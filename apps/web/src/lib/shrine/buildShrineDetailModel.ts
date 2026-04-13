@@ -394,7 +394,7 @@ function buildReasonSection(args: {
       },
     ].filter((group) => group.items.length > 0);
 
-    console.log("DETAIL_REASON_SECTION_DEBUG", { mode: args.mode, shrineText, groups });
+
 
     return groups.length > 0
       ? {
@@ -422,7 +422,7 @@ function buildReasonSection(args: {
     },
   ].filter((group) => group.items.length > 0);
 
-  console.log("DETAIL_REASON_SECTION_DEBUG", { mode: args.mode, shrineText, groups });
+
 
   return groups.length > 0
     ? {

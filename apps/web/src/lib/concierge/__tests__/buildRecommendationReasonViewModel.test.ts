@@ -16,7 +16,7 @@ describe("buildRecommendationReasonViewModel", () => {
     expect(vm.inputType).toBe("query");
     expect(vm.why.reasonKeys.primary).toBe("need_match");
     expect(vm.why.primaryReason.length).toBeGreaterThan(0);
-    expect(vm.hero.topReasonLabel).toBe("相談に合う");
+    expect(vm.hero.topReasonLabel).toBe("相談との一致が強い");
   });
 
   it("birthdateのみで primary_reason が相性系になる", () => {
@@ -35,7 +35,7 @@ describe("buildRecommendationReasonViewModel", () => {
     expect(vm.inputType).toBe("birthdate");
     expect(vm.why.reasonKeys.primary).toBe("element_match");
     expect(vm.why.primaryReason.length).toBeGreaterThan(0);
-    expect(vm.hero.topReasonLabel).toBe("相性が最も高い");
+    expect(vm.hero.topReasonLabel).toBe("相性との一致が強い");
   });
 
   it("fallback時に need文が出ない", () => {
