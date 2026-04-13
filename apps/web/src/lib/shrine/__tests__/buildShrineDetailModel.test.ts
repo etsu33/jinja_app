@@ -170,7 +170,7 @@ describe("buildShrineDetailModel", () => {
     expect(result.proposalWhy).toEqual([
       {
         label: "相談との一致",
-        text: "行動のきっかけや後押しを求める意図が中心にあり、金運面も立て直したい流れが見られます。",
+        text: "今回の相談の中心にある「前進のきっかけ」のテーマと、この神社の「開運」の性質が重なるため、この神社が候補に入っています。",
       },
       {
         label: "神社のご利益",
@@ -178,11 +178,11 @@ describe("buildShrineDetailModel", () => {
       },
       {
         label: "補助的な一致",
-        text: "三峯神社は、背中を押してほしい気持ちに加えて、金運や巡りの停滞も立て直したい今の段階で向いています。",
+        text: "三峯神社のご利益や性質も、「金運」の観点で補助的に重なっています。",
       },
       {
         label: "上位になった理由",
-        text: "今回は『前進』のテーマとの一致が強く、他候補と比べても行動のきっかけを持ちやすい候補として上位に入りました。",
+        text: "今回の候補の中でも、「前に進むきっかけ」のテーマとの一致が最も強い候補です。",
       },
       {
         label: "他候補との差",
@@ -215,7 +215,7 @@ describe("buildShrineDetailModel", () => {
       {
         key: "rank",
         title: "上位になった理由",
-        body: "今回は『前進』のテーマとの一致が強く、他候補と比べても行動のきっかけを持ちやすい候補として上位に入りました。",
+        body: "今回の候補の中でも、「前に進むきっかけ」のテーマとの一致が最も強い候補です。",
       },
     ]);
     expect(result.rankReason).toBe(
@@ -248,7 +248,7 @@ describe("buildShrineDetailModel", () => {
     expect(result.proposalWhy).toEqual([
       {
         label: "相談との一致",
-        text: "行動のきっかけや後押しを求める意図が中心にあり、金運面も立て直したい流れが見られます。",
+        text: "今回の相談の中心にある「前進のきっかけ」のテーマと、この神社の「開運」の性質が重なるため、この神社が候補に入っています。",
       },
       {
         label: "神社のご利益",
@@ -256,11 +256,11 @@ describe("buildShrineDetailModel", () => {
       },
       {
         label: "補助的な一致",
-        text: "三峯神社は、背中を押してほしい気持ちに加えて、金運や巡りの停滞も立て直したい今の段階で向いています。",
+        text: "三峯神社のご利益や性質も、「金運」の観点で補助的に重なっています。",
       },
       {
         label: "上位になった理由",
-        text: "今回は『前進』のテーマとの一致が強く、他候補と比べても行動のきっかけを持ちやすい候補として上位に入りました。",
+        text: "今回の候補の中でも、「前に進むきっかけ」のテーマとの一致が最も強い候補です。",
       },
       {
         label: "他候補との差",
@@ -325,7 +325,7 @@ describe("buildShrineDetailModel", () => {
     expect(result.proposal).toBe("仕事や転機に向き合う参拝先");
     expect(result.proposalWhy[0]).toEqual({
       label: "相談との一致",
-      text: "行動のきっかけや後押しを求める意図が相談の中心にあります。",
+      text: "今回の相談の中心にある「前進のきっかけ」のテーマと、この神社の「開運」の性質が重なるため、この神社が候補に入っています。",
     });
   });
 
@@ -346,7 +346,7 @@ describe("buildShrineDetailModel", () => {
     expect(result.proposal).toBe("気持ちを整えて休息したい時の参拝先");
     expect(result.proposalWhy[0]).toEqual({
       label: "相談との一致",
-      text: "不安や気持ちの揺れを整えたい意図が中心にあり、落ち着いて休みたい状態も見られます。",
+      text: "今回の相談の中心にある「気持ちの立て直し」のテーマと、この神社の「開運」の性質が重なるため、この神社が候補に入っています。",
     });
   });
 
@@ -367,7 +367,7 @@ describe("buildShrineDetailModel", () => {
     expect(result.proposal).toBe("良縁を願う参拝先");
     expect(result.proposalWhy[0]).toEqual({
       label: "相談との一致",
-      text: "良縁や恋愛を前向きに進めたい意図が相談の中心にあります。",
+      text: "今回の相談の中心にある「関係性」のテーマと、この神社の「開運」の性質が重なるため、この神社が候補に入っています。",
     });
   });
 
@@ -388,7 +388,7 @@ describe("buildShrineDetailModel", () => {
     expect(result.proposal).toBe("学業や合格に集中したい時の参拝先");
     expect(result.proposalWhy[0]).toEqual({
       label: "相談との一致",
-      text: "学業や合格に集中したい意図が相談の中心にあります。",
+      text: "今回の相談の中心にある「学業」のテーマと、この神社の「開運」の性質が重なるため、この神社が候補に入っています。",
     });
   });
 

@@ -16,7 +16,7 @@ describe("buildRecommendationReasonViewModel", () => {
     expect(vm.inputType).toBe("query");
     expect(vm.why.reasonKeys.primary).toBe("need_match");
     expect(vm.why.primaryReason.length).toBeGreaterThan(0);
-    expect(vm.hero.topReasonLabel).toBe("相談に合う");
+    expect(vm.hero.topReasonLabel).toBe("相談との一致が強い");
   });
 
   it("birthdateのみで primary_reason が相性系になる", () => {
@@ -35,7 +35,7 @@ describe("buildRecommendationReasonViewModel", () => {
     expect(vm.inputType).toBe("birthdate");
     expect(vm.why.reasonKeys.primary).toBe("element_match");
     expect(vm.why.primaryReason.length).toBeGreaterThan(0);
-    expect(vm.hero.topReasonLabel).toBe("相性が最も高い");
+    expect(vm.hero.topReasonLabel).toBe("相性との一致が強い");
   });
 
   it("fallback時に need文が出ない", () => {
@@ -130,6 +130,83 @@ describe("buildRecommendationReasonViewModel", () => {
     };
 
     expect(samples).toMatchSnapshot();
+  });
+
+  it("③の shrineMeaning が 2文構造で今ここに行く意味になる", () => {
+    const cases = [
+      {
+        label: "厄除け",
+        params: {
+          rec: { breakdown: { matched_need_tags: ["厄除け"] }, fallback_mode: "none" },
+          index: 0,
+          mode: "need" as const,
+          needTags: ["厄除け"],
+        },
+      },
+      {
+        label: "仕事",
+        params: {
+          rec: { breakdown: { matched_need_tags: ["仕事"] }, fallback_mode: "none" },
+          index: 0,
+          mode: "need" as const,
+          needTags: ["仕事"],
+        },
+      },
+      {
+        label: "金運",
+        params: {
+          rec: { breakdown: { matched_need_tags: ["金運"] }, fallback_mode: "none" },
+          index: 0,
+          mode: "need" as const,
+          needTags: ["金運"],
+        },
+      },
+      {
+        label: "転機",
+        params: {
+          rec: { breakdown: { matched_need_tags: ["転機"] }, fallback_mode: "none" },
+          index: 0,
+          mode: "need" as const,
+          needTags: ["転機"],
+        },
+      },
+      {
+        label: "compat",
+        params: {
+          rec: { astro_elements: ["water"], astro_priority: 2, fallback_mode: "none" },
+          index: 0,
+          mode: "compat" as const,
+          birthdate: "1992-08-10",
+          needTags: [],
+        },
+      },
+      {
+        label: "distance fallback",
+        params: {
+          rec: {
+            breakdown: { matched_need_tags: ["転機"] },
+            reason_facts: { primary_axis: "distance" as const, distance_label: "550m" },
+            fallback_mode: "nearby_unfiltered",
+            distance_m: 550,
+          },
+          index: 0,
+          mode: "need" as const,
+          needTags: ["転機"],
+        },
+      },
+    ];
+
+    for (const sample of cases) {
+      const vm = buildRecommendationReasonViewModel(sample.params);
+      const sentences = vm.detail.shrineMeaning.match(/[^。]+。/g) ?? [];
+
+      expect(sentences, sample.label).toHaveLength(2);
+      expect(vm.detail.shrineMeaning, sample.label).toContain("今は、");
+      expect(vm.detail.shrineMeaning, sample.label).toContain("節目として置きやすい場所です");
+      expect(vm.detail.shrineMeaning, sample.label).not.toContain("ご利益");
+      expect(vm.detail.shrineMeaning, sample.label).not.toContain("由緒");
+      expect(vm.detail.shrineMeaning, sample.label).not.toBe(vm.detail.heroMeaningCopy);
+    }
   });
 
   it("reason_facts.primary_axis=distance を優先できる", () => {

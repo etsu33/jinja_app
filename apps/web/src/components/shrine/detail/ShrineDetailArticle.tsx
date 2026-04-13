@@ -1,12 +1,34 @@
 /**
- * 一覧の catchCopy:
- * - 候補を開く理由を短く伝える入口コピー
- * - 一覧での期待を作る役割を持つ
+ * ShrineDetailArticle
  *
- * 詳細の heroMeaningCopy:
- * - この神社を今どう受け取るかを定義する意味宣言
- * - 一覧の要約ではなく、詳細画面で最初に読む主文として使う
- * - 詳細では「意味 → 理由 → 本文」の順に理解を進める
+ * UI section responsibility (fixed contract)
+ *
+ * ① 推薦判断
+ * - list.primaryPhrase / list.secondaryPhrase / rank.*
+ * - なぜこの神社が候補に入ったのかを表示する
+ * - 推薦判断の主理由 / 補助理由 / 1位理由を扱う
+ * - 状態整理や行動意味はここに混ぜない
+ *
+ * ② 状態整理
+ * - detail.consultationSummary
+ * - 今どういう状態なのかを表示する
+ * - 判断が散りやすい理由 / 今の優先順位を扱う
+ * - 神社説明や推薦判断はここに混ぜない
+ *
+ * ③ 行動意味
+ * - detail.shrineMeaning
+ * - 今この神社をどう置くかを表示する
+ * - 行動意味の接続を扱う
+ * - 推薦判断や神社情報はここに混ぜない
+ *
+ * ④ 神社情報
+ * - Shrine API / shrine detail model 側
+ * - ご利益 / 象徴 / 相性タグ / 基本情報を補助表示する
+ * - 説得の主戦場にしない
+ *
+ * note:
+ * - 詳細画面は「①推薦判断 → ②状態整理 → ③行動意味 → ④神社情報」の順で理解を進める
+ * - heroMeaningCopy は ③ 行動意味の入口コピーとして扱う
  */
 import type React from "react";
 
@@ -23,6 +45,19 @@ import type { ShrineTag } from "@/lib/shrine/tags/types";
 import type { ShrineCardAdapterProps } from "@/components/shrine/buildShrineCardProps";
 import type { ShrineDetailSectionModel } from "@/components/shrine/detail/types";
 
+/**
+ * section rendering rule
+ *
+ * - reason     = ① 推薦判断
+ * - proposal   = ② 状態整理
+ * - meaning    = ③ 行動意味
+ * - supplement = ④ 神社情報
+ *
+ * rule:
+ * - ①と③を混ぜない
+ * - ②に神社説明を入れない
+ * - ④を説得の主戦場にしない
+ */
 function ShrineDetailSections({ sections }: { sections: ShrineDetailSectionModel[] }) {
   return (
     <div className="space-y-4">
@@ -46,6 +81,13 @@ function ShrineDetailSections({ sections }: { sections: ShrineDetailSectionModel
   );
 }
 
+/**
+ * hero header responsibility
+ *
+ * - heroMeaningCopy は ③ 行動意味の入口として使う
+ * - 一覧の要約ではなく、詳細画面で最初に読む意味宣言を置く
+ * - ① 推薦判断や ④ 神社情報の本文はここに混ぜない
+ */
 function ShrineDetailHeroHeader(props: { title: string; heroMeaningCopy?: string | null; address?: string | null }) {
   const resolvedHeroMeaningCopy = props.heroMeaningCopy?.trim() || "今の流れを整え、次の見方を作る神社";
 
@@ -64,6 +106,25 @@ function ShrineDetailHeroHeader(props: { title: string; heroMeaningCopy?: string
   );
 }
 
+/**
+ * display mapping summary
+ *
+ * ① 推薦判断
+ * - ShrineReasonSection
+ * - list.primaryPhrase / list.secondaryPhrase / rank.*
+ *
+ * ② 状態整理
+ * - ShrineProposalSection
+ * - detail.consultationSummary
+ *
+ * ③ 行動意味
+ * - ShrineJudgeSection
+ * - detail.shrineMeaning
+ *
+ * ④ 神社情報
+ * - ShrineSupplementSection
+ * - Shrine API / shrine detail model 側の補助情報
+ */
 export default function ShrineDetailArticle({
   cardProps,
   heroImageUrl,

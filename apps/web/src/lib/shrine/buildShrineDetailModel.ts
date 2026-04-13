@@ -148,25 +148,7 @@ function getShrineTone(shrineName?: string | null): ShrineTone {
   return "neutral";
 }
 
-const NEED_REASON_LABELS: Record<NeedTag, string> = {
-  money: "金運",
-  courage: "前進のきっかけ",
-  career: "仕事や転機",
-  mental: "気持ちを整えたい",
-  rest: "休息したい",
-  love: "良縁や恋愛",
-  study: "学業や合格",
-};
 
-const NEED_STATE_LABELS: Record<NeedTag, string> = {
-  money: "流れを立て直したい",
-  courage: "前に進むきっかけがほしい",
-  career: "判断や転機を整理したい",
-  mental: "気持ちを整えたい",
-  rest: "無理せず休みたい",
-  love: "関係性を前向きに整えたい",
-  study: "集中を立て直したい",
-};
 
 function needLabelJa(tag: NeedTag): string {
   if (tag === "money") return "金運";
@@ -176,6 +158,45 @@ function needLabelJa(tag: NeedTag): string {
   if (tag === "rest") return "休息";
   if (tag === "love") return "良縁や恋愛";
   return "学業や合格";
+}
+
+function buildNeedThemeLabel(tag: NeedTag | null): string | null {
+  if (!tag) return null;
+  if (tag === "money") return "流れの立て直し";
+  if (tag === "courage") return "前進のきっかけ";
+  if (tag === "career") return "仕事や転機";
+  if (tag === "mental") return "気持ちの立て直し";
+  if (tag === "rest") return "休息";
+  if (tag === "love") return "関係性";
+  if (tag === "study") return "学業";
+  return needLabelJa(tag);
+}
+
+function buildPrimaryBenefitLabel(benefitLabels: string[]): string | null {
+  const first = benefitLabels.find((label) => typeof label === "string" && label.trim().length > 0);
+  return first ? first.trim() : null;
+}
+
+function buildReasonIntersectionText(args: {
+  primary: NeedTag | null;
+  benefitLabels: string[];
+}): string {
+  const themeLabel = buildNeedThemeLabel(args.primary);
+  const benefitLabel = buildPrimaryBenefitLabel(args.benefitLabels);
+
+  if (themeLabel && benefitLabel) {
+    return `今回の相談の中心にある「${themeLabel}」のテーマと、この神社の「${benefitLabel}」の性質が重なるため、この神社が候補に入っています。`;
+  }
+
+  if (themeLabel) {
+    return `今回の相談の中心にある「${themeLabel}」のテーマと重なるため、この神社が候補に入っています。`;
+  }
+
+  if (benefitLabel) {
+    return `この神社の「${benefitLabel}」の性質が、今回の相談と重なるため、この神社が候補に入っています。`;
+  }
+
+  return "今回の相談内容との重なりから、この神社が候補に入っています。";
 }
 
 function isNeedTag(tag: string): tag is NeedTag {
@@ -208,46 +229,30 @@ function getSecondaryNeedTags(breakdown?: ConciergeBreakdown | null): NeedTag[] 
 }
 
 
-function buildNeedMatchText(primary: NeedTag | null, secondary: NeedTag[]): string {
-  if (primary === "courage") {
-    return secondary.includes("money")
-      ? "行動のきっかけや後押しを求める意図が中心にあり、金運面も立て直したい流れが見られます。"
-      : "行動のきっかけや後押しを求める意図が相談の中心にあります。";
+function buildNeedMatchText(
+  argsOrPrimary: { primary?: NeedTag | null; benefitLabels?: string[] | null } | NeedTag | null,
+  _legacySecondary?: NeedTag[],
+): string {
+  if (!argsOrPrimary || typeof argsOrPrimary !== "object") {
+    return buildReasonIntersectionText({
+      primary: argsOrPrimary ?? null,
+      benefitLabels: [],
+    });
   }
 
-  if (primary === "money") {
-    return secondary.includes("courage")
-      ? "金運や流れを立て直したい意図が中心にあり、動き出すきっかけも求めている状態です。"
-      : "金運や流れを立て直したい意図が相談の中心にあります。";
-  }
+  const safePrimary: NeedTag | null = "primary" in argsOrPrimary ? (argsOrPrimary.primary ?? null) : null;
 
-  if (primary === "career") {
-    return secondary.includes("courage")
-      ? "仕事や転機への意識が中心にあり、前に進むきっかけも必要としている状態です。"
-      : "仕事や転機に向き合いたい意図が相談の中心にあります。";
-  }
+  const safeBenefitLabels: string[] =
+    "benefitLabels" in argsOrPrimary && Array.isArray(argsOrPrimary.benefitLabels)
+      ? argsOrPrimary.benefitLabels.filter(
+          (label): label is string => typeof label === "string" && label.trim().length > 0,
+        )
+      : [];
 
-  if (primary === "mental") {
-    return secondary.includes("rest")
-      ? "不安や気持ちの揺れを整えたい意図が中心にあり、落ち着いて休みたい状態も見られます。"
-      : "不安や気持ちの揺れを整えたい意図が相談の中心にあります。";
-  }
-
-  if (primary === "rest") {
-    return secondary.includes("mental")
-      ? "休息したい意図が中心にあり、気持ちの揺れも整えたい状態が見られます。"
-      : "落ち着いて休みたい意図が相談の中心にあります。";
-  }
-
-  if (primary === "love") {
-    return "良縁や恋愛を前向きに進めたい意図が相談の中心にあります。";
-  }
-
-  if (primary === "study") {
-    return "学業や合格に集中したい意図が相談の中心にあります。";
-  }
-
-  return "相談内容の中に、今の状態を整えたい意図が見られます。";
+  return buildReasonIntersectionText({
+    primary: safePrimary,
+    benefitLabels: safeBenefitLabels,
+  });
 }
 
 function buildCompatMatchText(args: {
@@ -284,18 +289,20 @@ function uniqueNonEmpty(values: Array<string | null | undefined>): string[] {
   return [...new Set(values.map((v) => (typeof v === "string" ? v.trim() : "")).filter(Boolean))];
 }
 
-function buildCompatReasonItems(payload?: ExplanationPayload | null, benefitLabels: string[] = []): {
-  consultation: string[];
-  states: string[];
-  shrineFactors: string[];
-} {
-  const consultation = payload?.primary_reason?.label_ja ? [payload.primary_reason.label_ja] : [];
 
-  const states = payload?.primary_need_label_ja ? [payload.primary_need_label_ja] : ["生年月日との相性を見ています"];
+function uniqueReasonItems(values: Array<string | null | undefined>): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
 
-  const shrineFactors = benefitLabels.slice(0, 3);
+  values.forEach((value) => {
+    const normalized = typeof value === "string" ? value.trim() : "";
+    if (!normalized) return;
+    if (seen.has(normalized)) return;
+    seen.add(normalized);
+    out.push(normalized);
+  });
 
-  return { consultation, states, shrineFactors };
+  return out;
 }
 
 function buildReasonSection(args: {
@@ -303,19 +310,60 @@ function buildReasonSection(args: {
   breakdown?: ConciergeBreakdown | null;
   explanationPayload?: ExplanationPayload | null;
   benefitLabels: string[];
+  shrineName?: string | null;
+  rankReason?: string | null;
+  comparisonText?: string | null;
+  isTop?: boolean | null;
 }): DetailReasonSection | null {
   const primary = getPrimaryNeedTag(args.breakdown);
   const secondary = getSecondaryNeedTags(args.breakdown);
   const payload = args.explanationPayload ?? null;
+  const shrineText = args.shrineName?.trim() || "この神社";
+  const shrineTone = getShrineTone(shrineText);
+  const benefitText = buildBenefitText(shrineText, args.benefitLabels, primary, shrineTone);
+  const secondaryText = buildSecondaryText(primary, secondary, shrineText);
+  const topReasonText = args.rankReason?.trim() || buildRankReasonText({
+    mode: args.mode,
+    breakdown: args.breakdown,
+    primaryNeed: primary,
+    secondaryNeedTags: secondary,
+  });
+  const comparisonReasonText = args.comparisonText?.trim() || buildComparisonText({
+    mode: args.mode,
+    primaryNeed: primary,
+    shrineName: shrineText,
+    shrineTone,
+  });
+  const rankGroupTitle = args.isTop ? "1位理由" : "上位理由";
 
   if (args.mode === "compat") {
-    const compat = buildCompatReasonItems(payload, args.benefitLabels);
+    const compatMatchText = buildCompatMatchText({
+      userElementLabel: payload?.primary_need_label_ja ?? null,
+      shrineElementLabels: args.benefitLabels,
+      primaryReasonLabel: payload?.primary_reason?.label_ja ?? null,
+    });
 
     const groups: DetailReasonGroup[] = [
-      { title: "一致した相談", items: compat.consultation },
-      { title: "一致した状態", items: compat.states },
-      { title: "一致した神社要素", items: compat.shrineFactors },
-    ].filter((g) => g.items.length > 0);
+      {
+        title: "主理由",
+        items: uniqueReasonItems([compatMatchText]),
+      },
+      {
+        title: "補助理由",
+        items: uniqueReasonItems([
+          benefitText,
+          payload?.primary_reason?.label_ja
+            ? `${payload.primary_reason.label_ja}に関わる相談内容との補助的な重なりも見られます。`
+            : "相談内容との補助的な一致も見られます。",
+        ]),
+      },
+      {
+        title: rankGroupTitle,
+        items: uniqueReasonItems([topReasonText, comparisonReasonText]),
+      },
+    ].filter((group) => group.items.length > 0);
+
+
 
     return groups.length > 0
       ? {
@@ -326,23 +374,24 @@ function buildReasonSection(args: {
       : null;
   }
 
-  const consultation = uniqueNonEmpty([
-    primary ? NEED_REASON_LABELS[primary] : null,
-    ...secondary.map((tag) => NEED_REASON_LABELS[tag]),
-  ]);
-
-  const states = uniqueNonEmpty([
-    primary ? NEED_STATE_LABELS[primary] : null,
-    ...secondary.map((tag) => NEED_STATE_LABELS[tag]),
-  ]);
-
-  const shrineFactors = uniqueNonEmpty(args.benefitLabels.slice(0, 3));
+  const needMatchText = buildNeedMatchText({ primary, benefitLabels: args.benefitLabels });
 
   const groups: DetailReasonGroup[] = [
-    { title: "一致した相談", items: consultation },
-    { title: "一致した状態", items: states },
-    { title: "一致した神社要素", items: shrineFactors },
-  ].filter((g) => g.items.length > 0);
+    {
+      title: "主理由",
+      items: uniqueReasonItems([needMatchText]),
+    },
+    {
+      title: "補助理由",
+      items: uniqueReasonItems([benefitText, secondaryText]),
+    },
+    {
+      title: rankGroupTitle,
+      items: uniqueReasonItems([topReasonText, comparisonReasonText]),
+    },
+  ].filter((group) => group.items.length > 0);
+
+
 
   return groups.length > 0
     ? {
@@ -527,133 +576,13 @@ function buildBenefitText(
 
 function buildSecondaryText(primary: NeedTag | null, secondary: NeedTag[], shrineName?: string): string {
   const shrineText = shrineName?.trim() || "この神社";
-  const shrineTone = getShrineTone(shrineText);
+  const secondaryLabel = secondary[0] ? needLabelJa(secondary[0]) : null;
 
-  if (secondary.length === 0) {
-    if (primary === "courage") {
-      if (shrineTone === "strong") {
-        return `${shrineText}は、静かに様子を見る場というより、止まった流れを切り替える節目として使いやすい神社です。`;
-      }
-      if (shrineTone === "tight") {
-        return `${shrineText}は、勢いで動く場というより、迷いを整理して一歩を定めるための神社です。`;
-      }
-      if (shrineTone === "quiet") {
-        return `${shrineText}は、強く背中を押す場というより、気持ちを整えてから一歩を決めるための神社です。`;
-      }
-      return `${shrineText}は、結論を急ぐより、まず最初の一歩を決めたい段階で向いています。`;
-    }
-
-    if (primary === "money") {
-      if (shrineTone === "strong") {
-        return `${shrineText}は、運を待つ場というより、停滞した流れを切り替える節目として使いやすい神社です。`;
-      }
-      if (shrineTone === "quiet") {
-        return `${shrineText}は、一気の好転を狙う場というより、巡りを落ち着いて整え直すための神社です。`;
-      }
-      return `${shrineText}は、金運や巡りを整え直したい今の段階で向いています。`;
-    }
-
-    if (primary === "career") {
-      if (shrineTone === "tight") {
-        return `${shrineText}は、感覚で決める場というより、仕事や転機への姿勢を引き締めて判断するための神社です。`;
-      }
-      if (shrineTone === "quiet") {
-        return `${shrineText}は、結論を急ぐ場というより、向き合い方を静かに整理するための神社です。`;
-      }
-      return `${shrineText}は、仕事や転機への向き合い方を整えたい今の段階で向いています。`;
-    }
-
-    if (primary === "mental") {
-      if (shrineTone === "quiet") {
-        return `${shrineText}は、強く前へ押し出す場というより、揺れた気持ちを静かに整え直すための神社です。`;
-      }
-      if (shrineTone === "strong") {
-        return `${shrineText}は、ただ休む場というより、沈んだ流れを切り替えて立て直す節目として使いやすい神社です。`;
-      }
-      if (shrineTone === "tight") {
-        return `${shrineText}は、感情に流されるまま過ごすより、気持ちを引き締めて整えたい段階で向いています。`;
-      }
-      return `${shrineText}は、不安や揺れを整えたい今の段階で向いています。`;
-    }
-
-    if (primary === "rest") {
-      if (shrineTone === "quiet") {
-        return `${shrineText}は、何かを進める場というより、消耗を静かに整え直すための神社です。`;
-      }
-      return `${shrineText}は、無理に予定を前へ進めるより、疲れを立て直したい今の段階で向いています。`;
-    }
-
-    if (primary === "love") {
-      if (shrineTone === "quiet") {
-        return `${shrineText}は、気持ちを勢いで動かす場というより、関係性を静かに見直すための神社です。`;
-      }
-      return `${shrineText}は、良縁や関係性を丁寧に整えたい今の段階で向いています。`;
-    }
-
-    if (primary === "study") {
-      if (shrineTone === "tight") {
-        return `${shrineText}は、焦って結果だけを追う場というより、集中や姿勢を引き締め直すための神社です。`;
-      }
-      return `${shrineText}は、学業や合格に向けた集中を整え直したい今の段階で向いています。`;
-    }
-
-    return `${shrineText}は、今の状態を整えながら次を決めたい今の段階で向いています。`;
+  if (secondaryLabel) {
+    return `${shrineText}のご利益や性質も、「${secondaryLabel}」の観点で補助的に重なっています。`;
   }
-
-  if (primary === "courage" && secondary.includes("money")) {
-    return `${shrineText}は、背中を押してほしい気持ちに加えて、金運や巡りの停滞も立て直したい今の段階で向いています。`;
-  }
-
-  if (primary === "money" && secondary.includes("courage")) {
-    if (shrineTone === "strong") {
-      return `${shrineText}は、停滞した巡りを切り替えつつ、止まった状態から動き出すきっかけも欲しい今の段階で向いています。`;
-    }
-    if (shrineTone === "quiet") {
-      return `${shrineText}は、巡りを焦って変えるより、落ち着いて整えながら次の一歩も決めたい今の段階で向いています。`;
-    }
-    if (shrineTone === "tight") {
-      return `${shrineText}は、巡りを立て直しつつ、迷いを絞って動き出す判断も固めたい今の段階で向いています。`;
-    }
-    return `${shrineText}は、巡りを整えるだけでなく、止まった状態から動き出すきっかけも欲しい今の段階で向いています。`;
-  }
-
-  if (primary === "career" && secondary.includes("courage")) {
-    if (shrineTone === "strong") {
-      return `${shrineText}は、仕事や転機への向き合い方を整理しながら、次の一歩へ切り替える節目も欲しい今の段階で向いています。`;
-    }
-    if (shrineTone === "quiet") {
-      return `${shrineText}は、仕事や転機への向き合い方を静かに見直しながら、急がず次の一歩も定めたい今の段階で向いています。`;
-    }
-    if (shrineTone === "tight") {
-      return `${shrineText}は、仕事や転機への姿勢を引き締めつつ、迷いを減らして次の一歩を決めたい今の段階で向いています。`;
-    }
-    return `${shrineText}は、仕事や転機への向き合い方を整理しつつ、次の一歩も決めたい今の段階で向いています。`;
-  }
-
-  if (primary === "mental" && secondary.includes("rest")) {
-    if (shrineTone === "quiet") {
-      return `${shrineText}は、気持ちを静かに整えながら、無理に進まず休みつつ立て直したい今の段階で向いています。`;
-    }
-    if (shrineTone === "strong") {
-      return `${shrineText}は、沈んだ流れを切り替えながら、気持ちと休息の両方を立て直したい今の段階で向いています。`;
-    }
-    return `${shrineText}は、気持ちを整えることに加えて、無理に進まず休みながら立て直したい今の段階で向いています。`;
-  }
-
-  if (primary === "rest" && secondary.includes("mental")) {
-    if (shrineTone === "quiet") {
-      return `${shrineText}は、休息を取りながら、気持ちの揺れも静かに整え直したい今の段階で一度立ち止まる場として使いやすい神社です。`;
-    }
-    if (shrineTone === "strong") {
-      return `${shrineText}は、休息を取りながら、沈んだ流れも切り替えて立て直したい今の段階で節目として置きやすい神社です。`;
-    }
-    if (shrineTone === "tight") {
-      return `${shrineText}は、休息を取りながら、気持ちの揺れを引き締め直して整えたい今の段階で判断材料にしやすい神社です。`;
-    }
-    return `${shrineText}は、休息を取りながら、気持ちの揺れも静かに整え直したい今の段階で向いています。`;
-  }
-
-  return `${shrineText}は、${secondary.map(needLabelJa).join("、")}も視野に入れながら、優先順位を落ち着いて整理したい段階で向いています。`;
+  // (fallback to original logic if no secondary tag, or just return empty string or generic)
+  return "";
 }
 
 function buildRankReasonText(args: {
@@ -662,49 +591,17 @@ function buildRankReasonText(args: {
   primaryNeed?: NeedTag | null;
   secondaryNeedTags?: NeedTag[];
 }): string {
-  const total = args.breakdown?.score_total ?? null;
-  const element = args.breakdown?.score_element ?? null;
-
   if (args.mode === "compat") {
-    if (typeof element === "number" && element > 0) {
-      return "今回は生年月日との相性要素が強く、相性軸で上位に入りました。";
-    }
-    return "今回は相性軸を主に見たときに、他候補より噛み合いが見られました。";
+    return "今回の候補の中でも、生年月日との相性の重なりが最も強い候補です。";
   }
 
-  if (args.mode === "need" && args.primaryNeed === "courage") {
-    return "今回は『前進』のテーマとの一致が強く、他候補と比べても行動のきっかけを持ちやすい候補として上位に入りました。";
+  const label = args.primaryNeed ? needLabelJa(args.primaryNeed) : null;
+
+  if (label) {
+    return `今回の候補の中でも、「${label}」のテーマとの一致が最も強い候補です。`;
   }
 
-  if (args.mode === "need" && args.primaryNeed === "mental") {
-    return "今回は「気持ちを整える」テーマとの一致が強く、他候補より落ち着きを取り戻す参拝先として位置づけやすいため上位に入りました。";
-  }
-
-  if (args.mode === "need" && args.primaryNeed === "career") {
-    return "今回は「仕事や転機」のテーマとの一致が強く、他候補より判断を整理する節目として置きやすいため上位に入りました。";
-  }
-
-  if (args.mode === "need" && args.primaryNeed === "money") {
-    return "今回は「金運や巡り」のテーマとの一致が強く、他候補より流れを立て直す節目として置きやすいため上位に入りました。";
-  }
-
-  if (args.mode === "need" && args.primaryNeed === "rest") {
-    return "今回は「休息」のテーマとの一致が強く、他候補より無理に進まず立て直す参拝先として位置づけやすいため上位に入りました。";
-  }
-
-  if (args.mode === "need" && args.primaryNeed === "love") {
-    return "今回は「良縁や関係性」のテーマとの一致が強く、他候補より気持ちを整えながら向き合いやすい候補として上位に入りました。";
-  }
-
-  if (args.mode === "need" && args.primaryNeed === "study") {
-    return "今回は「学業や合格」のテーマとの一致が強く、他候補より集中や姿勢を立て直す参拝先として置きやすいため上位に入りました。";
-  }
-
-  if (typeof total === "number") {
-    return "今回は複数の観点を合わせた総合評価で上位に入りました。";
-  }
-
-  return "今回は今回の相談軸に近い候補として上位に入りました。";
+  return "今回の候補の中でも、相談内容との重なりが最も強い候補です。";
 }
 
 
@@ -768,7 +665,7 @@ function buildProposalWhyFromBreakdown(args: {
   return [
     {
       label: "相談との一致",
-      text: buildNeedMatchText(primary, secondary),
+      text: buildNeedMatchText({ primary, benefitLabels }),
     },
     {
       label: "神社のご利益",
@@ -1439,6 +1336,10 @@ export function buildShrineDetailModel({
     breakdown: conciergeBreakdown,
     explanationPayload,
     benefitLabels,
+    shrineName: cardProps.title ?? null,
+    rankReason,
+    comparisonText,
+    isTop: recommendationRankComparison?.is_top ?? null,
   });
 
   const proposalSection = buildProposalSection({
