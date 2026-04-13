@@ -190,22 +190,7 @@ const ELEMENT_LABELS: Record<string, string> = {
   water: "水",
 };
 
-const NEED_PRIMARY_TEXT: Record<string, string> = {
-  転機: "今回の相談の中心にある切り替えのテーマと強く重なる候補です",
-  仕事: "今回の相談の中心にある仕事のテーマと強く重なる候補です",
-  厄除け: "今回の相談の中心にある立て直しのテーマと強く重なる候補です",
-  恋愛: "今回の相談の中心にある関係性のテーマと強く重なる候補です",
-  健康: "今回の相談の中心にある心身調整のテーマと強く重なる候補です",
-  金運: "今回の相談の中心にある流れの立て直しテーマと強く重なる候補です",
-  学業: "今回の相談の中心にある集中と学びのテーマと強く重なる候補です",
-};
 
-const ELEMENT_PRIMARY_TEXT: Record<string, string> = {
-  火: "生年月日から見た「火」の要素と相性が強く重なる候補です",
-  土: "生年月日から見た「土」の要素と相性が強く重なる候補です",
-  風: "生年月日から見た「風」の要素と相性が強く重なる候補です",
-  水: "生年月日から見た「水」の要素と相性が強く重なる候補です",
-};
 
 function clean(value?: string | null): string {
   return (value ?? "").replace(/\s+/g, " ").trim();
@@ -236,13 +221,7 @@ function getPrimaryElement(rec: RecommendationLike): string | null {
   return ELEMENT_LABELS[String(raw).toLowerCase()] ?? String(raw);
 }
 
-function buildNeedPrimaryText(need: string): string {
-  return NEED_PRIMARY_TEXT[need] ?? `${need}を意識した今に合いやすい候補です`;
-}
 
-function buildElementPrimaryText(element: string): string {
-  return ELEMENT_PRIMARY_TEXT[element] ?? `${element}の要素と相性が良い候補です`;
-}
 
 function buildNeedThemeLabel(need?: string | null): string | null {
   const normalized = clean(need);
@@ -796,7 +775,7 @@ function buildMeaningReceiver(args: { need: string | null; benefit: string | nul
   return `${qualifier}${baseWish}`;
 }
 
-function buildMeaningCore(params: BuildParams, primary: Candidate): string {
+function buildMeaningCore(params: BuildParams, _primary: Candidate): string {
   const need = clean(params.needTags?.[0]);
   const benefit = getPrimaryNeedBenefitLabel(params.rec, params.shrineBenefitLabels);
   const feature = getShrineFeatureLabel(params.rec, params.shrineFeatureLabels);
@@ -811,9 +790,7 @@ function buildMeaningCore(params: BuildParams, primary: Candidate): string {
   return `この神社は、${receiver}を見直し、今の流れを整える節目として置きやすい場所です。`;
 }
 
-function buildStateShrineMeaningText(params: BuildParams, primary: Candidate): string {
-  return buildMeaningCore(params, primary);
-}
+
 
 function buildWhyNow(params: BuildParams, primary: Candidate): string {
   const need = clean(params.needTags?.[0]);

@@ -148,25 +148,7 @@ function getShrineTone(shrineName?: string | null): ShrineTone {
   return "neutral";
 }
 
-const NEED_REASON_LABELS: Record<NeedTag, string> = {
-  money: "金運",
-  courage: "前進のきっかけ",
-  career: "仕事や転機",
-  mental: "気持ちを整えたい",
-  rest: "休息したい",
-  love: "良縁や恋愛",
-  study: "学業や合格",
-};
 
-const NEED_STATE_LABELS: Record<NeedTag, string> = {
-  money: "流れを立て直したい",
-  courage: "前に進むきっかけがほしい",
-  career: "判断や転機を整理したい",
-  mental: "気持ちを整えたい",
-  rest: "無理せず休みたい",
-  love: "関係性を前向きに整えたい",
-  study: "集中を立て直したい",
-};
 
 function needLabelJa(tag: NeedTag): string {
   if (tag === "money") return "金運";
@@ -307,19 +289,6 @@ function uniqueNonEmpty(values: Array<string | null | undefined>): string[] {
   return [...new Set(values.map((v) => (typeof v === "string" ? v.trim() : "")).filter(Boolean))];
 }
 
-function buildCompatReasonItems(payload?: ExplanationPayload | null, benefitLabels: string[] = []): {
-  consultation: string[];
-  states: string[];
-  shrineFactors: string[];
-} {
-  const consultation = payload?.primary_reason?.label_ja ? [payload.primary_reason.label_ja] : [];
-
-  const states = payload?.primary_need_label_ja ? [payload.primary_need_label_ja] : ["生年月日との相性を見ています"];
-
-  const shrineFactors = benefitLabels.slice(0, 3);
-
-  return { consultation, states, shrineFactors };
-}
 
 function uniqueReasonItems(values: Array<string | null | undefined>): string[] {
   const seen = new Set<string>();

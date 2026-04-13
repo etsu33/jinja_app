@@ -185,7 +185,7 @@ describe("buildRecommendationReasonViewModel", () => {
         params: {
           rec: {
             breakdown: { matched_need_tags: ["転機"] },
-            reason_facts: { primary_axis: "distance", distance_label: "550m" },
+            reason_facts: { primary_axis: "distance" as const, distance_label: "550m" },
             fallback_mode: "nearby_unfiltered",
             distance_m: 550,
           },
