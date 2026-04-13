@@ -19,6 +19,43 @@
 export type ReasonInputType = "query" | "birthdate" | "fallback";
 export type ReasonKey = "need_match" | "text_match" | "element_match" | "sign_match" | "distance" | "popular";
 
+/**
+ * UI section mapping (fixed contract)
+ *
+ * ① 推薦判断
+ * - list.primaryPhrase
+ * - list.secondaryPhrase
+ * - rank.whyTop
+ * - rank.differenceFromOthers
+ *
+ * role:
+ * - なぜこの神社が候補に入ったのかを説明する
+ * - 推薦判断の主理由 / 補助理由 / 1位理由を返す
+ * - 状態診断や行動意味はここに混ぜない
+ *
+ * ② 状態整理
+ * - detail.consultationSummary
+ *
+ * role:
+ * - 今どういう状態なのかを整理する
+ * - 判断が散りやすい理由 / 今の優先順位を返す
+ * - 神社説明や推薦判断はここに混ぜない
+ *
+ * ③ 行動意味
+ * - detail.shrineMeaning
+ *
+ * role:
+ * - 今この神社をどう置くかを説明する
+ * - meaningCore / whyNow / actionRole を使って組み立てる
+ * - 推薦判断や神社情報はここに混ぜない
+ *
+ * ④ 神社情報
+ * - Shrine API / shrine detail UI 側で扱う
+ *
+ * role:
+ * - ご利益 / 象徴 / 相性タグ / 基本情報を補助表示する
+ * - この view model では責務を持たない
+ */
 export type RecommendationReasonViewModel = {
   inputType: ReasonInputType;
 
@@ -27,12 +64,14 @@ export type RecommendationReasonViewModel = {
     catchCopy: string;
   };
 
+  // ① 推薦判断: 主理由 / 補助理由
   list: {
     primaryPhrase: string;
     summary: string;
     secondaryPhrase?: string;
   };
 
+  // ② 状態整理 + ③ 行動意味
   detail: {
     heroMeaningCopy: string;
     consultationSummary: string;
@@ -40,6 +79,7 @@ export type RecommendationReasonViewModel = {
     actionMeaning?: string;
   };
 
+  // ① 推薦判断: 1位理由 / 他候補との差
   rank: {
     whyTop?: string;
     differenceFromOthers?: string;
@@ -55,8 +95,8 @@ export type RecommendationReasonViewModel = {
 
   /**
    * compatibility:
-   * - 既存UIが why / interpretation を参照している間は残す
-   * - 呼び出し側を list / detail に寄せ終えたら削除する
+   * - why は ① 推薦判断の互換フィールド
+   * - 呼び出し側を list / rank に寄せ終えたら削除する
    */
   why: {
     summary: string;
@@ -68,6 +108,12 @@ export type RecommendationReasonViewModel = {
       summary: ReasonKey;
     };
   };
+  /**
+   * compatibility:
+   * - interpretation.consultationSummary は ② 状態整理の互換フィールド
+   * - interpretation.shrineMeaning は ③ 行動意味の互換フィールド
+   * - 呼び出し側を detail に寄せ終えたら削除する
+   */
   interpretation: {
     consultationSummary: string;
     shrineMeaning: string;
@@ -145,20 +191,20 @@ const ELEMENT_LABELS: Record<string, string> = {
 };
 
 const NEED_PRIMARY_TEXT: Record<string, string> = {
-  転機: "切り替えたい今に合いやすい候補です",
-  仕事: "仕事の流れを整えたい時に向く候補です",
-  厄除け: "気持ちを立て直したい時に合う候補です",
-  恋愛: "ご縁を整えたい気持ちに寄り添いやすい候補です",
-  健康: "心身を整えたい時に向きやすい候補です",
-  金運: "流れを立て直したい時に意識しやすい候補です",
-  学業: "集中して力を伸ばしたい時に向く候補です",
+  転機: "今回の相談の中心にある切り替えのテーマと強く重なる候補です",
+  仕事: "今回の相談の中心にある仕事のテーマと強く重なる候補です",
+  厄除け: "今回の相談の中心にある立て直しのテーマと強く重なる候補です",
+  恋愛: "今回の相談の中心にある関係性のテーマと強く重なる候補です",
+  健康: "今回の相談の中心にある心身調整のテーマと強く重なる候補です",
+  金運: "今回の相談の中心にある流れの立て直しテーマと強く重なる候補です",
+  学業: "今回の相談の中心にある集中と学びのテーマと強く重なる候補です",
 };
 
 const ELEMENT_PRIMARY_TEXT: Record<string, string> = {
-  火: "前向きに動きたい気質と合いやすい候補です",
-  土: "落ち着いて整えたい時に向きやすい候補です",
-  風: "流れを変えたい時に軽やかに選びやすい候補です",
-  水: "静かに気持ちを整えたい時に馴染みやすい候補です",
+  火: "生年月日から見た「火」の要素と相性が強く重なる候補です",
+  土: "生年月日から見た「土」の要素と相性が強く重なる候補です",
+  風: "生年月日から見た「風」の要素と相性が強く重なる候補です",
+  水: "生年月日から見た「水」の要素と相性が強く重なる候補です",
 };
 
 function clean(value?: string | null): string {
@@ -198,6 +244,59 @@ function buildElementPrimaryText(element: string): string {
   return ELEMENT_PRIMARY_TEXT[element] ?? `${element}の要素と相性が良い候補です`;
 }
 
+function buildNeedThemeLabel(need?: string | null): string | null {
+  const normalized = clean(need);
+  if (!normalized) return null;
+
+  if (normalized === "厄除け") return "立て直し";
+  if (normalized === "仕事") return "仕事";
+  if (normalized === "金運") return "流れの立て直し";
+  if (normalized === "転機") return "切り替え";
+  if (normalized === "恋愛") return "関係性";
+  if (normalized === "健康") return "心身調整";
+  if (normalized === "学業") return "学業";
+
+  return normalized;
+}
+
+function buildShrineAxisLabel(args: { benefit?: string | null; feature?: string | null }): string | null {
+  const benefit = clean(args.benefit);
+  const feature = clean(args.feature);
+
+  if (benefit) return benefit;
+  if (feature) return feature;
+  return null;
+}
+
+function buildIntersectionPrimaryText(args: {
+  need?: string | null;
+  benefit?: string | null;
+  feature?: string | null;
+}): string | null {
+  const needLabel = buildNeedThemeLabel(args.need);
+  const shrineLabel = buildShrineAxisLabel({ benefit: args.benefit, feature: args.feature });
+
+  if (needLabel && shrineLabel) {
+    return `今回の相談の中心にある「${needLabel}」のテーマと、この神社の「${shrineLabel}」の性質が重なるため、この神社が候補に入っています。`;
+  }
+
+  if (needLabel) {
+    return `今回の相談の中心にある「${needLabel}」のテーマと重なるため、この神社が候補に入っています。`;
+  }
+
+  if (shrineLabel) {
+    return `この神社の「${shrineLabel}」の性質が、今回の相談と重なるため、この神社が候補に入っています。`;
+  }
+
+  return null;
+}
+
+/**
+ * ① 推薦判断
+ * - query ベースの主理由 / 補助理由候補を組み立てる
+ * - 「なぜこの神社が候補に入ったのか」を説明する
+ * - 状態整理や行動意味はここで作らない
+ */
 function buildQueryCandidates(rec: RecommendationLike, needTags?: string[]): Candidate[] {
   const matched = uniq((rec.breakdown?.matched_need_tags ?? []).map(clean).filter(Boolean));
   const needs = uniq((needTags ?? []).map(clean).filter(Boolean));
@@ -205,43 +304,86 @@ function buildQueryCandidates(rec: RecommendationLike, needTags?: string[]): Can
 
   const out: Candidate[] = [];
 
-  if (mainNeed) out.push({ key: "need_match", text: buildNeedPrimaryText(mainNeed) });
+  if (mainNeed) {
+    out.push({
+      key: "need_match",
+      text: `今回の相談の中心にある「${mainNeed}」のテーマと最も強く重なるため、この神社が候補に入っています。`,
+    });
+  }
 
   if (matched.length >= 2) {
-    out.push({ key: "text_match", text: `${matched[1]}の観点も含む候補です` });
+    out.push({
+      key: "text_match",
+      text: `加えて、「${matched[1]}」の観点でも補助的な重なりが見られます。`,
+    });
   } else if (matched.length === 1) {
-    out.push({ key: "text_match", text: "入力内容に沿って選びやすい候補です" });
+    out.push({
+      key: "text_match",
+      text: "相談内容の流れに沿って受け取りやすい点も、この神社が候補に入った理由です。",
+    });
   }
 
   if (typeof rec.astro_priority === "number" && rec.astro_priority > 0) {
-    out.push({ key: "sign_match", text: "気質とのなじみも見られる候補です" });
+    out.push({
+      key: "sign_match",
+      text: "気質とのなじみも補助的に見られます。",
+    });
   }
 
   const distance = formatDistance(rec.distance_m);
-  if (distance) out.push({ key: "distance", text: `${distance}圏内で無理なく動きやすい候補です` });
+  if (distance) {
+    out.push({
+      key: "distance",
+      text: `${distance}圏内で実際に動きやすい条件もあります。`,
+    });
+  }
 
   if (typeof rec.popular_score === "number") {
-    out.push({ key: "popular", text: "定番としての安定感もあります" });
+    out.push({
+      key: "popular",
+      text: "参拝先として選びやすい安定感もあります。",
+    });
   }
 
   return out;
 }
 
+/**
+ * ① 推薦判断
+ * - birthdate / compat ベースの主理由 / 補助理由候補を組み立てる
+ * - 「なぜこの神社が候補に入ったのか」を相性軸で説明する
+ */
 function buildBirthdateCandidates(rec: RecommendationLike): Candidate[] {
   const out: Candidate[] = [];
   const element = getPrimaryElement(rec);
 
-  if (element) out.push({ key: "element_match", text: buildElementPrimaryText(element) });
+  if (element) {
+    out.push({
+      key: "element_match",
+      text: `生年月日から見た「${element}」の要素との相性が強く重なるため、この神社が候補に入っています。`,
+    });
+  }
 
   if (typeof rec.astro_priority === "number" && rec.astro_priority > 0) {
-    out.push({ key: "sign_match", text: "気質とのなじみも見られる候補です" });
+    out.push({
+      key: "sign_match",
+      text: "気質とのなじみも補助的に見られます。",
+    });
   }
 
   const distance = formatDistance(rec.distance_m);
-  if (distance) out.push({ key: "distance", text: `${distance}圏内で落ち着いて向かいやすい候補です` });
+  if (distance) {
+    out.push({
+      key: "distance",
+      text: `${distance}圏内で、落ち着いて向かいやすい条件もあります。`,
+    });
+  }
 
   if (typeof rec.popular_score === "number") {
-    out.push({ key: "popular", text: "定番としての安定感もあります" });
+    out.push({
+      key: "popular",
+      text: "参拝先として選びやすい安定感もあります。",
+    });
   }
 
   return out;
@@ -253,37 +395,43 @@ function buildFallbackCandidates(rec: RecommendationLike): Candidate[] {
   const hasPopular = typeof rec.popular_score === "number";
 
   if (distance) {
-    out.push({ key: "distance", text: "まず動きやすさを優先して見られる候補です" });
-    if (hasPopular) out.push({ key: "popular", text: "定番として選びやすい候補です" });
+    out.push({
+      key: "distance",
+      text: "今回はまず動きやすさを優先して、この神社が候補に入っています。",
+    });
+    if (hasPopular) {
+      out.push({
+        key: "popular",
+        text: "その中でも、選びやすい安定感があります。",
+      });
+    }
     return out;
   }
 
   if (hasPopular) {
-    out.push({ key: "popular", text: "まず選びやすさを優先して見られる候補です" });
-    out.push({ key: "distance", text: "無理なく選びやすい候補です" });
+    out.push({
+      key: "popular",
+      text: "今回はまず選びやすさを優先して、この神社が候補に入っています。",
+    });
+    out.push({
+      key: "distance",
+      text: "無理なく足を運びやすい条件もあります。",
+    });
     return out;
   }
 
-  out.push({ key: "distance", text: "まず動きやすさを優先して見られる候補です" });
+  out.push({
+    key: "distance",
+    text: "今回はまず動きやすさを優先して、この神社が候補に入っています。",
+  });
   return out;
 }
 
 /**
- * reason_facts を Candidate の素材へ変換する。
- *
- * ここで扱うのは backend が返した「推薦判断の事実」であり、
- * まだ UI 完成文や順位比較文は生成しない。
- *
- * role:
- * - primary_axis / secondary_axis
- * - matched_need_tags / matched_benefits
- * - shrine_feature / shrine_benefit / visit_fit
- * - matched_element / matched_sign
- * - distance_label / popularity_label / fallback_reason
- *
- * note:
- * - ここは evidence → candidate 素材の変換層
- * - 「なぜ1位か」「他候補との差」は buildRankReason 側で扱う
+ * ① 推薦判断
+ * - backend reason_facts を UI 用の推薦判断文へ翻訳する
+ * - evidence を推薦理由へ変換する層
+ * - 状態整理や行動意味は扱わない
  */
 function buildFactsCandidates(rec: RecommendationLike): Candidate[] {
   const f = rec.reason_facts;
@@ -300,48 +448,84 @@ function buildFactsCandidates(rec: RecommendationLike): Candidate[] {
   const element = clean(f.matched_element);
   const distanceLabel = clean(f.distance_label);
   const popularityLabel = clean(f.popularity_label);
+  const primaryIntersectionText = buildIntersectionPrimaryText({ need: matchedNeed, benefit, feature });
 
   switch (f.primary_axis) {
     case "need":
-      if (matchedNeed) out.push({ key: "need_match", text: `${matchedNeed}を意識した今に合いやすい候補です` });
+      if (primaryIntersectionText) {
+        out.push({
+          key: "need_match",
+          text: primaryIntersectionText,
+        });
+      } else if (matchedNeed) {
+        out.push({
+          key: "need_match",
+          text: `今回の相談の中心にある「${matchedNeed}」と最も強く重なるため、この神社が候補に入っています。`,
+        });
+      }
       break;
     case "benefit":
-      if (benefit) out.push({ key: "need_match", text: `${benefit}の軸を重ねて見やすい候補です` });
+      if (primaryIntersectionText) {
+        out.push({
+          key: "need_match",
+          text: primaryIntersectionText,
+        });
+      } else if (benefit) {
+        out.push({
+          key: "need_match",
+          text: `${benefit}の方向が今回の相談と強く重なるため、この神社が候補に入っています。`,
+        });
+      }
       break;
     case "feature":
-      if (feature) out.push({ key: "text_match", text: `${feature}点が今の流れに合いやすい候補です` });
+      if (primaryIntersectionText) {
+        out.push({
+          key: "need_match",
+          text: primaryIntersectionText,
+        });
+      } else if (feature) {
+        out.push({
+          key: "text_match",
+          text: `${feature}の性質が、今の相談の流れと重なって見られます。`,
+        });
+      }
       break;
     case "element":
-      if (element) out.push({ key: "element_match", text: `${element}の相性軸で見やすい候補です` });
+      if (element) {
+        out.push({
+          key: "element_match",
+          text: `${element}の相性軸で強い重なりがあるため、この神社が候補に入っています。`,
+        });
+      }
       break;
     case "distance":
       out.push({
         key: "distance",
-        text: distanceLabel ? `${distanceLabel}圏で動きやすい候補です` : "無理なく足を運びやすい候補です",
+        text: distanceLabel ? `${distanceLabel}圏で実際に動きやすい条件があります。` : "無理なく足を運びやすい条件があります。",
       });
       break;
     case "popularity":
       out.push({
         key: "popular",
-        text: popularityLabel || "選びやすさの安定感がある候補です",
+        text: popularityLabel || "参拝先として選びやすい安定感があります。",
       });
       break;
     case "fallback":
       out.push({
         key: "distance",
-        text: fallbackReason || "まずは選びやすさを優先して見られる候補です",
+        text: fallbackReason || "今回はまず選びやすさを優先して、この神社が候補に入っています。",
       });
       break;
   }
 
-  if (visitFit) out.push({ key: "text_match", text: visitFit });
-  if (feature && f.primary_axis !== "feature") out.push({ key: "text_match", text: `${feature}点も見やすい候補です` });
-  if (benefit && f.primary_axis !== "benefit") {
-    out.push({ key: "need_match", text: `${benefit}の方向とも重なりやすい候補です` });
+  if (visitFit) out.push({ key: "text_match", text: `${visitFit}点でも補助的な重なりが見られます。` });
+  if (feature && f.primary_axis !== "feature") out.push({ key: "text_match", text: `${feature}の性質も補助的に重なって見られます。` });
+  if (benefit && f.primary_axis !== "benefit" && clean(primaryIntersectionText) !== clean(`${benefit}の方向とも補助的な重なりが見られます。`)) {
+    out.push({ key: "need_match", text: `${benefit}の方向とも補助的な重なりが見られます。` });
   }
-  if (secondaryNeed) out.push({ key: "text_match", text: `${secondaryNeed}の観点も含む候補です` });
+  if (secondaryNeed) out.push({ key: "text_match", text: `加えて、「${secondaryNeed}」の観点でも補助的な重なりが見られます。` });
   if (element && f.primary_axis !== "element") {
-    out.push({ key: "sign_match", text: `${element}の相性傾向も見られる候補です` });
+    out.push({ key: "sign_match", text: `${element}の相性傾向も補助的に見られます。` });
   }
   if (popularityLabel && f.primary_axis !== "popularity") out.push({ key: "popular", text: popularityLabel });
 
@@ -372,16 +556,16 @@ function buildSummary(
 
   const byType: Record<ReasonInputType, Array<{ key: ReasonKey; text: string }>> = {
     query: [
-      { key: "need_match", text: "今の気持ちに合いやすい候補です" },
-      { key: "text_match", text: "相談内容に沿って見やすい候補です" },
+      { key: "need_match", text: "相談内容と神社の性質が重なるため、この神社が選ばれています。" },
+      { key: "text_match", text: "今の相談の流れに沿って受け取りやすい点が、この神社が選ばれた理由です。" },
     ],
     birthdate: [
-      { key: "element_match", text: "相性を軸に見やすい候補です" },
-      { key: "sign_match", text: "気質とのなじみを見やすい候補です" },
+      { key: "element_match", text: "生年月日との相性の重なりを主軸に、この神社が選ばれています。" },
+      { key: "sign_match", text: "気質とのなじみも含めて見やすい点が、この神社が選ばれた理由です。" },
     ],
     fallback: [
-      { key: "distance", text: "まず動きやすさで見やすい候補です" },
-      { key: "popular", text: "まず選びやすさで見やすい候補です" },
+      { key: "distance", text: "今回はまず動きやすさを優先して、この神社が選ばれています。" },
+      { key: "popular", text: "今回はまず選びやすさを優先して、この神社が選ばれています。" },
     ],
   };
 
@@ -391,8 +575,8 @@ function buildSummary(
 
 function buildTopReasonLabel(inputType: ReasonInputType, primaryKey: ReasonKey, index: number) {
   if (index !== 0) return undefined;
-  if (inputType === "query") return primaryKey === "need_match" ? "相談に合う" : "内容に合う";
-  if (inputType === "birthdate") return "相性が最も高い";
+  if (inputType === "query") return primaryKey === "need_match" ? "相談との一致が強い" : "内容との一致が強い";
+  if (inputType === "birthdate") return "相性との一致が強い";
   if (inputType === "fallback") {
     if (primaryKey === "distance") return "まず動きやすい";
     if (primaryKey === "popular") return "まず選びやすい";
@@ -418,6 +602,10 @@ function buildHeroCatchCopy(params: BuildParams, primary: Candidate): string {
   return "今の状態に重ねて見やすい神社";
 }
 
+/**
+ * Hero 用の短い要約。
+ * ③「神社との意味の接続」の本文そのものは返さず、要点だけを短く見せる。
+ */
 function buildDetailHeroMeaningCopy(params: BuildParams, primary: Candidate): string {
   if (params.mode === "compat") {
     return "相性の無理が少なく、落ち着いて受け取りやすい神社";
@@ -575,44 +763,148 @@ function getShrineFeatureLabel(rec: RecommendationLike, shrineFeatureLabels?: st
   return null;
 }
 
-function buildWishClause(args: { need: string | null; benefit: string | null; feature: string | null }): string {
-  const { need, benefit, feature } = args;
 
-  if (benefit) return `${benefit}の願い`;
-  if (feature) return `${feature}を手がかりにした願い`;
+function buildNeedWishBase(need: string | null, mode?: BuildParams["mode"]): string {
+  if (mode === "compat") return "今の自分に無理なく向き合いたい願い";
 
-  if (need === "厄除け") return "不安や引っかかりをほどきたい願い";
-  if (need === "仕事") return "仕事や転機に向き合いたい願い";
-  if (need === "金運") return "巡りや金運を整えたい願い";
-  if (need === "転機") return "切り替えや節目を整えたい願い";
-  if (need === "恋愛") return "縁や関係性を見つめたい願い";
-  if (need === "健康") return "心身の回復を願う願い";
-  if (need === "学業") return "集中や学びに向かいたい願い";
+  if (need === "厄除け") return "不安や引っかかりをほどき、気持ちを整え直したい願い";
+  if (need === "仕事") return "仕事の流れや優先順位を整え直したい願い";
+  if (need === "金運") return "止まった巡りを整え、立て直しの軸を作りたい願い";
+  if (need === "転機") return "切り替えや節目を整え、次の見方を作りたい願い";
+  if (need === "恋愛") return "関係性の受け取り方を整え、気持ちの置き場を作りたい願い";
+  if (need === "健康") return "心身の消耗を増やさず、整える順番を取り戻したい願い";
+  if (need === "学業") return "集中を整え、学びへの向き合い方を立て直したい願い";
 
-  return "願い";
+  return "今の流れを整え直したい願い";
 }
 
-function buildStateShrineMeaningText(params: BuildParams, primary: Candidate): string {
+function buildNeedSupportQualifier(args: { benefit: string | null; feature: string | null }): string {
+  const { benefit, feature } = args;
+
+  if (benefit && feature) return `${benefit}や${feature}を手がかりに`;
+  if (benefit) return `${benefit}を手がかりに`;
+  if (feature) return `${feature}を手がかりに`;
+
+  return "";
+}
+
+function buildMeaningReceiver(args: { need: string | null; benefit: string | null; feature: string | null; mode?: BuildParams["mode"] }): string {
+  const baseWish = buildNeedWishBase(args.need, args.mode);
+  const qualifier = buildNeedSupportQualifier({ benefit: args.benefit, feature: args.feature });
+
+  if (!qualifier) return baseWish;
+  return `${qualifier}${baseWish}`;
+}
+
+function buildMeaningCore(params: BuildParams, primary: Candidate): string {
   const need = clean(params.needTags?.[0]);
   const benefit = getPrimaryNeedBenefitLabel(params.rec, params.shrineBenefitLabels);
   const feature = getShrineFeatureLabel(params.rec, params.shrineFeatureLabels);
-  const wish = buildWishClause({ need, benefit, feature });
+
+  const receiver = buildMeaningReceiver({
+    need,
+    benefit,
+    feature,
+    mode: params.mode,
+  });
+
+  return `この神社は、${receiver}を見直し、今の流れを整える節目として置きやすい場所です。`;
+}
+
+function buildStateShrineMeaningText(params: BuildParams, primary: Candidate): string {
+  return buildMeaningCore(params, primary);
+}
+
+function buildWhyNow(params: BuildParams, primary: Candidate): string {
+  const need = clean(params.needTags?.[0]);
+
+  if (params.mode === "compat") {
+    return "勢いで合う・合わないを決めるほど感覚がぶれやすい今は、";
+  }
+
+  if (need === "厄除け") {
+    return "不安や引っかかりを抱えたまま考えるほど判断が散りやすい今は、";
+  }
+
+  if (need === "仕事") {
+    return "次の一手を急ぐほど優先順位が崩れやすい今は、";
+  }
+
+  if (need === "転機") {
+    return "結論を急ぐほど何を切り替えるかが見えにくくなる今は、";
+  }
+
+  if (need === "恋愛") {
+    return "相手の反応を追うほど自分の受け取り方が揺れやすい今は、";
+  }
+
+  if (need === "健康") {
+    return "整えようとするほど休むことと立て直すことの順番が崩れやすい今は、";
+  }
+
+  if (need === "学業") {
+    return "結果を急ぐほど集中の軸がぶれやすい今は、";
+  }
 
   if (primary.key === "distance") {
-    return `この神社は、${wish}を気負わず預けやすく、まず足を運ぶことから静かに向き合いたい時に向いている候補です。`;
+    return "遠くの正解を探すほど動けなくなりやすい今は、";
   }
 
   if (primary.key === "element_match" || primary.key === "sign_match") {
-    return `この神社は、${wish}を身構えず受け止めやすく、無理のない相性の中で落ち着いて向き合いたい時に向いている候補です。`;
+    return "強い刺激よりも無理なく受け取れる場所の方が整いやすい今は、";
   }
 
-  if (params.mode === "compat") {
-    return `この神社は、${wish}を静かに受け止めやすく、答えを急がず落ち着いて向き合いたい時に向いている候補です。`;
-  }
-
-  return `この神社は、${wish}を静かに受け止め、その願いと落ち着いて向き合いたい時に向いている候補です。`;
+  return "答えを急ぐほど判断が散りやすい今は、";
 }
 
+function buildActionRole(params: BuildParams, primary: Candidate): string {
+  const need = clean(params.needTags?.[0]);
+
+  if (params.mode === "compat") {
+    return "自分の感覚を整えながら、相性の受け取り方を見直す節目として向き合いやすい場所です。";
+  }
+
+  if (need === "厄除け") {
+    return "気持ちの流れを整えながら、立て直す順番を見直す節目として向き合いやすい場所です。";
+  }
+
+  if (need === "仕事") {
+    return "仕事の流れと判断軸を整え直す節目として向き合いやすい場所です。";
+  }
+
+  if (need === "転機") {
+    return "流れを整えながら、どこを切り替えるかを見直す節目として向き合いやすい場所です。";
+  }
+
+  if (need === "恋愛") {
+    return "気持ちの置き場を整えながら、関係の見方を見直す節目として向き合いやすい場所です。";
+  }
+
+  if (need === "健康") {
+    return "無理を増やさず整える順番を見直す節目として向き合いやすい場所です。";
+  }
+
+  if (need === "学業") {
+    return "集中の軸と取り組み方を整え直す節目として向き合いやすい場所です。";
+  }
+
+  if (primary.key === "distance") {
+    return "まず足を運べる場所から流れを整え直す節目として向き合いやすい場所です。";
+  }
+
+  if (primary.key === "element_match" || primary.key === "sign_match") {
+    return "無理なく受け取れる場所で、気持ちと判断を整える節目として向き合いやすい場所です。";
+  }
+
+  return "気持ちと流れを整えながら、次の見方を見直す節目として向き合いやすい場所です。";
+}
+
+
+/**
+ * ② 状態整理
+ * - buildStateStuckText + buildStatePriorityText を束ねて現在地を返す
+ * - 今どういう状態か / 今何を優先すべきかを説明する
+ */
 function buildConsultationSummary(params: BuildParams, primary: Candidate, _secondary?: Candidate): string {
   const stuck = buildStateStuckText(params, primary);
   const priority = buildStatePriorityText(params, primary);
@@ -620,24 +912,30 @@ function buildConsultationSummary(params: BuildParams, primary: Candidate, _seco
   return `${stuck} ${priority}`;
 }
 
+/**
+ * ③ 行動意味
+ *
+ * role:
+ * - 神社説明ではなく「今この神社をどう置くか」を説明する
+ * - 1文目で meaningCore、2文目で whyNow + actionRole を返す
+ *
+ * boundary:
+ * - 推薦判断はここで説明しない
+ * - ご利益 / 象徴 / 相性タグなどの神社情報はここで説明しない
+ */
 function buildShrineMeaning(params: BuildParams, primary: Candidate): string {
-  return buildStateShrineMeaningText(params, primary);
+  const meaningCore = buildMeaningCore(params, primary);
+  const whyNow = buildWhyNow(params, primary);
+  const actionRole = buildActionRole(params, primary);
+
+  return `${meaningCore}\n\n${whyNow}${actionRole}`;
 }
 
 /**
- * rank reason は frontend view model 層で生成する。
- *
- * reason_facts は比較の材料までを持ち、
- * 「なぜ1位か」「他候補との差」といった表示解釈はここで組み立てる。
- *
- * boundary:
- * - backend は ranking evidence を返す
- * - frontend は index / primary candidate / mode などを使って
- *   rank.whyTop / rank.differenceFromOthers を生成する
- *
- * note:
- * - 1位以外では rank 文面を無理に返さない
- * - UI 向けの比較表現は backend 契約に含めない
+ * ① 推薦判断
+ * - 1位理由 / 他候補との差を返す
+ * - ranking の説明責務を持つ
+ * - 行動意味や神社情報はここに混ぜない
  */
 function buildRankReason(
   params: BuildParams,
@@ -651,13 +949,13 @@ function buildRankReason(
   if (primary.key === "need_match") {
     return {
       whyTop: "今回の候補の中でも、相談内容との一致が最も強く見られる候補です。",
-      differenceFromOthers: "他候補よりも、今優先したいテーマにまっすぐ重なりやすい位置づけです。",
+      differenceFromOthers: "他候補よりも、今回いちばん優先したいテーマにまっすぐ重なりやすい位置づけです。",
     };
   }
 
   if (primary.key === "element_match" || primary.key === "sign_match") {
     return {
-      whyTop: "今回の候補の中でも、相性の無理のなさが強く見られる候補です。",
+      whyTop: "今回の候補の中でも、生年月日との相性の重なりが最も強く見られる候補です。",
       differenceFromOthers: "他候補よりも、気質に無理なく馴染みやすい点が上位理由になっています。",
     };
   }
@@ -672,16 +970,38 @@ function buildRankReason(
   if (primary.key === "popular") {
     return {
       whyTop: "今回の候補の中でも、選びやすさの安定感が強い候補です。",
-      differenceFromOthers: "他候補よりも、迷いがある段階で選択しやすい点を優先しています。",
+      differenceFromOthers: "他候補よりも、迷いがある段階でも選択しやすい点を優先しています。",
     };
   }
 
   return {
-    whyTop: "今回の候補の中でも、今の状態との重なりが最も強く見られる候補です。",
-    differenceFromOthers: "他候補よりも、今優先したい整理軸に沿って受け取りやすい位置づけです。",
+    whyTop: "今回の候補の中でも、今の相談との重なりが最も強く見られる候補です。",
+    differenceFromOthers: "他候補よりも、今回の相談を整理する軸に沿って受け取りやすい位置づけです。",
   };
 }
 
+/**
+ * section contract summary
+ *
+ * ① 推薦判断
+ * - list.primaryPhrase
+ * - list.secondaryPhrase
+ * - rank.whyTop
+ * - rank.differenceFromOthers
+ *
+ * ② 状態整理
+ * - detail.consultationSummary
+ *
+ * ③ 行動意味
+ * - detail.shrineMeaning
+ *
+ * ④ 神社情報
+ * - Shrine API / shrine detail UI 側
+ *
+ * note:
+ * - この関数は ①〜③ の view model を組み立てる
+ * - ④ 神社情報はこの関数の責務に含めない
+ */
 export function buildRecommendationReasonViewModel(params: BuildParams): RecommendationReasonViewModel {
   const inputType = resolveInputType(params);
   const factsCandidates = buildFactsCandidates(params.rec);

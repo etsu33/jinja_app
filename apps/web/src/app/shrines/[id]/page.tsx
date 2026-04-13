@@ -164,6 +164,13 @@ function buildRecommendationReasonDetailInput(
     rawReason,
   });
 
+  console.log("REASON_DETAIL_INPUT", {
+    shrineName: args.shrineName,
+    shrineBenefitLabels: args.shrineBenefitLabels,
+    shrineFeatureLabels: args.shrineFeatureLabels,
+    fallbackTags,
+    primaryReasonLabel,
+  });
   const reasonVm = buildRecommendationReasonViewModel({
     rec: {
       display_name: args.shrineName,
@@ -398,6 +405,12 @@ export default async function Page({ params, searchParams }: Props) {
   if (ctx === "concierge") {
     // detail を主、NarrativeFallback を従にするため、詳細表示用の輸送元をここに集約する。
     const shrineName = (s.name_jp ?? "").trim() || pageTitle;
+    serverLog("info", "SHRINE_LABEL_INPUT", {
+      shrineId: numericId,
+      shrineName,
+      shrineBenefitLabels,
+      shrineFeatureLabels,
+    });
     const builtReasonDetail = buildRecommendationReasonDetailInput({
       shrineName,
       shrineBenefitLabels,
