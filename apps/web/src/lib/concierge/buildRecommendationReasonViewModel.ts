@@ -19,6 +19,8 @@ export type RecommendationLike = {
   title?: string | null;
   address?: string | null;
   location?: string | null;
+  reason?: string | null;
+  explanation?: { summary?: string | null } | null;
   distance_m?: number | null;
   popular_score?: number | null;
   fallback_mode?: string | null;
@@ -99,7 +101,7 @@ export type RecommendationReasonViewModel = {
 export type BuildParams = {
   rec: RecommendationLike;
   index: number;
-  mode: "need" | "compat";
+  mode?: "need" | "compat" | string | null;
   needTags: string[];
   birthdate?: string | null;
   shrineBenefitLabels?: string[];
