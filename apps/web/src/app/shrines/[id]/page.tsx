@@ -164,13 +164,6 @@ function buildRecommendationReasonDetailInput(
     rawReason,
   });
 
-  console.log("REASON_DETAIL_INPUT", {
-    shrineName: args.shrineName,
-    shrineBenefitLabels: args.shrineBenefitLabels,
-    shrineFeatureLabels: args.shrineFeatureLabels,
-    fallbackTags,
-    primaryReasonLabel,
-  });
   const reasonVm = buildRecommendationReasonViewModel({
     rec: {
       display_name: args.shrineName,
