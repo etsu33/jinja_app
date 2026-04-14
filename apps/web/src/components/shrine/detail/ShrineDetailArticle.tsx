@@ -29,6 +29,9 @@
  * note:
  * - 詳細画面は「①推薦判断 → ②状態整理 → ③行動意味 → ④神社情報」の順で理解を進める
  * - heroMeaningCopy は ③ 行動意味の入口コピーとして扱う
+ * - 比較情報は本文ではなく補助導線として扱う
+ * - 比較はデフォルト非表示にし、必要な時だけ開く
+ * - 比較カードは主導線（①〜④）の下に置く
  */
 import type React from "react";
 
@@ -39,25 +42,11 @@ import ShrineReasonSection from "@/components/shrine/detail/ShrineReasonSection"
 import ShrineSupplementSection from "@/components/shrine/detail/ShrineSupplementSection";
 import ShrineDetailHeroCard from "@/components/shrine/detail/ShrineDetailHeroCard";
 import DetailDisclosureBlock from "@/components/shrine/DetailDisclosureBlock";
-import { RecommendationMetaSection } from "@/components/shrine/detail/RecommendationMetaSection";
 
 import type { ShrineTag } from "@/lib/shrine/tags/types";
 import type { ShrineCardAdapterProps } from "@/components/shrine/buildShrineCardProps";
 import type { ShrineDetailSectionModel } from "@/components/shrine/detail/types";
 
-/**
- * section rendering rule
- *
- * - reason     = ① 推薦判断
- * - proposal   = ② 状態整理
- * - meaning    = ③ 行動意味
- * - supplement = ④ 神社情報
- *
- * rule:
- * - ①と③を混ぜない
- * - ②に神社説明を入れない
- * - ④を説得の主戦場にしない
- */
 function ShrineDetailSections({ sections }: { sections: ShrineDetailSectionModel[] }) {
   return (
     <div className="space-y-4">
@@ -81,13 +70,6 @@ function ShrineDetailSections({ sections }: { sections: ShrineDetailSectionModel
   );
 }
 
-/**
- * hero header responsibility
- *
- * - heroMeaningCopy は ③ 行動意味の入口として使う
- * - 一覧の要約ではなく、詳細画面で最初に読む意味宣言を置く
- * - ① 推薦判断や ④ 神社情報の本文はここに混ぜない
- */
 function ShrineDetailHeroHeader(props: { title: string; heroMeaningCopy?: string | null; address?: string | null }) {
   const resolvedHeroMeaningCopy = props.heroMeaningCopy?.trim() || "今の流れを整え、次の見方を作る神社";
 
@@ -106,25 +88,37 @@ function ShrineDetailHeroHeader(props: { title: string; heroMeaningCopy?: string
   );
 }
 
-/**
- * display mapping summary
- *
- * ① 推薦判断
- * - ShrineReasonSection
- * - list.primaryPhrase / list.secondaryPhrase / rank.*
- *
- * ② 状態整理
- * - ShrineProposalSection
- * - detail.consultationSummary
- *
- * ③ 行動意味
- * - ShrineJudgeSection
- * - detail.shrineMeaning
- *
- * ④ 神社情報
- * - ShrineSupplementSection
- * - Shrine API / shrine detail model 側の補助情報
- */
+function ShrineComparisonDisclosure(props: {
+  recommendationMeta: {
+    rankTitle?: string | null;
+    rankBody?: string | null;
+    rankComparison?: {
+      is_top?: boolean;
+      gap_from_top?: number;
+    } | null;
+  };
+}) {
+  const rankTitle = props.recommendationMeta.rankTitle?.trim() || "上位候補との違い";
+  const rankBody = props.recommendationMeta.rankBody?.trim() || null;
+
+  if (!rankBody) return null;
+
+  return (
+    <details className="rounded-2xl border border-slate-200 bg-white p-4">
+      <summary className="cursor-pointer list-none text-sm font-medium text-slate-700">
+        <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-700">
+          比較を見る
+        </span>
+      </summary>
+
+      <div className="mt-4 space-y-2">
+        <h2 className="text-base font-semibold text-slate-900">{rankTitle}</h2>
+        <p className="text-sm leading-7 text-slate-700">{rankBody}</p>
+      </div>
+    </details>
+  );
+}
+
 export default function ShrineDetailArticle({
   cardProps,
   heroImageUrl,
@@ -158,7 +152,6 @@ export default function ShrineDetailArticle({
   saveActionNode?: React.ReactNode;
 }) {
   const hasRecommendationMeta = Boolean(recommendationMeta?.rankTitle && recommendationMeta?.rankBody);
-
   const hasSections = sections.length > 0;
 
   const benefitTagObjs = _tags.filter(
@@ -185,16 +178,16 @@ export default function ShrineDetailArticle({
           address={cardProps.address ?? null}
         />
 
-        {hasRecommendationMeta ? (
-          <section className="pt-2">
-            <RecommendationMetaSection recommendationMeta={recommendationMeta} />
-          </section>
-        ) : null}
-
         <ShrineDetailHeroCard title={cardProps.title} imageUrl={heroImageUrl} />
       </section>
 
       {hasSections ? <ShrineDetailSections sections={sections} /> : null}
+
+      {hasRecommendationMeta && recommendationMeta ? (
+        <section>
+          <ShrineComparisonDisclosure recommendationMeta={recommendationMeta} />
+        </section>
+      ) : null}
 
       <section id="goshuins">
         <PublicGoshuinSection

@@ -164,22 +164,27 @@ function buildRecommendationReasonDetailInput(
     rawReason,
   });
 
+  console.log("REASON_DETAIL_INPUT", {
+    shrineName: args.shrineName,
+    shrineBenefitLabels: args.shrineBenefitLabels,
+    shrineFeatureLabels: args.shrineFeatureLabels,
+    fallbackTags,
+    primaryReasonLabel,
+  });
   const reasonVm = buildRecommendationReasonViewModel({
     rec: {
       display_name: args.shrineName,
       name: args.shrineName,
-      reason: args.conciergeReason ?? null,
       breakdown: args.conciergeBreakdown ?? null,
       fallback_mode: args.recommendation?.fallback_mode ?? null,
       distance_m: args.recommendation?.distance_m ?? null,
       popular_score: args.recommendation?.popular_score ?? null,
       astro_elements: args.recommendation?.astro_elements ?? null,
       astro_priority: args.recommendation?.astro_priority ?? null,
-      explanation: args.recommendation?.explanation ?? null,
       reason_facts: args.recommendation?.reason_facts ?? args.recommendation?._reason_facts ?? null,
     },
     index: typeof args.recommendation?.rank === "number" ? Math.max(args.recommendation.rank - 1, 0) : 0,
-    mode: args.conciergeMode ?? undefined,
+    mode: args.conciergeMode ?? "need",
     needTags: fallbackTags,
     shrineBenefitLabels: args.shrineBenefitLabels ?? [],
     shrineFeatureLabels: args.shrineFeatureLabels ?? [],

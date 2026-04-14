@@ -906,10 +906,10 @@ function buildMeaningSection(args: {
   mode: ConciergeMode;
   breakdown?: ConciergeBreakdown | null;
 }): DetailMeaningSection {
-  // fallback order:
+  // ③ の表示優先順位:
   // 1. recommendationReasonDetail
   // 2. conciergeDeepReason
-  // 3. generated fallback from shrine/breakdown data
+  // 3. buildMeaningSection 内 fallback
   const detailItems: DetailMeaningItem[] = [
     args.recommendationReasonDetail?.shrineMeaning
       ? {
@@ -927,35 +927,35 @@ function buildMeaningSection(args: {
       : null,
   ].filter((item): item is DetailMeaningItem => Boolean(item));
 
-  const narrativeItems =
+  const deepReasonItems = buildJudgeItemsFromNarrativeSources({
+    recommendationReasonDetail: null,
+    deepReason: args.deepReason,
+  });
+
+  const fallbackItems: DetailMeaningItem[] =
     detailItems.length > 0
       ? detailItems
-      : buildJudgeItemsFromNarrativeSources({
-          recommendationReasonDetail: args.recommendationReasonDetail,
-          deepReason: args.deepReason,
-        });
-
-  const fallbackItems: DetailMeaningItem[] = narrativeItems ?? [
-    {
-      key: "meaning",
-      title: "この神社をすすめる理由",
-      body: buildBenefitText(
-        args.shrineName?.trim() || "この神社",
-        args.benefitLabels,
-        getPrimaryNeedTag(args.breakdown),
-        getShrineTone(args.shrineName ?? null),
-      ),
-    },
-    {
-      key: "action",
-      title: "参拝を置く意味",
-      body: buildSecondaryText(
-        getPrimaryNeedTag(args.breakdown),
-        getSecondaryNeedTags(args.breakdown),
-        args.shrineName ?? undefined,
-      ),
-    },
-  ];
+      : deepReasonItems ?? [
+          {
+            key: "meaning",
+            title: "この神社をすすめる理由",
+            body: buildBenefitText(
+              args.shrineName?.trim() || "この神社",
+              args.benefitLabels,
+              getPrimaryNeedTag(args.breakdown),
+              getShrineTone(args.shrineName ?? null),
+            ),
+          },
+          {
+            key: "action",
+            title: "参拝を置く意味",
+            body: buildSecondaryText(
+              getPrimaryNeedTag(args.breakdown),
+              getSecondaryNeedTags(args.breakdown),
+              args.shrineName ?? undefined,
+            ),
+          },
+        ];
 
   return {
     kind: "meaning",
