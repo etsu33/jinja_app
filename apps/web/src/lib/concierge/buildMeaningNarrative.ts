@@ -67,18 +67,33 @@ type ShrineContextEntry = {
  * 追加方法: バックエンドで shrine_id を確認して以下に追記する。
  */
 const SHRINE_CONTEXT_TABLE: Record<number, ShrineContextEntry> = {
-  // 三峯神社 (埼玉県秩父市)
   17: {
     place: "mountain",
     symbol: "古くから節目や鍛錬の場として向き合われてきた場所でもあり",
-    ritual: "高低差や道のりを進むこと自体が、気持ちを切り替える参拝体験につながります。",
-    pattern: "人生の転機や、気持ちを切り替えたい時に選ばれやすい神社です。",
+    ritual: "高低差や道のりを進みながら、切り替えたい流れをいったん引き受け直す参拝につなげやすい場所です。",
+    pattern: "人生の転機や、流れを切り替える節目を置きたい時に選ばれやすい神社です。",
   },
-  // 他の shrine_id が確定したら追記:
-  // XX: { place: "city",    nameHint: "乃木神社", symbol: "...", ritual: "...", pattern: "..." },
-  // YY: { place: "water",   nameHint: "住吉大社",  symbol: "...", ritual: "...", pattern: "..." },
-  // ZZ: { place: "forest",  nameHint: "伊勢神宮（内宮）", symbol: "...", ritual: "...", pattern: "..." },
-  // WW: { place: "water",   nameHint: "亀戸天神社", symbol: "...", ritual: "...", pattern: "..." },
+
+  59: {
+    place: "city",
+    symbol: "姿勢を整え、目標へ向き直る節目として受け取られやすい神社でもあり",
+    ritual: "日常の動線の中でも立ち寄りやすく、集中を整え直す参拝につなげやすい場所です。",
+    pattern: "学業や仕事の節目で選ばれやすい神社です。",
+  },
+
+  3: {
+    place: "forest",
+    symbol: "静けさの中で受け取り方を整える場として受け止められやすい神社でもあり",
+    ritual: "木々に包まれながら、気持ちの置き場や向き合い方を落ち着いて整え直す参拝につなげやすい場所です。",
+    pattern: "気持ちを整え直し、受け取り方を静かに見直したい時に選ばれやすい神社です。",
+  },
+
+  47: {
+    place: "water",
+    symbol: "巡りや流れを整える節目として受け取られやすい神社でもあり",
+    ritual: "水辺の気配の中で、滞りをほどくように気持ちや流れを整え直す参拝につなげやすい場所です。",
+    pattern: "学びや願いの流れを立て直したい時に選ばれやすい神社です。",
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -277,23 +292,84 @@ function buildMeaningCore(args: {
   const intro = [symbolPart, placePart].filter(Boolean).join(" ");
   const introText = intro ? `${intro} ` : "";
 
+  const buildThreeActionMeaningCore = (actionBase: string, placementBase: string): string => {
+    const introClause = introText ? `${introText}` : "";
+    return `この神社は、${introClause}${args.receiver}を整えながら、${actionBase}場所であり、${placementBase}として置きやすい場所です。`;
+  };
+
   if (args.mode === "compat") {
-    return `この神社は、${introText}${args.receiver}を落ち着いて受け止め直し、自分にとって無理のない向き合い方を整える節目として置きやすい場所です。`;
+    return buildThreeActionMeaningCore(
+      "落ち着いて受け止め直し、自分にとって無理のない向き合い方を整えるために立ち止まれる",
+      "相性を静かに見直す節目"
+    );
   }
 
-  if (args.need === "厄除け") return `この神社は、${introText}${args.receiver}を抱え直すのではなく、ほどきながら整え直す節目として置きやすい場所です。`;
-  if (args.need === "仕事")   return `この神社は、${introText}${args.receiver}を見直し、仕事の流れと判断軸を立て直す節目として置きやすい場所です。`;
-  if (args.need === "転機")   return `この神社は、${introText}${args.receiver}を見直し、切り替えの流れを整え直す節目として置きやすい場所です。`;
-  if (args.need === "恋愛")   return `この神社は、${introText}${args.receiver}を見つめ直し、関係性の受け取り方を整える節目として置きやすい場所です。`;
-  if (args.need === "健康")   return `この神社は、${introText}${args.receiver}を急がず見直し、心身を整え直す順番を取り戻す節目として置きやすい場所です。`;
-  if (args.need === "学業")   return `この神社は、${introText}${args.receiver}を見直し、集中の軸と取り組み方を定め直す節目として置きやすい場所です。`;
+  if (args.need === "厄除け") {
+    return buildThreeActionMeaningCore(
+      "抱え直すのではなく、ほどきながら整え直すために立ち止まれる",
+      "気持ちの引っかかりを見直す節目"
+    );
+  }
+  if (args.need === "仕事") {
+    return buildThreeActionMeaningCore(
+      "見直し、仕事の流れと判断軸を整え直すために立ち止まれる",
+      "優先順位を整え直す節目"
+    );
+  }
+  if (args.need === "転機") {
+    return buildThreeActionMeaningCore(
+      "見直し、切り替えたい流れを整え直すために立ち止まれる",
+      "切り替えの節目"
+    );
+  }
+  if (args.need === "恋愛") {
+    return buildThreeActionMeaningCore(
+      "見つめ直し、関係性の受け取り方を整えるために立ち止まれる",
+      "関係の見方を整え直す節目"
+    );
+  }
+  if (args.need === "健康") {
+    return buildThreeActionMeaningCore(
+      "急がず見直し、心身を整え直す順番を取り戻すために立ち止まれる",
+      "整える順番を見直す節目"
+    );
+  }
+  if (args.need === "学業") {
+    return buildThreeActionMeaningCore(
+      "見直し、集中の軸と取り組み方を整え直すために立ち止まれる",
+      "学び方を整え直す節目"
+    );
+  }
 
-  if (args.shrine.tone === "strong") return `この神社は、${introText}${args.receiver}をため込み続けるのではなく、流れを切り替える節目として置きやすい場所です。`;
-  if (args.shrine.tone === "quiet")  return `この神社は、${introText}${args.receiver}を静かに受け止め直し、落ち着いて整える節目として置きやすい場所です。`;
-  if (args.shrine.tone === "tight")  return `この神社は、${introText}${args.receiver}を広げすぎず、判断と集中の軸を定め直す節目として置きやすい場所です。`;
-  if (args.shrine.tone === "open")   return `この神社は、${introText}${args.receiver}を抱えたまま閉じるのではなく、巡りと視野を開き直す節目として置きやすい場所です。`;
+  if (args.shrine.tone === "strong") {
+    return buildThreeActionMeaningCore(
+      "ため込み続けるのではなく、いまの流れを切り替えるために立ち止まれる",
+      "流れを切り替える節目"
+    );
+  }
+  if (args.shrine.tone === "quiet") {
+    return buildThreeActionMeaningCore(
+      "静かに受け止め直し、判断を急がず整え直すために立ち止まれる",
+      "受け取り方を整え直す節目"
+    );
+  }
+  if (args.shrine.tone === "tight") {
+    return buildThreeActionMeaningCore(
+      "広げすぎず、判断と集中の軸を定め直すために立ち止まれる",
+      "判断軸を絞り直す節目"
+    );
+  }
+  if (args.shrine.tone === "open") {
+    return buildThreeActionMeaningCore(
+      "抱えたまま閉じるのではなく、巡りと視野を開き直すために立ち止まれる",
+      "視野を開き直す節目"
+    );
+  }
 
-  return `この神社は、${introText}${args.receiver}を見直し、今の流れを整える節目として置きやすい場所です。`;
+  return buildThreeActionMeaningCore(
+    "見直し、今の流れを整え直すために立ち止まれる",
+    "今の流れを整え直す節目"
+  );
 }
 
 // ---------------------------------------------------------------------------

@@ -25,8 +25,10 @@ import {
   type ExplanationPayload,
   type NarrativeFallback,
 } from "@/lib/concierge/narrative/types";
+import { buildRankReason } from "@/lib/concierge/narrative/buildRankReason";
 import { buildComparisonText } from "@/lib/concierge/narrative/buildComparisonText";
-import { buildRecommendationNarrative } from "@/lib/concierge/narrative/buildRecommendationNarrative";
+import { buildPsychologicalTags } from "@/lib/concierge/narrative/buildPsychologicalTags";
+import { buildSymbolTags } from "@/lib/concierge/narrative/buildSymbolTags";
 
 
 type Args = {
@@ -1189,20 +1191,27 @@ export function buildShrineDetailModel({
   const secondaryNeedTags = getSecondaryNeedTags(conciergeBreakdown);
   const isConciergeContext = ctx === "concierge";
 
-  const narrative = buildRecommendationNarrative({
+  const rankReason = buildRankReason({
     mode,
+    breakdown: conciergeBreakdown,
     primaryNeed,
     secondaryNeedTags,
+  });
+
+  const comparisonText = buildComparisonText({
+    mode,
+    primaryNeed,
     shrineName: cardProps.title ?? null,
     shrineTone: getShrineTone(cardProps.title ?? null),
-    breakdown: conciergeBreakdown,
-    explanationPayload,
-    deepReason: conciergeDeepReason,
-    conciergeReason,
-    benefitLabels,
-    userElementLabel: explanationPayload?.primary_need_label_ja ?? null,
-    primaryReasonLabel: explanationPayload?.primary_reason?.label_ja ?? null,
-    shrineSymbolTags: null,
+  });
+
+  const psychologicalTags = buildPsychologicalTags({
+    primaryNeed,
+    secondaryNeeds: secondaryNeedTags,
+  });
+
+  const symbolTags = buildSymbolTags({
+    psychologicalTags,
   });
 
   const consultationSummary = isConciergeContext ? (recommendationReasonDetail?.consultationSummary ?? null) : null;
@@ -1234,21 +1243,9 @@ export function buildShrineDetailModel({
     recommendationReasonDetail,
     conciergeDeepReason,
     conciergeReason,
-    generatedLead: isConciergeContext
-      ? (narrative.meaning.lead ??
-        buildProposalLead({
-          mode,
-          explanationPayload,
-        }))
-      : buildProposalLead({
-          mode,
-          explanationPayload,
-        }),
+    generatedLead: buildProposalLead({ mode, explanationPayload }),
   });
 
-  const rankReason = narrative.ranking.rankReason;
-
-  const comparisonText = narrative.ranking.comparisonText;
 
   const fallbackProposalWhy = buildProposalWhyFromBreakdown({
     mode,
@@ -1280,16 +1277,7 @@ export function buildShrineDetailModel({
     recommendationReasonDetail,
     conciergeDeepReason,
     conciergeReason,
-    generatedLead: isConciergeContext
-      ? (narrative.meaning.lead ??
-        buildProposalLead({
-          mode,
-          explanationPayload,
-        }))
-      : buildProposalLead({
-          mode,
-          explanationPayload,
-        }),
+    generatedLead: buildProposalLead({ mode, explanationPayload }),
   });
 
   const goriyakuText =
@@ -1365,8 +1353,8 @@ export function buildShrineDetailModel({
 
   const supplementSection = buildSupplementSection({
     benefitLabels,
-    psychologicalTags: narrative.psychologicalTags,
-    symbolTags: narrative.symbolTags,
+    psychologicalTags,
+    symbolTags,
     mode,
     explanationPayload,
   });
@@ -1402,7 +1390,7 @@ export function buildShrineDetailModel({
     judgeSection: explanation.judgeSection,
     rankReason: explanation.rankReason,
     recommendationMeta,
-    psychologicalTags: narrative.psychologicalTags,
-    symbolTags: narrative.symbolTags,
+    psychologicalTags,
+    symbolTags,
   };
 }

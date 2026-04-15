@@ -92,3 +92,6 @@ apps/web/cookies.txt
 !**/.vscode/settings.json
 !**/.vscode/extensions.json
 apps/web/debug-storybook.log
+
+
+.claude
