@@ -3,11 +3,19 @@
  *
  * responsibility:
  * ③ 行動意味を生成する
+ *   - meaningCore    : 「この神社は、...節目として置きやすい場所です。」
+ *   - meaningContext : 「...今は、...節目として向き合いやすい場所です。」
+ *   - meaningAction  : 距離・人気など補助要因がある場合の付加文
  *
  * boundary:
- * - 推薦判断は扱わない
- * - 状態整理は扱わない
- * - 神社補足は扱わない
+ * - 推薦判断（①）は扱わない
+ * - 状態整理（②）は扱わない
+ * - 神社補足情報（④）は扱わない
+ *
+ * design note:
+ * - コンテキスト解決順: SHRINE_CONTEXT_TABLE(shrine_id直接参照) → place text 推定
+ * - name マッチ・text マッチによる文字列推定は使わない
+ * - raw benefit / feature label は外部に漏らさない（未知ラベルは null）
  */
 
 import {
@@ -22,628 +30,496 @@ import type {
   ShrineMeaningSlots,
 } from "./buildRecommendationReasonViewModel";
 
+// ---------------------------------------------------------------------------
+// Output type
+// ---------------------------------------------------------------------------
+
 export type MeaningNarrative = {
   heroMeaningCopy: string;
+  /** 1文目: 「この神社は、...節目として置きやすい場所です。」 */
+  meaningCore: string;
+  /** 2文目: 「...今は、...節目として向き合いやすい場所です。」 */
+  meaningContext: string;
+  /** 補助文: 距離・人気など補足要因がある場合のみ */
+  meaningAction?: string;
+  /** backward compat: `${meaningCore}\n\n${meaningContext}` */
   shrineMeaning: string;
+  /** backward compat alias for meaningAction */
   actionMeaning?: string;
 };
 
-type ShrineNarrativeContext = {
-  symbol?: string;
-  place?: "mountain" | "forest" | "water" | "city";
-  ritual?: string;
-  pattern?: string;
+// ---------------------------------------------------------------------------
+// SHRINE_CONTEXT_TABLE: shrine_id による直接参照（source of truth）
+// ---------------------------------------------------------------------------
+
+type ShrineContextEntry = {
+  place: "mountain" | "forest" | "water" | "city";
+  symbol: string;
+  ritual: string;
+  pattern: string;
 };
 
-const SHRINE_NARRATIVE_CONTEXT_MAP: Record<string, ShrineNarrativeContext> = {
-  "三峯神社": {
+/**
+ * キー: API レスポンスの rec.id (shrine_id)
+ * 名前マッチや text 推定は不要 — shrine ID が確定しているものを列挙する。
+ * 未登録の shrine は place text 推定にフォールバックする。
+ *
+ * 追加方法: バックエンドで shrine_id を確認して以下に追記する。
+ */
+const SHRINE_CONTEXT_TABLE: Record<number, ShrineContextEntry> = {
+  17: {
     place: "mountain",
     symbol: "古くから節目や鍛錬の場として向き合われてきた場所でもあり",
-    ritual: "高低差や道のりを進むこと自体が、気持ちを切り替える参拝体験につながります。",
-    pattern: "人生の転機や、気持ちを切り替えたい時に選ばれやすい神社です。",
+    ritual: "高低差や道のりを進みながら、切り替えたい流れをいったん引き受け直す参拝につなげやすい場所です。",
+    pattern: "人生の転機や、流れを切り替える節目を置きたい時に選ばれやすい神社です。",
   },
-  "乃木神社": {
+
+  59: {
     place: "city",
-    symbol: "日常の延長で姿勢を整え、目標へ向き直る節目として受け取られやすい神社でもあり",
-    ritual: "街の中でも立ち寄りやすく、気持ちと集中を整え直す入口にしやすい参拝です。",
-    pattern: "学業や仕事の節目で、姿勢を整えたい時に選ばれやすい神社です。",
+    symbol: "姿勢を整え、目標へ向き直る節目として受け取られやすい神社でもあり",
+    ritual: "日常の動線の中でも立ち寄りやすく、集中を整え直す参拝につなげやすい場所です。",
+    pattern: "学業や仕事の節目で選ばれやすい神社です。",
   },
-  "住吉大社": {
-    place: "water",
-    symbol: "流れや進路の守りと重ねて受け取られてきた場所でもあり",
-    ritual: "水辺の気配を感じながら、流れを整え直すように参拝しやすい神社です。",
-    pattern: "切り替えや立て直しの節目に選ばれやすい神社です。",
-  },
-  "伊勢神宮（内宮）": {
+
+  3: {
     place: "forest",
-    symbol: "静けさの中で姿勢や受け取り方を整える場として重ねられてきた場所でもあり",
-    ritual: "木々に包まれた参道を進みながら、落ち着いて向き合い方を整えやすい参拝です。",
-    pattern: "気持ちを整え直し、落ち着いて受け止めたい時に選ばれやすい神社です。",
+    symbol: "静けさの中で受け取り方を整える場として受け止められやすい神社でもあり",
+    ritual: "木々に包まれながら、気持ちの置き場や向き合い方を落ち着いて整え直す参拝につなげやすい場所です。",
+    pattern: "気持ちを整え直し、受け取り方を静かに見直したい時に選ばれやすい神社です。",
   },
-  "亀戸天神社": {
+
+  47: {
     place: "water",
-    symbol: "学びや願掛けの節目として重ねて受け取られてきた場所でもあり",
-    ritual: "水辺の気配を感じながら、焦りをほどいて目標へ向き直しやすい参拝です。",
-    pattern: "受験や学びの節目で、集中を整えたい時に選ばれやすい神社です。",
+    symbol: "巡りや流れを整える節目として受け取られやすい神社でもあり",
+    ritual: "水辺の気配の中で、滞りをほどくように気持ちや流れを整え直す参拝につなげやすい場所です。",
+    pattern: "学びや願いの流れを立て直したい時に選ばれやすい神社です。",
   },
 };
 
-function buildHeroMeaningFromSlots(args: {
-  mode: BuildParams["mode"];
-  need: string | null;
-  shrine: ShrineMeaningSlots;
-}): string {
-  if (args.mode === "compat") {
-    return "相性の無理が少なく、落ち着いて受け取りやすい神社";
-  }
+// ---------------------------------------------------------------------------
+// Fallback context: place text 推定（SHRINE_CONTEXT_TABLE 未登録時のみ）
+// ---------------------------------------------------------------------------
 
-  if (args.need === "厄除け") return "気持ちを立て直し、受け取り方を整え直す神社";
-  if (args.need === "仕事") return "仕事の流れと判断軸を整え直す神社";
-  if (args.need === "金運") return "止まった流れを整え、立て直しの軸を作る神社";
-  if (args.need === "転機") return "切り替えの流れを整え、次の見方を作る神社";
-  if (args.need === "恋愛") return "関係性の受け取り方を整え、気持ちの置き場を作る神社";
-  if (args.need === "健康") return "心身を整え、回復の順番を取り戻す神社";
-  if (args.need === "学業") return "集中を整え、目標への向き合い方を立て直す神社";
+type ShrineNarrativeContext = Partial<ShrineContextEntry>;
 
-  if (args.shrine.tone === "strong") {
-    return "流れを切り替え、次の一歩を動かしやすい神社";
-  }
+function inferPlaceFromText(text: string): ShrineContextEntry["place"] | undefined {
+  const t = text.toLowerCase();
 
-  if (args.shrine.tone === "quiet") {
-    return "落ち着いて受け止め、静かに整え直しやすい神社";
-  }
-
-  if (args.shrine.tone === "tight") {
-    return "判断を絞り、集中を定め直しやすい神社";
-  }
-
-  if (args.shrine.tone === "open") {
-    return "巡りを戻し、視野を開き直しやすい神社";
-  }
-
-  return "今の流れを整え、次の見方を作る神社";
-}
-
-function inferPlaceFromShrineText(text: string | null): ShrineNarrativeContext["place"] | undefined {
-  const value = clean(text)?.toLowerCase() ?? "";
-  if (!value) return undefined;
-
-  if (
-    value.includes("山") ||
-    value.includes("峰") ||
-    value.includes("岳") ||
-    value.includes("mountain") ||
-    value.includes("okumiya")
-  ) {
-    return "mountain";
-  }
-
-  if (
-    value.includes("森") ||
-    value.includes("forest") ||
-    value.includes("杜") ||
-    value.includes("林")
-  ) {
-    return "forest";
-  }
-
-  if (
-    value.includes("水") ||
-    value.includes("川") ||
-    value.includes("滝") ||
-    value.includes("海") ||
-    value.includes("池") ||
-    value.includes("water")
-  ) {
-    return "water";
-  }
-
-  if (
-    value.includes("街") ||
-    value.includes("市") ||
-    value.includes("駅") ||
-    value.includes("都市") ||
-    value.includes("city")
-  ) {
-    return "city";
-  }
+  if (t.includes("山") || t.includes("峰") || t.includes("岳")) return "mountain";
+  if (t.includes("森") || t.includes("杜") || t.includes("林")) return "forest";
+  if (t.includes("水") || t.includes("川") || t.includes("滝") || t.includes("海") || t.includes("池")) return "water";
+  if (t.includes("街") || t.includes("市") || t.includes("駅")) return "city";
 
   return undefined;
 }
 
-function buildPlacePhrase(place?: ShrineNarrativeContext["place"]): string | null {
-  if (place === "mountain") return "山の気配の中で";
-  if (place === "forest") return "森に包まれた空気の中で";
-  if (place === "water") return "水の流れを感じながら";
-  if (place === "city") return "街の中でも立ち寄りやすく";
-  return null;
-}
-
-function buildSymbolPhrase(context: ShrineNarrativeContext): string | null {
-  return clean(context.symbol) || null;
-}
-
-function buildRitualPhrase(context: ShrineNarrativeContext): string | null {
-  return clean(context.ritual) || null;
-}
-
-function buildPatternPhrase(context: ShrineNarrativeContext): string | null {
-  return clean(context.pattern) || null;
-}
-
-function resolveShrineNarrativeContextFromMap(texts: string[]): ShrineNarrativeContext | null {
-  const candidates = texts.map((text) => clean(text)).filter(Boolean) as string[];
-
-  for (const candidate of candidates) {
-    const matchedEntry = Object.entries(SHRINE_NARRATIVE_CONTEXT_MAP).find(([name]) => candidate.includes(name));
-    if (matchedEntry) {
-      return matchedEntry[1];
-    }
-  }
-
-  return null;
-}
-
-function buildShrineNarrativeContext(params: BuildParams): ShrineNarrativeContext {
-  const shrineNameCandidates = Array.from(
-    new Set(
-      [
-        clean((params.rec as { display_name?: string | null }).display_name),
-        clean((params.rec as { title?: string | null }).title),
-        clean((params.rec as { name?: string | null }).name),
-      ].filter(Boolean) as string[],
-    ),
-  );
-
-  const featureTexts = (params.shrineFeatureLabels ?? []).map(clean).filter(Boolean) as string[];
-  // name resolver: 神社名のみで照合（benefit label は混入させない）
-  const mapped = resolveShrineNarrativeContextFromMap(shrineNameCandidates);
-  if (mapped) {
-    return mapped;
-  }
-
-  // text resolver: featureTexts のみで place 推定（benefit label は参照しない）
-  const joined = featureTexts.join(" ");
-  const place = inferPlaceFromShrineText(joined);
-
-  let symbol: string | undefined;
-  let ritual: string | undefined;
-  let pattern: string | undefined;
-
+function contextFromPlace(place: ShrineContextEntry["place"] | undefined): ShrineNarrativeContext {
   if (place === "mountain") {
-    symbol = "古くから節目や鍛錬の場として向き合われてきた場所でもあり";
-    ritual = "高低差や道のりを進むこと自体が、気持ちを切り替える参拝体験につながります。";
-    pattern = "人生の転機や、気持ちを切り替えたい時に選ばれやすい神社です。";
-  } else if (place === "forest") {
-    symbol = "静けさの中で気持ちを整える場として受け取られてきた場所でもあり";
-    ritual = "木々に包まれた参道を進みながら、落ち着いて気持ちを整えやすい参拝です。";
-    pattern = "落ち着いて考えを整えたい時に選ばれやすい神社です。";
-  } else if (place === "water") {
-    symbol = "流れや浄化の象徴と重ねて受け取られやすい場所でもあり";
-    ritual = "水辺や流れを感じながら、滞りをほどくように参拝しやすい神社です。";
-    pattern = "切り替えや立て直しの節目に選ばれやすい神社です。";
-  } else if (place === "city") {
-    symbol = "日常の延長で節目を作りやすい場所として親しまれてきた神社でもあり";
-    ritual = "日常の動線の中でも立ち寄りやすく、今の流れを切り替える入口にしやすい参拝です。";
-    pattern = "忙しい時期でも節目を作りたい人に選ばれやすい神社です。";
+    return {
+      place,
+      symbol: "古くから節目や鍛錬の場として向き合われてきた場所でもあり",
+      ritual: "高低差や道のりを進むこと自体が、気持ちを切り替える参拝体験につながります。",
+      pattern: "人生の転機や、気持ちを切り替えたい時に選ばれやすい神社です。",
+    };
   }
-
-  return {
-    symbol,
-    place,
-    ritual,
-    pattern,
-  };
+  if (place === "forest") {
+    return {
+      place,
+      symbol: "静けさの中で気持ちを整える場として受け取られてきた場所でもあり",
+      ritual: "木々に包まれた参道を進みながら、落ち着いて気持ちを整えやすい参拝です。",
+      pattern: "落ち着いて考えを整えたい時に選ばれやすい神社です。",
+    };
+  }
+  if (place === "water") {
+    return {
+      place,
+      symbol: "流れや浄化の象徴と重ねて受け取られやすい場所でもあり",
+      ritual: "水辺や流れを感じながら、滞りをほどくように参拝しやすい神社です。",
+      pattern: "切り替えや立て直しの節目に選ばれやすい神社です。",
+    };
+  }
+  if (place === "city") {
+    return {
+      place,
+      symbol: "日常の延長で節目を作りやすい場所として親しまれてきた神社でもあり",
+      ritual: "日常の動線の中でも立ち寄りやすく、今の流れを切り替える入口にしやすい参拝です。",
+      pattern: "忙しい時期でも節目を作りたい人に選ばれやすい神社です。",
+    };
+  }
+  return {};
 }
 
-function buildMeaningReceiver(args: {
+// ---------------------------------------------------------------------------
+// Context resolution
+// ---------------------------------------------------------------------------
+
+function resolveShrineContext(params: BuildParams): ShrineNarrativeContext {
+  // 1. SHRINE_CONTEXT_TABLE: shrine_id による直接参照（最優先）
+  const shrineId = typeof params.rec.id === "number" ? params.rec.id : null;
+  if (shrineId !== null && shrineId in SHRINE_CONTEXT_TABLE) {
+    return SHRINE_CONTEXT_TABLE[shrineId];
+  }
+
+  // 2. featureTexts による place 推定（フォールバック）
+  //    benefit label は渡さない（御利益名が place 推定に混入しないよう）
+  const featureTexts = (params.shrineFeatureLabels ?? []).map(clean).filter(Boolean) as string[];
+  const place = inferPlaceFromText(featureTexts.join(" "));
+  return contextFromPlace(place);
+}
+
+// ---------------------------------------------------------------------------
+// Hero meaning copy
+// ---------------------------------------------------------------------------
+
+function buildHeroMeaningCopy(args: {
+  mode: BuildParams["mode"];
+  need: string | null;
+  shrine: ShrineMeaningSlots;
+}): string {
+  if (args.mode === "compat") return "相性の無理が少なく、落ち着いて受け取りやすい神社";
+
+  if (args.need === "厄除け") return "気持ちを立て直し、受け取り方を整え直す神社";
+  if (args.need === "仕事")   return "仕事の流れと判断軸を整え直す神社";
+  if (args.need === "金運")   return "止まった流れを整え、立て直しの軸を作る神社";
+  if (args.need === "転機")   return "切り替えの流れを整え、次の見方を作る神社";
+  if (args.need === "恋愛")   return "関係性の受け取り方を整え、気持ちの置き場を作る神社";
+  if (args.need === "健康")   return "心身を整え、回復の順番を取り戻す神社";
+  if (args.need === "学業")   return "集中を整え、目標への向き合い方を立て直す神社";
+
+  if (args.shrine.tone === "strong") return "流れを切り替え、次の一歩を動かしやすい神社";
+  if (args.shrine.tone === "quiet")  return "落ち着いて受け止め、静かに整え直しやすい神社";
+  if (args.shrine.tone === "tight")  return "判断を絞り、集中を定め直しやすい神社";
+  if (args.shrine.tone === "open")   return "巡りを戻し、視野を開き直しやすい神社";
+
+  return "今の流れを整え、次の見方を作る神社";
+}
+
+// ---------------------------------------------------------------------------
+// Wish base / qualifier（受け取り意志の言語化）
+// ---------------------------------------------------------------------------
+
+function buildNeedWishBase(need: string | null, mode?: BuildParams["mode"]): string {
+  if (mode === "compat") return "今の自分に無理なく向き合いたい願い";
+
+  if (need === "厄除け") return "不安や引っかかりをほどき、気持ちを整え直したい願い";
+  if (need === "仕事")   return "仕事の流れや優先順位を整え直したい願い";
+  if (need === "金運")   return "止まった巡りを整え、立て直しの軸を作りたい願い";
+  if (need === "転機")   return "切り替えや節目を整え、次の見方を作りたい願い";
+  if (need === "恋愛")   return "関係性の受け取り方を整え、気持ちの置き場を作りたい願い";
+  if (need === "健康")   return "心身の消耗を増やさず、整える順番を取り戻したい願い";
+  if (need === "学業")   return "集中を整え、学びへの向き合い方を立て直したい願い";
+
+  return "今の流れを整え直したい願い";
+}
+
+function buildMeaningBenefitPhrase(benefit: string | null): string | null {
+  const v = clean(benefit);
+  if (!v) return null;
+
+  if (v.includes("厄除け"))   return "不安や引っかかりをほどきながら整え直す流れ";
+  if (v.includes("開運"))     return "流れを切り替え整え直す流れ";
+  if (v.includes("仕事"))     return "仕事の流れと判断軸を立て直す流れ";
+  if (v.includes("金運"))     return "止まった巡りを立て直す流れ";
+  if (v.includes("交通安全")) return "移動や進む向きを整え直す流れ";
+  if (v.includes("航海安全")) return "進む流れを安定して通し直す流れ";
+  if (v.includes("家内安全")) return "暮らしの流れを落ち着かせ整え直す流れ";
+  if (v.includes("健康"))     return "心身の巡りを整え直す流れ";
+  if (v.includes("恋愛"))     return "関係性の受け取り方を整える流れ";
+  if (v.includes("縁結び"))   return "関係の結び目を整え直す流れ";
+  if (v.includes("学業"))     return "集中の軸を整え直す流れ";
+  if (v.includes("合格"))     return "目標への焦点を定め直す流れ";
+  if (v.includes("勝運"))     return "背中を押して前へ進みやすくする流れ";
+
+  return null; // 未知ラベルは素通りしない
+}
+
+function buildMeaningFeaturePhrase(feature: string | null): string | null {
+  const v = clean(feature);
+  if (!v) return null;
+
+  if (v.includes("切り替え") || v.includes("踏み出し"))                     return "流れを切り替え次の一歩へ動き直す足場";
+  if (v.includes("落ち着") || v.includes("静か") || v.includes("受け止め")) return "気持ちを静かに受け止め整え直す足場";
+  if (v.includes("集中") || v.includes("判断") || v.includes("絞"))         return "判断と集中の軸を定め直す足場";
+  if (v.includes("巡り") || v.includes("視野") || v.includes("開"))         return "巡りや視野を開き直す足場";
+
+  return null; // 未知ラベルは素通りしない
+}
+
+function buildNeedSupportQualifier(benefit: string | null, feature: string | null): string {
+  const bp = buildMeaningBenefitPhrase(benefit);
+  const fp = buildMeaningFeaturePhrase(feature);
+
+  if (bp && fp) return `${bp}や${fp}を足場に`;
+  if (bp)       return `${bp}を足場に`;
+  if (fp)       return `${fp}を足場に`;
+  return "";
+}
+
+function buildReceiver(args: {
   need: string | null;
   benefit: string | null;
   feature: string | null;
   mode?: BuildParams["mode"];
+  hasMappedContext: boolean;
 }): string {
-  const baseWish = buildNeedWishBase(args.need, args.mode);
-  const qualifier = buildNeedSupportQualifier({ benefit: args.benefit, feature: args.feature });
+  const base = buildNeedWishBase(args.need, args.mode);
+  if (args.hasMappedContext) return base; // mapped context は benefit/feature を無視
 
-  if (!qualifier) return baseWish;
-  return `${qualifier}${baseWish}`;
+  const qualifier = buildNeedSupportQualifier(args.benefit, args.feature);
+  return qualifier ? `${qualifier}${base}` : base;
 }
 
-function buildMeaningCoreFromSlots(args: {
+// ---------------------------------------------------------------------------
+// meaning-core: 「この神社は、...節目として置きやすい場所です。」
+// ---------------------------------------------------------------------------
+
+function buildMeaningCore(args: {
   mode: BuildParams["mode"];
   need: string | null;
   shrine: ShrineMeaningSlots;
   receiver: string;
   context: ShrineNarrativeContext;
 }): string {
-  const symbol = buildSymbolPhrase(args.context);
-  const place = buildPlacePhrase(args.context.place);
-  const intro = [symbol, place].filter(Boolean).join(" ");
+  const symbolPart = clean(args.context.symbol) || null;
+  const placePart = (() => {
+    if (args.context.place === "mountain") return "山の気配の中で";
+    if (args.context.place === "forest")   return "森に包まれた空気の中で";
+    if (args.context.place === "water")    return "水の流れを感じながら";
+    if (args.context.place === "city")     return "街の中でも立ち寄りやすく";
+    return null;
+  })();
+
+  const intro = [symbolPart, placePart].filter(Boolean).join(" ");
   const introText = intro ? `${intro} ` : "";
 
+  const buildThreeActionMeaningCore = (actionBase: string, placementBase: string): string => {
+    const introClause = introText ? `${introText}` : "";
+    return `この神社は、${introClause}${args.receiver}を整えながら、${actionBase}場所であり、${placementBase}として置きやすい場所です。`;
+  };
+
   if (args.mode === "compat") {
-    return `この神社は、${introText}${args.receiver}を落ち着いて受け止め直し、自分にとって無理のない向き合い方を整える節目として置きやすい場所です。`;
+    return buildThreeActionMeaningCore(
+      "落ち着いて受け止め直し、自分にとって無理のない向き合い方を整えるために立ち止まれる",
+      "相性を静かに見直す節目"
+    );
   }
 
   if (args.need === "厄除け") {
-    return `この神社は、${introText}${args.receiver}を抱え直すのではなく、ほどきながら整え直す節目として置きやすい場所です。`;
+    return buildThreeActionMeaningCore(
+      "抱え直すのではなく、ほどきながら整え直すために立ち止まれる",
+      "気持ちの引っかかりを見直す節目"
+    );
   }
-
   if (args.need === "仕事") {
-    return `この神社は、${introText}${args.receiver}を見直し、仕事の流れと判断軸を立て直す節目として置きやすい場所です。`;
+    return buildThreeActionMeaningCore(
+      "見直し、仕事の流れと判断軸を整え直すために立ち止まれる",
+      "優先順位を整え直す節目"
+    );
   }
-
   if (args.need === "転機") {
-    return `この神社は、${introText}${args.receiver}を見直し、切り替えの流れを整え直す節目として置きやすい場所です。`;
+    return buildThreeActionMeaningCore(
+      "見直し、切り替えたい流れを整え直すために立ち止まれる",
+      "切り替えの節目"
+    );
   }
-
   if (args.need === "恋愛") {
-    return `この神社は、${introText}${args.receiver}を見つめ直し、関係性の受け取り方を整える節目として置きやすい場所です。`;
+    return buildThreeActionMeaningCore(
+      "見つめ直し、関係性の受け取り方を整えるために立ち止まれる",
+      "関係の見方を整え直す節目"
+    );
   }
-
   if (args.need === "健康") {
-    return `この神社は、${introText}${args.receiver}を急がず見直し、心身を整え直す順番を取り戻す節目として置きやすい場所です。`;
+    return buildThreeActionMeaningCore(
+      "急がず見直し、心身を整え直す順番を取り戻すために立ち止まれる",
+      "整える順番を見直す節目"
+    );
   }
-
   if (args.need === "学業") {
-    return `この神社は、${introText}${args.receiver}を見直し、集中の軸と取り組み方を定め直す節目として置きやすい場所です。`;
+    return buildThreeActionMeaningCore(
+      "見直し、集中の軸と取り組み方を整え直すために立ち止まれる",
+      "学び方を整え直す節目"
+    );
   }
 
   if (args.shrine.tone === "strong") {
-    return `この神社は、${introText}${args.receiver}をため込み続けるのではなく、流れを切り替える節目として置きやすい場所です。`;
+    return buildThreeActionMeaningCore(
+      "ため込み続けるのではなく、いまの流れを切り替えるために立ち止まれる",
+      "流れを切り替える節目"
+    );
   }
-
   if (args.shrine.tone === "quiet") {
-    return `この神社は、${introText}${args.receiver}を静かに受け止め直し、落ち着いて整える節目として置きやすい場所です。`;
+    return buildThreeActionMeaningCore(
+      "静かに受け止め直し、判断を急がず整え直すために立ち止まれる",
+      "受け取り方を整え直す節目"
+    );
   }
-
   if (args.shrine.tone === "tight") {
-    return `この神社は、${introText}${args.receiver}を広げすぎず、判断と集中の軸を定め直す節目として置きやすい場所です。`;
+    return buildThreeActionMeaningCore(
+      "広げすぎず、判断と集中の軸を定め直すために立ち止まれる",
+      "判断軸を絞り直す節目"
+    );
   }
-
   if (args.shrine.tone === "open") {
-    return `この神社は、${introText}${args.receiver}を抱えたまま閉じるのではなく、巡りと視野を開き直す節目として置きやすい場所です。`;
+    return buildThreeActionMeaningCore(
+      "抱えたまま閉じるのではなく、巡りと視野を開き直すために立ち止まれる",
+      "視野を開き直す節目"
+    );
   }
 
-  return `この神社は、${introText}${args.receiver}を見直し、今の流れを整える節目として置きやすい場所です。`;
+  return buildThreeActionMeaningCore(
+    "見直し、今の流れを整え直すために立ち止まれる",
+    "今の流れを整え直す節目"
+  );
 }
 
-function buildFallbackWhyNowFromPrimary(args: {
+// ---------------------------------------------------------------------------
+// meaning-context: 「...今は、...節目として向き合いやすい場所です。」
+// ---------------------------------------------------------------------------
+
+function buildWhyNow(args: {
+  mode: BuildParams["mode"];
+  need: string | null;
   consultation: ConsultationMeaningSlots;
   primary: Candidate;
 }): string {
-  if (!clean(args.consultation.needPrimary) && args.primary.key === "distance") {
-    return "遠くの正解を探すほど動けなくなりやすい今は、";
-  }
+  if (args.mode === "compat") return "勢いで合う・合わないを決めるほど感覚がぶれやすい今は、";
 
-  if (!clean(args.consultation.needPrimary) && (args.primary.key === "element_match" || args.primary.key === "sign_match")) {
-    return "強い刺激よりも無理なく受け取れる場所の方が整いやすい今は、";
+  if (args.need === "厄除け") return "不安や引っかかりを抱えたまま考えるほど判断が散りやすい今は、";
+  if (args.need === "仕事")   return "次の一手を急ぐほど優先順位が崩れやすい今は、";
+  if (args.need === "転機")   return "結論を急ぐほど何を切り替えるかが見えにくくなる今は、";
+  if (args.need === "恋愛")   return "相手の反応を追うほど自分の受け取り方が揺れやすい今は、";
+  if (args.need === "健康")   return "整えようとするほど休むことと立て直すことの順番が崩れやすい今は、";
+  if (args.need === "学業")   return "結果を急ぐほど集中の軸がぶれやすい今は、";
+
+  if (!clean(args.consultation.needPrimary)) {
+    if (args.primary.key === "distance")   return "遠くの正解を探すほど動けなくなりやすい今は、";
+    if (args.primary.key === "element_match" || args.primary.key === "sign_match") {
+      return "強い刺激よりも無理なく受け取れる場所の方が整いやすい今は、";
+    }
   }
 
   return "答えを急ぐほど判断が散りやすい今は、";
 }
 
-function buildFallbackActionRoleFromPrimary(args: {
-  consultation: ConsultationMeaningSlots;
-  primary: Candidate;
-}): string {
-  if (!clean(args.consultation.needPrimary) && args.primary.key === "distance") {
-    return "まず足を運べる場所から流れを整え直す節目として向き合いやすい場所です。";
-  }
-
-  if (!clean(args.consultation.needPrimary) && (args.primary.key === "element_match" || args.primary.key === "sign_match")) {
-    return "無理なく受け取れる場所で、気持ちと判断を整える節目として向き合いやすい場所です。";
-  }
-
-  return "気持ちと流れを整えながら、次の見方を見直す節目として向き合いやすい場所です。";
-}
-
-function buildWhyNowFromSlots(args: {
-  mode: BuildParams["mode"];
-  need: string | null;
-  consultation: ConsultationMeaningSlots;
-  primary: Candidate;
-}): string {
-  if (args.mode === "compat") {
-    return "勢いで合う・合わないを決めるほど感覚がぶれやすい今は、";
-  }
-
-  if (args.need === "厄除け") {
-    return "不安や引っかかりを抱えたまま考えるほど判断が散りやすい今は、";
-  }
-
-  if (args.need === "仕事") {
-    return "次の一手を急ぐほど優先順位が崩れやすい今は、";
-  }
-
-  if (args.need === "転機") {
-    return "結論を急ぐほど何を切り替えるかが見えにくくなる今は、";
-  }
-
-  if (args.need === "恋愛") {
-    return "相手の反応を追うほど自分の受け取り方が揺れやすい今は、";
-  }
-
-  if (args.need === "健康") {
-    return "整えようとするほど休むことと立て直すことの順番が崩れやすい今は、";
-  }
-
-  if (args.need === "学業") {
-    return "結果を急ぐほど集中の軸がぶれやすい今は、";
-  }
-
-  return buildFallbackWhyNowFromPrimary({
-    consultation: args.consultation,
-    primary: args.primary,
-  });
-}
-
-function buildActionRoleFromSlots(args: {
+function buildActionRole(args: {
   mode: BuildParams["mode"];
   need: string | null;
   shrine: ShrineMeaningSlots;
   consultation: ConsultationMeaningSlots;
   primary: Candidate;
+  context: ShrineNarrativeContext;
 }): string {
-  if (args.mode === "compat") {
-    return "自分の感覚を整えながら、相性の受け取り方を見直す節目として向き合いやすい場所です。";
+  if (args.mode === "compat") return "自分の感覚を整えながら、相性の受け取り方を見直す節目として向き合いやすい場所です。";
+
+  if (args.need === "厄除け") return "気持ちの流れを整えながら、立て直す順番を見直す節目として向き合いやすい場所です。";
+  if (args.need === "仕事")   return "仕事の流れと判断軸を整え直す節目として向き合いやすい場所です。";
+  if (args.need === "転機")   return "流れを整えながら、どこを切り替えるかを見直す節目として向き合いやすい場所です。";
+  if (args.need === "恋愛")   return "気持ちの置き場を整えながら、関係の見方を見直す節目として向き合いやすい場所です。";
+  if (args.need === "健康")   return "無理を増やさず整える順番を見直す節目として向き合いやすい場所です。";
+  if (args.need === "学業")   return "集中の軸と取り組み方を整え直す節目として向き合いやすい場所です。";
+
+  // tone ベース
+  if (args.shrine.tone === "strong") return "切り替えや踏み出しの方向へ、気持ちを動かし直す節目として向き合いやすい場所です。";
+  if (args.shrine.tone === "quiet")  return "気持ちを静かに受け止め直しながら、整える順番を見直す節目として向き合いやすい場所です。";
+  if (args.shrine.tone === "tight")  return "判断を絞りながら、優先順位を定め直す節目として向き合いやすい場所です。";
+  if (args.shrine.tone === "open")   return "滞りをほどきながら、巡りや視野を開き直す節目として向き合いやすい場所です。";
+
+  // context ritual があればそれを使う
+  if (args.context.ritual) return args.context.ritual;
+
+  if (!clean(args.consultation.needPrimary)) {
+    if (args.primary.key === "distance") return "まず足を運べる場所から流れを整え直す節目として向き合いやすい場所です。";
+    if (args.primary.key === "element_match" || args.primary.key === "sign_match") {
+      return "無理なく受け取れる場所で、気持ちと判断を整える節目として向き合いやすい場所です。";
+    }
   }
 
-  if (args.need === "厄除け") {
-    return "気持ちの流れを整えながら、立て直す順番を見直す節目として向き合いやすい場所です。";
-  }
-
-  if (args.need === "仕事") {
-    return "仕事の流れと判断軸を整え直す節目として向き合いやすい場所です。";
-  }
-
-  if (args.need === "転機") {
-    return "流れを整えながら、どこを切り替えるかを見直す節目として向き合いやすい場所です。";
-  }
-
-  if (args.need === "恋愛") {
-    return "気持ちの置き場を整えながら、関係の見方を見直す節目として向き合いやすい場所です。";
-  }
-
-  if (args.need === "健康") {
-    return "無理を増やさず整える順番を見直す節目として向き合いやすい場所です。";
-  }
-
-  if (args.need === "学業") {
-    return "集中の軸と取り組み方を整え直す節目として向き合いやすい場所です。";
-  }
-
-  if (args.shrine.tone === "strong") {
-    return "切り替えや踏み出しの方向へ、気持ちを動かし直す節目として向き合いやすい場所です。";
-  }
-
-  if (args.shrine.tone === "quiet") {
-    return "気持ちを静かに受け止め直しながら、整える順番を見直す節目として向き合いやすい場所です。";
-  }
-
-  if (args.shrine.tone === "tight") {
-    return "判断を絞りながら、優先順位を定め直す節目として向き合いやすい場所です。";
-  }
-
-  if (args.shrine.tone === "open") {
-    return "滞りをほどきながら、巡りや視野を開き直す節目として向き合いやすい場所です。";
-  }
-
-  return buildFallbackActionRoleFromPrimary({
-    consultation: args.consultation,
-    primary: args.primary,
-  });
+  return "気持ちと流れを整えながら、次の見方を見直す節目として向き合いやすい場所です。";
 }
 
-function buildDetailHeroMeaningCopy(params: BuildParams, _primary: Candidate): string {
-  const consultation = buildConsultationMeaningSlots(params);
-  const shrine = buildShrineMeaningSlots(params);
-  const need = clean(consultation.needPrimary) || clean(params.needTags?.[0]) || null;
+// ---------------------------------------------------------------------------
+// meaning-action: 補助付加文（距離・人気など）
+// ---------------------------------------------------------------------------
 
-  return buildHeroMeaningFromSlots({
-    mode: params.mode,
-    need,
-    shrine,
-  });
-}
+function buildMeaningAction(args: {
+  secondary?: Candidate;
+  context: ShrineNarrativeContext;
+  rec: BuildParams["rec"];
+}): string | undefined {
+  const ritual  = clean(args.context.ritual)  || null;
+  const pattern = clean(args.context.pattern) || null;
 
-function getPrimaryNeedBenefitLabel(params: BuildParams): string | null {
-  const preferredBenefit = (params.shrineBenefitLabels ?? []).map(clean).find(Boolean);
-  if (preferredBenefit) return preferredBenefit;
-
-  const shrineBenefit = clean(params.rec.reason_facts?.shrine_benefit);
-  if (shrineBenefit) return shrineBenefit;
-
-  const matchedBenefit = clean(params.rec.reason_facts?.matched_benefits?.[0]);
-  if (matchedBenefit) return matchedBenefit;
-
-  return null;
-}
-
-
-function getShrineFeatureLabel(params: BuildParams): string | null {
-  const preferredFeature = (params.shrineFeatureLabels ?? []).map(clean).find(Boolean);
-  if (preferredFeature) return preferredFeature;
-
-  const feature = clean(params.rec.reason_facts?.shrine_feature);
-  if (feature) return feature;
-
-  const visitFit = clean(params.rec.reason_facts?.visit_fit);
-  if (visitFit) return visitFit;
-
-  return null;
-}
-
-function buildMeaningBenefitPhrase(benefit: string | null): string | null {
-  const value = clean(benefit);
-  if (!value) return null;
-
-  if (value.includes("厄除け")) return "不安や引っかかりをほどきながら整え直す流れ";
-  if (value.includes("開運")) return "流れを切り替え整え直す流れ";
-  if (value.includes("仕事")) return "仕事の流れと判断軸を立て直す流れ";
-  if (value.includes("金運")) return "止まった巡りを立て直す流れ";
-  if (value.includes("交通安全")) return "移動や進む向きを整え直す流れ";
-  if (value.includes("航海安全")) return "進む流れを安定して通し直す流れ";
-  if (value.includes("家内安全")) return "暮らしの流れを落ち着かせ整え直す流れ";
-  if (value.includes("健康")) return "心身の巡りを整え直す流れ";
-  if (value.includes("恋愛")) return "関係性の受け取り方を整える流れ";
-  if (value.includes("縁結び")) return "関係の結び目を整え直す流れ";
-  if (value.includes("学業")) return "集中の軸を整え直す流れ";
-  if (value.includes("合格")) return "目標への焦点を定め直す流れ";
-  if (value.includes("勝運")) return "背中を押して前へ進みやすくする流れ";
-
-  // 未知ラベルは null（raw 文字列を ③ narrative に混入させない）
-  return null;
-}
-
-function buildMeaningFeaturePhrase(feature: string | null): string | null {
-  const value = clean(feature);
-  if (!value) return null;
-
-  if (value.includes("切り替え") || value.includes("踏み出し")) {
-    return "流れを切り替え次の一歩へ動き直す足場";
+  if (args.secondary?.key === "distance") {
+    return ritual  ?? "まず無理なく足を運べること自体が、参拝の入口になります。";
   }
-
-  if (value.includes("落ち着") || value.includes("静か") || value.includes("受け止め")) {
-    return "気持ちを静かに受け止め整え直す足場";
-  }
-
-  if (value.includes("集中") || value.includes("判断") || value.includes("絞")) {
-    return "判断と集中の軸を定め直す足場";
-  }
-
-  if (value.includes("巡り") || value.includes("視野") || value.includes("開")) {
-    return "巡りや視野を開き直す足場";
-  }
-
-  // 未知ラベルは null
-  return null;
-}
-
-function buildNeedWishBase(need: string | null, mode?: BuildParams["mode"]): string {
-  if (mode === "compat") return "今の自分に無理なく向き合いたい願い";
-
-  if (need === "厄除け") return "不安や引っかかりをほどき、気持ちを整え直したい願い";
-  if (need === "仕事") return "仕事の流れや優先順位を整え直したい願い";
-  if (need === "金運") return "止まった巡りを整え、立て直しの軸を作りたい願い";
-  if (need === "転機") return "切り替えや節目を整え、次の見方を作りたい願い";
-  if (need === "恋愛") return "関係性の受け取り方を整え、気持ちの置き場を作りたい願い";
-  if (need === "健康") return "心身の消耗を増やさず、整える順番を取り戻したい願い";
-  if (need === "学業") return "集中を整え、学びへの向き合い方を立て直したい願い";
-
-  return "今の流れを整え直したい願い";
-}
-
-function buildNeedSupportQualifier(args: { benefit: string | null; feature: string | null }): string {
-  const benefitPhrase = buildMeaningBenefitPhrase(args.benefit);
-  const featurePhrase = buildMeaningFeaturePhrase(args.feature);
-
-  if (benefitPhrase && featurePhrase) return `${benefitPhrase}や${featurePhrase}を足場に`;
-  if (benefitPhrase) return `${benefitPhrase}を足場に`;
-  if (featurePhrase) return `${featurePhrase}を足場に`;
-
-  return "";
-}
-
-function buildMeaningCore(params: BuildParams, _primary: Candidate): string {
-  const consultation = buildConsultationMeaningSlots(params);
-  const shrine = buildShrineMeaningSlots(params);
-  const need = clean(consultation.needPrimary) || clean(params.needTags?.[0]) || null;
-  const benefit = getPrimaryNeedBenefitLabel(params);
-  const feature = getShrineFeatureLabel(params);
-  const context = buildShrineNarrativeContext(params);
-
-  const hasMappedNarrativeContext = Boolean(
-    clean(context.symbol) || clean(context.ritual) || clean(context.pattern),
-  );
-
-  const receiver = hasMappedNarrativeContext
-    ? buildNeedWishBase(need, params.mode)
-    : buildMeaningReceiver({
-        need,
-        benefit,
-        feature,
-        mode: params.mode,
-      });
-
-  return buildMeaningCoreFromSlots({
-    mode: params.mode,
-    need,
-    shrine,
-    receiver,
-    context,
-  });
-}
-
-function buildWhyNow(params: BuildParams, primary: Candidate): string {
-  const consultation = buildConsultationMeaningSlots(params);
-  const need = clean(consultation.needPrimary) || clean(params.needTags?.[0]) || null;
-
-  return buildWhyNowFromSlots({
-    mode: params.mode,
-    need,
-    consultation,
-    primary,
-  });
-}
-
-
-function buildActionRole(params: BuildParams, primary: Candidate): string {
-  const consultation = buildConsultationMeaningSlots(params);
-  const shrine = buildShrineMeaningSlots(params);
-  const need = clean(consultation.needPrimary) || clean(params.needTags?.[0]) || null;
-
-  return buildActionRoleFromSlots({
-    mode: params.mode,
-    need,
-    shrine,
-    consultation,
-    primary,
-  });
-}
-
-function buildActionMeaning(params: BuildParams, secondary?: Candidate): string | undefined {
-  const context = buildShrineNarrativeContext(params);
-  const ritual = buildRitualPhrase(context);
-  const pattern = buildPatternPhrase(context);
-
-  if (secondary?.key === "distance") {
-    return ritual ?? "まず無理なく足を運べること自体が、参拝の入口になります。";
-  }
-
-  if (secondary?.key === "popular") {
+  if (args.secondary?.key === "popular") {
     return pattern ?? "迷いがある時でも、参拝先として思い描きやすい安定感があります。";
   }
 
-  if (params.rec.fallback_mode && params.rec.fallback_mode !== "none") {
-    if (typeof params.rec.distance_m === "number") {
-      return ritual ?? "まず無理なく足を運べること自体が、参拝の入口になります。";
-    }
-
-    if (typeof params.rec.popular_score === "number") {
-      return pattern ?? "迷いがある時でも、参拝先として思い描きやすい安定感があります。";
-    }
+  if (args.rec.fallback_mode && args.rec.fallback_mode !== "none") {
+    if (typeof args.rec.distance_m    === "number") return ritual  ?? "まず無理なく足を運べること自体が、参拝の入口になります。";
+    if (typeof args.rec.popular_score === "number") return pattern ?? "迷いがある時でも、参拝先として思い描きやすい安定感があります。";
   }
 
   return undefined;
 }
 
-function buildShrineMeaning(params: BuildParams, primary: Candidate): string {
-  const meaningCore = buildMeaningCore(params, primary);
-  const whyNow = buildWhyNow(params, primary);
-  const actionRole = buildActionRole(params, primary);
+// ---------------------------------------------------------------------------
+// helpers: benefit / feature label を params から取り出す
+// ---------------------------------------------------------------------------
 
-  return `${meaningCore}\n\n${whyNow}${actionRole}`;
+function getPrimaryBenefitLabel(params: BuildParams): string | null {
+  return (params.shrineBenefitLabels ?? []).map(clean).find(Boolean)
+    ?? clean(params.rec.reason_facts?.shrine_benefit)
+    ?? clean(params.rec.reason_facts?.matched_benefits?.[0])
+    ?? null;
 }
+
+function getPrimaryFeatureLabel(params: BuildParams): string | null {
+  return (params.shrineFeatureLabels ?? []).map(clean).find(Boolean)
+    ?? clean(params.rec.reason_facts?.shrine_feature)
+    ?? clean(params.rec.reason_facts?.visit_fit)
+    ?? null;
+}
+
+// ---------------------------------------------------------------------------
+// Public export
+// ---------------------------------------------------------------------------
 
 export function buildMeaningNarrative(args: {
   params: BuildParams;
   primary: Candidate;
   secondary?: Candidate;
 }): MeaningNarrative {
+  const { params, primary, secondary } = args;
+
+  const consultation = buildConsultationMeaningSlots(params);
+  const shrine       = buildShrineMeaningSlots(params);
+  const need         = clean(consultation.needPrimary) || clean(params.needTags?.[0]) || null;
+  const benefit      = getPrimaryBenefitLabel(params);
+  const feature      = getPrimaryFeatureLabel(params);
+  const context      = resolveShrineContext(params);
+  const hasMapped    = Boolean(context.symbol || context.ritual || context.pattern);
+
+  const receiver = buildReceiver({ need, benefit, feature, mode: params.mode, hasMappedContext: hasMapped });
+
+  const heroMeaningCopy = buildHeroMeaningCopy({ mode: params.mode, need, shrine });
+
+  const meaningCore = buildMeaningCore({ mode: params.mode, need, shrine, receiver, context });
+
+  const whyNow     = buildWhyNow({ mode: params.mode, need, consultation, primary });
+  const actionRole = buildActionRole({ mode: params.mode, need, shrine, consultation, primary, context });
+  const meaningContext = `${whyNow}${actionRole}`;
+
+  const meaningAction = buildMeaningAction({ secondary, context, rec: params.rec });
+
   return {
-    heroMeaningCopy: buildDetailHeroMeaningCopy(args.params, args.primary),
-    shrineMeaning: buildShrineMeaning(args.params, args.primary),
-    actionMeaning: buildActionMeaning(args.params, args.secondary),
+    heroMeaningCopy,
+    meaningCore,
+    meaningContext,
+    meaningAction,
+    // backward compat
+    shrineMeaning: `${meaningCore}\n\n${meaningContext}`,
+    actionMeaning: meaningAction,
   };
 }

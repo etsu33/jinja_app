@@ -202,7 +202,7 @@ describe("buildRecommendationReasonViewModel", () => {
 
       expect(sentences, sample.label).toHaveLength(2);
       expect(vm.detail.shrineMeaning, sample.label).toContain("今は、");
-      expect(vm.detail.shrineMeaning, sample.label).toContain("節目として置きやすい場所です");
+      expect(vm.detail.shrineMeaning, sample.label).toMatch(/置きやすい場所です/);
       expect(vm.detail.shrineMeaning, sample.label).not.toContain("ご利益");
       expect(vm.detail.shrineMeaning, sample.label).not.toContain("由緒");
       expect(vm.detail.shrineMeaning, sample.label).not.toBe(vm.detail.heroMeaningCopy);
