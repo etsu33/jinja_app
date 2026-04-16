@@ -1,7 +1,7 @@
 // apps/web/src/hooks/useFavorite.ts
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   createFavoriteByShrineId,
   removeFavoriteByPk,
@@ -13,7 +13,6 @@ import { favoriteMatchKey } from "@/lib/favorites/normalize";
 
 import {
   peekFavoritesCache,
-  getFavoritesCached,
   upsertFavorite,
   removeFavoriteFromCacheByPk,
   removeFavoriteFromCacheByShrineId,
@@ -22,26 +21,9 @@ import {
 
 type Args = {
   shrineId?: number;
-  initial?: boolean; // SSRなどで明示したい場合だけ使う
+  initial?: boolean;
   guestMode?: boolean;
 };
-
-async function getFavoritesDirect(): Promise<Favorite[]> {
-  const r = await fetch("/api/favorites/", { cache: "no-store" });
-
-  if (r.status === 401) {
-    const err = new Error("unauthenticated");
-    (err as any).status = 401;
-    throw err;
-  }
-
-  if (!r.ok) {
-    throw new Error(`favorites fetch failed: ${r.status}`);
-  }
-
-  const data = await r.json();
-  return Array.isArray(data) ? data : (data?.results ?? []);
-}
 
 export function useFavorite({ shrineId, initial, guestMode = false }: Args) {
   const isGuest = Boolean(guestMode);
@@ -51,7 +33,6 @@ export function useFavorite({ shrineId, initial, guestMode = false }: Args) {
     return null;
   }, [shrineId]);
 
-  // ① cache が既にあるなら即反映
   const cached = useMemo(() => {
     if (typeof shrineId !== "number") return null;
     if (isGuest) return null;
@@ -64,51 +45,31 @@ export function useFavorite({ shrineId, initial, guestMode = false }: Args) {
   const [fav, setFav] = useState<boolean>(() => {
     if (isGuest) return false;
     if (typeof initial === "boolean") return initial;
-    if (cached) return cached.fav;
-    return false;
+    return cached?.fav ?? false;
   });
+
   const [favPk, setFavPk] = useState<number | null>(() => {
     if (isGuest) return null;
-    return cached ? cached.pk : null;
+    return cached?.pk ?? null;
   });
+
   const [busy, setBusy] = useState(false);
 
-  const hydratedRef = useRef(false);
-
   useEffect(() => {
-    hydratedRef.current = false;
-  }, [isGuest, shrineId, initial]);
-
-  // ② cache が無い/不確実なら一度だけ取得して復元
-  useEffect(() => {
-    if (!key) return;
-    if (hydratedRef.current) return;
     if (isGuest) {
-      hydratedRef.current = true;
       setFav(false);
       setFavPk(null);
       return;
     }
 
-    // initial が明示されてる場合は fetch しない
     if (typeof initial === "boolean") {
-      hydratedRef.current = true;
+      setFav(initial);
       return;
     }
 
-    hydratedRef.current = true;
-
-    (async () => {
-      try {
-        const list = await getFavoritesCached(getFavoritesDirect);
-        const hit = list.find((f) => favoriteMatchKey(f, { shrineId })) ?? null;
-        setFav(Boolean(hit));
-        setFavPk(hit?.id ?? null);
-      } catch {
-        // noop
-      }
-    })();
-  }, [key, shrineId, initial, isGuest]);
+    setFav(cached?.fav ?? false);
+    setFavPk(cached?.pk ?? null);
+  }, [isGuest, initial, cached?.fav, cached?.pk, key]);
 
   async function toggle() {
     if (!key || busy) return;
@@ -126,10 +87,8 @@ export function useFavorite({ shrineId, initial, guestMode = false }: Args) {
 
     try {
       if (!prev) {
-        // add
         const createdRaw = await createFavoriteByShrineId(shrineId);
 
-        // backend が id/created_at だけ返しても cache/normalize が成立するよう補完
         const created: Favorite = {
           ...createdRaw,
           shrine_id: shrineId as any,
@@ -144,7 +103,6 @@ export function useFavorite({ shrineId, initial, guestMode = false }: Args) {
         return;
       }
 
-      // remove
       if (favPk != null) {
         await removeFavoriteByPk(favPk);
         removeFavoriteFromCacheByPk(favPk);
@@ -153,7 +111,6 @@ export function useFavorite({ shrineId, initial, guestMode = false }: Args) {
         return;
       }
 
-      // pk不明フォールバック
       await removeFavoriteByShrineId(shrineId);
       removeFavoriteFromCacheByShrineId(shrineId);
       clearFavoritesInFlight();
