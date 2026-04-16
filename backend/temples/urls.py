@@ -14,7 +14,7 @@ from temples.views.places import (
 )
 
 from .api_views import FavoriteViewSet, ShrineNearbyView
-from .api_views_concierge import ConciergeChatView, ConciergePlanView
+from .api_views_concierge import ConciergeChatView, ConciergePlanView, ConciergeThreadView
 from .views import PopularShrinesView, shrine_list, shrine_route, shrine_detail
 
 app_name = "temples"
@@ -37,6 +37,7 @@ urlpatterns = [
     path("places/find/", PlacesFindLiteView.as_view(), name="places-find-lite"),
     path("concierge/chat/", ConciergeChatView.as_view(), name="concierge_chat"),
     path("concierge/plan/", ConciergePlanView.as_view(), name="concierge_plan"),
+    path("concierge/thread/", ConciergeThreadView.as_view(), name="concierge_thread"),
     path("route/", RouteView.as_view(), name="route"),
     path("admin/seed/shrine/", seed_initial_shrine),
 ]

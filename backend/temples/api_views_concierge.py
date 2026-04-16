@@ -24,6 +24,7 @@ from rest_framework_simplejwt.exceptions import TokenError
 from temples.api.serializers.concierge import (
     ConciergePlanRequestSerializer,
     ConciergePlanResponseSerializer,
+    ConciergeThreadSerializer,
 )
 from temples.geocoding.client import geocode_google_point
 from temples.models import ConciergeThread
@@ -867,6 +868,13 @@ class ConciergeChatView(APIView):
                 )
                 thread_obj = saved.thread
 
+            log.warning(
+                "[concierge/chat] THREAD_SAVED rid=%s thread_pk=%r recommendations_saved=%s recommendations_v2_saved=%s",
+                rid,
+                getattr(thread_obj, "id", None),
+                len(getattr(thread_obj, "recommendations", None) or []),
+                len(getattr(thread_obj, "recommendations_v2", None) or []),
+            )
             log.info(
                 "[concierge/perf] step=append_chat rid=%s elapsed=%.3f thread=%r",
                 rid,
@@ -1067,18 +1075,37 @@ class ConciergePlanViewLegacy(ConciergePlanView):
     schema = None
 
 
+class ConciergeThreadView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        tid = request.query_params.get("tid")
+        if not tid:
+            return Response({"error": "tid required"}, status=400)
+
+        try:
+            thread = ConciergeThread.objects.get(id=tid)
+        except ConciergeThread.DoesNotExist:
+            return Response({"error": "not found"}, status=404)
+
+        return Response(ConciergeThreadSerializer(thread).data)
+
+
 chat = ConciergeChatView.as_view()
 plan = ConciergePlanView.as_view()
+thread = ConciergeThreadView.as_view()
 chat_legacy = ConciergeChatViewLegacy.as_view()
 plan_legacy = ConciergePlanViewLegacy.as_view()
 
 __all__ = [
     "chat",
     "plan",
+    "thread",
     "chat_legacy",
     "plan_legacy",
     "ConciergeChatView",
     "ConciergePlanView",
+    "ConciergeThreadView",
     "ConciergeChatViewLegacy",
     "ConciergePlanViewLegacy",
 ]

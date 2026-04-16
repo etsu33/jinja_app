@@ -53,17 +53,15 @@ class ConciergeMessageSerializer(serializers.ModelSerializer):
 
 class ConciergeThreadDetailSerializer(serializers.ModelSerializer):
     messages = ConciergeMessageSerializer(many=True, read_only=True)
-    message_count = serializers.SerializerMethodField()
 
     class Meta:
         model = ConciergeThread
         fields = [
             "id",
             "title",
-            "created_at",
-            "updated_at",
             "last_message_at",
-            "message_count",
+            "recommendations",
+            "recommendations_v2",
             "messages",
         ]
 

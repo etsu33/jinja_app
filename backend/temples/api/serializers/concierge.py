@@ -131,18 +131,15 @@ class ConciergeMessageSerializer(serializers.ModelSerializer):
         ]
 
 
-class ConciergeThreadDetailSerializer(serializers.ModelSerializer):
-    messages = ConciergeMessageSerializer(many=True, read_only=True)
-
+class ConciergeThreadSerializer(serializers.ModelSerializer):
     class Meta:
         model = ConciergeThread
         fields = [
             "id",
             "title",
-            "last_message",
             "last_message_at",
-            "message_count",
-            "messages",
+            "recommendations",
+            "recommendations_v2",
         ]
 
 

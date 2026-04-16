@@ -171,6 +171,7 @@ function buildRecommendationReasonDetailInput(
     fallbackTags,
     primaryReasonLabel,
   });
+  const shrineId = Number(args.recommendation?.shrine_id ?? args.recommendation?.id ?? null);
   const reasonVm = buildRecommendationReasonViewModel({
     rec: {
       display_name: args.shrineName,
@@ -207,6 +208,16 @@ function buildRecommendationReasonDetailInput(
     shrineMeaning: reasonVm.detail.shrineMeaning ?? conciergeDeepReason?.shrineMeaning ?? null,
     actionMeaning: reasonVm.detail.actionMeaning ?? conciergeDeepReason?.action ?? null,
   };
+
+  console.log("REASON_DETAIL_OUTPUT", {
+    shrineId,
+    shrineName: args.shrineName,
+    recommendationReasonDetail,
+    heroMeaningCopy: recommendationReasonDetail?.heroMeaningCopy,
+    consultationSummary: recommendationReasonDetail?.consultationSummary,
+    shrineMeaning: recommendationReasonDetail?.shrineMeaning,
+    actionMeaning: recommendationReasonDetail?.actionMeaning,
+  });
 
   return {
     recommendationReasonDetail,

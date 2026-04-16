@@ -343,7 +343,7 @@ function buildMeaningCore(args: {
 
   if (args.shrine.tone === "strong") {
     return buildThreeActionMeaningCore(
-      "ため込み続けるのではなく、いまの流れを切り替えるために立ち止まれる",
+      "いまの流れを切り替えるために立ち止まれる",
       "流れを切り替える節目"
     );
   }
@@ -411,7 +411,12 @@ function buildActionRole(args: {
 }): string {
   if (args.mode === "compat") return "自分の感覚を整えながら、相性の受け取り方を見直す節目として向き合いやすい場所です。";
 
-  if (args.need === "厄除け") return "気持ちの流れを整えながら、立て直す順番を見直す節目として向き合いやすい場所です。";
+  if (args.need === "厄除け") {
+    if (args.shrine.tone === "strong") {
+      return "不安や引っかかりを抱えたまま抱え込まず、切り替えや踏み出しの方向へ気持ちを動かし直す節目として向き合いやすい場所です。";
+    }
+    return "気持ちの流れを整えながら、立て直す順番を見直す節目として向き合いやすい場所です。";
+  }
   if (args.need === "仕事")   return "仕事の流れと判断軸を整え直す節目として向き合いやすい場所です。";
   if (args.need === "転機")   return "流れを整えながら、どこを切り替えるかを見直す節目として向き合いやすい場所です。";
   if (args.need === "恋愛")   return "気持ちの置き場を整えながら、関係の見方を見直す節目として向き合いやすい場所です。";
