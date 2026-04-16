@@ -23,16 +23,29 @@ import {
 type Args = {
   shrineId?: number;
   initial?: boolean; // SSRなどで明示したい場合だけ使う
+  guestMode?: boolean;
 };
 
 async function getFavoritesDirect(): Promise<Favorite[]> {
   const r = await fetch("/api/favorites/", { cache: "no-store" });
-  if (!r.ok) return [];
+
+  if (r.status === 401) {
+    const err = new Error("unauthenticated");
+    (err as any).status = 401;
+    throw err;
+  }
+
+  if (!r.ok) {
+    throw new Error(`favorites fetch failed: ${r.status}`);
+  }
+
   const data = await r.json();
   return Array.isArray(data) ? data : (data?.results ?? []);
 }
 
-export function useFavorite({ shrineId, initial }: Args) {
+export function useFavorite({ shrineId, initial, guestMode = false }: Args) {
+  const isGuest = Boolean(guestMode);
+
   const key = useMemo(() => {
     if (typeof shrineId === "number") return `shrine:${shrineId}`;
     return null;
@@ -41,26 +54,41 @@ export function useFavorite({ shrineId, initial }: Args) {
   // ① cache が既にあるなら即反映
   const cached = useMemo(() => {
     if (typeof shrineId !== "number") return null;
+    if (isGuest) return null;
     const c = peekFavoritesCache();
     if (!c) return null;
     const hit = c.find((f) => favoriteMatchKey(f, { shrineId })) ?? null;
     return hit ? { fav: true, pk: hit.id } : { fav: false, pk: null };
-  }, [shrineId]);
+  }, [shrineId, isGuest]);
 
   const [fav, setFav] = useState<boolean>(() => {
+    if (isGuest) return false;
     if (typeof initial === "boolean") return initial;
     if (cached) return cached.fav;
     return false;
   });
-  const [favPk, setFavPk] = useState<number | null>(() => (cached ? cached.pk : null));
+  const [favPk, setFavPk] = useState<number | null>(() => {
+    if (isGuest) return null;
+    return cached ? cached.pk : null;
+  });
   const [busy, setBusy] = useState(false);
 
   const hydratedRef = useRef(false);
+
+  useEffect(() => {
+    hydratedRef.current = false;
+  }, [isGuest, shrineId, initial]);
 
   // ② cache が無い/不確実なら一度だけ取得して復元
   useEffect(() => {
     if (!key) return;
     if (hydratedRef.current) return;
+    if (isGuest) {
+      hydratedRef.current = true;
+      setFav(false);
+      setFavPk(null);
+      return;
+    }
 
     // initial が明示されてる場合は fetch しない
     if (typeof initial === "boolean") {
@@ -80,11 +108,17 @@ export function useFavorite({ shrineId, initial }: Args) {
         // noop
       }
     })();
-  }, [key, shrineId, initial]);
+  }, [key, shrineId, initial, isGuest]);
 
   async function toggle() {
     if (!key || busy) return;
     if (typeof shrineId !== "number") return;
+
+    if (isGuest) {
+      const err = new Error("unauthenticated");
+      (err as any).status = 401;
+      throw err;
+    }
 
     setBusy(true);
     const prev = fav;
@@ -131,5 +165,10 @@ export function useFavorite({ shrineId, initial }: Args) {
     }
   }
 
-  return { fav, busy, toggle };
+  return {
+    fav,
+    busy,
+    toggle,
+    isGuest,
+  };
 }
