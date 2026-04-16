@@ -5,18 +5,25 @@ import { useRouter } from "next/navigation";
 import { useFavorite } from "@/hooks/useFavorite";
 import { buildShrineHref } from "@/lib/nav/buildShrineHref";
 import { buildLoginHref } from "@/lib/nav/login";
+import { useAuth } from "@/lib/auth/AuthProvider";
 
 type Props = {
   shrineId: number;
   nextPath?: string;
+  guestMode?: boolean;
 };
 
-export default function ShrineSaveButton({ shrineId, nextPath }: Props) {
+export default function ShrineSaveButton({ shrineId, nextPath, guestMode }: Props) {
   const router = useRouter();
+  const { isLoggedIn, loading } = useAuth();
   const [err, setErr] = useState<string | null>(null);
+
+  const effectiveGuestMode =
+    typeof guestMode === "boolean" ? guestMode : !loading && !isLoggedIn;
 
   const { fav, busy, toggle } = useFavorite({
     shrineId,
+    guestMode: effectiveGuestMode,
   });
 
   const onClick = async () => {

@@ -56,12 +56,6 @@ function maybeLoggedIn(): boolean {
 async function fetchMe(): Promise<AuthUser | null> {
   try {
     const me = await getCurrentUser();
-
-    if (!me) {
-      markLoggedOut();
-      return null;
-    }
-
     return me;
   } catch {
     markLoggedOut();
@@ -111,7 +105,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false;
 
     (async () => {
-      const shouldFetch = shouldAutoFetchMe(pathname) || maybeLoggedIn();
+      const auto = shouldAutoFetchMe(pathname);
+      const maybe = maybeLoggedIn();
+      const shouldFetch = auto || maybe;
 
       if (!shouldFetch) {
         if (!cancelled) {
