@@ -123,6 +123,7 @@ urlpatterns = [
     path("concierge/chat/", concierge_chat_compat, name="concierge-chat"),
     path("concierge/chat", concierge_chat_compat_noslash, name="concierge-chat-noslash"),
     path("concierge/plan/", concierge.plan, name="concierge-plan"),
+    path("concierge/thread/", concierge.thread, name="concierge-thread"), 
     path("concierge-threads/", ConciergeThreadListView.as_view(), name="concierge-thread-list"),
     path("concierge-threads/<int:pk>/", ConciergeThreadDetailView.as_view(), name="concierge-thread-detail"),
 
