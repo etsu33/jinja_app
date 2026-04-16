@@ -1075,6 +1075,7 @@ class ConciergePlanViewLegacy(ConciergePlanView):
     schema = None
 
 
+@extend_schema(exclude=True)
 class ConciergeThreadView(APIView):
     permission_classes = [AllowAny]
 
