@@ -66,17 +66,27 @@ async function fetchMe(): Promise<AuthUser | null> {
 function shouldAutoFetchMe(pathname: string | null): boolean {
   if (!pathname) return true;
 
-  // ログイン画面は未ログインが前提なので叩かない
-  if (pathname === "/login" || pathname === "/signup" || pathname === "/auth/login" || pathname === "/auth/register") {
+  // ログイン画面は未ログイン前提
+  if (
+    pathname === "/login" ||
+    pathname === "/signup" ||
+    pathname === "/auth/login" ||
+    pathname === "/auth/register"
+  ) {
     return false;
   }
 
-  // concierge 系は localStorage の復元フラグがある時だけに寄せる
+  // 公開ページでは未ログイン時に users/me を叩かない
+  if (pathname === "/" || pathname.startsWith("/shrines/")) {
+    return false;
+  }
+
+  // concierge 系は localStorage 復元フラグがある時だけに寄せる
   if (pathname === "/concierge" || pathname.startsWith("/concierge/")) {
     return false;
   }
 
-  // 実験場はOK
+  // 実験場だけ例外
   if (pathname.startsWith("/concierge/full")) return true;
 
   return true;
