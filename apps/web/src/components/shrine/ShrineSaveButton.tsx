@@ -23,6 +23,7 @@ export default function ShrineSaveButton({ shrineId, nextPath, guestMode }: Prop
 
   const { fav, busy, toggle } = useFavorite({
     shrineId,
+    initial: false,
     guestMode: effectiveGuestMode,
   });
 
