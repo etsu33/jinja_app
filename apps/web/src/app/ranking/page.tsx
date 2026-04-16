@@ -7,20 +7,20 @@ import { fetchRanking } from "@/lib/api/ranking";
 import type { RankingItem } from "@/lib/api/ranking";
 import { useFavorite } from "@/hooks/useFavorite";
 import { preloadFavoritesByShrineIds, type FavoritePreloadMap } from "@/lib/api/favorites";
-import { usePopularShrines } from "../../hooks/usePopularShrines";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
-function FavButton({ shrineId, initial }: { shrineId: number; initial?: boolean }) {
+function FavButton({ shrineId, initial, loading = false }: { shrineId: number; initial?: boolean; loading?: boolean }) {
   const { fav, busy, toggle } = useFavorite({ shrineId, initial });
+  const disabled = busy || loading;
   return (
-    <button onClick={toggle} disabled={busy} aria-pressed={fav} className="text-sm">
-      {busy ? "…" : fav ? "★" : "☆"}
+    <button onClick={toggle} disabled={disabled} aria-pressed={fav} className="text-sm">
+      {disabled && loading ? "…" : busy ? "…" : fav ? "★" : "☆"}
     </button>
   );
 }
 
-function RankingList({ data, favoriteMap }: { data: RankingItem[]; favoriteMap: FavoritePreloadMap }) {
+function RankingList({ data, favoriteMap, loading }: { data: RankingItem[]; favoriteMap: FavoritePreloadMap; loading: boolean }) {
   const hasData = Array.isArray(data) && data.length > 0;
   return (
     <ol role="list" className="space-y-4">
@@ -34,7 +34,7 @@ function RankingList({ data, favoriteMap }: { data: RankingItem[]; favoriteMap: 
                   <span>{shrine?.name_jp ?? "名称不明"}</span>
                   {typeof shrine.id === "number" && (
                     <span className="ml-auto">
-                      <FavButton shrineId={shrine.id} initial={favoriteMap[String(shrine.id)]?.fav} />
+                      <FavButton shrineId={shrine.id} initial={favoriteMap[String(shrine.id)]?.fav} loading={loading} />
                     </span>
                   )}
                 </CardTitle>
@@ -59,6 +59,7 @@ export default function RankingPage() {
   const [monthly, setMonthly] = useState<RankingItem[]>([]);
   const [yearly, setYearly] = useState<RankingItem[]>([]);
   const [favoriteMap, setFavoriteMap] = useState<FavoritePreloadMap>({});
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
@@ -66,9 +67,13 @@ export default function RankingPage() {
       setMonthly(m);
       setYearly(y);
 
-      const ids = [...m, ...y].map((s) => s.id);
-      const map = await preloadFavoritesByShrineIds(ids);
-      setFavoriteMap(map);
+      try {
+        const ids = [...m, ...y].map((s) => s.id);
+        const map = await preloadFavoritesByShrineIds(ids);
+        setFavoriteMap(map);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, []);
 
@@ -83,11 +88,11 @@ export default function RankingPage() {
         </TabsList>
 
         <TabsContent value="monthly">
-          <RankingList data={monthly} favoriteMap={favoriteMap} />
+          <RankingList data={monthly} favoriteMap={favoriteMap} loading={loading} />
         </TabsContent>
 
         <TabsContent value="yearly">
-          <RankingList data={yearly} favoriteMap={favoriteMap} />
+          <RankingList data={yearly} favoriteMap={favoriteMap} loading={loading} />
         </TabsContent>
       </Tabs>
     </main>
