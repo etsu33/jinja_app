@@ -138,6 +138,23 @@ type ConciergeSessionState = {
 
 ---
 
+## favorite 導線の優先順位
+
+favorite 導線の主導線は以下とする。
+
+`concierge -> shrine detail -> save -> mypage`
+
+- concierge は発見導線
+- shrine detail は判断と保存の中心画面
+- mypage は保存済み神社の再訪導線
+
+ranking / popular は閲覧導線として残すが、MVP では favorite 導線の主責務を持たせない。
+そのため、ranking / popular への preload や保存導線の追加投資は現時点では行わない。
+
+将来的に ranking の利用実績や回遊価値が確認できた場合に限り、favorite 初期状態取得の最適化を再検討する。
+
+---
+
 ## アクション単位の認証ガード
 
 ログイン必須判定は `isAuthRequiredForAction()` に集約する。

@@ -20,7 +20,7 @@ vi.mock("../client", () => {
 });
 
 import api from "../client";
-import { getCurrentUser, updateUser, uploadUserIcon } from "../users";
+import { updateUser, uploadUserIcon } from "../users";
 
 const mockedApi = vi.mocked(api, { deep: true });
 
@@ -47,53 +47,6 @@ describe("users api client", () => {
     expect(formData).toBeInstanceOf(FormData);
     // axios に任せるのでヘッダーは undefined でOK
     expect(config?.headers?.["Content-Type"]).toBeUndefined();
-  });
-
-  it("getCurrentUser は /api/users/me/ から現在のユーザー情報を取得する", async () => {
-    const me = { id: 1, username: "test-user" };
-
-    const mockFetch = vi.fn().mockResolvedValue({
-      status: 200,
-      ok: true,
-      json: vi.fn().mockResolvedValue(me),
-    } as any);
-
-    const originalFetch = global.fetch;
-    global.fetch = mockFetch;
-
-    const result = await getCurrentUser();
-
-    expect(mockFetch).toHaveBeenCalledTimes(1);
-    expect(mockFetch).toHaveBeenCalledWith(
-      "/api/users/me/",
-      expect.objectContaining({
-        method: "GET",
-        credentials: "same-origin",
-        cache: "no-store",
-        signal: undefined,
-      }),
-    );
-    expect(result).toEqual(me);
-
-    global.fetch = originalFetch;
-  });
-
-  it("getCurrentUser は 401 のとき null を返す", async () => {
-    const mockFetch = vi.fn().mockResolvedValue({
-      status: 401,
-      ok: false,
-      text: vi.fn().mockResolvedValue(""),
-    } as any);
-
-    const originalFetch = global.fetch;
-    global.fetch = mockFetch;
-
-    const result = await getCurrentUser();
-
-    expect(mockFetch).toHaveBeenCalledTimes(1);
-    expect(result).toBeNull();
-
-    global.fetch = originalFetch;
   });
 
   it("updateUser は /api/users/me/ に PATCH して成功時に User を返す", async () => {

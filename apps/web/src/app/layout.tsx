@@ -6,8 +6,6 @@ import "./globals.css";
 import { ClientToaster } from "./ClientToaster";
 import HomeLogoLink from "@/components/layout/HomeLogoLink";
 
-
-
 import ClientBootstrap from "./providers/ClientBootstrap";
 
 import { AuthProvider } from "@/lib/auth/AuthProvider";
@@ -56,8 +54,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <HomeLogoLink />
 
               <div className="ml-auto flex items-center gap-4">
-                
-
                 <Suspense fallback={null}>
                   <HeaderAuthButtons />
                 </Suspense>
@@ -65,13 +61,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </nav>
           </header>
 
-          {/* ページ内容 */}
           <main className="flex-1 min-h-0 overflow-y-auto">{children}</main>
 
-          {/* ここに置く */}
           <ClientToaster />
         </AuthProvider>
       </body>
     </html>
   );
 }
+
+
