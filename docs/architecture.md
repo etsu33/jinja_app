@@ -112,6 +112,67 @@ type ConciergeSessionState = {
 
 ---
 
+## Auth / Favorite 責務の明文化
+
+### Auth（認証）責務
+
+認証状態の取得責務は `AuthProvider` に集約する。
+
+- `/api/users/me/` の呼び出しは **AuthProvider のみ** が行う
+- 各画面・各コンポーネントは `useAuth()` を通じて認証状態を参照する
+- 認証状態を画面ごとに再取得しない
+- ルート遷移時に `users/me` を増やさないことを優先する
+
+#### 禁止事項
+
+- コンポーネントから直接 `/api/users/me/` を呼ぶ
+- `getCurrentUser()` のような read API を各所で再利用する
+- 認証状態を複数箇所で独自管理する
+
+---
+
+### Favorite（保存）責務
+
+favorite の責務は「初期状態の決定」と「保存/解除の更新」で分離する。
+
+#### 初期状態の決定責務
+
+- shrine detail: server 側が SSR initial を解決する
+- ranking 一覧: preload により複数件の初期状態を解決する
+- mypage favorites: favorites 本体取得をそのまま使う
+
+#### 更新責務
+
+- `useFavorite` は保存 / 解除の更新責務のみを持つ
+- UI コンポーネントは更新結果を描画する
+- 保存済み状態では再押下で解除できるトグルUIを前提とする
+
+#### API
+
+- 保存: `POST /favorites/`
+- 解除: `DELETE /favorites/by-shrine/{id}/` または `DELETE /favorites/{favorite_id}/`
+
+---
+
+### Auth と Favorite の関係
+
+- 未ログイン時に favorite 操作を行った場合はログイン導線へ遷移する
+- ログイン済みの場合はその場で保存 / 解除 API を呼ぶ
+- UI は再fetch ではなくローカル state 更新を優先する
+- 認証状態の取得責務と favorite 状態の更新責務を混在させない
+
+---
+
+### 設計原則
+
+1. 認証状態は `AuthProvider` に一元化する
+2. favorite 初期状態の正本は画面ごとに決める
+3. component は状態決定より描画責務を優先する
+4. Provider の多重配置を避ける
+5. `users/me` の過剰fetchを起こさない
+
+---
+
 ## 表示名解決
 
 表示名は `resolveDisplayName()` に統一し、以下の優先順位で決定する。
