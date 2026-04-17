@@ -5,6 +5,7 @@ import type { ConciergeBreakdown } from "@/lib/api/concierge";
 import { getConciergeThreadServer } from "@/lib/api/concierge.server";
 import { getShrinePublicServer } from "@/lib/api/shrines.server";
 import { fetchPublicGoshuinsForShrineServer } from "@/lib/api/publicGoshuins.server";
+import { getShrineFavoriteInitialState } from "@/lib/server/favorites.server";
 
 import { serverLog } from "@/lib/server/logging";
 import { gmapsDirUrl } from "@/lib/maps";
@@ -30,8 +31,6 @@ import ShrineDetailArticle from "@/components/shrine/detail/ShrineDetailArticle"
 import ScrollToTopOnMount from "@/components/navigation/ScrollToTopOnMount";
 
 import { getBenefitLabels } from "@/lib/shrine/getBenefitLabels";
-import { cookies } from "next/headers";
-import { bffFetchWithAuthFromReq } from "@/lib/server/bffFetch";
 
 
 function normalizeCtx(v?: string | null): "map" | "concierge" | null {
@@ -292,33 +291,7 @@ export default async function Page({ params, searchParams }: Props) {
   const shrineBenefitLabels = getBenefitLabels(s);
   const shrineFeatureLabels: string[] = [];
 
-  // --- favorite 初期状態（SSR） ---
-  let initialFavorite = { fav: false, favorite_id: null };
-
-  try {
-    const upstream = await bffFetchWithAuthFromReq(
-      {} as any,
-      "/api/favorites/"
-    );
-
-    if (upstream.ok) {
-      const data = await upstream.json();
-      const list = Array.isArray(data) ? data : data?.results ?? [];
-
-      const hit = list.find((f: any) => Number(f.shrine_id) === numericId);
-
-      initialFavorite = {
-        fav: Boolean(hit),
-        favorite_id: hit?.id ?? null,
-      };
-    }
-  } catch {
-    initialFavorite = { fav: false, favorite_id: null };
-  }
-
-  // --- guestMode 判定 ---
-  const cookieStore = await cookies();
-  const guestMode = !cookieStore.get("access_token");
+  const { guestMode, ...initialFavorite } = await getShrineFavoriteInitialState(numericId);
 
   let publicGoshuins: Awaited<ReturnType<typeof fetchPublicGoshuinsForShrineServer>> = [];
   try {
