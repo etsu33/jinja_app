@@ -176,7 +176,10 @@ export default function ShrineConciergeCard({
   const effShowFavorite = isHero ? false : showFavorite;
   const effHideDetailLink = hideDetailLink;
 
-  const { fav, busy, toggle } = useFavorite({ shrineId, initial: initialFav });
+  const { fav, busy, toggle } = useFavorite({
+    shrineId,
+    initial: { fav: initialFav, favorite_id: null },
+  });
 
   const addr = effHideAddress ? "" : (address ?? "").trim() || "住所情報は準備中です。";
   const safeDetailHref = detailHref ?? (Number.isFinite(shrineId) ? buildShrineHref(shrineId) : undefined);

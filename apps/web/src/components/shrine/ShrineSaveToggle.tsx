@@ -7,7 +7,7 @@ type Props = {
 };
 
 export default function ShrineSaveToggle({ shrineId }: Props) {
-  const { fav, busy, toggle } = useFavorite({ shrineId, initial: false });
+  const { fav, busy, toggle } = useFavorite({ shrineId, initial: { fav: false, favorite_id: null } });
 
   return (
     <button

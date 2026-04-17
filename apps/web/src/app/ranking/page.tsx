@@ -16,7 +16,10 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 /* --- 小物: お気に入り --- */
 function FavButton({ shrineId }: { shrineId: number }) {
-  const { fav, busy, toggle } = useFavorite({ shrineId, initial: false });
+  const { fav, busy, toggle } = useFavorite({
+    shrineId,
+    initial: { fav: false, favorite_id: null },
+  })
   return (
     <button
       onClick={toggle}
