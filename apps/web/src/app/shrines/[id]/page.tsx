@@ -30,6 +30,8 @@ import ShrineDetailArticle from "@/components/shrine/detail/ShrineDetailArticle"
 import ScrollToTopOnMount from "@/components/navigation/ScrollToTopOnMount";
 
 import { getBenefitLabels } from "@/lib/shrine/getBenefitLabels";
+import { cookies } from "next/headers";
+import { bffFetchWithAuthFromReq } from "@/lib/server/bffFetch";
 
 
 function normalizeCtx(v?: string | null): "map" | "concierge" | null {
@@ -144,7 +146,7 @@ function buildFallbackShortFromPrimaryTag(args: {
                 : rawReason;
 }
 
-function buildRecommendationReasonDetailInput(
+export function buildRecommendationReasonDetailInput(
   args: RecommendationReasonDetailBuildArgs,
 ): {
   recommendationReasonDetail: RecommendationReasonDetailInput | null;
@@ -210,8 +212,8 @@ export default async function Page({ params, searchParams }: Props) {
 
   const { id } = await params;
   const sp = (await searchParams) ?? {};
-  const ctx = normalizeCtx(sp.ctx ?? null);
-  const tid = sp.tid ?? null;
+  const ctx = normalizeCtx(sp?.ctx ?? null);
+  const tid = sp?.tid ?? null;
 
   const hideActions = false;
   const close = buildShrineClose({ ctx, tid });
@@ -289,6 +291,34 @@ export default async function Page({ params, searchParams }: Props) {
   const addGoshuinHref = `/goshuin/new?${addQ.toString()}`;
   const shrineBenefitLabels = getBenefitLabels(s);
   const shrineFeatureLabels: string[] = [];
+
+  // --- favorite 初期状態（SSR） ---
+  let initialFavorite = { fav: false, favorite_id: null };
+
+  try {
+    const upstream = await bffFetchWithAuthFromReq(
+      {} as any,
+      "/api/favorites/"
+    );
+
+    if (upstream.ok) {
+      const data = await upstream.json();
+      const list = Array.isArray(data) ? data : data?.results ?? [];
+
+      const hit = list.find((f: any) => Number(f.shrine_id) === numericId);
+
+      initialFavorite = {
+        fav: Boolean(hit),
+        favorite_id: hit?.id ?? null,
+      };
+    }
+  } catch {
+    initialFavorite = { fav: false, favorite_id: null };
+  }
+
+  // --- guestMode 判定 ---
+  const cookieStore = await cookies();
+  const guestMode = !cookieStore.get("access_token");
 
   let publicGoshuins: Awaited<ReturnType<typeof fetchPublicGoshuinsForShrineServer>> = [];
   try {
@@ -447,7 +477,14 @@ export default async function Page({ params, searchParams }: Props) {
         <ShrineDetailArticle
           {...model}
           addGoshuinHref={addGoshuinHref}
-          saveActionNode={<ShrineSaveButton shrineId={numericId} nextPath={nextPath} />}
+          saveActionNode={
+            <ShrineSaveButton
+              shrineId={numericId}
+              nextPath={nextPath}
+              guestMode={guestMode}
+              initial={initialFavorite}
+            />
+          }
         />
       </ShrineDetailShell>
     </>

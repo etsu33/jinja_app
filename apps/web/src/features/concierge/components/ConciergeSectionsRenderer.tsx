@@ -21,8 +21,18 @@ import type {
 
 type MetaMode = NonNullable<ConciergeSectionsPayload["meta"]>["mode"];
 
+
 const conciergeSoftCardClass = "rounded-2xl border border-slate-200 bg-slate-50 shadow-sm p-4";
 const conciergeNoticeCardClass = "rounded-2xl border border-amber-200 bg-amber-50 shadow-sm p-4";
+
+/**
+ * Conciergeではfavorite操作を提供しない。
+ *
+ * 理由:
+ * - 本画面は discovery / comparison の導線に特化
+ * - 保存操作は shrine詳細に集約する
+ * - UI責務の肥大化と状態管理の複雑化を防ぐ
+ */
 
 function normalizeConciergeMode(mode: MetaMode | null | undefined): "need" | "compat" {
   if (!mode) return "need";

@@ -11,9 +11,13 @@ type Props = {
   shrineId: number;
   nextPath?: string;
   guestMode?: boolean;
+  initial?: {
+    fav: boolean;
+    favorite_id: number | null;
+  };
 };
 
-export default function ShrineSaveButton({ shrineId, nextPath, guestMode }: Props) {
+export default function ShrineSaveButton({ shrineId, nextPath, guestMode, initial }: Props) {
   const router = useRouter();
   const { isLoggedIn, loading } = useAuth();
   const [err, setErr] = useState<string | null>(null);
@@ -24,6 +28,7 @@ export default function ShrineSaveButton({ shrineId, nextPath, guestMode }: Prop
   const { fav, busy, toggle } = useFavorite({
     shrineId,
     guestMode: effectiveGuestMode,
+    initial,
   });
 
   const onClick = async () => {

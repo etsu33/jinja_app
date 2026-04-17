@@ -155,21 +155,76 @@ type ConciergeSessionState = {
 
 ## 画面要件
 
+
 ### `/concierge`
 
 - guest 利用可能
 - ConciergeSessionState を使用
 - 保存系のみログイン要求
 
+### `/concierge` の favorite 方針
+
+Concierge結果一覧では favorite 操作を提供しない。
+
+理由:
+
+- 本画面は discovery / comparison の導線に特化する
+- 保存操作は shrine詳細に集約する
+- Hero / Compact に保存UIを載せると責務が肥大化する
+- favorite 状態管理の複雑化を避ける
+
+運用方針:
+
+- shrine詳細では SSR initial により保存状態を正として扱う
+- 一覧系で favorite を出す場合は preload を使う
+- Concierge に favorite を導入する場合は、Hero / Compact 両方のUI責務を再設計してから行う
+
+#### preload の適用対象画面
+
+preload は「複数カードの favorite 初期状態だけを軽く解決する仕組み」として扱う。
+
+適用対象:
+
+- shrine detail: preload ではなく SSR initial を使う
+- ranking 一覧: preload を使う
+- mypage favorites 一覧: preload ではなく favorites 本体取得を使う
+
+非適用対象:
+
+- concierge 一覧: favorite UI を提供しないため preload を使わない
+- popular 一覧: 現時点では preload を使わない
+
+#### concierge → shrine detail の favorite 状態
+
+concierge から shrine detail へ遷移した後の favorite 状態は、detail 側の SSR initial を正本として扱う。
+
+- concierge 一覧では preload を使わない
+- shrine detail で server が favorite 済み判定を行う
+- `ShrineSaveButton` へ `initial` を渡して表示を決定する
+
+#### favorite UI の単一責務
+
+- shrine detail: server が favorite 初期状態の正本を決める
+- ranking 一覧: preload が favorite 初期状態を解決する
+- useFavorite: 保存 / 解除の更新責務のみを持つ
+- component は初期状態の決定責務を持たない
+
 ### `/mypage`
 
 - ログイン必須
 - AuthProvider の状態を見て描画分岐する
 
-### `/auth/login` / `/auth/register`
+### `/popular` の favorite 方針
 
-- 未ログイン前提の画面
-- 不要な `me` 取得を避ける
+popular 一覧では現時点で preload を適用しない。
+
+理由:
+
+- 本画面は探索導線としての役割が強い
+- favorite 初期状態の即時表示より、一覧表示の軽さと単純さを優先する
+- preload は ranking のような比較導線に限定して使う
+
+将来的に popular 一覧へ favorite UI を強化する場合は、ranking と同じ preload パターンを再利用する。
 
 ---
 
