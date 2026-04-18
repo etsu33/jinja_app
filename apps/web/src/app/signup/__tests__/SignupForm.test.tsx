@@ -105,6 +105,6 @@ describe("SignupForm", () => {
     });
 
     expect(loginApiMock).not.toHaveBeenCalled();
-    expect(screen.getByText("そのユーザー名は既に使われています。")).toBeInTheDocument();
+    expect(await screen.findByText("そのユーザー名は既に使われています。")).toBeInTheDocument();
   });
 });
