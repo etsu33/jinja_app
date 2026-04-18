@@ -56,7 +56,7 @@ describe("/auth/register page", () => {
     );
   });
 
-  it("外部 URL は strip 後の path が渡る", async () => {
+  it("外部 URL は null に落とす", async () => {
     const { default: Page } = await import("../page");
 
     const ui = await Page({
@@ -69,10 +69,10 @@ describe("/auth/register page", () => {
 
     expect(signupFormMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        returnTo: "/phish",
+        returnTo: null,
       }),
     );
-    expect(screen.getByTestId("signup-form-props")).toHaveTextContent("/phish");
+    expect(screen.getByTestId("signup-form-props")).toHaveTextContent("__NULL__");
   });
 
   it("配列の returnTo は先頭要素を使う", async () => {
