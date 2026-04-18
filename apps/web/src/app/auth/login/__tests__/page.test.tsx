@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
 const loginFormMock = vi.fn(({ next }: { next?: string | null }) => {
@@ -56,7 +56,7 @@ describe("/auth/login page", () => {
     );
   });
 
-  it("外部 URL は strip 後の path が渡る", async () => {
+  it("外部 URL は null に落とす", async () => {
     const { default: Page } = await import("../page");
 
     const ui = await Page({
@@ -69,10 +69,10 @@ describe("/auth/login page", () => {
 
     expect(loginFormMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        next: "/phish",
+        next: null,
       }),
     );
-    expect(screen.getByTestId("login-form-props")).toHaveTextContent("/phish");
+    expect(screen.getByTestId("login-form-props")).toHaveTextContent("__NULL__");
   });
 
   it("配列の returnTo は先頭要素を使う", async () => {
