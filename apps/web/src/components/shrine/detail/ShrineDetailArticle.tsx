@@ -1,3 +1,4 @@
+"use client";
 /**
  * ShrineDetailArticle
  *
@@ -33,7 +34,8 @@
  * - 比較はデフォルト非表示にし、必要な時だけ開く
  * - 比較カードは主導線（①〜④）の下に置く
  */
-import type React from "react";
+import Link from "next/link";
+import React, { useMemo, useState } from "react";
 
 import PublicGoshuinSection, { type PublicGoshuinItem } from "@/components/shrine/detail/PublicGoshuinSection";
 import ShrineJudgeSection from "@/components/shrine/detail/ShrineJudgeSection";
@@ -169,6 +171,18 @@ export default function ShrineDetailArticle({
         ? benefitLabels.slice(0, 2).join(" / ")
         : "準備中";
 
+  const [favoriteNoticeState, setFavoriteNoticeState] = useState<"saved" | "removed" | null>(null);
+
+  const resolvedSaveActionNode = useMemo(() => {
+    if (!saveActionNode || !React.isValidElement(saveActionNode)) return saveActionNode;
+
+    return React.cloneElement(saveActionNode as React.ReactElement<any>, {
+      onToggleSuccess: (nextFav: boolean) => {
+        setFavoriteNoticeState(nextFav ? "saved" : "removed");
+      },
+    });
+  }, [saveActionNode]);
+
   return (
     <article className="space-y-4">
       <section className="space-y-5">
@@ -232,11 +246,33 @@ export default function ShrineDetailArticle({
         </div>
       ) : null}
 
-      {saveActionNode ? (
+      {resolvedSaveActionNode ? (
         <section className="pt-4">
           <div className="rounded-2xl border bg-emerald-50 p-4">
             <div className="mb-2 text-sm text-slate-700">気になったら保存して、あとで見返せます</div>
-            {saveActionNode}
+
+            {favoriteNoticeState === "saved" ? (
+              <div className="mb-3 rounded-xl border border-emerald-200 bg-white p-3">
+                <p className="text-sm font-semibold text-emerald-800">保存しました</p>
+                <p className="mt-1 text-xs text-slate-600">マイページの保存した神社から見返せます</p>
+                <div className="mt-2">
+                  <Link
+                    href="/mypage?tab=favorites"
+                    className="inline-flex items-center text-sm font-semibold text-emerald-700 hover:underline"
+                  >
+                    保存先を見る
+                  </Link>
+                </div>
+              </div>
+            ) : null}
+
+            {favoriteNoticeState === "removed" ? (
+              <div className="mb-3 rounded-xl border border-slate-200 bg-white p-3">
+                <p className="text-sm font-semibold text-emerald-800">保存を解除しました</p>
+              </div>
+            ) : null}
+
+            {resolvedSaveActionNode}
           </div>
         </section>
       ) : null}

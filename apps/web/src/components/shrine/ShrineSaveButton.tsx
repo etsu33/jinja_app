@@ -15,9 +15,10 @@ type Props = {
     fav: boolean;
     favorite_id: number | null;
   };
+  onToggleSuccess?: (nextFav: boolean) => void;
 };
 
-export default function ShrineSaveButton({ shrineId, nextPath, guestMode, initial }: Props) {
+export default function ShrineSaveButton({ shrineId, nextPath, guestMode, initial, onToggleSuccess }: Props) {
   const router = useRouter();
   const { isLoggedIn, loading } = useAuth();
   const [err, setErr] = useState<string | null>(null);
@@ -34,7 +35,9 @@ export default function ShrineSaveButton({ shrineId, nextPath, guestMode, initia
   const onClick = async () => {
     setErr(null);
     try {
+      const prevFav = fav;
       await toggle();
+      onToggleSuccess?.(!prevFav);
     } catch (e: any) {
       const status = e?.response?.status ?? e?.status;
       if (status === 401) {
