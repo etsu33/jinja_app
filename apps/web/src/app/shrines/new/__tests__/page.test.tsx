@@ -6,14 +6,12 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 
 const pushMock = vi.fn();
 const replaceMock = vi.fn();
-const useSearchParamsMock = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
     push: pushMock,
     replace: replaceMock,
   }),
-  useSearchParams: () => useSearchParamsMock(),
 }));
 
 vi.mock("@/lib/auth/AuthProvider", () => ({
@@ -49,23 +47,30 @@ vi.mock("@/features/shrine-submission/components/ShrineSubmissionForm", () => ({
 
 const mockedUseAuth = vi.mocked(useAuth);
 
-function createSearchParams(params: Record<string, string>) {
-  return {
-    get: (key: string) => params[key] ?? null,
-  };
-}
-
 describe("/shrines/new page", () => {
+  const originalWindowLocation = window.location;
+
   beforeEach(() => {
     vi.clearAllMocks();
+
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: {
+        ...originalWindowLocation,
+        search: "",
+      },
+    });
   });
 
   it("submit成功時にreturnToへsubmitted/status/name付きで戻る", async () => {
-    useSearchParamsMock.mockReturnValue(
-      createSearchParams({
-        returnTo: "/shrines?q=%E6%9C%AA%E7%99%BB%E9%8C%B2%E3%83%86%E3%82%B9%E3%83%88%E7%A5%9E%E7%A4%BE20260419",
-      }),
-    );
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: {
+        ...originalWindowLocation,
+        search:
+          "?returnTo=%2Fshrines%3Fq%3D%E6%9C%AA%E7%99%BB%E9%8C%B2%E3%83%86%E3%82%B9%E3%83%88%E7%A5%9E%E7%A4%BE20260419",
+      },
+    });
 
     mockedUseAuth.mockReturnValue({
       isLoggedIn: true,
@@ -78,17 +83,19 @@ describe("/shrines/new page", () => {
 
     await waitFor(() => {
       expect(replaceMock).toHaveBeenCalledWith(
-        "/shrines?q=%E6%9C%AA%E7%99%BB%E9%8C%B2%E3%83%86%E3%82%B9%E3%83%88%E7%A5%9E%E7%A4%BE20260419&submitted=1&status=pending&name=%E6%9C%AA%E7%99%BB%E9%8C%B2%E3%83%86%E3%82%B9%E3%83%88%E7%A5%9E%E7%A4%BE20260419",
+        "/shrines?q=未登録テスト神社20260419&submitted=1&status=pending&name=%E6%9C%AA%E7%99%BB%E9%8C%B2%E3%83%86%E3%82%B9%E3%83%88%E7%A5%9E%E7%A4%BE20260419",
       );
     });
   });
 
   it("未ログインならreturnToを保持したままログインへ飛ばす", async () => {
-    useSearchParamsMock.mockReturnValue(
-      createSearchParams({
-        returnTo: "/shrines?q=test",
-      }),
-    );
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: {
+        ...originalWindowLocation,
+        search: "?returnTo=%2Fshrines%3Fq%3Dtest",
+      },
+    });
 
     mockedUseAuth.mockReturnValue({
       isLoggedIn: false,
@@ -98,7 +105,7 @@ describe("/shrines/new page", () => {
     render(<NewShrinePage />);
 
     await waitFor(() => {
-      expect(replaceMock).toHaveBeenCalledWith(
+      expect(replaceMock).toHaveBeenLastCalledWith(
         "/auth/login?returnTo=%2Fshrines%2Fnew%3FreturnTo%3D%2Fshrines%3Fq%3Dtest",
       );
     });

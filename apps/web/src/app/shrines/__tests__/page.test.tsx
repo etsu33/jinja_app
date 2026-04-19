@@ -6,14 +6,12 @@ import { fetchShrines } from "@/lib/api/shrinesSearch";
 
 const pushMock = vi.fn();
 const replaceMock = vi.fn();
-const useSearchParamsMock = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
     push: pushMock,
     replace: replaceMock,
   }),
-  useSearchParams: () => useSearchParamsMock(),
 }));
 
 vi.mock("@/lib/api/shrinesSearch", () => ({
@@ -41,23 +39,29 @@ vi.mock("@/components/shrines/ShrineCard", () => ({
 
 const mockedFetchShrines = vi.mocked(fetchShrines);
 
-function createSearchParams(params: Record<string, string>) {
-  return {
-    get: (key: string) => params[key] ?? null,
-  };
-}
-
 describe("/shrines page", () => {
+  const originalWindowLocation = window.location;
+
   beforeEach(() => {
     vi.clearAllMocks();
+
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: {
+        ...originalWindowLocation,
+        search: "",
+      },
+    });
   });
 
   it("qありで0件ならCTAを表示する", async () => {
-    useSearchParamsMock.mockReturnValue(
-      createSearchParams({
-        q: "未登録テスト神社20260419",
-      }),
-    );
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: {
+        ...originalWindowLocation,
+        search: "?q=%E6%9C%AA%E7%99%BB%E9%8C%B2%E3%83%86%E3%82%B9%E3%83%88%E7%A5%9E%E7%A4%BE20260419",
+      },
+    });
 
     mockedFetchShrines.mockResolvedValue({
       results: [],
@@ -72,9 +76,9 @@ describe("/shrines page", () => {
       });
     });
 
-    expect(screen.getByText("お探しの神社が見つかりませんか？")).toBeInTheDocument();
+    expect(await screen.findByText("お探しの神社が見つかりませんか？")).toBeInTheDocument();
 
-    const cta = screen.getByRole("button", { name: "神社を追加する" });
+    const cta = await screen.findByRole("button", { name: "神社を追加する" });
     expect(cta).toBeInTheDocument();
 
     fireEvent.click(cta);
@@ -85,14 +89,14 @@ describe("/shrines page", () => {
   });
 
   it("submitted=1 & status=pending なら審査中メッセージを表示する", async () => {
-    useSearchParamsMock.mockReturnValue(
-      createSearchParams({
-        q: "",
-        submitted: "1",
-        status: "pending",
-        name: "未登録テスト神社20260419",
-      }),
-    );
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: {
+        ...originalWindowLocation,
+        search:
+          "?submitted=1&status=pending&name=%E6%9C%AA%E7%99%BB%E9%8C%B2%E3%83%86%E3%82%B9%E3%83%88%E7%A5%9E%E7%A4%BE20260419",
+      },
+    });
 
     mockedFetchShrines.mockResolvedValue({
       results: [
@@ -112,7 +116,7 @@ describe("/shrines page", () => {
     });
 
     expect(
-      screen.getByText("「未登録テスト神社20260419」の投稿を受け付けました。現在審査中です。"),
+      await screen.findByText("「未登録テスト神社20260419」の投稿を受け付けました。現在審査中です。"),
     ).toBeInTheDocument();
   });
 });
