@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { ShrineSubmissionForm } from "@/features/shrine-submission/components/ShrineSubmissionForm";
+import { sanitizeReturnTo } from "@/lib/nav/login";
 
 export default function NewShrinePage() {
   const router = useRouter();
@@ -15,9 +16,17 @@ export default function NewShrinePage() {
     if (typeof window === "undefined") return;
 
     const params = new URLSearchParams(window.location.search);
-    const nextReturnTo = params.get("returnTo") || "/shrines";
+    const rawReturnTo = params.get("returnTo");
+    const nextReturnTo = sanitizeReturnTo(rawReturnTo) ?? "/shrines";
     setReturnTo(nextReturnTo);
-  }, []);
+
+    if (rawReturnTo !== nextReturnTo) {
+      const next = new URLSearchParams(params.toString());
+      next.set("returnTo", nextReturnTo);
+      const qs = next.toString();
+      router.replace(qs ? `/shrines/new?${qs}` : "/shrines/new");
+    }
+  }, [router]);
 
   useEffect(() => {
     if (loading) return;
@@ -46,11 +55,13 @@ export default function NewShrinePage() {
           next.set("submitted", "1");
           next.set("status", submission.status);
           next.set("name", submission.name);
-          router.replace(`${returnTo}${returnTo.includes("?") ? "&" : "?"}${next.toString()}`);
+          const safeReturnTo = sanitizeReturnTo(returnTo) ?? "/shrines";
+          router.replace(`${safeReturnTo}${safeReturnTo.includes("?") ? "&" : "?"}${next.toString()}`);
         }}
-        onRequireAuth={() =>
-          router.replace(`/auth/login?returnTo=${encodeURIComponent(`/shrines/new?returnTo=${returnTo}`)}`)
-        }
+        onRequireAuth={() => {
+          const safeReturnTo = sanitizeReturnTo(returnTo) ?? "/shrines";
+          router.replace(`/auth/login?returnTo=${encodeURIComponent(`/shrines/new?returnTo=${safeReturnTo}`)}`);
+        }}
       />
     </div>
   );
