@@ -44,6 +44,7 @@ import ShrineReasonSection from "@/components/shrine/detail/ShrineReasonSection"
 import ShrineSupplementSection from "@/components/shrine/detail/ShrineSupplementSection";
 import ShrineDetailHeroCard from "@/components/shrine/detail/ShrineDetailHeroCard";
 import DetailDisclosureBlock from "@/components/shrine/DetailDisclosureBlock";
+import { FAVORITE_LABELS } from "@/lib/ui/labels";
 
 import type { ShrineTag } from "@/lib/shrine/tags/types";
 import type { ShrineCardAdapterProps } from "@/components/shrine/buildShrineCardProps";
@@ -249,18 +250,18 @@ export default function ShrineDetailArticle({
       {resolvedSaveActionNode ? (
         <section className="pt-4">
           <div className="rounded-2xl border bg-emerald-50 p-4">
-            <div className="mb-2 text-sm text-slate-700">気になったら保存して、あとで見返せます</div>
+            <div className="mb-2 text-sm text-slate-700">{FAVORITE_LABELS.lead}</div>
 
             {favoriteNoticeState === "saved" ? (
               <div className="mb-3 rounded-xl border border-emerald-200 bg-white p-3">
-                <p className="text-sm font-semibold text-emerald-800">保存しました</p>
-                <p className="mt-1 text-xs text-slate-600">マイページの保存した神社から見返せます</p>
+                <p className="text-sm font-semibold text-emerald-800">{FAVORITE_LABELS.saved}</p>
+                <p className="mt-1 text-xs text-slate-600">{FAVORITE_LABELS.guide}</p>
                 <div className="mt-2">
                   <Link
                     href="/mypage?tab=favorites"
                     className="inline-flex items-center text-sm font-semibold text-emerald-700 hover:underline"
                   >
-                    保存先を見る
+                    {FAVORITE_LABELS.cta}
                   </Link>
                 </div>
               </div>
@@ -268,7 +269,7 @@ export default function ShrineDetailArticle({
 
             {favoriteNoticeState === "removed" ? (
               <div className="mb-3 rounded-xl border border-slate-200 bg-white p-3">
-                <p className="text-sm font-semibold text-emerald-800">保存を解除しました</p>
+                <p className="text-sm font-semibold text-emerald-800">{FAVORITE_LABELS.removed}</p>
               </div>
             ) : null}
 

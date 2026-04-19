@@ -90,6 +90,10 @@ describe("LoginForm", () => {
     await waitFor(() => {
       expect(loginMock).toHaveBeenCalledWith("tester", "password123");
     });
-    expect(screen.getByText("ログインに失敗しました。")).toBeInTheDocument();
+    await waitFor(() => {
+
+      expect(screen.getByText("ログインに失敗しました。")).toBeInTheDocument();
+    
+    });
   });
 });
