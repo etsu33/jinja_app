@@ -98,11 +98,16 @@ def test_create_shrine_submission_rejects_duplicate_existing_shrine():
 
     assert resp.status_code == 400
     body = resp.json()
-    assert "non_field_errors" in body
+    assert body["code"] == "duplicate_candidate"
+    assert body["message"] == "この神社はすでに登録されている可能性があります。"
+    assert len(body["candidates"]) >= 1
+    assert body["candidates"][0]["id"] == Shrine.objects.get(name_jp="既存重複神社", address="東京都重複区9-9-9").id
+    assert body["candidates"][0]["name"] == "既存重複神社"
+    assert body["candidates"][0]["address"] == "東京都重複区9-9-9"
     assert ShrineSubmission.objects.filter(name="既存重複神社", address="東京都重複区9-9-9").count() == 0
 
 
-def test_create_shrine_submission_rejects_duplicate_pending_submission():
+def test_create_shrine_submission_allows_duplicate_pending_submission():
     user = _create_user(username="pending_dup_user")
 
     ShrineSubmission.objects.create(
@@ -130,7 +135,9 @@ def test_create_shrine_submission_rejects_duplicate_pending_submission():
 
     resp = client.post("/api/shrine-submissions/", payload, format="json")
 
-    assert resp.status_code == 400
+    assert resp.status_code == 201
     body = resp.json()
-    assert "non_field_errors" in body
-    assert ShrineSubmission.objects.filter(name="審査中重複神社", address="東京都審査中区8-8-8").count() == 1
+    assert body["name"] == "審査中重複神社"
+    assert body["address"] == "東京都審査中区8-8-8"
+    assert body["status"] == "pending"
+    assert ShrineSubmission.objects.filter(name="審査中重複神社", address="東京都審査中区8-8-8").count() == 2

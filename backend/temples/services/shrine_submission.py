@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
 from django.contrib.auth import get_user_model
+from django.db.models import Q
 from django.db import transaction
 from django.utils import timezone
 
@@ -17,7 +18,9 @@ class ShrineSubmissionError(Exception):
 
 
 class ShrineSubmissionDuplicateError(ShrineSubmissionError):
-    pass
+    def __init__(self, message: str, *, candidates: list[dict] | None = None):
+        super().__init__(message)
+        self.candidates = candidates or []
 
 
 class ShrineSubmissionInvalidStateError(ShrineSubmissionError):
@@ -30,9 +33,72 @@ class DuplicateCheckResult:
     exists_in_pending_submission: bool
 
 
+@dataclass(frozen=True)
+class DuplicateCandidate:
+    id: int
+    name: str
+    address: str
+
+
+def normalize_shrine_name(value: str) -> str:
+    normalized = (value or "").strip()
+    normalized = normalized.replace("\u3000", " ")
+    normalized = " ".join(normalized.split())
+    normalized = normalized.replace("(", "（").replace(")", "）")
+    return normalized
+
+
+def normalize_shrine_address(value: str) -> str:
+    normalized = (value or "").strip()
+    normalized = normalized.replace("\u3000", " ")
+    normalized = " ".join(normalized.split())
+    return normalized
+
+
+def serialize_duplicate_candidates(candidates: list[DuplicateCandidate]) -> list[dict]:
+    return [asdict(candidate) for candidate in candidates]
+
+
+def find_duplicate_candidates(*, name: str, address: str, limit: int = 3) -> list[DuplicateCandidate]:
+    normalized_name = normalize_shrine_name(name)
+    normalized_address = normalize_shrine_address(address)
+    if not normalized_name:
+        return []
+
+    name_terms = [term for term in normalized_name.replace("\u3000", " ").split(" ") if term]
+    address_terms = [term for term in normalized_address.replace("\u3000", " ").split(" ") if term]
+
+    qs = Shrine.objects.all()
+
+    query = Q(name_jp__iexact=normalized_name)
+    for term in name_terms:
+        query |= Q(name_jp__icontains=term)
+        query |= Q(name_romaji__icontains=term)
+
+    if normalized_address:
+        query |= Q(address__icontains=normalized_address)
+        for term in address_terms:
+            query |= Q(address__icontains=term)
+
+    rows = (
+        qs.filter(query)
+        .order_by("id")
+        .values("id", "name_jp", "address")[: max(1, limit)]
+    )
+
+    return [
+        DuplicateCandidate(
+            id=row["id"],
+            name=row["name_jp"],
+            address=row["address"] or "",
+        )
+        for row in rows
+    ]
+
+
 def has_duplicate_shrine(*, name: str, address: str) -> bool:
-    normalized_name = (name or "").strip()
-    normalized_address = (address or "").strip()
+    normalized_name = normalize_shrine_name(name)
+    normalized_address = normalize_shrine_address(address)
     if not normalized_name or not normalized_address:
         return False
 
@@ -48,8 +114,8 @@ def has_duplicate_pending_submission(
     address: str,
     exclude_submission_id: int | None = None,
 ) -> bool:
-    normalized_name = (name or "").strip()
-    normalized_address = (address or "").strip()
+    normalized_name = normalize_shrine_name(name)
+    normalized_address = normalize_shrine_address(address)
     if not normalized_name or not normalized_address:
         return False
 
@@ -100,12 +166,15 @@ def approve_shrine_submission(
 
     if duplicate.exists_in_shrine:
         raise ShrineSubmissionDuplicateError(
-            f"既存 Shrine と重複しています: name={submission.name}, address={submission.address}"
+            f"既存 Shrine と重複しています: name={submission.name}, address={submission.address}",
+            candidates=serialize_duplicate_candidates(
+                find_duplicate_candidates(name=submission.name, address=submission.address)
+            ),
         )
 
     shrine = Shrine.objects.create(
-        name_jp=submission.name.strip(),
-        address=submission.address.strip(),
+        name_jp=normalize_shrine_name(submission.name),
+        address=normalize_shrine_address(submission.address),
         latitude=submission.lat,
         longitude=submission.lng,
         owner=submission.user,

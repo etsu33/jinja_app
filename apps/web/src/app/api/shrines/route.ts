@@ -40,10 +40,11 @@ async function passthrough(upstream: Response) {
 }
 
 export async function GET(req: NextRequest) {
-  // ✅ Django 側に public 一覧があるならここを /api/public/shrines/ に寄せる
-  // まだ無いなら暫定で /api/shrines/ のままでもOK（ただし “public扱い” と決める）
   const upstreamPath = buildUpstreamPath(req, "/api/shrines/");
-  const upstream = await djFetch(req, upstreamPath, { method: "GET" });
+  const upstream = await djFetch(req, upstreamPath, {
+    method: "GET",
+    forwardAuth: false,
+  });
   return passthrough(upstream);
 }
 
