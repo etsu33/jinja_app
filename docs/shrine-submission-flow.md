@@ -87,6 +87,18 @@ describe("ShrineSearchResultPage", () => {
 - candidate が複数件のときは `/shrines?q=...` への候補一覧導線を表示する
 - `duplicate_candidate` は serializer の入力バリデーションではなく、view / service 側の重複候補判定で返す
 
+## name suggest 契約
+- `/shrines/new` の神社名入力では、name 2文字以上で既存神社候補を最大3件まで表示する
+- suggest は入力補助であり正本ではない
+- 正本の重複判定は submit 後の `duplicate_candidate` とする
+- suggest は name のみを使う軽量導線、`duplicate_candidate` は name + address を使う submit 後判定として責務を分離する
+- suggest の BFF は `GET /api/shrines/suggest?name=...` とする
+- `/api/shrines/suggest` は Web BFF の補助 route として扱い、backend OpenAPI の主契約には含めない
+- route 実装は公開検索の単純中継として `djFetch` を優先し、backend 直 URL を route 内で組み立てない
+- suggest で候補が1件のときは `/shrines/[id]` 導線を優先する
+- suggest で候補が複数件のときは `/shrines?q=...` 導線を優先する
+- `duplicate_candidate` 表示中は suggest UI を隠し、submit 後の backend 応答を優先する
+
 ## 確認済み
 - `/shrines` の検索0件時にCTAが表示される
 - CTAから `/shrines/new?returnTo=...` に遷移する
