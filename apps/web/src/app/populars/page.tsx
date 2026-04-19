@@ -1,7 +1,7 @@
 "use client";
 
-import { usePopularShrines } from "@/hooks/usePopularShrines";
-import type { Shrine } from "@/lib/api/popular";
+import { useEffect, useState } from "react";
+import { fetchPopular, type Shrine } from "@/lib/api/popular";
 
 function labelFor(s: Shrine): string {
   const anyS = s as Shrine & { name?: string };
@@ -9,7 +9,30 @@ function labelFor(s: Shrine): string {
 }
 
 export default function PopularShrinesListPage() {
-  const { items, loading, error } = usePopularShrines({ limit: 50 });
+  const [items, setItems] = useState<Shrine[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+
+    fetchPopular({ limit: 50 })
+      .then(({ items: next }) => {
+        if (!cancelled) setItems(next);
+      })
+      .catch((e: unknown) => {
+        if (!cancelled) setError(e instanceof Error ? e.message : "fetch failed");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <main className="mx-auto max-w-lg p-4">
