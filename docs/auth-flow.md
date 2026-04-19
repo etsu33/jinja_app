@@ -55,7 +55,10 @@ login にリダイレクト
 /shrines/new に復帰
 
 ### 補足
-- `/shrines/new` または `/mypage/shrine-submissions/new` を投稿入口とする
-- returnTo には元画面（例: `/concierge`, `/shrines?q=...`）を保持してもよい
-- 投稿アクション（submit_shrine_submission）はログイン必須
-- returnTo は Login / Signup の両方で維持すること
+- 投稿入口は `/shrines/new` を正規とする
+- 未ログイン時は以下の認証導線に遷移する
+  - `/auth/login?returnTo=/shrines/new`
+  - `/auth/register?returnTo=/shrines/new`
+- 検索画面から遷移した場合、必要に応じて `returnTo` に元画面（例: `/shrines?q=...`）を保持してよい
+- 投稿アクション（`submit_shrine_submission`）はログイン必須
+- `returnTo` は Login / Signup の両方で維持すること

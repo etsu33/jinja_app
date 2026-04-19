@@ -14,7 +14,8 @@
 ## 投稿入口
 - 正規入口は `/shrines/new`
 - 検索0件時のCTAから遷移する
-- `/mypage/shrine-submissions/new` は補助導線とする
+- 未ログイン時は login/register に遷移し、完了後は `returnTo` で `/shrines/new` に復帰する
+
 
 ## duplicate_candidate 契約
 - `POST /api/shrine-submissions/` は、既存 `Shrine` と重複の可能性がある場合 `400` を返す
