@@ -12,7 +12,7 @@
 
 - 主導線は `shrines search → 0件 → CTA → submission`
 - 投稿入口は `/shrines/new`
-- `returnTo` により検索画面へ復帰する
+- `returnTo` により検索画面へ復帰する（詳細は `docs/auth-flow.md` を参照）
 
 ## 正本ドキュメント
 
