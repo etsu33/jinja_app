@@ -1,53 +1,83 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Shrine } from "@/lib/api/popular";
 
-function labelFor(s: Shrine): string {
-  const anyS = s as Shrine & { name?: string };
-  return anyS.name_jp || anyS.name || "（名称不明）";
+import type { PopularShrineRow, PopularShrinesResponseBody } from "./types";
+
+function labelFor(s: PopularShrineRow): string {
+  return (s.name_jp ?? "").trim() || "（名称不明）";
 }
 
-function toItems(data: unknown): Shrine[] {
-  if (Array.isArray(data)) return data as Shrine[];
-  if (data && typeof data === "object") {
-    const o = data as Record<string, unknown>;
-    if (Array.isArray(o.results)) return o.results as Shrine[];
-    if (Array.isArray(o.items)) return o.items as Shrine[];
+function normalizeRows(body: PopularShrinesResponseBody): PopularShrineRow[] {
+  if (Array.isArray(body)) return body;
+  if (body && typeof body === "object") {
+    const rec = body as Record<string, unknown>;
+    const fromResults = rec.results;
+    if (Array.isArray(fromResults)) return fromResults as PopularShrineRow[];
+    const fromItems = rec.items;
+    if (Array.isArray(fromItems)) return fromItems as PopularShrineRow[];
   }
   return [];
 }
 
+function errorMessage(e: unknown): string {
+  if (e instanceof DOMException && e.name === "AbortError") return "";
+  if (e instanceof Error) return e.message;
+  return typeof e === "string" ? e : "不明なエラーが発生しました";
+}
+
 export default function PopularShrinesListPage() {
-  const [items, setItems] = useState<Shrine[]>([]);
+  const [items, setItems] = useState<PopularShrineRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
+    const ac = new AbortController();
+    const { signal } = ac;
+
     setLoading(true);
     setError(null);
+    setItems([]);
 
     const sp = new URLSearchParams();
     sp.set("limit", "50");
 
-    fetch(`/api/populars/?${sp.toString()}`, { cache: "no-store" })
+    fetch(`/api/populars/?${sp.toString()}`, { cache: "no-store", signal })
       .then(async (res) => {
-        if (!res.ok) throw new Error("failed to fetch popular shrines");
-        return res.json() as Promise<unknown>;
+        if (!res.ok) {
+          const rawText = await res.text();
+          let detail = rawText.slice(0, 500);
+          try {
+            const j = JSON.parse(rawText) as Record<string, unknown>;
+            if (typeof j.error === "string") detail = j.error;
+            else if (typeof j.body === "string") detail = j.body.slice(0, 500);
+          } catch {
+            /* プレーンテキストのまま */
+          }
+          throw new Error(`取得に失敗しました（HTTP ${res.status}）${detail ? `: ${detail}` : ""}`);
+        }
+        try {
+          return (await res.json()) as PopularShrinesResponseBody;
+        } catch {
+          throw new Error("レスポンスの JSON が不正です");
+        }
       })
-      .then((data) => {
-        if (!cancelled) setItems(toItems(data));
+      .then((body) => {
+        if (signal.aborted) return;
+        setItems(normalizeRows(body));
       })
       .catch((e: unknown) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : "fetch failed");
+        if (signal.aborted || (e instanceof DOMException && e.name === "AbortError")) return;
+        const msg = errorMessage(e);
+        if (msg) setError(msg);
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (signal.aborted) return;
+        setLoading(false);
       });
 
     return () => {
-      cancelled = true;
+      ac.abort();
     };
   }, []);
 
@@ -58,7 +88,13 @@ export default function PopularShrinesListPage() {
       {loading && <p className="text-sm text-gray-500">読み込み中です…</p>}
 
       {error && !loading && (
-        <p className="text-sm text-red-600">データを取得できませんでした。時間をおいて再度お試しください。</p>
+        <div
+          role="alert"
+          className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-900"
+        >
+          <p className="font-medium">エラー</p>
+          <p className="mt-2 whitespace-pre-wrap break-words">{error}</p>
+        </div>
       )}
 
       {!loading && !error && (
