@@ -99,7 +99,7 @@ describe("ShrineSearchResultPage", () => {
 - duplicate_candidate の複数候補ケースは未確認
 - ローカル seed データ条件未成立のため、実運用または追加データ投入後に確認予定
 
-## 備考
 - 公開検索対象は `Shrine`
 - 投稿直後データは公開マスター未反映のため、審査完了までは検索結果に出ない
 - 重複投稿抑止は Phase 2 で正規化・精度改善を行う
+- duplicate candidate 判定では、神社名の空白・括弧表記ゆれと、住所の空白・ハイフンゆれを service 層で正規化して比較する

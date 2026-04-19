@@ -3,14 +3,24 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 
 from django.contrib.auth import get_user_model
-from django.db.models import Q
+from django.db.models import F, Q, Value
+from django.db.models.functions import Coalesce, Replace
 from django.db import transaction
 from django.utils import timezone
 
 from temples.models import Shrine, ShrineSubmission
 
+from temples.services.shrine_duplicate_normalize import (
+    normalize_shrine_address_for_duplicate,
+    normalize_shrine_name_for_duplicate,
+    shrine_name_duplicate_base_key,
+)
+
 
 User = get_user_model()
+
+# 括弧除去キーでの広い検索は短すぎるとノイズになる
+_MIN_BASE_NAME_KEY_LEN = 3
 
 
 class ShrineSubmissionError(Exception):
@@ -41,18 +51,13 @@ class DuplicateCandidate:
 
 
 def normalize_shrine_name(value: str) -> str:
-    normalized = (value or "").strip()
-    normalized = normalized.replace("\u3000", " ")
-    normalized = " ".join(normalized.split())
-    normalized = normalized.replace("(", "（").replace(")", "）")
-    return normalized
+    """保存・照合用の神社名正規化（service 内の単一実装へ委譲）。"""
+    return normalize_shrine_name_for_duplicate(value)
 
 
 def normalize_shrine_address(value: str) -> str:
-    normalized = (value or "").strip()
-    normalized = normalized.replace("\u3000", " ")
-    normalized = " ".join(normalized.split())
-    return normalized
+    """保存・照合用の住所正規化（service 内の単一実装へ委譲）。"""
+    return normalize_shrine_address_for_duplicate(value)
 
 
 def serialize_duplicate_candidates(candidates: list[DuplicateCandidate]) -> list[dict]:
@@ -60,25 +65,40 @@ def serialize_duplicate_candidates(candidates: list[DuplicateCandidate]) -> list
 
 
 def find_duplicate_candidates(*, name: str, address: str, limit: int = 3) -> list[DuplicateCandidate]:
-    normalized_name = normalize_shrine_name(name)
-    normalized_address = normalize_shrine_address(address)
+    normalized_name = normalize_shrine_name_for_duplicate(name)
+    normalized_address = normalize_shrine_address_for_duplicate(address)
     if not normalized_name:
         return []
 
-    name_terms = [term for term in normalized_name.replace("\u3000", " ").split(" ") if term]
-    address_terms = [term for term in normalized_address.replace("\u3000", " ").split(" ") if term]
+    name_terms = [term for term in normalized_name.split(" ") if term]
+    base_key = shrine_name_duplicate_base_key(normalized_name)
 
     qs = Shrine.objects.all()
 
     query = Q(name_jp__iexact=normalized_name)
+    # DB 側が全角括弧のままの行も拾う
+    legacy_exact = normalized_name.replace("(", "（").replace(")", "）")
+    if legacy_exact != normalized_name:
+        query |= Q(name_jp__iexact=legacy_exact)
+
     for term in name_terms:
         query |= Q(name_jp__icontains=term)
         query |= Q(name_romaji__icontains=term)
 
+    if len(base_key) >= _MIN_BASE_NAME_KEY_LEN:
+        query |= Q(name_jp__icontains=base_key)
+
     if normalized_address:
-        query |= Q(address__icontains=normalized_address)
-        for term in address_terms:
-            query |= Q(address__icontains=term)
+        qs = qs.annotate(
+            _dup_addr_cmp=Replace(
+                Replace(Coalesce(F("address"), Value("")), Value("\u3000"), Value("")),
+                Value(" "),
+                Value(""),
+            )
+        )
+        query |= Q(address__icontains=normalized_address) | Q(
+            _dup_addr_cmp__icontains=normalized_address
+        )
 
     rows = (
         qs.filter(query)
