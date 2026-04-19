@@ -12,6 +12,7 @@ vi.mock("next/navigation", () => ({
     push: pushMock,
     replace: replaceMock,
   }),
+  usePathname: () => "/shrines",
 }));
 
 vi.mock("@/lib/api/shrinesSearch", () => ({

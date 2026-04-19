@@ -21,8 +21,37 @@ export function sanitizeNext(next: string | null | undefined): string | null {
   return t;
 }
 
+export function normalizeReturnTo(input: string | null | undefined): string | null {
+  const t0 = (input ?? "").trim();
+  if (!t0) return null;
+
+  let t = t0;
+  try {
+    t = decodeURIComponent(t0);
+  } catch {
+    // ignore
+  }
+
+  // 内部パス以外は reject
+  if (!t.startsWith("/")) return null;
+  if (t.startsWith("//")) return null;
+
+  // URLスキームはすべて reject（内部相対パスのみ許可）
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(t)) return null;
+
+  const [path, search = ""] = t.split("?", 2);
+  if (!path.startsWith("/")) return null;
+  if (path.startsWith("//")) return null;
+
+  const params = new URLSearchParams(search);
+  params.delete("returnTo");
+
+  const nextSearch = params.toString();
+  return nextSearch ? `${path}?${nextSearch}` : path;
+}
+
 export function sanitizeReturnTo(returnTo: string | null | undefined): string | null {
-  return sanitizeNext(returnTo);
+  return sanitizeNext(normalizeReturnTo(returnTo));
 }
 
 export function buildLoginHref(returnTo?: string | null): string {

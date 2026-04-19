@@ -1,7 +1,11 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import {
+  clearSubmissionPendingParams,
+  isSubmissionPendingParams,
+} from "@/features/shrine-submission/lib/submissionReturnState";
 
 import { ShrineCard } from "@/components/shrines/ShrineCard";
 import type { ShrineCardAdapterProps } from "@/components/shrine/buildShrineCardProps";
@@ -10,12 +14,18 @@ import { buildShrineListCardModel } from "@/lib/shrine/buildShrineListCardModel"
 
 export default function ShrinesPage() {
   const router = useRouter();
+  const pathname = usePathname();
 
   const [q, setQ] = useState("");
   const [submitted, setSubmitted] = useState(false);
-  const [status, setStatus] = useState("");
   const [submittedName, setSubmittedName] = useState("");
   const [inputValue, setInputValue] = useState("");
+  const showSubmissionPendingBanner = submitted;
+
+  const [cards, setCards] = useState<ShrineCardAdapterProps[]>([]);
+  const [count, setCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -23,10 +33,26 @@ export default function ShrinesPage() {
     const params = new URLSearchParams(window.location.search);
 
     setQ((params.get("q") ?? "").trim());
-    setSubmitted(params.get("submitted") === "1");
-    setStatus(params.get("status") ?? "");
+    setSubmitted(isSubmissionPendingParams(params));
     setSubmittedName((params.get("name") ?? "").trim());
   }, []);
+
+  useEffect(() => {
+    if (!showSubmissionPendingBanner) return;
+    if (typeof window === "undefined") return;
+
+    const next = new URLSearchParams(window.location.search);
+    clearSubmissionPendingParams(next);
+
+    const qs = next.toString();
+    const url = qs ? `${pathname}?${qs}` : pathname;
+
+    const timer = window.setTimeout(() => {
+      router.replace(url);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [showSubmissionPendingBanner, pathname, router]);
 
   useEffect(() => {
     setInputValue(q);
@@ -65,24 +91,14 @@ export default function ShrinesPage() {
     };
   }, [q]);
 
-  const [cards, setCards] = useState<ShrineCardAdapterProps[]>([]);
-  const [count, setCount] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
   const hasSearched = q.length > 0;
   const isEmpty = !loading && !error && hasSearched && count === 0;
   const submissionNotice = useMemo(() => {
-    if (!submitted) return null;
-    if (status === "pending") {
-      return submittedName
-        ? `「${submittedName}」の投稿を受け付けました。現在審査中です。`
-        : "神社登録の投稿を受け付けました。現在審査中です。";
-    }
+    if (!showSubmissionPendingBanner) return null;
     return submittedName
-      ? `「${submittedName}」の投稿を受け付けました。`
-      : "神社登録の投稿を受け付けました。";
-  }, [status, submitted, submittedName]);
+      ? `「${submittedName}」の投稿を受け付けました。現在審査中です。`
+      : "神社登録の投稿を受け付けました。現在審査中です。";
+  }, [showSubmissionPendingBanner, submittedName]);
 
   const handleSearch = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();

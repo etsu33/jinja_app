@@ -14,6 +14,13 @@
 - 投稿直後の状態表示は `審査中` とする
 - 審査中データは公開検索結果に混ざらない前提で扱う
 
+-## 投稿後の復帰状態
+- 投稿成功後は `/shrines?...&submitted=1&status=pending` に復帰する
+- 上部メッセージは `submitted=1` かつ `status=pending` の場合のみ表示する
+- 表示位置は検索結果一覧の上部とする
+- `status=pending` 以外では表示しない
+- query param が残っている限り、reload 時も表示してよい
+
 ## 投稿入口
 - 正規入口は `/shrines/new`
 - 検索0件時のCTAから遷移する
