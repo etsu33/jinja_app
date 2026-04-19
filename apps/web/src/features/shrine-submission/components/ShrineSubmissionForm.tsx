@@ -7,7 +7,7 @@ import type { ChangeEvent, FormEvent } from "react";
 import { getGoriyakuTags } from "@/lib/api/tags";
 import { isApiError } from "@/lib/api/errors";
 import { createShrineSubmission } from "@/lib/api/shrineSubmissions";
-import { fetchShrines } from "@/lib/api/shrinesSearch";
+import { fetchShrineSuggest } from "@/lib/api/shrinesSuggest";
 import type {
   ShrineSubmissionFieldErrors,
   ShrineSubmissionFormValues,
@@ -27,7 +27,6 @@ type ShrineCandidate = {
 };
 
 const NAME_SUGGESTION_MIN_LENGTH = 2;
-const NAME_SUGGESTION_LIMIT = 3;
 const NAME_SUGGESTION_DEBOUNCE_MS = 300;
 
 function normalizeCandidate(value: unknown): ShrineCandidate | null {
@@ -66,6 +65,7 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
   const [duplicateQuery, setDuplicateQuery] = useState<string | null>(null);
   const [duplicateCandidates, setDuplicateCandidates] = useState<ShrineCandidate[]>([]);
   const [nameSuggestions, setNameSuggestions] = useState<ShrineCandidate[]>([]);
+  const [isSuggesting, setIsSuggesting] = useState(false);
 
   useEffect(() => {
     getGoriyakuTags()
@@ -81,28 +81,40 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
   useEffect(() => {
     const name = form.name.trim();
 
-    if (isSubmitting || name.length < NAME_SUGGESTION_MIN_LENGTH) {
+    if (isSubmitting || duplicateQuery || name.length < NAME_SUGGESTION_MIN_LENGTH) {
+      setIsSuggesting(false);
       setNameSuggestions([]);
       return;
     }
 
+    let active = true;
+    setIsSuggesting(true);
+
     const timer = window.setTimeout(async () => {
       try {
-        const response = await fetchShrines({ q: name, limit: NAME_SUGGESTION_LIMIT });
-        const next = (response.results ?? [])
-          .map(normalizeCandidate)
-          .filter((candidate): candidate is ShrineCandidate => candidate !== null)
-          .slice(0, NAME_SUGGESTION_LIMIT);
+        const response = await fetchShrineSuggest(name);
+        if (!active) return;
+        const next = response.results.map((candidate) => ({
+          id: candidate.id,
+          name: candidate.name,
+          address: candidate.address,
+        }));
         setNameSuggestions(next);
       } catch {
+        if (!active) return;
         setNameSuggestions([]);
+      } finally {
+        if (active) {
+          setIsSuggesting(false);
+        }
       }
     }, NAME_SUGGESTION_DEBOUNCE_MS);
 
     return () => {
+      active = false;
       window.clearTimeout(timer);
     };
-  }, [form.name, isSubmitting]);
+  }, [duplicateQuery, form.name, isSubmitting]);
 
   const selectedTagNames = useMemo(
     () => tags.filter((tag) => selectedTags.includes(tag.id)).map((tag) => tag.name),
@@ -149,6 +161,19 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
 
     if (duplicateQuery) {
       router.push(`/shrines?q=${encodeURIComponent(duplicateQuery)}`);
+    }
+  };
+
+  const handleOpenNameSuggestions = () => {
+    const name = form.name.trim();
+
+    if (nameSuggestions.length === 1) {
+      router.push(`/shrines/${nameSuggestions[0].id}`);
+      return;
+    }
+
+    if (nameSuggestions.length > 1 && name) {
+      router.push(`/shrines?q=${encodeURIComponent(name)}`);
     }
   };
 
@@ -288,30 +313,40 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
         />
         {errors.name && <p className="text-xs text-red-600">{errors.name}</p>}
 
-        {nameSuggestions.length > 0 && (
+        {!duplicateQuery && (isSuggesting || nameSuggestions.length > 0) && (
           <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
             <div>
               <p className="text-sm font-medium text-slate-900">既存の神社候補</p>
-              <p className="text-xs text-slate-500">同じ神社がすでに登録されている可能性があります。</p>
+              <p className="text-xs text-slate-500">入力補助です。重複判定は投稿時に行われます。</p>
             </div>
 
-            <div className="space-y-2">
-              {nameSuggestions.map((candidate) => (
-                <div key={candidate.id} className="rounded-lg bg-white px-3 py-3 text-sm text-slate-700">
-                  <p className="font-medium text-slate-900">{candidate.name}</p>
-                  <p className="mt-1 text-xs text-slate-500">{candidate.address || "住所未登録"}</p>
-                  <div className="mt-2">
-                    <button
-                      type="button"
-                      className="text-xs font-medium text-emerald-700"
-                      onClick={() => router.push(`/shrines/${candidate.id}`)}
-                    >
-                      詳細を見る
-                    </button>
-                  </div>
+            {isSuggesting && <p className="text-xs text-slate-500">候補を確認しています...</p>}
+
+            {!isSuggesting && nameSuggestions.length > 0 && (
+              <>
+                <div className="space-y-2">
+                  {nameSuggestions.map((candidate) => (
+                    <div key={candidate.id} className="rounded-lg bg-white px-3 py-3 text-sm text-slate-700">
+                      <p className="font-medium text-slate-900">{candidate.name}</p>
+                      <p className="mt-1 text-xs text-slate-500">{candidate.address || "住所未登録"}</p>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    className="rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-700"
+                    onClick={handleOpenNameSuggestions}
+                  >
+                    {nameSuggestions.length === 1 ? "既存の神社を見る" : "候補を一覧で見る"}
+                  </button>
+                  {nameSuggestions.length === 1 && (
+                    <p className="text-xs text-slate-500">別の神社ならそのまま投稿できます。</p>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>
