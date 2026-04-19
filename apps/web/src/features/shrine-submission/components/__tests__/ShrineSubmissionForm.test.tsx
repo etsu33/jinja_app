@@ -54,12 +54,7 @@ describe("ShrineSubmissionForm", () => {
       ],
     });
 
-    render(
-      <ShrineSubmissionForm
-        onSubmitted={vi.fn()}
-        onRequireAuth={vi.fn()}
-      />,
-    );
+    render(<ShrineSubmissionForm onSubmitted={vi.fn()} onRequireAuth={vi.fn()} />);
 
     fireEvent.change(screen.getByLabelText("神社名"), {
       target: { value: "神田神社" },
@@ -95,12 +90,7 @@ describe("ShrineSubmissionForm", () => {
       ],
     });
 
-    render(
-      <ShrineSubmissionForm
-        onSubmitted={vi.fn()}
-        onRequireAuth={vi.fn()}
-      />,
-    );
+    render(<ShrineSubmissionForm onSubmitted={vi.fn()} onRequireAuth={vi.fn()} />);
 
     fireEvent.change(screen.getByLabelText("神社名"), {
       target: { value: "神田神社" },
@@ -139,12 +129,7 @@ describe("ShrineSubmissionForm", () => {
       },
     });
 
-    render(
-      <ShrineSubmissionForm
-        onSubmitted={vi.fn()}
-        onRequireAuth={vi.fn()}
-      />,
-    );
+    render(<ShrineSubmissionForm onSubmitted={vi.fn()} onRequireAuth={vi.fn()} />);
 
     fireEvent.change(screen.getByLabelText("神社名"), {
       target: { value: "神田神社（神田明神）" },
@@ -161,9 +146,7 @@ describe("ShrineSubmissionForm", () => {
       expect(mockedCreateShrineSubmission).toHaveBeenCalled();
     });
 
-    expect(
-      screen.getByText("この神社はすでに登録されている可能性があります。"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("この神社はすでに登録されている可能性があります。")).toBeInTheDocument();
     expect(screen.getByText("既存の神社をご確認ください。")).toBeInTheDocument();
     expect(screen.queryByText("入力補助です。重複判定は投稿時に行われます。")).not.toBeInTheDocument();
     expect(screen.getByText("神田神社（神田明神）")).toBeInTheDocument();
@@ -182,5 +165,76 @@ describe("ShrineSubmissionForm", () => {
     expect(screen.queryByText("既存の神社をご確認ください。")).not.toBeInTheDocument();
 
     expect(await screen.findByText("入力補助です。重複判定は投稿時に行われます。")).toBeInTheDocument();
+  });
+
+  it("duplicate_candidate が複数件なら複数候補UI を表示し、一覧導線を優先する", async () => {
+    const onSubmitted = vi.fn();
+
+    mockedCreateShrineSubmission.mockRejectedValue({
+      status: 400,
+      body: {
+        code: "duplicate_candidate",
+        message: "この神社はすでに登録されている可能性があります。",
+        candidates: [
+          {
+            id: 101,
+            name: "複数候補神社",
+            address: "東京都複数1区1-1-1",
+          },
+          {
+            id: 102,
+            name: "複数候補神社",
+            address: "東京都複数2区2-2-2",
+          },
+        ],
+      },
+    });
+
+    render(<ShrineSubmissionForm onSubmitted={onSubmitted} onRequireAuth={vi.fn()} />);
+
+    fireEvent.change(screen.getByLabelText("神社名"), {
+      target: { value: "複数候補神社" },
+    });
+    fireEvent.change(screen.getByLabelText("住所"), {
+      target: { value: "東京都新規区3-3-3" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "審査用に投稿する" }));
+
+    await waitFor(() => {
+      expect(mockedCreateShrineSubmission).toHaveBeenCalled();
+    });
+
+    // 重複メッセージが表示される
+    expect(screen.getByText("この神社はすでに登録されている可能性があります。")).toBeInTheDocument();
+    expect(screen.getByText("既存の神社をご確認ください。")).toBeInTheDocument();
+
+    // 複数候補の場合は各候補が個別に表示される
+    // 複数候補の場合、複数候補神社 というテキストは複数存在する（各候補の名前として）
+    const candidateNames = screen.getAllByText("複数候補神社");
+    expect(candidateNames.length).toBe(2);
+    expect(screen.getByText("東京都複数1区1-1-1")).toBeInTheDocument();
+    expect(screen.getByText("東京都複数2区2-2-2")).toBeInTheDocument();
+
+    // 複数件なので "候補一覧を見る" ボタンが表示される
+    const listButton = screen.getByRole("button", { name: "候補一覧を見る" });
+    expect(listButton).toBeInTheDocument();
+
+    // "既存神社の詳細を見る" ボタンは表示されない
+    expect(screen.queryByRole("button", { name: "既存神社の詳細を見る" })).not.toBeInTheDocument();
+
+    // 一覧ボタンをクリック
+    fireEvent.click(listButton);
+    expect(pushMock).toHaveBeenCalledWith("/shrines?q=%E8%A4%87%E6%95%B0%E5%80%99%E8%A3%9C%E7%A5%9E%E7%A4%BE");
+
+    // submit callback は呼ばれない
+    expect(onSubmitted).not.toHaveBeenCalled();
+
+    // 編集で候補を解除できる
+    fireEvent.change(screen.getByLabelText("神社名"), {
+      target: { value: "新規神社" },
+    });
+
+    expect(screen.queryByText("既存の神社をご確認ください。")).not.toBeInTheDocument();
   });
 });

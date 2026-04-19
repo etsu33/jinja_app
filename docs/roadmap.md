@@ -150,4 +150,11 @@
 - [x] approve / duplicate / reject の service 動作確認
 - [x] Django admin 経由の approve / reject 確認
 - [x] submission API 作成
-- [ ] frontend 投稿画面作成
+- [x] duplicate_candidate 契約の正本を `docs/shrine-submission-flow.md` に固定
+- [x] `docs/architecture.md` を責務境界 + 正本参照ハブに整理
+- [x] `docs/auth-flow.md` に submission auth 復帰を追記
+- [ ] submission 投稿画面UIの最終化
+- [ ] duplicate_candidate 複数候補ケースのテスト追加
+- [ ] duplicateCandidates UI の複数候補表示確認
+- [ ] submission 後の search 復帰導線（`submitted=1&status=pending`）の確認
+- [ ] `/shrines/new` と `/mypage/shrine-submissions/new` の入口整理を最終確定

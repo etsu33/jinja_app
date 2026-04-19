@@ -141,3 +141,54 @@ def test_create_shrine_submission_allows_duplicate_pending_submission():
     assert body["address"] == "東京都審査中区8-8-8"
     assert body["status"] == "pending"
     assert ShrineSubmission.objects.filter(name="審査中重複神社", address="東京都審査中区8-8-8").count() == 2
+
+
+def test_create_shrine_submission_rejects_multiple_duplicate_candidates():
+    user = _create_user(username="multi_dup_user")
+
+    # 同じ名前で異なる住所の Shrine を2件作成
+    shrine1 = Shrine.objects.create(
+        name_jp="複数候補神社",
+        address="東京都複数1区1-1-1",
+        latitude=35.7000,
+        longitude=139.7000,
+        owner=user,
+    )
+    shrine2 = Shrine.objects.create(
+        name_jp="複数候補神社",
+        address="東京都複数2区2-2-2",
+        latitude=35.7100,
+        longitude=139.7100,
+        owner=user,
+    )
+
+    client = APIClient()
+    client.force_authenticate(user=user)
+
+    payload = {
+        "name": "複数候補神社",
+        "address": "東京都新規区3-3-3",  # 異なる住所で投稿
+        "lat": 35.7200,
+        "lng": 139.7200,
+        "goriyaku_tags": ["開運"],
+        "note": "multiple duplicate test",
+    }
+
+    resp = client.post("/api/shrine-submissions/", payload, format="json")
+
+    assert resp.status_code == 400
+    body = resp.json()
+    assert body["code"] == "duplicate_candidate"
+    assert body["message"] == "この神社はすでに登録されている可能性があります。"
+    assert len(body["candidates"]) >= 2  # 少なくとも2件の候補
+    # candidates に shrine1 と shrine2 が含まれていることを確認
+    candidate_ids = {c["id"] for c in body["candidates"]}
+    assert shrine1.id in candidate_ids
+    assert shrine2.id in candidate_ids
+    for candidate in body["candidates"]:
+        assert "id" in candidate
+        assert "name" in candidate
+        assert "address" in candidate
+        assert candidate["name"] == "複数候補神社"
+    # ShrineSubmission は作成されていない
+    assert ShrineSubmission.objects.filter(name="複数候補神社").count() == 0

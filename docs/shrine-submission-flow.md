@@ -1,56 +1,3 @@
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { ShrineSearchResultPage } from "../page";
-
-jest.mock("../../api/shrines", () => ({
-  fetchShrines: jest.fn(),
-}));
-
-import { fetchShrines } from "../../api/shrines";
-
-const mockedFetchShrines = fetchShrines as jest.MockedFunction<typeof fetchShrines>;
-
-describe("ShrineSearchResultPage", () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  test("qありで0件ならCTAを表示する", async () => {
-    mockedFetchShrines.mockResolvedValueOnce({
-      data: [],
-      totalCount: 0,
-    });
-
-    render(<ShrineSearchResultPage searchParams={{ q: "テスト" }} />);
-
-    expect(await screen.findByText("お探しの神社が見つかりませんか？")).toBeInTheDocument();
-
-    const cta = await screen.findByRole("button", { name: "神社を追加する" });
-    expect(cta).toBeInTheDocument();
-  });
-
-  test("submitted=1 & status=pending なら審査中メッセージを表示する", async () => {
-    mockedFetchShrines.mockResolvedValueOnce({
-      data: [],
-      totalCount: 0,
-    });
-
-    render(
-      <ShrineSearchResultPage
-        searchParams={{ submitted: "1", status: "pending", q: "未登録テスト神社20260419" }}
-      />,
-    );
-
-    await waitFor(() => {
-      expect(mockedFetchShrines).toHaveBeenCalled();
-    });
-
-    expect(
-      await screen.findByText("「未登録テスト神社20260419」の投稿を受け付けました。現在審査中です。"),
-    ).toBeInTheDocument();
-  });
-});
-
 # 神社追加導線の現行仕様
 
 ## 目的
@@ -63,6 +10,11 @@ describe("ShrineSearchResultPage", () => {
 - 投稿後は `/shrines` に戻し、一覧上部に受付メッセージを表示する
 - 投稿直後の状態表示は `審査中` とする
 - 審査中データは公開検索結果に混ざらない前提で扱う
+
+## 投稿入口
+- 正規入口は `/shrines/new`
+- 検索0件時のCTAから遷移する
+- `/mypage/shrine-submissions/new` は補助導線とする
 
 ## duplicate_candidate 契約
 - `POST /api/shrine-submissions/` は、既存 `Shrine` と重複の可能性がある場合 `400` を返す
@@ -107,10 +59,15 @@ describe("ShrineSearchResultPage", () => {
 - 投稿直後データは `Shrine` 公開検索には混ざらない
 - duplicate_candidate の1件候補時は詳細導線に遷移する
 
+## 検証状態
+- 1件候補: 確認済み
+- 複数候補: 未確認（要テスト）
+
 ## 未確認
-- duplicate_candidate の複数候補ケースは未確認
+- duplicate_candidate の複数候補ケース
 - ローカル seed データ条件未成立のため、実運用または追加データ投入後に確認予定
 
+## 補足
 - 公開検索対象は `Shrine`
 - 投稿直後データは公開マスター未反映のため、審査完了までは検索結果に出ない
 - 重複投稿抑止は Phase 2 で正規化・精度改善を行う
