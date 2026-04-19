@@ -1,11 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fetchPopular, type Shrine } from "@/lib/api/popular";
+import type { Shrine } from "@/lib/api/popular";
 
 function labelFor(s: Shrine): string {
   const anyS = s as Shrine & { name?: string };
   return anyS.name_jp || anyS.name || "（名称不明）";
+}
+
+function toItems(data: unknown): Shrine[] {
+  if (Array.isArray(data)) return data as Shrine[];
+  if (data && typeof data === "object") {
+    const o = data as Record<string, unknown>;
+    if (Array.isArray(o.results)) return o.results as Shrine[];
+    if (Array.isArray(o.items)) return o.items as Shrine[];
+  }
+  return [];
 }
 
 export default function PopularShrinesListPage() {
@@ -18,9 +28,16 @@ export default function PopularShrinesListPage() {
     setLoading(true);
     setError(null);
 
-    fetchPopular({ limit: 50 })
-      .then(({ items: next }) => {
-        if (!cancelled) setItems(next);
+    const sp = new URLSearchParams();
+    sp.set("limit", "50");
+
+    fetch(`/api/populars/?${sp.toString()}`, { cache: "no-store" })
+      .then(async (res) => {
+        if (!res.ok) throw new Error("failed to fetch popular shrines");
+        return res.json() as Promise<unknown>;
+      })
+      .then((data) => {
+        if (!cancelled) setItems(toItems(data));
       })
       .catch((e: unknown) => {
         if (!cancelled) setError(e instanceof Error ? e.message : "fetch failed");
