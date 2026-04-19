@@ -40,3 +40,22 @@ login にリダイレクト
   signup -> login -> returnTo 復帰
 - /api/auth/register:
   backend signup endpoint の BFF
+
+## 5. shrine submission 認証導線
+未ログインで神社登録CTA押下
+↓
+/auth/login?returnTo=/shrines/new
+↓
+必要なら /auth/register?returnTo=/shrines/new
+↓
+登録成功
+↓
+ログイン成功
+↓
+/shrines/new に復帰
+
+### 補足
+- `/shrines/new` または `/mypage/shrine-submissions/new` を投稿入口とする
+- returnTo には元画面（例: `/concierge`, `/shrines?q=...`）を保持してもよい
+- 投稿アクション（submit_shrine_submission）はログイン必須
+- returnTo は Login / Signup の両方で維持すること
