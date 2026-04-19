@@ -1,5 +1,3 @@
-
-
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
@@ -20,7 +18,6 @@ export default function ShrinesPage() {
 
   const [q, setQ] = useState("");
   const [submitted, setSubmitted] = useState(false);
-  const [status, setStatus] = useState("");
   const [submittedName, setSubmittedName] = useState("");
   const [inputValue, setInputValue] = useState("");
   const showSubmissionPendingBanner = submitted;
@@ -37,7 +34,6 @@ export default function ShrinesPage() {
 
     setQ((params.get("q") ?? "").trim());
     setSubmitted(isSubmissionPendingParams(params));
-    setStatus(params.get("status") ?? "");
     setSubmittedName((params.get("name") ?? "").trim());
   }, []);
 
