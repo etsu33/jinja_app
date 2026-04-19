@@ -41,6 +41,7 @@ login にリダイレクト
 - /api/auth/register:
   backend signup endpoint の BFF
 
+
 ## 5. shrine submission 認証導線
 未ログインで神社登録CTA押下
 ↓
@@ -54,11 +55,24 @@ login にリダイレクト
 ↓
 /shrines/new に復帰
 
-### 補足
+### 具体URL仕様
 - 投稿入口は `/shrines/new` を正規とする
-- 未ログイン時は以下の認証導線に遷移する
+- 未ログイン時は以下へ遷移する
   - `/auth/login?returnTo=/shrines/new`
   - `/auth/register?returnTo=/shrines/new`
-- 検索画面から遷移した場合、必要に応じて `returnTo` に元画面（例: `/shrines?q=...`）を保持してよい
+- login / signup 完了後は `returnTo` に従い `/shrines/new` に復帰する
+
+### returnTo ルール
+- `returnTo` は相対パスのみ許可する（例: `/shrines/new`, `/shrines?q=...`）
+- 既に `returnTo` が含まれる場合は多段ネストを避け、最外の1つのみ採用する
+- 不正な値（外部URLなど）の場合は `/` にフォールバックする
+- Login / Signup の両方で `returnTo` を維持する
+
+### 検索画面からの遷移
+- `/shrines?q=...` から遷移した場合、必要に応じて以下のように保持してよい
+  - `/auth/login?returnTo=/shrines/new?returnTo=/shrines?q=...`
+- ただし実装では多段 `returnTo` を正規化すること
+
+### 補足
 - 投稿アクション（`submit_shrine_submission`）はログイン必須
-- `returnTo` は Login / Signup の両方で維持すること
+
