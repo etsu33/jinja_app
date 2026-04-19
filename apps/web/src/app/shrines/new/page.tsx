@@ -1,16 +1,23 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { ShrineSubmissionForm } from "@/features/shrine-submission/components/ShrineSubmissionForm";
 
 export default function NewShrinePage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const returnTo = searchParams.get("returnTo") || "/shrines";
   const { isLoggedIn, loading } = useAuth();
+  const [returnTo, setReturnTo] = useState("/shrines");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const params = new URLSearchParams(window.location.search);
+    const nextReturnTo = params.get("returnTo") || "/shrines";
+    setReturnTo(nextReturnTo);
+  }, []);
 
   useEffect(() => {
     if (loading) return;
