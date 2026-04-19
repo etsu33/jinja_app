@@ -35,8 +35,9 @@ export function normalizeReturnTo(input: string | null | undefined): string | nu
   // 内部パス以外は reject
   if (!t.startsWith("/")) return null;
   if (t.startsWith("//")) return null;
-  if (t.includes("://")) return null;
-  if (t.toLowerCase().startsWith("javascript:")) return null;
+
+  // URLスキームはすべて reject（内部相対パスのみ許可）
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(t)) return null;
 
   const [path, search = ""] = t.split("?", 2);
   if (!path.startsWith("/")) return null;
