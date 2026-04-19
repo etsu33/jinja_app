@@ -284,6 +284,21 @@ class ShrineViewSet(viewsets.ModelViewSet):
 
             return qs.filter(owner=u).distinct()
 
+        params = self.request.query_params
+
+        kind = (params.get("kind") or "shrine").lower()
+        if kind in ("shrine", "temple"):
+            qs = qs.filter(kind=kind)
+        elif kind != "all":
+            qs = qs.filter(kind="shrine")
+
+        qs = _apply_q_terms(qs, params)
+
+        name = params.get("name")
+        if name:
+            qs = qs.filter(Q(name_jp__icontains=name) | Q(name_romaji__icontains=name))
+
+        qs = annotate_is_favorite(qs, self.request)
         return qs.distinct()
     
     

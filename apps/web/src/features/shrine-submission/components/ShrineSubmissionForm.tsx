@@ -7,6 +7,7 @@ import type { ChangeEvent, FormEvent } from "react";
 import { getGoriyakuTags } from "@/lib/api/tags";
 import { isApiError } from "@/lib/api/errors";
 import { createShrineSubmission } from "@/lib/api/shrineSubmissions";
+import { fetchShrines } from "@/lib/api/shrinesSearch";
 import type {
   ShrineSubmissionFieldErrors,
   ShrineSubmissionFormValues,
@@ -18,6 +19,37 @@ type Props = {
   onSubmitted: (submission: ShrineSubmissionResponse) => void;
   onRequireAuth: () => void;
 };
+
+type ShrineCandidate = {
+  id: number;
+  name: string;
+  address: string;
+};
+
+const NAME_SUGGESTION_MIN_LENGTH = 2;
+const NAME_SUGGESTION_LIMIT = 3;
+const NAME_SUGGESTION_DEBOUNCE_MS = 300;
+
+function normalizeCandidate(value: unknown): ShrineCandidate | null {
+  if (!value || typeof value !== "object") return null;
+
+  const row = value as Record<string, unknown>;
+  const id = typeof row.id === "number" ? row.id : null;
+  const name = typeof row.name === "string"
+    ? row.name
+    : typeof row.name_jp === "string"
+      ? row.name_jp
+      : null;
+  const address = typeof row.address === "string" ? row.address : "";
+
+  if (!id || !name) return null;
+
+  return {
+    id,
+    name,
+    address,
+  };
+}
 
 export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
   const router = useRouter();
@@ -32,6 +64,8 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
   const [selectedTags, setSelectedTags] = useState<number[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [duplicateQuery, setDuplicateQuery] = useState<string | null>(null);
+  const [duplicateCandidates, setDuplicateCandidates] = useState<ShrineCandidate[]>([]);
+  const [nameSuggestions, setNameSuggestions] = useState<ShrineCandidate[]>([]);
 
   useEffect(() => {
     getGoriyakuTags()
@@ -43,6 +77,32 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
         }));
       });
   }, []);
+
+  useEffect(() => {
+    const name = form.name.trim();
+
+    if (isSubmitting || name.length < NAME_SUGGESTION_MIN_LENGTH) {
+      setNameSuggestions([]);
+      return;
+    }
+
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await fetchShrines({ q: name, limit: NAME_SUGGESTION_LIMIT });
+        const next = (response.results ?? [])
+          .map(normalizeCandidate)
+          .filter((candidate): candidate is ShrineCandidate => candidate !== null)
+          .slice(0, NAME_SUGGESTION_LIMIT);
+        setNameSuggestions(next);
+      } catch {
+        setNameSuggestions([]);
+      }
+    }, NAME_SUGGESTION_DEBOUNCE_MS);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [form.name, isSubmitting]);
 
   const selectedTagNames = useMemo(
     () => tags.filter((tag) => selectedTags.includes(tag.id)).map((tag) => tag.name),
@@ -69,6 +129,7 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
     setForm((prev) => ({ ...prev, [name]: value }));
     clearErrors(name, "non_field_errors", "general");
     setDuplicateQuery(null);
+    setDuplicateCandidates([]);
   };
 
   const toggleTag = (id: number) => {
@@ -77,6 +138,18 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
     setSelectedTags((prev) => (prev.includes(id) ? prev.filter((tagId) => tagId !== id) : [...prev, id]));
     clearErrors("tags", "non_field_errors", "general");
     setDuplicateQuery(null);
+    setDuplicateCandidates([]);
+  };
+
+  const handleOpenDuplicateCandidates = () => {
+    if (duplicateCandidates.length === 1) {
+      router.push(`/shrines/${duplicateCandidates[0].id}`);
+      return;
+    }
+
+    if (duplicateQuery) {
+      router.push(`/shrines?q=${encodeURIComponent(duplicateQuery)}`);
+    }
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -100,6 +173,7 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
 
     setIsSubmitting(true);
     setDuplicateQuery(null);
+    setDuplicateCandidates([]);
     clearErrors("name", "address", "tags", "note", "general");
 
     try {
@@ -126,8 +200,12 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
           }
 
           const backendMessage = next.non_field_errors ?? next.general ?? "入力内容を確認してください。";
-
-          const duplicate = isDuplicateMessage(backendMessage);
+          const duplicate = body.code === "duplicate_candidate" || isDuplicateMessage(backendMessage);
+          const candidates = Array.isArray(body.candidates)
+            ? body.candidates
+                .map(normalizeCandidate)
+                .filter((candidate): candidate is ShrineCandidate => candidate !== null)
+            : [];
 
           setErrors({
             ...next,
@@ -136,6 +214,7 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
 
           if (duplicate) {
             setDuplicateQuery(name);
+            setDuplicateCandidates(candidates);
           }
 
           return;
@@ -165,13 +244,28 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
           {duplicateQuery && (
             <>
               <p className="text-sm text-slate-700">既存の神社をご確認ください。</p>
+
+              {duplicateCandidates.length > 0 && (
+                <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-xs font-medium text-slate-500">
+                    {duplicateCandidates.length === 1 ? "最も近い候補" : "近い候補"}
+                  </p>
+                  {duplicateCandidates.map((candidate) => (
+                    <div key={candidate.id} className="rounded-lg bg-white px-3 py-2 text-sm text-slate-700">
+                      <p className="font-medium text-slate-900">{candidate.name}</p>
+                      <p className="text-xs text-slate-500">{candidate.address || "住所未登録"}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <div className="pt-1">
                 <button
                   type="button"
                   className="rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-700"
-                  onClick={() => router.push(`/shrines?q=${encodeURIComponent(duplicateQuery)}`)}
+                  onClick={handleOpenDuplicateCandidates}
                 >
-                  既存神社を見る
+                  {duplicateCandidates.length === 1 ? "既存神社の詳細を見る" : "候補一覧を見る"}
                 </button>
               </div>
             </>
@@ -193,6 +287,33 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
           placeholder="例: 明治神宮"
         />
         {errors.name && <p className="text-xs text-red-600">{errors.name}</p>}
+
+        {nameSuggestions.length > 0 && (
+          <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div>
+              <p className="text-sm font-medium text-slate-900">既存の神社候補</p>
+              <p className="text-xs text-slate-500">同じ神社がすでに登録されている可能性があります。</p>
+            </div>
+
+            <div className="space-y-2">
+              {nameSuggestions.map((candidate) => (
+                <div key={candidate.id} className="rounded-lg bg-white px-3 py-3 text-sm text-slate-700">
+                  <p className="font-medium text-slate-900">{candidate.name}</p>
+                  <p className="mt-1 text-xs text-slate-500">{candidate.address || "住所未登録"}</p>
+                  <div className="mt-2">
+                    <button
+                      type="button"
+                      className="text-xs font-medium text-emerald-700"
+                      onClick={() => router.push(`/shrines/${candidate.id}`)}
+                    >
+                      詳細を見る
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="space-y-2">

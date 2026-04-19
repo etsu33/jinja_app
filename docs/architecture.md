@@ -410,6 +410,31 @@ shrine table insert
 - submission を reject
 - または既存 shrine への関連付けを提示する
 
+
+## duplicate_candidate 契約
+
+- `POST /api/shrine-submissions/` は、既存 `Shrine` と重複の可能性がある場合 `400` を返す
+- response は以下の形式とする
+
+```json
+{
+  "code": "duplicate_candidate",
+  "message": "この神社はすでに登録されている可能性があります。",
+  "candidates": [
+    {
+      "id": 23,
+      "name": "神田神社（神田明神）",
+      "address": "東京都千代田区外神田2-16-2"
+    }
+  ]
+}
+```
+
+- `candidates` は既存 `Shrine` の簡易情報配列とする
+- candidate が1件のときは詳細導線を表示する
+- candidate が複数件のときは `/shrines?q=...` への候補一覧導線を表示する
+- `duplicate_candidate` は serializer の入力バリデーションではなく、view / service 側の重複候補判定で返す
+
 ---
 
 ## MVP スコープ外
