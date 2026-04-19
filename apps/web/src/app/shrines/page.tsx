@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 import { ShrineCard } from "@/components/shrines/ShrineCard";
 import type { ShrineCardAdapterProps } from "@/components/shrine/buildShrineCardProps";
@@ -10,17 +10,23 @@ import { buildShrineListCardModel } from "@/lib/shrine/buildShrineListCardModel"
 
 export default function ShrinesPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const q = (searchParams.get("q") ?? "").trim();
-  const submitted = searchParams.get("submitted") === "1";
-  const status = searchParams.get("status");
-  const submittedName = (searchParams.get("name") ?? "").trim();
 
-  const [inputValue, setInputValue] = useState(q);
-  const [cards, setCards] = useState<ShrineCardAdapterProps[]>([]);
-  const [count, setCount] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [q, setQ] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const [status, setStatus] = useState("");
+  const [submittedName, setSubmittedName] = useState("");
+  const [inputValue, setInputValue] = useState("");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const params = new URLSearchParams(window.location.search);
+
+    setQ((params.get("q") ?? "").trim());
+    setSubmitted(params.get("submitted") === "1");
+    setStatus(params.get("status") ?? "");
+    setSubmittedName((params.get("name") ?? "").trim());
+  }, []);
 
   useEffect(() => {
     setInputValue(q);
@@ -28,6 +34,11 @@ export default function ShrinesPage() {
 
   useEffect(() => {
     let alive = true;
+    if (typeof window !== "undefined" && q === "" && window.location.search.includes("q=")) {
+      return () => {
+        alive = false;
+      };
+    }
     setLoading(true);
     setError(null);
 
@@ -53,6 +64,11 @@ export default function ShrinesPage() {
       alive = false;
     };
   }, [q]);
+
+  const [cards, setCards] = useState<ShrineCardAdapterProps[]>([]);
+  const [count, setCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const hasSearched = q.length > 0;
   const isEmpty = !loading && !error && hasSearched && count === 0;
