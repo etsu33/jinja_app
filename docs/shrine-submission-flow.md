@@ -78,6 +78,26 @@
 - duplicate_candidate の複数候補ケース
 - ローカル seed データ条件未成立のため、実運用または追加データ投入後に確認予定
 
+## duplicate_candidate の定義
+
+### 判定方針
+- duplicate_candidate は「重複の疑いが高い既存神社候補」を返す
+- 名前一致を主判定とする
+- 住所一致は補助判定として扱う
+- 住所のみの一致では duplicate_candidate を返さない
+- 軽い曖昧一致は pending submission として受け付ける
+
+### nameSuggestions との責務分離
+- nameSuggestions は入力補助のための広い候補提示
+- duplicate_candidate は submit 後の強い警告
+- suggestion が出ても submit を必ずしも止めない
+- duplicate_candidate が出た場合のみ投稿前確認を促す
+
+### 境界確認
+- 明確一致: 400 / duplicate_candidate
+- あいまい一致: 201 / pending submission
+- 住所のみ一致: duplicate_candidate にしない
+
 ## 補足
 - 公開検索対象は `Shrine`
 - 投稿直後データは公開マスター未反映のため、審査完了までは検索結果に出ない

@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 
 from django.contrib.auth import get_user_model
-from django.db.models import F, Q, Value
+from django.db.models import Case, F, IntegerField, Q, Value, When
 from django.db.models.functions import Coalesce, Replace
 from django.db import transaction
 from django.utils import timezone
@@ -70,23 +70,30 @@ def find_duplicate_candidates(*, name: str, address: str, limit: int = 3) -> lis
     if not normalized_name:
         return []
 
-    name_terms = [term for term in normalized_name.split(" ") if term]
     base_key = shrine_name_duplicate_base_key(normalized_name)
-
-    qs = Shrine.objects.all()
-
-    query = Q(name_jp__iexact=normalized_name)
-    # DB 側が全角括弧のままの行も拾う
     legacy_exact = normalized_name.replace("(", "（").replace(")", "）")
-    if legacy_exact != normalized_name:
-        query |= Q(name_jp__iexact=legacy_exact)
 
-    for term in name_terms:
-        query |= Q(name_jp__icontains=term)
-        query |= Q(name_romaji__icontains=term)
+    qs = Shrine.objects.all().annotate(
+        _dup_name_exact_score=Case(
+            When(name_jp__iexact=normalized_name, then=Value(2)),
+            When(name_jp__iexact=legacy_exact, then=Value(2)),
+            default=Value(0),
+            output_field=IntegerField(),
+        )
+    )
 
     if len(base_key) >= _MIN_BASE_NAME_KEY_LEN:
-        query |= Q(name_jp__icontains=base_key)
+        qs = qs.annotate(
+            _dup_name_base_score=Case(
+                When(name_jp__icontains=base_key, then=Value(1)),
+                default=Value(0),
+                output_field=IntegerField(),
+            )
+        )
+    else:
+        qs = qs.annotate(
+            _dup_name_base_score=Value(0, output_field=IntegerField())
+        )
 
     if normalized_address:
         qs = qs.annotate(
@@ -95,14 +102,22 @@ def find_duplicate_candidates(*, name: str, address: str, limit: int = 3) -> lis
                 Value(" "),
                 Value(""),
             )
+        ).annotate(
+            _dup_address_score=Case(
+                When(address__icontains=normalized_address, then=Value(1)),
+                When(_dup_addr_cmp__icontains=normalized_address, then=Value(1)),
+                default=Value(0),
+                output_field=IntegerField(),
+            )
         )
-        query |= Q(address__icontains=normalized_address) | Q(
-            _dup_addr_cmp__icontains=normalized_address
+    else:
+        qs = qs.annotate(
+            _dup_address_score=Value(0, output_field=IntegerField())
         )
 
     rows = (
-        qs.filter(query)
-        .order_by("id")
+        qs.filter(Q(_dup_name_exact_score__gt=0) | Q(_dup_name_base_score__gt=0))
+        .order_by("-_dup_name_exact_score", "-_dup_name_base_score", "-_dup_address_score", "id")
         .values("id", "name_jp", "address")[: max(1, limit)]
     )
 
