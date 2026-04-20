@@ -192,3 +192,37 @@ def test_create_shrine_submission_rejects_multiple_duplicate_candidates():
         assert candidate["name"] == "複数候補神社"
     # ShrineSubmission は作成されていない
     assert ShrineSubmission.objects.filter(name="複数候補神社").count() == 0
+
+
+def test_create_shrine_submission_allows_ambiguous_match_as_pending():
+    user = _create_user(username="ambiguous_user")
+
+    Shrine.objects.create(
+        name_jp="神田神社（神田明神）",
+        address="東京都千代田区外神田2-16-2",
+        latitude=35.7023,
+        longitude=139.7745,
+        owner=user,
+    )
+
+    client = APIClient()
+    client.force_authenticate(user=user)
+
+    payload = {
+        "name": "神田",
+        "address": "東京都渋谷区1-2-3",
+        "lat": 35.6595,
+        "lng": 139.7005,
+        "goriyaku_tags": ["開運"],
+        "note": "ambiguous match should be allowed",
+    }
+
+    resp = client.post("/api/shrine-submissions/", payload, format="json")
+
+    assert resp.status_code == 201
+    body = resp.json()
+    assert body["name"] == "神田"
+    assert body["address"] == "東京都渋谷区1-2-3"
+    assert body["status"] == "pending"
+
+    assert ShrineSubmission.objects.filter(name="神田", address="東京都渋谷区1-2-3").count() == 1
