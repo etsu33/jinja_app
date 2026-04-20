@@ -263,20 +263,22 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
   return (
     <form onSubmit={handleSubmit} className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       {errors.general && (
-        <div className="space-y-3">
-          <p className="text-sm text-red-600">{errors.general}</p>
+        <div className={`space-y-3 rounded-xl border p-4 ${duplicateQuery ? "border-red-200 bg-red-50" : "border-red-200 bg-white"}`}>
+          <p className="text-sm font-medium text-red-700">
+            {duplicateQuery ? "この神社はすでに登録されている可能性があります。" : errors.general}
+          </p>
 
           {duplicateQuery && (
             <>
-              <p className="text-sm text-slate-700">既存の神社をご確認ください。</p>
+              <p className="text-sm text-slate-700">投稿する前に、既存の神社をご確認ください。</p>
 
               {duplicateCandidates.length > 0 && (
-                <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-xs font-medium text-slate-500">
+                <div className="space-y-2 rounded-xl border border-red-200 bg-white p-4">
+                  <p className="text-xs font-medium uppercase tracking-wide text-red-600">
                     {duplicateCandidates.length === 1 ? "最も近い候補" : "近い候補"}
                   </p>
                   {duplicateCandidates.map((candidate) => (
-                    <div key={candidate.id} className="rounded-lg bg-white px-3 py-2 text-sm text-slate-700">
+                    <div key={candidate.id} className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-slate-700">
                       <p className="font-medium text-slate-900">{candidate.name}</p>
                       <p className="text-xs text-slate-500">{candidate.address || "住所未登録"}</p>
                     </div>
@@ -287,7 +289,7 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
               <div className="pt-1">
                 <button
                   type="button"
-                  className="rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-700"
+                  className="rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-700"
                   onClick={handleOpenDuplicateCandidates}
                 >
                   {duplicateCandidates.length === 1 ? "既存神社の詳細を見る" : "候補一覧を見る"}
@@ -314,10 +316,10 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
         {errors.name && <p className="text-xs text-red-600">{errors.name}</p>}
 
         {!duplicateQuery && (isSuggesting || nameSuggestions.length > 0) && (
-          <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/70 p-4">
             <div>
-              <p className="text-sm font-medium text-slate-900">既存の神社候補</p>
-              <p className="text-xs text-slate-500">入力補助です。重複判定は投稿時に行われます。</p>
+              <p className="text-sm font-medium text-slate-800">既存の神社候補</p>
+              <p className="text-xs text-slate-500">入力補助です。似ている神社がないか先に確認できます。</p>
             </div>
 
             {isSuggesting && <p className="text-xs text-slate-500">候補を確認しています...</p>}
@@ -326,7 +328,7 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
               <>
                 <div className="space-y-2">
                   {nameSuggestions.map((candidate) => (
-                    <div key={candidate.id} className="rounded-lg bg-white px-3 py-3 text-sm text-slate-700">
+                    <div key={candidate.id} className="rounded-lg bg-white/90 px-3 py-3 text-sm text-slate-700">
                       <p className="font-medium text-slate-900">{candidate.name}</p>
                       <p className="mt-1 text-xs text-slate-500">{candidate.address || "住所未登録"}</p>
                     </div>
@@ -336,7 +338,7 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
                 <div className="space-y-2">
                   <button
                     type="button"
-                    className="rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-700"
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700"
                     onClick={handleOpenNameSuggestions}
                   >
                     {nameSuggestions.length === 1 ? "既存の神社を見る" : "候補を一覧で見る"}

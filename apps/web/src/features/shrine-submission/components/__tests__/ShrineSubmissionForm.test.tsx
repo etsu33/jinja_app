@@ -65,7 +65,7 @@ describe("ShrineSubmissionForm", () => {
     });
 
     expect(await screen.findByText("既存の神社候補")).toBeInTheDocument();
-    expect(screen.getByText("入力補助です。重複判定は投稿時に行われます。")).toBeInTheDocument();
+    expect(screen.getByText("入力補助です。似ている神社がないか先に確認できます。")).toBeInTheDocument();
 
     const detailButton = screen.getByRole("button", { name: "既存の神社を見る" });
     fireEvent.click(detailButton);
@@ -147,8 +147,8 @@ describe("ShrineSubmissionForm", () => {
     });
 
     expect(screen.getByText("この神社はすでに登録されている可能性があります。")).toBeInTheDocument();
-    expect(screen.getByText("既存の神社をご確認ください。")).toBeInTheDocument();
-    expect(screen.queryByText("入力補助です。重複判定は投稿時に行われます。")).not.toBeInTheDocument();
+    expect(screen.getByText("投稿する前に、既存の神社をご確認ください。")).toBeInTheDocument();
+    expect(screen.queryByText("入力補助です。似ている神社がないか先に確認できます。")).not.toBeInTheDocument();
     expect(screen.getByText("神田神社（神田明神）")).toBeInTheDocument();
     expect(screen.getByText("東京都千代田区外神田2-16-2")).toBeInTheDocument();
 
@@ -162,9 +162,9 @@ describe("ShrineSubmissionForm", () => {
       target: { value: "東京都千代田区外神田2-16-3" },
     });
 
-    expect(screen.queryByText("既存の神社をご確認ください。")).not.toBeInTheDocument();
+    expect(screen.queryByText("投稿する前に、既存の神社をご確認ください。")).not.toBeInTheDocument();
 
-    expect(await screen.findByText("入力補助です。重複判定は投稿時に行われます。")).toBeInTheDocument();
+    expect(await screen.findByText("入力補助です。似ている神社がないか先に確認できます。")).toBeInTheDocument();
   });
 
   it("duplicate_candidate が複数件なら複数候補UI を表示し、一覧導線を優先する", async () => {
@@ -207,7 +207,7 @@ describe("ShrineSubmissionForm", () => {
 
     // 重複メッセージが表示される
     expect(screen.getByText("この神社はすでに登録されている可能性があります。")).toBeInTheDocument();
-    expect(screen.getByText("既存の神社をご確認ください。")).toBeInTheDocument();
+    expect(screen.getByText("投稿する前に、既存の神社をご確認ください。")).toBeInTheDocument();
 
     // 複数候補の場合は各候補が個別に表示される
     // 複数候補の場合、複数候補神社 というテキストは複数存在する（各候補の名前として）
@@ -235,6 +235,6 @@ describe("ShrineSubmissionForm", () => {
       target: { value: "新規神社" },
     });
 
-    expect(screen.queryByText("既存の神社をご確認ください。")).not.toBeInTheDocument();
+    expect(screen.queryByText("投稿する前に、既存の神社をご確認ください。")).not.toBeInTheDocument();
   });
 });
