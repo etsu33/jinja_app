@@ -99,9 +99,8 @@
 
 - 神社登録は `shrine` 本体APIへの直接追加ではなく、`submission API` を使う
 - Web は shrine 本体を直接作成・更新する前提を持たない
-- 登録入口は以下のいずれかに統一する
-  - `/shrines/new`
-  - `/mypage/shrine-submissions/new`
+- 投稿入口は `/shrines/new` を正規ルートとする
+- mypage 起点の投稿も `/shrines/new?returnTo=/mypage` で吸収する
 - 投稿はログインユーザーのみを前提とし、未ログイン時は login/register に遷移する
 - 投稿完了時点では即公開扱いにせず、`pending` 前提でUIを構成する
 

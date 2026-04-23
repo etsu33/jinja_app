@@ -157,4 +157,5 @@
 - [ ] duplicate_candidate 複数候補ケースのテスト追加
 - [ ] duplicateCandidates UI の複数候補表示確認
 - [ ] submission 後の search 復帰導線（`submitted=1&status=pending`）の確認
-- [ ] `/shrines/new` と `/mypage/shrine-submissions/new` の入口整理を最終確定
+- [x] 投稿入口は `/shrines/new` を正規ルートとして確定
+- [x] mypage 起点の投稿は `/shrines/new?returnTo=/mypage` で吸収する方針を確定
