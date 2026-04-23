@@ -10,7 +10,7 @@ import { sanitizeReturnTo } from "@/lib/nav/login";
 export default function NewShrinePage() {
   const router = useRouter();
   const { isLoggedIn, loading } = useAuth();
-  const [returnTo, setReturnTo] = useState("/shrines");
+  const [returnTo, setReturnTo] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -29,13 +29,13 @@ export default function NewShrinePage() {
   }, [router]);
 
   useEffect(() => {
-    if (loading) return;
+    if (loading || returnTo === null) return;
     if (!isLoggedIn) {
       router.replace(`/auth/login?returnTo=${encodeURIComponent(`/shrines/new?returnTo=${returnTo}`)}`);
     }
   }, [isLoggedIn, loading, returnTo, router]);
 
-  if (loading || !isLoggedIn) {
+  if (loading || returnTo === null || !isLoggedIn) {
     return <div className="mx-auto max-w-2xl px-4 py-10 text-sm text-slate-500">認証状態を確認しています...</div>;
   }
 

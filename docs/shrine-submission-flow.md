@@ -20,6 +20,7 @@
 - 表示位置は検索結果一覧の上部とする
 - `status=pending` 以外では表示しない
 - query param が残っている限り、reload 時も表示してよい
+- mypage 起点の場合は `/shrines/new?returnTo=/mypage` から遷移し、投稿成功後は `/mypage?submitted=1&status=pending&name=...` に復帰する
 
 ## 投稿入口
 - 正規入口は `/shrines/new`

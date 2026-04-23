@@ -45,6 +45,7 @@ login にリダイレクト
 ## 5. shrine submission 認証導線
 
 未ログインで神社登録CTA押下
+↓
 /auth/login?returnTo=/shrines/new?returnTo=...
 ↓
 必要なら /auth/register?returnTo=/shrines/new?returnTo=...

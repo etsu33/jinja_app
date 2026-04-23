@@ -1,4 +1,4 @@
-import { sanitizeReturnTo } from "@/lib/nav/login";
+import { sanitizeNext } from "@/lib/nav/login";
 
 type SearchParamsLike = Record<string, string | string[] | undefined>;
 
@@ -25,7 +25,7 @@ export function normalizeReturnToParam(
     if (typeof first !== "string") return null;
 
     const cleaned = stripRscParamFromInternalPath(first);
-    return sanitizeReturnTo(cleaned);
+    return sanitizeNext(cleaned);
   };
 
   return resolve();
