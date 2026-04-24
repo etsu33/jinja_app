@@ -22,10 +22,14 @@ export default function MyPageScreen() {
 
   const goshuinEnabled = !loading && isLoggedIn && !!user;
 
-  const sp = useSearchParams(); // ✅ これが必要
+  const sp = useSearchParams();
 
   const shrineId = Number(sp.get("shrine") ?? "");
   const hasShrine = Number.isFinite(shrineId) && shrineId > 0;
+  const submitted = sp.get("submitted");
+  const submissionStatus = sp.get("status");
+  const submittedShrineName = sp.get("name")?.trim() ?? "";
+  const showSubmissionPendingBanner = submitted === "1" && submissionStatus === "pending";
 
   const {
     items,
@@ -77,6 +81,14 @@ export default function MyPageScreen() {
           ログアウト
         </button>
       </header>
+
+      {showSubmissionPendingBanner && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800" role="status" aria-live="polite">
+          {submittedShrineName
+            ? `「${submittedShrineName}」の投稿を受け付けました。現在審査中です。`
+            : "投稿を受け付けました。現在審査中です。"}
+        </div>
+      )}
 
       <div className="space-y-4">
         <div id="goshuin-upload">
