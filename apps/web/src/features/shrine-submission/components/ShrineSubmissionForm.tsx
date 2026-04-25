@@ -121,6 +121,8 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
     [selectedTags, tags],
   );
 
+  const tagStatusText = selectedTagNames.length > 0 ? `${selectedTagNames.length}件選択中` : "未選択";
+
   const clearErrors = (...keys: string[]) => {
     setErrors((prev) => {
       const next = { ...prev };
@@ -263,19 +265,22 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
   return (
     <form onSubmit={handleSubmit} className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       {errors.general && (
-        <div className={`space-y-3 rounded-xl border p-4 ${duplicateQuery ? "border-red-200 bg-red-50" : "border-red-200 bg-white"}`}>
-          <p className="text-sm font-medium text-red-700">
-            {duplicateQuery ? "この神社はすでに登録されている可能性があります。" : errors.general}
-          </p>
+        <div className={`space-y-3 rounded-2xl border p-4 ${duplicateQuery ? "border-red-300 bg-red-50" : "border-red-200 bg-white"}`}>
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-red-700">
+              {duplicateQuery ? "この神社はすでに登録されている可能性があります。" : errors.general}
+            </p>
+            {duplicateQuery && <p className="text-xs text-red-700">重複の可能性が高いため、投稿前に候補を確認してください。</p>}
+          </div>
 
           {duplicateQuery && (
             <>
-              <p className="text-sm text-slate-700">投稿する前に、既存の神社をご確認ください。</p>
+              <p className="text-sm text-slate-700">同じ神社がすでに登録されている場合、追加投稿は不要です。</p>
 
               {duplicateCandidates.length > 0 && (
                 <div className="space-y-2 rounded-xl border border-red-200 bg-white p-4">
-                  <p className="text-xs font-medium uppercase tracking-wide text-red-600">
-                    {duplicateCandidates.length === 1 ? "最も近い候補" : "近い候補"}
+                  <p className="text-xs font-semibold text-red-700">
+                    {duplicateCandidates.length === 1 ? "確認が必要な候補" : "確認が必要な候補"}
                   </p>
                   {duplicateCandidates.map((candidate) => (
                     <div key={candidate.id} className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-slate-700">
@@ -316,10 +321,10 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
         {errors.name && <p className="text-xs text-red-600">{errors.name}</p>}
 
         {!duplicateQuery && (isSuggesting || nameSuggestions.length > 0) && (
-          <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+          <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
             <div>
-              <p className="text-sm font-medium text-slate-800">既存の神社候補</p>
-              <p className="text-xs text-slate-500">入力補助です。似ている神社がないか先に確認できます。</p>
+              <p className="text-sm font-semibold text-slate-800">既存の神社候補</p>
+              <p className="text-xs text-slate-500">入力補助です。候補があっても、別の神社ならそのまま投稿できます。</p>
             </div>
 
             {isSuggesting && <p className="text-xs text-slate-500">候補を確認しています...</p>}
@@ -369,39 +374,54 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
         {errors.address && <p className="text-xs text-red-600">{errors.address}</p>}
       </div>
 
-      <div className="space-y-3">
-        <div>
-          <p className="text-sm font-medium text-slate-900">ご利益タグ</p>
-          <p className="text-xs text-slate-500">該当するものだけ選択してください。</p>
+      <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-semibold text-slate-900">ご利益タグ</p>
+              <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-slate-500">任意</span>
+            </div>
+            <p className="text-xs text-slate-500">分かる範囲で選択してください。後から審査時に補正される前提です。</p>
+          </div>
+          <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-700">{tagStatusText}</span>
         </div>
 
         {errors.tags && <p className="text-xs text-red-600">{errors.tags}</p>}
 
-        <div className="flex flex-wrap gap-2">
-          {tags.map((tag) => {
-            const active = selectedTags.includes(tag.id);
-            return (
-              <button
-                key={tag.id}
-                type="button"
-                disabled={isSubmitting}
-                onClick={() => toggleTag(tag.id)}
-                className={`rounded-full border px-3 py-1 text-xs ${
-                  active
-                    ? "border-emerald-600 bg-emerald-50 text-emerald-700"
-                    : "border-slate-200 bg-white text-slate-700"
-                }`}
-              >
-                {tag.name}
-              </button>
-            );
-          })}
-        </div>
+        {tags.length === 0 && !errors.tags ? (
+          <p className="rounded-xl border border-dashed border-slate-200 bg-white px-3 py-2 text-xs text-slate-500">ご利益タグを読み込んでいます...</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {tags.map((tag) => {
+              const active = selectedTags.includes(tag.id);
+              return (
+                <button
+                  key={tag.id}
+                  type="button"
+                  disabled={isSubmitting}
+                  onClick={() => toggleTag(tag.id)}
+                  aria-pressed={active}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                    active
+                      ? "border-emerald-600 bg-emerald-50 text-emerald-700"
+                      : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  {tag.name}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {selectedTagNames.length > 0 && (
+          <p className="text-xs text-slate-500">選択中: {selectedTagNames.join("、")}</p>
+        )}
       </div>
 
       <div className="space-y-2">
         <label htmlFor="note" className="text-sm font-medium text-slate-900">
-          補足文
+          補足文 <span className="text-xs font-normal text-slate-500">任意</span>
         </label>
         <textarea
           id="note"
@@ -410,7 +430,7 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
           onChange={handleChange}
           disabled={isSubmitting}
           className="min-h-32 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900"
-          placeholder="この神社を追加したい理由や補足情報を書いてください。"
+          placeholder="由緒、地元での呼び名、所在地の補足などがあれば書いてください。"
         />
         {errors.note && <p className="text-xs text-red-600">{errors.note}</p>}
       </div>
