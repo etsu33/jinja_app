@@ -101,7 +101,9 @@ describe("MyPageScreen", () => {
 
     render(<MyPageScreen />);
 
-    expect(screen.getByRole("status")).toHaveTextContent("「テスト神社」の投稿を受け付けました。現在審査中です。");
+    expect(screen.getByRole("status")).toHaveTextContent(
+      /「テスト神社」の投稿を受け付けました。\s*現在審査中のため、公開検索にはまだ表示されません。\s*審査完了後に公開されます。/,
+    );
   });
 
   it("submitted=1 でも status=pending 以外なら submission 受付バナーを表示しない", () => {
@@ -118,6 +120,10 @@ describe("MyPageScreen", () => {
 
     render(<MyPageScreen />);
 
-    expect(screen.queryByText("「テスト神社」の投稿を受け付けました。現在審査中です。")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "「テスト神社」の投稿を受け付けました。現在審査中のため、公開検索にはまだ表示されません。審査完了後に公開されます。",
+      ),
+    ).not.toBeInTheDocument();
   });
 });

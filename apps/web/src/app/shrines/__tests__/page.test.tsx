@@ -116,8 +116,10 @@ describe("/shrines page", () => {
       expect(mockedFetchShrines).toHaveBeenCalled();
     });
 
-    expect(
-      await screen.findByText("「未登録テスト神社20260419」の投稿を受け付けました。現在審査中です。"),
-    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/未登録テスト神社20260419/).closest("div")).toHaveTextContent(
+        /「未登録テスト神社20260419」の投稿を受け付けました。\s*現在審査中のため、公開検索にはまだ表示されません。\s*審査完了後に公開されます。/,
+      );
+    });
   });
 });

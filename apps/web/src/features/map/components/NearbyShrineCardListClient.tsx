@@ -192,10 +192,14 @@ export default function NearbyShrineCardListClient() {
       )}
 
       {showSubmissionPendingBanner && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800" role="status" aria-live="polite">
+        <div
+          className="whitespace-pre-line rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+          role="status"
+          aria-live="polite"
+        >
           {submittedShrineName
-            ? `「${submittedShrineName}」の投稿を受け付けました。現在審査中です。`
-            : "投稿を受け付けました。現在審査中です。"}
+            ? `「${submittedShrineName}」の投稿を受け付けました。\n現在審査中のため、公開検索にはまだ表示されません。\n審査完了後に公開されます。`
+            : "投稿を受け付けました。\n現在審査中のため、公開検索にはまだ表示されません。\n審査完了後に公開されます。"}
         </div>
       )}
 

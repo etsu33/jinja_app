@@ -96,8 +96,8 @@ export default function ShrinesPage() {
   const submissionNotice = useMemo(() => {
     if (!showSubmissionPendingBanner) return null;
     return submittedName
-      ? `「${submittedName}」の投稿を受け付けました。現在審査中です。`
-      : "神社登録の投稿を受け付けました。現在審査中です。";
+      ? `「${submittedName}」の投稿を受け付けました。\n現在審査中のため、公開検索にはまだ表示されません。\n審査完了後に公開されます。`
+      : "投稿を受け付けました。\n現在審査中のため、公開検索にはまだ表示されません。\n審査完了後に公開されます。";
   }, [showSubmissionPendingBanner, submittedName]);
 
   const handleSearch = (e: FormEvent<HTMLFormElement>) => {
@@ -136,7 +136,7 @@ export default function ShrinesPage() {
       </form>
 
       {submissionNotice && (
-        <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+        <div className="mb-6 whitespace-pre-line rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
           {submissionNotice}
         </div>
       )}

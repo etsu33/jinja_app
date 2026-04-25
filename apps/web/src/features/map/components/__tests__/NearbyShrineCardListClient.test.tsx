@@ -68,7 +68,9 @@ describe("NearbyShrineCardListClient", () => {
 
     render(<NearbyShrineCardListClient />);
 
-    expect(screen.getByRole("status")).toHaveTextContent("「テスト神社」の投稿を受け付けました。現在審査中です。");
+    expect(screen.getByRole("status")).toHaveTextContent(
+      /「テスト神社」の投稿を受け付けました。\s*現在審査中のため、公開検索にはまだ表示されません。\s*審査完了後に公開されます。/,
+    );
     expect(await screen.findByText("近くに候補が見つかりませんでした。")).toBeInTheDocument();
   });
 });
