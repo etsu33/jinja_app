@@ -65,9 +65,13 @@ describe("ShrineSubmissionForm", () => {
     });
 
     expect(await screen.findByText("既存の神社候補")).toBeInTheDocument();
-    expect(screen.getByText("入力補助です。候補があっても、別の神社ならそのまま投稿できます。")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "同じ名前でも場所が違う神社があります。住所が近いか確認してください。違う神社なら、そのまま投稿できます。",
+      ),
+    ).toBeInTheDocument();
 
-    const detailButton = screen.getByRole("button", { name: "既存の神社を見る" });
+    const detailButton = screen.getByRole("button", { name: "この神社と同じか確認する" });
     fireEvent.click(detailButton);
 
     expect(pushMock).toHaveBeenCalledWith("/shrines/23");
@@ -140,7 +144,7 @@ describe("ShrineSubmissionForm", () => {
       target: { value: "東京都千代田区外神田2-16-2" },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "神社を登録申請する" }));
+    fireEvent.click(screen.getByRole("button", { name: "神社を追加する" }));
 
     await waitFor(() => {
       expect(mockedCreateShrineSubmission).toHaveBeenCalled();
@@ -148,9 +152,12 @@ describe("ShrineSubmissionForm", () => {
 
     expect(screen.getByText("この神社はすでに登録されている可能性があります。")).toBeInTheDocument();
     expect(screen.getByText("同じ神社がすでに登録されている場合、追加投稿は不要です。")).toBeInTheDocument();
-    expect(screen.queryByText("入力補助です。候補があっても、別の神社ならそのまま投稿できます。")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("同じ名前でも場所が違う神社があります。住所が近いか確認してください。違う神社なら、そのまま投稿できます。"),
+    ).not.toBeInTheDocument();
     expect(screen.getByText("神田神社（神田明神）")).toBeInTheDocument();
     expect(screen.getByText("東京都千代田区外神田2-16-2")).toBeInTheDocument();
+    expect(screen.getByText("住所が一致する場合は、既存の神社の可能性が高いです。")).toBeInTheDocument();
 
     const detailButton = screen.getByRole("button", { name: "既存神社の詳細を見る" });
     expect(detailButton).toBeInTheDocument();
@@ -164,7 +171,9 @@ describe("ShrineSubmissionForm", () => {
 
     expect(screen.queryByText("同じ神社がすでに登録されている場合、追加投稿は不要です。")).not.toBeInTheDocument();
 
-    expect(await screen.findByText("入力補助です。候補があっても、別の神社ならそのまま投稿できます。")).toBeInTheDocument();
+    expect(
+      await screen.findByText("同じ名前でも場所が違う神社があります。住所が近いか確認してください。違う神社なら、そのまま投稿できます。"),
+    ).toBeInTheDocument();
   });
 
   it("duplicate_candidate が複数件なら複数候補UI を表示し、一覧導線を優先する", async () => {
@@ -199,7 +208,7 @@ describe("ShrineSubmissionForm", () => {
       target: { value: "東京都新規区3-3-3" },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "神社を登録申請する" }));
+    fireEvent.click(screen.getByRole("button", { name: "神社を追加する" }));
 
     await waitFor(() => {
       expect(mockedCreateShrineSubmission).toHaveBeenCalled();
@@ -215,6 +224,7 @@ describe("ShrineSubmissionForm", () => {
     expect(candidateNames.length).toBe(2);
     expect(screen.getByText("東京都複数1区1-1-1")).toBeInTheDocument();
     expect(screen.getByText("東京都複数2区2-2-2")).toBeInTheDocument();
+    expect(screen.getAllByText("住所が一致する場合は、既存の神社の可能性が高いです。").length).toBe(2);
 
     // 複数件なので "候補一覧を見る" ボタンが表示される
     const listButton = screen.getByRole("button", { name: "候補一覧を見る" });

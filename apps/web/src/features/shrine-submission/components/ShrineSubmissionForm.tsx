@@ -34,11 +34,7 @@ function normalizeCandidate(value: unknown): ShrineCandidate | null {
 
   const row = value as Record<string, unknown>;
   const id = typeof row.id === "number" ? row.id : null;
-  const name = typeof row.name === "string"
-    ? row.name
-    : typeof row.name_jp === "string"
-      ? row.name_jp
-      : null;
+  const name = typeof row.name === "string" ? row.name : typeof row.name_jp === "string" ? row.name_jp : null;
   const address = typeof row.address === "string" ? row.address : "";
 
   if (!id || !name) return null;
@@ -309,7 +305,8 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
                       className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-slate-700"
                     >
                       <p className="font-medium text-slate-900">{candidate.name}</p>
-                      <p className="text-xs text-slate-500">{candidate.address || "住所未登録"}</p>
+                      <p className="mt-1 text-xs font-medium text-slate-700">{candidate.address || "住所未登録"}</p>
+                      <p className="mt-1 text-[11px] text-red-700">住所が一致する場合は、既存の神社の可能性が高いです。</p>
                     </div>
                   ))}
                 </div>
@@ -348,18 +345,21 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
           <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
             <div>
               <p className="text-sm font-semibold text-slate-800">既存の神社候補</p>
-              <p className="text-xs text-slate-500">入力補助です。候補があっても、別の神社ならそのまま投稿できます。</p>
+              <p className="text-xs font-medium text-slate-700">
+                同じ名前でも場所が違う神社があります。住所が近いか確認してください。違う神社なら、そのまま投稿できます。
+              </p>
             </div>
 
-            {isSuggesting && <p className="text-xs text-slate-500">候補を確認しています...</p>}
+            {isSuggesting && <p className="text-xs text-slate-700 font-medium">候補を確認しています...</p>}
 
             {!isSuggesting && nameSuggestions.length > 0 && (
               <>
                 <div className="space-y-2">
                   {nameSuggestions.map((candidate) => (
-                    <div key={candidate.id} className="rounded-lg bg-white/90 px-3 py-3 text-sm text-slate-700">
+                    <div key={candidate.id} className="rounded-lg border border-slate-200 bg-white/90 px-3 py-3 text-sm text-slate-700">
                       <p className="font-medium text-slate-900">{candidate.name}</p>
-                      <p className="mt-1 text-xs text-slate-500">{candidate.address || "住所未登録"}</p>
+                      <p className="mt-1 text-xs font-medium text-slate-700">{candidate.address || "住所未登録"}</p>
+                      <p className="mt-1 text-[11px] text-slate-500">住所が近い場合は、この神社と同じ可能性があります。</p>
                     </div>
                   ))}
                 </div>
@@ -370,10 +370,10 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
                     className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700"
                     onClick={handleOpenNameSuggestions}
                   >
-                    {nameSuggestions.length === 1 ? "既存の神社を見る" : "候補を一覧で見る"}
+                    {nameSuggestions.length === 1 ? "この神社と同じか確認する" : "候補を一覧で見る"}
                   </button>
                   {nameSuggestions.length === 1 && (
-                    <p className="text-xs text-slate-500">別の神社ならそのまま投稿できます。</p>
+                    <p className="text-xs font-medium text-slate-700">住所が違う場合は、そのまま神社を追加できます。</p>
                   )}
                 </div>
               </>
@@ -405,7 +405,7 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
               <p className="text-sm font-semibold text-slate-900">ご利益タグ</p>
               <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-slate-500">任意</span>
             </div>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-700 font-medium">
               1つでも選ぶと、他の人に見つけてもらいやすくなります。未選択でも投稿できます。
             </p>
           </div>
@@ -417,7 +417,7 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
         {errors.tags && <p className="text-xs text-red-600">{errors.tags}</p>}
 
         {tagsLoading ? (
-          <p className="rounded-xl border border-dashed border-slate-200 bg-white px-3 py-2 text-xs text-slate-500">
+          <p className="rounded-xl border border-dashed border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 font-medium">
             ご利益タグを読み込んでいます...
           </p>
         ) : tags.length > 0 ? (
@@ -443,15 +443,15 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
             })}
           </div>
         ) : (
-          <p className="rounded-xl border border-dashed border-slate-200 bg-white px-3 py-2 text-xs text-slate-500">
+          <p className="rounded-xl border border-dashed border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 font-medium">
             選択できるご利益タグがありません。未選択でも投稿できます。
           </p>
         )}
 
         {selectedTagNames.length > 0 ? (
-          <p className="text-xs text-slate-500">選択中: {selectedTagNames.join("、")}</p>
+          <p className="text-xs text-slate-700 font-medium">選択中: {selectedTagNames.join("、")}</p>
         ) : !tagsLoading && !errors.tags && tags.length > 0 ? (
-          <p className="text-xs text-slate-500">1つでも選ぶと見つけてもらいやすくなります。</p>
+          <p className="text-xs text-slate-700 font-medium">1つでも選ぶと見つけてもらいやすくなります。</p>
         ) : null}
       </div>
 
@@ -476,7 +476,7 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
         disabled={isSubmitting}
         className="w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {isSubmitting ? "申請中..." : "神社を登録申請する"}
+        {isSubmitting ? "申請中..." : "神社を追加する"}
       </button>
     </form>
   );
