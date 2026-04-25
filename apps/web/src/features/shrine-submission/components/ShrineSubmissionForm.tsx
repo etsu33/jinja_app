@@ -282,12 +282,16 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
   return (
     <form onSubmit={handleSubmit} className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       {errors.general && (
-        <div className={`space-y-3 rounded-2xl border p-4 ${duplicateQuery ? "border-red-300 bg-red-50" : "border-red-200 bg-white"}`}>
+        <div
+          className={`space-y-3 rounded-2xl border p-4 ${duplicateQuery ? "border-red-300 bg-red-50" : "border-red-200 bg-white"}`}
+        >
           <div className="space-y-1">
             <p className="text-sm font-semibold text-red-700">
               {duplicateQuery ? "この神社はすでに登録されている可能性があります。" : errors.general}
             </p>
-            {duplicateQuery && <p className="text-xs text-red-700">重複の可能性が高いため、投稿前に候補を確認してください。</p>}
+            {duplicateQuery && (
+              <p className="text-xs text-red-700">重複の可能性が高いため、投稿前に候補を確認してください。</p>
+            )}
           </div>
 
           {duplicateQuery && (
@@ -300,7 +304,10 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
                     {duplicateCandidates.length === 1 ? "確認が必要な候補" : "確認が必要な候補"}
                   </p>
                   {duplicateCandidates.map((candidate) => (
-                    <div key={candidate.id} className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-slate-700">
+                    <div
+                      key={candidate.id}
+                      className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-slate-700"
+                    >
                       <p className="font-medium text-slate-900">{candidate.name}</p>
                       <p className="text-xs text-slate-500">{candidate.address || "住所未登録"}</p>
                     </div>
@@ -377,7 +384,7 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
 
       <div className="space-y-2">
         <label htmlFor="address" className="text-sm font-medium text-slate-900">
-          住所
+          住所 <span className="text-xs font-normal text-slate-500">任意</span>
         </label>
         <input
           id="address"
@@ -398,15 +405,21 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
               <p className="text-sm font-semibold text-slate-900">ご利益タグ</p>
               <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-slate-500">任意</span>
             </div>
-            <p className="text-xs text-slate-500">1つでも選ぶと、他の人に見つけてもらいやすくなります。未選択でも投稿できます。</p>
+            <p className="text-xs text-slate-500">
+              1つでも選ぶと、他の人に見つけてもらいやすくなります。未選択でも投稿できます。
+            </p>
           </div>
-          <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-700">{tagStatusText}</span>
+          <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-700">
+            {tagStatusText}
+          </span>
         </div>
 
         {errors.tags && <p className="text-xs text-red-600">{errors.tags}</p>}
 
         {tagsLoading ? (
-          <p className="rounded-xl border border-dashed border-slate-200 bg-white px-3 py-2 text-xs text-slate-500">ご利益タグを読み込んでいます...</p>
+          <p className="rounded-xl border border-dashed border-slate-200 bg-white px-3 py-2 text-xs text-slate-500">
+            ご利益タグを読み込んでいます...
+          </p>
         ) : tags.length > 0 ? (
           <div className="flex flex-wrap gap-2">
             {tags.map((tag) => {
@@ -430,7 +443,9 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
             })}
           </div>
         ) : (
-          <p className="rounded-xl border border-dashed border-slate-200 bg-white px-3 py-2 text-xs text-slate-500">選択できるご利益タグがありません。未選択でも投稿できます。</p>
+          <p className="rounded-xl border border-dashed border-slate-200 bg-white px-3 py-2 text-xs text-slate-500">
+            選択できるご利益タグがありません。未選択でも投稿できます。
+          </p>
         )}
 
         {selectedTagNames.length > 0 ? (
@@ -461,7 +476,7 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
         disabled={isSubmitting}
         className="w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {isSubmitting ? "投稿中..." : "審査用に投稿する"}
+        {isSubmitting ? "申請中..." : "神社を登録申請する"}
       </button>
     </form>
   );

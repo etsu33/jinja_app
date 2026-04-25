@@ -45,7 +45,7 @@ export default function NewShrinePage() {
         <p className="text-xs text-emerald-700">Shrine Submission</p>
         <h1 className="mt-2 text-base font-semibold text-slate-900">神社を追加する</h1>
         <p className="mt-3 text-sm leading-7 text-slate-700">
-          神社名・住所・ご利益タグ・補足文をもとに審査され、承認後に神社データへ反映されます。
+          投稿内容は確認後、公開検索や神社データに反映されます。住所・ご利益タグ・補足文があると、他の人にも見つけてもらいやすくなります。
         </p>
       </div>
 

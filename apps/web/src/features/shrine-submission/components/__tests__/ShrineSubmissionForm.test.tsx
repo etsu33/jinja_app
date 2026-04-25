@@ -136,11 +136,11 @@ describe("ShrineSubmissionForm", () => {
     });
     expect(await screen.findByText("既存の神社候補")).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText("住所"), {
+    fireEvent.change(screen.getByLabelText(/住所/), {
       target: { value: "東京都千代田区外神田2-16-2" },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "審査用に投稿する" }));
+    fireEvent.click(screen.getByRole("button", { name: "神社を登録申請する" }));
 
     await waitFor(() => {
       expect(mockedCreateShrineSubmission).toHaveBeenCalled();
@@ -158,7 +158,7 @@ describe("ShrineSubmissionForm", () => {
     fireEvent.click(detailButton);
     expect(pushMock).toHaveBeenCalledWith("/shrines/23");
 
-    fireEvent.change(screen.getByLabelText("住所"), {
+    fireEvent.change(screen.getByLabelText(/住所/), {
       target: { value: "東京都千代田区外神田2-16-3" },
     });
 
@@ -195,11 +195,11 @@ describe("ShrineSubmissionForm", () => {
     fireEvent.change(screen.getByLabelText("神社名"), {
       target: { value: "複数候補神社" },
     });
-    fireEvent.change(screen.getByLabelText("住所"), {
+    fireEvent.change(screen.getByLabelText(/住所/), {
       target: { value: "東京都新規区3-3-3" },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "審査用に投稿する" }));
+    fireEvent.click(screen.getByRole("button", { name: "神社を登録申請する" }));
 
     await waitFor(() => {
       expect(mockedCreateShrineSubmission).toHaveBeenCalled();
