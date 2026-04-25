@@ -60,6 +60,7 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
   });
   const [errors, setErrors] = useState<ShrineSubmissionFieldErrors>({});
   const [tags, setTags] = useState<ShrineSubmissionTag[]>([]);
+  const [tagsLoading, setTagsLoading] = useState(true);
   const [selectedTags, setSelectedTags] = useState<number[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [duplicateQuery, setDuplicateQuery] = useState<string | null>(null);
@@ -68,14 +69,30 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
   const [isSuggesting, setIsSuggesting] = useState(false);
 
   useEffect(() => {
+    let active = true;
+    setTagsLoading(true);
+
     getGoriyakuTags()
-      .then(setTags)
+      .then((nextTags) => {
+        if (!active) return;
+        setTags(nextTags);
+      })
       .catch(() => {
+        if (!active) return;
         setErrors((prev) => ({
           ...prev,
-          tags: "ご利益タグの取得に失敗しました",
+          tags: "ご利益タグを取得できませんでした。未選択でも投稿でき、あとから審査時に補正されます。",
         }));
+      })
+      .finally(() => {
+        if (active) {
+          setTagsLoading(false);
+        }
       });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -381,16 +398,16 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
               <p className="text-sm font-semibold text-slate-900">ご利益タグ</p>
               <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-slate-500">任意</span>
             </div>
-            <p className="text-xs text-slate-500">分かる範囲で選択してください。後から審査時に補正される前提です。</p>
+            <p className="text-xs text-slate-500">1つでも選ぶと、他の人に見つけてもらいやすくなります。未選択でも投稿できます。</p>
           </div>
           <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-700">{tagStatusText}</span>
         </div>
 
         {errors.tags && <p className="text-xs text-red-600">{errors.tags}</p>}
 
-        {tags.length === 0 && !errors.tags ? (
+        {tagsLoading ? (
           <p className="rounded-xl border border-dashed border-slate-200 bg-white px-3 py-2 text-xs text-slate-500">ご利益タグを読み込んでいます...</p>
-        ) : (
+        ) : tags.length > 0 ? (
           <div className="flex flex-wrap gap-2">
             {tags.map((tag) => {
               const active = selectedTags.includes(tag.id);
@@ -412,11 +429,15 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
               );
             })}
           </div>
+        ) : (
+          <p className="rounded-xl border border-dashed border-slate-200 bg-white px-3 py-2 text-xs text-slate-500">選択できるご利益タグがありません。未選択でも投稿できます。</p>
         )}
 
-        {selectedTagNames.length > 0 && (
+        {selectedTagNames.length > 0 ? (
           <p className="text-xs text-slate-500">選択中: {selectedTagNames.join("、")}</p>
-        )}
+        ) : !tagsLoading && !errors.tags && tags.length > 0 ? (
+          <p className="text-xs text-slate-500">1つでも選ぶと見つけてもらいやすくなります。</p>
+        ) : null}
       </div>
 
       <div className="space-y-2">
