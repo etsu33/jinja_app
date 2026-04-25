@@ -13,10 +13,12 @@ vi.mock("@/features/mypage/hooks", () => ({
   useMyGoshuin: (args: any) => mockUseMyGoshuin(args),
 }));
 
+const mockSearchParams = new Map<string, string>();
+
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
   useSearchParams: () => ({
-    get: (_k: string) => null, // shrine クエリ無し想定
+    get: (key: string) => mockSearchParams.get(key) ?? null,
   }),
 }));
 
@@ -30,6 +32,7 @@ vi.mock("../MyGoshuinList", () => ({
 
 describe("MyPageScreen", () => {
   beforeEach(() => {
+    mockSearchParams.clear();
     mockUseMyGoshuin.mockReturnValue({
       items: [],
       loading: false,
@@ -82,5 +85,45 @@ describe("MyPageScreen", () => {
 
     // enabled の条件が効いてるかも軽く担保
     expect(mockUseMyGoshuin).toHaveBeenCalledWith({ enabled: true });
+  });
+
+  it("submitted=1 かつ status=pending のとき submission 受付バナーを表示する", () => {
+    mockSearchParams.set("submitted", "1");
+    mockSearchParams.set("status", "pending");
+    mockSearchParams.set("name", "テスト神社");
+
+    mockUseAuth.mockReturnValue({
+      user: { id: 1, username: "u" },
+      isLoggedIn: true,
+      loading: false,
+      logout: vi.fn(),
+    });
+
+    render(<MyPageScreen />);
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      /「テスト神社」の投稿を受け付けました。\s*現在審査中のため、公開検索にはまだ表示されません。\s*審査完了後に公開されます。/,
+    );
+  });
+
+  it("submitted=1 でも status=pending 以外なら submission 受付バナーを表示しない", () => {
+    mockSearchParams.set("submitted", "1");
+    mockSearchParams.set("status", "approved");
+    mockSearchParams.set("name", "テスト神社");
+
+    mockUseAuth.mockReturnValue({
+      user: { id: 1, username: "u" },
+      isLoggedIn: true,
+      loading: false,
+      logout: vi.fn(),
+    });
+
+    render(<MyPageScreen />);
+
+    expect(
+      screen.queryByText(
+        "「テスト神社」の投稿を受け付けました。現在審査中のため、公開検索にはまだ表示されません。審査完了後に公開されます。",
+      ),
+    ).not.toBeInTheDocument();
   });
 });

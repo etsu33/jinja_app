@@ -46,6 +46,10 @@ function clientLog(event: string, payload?: Record<string, unknown>) {
 export default function NearbyShrineCardListClient() {
   const sp = useSearchParams();
   const tid = sp.get("tid");
+  const submitted = sp.get("submitted");
+  const submissionStatus = sp.get("status");
+  const submittedShrineName = sp.get("name")?.trim() ?? "";
+  const showSubmissionPendingBanner = submitted === "1" && submissionStatus === "pending";
 
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [loadingLoc, setLoadingLoc] = useState(true);
@@ -187,6 +191,18 @@ export default function NearbyShrineCardListClient() {
         </div>
       )}
 
+      {showSubmissionPendingBanner && (
+        <div
+          className="whitespace-pre-line rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+          role="status"
+          aria-live="polite"
+        >
+          {submittedShrineName
+            ? `「${submittedShrineName}」の投稿を受け付けました。\n現在審査中のため、公開検索にはまだ表示されません。\n審査完了後に公開されます。`
+            : "投稿を受け付けました。\n現在審査中のため、公開検索にはまだ表示されません。\n審査完了後に公開されます。"}
+        </div>
+      )}
+
       {usedFallback && !loadingLoc && (
         <div className="rounded-xl border bg-amber-50 px-3 py-2 text-[11px] text-amber-700">
           現在地が取れないため仮の場所（東京駅）で検索中
@@ -227,13 +243,26 @@ export default function NearbyShrineCardListClient() {
 
       {/* 空・エラー時のフォールバック */}
       {(state === "empty" || state === "error") && (
-        <div className="rounded-xl border bg-white p-4 text-center">
-          <p className="text-sm text-slate-500">
-            {state === "error" ? "情報の取得に失敗しました。" : "近くに候補が見つかりませんでした。"}
-          </p>
-          <div className="mt-3 flex gap-2">
+        <div className="space-y-3 rounded-xl border bg-white p-4 text-center">
+          <div className="space-y-1">
+            <p className="text-sm text-slate-600">
+              {state === "error" ? "情報の取得に失敗しました。" : "近くに候補が見つかりませんでした。"}
+            </p>
+            {state === "empty" && <p className="text-xs text-slate-500">この場所にはまだ登録がない可能性があります。</p>}
+          </div>
+
+          <div className="flex flex-col gap-2 sm:flex-row">
+            {state === "empty" && (
+              <Link
+                href="/shrines/new?returnTo=/map"
+                className="inline-flex flex-1 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
+              >
+                神社を追加する
+              </Link>
+            )}
+
             <a
-              className="flex-1 rounded-xl bg-emerald-600 px-3 py-2 text-center text-xs font-semibold text-white"
+              className="flex-1 rounded-xl bg-emerald-600 px-3 py-2 text-center text-xs font-semibold text-white hover:opacity-95"
               href={googleSearchNearbyUrl}
               target="_blank"
               rel="noreferrer"

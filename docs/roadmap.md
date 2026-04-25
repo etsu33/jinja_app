@@ -1,4 +1,4 @@
-# 🚀 開発ロードマップ（ポストMVP / ゼロコスト運用版）
+<file name=0 path=/Users/morietsu/Desktop/jinja_app/docs/roadmap.md># 🚀 開発ロードマップ（ポストMVP / ゼロコスト運用版）
 
 本ドキュメントは **返金待ち期間〜β公開** までを **月額¥0** を前提に進めるためのロードマップです。
 既存のロードマップを、無料プロバイダ運用・安全装置・低コストCIに合わせて更新しています。
@@ -153,8 +153,20 @@
 - [x] duplicate_candidate 契約の正本を `docs/shrine-submission-flow.md` に固定
 - [x] `docs/architecture.md` を責務境界 + 正本参照ハブに整理
 - [x] `docs/auth-flow.md` に submission auth 復帰を追記
-- [ ] submission 投稿画面UIの最終化
+- [x] submission 投稿画面UIの最終化
+
+### Phase 2: 投稿後体験と回遊
 - [ ] duplicate_candidate 複数候補ケースのテスト追加
 - [ ] duplicateCandidates UI の複数候補表示確認
 - [ ] submission 後の search 復帰導線（`submitted=1&status=pending`）の確認
-- [ ] `/shrines/new` と `/mypage/shrine-submissions/new` の入口整理を最終確定
+- [ ] pending状態の可視化（mypage / banner）
+  - [ ] 投稿直後に受付バナーを表示（returnTo先で）
+  - [ ] mypage に「審査中」セクションを追加
+  - [ ] 投稿名・状態（pending）を表示
+  - [ ] pending中は検索結果には表示しない（ghost表示なし）
+
+### Phase 3: データ成長導線
+- [ ] 投稿履歴の表示（mypage）
+- [ ] 投稿→お気に入り / 回遊導線の強化
+- [ ] 投稿貢献の可視化（ランキング / バッジなど）
+</file>

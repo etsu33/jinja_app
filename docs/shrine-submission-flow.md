@@ -20,6 +20,9 @@
 - 表示位置は検索結果一覧の上部とする
 - `status=pending` 以外では表示しない
 - query param が残っている限り、reload 時も表示してよい
+- mypage 起点の場合は `/shrines/new?returnTo=/mypage` から遷移し、投稿成功後は `/mypage?submitted=1&status=pending&name=...` に復帰する
+- pending 中の投稿データは検索結果に ghost 表示しない
+- pending 状態は受付バナーで説明し、公開検索にはまだ表示されないことを明示する
 
 ## 投稿入口
 - 正規入口は `/shrines/new`
@@ -74,9 +77,20 @@
 - 1件候補: 確認済み
 - 複数候補: フロントテストで確認済み / 実機手動確認は未完了
 
+
 ## 未確認
 - duplicate_candidate の複数候補ケース
 - ローカル seed データ条件未成立のため、実運用または追加データ投入後に確認予定
+
+## duplicate_candidate 検証結果
+
+- 明確一致：duplicate_candidate を返す
+- 複数候補：一覧UIに分岐
+- あいまい一致：submission に進む
+
+seed:
+- 重複検証神社 ×2
+- 重複検証神社（別宮）×1
 
 ## duplicate_candidate の定義
 

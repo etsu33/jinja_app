@@ -10,7 +10,7 @@ import { sanitizeReturnTo } from "@/lib/nav/login";
 export default function NewShrinePage() {
   const router = useRouter();
   const { isLoggedIn, loading } = useAuth();
-  const [returnTo, setReturnTo] = useState("/shrines");
+  const [returnTo, setReturnTo] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -29,13 +29,13 @@ export default function NewShrinePage() {
   }, [router]);
 
   useEffect(() => {
-    if (loading) return;
+    if (loading || returnTo === null) return;
     if (!isLoggedIn) {
       router.replace(`/auth/login?returnTo=${encodeURIComponent(`/shrines/new?returnTo=${returnTo}`)}`);
     }
   }, [isLoggedIn, loading, returnTo, router]);
 
-  if (loading || !isLoggedIn) {
+  if (loading || returnTo === null || !isLoggedIn) {
     return <div className="mx-auto max-w-2xl px-4 py-10 text-sm text-slate-500">認証状態を確認しています...</div>;
   }
 
@@ -45,7 +45,7 @@ export default function NewShrinePage() {
         <p className="text-xs text-emerald-700">Shrine Submission</p>
         <h1 className="mt-2 text-base font-semibold text-slate-900">神社を追加する</h1>
         <p className="mt-3 text-sm leading-7 text-slate-700">
-          神社名・住所・ご利益タグ・補足文をもとに審査され、承認後に神社データへ反映されます。
+          投稿内容は確認後、公開検索や神社データに反映されます。住所・ご利益タグ・補足文があると、他の人にも見つけてもらいやすくなります。
         </p>
       </div>
 

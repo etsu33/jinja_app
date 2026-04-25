@@ -18,7 +18,14 @@ export function sanitizeNext(next: string | null | undefined): string | null {
   if (t.startsWith("/login")) return null;
   if (t.startsWith("/signup")) return null;
 
-  return t;
+  if (
+    t.startsWith("/shrines") ||
+    t.startsWith("/mypage")
+  ) {
+    return t;
+  }
+
+  return null;
 }
 
 export function normalizeReturnTo(input: string | null | undefined): string | null {
@@ -49,6 +56,8 @@ export function normalizeReturnTo(input: string | null | undefined): string | nu
   const nextSearch = params.toString();
   return nextSearch ? `${path}?${nextSearch}` : path;
 }
+
+
 
 export function sanitizeReturnTo(returnTo: string | null | undefined): string | null {
   return sanitizeNext(normalizeReturnTo(returnTo));
