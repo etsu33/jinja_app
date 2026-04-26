@@ -206,6 +206,10 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
       nextErrors.name = "神社名は必須です。";
     }
 
+    if (!address) {
+      nextErrors.address = "住所は必須です。";
+    }
+
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors);
       return;
@@ -223,8 +227,8 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
         goriyaku_tags: selectedTagNames,
         note,
       });
-
       onSubmitted(created);
+      router.replace(`/shrines?q=${encodeURIComponent(name)}&submitted=1&status=pending`);
     } catch (err: unknown) {
       if (isApiError(err)) {
         if (err.status === 400 && err.body && typeof err.body === "object") {

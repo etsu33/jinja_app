@@ -2,15 +2,14 @@
 from __future__ import annotations
 
 from django.apps import apps
-from django.contrib import admin
+from django.contrib import admin, messages
 
-from .models import Goshuin, GoshuinImage, ShrineCandidate, ShrineSubmission
-from django.utils import timezone
-from django.contrib import messages
+from .models import Goshuin, GoshuinImage, ShrineSubmission
 from temples.services.shrine_submission import (
     ShrineSubmissionDuplicateError,
     ShrineSubmissionInvalidStateError,
     approve_shrine_submission,
+    reject_shrine_submission,
 )
 
 
@@ -35,16 +34,60 @@ class ShrineSubmissionAdmin(admin.ModelAdmin):
         "name",
         "address",
         "user",
-        "reviewed_by",
+        "goriyaku_tags_summary",
         "created_at",
+        "reviewed_by",
+        "reviewed_at",
     )
     list_filter = ("status", "created_at", "reviewed_at")
     search_fields = ("name", "address", "user__username", "user__email")
     ordering = ("-created_at",)
-    readonly_fields = ("created_at", "updated_at", "reviewed_at")
+    readonly_fields = ("created_at", "updated_at", "reviewed_at", "reviewed_by")
+    fieldsets = (
+        (
+            "投稿内容",
+            {
+                "fields": (
+                    "status",
+                    "name",
+                    "address",
+                    ("lat", "lng"),
+                    "goriyaku_tags",
+                    "note",
+                )
+            },
+        ),
+        (
+            "審査情報",
+            {
+                "fields": (
+                    "review_comment",
+                    "reviewed_by",
+                    "reviewed_at",
+                )
+            },
+        ),
+        (
+            "メタ情報",
+            {
+                "fields": (
+                    "user",
+                    "created_at",
+                    "updated_at",
+                )
+            },
+        ),
+    )
 
     actions = ["mark_approved", "mark_rejected"]
 
+    @admin.display(description="ご利益タグ")
+    def goriyaku_tags_summary(self, obj):
+        if not obj.goriyaku_tags:
+            return "-"
+        if isinstance(obj.goriyaku_tags, list):
+            return ", ".join(str(tag) for tag in obj.goriyaku_tags[:5])
+        return str(obj.goriyaku_tags)
 
     @admin.action(description="Mark as approved")
     def mark_approved(self, request, queryset):
@@ -82,16 +125,37 @@ class ShrineSubmissionAdmin(admin.ModelAdmin):
 
     @admin.action(description="Mark as rejected")
     def mark_rejected(self, request, queryset):
-        updated = queryset.update(
-            status=ShrineSubmission.Status.REJECTED,
-            reviewed_at=timezone.now(),
-            reviewed_by=request.user,
-        )
-        self.message_user(
-            request,
-            f"{updated}件を rejected に更新しました。",
-            level=messages.SUCCESS,
-        )
+        success_count = 0
+        fail_count = 0
+
+        for submission in queryset:
+            try:
+                reject_shrine_submission(
+                    submission_id=submission.id,
+                    reviewer=request.user,
+                )
+                success_count += 1
+            except Exception as exc:
+                fail_count += 1
+                self.message_user(
+                    request,
+                    f"id={submission.id} の却下に失敗: {exc}",
+                    level=messages.WARNING,
+                )
+
+        if success_count:
+            self.message_user(
+                request,
+                f"{success_count}件を rejected に更新しました。",
+                level=messages.SUCCESS,
+            )
+
+        if fail_count:
+            self.message_user(
+                request,
+                f"{fail_count}件は却下できませんでした。",
+                level=messages.WARNING,
+            )
 
 
 def _maybe_register(model_name: str, admin_cls: type[admin.ModelAdmin]) -> None:
@@ -123,6 +187,7 @@ class GoriyakuTagAdmin(admin.ModelAdmin):
 
 class ShrineAdmin(admin.ModelAdmin):
     """神社モデルの管理画面（GISウィジェットなしの暫定版）"""
+
     list_display = ("name_jp", "address", "popular_score", "views_30d", "favorites_30d", "updated_at")
     search_fields = ("name_jp", "name_romaji", "address")
     list_filter = ("kind", "element", "kyusei")

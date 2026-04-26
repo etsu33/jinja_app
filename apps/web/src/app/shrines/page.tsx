@@ -1,26 +1,25 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
-import {
-  clearSubmissionPendingParams,
-  isSubmissionPendingParams,
-} from "@/features/shrine-submission/lib/submissionReturnState";
+import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { isSubmissionPendingParams } from "@/features/shrine-submission/lib/submissionReturnState";
 
 import { ShrineCard } from "@/components/shrines/ShrineCard";
 import type { ShrineCardAdapterProps } from "@/components/shrine/buildShrineCardProps";
 import { fetchShrines } from "@/lib/api/shrinesSearch";
 import { buildShrineListCardModel } from "@/lib/shrine/buildShrineListCardModel";
 
-export default function ShrinesPage() {
+function ShrinesPageContent() {
   const router = useRouter();
-  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   const [q, setQ] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [submittedName, setSubmittedName] = useState("");
   const [inputValue, setInputValue] = useState("");
   const showSubmissionPendingBanner = submitted;
+  const shouldShowSearchResults = !showSubmissionPendingBanner;
+  const searchEffectKey = `${q}:${shouldShowSearchResults ? "show" : "hide"}`;
 
   const [cards, setCards] = useState<ShrineCardAdapterProps[]>([]);
   const [count, setCount] = useState(0);
@@ -28,31 +27,13 @@ export default function ShrinesPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(searchParams.toString());
 
     setQ((params.get("q") ?? "").trim());
     setSubmitted(isSubmissionPendingParams(params));
     setSubmittedName((params.get("name") ?? "").trim());
-  }, []);
+  }, [searchParams]);
 
-  useEffect(() => {
-    if (!showSubmissionPendingBanner) return;
-    if (typeof window === "undefined") return;
-
-    const next = new URLSearchParams(window.location.search);
-    clearSubmissionPendingParams(next);
-
-    const qs = next.toString();
-    const url = qs ? `${pathname}?${qs}` : pathname;
-
-    const timer = window.setTimeout(() => {
-      router.replace(url);
-    }, 0);
-
-    return () => window.clearTimeout(timer);
-  }, [showSubmissionPendingBanner, pathname, router]);
 
   useEffect(() => {
     setInputValue(q);
@@ -65,6 +46,17 @@ export default function ShrinesPage() {
         alive = false;
       };
     }
+
+    if (!shouldShowSearchResults || q.length === 0) {
+      setCards([]);
+      setCount(0);
+      setError(null);
+      setLoading(false);
+      return () => {
+        alive = false;
+      };
+    }
+
     setLoading(true);
     setError(null);
 
@@ -89,22 +81,30 @@ export default function ShrinesPage() {
     return () => {
       alive = false;
     };
-  }, [q]);
+  }, [searchEffectKey]);
 
   const hasSearched = q.length > 0;
-  const isEmpty = !loading && !error && hasSearched && count === 0;
+  const isEmpty = shouldShowSearchResults && !loading && !error && hasSearched && count === 0;
   const submissionNotice = useMemo(() => {
     if (!showSubmissionPendingBanner) return null;
     return submittedName
-      ? `「${submittedName}」の投稿を受け付けました。\n現在審査中のため、公開検索にはまだ表示されません。\n審査完了後に公開されます。`
-      : "投稿を受け付けました。\n現在審査中のため、公開検索にはまだ表示されません。\n審査完了後に公開されます。";
+      ? `「${submittedName}」の投稿を受け付けました。\n現在公開準備中のため、公開検索にはまだ表示されません。\n確認が完了すると公開されます。`
+      : "投稿を受け付けました。\n現在公開準備中のため、公開検索にはまだ表示されません。\n確認が完了すると公開されます。";
   }, [showSubmissionPendingBanner, submittedName]);
 
   const handleSearch = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const nextQ = inputValue.trim();
     const next = new URLSearchParams();
-    if (nextQ) next.set("q", nextQ);
+
+    setSubmitted(false);
+    setSubmittedName("");
+    setQ(nextQ);
+
+    if (nextQ) {
+      next.set("q", nextQ);
+    }
+
     router.push(`/shrines${next.toString() ? `?${next.toString()}` : ""}`);
   };
 
@@ -113,65 +113,91 @@ export default function ShrinesPage() {
     router.push(`/shrines/new?returnTo=${encodeURIComponent(returnTo)}`);
   };
 
+  const handleReturnToSearch = () => {
+    setSubmitted(false);
+    setSubmittedName("");
+    setQ("");
+    setInputValue("");
+    router.push("/shrines");
+  };
+
   if (loading) return <p className="p-4">読み込み中...</p>;
 
   return (
     <main className="p-4">
       <h1 className="mb-4 text-xl font-bold">神社を探す</h1>
 
-      <form onSubmit={handleSearch} className="mb-6 flex flex-col gap-3 sm:flex-row">
-        <input
-          type="search"
-          value={inputValue}
-          onChange={(e) => setInputValue(e.currentTarget.value)}
-          placeholder="神社名で検索"
-          className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-900"
-        />
-        <button
-          type="submit"
-          className="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-medium text-white"
-        >
-          検索する
-        </button>
-      </form>
+      {shouldShowSearchResults && (
+        <form onSubmit={handleSearch} className="mb-6 flex flex-col gap-3 sm:flex-row">
+          <input
+            type="search"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.currentTarget.value)}
+            placeholder="神社名で検索"
+            className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-900"
+          />
+          <button
+            type="submit"
+            className="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-medium text-white"
+          >
+            検索する
+          </button>
+        </form>
+      )}
 
       {submissionNotice && (
         <div className="mb-6 whitespace-pre-line rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
-          {submissionNotice}
+          <p className="mb-3">{submissionNotice}</p>
+          <button
+            type="button"
+            onClick={handleReturnToSearch}
+            className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white"
+          >
+            神社を探すへ戻る
+          </button>
         </div>
       )}
 
       {error && <p className="text-red-500">{error}</p>}
 
-      {isEmpty ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <p className="text-sm text-slate-700">お探しの神社が見つかりませんか？</p>
-          <div className="mt-4">
-            <button
-              type="button"
-              className="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-medium text-white"
-              onClick={handleAddShrine}
-            >
-              神社を追加する
-            </button>
+      {shouldShowSearchResults && hasSearched &&
+        (isEmpty ? (
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <p className="text-sm text-slate-700">お探しの神社が見つかりませんか？</p>
+            <div className="mt-4">
+              <button
+                type="button"
+                className="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-medium text-white"
+                onClick={handleAddShrine}
+              >
+                神社を追加する
+              </button>
+            </div>
           </div>
-        </div>
-      ) : (
-        <ul className="grid gap-4">
-          {cards.map((p) => (
-            <li key={p.shrineId}>
-              <ShrineCard
-                name={p.title}
-                address={p.address ?? undefined}
-                recommendReason={p.description ?? undefined}
-                imageUrl={p.imageUrl ?? undefined}
-                tags={p.badges ?? []}
-                href={`/shrines/${p.shrineId}`}
-              />
-            </li>
-          ))}
-        </ul>
-      )}
+        ) : (
+          <ul className="grid gap-4">
+            {cards.map((p) => (
+              <li key={p.shrineId}>
+                <ShrineCard
+                  name={p.title}
+                  address={p.address ?? undefined}
+                  recommendReason={p.description ?? undefined}
+                  imageUrl={p.imageUrl ?? undefined}
+                  tags={p.badges ?? []}
+                  href={`/shrines/${p.shrineId}`}
+                />
+              </li>
+            ))}
+          </ul>
+        ))}
     </main>
+  );
+}
+
+export default function ShrinesPage() {
+  return (
+    <Suspense fallback={<p className="p-4">読み込み中...</p>}>
+      <ShrinesPageContent />
+    </Suspense>
   );
 }
