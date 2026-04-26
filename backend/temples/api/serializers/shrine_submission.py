@@ -60,3 +60,22 @@ class ShrineSubmissionCreateSerializer(serializers.ModelSerializer):
             status=ShrineSubmission.Status.PENDING,
             **validated_data,
         )
+
+
+class ShrineSubmissionListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ShrineSubmission
+        fields = [
+            "id",
+            "name",
+            "address",
+            "lat",
+            "lng",
+            "goriyaku_tags",
+            "note",
+            "status",
+            "created_at",
+            "reviewed_at",
+            "review_comment",
+        ]
+        read_only_fields = fields

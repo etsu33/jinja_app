@@ -3,17 +3,30 @@ from __future__ import annotations
 from rest_framework import generics, permissions
 from rest_framework.response import Response
 from rest_framework import status
+from temples.models import ShrineSubmission
 
-from temples.api.serializers.shrine_submission import ShrineSubmissionCreateSerializer
+from temples.api.serializers.shrine_submission import (
+    ShrineSubmissionCreateSerializer,
+    ShrineSubmissionListSerializer,
+)
+
 from temples.services.shrine_submission import (
     find_duplicate_candidates,
     serialize_duplicate_candidates,
 )
 
 
-class ShrineSubmissionCreateView(generics.CreateAPIView):
+class ShrineSubmissionCreateView(generics.ListCreateAPIView):
     serializer_class = ShrineSubmissionCreateSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return ShrineSubmission.objects.filter(user=self.request.user).order_by("-created_at")
+
+    def get_serializer_class(self):
+        if self.request.method == "GET":
+            return ShrineSubmissionListSerializer
+        return ShrineSubmissionCreateSerializer
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -35,5 +48,5 @@ class ShrineSubmissionCreateView(generics.CreateAPIView):
 
         submission = serializer.save()
 
-        response_serializer = self.get_serializer(submission)
+        response_serializer = ShrineSubmissionCreateSerializer(submission)
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)

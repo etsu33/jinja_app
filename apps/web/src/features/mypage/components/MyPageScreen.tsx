@@ -1,4 +1,3 @@
-// apps/web/src/features/mypage/components/MyPageScreen.tsx
 "use client";
 
 import React from "react";
@@ -14,7 +13,6 @@ import { buildShrineHref } from "@/lib/nav/buildShrineHref";
 import { useRouter } from "next/navigation";
 
 import { buildLoginHref } from "@/lib/nav/login";
-
 
 export default function MyPageScreen() {
   const router = useRouter();

@@ -1,4 +1,3 @@
-// apps/web/src/components/views/MyPageView.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -126,6 +125,7 @@ export default function MyPageView({ initialFavorites }: Props) {
         <TabLink href="/mypage?tab=favorites" active={tab === "favorites"}>
           保存した神社
         </TabLink>
+
       </div>
 
       {tab === "goshuin" ? (
