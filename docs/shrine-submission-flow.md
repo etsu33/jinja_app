@@ -123,6 +123,20 @@ seed:
 - 住所のみの一致では duplicate_candidate を返さない
 - 軽い曖昧一致は pending submission として受け付ける
 
+### 現時点の境界メモ
+
+- name の括弧表記ゆれは duplicate_candidate の候補判定で考慮する
+- name の空白・全角空白ゆれは normalize 単体で検証済み
+- ただし DB 側 `Shrine.name_jp` との比較では、空白除去済み name 同士の完全比較までは行わない
+- address の空白・全角空白・ハイフンゆれは normalize 単体で検証済み
+- 住所のみ一致では duplicate_candidate を返さない
+- 住所一致は候補抽出の主条件ではなく、候補の並び順補助として扱う
+
+### 将来拡張メモ
+
+- DB 側 `Shrine.name_jp` も空白除去・括弧正規化した比較キーで照合する余地がある
+- ただし曖昧一致を広げすぎると誤検知が増えるため、実データ検証後に対応する
+
 ### nameSuggestions との責務分離
 - nameSuggestions は入力補助のための広い候補提示
 - duplicate_candidate は submit 後の強い警告
