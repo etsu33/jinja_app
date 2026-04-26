@@ -134,7 +134,7 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
     [selectedTags, tags],
   );
 
-  const tagStatusText = selectedTagNames.length > 0 ? `${selectedTagNames.length}件選択中` : "未選択";
+  const tagStatusText = selectedTagNames.length > 0 ? `${selectedTagNames.length}件選択中` : "未選択でもOK";
 
   const clearErrors = (...keys: string[]) => {
     setErrors((prev) => {
@@ -402,18 +402,30 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
         {errors.address && <p className="text-xs text-red-600">{errors.address}</p>}
       </div>
 
-      <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+      <div className="space-y-4 rounded-2xl border border-emerald-100 bg-emerald-50/40 p-4">
         <div className="flex items-start justify-between gap-3">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
               <p className="text-sm font-semibold text-slate-900">ご利益タグ</p>
-              <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-slate-500">任意</span>
+              <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-100">
+                任意
+              </span>
+              <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-slate-500 ring-1 ring-slate-100">
+                参考情報
+              </span>
             </div>
-            <p className="text-xs text-slate-700 font-medium">
+            <p className="text-xs font-medium leading-relaxed text-slate-700">
               1つでも選ぶと、他の人に見つけてもらいやすくなります。未選択でも投稿できます。
             </p>
+            <p className="text-[11px] leading-relaxed text-slate-500">
+              選んだタグは公開前の確認時に参考情報として扱います。
+            </p>
           </div>
-          <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-700">
+          <span
+            className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+              selectedTagNames.length > 0 ? "bg-emerald-600 text-white" : "bg-white text-slate-500 ring-1 ring-slate-200"
+            }`}
+          >
             {tagStatusText}
           </span>
         </div>
@@ -421,7 +433,7 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
         {errors.tags && <p className="text-xs text-red-600">{errors.tags}</p>}
 
         {tagsLoading ? (
-          <p className="rounded-xl border border-dashed border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 font-medium">
+          <p className="rounded-xl border border-dashed border-emerald-200 bg-white px-3 py-2 text-xs font-medium text-slate-700">
             ご利益タグを読み込んでいます...
           </p>
         ) : tags.length > 0 ? (
@@ -435,10 +447,10 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
                   disabled={isSubmitting}
                   onClick={() => toggleTag(tag.id)}
                   aria-pressed={active}
-                  className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                  className={`rounded-full border px-3.5 py-2 text-xs font-semibold shadow-sm transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 ${
                     active
-                      ? "border-emerald-600 bg-emerald-50 text-emerald-700"
-                      : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                      ? "border-emerald-600 bg-emerald-600 text-white shadow-emerald-100 ring-2 ring-emerald-100"
+                      : "border-slate-200 bg-white text-slate-700 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
                   }`}
                 >
                   {tag.name}
@@ -447,15 +459,19 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
             })}
           </div>
         ) : (
-          <p className="rounded-xl border border-dashed border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 font-medium">
+          <p className="rounded-xl border border-dashed border-emerald-200 bg-white px-3 py-2 text-xs font-medium text-slate-700">
             選択できるご利益タグがありません。未選択でも投稿できます。
           </p>
         )}
 
         {selectedTagNames.length > 0 ? (
-          <p className="text-xs text-slate-700 font-medium">選択中: {selectedTagNames.join("、")}</p>
+          <div className="rounded-xl bg-white px-3 py-2 text-xs font-medium text-emerald-800 ring-1 ring-emerald-100">
+            選択中: {selectedTagNames.join("、")}
+          </div>
         ) : !tagsLoading && !errors.tags && tags.length > 0 ? (
-          <p className="text-xs text-slate-700 font-medium">1つでも選ぶと見つけてもらいやすくなります。</p>
+          <p className="rounded-xl bg-white px-3 py-2 text-xs font-medium text-slate-600 ring-1 ring-slate-100">
+            未選択でも投稿できます。迷う場合は空欄のままで大丈夫です。
+          </p>
         ) : null}
       </div>
 
