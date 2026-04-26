@@ -45,5 +45,15 @@ export async function getMyShrineSubmissions(): Promise<ShrineSubmissionResponse
     throw error;
   }
 
-  return body as ShrineSubmissionResponse[];
+  if (Array.isArray(body)) return body;
+
+  if (
+    body &&
+    typeof body === "object" &&
+    Array.isArray((body as { results?: unknown }).results)
+  ) {
+    return (body as { results: ShrineSubmissionResponse[] }).results;
+  }
+
+  return [];
 }
