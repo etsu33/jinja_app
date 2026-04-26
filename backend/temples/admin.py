@@ -2,10 +2,9 @@
 from __future__ import annotations
 
 from django.apps import apps
-from django.contrib import admin
+from django.contrib import admin, messages
 
-from .models import Goshuin, GoshuinImage, ShrineCandidate, ShrineSubmission
-from django.contrib import messages
+from .models import Goshuin, GoshuinImage, ShrineSubmission
 from temples.services.shrine_submission import (
     ShrineSubmissionDuplicateError,
     ShrineSubmissionInvalidStateError,
@@ -188,6 +187,7 @@ class GoriyakuTagAdmin(admin.ModelAdmin):
 
 class ShrineAdmin(admin.ModelAdmin):
     """神社モデルの管理画面（GISウィジェットなしの暫定版）"""
+
     list_display = ("name_jp", "address", "popular_score", "views_30d", "favorites_30d", "updated_at")
     search_fields = ("name_jp", "name_romaji", "address")
     list_filter = ("kind", "element", "kyusei")

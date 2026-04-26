@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { isSubmissionPendingParams } from "@/features/shrine-submission/lib/submissionReturnState";
 
@@ -9,7 +9,7 @@ import type { ShrineCardAdapterProps } from "@/components/shrine/buildShrineCard
 import { fetchShrines } from "@/lib/api/shrinesSearch";
 import { buildShrineListCardModel } from "@/lib/shrine/buildShrineListCardModel";
 
-export default function ShrinesPage() {
+function ShrinesPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -191,5 +191,13 @@ export default function ShrinesPage() {
           </ul>
         ))}
     </main>
+  );
+}
+
+export default function ShrinesPage() {
+  return (
+    <Suspense fallback={<p className="p-4">読み込み中...</p>}>
+      <ShrinesPageContent />
+    </Suspense>
   );
 }
