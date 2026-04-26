@@ -40,6 +40,7 @@ class ShrineSubmissionAdmin(admin.ModelAdmin):
         "address",
         "user",
         "goriyaku_tags_summary",
+        "review_status_summary",
         "created_at",
         "reviewed_by",
         "reviewed_at",
@@ -52,6 +53,7 @@ class ShrineSubmissionAdmin(admin.ModelAdmin):
         "updated_at",
         "reviewed_at",
         "reviewed_by",
+        "review_status_summary",
         "shrine_create_preview",
     )
     formfield_overrides = {
@@ -78,6 +80,7 @@ class ShrineSubmissionAdmin(admin.ModelAdmin):
             {
                 "fields": (
                     "review_comment",
+                    "review_status_summary",
                     "shrine_create_preview",
                     "reviewed_by",
                     "reviewed_at",
@@ -125,17 +128,35 @@ class ShrineSubmissionAdmin(admin.ModelAdmin):
             obj.user,
         )
 
+    @admin.display(description="審査状態")
+    def review_status_summary(self, obj):
+        if obj.status == ShrineSubmission.Status.APPROVED:
+            return format_html(
+                "<strong>承認済み</strong><br>確認者: {}<br>確認日時: {}",
+                obj.reviewed_by or "-",
+                obj.reviewed_at or "-",
+            )
+        if obj.status == ShrineSubmission.Status.REJECTED:
+            return format_html(
+                "<strong>却下済み</strong><br>確認者: {}<br>確認日時: {}",
+                obj.reviewed_by or "-",
+                obj.reviewed_at or "-",
+            )
+        return "審査待ち"
+
     @admin.action(description="Mark as approved")
     def mark_approved(self, request, queryset):
         success_count = 0
         fail_count = 0
+        created_shrines = []
 
         for submission in queryset:
             try:
-                approve_shrine_submission(
+                shrine = approve_shrine_submission(
                     submission_id=submission.id,
                     reviewer=request.user,
                 )
+                created_shrines.append(f"id={shrine.id}: {shrine.name_jp}")
                 success_count += 1
             except (ShrineSubmissionDuplicateError, ShrineSubmissionInvalidStateError) as exc:
                 fail_count += 1
@@ -146,9 +167,12 @@ class ShrineSubmissionAdmin(admin.ModelAdmin):
                 )
 
         if success_count:
+            shrine_summary = " / ".join(created_shrines[:5])
+            suffix = f" 他{len(created_shrines) - 5}件" if len(created_shrines) > 5 else ""
+            detail = f" 作成: {shrine_summary}{suffix}" if shrine_summary else ""
             self.message_user(
                 request,
-                f"{success_count}件を承認し、Shrine へ反映しました。",
+                f"{success_count}件を承認し、Shrine へ反映しました。{detail}",
                 level=messages.SUCCESS,
             )
 
