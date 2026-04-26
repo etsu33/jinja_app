@@ -12,6 +12,7 @@ vi.mock("next/navigation", () => ({
     push: pushMock,
     replace: replaceMock,
   }),
+  useSearchParams: () => new URLSearchParams(window.location.search),
   usePathname: () => "/shrines",
 }));
 
@@ -89,7 +90,7 @@ describe("/shrines page", () => {
     );
   });
 
-  it("submitted=1 & status=pending なら審査中メッセージを表示する", async () => {
+  it("submitted=1 & status=pending なら公開準備中メッセージだけを表示する", async () => {
     Object.defineProperty(window, "location", {
       configurable: true,
       value: {
@@ -113,13 +114,13 @@ describe("/shrines page", () => {
     render(<ShrinesPage />);
 
     await waitFor(() => {
-      expect(mockedFetchShrines).toHaveBeenCalled();
-    });
-
-    await waitFor(() => {
       expect(screen.getByText(/未登録テスト神社20260419/).closest("div")).toHaveTextContent(
-        /「未登録テスト神社20260419」の投稿を受け付けました。\s*現在審査中のため、公開検索にはまだ表示されません。\s*審査完了後に公開されます。/,
+        /「未登録テスト神社20260419」の投稿を受け付けました。\s*現在公開準備中のため、公開検索にはまだ表示されません。\s*確認が完了すると公開されます。/,
       );
     });
+
+    expect(mockedFetchShrines).not.toHaveBeenCalled();
+    expect(screen.queryByText("神田神社（神田明神）")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "神社を探すへ戻る" })).toBeInTheDocument();
   });
 });
