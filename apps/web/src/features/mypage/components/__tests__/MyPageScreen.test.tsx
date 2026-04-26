@@ -57,7 +57,7 @@ describe("MyPageScreen", () => {
       logout: vi.fn(),
     });
 
-    render(<MyPageScreen />);
+    render(<MyPageScreen activeTab="goshuin" />);
     expect(screen.getByRole("status")).toBeInTheDocument();
   });
 
@@ -69,7 +69,7 @@ describe("MyPageScreen", () => {
       logout: vi.fn(),
     });
 
-    render(<MyPageScreen />);
+    render(<MyPageScreen activeTab="goshuin" />);
     const link = screen.getByRole("link", { name: "ログインへ" });
     const href = link.getAttribute("href")!;
     expect(decodeURIComponent(href)).toBe("/auth/login?returnTo=/mypage?tab=goshuin");
@@ -83,7 +83,7 @@ describe("MyPageScreen", () => {
       logout: vi.fn(),
     });
 
-    render(<MyPageScreen />);
+    render(<MyPageScreen activeTab="goshuin" />);
     expect(screen.getByText("御朱印アップロード")).toBeInTheDocument();
     expect(screen.getByText("UPLOAD_FORM")).toBeInTheDocument();
     expect(screen.getByText("GOSHUIN_LIST")).toBeInTheDocument();
@@ -105,7 +105,7 @@ describe("MyPageScreen", () => {
       logout: vi.fn(),
     });
 
-    render(<MyPageScreen />);
+    render(<MyPageScreen activeTab="goshuin" />);
 
     expect(screen.getByRole("status")).toHaveTextContent(
       /「テスト神社」の投稿を受け付けました。\s*現在審査中のため、公開検索にはまだ表示されません。\s*審査完了後に公開されます。/,
@@ -124,7 +124,7 @@ describe("MyPageScreen", () => {
       logout: vi.fn(),
     });
 
-    render(<MyPageScreen />);
+    render(<MyPageScreen activeTab="goshuin" />);
 
     expect(
       screen.queryByText(
@@ -180,7 +180,7 @@ describe("MyPageScreen", () => {
       },
     ]);
 
-    render(<MyPageScreen />);
+    render(<MyPageScreen activeTab="submissions" />);
 
     expect(await screen.findByText("審査中神社")).toBeInTheDocument();
     expect(screen.getByText("審査中")).toBeInTheDocument();
@@ -207,7 +207,7 @@ describe("MyPageScreen", () => {
     });
     mockGetMyShrineSubmissions.mockRejectedValue(new Error("failed"));
 
-    render(<MyPageScreen />);
+    render(<MyPageScreen activeTab="submissions" />);
 
     expect(await screen.findByText("投稿した神社を読み込めませんでした。")).toBeInTheDocument();
   });
