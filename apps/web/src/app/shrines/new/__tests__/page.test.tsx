@@ -88,6 +88,31 @@ describe("/shrines/new page", () => {
     });
   });
 
+  it("mypage起点のsubmit成功時はsubmissionsタブへ戻る", async () => {
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: {
+        ...originalWindowLocation,
+        search: "?returnTo=%2Fmypage%3Ftab%3Dgoshuin",
+      },
+    });
+
+    mockedUseAuth.mockReturnValue({
+      isLoggedIn: true,
+      loading: false,
+    } as ReturnType<typeof useAuth>);
+
+    render(<NewShrinePage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "submit-success" }));
+
+    await waitFor(() => {
+      expect(replaceMock).toHaveBeenCalledWith(
+        "/mypage?tab=submissions&submitted=1&status=pending&name=%E6%9C%AA%E7%99%BB%E9%8C%B2%E3%83%86%E3%82%B9%E3%83%88%E7%A5%9E%E7%A4%BE20260419",
+      );
+    });
+  });
+
   it("未ログインならreturnToを保持したままログインへ飛ばす", async () => {
     Object.defineProperty(window, "location", {
       configurable: true,

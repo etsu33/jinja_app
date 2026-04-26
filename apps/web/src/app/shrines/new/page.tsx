@@ -5,7 +5,19 @@ import { useRouter } from "next/navigation";
 
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { ShrineSubmissionForm } from "@/features/shrine-submission/components/ShrineSubmissionForm";
+
 import { sanitizeReturnTo } from "@/lib/nav/login";
+
+function normalizeSubmissionReturnTo(value: string): string {
+  if (!value.startsWith("/mypage")) return value;
+
+  const [path, query = ""] = value.split("?");
+  const params = new URLSearchParams(query);
+  params.set("tab", "submissions");
+  const qs = params.toString();
+
+  return qs ? `${path}?${qs}` : `${path}?tab=submissions`;
+}
 
 export default function NewShrinePage() {
   const router = useRouter();
@@ -55,7 +67,7 @@ export default function NewShrinePage() {
           next.set("submitted", "1");
           next.set("status", submission.status);
           next.set("name", submission.name);
-          const safeReturnTo = sanitizeReturnTo(returnTo) ?? "/shrines";
+          const safeReturnTo = normalizeSubmissionReturnTo(sanitizeReturnTo(returnTo) ?? "/shrines");
           router.replace(`${safeReturnTo}${safeReturnTo.includes("?") ? "&" : "?"}${next.toString()}`);
         }}
         onRequireAuth={() => {
