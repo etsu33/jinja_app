@@ -1,5 +1,3 @@
-
-
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createShrineSubmission, getMyShrineSubmissions } from "../shrineSubmissions";
@@ -35,8 +33,6 @@ describe("shrineSubmissions api", () => {
       createShrineSubmission({
         name: "投稿神社",
         address: "東京都千代田区1-1-1",
-        lat: null,
-        lng: null,
         goriyaku_tags: ["開運"],
         note: "補足",
       }),
@@ -49,8 +45,6 @@ describe("shrineSubmissions api", () => {
       body: JSON.stringify({
         name: "投稿神社",
         address: "東京都千代田区1-1-1",
-        lat: null,
-        lng: null,
         goriyaku_tags: ["開運"],
         note: "補足",
       }),
