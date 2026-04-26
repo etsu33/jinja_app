@@ -6,8 +6,9 @@ from django.contrib import admin, messages
 from django import forms
 from django.db import models
 from django.utils.html import format_html
+from django.urls import reverse
 
-from .models import Goshuin, GoshuinImage, ShrineSubmission
+from .models import Goshuin, GoshuinImage, Shrine, ShrineSubmission
 from temples.services.shrine_submission import (
     ShrineSubmissionDuplicateError,
     ShrineSubmissionInvalidStateError,
@@ -54,6 +55,7 @@ class ShrineSubmissionAdmin(admin.ModelAdmin):
         "reviewed_at",
         "reviewed_by",
         "review_status_summary",
+        "approved_shrine_admin_link",
         "shrine_create_preview",
     )
     formfield_overrides = {
@@ -81,6 +83,7 @@ class ShrineSubmissionAdmin(admin.ModelAdmin):
                 "fields": (
                     "review_comment",
                     "review_status_summary",
+                    "approved_shrine_admin_link",
                     "shrine_create_preview",
                     "reviewed_by",
                     "reviewed_at",
@@ -143,6 +146,22 @@ class ShrineSubmissionAdmin(admin.ModelAdmin):
                 obj.reviewed_at or "-",
             )
         return "審査待ち"
+
+    @admin.display(description="作成済み Shrine")
+    def approved_shrine_admin_link(self, obj):
+        if obj.status != ShrineSubmission.Status.APPROVED:
+            return "未承認"
+
+        shrine = Shrine.objects.filter(
+            name_jp=normalize_shrine_name(obj.name),
+            address=normalize_shrine_address(obj.address),
+        ).first()
+
+        if shrine is None:
+            return "未作成または特定できません"
+
+        url = reverse("admin:temples_shrine_change", args=[shrine.id])
+        return format_html('<a href="{}">{} (id={})</a>', url, shrine.name_jp, shrine.id)
 
     @admin.action(description="Mark as approved")
     def mark_approved(self, request, queryset):
