@@ -123,4 +123,34 @@ describe("/shrines page", () => {
     expect(screen.queryByText("神田神社（神田明神）")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "神社を探すへ戻る" })).toBeInTheDocument();
   });
+
+  it("投稿完了後に神社を探すへ戻れる", async () => {
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: {
+        ...originalWindowLocation,
+        search:
+          "?submitted=1&status=pending&name=%E6%9C%AA%E7%99%BB%E9%8C%B2%E3%83%86%E3%82%B9%E3%83%88%E7%A5%9E%E7%A4%BE20260419",
+      },
+    });
+
+    render(<ShrinesPage />);
+
+    const button = await screen.findByRole("button", { name: "神社を探すへ戻る" });
+    fireEvent.click(button);
+
+    expect(pushMock).toHaveBeenCalledWith("/shrines");
+  });
+
+  it("検索語を入力して検索すると検索URLへ遷移する", async () => {
+    render(<ShrinesPage />);
+
+    fireEvent.change(screen.getByPlaceholderText("神社名で検索"), {
+      target: { value: "稲荷" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "検索する" }));
+
+    expect(pushMock).toHaveBeenCalledWith("/shrines?q=%E7%A8%B2%E8%8D%B7");
+  });
 });
