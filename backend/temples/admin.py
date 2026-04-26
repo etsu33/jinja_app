@@ -3,12 +3,17 @@ from __future__ import annotations
 
 from django.apps import apps
 from django.contrib import admin, messages
+from django import forms
+from django.db import models
+from django.utils.html import format_html
 
 from .models import Goshuin, GoshuinImage, ShrineSubmission
 from temples.services.shrine_submission import (
     ShrineSubmissionDuplicateError,
     ShrineSubmissionInvalidStateError,
     approve_shrine_submission,
+    normalize_shrine_address,
+    normalize_shrine_name,
     reject_shrine_submission,
 )
 
@@ -42,7 +47,18 @@ class ShrineSubmissionAdmin(admin.ModelAdmin):
     list_filter = ("status", "created_at", "reviewed_at")
     search_fields = ("name", "address", "user__username", "user__email")
     ordering = ("-created_at",)
-    readonly_fields = ("created_at", "updated_at", "reviewed_at", "reviewed_by")
+    readonly_fields = (
+        "created_at",
+        "updated_at",
+        "reviewed_at",
+        "reviewed_by",
+        "shrine_create_preview",
+    )
+    formfield_overrides = {
+        models.TextField: {
+            "widget": forms.Textarea(attrs={"rows": 6, "cols": 80}),
+        },
+    }
     fieldsets = (
         (
             "投稿内容",
@@ -62,6 +78,7 @@ class ShrineSubmissionAdmin(admin.ModelAdmin):
             {
                 "fields": (
                     "review_comment",
+                    "shrine_create_preview",
                     "reviewed_by",
                     "reviewed_at",
                 )
@@ -83,11 +100,30 @@ class ShrineSubmissionAdmin(admin.ModelAdmin):
 
     @admin.display(description="ご利益タグ")
     def goriyaku_tags_summary(self, obj):
-        if not obj.goriyaku_tags:
+        tags = obj.goriyaku_tags
+        if not tags:
             return "-"
-        if isinstance(obj.goriyaku_tags, list):
-            return ", ".join(str(tag) for tag in obj.goriyaku_tags[:5])
-        return str(obj.goriyaku_tags)
+
+        if isinstance(tags, list):
+            normalized = [str(tag) for tag in tags if str(tag).strip()]
+            if not normalized:
+                return "-"
+            visible = normalized[:5]
+            suffix = f" 他{len(normalized) - 5}件" if len(normalized) > 5 else ""
+            return f"{', '.join(visible)}{suffix}"
+
+        return str(tags)
+
+    @admin.display(description="承認時の Shrine 反映プレビュー")
+    def shrine_create_preview(self, obj):
+        return format_html(
+            "神社名: {}<br>住所: {}<br>緯度: {}<br>経度: {}<br>所有者: {}<br>ご利益タグ: Shrine本体へは自動反映しません",
+            normalize_shrine_name(obj.name),
+            normalize_shrine_address(obj.address),
+            obj.lat if obj.lat is not None else "-",
+            obj.lng if obj.lng is not None else "-",
+            obj.user,
+        )
 
     @admin.action(description="Mark as approved")
     def mark_approved(self, request, queryset):
