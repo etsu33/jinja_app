@@ -11,6 +11,12 @@ import Link from "next/link";
 import { buildLoginHref } from "@/lib/nav/login";
 
 type Props = { initialFavorites: Favorite[] };
+type MyPageTab = "profile" | "goshuin" | "favorites" | "submissions";
+
+function normalizeTab(value: string | null): MyPageTab {
+  if (value === "goshuin" || value === "favorites" || value === "submissions") return value;
+  return "profile";
+}
 
 function TabLink({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
   return (
@@ -22,7 +28,7 @@ function TabLink({ href, active, children }: { href: string; active: boolean; ch
 
 export default function MyPageView({ initialFavorites }: Props) {
   const sp = useSearchParams();
-  const tab = sp.get("tab") ?? "profile";
+  const tab = normalizeTab(sp.get("tab"));
   const { user: authUser, loading } = useAuthContext();
 
   const [user, setUser] = useState<UserMe | null>(null);
@@ -94,7 +100,7 @@ export default function MyPageView({ initialFavorites }: Props) {
   }
 
   if (!user) {
-    const next = tab === "goshuin" ? "/mypage?tab=goshuin" : "/mypage?tab=profile";
+    const next = tab === "goshuin" || tab === "favorites" || tab === "submissions" ? `/mypage?tab=${tab}` : "/mypage?tab=profile";
     return (
       <main className="mx-auto max-w-3xl p-6">
         <h1 className="mb-4 text-xl font-bold">マイページ</h1>
@@ -118,6 +124,10 @@ export default function MyPageView({ initialFavorites }: Props) {
           プロフィール
         </TabLink>
 
+        <TabLink href="/mypage?tab=submissions" active={tab === "submissions"}>
+          投稿した神社
+        </TabLink>
+
         <TabLink href="/mypage?tab=goshuin" active={tab === "goshuin"}>
           御朱印
         </TabLink>
@@ -125,11 +135,12 @@ export default function MyPageView({ initialFavorites }: Props) {
         <TabLink href="/mypage?tab=favorites" active={tab === "favorites"}>
           保存した神社
         </TabLink>
-
       </div>
 
       {tab === "goshuin" ? (
-        <MyPageScreen />
+        <MyPageScreen activeTab="goshuin" />
+      ) : tab === "submissions" ? (
+        <MyPageScreen activeTab="submissions" />
       ) : tab === "favorites" ? (
         <FavoritesSection initialFavorites={initialFavorites} />
       ) : (

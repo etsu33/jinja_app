@@ -28,7 +28,11 @@ const submissionStatusClass: Record<ShrineSubmissionStatus, string> = {
   rejected: "border-rose-200 bg-rose-50 text-rose-800",
 };
 
-export default function MyPageScreen() {
+type MyPageScreenProps = {
+  activeTab: "goshuin" | "submissions";
+};
+
+export default function MyPageScreen({ activeTab }: MyPageScreenProps) {
   const router = useRouter();
   const { user, isLoggedIn, loading, logout } = useAuth();
 
@@ -142,10 +146,11 @@ export default function MyPageScreen() {
       )}
 
       <div className="space-y-4">
-        <SectionCard
-          title="投稿した神社"
-          description="追加申請した神社の審査状態を確認できます。公開済みになると検索から確認できます。"
-        >
+        {activeTab === "submissions" && (
+          <SectionCard
+            title="投稿した神社"
+            description="追加申請した神社の審査状態を確認できます。公開済みになると検索から確認できます。"
+          >
           {submissionsLoading ? (
             <p className="text-sm text-slate-500">投稿履歴を読み込み中…</p>
           ) : submissionsError ? (
@@ -201,9 +206,11 @@ export default function MyPageScreen() {
               })}
             </div>
           )}
-        </SectionCard>
+          </SectionCard>
+        )}
 
-        <section className="space-y-4" aria-labelledby="goshuin-section-title">
+        {activeTab === "goshuin" && (
+          <section className="space-y-4" aria-labelledby="goshuin-section-title">
           <div className="space-y-1">
             <h2 id="goshuin-section-title" className="text-lg font-semibold text-slate-900">
               御朱印帳
@@ -239,7 +246,8 @@ export default function MyPageScreen() {
               navigateOnCardClick
             />
           </SectionCard>
-        </section>
+          </section>
+        )}
       </div>
     </main>
   );
