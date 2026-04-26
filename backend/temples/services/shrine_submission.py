@@ -207,6 +207,9 @@ def approve_shrine_submission(
             ),
         )
 
+    # 投稿者選択の goriyaku_tags / note は審査時の参考情報として扱う。
+    # 検索・推薦に使う Shrine.goriyaku_tags は admin が確認後に確定するため、ここでは自動反映しない。
+    # 将来的にタグ自動提案や半自動承認を入れる場合も、正本反映は信頼済みルールを経由させる。
     shrine = Shrine.objects.create(
         name_jp=normalize_shrine_name(submission.name),
         address=normalize_shrine_address(submission.address),
