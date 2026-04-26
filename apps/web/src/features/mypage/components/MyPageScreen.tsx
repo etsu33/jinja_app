@@ -14,19 +14,6 @@ import { useRouter } from "next/navigation";
 
 import { buildLoginHref } from "@/lib/nav/login";
 import { getMyShrineSubmissions } from "@/lib/api/shrineSubmissions";
-import type { ShrineSubmissionStatus } from "@/features/shrine-submission/types";
-
-const submissionStatusLabel: Record<ShrineSubmissionStatus, string> = {
-  pending: "審査中",
-  approved: "公開済み",
-  rejected: "見送り",
-};
-
-const submissionStatusClass: Record<ShrineSubmissionStatus, string> = {
-  pending: "border-amber-200 bg-amber-50 text-amber-800",
-  approved: "border-emerald-200 bg-emerald-50 text-emerald-800",
-  rejected: "border-rose-200 bg-rose-50 text-rose-800",
-};
 
 type MyPageScreenProps = {
   activeTab: "goshuin" | "submissions";
@@ -59,6 +46,10 @@ export default function MyPageScreen({ activeTab }: MyPageScreenProps) {
     removeItem,
     toggleVisibility,
   } = useMyGoshuin({ enabled: goshuinEnabled });
+
+  const approvedSubmissions = submissions.filter((submission) => submission.status === "approved");
+  const pendingSubmissions = submissions.filter((submission) => submission.status === "pending");
+  const rejectedSubmissions = submissions.filter((submission) => submission.status === "rejected");
 
   useEffect(() => {
     if (loading || !isLoggedIn || !user) {
@@ -148,64 +139,101 @@ export default function MyPageScreen({ activeTab }: MyPageScreenProps) {
       <div className="space-y-4">
         {activeTab === "submissions" && (
           <SectionCard
-            title="投稿した神社"
-            description="追加申請した神社の審査状態を確認できます。公開済みになると検索から確認できます。"
+            title="投稿状況"
+            description="追加申請した神社の審査状況を確認できます。公開済みになると検索から確認できます。"
           >
-          {submissionsLoading ? (
-            <p className="text-sm text-slate-500">投稿履歴を読み込み中…</p>
-          ) : submissionsError ? (
-            <p className="text-sm text-rose-700">{submissionsError}</p>
-          ) : submissions.length === 0 ? (
-            <p className="text-sm text-slate-500">投稿した神社はまだありません。</p>
-          ) : (
-            <div className="space-y-3">
-              {submissions.map((submission) => {
-                const searchHref = `/shrines?q=${encodeURIComponent(submission.name)}`;
+            {submissionsLoading ? (
+              <p className="text-sm text-slate-500">投稿履歴を読み込み中…</p>
+            ) : submissionsError ? (
+              <p className="text-sm text-rose-700">{submissionsError}</p>
+            ) : submissions.length === 0 ? (
+              <p className="text-sm text-slate-500">投稿した神社はまだありません。</p>
+            ) : (
+              <div className="space-y-5">
+                {approvedSubmissions.length > 0 && (
+                  <section className="space-y-3">
+                    <h3 className="text-sm font-semibold text-emerald-900">公開済み</h3>
 
-                return (
-                  <article key={submission.id} className="rounded-2xl border border-slate-200 bg-white p-4">
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="space-y-1">
-                        <h3 className="text-sm font-semibold text-slate-900">{submission.name}</h3>
-                        <p className="text-xs leading-6 text-slate-500">{submission.address}</p>
-                      </div>
-                      <span
-                        className={`w-fit rounded-full border px-2 py-0.5 text-xs font-medium ${submissionStatusClass[submission.status]}`}
-                      >
-                        {submissionStatusLabel[submission.status]}
-                      </span>
-                    </div>
+                    {approvedSubmissions.map((submission) => {
+                      const searchHref = `/shrines?q=${encodeURIComponent(submission.name)}`;
 
-                    {submission.status === "pending" && (
-                      <p className="mt-3 text-xs leading-6 text-slate-600">
-                        現在審査中です。公開検索にはまだ表示されません。
-                      </p>
-                    )}
+                      return (
+                        <div key={submission.id} className="rounded-xl border border-emerald-100 bg-emerald-50 p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="font-semibold text-slate-900">{submission.name}</p>
+                              <p className="mt-1 text-xs text-slate-500">{submission.address}</p>
+                            </div>
+                            <span className="rounded-full border border-emerald-200 bg-white px-2 py-1 text-xs font-semibold text-emerald-700">
+                              公開済み
+                            </span>
+                          </div>
 
-                    {submission.status === "approved" && (
-                      <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-3">
-                        <p className="text-xs leading-6 text-emerald-900">
-                          公開検索で確認できます。コンシェルジュ推薦には反映準備中の場合があります。
+                          <p className="mt-3 text-xs leading-6 text-emerald-900">
+                            この神社は公開されました。検索から確認できます。
+                          </p>
+
+                          <Link
+                            className="mt-2 inline-flex w-fit items-center rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+                            href={searchHref}
+                          >
+                            公開検索で確認する
+                          </Link>
+                        </div>
+                      );
+                    })}
+                  </section>
+                )}
+
+                {pendingSubmissions.length > 0 && (
+                  <section className="space-y-3">
+                    <h3 className="text-sm font-semibold text-amber-900">審査中</h3>
+
+                    {pendingSubmissions.map((submission) => (
+                      <div key={submission.id} className="rounded-xl border border-amber-100 bg-amber-50 p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-semibold text-slate-900">{submission.name}</p>
+                            <p className="mt-1 text-xs text-slate-500">{submission.address}</p>
+                          </div>
+                          <span className="rounded-full border border-amber-200 bg-white px-2 py-1 text-xs font-semibold text-amber-700">
+                            審査中
+                          </span>
+                        </div>
+
+                        <p className="mt-3 text-xs leading-6 text-amber-900">
+                          現在審査中です。公開されると検索に表示されます。
                         </p>
-                        <Link
-                          className="mt-2 inline-flex w-fit items-center rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700"
-                          href={searchHref}
-                        >
-                          公開検索で確認する
-                        </Link>
                       </div>
-                    )}
+                    ))}
+                  </section>
+                )}
 
-                    {submission.status === "rejected" && submission.review_comment && (
-                      <p className="mt-3 rounded-xl bg-rose-50 px-3 py-2 text-xs leading-6 text-rose-800">
-                        {submission.review_comment}
-                      </p>
-                    )}
-                  </article>
-                );
-              })}
-            </div>
-          )}
+                {rejectedSubmissions.length > 0 && (
+                  <section className="space-y-3">
+                    <h3 className="text-sm font-semibold text-rose-900">差し戻し</h3>
+
+                    {rejectedSubmissions.map((submission) => (
+                      <div key={submission.id} className="rounded-xl border border-rose-100 bg-rose-50 p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-semibold text-slate-900">{submission.name}</p>
+                            <p className="mt-1 text-xs text-slate-500">{submission.address}</p>
+                          </div>
+                          <span className="rounded-full border border-rose-200 bg-white px-2 py-1 text-xs font-semibold text-rose-700">
+                            差し戻し
+                          </span>
+                        </div>
+
+                        {submission.review_comment && (
+                          <p className="mt-3 text-xs leading-6 text-rose-900">{submission.review_comment}</p>
+                        )}
+                      </div>
+                    ))}
+                  </section>
+                )}
+              </div>
+            )}
           </SectionCard>
         )}
 
