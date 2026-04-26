@@ -85,12 +85,11 @@ function ShrinesPageContent() {
 
   const hasSearched = q.length > 0;
   const isEmpty = shouldShowSearchResults && !loading && !error && hasSearched && count === 0;
-  const submissionNotice = useMemo(() => {
+  const submissionNoticeTitle = submittedName ? `「${submittedName}」の投稿を受け付けました` : "投稿を受け付けました";
+  const submissionNoticeBody = useMemo(() => {
     if (!showSubmissionPendingBanner) return null;
-    return submittedName
-      ? `「${submittedName}」の投稿を受け付けました。\n現在公開準備中のため、公開検索にはまだ表示されません。\n確認が完了すると公開されます。`
-      : "投稿を受け付けました。\n現在公開準備中のため、公開検索にはまだ表示されません。\n確認が完了すると公開されます。";
-  }, [showSubmissionPendingBanner, submittedName]);
+    return "現在公開準備中です。確認が完了するまで公開検索には表示されません。";
+  }, [showSubmissionPendingBanner]);
 
   const handleSearch = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -145,13 +144,19 @@ function ShrinesPageContent() {
         </form>
       )}
 
-      {submissionNotice && (
-        <div className="mb-6 whitespace-pre-line rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
-          <p className="mb-3">{submissionNotice}</p>
+      {submissionNoticeBody && (
+        <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-900">
+          <div className="mb-4 space-y-2">
+            <p className="text-base font-semibold text-emerald-950">{submissionNoticeTitle}</p>
+            <p className="leading-relaxed text-emerald-900">{submissionNoticeBody}</p>
+            <p className="text-xs leading-relaxed text-emerald-800">
+              ご利益タグなどの内容は確認時の参考情報として扱います。
+            </p>
+          </div>
           <button
             type="button"
             onClick={handleReturnToSearch}
-            className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white"
+            className="rounded-xl border border-emerald-200 bg-white px-4 py-2 text-sm font-medium text-emerald-700 shadow-sm transition hover:bg-emerald-100"
           >
             神社を探すへ戻る
           </button>

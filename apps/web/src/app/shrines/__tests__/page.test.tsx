@@ -114,9 +114,9 @@ describe("/shrines page", () => {
     render(<ShrinesPage />);
 
     await waitFor(() => {
-      expect(screen.getByText(/未登録テスト神社20260419/).closest("div")).toHaveTextContent(
-        /「未登録テスト神社20260419」の投稿を受け付けました。\s*現在公開準備中のため、公開検索にはまだ表示されません。\s*確認が完了すると公開されます。/,
-      );
+      expect(screen.getByText("「未登録テスト神社20260419」の投稿を受け付けました")).toBeInTheDocument();
+      expect(screen.getByText("現在公開準備中です。確認が完了するまで公開検索には表示されません。")).toBeInTheDocument();
+      expect(screen.getByText("ご利益タグなどの内容は確認時の参考情報として扱います。")).toBeInTheDocument();
     });
 
     expect(mockedFetchShrines).not.toHaveBeenCalled();
