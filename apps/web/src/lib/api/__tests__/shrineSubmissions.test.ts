@@ -51,7 +51,7 @@ describe("shrineSubmissions api", () => {
     });
   });
 
-  it("getMyShrineSubmissions は投稿一覧を取得する", async () => {
+  it("getMyShrineSubmissions は配列レスポンスをそのまま返す", async () => {
     const body = [
       {
         id: 1,
@@ -75,6 +75,43 @@ describe("shrineSubmissions api", () => {
     });
 
     await expect(getMyShrineSubmissions()).resolves.toEqual(body);
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/shrine-submissions/", {
+      method: "GET",
+      credentials: "include",
+    });
+  });
+
+  it("getMyShrineSubmissions は results 形式を配列に正規化する", async () => {
+    const results = [
+      {
+        id: 2,
+        name: "ページング投稿神社",
+        address: "東京都港区2-2-2",
+        lat: null,
+        lng: null,
+        goriyaku_tags: [],
+        note: "",
+        status: "pending",
+        created_at: "2026-04-03T00:00:00Z",
+        reviewed_at: null,
+        review_comment: null,
+      },
+    ];
+    const body = {
+      count: 1,
+      next: null,
+      previous: null,
+      results,
+    };
+
+    fetchMock.mockResolvedValue({
+      ok: true,
+      headers: new Headers({ "content-type": "application/json" }),
+      json: async () => body,
+    });
+
+    await expect(getMyShrineSubmissions()).resolves.toEqual(results);
 
     expect(fetchMock).toHaveBeenCalledWith("/api/shrine-submissions/", {
       method: "GET",
