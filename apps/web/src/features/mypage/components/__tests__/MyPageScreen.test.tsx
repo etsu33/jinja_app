@@ -13,6 +13,11 @@ vi.mock("@/features/mypage/hooks", () => ({
   useMyGoshuin: (args: any) => mockUseMyGoshuin(args),
 }));
 
+const mockGetMyShrineSubmissions = vi.fn();
+vi.mock("@/lib/api/shrineSubmissions", () => ({
+  getMyShrineSubmissions: () => mockGetMyShrineSubmissions(),
+}));
+
 const mockSearchParams = new Map<string, string>();
 
 vi.mock("next/navigation", () => ({
@@ -33,6 +38,7 @@ vi.mock("../MyGoshuinList", () => ({
 describe("MyPageScreen", () => {
   beforeEach(() => {
     mockSearchParams.clear();
+    mockGetMyShrineSubmissions.mockResolvedValue([]);
     mockUseMyGoshuin.mockReturnValue({
       items: [],
       loading: false,
@@ -125,5 +131,84 @@ describe("MyPageScreen", () => {
         "「テスト神社」の投稿を受け付けました。現在審査中のため、公開検索にはまだ表示されません。審査完了後に公開されます。",
       ),
     ).not.toBeInTheDocument();
+  });
+
+  it("ログイン時に投稿履歴を取得して pending / approved / rejected を表示する", async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: 1, username: "u" },
+      isLoggedIn: true,
+      loading: false,
+      logout: vi.fn(),
+    });
+
+    mockGetMyShrineSubmissions.mockResolvedValue([
+      {
+        id: 1,
+        name: "審査中神社",
+        address: "東京都千代田区1-1-1",
+        lat: null,
+        lng: null,
+        goriyaku_tags: [],
+        note: "",
+        status: "pending",
+        created_at: "2026-04-01T00:00:00Z",
+      },
+      {
+        id: 2,
+        name: "公開済み神社",
+        address: "東京都中央区2-2-2",
+        lat: null,
+        lng: null,
+        goriyaku_tags: [],
+        note: "",
+        status: "approved",
+        created_at: "2026-04-02T00:00:00Z",
+        reviewed_at: "2026-04-03T00:00:00Z",
+      },
+      {
+        id: 3,
+        name: "見送り神社",
+        address: "東京都港区3-3-3",
+        lat: null,
+        lng: null,
+        goriyaku_tags: [],
+        note: "",
+        status: "rejected",
+        created_at: "2026-04-04T00:00:00Z",
+        reviewed_at: "2026-04-05T00:00:00Z",
+        review_comment: "既存神社と重複しています。",
+      },
+    ]);
+
+    render(<MyPageScreen />);
+
+    expect(await screen.findByText("審査中神社")).toBeInTheDocument();
+    expect(screen.getByText("審査中")).toBeInTheDocument();
+    expect(screen.getByText("現在審査中です。公開検索にはまだ表示されません。")).toBeInTheDocument();
+
+    expect(screen.getByText("公開済み神社")).toBeInTheDocument();
+    expect(screen.getByText("公開済み")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "公開検索で確認する" })).toHaveAttribute(
+      "href",
+      "/shrines?q=%E5%85%AC%E9%96%8B%E6%B8%88%E3%81%BF%E7%A5%9E%E7%A4%BE",
+    );
+
+    expect(screen.getByText("見送り神社")).toBeInTheDocument();
+    expect(screen.getByText("見送り")).toBeInTheDocument();
+    expect(screen.getByText("既存神社と重複しています。")).toBeInTheDocument();
+  });
+
+  it("投稿履歴取得に失敗したらエラーを表示する", async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: 1, username: "u" },
+      isLoggedIn: true,
+      loading: false,
+      logout: vi.fn(),
+    });
+    mockGetMyShrineSubmissions.mockRejectedValue(new Error("failed"));
+
+    render(<MyPageScreen />);
+
+    expect(await screen.findByText("投稿した神社を読み込めませんでした。")).toBeInTheDocument();
   });
 });
