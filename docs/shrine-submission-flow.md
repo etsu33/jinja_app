@@ -92,6 +92,28 @@ seed:
 - 重複検証神社 ×2
 - 重複検証神社（別宮）×1
 
+## duplicate_candidate 実データ検証結果
+
+検証DB:
+- Shrine 件数: 105件
+
+類似名抽出:
+- `稲荷`: 6件
+- `神田`: 1件
+
+確認ケース:
+- `神田神社` + `東京都千代田区外神田2-16-2`
+  - 結果: `神田神社（神田明神）` を候補として返す
+- `神田神社(神田明神)` + `東京都千代田区外神田2-16-2`
+  - 結果: `神田神社（神田明神）` を候補として返す
+- `まったく別の神社名` + `東京都千代田区外神田2-16-2`
+  - 結果: 候補なし
+
+判断:
+- 明確一致: OK
+- 括弧表記ゆれ: OK
+- 住所のみ一致: 投稿を止めないためOK
+
 ## duplicate_candidate の定義
 
 ### 判定方針
@@ -117,3 +139,32 @@ seed:
 - 投稿直後データは公開マスター未反映のため、審査完了までは検索結果に出ない
 - 重複投稿抑止は Phase 2 で正規化・精度改善を行う
 - duplicate candidate 判定では、神社名の空白・括弧表記ゆれと、住所の空白・ハイフンゆれを service 層で正規化して比較する
+
+
+## 投稿タグ・note・推薦利用方針
+
+### goriyaku_tags の扱い
+
+- `Shrine.goriyaku_tags` は検索・推薦に使う正本データとする
+- `ShrineSubmission.goriyaku_tags` は投稿者が選んだ参考情報として扱う
+- `ShrineSubmission.goriyaku_tags` は JSONField で保持し、投稿時点では `Shrine.goriyaku_tags` へ自動反映しない
+- 承認時に自動反映するのは `name / address / lat / lng / owner` のみとする
+- `Shrine.goriyaku_tags` への反映は admin が確認後に手動で確定する
+
+### note の扱い
+
+- `ShrineSubmission.note` は審査補足として扱う
+- `note` は公開検索・推薦・concierge の入力には使わない
+- `note` の内容を Shrine 本体へ反映する場合は、admin が `description` や `goriyaku` など適切なフィールドへ手動で転記する
+
+### concierge との関係
+
+- concierge は `Shrine.goriyaku_tags` のみを検索・推薦ロジックの対象とする
+- pending / rejected の `ShrineSubmission` は concierge 候補に含めない
+- 投稿者選択タグは admin 審査時の判断材料であり、推薦ロジックの直接入力にはしない
+
+### 将来拡張
+
+- 投稿者選択タグは、将来的に admin 向けのタグ自動提案に使う余地を残す
+- 半自動承認を導入する場合も、`Shrine.goriyaku_tags` への確定反映は admin または信頼済みルールを経由する
+- MVPでは、投稿者選択タグをそのまま検索・推薦の正本にはしない

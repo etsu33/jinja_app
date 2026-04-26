@@ -176,3 +176,15 @@ duplicate_candidate の詳細契約は以下を正本とする：
 - Django admin の action から approve / reject を実行できる
 - approve は service 経由で Shrine 本体へ反映する
 - reject は review 情報を保存し、Shrine 本体は作成しない
+
+---
+
+## Shrine / ShrineSubmission の責務分離
+
+`Shrine` は公開検索・ランキング・concierge 推薦で参照される公開マスターとする。
+
+`ShrineSubmission` はユーザー投稿の受付・審査用データであり、pending / rejected の状態では公開検索・推薦対象に含めない。
+
+`ShrineSubmission.goriyaku_tags` は投稿者の意図を示す参考情報であり、`Shrine.goriyaku_tags` とは別物として扱う。検索・推薦に使う正本タグは、管理者が `Shrine.goriyaku_tags` として確定する。
+
+承認時に自動反映するのは `name / address / lat / lng / owner` のみとし、タグ・note は自動反映しない。
