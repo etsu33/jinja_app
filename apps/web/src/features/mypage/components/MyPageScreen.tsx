@@ -178,8 +178,14 @@ export default function MyPageScreen() {
                     )}
 
                     {submission.status === "approved" && (
-                      <div className="mt-3">
-                        <Link className="text-xs font-medium text-emerald-700 hover:underline" href={searchHref}>
+                      <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-3">
+                        <p className="text-xs leading-6 text-emerald-900">
+                          公開検索で確認できます。コンシェルジュ推薦には反映準備中の場合があります。
+                        </p>
+                        <Link
+                          className="mt-2 inline-flex w-fit items-center rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+                          href={searchHref}
+                        >
                           公開検索で確認する
                         </Link>
                       </div>

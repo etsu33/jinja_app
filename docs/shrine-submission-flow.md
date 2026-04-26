@@ -171,11 +171,48 @@ seed:
 - `note` は公開検索・推薦・concierge の入力には使わない
 - `note` の内容を Shrine 本体へ反映する場合は、admin が `description` や `goriyaku` など適切なフィールドへ手動で転記する
 
+
 ### concierge との関係
 
 - concierge は `Shrine.goriyaku_tags` のみを検索・推薦ロジックの対象とする
 - pending / rejected の `ShrineSubmission` は concierge 候補に含めない
 - 投稿者選択タグは admin 審査時の判断材料であり、推薦ロジックの直接入力にはしない
+
+### 承認後 Shrine の concierge 反映条件
+
+- concierge の候補母集団は `Shrine.objects.all()` のみとする
+- `ShrineSubmission` は pending / approved / rejected を問わず候補には含めない
+- 承認後に `Shrine` が作成されることで初めて concierge の候補対象になる
+
+#### 候補に入るための最低条件
+
+- `latitude` / `longitude` が存在すること
+- `address` が空でないこと
+- テスト用 name（"テスト神社" 等）に該当しないこと
+
+#### 推薦に効く要素
+
+- `Shrine.goriyaku_tags`
+  - `goriyaku_tag_ids` フィルタに直接使用される
+  - need と一致した場合 `matched_by_gid` として強く評価される
+
+- `Shrine.goriyaku` / `description`
+  - テキストマッチで need と弱く一致する
+
+#### 未設定時の挙動
+
+- `goriyaku_tags` 未設定
+  - タグフィルタ指定時は候補から除外される
+  - フィルタなし時は候補に残るが、推薦理由が弱くなる
+
+- `goriyaku` / `description` 未設定
+  - テキスト一致が発生せず、スコアに寄与しない
+
+#### 運用上の前提
+
+- 承認直後の Shrine は推薦に弱い状態で登録される
+- concierge で適切に推薦させるには admin による `goriyaku_tags` の確定が前提となる
+- 投稿者入力は直接推薦ロジックに入れず、必ず admin 確認を経由する
 
 ### 将来拡張
 
