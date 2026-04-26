@@ -14,19 +14,6 @@ import { useRouter } from "next/navigation";
 
 import { buildLoginHref } from "@/lib/nav/login";
 import { getMyShrineSubmissions } from "@/lib/api/shrineSubmissions";
-import type { ShrineSubmissionStatus } from "@/features/shrine-submission/types";
-
-const submissionStatusLabel: Record<ShrineSubmissionStatus, string> = {
-  pending: "審査中",
-  approved: "公開済み",
-  rejected: "見送り",
-};
-
-const submissionStatusClass: Record<ShrineSubmissionStatus, string> = {
-  pending: "border-amber-200 bg-amber-50 text-amber-800",
-  approved: "border-emerald-200 bg-emerald-50 text-emerald-800",
-  rejected: "border-rose-200 bg-rose-50 text-rose-800",
-};
 
 type MyPageScreenProps = {
   activeTab: "goshuin" | "submissions";

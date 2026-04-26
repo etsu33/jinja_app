@@ -19,7 +19,6 @@ function ShrinesPageContent() {
   const [inputValue, setInputValue] = useState("");
   const showSubmissionPendingBanner = submitted;
   const shouldShowSearchResults = !showSubmissionPendingBanner;
-  const searchEffectKey = `${q}:${shouldShowSearchResults ? "show" : "hide"}`;
 
   const [cards, setCards] = useState<ShrineCardAdapterProps[]>([]);
   const [count, setCount] = useState(0);
@@ -81,7 +80,7 @@ function ShrinesPageContent() {
     return () => {
       alive = false;
     };
-  }, [searchEffectKey]);
+  }, [q, shouldShowSearchResults]);
 
   const hasSearched = q.length > 0;
   const isEmpty = shouldShowSearchResults && !loading && !error && hasSearched && count === 0;
