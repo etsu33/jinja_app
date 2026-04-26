@@ -183,18 +183,18 @@ describe("MyPageScreen", () => {
     render(<MyPageScreen activeTab="submissions" />);
 
     expect(await screen.findByText("審査中神社")).toBeInTheDocument();
-    expect(screen.getByText("審査中")).toBeInTheDocument();
-    expect(screen.getByText("現在審査中です。公開検索にはまだ表示されません。")).toBeInTheDocument();
+    expect(screen.getAllByText("審査中")).toHaveLength(2);
+    expect(screen.getByText("現在審査中です。公開されると検索に表示されます。")).toBeInTheDocument();
 
     expect(screen.getByText("公開済み神社")).toBeInTheDocument();
-    expect(screen.getByText("公開済み")).toBeInTheDocument();
+    expect(screen.getAllByText("公開済み")).toHaveLength(2);
     expect(screen.getByRole("link", { name: "公開検索で確認する" })).toHaveAttribute(
       "href",
       "/shrines?q=%E5%85%AC%E9%96%8B%E6%B8%88%E3%81%BF%E7%A5%9E%E7%A4%BE",
     );
 
     expect(screen.getByText("見送り神社")).toBeInTheDocument();
-    expect(screen.getByText("見送り")).toBeInTheDocument();
+    expect(screen.getAllByText("差し戻し")).toHaveLength(2);
     expect(screen.getByText("既存神社と重複しています。")).toBeInTheDocument();
   });
 
