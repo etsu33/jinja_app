@@ -388,7 +388,7 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
 
       <div className="space-y-2">
         <label htmlFor="address" className="text-sm font-medium text-slate-900">
-          住所
+          住所 <span className="text-xs font-normal text-slate-500">任意</span>
         </label>
         <input
           id="address"
