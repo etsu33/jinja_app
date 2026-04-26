@@ -98,7 +98,7 @@ export default function MyPageScreen() {
   if (!isLoggedIn || !user) {
     return (
       <main className="mx-auto max-w-3xl p-6">
-        <h1 className="mb-4 text-xl font-bold">御朱印帳</h1>
+        <h1 className="mb-4 text-xl font-bold">マイページ</h1>
         <div className="rounded-lg border bg-white p-6">
           <p className="mb-3">御朱印帳を利用するにはログインしてください。</p>
           <Link
@@ -115,7 +115,7 @@ export default function MyPageScreen() {
   return (
     <main className="mx-auto max-w-4xl space-y-6 p-6">
       <header className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">御朱印帳</h1>
+        <h1 className="text-xl font-bold">マイページ</h1>
 
         <button
           type="button"
@@ -203,34 +203,43 @@ export default function MyPageScreen() {
           )}
         </SectionCard>
 
-        <div id="goshuin-upload">
-          <SectionCard
-            title="御朱印アップロード"
-            description="御朱印画像（推奨サイズ：5MB 以下）をアップロードできます。画像とタイトルを選んで登録してください。"
-          >
-            <GoshuinUploadForm
-              onUploaded={(created) => {
-                addItem(created);
-                const href = hasShrine
-                  ? buildShrineHref(shrineId, { query: { toast: "goshuin_saved" }, hash: "goshuins" })
-                  : `/mypage?tab=goshuin&toast=goshuin_saved#goshuin-upload`;
+        <section className="space-y-4" aria-labelledby="goshuin-section-title">
+          <div className="space-y-1">
+            <h2 id="goshuin-section-title" className="text-lg font-semibold text-slate-900">
+              御朱印帳
+            </h2>
+            <p className="text-sm text-slate-500">御朱印画像の登録と、登録済みの御朱印を確認できます。</p>
+          </div>
 
-                router.push(href);
-              }}
+          <div id="goshuin-upload">
+            <SectionCard
+              title="御朱印アップロード"
+              description="御朱印画像（推奨サイズ：5MB 以下）をアップロードできます。画像とタイトルを選んで登録してください。"
+            >
+              <GoshuinUploadForm
+                onUploaded={(created) => {
+                  addItem(created);
+                  const href = hasShrine
+                    ? buildShrineHref(shrineId, { query: { toast: "goshuin_saved" }, hash: "goshuins" })
+                    : `/mypage?tab=goshuin&toast=goshuin_saved#goshuin-upload`;
+
+                  router.push(href);
+                }}
+              />
+            </SectionCard>
+          </div>
+
+          <SectionCard title="登録済みの御朱印">
+            <MyGoshuinList
+              items={items}
+              loading={goshuinLoading}
+              error={goshuinError}
+              onDelete={removeItem}
+              onToggleVisibility={toggleVisibility}
+              navigateOnCardClick
             />
           </SectionCard>
-        </div>
-
-        <SectionCard title="登録済みの御朱印">
-          <MyGoshuinList
-            items={items}
-            loading={goshuinLoading}
-            error={goshuinError}
-            onDelete={removeItem}
-            onToggleVisibility={toggleVisibility}
-            navigateOnCardClick
-          />
-        </SectionCard>
+        </section>
       </div>
     </main>
   );
