@@ -7,7 +7,6 @@ export function buildShrineListCardModel(shrine: Shrine) {
 
   return {
     ...cardProps,
-    address: null,
     rating: null,
     reviewCount: null,
   };

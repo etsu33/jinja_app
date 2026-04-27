@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 import ShrinesPage from "../page";
 import { fetchShrines } from "@/lib/api/shrinesSearch";
+import { getGoriyakuTags } from "@/lib/api/tags";
 
 const pushMock = vi.fn();
 const replaceMock = vi.fn();
@@ -16,8 +17,13 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/shrines",
 }));
 
+
 vi.mock("@/lib/api/shrinesSearch", () => ({
   fetchShrines: vi.fn(),
+}));
+
+vi.mock("@/lib/api/tags", () => ({
+  getGoriyakuTags: vi.fn(),
 }));
 
 vi.mock("@/lib/shrine/buildShrineListCardModel", () => ({
@@ -40,12 +46,14 @@ vi.mock("@/components/shrines/ShrineCard", () => ({
 }));
 
 const mockedFetchShrines = vi.mocked(fetchShrines);
+const mockedGetGoriyakuTags = vi.mocked(getGoriyakuTags);
 
 describe("/shrines page", () => {
   const originalWindowLocation = window.location;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockedGetGoriyakuTags.mockResolvedValue([]);
 
     Object.defineProperty(window, "location", {
       configurable: true,
@@ -152,5 +160,21 @@ describe("/shrines page", () => {
     fireEvent.click(screen.getByRole("button", { name: "検索する" }));
 
     expect(pushMock).toHaveBeenCalledWith("/shrines?q=%E7%A8%B2%E8%8D%B7");
+  });
+
+  it("ご利益タグを表示し、クリックするとタグ名で検索URLへ遷移する", async () => {
+    mockedGetGoriyakuTags.mockResolvedValue([
+      { id: 1, name: "縁結び" },
+      { id: 5, name: "金運・商売繁盛" },
+    ]);
+
+    render(<ShrinesPage />);
+
+    expect(await screen.findByText("ご利益から探す")).toBeInTheDocument();
+
+    const tagButton = await screen.findByRole("button", { name: "縁結び" });
+    fireEvent.click(tagButton);
+
+    expect(pushMock).toHaveBeenCalledWith("/shrines?q=%E7%B8%81%E7%B5%90%E3%81%B3");
   });
 });
