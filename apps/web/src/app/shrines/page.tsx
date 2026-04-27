@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
+import { FormEvent, Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { isSubmissionPendingParams } from "@/features/shrine-submission/lib/submissionReturnState";
 
@@ -85,10 +85,9 @@ function ShrinesPageContent() {
   const hasSearched = q.length > 0;
   const isEmpty = shouldShowSearchResults && !loading && !error && hasSearched && count === 0;
   const submissionNoticeTitle = submittedName ? `「${submittedName}」の投稿を受け付けました` : "投稿を受け付けました";
-  const submissionNoticeBody = useMemo(() => {
-    if (!showSubmissionPendingBanner) return null;
-    return "現在公開準備中です。確認が完了するまで公開検索には表示されません。";
-  }, [showSubmissionPendingBanner]);
+  const submissionNoticeBody = showSubmissionPendingBanner
+    ? "現在公開準備中です。確認が完了するまで公開検索には表示されません。"
+    : null;
 
   const handleSearch = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
