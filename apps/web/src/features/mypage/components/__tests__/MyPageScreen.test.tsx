@@ -133,7 +133,7 @@ describe("MyPageScreen", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("ログイン時に投稿履歴を取得して pending / approved / rejected を表示する", async () => {
+  it("ログイン時に投稿履歴を取得して pending / approved を表示する", async () => {
     mockUseAuth.mockReturnValue({
       user: { id: 1, username: "u" },
       isLoggedIn: true,
@@ -165,19 +165,6 @@ describe("MyPageScreen", () => {
         created_at: "2026-04-02T00:00:00Z",
         reviewed_at: "2026-04-03T00:00:00Z",
       },
-      {
-        id: 3,
-        name: "見送り神社",
-        address: "東京都港区3-3-3",
-        lat: null,
-        lng: null,
-        goriyaku_tags: [],
-        note: "",
-        status: "rejected",
-        created_at: "2026-04-04T00:00:00Z",
-        reviewed_at: "2026-04-05T00:00:00Z",
-        review_comment: "既存神社と重複しています。",
-      },
     ]);
 
     render(<MyPageScreen activeTab="submissions" />);
@@ -192,10 +179,7 @@ describe("MyPageScreen", () => {
       "href",
       "/shrines?q=%E5%85%AC%E9%96%8B%E6%B8%88%E3%81%BF%E7%A5%9E%E7%A4%BE",
     );
-
-    expect(screen.getByText("見送り神社")).toBeInTheDocument();
-    expect(screen.getAllByText("差し戻し")).toHaveLength(2);
-    expect(screen.getByText("既存神社と重複しています。")).toBeInTheDocument();
+    expect(screen.queryByText("差し戻し")).not.toBeInTheDocument();
   });
 
   it("投稿履歴取得に失敗したらエラーを表示する", async () => {
