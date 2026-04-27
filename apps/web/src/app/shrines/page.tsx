@@ -33,7 +33,6 @@ function ShrinesPageContent() {
     setSubmittedName((params.get("name") ?? "").trim());
   }, [searchParams]);
 
-
   useEffect(() => {
     setInputValue(q);
   }, [q]);
