@@ -49,7 +49,6 @@ export default function MyPageScreen({ activeTab }: MyPageScreenProps) {
 
   const approvedSubmissions = submissions.filter((submission) => submission.status === "approved");
   const pendingSubmissions = submissions.filter((submission) => submission.status === "pending");
-  const rejectedSubmissions = submissions.filter((submission) => submission.status === "rejected");
 
   useEffect(() => {
     if (loading || !isLoggedIn || !user) {
@@ -150,11 +149,15 @@ export default function MyPageScreen({ activeTab }: MyPageScreenProps) {
               <p className="text-sm text-slate-500">投稿した神社はまだありません。</p>
             ) : (
               <div className="space-y-5">
-                {approvedSubmissions.length > 0 && (
-                  <section className="space-y-3">
-                    <h3 className="text-sm font-semibold text-emerald-900">公開済み</h3>
+                <section className="space-y-3">
+                  <h3 className="text-sm font-semibold text-emerald-900">公開済み</h3>
 
-                    {approvedSubmissions.map((submission) => {
+                  {approvedSubmissions.length === 0 ? (
+                    <p className="rounded-xl border border-emerald-100 bg-emerald-50 p-4 text-sm text-emerald-900">
+                      まだ公開された神社はありません。
+                    </p>
+                  ) : (
+                    approvedSubmissions.map((submission) => {
                       const searchHref = `/shrines?q=${encodeURIComponent(submission.name)}`;
 
                       return (
@@ -181,9 +184,9 @@ export default function MyPageScreen({ activeTab }: MyPageScreenProps) {
                           </Link>
                         </div>
                       );
-                    })}
-                  </section>
-                )}
+                    })
+                  )}
+                </section>
 
                 {pendingSubmissions.length > 0 && (
                   <section className="space-y-3">
@@ -204,30 +207,6 @@ export default function MyPageScreen({ activeTab }: MyPageScreenProps) {
                         <p className="mt-3 text-xs leading-6 text-amber-900">
                           現在審査中です。公開されると検索に表示されます。
                         </p>
-                      </div>
-                    ))}
-                  </section>
-                )}
-
-                {rejectedSubmissions.length > 0 && (
-                  <section className="space-y-3">
-                    <h3 className="text-sm font-semibold text-rose-900">差し戻し</h3>
-
-                    {rejectedSubmissions.map((submission) => (
-                      <div key={submission.id} className="rounded-xl border border-rose-100 bg-rose-50 p-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="font-semibold text-slate-900">{submission.name}</p>
-                            <p className="mt-1 text-xs text-slate-500">{submission.address}</p>
-                          </div>
-                          <span className="rounded-full border border-rose-200 bg-white px-2 py-1 text-xs font-semibold text-rose-700">
-                            差し戻し
-                          </span>
-                        </div>
-
-                        {submission.review_comment && (
-                          <p className="mt-3 text-xs leading-6 text-rose-900">{submission.review_comment}</p>
-                        )}
                       </div>
                     ))}
                   </section>
