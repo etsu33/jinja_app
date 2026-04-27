@@ -7,6 +7,7 @@ import { isSubmissionPendingParams } from "@/features/shrine-submission/lib/subm
 import { ShrineCard } from "@/components/shrines/ShrineCard";
 import type { ShrineCardAdapterProps } from "@/components/shrine/buildShrineCardProps";
 import { fetchShrines } from "@/lib/api/shrinesSearch";
+import { getGoriyakuTags, type GoriyakuTag } from "@/lib/api/tags";
 import { buildShrineListCardModel } from "@/lib/shrine/buildShrineListCardModel";
 
 function ShrinesPageContent() {
@@ -24,6 +25,9 @@ function ShrinesPageContent() {
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [goriyakuTags, setGoriyakuTags] = useState<GoriyakuTag[]>([]);
+  const [tagsLoading, setTagsLoading] = useState(false);
+  const [tagsError, setTagsError] = useState<string | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(searchParams.toString());
@@ -36,6 +40,32 @@ function ShrinesPageContent() {
   useEffect(() => {
     setInputValue(q);
   }, [q]);
+
+  useEffect(() => {
+    let alive = true;
+
+    setTagsLoading(true);
+    setTagsError(null);
+
+    getGoriyakuTags()
+      .then((tags) => {
+        if (!alive) return;
+        setGoriyakuTags(tags);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setGoriyakuTags([]);
+        setTagsError("ご利益タグを読み込めませんでした");
+      })
+      .finally(() => {
+        if (!alive) return;
+        setTagsLoading(false);
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -104,6 +134,18 @@ function ShrinesPageContent() {
     router.push(`/shrines${next.toString() ? `?${next.toString()}` : ""}`);
   };
 
+  const handleTagSearch = (tagName: string) => {
+    const nextQ = tagName.trim();
+    if (!nextQ) return;
+
+    setSubmitted(false);
+    setSubmittedName("");
+    setQ(nextQ);
+    setInputValue(nextQ);
+
+    router.push(`/shrines?q=${encodeURIComponent(nextQ)}`);
+  };
+
   const handleAddShrine = () => {
     const returnTo = `/shrines${q ? `?q=${encodeURIComponent(q)}` : ""}`;
     router.push(`/shrines/new?returnTo=${encodeURIComponent(returnTo)}`);
@@ -124,21 +166,46 @@ function ShrinesPageContent() {
       <h1 className="mb-4 text-xl font-bold">神社を探す</h1>
 
       {shouldShowSearchResults && (
-        <form onSubmit={handleSearch} className="mb-6 flex flex-col gap-3 sm:flex-row">
-          <input
-            type="search"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.currentTarget.value)}
-            placeholder="神社名で検索"
-            className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-900"
-          />
-          <button
-            type="submit"
-            className="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-medium text-white"
-          >
-            検索する
-          </button>
-        </form>
+        <div className="mb-6 space-y-3">
+          <form onSubmit={handleSearch} className="flex flex-col gap-3 sm:flex-row">
+            <input
+              type="search"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.currentTarget.value)}
+              placeholder="神社名で検索"
+              className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-900"
+            />
+            <button
+              type="submit"
+              className="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-medium text-white"
+            >
+              検索する
+            </button>
+          </form>
+
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-slate-500">ご利益から探す</p>
+
+            {tagsLoading ? (
+              <p className="text-xs text-slate-400">ご利益タグを読み込み中…</p>
+            ) : tagsError ? (
+              <p className="text-xs text-rose-600">{tagsError}</p>
+            ) : goriyakuTags.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {goriyakuTags.slice(0, 8).map((tag) => (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    onClick={() => handleTagSearch(tag.name)}
+                    className="rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50"
+                  >
+                    {tag.name}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </div>
       )}
 
       {submissionNoticeBody && (
