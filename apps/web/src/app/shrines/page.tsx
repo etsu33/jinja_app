@@ -114,6 +114,7 @@ function ShrinesPageContent() {
   const hasSearched = q.length > 0;
   const isEmpty = shouldShowSearchResults && !loading && !error && hasSearched && count === 0;
   const submissionNoticeTitle = submittedName ? `「${submittedName}」の投稿を受け付けました` : "投稿を受け付けました";
+  const activeGoriyakuTag = goriyakuTags.find((tag) => tag.name === q) ?? null;
   const submissionNoticeBody = showSubmissionPendingBanner
     ? "現在公開準備中です。確認が完了するまで公開検索には表示されません。"
     : null;
@@ -140,6 +141,14 @@ function ShrinesPageContent() {
 
     setSubmitted(false);
     setSubmittedName("");
+
+    if (q === nextQ) {
+      setQ("");
+      setInputValue("");
+      router.push("/shrines");
+      return;
+    }
+
     setQ(nextQ);
     setInputValue(nextQ);
 
@@ -158,8 +167,6 @@ function ShrinesPageContent() {
     setInputValue("");
     router.push("/shrines");
   };
-
-  if (loading) return <p className="p-4">読み込み中...</p>;
 
   return (
     <main className="p-4">
@@ -192,16 +199,29 @@ function ShrinesPageContent() {
               <p className="text-xs text-rose-600">{tagsError}</p>
             ) : goriyakuTags.length > 0 ? (
               <div className="flex flex-wrap gap-2">
-                {goriyakuTags.slice(0, 8).map((tag) => (
-                  <button
-                    key={tag.id}
-                    type="button"
-                    onClick={() => handleTagSearch(tag.name)}
-                    className="rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50"
-                  >
-                    {tag.name}
-                  </button>
-                ))}
+                {goriyakuTags.slice(0, 8).map((tag) => {
+                  const isActive = tag.name === q;
+
+                  return (
+                    <button
+                      key={tag.id}
+                      type="button"
+                      aria-pressed={isActive}
+                      onClick={() => handleTagSearch(tag.name)}
+                      className={[
+                        "rounded-full border px-3 py-1.5 text-xs font-semibold transition",
+                        isActive
+                          ? "border-emerald-600 bg-emerald-600 text-white shadow-sm"
+                          : "border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50",
+                      ].join(" ")}
+                    >
+                      {tag.name}
+                    </button>
+                  );
+                })}
+                {activeGoriyakuTag ? (
+                  <p className="text-xs text-emerald-700">{activeGoriyakuTag.name}で検索中です。もう一度押すと解除できます。</p>
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -229,10 +249,16 @@ function ShrinesPageContent() {
 
       {error && <p className="text-red-500">{error}</p>}
 
+      {shouldShowSearchResults && loading ? <p className="mb-4 text-sm text-slate-500">検索しています...</p> : null}
+
       {shouldShowSearchResults && hasSearched &&
         (isEmpty ? (
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <p className="text-sm text-slate-700">お探しの神社が見つかりませんか？</p>
+            <p className="text-sm text-slate-700">
+              {activeGoriyakuTag
+                ? `${activeGoriyakuTag.name}に合う神社はまだ登録されていません。`
+                : "お探しの神社が見つかりませんか？"}
+            </p>
             <div className="mt-4">
               <button
                 type="button"
