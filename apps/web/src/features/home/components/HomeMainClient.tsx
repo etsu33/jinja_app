@@ -14,10 +14,6 @@ export function HomeMainClient() {
         <HomeConciergeInlineClient />
       </SectionCard>
 
-      <SectionCard title="最新の公開御朱印" description="タップで神社詳細へ">
-        <HomeGoshuinFeedSection limit={12} />
-      </SectionCard>
-
       <SectionCard title="今いる場所の近くの神社" description="位置情報をもとに、徒歩圏内の神社を優先して表示します。">
         <div className="space-y-4">
           <HomeNearbySection />
@@ -35,6 +31,10 @@ export function HomeMainClient() {
             </Link>
           </div>
         </div>
+      </SectionCard>
+
+      <SectionCard title="参拝の記録" description="みんなの御朱印から、参拝後の雰囲気を見られます。">
+        <HomeGoshuinFeedSection limit={6} />
       </SectionCard>
     </>
   );
