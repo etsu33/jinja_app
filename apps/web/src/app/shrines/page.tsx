@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, Suspense, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { isSubmissionPendingParams } from "@/features/shrine-submission/lib/submissionReturnState";
 
@@ -270,20 +271,35 @@ function ShrinesPageContent() {
             </div>
           </div>
         ) : (
-          <ul className="grid gap-4">
-            {cards.map((p) => (
-              <li key={p.shrineId}>
-                <ShrineCard
-                  name={p.title}
-                  address={p.address ?? undefined}
-                  recommendReason={p.description ?? undefined}
-                  imageUrl={p.imageUrl ?? undefined}
-                  tags={p.badges ?? []}
-                  href={`/shrines/${p.shrineId}`}
-                />
-              </li>
-            ))}
-          </ul>
+          <>
+            <ul className="grid gap-4">
+              {cards.map((p) => (
+                <li key={p.shrineId}>
+                  <ShrineCard
+                    name={p.title}
+                    address={p.address ?? undefined}
+                    recommendReason={p.description ?? undefined}
+                    imageUrl={p.imageUrl ?? undefined}
+                    tags={p.badges ?? []}
+                    href={`/shrines/${p.shrineId}`}
+                  />
+                </li>
+              ))}
+            </ul>
+
+            <section className="mt-6 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-5 shadow-sm">
+              <p className="text-sm font-semibold text-emerald-950">なんとなく選びきれない場合はこちら</p>
+              <p className="mt-2 text-sm leading-6 text-emerald-900">
+                今の気持ちや願いから、どの神社が合いそうかをコンシェルジュで整理できます。
+              </p>
+              <Link
+                href="/concierge"
+                className="mt-4 inline-flex rounded-xl bg-emerald-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-emerald-700"
+              >
+                あなたに合う理由を詳しく知る
+              </Link>
+            </section>
+          </>
         ))}
     </main>
   );
