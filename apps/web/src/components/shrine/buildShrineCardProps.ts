@@ -26,17 +26,16 @@ export function buildShrineCardProps(s: Shrine): { cardProps: ShrineCardAdapterP
   // 画像は現状レスポンスに無いので null でOK（無理に photo_url 読まない）
   const imageUrl = null;
 
-  const description =
-    firstNonEmpty(s.goriyaku) ||
-    (Array.isArray(s.goriyaku_tags) && s.goriyaku_tags.length
-      ? s.goriyaku_tags
-          .map((t) => t.name)
-          .filter(Boolean)
-          .slice(0, 3)
-          .join(" / ")
-      : "説明は準備中です。");
+  const benefitLabels = Array.isArray(s.goriyaku_tags)
+    ? s.goriyaku_tags
+        .map((t) => t.name)
+        .filter(Boolean)
+        .slice(0, 3)
+    : [];
 
-  const badges = Array.isArray(s.goriyaku_tags) && s.goriyaku_tags.length ? ["ご利益あり"] : [];
+  const description = firstNonEmpty(s.goriyaku) || benefitLabels.join(" / ") || "説明は準備中です。";
+
+  const badges = benefitLabels;
 
   return { cardProps: { shrineId, title, address, imageUrl, description, badges } };
 }
