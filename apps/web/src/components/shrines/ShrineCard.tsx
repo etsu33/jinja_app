@@ -72,11 +72,11 @@ export function ShrineCard(props: ShrineCardProps) {
     name,
     address,
     recommendReason,
-    subReason,
+    subReason: _subReason,
     topReasonLabel,
     primaryReason,
-    secondaryReason,
-    compatibilityLabels = [],
+    secondaryReason: _secondaryReason,
+    compatibilityLabels: _compatibilityLabels = [],
     distanceM,
     rating,
     reviewCount,
@@ -100,17 +100,8 @@ export function ShrineCard(props: ShrineCardProps) {
     (Array.isArray(explanationReasons) ? clean(explanationReasons.find((r) => clean(r?.text))?.text) : null) ||
     null;
 
-  const resolvedSecondaryReason = clean(secondaryReason) || clean(subReason) || null;
-
   const finalPrimaryReason =
     resolvedPrimaryReason && resolvedPrimaryReason !== resolvedSummary ? resolvedPrimaryReason : null;
-
-  const finalSecondaryReason =
-    resolvedSecondaryReason &&
-    resolvedSecondaryReason !== resolvedSummary &&
-    resolvedSecondaryReason !== finalPrimaryReason
-      ? resolvedSecondaryReason
-      : null;
 
   const cardClass = [
     "rounded-2xl border p-4 shadow-sm transition-colors",
@@ -129,7 +120,6 @@ export function ShrineCard(props: ShrineCardProps) {
       : "text-[13px] font-medium leading-6 text-slate-700",
   ].join(" ");
 
-  const secondaryClass = "mt-1 line-clamp-1 text-[12px] leading-5 text-slate-500";
   const MainContent = (
     <div className="flex gap-4">
       <div className="h-20 w-28 shrink-0 overflow-hidden rounded-xl bg-slate-100">
@@ -172,8 +162,6 @@ export function ShrineCard(props: ShrineCardProps) {
               </div>
             ) : null}
 
-            {finalSecondaryReason ? <div className={secondaryClass}>{finalSecondaryReason}</div> : null}
-
             {distText || typeof rating === "number" ? (
               <div className="mt-2 flex gap-3 text-sm text-slate-600">
                 {distText ? <span>{distText}</span> : null}
@@ -187,10 +175,6 @@ export function ShrineCard(props: ShrineCardProps) {
             ) : null}
 
             {address ? <div className="mt-1 truncate text-xs text-slate-500">{address}</div> : null}
-
-            {compatibilityLabels.length ? (
-              <div className="mt-2 text-[11px] text-slate-400">相性: {compatibilityLabels.join(" / ")}</div>
-            ) : null}
           </div>
 
           {typeof isFavorited === "boolean" && onToggleFavorite ? (
