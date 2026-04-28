@@ -12,6 +12,12 @@ function clean(value?: string | null) {
   return (value ?? "").replace(/\s+/g, " ").trim();
 }
 
+function buildBenefitPrompt(tags: string[]) {
+  const firstTag = tags.map((tag) => clean(tag)).find(Boolean);
+  if (!firstTag) return null;
+  return `${firstTag}を意識して参拝先を選びたい時の候補です。`;
+}
+
 export type ShrineCardProps = {
   name: string;
   address?: string | null;
@@ -68,7 +74,8 @@ export function ShrineCard(props: ShrineCardProps) {
 
   const distText = formatDistance(distanceM);
 
-  const resolvedSummary = clean(explanationSummary) || clean(recommendReason) || null;
+  const benefitPrompt = buildBenefitPrompt(tags);
+  const resolvedSummary = clean(explanationSummary) || clean(recommendReason) || benefitPrompt;
 
   const resolvedPrimaryReason =
     clean(primaryReason) ||
@@ -105,8 +112,6 @@ export function ShrineCard(props: ShrineCardProps) {
   ].join(" ");
 
   const secondaryClass = "mt-1 line-clamp-1 text-[12px] leading-5 text-slate-500";
-
-
   const MainContent = (
     <div className="flex gap-4">
       <div className="h-20 w-28 shrink-0 overflow-hidden rounded-xl bg-slate-100">
@@ -142,7 +147,12 @@ export function ShrineCard(props: ShrineCardProps) {
 
             {finalPrimaryReason ? <div className={primaryClass}>{finalPrimaryReason}</div> : null}
 
-            {resolvedSummary ? <div className={summaryClass}>{resolvedSummary}</div> : null}
+            {resolvedSummary ? (
+              <div className={summaryClass}>
+                <span className="font-semibold text-emerald-700">選ぶ理由：</span>
+                {resolvedSummary}
+              </div>
+            ) : null}
 
             {finalSecondaryReason ? <div className={secondaryClass}>{finalSecondaryReason}</div> : null}
 
