@@ -79,7 +79,7 @@ export default function HomeGoshuinFeedSection({ limit = 12 }: { limit?: number 
 
     if (state.kind === "empty") {
       return (
-        <div className="rounded-xl border bg-white p-3 text-xs text-slate-600">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 text-xs text-slate-600 shadow-sm">
           まだ公開御朱印がありません
           <div className="mt-2 grid grid-cols-3 gap-2 opacity-40">
             {Array.from({ length: 3 }).map((_, i) => (
@@ -92,7 +92,7 @@ export default function HomeGoshuinFeedSection({ limit = 12 }: { limit?: number 
 
     if (state.kind === "error") {
       return (
-        <div className="rounded-xl border bg-white p-3 text-xs text-slate-600">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 text-xs text-slate-600 shadow-sm">
           現在、最新の公開御朱印を表示できません
           <div className="mt-2 grid grid-cols-3 gap-2 opacity-40">
             {Array.from({ length: 3 }).map((_, i) => (
@@ -113,9 +113,9 @@ export default function HomeGoshuinFeedSection({ limit = 12 }: { limit?: number 
           <Link
             key={g.id}
             href={buildShrineHref(g.shrine)}
-            className="group block overflow-hidden rounded-lg border bg-white"
+            className="group block overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
           >
-            <div className="aspect-square bg-slate-50 relative overflow-hidden">
+            <div className="relative aspect-square overflow-hidden bg-stone-50">
               <Image
                 src={g.image_url ?? ""}
                 alt={g.title ?? g.shrine_name ?? "御朱印"}
@@ -129,13 +129,13 @@ export default function HomeGoshuinFeedSection({ limit = 12 }: { limit?: number 
         ))}
 
         {Array.from({ length: need }).map((_, i) => (
-          <div key={`ph-${i}`} className="aspect-square rounded-lg border bg-white">
-            <div className="h-full w-full bg-slate-50" />
+          <div key={`ph-${i}`} className="aspect-square rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="h-full w-full bg-stone-50" />
           </div>
         ))}
       </div>
     );
   }, [state, limit]);
 
-  return <section className="space-y-2">{content}</section>;
+  return <section className="space-y-4">{content}</section>;
 }
