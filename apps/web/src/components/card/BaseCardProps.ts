@@ -16,6 +16,7 @@ export type BaseCardProps = {
 
   detailHref?: string | null;
   detailLabel?: string | null;
+  onDetailClick?: () => void;
 
   headerRight?: React.ReactNode;
 

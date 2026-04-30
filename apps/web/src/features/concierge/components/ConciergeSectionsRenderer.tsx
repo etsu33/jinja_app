@@ -9,6 +9,7 @@ import { buildRecommendationReasonViewModel } from "@/lib/concierge/buildRecomme
 import ConciergeTopRecommendationHero from "@/features/concierge/components/ConciergeTopRecommendationHero";
 import ConciergeConsultationSummary from "@/features/concierge/components/ConciergeConsultationSummary";
 import ShrineCardCompact from "@/components/shrines/ShrineCardCompact";
+import { track } from "@/lib/analytics/track";
 
 import type {
   ConciergeSectionsPayload,
@@ -385,6 +386,15 @@ export default function ConciergeSectionsRenderer({
                               differenceFromOthers={reasonVm.rank.differenceFromOthers ?? null}
                               tags={(heroItem.breakdown?.matched_need_tags ?? []).slice(0, 3)}
                               onRouteClick={() => onAction?.({ type: "open_map" })}
+                              onDetailClick={() =>
+                                track("concierge_result_click", {
+                                  shrineId: heroItem.shrineId,
+                                  name: heroItem.title,
+                                  position: "hero",
+                                  rank: 1,
+                                  mode: normalizedMode,
+                                })
+                              }
                             />
                           </div>
                         );
@@ -431,6 +441,15 @@ export default function ConciergeSectionsRenderer({
                                 primaryReason={reasonVm.list.primaryPhrase}
                                 tags={(item.breakdown?.matched_need_tags ?? []).slice(0, 1)}
                                 distanceM={(item as any).distance_m ?? null}
+                                onDetailClick={() =>
+                                  track("concierge_result_click", {
+                                    shrineId: item.shrineId,
+                                    name: item.title,
+                                    position: "compact",
+                                    rank: compactIdx + 2,
+                                    mode: normalizedMode,
+                                  })
+                                }
                               />
                             </div>
                           );

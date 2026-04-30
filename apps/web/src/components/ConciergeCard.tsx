@@ -46,6 +46,7 @@ export default function ConciergeCard(props: BaseCardProps) {
     hideLeftMark = false,
     detailHref,
     detailLabel = "詳細を見る",
+    onDetailClick,
     headerRight,
     disclosureTitle,
     disclosureBody,
@@ -168,7 +169,10 @@ export default function ConciergeCard(props: BaseCardProps) {
                   "ring-1 ring-inset ring-black/10 transition active:scale-[0.99] hover:bg-neutral-800",
                   "focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400",
                 )}
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDetailClick?.();
+                }}
               >
                 {detailLabel}
               </Link>

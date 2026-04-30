@@ -1,5 +1,3 @@
-// apps/web/src/components/shrines/ShrineCardCompact.tsx
-
 import Link from "next/link";
 import Image from "next/image";
 
@@ -22,6 +20,7 @@ export type ShrineCardCompactProps = {
   primaryReason?: string | null;
   tags?: string[];
   distanceM?: number | null;
+  onDetailClick?: () => void;
 };
 
 export default function ShrineCardCompact({
@@ -33,6 +32,7 @@ export default function ShrineCardCompact({
   primaryReason = null,
   tags = [],
   distanceM = null,
+  onDetailClick,
 }: ShrineCardCompactProps) {
   const distText = formatDistance(distanceM);
   const resolvedPrimaryReason = clean(primaryReason) || null;
@@ -77,6 +77,7 @@ export default function ShrineCardCompact({
               {href ? (
                 <Link
                   href={href}
+                  onClick={onDetailClick}
                   className="ml-auto inline-flex items-center text-sm font-medium text-slate-600 transition hover:text-slate-900"
                 >
                   → 詳細
