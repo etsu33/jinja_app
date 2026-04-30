@@ -277,6 +277,7 @@ function ShrinesPageContent() {
                 <li key={p.shrineId}>
                   <ShrineCard
                     name={p.title}
+                    shrineId={p.shrineId}
                     address={p.address ?? undefined}
                     recommendReason={p.description ?? undefined}
                     imageUrl={p.imageUrl ?? undefined}

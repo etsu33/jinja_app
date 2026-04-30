@@ -1,6 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { track } from "@/lib/analytics/track";
 
 function formatDistance(m?: number | null) {
   if (typeof m !== "number" || !Number.isFinite(m)) return null;
@@ -38,6 +39,7 @@ function buildBenefitPrompt(tags: string[]) {
 
 export type ShrineCardProps = {
   name: string;
+  shrineId?: string | number;
   address?: string | null;
 
   recommendReason?: string | null;
@@ -70,6 +72,7 @@ export type ShrineCardProps = {
 export function ShrineCard(props: ShrineCardProps) {
   const {
     name,
+    shrineId,
     address,
     recommendReason,
     subReason: _subReason,
@@ -209,7 +212,13 @@ export function ShrineCard(props: ShrineCardProps) {
   return (
     <div className={cardClass}>
       {href ? (
-        <Link href={href} className="block">
+        <Link
+          href={href}
+          className="block"
+          onClick={() => {
+            track("shrine_card_click", { shrineId });
+          }}
+        >
           {MainContent}
         </Link>
       ) : (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { track } from "@/lib/analytics/track";
 
 export function HomeConciergeInlineClient({ className }: { className?: string }) {
   const router = useRouter();
@@ -17,7 +18,10 @@ export function HomeConciergeInlineClient({ className }: { className?: string })
         </p>
         <button
           type="button"
-          onClick={() => router.push("/concierge")}
+          onClick={() => {
+            track("concierge_click");
+            router.push("/concierge");
+          }}
           className="mt-6 min-h-[52px] w-full rounded-full bg-amber-500 px-6 py-3.5 text-base font-bold text-slate-950 shadow-sm transition-colors hover:bg-amber-400"
         >
           相談して神社を見つける
