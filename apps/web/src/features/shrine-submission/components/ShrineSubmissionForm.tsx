@@ -8,6 +8,7 @@ import { getGoriyakuTags } from "@/lib/api/tags";
 import { isApiError } from "@/lib/api/errors";
 import { createShrineSubmission } from "@/lib/api/shrineSubmissions";
 import { fetchShrineSuggest } from "@/lib/api/shrinesSuggest";
+import { track } from "@/lib/analytics/track";
 import type {
   ShrineSubmissionFieldErrors,
   ShrineSubmissionFormValues,
@@ -226,6 +227,11 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
         address,
         goriyaku_tags: selectedTagNames,
         note,
+      });
+      track("shrine_submission_complete", {
+        q: name,
+        name: created.name ?? name,
+        status: created.status ?? "pending",
       });
       onSubmitted(created);
       router.replace(`/shrines?q=${encodeURIComponent(name)}&submitted=1&status=pending`);
