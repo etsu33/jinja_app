@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, Suspense, useEffect, useState } from "react";
+import { FormEvent, Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { isSubmissionPendingParams } from "@/features/shrine-submission/lib/submissionReturnState";
@@ -10,6 +10,7 @@ import type { ShrineCardAdapterProps } from "@/components/shrine/buildShrineCard
 import { fetchShrines } from "@/lib/api/shrinesSearch";
 import { getGoriyakuTags, type GoriyakuTag } from "@/lib/api/tags";
 import { buildShrineListCardModel } from "@/lib/shrine/buildShrineListCardModel";
+import { track } from "@/lib/analytics/track";
 
 function ShrinesPageContent() {
   const router = useRouter();
@@ -29,6 +30,7 @@ function ShrinesPageContent() {
   const [goriyakuTags, setGoriyakuTags] = useState<GoriyakuTag[]>([]);
   const [tagsLoading, setTagsLoading] = useState(false);
   const [tagsError, setTagsError] = useState<string | null>(null);
+  const trackedEmptyStateKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(searchParams.toString());
@@ -114,6 +116,17 @@ function ShrinesPageContent() {
 
   const hasSearched = q.length > 0;
   const isEmpty = shouldShowSearchResults && !loading && !error && hasSearched && count === 0;
+
+  useEffect(() => {
+    if (!isEmpty) return;
+
+    const emptyStateKey = q || "__empty__";
+    if (trackedEmptyStateKeyRef.current === emptyStateKey) return;
+
+    trackedEmptyStateKeyRef.current = emptyStateKey;
+    track("empty_state_view", { q });
+  }, [isEmpty, q]);
+
   const submissionNoticeTitle = submittedName ? `「${submittedName}」の投稿を受け付けました` : "投稿を受け付けました";
   const activeGoriyakuTag = goriyakuTags.find((tag) => tag.name === q) ?? null;
   const submissionNoticeBody = showSubmissionPendingBanner
@@ -158,6 +171,7 @@ function ShrinesPageContent() {
 
   const handleAddShrine = () => {
     const returnTo = `/shrines${q ? `?q=${encodeURIComponent(q)}` : ""}`;
+    track("add_shrine_click", { q, returnTo });
     router.push(`/shrines/new?returnTo=${encodeURIComponent(returnTo)}`);
   };
 
