@@ -17,6 +17,7 @@ type Props = {
   tags?: string[];
   routeLabel?: string;
   onRouteClick?: () => void;
+  onDetailClick?: () => void;
 };
 
 export default function ConciergeTopRecommendationHero({
@@ -34,6 +35,7 @@ export default function ConciergeTopRecommendationHero({
   tags = [],
   routeLabel = "経路案内",
   onRouteClick,
+  onDetailClick,
 }: Props) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4">
@@ -70,7 +72,11 @@ export default function ConciergeTopRecommendationHero({
 
       <div className="mt-4 flex gap-2">
         {href ? (
-          <Link href={href} className="inline-flex rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-700">
+          <Link
+            href={href}
+            onClick={onDetailClick}
+            className="inline-flex rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-700"
+          >
             詳細を見る
           </Link>
         ) : null}
