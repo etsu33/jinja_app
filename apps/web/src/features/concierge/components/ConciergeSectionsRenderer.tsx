@@ -83,7 +83,7 @@ export default function ConciergeSectionsRenderer({
   payload,
   onAction,
   sending = false,
-  threadId: _threadId = null,
+  threadId = null,
   isEntryRoute = false,
 }: Props) {
   useEffect(() => {
@@ -99,6 +99,42 @@ export default function ConciergeSectionsRenderer({
 
   const appliedTokens = parseExtraTokens(filterState?.extraCondition);
   const appliedLabel = appliedTokens.length ? `条件: ${appliedTokens.join(" / ")}` : null;
+  const normalizedModeForTracking = normalizeConciergeMode(payload?.meta?.mode);
+  const tid = threadId != null ? String(threadId) : null;
+
+  const resultImpressions = useMemo(() => {
+    if (!payload || !Array.isArray(payload.sections)) return [];
+
+    return payload.sections.flatMap((sec: ConciergeSection) => {
+      if (sec.type !== "recommendations") return [];
+
+      const items = ((sec as any).items ?? []).filter(
+        (item: RegisteredShrineItem | PlaceShrineItem): item is RegisteredShrineItem => item.kind === "registered",
+      );
+
+      return items.map((item: RegisteredShrineItem, index: number) => ({
+        shrineId: item.shrineId,
+        name: item.title,
+        position: index === 0 ? "hero" : "compact",
+        rank: index + 1,
+        mode: normalizedModeForTracking,
+      }));
+    });
+  }, [payload, normalizedModeForTracking]);
+
+  useEffect(() => {
+    resultImpressions.forEach((item) => {
+      track("concierge_result_impression", {
+        shrineId: item.shrineId,
+        name: item.name,
+        position: item.position,
+        rank: item.rank,
+        ctx: "concierge",
+        tid,
+        mode: item.mode,
+      });
+    });
+  }, [resultImpressions, tid]);
 
   if (!payload || !Array.isArray(payload.sections) || payload.sections.length === 0) return null;
 
