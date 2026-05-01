@@ -25,6 +25,7 @@ import { pickReasonFromThread } from "@/lib/concierge/pickReasonFromThread";
 import { pickModeFromThread } from "@/lib/concierge/pickModeFromThread";
 
 import { ShrineDetailToast } from "@/components/shrine/ShrineDetailToast";
+import { ShrineDetailViewTracker } from "@/components/shrine/ShrineDetailViewTracker";
 import ShrineSaveButton from "@/components/shrine/ShrineSaveButton";
 import ShrineDetailShell from "@/components/shrine/ShrineDetailShell";
 import ShrineDetailArticle from "@/components/shrine/detail/ShrineDetailArticle";
@@ -436,6 +437,7 @@ export default async function Page({ params, searchParams }: Props) {
   return (
     <>
       <ScrollToTopOnMount />
+      <ShrineDetailViewTracker shrineId={numericId} ctx={ctx} tid={tid} />
       <ShrineDetailToast shrineId={numericId} />
       <ShrineDetailShell
         title={pageTitle}
