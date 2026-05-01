@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import DetailSection from "@/components/shrine/DetailSection";
 import PlaceShrineCard from "@/components/shrine/PlaceShrineCard";
 import ConciergeFilterPanel from "@/features/concierge/components/ConciergeFilterPanel";
@@ -86,6 +86,8 @@ export default function ConciergeSectionsRenderer({
   threadId = null,
   isEntryRoute = false,
 }: Props) {
+  const trackedImpressionKeysRef = useRef<Set<string>>(new Set());
+
   useEffect(() => {
     const onOpen = () => onAction?.({ type: "add_condition" });
     window.addEventListener("concierge:open-filter", onOpen);
@@ -124,6 +126,10 @@ export default function ConciergeSectionsRenderer({
 
   useEffect(() => {
     resultImpressions.forEach((item) => {
+      const impressionKey = `${tid ?? "unknown"}:concierge_result_impression:${item.shrineId}:${item.position}:${item.rank}`;
+      if (trackedImpressionKeysRef.current.has(impressionKey)) return;
+
+      trackedImpressionKeysRef.current.add(impressionKey);
       track("concierge_result_impression", {
         shrineId: item.shrineId,
         name: item.name,
