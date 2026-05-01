@@ -455,6 +455,8 @@ export default async function Page({ params, searchParams }: Props) {
           saveActionNode={
             <ShrineSaveButton
               shrineId={numericId}
+              ctx={ctx}
+              tid={tid}
               nextPath={nextPath}
               guestMode={guestMode}
               initial={initialFavorite}

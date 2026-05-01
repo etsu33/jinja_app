@@ -6,9 +6,12 @@ import { useFavorite } from "@/hooks/useFavorite";
 import { buildShrineHref } from "@/lib/nav/buildShrineHref";
 import { buildLoginHref } from "@/lib/nav/login";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { track } from "@/lib/analytics/track";
 
 type Props = {
   shrineId: number;
+  ctx?: "map" | "concierge" | null;
+  tid?: string | null;
   nextPath?: string;
   guestMode?: boolean;
   initial?: {
@@ -18,7 +21,15 @@ type Props = {
   onToggleSuccess?: (nextFav: boolean) => void;
 };
 
-export default function ShrineSaveButton({ shrineId, nextPath, guestMode, initial, onToggleSuccess }: Props) {
+export default function ShrineSaveButton({
+  shrineId,
+  ctx = null,
+  tid = null,
+  nextPath,
+  guestMode,
+  initial,
+  onToggleSuccess,
+}: Props) {
   const router = useRouter();
   const { isLoggedIn, loading } = useAuth();
   const [err, setErr] = useState<string | null>(null);
@@ -36,8 +47,15 @@ export default function ShrineSaveButton({ shrineId, nextPath, guestMode, initia
     setErr(null);
     try {
       const prevFav = fav;
+      const nextFav = !prevFav;
       await toggle();
-      onToggleSuccess?.(!prevFav);
+      track("favorite_click", {
+        shrineId,
+        ctx,
+        tid,
+        nextFav,
+      });
+      onToggleSuccess?.(nextFav);
     } catch (e: any) {
       const status = e?.response?.status ?? e?.status;
       if (status === 401) {
