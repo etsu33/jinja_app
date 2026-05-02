@@ -42,6 +42,7 @@ import { EVT_CLOSE_CONCIERGE } from "@/lib/events";
 const conciergeCardClass = "rounded-2xl border border-slate-200 bg-white shadow-sm p-6";
 
 import { isValidISODate, normalizeBirthdateInput } from "@/lib/date/normalizeBirthdateInput";
+import { track } from "@/lib/analytics/track";
 
 /* ========================================
  * 型定義とデータ設定
@@ -1018,7 +1019,15 @@ export default function ConciergeClientFull() {
 
     switch (a.type) {
       case "open_map":
-        navPush("/map", { reason: "open_map" });
+        if (typeof a.shrineId === "number") {
+          track("shrine_decision", {
+            shrineId: a.shrineId,
+            action: "route",
+            rank: typeof a.rank === "number" ? a.rank : null,
+            tid: activeThreadIdRef.current || null,
+          });
+        }
+        navPush("/map", { reason: "open_map", shrineId: a.shrineId ?? null, rank: a.rank ?? null });
         return;
 
       case "save_concierge_thread":
