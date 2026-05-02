@@ -86,14 +86,20 @@ export default function ConciergeSectionsRenderer({
   isEntryRoute = false,
 }: Props) {
   const trackedImpressionKeysRef = useRef<Set<string>>(new Set());
-  const firstResultClickSentRef = useRef(false);
 
-  function resolveFirstResultClick() {
-    if (firstResultClickSentRef.current) return false;
+  function resolveFirstResultClick(resultSetId: string) {
+    if (typeof window === "undefined") return false;
 
-    firstResultClickSentRef.current = true;
+    const key = `firstClick:${resultSetId}`;
 
-    return true;
+    try {
+      if (window.localStorage.getItem(key)) return false;
+
+      window.localStorage.setItem(key, "1");
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   useEffect(() => {
@@ -444,7 +450,7 @@ export default function ConciergeSectionsRenderer({
                                   name: heroItem.title,
                                   position: "hero",
                                   rank: 1,
-                                  firstClick: resolveFirstResultClick(),
+                                  firstClick: resolveFirstResultClick(resultSetId),
                                   ctx: "concierge",
                                   tid,
                                   resultSetId,
@@ -501,7 +507,7 @@ export default function ConciergeSectionsRenderer({
                                     name: item.title,
                                     position: "compact",
                                     rank: compactIdx + 2,
-                                    firstClick: resolveFirstResultClick(),
+                                    firstClick: resolveFirstResultClick(resultSetId),
                                     ctx: "concierge",
                                     tid,
                                     resultSetId,
