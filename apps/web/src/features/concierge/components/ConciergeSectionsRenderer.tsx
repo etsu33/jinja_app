@@ -124,9 +124,14 @@ export default function ConciergeSectionsRenderer({
     });
   }, [payload, normalizedModeForTracking]);
 
+  const resultSetId = useMemo(() => {
+    const signature = resultImpressions.map((item) => `${item.rank}:${item.position}:${item.shrineId}`).join("|");
+    return `${tid ?? "unknown"}:${signature || "empty"}`;
+  }, [resultImpressions, tid]);
+
   useEffect(() => {
     resultImpressions.forEach((item) => {
-      const impressionKey = `${tid ?? "unknown"}:concierge_result_impression:${item.shrineId}:${item.position}:${item.rank}`;
+      const impressionKey = `${resultSetId}:concierge_result_impression:${item.shrineId}:${item.position}:${item.rank}`;
       if (trackedImpressionKeysRef.current.has(impressionKey)) return;
 
       trackedImpressionKeysRef.current.add(impressionKey);
@@ -137,10 +142,11 @@ export default function ConciergeSectionsRenderer({
         rank: item.rank,
         ctx: "concierge",
         tid,
+        resultSetId,
         mode: item.mode,
       });
     });
-  }, [resultImpressions, tid]);
+  }, [resultImpressions, resultSetId, tid]);
 
   if (!payload || !Array.isArray(payload.sections) || payload.sections.length === 0) return null;
 
@@ -434,6 +440,9 @@ export default function ConciergeSectionsRenderer({
                                   name: heroItem.title,
                                   position: "hero",
                                   rank: 1,
+                                  ctx: "concierge",
+                                  tid,
+                                  resultSetId,
                                   mode: normalizedMode,
                                 })
                               }
@@ -489,6 +498,9 @@ export default function ConciergeSectionsRenderer({
                                     name: item.title,
                                     position: "compact",
                                     rank: compactIdx + 2,
+                                    ctx: "concierge",
+                                    tid,
+                                    resultSetId,
                                     mode: normalizedMode,
                                   })
                                 }
