@@ -7,10 +7,6 @@ function formatDistance(m?: number | null) {
   return `${(m / 1000).toFixed(1)}km`;
 }
 
-function clean(value?: string | null) {
-  return (value ?? "").replace(/\s+/g, " ").trim();
-}
-
 export type ShrineCardCompactProps = {
   name: string;
   href?: string | null;
@@ -29,15 +25,12 @@ export default function ShrineCardCompact({
   imageUrl = null,
   address = null,
   summary: _summary = null,
-  primaryReason = null,
-  tags = [],
+  primaryReason: _primaryReason = null,
+  tags: _tags = [],
   distanceM = null,
   onDetailClick,
 }: ShrineCardCompactProps) {
   const distText = formatDistance(distanceM);
-  const resolvedPrimaryReason = clean(primaryReason) || null;
-
-  const visibleTags = tags.filter(Boolean).slice(0, 1);
 
   return (
     <article className="rounded-2xl border border-slate-100 bg-white/90 p-3">
@@ -51,23 +44,13 @@ export default function ShrineCardCompact({
         <div className="min-w-0 flex-1">
           <div className="space-y-1">
             <h3 className="truncate text-sm font-semibold text-slate-900">{name}</h3>
-
-            {resolvedPrimaryReason ? (
-              <p className="line-clamp-1 text-xs leading-5 text-slate-600">{resolvedPrimaryReason}</p>
-            ) : null}
           </div>
 
-          {address || distText || visibleTags.length > 0 || href ? (
+          {address || distText || href ? (
             <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
               {address ? <span className="truncate text-xs text-slate-500">{address}</span> : null}
 
               {!address && distText ? <span className="text-xs text-slate-500">{distText}</span> : null}
-
-              {visibleTags.map((tag) => (
-                <span key={tag} className="rounded-full bg-slate-100 px-2 py-1 text-[11px] text-slate-500">
-                  {tag}
-                </span>
-              ))}
 
               {href ? (
                 <Link
