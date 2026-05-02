@@ -122,6 +122,21 @@ function ShrineComparisonDisclosure(props: {
   );
 }
 
+function ShrineDecisionPrompt() {
+  return (
+    <section className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4">
+      <div className="space-y-2">
+        <p className="text-sm font-semibold leading-6 text-emerald-900">
+          今のあなたの状態なら、この神社を基準に判断して問題ありません。
+        </p>
+        <p className="text-xs leading-6 text-slate-600">
+          今は選択肢を広げるより、1つに絞って動く方が判断しやすい状態です。
+        </p>
+      </div>
+    </section>
+  );
+}
+
 export default function ShrineDetailArticle({
   cardProps,
   heroImageUrl,
@@ -198,6 +213,8 @@ export default function ShrineDetailArticle({
 
       {hasSections ? <ShrineDetailSections sections={sections} /> : null}
 
+      <ShrineDecisionPrompt />
+
       {hasRecommendationMeta && recommendationMeta ? (
         <section>
           <ShrineComparisonDisclosure recommendationMeta={recommendationMeta} />
@@ -250,7 +267,10 @@ export default function ShrineDetailArticle({
       {resolvedSaveActionNode ? (
         <section className="pt-4">
           <div className="rounded-2xl border bg-emerald-50 p-4">
-            <div className="mb-2 text-sm text-slate-700">{FAVORITE_LABELS.lead}</div>
+            <div className="mb-3 space-y-1">
+              <p className="text-sm font-semibold text-emerald-900">この神社から始める</p>
+              <p className="text-xs leading-5 text-slate-600">{FAVORITE_LABELS.lead}</p>
+            </div>
 
             {favoriteNoticeState === "saved" ? (
               <div className="mb-3 rounded-xl border border-emerald-200 bg-white p-3">
