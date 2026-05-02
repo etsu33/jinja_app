@@ -38,8 +38,8 @@ export default function ConciergeTopRecommendationHero({
   onDetailClick,
 }: Props) {
   return (
-    <section className="rounded-[28px] border border-emerald-100 bg-white p-5 shadow-sm shadow-emerald-900/5">
-      <div className="space-y-4">
+    <section className="rounded-[30px] border border-emerald-200 bg-gradient-to-b from-emerald-50/80 to-white p-6 shadow-lg shadow-emerald-900/10 ring-1 ring-emerald-100">
+      <div className="space-y-5">
         <div className="space-y-3">
           {topReasonLabel ? (
             <div className="inline-flex rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
@@ -48,14 +48,15 @@ export default function ConciergeTopRecommendationHero({
           ) : null}
 
           <div className="space-y-2">
-            <div className="text-xs font-semibold tracking-[0.18em] text-emerald-700">今回のおすすめ</div>
+            <div className="text-xs font-semibold tracking-[0.18em] text-emerald-700">今回いちばん合う神社</div>
             <h2 className="text-xl font-semibold leading-8 text-slate-950">{name}</h2>
+            <p className="text-sm font-semibold leading-6 text-emerald-800">今のあなたには、まずここを軸に見るのがおすすめです。</p>
             {address ? <div className="text-xs leading-5 text-slate-500">{address}</div> : null}
           </div>
         </div>
 
-        <div className="rounded-2xl bg-emerald-50/70 px-4 py-3">
-          <p className="text-base font-semibold leading-7 text-slate-900">{catchCopy}</p>
+        <div className="rounded-2xl border border-emerald-100 bg-white/85 px-4 py-4 shadow-sm shadow-emerald-900/5">
+          <p className="text-base font-semibold leading-7 text-slate-950">{catchCopy}</p>
         </div>
 
         {whyTop || primaryReason ? (
@@ -81,12 +82,12 @@ export default function ConciergeTopRecommendationHero({
           </div>
         ) : null}
 
-        <div className="flex flex-col gap-2 pt-1 sm:flex-row">
+        <div className="flex flex-col gap-2 pt-2 sm:flex-row">
           {onRouteClick ? (
             <button
               type="button"
               onClick={onRouteClick}
-              className="inline-flex flex-1 items-center justify-center rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
+              className="inline-flex flex-1 items-center justify-center rounded-2xl bg-emerald-600 px-5 py-3.5 text-sm font-bold text-white shadow-md shadow-emerald-900/20 transition hover:bg-emerald-700"
             >
               {routeLabel}
             </button>
@@ -96,9 +97,9 @@ export default function ConciergeTopRecommendationHero({
             <Link
               href={href}
               onClick={onDetailClick}
-              className="inline-flex flex-1 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              className="inline-flex flex-1 items-center justify-center rounded-2xl border border-emerald-200 bg-white px-5 py-3.5 text-sm font-bold text-emerald-800 shadow-sm transition hover:bg-emerald-50"
             >
-              詳細を見る
+              この神社を詳しく見る
             </Link>
           ) : null}
         </div>
