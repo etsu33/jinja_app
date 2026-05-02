@@ -161,6 +161,48 @@ export function clean(value?: string | null): string {
   return (value ?? "").trim();
 }
 
+function compactText(value?: string | null, maxLength = 54): string {
+  const text = clean(value);
+  if (!text) return "";
+  if (text.length <= maxLength) return text;
+
+  const sentenceEndIndex = text.slice(0, maxLength).search(/[。.!?！？]/);
+  if (sentenceEndIndex > 0) return text.slice(0, sentenceEndIndex + 1).trim();
+
+  return text;
+}
+
+function compactOptionalText(value?: string | null, maxLength = 54): string | undefined {
+  const text = compactText(value, maxLength);
+  return text || undefined;
+}
+
+function compactReasonViewModel(reason: ReturnType<typeof buildReasonNarrative>) {
+  return {
+    hero: {
+      ...reason.hero,
+      catchCopy: compactText(reason.hero.catchCopy, 32),
+    },
+    list: {
+      ...reason.list,
+      primaryPhrase: compactText(reason.list.primaryPhrase, 44),
+      summary: compactText(reason.list.summary, 38),
+      secondaryPhrase: compactOptionalText(reason.list.secondaryPhrase, 42),
+    },
+    rank: {
+      ...reason.rank,
+      whyTop: compactOptionalText(reason.rank.whyTop, 48),
+      differenceFromOthers: compactOptionalText(reason.rank.differenceFromOthers, 42),
+    },
+    why: {
+      ...reason.why,
+      primaryReason: compactText(reason.why.primaryReason, 44),
+      summary: compactText(reason.why.summary, 38),
+      secondaryReason: compactOptionalText(reason.why.secondaryReason, 42),
+    },
+  };
+}
+
 export function uniq<T>(arr: T[]): T[] {
   return Array.from(new Set(arr));
 }
@@ -422,6 +464,7 @@ export function buildRecommendationMatchModel(args: {
  */
 export function buildRecommendationReasonViewModel(params: BuildParams): RecommendationReasonViewModel {
   const reason = buildReasonNarrative(params);
+  const compactReason = compactReasonViewModel(reason);
 
   const state = buildStateNarrative({
     params,
@@ -437,17 +480,17 @@ export function buildRecommendationReasonViewModel(params: BuildParams): Recomme
 
   return {
     inputType: resolveInputType(params),
-    hero: reason.hero,
-    list: reason.list,
+    hero: compactReason.hero,
+    list: compactReason.list,
     detail: {
       heroMeaningCopy: meaning.heroMeaningCopy,
       consultationSummary: state.consultationSummary,
       shrineMeaning: meaning.shrineMeaning,
       actionMeaning: meaning.actionMeaning,
     },
-    rank: reason.rank,
+    rank: compactReason.rank,
     debug: reason.debug,
-    why: reason.why,
+    why: compactReason.why,
     interpretation: {
       consultationSummary: state.consultationSummary,
       shrineMeaning: meaning.shrineMeaning,

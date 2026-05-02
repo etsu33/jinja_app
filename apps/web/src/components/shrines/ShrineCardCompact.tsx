@@ -28,7 +28,7 @@ export default function ShrineCardCompact({
   href = null,
   imageUrl = null,
   address = null,
-  summary = null,
+  summary: _summary = null,
   primaryReason = null,
   tags = [],
   distanceM = null,
@@ -36,34 +36,29 @@ export default function ShrineCardCompact({
 }: ShrineCardCompactProps) {
   const distText = formatDistance(distanceM);
   const resolvedPrimaryReason = clean(primaryReason) || null;
-  const resolvedSummary = clean(summary) && clean(summary) !== resolvedPrimaryReason ? clean(summary) : null;
 
   const visibleTags = tags.filter(Boolean).slice(0, 1);
 
   return (
-    <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <article className="rounded-2xl border border-slate-100 bg-white/90 p-3">
       <div className="flex gap-3">
-        <div className="h-16 w-20 shrink-0 overflow-hidden rounded-xl bg-slate-100">
+        <div className="h-14 w-16 shrink-0 overflow-hidden rounded-xl bg-slate-100">
           {imageUrl ? (
-            <Image src={imageUrl} alt={name} width={80} height={64} className="h-full w-full object-cover" />
+            <Image src={imageUrl} alt={name} width={64} height={56} className="h-full w-full object-cover" />
           ) : null}
         </div>
 
         <div className="min-w-0 flex-1">
           <div className="space-y-1">
-            <h3 className="truncate text-[15px] font-semibold text-slate-900">{name}</h3>
+            <h3 className="truncate text-sm font-semibold text-slate-900">{name}</h3>
 
             {resolvedPrimaryReason ? (
-              <p className="line-clamp-2 text-[13px] leading-6 text-slate-700">{resolvedPrimaryReason}</p>
-            ) : null}
-
-            {resolvedSummary ? (
-              <p className="line-clamp-1 text-[12px] leading-5 text-slate-500">{resolvedSummary}</p>
+              <p className="line-clamp-1 text-xs leading-5 text-slate-600">{resolvedPrimaryReason}</p>
             ) : null}
           </div>
 
           {address || distText || visibleTags.length > 0 || href ? (
-            <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+            <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
               {address ? <span className="truncate text-xs text-slate-500">{address}</span> : null}
 
               {!address && distText ? <span className="text-xs text-slate-500">{distText}</span> : null}
@@ -78,7 +73,7 @@ export default function ShrineCardCompact({
                 <Link
                   href={href}
                   onClick={onDetailClick}
-                  className="ml-auto inline-flex items-center text-sm font-medium text-slate-600 transition hover:text-slate-900"
+                  className="ml-auto inline-flex items-center text-xs font-medium text-slate-500 transition hover:text-slate-800"
                 >
                   → 詳細
                 </Link>
