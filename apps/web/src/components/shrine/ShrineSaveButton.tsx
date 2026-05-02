@@ -55,6 +55,16 @@ export default function ShrineSaveButton({
         tid,
         nextFav,
       });
+
+      if (nextFav) {
+        track("shrine_decision", {
+          shrineId,
+          action: "save",
+          ctx,
+          tid,
+        });
+      }
+
       onToggleSuccess?.(nextFav);
     } catch (e: any) {
       const status = e?.response?.status ?? e?.status;

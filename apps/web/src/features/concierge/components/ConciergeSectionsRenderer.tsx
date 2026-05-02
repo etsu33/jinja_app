@@ -444,7 +444,7 @@ export default function ConciergeSectionsRenderer({
                               secondaryReason={null}
                               differenceFromOthers={null}
                               tags={(heroItem.breakdown?.matched_need_tags ?? []).slice(0, 3)}
-                              onRouteClick={() => onAction?.({ type: "open_map" })}
+                              onRouteClick={() => onAction?.({ type: "open_map", shrineId: heroItem.shrineId, rank: 1 })}
                               onDetailClick={() =>
                                 track("concierge_result_click", {
                                   rank: 1,
