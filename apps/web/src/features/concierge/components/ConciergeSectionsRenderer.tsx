@@ -22,7 +22,6 @@ import type {
 
 type MetaMode = NonNullable<ConciergeSectionsPayload["meta"]>["mode"];
 
-
 const conciergeSoftCardClass = "rounded-2xl border border-slate-200 bg-slate-50 shadow-sm p-4";
 const conciergeNoticeCardClass = "rounded-2xl border border-amber-200 bg-amber-50 shadow-sm p-4";
 
@@ -162,9 +161,7 @@ export default function ConciergeSectionsRenderer({
             const title = (sec as any).title ?? "条件を追加して絞る";
 
             const canApplyCompatFilter =
-              !!state.birthdate?.trim() ||
-              (state.selectedTagIds?.length ?? 0) > 0 ||
-              !!state.extraCondition?.trim();
+              !!state.birthdate?.trim() || (state.selectedTagIds?.length ?? 0) > 0 || !!state.extraCondition?.trim();
 
             // 閉じ状態（プリセット選択 + 即絞り）
             if (!state.isOpen) {
@@ -279,8 +276,6 @@ export default function ConciergeSectionsRenderer({
               </div>
             );
           }
-
-            
 
           case "recommendations": {
             const items = (sec as any).items ?? [];
@@ -429,9 +424,9 @@ export default function ConciergeSectionsRenderer({
                               topReasonLabel={reasonVm.hero.topReasonLabel ?? null}
                               catchCopy={reasonVm.hero.catchCopy}
                               whyTop={reasonVm.rank.whyTop ?? null}
-                              primaryReason={reasonVm.list.primaryPhrase}
-                              secondaryReason={reasonVm.list.secondaryPhrase ?? null}
-                              differenceFromOthers={reasonVm.rank.differenceFromOthers ?? null}
+                              primaryReason=""
+                              secondaryReason={null}
+                              differenceFromOthers={null}
                               tags={(heroItem.breakdown?.matched_need_tags ?? []).slice(0, 3)}
                               onRouteClick={() => onAction?.({ type: "open_map" })}
                               onDetailClick={() =>
@@ -454,10 +449,8 @@ export default function ConciergeSectionsRenderer({
 
                   {otherRegisteredItems.length > 0 ? (
                     <div className="pt-8">
-                      <div className="mb-2 text-sm font-semibold text-slate-900">他の候補</div>
-                      <p className="mb-3 text-xs leading-6 text-slate-500">
-                        比較候補として、今回の相談と相性のある神社も紹介します。
-                      </p>
+                      <div className="mb-2 text-xs font-semibold tracking-[0.16em] text-slate-500">ほかの候補</div>
+                      <p className="mb-3 text-xs leading-5 text-slate-500">迷った時の参考です。</p>
 
                       <div className="space-y-3">
                         {otherRegisteredItems.map((item: RegisteredShrineItem, compactIdx: number) => {
@@ -489,7 +482,7 @@ export default function ConciergeSectionsRenderer({
                                 imageUrl={item.imageUrl}
                                 address={null}
                                 summary={reasonVm.list.summary}
-                                primaryReason={reasonVm.list.primaryPhrase}
+                                primaryReason=""
                                 tags={(item.breakdown?.matched_need_tags ?? []).slice(0, 1)}
                                 distanceM={(item as any).distance_m ?? null}
                                 onDetailClick={() =>
