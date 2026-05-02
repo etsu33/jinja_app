@@ -1196,7 +1196,7 @@ export default function ConciergeClientFull() {
                 maxLength={20}
               />
             </div>
-            {!canSaveConciergeThread ? (
+            {!canSaveConciergeThread && !isUiPaywall ? (
               <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
                 <p>未ログインでも検索できます。保存にはログインが必要です。</p>
                 <div className="mt-2 flex gap-2">
@@ -1352,15 +1352,19 @@ export default function ConciergeClientFull() {
             {!isBusy && isUiPaywall ? (
               <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
                 <p className="font-medium text-slate-800">無料回数を使い切りました。</p>
-                <p className="mt-1 text-xs leading-6 text-slate-500">続けるにはログイン、または有料プランへの切り替えが必要です。</p>
+                <p className="mt-1 text-xs leading-6 text-slate-500">
+                  {isLoggedIn ? "続けるには有料プランへの切り替えが必要です。" : "続けるにはログイン、または有料プランへの切り替えが必要です。"}
+                </p>
                 <div className="mt-3 flex gap-2">
-                  <button
-                    type="button"
-                    className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
-                    onClick={() => redirectToAuth("login")}
-                  >
-                    ログイン
-                  </button>
+                  {!isLoggedIn ? (
+                    <button
+                      type="button"
+                      className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
+                      onClick={() => redirectToAuth("login")}
+                    >
+                      ログイン
+                    </button>
+                  ) : null}
                   <Link
                     href="/billing/upgrade"
                     className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
@@ -1414,15 +1418,19 @@ export default function ConciergeClientFull() {
             {!isBusy && isUiPaywall ? (
               <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
                 <p className="font-medium text-slate-800">無料回数を使い切りました。</p>
-                <p className="mt-1 text-xs leading-6 text-slate-500">続けるにはログイン、または有料プランへの切り替えが必要です。</p>
+                <p className="mt-1 text-xs leading-6 text-slate-500">
+                  {isLoggedIn ? "続けるには有料プランへの切り替えが必要です。" : "続けるにはログイン、または有料プランへの切り替えが必要です。"}
+                </p>
                 <div className="mt-3 flex gap-2">
-                  <button
-                    type="button"
-                    className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
-                    onClick={() => redirectToAuth("login")}
-                  >
-                    ログイン
-                  </button>
+                  {!isLoggedIn ? (
+                    <button
+                      type="button"
+                      className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
+                      onClick={() => redirectToAuth("login")}
+                    >
+                      ログイン
+                    </button>
+                  ) : null}
                   <Link
                     href="/billing/upgrade"
                     className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
