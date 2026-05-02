@@ -51,6 +51,9 @@ export default function ConciergeTopRecommendationHero({
             <div className="text-xs font-semibold tracking-[0.18em] text-emerald-700">今回いちばん合う神社</div>
             <h2 className="text-xl font-semibold leading-8 text-slate-950">{name}</h2>
             <p className="text-sm font-semibold leading-6 text-emerald-800">今のあなたには、まずここを軸に見るのがおすすめです。</p>
+            <p className="text-xs font-medium leading-6 text-slate-600">
+              他の候補を見る前に、まずここを確認すると判断しやすくなります。
+            </p>
             {address ? <div className="text-xs leading-5 text-slate-500">{address}</div> : null}
           </div>
         </div>

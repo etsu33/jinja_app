@@ -56,9 +56,9 @@ export default function ShrineCardCompact({
                 <Link
                   href={href}
                   onClick={onDetailClick}
-                  className="ml-auto inline-flex items-center text-xs font-medium text-slate-500 transition hover:text-slate-800"
+                  className="ml-auto inline-flex items-center text-[11px] font-normal text-slate-400 transition hover:text-slate-600"
                 >
-                  → 詳細
+                  詳細だけ見る
                 </Link>
               ) : null}
             </div>
