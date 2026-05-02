@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import DetailSection from "@/components/shrine/DetailSection";
 import PlaceShrineCard from "@/components/shrine/PlaceShrineCard";
 import ConciergeFilterPanel from "@/features/concierge/components/ConciergeFilterPanel";
@@ -86,6 +86,7 @@ export default function ConciergeSectionsRenderer({
   isEntryRoute = false,
 }: Props) {
   const trackedImpressionKeysRef = useRef<Set<string>>(new Set());
+  const [showOtherRecommendations, setShowOtherRecommendations] = useState(false);
 
   function resolveFirstResultClick(resultSetId: string) {
     if (typeof window === "undefined") return false;
@@ -459,34 +460,46 @@ export default function ConciergeSectionsRenderer({
 
                   {otherRegisteredItems.length > 0 ? (
                     <div className="pt-8">
-                      <div className="mb-2 text-xs font-semibold tracking-[0.16em] text-slate-500">ほかの候補</div>
-                      <p className="mb-3 text-xs leading-5 text-slate-500">迷った時の参考です。</p>
+                      {!showOtherRecommendations ? (
+                        <button
+                          type="button"
+                          className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs font-semibold text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
+                          onClick={() => setShowOtherRecommendations(true)}
+                        >
+                          迷った時だけ、ほかの候補を見る
+                        </button>
+                      ) : (
+                        <div>
+                          <div className="mb-2 text-xs font-semibold tracking-[0.16em] text-slate-500">ほかの候補</div>
+                          <p className="mb-3 text-xs leading-5 text-slate-500">迷った時の参考です。</p>
 
-                      <div className="space-y-3">
-                        {otherRegisteredItems.map((item: RegisteredShrineItem, compactIdx: number) => {
-                          return (
-                            <div key={`rec-${i}-compact-${item.shrineId}`} className="space-y-2">
-                              <ShrineCardCompact
-                                name={item.title}
-                                href={item.detailHref}
-                                imageUrl={item.imageUrl}
-                                address={null}
-                                summary={null}
-                                primaryReason={null}
-                                tags={[]}
-                                distanceM={(item as any).distance_m ?? null}
-                                onDetailClick={() =>
-                                  track("concierge_result_click", {
-                                    rank: compactIdx + 2,
-                                    shrineId: item.shrineId,
-                                    firstClick: resolveFirstResultClick(resultSetId),
-                                  })
-                                }
-                              />
-                            </div>
-                          );
-                        })}
-                      </div>
+                          <div className="space-y-3">
+                            {otherRegisteredItems.map((item: RegisteredShrineItem, compactIdx: number) => {
+                              return (
+                                <div key={`rec-${i}-compact-${item.shrineId}`} className="space-y-2">
+                                  <ShrineCardCompact
+                                    name={item.title}
+                                    href={item.detailHref}
+                                    imageUrl={item.imageUrl}
+                                    address={null}
+                                    summary={null}
+                                    primaryReason={null}
+                                    tags={[]}
+                                    distanceM={(item as any).distance_m ?? null}
+                                    onDetailClick={() =>
+                                      track("concierge_result_click", {
+                                        rank: compactIdx + 2,
+                                        shrineId: item.shrineId,
+                                        firstClick: resolveFirstResultClick(resultSetId),
+                                      })
+                                    }
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ) : null}
 
