@@ -840,6 +840,7 @@ export default function ConciergeClientFull() {
    * -------------------------------------- */
   const isBusy = sending || (isEntryRoute && entrySubmitting);
 
+
   /* ----------------------------------------
    * 安全な送信関数（共通化）
    * -------------------------------------- */

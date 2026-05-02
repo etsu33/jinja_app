@@ -446,15 +446,9 @@ export default function ConciergeSectionsRenderer({
                               onRouteClick={() => onAction?.({ type: "open_map" })}
                               onDetailClick={() =>
                                 track("concierge_result_click", {
-                                  shrineId: heroItem.shrineId,
-                                  name: heroItem.title,
-                                  position: "hero",
                                   rank: 1,
+                                  shrineId: heroItem.shrineId,
                                   firstClick: resolveFirstResultClick(resultSetId),
-                                  ctx: "concierge",
-                                  tid,
-                                  resultSetId,
-                                  mode: normalizedMode,
                                 })
                               }
                             />
@@ -503,15 +497,9 @@ export default function ConciergeSectionsRenderer({
                                 distanceM={(item as any).distance_m ?? null}
                                 onDetailClick={() =>
                                   track("concierge_result_click", {
-                                    shrineId: item.shrineId,
-                                    name: item.title,
-                                    position: "compact",
                                     rank: compactIdx + 2,
+                                    shrineId: item.shrineId,
                                     firstClick: resolveFirstResultClick(resultSetId),
-                                    ctx: "concierge",
-                                    tid,
-                                    resultSetId,
-                                    mode: normalizedMode,
                                   })
                                 }
                               />
