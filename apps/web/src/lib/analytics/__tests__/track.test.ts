@@ -40,7 +40,11 @@ describe("track", () => {
       "[track]",
       expect.objectContaining({
         eventName: "add_shrine_click",
-        payload: { q: "未登録神社", returnTo: "/shrines?q=%E6%9C%AA%E7%99%BB%E9%8C%B2" },
+        payload: expect.objectContaining({
+          q: "未登録神社",
+          returnTo: "/shrines?q=%E6%9C%AA%E7%99%BB%E9%8C%B2",
+          sessionId: expect.any(String),
+        }),
         timestamp: expect.any(String),
       }),
     );
@@ -50,7 +54,11 @@ describe("track", () => {
     expect(listener.mock.calls[0]?.[0].detail).toEqual(
       expect.objectContaining({
         eventName: "add_shrine_click",
-        payload: { q: "未登録神社", returnTo: "/shrines?q=%E6%9C%AA%E7%99%BB%E9%8C%B2" },
+        payload: expect.objectContaining({
+          q: "未登録神社",
+          returnTo: "/shrines?q=%E6%9C%AA%E7%99%BB%E9%8C%B2",
+          sessionId: expect.any(String),
+        }),
         timestamp: expect.any(String),
       }),
     );
@@ -60,7 +68,11 @@ describe("track", () => {
     expect(saved[0]).toEqual(
       expect.objectContaining({
         eventName: "add_shrine_click",
-        payload: { q: "未登録神社", returnTo: "/shrines?q=%E6%9C%AA%E7%99%BB%E9%8C%B2" },
+        payload: expect.objectContaining({
+          q: "未登録神社",
+          returnTo: "/shrines?q=%E6%9C%AA%E7%99%BB%E9%8C%B2",
+          sessionId: expect.any(String),
+        }),
         timestamp: expect.any(String),
       }),
     );
@@ -85,7 +97,10 @@ describe("track", () => {
     expect(saved[99]).toEqual(
       expect.objectContaining({
         eventName: "latest_event",
-        payload: { index: 100 },
+        payload: expect.objectContaining({
+          index: 100,
+          sessionId: expect.any(String),
+        }),
         timestamp: expect.any(String),
       }),
     );
