@@ -464,26 +464,6 @@ export default function ConciergeSectionsRenderer({
 
                       <div className="space-y-3">
                         {otherRegisteredItems.map((item: RegisteredShrineItem, compactIdx: number) => {
-                          const reasonVm = buildRecommendationReasonViewModel({
-                            rec: {
-                              display_name: item.title,
-                              name: item.title,
-                              breakdown: item.breakdown ?? null,
-                              reason: item.description ?? null,
-                              fallback_mode: payload?.meta?.resultState?.fallback_mode ?? null,
-                              distance_m: (item as any).distance_m ?? null,
-                              popular_score: (item as any).popular_score ?? null,
-                              astro_elements: (item as any).astro_elements ?? null,
-                              astro_priority: (item as any).astro_priority ?? null,
-                              explanation: (item as any).explanation ?? null,
-                              reason_facts: (item as any).reasonFacts ?? null,
-                            },
-                            index: compactIdx + 1,
-                            mode: normalizedMode,
-                            birthdate: filterState?.birthdate ?? null,
-                            needTags: item.breakdown?.matched_need_tags ?? [],
-                          });
-
                           return (
                             <div key={`rec-${i}-compact-${item.shrineId}`} className="space-y-2">
                               <ShrineCardCompact
@@ -491,9 +471,9 @@ export default function ConciergeSectionsRenderer({
                                 href={item.detailHref}
                                 imageUrl={item.imageUrl}
                                 address={null}
-                                summary={reasonVm.list.summary}
-                                primaryReason=""
-                                tags={(item.breakdown?.matched_need_tags ?? []).slice(0, 1)}
+                                summary={null}
+                                primaryReason={null}
+                                tags={[]}
                                 distanceM={(item as any).distance_m ?? null}
                                 onDetailClick={() =>
                                   track("concierge_result_click", {
