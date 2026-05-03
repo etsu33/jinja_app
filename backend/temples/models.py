@@ -233,6 +233,7 @@ class Shrine(dj_models.Model):
     popular_score = models.FloatField(default=0.0)
     last_popular_calc_at = models.DateTimeField(null=True, blank=True)
     astro_elements = models.JSONField(default=list, blank=True, help_text="西洋占星術エレメント: ['火','土','風','水']")
+    visit_style_tags = models.JSONField(default=list, blank=True, help_text="参拝スタイルタグ: ['quiet','nature','classic'] など")
 
     place_ref = models.OneToOneField(
         "PlaceRef",

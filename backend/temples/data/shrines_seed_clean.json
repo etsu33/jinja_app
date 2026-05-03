@@ -9,6 +9,11 @@
     "astro_elements": [
       "火"
     ],
+    "visit_style_tags": [
+      "nature",
+      "quiet",
+      "classic"
+    ],
     "location": {
       "lat": 35.6764,
       "lng": 139.6993
@@ -339,6 +344,11 @@
     "astro_elements": [
       "風"
     ],
+    "visit_style_tags": [
+      "classic",
+      "urban",
+      "business"
+    ],
     "location": {
       "lat": 35.7019,
       "lng": 139.7674
@@ -353,6 +363,11 @@
     "kyusei": null,
     "astro_elements": [
       "水"
+    ],
+    "visit_style_tags": [
+      "classic",
+      "tourism",
+      "less_crowded"
     ],
     "location": {
       "lat": 35.7152,
@@ -602,6 +617,11 @@
     "kyusei": null,
     "astro_elements": [
       "火"
+    ],
+    "visit_style_tags": [
+      "quiet",
+      "formal",
+      "classic"
     ],
     "location": {
       "lat": 35.6745,
