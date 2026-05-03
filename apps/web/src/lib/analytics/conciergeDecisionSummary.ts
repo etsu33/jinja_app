@@ -1,5 +1,3 @@
-
-
 type TrackPayload = Record<string, unknown>;
 
 type TrackEventDetail = {
@@ -13,8 +11,16 @@ export type ConciergeDecisionSummary = {
   detailViews: number;
   decisions: number;
   returnsAfterDetail: number;
+  resultClicks: number;
+  heroPrimaryClicks: number;
+  heroSecondaryClicks: number;
+  detailClicks: number;
+  routeClicks: number;
   decisionRate: string;
   returnRate: string;
+  detailRate: string;
+  primaryClickRate: string;
+  secondaryClickRate: string;
   saveDecisions: number;
   mapSearchDecisions: number;
   saveRate: string;
@@ -37,6 +43,7 @@ export function buildConciergeDecisionSummary(events: TrackEventDetail[]): Conci
   const detailViews = events.filter((event) => event.eventName === "shrine_detail_view");
   const decisions = events.filter((event) => event.eventName === "shrine_decision");
   const returnsAfterDetail = events.filter((event) => event.eventName === "concierge_return_after_detail");
+  const resultClicks = events.filter((event) => event.eventName === "concierge_result_click");
 
   for (const event of events) {
     if (
@@ -51,14 +58,26 @@ export function buildConciergeDecisionSummary(events: TrackEventDetail[]): Conci
 
   const saveDecisions = decisions.filter((event) => event.payload?.action === "save").length;
   const mapSearchDecisions = decisions.filter((event) => event.payload?.action === "map_search").length;
+  const detailClicks = resultClicks.filter((event) => event.payload?.action === "detail").length;
+  const routeClicks = resultClicks.filter((event) => event.payload?.action === "route").length;
+  const heroPrimaryClicks = resultClicks.filter((event) => event.payload?.position === "hero_primary").length;
+  const heroSecondaryClicks = resultClicks.filter((event) => event.payload?.position === "hero_secondary").length;
 
   return {
     totalSessions: sessionIds.size,
     detailViews: detailViews.length,
     decisions: decisions.length,
     returnsAfterDetail: returnsAfterDetail.length,
+    resultClicks: resultClicks.length,
+    heroPrimaryClicks,
+    heroSecondaryClicks,
+    detailClicks,
+    routeClicks,
     decisionRate: percent(decisions.length, detailViews.length),
     returnRate: percent(returnsAfterDetail.length, detailViews.length),
+    detailRate: percent(detailClicks, resultClicks.length),
+    primaryClickRate: percent(heroPrimaryClicks, resultClicks.length),
+    secondaryClickRate: percent(heroSecondaryClicks, resultClicks.length),
     saveDecisions,
     mapSearchDecisions,
     saveRate: percent(saveDecisions, decisions.length),

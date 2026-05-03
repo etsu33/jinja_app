@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import DetailSection from "@/components/shrine/DetailSection";
 import PlaceShrineCard from "@/components/shrine/PlaceShrineCard";
+import ShrineSaveButton from "@/components/shrine/ShrineSaveButton";
 import ConciergeFilterPanel from "@/features/concierge/components/ConciergeFilterPanel";
 import ModeBadge from "@/features/concierge/components/ModeBadge";
 import { buildRecommendationReasonViewModel } from "@/lib/concierge/buildRecommendationReasonViewModel";
@@ -445,7 +446,25 @@ export default function ConciergeSectionsRenderer({
                               secondaryReason={null}
                               differenceFromOthers={null}
                               tags={(heroItem.breakdown?.matched_need_tags ?? []).slice(0, 3)}
-                              onRouteClick={() =>
+                              routeLabel="まずはここに行く"
+                              secondaryActionSlot={
+                                <ShrineSaveButton
+                                  shrineId={heroItem.shrineId}
+                                  ctx="concierge"
+                                  tid={tid}
+                                  nextPath={heroItem.detailHref}
+                                  variant="subtle"
+                                />
+                              }
+                              onRouteClick={() => {
+                                track("concierge_result_click", {
+                                  action: "route",
+                                  position: "hero_primary",
+                                  rank: 1,
+                                  shrineId: heroItem.shrineId,
+                                  firstClick: resolveFirstResultClick(resultSetId),
+                                });
+
                                 onAction?.({
                                   type: "open_map",
                                   shrineId: heroItem.shrineId,
@@ -454,10 +473,12 @@ export default function ConciergeSectionsRenderer({
                                     address: (heroItem as any).address ?? null,
                                     fallbackName: heroItem.title,
                                   }),
-                                })
-                              }
+                                });
+                              }}
                               onDetailClick={() =>
                                 track("concierge_result_click", {
+                                  action: "detail",
+                                  position: "hero_secondary",
                                   rank: 1,
                                   shrineId: heroItem.shrineId,
                                   firstClick: resolveFirstResultClick(resultSetId),
@@ -499,6 +520,8 @@ export default function ConciergeSectionsRenderer({
                                     distanceM={(item as any).distance_m ?? null}
                                     onDetailClick={() =>
                                       track("concierge_result_click", {
+                                        action: "detail",
+                                        position: "compact",
                                         rank: compactIdx + 2,
                                         shrineId: item.shrineId,
                                         firstClick: resolveFirstResultClick(resultSetId),

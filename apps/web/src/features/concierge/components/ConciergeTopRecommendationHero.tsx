@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 type Props = {
   name: string;
@@ -16,6 +17,7 @@ type Props = {
   nextActionHint?: string | null;
   tags?: string[];
   routeLabel?: string;
+  secondaryActionSlot?: ReactNode;
   onRouteClick?: () => void;
   onDetailClick?: () => void;
 };
@@ -34,6 +36,7 @@ export default function ConciergeTopRecommendationHero({
   nextActionHint = null,
   tags = [],
   routeLabel = "経路案内",
+  secondaryActionSlot = null,
   onRouteClick,
   onDetailClick,
 }: Props) {
@@ -85,25 +88,30 @@ export default function ConciergeTopRecommendationHero({
           </div>
         ) : null}
 
-        <div className="flex flex-col gap-2 pt-2 sm:flex-row">
+        <div className="pt-2">
           {onRouteClick ? (
             <button
               type="button"
               onClick={onRouteClick}
-              className="inline-flex flex-1 items-center justify-center rounded-2xl bg-emerald-600 px-5 py-3.5 text-sm font-bold text-white shadow-md shadow-emerald-900/20 transition hover:bg-emerald-700"
+              className="inline-flex w-full items-center justify-center rounded-2xl bg-emerald-600 px-5 py-3.5 text-sm font-bold text-white shadow-md shadow-emerald-900/20 transition hover:bg-emerald-700"
             >
               {routeLabel}
             </button>
           ) : null}
 
-          {href ? (
-            <Link
-              href={href}
-              onClick={onDetailClick}
-              className="inline-flex flex-1 items-center justify-center rounded-2xl border border-emerald-200 bg-white px-5 py-3.5 text-sm font-bold text-emerald-800 shadow-sm transition hover:bg-emerald-50"
-            >
-              この神社を詳しく見る
-            </Link>
+          {href || secondaryActionSlot ? (
+            <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2" data-testid="hero-secondary-actions">
+              {href ? (
+                <Link
+                  href={href}
+                  onClick={onDetailClick}
+                  className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
+                >
+                  詳しく見る
+                </Link>
+              ) : null}
+              {secondaryActionSlot}
+            </div>
           ) : null}
         </div>
       </div>
