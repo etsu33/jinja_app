@@ -70,6 +70,7 @@ def _attach_chat_rec_enrichment(
     weights: Dict[str, float],
     astro_bonus_enabled: bool,
     soft_signal_tags: set[str],
+    visit_style_tags: set[str],
 ) -> Dict[str, Any]:
     for rec in recs.get("recommendations") or []:
         if not isinstance(rec, dict):
@@ -81,6 +82,7 @@ def _attach_chat_rec_enrichment(
             need_tags=need_tags,
             weights=weights,
             astro_bonus_enabled=astro_bonus_enabled,
+            visit_style_tags=visit_style_tags,
         )
         _apply_soft_signal_highlights(
             rec,
@@ -209,6 +211,7 @@ def build_chat_recommendations(
     sort_tags = extra_tags["sort_tags"]
     hard_filter_tags = extra_tags["hard_filter_tags"]
     soft_signal_tags = extra_tags["soft_signal_tags"]
+    visit_style_tags = extra_tags["visit_style_tags"]
 
     weights = _resolve_mode_weights(
         public_mode=public_mode,  # type: ignore[arg-type]
@@ -268,6 +271,7 @@ def build_chat_recommendations(
         weights=weights,
         astro_bonus_enabled=astro_bonus_enabled,
         soft_signal_tags=soft_signal_tags,
+        visit_style_tags=visit_style_tags,
     )
 
     recs = attach_explanation_payload(recs)
@@ -282,6 +286,7 @@ def build_chat_recommendations(
                     "breakdown_matched_need_tags": (r.get("breakdown") or {}).get(
                         "matched_need_tags"
                     ),
+                    "visit_style": ((r.get("breakdown_detail") or {}).get("features") or {}).get("visit_style"),
                     "breakdown_score_need": (r.get("breakdown") or {}).get("score_need"),
                     "explanation_payload": r.get("_explanation_payload"),
                 }
@@ -316,6 +321,7 @@ def build_chat_recommendations(
                     "score_total": r.get("_score_total"),
                     "score_need": (r.get("breakdown") or {}).get("score_need"),
                     "matched_need_tags": (r.get("breakdown") or {}).get("matched_need_tags"),
+                    "visit_style": ((r.get("breakdown_detail") or {}).get("features") or {}).get("visit_style"),
                     "goriyaku": r.get("goriyaku"),
                     "reason": r.get("reason"),
                 }

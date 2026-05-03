@@ -348,6 +348,7 @@ def _attach_breakdown(
     need_tags: List[str],
     weights: Dict[str, float],
     astro_bonus_enabled: bool,
+    visit_style_tags: set[str] | None = None,
 ) -> None:
     """
     rec（1件の神社辞書）にスコアの内訳を追加する。
@@ -473,6 +474,8 @@ def _attach_breakdown(
     except Exception:
         distance_m = None
     score_distance = _distance_decay(distance_m)
+    matched_visit_style_tags = sorted(t for t in (visit_style_tags or set()) if isinstance(t, str) and t.strip())
+    score_visit_style = len(matched_visit_style_tags)
 
     # score_total:
     #   API 契約用の公開スコア。
@@ -535,6 +538,12 @@ def _attach_breakdown(
                 "raw": float(score_distance),
                 "weight": float(w4),
                 "contribution": float(score_distance * w4),
+            },
+            "visit_style": {
+                "raw": int(score_visit_style),
+                "weight": 0.0,
+                "matched_tags": matched_visit_style_tags,
+                "contribution": 0.0,
             },
             "astro_bonus": float(astro_bonus) if astro_bonus_enabled else 0.0,
             "score_total_ranked": float(score_total_ranked),
