@@ -29,7 +29,7 @@ export default function ConciergeTopRecommendationHero({
   address = null,
   topReasonLabel = null,
   catchCopy,
-  whyTop = null,
+  whyTop: _whyTop = null,
   primaryReason = null,
   secondaryReason: _secondaryReason = null,
   differenceFromOthers: _differenceFromOthers = null,
