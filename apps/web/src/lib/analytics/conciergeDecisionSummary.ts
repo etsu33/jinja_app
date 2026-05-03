@@ -16,9 +16,9 @@ export type ConciergeDecisionSummary = {
   decisionRate: string;
   returnRate: string;
   saveDecisions: number;
-  routeDecisions: number;
+  mapSearchDecisions: number;
   saveRate: string;
-  routeRate: string;
+  mapSearchRate: string;
 };
 
 function percent(numerator: number, denominator: number): string {
@@ -50,7 +50,7 @@ export function buildConciergeDecisionSummary(events: TrackEventDetail[]): Conci
   }
 
   const saveDecisions = decisions.filter((event) => event.payload?.action === "save").length;
-  const routeDecisions = decisions.filter((event) => event.payload?.action === "route").length;
+  const mapSearchDecisions = decisions.filter((event) => event.payload?.action === "map_search").length;
 
   return {
     totalSessions: sessionIds.size,
@@ -60,9 +60,9 @@ export function buildConciergeDecisionSummary(events: TrackEventDetail[]): Conci
     decisionRate: percent(decisions.length, detailViews.length),
     returnRate: percent(returnsAfterDetail.length, detailViews.length),
     saveDecisions,
-    routeDecisions,
+    mapSearchDecisions,
     saveRate: percent(saveDecisions, decisions.length),
-    routeRate: percent(routeDecisions, decisions.length),
+    mapSearchRate: percent(mapSearchDecisions, decisions.length),
   };
 }
 

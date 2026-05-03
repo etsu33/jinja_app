@@ -1018,7 +1018,7 @@ export default function ConciergeClientFull() {
     snap("action:renderer", { type: a.type });
 
     switch (a.type) {
-      case "open_map":
+      case "open_map": {
         if (typeof a.shrineId === "number") {
           track("shrine_decision", {
             shrineId: a.shrineId,
@@ -1027,8 +1027,16 @@ export default function ConciergeClientFull() {
             tid: activeThreadIdRef.current || null,
           });
         }
-        navPush("/map", { reason: "open_map", shrineId: a.shrineId ?? null, rank: a.rank ?? null });
+
+        const routeHref = typeof a.routeHref === "string" && a.routeHref.length > 0 ? a.routeHref : null;
+        if (routeHref) {
+          window.location.assign(routeHref);
+          return;
+        }
+
+        navPush("/map", { reason: "open_map_fallback", shrineId: a.shrineId ?? null, rank: a.rank ?? null });
         return;
+      }
 
       case "save_concierge_thread":
         snap("action:save_concierge_thread", {
