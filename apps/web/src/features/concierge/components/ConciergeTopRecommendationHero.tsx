@@ -51,10 +51,10 @@ export default function ConciergeTopRecommendationHero({
           ) : null}
 
           <div className="space-y-2">
-            <div className="text-xs font-semibold tracking-[0.18em] text-emerald-700">今回いちばん合う神社</div>
+            <div className="text-xs font-semibold tracking-[0.18em] text-emerald-700">今の相談に合いそうな神社</div>
             <h2 className="text-xl font-semibold leading-8 text-slate-950">{name}</h2>
             <p className="text-sm font-semibold leading-6 text-emerald-800">
-              今のあなたには、まずここを軸に見るのがおすすめです。
+              今のあなたには、まずここを軸に見ると整理しやすそうです。
             </p>
             {address ? <div className="text-xs leading-5 text-slate-500">{address}</div> : null}
           </div>
@@ -67,7 +67,7 @@ export default function ConciergeTopRecommendationHero({
         {primaryReason ? (
           <div className="space-y-1 text-sm leading-7">
             <p className="text-slate-700">{primaryReason.split("。")[0] || primaryReason}</p>
-            <p className="font-semibold text-slate-900">今の状況から動き出すなら、この候補が一番自然です。</p>
+            <p className="font-semibold text-slate-900">今の状況から動き出すなら、この候補が自然に見えます。</p>
             <p className="text-xs text-slate-500">この候補を基準にすると判断しやすくなります。</p>
           </div>
         ) : null}
