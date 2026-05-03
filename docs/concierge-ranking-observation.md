@@ -115,6 +115,80 @@ OK：
 - 同一クエリで順位変化を見る
 - location変更と組み合わせて確認
 
+## ▼ 神社側 visit_style タグ保持方針（検討）
+
+### ■ 目的
+ユーザーが選んだ visit_style を、候補神社ごとの差分として ranking に反映できるようにする。
+
+現状はユーザー側の visit_style は抽出できているが、神社側に対応する特徴タグがないため、全候補に同じ visit_style が乗り、順位差が出ない。
+
+---
+
+### ■ 比較
+
+| 方式 | メリット | デメリット | 判断 |
+|---|---|---|---|
+| seed に `visit_style_tags` を追加 | 既存 seed 管理に乗せやすい / MVPで手動整備しやすい / 代表神社から始められる | import処理の対応が必要 / seed未投入環境では反映されない | MVPで採用 |
+| DB に `Shrine.visit_style_tags` JSONField を追加 | rankingで参照しやすい / admin編集に拡張しやすい / 長期運用に向く | migration が必要 / 初期データ投入が必要 | MVP〜中期で採用 |
+| コード内 map で持つ | 最速で検証できる / migration不要 | DB/seedと二重管理になる / 長期負債化しやすい / 運用者が編集しにくい | 採用しない |
+
+---
+
+### ■ MVP方針（仮固定）
+
+MVPでは **seed + DB JSONField** を採用する。
+
+- `Shrine.visit_style_tags` を JSONField として追加する
+- `shrines_seed_clean.json` に `visit_style_tags` を追加する
+- `import_shrines_seed` で `visit_style_tags` を取り込む
+- まずは代表神社だけ手動タグ付けする
+- ranking加点は神社側タグ投入後に実施する
+
+---
+
+### ■ 初期運用
+
+- 全神社を一気にタグ付けしない
+- 東京・主要候補など、コンシェルジュに出やすい神社から整備する
+- 不明な神社は `visit_style_tags: []` として扱う
+- 空配列の場合は visit_style 加点なし
+
+---
+
+### ■ ranking加点の前提
+
+ranking加点は、以下が揃ってから実施する。
+
+- user側 `visit_style_tags` が抽出できている
+- shrine側 `visit_style_tags` が候補に載っている
+- `breakdown_detail.features.visit_style` で一致タグを観測できる
+- 代表クエリで visit_style あり / なしの差分を確認できる
+
+---
+
+### ■ ranking導入順序
+
+visit_style は以下の順序で導入する。
+
+1. 神社側に `visit_style_tags` を入れる
+2. 候補辞書に `visit_style_tags` を載せる
+3. `breakdown_detail.features.visit_style` で可視化する
+4. visit_style あり / なしの差分を確認する
+5. 問題なければ `_score_total` に加点する
+
+加点は最後に行う。  
+タグ投入直後に ranking へ反映しない。
+
+### ■ 実装順
+
+1. `Shrine.visit_style_tags` JSONField を追加
+2. migration を作成
+3. `import_shrines_seed` に取り込み対応を追加
+4. seed に代表神社の `visit_style_tags` を追記
+5. `build_chat_candidates` で候補辞書に `visit_style_tags` を載せる
+6. breakdown_detail で user側 × shrine側の一致を観測
+7. 問題なければ `_score_total` に visit_style 加点を入れる
+
 ## 次に確認すること
 
 - 既存テストで weight を固定している箇所
