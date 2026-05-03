@@ -474,7 +474,18 @@ def _attach_breakdown(
     except Exception:
         distance_m = None
     score_distance = _distance_decay(distance_m)
-    matched_visit_style_tags = sorted(t for t in (visit_style_tags or set()) if isinstance(t, str) and t.strip())
+
+    user_visit_style_tag_set = {
+        str(t).strip()
+        for t in (visit_style_tags or set())
+        if isinstance(t, str) and str(t).strip()
+    }
+    shrine_visit_style_tag_set = {
+        str(t).strip()
+        for t in (rec.get("visit_style_tags") or [])
+        if isinstance(t, str) and str(t).strip()
+    }
+    matched_visit_style_tags = sorted(user_visit_style_tag_set & shrine_visit_style_tag_set)
     score_visit_style = len(matched_visit_style_tags)
 
     # score_total:
