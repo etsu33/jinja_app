@@ -19,7 +19,7 @@ export function buildComparisonText(args: BuildComparisonTextArgs): string {
   }
 
   if (args.primaryNeed === "mental") {
-    return `${shrineText}は、今回の候補の中でも気持ちを落ち着ける方向に最も寄った候補です。`;
+    return `${shrineText}は、今回の候補の中でも気持ちを落ち着ける方向に寄りやすい候補です。`;
   }
 
   if (args.primaryNeed === "career") {

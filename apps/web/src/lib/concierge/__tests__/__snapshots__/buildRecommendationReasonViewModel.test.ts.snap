@@ -36,8 +36,8 @@ exports[`buildRecommendationReasonViewModel > reason文の代表パターンを 
       "summary": "生年月日との相性の重なりを主軸に、この神社が選ばれています。",
     },
     "rank": {
-      "differenceFromOthers": "他候補よりも、気質に無理なく馴染みやすい点が比較上の強みになっています。",
-      "whyTop": "今回の候補の中でも、生年月日との相性の重なりが最も強い候補です。",
+      "differenceFromOthers": "他候補と比べると、気質に無理なく馴染みやすい位置づけです。",
+      "whyTop": "今回の候補の中でも、生年月日との相性の重なりが見えやすい候補です。",
     },
     "why": {
       "primaryReason": "生年月日から見た「water」の要素との相性が強く重なるため、この神社が候補に入っています。",
@@ -68,7 +68,7 @@ exports[`buildRecommendationReasonViewModel > reason文の代表パターンを 
     },
     "hero": {
       "catchCopy": "今の状態に重ねて見やすい神社",
-      "topReasonLabel": "おすすめ",
+      "topReasonLabel": "見やすい候補",
     },
     "inputType": "fallback",
     "interpretation": {
@@ -84,8 +84,8 @@ exports[`buildRecommendationReasonViewModel > reason文の代表パターンを 
       "summary": "今回はまず動きやすさを優先して、この神社が選ばれています。",
     },
     "rank": {
-      "differenceFromOthers": "他候補よりも、今回いちばん優先したいテーマによりまっすぐ重なりやすい位置づけです。",
-      "whyTop": "今回の候補の中でも、相談内容との一致が最も強く見られる候補です。",
+      "differenceFromOthers": "他候補と比べると、今回優先したいテーマにまっすぐ重なりやすい位置づけです。",
+      "whyTop": "今回の候補の中でも、相談内容との重なりが見えやすい候補です。",
     },
     "why": {
       "primaryReason": "今回の相談の中心にある「切り替え」のテーマと重なるため、この神社が候補に入っています。",
@@ -132,8 +132,8 @@ exports[`buildRecommendationReasonViewModel > reason文の代表パターンを 
       "summary": "相談内容と神社の性質が重なるため、この神社が選ばれています。",
     },
     "rank": {
-      "differenceFromOthers": "他候補よりも、今回いちばん優先したいテーマによりまっすぐ重なりやすい位置づけです。",
-      "whyTop": "今回の候補の中でも、相談内容との一致が最も強く見られる候補です。",
+      "differenceFromOthers": "他候補と比べると、今回優先したいテーマにまっすぐ重なりやすい位置づけです。",
+      "whyTop": "今回の候補の中でも、相談内容との重なりが見えやすい候補です。",
     },
     "why": {
       "primaryReason": "今回の相談の中心にある「切り替え」のテーマと重なるため、この神社が候補に入っています。",

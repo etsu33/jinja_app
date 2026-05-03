@@ -444,7 +444,7 @@ function buildTopReasonLabel(inputType: ReturnType<typeof resolveInputType>, pri
   if (inputType === "fallback") {
     if (primaryKey === "distance") return "まず動きやすい";
     if (primaryKey === "popular") return "まず選びやすい";
-    return "おすすめ";
+    return "見やすい候補";
   }
   return undefined;
 }
@@ -493,54 +493,54 @@ function buildRankReason(
     case "strongest_theme_match": {
       if (tone === "strong") {
         return {
-          whyTop: "今回の候補の中でも、切り替えや踏み出しに向けた重なりが最も強く見られる候補です。",
-          differenceFromOthers: "他候補よりも、流れを切り替える方向へ気持ちを動かしやすい点で比較上の強みがあります。",
+          whyTop: "今回の候補の中でも、切り替えや踏み出しに向けた重なりが見えやすい候補です。",
+          differenceFromOthers: "他候補と比べると、流れを切り替える方向へ気持ちを向けやすい位置づけです。",
         };
       }
       if (tone === "quiet") {
         return {
-          whyTop: "今回の候補の中でも、落ち着いて受け止めやすい重なりが強い候補です。",
-          differenceFromOthers: "他候補よりも、今の状態を静かに整えながら向き合いやすい点で比較上の強みがあります。",
+          whyTop: "今回の候補の中でも、落ち着いて受け止めやすい重なりが見えやすい候補です。",
+          differenceFromOthers: "他候補と比べると、今の状態を静かに整えながら向き合いやすい位置づけです。",
         };
       }
       if (tone === "tight") {
         return {
-          whyTop: "今回の候補の中でも、判断を絞りやすい重なりが強い候補です。",
-          differenceFromOthers: "他候補よりも、優先順位を定め直しながら向き合いやすい点で比較上の強みがあります。",
+          whyTop: "今回の候補の中でも、判断を絞りやすい重なりが見えやすい候補です。",
+          differenceFromOthers: "他候補と比べると、優先順位を定め直しながら向き合いやすい位置づけです。",
         };
       }
       if (tone === "open") {
         return {
-          whyTop: "今回の候補の中でも、巡りや視野を開きやすい重なりが強い候補です。",
-          differenceFromOthers: "他候補よりも、滞りをほどいて流れを通し直しやすい点で比較上の強みがあります。",
+          whyTop: "今回の候補の中でも、巡りや視野を開きやすい重なりが見えやすい候補です。",
+          differenceFromOthers: "他候補と比べると、滞りをほどいて流れを通し直しやすい位置づけです。",
         };
       }
       if (needPrimary === "学業") {
         return {
           whyTop: "今回の候補の中でも、学業への集中に重ねやすい候補です。",
-          differenceFromOthers: "他候補よりも、目標に向けて意識を絞りやすい点で比較上の強みがあります。",
+          differenceFromOthers: "他候補と比べると、目標に向けて意識を絞りやすい位置づけです。",
         };
       }
       return {
-        whyTop: "今回の候補の中でも、相談内容との一致が最も強く見られる候補です。",
-        differenceFromOthers: "他候補よりも、今回いちばん優先したいテーマによりまっすぐ重なりやすい位置づけです。",
+        whyTop: "今回の候補の中でも、相談内容との重なりが見えやすい候補です。",
+        differenceFromOthers: "他候補と比べると、今回優先したいテーマにまっすぐ重なりやすい位置づけです。",
       };
     }
     case "strongest_compat_match":
       return {
-        whyTop: "今回の候補の中でも、生年月日との相性の重なりが最も強い候補です。",
-        differenceFromOthers: "他候補よりも、気質に無理なく馴染みやすい点が比較上の強みになっています。",
+        whyTop: "今回の候補の中でも、生年月日との相性の重なりが見えやすい候補です。",
+        differenceFromOthers: "他候補と比べると、気質に無理なく馴染みやすい位置づけです。",
       };
     case "most_actionable":
       return {
-        whyTop: "今回の候補の中でも、実際に動きやすい条件が強い候補です。",
-        differenceFromOthers: "他候補よりも、足を運ぶこと自体が負担になりにくい点で比較上の優位があります。",
+        whyTop: "今回の候補の中でも、実際に動きやすい条件が見えやすい候補です。",
+        differenceFromOthers: "他候補と比べると、足を運ぶこと自体が負担になりにくい位置づけです。",
       };
     case "most_stable_choice":
     default:
       return {
-        whyTop: "今回の候補の中でも、選びやすさの安定感が強い候補です。",
-        differenceFromOthers: "他候補よりも、迷いがある段階でも選択しやすい点で比較上の安定感があります。",
+        whyTop: "今回の候補の中でも、選びやすさの安定感が見えやすい候補です。",
+        differenceFromOthers: "他候補と比べると、迷いがある段階でも選択しやすい位置づけです。",
       };
   }
 }
