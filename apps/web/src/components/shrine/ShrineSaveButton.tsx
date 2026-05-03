@@ -14,6 +14,7 @@ type Props = {
   tid?: string | null;
   nextPath?: string;
   guestMode?: boolean;
+  variant?: "default" | "subtle";
   initial?: {
     fav: boolean;
     favorite_id: number | null;
@@ -27,6 +28,7 @@ export default function ShrineSaveButton({
   tid = null,
   nextPath,
   guestMode,
+  variant = "default",
   initial,
   onToggleSuccess,
 }: Props) {
@@ -77,19 +79,30 @@ export default function ShrineSaveButton({
     }
   };
 
+  const buttonClass =
+    variant === "subtle"
+      ? `inline-flex w-full items-center justify-center rounded-xl border px-4 py-2.5 text-xs font-semibold transition
+          ${
+            fav
+              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+              : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+          }
+          disabled:opacity-60`
+      : `inline-flex w-full items-center justify-center rounded-xl border px-4 py-3 text-sm font-semibold transition
+          ${
+            fav
+              ? "border-emerald-300 bg-emerald-50 text-emerald-800"
+              : "border-slate-300 bg-white text-slate-900 hover:bg-slate-50"
+          }
+          disabled:opacity-60`;
+
   return (
     <div className="space-y-2">
       <button
         type="button"
         onClick={onClick}
         disabled={busy}
-        className={`inline-flex w-full items-center justify-center rounded-xl border px-4 py-3 text-sm font-semibold transition
-          ${
-            fav
-              ? "border-emerald-300 bg-emerald-50 text-emerald-800"
-              : "border-slate-300 bg-white text-slate-900 hover:bg-slate-50"
-          }
-          disabled:opacity-60`}
+        className={buttonClass}
         aria-pressed={fav}
       >
         {busy ? "保存中…" : fav ? "保存しました" : "保存する"}
