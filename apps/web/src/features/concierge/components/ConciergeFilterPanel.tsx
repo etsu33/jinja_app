@@ -30,10 +30,11 @@ type Props = {
 
 const QUICK_PRESETS: readonly { label: string; value: string }[] = [
   { label: "静かに整えたい", value: "静かな雰囲気で、気持ちを落ち着けて整理できる場所がいい" },
-  { label: "背中を押してほしい", value: "前向きになれる、活力が出る感じの場所がいい" },
   { label: "人混みが苦手", value: "混雑しにくい、落ち着いた場所がいい" },
-  { label: "階段少なめ", value: "階段や坂が少なく、歩きやすいところがいい" },
   { label: "近場優先", value: "できるだけ近い場所を優先して" },
+  { label: "自然を感じたい", value: "自然を感じながら、ゆっくり参拝できる場所がいい" },
+  { label: "気持ちを切り替えたい", value: "気持ちを切り替えて、前向きになれる場所がいい" },
+  { label: "有名な神社が安心", value: "有名で定番感があり、安心して参拝しやすい場所がいい" },
 ];
 
 const INITIAL_VISIBLE_GORIYAKU_COUNT = 4;
@@ -101,8 +102,11 @@ export default function ConciergeFilterPanel({
           </div>
         ) : null}
 
-        <div className="space-y-0">
-          <div className="text-[10px] font-semibold text-slate-500">今の気分に近いもの</div>
+        <div className="space-y-1">
+          <div>
+            <div className="text-[10px] font-semibold text-slate-600">参拝スタイル</div>
+            <p className="mt-0.5 text-[10px] leading-4 text-slate-400">どう過ごしたいかを選ぶと、候補の並び方の参考にします。</p>
+          </div>
           <div className="flex flex-wrap gap-1.5">
             {QUICK_PRESETS.map((p) => (
               <button
@@ -120,7 +124,7 @@ export default function ConciergeFilterPanel({
 
         {element4 && suggestedTags.length > 0 ? (
           <div className="space-y-0.5">
-            <div className="text-[10px] font-semibold text-slate-500">おすすめ</div>
+            <div className="text-[10px] font-semibold text-slate-500">相性から見た候補</div>
             <div className="flex flex-wrap gap-1.5">
               {suggestedTags.map((t) => {
                 const on = selected.has(t.id);
@@ -144,6 +148,10 @@ export default function ConciergeFilterPanel({
 
       {tagsLoading || tagsError || visibleGoriyakuTags.length > 0 || hiddenGoriyakuCount > 0 ? (
         <div className="space-y-1 rounded-xl border border-slate-200 bg-white p-2">
+          <div>
+            <div className="text-[10px] font-semibold text-slate-600">願いごと・ご利益</div>
+            <p className="mt-0.5 text-[10px] leading-4 text-slate-400">願いたいことに近いものを選ぶと、神社の特徴との一致を見ます。</p>
+          </div>
           {tagsError ? <div className="text-xs text-red-600">{tagsError}</div> : null}
           {tagsLoading ? <div className="text-xs text-slate-500">読み込み中…</div> : null}
 
@@ -170,16 +178,6 @@ export default function ConciergeFilterPanel({
           {hiddenGoriyakuCount > 0 ? <div className="text-[11px] text-slate-500">他{hiddenGoriyakuCount}件</div> : null}
         </div>
       ) : null}
-
-      <div className="space-y-0.5 rounded-xl border border-slate-200 bg-white p-2">
-        <textarea
-          value={extraCondition}
-          onChange={(e) => onExtraConditionChange(e.target.value)}
-          placeholder="例：静かな雰囲気がいい、階段は少なめがいい、など"
-          className="w-full rounded-xl border p-1.5 text-sm"
-          rows={1}
-        />
-      </div>
 
       <div
         className="flex justify-end gap-2 border-t border-slate-200 bg-slate-50/95 pt-1.5 pb-0.5"
