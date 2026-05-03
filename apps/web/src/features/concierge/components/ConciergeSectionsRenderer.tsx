@@ -441,7 +441,7 @@ export default function ConciergeSectionsRenderer({
                               address={null}
                               topReasonLabel={reasonVm.hero.topReasonLabel ?? null}
                               catchCopy={reasonVm.hero.catchCopy}
-                              whyTop={reasonVm.rank.whyTop ?? null}
+                              whyTop={null}
                               primaryReason={reasonVm.why.primaryReason}
                               secondaryReason={null}
                               differenceFromOthers={null}
