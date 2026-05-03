@@ -109,11 +109,39 @@ OK：
 
 ---
 
+
 ### ■ 検証方法
 
 - A/B: visit_styleあり vs なし
 - 同一クエリで順位変化を見る
 - location変更と組み合わせて確認
+
+### ■ A/B観測結果（仮weight 0.15）
+
+#### 条件
+- クエリ: 金運を整えたい
+- extra_condition: 静かな場所がいい
+- location: 東京駅付近
+
+#### weight 0.0（現状）
+1. 浅草神社: score=2.2142 / need=2 / visit=0
+2. 神田神社（神田明神）: score=1.5796 / need=1 / visit=0
+3. 日枝神社: score=1.5718 / need=1 / visit=1
+
+#### weight 0.15（仮）
+1. 浅草神社: score=2.2142 / need=2 / visit=0
+2. 日枝神社: score=1.7218 / need=1 / visit=1
+3. 神田神社（神田明神）: score=1.5796 / need=1 / visit=0
+
+#### 観測結果
+- visit_style一致（quiet）の日枝神社のみ +0.15 加点
+- 日枝神社が3位→2位に上昇
+- 浅草神社（need=2）は順位維持
+
+#### 判断
+- visit_style は順位の微調整として機能している
+- need を上書きしないことを確認
+- 補助軸として妥当な挙動
 
 ## ▼ 神社側 visit_style タグ保持方針（検討）
 
