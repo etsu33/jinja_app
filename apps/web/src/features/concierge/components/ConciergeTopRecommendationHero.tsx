@@ -67,7 +67,8 @@ export default function ConciergeTopRecommendationHero({
         {primaryReason ? (
           <div className="space-y-1 text-sm leading-7">
             <p className="text-slate-700">{primaryReason.split("。")[0] || primaryReason}</p>
-            <p className="font-semibold text-slate-900"> 今の状況から動き出すなら、この候補が一番自然です。</p>
+            <p className="font-semibold text-slate-900">今の状況から動き出すなら、この候補が一番自然です。</p>
+            <p className="text-xs text-slate-500">この候補を基準にすると判断しやすくなります。</p>
           </div>
         ) : null}
 
