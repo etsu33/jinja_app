@@ -62,6 +62,59 @@
 - ranking：まずは並び替えには直接使わず、将来的に visit_style_score を検討
 - i18n：タグキーは英語固定、表示文言のみ翻訳
 
+## ▼ visit_style ranking加点設計（検討）
+
+### ■ 目的
+参拝スタイル（気分・行動意図）をランキングに反映する
+
+### ■ 背景
+- 現状は need / element / distance が主軸
+- 気分系（静か・自然・リフレッシュ）が順位に効いていない
+- UIチップで選択できるようになったため、rankingに接続する
+
+---
+
+### ■ スコア構造（仮）
+
+need: 0.45  
+distance: 0.30  
+visit_style: 0.15  
+element: 0.08  
+popular: 0.02  
+
+---
+
+### ■ visit_style の役割
+
+- 主軸ではなく「補助軸」
+- need を満たした候補の中で順位を調整する
+
+---
+
+### ■ 競合ルール
+
+NG：
+- visit_style が need を上書きする
+
+OK：
+- need一致内で visit_style が順位を微調整する
+
+---
+
+### ■ 実装方針（未実装）
+
+- soft_signal_tags / visit_style_tags を breakdown に追加
+- score_visit_style を計算
+- _score_total に加算（重み0.15）
+
+---
+
+### ■ 検証方法
+
+- A/B: visit_styleあり vs なし
+- 同一クエリで順位変化を見る
+- location変更と組み合わせて確認
+
 ## 次に確認すること
 
 - 既存テストで weight を固定している箇所
