@@ -20,6 +20,7 @@ import type { ConciergeChatRequestV1, ConciergeChatFilters } from "@/features/co
 import { buildDummySections } from "@/features/concierge/sections/dummy";
 
 import ConciergeSectionsRenderer from "@/features/concierge/components/ConciergeSectionsRenderer";
+import ConciergeEntryCard from "@/features/concierge/components/ConciergeEntryCard";
 import { buildPayloadFromUnified } from "@/features/concierge/buildPayloadFromUnified";
 import { SHOW_NEW_RENDERER } from "@/features/concierge/rendererMode";
 
@@ -1183,188 +1184,104 @@ export default function ConciergeClientFull() {
       {/* ===== 入口（tidなし） ===== */}
       {shouldShowEntry ? (
         <div className="px-4 pt-4">
-          <div
-            className={`relative ${conciergeCardClass}`}
-          >
-            {/* ロック中のオーバーレイ */}
+          <div className={`relative ${conciergeCardClass}`}>
             {isBusy ? (
               <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-white/70 backdrop-blur-sm">
                 <div className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">選定中です…</div>
               </div>
             ) : null}
 
-            <div className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-700">
-              {displayName
-                ? `${displayLabel}さん向けに、今の状態に合う神社を探します。`
-                : "今の状態に合う神社を探します。"}
-            </div>
-            <div className="mt-3">
-              <label className="mb-1 block text-xs font-semibold text-slate-600">呼び名（任意）</label>
-              <input
-                type="text"
-                value={sessionState.sessionNickname ?? ""}
-                onChange={(e) =>
-                  setSessionState((prev) => ({
-                    ...prev,
-                    sessionNickname: e.target.value,
-                  }))
-                }
-                placeholder="例: えつこ"
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
-                maxLength={20}
-              />
-            </div>
-            {!canSaveConciergeThread && !isUiPaywall ? (
-              <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                <p>未ログインでも検索できます。保存にはログインが必要です。</p>
-                <div className="mt-2 flex gap-2">
-                  <button
-                    type="button"
-                    className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white"
-                    onClick={() => redirectToAuth("login")}
-                  >
-                    ログイン
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700"
-                    onClick={() => redirectToAuth("register")}
-                  >
-                    新規登録
-                  </button>
-                </div>
-              </div>
-            ) : null}
-            {/* コンテンツ */}
-            <div className="mt-3 space-y-3">
-              <div>
-                <label className="mb-1 block text-xs font-semibold text-slate-600">今の気持ち・状況・願いごと</label>
-                <textarea
-                  value={needText}
-                  onChange={(e) => setNeedText(e.target.value)}
-                  placeholder="今の気分・願い・状況を、そのまま書いてください"
-                  rows={5}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
-                />
-              </div>
+            <ConciergeEntryCard
+              displayName={displayName}
+              displayLabel={displayLabel}
+              sessionState={sessionState}
+              setSessionNickname={(value) =>
+                setSessionState((prev) => ({
+                  ...prev,
+                  sessionNickname: value,
+                }))
+              }
+              canSaveConciergeThread={canSaveConciergeThread}
+              isUiPaywall={isUiPaywall}
+              redirectToAuth={redirectToAuth}
+              needText={needText}
+              setNeedText={setNeedText}
+              feelExamples={feelExamples}
+              onPickExample={onPickExample}
+              isBusy={isBusy}
+              canSend={canSend}
+              onSubmit={() =>
+                void safeSend(needText.trim(), { kind: "need_submit", textLen: needText.trim().length })
+              }
+              onClear={() => setNeedText("")}
+            />
 
-              <div>
-                <p className="text-xs font-semibold text-slate-600">入力例</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {feelExamples.map((example) => {
-                    const isSelected = needText.trim() === example.text;
-                    return (
-                      <button
-                        key={example.label}
-                        type="button"
-                        className={[
-                          "rounded-full border px-3 py-2 text-sm font-semibold transition shadow-sm",
-                          isSelected
-                            ? "border-emerald-600 bg-emerald-600 text-white"
-                            : "border-slate-300 bg-white text-slate-800 hover:border-emerald-300 hover:bg-emerald-50 active:bg-emerald-100",
-                          "disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none",
-                        ].join(" ")}
-                        onClick={() => onPickExample(example.text)}
-                        disabled={isBusy || !canSend}
-                        aria-pressed={isSelected}
-                        title={example.text}
-                      >
-                        {example.label}
-                      </button>
-                    );
-                  })}
+            <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold text-slate-700">希望を補足する</p>
+                  <p className="mt-0.5 text-[11px] text-slate-500">誕生日や希望条件を追加して、候補を絞れます。</p>
                 </div>
-              </div>
-
-              <div className="flex flex-col gap-2 sm:flex-row">
                 <button
                   type="button"
-                  className="w-full rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 active:bg-slate-950 disabled:cursor-not-allowed disabled:opacity-50"
-                  disabled={isBusy || !needText.trim() || !canSend}
-                  onClick={() =>
-                    void safeSend(needText.trim(), { kind: "need_submit", textLen: needText.trim().length })
-                  }
-                >
-                  この内容で探す
-                </button>
-
-                <button
-                  type="button"
-                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 active:bg-slate-100 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
+                  className="shrink-0 rounded-lg border bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  onClick={() => setIsFilterOpen((prev) => !prev)}
                   disabled={isBusy}
-                  onClick={() => setNeedText("")}
                 >
-                  クリア
+                  {isFilterOpen ? "閉じる" : "条件を追加する"}
                 </button>
               </div>
 
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-semibold text-slate-700">希望を補足する</p>
-                    <p className="mt-0.5 text-[11px] text-slate-500">誕生日や希望条件を追加して、候補を絞れます。</p>
-                  </div>
-                  <button
-                    type="button"
-                    className="shrink-0 rounded-lg border bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                    onClick={() => setIsFilterOpen((prev) => !prev)}
-                    disabled={isBusy}
-                  >
-                    {isFilterOpen ? "閉じる" : "条件を追加する"}
-                  </button>
-                </div>
+              {!isFilterOpen && hasFilter ? (
+                <div className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[11px] font-semibold text-slate-600">追加済みの条件</p>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {baseFilters.birthdate ? (
+                          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
+                            誕生日あり
+                          </span>
+                        ) : null}
 
-                {!isFilterOpen && hasFilter ? (
-                  <div className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-2">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-[11px] font-semibold text-slate-600">追加済みの条件</p>
-                        <div className="mt-2 flex flex-wrap gap-1.5">
-                          {baseFilters.birthdate ? (
-                            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
-                              誕生日あり
-                            </span>
-                          ) : null}
+                        {selectedTagNames.length ? (
+                          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
+                            希望: {selectedTagNames[0]}
+                            {selectedTagNames.length > 1 ? ` 他${selectedTagNames.length - 1}` : ""}
+                          </span>
+                        ) : null}
 
-                          {selectedTagNames.length ? (
-                            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
-                              希望: {selectedTagNames[0]}
-                              {selectedTagNames.length > 1 ? ` 他${selectedTagNames.length - 1}` : ""}
-                            </span>
-                          ) : null}
-
-                          {baseFilters.extra_condition ? (
-                            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
-                              希望の補足あり
-                            </span>
-                          ) : null}
-                        </div>
+                        {baseFilters.extra_condition ? (
+                          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
+                            希望の補足あり
+                          </span>
+                        ) : null}
                       </div>
-
-                      <button
-                        type="button"
-                        className="shrink-0 rounded-md px-2 py-1 text-[11px] font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-700"
-                        onClick={() => onRendererAction({ type: "filter_clear" })}
-                        disabled={isBusy}
-                      >
-                        クリア
-                      </button>
                     </div>
-                  </div>
-                ) : null}
 
-                {SHOW_NEW_RENDERER && isFilterOpen ? (
-                  <div className="mt-3">
-                    <ConciergeSectionsRenderer
-                      payload={payload}
-                      onAction={onRendererAction}
-                      sending={sending}
-                      threadId={thread?.id ?? activeThreadId}
-                      isEntryRoute={isEntryRoute}
-                    />
+                    <button
+                      type="button"
+                      className="shrink-0 rounded-md px-2 py-1 text-[11px] font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                      onClick={() => onRendererAction({ type: "filter_clear" })}
+                      disabled={isBusy}
+                    >
+                      クリア
+                    </button>
                   </div>
-                ) : null}
-              </div>
+                </div>
+              ) : null}
+
+              {SHOW_NEW_RENDERER && isFilterOpen ? (
+                <div className="mt-3">
+                  <ConciergeSectionsRenderer
+                    payload={payload}
+                    onAction={onRendererAction}
+                    sending={sending}
+                    threadId={thread?.id ?? activeThreadId}
+                    isEntryRoute={isEntryRoute}
+                  />
+                </div>
+              ) : null}
             </div>
 
             {!isBusy && isUiPaywall ? (
@@ -1393,7 +1310,6 @@ export default function ConciergeClientFull() {
               </div>
             ) : null}
 
-            {/* エラー表示 */}
             {!isBusy && error ? (
               <div className={`mt-3 ${conciergeCardClass}`}>
                 <p className="text-sm font-semibold text-rose-600">うまく取得できませんでした</p>
