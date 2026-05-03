@@ -129,7 +129,7 @@ export type ConciergeSectionsPayload = {
  * ========================= */
 export type RendererAction =
   | { type: "back_to_entry" }
-  | { type: "open_map"; shrineId?: number | null; rank?: number | null }
+  | { type: "open_map"; shrineId?: number | null; rank?: number | null; routeHref?: string | null }
   | { type: "add_condition" }
   | { type: "filter_close" }
   | { type: "filter_apply" }
