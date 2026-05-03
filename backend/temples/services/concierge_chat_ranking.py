@@ -454,6 +454,7 @@ def _attach_breakdown(
     w2 = float(weights.get("need", 0.0))
     w3 = float(weights.get("popular", 0.0))
     w4 = float(weights.get("distance", 0.0))
+    w5 = 0.15  # visit_style AB observation only. Do not expose in public weights yet.
 
     astro_bonus = 0.0
     if astro_bonus_enabled:
@@ -501,6 +502,7 @@ def _attach_breakdown(
         + score_need_rank_weighted * w2
         + score_popular * w3
         + score_distance * w4
+        + score_visit_style * w5
         + astro_bonus
     )
 
@@ -552,9 +554,9 @@ def _attach_breakdown(
             },
             "visit_style": {
                 "raw": int(score_visit_style),
-                "weight": 0.0,
+                "weight": float(w5),
                 "matched_tags": matched_visit_style_tags,
-                "contribution": 0.0,
+                "contribution": float(score_visit_style * w5),
             },
             "astro_bonus": float(astro_bonus) if astro_bonus_enabled else 0.0,
             "score_total_ranked": float(score_total_ranked),
