@@ -14,7 +14,7 @@ from temples.services.concierge_candidate_utils import (
 
 log = logging.getLogger(__name__)
 
-DEFAULT_LIMIT = 12
+DEFAULT_LIMIT = 20
 
 
 def _distance_m(
