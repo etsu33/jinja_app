@@ -445,3 +445,24 @@ visit_style は以下の順序で導入する。
 - 既存テストで weight を固定している箇所
 - need mode weight変更時の上位候補差分
 - 同一クエリで location を変えた時の上位3件差分
+
+## ▼ candidate pool 20 副作用確認
+
+### 観測結果
+
+- nature: pool20で hit_count=2、TOP2が nature一致
+- total_ms=85.9ms のため、処理時間の大きな悪化は見られない
+- TOP3の3位に visit_style 不一致候補が残るため、pool20採用前に quiet / business でも品質確認した
+- quota_checkで弾かれたログは candidates=0 / recs=0 のため観測対象外
+- quiet: pool20で hit_count=7、TOP3すべて quiet 一致
+- business: pool20で hit_count=9、TOP1/TOP2は business + career 一致
+- business TOP3の乃木神社は business 不一致だが、career 一致のため完全なノイズではない
+- total_ms は quiet=82.9ms / business=77.5ms で、大きな処理時間悪化は見られない
+- pool20で“無関係な強い神社”がTOP3に紛れ込む挙動は、今回の観測では確認されなかった
+- ただし business はTOP3をvisit_style一致で揃えきれていないため、採用後も継続観測する
+
+### 判断
+
+- candidate pool 12→20 は採用候補として妥当
+- 処理時間・TOP3品質・候補ノイズの大きな悪化は今回の観測では確認されなかった
+- B案の prefilter visit_style 弱ブーストは現時点では保留
