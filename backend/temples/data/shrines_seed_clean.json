@@ -638,6 +638,11 @@
     "astro_elements": [
       "水"
     ],
+    "visit_style_tags": [
+      "quiet",
+      "urban",
+      "love"
+    ],
     "location": {
       "lat": 35.7006,
       "lng": 139.7454
@@ -652,6 +657,11 @@
     "kyusei": null,
     "astro_elements": [
       "風"
+    ],
+    "visit_style_tags": [
+      "classic",
+      "urban",
+      "business"
     ],
     "location": {
       "lat": 35.6581,
@@ -668,6 +678,11 @@
     "astro_elements": [
       "火"
     ],
+    "visit_style_tags": [
+      "reset",
+      "urban",
+      "business"
+    ],
     "location": {
       "lat": 35.6627,
       "lng": 139.7487
@@ -682,6 +697,11 @@
     "kyusei": null,
     "astro_elements": [
       "土"
+    ],
+    "visit_style_tags": [
+      "classic",
+      "urban",
+      "study"
     ],
     "location": {
       "lat": 35.7034,
@@ -698,6 +718,11 @@
     "astro_elements": [
       "水"
     ],
+    "visit_style_tags": [
+      "quiet",
+      "classic",
+      "nature"
+    ],
     "location": {
       "lat": 35.7174,
       "lng": 139.7603
@@ -713,6 +738,11 @@
     "astro_elements": [
       "土"
     ],
+    "visit_style_tags": [
+      "classic",
+      "urban",
+      "business"
+    ],
     "location": {
       "lat": 35.6733,
       "lng": 139.7967
@@ -727,6 +757,11 @@
     "kyusei": null,
     "astro_elements": [
       "火"
+    ],
+    "visit_style_tags": [
+      "reset",
+      "urban",
+      "business"
     ],
     "location": {
       "lat": 35.6229,
@@ -857,6 +892,7 @@
     "goriyaku": "仕事運・勝運・家内安全",
     "kyusei": null,
     "astro_elements": ["土"],
+    "visit_style_tags": ["quiet", "urban", "classic"],
     "location": { "lat": 35.6698, "lng": 139.7268 }
   },
   {
