@@ -213,6 +213,39 @@ def build_chat_recommendations(
     soft_signal_tags = extra_tags["soft_signal_tags"]
     visit_style_tags = extra_tags["visit_style_tags"]
 
+    try:
+        visit_style_hit_count = sum(
+            1
+            for c in valid_candidates
+            if set(c.get("visit_style_tags") or []) & set(visit_style_tags)
+        )
+        need_hit_count = sum(
+            1
+            for c in valid_candidates
+            if set(c.get("matched_need_tags") or []) & set(need_tags)
+        )
+        pool_detail = [
+            (
+                c.get("shrine_id") or c.get("id"),
+                c.get("visit_style_tags") or [],
+                sorted(set(c.get("visit_style_tags") or []) & set(visit_style_tags)),
+            )
+            for c in valid_candidates
+        ]
+
+        log.info(
+            "[pool] size=%d visit_style_hits=%d need_hits=%d",
+            len(valid_candidates),
+            visit_style_hit_count,
+            need_hit_count,
+        )
+        log.info(
+            "[pool_detail] %s",
+            pool_detail,
+        )
+    except Exception:
+        log.exception("[pool] observation failed")
+
     weights = _resolve_mode_weights(
         public_mode=public_mode,  # type: ignore[arg-type]
         flow=flow,
