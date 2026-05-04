@@ -250,7 +250,7 @@ def build_chat_recommendations(
     recs = _ensure_pool_size(
         recs,
         candidates=valid_candidates,
-        size=12,
+        size=20,
     )
     recs = _merge_candidate_fields(
         recs,
@@ -302,6 +302,50 @@ def build_chat_recommendations(
         sort_tags=sort_tags,
     )
     recs["recommendations"] = _attach_rank_comparison(recs.get("recommendations") or [])
+
+    try:
+        pool = [
+            r
+            for r in (recs.get("recommendations") or [])
+            if isinstance(r, dict)
+        ]
+        visit_style_pool_rows = []
+        for idx, r in enumerate(pool, start=1):
+            features = (r.get("breakdown_detail") or {}).get("features") or {}
+            visit_style = features.get("visit_style") or {}
+            visit_style_pool_rows.append(
+                {
+                    "rank": idx,
+                    "shrine_id": r.get("shrine_id"),
+                    "name": r.get("name"),
+                    "visit_style_tags": r.get("visit_style_tags") or [],
+                    "matched_tags": visit_style.get("matched_tags") or [],
+                    "contribution": float(visit_style.get("contribution") or 0.0),
+                    "score_total_ranked": float(features.get("score_total_ranked") or 0.0),
+                    "score_need": (r.get("breakdown") or {}).get("score_need"),
+                    "matched_need_tags": (r.get("breakdown") or {}).get("matched_need_tags") or [],
+                }
+            )
+
+        hit_count = sum(1 for row in visit_style_pool_rows if row["contribution"] > 0)
+        matched_tag_counts: dict[str, int] = {}
+        for row in visit_style_pool_rows:
+            for tag in row["matched_tags"]:
+                tag_key = str(tag)
+                matched_tag_counts[tag_key] = matched_tag_counts.get(tag_key, 0) + 1
+
+        log.info(
+            "[visit_style_observation_before_trim] query=%r extra=%r user_visit_style_tags=%r pool_size=%d hit_count=%d matched_tag_counts=%r rows=%r",
+            (query or "")[:80],
+            extra_condition,
+            sorted(visit_style_tags),
+            len(visit_style_pool_rows),
+            hit_count,
+            matched_tag_counts,
+            visit_style_pool_rows,
+        )
+    except Exception:
+        log.exception("[visit_style_observation_before_trim] failed")
 
     _fill_location_from_existing_address(recs)
     _backfill_location_from_name(

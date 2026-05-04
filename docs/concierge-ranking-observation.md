@@ -285,6 +285,87 @@ visit_style は hard filter ではなく、need を壊さない補助ランキ�
 - 次の改善では、タグ追加よりも「visit_style一致候補が候補プールに入っているか」を観測する
 - rankingロジック変更はまだ行わず、まずはログ可視化で原因を分解する
 
+## ▼ visit_style 50%拡張後の追加観測（before_trim）
+
+### 観測結果
+
+- study / nature / reset はいずれも pool_size=12 に対して hit_count=1
+- 一致候補はすべて rank1 に上がっている
+- visit_style weight=0.35 はランキング上で有効に機能している
+
+### 解釈
+
+- visit_style 自体は「効いていない」のではなく「効く対象が少ない」状態
+- 一致候補が1件しかないため、TOPに上がるが全体の分布には影響しない
+
+### ボトルネック
+
+- hit率横ばいの主因は ranking weight ではない
+- 候補プール内の visit_style 一致候補の不足が支配的
+
+### 次の改善対象
+
+- ranking weight の調整ではなく、以下にフォーカスする
+
+1. candidate pool の拡張
+2. prefilter で visit_style を弱条件として考慮する
+3. visit_style 一致候補が pool に含まれる確率の向上
+
+### 判断
+
+- 現段階で weight の再調整は不要
+- visit_style は十分に機能しているため、改善は「供給側（候補生成）」に寄せる
+
+## ▼ candidate pool 12→20 A/B観測
+
+### 観測条件
+
+- query: 合格祈願をしたい
+- extra_condition: 勉強や試験に向いた神社がいい
+
+- query: 自然を感じながら参拝したい
+- extra_condition: 自然や緑を感じられる神社がいい
+
+- query: 気持ちを切り替えたい
+- extra_condition: リセットできる神社がいい
+
+### A案: candidate pool 12→20
+
+#### 結果
+
+- study:
+  - pool 12: hit_count 1
+  - pool 20: hit_count 2
+  - 追加で湯島天満宮が候補に入り、TOP2が study 一致
+
+- nature:
+  - pool 12: hit_count 1
+  - pool 20: hit_count 2
+  - 根津神社 / 明治神宮が nature 一致としてTOP2に表示
+
+- reset:
+  - pool 12: hit_count 1
+  - pool 20: hit_count 3
+  - 小網神社 / 愛宕神社 / 品川神社が reset 一致としてTOP3に表示
+
+### 観測結果
+
+- candidate pool を 12 から 20 に広げることで、study / nature / reset すべてで visit_style 一致候補が増えた
+- 50%拡張後にhit率が横ばいだった主因は、ranking weight ではなく candidate pool 側の候補不足だった
+- visit_style weight = 0.35 は、一致候補が候補プールに入っていればTOPへ押し上げる挙動を確認できた
+
+### B案: prefilter に visit_style を弱ブースト
+
+- 現時点では未実施
+- A案だけで hit_count が改善したため、まずは candidate pool 拡張を優先して評価する
+- B案は、pool 20 でも一致候補が不足するタグが残った場合に検討する
+
+### 判断
+
+- A案 `candidate pool 12→20` は採用候補
+- B案 `prefilter visit_style 弱ブースト` は保留
+- 次は pool 20 の副作用として、処理時間・不要候補増加・TOP3品質低下がないかを確認する
+
 ## ▼ 神社側 visit_style タグ保持方針（検討）
 
 ### ■ 目的
