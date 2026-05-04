@@ -231,6 +231,60 @@ visit_style は hard filter ではなく、need を壊さない補助ランキ�
 - タグ別hit率
 - need一致あり / visit_style不一致の件数
 
+## ▼ visit_style_tags 50%拡張後の観測
+
+### KPI
+
+- visit_style_tags付与率: 51 / 100 = 51%
+
+### rankingでvisit_styleが効いた割合
+
+- quiet: 3 / 3 = 100%
+- business: 2 / 3 = 66.7%
+- study: 1 / 3 = 33.3%
+- nature: 1 / 3 = 33.3%
+- reset: 1 / 3 = 33.3%
+
+平均: 8 / 15 = 53.3%
+
+### 30件拡張時点との差分
+
+- visit_style_tags付与率は 31% → 51% に改善
+- rankingでvisit_styleが効いた割合は 53.3% のまま横ばい
+- quiet / business は引き続きTOP3内で効きやすい
+- study / nature / reset はタグを増やしてもTOP3内hit数は改善しなかった
+
+### 観測結果
+
+- 付与率を50%まで引き上げても、東京駅周辺のTOP3ではhit率が大きく変わらなかった
+- study / nature / reset は、タグ不足だけでなく候補プール / 距離 / need側スコアの影響を受けている可能性がある
+- visit_style weight = 0.35 は引き続きneedを上書きしていない
+- 50%拡張後も、visit_styleはhard filterではなく補助ランキング軸として扱う方針を維持する
+
+### 無効ケース
+
+- study:
+  - 2位 神田神社（神田明神）
+  - visit_style contribution = 0
+  - studyタグ不一致だが、need / classic / business文脈で残る
+
+- nature:
+  - 2位 神田神社（神田明神）
+  - visit_style contribution = 0
+  - natureタグ不一致だが、候補上位に残る
+
+- reset:
+  - 2位 神田神社（神田明神）
+  - visit_style contribution = 0
+  - resetタグ不一致だが、候補上位に残る
+
+### 判断
+
+- 現時点のボトルネックは単純なタグ付与率だけではない
+- 特に study / nature / reset は、候補抽出・距離・needスコアとの相互作用を見る必要がある
+- 次の改善では、タグ追加よりも「visit_style一致候補が候補プールに入っているか」を観測する
+- rankingロジック変更はまだ行わず、まずはログ可視化で原因を分解する
+
 ## ▼ 神社側 visit_style タグ保持方針（検討）
 
 ### ■ 目的
