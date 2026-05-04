@@ -171,6 +171,66 @@ visit_style は hard filter ではなく、need を壊さない補助ランキ�
 - need 一致の強さを上書きしないことをテストで固定
 - 神社側 visit_style_tags の網羅率が上がるまでは filter 化しない
 
+## ▼ visit_style_tags 30件拡張後の観測
+
+### KPI
+
+- visit_style_tags付与率: 31 / 100 = 31%
+
+### rankingでvisit_styleが効いた割合
+
+- quiet: 3 / 3 = 100%
+- business: 2 / 3 = 66.7%
+- study: 1 / 3 = 33.3%
+- nature: 1 / 3 = 33.3%
+- reset: 1 / 3 = 33.3%
+
+平均: 8 / 15 = 53.3%
+
+### 無効ケース
+
+- business:
+  - 3位 乃木神社
+  - visit_style contribution = 0
+  - need側では残るが business タグ不一致
+
+- study:
+  - 2位 神田神社（神田明神）
+  - visit_style contribution = 0
+  - business寄りタグのため study には寄与しない
+
+- nature:
+  - 2位 神田神社（神田明神）
+  - visit_style contribution = 0
+  - natureタグ未付与
+
+- reset:
+  - 2位 神田神社（神田明神）
+  - visit_style contribution = 0
+  - resetタグ未付与
+
+### 判断
+
+- 31%付与時点で、visit_styleはTOP候補に反映される
+- quiet / business は比較的効きやすい
+- study / nature / reset はTOP3内での一致数がまだ少ない
+- 無効ケースの主因は「needで残るが visit_style_tags が未一致」
+
+### breakdownログ可視化案
+
+- `visit_style.matched_tags`
+- `visit_style.contribution`
+- `score_total_ranked`
+- `matched_need_tags`
+- `recommendation rank`
+
+上記をCSVまたはJSONLで出力し、以下を集計する。
+
+- visit_style一致率
+- contribution分布
+- タグ別hit率
+- need一致あり / visit_style不一致の件数
+
 ## ▼ 神社側 visit_style タグ保持方針（検討）
 
 ### ■ 目的
