@@ -122,6 +122,7 @@ export type ConciergeRecommendation = {
   score?: number | null;
   popular_score?: number | null;
   breakdown?: ConciergeBreakdown | null;
+  breakdown_detail?: any | null;
 
   tags?: string[];
   deities?: string[];

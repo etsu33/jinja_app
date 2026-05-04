@@ -454,7 +454,7 @@ def _attach_breakdown(
     w2 = float(weights.get("need", 0.0))
     w3 = float(weights.get("popular", 0.0))
     w4 = float(weights.get("distance", 0.0))
-    w5 = 0.15  # visit_style AB observation only. Do not expose in public weights yet.
+    w5 = 0.35
 
     astro_bonus = 0.0
     if astro_bonus_enabled:

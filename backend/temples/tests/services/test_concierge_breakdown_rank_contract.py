@@ -1,7 +1,10 @@
+                       
+
 # -*- coding: utf-8 -*-
 import pytest
 
 from temples.services.concierge_chat import build_chat_recommendations
+
 
 @pytest.mark.django_db
 def test_breakdown_score_total_is_contract_value_but_sort_uses_ranked_score(monkeypatch):
@@ -74,7 +77,6 @@ def test_breakdown_score_total_is_contract_value_but_sort_uses_ranked_score(monk
     assert b["breakdown_detail"]["features"]["need"]["rank_raw"] == 1
 
 
-
 @pytest.mark.django_db
 def test_visit_style_weight_can_reorder_same_need_strength_candidates(monkeypatch):
     """
@@ -135,13 +137,13 @@ def test_visit_style_weight_can_reorder_same_need_strength_candidates(monkeypatc
     # visit_style は breakdown_detail にだけ寄与し、内部ランキングを微調整する
     assert quiet["breakdown_detail"]["features"]["visit_style"] == {
         "raw": 1,
-        "weight": 0.15,
+        "weight": 0.35,
         "matched_tags": ["quiet"],
-        "contribution": 0.15,
+        "contribution": 0.35,
     }
     assert normal["breakdown_detail"]["features"]["visit_style"] == {
         "raw": 0,
-        "weight": 0.15,
+        "weight": 0.35,
         "matched_tags": [],
         "contribution": 0.0,
     }
@@ -208,9 +210,9 @@ def test_visit_style_weight_does_not_override_stronger_need_match(monkeypatch):
     assert strong_need["breakdown_detail"]["features"]["visit_style"]["raw"] == 0
     assert quiet["breakdown_detail"]["features"]["visit_style"] == {
         "raw": 1,
-        "weight": 0.15,
+        "weight": 0.35,
         "matched_tags": ["quiet"],
-        "contribution": 0.15,
+        "contribution": 0.35,
     }
 
     assert strong_need["_score_total"] > quiet["_score_total"]

@@ -29,6 +29,7 @@ export type RecommendationLike = {
   breakdown?: {
     matched_need_tags?: string[] | null;
   } | null;
+  breakdown_detail?: any | null;
   reason_facts?: {
     primary_axis?: "need" | "benefit" | "feature" | "element" | "distance" | "popularity" | "fallback" | null;
     confidence?: "high" | "mid" | "low" | null;

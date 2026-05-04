@@ -320,6 +320,7 @@ export default function ConciergeSectionsRenderer({
                       display_name: topRegisteredItem.title,
                       name: topRegisteredItem.title,
                       breakdown: topRegisteredItem.breakdown ?? null,
+                      breakdown_detail: (topRegisteredItem as any).breakdown_detail ?? null,
                       reason: topRegisteredItem.description ?? null,
                       fallback_mode: payload?.meta?.resultState?.fallback_mode ?? null,
                       distance_m: (topRegisteredItem as any).distance_m ?? null,
@@ -417,6 +418,7 @@ export default function ConciergeSectionsRenderer({
                             display_name: heroItem.title,
                             name: heroItem.title,
                             breakdown: heroItem.breakdown ?? null,
+                            breakdown_detail: (heroItem as any).breakdown_detail ?? null,
                             reason: heroItem.description ?? null,
                             fallback_mode: payload?.meta?.resultState?.fallback_mode ?? null,
                             distance_m: (heroItem as any).distance_m ?? null,
@@ -431,6 +433,7 @@ export default function ConciergeSectionsRenderer({
                           birthdate: filterState?.birthdate ?? null,
                           needTags: heroItem.breakdown?.matched_need_tags ?? [],
                         });
+
 
                         return (
                           <div key={`rec-${i}-hero-${heroItem.shrineId}`} className="space-y-2">
