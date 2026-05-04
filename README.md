@@ -115,6 +115,8 @@ python manage.py runserver
 PLACES_API_NEW=1 python manage.py runserver 8000
 ```
 
+cd /Users/morietsu/Desktop/jinja_app/backend && BILLING_STUB_PLAN=premium BILLING_STUB_ACTIVE=1 DISABLE_THROTTLE=1 python manage.py runserver 127.0.0.1:8000
+
 ### 起動時（プロジェクトルート）
 
 ```bash

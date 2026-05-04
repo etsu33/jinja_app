@@ -31,6 +31,7 @@ export type RegisteredShrineItem = {
   imageUrl?: string | null;
   detailHref?: string;
   breakdown?: ConciergeBreakdown | null;
+  breakdown_detail?: any | null;
   reasonFacts?: ConciergeReasonFacts | null;
   explanation?: {
     version?: number | null;
@@ -56,6 +57,7 @@ export type PlaceShrineItem = {
   detailHref?: string;
   detailLabel?: string;
   breakdown?: ConciergeBreakdown | null;
+  breakdown_detail?: any | null;
   reasonFacts?: ConciergeReasonFacts | null;
   isDummy?: boolean;
 };

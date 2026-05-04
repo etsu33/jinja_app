@@ -17,6 +17,7 @@ type NormalizedItemBase = {
   description: string;
   imageUrl: string | null;
   breakdown: any | null;
+  breakdown_detail?: any | null;
   reasonFacts?: ConciergeReasonFacts | null;
   detailHref?: string;
   isDummy?: boolean;
@@ -76,6 +77,7 @@ function normalizeRecommendation(r: any, tid: string | null): NormalizedItem | n
   const description = pickFirstString(r?.reason) ?? "";
   const imageUrl = asTrimmedString(r?.photo_url);
   const breakdown = r?.breakdown ?? null;
+  const breakdownDetail = r?.breakdown_detail ?? r?.breakdownDetail ?? null;
   const reasonFacts = r?.reason_facts ?? r?.reasonFacts ?? null;
 
   if (shrineId) {
@@ -88,6 +90,7 @@ function normalizeRecommendation(r: any, tid: string | null): NormalizedItem | n
       description,
       imageUrl,
       breakdown,
+      breakdown_detail: breakdownDetail,
       reasonFacts,
       detailHref,
       isDummy,
@@ -105,6 +108,7 @@ function normalizeRecommendation(r: any, tid: string | null): NormalizedItem | n
       description,
       imageUrl,
       breakdown,
+      breakdown_detail: breakdownDetail,
       reasonFacts,
       detailHref,
       isDummy,
@@ -152,7 +156,7 @@ function dedupeItems(items: NormalizedItem[]): NormalizedItem[] {
     if (!k) continue;
 
     if (seenPlace.has(k)) {
-      // ★ breakdown だけ救出
+      // ★ breakdown / breakdown_detail を救出
       const idx = registeredByPlace.get(k);
       if (idx != null) {
         const reg = out[idx];
@@ -162,7 +166,15 @@ function dedupeItems(items: NormalizedItem[]): NormalizedItem[] {
           item.breakdown &&
           typeof item.breakdown === "object"
         ) {
-          out[idx] = { ...reg, breakdown: item.breakdown };
+          out[idx] = { ...reg, breakdown: item.breakdown, breakdown_detail: item.breakdown_detail ?? reg.breakdown_detail ?? null };
+        }
+        if (
+          reg?.kind === "registered" &&
+          (reg.breakdown_detail == null || typeof reg.breakdown_detail !== "object") &&
+          item.breakdown_detail &&
+          typeof item.breakdown_detail === "object"
+        ) {
+          out[idx] = { ...reg, breakdown_detail: item.breakdown_detail };
         }
       }
       continue;

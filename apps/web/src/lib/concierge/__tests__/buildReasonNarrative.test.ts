@@ -386,6 +386,52 @@ describe("hero catchCopy", () => {
     expect(r.hero.catchCopy).toContain("相性から静かに");
   });
 
+  it("visit_style quiet がある場合は Hero catchCopy に反映する", () => {
+    const r = buildReasonNarrative(params({
+      rec: {
+        fallback_mode: "none",
+        breakdown_detail: {
+          features: {
+            visit_style: {
+              raw: 1,
+              weight: 0.35,
+              matched_tags: ["quiet"],
+              contribution: 0.35,
+            },
+          },
+        },
+      },
+      needTags: [],
+    }));
+
+    expect(r.hero.catchCopy).toContain("静かに落ち着いて");
+  });
+
+  it.each([
+    ["nature", "自然を感じながら"],
+    ["reset", "気持ちを切り替えたい"],
+    ["less_crowded", "人混みを避けて"],
+    ["classic", "安心して選びたい"],
+    ["nearby", "無理なく向かいやすい"],
+    ["静か", "静かに落ち着いて"],
+  ])("visit_style %s が Hero catchCopy に反映される", (tag, expected) => {
+    const r = buildReasonNarrative(params({
+      rec: {
+        fallback_mode: "none",
+        breakdown_detail: {
+          features: {
+            visit_style: {
+              matched_tags: [tag],
+            },
+          },
+        },
+      },
+      needTags: [],
+    }));
+
+    expect(r.hero.catchCopy).toContain(expected);
+  });
+
   it("need=厄除け → 気持ちを立て直したい", () => {
     const r = buildReasonNarrative(params({
       rec: { fallback_mode: "none" },

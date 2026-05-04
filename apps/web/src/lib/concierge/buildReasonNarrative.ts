@@ -141,6 +141,64 @@ function buildShrineAxisLabel(args: {
   return null;
 }
 
+function getMatchedVisitStyleTags(rec: BuildParams["rec"]): string[] {
+  const features = (rec as any)?.breakdown_detail?.features;
+  const visitStyle = features && typeof features === "object" ? (features as any).visit_style : null;
+  const matched = visitStyle && typeof visitStyle === "object" ? (visitStyle as any).matched_tags : null;
+  if (!Array.isArray(matched)) return [];
+  return matched.filter((tag): tag is string => typeof tag === "string" && clean(tag).length > 0);
+}
+
+function normalizeVisitStyleTag(tag: string): string {
+  const normalized = clean(tag);
+  if (!normalized) return "";
+
+  if (normalized === "quiet" || normalized === "静か") return "quiet";
+  if (normalized === "nature" || normalized === "自然") return "nature";
+  if (normalized === "reset" || normalized === "切り替え") return "reset";
+  if (normalized === "less_crowded" || normalized === "混雑少なめ" || normalized === "人混み少なめ") return "less_crowded";
+  if (normalized === "classic" || normalized === "定番") return "classic";
+  if (normalized === "nearby" || normalized === "近場") return "nearby";
+
+  return normalized;
+}
+
+function buildVisitStyleLabel(tag: string): string | null {
+  const normalized = normalizeVisitStyleTag(tag);
+  if (!normalized) return null;
+
+  if (normalized === "quiet") return "静かに落ち着いて過ごしたい気持ち";
+  if (normalized === "nature") return "自然を感じながら整えたい気持ち";
+  if (normalized === "reset") return "気持ちを切り替えたい流れ";
+  if (normalized === "less_crowded") return "人混みを避けて落ち着きたい条件";
+  if (normalized === "classic") return "定番感があり安心して選びたい条件";
+  if (normalized === "nearby") return "近場で無理なく向かいたい条件";
+
+  return null;
+}
+
+function buildVisitStylePrimaryText(rec: BuildParams["rec"]): string | null {
+  const tag = getMatchedVisitStyleTags(rec)[0];
+  const label = tag ? buildVisitStyleLabel(tag) : null;
+  if (!label) return null;
+  return `選んだ参拝スタイルの「${label}」にも合うため、この神社が候補に入っています。`;
+}
+
+function buildVisitStyleCatchCopy(rec: BuildParams["rec"]): string | null {
+  const tag = getMatchedVisitStyleTags(rec)[0];
+  const normalized = tag ? normalizeVisitStyleTag(tag) : "";
+  if (!normalized) return null;
+
+  if (normalized === "quiet") return "静かに落ち着いて過ごしたい時の神社";
+  if (normalized === "nature") return "自然を感じながら整えたい時の神社";
+  if (normalized === "reset") return "気持ちを切り替えたい時の神社";
+  if (normalized === "less_crowded") return "人混みを避けて落ち着きたい時の神社";
+  if (normalized === "classic") return "安心して選びたい時の神社";
+  if (normalized === "nearby") return "無理なく向かいやすい神社";
+
+  return null;
+}
+
 function buildIntersectionPrimaryText(args: {
   need?: string | null;
   benefit?: string | null;
@@ -213,6 +271,11 @@ function buildQueryCandidates(params: BuildParams): Candidate[] {
     out.push({ key: "need_match", text: buildBenefitSupportText(shrine.benefitPrimary, shrine.tone) });
   } else if (shrine.feature) {
     out.push({ key: "text_match", text: buildFeatureSupportText(shrine.feature, shrine.tone) });
+  }
+
+  const visitStyleText = buildVisitStylePrimaryText(rec);
+  if (visitStyleText) {
+    out.push({ key: "text_match", text: visitStyleText });
   }
 
   if (typeof rec.astro_priority === "number" && rec.astro_priority > 0) {
@@ -362,6 +425,11 @@ function buildFactsCandidates(params: BuildParams, inputType: ReturnType<typeof 
       break;
   }
 
+  const visitStyleText = buildVisitStylePrimaryText(rec);
+  if (visitStyleText) {
+    out.push({ key: "text_match", text: visitStyleText });
+  }
+
   for (const secondaryType of match.secondaryReasonTypes) {
     switch (secondaryType) {
       case "secondary_need_match":
@@ -450,6 +518,9 @@ function buildTopReasonLabel(inputType: ReturnType<typeof resolveInputType>, pri
 }
 
 function buildHeroCatchCopy(params: BuildParams, primary: Candidate): string {
+  const visitStyleCatchCopy = buildVisitStyleCatchCopy(params.rec);
+  if (visitStyleCatchCopy) return visitStyleCatchCopy;
+
   if (params.mode === "compat") {
     return "相性から静かに選びたい時の神社";
   }

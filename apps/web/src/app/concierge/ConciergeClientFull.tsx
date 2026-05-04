@@ -31,6 +31,7 @@ import type {
 import { getGoriyakuTags } from "@/lib/api/tags";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { useBilling } from "@/features/billing/hooks/useBilling";
 import { isAuthRequiredForAction } from "@/lib/auth/actionGuards";
 import {
   initialConciergeSessionState,
@@ -299,6 +300,8 @@ export default function ConciergeClientFull() {
   );
 
   const { user, isLoggedIn } = useAuth();
+  const billing = useBilling();
+  const isPremiumActive = billing.status?.plan === "premium" && billing.status?.is_active === true;
 
   const canSaveConciergeThread =
     !isAuthRequiredForAction("save_concierge_thread") || isLoggedIn;
@@ -642,15 +645,17 @@ export default function ConciergeClientFull() {
     return goriyakuTags.filter((t) => setNames.has(t.name));
   }, [element4, goriyakuTags]);
 
-  const stopReason: StopReason =
+  const rawStopReason: StopReason =
     process.env.NODE_ENV !== "production" && forced ? forced : (displayUnified?.stop_reason ?? null);
-  const canSend = stopReason === null || (process.env.NODE_ENV !== "production" && !!forced);
+  const stopReason: StopReason = isPremiumActive && rawStopReason === "paywall" ? null : rawStopReason;
+  const canSend = stopReason === null || isPremiumActive || (process.env.NODE_ENV !== "production" && !!forced);
   const isUiPaywall =
-    stopReason === "paywall" ||
-    displayUnified?.limitReached === true ||
-    ((displayUnified?.plan === "anonymous" || displayUnified?.plan === "free") &&
-      typeof displayUnified?.remaining === "number" &&
-      displayUnified.remaining <= 0);
+    !isPremiumActive &&
+    (stopReason === "paywall" ||
+      displayUnified?.limitReached === true ||
+      ((displayUnified?.plan === "anonymous" || displayUnified?.plan === "free") &&
+        typeof displayUnified?.remaining === "number" &&
+        displayUnified.remaining <= 0));
 
   const baseFilters: ConciergeChatFilters = useMemo(() => {
     const bd = normalizeBirthdateInput(sessionState.temporaryBirthdate ?? "") ?? undefined;
