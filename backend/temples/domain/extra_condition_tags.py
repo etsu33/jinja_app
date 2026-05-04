@@ -14,6 +14,8 @@ EXTRA_TAG_META: Dict[str, Dict[str, str]] = {
     "nature": {"kind": "visit_style"},
     "reset": {"kind": "visit_style"},
     "classic": {"kind": "visit_style"},
+    "business": {"kind": "visit_style"},
+    "study": {"kind": "visit_style"},
 
     "energize": {"kind": "soft_signal"},
     "calm": {"kind": "soft_signal"},
@@ -51,6 +53,8 @@ EXTRA_TAGS: Dict[str, List[str]] = {
     "nature": ["自然", "緑", "木々", "森", "庭", "水辺", "空気が良い"],
     "reset": ["気持ちを切り替え", "切り替え", "リセット", "気分転換", "前向き", "流れを変え"],
     "classic": ["有名", "定番", "安心", "評判", "知名度", "初めてでも行きやすい"],
+    "business": ["ビジネス", "仕事向き", "商売", "成果", "出世"],
+    "study": ["学業", "勉強", "合格", "受験", "試験"],
 
     # 気分・エネルギー
     "energize": ["前向き", "活力", "元気", "やる気", "パワー", "エネルギー", "背中を押", "勇気"],
