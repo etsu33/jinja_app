@@ -53,7 +53,7 @@ def observe_visit_style_before_trim(
     query: str,
     extra_condition: Any,
     visit_style_tags: set[str],
-) -> None:
+) -> dict[str, Any]:
     try:
         pool = [
             r
@@ -85,16 +85,31 @@ def observe_visit_style_before_trim(
                 tag_key = str(tag)
                 matched_tag_counts[tag_key] = matched_tag_counts.get(tag_key, 0) + 1
 
+        result = {
+            "pool_size": len(visit_style_pool_rows),
+            "hit_count": hit_count,
+            "matched_tag_counts": matched_tag_counts,
+            "rows": visit_style_pool_rows,
+        }
+
         log.info(
             "[visit_style_observation_before_trim] has_query=%s query_len=%d has_extra=%s user_visit_style_tags=%r pool_size=%d hit_count=%d matched_tag_counts=%r rows=%r",
             bool(query),
             len(query or ""),
             bool(str(extra_condition or "").strip()),
             sorted(visit_style_tags),
-            len(visit_style_pool_rows),
-            hit_count,
-            matched_tag_counts,
-            visit_style_pool_rows,
+            result["pool_size"],
+            result["hit_count"],
+            result["matched_tag_counts"],
+            result["rows"],
         )
+
+        return result
     except Exception:
         log.exception("[visit_style_observation_before_trim] failed")
+        return {
+            "pool_size": 0,
+            "hit_count": 0,
+            "matched_tag_counts": {},
+            "rows": [],
+        }
