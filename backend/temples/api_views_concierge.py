@@ -612,11 +612,18 @@ class ConciergeChatView(APIView):
             if public_mode not in {"need", "compat"}:
                 public_mode = "compat" if birthdate and not query else "need"
 
-            flow = (
-                str(data.get("flow")).upper()
-                if str(data.get("flow")).upper() in {"A", "B"}
-                else ("B" if public_mode == "compat" else "A")
-            )
+            requested_flow = str(data.get("flow") or "").strip().upper()
+            has_extra_condition = bool(str(extra_condition or "").strip())
+            has_goriyaku_tags = bool(goriyaku_tag_ids)
+
+            if requested_flow in {"A", "B"}:
+                flow = requested_flow
+            elif has_extra_condition or has_goriyaku_tags:
+                flow = "B"
+            elif public_mode == "compat":
+                flow = "B"
+            else:
+                flow = "A"
             intent = extract_intent(query or "")
 
             request._concierge_trace_id = rid
