@@ -195,14 +195,15 @@ def build_chat_recommendations(
     need_tags = need_payload["tags"]
 
     log.info(
-        "[dbg] need_tags query=%r tags=%r language=%r flow=%r mode=%r extra=%r goriyaku=%r",
-        (query or "")[:60],
+        "[dbg] need_tags has_query=%s query_len=%d tags=%r language=%r flow=%r mode=%r has_extra=%s has_goriyaku=%s",
+        bool(query),
+        len(query or ""),
         need_tags,
         language,
         flow,
         public_mode,
-        extra_condition,
-        goriyaku_tag_ids,
+        bool(str(extra_condition or "").strip()),
+        bool(goriyaku_tag_ids),
     )
 
     astro_profile = _resolve_astro_profile(birthdate)
@@ -368,9 +369,10 @@ def build_chat_recommendations(
                 matched_tag_counts[tag_key] = matched_tag_counts.get(tag_key, 0) + 1
 
         log.info(
-            "[visit_style_observation_before_trim] query=%r extra=%r user_visit_style_tags=%r pool_size=%d hit_count=%d matched_tag_counts=%r rows=%r",
-            (query or "")[:80],
-            extra_condition,
+            "[visit_style_observation_before_trim] has_query=%s query_len=%d has_extra=%s user_visit_style_tags=%r pool_size=%d hit_count=%d matched_tag_counts=%r rows=%r",
+            bool(query),
+            len(query or ""),
+            bool(str(extra_condition or "").strip()),
             sorted(visit_style_tags),
             len(visit_style_pool_rows),
             hit_count,
