@@ -466,3 +466,12 @@ visit_style は以下の順序で導入する。
 - candidate pool 12→20 は採用候補として妥当
 - 処理時間・TOP3品質・候補ノイズの大きな悪化は今回の観測では確認されなかった
 - B案の prefilter visit_style 弱ブーストは現時点では保留
+
+
+### 補足: poolログの見方
+
+- `[pool]` は candidate生成直後 / ranking前の観測ログ
+- `visit_style_hits` は、候補プール内にユーザーの visit_style と一致する神社が何件あるかを見る
+- `need_hits` はこの位置では `matched_need_tags` 付与前のため、0になりやすい
+- need一致の評価は ranking後の `breakdown.matched_need_tags` / `visit_style_observation_before_trim` 側で確認する
+- poolログは candidate pool 20 採用判断までの一時観測ログとして扱う
