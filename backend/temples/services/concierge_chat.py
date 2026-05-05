@@ -233,13 +233,13 @@ def build_chat_recommendations(
             for c in valid_candidates
         ]
 
-        log.info(
+        log.debug(
             "[pool] size=%d visit_style_hits=%d need_hits=%d",
             len(valid_candidates),
             visit_style_hit_count,
             need_hit_count,
         )
-        log.info(
+        log.debug(
             "[pool_detail] %s",
             pool_detail,
         )
