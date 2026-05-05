@@ -315,12 +315,13 @@ def build_chat_recommendations(
     )
     recs["recommendations"] = _attach_rank_comparison(recs.get("recommendations") or [])
 
-    observe_visit_style_before_trim(
+    observation = observe_visit_style_before_trim(
         recs=recs,
         query=query or "",
         extra_condition=extra_condition,
         visit_style_tags=visit_style_tags,
     )
+    recs.setdefault("_debug", {})["visit_style_observation"] = observation
 
     _fill_location_from_existing_address(recs)
     _backfill_location_from_name(
