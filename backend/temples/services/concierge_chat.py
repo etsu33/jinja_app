@@ -47,6 +47,7 @@ from temples.services.concierge_chat_observation import (
     build_trim_observation,
     observe_candidate_pool,
     observe_candidate_pool_debug,
+    observe_ranking_breakdown,
     observe_trim_after,
     observe_trim_before,
     observe_visit_style_before_trim,
@@ -335,6 +336,9 @@ def build_chat_recommendations(
         sort_tags=sort_tags,
     )
     recs["recommendations"] = _attach_rank_comparison(recs.get("recommendations") or [])
+    recs.setdefault("_debug", {})["ranking_breakdown_observation"] = observe_ranking_breakdown(
+        recs=recs,
+    )
 
     observation = observe_visit_style_before_trim(
         recs=recs,

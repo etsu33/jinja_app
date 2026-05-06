@@ -264,6 +264,7 @@ function ConciergeDebugPanel({ unified }: { unified: UnifiedConciergeResponse | 
 
   const candidatePool = debug?.candidate_pool_observation ?? null;
   const visitStyle = debug?.visit_style_observation ?? null;
+  const rankingBreakdown = debug?.ranking_breakdown_observation ?? null;
   const trim = debug?.trim_observation ?? null;
 
   return (
@@ -325,6 +326,31 @@ function ConciergeDebugPanel({ unified }: { unified: UnifiedConciergeResponse | 
                 null,
                 2,
               )}
+            </pre>
+          </section>
+        ) : null}
+
+        {rankingBreakdown ? (
+          <section className="rounded-xl border border-slate-200 bg-white p-3">
+            <p className="font-semibold text-slate-800">Ranking Breakdown Observation</p>
+            <dl className="mt-2 grid grid-cols-3 gap-2">
+              <div>
+                <dt className="text-slate-400">ranked_count</dt>
+                <dd className="font-mono text-slate-700">{String(rankingBreakdown.ranked_count ?? "-")}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-400">top1_score</dt>
+                <dd className="font-mono text-slate-700">
+                  {String(rankingBreakdown.top10?.[0]?.score_total_ranked ?? "-")}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-slate-400">top1_name</dt>
+                <dd className="font-mono text-slate-700">{String(rankingBreakdown.top10?.[0]?.name ?? "-")}</dd>
+              </div>
+            </dl>
+            <pre className="mt-2 max-h-40 overflow-auto rounded-lg bg-slate-900 p-2 text-[11px] leading-5 text-slate-100">
+              {JSON.stringify(rankingBreakdown.top10 ?? [], null, 2)}
             </pre>
           </section>
         ) : null}

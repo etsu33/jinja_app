@@ -168,6 +168,69 @@ def observe_candidate_pool_debug(
         }
 
 
+def observe_ranking_breakdown(
+    *,
+    recs: dict[str, Any],
+    limit: int = 10,
+) -> dict[str, Any]:
+    try:
+        recommendations = [
+            r
+            for r in (recs.get("recommendations") or [])
+            if isinstance(r, dict)
+        ]
+
+        rows = []
+        for idx, rec in enumerate(recommendations[:limit], start=1):
+            breakdown = rec.get("breakdown") or {}
+            features = (rec.get("breakdown_detail") or {}).get("features") or {}
+            need = features.get("need") or {}
+            popular = features.get("popular") or {}
+            distance = features.get("distance") or {}
+            visit_style = features.get("visit_style") or {}
+            element = features.get("element") or {}
+
+            rows.append(
+                {
+                    "rank": idx,
+                    "shrine_id": rec.get("shrine_id") or rec.get("id"),
+                    "name": rec.get("name"),
+                    "score_raw": float(rec.get("_score_total") or 0.0),
+                    "score_total": float(breakdown.get("score_total") or 0.0),
+                    "score_total_ranked": float(features.get("score_total_ranked") or 0.0),
+                    "score_need": int(breakdown.get("score_need") or 0),
+                    "score_need_rank_weighted": float(need.get("rank_weighted") or 0.0),
+                    "score_distance": float(distance.get("raw") or 0.0),
+                    "score_popular": float(popular.get("raw") or 0.0),
+                    "score_visit_style": int(visit_style.get("raw") or 0),
+                    "score_element": int(element.get("raw") or 0),
+                    "contributions": {
+                        "need": float(need.get("rank_weighted_contribution") or 0.0),
+                        "distance": float(distance.get("contribution") or 0.0),
+                        "popular": float(popular.get("contribution") or 0.0),
+                        "visit_style": float(visit_style.get("contribution") or 0.0),
+                        "element": float(element.get("contribution") or 0.0),
+                        "astro_bonus": float(features.get("astro_bonus") or 0.0),
+                    },
+                    "matched_need_tags": list(breakdown.get("matched_need_tags") or []),
+                    "matched_visit_style_tags": list(visit_style.get("matched_tags") or []),
+                    "primary_reason_source": rec.get("_primary_reason_source"),
+                    "primary_reason_label": rec.get("_primary_reason_label"),
+                }
+            )
+
+        return {
+            "ranked_count": len(recommendations),
+            "top10": rows,
+        }
+    except Exception:
+        log.exception("[ranking_breakdown_observation] failed")
+        return {
+            "ranked_count": 0,
+            "top10": [],
+        }
+
+
 def observe_visit_style_before_trim(
     *,
     recs: dict[str, Any],
