@@ -112,6 +112,62 @@ def observe_candidate_pool(
         log.exception("[pool] observation failed")
 
 
+def observe_candidate_pool_debug(
+    *,
+    valid_candidates: list[dict[str, Any]],
+    filter_context: dict[str, Any] | None = None,
+    limit: int = 10,
+) -> dict[str, Any]:
+    try:
+        candidates = [
+            c
+            for c in (valid_candidates or [])
+            if isinstance(c, dict)
+        ]
+
+        with_place_id = sum(1 for c in candidates if c.get("place_id"))
+        missing_latlng = sum(
+            1
+            for c in candidates
+            if c.get("lat") is None or c.get("lng") is None
+        )
+        distance_none = sum(1 for c in candidates if c.get("distance_m") is None)
+
+        score_top10 = [
+            {
+                "rank": idx,
+                "shrine_id": c.get("shrine_id") or c.get("id"),
+                "place_id": c.get("place_id"),
+                "name": c.get("name"),
+                "distance_m": c.get("distance_m"),
+                "popular_score": c.get("popular_score"),
+                "score_total": c.get("_score_total"),
+                "visit_style_tags": c.get("visit_style_tags") or [],
+                "goriyaku_tag_ids": c.get("goriyaku_tag_ids") or [],
+            }
+            for idx, c in enumerate(candidates[:limit], start=1)
+        ]
+
+        return {
+            "valid_candidate_count": len(candidates),
+            "with_place_id": with_place_id,
+            "missing_latlng": missing_latlng,
+            "distance_none": distance_none,
+            "score_top10": score_top10,
+            "filter_context": filter_context or {},
+        }
+    except Exception:
+        log.exception("[candidate_pool_debug] observation failed")
+        return {
+            "valid_candidate_count": 0,
+            "with_place_id": 0,
+            "missing_latlng": 0,
+            "distance_none": 0,
+            "score_top10": [],
+            "filter_context": filter_context or {},
+        }
+
+
 def observe_visit_style_before_trim(
     *,
     recs: dict[str, Any],

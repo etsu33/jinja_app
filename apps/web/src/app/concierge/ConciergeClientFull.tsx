@@ -262,6 +262,7 @@ function ConciergeDebugPanel({ unified }: { unified: UnifiedConciergeResponse | 
 
   if (!debug && !mode) return null;
 
+  const candidatePool = debug?.candidate_pool_observation ?? null;
   const visitStyle = debug?.visit_style_observation ?? null;
   const trim = debug?.trim_observation ?? null;
 
@@ -293,6 +294,40 @@ function ConciergeDebugPanel({ unified }: { unified: UnifiedConciergeResponse | 
             </div>
           </dl>
         </section>
+
+        {candidatePool ? (
+          <section className="rounded-xl border border-slate-200 bg-white p-3">
+            <p className="font-semibold text-slate-800">Candidate Pool Observation</p>
+            <dl className="mt-2 grid grid-cols-3 gap-2">
+              <div>
+                <dt className="text-slate-400">valid</dt>
+                <dd className="font-mono text-slate-700">{String(candidatePool.valid_candidate_count ?? "-")}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-400">with_place_id</dt>
+                <dd className="font-mono text-slate-700">{String(candidatePool.with_place_id ?? "-")}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-400">distance_none</dt>
+                <dd className="font-mono text-slate-700">{String(candidatePool.distance_none ?? "-")}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-400">missing_latlng</dt>
+                <dd className="font-mono text-slate-700">{String(candidatePool.missing_latlng ?? "-")}</dd>
+              </div>
+            </dl>
+            <pre className="mt-2 max-h-40 overflow-auto rounded-lg bg-slate-900 p-2 text-[11px] leading-5 text-slate-100">
+              {JSON.stringify(
+                {
+                  filter_context: candidatePool.filter_context ?? {},
+                  score_top10: candidatePool.score_top10 ?? [],
+                },
+                null,
+                2,
+              )}
+            </pre>
+          </section>
+        ) : null}
 
         {visitStyle ? (
           <section className="rounded-xl border border-slate-200 bg-white p-3">

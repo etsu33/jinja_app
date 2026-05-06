@@ -7,6 +7,7 @@ import logging
 from temples.services.concierge_chat_observation import (
     build_trim_observation,
     observe_candidate_pool,
+    observe_candidate_pool_debug,
     observe_trim_after,
     observe_trim_before,
     observe_visit_style_before_trim,
@@ -75,6 +76,40 @@ def assert_trim_observation_row_schema(row):
         "display_name",
     }
     assert isinstance(row["rank"], int)
+
+
+def assert_candidate_pool_observation_schema(observation):
+    assert set(observation.keys()) == {
+        "valid_candidate_count",
+        "with_place_id",
+        "missing_latlng",
+        "distance_none",
+        "score_top10",
+        "filter_context",
+    }
+    assert isinstance(observation["valid_candidate_count"], int)
+    assert isinstance(observation["with_place_id"], int)
+    assert isinstance(observation["missing_latlng"], int)
+    assert isinstance(observation["distance_none"], int)
+    assert isinstance(observation["score_top10"], list)
+    assert isinstance(observation["filter_context"], dict)
+
+
+def assert_candidate_pool_top_row_schema(row):
+    assert set(row.keys()) == {
+        "rank",
+        "shrine_id",
+        "place_id",
+        "name",
+        "distance_m",
+        "popular_score",
+        "score_total",
+        "visit_style_tags",
+        "goriyaku_tag_ids",
+    }
+    assert isinstance(row["rank"], int)
+    assert isinstance(row["visit_style_tags"], list)
+    assert isinstance(row["goriyaku_tag_ids"], list)
 
 
 def test_observe_candidate_pool_logs_counts(caplog):
@@ -303,6 +338,14 @@ def test_build_chat_recommendations_attaches_visit_style_observation_debug(monke
     assert trim_observation["before_count"] >= trim_observation["after_count"]
     assert trim_observation["after_count"] == len(result["recommendations"])
 
+    candidate_pool_observation = result["_debug"]["candidate_pool_observation"]
+    assert_candidate_pool_observation_schema(candidate_pool_observation)
+    assert_candidate_pool_top_row_schema(candidate_pool_observation["score_top10"][0])
+    assert candidate_pool_observation["valid_candidate_count"] == 2
+    assert candidate_pool_observation["filter_context"]["flow"] == "B"
+    assert candidate_pool_observation["filter_context"]["has_extra_condition"] is True
+    assert candidate_pool_observation["score_top10"][0]["name"] == "根津神社"
+
 
 def test_visit_style_observation_empty_contract_has_stable_schema():
     observation = observe_visit_style_before_trim(
@@ -364,4 +407,65 @@ def test_trim_observation_empty_contract_has_stable_schema():
         "before": [],
         "after": [],
         "dropped": [],
+    }
+
+
+def test_observe_candidate_pool_debug_returns_stable_schema():
+    observation = observe_candidate_pool_debug(
+        valid_candidates=[
+            {
+                "id": 1,
+                "shrine_id": 101,
+                "place_id": "place-101",
+                "name": "根津神社",
+                "lat": 35.1,
+                "lng": 139.1,
+                "distance_m": 1200,
+                "popular_score": 42,
+                "_score_total": 0.91,
+                "visit_style_tags": ["nature", "quiet"],
+                "goriyaku_tag_ids": [1, 2],
+            },
+            {
+                "id": 2,
+                "shrine_id": 102,
+                "place_id": None,
+                "name": "小網神社",
+                "lat": None,
+                "lng": 139.2,
+                "distance_m": None,
+                "popular_score": 30,
+                "visit_style_tags": None,
+                "goriyaku_tag_ids": None,
+            },
+        ],
+        filter_context={"flow": "B", "public_mode": "need"},
+    )
+
+    assert_candidate_pool_observation_schema(observation)
+    assert_candidate_pool_top_row_schema(observation["score_top10"][0])
+    assert observation["valid_candidate_count"] == 2
+    assert observation["with_place_id"] == 1
+    assert observation["missing_latlng"] == 1
+    assert observation["distance_none"] == 1
+    assert observation["filter_context"] == {"flow": "B", "public_mode": "need"}
+    assert observation["score_top10"][0]["name"] == "根津神社"
+    assert observation["score_top10"][1]["visit_style_tags"] == []
+    assert observation["score_top10"][1]["goriyaku_tag_ids"] == []
+
+
+def test_observe_candidate_pool_debug_empty_contract_has_stable_schema():
+    observation = observe_candidate_pool_debug(
+        valid_candidates=[],
+        filter_context={"flow": "A"},
+    )
+
+    assert_candidate_pool_observation_schema(observation)
+    assert observation == {
+        "valid_candidate_count": 0,
+        "with_place_id": 0,
+        "missing_latlng": 0,
+        "distance_none": 0,
+        "score_top10": [],
+        "filter_context": {"flow": "A"},
     }
