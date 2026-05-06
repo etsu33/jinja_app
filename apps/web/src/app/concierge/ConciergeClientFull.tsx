@@ -253,7 +253,7 @@ function isRecommendationsPayload(
 }
 
 function ConciergeDebugPanel({ unified }: { unified: UnifiedConciergeResponse | null }) {
-  if (process.env.NODE_ENV === "production") return null;
+  if (process.env.NEXT_PUBLIC_ENABLE_CONCIERGE_DEBUG_PANEL !== "1") return null;
 
   const data = (unified?.data ?? {}) as any;
   const debug = data?._debug && typeof data._debug === "object" ? data._debug : null;
