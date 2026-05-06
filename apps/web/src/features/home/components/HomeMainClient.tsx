@@ -12,9 +12,9 @@ export function HomeMainClient() {
     <div className="space-y-6">
       <div className="space-y-2 px-1">
         <p className="text-xs font-semibold text-emerald-700">神社コンシェルジュ</p>
-        <h1 className="text-2xl font-semibold leading-tight text-slate-950">今のあなたに合う探し方を選んでください</h1>
+        <h1 className="text-2xl font-semibold leading-tight text-slate-950">今の気持ちに合う探し方を選ぶ</h1>
         <p className="text-sm leading-6 text-slate-600">
-          迷っている時は相談から、近くで探したい時は地図から、条件が決まっている時は検索から進めます。
+          迷っている時は相談から、近くで探したい時は地図から。今の状態に合わせて神社を探せます。
         </p>
       </div>
 

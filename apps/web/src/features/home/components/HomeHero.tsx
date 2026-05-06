@@ -9,14 +9,14 @@ export function HomeHero() {
       <div>
         <div className="text-3xl mb-1">⛩</div>
         <h1 className="text-2xl font-semibold leading-tight text-slate-950">
-          人生の節目を整理する
+          今の気持ちに合う
           <br />
-          神社コンシェルジュ
+          神社を見つける
         </h1>
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          今の悩みや迷いを書くだけで
+          悩みや迷い、今の気分を書くだけで
           <br />
-          相性のよい神社を整理して提案します
+          あなたに合う神社を静かに探します
         </p>
       </div>
 
@@ -24,7 +24,7 @@ export function HomeHero() {
         href="/concierge"
         className="inline-flex items-center justify-center rounded-full bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 active:scale-[0.98]"
       >
-        相談して神社を見つける
+        今の気持ちに合う神社を探す
       </Link>
 
       <Link
