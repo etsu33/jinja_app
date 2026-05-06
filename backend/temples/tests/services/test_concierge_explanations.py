@@ -1,0 +1,83 @@
+from __future__ import annotations
+
+from temples.services.concierge_explanations import build_explanation_for_chat_rec
+
+
+def test_build_explanation_for_chat_rec_adds_quiet_visit_style_reason():
+    result = build_explanation_for_chat_rec(
+        {
+            "reason": "候補としておすすめしています。",
+            "_explanation_payload": {
+                "primary_reason": {
+                    "type": "fallback",
+                    "label": "fallback",
+                    "label_ja": "近い候補",
+                    "evidence": [],
+                    "score": 0.0,
+                    "is_primary": True,
+                },
+                "highlights": [],
+            },
+            "breakdown_detail": {
+                "features": {
+                    "visit_style": {
+                        "raw": 1,
+                        "matched_tags": ["quiet"],
+                        "contribution": 0.35,
+                    }
+                }
+            },
+        },
+        query="静かな場所でお参りしたいです",
+        bias=None,
+        birthdate=None,
+        extra_condition=None,
+    )
+
+    reasons = result["reasons"]
+    visit_style_reason = next(r for r in reasons if r["code"] == "VISIT_STYLE_MATCH")
+
+    assert visit_style_reason["label"] == "参拝スタイルとの一致"
+    assert visit_style_reason["text"] == "静かで落ち着いた雰囲気を求める条件と重なっています。"
+    assert visit_style_reason["strength"] == "high"
+    assert visit_style_reason["evidence"]["matched_visit_style_tags"] == ["quiet"]
+
+
+def test_build_explanation_for_chat_rec_adds_less_crowded_visit_style_reason():
+    result = build_explanation_for_chat_rec(
+        {
+            "reason": "候補としておすすめしています。",
+            "_explanation_payload": {
+                "primary_reason": {
+                    "type": "fallback",
+                    "label": "fallback",
+                    "label_ja": "近い候補",
+                    "evidence": [],
+                    "score": 0.0,
+                    "is_primary": True,
+                },
+                "highlights": [],
+            },
+            "breakdown_detail": {
+                "features": {
+                    "visit_style": {
+                        "raw": 1,
+                        "matched_tags": ["less_crowded"],
+                        "contribution": 0.35,
+                    }
+                }
+            },
+        },
+        query="人が少ない場所でお参りしたいです",
+        bias=None,
+        birthdate=None,
+        extra_condition=None,
+    )
+
+    reasons = result["reasons"]
+    visit_style_reason = next(r for r in reasons if r["code"] == "VISIT_STYLE_MATCH")
+
+    assert visit_style_reason["label"] == "参拝スタイルとの一致"
+    assert visit_style_reason["text"] == "人が少なめで落ち着いて参拝したい条件と重なっています。"
+    assert visit_style_reason["strength"] == "high"
+    assert visit_style_reason["evidence"]["matched_visit_style_tags"] == ["less_crowded"]
