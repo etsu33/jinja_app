@@ -399,6 +399,87 @@ def test_build_chat_recommendations_attaches_visit_style_observation_debug(monke
     assert ranking_breakdown["top10"][0]["score_total_ranked"] >= 0.0
 
 
+def test_build_chat_recommendations_uses_query_for_visit_style_tags(monkeypatch):
+    def fake_resolve_llm_route(*, query, valid_candidates, need_tags, llm_enabled):
+        return {
+            "recs": {
+                "recommendations": [
+                    {
+                        "name": "静かな神社",
+                        "shrine_id": 201,
+                        "visit_style_tags": ["quiet", "reset"],
+                        "goriyaku": "心願成就",
+                        "distance_m": 1200,
+                    },
+                    {
+                        "name": "賑やかな神社",
+                        "shrine_id": 202,
+                        "visit_style_tags": ["business", "classic"],
+                        "goriyaku": "商売繁盛",
+                        "distance_m": 800,
+                    },
+                ],
+                "_seed": True,
+            },
+            "requested_llm_enabled": False,
+            "effective_llm_enabled": False,
+            "llm_used": False,
+            "llm_error": None,
+        }
+
+    monkeypatch.setattr(
+        "temples.services.concierge_chat.resolve_llm_route",
+        fake_resolve_llm_route,
+    )
+    monkeypatch.setattr(
+        "temples.services.concierge_chat._backfill_location_from_name",
+        lambda recs, *, bias, language: None,
+    )
+
+    result = build_chat_recommendations(
+        query="人が少なくて静かな場所でお参りしたいです",
+        language="ja",
+        candidates=[
+            {
+                "name": "静かな神社",
+                "shrine_id": 201,
+                "visit_style_tags": ["quiet", "reset"],
+                "goriyaku": "心願成就",
+                "distance_m": 1200,
+            },
+            {
+                "name": "賑やかな神社",
+                "shrine_id": 202,
+                "visit_style_tags": ["business", "classic"],
+                "goriyaku": "商売繁盛",
+                "distance_m": 800,
+            },
+        ],
+        bias=None,
+        birthdate=None,
+        goriyaku_tag_ids=None,
+        extra_condition=None,
+        public_mode="need",
+        flow="A",
+    )
+
+    observation = result["_debug"]["visit_style_observation"]
+    assert_visit_style_observation_schema(observation)
+    assert observation["hit_count"] >= 1
+    assert observation["matched_tag_counts"]["quiet"] >= 1
+
+    quiet_row = next(row for row in observation["rows"] if row["name"] == "静かな神社")
+    assert "quiet" in quiet_row["matched_tags"]
+    assert quiet_row["contribution"] > 0.0
+
+    ranking_breakdown = result["_debug"]["ranking_breakdown_observation"]
+    assert_ranking_breakdown_observation_schema(ranking_breakdown)
+    quiet_rank = next(row for row in ranking_breakdown["top10"] if row["name"] == "静かな神社")
+    assert "quiet" in quiet_rank["matched_visit_style_tags"]
+    assert quiet_rank["score_visit_style"] >= 1
+    assert quiet_rank["contributions"]["visit_style"] > 0.0
+
+
 def test_visit_style_observation_empty_contract_has_stable_schema():
     observation = observe_visit_style_before_trim(
         recs={"recommendations": []},

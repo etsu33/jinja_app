@@ -218,7 +218,13 @@ def build_chat_recommendations(
 
     astro_profile = _resolve_astro_profile(birthdate)
 
-    extra_tags = resolve_extra_condition_tags(extra_condition)
+    extra_tags = resolve_extra_condition_tags(
+        " ".join(
+            part
+            for part in [query or "", extra_condition or ""]
+            if str(part).strip()
+        )
+    )
     sort_tags = extra_tags["sort_tags"]
     hard_filter_tags = extra_tags["hard_filter_tags"]
     soft_signal_tags = extra_tags["soft_signal_tags"]
