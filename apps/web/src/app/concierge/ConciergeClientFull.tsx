@@ -252,6 +252,100 @@ function isRecommendationsPayload(
   );
 }
 
+function ConciergeDebugPanel({ unified }: { unified: UnifiedConciergeResponse | null }) {
+  if (process.env.NODE_ENV === "production") return null;
+
+  const data = (unified?.data ?? {}) as any;
+  const debug = data?._debug && typeof data._debug === "object" ? data._debug : null;
+  const signals = data?._signals && typeof data._signals === "object" ? data._signals : null;
+  const mode = signals?.mode && typeof signals.mode === "object" ? signals.mode : null;
+
+  if (!debug && !mode) return null;
+
+  const visitStyle = debug?.visit_style_observation ?? null;
+  const trim = debug?.trim_observation ?? null;
+
+  return (
+    <details className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-3 text-xs text-slate-700">
+      <summary className="cursor-pointer select-none font-semibold text-slate-700">
+        Debug: concierge response
+      </summary>
+
+      <div className="mt-3 grid gap-3">
+        <section className="rounded-xl border border-slate-200 bg-white p-3">
+          <p className="font-semibold text-slate-800">Flow / Mode</p>
+          <dl className="mt-2 grid grid-cols-2 gap-2">
+            <div>
+              <dt className="text-slate-400">mode</dt>
+              <dd className="font-mono text-slate-700">{String(mode?.mode ?? "-")}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-400">flow</dt>
+              <dd className="font-mono text-slate-700">{String(mode?.flow ?? "-")}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-400">llm_used</dt>
+              <dd className="font-mono text-slate-700">{String(signals?.llm?.used ?? "-")}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-400">fallback</dt>
+              <dd className="font-mono text-slate-700">{String(signals?.result_state?.fallback_mode ?? "-")}</dd>
+            </div>
+          </dl>
+        </section>
+
+        {visitStyle ? (
+          <section className="rounded-xl border border-slate-200 bg-white p-3">
+            <p className="font-semibold text-slate-800">Visit Style Observation</p>
+            <dl className="mt-2 grid grid-cols-3 gap-2">
+              <div>
+                <dt className="text-slate-400">pool_size</dt>
+                <dd className="font-mono text-slate-700">{String(visitStyle.pool_size ?? "-")}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-400">hit_count</dt>
+                <dd className="font-mono text-slate-700">{String(visitStyle.hit_count ?? "-")}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-400">matched_tags</dt>
+                <dd className="font-mono text-slate-700">
+                  {Object.keys(visitStyle.matched_tag_counts ?? {}).join(", ") || "-"}
+                </dd>
+              </div>
+            </dl>
+            <pre className="mt-2 max-h-40 overflow-auto rounded-lg bg-slate-900 p-2 text-[11px] leading-5 text-slate-100">
+              {JSON.stringify(visitStyle.rows ?? [], null, 2)}
+            </pre>
+          </section>
+        ) : null}
+
+        {trim ? (
+          <section className="rounded-xl border border-slate-200 bg-white p-3">
+            <p className="font-semibold text-slate-800">Trim Observation</p>
+            <dl className="mt-2 grid grid-cols-3 gap-2">
+              <div>
+                <dt className="text-slate-400">before</dt>
+                <dd className="font-mono text-slate-700">{String(trim.before_count ?? "-")}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-400">after</dt>
+                <dd className="font-mono text-slate-700">{String(trim.after_count ?? "-")}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-400">dropped</dt>
+                <dd className="font-mono text-slate-700">{String(trim.dropped_count ?? "-")}</dd>
+              </div>
+            </dl>
+            <pre className="mt-2 max-h-40 overflow-auto rounded-lg bg-slate-900 p-2 text-[11px] leading-5 text-slate-100">
+              {JSON.stringify(trim.dropped ?? [], null, 2)}
+            </pre>
+          </section>
+        ) : null}
+      </div>
+    </details>
+  );
+}
+
 
 
 
@@ -1353,6 +1447,8 @@ export default function ConciergeClientFull() {
               threadId={thread?.id ?? activeThreadId}
               isEntryRoute={isEntryRoute}
             />
+
+            <ConciergeDebugPanel unified={displayUnified} />
 
             {!isBusy && isUiPaywall ? (
               <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
