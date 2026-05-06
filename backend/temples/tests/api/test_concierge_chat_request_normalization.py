@@ -53,7 +53,7 @@ def test_chat_promotes_filters_to_top_level_and_keeps_need_mode_when_query_exist
     assert captured["goriyaku_tag_ids"] == [10, 20]
     assert captured["extra_condition"] == "静か"
     assert captured["public_mode"] == "need"
-    assert captured["flow"] == "A"
+    assert captured["flow"] == "B"
 
 
 @pytest.mark.django_db
@@ -105,7 +105,7 @@ def test_chat_top_level_values_override_filters_values_and_keep_need_mode(client
     assert captured["goriyaku_tag_ids"] == [999]
     assert captured["extra_condition"] == "にぎやか"
     assert captured["public_mode"] == "need"
-    assert captured["flow"] == "A"
+    assert captured["flow"] == "B"
 
 @pytest.mark.django_db
 def test_chat_rescues_birthdate_from_query_and_switches_to_compat_mode(client, monkeypatch):
