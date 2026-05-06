@@ -46,19 +46,19 @@ export default function ConciergeEntryCard({
 }: Props) {
   return (
     <>
-      <div className="space-y-3 rounded-2xl border border-emerald-100 bg-gradient-to-b from-emerald-50/80 to-white px-4 py-4 shadow-sm shadow-emerald-900/5">
+      <div className="space-y-2 rounded-2xl border border-emerald-100 bg-gradient-to-b from-emerald-50/80 to-white px-4 py-3 shadow-sm shadow-emerald-900/5">
         <div>
           <p className="text-xs font-semibold tracking-[0.18em] text-emerald-700">神社コンシェルジュ</p>
-          <h1 className="mt-2 text-xl font-semibold leading-8 text-slate-950">今の気持ちに合う神社を見つける</h1>
+          <h1 className="mt-1.5 text-lg font-semibold leading-7 text-slate-950">今の気持ちに合う神社を見つける</h1>
         </div>
-        <p className="text-sm leading-7 text-slate-600">
+        <p className="text-sm leading-6 text-slate-600">
           {displayName
             ? `${displayLabel}さんの今の状態をもとに、行き先の候補を静かに整理します。`
             : "今の状態をもとに、行き先の候補を静かに整理します。"}
         </p>
       </div>
 
-      <div className="mt-4">
+      <div className="mt-3">
         <label htmlFor="concierge-entry-nickname" className="mb-1 block text-xs font-semibold text-slate-600">
           呼び名（任意）
         </label>
@@ -105,14 +105,14 @@ export default function ConciergeEntryCard({
             value={needText}
             onChange={(e) => setNeedText(e.target.value)}
             placeholder="例：金運を整えたい、気持ちを切り替えたい、静かな場所で参拝したい"
-            rows={5}
-            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-7 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-emerald-300 focus:ring-4 focus:ring-emerald-100"
+            rows={4}
+            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm leading-6 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-emerald-300 focus:ring-4 focus:ring-emerald-100"
           />
         </div>
 
         <div>
           <p className="text-xs font-semibold text-slate-500">迷ったら選んでください</p>
-          <div className="mt-2 flex flex-wrap gap-2">
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
             {feelExamples.map((example) => {
               const isSelected = needText.trim() === example.text;
               return (
@@ -120,7 +120,7 @@ export default function ConciergeEntryCard({
                   key={example.label}
                   type="button"
                   className={[
-                    "rounded-full border px-3.5 py-2 text-sm font-semibold transition shadow-sm active:scale-[0.98]",
+                    "rounded-full border px-3 py-1.5 text-sm font-semibold transition shadow-sm active:scale-[0.98]",
                     isSelected
                       ? "border-emerald-600 bg-emerald-600 text-white"
                       : "border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800 active:bg-emerald-100",
