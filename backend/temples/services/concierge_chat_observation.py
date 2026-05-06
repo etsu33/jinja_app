@@ -7,6 +7,71 @@ from typing import Any
 log = logging.getLogger(__name__)
 
 
+def _recommendation_identity(rec: dict[str, Any], *, rank: int) -> dict[str, Any]:
+    return {
+        "rank": rank,
+        "id": rec.get("id"),
+        "shrine_id": rec.get("shrine_id"),
+        "place_id": rec.get("place_id"),
+        "name": rec.get("name"),
+        "display_name": rec.get("display_name"),
+    }
+
+
+def _recommendation_key(row: dict[str, Any]) -> str:
+    for key in ("shrine_id", "place_id", "id", "name"):
+        value = row.get(key)
+        if value not in (None, ""):
+            return f"{key}:{value}"
+    return f"rank:{row.get('rank')}"
+
+
+def observe_trim_before(recs: dict[str, Any]) -> list[dict[str, Any]]:
+    recommendations = [
+        r
+        for r in (recs.get("recommendations") or [])
+        if isinstance(r, dict)
+    ]
+    return [
+        _recommendation_identity(rec, rank=idx)
+        for idx, rec in enumerate(recommendations, start=1)
+    ]
+
+
+def observe_trim_after(recs: dict[str, Any]) -> list[dict[str, Any]]:
+    recommendations = [
+        r
+        for r in (recs.get("recommendations") or [])
+        if isinstance(r, dict)
+    ]
+    return [
+        _recommendation_identity(rec, rank=idx)
+        for idx, rec in enumerate(recommendations, start=1)
+    ]
+
+
+def build_trim_observation(
+    *,
+    before: list[dict[str, Any]],
+    after: list[dict[str, Any]],
+) -> dict[str, Any]:
+    after_keys = {_recommendation_key(row) for row in after}
+    dropped = [
+        row
+        for row in before
+        if _recommendation_key(row) not in after_keys
+    ]
+
+    return {
+        "before_count": len(before),
+        "after_count": len(after),
+        "dropped_count": len(dropped),
+        "before": before,
+        "after": after,
+        "dropped": dropped,
+    }
+
+
 def observe_candidate_pool(
     *,
     valid_candidates: list[dict[str, Any]],

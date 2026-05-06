@@ -5,7 +5,10 @@ from __future__ import annotations
 import logging
 
 from temples.services.concierge_chat_observation import (
+    build_trim_observation,
     observe_candidate_pool,
+    observe_trim_after,
+    observe_trim_before,
     observe_visit_style_before_trim,
 )
 
@@ -43,6 +46,35 @@ def assert_visit_style_observation_row_schema(row):
     assert isinstance(row["contribution"], float)
     assert isinstance(row["score_total_ranked"], float)
     assert isinstance(row["matched_need_tags"], list)
+
+
+def assert_trim_observation_schema(observation):
+    assert set(observation.keys()) == {
+        "before_count",
+        "after_count",
+        "dropped_count",
+        "before",
+        "after",
+        "dropped",
+    }
+    assert isinstance(observation["before_count"], int)
+    assert isinstance(observation["after_count"], int)
+    assert isinstance(observation["dropped_count"], int)
+    assert isinstance(observation["before"], list)
+    assert isinstance(observation["after"], list)
+    assert isinstance(observation["dropped"], list)
+
+
+def assert_trim_observation_row_schema(row):
+    assert set(row.keys()) == {
+        "rank",
+        "id",
+        "shrine_id",
+        "place_id",
+        "name",
+        "display_name",
+    }
+    assert isinstance(row["rank"], int)
 
 
 def test_observe_candidate_pool_logs_counts(caplog):
@@ -264,6 +296,13 @@ def test_build_chat_recommendations_attaches_visit_style_observation_debug(monke
     assert observation["rows"][0]["name"] == "根津神社"
     assert observation["rows"][0]["matched_tags"] == ["nature"]
 
+    trim_observation = result["_debug"]["trim_observation"]
+    assert_trim_observation_schema(trim_observation)
+    assert_trim_observation_row_schema(trim_observation["before"][0])
+    assert_trim_observation_row_schema(trim_observation["after"][0])
+    assert trim_observation["before_count"] >= trim_observation["after_count"]
+    assert trim_observation["after_count"] == len(result["recommendations"])
+
 
 def test_visit_style_observation_empty_contract_has_stable_schema():
     observation = observe_visit_style_before_trim(
@@ -279,4 +318,50 @@ def test_visit_style_observation_empty_contract_has_stable_schema():
         "hit_count": 0,
         "matched_tag_counts": {},
         "rows": [],
+    }
+
+
+def test_build_trim_observation_returns_before_after_and_dropped_candidates():
+    before = observe_trim_before(
+        {
+            "recommendations": [
+                {"shrine_id": 101, "name": "根津神社"},
+                {"shrine_id": 102, "name": "小網神社"},
+                {"shrine_id": 103, "name": "神田明神"},
+            ]
+        }
+    )
+    after = observe_trim_after(
+        {
+            "recommendations": [
+                {"shrine_id": 101, "name": "根津神社"},
+                {"shrine_id": 103, "name": "神田明神"},
+            ]
+        }
+    )
+
+    observation = build_trim_observation(before=before, after=after)
+
+    assert_trim_observation_schema(observation)
+    assert_trim_observation_row_schema(observation["before"][0])
+    assert_trim_observation_row_schema(observation["after"][0])
+    assert_trim_observation_row_schema(observation["dropped"][0])
+    assert observation["before_count"] == 3
+    assert observation["after_count"] == 2
+    assert observation["dropped_count"] == 1
+    assert observation["dropped"][0]["shrine_id"] == 102
+    assert observation["dropped"][0]["name"] == "小網神社"
+
+
+def test_trim_observation_empty_contract_has_stable_schema():
+    observation = build_trim_observation(before=[], after=[])
+
+    assert_trim_observation_schema(observation)
+    assert observation == {
+        "before_count": 0,
+        "after_count": 0,
+        "dropped_count": 0,
+        "before": [],
+        "after": [],
+        "dropped": [],
     }
