@@ -12,6 +12,39 @@ from temples.services.concierge_chat_observation import (
 from temples.services.concierge_chat import build_chat_recommendations
 
 
+def assert_visit_style_observation_schema(observation):
+    assert set(observation.keys()) == {
+        "pool_size",
+        "hit_count",
+        "matched_tag_counts",
+        "rows",
+    }
+    assert isinstance(observation["pool_size"], int)
+    assert isinstance(observation["hit_count"], int)
+    assert isinstance(observation["matched_tag_counts"], dict)
+    assert isinstance(observation["rows"], list)
+
+
+def assert_visit_style_observation_row_schema(row):
+    assert set(row.keys()) == {
+        "rank",
+        "shrine_id",
+        "name",
+        "visit_style_tags",
+        "matched_tags",
+        "contribution",
+        "score_total_ranked",
+        "score_need",
+        "matched_need_tags",
+    }
+    assert isinstance(row["rank"], int)
+    assert isinstance(row["visit_style_tags"], list)
+    assert isinstance(row["matched_tags"], list)
+    assert isinstance(row["contribution"], float)
+    assert isinstance(row["score_total_ranked"], float)
+    assert isinstance(row["matched_need_tags"], list)
+
+
 def test_observe_candidate_pool_logs_counts(caplog):
     caplog.set_level(logging.DEBUG, logger="temples.services.concierge_chat_observation")
 
@@ -92,6 +125,8 @@ def test_observe_visit_style_before_trim_logs_summary(caplog):
         extra_condition="自然や緑を感じられる神社がいい",
         visit_style_tags={"nature"},
     )
+    assert_visit_style_observation_schema(result)
+    assert_visit_style_observation_row_schema(result["rows"][0])
     assert result["pool_size"] == 2
     assert result["hit_count"] == 1
     assert result["matched_tag_counts"] == {"nature": 1}
@@ -119,6 +154,8 @@ def test_observe_visit_style_before_trim_ignores_non_dict_recommendations(caplog
         extra_condition=None,
         visit_style_tags=set(),
     )
+    assert_visit_style_observation_schema(result)
+    assert_visit_style_observation_row_schema(result["rows"][0])
     assert result["pool_size"] == 1
     assert result["hit_count"] == 0
     assert result["matched_tag_counts"] == {}
@@ -140,6 +177,7 @@ def test_observe_visit_style_before_trim_returns_empty_result_on_invalid_recs(ca
         extra_condition="自然がいい",
         visit_style_tags={"nature"},
     )
+    assert_visit_style_observation_schema(result)
 
     assert result == {
         "pool_size": 0,
@@ -217,9 +255,28 @@ def test_build_chat_recommendations_attaches_visit_style_observation_debug(monke
     )
 
     observation = result["_debug"]["visit_style_observation"]
+    assert_visit_style_observation_schema(observation)
+    assert_visit_style_observation_row_schema(observation["rows"][0])
 
     assert observation["pool_size"] >= 2
     assert observation["hit_count"] >= 1
     assert observation["matched_tag_counts"]["nature"] >= 1
     assert observation["rows"][0]["name"] == "根津神社"
     assert observation["rows"][0]["matched_tags"] == ["nature"]
+
+
+def test_visit_style_observation_empty_contract_has_stable_schema():
+    observation = observe_visit_style_before_trim(
+        recs={"recommendations": []},
+        query="",
+        extra_condition=None,
+        visit_style_tags=set(),
+    )
+
+    assert_visit_style_observation_schema(observation)
+    assert observation == {
+        "pool_size": 0,
+        "hit_count": 0,
+        "matched_tag_counts": {},
+        "rows": [],
+    }
