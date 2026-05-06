@@ -1,14 +1,23 @@
 from __future__ import annotations
-import os
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import serializers
-from rest_framework.permissions import AllowAny
+from rest_framework.exceptions import APIException
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.authentication import SessionAuthentication
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
+from temples.services.billing_checkout import create_checkout_session
 from temples.services.billing_state import get_billing_status
 
 PROVIDER_CHOICES = ("stub", "stripe", "revenuecat", "unknown")
+
+
+class CheckoutUnavailable(APIException):
+    status_code = 503
+    default_detail = "checkout is unavailable"
+    default_code = "checkout_unavailable"
 
 
 class BillingStatusSerializer(serializers.Serializer):
@@ -27,7 +36,7 @@ class BillingStatusSerializer(serializers.Serializer):
 )
 class BillingStatusView(APIView):
     permission_classes = [AllowAny]
-    authentication_classes = []
+    authentication_classes = [JWTAuthentication, SessionAuthentication]
 
     def get(self, request):
         st = get_billing_status(user=getattr(request, "user", None))
@@ -41,10 +50,51 @@ class BillingStatusView(APIView):
                 "cancel_at_period_end": st.cancel_at_period_end,
             }
         )
-        u = getattr(request, "user", None)
         return Response(ser.data, status=200)
 
 
 @extend_schema(exclude=True)
 class BillingStatusLegacyView(BillingStatusView):
     pass
+
+
+class CheckoutRequestSerializer(serializers.Serializer):
+    success_url = serializers.URLField()
+    cancel_url = serializers.URLField()
+
+
+class CheckoutResponseSerializer(serializers.Serializer):
+    session_id = serializers.CharField()
+    checkout_url = serializers.URLField()
+
+
+@extend_schema(
+    summary="Create billing checkout session",
+    tags=["billing"],
+    request=CheckoutRequestSerializer,
+    responses={200: OpenApiResponse(response=CheckoutResponseSerializer)},
+)
+class BillingCheckoutView(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication, SessionAuthentication]
+
+    def post(self, request):
+        req = CheckoutRequestSerializer(data=request.data)
+        req.is_valid(raise_exception=True)
+
+        try:
+            session = create_checkout_session(
+                user=request.user,
+                success_url=req.validated_data["success_url"],
+                cancel_url=req.validated_data["cancel_url"],
+            )
+        except RuntimeError as exc:
+            raise CheckoutUnavailable(str(exc)) from exc
+
+        ser = CheckoutResponseSerializer(
+            instance={
+                "session_id": session.session_id,
+                "checkout_url": session.checkout_url,
+            }
+        )
+        return Response(ser.data, status=200)
