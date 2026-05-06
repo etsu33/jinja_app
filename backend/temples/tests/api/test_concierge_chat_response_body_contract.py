@@ -197,11 +197,23 @@ def test_chat_response_includes_debug_observation_contract_fields(client, monkey
                 {"name": "神社A", "reason": "ok", "reason_source": "reason:test"}
             ],
             "_debug": {
+                "candidate_pool_observation": {
+                    "valid_candidate_count": 1,
+                    "with_place_id": 1,
+                    "missing_latlng": 0,
+                    "distance_none": 0,
+                    "score_top10": [],
+                    "filter_context": {},
+                },
                 "visit_style_observation": {
                     "pool_size": 1,
                     "hit_count": 0,
                     "matched_tag_counts": {},
                     "rows": [],
+                },
+                "ranking_breakdown_observation": {
+                    "ranked_count": 1,
+                    "top10": [],
                 },
                 "trim_observation": {
                     "before_count": 1,
@@ -224,12 +236,35 @@ def test_chat_response_includes_debug_observation_contract_fields(client, monkey
 
     debug = r.json()["data"]["_debug"]
 
+    assert set(debug.keys()) == {
+        "candidate_pool_observation",
+        "visit_style_observation",
+        "ranking_breakdown_observation",
+        "trim_observation",
+    }
+
+    candidate_pool = debug["candidate_pool_observation"]
+    assert set(candidate_pool.keys()) == {
+        "valid_candidate_count",
+        "with_place_id",
+        "missing_latlng",
+        "distance_none",
+        "score_top10",
+        "filter_context",
+    }
+
     visit_style = debug["visit_style_observation"]
     assert set(visit_style.keys()) == {
         "pool_size",
         "hit_count",
         "matched_tag_counts",
         "rows",
+    }
+
+    ranking_breakdown = debug["ranking_breakdown_observation"]
+    assert set(ranking_breakdown.keys()) == {
+        "ranked_count",
+        "top10",
     }
 
     trim = debug["trim_observation"]
