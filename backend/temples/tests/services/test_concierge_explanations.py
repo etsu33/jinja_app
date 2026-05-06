@@ -1,6 +1,50 @@
 from __future__ import annotations
 
+from temples.services.concierge_explanation_payload import build_explanation_payload
 from temples.services.concierge_explanations import build_explanation_for_chat_rec
+
+
+def test_build_explanation_payload_prefers_visit_style_over_fallback_primary_reason():
+    payload = build_explanation_payload(
+        {
+            "reason": "候補としておすすめしています。",
+            "_reason_facts": [
+                {
+                    "type": "fallback",
+                    "label": "fallback",
+                    "label_ja": "近い候補",
+                    "evidence": [],
+                    "score": 0.0,
+                    "is_primary": True,
+                }
+            ],
+            "breakdown": {
+                "score_need": 0,
+                "score_total": 0.0,
+                "matched_need_tags": [],
+            },
+            "breakdown_detail": {
+                "features": {
+                    "visit_style": {
+                        "raw": 1,
+                        "matched_tags": ["quiet"],
+                        "contribution": 0.35,
+                    },
+                    "score_total_ranked": 0.35,
+                }
+            },
+        }
+    )
+
+    assert payload["primary_reason"] == {
+        "type": "visit_style",
+        "label": "quiet",
+        "label_ja": "参拝スタイル",
+        "evidence": ["quiet"],
+        "score": 0.35,
+        "is_primary": True,
+    }
+    assert payload["matched_need_tags"] == []
 
 
 def test_build_explanation_for_chat_rec_adds_quiet_visit_style_reason():
