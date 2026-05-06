@@ -12,10 +12,13 @@ def _stub_candidates(monkeypatch):
     monkeypatch.setattr("temples.api_views_concierge.build_chat_candidates", lambda **kwargs: [])
 
 
-def _stub_recommendations(monkeypatch, recommendations):
+def _stub_recommendations(monkeypatch, payload):
+    if isinstance(payload, list):
+        payload = {"recommendations": payload}
+
     monkeypatch.setattr(
         "temples.api_views_concierge.build_chat_recommendations",
-        lambda **kwargs: {"recommendations": recommendations},
+        lambda **kwargs: payload,
     )
 
 
@@ -182,3 +185,59 @@ def test_chat_response_anonymous_includes_thread_when_append_chat_succeeds(clien
     assert body["thread"]["id"] == 1
     assert body["thread_id"] == "1"
     assert body["data"]["thread_id"] == "1"
+
+
+@pytest.mark.django_db
+def test_chat_response_includes_debug_observation_contract_fields(client, monkeypatch):
+    _stub_candidates(monkeypatch)
+    _stub_recommendations(
+        monkeypatch,
+        {
+            "recommendations": [
+                {"name": "神社A", "reason": "ok", "reason_source": "reason:test"}
+            ],
+            "_debug": {
+                "visit_style_observation": {
+                    "pool_size": 1,
+                    "hit_count": 0,
+                    "matched_tag_counts": {},
+                    "rows": [],
+                },
+                "trim_observation": {
+                    "before_count": 1,
+                    "after_count": 1,
+                    "dropped_count": 0,
+                    "before": [],
+                    "after": [],
+                    "dropped": [],
+                },
+            },
+        },
+    )
+
+    r = client.post(
+        URL,
+        data=json.dumps({"query": "近場で参拝したい", "lat": 35.0, "lng": 139.0}),
+        content_type="application/json",
+    )
+    assert r.status_code == 200
+
+    debug = r.json()["data"]["_debug"]
+
+    visit_style = debug["visit_style_observation"]
+    assert set(visit_style.keys()) == {
+        "pool_size",
+        "hit_count",
+        "matched_tag_counts",
+        "rows",
+    }
+
+    trim = debug["trim_observation"]
+    assert set(trim.keys()) == {
+        "before_count",
+        "after_count",
+        "dropped_count",
+        "before",
+        "after",
+        "dropped",
+    }
