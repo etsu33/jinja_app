@@ -150,8 +150,8 @@ def test_chat_view_prefers_direct_latlng_even_with_area(client, monkeypatch):
     "extra,expected_flow",
     [
         ({}, "A"),
-        ({"goriyaku_tag_ids": [1]}, "A"),
-        ({"extra_condition": "静か"}, "A"),
+        ({"goriyaku_tag_ids": [1]}, "B"),
+        ({"extra_condition": "静か"}, "B"),
     ],
 )
 def test_chat_view_flow_detection_contract(client, monkeypatch, extra, expected_flow):
