@@ -44,7 +44,10 @@ from temples.services.concierge_explanations import (
 )
 
 from temples.services.concierge_chat_observation import (
+    build_trim_observation,
     observe_candidate_pool,
+    observe_trim_after,
+    observe_trim_before,
     observe_visit_style_before_trim,
 )
 
@@ -323,6 +326,8 @@ def build_chat_recommendations(
     )
     recs.setdefault("_debug", {})["visit_style_observation"] = observation
 
+    trim_before = observe_trim_before(recs)
+
     _fill_location_from_existing_address(recs)
     _backfill_location_from_name(
         recs,
@@ -330,6 +335,12 @@ def build_chat_recommendations(
         language=language,
     )
     _trim_to_top3_and_fill_message(recs)
+
+    trim_after = observe_trim_after(recs)
+    recs.setdefault("_debug", {})["trim_observation"] = build_trim_observation(
+        before=trim_before,
+        after=trim_after,
+    )
 
     try:
         log.info(
