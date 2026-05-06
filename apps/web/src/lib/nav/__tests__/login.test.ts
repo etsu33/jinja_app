@@ -1,5 +1,3 @@
-
-
 import { describe, expect, it } from "vitest";
 
 import {
@@ -11,6 +9,14 @@ import {
 describe("sanitizeReturnTo", () => {
   it("内部パスは通す", () => {
     expect(sanitizeReturnTo("/mypage")).toBe("/mypage");
+  });
+
+  it("/concierge は復帰先として通す", () => {
+    expect(sanitizeReturnTo("/concierge")).toBe("/concierge");
+  });
+
+  it("/billing/upgrade は復帰先として通す", () => {
+    expect(sanitizeReturnTo("/billing/upgrade")).toBe("/billing/upgrade");
   });
 
   it("クエリ付き内部パスは通す", () => {
@@ -51,6 +57,10 @@ describe("buildLoginHref", () => {
     );
   });
 
+  it("/billing/upgrade を returnTo に付ける", () => {
+    expect(buildLoginHref("/billing/upgrade")).toBe("/auth/login?returnTo=%2Fbilling%2Fupgrade");
+  });
+
   it("unsafe な returnTo のとき /auth/login に落とす", () => {
     expect(buildLoginHref("https://evil.example.com/phish")).toBe("/auth/login");
   });
@@ -61,6 +71,10 @@ describe("buildRegisterHref", () => {
     expect(buildRegisterHref("/mypage?tab=favorites")).toBe(
       "/auth/register?returnTo=%2Fmypage%3Ftab%3Dfavorites",
     );
+  });
+
+  it("/concierge を returnTo に付ける", () => {
+    expect(buildRegisterHref("/concierge")).toBe("/auth/register?returnTo=%2Fconcierge");
   });
 
   it("unsafe な returnTo のとき /auth/register に落とす", () => {

@@ -24,19 +24,13 @@ import ConciergeEntryCard from "@/features/concierge/components/ConciergeEntryCa
 import { buildPayloadFromUnified } from "@/features/concierge/buildPayloadFromUnified";
 import { SHOW_NEW_RENDERER } from "@/features/concierge/rendererMode";
 
-import type {
-  RendererAction,
-  ConciergeSectionsPayload,
-} from "@/features/concierge/sections/types";
+import type { RendererAction, ConciergeSectionsPayload } from "@/features/concierge/sections/types";
 import { getGoriyakuTags } from "@/lib/api/tags";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useBilling } from "@/features/billing/hooks/useBilling";
 import { isAuthRequiredForAction } from "@/lib/auth/actionGuards";
-import {
-  initialConciergeSessionState,
-  type ConciergeSessionState,
-} from "@/features/concierge/types";
+import { initialConciergeSessionState, type ConciergeSessionState } from "@/features/concierge/types";
 import { resolveDisplayLabel, resolveDisplayName } from "@/lib/profile/resolveDisplayName";
 
 import { conciergeLog } from "@/lib/log/concierge";
@@ -57,9 +51,7 @@ type LocalEvent = ChatEvent | AssistantStateEvent;
 
 type EventsByThread = Record<number, LocalEvent[]>;
 
-
 const STORAGE_KEY = "concierge:eventsByThread";
-
 
 type AnonymousConciergeSnapshot = {
   version: 1;
@@ -87,8 +79,6 @@ const ELEMENT_TO_GORIYAKU: Record<Element4, string[]> = {
  * snap（ナビ/状態遷移を１箇所に集約してログを強制出力）
  * ====================================== */
 function snap(_label: string, _extra: Record<string, any> = {}) {}
-
-
 
 /**
  * UI補助用の簡易変換。
@@ -260,8 +250,6 @@ function ConciergeDebugPanel({ unified }: { unified: UnifiedConciergeResponse | 
   const signals = data?._signals && typeof data._signals === "object" ? data._signals : null;
   const mode = signals?.mode && typeof signals.mode === "object" ? signals.mode : null;
 
-
-
   if (!debug && !mode) return null;
 
   const candidatePool = debug?.candidate_pool_observation ?? null;
@@ -271,9 +259,7 @@ function ConciergeDebugPanel({ unified }: { unified: UnifiedConciergeResponse | 
 
   return (
     <details className="mt-4 rounded-2xl border border-dashed border-amber-400 bg-amber-50 p-3 text-xs text-slate-700">
-      <summary className="cursor-pointer select-none font-semibold text-slate-700">
-        Debug: concierge response
-      </summary>
+      <summary className="cursor-pointer select-none font-semibold text-slate-700">Debug: concierge response</summary>
 
       <div className="mt-3 grid gap-3">
         <section className="rounded-xl border border-slate-200 bg-white p-3">
@@ -409,9 +395,6 @@ function ConciergeDebugPanel({ unified }: { unified: UnifiedConciergeResponse | 
   );
 }
 
-
-
-
 /* ========================================
  * メインコンポーネント
  * ====================================== */
@@ -460,8 +443,7 @@ export default function ConciergeClientFull() {
   const billing = useBilling();
   const isPremiumActive = billing.status?.plan === "premium" && billing.status?.is_active === true;
 
-  const canSaveConciergeThread =
-    !isAuthRequiredForAction("save_concierge_thread") || isLoggedIn;
+  const canSaveConciergeThread = !isAuthRequiredForAction("save_concierge_thread") || isLoggedIn;
 
   const [eventsByThread, setEventsByThread] = useState<EventsByThread>({});
   const [hydrated, setHydrated] = useState(false);
@@ -512,7 +494,6 @@ export default function ConciergeClientFull() {
     setActiveThreadId(tid);
   };
 
-
   /* ----------------------------------------
    * URLパラメータ
    * -------------------------------------- */
@@ -529,10 +510,6 @@ export default function ConciergeClientFull() {
 
   const isEntryRoute = tidNum === null;
   const tidFromQuery = tidNum ?? 0;
-
-
-
-
 
   // 入口でtidパラメータがある場合は削除
   useEffect(() => {
@@ -602,9 +579,6 @@ export default function ConciergeClientFull() {
     }, 250);
     return () => window.clearTimeout(id);
   }, [eventsByThread, hydrated]);
-
-
-
 
   /* ----------------------------------------
    * スレッド切り替え（URLパラメータ反応）
@@ -745,13 +719,9 @@ export default function ConciergeClientFull() {
     const fallbackData = lastUnified?.data ?? null;
     const primaryData = primary.data ?? null;
 
-    const primaryRecommendations = Array.isArray(primaryData?.recommendations)
-      ? primaryData.recommendations
-      : [];
+    const primaryRecommendations = Array.isArray(primaryData?.recommendations) ? primaryData.recommendations : [];
 
-    const fallbackRecommendations = Array.isArray(fallbackData?.recommendations)
-      ? fallbackData.recommendations
-      : [];
+    const fallbackRecommendations = Array.isArray(fallbackData?.recommendations) ? fallbackData.recommendations : [];
 
     return {
       ...primary,
@@ -764,8 +734,7 @@ export default function ConciergeClientFull() {
       data: {
         ...(fallbackData ?? {}),
         ...(primaryData ?? {}),
-        recommendations:
-          primaryRecommendations.length > 0 ? primaryRecommendations : fallbackRecommendations,
+        recommendations: primaryRecommendations.length > 0 ? primaryRecommendations : fallbackRecommendations,
       },
     } as UnifiedConciergeResponse;
   }, [liveUnified, backendUnified, lastUnified]);
@@ -787,10 +756,7 @@ export default function ConciergeClientFull() {
     activeThreadId !== 0 ? String(activeThreadId) : typeof thread?.id === "number" ? String(thread.id) : null;
 
   const element4 = useMemo(
-    () =>
-      sessionState.temporaryBirthdate
-        ? birthdateToElement4(sessionState.temporaryBirthdate)
-        : null,
+    () => (sessionState.temporaryBirthdate ? birthdateToElement4(sessionState.temporaryBirthdate) : null),
     [sessionState.temporaryBirthdate],
   );
 
@@ -846,22 +812,22 @@ export default function ConciergeClientFull() {
       const birthdate = normalizeBirthdateInput(sessionState.temporaryBirthdate ?? "") ?? undefined;
       const query = (input?.query ?? needText).trim();
 
-     return {
-       version: input?.version ?? 1,
-       mode: input?.mode ?? "need",
-       query,
-       birthdate: input?.birthdate ?? birthdate,
-       filters: {
-         birthdate: input?.birthdate ?? birthdate,
-         goriyaku_tag_ids: input?.goriyaku_tag_ids ?? baseFilters.goriyaku_tag_ids,
-         extra_condition: input?.extra_condition ?? baseFilters.extra_condition,
-         crowd: input?.crowd ?? baseFilters.crowd,
-         duration_max_min: input?.duration_max_min ?? baseFilters.duration_max_min,
-         free_text: input?.free_text ?? input?.extra_condition ?? baseFilters.free_text,
-       },
-       goriyaku_tag_ids: input?.goriyaku_tag_ids ?? baseFilters.goriyaku_tag_ids,
-       extra_condition: input?.extra_condition ?? baseFilters.extra_condition,
-     };
+      return {
+        version: input?.version ?? 1,
+        mode: input?.mode ?? "need",
+        query,
+        birthdate: input?.birthdate ?? birthdate,
+        filters: {
+          birthdate: input?.birthdate ?? birthdate,
+          goriyaku_tag_ids: input?.goriyaku_tag_ids ?? baseFilters.goriyaku_tag_ids,
+          extra_condition: input?.extra_condition ?? baseFilters.extra_condition,
+          crowd: input?.crowd ?? baseFilters.crowd,
+          duration_max_min: input?.duration_max_min ?? baseFilters.duration_max_min,
+          free_text: input?.free_text ?? input?.extra_condition ?? baseFilters.free_text,
+        },
+        goriyaku_tag_ids: input?.goriyaku_tag_ids ?? baseFilters.goriyaku_tag_ids,
+        extra_condition: input?.extra_condition ?? baseFilters.extra_condition,
+      };
     },
     [sessionState.temporaryBirthdate, needText, baseFilters],
   );
@@ -906,9 +872,6 @@ export default function ConciergeClientFull() {
     () => buildPayloadFromUnified(displayUnified, filterState) ?? buildDummySections(filterState),
     [displayUnified, filterState],
   );
-
-
-
 
   const messages = useMemo(
     () => deriveMessages(events, thread?.id ?? activeThreadId),
@@ -1004,16 +967,11 @@ export default function ConciergeClientFull() {
    * -------------------------------------- */
   const isBusy = sending || (isEntryRoute && entrySubmitting);
 
-
   /* ----------------------------------------
    * 安全な送信関数（共通化）
    * -------------------------------------- */
   const safeSend = useCallback(
-    async (
-      textOrPayload: any,
-      logMeta?: Record<string, any>,
-      options?: { ignoreStopReason?: boolean },
-    ) => {
+    async (textOrPayload: any, logMeta?: Record<string, any>, options?: { ignoreStopReason?: boolean }) => {
       snap("safeSend:start", { isEntryRoute, sending, entrySubmitting, canSend });
       const ignoreStopReason = options?.ignoreStopReason === true;
       const effectiveCanSend = ignoreStopReason ? true : canSend;
@@ -1088,7 +1046,6 @@ export default function ConciergeClientFull() {
   const shouldShowThreadRenderer = hydrated && !shouldShowEntry;
   const hideChatPanel = !hydrated || (isEntryRoute && !hasRestoredCandidates);
 
-
   const entryViewedRef = useRef(false);
 
   useEffect(() => {
@@ -1101,8 +1058,6 @@ export default function ConciergeClientFull() {
       meta: {},
     });
   }, [shouldShowEntry]);
-
-  
 
   useEffect(() => {
     if (!isEntryRoute && entrySubmitting) {
@@ -1372,9 +1327,7 @@ export default function ConciergeClientFull() {
               onPickExample={onPickExample}
               isBusy={isBusy}
               canSend={canSend}
-              onSubmit={() =>
-                void safeSend(needText.trim(), { kind: "need_submit", textLen: needText.trim().length })
-              }
+              onSubmit={() => void safeSend(needText.trim(), { kind: "need_submit", textLen: needText.trim().length })}
               onClear={() => setNeedText("")}
             />
 
@@ -1450,13 +1403,15 @@ export default function ConciergeClientFull() {
               <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
                 <p className="font-medium text-slate-800">無料回数を使い切りました。</p>
                 <p className="mt-1 text-xs leading-6 text-slate-500">
-                  {isLoggedIn ? "続けるには有料プランへの切り替えが必要です。" : "続けるにはログイン、または有料プランへの切り替えが必要です。"}
+                  {isLoggedIn
+                    ? "続けるには有料プランへの切り替えが必要です。"
+                    : "続けるにはログイン、または有料プランへの切り替えが必要です。"}
                 </p>
-                <div className="mt-3 flex gap-2">
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                   {!isLoggedIn ? (
                     <button
                       type="button"
-                      className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
+                      className="w-full rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white sm:w-auto"
                       onClick={() => redirectToAuth("login")}
                     >
                       ログイン
@@ -1464,7 +1419,7 @@ export default function ConciergeClientFull() {
                   ) : null}
                   <Link
                     href="/billing/upgrade"
-                    className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
+                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-center text-sm font-semibold text-slate-700 sm:w-auto"
                   >
                     有料プランを見る
                   </Link>
@@ -1517,13 +1472,15 @@ export default function ConciergeClientFull() {
               <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
                 <p className="font-medium text-slate-800">無料回数を使い切りました。</p>
                 <p className="mt-1 text-xs leading-6 text-slate-500">
-                  {isLoggedIn ? "続けるには有料プランへの切り替えが必要です。" : "続けるにはログイン、または有料プランへの切り替えが必要です。"}
+                  {isLoggedIn
+                    ? "続けるには有料プランへの切り替えが必要です。"
+                    : "続けるにはログイン、または有料プランへの切り替えが必要です。"}
                 </p>
-                <div className="mt-3 flex gap-2">
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                   {!isLoggedIn ? (
                     <button
                       type="button"
-                      className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
+                      className="w-full rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white sm:w-auto"
                       onClick={() => redirectToAuth("login")}
                     >
                       ログイン
@@ -1531,7 +1488,7 @@ export default function ConciergeClientFull() {
                   ) : null}
                   <Link
                     href="/billing/upgrade"
-                    className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
+                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-center text-sm font-semibold text-slate-700 sm:w-auto"
                   >
                     有料プランを見る
                   </Link>

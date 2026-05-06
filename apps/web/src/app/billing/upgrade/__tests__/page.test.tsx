@@ -1,4 +1,3 @@
-// apps/web/src/app/billing/upgrade/__tests__/page.test.tsx
 import { render, screen } from "@testing-library/react";
 import BillingUpgradePage from "../page";
 
@@ -15,6 +14,10 @@ describe("BillingUpgradePage", () => {
     expect(screen.getByText("無料プランとの違い")).toBeInTheDocument();
     expect(screen.getByText("無料")).toBeInTheDocument();
     expect(screen.getByText("プレミアム")).toBeInTheDocument();
+
+    expect(
+      screen.getByText("プレミアム機能は現在順次準備中です。利用可能になり次第、この画面から案内します。"),
+    ).toBeInTheDocument();
 
     expect(screen.getByRole("link", { name: "無料でコンシェルジュを使う" })).toHaveAttribute("href", "/concierge");
 
