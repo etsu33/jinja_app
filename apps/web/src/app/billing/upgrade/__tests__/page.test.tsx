@@ -7,7 +7,13 @@ const pushMock = vi.fn();
 const startBillingCheckoutMock = vi.fn();
 const assignMock = vi.fn();
 
-let authState = {
+type MockAuthState = {
+  loading: boolean;
+  isLoggedIn: boolean;
+  user: { id: number } | null;
+};
+
+let authState: MockAuthState = {
   loading: false,
   isLoggedIn: true,
   user: { id: 1 },
