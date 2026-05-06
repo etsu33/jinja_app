@@ -260,6 +260,8 @@ function ConciergeDebugPanel({ unified }: { unified: UnifiedConciergeResponse | 
   const signals = data?._signals && typeof data._signals === "object" ? data._signals : null;
   const mode = signals?.mode && typeof signals.mode === "object" ? signals.mode : null;
 
+
+
   if (!debug && !mode) return null;
 
   const candidatePool = debug?.candidate_pool_observation ?? null;
@@ -268,7 +270,7 @@ function ConciergeDebugPanel({ unified }: { unified: UnifiedConciergeResponse | 
   const trim = debug?.trim_observation ?? null;
 
   return (
-    <details className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-3 text-xs text-slate-700">
+    <details className="mt-4 rounded-2xl border border-dashed border-amber-400 bg-amber-50 p-3 text-xs text-slate-700">
       <summary className="cursor-pointer select-none font-semibold text-slate-700">
         Debug: concierge response
       </summary>
