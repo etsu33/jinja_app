@@ -39,6 +39,7 @@ def _take3(xs: List[dict]) -> List[dict]:
         "ELEMENT_MATCH": 2,
         "NEED_MATCH": 3,
         "WISH_MATCH": 4,
+        "VISIT_STYLE_MATCH": 4,
         "REASON_SOURCE": 5,
         "SHRINE_FEATURE": 6,
         "START_POINT": 7,
@@ -91,6 +92,14 @@ def _get_secondary_reasons(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
     if not isinstance(value, list):
         return []
     return [x for x in value if isinstance(x, dict)]
+
+
+def _get_visit_style_feature(rec: Dict[str, Any]) -> Dict[str, Any]:
+    features = (rec.get("breakdown_detail") or {}).get("features") or {}
+    visit_style = features.get("visit_style")
+    if isinstance(visit_style, dict):
+        return visit_style
+    return {}
 
 def _build_summary_from_primary_reason(
     *,
@@ -227,6 +236,34 @@ def build_explanation_for_chat_rec(
     )
     if primary_entry:
         reasons.append(primary_entry)
+
+    visit_style = _get_visit_style_feature(rec)
+    matched_visit_style_tags = [
+        str(x).strip()
+        for x in (visit_style.get("matched_tags") or [])
+        if str(x).strip()
+    ]
+
+    if matched_visit_style_tags:
+        if "quiet" in matched_visit_style_tags and "less_crowded" in matched_visit_style_tags:
+            text = "静かで人が少なめの雰囲気を求める条件と重なっています。"
+        elif "quiet" in matched_visit_style_tags:
+            text = "静かで落ち着いた雰囲気を求める条件と重なっています。"
+        elif "less_crowded" in matched_visit_style_tags:
+            text = "人が少なめで落ち着いて参拝したい条件と重なっています。"
+        else:
+            text = "参拝スタイルの希望と重なる特徴があります。"
+
+        reasons.append(_reason(
+            "VISIT_STYLE_MATCH",
+            "参拝スタイルとの一致",
+            text,
+            strength="high",
+            evidence={
+                "matched_visit_style_tags": matched_visit_style_tags,
+                "visit_style": visit_style,
+            },
+        ))
 
     if bullets:
         reasons.append(_reason(
