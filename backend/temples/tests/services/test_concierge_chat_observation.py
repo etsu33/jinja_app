@@ -8,6 +8,7 @@ from temples.services.concierge_chat_observation import (
     build_trim_observation,
     observe_candidate_pool,
     observe_candidate_pool_debug,
+    observe_ranking_breakdown,
     observe_trim_after,
     observe_trim_before,
     observe_visit_style_before_trim,
@@ -110,6 +111,50 @@ def assert_candidate_pool_top_row_schema(row):
     assert isinstance(row["rank"], int)
     assert isinstance(row["visit_style_tags"], list)
     assert isinstance(row["goriyaku_tag_ids"], list)
+
+
+def assert_ranking_breakdown_observation_schema(observation):
+    assert set(observation.keys()) == {
+        "ranked_count",
+        "top10",
+    }
+    assert isinstance(observation["ranked_count"], int)
+    assert isinstance(observation["top10"], list)
+
+
+def assert_ranking_breakdown_top_row_schema(row):
+    assert set(row.keys()) == {
+        "rank",
+        "shrine_id",
+        "name",
+        "score_raw",
+        "score_total",
+        "score_total_ranked",
+        "score_need",
+        "score_need_rank_weighted",
+        "score_distance",
+        "score_popular",
+        "score_visit_style",
+        "score_element",
+        "contributions",
+        "matched_need_tags",
+        "matched_visit_style_tags",
+        "primary_reason_source",
+        "primary_reason_label",
+    }
+    assert isinstance(row["rank"], int)
+    assert isinstance(row["score_raw"], float)
+    assert isinstance(row["score_total"], float)
+    assert isinstance(row["score_total_ranked"], float)
+    assert isinstance(row["score_need"], int)
+    assert isinstance(row["score_need_rank_weighted"], float)
+    assert isinstance(row["score_distance"], float)
+    assert isinstance(row["score_popular"], float)
+    assert isinstance(row["score_visit_style"], int)
+    assert isinstance(row["score_element"], int)
+    assert isinstance(row["contributions"], dict)
+    assert isinstance(row["matched_need_tags"], list)
+    assert isinstance(row["matched_visit_style_tags"], list)
 
 
 def test_observe_candidate_pool_logs_counts(caplog):
@@ -346,6 +391,13 @@ def test_build_chat_recommendations_attaches_visit_style_observation_debug(monke
     assert candidate_pool_observation["filter_context"]["has_extra_condition"] is True
     assert candidate_pool_observation["score_top10"][0]["name"] == "根津神社"
 
+    ranking_breakdown = result["_debug"]["ranking_breakdown_observation"]
+    assert_ranking_breakdown_observation_schema(ranking_breakdown)
+    assert_ranking_breakdown_top_row_schema(ranking_breakdown["top10"][0])
+    assert ranking_breakdown["ranked_count"] >= len(result["recommendations"])
+    assert ranking_breakdown["top10"][0]["name"] == "根津神社"
+    assert ranking_breakdown["top10"][0]["score_total_ranked"] >= 0.0
+
 
 def test_visit_style_observation_empty_contract_has_stable_schema():
     observation = observe_visit_style_before_trim(
@@ -468,4 +520,82 @@ def test_observe_candidate_pool_debug_empty_contract_has_stable_schema():
         "distance_none": 0,
         "score_top10": [],
         "filter_context": {"flow": "A"},
+    }
+
+
+def test_observe_ranking_breakdown_returns_stable_schema():
+    observation = observe_ranking_breakdown(
+        recs={
+            "recommendations": [
+                {
+                    "id": 1,
+                    "shrine_id": 101,
+                    "name": "根津神社",
+                    "_score_total": 1.23,
+                    "breakdown": {
+                        "score_need": 1,
+                        "score_total": 0.5,
+                        "matched_need_tags": ["rest"],
+                    },
+                    "breakdown_detail": {
+                        "features": {
+                            "need": {
+                                "rank_weighted": 2.0,
+                                "rank_weighted_contribution": 0.6,
+                            },
+                            "distance": {
+                                "raw": 0.7,
+                                "contribution": 0.2,
+                            },
+                            "popular": {
+                                "raw": 0.4,
+                                "contribution": 0.04,
+                            },
+                            "visit_style": {
+                                "raw": 1,
+                                "matched_tags": ["nature"],
+                                "contribution": 0.35,
+                            },
+                            "element": {
+                                "raw": 0,
+                                "contribution": 0.0,
+                            },
+                            "astro_bonus": 0.0,
+                            "score_total_ranked": 1.23,
+                        }
+                    },
+                    "_primary_reason_source": "text_hint",
+                    "_primary_reason_label": "rest",
+                }
+            ]
+        }
+    )
+
+    assert_ranking_breakdown_observation_schema(observation)
+    assert_ranking_breakdown_top_row_schema(observation["top10"][0])
+    assert observation["ranked_count"] == 1
+    row = observation["top10"][0]
+    assert row["name"] == "根津神社"
+    assert row["score_raw"] == 1.23
+    assert row["score_total"] == 0.5
+    assert row["score_total_ranked"] == 1.23
+    assert row["score_need"] == 1
+    assert row["score_need_rank_weighted"] == 2.0
+    assert row["score_distance"] == 0.7
+    assert row["score_popular"] == 0.4
+    assert row["score_visit_style"] == 1
+    assert row["contributions"]["visit_style"] == 0.35
+    assert row["matched_need_tags"] == ["rest"]
+    assert row["matched_visit_style_tags"] == ["nature"]
+    assert row["primary_reason_source"] == "text_hint"
+    assert row["primary_reason_label"] == "rest"
+
+
+def test_observe_ranking_breakdown_empty_contract_has_stable_schema():
+    observation = observe_ranking_breakdown(recs={"recommendations": []})
+
+    assert_ranking_breakdown_observation_schema(observation)
+    assert observation == {
+        "ranked_count": 0,
+        "top10": [],
     }
