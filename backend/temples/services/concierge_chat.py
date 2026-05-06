@@ -46,6 +46,7 @@ from temples.services.concierge_explanations import (
 from temples.services.concierge_chat_observation import (
     build_trim_observation,
     observe_candidate_pool,
+    observe_candidate_pool_debug,
     observe_trim_after,
     observe_trim_before,
     observe_visit_style_before_trim,
@@ -228,6 +229,22 @@ def build_chat_recommendations(
         need_tags=need_tags,
     )
 
+    candidate_pool_observation = observe_candidate_pool_debug(
+        valid_candidates=valid_candidates,
+        filter_context={
+            "public_mode": public_mode,
+            "flow": flow,
+            "has_query": bool(query),
+            "query_len": len(query or ""),
+            "has_extra_condition": bool(str(extra_condition or "").strip()),
+            "has_goriyaku_tag_ids": bool(goriyaku_tag_ids),
+            "need_tags": need_tags,
+            "sort_tags": sorted(sort_tags),
+            "hard_filter_tags": sorted(hard_filter_tags),
+            "visit_style_tags": sorted(visit_style_tags),
+        },
+    )
+
     weights = _resolve_mode_weights(
         public_mode=public_mode,  # type: ignore[arg-type]
         flow=flow,
@@ -245,6 +262,7 @@ def build_chat_recommendations(
     )
 
     recs = route["recs"]
+    recs.setdefault("_debug", {})["candidate_pool_observation"] = candidate_pool_observation
     requested_llm_enabled = bool(route["requested_llm_enabled"])
     effective_llm_enabled = bool(route["effective_llm_enabled"])
     llm_used = bool(route["llm_used"])
