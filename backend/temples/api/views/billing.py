@@ -1,4 +1,9 @@
 from __future__ import annotations
+import logging
+
+from django.http import HttpResponse
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import serializers
 from rest_framework.exceptions import APIException
@@ -10,8 +15,15 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from temples.services.billing_checkout import create_checkout_session
 from temples.services.billing_state import get_billing_status
+from users.services.stripe_webhook import (
+    StripeWebhookInvalidSignature,
+    StripeWebhookNotConfigured,
+    apply_stripe_event,
+    construct_stripe_event,
+)
 
 PROVIDER_CHOICES = ("stub", "stripe", "revenuecat", "unknown")
+log = logging.getLogger(__name__)
 
 
 class CheckoutUnavailable(APIException):
@@ -98,3 +110,33 @@ class BillingCheckoutView(APIView):
             }
         )
         return Response(ser.data, status=200)
+
+
+@extend_schema(exclude=True)
+@method_decorator(csrf_exempt, name="dispatch")
+class BillingStripeWebhookView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes: list = []
+
+    def post(self, request):
+        try:
+            event = construct_stripe_event(
+                payload=request.body,
+                sig_header=request.headers.get("Stripe-Signature", ""),
+            )
+        except StripeWebhookNotConfigured:
+            log.exception("[stripe] webhook is not configured")
+            return HttpResponse(status=503)
+        except StripeWebhookInvalidSignature:
+            return HttpResponse(status=400)
+        except Exception:
+            log.exception("[stripe] construct_event failed")
+            return HttpResponse(status=400)
+
+        try:
+            apply_stripe_event(event=event)
+        except Exception:
+            log.exception("[stripe] apply event failed etype=%s", event.get("type"))
+            return HttpResponse(status=500)
+
+        return HttpResponse(status=200)
