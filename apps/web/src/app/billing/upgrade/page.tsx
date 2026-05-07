@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { startBillingCheckout } from "@/lib/api/billing";
+import { trackBillingEvent } from "@/lib/analytics/billing";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { buildLoginHref } from "@/lib/nav/login";
 
@@ -12,9 +13,16 @@ export default function BillingUpgradePage() {
   const auth = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const upgradeClickTrackedRef = useRef(false);
+  const checkoutStartedTrackedRef = useRef(false);
 
   const startCheckout = async () => {
     if (auth.loading) return;
+
+    if (!upgradeClickTrackedRef.current) {
+      upgradeClickTrackedRef.current = true;
+      trackBillingEvent("upgrade_click");
+    }
 
     if (!auth.isLoggedIn) {
       router.push(buildLoginHref("/billing/upgrade"));
@@ -25,6 +33,10 @@ export default function BillingUpgradePage() {
       setSubmitting(true);
       setError(null);
       const session = await startBillingCheckout();
+      if (!checkoutStartedTrackedRef.current) {
+        checkoutStartedTrackedRef.current = true;
+        trackBillingEvent("checkout_started", { session_id: session.session_id });
+      }
       window.location.assign(session.checkout_url);
     } catch {
       setError("決済画面を開始できませんでした。時間をおいて再度お試しください。");

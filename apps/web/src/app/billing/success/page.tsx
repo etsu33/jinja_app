@@ -1,15 +1,30 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useBilling } from "@/features/billing/hooks/useBilling";
+import { trackBillingEvent } from "@/lib/analytics/billing";
 
 function BillingSuccessContent() {
   const searchParams = useSearchParams();
   const billing = useBilling();
   const sessionId = searchParams.get("checkout_session_id") ?? searchParams.get("session_id");
   const isPremiumActive = billing.status?.plan === "premium" && billing.status.is_active === true;
+  const checkoutSuccessTrackedRef = useRef(false);
+  const premiumActiveTrackedRef = useRef(false);
+
+  useEffect(() => {
+    if (checkoutSuccessTrackedRef.current) return;
+    checkoutSuccessTrackedRef.current = true;
+    trackBillingEvent("checkout_success", sessionId ? { session_id: sessionId } : {});
+  }, [sessionId]);
+
+  useEffect(() => {
+    if (!isPremiumActive || premiumActiveTrackedRef.current) return;
+    premiumActiveTrackedRef.current = true;
+    trackBillingEvent("premium_active", sessionId ? { session_id: sessionId } : {});
+  }, [isPremiumActive, sessionId]);
 
   if (!sessionId) {
     return (
