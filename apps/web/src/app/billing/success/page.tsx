@@ -1,14 +1,14 @@
 "use client";
 
+import { Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useBilling } from "@/features/billing/hooks/useBilling";
 
-export default function BillingSuccessPage() {
+function BillingSuccessContent() {
   const searchParams = useSearchParams();
   const billing = useBilling();
   const sessionId = searchParams.get("checkout_session_id") ?? searchParams.get("session_id");
-
   const isPremiumActive = billing.status?.plan === "premium" && billing.status.is_active === true;
 
   if (!sessionId) {
@@ -60,5 +60,19 @@ export default function BillingSuccessPage() {
         </Link>
       </div>
     </div>
+  );
+}
+
+export default function BillingSuccessPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="mx-auto w-full max-w-md px-4 py-6">
+          <p className="text-sm leading-6 text-slate-600">課金状態を確認しています...</p>
+        </main>
+      }
+    >
+      <BillingSuccessContent />
+    </Suspense>
   );
 }
