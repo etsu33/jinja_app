@@ -6,7 +6,12 @@ from drf_spectacular.utils import extend_schema
 from rest_framework.routers import DefaultRouter
 
 from temples import api_views_concierge as concierge
-from temples.api.views.billing import BillingCheckoutView, BillingStatusLegacyView, BillingStatusView
+from temples.api.views.billing import (
+    BillingCheckoutView,
+    BillingStatusLegacyView,
+    BillingStatusView,
+    BillingStripeWebhookView,
+)
 from temples.api.views.compat import concierge_chat_compat
 from temples.api.views.concierge import (
     ConciergeThreadDetailView,
@@ -131,6 +136,7 @@ urlpatterns = [
     path("billing/status/", BillingStatusLegacyView.as_view(), name="billing-status-legacy"),
     path("billings/checkout/", BillingCheckoutView.as_view(), name="billing-checkout"),
     path("billings/status/", BillingStatusView.as_view(), name="billing-status"),
+    path("billings/webhook/", BillingStripeWebhookView.as_view(), name="billing-stripe-webhook"),
 
     # ---- Profiles / Tags / Feed ------------------------------------------
     path("profiles/<str:username>/", public_profile, name="public_profile"),
