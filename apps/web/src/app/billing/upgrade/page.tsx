@@ -1,8 +1,37 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { startBillingCheckout } from "@/lib/api/billing";
+import { useAuth } from "@/lib/auth/AuthProvider";
+import { buildLoginHref } from "@/lib/nav/login";
 
 export default function BillingUpgradePage() {
+  const router = useRouter();
+  const auth = useAuth();
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const startCheckout = async () => {
+    if (auth.loading) return;
+
+    if (!auth.isLoggedIn) {
+      router.push(buildLoginHref("/billing/upgrade"));
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      setError(null);
+      const session = await startBillingCheckout();
+      window.location.assign(session.checkout_url);
+    } catch {
+      setError("決済画面を開始できませんでした。時間をおいて再度お試しください。");
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div className="mx-auto w-full max-w-md px-4 py-6">
       <section className="space-y-2">
@@ -30,17 +59,21 @@ export default function BillingUpgradePage() {
         </div>
       </section>
 
-      <section className="mt-6 rounded-xl border bg-amber-50 p-4 text-sm text-amber-900">
-        プレミアム機能は現在順次準備中です。利用可能になり次第、この画面から案内します。
-      </section>
+      {error ? (
+        <section role="alert" className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+          {error}
+        </section>
+      ) : null}
 
       <div className="mt-6 flex flex-col gap-2">
-        <Link
-          href="/concierge"
+        <button
+          type="button"
+          onClick={startCheckout}
+          disabled={auth.loading || submitting}
           className="inline-flex items-center justify-center rounded-md bg-slate-900 px-4 py-3 text-sm font-semibold text-white"
         >
-          無料でコンシェルジュを使う
-        </Link>
+          {submitting ? "決済画面を準備中…" : "プレミアムにする"}
+        </button>
         <Link
           href="/billing"
           className="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-800"
