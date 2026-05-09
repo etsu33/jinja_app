@@ -61,10 +61,7 @@ export function HomeMainClient() {
       */}
 
       {!conciergeOpen && (
-        <SectionCard
-          title="近くの神社"
-          description="現在地から近い神社をお探しします"
-        >
+        <SectionCard title="近くの神社">
           <HomeNearbySection />
         </SectionCard>
       )}
