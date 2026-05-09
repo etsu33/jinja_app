@@ -7,6 +7,9 @@ python manage.py migrate --noinput
 echo "Repairing FeatureUsage table..."
 python manage.py repair_featureusage_table
 
+echo "Importing shrine seed data..."
+python manage.py import_shrines_seed
+
 echo "Debugging concierge candidate counts..."
 python manage.py debug_concierge_candidates
 
