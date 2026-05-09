@@ -82,9 +82,9 @@ export default function MyGoshuinCard({
       tabIndex={href ? undefined : 0}
       onClick={handleClickCard}
       onKeyDown={handleKeyDown}
-      className="group relative flex flex-col overflow-hidden rounded-3xl border border-border/20 bg-card transition-all duration-300 hover:-translate-y-0.5 hover:border-border/40 hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)]"
+      className="group relative flex flex-col overflow-hidden rounded-3xl border border-stone-200/20 bg-stone-50/20 transition-all duration-300 hover:border-stone-300/30"
     >
-      <div className="relative aspect-[4/5] overflow-hidden bg-gradient-to-br from-muted to-muted/60">
+      <div className="relative aspect-[4/5] overflow-hidden bg-stone-100/40">
         {proxiedImageUrl ? (
           <Image
             src={proxiedImageUrl}
@@ -94,14 +94,14 @@ export default function MyGoshuinCard({
             sizes="(max-width: 640px) 50vw, 33vw"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-muted text-xs text-muted-foreground/80">
+          <div className="flex h-full w-full items-center justify-center bg-stone-100/50 text-xs text-stone-400">
             画像なし
           </div>
         )}
 
         {!is_public && (
           <div className="absolute left-3 top-3">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-orange-500/95 to-pink-500/95 px-3 py-1.5 text-xs font-semibold text-white shadow-lg backdrop-blur-sm">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-stone-300/30 bg-stone-50/80 px-3 py-1.5 text-xs font-medium text-stone-600 backdrop-blur-sm">
               <EyeOff className="h-3.5 w-3.5" />
               非公開
             </span>
@@ -116,7 +116,7 @@ export default function MyGoshuinCard({
                 variant="secondary"
                 className={cn(
                   "pointer-events-auto",
-                  "h-9 w-9 rounded-full bg-white/90 shadow-lg backdrop-blur-md transition-all duration-300 hover:scale-110 hover:bg-white",
+                  "h-9 w-9 rounded-full border border-stone-200/30 bg-stone-50/80 backdrop-blur-md transition-all duration-300 hover:bg-stone-100",
                   "dark:bg-black/60 dark:hover:bg-black/80",
                   "supports-[hover:hover]:opacity-0 supports-[hover:hover]:translate-y-2",
                   "supports-[hover:hover]:group-hover:opacity-100 supports-[hover:hover]:group-hover:translate-y-0",
@@ -126,9 +126,9 @@ export default function MyGoshuinCard({
                 disabled={isToggling}
               >
                 {is_public ? (
-                  <Eye className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  <Eye className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
                 ) : (
-                  <EyeOff className="h-4 w-4 text-muted-foreground" />
+                  <EyeOff className="h-4 w-4 text-stone-500" />
                 )}
               </Button>
             )}
@@ -139,8 +139,8 @@ export default function MyGoshuinCard({
                 variant="secondary"
                 className={cn(
                   "pointer-events-auto",
-                  "h-9 w-9 rounded-full bg-white/90 shadow-lg backdrop-blur-md transition-all duration-300 delay-75 hover:scale-110 hover:bg-red-500 hover:text-white",
-                  "dark:bg-black/60 dark:hover:bg-red-500",
+                  "h-9 w-9 rounded-full border border-stone-200/30 bg-stone-50/80 text-stone-500 backdrop-blur-md transition-all duration-300 delay-75 hover:bg-rose-50 hover:text-rose-700",
+                  "dark:bg-black/60 dark:hover:bg-rose-500",
                   "supports-[hover:hover]:opacity-0 supports-[hover:hover]:translate-y-2",
                   "supports-[hover:hover]:group-hover:opacity-100 supports-[hover:hover]:group-hover:translate-y-0",
                 )}
@@ -155,14 +155,14 @@ export default function MyGoshuinCard({
         </div>
 
         <div className="flex flex-col gap-1 p-4">
-          <h3 className="line-clamp-1 text-sm font-semibold tracking-tight text-foreground">
+          <h3 className="line-clamp-1 text-sm font-medium tracking-tight text-stone-900">
             {item.title || shrineName || "タイトル未設定"}
           </h3>
-          <p className="line-clamp-1 text-xs text-muted-foreground">{shrineName ?? "-"}</p>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="line-clamp-1 text-xs text-stone-500">{shrineName ?? "-"}</p>
+          <p className="text-[11px] text-stone-400">
             登録日: <time>{createdAtLabel ?? "-"}</time>
           </p>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-[11px] text-stone-400">
             公開設定: <span className="font-medium">{visibilityLabel}</span>
           </p>
         </div>

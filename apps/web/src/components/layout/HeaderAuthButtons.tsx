@@ -17,12 +17,12 @@ export function HeaderAuthButtons() {
     return buildLoginHref(current);
   }, [pathname, sp]);
 
-  const goshuinBookHref = "/mypage?tab=goshuin";
+  const myPageHref = "/mypage?tab=profile";
 
   return (
     <div className="flex items-center gap-2">
-      <Link href={goshuinBookHref} className="rounded-md bg-emerald-600 px-3 py-2 text-xs font-medium text-white">
-        御朱印帳
+      <Link href={myPageHref} className="rounded-md bg-emerald-600 px-3 py-2 text-xs font-medium text-white">
+        マイページ
       </Link>
 
       {!loading && !isLoggedIn && (

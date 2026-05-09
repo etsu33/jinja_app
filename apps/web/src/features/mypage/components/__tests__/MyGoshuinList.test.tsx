@@ -48,9 +48,7 @@ describe("MyGoshuinList", () => {
     );
 
     expect(screen.getByText("登録済みの御朱印")).toBeInTheDocument();
-    expect(
-      screen.getByText("まだ御朱印が登録されていません。上のフォームからアップロードしてみてください。"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("まだ御朱印が登録されていません。")).toBeInTheDocument();
   });
 
   // --- 通常レンダー ---

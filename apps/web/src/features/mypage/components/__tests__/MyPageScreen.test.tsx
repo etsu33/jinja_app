@@ -108,7 +108,7 @@ describe("MyPageScreen", () => {
     render(<MyPageScreen activeTab="goshuin" />);
 
     expect(screen.getByRole("status")).toHaveTextContent(
-      /「テスト神社」の投稿を受け付けました。\s*現在審査中のため、公開検索にはまだ表示されません。\s*審査完了後に公開されます。/,
+      /「テスト神社」の投稿を受け付けました。\s*公開までしばらくお待ちください。/,
     );
   });
 
@@ -171,11 +171,11 @@ describe("MyPageScreen", () => {
 
     expect(await screen.findByText("審査中神社")).toBeInTheDocument();
     expect(screen.getAllByText("審査中")).toHaveLength(2);
-    expect(screen.getByText("現在審査中です。公開されると検索に表示されます。")).toBeInTheDocument();
+    expect(screen.getByText("公開までしばらくお待ちください。")).toBeInTheDocument();
 
     expect(screen.getByText("公開済み神社")).toBeInTheDocument();
     expect(screen.getAllByText("公開済み")).toHaveLength(2);
-    expect(screen.getByRole("link", { name: "公開検索で確認する" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "検索で見る" })).toHaveAttribute(
       "href",
       "/shrines?q=%E5%85%AC%E9%96%8B%E6%B8%88%E3%81%BF%E7%A5%9E%E7%A4%BE",
     );

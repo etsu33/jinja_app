@@ -383,7 +383,7 @@ export default function ConciergeSectionsRenderer({
                       className="rounded-xl border px-4 py-3 text-sm font-semibold"
                       onClick={() => onAction?.({ type: "open_map" })}
                     >
-                      近くの候補を優先して探す
+                      近くの候補を静かに見る
                     </button>
                     <button
                       type="button"
