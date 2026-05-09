@@ -3,6 +3,7 @@ set -e
 
 echo "Running migrations..."
 python manage.py migrate --noinput
+python manage.py migrate temples 0083 --noinput
 
 echo "Repairing FeatureUsage table..."
 python manage.py repair_featureusage_table
