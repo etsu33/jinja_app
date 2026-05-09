@@ -5,31 +5,31 @@ import Link from "next/link";
 
 export function HomeNearbySection() {
   return (
-    <div className="flex flex-col items-center py-6 text-center sm:py-8">
-      <p className="max-w-xs text-pretty text-sm font-light leading-relaxed tracking-wide text-foreground/60">
-        現在地から、歩いて行ける距離の神社を地図でお探しいただけます
+    <div className="flex flex-col items-center py-4 text-center sm:py-6">
+      <p className="max-w-sm text-pretty text-sm font-normal leading-relaxed text-muted-foreground">
+        現在地から歩いて行ける神社を地図でお探しいただけます
       </p>
 
       <Link
         href="/map"
-        className="mt-8 inline-flex items-center gap-2 rounded-full border border-border/40 bg-transparent px-6 py-2.5 text-xs font-light tracking-wider text-foreground/60 transition-all duration-500 hover:border-primary/30 hover:bg-primary/5 hover:text-foreground/80"
+        className="mt-6 inline-flex items-center gap-2.5 rounded-full border border-border/50 bg-card px-6 py-3 text-sm font-normal text-foreground/70 shadow-sm transition-all duration-300 hover:border-primary/40 hover:bg-primary/5 hover:text-foreground/90 sm:mt-8"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          width="14"
-          height="14"
+          width="16"
+          height="16"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
           strokeWidth="1.5"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className="opacity-60"
+          className="text-primary/60"
         >
           <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
           <circle cx="12" cy="10" r="3" />
         </svg>
-        地図を開く
+        地図から探す
       </Link>
     </div>
   );

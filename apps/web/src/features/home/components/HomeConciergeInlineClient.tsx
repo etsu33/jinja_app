@@ -43,34 +43,38 @@ export function HomeConciergeInlineClient({ className, open, onOpen, onClose }: 
       <div ref={topRef} />
 
       {!open ? (
-        /* Hero Section - 静かなエディトリアル空間 */
-        <div className="flex min-h-[60vh] flex-col items-center justify-center px-4 py-16 sm:min-h-[55vh] sm:py-20">
-          {/* 装飾的な縦線 - 神社の鳥居をイメージ */}
-          <div className="mb-12 h-12 w-px bg-gradient-to-b from-transparent via-primary/30 to-primary/50 sm:mb-16 sm:h-16" />
+        /* Hero Section - 静かだが導線が明確 */
+        <div className="flex min-h-[50vh] flex-col items-center justify-center px-4 py-12 sm:min-h-[45vh] sm:py-16">
+          {/* ブランドマーク - 小さく控えめに */}
+          <p className="mb-8 text-[10px] font-light uppercase tracking-[0.3em] text-muted-foreground/40 sm:mb-10">
+            KAMI MUSUBI
+          </p>
           
-          {/* メインコピー - 大きく静かに */}
-          <h1 className="text-balance text-center text-2xl font-extralight leading-loose tracking-widest text-foreground/85 sm:text-3xl md:text-4xl">
+          {/* メインコピー - 読みやすさを上げつつ静けさを保つ */}
+          <h1 className="text-balance text-center text-xl font-light leading-relaxed tracking-wider text-foreground/90 sm:text-2xl md:text-3xl">
             静かに、自分を整える場所へ
           </h1>
           
-          {/* サブコピー - 余白を大きく */}
-          <p className="mt-8 max-w-sm text-pretty text-center text-sm font-light leading-loose tracking-wide text-muted-foreground/80 sm:mt-10 sm:max-w-md sm:text-base">
-            心が少し疲れたとき、
-            <br />
-            ふと立ち寄りたくなる場所がある
+          {/* サブコピー - より具体的な導線を示唆 */}
+          <p className="mt-5 max-w-xs text-pretty text-center text-sm font-normal leading-relaxed text-muted-foreground sm:mt-6 sm:max-w-sm">
+            心が少し疲れたとき、ふと立ち寄りたくなる場所がある。
+            <br className="hidden sm:inline" />
+            あなたの今の気持ちに寄り添う神社を見つけてみませんか。
           </p>
 
-          {/* CTA - 控えめだが存在感 */}
+          {/* CTA - 視認性を上げつつ静けさを保つ */}
           <button
             type="button"
             onClick={handleOpen}
-            className="mt-14 rounded-full border border-primary/25 bg-transparent px-7 py-3 text-sm font-light tracking-wider text-foreground/70 transition-all duration-500 hover:border-primary/40 hover:bg-primary/5 hover:text-foreground/90 sm:mt-16 sm:px-8"
+            className="mt-10 rounded-full border border-primary/40 bg-primary/8 px-7 py-3 text-sm font-normal tracking-wide text-foreground/80 transition-all duration-300 hover:border-primary/50 hover:bg-primary/12 hover:text-foreground sm:mt-12 sm:px-8"
           >
             今の気持ちから探す
           </button>
 
-          {/* 下部の装飾線 */}
-          <div className="mt-14 h-8 w-px bg-gradient-to-b from-primary/40 to-transparent sm:mt-16 sm:h-10" />
+          {/* ヒントテキスト - 次のアクションを示唆 */}
+          <p className="mt-6 text-xs font-light text-muted-foreground/50">
+            または下へスクロールして近くの神社を探す
+          </p>
         </div>
       ) : (
         <div className="relative px-1 py-4 sm:px-2 sm:py-6">

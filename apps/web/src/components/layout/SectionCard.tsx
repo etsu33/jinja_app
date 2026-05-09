@@ -9,19 +9,19 @@ type Props = {
 
 export function SectionCard({ title, description, children }: Props) {
   return (
-    <section className="space-y-6 px-2 py-8 sm:px-4 sm:py-10">
-      {/* 繊細な区切り線 - 和の静けさ */}
-      <div className="mx-auto h-px w-12 bg-gradient-to-r from-transparent via-border/50 to-transparent" />
+    <section className="px-2 py-10 sm:px-4 sm:py-12">
+      {/* 繊細な区切り線 */}
+      <div className="mx-auto mb-8 h-px w-16 bg-border/30 sm:mb-10" />
       
       {(title || description) && (
-        <header className="space-y-2 text-center">
+        <header className="mb-6 space-y-2 text-center sm:mb-8">
           {title && (
-            <h2 className="text-xs font-light uppercase tracking-[0.2em] text-muted-foreground/60">
+            <h2 className="text-xs font-medium uppercase tracking-[0.15em] text-foreground/50">
               {title}
             </h2>
           )}
           {description && (
-            <p className="text-sm font-light leading-relaxed tracking-wide text-foreground/50">
+            <p className="text-sm font-normal leading-relaxed text-muted-foreground">
               {description}
             </p>
           )}
