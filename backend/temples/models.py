@@ -77,6 +77,40 @@ class CrawlTile(models.Model):
         return f"tile({self.status}) step={self.step_km} bbox=({self.min_lat},{self.min_lng})-({self.max_lat},{self.max_lng})"
 
 
+class ProductionDataBootstrapRun(models.Model):
+    class Status(models.TextChoices):
+        RUNNING = "running", "Running"
+        SUCCESS = "success", "Success"
+        FAILED = "failed", "Failed"
+
+    step = models.CharField(max_length=100)
+    version = models.CharField(max_length=100)
+    command = models.CharField(max_length=100)
+    args = models.JSONField(default=list, blank=True)
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.RUNNING)
+    attempts = models.PositiveIntegerField(default=0)
+    last_error = models.TextField(blank=True, default="")
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["step", "version"],
+                name="uniq_production_bootstrap_step_version",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["status", "updated_at"], name="idx_bootstrap_status_updated"),
+            models.Index(fields=["step", "version"], name="idx_bootstrap_step_version"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.step}@{self.version} ({self.status})"
+
+
 
 # 以降、この PointFieldBase を PointField として使う
 class PointField(PointFieldBase):
