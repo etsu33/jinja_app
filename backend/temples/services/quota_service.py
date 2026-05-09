@@ -5,8 +5,8 @@ import logging
 from dataclasses import dataclass
 from typing import Optional
 
-from django.db import connection, transaction
 from django.conf import settings
+from django.db import connection, transaction
 from django.utils import timezone
 
 from temples.models import FeatureUsage, ConciergeUsage
@@ -106,7 +106,6 @@ class QuotaStatus:
 
 
 def get_used_count(plan_context: PlanContext, feature: str) -> int:
-    ensure_feature_usage_table()
 
     current_count = 0
     feature_obj = None
@@ -236,7 +235,6 @@ def check_quota(plan_context: PlanContext, feature: str) -> QuotaStatus:
 
 @transaction.atomic
 def consume_quota(plan_context: PlanContext, feature: str, amount: int = 1) -> None:
-    ensure_feature_usage_table()
 
     policy = get_feature_policy(plan_context.plan, feature)
 
