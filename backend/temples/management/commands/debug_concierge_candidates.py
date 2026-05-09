@@ -1,3 +1,4 @@
+# temples/management/commands/debug_concierge_candidates.py
 from __future__ import annotations
 
 from django.core.management.base import BaseCommand
