@@ -37,9 +37,9 @@ type Props = {
 
 function DisclosureSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-3">
-      <div className="text-xs font-semibold text-slate-500">{title}</div>
-      <div className="mt-2 text-sm leading-6 text-slate-700">{children}</div>
+    <div className="rounded-lg border border-border/30 bg-secondary/30 p-4">
+      <div className="text-xs font-medium text-muted-foreground">{title}</div>
+      <div className="mt-2 text-sm leading-relaxed text-foreground/70">{children}</div>
     </div>
   );
 }
@@ -100,20 +100,20 @@ export default function ShrineCard({
 
   const shouldHideDisclosure = hideDisclosure || variant === "detail";
 
-  const disclosureTitle = shouldHideDisclosure ? undefined : "おすすめ理由を見る";
+  const disclosureTitle = shouldHideDisclosure ? undefined : "なぜこの場所を選んだか";
   const disclosureBody = shouldHideDisclosure ? undefined : (
-    <div className="space-y-3">
-      {breakdown ? (
-        <DisclosureSection title="おすすめ理由（内訳）">
-          <ConciergeBreakdownBody breakdown={breakdown} />
-        </DisclosureSection>
-      ) : null}
-
-      <DisclosureSection title="要点">
-        <p className="text-sm text-slate-700 line-clamp-2">
-          {breakdown ? buildOneLiner(breakdown) : "条件に合う候補から選びました。"}
+    <div className="space-y-4">
+      <DisclosureSection title="選んだ理由">
+        <p className="text-sm leading-relaxed text-foreground/70">
+          {breakdown ? buildOneLiner(breakdown) : "あなたの今の気持ちに合う場所としてお選びしました。"}
         </p>
       </DisclosureSection>
+
+      {breakdown && (
+        <DisclosureSection title="詳しい理由">
+          <ConciergeBreakdownBody breakdown={breakdown} />
+        </DisclosureSection>
+      )}
     </div>
   );
 

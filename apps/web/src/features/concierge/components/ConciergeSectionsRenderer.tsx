@@ -20,11 +20,11 @@ function AstroCard(props: { sunSign?: string; element?: string; reason?: string 
   const { sunSign, element, reason } = props;
   return (
     <DetailSection title="占星術による選定">
-      <div className="rounded-xl border bg-amber-50 px-4 py-3">
-        <div className="text-sm font-semibold text-slate-900">
+      <div className="rounded-lg border border-primary/20 bg-primary/5 px-5 py-4">
+        <div className="text-sm font-medium text-foreground/80">
           {sunSign || "不明"} / {element || "不明"}
         </div>
-        <div className="mt-1 text-sm text-slate-700">{reason || "（理由なし）"}</div>
+        <div className="mt-2 text-sm leading-relaxed text-muted-foreground">{reason || "（理由なし）"}</div>
       </div>
     </DetailSection>
   );
@@ -74,7 +74,7 @@ export default function ConciergeSectionsRenderer({ payload, onAction, sending =
             const state: ConciergeFilterState = (sec as any).state;
             const title = (sec as any).title ?? "条件を追加して絞る";
 
-            // 閉じ状態（プリセット選択 + 即絞り）
+            // 閉じ状態（プリセット選択 + 即絞り）- 静かなUI
             if (!state.isOpen) {
               const presets = ["静か", "駅近", "ひとり", "階段少なめ"] as const;
 
@@ -92,10 +92,12 @@ export default function ConciergeSectionsRenderer({ payload, onAction, sending =
               const hasAny = selectedPresets.length > 0;
 
               return (
-                <DetailSection key={`filter-${i}`} title="条件で絞る">
-                  <p className="mb-2 text-xs text-slate-500">まずは条件を追加</p>
+                <DetailSection key={`filter-${i}`} title="さらに条件を追加">
+                  <p className="mb-4 text-sm text-muted-foreground">
+                    お気持ちに合わせて絞り込めます
+                  </p>
 
-                  <div className="mb-3 flex flex-wrap gap-2">
+                  <div className="mb-4 flex flex-wrap gap-2">
                     {presets.map((p) => {
                       const active = set.has(p);
                       return (
@@ -103,10 +105,10 @@ export default function ConciergeSectionsRenderer({ payload, onAction, sending =
                           key={p}
                           type="button"
                           className={[
-                            "rounded-full border px-3 py-1 text-xs font-semibold transition",
+                            "rounded-full border px-4 py-2 text-xs font-medium transition-all duration-200",
                             active
-                              ? "bg-emerald-600 text-white border-emerald-600"
-                              : "bg-white text-slate-700 hover:bg-slate-50",
+                              ? "border-primary/50 bg-primary/10 text-foreground"
+                              : "border-border/50 bg-card text-muted-foreground hover:border-primary/30 hover:bg-primary/5",
                           ].join(" ")}
                           onClick={() => togglePreset(p)}
                         >
@@ -117,26 +119,26 @@ export default function ConciergeSectionsRenderer({ payload, onAction, sending =
                   </div>
 
                   {selectedPresets.length > 0 && (
-                    <div className="mb-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
-                      追加済み: {selectedPresets.join(" / ")}
+                    <div className="mb-4 rounded-lg border border-border/30 bg-secondary/50 px-4 py-3 text-sm text-foreground/70">
+                      {selectedPresets.join(" / ")} で探します
                     </div>
                   )}
 
                   <button
                     type="button"
-                    className="w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
+                    className="w-full rounded-full border border-primary/40 bg-primary/10 px-4 py-3 text-sm font-medium text-foreground/90 transition-all duration-200 hover:bg-primary/15 disabled:opacity-50"
                     disabled={!hasAny || sending}
                     onClick={() => onAction?.({ type: "filter_apply" })}
                   >
-                    {sending ? "絞り込み中…" : "この条件で絞り込む"}
+                    {sending ? "探しています..." : "この条件で探す"}
                   </button>
 
                   <button
                     type="button"
-                    className="mt-2 w-full rounded-xl border px-4 py-3 text-sm font-semibold"
+                    className="mt-3 w-full rounded-full border border-border/40 bg-card px-4 py-3 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-secondary hover:text-foreground"
                     onClick={() => onAction?.({ type: "add_condition" })}
                   >
-                    詳細条件を設定する
+                    詳しく設定する
                   </button>
                 </DetailSection>
               );
@@ -168,19 +170,28 @@ export default function ConciergeSectionsRenderer({ payload, onAction, sending =
 
           
 
-          case "recommendations":
+          case "recommendations": {
+            const items = (sec as any).items as (RegisteredShrineItem | PlaceShrineItem)[];
+            const heroItem = items[0]; // 最初の1件をヒーローとして扱う
+            const otherItems = items.slice(1);
+
             return (
-              <DetailSection key={`recs-${i}`} title={(sec as any).title ?? ""}>
-                <div className="mb-2 flex items-center justify-end">
-                  <ModeBadge mode={payload?.meta?.mode} />
+              <div key={`recs-${i}`} className="space-y-8">
+                {/* 相談サマリー - 静かな導入 */}
+                <div className="text-center">
+                  <p className="text-sm leading-relaxed text-muted-foreground">
+                    あなたの今の気持ちに寄り添う場所を
+                    <br />
+                    お探ししました
+                  </p>
                 </div>
 
                 {appliedLabel && (
-                  <div className="mb-2 flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
-                    <span>{appliedLabel}</span>
+                  <div className="flex items-center justify-center gap-3 rounded-lg border border-border/30 bg-secondary/30 px-4 py-3">
+                    <span className="text-sm text-foreground/70">{appliedLabel}</span>
                     <button
                       type="button"
-                      className="rounded-md px-2 py-1 font-semibold text-slate-700 hover:bg-slate-100"
+                      className="text-xs font-medium text-muted-foreground hover:text-foreground"
                       onClick={() => onAction?.({ type: "filter_clear" })}
                     >
                       クリア
@@ -188,42 +199,87 @@ export default function ConciergeSectionsRenderer({ payload, onAction, sending =
                   </div>
                 )}
 
-                <div className="space-y-3">
-                  {(sec as any).items.map((item: RegisteredShrineItem | PlaceShrineItem, idx: number) => {
-                    
+                {/* ヒーロー神社 - 1件を主役に */}
+                {heroItem && (
+                  <div className="space-y-4">
+                    <div className="text-center">
+                      <p className="text-xs font-medium uppercase tracking-[0.15em] text-foreground/50">
+                        おすすめの場所
+                      </p>
+                    </div>
 
-                    if (item.kind === "registered") {
-                      return (
-                        <ShrineCard
-                          key={`rec-${i}-${idx}`}
-                          shrineId={item.shrineId}
-                          title={item.title}
-                          address={item.address}
-                          description={item.description}
-                          imageUrl={item.imageUrl}
-                          breakdown={item.breakdown ?? null} // ✅ registeredのみ
-                          detailHref={item.detailHref}
-                          // isPrimary 使うならここで渡す（ShrineCardが受けるなら）
-                        />
-                      );
-                    }
-
-                    return (
-                      <PlaceShrineCard
-                        key={`rec-${i}-${idx}`}
-                        placeId={item.placeId}
-                        title={item.title}
-                        address={item.address}
-                        description={item.description}
-                        imageUrl={item.imageUrl}
-                        detailHref={item.detailHref}
-                        detailLabel={item.detailLabel}
+                    {heroItem.kind === "registered" ? (
+                      <ShrineCard
+                        shrineId={heroItem.shrineId}
+                        title={heroItem.title}
+                        address={heroItem.address}
+                        description={heroItem.description}
+                        imageUrl={heroItem.imageUrl}
+                        breakdown={heroItem.breakdown ?? null}
+                        detailHref={heroItem.detailHref}
+                        hideLeftMark
+                        hideBadges
                       />
-                    );
-                  })}
-                </div>
-              </DetailSection>
+                    ) : (
+                      <PlaceShrineCard
+                        placeId={heroItem.placeId}
+                        title={heroItem.title}
+                        address={heroItem.address}
+                        description={heroItem.description}
+                        imageUrl={heroItem.imageUrl}
+                        detailHref={heroItem.detailHref}
+                        detailLabel={heroItem.detailLabel}
+                      />
+                    )}
+                  </div>
+                )}
+
+                {/* 他の候補 - 控えめに */}
+                {otherItems.length > 0 && (
+                  <div className="space-y-4">
+                    <div className="mx-auto h-px w-12 bg-border/40" />
+                    <p className="text-center text-xs text-muted-foreground/70">
+                      ほかにも気になる場所があれば
+                    </p>
+
+                    <div className="space-y-4">
+                      {otherItems.map((item, idx) => {
+                        if (item.kind === "registered") {
+                          return (
+                            <ShrineCard
+                              key={`rec-${i}-${idx + 1}`}
+                              shrineId={item.shrineId}
+                              title={item.title}
+                              address={item.address}
+                              description={item.description}
+                              imageUrl={item.imageUrl}
+                              breakdown={item.breakdown ?? null}
+                              detailHref={item.detailHref}
+                              hideLeftMark
+                              hideBadges
+                            />
+                          );
+                        }
+
+                        return (
+                          <PlaceShrineCard
+                            key={`rec-${i}-${idx + 1}`}
+                            placeId={item.placeId}
+                            title={item.title}
+                            address={item.address}
+                            description={item.description}
+                            imageUrl={item.imageUrl}
+                            detailHref={item.detailHref}
+                            detailLabel={item.detailLabel}
+                          />
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
             );
+          }
 
           case "astro":
             return (

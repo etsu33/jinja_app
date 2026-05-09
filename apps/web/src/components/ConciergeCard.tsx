@@ -62,9 +62,9 @@ export default function ConciergeCard(props: BaseCardProps) {
     isPrimary = false,
     badges = [],
     hideBadges = false,
-    hideLeftMark = false,
+    hideLeftMark: _hideLeftMark = false,
     detailHref,
-    detailLabel = "詳細を見る",
+    detailLabel = "この神社を見る",
     headerRight,
     disclosureTitle = "詳細",
     disclosureBody,
@@ -82,13 +82,13 @@ export default function ConciergeCard(props: BaseCardProps) {
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-2xl bg-white ring-1 ring-neutral-200/70",
-        "shadow-sm transition",
-        isPrimary && "shadow-md ring-neutral-200",
+        "overflow-hidden rounded-xl bg-card",
+        "border border-border/40",
+        "transition duration-300",
       )}
     >
-      {/* media */}
-      <div className="relative h-36 w-full">
+      {/* media - より大きく、静かな印象に */}
+      <div className="relative aspect-[16/10] w-full">
         {imageUrl ? (
           <Image
             src={imageUrl}
@@ -100,112 +100,110 @@ export default function ConciergeCard(props: BaseCardProps) {
             unoptimized
           />
         ) : (
-          <div className="h-full w-full bg-gradient-to-br from-neutral-100 to-neutral-50" />
+          <div className="h-full w-full bg-gradient-to-br from-secondary to-muted" />
         )}
 
-        {/* 画像上の薄いレイヤーで「のっぺり」回避 */}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/20 via-black/0 to-black/0" />
-
-        {/* 上部の内側リング */}
-        <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-black/5" />
+        {/* 画像上の薄いレイヤー */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/15 via-transparent to-transparent" />
       </div>
 
-      <div className={cn("px-4", isPrimary ? "py-4" : "py-3")}>
-        {/* badges row */}
-        {!hideBadges && (badges.length > 0 || headerRight) ? (
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <div className="flex flex-wrap gap-2">
-              {badges.map((badge) => (
-                <span
-                  key={badge}
-                  className={cn(
-                    "inline-flex shrink-0 items-center rounded-full px-2.5 py-1",
-                    "text-[11px] font-semibold",
-                    "bg-neutral-100/80 text-neutral-700 ring-1 ring-inset ring-neutral-200/60",
-                  )}
-                >
-                  {badge}
-                </span>
-              ))}
-            </div>
-            {headerRight ? <div className="shrink-0">{headerRight}</div> : null}
+      <div className="space-y-4 px-5 py-5 sm:px-6 sm:py-6">
+        {/* Header with favorite */}
+        {headerRight && (
+          <div className="flex items-center justify-end">
+            <div className="shrink-0">{headerRight}</div>
           </div>
-        ) : null}
+        )}
 
-        <div className="flex items-start gap-3">
-          {/* left mark */}
-          {!hideLeftMark ? (
-            <div
-              className={cn(
-                "mt-0.5 flex size-9 items-center justify-center rounded-full",
-                "bg-neutral-100 ring-1 ring-inset ring-neutral-200/60",
-              )}
-              aria-hidden="true"
-            >
-              <span className={cn("text-xs font-semibold", isPrimary ? "text-neutral-800" : "text-neutral-600")}>
-                {isPrimary ? "TOP" : "ALT"}
-              </span>
-            </div>
-          ) : null}
-
-          <div className="min-w-0 flex-1">
-            <h3 className="text-[15px] font-semibold leading-snug text-neutral-900">{title}</h3>
-            {address ? <p className="mt-1 truncate text-xs text-neutral-600">{address}</p> : null}
-
-            {sub ? <p className="mt-2 text-sm font-medium leading-relaxed text-neutral-800 line-clamp-1">{sub}</p> : null}
-
-            {desc ? (
-              <p className={cn("mt-2 text-sm leading-relaxed text-neutral-800", clampDesc && "line-clamp-2 text-neutral-700")}>
-                {desc}
-              </p>
-            ) : null}
-
-            {!isPrimary ? (
-              <span className="mt-2 inline-flex items-center rounded-full bg-neutral-50 px-2 py-0.5 text-[10px] text-neutral-600 ring-1 ring-inset ring-neutral-200/60">
-                候補
-              </span>
-            ) : null}
-
-            {detailHref ? (
-              <div className={cn("mt-4", !isPrimary && "mt-3")}>
-                <Link
-                  href={detailHref}
-                  className={cn(
-                    "inline-flex min-h-[44px] w-full items-center justify-center rounded-xl px-3 py-2",
-                    "text-sm font-semibold",
-                    "bg-neutral-900 text-white",
-                    "ring-1 ring-inset ring-black/10",
-                    "transition active:scale-[0.99] hover:bg-neutral-800",
-                    "focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400",
-                  )}
-                >
-                  {detailLabel}
-                </Link>
-              </div>
-            ) : null}
-          </div>
+        {/* Title and address - 静かで読みやすく */}
+        <div className="space-y-2">
+          <h3 className="text-lg font-medium leading-snug tracking-wide text-foreground">
+            {title}
+          </h3>
+          {address && (
+            <p className="text-sm text-muted-foreground">
+              {address}
+            </p>
+          )}
         </div>
+
+        {/* Subtitle if present */}
+        {sub && (
+          <p className="text-sm font-medium leading-relaxed text-foreground/80">
+            {sub}
+          </p>
+        )}
+
+        {/* Description - おすすめ理由を穏やかに伝える */}
+        {desc && (
+          <div className="border-l-2 border-primary/30 pl-4">
+            <p className={cn(
+              "text-sm leading-relaxed text-foreground/70",
+              clampDesc && "line-clamp-3"
+            )}>
+              {desc}
+            </p>
+          </div>
+        )}
+
+        {/* Badges - 控えめに */}
+        {!hideBadges && badges.length > 0 && (
+          <div className="flex flex-wrap gap-2 pt-1">
+            {badges.slice(0, 2).map((badge) => (
+              <span
+                key={badge}
+                className="inline-flex items-center rounded-full bg-secondary px-3 py-1 text-xs text-muted-foreground"
+              >
+                {badge}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* CTA - 1つだけ、静かだが明確 */}
+        {detailHref && (
+          <div className="pt-2">
+            <Link
+              href={detailHref}
+              className={cn(
+                "inline-flex min-h-[44px] w-full items-center justify-center rounded-full px-5 py-3",
+                "text-sm font-medium tracking-wide",
+                "border border-primary/40 bg-primary/8 text-foreground/90",
+                "transition-all duration-300",
+                "hover:border-primary/50 hover:bg-primary/12",
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
+              )}
+            >
+              {detailLabel}
+            </Link>
+          </div>
+        )}
       </div>
 
-      {disclosureBody ? (
-        <div className="border-t border-neutral-200/70 bg-neutral-50/30">
+      {/* Disclosure - より静かに */}
+      {disclosureBody && (
+        <div className="border-t border-border/30 bg-secondary/30">
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
             className={cn(
-              "flex w-full items-center justify-between px-4 py-3 text-left",
-              "transition hover:bg-neutral-50",
-              "focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400",
+              "flex w-full items-center justify-between px-5 py-4 text-left sm:px-6",
+              "transition hover:bg-secondary/50",
+              "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
             )}
             aria-expanded={open}
           >
-            <span className="text-xs font-semibold text-neutral-800">{disclosureTitle}</span>
+            <span className="text-xs font-medium text-foreground/60">{disclosureTitle}</span>
             <Chevron open={open} />
           </button>
 
-          {open ? <div className="px-4 pb-4 pt-1 text-sm leading-relaxed text-neutral-800">{disclosureBody}</div> : null}
+          {open && (
+            <div className="px-5 pb-5 pt-1 text-sm leading-relaxed text-foreground/70 sm:px-6 sm:pb-6">
+              {disclosureBody}
+            </div>
+          )}
         </div>
-      ) : null}
+      )}
     </div>
   );
 }

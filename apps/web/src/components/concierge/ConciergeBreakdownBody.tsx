@@ -54,38 +54,40 @@ export default function ConciergeBreakdownBody({ breakdown }: Props) {
   const shownTags = matched.slice(0, 2);
 
   if (!hasAny) {
-    return <div className="text-xs text-slate-600">条件情報が少ないため、複数要素を総合して表示しています。</div>;
+    return <div className="text-sm leading-relaxed text-muted-foreground">いくつかの要素を総合してお選びしました。</div>;
   }
 
   return (
-    <ul className="space-y-1 text-xs text-slate-700">
-      {sn > 0 ? (
-        <li className="flex flex-wrap items-center gap-1">
-          <span className="text-slate-600">ご利益：</span>
+    <ul className="space-y-2 text-sm text-foreground/70">
+      {sn > 0 && (
+        <li className="flex flex-wrap items-center gap-2">
+          <span className="text-muted-foreground">ご利益：</span>
           {shownTags.length > 0 ? (
             shownTags.map((t) => (
-              <span key={t} className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px]">
+              <span key={t} className="rounded-full border border-border/40 bg-secondary px-2.5 py-0.5 text-xs">
                 {t}
               </span>
             ))
           ) : (
-            <span className="text-slate-700">希望条件に合致</span>
+            <span>希望に合う</span>
           )}
-          {matched.length > shownTags.length ? <span className="text-slate-500">ほか</span> : null}
+          {matched.length > shownTags.length && <span className="text-muted-foreground/70">ほか</span>}
         </li>
-      ) : null}
+      )}
 
-      {se > 0 ? (
+      {se > 0 && (
         <li>
-          <span className="text-slate-600">雰囲気・属性：</span>一致
+          <span className="text-muted-foreground">雰囲気：</span>
+          <span>あなたに合いそう</span>
         </li>
-      ) : null}
+      )}
 
-      {sp > 0 ? (
+      {sp > 0 && (
         <li>
-          <span className="text-slate-600">人気：</span>考慮
+          <span className="text-muted-foreground">訪れた方の評価：</span>
+          <span>好評</span>
         </li>
-      ) : null}
+      )}
     </ul>
   );
 }
