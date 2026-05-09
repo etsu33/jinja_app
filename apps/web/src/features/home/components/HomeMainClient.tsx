@@ -45,9 +45,8 @@ export function HomeMainClient() {
 
   return (
     <>
-      <SectionCard>
-        <HomeConciergeInlineClient open={conciergeOpen} onOpen={openConcierge} onClose={closeConcierge} />
-      </SectionCard>
+      {/* Hero - カードで囲まず開放的な空間に */}
+      <HomeConciergeInlineClient open={conciergeOpen} onOpen={openConcierge} onClose={closeConcierge} />
 
       {/* 
         TODO: 御朱印フィードは バックエンド実装完了後に復活予定

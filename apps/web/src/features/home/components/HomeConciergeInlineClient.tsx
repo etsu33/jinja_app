@@ -43,44 +43,46 @@ export function HomeConciergeInlineClient({ className, open, onOpen, onClose }: 
       <div ref={topRef} />
 
       {!open ? (
-        /* Hero Section - 静かで感情的なデザイン */
-        <div className="flex flex-col items-center text-center">
-          {/* メインコピー */}
-          <h1 className="text-balance text-2xl font-light leading-relaxed tracking-wide text-foreground/90 sm:text-3xl">
+        /* Hero Section - 静かなエディトリアル空間 */
+        <div className="flex min-h-[60vh] flex-col items-center justify-center px-4 py-16 sm:min-h-[55vh] sm:py-20">
+          {/* 装飾的な縦線 - 神社の鳥居をイメージ */}
+          <div className="mb-12 h-12 w-px bg-gradient-to-b from-transparent via-primary/30 to-primary/50 sm:mb-16 sm:h-16" />
+          
+          {/* メインコピー - 大きく静かに */}
+          <h1 className="text-balance text-center text-2xl font-extralight leading-loose tracking-widest text-foreground/85 sm:text-3xl md:text-4xl">
             静かに、自分を整える場所へ
           </h1>
           
-          <p className="mt-4 max-w-md text-pretty text-sm leading-relaxed text-muted-foreground">
-            心が少し疲れたとき、ふと立ち寄りたくなる場所がある。
-            <br className="hidden sm:inline" />
-            あなたの今の気持ちに寄り添う神社を、見つけてみませんか。
+          {/* サブコピー - 余白を大きく */}
+          <p className="mt-8 max-w-sm text-pretty text-center text-sm font-light leading-loose tracking-wide text-muted-foreground/80 sm:mt-10 sm:max-w-md sm:text-base">
+            心が少し疲れたとき、
+            <br />
+            ふと立ち寄りたくなる場所がある
           </p>
 
-          {/* 単一の主役CTA - soft sage green */}
+          {/* CTA - 控えめだが存在感 */}
           <button
             type="button"
             onClick={handleOpen}
-            className="mt-10 rounded-full border border-accent/40 bg-accent/30 px-8 py-3.5 text-sm font-medium text-accent-foreground transition-all duration-300 hover:border-accent/60 hover:bg-accent/50"
+            className="mt-14 rounded-full border border-primary/25 bg-transparent px-7 py-3 text-sm font-light tracking-wider text-foreground/70 transition-all duration-500 hover:border-primary/40 hover:bg-primary/5 hover:text-foreground/90 sm:mt-16 sm:px-8"
           >
             今の気持ちから探す
           </button>
 
-          {/* サブテキスト */}
-          <p className="mt-4 text-xs text-muted-foreground/70">
-            位置情報から、近くの神社もお探しできます
-          </p>
+          {/* 下部の装飾線 */}
+          <div className="mt-14 h-8 w-px bg-gradient-to-b from-primary/40 to-transparent sm:mt-16 sm:h-10" />
         </div>
       ) : (
-        <div className="relative">
-          <div className="space-y-4">
+        <div className="relative px-1 py-4 sm:px-2 sm:py-6">
+          <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-foreground/70">今の気持ちから探す</p>
+              <p className="text-sm font-light tracking-wide text-foreground/60">今の気持ちから探す</p>
               <button 
                 type="button" 
                 onClick={onClose} 
-                className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+                className="text-xs font-light text-muted-foreground/70 transition-colors hover:text-foreground"
               >
-                閉じる
+                戻る
               </button>
             </div>
 
