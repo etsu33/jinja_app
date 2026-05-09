@@ -5,7 +5,8 @@ import { useEffect, useRef, useState } from "react";
 import { SectionCard } from "@/components/layout/SectionCard";
 import { HomeConciergeInlineClient } from "./HomeConciergeInlineClient";
 import { HomeNearbySection } from "./HomeNearbySection";
-import HomeGoshuinFeedSection from "@/features/home/components/HomeGoshuinFeedSection";
+// TODO: バックエンド実装完了後に復活
+// import HomeGoshuinFeedSection from "@/features/home/components/HomeGoshuinFeedSection";
 
 export function HomeMainClient() {
   const [conciergeOpen, setConciergeOpen] = useState(false);
@@ -48,22 +49,25 @@ export function HomeMainClient() {
         <HomeConciergeInlineClient open={conciergeOpen} onOpen={openConcierge} onClose={closeConcierge} />
       </SectionCard>
 
-      {!conciergeOpen && (
-        <>
-          <SectionCard 
-            title="みんなの御朱印" 
-            description="最近記録された御朱印をご覧いただけます"
-          >
-            <HomeGoshuinFeedSection limit={12} />
-          </SectionCard>
+      {/* 
+        TODO: 御朱印フィードは バックエンド実装完了後に復活予定
+        優先導線: Hero → コンシェルジュ → 推薦結果 → 神社詳細 → 経路案内
+        
+        <SectionCard 
+          title="みんなの御朱印" 
+          description="最近記録された御朱印をご覧いただけます"
+        >
+          <HomeGoshuinFeedSection limit={12} />
+        </SectionCard>
+      */}
 
-          <SectionCard
-            title="近くの神社"
-            description="現在地から近い神社をお探しします"
-          >
-            <HomeNearbySection />
-          </SectionCard>
-        </>
+      {!conciergeOpen && (
+        <SectionCard
+          title="近くの神社"
+          description="現在地から近い神社をお探しします"
+        >
+          <HomeNearbySection />
+        </SectionCard>
       )}
     </>
   );

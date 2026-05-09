@@ -13,17 +13,23 @@ export function HeaderAuthButtons() {
   const current = pathname + (sp.toString() ? `?${sp.toString()}` : "");
   const loginHref = `/login?next=${encodeURIComponent(current)}`;
 
-  // ✅ 閲覧入口（固定）
-  const goshuinBookHref = "/mypage?tab=goshuin";
+  // TODO: 御朱印帳リンクはバックエンド実装完了後に復活予定
+  // const goshuinBookHref = "/mypage?tab=goshuin";
 
   return (
     <div className="flex items-center gap-2">
-      <Link href={goshuinBookHref} className="rounded-md bg-emerald-600 px-3 py-2 text-xs font-medium text-white">
-        御朱印帳
-      </Link>
+      {/* 
+        TODO: 御朱印帳リンクはバックエンド実装完了後に復活
+        <Link href={goshuinBookHref} className="rounded-full border border-border/50 bg-card px-3 py-1.5 text-xs font-medium text-foreground/70 transition-colors hover:bg-secondary hover:text-foreground">
+          御朱印帳
+        </Link>
+      */}
 
       {!isLoggedIn && (
-        <Link href={loginHref} className="rounded-md bg-orange-500 px-3 py-2 text-xs font-medium text-white">
+        <Link 
+          href={loginHref} 
+          className="rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/20"
+        >
           ログイン
         </Link>
       )}

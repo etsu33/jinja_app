@@ -1,6 +1,10 @@
 import ShrineCard from "@/components/shrine/ShrineCard";
-import PublicGoshuinSection, { type PublicGoshuinItem } from "@/components/shrine/detail/PublicGoshuinSection";
+// TODO: バックエンド実装完了後に復活
+// import PublicGoshuinSection, { type PublicGoshuinItem } from "@/components/shrine/detail/PublicGoshuinSection";
 import ShrineJudgeSection from "@/components/shrine/detail/ShrineJudgeSection";
+
+// 一時的に型だけ残す（propsの型エラー回避）
+type PublicGoshuinItem = { id: string; imageUrl: string; username: string; createdAt: string };
 import DetailDisclosureBlock from "@/components/shrine/DetailDisclosureBlock";
 
 import type { ShrineCardAdapterProps } from "@/components/shrine/buildShrineCardProps";
@@ -74,17 +78,21 @@ export default function ShrineDetailArticle({
         subtitle={subtitle}
       />
 
-      {/* 公開御朱印（3枚 + 条件付きで「すべて見る」） */}
-      <section id="goshuins">
-        <PublicGoshuinSection
-          items={publicGoshuinsPreview}
-          addGoshuinHref={addGoshuinHref}
-          sendingLabel="最新3枚（公開）"
-          hasMore={publicGoshuinsHasMore}
-          seeAllHref={publicGoshuinsHasMore ? publicGoshuinsViewAllHref : null}
-          seeAllLabel="すべて見る"
-        />
-      </section>
+      {/* 
+        TODO: 公開御朱印セクションはバックエンド実装完了後に復活予定
+        優先導線: Hero → コンシェルジュ → 推薦結果 → 神社詳細 → 経路案内
+        
+        <section id="goshuins">
+          <PublicGoshuinSection
+            items={publicGoshuinsPreview}
+            addGoshuinHref={addGoshuinHref}
+            sendingLabel="最新3枚（公開）"
+            hasMore={publicGoshuinsHasMore}
+            seeAllHref={publicGoshuinsHasMore ? publicGoshuinsViewAllHref : null}
+            seeAllLabel="すべて見る"
+          />
+        </section>
+      */}
 
       <div className="space-y-2">
         <DetailDisclosureBlock
