@@ -6,8 +6,12 @@ from django.core.management.base import BaseCommand
 from django.db import connection
 
 
+def _description_column_names(description):
+    return {column.name for column in description}
+
+
 class Command(BaseCommand):
-    help = "Create temples_featureusage table if it is missing."
+    help = "Create temples_featureusage table and repair required shrine columns if missing."
 
     def handle(self, *args, **options):
         auth_app_label, auth_model_name = settings.AUTH_USER_MODEL.split(".", 1)
@@ -70,6 +74,22 @@ class Command(BaseCommand):
         with connection.cursor() as cursor:
             for statement in sql_statements:
                 cursor.execute(statement)
+
+            shrine_columns = _description_column_names(
+                connection.introspection.get_table_description(cursor, "temples_shrine")
+            )
+            if "visit_style_tags" not in shrine_columns:
+                if connection.vendor == "sqlite":
+                    cursor.execute(
+                        "ALTER TABLE temples_shrine "
+                        "ADD COLUMN visit_style_tags text NOT NULL DEFAULT '[]'"
+                    )
+                else:
+                    cursor.execute(
+                        "ALTER TABLE temples_shrine "
+                        "ADD COLUMN visit_style_tags jsonb NOT NULL DEFAULT '[]'::jsonb"
+                    )
+
             cursor.execute(existence_sql)
             table = cursor.fetchone()[0]
 
