@@ -590,8 +590,7 @@ class ConciergeUsage(models.Model):
     def __str__(self) -> str:
         return f"{self.user} @ {self.date}: {self.count}"
 
-# Shrine に ManyToMany を追加（既存 Shrine クラス内）
-# deities = models.ManyToManyField("Deity", related_name="shrines", blank=True)
+
 class ShrineSubmission(dj_models.Model):
     class Status(models.TextChoices):
         PENDING = "pending", "Pending"
@@ -744,5 +743,3 @@ class PlaceCache(models.Model):
 
     def __str__(self) -> str:
         return f"{self.name} ({self.place_id})"
-
-    
