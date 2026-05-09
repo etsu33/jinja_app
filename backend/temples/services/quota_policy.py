@@ -3,13 +3,13 @@ from __future__ import annotations
 
 QUOTA_POLICY = {
     "anonymous": {
-        "concierge": {"limit": 3, "unlimited": False},
+        "concierge": {"limit": 999, "unlimited": False},
         "favorite": {"limit": 0, "unlimited": False},
         "goshuin_upload": {"limit": 0, "unlimited": False},
         "shrine_search": {"limit": None, "unlimited": True, "mode": "db_only"},
     },
     "free": {
-        "concierge": {"limit": 3, "unlimited": False},
+        "concierge": {"limit": 999, "unlimited": False},
         "favorite": {"limit": 10, "unlimited": False},
         "goshuin_upload": {"limit": 5, "unlimited": False},
         "shrine_search": {"limit": None, "unlimited": True, "mode": "db_only"},
