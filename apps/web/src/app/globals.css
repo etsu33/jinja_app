@@ -44,28 +44,29 @@
 :root {
   --radius: 0.75rem;
   /* KAMI MUSUBI: stone / soft green / muted gold palette */
-  --background: oklch(0.985 0.002 90);
-  --foreground: oklch(0.25 0.02 70);
-  --card: oklch(0.995 0.001 90);
-  --card-foreground: oklch(0.25 0.02 70);
-  --popover: oklch(0.995 0.001 90);
-  --popover-foreground: oklch(0.25 0.02 70);
-  /* muted gold as primary */
-  --primary: oklch(0.55 0.08 85);
-  --primary-foreground: oklch(0.98 0.005 90);
+  /* Refined for calm usability - improved contrast while keeping warmth */
+  --background: oklch(0.98 0.003 85);
+  --foreground: oklch(0.22 0.02 75);
+  --card: oklch(0.995 0.002 85);
+  --card-foreground: oklch(0.22 0.02 75);
+  --popover: oklch(0.995 0.002 85);
+  --popover-foreground: oklch(0.22 0.02 75);
+  /* muted gold as primary - slightly deeper for better visibility */
+  --primary: oklch(0.48 0.09 80);
+  --primary-foreground: oklch(0.98 0.005 85);
   /* warm stone for secondary */
-  --secondary: oklch(0.94 0.01 80);
-  --secondary-foreground: oklch(0.35 0.02 70);
-  /* soft stone muted */
-  --muted: oklch(0.96 0.008 80);
-  --muted-foreground: oklch(0.50 0.02 70);
+  --secondary: oklch(0.93 0.012 80);
+  --secondary-foreground: oklch(0.30 0.02 75);
+  /* soft stone muted - improved contrast */
+  --muted: oklch(0.95 0.008 80);
+  --muted-foreground: oklch(0.42 0.02 75);
   /* soft sage green accent */
-  --accent: oklch(0.92 0.03 145);
-  --accent-foreground: oklch(0.30 0.04 145);
+  --accent: oklch(0.90 0.04 145);
+  --accent-foreground: oklch(0.28 0.04 145);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.91 0.01 80);
-  --input: oklch(0.93 0.01 80);
-  --ring: oklch(0.60 0.06 85);
+  --border: oklch(0.88 0.012 80);
+  --input: oklch(0.92 0.01 80);
+  --ring: oklch(0.55 0.07 80);
   --chart-1: oklch(0.55 0.08 85);
   --chart-2: oklch(0.65 0.06 145);
   --chart-3: oklch(0.50 0.03 70);
