@@ -9,11 +9,11 @@ type Props = {
 
 export function SectionCard({ title, description, children }: Props) {
   return (
-    <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <section className="space-y-5 rounded-xl border border-border/60 bg-card px-5 py-6 sm:px-8 sm:py-8">
       {(title || description) && (
-        <header>
-          {title && <h2 className="text-sm font-semibold text-slate-800">{title}</h2>}
-          {description && <p className="mt-1 text-xs text-slate-500">{description}</p>}
+        <header className="space-y-1">
+          {title && <h2 className="text-sm font-medium text-foreground/70">{title}</h2>}
+          {description && <p className="text-xs text-muted-foreground leading-relaxed">{description}</p>}
         </header>
       )}
       {children}

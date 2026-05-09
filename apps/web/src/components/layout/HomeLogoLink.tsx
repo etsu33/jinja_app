@@ -27,8 +27,8 @@ export default function HomeLogoLink() {
   );
 
   return (
-    <Link href="/" onClick={onClick} className="text-base font-bold">
-      Jinja
+    <Link href="/" onClick={onClick} className="text-base font-medium tracking-wide text-foreground/80">
+      KAMI MUSUBI
     </Link>
   );
 }

@@ -50,13 +50,16 @@ export function HomeMainClient() {
 
       {!conciergeOpen && (
         <>
-          <SectionCard title="最新の公開御朱印" description="タップで神社詳細へ">
+          <SectionCard 
+            title="みんなの御朱印" 
+            description="最近記録された御朱印をご覧いただけます"
+          >
             <HomeGoshuinFeedSection limit={12} />
           </SectionCard>
 
           <SectionCard
-            title="今いる場所の近くの神社"
-            description="位置情報をもとに、徒歩圏内の神社を優先して表示します。"
+            title="近くの神社"
+            description="現在地から近い神社をお探しします"
           >
             <HomeNearbySection />
           </SectionCard>
