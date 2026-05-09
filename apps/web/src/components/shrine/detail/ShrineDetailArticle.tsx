@@ -274,7 +274,7 @@ export default function ShrineDetailArticle({
 
             {favoriteNoticeState === "saved" ? (
               <div className="mb-3 rounded-xl border border-emerald-200 bg-white p-3">
-                <p className="text-sm font-semibold text-emerald-800">{FAVORITE_LABELS.saved}</p>
+                <p className="text-sm font-semibold text-emerald-700">{FAVORITE_LABELS.saved}</p>
                 <p className="mt-1 text-xs text-slate-600">{FAVORITE_LABELS.guide}</p>
                 <div className="mt-2">
                   <Link
@@ -289,7 +289,7 @@ export default function ShrineDetailArticle({
 
             {favoriteNoticeState === "removed" ? (
               <div className="mb-3 rounded-xl border border-slate-200 bg-white p-3">
-                <p className="text-sm font-semibold text-emerald-800">{FAVORITE_LABELS.removed}</p>
+                <p className="text-sm font-semibold text-emerald-700">{FAVORITE_LABELS.removed}</p>
               </div>
             ) : null}
 

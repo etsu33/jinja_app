@@ -11,15 +11,15 @@ type Props = {
 export function SectionCard({ title, description, variant = "default", children }: Props) {
   const sectionClassName =
     variant === "subtle"
-      ? "space-y-4 rounded-2xl border border-slate-100 bg-white/70 p-5 shadow-none sm:p-6"
-      : "space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm";
+      ? "space-y-4 rounded-2xl border border-stone-200/15 bg-stone-50/20 p-5 shadow-none sm:p-6"
+      : "space-y-4 rounded-2xl border border-stone-200/20 bg-stone-50/30 p-6 shadow-none";
 
   return (
     <section className={sectionClassName}>
       {(title || description) && (
         <header>
-          {title && <h2 className="text-base font-semibold text-slate-900">{title}</h2>}
-          {description && <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>}
+          {title && <h2 className="text-base font-semibold text-stone-900">{title}</h2>}
+          {description && <p className="mt-2 text-sm leading-6 text-stone-500">{description}</p>}
         </header>
       )}
       {children}

@@ -20,7 +20,7 @@ export default function GoshuinDetailModal({ open, onOpenChange, goshuin }: Prop
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-40 bg-black/40" />
+        <Dialog.Overlay className="fixed inset-0 z-40 bg-stone-950/35" />
         <Dialog.Content
           className="
             fixed inset-0 z-50 flex items-center justify-center
@@ -29,24 +29,23 @@ export default function GoshuinDetailModal({ open, onOpenChange, goshuin }: Prop
         >
           <div
             className="
-              relative w-full max-w-md rounded-2xl bg-white p-4
-              shadow-lg
+              relative w-full max-w-md rounded-2xl border border-stone-200/20 bg-stone-50 p-4
             "
           >
             <Dialog.Close
               className="
-                absolute right-2 top-2 rounded-full bg-white/80 px-2
-                text-xs text-gray-600 shadow hover:bg-gray-100
+                absolute right-2 top-2 rounded-full border border-stone-200/30 bg-stone-50/80 px-2
+                text-xs text-stone-500 hover:bg-stone-100
               "
             >
               ×
             </Dialog.Close>
 
-            <Dialog.Title className="mb-2 text-sm font-semibold">{title}</Dialog.Title>
+            <Dialog.Title className="mb-2 text-sm font-medium text-stone-900">{title}</Dialog.Title>
 
-            {dateLabel && <p className="mb-3 text-xs text-gray-500">登録日: {dateLabel}</p>}
+            {dateLabel && <p className="mb-3 text-xs text-stone-500">登録日: {dateLabel}</p>}
 
-            <div className="relative mb-3 aspect-[3/4] overflow-hidden rounded-lg bg-gray-50">
+            <div className="relative mb-3 aspect-[3/4] overflow-hidden rounded-xl bg-stone-100/50">
               {goshuin.image_url ? (
                 <Image
                   src={goshuin.image_url}
@@ -56,7 +55,7 @@ export default function GoshuinDetailModal({ open, onOpenChange, goshuin }: Prop
                   className="object-contain"
                 />
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">画像なし</div>
+                <div className="flex h-full w-full items-center justify-center text-xs text-stone-400">画像なし</div>
               )}
             </div>
           </div>

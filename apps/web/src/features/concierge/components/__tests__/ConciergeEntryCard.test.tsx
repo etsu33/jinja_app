@@ -29,15 +29,15 @@ describe("ConciergeEntryCard", () => {
   it("renders the entry copy, input prompt, examples, and primary CTA", () => {
     render(<ConciergeEntryCard {...baseProps} needText="金運を整えたい" />);
 
-    expect(screen.getByText("神社コンシェルジュ")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "今の気持ちに合う神社を見つける" })).toBeInTheDocument();
-    expect(screen.getByText("今の状態をもとに、行き先の候補を静かに整理します。")).toBeInTheDocument();
-    expect(screen.getByLabelText("今、何に迷っていますか？")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("例：金運を整えたい、気持ちを切り替えたい、静かな場所で参拝したい")).toBeInTheDocument();
-    expect(screen.getByText("迷ったら選んでください")).toBeInTheDocument();
+    expect(screen.getByText("KAMI MUSUBI GUIDE")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "静かに言葉を整える" })).toBeInTheDocument();
+    expect(screen.getByText("言葉を、ゆっくり整えます。")).toBeInTheDocument();
+    expect(screen.getByLabelText("今の言葉を、静かに書く")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("例：気持ちを切り替えたい、静かな時間を持ちたい")).toBeInTheDocument();
+    expect(screen.getByText("ことばのきっかけ")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "金運" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "切り替え" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "今の気持ちに合う神社を探す" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "言葉を整える" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "クリア" })).toBeEnabled();
   });
 
@@ -61,9 +61,9 @@ describe("ConciergeEntryCard", () => {
     );
 
     fireEvent.change(screen.getByPlaceholderText("例: えつこ"), { target: { value: "えつこ" } });
-    fireEvent.change(screen.getByLabelText("今、何に迷っていますか？"), { target: { value: "静かな場所に行きたい" } });
+    fireEvent.change(screen.getByLabelText("今の言葉を、静かに書く"), { target: { value: "静かな場所に行きたい" } });
     fireEvent.click(screen.getByRole("button", { name: "切り替え" }));
-    fireEvent.click(screen.getByRole("button", { name: "今の気持ちに合う神社を探す" }));
+    fireEvent.click(screen.getByRole("button", { name: "言葉を整える" }));
     fireEvent.click(screen.getByRole("button", { name: "クリア" }));
 
     expect(setSessionNickname).toHaveBeenCalledWith("えつこ");

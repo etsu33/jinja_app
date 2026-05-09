@@ -36,8 +36,7 @@ export default function ShrineSaveButton({
   const { isLoggedIn, loading } = useAuth();
   const [err, setErr] = useState<string | null>(null);
 
-  const effectiveGuestMode =
-    typeof guestMode === "boolean" ? guestMode : !loading && !isLoggedIn;
+  const effectiveGuestMode = typeof guestMode === "boolean" ? guestMode : !loading && !isLoggedIn;
 
   const { fav, busy, toggle } = useFavorite({
     shrineId,
@@ -91,20 +90,14 @@ export default function ShrineSaveButton({
       : `inline-flex w-full items-center justify-center rounded-xl border px-4 py-3 text-sm font-semibold transition
           ${
             fav
-              ? "border-emerald-300 bg-emerald-50 text-emerald-800"
+              ? "border-emerald-300 bg-emerald-50 text-emerald-700"
               : "border-slate-300 bg-white text-slate-900 hover:bg-slate-50"
           }
           disabled:opacity-60`;
 
   return (
     <div className="space-y-2">
-      <button
-        type="button"
-        onClick={onClick}
-        disabled={busy}
-        className={buttonClass}
-        aria-pressed={fav}
-      >
+      <button type="button" onClick={onClick} disabled={busy} className={buttonClass} aria-pressed={fav}>
         {busy ? "保存中…" : fav ? "保存しました" : "保存する"}
       </button>
 

@@ -12,15 +12,24 @@ import { buildLoginHref } from "@/lib/nav/login";
 
 type Props = { initialFavorites: Favorite[] };
 type MyPageTab = "profile" | "goshuin" | "favorites" | "submissions";
+const GOSHUIN_TAB_ENABLED = false;
 
 function normalizeTab(value: string | null): MyPageTab {
-  if (value === "goshuin" || value === "favorites" || value === "submissions") return value;
+  if (GOSHUIN_TAB_ENABLED && value === "goshuin") return value;
+  if (value === "favorites" || value === "submissions") return value;
   return "profile";
 }
 
 function TabLink({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
   return (
-    <Link href={href} className={`rounded px-3 py-2 text-sm ${active ? "bg-slate-900 text-white" : "bg-slate-100"}`}>
+    <Link
+      href={href}
+      className={`rounded-full px-3 py-1.5 text-sm transition ${
+        active
+          ? "border border-stone-300/50 bg-stone-200/50 text-stone-900"
+          : "border border-stone-200/20 bg-stone-50/20 text-stone-500 hover:bg-stone-100/40 hover:text-stone-800"
+      }`}
+    >
       {children}
     </Link>
   );
@@ -93,7 +102,7 @@ export default function MyPageView({ initialFavorites }: Props) {
 
   if (loading) {
     return (
-      <div className="p-4 text-sm text-gray-500" role="status" aria-busy="true">
+      <div className="p-4 text-sm text-stone-500" role="status" aria-busy="true">
         読み込み中...
       </div>
     );
@@ -102,13 +111,13 @@ export default function MyPageView({ initialFavorites }: Props) {
   if (!user) {
     const next = tab === "goshuin" || tab === "favorites" || tab === "submissions" ? `/mypage?tab=${tab}` : "/mypage?tab=profile";
     return (
-      <main className="mx-auto max-w-3xl p-6">
-        <h1 className="mb-4 text-xl font-bold">マイページ</h1>
-        <div className="rounded-lg border bg-white p-6">
-          <p className="mb-3">利用するにはログインしてください。</p>
+      <main className="mx-auto max-w-3xl p-6 text-stone-800">
+        <h1 className="mb-4 text-xl font-semibold">マイページ</h1>
+        <div className="rounded-2xl border border-stone-200/20 bg-stone-50/30 p-6">
+          <p className="mb-3 text-sm text-stone-600">ログインしてご利用ください。</p>
           <Link
             href={buildLoginHref(next)}
-            className="inline-block rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+            className="inline-block rounded-full border border-emerald-700/20 bg-emerald-800 px-4 py-2 text-sm text-white transition hover:bg-emerald-900"
           >
             ログインへ
           </Link>
@@ -118,8 +127,8 @@ export default function MyPageView({ initialFavorites }: Props) {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex gap-2">
+    <main className="mx-auto max-w-4xl space-y-6 px-4 py-6 text-stone-800 sm:px-6">
+      <div className="flex flex-wrap gap-2 border-b border-stone-200/20 pb-3">
         <TabLink href="/mypage?tab=profile" active={tab === "profile"}>
           プロフィール
         </TabLink>
@@ -128,9 +137,11 @@ export default function MyPageView({ initialFavorites }: Props) {
           投稿した神社
         </TabLink>
 
-        <TabLink href="/mypage?tab=goshuin" active={tab === "goshuin"}>
-          御朱印
-        </TabLink>
+        {GOSHUIN_TAB_ENABLED && (
+          <TabLink href="/mypage?tab=goshuin" active={tab === "goshuin"}>
+            御朱印
+          </TabLink>
+        )}
 
         <TabLink href="/mypage?tab=favorites" active={tab === "favorites"}>
           保存した神社
@@ -144,24 +155,25 @@ export default function MyPageView({ initialFavorites }: Props) {
       ) : tab === "favorites" ? (
         <FavoritesSection initialFavorites={initialFavorites} />
       ) : (
-        <div className="space-y-6">
+        <section className="space-y-5 rounded-2xl border border-stone-200/20 bg-stone-50/30 p-5 sm:p-6">
           <div>
-            <label className="block text-sm font-medium mb-1">ニックネーム</label>
+            <label className="mb-1 block text-sm font-medium text-stone-700">ニックネーム</label>
             <input
               type="text"
               value={form.nickname}
               onChange={(e) => setForm((f) => ({ ...f, nickname: e.target.value }))}
               disabled={saving}
-              className="w-full border rounded px-3 py-2"
+              className="w-full rounded-xl border border-stone-200/30 bg-stone-50/30 px-3 py-2 text-sm text-stone-800 outline-none transition placeholder:text-stone-300 focus:border-stone-300/70 focus:ring-2 focus:ring-stone-200/30 disabled:opacity-60"
             />
           </div>
 
-          <label className="inline-flex items-center gap-2">
+          <label className="inline-flex items-center gap-2 text-sm text-stone-700">
             <input
               type="checkbox"
               checked={form.is_public}
               onChange={(e) => setForm((f) => ({ ...f, is_public: e.target.checked }))}
               disabled={saving}
+              className="h-4 w-4 rounded border-stone-300 text-emerald-800 focus:ring-stone-200"
             />
             <span>プロフィールを公開</span>
           </label>
@@ -170,7 +182,7 @@ export default function MyPageView({ initialFavorites }: Props) {
             <button
               onClick={handleSave}
               disabled={!dirty || saving}
-              className="px-4 py-2 rounded bg-blue-600 text-white disabled:opacity-50"
+              className="rounded-full border border-emerald-700/20 bg-emerald-800 px-4 py-2 text-sm text-white transition hover:bg-emerald-900 disabled:opacity-40"
             >
               {saving ? "保存中..." : "保存"}
             </button>
@@ -178,13 +190,13 @@ export default function MyPageView({ initialFavorites }: Props) {
               type="button"
               onClick={handleReset}
               disabled={!dirty || saving}
-              className="px-4 py-2 rounded border"
+              className="rounded-full border border-stone-200/40 bg-stone-50/20 px-4 py-2 text-sm text-stone-600 transition hover:bg-stone-100/50 disabled:opacity-40"
             >
               変更を破棄
             </button>
           </div>
-        </div>
+        </section>
       )}
-    </div>
+    </main>
   );
 }

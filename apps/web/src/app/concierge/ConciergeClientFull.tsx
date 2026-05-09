@@ -35,7 +35,7 @@ import { resolveDisplayLabel, resolveDisplayName } from "@/lib/profile/resolveDi
 
 import { conciergeLog } from "@/lib/log/concierge";
 import { EVT_CLOSE_CONCIERGE } from "@/lib/events";
-const conciergeCardClass = "rounded-2xl border border-slate-200 bg-white shadow-sm p-6";
+const conciergeCardClass = "rounded-3xl border border-stone-200/45 bg-white/75 p-6";
 
 import { isValidISODate, normalizeBirthdateInput } from "@/lib/date/normalizeBirthdateInput";
 import { track } from "@/lib/analytics/track";
@@ -1300,11 +1300,13 @@ export default function ConciergeClientFull() {
     >
       {/* ===== 入口（tidなし） ===== */}
       {shouldShowEntry ? (
-        <div className="px-4 pt-4">
+        <div className="px-4 pt-6">
           <div className={`relative ${conciergeCardClass}`}>
             {isBusy ? (
-              <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-white/70 backdrop-blur-sm">
-                <div className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">選定中です…</div>
+              <div className="absolute inset-0 z-10 flex items-center justify-center rounded-3xl bg-white/65 backdrop-blur-sm">
+                <div className="rounded-full border border-stone-200/60 bg-stone-50/90 px-3 py-1.5 text-sm text-stone-700">
+                  選定中です…
+                </div>
               </div>
             ) : null}
 
@@ -1331,15 +1333,15 @@ export default function ConciergeClientFull() {
               onClear={() => setNeedText("")}
             />
 
-            <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <div className="mt-7 rounded-3xl border border-stone-200/45 bg-stone-50/60 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs font-semibold text-slate-700">希望を補足する</p>
-                  <p className="mt-0.5 text-[11px] text-slate-500">誕生日や希望条件を追加して、候補を絞れます。</p>
+                  <p className="text-[11px] font-medium tracking-[0.2em] text-stone-500">QUIET FILTER</p>
+                  <p className="mt-0.5 text-[11px] text-stone-500">必要なときだけ条件を添える</p>
                 </div>
                 <button
                   type="button"
-                  className="shrink-0 rounded-lg border bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  className="shrink-0 rounded-full border border-stone-200/70 bg-white/80 px-3 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-50"
                   onClick={() => setIsFilterOpen((prev) => !prev)}
                   disabled={isBusy}
                 >
@@ -1348,26 +1350,26 @@ export default function ConciergeClientFull() {
               </div>
 
               {!isFilterOpen && hasFilter ? (
-                <div className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-2">
+                <div className="mt-4 rounded-2xl border border-stone-200/50 bg-white/80 px-3 py-3">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-[11px] font-semibold text-slate-600">追加済みの条件</p>
+                      <p className="text-[11px] font-medium text-stone-500">追加済みの条件</p>
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         {baseFilters.birthdate ? (
-                          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
+                          <span className="rounded-full border border-stone-200/70 bg-stone-50 px-3 py-1 text-xs font-medium text-stone-700">
                             誕生日あり
                           </span>
                         ) : null}
 
                         {selectedTagNames.length ? (
-                          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
+                          <span className="rounded-full border border-stone-200/70 bg-stone-50 px-3 py-1 text-xs font-medium text-stone-700">
                             希望: {selectedTagNames[0]}
                             {selectedTagNames.length > 1 ? ` 他${selectedTagNames.length - 1}` : ""}
                           </span>
                         ) : null}
 
                         {baseFilters.extra_condition ? (
-                          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
+                          <span className="rounded-full border border-stone-200/70 bg-stone-50 px-3 py-1 text-xs font-medium text-stone-700">
                             希望の補足あり
                           </span>
                         ) : null}
@@ -1376,7 +1378,7 @@ export default function ConciergeClientFull() {
 
                     <button
                       type="button"
-                      className="shrink-0 rounded-md px-2 py-1 text-[11px] font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                      className="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium text-stone-500 hover:bg-stone-100 hover:text-stone-700"
                       onClick={() => onRendererAction({ type: "filter_clear" })}
                       disabled={isBusy}
                     >
@@ -1400,9 +1402,9 @@ export default function ConciergeClientFull() {
             </div>
 
             {!isBusy && isUiPaywall ? (
-              <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-                <p className="font-medium text-slate-800">無料回数を使い切りました。</p>
-                <p className="mt-1 text-xs leading-6 text-slate-500">
+              <div className="mt-5 rounded-3xl border border-stone-200/50 bg-stone-50/70 px-5 py-4 text-sm text-stone-700">
+                <p className="font-medium text-stone-800">無料回数を使い切りました。</p>
+                <p className="mt-1 text-xs leading-6 text-stone-500">
                   {isLoggedIn
                     ? "続けるには有料プランへの切り替えが必要です。"
                     : "続けるにはログイン、または有料プランへの切り替えが必要です。"}
@@ -1411,7 +1413,7 @@ export default function ConciergeClientFull() {
                   {!isLoggedIn ? (
                     <button
                       type="button"
-                      className="w-full rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white sm:w-auto"
+                      className="w-full rounded-full border border-stone-200/70 bg-white/85 px-4 py-2 text-sm font-medium text-stone-700 sm:w-auto"
                       onClick={() => redirectToAuth("login")}
                     >
                       ログイン
@@ -1419,7 +1421,7 @@ export default function ConciergeClientFull() {
                   ) : null}
                   <Link
                     href="/billing/upgrade"
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-center text-sm font-semibold text-slate-700 sm:w-auto"
+                    className="w-full rounded-full border border-emerald-200/70 bg-emerald-50/90 px-4 py-2 text-center text-sm font-medium text-emerald-900 sm:w-auto"
                   >
                     有料プランを見る
                   </Link>
@@ -1457,7 +1459,7 @@ export default function ConciergeClientFull() {
       {/* ===== 通常（tidあり） ===== */}
       {hydrated && shouldShowThreadRenderer ? (
         SHOW_NEW_RENDERER ? (
-          <div className="p-4 space-y-3">
+          <div className="p-4 space-y-5">
             <ConciergeSectionsRenderer
               payload={payload}
               onAction={onRendererAction}
@@ -1469,9 +1471,9 @@ export default function ConciergeClientFull() {
             <ConciergeDebugPanel unified={displayUnified} />
 
             {!isBusy && isUiPaywall ? (
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-                <p className="font-medium text-slate-800">無料回数を使い切りました。</p>
-                <p className="mt-1 text-xs leading-6 text-slate-500">
+              <div className="rounded-3xl border border-stone-200/50 bg-stone-50/70 px-5 py-4 text-sm text-stone-700">
+                <p className="font-medium text-stone-800">無料回数を使い切りました。</p>
+                <p className="mt-1 text-xs leading-6 text-stone-500">
                   {isLoggedIn
                     ? "続けるには有料プランへの切り替えが必要です。"
                     : "続けるにはログイン、または有料プランへの切り替えが必要です。"}
@@ -1480,7 +1482,7 @@ export default function ConciergeClientFull() {
                   {!isLoggedIn ? (
                     <button
                       type="button"
-                      className="w-full rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white sm:w-auto"
+                      className="w-full rounded-full border border-stone-200/70 bg-white/85 px-4 py-2 text-sm font-medium text-stone-700 sm:w-auto"
                       onClick={() => redirectToAuth("login")}
                     >
                       ログイン
@@ -1488,7 +1490,7 @@ export default function ConciergeClientFull() {
                   ) : null}
                   <Link
                     href="/billing/upgrade"
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-center text-sm font-semibold text-slate-700 sm:w-auto"
+                    className="w-full rounded-full border border-emerald-200/70 bg-emerald-50/90 px-4 py-2 text-center text-sm font-medium text-emerald-900 sm:w-auto"
                   >
                     有料プランを見る
                   </Link>
