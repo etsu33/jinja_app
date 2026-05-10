@@ -37,6 +37,7 @@
 import Link from "next/link";
 import React, { useMemo, useState } from "react";
 
+import PublicGoshuinSection, { type PublicGoshuinItem } from "@/components/shrine/detail/PublicGoshuinSection";
 import ShrineJudgeSection from "@/components/shrine/detail/ShrineJudgeSection";
 import ShrineProposalSection from "@/components/shrine/detail/ShrineProposalSection";
 import ShrineReasonSection from "@/components/shrine/detail/ShrineReasonSection";
@@ -142,6 +143,9 @@ export default function ShrineDetailArticle({
   heroMeaningCopy,
   benefitLabels,
   tags: _tags = [],
+  addGoshuinHref,
+  publicGoshuinsPreview = [],
+  publicGoshuinsViewAllHref = "",
   sections = [],
   recommendationMeta = null,
   saveActionNode,
@@ -151,6 +155,9 @@ export default function ShrineDetailArticle({
   heroMeaningCopy?: string | null;
   benefitLabels: string[];
   tags?: ShrineTag[];
+  publicGoshuinsPreview: PublicGoshuinItem[];
+  publicGoshuinsViewAllHref: string;
+  addGoshuinHref?: string | null;
   sections?: ShrineDetailSectionModel[];
   recommendationMeta?: {
     rankTitle?: string | null;
@@ -214,6 +221,16 @@ export default function ShrineDetailArticle({
         </section>
       ) : null}
 
+      <section id="goshuins">
+        <PublicGoshuinSection
+          items={publicGoshuinsPreview}
+          addGoshuinHref={addGoshuinHref}
+          sendingLabel={undefined}
+          limit={3}
+          seeAllHref={publicGoshuinsViewAllHref ? publicGoshuinsViewAllHref : null}
+          seeAllLabel="すべて見る"
+        />
+      </section>
 
       {!hasSections ? (
         <div className="space-y-2">
