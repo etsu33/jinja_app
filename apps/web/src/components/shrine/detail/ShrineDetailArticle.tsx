@@ -146,6 +146,7 @@ export default function ShrineDetailArticle({
   addGoshuinHref,
   publicGoshuinsPreview = [],
   publicGoshuinsViewAllHref = "",
+  showGoshuinSection = false,
   sections = [],
   recommendationMeta = null,
   saveActionNode,
@@ -158,6 +159,7 @@ export default function ShrineDetailArticle({
   publicGoshuinsPreview: PublicGoshuinItem[];
   publicGoshuinsViewAllHref: string;
   addGoshuinHref?: string | null;
+  showGoshuinSection?: boolean;
   sections?: ShrineDetailSectionModel[];
   recommendationMeta?: {
     rankTitle?: string | null;
@@ -221,16 +223,18 @@ export default function ShrineDetailArticle({
         </section>
       ) : null}
 
-      <section id="goshuins">
-        <PublicGoshuinSection
-          items={publicGoshuinsPreview}
-          addGoshuinHref={addGoshuinHref}
-          sendingLabel={undefined}
-          limit={3}
-          seeAllHref={publicGoshuinsViewAllHref ? publicGoshuinsViewAllHref : null}
-          seeAllLabel="すべて見る"
-        />
-      </section>
+      {showGoshuinSection ? (
+        <section id="goshuins">
+          <PublicGoshuinSection
+            items={publicGoshuinsPreview}
+            addGoshuinHref={addGoshuinHref}
+            sendingLabel={undefined}
+            limit={3}
+            seeAllHref={publicGoshuinsViewAllHref ? publicGoshuinsViewAllHref : null}
+            seeAllLabel="すべて見る"
+          />
+        </section>
+      ) : null}
 
       {!hasSections ? (
         <div className="space-y-2">
