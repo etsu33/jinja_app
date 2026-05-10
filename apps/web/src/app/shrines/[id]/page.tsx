@@ -451,7 +451,6 @@ export default async function Page({ params, searchParams }: Props) {
       >
         <ShrineDetailArticle
           {...model}
-          addGoshuinHref={addGoshuinHref}
           saveActionNode={
             <ShrineSaveButton
               key={`shrine-save-${numericId}`}
