@@ -50,6 +50,7 @@ export default async function Page({ params, searchParams }: Props) {
   if (ctx) addQ.set("ctx", ctx);
   if (tid) addQ.set("tid", String(tid));
 
+  const addGoshuinHref = `/goshuin/new?${addQ.toString()}`;
 
   return (
     <ShrineDetailShell
@@ -67,7 +68,7 @@ export default async function Page({ params, searchParams }: Props) {
           <p className="mt-1 text-xs text-slate-500">まだ公開御朱印がない場合は、最初の記録を残せます。</p>
         </div>
 
-        <PublicGoshuinSection items={items} addGoshuinHref={null} seeAllHref={null} />
+        <PublicGoshuinSection items={items} addGoshuinHref={addGoshuinHref} seeAllHref={null} />
 
         <div className="pt-1">
           <Link href={backHref} className="text-xs text-slate-600 hover:underline">
