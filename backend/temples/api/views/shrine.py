@@ -252,10 +252,8 @@ class ShrineViewSet(viewsets.ModelViewSet):
     search_fields = ["name_jp", "name_romaji", "address", "goriyaku"]
 
     def get_permissions(self):
-        if self.action in ("list", "nearest", "ingest"):
+        if self.action in ("list", "retrieve", "nearest", "ingest"):
             return [AllowAny()]
-        if self.action == "retrieve":
-            return [IsAuthenticated()]
         return [IsAuthenticated()]
 
     def get_serializer_class(self):
@@ -273,16 +271,6 @@ class ShrineViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
-
-        if getattr(self, "action", None) == "retrieve":
-            u = getattr(self.request, "user", None)
-            if not u or not u.is_authenticated:
-                return qs.none()
-
-            if getattr(u, "is_staff", False) or getattr(u, "is_superuser", False):
-                return qs.distinct()
-
-            return qs.filter(owner=u).distinct()
 
         params = self.request.query_params
 
