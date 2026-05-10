@@ -4,11 +4,11 @@ set -e
 echo "Running migrations..."
 python manage.py migrate --noinput
 
-if ls temples/migrations/0083_*.py >/dev/null 2>&1; then
+if python manage.py showmigrations temples | grep -q "0083_"; then
   echo "Applying bootstrap migration explicitly..."
   python manage.py migrate temples 0083 --noinput
 else
-  echo "Skipping explicit temples 0083 migration: file not found"
+  echo "Skipping explicit temples 0083 migration: not registered in Django migration graph"
 fi
 
 echo "Repairing FeatureUsage table..."
