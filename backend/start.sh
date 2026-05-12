@@ -27,5 +27,6 @@ else
   echo "Skipping production data bootstrap on start. Set RUN_BOOTSTRAP_ON_START=1 to run it explicitly."
 fi
 
-echo "Starting gunicorn on PORT=${PORT:-10000}..."
-exec gunicorn shrine_project.wsgi:application --bind 0.0.0.0:${PORT:-10000} --workers 1 --timeout 120 --access-logfile - --error-logfile - --capture-output
+export PORT="${PORT:-10000}"
+echo "Starting gunicorn on 0.0.0.0:${PORT}..."
+exec gunicorn shrine_project.wsgi:application --bind "0.0.0.0:${PORT}" --workers "${WEB_CONCURRENCY:-1}" --timeout 120 --access-logfile - --error-logfile - --capture-output
