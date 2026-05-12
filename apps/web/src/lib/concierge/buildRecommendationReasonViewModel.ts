@@ -206,9 +206,33 @@ function compactReasonViewModel(reason: ReturnType<typeof buildReasonNarrative>)
   };
 }
 
-function buildHeroCopyForMode(args: {
+function resolveHeroTheme(needTags?: string[] | null): "quiet" | "reset" | "relationship" | "work" | "money" | "default" {
+  const tags = (Array.isArray(needTags) ? needTags : []).map((tag) => clean(tag));
+  const joined = tags.join(" ");
+
+  if (tags.includes("money") || joined.includes("金運")) return "money";
+  if (tags.includes("career") || joined.includes("仕事") || joined.includes("転機")) return "work";
+  if (tags.includes("love") || joined.includes("恋愛") || joined.includes("関係")) return "relationship";
+  if (tags.includes("mental") || tags.includes("rest") || joined.includes("静か") || joined.includes("休息")) return "quiet";
+  if (tags.includes("courage") || joined.includes("切り替え") || joined.includes("前向き") || joined.includes("厄除")) return "reset";
+
+  return "default";
+}
+
+function buildHeroSubtitleForTheme(theme: ReturnType<typeof resolveHeroTheme>): string {
+  if (theme === "quiet") return "静かに気持ちを整えたい時に、今は重ねて見やすい候補です。";
+  if (theme === "reset") return "気持ちを切り替えたい時に、今は入り口として見やすい候補です。";
+  if (theme === "relationship") return "関係性の受け取り方を整えたい時に、今は重ねて見やすい候補です。";
+  if (theme === "work") return "仕事や転機の流れを見直したい時に、今は比較しやすい候補です。";
+  if (theme === "money") return "巡りや流れを整えたい時に、今は重ねて見やすい候補です。";
+
+  return "今の相談内容なら、この候補を軸にすると比較しやすそうです。";
+}
+
+function buildHeroCopy(args: {
   mode?: BuildParams["mode"];
   inputType: ReasonInputType;
+  needTags?: string[] | null;
   hero: ReturnType<typeof compactReasonViewModel>["hero"];
 }): RecommendationReasonViewModel["hero"] {
   if (args.mode === "compat" || args.inputType === "birthdate") {
@@ -223,7 +247,7 @@ function buildHeroCopyForMode(args: {
   return {
     ...args.hero,
     eyebrowLabel: "今の相談に合いそうな神社",
-    subtitle: "今のあなたには、まずここを軸に見ると整理しやすそうです。",
+    subtitle: buildHeroSubtitleForTheme(resolveHeroTheme(args.needTags)),
   };
 }
 
@@ -491,9 +515,10 @@ export function buildRecommendationReasonViewModel(params: BuildParams): Recomme
   const compactReason = compactReasonViewModel(reason);
 
   const inputType = resolveInputType(params);
-  const hero = buildHeroCopyForMode({
+  const hero = buildHeroCopy({
     mode: params.mode,
     inputType,
+    needTags: params.needTags,
     hero: compactReason.hero,
   });
 
