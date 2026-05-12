@@ -32,6 +32,12 @@ import ShrineDetailArticle from "@/components/shrine/detail/ShrineDetailArticle"
 import ScrollToTopOnMount from "@/components/navigation/ScrollToTopOnMount";
 
 import { getBenefitLabels } from "@/lib/shrine/getBenefitLabels";
+import {
+  buildNeedPrimaryShortCopy,
+  isNeedDisplayTag,
+  type NeedDisplayTag,
+  type ShrineTone,
+} from "@/features/concierge/copy/needDisplayCopy";
 
 
 function normalizeCtx(v?: string | null): "map" | "concierge" | null {
@@ -61,19 +67,11 @@ type RecommendationReasonDetailBuildArgs = {
 function resolvePrimaryTagFromConcierge(args: {
   primaryReasonLabel?: string | null;
   fallbackTags?: string[] | null;
-}): "money" | "courage" | "career" | "mental" | "rest" | "love" | "study" | null {
+}): NeedDisplayTag | null {
   const primaryReasonLabel = args.primaryReasonLabel ?? null;
   const fallbackTags = Array.isArray(args.fallbackTags) ? args.fallbackTags : [];
 
-  if (
-    primaryReasonLabel === "money" ||
-    primaryReasonLabel === "courage" ||
-    primaryReasonLabel === "career" ||
-    primaryReasonLabel === "mental" ||
-    primaryReasonLabel === "rest" ||
-    primaryReasonLabel === "love" ||
-    primaryReasonLabel === "study"
-  ) {
+  if (isNeedDisplayTag(primaryReasonLabel ?? "")) {
     return primaryReasonLabel;
   }
 
@@ -88,7 +86,7 @@ function resolvePrimaryTagFromConcierge(args: {
   return null;
 }
 
-function resolveShrineToneForNarrativeFallback(shrineName: string): "strong" | "quiet" | "tight" | "neutral" {
+function resolveShrineToneForNarrativeFallback(shrineName: string): ShrineTone {
   const normalizedName = shrineName.replace(/\s+/g, "").trim();
 
   if (normalizedName.includes("三峯")) return "strong";
@@ -98,53 +96,6 @@ function resolveShrineToneForNarrativeFallback(shrineName: string): "strong" | "
   return "neutral";
 }
 
-function buildFallbackShortFromPrimaryTag(args: {
-  primaryTag: "money" | "courage" | "career" | "mental" | "rest" | "love" | "study" | null;
-  shrineTone: "strong" | "quiet" | "tight" | "neutral";
-  rawReason: string | null;
-}): string | null {
-  const { primaryTag, shrineTone, rawReason } = args;
-
-  return primaryTag === "courage"
-    ? shrineTone === "strong"
-      ? "止まった流れを動かす"
-      : shrineTone === "tight"
-        ? "次の一歩を定める"
-        : shrineTone === "quiet"
-          ? "気持ちを整えて一歩を決める"
-          : "次の一歩を後押しする"
-    : primaryTag === "mental"
-      ? shrineTone === "strong"
-        ? "気持ちを切り替える"
-        : shrineTone === "tight"
-          ? "気持ちを引き締めて整える"
-          : "不安や気持ちを整える"
-      : primaryTag === "career"
-        ? shrineTone === "strong"
-          ? "仕事の停滞を動かす"
-          : shrineTone === "tight"
-            ? "仕事や転機の判断を定める"
-            : "仕事や転機を整える"
-        : primaryTag === "money"
-          ? shrineTone === "strong"
-            ? "金運や流れを動かす"
-            : shrineTone === "quiet"
-              ? "金運や巡りを整える"
-              : "金運や流れを立て直す"
-          : primaryTag === "rest"
-            ? shrineTone === "quiet"
-              ? "心身を休める"
-              : "心身を整える"
-            : primaryTag === "love"
-              ? shrineTone === "quiet"
-                ? "関係性を見直す"
-                : "良縁や関係性を進める"
-              : primaryTag === "study"
-                ? shrineTone === "tight"
-                  ? "集中や目標を定める"
-                  : "集中や学業の流れを整える"
-                : rawReason;
-}
 
 export function buildRecommendationReasonDetailInput(
   args: RecommendationReasonDetailBuildArgs,
@@ -160,10 +111,10 @@ export function buildRecommendationReasonDetailInput(
   });
   const rawReason = args.conciergeExplanationPayload?.original_reason?.trim() || args.conciergeReason?.trim() || null;
   const shrineTone = resolveShrineToneForNarrativeFallback(args.shrineName);
-  const fallbackShort = buildFallbackShortFromPrimaryTag({
+  const fallbackShort = buildNeedPrimaryShortCopy({
     primaryTag,
     shrineTone,
-    rawReason,
+    fallbackText: rawReason,
   });
 
   const reasonVm = buildRecommendationReasonViewModel({
