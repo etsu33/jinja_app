@@ -21,7 +21,7 @@ exports[`buildRecommendationReasonViewModel > reason文の代表パターンを 
     "hero": {
       "catchCopy": "相性から静かに選びたい時の神社",
       "eyebrowLabel": "今の相性に合いそうな神社",
-      "subtitle": "生年月日の傾向を補助的に重ねて見ると、ここを軸に整理しやすそうです。",
+      "subtitle": "生年月日の傾向を補助的に重ねると、比較の軸にしやすい候補です。",
       "topReasonLabel": "生年月日との重なりが強い",
     },
     "inputType": "birthdate",
@@ -70,8 +70,8 @@ exports[`buildRecommendationReasonViewModel > reason文の代表パターンを 
     },
     "hero": {
       "catchCopy": "今の状態に重ねて見やすい神社",
-      "eyebrowLabel": "今の相談に合いそうな神社",
-      "subtitle": "仕事や転機の流れを見直したい時に、今は比較しやすい候補です。",
+      "eyebrowLabel": "今の相談に近い方向の神社",
+      "subtitle": "仕事や転機まわりの流れを見直したい時に、比較しやすい候補です。",
       "topReasonLabel": "見やすい候補",
     },
     "inputType": "fallback",
@@ -120,8 +120,8 @@ exports[`buildRecommendationReasonViewModel > reason文の代表パターンを 
     },
     "hero": {
       "catchCopy": "今の状態に重ねて見やすい神社",
-      "eyebrowLabel": "今の相談に合いそうな神社",
-      "subtitle": "仕事や転機の流れを見直したい時に、今は比較しやすい候補です。",
+      "eyebrowLabel": "今の相談に近い方向の神社",
+      "subtitle": "仕事や転機まわりの流れを見直したい時に、比較しやすい候補です。",
       "topReasonLabel": "相談との一致が強い",
     },
     "inputType": "query",
