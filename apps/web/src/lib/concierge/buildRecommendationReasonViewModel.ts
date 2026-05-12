@@ -1,6 +1,12 @@
 import { buildReasonNarrative } from "./buildReasonNarrative";
 import { buildStateNarrative } from "./buildStateNarrative";
 import { buildMeaningNarrative } from "./buildMeaningNarrative";
+import {
+  HERO_COMPAT_SUBTITLE,
+  HERO_EYEBROW_LABELS,
+  getHeroThemeSubtitle,
+  type HeroTheme,
+} from "@/lib/concierge/copy/heroThemeCopies";
 
 export type ReasonInputType = "query" | "birthdate" | "fallback";
 
@@ -206,7 +212,7 @@ function compactReasonViewModel(reason: ReturnType<typeof buildReasonNarrative>)
   };
 }
 
-function resolveHeroTheme(needTags?: string[] | null): "quiet" | "reset" | "relationship" | "work" | "money" | "default" {
+function resolveHeroTheme(needTags?: string[] | null): HeroTheme {
   const tags = (Array.isArray(needTags) ? needTags : []).map((tag) => clean(tag)).filter(Boolean);
   const joined = tags.join(" ");
 
@@ -219,15 +225,6 @@ function resolveHeroTheme(needTags?: string[] | null): "quiet" | "reset" | "rela
   return "default";
 }
 
-function buildHeroSubtitleForTheme(theme: ReturnType<typeof resolveHeroTheme>): string {
-  if (theme === "quiet") return "静かに整えたい感覚に近い方向として、今は重ねて見やすい候補です。";
-  if (theme === "reset") return "気持ちや流れを少し切り替えたい時に、入り口として見やすい候補です。";
-  if (theme === "relationship") return "人や縁との向き合い方を整えたい時に、近い方向として見やすい候補です。";
-  if (theme === "work") return "仕事や転機まわりの流れを見直したい時に、比較しやすい候補です。";
-  if (theme === "money") return "巡りや流れを整えたい感覚に、今は重ねて見やすい候補です。";
-
-  return "今の相談内容に近い方向として、この候補を軸にすると比較しやすそうです。";
-}
 
 function buildHeroCopy(args: {
   mode?: BuildParams["mode"];
@@ -239,15 +236,15 @@ function buildHeroCopy(args: {
     return {
       ...args.hero,
       topReasonLabel: "生年月日との重なりが強い",
-      eyebrowLabel: "今の相性に合いそうな神社",
-      subtitle: "生年月日の傾向を補助的に重ねると、比較の軸にしやすい候補です。",
+      eyebrowLabel: HERO_EYEBROW_LABELS.compat,
+      subtitle: HERO_COMPAT_SUBTITLE,
     };
   }
 
   return {
     ...args.hero,
-    eyebrowLabel: "今の相談に近い方向の神社",
-    subtitle: buildHeroSubtitleForTheme(resolveHeroTheme(args.needTags)),
+    eyebrowLabel: HERO_EYEBROW_LABELS.need,
+    subtitle: getHeroThemeSubtitle(resolveHeroTheme(args.needTags)),
   };
 }
 
