@@ -59,7 +59,14 @@ type Args = {
 
 
 type RecommendationWhySection = {
-  label: "相談との一致" | "神社のご利益" | "補助的な一致" | "上位になった理由" | "他候補との差";
+  label:
+    | "相談との一致"
+    | "相性との重なり"
+    | "神社のご利益"
+    | "補助的な一致"
+    | "補助的な観点"
+    | "上位になった理由"
+    | "他候補との差";
   text: string;
 };
 
@@ -270,7 +277,7 @@ function buildCompatMatchText(args: {
   }
 
   if (args.primaryReasonLabel) {
-    return `${user}を主軸に見つつ、${args.primaryReasonLabel}に関わる相談内容との重なりも補助的に見ています。`;
+    return `${user}を主軸に見つつ、${args.primaryReasonLabel}の観点も補助要素として見ています。`;
   }
 
   return `${user}と、この神社が持つ要素の噛み合いを主軸に見ています。`;
@@ -355,8 +362,8 @@ function buildReasonSection(args: {
         items: uniqueReasonItems([
           benefitText,
           payload?.primary_reason?.label_ja
-            ? `${payload.primary_reason.label_ja}に関わる相談内容との補助的な重なりも見られます。`
-            : "相談内容との補助的な一致も見られます。",
+            ? `${payload.primary_reason.label_ja}の観点も、相性軸を補う要素として見ています。`
+            : "生年月日との相性を補う要素も見ています。",
         ]),
       },
       {
@@ -626,7 +633,7 @@ function buildProposalWhyFromBreakdown(args: {
   if (args.mode === "compat") {
     return [
       {
-        label: "相談との一致",
+        label: "相性との重なり",
         text: buildCompatMatchText({
           userElementLabel,
           shrineElementLabels: benefitLabels,
@@ -638,10 +645,10 @@ function buildProposalWhyFromBreakdown(args: {
         text: buildBenefitText(shrineText, benefitLabels, primary, shrineTone),
       },
       {
-        label: "補助的な一致",
+        label: "補助的な観点",
         text: primaryReasonLabel
-          ? `${primaryReasonLabel}に関わる相談内容との補助的な重なりも見られます。`
-          : "相談内容との補助的な一致も見られます。",
+          ? `${primaryReasonLabel}の観点も、相性軸を補う要素として見ています。`
+          : "生年月日との相性を補う要素も見ています。",
       },
       {
         label: "上位になった理由",
@@ -835,10 +842,10 @@ function buildJudgeSectionOrder(args: {
     },
     {
       key: "reason",
-      title: "相談との一致",
+      title: "補助的な観点",
       body: primaryReasonLabel
-        ? `${primaryReasonLabel}に関わる相談内容との補助的な重なりもあります。`
-        : "相談内容との補助的な一致も見られます。",
+        ? `${primaryReasonLabel}の観点も、相性軸を補う要素として見ています。`
+        : "生年月日との相性を補う要素も見ています。",
     },
     {
       key: "secondary",
@@ -1281,9 +1288,13 @@ export function buildShrineDetailModel({
   });
 
   const goriyakuText =
-    benefitLabels.length > 0
-      ? `${benefitLabels.slice(0, 3).join("・")}のご利益が、今回の相談内容に近い方向です。`
-      : "この神社のご利益が、今回の相談内容に近い方向です。";
+    mode === "compat"
+      ? benefitLabels.length > 0
+        ? `${benefitLabels.slice(0, 3).join("・")}のご利益も、生年月日との相性を補う要素として見ています。`
+        : "この神社が持つ性質も、生年月日との相性を補う要素として見ています。"
+      : benefitLabels.length > 0
+        ? `${benefitLabels.slice(0, 3).join("・")}のご利益が、今回の相談内容に近い方向です。`
+        : "この神社のご利益が、今回の相談内容に近い方向です。";
 
   // judgeItems fallback order:
   // 1. recommendationReasonDetail
