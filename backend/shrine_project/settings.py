@@ -370,18 +370,30 @@ def _split_csv(s, default=None):
     return [x.strip() for x in s.split(",") if x.strip()]
 
 
+
 ALLOWED_HOSTS = _split_csv(os.environ.get("ALLOWED_HOSTS"), ["localhost", "127.0.0.1", "web"])
+RENDER_EXTERNAL_HOSTNAME = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
+if RENDER_EXTERNAL_HOSTNAME and RENDER_EXTERNAL_HOSTNAME not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+if ".onrender.com" not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(".onrender.com")
 
 
+CORS_TRUSTED_ORIGINS_DEFAULTS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
+]
 CSRF_TRUSTED_ORIGINS = _split_csv(
     os.environ.get("CSRF_TRUSTED_ORIGINS"),
-    [
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3001",
-    ],
+    CORS_TRUSTED_ORIGINS_DEFAULTS,
 )
+if RENDER_EXTERNAL_HOSTNAME:
+    render_origin = f"https://{RENDER_EXTERNAL_HOSTNAME}"
+    if render_origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(render_origin)
+
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = _split_csv(
     os.environ.get("CORS_ALLOWED_ORIGINS"),
