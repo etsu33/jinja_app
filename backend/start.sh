@@ -14,13 +14,17 @@ fi
 echo "Repairing FeatureUsage table..."
 python manage.py repair_featureusage_table
 
-if python manage.py showmigrations temples | grep -q "\[X\] 0083"; then
-  echo "Bootstrapping production data..."
-  python manage.py bootstrap_production_data
+if [ "${RUN_BOOTSTRAP_ON_START:-0}" = "1" ]; then
+  if python manage.py showmigrations temples | grep -q "\[X\] 0083"; then
+    echo "Bootstrapping production data because RUN_BOOTSTRAP_ON_START=1..."
+    python manage.py bootstrap_production_data
+  else
+    echo "Bootstrap migration is not applied. Falling back to direct seed/backfill because RUN_BOOTSTRAP_ON_START=1..."
+    python manage.py import_shrines_seed
+    python manage.py backfill_goriyaku_tags --with-visit-style --force
+  fi
 else
-  echo "Bootstrap migration is not applied. Falling back to direct seed/backfill..."
-  python manage.py import_shrines_seed
-  python manage.py backfill_goriyaku_tags --with-visit-style --force
+  echo "Skipping production data bootstrap on start. Set RUN_BOOTSTRAP_ON_START=1 to run it explicitly."
 fi
 
 echo "Starting gunicorn on PORT=${PORT:-10000}..."
