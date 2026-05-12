@@ -104,6 +104,19 @@ function birthdateToElement4(birthdateISO: string): Element4 | null {
   return "水";
 }
 
+function isBirthdateOnlyText(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  return normalizeBirthdateInput(trimmed) !== null;
+}
+
+function normalizeQueryText(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  if (isBirthdateOnlyText(trimmed)) return "";
+  return trimmed;
+}
+
 function deriveMessages(events: LocalEvent[], threadId: number): ConciergeMessage[] {
   let mid = 0;
   const out: ConciergeMessage[] = [];
@@ -463,6 +476,7 @@ export default function ConciergeClientFull() {
 
   const [entrySubmitting, setEntrySubmitting] = useState(false);
   const [needText, setNeedText] = useState("");
+  const [entryValidationError, setEntryValidationError] = useState<string | null>(null);
 
   const displayName = useMemo(
     () =>
@@ -810,7 +824,7 @@ export default function ConciergeClientFull() {
       },
     ): Omit<ConciergeChatRequestV1, "thread_id"> => {
       const birthdate = normalizeBirthdateInput(sessionState.temporaryBirthdate ?? "") ?? undefined;
-      const query = (input?.query ?? needText).trim();
+      const query = normalizeQueryText(input?.query ?? needText);
 
       return {
         version: input?.version ?? 1,
@@ -989,6 +1003,21 @@ export default function ConciergeClientFull() {
         return;
       }
 
+      const rawInputQuery = typeof textOrPayload === "string" ? textOrPayload : textOrPayload?.query;
+      const normalizedInputBirthdate =
+        typeof rawInputQuery === "string" ? normalizeBirthdateInput(rawInputQuery) : null;
+
+      if (typeof rawInputQuery === "string" && isBirthdateOnlyText(rawInputQuery)) {
+        setSessionState((prev) => ({
+          ...prev,
+          temporaryBirthdate: normalizedInputBirthdate,
+        }));
+        setNeedText("");
+        setEntryValidationError("生年月日は補助条件として受け取りました。今の状態も一言添えてください。");
+        snap("safeSend:blocked_birthdate_only_query", { birthdate: normalizedInputBirthdate });
+        return;
+      }
+
       const isEntrySend = isEntryRoute;
 
       if (isEntrySend) {
@@ -1008,6 +1037,17 @@ export default function ConciergeClientFull() {
               version: textOrPayload?.version ?? 1,
               query: typeof textOrPayload?.query === "string" ? textOrPayload.query : undefined,
             });
+
+      if (!normalizedPayload.query.trim()) {
+        setEntryValidationError("今の状態を一言だけ入力してください。");
+        snap("safeSend:blocked_empty_query", { hasBirthdate: !!normalizedPayload.birthdate });
+        if (isEntrySend) {
+          setEntrySubmitting(false);
+        }
+        return;
+      }
+
+      setEntryValidationError(null);
 
       try {
         if (logMeta) {
@@ -1107,6 +1147,7 @@ export default function ConciergeClientFull() {
 
   const onPickExample = (text: string) => {
     setNeedText(text);
+    setEntryValidationError(null);
     snap("action:pick_example", { text });
   };
 
@@ -1191,6 +1232,7 @@ export default function ConciergeClientFull() {
         setLiveRecs([]);
         setEntrySubmitting(false);
         setNeedText("");
+        setEntryValidationError(null);
         setActiveTid(0);
         clearAnonymousSnapshot();
         setSessionState((prev) => ({
@@ -1258,6 +1300,7 @@ export default function ConciergeClientFull() {
         conciergeLog("filter_clear", { tid: activeThreadIdRef.current });
         setExtraCondition("");
         setSelectedTagIds([]);
+        setEntryValidationError(null);
         setSessionState((prev) => ({
           ...prev,
           temporaryBirthdate: null,
@@ -1279,7 +1322,10 @@ export default function ConciergeClientFull() {
       hideChatPanel={hideChatPanel}
       onSend={(text) => {
         const trimmed = text.trim();
-        if (!trimmed) return;
+        if (!trimmed) {
+          setEntryValidationError("今の状態を一言だけ入力してください。");
+          return;
+        }
         snap("action:onSend", { textLen: trimmed.length });
         void safeSend(trimmed, { kind: "chat" });
       }}
@@ -1289,6 +1335,7 @@ export default function ConciergeClientFull() {
         setLiveRecs([]);
         setEntrySubmitting(false);
         setNeedText("");
+        setEntryValidationError(null);
         setActiveTid(0);
         clearAnonymousSnapshot();
         snap("nav:replace", { to: "/concierge", reason: "onNewThread" });
@@ -1330,7 +1377,10 @@ export default function ConciergeClientFull() {
               isBusy={isBusy}
               canSend={canSend}
               onSubmit={() => void safeSend(needText.trim(), { kind: "need_submit", textLen: needText.trim().length })}
-              onClear={() => setNeedText("")}
+              onClear={() => {
+                setNeedText("");
+                setEntryValidationError(null);
+              }}
             />
 
             <div className="mt-7 rounded-3xl border border-stone-200/45 bg-stone-50/60 p-4">
@@ -1429,7 +1479,13 @@ export default function ConciergeClientFull() {
               </div>
             ) : null}
 
-            {!isBusy && error ? (
+            {!isBusy && entryValidationError ? (
+              <div className="mt-3 rounded-3xl border border-amber-200/70 bg-amber-50/70 px-5 py-4 text-sm text-amber-900">
+                <p className="font-medium">{entryValidationError}</p>
+              </div>
+            ) : null}
+
+            {!isBusy && !entryValidationError && error ? (
               <div className={`mt-3 ${conciergeCardClass}`}>
                 <p className="text-sm font-semibold text-rose-600">うまく取得できませんでした</p>
                 <div className="mt-2 grid gap-2">
