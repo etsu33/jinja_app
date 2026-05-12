@@ -72,6 +72,14 @@ function buildNeedThemeLabel(need?: string | null): string | null {
   const normalized = clean(need);
   if (!normalized) return null;
 
+  if (normalized === "money") return "流れの立て直し";
+  if (normalized === "career") return "仕事";
+  if (normalized === "mental") return "気持ちの立て直し";
+  if (normalized === "rest") return "休息";
+  if (normalized === "courage") return "前進のきっかけ";
+  if (normalized === "love") return "関係性";
+  if (normalized === "study") return "学業";
+
   if (normalized === "厄除け") return "立て直し";
   if (normalized === "仕事") return "仕事";
   if (normalized === "金運") return "流れの立て直し";
