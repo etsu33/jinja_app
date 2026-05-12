@@ -68,10 +68,10 @@ function resolvePrimaryTagFromConcierge(args: {
   primaryReasonLabel?: string | null;
   fallbackTags?: string[] | null;
 }): NeedDisplayTag | null {
-  const primaryReasonLabel = args.primaryReasonLabel ?? null;
+  const primaryReasonLabel = (args.primaryReasonLabel ?? "").trim();
   const fallbackTags = Array.isArray(args.fallbackTags) ? args.fallbackTags : [];
 
-  if (isNeedDisplayTag(primaryReasonLabel ?? "")) {
+  if (isNeedDisplayTag(primaryReasonLabel)) {
     return primaryReasonLabel;
   }
 
