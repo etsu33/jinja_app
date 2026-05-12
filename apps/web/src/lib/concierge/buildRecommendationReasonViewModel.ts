@@ -1,6 +1,12 @@
 import { buildReasonNarrative } from "./buildReasonNarrative";
 import { buildStateNarrative } from "./buildStateNarrative";
 import { buildMeaningNarrative } from "./buildMeaningNarrative";
+import {
+  HERO_COMPAT_SUBTITLE,
+  HERO_EYEBROW_LABELS,
+  getHeroThemeSubtitle,
+  type HeroTheme,
+} from "@/lib/concierge/copy/heroThemeCopies";
 
 export type ReasonInputType = "query" | "birthdate" | "fallback";
 
@@ -206,28 +212,19 @@ function compactReasonViewModel(reason: ReturnType<typeof buildReasonNarrative>)
   };
 }
 
-function resolveHeroTheme(needTags?: string[] | null): "quiet" | "reset" | "relationship" | "work" | "money" | "default" {
-  const tags = (Array.isArray(needTags) ? needTags : []).map((tag) => clean(tag));
+function resolveHeroTheme(needTags?: string[] | null): HeroTheme {
+  const tags = (Array.isArray(needTags) ? needTags : []).map((tag) => clean(tag)).filter(Boolean);
   const joined = tags.join(" ");
 
-  if (tags.includes("money") || joined.includes("金運")) return "money";
+  if (tags.includes("money") || joined.includes("金運") || joined.includes("巡り")) return "money";
   if (tags.includes("career") || joined.includes("仕事") || joined.includes("転機")) return "work";
-  if (tags.includes("love") || joined.includes("恋愛") || joined.includes("関係")) return "relationship";
-  if (tags.includes("mental") || tags.includes("rest") || joined.includes("静か") || joined.includes("休息")) return "quiet";
+  if (tags.includes("love") || joined.includes("恋愛") || joined.includes("関係") || joined.includes("縁")) return "relationship";
+  if (tags.includes("mental") || tags.includes("rest") || joined.includes("静か") || joined.includes("休息") || joined.includes("落ち着")) return "quiet";
   if (tags.includes("courage") || joined.includes("切り替え") || joined.includes("前向き") || joined.includes("厄除")) return "reset";
 
   return "default";
 }
 
-function buildHeroSubtitleForTheme(theme: ReturnType<typeof resolveHeroTheme>): string {
-  if (theme === "quiet") return "静かに気持ちを整えたい時に、今は重ねて見やすい候補です。";
-  if (theme === "reset") return "気持ちを切り替えたい時に、今は入り口として見やすい候補です。";
-  if (theme === "relationship") return "関係性の受け取り方を整えたい時に、今は重ねて見やすい候補です。";
-  if (theme === "work") return "仕事や転機の流れを見直したい時に、今は比較しやすい候補です。";
-  if (theme === "money") return "巡りや流れを整えたい時に、今は重ねて見やすい候補です。";
-
-  return "今の相談内容なら、この候補を軸にすると比較しやすそうです。";
-}
 
 function buildHeroCopy(args: {
   mode?: BuildParams["mode"];
@@ -239,15 +236,15 @@ function buildHeroCopy(args: {
     return {
       ...args.hero,
       topReasonLabel: "生年月日との重なりが強い",
-      eyebrowLabel: "今の相性に合いそうな神社",
-      subtitle: "生年月日の傾向を補助的に重ねて見ると、ここを軸に整理しやすそうです。",
+      eyebrowLabel: HERO_EYEBROW_LABELS.compat,
+      subtitle: HERO_COMPAT_SUBTITLE,
     };
   }
 
   return {
     ...args.hero,
-    eyebrowLabel: "今の相談に合いそうな神社",
-    subtitle: buildHeroSubtitleForTheme(resolveHeroTheme(args.needTags)),
+    eyebrowLabel: HERO_EYEBROW_LABELS.need,
+    subtitle: getHeroThemeSubtitle(resolveHeroTheme(args.needTags)),
   };
 }
 
