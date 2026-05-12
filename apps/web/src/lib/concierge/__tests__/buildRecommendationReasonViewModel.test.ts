@@ -35,7 +35,7 @@ describe("buildRecommendationReasonViewModel", () => {
     expect(vm.inputType).toBe("birthdate");
     expect(vm.why.reasonKeys.primary).toBe("element_match");
     expect(vm.why.primaryReason.length).toBeGreaterThan(0);
-    expect(vm.hero.topReasonLabel).toBe("相性との一致が強い");
+    expect(vm.hero.topReasonLabel).toBe("生年月日との重なりが強い");
   });
 
   it("fallback時に need文が出ない", () => {

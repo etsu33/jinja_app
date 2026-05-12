@@ -48,6 +48,8 @@ export type RecommendationReasonViewModel = {
   inputType: ReasonInputType;
   hero: {
     topReasonLabel?: string;
+    eyebrowLabel?: string;
+    subtitle?: string;
     catchCopy: string;
   };
   list: {
@@ -201,6 +203,27 @@ function compactReasonViewModel(reason: ReturnType<typeof buildReasonNarrative>)
       summary: compactText(reason.why.summary, 38),
       secondaryReason: compactOptionalText(reason.why.secondaryReason, 42),
     },
+  };
+}
+
+function buildHeroCopyForMode(args: {
+  mode?: BuildParams["mode"];
+  inputType: ReasonInputType;
+  hero: ReturnType<typeof compactReasonViewModel>["hero"];
+}): RecommendationReasonViewModel["hero"] {
+  if (args.mode === "compat" || args.inputType === "birthdate") {
+    return {
+      ...args.hero,
+      topReasonLabel: "生年月日との重なりが強い",
+      eyebrowLabel: "今の相性に合いそうな神社",
+      subtitle: "生年月日の傾向を補助的に重ねて見ると、ここを軸に整理しやすそうです。",
+    };
+  }
+
+  return {
+    ...args.hero,
+    eyebrowLabel: "今の相談に合いそうな神社",
+    subtitle: "今のあなたには、まずここを軸に見ると整理しやすそうです。",
   };
 }
 
@@ -467,6 +490,13 @@ export function buildRecommendationReasonViewModel(params: BuildParams): Recomme
   const reason = buildReasonNarrative(params);
   const compactReason = compactReasonViewModel(reason);
 
+  const inputType = resolveInputType(params);
+  const hero = buildHeroCopyForMode({
+    mode: params.mode,
+    inputType,
+    hero: compactReason.hero,
+  });
+
   const state = buildStateNarrative({
     params,
     primary: reason._meta.primary,
@@ -480,8 +510,8 @@ export function buildRecommendationReasonViewModel(params: BuildParams): Recomme
   });
 
   return {
-    inputType: resolveInputType(params),
-    hero: compactReason.hero,
+    inputType,
+    hero,
     list: compactReason.list,
     detail: {
       heroMeaningCopy: meaning.heroMeaningCopy,

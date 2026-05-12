@@ -9,6 +9,8 @@ type Props = {
   imageUrl?: string | null;
   address?: string | null;
   topReasonLabel?: string | null;
+  eyebrowLabel?: string | null;
+  subtitle?: string | null;
   catchCopy: string;
   whyTop?: string | null;
   primaryReason?: string | null;
@@ -28,6 +30,8 @@ export default function ConciergeTopRecommendationHero({
   imageUrl: _imageUrl = null,
   address = null,
   topReasonLabel = null,
+  eyebrowLabel = null,
+  subtitle = null,
   catchCopy,
   whyTop: _whyTop = null,
   primaryReason = null,
@@ -51,10 +55,12 @@ export default function ConciergeTopRecommendationHero({
           ) : null}
 
           <div className="space-y-2">
-            <div className="text-xs font-semibold tracking-[0.18em] text-emerald-700">今の相談に合いそうな神社</div>
+            <div className="text-xs font-semibold tracking-[0.18em] text-emerald-700">
+              {eyebrowLabel ?? "今の相談に合いそうな神社"}
+            </div>
             <h2 className="text-xl font-semibold leading-8 text-slate-950">{name}</h2>
             <p className="text-sm font-semibold leading-6 text-emerald-700">
-              今のあなたには、まずここを軸に見ると整理しやすそうです。
+              {subtitle ?? "今のあなたには、まずここを軸に見ると整理しやすそうです。"}
             </p>
             {address ? <div className="text-xs leading-5 text-slate-500">{address}</div> : null}
           </div>

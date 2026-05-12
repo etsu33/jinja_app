@@ -12,6 +12,7 @@ import ConciergeConsultationSummary from "@/features/concierge/components/Concie
 import ShrineCardCompact from "@/components/shrines/ShrineCardCompact";
 import { track } from "@/lib/analytics/track";
 import { buildGoogleMapsDirUrl } from "@/lib/maps/googleMaps";
+import { labelNeedDisplayTag } from "@/features/concierge/copy/needDisplayCopy";
 
 import type {
   ConciergeSectionsPayload,
@@ -443,12 +444,14 @@ export default function ConciergeSectionsRenderer({
                               imageUrl={heroItem.imageUrl}
                               address={null}
                               topReasonLabel={reasonVm.hero.topReasonLabel ?? null}
+                              eyebrowLabel={reasonVm.hero.eyebrowLabel ?? null}
+                              subtitle={reasonVm.hero.subtitle ?? null}
                               catchCopy={reasonVm.hero.catchCopy}
                               whyTop={null}
                               primaryReason={reasonVm.why.primaryReason}
                               secondaryReason={null}
                               differenceFromOthers={null}
-                              tags={(heroItem.breakdown?.matched_need_tags ?? []).slice(0, 3)}
+                              tags={(heroItem.breakdown?.matched_need_tags ?? []).map(labelNeedDisplayTag).slice(0, 3)}
                               routeLabel="まずはここに行く"
                               secondaryActionSlot={
                                 <ShrineSaveButton
