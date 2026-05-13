@@ -114,6 +114,7 @@ def build_chat_candidates(
                 "astro_tags": getattr(s, "astro_tags", None),
                 "astro_elements": getattr(s, "astro_elements", None),
                 "visit_style_tags": getattr(s, "visit_style_tags", None),
+                "history_theme": getattr(s, "history_theme", ""),
                 "astro_priority": getattr(s, "astro_priority", None),
                 "goriyaku_tag_ids": list(s.goriyaku_tags.values_list("id", flat=True))
                 if hasattr(s, "goriyaku_tags")

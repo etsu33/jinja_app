@@ -36,6 +36,8 @@ def _take3(xs: List[dict]) -> List[dict]:
     code_pri = {
         "USER_CONDITION": 0,
         "AREA_MATCH": 1,
+        "GOGYOU_CONTEXT": 1,
+        "HISTORY_CONTEXT": 1,
         "ELEMENT_MATCH": 2,
         "NEED_MATCH": 3,
         "WISH_MATCH": 4,
@@ -94,6 +96,20 @@ def _get_secondary_reasons(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
     return [x for x in value if isinstance(x, dict)]
 
 
+def _get_gogyou_context(payload: Dict[str, Any]) -> Dict[str, Any]:
+    value = payload.get("gogyou_context")
+    if isinstance(value, dict):
+        return value
+    return {}
+
+
+
+def _get_history_context(payload: Dict[str, Any]) -> Dict[str, Any]:
+    value = payload.get("history_context")
+    if isinstance(value, dict):
+        return value
+    return {}
+
 def _get_visit_style_feature(rec: Dict[str, Any]) -> Dict[str, Any]:
     features = (rec.get("breakdown_detail") or {}).get("features") or {}
     visit_style = features.get("visit_style")
@@ -106,7 +122,23 @@ def _build_summary_from_primary_reason(
     primary_reason: Optional[Dict[str, Any]],
     original_reason: Optional[str],
     highlights: List[str],
+    gogyou_context: Optional[Dict[str, Any]] = None,
+    history_context: Optional[Dict[str, Any]] = None,
 ) -> str:
+    gogyou = str((gogyou_context or {}).get("gogyou") or "").strip()
+    gogyou_tone = str((gogyou_context or {}).get("tone") or "").strip()
+    history_label = str((history_context or {}).get("label") or "").strip()
+    history_tone = str((history_context or {}).get("tone") or "").strip()
+
+    if gogyou and gogyou_tone and history_tone:
+        return f"今は「{gogyou}」の傾向として、{gogyou_tone}と、{history_tone}が重なる神社です。"
+
+    if gogyou and gogyou_tone:
+        return f"今は「{gogyou}」の傾向として、{gogyou_tone}に合う神社です。"
+
+    if history_label and history_tone:
+        return f"{history_label}に関わる文脈を持ち、{history_tone}として受け取りやすい神社です。"
+
     if isinstance(primary_reason, dict):
         reason_type = str(primary_reason.get("type") or "").strip()
         label_ja = str(primary_reason.get("label_ja") or "").strip()
@@ -121,7 +153,7 @@ def _build_summary_from_primary_reason(
             return f"{label_ja}に関わる相談内容との重なりが見られます。"
 
         if reason_type == "element":
-            return "生年月日から見た相性を中心におすすめしています。"
+            return "生年月日から見た相性も補助的に見ながら、おすすめしています。"
 
         if reason_type == "fallback":
             return "今の条件に近い候補としておすすめしています。"
@@ -140,6 +172,8 @@ def _build_reason_entry_from_primary_reason(
     *,
     primary_reason: Optional[Dict[str, Any]],
     birthdate: Optional[str],
+    gogyou_context: Optional[Dict[str, Any]] = None,
+    history_context: Optional[Dict[str, Any]] = None,
 ) -> Optional[dict]:
     if not isinstance(primary_reason, dict):
         return None
@@ -147,6 +181,35 @@ def _build_reason_entry_from_primary_reason(
     reason_type = str(primary_reason.get("type") or "").strip()
     label_ja = str(primary_reason.get("label_ja") or "").strip()
     evidence = primary_reason.get("evidence") if isinstance(primary_reason.get("evidence"), list) else []
+
+    gogyou = str((gogyou_context or {}).get("gogyou") or "").strip()
+    tone = str((gogyou_context or {}).get("tone") or "").strip()
+    eto = str((gogyou_context or {}).get("eto") or "").strip()
+    history_label = str((history_context or {}).get("label") or "").strip()
+    history_tone = str((history_context or {}).get("tone") or "").strip()
+
+    if gogyou and tone:
+        return _reason(
+            "GOGYOU_CONTEXT",
+            "今の巡り",
+            f"生年月日から見た今の巡りでは、「{gogyou}」の傾向として{tone}が見られます。",
+            strength="high",
+            evidence={
+                "gogyou_context": gogyou_context,
+                "history_context": history_context or None,
+                "birthdate": bool(birthdate),
+                "eto": eto or None,
+            },
+        )
+
+    if history_label and history_tone:
+        return _reason(
+            "HISTORY_CONTEXT",
+            "神社の文脈",
+            f"この神社には「{history_label}」の文脈があり、{history_tone}として受け取りやすい候補です。",
+            strength="high",
+            evidence={"history_context": history_context},
+        )
 
     if reason_type == "need_tag":
         return _reason(
@@ -178,9 +241,9 @@ def _build_reason_entry_from_primary_reason(
     if reason_type == "element":
         return _reason(
             "ELEMENT_MATCH",
-            "生年月日との相性",
-            "生年月日から見た傾向との相性を考慮しています。",
-            strength="high",
+            "生年月日との相性補助",
+            "西洋占星術の要素は、補助的な相性として参考にしています。",
+            strength="mid",
             evidence={"primary_reason": primary_reason, "birthdate": bool(birthdate)},
         )
 
@@ -217,11 +280,15 @@ def build_explanation_for_chat_rec(
     )
 
     primary_reason = _get_primary_reason(payload)
+    gogyou_context = _get_gogyou_context(payload)
+    history_context = _get_history_context(payload)
 
     summary = _build_summary_from_primary_reason(
         primary_reason=primary_reason,
         original_reason=original_reason,
         highlights=bullets,
+        gogyou_context=gogyou_context,
+        history_context=history_context,
     )
 
     reason_source = str(payload.get("reason_source") or "").strip()
@@ -233,6 +300,8 @@ def build_explanation_for_chat_rec(
     primary_entry = _build_reason_entry_from_primary_reason(
         primary_reason=primary_reason,
         birthdate=birthdate,
+        gogyou_context=gogyou_context,
+        history_context=history_context,
     )
     if primary_entry:
         reasons.append(primary_entry)
@@ -313,11 +382,15 @@ def build_explanation_for_plan_rec(
     )
 
     primary_reason = _get_primary_reason(payload)
+    gogyou_context = _get_gogyou_context(payload)
+    history_context = _get_history_context(payload)
 
     summary = _build_summary_from_primary_reason(
         primary_reason=primary_reason,
         original_reason=original_reason,
         highlights=bullets,
+        gogyou_context=gogyou_context,
+        history_context=history_context,
     )
 
     reasons: List[dict] = []
@@ -325,6 +398,8 @@ def build_explanation_for_plan_rec(
     primary_entry = _build_reason_entry_from_primary_reason(
         primary_reason=primary_reason,
         birthdate=birthdate,
+        gogyou_context=gogyou_context,
+        history_context=history_context,
     )
     if primary_entry:
         reasons.append(primary_entry)

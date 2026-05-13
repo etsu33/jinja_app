@@ -249,6 +249,14 @@ class Shrine(dj_models.Model):
         max_length=10, blank=True, null=True, help_text="五行属性: 木火土金水"
     )
 
+    # 歴史・文脈タグ（推薦理由の説明補助）
+    history_theme = models.CharField(
+        max_length=32,
+        blank=True,
+        default="",
+        help_text="神社の歴史文脈タグ: 再出発 / 静寂 / 復興 / 勝負 / 縁 / 学び / 守り",
+    )
+
     # 九星（任意入力・タグ用途）
     kyusei = models.CharField(
         max_length=8,
@@ -298,6 +306,7 @@ class Shrine(dj_models.Model):
             models.Index(fields=["longitude"], name="idx_shrine_lng"),
             models.Index(fields=["latitude", "longitude"], name="idx_shrine_lat_lng"),
             models.Index(fields=["kyusei"], name="idx_shrine_kyusei"),
+            models.Index(fields=["history_theme"], name="idx_shrine_history_theme"),
             models.Index(fields=["kind"], name="idx_shrine_kind"),
         ]
         constraints = [
