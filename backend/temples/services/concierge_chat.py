@@ -314,7 +314,7 @@ def build_chat_recommendations(
         visit_style_tags=visit_style_tags,
     )
 
-    recs = attach_explanation_payload(recs)
+    recs = attach_explanation_payload(recs, birthdate=birthdate)
 
     try:
         log.info(
