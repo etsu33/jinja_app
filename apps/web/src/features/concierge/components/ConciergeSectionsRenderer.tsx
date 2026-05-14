@@ -8,7 +8,6 @@ import ConciergeFilterPanel from "@/features/concierge/components/ConciergeFilte
 import ModeBadge from "@/features/concierge/components/ModeBadge";
 import { buildRecommendationReasonViewModel } from "@/lib/concierge/buildRecommendationReasonViewModel";
 import ConciergeTopRecommendationHero from "@/features/concierge/components/ConciergeTopRecommendationHero";
-import ConciergeConsultationSummary from "@/features/concierge/components/ConciergeConsultationSummary";
 import ShrineCardCompact from "@/components/shrines/ShrineCardCompact";
 import { track } from "@/lib/analytics/track";
 import { buildGoogleMapsDirUrl } from "@/lib/maps/googleMaps";
@@ -354,16 +353,6 @@ export default function ConciergeSectionsRenderer({
                 <div className="mb-2 flex items-center justify-end">
                   <ModeBadge mode={payload?.meta?.mode} />
                 </div>
-
-                {topReasonVm?.detail.consultationSummary ? (
-                  <div className="mb-4">
-                    <ConciergeConsultationSummary
-                      summary={topReasonVm.detail.consultationSummary}
-                      modeLabel={normalizedMode === "compat" ? "相性をもとに見ています" : "相談内容をもとに見ています"}
-                      appliedLabel={appliedLabel}
-                    />
-                  </div>
-                ) : null}
 
                 {typeof payload?.meta?.remaining === "number" && payload.meta.remaining > 0 && (
                   <div className="mb-2 text-xs leading-6 text-slate-500">

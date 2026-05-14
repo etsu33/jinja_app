@@ -37,7 +37,7 @@ export default function ConciergeTopRecommendationHero({
   primaryReason = null,
   secondaryReason: _secondaryReason = null,
   differenceFromOthers: _differenceFromOthers = null,
-  nextActionHint = null,
+  nextActionHint: _nextActionHint = null,
   tags = [],
   routeLabel = "経路案内",
   secondaryActionSlot = null,
@@ -71,17 +71,7 @@ export default function ConciergeTopRecommendationHero({
         </div>
 
         {primaryReason ? (
-          <div className="space-y-1 text-sm leading-7">
-            <p className="text-slate-700">{primaryReason.split("。")[0] || primaryReason}</p>
-            <p className="font-semibold text-slate-900">今の状況から動き出すなら、この候補が自然に見えます。</p>
-            <p className="text-xs text-slate-500">この候補を基準にすると判断しやすくなります。</p>
-          </div>
-        ) : null}
-
-        {nextActionHint ? (
-          <div className="border-t border-slate-100 pt-3 text-xs leading-6 text-slate-500">
-            <p>{nextActionHint}</p>
-          </div>
+          <p className="text-sm leading-7 text-slate-700">{primaryReason.split("。")[0] || primaryReason}</p>
         ) : null}
 
         {tags.length > 0 ? (
