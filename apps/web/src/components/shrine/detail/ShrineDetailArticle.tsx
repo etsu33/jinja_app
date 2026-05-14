@@ -197,7 +197,8 @@ export default function ShrineDetailArticle({
   saveActionNode?: React.ReactNode;
 }) {
   const hasRecommendationMeta = Boolean(recommendationMeta?.rankTitle && recommendationMeta?.rankBody);
-  const freeSections = freeDisplaySections.length > 0 ? freeDisplaySections.map((item) => item.section) : sections;
+  const hasLayeredSections = freeDisplaySections.length > 0 || premiumDisplaySections.length > 0;
+  const freeSections = hasLayeredSections ? freeDisplaySections.map((item) => item.section) : sections;
   const premiumSections = premiumDisplaySections.map((item) => item.section);
   const hasFreeSections = freeSections.length > 0;
   const hasPremiumSections = premiumSections.length > 0;
