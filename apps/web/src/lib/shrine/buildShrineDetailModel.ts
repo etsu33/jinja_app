@@ -1023,15 +1023,8 @@ function buildFreeDisplaySections(args: {
 }): ShrineDetailDisplaySection[] {
   const sections: ShrineDetailDisplaySection[] = [];
 
-  // Free では神社そのものの理解を中心にする。
-  // concierge 起点の詳細な意味づけは premiumSections 側へ寄せる。
-  if (args.meaningSection) {
-    sections.push({
-      tier: "free",
-      layer: "public",
-      section: args.meaningSection,
-    });
-  }
+  // Free では公開情報・ご利益などの補足に限定する。
+  // 「神社との意味の接続」は concierge 文脈が強いため premiumSections 側へ寄せる。
 
   if (args.supplementSection) {
     sections.push({
@@ -1048,6 +1041,7 @@ function buildPremiumDisplaySections(args: {
   isConciergeContext: boolean;
   reasonSection: DetailReasonSection | null;
   proposalSection: DetailProposalSection | null;
+  meaningSection: DetailMeaningSection;
 }): ShrineDetailDisplaySection[] {
   const sections: ShrineDetailDisplaySection[] = [];
 
@@ -1068,6 +1062,14 @@ function buildPremiumDisplaySections(args: {
       tier: "premium",
       layer: "context",
       section: args.proposalSection,
+    });
+  }
+
+  if (args.meaningSection) {
+    sections.push({
+      tier: "premium",
+      layer: "context",
+      section: args.meaningSection,
     });
   }
 
@@ -1450,6 +1452,7 @@ export function buildShrineDetailModel({
     isConciergeContext,
     reasonSection,
     proposalSection,
+    meaningSection,
   });
 
   const sections: ShrineDetailSectionModel[] = [
