@@ -73,6 +73,25 @@ function ShrineDetailSections({ sections }: { sections: ShrineDetailSectionModel
   );
 }
 
+function PremiumUpgradePrompt() {
+  return (
+    <section className="rounded-2xl border border-amber-100 bg-amber-50/70 p-4">
+      <div className="space-y-2">
+        <p className="text-sm font-semibold leading-6 text-amber-950">この神社が今のあなたに合う理由を、Premiumで詳しく確認できます。</p>
+        <p className="text-xs leading-6 text-slate-600">
+          コンシェルジュの相談内容に基づく深い理由、相性、行動の意味づけを表示します。
+        </p>
+        <Link
+          href="/billing/upgrade"
+          className="inline-flex items-center rounded-xl bg-amber-700 px-3 py-2 text-xs font-semibold text-white hover:bg-amber-800"
+        >
+          Premiumを見る
+        </Link>
+      </div>
+    </section>
+  );
+}
+
 function ShrineDetailHeroHeader(props: { title: string; heroMeaningCopy?: string | null; address?: string | null }) {
   const resolvedHeroMeaningCopy = props.heroMeaningCopy?.trim() || "今の流れを整え、次の見方を作る神社";
 
@@ -148,6 +167,9 @@ export default function ShrineDetailArticle({
   publicGoshuinsViewAllHref = "",
   showGoshuinSection = false,
   sections = [],
+  freeDisplaySections = [],
+  premiumDisplaySections = [],
+  isPremiumActive = false,
   recommendationMeta = null,
   saveActionNode,
 }: {
@@ -161,6 +183,9 @@ export default function ShrineDetailArticle({
   addGoshuinHref?: string | null;
   showGoshuinSection?: boolean;
   sections?: ShrineDetailSectionModel[];
+  freeDisplaySections?: { section: ShrineDetailSectionModel }[];
+  premiumDisplaySections?: { section: ShrineDetailSectionModel }[];
+  isPremiumActive?: boolean;
   recommendationMeta?: {
     rankTitle?: string | null;
     rankBody?: string | null;
@@ -172,7 +197,11 @@ export default function ShrineDetailArticle({
   saveActionNode?: React.ReactNode;
 }) {
   const hasRecommendationMeta = Boolean(recommendationMeta?.rankTitle && recommendationMeta?.rankBody);
-  const hasSections = sections.length > 0;
+  const freeSections = freeDisplaySections.length > 0 ? freeDisplaySections.map((item) => item.section) : sections;
+  const premiumSections = premiumDisplaySections.map((item) => item.section);
+  const hasFreeSections = freeSections.length > 0;
+  const hasPremiumSections = premiumSections.length > 0;
+  const hasSections = hasFreeSections || (isPremiumActive && hasPremiumSections);
 
   const benefitTagObjs = _tags.filter(
     (t) => t.type === "benefit" && (t.confidence === "high" || t.confidence === "mid"),
@@ -213,7 +242,11 @@ export default function ShrineDetailArticle({
         <ShrineDetailHeroCard title={cardProps.title} imageUrl={heroImageUrl} />
       </section>
 
-      {hasSections ? <ShrineDetailSections sections={sections} /> : null}
+      {hasFreeSections ? <ShrineDetailSections sections={freeSections} /> : null}
+
+      {isPremiumActive && hasPremiumSections ? <ShrineDetailSections sections={premiumSections} /> : null}
+
+      {!isPremiumActive && hasPremiumSections ? <PremiumUpgradePrompt /> : null}
 
       <ShrineDecisionPrompt />
 

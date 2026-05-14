@@ -56,6 +56,16 @@ type Args = {
   };
 };
 
+type ShrineDetailDisplayTier = "free" | "premium";
+
+type ShrineDetailLayer = "public" | "context" | "personal";
+
+type ShrineDetailDisplaySection = {
+  tier: ShrineDetailDisplayTier;
+  layer: ShrineDetailLayer;
+  section: ShrineDetailSectionModel;
+};
+
 
 
 type RecommendationWhySection = {
@@ -1005,6 +1015,65 @@ function buildSupplementSection(args: {
     : null;
 }
 
+function buildFreeDisplaySections(args: {
+  reasonSection: DetailReasonSection | null;
+  proposalSection: DetailProposalSection | null;
+  meaningSection: DetailMeaningSection;
+  supplementSection: DetailSupplementSection | null;
+}): ShrineDetailDisplaySection[] {
+  const sections: ShrineDetailDisplaySection[] = [];
+
+  // Free では神社そのものの理解を中心にする。
+  // concierge 起点の詳細な意味づけは premiumSections 側へ寄せる。
+  if (args.meaningSection) {
+    sections.push({
+      tier: "free",
+      layer: "public",
+      section: args.meaningSection,
+    });
+  }
+
+  if (args.supplementSection) {
+    sections.push({
+      tier: "free",
+      layer: "public",
+      section: args.supplementSection,
+    });
+  }
+
+  return sections;
+}
+
+function buildPremiumDisplaySections(args: {
+  isConciergeContext: boolean;
+  reasonSection: DetailReasonSection | null;
+  proposalSection: DetailProposalSection | null;
+}): ShrineDetailDisplaySection[] {
+  const sections: ShrineDetailDisplaySection[] = [];
+
+  // Premium は「自分の相談文脈との接続」に限定する。
+  // 検索・map から直接来た場合は、過度な個人向け理由を出さない。
+  if (!args.isConciergeContext) return sections;
+
+  if (args.reasonSection) {
+    sections.push({
+      tier: "premium",
+      layer: "context",
+      section: args.reasonSection,
+    });
+  }
+
+  if (args.proposalSection) {
+    sections.push({
+      tier: "premium",
+      layer: "context",
+      section: args.proposalSection,
+    });
+  }
+
+  return sections;
+}
+
 const HERO_MEANING_BY_TAG: Record<NeedTag, string> = {
   courage: "止まった流れを切り替え、次の一歩を定め直す神社",
   money: "巡りと流れを整え、立て直しの軸を取り戻す神社",
@@ -1370,11 +1439,22 @@ export function buildShrineDetailModel({
     explanationPayload,
   });
 
+  const freeDisplaySections = buildFreeDisplaySections({
+    reasonSection,
+    proposalSection,
+    meaningSection,
+    supplementSection,
+  });
+
+  const premiumDisplaySections = buildPremiumDisplaySections({
+    isConciergeContext,
+    reasonSection,
+    proposalSection,
+  });
+
   const sections: ShrineDetailSectionModel[] = [
-    ...(reasonSection ? [reasonSection] : []),
-    ...(proposalSection ? [proposalSection] : []),
-    ...(meaningSection ? [meaningSection] : []),
-    ...(supplementSection ? [supplementSection] : []),
+    ...freeDisplaySections.map((item) => item.section),
+    ...premiumDisplaySections.map((item) => item.section),
   ];
 
   return {
@@ -1388,6 +1468,8 @@ export function buildShrineDetailModel({
     conciergeBreakdown,
     exp,
     sections,
+    freeDisplaySections,
+    premiumDisplaySections,
     reasonSection,
     proposalSection,
     meaningSection,
