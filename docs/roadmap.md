@@ -24,6 +24,13 @@
 ---
 
 ## 🗂 マイルストーン（チェックリスト）
+### 完了: Premium 体験境界の明文化
+
+- [x] Premium 価値を Map/Search ではなく、パーソナル理由・相性・継続分析・保存/記録拡張に固定
+- [x] free / premium の価値境界を `docs/pricing.md` に追加
+- [x] Premium 体験境界を `docs/premium-experience.md` に追加
+- [x] 神社詳細の情報レイヤを `docs/shrine-detail-layer.md` に追加
+
 ### 完了: auth-state-boundary の整理
 
 - [x] `AuthProvider + /api/users/me/` を認証状態の source of truth に固定
