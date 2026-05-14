@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { Shrine } from "@/lib/api/shrines";
 import type { ConciergeBreakdown } from "@/lib/api/concierge";
 import { getConciergeThreadServer } from "@/lib/api/concierge.server";
+import { getBillingStatusServer } from "@/lib/api/billing.server";
 import { getShrinePublicServer } from "@/lib/api/shrines.server";
 import { fetchPublicGoshuinsForShrineServer } from "@/lib/api/publicGoshuins.server";
 import { getShrineFavoriteInitialState } from "@/lib/server/favorites.server";
@@ -243,6 +244,9 @@ export default async function Page({ params, searchParams }: Props) {
   const shrineBenefitLabels = getBenefitLabels(s);
   const shrineFeatureLabels: string[] = [];
 
+  const billingStatus = await getBillingStatusServer();
+  const isPremiumActive = billingStatus.plan === "premium" && billingStatus.is_active === true;
+
   const { guestMode, ...initialFavorite } = await getShrineFavoriteInitialState(numericId);
 
   let publicGoshuins: Awaited<ReturnType<typeof fetchPublicGoshuinsForShrineServer>> = [];
@@ -402,6 +406,7 @@ export default async function Page({ params, searchParams }: Props) {
       >
         <ShrineDetailArticle
           {...model}
+          isPremiumActive={isPremiumActive}
           addGoshuinHref={addGoshuinHref}
           saveActionNode={
             <ShrineSaveButton
