@@ -38,10 +38,10 @@ export default function ConciergeTopRecommendationHero({
   secondaryReason: _secondaryReason = null,
   differenceFromOthers: _differenceFromOthers = null,
   nextActionHint: _nextActionHint = null,
-  tags = [],
+  tags: _tags = [],
   routeLabel = "詳しく見る",
   secondaryActionSlot = null,
-  onRouteClick,
+  onRouteClick: _onRouteClick,
   onDetailClick,
 }: Props) {
   return (
