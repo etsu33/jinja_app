@@ -452,7 +452,7 @@ export default function ConciergeSectionsRenderer({
                               secondaryReason={null}
                               differenceFromOthers={null}
                               tags={(heroItem.breakdown?.matched_need_tags ?? []).map(labelNeedDisplayTag).slice(0, 3)}
-                              routeLabel="まずはここに行く"
+                              routeLabel="詳しく見る"
                               secondaryActionSlot={
                                 <ShrineSaveButton
                                   shrineId={heroItem.shrineId}

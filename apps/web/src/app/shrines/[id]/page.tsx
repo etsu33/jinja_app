@@ -399,7 +399,7 @@ export default async function Page({ params, searchParams }: Props) {
         subtitle={null}
         close={close}
         addGoshuinHref={null}
-        googleDirHref={googleDirHref}
+        googleDirHref={isPremiumActive ? googleDirHref : null}
         googleDirLabel="Googleマップで経路案内"
         saveAction={null}
         hideActions={hideActions}

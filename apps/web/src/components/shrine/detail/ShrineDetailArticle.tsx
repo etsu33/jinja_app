@@ -249,7 +249,7 @@ export default function ShrineDetailArticle({
 
       {!isPremiumActive && hasPremiumSections ? <PremiumUpgradePrompt /> : null}
 
-      <ShrineDecisionPrompt />
+      {isPremiumActive && hasPremiumSections ? <ShrineDecisionPrompt /> : null}
 
       {hasRecommendationMeta && recommendationMeta ? (
         <section>
