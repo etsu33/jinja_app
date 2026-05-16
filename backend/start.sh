@@ -17,12 +17,6 @@ echo "Running migrations..."
 python manage.py migrate --noinput
 python manage.py repair_favorite_table || echo "repair_favorite_table failed; continue startup"
 
-if python manage.py showmigrations temples | grep -q "0083_"; then
-  echo "Applying bootstrap migration explicitly..."
-  python manage.py migrate temples 0083 --noinput
-else
-  echo "Skipping explicit temples 0083 migration: not registered in Django migration graph"
-fi
 
 echo "Repairing FeatureUsage table..."
 python manage.py repair_featureusage_table
