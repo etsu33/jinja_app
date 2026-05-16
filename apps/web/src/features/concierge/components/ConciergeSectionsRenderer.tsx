@@ -82,6 +82,8 @@ function ConciergePremiumEntryCard(props: { shrineId?: number | null; tid?: stri
           onClick={() =>
             track("concierge_premium_click", {
               source: "hero_card",
+              valueProp: "state_reflection_subscription",
+              funnelStep: "concierge_result",
               shrineId: props.shrineId ?? null,
               tid: props.tid ?? null,
             })
