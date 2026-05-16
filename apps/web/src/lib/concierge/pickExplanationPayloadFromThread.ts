@@ -23,22 +23,6 @@ export type PickedExplanationPayload = {
   } | null;
 };
 
-export type PreviousConsultationSummary = {
-  threadId: number | null;
-  createdAt: string | null;
-  consultationSummary: string | null;
-  matchedNeedTags: string[];
-  primaryNeedLabelJa: string | null;
-  primaryReasonLabelJa: string | null;
-};
-
-export type StateDelta = {
-  previous: PreviousConsultationSummary | null;
-  current: PreviousConsultationSummary | null;
-  changedNeedTags: string[];
-  continuedNeedTags: string[];
-  summary: string | null;
-};
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
