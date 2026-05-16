@@ -163,7 +163,13 @@ function threadDetailToUnified(thread: ConciergeThreadDetail | null): UnifiedCon
   const dataLike =
     (root?.data && typeof root.data === "object" && !Array.isArray(root.data) ? root.data : null) ?? root;
 
+  const recommendationsV2 =
+    (Array.isArray(dataLike?.recommendations_v2) ? dataLike.recommendations_v2 : null) ??
+    (Array.isArray(root?.recommendations_v2) ? root.recommendations_v2 : null) ??
+    null;
+
   const recommendations =
+    recommendationsV2 ??
     (Array.isArray(dataLike?.recommendations) ? dataLike.recommendations : null) ??
     (Array.isArray(root?.recommendations) ? root.recommendations : null) ??
     [];
@@ -201,6 +207,7 @@ function threadDetailToUnified(thread: ConciergeThreadDetail | null): UnifiedCon
     data: {
       ...(dataLike ?? {}),
       recommendations,
+      recommendations_v2: recommendationsV2,
       _signals: signals,
     },
     reply,
