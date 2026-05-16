@@ -4,8 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import ConciergeLayout from "@/features/concierge/components/ConciergeLayout";
-import { useConciergeChat } from "@/features/concierge/hooks";
-
+import { useConciergeChat, useConciergeThreads } from "@/features/concierge/hooks";
 import {
   getConciergeThread,
   type ConciergeMessage,
@@ -42,6 +41,7 @@ import { track } from "@/lib/analytics/track";
 import { buildPreviousConsultationSummary } from "@/lib/concierge/buildPreviousConsultationSummary";
 import { compareState } from "@/lib/concierge/compareState";
 import PremiumStateDeltaCard from "@/features/concierge/components/PremiumStateDeltaCard";
+
 
 
 /* ========================================
@@ -468,6 +468,7 @@ export default function ConciergeClientFull() {
   const isPremiumActive = billing.status?.plan === "premium" && billing.status?.is_active === true;
 
   const canSaveConciergeThread = !isAuthRequiredForAction("save_concierge_thread") || isLoggedIn;
+  const { threads } = useConciergeThreads();
 
   const [eventsByThread, setEventsByThread] = useState<EventsByThread>({});
   const [hydrated, setHydrated] = useState(false);
@@ -511,13 +512,23 @@ export default function ConciergeClientFull() {
   const [liveRecs, setLiveRecs] = useState<ConciergeRecommendation[]>([]);
 
   const [threadDetail, setThreadDetail] = useState<ConciergeThreadDetail | null>(null);
+  const [previousThreadDetail, setPreviousThreadDetail] = useState<ConciergeThreadDetail | null>(null);
 
-  const previousConsultationSummary = useMemo(
+
+  const currentConsultationSummary = useMemo(
     () => buildPreviousConsultationSummary(threadDetail),
     [threadDetail],
   );
 
-  const stateDelta = useMemo(() => compareState(null, previousConsultationSummary), [previousConsultationSummary]);
+  const previousConsultationSummary = useMemo(
+    () => buildPreviousConsultationSummary(previousThreadDetail),
+    [previousThreadDetail],
+  );
+
+  const stateDelta = useMemo(
+    () => compareState(previousConsultationSummary, currentConsultationSummary),
+    [currentConsultationSummary, previousConsultationSummary],
+  );
   const [, setThreadLoading] = useState(false);
 
   const setActiveTid = (tid: number) => {
@@ -539,6 +550,17 @@ export default function ConciergeClientFull() {
     if (n <= 0) return null;
     return n;
   }, [rawTid]);
+
+  const previousThreadId = useMemo(() => {
+    const currentId = tidNum ?? activeThreadId;
+    if (!currentId || !Array.isArray(threads) || threads.length === 0) return null;
+
+    const currentIndex = threads.findIndex((t) => Number(t.id) === Number(currentId));
+    if (currentIndex < 0) return null;
+
+    const previousThread = threads[currentIndex + 1] ?? null;
+    return typeof previousThread?.id === "number" ? previousThread.id : null;
+  }, [activeThreadId, threads, tidNum]);
 
   const isEntryRoute = tidNum === null;
   const tidFromQuery = tidNum ?? 0;
@@ -690,6 +712,31 @@ export default function ConciergeClientFull() {
       cancelled = true;
     };
   }, [hydrated, tidNum]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    if (!previousThreadId) {
+      setPreviousThreadDetail(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const data = await getConciergeThread(String(previousThreadId));
+        if (cancelled) return;
+        setPreviousThreadDetail(data);
+      } catch {
+        if (cancelled) return;
+        setPreviousThreadDetail(null);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hydrated, previousThreadId]);
 
   /* ----------------------------------------
    * タグ取得（フィルター開いたら）
