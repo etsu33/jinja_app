@@ -447,7 +447,7 @@ export default function ConciergeSectionsRenderer({
                               subtitle={reasonVm.hero.subtitle ?? null}
                               catchCopy={reasonVm.hero.catchCopy}
                               whyTop={null}
-                              primaryReason={reasonVm.why.primaryReason}
+                              primaryReason={null}
                               secondaryReason={null}
                               differenceFromOthers={null}
                               tags={(heroItem.breakdown?.matched_need_tags ?? []).map(labelNeedDisplayTag).slice(0, 3)}
