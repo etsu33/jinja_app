@@ -11,7 +11,6 @@ import ConciergeTopRecommendationHero from "@/features/concierge/components/Conc
 import ConciergeConsultationSummary from "@/features/concierge/components/ConciergeConsultationSummary";
 import ShrineCardCompact from "@/components/shrines/ShrineCardCompact";
 import { track } from "@/lib/analytics/track";
-import { buildGoogleMapsDirUrl } from "@/lib/maps/googleMaps";
 import { labelNeedDisplayTag } from "@/features/concierge/copy/needDisplayCopy";
 
 import type {
@@ -462,25 +461,6 @@ export default function ConciergeSectionsRenderer({
                                   variant="subtle"
                                 />
                               }
-                              onRouteClick={() => {
-                                track("concierge_result_click", {
-                                  action: "route",
-                                  position: "hero_primary",
-                                  rank: 1,
-                                  shrineId: heroItem.shrineId,
-                                  firstClick: resolveFirstResultClick(resultSetId),
-                                });
-
-                                onAction?.({
-                                  type: "open_map",
-                                  shrineId: heroItem.shrineId,
-                                  rank: 1,
-                                  routeHref: buildGoogleMapsDirUrl({
-                                    address: (heroItem as any).address ?? null,
-                                    fallbackName: heroItem.title,
-                                  }),
-                                });
-                              }}
                               onDetailClick={() =>
                                 track("concierge_result_click", {
                                   action: "detail",
