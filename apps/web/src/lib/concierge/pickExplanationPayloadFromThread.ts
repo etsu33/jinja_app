@@ -23,6 +23,23 @@ export type PickedExplanationPayload = {
   } | null;
 };
 
+export type PreviousConsultationSummary = {
+  threadId: number | null;
+  createdAt: string | null;
+  consultationSummary: string | null;
+  matchedNeedTags: string[];
+  primaryNeedLabelJa: string | null;
+  primaryReasonLabelJa: string | null;
+};
+
+export type StateDelta = {
+  previous: PreviousConsultationSummary | null;
+  current: PreviousConsultationSummary | null;
+  changedNeedTags: string[];
+  continuedNeedTags: string[];
+  summary: string | null;
+};
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -63,7 +80,10 @@ export function pickExplanationPayloadFromThread(thread: unknown, shrineId: numb
   if (!isRecord(thread)) return null;
 
   const data = isRecord(thread.data) ? thread.data : null;
-  const recs = Array.isArray(data?.recommendations) ? data!.recommendations : [];
+  const recs =
+    (Array.isArray(data?.recommendations_v2) ? data.recommendations_v2 : null) ??
+    (Array.isArray(data?.recommendations) ? data.recommendations : null) ??
+    [];
 
   const hit = recs.find((item) => {
     if (!isRecord(item)) return false;
