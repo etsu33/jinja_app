@@ -78,7 +78,7 @@ function PremiumUpgradePrompt() {
     <section className="rounded-2xl border border-amber-100 bg-amber-50/70 p-4">
       <div className="space-y-2">
         <p className="text-sm font-semibold leading-6 text-amber-950">
-          なぜ今のあなたにこの神社が合うのか、Premiumで確認できます。
+          今の状態整理と、この神社を選ぶ意味をPremiumで深められます。
         </p>
         <p className="text-xs leading-6 text-slate-600">
           相談内容に基づく状態整理、相性、行動の意味づけを表示します。
