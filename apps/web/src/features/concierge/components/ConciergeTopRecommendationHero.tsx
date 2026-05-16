@@ -85,7 +85,7 @@ export default function ConciergeTopRecommendationHero({
             </Link>
           ) : null}
 
-          {href || secondaryActionSlot ? (
+          {secondaryActionSlot ? (
             <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2" data-testid="hero-secondary-actions">
               {secondaryActionSlot}
             </div>
