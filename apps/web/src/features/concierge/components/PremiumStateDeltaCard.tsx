@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 
 import type { StateDelta } from "@/lib/concierge/stateComparison";
+import { toNeedTagLabels } from "@/lib/concierge/needTagLabelMap";
 import { track } from "@/lib/analytics/track";
 
 type Props = {
@@ -24,8 +25,8 @@ function renderTagSentence(tags: string[] | undefined | null, emptyText: string)
 }
 
 export default function PremiumStateDeltaCard({ stateDelta, isPremium }: Props) {
-  const changedNeedTags = stateDelta.changedNeedTags ?? [];
-  const continuedNeedTags = stateDelta.continuedNeedTags ?? [];
+  const changedNeedTags = toNeedTagLabels(stateDelta.changedNeedTags ?? []);
+  const continuedNeedTags = toNeedTagLabels(stateDelta.continuedNeedTags ?? []);
 
   useEffect(() => {
     if (!isPremium) return;
