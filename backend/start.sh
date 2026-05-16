@@ -15,6 +15,7 @@ python manage.py showmigrations temples | tail -20
 
 echo "Running migrations..."
 python manage.py migrate --noinput
+python manage.py repair_favorite_table || echo "repair_favorite_table failed; continue startup"
 
 if python manage.py showmigrations temples | grep -q "0083_"; then
   echo "Applying bootstrap migration explicitly..."
