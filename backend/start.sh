@@ -17,7 +17,6 @@ echo "Running migrations..."
 python manage.py migrate --noinput
 python manage.py repair_favorite_table || echo "repair_favorite_table failed; continue startup"
 
-
 echo "Repairing FeatureUsage table..."
 python manage.py repair_featureusage_table
 echo "FeatureUsage repair completed."
