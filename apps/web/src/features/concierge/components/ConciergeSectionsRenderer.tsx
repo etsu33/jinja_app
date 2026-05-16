@@ -484,15 +484,6 @@ export default function ConciergeSectionsRenderer({
                               differenceFromOthers={null}
                               tags={(heroItem.breakdown?.matched_need_tags ?? []).map(labelNeedDisplayTag).slice(0, 3)}
                               routeLabel="詳しく見る"
-                              secondaryActionSlot={
-                                <ShrineSaveButton
-                                  shrineId={heroItem.shrineId}
-                                  ctx="concierge"
-                                  tid={tid}
-                                  nextPath={heroItem.detailHref}
-                                  variant="subtle"
-                                />
-                              }
                               onDetailClick={() =>
                                 track("concierge_result_click", {
                                   action: "detail",
@@ -507,6 +498,14 @@ export default function ConciergeSectionsRenderer({
                             {!isPremiumActive ? (
                               <ConciergePremiumEntryCard shrineId={heroItem.shrineId} tid={tid} />
                             ) : null}
+
+                            <ShrineSaveButton
+                              shrineId={heroItem.shrineId}
+                              ctx="concierge"
+                              tid={tid}
+                              nextPath={heroItem.detailHref}
+                              variant="subtle"
+                            />
                           </div>
                         );
                       })()
