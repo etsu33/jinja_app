@@ -39,6 +39,10 @@ const conciergeCardClass = "rounded-3xl border border-stone-200/45 bg-white/75 p
 
 import { isValidISODate, normalizeBirthdateInput } from "@/lib/date/normalizeBirthdateInput";
 import { track } from "@/lib/analytics/track";
+import { buildPreviousConsultationSummary } from "@/lib/concierge/buildPreviousConsultationSummary";
+import { compareState } from "@/lib/concierge/compareState";
+import PremiumStateDeltaCard from "@/features/concierge/components/PremiumStateDeltaCard";
+
 
 /* ========================================
  * 型定義とデータ設定
@@ -507,6 +511,13 @@ export default function ConciergeClientFull() {
   const [liveRecs, setLiveRecs] = useState<ConciergeRecommendation[]>([]);
 
   const [threadDetail, setThreadDetail] = useState<ConciergeThreadDetail | null>(null);
+
+  const previousConsultationSummary = useMemo(
+    () => buildPreviousConsultationSummary(threadDetail),
+    [threadDetail],
+  );
+
+  const stateDelta = useMemo(() => compareState(null, previousConsultationSummary), [previousConsultationSummary]);
   const [, setThreadLoading] = useState(false);
 
   const setActiveTid = (tid: number) => {
@@ -765,6 +776,12 @@ export default function ConciergeClientFull() {
     const recs = displayUnified?.data?.recommendations;
     return Array.isArray(recs) ? (recs as ConciergeRecommendation[]) : [];
   }, [liveRecs, displayUnified]);
+
+  useEffect(() => {
+    if (!stateDelta) return;
+
+    console.debug("[STATE_DELTA]", stateDelta);
+  }, [stateDelta]);
 
   const hasCandidates = displayRecommendations.length > 0;
 
@@ -1530,6 +1547,13 @@ export default function ConciergeClientFull() {
               threadId={thread?.id ?? activeThreadId}
               isEntryRoute={isEntryRoute}
             />
+
+            {stateDelta ? (
+              <PremiumStateDeltaCard
+                stateDelta={stateDelta}
+                isPremium={isPremiumActive}
+              />
+            ) : null}
 
             <ConciergeDebugPanel unified={displayUnified} />
 

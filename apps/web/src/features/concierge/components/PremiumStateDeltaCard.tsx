@@ -1,0 +1,105 @@
+
+
+import { useEffect } from "react";
+import Link from "next/link";
+
+import type { StateDelta } from "@/lib/concierge/stateComparison";
+import { track } from "@/lib/analytics/track";
+
+type Props = {
+  stateDelta: StateDelta;
+  isPremium: boolean;
+};
+
+function renderTagSentence(tags: string[] | undefined | null, emptyText: string) {
+  if (!Array.isArray(tags) || tags.length === 0) {
+    return emptyText;
+  }
+
+  if (tags.length === 1) {
+    return `「${tags[0]}」が見えています。`;
+  }
+
+  return `「${tags.join("」「")}」が見えています。`;
+}
+
+export default function PremiumStateDeltaCard({ stateDelta, isPremium }: Props) {
+  const changedNeedTags = stateDelta.changedNeedTags ?? [];
+  const continuedNeedTags = stateDelta.continuedNeedTags ?? [];
+
+  useEffect(() => {
+    if (!isPremium) return;
+
+    track("premium_history_comparison_view", {
+      source: "state_delta_card",
+      hasSummary: Boolean(stateDelta.summary),
+      changedNeedTagCount: changedNeedTags.length,
+      continuedNeedTagCount: continuedNeedTags.length,
+    });
+  }, [changedNeedTags.length, continuedNeedTags.length, isPremium, stateDelta.summary]);
+
+  if (!isPremium) {
+    return (
+      <section className="mx-4 mt-4 rounded-3xl border border-amber-200 bg-amber-50/80 p-4">
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-amber-950">
+            前回との状態変化はPremiumで確認できます。
+          </p>
+
+          <p className="text-xs leading-6 text-slate-600">
+            気持ちの変化や、継続しているテーマを振り返れます。
+          </p>
+
+          <Link
+            href="/billing/upgrade"
+            className="inline-flex rounded-2xl bg-amber-700 px-4 py-2 text-sm font-semibold text-white"
+            onClick={() =>
+              track("premium_history_comparison_click", {
+                source: "state_delta_card",
+                funnelStep: "comparison_preview",
+              })
+            }
+          >
+            Premiumで比較を見る
+          </Link>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="mx-4 mt-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="space-y-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+            前回との変化
+          </p>
+
+          <p className="mt-2 text-sm leading-6 text-slate-700">
+            {stateDelta.summary ?? "今回の相談内容から、状態の変化を整理しています。前回比較の材料が増えるほど、変化の見え方が安定します。"}
+          </p>
+        </div>
+
+        <div className="rounded-2xl bg-slate-50 p-3">
+          <p className="text-xs font-semibold text-slate-500">
+            今回強く出ているテーマ
+          </p>
+
+          <p className="mt-2 text-sm leading-6 text-slate-700">
+            {renderTagSentence(changedNeedTags, "今回新しく強まったテーマはまだ整理中です。")}
+          </p>
+        </div>
+
+        <div className="rounded-2xl bg-slate-50 p-3">
+          <p className="text-xs font-semibold text-slate-500">
+            継続しているテーマ
+          </p>
+
+          <p className="mt-2 text-sm leading-6 text-slate-700">
+            {renderTagSentence(continuedNeedTags, "前回から継続しているテーマはまだ整理中です。")}
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
