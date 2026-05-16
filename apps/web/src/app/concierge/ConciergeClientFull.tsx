@@ -552,15 +552,16 @@ export default function ConciergeClientFull() {
   }, [rawTid]);
 
   const previousThreadId = useMemo(() => {
+    if (!isLoggedIn) return null;
     const currentId = tidNum ?? activeThreadId;
     if (!currentId || !Array.isArray(threads) || threads.length === 0) return null;
 
-    const currentIndex = threads.findIndex((t) => Number(t.id) === Number(currentId));
+    const currentIndex = threads.findIndex((t) => t != null && Number(t.id) === Number(currentId));
     if (currentIndex < 0) return null;
 
     const previousThread = threads[currentIndex + 1] ?? null;
     return typeof previousThread?.id === "number" ? previousThread.id : null;
-  }, [activeThreadId, threads, tidNum]);
+  }, [activeThreadId, isLoggedIn, threads, tidNum]);
 
   const isEntryRoute = tidNum === null;
   const tidFromQuery = tidNum ?? 0;
@@ -1595,7 +1596,7 @@ export default function ConciergeClientFull() {
               isEntryRoute={isEntryRoute}
             />
 
-            {stateDelta ? (
+            {isLoggedIn && stateDelta ? (
               <PremiumStateDeltaCard
                 stateDelta={stateDelta}
                 isPremium={isPremiumActive}
