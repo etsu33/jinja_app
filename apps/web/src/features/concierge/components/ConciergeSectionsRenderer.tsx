@@ -71,7 +71,7 @@ function ConciergePremiumEntryCard(props: { shrineId?: number | null; tid?: stri
     <section className={conciergePremiumCardClass}>
       <div className="space-y-2">
         <p className="text-sm font-semibold leading-6 text-amber-950">
-          なぜ今のあなたにこの神社が合うのか、Premiumで確認できます。
+          今の状態整理と、次の選び方をPremiumで深められます。
         </p>
         <p className="text-xs leading-6 text-slate-600">
           相談内容に基づく状態整理、相性、行動の意味づけを表示します。
@@ -82,6 +82,8 @@ function ConciergePremiumEntryCard(props: { shrineId?: number | null; tid?: stri
           onClick={() =>
             track("concierge_premium_click", {
               source: "hero_card",
+              valueProp: "state_reflection_subscription",
+              funnelStep: "concierge_result",
               shrineId: props.shrineId ?? null,
               tid: props.tid ?? null,
             })

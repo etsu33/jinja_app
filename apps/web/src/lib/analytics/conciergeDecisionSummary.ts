@@ -12,6 +12,7 @@ export type ConciergeDecisionSummary = {
   decisions: number;
   returnsAfterDetail: number;
   resultClicks: number;
+  premiumClicks: number;
   heroPrimaryClicks: number;
   heroSecondaryClicks: number;
   detailClicks: number;
@@ -44,10 +45,12 @@ export function buildConciergeDecisionSummary(events: TrackEventDetail[]): Conci
   const decisions = events.filter((event) => event.eventName === "shrine_decision");
   const returnsAfterDetail = events.filter((event) => event.eventName === "concierge_return_after_detail");
   const resultClicks = events.filter((event) => event.eventName === "concierge_result_click");
+  const premiumClicks = events.filter((event) => event.eventName === "concierge_premium_click");
 
   for (const event of events) {
     if (
       event.eventName === "concierge_result_click" ||
+      event.eventName === "concierge_premium_click" ||
       event.eventName === "shrine_detail_view" ||
       event.eventName === "shrine_decision" ||
       event.eventName === "concierge_return_after_detail"
@@ -69,6 +72,7 @@ export function buildConciergeDecisionSummary(events: TrackEventDetail[]): Conci
     decisions: decisions.length,
     returnsAfterDetail: returnsAfterDetail.length,
     resultClicks: resultClicks.length,
+    premiumClicks: premiumClicks.length,
     heroPrimaryClicks,
     heroSecondaryClicks,
     detailClicks,
