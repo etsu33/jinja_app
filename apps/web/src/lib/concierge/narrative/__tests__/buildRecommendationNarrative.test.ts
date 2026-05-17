@@ -120,6 +120,32 @@ describe("buildRecommendationNarrative", () => {
     expect(result.match.actionMeaning).toContain("休みつつ立て直したい");
   });
 
+  it("primaryNeed=mental かつ secondaryNeedTags=rest で複合タイトルを返す", () => {
+    const result = buildRecommendationNarrative({
+      mode: "need",
+      primaryNeed: "mental",
+      secondaryNeedTags: ["rest"],
+      shrineName: "伊勢神宮",
+      shrineTone: "quiet",
+      benefitLabels: ["浄化"],
+    });
+
+    expect(result.combination?.title).toBe("不安と疲れが重なっている状態");
+  });
+
+  it("primaryNeed=money かつ secondaryNeedTags=love では combination を返さない", () => {
+    const result = buildRecommendationNarrative({
+      mode: "need",
+      primaryNeed: "money",
+      secondaryNeedTags: ["love"],
+      shrineName: "神社D",
+      shrineTone: "neutral",
+      benefitLabels: ["金運", "縁結び"],
+    });
+
+    expect(result.combination).toBeNull();
+  });
+
   it("need+career+courage で転機と前進の複合文言を返す", () => {
     const result = buildRecommendationNarrative({
       mode: "need",
