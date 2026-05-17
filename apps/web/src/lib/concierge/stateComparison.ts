@@ -13,5 +13,7 @@ export type StateDelta = {
   current: PreviousConsultationSummary | null;
   changedNeedTags: string[];
   continuedNeedTags: string[];
+  daysSincePrevious: number | null;
+  within7DaysSincePrevious: boolean;
   summary: string | null;
 };

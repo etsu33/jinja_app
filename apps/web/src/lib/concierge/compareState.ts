@@ -1,5 +1,3 @@
-
-
 import type {
   PreviousConsultationSummary,
   StateDelta,
@@ -27,6 +25,23 @@ function buildSummary(
   return null;
 }
 
+function calculateDaysSincePrevious(
+  previous: PreviousConsultationSummary | null,
+  current: PreviousConsultationSummary | null,
+): number | null {
+  if (!previous?.createdAt || !current?.createdAt) return null;
+
+  const previousTime = new Date(previous.createdAt).getTime();
+  const currentTime = new Date(current.createdAt).getTime();
+
+  if (!Number.isFinite(previousTime) || !Number.isFinite(currentTime)) return null;
+
+  const diffMs = currentTime - previousTime;
+  if (diffMs < 0) return null;
+
+  return Math.floor(diffMs / (1000 * 60 * 60 * 24));
+}
+
 export function compareState(
   previous: PreviousConsultationSummary | null,
   current: PreviousConsultationSummary | null,
@@ -42,11 +57,16 @@ export function compareState(
     previousTags.includes(tag),
   );
 
+  const daysSincePrevious = calculateDaysSincePrevious(previous, current);
+  const within7DaysSincePrevious = daysSincePrevious !== null && daysSincePrevious <= 7;
+
   return {
     previous,
     current,
     changedNeedTags,
     continuedNeedTags,
+    daysSincePrevious,
+    within7DaysSincePrevious,
     summary: buildSummary(changedNeedTags, continuedNeedTags),
   };
 }
