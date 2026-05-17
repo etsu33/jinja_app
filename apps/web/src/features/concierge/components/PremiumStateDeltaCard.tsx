@@ -119,7 +119,10 @@ export default function PremiumStateDeltaCard({ stateDelta, isPremium }: Props) 
           <p className="text-xs font-semibold text-slate-500">今回強く出ているテーマ</p>
 
           <p className="mt-2 text-sm leading-6 text-slate-700">
-            {renderTagSentence(changedNeedTags, "今回新しく強まったテーマはまだ整理中です。")}
+            {renderTagSentence(
+              changedNeedTags,
+              "今回は新しく強まったテーマを断定するより、今見えている流れを優先して整理しています。",
+            )}
           </p>
         </div>
 
