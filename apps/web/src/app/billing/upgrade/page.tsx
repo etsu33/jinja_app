@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useRef, useState } from "react";
+import { Suspense, useRef, useState } from "react";
 import { startBillingCheckout } from "@/lib/api/billing";
 import { trackBillingEvent } from "@/lib/analytics/billing";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { buildLoginHref } from "@/lib/nav/login";
 
-export default function BillingUpgradePage() {
+function BillingUpgradeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const auth = useAuth();
@@ -105,5 +105,19 @@ export default function BillingUpgradePage() {
         </Link>
       </div>
     </div>
+  );
+}
+
+export default function BillingUpgradePage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="mx-auto w-full max-w-md px-4 py-6">
+          <p className="text-sm leading-6 text-slate-600">プレミアム登録画面を準備しています...</p>
+        </main>
+      }
+    >
+      <BillingUpgradeContent />
+    </Suspense>
   );
 }
