@@ -5,6 +5,7 @@ import {
   serializeBillingAnalyticsPayload,
   trackBillingEvent,
 } from "../billing";
+import { ConsoleAnalyticsProvider, getAnalyticsProvider, setAnalyticsProvider } from "../providers";
 import { track } from "../track";
 
 vi.mock("../track", () => ({
@@ -16,6 +17,7 @@ const trackMock = vi.mocked(track);
 describe("billing analytics", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    setAnalyticsProvider(null);
   });
 
   describe("parseBillingFunnelSource", () => {
@@ -65,7 +67,56 @@ describe("billing analytics", () => {
   });
 
   describe("trackBillingEvent", () => {
+    it("provider未設定時はConsoleAnalyticsProviderにfallbackする", () => {
+      expect(getAnalyticsProvider()).toBeInstanceOf(ConsoleAnalyticsProvider);
+
+      trackBillingEvent("checkout_started", {
+        checkoutSessionId: "cs_test_123",
+      });
+
+      expect(trackMock).toHaveBeenCalledWith("checkout_started", {
+        area: "billing",
+        checkoutSessionId: "cs_test_123",
+      });
+    });
+
+    it("serialize後のpayloadをprovider.trackに渡す", () => {
+      const providerTrackMock = vi.fn();
+      setAnalyticsProvider({ track: providerTrackMock });
+
+      trackBillingEvent("checkout_started", {
+        checkoutSessionId: "cs_test_123",
+        source: null,
+        funnelStep: undefined,
+        count: 0,
+        enabled: false,
+        label: "",
+      });
+
+      expect(providerTrackMock).toHaveBeenCalledWith("checkout_started", {
+        area: "billing",
+        checkoutSessionId: "cs_test_123",
+        count: 0,
+        enabled: false,
+        label: "",
+      });
+    });
+
     it("analyticsの例外を外に投げない", () => {
+      setAnalyticsProvider({
+        track: () => {
+          throw new Error("analytics failed");
+        },
+      });
+
+      expect(() => {
+        trackBillingEvent("checkout_started", {
+          checkoutSessionId: "cs_test_123",
+        });
+      }).not.toThrow();
+    });
+
+    it("fallback providerの例外も外に投げない", () => {
       trackMock.mockImplementationOnce(() => {
         throw new Error("analytics failed");
       });
@@ -78,13 +129,16 @@ describe("billing analytics", () => {
     });
 
     it("session_id / sessionIdをtrack payloadに残さない", () => {
+      const providerTrackMock = vi.fn();
+      setAnalyticsProvider({ track: providerTrackMock });
+
       trackBillingEvent("checkout_started", {
         checkoutSessionId: "cs_test_123",
         session_id: "raw_session_id",
         sessionId: "rawSessionId",
       });
 
-      expect(trackMock).toHaveBeenCalledWith("checkout_started", {
+      expect(providerTrackMock).toHaveBeenCalledWith("checkout_started", {
         area: "billing",
         checkoutSessionId: "cs_test_123",
       });

@@ -1,5 +1,5 @@
 // apps/web/src/lib/analytics/billing.ts
-import { track } from "@/lib/analytics/track";
+import { getAnalyticsProvider } from "@/lib/analytics/providers";
 
 export type BillingAnalyticsEventName =
   | "comparison_preview"
@@ -65,7 +65,7 @@ export function trackBillingEvent(eventName: BillingAnalyticsEventName, payload:
   });
 
   try {
-    track(eventName, serializedPayload);
+    getAnalyticsProvider().track(eventName, serializedPayload);
   } catch (error) {
     if (process.env.NODE_ENV === "development") {
       console.warn("[billing analytics]", eventName, serializedPayload, error);
