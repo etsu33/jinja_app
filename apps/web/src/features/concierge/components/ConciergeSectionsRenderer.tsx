@@ -551,7 +551,7 @@ export default function ConciergeSectionsRenderer({
                         onClick={() => onAction?.({ type: "save_concierge_thread" })}
                         disabled={sending}
                       >
-                        {isGuestUser ? "ログインして相談を保存する" : "この相談を保存する"}
+                        {isGuestUser ? "ログインして相談結果を保存" : "この相談を保存する"}
                       </button>
                     </div>
                   ) : null}
