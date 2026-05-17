@@ -1154,6 +1154,8 @@ export default function ConciergeClientFull() {
   const shouldShowThreadRenderer = hydrated && !shouldShowEntry;
   const hideChatPanel = !hydrated || (isEntryRoute && !hasRestoredCandidates);
 
+  const shouldShowEntryError = !isBusy && !entryValidationError && !!error && !hasCandidates;
+
   const entryViewedRef = useRef(false);
 
   useEffect(() => {
@@ -1553,7 +1555,7 @@ export default function ConciergeClientFull() {
               </div>
             ) : null}
 
-            {!isBusy && !entryValidationError && error ? (
+            {shouldShowEntryError ? (
               <div className={`mt-3 ${conciergeCardClass}`}>
                 <p className="text-sm font-semibold text-rose-600">うまく取得できませんでした</p>
                 <div className="mt-2 grid gap-2">
