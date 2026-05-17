@@ -34,6 +34,8 @@ export default function PremiumStateDeltaCard({ stateDelta, isPremium }: Props) 
       hasSummary: Boolean(stateDelta.summary),
       hasCombinationChange: Boolean(stateDelta.combinationChange?.summary),
       combinationChanged: Boolean(stateDelta.combinationChange?.changed),
+      hasTransitionNarrative: Boolean(stateDelta.transitionNarrative?.summary),
+      transitionType: stateDelta.transitionNarrative?.type ?? "unknown",
       changedNeedTagCount: changedNeedTags.length,
       continuedNeedTagCount: continuedNeedTags.length,
       daysSincePrevious: stateDelta.daysSincePrevious,
@@ -47,6 +49,8 @@ export default function PremiumStateDeltaCard({ stateDelta, isPremium }: Props) 
     stateDelta.combinationChange?.summary,
     stateDelta.daysSincePrevious,
     stateDelta.summary,
+    stateDelta.transitionNarrative?.summary,
+    stateDelta.transitionNarrative?.type,
     stateDelta.within7DaysSincePrevious,
   ]);
 
@@ -100,6 +104,22 @@ export default function PremiumStateDeltaCard({ stateDelta, isPremium }: Props) 
 
             <p className="mt-2 text-sm leading-6 text-slate-700">
               {stateDelta.combinationChange.summary}
+            </p>
+          </div>
+        ) : null}
+
+        {stateDelta.transitionNarrative?.summary ? (
+          <div className="rounded-2xl bg-emerald-50/60 p-3">
+            <p className="text-xs font-semibold text-emerald-700">
+              今の流れ
+            </p>
+
+            <p className="mt-1 text-sm font-semibold leading-6 text-slate-800">
+              {stateDelta.transitionNarrative.title}
+            </p>
+
+            <p className="mt-2 text-sm leading-6 text-slate-700">
+              {stateDelta.transitionNarrative.summary}
             </p>
           </div>
         ) : null}
