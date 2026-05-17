@@ -4,6 +4,7 @@ import type {
   PreviousConsultationSummary,
   StateDelta,
 } from "./stateComparison";
+import { toNeedTagLabel } from "./needTagLabelMap";
 
 function unique(values: string[]): string[] {
   return [...new Set(values.filter(Boolean))];
@@ -14,11 +15,13 @@ function buildSummary(
   continuedNeedTags: string[],
 ): string | null {
   if (changedNeedTags.length > 0) {
-    return `前回より「${changedNeedTags.join("」「")}」の傾向が強まっています。`;
+    const labels = changedNeedTags.map(toNeedTagLabel);
+    return `前回より「${labels.join("」「")}」を意識する流れが強まっています。`;
   }
 
   if (continuedNeedTags.length > 0) {
-    return `前回から継続して「${continuedNeedTags.join("」「")}」がテーマになっています。`;
+    const labels = continuedNeedTags.map(toNeedTagLabel);
+    return `前回から継続して「${labels.join("」「")}」がテーマになっています。`;
   }
 
   return null;
