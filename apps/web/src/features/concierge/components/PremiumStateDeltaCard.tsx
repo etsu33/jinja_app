@@ -32,6 +32,8 @@ export default function PremiumStateDeltaCard({ stateDelta, isPremium }: Props) 
     track("premium_history_comparison_view", {
       source: "state_delta_card",
       hasSummary: Boolean(stateDelta.summary),
+      hasCombinationChange: Boolean(stateDelta.combinationChange?.summary),
+      combinationChanged: Boolean(stateDelta.combinationChange?.changed),
       changedNeedTagCount: changedNeedTags.length,
       continuedNeedTagCount: continuedNeedTags.length,
       daysSincePrevious: stateDelta.daysSincePrevious,
@@ -41,6 +43,8 @@ export default function PremiumStateDeltaCard({ stateDelta, isPremium }: Props) 
     changedNeedTags.length,
     continuedNeedTags.length,
     isPremium,
+    stateDelta.combinationChange?.changed,
+    stateDelta.combinationChange?.summary,
     stateDelta.daysSincePrevious,
     stateDelta.summary,
     stateDelta.within7DaysSincePrevious,
@@ -87,6 +91,18 @@ export default function PremiumStateDeltaCard({ stateDelta, isPremium }: Props) 
             {stateDelta.summary ?? "今回の相談内容から、状態の変化を整理しています。前回比較の材料が増えるほど、変化の見え方が安定します。"}
           </p>
         </div>
+
+        {stateDelta.combinationChange?.summary ? (
+          <div className="rounded-2xl bg-slate-50 p-3">
+            <p className="text-xs font-semibold text-slate-500">
+              状態の重なり
+            </p>
+
+            <p className="mt-2 text-sm leading-6 text-slate-700">
+              {stateDelta.combinationChange.summary}
+            </p>
+          </div>
+        ) : null}
 
         <div className="rounded-2xl bg-slate-50 p-3">
           <p className="text-xs font-semibold text-slate-500">

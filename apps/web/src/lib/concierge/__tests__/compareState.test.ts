@@ -1,0 +1,105 @@
+
+
+import { describe, expect, it } from "vitest";
+
+import { compareState } from "../compareState";
+import type { PreviousConsultationSummary } from "../stateComparison";
+
+function makeSummary(
+  overrides: Partial<PreviousConsultationSummary> = {},
+): PreviousConsultationSummary {
+  return {
+    threadId: 1,
+    createdAt: "2026-05-01T00:00:00.000Z",
+    consultationSummary: null,
+    matchedNeedTags: [],
+    combination: null,
+    primaryNeedLabelJa: null,
+    primaryReasonLabelJa: null,
+    recommendationNames: [],
+    ...overrides,
+  };
+}
+
+describe("compareState", () => {
+  it("currentだけ combination があると summary が出る", () => {
+    const result = compareState(
+      makeSummary({ combination: null }),
+      makeSummary({
+        combination: {
+          key: "mental+rest",
+          title: "不安と疲れが重なっている状態",
+          summary: "考え続ける疲れと、落ち着きたい気持ちが同時に出ています。",
+        },
+      }),
+    );
+
+    expect(result.combinationChange).toEqual({
+      previousTitle: null,
+      currentTitle: "不安と疲れが重なっている状態",
+      changed: true,
+      summary: "今回は「不安と疲れが重なっている状態」が状態の重なりとして見えています。",
+    });
+  });
+
+  it("previous/current が同じ combination なら changed=false", () => {
+    const combination = {
+      key: "mental+rest",
+      title: "不安と疲れが重なっている状態",
+      summary: "考え続ける疲れと、落ち着きたい気持ちが同時に出ています。",
+    };
+
+    const result = compareState(
+      makeSummary({ combination }),
+      makeSummary({ combination }),
+    );
+
+    expect(result.combinationChange).toEqual({
+      previousTitle: "不安と疲れが重なっている状態",
+      currentTitle: "不安と疲れが重なっている状態",
+      changed: false,
+      summary: "前回から「不安と疲れが重なっている状態」が継続して見えています。",
+    });
+  });
+
+  it("previous/current が違う combination なら changed=true", () => {
+    const result = compareState(
+      makeSummary({
+        combination: {
+          key: "mental+rest",
+          title: "不安と疲れが重なっている状態",
+          summary: "考え続ける疲れと、落ち着きたい気持ちが同時に出ています。",
+        },
+      }),
+      makeSummary({
+        combination: {
+          key: "career+courage",
+          title: "仕事や転機に向けて前進したい状態",
+          summary: "仕事や役割の流れを変えたい気持ちと、行動に移したい気持ちが重なっています。",
+        },
+      }),
+    );
+
+    expect(result.combinationChange).toEqual({
+      previousTitle: "不安と疲れが重なっている状態",
+      currentTitle: "仕事や転機に向けて前進したい状態",
+      changed: true,
+      summary:
+        "前回は「不安と疲れが重なっている状態」が見えていましたが、今回は「仕事や転機に向けて前進したい状態」が強く出ています。",
+    });
+  });
+
+  it("どちらも combination なしなら summary=null", () => {
+    const result = compareState(
+      makeSummary({ combination: null }),
+      makeSummary({ combination: null }),
+    );
+
+    expect(result.combinationChange).toEqual({
+      previousTitle: null,
+      currentTitle: null,
+      changed: false,
+      summary: null,
+    });
+  });
+});

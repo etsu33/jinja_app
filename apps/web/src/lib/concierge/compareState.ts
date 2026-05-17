@@ -25,6 +25,66 @@ function buildSummary(
   return null;
 }
 
+function buildCombinationChange(
+  previous: PreviousConsultationSummary | null,
+  current: PreviousConsultationSummary | null,
+): StateDelta["combinationChange"] {
+  const previousCombination = previous?.combination ?? null;
+  const currentCombination = current?.combination ?? null;
+  const previousTitle = previousCombination?.title ?? null;
+  const currentTitle = currentCombination?.title ?? null;
+
+  if (!previousCombination && !currentCombination) {
+    return {
+      previousTitle,
+      currentTitle,
+      changed: false,
+      summary: null,
+    };
+  }
+
+  if (!previousCombination && currentCombination) {
+    return {
+      previousTitle,
+      currentTitle,
+      changed: true,
+      summary: `今回は「${currentTitle}」が状態の重なりとして見えています。`,
+    };
+  }
+
+  if (previousCombination && !currentCombination) {
+    return {
+      previousTitle,
+      currentTitle,
+      changed: true,
+      summary: previousTitle
+        ? `前回見えていた「${previousTitle}」とは違い、今回は単一のテーマが中心に出ています。`
+        : null,
+    };
+  }
+
+  const changed = previousCombination?.key !== currentCombination?.key;
+
+  if (!changed) {
+    return {
+      previousTitle,
+      currentTitle,
+      changed: false,
+      summary: currentTitle ? `前回から「${currentTitle}」が継続して見えています。` : null,
+    };
+  }
+
+  return {
+    previousTitle,
+    currentTitle,
+    changed: true,
+    summary:
+      previousTitle && currentTitle
+        ? `前回は「${previousTitle}」が見えていましたが、今回は「${currentTitle}」が強く出ています。`
+        : null,
+  };
+}
+
 function calculateDaysSincePrevious(
   previous: PreviousConsultationSummary | null,
   current: PreviousConsultationSummary | null,
@@ -68,5 +128,6 @@ export function compareState(
     daysSincePrevious,
     within7DaysSincePrevious,
     summary: buildSummary(changedNeedTags, continuedNeedTags),
+    combinationChange: buildCombinationChange(previous, current),
   };
 }
