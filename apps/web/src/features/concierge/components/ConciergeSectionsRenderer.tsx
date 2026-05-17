@@ -8,7 +8,6 @@ import ConciergeFilterPanel from "@/features/concierge/components/ConciergeFilte
 import ModeBadge from "@/features/concierge/components/ModeBadge";
 import { buildRecommendationReasonViewModel } from "@/lib/concierge/buildRecommendationReasonViewModel";
 import ConciergeTopRecommendationHero from "@/features/concierge/components/ConciergeTopRecommendationHero";
-import ConciergeConsultationSummary from "@/features/concierge/components/ConciergeConsultationSummary";
 import ShrineCardCompact from "@/components/shrines/ShrineCardCompact";
 import { track } from "@/lib/analytics/track";
 import { labelNeedDisplayTag } from "@/features/concierge/copy/needDisplayCopy";
@@ -339,35 +338,9 @@ export default function ConciergeSectionsRenderer({
               (typeof rs?.ui_disclaimer_ja === "string" && rs.ui_disclaimer_ja) ||
               (hasDummy ? "条件に合う候補が少ないため、まずは選びやすい候補から表示しています。" : null);
 
-            const topRegisteredItem = items.find(
-              (x: RegisteredShrineItem | PlaceShrineItem) => x.kind === "registered",
-            ) as RegisteredShrineItem | undefined;
 
             const normalizedMode = normalizeConciergeMode(payload?.meta?.mode);
 
-            const topReasonVm =
-              topRegisteredItem && topRegisteredItem.kind === "registered"
-                ? buildRecommendationReasonViewModel({
-                    rec: {
-                      display_name: topRegisteredItem.title,
-                      name: topRegisteredItem.title,
-                      breakdown: topRegisteredItem.breakdown ?? null,
-                      breakdown_detail: (topRegisteredItem as any).breakdown_detail ?? null,
-                      reason: topRegisteredItem.description ?? null,
-                      fallback_mode: payload?.meta?.resultState?.fallback_mode ?? null,
-                      distance_m: (topRegisteredItem as any).distance_m ?? null,
-                      popular_score: (topRegisteredItem as any).popular_score ?? null,
-                      astro_elements: (topRegisteredItem as any).astro_elements ?? null,
-                      astro_priority: (topRegisteredItem as any).astro_priority ?? null,
-                      explanation: (topRegisteredItem as any).explanation ?? null,
-                      reason_facts: (topRegisteredItem as any).reasonFacts ?? null,
-                    },
-                    index: 0,
-                    mode: normalizedMode,
-                    birthdate: filterState?.birthdate ?? null,
-                    needTags: topRegisteredItem.breakdown?.matched_need_tags ?? [],
-                  })
-                : null;
 
             const registeredItems = items.filter(
               (x: RegisteredShrineItem | PlaceShrineItem): x is RegisteredShrineItem => x.kind === "registered",
@@ -385,16 +358,6 @@ export default function ConciergeSectionsRenderer({
                 <div className="mb-2 flex items-center justify-end">
                   <ModeBadge mode={payload?.meta?.mode} />
                 </div>
-
-                {topReasonVm?.detail.consultationSummary ? (
-                  <div className="mb-4">
-                    <ConciergeConsultationSummary
-                      summary={topReasonVm.detail.consultationSummary}
-                      modeLabel={normalizedMode === "compat" ? "相性をもとに見ています" : "相談内容をもとに見ています"}
-                      appliedLabel={appliedLabel}
-                    />
-                  </div>
-                ) : null}
 
                 {typeof payload?.meta?.remaining === "number" && payload.meta.remaining > 0 && (
                   <div className="mb-2 text-xs leading-6 text-slate-500">
