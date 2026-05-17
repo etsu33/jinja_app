@@ -87,47 +87,36 @@ export default function PremiumStateDeltaCard({ stateDelta, isPremium }: Props) 
     <section className="mx-4 mt-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="space-y-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-            前回との変化
-          </p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">前回との変化</p>
 
           <p className="mt-2 text-sm leading-6 text-slate-700">
-            {stateDelta.summary ?? "今回の相談内容から、状態の変化を整理しています。前回比較の材料が増えるほど、変化の見え方が安定します。"}
+            {stateDelta.summary ??
+              "今回の相談内容から、状態の変化を整理しています。前回比較の材料が増えるほど、変化の見え方が安定します。"}
           </p>
         </div>
 
         {stateDelta.combinationChange?.summary ? (
           <div className="rounded-2xl bg-slate-50 p-3">
-            <p className="text-xs font-semibold text-slate-500">
-              状態の重なり
-            </p>
+            <p className="text-xs font-semibold text-slate-500">状態の重なり</p>
 
-            <p className="mt-2 text-sm leading-6 text-slate-700">
-              {stateDelta.combinationChange.summary}
-            </p>
+            <p className="mt-2 text-sm leading-6 text-slate-700">{stateDelta.combinationChange.summary}</p>
           </div>
         ) : null}
 
         {stateDelta.transitionNarrative?.summary ? (
           <div className="rounded-2xl bg-emerald-50/60 p-3">
-            <p className="text-xs font-semibold text-emerald-700">
-              今の流れ
-            </p>
+            <p className="text-xs font-semibold text-emerald-700">今の流れ</p>
 
             <p className="mt-1 text-sm font-semibold leading-6 text-slate-800">
               {stateDelta.transitionNarrative.title}
             </p>
 
-            <p className="mt-2 text-sm leading-6 text-slate-700">
-              {stateDelta.transitionNarrative.summary}
-            </p>
+            <p className="mt-2 text-sm leading-6 text-slate-700">{stateDelta.transitionNarrative.summary}</p>
           </div>
         ) : null}
 
         <div className="rounded-2xl bg-slate-50 p-3">
-          <p className="text-xs font-semibold text-slate-500">
-            今回強く出ているテーマ
-          </p>
+          <p className="text-xs font-semibold text-slate-500">今回強く出ているテーマ</p>
 
           <p className="mt-2 text-sm leading-6 text-slate-700">
             {renderTagSentence(changedNeedTags, "今回新しく強まったテーマはまだ整理中です。")}
@@ -135,12 +124,13 @@ export default function PremiumStateDeltaCard({ stateDelta, isPremium }: Props) 
         </div>
 
         <div className="rounded-2xl bg-slate-50 p-3">
-          <p className="text-xs font-semibold text-slate-500">
-            継続しているテーマ
-          </p>
+          <p className="text-xs font-semibold text-slate-500">継続しているテーマ</p>
 
           <p className="mt-2 text-sm leading-6 text-slate-700">
-            {renderTagSentence(continuedNeedTags, "前回から継続しているテーマはまだ整理中です。")}
+            {renderTagSentence(
+              continuedNeedTags,
+              "今回は前回と同じテーマが中心に続くというより、別の方向に意識が向き始めています。",
+            )}
           </p>
         </div>
       </div>
