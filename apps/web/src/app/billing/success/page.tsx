@@ -4,7 +4,39 @@ import { Suspense, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useBilling } from "@/features/billing/hooks/useBilling";
-import { trackBillingEvent } from "@/lib/analytics/billing";
+import {
+  parseBillingFunnelSource,
+  parseBillingFunnelStep,
+  trackBillingEvent,
+  type BillingFunnelSource,
+  type BillingFunnelStep,
+} from "@/lib/analytics/billing";
+
+const BILLING_FUNNEL_STORAGE_KEY = "billing:funnel-attribution";
+
+type BillingFunnelAttribution = {
+  source?: BillingFunnelSource | null;
+  funnelStep?: BillingFunnelStep | null;
+};
+
+function readBillingFunnelAttribution(): BillingFunnelAttribution {
+  if (typeof window === "undefined") return {};
+
+  try {
+    const raw = window.sessionStorage.getItem(BILLING_FUNNEL_STORAGE_KEY);
+    if (!raw) return {};
+
+    const parsed = JSON.parse(raw);
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return {};
+
+    return {
+      source: typeof parsed.source === "string" ? parseBillingFunnelSource(parsed.source) : null,
+      funnelStep: typeof parsed.funnelStep === "string" ? parseBillingFunnelStep(parsed.funnelStep) : null,
+    };
+  } catch {
+    return {};
+  }
+}
 
 function BillingSuccessContent() {
   const searchParams = useSearchParams();
@@ -17,13 +49,21 @@ function BillingSuccessContent() {
   useEffect(() => {
     if (checkoutSuccessTrackedRef.current) return;
     checkoutSuccessTrackedRef.current = true;
-    trackBillingEvent("checkout_success", sessionId ? { session_id: sessionId } : {});
+    const funnelAttribution = readBillingFunnelAttribution();
+    trackBillingEvent("checkout_success", {
+      checkoutSessionId: sessionId,
+      ...funnelAttribution,
+    });
   }, [sessionId]);
 
   useEffect(() => {
     if (!isPremiumActive || premiumActiveTrackedRef.current) return;
     premiumActiveTrackedRef.current = true;
-    trackBillingEvent("premium_active", sessionId ? { session_id: sessionId } : {});
+    const funnelAttribution = readBillingFunnelAttribution();
+    trackBillingEvent("premium_active", {
+      checkoutSessionId: sessionId,
+      ...funnelAttribution,
+    });
   }, [isPremiumActive, sessionId]);
 
   if (!sessionId) {

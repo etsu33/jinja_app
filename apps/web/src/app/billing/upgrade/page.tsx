@@ -4,9 +4,36 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useRef, useState } from "react";
 import { startBillingCheckout } from "@/lib/api/billing";
-import { trackBillingEvent } from "@/lib/analytics/billing";
+import {
+  parseBillingFunnelSource,
+  parseBillingFunnelStep,
+  trackBillingEvent,
+  type BillingFunnelSource,
+  type BillingFunnelStep,
+} from "@/lib/analytics/billing";
 import { useAuth } from "@/lib/auth/AuthProvider";
+
 import { buildLoginHref } from "@/lib/nav/login";
+
+const BILLING_FUNNEL_STORAGE_KEY = "billing:funnel-attribution";
+
+type BillingFunnelAttribution = {
+  source: BillingFunnelSource | null;
+  funnelStep: BillingFunnelStep | null;
+};
+
+function saveBillingFunnelAttribution(funnelParams: BillingFunnelAttribution) {
+  try {
+    window.sessionStorage.setItem(
+      BILLING_FUNNEL_STORAGE_KEY,
+      JSON.stringify(funnelParams),
+    );
+  } catch (error) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn("[billing attribution]", error);
+    }
+  }
+}
 
 function BillingUpgradeContent() {
   const router = useRouter();
@@ -16,11 +43,18 @@ function BillingUpgradeContent() {
   const [error, setError] = useState<string | null>(null);
   const upgradeClickTrackedRef = useRef(false);
   const checkoutStartedTrackedRef = useRef(false);
-  const source = searchParams.get("source");
-  const funnelStep = searchParams.get("funnelStep");
+  const source = parseBillingFunnelSource(searchParams.get("source"));
+  const funnelStep = parseBillingFunnelStep(searchParams.get("funnelStep"));
 
   const startCheckout = async () => {
     if (auth.loading) return;
+
+    const funnelParams = {
+      source,
+      funnelStep,
+    };
+
+    saveBillingFunnelAttribution(funnelParams);
 
     if (!upgradeClickTrackedRef.current) {
       upgradeClickTrackedRef.current = true;
@@ -43,7 +77,7 @@ function BillingUpgradeContent() {
       if (!checkoutStartedTrackedRef.current) {
         checkoutStartedTrackedRef.current = true;
         trackBillingEvent("checkout_started", {
-          session_id: session.session_id,
+          checkoutSessionId: session.session_id,
           source,
           funnelStep,
         });
