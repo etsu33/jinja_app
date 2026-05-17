@@ -3,6 +3,7 @@ import type {
   StateDelta,
 } from "./stateComparison";
 import { toNeedTagLabel } from "./needTagLabelMap";
+import { buildStateTransitionNarrative } from "./stateTransitionNarrative";
 
 function unique(values: string[]): string[] {
   return [...new Set(values.filter(Boolean))];
@@ -119,6 +120,14 @@ export function compareState(
 
   const daysSincePrevious = calculateDaysSincePrevious(previous, current);
   const within7DaysSincePrevious = daysSincePrevious !== null && daysSincePrevious <= 7;
+  const combinationChange = buildCombinationChange(previous, current);
+  const transitionNarrative = buildStateTransitionNarrative({
+    previousNeedTags: previousTags,
+    currentNeedTags: currentTags,
+    changedNeedTags,
+    continuedNeedTags,
+    combinationChanged: combinationChange.changed,
+  });
 
   return {
     previous,
@@ -128,6 +137,7 @@ export function compareState(
     daysSincePrevious,
     within7DaysSincePrevious,
     summary: buildSummary(changedNeedTags, continuedNeedTags),
-    combinationChange: buildCombinationChange(previous, current),
+    combinationChange,
+    transitionNarrative,
   };
 }

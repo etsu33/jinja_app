@@ -1,5 +1,3 @@
-
-
 import { describe, expect, it } from "vitest";
 
 import { compareState } from "../compareState";
@@ -26,6 +24,7 @@ describe("compareState", () => {
     const result = compareState(
       makeSummary({ combination: null }),
       makeSummary({
+        matchedNeedTags: ["mental", "rest"],
         combination: {
           key: "mental+rest",
           title: "不安と疲れが重なっている状態",
@@ -40,6 +39,8 @@ describe("compareState", () => {
       changed: true,
       summary: "今回は「不安と疲れが重なっている状態」が状態の重なりとして見えています。",
     });
+
+    expect(result.transitionNarrative.type).toBe("transition");
   });
 
   it("previous/current が同じ combination なら changed=false", () => {
@@ -50,8 +51,8 @@ describe("compareState", () => {
     };
 
     const result = compareState(
-      makeSummary({ combination }),
-      makeSummary({ combination }),
+      makeSummary({ matchedNeedTags: ["mental", "rest"], combination }),
+      makeSummary({ matchedNeedTags: ["mental", "rest"], combination }),
     );
 
     expect(result.combinationChange).toEqual({
@@ -60,11 +61,14 @@ describe("compareState", () => {
       changed: false,
       summary: "前回から「不安と疲れが重なっている状態」が継続して見えています。",
     });
+
+    expect(result.transitionNarrative.type).toBe("continuation");
   });
 
   it("previous/current が違う combination なら changed=true", () => {
     const result = compareState(
       makeSummary({
+        matchedNeedTags: ["mental", "rest"],
         combination: {
           key: "mental+rest",
           title: "不安と疲れが重なっている状態",
@@ -72,6 +76,7 @@ describe("compareState", () => {
         },
       }),
       makeSummary({
+        matchedNeedTags: ["career", "courage"],
         combination: {
           key: "career+courage",
           title: "仕事や転機に向けて前進したい状態",
@@ -87,6 +92,8 @@ describe("compareState", () => {
       summary:
         "前回は「不安と疲れが重なっている状態」が見えていましたが、今回は「仕事や転機に向けて前進したい状態」が強く出ています。",
     });
+
+    expect(result.transitionNarrative.type).toBe("progression");
   });
 
   it("どちらも combination なしなら summary=null", () => {
@@ -101,5 +108,7 @@ describe("compareState", () => {
       changed: false,
       summary: null,
     });
+
+    expect(result.transitionNarrative.type).toBe("unknown");
   });
 });

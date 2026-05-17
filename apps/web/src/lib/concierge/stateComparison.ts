@@ -20,6 +20,14 @@ export type CombinationChange = {
   summary: string | null;
 };
 
+export type StateTransitionType = "continuation" | "progression" | "recovery" | "regression" | "transition" | "unknown";
+
+export type StateTransitionNarrative = {
+  type: StateTransitionType;
+  title: string;
+  summary: string | null;
+};
+
 export type StateDelta = {
   previous: PreviousConsultationSummary | null;
   current: PreviousConsultationSummary | null;
@@ -29,4 +37,5 @@ export type StateDelta = {
   within7DaysSincePrevious: boolean;
   summary: string | null;
   combinationChange: CombinationChange;
+  transitionNarrative: StateTransitionNarrative;
 };
