@@ -4,8 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import ConciergeLayout from "@/features/concierge/components/ConciergeLayout";
-import { useConciergeChat } from "@/features/concierge/hooks";
-
+import { useConciergeChat, useConciergeThreads } from "@/features/concierge/hooks";
 import {
   getConciergeThread,
   type ConciergeMessage,
@@ -39,6 +38,11 @@ const conciergeCardClass = "rounded-3xl border border-stone-200/45 bg-white/75 p
 
 import { isValidISODate, normalizeBirthdateInput } from "@/lib/date/normalizeBirthdateInput";
 import { track } from "@/lib/analytics/track";
+import { buildPreviousConsultationSummary } from "@/lib/concierge/buildPreviousConsultationSummary";
+import { compareState } from "@/lib/concierge/compareState";
+import PremiumStateDeltaCard from "@/features/concierge/components/PremiumStateDeltaCard";
+
+
 
 /* ========================================
  * 型定義とデータ設定
@@ -163,7 +167,13 @@ function threadDetailToUnified(thread: ConciergeThreadDetail | null): UnifiedCon
   const dataLike =
     (root?.data && typeof root.data === "object" && !Array.isArray(root.data) ? root.data : null) ?? root;
 
+  const recommendationsV2 =
+    (Array.isArray(dataLike?.recommendations_v2) ? dataLike.recommendations_v2 : null) ??
+    (Array.isArray(root?.recommendations_v2) ? root.recommendations_v2 : null) ??
+    null;
+
   const recommendations =
+    recommendationsV2 ??
     (Array.isArray(dataLike?.recommendations) ? dataLike.recommendations : null) ??
     (Array.isArray(root?.recommendations) ? root.recommendations : null) ??
     [];
@@ -201,6 +211,7 @@ function threadDetailToUnified(thread: ConciergeThreadDetail | null): UnifiedCon
     data: {
       ...(dataLike ?? {}),
       recommendations,
+      recommendations_v2: recommendationsV2,
       _signals: signals,
     },
     reply,
@@ -457,6 +468,7 @@ export default function ConciergeClientFull() {
   const isPremiumActive = billing.status?.plan === "premium" && billing.status?.is_active === true;
 
   const canSaveConciergeThread = !isAuthRequiredForAction("save_concierge_thread") || isLoggedIn;
+  const { threads } = useConciergeThreads();
 
   const [eventsByThread, setEventsByThread] = useState<EventsByThread>({});
   const [hydrated, setHydrated] = useState(false);
@@ -500,6 +512,23 @@ export default function ConciergeClientFull() {
   const [liveRecs, setLiveRecs] = useState<ConciergeRecommendation[]>([]);
 
   const [threadDetail, setThreadDetail] = useState<ConciergeThreadDetail | null>(null);
+  const [previousThreadDetail, setPreviousThreadDetail] = useState<ConciergeThreadDetail | null>(null);
+
+
+  const currentConsultationSummary = useMemo(
+    () => buildPreviousConsultationSummary(threadDetail),
+    [threadDetail],
+  );
+
+  const previousConsultationSummary = useMemo(
+    () => buildPreviousConsultationSummary(previousThreadDetail),
+    [previousThreadDetail],
+  );
+
+  const stateDelta = useMemo(
+    () => compareState(previousConsultationSummary, currentConsultationSummary),
+    [currentConsultationSummary, previousConsultationSummary],
+  );
   const [, setThreadLoading] = useState(false);
 
   const setActiveTid = (tid: number) => {
@@ -521,6 +550,19 @@ export default function ConciergeClientFull() {
     if (n <= 0) return null;
     return n;
   }, [rawTid]);
+
+  const previousThreadId = useMemo(() => {
+    if (!isLoggedIn) return null;
+    const currentId = tidNum ?? activeThreadId;
+    if (!currentId || !Array.isArray(threads) || threads.length === 0) return null;
+
+    const currentIndex = threads.findIndex((t) => t != null && Number(t.id) === Number(currentId));
+    if (currentIndex < 0) return null;
+
+    const previousThread = threads[currentIndex + 1] ?? null;
+    return typeof previousThread?.id === "number" ? previousThread.id : null;
+  }, [activeThreadId, isLoggedIn, threads, tidNum]);
+
 
   const isEntryRoute = tidNum === null;
   const tidFromQuery = tidNum ?? 0;
@@ -673,6 +715,31 @@ export default function ConciergeClientFull() {
     };
   }, [hydrated, tidNum]);
 
+  useEffect(() => {
+    if (!hydrated) return;
+    if (!previousThreadId) {
+      setPreviousThreadDetail(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const data = await getConciergeThread(String(previousThreadId));
+        if (cancelled) return;
+        setPreviousThreadDetail(data);
+      } catch {
+        if (cancelled) return;
+        setPreviousThreadDetail(null);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hydrated, previousThreadId]);
+
   /* ----------------------------------------
    * タグ取得（フィルター開いたら）
    * -------------------------------------- */
@@ -758,6 +825,7 @@ export default function ConciergeClientFull() {
     const recs = displayUnified?.data?.recommendations;
     return Array.isArray(recs) ? (recs as ConciergeRecommendation[]) : [];
   }, [liveRecs, displayUnified]);
+
 
   const hasCandidates = displayRecommendations.length > 0;
 
@@ -1523,6 +1591,13 @@ export default function ConciergeClientFull() {
               threadId={thread?.id ?? activeThreadId}
               isEntryRoute={isEntryRoute}
             />
+
+            {isLoggedIn && stateDelta ? (
+              <PremiumStateDeltaCard
+                stateDelta={stateDelta}
+                isPremium={isPremiumActive}
+              />
+            ) : null}
 
             <ConciergeDebugPanel unified={displayUnified} />
 

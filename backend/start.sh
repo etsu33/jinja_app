@@ -15,13 +15,7 @@ python manage.py showmigrations temples | tail -20
 
 echo "Running migrations..."
 python manage.py migrate --noinput
-
-if python manage.py showmigrations temples | grep -q "0083_"; then
-  echo "Applying bootstrap migration explicitly..."
-  python manage.py migrate temples 0083 --noinput
-else
-  echo "Skipping explicit temples 0083 migration: not registered in Django migration graph"
-fi
+python manage.py repair_favorite_table || echo "repair_favorite_table failed; continue startup"
 
 echo "Repairing FeatureUsage table..."
 python manage.py repair_featureusage_table
@@ -45,4 +39,4 @@ echo "Final diagnostics before gunicorn:"
 echo "PORT=${PORT}"
 echo "WEB_CONCURRENCY=${WEB_CONCURRENCY:-1}"
 echo "Starting gunicorn on 0.0.0.0:${PORT}..."
-exec gunicorn shrine_project.wsgi:application --bind "0.0.0.0:${PORT}" --workers "${WEB_CONCURRENCY:-1}" --timeout 120 --worker-tmp-dir /dev/shm --log-level debug --access-logfile - --error-logfile - --capture-output
+exec gunicorn shrine_project.wsgi:application --bind "0.0.0.0:${PORT}" --workers "${WEB_CONCURRENCY:-1}" --timeout 120 --worker-tmp-dir /dev/shm --log-level debug --access-logfile - --error-logfile - --capture-output --preload

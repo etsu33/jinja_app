@@ -1,5 +1,7 @@
 // apps/web/src/features/concierge/components/ThreadList.tsx
+import Link from "next/link";
 import type { ConciergeThread } from "@/lib/api/concierge";
+import { track } from "@/lib/analytics/track";
 import ThreadListItem from "./ThreadListItem";
 
 type Props = {
@@ -54,6 +56,23 @@ export function ThreadList({ threads, selectedId, loading, requiresLogin, onSele
         >
           新しい相談
         </button>
+      </div>
+
+      <div className="mx-3 mb-2 rounded-2xl border border-amber-200 bg-amber-50/80 p-3 text-xs">
+        <p className="font-semibold text-amber-950">過去の相談との変化をPremiumで確認できます。</p>
+        <p className="mt-1 leading-5 text-slate-600">前回との違いや、今の状態の変化を見返せます。</p>
+        <Link
+          href="/billing/upgrade"
+          className="mt-2 inline-flex rounded-xl bg-amber-700 px-3 py-2 font-semibold text-white"
+          onClick={() =>
+            track("premium_history_click", {
+              source: "thread_list",
+              funnelStep: "history_comparison",
+            })
+          }
+        >
+          Premiumを見る
+        </Link>
       </div>
 
       {loading && <p className="px-3 pb-2 text-[11px] text-gray-400">読み込み中です…</p>}

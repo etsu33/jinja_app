@@ -10,7 +10,6 @@ import { buildRecommendationReasonViewModel } from "@/lib/concierge/buildRecomme
 import ConciergeTopRecommendationHero from "@/features/concierge/components/ConciergeTopRecommendationHero";
 import ShrineCardCompact from "@/components/shrines/ShrineCardCompact";
 import { track } from "@/lib/analytics/track";
-import { buildGoogleMapsDirUrl } from "@/lib/maps/googleMaps";
 import { labelNeedDisplayTag } from "@/features/concierge/copy/needDisplayCopy";
 
 import type {
@@ -26,6 +25,7 @@ type MetaMode = NonNullable<ConciergeSectionsPayload["meta"]>["mode"];
 
 const conciergeSoftCardClass = "rounded-2xl border border-slate-200 bg-slate-50 shadow-sm p-4";
 const conciergeNoticeCardClass = "rounded-2xl border border-amber-200 bg-amber-50 shadow-sm p-4";
+const conciergePremiumCardClass = "rounded-2xl border border-amber-200 bg-amber-50/80 shadow-sm p-4";
 
 /**
  * Conciergeではfavorite操作を提供しない。
@@ -62,6 +62,36 @@ function AstroCard(props: { sunSign?: string; element?: string; reason?: string 
         <div className="mt-2 text-sm leading-7 text-slate-700">{reason || "（理由なし）"}</div>
       </div>
     </DetailSection>
+  );
+}
+
+function ConciergePremiumEntryCard(props: { shrineId?: number | null; tid?: string | null }) {
+  return (
+    <section className={conciergePremiumCardClass}>
+      <div className="space-y-2">
+        <p className="text-sm font-semibold leading-6 text-amber-950">
+          今の状態整理と、次の選び方をPremiumで深められます。
+        </p>
+        <p className="text-xs leading-6 text-slate-600">
+          相談内容に基づく状態整理、相性、行動の意味づけを表示します。
+        </p>
+        <a
+          href="/billing/upgrade"
+          className="inline-flex items-center rounded-xl bg-amber-700 px-3 py-2 text-xs font-semibold text-white hover:bg-amber-800"
+          onClick={() =>
+            track("concierge_premium_click", {
+              source: "hero_card",
+              valueProp: "state_reflection_subscription",
+              funnelStep: "concierge_result",
+              shrineId: props.shrineId ?? null,
+              tid: props.tid ?? null,
+            })
+          }
+        >
+          Premiumを見る
+        </a>
+      </div>
+    </section>
   );
 }
 
@@ -120,6 +150,7 @@ export default function ConciergeSectionsRenderer({
   const appliedLabel = appliedTokens.length ? `条件: ${appliedTokens.join(" / ")}` : null;
   const normalizedModeForTracking = normalizeConciergeMode(payload?.meta?.mode);
   const tid = threadId != null ? String(threadId) : null;
+  const isPremiumActive = Boolean((payload?.meta as any)?.billing?.is_active || (payload?.meta as any)?.isPremiumActive);
 
   const resultImpressions = useMemo(() => {
     if (!payload || !Array.isArray(payload.sections)) return [];
@@ -408,51 +439,35 @@ export default function ConciergeSectionsRenderer({
                               address={null}
                               topReasonLabel={reasonVm.hero.topReasonLabel ?? null}
                               eyebrowLabel={reasonVm.hero.eyebrowLabel ?? null}
-                              subtitle={reasonVm.hero.subtitle ?? null}
+                              subtitle="今の状態に近い候補です。"
                               catchCopy={reasonVm.hero.catchCopy}
                               whyTop={null}
-                              primaryReason={reasonVm.why.primaryReason}
+                              primaryReason={null}
                               secondaryReason={null}
                               differenceFromOthers={null}
                               tags={(heroItem.breakdown?.matched_need_tags ?? []).map(labelNeedDisplayTag).slice(0, 3)}
-                              routeLabel="まずはここに行く"
-                              secondaryActionSlot={
-                                <ShrineSaveButton
-                                  shrineId={heroItem.shrineId}
-                                  ctx="concierge"
-                                  tid={tid}
-                                  nextPath={heroItem.detailHref}
-                                  variant="subtle"
-                                />
-                              }
-                              onRouteClick={() => {
-                                track("concierge_result_click", {
-                                  action: "route",
-                                  position: "hero_primary",
-                                  rank: 1,
-                                  shrineId: heroItem.shrineId,
-                                  firstClick: resolveFirstResultClick(resultSetId),
-                                });
-
-                                onAction?.({
-                                  type: "open_map",
-                                  shrineId: heroItem.shrineId,
-                                  rank: 1,
-                                  routeHref: buildGoogleMapsDirUrl({
-                                    address: (heroItem as any).address ?? null,
-                                    fallbackName: heroItem.title,
-                                  }),
-                                });
-                              }}
+                              routeLabel="詳しく見る"
                               onDetailClick={() =>
                                 track("concierge_result_click", {
                                   action: "detail",
-                                  position: "hero_secondary",
+                                  position: "hero_primary",
                                   rank: 1,
                                   shrineId: heroItem.shrineId,
                                   firstClick: resolveFirstResultClick(resultSetId),
                                 })
                               }
+                            />
+
+                            {!isPremiumActive ? (
+                              <ConciergePremiumEntryCard shrineId={heroItem.shrineId} tid={tid} />
+                            ) : null}
+
+                            <ShrineSaveButton
+                              shrineId={heroItem.shrineId}
+                              ctx="concierge"
+                              tid={tid}
+                              nextPath={heroItem.detailHref}
+                              variant="subtle"
                             />
                           </div>
                         );

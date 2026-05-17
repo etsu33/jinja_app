@@ -1,31 +1,72 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useRef, useState } from "react";
 import { startBillingCheckout } from "@/lib/api/billing";
-import { trackBillingEvent } from "@/lib/analytics/billing";
+import {
+  parseBillingFunnelSource,
+  parseBillingFunnelStep,
+  trackBillingEvent,
+  type BillingFunnelSource,
+  type BillingFunnelStep,
+} from "@/lib/analytics/billing";
 import { useAuth } from "@/lib/auth/AuthProvider";
+
 import { buildLoginHref } from "@/lib/nav/login";
 
-export default function BillingUpgradePage() {
+const UPGRADE_ENTRY_CONTEXT_STORAGE_KEY = "upgrade:entry-context";
+
+type UpgradeEntryContext = {
+  entryPoint: BillingFunnelSource | null;
+  entryStep: BillingFunnelStep | null;
+};
+
+function saveUpgradeEntryContext(entryContext: UpgradeEntryContext) {
+  try {
+    window.sessionStorage.setItem(
+      UPGRADE_ENTRY_CONTEXT_STORAGE_KEY,
+      JSON.stringify(entryContext),
+    );
+  } catch (error) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn("[billing attribution]", error);
+    }
+  }
+}
+
+function BillingUpgradeContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const auth = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const upgradeClickTrackedRef = useRef(false);
   const checkoutStartedTrackedRef = useRef(false);
+  const source = parseBillingFunnelSource(searchParams.get("source"));
+  const funnelStep = parseBillingFunnelStep(searchParams.get("funnelStep"));
 
   const startCheckout = async () => {
     if (auth.loading) return;
 
+    const entryContext = {
+      entryPoint: source,
+      entryStep: funnelStep,
+    };
+
+    saveUpgradeEntryContext(entryContext);
+
     if (!upgradeClickTrackedRef.current) {
       upgradeClickTrackedRef.current = true;
-      trackBillingEvent("upgrade_click");
+      trackBillingEvent("upgrade_click", {
+        source,
+        funnelStep,
+      });
     }
 
     if (!auth.isLoggedIn) {
-      router.push(buildLoginHref("/billing/upgrade"));
+      const currentPath = `/billing/upgrade${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
+      router.push(buildLoginHref(currentPath));
       return;
     }
 
@@ -35,7 +76,11 @@ export default function BillingUpgradePage() {
       const session = await startBillingCheckout();
       if (!checkoutStartedTrackedRef.current) {
         checkoutStartedTrackedRef.current = true;
-        trackBillingEvent("checkout_started", { session_id: session.session_id });
+        trackBillingEvent("checkout_started", {
+          checkoutSessionId: session.session_id,
+          source,
+          funnelStep,
+        });
       }
       window.location.assign(session.checkout_url);
     } catch {
@@ -94,5 +139,19 @@ export default function BillingUpgradePage() {
         </Link>
       </div>
     </div>
+  );
+}
+
+export default function BillingUpgradePage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="mx-auto w-full max-w-md px-4 py-6">
+          <p className="text-sm leading-6 text-slate-600">プレミアム登録画面を準備しています...</p>
+        </main>
+      }
+    >
+      <BillingUpgradeContent />
+    </Suspense>
   );
 }

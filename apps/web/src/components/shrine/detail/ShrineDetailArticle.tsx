@@ -77,9 +77,11 @@ function PremiumUpgradePrompt() {
   return (
     <section className="rounded-2xl border border-amber-100 bg-amber-50/70 p-4">
       <div className="space-y-2">
-        <p className="text-sm font-semibold leading-6 text-amber-950">この神社が今のあなたに合う理由を、Premiumで詳しく確認できます。</p>
+        <p className="text-sm font-semibold leading-6 text-amber-950">
+          今の状態整理と、この神社を選ぶ意味をPremiumで深められます。
+        </p>
         <p className="text-xs leading-6 text-slate-600">
-          コンシェルジュの相談内容に基づく深い理由、相性、行動の意味づけを表示します。
+          相談内容に基づく状態整理、相性、行動の意味づけを表示します。
         </p>
         <Link
           href="/billing/upgrade"
@@ -93,7 +95,7 @@ function PremiumUpgradePrompt() {
 }
 
 function ShrineDetailHeroHeader(props: { title: string; heroMeaningCopy?: string | null; address?: string | null }) {
-  const resolvedHeroMeaningCopy = props.heroMeaningCopy?.trim() || "今の流れを整え、次の見方を作る神社";
+  const resolvedHeroMeaningCopy = props.heroMeaningCopy?.trim() || "今の状態と相性が良い候補です。";
 
   return (
     <section className="rounded-2xl border bg-white p-5 shadow-sm">
@@ -197,7 +199,8 @@ export default function ShrineDetailArticle({
   saveActionNode?: React.ReactNode;
 }) {
   const hasRecommendationMeta = Boolean(recommendationMeta?.rankTitle && recommendationMeta?.rankBody);
-  const freeSections = freeDisplaySections.length > 0 ? freeDisplaySections.map((item) => item.section) : sections;
+  const hasLayeredSections = freeDisplaySections.length > 0 || premiumDisplaySections.length > 0;
+  const freeSections = hasLayeredSections ? freeDisplaySections.map((item) => item.section) : sections;
   const premiumSections = premiumDisplaySections.map((item) => item.section);
   const hasFreeSections = freeSections.length > 0;
   const hasPremiumSections = premiumSections.length > 0;
@@ -235,7 +238,7 @@ export default function ShrineDetailArticle({
       <section className="space-y-5">
         <ShrineDetailHeroHeader
           title={cardProps.title}
-          heroMeaningCopy={heroMeaningCopy}
+          heroMeaningCopy={isPremiumActive ? heroMeaningCopy : "今の状態と相性が良い候補です。"}
           address={cardProps.address ?? null}
         />
 
@@ -248,9 +251,9 @@ export default function ShrineDetailArticle({
 
       {!isPremiumActive && hasPremiumSections ? <PremiumUpgradePrompt /> : null}
 
-      <ShrineDecisionPrompt />
+      {isPremiumActive && hasPremiumSections ? <ShrineDecisionPrompt /> : null}
 
-      {hasRecommendationMeta && recommendationMeta ? (
+      {isPremiumActive && hasRecommendationMeta && recommendationMeta ? (
         <section>
           <ShrineComparisonDisclosure recommendationMeta={recommendationMeta} />
         </section>

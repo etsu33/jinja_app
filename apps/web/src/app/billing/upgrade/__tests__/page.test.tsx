@@ -6,6 +6,7 @@ import BillingUpgradePage from "../page";
 const pushMock = vi.fn();
 const startBillingCheckoutMock = vi.fn();
 const assignMock = vi.fn();
+const trackBillingEventMock = vi.fn();
 
 type MockAuthState = {
   loading: boolean;
@@ -21,6 +22,7 @@ let authState: MockAuthState = {
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock }),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 vi.mock("@/lib/api/billing", () => ({
@@ -31,9 +33,15 @@ vi.mock("@/lib/auth/AuthProvider", () => ({
   useAuth: () => authState,
 }));
 
+vi.mock("@/lib/analytics/billing", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/analytics/billing")>()),
+  trackBillingEvent: (...args: unknown[]) => trackBillingEventMock(...args),
+}));
+
 describe("BillingUpgradePage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.sessionStorage.clear();
     authState = {
       loading: false,
       isLoggedIn: true,
@@ -89,6 +97,36 @@ describe("BillingUpgradePage", () => {
 
     await waitFor(() => {
       expect(assignMock).toHaveBeenCalledWith("https://checkout.stripe.com/c/pay/cs_test_123");
+    });
+  });
+
+  it("upgrade entry contextを短期UI文脈のkeyで保存し、analytics payloadは既存schemaを維持する", async () => {
+    startBillingCheckoutMock.mockResolvedValue({
+      session_id: "cs_test_123",
+      checkout_url: "https://checkout.stripe.com/c/pay/cs_test_123",
+    });
+
+    render(<BillingUpgradePage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "プレミアムにする" }));
+
+    await waitFor(() => {
+      expect(assignMock).toHaveBeenCalledWith("https://checkout.stripe.com/c/pay/cs_test_123");
+    });
+
+    expect(window.sessionStorage.getItem("billing:funnel-attribution")).toBeNull();
+    expect(JSON.parse(window.sessionStorage.getItem("upgrade:entry-context") ?? "{}")).toEqual({
+      entryPoint: null,
+      entryStep: null,
+    });
+    expect(trackBillingEventMock).toHaveBeenCalledWith("upgrade_click", {
+      source: null,
+      funnelStep: null,
+    });
+    expect(trackBillingEventMock).toHaveBeenCalledWith("checkout_started", {
+      checkoutSessionId: "cs_test_123",
+      source: null,
+      funnelStep: null,
     });
   });
 });
