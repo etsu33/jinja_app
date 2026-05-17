@@ -439,7 +439,7 @@ export default function ConciergeSectionsRenderer({
                               address={null}
                               topReasonLabel={reasonVm.hero.topReasonLabel ?? null}
                               eyebrowLabel={reasonVm.hero.eyebrowLabel ?? null}
-                              subtitle="今の状態に近い候補です。"
+                              subtitle={reasonVm.hero.subtitle ?? null}
                               catchCopy={reasonVm.hero.catchCopy}
                               whyTop={null}
                               primaryReason={null}
