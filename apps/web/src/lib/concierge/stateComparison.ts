@@ -3,9 +3,21 @@ export type PreviousConsultationSummary = {
   createdAt: string | null;
   consultationSummary: string | null;
   matchedNeedTags: string[];
+  combination: {
+    key: string;
+    title: string;
+    summary: string;
+  } | null;
   primaryNeedLabelJa: string | null;
   primaryReasonLabelJa: string | null;
   recommendationNames: string[];
+};
+
+export type CombinationChange = {
+  previousTitle: string | null;
+  currentTitle: string | null;
+  changed: boolean;
+  summary: string | null;
 };
 
 export type StateDelta = {
@@ -16,4 +28,5 @@ export type StateDelta = {
   daysSincePrevious: number | null;
   within7DaysSincePrevious: boolean;
   summary: string | null;
+  combinationChange: CombinationChange;
 };
