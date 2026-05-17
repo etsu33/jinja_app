@@ -241,4 +241,46 @@ describe("buildRecommendationNarrative", () => {
 
     expect(result.match.shrineBenefit).toContain("気持ちや優先順位を整え直す節目");
   });
+
+  it("shrineMeaningSchema があると shrineMeaning の fallback として summary を使う", () => {
+    const result = buildRecommendationNarrative({
+      mode: "need",
+      primaryNeed: "rest",
+      secondaryNeedTags: [],
+      shrineName: "静かな神社",
+      shrineTone: "quiet",
+      benefitLabels: ["浄化"],
+      shrineMeaningSchema: {
+        shrineId: 999,
+        meaningKey: "quiet-recovery-test",
+        title: "静かに整え直す神社",
+        summary: "神社意味構造から渡された静かな回復の意味です。",
+        coreMeanings: ["回復", "静けさ"],
+        emotionalTone: {
+          silence: "high",
+          intensity: "low",
+          openness: "mid",
+          grounding: "high",
+        },
+        actionMeanings: ["rest", "reflect"],
+        historicalContexts: ["protection"],
+        spatialFeelings: ["quiet_forest"],
+        stateFit: {
+          continuation: "mid",
+          progression: "low",
+          recovery: "high",
+          regression: "mid",
+          transition: "low",
+        },
+      },
+    });
+
+    expect(result.meaning.short).toBe(
+      "神社意味構造から渡された静かな回復の意味です。",
+    );
+
+    expect(result.shrine.shrineMeaning).toBe(
+      "神社意味構造から渡された静かな回復の意味です。",
+    );
+  });
 });

@@ -440,6 +440,7 @@ export function buildRecommendationNarrative(args: BuildNarrativeBaseArgs): Reco
   const primaryNeed = args.primaryNeed ?? null;
   const secondaryNeeds = args.secondaryNeedTags ?? [];
   const shrineTone = args.shrineTone ?? "neutral";
+  const shrineMeaningSchema = args.shrineMeaningSchema ?? null;
 
   const combinationNarrative = resolveNeedCombinationNarrative(
     primaryNeed ? [primaryNeed, ...secondaryNeeds] : secondaryNeeds,
@@ -484,7 +485,9 @@ export function buildRecommendationNarrative(args: BuildNarrativeBaseArgs): Reco
     conciergeReason: args.conciergeReason ?? null,
   });
 
-  const shrineMeaning = sanitizeCopyText(args.deepReason?.shrineMeaning ?? meaningSentence);
+  const shrineMeaning = sanitizeCopyText(
+    args.deepReason?.shrineMeaning ?? shrineMeaningSchema?.summary ?? meaningSentence,
+  );
 
   const rankReason = buildRankReason({
     mode,
