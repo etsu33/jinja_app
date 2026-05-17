@@ -45,6 +45,8 @@ import ShrineSupplementSection from "@/components/shrine/detail/ShrineSupplement
 import ShrineDetailHeroCard from "@/components/shrine/detail/ShrineDetailHeroCard";
 import DetailDisclosureBlock from "@/components/shrine/DetailDisclosureBlock";
 import { FAVORITE_LABELS } from "@/lib/ui/labels";
+import { useAuth } from "@/lib/auth/AuthProvider";
+import { buildLoginHref } from "@/lib/nav/login";
 
 import type { ShrineTag } from "@/lib/shrine/tags/types";
 import type { ShrineCardAdapterProps } from "@/components/shrine/buildShrineCardProps";
@@ -74,20 +76,27 @@ function ShrineDetailSections({ sections }: { sections: ShrineDetailSectionModel
 }
 
 function PremiumUpgradePrompt() {
+  const { isLoggedIn, loading: authLoading } = useAuth();
+  const isGuestUser = !authLoading && !isLoggedIn;
+  const href = isGuestUser ? buildLoginHref("/billing/upgrade") : "/billing/upgrade";
+  const ctaLabel = isGuestUser ? "ログインして詳しく見る" : "Premiumを見る";
+
   return (
     <section className="rounded-2xl border border-amber-100 bg-amber-50/70 p-4">
       <div className="space-y-2">
         <p className="text-sm font-semibold leading-6 text-amber-950">
-          今の状態整理と、この神社を選ぶ意味をPremiumで深められます。
+          {isGuestUser
+            ? "今の状態整理と、この神社を選ぶ意味を深められます。"
+            : "今の状態整理と、この神社を選ぶ意味をPremiumで深められます。"}
         </p>
         <p className="text-xs leading-6 text-slate-600">
           相談内容に基づく状態整理、相性、行動の意味づけを表示します。
         </p>
         <Link
-          href="/billing/upgrade"
+          href={href}
           className="inline-flex items-center rounded-xl bg-amber-700 px-3 py-2 text-xs font-semibold text-white hover:bg-amber-800"
         >
-          Premiumを見る
+          {ctaLabel}
         </Link>
       </div>
     </section>
