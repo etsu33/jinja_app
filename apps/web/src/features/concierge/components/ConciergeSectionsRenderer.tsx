@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useAuth } from "@/lib/auth/AuthProvider";
 import DetailSection from "@/components/shrine/DetailSection";
 import PlaceShrineCard from "@/components/shrine/PlaceShrineCard";
 import ShrineSaveButton from "@/components/shrine/ShrineSaveButton";
@@ -119,6 +120,9 @@ export default function ConciergeSectionsRenderer({
 }: Props) {
   const trackedImpressionKeysRef = useRef<Set<string>>(new Set());
   const [showOtherRecommendations, setShowOtherRecommendations] = useState(false);
+
+  const { isLoggedIn, loading: authLoading } = useAuth();
+  const isGuestUser = !authLoading && !isLoggedIn;
 
   function resolveFirstResultClick(resultSetId: string) {
     if (typeof window === "undefined") return false;
@@ -547,7 +551,7 @@ export default function ConciergeSectionsRenderer({
                         onClick={() => onAction?.({ type: "save_concierge_thread" })}
                         disabled={sending}
                       >
-                        この相談を保存する
+                        {isGuestUser ? "ログインして相談を保存する" : "この相談を保存する"}
                       </button>
                     </div>
                   ) : null}
