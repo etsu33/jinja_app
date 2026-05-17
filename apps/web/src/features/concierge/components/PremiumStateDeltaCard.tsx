@@ -1,5 +1,3 @@
-
-
 import { useEffect } from "react";
 import Link from "next/link";
 
@@ -36,8 +34,17 @@ export default function PremiumStateDeltaCard({ stateDelta, isPremium }: Props) 
       hasSummary: Boolean(stateDelta.summary),
       changedNeedTagCount: changedNeedTags.length,
       continuedNeedTagCount: continuedNeedTags.length,
+      daysSincePrevious: stateDelta.daysSincePrevious,
+      within7DaysSincePrevious: stateDelta.within7DaysSincePrevious,
     });
-  }, [changedNeedTags.length, continuedNeedTags.length, isPremium, stateDelta.summary]);
+  }, [
+    changedNeedTags.length,
+    continuedNeedTags.length,
+    isPremium,
+    stateDelta.daysSincePrevious,
+    stateDelta.summary,
+    stateDelta.within7DaysSincePrevious,
+  ]);
 
   if (!isPremium) {
     return (
