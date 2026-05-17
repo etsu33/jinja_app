@@ -12,30 +12,42 @@ import {
   type BillingFunnelStep,
 } from "@/lib/analytics/billing";
 
-const BILLING_FUNNEL_STORAGE_KEY = "billing:funnel-attribution";
+const UPGRADE_ENTRY_CONTEXT_STORAGE_KEY = "upgrade:entry-context";
 
-type BillingFunnelAttribution = {
+type UpgradeEntryContext = {
+  entryPoint?: BillingFunnelSource | null;
+  entryStep?: BillingFunnelStep | null;
+};
+
+type BillingAnalyticsAttribution = {
   source?: BillingFunnelSource | null;
   funnelStep?: BillingFunnelStep | null;
 };
 
-function readBillingFunnelAttribution(): BillingFunnelAttribution {
+function readUpgradeEntryContext(): UpgradeEntryContext {
   if (typeof window === "undefined") return {};
 
   try {
-    const raw = window.sessionStorage.getItem(BILLING_FUNNEL_STORAGE_KEY);
+    const raw = window.sessionStorage.getItem(UPGRADE_ENTRY_CONTEXT_STORAGE_KEY);
     if (!raw) return {};
 
     const parsed = JSON.parse(raw);
     if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return {};
 
     return {
-      source: typeof parsed.source === "string" ? parseBillingFunnelSource(parsed.source) : null,
-      funnelStep: typeof parsed.funnelStep === "string" ? parseBillingFunnelStep(parsed.funnelStep) : null,
+      entryPoint: typeof parsed.entryPoint === "string" ? parseBillingFunnelSource(parsed.entryPoint) : null,
+      entryStep: typeof parsed.entryStep === "string" ? parseBillingFunnelStep(parsed.entryStep) : null,
     };
   } catch {
     return {};
   }
+}
+
+function toBillingAnalyticsAttribution(entryContext: UpgradeEntryContext): BillingAnalyticsAttribution {
+  return {
+    source: entryContext.entryPoint ?? null,
+    funnelStep: entryContext.entryStep ?? null,
+  };
 }
 
 function BillingSuccessContent() {
@@ -49,7 +61,7 @@ function BillingSuccessContent() {
   useEffect(() => {
     if (checkoutSuccessTrackedRef.current) return;
     checkoutSuccessTrackedRef.current = true;
-    const funnelAttribution = readBillingFunnelAttribution();
+    const funnelAttribution = toBillingAnalyticsAttribution(readUpgradeEntryContext());
     trackBillingEvent("checkout_success", {
       checkoutSessionId: sessionId,
       ...funnelAttribution,
@@ -59,7 +71,7 @@ function BillingSuccessContent() {
   useEffect(() => {
     if (!isPremiumActive || premiumActiveTrackedRef.current) return;
     premiumActiveTrackedRef.current = true;
-    const funnelAttribution = readBillingFunnelAttribution();
+    const funnelAttribution = toBillingAnalyticsAttribution(readUpgradeEntryContext());
     trackBillingEvent("premium_active", {
       checkoutSessionId: sessionId,
       ...funnelAttribution,

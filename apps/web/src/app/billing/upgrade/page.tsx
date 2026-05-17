@@ -15,18 +15,18 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 
 import { buildLoginHref } from "@/lib/nav/login";
 
-const BILLING_FUNNEL_STORAGE_KEY = "billing:funnel-attribution";
+const UPGRADE_ENTRY_CONTEXT_STORAGE_KEY = "upgrade:entry-context";
 
-type BillingFunnelAttribution = {
-  source: BillingFunnelSource | null;
-  funnelStep: BillingFunnelStep | null;
+type UpgradeEntryContext = {
+  entryPoint: BillingFunnelSource | null;
+  entryStep: BillingFunnelStep | null;
 };
 
-function saveBillingFunnelAttribution(funnelParams: BillingFunnelAttribution) {
+function saveUpgradeEntryContext(entryContext: UpgradeEntryContext) {
   try {
     window.sessionStorage.setItem(
-      BILLING_FUNNEL_STORAGE_KEY,
-      JSON.stringify(funnelParams),
+      UPGRADE_ENTRY_CONTEXT_STORAGE_KEY,
+      JSON.stringify(entryContext),
     );
   } catch (error) {
     if (process.env.NODE_ENV === "development") {
@@ -49,12 +49,12 @@ function BillingUpgradeContent() {
   const startCheckout = async () => {
     if (auth.loading) return;
 
-    const funnelParams = {
-      source,
-      funnelStep,
+    const entryContext = {
+      entryPoint: source,
+      entryStep: funnelStep,
     };
 
-    saveBillingFunnelAttribution(funnelParams);
+    saveUpgradeEntryContext(entryContext);
 
     if (!upgradeClickTrackedRef.current) {
       upgradeClickTrackedRef.current = true;
