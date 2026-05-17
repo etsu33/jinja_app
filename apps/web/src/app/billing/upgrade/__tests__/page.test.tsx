@@ -21,6 +21,7 @@ let authState: MockAuthState = {
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock }),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 vi.mock("@/lib/api/billing", () => ({
