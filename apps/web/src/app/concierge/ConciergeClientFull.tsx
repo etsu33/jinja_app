@@ -563,6 +563,7 @@ export default function ConciergeClientFull() {
     return typeof previousThread?.id === "number" ? previousThread.id : null;
   }, [activeThreadId, isLoggedIn, threads, tidNum]);
 
+
   const isEntryRoute = tidNum === null;
   const tidFromQuery = tidNum ?? 0;
 
@@ -825,11 +826,6 @@ export default function ConciergeClientFull() {
     return Array.isArray(recs) ? (recs as ConciergeRecommendation[]) : [];
   }, [liveRecs, displayUnified]);
 
-  useEffect(() => {
-    if (!stateDelta) return;
-
-    console.debug("[STATE_DELTA]", stateDelta);
-  }, [stateDelta]);
 
   const hasCandidates = displayRecommendations.length > 0;
 
