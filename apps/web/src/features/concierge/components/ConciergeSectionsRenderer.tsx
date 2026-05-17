@@ -12,6 +12,7 @@ import ConciergeTopRecommendationHero from "@/features/concierge/components/Conc
 import ShrineCardCompact from "@/components/shrines/ShrineCardCompact";
 import { track } from "@/lib/analytics/track";
 import { labelNeedDisplayTag } from "@/features/concierge/copy/needDisplayCopy";
+import { buildLoginHref } from "@/lib/nav/login";
 
 import type {
   ConciergeSectionsPayload,
@@ -66,18 +67,22 @@ function AstroCard(props: { sunSign?: string; element?: string; reason?: string 
   );
 }
 
-function ConciergePremiumEntryCard(props: { shrineId?: number | null; tid?: string | null }) {
+function ConciergePremiumEntryCard(props: { shrineId?: number | null; tid?: string | null; isGuestUser?: boolean }) {
+  const href = props.isGuestUser ? buildLoginHref("/billing/upgrade") : "/billing/upgrade";
+  const ctaLabel = props.isGuestUser ? "ログインして詳しく見る" : "Premiumを見る";
   return (
     <section className={conciergePremiumCardClass}>
       <div className="space-y-2">
         <p className="text-sm font-semibold leading-6 text-amber-950">
-          今の状態整理と、次の選び方をPremiumで深められます。
+          {props.isGuestUser
+            ? "今の状態整理と、次の選び方を深められます。"
+            : "今の状態整理と、次の選び方をPremiumで深められます。"}
         </p>
         <p className="text-xs leading-6 text-slate-600">
           相談内容に基づく状態整理、相性、行動の意味づけを表示します。
         </p>
         <a
-          href="/billing/upgrade"
+          href={href}
           className="inline-flex items-center rounded-xl bg-amber-700 px-3 py-2 text-xs font-semibold text-white hover:bg-amber-800"
           onClick={() =>
             track("concierge_premium_click", {
@@ -89,7 +94,7 @@ function ConciergePremiumEntryCard(props: { shrineId?: number | null; tid?: stri
             })
           }
         >
-          Premiumを見る
+          {ctaLabel}
         </a>
       </div>
     </section>
@@ -463,7 +468,7 @@ export default function ConciergeSectionsRenderer({
                             />
 
                             {!isPremiumActive ? (
-                              <ConciergePremiumEntryCard shrineId={heroItem.shrineId} tid={tid} />
+                              <ConciergePremiumEntryCard shrineId={heroItem.shrineId} tid={tid} isGuestUser={isGuestUser} />
                             ) : null}
 
                             <ShrineSaveButton
