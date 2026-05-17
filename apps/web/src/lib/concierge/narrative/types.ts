@@ -88,4 +88,11 @@ export type RecommendationNarrative = {
   shrine: {
     shrineMeaning: string | null;
   };
+  combination: {
+    key: string;
+    title: string;
+    summary: string;
+    priorityHint: string;
+    actionHint: string;
+  } | null;
 };

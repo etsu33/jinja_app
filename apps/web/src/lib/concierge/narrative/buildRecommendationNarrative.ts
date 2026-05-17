@@ -13,6 +13,7 @@ import { buildComparisonText } from "@/lib/concierge/narrative/buildComparisonTe
 import { sanitizeCopyText } from "@/lib/concierge/conciergeCopyRules";
 import { resolveTurningPoint } from "@/lib/concierge/turningPoint/resolveTurningPoint";
 import { buildTurningPointSentence } from "@/lib/concierge/turningPoint/buildTurningPointSentence";
+import { resolveNeedCombinationNarrative } from "@/lib/concierge/narrative/needCombinationMap";
 
 function buildNeedMatchText(primary: NeedTag | null, secondary: NeedTag[]): string {
   if (primary === "courage") {
@@ -440,6 +441,10 @@ export function buildRecommendationNarrative(args: BuildNarrativeBaseArgs): Reco
   const secondaryNeeds = args.secondaryNeedTags ?? [];
   const shrineTone = args.shrineTone ?? "neutral";
 
+  const combinationNarrative = resolveNeedCombinationNarrative(
+    primaryNeed ? [primaryNeed, ...secondaryNeeds] : secondaryNeeds,
+  );
+
   const userState =
     mode === "compat"
       ? buildCompatMatchText({
@@ -523,6 +528,15 @@ export function buildRecommendationNarrative(args: BuildNarrativeBaseArgs): Reco
     breakdown: args.breakdown ?? null,
     psychologicalTags,
     symbolTags,
+    combination: combinationNarrative
+      ? {
+          key: combinationNarrative.key,
+          title: sanitizeCopyText(combinationNarrative.title),
+          summary: sanitizeCopyText(combinationNarrative.summary),
+          priorityHint: sanitizeCopyText(combinationNarrative.priorityHint),
+          actionHint: sanitizeCopyText(combinationNarrative.actionHint),
+        }
+      : null,
     turningPoint: {
       type: turningPointMeta.type,
       label: turningPointMeta.label,

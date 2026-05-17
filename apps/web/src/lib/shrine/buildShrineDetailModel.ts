@@ -29,6 +29,7 @@ import { buildRankReason } from "@/lib/concierge/narrative/buildRankReason";
 import { buildComparisonText } from "@/lib/concierge/narrative/buildComparisonText";
 import { buildPsychologicalTags } from "@/lib/concierge/narrative/buildPsychologicalTags";
 import { buildSymbolTags } from "@/lib/concierge/narrative/buildSymbolTags";
+import { resolveNeedCombinationNarrative } from "@/lib/concierge/narrative/needCombinationMap";
 
 
 type Args = {
@@ -425,15 +426,25 @@ function buildProposalSection(args: {
   lead?: string | null;
   consultationSummary?: string | null;
   proposal?: string | null;
+  combination?: {
+    title: string;
+    summary: string;
+    priorityHint: string;
+  } | null;
   ctx?: "map" | "concierge" | null;
 }): DetailProposalSection | null {
   if (args.ctx !== "concierge") return null;
+
+  const combinationBody = args.combination
+    ? `${args.combination.title}。${args.combination.summary} 優先したいことは「${args.combination.priorityHint}」です。`
+    : null;
+  const body = [combinationBody, args.proposal].filter(Boolean).join("\n\n") || null;
 
   return {
     kind: "proposal",
     heading: "② 今回の相談の整理",
     lead: args.consultationSummary ?? args.lead ?? "",
-    body: args.proposal ?? null,
+    body,
   };
 }
 
@@ -1267,6 +1278,9 @@ export function buildShrineDetailModel({
 
   const primaryNeed = getPrimaryNeedTag(conciergeBreakdown);
   const secondaryNeedTags = getSecondaryNeedTags(conciergeBreakdown);
+  const combinationNarrative = resolveNeedCombinationNarrative(
+    primaryNeed ? [primaryNeed, ...secondaryNeedTags] : secondaryNeedTags,
+  );
   const isConciergeContext = ctx === "concierge";
 
   const rankReason = buildRankReason({
@@ -1416,6 +1430,7 @@ export function buildShrineDetailModel({
     lead: proposalLead,
     consultationSummary,
     proposal,
+    combination: combinationNarrative,
     ctx,
   });
 
