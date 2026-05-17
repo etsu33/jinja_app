@@ -59,7 +59,7 @@ export default function PremiumStateDeltaCard({ stateDelta, isPremium }: Props) 
           </p>
 
           <Link
-            href="/billing/upgrade"
+            href="/billing/upgrade?source=state_delta_card&funnelStep=comparison_preview"
             className="inline-flex rounded-2xl bg-amber-700 px-4 py-2 text-sm font-semibold text-white"
             onClick={() =>
               track("premium_history_comparison_click", {

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useRef, useState } from "react";
 import { startBillingCheckout } from "@/lib/api/billing";
 import { trackBillingEvent } from "@/lib/analytics/billing";
@@ -10,22 +10,29 @@ import { buildLoginHref } from "@/lib/nav/login";
 
 export default function BillingUpgradePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const auth = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const upgradeClickTrackedRef = useRef(false);
   const checkoutStartedTrackedRef = useRef(false);
+  const source = searchParams.get("source");
+  const funnelStep = searchParams.get("funnelStep");
 
   const startCheckout = async () => {
     if (auth.loading) return;
 
     if (!upgradeClickTrackedRef.current) {
       upgradeClickTrackedRef.current = true;
-      trackBillingEvent("upgrade_click");
+      trackBillingEvent("upgrade_click", {
+        source,
+        funnelStep,
+      });
     }
 
     if (!auth.isLoggedIn) {
-      router.push(buildLoginHref("/billing/upgrade"));
+      const currentPath = `/billing/upgrade${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
+      router.push(buildLoginHref(currentPath));
       return;
     }
 
@@ -35,7 +42,11 @@ export default function BillingUpgradePage() {
       const session = await startBillingCheckout();
       if (!checkoutStartedTrackedRef.current) {
         checkoutStartedTrackedRef.current = true;
-        trackBillingEvent("checkout_started", { session_id: session.session_id });
+        trackBillingEvent("checkout_started", {
+          session_id: session.session_id,
+          source,
+          funnelStep,
+        });
       }
       window.location.assign(session.checkout_url);
     } catch {
