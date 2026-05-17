@@ -3,6 +3,11 @@ export type PreviousConsultationSummary = {
   createdAt: string | null;
   consultationSummary: string | null;
   matchedNeedTags: string[];
+  combination: {
+    key: string;
+    title: string;
+    summary: string;
+  } | null;
   primaryNeedLabelJa: string | null;
   primaryReasonLabelJa: string | null;
   recommendationNames: string[];
