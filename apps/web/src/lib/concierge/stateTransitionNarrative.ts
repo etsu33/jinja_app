@@ -137,7 +137,8 @@ export function buildStateTransitionNarrative(
 
   return {
     type: "unknown",
-    title: "今の流れを整理中",
-    summary: null,
+    title: "今の流れを静かに確認する段階",
+    summary:
+      "今回は大きな変化として断定するより、今出ているテーマを静かに確認する段階です。",
   };
 }
