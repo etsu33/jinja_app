@@ -237,6 +237,7 @@ export default function ShrineDetailArticle({
 
   const contextReasonVisibility = getVisibilityForCard("context_reason", accessLevel);
   const personalMeaningVisibility = getVisibilityForCard("personal_meaning", accessLevel);
+  const savedRecordVisibility = getVisibilityForCard("saved_record", accessLevel);
   const firstReasonSectionIndex = freeSections.findIndex((section) => section.kind === "reason");
 
   const contextReasonSections =
@@ -347,7 +348,7 @@ export default function ShrineDetailArticle({
         </div>
       ) : null}
 
-      {resolvedSaveActionNode ? (
+      {savedRecordVisibility === "visible" && resolvedSaveActionNode ? (
         <section className="pt-4">
           <div className="rounded-2xl border bg-emerald-50 p-4">
             <div className="mb-3 space-y-1">
