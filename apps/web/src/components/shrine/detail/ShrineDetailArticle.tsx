@@ -236,6 +236,7 @@ export default function ShrineDetailArticle({
   );
 
   const contextReasonVisibility = getVisibilityForCard("context_reason", accessLevel);
+  const personalMeaningVisibility = getVisibilityForCard("personal_meaning", accessLevel);
   const firstReasonSectionIndex = freeSections.findIndex((section) => section.kind === "reason");
 
   const contextReasonSections =
@@ -287,9 +288,11 @@ export default function ShrineDetailArticle({
 
       {hasContextReasonSections ? <ShrineDetailSections sections={contextReasonSections} /> : null}
 
-      {isPremiumActive && hasPremiumSections ? <ShrineDetailSections sections={premiumSections} /> : null}
+      {personalMeaningVisibility === "visible" && hasPremiumSections ? (
+        <ShrineDetailSections sections={premiumSections} />
+      ) : null}
 
-      {!isPremiumActive && hasPremiumSections ? <PremiumUpgradePrompt /> : null}
+      {personalMeaningVisibility === "teaser" && hasPremiumSections ? <PremiumUpgradePrompt /> : null}
 
       {isPremiumActive && hasPremiumSections ? <ShrineDecisionPrompt /> : null}
 
