@@ -53,6 +53,9 @@ import type { ShrineTag } from "@/lib/shrine/tags/types";
 import type { ShrineCardAdapterProps } from "@/components/shrine/buildShrineCardProps";
 import type { ShrineDetailSectionModel } from "@/components/shrine/detail/types";
 
+import { resolveAccessLevel } from "@/lib/premium/accessLevel";
+import { getVisibilityForCard } from "@/lib/premium/cardVisibility";
+
 function ShrineDetailSections({ sections }: { sections: ShrineDetailSectionModel[] }) {
   return (
     <div className="space-y-4">
@@ -224,6 +227,19 @@ export default function ShrineDetailArticle({
   const hasPremiumSections = premiumSections.length > 0;
   const hasSections = hasFreeSections || (isPremiumActive && hasPremiumSections);
 
+  const accessLevel = resolveAccessLevel(
+    {
+      plan: isPremiumActive ? "premium" : "free",
+      is_active: isPremiumActive,
+    },
+    true,
+  );
+
+  const contextReasonVisibility = getVisibilityForCard("context_reason", accessLevel);
+  const contextReasonSections =
+    contextReasonVisibility === "hidden" ? freeSections.filter((section) => section.kind !== "reason") : freeSections;
+  const hasContextReasonSections = contextReasonSections.length > 0;
+
   const benefitTagObjs = _tags.filter(
     (t) => t.type === "benefit" && (t.confidence === "high" || t.confidence === "mid"),
   );
@@ -263,7 +279,7 @@ export default function ShrineDetailArticle({
         <ShrineDetailHeroCard title={cardProps.title} imageUrl={heroImageUrl} />
       </section>
 
-      {hasFreeSections ? <ShrineDetailSections sections={freeSections} /> : null}
+      {hasContextReasonSections ? <ShrineDetailSections sections={contextReasonSections} /> : null}
 
       {isPremiumActive && hasPremiumSections ? <ShrineDetailSections sections={premiumSections} /> : null}
 
