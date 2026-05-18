@@ -81,6 +81,24 @@ function ShrineDetailSections({ sections }: { sections: ShrineDetailSectionModel
   );
 }
 
+function buildContextReasonSections(args: {
+  sections: ShrineDetailSectionModel[];
+  visibility: "hidden" | "partial" | "teaser" | "visible";
+}) {
+  const { sections, visibility } = args;
+
+  if (visibility === "hidden") {
+    return sections.filter((section) => section.kind !== "reason");
+  }
+
+  if (visibility === "partial") {
+    const firstReasonSectionIndex = sections.findIndex((section) => section.kind === "reason");
+    return sections.filter((section, index) => section.kind !== "reason" || index === firstReasonSectionIndex);
+  }
+
+  return sections;
+}
+
 function PremiumUpgradePrompt() {
   const { isLoggedIn, loading: authLoading } = useAuth();
   const isGuestUser = !authLoading && !isLoggedIn;
@@ -240,14 +258,11 @@ export default function ShrineDetailArticle({
   const contextReasonVisibility = getVisibilityForCard("context_reason", accessLevel);
   const personalMeaningVisibility = getVisibilityForCard("personal_meaning", accessLevel);
   const savedRecordVisibility = getVisibilityForCard("saved_record", accessLevel);
-  const firstReasonSectionIndex = freeSections.findIndex((section) => section.kind === "reason");
 
-  const contextReasonSections =
-    contextReasonVisibility === "hidden"
-      ? freeSections.filter((section) => section.kind !== "reason")
-      : contextReasonVisibility === "partial"
-        ? freeSections.filter((section, index) => section.kind !== "reason" || index === firstReasonSectionIndex)
-        : freeSections;
+  const contextReasonSections = buildContextReasonSections({
+    sections: freeSections,
+    visibility: contextReasonVisibility,
+  });
   const hasContextReasonSections = contextReasonSections.length > 0;
 
   useEffect(() => {
