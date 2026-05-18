@@ -11,8 +11,10 @@ import { buildRecommendationReasonViewModel } from "@/lib/concierge/buildRecomme
 import ConciergeTopRecommendationHero from "@/features/concierge/components/ConciergeTopRecommendationHero";
 import ShrineCardCompact from "@/components/shrines/ShrineCardCompact";
 import { track } from "@/lib/analytics/track";
+import { trackCardEvent } from "@/lib/analytics/cardEvents";
 import { labelNeedDisplayTag } from "@/features/concierge/copy/needDisplayCopy";
 import { buildLoginHref } from "@/lib/nav/login";
+import { resolveAccessLevel } from "@/lib/premium/accessLevel";
 
 import type {
   ConciergeSectionsPayload,
@@ -67,7 +69,12 @@ function AstroCard(props: { sunSign?: string; element?: string; reason?: string 
   );
 }
 
-function ConciergePremiumEntryCard(props: { shrineId?: number | null; tid?: string | null; isGuestUser?: boolean }) {
+function ConciergePremiumEntryCard(props: {
+  shrineId?: number | null;
+  tid?: string | null;
+  isGuestUser?: boolean;
+  accessLevel: "anonymous" | "free" | "premium";
+}) {
   const href = props.isGuestUser ? buildLoginHref("/billing/upgrade") : "/billing/upgrade";
   const ctaLabel = props.isGuestUser ? "ログインして今の変化を見る" : "今の変化をもう少し深く整理する";
   return (
@@ -84,15 +91,26 @@ function ConciergePremiumEntryCard(props: { shrineId?: number | null; tid?: stri
         <a
           href={href}
           className="inline-flex items-center rounded-xl bg-amber-700 px-3 py-2 text-xs font-semibold text-white hover:bg-amber-800"
-          onClick={() =>
+          onClick={() => {
             track("concierge_premium_preview_click", {
               source: "hero_card",
               valueProp: "state_reflection_subscription",
               funnelStep: "concierge_result",
               shrineId: props.shrineId ?? null,
               tid: props.tid ?? null,
-            })
-          }
+            });
+
+            trackCardEvent({
+              event: "premium_preview_click",
+              cardId: "premium_preview",
+              source: "concierge_result",
+              accessLevel: props.accessLevel,
+              visibility: "teaser",
+              ctaType: "continue_with_premium",
+              shrineId: props.shrineId ?? undefined,
+              sessionId: props.tid ?? undefined,
+            });
+          }}
         >
           {ctaLabel}
         </a>
@@ -126,6 +144,7 @@ export default function ConciergeSectionsRenderer({
   isPremiumActive: isPremiumActiveProp,
 }: Props) {
   const trackedImpressionKeysRef = useRef<Set<string>>(new Set());
+  const trackedCardEventKeysRef = useRef<Set<string>>(new Set());
   const [showOtherRecommendations, setShowOtherRecommendations] = useState(false);
 
   const { isLoggedIn, loading: authLoading } = useAuth();
@@ -165,6 +184,14 @@ export default function ConciergeSectionsRenderer({
     typeof isPremiumActiveProp === "boolean"
       ? isPremiumActiveProp
       : Boolean((payload?.meta as any)?.billing?.is_active || (payload?.meta as any)?.isPremiumActive);
+
+  const accessLevel = resolveAccessLevel(
+    {
+      plan: isPremiumActive ? "premium" : "free",
+      is_active: isPremiumActive,
+    },
+    !authLoading && isLoggedIn,
+  );
 
   const resultImpressions = useMemo(() => {
     if (!payload || !Array.isArray(payload.sections)) return [];
@@ -209,6 +236,45 @@ export default function ConciergeSectionsRenderer({
       });
     });
   }, [resultImpressions, resultSetId, tid]);
+
+  useEffect(() => {
+    const heroItem = resultImpressions.find((item) => item.position === "hero");
+    if (!heroItem) return;
+
+    const heroEventKey = `${resultSetId}:card_view:shrine_hero:${heroItem.shrineId}`;
+    if (!trackedCardEventKeysRef.current.has(heroEventKey)) {
+      trackedCardEventKeysRef.current.add(heroEventKey);
+      trackCardEvent({
+        event: "card_view",
+        cardId: "shrine_hero",
+        source: "concierge_result",
+        accessLevel,
+        visibility: "visible",
+        shrineId: heroItem.shrineId,
+        recommendationRank: heroItem.rank,
+        mode: heroItem.mode,
+        sessionId: tid ?? undefined,
+      });
+    }
+
+    if (isPremiumActive) return;
+
+    const premiumPreviewEventKey = `${resultSetId}:card_teaser_view:premium_preview:${heroItem.shrineId}`;
+    if (trackedCardEventKeysRef.current.has(premiumPreviewEventKey)) return;
+
+    trackedCardEventKeysRef.current.add(premiumPreviewEventKey);
+    trackCardEvent({
+      event: "card_teaser_view",
+      cardId: "premium_preview",
+      source: "concierge_result",
+      accessLevel,
+      visibility: "teaser",
+      shrineId: heroItem.shrineId,
+      recommendationRank: heroItem.rank,
+      mode: heroItem.mode,
+      sessionId: tid ?? undefined,
+    });
+  }, [accessLevel, isPremiumActive, resultImpressions, resultSetId, tid]);
 
   if (!payload || !Array.isArray(payload.sections) || payload.sections.length === 0) return null;
 
@@ -473,7 +539,12 @@ export default function ConciergeSectionsRenderer({
                             />
 
                             {!isPremiumActive ? (
-                              <ConciergePremiumEntryCard shrineId={heroItem.shrineId} tid={tid} isGuestUser={isGuestUser} />
+                              <ConciergePremiumEntryCard
+                                shrineId={heroItem.shrineId}
+                                tid={tid}
+                                isGuestUser={isGuestUser}
+                                accessLevel={accessLevel}
+                              />
                             ) : null}
 
                             <ShrineSaveButton
@@ -558,7 +629,19 @@ export default function ConciergeSectionsRenderer({
                       <button
                         type="button"
                         className="w-full rounded-xl border px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                        onClick={() => onAction?.({ type: "save_concierge_thread" })}
+                        onClick={() => {
+                          trackCardEvent({
+                            event: "save_prompt_click",
+                            cardId: "save_prompt",
+                            source: "concierge_result",
+                            accessLevel,
+                            visibility: isGuestUser ? "teaser" : "visible",
+                            ctaType: isGuestUser ? "login_to_save" : "save",
+                            sessionId: tid ?? undefined,
+                          });
+
+                          onAction?.({ type: "save_concierge_thread" });
+                        }}
                         disabled={sending}
                       >
                         {isGuestUser ? "ログインして相談結果を保存" : "この相談を保存する"}
