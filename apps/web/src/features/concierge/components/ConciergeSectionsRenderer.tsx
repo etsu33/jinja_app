@@ -85,7 +85,7 @@ function ConciergePremiumEntryCard(props: { shrineId?: number | null; tid?: stri
           href={href}
           className="inline-flex items-center rounded-xl bg-amber-700 px-3 py-2 text-xs font-semibold text-white hover:bg-amber-800"
           onClick={() =>
-            track("concierge_premium_click", {
+            track("concierge_premium_preview_click", {
               source: "hero_card",
               valueProp: "state_reflection_subscription",
               funnelStep: "concierge_result",
