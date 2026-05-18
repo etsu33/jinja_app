@@ -53,7 +53,6 @@ import type { ShrineTag } from "@/lib/shrine/tags/types";
 import type { ShrineCardAdapterProps } from "@/components/shrine/buildShrineCardProps";
 import type { ShrineDetailSectionModel } from "@/components/shrine/detail/types";
 
-import { trackCardEvent } from "@/lib/analytics/cardEvents";
 import { resolveAccessLevel } from "@/lib/premium/accessLevel";
 import { getVisibilityForCard } from "@/lib/premium/cardVisibility";
 
@@ -220,7 +219,6 @@ export default function ShrineDetailArticle({
   } | null;
   saveActionNode?: React.ReactNode;
 }) {
-  const { isLoggedIn, loading: authLoading } = useAuth();
   const hasRecommendationMeta = Boolean(recommendationMeta?.rankTitle && recommendationMeta?.rankBody);
   const hasLayeredSections = freeDisplaySections.length > 0 || premiumDisplaySections.length > 0;
   const freeSections = hasLayeredSections ? freeDisplaySections.map((item) => item.section) : sections;
@@ -234,7 +232,7 @@ export default function ShrineDetailArticle({
       plan: isPremiumActive ? "premium" : "free",
       is_active: isPremiumActive,
     },
-    !authLoading && isLoggedIn,
+    true,
   );
 
   const contextReasonVisibility = getVisibilityForCard("context_reason", accessLevel);
