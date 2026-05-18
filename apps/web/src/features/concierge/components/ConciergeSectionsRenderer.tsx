@@ -199,6 +199,7 @@ export default function ConciergeSectionsRenderer({
   const savePromptVisibility = getVisibilityForCard("save_prompt", accessLevel);
   const consultationSummaryVisibility = getVisibilityForCard("consultation_summary", accessLevel);
   const shrineMeaningVisibility = getVisibilityForCard("shrine_meaning", accessLevel);
+  const actionMeaningVisibility = getVisibilityForCard("action_meaning", accessLevel);
 
   const resultImpressions = useMemo(() => {
     if (!payload || !Array.isArray(payload.sections)) return [];
@@ -278,6 +279,26 @@ export default function ConciergeSectionsRenderer({
             source: "concierge_result",
             accessLevel,
             visibility: shrineMeaningVisibility,
+            shrineId: heroItem.shrineId,
+            recommendationRank: heroItem.rank,
+            mode: heroItem.mode,
+            sessionId: tid ?? undefined,
+          });
+        }
+      }
+
+      if (actionMeaningVisibility !== "hidden") {
+        const actionMeaningEvent = actionMeaningVisibility === "teaser" ? "card_teaser_view" : "card_view";
+        const actionMeaningEventKey = `${resultSetId}:${actionMeaningEvent}:action_meaning:${heroItem.shrineId}`;
+
+        if (!trackedCardEventKeysRef.current.has(actionMeaningEventKey)) {
+          trackedCardEventKeysRef.current.add(actionMeaningEventKey);
+          trackCardEvent({
+            event: actionMeaningEvent,
+            cardId: "action_meaning",
+            source: "concierge_result",
+            accessLevel,
+            visibility: actionMeaningVisibility,
             shrineId: heroItem.shrineId,
             recommendationRank: heroItem.rank,
             mode: heroItem.mode,
@@ -372,7 +393,7 @@ export default function ConciergeSectionsRenderer({
       mode: heroItem.mode,
       sessionId: tid ?? undefined,
     });
-  }, [accessLevel, consultationSummaryVisibility, isGuestUser, isPremiumActive, isEntryRoute, resultImpressions, resultSetId, savePromptVisibility, showOtherRecommendations, shrineMeaningVisibility, tid]);
+  }, [accessLevel, actionMeaningVisibility, consultationSummaryVisibility, isGuestUser, isPremiumActive, isEntryRoute, resultImpressions, resultSetId, savePromptVisibility, showOtherRecommendations, shrineMeaningVisibility, tid]);
 
   if (!payload || !Array.isArray(payload.sections) || payload.sections.length === 0) return null;
 
@@ -653,6 +674,21 @@ export default function ConciergeSectionsRenderer({
                                     {shrineMeaningVisibility === "partial"
                                       ? reasonVm.hero.topReasonLabel ?? reasonVm.hero.subtitle ?? reasonVm.hero.catchCopy
                                       : reasonVm.hero.subtitle ?? reasonVm.hero.catchCopy}
+                                  </p>
+                                </div>
+                              </section>
+                            ) : null}
+
+                            {actionMeaningVisibility !== "hidden" ? (
+                              <section className={conciergeSoftCardClass}>
+                                <div className="space-y-2">
+                                  <p className="text-xs font-semibold tracking-[0.12em] text-slate-500">
+                                    次にできること
+                                  </p>
+                                  <p className="text-sm leading-7 text-slate-700">
+                                    {actionMeaningVisibility === "teaser"
+                                      ? "この結果を保存すると、今の状態や次の選び方をあとから整理できます。"
+                                      : reasonVm.hero.catchCopy}
                                   </p>
                                 </div>
                               </section>
