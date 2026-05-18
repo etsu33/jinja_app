@@ -1,4 +1,4 @@
-import { cookies } from "next/headers";
+import { cookies, headers as nextHeaders } from "next/headers";
 
 import type { BillingStatus } from "@/lib/api/billing";
 
@@ -15,14 +15,26 @@ export async function getBillingStatusServer(): Promise<BillingStatus> {
   try {
     const cookieStore = await cookies();
     const cookieHeader = cookieStore.toString();
+    const headers = cookieHeader ? { Cookie: cookieHeader } : undefined;
 
-    const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL ?? ""}/api/billings/status/`, {
+    const requestHeaders = await nextHeaders();
+    const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
+    const proto = requestHeaders.get("x-forwarded-proto") ?? "http";
+    const envOrigin = process.env.NEXT_PUBLIC_APP_URL?.trim();
+    const origin = envOrigin || (host ? `${proto}://${host}` : "");
+    const statusUrl = `${origin}/api/billings/status/`;
+
+
+    const res = await fetch(statusUrl, {
       cache: "no-store",
-      headers: cookieHeader ? { cookie: cookieHeader } : {},
+      headers,
     });
 
+    const text = await res.text();
+
+
     if (!res.ok) return FALLBACK_BILLING_STATUS;
-    return (await res.json()) as BillingStatus;
+    return JSON.parse(text) as BillingStatus;
   } catch {
     return FALLBACK_BILLING_STATUS;
   }
