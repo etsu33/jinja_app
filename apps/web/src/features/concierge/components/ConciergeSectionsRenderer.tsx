@@ -69,7 +69,7 @@ function AstroCard(props: { sunSign?: string; element?: string; reason?: string 
 
 function ConciergePremiumEntryCard(props: { shrineId?: number | null; tid?: string | null; isGuestUser?: boolean }) {
   const href = props.isGuestUser ? buildLoginHref("/billing/upgrade") : "/billing/upgrade";
-  const ctaLabel = props.isGuestUser ? "ログインして詳しく見る" : "Premiumを見る";
+  const ctaLabel = props.isGuestUser ? "ログインして詳しく見る" : "今の変化をもう少し深く整理する";
   return (
     <section className={conciergePremiumCardClass}>
       <div className="space-y-2">

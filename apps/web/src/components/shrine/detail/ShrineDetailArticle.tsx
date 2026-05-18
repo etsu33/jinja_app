@@ -79,7 +79,7 @@ function PremiumUpgradePrompt() {
   const { isLoggedIn, loading: authLoading } = useAuth();
   const isGuestUser = !authLoading && !isLoggedIn;
   const href = isGuestUser ? buildLoginHref("/billing/upgrade") : "/billing/upgrade";
-  const ctaLabel = isGuestUser ? "ログインして意味を深める" : "Premiumを見る";
+  const ctaLabel = isGuestUser ? "ログインして意味を深める" : "なぜ今この神社が合っているのかを深掘りする";
 
   return (
     <section className="rounded-2xl border border-amber-100 bg-amber-50/70 p-4">
