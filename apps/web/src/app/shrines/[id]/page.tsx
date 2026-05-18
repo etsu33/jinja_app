@@ -247,6 +247,7 @@ export default async function Page({ params, searchParams }: Props) {
   const billingStatus = await getBillingStatusServer();
   const isPremiumActive = billingStatus.plan === "premium" && billingStatus.is_active === true;
 
+
   const { guestMode, ...initialFavorite } = await getShrineFavoriteInitialState(numericId);
 
   let publicGoshuins: Awaited<ReturnType<typeof fetchPublicGoshuinsForShrineServer>> = [];
