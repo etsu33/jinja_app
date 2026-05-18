@@ -473,6 +473,8 @@ export default function ConciergeClientFull() {
 
   const accessLevel = resolveAccessLevel(billing.status, isLoggedIn);
   const previousComparisonVisibility = getVisibilityForCard("previous_comparison", accessLevel);
+  const historyShiftVisibility = getVisibilityForCard("history_shift", accessLevel);
+  const deepReflectionVisibility = getVisibilityForCard("deep_reflection", accessLevel);
 
   const canSaveConciergeThread = !isAuthRequiredForAction("save_concierge_thread") || isLoggedIn;
   const { threads } = useConciergeThreads();
@@ -537,20 +539,62 @@ export default function ConciergeClientFull() {
     [currentConsultationSummary, previousConsultationSummary],
   );
 
+  const shouldTrackHistoryShiftView = Boolean(stateDelta?.transitionNarrative?.summary);
+  const shouldTrackDeepReflectionView = Boolean(
+    stateDelta?.combinationChange?.summary ||
+      (stateDelta?.changedNeedTags?.length ?? 0) > 0 ||
+      (stateDelta?.continuedNeedTags?.length ?? 0) > 0,
+  );
+
   useEffect(() => {
     if (!isLoggedIn) return;
     if (!stateDelta) return;
-    if (previousComparisonVisibility === "hidden") return;
 
-    trackCardEvent({
-      event: "card_view",
-      cardId: "previous_comparison",
-      source: "concierge_result",
-      accessLevel,
-      visibility: previousComparisonVisibility,
-      sessionId: activeThreadId ? String(activeThreadId) : undefined,
-    });
-  }, [accessLevel, activeThreadId, isLoggedIn, previousComparisonVisibility, stateDelta]);
+    const sessionId = activeThreadId ? String(activeThreadId) : undefined;
+
+    if (previousComparisonVisibility !== "hidden") {
+      trackCardEvent({
+        event: "card_view",
+        cardId: "previous_comparison",
+        source: "concierge_result",
+        accessLevel,
+        visibility: previousComparisonVisibility,
+        sessionId,
+      });
+    }
+
+    if (historyShiftVisibility !== "hidden" && shouldTrackHistoryShiftView) {
+      trackCardEvent({
+        event: "card_view",
+        cardId: "history_shift",
+        source: "concierge_result",
+        accessLevel,
+        visibility: historyShiftVisibility,
+        sessionId,
+      });
+    }
+
+    if (deepReflectionVisibility !== "hidden" && shouldTrackDeepReflectionView) {
+      trackCardEvent({
+        event: "card_view",
+        cardId: "deep_reflection",
+        source: "concierge_result",
+        accessLevel,
+        visibility: deepReflectionVisibility,
+        sessionId,
+      });
+    }
+  }, [
+    accessLevel,
+    activeThreadId,
+    deepReflectionVisibility,
+    historyShiftVisibility,
+    isLoggedIn,
+    previousComparisonVisibility,
+    shouldTrackDeepReflectionView,
+    shouldTrackHistoryShiftView,
+    stateDelta,
+  ]);
 
   const [, setThreadLoading] = useState(false);
 
