@@ -241,6 +241,22 @@ export default function ConciergeSectionsRenderer({
     const heroItem = resultImpressions.find((item) => item.position === "hero");
     if (!heroItem) return;
 
+    if (!isEntryRoute) {
+      const savePromptEventKey = `${resultSetId}:save_prompt_view:${accessLevel}`;
+      if (!trackedCardEventKeysRef.current.has(savePromptEventKey)) {
+        trackedCardEventKeysRef.current.add(savePromptEventKey);
+        trackCardEvent({
+          event: "save_prompt_view",
+          cardId: "save_prompt",
+          source: "concierge_result",
+          accessLevel,
+          visibility: isGuestUser ? "teaser" : "visible",
+          ctaType: isGuestUser ? "login_to_save" : "save",
+          sessionId: tid ?? undefined,
+        });
+      }
+    }
+
     const heroEventKey = `${resultSetId}:card_view:shrine_hero:${heroItem.shrineId}`;
     if (!trackedCardEventKeysRef.current.has(heroEventKey)) {
       trackedCardEventKeysRef.current.add(heroEventKey);
@@ -274,7 +290,7 @@ export default function ConciergeSectionsRenderer({
       mode: heroItem.mode,
       sessionId: tid ?? undefined,
     });
-  }, [accessLevel, isPremiumActive, resultImpressions, resultSetId, tid]);
+  }, [accessLevel, isGuestUser, isPremiumActive, isEntryRoute, resultImpressions, resultSetId, tid]);
 
   if (!payload || !Array.isArray(payload.sections) || payload.sections.length === 0) return null;
 
