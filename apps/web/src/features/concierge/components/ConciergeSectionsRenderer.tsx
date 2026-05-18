@@ -107,6 +107,7 @@ type Props = {
   sending?: boolean;
   threadId?: number | null;
   isEntryRoute?: boolean;
+  isPremiumActive?: boolean;
 };
 
 function parseExtraTokens(extra: string | undefined | null): string[] {
@@ -122,6 +123,7 @@ export default function ConciergeSectionsRenderer({
   sending = false,
   threadId = null,
   isEntryRoute = false,
+  isPremiumActive: isPremiumActiveProp,
 }: Props) {
   const trackedImpressionKeysRef = useRef<Set<string>>(new Set());
   const [showOtherRecommendations, setShowOtherRecommendations] = useState(false);
@@ -159,7 +161,10 @@ export default function ConciergeSectionsRenderer({
   const appliedLabel = appliedTokens.length ? `条件: ${appliedTokens.join(" / ")}` : null;
   const normalizedModeForTracking = normalizeConciergeMode(payload?.meta?.mode);
   const tid = threadId != null ? String(threadId) : null;
-  const isPremiumActive = Boolean((payload?.meta as any)?.billing?.is_active || (payload?.meta as any)?.isPremiumActive);
+  const isPremiumActive =
+    typeof isPremiumActiveProp === "boolean"
+      ? isPremiumActiveProp
+      : Boolean((payload?.meta as any)?.billing?.is_active || (payload?.meta as any)?.isPremiumActive);
 
   const resultImpressions = useMemo(() => {
     if (!payload || !Array.isArray(payload.sections)) return [];
