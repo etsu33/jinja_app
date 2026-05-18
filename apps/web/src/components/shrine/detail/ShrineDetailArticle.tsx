@@ -35,7 +35,7 @@
  * - 比較カードは主導線（①〜④）の下に置く
  */
 import Link from "next/link";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 import PublicGoshuinSection, { type PublicGoshuinItem } from "@/components/shrine/detail/PublicGoshuinSection";
 import ShrineJudgeSection from "@/components/shrine/detail/ShrineJudgeSection";
@@ -55,6 +55,8 @@ import type { ShrineDetailSectionModel } from "@/components/shrine/detail/types"
 
 import { resolveAccessLevel } from "@/lib/premium/accessLevel";
 import { getVisibilityForCard } from "@/lib/premium/cardVisibility";
+import { trackCardEvent } from "@/lib/analytics/cardEvents";
+
 
 function ShrineDetailSections({ sections }: { sections: ShrineDetailSectionModel[] }) {
   return (
@@ -247,6 +249,19 @@ export default function ShrineDetailArticle({
         ? freeSections.filter((section, index) => section.kind !== "reason" || index === firstReasonSectionIndex)
         : freeSections;
   const hasContextReasonSections = contextReasonSections.length > 0;
+
+  useEffect(() => {
+    if (!hasContextReasonSections) return;
+    if (contextReasonVisibility === "hidden") return;
+
+    trackCardEvent({
+      event: contextReasonVisibility === "partial" ? "card_partial_view" : "card_view",
+      cardId: "context_reason",
+      source: "shrine_detail",
+      accessLevel,
+      visibility: contextReasonVisibility,
+    });
+  }, [accessLevel, contextReasonVisibility, hasContextReasonSections]);
 
   const benefitTagObjs = _tags.filter(
     (t) => t.type === "benefit" && (t.confidence === "high" || t.confidence === "mid"),
