@@ -198,6 +198,7 @@ export default function ConciergeSectionsRenderer({
   const premiumPreviewVisibility = getVisibilityForCard("premium_preview", accessLevel);
   const savePromptVisibility = getVisibilityForCard("save_prompt", accessLevel);
   const consultationSummaryVisibility = getVisibilityForCard("consultation_summary", accessLevel);
+  const shrineMeaningVisibility = getVisibilityForCard("shrine_meaning", accessLevel);
 
   const resultImpressions = useMemo(() => {
     if (!payload || !Array.isArray(payload.sections)) return [];
@@ -259,6 +260,26 @@ export default function ConciergeSectionsRenderer({
             source: "concierge_result",
             accessLevel,
             visibility: consultationSummaryVisibility,
+            mode: heroItem.mode,
+            sessionId: tid ?? undefined,
+          });
+        }
+      }
+
+      if (shrineMeaningVisibility !== "hidden") {
+        const shrineMeaningEvent = shrineMeaningVisibility === "partial" ? "card_partial_view" : "card_view";
+        const shrineMeaningEventKey = `${resultSetId}:${shrineMeaningEvent}:shrine_meaning:${heroItem.shrineId}`;
+
+        if (!trackedCardEventKeysRef.current.has(shrineMeaningEventKey)) {
+          trackedCardEventKeysRef.current.add(shrineMeaningEventKey);
+          trackCardEvent({
+            event: shrineMeaningEvent,
+            cardId: "shrine_meaning",
+            source: "concierge_result",
+            accessLevel,
+            visibility: shrineMeaningVisibility,
+            shrineId: heroItem.shrineId,
+            recommendationRank: heroItem.rank,
             mode: heroItem.mode,
             sessionId: tid ?? undefined,
           });
@@ -351,7 +372,7 @@ export default function ConciergeSectionsRenderer({
       mode: heroItem.mode,
       sessionId: tid ?? undefined,
     });
-  }, [accessLevel, consultationSummaryVisibility, isGuestUser, isPremiumActive, isEntryRoute, resultImpressions, resultSetId, savePromptVisibility, showOtherRecommendations, tid]);
+  }, [accessLevel, consultationSummaryVisibility, isGuestUser, isPremiumActive, isEntryRoute, resultImpressions, resultSetId, savePromptVisibility, showOtherRecommendations, shrineMeaningVisibility, tid]);
 
   if (!payload || !Array.isArray(payload.sections) || payload.sections.length === 0) return null;
 
@@ -621,6 +642,21 @@ export default function ConciergeSectionsRenderer({
                                 })
                               }
                             />
+
+                            {shrineMeaningVisibility !== "hidden" ? (
+                              <section className={conciergeSoftCardClass}>
+                                <div className="space-y-2">
+                                  <p className="text-xs font-semibold tracking-[0.12em] text-slate-500">
+                                    この神社が合う理由
+                                  </p>
+                                  <p className="text-sm leading-7 text-slate-700">
+                                    {shrineMeaningVisibility === "partial"
+                                      ? reasonVm.hero.topReasonLabel ?? reasonVm.hero.subtitle ?? reasonVm.hero.catchCopy
+                                      : reasonVm.hero.subtitle ?? reasonVm.hero.catchCopy}
+                                  </p>
+                                </div>
+                              </section>
+                            ) : null}
 
                             {premiumPreviewVisibility !== "hidden" ? (
                               <ConciergePremiumEntryCard
