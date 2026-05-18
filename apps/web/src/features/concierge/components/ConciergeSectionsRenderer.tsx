@@ -16,7 +16,7 @@ import { labelNeedDisplayTag } from "@/features/concierge/copy/needDisplayCopy";
 import { buildLoginHref } from "@/lib/nav/login";
 import { resolveAccessLevel } from "@/lib/premium/accessLevel";
 import { getVisibilityForCard } from "@/lib/premium/cardVisibility";
-
+import ConciergeConsultationSummary from "@/features/concierge/components/ConciergeConsultationSummary";
 
 import type {
   ConciergeSectionsPayload,
@@ -197,6 +197,7 @@ export default function ConciergeSectionsRenderer({
 
   const premiumPreviewVisibility = getVisibilityForCard("premium_preview", accessLevel);
   const savePromptVisibility = getVisibilityForCard("save_prompt", accessLevel);
+  const consultationSummaryVisibility = getVisibilityForCard("consultation_summary", accessLevel);
 
   const resultImpressions = useMemo(() => {
     if (!payload || !Array.isArray(payload.sections)) return [];
@@ -245,6 +246,24 @@ export default function ConciergeSectionsRenderer({
     useEffect(() => {
       const heroItem = resultImpressions.find((item) => item.position === "hero");
       if (!heroItem) return;
+
+      if (consultationSummaryVisibility !== "hidden") {
+        const consultationSummaryEvent = consultationSummaryVisibility === "partial" ? "card_partial_view" : "card_view";
+        const consultationSummaryEventKey = `${resultSetId}:${consultationSummaryEvent}:consultation_summary`;
+
+        if (!trackedCardEventKeysRef.current.has(consultationSummaryEventKey)) {
+          trackedCardEventKeysRef.current.add(consultationSummaryEventKey);
+          trackCardEvent({
+            event: consultationSummaryEvent,
+            cardId: "consultation_summary",
+            source: "concierge_result",
+            accessLevel,
+            visibility: consultationSummaryVisibility,
+            mode: heroItem.mode,
+            sessionId: tid ?? undefined,
+          });
+        }
+      }
 
       if (!isEntryRoute) {
         const savePromptEventKey = `${resultSetId}:save_prompt_view:${accessLevel}`;
@@ -332,7 +351,7 @@ export default function ConciergeSectionsRenderer({
       mode: heroItem.mode,
       sessionId: tid ?? undefined,
     });
-  }, [accessLevel, isGuestUser, isPremiumActive, isEntryRoute, resultImpressions, resultSetId, showOtherRecommendations, tid]);
+  }, [accessLevel, consultationSummaryVisibility, isGuestUser, isPremiumActive, isEntryRoute, resultImpressions, resultSetId, savePromptVisibility, showOtherRecommendations, tid]);
 
   if (!payload || !Array.isArray(payload.sections) || payload.sections.length === 0) return null;
 
@@ -570,6 +589,13 @@ export default function ConciergeSectionsRenderer({
 
                         return (
                           <div key={`rec-${i}-hero-${heroItem.shrineId}`} className="space-y-2">
+                            {consultationSummaryVisibility !== "hidden" && reasonVm.hero.catchCopy ? (
+                              <ConciergeConsultationSummary
+                                summary={reasonVm.hero.catchCopy}
+                                modeLabel={normalizedMode === "compat" ? "相性ベース" : "悩みベース"}
+                              />
+                            ) : null}
+
                             <ConciergeTopRecommendationHero
                               name={heroItem.title}
                               href={heroItem.detailHref}
