@@ -273,6 +273,43 @@ export default function ConciergeSectionsRenderer({
       });
     }
 
+    if (showOtherRecommendations) {
+      const compactItems = resultImpressions.filter((item) => item.position === "compact");
+
+      if (compactItems.length > 0) {
+        const otherShrinesEventKey = `${resultSetId}:card_view:other_shrines`;
+        if (!trackedCardEventKeysRef.current.has(otherShrinesEventKey)) {
+          trackedCardEventKeysRef.current.add(otherShrinesEventKey);
+          trackCardEvent({
+            event: "card_view",
+            cardId: "other_shrines",
+            source: "concierge_result",
+            accessLevel,
+            visibility: "visible",
+            sessionId: tid ?? undefined,
+          });
+        }
+
+        compactItems.forEach((item) => {
+          const compactEventKey = `${resultSetId}:card_view:shrine_compact:${item.shrineId}`;
+          if (trackedCardEventKeysRef.current.has(compactEventKey)) return;
+
+          trackedCardEventKeysRef.current.add(compactEventKey);
+          trackCardEvent({
+            event: "card_view",
+            cardId: "shrine_compact",
+            source: "concierge_result",
+            accessLevel,
+            visibility: "visible",
+            shrineId: item.shrineId,
+            recommendationRank: item.rank,
+            mode: item.mode,
+            sessionId: tid ?? undefined,
+          });
+        });
+      }
+    }
+
     if (isPremiumActive) return;
 
     const premiumPreviewEventKey = `${resultSetId}:card_teaser_view:premium_preview:${heroItem.shrineId}`;
@@ -290,7 +327,7 @@ export default function ConciergeSectionsRenderer({
       mode: heroItem.mode,
       sessionId: tid ?? undefined,
     });
-  }, [accessLevel, isGuestUser, isPremiumActive, isEntryRoute, resultImpressions, resultSetId, tid]);
+  }, [accessLevel, isGuestUser, isPremiumActive, isEntryRoute, resultImpressions, resultSetId, showOtherRecommendations, tid]);
 
   if (!payload || !Array.isArray(payload.sections) || payload.sections.length === 0) return null;
 
