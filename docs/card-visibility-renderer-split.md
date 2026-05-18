@@ -1,5 +1,3 @@
-
-
 # Card Visibility Renderer Split
 
 最終更新: 2026-05-18  
@@ -286,29 +284,51 @@ Premium: 長文
 - [x] SavePromptCard
 ```
 
-### Phase 2: 次に接続する
+### Phase 2: 接続済み
 
 ```markdown
-- [ ] ConsultationSummaryCard
-- [ ] ShrineMeaningCard
-- [ ] ActionMeaningCard
+- [x] ConsultationSummaryCard
+- [x] ShrineMeaningCard
+- [x] ActionMeaningCard
 ```
 
-### Phase 3: 履歴・比較系
+### Phase 3: 一部接続済み / 次に分離
 
 ```markdown
-- [ ] PreviousComparisonCard
+- [x] PreviousComparisonCard
 - [ ] HistoryShiftCard
 - [ ] DeepReflectionCard
 ```
 
-### Phase 4: ShrineDetail 側
+### Phase 4: ShrineDetail 側 / 未接続
 
 ```markdown
 - [ ] ContextReasonCard
 - [ ] PersonalMeaningCard
 - [ ] SavedRecordCard
 ```
+
+### 現在の接続状況
+
+```markdown
+- [x] ConciergeResult: premium_preview
+- [x] ConciergeResult: save_prompt
+- [x] ConciergeResult: consultation_summary
+- [x] ConciergeResult: shrine_meaning
+- [x] ConciergeResult: action_meaning
+- [x] ConciergeResult: previous_comparison
+- [ ] ConciergeResult: history_shift
+- [ ] ConciergeResult: deep_reflection
+- [ ] ShrineDetail: context_reason
+- [ ] ShrineDetail: personal_meaning
+- [ ] ShrineDetail: saved_record
+```
+
+### 注意
+
+`PreviousComparisonCard` は `PremiumStateDeltaCard` として接続済みである。
+
+ただし、`history_shift` と `deep_reflection` は同じ state delta 系の内部ブロックとして扱える可能性があるため、別PRで分離方針を決める。
 
 ---
 
@@ -345,26 +365,25 @@ Premium: 長文
 
 ## 次PRの実装候補
 
-### 候補A: ConsultationSummary policy接続
+### 候補A: HistoryShift / DeepReflection 分離方針整理
 
-最も安全。
+次に安全。
 
 ```markdown
-- [ ] `getVisibilityForCard("consultation_summary", accessLevel)` を使う
-- [ ] anonymous では hidden
-- [ ] free では partial
-- [ ] premium では visible
-- [ ] 表示内容は現状維持
+- [ ] PremiumStateDeltaCard 内の summary / combinationChange / transitionNarrative を棚卸し
+- [ ] previous_comparison / history_shift / deep_reflection の責務を分ける
+- [ ] 表示分離するか analytics 分離だけにするか判断する
+- [ ] 実装はまだ増やさない
 ```
 
-### 候補B: ShrineMeaning / ActionMeaning policy接続
+### 候補B: ShrineDetail 側 policy 接続
 
 中程度。
 
 ```markdown
-- [ ] shrine_meaning visibility を使う
-- [ ] action_meaning visibility を使う
-- [ ] partial / teaser の表示文言を固定
+- [ ] ShrineDetail 側の表示カードを洗い出す
+- [ ] context_reason / personal_meaning / saved_record の対応UIを確認する
+- [ ] cardId と visibility を接続する
 ```
 
 ### 候補C: render route helper 作成
@@ -384,8 +403,8 @@ Premium: 長文
 - teaser / partial / hidden / visible の責務が説明できる
 - Premium差分を block count で説明できる
 - policy接続順が固定されている
+- 接続済みカードと未接続カードが判断できる
 - 次PRでどのcardから接続するか判断できる
-- このPRで実装対象を増やしていない
 
 ---
 
@@ -399,5 +418,5 @@ Premium: 長文
 - [x] ConciergeResult の card render flow を整理
 - [x] block count でPremium差分を定義
 - [x] policy接続順を定義
-- [x] 実装対象はまだ増やさない
+- [x] card policy接続済み一覧を更新
 ```
