@@ -42,6 +42,10 @@ import { buildPreviousConsultationSummary } from "@/lib/concierge/buildPreviousC
 import { compareState } from "@/lib/concierge/compareState";
 import PremiumStateDeltaCard from "@/features/concierge/components/PremiumStateDeltaCard";
 
+import { resolveAccessLevel } from "@/lib/premium/accessLevel";
+import { getVisibilityForCard } from "@/lib/premium/cardVisibility";
+import { trackCardEvent } from "@/lib/analytics/cardEvents";
+
 
 
 /* ========================================
@@ -467,6 +471,9 @@ export default function ConciergeClientFull() {
   const billing = useBilling();
   const isPremiumActive = billing.status?.plan === "premium" && billing.status?.is_active === true;
 
+  const accessLevel = resolveAccessLevel(billing.status, isLoggedIn);
+  const previousComparisonVisibility = getVisibilityForCard("previous_comparison", accessLevel);
+
   const canSaveConciergeThread = !isAuthRequiredForAction("save_concierge_thread") || isLoggedIn;
   const { threads } = useConciergeThreads();
 
@@ -529,6 +536,22 @@ export default function ConciergeClientFull() {
     () => compareState(previousConsultationSummary, currentConsultationSummary),
     [currentConsultationSummary, previousConsultationSummary],
   );
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    if (!stateDelta) return;
+    if (previousComparisonVisibility === "hidden") return;
+
+    trackCardEvent({
+      event: "card_view",
+      cardId: "previous_comparison",
+      source: "concierge_result",
+      accessLevel,
+      visibility: previousComparisonVisibility,
+      sessionId: activeThreadId ? String(activeThreadId) : undefined,
+    });
+  }, [accessLevel, activeThreadId, isLoggedIn, previousComparisonVisibility, stateDelta]);
+
   const [, setThreadLoading] = useState(false);
 
   const setActiveTid = (tid: number) => {
@@ -1596,11 +1619,8 @@ export default function ConciergeClientFull() {
               isPremiumActive={isPremiumActive}
             />
 
-            {isLoggedIn && stateDelta ? (
-              <PremiumStateDeltaCard
-                stateDelta={stateDelta}
-                isPremium={isPremiumActive}
-              />
+            {isLoggedIn && stateDelta && previousComparisonVisibility !== "hidden" ? (
+              <PremiumStateDeltaCard stateDelta={stateDelta} isPremium={isPremiumActive} />
             ) : null}
 
             <ConciergeDebugPanel unified={displayUnified} />
