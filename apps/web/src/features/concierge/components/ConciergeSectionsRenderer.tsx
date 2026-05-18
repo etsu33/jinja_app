@@ -15,6 +15,8 @@ import { trackCardEvent } from "@/lib/analytics/cardEvents";
 import { labelNeedDisplayTag } from "@/features/concierge/copy/needDisplayCopy";
 import { buildLoginHref } from "@/lib/nav/login";
 import { resolveAccessLevel } from "@/lib/premium/accessLevel";
+import { getVisibilityForCard } from "@/lib/premium/cardVisibility";
+
 
 import type {
   ConciergeSectionsPayload,
@@ -193,6 +195,9 @@ export default function ConciergeSectionsRenderer({
     !authLoading && isLoggedIn,
   );
 
+  const premiumPreviewVisibility = getVisibilityForCard("premium_preview", accessLevel);
+  const savePromptVisibility = getVisibilityForCard("save_prompt", accessLevel);
+
   const resultImpressions = useMemo(() => {
     if (!payload || !Array.isArray(payload.sections)) return [];
 
@@ -237,25 +242,25 @@ export default function ConciergeSectionsRenderer({
     });
   }, [resultImpressions, resultSetId, tid]);
 
-  useEffect(() => {
-    const heroItem = resultImpressions.find((item) => item.position === "hero");
-    if (!heroItem) return;
+    useEffect(() => {
+      const heroItem = resultImpressions.find((item) => item.position === "hero");
+      if (!heroItem) return;
 
-    if (!isEntryRoute) {
-      const savePromptEventKey = `${resultSetId}:save_prompt_view:${accessLevel}`;
-      if (!trackedCardEventKeysRef.current.has(savePromptEventKey)) {
-        trackedCardEventKeysRef.current.add(savePromptEventKey);
-        trackCardEvent({
-          event: "save_prompt_view",
-          cardId: "save_prompt",
-          source: "concierge_result",
-          accessLevel,
-          visibility: isGuestUser ? "teaser" : "visible",
-          ctaType: isGuestUser ? "login_to_save" : "save",
-          sessionId: tid ?? undefined,
-        });
+      if (!isEntryRoute) {
+        const savePromptEventKey = `${resultSetId}:save_prompt_view:${accessLevel}`;
+        if (!trackedCardEventKeysRef.current.has(savePromptEventKey)) {
+          trackedCardEventKeysRef.current.add(savePromptEventKey);
+          trackCardEvent({
+            event: "save_prompt_view",
+            cardId: "save_prompt",
+            source: "concierge_result",
+            accessLevel,
+            visibility: savePromptVisibility,
+            ctaType: isGuestUser ? "login_to_save" : "save",
+            sessionId: tid ?? undefined,
+          });
+        }
       }
-    }
 
     const heroEventKey = `${resultSetId}:card_view:shrine_hero:${heroItem.shrineId}`;
     if (!trackedCardEventKeysRef.current.has(heroEventKey)) {
@@ -393,7 +398,7 @@ export default function ConciergeSectionsRenderer({
                       </div>
                     )}
 
-                    {!isEntryRoute && (
+                    {!isEntryRoute ? (
                       <button
                         type="button"
                         className="mt-2 w-full rounded-xl border px-4 py-3 text-sm font-semibold"
@@ -402,7 +407,7 @@ export default function ConciergeSectionsRenderer({
                       >
                         入口に戻る
                       </button>
-                    )}
+                    ) : null}
 
                     <button
                       type="button"
@@ -591,7 +596,7 @@ export default function ConciergeSectionsRenderer({
                               }
                             />
 
-                            {!isPremiumActive ? (
+                            {premiumPreviewVisibility !== "hidden" ? (
                               <ConciergePremiumEntryCard
                                 shrineId={heroItem.shrineId}
                                 tid={tid}
@@ -677,7 +682,7 @@ export default function ConciergeSectionsRenderer({
                     </div>
                   ) : null}
 
-                  {!isEntryRoute ? (
+                  {!isEntryRoute && savePromptVisibility !== "hidden" ? (
                     <div className="pt-4">
                       <button
                         type="button"
@@ -688,7 +693,7 @@ export default function ConciergeSectionsRenderer({
                             cardId: "save_prompt",
                             source: "concierge_result",
                             accessLevel,
-                            visibility: isGuestUser ? "teaser" : "visible",
+                            visibility: savePromptVisibility,
                             ctaType: isGuestUser ? "login_to_save" : "save",
                             sessionId: tid ?? undefined,
                           });
