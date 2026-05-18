@@ -69,7 +69,7 @@ function AstroCard(props: { sunSign?: string; element?: string; reason?: string 
 
 function ConciergePremiumEntryCard(props: { shrineId?: number | null; tid?: string | null; isGuestUser?: boolean }) {
   const href = props.isGuestUser ? buildLoginHref("/billing/upgrade") : "/billing/upgrade";
-  const ctaLabel = props.isGuestUser ? "ログインして詳しく見る" : "今の変化をもう少し深く整理する";
+  const ctaLabel = props.isGuestUser ? "ログインして今の変化を見る" : "今の変化をもう少し深く整理する";
   return (
     <section className={conciergePremiumCardClass}>
       <div className="space-y-2">
@@ -460,7 +460,7 @@ export default function ConciergeSectionsRenderer({
                               secondaryReason={null}
                               differenceFromOthers={null}
                               tags={(heroItem.breakdown?.matched_need_tags ?? []).map(labelNeedDisplayTag).slice(0, 3)}
-                              routeLabel="詳しく見る"
+                              routeLabel="神社の詳細を見る"
                               onDetailClick={() =>
                                 track("concierge_result_click", {
                                   action: "detail",
