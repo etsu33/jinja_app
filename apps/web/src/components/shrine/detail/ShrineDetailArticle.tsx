@@ -54,7 +54,7 @@ import type { ShrineCardAdapterProps } from "@/components/shrine/buildShrineCard
 import type { ShrineDetailSectionModel } from "@/components/shrine/detail/types";
 
 import { resolveAccessLevel } from "@/lib/premium/accessLevel";
-import { getVisibilityForCard } from "@/lib/premium/cardVisibility";
+import { getVisibilityForCard, type CardVisibilityState } from "@/lib/premium/cardVisibility";
 import { trackCardEvent } from "@/lib/analytics/cardEvents";
 
 
@@ -97,6 +97,22 @@ function buildContextReasonSections(args: {
   }
 
   return sections;
+}
+
+function trackShrineDetailCardView(args: {
+  cardId: "context_reason" | "personal_meaning" | "saved_record";
+  accessLevel: "anonymous" | "free" | "premium";
+  visibility: CardVisibilityState;
+}) {
+  if (args.visibility === "hidden") return;
+
+  trackCardEvent({
+    event: args.visibility === "partial" || args.visibility === "teaser" ? "card_partial_view" : "card_view",
+    cardId: args.cardId,
+    source: "shrine_detail",
+    accessLevel: args.accessLevel,
+    visibility: args.visibility,
+  });
 }
 
 function PremiumUpgradePrompt() {
@@ -265,18 +281,6 @@ export default function ShrineDetailArticle({
   });
   const hasContextReasonSections = contextReasonSections.length > 0;
 
-  useEffect(() => {
-    if (!hasContextReasonSections) return;
-    if (contextReasonVisibility === "hidden") return;
-
-    trackCardEvent({
-      event: contextReasonVisibility === "partial" ? "card_partial_view" : "card_view",
-      cardId: "context_reason",
-      source: "shrine_detail",
-      accessLevel,
-      visibility: contextReasonVisibility,
-    });
-  }, [accessLevel, contextReasonVisibility, hasContextReasonSections]);
 
   const benefitTagObjs = _tags.filter(
     (t) => t.type === "benefit" && (t.confidence === "high" || t.confidence === "mid"),
@@ -304,6 +308,40 @@ export default function ShrineDetailArticle({
       },
     });
   }, [saveActionNode]);
+
+  useEffect(() => {
+    if (hasContextReasonSections) {
+      trackShrineDetailCardView({
+        cardId: "context_reason",
+        accessLevel,
+        visibility: contextReasonVisibility,
+      });
+    }
+
+    if (hasPremiumSections) {
+      trackShrineDetailCardView({
+        cardId: "personal_meaning",
+        accessLevel,
+        visibility: personalMeaningVisibility,
+      });
+    }
+
+    if (resolvedSaveActionNode) {
+      trackShrineDetailCardView({
+        cardId: "saved_record",
+        accessLevel,
+        visibility: savedRecordVisibility,
+      });
+    }
+  }, [
+    accessLevel,
+    contextReasonVisibility,
+    hasContextReasonSections,
+    hasPremiumSections,
+    personalMeaningVisibility,
+    resolvedSaveActionNode,
+    savedRecordVisibility,
+  ]);
 
   return (
     <article className="space-y-4">
