@@ -1516,6 +1516,7 @@ export default function ConciergeClientFull() {
                     sending={sending}
                     threadId={thread?.id ?? activeThreadId}
                     isEntryRoute={isEntryRoute}
+                    isPremiumActive={isPremiumActive}
                   />
                 </div>
               ) : null}
@@ -1592,6 +1593,7 @@ export default function ConciergeClientFull() {
               sending={sending}
               threadId={thread?.id ?? activeThreadId}
               isEntryRoute={isEntryRoute}
+              isPremiumActive={isPremiumActive}
             />
 
             {isLoggedIn && stateDelta ? (
