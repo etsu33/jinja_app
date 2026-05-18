@@ -236,8 +236,14 @@ export default function ShrineDetailArticle({
   );
 
   const contextReasonVisibility = getVisibilityForCard("context_reason", accessLevel);
+  const firstReasonSectionIndex = freeSections.findIndex((section) => section.kind === "reason");
+
   const contextReasonSections =
-    contextReasonVisibility === "hidden" ? freeSections.filter((section) => section.kind !== "reason") : freeSections;
+    contextReasonVisibility === "hidden"
+      ? freeSections.filter((section) => section.kind !== "reason")
+      : contextReasonVisibility === "partial"
+        ? freeSections.filter((section, index) => section.kind !== "reason" || index === firstReasonSectionIndex)
+        : freeSections;
   const hasContextReasonSections = contextReasonSections.length > 0;
 
   const benefitTagObjs = _tags.filter(
