@@ -20,6 +20,7 @@ const UPGRADE_ENTRY_CONTEXT_STORAGE_KEY = "upgrade:entry-context";
 type UpgradeEntryContext = {
   entryPoint: BillingFunnelSource | null;
   entryStep: BillingFunnelStep | null;
+  entryCardId: string | null;
 };
 
 function saveUpgradeEntryContext(entryContext: UpgradeEntryContext) {
@@ -45,6 +46,7 @@ function BillingUpgradeContent() {
   const checkoutStartedTrackedRef = useRef(false);
   const source = parseBillingFunnelSource(searchParams.get("source"));
   const funnelStep = parseBillingFunnelStep(searchParams.get("funnelStep"));
+  const cardId = searchParams.get("cardId");
 
   const startCheckout = async () => {
     if (auth.loading) return;
@@ -52,6 +54,7 @@ function BillingUpgradeContent() {
     const entryContext = {
       entryPoint: source,
       entryStep: funnelStep,
+      entryCardId: cardId,
     };
 
     saveUpgradeEntryContext(entryContext);
@@ -61,6 +64,7 @@ function BillingUpgradeContent() {
       trackBillingEvent("upgrade_click", {
         source,
         funnelStep,
+        cardId,
       });
     }
 
@@ -80,6 +84,7 @@ function BillingUpgradeContent() {
           checkoutSessionId: session.session_id,
           source,
           funnelStep,
+          cardId,
         });
       }
       window.location.assign(session.checkout_url);
