@@ -631,9 +631,9 @@ export default function ConciergeSectionsRenderer({
 
                         return (
                           <div key={`rec-${i}-hero-${heroItem.shrineId}`} className="space-y-2">
-                            {consultationSummaryVisibility !== "hidden" && reasonVm.hero.catchCopy ? (
+                            {consultationSummaryVisibility !== "hidden" && reasonVm.detail.consultationSummary ? (
                               <ConciergeConsultationSummary
-                                summary={reasonVm.hero.catchCopy}
+                                summary={reasonVm.detail.consultationSummary}
                                 modeLabel={normalizedMode === "compat" ? "相性ベース" : "悩みベース"}
                               />
                             ) : null}
@@ -671,9 +671,7 @@ export default function ConciergeSectionsRenderer({
                                     この神社が合う理由
                                   </p>
                                   <p className="text-sm leading-7 text-slate-700">
-                                    {shrineMeaningVisibility === "partial"
-                                      ? reasonVm.hero.topReasonLabel ?? reasonVm.hero.subtitle ?? reasonVm.hero.catchCopy
-                                      : reasonVm.hero.subtitle ?? reasonVm.hero.catchCopy}
+                                    {reasonVm.detail.shrineMeaning}
                                   </p>
                                 </div>
                               </section>
@@ -688,7 +686,7 @@ export default function ConciergeSectionsRenderer({
                                   <p className="text-sm leading-7 text-slate-700">
                                     {actionMeaningVisibility === "teaser"
                                       ? "この結果を保存すると、今の状態や次の選び方をあとから整理できます。"
-                                      : reasonVm.hero.catchCopy}
+                                      : (reasonVm.detail.actionMeaning ?? reasonVm.detail.shrineMeaning)}
                                   </p>
                                 </div>
                               </section>
