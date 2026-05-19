@@ -1,5 +1,3 @@
-
-
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import BillingSuccessPage from "../page";
@@ -81,12 +79,13 @@ describe("BillingSuccessPage", () => {
     expect(screen.getByRole("link", { name: "もう一度登録を開始する" })).toHaveAttribute("href", "/billing/upgrade");
   });
 
-  it("upgrade entry contextをanalytics payloadのsource / funnelStepへ戻す", () => {
+  it("upgrade entry contextをanalytics payloadのsource / funnelStep / cardIdへ戻す", () => {
     window.sessionStorage.setItem(
       "upgrade:entry-context",
       JSON.stringify({
         entryPoint: "state_delta_card",
         entryStep: "comparison_preview",
+        entryCardId: "personal_meaning",
         session_id: "raw_session_id",
         sessionId: "rawSessionId",
       }),
@@ -98,6 +97,7 @@ describe("BillingSuccessPage", () => {
       checkoutSessionId: "cs_test_123",
       source: "state_delta_card",
       funnelStep: "comparison_preview",
+      cardId: "personal_meaning",
     });
   });
 });
