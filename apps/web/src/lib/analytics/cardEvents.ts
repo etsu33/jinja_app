@@ -1,5 +1,6 @@
 import type { AccessLevel } from "../premium/accessLevel";
 import type { CardId, CardVisibilityState } from "../premium/cardVisibility";
+import { getAnalyticsProvider, type AnalyticsPayload } from "@/lib/analytics/providers";
 
 export type AnalyticsSource = "concierge_result" | "shrine_detail" | "billing_upgrade" | "mypage";
 
@@ -38,8 +39,23 @@ export type CardAnalyticsPayload = {
   sessionId?: string;
 };
 
+type SerializedCardAnalyticsPayloadInput = Omit<CardAnalyticsPayload, "event">;
+
+function serializeCardAnalyticsPayload(payload: SerializedCardAnalyticsPayloadInput): AnalyticsPayload {
+  return Object.fromEntries(Object.entries(payload).filter(([, value]) => value !== undefined)) as AnalyticsPayload;
+}
+
 export function trackCardEvent(payload: CardAnalyticsPayload) {
   if (process.env.NODE_ENV !== "production") {
     console.log("CARD_ANALYTICS_EVENT", payload.event, payload);
+  }
+
+  const { event, ...rest } = payload;
+  try {
+    getAnalyticsProvider().track(event, serializeCardAnalyticsPayload(rest));
+  } catch (error) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn("CARD_ANALYTICS_EVENT_FAILED", event, error);
+    }
   }
 }
