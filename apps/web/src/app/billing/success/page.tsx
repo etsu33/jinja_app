@@ -17,11 +17,13 @@ const UPGRADE_ENTRY_CONTEXT_STORAGE_KEY = "upgrade:entry-context";
 type UpgradeEntryContext = {
   entryPoint?: BillingFunnelSource | null;
   entryStep?: BillingFunnelStep | null;
+  entryCardId?: string | null;
 };
 
 type BillingAnalyticsAttribution = {
   source?: BillingFunnelSource | null;
   funnelStep?: BillingFunnelStep | null;
+  cardId?: string | null;
 };
 
 function readUpgradeEntryContext(): UpgradeEntryContext {
@@ -37,6 +39,7 @@ function readUpgradeEntryContext(): UpgradeEntryContext {
     return {
       entryPoint: typeof parsed.entryPoint === "string" ? parseBillingFunnelSource(parsed.entryPoint) : null,
       entryStep: typeof parsed.entryStep === "string" ? parseBillingFunnelStep(parsed.entryStep) : null,
+      entryCardId: typeof parsed.entryCardId === "string" ? parsed.entryCardId : null,
     };
   } catch {
     return {};
@@ -47,6 +50,7 @@ function toBillingAnalyticsAttribution(entryContext: UpgradeEntryContext): Billi
   return {
     source: entryContext.entryPoint ?? null,
     funnelStep: entryContext.entryStep ?? null,
+    cardId: entryContext.entryCardId ?? null,
   };
 }
 
