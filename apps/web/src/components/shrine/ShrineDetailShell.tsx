@@ -46,7 +46,7 @@ export default function ShrineDetailShell({
   const shouldShowActions = !hideActions && Boolean(googleDirHref || saveAction?.node || addGoshuinHref);
 
   return (
-    <main className="mx-auto min-h-[calc(100vh-64px)] max-w-md space-y-4 p-4">
+    <main className="mx-auto min-h-[calc(100vh-64px)] max-w-md space-y-4 p-4 lg:max-w-2xl">
       {/* ✅ Close をヘッダー左固定 */}
       <header className="flex items-center justify-between">
         <div className="shrink-0">
