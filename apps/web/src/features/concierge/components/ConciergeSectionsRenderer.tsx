@@ -398,7 +398,7 @@ export default function ConciergeSectionsRenderer({
   if (!payload || !Array.isArray(payload.sections) || payload.sections.length === 0) return null;
 
   return (
-    <div className="mx-auto w-full max-w-md min-w-0 space-y-4 pb-0">
+    <div className="mx-auto w-full max-w-md min-w-0 space-y-4 pb-0 lg:max-w-2xl">
       {payload.sections.map((sec: ConciergeSection, i: number) => {
         switch (sec.type) {
           case "guide":
