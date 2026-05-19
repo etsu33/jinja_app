@@ -8,7 +8,7 @@ export type BillingAnalyticsEventName =
   | "checkout_success"
   | "premium_active";
 
-export type BillingFunnelSource = "state_delta_card";
+export type BillingFunnelSource = "state_delta_card" | "concierge_result" | "shrine_detail";
 
 export type BillingFunnelStep = "comparison_preview";
 
@@ -17,6 +17,7 @@ type BillingAnalyticsPrimitive = string | number | boolean | null | undefined;
 export type BillingAnalyticsPayload = {
   source?: BillingFunnelSource | null;
   funnelStep?: BillingFunnelStep | null;
+  cardId?: string | null;
   checkoutSessionId?: string | null;
   area?: "billing" | null;
   [key: string]: BillingAnalyticsPrimitive;
@@ -25,7 +26,11 @@ export type BillingAnalyticsPayload = {
 export type SerializedBillingAnalyticsPayload = Record<string, string | number | boolean>;
 
 export function parseBillingFunnelSource(source: string | null): BillingFunnelSource | null {
-  return source === "state_delta_card" ? source : null;
+  if (source === "state_delta_card") return source;
+  if (source === "concierge_result") return source;
+  if (source === "shrine_detail") return source;
+
+  return null;
 }
 
 export function parseBillingFunnelStep(funnelStep: string | null): BillingFunnelStep | null {

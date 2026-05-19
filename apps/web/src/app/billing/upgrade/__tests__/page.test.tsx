@@ -100,7 +100,7 @@ describe("BillingUpgradePage", () => {
     });
   });
 
-  it("upgrade entry contextを短期UI文脈のkeyで保存し、analytics payloadは既存schemaを維持する", async () => {
+  it("upgrade entry contextにcardIdを保存し、analytics payloadにもcardIdを含める", async () => {
     startBillingCheckoutMock.mockResolvedValue({
       session_id: "cs_test_123",
       checkout_url: "https://checkout.stripe.com/c/pay/cs_test_123",
@@ -118,15 +118,18 @@ describe("BillingUpgradePage", () => {
     expect(JSON.parse(window.sessionStorage.getItem("upgrade:entry-context") ?? "{}")).toEqual({
       entryPoint: null,
       entryStep: null,
+      entryCardId: null,
     });
     expect(trackBillingEventMock).toHaveBeenCalledWith("upgrade_click", {
       source: null,
       funnelStep: null,
+      cardId: null,
     });
     expect(trackBillingEventMock).toHaveBeenCalledWith("checkout_started", {
       checkoutSessionId: "cs_test_123",
       source: null,
       funnelStep: null,
+      cardId: null,
     });
   });
 });
