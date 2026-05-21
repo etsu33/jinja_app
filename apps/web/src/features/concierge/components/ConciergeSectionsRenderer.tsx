@@ -11,12 +11,15 @@ import { buildRecommendationReasonViewModel } from "@/lib/concierge/buildRecomme
 import ConciergeTopRecommendationHero from "@/features/concierge/components/ConciergeTopRecommendationHero";
 import ShrineCardCompact from "@/components/shrines/ShrineCardCompact";
 import { track } from "@/lib/analytics/track";
-import { trackCardEvent } from "@/lib/analytics/cardEvents";
+
 import { labelNeedDisplayTag } from "@/features/concierge/copy/needDisplayCopy";
 import { buildLoginHref } from "@/lib/nav/login";
 import { resolveAccessLevel } from "@/lib/premium/accessLevel";
 import { getVisibilityForCard } from "@/lib/premium/cardVisibility";
 import ConciergeConsultationSummary from "@/features/concierge/components/ConciergeConsultationSummary";
+
+import { trackCardEvent } from "@/lib/analytics/cardEvents";
+import { trackSearchEvent } from "@/lib/analytics/searchEvents";
 
 import type {
   ConciergeSectionsPayload,
@@ -682,10 +685,12 @@ export default function ConciergeSectionsRenderer({
                               tags={(heroItem.breakdown?.matched_need_tags ?? []).map(labelNeedDisplayTag).slice(0, 3)}
                               routeLabel="神社の詳細を見る"
                               onDetailClick={() =>
-                                track("concierge_result_click", {
-                                  action: "detail",
+                                trackSearchEvent("shrine_detail_transition", {
+                                  source: "concierge_result",
+                                  threadId: tid ?? undefined,
+                                  resultSetId,
                                   position: "hero_primary",
-                                  rank: 1,
+                                  recommendationRank: 1,
                                   shrineId: heroItem.shrineId,
                                   firstClick: resolveFirstResultClick(resultSetId),
                                 })
@@ -768,10 +773,12 @@ export default function ConciergeSectionsRenderer({
                                     tags={[]}
                                     distanceM={(item as any).distance_m ?? null}
                                     onDetailClick={() =>
-                                      track("concierge_result_click", {
-                                        action: "detail",
+                                      trackSearchEvent("shrine_detail_transition", {
+                                        source: "concierge_result",
+                                        threadId: tid ?? undefined,
+                                        resultSetId,
                                         position: "compact",
-                                        rank: compactIdx + 2,
+                                        recommendationRank: compactIdx + 2,
                                         shrineId: item.shrineId,
                                         firstClick: resolveFirstResultClick(resultSetId),
                                       })
