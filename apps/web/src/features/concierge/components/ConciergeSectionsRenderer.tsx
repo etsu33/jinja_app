@@ -27,6 +27,9 @@ import type {
   RendererAction,
 } from "@/features/concierge/sections/types";
 
+import { buildConciergeCardRoutes } from "@/lib/concierge/conciergeCardRoutes";
+
+
 type MetaMode = NonNullable<ConciergeSectionsPayload["meta"]>["mode"];
 
 const conciergeSoftCardClass = "rounded-2xl border border-slate-200 bg-slate-50 shadow-sm p-4";
@@ -200,6 +203,14 @@ export default function ConciergeSectionsRenderer({
   const consultationSummaryVisibility = getVisibilityForCard("consultation_summary", accessLevel);
   const shrineMeaningVisibility = getVisibilityForCard("shrine_meaning", accessLevel);
   const actionMeaningVisibility = getVisibilityForCard("action_meaning", accessLevel);
+
+  const conciergeCardRoutes = buildConciergeCardRoutes([
+    { cardId: "premium_preview", visibility: premiumPreviewVisibility },
+    { cardId: "save_prompt", visibility: savePromptVisibility },
+    { cardId: "consultation_summary", visibility: consultationSummaryVisibility },
+    { cardId: "shrine_meaning", visibility: shrineMeaningVisibility },
+    { cardId: "action_meaning", visibility: actionMeaningVisibility },
+  ]);
 
   const resultImpressions = useMemo(() => {
     if (!payload || !Array.isArray(payload.sections)) return [];
