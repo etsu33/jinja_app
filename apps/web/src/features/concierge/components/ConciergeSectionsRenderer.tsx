@@ -29,7 +29,6 @@ import type {
 
 import { buildConciergeCardRoutes } from "@/lib/concierge/conciergeCardRoutes";
 
-
 type MetaMode = NonNullable<ConciergeSectionsPayload["meta"]>["mode"];
 
 const conciergeSoftCardClass = "rounded-2xl border border-slate-200 bg-slate-50 shadow-sm p-4";
@@ -90,21 +89,11 @@ function ConciergePremiumEntryCard(props: {
             ? "今の状態整理と、次の選び方を深められます。"
             : "今の状態整理と、次の選び方をPremiumで深められます。"}
         </p>
-        <p className="text-xs leading-6 text-slate-600">
-          相談内容に基づく状態整理、相性、行動の意味づけを表示します。
-        </p>
+        <p className="text-xs leading-6 text-slate-600">相談内容に基づく状態整理、相性、行動の意味づけを表示します。</p>
         <a
           href={href}
           className="inline-flex items-center rounded-xl bg-amber-700 px-3 py-2 text-xs font-semibold text-white hover:bg-amber-800"
           onClick={() => {
-            track("concierge_premium_preview_click", {
-              source: "hero_card",
-              valueProp: "state_reflection_subscription",
-              funnelStep: "concierge_result",
-              shrineId: props.shrineId ?? null,
-              tid: props.tid ?? null,
-            });
-
             trackCardEvent({
               event: "premium_preview_click",
               cardId: "premium_preview",
@@ -113,7 +102,7 @@ function ConciergePremiumEntryCard(props: {
               visibility: "teaser",
               ctaType: "continue_with_premium",
               shrineId: props.shrineId ?? undefined,
-              sessionId: props.tid ?? undefined,
+              threadId: props.tid ?? undefined,
             });
           }}
         >
@@ -266,89 +255,89 @@ export default function ConciergeSectionsRenderer({
     });
   }, [resultImpressions, resultSetId, tid]);
 
-    useEffect(() => {
-      const heroItem = resultImpressions.find((item) => item.position === "hero");
-      if (!heroItem) return;
+  useEffect(() => {
+    const heroItem = resultImpressions.find((item) => item.position === "hero");
+    if (!heroItem) return;
 
-      const routeByCardId = new Map(conciergeCardRoutes.map((route) => [route.cardId, route]));
+    const routeByCardId = new Map(conciergeCardRoutes.map((route) => [route.cardId, route]));
 
-      const consultationSummaryRoute = routeByCardId.get("consultation_summary");
-      if (consultationSummaryRoute) {
-        const consultationSummaryEventKey = `${resultSetId}:${consultationSummaryRoute.viewEvent}:consultation_summary`;
+    const consultationSummaryRoute = routeByCardId.get("consultation_summary");
+    if (consultationSummaryRoute) {
+      const consultationSummaryEventKey = `${resultSetId}:${consultationSummaryRoute.viewEvent}:consultation_summary`;
 
-        if (!trackedCardEventKeysRef.current.has(consultationSummaryEventKey)) {
-          trackedCardEventKeysRef.current.add(consultationSummaryEventKey);
-          trackCardEvent({
-            event: consultationSummaryRoute.viewEvent,
-            cardId: "consultation_summary",
-            source: "concierge_result",
-            accessLevel,
-            visibility: consultationSummaryRoute.visibility,
-            mode: heroItem.mode,
-            threadId: tid ?? undefined,
-            resultSetId,
-          });
-        }
+      if (!trackedCardEventKeysRef.current.has(consultationSummaryEventKey)) {
+        trackedCardEventKeysRef.current.add(consultationSummaryEventKey);
+        trackCardEvent({
+          event: consultationSummaryRoute.viewEvent,
+          cardId: "consultation_summary",
+          source: "concierge_result",
+          accessLevel,
+          visibility: consultationSummaryRoute.visibility,
+          mode: heroItem.mode,
+          threadId: tid ?? undefined,
+          resultSetId,
+        });
       }
+    }
 
-      const shrineMeaningRoute = routeByCardId.get("shrine_meaning");
-      if (shrineMeaningRoute) {
-        const shrineMeaningEventKey = `${resultSetId}:${shrineMeaningRoute.viewEvent}:shrine_meaning:${heroItem.shrineId}`;
+    const shrineMeaningRoute = routeByCardId.get("shrine_meaning");
+    if (shrineMeaningRoute) {
+      const shrineMeaningEventKey = `${resultSetId}:${shrineMeaningRoute.viewEvent}:shrine_meaning:${heroItem.shrineId}`;
 
-        if (!trackedCardEventKeysRef.current.has(shrineMeaningEventKey)) {
-          trackedCardEventKeysRef.current.add(shrineMeaningEventKey);
-          trackCardEvent({
-            event: shrineMeaningRoute.viewEvent,
-            cardId: "shrine_meaning",
-            source: "concierge_result",
-            accessLevel,
-            visibility: shrineMeaningRoute.visibility,
-            shrineId: heroItem.shrineId,
-            recommendationRank: heroItem.rank,
-            mode: heroItem.mode,
-            threadId: tid ?? undefined,
-            resultSetId,
-          });
-        }
+      if (!trackedCardEventKeysRef.current.has(shrineMeaningEventKey)) {
+        trackedCardEventKeysRef.current.add(shrineMeaningEventKey);
+        trackCardEvent({
+          event: shrineMeaningRoute.viewEvent,
+          cardId: "shrine_meaning",
+          source: "concierge_result",
+          accessLevel,
+          visibility: shrineMeaningRoute.visibility,
+          shrineId: heroItem.shrineId,
+          recommendationRank: heroItem.rank,
+          mode: heroItem.mode,
+          threadId: tid ?? undefined,
+          resultSetId,
+        });
       }
+    }
 
-      const actionMeaningRoute = routeByCardId.get("action_meaning");
-      if (actionMeaningRoute) {
-        const actionMeaningEventKey = `${resultSetId}:${actionMeaningRoute.viewEvent}:action_meaning:${heroItem.shrineId}`;
+    const actionMeaningRoute = routeByCardId.get("action_meaning");
+    if (actionMeaningRoute) {
+      const actionMeaningEventKey = `${resultSetId}:${actionMeaningRoute.viewEvent}:action_meaning:${heroItem.shrineId}`;
 
-        if (!trackedCardEventKeysRef.current.has(actionMeaningEventKey)) {
-          trackedCardEventKeysRef.current.add(actionMeaningEventKey);
-          trackCardEvent({
-            event: actionMeaningRoute.viewEvent,
-            cardId: "action_meaning",
-            source: "concierge_result",
-            accessLevel,
-            visibility: actionMeaningRoute.visibility,
-            shrineId: heroItem.shrineId,
-            recommendationRank: heroItem.rank,
-            mode: heroItem.mode,
-            threadId: tid ?? undefined,
-            resultSetId,
-          });
-        }
+      if (!trackedCardEventKeysRef.current.has(actionMeaningEventKey)) {
+        trackedCardEventKeysRef.current.add(actionMeaningEventKey);
+        trackCardEvent({
+          event: actionMeaningRoute.viewEvent,
+          cardId: "action_meaning",
+          source: "concierge_result",
+          accessLevel,
+          visibility: actionMeaningRoute.visibility,
+          shrineId: heroItem.shrineId,
+          recommendationRank: heroItem.rank,
+          mode: heroItem.mode,
+          threadId: tid ?? undefined,
+          resultSetId,
+        });
       }
+    }
 
-      if (!isEntryRoute) {
-        const savePromptEventKey = `${resultSetId}:save_prompt_view:${accessLevel}`;
-        if (!trackedCardEventKeysRef.current.has(savePromptEventKey)) {
-          trackedCardEventKeysRef.current.add(savePromptEventKey);
-          trackCardEvent({
-            event: "save_prompt_view",
-            cardId: "save_prompt",
-            source: "concierge_result",
-            accessLevel,
-            visibility: savePromptVisibility,
-            ctaType: isGuestUser ? "login_to_save" : "save",
-            threadId: tid ?? undefined,
-            resultSetId,
-          });
-        }
+    if (!isEntryRoute) {
+      const savePromptEventKey = `${resultSetId}:save_prompt_view:${accessLevel}`;
+      if (!trackedCardEventKeysRef.current.has(savePromptEventKey)) {
+        trackedCardEventKeysRef.current.add(savePromptEventKey);
+        trackCardEvent({
+          event: "save_prompt_view",
+          cardId: "save_prompt",
+          source: "concierge_result",
+          accessLevel,
+          visibility: savePromptVisibility,
+          ctaType: isGuestUser ? "login_to_save" : "save",
+          threadId: tid ?? undefined,
+          resultSetId,
+        });
       }
+    }
 
     const heroEventKey = `${resultSetId}:card_view:shrine_hero:${heroItem.shrineId}`;
     if (!trackedCardEventKeysRef.current.has(heroEventKey)) {
@@ -424,7 +413,18 @@ export default function ConciergeSectionsRenderer({
       threadId: tid ?? undefined,
       resultSetId,
     });
-  }, [accessLevel, conciergeCardRoutes, isGuestUser, isPremiumActive, isEntryRoute, resultImpressions, resultSetId, savePromptVisibility, showOtherRecommendations, tid]);
+  }, [
+    accessLevel,
+    conciergeCardRoutes,
+    isGuestUser,
+    isPremiumActive,
+    isEntryRoute,
+    resultImpressions,
+    resultSetId,
+    savePromptVisibility,
+    showOtherRecommendations,
+    tid,
+  ]);
 
   if (!payload || !Array.isArray(payload.sections) || payload.sections.length === 0) return null;
 
@@ -568,9 +568,7 @@ export default function ConciergeSectionsRenderer({
               (typeof rs?.ui_disclaimer_ja === "string" && rs.ui_disclaimer_ja) ||
               (hasDummy ? "条件に合う候補が少ないため、まずは選びやすい候補から表示しています。" : null);
 
-
             const normalizedMode = normalizeConciergeMode(payload?.meta?.mode);
-
 
             const registeredItems = items.filter(
               (x: RegisteredShrineItem | PlaceShrineItem): x is RegisteredShrineItem => x.kind === "registered",
@@ -659,7 +657,6 @@ export default function ConciergeSectionsRenderer({
                           needTags: heroItem.breakdown?.matched_need_tags ?? [],
                         });
 
-
                         return (
                           <div key={`rec-${i}-hero-${heroItem.shrineId}`} className="space-y-2">
                             {consultationSummaryVisibility !== "hidden" && reasonVm.detail.consultationSummary ? (
@@ -701,9 +698,7 @@ export default function ConciergeSectionsRenderer({
                                   <p className="text-xs font-semibold tracking-[0.12em] text-slate-500">
                                     この神社が合う理由
                                   </p>
-                                  <p className="text-sm leading-7 text-slate-700">
-                                    {reasonVm.detail.shrineMeaning}
-                                  </p>
+                                  <p className="text-sm leading-7 text-slate-700">{reasonVm.detail.shrineMeaning}</p>
                                 </div>
                               </section>
                             ) : null}
