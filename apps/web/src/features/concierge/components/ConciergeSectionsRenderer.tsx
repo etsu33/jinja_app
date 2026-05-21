@@ -10,7 +10,6 @@ import ModeBadge from "@/features/concierge/components/ModeBadge";
 import { buildRecommendationReasonViewModel } from "@/lib/concierge/buildRecommendationReasonViewModel";
 import ConciergeTopRecommendationHero from "@/features/concierge/components/ConciergeTopRecommendationHero";
 import ShrineCardCompact from "@/components/shrines/ShrineCardCompact";
-import { track } from "@/lib/analytics/track";
 
 import { labelNeedDisplayTag } from "@/features/concierge/copy/needDisplayCopy";
 import { buildLoginHref } from "@/lib/nav/login";
@@ -245,14 +244,13 @@ export default function ConciergeSectionsRenderer({
       if (trackedImpressionKeysRef.current.has(impressionKey)) return;
 
       trackedImpressionKeysRef.current.add(impressionKey);
-      track("concierge_result_impression", {
-        shrineId: item.shrineId,
-        name: item.name,
-        position: item.position,
-        rank: item.rank,
-        ctx: "concierge",
-        tid,
+      trackSearchEvent("concierge_result_impression", {
+        source: "concierge_result",
+        threadId: tid ?? undefined,
         resultSetId,
+        shrineId: item.shrineId,
+        position: item.position === "hero" ? "hero_primary" : "compact",
+        recommendationRank: item.rank,
         mode: item.mode,
       });
     });
