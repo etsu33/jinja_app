@@ -204,13 +204,23 @@ export default function ConciergeSectionsRenderer({
   const shrineMeaningVisibility = getVisibilityForCard("shrine_meaning", accessLevel);
   const actionMeaningVisibility = getVisibilityForCard("action_meaning", accessLevel);
 
-  const _conciergeCardRoutes = buildConciergeCardRoutes([
-    { cardId: "premium_preview", visibility: premiumPreviewVisibility },
-    { cardId: "save_prompt", visibility: savePromptVisibility },
-    { cardId: "consultation_summary", visibility: consultationSummaryVisibility },
-    { cardId: "shrine_meaning", visibility: shrineMeaningVisibility },
-    { cardId: "action_meaning", visibility: actionMeaningVisibility },
-  ]);
+  const conciergeCardRoutes = useMemo(
+    () =>
+      buildConciergeCardRoutes([
+        { cardId: "premium_preview", visibility: premiumPreviewVisibility },
+        { cardId: "save_prompt", visibility: savePromptVisibility },
+        { cardId: "consultation_summary", visibility: consultationSummaryVisibility },
+        { cardId: "shrine_meaning", visibility: shrineMeaningVisibility },
+        { cardId: "action_meaning", visibility: actionMeaningVisibility },
+      ]),
+    [
+      actionMeaningVisibility,
+      consultationSummaryVisibility,
+      premiumPreviewVisibility,
+      savePromptVisibility,
+      shrineMeaningVisibility,
+    ],
+  );
 
   const resultImpressions = useMemo(() => {
     if (!payload || !Array.isArray(payload.sections)) return [];
@@ -260,36 +270,38 @@ export default function ConciergeSectionsRenderer({
       const heroItem = resultImpressions.find((item) => item.position === "hero");
       if (!heroItem) return;
 
-      if (consultationSummaryVisibility !== "hidden") {
-        const consultationSummaryEvent = consultationSummaryVisibility === "partial" ? "card_partial_view" : "card_view";
-        const consultationSummaryEventKey = `${resultSetId}:${consultationSummaryEvent}:consultation_summary`;
+      const routeByCardId = new Map(conciergeCardRoutes.map((route) => [route.cardId, route]));
+
+      const consultationSummaryRoute = routeByCardId.get("consultation_summary");
+      if (consultationSummaryRoute) {
+        const consultationSummaryEventKey = `${resultSetId}:${consultationSummaryRoute.viewEvent}:consultation_summary`;
 
         if (!trackedCardEventKeysRef.current.has(consultationSummaryEventKey)) {
           trackedCardEventKeysRef.current.add(consultationSummaryEventKey);
           trackCardEvent({
-            event: consultationSummaryEvent,
+            event: consultationSummaryRoute.viewEvent,
             cardId: "consultation_summary",
             source: "concierge_result",
             accessLevel,
-            visibility: consultationSummaryVisibility,
+            visibility: consultationSummaryRoute.visibility,
             mode: heroItem.mode,
             sessionId: tid ?? undefined,
           });
         }
       }
 
-      if (shrineMeaningVisibility !== "hidden") {
-        const shrineMeaningEvent = shrineMeaningVisibility === "partial" ? "card_partial_view" : "card_view";
-        const shrineMeaningEventKey = `${resultSetId}:${shrineMeaningEvent}:shrine_meaning:${heroItem.shrineId}`;
+      const shrineMeaningRoute = routeByCardId.get("shrine_meaning");
+      if (shrineMeaningRoute) {
+        const shrineMeaningEventKey = `${resultSetId}:${shrineMeaningRoute.viewEvent}:shrine_meaning:${heroItem.shrineId}`;
 
         if (!trackedCardEventKeysRef.current.has(shrineMeaningEventKey)) {
           trackedCardEventKeysRef.current.add(shrineMeaningEventKey);
           trackCardEvent({
-            event: shrineMeaningEvent,
+            event: shrineMeaningRoute.viewEvent,
             cardId: "shrine_meaning",
             source: "concierge_result",
             accessLevel,
-            visibility: shrineMeaningVisibility,
+            visibility: shrineMeaningRoute.visibility,
             shrineId: heroItem.shrineId,
             recommendationRank: heroItem.rank,
             mode: heroItem.mode,
@@ -298,18 +310,18 @@ export default function ConciergeSectionsRenderer({
         }
       }
 
-      if (actionMeaningVisibility !== "hidden") {
-        const actionMeaningEvent = actionMeaningVisibility === "teaser" ? "card_teaser_view" : "card_view";
-        const actionMeaningEventKey = `${resultSetId}:${actionMeaningEvent}:action_meaning:${heroItem.shrineId}`;
+      const actionMeaningRoute = routeByCardId.get("action_meaning");
+      if (actionMeaningRoute) {
+        const actionMeaningEventKey = `${resultSetId}:${actionMeaningRoute.viewEvent}:action_meaning:${heroItem.shrineId}`;
 
         if (!trackedCardEventKeysRef.current.has(actionMeaningEventKey)) {
           trackedCardEventKeysRef.current.add(actionMeaningEventKey);
           trackCardEvent({
-            event: actionMeaningEvent,
+            event: actionMeaningRoute.viewEvent,
             cardId: "action_meaning",
             source: "concierge_result",
             accessLevel,
-            visibility: actionMeaningVisibility,
+            visibility: actionMeaningRoute.visibility,
             shrineId: heroItem.shrineId,
             recommendationRank: heroItem.rank,
             mode: heroItem.mode,
@@ -404,7 +416,7 @@ export default function ConciergeSectionsRenderer({
       mode: heroItem.mode,
       sessionId: tid ?? undefined,
     });
-  }, [accessLevel, actionMeaningVisibility, consultationSummaryVisibility, isGuestUser, isPremiumActive, isEntryRoute, resultImpressions, resultSetId, savePromptVisibility, showOtherRecommendations, shrineMeaningVisibility, tid]);
+  }, [accessLevel, conciergeCardRoutes, isGuestUser, isPremiumActive, isEntryRoute, resultImpressions, resultSetId, savePromptVisibility, showOtherRecommendations, tid]);
 
   if (!payload || !Array.isArray(payload.sections) || payload.sections.length === 0) return null;
 
