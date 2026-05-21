@@ -36,7 +36,10 @@ export type CardAnalyticsPayload = {
   recommendationRank?: number;
   mode?: "need" | "compat";
   flow?: "A" | "B";
+  // legacy compatibility: analyticsSessionId is injected by track.ts.
   sessionId?: string;
+  threadId?: string;
+  resultSetId?: string;
 };
 
 type SerializedCardAnalyticsPayloadInput = Omit<CardAnalyticsPayload, "event">;
