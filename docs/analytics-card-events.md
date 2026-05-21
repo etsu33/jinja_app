@@ -1,5 +1,3 @@
-
-
 # Analytics Card Events
 
 最終更新: 2026-05-18  
@@ -400,6 +398,21 @@ type CtaType =
 ---
 
 ## Funnel KPI
+
+## Card Funnel KPI Mapping
+
+| KPI | view event | action event | conversion / retention | source | cardId | 必要payload | 現状 |
+|---|---|---|---|---|---|---|---|
+| Premium preview CVR | card_teaser_view / premium_preview_view | premium_preview_click | checkout_started / checkout_success | concierge_result | premium_preview | accessLevel, sessionId, resultSetId, shrineId | 既存eventで対応可能 |
+| Action meaning → Premium | card_teaser_view | premium_preview_click | checkout_started / checkout_success | concierge_result | action_meaning | accessLevel, sessionId, resultSetId, shrineId | 既存eventで対応可能 |
+| Save prompt CVR | save_prompt_view | save_prompt_click | save_completed 相当 | concierge_result | save_prompt | accessLevel, sessionId, resultSetId | conversion event は要確認 |
+| Shrine meaning → Detail | card_partial_view | concierge_result_click | shrine_detail_view 相当 | concierge_result | shrine_meaning | accessLevel, sessionId, resultSetId, shrineId, rank | 既存eventで対応可能 |
+| Consultation summary → Save | card_view / card_partial_view | save_prompt_click | save_completed 相当 | concierge_result | consultation_summary | accessLevel, sessionId, resultSetId | conversion event は要確認 |
+| Previous comparison → Retention | card_view | next_session / next_thread | retention | concierge_result | previous_comparison | sessionId, threadId, userId相当 | retention event 定義が必要 |
+| History shift → Retention | card_view | next_session / next_thread | retention | concierge_result | history_shift | sessionId, threadId, userId相当 | retention event 定義が必要 |
+| Deep reflection → Retention | card_view | next_session / next_thread | retention | concierge_result | deep_reflection | sessionId, threadId, userId相当 | retention event 定義が必要 |
+
+---
 
 ## Premium CVR
 
