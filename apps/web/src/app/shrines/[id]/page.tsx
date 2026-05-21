@@ -399,6 +399,7 @@ export default async function Page({ params, searchParams }: Props) {
         title={pageTitle}
         subtitle={null}
         close={close}
+        shrineId={numericId}
         addGoshuinHref={null}
         googleDirHref={googleDirHref}
         googleDirLabel="Googleマップで経路案内"
