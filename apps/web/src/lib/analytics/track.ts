@@ -61,8 +61,15 @@ export function track(eventName: string, payload: TrackPayload = {}) {
 
   if (typeof window === "undefined") return;
 
-  const sessionId = getAnalyticsSessionId();
-  const payloadWithSession = sessionId ? { ...payload, sessionId } : payload;
+  const analyticsSessionId = getAnalyticsSessionId();
+  const payloadWithSession = analyticsSessionId
+    ? {
+        ...payload,
+        analyticsSessionId,
+        // legacy compatibility: existing analytics consumers still read sessionId.
+        sessionId: analyticsSessionId,
+      }
+    : payload;
 
   const detail: TrackEventDetail = {
     eventName,
