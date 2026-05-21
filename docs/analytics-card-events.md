@@ -467,6 +467,32 @@ login_success または save_success
 | detail transition | shrine_detail_transition / shrine_hero card_view | 神社詳細へ進んだか |
 
 ---
+## Retention / ID Responsibility
+
+### ID責務
+
+| ID | 意味 | 生成元 | 主な用途 | 注意 |
+|---|---|---|---|---|
+| analyticsSessionId | ブラウザ内の一連の利用単位 | track.ts / localStorage | repeat visit / retention 候補 | 現状は payload.sessionId として自動付与される |
+| threadId / tid | concierge相談スレッド単位 | backend thread.id / URL query | 同一相談の表示・比較・履歴 | 現状一部card eventで sessionId として渡されている |
+| resultSetId | 推薦結果セット単位 | tid + recommendation signature | card view/click 重複防止、CTR集計 | 同一thread内でも推薦結果が変われば別セット |
+
+### 現時点の注意
+
+`track.ts` は payload に `sessionId` を自動付与する。
+そのため、呼び出し側で `sessionId: tid` を渡しても、最終payloadでは analytics sessionId に置き換わる可能性がある。
+
+今後は以下のように命名を分離する。
+
+```ts
+{
+  analyticsSessionId: "...",
+  threadId: "...",
+  resultSetId: "..."
+}
+```
+
+---
 
 ## Privacy Policy
 
