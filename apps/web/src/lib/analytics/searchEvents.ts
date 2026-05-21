@@ -1,6 +1,11 @@
 import { getAnalyticsProvider } from "@/lib/analytics/providers";
 
-export type SearchAnalyticsEventName = "shrine_search" | "map_search" | "route_open" | "shrine_detail_transition";
+export type SearchAnalyticsEventName =
+  | "shrine_search"
+  | "map_search"
+  | "route_open"
+  | "shrine_detail_transition"
+  | "concierge_result_impression";
 
 type SearchAnalyticsPrimitive = string | number | boolean | null | undefined;
 
