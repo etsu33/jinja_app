@@ -1,4 +1,4 @@
-import { getAnalyticsProvider, type AnalyticsPayload } from "@/lib/analytics/providers";
+import { getAnalyticsProvider } from "@/lib/analytics/providers";
 
 export type RetentionAnalyticsEventName = "next_session" | "next_thread" | "thread_resume";
 
