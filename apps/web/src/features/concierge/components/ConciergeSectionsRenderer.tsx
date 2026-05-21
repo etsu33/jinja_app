@@ -204,7 +204,7 @@ export default function ConciergeSectionsRenderer({
   const shrineMeaningVisibility = getVisibilityForCard("shrine_meaning", accessLevel);
   const actionMeaningVisibility = getVisibilityForCard("action_meaning", accessLevel);
 
-  const conciergeCardRoutes = buildConciergeCardRoutes([
+  const _conciergeCardRoutes = buildConciergeCardRoutes([
     { cardId: "premium_preview", visibility: premiumPreviewVisibility },
     { cardId: "save_prompt", visibility: savePromptVisibility },
     { cardId: "consultation_summary", visibility: consultationSummaryVisibility },
