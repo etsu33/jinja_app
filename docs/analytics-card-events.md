@@ -831,6 +831,63 @@ analytics event は以下の namespace 方針で整理する。
 | cardCtr.ts | card CTR aggregation | existing |
 | conciergeDecisionSummary.ts | concierge decision / session summary aggregation | existing |
 
+## Concierge Result Click Domain Policy
+
+### 目的
+
+`concierge_result_click` の責務を整理し、  
+card CTA / search transition / route action を混在させない。
+
+推薦結果クリックは単なる card CTA ではなく、  
+「推薦結果から神社詳細へ進んだ」遷移eventとして扱う。
+
+### 現状
+
+```ts
+track("concierge_result_click", {
+  action: "detail",
+  position: "hero_primary" | "compact",
+  rank: 1,
+  shrineId: 123,
+  firstClick: true
+});
+```
+
+---
+
+### 問題
+
+- `card_cta_click` と責務が近い
+- ただし推薦結果の詳細遷移という意味を持つ
+- `resultSetId` は dedupe 判定には使われているが payload には含まれていない
+- `threadId` が payload に含まれていない
+- hero / compact の position 意味が event 名からは分からない
+
+### 方針
+
+| 現event | domain | 方針 |
+|---|---|---|
+| concierge_result_click | result / search | `shrine_detail_transition` へ移行候補 |
+| card_cta_click | card | Premium / Save / UI CTA 用に維持 |
+| route_open | map / search | 経路を見る導線用に別event候補 |
+
+### 将来payload案
+
+```ts
+{
+  event: "shrine_detail_transition",
+  source: "concierge_result",
+  threadId: "...",
+  resultSetId: "...",
+  shrineId: 123,
+  recommendationRank: 1,
+  position: "hero_primary" | "compact",
+  firstClick: true
+}
+```
+
+
+
 ### 実装方針
 
 - `cardEvents.ts` は継続利用する
