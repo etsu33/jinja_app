@@ -1,7 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { track } from "@/lib/analytics/track";
+import { trackSearchEvent } from "@/lib/analytics/searchEvents";
 
 function formatDistance(m?: number | null) {
   if (typeof m !== "number" || !Number.isFinite(m)) return null;
@@ -216,7 +216,10 @@ export function ShrineCard(props: ShrineCardProps) {
           href={href}
           className="block"
           onClick={() => {
-            track("shrine_card_click", { shrineId });
+            trackSearchEvent("shrine_card_click", {
+              source: "shrines",
+              shrineId,
+            });
           }}
         >
           {MainContent}
