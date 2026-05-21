@@ -285,7 +285,8 @@ export default function ConciergeSectionsRenderer({
             accessLevel,
             visibility: consultationSummaryRoute.visibility,
             mode: heroItem.mode,
-            sessionId: tid ?? undefined,
+            threadId: tid ?? undefined,
+            resultSetId,
           });
         }
       }
@@ -305,7 +306,8 @@ export default function ConciergeSectionsRenderer({
             shrineId: heroItem.shrineId,
             recommendationRank: heroItem.rank,
             mode: heroItem.mode,
-            sessionId: tid ?? undefined,
+            threadId: tid ?? undefined,
+            resultSetId,
           });
         }
       }
@@ -325,7 +327,8 @@ export default function ConciergeSectionsRenderer({
             shrineId: heroItem.shrineId,
             recommendationRank: heroItem.rank,
             mode: heroItem.mode,
-            sessionId: tid ?? undefined,
+            threadId: tid ?? undefined,
+            resultSetId,
           });
         }
       }
@@ -341,7 +344,8 @@ export default function ConciergeSectionsRenderer({
             accessLevel,
             visibility: savePromptVisibility,
             ctaType: isGuestUser ? "login_to_save" : "save",
-            sessionId: tid ?? undefined,
+            threadId: tid ?? undefined,
+            resultSetId,
           });
         }
       }
@@ -358,7 +362,8 @@ export default function ConciergeSectionsRenderer({
         shrineId: heroItem.shrineId,
         recommendationRank: heroItem.rank,
         mode: heroItem.mode,
-        sessionId: tid ?? undefined,
+        threadId: tid ?? undefined,
+        resultSetId,
       });
     }
 
@@ -375,7 +380,8 @@ export default function ConciergeSectionsRenderer({
             source: "concierge_result",
             accessLevel,
             visibility: "visible",
-            sessionId: tid ?? undefined,
+            threadId: tid ?? undefined,
+            resultSetId,
           });
         }
 
@@ -393,7 +399,8 @@ export default function ConciergeSectionsRenderer({
             shrineId: item.shrineId,
             recommendationRank: item.rank,
             mode: item.mode,
-            sessionId: tid ?? undefined,
+            threadId: tid ?? undefined,
+            resultSetId,
           });
         });
       }
@@ -414,7 +421,8 @@ export default function ConciergeSectionsRenderer({
       shrineId: heroItem.shrineId,
       recommendationRank: heroItem.rank,
       mode: heroItem.mode,
-      sessionId: tid ?? undefined,
+      threadId: tid ?? undefined,
+      resultSetId,
     });
   }, [accessLevel, conciergeCardRoutes, isGuestUser, isPremiumActive, isEntryRoute, resultImpressions, resultSetId, savePromptVisibility, showOtherRecommendations, tid]);
 
@@ -814,7 +822,8 @@ export default function ConciergeSectionsRenderer({
                             accessLevel,
                             visibility: savePromptVisibility,
                             ctaType: isGuestUser ? "login_to_save" : "save",
-                            sessionId: tid ?? undefined,
+                            threadId: tid ?? undefined,
+                            resultSetId,
                           });
 
                           onAction?.({ type: "save_concierge_thread" });
