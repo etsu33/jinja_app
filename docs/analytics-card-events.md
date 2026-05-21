@@ -800,3 +800,49 @@ analytics event は以下の namespace 方針で整理する。
 - `trackSearchEvent()` の新規実装
 - PostHog / GA 接続変更
 - event 発火箇所の変更
+
+
+## Direct Track Domain Audit
+
+| event | file | domain | migration candidate | note |
+|---|---|---|---|---|
+| empty_state_view | apps/web/src/app/shrines/page.tsx | search | trackSearchEvent | 神社検索の空結果 |
+| add_shrine_click | apps/web/src/app/shrines/page.tsx | search | trackSearchEvent | 未登録神社追加導線 |
+| premium_history_click | ThreadList.tsx | retention | trackRetentionEvent | 履歴クリック |
+| concierge_premium_preview_click | ConciergeSectionsRenderer.tsx | card | trackCardEvent | premium_preview_click へ統合候補 |
+| concierge_result_impression | ConciergeSectionsRenderer.tsx | card | trackCardEvent | resultSetId を持つ表示event |
+| concierge_result_click | ConciergeSectionsRenderer.tsx | card / search | trackCardEvent / trackSearchEvent | action別に分離候補 |
+| premium_history_comparison_view | PremiumStateDeltaCard.tsx | retention | trackRetentionEvent | previous_comparison_view へ統合候補 |
+| premium_history_comparison_click | PremiumStateDeltaCard.tsx | retention | trackRetentionEvent | comparison CTA |
+| shrine_decision | ConciergeClientFull.tsx | search / action | trackSearchEvent | detail後の意思決定 |
+| latest_event | track.test.ts | escape hatch | none | test用 |
+
+
+## Analytics Helper File Structure
+
+| file | responsibility | status |
+|---|---|---|
+| track.ts | low-level analytics pipeline / analyticsSessionId付与 | existing |
+| providers.ts | provider abstraction / payload passthrough | existing |
+| cardEvents.ts | card analytics schema / card payload serialize | existing |
+| billing.ts | billing funnel analytics / billing payload serialize | existing |
+| retentionEvents.ts | retention analytics schema / retention payload serialize | planned |
+| searchEvents.ts | search analytics schema / search payload serialize | planned |
+| cardCtr.ts | card CTR aggregation | existing |
+| conciergeDecisionSummary.ts | concierge decision / session summary aggregation | existing |
+
+### 実装方針
+
+- `cardEvents.ts` は継続利用する
+- `billing.ts` は既存方針を維持する
+- `retentionEvents.ts` を後続PRで追加する
+- `searchEvents.ts` を後続PRで追加する
+- helper file は domain 単位で分離する
+- `track.ts` は低レベルpipelineとして残す
+
+### このPRでやらないこと
+
+- helper file の新規作成
+- 既存 event の移行
+- payload v2 の実装
+- PostHog / GA 接続変更
