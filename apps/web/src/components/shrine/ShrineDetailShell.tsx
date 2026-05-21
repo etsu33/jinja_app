@@ -5,6 +5,7 @@ import type { Close } from "@/lib/navigation/shrineClose";
 import ShrineCloseLink from "@/components/shrine/ShrineCloseLink";
 import { LABELS } from "@/lib/ui/labels";
 import DetailSection from "@/components/shrine/DetailSection";
+import { trackSearchEvent } from "@/lib/analytics/searchEvents";
 
 type SaveAction = {
   shrineId: number;
@@ -16,6 +17,7 @@ type Props = {
   title: string;
   subtitle?: string | null;
   close: Close;
+  shrineId?: number | string | null;
 
   // CTA
   addGoshuinHref?: string | null;
@@ -35,6 +37,7 @@ export default function ShrineDetailShell({
   title,
   subtitle = null,
   close,
+  shrineId = null,
   addGoshuinHref = null,
   googleDirHref = null,
   googleDirLabel = LABELS.googleDirections,
@@ -72,6 +75,13 @@ export default function ShrineDetailShell({
                 href={googleDirHref}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => {
+                  trackSearchEvent("route_open", {
+                    source: "shrine_detail",
+                    shrineId: shrineId ?? undefined,
+                    routeTarget: "google_maps",
+                  });
+                }}
                 className="inline-flex min-h-[44px] w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800"
               >
                 {googleDirLabel}
