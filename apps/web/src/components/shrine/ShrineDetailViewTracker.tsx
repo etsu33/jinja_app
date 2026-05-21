@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { track } from "@/lib/analytics/track";
+import { trackSearchEvent } from "@/lib/analytics/searchEvents";
 
 type Props = {
   shrineId: number;
@@ -16,10 +16,10 @@ export function ShrineDetailViewTracker({ shrineId, ctx = null, tid = null }: Pr
     if (trackedRef.current) return;
 
     trackedRef.current = true;
-    track("shrine_detail_view", {
+    trackSearchEvent("shrine_detail_view", {
+      source: ctx === "map" ? "map" : ctx === "concierge" ? "concierge_result" : "shrine_detail",
       shrineId,
-      ctx,
-      tid,
+      threadId: tid ?? undefined,
     });
   }, [shrineId, ctx, tid]);
 

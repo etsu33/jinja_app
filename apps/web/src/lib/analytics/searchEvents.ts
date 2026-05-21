@@ -5,7 +5,11 @@ export type SearchAnalyticsEventName =
   | "map_search"
   | "route_open"
   | "shrine_detail_transition"
-  | "concierge_result_impression";
+  | "concierge_result_impression"
+  | "empty_state_view"
+  | "add_shrine_click"
+  | "shrine_card_click"
+  | "shrine_detail_view";
 
 type SearchAnalyticsPrimitive = string | number | boolean | null | undefined;
 
