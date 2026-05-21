@@ -897,9 +897,86 @@ track("concierge_result_click", {
 - helper file は domain 単位で分離する
 - `track.ts` は低レベルpipelineとして残す
 
+
 ### このPRでやらないこと
 
 - helper file の新規作成
 - 既存 event の移行
 - payload v2 の実装
+- PostHog / GA 接続変更
+
+---
+
+## Direct Track Final Audit
+
+### 目的
+
+画面・component から直接呼ばれている `track()` を棚卸しし、  
+domain helper へ移行する対象と、escape hatch として残す対象を分離する。
+
+analytics は event を追加するより、  
+野良 event を増やさないことの方が重要である。  
+人類は「一旦 track だけ入れる」を覚えると、だいたい半年後に考古学を始める。
+
+### 監査対象
+
+テストコードを除外した direct `track()` / provider direct call を対象とする。
+
+```bash
+grep -R "track(\"\\|track('" apps/web/src -n | grep -v "__tests__" | grep -v ".test."
+```
+
+### 残存 direct track 一覧
+
+| event | file | domain | 方針 | note |
+|---|---|---|---|---|
+| shrine_decision | apps/web/src/app/concierge/ConciergeClientFull.tsx | search / action | 後続整理 | 相談後の意思決定event。保存導線・詳細遷移と混在しないよう後続で確認する |
+| empty_state_view | apps/web/src/app/shrines/page.tsx | search | `trackSearchEvent` 移行候補 | 神社検索の空結果 |
+| add_shrine_click | apps/web/src/app/shrines/page.tsx | search | `trackSearchEvent` 移行候補 | 未登録神社追加導線 |
+| posthog_health_check | apps/web/src/app/providers/ClientBootstrap.tsx | escape hatch | 残す | provider疎通確認のため direct provider call を許容 |
+| premium_history_click | apps/web/src/features/concierge/components/ThreadList.tsx | retention | `trackRetentionEvent` 移行候補 | 履歴クリック / thread再開候補 |
+| premium_history_comparison_view | apps/web/src/features/concierge/components/PremiumStateDeltaCard.tsx | retention | `trackRetentionEvent` 移行候補 | 前回比較表示 |
+| premium_history_comparison_click | apps/web/src/features/concierge/components/PremiumStateDeltaCard.tsx | retention | `trackRetentionEvent` 移行候補 | 前回比較CTA |
+| shrine_submission_complete | apps/web/src/features/shrine-submission/components/ShrineSubmissionForm.tsx | submission | 今回保留 | submission domain helper 未定義のため保留 |
+| shrine_card_click | apps/web/src/components/shrines/ShrineCard.tsx | search / card | `trackSearchEvent` 移行候補 | 神社カードクリック |
+| shrine_detail_view | apps/web/src/components/shrine/ShrineDetailViewTracker.tsx | search | `trackSearchEvent` 移行候補 | 神社詳細表示 |
+| shrine_detail_premium_preview_click | apps/web/src/components/shrine/detail/ShrineDetailArticle.tsx | card / premium | `trackCardEvent` 移行候補 | 神社詳細内Premium導線 |
+| favorite_click | apps/web/src/components/shrine/ShrineSaveButton.tsx | save / action | 今回保留 | save domain helper 未定義のため保留 |
+| shrine_decision | apps/web/src/components/shrine/ShrineSaveButton.tsx | search / action | 後続整理 | 保存操作後の意思決定event。`ConciergeClientFull.tsx` 側と重複確認が必要 |
+
+### 分類方針
+
+| 分類 | 方針 |
+|---|---|
+| search | `trackSearchEvent` へ移行する |
+| retention | `trackRetentionEvent` へ移行する |
+| card / premium | `trackCardEvent` へ移行する |
+| billing | `trackBillingEvent` を使う |
+| submission | helper 未定義のため今回は保留 |
+| save / action | save domain の必要性を後続で判断する |
+| escape hatch | provider疎通・debug・migration用途のみ残す |
+
+### escape hatch として残すevent
+
+| event | 理由 |
+|---|---|
+| posthog_health_check | provider疎通確認であり、domain event ではないため |
+
+### 後続PR候補
+
+```markdown
+- [ ] search系 direct track を `trackSearchEvent` へ移行
+- [ ] retention系 direct track を `trackRetentionEvent` へ移行
+- [ ] shrine_detail_premium_preview_click を `trackCardEvent` へ移行
+- [ ] save / favorite 系eventのdomainを定義
+- [ ] submission domain helper の必要性を判断
+- [ ] shrine_decision の責務を整理
+```
+
+### このPRでやらないこと
+
+- direct `track()` の実装修正
+- event名の変更
+- provider実装の変更
+- dashboard / aggregation の変更
 - PostHog / GA 接続変更
