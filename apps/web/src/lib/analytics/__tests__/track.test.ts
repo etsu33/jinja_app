@@ -43,6 +43,7 @@ describe("track", () => {
         payload: expect.objectContaining({
           q: "未登録神社",
           returnTo: "/shrines?q=%E6%9C%AA%E7%99%BB%E9%8C%B2",
+          analyticsSessionId: expect.any(String),
           sessionId: expect.any(String),
         }),
         timestamp: expect.any(String),
@@ -57,6 +58,7 @@ describe("track", () => {
         payload: expect.objectContaining({
           q: "未登録神社",
           returnTo: "/shrines?q=%E6%9C%AA%E7%99%BB%E9%8C%B2",
+          analyticsSessionId: expect.any(String),
           sessionId: expect.any(String),
         }),
         timestamp: expect.any(String),
@@ -71,6 +73,7 @@ describe("track", () => {
         payload: expect.objectContaining({
           q: "未登録神社",
           returnTo: "/shrines?q=%E6%9C%AA%E7%99%BB%E9%8C%B2",
+          analyticsSessionId: expect.any(String),
           sessionId: expect.any(String),
         }),
         timestamp: expect.any(String),
@@ -99,6 +102,7 @@ describe("track", () => {
         eventName: "latest_event",
         payload: expect.objectContaining({
           index: 100,
+          analyticsSessionId: expect.any(String),
           sessionId: expect.any(String),
         }),
         timestamp: expect.any(String),
