@@ -1,5 +1,3 @@
-
-
 # Analytics Card Events
 
 最終更新: 2026-05-18  
@@ -9,9 +7,10 @@
 
 ## 目的
 
-本ドキュメントは、KAMI MUSUBI の card 単位 analytics event を固定するための設計メモである。
+本ドキュメントは、KAMI MUSUBI の **card 単位** analytics event を固定するための設計メモである。  
+analytics は後から適当に足すと、**event名・payload・発火条件**が画面ごとに分裂する。  
+人類はなぜ毎回「あとで整理しよう」でevent名を爆発させるのか。未来の自分を敵視しすぎている。
 
-analytics は後から適当に足すと、event名・payload・発火条件が画面ごとに分裂する。
 そのため、実装前に以下を固定する。
 
 - event名
@@ -50,7 +49,11 @@ analytics は後から適当に足すと、event名・payload・発火条件が�
 ```ts
 type AccessLevel = "anonymous" | "free" | "premium";
 
-type CardVisibilityState = "visible" | "teaser" | "partial" | "hidden";
+type CardVisibilityState =
+  | "visible"
+  | "teaser"
+  | "partial"
+  | "hidden";
 
 type AnalyticsSource =
   | "concierge_result"
@@ -68,8 +71,6 @@ type AnalyticsSource =
 | ctaType | 押されたCTAの種類 |
 | recommendationRank | 推薦順位 |
 
----
-
 ## Event Naming Rule
 
 ### 命名規則
@@ -77,12 +78,11 @@ type AnalyticsSource =
 - snake_case
 - 英語
 - 動詞は末尾に置く
-- card単位は `card_` prefix を使う
-- Premium導線は `premium_` prefix を使う
-- 保存導線は `save_` prefix を使う
+- card単位は card_ prefix を使う
+- Premium導線は premium_ prefix を使う
+- 保存導線は save_ prefix を使う
 
 ### 採用例
-
 ```txt
 card_view
 card_teaser_view
@@ -92,19 +92,21 @@ premium_preview_view
 premium_preview_click
 save_prompt_view
 save_prompt_click
+save_success
+next_session
+next_thread
+thread_resume
 ```
 
 ### 禁止例
-
 ```txt
 read_more_click
 more_detail_click
 premium_long_text_open
 conciergeClick
-カード表示
 ```
 
-理由:
+理由:  
 KAMI MUSUBI の Premium 差分は「続きを読む」ではなく、整理ブロックの増加で表現するため。
 
 ---
@@ -126,9 +128,9 @@ KAMI MUSUBI の Premium 差分は「続きを読む」ではなく、整理ブ�
 
 ## Optional Events
 
-必要になった場合のみ追加する。
-最初から増やしすぎない。
-人類は計測項目を増やすと、だいたい見なくなる。
+必要になった場合のみ追加する。  
+最初から増やしすぎない。  
+analytics は増やすほど人類が見なくなる。観測者が観測を放棄する量子力学。
 
 | event | 発火条件 | 目的 |
 |---|---|---|
@@ -137,12 +139,13 @@ KAMI MUSUBI の Premium 差分は「続きを読む」ではなく、整理ブ�
 | checkout_started | checkout session 開始 | 決済開始計測 |
 | checkout_success | checkout success 復帰 | 決済完了計測 |
 | premium_active_confirmed | billing status で premium active 確認 | Premium反映確認 |
+| next_session | 別日で再訪した | retention計測 |
+| next_thread | 新しい相談threadを開始した | 継続相談計測 |
+| thread_resume | 既存threadを再開した | 履歴回帰計測 |
 
 ---
 
 ## Common Payload
-
-全 event は可能な限り以下の共通 payload を持つ。
 
 ```ts
 type CardAnalyticsPayload = {
@@ -156,7 +159,14 @@ type CardAnalyticsPayload = {
   recommendationRank?: number;
   mode?: "need" | "compat";
   flow?: "A" | "B";
+
+  // legacy
   sessionId?: string;
+
+  // analytics v2
+  analyticsSessionId?: string;
+  threadId?: string;
+  resultSetId?: string;
 };
 ```
 
@@ -229,7 +239,7 @@ type CtaType =
 
 ### 発火条件
 
-- visibility が `visible`
+- visibility が visible
 - card が viewport に入ったとき
 - 同一 cardId は同一画面表示中に原則1回のみ
 
@@ -249,13 +259,11 @@ type CtaType =
 }
 ```
 
----
-
 ## card_teaser_view
 
 ### 発火条件
 
-- visibility が `teaser`
+- visibility が teaser
 - Premium価値の予告として表示されたとき
 
 ### payload
@@ -271,13 +279,11 @@ type CtaType =
 }
 ```
 
----
-
 ## card_partial_view
 
 ### 発火条件
 
-- visibility が `partial`
+- visibility が partial
 - Free向けに冒頭または hint のみ表示されたとき
 
 ### payload
@@ -293,8 +299,6 @@ type CtaType =
   recommendationRank: 1
 }
 ```
-
----
 
 ## card_cta_click
 
@@ -314,8 +318,6 @@ type CtaType =
   ctaType: "continue_with_premium"
 }
 ```
-
----
 
 ## premium_preview_view
 
@@ -337,152 +339,124 @@ type CtaType =
 
 ---
 
-## premium_preview_click
-
-### 発火条件
-
-- PremiumPreviewCard のCTAが押されたとき
-
-### payload
-
-```ts
-{
-  event: "premium_preview_click",
-  cardId: "premium_preview",
-  source: "concierge_result",
-  accessLevel: "free",
-  visibility: "visible",
-  ctaType: "continue_with_premium"
-}
-```
-
----
-
-## save_prompt_view
-
-### 発火条件
-
-- SavePromptCard が visible または teaser で表示されたとき
-
-### payload
-
-```ts
-{
-  event: "save_prompt_view",
-  cardId: "save_prompt",
-  source: "concierge_result",
-  accessLevel: "anonymous",
-  visibility: "teaser"
-}
-```
-
----
-
-## save_prompt_click
-
-### 発火条件
-
-- 保存CTAが押されたとき
-
-### payload
-
-```ts
-{
-  event: "save_prompt_click",
-  cardId: "save_prompt",
-  source: "concierge_result",
-  accessLevel: "anonymous",
-  visibility: "teaser",
-  ctaType: "login_to_save"
-}
-```
-
----
-
-## Funnel KPI
-
-## Premium CVR
-
-### 目的
-
-Premium preview から checkout / premium active までの転換を見る。
-
-### funnel
-
-```txt
-premium_preview_view
-↓
-premium_preview_click
-↓
-billing_upgrade_click
-↓
-checkout_started
-↓
-checkout_success
-↓
-premium_active_confirmed
-```
-
-### KPI
-
-| KPI | 計算 |
-|---|---|
-| preview CTR | premium_preview_click / premium_preview_view |
-| upgrade CTR | billing_upgrade_click / premium_preview_view |
-| checkout start rate | checkout_started / billing_upgrade_click |
-| checkout success rate | checkout_success / checkout_started |
-| premium activation rate | premium_active_confirmed / checkout_started |
-
----
-
 ## Save Intent KPI
 
-### funnel
+| KPI | 計算 | 目的 |
+|---|---|---|
+| save_prompt_view | SavePromptCard 表示 | 保存導線の接触計測 |
+| save_prompt_click | SavePromptCard 内CTAクリック | 保存意図の計測 |
+
+### Save Success Event Policy
+
+#### 目的
+
+`save_prompt_click` 後に、実際に保存が完了したかを計測する。
+
+#### event
 
 ```txt
-save_prompt_view
-↓
-save_prompt_click
-↓
-login_success または save_success
+save_success
 ```
 
-### KPI
+#### 発火条件
 
-| KPI | 計算 |
-|---|---|
-| save CTR | save_prompt_click / save_prompt_view |
-| anonymous login intent | login_to_save click / anonymous save_prompt_view |
-| save completion | save_success / save_prompt_click |
+- 相談結果の保存APIが成功した
+- ログイン後に保存処理が完了した
+- 保存対象が backend / storage 側で確定した
+
+#### payload
+
+```ts
+{
+  event: "save_success",
+  source: "concierge_result",
+  accessLevel: "free",
+  threadId: "...",
+  resultSetId: "...",
+  saveType: "consultation"
+}
+```
+
+#### 注意
+
+`save_prompt_click` は保存意図を表す。  
+`save_success` は保存完了を表す。
+
+両者は別eventとして扱う。
 
 ---
 
 ## Card Engagement KPI
 
-| KPI | 計算 | 見ること |
+| KPI | 計算 | 目的 |
 |---|---|---|
-| card exposure | card_view count | どの整理ブロックが見られたか |
-| teaser CTR | card_cta_click / card_teaser_view | teaser が行動につながったか |
-| partial CTR | card_cta_click / card_partial_view | partial が行動につながったか |
-| detail transition | shrine_detail_transition / shrine_hero card_view | 神社詳細へ進んだか |
+| card_view | card visible 表示 | card単位の接触計測 |
+| card_teaser_view | card teaser 表示 | Premium予告の接触計測 |
+| card_partial_view | card partial 表示 | Free向け部分表示の接触計測 |
+| card_cta_click | card 内CTAクリック | 行動計測 |
 
 ---
-## Retention / ID Responsibility
 
-### ID責務
+## Retention KPI
 
-| ID | 意味 | 生成元 | 主な用途 | 注意 |
-|---|---|---|---|---|
-| analyticsSessionId | ブラウザ内の一連の利用単位 | track.ts / localStorage | repeat visit / retention 候補 | 現状は payload.sessionId として自動付与される |
-| threadId / tid | concierge相談スレッド単位 | backend thread.id / URL query | 同一相談の表示・比較・履歴 | 現状一部card eventで sessionId として渡されている |
-| resultSetId | 推薦結果セット単位 | tid + recommendation signature | card view/click 重複防止、CTR集計 | 同一thread内でも推薦結果が変われば別セット |
+### 目的
 
-### 現時点の注意
+継続利用・相談継続・履歴回帰を計測する。
 
-`track.ts` は payload に `sessionId` を自動付与する。
-そのため、呼び出し側で `sessionId: tid` を渡しても、最終payloadでは analytics sessionId に置き換わる可能性がある。
+Premium CVRだけではなく、  
+「また戻ってきたか」を追う。  
+継続率を見ないプロダクトは、だいたい短命になる。
 
-今後は以下のように命名を分離する。
+### next_session
+
+別日にアプリへ再訪したとき。
+
+#### event
+
+```txt
+next_session
+```
+
+#### payload
+
+```ts
+{
+  analyticsSessionId: "...",
+  previousSessionAt: "2026-05-18T12:00:00Z"
+}
+```
+
+### next_thread
+
+新しい相談threadを開始したとき。
+
+#### event
+
+```txt
+next_thread
+```
+
+#### payload
+
+```ts
+{
+  analyticsSessionId: "...",
+  threadId: "...",
+  source: "concierge_result"
+}
+```
+
+### thread_resume
+
+既存threadを再開したとき。
+
+#### event
+
+```txt
+thread_resume
+```
+
+#### payload
 
 ```ts
 {
@@ -492,92 +466,337 @@ login_success または save_success
 }
 ```
 
----
+### KPI
 
-## Privacy Policy
-
-### 送ってよいもの
-
-- cardId
-- source
-- accessLevel
-- visibility
-- ctaType
-- shrineId
-- recommendationRank
-- mode
-- flow
-- sessionId
-
-### 送らないもの
-
-- ユーザーの相談文全文
-- 自由入力の原文
-- 生年月日
-- 住所の詳細
-- 個人を直接識別できる情報
-- 御朱印画像URL
-- 決済情報
+| KPI | 計算 |
+|---|---|
+| retention rate | next_session / analyticsSessionId |
+| thread continuation rate | next_thread / next_session |
+| thread resume rate | thread_resume / next_session |
 
 ---
 
-## 実装方針
+## Retention / ID Responsibility
 
-### 推奨構造
+## Analytics Naming Migration Policy
+
+### 目的
+
+`sessionId` に analytics session と concierge thread の2つの意味が混在しているため、  
+今後の実装では ID 名を段階的に分離する。
+
+### 現状の問題
+
+| 名前 | 現在の意味 | 問題 |
+|---|---|---|
+| sessionId | analytics session または threadId | 意味が混在している |
+| tid | concierge thread id | analytics payload 上では sessionId として渡される箇所がある |
+| resultSetId | 推薦結果セット | 一部eventでのみ送られている |
+
+### 移行方針
+
+| Phase | 内容 | 実装有無 |
+|---|---|---|
+| Phase 0 | docsで責務と移行方針を固定する | 今回 |
+| Phase 1 | card event payload に `threadId` を追加し、`sessionId` は互換維持する | 後続PR |
+| Phase 2 | `track.ts` で `analyticsSessionId` を追加し、既存 `sessionId` も当面維持する | 後続PR |
+| Phase 3 | 集計関数を `analyticsSessionId ?? sessionId` に対応させる | 後続PR |
+| Phase 4 | `sessionId` の意味を段階的に廃止する | 将来 |
+
+### payload 方針
+
+今後のanalytics payloadは以下を優先する。
+
+```ts
+{
+  analyticsSessionId: "...",
+  threadId: "...",
+  resultSetId: "..."
+}
+```
+
+互換期間中は以下も許容する。
+
+```ts
+{
+  sessionId: "..."
+}
+```
+
+### このPRでやらないこと
+
+- `track.ts` を変更しない
+- `trackCardEvent` を変更しない
+- 既存 event payload を変更しない
+- 集計関数を変更しない
+- PostHog / GA 接続をしない
+
+## Analytics Serialization Responsibility
+
+### AnalyticsPayload
+
+```ts
+type AnalyticsPayload =
+  Record<string, string | number | boolean>;
+```
+
+### AnalyticsPayload Responsibility
+
+- provider 送信可能型
+- primitive value のみ許可
+- nested object を許可しない
+- Date object を許可しない
+- undefined は serialize layer で除外する
+
+### serializeCardAnalyticsPayload の責務
+
+serializeCardAnalyticsPayload は
+analytics provider へ送信する直前の
+payload 正規化レイヤとして扱う。
+
+
+## providers.ts Responsibility
+
+### 目的
+
+analytics provider を差し替え可能にしつつ、  
+application layer と provider SDK を分離する。
+
+PostHog / GA / console provider を
+後から切り替えられるようにする。
+
+人類は analytics SDK を直接各画面に書き始めると、
+半年後に「このeventどこから飛んでるの？」遺跡探索を始める。
+
+### 責務
+
+- analytics provider abstraction layer
+- payload passthrough layer
+- provider initialize responsibility
+
+### やらないこと
+
+- serialization を担当しない
+- normalize を担当しない
+- undefined 除去を担当しない
+- analytics payload v1/v2 互換吸収を担当しない
+- business logic を担当しない
+- retention 判定を担当しない
+
+### 境界
 
 ```txt
-apps/web/src/lib/analytics/
-├─ events.ts
-├─ cardEvents.ts
-└─ types.ts
+UI / feature layer
+  ↓
+trackCardEvent
+  ↓
+serializeCardAnalyticsPayload
+  ↓
+providers.ts
+  ↓
+PostHog / GA / console
 ```
 
-### events.ts
+### serialize responsibility の所在
 
-```ts
-export function trackEvent(event: string, payload: Record<string, unknown>) {
-  if (process.env.NODE_ENV !== "production") {
-    console.log("ANALYTICS_EVENT", event, payload);
-  }
 
-  // TODO: PostHog / GA に差し替え
-}
-```
-
-### cardEvents.ts
-
-```ts
-export function trackCardEvent(payload: CardAnalyticsPayload) {
-  trackEvent(payload.event, payload);
-}
-```
+| layer | responsibility |
+|---|---|
+| feature layer | event発火 |
+| trackCardEvent | analytics event統一入口 |
+| serializeCardAnalyticsPayload | payload normalize / undefined除去 |
+| providers.ts | provider forwarding |
+| analytics SDK | 外部送信 |
 
 ---
 
-## 実装TODO
+## Analytics Firing Layer Responsibility
 
-```markdown
-- [ ] analytics-card-events.md で event schema を固定
-- [ ] CardId を union type として定義
-- [ ] CtaType を union type として定義
-- [ ] CardAnalyticsPayload を定義
-- [ ] trackEvent の console log 仮実装を作る
-- [ ] trackCardEvent を作る
-- [ ] card_view / card_teaser_view / card_partial_view を発火する
-- [ ] card_cta_click を共通化する
-- [ ] premium_preview_view / premium_preview_click を追加する
-- [ ] save_prompt_view / save_prompt_click を追加する
-- [ ] PostHog or GA 接続は別PRに分離する
+### 目的
+
+analytics event を
+
+- どこで
+- いつ
+- 何回
+- 誰が
+
+発火するかを固定する。
+
+schema が正しくても、
+発火責務が崩れると analytics は壊れる。
+
+人類は duplicate event に鈍感すぎる。
+
+### firing layer の責務
+
+- analytics event 発火
+- event timing 制御
+- viewport exposure 判定
+- event dedupe
+- resultSetId 単位の重複防止
+- analytics payload 構築
+
+### firing layer がやらないこと
+
+- provider dispatch
+- provider initialize
+- analytics SDK 呼び出し詳細
+- retention 集計
+- dashboard 集計
+- recommendation logic
+- business decision
+
+### firing responsibility
+
+| layer | responsibility |
+|---|---|
+| feature component | user interaction / UI state |
+| trackCardEvent | analytics schema統一 |
+| serializeCardAnalyticsPayload | payload normalize |
+| providers.ts | provider forwarding |
+| analytics SDK | 外部送信 |
+
+### dedupe responsibility
+
+| ID | responsibility |
+|---|---|
+| analyticsSessionId | 訪問単位 |
+| threadId | 相談単位 |
+| resultSetId | 同一推薦結果単位 |
+
+### IntersectionObserver Responsibility
+
+IntersectionObserver は
+viewport exposure 判定のみを担当する。
+
+以下は担当しない。
+
+- analytics payload 構築
+- retention 判定
+- recommendation logic
+- provider dispatch
+
+### event firing policy
+
+同一 cardId の card_view は、
+同一 resultSetId 内では原則1回のみ発火する。
+
+同一eventの重複送信防止は、
+analytics firing layer 側で責務を持つ。
+
+### 実装候補
+
+```txt
+ConciergeSectionsRenderer.tsx
+PremiumStateDeltaCard.tsx
+ThreadList.tsx
+ConciergeClientFull.tsx
 ```
+
+### このPRでやらないこと
+
+- firing layer 共通hook化
+- analytics middleware 作成
+- track API redesign
+- PostHog optimize
+- queueing layer 実装
+- retry layer 実装
+
 
 ---
 
-## 完了条件
+## Analytics Event Domain / Namespace Policy
 
-- event名が固定されている
-- cardId が固定されている
-- ctaType が固定されている
-- payload に個人情報を含めない方針が明記されている
-- Premium funnel が追える
-- Save intent funnel が追える
-- PostHog / GA に依存しない薄い analytics 層として実装できる
+### 目的
+
+analytics event の増殖を防ぐため、event を domain ごとに分離する。
+
+`track()` をどこからでも直接呼び出すと、event名・payload・発火条件が分裂する。  
+そのため、原則として domain-specific helper を経由する。
+
+### event domain table
+
+| domain | helper | 主なevent | 責務 |
+|---|---|---|---|
+| core | `track()` | system / fallback event | low-level pipeline |
+| card | `trackCardEvent()` | card_view / card_cta_click / premium_preview_click / save_prompt_click | card exposure / CTA |
+| retention | `trackRetentionEvent()` | next_session / next_thread / thread_resume | 継続利用 / 再訪 / 再開 |
+| billing | `trackBillingEvent()` | billing_upgrade_click / checkout_started / checkout_success / premium_active_confirmed | 課金funnel |
+| search | `trackSearchEvent()` | shrine_search / map_search / route_open | 検索・経路導線 |
+
+### track() responsibility
+
+`track()` は low-level analytics pipeline として扱う。
+
+#### やること
+
+- analyticsSessionId の付与
+- timestamp の付与
+- provider dispatch
+- fail-safe logging
+- fallback event の送信
+
+#### やらないこと
+
+- card schema の組み立て
+- retention 判定
+- billing funnel 判定
+- business logic
+- UI visibility 判定
+- dedupe 判定
+
+### 直track禁止原則
+
+画面・component から `track()` を直接呼ぶことは原則避ける。
+
+以下は domain-specific helper を使う。
+
+| event種別 | 使用helper |
+|---|---|
+| card表示 / card CTA | `trackCardEvent()` |
+| 継続利用 / 再訪 / 再開 | `trackRetentionEvent()` |
+| 課金導線 | `trackBillingEvent()` |
+| 検索 / map / route | `trackSearchEvent()` |
+
+### escape hatch policy
+
+以下の場合のみ、直 `track()` を許容する。
+
+- まだ domain helper が存在しない experimental event
+- system error / debug event
+- provider疎通確認
+- migration期間中の一時event
+- analytics schema確定前の仮event
+
+ただし、直 `track()` を使う場合は以下を守る。
+
+- payload に個人情報を入れない
+- nested object を送らない
+- Date object を送らない
+- event名は snake_case にする
+- 後続PRで domain helper へ移行する
+
+### namespace設計
+
+analytics event は以下の namespace 方針で整理する。
+
+| namespace | 例 | 用途 |
+|---|---|---|
+| `card_*` | card_view / card_cta_click | card単位の表示・行動 |
+| `premium_*` | premium_preview_click | Premium導線 |
+| `save_*` | save_prompt_click / save_success | 保存導線 |
+| `billing_*` | billing_upgrade_click | 課金導線 |
+| `checkout_*` | checkout_started / checkout_success | 決済処理 |
+| `next_*` | next_session / next_thread | 継続利用 |
+| `thread_*` | thread_resume | 相談thread再開 |
+
+### このPRでやらないこと
+
+- `track()` の実装修正
+- `trackCardEvent()` の実装修正
+- `trackRetentionEvent()` の新規実装
+- `trackBillingEvent()` の変更
+- `trackSearchEvent()` の新規実装
+- PostHog / GA 接続変更
+- event 発火箇所の変更
