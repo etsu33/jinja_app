@@ -1,6 +1,12 @@
 import { getAnalyticsProvider } from "@/lib/analytics/providers";
 
-export type RetentionAnalyticsEventName = "next_session" | "next_thread" | "thread_resume";
+export type RetentionAnalyticsEventName =
+  | "next_session"
+  | "next_thread"
+  | "thread_resume"
+  | "premium_history_click"
+  | "premium_history_comparison_view"
+  | "premium_history_comparison_click";
 
 type RetentionAnalyticsPrimitive = string | number | boolean | null | undefined;
 
@@ -8,7 +14,7 @@ export type RetentionAnalyticsPayload = {
   analyticsSessionId?: string | null;
   threadId?: string | null;
   resultSetId?: string | null;
-  source?: "concierge_result" | "mypage" | "thread_history" | null;
+  source?: "concierge_result" | "mypage" | "thread_history" | "state_delta_card" | "thread_list" | null;
   previousSessionAt?: string | null;
   [key: string]: RetentionAnalyticsPrimitive;
 };
@@ -24,6 +30,8 @@ function isRetentionAnalyticsPrimitive(value: unknown): value is RetentionAnalyt
     value === undefined
   );
 }
+
+
 
 export function serializeRetentionAnalyticsPayload(
   payload: RetentionAnalyticsPayload = {},
