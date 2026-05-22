@@ -10,7 +10,7 @@ import type { ShrineCardAdapterProps } from "@/components/shrine/buildShrineCard
 import { fetchShrines } from "@/lib/api/shrinesSearch";
 import { getGoriyakuTags, type GoriyakuTag } from "@/lib/api/tags";
 import { buildShrineListCardModel } from "@/lib/shrine/buildShrineListCardModel";
-import { track } from "@/lib/analytics/track";
+import { trackSearchEvent } from "@/lib/analytics/searchEvents";
 
 function ShrinesPageContent() {
   const router = useRouter();
@@ -124,7 +124,10 @@ function ShrinesPageContent() {
     if (trackedEmptyStateKeyRef.current === emptyStateKey) return;
 
     trackedEmptyStateKeyRef.current = emptyStateKey;
-    track("empty_state_view", { q });
+    trackSearchEvent("empty_state_view", {
+      source: "shrines",
+      query: q,
+    });
   }, [isEmpty, q]);
 
   const submissionNoticeTitle = submittedName ? `「${submittedName}」の投稿を受け付けました` : "投稿を受け付けました";
@@ -171,7 +174,11 @@ function ShrinesPageContent() {
 
   const handleAddShrine = () => {
     const returnTo = `/shrines${q ? `?q=${encodeURIComponent(q)}` : ""}`;
-    track("add_shrine_click", { q, returnTo });
+    trackSearchEvent("add_shrine_click", {
+      source: "shrines",
+      query: q,
+      returnTo,
+    });
     router.push(`/shrines/new?returnTo=${encodeURIComponent(returnTo)}`);
   };
 
