@@ -47,7 +47,7 @@ import DetailDisclosureBlock from "@/components/shrine/DetailDisclosureBlock";
 import { FAVORITE_LABELS } from "@/lib/ui/labels";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { buildLoginHref } from "@/lib/nav/login";
-import { track } from "@/lib/analytics/track";
+
 
 import type { ShrineTag } from "@/lib/shrine/tags/types";
 import type { ShrineCardAdapterProps } from "@/components/shrine/buildShrineCardProps";
@@ -129,18 +129,18 @@ function PremiumUpgradePrompt() {
             ? "今の状態整理と、この神社を選ぶ意味を深められます。"
             : "今の状態整理と、この神社を選ぶ意味をPremiumで深められます。"}
         </p>
-        <p className="text-xs leading-6 text-slate-600">
-          相談内容に基づく状態整理、相性、行動の意味づけを表示します。
-        </p>
+        <p className="text-xs leading-6 text-slate-600">相談内容に基づく状態整理、相性、行動の意味づけを表示します。</p>
         <Link
           href={href}
           className="inline-flex items-center rounded-xl bg-amber-700 px-3 py-2 text-xs font-semibold text-white hover:bg-amber-800"
           onClick={() =>
-            track("shrine_detail_premium_preview_click", {
+            trackCardEvent({
+              event: "premium_preview_click",
+              cardId: "premium_preview",
               source: "shrine_detail",
-              valueProp: "shrine_meaning_subscription",
-              funnelStep: "shrine_detail_preview",
-              isGuestUser,
+              accessLevel: isGuestUser ? "anonymous" : "free",
+              visibility: "teaser",
+              ctaType: "continue_with_premium",
             })
           }
         >
