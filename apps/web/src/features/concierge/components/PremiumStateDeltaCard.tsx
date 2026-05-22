@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import type { StateDelta } from "@/lib/concierge/stateComparison";
 import { toNeedTagLabels } from "@/lib/concierge/needTagLabelMap";
-import { track } from "@/lib/analytics/track";
+import { trackRetentionEvent } from "@/lib/analytics/retentionEvents";
 
 type Props = {
   stateDelta: StateDelta;
@@ -29,7 +29,7 @@ export default function PremiumStateDeltaCard({ stateDelta, isPremium }: Props) 
   useEffect(() => {
     if (!isPremium) return;
 
-    track("premium_history_comparison_view", {
+    trackRetentionEvent("premium_history_comparison_view", {
       source: "state_delta_card",
       hasSummary: Boolean(stateDelta.summary),
       hasCombinationChange: Boolean(stateDelta.combinationChange?.summary),
@@ -58,19 +58,15 @@ export default function PremiumStateDeltaCard({ stateDelta, isPremium }: Props) 
     return (
       <section className="mx-4 mt-4 rounded-3xl border border-amber-200 bg-amber-50/80 p-4">
         <div className="space-y-2">
-          <p className="text-sm font-semibold text-amber-950">
-            前回との状態変化はPremiumで確認できます。
-          </p>
+          <p className="text-sm font-semibold text-amber-950">前回との状態変化はPremiumで確認できます。</p>
 
-          <p className="text-xs leading-6 text-slate-600">
-            気持ちの変化や、継続しているテーマを振り返れます。
-          </p>
+          <p className="text-xs leading-6 text-slate-600">気持ちの変化や、継続しているテーマを振り返れます。</p>
 
           <Link
             href="/billing/upgrade?source=state_delta_card&funnelStep=comparison_preview"
             className="inline-flex rounded-2xl bg-amber-700 px-4 py-2 text-sm font-semibold text-white"
             onClick={() =>
-              track("premium_history_comparison_click", {
+              trackRetentionEvent("premium_history_comparison_click", {
                 source: "state_delta_card",
                 funnelStep: "comparison_preview",
               })

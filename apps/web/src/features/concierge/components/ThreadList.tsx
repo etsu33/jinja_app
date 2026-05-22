@@ -1,8 +1,9 @@
 // apps/web/src/features/concierge/components/ThreadList.tsx
 import Link from "next/link";
 import type { ConciergeThread } from "@/lib/api/concierge";
-import { track } from "@/lib/analytics/track";
 import ThreadListItem from "./ThreadListItem";
+import { trackRetentionEvent } from "@/lib/analytics/retentionEvents";
+
 
 type Props = {
   threads: ConciergeThread[] | null | undefined;
@@ -65,7 +66,7 @@ export function ThreadList({ threads, selectedId, loading, requiresLogin, onSele
           href="/billing/upgrade"
           className="mt-2 inline-flex rounded-xl bg-amber-700 px-3 py-2 font-semibold text-white"
           onClick={() =>
-            track("premium_history_click", {
+            trackRetentionEvent("premium_history_click", {
               source: "thread_list",
               funnelStep: "history_comparison",
             })
