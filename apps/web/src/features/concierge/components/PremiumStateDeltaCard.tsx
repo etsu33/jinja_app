@@ -58,9 +58,9 @@ export default function PremiumStateDeltaCard({ stateDelta, isPremium }: Props) 
     return (
       <section className="mx-4 mt-4 rounded-3xl border border-amber-200 bg-amber-50/80 p-4">
         <div className="space-y-2">
-          <p className="text-sm font-semibold text-amber-950">前回との状態変化はPremiumで確認できます。</p>
+          <p className="text-sm font-semibold text-amber-950">前回との違いをPremiumで確認できます。</p>
 
-          <p className="text-xs leading-6 text-slate-600">気持ちの変化や、継続しているテーマを振り返れます。</p>
+          <p className="text-xs leading-6 text-slate-600">気持ちの変化や、続いているテーマをあとから振り返れます。</p>
 
           <Link
             href="/billing/upgrade?source=state_delta_card&funnelStep=comparison_preview"
@@ -72,7 +72,7 @@ export default function PremiumStateDeltaCard({ stateDelta, isPremium }: Props) 
               })
             }
           >
-            Premiumで比較を見る
+            前回との違いを見る
           </Link>
         </div>
       </section>
@@ -83,11 +83,11 @@ export default function PremiumStateDeltaCard({ stateDelta, isPremium }: Props) 
     <section className="mx-4 mt-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="space-y-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">前回との変化</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">前回との違い</p>
 
           <p className="mt-2 text-sm leading-6 text-slate-700">
             {stateDelta.summary ??
-              "今回の相談内容から、状態の変化を整理しています。前回比較の材料が増えるほど、変化の見え方が安定します。"}
+              "今回の相談内容から、前回との違いを整理しています。相談を重ねるほど、変化の見え方が安定します。"}
           </p>
         </div>
 

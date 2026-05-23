@@ -119,7 +119,7 @@ function PremiumUpgradePrompt() {
   const { isLoggedIn, loading: authLoading } = useAuth();
   const isGuestUser = !authLoading && !isLoggedIn;
   const href = isGuestUser ? buildLoginHref("/billing/upgrade") : "/billing/upgrade";
-  const ctaLabel = isGuestUser ? "ログインして意味を深める" : "なぜ今この神社が合っているのかを深掘りする";
+  const ctaLabel = isGuestUser ? "ログインして意味を深掘りする" : "この神社を選ぶ意味を深掘りする";
 
   return (
     <section className="rounded-2xl border border-amber-100 bg-amber-50/70 p-4">
@@ -127,7 +127,7 @@ function PremiumUpgradePrompt() {
         <p className="text-sm font-semibold leading-6 text-amber-950">
           {isGuestUser
             ? "今の状態整理と、この神社を選ぶ意味を深められます。"
-            : "今の状態整理と、この神社を選ぶ意味をPremiumで深められます。"}
+            : "今の状態整理と、この神社を選ぶ意味をPremiumで深掘りできます。"}
         </p>
         <p className="text-xs leading-6 text-slate-600">相談内容に基づく状態整理、相性、行動の意味づけを表示します。</p>
         <Link

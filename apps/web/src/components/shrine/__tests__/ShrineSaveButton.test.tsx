@@ -93,7 +93,7 @@ describe("ShrineSaveButton", () => {
       />,
     );
 
-    expect(screen.getByRole("button", { name: "保存する" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "あとで見返すために保存" })).toBeInTheDocument();
     expect(pushMock).not.toHaveBeenCalled();
   });
 

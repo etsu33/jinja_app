@@ -98,7 +98,13 @@ export default function ShrineSaveButton({
   return (
     <div className="space-y-2">
       <button type="button" onClick={onClick} disabled={busy} className={buttonClass} aria-pressed={fav}>
-        {busy ? "保存中…" : fav ? "保存しました" : effectiveGuestMode ? "ログインしてこの神社を保存" : "保存する"}
+        {busy
+          ? "保存中…"
+          : fav
+            ? "保存しました"
+            : effectiveGuestMode
+              ? "ログインしてあとで見返す"
+              : "あとで見返すために保存"}
       </button>
 
       {err ? <p className="text-xs text-red-600">{err}</p> : null}
