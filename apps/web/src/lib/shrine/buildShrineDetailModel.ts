@@ -1525,6 +1525,10 @@ export function buildShrineDetailModel({
 
   const payloadV2DisplaySections = buildMeaningSectionsFromPayloadV2(shrineMeaningPayloadV2);
 
+
+
+  const meaningPayloadSource: "v2" | "fallback" = payloadV2DisplaySections ? "v2" : "fallback";
+
   const freeDisplaySections =
     payloadV2DisplaySections?.freeDisplaySections ??
     buildFreeDisplaySections({
@@ -1558,6 +1562,7 @@ export function buildShrineDetailModel({
     judge,
     conciergeBreakdown,
     exp,
+    meaningPayloadSource,
     sections,
     freeDisplaySections,
     premiumDisplaySections,
