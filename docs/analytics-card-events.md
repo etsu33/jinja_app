@@ -1209,6 +1209,24 @@ analytics event は送れているだけでは不十分であり、
 
 発火候補は `ThreadList.tsx` の `onSelect(idStr)` 直前とする。
 
+### thread_resume の duplicate 条件
+
+`thread_resume` は、現在選択中の thread を再クリックした場合は発火しない。
+
+実装条件:
+
+```ts
+if (id === selectedId) return;
+```
+
+理由:
+
+```markdown
+- 同じthreadの再クリックを再開行動として扱わない
+- thread_resume rate の過剰計測を防ぐ
+- ユーザーが別の既存threadへ移動した場合のみ resume として扱う
+```
+
 ### next_thread / thread_resume の境界
 
 | event | 意味 | 発火候補 |
