@@ -222,9 +222,6 @@ export default async function Page({ params, searchParams }: Props) {
   const pageTitle = (s.name_jp ?? "").trim() || `神社 #${numericId}`;
   const shrineMeaningPayloadV2 = await fetchShrineMeaningPayloadV2Server(numericId);
 
-  // TODO(CONNECT_MEANING_PAYLOAD_V2): detail model / article 側で v2 display.blocks を優先表示する。
-  // 現時点では fetch 経路の追加のみ。null の場合は既存 fallback 表示を維持する。
-  void shrineMeaningPayloadV2;
 
   const latNum = Number(s.latitude ?? NaN);
   const lngNum = Number(s.longitude ?? NaN);
@@ -383,6 +380,7 @@ export default async function Page({ params, searchParams }: Props) {
 
   const model = buildShrineDetailModel({
     shrine: s,
+    shrineMeaningPayloadV2,
     publicGoshuins,
     conciergeBreakdown,
     conciergeReason,
