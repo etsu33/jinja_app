@@ -36,7 +36,6 @@ export default function ShrineDetailShell({
   title,
   subtitle = null,
   close,
-  shrineId = null,
   addGoshuinHref = null,
   googleDirHref = null,
   googleDirLabel = LABELS.googleDirections,
