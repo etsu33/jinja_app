@@ -798,7 +798,215 @@ analytics event は以下の namespace 方針で整理する。
 - `trackRetentionEvent()` の新規実装
 - `trackBillingEvent()` の変更
 - `trackSearchEvent()` の新規実装
-- PostHog / GA 接続変更
+
+---
+
+## Retention Event Audit
+
+### 目的
+
+Retention KPI を dashboard で集計できる状態か確認するため、既存実装の event 発火箇所と payload 欠損を監査する。
+
+この監査では、実装追加は行わず、以下を確認する。
+
+```markdown
+- premium_history_comparison_view の実装位置
+- thread_resume の実装位置
+- save_prompt_click / favorite_click の責務
+- source の欠損
+- cardId の欠損
+- dashboard 集計可能状態
+- 実装不足event
+```
+
+### 監査コマンド
+
+```bash
+grep -R "premium_history_comparison_view\|thread_resume\|save_prompt_click\|favorite_click\|premium_preview_click" apps/web/src -n | grep -v "__tests__" | grep -v ".test."
+```
+
+```bash
+grep -R "trackRetentionEvent(\"thread_resume\"\|thread_resume" apps/web/src -n | grep -v "__tests__" | grep -v ".test."
+```
+
+### 実装確認結果
+
+| event | 実装位置 | helper | 状態 | 判断 |
+|---|---|---|---|---|
+| premium_preview_click | ConciergeSectionsRenderer.tsx | trackCardEvent | 実装あり | 集計可能 |
+| premium_preview_click | ShrineDetailArticle.tsx | trackCardEvent | 実装あり | 集計可能 |
+| save_prompt_click | ConciergeSectionsRenderer.tsx | trackCardEvent | 実装あり | 集計可能 |
+| premium_history_comparison_view | PremiumStateDeltaCard.tsx | trackRetentionEvent | 実装あり | 集計可能。event名整理余地あり |
+| favorite_click | ShrineSaveButton.tsx | direct track | 実装あり | source / cardId 欠損あり。save domain整理候補 |
+| thread_resume | retentionEvents.ts | trackRetentionEvent 型のみ | 発火箇所なし | 未計測。実装不足候補 |
+
+### payload確認
+
+#### premium_preview_click / concierge_result
+
+```ts
+trackCardEvent({
+  event: "premium_preview_click",
+  cardId: "premium_preview",
+  source: "concierge_result",
+  accessLevel: props.accessLevel,
+  visibility: "teaser",
+  ctaType: "continue_with_premium",
+  shrineId: props.shrineId ?? undefined,
+  threadId: props.tid ?? undefined,
+});
+```
+
+判断:
+
+```markdown
+- source あり
+- cardId あり
+- accessLevel あり
+- visibility あり
+- threadId あり
+- dashboard集計可能
+```
+
+#### save_prompt_click / concierge_result
+
+```ts
+trackCardEvent({
+  event: "save_prompt_click",
+  cardId: "save_prompt",
+  source: "concierge_result",
+  accessLevel,
+  visibility: savePromptVisibility,
+  ctaType: isGuestUser ? "login_to_save" : "save",
+  threadId: tid ?? undefined,
+  resultSetId,
+});
+```
+
+判断:
+
+```markdown
+- source あり
+- cardId あり
+- accessLevel あり
+- visibility あり
+- threadId あり
+- resultSetId あり
+- dashboard集計可能
+```
+
+#### premium_history_comparison_view
+
+```ts
+trackRetentionEvent("premium_history_comparison_view", {
+  source: "state_delta_card",
+  hasSummary: Boolean(stateDelta.summary),
+  hasCombinationChange: Boolean(stateDelta.combinationChange?.summary),
+  combinationChanged: Boolean(stateDelta.combinationChange?.changed),
+  hasTransitionNarrative: Boolean(stateDelta.transitionNarrative?.summary),
+  transitionType: stateDelta.transitionNarrative?.type ?? "unknown",
+  changedNeedTagCount: changedNeedTags.length,
+  continuedNeedTagCount: continuedNeedTags.length,
+  daysSincePrevious: stateDelta.daysSincePrevious,
+  within7DaysSincePrevious: stateDelta.within7DaysSincePrevious,
+});
+```
+
+判断:
+
+```markdown
+- source あり
+- comparison表示の集計は可能
+- cardId はないが retention event としては許容
+- 将来的には previous_comparison_view へ名称整理余地あり
+```
+
+#### favorite_click
+
+```ts
+track("favorite_click", {
+  shrineId,
+  ctx,
+  tid,
+  nextFav,
+});
+```
+
+判断:
+
+```markdown
+- direct track のまま
+- source がない
+- cardId がない
+- accessLevel がない
+- visibility がない
+- save_rate の補助指標としては使えるが、card別dashboard集計には弱い
+- save domain helper 定義候補
+```
+
+#### thread_resume
+
+```txt
+apps/web/src/lib/analytics/retentionEvents.ts
+```
+
+判断:
+
+```markdown
+- RetentionAnalyticsEventName には存在する
+- trackRetentionEvent("thread_resume") の発火箇所は未確認
+- 現状では thread_resume rate は dashboard で実測できない
+- ThreadListItem の既存thread選択時に発火候補
+```
+
+### KPI集計可能状態
+
+| KPI | 必要event | 現状 | 判断 |
+|---|---|---|---|
+| comparison_view rate | premium_history_comparison_view | 実装あり | 集計可能 |
+| premium_preview_to_checkout_rate | premium_preview_click → checkout_started | preview側は実装あり | billing側との接続確認が必要 |
+| save_rate | save_prompt_click / favorite_click | 実装あり | favorite_click はpayload弱い |
+| thread_resume rate | thread_resume / next_session | thread_resume 発火なし | 未計測 |
+
+### 欠損・不足
+
+| 項目 | 状態 | 対応候補 |
+|---|---|---|
+| thread_resume 発火 | なし | ThreadListItem クリック時に trackRetentionEvent を追加 |
+| favorite_click source | なし | source: shrine_detail などを追加 |
+| favorite_click cardId | なし | saved_record / shrine_save などを定義 |
+| favorite_click helper | direct track | saveEvents.ts の必要性を判断 |
+| premium_history_comparison_view 名称 | 実装済みだが長い | previous_comparison_view への整理を検討 |
+
+### 現時点の判断
+
+```markdown
+- comparison_view rate は集計可能
+- premium_preview_click は ConciergeResult / ShrineDetail の両方で集計可能
+- save_prompt_click は集計可能
+- favorite_click は保存行動としては使えるが、card analytics としては弱い
+- thread_resume は型だけ存在し、未発火のため実測できない
+```
+
+### 次PR候補
+
+```markdown
+- [ ] thread_resume 発火箇所を ThreadListItem / thread選択導線に追加
+- [ ] favorite_click を save domain helper に移行するか判断
+- [ ] favorite_click に source / cardId / accessLevel を追加するか判断
+- [ ] premium_history_comparison_view を previous_comparison_view に寄せるか判断
+- [ ] dashboard集計前に source / cardId の必須条件を再確認する
+```
+
+### このPRでやらないこと
+
+```markdown
+- [ ] thread_resume の実装追加
+- [ ] favorite_click の実装修正
+- [ ] event名変更
+- [ ] dashboard実装
+- [ ] PostHog / GA 接続変更
+```
 - event 発火箇所の変更
 
 
