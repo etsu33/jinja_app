@@ -37,6 +37,7 @@ export default function ShrineSaveButton({
   const [err, setErr] = useState<string | null>(null);
 
   const effectiveGuestMode = typeof guestMode === "boolean" ? guestMode : !loading && !isLoggedIn;
+  const accessLevel = effectiveGuestMode ? "anonymous" : "free";
 
   const { fav, busy, toggle } = useFavorite({
     shrineId,
@@ -55,6 +56,9 @@ export default function ShrineSaveButton({
         ctx,
         tid,
         nextFav,
+        source: "shrine_detail",
+        cardId: "saved_record",
+        accessLevel,
       });
 
       if (nextFav) {
