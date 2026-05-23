@@ -345,6 +345,124 @@ D: 全文は見せず、価値予告だけにする
 
 ---
 
+## Retention KPI 固定
+
+### 目的
+
+Premium の継続価値を、感覚ではなく dashboard 指標で確認できるようにする。
+
+このdashboardでは、PVや単純なクリック数ではなく、以下を中心に見る。
+
+```markdown
+- 前回比較が見られているか
+- 相談履歴が再開されているか
+- 保存行動が起きているか
+- Premium preview から checkout に進んでいるか
+```
+
+### Dashboard KPI
+
+| KPI | 定義 | 分子 | 分母 | 主event | source |
+|---|---|---|---|---|---|
+| comparison_view rate | 前回比較が表示された割合 | `premium_history_comparison_view` | premium active session | `premium_history_comparison_view` | `state_delta_card` |
+| thread_resume rate | 既存相談が再開された割合 | `thread_resume` | `next_session` | `thread_resume` | `thread_history` |
+| save_rate | 保存導線が押された割合 | `save_prompt_click` / `favorite_click` | eligible view | `save_prompt_click` / `favorite_click` | `concierge_result` / `shrine_detail` |
+| premium_preview_to_checkout_rate | Premium preview から checkout に進んだ割合 | `checkout_started` | `premium_preview_click` | `premium_preview_click` → `checkout_started` | `concierge_result` / `shrine_detail` |
+| checkout_success_rate | checkout 開始後に成功した割合 | `checkout_success` | `checkout_started` | `checkout_started` → `checkout_success` | billing |
+| premium_active_rate | checkout 成功後にPremium有効化した割合 | `premium_active` | `checkout_success` | `checkout_success` → `premium_active` | billing |
+
+### KPIごとの判断用途
+
+#### comparison_view rate
+
+前回比較が Premium 価値として見られているかを確認する。
+
+判断用途:
+
+```markdown
+- Premiumユーザーが「前回との違い」を見ているか
+- Premiumの中心価値が comparison に寄っているか
+- comparison card copy / 表示位置の改善余地があるか
+```
+
+#### thread_resume rate
+
+相談履歴が、単なる過去ログではなく再開導線として機能しているかを確認する。
+
+判断用途:
+
+```markdown
+- ユーザーが過去の相談に戻っているか
+- 履歴が retention に寄与しているか
+- thread list copy / resume導線を強化すべきか
+```
+
+#### save_rate
+
+保存が「あとで見返す」行動につながっているかを確認する。
+
+判断用途:
+
+```markdown
+- 相談結果や神社が記録対象として認識されているか
+- 保存導線copyが機能しているか
+- saved_record / save_prompt の改善余地があるか
+```
+
+#### premium_preview_to_checkout_rate
+
+Premium preview への関心が checkout に進んでいるかを確認する。
+
+判断用途:
+
+```markdown
+- Premium preview copy が課金意欲につながっているか
+- ConciergeResult と ShrineDetail のどちらが課金導線として強いか
+- source別に checkout_start_rate を比較する
+```
+
+### source / event 対応
+
+| 領域 | source | 主event | 見るKPI |
+|---|---|---|---|
+| ConciergeResult | `concierge_result` | `premium_preview_click` / `save_prompt_click` | premium_preview_to_checkout_rate / save_rate |
+| ShrineDetail | `shrine_detail` | `premium_preview_click` / `favorite_click` | premium_preview_to_checkout_rate / save_rate |
+| Thread history | `thread_history` | `thread_resume` | thread_resume rate |
+| State delta card | `state_delta_card` | `premium_history_comparison_view` | comparison_view rate |
+| Billing | billing | `checkout_started` / `checkout_success` / `premium_active` | checkout_success_rate / premium_active_rate |
+
+### 初期dashboardで見ないもの
+
+初期dashboardでは、以下を中心指標にしない。
+
+```markdown
+- PV
+- 単純な page view
+- 神社詳細の閲覧数だけ
+- Map / Search の利用数だけ
+- 長文閲覧量
+```
+
+理由:
+
+```markdown
+Premium の価値は、神社情報の閲覧量ではなく、状態変化・保存・比較・再開にあるため。
+```
+
+### 実装前の確認条件
+
+実装に進む前に以下を確認する。
+
+```markdown
+- premium_preview_click の source が concierge_result / shrine_detail で分かれている
+- save_prompt_click と favorite_click の責務が分かれている
+- thread_resume が既存thread再開時に発火する
+- premium_history_comparison_view が comparison表示時に発火する
+- checkout_started / checkout_success / premium_active が billing funnel として追える
+```
+
+---
+
 ## 実装を増やさない制約
 
 このPRでは以下を行わない。
