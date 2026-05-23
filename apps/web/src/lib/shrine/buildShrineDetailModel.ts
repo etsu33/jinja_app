@@ -1,5 +1,6 @@
 // apps/web/src/lib/shrine/buildShrineDetailModel.ts
 import type { Shrine } from "@/lib/api/shrines";
+import type { ShrineMeaningPayloadV2 } from "@/lib/shrineMeaning/payloadV2";
 import type { ShrineTag } from "@/lib/shrine/tags/types";
 import type { PublicGoshuinItem } from "@/components/shrine/detail/PublicGoshuinSection";
 import type {
@@ -34,6 +35,7 @@ import { resolveNeedCombinationNarrative } from "@/lib/concierge/narrative/needC
 
 type Args = {
   shrine: Shrine;
+  shrineMeaningPayloadV2?: ShrineMeaningPayloadV2 | null;
   publicGoshuins: PublicGoshuinItem[];
   conciergeBreakdown?: ConciergeBreakdown | null;
   conciergeReason?: string | null;
@@ -67,7 +69,71 @@ type ShrineDetailDisplaySection = {
   section: ShrineDetailSectionModel;
 };
 
+function buildMeaningSectionsFromPayloadV2(
+  payload?: ShrineMeaningPayloadV2 | null,
+): {
+  freeDisplaySections: ShrineDetailDisplaySection[];
+  premiumDisplaySections: ShrineDetailDisplaySection[];
+} | null {
+  const blocks = payload?.display?.blocks ?? [];
+  if (!blocks.length) return null;
 
+  const freeItems: DetailMeaningItem[] = [];
+  const premiumItems: DetailMeaningItem[] = [];
+
+  blocks.forEach((block) => {
+    const body = block.body?.trim();
+    if (!body) return;
+
+    const item: DetailMeaningItem = {
+      key: block.id,
+      title: block.title,
+      body,
+    };
+
+    if (block.access === "premium") {
+      premiumItems.push(item);
+      return;
+    }
+
+    freeItems.push(item);
+  });
+
+  const freeDisplaySections: ShrineDetailDisplaySection[] = freeItems.length
+    ? [
+        {
+          tier: "free",
+          layer: "context",
+          section: {
+            kind: "meaning",
+            heading: "神社との意味の接続",
+            items: freeItems,
+          },
+        },
+      ]
+    : [];
+
+  const premiumDisplaySections: ShrineDetailDisplaySection[] = premiumItems.length
+    ? [
+        {
+          tier: "premium",
+          layer: "personal",
+          section: {
+            kind: "meaning",
+            heading: "Premiumで見える深い意味",
+            items: premiumItems,
+          },
+        },
+      ]
+    : [];
+
+  if (!freeDisplaySections.length && !premiumDisplaySections.length) return null;
+
+  return {
+    freeDisplaySections,
+    premiumDisplaySections,
+  };
+}
 
 type RecommendationWhySection = {
   label:
@@ -1210,6 +1276,7 @@ function buildHeroMeaningCopy(args: {
 
 export function buildShrineDetailModel({
   shrine,
+  shrineMeaningPayloadV2 = null,
   publicGoshuins,
   conciergeBreakdown = null,
   conciergeReason = null,
@@ -1456,19 +1523,25 @@ export function buildShrineDetailModel({
     explanationPayload,
   });
 
-  const freeDisplaySections = buildFreeDisplaySections({
-    reasonSection,
-    proposalSection,
-    meaningSection,
-    supplementSection,
-  });
+  const payloadV2DisplaySections = buildMeaningSectionsFromPayloadV2(shrineMeaningPayloadV2);
 
-  const premiumDisplaySections = buildPremiumDisplaySections({
-    isConciergeContext,
-    reasonSection,
-    proposalSection,
-    meaningSection,
-  });
+  const freeDisplaySections =
+    payloadV2DisplaySections?.freeDisplaySections ??
+    buildFreeDisplaySections({
+      reasonSection,
+      proposalSection,
+      meaningSection,
+      supplementSection,
+    });
+
+  const premiumDisplaySections =
+    payloadV2DisplaySections?.premiumDisplaySections ??
+    buildPremiumDisplaySections({
+      isConciergeContext,
+      reasonSection,
+      proposalSection,
+      meaningSection,
+    });
 
   const sections: ShrineDetailSectionModel[] = [
     ...freeDisplaySections.map((item) => item.section),

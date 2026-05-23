@@ -40,6 +40,7 @@ import {
   type ShrineTone,
 } from "@/features/concierge/copy/needDisplayCopy";
 
+import { fetchShrineMeaningPayloadV2Server } from "@/lib/api/shrineMeaning.server";
 
 function normalizeCtx(v?: string | null): "map" | "concierge" | null {
   return v === "map" || v === "concierge" ? v : null;
@@ -219,6 +220,8 @@ export default async function Page({ params, searchParams }: Props) {
 
   const s = shrine;
   const pageTitle = (s.name_jp ?? "").trim() || `神社 #${numericId}`;
+  const shrineMeaningPayloadV2 = await fetchShrineMeaningPayloadV2Server(numericId);
+
 
   const latNum = Number(s.latitude ?? NaN);
   const lngNum = Number(s.longitude ?? NaN);
@@ -377,6 +380,7 @@ export default async function Page({ params, searchParams }: Props) {
 
   const model = buildShrineDetailModel({
     shrine: s,
+    shrineMeaningPayloadV2,
     publicGoshuins,
     conciergeBreakdown,
     conciergeReason,

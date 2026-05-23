@@ -99,8 +99,16 @@ function buildContextReasonSections(args: {
   return sections;
 }
 
+type ShrineDetailTrackedCardId =
+  | "context_reason"
+  | "personal_meaning"
+  | "saved_record"
+  | "consultation_summary"
+  | "shrine_meaning"
+  | "action_meaning";
+
 function trackShrineDetailCardView(args: {
-  cardId: "context_reason" | "personal_meaning" | "saved_record";
+  cardId: ShrineDetailTrackedCardId;
   accessLevel: "anonymous" | "free" | "premium";
   visibility: CardVisibilityState;
 }) {
@@ -113,6 +121,22 @@ function trackShrineDetailCardView(args: {
     accessLevel: args.accessLevel,
     visibility: args.visibility,
   });
+}
+
+function collectMeaningBlockCardIds(sections: ShrineDetailSectionModel[]): ShrineDetailTrackedCardId[] {
+  const ids = new Set<ShrineDetailTrackedCardId>();
+
+  sections.forEach((section) => {
+    if (section.kind !== "meaning") return;
+
+    section.items.forEach((item) => {
+      if (item.key === "consultation_summary") ids.add("consultation_summary");
+      if (item.key === "shrine_meaning") ids.add("shrine_meaning");
+      if (item.key === "action_meaning") ids.add("action_meaning");
+    });
+  });
+
+  return [...ids];
 }
 
 function PremiumUpgradePrompt() {
@@ -280,7 +304,10 @@ export default function ShrineDetailArticle({
     visibility: contextReasonVisibility,
   });
   const hasContextReasonSections = contextReasonSections.length > 0;
-
+  const freeMeaningBlockCardIds = collectMeaningBlockCardIds(contextReasonSections);
+  const premiumMeaningBlockCardIds = collectMeaningBlockCardIds(premiumSections);
+  const freeMeaningBlockCardIdKey = freeMeaningBlockCardIds.join("|");
+  const premiumMeaningBlockCardIdKey = premiumMeaningBlockCardIds.join("|");
 
   const benefitTagObjs = _tags.filter(
     (t) => t.type === "benefit" && (t.confidence === "high" || t.confidence === "mid"),
@@ -318,6 +345,14 @@ export default function ShrineDetailArticle({
       });
     }
 
+    freeMeaningBlockCardIds.forEach((cardId) => {
+      trackShrineDetailCardView({
+        cardId,
+        accessLevel,
+        visibility: contextReasonVisibility,
+      });
+    });
+
     if (hasPremiumSections) {
       trackShrineDetailCardView({
         cardId: "personal_meaning",
@@ -325,6 +360,14 @@ export default function ShrineDetailArticle({
         visibility: personalMeaningVisibility,
       });
     }
+
+    premiumMeaningBlockCardIds.forEach((cardId) => {
+      trackShrineDetailCardView({
+        cardId,
+        accessLevel,
+        visibility: personalMeaningVisibility,
+      });
+    });
 
     if (resolvedSaveActionNode) {
       trackShrineDetailCardView({
@@ -336,9 +379,11 @@ export default function ShrineDetailArticle({
   }, [
     accessLevel,
     contextReasonVisibility,
+    freeMeaningBlockCardIdKey,
     hasContextReasonSections,
     hasPremiumSections,
     personalMeaningVisibility,
+    premiumMeaningBlockCardIdKey,
     resolvedSaveActionNode,
     savedRecordVisibility,
   ]);
