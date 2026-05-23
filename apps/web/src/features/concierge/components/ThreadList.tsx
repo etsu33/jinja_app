@@ -26,6 +26,17 @@ export function ThreadList({ threads, selectedId, loading, requiresLogin, onSele
     ? threads.filter((t): t is ConciergeThread => !!t && typeof (t as any).id === "number")
     : [];
 
+  const handleSelectThread = (id: string) => {
+    if (id === selectedId) return;
+
+    trackRetentionEvent("thread_resume", {
+      source: "thread_list",
+      threadId: id,
+    });
+
+    onSelect(id);
+  };
+
   // 未ログイン：履歴エリアは「ログイン特典」として説明だけ出す
   if (requiresLogin) {
     return (
@@ -85,7 +96,12 @@ export function ThreadList({ threads, selectedId, loading, requiresLogin, onSele
         {safeThreads.map((t) => {
           const idStr = String((t as any).id);
           return (
-            <ThreadListItem key={idStr} thread={t} selected={idStr === selectedId} onClick={() => onSelect(idStr)} />
+            <ThreadListItem
+              key={idStr}
+              thread={t}
+              selected={idStr === selectedId}
+              onClick={() => handleSelectThread(idStr)}
+            />
           );
         })}
       </ul>
