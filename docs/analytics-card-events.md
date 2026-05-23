@@ -60,7 +60,6 @@ type AnalyticsSource =
   | "shrine_detail"
   | "billing_upgrade"
   | "mypage";
-```
 
 | 用語 | 意味 |
 |---|---|
@@ -1188,3 +1187,139 @@ grep -R "track(\"\\|track('" apps/web/src -n | grep -v "__tests__" | grep -v ".t
 - provider実装の変更
 - dashboard / aggregation の変更
 - PostHog / GA 接続変更
+
+
+---
+
+
+## Retention / Save Schema Boundary
+
+### 目的
+
+dashboard aggregation 前提となる analytics schema の境界を固定する。
+
+analytics event は送れているだけでは不十分であり、
+「source別」「card別」「導線別」に集計できる状態である必要がある。
+
+そのため、source / cardId / domain boundary の責務をここで固定する。
+
+### thread_resume の発火タイミング
+
+`thread_resume` は、既存threadをユーザーが選択して再開したときに発火する。
+
+発火候補は `ThreadList.tsx` の `onSelect(idStr)` 直前とする。
+
+### next_thread / thread_resume の境界
+
+| event | 意味 | 発火候補 |
+|---|---|---|
+| next_thread | 新しい相談threadを開始した | `onCreateNew` 実行時 |
+| thread_resume | 既存threadを選択して再開した | `onSelect(idStr)` 実行時 |
+
+### save_prompt_click / favorite_click の境界
+
+| event | 意味 | domain | 状態 |
+|---|---|---|---|
+| save_prompt_click | 保存したい意図 | card / save intent | `trackCardEvent` 管理済み |
+| favorite_click | 神社保存/解除の実行 | save / action | direct track のまま |
+| save_success | backend保存完了 | save | 後続候補 |
+
+### source 必須ルール
+
+以下のeventは dashboard aggregation 対象のため、`source` を必須とする。
+
+| domain | event例 | source 必須理由 |
+|---|---|---|
+| card | premium_preview_click | Concierge / ShrineDetail の比較に必要 |
+| card | save_prompt_click | 保存導線の画面別比較に必要 |
+| retention | premium_history_comparison_view | comparison 表示元の識別に必要 |
+| retention | thread_resume | 履歴再開導線の識別に必要 |
+| billing | checkout_started | 課金導線の入口比較に必要 |
+| search | shrine_detail_transition | 詳細遷移元の識別に必要 |
+
+### cardId 必須対象
+
+以下のeventは card analytics 対象のため、`cardId` を必須とする。
+
+| event category | cardId |
+|---|---|
+| card_view | required |
+| card_teaser_view | required |
+| card_partial_view | required |
+| card_cta_click | required |
+| premium_preview_click | required |
+| save_prompt_click | required |
+
+### cardId を必須にしないevent
+
+| event | 理由 |
+|---|---|
+| next_session | visit単位のretention event |
+| next_thread | thread作成event |
+| thread_resume | thread再開event |
+| checkout_started | billing funnel event |
+| checkout_success | billing funnel event |
+| premium_active | billing status event |
+| posthog_health_check | provider疎通確認 |
+
+### dashboard aggregation 前提schema
+
+```ts
+{
+  event: string;
+  source: string;
+  accessLevel?: string;
+  cardId?: string;
+  visibility?: string;
+  threadId?: string;
+  resultSetId?: string;
+  shrineId?: number | string;
+}
+```
+
+### aggregation key
+
+初期dashboardでは、以下の key で集計できる状態を目標とする。
+
+```txt
+event
+source
+cardId
+accessLevel
+visibility
+threadId
+resultSetId
+```
+
+### dashboard 集計上の扱い
+
+| event | 集計用途 | 注意 |
+|---|---|---|
+| premium_preview_click | Premium関心 / checkout導線 | source / cardId 必須 |
+| save_prompt_click | 保存意図 | source / cardId 必須 |
+| favorite_click | 保存操作 | 現状は補助event。source / cardId 欠損 |
+| premium_history_comparison_view | comparison view rate | retention event。cardIdなし許容 |
+| thread_resume | thread resume rate | 現状未発火。実装候補あり |
+
+### 後続PR候補
+
+```markdown
+- [ ] thread_resume を ThreadList の既存thread選択時に発火する
+- [ ] next_thread を新規相談開始時に発火するか判断する
+- [ ] favorite_click に source を追加するか判断する
+- [ ] favorite_click に cardId を追加するか判断する
+- [ ] saveEvents.ts の必要性を判断する
+- [ ] dashboard aggregation 側で source / cardId 欠損eventの扱いを決める
+```
+
+### このPRでやらないこと
+
+```markdown
+- [ ] event追加
+- [ ] helper実装
+- [ ] dashboard UI実装
+- [ ] favorite_click 修正
+- [ ] thread_resume 実装
+- [ ] next_thread 実装
+- [ ] PostHog / GA 接続変更
+```
