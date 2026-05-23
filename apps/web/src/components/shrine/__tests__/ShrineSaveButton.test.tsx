@@ -70,6 +70,9 @@ describe("ShrineSaveButton", () => {
         ctx: "concierge",
         tid: "thread-123",
         nextFav: false,
+        source: "shrine_detail",
+        cardId: "saved_record",
+        accessLevel: "free",
       });
     });
 
