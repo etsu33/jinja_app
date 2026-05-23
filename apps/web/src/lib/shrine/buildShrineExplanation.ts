@@ -57,6 +57,8 @@ function getSignalSummary(args: { shrine: Shrine; signals?: BuildShrineExplanati
   };
 }
 
+// TODO(MOVE_TO_BACKEND_COMPOSER): v2 では ranking / reason 由来の意味生成は backend meaning composer に寄せる。
+// TODO(KEEP_AS_FRONTEND_FALLBACK): v2 payload 欠損時のみ、この関数を fallback reason として使う。
 function buildRankReason(args: BuildShrineExplanationArgs): string {
   const { shrine, signals } = args;
   const { publicCount, views30d, fav30d, hasSignal } = getSignalSummary({ shrine, signals });
@@ -92,6 +94,8 @@ function buildRankReason(args: BuildShrineExplanationArgs): string {
   return reasons[0];
 }
 
+// TODO(MOVE_TO_BACKEND_COMPOSER): consultationSummary は backend generated field として返す。
+// TODO(REMOVE_AFTER_V2_PAYLOAD): v2 payload が安定したら frontend 側の本文生成責務から外す。
 function buildConsultationSummary(args: BuildShrineExplanationArgs): string {
   const shrine = args.shrine;
   const description = trimText((shrine as any)?.description);
@@ -110,6 +114,9 @@ function buildConsultationSummary(args: BuildShrineExplanationArgs): string {
   return "今回の相談は、いま抱えているテーマを一度ほどき、何を先に見直すかを整理する段階として読むのが自然です。";
 }
 
+// TODO(MOVE_TO_BACKEND_COMPOSER): shrineMeaning は backend meaning composer で生成する。
+// TODO(MOVE_TO_BACKEND_COMPOSER): description / goriyaku / sajin 由来の意味変換は backend 側へ移す。
+// TODO(KEEP_AS_FRONTEND_FALLBACK): v2 payload 欠損時のみ fallback として使用する。
 function buildShrineMeaning(args: BuildShrineExplanationArgs): string {
   const shrine = args.shrine;
   const description = trimText((shrine as any)?.description);
@@ -131,6 +138,8 @@ function buildShrineMeaning(args: BuildShrineExplanationArgs): string {
   return "この神社は、今回の相談で主題になっている整理や立て直しのテーマと接続しやすく、意味を重ねて受け取りやすい候補です。";
 }
 
+// TODO(MOVE_TO_BACKEND_COMPOSER): supplement のうち meaning に関わる文脈生成は backend 側へ移す。
+// TODO(KEEP_AS_FRONTEND_FALLBACK): 実データの最低限表示と payload 欠損時の補助文のみ frontend に残す。
 function buildSupplement(args: BuildShrineExplanationArgs): string {
   const { shrine, signals } = args;
   const { publicCount, views30d, fav30d } = getSignalSummary({ shrine, signals });
@@ -171,6 +180,7 @@ function buildSupplement(args: BuildShrineExplanationArgs): string {
   return pieces.join(" / ");
 }
 
+// TODO(REMOVE_AFTER_V2_PAYLOAD): ShrineMeaningPayloadV2 の導入後、この関数は meaning generator ではなく fallback renderer に縮小する。
 export function buildShrineExplanation(args: BuildShrineExplanationArgs): ShrineExplanation {
   return {
     reason: buildRankReason(args),
