@@ -389,11 +389,13 @@ export default function ShrineDetailArticle({
     accessLevel,
     contextReasonVisibility,
     freeMeaningBlockCardIdKey,
+    freeMeaningBlockCardIds,
     hasContextReasonSections,
     hasPremiumSections,
     meaningPayloadSource,
     personalMeaningVisibility,
     premiumMeaningBlockCardIdKey,
+    premiumMeaningBlockCardIds,
     resolvedSaveActionNode,
     savedRecordVisibility,
   ]);
