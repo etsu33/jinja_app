@@ -153,12 +153,11 @@ def _read_value(source: Any, *keys: str) -> Any:
 def _read_goriyaku_tags(source: Any) -> tuple[str, ...]:
     raw = _read_value(source, "goriyakuTags", "goriyaku_tags")
 
-    if raw is None and hasattr(source, "goriyaku_tags"):
-        manager = getattr(source, "goriyaku_tags")
+    if hasattr(raw, "values_list"):
         try:
-            raw = list(manager.values_list("name", flat=True))
+            return _clean_str_list(list(raw.values_list("name", flat=True)))
         except Exception:
-            raw = None
+            return ()
 
     if raw and not isinstance(raw, str):
         names: list[str] = []
