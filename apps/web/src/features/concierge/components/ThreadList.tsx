@@ -4,7 +4,6 @@ import type { ConciergeThread } from "@/lib/api/concierge";
 import ThreadListItem from "./ThreadListItem";
 import { trackRetentionEvent } from "@/lib/analytics/retentionEvents";
 
-
 type Props = {
   threads: ConciergeThread[] | null | undefined;
   selectedId: string | null;
@@ -18,7 +17,7 @@ export function ThreadList({ threads, selectedId, loading, requiresLogin, onSele
   if (requiresLogin) {
     return (
       <div className="text-xs text-gray-500 px-3 py-2 space-y-2">
-        <p>ログインすると、これまでの相談履歴を一覧で確認できます。</p>
+        <p>ログインすると、前回の相談や今の変化をあとから見返せます。</p>
         {/* ログイン導線を付けるならここでボタン or Link */}
       </div>
     );
@@ -31,7 +30,7 @@ export function ThreadList({ threads, selectedId, loading, requiresLogin, onSele
   if (requiresLogin) {
     return (
       <div className="flex flex-col h-full px-3 py-2 text-xs text-gray-500">
-        <p className="mb-2">ログインすると、これまでの相談履歴を一覧で確認できます。</p>
+        <p className="mb-2">ログインすると、前回の相談や今の変化をあとから見返せます。</p>
         <button
           type="button"
           onClick={onCreateNew}
@@ -60,8 +59,8 @@ export function ThreadList({ threads, selectedId, loading, requiresLogin, onSele
       </div>
 
       <div className="mx-3 mb-2 rounded-2xl border border-amber-200 bg-amber-50/80 p-3 text-xs">
-        <p className="font-semibold text-amber-950">過去の相談との変化をPremiumで確認できます。</p>
-        <p className="mt-1 leading-5 text-slate-600">前回との違いや、今の状態の変化を見返せます。</p>
+        <p className="font-semibold text-amber-950">前回からの変化をPremiumで見返せます。</p>
+        <p className="mt-1 leading-5 text-slate-600">過去の相談と比べて、今の状態や選び方の変化を確認できます。</p>
         <Link
           href="/billing/upgrade"
           className="mt-2 inline-flex rounded-xl bg-amber-700 px-3 py-2 font-semibold text-white"
@@ -72,7 +71,7 @@ export function ThreadList({ threads, selectedId, loading, requiresLogin, onSele
             })
           }
         >
-          Premiumを見る
+          変化を見返す
         </Link>
       </div>
 

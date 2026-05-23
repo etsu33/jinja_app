@@ -82,16 +82,16 @@ function ConciergePremiumEntryCard(props: {
   accessLevel: "anonymous" | "free" | "premium";
 }) {
   const href = props.isGuestUser ? buildLoginHref("/billing/upgrade") : "/billing/upgrade";
-  const ctaLabel = props.isGuestUser ? "ログインして今の変化を見る" : "今の変化をもう少し深く整理する";
+  const ctaLabel = props.isGuestUser ? "ログインして変化を見返す" : "変化を見返せるようにする";
   return (
     <section className={conciergePremiumCardClass}>
       <div className="space-y-2">
         <p className="text-sm font-semibold leading-6 text-amber-950">
           {props.isGuestUser
-            ? "今の状態整理と、次の選び方を深められます。"
-            : "今の状態整理と、次の選び方をPremiumで深められます。"}
+            ? "相談を保存すると、今の状態や選んだ理由をあとから見返せます。"
+            : "Premiumでは、前回との違いや状態の変化をあとから見返せます。"}
         </p>
-        <p className="text-xs leading-6 text-slate-600">相談内容に基づく状態整理、相性、行動の意味づけを表示します。</p>
+        <p className="text-xs leading-6 text-slate-600">相談内容に基づく状態整理、選んだ理由、行動の意味を記録として残せます。</p>
         <a
           href={href}
           className="inline-flex items-center rounded-xl bg-amber-700 px-3 py-2 text-xs font-semibold text-white hover:bg-amber-800"
@@ -714,7 +714,7 @@ export default function ConciergeSectionsRenderer({
                                   </p>
                                   <p className="text-sm leading-7 text-slate-700">
                                     {actionMeaningVisibility === "teaser"
-                                      ? "この結果を保存すると、今の状態や次の選び方をあとから整理できます。"
+                                      ? "この結果を保存すると、今の状態や選んだ理由をあとから見返せます。"
                                       : (reasonVm.detail.actionMeaning ?? reasonVm.detail.shrineMeaning)}
                                   </p>
                                 </div>
@@ -830,7 +830,7 @@ export default function ConciergeSectionsRenderer({
                         }}
                         disabled={sending}
                       >
-                        {isGuestUser ? "ログインして相談結果を保存" : "この相談を保存する"}
+                        {isGuestUser ? "ログインしてあとで見返す" : "あとで見返すために保存"}
                       </button>
                     </div>
                   ) : null}
