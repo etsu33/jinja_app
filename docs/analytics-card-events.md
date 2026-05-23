@@ -22,6 +22,14 @@ analytics は後から適当に足すと、**event名・payload・発火条件**
 - CTA種別
 - Premium導線の計測単位
 
+## 関連ドキュメント
+
+- `docs/analytics/save-premium-correlation.md`
+  - favorite_click / shrine_detail_view / route_click / premium_preview_click / checkout_started / premium_active の相関定義
+  - source別 save_rate の定義
+  - detail / save / route 比率の定義
+  - 「保存されるが課金されない」「詳細は見られるが参拝行動に進まない」「Premium preview は押されるが checkout に行かない」落下判定
+
 ---
 
 ## 基本方針
