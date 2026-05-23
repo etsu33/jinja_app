@@ -36,6 +36,7 @@ export type CardAnalyticsPayload = {
   recommendationRank?: number;
   mode?: "need" | "compat";
   flow?: "A" | "B";
+  payloadSource?: "v2" | "fallback";
   // legacy compatibility: analyticsSessionId is injected by track.ts.
   sessionId?: string;
   threadId?: string;

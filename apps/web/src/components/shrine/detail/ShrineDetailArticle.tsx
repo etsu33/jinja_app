@@ -111,6 +111,7 @@ function trackShrineDetailCardView(args: {
   cardId: ShrineDetailTrackedCardId;
   accessLevel: "anonymous" | "free" | "premium";
   visibility: CardVisibilityState;
+  payloadSource?: "v2" | "fallback";
 }) {
   if (args.visibility === "hidden") return;
 
@@ -120,6 +121,7 @@ function trackShrineDetailCardView(args: {
     source: "shrine_detail",
     accessLevel: args.accessLevel,
     visibility: args.visibility,
+    payloadSource: args.payloadSource,
   });
 }
 
@@ -254,6 +256,7 @@ export default function ShrineDetailArticle({
   premiumDisplaySections = [],
   isPremiumActive = false,
   recommendationMeta = null,
+  meaningPayloadSource = "fallback",
   saveActionNode,
 }: {
   cardProps: ShrineCardAdapterProps;
@@ -277,6 +280,7 @@ export default function ShrineDetailArticle({
       gap_from_top?: number;
     } | null;
   } | null;
+  meaningPayloadSource?: "v2" | "fallback";
   saveActionNode?: React.ReactNode;
 }) {
   const hasRecommendationMeta = Boolean(recommendationMeta?.rankTitle && recommendationMeta?.rankBody);
@@ -342,6 +346,7 @@ export default function ShrineDetailArticle({
         cardId: "context_reason",
         accessLevel,
         visibility: contextReasonVisibility,
+        payloadSource: meaningPayloadSource,
       });
     }
 
@@ -350,6 +355,7 @@ export default function ShrineDetailArticle({
         cardId,
         accessLevel,
         visibility: contextReasonVisibility,
+        payloadSource: meaningPayloadSource,
       });
     });
 
@@ -358,6 +364,7 @@ export default function ShrineDetailArticle({
         cardId: "personal_meaning",
         accessLevel,
         visibility: personalMeaningVisibility,
+        payloadSource: meaningPayloadSource,
       });
     }
 
@@ -366,6 +373,7 @@ export default function ShrineDetailArticle({
         cardId,
         accessLevel,
         visibility: personalMeaningVisibility,
+        payloadSource: meaningPayloadSource,
       });
     });
 
@@ -374,6 +382,7 @@ export default function ShrineDetailArticle({
         cardId: "saved_record",
         accessLevel,
         visibility: savedRecordVisibility,
+        payloadSource: meaningPayloadSource,
       });
     }
   }, [
@@ -382,6 +391,7 @@ export default function ShrineDetailArticle({
     freeMeaningBlockCardIdKey,
     hasContextReasonSections,
     hasPremiumSections,
+    meaningPayloadSource,
     personalMeaningVisibility,
     premiumMeaningBlockCardIdKey,
     resolvedSaveActionNode,
