@@ -1,5 +1,3 @@
-
-
 # Premium Analytics Dashboard 設計
 
 最終更新: 2026-05-18  
@@ -524,3 +522,65 @@ Premium の価値は、神社情報の閲覧量ではなく、状態変化・保
 - [x] partial UI ABテストは次PRへ分離
 - [x] 実装はまだ増やさない
 ```
+
+### save_rate の正式定義
+
+save_rate は「保存意図」または「保存実行」が発生した割合として扱う。
+
+| source | 分子 | 分母 |
+|---|---|---|
+| concierge_result | save_prompt_click | save_prompt eligible view |
+| shrine_detail | favorite_click | saved_record card_view |
+
+### anonymous → free save conversion
+
+anonymous の save_prompt_click 後に login / signup を経由し、同一 user または session で favorite_click が発生した割合を見る。
+
+### shrine_decision taxonomy
+
+| action | 意味 |
+|---|---|
+| save | 神社をあとで見返す対象として保存した |
+| detail | 神社詳細へ進んだ |
+| route | 経路確認へ進んだ |
+
+### saveEvents.ts 判断
+
+現時点では作らない。  
+理由は save系eventがまだ少なく、direct track + schema補強で足りるため。
+
+
+## Save → Premium Correlation
+
+### 目的
+
+保存行動が Premium 化の前兆になっているかを確認する。
+
+### session内相関
+
+初期dashboardでは、同一session内で以下の順序が発生したかを見る。
+
+```txt
+favorite_click
+↓
+premium_preview_click
+↓
+checkout_started
+↓
+premium_active
+```
+
+### KPI
+
+| KPI | 分子 | 分母 | 条件 |
+|---|---|---|---|
+| favorite_to_premium_click_rate | favorite_click 後に premium_preview_click が発生した session | favorite_click が発生した session | same session |
+| favorite_to_checkout_rate | favorite_click 後に checkout_started が発生した session | favorite_click が発生した session | same session |
+| favorite_to_premium_active_rate | favorite_click 後に premium_active が発生した session | favorite_click が発生した session | same session |
+
+### 注意
+
+- 初期は同一session内だけを見る
+- userId が安定して取得できる段階で 7日以内転換を見る
+- event順序は favorite_click → premium_preview_click → checkout_started → premium_active を基本とする
+- checkout_started が favorite_click より前にある session は、この相関指標から除外する
