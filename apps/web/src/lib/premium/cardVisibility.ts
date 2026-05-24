@@ -15,6 +15,7 @@ export type CardId =
   | "premium_preview"
   | "login_prompt"
   | "state_teaser"
+  | "filter_panel"
   | "comparison_hint"
   | "deep_reflection"
   | "shrine_public_info"
@@ -84,6 +85,12 @@ export const CARD_VISIBILITY_POLICIES: CardVisibilityPolicy[] = [
     anonymous: "hidden",
     free: "visible",
     premium: "hidden",
+  },
+  {
+    cardId: "filter_panel",
+    anonymous: "visible",
+    free: "visible",
+    premium: "visible",
   },
   {
     cardId: "shrine_meaning",

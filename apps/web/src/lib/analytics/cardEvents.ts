@@ -12,6 +12,8 @@ export type CtaType =
   | "open_route"
   | "compare_previous"
   | "continue_with_premium"
+  | "filter_apply"
+  | "back_to_entry"
   | "upgrade"
   | "checkout";
 
