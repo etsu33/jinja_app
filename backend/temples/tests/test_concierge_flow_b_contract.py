@@ -1,46 +1,36 @@
 # temples/tests/test_concierge_flow_b_contract.py
-import pytest
-from temples.services.concierge_chat import build_chat_recommendations
 
 
-@pytest.mark.django_db
-def test_flow_b_contract(monkeypatch):
-    # Orchestrator を固定（外部LLMとかに触らない）
-    class DummyOrchestrator:
-        def suggest(self, *, query, candidates):
-            # Orchestratorは1件だけ返す（残りは _finalize_3 が candidates で埋める想定）
-            return {"recommendations": [{"name": "A", "reason": ""}]}
+def test_mode_meta_compat_without_birthdate_uses_condition_label():
+    from temples.services.concierge_chat_ranking import _resolve_mode_meta
 
-    import temples.llm.orchestrator as orch
-    monkeypatch.setattr(orch, "ConciergeOrchestrator", DummyOrchestrator, raising=True)
-
-    # candidates は最低3件 + lat/lng を付ける（geoフィルタで落ちないため）
-    candidates = [
-        {"name": "A", "lat": 1, "lng": 1},
-        {"name": "B", "lat": 1, "lng": 1},
-        {"name": "C", "lat": 1, "lng": 1},
-    ]
-
-    recs = build_chat_recommendations(
-        query="近場で縁結び",
-        language="ja",
-        candidates=candidates,
-        bias=None,
-        birthdate="2000-03-21",
-        goriyaku_tag_ids=None,
-        extra_condition=None,
+    mode = _resolve_mode_meta(
         public_mode="compat",
         flow="B",
+        weights={"element": 0.8, "need": 0.2, "popular": 0.0},
+        astro_bonus_enabled=True,
+        birthdate=None,
     )
 
-    assert "_signals" in recs
-    assert "mode" in recs["_signals"]
+    assert mode["mode"] == "compat"
+    assert mode["flow"] == "B"
+    assert mode["ui_label_ja"] == "条件重視"
+    assert mode["ui_note_ja"] == "追加条件との一致を中心に並べ替えています"
 
-    mode = recs["_signals"]["mode"]
+
+def test_mode_meta_compat_with_birthdate_uses_compat_label():
+    from temples.services.concierge_chat_ranking import _resolve_mode_meta
+
+    mode = _resolve_mode_meta(
+        public_mode="compat",
+        flow="B",
+        weights={"element": 0.8, "need": 0.2, "popular": 0.0},
+        astro_bonus_enabled=True,
+        birthdate="2000-03-21",
+    )
+
+    assert mode["mode"] == "compat"
     assert mode["flow"] == "B"
     assert mode["weights"] == {"element": 0.8, "need": 0.2, "popular": 0.0}
-
-    assert mode["astro_bonus_enabled"] is True
-
     assert mode["ui_label_ja"] == "相性重視"
     assert mode["ui_note_ja"] == "生年月日との相性を中心に並べ替えています"

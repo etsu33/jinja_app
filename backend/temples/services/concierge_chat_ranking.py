@@ -314,12 +314,14 @@ def _resolve_mode_meta(
     flow: str,
     weights: Dict[str, float],
     astro_bonus_enabled: bool,
+    birthdate: Optional[str] = None,
 ) -> Dict[str, Any]:
     public_weights = {
         "element": float(weights.get("element", 0.0)),
         "need": float(weights.get("need", 0.0)),
         "popular": float(weights.get("popular", 0.0)),
     }
+    has_birthdate = bool(str(birthdate or "").strip())
 
     if public_mode == "compat":
         return {
@@ -327,8 +329,12 @@ def _resolve_mode_meta(
             "flow": flow,
             "weights": public_weights,
             "astro_bonus_enabled": bool(astro_bonus_enabled),
-            "ui_label_ja": "相性重視",
-            "ui_note_ja": "生年月日との相性を中心に並べ替えています",
+            "ui_label_ja": "相性重視" if has_birthdate else "条件重視",
+            "ui_note_ja": (
+                "生年月日との相性を中心に並べ替えています"
+                if has_birthdate
+                else "追加条件との一致を中心に並べ替えています"
+            ),
         }
 
     return {
