@@ -336,6 +336,11 @@ export function useConciergeChat(threadId: string | null, options?: UseConcierge
 
         let msg = "チャット送信に失敗しました";
         if (axios.isAxiosError(err)) {
+          console.error("CONCIERGE_CHAT_ERROR", {
+            status: err.response?.status,
+            data: err.response?.data,
+            message: err.message,
+          });
           msg = `チャット送信に失敗しました (${err.response?.status ?? "network error"})`;
         }
         setError(msg);
