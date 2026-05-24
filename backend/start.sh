@@ -39,4 +39,4 @@ echo "Final diagnostics before gunicorn:"
 echo "PORT=${PORT}"
 echo "WEB_CONCURRENCY=${WEB_CONCURRENCY:-1}"
 echo "Starting gunicorn on 0.0.0.0:${PORT}..."
-exec gunicorn shrine_project.wsgi:application --bind "0.0.0.0:${PORT}" --workers "${WEB_CONCURRENCY:-1}" --timeout 120 --worker-tmp-dir /dev/shm --log-level debug --access-logfile - --error-logfile - --capture-output --preload
+exec gunicorn shrine_project.wsgi:application --bind "0.0.0.0:${PORT}" --workers "${WEB_CONCURRENCY:-1}" --timeout 120 --worker-tmp-dir /dev/shm --log-level debug --access-logfile - --error-logfile - --capture-output
