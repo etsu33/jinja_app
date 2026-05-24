@@ -99,13 +99,13 @@ export default function ConciergeEntryCard({
       <div className="mt-5 space-y-4">
         <div>
           <label
-            htmlFor="concierge-entry-need"
+            htmlFor="concierge-input"
             className="mb-0.5 block text-[11px] font-medium text-stone-500 opacity-65"
           >
             今の言葉を、静かに書く
           </label>
           <textarea
-            id="concierge-entry-need"
+            id="concierge-input"
             value={needText}
             onChange={(e) => setNeedText(e.target.value)}
             placeholder="例：気持ちを切り替えたい、静かな時間を持ちたい"

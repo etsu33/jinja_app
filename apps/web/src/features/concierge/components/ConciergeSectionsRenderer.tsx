@@ -131,6 +131,26 @@ function parseExtraTokens(extra: string | undefined | null): string[] {
     .filter(Boolean);
 }
 
+function scrollToConciergeInput() {
+  if (typeof window === "undefined") return;
+
+  const scroll = () => {
+    const target = document.getElementById("concierge-input");
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+      if (target instanceof HTMLTextAreaElement || target instanceof HTMLInputElement) {
+        target.focus({ preventScroll: true });
+      }
+      return;
+    }
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  window.requestAnimationFrame(scroll);
+  window.setTimeout(scroll, 120);
+}
+
 export default function ConciergeSectionsRenderer({
   payload,
   onAction,
@@ -495,7 +515,10 @@ export default function ConciergeSectionsRenderer({
                       <button
                         type="button"
                         className="mt-2 w-full rounded-xl border px-4 py-3 text-sm font-semibold"
-                        onClick={() => onAction?.({ type: "back_to_entry" })}
+                        onClick={() => {
+                          onAction?.({ type: "back_to_entry" });
+                          scrollToConciergeInput();
+                        }}
                         disabled={sending}
                       >
                         入口に戻る
