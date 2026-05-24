@@ -407,6 +407,7 @@ def build_chat_recommendations(
         flow=flow,
         weights=weights,
         astro_bonus_enabled=astro_bonus_enabled,
+        birthdate=birthdate,
         effective_llm_enabled=effective_llm_enabled,
         llm_used=llm_used,
         llm_error=llm_error,
