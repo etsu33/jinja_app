@@ -436,6 +436,7 @@ export default function ConciergeClientFull() {
 
   const lastNavAtRef = useRef(0);
   const isClosingRef = useRef(false);
+  const filterApplyPendingRef = useRef(false);
 
   const navReplace = useCallback(
     (to: string, meta?: any) => {
@@ -1061,6 +1062,20 @@ export default function ConciergeClientFull() {
           hasRecs: Array.isArray(u.data?.recommendations) ? u.data.recommendations.length : 0,
         },
       });
+      if (filterApplyPendingRef.current) {
+        const recommendationCount = Array.isArray(u.data?.recommendations) ? u.data.recommendations.length : 0;
+
+        track("filter_result", {
+          source: "concierge_result",
+          threadId: nextTid || currentTid || null,
+          mode: "compat",
+          recommendation_count: recommendationCount,
+          is_zero_result: recommendationCount === 0,
+          hasFilter,
+        });
+
+        filterApplyPendingRef.current = false;
+      }
 
       setLiveUnified(u);
       setLiveRecs(Array.isArray(u.data?.recommendations) ? (u.data.recommendations as any) : []);
@@ -1412,6 +1427,7 @@ export default function ConciergeClientFull() {
           : null;
         if (!compatPayload) return;
         snap("action:filter_apply", { baseFilters, payload: compatPayload });
+        filterApplyPendingRef.current = true;
         trackCardEvent({
           event: "card_cta_click",
           cardId: "filter_panel",
