@@ -1024,6 +1024,19 @@ export default function ConciergeClientFull() {
     [displayUnified, filterState],
   );
 
+  const modeAnalyticsPayload = useMemo(() => {
+    const modeRaw = (displayUnified?.data as any)?._signals?.mode;
+    const mode = modeRaw?.mode === "need" || modeRaw?.mode === "compat" ? modeRaw.mode : undefined;
+    const flow = modeRaw?.flow === "A" || modeRaw?.flow === "B" ? modeRaw.flow : undefined;
+
+    return {
+      mode,
+      flow,
+      hasBirthdate: Boolean(normalizedBirthdate),
+      recommendationCount: displayRecommendations.length,
+    };
+  }, [displayUnified, displayRecommendations.length, normalizedBirthdate]);
+
   const messages = useMemo(
     () => deriveMessages(events, thread?.id ?? activeThreadId),
     [events, thread, activeThreadId],
@@ -1384,6 +1397,7 @@ export default function ConciergeClientFull() {
           accessLevel,
           visibility: "visible",
           ctaType: "back_to_entry",
+          ...modeAnalyticsPayload,
           threadId: activeThreadIdRef.current ? String(activeThreadIdRef.current) : undefined,
         });
         conciergeLog("back_to_entry", {
@@ -1435,6 +1449,7 @@ export default function ConciergeClientFull() {
           accessLevel,
           visibility: "visible",
           ctaType: "filter_apply",
+          ...modeAnalyticsPayload,
           threadId: activeThreadIdRef.current ? String(activeThreadIdRef.current) : undefined,
         });
         conciergeLog("filter_apply", {
