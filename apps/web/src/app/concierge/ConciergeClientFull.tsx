@@ -1361,6 +1361,15 @@ export default function ConciergeClientFull() {
 
       case "back_to_entry":
         snap("action:back_to_entry", { fromTid: activeThreadIdRef.current });
+        trackCardEvent({
+          event: "card_cta_click",
+          cardId: "filter_panel",
+          source: "concierge_result",
+          accessLevel,
+          visibility: "visible",
+          ctaType: "back_to_entry",
+          threadId: activeThreadIdRef.current ? String(activeThreadIdRef.current) : undefined,
+        });
         conciergeLog("back_to_entry", {
           tid: activeThreadIdRef.current,
           meta: { fromTid: activeThreadIdRef.current },
@@ -1401,6 +1410,15 @@ export default function ConciergeClientFull() {
           : null;
         if (!compatPayload) return;
         snap("action:filter_apply", { baseFilters, payload: compatPayload });
+        trackCardEvent({
+          event: "card_cta_click",
+          cardId: "filter_panel",
+          source: "concierge_result",
+          accessLevel,
+          visibility: "visible",
+          ctaType: "filter_apply",
+          threadId: activeThreadIdRef.current ? String(activeThreadIdRef.current) : undefined,
+        });
         conciergeLog("filter_apply", {
           tid: activeThreadIdRef.current,
           meta: { baseFilters, payload: compatPayload },
