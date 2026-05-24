@@ -486,6 +486,7 @@ export default function ConciergeClientFull() {
   const activeThreadIdRef = useRef(0);
 
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isFiltering, setIsFiltering] = useState(false);
   const [extraCondition, setExtraCondition] = useState("");
 
   const [goriyakuTags, setGoriyakuTags] = useState<Tag[]>([]);
@@ -1114,7 +1115,7 @@ export default function ConciergeClientFull() {
   /* ----------------------------------------
    * ロック統一：isBusy
    * -------------------------------------- */
-  const isBusy = sending || (isEntryRoute && entrySubmitting);
+  const isBusy = sending || isFiltering || (isEntryRoute && entrySubmitting);
 
   /* ----------------------------------------
    * 安全な送信関数（共通化）
@@ -1221,7 +1222,7 @@ export default function ConciergeClientFull() {
   const shouldShowThreadRenderer = hydrated && !shouldShowEntry;
   const hideChatPanel = !hydrated || (isEntryRoute && !hasRestoredCandidates);
 
-  const shouldShowEntryError = !isBusy && !entryValidationError && !!error && !hasCandidates;
+  const shouldShowEntryError = !isBusy && !isFiltering && !entryValidationError && !!error && !hasCandidates;
 
   const entryViewedRef = useRef(false);
 
@@ -1376,6 +1377,7 @@ export default function ConciergeClientFull() {
         });
         setLiveUnified(null);
         setLiveRecs([]);
+        setIsFiltering(false);
         setEntrySubmitting(false);
         setNeedText("");
         setEntryValidationError(null);
@@ -1426,7 +1428,10 @@ export default function ConciergeClientFull() {
         if (!isEntryRoute) {
           setIsFilterOpen(false);
         }
-        void safeSend(compatPayload, { kind: "filter_apply" }, { ignoreStopReason: true });
+        setIsFiltering(true);
+        void safeSend(compatPayload, { kind: "filter_apply" }, { ignoreStopReason: true }).finally(() => {
+          setIsFiltering(false);
+        });
         return;
       }
 
@@ -1488,6 +1493,7 @@ export default function ConciergeClientFull() {
         snap("action:onNewThread", {});
         setLiveUnified(null);
         setLiveRecs([]);
+        setIsFiltering(false);
         setEntrySubmitting(false);
         setNeedText("");
         setEntryValidationError(null);
@@ -1598,7 +1604,7 @@ export default function ConciergeClientFull() {
                   <ConciergeSectionsRenderer
                     payload={payload}
                     onAction={onRendererAction}
-                    sending={sending}
+                    sending={sending || isFiltering}
                     threadId={thread?.id ?? activeThreadId}
                     isEntryRoute={isEntryRoute}
                     isPremiumActive={isPremiumActive}
@@ -1672,10 +1678,18 @@ export default function ConciergeClientFull() {
       {hydrated && shouldShowThreadRenderer ? (
         SHOW_NEW_RENDERER ? (
           <div className="p-4 space-y-5">
+            {isFiltering ? (
+              <div className="rounded-3xl border border-emerald-100 bg-emerald-50/70 px-5 py-4 text-sm text-emerald-900">
+                <p className="font-semibold">条件に合わせて再提案しています</p>
+                <p className="mt-1 text-xs leading-6 text-slate-600">
+                  候補を絞り直しているため、少しだけお待ちください。
+                </p>
+              </div>
+            ) : null}
             <ConciergeSectionsRenderer
               payload={payload}
               onAction={onRendererAction}
-              sending={sending}
+              sending={sending || isFiltering}
               threadId={thread?.id ?? activeThreadId}
               isEntryRoute={isEntryRoute}
               isPremiumActive={isPremiumActive}
