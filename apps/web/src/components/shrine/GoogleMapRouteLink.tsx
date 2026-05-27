@@ -1,0 +1,36 @@
+
+
+"use client";
+
+import { trackSearchEvent } from "@/lib/analytics/searchEvents";
+
+type Props = {
+  href: string;
+  label: string;
+  shrineId?: number | string | null;
+  ctx?: string | null;
+  tid?: string | number | null;
+  className?: string;
+};
+
+export default function GoogleMapRouteLink({ href, label, shrineId = null, ctx = null, tid = null, className }: Props) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={className}
+      onClick={() => {
+        trackSearchEvent("route_open", {
+          source: "shrine_detail",
+          routeTarget: "google_maps",
+          shrineId: shrineId ?? undefined,
+          threadId: tid != null ? String(tid) : undefined,
+          ctx,
+        });
+      }}
+    >
+      {label}
+    </a>
+  );
+}

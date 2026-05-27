@@ -5,7 +5,7 @@ import type { Close } from "@/lib/navigation/shrineClose";
 import ShrineCloseLink from "@/components/shrine/ShrineCloseLink";
 import { LABELS } from "@/lib/ui/labels";
 import DetailSection from "@/components/shrine/DetailSection";
-import { trackSearchEvent } from "@/lib/analytics/searchEvents";
+import GoogleMapRouteLink from "@/components/shrine/GoogleMapRouteLink";
 
 type SaveAction = {
   shrineId: number;
@@ -77,23 +77,14 @@ export default function ShrineDetailShell({
           <div className="grid gap-2">
             {/* primary: 経路案内 */}
             {googleDirHref ? (
-              <a
+              <GoogleMapRouteLink
                 href={googleDirHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => {
-                  trackSearchEvent("route_open", {
-                    source: "shrine_detail",
-                    routeTarget: "google_maps",
-                    shrineId: shrineId ?? undefined,
-                    threadId: tid != null ? String(tid) : undefined,
-                    ctx,
-                  });
-                }}
+                label={googleDirLabel}
+                shrineId={shrineId}
+                ctx={ctx}
+                tid={tid}
                 className="inline-flex min-h-[44px] w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800"
-              >
-                {googleDirLabel}
-              </a>
+              />
             ) : null}
 
             {/* secondary: 保存 */}
