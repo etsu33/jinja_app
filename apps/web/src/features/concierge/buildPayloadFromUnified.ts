@@ -39,6 +39,13 @@ type NormalizedPlace = NormalizedItemBase & {
 
 type NormalizedItem = NormalizedRegistered | NormalizedPlace;
 
+type DetailAnalyticsContext = {
+  mode?: "need" | "compat";
+  flow?: "A" | "B";
+  hasBirthdate?: boolean;
+  recommendationCount?: number;
+};
+
 function asTrimmedString(v: unknown): string | null {
   if (typeof v !== "string") return null;
   const s = v.trim();
@@ -59,7 +66,7 @@ function pickFirstString(...vals: unknown[]): string | null {
 }
 
 // 登録済み=shrine_idあり → /shrines/:id, 未登録=place_idのみ → /shrines/resolve, どちらも無い→除外
-function normalizeRecommendation(r: any, tid: string | null): NormalizedItem | null {
+function normalizeRecommendation(r: any, tid: string | null, analyticsContext: DetailAnalyticsContext): NormalizedItem | null {
   const shrineId = asPositiveInt(r?.shrine_id ?? r?.shrine?.id ?? null);
 
   const placeId =
@@ -69,7 +76,12 @@ function normalizeRecommendation(r: any, tid: string | null): NormalizedItem | n
     (r?.placeId != null ? String(r.placeId).trim() : null);
 
   const isDummy = r?.is_dummy === true || r?.__dummy === true;
-  const rawHref = detailHrefFromRecommendation(r, { ctx: "concierge", tid: tid ?? undefined }) ?? undefined;
+  const rawHref =
+    detailHrefFromRecommendation(r, {
+      ctx: "concierge",
+      tid: tid ?? undefined,
+      ...analyticsContext,
+    }) ?? undefined;
   const detailHref = isDummy ? undefined : rawHref;
 
   const title = pickFirstString(r?.display_name, r?.name) ?? "名称不明";
@@ -212,6 +224,15 @@ export function buildPayloadFromUnified(
   const isLimitReached = limitReached;
 
   const mode = (u as any)?.data?._signals?.mode ?? null;
+  const analyticsMode = mode?.mode === "need" || mode?.mode === "compat" ? mode.mode : undefined;
+  const analyticsFlow = mode?.flow === "A" || mode?.flow === "B" ? mode.flow : undefined;
+  const analyticsContext: DetailAnalyticsContext = {
+    mode: analyticsMode,
+    flow: analyticsFlow,
+    hasBirthdate: Boolean(filterState.birthdate?.trim()),
+    recommendationCount: Array.isArray(recs) ? recs.length : undefined,
+  };
+
   const rsRaw = (u as any)?.data?._signals?.result_state ?? (u as any)?.data?._signals?.resultState ?? null;
 
   const resultState =
@@ -252,7 +273,9 @@ export function buildPayloadFromUnified(
 
   if (!hasRecs) return null;
 
-  let items = recs.map((r: any) => normalizeRecommendation(r, tid)).filter((x): x is NormalizedItem => x !== null);
+  let items = recs
+    .map((r: any) => normalizeRecommendation(r, tid, analyticsContext))
+    .filter((x): x is NormalizedItem => x !== null);
   items = dedupeItems(items);
 
   if (items.length === 0) return null;
