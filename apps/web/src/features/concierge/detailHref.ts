@@ -30,13 +30,29 @@ export function pickShrineId(item: AnyObj): number | null {
 
 export function detailHrefFromRecommendation(
   item: AnyObj,
-  ctx?: { ctx?: string; tid?: string | number },
+  ctx?: {
+    ctx?: string;
+    tid?: string | number;
+    mode?: "need" | "compat";
+    flow?: "A" | "B";
+    hasBirthdate?: boolean;
+    recommendationCount?: number;
+  },
 ): string | null {
   const shrineId = pickShrineId(item);
+  const analyticsQuery = {
+    mode: ctx?.mode,
+    flow: ctx?.flow,
+    hasBirthdate: typeof ctx?.hasBirthdate === "boolean" ? String(ctx.hasBirthdate) : undefined,
+    recommendationCount:
+      typeof ctx?.recommendationCount === "number" ? String(ctx.recommendationCount) : undefined,
+  };
+
   if (shrineId != null) {
     return buildShrineHref(shrineId, {
       ctx: ctx?.ctx,
       tid: ctx?.tid ?? undefined,
+      query: analyticsQuery,
     });
   }
 
@@ -45,6 +61,7 @@ export function detailHrefFromRecommendation(
     return buildShrineResolveHref(placeId, {
       ctx: ctx?.ctx === "map" || ctx?.ctx === "concierge" ? ctx.ctx : "concierge",
       tid: ctx?.tid != null ? String(ctx.tid) : null,
+      query: analyticsQuery,
     });
   }
 
