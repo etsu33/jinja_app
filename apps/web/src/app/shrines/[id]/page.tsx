@@ -205,6 +205,8 @@ export default async function Page({ params, searchParams }: Props) {
         title="神社の詳細"
         subtitle={null}
         close={close}
+        ctx={ctx}
+        tid={tid}
         addGoshuinHref={null}
         saveAction={null}
         googleDirHref={null}
@@ -404,6 +406,8 @@ export default async function Page({ params, searchParams }: Props) {
         subtitle={null}
         close={close}
         shrineId={numericId}
+        ctx={ctx}
+        tid={tid}
         addGoshuinHref={null}
         googleDirHref={googleDirHref}
         googleDirLabel="Googleマップで経路案内"

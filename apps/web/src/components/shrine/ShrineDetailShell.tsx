@@ -5,6 +5,7 @@ import type { Close } from "@/lib/navigation/shrineClose";
 import ShrineCloseLink from "@/components/shrine/ShrineCloseLink";
 import { LABELS } from "@/lib/ui/labels";
 import DetailSection from "@/components/shrine/DetailSection";
+import { trackSearchEvent } from "@/lib/analytics/searchEvents";
 
 type SaveAction = {
   shrineId: number;
@@ -30,6 +31,9 @@ type Props = {
 
   // ✅ concierge 等で「操作」を消すためのスイッチ
   hideActions?: boolean;
+
+  ctx?: string | null;
+  tid?: string | number | null;
 };
 
 export default function ShrineDetailShell({
@@ -43,6 +47,10 @@ export default function ShrineDetailShell({
   saveAction = null,
   children,
   hideActions = false,
+
+  shrineId = null,
+  ctx = null,
+  tid = null,
 }: Props) {
   const shouldShowActions = !hideActions && Boolean(googleDirHref || saveAction?.node || addGoshuinHref);
 
@@ -73,6 +81,15 @@ export default function ShrineDetailShell({
                 href={googleDirHref}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => {
+                  trackSearchEvent("route_open", {
+                    source: "shrine_detail",
+                    routeTarget: "google_maps",
+                    shrineId: shrineId ?? undefined,
+                    threadId: tid != null ? String(tid) : undefined,
+                    ctx,
+                  });
+                }}
                 className="inline-flex min-h-[44px] w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800"
               >
                 {googleDirLabel}
