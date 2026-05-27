@@ -35,7 +35,15 @@ export class PostHogAnalyticsProvider implements AnalyticsProvider {
   }
 
   track(eventName: string, payload: AnalyticsPayload) {
-    if (!this.init()) return;
+    const initialized = this.init();
+
+    console.log("POSTHOG_PROVIDER_TRACK", {
+      eventName,
+      payload,
+      initialized,
+    });
+
+    if (!initialized) return;
 
     posthog.capture(eventName, payload);
   }
