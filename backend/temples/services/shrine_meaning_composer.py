@@ -77,6 +77,27 @@ HISTORY_THEME_CONTEXT: dict[str, str] = {
     "守り": "不安を鎮め、安心を得る文脈として受け取りやすい場所です。",
 }
 
+HISTORY_THEME_DISPLAY_COPY: dict[str, str] = {
+    "再出発": "気持ちを切り替えたい時",
+    "静寂": "静かに整えたい時",
+    "復興": "疲れた状態を立て直したい時",
+    "勝負": "決断や挑戦の前",
+    "縁": "人や機会とのつながりを見直したい時",
+    "学び": "努力や積み重ねを整えたい時",
+    "守り": "不安を落ち着けたい時",
+}
+
+
+HISTORY_THEME_ACTION_CONTEXT: dict[str, str] = {
+    "再出発": "今の状態を区切り、次の一歩を置きたい時に向き合いやすい神社です。",
+    "静寂": "予定や情報を増やさず、静かに気持ちを整えたい時に向き合いやすい神社です。",
+    "復興": "疲れや停滞を抱えた状態から、少しずつ立て直したい時に向き合いやすい神社です。",
+    "勝負": "判断前や挑戦前に、気持ちを固めたい時に向き合いやすい神社です。",
+    "縁": "人間関係や機会との向き合い方を見直したい時に向き合いやすい神社です。",
+    "学び": "努力を続ける前に、集中や積み重ねの方向を整えたい時に向き合いやすい神社です。",
+    "守り": "不安を広げず、今の生活を落ち着いて守りたい時に向き合いやすい神社です。",
+}
+
 
 @dataclass(frozen=True)
 class ShrineMeaningInput:
@@ -212,7 +233,8 @@ def _primary_benefit(input_: ShrineMeaningInput) -> str | None:
 
 def _build_hero_meaning(input_: ShrineMeaningInput) -> str:
     if input_.history_theme:
-        return f"{input_.name_jp}は、今の状態を整え直す節目として向き合いやすい神社です。"
+        display_copy = HISTORY_THEME_DISPLAY_COPY.get(input_.history_theme, "今の状態を整えたい時")
+        return f"{input_.name_jp}は、{display_copy}に向き合いやすい神社です。"
     if _primary_benefit(input_):
         return f"{input_.name_jp}は、今の願いや状態を一度整理する入口として置きやすい神社です。"
     return f"{input_.name_jp}は、今の状態を落ち着いて見直す候補として扱いやすい神社です。"
@@ -239,10 +261,13 @@ def _build_shrine_meaning(input_: ShrineMeaningInput) -> str:
 
 def _build_action_meaning(input_: ShrineMeaningInput) -> str:
     benefit = _primary_benefit(input_)
+    theme_action = HISTORY_THEME_ACTION_CONTEXT.get(input_.history_theme or "")
+    if benefit and theme_action:
+        return f"参拝を、{_clip(benefit, 32)}という願いを急いで叶えるためではなく、{theme_action}"
     if benefit:
         return f"参拝を、{_clip(benefit, 32)}という願いを急いで叶えるためではなく、今の状態を整理して次の一歩を置く行動として扱えます。"
-    if input_.history_theme:
-        return "参拝を、気持ちを切り替えながら今のテーマを見直すための小さな行動として置けます。"
+    if theme_action:
+        return f"参拝を、{theme_action}"
     return "参拝を、考え続ける状態から少し離れ、現実の一歩へ移すための行動として置けます。"
 
 
@@ -265,6 +290,9 @@ def _build_benefit_action_context(input_: ShrineMeaningInput) -> str | None:
     benefit = _primary_benefit(input_)
     if not benefit:
         return None
+    display_copy = HISTORY_THEME_DISPLAY_COPY.get(input_.history_theme or "")
+    if display_copy:
+        return f"「{_clip(benefit)}」は願望成就の断定ではなく、{display_copy}の行動テーマを整える補助軸として扱います。"
     return f"「{_clip(benefit)}」は願望成就の断定ではなく、今の行動テーマを整える補助軸として扱います。"
 
 
