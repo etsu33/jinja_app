@@ -24,6 +24,7 @@ export type SearchAnalyticsPayload = {
   firstClick?: boolean | null;
   query?: string | null;
   routeTarget?: "google_maps" | "internal_map" | null;
+  historyTheme?: string | null;
   [key: string]: SearchAnalyticsPrimitive;
 };
 

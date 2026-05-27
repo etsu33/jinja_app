@@ -34,6 +34,7 @@ type Props = {
 
   ctx?: string | null;
   tid?: string | number | null;
+  historyTheme?: string | null;
 };
 
 export default function ShrineDetailShell({
@@ -51,6 +52,7 @@ export default function ShrineDetailShell({
   shrineId = null,
   ctx = null,
   tid = null,
+  historyTheme = null,
 }: Props) {
   const shouldShowActions = !hideActions && Boolean(googleDirHref || saveAction?.node || addGoshuinHref);
 
@@ -83,6 +85,7 @@ export default function ShrineDetailShell({
                 shrineId={shrineId}
                 ctx={ctx}
                 tid={tid}
+                historyTheme={historyTheme}
                 className="inline-flex min-h-[44px] w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800"
               />
             ) : null}
