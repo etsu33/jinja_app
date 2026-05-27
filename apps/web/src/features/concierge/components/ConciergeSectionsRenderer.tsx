@@ -269,6 +269,12 @@ export default function ConciergeSectionsRenderer({
       if (trackedImpressionKeysRef.current.has(impressionKey)) return;
 
       trackedImpressionKeysRef.current.add(impressionKey);
+      console.log("IMPRESSION_EVENT", {
+        resultSetId,
+        item,
+        resultImpressionsLength: resultImpressions.length,
+        trackedImpressionKeysCount: trackedImpressionKeysRef.current.size,
+      });
       trackSearchEvent("concierge_result_impression", {
         source: "concierge_result",
         threadId: tid ?? undefined,
