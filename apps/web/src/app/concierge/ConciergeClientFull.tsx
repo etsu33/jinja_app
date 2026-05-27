@@ -1634,6 +1634,7 @@ export default function ConciergeClientFull() {
                 <div className="mt-3">
                   <ConciergeSectionsRenderer
                     payload={payload}
+                    analyticsContext={modeAnalyticsPayload}
                     onAction={onRendererAction}
                     sending={sending || isFiltering}
                     threadId={thread?.id ?? activeThreadId}
@@ -1719,6 +1720,7 @@ export default function ConciergeClientFull() {
             ) : null}
             <ConciergeSectionsRenderer
               payload={payload}
+              analyticsContext={modeAnalyticsPayload}
               onAction={onRendererAction}
               sending={sending || isFiltering}
               threadId={thread?.id ?? activeThreadId}

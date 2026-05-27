@@ -17,7 +17,7 @@ import { resolveAccessLevel } from "@/lib/premium/accessLevel";
 import { getVisibilityForCard } from "@/lib/premium/cardVisibility";
 import ConciergeConsultationSummary from "@/features/concierge/components/ConciergeConsultationSummary";
 
-import { trackCardEvent } from "@/lib/analytics/cardEvents";
+import { trackCardEvent, type CardAnalyticsPayload } from "@/lib/analytics/cardEvents";
 import { trackSearchEvent } from "@/lib/analytics/searchEvents";
 
 import type {
@@ -32,6 +32,7 @@ import type {
 import { buildConciergeCardRoutes } from "@/lib/concierge/conciergeCardRoutes";
 
 type MetaMode = NonNullable<ConciergeSectionsPayload["meta"]>["mode"];
+type AnalyticsContext = Pick<CardAnalyticsPayload, "mode" | "flow" | "hasBirthdate" | "recommendationCount">;
 
 const conciergeSoftCardClass = "rounded-2xl border border-slate-200 bg-slate-50 shadow-sm p-4";
 const conciergeNoticeCardClass = "rounded-2xl border border-amber-200 bg-amber-50 shadow-sm p-4";
@@ -80,6 +81,7 @@ function ConciergePremiumEntryCard(props: {
   tid?: string | null;
   isGuestUser?: boolean;
   accessLevel: "anonymous" | "free" | "premium";
+  analyticsContext?: AnalyticsContext;
 }) {
   const href = props.isGuestUser ? buildLoginHref("/billing/upgrade") : "/billing/upgrade";
   const ctaLabel = props.isGuestUser ? "ログインして変化を見返す" : "変化を見返せるようにする";
@@ -103,6 +105,7 @@ function ConciergePremiumEntryCard(props: {
               accessLevel: props.accessLevel,
               visibility: "teaser",
               ctaType: "continue_with_premium",
+              ...props.analyticsContext,
               shrineId: props.shrineId ?? undefined,
               threadId: props.tid ?? undefined,
             });
@@ -122,6 +125,7 @@ type Props = {
   threadId?: number | null;
   isEntryRoute?: boolean;
   isPremiumActive?: boolean;
+  analyticsContext?: AnalyticsContext;
 };
 
 function parseExtraTokens(extra: string | undefined | null): string[] {
@@ -158,6 +162,7 @@ export default function ConciergeSectionsRenderer({
   threadId = null,
   isEntryRoute = false,
   isPremiumActive: isPremiumActiveProp,
+  analyticsContext,
 }: Props) {
   const trackedImpressionKeysRef = useRef<Set<string>>(new Set());
   const trackedCardEventKeysRef = useRef<Set<string>>(new Set());
@@ -354,6 +359,7 @@ export default function ConciergeSectionsRenderer({
           accessLevel,
           visibility: savePromptVisibility,
           ctaType: isGuestUser ? "login_to_save" : "save",
+          ...analyticsContext,
           threadId: tid ?? undefined,
           resultSetId,
         });
@@ -436,6 +442,7 @@ export default function ConciergeSectionsRenderer({
     });
   }, [
     accessLevel,
+    analyticsContext,
     conciergeCardRoutes,
     isGuestUser,
     isPremiumActive,
@@ -705,17 +712,21 @@ export default function ConciergeSectionsRenderer({
                               differenceFromOthers={null}
                               tags={(heroItem.breakdown?.matched_need_tags ?? []).map(labelNeedDisplayTag).slice(0, 3)}
                               routeLabel="神社の詳細を見る"
-                              onDetailClick={() =>
-                                trackSearchEvent("shrine_detail_transition", {
-                                  source: "concierge_result",
-                                  threadId: tid ?? undefined,
-                                  resultSetId,
-                                  position: "hero_primary",
-                                  recommendationRank: 1,
-                                  shrineId: heroItem.shrineId,
-                                  firstClick: resolveFirstResultClick(resultSetId),
-                                })
-                              }
+                            onDetailClick={() =>
+                              trackSearchEvent("shrine_detail_transition", {
+                                source: "concierge_result",
+                                threadId: tid ?? undefined,
+                                resultSetId,
+                                position: "hero_primary",
+                                recommendationRank: 1,
+                                shrineId: heroItem.shrineId,
+                                mode: analyticsContext?.mode ?? normalizedMode,
+                                flow: analyticsContext?.flow,
+                                hasBirthdate: analyticsContext?.hasBirthdate,
+                                recommendationCount: analyticsContext?.recommendationCount,
+                                firstClick: resolveFirstResultClick(resultSetId),
+                              })
+                            }
                             />
 
                             {shrineMeaningVisibility !== "hidden" ? (
@@ -750,6 +761,7 @@ export default function ConciergeSectionsRenderer({
                                 tid={tid}
                                 isGuestUser={isGuestUser}
                                 accessLevel={accessLevel}
+                                analyticsContext={analyticsContext}
                               />
                             ) : null}
 
@@ -801,6 +813,10 @@ export default function ConciergeSectionsRenderer({
                                         position: "compact",
                                         recommendationRank: compactIdx + 2,
                                         shrineId: item.shrineId,
+                                        mode: analyticsContext?.mode ?? normalizedMode,
+                                        flow: analyticsContext?.flow,
+                                        hasBirthdate: analyticsContext?.hasBirthdate,
+                                        recommendationCount: analyticsContext?.recommendationCount,
                                         firstClick: resolveFirstResultClick(resultSetId),
                                       })
                                     }
@@ -845,6 +861,7 @@ export default function ConciergeSectionsRenderer({
                             accessLevel,
                             visibility: savePromptVisibility,
                             ctaType: isGuestUser ? "login_to_save" : "save",
+                            ...analyticsContext,
                             threadId: tid ?? undefined,
                             resultSetId,
                           });
