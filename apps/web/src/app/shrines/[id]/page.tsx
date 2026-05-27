@@ -223,7 +223,7 @@ export default async function Page({ params, searchParams }: Props) {
   const s = shrine;
   const pageTitle = (s.name_jp ?? "").trim() || `神社 #${numericId}`;
   const shrineMeaningPayloadV2 = await fetchShrineMeaningPayloadV2Server(numericId);
-
+  const historyThemeForAnalytics = shrineMeaningPayloadV2?.source?.historyTheme ?? null;
 
   const latNum = Number(s.latitude ?? NaN);
   const lngNum = Number(s.longitude ?? NaN);
@@ -408,6 +408,7 @@ export default async function Page({ params, searchParams }: Props) {
         shrineId={numericId}
         ctx={ctx}
         tid={tid}
+        historyTheme={historyThemeForAnalytics}
         addGoshuinHref={null}
         googleDirHref={googleDirHref}
         googleDirLabel="Googleマップで経路案内"

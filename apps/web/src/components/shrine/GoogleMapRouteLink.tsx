@@ -1,5 +1,3 @@
-
-
 "use client";
 
 import { trackSearchEvent } from "@/lib/analytics/searchEvents";
@@ -10,10 +8,11 @@ type Props = {
   shrineId?: number | string | null;
   ctx?: string | null;
   tid?: string | number | null;
+  historyTheme?: string | null;
   className?: string;
 };
 
-export default function GoogleMapRouteLink({ href, label, shrineId = null, ctx = null, tid = null, className }: Props) {
+export default function GoogleMapRouteLink({ href, label, shrineId = null, ctx = null, tid = null, historyTheme = null, className }: Props) {
   return (
     <a
       href={href}
@@ -26,6 +25,7 @@ export default function GoogleMapRouteLink({ href, label, shrineId = null, ctx =
           routeTarget: "google_maps",
           shrineId: shrineId ?? undefined,
           threadId: tid != null ? String(tid) : undefined,
+          historyTheme: historyTheme ?? undefined,
           ctx,
         });
       }}
