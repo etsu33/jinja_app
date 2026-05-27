@@ -18,6 +18,8 @@ from temples.services.shrine_submission import (
     reject_shrine_submission,
 )
 
+from temples.management.commands.seed_history_theme import HISTORY_THEME_SEED
+
 
 @admin.register(Goshuin)
 class GoshuinAdmin(admin.ModelAdmin):
@@ -267,12 +269,55 @@ class GoriyakuTagAdmin(admin.ModelAdmin):
 class ShrineAdmin(admin.ModelAdmin):
     """神社モデルの管理画面（GISウィジェットなしの暫定版）"""
 
-    list_display = ("name_jp", "address", "popular_score", "views_30d", "favorites_30d", "updated_at")
+    list_display = (
+        "name_jp",
+        "address",
+        "history_theme",
+        "popular_score",
+        "views_30d",
+        "favorites_30d",
+        "updated_at",
+    )
     search_fields = ("name_jp", "name_romaji", "address")
-    list_filter = ("kind", "element", "kyusei")
+    list_filter = ("kind", "element", "kyusei", "history_theme")
     ordering = ("-popular_score", "-updated_at")
     readonly_fields = ("last_popular_calc_at",)
     filter_horizontal = ("goriyaku_tags",)
+    actions = ["seed_history_theme"]
+
+    @admin.action(description="history_theme 初期値を投入する")
+    def seed_history_theme(self, request, queryset):
+        updated = 0
+        skipped = 0
+        missing: list[int] = []
+
+        for shrine_id, history_theme in HISTORY_THEME_SEED.items():
+            shrine = Shrine.objects.filter(id=shrine_id).only("id", "name_jp", "history_theme").first()
+            if shrine is None:
+                missing.append(shrine_id)
+                continue
+
+            current = shrine.history_theme or ""
+            if current == history_theme:
+                skipped += 1
+                continue
+
+            shrine.history_theme = history_theme
+            shrine.save(update_fields=["history_theme"])
+            updated += 1
+
+        if missing:
+            self.message_user(
+                request,
+                f"history_theme 初期投入: 存在しない Shrine id があります: {missing}",
+                level=messages.WARNING,
+            )
+
+        self.message_user(
+            request,
+            f"history_theme 初期投入完了: 更新 {updated}件 / 既存一致 {skipped}件 / 定義 {len(HISTORY_THEME_SEED)}件",
+            level=messages.SUCCESS,
+        )
 
 
 # ---- 動的登録（存在する時だけ）----
