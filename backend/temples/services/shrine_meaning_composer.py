@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Iterable, Literal, Mapping, TypedDict
+from temples.services.shrine_culture_translation import get_shrine_culture_translation
+
 
 AccessLevel = Literal["anonymous", "free", "premium"]
 DisplayBlockId = Literal[
@@ -397,6 +399,10 @@ def _build_consultation_summary(input_: ShrineMeaningInput) -> str:
 # 「今の状態との接続」を含める
 
 def _build_shrine_meaning(input_: ShrineMeaningInput) -> str:
+    culture = get_shrine_culture_translation(input_.shrine_id)
+    if culture:
+        return f"{culture.historical_background}{culture.place_meaning}"
+
     override = SHRINE_HISTORY_STORY_OVERRIDES.get(input_.shrine_id)
     if override:
         return override["shrineMeaning"]
@@ -460,6 +466,11 @@ def _build_benefit_action_context(input_: ShrineMeaningInput) -> str | None:
     benefit = _primary_benefit(input_)
     if not benefit:
         return None
+
+    culture = get_shrine_culture_translation(input_.shrine_id)
+    if culture:
+        return culture.benefit_translation
+
     action_result = HISTORY_THEME_ACTION_RESULT_CONTEXT.get(input_.history_theme or "")
     state_themes = _benefit_state_themes(input_)
     if state_themes:
@@ -477,6 +488,10 @@ def _build_benefit_action_context(input_: ShrineMeaningInput) -> str | None:
 
 
 def _build_today_flow_context(input_: ShrineMeaningInput) -> str | None:
+    culture = get_shrine_culture_translation(input_.shrine_id)
+    if culture:
+        return f"{culture.flow_guidance}{culture.action_reason}"
+
     flow_context = _cultural_flow_context(input_)
     if flow_context:
         return "今日は、結論を急がず、次の一歩を小さく試す日として置けます。まずは考えを増やさず、実際に動いて確かめることを優先します。"
