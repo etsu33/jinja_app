@@ -146,71 +146,21 @@ SHRINE_HISTORY_STORY_OVERRIDES: dict[int, ShrineHistoryStoryOverride] = {
         "subContext": "覚悟",
         "heroMeaningCopy": "三峯神社は、迷いや不安を抱えたままでも、前に進む覚悟を固めたい時に向き合いやすい神社です。",
         "shrineMeaning": "三峯神社は、険しい山中で信仰されてきた背景を持ち、簡単には進めない場面で覚悟を固める文脈と重ねて受け取りやすい神社です。",
-        "actionMeaning": "参拝を、結果を急ぐためではなく、迷いを抱えたままでも一度腹を決め、次の一歩へ向かうための行動として置けます。",
+        "actionMeaning": "参拝前に、今いちばん決めきれていないことを一つだけ書き出します。参拝中は、その答えを急がず、帰り道で次に取る小さな一歩だけを確認します。",
     },
     14: {
         "subContext": "踏み出し",
         "heroMeaningCopy": "鹿島神宮は、迷いや不安を抱えたままでも、流れを変える一歩を踏み出したい時に向き合いやすい神社です。",
         "shrineMeaning": "鹿島神宮は、武神を祀る由緒を持ち、迷いを断ち、前へ進む判断を整える文脈と重ねて受け取りやすい神社です。",
-        "actionMeaning": "参拝を、勝ち負けを急ぐためではなく、停滞した気持ちから主導権を取り戻し、次の動きを選び直す行動として置けます。",
+        "actionMeaning": "参拝前に、今止まっている理由を一つだけ言葉にします。参拝中は、変えたい流れを一つに絞り、帰り道で今日動かせる行動を一つ決めます。",
     },
     4: {
         "subContext": "結び直し",
         "heroMeaningCopy": "出雲大社は、人や機会とのつながりを見直したい時に向き合いやすい神社です。",
         "shrineMeaning": "出雲大社は、縁結びの信仰で知られ、人との関係や機会の受け取り方を落ち着いて見直す文脈と重ねて受け取りやすい神社です。",
-        "actionMeaning": "参拝を、良い縁を急いで求めるためではなく、今ある関係やこれから選びたいつながりを整理する行動として置けます。",
+        "actionMeaning": "参拝前に、今大切にしたい関係を一つだけ思い浮かべます。参拝中は、急いで答えを出さず、帰り道で自分から整えたい関わり方を一つ確認します。",
     },
 }
-
-
-
-HISTORY_THEME_ACTION_RESULT_CONTEXT: dict[str, str] = {
-    "再出発": "今の状態を区切り、次の一歩を置き直す",
-    "静寂": "情報や刺激を減らし、気持ちを落ち着ける",
-    "復興": "疲れや停滞を抱えた状態から、少しずつ立て直す",
-    "勝負": "判断を急がず、次の動きを整理する",
-    "縁": "人や機会との向き合い方を見直す",
-    "学び": "努力の方向を整え、集中し直す",
-    "守り": "不安を広げず、今の生活を落ち着いて守る",
-}
-
-
-# ---- HISTORY_THEME_SUB_CONTEXT ----
-HISTORY_THEME_SUB_CONTEXT: dict[str, dict[str, str]] = {
-    "勝負": {
-        "覚悟": "迷いや不安を抱えたままでも、前に進む覚悟を固めたい時",
-        "踏み出し": "迷いや不安を抱えたままでも、流れを変える一歩を踏み出したい時",
-        "主導権": "受け身の流れから抜け、自分で次の動きを選び直したい時",
-    },
-    "縁": {
-        "結び直し": "人や機会との関係を、落ち着いて見直したい時",
-        "受け取り直し": "今あるつながりの意味を、急がず受け取り直したい時",
-    },
-}
-
-
-# ---- SHRINE_HISTORY_STORY_OVERRIDES ----
-SHRINE_HISTORY_STORY_OVERRIDES: dict[int, ShrineHistoryStoryOverride] = {
-    17: {
-        "subContext": "覚悟",
-        "heroMeaningCopy": "三峯神社は、迷いや不安を抱えたままでも、前に進む覚悟を固めたい時に向き合いやすい神社です。",
-        "shrineMeaning": "三峯神社は、険しい山中で信仰されてきた背景を持ち、簡単には進めない場面で覚悟を固める文脈と重ねて受け取りやすい神社です。",
-        "actionMeaning": "参拝を、結果を急ぐためではなく、迷いを抱えたままでも一度腹を決め、次の一歩へ向かうための行動として置けます。",
-    },
-    14: {
-        "subContext": "踏み出し",
-        "heroMeaningCopy": "鹿島神宮は、迷いや不安を抱えたままでも、流れを変える一歩を踏み出したい時に向き合いやすい神社です。",
-        "shrineMeaning": "鹿島神宮は、武神を祀る由緒を持ち、迷いを断ち、前へ進む判断を整える文脈と重ねて受け取りやすい神社です。",
-        "actionMeaning": "参拝を、勝ち負けを急ぐためではなく、停滞した気持ちから主導権を取り戻し、次の動きを選び直す行動として置けます。",
-    },
-    4: {
-        "subContext": "結び直し",
-        "heroMeaningCopy": "出雲大社は、人や機会とのつながりを見直したい時に向き合いやすい神社です。",
-        "shrineMeaning": "出雲大社は、縁結びの信仰で知られ、人との関係や機会の受け取り方を落ち着いて見直す文脈と重ねて受け取りやすい神社です。",
-        "actionMeaning": "参拝を、良い縁を急いで求めるためではなく、今ある関係やこれから選びたいつながりを整理する行動として置けます。",
-    },
-}
-
 
 @dataclass(frozen=True)
 class ShrineMeaningInput:
@@ -456,13 +406,13 @@ def _build_benefit_action_context(input_: ShrineMeaningInput) -> str | None:
 def _build_today_flow_context(input_: ShrineMeaningInput) -> str | None:
     if not input_.history_theme:
         return None
-    return "今日は、今の状態を無理に結論づけるよりも、少し動いて流れを確かめる候補として置きやすい日です。"
+    return "今日は、考え続けるよりも短く動いて確かめる方が合いやすい流れです。結論を出す日ではなく、次の一歩を試す日として置けます。"
 
 
 def _build_after_visit_reflection(input_: ShrineMeaningInput) -> str | None:
     if not input_.history_theme:
         return None
-    return "帰り道で、参拝前より少しでも決めやすくなったこと、または手放しやすくなった迷いがあるかを一つだけ確認します。"
+    return "帰り道で確認することは一つだけです。参拝前より、決めやすくなったこと、手放しやすくなったこと、次に動かせそうなことのどれが残ったかを見ます。"
 
 
 def build_generated_fields(input_: ShrineMeaningInput) -> ShrineMeaningGeneratedV2:
