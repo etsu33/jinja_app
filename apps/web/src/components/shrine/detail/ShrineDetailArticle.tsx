@@ -226,20 +226,6 @@ function ShrineComparisonDisclosure(props: {
   );
 }
 
-function ShrineDecisionPrompt() {
-  return (
-    <section className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4">
-      <div className="space-y-2">
-        <p className="text-sm font-semibold leading-6 text-emerald-900">
-          今のあなたの状態なら、この神社を基準に判断して問題ありません。
-        </p>
-        <p className="text-xs leading-6 text-slate-600">
-          今は選択肢を広げるより、1つに絞って動く方が判断しやすい状態です。
-        </p>
-      </div>
-    </section>
-  );
-}
 
 export default function ShrineDetailArticle({
   cardProps,
@@ -420,7 +406,6 @@ export default function ShrineDetailArticle({
 
       {personalMeaningVisibility === "teaser" && hasPremiumSections ? <PremiumUpgradePrompt /> : null}
 
-      {isPremiumActive && hasPremiumSections ? <ShrineDecisionPrompt /> : null}
 
       {isPremiumActive && hasRecommendationMeta && recommendationMeta ? (
         <section>
