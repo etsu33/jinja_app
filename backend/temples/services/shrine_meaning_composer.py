@@ -289,6 +289,11 @@ def _primary_benefit(input_: ShrineMeaningInput) -> str | None:
     return input_.goriyaku
 
 
+# hero:
+# 今の自分との接点を返す
+# 神社説明は禁止
+# 歴史説明は禁止
+# 「なぜ今この神社か」を短く返す
 
 def _build_hero_meaning(input_: ShrineMeaningInput) -> str:
     override = SHRINE_HISTORY_STORY_OVERRIDES.get(input_.shrine_id)
@@ -301,6 +306,11 @@ def _build_hero_meaning(input_: ShrineMeaningInput) -> str:
         return f"{input_.name_jp}は、今の願いや状態を一度整理する入口として置きやすい神社です。"
     return f"{input_.name_jp}は、今の状態を落ち着いて見直す候補として扱いやすい神社です。"
 
+# consultation_summary:
+# 今回の相談状態を整理する
+# 神社説明は禁止
+# 行動指示は禁止
+# 「何を見直す段階か」を返す
 
 def _build_consultation_summary(input_: ShrineMeaningInput) -> str:
     if input_.description or input_.history_theme:
@@ -310,6 +320,11 @@ def _build_consultation_summary(input_: ShrineMeaningInput) -> str:
     return "今回の相談は、いま抱えているテーマを一度ほどき、何を先に見直すかを整理する段階として読むのが自然です。"
 
 
+# shrine_meaning:
+# なぜこの神社なのかを返す
+# 神社固有文脈を扱う
+# 歴史説明だけで終わらせない
+# 「今の状態との接続」を含める
 
 def _build_shrine_meaning(input_: ShrineMeaningInput) -> str:
     override = SHRINE_HISTORY_STORY_OVERRIDES.get(input_.shrine_id)
@@ -325,6 +340,11 @@ def _build_shrine_meaning(input_: ShrineMeaningInput) -> str:
     return f"{input_.name_jp}は、今回の相談で主題になっている整理や立て直しのテーマと接続しやすく、意味を重ねて受け取りやすい候補です。"
 
 
+# action_meaning:
+# なぜ参拝という行動を置くのかを返す
+# 結果保証は禁止
+# 行動理由へ翻訳する
+# 「次の一歩」を扱う
 
 def _build_action_meaning(input_: ShrineMeaningInput) -> str:
     override = SHRINE_HISTORY_STORY_OVERRIDES.get(input_.shrine_id)
@@ -340,6 +360,11 @@ def _build_action_meaning(input_: ShrineMeaningInput) -> str:
         return f"参拝を、{theme_action}"
     return "参拝を、考え続ける状態から少し離れ、現実の一歩へ移すための行動として置けます。"
 
+# history_context:
+# 歴史・土地・背景を状態理解へ接続する
+# Wikipedia説明は禁止
+# 固有名詞紹介で終わらせない
+# 「だから今の状態と接続する」を返す
 
 def _build_history_context(input_: ShrineMeaningInput) -> str | None:
     if not input_.history_theme:
@@ -355,6 +380,11 @@ def _build_deity_symbol_context(input_: ShrineMeaningInput) -> str | None:
         return None
     return f"祭神として「{_clip(input_.sajin)}」が伝わっており、由緒本文ではなく象徴接続の補助材料として扱います。"
 
+# benefit_action:
+# ご利益を行動テーマへ翻訳する
+# 願望成就の断定は禁止
+# 「今の自分ならどう置くか」を返す
+# 結果ではなく状態変化へ寄せる
 
 def _build_benefit_action_context(input_: ShrineMeaningInput) -> str | None:
     benefit = _primary_benefit(input_)
