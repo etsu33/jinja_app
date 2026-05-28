@@ -114,7 +114,6 @@ HISTORY_THEME_ACTION_CONTEXT: dict[str, str] = {
 }
 
 
-
 HISTORY_THEME_ACTION_RESULT_CONTEXT: dict[str, str] = {
     "再出発": "今の状態を区切り、次の一歩を置き直す",
     "静寂": "情報や刺激を減らし、気持ちを落ち着ける",
@@ -139,6 +138,22 @@ HISTORY_THEME_SUB_CONTEXT: dict[str, dict[str, str]] = {
     },
 }
 
+
+CULTURAL_FLOW_CONTEXT: dict[str, str] = {
+    "再出発": "今は、過去の延長で考え続けるより、一度区切りを置いて流れを作り直す方が合いやすい時期です。",
+    "静寂": "今は、外へ答えを探しに行くより、情報や刺激を減らして静かに見直す方が合いやすい時期です。",
+    "勝負": "今は、勢いだけで押し切るより、迷いを一つに絞ってから動く方が流れを作りやすい時期です。",
+    "縁": "今は、新しいつながりを急いで増やすより、今ある関係や機会の意味を見直す方が合いやすい時期です。",
+    "学び": "今は、手を広げるより、積み重ねる対象を一つに絞る方が理解を深めやすい時期です。",
+    "守り": "今は、大きく変えるより、不安を広げないために今の土台を静かに確認する方が合いやすい時期です。",
+    "復興": "今は、無理に元へ戻そうとするより、疲れや停滞を少しずつ整え直す方が合いやすい時期です。",
+}
+
+
+def _cultural_flow_context(input_: ShrineMeaningInput) -> str | None:
+    if not input_.history_theme:
+        return None
+    return CULTURAL_FLOW_CONTEXT.get(input_.history_theme)
 
 # ---- SHRINE_HISTORY_STORY_OVERRIDES ----
 SHRINE_HISTORY_STORY_OVERRIDES: dict[int, ShrineHistoryStoryOverride] = {
@@ -318,6 +333,9 @@ def _build_hero_meaning(input_: ShrineMeaningInput) -> str:
 # 「何を見直す段階か」を返す
 
 def _build_consultation_summary(input_: ShrineMeaningInput) -> str:
+    flow_context = _cultural_flow_context(input_)
+    if flow_context:
+        return f"{flow_context} まずは、今いちばん気になっていることを一つに絞る状態です。"
     if input_.description or input_.history_theme:
         return "今は答えを急ぐより、何を決めきれていないのかを一つに絞る状態です。まず優先順位を見直す方が、次の判断に進みやすくなります。"
     if input_.goriyaku or input_.sajin or input_.element:
@@ -401,12 +419,19 @@ def _build_benefit_action_context(input_: ShrineMeaningInput) -> str | None:
             f"「{_clip(benefit)}」は結果を急ぐためではなく、"
             f"{action_result}きっかけとして受け取りやすい要素です。"
         )
+
     return f"「{_clip(benefit)}」は願望成就の断定ではなく、今の行動テーマを整える補助軸として扱います。"
 
+
+
 def _build_today_flow_context(input_: ShrineMeaningInput) -> str | None:
+    flow_context = _cultural_flow_context(input_)
+    if flow_context:
+        return "今日は、結論を急がず、次の一歩を小さく試す日として置けます。まずは考えを増やさず、実際に動いて確かめることを優先します。"
+
     if not input_.history_theme:
         return None
-    return "今日は、考え続けるよりも短く動いて確かめる方が合いやすい流れです。結論を出す日ではなく、次の一歩を試す日として置けます。"
+    return "今日は、結論を出す日ではなく、次の一歩を小さく試す日として置けます。考えを増やすより、実際に動いて確かめることを優先します。"
 
 
 def _build_after_visit_reflection(input_: ShrineMeaningInput) -> str | None:
@@ -461,15 +486,23 @@ def _block(
         "access": access,
     }
 
-
+# 1. 今のあなたとの接点
+# 2. 神社と文化の接続
+# 3. 今の状態と流れ
+# 4. 今日の扱い方
+# 5. 今日ここでやること
+# 6. 参拝後に見る変化
+# 7. 歴史文脈との接続
+# 8. 祭神の象徴
+# 9. ご利益と行動テーマ
 def build_display_fields(generated: ShrineMeaningGeneratedV2) -> ShrineMeaningDisplayV2:
     maybe_blocks = [
         _block("hero", "今のあなたとの接点", generated["heroMeaningCopy"], "anonymous"),
-        _block("consultation_summary", "相談との接続", generated["consultationSummary"], "free"),
-        _block("shrine_meaning", "この神社で向き合う理由", generated["shrineMeaning"], "free"),
-        _block("today_flow", "今日の流れ", generated["todayFlowContext"], "premium"),
+        _block("shrine_meaning", "神社と文化の接続", generated["shrineMeaning"], "free"),
+        _block("consultation_summary", "今の状態と流れ", generated["consultationSummary"], "free"),
+        _block("today_flow", "今日の扱い方", generated["todayFlowContext"], "premium"),
         _block("action_meaning", "今日ここでやること", generated["actionMeaning"], "premium"),
-        _block("after_visit_reflection", "参拝後に見る変化", generated["afterVisitReflection"], "premium"),
+        _block("after_visit_reflection", "帰り道で整理し直す", generated["afterVisitReflection"], "premium"),
         _block("history_context", "歴史文脈との接続", generated["historyContext"], "premium"),
         _block("deity_symbol", "祭神の象徴", generated["deitySymbolContext"], "premium"),
         _block("benefit_action", "ご利益と行動テーマ", generated["benefitActionContext"], "premium"),
