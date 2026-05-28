@@ -412,7 +412,7 @@ def _build_today_flow_context(input_: ShrineMeaningInput) -> str | None:
 def _build_after_visit_reflection(input_: ShrineMeaningInput) -> str | None:
     if not input_.history_theme:
         return None
-    return "帰り道で確認することは一つだけです。参拝前より、決めやすくなったこと、手放しやすくなったこと、次に動かせそうなことのどれが残ったかを見ます。"
+    return "帰り道で、まだ迷いが残っていても問題ありません。今は一度で答えを決めるより、少しずつ整理し直す流れの方が合っています。必要なら、もう一度相談を開いて整理し直せます。"
 
 
 def build_generated_fields(input_: ShrineMeaningInput) -> ShrineMeaningGeneratedV2:
