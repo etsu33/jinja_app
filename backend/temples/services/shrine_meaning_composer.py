@@ -20,6 +20,8 @@ DisplayBlockId = Literal[
     "deity_symbol",
     "benefit_action",
     "public_info",
+    "today_flow",
+    "after_visit_reflection",
 ]
 
 
@@ -46,6 +48,8 @@ class ShrineMeaningGeneratedV2(TypedDict):
     historyContext: str | None
     deitySymbolContext: str | None
     benefitActionContext: str | None
+    todayFlowContext: str | None
+    afterVisitReflection: str | None
 
 
 class ShrineMeaningDisplayBlockV2(TypedDict):
@@ -449,6 +453,17 @@ def _build_benefit_action_context(input_: ShrineMeaningInput) -> str | None:
         )
     return f"「{_clip(benefit)}」は願望成就の断定ではなく、今の行動テーマを整える補助軸として扱います。"
 
+def _build_today_flow_context(input_: ShrineMeaningInput) -> str | None:
+    if not input_.history_theme:
+        return None
+    return "今日は、今の状態を無理に結論づけるよりも、少し動いて流れを確かめる候補として置きやすい日です。"
+
+
+def _build_after_visit_reflection(input_: ShrineMeaningInput) -> str | None:
+    if not input_.history_theme:
+        return None
+    return "帰り道で、参拝前より少しでも決めやすくなったこと、または手放しやすくなった迷いがあるかを一つだけ確認します。"
+
 
 def build_generated_fields(input_: ShrineMeaningInput) -> ShrineMeaningGeneratedV2:
     return {
@@ -459,6 +474,8 @@ def build_generated_fields(input_: ShrineMeaningInput) -> ShrineMeaningGenerated
         "historyContext": _build_history_context(input_),
         "deitySymbolContext": _build_deity_symbol_context(input_),
         "benefitActionContext": _build_benefit_action_context(input_),
+        "todayFlowContext": _build_today_flow_context(input_),
+        "afterVisitReflection": _build_after_visit_reflection(input_),
     }
 
 
@@ -499,8 +516,10 @@ def build_display_fields(generated: ShrineMeaningGeneratedV2) -> ShrineMeaningDi
     maybe_blocks = [
         _block("hero", "今のあなたとの接点", generated["heroMeaningCopy"], "anonymous"),
         _block("consultation_summary", "相談との接続", generated["consultationSummary"], "free"),
-        _block("shrine_meaning", "この神社をすすめる意味", generated["shrineMeaning"], "free"),
-        _block("action_meaning", "参拝を置く意味", generated["actionMeaning"], "premium"),
+        _block("shrine_meaning", "この神社で向き合う理由", generated["shrineMeaning"], "free"),
+        _block("today_flow", "今日の流れ", generated["todayFlowContext"], "premium"),
+        _block("action_meaning", "今日ここでやること", generated["actionMeaning"], "premium"),
+        _block("after_visit_reflection", "参拝後に見る変化", generated["afterVisitReflection"], "premium"),
         _block("history_context", "歴史文脈との接続", generated["historyContext"], "premium"),
         _block("deity_symbol", "祭神の象徴", generated["deitySymbolContext"], "premium"),
         _block("benefit_action", "ご利益と行動テーマ", generated["benefitActionContext"], "premium"),
