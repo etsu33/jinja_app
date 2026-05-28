@@ -79,7 +79,11 @@ function buildMeaningSectionsFromPayloadV2(
   if (!blocks.length) return null;
 
   const freeItems: DetailMeaningItem[] = [];
-  const premiumItems: DetailMeaningItem[] = [];
+  const premiumPrimaryItems: DetailMeaningItem[] = [];
+  const premiumSupplementItems: DetailMeaningItem[] = [];
+
+  const premiumPrimaryBlockIds = new Set(["today_flow", "action_meaning", "after_visit_reflection"]);
+  const premiumSupplementBlockIds = new Set(["history_context", "deity_symbol", "benefit_action"]);
 
   blocks.forEach((block) => {
     const body = block.body?.trim();
@@ -92,7 +96,15 @@ function buildMeaningSectionsFromPayloadV2(
     };
 
     if (block.access === "premium") {
-      premiumItems.push(item);
+      if (premiumPrimaryBlockIds.has(block.id)) {
+        premiumPrimaryItems.push(item);
+        return;
+      }
+      if (premiumSupplementBlockIds.has(block.id)) {
+        premiumSupplementItems.push(item);
+        return;
+      }
+      premiumPrimaryItems.push(item);
       return;
     }
 
@@ -113,19 +125,34 @@ function buildMeaningSectionsFromPayloadV2(
       ]
     : [];
 
-  const premiumDisplaySections: ShrineDetailDisplaySection[] = premiumItems.length
-    ? [
-        {
-          tier: "premium",
-          layer: "personal",
-          section: {
-            kind: "meaning",
-            heading: "Premiumで見える深い意味",
-            items: premiumItems,
+  const premiumDisplaySections: ShrineDetailDisplaySection[] = [
+    ...(premiumPrimaryItems.length
+      ? [
+          {
+            tier: "premium" as const,
+            layer: "personal" as const,
+            section: {
+              kind: "meaning" as const,
+              heading: "今日の参拝で見ること",
+              items: premiumPrimaryItems,
+            },
           },
-        },
-      ]
-    : [];
+        ]
+      : []),
+    ...(premiumSupplementItems.length
+      ? [
+          {
+            tier: "premium" as const,
+            layer: "context" as const,
+            section: {
+              kind: "meaning" as const,
+              heading: "補足：神社の背景とご利益",
+              items: premiumSupplementItems,
+            },
+          },
+        ]
+      : []),
+  ];
 
   if (!freeDisplaySections.length && !premiumDisplaySections.length) return null;
 
@@ -1524,8 +1551,6 @@ export function buildShrineDetailModel({
   });
 
   const payloadV2DisplaySections = buildMeaningSectionsFromPayloadV2(shrineMeaningPayloadV2);
-
-
 
   const meaningPayloadSource: "v2" | "fallback" = payloadV2DisplaySections ? "v2" : "fallback";
 
