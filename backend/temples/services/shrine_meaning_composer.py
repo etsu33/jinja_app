@@ -60,11 +60,20 @@ class ShrineMeaningDisplayV2(TypedDict):
     fallbackMessage: str | None
 
 
+
 class ShrineMeaningPayloadV2(TypedDict):
     version: Literal["v2"]
     source: ShrineMeaningSourceV2
     generated: ShrineMeaningGeneratedV2
     display: ShrineMeaningDisplayV2
+
+
+# --- ShrineHistoryStoryOverride TypedDict ---
+class ShrineHistoryStoryOverride(TypedDict):
+    subContext: str
+    heroMeaningCopy: str
+    shrineMeaning: str
+    actionMeaning: str
 
 
 HISTORY_THEME_CONTEXT: dict[str, str] = {
@@ -96,6 +105,55 @@ HISTORY_THEME_ACTION_CONTEXT: dict[str, str] = {
     "縁": "人間関係や機会との向き合い方を見直したい時に向き合いやすい神社です。",
     "学び": "努力を続ける前に、集中や積み重ねの方向を整えたい時に向き合いやすい神社です。",
     "守り": "不安を広げず、今の生活を落ち着いて守りたい時に向き合いやすい神社です。",
+}
+
+
+
+HISTORY_THEME_ACTION_RESULT_CONTEXT: dict[str, str] = {
+    "再出発": "今の状態を区切り、次の一歩を置き直す",
+    "静寂": "情報や刺激を減らし、気持ちを落ち着ける",
+    "復興": "疲れや停滞を抱えた状態から、少しずつ立て直す",
+    "勝負": "判断を急がず、次の動きを整理する",
+    "縁": "人や機会との向き合い方を見直す",
+    "学び": "努力の方向を整え、集中し直す",
+    "守り": "不安を広げず、今の生活を落ち着いて守る",
+}
+
+
+# ---- HISTORY_THEME_SUB_CONTEXT ----
+HISTORY_THEME_SUB_CONTEXT: dict[str, dict[str, str]] = {
+    "勝負": {
+        "覚悟": "迷いや不安を抱えたままでも、前に進む覚悟を固めたい時",
+        "踏み出し": "迷いや不安を抱えたままでも、流れを変える一歩を踏み出したい時",
+        "主導権": "受け身の流れから抜け、自分で次の動きを選び直したい時",
+    },
+    "縁": {
+        "結び直し": "人や機会との関係を、落ち着いて見直したい時",
+        "受け取り直し": "今あるつながりの意味を、急がず受け取り直したい時",
+    },
+}
+
+
+# ---- SHRINE_HISTORY_STORY_OVERRIDES ----
+SHRINE_HISTORY_STORY_OVERRIDES: dict[int, ShrineHistoryStoryOverride] = {
+    17: {
+        "subContext": "覚悟",
+        "heroMeaningCopy": "三峯神社は、迷いや不安を抱えたままでも、前に進む覚悟を固めたい時に向き合いやすい神社です。",
+        "shrineMeaning": "三峯神社は、険しい山中で信仰されてきた背景を持ち、簡単には進めない場面で覚悟を固める文脈と重ねて受け取りやすい神社です。",
+        "actionMeaning": "参拝を、結果を急ぐためではなく、迷いを抱えたままでも一度腹を決め、次の一歩へ向かうための行動として置けます。",
+    },
+    14: {
+        "subContext": "踏み出し",
+        "heroMeaningCopy": "鹿島神宮は、迷いや不安を抱えたままでも、流れを変える一歩を踏み出したい時に向き合いやすい神社です。",
+        "shrineMeaning": "鹿島神宮は、武神を祀る由緒を持ち、迷いを断ち、前へ進む判断を整える文脈と重ねて受け取りやすい神社です。",
+        "actionMeaning": "参拝を、勝ち負けを急ぐためではなく、停滞した気持ちから主導権を取り戻し、次の動きを選び直す行動として置けます。",
+    },
+    4: {
+        "subContext": "結び直し",
+        "heroMeaningCopy": "出雲大社は、人や機会とのつながりを見直したい時に向き合いやすい神社です。",
+        "shrineMeaning": "出雲大社は、縁結びの信仰で知られ、人との関係や機会の受け取り方を落ち着いて見直す文脈と重ねて受け取りやすい神社です。",
+        "actionMeaning": "参拝を、良い縁を急いで求めるためではなく、今ある関係やこれから選びたいつながりを整理する行動として置けます。",
+    },
 }
 
 
@@ -231,7 +289,11 @@ def _primary_benefit(input_: ShrineMeaningInput) -> str | None:
     return input_.goriyaku
 
 
+
 def _build_hero_meaning(input_: ShrineMeaningInput) -> str:
+    override = SHRINE_HISTORY_STORY_OVERRIDES.get(input_.shrine_id)
+    if override:
+        return override["heroMeaningCopy"]
     if input_.history_theme:
         display_copy = HISTORY_THEME_DISPLAY_COPY.get(input_.history_theme, "今の状態を整えたい時")
         return f"{input_.name_jp}は、{display_copy}に向き合いやすい神社です。"
@@ -248,7 +310,11 @@ def _build_consultation_summary(input_: ShrineMeaningInput) -> str:
     return "今回の相談は、いま抱えているテーマを一度ほどき、何を先に見直すかを整理する段階として読むのが自然です。"
 
 
+
 def _build_shrine_meaning(input_: ShrineMeaningInput) -> str:
+    override = SHRINE_HISTORY_STORY_OVERRIDES.get(input_.shrine_id)
+    if override:
+        return override["shrineMeaning"]
     if input_.description:
         return f"{input_.name_jp}は「{_clip(input_.description)}」という特徴を持ち、今回の相談で主題になっている整理や見直しのテーマと接続しやすい神社です。"
     benefit = _primary_benefit(input_)
@@ -259,7 +325,11 @@ def _build_shrine_meaning(input_: ShrineMeaningInput) -> str:
     return f"{input_.name_jp}は、今回の相談で主題になっている整理や立て直しのテーマと接続しやすく、意味を重ねて受け取りやすい候補です。"
 
 
+
 def _build_action_meaning(input_: ShrineMeaningInput) -> str:
+    override = SHRINE_HISTORY_STORY_OVERRIDES.get(input_.shrine_id)
+    if override:
+        return override["actionMeaning"]
     benefit = _primary_benefit(input_)
     theme_action = HISTORY_THEME_ACTION_CONTEXT.get(input_.history_theme or "")
     if benefit and theme_action:
@@ -290,9 +360,12 @@ def _build_benefit_action_context(input_: ShrineMeaningInput) -> str | None:
     benefit = _primary_benefit(input_)
     if not benefit:
         return None
-    display_copy = HISTORY_THEME_DISPLAY_COPY.get(input_.history_theme or "")
-    if display_copy:
-        return f"「{_clip(benefit)}」は願望成就の断定ではなく、{display_copy}の行動テーマを整える補助軸として扱います。"
+    action_result = HISTORY_THEME_ACTION_RESULT_CONTEXT.get(input_.history_theme or "")
+    if action_result:
+        return (
+            f"「{_clip(benefit)}」は結果を急ぐためではなく、"
+            f"{action_result}きっかけとして受け取りやすい要素です。"
+        )
     return f"「{_clip(benefit)}」は願望成就の断定ではなく、今の行動テーマを整える補助軸として扱います。"
 
 
@@ -374,6 +447,9 @@ def compose_shrine_meaning_payload(source: Any) -> ShrineMeaningPayloadV2:
 __all__ = [
     "ShrineMeaningInput",
     "ShrineMeaningPayloadV2",
+    "HISTORY_THEME_SUB_CONTEXT",
+    "SHRINE_HISTORY_STORY_OVERRIDES",
+    "ShrineHistoryStoryOverride",
     "build_display_fields",
     "build_generated_fields",
     "build_source_fields",
