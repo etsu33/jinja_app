@@ -1,5 +1,3 @@
-
-
 """Cultural translation dictionary for shrine meaning payloads.
 
 This module keeps shrine-specific cultural context outside the generic payload
@@ -59,6 +57,32 @@ SHRINE_CULTURE_TRANSLATIONS: dict[int, ShrineCultureTranslation] = {
         ),
         benefit_translation=(
             "仕事運は結果を急ぐためではなく、決断・主導権・切替を見直すための手がかりとして扱います。"
+        ),
+    ),
+    14: ShrineCultureTranslation(
+        landscape_tags=("境界", "東国"),
+        faith_tags=("守護", "起動", "突破"),
+        body_feeling_tags=("前進", "切替", "境界"),
+        historical_background=(
+            "鹿島神宮は、武神・剣神として信仰される武甕槌大神を祀り、"
+            "国譲りや神武東征の物語と結びついてきた神社です。"
+            "古くから旅立ちや勝負の前に、進む方向を定める場所として信仰されてきました。"
+        ),
+        place_meaning=(
+            "三峯神社が山の静けさの中で整える場所なら、"
+            "鹿島神宮は迷いを断ち、次の局面へ踏み出す感覚に近い場所です。"
+        ),
+        flow_guidance=(
+            "今は、迷いを抱えたまま立ち止まるより、"
+            "進む方向を一つ決めて動き始める方が合っています。"
+        ),
+        action_reason=(
+            "まずは大きな勝ち負けではなく、今日から動かす一歩と、"
+            "手放す迷いを一つずつ確認する感覚で向き合えます。"
+        ),
+        benefit_translation=(
+            "勝運・仕事運は結果を急ぐためではなく、決断・主導権・切替を明確にし、"
+            "次の局面へ踏み出すための手がかりとして扱います。"
         ),
     ),
 }
