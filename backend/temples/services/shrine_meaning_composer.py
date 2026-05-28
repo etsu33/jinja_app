@@ -486,19 +486,21 @@ def _block(
         "access": access,
     }
 
-# 1. 今のあなたとの接点
-# 2. 神社と文化の接続
-# 3. 今の状態と流れ
-# 4. 今日の扱い方
-# 5. 今日ここでやること
-# 6. 参拝後に見る変化
-# 7. 歴史文脈との接続
-# 8. 祭神の象徴
-# 9. ご利益と行動テーマ
+#
+# display responsibility:
+# 1. 今のあなたとの接点: 今の状態に合う入口コピー
+# 2. この場所に流れている考え方: 神社固有の文化・歴史文脈
+# 3. 今の状態と流れ: 相談状態と文化的流れの翻訳
+# 4. 今日の扱い方: 今日どう扱うかの行動前提
+# 5. 今日ここでやること: 参拝前・参拝中の具体行動
+# 6. 帰り道で整理し直す: 再相談・整理し直し導線
+# 7. 歴史文脈との接続: 補足としての歴史文脈
+# 8. 祭神の象徴: 補足としての象徴情報
+# 9. ご利益と行動テーマ: 補足としてのご利益翻訳
 def build_display_fields(generated: ShrineMeaningGeneratedV2) -> ShrineMeaningDisplayV2:
     maybe_blocks = [
         _block("hero", "今のあなたとの接点", generated["heroMeaningCopy"], "anonymous"),
-        _block("shrine_meaning", "神社と文化の接続", generated["shrineMeaning"], "free"),
+        _block("shrine_meaning", "この場所に流れている考え方", generated["shrineMeaning"], "free"),
         _block("consultation_summary", "今の状態と流れ", generated["consultationSummary"], "free"),
         _block("today_flow", "今日の扱い方", generated["todayFlowContext"], "premium"),
         _block("action_meaning", "今日ここでやること", generated["actionMeaning"], "premium"),
