@@ -121,6 +121,24 @@ HISTORY_THEME_ACTION_RESULT_CONTEXT: dict[str, str] = {
     "復興": "疲れや停滞を抱えた状態を、少しずつ整え直す",
 }
 
+BENEFIT_STATE_THEME_MAP: dict[str, tuple[str, ...]] = {
+    "仕事運": ("決断", "主導権", "継続", "切替", "集中"),
+    "商売繁盛": ("信頼形成", "循環", "継続", "受け渡し"),
+    "勝運": ("決断", "主導権", "停滞打破", "勝負前の整理"),
+    "縁結び": ("関係整理", "距離感", "受け取り直し", "選び直し"),
+    "厄除け": ("不安整理", "境界線", "守り", "リスク回避"),
+    "開運": ("切替", "停滞打破", "新しい流れ"),
+    "学業成就": ("集中", "積み重ね", "理解", "継続"),
+    "家内安全": ("土台確認", "安心", "生活維持"),
+    "交通安全": ("移動前の確認", "無事に進む", "境界越え"),
+    "航海安全": ("移動前の確認", "無事に進む", "境界越え"),
+    "海上安全": ("移動前の確認", "無事に進む", "境界越え"),
+    "金運": ("循環", "選択", "使い方", "商い"),
+    "美容": ("自己回復", "見せ方", "整え直し"),
+    "芸能運": ("表現", "継続", "技を磨く"),
+    "技芸上達": ("表現", "継続", "技を磨く"),
+}
+
 
 # ---- HISTORY_THEME_SUB_CONTEXT ----
 HISTORY_THEME_SUB_CONTEXT: dict[str, dict[str, str]] = {
@@ -303,10 +321,39 @@ def _clip(text: str, max_length: int = 56) -> str:
     return f"{text[:max_length]}…"
 
 
+
 def _primary_benefit(input_: ShrineMeaningInput) -> str | None:
     if input_.goriyaku_tags:
         return input_.goriyaku_tags[0]
     return input_.goriyaku
+
+
+def _benefit_labels(input_: ShrineMeaningInput) -> tuple[str, ...]:
+    labels: list[str] = []
+    seen: set[str] = set()
+
+    for source in (*input_.goriyaku_tags, input_.goriyaku or ""):
+        for label in _clean_str_list(source):
+            if label in seen:
+                continue
+            seen.add(label)
+            labels.append(label)
+
+    return tuple(labels)
+
+
+def _benefit_state_themes(input_: ShrineMeaningInput) -> tuple[str, ...]:
+    themes: list[str] = []
+    seen: set[str] = set()
+
+    for label in _benefit_labels(input_):
+        for theme in BENEFIT_STATE_THEME_MAP.get(label, ()):
+            if theme in seen:
+                continue
+            seen.add(theme)
+            themes.append(theme)
+
+    return tuple(themes)
 
 
 # hero:
@@ -414,12 +461,18 @@ def _build_benefit_action_context(input_: ShrineMeaningInput) -> str | None:
     if not benefit:
         return None
     action_result = HISTORY_THEME_ACTION_RESULT_CONTEXT.get(input_.history_theme or "")
+    state_themes = _benefit_state_themes(input_)
+    if state_themes:
+        theme_text = "・".join(state_themes[:3])
+        return (
+            f"「{_clip(benefit)}」は結果を急ぐためではなく、"
+            f"{theme_text}を見直すための手がかりとして扱います。"
+        )
     if action_result:
         return (
             f"「{_clip(benefit)}」は結果を急ぐためではなく、"
             f"{action_result}きっかけとして受け取りやすい要素です。"
         )
-
     return f"「{_clip(benefit)}」は願望成就の断定ではなく、今の行動テーマを整える補助軸として扱います。"
 
 
