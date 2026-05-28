@@ -97,7 +97,6 @@ HISTORY_THEME_DISPLAY_COPY: dict[str, str] = {
     "学び": "努力や積み重ねを整えたい時",
     "守り": "不安を落ち着けたい時",
     "復興": "疲れた状態を整え直したい時",
-
 }
 
 
@@ -109,7 +108,6 @@ HISTORY_THEME_ACTION_CONTEXT: dict[str, str] = {
     "学び": "努力を続ける前に、集中や積み重ねの方向を整えたい時に向き合いやすい神社です。",
     "守り": "不安を広げず、今の生活を落ち着いて守りたい時に向き合いやすい神社です。",
     "復興": "疲れや停滞を抱えた状態から、無理なく整え直したい時に向き合いやすい神社です。",
-
 }
 
 
@@ -141,7 +139,7 @@ HISTORY_THEME_SUB_CONTEXT: dict[str, dict[str, str]] = {
 CULTURAL_FLOW_CONTEXT: dict[str, str] = {
     "再出発": "今は、過去の延長で考え続けるより、一度区切りを置いて流れを作り直す方が合いやすい時期です。",
     "静寂": "今は、外へ答えを探しに行くより、情報や刺激を減らして静かに見直す方が合いやすい時期です。",
-    "勝負": "今は、勢いだけで押し切るより、迷いを一つに絞ってから動く方が流れを作りやすい時期です。",
+    "勝負": "今は、力で押し切るより、迷いの中心を一つに絞る方が動き出しやすい時期です。",
     "縁": "今は、新しいつながりを急いで増やすより、今ある関係や機会の意味を見直す方が合いやすい時期です。",
     "学び": "今は、手を広げるより、積み重ねる対象を一つに絞る方が理解を深めやすい時期です。",
     "守り": "今は、大きく変えるより、不安を広げないために今の土台を静かに確認する方が合いやすい時期です。",
@@ -154,12 +152,13 @@ def _cultural_flow_context(input_: ShrineMeaningInput) -> str | None:
         return None
     return CULTURAL_FLOW_CONTEXT.get(input_.history_theme)
 
+
 # ---- SHRINE_HISTORY_STORY_OVERRIDES ----
 SHRINE_HISTORY_STORY_OVERRIDES: dict[int, ShrineHistoryStoryOverride] = {
     17: {
         "subContext": "覚悟",
         "heroMeaningCopy": "三峯神社は、迷いや不安を抱えたままでも、前に進む覚悟を固めたい時に向き合いやすい神社です。",
-        "shrineMeaning": "三峯神社は、険しい山中で信仰されてきた背景を持ち、迷いを抱えたまま進む時に、一度腹を決める感覚と結びつきやすい神社です。",
+        "shrineMeaning": "三峯神社は、山深い地で自然への祈りや狼を守りの象徴として受け継いできた神社です。迷いを消してから進むのではなく、不安を抱えたままでも一度腹を決める感覚と結びつきやすい場所です。",
         "actionMeaning": "参拝前に、今いちばん決めきれていないことを一つだけ書き出します。参拝中は、その答えを急がず、帰り道で次に取る小さな一歩だけを確認します。",
     },
     14: {
@@ -175,6 +174,8 @@ SHRINE_HISTORY_STORY_OVERRIDES: dict[int, ShrineHistoryStoryOverride] = {
         "actionMeaning": "参拝前に、今大切にしたい関係を一つだけ思い浮かべます。参拝中は、急いで答えを出さず、帰り道で自分から整えたい関わり方を一つ確認します。",
     },
 }
+
+
 
 @dataclass(frozen=True)
 class ShrineMeaningInput:
@@ -334,7 +335,7 @@ def _build_hero_meaning(input_: ShrineMeaningInput) -> str:
 def _build_consultation_summary(input_: ShrineMeaningInput) -> str:
     flow_context = _cultural_flow_context(input_)
     if flow_context:
-        return f"{flow_context} まずは、今いちばん気になっていることを一つに絞る状態です。"
+        return f"{flow_context} 気になっていることを一つに絞ると、次の判断が見えやすくなります。"
     if input_.description or input_.history_theme:
         return "今は答えを急ぐより、何を決めきれていないのかを一つに絞る状態です。まず優先順位を見直す方が、次の判断に進みやすくなります。"
     if input_.goriyaku or input_.sajin or input_.element:
@@ -420,7 +421,6 @@ def _build_benefit_action_context(input_: ShrineMeaningInput) -> str | None:
         )
 
     return f"「{_clip(benefit)}」は願望成就の断定ではなく、今の行動テーマを整える補助軸として扱います。"
-
 
 
 def _build_today_flow_context(input_: ShrineMeaningInput) -> str | None:
