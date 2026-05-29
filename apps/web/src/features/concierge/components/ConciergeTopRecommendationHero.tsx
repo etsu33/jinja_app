@@ -38,7 +38,7 @@ export default function ConciergeTopRecommendationHero({
   originSummary = null,
   catchCopy,
   whyTop: _whyTop = null,
-  primaryReason = null,
+  primaryReason: _primaryReason = null,
   secondaryReason: _secondaryReason = null,
   differenceFromOthers: _differenceFromOthers = null,
   nextActionHint: _nextActionHint = null,
@@ -49,6 +49,8 @@ export default function ConciergeTopRecommendationHero({
   onDetailClick,
 }: Props) {
   const visibleTrustLabels = trustLabels.filter(Boolean).slice(0, 4);
+  const entranceCopySource = subtitle ?? catchCopy;
+  const entranceCopy = entranceCopySource.split("。")[0] ? `${entranceCopySource.split("。")[0]}。` : entranceCopySource;
 
   return (
     <section className="rounded-[30px] border border-emerald-200 bg-gradient-to-b from-emerald-50/80 to-white p-6 shadow-lg shadow-emerald-900/10 ring-1 ring-emerald-100">
@@ -81,16 +83,10 @@ export default function ConciergeTopRecommendationHero({
         <div className="rounded-2xl border border-emerald-100 bg-white/70 px-4 py-3 shadow-sm shadow-emerald-900/5">
           <div className="space-y-1.5">
             <p className="text-[11px] font-semibold tracking-[0.14em] text-emerald-700">今回の入口</p>
-            <p className="text-sm font-semibold leading-6 text-slate-800">
-              {subtitle ?? catchCopy}
-            </p>
+            <p className="text-sm font-semibold leading-6 text-slate-800">{entranceCopy}</p>
             {topReasonLabel ? <p className="text-xs leading-5 text-slate-500">{topReasonLabel}</p> : null}
           </div>
         </div>
-
-        {primaryReason ? (
-          <p className="text-sm leading-7 text-slate-700">{primaryReason.split("。")[0] || primaryReason}</p>
-        ) : null}
 
         <div className="pt-2">
           {href ? (
