@@ -81,6 +81,27 @@ function normalizeTagList(tags: string[] | null | undefined): string[] {
     .filter(Boolean);
 }
 
+function normalizeTrustMetadata(raw: any) {
+  if (!raw || typeof raw !== "object") return null;
+
+  const culturalStatusRaw = raw.cultural_status ?? raw.culturalStatus;
+  const culturalStatus = Array.isArray(culturalStatusRaw)
+    ? culturalStatusRaw.filter((v): v is string => typeof v === "string" && v.trim().length > 0).map((v) => v.trim())
+    : [];
+
+  return {
+    rankClass: typeof raw.rank_class === "string" ? raw.rank_class : typeof raw.rankClass === "string" ? raw.rankClass : null,
+    culturalStatus,
+    lineage: typeof raw.lineage === "string" ? raw.lineage : null,
+    originSummary:
+      typeof raw.origin_summary === "string"
+        ? raw.origin_summary
+        : typeof raw.originSummary === "string"
+          ? raw.originSummary
+          : null,
+  };
+}
+
 function toDisplayTag(tag: string): string {
   return labelNeedDisplayTag(tag);
 }
@@ -103,6 +124,7 @@ export function conciergeToShrineListItems(resp: ConciergeResponse): ConciergeRe
     .map((r, index) => {
       const id = safeId(r);
       const name = r.display_name ?? r.name;
+      const trustMetadata = normalizeTrustMetadata(r.trust_metadata ?? r.trustMetadata ?? null);
 
       const matchedTags = normalizeTagList(r.breakdown?.matched_need_tags);
       const rawTags = matchedTags.length ? matchedTags : normalizeTagList(resp.data?._need?.tags);
@@ -165,6 +187,7 @@ export function conciergeToShrineListItems(resp: ConciergeResponse): ConciergeRe
         id,
         tid: threadId,
         detailHref,
+        trustMetadata,
         cardProps: {
           shrineId: r.shrine_id,
           title: name,

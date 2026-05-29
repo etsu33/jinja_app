@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import math
 from typing import Any, Dict, List, Optional
+from dataclasses import asdict
 
 from django.db.models import Q
 
@@ -11,6 +12,7 @@ from temples.services.concierge_candidate_utils import (
     _dedupe_candidates,
     _to_float,
 )
+from temples.services.shrine_trust_metadata import get_shrine_trust_metadata
 
 log = logging.getLogger(__name__)
 
@@ -98,6 +100,7 @@ def build_chat_candidates(
 
         pref = getattr(s, "place_ref", None)
         place_id = getattr(pref, "place_id", None) if pref else None
+        trust_metadata = get_shrine_trust_metadata(s.id)
 
         candidates.append(
             {
@@ -120,6 +123,7 @@ def build_chat_candidates(
                 if hasattr(s, "goriyaku_tags")
                 else [],
                 "popular_score": getattr(s, "popular_score", None),
+                "trust_metadata": asdict(trust_metadata) if trust_metadata else None,
             }
         )
 

@@ -19,6 +19,7 @@ type NormalizedItemBase = {
   breakdown: any | null;
   breakdown_detail?: any | null;
   reasonFacts?: ConciergeReasonFacts | null;
+  trustMetadata?: any | null;
   detailHref?: string;
   isDummy?: boolean;
 };
@@ -91,6 +92,7 @@ function normalizeRecommendation(r: any, tid: string | null, analyticsContext: D
   const breakdown = r?.breakdown ?? null;
   const breakdownDetail = r?.breakdown_detail ?? r?.breakdownDetail ?? null;
   const reasonFacts = r?.reason_facts ?? r?.reasonFacts ?? null;
+  const trustMetadata = r?.trust_metadata ?? r?.trustMetadata ?? null;
 
   if (shrineId) {
     return {
@@ -104,6 +106,7 @@ function normalizeRecommendation(r: any, tid: string | null, analyticsContext: D
       breakdown,
       breakdown_detail: breakdownDetail,
       reasonFacts,
+      trustMetadata,
       detailHref,
       isDummy,
       goriyakuTags: [],
@@ -122,6 +125,7 @@ function normalizeRecommendation(r: any, tid: string | null, analyticsContext: D
       breakdown,
       breakdown_detail: breakdownDetail,
       reasonFacts,
+      trustMetadata,
       detailHref,
       isDummy,
       detailLabel: "神社の詳細を見る",
@@ -187,6 +191,14 @@ function dedupeItems(items: NormalizedItem[]): NormalizedItem[] {
           typeof item.breakdown_detail === "object"
         ) {
           out[idx] = { ...reg, breakdown_detail: item.breakdown_detail };
+        }
+        if (
+          reg?.kind === "registered" &&
+          (reg.trustMetadata == null || typeof reg.trustMetadata !== "object") &&
+          item.trustMetadata &&
+          typeof item.trustMetadata === "object"
+        ) {
+          out[idx] = { ...reg, trustMetadata: item.trustMetadata };
         }
       }
       continue;

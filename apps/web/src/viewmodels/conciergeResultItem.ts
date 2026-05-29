@@ -1,7 +1,15 @@
 // conciergeResultItem.ts
+export type ShrineTrustMetadataViewModel = {
+  rankClass?: string | null;
+  culturalStatus: string[];
+  lineage?: string | null;
+  originSummary?: string | null;
+};
+
 export type ConciergeResultItem = {
   id: string;
   tid: string | null;
+  trustMetadata?: ShrineTrustMetadataViewModel | null;
   cardProps: {
     shrineId: number;
     title: string;
