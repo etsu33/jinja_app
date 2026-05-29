@@ -124,6 +124,13 @@ export type ConciergeRecommendation = {
   breakdown?: ConciergeBreakdown | null;
   breakdown_detail?: any | null;
 
+  trust_metadata?: {
+    rank_class?: string | null;
+    cultural_status?: string[] | null;
+    lineage?: string | null;
+    origin_summary?: string | null;
+  } | null;
+
   tags?: string[];
   deities?: string[];
 

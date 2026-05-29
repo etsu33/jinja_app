@@ -693,6 +693,12 @@ export default function ConciergeSectionsRenderer({
                           birthdate: filterState?.birthdate ?? null,
                           needTags: heroItem.breakdown?.matched_need_tags ?? [],
                         });
+                        const trustMetadata = (heroItem as any).trustMetadata ?? null;
+                        const trustLabels = [
+                          trustMetadata?.rank_class ?? trustMetadata?.rankClass,
+                          ...(trustMetadata?.cultural_status ?? trustMetadata?.culturalStatus ?? []),
+                          trustMetadata?.lineage,
+                        ].filter(Boolean);
 
                         return (
                           <div key={`rec-${i}-hero-${heroItem.shrineId}`} className="space-y-2">
@@ -718,22 +724,44 @@ export default function ConciergeSectionsRenderer({
                               differenceFromOthers={null}
                               tags={(heroItem.breakdown?.matched_need_tags ?? []).map(labelNeedDisplayTag).slice(0, 3)}
                               routeLabel="神社の詳細を見る"
-                            onDetailClick={() =>
-                              trackSearchEvent("shrine_detail_transition", {
-                                source: "concierge_result",
-                                threadId: tid ?? undefined,
-                                resultSetId,
-                                position: "hero_primary",
-                                recommendationRank: 1,
-                                shrineId: heroItem.shrineId,
-                                mode: analyticsContext?.mode ?? normalizedMode,
-                                flow: analyticsContext?.flow,
-                                hasBirthdate: analyticsContext?.hasBirthdate,
-                                recommendationCount: analyticsContext?.recommendationCount,
-                                firstClick: resolveFirstResultClick(resultSetId),
-                              })
-                            }
+                              onDetailClick={() =>
+                                trackSearchEvent("shrine_detail_transition", {
+                                  source: "concierge_result",
+                                  threadId: tid ?? undefined,
+                                  resultSetId,
+                                  position: "hero_primary",
+                                  recommendationRank: 1,
+                                  shrineId: heroItem.shrineId,
+                                  mode: analyticsContext?.mode ?? normalizedMode,
+                                  flow: analyticsContext?.flow,
+                                  hasBirthdate: analyticsContext?.hasBirthdate,
+                                  recommendationCount: analyticsContext?.recommendationCount,
+                                  firstClick: resolveFirstResultClick(resultSetId),
+                                })
+                              }
                             />
+
+                            {trustMetadata ? (
+                              <section className={conciergeSoftCardClass}>
+                                <div className="space-y-2">
+                                  <div className="flex flex-wrap gap-1">
+                                    {trustLabels.slice(0, 4).map((label: string) => (
+                                      <span
+                                        key={label}
+                                        className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600"
+                                      >
+                                        {label}
+                                      </span>
+                                    ))}
+                                  </div>
+                                  {trustMetadata.origin_summary || trustMetadata.originSummary ? (
+                                    <p className="text-xs leading-6 text-slate-600">
+                                      {trustMetadata.origin_summary ?? trustMetadata.originSummary}
+                                    </p>
+                                  ) : null}
+                                </div>
+                              </section>
+                            ) : null}
 
                             {shrineMeaningVisibility !== "hidden" ? (
                               <section className={conciergeSoftCardClass}>
