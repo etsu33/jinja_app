@@ -11,6 +11,8 @@ type Props = {
   topReasonLabel?: string | null;
   eyebrowLabel?: string | null;
   subtitle?: string | null;
+  trustLabels?: string[];
+  originSummary?: string | null;
   catchCopy: string;
   whyTop?: string | null;
   primaryReason?: string | null;
@@ -32,6 +34,8 @@ export default function ConciergeTopRecommendationHero({
   topReasonLabel = null,
   eyebrowLabel = null,
   subtitle = null,
+  trustLabels = [],
+  originSummary = null,
   catchCopy,
   whyTop: _whyTop = null,
   primaryReason = null,
@@ -44,30 +48,44 @@ export default function ConciergeTopRecommendationHero({
   onRouteClick: _onRouteClick,
   onDetailClick,
 }: Props) {
+  const visibleTrustLabels = trustLabels.filter(Boolean).slice(0, 4);
+
   return (
     <section className="rounded-[30px] border border-emerald-200 bg-gradient-to-b from-emerald-50/80 to-white p-6 shadow-lg shadow-emerald-900/10 ring-1 ring-emerald-100">
       <div className="space-y-5">
         <div className="space-y-3">
-          {topReasonLabel ? (
-            <div className="inline-flex rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-              {topReasonLabel}
-            </div>
-          ) : null}
-
           <div className="space-y-2">
             <div className="text-xs font-semibold tracking-[0.18em] text-emerald-700">
-              {eyebrowLabel ?? "今の相談に合いそうな神社"}
+              {eyebrowLabel ?? "信頼できる神社候補"}
             </div>
             <h2 className="text-xl font-semibold leading-8 text-slate-950">{name}</h2>
-            <p className="text-sm font-semibold leading-6 text-emerald-700">
-              {subtitle ?? "今のあなたには、まずここを軸に見ると整理しやすそうです。"}
-            </p>
+
+            {visibleTrustLabels.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {visibleTrustLabels.map((label) => (
+                  <span
+                    key={label}
+                    className="rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-emerald-800 ring-1 ring-emerald-100"
+                  >
+                    {label}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+
+            {originSummary ? <p className="text-sm leading-7 text-slate-700">{originSummary}</p> : null}
             {address ? <div className="text-xs leading-5 text-slate-500">{address}</div> : null}
           </div>
         </div>
 
-        <div className="rounded-2xl border border-emerald-100 bg-white/85 px-4 py-4 shadow-sm shadow-emerald-900/5">
-          <p className="text-base font-semibold leading-7 text-slate-950">{catchCopy}</p>
+        <div className="rounded-2xl border border-emerald-100 bg-white/70 px-4 py-3 shadow-sm shadow-emerald-900/5">
+          <div className="space-y-1.5">
+            <p className="text-[11px] font-semibold tracking-[0.14em] text-emerald-700">今回の入口</p>
+            <p className="text-sm font-semibold leading-6 text-slate-800">
+              {subtitle ?? catchCopy}
+            </p>
+            {topReasonLabel ? <p className="text-xs leading-5 text-slate-500">{topReasonLabel}</p> : null}
+          </div>
         </div>
 
         {primaryReason ? (

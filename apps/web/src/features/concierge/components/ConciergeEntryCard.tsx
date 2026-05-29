@@ -68,7 +68,7 @@ export default function ConciergeEntryCard({
           type="text"
           value={sessionState.sessionNickname ?? ""}
           onChange={(e) => setSessionNickname(e.target.value)}
-          placeholder="例: えつこ"
+          placeholder="例: なまえ"
           className="w-full rounded-2xl border border-stone-200/30 bg-stone-50/25 px-2.5 py-1.5 text-sm text-stone-900 placeholder:text-stone-400 placeholder:opacity-60"
           maxLength={20}
         />
