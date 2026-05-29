@@ -21,8 +21,6 @@ describe("ConciergeTopRecommendationHero", () => {
 
     expect(screen.getByText("今回の入口")).toBeInTheDocument();
     expect(screen.getByText("今の相談に合う候補です。")).toBeInTheDocument();
-    expect(screen.getByText("今回の入口")).toBeInTheDocument();
-    expect(screen.getByText("今の相談に合う候補です。")).toBeInTheDocument();
     expect(
       screen.queryByText("今回の相談の中心にある「金運」のテーマと重なるため、この神社が候補に入っています"),
     ).not.toBeInTheDocument();
