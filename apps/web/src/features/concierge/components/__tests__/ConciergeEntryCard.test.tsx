@@ -60,13 +60,13 @@ describe("ConciergeEntryCard", () => {
       />,
     );
 
-    fireEvent.change(screen.getByPlaceholderText("例: えつこ"), { target: { value: "えつこ" } });
+    fireEvent.change(screen.getByPlaceholderText("例: なまえ"), { target: { value: "なまえ" } });
     fireEvent.change(screen.getByLabelText("今の言葉を、静かに書く"), { target: { value: "静かな場所に行きたい" } });
     fireEvent.click(screen.getByRole("button", { name: "切り替え" }));
     fireEvent.click(screen.getByRole("button", { name: "言葉を整える" }));
     fireEvent.click(screen.getByRole("button", { name: "クリア" }));
 
-    expect(setSessionNickname).toHaveBeenCalledWith("えつこ");
+    expect(setSessionNickname).toHaveBeenCalledWith("なまえ");
     expect(setNeedText).toHaveBeenCalledWith("静かな場所に行きたい");
     expect(onPickExample).toHaveBeenCalledWith("気持ちを切り替えたい");
     expect(onSubmit).toHaveBeenCalledTimes(1);
