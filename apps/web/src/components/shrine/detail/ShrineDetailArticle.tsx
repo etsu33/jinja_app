@@ -196,36 +196,6 @@ function ShrineDetailHeroHeader(props: { title: string; heroMeaningCopy?: string
   );
 }
 
-function ShrineComparisonDisclosure(props: {
-  recommendationMeta: {
-    rankTitle?: string | null;
-    rankBody?: string | null;
-    rankComparison?: {
-      is_top?: boolean;
-      gap_from_top?: number;
-    } | null;
-  };
-}) {
-  const rankTitle = props.recommendationMeta.rankTitle?.trim() || "上位候補との違い";
-  const rankBody = props.recommendationMeta.rankBody?.trim() || null;
-
-  if (!rankBody) return null;
-
-  return (
-    <details className="rounded-2xl border border-slate-200 bg-white p-4">
-      <summary className="cursor-pointer list-none text-sm font-medium text-slate-700">
-        <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-700">
-          比較を見る
-        </span>
-      </summary>
-
-      <div className="mt-4 space-y-2">
-        <h2 className="text-base font-semibold text-slate-900">{rankTitle}</h2>
-        <p className="text-sm leading-7 text-slate-700">{rankBody}</p>
-      </div>
-    </details>
-  );
-}
 
 
 export default function ShrineDetailArticle({
@@ -270,7 +240,6 @@ export default function ShrineDetailArticle({
   meaningPayloadSource?: "v2" | "fallback";
   saveActionNode?: React.ReactNode;
 }) {
-  const hasRecommendationMeta = Boolean(recommendationMeta?.rankTitle && recommendationMeta?.rankBody);
   const hasLayeredSections = freeDisplaySections.length > 0 || premiumDisplaySections.length > 0;
   const freeSections = hasLayeredSections ? freeDisplaySections.map((item) => item.section) : sections;
   const premiumSections = premiumDisplaySections.map((item) => item.section);
@@ -408,12 +377,7 @@ export default function ShrineDetailArticle({
 
       {personalMeaningVisibility === "teaser" && hasPremiumSections ? <PremiumUpgradePrompt /> : null}
 
-      {/* Premium比較カードは後続PRで再設計する。
-      {isPremiumActive && hasRecommendationMeta && recommendationMeta ? (
-        <section>
-          <ShrineComparisonDisclosure recommendationMeta={recommendationMeta} />
-        </section>
-      ) : null} */}
+      {/* Premium比較カードは後続PRで再設計する。 */}
 
       {showGoshuinSection ? (
         <section id="goshuins">
