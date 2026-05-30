@@ -27,6 +27,7 @@ function ShrinesPageContent() {
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadedQuery, setLoadedQuery] = useState<string | null>(null);
   const [goriyakuTags, setGoriyakuTags] = useState<GoriyakuTag[]>([]);
   const [tagsLoading, setTagsLoading] = useState(false);
   const [tagsError, setTagsError] = useState<string | null>(null);
@@ -82,6 +83,7 @@ function ShrinesPageContent() {
       setCards([]);
       setCount(0);
       setError(null);
+      setLoadedQuery(q);
       setLoading(false);
       return () => {
         alive = false;
@@ -90,6 +92,7 @@ function ShrinesPageContent() {
 
     setLoading(true);
     setError(null);
+    setLoadedQuery(null);
 
     fetchShrines({ q })
       .then((data) => {
@@ -97,11 +100,13 @@ function ShrinesPageContent() {
         const nextCards = data.results.map((shrine) => buildShrineListCardModel(shrine));
         setCards(nextCards);
         setCount(data.count);
+        setLoadedQuery(q);
       })
       .catch(() => {
         if (!alive) return;
         setCards([]);
         setCount(0);
+        setLoadedQuery(q);
         setError("神社データの取得に失敗しました");
       })
       .finally(() => {
@@ -115,7 +120,7 @@ function ShrinesPageContent() {
   }, [q, shouldShowSearchResults]);
 
   const hasSearched = q.length > 0;
-  const isEmpty = shouldShowSearchResults && !loading && !error && hasSearched && count === 0;
+  const isEmpty = shouldShowSearchResults && !loading && !error && hasSearched && loadedQuery === q && count === 0;
 
   useEffect(() => {
     if (!isEmpty) return;
