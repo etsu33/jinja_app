@@ -144,7 +144,15 @@ function collectMeaningBlockCardIds(sections: ShrineDetailSectionModel[]): Shrin
   return [...ids];
 }
 
-function PremiumUpgradePrompt() {
+function PremiumUpgradePrompt({
+  shrineId,
+  ctx,
+  tid,
+}: {
+  shrineId?: number | string | null;
+  ctx?: string | null;
+  tid?: string | number | null;
+}) {
   const { isLoggedIn, loading: authLoading } = useAuth();
   const isGuestUser = !authLoading && !isLoggedIn;
   const href = isGuestUser ? buildLoginHref("/billing/upgrade") : "/billing/upgrade";
@@ -170,6 +178,9 @@ function PremiumUpgradePrompt() {
               accessLevel: isGuestUser ? "anonymous" : "free",
               visibility: "teaser",
               ctaType: "continue_with_premium",
+              shrineId: shrineId ?? undefined,
+              threadId: tid != null ? String(tid) : undefined,
+              mode: ctx === "concierge" ? "need" : undefined,
             })
           }
         >
@@ -302,6 +313,8 @@ export default function ShrineDetailArticle({
   isPremiumActive = false,
   recommendationMeta = null,
   stateDelta = null,
+  ctx = null,
+  tid = null,
   meaningPayloadSource = "fallback",
   saveActionNode,
 }: {
@@ -327,6 +340,8 @@ export default function ShrineDetailArticle({
     } | null;
   } | null;
   stateDelta?: StateDelta | null;
+  ctx?: string | null;
+  tid?: string | number | null;
   meaningPayloadSource?: "v2" | "fallback";
   saveActionNode?: React.ReactNode;
 }) {
@@ -505,7 +520,9 @@ export default function ShrineDetailArticle({
         <ShrineDetailSections sections={premiumSections} />
       ) : null}
 
-      {personalMeaningVisibility === "teaser" && hasPremiumSections ? <PremiumUpgradePrompt /> : null}
+      {personalMeaningVisibility === "teaser" && hasPremiumSections ? (
+        <PremiumUpgradePrompt shrineId={cardProps.shrineId} ctx={ctx} tid={tid} />
+      ) : null}
 
       {/* Premium比較カードは後続PRで再設計する。 */}
 
