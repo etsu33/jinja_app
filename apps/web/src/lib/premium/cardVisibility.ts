@@ -24,7 +24,8 @@ export type CardId =
   | "shrine_goshuin_preview"
   | "context_reason"
   | "personal_meaning"
-  | "saved_record";
+  | "saved_record"
+  | "recommendation_meta";
 
 export type CardVisibilityPolicy = {
   cardId: CardId;
@@ -166,6 +167,12 @@ export const CARD_VISIBILITY_POLICIES: CardVisibilityPolicy[] = [
   },
   {
     cardId: "saved_record",
+    anonymous: "hidden",
+    free: "visible",
+    premium: "visible",
+  },
+  {
+    cardId: "recommendation_meta",
     anonymous: "hidden",
     free: "visible",
     premium: "visible",

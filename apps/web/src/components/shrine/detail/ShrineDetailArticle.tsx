@@ -348,6 +348,10 @@ export default function ShrineDetailArticle({
   const contextReasonVisibility = getVisibilityForCard("context_reason", accessLevel);
   const personalMeaningVisibility = getVisibilityForCard("personal_meaning", accessLevel);
   const savedRecordVisibility = getVisibilityForCard("saved_record", accessLevel);
+  const recommendationMetaVisibility = getVisibilityForCard("recommendation_meta", accessLevel);
+  const previousComparisonVisibility: CardVisibilityState = isPremiumActive
+    ? getVisibilityForCard("previous_comparison", accessLevel)
+    : "teaser";
 
   const contextReasonSections = buildContextReasonSections({
     sections: freeSections,
@@ -431,8 +435,39 @@ export default function ShrineDetailArticle({
         payloadSource: meaningPayloadSource,
       });
     }
+
+    if (recommendationMeta?.rankTitle && recommendationMeta?.rankBody) {
+      trackCardEvent({
+        event:
+          recommendationMetaVisibility === "partial" || recommendationMetaVisibility === "teaser"
+            ? "card_partial_view"
+            : "card_view",
+        cardId: "recommendation_meta",
+        source: "shrine_detail",
+        accessLevel,
+        visibility: recommendationMetaVisibility,
+        shrineId: cardProps.shrineId,
+        payloadSource: meaningPayloadSource,
+      });
+    }
+
+    if (stateDelta && previousComparisonVisibility !== "hidden") {
+      trackCardEvent({
+        event:
+          previousComparisonVisibility === "partial" || previousComparisonVisibility === "teaser"
+            ? "card_partial_view"
+            : "card_view",
+        cardId: "previous_comparison",
+        source: "shrine_detail",
+        accessLevel,
+        visibility: previousComparisonVisibility,
+        shrineId: cardProps.shrineId,
+        payloadSource: meaningPayloadSource,
+      });
+    }
   }, [
     accessLevel,
+    cardProps.shrineId,
     contextReasonVisibility,
     freeMeaningBlockCardIdKey,
     freeMeaningBlockCardIds,
@@ -442,8 +477,13 @@ export default function ShrineDetailArticle({
     personalMeaningVisibility,
     premiumMeaningBlockCardIdKey,
     premiumMeaningBlockCardIds,
+    previousComparisonVisibility,
+    recommendationMeta?.rankBody,
+    recommendationMeta?.rankTitle,
+    recommendationMetaVisibility,
     resolvedSaveActionNode,
     savedRecordVisibility,
+    stateDelta,
   ]);
 
   return (
