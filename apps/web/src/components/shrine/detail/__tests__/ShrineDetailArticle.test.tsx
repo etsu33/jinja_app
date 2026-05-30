@@ -1,5 +1,13 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const analyticsMocks = vi.hoisted(() => ({
+  trackCardEvent: vi.fn(),
+}));
+
+vi.mock("@/lib/analytics/cardEvents", () => ({
+  trackCardEvent: analyticsMocks.trackCardEvent,
+}));
 
 import ShrineDetailArticle from "../ShrineDetailArticle";
 
@@ -47,6 +55,9 @@ function SaveActionStub({ onToggleSuccess }: { onToggleSuccess?: (nextFav: boole
 }
 
 describe("ShrineDetailArticle", () => {
+  beforeEach(() => {
+    analyticsMocks.trackCardEvent.mockClear();
+  });
   it("保存成功時の notice と保存先導線を表示する", () => {
     render(
       <ShrineDetailArticle
@@ -109,5 +120,81 @@ describe("ShrineDetailArticle", () => {
     expect(screen.getByText("保存を解除しました")).toBeInTheDocument();
     expect(screen.queryByText("保存しました")).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "保存先を見る" })).not.toBeInTheDocument();
+  });
+
+  it("推薦理由と前回比較の view イベントを送信する", async () => {
+    render(
+      <ShrineDetailArticle
+        cardProps={{
+          shrineId: 17,
+          title: "乃木神社",
+          href: "/shrines/17",
+          imageUrl: null,
+          badges: [],
+          metaChips: [],
+          address: "東京都港区赤坂",
+        } as any}
+        heroImageUrl={null}
+        heroMeaningCopy={null}
+        benefitLabels={[]}
+        tags={[]}
+        publicGoshuinsPreview={[]}
+        publicGoshuinsViewAllHref=""
+        sections={[]}
+        isPremiumActive
+        recommendationMeta={{
+          rankTitle: "この神社が1位の理由",
+          rankBody: "相談内容との一致が主因です。",
+          rankComparison: {
+            is_top: true,
+            gap_from_top: 0,
+          },
+        }}
+        stateDelta={{
+          previous: null,
+          current: null,
+          changedNeedTags: ["career"],
+          continuedNeedTags: ["mental"],
+          daysSincePrevious: 1,
+          within7DaysSincePrevious: true,
+          summary: "前回より行動に意識が向いています。",
+          combinationChange: {
+            previousTitle: null,
+            currentTitle: "仕事と不安",
+            changed: true,
+            summary: "状態の重なりが変化しています。",
+          },
+          transitionNarrative: {
+            type: "progression",
+            title: "動き出し",
+            summary: "前回より次の行動が見えています。",
+          },
+        }}
+        saveActionNode={null}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(analyticsMocks.trackCardEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: "card_view",
+          cardId: "recommendation_meta",
+          source: "shrine_detail",
+          accessLevel: "premium",
+          visibility: "visible",
+          shrineId: 17,
+        }),
+      );
+      expect(analyticsMocks.trackCardEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: "card_view",
+          cardId: "previous_comparison",
+          source: "shrine_detail",
+          accessLevel: "premium",
+          visibility: "visible",
+          shrineId: 17,
+        }),
+      );
+    });
   });
 });
