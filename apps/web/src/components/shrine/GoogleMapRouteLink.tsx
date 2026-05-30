@@ -12,7 +12,15 @@ type Props = {
   className?: string;
 };
 
-export default function GoogleMapRouteLink({ href, label, shrineId = null, ctx = null, tid = null, historyTheme = null, className }: Props) {
+export default function GoogleMapRouteLink({
+  href,
+  label,
+  shrineId = null,
+  ctx = null,
+  tid = null,
+  historyTheme = null,
+  className,
+}: Props) {
   return (
     <a
       href={href}
