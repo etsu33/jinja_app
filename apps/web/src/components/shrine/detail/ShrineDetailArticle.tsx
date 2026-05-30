@@ -408,11 +408,12 @@ export default function ShrineDetailArticle({
 
       {personalMeaningVisibility === "teaser" && hasPremiumSections ? <PremiumUpgradePrompt /> : null}
 
+      {/* Premium比較カードは後続PRで再設計する。
       {isPremiumActive && hasRecommendationMeta && recommendationMeta ? (
         <section>
           <ShrineComparisonDisclosure recommendationMeta={recommendationMeta} />
         </section>
-      ) : null}
+      ) : null} */}
 
       {showGoshuinSection ? (
         <section id="goshuins">
