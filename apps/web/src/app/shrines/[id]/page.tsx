@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import type { Shrine } from "@/lib/api/shrines";
 import type { ConciergeBreakdown } from "@/lib/api/concierge";
-import { getConciergeThreadServer } from "@/lib/api/concierge.server";
+import { getConciergeThreadServer, getConciergeThreadsServer } from "@/lib/api/concierge.server";
 import { getBillingStatusServer } from "@/lib/api/billing.server";
 import { getShrinePublicServer } from "@/lib/api/shrines.server";
 import { fetchPublicGoshuinsForShrineServer } from "@/lib/api/publicGoshuins.server";
@@ -41,6 +41,10 @@ import {
 } from "@/features/concierge/copy/needDisplayCopy";
 
 import { fetchShrineMeaningPayloadV2Server } from "@/lib/api/shrineMeaning.server";
+
+import { buildPreviousConsultationSummary } from "@/lib/concierge/buildPreviousConsultationSummary";
+import { compareState } from "@/lib/concierge/compareState";
+import type { StateDelta } from "@/lib/concierge/stateComparison";
 
 function normalizeCtx(v?: string | null): "map" | "concierge" | null {
   return v === "map" || v === "concierge" ? v : null;
@@ -292,6 +296,8 @@ export default async function Page({ params, searchParams }: Props) {
     gap_from_top?: number;
     comparison_summary?: string | null;
   } | null = null;
+
+  let stateDelta: StateDelta | null = null;
   
   let selectedRecommendation: Record<string, any> | null = null;
 
@@ -307,11 +313,28 @@ export default async function Page({ params, searchParams }: Props) {
         const recommendation = (thread.recommendations ?? []).find((r) => Number(r?.shrine_id ?? r?.id) === numericId);
         selectedRecommendation = recommendation ?? null;
 
-
         recommendationRankExplanation = recommendation?.rank_explanation as typeof recommendationRankExplanation;
-
         recommendationRankComparison = recommendation?.rank_comparison as typeof recommendationRankComparison;
 
+        const threads = await getConciergeThreadsServer();
+        const currentThreadId = Number(tid);
+        const currentIndex = threads.findIndex((t) => t != null && Number(t.id) === currentThreadId);
+        const previousThread = currentIndex >= 0 ? (threads[currentIndex + 1] ?? null) : null;
+        const previousThreadId = previousThread?.id ?? null;
+
+        if (previousThreadId != null) {
+          const previousThreadDetail = await getConciergeThreadServer(String(previousThreadId));
+          const currentSummary = buildPreviousConsultationSummary(thread);
+          const previousSummary = buildPreviousConsultationSummary(previousThreadDetail);
+          stateDelta = compareState(previousSummary, currentSummary);
+          serverLog("info", "SHRINE_DETAIL_PREVIOUS_THREAD_RESOLVED", {
+            shrineId: numericId,
+            tid,
+            previousThreadId,
+            hasPreviousThreadDetail: Boolean(previousThreadDetail),
+            hasStateDelta: Boolean(stateDelta),
+          });
+        }
       }
     } catch (e) {
       serverLog("warn", "GET_CONCIERGE_THREAD_FAILED", {
@@ -325,6 +348,7 @@ export default async function Page({ params, searchParams }: Props) {
       conciergeMode = null;
       recommendationRankExplanation = null;
       recommendationRankComparison = null;
+      stateDelta = null;
     }
   }
 
@@ -417,6 +441,7 @@ export default async function Page({ params, searchParams }: Props) {
       >
         <ShrineDetailArticle
           {...model}
+          stateDelta={stateDelta}
           isPremiumActive={isPremiumActive}
           addGoshuinHref={addGoshuinHref}
           saveActionNode={
