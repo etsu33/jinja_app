@@ -256,25 +256,29 @@ function ShrineDetailStateDeltaSection({
           </div>
         ) : null}
 
-        <div className="rounded-2xl bg-slate-50 p-3">
-          <p className="text-xs font-semibold text-slate-500">今優先したいこと</p>
-          <p className="mt-2 text-sm leading-6 text-slate-700">
-            {renderStateDeltaTagSentence(
-              changedNeedTags,
-              "今回は新しく強まったテーマを断定するより、今見えている流れを優先して整理しています。",
-            )}
-          </p>
-        </div>
+        <DetailDisclosureBlock title="テーマの内訳" summary="今優先したいこと・変わらず残っていること" defaultOpen={false}>
+          <div className="space-y-3">
+            <div className="rounded-2xl bg-slate-50 p-3">
+              <p className="text-xs font-semibold text-slate-500">今優先したいこと</p>
+              <p className="mt-2 text-sm leading-6 text-slate-700">
+                {renderStateDeltaTagSentence(
+                  changedNeedTags,
+                  "今回は新しく強まったテーマを断定するより、今見えている流れを優先して整理しています。",
+                )}
+              </p>
+            </div>
 
-        <div className="rounded-2xl bg-slate-50 p-3">
-          <p className="text-xs font-semibold text-slate-500">変わらず残っていること</p>
-          <p className="mt-2 text-sm leading-6 text-slate-700">
-            {renderStateDeltaTagSentence(
-              continuedNeedTags,
-              "今回は前回と同じテーマが中心に続くというより、別の方向に意識が向き始めています。",
-            )}
-          </p>
-        </div>
+            <div className="rounded-2xl bg-slate-50 p-3">
+              <p className="text-xs font-semibold text-slate-500">変わらず残っていること</p>
+              <p className="mt-2 text-sm leading-6 text-slate-700">
+                {renderStateDeltaTagSentence(
+                  continuedNeedTags,
+                  "今回は前回と同じテーマが中心に続くというより、別の方向に意識が向き始めています。",
+                )}
+              </p>
+            </div>
+          </div>
+        </DetailDisclosureBlock>
       </div>
     </section>
   );
