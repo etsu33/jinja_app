@@ -57,6 +57,8 @@ import { resolveAccessLevel } from "@/lib/premium/accessLevel";
 import { getVisibilityForCard, type CardVisibilityState } from "@/lib/premium/cardVisibility";
 import { trackCardEvent } from "@/lib/analytics/cardEvents";
 import { RecommendationMetaSection } from "@/components/shrine/detail/RecommendationMetaSection";
+import type { StateDelta } from "@/lib/concierge/stateComparison";
+import { toNeedTagLabels } from "@/lib/concierge/needTagLabelMap";
 
 
 function ShrineDetailSections({ sections }: { sections: ShrineDetailSectionModel[] }) {
@@ -197,6 +199,88 @@ function ShrineDetailHeroHeader(props: { title: string; heroMeaningCopy?: string
 }
 
 
+function renderStateDeltaTagSentence(tags: string[] | undefined | null, emptyText: string) {
+  if (!Array.isArray(tags) || tags.length === 0) {
+    return emptyText;
+  }
+
+  if (tags.length === 1) {
+    return `「${tags[0]}」が見えています。`;
+  }
+
+  return `「${tags.join("」「")}」が見えています。`;
+}
+
+function ShrineDetailStateDeltaSection({
+  stateDelta,
+  isPremiumActive,
+}: {
+  stateDelta?: StateDelta | null;
+  isPremiumActive: boolean;
+}) {
+  if (!stateDelta) return null;
+
+  const changedNeedTags = toNeedTagLabels(stateDelta.changedNeedTags ?? []);
+  const continuedNeedTags = toNeedTagLabels(stateDelta.continuedNeedTags ?? []);
+
+  if (!isPremiumActive) {
+    return (
+      <section className="rounded-2xl border border-amber-200 bg-amber-50/80 p-4">
+        <div className="space-y-2">
+          <p className="text-xs font-semibold tracking-[0.08em] text-amber-700">前回との違い</p>
+          <p className="text-sm font-semibold leading-6 text-amber-950">Premiumでは、前回からの変化をこの神社選びとあわせて確認できます。</p>
+          <p className="text-xs leading-6 text-slate-600">今回強く出たテーマや、変わらず残っているテーマを見返せます。</p>
+          <Link href="/billing/upgrade?source=shrine_detail_state_delta&funnelStep=comparison_preview" className="inline-flex rounded-2xl bg-amber-700 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-800">
+            前回との違いを見る
+          </Link>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="space-y-4">
+        <div>
+          <p className="text-xs font-semibold tracking-[0.08em] text-slate-400">前回との違い</p>
+          <p className="mt-2 text-sm leading-6 text-slate-700">
+            {stateDelta.summary ?? "今回の相談内容から、前回との違いを整理しています。相談を重ねるほど、変化の見え方が安定します。"}
+          </p>
+        </div>
+
+        {stateDelta.transitionNarrative?.summary ? (
+          <div className="rounded-2xl bg-emerald-50/60 p-3">
+            <p className="text-xs font-semibold text-emerald-700">前回から変わったこと</p>
+            <p className="mt-1 text-sm font-semibold leading-6 text-slate-800">{stateDelta.transitionNarrative.title}</p>
+            <p className="mt-2 text-sm leading-6 text-slate-700">{stateDelta.transitionNarrative.summary}</p>
+          </div>
+        ) : null}
+
+        <div className="rounded-2xl bg-slate-50 p-3">
+          <p className="text-xs font-semibold text-slate-500">今優先したいこと</p>
+          <p className="mt-2 text-sm leading-6 text-slate-700">
+            {renderStateDeltaTagSentence(
+              changedNeedTags,
+              "今回は新しく強まったテーマを断定するより、今見えている流れを優先して整理しています。",
+            )}
+          </p>
+        </div>
+
+        <div className="rounded-2xl bg-slate-50 p-3">
+          <p className="text-xs font-semibold text-slate-500">変わらず残っていること</p>
+          <p className="mt-2 text-sm leading-6 text-slate-700">
+            {renderStateDeltaTagSentence(
+              continuedNeedTags,
+              "今回は前回と同じテーマが中心に続くというより、別の方向に意識が向き始めています。",
+            )}
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+
 
 export default function ShrineDetailArticle({
   cardProps,
@@ -213,6 +297,7 @@ export default function ShrineDetailArticle({
   premiumDisplaySections = [],
   isPremiumActive = false,
   recommendationMeta = null,
+  stateDelta = null,
   meaningPayloadSource = "fallback",
   saveActionNode,
 }: {
@@ -237,6 +322,7 @@ export default function ShrineDetailArticle({
       gap_from_top?: number;
     } | null;
   } | null;
+  stateDelta?: StateDelta | null;
   meaningPayloadSource?: "v2" | "fallback";
   saveActionNode?: React.ReactNode;
 }) {
@@ -364,8 +450,8 @@ export default function ShrineDetailArticle({
           heroMeaningCopy={isPremiumActive ? heroMeaningCopy : "今の状態と相性が良い候補です。"}
           address={cardProps.address ?? null}
         />
-
         <ShrineDetailHeroCard title={cardProps.title} imageUrl={heroImageUrl} />
+        <ShrineDetailStateDeltaSection stateDelta={stateDelta} isPremiumActive={isPremiumActive} />
         <RecommendationMetaSection recommendationMeta={recommendationMeta} />
       </section>
 
