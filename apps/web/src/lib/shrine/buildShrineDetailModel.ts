@@ -32,7 +32,6 @@ import { buildPsychologicalTags } from "@/lib/concierge/narrative/buildPsycholog
 import { buildSymbolTags } from "@/lib/concierge/narrative/buildSymbolTags";
 import { resolveNeedCombinationNarrative } from "@/lib/concierge/narrative/needCombinationMap";
 
-
 type Args = {
   shrine: Shrine;
   shrineMeaningPayloadV2?: ShrineMeaningPayloadV2 | null;
@@ -69,9 +68,7 @@ type ShrineDetailDisplaySection = {
   section: ShrineDetailSectionModel;
 };
 
-function buildMeaningSectionsFromPayloadV2(
-  payload?: ShrineMeaningPayloadV2 | null,
-): {
+function buildMeaningSectionsFromPayloadV2(payload?: ShrineMeaningPayloadV2 | null): {
   freeDisplaySections: ShrineDetailDisplaySection[];
   premiumDisplaySections: ShrineDetailDisplaySection[];
 } | null {
@@ -133,7 +130,7 @@ function buildMeaningSectionsFromPayloadV2(
             layer: "personal" as const,
             section: {
               kind: "meaning" as const,
-              heading: "今日の参拝で見ること",
+              heading: "で見ること",
               items: premiumPrimaryItems,
             },
           },
@@ -220,7 +217,6 @@ type RecommendationMeta = {
   rankBody?: string | null;
 };
 
-
 function buildRecommendationMeta(args: {
   rankExplanation?: RankExplanation | null;
   rankComparison?: RankComparison | null;
@@ -261,8 +257,6 @@ function getShrineTone(shrineName?: string | null): ShrineTone {
   return "neutral";
 }
 
-
-
 function needLabelJa(tag: NeedTag): string {
   if (tag === "money") return "金運";
   if (tag === "courage") return "前に進むきっかけ";
@@ -290,10 +284,7 @@ function buildPrimaryBenefitLabel(benefitLabels: string[]): string | null {
   return first ? first.trim() : null;
 }
 
-function buildReasonIntersectionText(args: {
-  primary: NeedTag | null;
-  benefitLabels: string[];
-}): string {
+function buildReasonIntersectionText(args: { primary: NeedTag | null; benefitLabels: string[] }): string {
   const themeLabel = buildNeedThemeLabel(args.primary);
   const benefitLabel = buildPrimaryBenefitLabel(args.benefitLabels);
 
@@ -340,7 +331,6 @@ function getSecondaryNeedTags(breakdown?: ConciergeBreakdown | null): NeedTag[] 
   const primary = getPrimaryNeedTag(breakdown);
   return getMatchedNeedTags(breakdown).filter((tag) => tag !== primary);
 }
-
 
 function buildNeedMatchText(
   argsOrPrimary: { primary?: NeedTag | null; benefitLabels?: string[] | null } | NeedTag | null,
@@ -402,7 +392,6 @@ function uniqueNonEmpty(values: Array<string | null | undefined>): string[] {
   return [...new Set(values.map((v) => (typeof v === "string" ? v.trim() : "")).filter(Boolean))];
 }
 
-
 function uniqueReasonItems(values: Array<string | null | undefined>): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
@@ -435,18 +424,22 @@ function buildReasonSection(args: {
   const shrineTone = getShrineTone(shrineText);
   const benefitText = buildBenefitText(shrineText, args.benefitLabels, primary, shrineTone);
   const secondaryText = buildSecondaryText(primary, secondary, shrineText);
-  const topReasonText = args.rankReason?.trim() || buildRankReasonText({
-    mode: args.mode,
-    breakdown: args.breakdown,
-    primaryNeed: primary,
-    secondaryNeedTags: secondary,
-  });
-  const comparisonReasonText = args.comparisonText?.trim() || buildComparisonText({
-    mode: args.mode,
-    primaryNeed: primary,
-    shrineName: shrineText,
-    shrineTone,
-  });
+  const topReasonText =
+    args.rankReason?.trim() ||
+    buildRankReasonText({
+      mode: args.mode,
+      breakdown: args.breakdown,
+      primaryNeed: primary,
+      secondaryNeedTags: secondary,
+    });
+  const comparisonReasonText =
+    args.comparisonText?.trim() ||
+    buildComparisonText({
+      mode: args.mode,
+      primaryNeed: primary,
+      shrineName: shrineText,
+      shrineTone,
+    });
   const rankGroupTitle = args.isTop ? "1位理由" : "上位理由";
 
   if (args.mode === "compat") {
@@ -476,8 +469,6 @@ function buildReasonSection(args: {
       },
     ].filter((group) => group.items.length > 0);
 
-
-
     return groups.length > 0
       ? {
           kind: "reason",
@@ -503,8 +494,6 @@ function buildReasonSection(args: {
       items: uniqueReasonItems([topReasonText, comparisonReasonText]),
     },
   ].filter((group) => group.items.length > 0);
-
-
 
   return groups.length > 0
     ? {
@@ -726,7 +715,6 @@ function buildRankReasonText(args: {
 
   return "今回の候補の中でも、相談内容との重なりが最も強い候補です。";
 }
-
 
 function buildProposalWhyFromBreakdown(args: {
   mode: ConciergeMode;
@@ -1058,7 +1046,7 @@ function buildMeaningSection(args: {
   const fallbackItems: DetailMeaningItem[] =
     detailItems.length > 0
       ? detailItems
-      : deepReasonItems ?? [
+      : (deepReasonItems ?? [
           {
             key: "meaning",
             title: "この神社をすすめる理由",
@@ -1078,7 +1066,7 @@ function buildMeaningSection(args: {
               args.shrineName ?? undefined,
             ),
           },
-        ];
+        ]);
 
   return {
     kind: "meaning",
@@ -1192,12 +1180,12 @@ const HERO_MEANING_BY_TAG: Record<NeedTag, string> = {
 
 const HERO_MEANING_BY_LABEL_JA: Record<string, string> = {
   金運: "巡りと流れを整え、立て直しの軸を取り戻す神社",
-  "前に進むきっかけ": "止まった流れを切り替え、次の一歩を定め直す神社",
-  "仕事や転機": "判断を整え、仕事や転機の方向を見直す神社",
-  "不安や気持ちの揺れ": "気持ちを静め、受け取り方を整え直す神社",
+  前に進むきっかけ: "止まった流れを切り替え、次の一歩を定め直す神社",
+  仕事や転機: "判断を整え、仕事や転機の方向を見直す神社",
+  不安や気持ちの揺れ: "気持ちを静め、受け取り方を整え直す神社",
   休息: "心身をゆるめ、回復の順番を取り戻す神社",
-  "良縁や恋愛": "関係性を見つめ直し、縁の受け取り方を整える神社",
-  "学業や合格": "集中を整え、目標に向き直る神社",
+  良縁や恋愛: "関係性を見つめ直し、縁の受け取り方を整える神社",
+  学業や合格: "集中を整え、目標に向き直る神社",
 };
 
 function compressShrineMeaning(text?: string | null): string | null {
@@ -1228,7 +1216,11 @@ function compressShrineMeaning(text?: string | null): string | null {
     return "気持ちを引き締め、目標に向き直る神社";
   }
 
-  const normalized = cleaned.replace(/ための$/, "").replace(/ために$/, "").replace(/したい$/, "").trim();
+  const normalized = cleaned
+    .replace(/ための$/, "")
+    .replace(/ために$/, "")
+    .replace(/したい$/, "")
+    .trim();
 
   return normalized.endsWith("神社") ? normalized : `${normalized}神社`;
 }
@@ -1248,7 +1240,9 @@ function resolveHeroMeaningFallbackKey(args: {
     null;
 
   if (labelJa && HERO_MEANING_BY_LABEL_JA[labelJa]) {
-    const matched = Object.entries(HERO_MEANING_BY_TAG).find(([, value]) => value === HERO_MEANING_BY_LABEL_JA[labelJa]);
+    const matched = Object.entries(HERO_MEANING_BY_TAG).find(
+      ([, value]) => value === HERO_MEANING_BY_LABEL_JA[labelJa],
+    );
     return (matched?.[0] as NeedTag | undefined) ?? null;
   }
 
@@ -1299,7 +1293,6 @@ function buildHeroMeaningCopy(args: {
 
   return "今の流れを整え、次の見方を作る神社";
 }
-
 
 export function buildShrineDetailModel({
   shrine,
@@ -1431,7 +1424,6 @@ export function buildShrineDetailModel({
     conciergeReason,
     generatedLead: buildProposalLead({ mode, explanationPayload }),
   });
-
 
   const fallbackProposalWhy = buildProposalWhyFromBreakdown({
     mode,
