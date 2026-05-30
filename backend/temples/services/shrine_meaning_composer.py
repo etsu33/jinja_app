@@ -179,19 +179,19 @@ SHRINE_HISTORY_STORY_OVERRIDES: dict[int, ShrineHistoryStoryOverride] = {
         "subContext": "覚悟",
         "heroMeaningCopy": "三峯神社は、迷いや不安を抱えたままでも、前に進む覚悟を固めたい時に向き合いやすい神社です。",
         "shrineMeaning": "三峯神社は、山深い地で自然への祈りや狼を守りの象徴として受け継いできた神社です。迷いを消してから進むのではなく、不安を抱えたままでも一度腹を決める感覚と結びつきやすい場所です。",
-        "actionMeaning": "参拝前に、今いちばん決めきれていないことを一つだけ書き出します。参拝中は、その答えを急がず、帰り道で次に取る小さな一歩だけを確認します。",
+        "actionMeaning": "参拝前に、今いちばん決めきれていないことを一つだけ書き出します。参拝中は、その答えを急がず、一つの問いとして心に置いてみます。",
     },
     14: {
         "subContext": "踏み出し",
         "heroMeaningCopy": "鹿島神宮は、迷いや不安を抱えたままでも、流れを変える一歩を踏み出したい時に向き合いやすい神社です。",
         "shrineMeaning": "鹿島神宮は、武神を祀る由緒を持ち、停滞した状況から主導権を取り戻し、次の動きを選び直す感覚と結びつきやすい神社です。",
-        "actionMeaning": "参拝前に、今止まっている理由を一つだけ言葉にします。参拝中は、変えたい流れを一つに絞り、帰り道で今日動かせる行動を一つ決めます。",
+        "actionMeaning": "参拝前に、今止まっている理由を一つだけ言葉にします。参拝中は、変えたい流れを一つに絞り、今日動かしたい方向を静かに確認します。",
     },
     4: {
         "subContext": "結び直し",
         "heroMeaningCopy": "出雲大社は、人や機会とのつながりを見直したい時に向き合いやすい神社です。",
         "shrineMeaning": "出雲大社は、縁結びの信仰で知られ、関係を増やすよりも、今あるつながりやこれから選びたい縁を見直す感覚と結びつきやすい神社です。",
-        "actionMeaning": "参拝前に、今大切にしたい関係を一つだけ思い浮かべます。参拝中は、急いで答えを出さず、帰り道で自分から整えたい関わり方を一つ確認します。",
+        "actionMeaning": "参拝前に、今大切にしたい関係を一つだけ思い浮かべます。参拝中は、急いで答えを出さず、自分から整えたい関わり方を静かに確認します。",
     },
 }
 
@@ -376,10 +376,11 @@ def _build_hero_meaning(input_: ShrineMeaningInput) -> str:
     return f"{input_.name_jp}は、今の状態を落ち着いて見直す候補として扱いやすい神社です。"
 
 # consultation_summary:
-# 今回の相談状態を整理する
+# Free/Premium共通の「今の状態」を返す
+# ユーザーの相談状態だけを整理する
 # 神社説明は禁止
 # 行動指示は禁止
-# 「何を見直す段階か」を返す
+# 「何を見直す段階か」を短く返す
 
 def _build_consultation_summary(input_: ShrineMeaningInput) -> str:
     flow_context = _cultural_flow_context(input_)
@@ -393,10 +394,10 @@ def _build_consultation_summary(input_: ShrineMeaningInput) -> str:
 
 
 # shrine_meaning:
-# なぜこの神社なのかを返す
-# 神社固有文脈を扱う
-# 歴史説明だけで終わらせない
-# 「今の状態との接続」を含める
+# Freeの主表示「この場所が合う理由」を返す
+# 神社固有文脈と今の状態の接続を扱う
+# 神社説明だけで終わらせない
+# Premium向けの深い個人解釈はここに混ぜない
 
 def _build_shrine_meaning(input_: ShrineMeaningInput) -> str:
     culture = get_shrine_culture_translation(input_.shrine_id)
@@ -417,10 +418,11 @@ def _build_shrine_meaning(input_: ShrineMeaningInput) -> str:
 
 
 # action_meaning:
-# なぜ参拝という行動を置くのかを返す
+# Free/Premium共通の「ここで試したいこと」を返す
+# 参拝前・参拝中の行動だけを扱う
+# 参拝後・帰り道・保存後の振り返りは禁止
 # 結果保証は禁止
-# 行動理由へ翻訳する
-# 「次の一歩」を扱う
+# 「次の一歩」を具体化する
 
 def _build_action_meaning(input_: ShrineMeaningInput) -> str:
     override = SHRINE_HISTORY_STORY_OVERRIDES.get(input_.shrine_id)
@@ -487,6 +489,11 @@ def _build_benefit_action_context(input_: ShrineMeaningInput) -> str | None:
     return f"「{_clip(benefit)}」は願望成就の断定ではなく、今の行動テーマを整える補助軸として扱います。"
 
 
+#
+# today_flow:
+# 削除候補
+# consultation_summary と状態整理の責務が重複しやすい
+# すぐには削除せず、frontend/API依存を確認してから判断する
 def _build_today_flow_context(input_: ShrineMeaningInput) -> str | None:
     culture = get_shrine_culture_translation(input_.shrine_id)
     if culture:
@@ -501,10 +508,17 @@ def _build_today_flow_context(input_: ShrineMeaningInput) -> str | None:
     return "今日は、結論を出す日ではなく、次の一歩を小さく試す日として置けます。考えを増やすより、実際に動いて確かめることを優先します。"
 
 
+#
+# after_visit_reflection:
+# Premium寄りの「参拝後に見直したいこと」を返す
+# 帰り道・保存後・再相談につながる振り返りだけを扱う
+# 参拝前・参拝中の行動指示は禁止
+# 実際に参拝しなければ価値がない表現にしない
+# 参拝後に何を持ち帰るかを扱う
 def _build_after_visit_reflection(input_: ShrineMeaningInput) -> str | None:
     if not input_.history_theme:
         return None
-    return "帰り道で、まだ迷いが残っていても問題ありません。今は一度で答えを決めるより、少しずつ整理し直す流れの方が合っています。必要なら、もう一度相談を開いて整理し直せます。"
+    return "参拝後は、答えが出たかどうかより、次の一歩が少し見えたかを見直します。迷いが残っていても、保存した内容やもう一度の相談から整理し直せます。"
 
 
 def build_generated_fields(input_: ShrineMeaningInput) -> ShrineMeaningGeneratedV2:
@@ -555,23 +569,26 @@ def _block(
 
 #
 # display responsibility:
+# Free表示順:
 # 1. 今のあなたとの接点: 今の状態に合う入口コピー
-# 2. この場所に流れている考え方: 神社固有の文化・歴史文脈
-# 3. 今の状態と流れ: 相談状態と文化的流れの翻訳
-# 4. 今日の扱い方: 今日どう扱うかの行動前提
-# 5. 今日ここでやること: 参拝前・参拝中の具体行動
-# 6. 帰り道で整理し直す: 再相談・整理し直し導線
-# 7. この神社の背景: 補足としての歴史文脈
-# 8. 祭神の象徴: 補足としての象徴情報
-# 9. ご利益を行動に置き換える: 補足としてのご利益翻訳
+# 2. 今の状態: 相談状態の整理
+# 3. この場所が合う理由: 神社固有文脈と今の状態の接続
+# 4. ここで試したいこと: 参拝前・参拝中の具体行動。Freeでは行動の入口まで見せる
+#
+# Premium表示順:
+# 5. 参拝後に見直したいこと: 帰り道・保存後・再相談につながる振り返り。Premiumでは変化記録へつなげる
+# 6. この神社の背景: 補足としての歴史文脈
+# 7. 祭神の象徴: 補足としての象徴情報
+# 8. ご利益を行動に置き換える: 補足としてのご利益翻訳
+# 9. today_flow: 削除候補。consultation_summary と責務が重複するため、依存確認後に整理する
 def build_display_fields(generated: ShrineMeaningGeneratedV2) -> ShrineMeaningDisplayV2:
     maybe_blocks = [
         _block("hero", "今のあなたとの接点", generated["heroMeaningCopy"], "anonymous"),
-        _block("shrine_meaning", "この場所に流れている考え方", generated["shrineMeaning"], "free"),
-        _block("consultation_summary", "今の状態と流れ", generated["consultationSummary"], "free"),
-        _block("today_flow", "今日の扱い方", generated["todayFlowContext"], "premium"),
-        _block("action_meaning", "今日ここでやること", generated["actionMeaning"], "premium"),
-        _block("after_visit_reflection", "帰り道で整理し直す", generated["afterVisitReflection"], "premium"),
+        _block("shrine_meaning", "この場所が合う理由", generated["shrineMeaning"], "free"),
+        _block("consultation_summary", "今の状態", generated["consultationSummary"], "free"),
+        # _block("today_flow", "今日の向き合い方", generated["todayFlowContext"], "premium"),
+        _block("action_meaning", "ここで試したいこと", generated["actionMeaning"], "premium"),
+        _block("after_visit_reflection", "参拝後に見直したいこと", generated["afterVisitReflection"], "premium"),
         _block("history_context", "この神社の背景", generated["historyContext"], "premium"),
         _block("deity_symbol", "祭神の象徴", generated["deitySymbolContext"], "premium"),
         _block("benefit_action", "ご利益を行動に置き換える", generated["benefitActionContext"], "premium"),

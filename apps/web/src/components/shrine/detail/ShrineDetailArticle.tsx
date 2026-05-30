@@ -56,6 +56,7 @@ import type { ShrineDetailSectionModel } from "@/components/shrine/detail/types"
 import { resolveAccessLevel } from "@/lib/premium/accessLevel";
 import { getVisibilityForCard, type CardVisibilityState } from "@/lib/premium/cardVisibility";
 import { trackCardEvent } from "@/lib/analytics/cardEvents";
+import { RecommendationMetaSection } from "@/components/shrine/detail/RecommendationMetaSection";
 
 
 function ShrineDetailSections({ sections }: { sections: ShrineDetailSectionModel[] }) {
@@ -396,6 +397,7 @@ export default function ShrineDetailArticle({
         />
 
         <ShrineDetailHeroCard title={cardProps.title} imageUrl={heroImageUrl} />
+        <RecommendationMetaSection recommendationMeta={recommendationMeta} />
       </section>
 
       {hasContextReasonSections ? <ShrineDetailSections sections={contextReasonSections} /> : null}
@@ -405,7 +407,6 @@ export default function ShrineDetailArticle({
       ) : null}
 
       {personalMeaningVisibility === "teaser" && hasPremiumSections ? <PremiumUpgradePrompt /> : null}
-
 
       {isPremiumActive && hasRecommendationMeta && recommendationMeta ? (
         <section>
