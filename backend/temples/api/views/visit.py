@@ -13,8 +13,8 @@ class VisitCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
     # URLの/<int:shrine_id>/ と JSON {shrine_id|shrine} の両対応
-    def post(self, request, shrine_id=None, *args, **kwargs):  # noqa: D401
-        shrine_id = shrine_id or request.data.get("shrine_id") or request.data.get("shrine")
+    def post(self, request, id=None, shrine_id=None, *args, **kwargs):
+        shrine_id = id or shrine_id or request.data.get("shrine_id") or request.data.get("shrine")
         if not shrine_id:
             return Response({"detail": "shrine_id is required"}, status=status.HTTP_400_BAD_REQUEST)
 
