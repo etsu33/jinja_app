@@ -541,9 +541,6 @@ export default function ConciergeClientFull() {
     [currentConsultationSummary, previousConsultationSummary],
   );
 
-  useEffect(() => {
-    console.log("ACTION REFLECTION", stateDelta?.actionReflection, stateDelta?.previous?.actionState);
-  }, [stateDelta?.actionReflection, stateDelta?.previous?.actionState]);
 
   const shouldTrackHistoryShiftView = Boolean(stateDelta?.transitionNarrative?.summary);
   const shouldTrackDeepReflectionView = Boolean(
