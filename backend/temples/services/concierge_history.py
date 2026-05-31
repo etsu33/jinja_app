@@ -6,8 +6,35 @@ from typing import Optional, Any
 from django.db import transaction
 from django.utils import timezone
 
-from temples.models import ConciergeMessage, ConciergeThread
+from temples.models import ConciergeHistory, ConciergeMessage, ConciergeThread, Favorite, Visit
 
+HistoryActionState = str
+
+
+def classify_history_action(*, user, history: ConciergeHistory) -> HistoryActionState:
+    if user is None or not getattr(user, "is_authenticated", False):
+        return "none"
+
+    shrine = history.shrine
+    if shrine is None:
+        return "none"
+
+    has_visit = Visit.objects.filter(
+        user=user,
+        shrine=shrine,
+        status="added",
+    ).exists()
+    if has_visit:
+        return "visited"
+
+    has_favorite = Favorite.objects.filter(
+        user=user,
+        shrine=shrine,
+    ).exists()
+    if has_favorite:
+        return "saved"
+
+    return "none"
 
 @dataclass
 class ChatSaveResult:
