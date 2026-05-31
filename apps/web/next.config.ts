@@ -38,14 +38,6 @@ const nextConfig: NextConfig = {
     return {
       afterFiles: [
         {
-          source: "/api/shrines/:id/visit/",
-          destination: "https://jinja-backend.onrender.com/api/shrines/:id/visit/",
-        },
-        {
-          source: "/api/shrines/:id/visit",
-          destination: "https://jinja-backend.onrender.com/api/shrines/:id/visit/",
-        },
-        {
           source: "/api/:path*",
           destination: "https://jinja-backend.onrender.com/api/:path*",
         },
