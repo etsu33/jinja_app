@@ -23,10 +23,6 @@ function renderTagSentence(tags: string[] | undefined | null, emptyText: string)
 }
 
 export default function PremiumStateDeltaCard({ stateDelta, isPremium }: Props) {
-  console.log("PremiumStateDeltaCard mounted", {
-    stateDelta,
-    isPremium,
-  });
 
   const changedNeedTags = toNeedTagLabels(stateDelta.changedNeedTags ?? []);
   const continuedNeedTags = toNeedTagLabels(stateDelta.continuedNeedTags ?? []);
@@ -85,19 +81,7 @@ export default function PremiumStateDeltaCard({ stateDelta, isPremium }: Props) 
   }
 
   return (
-    <>
-      <div
-        style={{
-          background: "red",
-          color: "white",
-          padding: "12px",
-          fontWeight: "bold",
-        }}
-      >
-        PREMIUM STATE DELTA CARD
-      </div>
-
-      <section className="mx-4 mt-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+    <section className="mx-4 mt-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="space-y-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">前回との違い</p>
@@ -159,7 +143,6 @@ export default function PremiumStateDeltaCard({ stateDelta, isPremium }: Props) 
           </p>
         </div>
       </div>
-      </section>
-    </>
+    </section>
   );
 }

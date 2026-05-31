@@ -626,31 +626,14 @@ export default function ConciergeClientFull() {
     const currentId = tidNum ?? activeThreadId;
     if (!currentId || !Array.isArray(threads) || threads.length === 0) return null;
 
-    console.log("PREVIOUS CHECK", {
-      currentId,
-      threadIds: threads.map((t) => t.id),
-    });
-
     const currentIndex = threads.findIndex(
       (t) => Number(t.id) === Number(currentId),
     );
-
-    console.log("PREVIOUS INDEX", {
-      currentId,
-      currentIndex,
-      currentThread: threads[currentIndex],
-      previousThread: threads[currentIndex + 1],
-    });
 
     if (currentIndex < 0) {
       const fallbackPreviousThread = threads.find(
         (t) => t != null && Number(t.id) !== Number(currentId),
       ) ?? null;
-
-      console.log("PREVIOUS FALLBACK", {
-        currentId,
-        fallbackPreviousThread,
-      });
 
       return typeof fallbackPreviousThread?.id === "number" ? fallbackPreviousThread.id : null;
     }
@@ -659,32 +642,6 @@ export default function ConciergeClientFull() {
     return typeof previousThread?.id === "number" ? previousThread.id : null;
   }, [activeThreadId, isLoggedIn, threads, tidNum]);
 
-  useEffect(() => {
-    console.log("THREAD LIST", {
-      activeThreadId,
-      tidNum,
-      threads,
-      currentThreadExists: threads.some(
-        (t) => Number(t.id) === Number(tidNum ?? activeThreadId),
-      ),
-    });
-  }, [activeThreadId, tidNum, threads]);
-
-  useEffect(() => {
-    console.log("ACTION REFLECTION", {
-      previousThreadId,
-      previousThreadDetail,
-      previousConsultationSummary,
-      actionReflection: stateDelta?.actionReflection,
-      previousActionState: stateDelta?.previous?.actionState,
-    });
-  }, [
-    previousThreadId,
-    previousThreadDetail,
-    previousConsultationSummary,
-    stateDelta?.actionReflection,
-    stateDelta?.previous?.actionState,
-  ]);
 
 
   const isEntryRoute = tidNum === null;
@@ -1781,16 +1738,6 @@ export default function ConciergeClientFull() {
               isPremiumActive={isPremiumActive}
             />
 
-            {(() => {
-              console.log("STATE DELTA RENDER", {
-                isLoggedIn,
-                isPremiumActive,
-                previousComparisonVisibility,
-                hasStateDelta: Boolean(stateDelta),
-                actionReflection: stateDelta?.actionReflection,
-              });
-              return null;
-            })()}
 
             {isLoggedIn && stateDelta && previousComparisonVisibility !== "hidden" ? (
               <PremiumStateDeltaCard stateDelta={stateDelta} isPremium={isPremiumActive} />
