@@ -33,6 +33,7 @@ export async function POST(
 
   const authorization = request.headers.get("authorization");
   const accessToken = request.cookies.get("access_token")?.value;
+  const authSource = authorization ? "header" : accessToken ? "cookie" : "none";
   if (authorization) {
     headers.Authorization = authorization;
   } else if (accessToken) {
@@ -59,6 +60,8 @@ export async function POST(
     status: response.status,
     headers: {
       "Content-Type": responseContentType,
+      "X-Visit-Proxy": "next-route",
+      "X-Visit-Auth-Source": authSource,
     },
   });
 }
