@@ -358,6 +358,34 @@ def _benefit_state_themes(input_: ShrineMeaningInput) -> tuple[str, ...]:
     return tuple(themes)
 
 
+# Helper functions for context specificity
+def _has_culture_translation(input_: ShrineMeaningInput) -> bool:
+    return get_shrine_culture_translation(input_.shrine_id) is not None
+
+
+def _has_story_override(input_: ShrineMeaningInput) -> bool:
+    return input_.shrine_id in SHRINE_HISTORY_STORY_OVERRIDES
+
+
+def _has_history_theme(input_: ShrineMeaningInput) -> bool:
+    return bool(input_.history_theme and input_.history_theme in HISTORY_THEME_CONTEXT)
+
+
+def _has_specific_context(input_: ShrineMeaningInput) -> bool:
+    """Return whether this shrine has enough shrine-specific context for stronger meaning copy.
+
+    Strong meaning copy should be used only when the shrine has curated cultural
+    translation, an explicit story override, or a known history_theme.
+    Generic benefit-only data is intentionally not treated as shrine-specific.
+    """
+
+    return (
+        _has_culture_translation(input_)
+        or _has_story_override(input_)
+        or _has_history_theme(input_)
+    )
+
+
 # hero:
 # 今の自分との接点を返す
 # 神社説明は禁止
@@ -372,8 +400,8 @@ def _build_hero_meaning(input_: ShrineMeaningInput) -> str:
         display_copy = HISTORY_THEME_DISPLAY_COPY.get(input_.history_theme, "今の状態を整えたい時")
         return f"{input_.name_jp}は、{display_copy}に向き合いやすい神社です。"
     if _primary_benefit(input_):
-        return f"{input_.name_jp}は、今の願いや状態を一度整理する入口として置きやすい神社です。"
-    return f"{input_.name_jp}は、今の状態を落ち着いて見直す候補として扱いやすい神社です。"
+        return f"{input_.name_jp}は、願いごとを手がかりに候補として確認しやすい神社です。"
+    return f"{input_.name_jp}は、基本情報をもとに参拝先の候補として確認しやすい神社です。"
 
 # consultation_summary:
 # Free/Premium共通の「今の状態」を返す
@@ -386,11 +414,9 @@ def _build_consultation_summary(input_: ShrineMeaningInput) -> str:
     flow_context = _cultural_flow_context(input_)
     if flow_context:
         return f"{flow_context} 気になっていることを一つに絞ると、次の判断が見えやすくなります。"
-    if input_.description or input_.history_theme:
+    if _has_specific_context(input_):
         return "今は答えを急ぐより、何を決めきれていないのかを一つに絞る状態です。まず優先順位を見直す方が、次の判断に進みやすくなります。"
-    if input_.goriyaku or input_.sajin or input_.element:
-        return "今は願いを広げるより、何を一番大切にしたいのかを絞る状態です。焦って決める前に、優先したいことを一つ選ぶ段階です。"
-    return "今は考える量を増やすより、気になっていることを一つに絞る状態です。先に見るテーマを決める方が、次の行動につながりやすくなります。"
+    return "相談内容に対して、まず気になっていることを一つに絞るための候補です。神社側の情報だけで状態を決めつけず、参拝先を選ぶ前の整理材料として扱います。"
 
 
 # shrine_meaning:
@@ -407,14 +433,18 @@ def _build_shrine_meaning(input_: ShrineMeaningInput) -> str:
     override = SHRINE_HISTORY_STORY_OVERRIDES.get(input_.shrine_id)
     if override:
         return override["shrineMeaning"]
+    if input_.history_theme:
+        history_context = HISTORY_THEME_CONTEXT.get(input_.history_theme)
+        if history_context:
+            return f"{input_.name_jp}は、{history_context} 今回の相談を整理する補助材料として受け取りやすい神社です。"
     if input_.description:
-        return f"{input_.name_jp}は「{_clip(input_.description)}」という特徴を持ち、今回の相談で主題になっている整理や見直しのテーマと接続しやすい神社です。"
+        return f"{input_.name_jp}には「{_clip(input_.description)}」という情報があります。現時点では、その公開情報を参拝先を選ぶための手がかりとして扱います。"
     benefit = _primary_benefit(input_)
     if benefit:
-        return f"{input_.name_jp}は「{_clip(benefit)}」に関わる文脈を持ち、今回の相談で求めている方向と結びつけて受け取りやすい神社です。"
+        return f"{input_.name_jp}は「{_clip(benefit)}」に関わる神社として確認できます。現時点では、願いごとの方向性を整理するための候補として扱います。"
     if input_.sajin:
-        return f"{input_.name_jp}は、祭神の象徴を手がかりに、今回の相談テーマと接続して受け取りやすい神社です。"
-    return f"{input_.name_jp}は、今の相談で残っている迷いや優先順位の整理に、静かに向き合う場所として選びやすい候補です。"
+        return f"{input_.name_jp}は、祭神の情報を手がかりに確認できる神社です。現時点では、相談内容との強い接続は断定せず、参拝先を選ぶための補助情報として扱います。"
+    return f"{input_.name_jp}は、登録されている基本情報をもとに確認できる神社です。詳しい固有文脈は、今後の情報整備に合わせて補足します。"
 
 
 # action_meaning:
@@ -432,11 +462,11 @@ def _build_action_meaning(input_: ShrineMeaningInput) -> str:
     theme_action = HISTORY_THEME_ACTION_CONTEXT.get(input_.history_theme or "")
     if benefit and theme_action:
         return f"参拝を、{_clip(benefit, 32)}という願いを急いで叶えるためではなく、{theme_action}"
-    if benefit:
-        return f"参拝を、{_clip(benefit, 32)}という願いを急いで叶えるためではなく、今の状態を整理して次の一歩を置く行動として扱えます。"
     if theme_action:
         return f"参拝を、{theme_action}"
-    return "参拝を、考え続ける状態から少し離れ、現実の一歩へ移すための行動として置けます。"
+    if benefit:
+        return f"参拝前に、{_clip(benefit, 32)}という願いの中で今いちばん整理したいことを一つだけ確認します。結果を急がず、参拝先を選ぶ前の小さな整理として扱います。"
+    return "参拝前に、今気になっていることを一つだけ確認します。神社側の情報だけで意味を決めつけず、静かに整理するための候補として扱います。"
 
 # history_context:
 # 歴史・土地・背景を状態理解へ接続する
@@ -618,6 +648,7 @@ __all__ = [
     "ShrineMeaningPayloadV2",
     "HISTORY_THEME_SUB_CONTEXT",
     "SHRINE_HISTORY_STORY_OVERRIDES",
+    "_has_specific_context",
     "ShrineHistoryStoryOverride",
     "build_display_fields",
     "build_generated_fields",
