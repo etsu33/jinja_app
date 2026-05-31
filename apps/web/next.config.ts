@@ -36,20 +36,10 @@ const nextConfig: NextConfig = {
   },
 
   async rewrites() {
-    const apiBaseUrl =
-      process.env.NEXT_PUBLIC_API_BASE_URL ||
-      process.env.NEXT_PUBLIC_API_BASE ||
-      process.env.API_BASE_URL ||
-      "";
-
-    if (!apiBaseUrl) {
-      return [];
-    }
-
     return [
       {
         source: "/api/:path*",
-        destination: `${apiBaseUrl.replace(/\/+$/, "")}/api/:path*`,
+        destination: "https://jinja-backend.onrender.com/api/:path*",
       },
     ];
   },
