@@ -60,6 +60,8 @@ import { RecommendationMetaSection } from "@/components/shrine/detail/Recommenda
 import type { StateDelta } from "@/lib/concierge/stateComparison";
 import { toNeedTagLabels } from "@/lib/concierge/needTagLabelMap";
 
+import { addVisit } from "@/lib/api/visits";
+
 
 function ShrineDetailSections({ sections }: { sections: ShrineDetailSectionModel[] }) {
   return (
@@ -410,6 +412,8 @@ export default function ShrineDetailArticle({
         : "準備中";
 
   const [favoriteNoticeState, setFavoriteNoticeState] = useState<"saved" | "removed" | null>(null);
+  const [visitSubmitting, setVisitSubmitting] = useState(false);
+  const [visitNotice, setVisitNotice] = useState<"saved" | "error" | null>(null);
 
   const resolvedSaveActionNode = useMemo(() => {
     if (!saveActionNode || !React.isValidElement(saveActionNode)) return saveActionNode;
@@ -617,6 +621,41 @@ export default function ShrineDetailArticle({
             ) : null}
 
             {resolvedSaveActionNode}
+
+            <div className="mt-3 space-y-2">
+              {visitNotice === "saved" ? (
+                <div className="rounded-xl border border-emerald-200 bg-white p-3">
+                  <p className="text-sm font-semibold text-emerald-700">参拝記録しました</p>
+                  <p className="mt-1 text-xs text-slate-600">次回の相談で、前回の行動として振り返れます。</p>
+                </div>
+              ) : null}
+
+              {visitNotice === "error" ? (
+                <div className="rounded-xl border border-rose-200 bg-white p-3">
+                  <p className="text-sm font-semibold text-rose-700">参拝記録に失敗しました</p>
+                </div>
+              ) : null}
+
+              <button
+                type="button"
+                disabled={visitSubmitting}
+                onClick={async () => {
+                  try {
+                    setVisitSubmitting(true);
+                    setVisitNotice(null);
+                    await addVisit(cardProps.shrineId);
+                    setVisitNotice("saved");
+                  } catch {
+                    setVisitNotice("error");
+                  } finally {
+                    setVisitSubmitting(false);
+                  }
+                }}
+                className="w-full rounded-2xl border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-50 disabled:opacity-60"
+              >
+                {visitSubmitting ? "記録中..." : "参拝済みにする"}
+              </button>
+            </div>
           </div>
         </section>
       ) : null}
