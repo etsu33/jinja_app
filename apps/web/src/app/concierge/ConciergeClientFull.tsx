@@ -634,6 +634,14 @@ export default function ConciergeClientFull() {
   }, [activeThreadId, isLoggedIn, threads, tidNum]);
 
   useEffect(() => {
+    console.log("THREAD LIST", {
+      activeThreadId,
+      tidNum,
+      threads,
+    });
+  }, [activeThreadId, tidNum, threads]);
+
+  useEffect(() => {
     console.log("ACTION REFLECTION", {
       previousThreadId,
       previousThreadDetail,
