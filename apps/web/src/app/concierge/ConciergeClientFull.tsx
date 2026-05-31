@@ -636,6 +636,22 @@ export default function ConciergeClientFull() {
     return typeof previousThread?.id === "number" ? previousThread.id : null;
   }, [activeThreadId, isLoggedIn, threads, tidNum]);
 
+  useEffect(() => {
+    console.log("ACTION REFLECTION", {
+      previousThreadId,
+      previousThreadDetail,
+      previousConsultationSummary,
+      actionReflection: stateDelta?.actionReflection,
+      previousActionState: stateDelta?.previous?.actionState,
+    });
+  }, [
+    previousThreadId,
+    previousThreadDetail,
+    previousConsultationSummary,
+    stateDelta?.actionReflection,
+    stateDelta?.previous?.actionState,
+  ]);
+
 
   const isEntryRoute = tidNum === null;
   const tidFromQuery = tidNum ?? 0;
