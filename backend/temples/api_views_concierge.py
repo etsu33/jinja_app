@@ -852,6 +852,13 @@ class ConciergeChatView(APIView):
             append_user = user if getattr(user, "is_authenticated", False) else None
             append_anonymous_id = None if append_user is not None else getattr(plan_context, "anon_id", None)
 
+            log.warning(
+                "[AUTH DEBUG] user=%r authenticated=%s anonymous_id=%r",
+                getattr(user, "id", None),
+                getattr(user, "is_authenticated", False),
+                getattr(plan_context, "anon_id", None),
+            )
+
             try:
                 saved = append_chat(
                     user=append_user,
@@ -863,6 +870,12 @@ class ConciergeChatView(APIView):
                     recommendations_v2=thread_recommendations_v2,
                 )
                 thread_obj = saved.thread
+                log.warning(
+                    "[THREAD DEBUG] thread=%r user_id=%r anonymous_id=%r",
+                    getattr(thread_obj, "id", None),
+                    getattr(thread_obj, "user_id", None),
+                    getattr(thread_obj, "anonymous_id", None),
+                )
             except ConciergeThread.DoesNotExist:
                 saved = append_chat(
                     user=append_user,
@@ -874,6 +887,12 @@ class ConciergeChatView(APIView):
                     recommendations_v2=thread_recommendations_v2,
                 )
                 thread_obj = saved.thread
+                log.warning(
+                    "[THREAD DEBUG] thread=%r user_id=%r anonymous_id=%r",
+                    getattr(thread_obj, "id", None),
+                    getattr(thread_obj, "user_id", None),
+                    getattr(thread_obj, "anonymous_id", None),
+                )
 
             log.warning(
                 "[concierge/chat] THREAD_SAVED rid=%s thread_pk=%r recommendations_saved=%s recommendations_v2_saved=%s",
