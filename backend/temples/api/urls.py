@@ -44,6 +44,8 @@ from temples.api.views.tags import goriyaku_tags_list
 from temples.api_views import FavoriteViewSet
 
 from temples.api.views.shrine_meaning import ShrineMeaningView
+from temples.api.views.visit import VisitCreateView, UserVisitListView
+
 
 app_name = "temples"
 
@@ -123,6 +125,8 @@ urlpatterns = [
     path("shrines/<int:pk>/meaning/", ShrineMeaningView.as_view(), name="shrine_meaning"),
     path("shrines/<int:pk>/", shrine_detail_view, name="shrine_detail"),
     path("shrines/nearby/", NearestShrinesAPIView.as_view(), name="nearby"),
+    path("shrines/<int:shrine_id>/visit/", VisitCreateView.as_view(), name="shrine-visit"),
+    path("visits/", UserVisitListView.as_view(), name="visit-list"),
     path("public/shrines/<int:pk>/", PublicShrineDetailView.as_view(), name="public-shrine-detail"),
 
     # ---- Popular ----------------------------------------------------------
