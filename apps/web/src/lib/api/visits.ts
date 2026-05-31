@@ -18,5 +18,10 @@ export async function addVisit(shrineId: number) {
 // 参拝履歴一覧
 export async function getVisits(): Promise<Visit[]> {
   const res = await api.get("/visits/");
-  return res.data;
+  const data = res.data;
+
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.results)) return data.results;
+
+  return [];
 }

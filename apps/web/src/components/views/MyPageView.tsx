@@ -224,7 +224,7 @@ export default function MyPageView({ initialFavorites }: Props) {
             <div className="space-y-3">
               {visits.map((visit) => {
                 const shrine = visit.shrine as any;
-                const shrineId = shrine?.id ?? shrine?.shrine_id ?? null;
+                const shrineId = typeof shrine === "number" ? shrine : shrine?.id ?? shrine?.shrine_id ?? null;
                 const shrineName = shrine?.name ?? shrine?.display_name ?? shrine?.title ?? "神社名未設定";
                 const shrineAddress = shrine?.address ?? shrine?.location ?? null;
 
