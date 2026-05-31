@@ -23,6 +23,11 @@ function renderTagSentence(tags: string[] | undefined | null, emptyText: string)
 }
 
 export default function PremiumStateDeltaCard({ stateDelta, isPremium }: Props) {
+  console.log("PremiumStateDeltaCard mounted", {
+    stateDelta,
+    isPremium,
+  });
+
   const changedNeedTags = toNeedTagLabels(stateDelta.changedNeedTags ?? []);
   const continuedNeedTags = toNeedTagLabels(stateDelta.continuedNeedTags ?? []);
 
