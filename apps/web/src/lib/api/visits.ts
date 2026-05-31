@@ -11,7 +11,7 @@ export type Visit = {
 
 // 参拝チェックイン（トグル）
 export async function addVisit(shrineId: number) {
-  const res = await api.post(`/shrines/${shrineId}/visit/`);
+  const res = await api.post(`/shrines/${shrineId}/visit`);
   return res.data;
 }
 
