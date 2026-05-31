@@ -50,5 +50,6 @@ export function buildPreviousConsultationSummary(
     primaryNeedLabelJa: payload?.primary_need_label_ja ?? null,
     primaryReasonLabelJa: payload?.primary_reason?.label_ja ?? null,
     recommendationNames,
+    actionState: first?.action_state ?? null,
   };
 }

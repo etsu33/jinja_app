@@ -15,6 +15,7 @@ function makeSummary(
     primaryNeedLabelJa: null,
     primaryReasonLabelJa: null,
     recommendationNames: [],
+    actionState: null,
     ...overrides,
   };
 }

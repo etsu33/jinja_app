@@ -12,16 +12,20 @@ HistoryActionState = str
 
 
 def classify_history_action(*, user, history: ConciergeHistory) -> HistoryActionState:
+    shrine_id = getattr(history, "shrine_id", None)
+    return classify_shrine_action_state(user=user, shrine_id=shrine_id)
+
+
+def classify_shrine_action_state(*, user, shrine_id: int | None) -> HistoryActionState:
     if user is None or not getattr(user, "is_authenticated", False):
         return "none"
 
-    shrine = history.shrine
-    if shrine is None:
+    if shrine_id is None:
         return "none"
 
     has_visit = Visit.objects.filter(
         user=user,
-        shrine=shrine,
+        shrine_id=shrine_id,
         status="added",
     ).exists()
     if has_visit:
@@ -29,7 +33,7 @@ def classify_history_action(*, user, history: ConciergeHistory) -> HistoryAction
 
     has_favorite = Favorite.objects.filter(
         user=user,
-        shrine=shrine,
+        shrine_id=shrine_id,
     ).exists()
     if has_favorite:
         return "saved"
