@@ -224,9 +224,14 @@ export default function MyPageView({ initialFavorites }: Props) {
             <div className="space-y-3">
               {visits.map((visit) => {
                 const shrine = visit.shrine as any;
-                const shrineId = typeof shrine === "number" ? shrine : shrine?.id ?? shrine?.shrine_id ?? null;
-                const shrineName = shrine?.name ?? shrine?.display_name ?? shrine?.title ?? "神社名未設定";
-                const shrineAddress = shrine?.address ?? shrine?.location ?? null;
+                const shrineId = typeof shrine === "number" ? shrine : (shrine?.id ?? shrine?.shrine_id ?? null);
+                const shrineName =
+                  visit.shrine_name ??
+                  (typeof shrine === "number" ? null : (shrine?.name ?? shrine?.display_name ?? shrine?.title)) ??
+                  "神社名未設定";
+                const shrineAddress =
+                  visit.shrine_address ??
+                  (typeof shrine === "number" ? null : (shrine?.address ?? shrine?.location ?? null));
 
                 return (
                   <article key={visit.id} className="rounded-xl border border-stone-200/40 bg-white p-4">

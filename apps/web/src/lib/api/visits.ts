@@ -3,7 +3,9 @@ import type { Shrine } from "./shrines";
 
 export type Visit = {
   id: number;
-  shrine: Shrine;
+  shrine: Shrine | number;
+  shrine_name?: string;
+  shrine_address?: string;
   visited_at: string;
   note?: string;
   status?: string;
