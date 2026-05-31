@@ -111,6 +111,15 @@ export default function PremiumStateDeltaCard({ stateDelta, isPremium }: Props) 
           </div>
         ) : null}
 
+        {stateDelta.actionReflection ? (
+          <div className="rounded-2xl bg-amber-50/70 p-3">
+            <p className="text-xs font-semibold text-amber-700">前回の行動</p>
+            <p className="mt-1 text-sm font-semibold leading-6 text-slate-800">{stateDelta.actionReflection.title}</p>
+            <p className="mt-2 text-sm leading-6 text-slate-700">{stateDelta.actionReflection.summary}</p>
+            <p className="mt-2 text-xs font-semibold text-amber-700">{stateDelta.actionReflection.nextActionLabel}</p>
+          </div>
+        ) : null}
+
         <div className="rounded-2xl bg-slate-50 p-3">
           <p className="text-xs font-semibold text-slate-500">今回強く出ているテーマ</p>
 

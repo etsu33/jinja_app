@@ -103,6 +103,44 @@ function calculateDaysSincePrevious(
   return Math.floor(diffMs / (1000 * 60 * 60 * 24));
 }
 
+function buildActionReflection(
+  previous: PreviousConsultationSummary | null,
+): StateDelta["actionReflection"] {
+  const actionState = previous?.actionState ?? null;
+
+  if (actionState === "visited") {
+    return {
+      type: "visited",
+      title: "前回の提案を実際の行動につなげています",
+      summary:
+        "前回の神社を訪れた記録があります。今回は、行ったことで少し見えたことや、まだ残っているテーマを整理する流れです。",
+      nextActionLabel: "参拝後の変化を振り返る",
+    };
+  }
+
+  if (actionState === "saved") {
+    return {
+      type: "saved",
+      title: "前回の候補を保存して見返す準備ができています",
+      summary:
+        "前回の神社は保存されています。まだ参拝までは進んでいないため、今回は行くかどうかを決める前の整理として扱えます。",
+      nextActionLabel: "保存した理由を見直す",
+    };
+  }
+
+  if (actionState === "none") {
+    return {
+      type: "none",
+      title: "前回はまだ行動ログが残っていません",
+      summary:
+        "前回の候補に対して、保存や参拝の記録はまだありません。今回は、気になった候補を一つ残すことから始めると見返しやすくなります。",
+      nextActionLabel: "気になる候補を一つ保存する",
+    };
+  }
+
+  return null;
+}
+
 export function compareState(
   previous: PreviousConsultationSummary | null,
   current: PreviousConsultationSummary | null,
@@ -139,5 +177,6 @@ export function compareState(
     summary: buildSummary(changedNeedTags, continuedNeedTags),
     combinationChange,
     transitionNarrative,
+    actionReflection: buildActionReflection(previous),
   };
 }

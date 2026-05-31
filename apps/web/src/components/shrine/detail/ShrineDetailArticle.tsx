@@ -255,19 +255,35 @@ function ShrineDetailStateDeltaSection({
         <div>
           <p className="text-xs font-semibold tracking-[0.08em] text-slate-400">前回との違い</p>
           <p className="mt-2 text-sm leading-6 text-slate-700">
-            {stateDelta.summary ?? "今回の相談内容から、前回との違いを整理しています。相談を重ねるほど、変化の見え方が安定します。"}
+            {stateDelta.summary ??
+              "今回の相談内容から、前回との違いを整理しています。相談を重ねるほど、変化の見え方が安定します。"}
           </p>
         </div>
 
         {stateDelta.transitionNarrative?.summary ? (
           <div className="rounded-2xl bg-emerald-50/60 p-3">
             <p className="text-xs font-semibold text-emerald-700">前回から変わったこと</p>
-            <p className="mt-1 text-sm font-semibold leading-6 text-slate-800">{stateDelta.transitionNarrative.title}</p>
+            <p className="mt-1 text-sm font-semibold leading-6 text-slate-800">
+              {stateDelta.transitionNarrative.title}
+            </p>
             <p className="mt-2 text-sm leading-6 text-slate-700">{stateDelta.transitionNarrative.summary}</p>
           </div>
         ) : null}
 
-        <DetailDisclosureBlock title="テーマの内訳" summary="今優先したいこと・変わらず残っていること" defaultOpen={false}>
+        {stateDelta.actionReflection ? (
+          <div className="rounded-2xl bg-amber-50/70 p-3">
+            <p className="text-xs font-semibold text-amber-700">前回の行動</p>
+            <p className="mt-1 text-sm font-semibold leading-6 text-slate-800">{stateDelta.actionReflection.title}</p>
+            <p className="mt-2 text-sm leading-6 text-slate-700">{stateDelta.actionReflection.summary}</p>
+            <p className="mt-2 text-xs font-semibold text-amber-700">{stateDelta.actionReflection.nextActionLabel}</p>
+          </div>
+        ) : null}
+
+        <DetailDisclosureBlock
+          title="テーマの内訳"
+          summary="今優先したいこと・変わらず残っていること"
+          defaultOpen={false}
+        >
           <div className="space-y-3">
             <div className="rounded-2xl bg-slate-50 p-3">
               <p className="text-xs font-semibold text-slate-500">今優先したいこと</p>

@@ -30,6 +30,15 @@ export type StateTransitionNarrative = {
   summary: string | null;
 };
 
+export type ActionReflectionType = "visited" | "saved" | "none";
+
+export type ActionReflection = {
+  type: ActionReflectionType;
+  title: string;
+  summary: string;
+  nextActionLabel: string;
+};
+
 export type StateDelta = {
   previous: PreviousConsultationSummary | null;
   current: PreviousConsultationSummary | null;
@@ -40,4 +49,5 @@ export type StateDelta = {
   summary: string | null;
   combinationChange: CombinationChange;
   transitionNarrative: StateTransitionNarrative;
+  actionReflection: ActionReflection | null;
 };
