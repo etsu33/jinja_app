@@ -5,18 +5,19 @@ import { useSearchParams } from "next/navigation";
 import { updateUser, type UserMe } from "@/lib/api/users";
 import { useAuth as useAuthContext } from "@/lib/auth/AuthProvider";
 import type { Favorite } from "@/lib/api/favorites";
+import { getVisits, type Visit } from "@/lib/api/visits";
 import MyPageScreen from "@/features/mypage/components/MyPageScreen";
 import FavoritesSection from "@/features/mypage/components/FavoritesSection";
 import Link from "next/link";
 import { buildLoginHref } from "@/lib/nav/login";
 
 type Props = { initialFavorites: Favorite[] };
-type MyPageTab = "profile" | "goshuin" | "favorites" | "submissions";
+type MyPageTab = "profile" | "goshuin" | "favorites" | "submissions" | "visits";
 const GOSHUIN_TAB_ENABLED = false;
 
 function normalizeTab(value: string | null): MyPageTab {
   if (GOSHUIN_TAB_ENABLED && value === "goshuin") return value;
-  if (value === "favorites" || value === "submissions") return value;
+  if (value === "favorites" || value === "submissions" || value === "visits") return value;
   return "profile";
 }
 
@@ -35,6 +36,18 @@ function TabLink({ href, active, children }: { href: string; active: boolean; ch
   );
 }
 
+function formatVisitedAt(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("ja-JP", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
 export default function MyPageView({ initialFavorites }: Props) {
   const sp = useSearchParams();
   const tab = normalizeTab(sp.get("tab"));
@@ -43,6 +56,9 @@ export default function MyPageView({ initialFavorites }: Props) {
   const [user, setUser] = useState<UserMe | null>(null);
   const [form, setForm] = useState({ nickname: "", is_public: true });
   const [saving, setSaving] = useState(false);
+  const [visits, setVisits] = useState<Visit[]>([]);
+  const [visitsLoading, setVisitsLoading] = useState(false);
+  const [visitsError, setVisitsError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authUser) {
@@ -66,6 +82,32 @@ export default function MyPageView({ initialFavorites }: Props) {
       document.querySelector(hash)?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }, [tab]);
+
+  useEffect(() => {
+    if (!user || tab !== "visits") return;
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        setVisitsLoading(true);
+        setVisitsError(null);
+        const data = await getVisits();
+        if (cancelled) return;
+        setVisits(Array.isArray(data) ? data : []);
+      } catch {
+        if (cancelled) return;
+        setVisits([]);
+        setVisitsError("参拝履歴を読み込めませんでした。");
+      } finally {
+        if (!cancelled) setVisitsLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, user]);
 
   const dirty = useMemo(() => {
     if (!user) return false;
@@ -109,7 +151,7 @@ export default function MyPageView({ initialFavorites }: Props) {
   }
 
   if (!user) {
-    const next = tab === "goshuin" || tab === "favorites" || tab === "submissions" ? `/mypage?tab=${tab}` : "/mypage?tab=profile";
+    const next = tab === "goshuin" || tab === "favorites" || tab === "submissions" || tab === "visits" ? `/mypage?tab=${tab}` : "/mypage?tab=profile";
     return (
       <main className="mx-auto max-w-3xl p-6 text-stone-800">
         <h1 className="mb-4 text-xl font-semibold">マイページ</h1>
@@ -146,6 +188,10 @@ export default function MyPageView({ initialFavorites }: Props) {
         <TabLink href="/mypage?tab=favorites" active={tab === "favorites"}>
           保存した神社
         </TabLink>
+
+        <TabLink href="/mypage?tab=visits" active={tab === "visits"}>
+          参拝履歴
+        </TabLink>
       </div>
 
       {tab === "goshuin" ? (
@@ -154,6 +200,58 @@ export default function MyPageView({ initialFavorites }: Props) {
         <MyPageScreen activeTab="submissions" />
       ) : tab === "favorites" ? (
         <FavoritesSection initialFavorites={initialFavorites} />
+      ) : tab === "visits" ? (
+        <section className="space-y-4 rounded-2xl border border-stone-200/20 bg-stone-50/30 p-5 sm:p-6">
+          <div>
+            <h2 className="text-lg font-semibold text-stone-900">参拝履歴</h2>
+            <p className="mt-1 text-sm text-stone-500">参拝済みにした神社を見返せます。</p>
+          </div>
+
+          {visitsLoading ? (
+            <p className="text-sm text-stone-500" role="status" aria-busy="true">
+              参拝履歴を読み込み中...
+            </p>
+          ) : visitsError ? (
+            <div className="rounded-xl border border-rose-200 bg-white p-4">
+              <p className="text-sm font-medium text-rose-700">{visitsError}</p>
+            </div>
+          ) : visits.length === 0 ? (
+            <div className="rounded-xl border border-stone-200/40 bg-white p-4">
+              <p className="text-sm font-medium text-stone-700">参拝履歴はまだありません。</p>
+              <p className="mt-1 text-xs text-stone-500">神社詳細から「参拝済みにする」を押すとここに表示されます。</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {visits.map((visit) => {
+                const shrine = visit.shrine as any;
+                const shrineId = shrine?.id ?? shrine?.shrine_id ?? null;
+                const shrineName = shrine?.name ?? shrine?.display_name ?? shrine?.title ?? "神社名未設定";
+                const shrineAddress = shrine?.address ?? shrine?.location ?? null;
+
+                return (
+                  <article key={visit.id} className="rounded-xl border border-stone-200/40 bg-white p-4">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <h3 className="text-base font-semibold text-stone-900">{shrineName}</h3>
+                        {shrineAddress ? <p className="mt-1 text-xs text-stone-500">{shrineAddress}</p> : null}
+                        <p className="mt-2 text-xs text-stone-500">参拝記録：{formatVisitedAt(visit.visited_at)}</p>
+                      </div>
+
+                      {shrineId ? (
+                        <Link
+                          href={`/shrines/${shrineId}`}
+                          className="inline-flex shrink-0 items-center justify-center rounded-full border border-emerald-700/20 bg-emerald-800 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-emerald-900"
+                        >
+                          詳細を見る
+                        </Link>
+                      ) : null}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
       ) : (
         <section className="space-y-5 rounded-2xl border border-stone-200/20 bg-stone-50/30 p-5 sm:p-6">
           <div>
