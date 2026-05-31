@@ -36,7 +36,7 @@ const nextConfig: NextConfig = {
 
   async rewrites() {
     return {
-      beforeFiles: [
+      afterFiles: [
         {
           source: "/api/:path*",
           destination: "https://jinja-backend.onrender.com/api/:path*",
