@@ -642,7 +642,18 @@ export default function ConciergeClientFull() {
       previousThread: threads[currentIndex + 1],
     });
 
-    if (currentIndex < 0) return null;
+    if (currentIndex < 0) {
+      const fallbackPreviousThread = threads.find(
+        (t) => t != null && Number(t.id) !== Number(currentId),
+      ) ?? null;
+
+      console.log("PREVIOUS FALLBACK", {
+        currentId,
+        fallbackPreviousThread,
+      });
+
+      return typeof fallbackPreviousThread?.id === "number" ? fallbackPreviousThread.id : null;
+    }
 
     const previousThread = threads[currentIndex + 1] ?? null;
     return typeof previousThread?.id === "number" ? previousThread.id : null;
