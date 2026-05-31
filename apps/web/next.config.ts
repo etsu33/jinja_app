@@ -35,14 +35,7 @@ const nextConfig: NextConfig = {
   },
 
   async rewrites() {
-    return {
-      afterFiles: [
-        {
-          source: "/api/:path*",
-          destination: "https://jinja-backend.onrender.com/api/:path*",
-        },
-      ],
-    };
+    return [];
   },
 };
 
