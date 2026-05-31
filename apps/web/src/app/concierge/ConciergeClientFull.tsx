@@ -626,7 +626,22 @@ export default function ConciergeClientFull() {
     const currentId = tidNum ?? activeThreadId;
     if (!currentId || !Array.isArray(threads) || threads.length === 0) return null;
 
-    const currentIndex = threads.findIndex((t) => t != null && Number(t.id) === Number(currentId));
+    console.log("PREVIOUS CHECK", {
+      currentId,
+      threadIds: threads.map((t) => t.id),
+    });
+
+    const currentIndex = threads.findIndex(
+      (t) => Number(t.id) === Number(currentId),
+    );
+
+    console.log("PREVIOUS INDEX", {
+      currentId,
+      currentIndex,
+      currentThread: threads[currentIndex],
+      previousThread: threads[currentIndex + 1],
+    });
+
     if (currentIndex < 0) return null;
 
     const previousThread = threads[currentIndex + 1] ?? null;
@@ -638,6 +653,9 @@ export default function ConciergeClientFull() {
       activeThreadId,
       tidNum,
       threads,
+      currentThreadExists: threads.some(
+        (t) => Number(t.id) === Number(tidNum ?? activeThreadId),
+      ),
     });
   }, [activeThreadId, tidNum, threads]);
 
