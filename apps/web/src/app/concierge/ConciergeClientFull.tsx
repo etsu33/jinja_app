@@ -1442,8 +1442,7 @@ export default function ConciergeClientFull() {
           sessionNickname: null,
           temporaryBirthdate: null,
         }));
-        snap("nav:push", { to: "/concierge", reason: "back_to_entry" });
-        router.push("/concierge");
+        navReplace("/concierge", { reason: "back_to_entry" });
         return;
 
       case "filter_close":
