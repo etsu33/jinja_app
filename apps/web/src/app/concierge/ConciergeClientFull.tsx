@@ -1781,6 +1781,17 @@ export default function ConciergeClientFull() {
               isPremiumActive={isPremiumActive}
             />
 
+            {(() => {
+              console.log("STATE DELTA RENDER", {
+                isLoggedIn,
+                isPremiumActive,
+                previousComparisonVisibility,
+                hasStateDelta: Boolean(stateDelta),
+                actionReflection: stateDelta?.actionReflection,
+              });
+              return null;
+            })()}
+
             {isLoggedIn && stateDelta && previousComparisonVisibility !== "hidden" ? (
               <PremiumStateDeltaCard stateDelta={stateDelta} isPremium={isPremiumActive} />
             ) : null}
