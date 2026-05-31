@@ -11,6 +11,8 @@ export type PreviousConsultationSummary = {
   primaryNeedLabelJa: string | null;
   primaryReasonLabelJa: string | null;
   recommendationNames: string[];
+
+  actionState: "visited" | "saved" | "none" | null;
 };
 
 export type CombinationChange = {
