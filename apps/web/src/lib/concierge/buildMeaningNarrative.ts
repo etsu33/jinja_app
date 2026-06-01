@@ -524,7 +524,7 @@ export function buildMeaningNarrative(args: {
     meaningContext,
     meaningAction,
     // backward compat
-    shrineMeaning: `${meaningCore}\n\n${meaningContext}`,
-    actionMeaning: meaningAction,
+    shrineMeaning: meaningCore,
+    actionMeaning: meaningAction ?? actionRole,
   };
 }
