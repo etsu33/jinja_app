@@ -347,6 +347,29 @@ def _resolve_mode_meta(
     }
 
 
+# Standalone helper: _build_entry_context
+def _build_entry_context(
+    *,
+    query: Optional[str],
+    birthdate: Optional[str],
+) -> Dict[str, Any]:
+    has_query = bool(str(query or "").strip())
+    has_birthdate = bool(str(birthdate or "").strip())
+
+    if has_query:
+        entry_type = "consultation"
+    else:
+        entry_type = "flow"
+
+    return {
+        "version": 1,
+        "entry_type": entry_type,
+        "has_query": has_query,
+        "has_consultation_axis": has_query,
+        "has_birthdate": has_birthdate,
+    }
+
+
 def _attach_breakdown(
     rec: Dict[str, Any],
     *,
@@ -355,6 +378,7 @@ def _attach_breakdown(
     weights: Dict[str, float],
     astro_bonus_enabled: bool,
     visit_style_tags: set[str] | None = None,
+    query: Optional[str] = None,
 ) -> None:
     """
     rec（1件の神社辞書）にスコアの内訳を追加する。
@@ -594,7 +618,8 @@ def _attach_breakdown(
     rec["_reason_facts"] = reason_facts
     rec["_primary_reason_source"] = str(primary_reason.get("type") or "")
     rec["_primary_reason_label"] = str(primary_reason.get("label") or "")
-    rec["rank_explanation"] = _to_rank_explanation(rec=rec)
+    entry_context = _build_entry_context(query=query, birthdate=birthdate)
+    rec["rank_explanation"] = _to_rank_explanation(rec=rec, entry_context=entry_context)
 
     need_score_reason = "normal_scored"
     if not need_tags_clean:
@@ -925,6 +950,7 @@ def _axis_label_ja(axis: str) -> str:
 def _to_rank_explanation(
     *,
     rec: Dict[str, Any],
+    entry_context: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     breakdown = rec.get("breakdown") or {}
     detail = (rec.get("breakdown_detail") or {}).get("features") or {}
@@ -1021,6 +1047,7 @@ def _to_rank_explanation(
 
     return {
         "version": 1,
+        "entry_context": entry_context or {},
         "primary_axis": primary_axis,
         "primary_axis_ja": _axis_label_ja(primary_axis),
         "primary_reason_source": primary_source or "fallback",
@@ -1150,6 +1177,7 @@ __all__ = [
     "_resolve_flow_from_mode",
     "_resolve_mode_weights",
     "_resolve_mode_meta",
+    "_build_entry_context",
     "_attach_breakdown",
     "_attach_rank_comparison",
     "_prefilter_candidates_for_need",
