@@ -98,6 +98,7 @@ describe("BillingSuccessPage", () => {
       source: "state_delta_card",
       funnelStep: "comparison_preview",
       cardId: "personal_meaning",
+      historyTheme: null,
     });
   });
 });

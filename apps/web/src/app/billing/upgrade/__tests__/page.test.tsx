@@ -119,17 +119,20 @@ describe("BillingUpgradePage", () => {
       entryPoint: null,
       entryStep: null,
       entryCardId: null,
+      entryHistoryTheme: null,
     });
     expect(trackBillingEventMock).toHaveBeenCalledWith("upgrade_click", {
       source: null,
       funnelStep: null,
       cardId: null,
+      historyTheme: null,
     });
     expect(trackBillingEventMock).toHaveBeenCalledWith("checkout_started", {
       checkoutSessionId: "cs_test_123",
       source: null,
       funnelStep: null,
       cardId: null,
+      historyTheme: null,
     });
   });
 });
