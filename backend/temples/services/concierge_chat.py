@@ -231,6 +231,15 @@ def build_chat_recommendations(
     soft_signal_tags = extra_tags["soft_signal_tags"]
     visit_style_tags = extra_tags["visit_style_tags"]
 
+    log.info(
+        "[dbg] extra_tags resolved sort=%r soft=%r visit_style=%r raw_query=%r raw_extra=%r",
+        sorted(sort_tags),
+        sorted(soft_signal_tags),
+        sorted(visit_style_tags),
+        query,
+        extra_condition,
+    )
+
     observe_candidate_pool(
         valid_candidates=valid_candidates,
         visit_style_tags=visit_style_tags,
