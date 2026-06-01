@@ -4,6 +4,7 @@ export type SearchAnalyticsEventName =
   | "shrine_search"
   | "map_search"
   | "route_open"
+  | "visit_done"
   | "shrine_detail_transition"
   | "concierge_result_impression"
   | "empty_state_view"

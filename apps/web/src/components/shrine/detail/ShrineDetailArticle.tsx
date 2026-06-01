@@ -61,6 +61,8 @@ import { toNeedTagLabels } from "@/lib/concierge/needTagLabelMap";
 
 import { addVisit, getVisits, type Visit } from "@/lib/api/visits";
 
+import { trackSearchEvent } from "@/lib/analytics/searchEvents";
+
 
 function ShrineDetailSections({ sections }: { sections: ShrineDetailSectionModel[] }) {
   return (
@@ -745,6 +747,13 @@ export default function ShrineDetailArticle({
                     setVisitSubmitting(true);
                     setVisitNotice(null);
                     await addVisit(cardProps.shrineId);
+                    trackSearchEvent("visit_done", {
+                      source: "shrine_detail",
+                      shrineId: cardProps.shrineId,
+                      threadId: tid != null ? String(tid) : undefined,
+                      historyTheme: historyTheme ?? undefined,
+                      ctx,
+                    });
                     const now = new Date().toISOString();
                     setVisitSummary((current) => ({
                       visitCount: current.visitCount + 1,
