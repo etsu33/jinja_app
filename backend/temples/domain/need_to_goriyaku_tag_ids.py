@@ -18,7 +18,7 @@ NEED_TO_GORIYAKU_IDS: Dict[str, Set[int]] = {
     "protection": {11, 16, 26, 28, 32, 38},
     "courage": {12, 15, 18, 20, 24, 30, 38},
     "focus": {3, 4, 39},
-    "rest": {7, 8, 9, 43, 44, 45},
+    "rest": {7, 8, 43, 44, 45},
     "family": {2, 25, 27, 34, 42},
     "travel_safe": {10, 22, 23},
 }
