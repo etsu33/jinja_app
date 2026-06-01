@@ -21,6 +21,7 @@ type UpgradeEntryContext = {
   entryPoint: BillingFunnelSource | null;
   entryStep: BillingFunnelStep | null;
   entryCardId: string | null;
+  entryHistoryTheme: string | null;
 };
 
 function saveUpgradeEntryContext(entryContext: UpgradeEntryContext) {
@@ -47,6 +48,7 @@ function BillingUpgradeContent() {
   const source = parseBillingFunnelSource(searchParams.get("source"));
   const funnelStep = parseBillingFunnelStep(searchParams.get("funnelStep"));
   const cardId = searchParams.get("cardId");
+  const historyTheme = searchParams.get("historyTheme");
 
   const startCheckout = async () => {
     if (auth.loading) return;
@@ -55,6 +57,7 @@ function BillingUpgradeContent() {
       entryPoint: source,
       entryStep: funnelStep,
       entryCardId: cardId,
+      entryHistoryTheme: historyTheme,
     };
 
     saveUpgradeEntryContext(entryContext);
@@ -65,6 +68,7 @@ function BillingUpgradeContent() {
         source,
         funnelStep,
         cardId,
+        historyTheme,
       });
     }
 
@@ -85,6 +89,7 @@ function BillingUpgradeContent() {
           source,
           funnelStep,
           cardId,
+          historyTheme,
         });
       }
       window.location.assign(session.checkout_url);
