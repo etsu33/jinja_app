@@ -913,6 +913,7 @@ def _axis_label_ja(axis: str) -> str:
     mapping = {
         "need": "悩みとの一致",
         "element": "生年月日との相性",
+        "direction": "風水・方角との相性",
         "distance": "距離",
         "popular": "定番性",
         "astro_bonus": "相性補正",
@@ -933,6 +934,7 @@ def _to_rank_explanation(
 
     need_feature = detail.get("need") or {}
     element_feature = detail.get("element") or {}
+    direction_feature = detail.get("direction") or {}
     popular_feature = detail.get("popular") or {}
     distance_feature = detail.get("distance") or {}
 
@@ -950,6 +952,13 @@ def _to_rank_explanation(
             "raw": float(element_feature.get("raw") or 0.0),
             "weight": float(element_feature.get("weight") or 0.0),
             "contribution": float(element_feature.get("contribution") or 0.0),
+        },
+        {
+            "axis": "direction",
+            "axis_ja": _axis_label_ja("direction"),
+            "raw": float(direction_feature.get("raw") or 0.0),
+            "weight": float(direction_feature.get("weight") or 0.0),
+            "contribution": float(direction_feature.get("contribution") or 0.0),
         },
         {
             "axis": "distance",
