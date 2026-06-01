@@ -1,5 +1,3 @@
-
-
 import pytest
 
 from temples.services.shrine_meaning_composer import (
@@ -74,6 +72,59 @@ def test_compose_shrine_meaning_payload_display_blocks_include_access_levels():
     assert "anonymous" in access_levels
     assert "free" in access_levels
     assert "premium" in access_levels
+
+
+@pytest.mark.parametrize(
+    ("shrine_id", "name_jp", "history_theme", "expected_hero", "expected_shrine", "expected_action"),
+    [
+        (
+            17,
+            "三峯神社",
+            "勝負",
+            "前に進む覚悟を固めたい時",
+            "狼は単なる象徴ではなく",
+            "今いちばん決めきれていないことを一つだけ書き出します",
+        ),
+        (
+            14,
+            "鹿島神宮",
+            "勝負",
+            "流れを変える一歩を踏み出したい時",
+            "武神・剣神として信仰される武甕槌大神",
+            "今止まっている理由を一つだけ言葉にします",
+        ),
+        (
+            4,
+            "出雲大社",
+            "縁",
+            "人や機会とのつながりを見直したい時",
+            "縁結びの信仰で知られ",
+            "今大切にしたい関係を一つだけ思い浮かべます",
+        ),
+    ],
+)
+def test_compose_shrine_meaning_payload_keeps_story_overrides(
+    shrine_id,
+    name_jp,
+    history_theme,
+    expected_hero,
+    expected_shrine,
+    expected_action,
+):
+    payload = compose_shrine_meaning_payload(
+        {
+            "id": shrine_id,
+            "name_jp": name_jp,
+            "history_theme": history_theme,
+            "goriyaku": "開運",
+        }
+    )
+
+    generated = payload["generated"]
+
+    assert expected_hero in generated["heroMeaningCopy"]
+    assert expected_shrine in generated["shrineMeaning"]
+    assert expected_action in generated["actionMeaning"]
 
 
 def test_normalize_shrine_meaning_source_splits_string_lists_and_dedupes():
