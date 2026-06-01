@@ -716,10 +716,10 @@ def build_display_fields(generated: ShrineMeaningGeneratedV2) -> ShrineMeaningDi
         _block("consultation_summary", "今の状態", generated["consultationSummary"], "free"),
         # _block("today_flow", "今日の向き合い方", generated["todayFlowContext"], "premium"),
         _block("action_meaning", "ここで試したいこと", generated["actionMeaning"], "premium"),
-        _block("after_visit_reflection", "参拝後に見直したいこと", generated["afterVisitReflection"], "premium"),
+        _block("after_visit_reflection", "あとで見直したいこと", generated["afterVisitReflection"], "premium"),
         _block("history_context", "この神社の背景", generated["historyContext"], "premium"),
         _block("deity_symbol", "祭神の象徴", generated["deitySymbolContext"], "premium"),
-        _block("benefit_action", "ご利益を行動に置き換える", generated["benefitActionContext"], "premium"),
+        _block("benefit_action", "ご利益の受け取り方", generated["benefitActionContext"], "premium"),
     ]
     blocks = [block for block in maybe_blocks if block is not None]
     return {
