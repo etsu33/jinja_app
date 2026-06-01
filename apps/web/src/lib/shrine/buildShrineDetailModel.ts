@@ -810,8 +810,6 @@ function buildProposalWhyFromBreakdown(args: {
 function buildProposalWhyFromNarrativeSources(args: {
   recommendationReasonDetail?: {
     consultationSummary?: string | null;
-    shrineMeaning?: string | null;
-    actionMeaning?: string | null;
   } | null;
   deepReason?: NarrativeFallback | null;
   rankReason?: string | null;
@@ -825,11 +823,8 @@ function buildProposalWhyFromNarrativeSources(args: {
   // 3. no value here; caller must fall back to generated proposalWhy
   const consultationText =
     args.recommendationReasonDetail?.consultationSummary?.trim() || args.deepReason?.interpretation?.trim() || "";
-  const shrineMeaningText =
-    args.recommendationReasonDetail?.shrineMeaning?.trim() || args.deepReason?.shrineMeaning?.trim() || "";
-  const actionText = args.recommendationReasonDetail?.actionMeaning?.trim() || args.deepReason?.action?.trim() || "";
 
-  const hasNarrativeSource = Boolean(consultationText || shrineMeaningText || actionText);
+  const hasNarrativeSource = Boolean(consultationText || args.rankReason || args.comparisonText);
   if (!hasNarrativeSource) {
     return null;
   }
@@ -838,20 +833,6 @@ function buildProposalWhyFromNarrativeSources(args: {
     items.push({
       label: "相談との一致",
       text: consultationText,
-    });
-  }
-
-  if (shrineMeaningText) {
-    items.push({
-      label: "神社のご利益",
-      text: shrineMeaningText,
-    });
-  }
-
-  if (actionText) {
-    items.push({
-      label: "補助的な一致",
-      text: actionText,
     });
   }
 
@@ -970,10 +951,7 @@ function buildJudgeSectionOrder(args: {
 }
 
 function buildJudgeItemsFromNarrativeSources(args: {
-  recommendationReasonDetail?: {
-    shrineMeaning?: string | null;
-    actionMeaning?: string | null;
-  } | null;
+  recommendationReasonDetail?: null;
   deepReason?: NarrativeFallback | null;
 }): JudgeSectionItem[] | null {
   const items: JudgeSectionItem[] = [];
@@ -982,9 +960,8 @@ function buildJudgeItemsFromNarrativeSources(args: {
   // 1. recommendationReasonDetail
   // 2. conciergeDeepReason
   // 3. no value here; caller must fall back to generated judge items
-  const shrineMeaningText =
-    args.recommendationReasonDetail?.shrineMeaning?.trim() || args.deepReason?.shrineMeaning?.trim() || "";
-  const actionText = args.recommendationReasonDetail?.actionMeaning?.trim() || args.deepReason?.action?.trim() || "";
+  const shrineMeaningText = args.deepReason?.shrineMeaning?.trim() || "";
+  const actionText = args.deepReason?.action?.trim() || "";
 
   if (shrineMeaningText) {
     items.push({
@@ -1472,7 +1449,7 @@ export function buildShrineDetailModel({
   // 2. conciergeDeepReason
   // 3. generated judge items
   const narrativeJudgeItems = buildJudgeItemsFromNarrativeSources({
-    recommendationReasonDetail,
+    recommendationReasonDetail: null,
     deepReason: conciergeDeepReason,
   });
 
