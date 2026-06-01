@@ -56,7 +56,6 @@ import type { ShrineDetailSectionModel } from "@/components/shrine/detail/types"
 import { resolveAccessLevel } from "@/lib/premium/accessLevel";
 import { getVisibilityForCard, type CardVisibilityState } from "@/lib/premium/cardVisibility";
 import { trackCardEvent } from "@/lib/analytics/cardEvents";
-import { RecommendationMetaSection } from "@/components/shrine/detail/RecommendationMetaSection";
 import type { StateDelta } from "@/lib/concierge/stateComparison";
 import { toNeedTagLabels } from "@/lib/concierge/needTagLabelMap";
 
@@ -602,7 +601,6 @@ export default function ShrineDetailArticle({
         />
         <ShrineDetailHeroCard title={cardProps.title} imageUrl={heroImageUrl} />
         <ShrineDetailStateDeltaSection stateDelta={stateDelta} isPremiumActive={isPremiumActive} />
-        <RecommendationMetaSection recommendationMeta={recommendationMeta} />
       </section>
 
       {hasContextReasonSections ? <ShrineDetailSections sections={contextReasonSections} /> : null}
