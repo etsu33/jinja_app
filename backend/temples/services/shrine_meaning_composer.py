@@ -74,11 +74,84 @@ class ShrineMeaningPayloadV2(TypedDict):
 
 
 # --- ShrineHistoryStoryOverride TypedDict ---
+
 class ShrineHistoryStoryOverride(TypedDict):
     subContext: str
     heroMeaningCopy: str
     shrineMeaning: str
     actionMeaning: str
+
+
+# --- HistoryThemeDefinition and HISTORY_THEME_DEFINITION ---
+class HistoryThemeDefinition(TypedDict):
+    historical_fact: str
+    historical_role: str
+    modern_interpretation: str
+    action_translation: str
+
+
+HISTORY_THEME_DEFINITION: dict[str, HistoryThemeDefinition] = {
+    "再出発": {
+        "historical_fact": "人生の節目や新しい始まりに、区切りを置く場所として参拝されてきました。",
+        "historical_role": "過去を否定するためではなく、次の段階へ進む前の区切りとして受け継がれてきた背景があります。",
+        "modern_interpretation": "現代では、これまでの流れを一度整理し、次に進む準備をする場所として受け取れます。",
+        "action_translation": "次に進むために、今日から変えることを一つだけ決める。",
+    },
+    "静寂": {
+        "historical_fact": "静かな境内や自然に囲まれた場は、祈りや内省の時間を持つ場所として大切にされてきました。",
+        "historical_role": "外の刺激から距離を置き、心身を落ち着ける時間を作る役割を担ってきた背景があります。",
+        "modern_interpretation": "現代では、情報や予定を増やすより、静かに自分の状態を見直す場所として受け取れます。",
+        "action_translation": "参拝中は判断を急がず、今いちばん減らしたい刺激を一つ確認する。",
+    },
+    "勝負": {
+        "historical_fact": "武神信仰や勝負事の祈りとして、大きな決断や挑戦の前に参拝されてきました。",
+        "historical_role": "結果を保証するためではなく、迷いを抱えながらも覚悟を置く場として受け継がれてきた背景があります。",
+        "modern_interpretation": "現代では、勝つことだけでなく、自分で次の動きを選び直す場所として受け取れます。",
+        "action_translation": "決めきれていないことを一つに絞り、次に動かす方向を確認する。",
+    },
+    "縁": {
+        "historical_fact": "人や土地、家族、共同体との結びつきを祈る場所として参拝されてきました。",
+        "historical_role": "新しい関係を増やすだけでなく、今あるつながりを大切にする役割を担ってきた背景があります。",
+        "modern_interpretation": "現代では、関係を広げるより、誰とどう関わりたいかを見直す場所として受け取れます。",
+        "action_translation": "今大切にしたい関係や機会を一つだけ確認する。",
+    },
+    "学び": {
+        "historical_fact": "学問や技芸の上達を願い、努力を積み重ねる前に参拝されてきました。",
+        "historical_role": "結果だけを求めるのではなく、継続する姿勢や集中を整える場として受け継がれてきた背景があります。",
+        "modern_interpretation": "現代では、手を広げるより、今積み重ねる対象を絞る場所として受け取れます。",
+        "action_translation": "続けたい学びや努力を一つに絞り、次に積み重ねる行動を決める。",
+    },
+    "守り": {
+        "historical_fact": "厄除けや家内安全など、暮らしの無事を願う場所として参拝されてきました。",
+        "historical_role": "不安を消すためではなく、生活の土台を確認し、守る意識を整える役割を担ってきた背景があります。",
+        "modern_interpretation": "現代では、大きく変える前に、今守りたいものを確認する場所として受け取れます。",
+        "action_translation": "今の生活で守りたい土台を一つだけ確認する。",
+    },
+    "復興": {
+        "historical_fact": "災害や困難を越えて再び整えられてきた場所は、回復や再建の象徴として受け継がれてきました。",
+        "historical_role": "一気に元へ戻すのではなく、失ったものを抱えながら少しずつ立て直す役割を担ってきた背景があります。",
+        "modern_interpretation": "現代では、疲れや停滞を責めず、回復の順番を整える場所として受け取れます。",
+        "action_translation": "無理に戻ろうとせず、今日できる回復行動を一つだけ決める。",
+    },
+    "浄化": {
+        "historical_fact": "祓いや清めの場として、穢れや重さを祈りの中で手放すために参拝されてきました。",
+        "historical_role": "問題を消すためではなく、抱え込みすぎたものを一度外へ置く役割を担ってきた背景があります。",
+        "modern_interpretation": "現代では、考えを足すより、不要な感情や情報を手放す場所として受け取れます。",
+        "action_translation": "今いったん手放したい考えや感情を一つだけ確認する。",
+    },
+    "導き": {
+        "historical_fact": "道開きや方角、旅の無事を願う場として、進む方向を定める時に参拝されてきました。",
+        "historical_role": "答えを与えるためではなく、迷いの中で進む向きを確認する役割を担ってきた背景があります。",
+        "modern_interpretation": "現代では、正解を探すより、自分が次に向かう方向を見直す場所として受け取れます。",
+        "action_translation": "選択肢を増やす前に、次に進みたい方向を一つだけ確認する。",
+    },
+    "巡り": {
+        "historical_fact": "水や道、季節の巡りと結びつく場所は、流れや循環を祈る場として受け継がれてきました。",
+        "historical_role": "停滞を責めるのではなく、止まった流れを少しずつ巡らせる役割を担ってきた背景があります。",
+        "modern_interpretation": "現代では、人や状況の流れを無理に変えず、小さく動かし直す場所として受け取れます。",
+        "action_translation": "止まっている流れの中で、今日小さく動かせることを一つ決める。",
+    },
+}
 
 
 HISTORY_THEME_CONTEXT: dict[str, str] = {
@@ -449,9 +522,9 @@ def _build_shrine_meaning(input_: ShrineMeaningInput) -> str:
     if override:
         return override["shrineMeaning"]
     if input_.history_theme:
-        history_context = HISTORY_THEME_CONTEXT.get(input_.history_theme)
-        if history_context:
-            return f"{input_.name_jp}は、{history_context} 今回の相談を整理する補助材料として受け取りやすい神社です。"
+        display_copy = HISTORY_THEME_DISPLAY_COPY.get(input_.history_theme)
+        if display_copy:
+            return f"{input_.name_jp}は、{display_copy}に向き合うための候補です。詳しい背景は、歴史文脈とあわせて補足します。"
     if input_.description:
         return f"{input_.name_jp}には「{_clip(input_.description)}」という情報があります。現時点では、その公開情報を参拝先を選ぶための手がかりとして扱います。"
     benefit = _primary_benefit(input_)
@@ -474,11 +547,12 @@ def _build_action_meaning(input_: ShrineMeaningInput) -> str:
     if override:
         return override["actionMeaning"]
     benefit = _primary_benefit(input_)
-    theme_action = HISTORY_THEME_ACTION_CONTEXT.get(input_.history_theme or "")
+    definition = HISTORY_THEME_DEFINITION.get(input_.history_theme or "")
+    theme_action = definition["action_translation"] if definition else HISTORY_THEME_ACTION_CONTEXT.get(input_.history_theme or "")
     if benefit and theme_action:
-        return f"参拝を、{_clip(benefit, 32)}という願いを急いで叶えるためではなく、{theme_action}"
+        return f"参拝を、{_clip(benefit, 32)}という願いを急いで叶えるためではなく、{theme_action}ことに使います。"
     if theme_action:
-        return f"参拝を、{theme_action}"
+        return f"参拝中は、{theme_action}ことを意識します。"
     if benefit:
         return f"参拝前に、{_clip(benefit, 32)}という願いの中で今いちばん整理したいことを一つだけ確認します。結果を急がず、参拝先を選ぶ前の小さな整理として扱います。"
     return "参拝前に、今気になっていることを一つだけ確認します。神社側の情報だけで意味を決めつけず、静かに整理するための候補として扱います。"
@@ -492,10 +566,19 @@ def _build_action_meaning(input_: ShrineMeaningInput) -> str:
 def _build_history_context(input_: ShrineMeaningInput) -> str | None:
     if not input_.history_theme:
         return None
-    return HISTORY_THEME_CONTEXT.get(
-        input_.history_theme,
-        "神社の歴史や土地の文脈を、今の状態を見直す補助材料として受け取りやすい場所です。",
-    )
+    definition = HISTORY_THEME_DEFINITION.get(input_.history_theme)
+    if definition:
+        return " ".join(
+            [
+                definition["historical_fact"],
+                definition["historical_role"],
+                definition["modern_interpretation"],
+            ]
+        )
+    history_context = HISTORY_THEME_CONTEXT.get(input_.history_theme)
+    if history_context:
+        return f"{history_context} 歴史や土地の背景を断定的な答えにせず、今の状態を見直す補助材料として扱います。"
+    return "神社の歴史や土地の文脈を、今の状態を見直す補助材料として扱います。"
 
 
 def _build_deity_symbol_context(input_: ShrineMeaningInput) -> str | None:
@@ -662,6 +745,7 @@ __all__ = [
     "ShrineMeaningInput",
     "ShrineMeaningPayloadV2",
     "HISTORY_THEME_SUB_CONTEXT",
+    "HISTORY_THEME_DEFINITION",
     "SHRINE_HISTORY_STORY_OVERRIDES",
     "_has_specific_context",
     "ShrineHistoryStoryOverride",
