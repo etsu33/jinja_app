@@ -75,6 +75,7 @@ def _attach_chat_rec_enrichment(
     recs: Dict[str, Any],
     *,
     public_mode: str,
+    query: str,
     birthdate: Optional[str],
     need_tags: List[str],
     weights: Dict[str, float],
@@ -85,9 +86,9 @@ def _attach_chat_rec_enrichment(
     for rec in recs.get("recommendations") or []:
         if not isinstance(rec, dict):
             continue
-
         _attach_breakdown(
             rec,
+            query=query,
             birthdate=birthdate,
             need_tags=need_tags,
             weights=weights,
@@ -306,6 +307,7 @@ def build_chat_recommendations(
     recs = _attach_chat_rec_enrichment(
         recs,
         public_mode=public_mode,
+        query=query or "",
         birthdate=birthdate,
         need_tags=need_tags,
         weights=weights,
