@@ -48,6 +48,65 @@ function formatVisitedAt(value: string) {
   }).format(date);
 }
 
+type AggregatedVisit = {
+  key: string;
+  shrineId: number | string | null;
+  shrineName: string;
+  shrineAddress: string | null;
+  latestVisitedAt: string;
+  visitCount: number;
+};
+
+function getVisitTime(value: string) {
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? 0 : time;
+}
+
+function aggregateVisitsByShrine(visits: Visit[]): AggregatedVisit[] {
+  const map = new Map<string, AggregatedVisit>();
+
+  visits.forEach((visit) => {
+    const shrine = visit.shrine as any;
+    const shrineId = typeof shrine === "number" ? shrine : (shrine?.id ?? shrine?.shrine_id ?? null);
+    const key = shrineId != null ? String(shrineId) : `visit-${visit.id}`;
+    const shrineName =
+      visit.shrine_name ??
+      (typeof shrine === "number" ? null : (shrine?.name ?? shrine?.display_name ?? shrine?.title)) ??
+      "神社名未設定";
+    const shrineAddress =
+      visit.shrine_address ??
+      (typeof shrine === "number" ? null : (shrine?.address ?? shrine?.location ?? null));
+
+    const current = map.get(key);
+    if (!current) {
+      map.set(key, {
+        key,
+        shrineId,
+        shrineName,
+        shrineAddress,
+        latestVisitedAt: visit.visited_at,
+        visitCount: 1,
+      });
+      return;
+    }
+
+    current.visitCount += 1;
+    if (getVisitTime(visit.visited_at) > getVisitTime(current.latestVisitedAt)) {
+      current.latestVisitedAt = visit.visited_at;
+    }
+    if (current.shrineName === "神社名未設定" && shrineName !== "神社名未設定") {
+      current.shrineName = shrineName;
+    }
+    if (!current.shrineAddress && shrineAddress) {
+      current.shrineAddress = shrineAddress;
+    }
+  });
+
+  return Array.from(map.values()).sort(
+    (a, b) => getVisitTime(b.latestVisitedAt) - getVisitTime(a.latestVisitedAt),
+  );
+}
+
 export default function MyPageView({ initialFavorites }: Props) {
   const sp = useSearchParams();
   const tab = normalizeTab(sp.get("tab"));
@@ -115,6 +174,8 @@ export default function MyPageView({ initialFavorites }: Props) {
     const nick1 = (form.nickname ?? "").trim();
     return nick1 !== nick0 || Boolean(form.is_public) !== Boolean(user.profile?.is_public);
   }, [user, form.nickname, form.is_public]);
+
+  const aggregatedVisits = useMemo(() => aggregateVisitsByShrine(visits), [visits]);
 
   const handleSave = async () => {
     if (!user || !dirty || saving) return;
@@ -215,36 +276,27 @@ export default function MyPageView({ initialFavorites }: Props) {
             <div className="rounded-xl border border-rose-200 bg-white p-4">
               <p className="text-sm font-medium text-rose-700">{visitsError}</p>
             </div>
-          ) : visits.length === 0 ? (
+          ) : aggregatedVisits.length === 0 ? (
             <div className="rounded-xl border border-stone-200/40 bg-white p-4">
               <p className="text-sm font-medium text-stone-700">参拝履歴はまだありません。</p>
               <p className="mt-1 text-xs text-stone-500">神社詳細から「参拝済みにする」を押すとここに表示されます。</p>
             </div>
           ) : (
             <div className="space-y-3">
-              {visits.map((visit) => {
-                const shrine = visit.shrine as any;
-                const shrineId = typeof shrine === "number" ? shrine : (shrine?.id ?? shrine?.shrine_id ?? null);
-                const shrineName =
-                  visit.shrine_name ??
-                  (typeof shrine === "number" ? null : (shrine?.name ?? shrine?.display_name ?? shrine?.title)) ??
-                  "神社名未設定";
-                const shrineAddress =
-                  visit.shrine_address ??
-                  (typeof shrine === "number" ? null : (shrine?.address ?? shrine?.location ?? null));
-
+              {aggregatedVisits.map((visit) => {
                 return (
-                  <article key={visit.id} className="rounded-xl border border-stone-200/40 bg-white p-4">
+                  <article key={visit.key} className="rounded-xl border border-stone-200/40 bg-white p-4">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                       <div>
-                        <h3 className="text-base font-semibold text-stone-900">{shrineName}</h3>
-                        {shrineAddress ? <p className="mt-1 text-xs text-stone-500">{shrineAddress}</p> : null}
-                        <p className="mt-2 text-xs text-stone-500">参拝記録：{formatVisitedAt(visit.visited_at)}</p>
+                        <h3 className="text-base font-semibold text-stone-900">{visit.shrineName}</h3>
+                        {visit.shrineAddress ? <p className="mt-1 text-xs text-stone-500">{visit.shrineAddress}</p> : null}
+                        <p className="mt-2 text-xs text-stone-500">最新参拝：{formatVisitedAt(visit.latestVisitedAt)}</p>
+                        <p className="mt-1 text-xs font-medium text-emerald-700">参拝回数：{visit.visitCount}回</p>
                       </div>
 
-                      {shrineId ? (
+                      {visit.shrineId ? (
                         <Link
-                          href={`/shrines/${shrineId}`}
+                          href={`/shrines/${visit.shrineId}`}
                           className="inline-flex shrink-0 items-center justify-center rounded-full border border-emerald-700/20 bg-emerald-800 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-emerald-900"
                         >
                           詳細を見る
