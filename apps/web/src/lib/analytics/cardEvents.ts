@@ -35,6 +35,7 @@ export type CardAnalyticsPayload = {
   visibility: CardVisibilityState;
   ctaType?: CtaType;
   shrineId?: number | string;
+  historyTheme?: string | null;
   recommendationRank?: number;
   mode?: "need" | "compat";
   flow?: "A" | "B";

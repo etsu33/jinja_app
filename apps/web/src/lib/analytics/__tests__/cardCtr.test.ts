@@ -34,6 +34,7 @@ describe("aggregateCardCtr", () => {
         cardId: "context_reason",
         visibility: "visible",
         accessLevel: "premium",
+        historyTheme: null,
         cardVisibilityCount: 2,
         premiumClickCount: 1,
         ctr: 0.5,
@@ -77,6 +78,7 @@ describe("aggregateCardCtr", () => {
         cardId: "context_reason",
         visibility: "partial",
         accessLevel: "free",
+        historyTheme: null,
         cardVisibilityCount: 1,
         premiumClickCount: 1,
         ctr: 1,
@@ -86,6 +88,7 @@ describe("aggregateCardCtr", () => {
         cardId: "premium_preview",
         visibility: "teaser",
         accessLevel: "anonymous",
+        historyTheme: null,
         cardVisibilityCount: 1,
         premiumClickCount: 1,
         ctr: 1,
@@ -135,8 +138,61 @@ describe("aggregateCardCtr", () => {
         cardId: "premium_preview",
         visibility: "teaser",
         accessLevel: "free",
+        historyTheme: null,
         cardVisibilityCount: 0,
         premiumClickCount: 1,
+        ctr: 0,
+      },
+    ]);
+  });
+
+  it("historyTheme ごとにCTRを分けて集計する", () => {
+    const rows = aggregateCardCtr([
+      {
+        event: "card_view",
+        source: "concierge_result",
+        cardId: "premium_preview",
+        visibility: "teaser",
+        accessLevel: "free",
+        historyTheme: "再出発",
+      },
+      {
+        event: "premium_preview_click",
+        source: "concierge_result",
+        cardId: "premium_preview",
+        visibility: "teaser",
+        accessLevel: "free",
+        historyTheme: "再出発",
+      },
+      {
+        event: "card_view",
+        source: "concierge_result",
+        cardId: "premium_preview",
+        visibility: "teaser",
+        accessLevel: "free",
+        historyTheme: "静寂",
+      },
+    ]);
+
+    expect(rows).toEqual([
+      {
+        source: "concierge_result",
+        cardId: "premium_preview",
+        visibility: "teaser",
+        accessLevel: "free",
+        historyTheme: "再出発",
+        cardVisibilityCount: 1,
+        premiumClickCount: 1,
+        ctr: 1,
+      },
+      {
+        source: "concierge_result",
+        cardId: "premium_preview",
+        visibility: "teaser",
+        accessLevel: "free",
+        historyTheme: "静寂",
+        cardVisibilityCount: 1,
+        premiumClickCount: 0,
         ctr: 0,
       },
     ]);

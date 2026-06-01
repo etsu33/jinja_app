@@ -443,6 +443,7 @@ export default async function Page({ params, searchParams }: Props) {
           {...model}
           stateDelta={stateDelta}
           isPremiumActive={isPremiumActive}
+          historyTheme={historyThemeForAnalytics}
           addGoshuinHref={addGoshuinHref}
           saveActionNode={
             <ShrineSaveButton

@@ -32,7 +32,10 @@ import type {
 import { buildConciergeCardRoutes } from "@/lib/concierge/conciergeCardRoutes";
 
 type MetaMode = NonNullable<ConciergeSectionsPayload["meta"]>["mode"];
-type AnalyticsContext = Pick<CardAnalyticsPayload, "mode" | "flow" | "hasBirthdate" | "recommendationCount">;
+type AnalyticsContext = Pick<
+  CardAnalyticsPayload,
+  "mode" | "flow" | "hasBirthdate" | "recommendationCount" | "historyTheme"
+>;
 
 const conciergeSoftCardClass = "rounded-2xl border border-slate-200 bg-slate-50 shadow-sm p-4";
 const conciergeNoticeCardClass = "rounded-2xl border border-amber-200 bg-amber-50 shadow-sm p-4";
@@ -306,6 +309,7 @@ export default function ConciergeSectionsRenderer({
           accessLevel,
           visibility: consultationSummaryRoute.visibility,
           mode: heroItem.mode,
+          historyTheme: analyticsContext?.historyTheme,
           threadId: tid ?? undefined,
           resultSetId,
         });
@@ -327,6 +331,7 @@ export default function ConciergeSectionsRenderer({
           shrineId: heroItem.shrineId,
           recommendationRank: heroItem.rank,
           mode: heroItem.mode,
+          historyTheme: analyticsContext?.historyTheme,
           threadId: tid ?? undefined,
           resultSetId,
         });
@@ -348,6 +353,7 @@ export default function ConciergeSectionsRenderer({
           shrineId: heroItem.shrineId,
           recommendationRank: heroItem.rank,
           mode: heroItem.mode,
+          historyTheme: analyticsContext?.historyTheme,
           threadId: tid ?? undefined,
           resultSetId,
         });
@@ -384,6 +390,7 @@ export default function ConciergeSectionsRenderer({
         shrineId: heroItem.shrineId,
         recommendationRank: heroItem.rank,
         mode: heroItem.mode,
+        historyTheme: analyticsContext?.historyTheme,
         threadId: tid ?? undefined,
         resultSetId,
       });
@@ -402,6 +409,7 @@ export default function ConciergeSectionsRenderer({
             source: "concierge_result",
             accessLevel,
             visibility: "visible",
+            historyTheme: analyticsContext?.historyTheme,
             threadId: tid ?? undefined,
             resultSetId,
           });
@@ -421,6 +429,7 @@ export default function ConciergeSectionsRenderer({
             shrineId: item.shrineId,
             recommendationRank: item.rank,
             mode: item.mode,
+            historyTheme: analyticsContext?.historyTheme,
             threadId: tid ?? undefined,
             resultSetId,
           });
@@ -443,6 +452,7 @@ export default function ConciergeSectionsRenderer({
       shrineId: heroItem.shrineId,
       recommendationRank: heroItem.rank,
       mode: heroItem.mode,
+      historyTheme: analyticsContext?.historyTheme,
       threadId: tid ?? undefined,
       resultSetId,
     });

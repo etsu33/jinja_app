@@ -1039,14 +1039,22 @@ export default function ConciergeClientFull() {
     const modeRaw = (displayUnified?.data as any)?._signals?.mode;
     const mode = modeRaw?.mode === "need" || modeRaw?.mode === "compat" ? modeRaw.mode : undefined;
     const flow = modeRaw?.flow === "A" || modeRaw?.flow === "B" ? modeRaw.flow : undefined;
+    const topRecommendation = displayRecommendations[0] as Record<string, unknown> | undefined;
+    const historyTheme =
+      typeof topRecommendation?.history_theme === "string"
+        ? topRecommendation.history_theme
+        : typeof topRecommendation?.historyTheme === "string"
+          ? topRecommendation.historyTheme
+          : undefined;
 
     return {
       mode,
       flow,
       hasBirthdate: Boolean(normalizedBirthdate),
       recommendationCount: displayRecommendations.length,
+      historyTheme,
     };
-  }, [displayUnified, displayRecommendations.length, normalizedBirthdate]);
+  }, [displayUnified, displayRecommendations, normalizedBirthdate]);
 
   const messages = useMemo(
     () => deriveMessages(events, thread?.id ?? activeThreadId),

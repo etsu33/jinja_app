@@ -116,6 +116,8 @@ function trackShrineDetailCardView(args: {
   accessLevel: "anonymous" | "free" | "premium";
   visibility: CardVisibilityState;
   payloadSource?: "v2" | "fallback";
+  shrineId?: number | string;
+  historyTheme?: string | null;
 }) {
   if (args.visibility === "hidden") return;
 
@@ -125,6 +127,8 @@ function trackShrineDetailCardView(args: {
     source: "shrine_detail",
     accessLevel: args.accessLevel,
     visibility: args.visibility,
+    shrineId: args.shrineId,
+    historyTheme: args.historyTheme,
     payloadSource: args.payloadSource,
   });
 }
@@ -149,10 +153,12 @@ function PremiumUpgradePrompt({
   shrineId,
   ctx,
   tid,
+  historyTheme,
 }: {
   shrineId?: number | string | null;
   ctx?: string | null;
   tid?: string | number | null;
+  historyTheme?: string | null;
 }) {
   const { isLoggedIn, loading: authLoading } = useAuth();
   const isGuestUser = !authLoading && !isLoggedIn;
@@ -180,6 +186,7 @@ function PremiumUpgradePrompt({
               visibility: "teaser",
               ctaType: "continue_with_premium",
               shrineId: shrineId ?? undefined,
+              historyTheme,
               threadId: tid != null ? String(tid) : undefined,
               mode: ctx === "concierge" ? "need" : undefined,
             })
@@ -380,6 +387,7 @@ export default function ShrineDetailArticle({
   stateDelta = null,
   ctx = null,
   tid = null,
+  historyTheme = null,
   meaningPayloadSource = "fallback",
   saveActionNode,
 }: {
@@ -407,6 +415,7 @@ export default function ShrineDetailArticle({
   stateDelta?: StateDelta | null;
   ctx?: string | null;
   tid?: string | number | null;
+  historyTheme?: string | null;
   meaningPayloadSource?: "v2" | "fallback";
   saveActionNode?: React.ReactNode;
 }) {
@@ -501,6 +510,8 @@ export default function ShrineDetailArticle({
         cardId: "context_reason",
         accessLevel,
         visibility: contextReasonVisibility,
+        shrineId: cardProps.shrineId,
+        historyTheme,
         payloadSource: meaningPayloadSource,
       });
     }
@@ -510,6 +521,8 @@ export default function ShrineDetailArticle({
         cardId,
         accessLevel,
         visibility: contextReasonVisibility,
+        shrineId: cardProps.shrineId,
+        historyTheme,
         payloadSource: meaningPayloadSource,
       });
     });
@@ -519,6 +532,8 @@ export default function ShrineDetailArticle({
         cardId: "personal_meaning",
         accessLevel,
         visibility: personalMeaningVisibility,
+        shrineId: cardProps.shrineId,
+        historyTheme,
         payloadSource: meaningPayloadSource,
       });
     }
@@ -528,6 +543,8 @@ export default function ShrineDetailArticle({
         cardId,
         accessLevel,
         visibility: personalMeaningVisibility,
+        shrineId: cardProps.shrineId,
+        historyTheme,
         payloadSource: meaningPayloadSource,
       });
     });
@@ -537,6 +554,8 @@ export default function ShrineDetailArticle({
         cardId: "saved_record",
         accessLevel,
         visibility: savedRecordVisibility,
+        shrineId: cardProps.shrineId,
+        historyTheme,
         payloadSource: meaningPayloadSource,
       });
     }
@@ -552,6 +571,7 @@ export default function ShrineDetailArticle({
         accessLevel,
         visibility: recommendationMetaVisibility,
         shrineId: cardProps.shrineId,
+        historyTheme,
         payloadSource: meaningPayloadSource,
       });
     }
@@ -567,6 +587,7 @@ export default function ShrineDetailArticle({
         accessLevel,
         visibility: previousComparisonVisibility,
         shrineId: cardProps.shrineId,
+        historyTheme,
         payloadSource: meaningPayloadSource,
       });
     }
@@ -589,6 +610,7 @@ export default function ShrineDetailArticle({
     resolvedSaveActionNode,
     savedRecordVisibility,
     stateDelta,
+    historyTheme,
   ]);
 
   return (
@@ -610,7 +632,7 @@ export default function ShrineDetailArticle({
       ) : null}
 
       {personalMeaningVisibility === "teaser" && hasPremiumSections ? (
-        <PremiumUpgradePrompt shrineId={cardProps.shrineId} ctx={ctx} tid={tid} />
+        <PremiumUpgradePrompt shrineId={cardProps.shrineId} ctx={ctx} tid={tid} historyTheme={historyTheme} />
       ) : null}
 
       {/* Premium比較カードは後続PRで再設計する。 */}

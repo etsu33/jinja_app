@@ -6,6 +6,7 @@ export type CardCtrEventInput = {
   cardId?: string | null;
   visibility?: string | null;
   accessLevel?: string | null;
+  historyTheme?: string | null;
 };
 
 export type CardCtrRow = {
@@ -13,6 +14,7 @@ export type CardCtrRow = {
   cardId: string;
   visibility: CardCtrVisibility;
   accessLevel: string;
+  historyTheme: string | null;
   cardVisibilityCount: number;
   premiumClickCount: number;
   ctr: number;
@@ -44,8 +46,9 @@ function buildGroupKey(args: {
   cardId: string;
   visibility: CardCtrVisibility;
   accessLevel: string;
+  historyTheme: string | null;
 }) {
-  return [args.source, args.cardId, args.visibility, args.accessLevel].join("::");
+  return [args.source, args.cardId, args.visibility, args.accessLevel, args.historyTheme ?? ""].join("::");
 }
 
 function createEmptyRow(args: {
@@ -53,12 +56,14 @@ function createEmptyRow(args: {
   cardId: string;
   visibility: CardCtrVisibility;
   accessLevel: string;
+  historyTheme: string | null;
 }): CardCtrRow {
   return {
     source: args.source,
     cardId: args.cardId,
     visibility: args.visibility,
     accessLevel: args.accessLevel,
+    historyTheme: args.historyTheme,
     cardVisibilityCount: 0,
     premiumClickCount: 0,
     ctr: 0,
@@ -82,12 +87,14 @@ export function aggregateCardCtr(events: CardCtrEventInput[]): CardCtrRow[] {
 
     const visibility = normalizeVisibility(event);
     if (!visibility) continue;
+    const historyTheme = event.historyTheme ?? null;
 
     const key = buildGroupKey({
       source: event.source,
       cardId: event.cardId,
       visibility,
       accessLevel: event.accessLevel,
+      historyTheme,
     });
 
     const row = rows.get(key) ??
@@ -96,6 +103,7 @@ export function aggregateCardCtr(events: CardCtrEventInput[]): CardCtrRow[] {
         cardId: event.cardId,
         visibility,
         accessLevel: event.accessLevel,
+        historyTheme,
       });
 
     if (CARD_VISIBILITY_EVENTS.has(event.event)) {
