@@ -60,7 +60,7 @@ import { RecommendationMetaSection } from "@/components/shrine/detail/Recommenda
 import type { StateDelta } from "@/lib/concierge/stateComparison";
 import { toNeedTagLabels } from "@/lib/concierge/needTagLabelMap";
 
-import { addVisit } from "@/lib/api/visits";
+import { addVisit, getVisits, type Visit } from "@/lib/api/visits";
 
 
 function ShrineDetailSections({ sections }: { sections: ShrineDetailSectionModel[] }) {
@@ -222,6 +222,54 @@ function renderStateDeltaTagSentence(tags: string[] | undefined | null, emptyTex
   }
 
   return `「${tags.join("」「")}」が見えています。`;
+}
+
+type VisitSummary = {
+  visitCount: number;
+  latestVisitedAt: string | null;
+};
+
+function getVisitShrineId(visit: Visit): number | string | null {
+  const shrine = visit.shrine as any;
+  if (typeof shrine === "number" || typeof shrine === "string") return shrine;
+  return shrine?.id ?? shrine?.shrine_id ?? null;
+}
+
+function getVisitTime(value: string | null) {
+  if (!value) return 0;
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? 0 : time;
+}
+
+function formatVisitDateTime(value: string | null) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("ja-JP", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function buildVisitSummary(visits: Visit[], shrineId: number | string): VisitSummary {
+  const currentShrineId = String(shrineId);
+  const matchedVisits = visits.filter((visit) => {
+    const visitShrineId = getVisitShrineId(visit);
+    return visitShrineId != null && String(visitShrineId) === currentShrineId;
+  });
+
+  const latestVisitedAt = matchedVisits.reduce<string | null>((latest, visit) => {
+    if (!latest) return visit.visited_at;
+    return getVisitTime(visit.visited_at) > getVisitTime(latest) ? visit.visited_at : latest;
+  }, null);
+
+  return {
+    visitCount: matchedVisits.length,
+    latestVisitedAt,
+  };
 }
 
 function ShrineDetailStateDeltaSection({
@@ -414,6 +462,9 @@ export default function ShrineDetailArticle({
   const [favoriteNoticeState, setFavoriteNoticeState] = useState<"saved" | "removed" | null>(null);
   const [visitSubmitting, setVisitSubmitting] = useState(false);
   const [visitNotice, setVisitNotice] = useState<"saved" | "error" | null>(null);
+  const [visitSummary, setVisitSummary] = useState<VisitSummary>({ visitCount: 0, latestVisitedAt: null });
+  const hasVisitHistory = visitSummary.visitCount > 0;
+  const latestVisitedAtLabel = formatVisitDateTime(visitSummary.latestVisitedAt);
 
   const resolvedSaveActionNode = useMemo(() => {
     if (!saveActionNode || !React.isValidElement(saveActionNode)) return saveActionNode;
@@ -424,6 +475,26 @@ export default function ShrineDetailArticle({
       },
     });
   }, [saveActionNode]);
+
+  useEffect(() => {
+    if (!cardProps.shrineId) return;
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const visits = await getVisits();
+        if (cancelled) return;
+        setVisitSummary(buildVisitSummary(visits, cardProps.shrineId));
+      } catch {
+        if (!cancelled) setVisitSummary({ visitCount: 0, latestVisitedAt: null });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [cardProps.shrineId]);
 
   useEffect(() => {
     if (hasContextReasonSections) {
@@ -623,6 +694,16 @@ export default function ShrineDetailArticle({
             {resolvedSaveActionNode}
 
             <div className="mt-3 space-y-2">
+              {hasVisitHistory ? (
+                <div className="rounded-xl border border-emerald-200 bg-white p-3">
+                  <p className="text-sm font-semibold text-emerald-700">参拝したことがあります</p>
+                  <p className="mt-1 text-xs text-slate-600">参拝回数：{visitSummary.visitCount}回</p>
+                  {latestVisitedAtLabel ? (
+                    <p className="mt-1 text-xs text-slate-600">最終参拝：{latestVisitedAtLabel}</p>
+                  ) : null}
+                </div>
+              ) : null}
+
               {visitNotice === "saved" ? (
                 <div className="rounded-xl border border-emerald-200 bg-white p-3">
                   <p className="text-sm font-semibold text-emerald-700">参拝記録しました</p>
@@ -644,6 +725,11 @@ export default function ShrineDetailArticle({
                     setVisitSubmitting(true);
                     setVisitNotice(null);
                     await addVisit(cardProps.shrineId);
+                    const now = new Date().toISOString();
+                    setVisitSummary((current) => ({
+                      visitCount: current.visitCount + 1,
+                      latestVisitedAt: now,
+                    }));
                     setVisitNotice("saved");
                   } catch {
                     setVisitNotice("error");
@@ -653,7 +739,7 @@ export default function ShrineDetailArticle({
                 }}
                 className="w-full rounded-2xl border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-50 disabled:opacity-60"
               >
-                {visitSubmitting ? "記録中..." : "参拝済みにする"}
+                {visitSubmitting ? "記録中..." : hasVisitHistory ? "もう一度参拝記録する" : "参拝済みにする"}
               </button>
             </div>
           </div>
