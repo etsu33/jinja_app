@@ -337,9 +337,10 @@ export default function ConciergeSectionsRenderer({
         position: item.position === "hero" ? "hero_primary" : "compact",
         recommendationRank: item.rank,
         mode: item.mode,
+        historyTheme: analyticsContext?.historyTheme,
       });
     });
-  }, [resultImpressions, resultSetId, tid]);
+  }, [analyticsContext?.historyTheme, resultImpressions, resultSetId, tid]);
 
   useEffect(() => {
     const heroItem = resultImpressions.find((item) => item.position === "hero");
@@ -816,6 +817,7 @@ export default function ConciergeSectionsRenderer({
                                   flow: analyticsContext?.flow,
                                   hasBirthdate: analyticsContext?.hasBirthdate,
                                   recommendationCount: analyticsContext?.recommendationCount,
+                                  historyTheme: analyticsContext?.historyTheme,
                                   firstClick: resolveFirstResultClick(resultSetId),
                                 })
                               }
@@ -945,6 +947,7 @@ export default function ConciergeSectionsRenderer({
                                         flow: analyticsContext?.flow,
                                         hasBirthdate: analyticsContext?.hasBirthdate,
                                         recommendationCount: analyticsContext?.recommendationCount,
+                                        historyTheme: analyticsContext?.historyTheme,
                                         firstClick: resolveFirstResultClick(resultSetId),
                                       })
                                     }
