@@ -263,6 +263,36 @@ def _cultural_flow_context(input_: ShrineMeaningInput) -> str | None:
 
 # ---- SHRINE_HISTORY_STORY_OVERRIDES ----
 SHRINE_HISTORY_STORY_OVERRIDES: dict[int, ShrineHistoryStoryOverride] = {
+    1: {
+        "subContext": "近代の区切り",
+        "heroMeaningCopy": "明治神宮は、これまでの流れに区切りを置き、次の歩き方を静かに整えたい時に向き合いやすい神社です。",
+        "shrineMeaning": "明治神宮は、近代日本の大きな転換期を背景に、明治天皇と昭憲皇太后を祀る神社として受け継がれてきました。過去をなかったことにするのではなく、一つの時代を区切り、次の状態へ歩き直す感覚と結びつきやすい場所です。",
+        "actionMeaning": "参拝前に、今までの流れの中で一区切りにしたいことを一つだけ書き出します。参拝中は、次に持ち越すものと手放すものを静かに分けてみます。",
+    },
+    3: {
+        "subContext": "原点回帰",
+        "heroMeaningCopy": "伊勢神宮（内宮）は、余計なものを削ぎ落とし、自分の原点に戻って整えたい時に向き合いやすい神社です。",
+        "shrineMeaning": "伊勢神宮（内宮）は、天照大御神を祀る神宮として、長く祈りの中心に置かれてきた場所です。何かを足して答えを探すより、いったん原点に立ち返り、今の自分に必要な軸を見直す感覚と結びつきやすい場所です。",
+        "actionMeaning": "参拝前に、今いちばん大事にしたい軸を一つだけ確認します。参拝中は、増やすことより削ることを意識し、次に残したい行動を一つに絞ります。",
+    },
+    6: {
+        "subContext": "積み重ね",
+        "heroMeaningCopy": "太宰府天満宮は、焦って結果を求めるより、学びや努力の向け方を整えたい時に向き合いやすい神社です。",
+        "shrineMeaning": "太宰府天満宮は、菅原道真公を祀り、学問や努力の積み重ねを願う場所として親しまれてきました。結果だけを急ぐのではなく、今続けることを一つに絞り、集中の置き方を整える感覚と結びつきやすい場所です。",
+        "actionMeaning": "参拝前に、今いちばん積み重ねたい学びや作業を一つだけ決めます。参拝中は、結果ではなく、今日続ける小さな行動を確認します。",
+    },
+    10: {
+        "subContext": "立て直す勝負",
+        "heroMeaningCopy": "鶴岡八幡宮は、揺れている判断を整え、次の勝負に向けて姿勢を立て直したい時に向き合いやすい神社です。",
+        "shrineMeaning": "鶴岡八幡宮は、武家の信仰や都市の中心として受け継がれてきた神社です。勢いだけで進むのではなく、守るものと動かすものを見直し、次の判断に向けて姿勢を整える感覚と結びつきやすい場所です。",
+        "actionMeaning": "参拝前に、今の勝負で守りたいものを一つ、動かしたいものを一つ確認します。参拝中は、焦って結論を出さず、次に取る行動を一つに絞ります。",
+    },
+    11: {
+        "subContext": "進む前の守り",
+        "heroMeaningCopy": "住吉大社は、進む前に足元を確認し、無理なく流れを守りたい時に向き合いやすい神社です。",
+        "shrineMeaning": "住吉大社は、航海や移動の守りと結びつき、進む道の無事を願う場所として受け継がれてきました。前へ進むことを急ぐより、まず今の足元や移動の流れを確認し、安全に進む感覚と結びつきやすい場所です。",
+        "actionMeaning": "参拝前に、今進めたいことの中で不安が残っている点を一つだけ確認します。参拝中は、無理に速度を上げず、安全に進むための次の一手を一つ決めます。",
+    },
     17: {
         "subContext": "覚悟",
         "heroMeaningCopy": "三峯神社は、迷いや不安を抱えたままでも、前に進む覚悟を固めたい時に向き合いやすい神社です。",
@@ -564,6 +594,9 @@ def _build_action_meaning(input_: ShrineMeaningInput) -> str:
 # 「だから今の状態と接続する」を返す
 
 def _build_history_context(input_: ShrineMeaningInput) -> str | None:
+    override = SHRINE_HISTORY_STORY_OVERRIDES.get(input_.shrine_id)
+    if override:
+        return override["shrineMeaning"]
     if not input_.history_theme:
         return None
     definition = HISTORY_THEME_DEFINITION.get(input_.history_theme)
