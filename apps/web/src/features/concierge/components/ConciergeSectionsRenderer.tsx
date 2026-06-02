@@ -131,11 +131,62 @@ type Props = {
   analyticsContext?: AnalyticsContext;
 };
 
+
 function parseExtraTokens(extra: string | undefined | null): string[] {
   return (extra || "")
     .split(/[、,\s]+/)
     .map((x) => x.trim())
     .filter(Boolean);
+}
+
+function buildHistoryThemeDisplay(theme: string | null | undefined): { title: string; body: string } | null {
+  const normalized = typeof theme === "string" ? theme.trim() : "";
+  if (!normalized) return null;
+
+  const map: Record<string, { title: string; body: string }> = {
+    再出発: {
+      title: "歴史的には、区切りと再出発を象徴する神社です",
+      body: "過去を否定するためではなく、次へ進む前に一度流れを区切る場所として受け取りやすい候補です。",
+    },
+    静寂: {
+      title: "歴史的には、静かに整える時間を象徴する神社です",
+      body: "刺激を増やすより、外の情報から少し距離を置いて、自分の状態を見直す場所として受け取りやすい候補です。",
+    },
+    勝負: {
+      title: "歴史的には、決断や覚悟を象徴する神社です",
+      body: "結果を保証する場所ではなく、迷いを抱えながらも次に動かす方向を確認する場所として受け取りやすい候補です。",
+    },
+    縁: {
+      title: "歴史的には、人や機会との結びつきを象徴する神社です",
+      body: "関係をただ増やすのではなく、今あるつながりやこれから選びたい縁を見直す場所として受け取りやすい候補です。",
+    },
+    学び: {
+      title: "歴史的には、積み重ねと集中を象徴する神社です",
+      body: "結果だけを急ぐより、今続ける対象を絞り、努力の向け方を整える場所として受け取りやすい候補です。",
+    },
+    守り: {
+      title: "歴史的には、暮らしの土台を守ることを象徴する神社です",
+      body: "不安を消し切るためではなく、今守りたいものや生活の土台を確認する場所として受け取りやすい候補です。",
+    },
+    復興: {
+      title: "歴史的には、回復と立て直しを象徴する神社です",
+      body: "一気に元へ戻すのではなく、疲れや停滞を抱えたまま少しずつ整え直す場所として受け取りやすい候補です。",
+    },
+    浄化: {
+      title: "歴史的には、抱えたものを手放すことを象徴する神社です",
+      body: "問題を消すためではなく、抱え込みすぎた感情や情報をいったん外へ置く場所として受け取りやすい候補です。",
+    },
+    導き: {
+      title: "歴史的には、進む方向を見直すことを象徴する神社です",
+      body: "答えを与える場所ではなく、迷いの中で次に向かう方向を静かに確認する場所として受け取りやすい候補です。",
+    },
+    巡り: {
+      title: "歴史的には、流れや循環を象徴する神社です",
+      body: "停滞を責めるのではなく、止まっている流れを小さく巡らせ直す場所として受け取りやすい候補です。",
+    },
+  };
+
+  return map[normalized] ?? null;
 }
 
 function scrollToConciergeInput() {
@@ -710,6 +761,14 @@ export default function ConciergeSectionsRenderer({
                           trustMetadata?.lineage,
                         ].filter(Boolean);
 
+                        const historyTheme =
+                          typeof (heroItem as any).history_theme === "string"
+                            ? (heroItem as any).history_theme
+                            : typeof (heroItem as any).historyTheme === "string"
+                              ? (heroItem as any).historyTheme
+                              : null;
+                        const historyThemeDisplay = buildHistoryThemeDisplay(historyTheme);
+
                         return (
                           <div key={`rec-${i}-hero-${heroItem.shrineId}`} className="space-y-2">
                             {consultationSummaryVisibility !== "hidden" && reasonVm.detail.consultationSummary ? (
@@ -780,6 +839,20 @@ export default function ConciergeSectionsRenderer({
                                     この神社が合う理由
                                   </p>
                                   <p className="text-sm leading-7 text-slate-700">{reasonVm.detail.shrineMeaning}</p>
+                                </div>
+                              </section>
+                            ) : null}
+
+                            {historyThemeDisplay ? (
+                              <section className={conciergeSoftCardClass}>
+                                <div className="space-y-2">
+                                  <p className="text-xs font-semibold tracking-[0.12em] text-slate-500">
+                                    この神社が歴史的に象徴すること
+                                  </p>
+                                  <p className="text-sm font-semibold leading-7 text-slate-800">
+                                    {historyThemeDisplay.title}
+                                  </p>
+                                  <p className="text-sm leading-7 text-slate-700">{historyThemeDisplay.body}</p>
                                 </div>
                               </section>
                             ) : null}
