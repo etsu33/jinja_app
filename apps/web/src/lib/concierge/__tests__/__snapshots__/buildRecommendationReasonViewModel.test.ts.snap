@@ -65,7 +65,7 @@ exports[`buildRecommendationReasonViewModel > reason文の代表パターンを 
     "hero": {
       "catchCopy": "今の状態に重ねて見やすい神社",
       "eyebrowLabel": "今の相談に近い方向の神社",
-      "subtitle": "働き方や次の動きを整理したい時に、比較しやすい候補です。",
+      "subtitle": "仕事や次の動きを整理したい相談として、判断軸を立て直しやすい候補です。",
       "topReasonLabel": "見やすい候補",
     },
     "inputType": "fallback",
@@ -111,7 +111,7 @@ exports[`buildRecommendationReasonViewModel > reason文の代表パターンを 
     "hero": {
       "catchCopy": "今の状態に重ねて見やすい神社",
       "eyebrowLabel": "今の相談に近い方向の神社",
-      "subtitle": "働き方や次の動きを整理したい時に、比較しやすい候補です。",
+      "subtitle": "仕事や次の動きを整理したい相談として、判断軸を立て直しやすい候補です。",
       "topReasonLabel": "相談との一致が強い",
     },
     "inputType": "query",
