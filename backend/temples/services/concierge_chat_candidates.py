@@ -14,6 +14,8 @@ from temples.services.concierge_candidate_utils import (
 )
 from temples.services.shrine_trust_metadata import get_shrine_trust_metadata
 
+from temples.services.shrine_meaning_composer import compose_shrine_meaning_payload
+
 log = logging.getLogger(__name__)
 
 DEFAULT_LIMIT = 20
@@ -102,6 +104,9 @@ def build_chat_candidates(
         place_id = getattr(pref, "place_id", None) if pref else None
         trust_metadata = get_shrine_trust_metadata(s.id)
 
+        meaning_payload = compose_shrine_meaning_payload(s)
+        generated_meaning = meaning_payload.get("generated") or {}
+
         candidates.append(
             {
                 "id": s.id,
@@ -124,6 +129,7 @@ def build_chat_candidates(
                 else [],
                 "popular_score": getattr(s, "popular_score", None),
                 "trust_metadata": asdict(trust_metadata) if trust_metadata else None,
+                "history_context": generated_meaning.get("historyContext"),
             }
         )
 
