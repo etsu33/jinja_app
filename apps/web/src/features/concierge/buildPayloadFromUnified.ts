@@ -20,6 +20,8 @@ type NormalizedItemBase = {
   breakdown_detail?: any | null;
   reasonFacts?: ConciergeReasonFacts | null;
   trustMetadata?: any | null;
+  historyTheme?: string | null;
+  historyContext?: string | null;
   detailHref?: string;
   isDummy?: boolean;
 };
@@ -93,6 +95,8 @@ function normalizeRecommendation(r: any, tid: string | null, analyticsContext: D
   const breakdownDetail = r?.breakdown_detail ?? r?.breakdownDetail ?? null;
   const reasonFacts = r?.reason_facts ?? r?.reasonFacts ?? null;
   const trustMetadata = r?.trust_metadata ?? r?.trustMetadata ?? null;
+  const historyTheme = pickFirstString(r?.history_theme, r?.historyTheme);
+  const historyContext = pickFirstString(r?.history_context, r?.historyContext);
 
   if (shrineId) {
     return {
@@ -107,6 +111,8 @@ function normalizeRecommendation(r: any, tid: string | null, analyticsContext: D
       breakdown_detail: breakdownDetail,
       reasonFacts,
       trustMetadata,
+      historyTheme,
+      historyContext,
       detailHref,
       isDummy,
       goriyakuTags: [],
@@ -126,6 +132,8 @@ function normalizeRecommendation(r: any, tid: string | null, analyticsContext: D
       breakdown_detail: breakdownDetail,
       reasonFacts,
       trustMetadata,
+      historyTheme,
+      historyContext,
       detailHref,
       isDummy,
       detailLabel: "神社の詳細を見る",
@@ -199,6 +207,12 @@ function dedupeItems(items: NormalizedItem[]): NormalizedItem[] {
           typeof item.trustMetadata === "object"
         ) {
           out[idx] = { ...reg, trustMetadata: item.trustMetadata };
+        }
+        if (reg?.kind === "registered" && !reg.historyTheme && item.historyTheme) {
+          out[idx] = { ...out[idx], historyTheme: item.historyTheme };
+        }
+        if (reg?.kind === "registered" && !reg.historyContext && item.historyContext) {
+          out[idx] = { ...out[idx], historyContext: item.historyContext };
         }
       }
       continue;
