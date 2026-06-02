@@ -767,7 +767,18 @@ export default function ConciergeSectionsRenderer({
                             : typeof (heroItem as any).historyTheme === "string"
                               ? (heroItem as any).historyTheme
                               : null;
-                        const historyThemeDisplay = buildHistoryThemeDisplay(historyTheme);
+                        const historyContext =
+                          typeof (heroItem as any).history_context === "string"
+                            ? (heroItem as any).history_context
+                            : typeof (heroItem as any).historyContext === "string"
+                              ? (heroItem as any).historyContext
+                              : null;
+                        const historyThemeDisplay = historyContext
+                          ? {
+                              title: "この神社が歴史的に象徴すること",
+                              body: historyContext,
+                            }
+                          : buildHistoryThemeDisplay(historyTheme);
 
                         return (
                           <div key={`rec-${i}-hero-${heroItem.shrineId}`} className="space-y-2">
