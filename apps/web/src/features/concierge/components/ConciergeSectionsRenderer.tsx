@@ -308,6 +308,12 @@ export default function ConciergeSectionsRenderer({
         position: index === 0 ? "hero" : "compact",
         rank: index + 1,
         mode: normalizedModeForTracking,
+        historyTheme:
+          typeof (item as any).history_theme === "string"
+            ? (item as any).history_theme
+            : typeof (item as any).historyTheme === "string"
+              ? (item as any).historyTheme
+              : null,
       }));
     });
   }, [payload, normalizedModeForTracking]);
@@ -337,7 +343,7 @@ export default function ConciergeSectionsRenderer({
         position: item.position === "hero" ? "hero_primary" : "compact",
         recommendationRank: item.rank,
         mode: item.mode,
-        historyTheme: analyticsContext?.historyTheme,
+        historyTheme: item.historyTheme ?? analyticsContext?.historyTheme,
       });
     });
   }, [analyticsContext?.historyTheme, resultImpressions, resultSetId, tid]);
@@ -361,7 +367,7 @@ export default function ConciergeSectionsRenderer({
           accessLevel,
           visibility: consultationSummaryRoute.visibility,
           mode: heroItem.mode,
-          historyTheme: analyticsContext?.historyTheme,
+          historyTheme: heroItem.historyTheme ?? analyticsContext?.historyTheme,
           threadId: tid ?? undefined,
           resultSetId,
         });
@@ -383,7 +389,7 @@ export default function ConciergeSectionsRenderer({
           shrineId: heroItem.shrineId,
           recommendationRank: heroItem.rank,
           mode: heroItem.mode,
-          historyTheme: analyticsContext?.historyTheme,
+          historyTheme: heroItem.historyTheme ?? analyticsContext?.historyTheme,
           threadId: tid ?? undefined,
           resultSetId,
         });
@@ -405,7 +411,7 @@ export default function ConciergeSectionsRenderer({
           shrineId: heroItem.shrineId,
           recommendationRank: heroItem.rank,
           mode: heroItem.mode,
-          historyTheme: analyticsContext?.historyTheme,
+          historyTheme: heroItem.historyTheme ?? analyticsContext?.historyTheme,
           threadId: tid ?? undefined,
           resultSetId,
         });
@@ -442,7 +448,7 @@ export default function ConciergeSectionsRenderer({
         shrineId: heroItem.shrineId,
         recommendationRank: heroItem.rank,
         mode: heroItem.mode,
-        historyTheme: analyticsContext?.historyTheme,
+        historyTheme: heroItem.historyTheme ?? analyticsContext?.historyTheme,
         threadId: tid ?? undefined,
         resultSetId,
       });
@@ -481,7 +487,7 @@ export default function ConciergeSectionsRenderer({
             shrineId: item.shrineId,
             recommendationRank: item.rank,
             mode: item.mode,
-            historyTheme: analyticsContext?.historyTheme,
+            historyTheme: item.historyTheme ?? analyticsContext?.historyTheme,
             threadId: tid ?? undefined,
             resultSetId,
           });
@@ -504,7 +510,7 @@ export default function ConciergeSectionsRenderer({
       shrineId: heroItem.shrineId,
       recommendationRank: heroItem.rank,
       mode: heroItem.mode,
-      historyTheme: analyticsContext?.historyTheme,
+      historyTheme: heroItem.historyTheme ?? analyticsContext?.historyTheme,
       threadId: tid ?? undefined,
       resultSetId,
     });
@@ -817,7 +823,7 @@ export default function ConciergeSectionsRenderer({
                                   flow: analyticsContext?.flow,
                                   hasBirthdate: analyticsContext?.hasBirthdate,
                                   recommendationCount: analyticsContext?.recommendationCount,
-                                  historyTheme: analyticsContext?.historyTheme,
+                                  historyTheme: historyTheme ?? analyticsContext?.historyTheme,
                                   firstClick: resolveFirstResultClick(resultSetId),
                                 })
                               }
@@ -947,7 +953,12 @@ export default function ConciergeSectionsRenderer({
                                         flow: analyticsContext?.flow,
                                         hasBirthdate: analyticsContext?.hasBirthdate,
                                         recommendationCount: analyticsContext?.recommendationCount,
-                                        historyTheme: analyticsContext?.historyTheme,
+                                        historyTheme:
+                                          typeof (item as any).history_theme === "string"
+                                            ? (item as any).history_theme
+                                            : typeof (item as any).historyTheme === "string"
+                                              ? (item as any).historyTheme
+                                              : analyticsContext?.historyTheme,
                                         firstClick: resolveFirstResultClick(resultSetId),
                                       })
                                     }
