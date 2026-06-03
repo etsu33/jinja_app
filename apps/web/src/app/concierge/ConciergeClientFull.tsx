@@ -1482,6 +1482,16 @@ export default function ConciergeClientFull() {
               mode: "compat" as const,
             }
           : null;
+        console.log("CLIENT_FILTER_APPLY", {
+          needText,
+          baseFilters,
+          filterPayload: p,
+          compatPayload,
+          isEntryRoute,
+          entrySubmitting,
+          sending,
+          canSend,
+        });
         if (!compatPayload) return;
         snap("action:filter_apply", { baseFilters, payload: compatPayload });
         filterApplyPendingRef.current = true;
