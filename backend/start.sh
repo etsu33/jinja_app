@@ -15,9 +15,18 @@ python manage.py showmigrations temples | tail -20
 python manage.py showmigrations temples | grep 0087 || true
 
 echo "Running migrations..."
+echo "Migration status before migrate:"
+python manage.py showmigrations temples | grep "0087_shrinereflection" || true
+python manage.py shell -c "from django.db import connection; print('HAS temples_shrinereflection=', 'temples_shrinereflection' in connection.introspection.table_names())" || true
 python manage.py migrate --noinput
-python manage.py repair_favorite_table || echo "repair_favorite_table failed; continue startup"
 
+echo "Ensuring ShrineReflection table exists..."
+python manage.py shell -c "from django.db import connection; from temples.models import ShrineReflection; tables = connection.introspection.table_names(); exists = ShrineReflection._meta.db_table in tables; print('HAS ShrineReflection table after migrate=', exists, 'table=', ShrineReflection._meta.db_table);\nif not exists:\n    print('Creating missing ShrineReflection table via schema_editor because migration state and DB schema are inconsistent');\n    connection.schema_editor().create_model(ShrineReflection);\n    print('Created ShrineReflection table');\nprint('HAS ShrineReflection table final=', ShrineReflection._meta.db_table in connection.introspection.table_names())"
+
+python manage.py repair_favorite_table || echo "repair_favorite_table failed; continue startup"
+echo "Migration status after migrate:"
+python manage.py showmigrations temples | grep "0087_shrinereflection" || true
+python manage.py shell -c "from django.db import connection; print('HAS temples_shrinereflection=', 'temples_shrinereflection' in connection.introspection.table_names())" || true
 echo "Repairing FeatureUsage table..."
 python manage.py repair_featureusage_table
 echo "FeatureUsage repair completed."
