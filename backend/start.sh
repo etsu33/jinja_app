@@ -21,7 +21,22 @@ python manage.py shell -c "from django.db import connection; print('HAS temples_
 python manage.py migrate --noinput
 
 echo "Ensuring ShrineReflection table exists..."
-python manage.py shell -c "from django.db import connection; from temples.models import ShrineReflection; tables = connection.introspection.table_names(); exists = ShrineReflection._meta.db_table in tables; print('HAS ShrineReflection table after migrate=', exists, 'table=', ShrineReflection._meta.db_table);\nif not exists:\n    print('Creating missing ShrineReflection table via schema_editor because migration state and DB schema are inconsistent');\n    connection.schema_editor().create_model(ShrineReflection);\n    print('Created ShrineReflection table');\nprint('HAS ShrineReflection table final=', ShrineReflection._meta.db_table in connection.introspection.table_names())"
+python manage.py shell <<'PY'
+from django.db import connection
+from temples.models import ShrineReflection
+
+table_name = ShrineReflection._meta.db_table
+exists = table_name in connection.introspection.table_names()
+print("HAS ShrineReflection table after migrate=", exists, "table=", table_name)
+
+if not exists:
+    print("Creating missing ShrineReflection table via schema_editor because migration state and DB schema are inconsistent")
+    with connection.schema_editor() as schema_editor:
+        schema_editor.create_model(ShrineReflection)
+    print("Created ShrineReflection table")
+
+print("HAS ShrineReflection table final=", table_name in connection.introspection.table_names())
+PY
 
 python manage.py repair_favorite_table || echo "repair_favorite_table failed; continue startup"
 echo "Migration status after migrate:"
