@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import type { GoriyakuTag, Element4 } from "@/features/concierge/sections/types";
 
 type Props = {
@@ -66,11 +68,14 @@ export default function ConciergeFilterPanel({
   onExtraConditionChange,
   canApply = false,
 }: Props) {
+  const [showAllGoriyakuTags, setShowAllGoriyakuTags] = useState(false);
+
   if (!isOpen) return null;
 
-
   const selected = new Set(selectedTagIds);
-  const visibleGoriyakuTags = goriyakuTags.slice(0, INITIAL_VISIBLE_GORIYAKU_COUNT);
+  const visibleGoriyakuTags = showAllGoriyakuTags
+    ? goriyakuTags
+    : goriyakuTags.slice(0, INITIAL_VISIBLE_GORIYAKU_COUNT);
   const hiddenGoriyakuCount = Math.max(goriyakuTags.length - INITIAL_VISIBLE_GORIYAKU_COUNT, 0);
 
   return (
@@ -177,7 +182,15 @@ export default function ConciergeFilterPanel({
             </div>
           ) : null}
 
-          {hiddenGoriyakuCount > 0 ? <div className="text-[11px] text-slate-500">他{hiddenGoriyakuCount}件</div> : null}
+          {hiddenGoriyakuCount > 0 ? (
+            <button
+              type="button"
+              className="text-left text-[11px] font-semibold text-slate-500 hover:text-slate-700 hover:underline"
+              onClick={() => setShowAllGoriyakuTags((prev) => !prev)}
+            >
+              {showAllGoriyakuTags ? "折りたたむ" : `他${hiddenGoriyakuCount}件を表示`}
+            </button>
+          ) : null}
         </div>
       ) : null}
 
