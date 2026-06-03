@@ -124,7 +124,7 @@ export type ConciergeRecommendation = {
   breakdown?: ConciergeBreakdown | null;
   breakdown_detail?: any | null;
 
-  action_state?: "visited" | "saved" | "none" | null;
+  action_state?: "reflected" | "visited" | "saved" | "none" | null;
 
   trust_metadata?: {
     rank_class?: string | null;

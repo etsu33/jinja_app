@@ -12,7 +12,7 @@ export type PreviousConsultationSummary = {
   primaryReasonLabelJa: string | null;
   recommendationNames: string[];
 
-  actionState: "visited" | "saved" | "none" | null;
+  actionState: "reflected" | "visited" | "saved" | "none" | null;
 };
 
 export type CombinationChange = {
@@ -30,7 +30,7 @@ export type StateTransitionNarrative = {
   summary: string | null;
 };
 
-export type ActionReflectionType = "visited" | "saved" | "none";
+export type ActionReflectionType = "reflected" | "visited" | "saved" | "none";
 
 export type ActionReflection = {
   type: ActionReflectionType;

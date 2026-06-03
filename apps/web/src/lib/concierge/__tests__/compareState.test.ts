@@ -112,4 +112,19 @@ describe("compareState", () => {
 
     expect(result.transitionNarrative.type).toBe("unknown");
   });
+
+  it("previous の actionState が reflected なら振り返り済みの actionReflection を返す", () => {
+    const result = compareState(
+      makeSummary({ actionState: "reflected" }),
+      makeSummary(),
+    );
+
+    expect(result.actionReflection).toEqual({
+      type: "reflected",
+      title: "前回の提案を振り返りまでつなげています",
+      summary:
+        "前回の神社について、参拝後の振り返りが保存されています。今回は、その時に見えた変化を踏まえて、次に整えたいテーマを確認する流れです。",
+      nextActionLabel: "前回の変化を踏まえて相談する",
+    });
+  });
 });
