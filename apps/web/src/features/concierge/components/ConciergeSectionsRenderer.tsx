@@ -638,7 +638,6 @@ export default function ConciergeSectionsRenderer({
                       title={title}
                       onClose={() => onAction?.({ type: "filter_close" })}
                       onApply={() => {
-                        console.log("RENDERER_FILTER_APPLY_ACTION", { canApplyCompatFilter, state });
                         onAction?.({ type: "filter_apply" });
                       }}
                       canApply={canApplyCompatFilter}

@@ -74,7 +74,9 @@ export default function ConciergeFilterPanel({
   const hiddenGoriyakuCount = Math.max(goriyakuTags.length - INITIAL_VISIBLE_GORIYAKU_COUNT, 0);
 
   return (
-    <section className="mx-auto w-full max-w-md min-w-0 space-y-2 rounded-xl border border-slate-200 bg-slate-50/60 p-2 sm:max-h-none">
+    <section
+      className="mx-auto w-full max-w-md min-w-0 space-y-2 rounded-xl border border-slate-200 bg-slate-50/60 p-2 sm:max-h-none"
+    >
       <div className="flex items-center justify-between">
         <div className="text-[10px] font-semibold text-slate-600">{title}</div>
         <button type="button" className="text-[11px] font-semibold text-slate-600 hover:underline" onClick={onClose}>
@@ -103,9 +105,7 @@ export default function ConciergeFilterPanel({
         <div className="space-y-1">
           <div>
             <div className="text-[10px] font-semibold text-slate-600">参拝スタイル</div>
-            <p className="mt-0.5 text-[10px] leading-4 text-slate-400">
-              どう過ごしたいかを選ぶと、候補の並び方の参考にします。
-            </p>
+            <p className="mt-0.5 text-[10px] leading-4 text-slate-400">どう過ごしたいかを選ぶと、候補の並び方の参考にします。</p>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {QUICK_PRESETS.map((p) => (
@@ -150,9 +150,7 @@ export default function ConciergeFilterPanel({
         <div className="space-y-1 rounded-xl border border-slate-200 bg-white p-2">
           <div>
             <div className="text-[10px] font-semibold text-slate-600">願いごと・ご利益</div>
-            <p className="mt-0.5 text-[10px] leading-4 text-slate-400">
-              願いたいことに近いものを選ぶと、神社の特徴との一致を見ます。
-            </p>
+            <p className="mt-0.5 text-[10px] leading-4 text-slate-400">願いたいことに近いものを選ぶと、神社の特徴との一致を見ます。</p>
           </div>
           {tagsError ? <div className="text-xs text-red-600">{tagsError}</div> : null}
           {tagsLoading ? <div className="text-xs text-slate-500">読み込み中…</div> : null}
@@ -181,17 +179,16 @@ export default function ConciergeFilterPanel({
         </div>
       ) : null}
 
-      <div className="flex justify-end gap-2 border-t border-slate-200 bg-slate-50/95 pt-1.5 pb-0.5">
+      <div
+        className="flex justify-end gap-2 border-t border-slate-200 bg-slate-50/95 pt-1.5 pb-0.5"
+      >
         <button type="button" className="rounded-xl border px-3 py-1.5 text-sm font-semibold" onClick={onClose}>
           キャンセル
         </button>
 
         <button
           type="button"
-          onClick={() => {
-            console.log("FILTER_PANEL_APPLY_CLICK", { canApply });
-            onApply();
-          }}
+          onClick={onApply}
           disabled={false}
           style={{ pointerEvents: "auto" }}
           className={[
