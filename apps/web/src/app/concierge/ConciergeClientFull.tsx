@@ -46,8 +46,6 @@ import { resolveAccessLevel } from "@/lib/premium/accessLevel";
 import { getVisibilityForCard } from "@/lib/premium/cardVisibility";
 import { trackCardEvent } from "@/lib/analytics/cardEvents";
 
-
-
 /* ========================================
  * 型定義とデータ設定
  * ====================================== */
@@ -525,11 +523,7 @@ export default function ConciergeClientFull() {
   const [threadDetail, setThreadDetail] = useState<ConciergeThreadDetail | null>(null);
   const [previousThreadDetail, setPreviousThreadDetail] = useState<ConciergeThreadDetail | null>(null);
 
-
-  const currentConsultationSummary = useMemo(
-    () => buildPreviousConsultationSummary(threadDetail),
-    [threadDetail],
-  );
+  const currentConsultationSummary = useMemo(() => buildPreviousConsultationSummary(threadDetail), [threadDetail]);
 
   const previousConsultationSummary = useMemo(
     () => buildPreviousConsultationSummary(previousThreadDetail),
@@ -541,12 +535,11 @@ export default function ConciergeClientFull() {
     [currentConsultationSummary, previousConsultationSummary],
   );
 
-
   const shouldTrackHistoryShiftView = Boolean(stateDelta?.transitionNarrative?.summary);
   const shouldTrackDeepReflectionView = Boolean(
     stateDelta?.combinationChange?.summary ||
-      (stateDelta?.changedNeedTags?.length ?? 0) > 0 ||
-      (stateDelta?.continuedNeedTags?.length ?? 0) > 0,
+    (stateDelta?.changedNeedTags?.length ?? 0) > 0 ||
+    (stateDelta?.continuedNeedTags?.length ?? 0) > 0,
   );
 
   useEffect(() => {
@@ -626,14 +619,10 @@ export default function ConciergeClientFull() {
     const currentId = tidNum ?? activeThreadId;
     if (!currentId || !Array.isArray(threads) || threads.length === 0) return null;
 
-    const currentIndex = threads.findIndex(
-      (t) => Number(t.id) === Number(currentId),
-    );
+    const currentIndex = threads.findIndex((t) => Number(t.id) === Number(currentId));
 
     if (currentIndex < 0) {
-      const fallbackPreviousThread = threads.find(
-        (t) => t != null && Number(t.id) !== Number(currentId),
-      ) ?? null;
+      const fallbackPreviousThread = threads.find((t) => t != null && Number(t.id) !== Number(currentId)) ?? null;
 
       return typeof fallbackPreviousThread?.id === "number" ? fallbackPreviousThread.id : null;
     }
@@ -641,8 +630,6 @@ export default function ConciergeClientFull() {
     const previousThread = threads[currentIndex + 1] ?? null;
     return typeof previousThread?.id === "number" ? previousThread.id : null;
   }, [activeThreadId, isLoggedIn, threads, tidNum]);
-
-
 
   const isEntryRoute = tidNum === null;
   const tidFromQuery = tidNum ?? 0;
@@ -880,15 +867,22 @@ export default function ConciergeClientFull() {
     const fallbackData = lastUnified?.data ?? null;
     const primaryData = primary.data ?? null;
 
-    const primaryRecommendationsV2 = Array.isArray(primaryData?.recommendations_v2) ? primaryData.recommendations_v2 : [];
+    const primaryRecommendationsV2 = Array.isArray(primaryData?.recommendations_v2)
+      ? primaryData.recommendations_v2
+      : [];
     const primaryRecommendations = Array.isArray(primaryData?.recommendations) ? primaryData.recommendations : [];
-    const primaryRecommendationCandidates = primaryRecommendationsV2.length > 0 ? primaryRecommendationsV2 : primaryRecommendations;
+    const primaryRecommendationCandidates =
+      primaryRecommendationsV2.length > 0 ? primaryRecommendationsV2 : primaryRecommendations;
 
-    const fallbackRecommendationsV2 = Array.isArray(fallbackData?.recommendations_v2) ? fallbackData.recommendations_v2 : [];
+    const fallbackRecommendationsV2 = Array.isArray(fallbackData?.recommendations_v2)
+      ? fallbackData.recommendations_v2
+      : [];
     const fallbackRecommendations = Array.isArray(fallbackData?.recommendations) ? fallbackData.recommendations : [];
-    const fallbackRecommendationCandidates = fallbackRecommendationsV2.length > 0 ? fallbackRecommendationsV2 : fallbackRecommendations;
+    const fallbackRecommendationCandidates =
+      fallbackRecommendationsV2.length > 0 ? fallbackRecommendationsV2 : fallbackRecommendations;
 
-    const recommendations = primaryRecommendationCandidates.length > 0 ? primaryRecommendationCandidates : fallbackRecommendationCandidates;
+    const recommendations =
+      primaryRecommendationCandidates.length > 0 ? primaryRecommendationCandidates : fallbackRecommendationCandidates;
 
     return {
       ...primary,
@@ -914,7 +908,6 @@ export default function ConciergeClientFull() {
     if (Array.isArray(recsV2) && recsV2.length > 0) return recsV2 as ConciergeRecommendation[];
     return Array.isArray(recs) ? (recs as ConciergeRecommendation[]) : [];
   }, [liveRecs, displayUnified]);
-
 
   const hasCandidates = displayRecommendations.length > 0;
 
@@ -1134,7 +1127,7 @@ export default function ConciergeClientFull() {
             : undefined;
 
       track("consultation_completed", {
-        threadId: nextTid || currentTid || null,
+        threadId: nextTid || currentTid ? String(nextTid || currentTid) : undefined,
         mode: completedModeRaw?.mode,
         flow: completedModeRaw?.flow,
         hasBirthdate: Boolean(normalizedBirthdate || baseFilters.birthdate),
@@ -1147,7 +1140,7 @@ export default function ConciergeClientFull() {
 
         track("filter_result", {
           source: "concierge_result",
-          threadId: nextTid || currentTid || null,
+          threadId: nextTid || currentTid ? String(nextTid || currentTid) : undefined,
           mode: "compat",
           recommendation_count: recommendationCount,
           is_zero_result: recommendationCount === 0,
@@ -1507,16 +1500,6 @@ export default function ConciergeClientFull() {
               mode: "compat" as const,
             }
           : null;
-        console.log("CLIENT_FILTER_APPLY", {
-          needText,
-          baseFilters,
-          filterPayload: p,
-          compatPayload,
-          isEntryRoute,
-          entrySubmitting,
-          sending,
-          canSend,
-        });
         if (!compatPayload) return;
         snap("action:filter_apply", { baseFilters, payload: compatPayload });
         filterApplyPendingRef.current = true;
@@ -1805,7 +1788,6 @@ export default function ConciergeClientFull() {
               isEntryRoute={isEntryRoute}
               isPremiumActive={isPremiumActive}
             />
-
 
             {isLoggedIn && stateDelta && previousComparisonVisibility !== "hidden" ? (
               <PremiumStateDeltaCard stateDelta={stateDelta} isPremium={isPremiumActive} />
