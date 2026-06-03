@@ -62,6 +62,7 @@ import { toNeedTagLabels } from "@/lib/concierge/needTagLabelMap";
 import { addVisit, getVisits, type Visit } from "@/lib/api/visits";
 
 import { trackSearchEvent } from "@/lib/analytics/searchEvents";
+import { ShrineReflectionPrompt } from "@/components/shrine/detail/ShrineReflectionPrompt";
 
 
 function ShrineDetailSections({ sections }: { sections: ShrineDetailSectionModel[] }) {
@@ -472,6 +473,7 @@ export default function ShrineDetailArticle({
   const [favoriteNoticeState, setFavoriteNoticeState] = useState<"saved" | "removed" | null>(null);
   const [visitSubmitting, setVisitSubmitting] = useState(false);
   const [visitNotice, setVisitNotice] = useState<"saved" | "error" | null>(null);
+  const [showReflectionPrompt, setShowReflectionPrompt] = useState(false);
   const [visitSummary, setVisitSummary] = useState<VisitSummary>({ visitCount: 0, latestVisitedAt: null });
   const hasVisitHistory = visitSummary.visitCount > 0;
   const latestVisitedAtLabel = formatVisitDateTime(visitSummary.latestVisitedAt);
@@ -733,6 +735,16 @@ export default function ShrineDetailArticle({
                 </div>
               ) : null}
 
+              {showReflectionPrompt ? (
+                <ShrineReflectionPrompt
+                  shrineId={cardProps.shrineId}
+                  historyTheme={historyTheme}
+                  threadId={tid != null ? String(tid) : null}
+                  ctx={ctx}
+                  onSaved={() => setShowReflectionPrompt(false)}
+                />
+              ) : null}
+
               {visitNotice === "error" ? (
                 <div className="rounded-xl border border-rose-200 bg-white p-3">
                   <p className="text-sm font-semibold text-rose-700">参拝記録に失敗しました</p>
@@ -760,6 +772,7 @@ export default function ShrineDetailArticle({
                       latestVisitedAt: now,
                     }));
                     setVisitNotice("saved");
+                    setShowReflectionPrompt(true);
                   } catch {
                     setVisitNotice("error");
                   } finally {
