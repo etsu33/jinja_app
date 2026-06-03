@@ -972,23 +972,37 @@ export default function ConciergeClientFull() {
       },
     ): Omit<ConciergeChatRequestV1, "thread_id"> => {
       const birthdate = normalizeBirthdateInput(sessionState.temporaryBirthdate ?? "") ?? undefined;
-      const query = normalizeQueryText(input?.query ?? needText);
+      const payloadBirthdate = input?.birthdate ?? birthdate;
+      const payloadGoriyakuTagIds = input?.goriyaku_tag_ids ?? baseFilters.goriyaku_tag_ids;
+      const payloadExtraCondition = input?.extra_condition ?? baseFilters.extra_condition;
+      const payloadCrowd = input?.crowd ?? baseFilters.crowd;
+      const payloadDurationMaxMin = input?.duration_max_min ?? baseFilters.duration_max_min;
+      const payloadFreeText = input?.free_text ?? input?.extra_condition ?? baseFilters.free_text;
+      const rawQuery = normalizeQueryText(input?.query ?? needText);
+      const hasPayloadFilter =
+        !!payloadBirthdate ||
+        (payloadGoriyakuTagIds?.length ?? 0) > 0 ||
+        !!payloadExtraCondition ||
+        !!payloadCrowd?.length ||
+        typeof payloadDurationMaxMin === "number" ||
+        !!payloadFreeText;
+      const query = rawQuery || (hasPayloadFilter ? "追加した条件に合う神社を提案してください。" : "");
 
       return {
         version: input?.version ?? 1,
         mode: input?.mode ?? "need",
         query,
-        birthdate: input?.birthdate ?? birthdate,
+        birthdate: payloadBirthdate,
         filters: {
-          birthdate: input?.birthdate ?? birthdate,
-          goriyaku_tag_ids: input?.goriyaku_tag_ids ?? baseFilters.goriyaku_tag_ids,
-          extra_condition: input?.extra_condition ?? baseFilters.extra_condition,
-          crowd: input?.crowd ?? baseFilters.crowd,
-          duration_max_min: input?.duration_max_min ?? baseFilters.duration_max_min,
-          free_text: input?.free_text ?? input?.extra_condition ?? baseFilters.free_text,
+          birthdate: payloadBirthdate,
+          goriyaku_tag_ids: payloadGoriyakuTagIds,
+          extra_condition: payloadExtraCondition,
+          crowd: payloadCrowd,
+          duration_max_min: payloadDurationMaxMin,
+          free_text: payloadFreeText,
         },
-        goriyaku_tag_ids: input?.goriyaku_tag_ids ?? baseFilters.goriyaku_tag_ids,
-        extra_condition: input?.extra_condition ?? baseFilters.extra_condition,
+        goriyaku_tag_ids: payloadGoriyakuTagIds,
+        extra_condition: payloadExtraCondition,
       };
     },
     [sessionState.temporaryBirthdate, needText, baseFilters],
