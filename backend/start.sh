@@ -12,6 +12,7 @@ echo "USE_GIS=${USE_GIS:-unset}"
 echo "USE_SQLITE=${USE_SQLITE:-unset}"
 python manage.py check
 python manage.py showmigrations temples | tail -20
+python manage.py showmigrations temples | grep 0087 || true
 
 echo "Running migrations..."
 python manage.py migrate --noinput
