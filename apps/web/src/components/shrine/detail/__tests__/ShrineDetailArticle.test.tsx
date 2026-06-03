@@ -169,6 +169,7 @@ describe("ShrineDetailArticle", () => {
             title: "動き出し",
             summary: "前回より次の行動が見えています。",
           },
+          hasPreviousAction: false,
           actionReflection: null,
         }}
         saveActionNode={null}
