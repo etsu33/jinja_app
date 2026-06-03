@@ -181,3 +181,30 @@ def test_build_explanation_for_chat_rec_adds_less_crowded_visit_style_reason():
     assert visit_style_reason["text"] == "人が少なめで落ち着いて参拝したい条件と重なっています。"
     assert visit_style_reason["strength"] == "high"
     assert visit_style_reason["evidence"]["matched_visit_style_tags"] == ["less_crowded"]
+
+def test_build_explanation_for_chat_rec_prioritizes_user_selected_beauty_over_gogyou():
+    exp = build_explanation_for_chat_rec(
+        {
+            "name": "美容神社",
+            "_explanation_payload": {
+                "primary_reason": {
+                    "type": "user_selected_tag",
+                    "label": "美容",
+                    "label_ja": "美容",
+                    "evidence": ["requested_goriyaku_tag_ids"],
+                    "score": 3.0,
+                    "is_primary": True,
+                },
+                "gogyou_context": {
+                    "gogyou": "土",
+                    "tone": "足元を固め、落ち着いて整えやすい流れ",
+                },
+            },
+        },
+        query="美容で整えたい",
+        bias=None,
+        birthdate="1984-05-15",
+    )
+
+    assert "美容" in exp["summary"]
+    assert exp["reasons"][0]["code"] == "USER_SELECTED_TAG"

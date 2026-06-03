@@ -35,6 +35,7 @@ def _take3(xs: List[dict]) -> List[dict]:
     strength_pri = {"high": 0, "mid": 1, "low": 2}
     code_pri = {
         "USER_CONDITION": 0,
+        "USER_SELECTED_TAG": 0,
         "AREA_MATCH": 1,
         "GOGYOU_CONTEXT": 1,
         "HISTORY_CONTEXT": 1,
@@ -130,6 +131,15 @@ def _build_summary_from_primary_reason(
     history_label = str((history_context or {}).get("label") or "").strip()
     history_tone = str((history_context or {}).get("tone") or "").strip()
 
+    if isinstance(primary_reason, dict):
+        reason_type = str(primary_reason.get("type") or "").strip()
+        label_ja = str(primary_reason.get("label_ja") or primary_reason.get("label") or "").strip()
+
+        if reason_type == "user_selected_tag" and label_ja:
+            if label_ja == "美容":
+                return "美容や見せ方を整え直したい願いと重なる候補としておすすめしています。"
+            return f"{label_ja}に関わる願いごとと重なる候補としておすすめしています。"
+
     if gogyou and gogyou_tone and history_tone:
         return f"今は「{gogyou}」の傾向として、{gogyou_tone}と、{history_tone}が重なる神社です。"
 
@@ -187,6 +197,20 @@ def _build_reason_entry_from_primary_reason(
     eto = str((gogyou_context or {}).get("eto") or "").strip()
     history_label = str((history_context or {}).get("label") or "").strip()
     history_tone = str((history_context or {}).get("tone") or "").strip()
+
+    if reason_type == "user_selected_tag" and label_ja:
+        if label_ja == "美容":
+            text = "美容や見せ方を整え直したい願いとの一致が見られます。"
+        else:
+            text = f"{label_ja}に関わる願いごととの一致が見られます。"
+
+        return _reason(
+            "USER_SELECTED_TAG",
+            "選択した願いとの一致",
+            text,
+            strength="high",
+            evidence={"primary_reason": primary_reason, "evidence": evidence},
+        )
 
     if gogyou and tone:
         return _reason(
