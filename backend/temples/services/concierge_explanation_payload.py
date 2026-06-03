@@ -217,6 +217,8 @@ def build_explanation_payload(rec: Dict[str, Any], *, birthdate: Optional[str] =
             (breakdown_detail["features"].get("score_total_ranked") or 0.0)
         )
 
+    score_v2 = rec.get("score_v2") if isinstance(rec.get("score_v2"), dict) else None
+
     # 候補採用理由
     reason_facts = _normalize_reason_facts(
         rec.get("_reason_facts"),
@@ -274,6 +276,7 @@ def build_explanation_payload(rec: Dict[str, Any], *, birthdate: Optional[str] =
             "total": score_total,
             "total_ranked": score_total_ranked,
         },
+        "score_v2": score_v2,
     }
 
 
