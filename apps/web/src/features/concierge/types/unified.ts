@@ -34,6 +34,7 @@ export type UnifiedConciergeResponse = {
 
   data: {
     recommendations: ConciergeRecommendation[];
+    recommendations_v2?: ConciergeRecommendation[];
     _need?: ConciergeNeed;
     _astro?: any;
     _signals?: ConciergeSignals;

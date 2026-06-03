@@ -880,9 +880,15 @@ export default function ConciergeClientFull() {
     const fallbackData = lastUnified?.data ?? null;
     const primaryData = primary.data ?? null;
 
+    const primaryRecommendationsV2 = Array.isArray(primaryData?.recommendations_v2) ? primaryData.recommendations_v2 : [];
     const primaryRecommendations = Array.isArray(primaryData?.recommendations) ? primaryData.recommendations : [];
+    const primaryRecommendationCandidates = primaryRecommendationsV2.length > 0 ? primaryRecommendationsV2 : primaryRecommendations;
 
+    const fallbackRecommendationsV2 = Array.isArray(fallbackData?.recommendations_v2) ? fallbackData.recommendations_v2 : [];
     const fallbackRecommendations = Array.isArray(fallbackData?.recommendations) ? fallbackData.recommendations : [];
+    const fallbackRecommendationCandidates = fallbackRecommendationsV2.length > 0 ? fallbackRecommendationsV2 : fallbackRecommendations;
+
+    const recommendations = primaryRecommendationCandidates.length > 0 ? primaryRecommendationCandidates : fallbackRecommendationCandidates;
 
     return {
       ...primary,
@@ -895,14 +901,17 @@ export default function ConciergeClientFull() {
       data: {
         ...(fallbackData ?? {}),
         ...(primaryData ?? {}),
-        recommendations: primaryRecommendations.length > 0 ? primaryRecommendations : fallbackRecommendations,
+        recommendations,
+        recommendations_v2: primaryRecommendationsV2.length > 0 ? primaryRecommendationsV2 : fallbackRecommendationsV2,
       },
     } as UnifiedConciergeResponse;
   }, [liveUnified, backendUnified, lastUnified]);
 
   const displayRecommendations = useMemo(() => {
     if (liveRecs.length > 0) return liveRecs;
+    const recsV2 = displayUnified?.data?.recommendations_v2;
     const recs = displayUnified?.data?.recommendations;
+    if (Array.isArray(recsV2) && recsV2.length > 0) return recsV2 as ConciergeRecommendation[];
     return Array.isArray(recs) ? (recs as ConciergeRecommendation[]) : [];
   }, [liveRecs, displayUnified]);
 
@@ -972,23 +981,37 @@ export default function ConciergeClientFull() {
       },
     ): Omit<ConciergeChatRequestV1, "thread_id"> => {
       const birthdate = normalizeBirthdateInput(sessionState.temporaryBirthdate ?? "") ?? undefined;
-      const query = normalizeQueryText(input?.query ?? needText);
+      const payloadBirthdate = input?.birthdate ?? birthdate;
+      const payloadGoriyakuTagIds = input?.goriyaku_tag_ids ?? baseFilters.goriyaku_tag_ids;
+      const payloadExtraCondition = input?.extra_condition ?? baseFilters.extra_condition;
+      const payloadCrowd = input?.crowd ?? baseFilters.crowd;
+      const payloadDurationMaxMin = input?.duration_max_min ?? baseFilters.duration_max_min;
+      const payloadFreeText = input?.free_text ?? input?.extra_condition ?? baseFilters.free_text;
+      const rawQuery = normalizeQueryText(input?.query ?? needText);
+      const hasPayloadFilter =
+        !!payloadBirthdate ||
+        (payloadGoriyakuTagIds?.length ?? 0) > 0 ||
+        !!payloadExtraCondition ||
+        !!payloadCrowd?.length ||
+        typeof payloadDurationMaxMin === "number" ||
+        !!payloadFreeText;
+      const query = rawQuery || (hasPayloadFilter ? "追加した条件に合う神社を提案してください。" : "");
 
       return {
         version: input?.version ?? 1,
         mode: input?.mode ?? "need",
         query,
-        birthdate: input?.birthdate ?? birthdate,
+        birthdate: payloadBirthdate,
         filters: {
-          birthdate: input?.birthdate ?? birthdate,
-          goriyaku_tag_ids: input?.goriyaku_tag_ids ?? baseFilters.goriyaku_tag_ids,
-          extra_condition: input?.extra_condition ?? baseFilters.extra_condition,
-          crowd: input?.crowd ?? baseFilters.crowd,
-          duration_max_min: input?.duration_max_min ?? baseFilters.duration_max_min,
-          free_text: input?.free_text ?? input?.extra_condition ?? baseFilters.free_text,
+          birthdate: payloadBirthdate,
+          goriyaku_tag_ids: payloadGoriyakuTagIds,
+          extra_condition: payloadExtraCondition,
+          crowd: payloadCrowd,
+          duration_max_min: payloadDurationMaxMin,
+          free_text: payloadFreeText,
         },
-        goriyaku_tag_ids: input?.goriyaku_tag_ids ?? baseFilters.goriyaku_tag_ids,
-        extra_condition: input?.extra_condition ?? baseFilters.extra_condition,
+        goriyaku_tag_ids: payloadGoriyakuTagIds,
+        extra_condition: payloadExtraCondition,
       };
     },
     [sessionState.temporaryBirthdate, needText, baseFilters],
@@ -1110,7 +1133,9 @@ export default function ConciergeClientFull() {
       }
 
       setLiveUnified(u);
-      setLiveRecs(Array.isArray(u.data?.recommendations) ? (u.data.recommendations as any) : []);
+      const unifiedRecommendationsV2 = Array.isArray(u.data?.recommendations_v2) ? u.data.recommendations_v2 : [];
+      const unifiedRecommendations = Array.isArray(u.data?.recommendations) ? u.data.recommendations : [];
+      setLiveRecs((unifiedRecommendationsV2.length > 0 ? unifiedRecommendationsV2 : unifiedRecommendations) as any);
 
       if (isAnonymousLikeUnified(u)) {
         saveAnonymousSnapshot({
@@ -1457,6 +1482,16 @@ export default function ConciergeClientFull() {
               mode: "compat" as const,
             }
           : null;
+        console.log("CLIENT_FILTER_APPLY", {
+          needText,
+          baseFilters,
+          filterPayload: p,
+          compatPayload,
+          isEntryRoute,
+          entrySubmitting,
+          sending,
+          canSend,
+        });
         if (!compatPayload) return;
         snap("action:filter_apply", { baseFilters, payload: compatPayload });
         filterApplyPendingRef.current = true;
