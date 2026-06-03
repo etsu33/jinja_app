@@ -512,8 +512,46 @@ class Visit(models.Model):
     note = models.TextField(blank=True)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="added")
 
+
     class Meta:
         ordering = ["-visited_at"]
+
+
+# --- ShrineReflection model ---
+
+class ShrineReflection(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="shrine_reflections",
+    )
+    shrine = models.ForeignKey(
+        Shrine,
+        on_delete=models.CASCADE,
+        related_name="reflections",
+    )
+    history_theme = models.CharField(
+        max_length=32,
+        blank=True,
+        default="",
+        help_text="保存時点の history_theme スナップショット",
+    )
+    prompt = models.TextField(blank=True, default="")
+    answer = models.TextField()
+    mood_before = models.CharField(max_length=50, blank=True, default="")
+    mood_after = models.CharField(max_length=50, blank=True, default="")
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user", "-created_at"], name="idx_reflection_user_created"),
+            models.Index(fields=["shrine", "-created_at"], name="idx_reflection_shrine_created"),
+            models.Index(fields=["history_theme"], name="idx_reflection_history_theme"),
+        ]
+
+    def __str__(self) -> str:
+        return f"Reflection #{self.pk} shrine={self.shrine_id} user={self.user_id}"
 
 
 class Goshuin(models.Model):

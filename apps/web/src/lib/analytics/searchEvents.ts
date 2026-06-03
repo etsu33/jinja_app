@@ -5,6 +5,8 @@ export type SearchAnalyticsEventName =
   | "map_search"
   | "route_open"
   | "visit_done"
+  | "reflection_prompt_view"
+  | "reflection_saved"
   | "shrine_detail_transition"
   | "concierge_result_impression"
   | "empty_state_view"
@@ -26,6 +28,11 @@ export type SearchAnalyticsPayload = {
   query?: string | null;
   routeTarget?: "google_maps" | "internal_map" | null;
   historyTheme?: string | null;
+  actionTheme?: string | null;
+  promptType?: string | null;
+  answerLength?: number | null;
+  moodBefore?: string | null;
+  moodAfter?: string | null;
   [key: string]: SearchAnalyticsPrimitive;
 };
 
