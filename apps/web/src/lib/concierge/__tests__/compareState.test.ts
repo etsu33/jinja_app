@@ -138,4 +138,22 @@ describe("compareState", () => {
     expect(compareState(makeSummary({ actionState: "visited" }), makeSummary()).hasPreviousAction).toBe(true);
     expect(compareState(makeSummary({ actionState: "reflected" }), makeSummary()).hasPreviousAction).toBe(true);
   });
+
+  it("前回行動ありなら前回の行動を踏まえた summary を返す", () => {
+    const result = compareState(
+      makeSummary({ actionState: "visited", matchedNeedTags: ["mental"] }),
+      makeSummary({ matchedNeedTags: ["career"] }),
+    );
+
+    expect(result.summary).toBe("前回の行動を踏まえると、今回は「仕事や転機を見直したい」を意識する流れが強まっています。");
+  });
+
+  it("前回行動なしなら小さく行動へ移す summary を返す", () => {
+    const result = compareState(
+      makeSummary({ actionState: "none", matchedNeedTags: ["mental"] }),
+      makeSummary({ matchedNeedTags: ["career"] }),
+    );
+
+    expect(result.summary).toBe("今回は小さく行動へ移すために、「仕事や転機を見直したい」を意識する流れが強まっています。");
+  });
 });
