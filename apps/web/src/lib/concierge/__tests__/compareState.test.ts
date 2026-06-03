@@ -127,4 +127,15 @@ describe("compareState", () => {
       nextActionLabel: "前回の変化を踏まえて相談する",
     });
   });
+
+  it("previous の actionState が null または none なら hasPreviousAction=false を返す", () => {
+    expect(compareState(makeSummary({ actionState: null }), makeSummary()).hasPreviousAction).toBe(false);
+    expect(compareState(makeSummary({ actionState: "none" }), makeSummary()).hasPreviousAction).toBe(false);
+  });
+
+  it("previous の actionState が saved / visited / reflected なら hasPreviousAction=true を返す", () => {
+    expect(compareState(makeSummary({ actionState: "saved" }), makeSummary()).hasPreviousAction).toBe(true);
+    expect(compareState(makeSummary({ actionState: "visited" }), makeSummary()).hasPreviousAction).toBe(true);
+    expect(compareState(makeSummary({ actionState: "reflected" }), makeSummary()).hasPreviousAction).toBe(true);
+  });
 });

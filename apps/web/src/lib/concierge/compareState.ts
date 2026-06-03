@@ -176,6 +176,8 @@ export function compareState(
     continuedNeedTags,
     combinationChanged: combinationChange.changed,
   });
+  const previousActionState = previous?.actionState ?? null;
+  const hasPreviousAction = previousActionState === "saved" || previousActionState === "visited" || previousActionState === "reflected";
 
   return {
     previous,
@@ -187,6 +189,7 @@ export function compareState(
     summary: buildSummary(changedNeedTags, continuedNeedTags),
     combinationChange,
     transitionNarrative,
+    hasPreviousAction,
     actionReflection: buildActionReflection(previous),
   };
 }

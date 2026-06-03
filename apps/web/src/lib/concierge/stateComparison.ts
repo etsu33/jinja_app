@@ -49,5 +49,6 @@ export type StateDelta = {
   summary: string | null;
   combinationChange: CombinationChange;
   transitionNarrative: StateTransitionNarrative;
+  hasPreviousAction: boolean;
   actionReflection: ActionReflection | null;
 };
