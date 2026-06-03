@@ -1,3 +1,4 @@
+import { getAnalyticsProvider, type AnalyticsPayload } from "@/lib/analytics/providers";
 type TrackPayload = Record<string, unknown>;
 
 type TrackEventDetail = {
@@ -9,6 +10,17 @@ type TrackEventDetail = {
 const DEV_ANALYTICS_STORAGE_KEY = "app:track:dev-events";
 const ANALYTICS_SESSION_ID_STORAGE_KEY = "app:track:session-id";
 const MAX_DEV_ANALYTICS_EVENTS = 100;
+
+function serializeAnalyticsPayload(payload: TrackPayload): AnalyticsPayload {
+  return Object.fromEntries(
+    Object.entries(payload).filter(
+      ([, value]) =>
+        typeof value === "string" ||
+        typeof value === "number" ||
+        typeof value === "boolean",
+    ),
+  ) as AnalyticsPayload;
+}
 
 function generateSessionId(): string {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
@@ -80,6 +92,14 @@ export function track(eventName: string, payload: TrackPayload = {}) {
   if (process.env.NODE_ENV === "development") {
     console.info("[track]", detail);
     persistDevTrackEvent(detail);
+  }
+
+  try {
+    getAnalyticsProvider().track(eventName, serializeAnalyticsPayload(payloadWithSession));
+  } catch (error) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn("TRACK_PROVIDER_FAILED", eventName, error);
+    }
   }
 
   window.dispatchEvent(
