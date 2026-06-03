@@ -9,18 +9,29 @@ function unique(values: string[]): string[] {
   return [...new Set(values.filter(Boolean))];
 }
 
-function buildSummary(
-  changedNeedTags: string[],
-  continuedNeedTags: string[],
-): string | null {
+type BuildSummaryArgs = {
+  changedNeedTags: string[];
+  continuedNeedTags: string[];
+  hasPreviousAction: boolean;
+};
+
+function buildSummary({
+  changedNeedTags,
+  continuedNeedTags,
+  hasPreviousAction,
+}: BuildSummaryArgs): string | null {
   if (changedNeedTags.length > 0) {
     const labels = changedNeedTags.map(toNeedTagLabel);
-    return `前回より「${labels.join("」「")}」を意識する流れが強まっています。`;
+    return hasPreviousAction
+      ? `前回の行動を踏まえると、今回は「${labels.join("」「")}」を意識する流れが強まっています。`
+      : `今回は小さく行動へ移すために、「${labels.join("」「")}」を意識する流れが強まっています。`;
   }
 
   if (continuedNeedTags.length > 0) {
     const labels = continuedNeedTags.map(toNeedTagLabel);
-    return `前回から継続して「${labels.join("」「")}」がテーマになっています。`;
+    return hasPreviousAction
+      ? `前回の行動を踏まえて、今回も「${labels.join("」「")}」が継続したテーマになっています。`
+      : `今回は小さく行動へ移すために、前回から継続して「${labels.join("」「")}」を見直す流れです。`;
   }
 
   return null;
@@ -186,7 +197,11 @@ export function compareState(
     continuedNeedTags,
     daysSincePrevious,
     within7DaysSincePrevious,
-    summary: buildSummary(changedNeedTags, continuedNeedTags),
+    summary: buildSummary({
+      changedNeedTags,
+      continuedNeedTags,
+      hasPreviousAction,
+    }),
     combinationChange,
     transitionNarrative,
     hasPreviousAction,
