@@ -880,9 +880,15 @@ export default function ConciergeClientFull() {
     const fallbackData = lastUnified?.data ?? null;
     const primaryData = primary.data ?? null;
 
+    const primaryRecommendationsV2 = Array.isArray(primaryData?.recommendations_v2) ? primaryData.recommendations_v2 : [];
     const primaryRecommendations = Array.isArray(primaryData?.recommendations) ? primaryData.recommendations : [];
+    const primaryRecommendationCandidates = primaryRecommendationsV2.length > 0 ? primaryRecommendationsV2 : primaryRecommendations;
 
+    const fallbackRecommendationsV2 = Array.isArray(fallbackData?.recommendations_v2) ? fallbackData.recommendations_v2 : [];
     const fallbackRecommendations = Array.isArray(fallbackData?.recommendations) ? fallbackData.recommendations : [];
+    const fallbackRecommendationCandidates = fallbackRecommendationsV2.length > 0 ? fallbackRecommendationsV2 : fallbackRecommendations;
+
+    const recommendations = primaryRecommendationCandidates.length > 0 ? primaryRecommendationCandidates : fallbackRecommendationCandidates;
 
     return {
       ...primary,
@@ -895,14 +901,17 @@ export default function ConciergeClientFull() {
       data: {
         ...(fallbackData ?? {}),
         ...(primaryData ?? {}),
-        recommendations: primaryRecommendations.length > 0 ? primaryRecommendations : fallbackRecommendations,
+        recommendations,
+        recommendations_v2: primaryRecommendationsV2.length > 0 ? primaryRecommendationsV2 : fallbackRecommendationsV2,
       },
     } as UnifiedConciergeResponse;
   }, [liveUnified, backendUnified, lastUnified]);
 
   const displayRecommendations = useMemo(() => {
     if (liveRecs.length > 0) return liveRecs;
+    const recsV2 = displayUnified?.data?.recommendations_v2;
     const recs = displayUnified?.data?.recommendations;
+    if (Array.isArray(recsV2) && recsV2.length > 0) return recsV2 as ConciergeRecommendation[];
     return Array.isArray(recs) ? (recs as ConciergeRecommendation[]) : [];
   }, [liveRecs, displayUnified]);
 
@@ -1124,7 +1133,9 @@ export default function ConciergeClientFull() {
       }
 
       setLiveUnified(u);
-      setLiveRecs(Array.isArray(u.data?.recommendations) ? (u.data.recommendations as any) : []);
+      const unifiedRecommendationsV2 = Array.isArray(u.data?.recommendations_v2) ? u.data.recommendations_v2 : [];
+      const unifiedRecommendations = Array.isArray(u.data?.recommendations) ? u.data.recommendations : [];
+      setLiveRecs((unifiedRecommendationsV2.length > 0 ? unifiedRecommendationsV2 : unifiedRecommendations) as any);
 
       if (isAnonymousLikeUnified(u)) {
         saveAnonymousSnapshot({
