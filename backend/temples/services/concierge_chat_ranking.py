@@ -617,6 +617,30 @@ def _attach_breakdown(
         },
     }
 
+    rec["score_v2"] = {
+        "version": 1,
+        "ranking_applied": False,
+        "total": float(score_total_ranked),
+        "components": {
+            "user_state_match": float(score_need_rank_weighted * w2),
+            "shrine_meaning_match": float(score_need * w2),
+            "context_match": float(score_visit_style * w5),
+            "element_match": float(score_element * w1),
+            "distance_score": float(score_distance * w4),
+            "popularity_score": float(score_popular * w3),
+            "astro_bonus": float(astro_bonus) if astro_bonus_enabled else 0.0,
+            "behavior_signal": 0.0,
+        },
+        "signals": {
+            "matched_need_tags": matched_all,
+            "matched_by_tag": matched_by_tag,
+            "matched_by_text": matched_by_text,
+            "matched_by_gid": matched_by_gid,
+            "matched_visit_style_tags": matched_visit_style_tags,
+            "matched_user_selected_goriyaku_tag_ids": matched_by_user_selected_gid,
+        },
+    }
+
     reason_facts = _build_reason_facts(
         matched_by_tag=matched_by_tag,
         matched_by_gid=matched_by_gid,
