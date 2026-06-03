@@ -15,6 +15,11 @@ from temples.services.concierge_chat_observation import (
 )
 
 from temples.services.concierge_chat import build_chat_recommendations
+from temples.services.concierge_chat_ranking import (
+    _attach_breakdown,
+    _build_reason_facts,
+    _resolve_primary_reason,
+)
 
 
 def assert_visit_style_observation_schema(observation):
@@ -670,6 +675,142 @@ def test_observe_ranking_breakdown_returns_stable_schema():
     assert row["matched_visit_style_tags"] == ["nature"]
     assert row["primary_reason_source"] == "text_hint"
     assert row["primary_reason_label"] == "rest"
+
+
+def test_observe_ranking_breakdown_supports_user_selected_tag_reason():
+    observation = observe_ranking_breakdown(
+        recs={
+            "recommendations": [
+                {
+                    "shrine_id": 101,
+                    "name": "美容神社",
+                    "_score_total": 1.5,
+                    "breakdown": {
+                        "score_need": 0,
+                        "score_total": 0.5,
+                        "matched_need_tags": [],
+                    },
+                    "breakdown_detail": {
+                        "features": {
+                            "need": {
+                                "rank_weighted": 0.0,
+                                "rank_weighted_contribution": 0.0,
+                            },
+                            "distance": {
+                                "raw": 0.0,
+                                "contribution": 0.0,
+                            },
+                            "popular": {
+                                "raw": 0.0,
+                                "contribution": 0.0,
+                            },
+                            "visit_style": {
+                                "raw": 0,
+                                "matched_tags": [],
+                                "contribution": 0.0,
+                            },
+                            "element": {
+                                "raw": 0,
+                                "contribution": 0.0,
+                            },
+                            "astro_bonus": 0.0,
+                            "score_total_ranked": 1.5,
+                        }
+                    },
+                    "_reason_facts": [
+                        {
+                            "type": "user_selected_tag",
+                            "label": "goriyaku_tag:1",
+                            "label_ja": "美容",
+                            "evidence": ["requested_goriyaku_tag_ids"],
+                            "score": 3.0,
+                            "is_primary": True,
+                        }
+                    ],
+                    "_primary_reason_source": "user_selected_tag",
+                    "_primary_reason_label": "goriyaku_tag:1",
+                }
+            ]
+        }
+    )
+
+    row = observation["top10"][0]
+    assert row["primary_reason_source"] == "user_selected_tag"
+    assert row["primary_reason_label"] == "goriyaku_tag:1"
+
+
+def test_build_reason_facts_generates_user_selected_tag_reason():
+    facts = _build_reason_facts(
+        matched_by_tag=[],
+        matched_by_gid=[],
+        matched_by_text=[],
+        matched_by_user_selected_gid=[1],
+        goriyaku_tag_label_by_id={1: "美容"},
+        text_score_by_tag={},
+        score_element=0,
+        astro_bonus_enabled=False,
+    )
+
+    assert facts[0] == {
+        "type": "user_selected_tag",
+        "label": "美容",
+        "label_ja": "美容",
+        "evidence": ["requested_goriyaku_tag_ids"],
+        "score": 3.0,
+        "is_primary": False,
+    }
+
+
+def test_resolve_primary_reason_prefers_user_selected_tag():
+    facts = _build_reason_facts(
+        matched_by_tag=["rest"],
+        matched_by_gid=["money"],
+        matched_by_text=["mental"],
+        matched_by_user_selected_gid=[1],
+        goriyaku_tag_label_by_id={1: "美容"},
+        text_score_by_tag={"mental": 5},
+        score_element=2,
+        astro_bonus_enabled=True,
+    )
+
+    primary = _resolve_primary_reason(facts)
+
+    assert primary["type"] == "user_selected_tag"
+    assert primary["label"] == "美容"
+    assert primary["evidence"] == ["requested_goriyaku_tag_ids"]
+
+
+def test_attach_breakdown_sets_user_selected_tag_as_primary_reason():
+    rec = {
+        "shrine_id": 101,
+        "name": "美容神社",
+        "goriyaku_tag_ids": [1],
+        "astro_elements": [],
+        "astro_tags": [],
+        "goriyaku": "",
+        "description": "",
+        "popular_score": 0,
+        "distance_m": None,
+        "visit_style_tags": [],
+    }
+
+    _attach_breakdown(
+        rec,
+        birthdate=None,
+        need_tags=["rest"],
+        weights={"element": 0.0, "need": 0.3, "popular": 0.0, "distance": 0.0},
+        astro_bonus_enabled=False,
+        visit_style_tags=set(),
+        query="美容で整えたい",
+        requested_goriyaku_tag_ids=[1],
+        goriyaku_tag_label_by_id={1: "美容"},
+    )
+
+    assert rec["_primary_reason_source"] == "user_selected_tag"
+    assert rec["_primary_reason_label"] == "美容"
+    assert rec["_reason_facts"][0]["type"] == "user_selected_tag"
+    assert rec["_reason_facts"][0]["is_primary"] is True
+    assert rec["_reason_facts"][0]["evidence"] == ["requested_goriyaku_tag_ids"]
 
 
 def test_observe_ranking_breakdown_empty_contract_has_stable_schema():

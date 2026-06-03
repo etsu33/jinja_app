@@ -4,6 +4,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from django.conf import settings as dj_settings
+from temples.models import GoriyakuTag
 
 from temples.services.concierge_candidate_utils import _normalize_candidate_fields
 from temples.services.concierge_chat_extra_condition import (
@@ -70,6 +71,20 @@ def _resolve_astro_profile(
     except Exception:
         return None
 
+def _build_goriyaku_tag_label_by_id(goriyaku_tag_ids: Optional[List[int]]) -> Dict[int, str]:
+    ids = [
+        int(x)
+        for x in (goriyaku_tag_ids or [])
+        if isinstance(x, int) or (isinstance(x, str) and str(x).strip().isdigit())
+    ]
+    if not ids:
+        return {}
+
+    try:
+        return dict(GoriyakuTag.objects.filter(id__in=ids).values_list("id", "name"))
+    except Exception:
+        return {}
+
 
 def _attach_chat_rec_enrichment(
     recs: Dict[str, Any],
@@ -82,6 +97,8 @@ def _attach_chat_rec_enrichment(
     astro_bonus_enabled: bool,
     soft_signal_tags: set[str],
     visit_style_tags: set[str],
+    goriyaku_tag_ids: Optional[List[int]],
+    goriyaku_tag_label_by_id: Dict[int, str],
 ) -> Dict[str, Any]:
     for rec in recs.get("recommendations") or []:
         if not isinstance(rec, dict):
@@ -94,6 +111,8 @@ def _attach_chat_rec_enrichment(
             weights=weights,
             astro_bonus_enabled=astro_bonus_enabled,
             visit_style_tags=visit_style_tags,
+            requested_goriyaku_tag_ids=goriyaku_tag_ids,
+            goriyaku_tag_label_by_id=goriyaku_tag_label_by_id,
         )
         _apply_soft_signal_highlights(
             rec,
@@ -313,6 +332,8 @@ def build_chat_recommendations(
         [r.get("name") for r in (recs.get("recommendations") or [])[:5] if isinstance(r, dict)],
     )
 
+    goriyaku_tag_label_by_id = _build_goriyaku_tag_label_by_id(goriyaku_tag_ids)
+
     recs = _attach_chat_rec_enrichment(
         recs,
         public_mode=public_mode,
@@ -323,6 +344,8 @@ def build_chat_recommendations(
         astro_bonus_enabled=astro_bonus_enabled,
         soft_signal_tags=soft_signal_tags,
         visit_style_tags=visit_style_tags,
+        goriyaku_tag_ids=goriyaku_tag_ids,
+        goriyaku_tag_label_by_id=goriyaku_tag_label_by_id,
     )
 
     recs = attach_explanation_payload(recs, birthdate=birthdate)

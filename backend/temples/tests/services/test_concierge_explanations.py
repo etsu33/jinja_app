@@ -47,6 +47,62 @@ def test_build_explanation_payload_prefers_visit_style_over_fallback_primary_rea
     assert payload["matched_need_tags"] == []
 
 
+# New test for user_selected_tag primary reason
+def test_build_explanation_payload_keeps_user_selected_tag_primary_reason():
+    payload = build_explanation_payload(
+        {
+            "reason": "候補としておすすめしています。",
+            "_reason_facts": [
+                {
+                    "type": "user_selected_tag",
+                    "label": "goriyaku_tag:1",
+                    "label_ja": "goriyaku_tag:1",
+                    "evidence": ["requested_goriyaku_tag_ids"],
+                    "score": 3.0,
+                    "is_primary": True,
+                },
+                {
+                    "type": "text_hint",
+                    "label": "rest",
+                    "label_ja": "休息",
+                    "evidence": ["text_score:3"],
+                    "score": 3.0,
+                    "is_primary": False,
+                },
+            ],
+            "breakdown": {
+                "score_need": 1,
+                "score_total": 0.3,
+                "matched_need_tags": ["rest"],
+            },
+            "breakdown_detail": {
+                "features": {
+                    "score_total_ranked": 0.9,
+                }
+            },
+        }
+    )
+
+    assert payload["primary_reason"] == {
+        "type": "user_selected_tag",
+        "label": "goriyaku_tag:1",
+        "label_ja": "goriyaku_tag:1",
+        "evidence": ["requested_goriyaku_tag_ids"],
+        "score": 3.0,
+        "is_primary": True,
+    }
+    assert payload["secondary_reasons"] == [
+        {
+            "type": "text_hint",
+            "label": "rest",
+            "label_ja": "休息",
+            "evidence": ["text_score:3"],
+            "score": 3.0,
+            "is_primary": False,
+        }
+    ]
+
+
 def test_build_explanation_for_chat_rec_adds_quiet_visit_style_reason():
     result = build_explanation_for_chat_rec(
         {

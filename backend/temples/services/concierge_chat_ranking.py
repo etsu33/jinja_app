@@ -126,10 +126,11 @@ NEED_LABELS_JA: Dict[str, str] = {
 }
 
 PRIMARY_REASON_PRIORITY: Dict[str, int] = {
-    "need_tag": 0,
-    "goriyaku_tag": 1,
-    "text_hint": 2,
-    "element": 3,
+    "user_selected_tag": 0,
+    "need_tag": 1,
+    "goriyaku_tag": 2,
+    "text_hint": 3,
+    "element": 4,
     "fallback": 9,
 }
 
@@ -171,11 +172,25 @@ def _build_reason_facts(
     matched_by_tag: List[str],
     matched_by_gid: List[str],
     matched_by_text: List[str],
+    matched_by_user_selected_gid: List[int],
+    goriyaku_tag_label_by_id: Optional[Dict[int, str]],
     text_score_by_tag: Dict[str, int],
     score_element: int,
     astro_bonus_enabled: bool,
 ) -> List[Dict[str, Any]]:
     facts: List[Dict[str, Any]] = []
+
+    label_map = goriyaku_tag_label_by_id or {}
+    for gid in matched_by_user_selected_gid:
+        label = str(label_map.get(gid) or f"goriyaku_tag:{gid}")
+        facts.append(
+            _make_reason_fact(
+                type_="user_selected_tag",
+                label=label,
+                evidence=["requested_goriyaku_tag_ids"],
+                score=3.0,
+            )
+        )
 
     for tag in matched_by_tag:
         facts.append(
@@ -379,6 +394,8 @@ def _attach_breakdown(
     astro_bonus_enabled: bool,
     visit_style_tags: set[str] | None = None,
     query: Optional[str] = None,
+    requested_goriyaku_tag_ids: Optional[List[int]] = None,
+    goriyaku_tag_label_by_id: Optional[Dict[int, str]] = None,
 ) -> None:
     """
     rec（1件の神社辞書）にスコアの内訳を追加する。
@@ -445,6 +462,13 @@ def _attach_breakdown(
         for x in (rec.get("goriyaku_tag_ids") or [])
         if isinstance(x, int) or (isinstance(x, str) and str(x).strip().isdigit())
     }
+
+    requested_gid_set = {
+        int(x)
+        for x in (requested_goriyaku_tag_ids or [])
+        if isinstance(x, int) or (isinstance(x, str) and str(x).strip().isdigit())
+    }
+    matched_by_user_selected_gid = sorted(candidate_gid_set & requested_gid_set)
 
     matched_by_gid: List[str] = []
     for tag in need_tags_clean:
@@ -597,6 +621,8 @@ def _attach_breakdown(
         matched_by_tag=matched_by_tag,
         matched_by_gid=matched_by_gid,
         matched_by_text=matched_by_text,
+        matched_by_user_selected_gid=matched_by_user_selected_gid,
+        goriyaku_tag_label_by_id=goriyaku_tag_label_by_id,
         text_score_by_tag=text_score_by_tag,
         score_element=score_element,
         astro_bonus_enabled=astro_bonus_enabled,
@@ -634,7 +660,7 @@ def _attach_breakdown(
 
     try:
         log.info(
-            "[dbg] attach_breakdown shrine_id=%r name=%r need_tags=%r prefilter_matched=%r matched_by_tag=%r matched_by_text=%r matched_by_gid=%r matched_all=%r score_need=%r need_score_reason=%r primary_reason_source=%r primary_reason_label=%r",
+            "[dbg] attach_breakdown shrine_id=%r name=%r need_tags=%r prefilter_matched=%r matched_by_tag=%r matched_by_text=%r matched_by_gid=%r matched_by_user_selected_gid=%r matched_all=%r score_need=%r need_score_reason=%r primary_reason_source=%r primary_reason_label=%r",
             rec.get("shrine_id"),
             rec.get("name"),
             need_tags_clean,
@@ -642,6 +668,7 @@ def _attach_breakdown(
             matched_by_tag,
             matched_by_text,
             matched_by_gid,
+            matched_by_user_selected_gid,
             matched_all,
             score_need,
             need_score_reason,
@@ -1022,7 +1049,7 @@ def _to_rank_explanation(
     top_contributors = [c for c in contributors if float(c.get("contribution") or 0.0) > 0][:2]
 
     primary_axis = "fallback"
-    if primary_source in {"need_tag", "goriyaku_tag", "text_hint"}:
+    if primary_source in {"user_selected_tag", "need_tag", "goriyaku_tag", "text_hint"}:
         primary_axis = "need"
     elif primary_source == "element":
         primary_axis = "element"
