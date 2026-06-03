@@ -12,8 +12,8 @@ from temples.models import Shrine, ShrineReflection
 class ShrineReflectionCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def post(self, request, id=None, shrine_id=None, *args, **kwargs):
-        shrine_id = id or shrine_id or request.data.get("shrine_id") or request.data.get("shrine")
+    def post(self, request, pk=None, id=None, shrine_id=None, *args, **kwargs):
+        shrine_id = pk or id or shrine_id or request.data.get("shrine_id") or request.data.get("shrine")
         if not shrine_id:
             return Response({"detail": "shrine_id is required"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -22,7 +22,10 @@ class ShrineReflectionCreateView(APIView):
         except Shrine.DoesNotExist:
             return Response({"detail": "Shrine not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        serializer = ShrineReflectionSerializer(data=request.data)
+        data = request.data.copy()
+        data["shrine"] = shrine.id
+
+        serializer = ShrineReflectionSerializer(data=data)
         serializer.is_valid(raise_exception=True)
 
         reflection = ShrineReflection.objects.create(
