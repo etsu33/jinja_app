@@ -94,11 +94,11 @@ export function track(eventName: string, payload: TrackPayload = {}) {
     persistDevTrackEvent(detail);
   }
 
-  try {
-    getAnalyticsProvider().track(eventName, serializeAnalyticsPayload(payloadWithSession));
-  } catch (error) {
-    if (process.env.NODE_ENV === "development") {
-      console.warn("TRACK_PROVIDER_FAILED", eventName, error);
+  if (process.env.NODE_ENV === "production") {
+    try {
+      getAnalyticsProvider().track(eventName, serializeAnalyticsPayload(payloadWithSession));
+    } catch {
+      // analytics送信の失敗でアプリ本体を止めない
     }
   }
 
