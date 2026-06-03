@@ -1117,6 +1117,31 @@ export default function ConciergeClientFull() {
           hasRecs: Array.isArray(u.data?.recommendations) ? u.data.recommendations.length : 0,
         },
       });
+
+      const completedRecommendations = Array.isArray((u.data as any)?.recommendations_v2)
+        ? (u.data as any).recommendations_v2
+        : Array.isArray(u.data?.recommendations)
+          ? u.data.recommendations
+          : [];
+
+      const completedModeRaw = (u.data as any)?._signals?.mode;
+      const completedTopRecommendation = completedRecommendations[0] as Record<string, unknown> | undefined;
+      const completedHistoryTheme =
+        typeof completedTopRecommendation?.history_theme === "string"
+          ? completedTopRecommendation.history_theme
+          : typeof completedTopRecommendation?.historyTheme === "string"
+            ? completedTopRecommendation.historyTheme
+            : undefined;
+
+      track("consultation_completed", {
+        threadId: nextTid || currentTid || null,
+        mode: completedModeRaw?.mode,
+        flow: completedModeRaw?.flow,
+        hasBirthdate: Boolean(normalizedBirthdate || baseFilters.birthdate),
+        recommendationCount: completedRecommendations.length,
+        historyTheme: completedHistoryTheme,
+        source: fromEntry ? "entry" : "thread",
+      });
       if (filterApplyPendingRef.current) {
         const recommendationCount = Array.isArray(u.data?.recommendations) ? u.data.recommendations.length : 0;
 
