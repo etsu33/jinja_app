@@ -6,7 +6,8 @@ from typing import Optional, Any
 from django.db import transaction
 from django.utils import timezone
 
-from temples.models import ConciergeHistory, ConciergeMessage, ConciergeThread, Favorite, Visit
+from temples.models import ConciergeHistory, ConciergeMessage, ConciergeThread, Favorite, ShrineReflection, Visit
+
 
 HistoryActionState = str
 
@@ -22,6 +23,13 @@ def classify_shrine_action_state(*, user, shrine_id: int | None) -> HistoryActio
 
     if shrine_id is None:
         return "none"
+
+    has_reflection = ShrineReflection.objects.filter(
+        user=user,
+        shrine_id=shrine_id,
+    ).exists()
+    if has_reflection:
+        return "reflected"
 
     has_visit = Visit.objects.filter(
         user=user,
