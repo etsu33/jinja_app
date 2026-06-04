@@ -300,6 +300,7 @@ export default async function Page({ params, searchParams }: Props) {
   let stateDelta: StateDelta | null = null;
   
   let selectedRecommendation: Record<string, any> | null = null;
+  // actionState will be set after selectedRecommendation is determined
 
   if (ctx === "concierge" && tid) {
     try {
@@ -351,6 +352,9 @@ export default async function Page({ params, searchParams }: Props) {
       stateDelta = null;
     }
   }
+
+  // Set actionState after determining selectedRecommendation
+  const actionState = selectedRecommendation?.action_state ?? null;
 
   
 
@@ -416,6 +420,7 @@ export default async function Page({ params, searchParams }: Props) {
     recommendationReasonDetail,
     recommendationRankExplanation,
     recommendationRankComparison,
+    actionState,
     ctx,
     tid,
     signals,

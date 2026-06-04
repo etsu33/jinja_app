@@ -4,7 +4,10 @@ import math
 import logging
 from typing import Any, Dict, List, Optional
 from temples.domain.need_to_goriyaku_tag_ids import need_tags_to_goriyaku_ids
-from temples.services.concierge_history import calculate_shrine_behavior_signal
+from temples.services.concierge_history import (
+    calculate_shrine_behavior_signal,
+    classify_shrine_action_state,
+)
 from typing import Literal
 
 
@@ -563,6 +566,11 @@ def _attach_breakdown(
         user=user,
         shrine_id=shrine_id_int,
     )
+    action_state = classify_shrine_action_state(
+        user=user,
+        shrine_id=shrine_id_int,
+    )
+    rec["action_state"] = action_state
     behavior_weight = 0.1
     behavior_contribution = float(behavior_signal) * behavior_weight
 
