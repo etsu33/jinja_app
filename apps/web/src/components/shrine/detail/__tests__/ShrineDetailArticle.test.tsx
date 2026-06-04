@@ -199,4 +199,41 @@ describe("ShrineDetailArticle", () => {
       );
     });
   });
+
+  it.each([
+    [true, "参拝お疲れさまでした"],
+    [false, null],
+  ])(
+    "actionState が %p のとき、参拝後コピーの表示を検証する",
+    (actionState, expectedText) => {
+      render(
+        <ShrineDetailArticle
+          cardProps={{
+            title: "乃木神社",
+            href: "/shrines/17",
+            imageUrl: null,
+            badges: [],
+            metaChips: [],
+            address: "東京都港区赤坂",
+          } as any}
+          heroImageUrl={null}
+          heroMeaningCopy={null}
+          benefitLabels={[]}
+          tags={[]}
+          publicGoshuinsPreview={[]}
+          publicGoshuinsViewAllHref=""
+          sections={[]}
+          recommendationMeta={null}
+          saveActionNode={null}
+          actionState={actionState ? "visited" : "none"}
+        />,
+      );
+
+      if (expectedText) {
+        expect(screen.getByText(expectedText)).toBeInTheDocument();
+      } else {
+        expect(screen.queryByText("参拝お疲れさまでした")).not.toBeInTheDocument();
+      }
+    },
+  );
 });
