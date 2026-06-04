@@ -424,6 +424,7 @@ export default function ShrineDetailArticle({
   saveActionNode?: React.ReactNode;
   actionState?: "none" | "detail_viewed" | "saved" | "route_opened" | "visited" | "reflected" | null;
 }) {
+
   const hasLayeredSections = freeDisplaySections.length > 0 || premiumDisplaySections.length > 0;
   const freeSections = hasLayeredSections ? freeDisplaySections.map((item) => item.section) : sections;
   const premiumSections = premiumDisplaySections.map((item) => item.section);
