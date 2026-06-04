@@ -220,18 +220,47 @@ def observe_ranking_breakdown(
                     "matched_visit_style_tags": list(visit_style.get("matched_tags") or []),
                     "primary_reason_source": rec.get("_primary_reason_source"),
                     "primary_reason_label": rec.get("_primary_reason_label"),
+                    "score_total_ranked_base": float(features.get("score_total_ranked_base") or 0.0),
+                    "capped_behavior_contribution": float(features.get("capped_behavior_contribution") or 0.0),
+                    "behavior_ratio": float(features.get("behavior_ratio") or 0.0),
+                    "visit_style_tags": list(rec.get("visit_style_tags") or []),
                 }
             )
+
+        debug = {
+            "query": recs.get("_query") or "",
+            "need_tags": recs.get("_need_tags") or [],
+            "matched_need_tags": [r.get("matched_need_tags") or [] for r in rows],
+            "visit_style_tags": [
+                list(dict.fromkeys((r.get("visit_style_tags") or []) + (r.get("matched_visit_style_tags") or [])))
+                for r in rows
+            ],
+            "matched_visit_style_tags": [r.get("matched_visit_style_tags") or [] for r in rows],
+            "score_total_ranked_base": [r.get("score_total_ranked_base") for r in rows],
+            "capped_behavior_contribution": [r.get("capped_behavior_contribution") for r in rows],
+            "behavior_ratio": [r.get("behavior_ratio") or 0.0 for r in rows],
+        }
 
         return {
             "ranked_count": len(recommendations),
             "top10": rows,
+            "_debug": debug,
         }
     except Exception:
         log.exception("[ranking_breakdown_observation] failed")
         return {
             "ranked_count": 0,
             "top10": [],
+            "_debug": {
+                "query": "",
+                "need_tags": [],
+                "matched_need_tags": [],
+                "visit_style_tags": [],
+                "matched_visit_style_tags": [],
+                "score_total_ranked_base": [],
+                "capped_behavior_contribution": [],
+                "behavior_ratio": [],
+            },
         }
 
 

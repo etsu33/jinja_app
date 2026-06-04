@@ -575,8 +575,13 @@ def _attach_breakdown(
         + astro_bonus
     )
     # 行動の影響を相談内容に対して最大30％に制限
-    # Ensure the behavior contribution is capped at 30% of score_total_ranked_base
-    capped_behavior_contribution = min(behavior_contribution, score_total_ranked_base * 0.3)
+    behavior_cap = score_total_ranked_base * 0.3
+    capped_behavior_contribution = min(behavior_contribution, behavior_cap)
+    behavior_ratio = (
+        capped_behavior_contribution / score_total_ranked_base
+        if score_total_ranked_base > 0
+        else 0.0
+    )
     score_total_ranked = score_total_ranked_base + capped_behavior_contribution
 
     rec["_score_total"] = float(score_total_ranked)
@@ -635,9 +640,14 @@ def _attach_breakdown(
                 "raw": float(behavior_signal),
                 "weight": float(behavior_weight),
                 "contribution": float(behavior_contribution),
+                "capped_contribution": float(capped_behavior_contribution),
+                "cap": float(behavior_cap),
+                "ratio": float(behavior_ratio),
             },
             "astro_bonus": float(astro_bonus) if astro_bonus_enabled else 0.0,
             "score_total_ranked_base": float(score_total_ranked_base),
+            "capped_behavior_contribution": float(capped_behavior_contribution),
+            "behavior_ratio": float(behavior_ratio),
             "score_total_ranked": float(score_total_ranked),
         },
     }
@@ -656,6 +666,8 @@ def _attach_breakdown(
             "astro_bonus": float(astro_bonus) if astro_bonus_enabled else 0.0,
             "behavior_signal": float(behavior_signal),
             "behavior_contribution": float(behavior_contribution),
+            "capped_behavior_contribution": float(capped_behavior_contribution),
+            "behavior_ratio": float(behavior_ratio),
         },
         "signals": {
             "matched_need_tags": matched_all,
