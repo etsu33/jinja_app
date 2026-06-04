@@ -24,6 +24,27 @@
 ---
 
 ## 🗂 マイルストーン（チェックリスト）
+### Recommendation Engine v2: score_v2 / behavior_signal 運用方針
+
+- [x] `score_v2` を推薦生成時点の評価スナップショットとして扱う
+- [x] 保存済み thread の `score_v2` は再計算・再ランキングしない
+- [x] `action_state` は現在DBにもとづく状態として表示する
+- [x] `behavior_signal` は Favorite / Visit / ShrineReflection などの行動データを数値化する
+- [x] `ranking_applied=false` の間は、`score_v2` を観測・説明用として扱う
+- [ ] `behavior_signal` の分布を継続監査する
+- [ ] `behavior_signal` を `score_total_ranked` に加算する重みを設計する
+- [ ] 新規 recommendation 生成時のみ `ranking_applied=true` を有効化する
+- [ ] 保存済み thread の履歴再現性と、現在の `action_state` 表示を両立する
+
+運用方針:
+
+- `score_v2`: 推薦生成時点の評価値。履歴の再現性を優先し、保存後は変更しない。
+- `behavior_signal`: ユーザー行動を推薦改善に使うための観測値。初期対象は Favorite / Visit / ShrineReflection とする。
+- `ranking_applied`: `score_v2` を実際の推薦順位へ反映したかを示すフラグ。true 化は新規推薦生成時のみ対象とする。
+- `action_state`: saved / visited / reflected / none など、現在DBにもとづく状態表示。保存済み `score_v2` と一致しない場合がある。
+
+次フェーズでは、`behavior_signal` を直接ランキングへ反映する前に、分布・偏り・重みの妥当性を確認する。
+
 ### 完了: Premium 体験境界の明文化
 
 - [x] Premium 価値を Map/Search ではなく、パーソナル理由・相性・継続分析・保存/記録拡張に固定
