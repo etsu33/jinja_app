@@ -122,6 +122,7 @@ def assert_ranking_breakdown_observation_schema(observation):
     assert set(observation.keys()) == {
         "ranked_count",
         "top10",
+        "_debug",
     }
     assert isinstance(observation["ranked_count"], int)
     assert isinstance(observation["top10"], list)
@@ -135,12 +136,16 @@ def assert_ranking_breakdown_top_row_schema(row):
         "score_raw",
         "score_total",
         "score_total_ranked",
+        "score_total_ranked_base",
+        "capped_behavior_contribution",
+        "behavior_ratio",
         "score_need",
         "score_need_rank_weighted",
         "score_distance",
         "score_popular",
         "score_visit_style",
         "score_element",
+        "visit_style_tags",
         "behavior_signal",
         "behavior_contribution",
         "contributions",
@@ -153,12 +158,16 @@ def assert_ranking_breakdown_top_row_schema(row):
     assert isinstance(row["score_raw"], float)
     assert isinstance(row["score_total"], float)
     assert isinstance(row["score_total_ranked"], float)
+    assert isinstance(row["score_total_ranked_base"], float)
+    assert isinstance(row["capped_behavior_contribution"], float)
+    assert isinstance(row["behavior_ratio"], float)
     assert isinstance(row["score_need"], int)
     assert isinstance(row["score_need_rank_weighted"], float)
     assert isinstance(row["score_distance"], float)
     assert isinstance(row["score_popular"], float)
     assert isinstance(row["score_visit_style"], int)
     assert isinstance(row["score_element"], int)
+    assert isinstance(row["visit_style_tags"], list)
     assert isinstance(row["behavior_signal"], float)
     assert isinstance(row["behavior_contribution"], float)
     assert isinstance(row["contributions"], dict)
@@ -616,11 +625,14 @@ def test_observe_candidate_pool_debug_empty_contract_has_stable_schema():
 def test_observe_ranking_breakdown_returns_stable_schema():
     observation = observe_ranking_breakdown(
         recs={
+            "_query": "",
+            "_need_tags": [],
             "recommendations": [
                 {
                     "id": 1,
                     "shrine_id": 101,
                     "name": "根津神社",
+                    "visit_style_tags": ["nature"],
                     "_score_total": 1.23,
                     "breakdown": {
                         "score_need": 1,
@@ -652,6 +664,9 @@ def test_observe_ranking_breakdown_returns_stable_schema():
                             },
                             "astro_bonus": 0.0,
                             "score_total_ranked": 1.23,
+                            "score_total_ranked_base": 1.23,
+                            "capped_behavior_contribution": 0.0,
+                            "behavior_ratio": 0.0,
                         }
                     },
                     "_primary_reason_source": "text_hint",
@@ -660,6 +675,17 @@ def test_observe_ranking_breakdown_returns_stable_schema():
             ]
         }
     )
+
+    # Assert _debug fields
+    _debug = observation.get("_debug", {})
+    assert _debug["query"] == ""
+    assert _debug["need_tags"] == []
+    assert _debug["matched_need_tags"] == [["rest"]]
+    assert _debug["visit_style_tags"] == [["nature"]]
+    assert _debug["matched_visit_style_tags"] == [["nature"]]
+    assert _debug["score_total_ranked_base"] == [1.23]
+    assert _debug["capped_behavior_contribution"] == [0.0]
+    assert _debug["behavior_ratio"] == [0.0]
 
     assert_ranking_breakdown_observation_schema(observation)
     assert_ranking_breakdown_top_row_schema(observation["top10"][0])
@@ -824,4 +850,14 @@ def test_observe_ranking_breakdown_empty_contract_has_stable_schema():
     assert observation == {
         "ranked_count": 0,
         "top10": [],
+        "_debug": {
+            "query": "",
+            "need_tags": [],
+            "matched_need_tags": [],
+            "visit_style_tags": [],
+            "matched_visit_style_tags": [],
+            "score_total_ranked_base": [],
+            "capped_behavior_contribution": [],
+            "behavior_ratio": [],
+        },
     }
