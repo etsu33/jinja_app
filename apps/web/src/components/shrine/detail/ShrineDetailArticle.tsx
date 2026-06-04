@@ -393,6 +393,7 @@ export default function ShrineDetailArticle({
   historyTheme = null,
   meaningPayloadSource = "fallback",
   saveActionNode,
+  actionState,
 }: {
   cardProps: ShrineCardAdapterProps;
   heroImageUrl?: string | null;
@@ -421,6 +422,7 @@ export default function ShrineDetailArticle({
   historyTheme?: string | null;
   meaningPayloadSource?: "v2" | "fallback";
   saveActionNode?: React.ReactNode;
+  actionState?: "none" | "detail_viewed" | "saved" | "route_opened" | "visited" | "reflected" | null;
 }) {
   const hasLayeredSections = freeDisplaySections.length > 0 || premiumDisplaySections.length > 0;
   const freeSections = hasLayeredSections ? freeDisplaySections.map((item) => item.section) : sections;
@@ -617,6 +619,13 @@ export default function ShrineDetailArticle({
     historyTheme,
   ]);
 
+  // Determine if after-visit copy should be shown
+  const showAfterVisitCopy =
+    actionState === "visited" || actionState === "reflected";
+
+  // ShrineDetailStateDeltaSection only if actionState is "visited" or "reflected"
+  const showStateDeltaSection = showAfterVisitCopy;
+
   return (
     <article className="space-y-4">
       <section className="space-y-5">
@@ -626,7 +635,18 @@ export default function ShrineDetailArticle({
           address={cardProps.address ?? null}
         />
         <ShrineDetailHeroCard title={cardProps.title} imageUrl={heroImageUrl} />
-        <ShrineDetailStateDeltaSection stateDelta={stateDelta} isPremiumActive={isPremiumActive} />
+        {showStateDeltaSection ? (
+          <ShrineDetailStateDeltaSection stateDelta={stateDelta} isPremiumActive={isPremiumActive} />
+        ) : null}
+        {/* 参拝後文言 (after-visit copy) */}
+        {showAfterVisitCopy ? (
+          <div className="rounded-2xl border border-emerald-200 bg-white p-3 mt-2">
+            <p className="text-sm font-semibold text-emerald-700">参拝お疲れさまでした</p>
+            <p className="mt-1 text-xs text-slate-600">
+              あなたの参拝が記録されました。次回の相談で前回の行動として振り返ることができます。
+            </p>
+          </div>
+        ) : null}
       </section>
 
       {hasContextReasonSections ? <ShrineDetailSections sections={contextReasonSections} /> : null}
@@ -718,7 +738,7 @@ export default function ShrineDetailArticle({
             {resolvedSaveActionNode}
 
             <div className="mt-3 space-y-2">
-              {hasVisitHistory ? (
+              {showAfterVisitCopy && hasVisitHistory ? (
                 <div className="rounded-xl border border-emerald-200 bg-white p-3">
                   <p className="text-sm font-semibold text-emerald-700">参拝したことがあります</p>
                   <p className="mt-1 text-xs text-slate-600">参拝回数：{visitSummary.visitCount}回</p>
