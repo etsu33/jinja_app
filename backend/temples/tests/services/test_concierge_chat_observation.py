@@ -141,6 +141,8 @@ def assert_ranking_breakdown_top_row_schema(row):
         "score_popular",
         "score_visit_style",
         "score_element",
+        "behavior_signal",
+        "behavior_contribution",
         "contributions",
         "matched_need_tags",
         "matched_visit_style_tags",
@@ -157,6 +159,8 @@ def assert_ranking_breakdown_top_row_schema(row):
     assert isinstance(row["score_popular"], float)
     assert isinstance(row["score_visit_style"], int)
     assert isinstance(row["score_element"], int)
+    assert isinstance(row["behavior_signal"], float)
+    assert isinstance(row["behavior_contribution"], float)
     assert isinstance(row["contributions"], dict)
     assert isinstance(row["matched_need_tags"], list)
     assert isinstance(row["matched_visit_style_tags"], list)
