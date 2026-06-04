@@ -574,7 +574,10 @@ def _attach_breakdown(
         + score_visit_style * w5
         + astro_bonus
     )
-    score_total_ranked = score_total_ranked_base + behavior_contribution
+    # 行動の影響を相談内容に対して最大30％に制限
+    # Ensure the behavior contribution is capped at 30% of score_total_ranked_base
+    capped_behavior_contribution = min(behavior_contribution, score_total_ranked_base * 0.3)
+    score_total_ranked = score_total_ranked_base + capped_behavior_contribution
 
     rec["_score_total"] = float(score_total_ranked)
 
