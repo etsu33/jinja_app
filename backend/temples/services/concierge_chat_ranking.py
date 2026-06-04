@@ -553,7 +553,20 @@ def _attach_breakdown(
     #   need の強一致・距離減衰まで含めた ranked score を入れる。
     score_total = score_element * w1 + score_need * w2 + score_popular * w3 + astro_bonus
 
-    score_total_ranked = (
+    shrine_id = rec.get("shrine_id") or rec.get("id")
+    try:
+        shrine_id_int = int(shrine_id) if shrine_id is not None else None
+    except (TypeError, ValueError):
+        shrine_id_int = None
+
+    behavior_signal = calculate_shrine_behavior_signal(
+        user=user,
+        shrine_id=shrine_id_int,
+    )
+    behavior_weight = 0.1
+    behavior_contribution = float(behavior_signal) * behavior_weight
+
+    score_total_ranked_base = (
         score_element * w1
         + score_need_rank_weighted * w2
         + score_popular * w3
@@ -561,6 +574,7 @@ def _attach_breakdown(
         + score_visit_style * w5
         + astro_bonus
     )
+    score_total_ranked = score_total_ranked_base + behavior_contribution
 
     rec["_score_total"] = float(score_total_ranked)
 
@@ -614,25 +628,20 @@ def _attach_breakdown(
                 "matched_tags": matched_visit_style_tags,
                 "contribution": float(score_visit_style * w5),
             },
+            "behavior": {
+                "raw": float(behavior_signal),
+                "weight": float(behavior_weight),
+                "contribution": float(behavior_contribution),
+            },
             "astro_bonus": float(astro_bonus) if astro_bonus_enabled else 0.0,
+            "score_total_ranked_base": float(score_total_ranked_base),
             "score_total_ranked": float(score_total_ranked),
         },
     }
 
-    shrine_id = rec.get("shrine_id") or rec.get("id")
-    try:
-        shrine_id_int = int(shrine_id) if shrine_id is not None else None
-    except (TypeError, ValueError):
-        shrine_id_int = None
-
-    behavior_signal = calculate_shrine_behavior_signal(
-        user=user,
-        shrine_id=shrine_id_int,
-    )
-
     rec["score_v2"] = {
         "version": 1,
-        "ranking_applied": False,
+        "ranking_applied": True,
         "total": float(score_total_ranked),
         "components": {
             "user_state_match": float(score_need_rank_weighted * w2),
@@ -643,6 +652,7 @@ def _attach_breakdown(
             "popularity_score": float(score_popular * w3),
             "astro_bonus": float(astro_bonus) if astro_bonus_enabled else 0.0,
             "behavior_signal": float(behavior_signal),
+            "behavior_contribution": float(behavior_contribution),
         },
         "signals": {
             "matched_need_tags": matched_all,
