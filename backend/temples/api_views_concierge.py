@@ -790,6 +790,7 @@ class ConciergeChatView(APIView):
                     extra_condition=extra_condition,
                     public_mode=public_mode,
                     flow=flow,
+                    user=user if getattr(user, "is_authenticated", False) else None,
                 )
             except Exception:
                 log.exception(

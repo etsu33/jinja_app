@@ -48,6 +48,26 @@ def classify_shrine_action_state(*, user, shrine_id: int | None) -> HistoryActio
 
     return "none"
 
+def calculate_shrine_behavior_signal(*, user, shrine_id: int | None) -> float:
+    if user is None or not getattr(user, "is_authenticated", False):
+        return 0.0
+
+    if shrine_id is None:
+        return 0.0
+
+    score = 0.0
+
+    if Favorite.objects.filter(user=user, shrine_id=shrine_id).exists():
+        score += 2.0
+
+    if Visit.objects.filter(user=user, shrine_id=shrine_id, status="added").exists():
+        score += 4.0
+
+    if ShrineReflection.objects.filter(user=user, shrine_id=shrine_id).exists():
+        score += 5.0
+
+    return min(score, 10.0)
+
 @dataclass
 class ChatSaveResult:
     thread: ConciergeThread

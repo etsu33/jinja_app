@@ -4,6 +4,7 @@ import math
 import logging
 from typing import Any, Dict, List, Optional
 from temples.domain.need_to_goriyaku_tag_ids import need_tags_to_goriyaku_ids
+from temples.services.concierge_history import calculate_shrine_behavior_signal
 from typing import Literal
 
 
@@ -396,6 +397,7 @@ def _attach_breakdown(
     query: Optional[str] = None,
     requested_goriyaku_tag_ids: Optional[List[int]] = None,
     goriyaku_tag_label_by_id: Optional[Dict[int, str]] = None,
+    user=None,
 ) -> None:
     """
     rec（1件の神社辞書）にスコアの内訳を追加する。
@@ -617,6 +619,17 @@ def _attach_breakdown(
         },
     }
 
+    shrine_id = rec.get("shrine_id") or rec.get("id")
+    try:
+        shrine_id_int = int(shrine_id) if shrine_id is not None else None
+    except (TypeError, ValueError):
+        shrine_id_int = None
+
+    behavior_signal = calculate_shrine_behavior_signal(
+        user=user,
+        shrine_id=shrine_id_int,
+    )
+
     rec["score_v2"] = {
         "version": 1,
         "ranking_applied": False,
@@ -629,7 +642,7 @@ def _attach_breakdown(
             "distance_score": float(score_distance * w4),
             "popularity_score": float(score_popular * w3),
             "astro_bonus": float(astro_bonus) if astro_bonus_enabled else 0.0,
-            "behavior_signal": 0.0,
+            "behavior_signal": float(behavior_signal),
         },
         "signals": {
             "matched_need_tags": matched_all,

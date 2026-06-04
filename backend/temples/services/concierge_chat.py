@@ -71,6 +71,7 @@ def _resolve_astro_profile(
     except Exception:
         return None
 
+
 def _build_goriyaku_tag_label_by_id(goriyaku_tag_ids: Optional[List[int]]) -> Dict[int, str]:
     ids = [
         int(x)
@@ -99,6 +100,7 @@ def _attach_chat_rec_enrichment(
     visit_style_tags: set[str],
     goriyaku_tag_ids: Optional[List[int]],
     goriyaku_tag_label_by_id: Dict[int, str],
+    user=None,
 ) -> Dict[str, Any]:
     for rec in recs.get("recommendations") or []:
         if not isinstance(rec, dict):
@@ -113,6 +115,7 @@ def _attach_chat_rec_enrichment(
             visit_style_tags=visit_style_tags,
             requested_goriyaku_tag_ids=goriyaku_tag_ids,
             goriyaku_tag_label_by_id=goriyaku_tag_label_by_id,
+            user=user,
         )
         _apply_soft_signal_highlights(
             rec,
@@ -206,6 +209,7 @@ def build_chat_recommendations(
     flow="A",
     need_tags: list[str] | None = None,
     llm_enabled: bool | None = None,
+    user=None,
 ) -> Dict[str, Any]:
     """
     候補リストからおすすめ神社を選んで返す関数。
@@ -346,6 +350,7 @@ def build_chat_recommendations(
         visit_style_tags=visit_style_tags,
         goriyaku_tag_ids=goriyaku_tag_ids,
         goriyaku_tag_label_by_id=goriyaku_tag_label_by_id,
+        user=user,
     )
 
     recs = attach_explanation_payload(recs, birthdate=birthdate)
