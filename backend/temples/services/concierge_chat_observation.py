@@ -189,6 +189,7 @@ def observe_ranking_breakdown(
             distance = features.get("distance") or {}
             visit_style = features.get("visit_style") or {}
             element = features.get("element") or {}
+            behavior = features.get("behavior") or {}
 
             rows.append(
                 {
@@ -204,11 +205,14 @@ def observe_ranking_breakdown(
                     "score_popular": float(popular.get("raw") or 0.0),
                     "score_visit_style": int(visit_style.get("raw") or 0),
                     "score_element": int(element.get("raw") or 0),
+                    "behavior_signal": float(behavior.get("raw") or 0.0),
+                    "behavior_contribution": float(behavior.get("contribution") or 0.0),
                     "contributions": {
                         "need": float(need.get("rank_weighted_contribution") or 0.0),
                         "distance": float(distance.get("contribution") or 0.0),
                         "popular": float(popular.get("contribution") or 0.0),
                         "visit_style": float(visit_style.get("contribution") or 0.0),
+                        "behavior": float(behavior.get("contribution") or 0.0),
                         "element": float(element.get("contribution") or 0.0),
                         "astro_bonus": float(features.get("astro_bonus") or 0.0),
                     },
