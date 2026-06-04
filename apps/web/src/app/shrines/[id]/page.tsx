@@ -355,14 +355,6 @@ export default async function Page({ params, searchParams }: Props) {
 
   // Set actionState after determining selectedRecommendation
   const actionState = selectedRecommendation?.action_state ?? null;
-  console.log("[ACTION_STATE_DEBUG]", {
-    shrineId: numericId,
-    actionState,
-    recommendationId: selectedRecommendation?.id ?? null,
-    recommendationShrineId: selectedRecommendation?.shrine_id ?? null,
-  });
-
-  
 
   if (ctx === "concierge" && !tid) {
     conciergeMode = "compat";
