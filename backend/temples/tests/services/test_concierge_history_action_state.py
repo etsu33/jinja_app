@@ -1,9 +1,12 @@
 import pytest
 from django.contrib.auth.models import AnonymousUser
 
-from temples.services.concierge_history import classify_shrine_action_state
-
 from temples.models import Favorite, Shrine, ShrineInteractionLog, ShrineReflection, Visit
+
+from temples.services.concierge_history import (
+    calculate_shrine_behavior_signal,
+    classify_shrine_action_state,
+)
 
 @pytest.fixture
 def shrine():
@@ -75,6 +78,7 @@ def test_classify_shrine_action_state_prioritizes_reflected_over_visit_and_favor
     assert classify_shrine_action_state(user=user, shrine_id=shrine.id) == "reflected"
 
 
+
 @pytest.mark.django_db
 def test_shrine_interaction_log_can_store_detail_view(user, shrine):
     log = ShrineInteractionLog.objects.create(
@@ -89,3 +93,51 @@ def test_shrine_interaction_log_can_store_detail_view(user, shrine):
     assert log.source == "shrine_detail"
     assert log.metadata == {"from": "test"}
     assert log.thread is None
+
+
+@pytest.mark.django_db
+def test_classify_shrine_action_state_returns_detail_viewed_when_detail_view_exists(user, shrine):
+    ShrineInteractionLog.objects.create(
+        user=user,
+        shrine=shrine,
+        action_type=ShrineInteractionLog.ActionType.DETAIL_VIEW,
+        source="shrine_detail",
+    )
+
+    assert classify_shrine_action_state(user=user, shrine_id=shrine.id) == "detail_viewed"
+
+
+@pytest.mark.django_db
+def test_classify_shrine_action_state_returns_route_opened_when_route_open_exists(user, shrine):
+    ShrineInteractionLog.objects.create(
+        user=user,
+        shrine=shrine,
+        action_type=ShrineInteractionLog.ActionType.ROUTE_OPEN,
+        source="shrine_detail",
+    )
+
+    assert classify_shrine_action_state(user=user, shrine_id=shrine.id) == "route_opened"
+
+
+@pytest.mark.django_db
+def test_calculate_shrine_behavior_signal_adds_detail_view_weight(user, shrine):
+    ShrineInteractionLog.objects.create(
+        user=user,
+        shrine=shrine,
+        action_type=ShrineInteractionLog.ActionType.DETAIL_VIEW,
+        source="shrine_detail",
+    )
+
+    assert calculate_shrine_behavior_signal(user=user, shrine_id=shrine.id) == 0.5
+
+
+@pytest.mark.django_db
+def test_calculate_shrine_behavior_signal_adds_route_open_weight(user, shrine):
+    ShrineInteractionLog.objects.create(
+        user=user,
+        shrine=shrine,
+        action_type=ShrineInteractionLog.ActionType.ROUTE_OPEN,
+        source="shrine_detail",
+    )
+
+    assert calculate_shrine_behavior_signal(user=user, shrine_id=shrine.id) == 1.0
