@@ -857,7 +857,8 @@ def test_resolve_direction_bonus_returns_zero_without_birthdate_or_location():
     ) == {"bonus": 0.0, "reason": None}
 
 
-def test_resolve_direction_bonus_keeps_future_contract_with_birthdate_and_location():
+def test_resolve_direction_bonus_stays_zero_without_user_origin_even_with_birthdate_and_location():
+    # direction calculation requires user origin lat/lng, which is not wired yet.
     result = _resolve_direction_bonus(
         rec={"shrine_id": 101, "name": "方位候補神社", "latitude": 35.0, "longitude": 139.0},
         birthdate="1990-01-01",
