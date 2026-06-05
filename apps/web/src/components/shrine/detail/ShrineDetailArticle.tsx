@@ -394,6 +394,7 @@ export default function ShrineDetailArticle({
   meaningPayloadSource = "fallback",
   saveActionNode,
   actionState,
+  directionSupportCopy = null,
 }: {
   cardProps: ShrineCardAdapterProps;
   heroImageUrl?: string | null;
@@ -423,6 +424,7 @@ export default function ShrineDetailArticle({
   meaningPayloadSource?: "v2" | "fallback";
   saveActionNode?: React.ReactNode;
   actionState?: "none" | "detail_viewed" | "saved" | "route_opened" | "visited" | "reflected" | null;
+  directionSupportCopy?: string | null;
 }) {
 
   const hasLayeredSections = freeDisplaySections.length > 0 || premiumDisplaySections.length > 0;
@@ -636,6 +638,11 @@ export default function ShrineDetailArticle({
           address={cardProps.address ?? null}
         />
         <ShrineDetailHeroCard title={cardProps.title} imageUrl={heroImageUrl} />
+        {directionSupportCopy ? (
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <p className="text-xs leading-5 text-slate-500">{directionSupportCopy}</p>
+          </div>
+        ) : null}
         {showStateDeltaSection ? (
           <ShrineDetailStateDeltaSection stateDelta={stateDelta} isPremiumActive={isPremiumActive} />
         ) : null}

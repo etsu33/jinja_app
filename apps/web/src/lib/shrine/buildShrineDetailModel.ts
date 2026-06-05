@@ -1588,6 +1588,8 @@ export function buildShrineDetailModel({
     ...premiumDisplaySections.map((item) => item.section),
   ];
 
+  const directionSupportCopy = shrineMeaningPayloadV2?.generated?.directionSupportCopy?.trim() || null;
+
   return {
     shrineId: shrine.id,
     cardProps,
@@ -1618,5 +1620,6 @@ export function buildShrineDetailModel({
     psychologicalTags,
     symbolTags,
     actionState,
+    directionSupportCopy,
   };
 }
