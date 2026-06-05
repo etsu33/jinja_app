@@ -16,8 +16,10 @@ from temples.services.concierge_chat_observation import (
 
 from temples.services.concierge_chat import build_chat_recommendations
 from temples.services.concierge_chat_ranking import (
+    DIRECTION_BONUS_MAX,
     _attach_breakdown,
     _build_reason_facts,
+    _resolve_direction_bonus,
     _resolve_primary_reason,
 )
 
@@ -841,6 +843,70 @@ def test_attach_breakdown_sets_user_selected_tag_as_primary_reason():
     assert rec["_reason_facts"][0]["type"] == "user_selected_tag"
     assert rec["_reason_facts"][0]["is_primary"] is True
     assert rec["_reason_facts"][0]["evidence"] == ["requested_goriyaku_tag_ids"]
+
+
+def test_resolve_direction_bonus_returns_zero_without_birthdate_or_location():
+    assert _resolve_direction_bonus(
+        rec={"shrine_id": 101, "name": "方位未設定神社"},
+        birthdate=None,
+    ) == {"bonus": 0.0, "reason": None}
+
+    assert _resolve_direction_bonus(
+        rec={"shrine_id": 101, "name": "方位未設定神社", "latitude": 35.0, "longitude": 139.0},
+        birthdate="",
+    ) == {"bonus": 0.0, "reason": None}
+
+
+def test_resolve_direction_bonus_keeps_future_contract_with_birthdate_and_location():
+    result = _resolve_direction_bonus(
+        rec={"shrine_id": 101, "name": "方位候補神社", "latitude": 35.0, "longitude": 139.0},
+        birthdate="1990-01-01",
+    )
+
+    assert result == {"bonus": 0.0, "reason": None}
+    assert result["bonus"] <= DIRECTION_BONUS_MAX
+
+
+def test_attach_breakdown_attaches_direction_bonus_contract():
+    rec = {
+        "shrine_id": 101,
+        "name": "方位候補神社",
+        "latitude": 35.0,
+        "longitude": 139.0,
+        "goriyaku_tag_ids": [],
+        "astro_elements": [],
+        "astro_tags": [],
+        "goriyaku": "",
+        "description": "",
+        "popular_score": 0,
+        "distance_m": None,
+        "visit_style_tags": [],
+    }
+
+    _attach_breakdown(
+        rec,
+        birthdate="1990-01-01",
+        need_tags=[],
+        weights={"element": 0.0, "need": 0.3, "popular": 0.0, "distance": 0.0},
+        astro_bonus_enabled=False,
+        visit_style_tags=set(),
+        query=None,
+    )
+
+    assert rec["breakdown"]["direction_bonus"] == 0.0
+    assert rec["breakdown"]["weights"]["direction_bonus"] == 0.0
+
+    direction_feature = rec["breakdown_detail"]["features"]["direction_bonus"]
+    assert direction_feature == {
+        "raw": 0.0,
+        "weight": 1.0,
+        "contribution": 0.0,
+        "reason": None,
+        "max": DIRECTION_BONUS_MAX,
+    }
+
+    assert rec["score_v2"]["components"]["direction_bonus"] == 0.0
+    assert rec["score_v2"]["components"]["direction_reason"] is None
 
 
 def test_observe_ranking_breakdown_empty_contract_has_stable_schema():
