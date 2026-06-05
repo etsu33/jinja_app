@@ -14,6 +14,7 @@ def test_concierge_chat_need_and_breakdown_contract(client, monkeypatch, setting
         - result_state に fallback 情報が入る
         - displayed_count / pool_count が recommendations 件数と一致する
         - recommendations[i].reason_source が "reason:" prefix を持つ
+        - weights: {element, need, popular, direction_bonus}
     """
     settings.CONCIERGE_USE_LLM = True
 
