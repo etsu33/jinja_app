@@ -1,6 +1,7 @@
 "use client";
 
 import { trackSearchEvent } from "@/lib/analytics/searchEvents";
+import { trackShrineInteraction } from "@/lib/api/shrineInteractions";
 
 type Props = {
   href: string;
@@ -36,6 +37,22 @@ export default function GoogleMapRouteLink({
           historyTheme: historyTheme ?? undefined,
           ctx,
         });
+        const shrineIdNumber = shrineId != null ? Number(shrineId) : null;
+
+        if (shrineIdNumber != null && Number.isFinite(shrineIdNumber) && shrineIdNumber > 0) {
+          void trackShrineInteraction({
+            shrineId: shrineIdNumber,
+            actionType: "route_open",
+            source: "shrine_detail",
+            threadId: tid,
+            metadata: {
+              event: "route_open",
+              routeTarget: "google_maps",
+              historyTheme,
+              ctx,
+            },
+          });
+        }
       }}
     >
       {label}
