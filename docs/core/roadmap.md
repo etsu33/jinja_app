@@ -74,7 +74,77 @@
 - `ranking_applied`: `score_v2` を実際の推薦順位へ反映したかを示すフラグ。true 化は新規推薦生成時のみ対象とする。
 - `action_state`: saved / visited / reflected / none など、現在DBにもとづく状態表示。保存済み `score_v2` と一致しない場合がある。
 
+
 次フェーズでは、`behavior_signal` を直接ランキングへ反映する前に、分布・偏り・重みの妥当性を確認する。
+
+#### behavior_signal v2 の責務分離方針
+
+行動ログは、意味の違う行動を混ぜずに扱う。
+Favorite / Visit / ShrineReflection は既存DBモデルとして維持し、detail_view / route_open は将来の軽量 interaction として分離する。
+
+行動種別:
+
+- Favorite
+  - 役割: 保存・候補化
+  - 意味: あとで見返したい / 候補として残したい
+  - 現状: DB保存あり
+  - action_state: saved
+  - behavior_signal: 中程度の補正
+
+- Visit
+  - 役割: 参拝実行
+  - 意味: 実際に行動へ移した記録
+  - 現状: DB保存あり
+  - action_state: visited
+  - behavior_signal: 強めの補正
+
+- ShrineReflection
+  - 役割: 参拝後の内省
+  - 意味: 参拝後に体験を振り返った記録
+  - 現状: DB保存あり
+  - action_state: reflected
+  - behavior_signal: 最も強い補正
+
+- detail_view
+  - 役割: 軽量 interaction
+  - 意味: 詳細を見た / 関心を持った
+  - 現状: analytics 発火のみ。DB保存なし
+  - action_state: 将来 detail_viewed
+  - behavior_signal: 弱い補正候補
+
+- route_open
+  - 役割: 軽量 interaction
+  - 意味: 行き方を確認した / 行動直前の関心
+  - 現状: analytics 発火のみ。DB保存なし
+  - action_state: 将来 route_opened
+  - behavior_signal: detail_view より強く、Visit より弱い補正候補
+
+優先順位:
+
+```text
+reflected
+> visited
+> saved
+> route_opened
+> detail_viewed
+> none
+```
+
+運用メモ:
+
+- 現状の `behavior_signal` は Favorite / Visit / ShrineReflection のみで運用する。
+- detail_view / route_open は analytics には存在するが、DB保存がないため現時点では `behavior_signal` に使わない。
+- detail_viewed / route_opened を `action_state` に追加する場合は、先に `ShrineInteractionLog` などの行動ログモデルを設計する。
+- Favorite と Visit は上下関係ではなく、保存・候補化と参拝実行として別概念で扱う。
+- 将来の `behavior_signal v2` では、軽量 interaction を弱い補正として追加する。
+
+- [x] Favorite を保存・候補化として定義
+- [x] Visit を参拝実行として定義
+- [x] ShrineReflection を参拝後の内省として定義
+- [ ] detail_view / route_open を軽量 interaction として分離
+- [ ] ShrineInteractionLog の将来設計を作成
+- [ ] behavior_signal v2 の重みを仮置きする
+- [ ] score_v2 には将来 behavior_bonus として接続する方針を維持する
 
 ### 完了: Premium 体験境界の明文化
 
