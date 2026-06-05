@@ -100,6 +100,7 @@ def _attach_chat_rec_enrichment(
     visit_style_tags: set[str],
     goriyaku_tag_ids: Optional[List[int]],
     goriyaku_tag_label_by_id: Dict[int, str],
+    user_origin: Optional[Dict[str, Any]] = None,
     user=None,
 ) -> Dict[str, Any]:
     for rec in recs.get("recommendations") or []:
@@ -115,6 +116,7 @@ def _attach_chat_rec_enrichment(
             visit_style_tags=visit_style_tags,
             requested_goriyaku_tag_ids=goriyaku_tag_ids,
             goriyaku_tag_label_by_id=goriyaku_tag_label_by_id,
+            user_origin=user_origin,
             user=user,
         )
         _apply_soft_signal_highlights(
@@ -350,6 +352,7 @@ def build_chat_recommendations(
         visit_style_tags=visit_style_tags,
         goriyaku_tag_ids=goriyaku_tag_ids,
         goriyaku_tag_label_by_id=goriyaku_tag_label_by_id,
+        user_origin=bias,
         user=user,
     )
 
