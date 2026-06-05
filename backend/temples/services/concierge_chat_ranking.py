@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TypedDict
 from temples.domain.need_to_goriyaku_tag_ids import need_tags_to_goriyaku_ids
 from temples.services.concierge_history import (
     calculate_shrine_behavior_signal,
@@ -11,7 +11,16 @@ from temples.services.concierge_history import (
 from typing import Literal
 
 
+
 PublicMode = Literal["need", "compat"]
+
+
+class DirectionBonusResult(TypedDict):
+    bonus: float
+    reason: str | None
+
+
+DIRECTION_BONUS_MAX = 0.3
 
 
 log = logging.getLogger(__name__)
@@ -389,6 +398,33 @@ def _build_entry_context(
     }
 
 
+def _resolve_direction_bonus(
+    *,
+    rec: Dict[str, Any],
+    birthdate: Optional[str],
+) -> DirectionBonusResult:
+    """Resolve the future direction bonus for score_v2.
+
+    Current phase:
+      - direction input UI is not implemented
+      - direction calculation is not implemented
+      - DB persistence is not used
+
+    Therefore this helper always returns zero, while keeping the score_v2
+    contract ready for future direction-based scoring.
+    """
+
+    has_birthdate = bool(str(birthdate or "").strip())
+    latitude = rec.get("latitude") or rec.get("lat")
+    longitude = rec.get("longitude") or rec.get("lng")
+    has_location = latitude not in (None, "") and longitude not in (None, "")
+
+    if not has_birthdate or not has_location:
+        return {"bonus": 0.0, "reason": None}
+
+    return {"bonus": 0.0, "reason": None}
+
+
 def _attach_breakdown(
     rec: Dict[str, Any],
     *,
@@ -514,8 +550,9 @@ def _attach_breakdown(
     w3 = float(weights.get("popular", 0.0))
     w4 = float(weights.get("distance", 0.0))
     w5 = 0.35
-    # Direction bonus (future): currently always zero, but included in score and breakdowns
-    direction_bonus = 0.0
+    direction_result = _resolve_direction_bonus(rec=rec, birthdate=birthdate)
+    direction_bonus = min(float(direction_result["bonus"]), DIRECTION_BONUS_MAX)
+    direction_reason = direction_result["reason"]
 
     astro_bonus = 0.0
     if astro_bonus_enabled:
@@ -583,7 +620,7 @@ def _attach_breakdown(
         + score_distance * w4
         + score_visit_style * w5
         + astro_bonus
-        + direction_bonus  # Add direction_bonus to ranked base
+        + direction_bonus
     )
     # 行動の影響を相談内容に対して最大30％に制限
     behavior_cap = score_total_ranked_base * 0.3
@@ -603,12 +640,12 @@ def _attach_breakdown(
         "score_need": int(score_need),
         "score_popular": float(score_popular),
         "score_total": float(score_total),
-        "direction_bonus": float(direction_bonus),  # New field for direction bonus
+        "direction_bonus": float(direction_bonus),
         "weights": {
             "element": float(w1),
             "need": float(w2),
             "popular": float(w3),
-            "direction_bonus": 0.0,  # Placeholder for direction weight
+            "direction_bonus": 0.0,
         },
         "matched_need_tags": matched_all,
     }
@@ -660,8 +697,10 @@ def _attach_breakdown(
             },
             "direction_bonus": {
                 "raw": float(direction_bonus),
-                "weight": 0.0,  # Placeholder, no effect yet
-                "contribution": 0.0,
+                "weight": 1.0,
+                "contribution": float(direction_bonus),
+                "reason": direction_reason,
+                "max": float(DIRECTION_BONUS_MAX),
             },
             "astro_bonus": float(astro_bonus) if astro_bonus_enabled else 0.0,
             "score_total_ranked_base": float(score_total_ranked_base),
@@ -688,7 +727,7 @@ def _attach_breakdown(
             "capped_behavior_contribution": float(capped_behavior_contribution),
             "behavior_ratio": float(behavior_ratio),
             "direction_bonus": float(direction_bonus),
-            "direction_reason": None,  # Placeholder for future direction explanation
+            "direction_reason": direction_reason,
         },
         "signals": {
             "matched_need_tags": matched_all,
@@ -1288,6 +1327,7 @@ __all__ = [
     "_resolve_mode_weights",
     "_resolve_mode_meta",
     "_build_entry_context",
+    "_resolve_direction_bonus",
     "_attach_breakdown",
     "_attach_rank_comparison",
     "_prefilter_candidates_for_need",
