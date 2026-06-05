@@ -6,7 +6,15 @@ from typing import Optional, Any
 from django.db import transaction
 from django.utils import timezone
 
-from temples.models import ConciergeHistory, ConciergeMessage, ConciergeThread, Favorite, ShrineReflection, Visit
+from temples.models import (
+    ConciergeHistory,
+    ConciergeMessage,
+    ConciergeThread,
+    Favorite,
+    ShrineInteractionLog,
+    ShrineReflection,
+    Visit,
+)
 
 
 HistoryActionState = str
@@ -46,7 +54,24 @@ def classify_shrine_action_state(*, user, shrine_id: int | None) -> HistoryActio
     if has_favorite:
         return "saved"
 
+    has_route_open = ShrineInteractionLog.objects.filter(
+        user=user,
+        shrine_id=shrine_id,
+        action_type=ShrineInteractionLog.ActionType.ROUTE_OPEN,
+    ).exists()
+    if has_route_open:
+        return "route_opened"
+
+    has_detail_view = ShrineInteractionLog.objects.filter(
+        user=user,
+        shrine_id=shrine_id,
+        action_type=ShrineInteractionLog.ActionType.DETAIL_VIEW,
+    ).exists()
+    if has_detail_view:
+        return "detail_viewed"
+
     return "none"
+
 
 def calculate_shrine_behavior_signal(*, user, shrine_id: int | None) -> float:
     if user is None or not getattr(user, "is_authenticated", False):
@@ -56,6 +81,20 @@ def calculate_shrine_behavior_signal(*, user, shrine_id: int | None) -> float:
         return 0.0
 
     score = 0.0
+
+    if ShrineInteractionLog.objects.filter(
+        user=user,
+        shrine_id=shrine_id,
+        action_type=ShrineInteractionLog.ActionType.DETAIL_VIEW,
+    ).exists():
+        score += 0.5
+
+    if ShrineInteractionLog.objects.filter(
+        user=user,
+        shrine_id=shrine_id,
+        action_type=ShrineInteractionLog.ActionType.ROUTE_OPEN,
+    ).exists():
+        score += 1.0
 
     if Favorite.objects.filter(user=user, shrine_id=shrine_id).exists():
         score += 2.0
