@@ -1,6 +1,7 @@
 import pytest
 
 from temples.services.shrine_meaning_composer import (
+    _build_direction_support_copy,
     compose_shrine_meaning_payload,
     normalize_shrine_meaning_source,
 )
@@ -140,3 +141,61 @@ def test_normalize_shrine_meaning_source_splits_string_lists_and_dedupes():
     assert normalized.shrine_id == 3
     assert normalized.name_jp == "文字列神社"
     assert normalized.place_tags == ("静寂", "節目")
+
+
+def test_normalize_shrine_meaning_source_reads_direction_fields():
+    normalized = normalize_shrine_meaning_source(
+        {
+            "id": 10,
+            "name_jp": "方位補助神社",
+            "direction_bonus": "0.2",
+            "direction_reason": "東の方位が補助的に合う",
+        }
+    )
+
+    assert normalized.direction_bonus == 0.2
+    assert normalized.direction_reason == "東の方位が補助的に合う"
+
+
+def test_direction_support_copy_is_none_without_bonus_or_reason():
+    no_bonus = normalize_shrine_meaning_source(
+        {
+            "id": 11,
+            "name_jp": "方位なし神社",
+            "direction_reason": "東の方位が補助的に合う",
+        }
+    )
+    no_reason = normalize_shrine_meaning_source(
+        {
+            "id": 12,
+            "name_jp": "理由なし神社",
+            "direction_bonus": 0.2,
+        }
+    )
+
+    assert _build_direction_support_copy(no_bonus) is None
+    assert _build_direction_support_copy(no_reason) is None
+
+
+def test_compose_shrine_meaning_payload_adds_direction_support_copy_without_changing_main_copy():
+    payload = compose_shrine_meaning_payload(
+        {
+            "id": 13,
+            "name_jp": "補助確認神社",
+            "history_theme": "導き",
+            "direction_bonus": 0.2,
+            "direction_reason": "東の方位が補助的に合う",
+        }
+    )
+
+    assert payload["source"]["directionBonus"] == 0.2
+    assert payload["source"]["directionReason"] == "東の方位が補助的に合う"
+    assert payload["generated"]["directionSupportCopy"] == "方位は主理由ではなく、補助要素として「東の方位が補助的に合う」を参考にしています。"
+
+    direction_reason = "東の方位が補助的に合う"
+    assert direction_reason not in payload["generated"]["heroMeaningCopy"]
+    assert direction_reason not in payload["generated"]["shrineMeaning"]
+    assert direction_reason not in payload["generated"]["actionMeaning"]
+
+    block_ids = [block["id"] for block in payload["display"]["blocks"]]
+    assert "direction_support" not in block_ids
