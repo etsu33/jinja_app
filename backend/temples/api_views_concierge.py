@@ -364,9 +364,21 @@ def _resolve_request_location_inputs(
     *,
     area: Any,
 ) -> tuple[Optional[float], Optional[float]]:
+    # Priority 1: explicit top-level lat/lng.
     lat = _to_float(data.get("lat"))
     lng = _to_float(data.get("lng"))
-    if (lat is None or lng is None) and area:
+    if lat is not None and lng is not None:
+        return lat, lng
+
+    # Priority 2: frontend conciergeChat sends location: { lat, lng }.
+    location = data.get("location") if isinstance(data.get("location"), dict) else {}
+    lat = _to_float(location.get("lat"))
+    lng = _to_float(location.get("lng"))
+    if lat is not None and lng is not None:
+        return lat, lng
+
+    # Priority 3: area text geocode fallback.
+    if area:
         pt = _geocode_area_for_chat(area=area)
         if pt:
             lat, lng = pt
