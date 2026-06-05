@@ -1,11 +1,9 @@
-
-
 import pytest
 from django.contrib.auth.models import AnonymousUser
 
-from temples.models import Favorite, Shrine, ShrineReflection, Visit
 from temples.services.concierge_history import classify_shrine_action_state
 
+from temples.models import Favorite, Shrine, ShrineInteractionLog, ShrineReflection, Visit
 
 @pytest.fixture
 def shrine():
@@ -75,3 +73,19 @@ def test_classify_shrine_action_state_prioritizes_reflected_over_visit_and_favor
     )
 
     assert classify_shrine_action_state(user=user, shrine_id=shrine.id) == "reflected"
+
+
+@pytest.mark.django_db
+def test_shrine_interaction_log_can_store_detail_view(user, shrine):
+    log = ShrineInteractionLog.objects.create(
+        user=user,
+        shrine=shrine,
+        action_type=ShrineInteractionLog.ActionType.DETAIL_VIEW,
+        source="shrine_detail",
+        metadata={"from": "test"},
+    )
+
+    assert log.action_type == "detail_view"
+    assert log.source == "shrine_detail"
+    assert log.metadata == {"from": "test"}
+    assert log.thread is None
