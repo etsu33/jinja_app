@@ -554,36 +554,49 @@ class ShrineReflection(models.Model):
         return f"Reflection #{self.pk} shrine={self.shrine_id} user={self.user_id}"
 
 
-# Future design note: ShrineInteractionLog
-#
-# detail_view / route_open は、Favorite / Visit / ShrineReflection とは別概念として扱う。
-# - Favorite: 保存・候補化
-# - Visit: 参拝実行
-# - ShrineReflection: 参拝後の内省
-# - detail_view / route_open: 軽量 interaction
-#
-# 今PRでは detail_view / route_open のDB保存は行わない。
-# 将来 behavior_signal v2 で使う場合は、ShrineInteractionLog のような独立モデルを追加し、
-# Favorite / Visit / ShrineReflection に混ぜない。
-#
-# 仮置き重み案:
-# - detail_view: +0.5
-# - route_open: +1.0
-# - favorite: +2.0
-# - visit_done: +4.0
-# - reflection_saved: +5.0
-#
-# action_state の将来優先順位:
-# reflected > visited > saved > route_opened > detail_viewed > none
-#
-# 実装候補フィールド:
-# - user
-# - shrine
-# - action_type: detail_view / route_open / shrine_card_click など
-# - source: concierge_result / shrine_detail / map / shrines など
-# - thread_id
-# - metadata
-# - created_at
+
+class ShrineInteractionLog(models.Model):
+    class ActionType(models.TextChoices):
+        DETAIL_VIEW = "detail_view", "Detail view"
+        ROUTE_OPEN = "route_open", "Route open"
+        SHRINE_CARD_CLICK = "shrine_card_click", "Shrine card click"
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="shrine_interaction_logs",
+    )
+    shrine = models.ForeignKey(
+        Shrine,
+        on_delete=models.CASCADE,
+        related_name="interaction_logs",
+    )
+    action_type = models.CharField(
+        max_length=32,
+        choices=ActionType.choices,
+        db_index=True,
+    )
+    source = models.CharField(max_length=64, blank=True, default="", db_index=True)
+    thread = models.ForeignKey(
+        ConciergeThread,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="shrine_interaction_logs",
+    )
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user", "shrine", "action_type"], name="idx_interact_user_shrine_act"),
+            models.Index(fields=["user", "-created_at"], name="idx_interaction_user_created"),
+            models.Index(fields=["shrine", "-created_at"], name="idx_interaction_shrine_created"),
+        ]
+
+    def __str__(self) -> str:
+        return f"Interaction #{self.pk} shrine={self.shrine_id} user={self.user_id} action={self.action_type}"
 
 
 class Goshuin(models.Model):
