@@ -122,6 +122,41 @@ describe("ShrineDetailArticle", () => {
     expect(screen.queryByRole("link", { name: "保存先を見る" })).not.toBeInTheDocument();
   });
 
+  it("directionSupportCopy がある場合だけ方位補助コピーを弱表示する", () => {
+    const baseProps = {
+      cardProps: {
+        title: "乃木神社",
+        href: "/shrines/17",
+        imageUrl: null,
+        badges: [],
+        metaChips: [],
+        address: "東京都港区赤坂",
+      } as any,
+      heroImageUrl: null,
+      heroMeaningCopy: null,
+      benefitLabels: [],
+      tags: [],
+      publicGoshuinsPreview: [],
+      publicGoshuinsViewAllHref: "",
+      sections: [],
+      recommendationMeta: null,
+      saveActionNode: null,
+    };
+
+    const { rerender } = render(
+      <ShrineDetailArticle
+        {...baseProps}
+        directionSupportCopy="方位は主理由ではなく、補助要素として参考にしています。"
+      />,
+    );
+
+    expect(screen.getByText("方位は主理由ではなく、補助要素として参考にしています。")).toBeInTheDocument();
+
+    rerender(<ShrineDetailArticle {...baseProps} directionSupportCopy={null} />);
+
+    expect(screen.queryByText("方位は主理由ではなく、補助要素として参考にしています。")).not.toBeInTheDocument();
+  });
+
   it("推薦理由と前回比較の view イベントを送信する", async () => {
     render(
       <ShrineDetailArticle
