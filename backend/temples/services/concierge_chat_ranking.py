@@ -305,6 +305,33 @@ def _distance_decay(distance_m: Optional[float]) -> float:
         return 0.0
     return math.exp(-distance_m / 2500.0)
 
+DIRECTION_LABELS_JA = ["北", "北東", "東", "南東", "南", "南西", "西", "北西"]
+
+
+def _to_float_or_none(value: Any) -> float | None:
+    try:
+        if value in (None, ""):
+            return None
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _bearing_degrees(*, from_lat: float, from_lng: float, to_lat: float, to_lng: float) -> float:
+    lat1 = math.radians(from_lat)
+    lat2 = math.radians(to_lat)
+    delta_lng = math.radians(to_lng - from_lng)
+
+    y = math.sin(delta_lng) * math.cos(lat2)
+    x = math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(delta_lng)
+
+    return (math.degrees(math.atan2(y, x)) + 360.0) % 360.0
+
+
+def _direction_label_ja(bearing: float) -> str:
+    index = int((bearing + 22.5) // 45) % 8
+    return DIRECTION_LABELS_JA[index]
+
 
 def _resolve_mode_weights(
     *,
@@ -402,6 +429,7 @@ def _resolve_direction_bonus(
     *,
     rec: Dict[str, Any],
     birthdate: Optional[str],
+    user_origin: Optional[Dict[str, Any]] = None,
 ) -> DirectionBonusResult:
     """Resolve the future direction bonus for score_v2.
 
@@ -418,11 +446,31 @@ def _resolve_direction_bonus(
     latitude = rec.get("latitude") or rec.get("lat")
     longitude = rec.get("longitude") or rec.get("lng")
     has_location = latitude not in (None, "") and longitude not in (None, "")
+    has_user_origin = bool(user_origin)
 
-    if not has_birthdate or not has_location:
+    if not has_birthdate or not has_location or not has_user_origin:
         return {"bonus": 0.0, "reason": None}
 
-    return {"bonus": 0.0, "reason": None}
+    origin_lat = _to_float_or_none(user_origin.get("lat") if user_origin else None)
+    origin_lng = _to_float_or_none(user_origin.get("lng") if user_origin else None)
+    shrine_lat = _to_float_or_none(latitude)
+    shrine_lng = _to_float_or_none(longitude)
+
+    if origin_lat is None or origin_lng is None or shrine_lat is None or shrine_lng is None:
+        return {"bonus": 0.0, "reason": None}
+
+    bearing = _bearing_degrees(
+        from_lat=origin_lat,
+        from_lng=origin_lng,
+        to_lat=shrine_lat,
+        to_lng=shrine_lng,
+    )
+    direction_label = _direction_label_ja(bearing)
+
+    return {
+        "bonus": 0.1,
+        "reason": f"現在地から見て{direction_label}方面の候補です",
+    }
 
 
 def _attach_breakdown(
@@ -436,6 +484,7 @@ def _attach_breakdown(
     query: Optional[str] = None,
     requested_goriyaku_tag_ids: Optional[List[int]] = None,
     goriyaku_tag_label_by_id: Optional[Dict[int, str]] = None,
+    user_origin: Optional[Dict[str, Any]] = None,
     user=None,
 ) -> None:
     """
@@ -550,7 +599,11 @@ def _attach_breakdown(
     w3 = float(weights.get("popular", 0.0))
     w4 = float(weights.get("distance", 0.0))
     w5 = 0.35
-    direction_result = _resolve_direction_bonus(rec=rec, birthdate=birthdate)
+    direction_result = _resolve_direction_bonus(
+        rec=rec,
+        birthdate=birthdate,
+        user_origin=user_origin,
+    )
     direction_bonus = min(float(direction_result["bonus"]), DIRECTION_BONUS_MAX)
     direction_reason = direction_result["reason"]
 
