@@ -554,6 +554,38 @@ class ShrineReflection(models.Model):
         return f"Reflection #{self.pk} shrine={self.shrine_id} user={self.user_id}"
 
 
+# Future design note: ShrineInteractionLog
+#
+# detail_view / route_open は、Favorite / Visit / ShrineReflection とは別概念として扱う。
+# - Favorite: 保存・候補化
+# - Visit: 参拝実行
+# - ShrineReflection: 参拝後の内省
+# - detail_view / route_open: 軽量 interaction
+#
+# 今PRでは detail_view / route_open のDB保存は行わない。
+# 将来 behavior_signal v2 で使う場合は、ShrineInteractionLog のような独立モデルを追加し、
+# Favorite / Visit / ShrineReflection に混ぜない。
+#
+# 仮置き重み案:
+# - detail_view: +0.5
+# - route_open: +1.0
+# - favorite: +2.0
+# - visit_done: +4.0
+# - reflection_saved: +5.0
+#
+# action_state の将来優先順位:
+# reflected > visited > saved > route_opened > detail_viewed > none
+#
+# 実装候補フィールド:
+# - user
+# - shrine
+# - action_type: detail_view / route_open / shrine_card_click など
+# - source: concierge_result / shrine_detail / map / shrines など
+# - thread_id
+# - metadata
+# - created_at
+
+
 class Goshuin(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
