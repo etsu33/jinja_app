@@ -514,6 +514,8 @@ def _attach_breakdown(
     w3 = float(weights.get("popular", 0.0))
     w4 = float(weights.get("distance", 0.0))
     w5 = 0.35
+    # Direction bonus (future): currently always zero, but included in score and breakdowns
+    direction_bonus = 0.0
 
     astro_bonus = 0.0
     if astro_bonus_enabled:
@@ -554,7 +556,7 @@ def _attach_breakdown(
     # _score_total:
     #   実際の並び順に使う内部ランキング用スコア。
     #   need の強一致・距離減衰まで含めた ranked score を入れる。
-    score_total = score_element * w1 + score_need * w2 + score_popular * w3 + astro_bonus
+    score_total = score_element * w1 + score_need * w2 + score_popular * w3 + astro_bonus + direction_bonus
 
     shrine_id = rec.get("shrine_id") or rec.get("id")
     try:
@@ -581,6 +583,7 @@ def _attach_breakdown(
         + score_distance * w4
         + score_visit_style * w5
         + astro_bonus
+        + direction_bonus  # Add direction_bonus to ranked base
     )
     # 行動の影響を相談内容に対して最大30％に制限
     behavior_cap = score_total_ranked_base * 0.3
@@ -590,6 +593,7 @@ def _attach_breakdown(
         if score_total_ranked_base > 0
         else 0.0
     )
+    # For now, direction_bonus is 0.0 and does not reverse ranking
     score_total_ranked = score_total_ranked_base + capped_behavior_contribution
 
     rec["_score_total"] = float(score_total_ranked)
@@ -599,10 +603,12 @@ def _attach_breakdown(
         "score_need": int(score_need),
         "score_popular": float(score_popular),
         "score_total": float(score_total),
+        "direction_bonus": float(direction_bonus),  # New field for direction bonus
         "weights": {
             "element": float(w1),
             "need": float(w2),
             "popular": float(w3),
+            "direction_bonus": 0.0,  # Placeholder for direction weight
         },
         "matched_need_tags": matched_all,
     }
@@ -652,6 +658,11 @@ def _attach_breakdown(
                 "cap": float(behavior_cap),
                 "ratio": float(behavior_ratio),
             },
+            "direction_bonus": {
+                "raw": float(direction_bonus),
+                "weight": 0.0,  # Placeholder, no effect yet
+                "contribution": 0.0,
+            },
             "astro_bonus": float(astro_bonus) if astro_bonus_enabled else 0.0,
             "score_total_ranked_base": float(score_total_ranked_base),
             "capped_behavior_contribution": float(capped_behavior_contribution),
@@ -676,6 +687,8 @@ def _attach_breakdown(
             "behavior_contribution": float(behavior_contribution),
             "capped_behavior_contribution": float(capped_behavior_contribution),
             "behavior_ratio": float(behavior_ratio),
+            "direction_bonus": float(direction_bonus),
+            "direction_reason": None,  # Placeholder for future direction explanation
         },
         "signals": {
             "matched_need_tags": matched_all,
