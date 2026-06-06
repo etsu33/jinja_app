@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+
 from typing import Any, Dict, List, Optional
+
+from temples.services.action_suggestions import get_action_suggestions_for_theme
 
 
 NEED_LABELS_JA: Dict[str, str] = {
@@ -257,6 +260,9 @@ def build_explanation_payload(rec: Dict[str, Any], *, birthdate: Optional[str] =
 
     gogyou_context = _build_gogyou_context(birthdate)
     history_context = _build_history_context(rec)
+    action_suggestions = get_action_suggestions_for_theme(
+        history_context.get("theme") if isinstance(history_context, dict) else None,
+    )
 
     return {
         "version": 2,
@@ -270,6 +276,7 @@ def build_explanation_payload(rec: Dict[str, Any], *, birthdate: Optional[str] =
         "original_reason": original_reason,
         "gogyou_context": gogyou_context,
         "history_context": history_context,
+        "action_suggestions": action_suggestions,
         "score": {
             "element": score_element,
             "need": score_need,
