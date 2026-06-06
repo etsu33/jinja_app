@@ -811,6 +811,7 @@ export default function ConciergeSectionsRenderer({
                               secondaryReason={null}
                               differenceFromOthers={null}
                               tags={(heroItem.breakdown?.matched_need_tags ?? []).map(labelNeedDisplayTag).slice(0, 3)}
+                              actionSuggestions={(heroItem as any).actionSuggestions ?? []}
                               routeLabel="神社の詳細を見る"
                               onDetailClick={() =>
                                 trackSearchEvent("shrine_detail_transition", {
