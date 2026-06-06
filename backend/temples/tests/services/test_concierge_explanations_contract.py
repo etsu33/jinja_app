@@ -271,3 +271,57 @@ def test_attach_explanations_chat_uses_gogyou_and_history_context_for_summary_an
     assert exp["reasons"][0]["label"] == "今の巡り"
     assert exp["reasons"][0]["evidence"]["gogyou_context"]["gogyou"] == "水"
     assert exp["reasons"][0]["evidence"]["history_context"]["theme"] == "静寂"
+
+
+def test_attach_explanation_payload_adds_action_suggestions_from_history_theme():
+    recs = {
+        "recommendations": [
+            {
+                "name": "神社Action",
+                "reason": "旧理由",
+                "reason_source": "reason:history_theme",
+                "history_theme": "勝負",
+                "breakdown": {
+                    "score_element": 0,
+                    "score_need": 1,
+                    "score_total": 1.0,
+                    "matched_need_tags": ["career"],
+                },
+            }
+        ]
+    }
+
+    out = attach_explanation_payload(recs, birthdate=None)
+
+    payload = out["recommendations"][0]["_explanation_payload"]
+    assert payload["version"] == 2
+    assert payload["action_suggestions"]
+    assert payload["action_suggestions"][0]["history_theme"] == "勝負"
+    assert payload["action_suggestions"][0]["id"] == "challenge_choose_this_week"
+    assert payload["action_suggestions"][0]["category"] == "prepare"
+
+
+def test_attach_explanation_payload_action_suggestions_fallback_when_history_theme_missing():
+    recs = {
+        "recommendations": [
+            {
+                "name": "神社FallbackAction",
+                "reason": "旧理由",
+                "reason_source": "reason:fallback",
+                "breakdown": {
+                    "score_element": 0,
+                    "score_need": 0,
+                    "score_total": 0.0,
+                    "matched_need_tags": [],
+                },
+            }
+        ]
+    }
+
+    out = attach_explanation_payload(recs, birthdate=None)
+
+    payload = out["recommendations"][0]["_explanation_payload"]
+    assert payload["version"] == 2
+    assert payload["history_context"] is None
+    assert payload["action_suggestions"]
+    assert payload["action_suggestions"][0]["history_theme"] == "静寂"
