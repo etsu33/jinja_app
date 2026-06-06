@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
+import type { ActionSuggestionViewModel } from "@/viewmodels/conciergeResultItem";
 
 type Props = {
   name: string;
@@ -20,6 +21,7 @@ type Props = {
   differenceFromOthers?: string | null;
   nextActionHint?: string | null;
   tags?: string[];
+  actionSuggestions?: ActionSuggestionViewModel[];
   routeLabel?: string;
   secondaryActionSlot?: ReactNode;
   onRouteClick?: () => void;
@@ -43,14 +45,18 @@ export default function ConciergeTopRecommendationHero({
   differenceFromOthers: _differenceFromOthers = null,
   nextActionHint: _nextActionHint = null,
   tags: _tags = [],
+  actionSuggestions = [],
   routeLabel = "詳しく見る",
   secondaryActionSlot = null,
   onRouteClick: _onRouteClick,
   onDetailClick,
 }: Props) {
   const visibleTrustLabels = trustLabels.filter(Boolean).slice(0, 4);
+  const visibleActionSuggestions = actionSuggestions.filter((item) => item.id && item.title).slice(0, 2);
   const entranceCopySource = subtitle ?? catchCopy;
-  const entranceCopy = entranceCopySource.split("。")[0] ? `${entranceCopySource.split("。")[0]}。` : entranceCopySource;
+  const entranceCopy = entranceCopySource.split("。")[0]
+    ? `${entranceCopySource.split("。")[0]}。`
+    : entranceCopySource;
 
   return (
     <section className="rounded-[30px] border border-emerald-200 bg-gradient-to-b from-emerald-50/80 to-white p-6 shadow-lg shadow-emerald-900/10 ring-1 ring-emerald-100">
@@ -87,6 +93,30 @@ export default function ConciergeTopRecommendationHero({
             {topReasonLabel ? <p className="text-xs leading-5 text-slate-500">{topReasonLabel}</p> : null}
           </div>
         </div>
+
+        {visibleActionSuggestions.length > 0 ? (
+          <div
+            className="rounded-2xl border border-amber-100 bg-amber-50/70 px-4 py-3 shadow-sm shadow-amber-900/5"
+            data-testid="hero-action-suggestions"
+          >
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <p className="text-[11px] font-semibold tracking-[0.14em] text-amber-700">次の小さな一歩</p>
+                <p className="text-xs leading-5 text-slate-600">今の状態に合わせて、無理なく試せる行動です。</p>
+              </div>
+              <div className="space-y-2">
+                {visibleActionSuggestions.map((item) => (
+                  <div key={item.id} className="rounded-xl bg-white/80 px-3 py-2 ring-1 ring-amber-100">
+                    <p className="text-sm font-semibold leading-6 text-slate-800">{item.title}</p>
+                    {item.description ? (
+                      <p className="mt-0.5 text-xs leading-5 text-slate-600">{item.description}</p>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         <div className="pt-2">
           {href ? (
