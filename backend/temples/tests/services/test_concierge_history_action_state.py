@@ -5,6 +5,7 @@ from temples.models import Favorite, Shrine, ShrineInteractionLog, ShrineReflect
 
 from temples.services.concierge_history import (
     calculate_shrine_behavior_signal,
+    calculate_shrine_behavior_signal_v2,
     classify_shrine_action_state,
 )
 
@@ -131,6 +132,7 @@ def test_calculate_shrine_behavior_signal_adds_detail_view_weight(user, shrine):
     assert calculate_shrine_behavior_signal(user=user, shrine_id=shrine.id) == 0.5
 
 
+
 @pytest.mark.django_db
 def test_calculate_shrine_behavior_signal_adds_route_open_weight(user, shrine):
     ShrineInteractionLog.objects.create(
@@ -141,3 +143,58 @@ def test_calculate_shrine_behavior_signal_adds_route_open_weight(user, shrine):
     )
 
     assert calculate_shrine_behavior_signal(user=user, shrine_id=shrine.id) == 1.0
+
+
+# --- v2 tests ---
+
+
+@pytest.mark.django_db
+def test_calculate_shrine_behavior_signal_v2_counts_detail_view_and_route_open(user, shrine):
+    ShrineInteractionLog.objects.create(
+        user=user,
+        shrine=shrine,
+        action_type=ShrineInteractionLog.ActionType.DETAIL_VIEW,
+        source="shrine_detail",
+    )
+    ShrineInteractionLog.objects.create(
+        user=user,
+        shrine=shrine,
+        action_type=ShrineInteractionLog.ActionType.DETAIL_VIEW,
+        source="shrine_detail",
+    )
+    ShrineInteractionLog.objects.create(
+        user=user,
+        shrine=shrine,
+        action_type=ShrineInteractionLog.ActionType.ROUTE_OPEN,
+        source="shrine_detail",
+    )
+
+    assert calculate_shrine_behavior_signal_v2(user=user, shrine_id=shrine.id) == 1.0
+
+
+@pytest.mark.django_db
+def test_calculate_shrine_behavior_signal_v2_adds_save_visit_and_reflection(user, shrine):
+    Favorite.objects.create(user=user, shrine=shrine)
+    Visit.objects.create(user=user, shrine=shrine, status="added")
+    ShrineReflection.objects.create(
+        user=user,
+        shrine=shrine,
+        history_theme="再出発",
+        prompt="参拝して、今どんな変化がありましたか？",
+        answer="整理できました。",
+    )
+
+    assert calculate_shrine_behavior_signal_v2(user=user, shrine_id=shrine.id) == 8.5
+
+
+@pytest.mark.django_db
+def test_calculate_shrine_behavior_signal_v2_caps_score_at_10(user, shrine):
+    for _ in range(80):
+        ShrineInteractionLog.objects.create(
+            user=user,
+            shrine=shrine,
+            action_type=ShrineInteractionLog.ActionType.DETAIL_VIEW,
+            source="shrine_detail",
+        )
+
+    assert calculate_shrine_behavior_signal_v2(user=user, shrine_id=shrine.id) == 10.0
