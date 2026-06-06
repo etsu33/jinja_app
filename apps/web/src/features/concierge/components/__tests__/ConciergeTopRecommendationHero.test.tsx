@@ -1,9 +1,20 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const analyticsMocks = vi.hoisted(() => ({
+  trackSearchEvent: vi.fn(),
+}));
+
+vi.mock("@/lib/analytics/searchEvents", () => ({
+  trackSearchEvent: analyticsMocks.trackSearchEvent,
+}));
 
 import ConciergeTopRecommendationHero from "../ConciergeTopRecommendationHero";
 
 describe("ConciergeTopRecommendationHero", () => {
+  beforeEach(() => {
+    analyticsMocks.trackSearchEvent.mockClear();
+  });
   it("uses detail as the primary CTA without requiring secondary actions", () => {
     render(
       <ConciergeTopRecommendationHero
@@ -28,5 +39,82 @@ describe("ConciergeTopRecommendationHero", () => {
     expect(screen.queryByText("この候補を基準にすると判断しやすくなります。")).not.toBeInTheDocument();
 
     expect(screen.queryByTestId("hero-secondary-actions")).not.toBeInTheDocument();
+  });
+
+
+  it("renders action suggestions and tracks view, click, and done events", async () => {
+    render(
+      <ConciergeTopRecommendationHero
+        name="検証神社"
+        href="/shrines/17?ctx=concierge"
+        catchCopy="今の相談に合う候補です。"
+        actionSuggestions={[
+          {
+            id: "challenge_choose_this_week",
+            historyTheme: "勝負",
+            title: "今週やることを1つ選ぶ",
+            description: "迷っていることから、まず1つだけ選んで動きます。",
+            category: "prepare",
+            timing: "today",
+            difficulty: "easy",
+            timeEstimate: "5分",
+            measurementKey: "weekly_choice",
+          },
+        ]}
+        analyticsSource="concierge_result"
+        threadId="thread-1"
+        resultSetId="result-set-1"
+        shrineId={17}
+        recommendationRank={1}
+        historyTheme="勝負"
+        routeLabel="詳しく見る"
+      />,
+    );
+
+    expect(screen.getByTestId("hero-action-suggestions")).toBeInTheDocument();
+    expect(screen.getByText("次の小さな一歩")).toBeInTheDocument();
+    expect(screen.getByText("今週やることを1つ選ぶ")).toBeInTheDocument();
+    expect(screen.getByText("迷っていることから、まず1つだけ選んで動きます。")).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(analyticsMocks.trackSearchEvent).toHaveBeenCalledWith(
+        "action_suggestion_view",
+        expect.objectContaining({
+          source: "concierge_result",
+          threadId: "thread-1",
+          resultSetId: "result-set-1",
+          shrineId: 17,
+          recommendationRank: 1,
+          position: "hero_primary",
+          historyTheme: "勝負",
+          actionSuggestionId: "challenge_choose_this_week",
+          actionCategory: "prepare",
+          actionTheme: "勝負",
+          actionPosition: 1,
+        }),
+      );
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "試してみる" }));
+    expect(analyticsMocks.trackSearchEvent).toHaveBeenCalledWith(
+      "action_suggestion_click",
+      expect.objectContaining({
+        actionSuggestionId: "challenge_choose_this_week",
+        actionCategory: "prepare",
+        actionTheme: "勝負",
+        actionPosition: 1,
+      }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "完了" }));
+    expect(analyticsMocks.trackSearchEvent).toHaveBeenCalledWith(
+      "action_done",
+      expect.objectContaining({
+        actionSuggestionId: "challenge_choose_this_week",
+        actionCategory: "prepare",
+        actionTheme: "勝負",
+        actionPosition: 1,
+      }),
+    );
   });
 });
