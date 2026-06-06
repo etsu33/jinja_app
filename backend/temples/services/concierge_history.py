@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import timedelta
 from typing import Optional, Any
 
 from django.db import transaction
@@ -106,6 +107,84 @@ def calculate_shrine_behavior_signal(*, user, shrine_id: int | None) -> float:
         score += 5.0
 
     return min(score, 10.0)
+
+
+def _recency_multiplier(latest_at) -> float:
+    if latest_at is None:
+        return 0.0
+
+    now = timezone.now()
+    age = now - latest_at
+
+    if age <= timedelta(days=30):
+        return 1.0
+    if age <= timedelta(days=90):
+        return 0.5
+    return 0.2
+
+
+def calculate_shrine_behavior_signal_v2(*, user, shrine_id: int | None) -> float:
+    if user is None or not getattr(user, "is_authenticated", False):
+        return 0.0
+
+    if shrine_id is None:
+        return 0.0
+
+    score = 0.0
+
+    detail_view_qs = ShrineInteractionLog.objects.filter(
+        user=user,
+        shrine_id=shrine_id,
+        action_type=ShrineInteractionLog.ActionType.DETAIL_VIEW,
+    )
+    detail_view_latest = (
+        detail_view_qs.order_by("-created_at")
+        .values_list("created_at", flat=True)
+        .first()
+    )
+    score += detail_view_qs.count() * 0.2 * _recency_multiplier(detail_view_latest)
+
+    route_open_qs = ShrineInteractionLog.objects.filter(
+        user=user,
+        shrine_id=shrine_id,
+        action_type=ShrineInteractionLog.ActionType.ROUTE_OPEN,
+    )
+    route_open_latest = (
+        route_open_qs.order_by("-created_at")
+        .values_list("created_at", flat=True)
+        .first()
+    )
+    score += route_open_qs.count() * 0.6 * _recency_multiplier(route_open_latest)
+
+    favorite_latest = (
+        Favorite.objects.filter(user=user, shrine_id=shrine_id)
+        .order_by("-created_at")
+        .values_list("created_at", flat=True)
+        .first()
+    )
+    if favorite_latest is not None:
+        score += 1.5 * _recency_multiplier(favorite_latest)
+
+    visit_latest = (
+        Visit.objects.filter(user=user, shrine_id=shrine_id, status="added")
+        .order_by("-visited_at")
+        .values_list("visited_at", flat=True)
+        .first()
+    )
+    if visit_latest is not None:
+        score += 3.0 * _recency_multiplier(visit_latest)
+
+    reflection_latest = (
+        ShrineReflection.objects.filter(user=user, shrine_id=shrine_id)
+        .order_by("-created_at")
+        .values_list("created_at", flat=True)
+        .first()
+    )
+    if reflection_latest is not None:
+        score += 4.0 * _recency_multiplier(reflection_latest)
+
+    return min(score, 10.0)
+
 
 @dataclass
 class ChatSaveResult:

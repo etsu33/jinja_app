@@ -5,7 +5,7 @@ import logging
 from typing import Any, Dict, List, Optional, TypedDict
 from temples.domain.need_to_goriyaku_tag_ids import need_tags_to_goriyaku_ids
 from temples.services.concierge_history import (
-    calculate_shrine_behavior_signal,
+    calculate_shrine_behavior_signal_v2,
     classify_shrine_action_state,
 )
 from typing import Literal
@@ -654,7 +654,7 @@ def _attach_breakdown(
     except (TypeError, ValueError):
         shrine_id_int = None
 
-    behavior_signal = calculate_shrine_behavior_signal(
+    behavior_signal = calculate_shrine_behavior_signal_v2(
         user=user,
         shrine_id=shrine_id_int,
     )
