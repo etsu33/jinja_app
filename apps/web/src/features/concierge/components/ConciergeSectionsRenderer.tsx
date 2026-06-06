@@ -812,6 +812,12 @@ export default function ConciergeSectionsRenderer({
                               differenceFromOthers={null}
                               tags={(heroItem.breakdown?.matched_need_tags ?? []).map(labelNeedDisplayTag).slice(0, 3)}
                               actionSuggestions={(heroItem as any).actionSuggestions ?? []}
+                              analyticsSource="concierge_result"
+                              threadId={tid ?? null}
+                              resultSetId={resultSetId}
+                              shrineId={heroItem.shrineId}
+                              recommendationRank={1}
+                              historyTheme={historyTheme ?? analyticsContext?.historyTheme ?? null}
                               routeLabel="神社の詳細を見る"
                               onDetailClick={() =>
                                 trackSearchEvent("shrine_detail_transition", {

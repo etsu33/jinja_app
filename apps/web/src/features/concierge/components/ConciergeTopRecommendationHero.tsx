@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
 import type { ReactNode } from "react";
+import { trackSearchEvent } from "@/lib/analytics/searchEvents";
 import type { ActionSuggestionViewModel } from "@/viewmodels/conciergeResultItem";
 
 type Props = {
@@ -22,6 +24,12 @@ type Props = {
   nextActionHint?: string | null;
   tags?: string[];
   actionSuggestions?: ActionSuggestionViewModel[];
+  analyticsSource?: "concierge_result" | "shrine_detail" | "map" | "shrines" | null;
+  threadId?: string | null;
+  resultSetId?: string | null;
+  shrineId?: number | string | null;
+  recommendationRank?: number | null;
+  historyTheme?: string | null;
   routeLabel?: string;
   secondaryActionSlot?: ReactNode;
   onRouteClick?: () => void;
@@ -46,6 +54,12 @@ export default function ConciergeTopRecommendationHero({
   nextActionHint: _nextActionHint = null,
   tags: _tags = [],
   actionSuggestions = [],
+  analyticsSource = "concierge_result",
+  threadId = null,
+  resultSetId = null,
+  shrineId = null,
+  recommendationRank = null,
+  historyTheme = null,
   routeLabel = "詳しく見る",
   secondaryActionSlot = null,
   onRouteClick: _onRouteClick,
@@ -53,10 +67,51 @@ export default function ConciergeTopRecommendationHero({
 }: Props) {
   const visibleTrustLabels = trustLabels.filter(Boolean).slice(0, 4);
   const visibleActionSuggestions = actionSuggestions.filter((item) => item.id && item.title).slice(0, 2);
+  const visibleActionSuggestionIds = visibleActionSuggestions.map((item) => item.id).join(",");
   const entranceCopySource = subtitle ?? catchCopy;
   const entranceCopy = entranceCopySource.split("。")[0]
     ? `${entranceCopySource.split("。")[0]}。`
     : entranceCopySource;
+
+  useEffect(() => {
+    if (visibleActionSuggestions.length === 0) return;
+
+    visibleActionSuggestions.forEach((item, index) => {
+      trackSearchEvent("action_suggestion_view", {
+        source: analyticsSource,
+        threadId,
+        resultSetId,
+        shrineId,
+        recommendationRank,
+        position: "hero_primary",
+        historyTheme: historyTheme ?? item.historyTheme,
+        actionSuggestionId: item.id,
+        actionCategory: item.category,
+        actionTheme: item.historyTheme,
+        actionPosition: index + 1,
+      });
+    });
+  }, [analyticsSource, historyTheme, recommendationRank, resultSetId, shrineId, threadId, visibleActionSuggestionIds]);
+
+  const trackActionSuggestionEvent = (
+    eventName: "action_suggestion_click" | "action_done",
+    item: ActionSuggestionViewModel,
+    index: number,
+  ) => {
+    trackSearchEvent(eventName, {
+      source: analyticsSource,
+      threadId,
+      resultSetId,
+      shrineId,
+      recommendationRank,
+      position: "hero_primary",
+      historyTheme: historyTheme ?? item.historyTheme,
+      actionSuggestionId: item.id,
+      actionCategory: item.category,
+      actionTheme: item.historyTheme,
+      actionPosition: index + 1,
+    });
+  };
 
   return (
     <section className="rounded-[30px] border border-emerald-200 bg-gradient-to-b from-emerald-50/80 to-white p-6 shadow-lg shadow-emerald-900/10 ring-1 ring-emerald-100">
@@ -105,12 +160,28 @@ export default function ConciergeTopRecommendationHero({
                 <p className="text-xs leading-5 text-slate-600">今の状態に合わせて、無理なく試せる行動です。</p>
               </div>
               <div className="space-y-2">
-                {visibleActionSuggestions.map((item) => (
+                {visibleActionSuggestions.map((item, index) => (
                   <div key={item.id} className="rounded-xl bg-white/80 px-3 py-2 ring-1 ring-amber-100">
                     <p className="text-sm font-semibold leading-6 text-slate-800">{item.title}</p>
                     {item.description ? (
                       <p className="mt-0.5 text-xs leading-5 text-slate-600">{item.description}</p>
                     ) : null}
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        className="rounded-lg border border-amber-200 bg-white px-2 py-1.5 text-xs font-semibold text-amber-800 transition hover:bg-amber-50"
+                        onClick={() => trackActionSuggestionEvent("action_suggestion_click", item, index)}
+                      >
+                        試してみる
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-lg bg-amber-600 px-2 py-1.5 text-xs font-semibold text-white transition hover:bg-amber-700"
+                        onClick={() => trackActionSuggestionEvent("action_done", item, index)}
+                      >
+                        完了
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
