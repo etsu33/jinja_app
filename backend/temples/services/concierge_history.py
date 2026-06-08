@@ -125,14 +125,27 @@ def _recency_multiplier(latest_at) -> float:
     return 0.2
 
 
-def calculate_shrine_behavior_signal_v2(*, user, shrine_id: int | None) -> float:
+# New breakdown helper for v2
+def calculate_shrine_behavior_signal_breakdown(*, user, shrine_id: int | None) -> dict[str, float]:
     if user is None or not getattr(user, "is_authenticated", False):
-        return 0.0
+        return {
+            "detail_view_signal": 0.0,
+            "route_open_signal": 0.0,
+            "save_signal": 0.0,
+            "visit_signal": 0.0,
+            "reflection_signal": 0.0,
+            "total": 0.0,
+        }
 
     if shrine_id is None:
-        return 0.0
-
-    score = 0.0
+        return {
+            "detail_view_signal": 0.0,
+            "route_open_signal": 0.0,
+            "save_signal": 0.0,
+            "visit_signal": 0.0,
+            "reflection_signal": 0.0,
+            "total": 0.0,
+        }
 
     detail_view_qs = ShrineInteractionLog.objects.filter(
         user=user,
@@ -144,7 +157,7 @@ def calculate_shrine_behavior_signal_v2(*, user, shrine_id: int | None) -> float
         .values_list("created_at", flat=True)
         .first()
     )
-    score += detail_view_qs.count() * 0.2 * _recency_multiplier(detail_view_latest)
+    detail_view_signal = detail_view_qs.count() * 0.2 * _recency_multiplier(detail_view_latest)
 
     route_open_qs = ShrineInteractionLog.objects.filter(
         user=user,
@@ -156,7 +169,7 @@ def calculate_shrine_behavior_signal_v2(*, user, shrine_id: int | None) -> float
         .values_list("created_at", flat=True)
         .first()
     )
-    score += route_open_qs.count() * 0.6 * _recency_multiplier(route_open_latest)
+    route_open_signal = route_open_qs.count() * 0.6 * _recency_multiplier(route_open_latest)
 
     favorite_latest = (
         Favorite.objects.filter(user=user, shrine_id=shrine_id)
@@ -164,8 +177,9 @@ def calculate_shrine_behavior_signal_v2(*, user, shrine_id: int | None) -> float
         .values_list("created_at", flat=True)
         .first()
     )
+    save_signal = 0.0
     if favorite_latest is not None:
-        score += 1.5 * _recency_multiplier(favorite_latest)
+        save_signal = 1.5 * _recency_multiplier(favorite_latest)
 
     visit_latest = (
         Visit.objects.filter(user=user, shrine_id=shrine_id, status="added")
@@ -173,8 +187,9 @@ def calculate_shrine_behavior_signal_v2(*, user, shrine_id: int | None) -> float
         .values_list("visited_at", flat=True)
         .first()
     )
+    visit_signal = 0.0
     if visit_latest is not None:
-        score += 3.0 * _recency_multiplier(visit_latest)
+        visit_signal = 3.0 * _recency_multiplier(visit_latest)
 
     reflection_latest = (
         ShrineReflection.objects.filter(user=user, shrine_id=shrine_id)
@@ -182,10 +197,35 @@ def calculate_shrine_behavior_signal_v2(*, user, shrine_id: int | None) -> float
         .values_list("created_at", flat=True)
         .first()
     )
+    reflection_signal = 0.0
     if reflection_latest is not None:
-        score += 4.0 * _recency_multiplier(reflection_latest)
+        reflection_signal = 4.0 * _recency_multiplier(reflection_latest)
 
-    return min(score, 10.0)
+    total = min(
+        detail_view_signal
+        + route_open_signal
+        + save_signal
+        + visit_signal
+        + reflection_signal,
+        10.0,
+    )
+
+    return {
+        "detail_view_signal": float(detail_view_signal),
+        "route_open_signal": float(route_open_signal),
+        "save_signal": float(save_signal),
+        "visit_signal": float(visit_signal),
+        "reflection_signal": float(reflection_signal),
+        "total": float(total),
+    }
+
+
+def calculate_shrine_behavior_signal_v2(*, user, shrine_id: int | None) -> float:
+    breakdown = calculate_shrine_behavior_signal_breakdown(
+        user=user,
+        shrine_id=shrine_id,
+    )
+    return float(breakdown["total"])
 
 
 def build_recent_reflection_hint(*, user, shrine_id: int | None = None) -> dict[str, Any] | None:
