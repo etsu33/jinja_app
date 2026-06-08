@@ -134,6 +134,9 @@ NEED_LABELS_JA: Dict[str, str] = {
     "money": "金運",
     "rest": "休息",
     "courage": "前進・後押し",
+    "protection": "厄除け・守り",
+    "focus": "集中・継続",
+    "travel_safe": "移動・安全",
     "element": "生年月日との相性",
     "fallback": "近い候補",
 }
@@ -173,6 +176,9 @@ NEED_TAG_LABELS_JA = {
     "money": "金運",
     "courage": "前進・後押し",
     "study": "学業・合格",
+    "protection": "厄除け・守り",
+    "focus": "集中・継続",
+    "travel_safe": "移動・安全",
 }
 
 
