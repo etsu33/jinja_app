@@ -128,6 +128,21 @@ def assert_ranking_breakdown_observation_schema(observation):
     }
     assert isinstance(observation["ranked_count"], int)
     assert isinstance(observation["top10"], list)
+    assert isinstance(observation["_debug"], dict)
+    assert set(observation["_debug"].keys()) == {
+        "query",
+        "need_tags",
+        "matched_need_tags",
+        "visit_style_tags",
+        "matched_visit_style_tags",
+        "score_total_ranked_base",
+        "capped_behavior_contribution",
+        "behavior_ratio",
+        "reflection_hint_state_change_direction",
+        "reflection_hint_next_need_hint",
+        "reflection_hint_next_history_theme_hint",
+        "reflection_hint_source_history_theme",
+    }
 
 
 def assert_ranking_breakdown_top_row_schema(row):
@@ -155,6 +170,11 @@ def assert_ranking_breakdown_top_row_schema(row):
         "matched_visit_style_tags",
         "primary_reason_source",
         "primary_reason_label",
+        "reflection_hint",
+        "reflection_hint_state_change_direction",
+        "reflection_hint_next_need_hint",
+        "reflection_hint_next_history_theme_hint",
+        "reflection_hint_source_history_theme",
     }
     assert isinstance(row["rank"], int)
     assert isinstance(row["score_raw"], float)
@@ -175,6 +195,9 @@ def assert_ranking_breakdown_top_row_schema(row):
     assert isinstance(row["contributions"], dict)
     assert isinstance(row["matched_need_tags"], list)
     assert isinstance(row["matched_visit_style_tags"], list)
+    assert isinstance(row["reflection_hint"], dict)
+    assert isinstance(row["reflection_hint_next_need_hint"], list)
+    assert isinstance(row["reflection_hint_next_history_theme_hint"], list)
 
 
 def test_observe_candidate_pool_logs_counts(caplog):
@@ -972,5 +995,9 @@ def test_observe_ranking_breakdown_empty_contract_has_stable_schema():
             "score_total_ranked_base": [],
             "capped_behavior_contribution": [],
             "behavior_ratio": [],
+            "reflection_hint_state_change_direction": [],
+            "reflection_hint_next_need_hint": [],
+            "reflection_hint_next_history_theme_hint": [],
+            "reflection_hint_source_history_theme": [],
         },
     }

@@ -190,6 +190,7 @@ def observe_ranking_breakdown(
             visit_style = features.get("visit_style") or {}
             element = features.get("element") or {}
             behavior = features.get("behavior") or {}
+            reflection_hint = rec.get("reflection_hint") or {}
 
             rows.append(
                 {
@@ -224,6 +225,11 @@ def observe_ranking_breakdown(
                     "capped_behavior_contribution": float(features.get("capped_behavior_contribution") or 0.0),
                     "behavior_ratio": float(features.get("behavior_ratio") or 0.0),
                     "visit_style_tags": list(rec.get("visit_style_tags") or []),
+                    "reflection_hint": reflection_hint,
+                    "reflection_hint_state_change_direction": reflection_hint.get("state_change_direction"),
+                    "reflection_hint_next_need_hint": list(reflection_hint.get("next_need_hint") or []),
+                    "reflection_hint_next_history_theme_hint": list(reflection_hint.get("next_history_theme_hint") or []),
+                    "reflection_hint_source_history_theme": reflection_hint.get("source_history_theme"),
                 }
             )
 
@@ -239,6 +245,22 @@ def observe_ranking_breakdown(
             "score_total_ranked_base": [r.get("score_total_ranked_base") for r in rows],
             "capped_behavior_contribution": [r.get("capped_behavior_contribution") for r in rows],
             "behavior_ratio": [r.get("behavior_ratio") or 0.0 for r in rows],
+            "reflection_hint_state_change_direction": [
+                r.get("reflection_hint_state_change_direction")
+                for r in rows
+            ],
+            "reflection_hint_next_need_hint": [
+                r.get("reflection_hint_next_need_hint") or []
+                for r in rows
+            ],
+            "reflection_hint_next_history_theme_hint": [
+                r.get("reflection_hint_next_history_theme_hint") or []
+                for r in rows
+            ],
+            "reflection_hint_source_history_theme": [
+                r.get("reflection_hint_source_history_theme")
+                for r in rows
+            ],
         }
 
         return {
@@ -260,6 +282,10 @@ def observe_ranking_breakdown(
                 "score_total_ranked_base": [],
                 "capped_behavior_contribution": [],
                 "behavior_ratio": [],
+                "reflection_hint_state_change_direction": [],
+                "reflection_hint_next_need_hint": [],
+                "reflection_hint_next_history_theme_hint": [],
+                "reflection_hint_source_history_theme": [],
             },
         }
 
