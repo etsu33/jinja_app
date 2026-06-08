@@ -1,8 +1,104 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useRef, useState } from "react";
+import { startBillingCheckout } from "@/lib/api/billing";
+import {
+  parseBillingFunnelSource,
+  parseBillingFunnelStep,
+  trackBillingEvent,
+  type BillingFunnelSource,
+  type BillingFunnelStep,
+} from "@/lib/analytics/billing";
+import { useAuth } from "@/lib/auth/AuthProvider";
 
-export default function BillingUpgradePage() {
+import { buildLoginHref } from "@/lib/nav/login";
+
+const UPGRADE_ENTRY_CONTEXT_STORAGE_KEY = "upgrade:entry-context";
+
+type UpgradeEntryContext = {
+  entryPoint: BillingFunnelSource | null;
+  entryStep: BillingFunnelStep | null;
+  entryCardId: string | null;
+  entryHistoryTheme: string | null;
+};
+
+function saveUpgradeEntryContext(entryContext: UpgradeEntryContext) {
+  try {
+    window.sessionStorage.setItem(
+      UPGRADE_ENTRY_CONTEXT_STORAGE_KEY,
+      JSON.stringify(entryContext),
+    );
+  } catch (error) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn("[billing attribution]", error);
+    }
+  }
+}
+
+function BillingUpgradeContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const auth = useAuth();
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const upgradeClickTrackedRef = useRef(false);
+  const checkoutStartedTrackedRef = useRef(false);
+  const source = parseBillingFunnelSource(searchParams.get("source"));
+  const funnelStep = parseBillingFunnelStep(searchParams.get("funnelStep"));
+  const cardId = searchParams.get("cardId");
+  const historyTheme = searchParams.get("historyTheme");
+
+  const startCheckout = async () => {
+    if (auth.loading) return;
+
+    const entryContext = {
+      entryPoint: source,
+      entryStep: funnelStep,
+      entryCardId: cardId,
+      entryHistoryTheme: historyTheme,
+    };
+
+    saveUpgradeEntryContext(entryContext);
+
+    if (!upgradeClickTrackedRef.current) {
+      upgradeClickTrackedRef.current = true;
+      trackBillingEvent("upgrade_click", {
+        source,
+        funnelStep,
+        cardId,
+        historyTheme,
+      });
+    }
+
+    if (!auth.isLoggedIn) {
+      const currentPath = `/billing/upgrade${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
+      router.push(buildLoginHref(currentPath));
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      setError(null);
+      const session = await startBillingCheckout();
+      if (!checkoutStartedTrackedRef.current) {
+        checkoutStartedTrackedRef.current = true;
+        trackBillingEvent("checkout_started", {
+          checkoutSessionId: session.session_id,
+          source,
+          funnelStep,
+          cardId,
+          historyTheme,
+        });
+      }
+      window.location.assign(session.checkout_url);
+    } catch {
+      setError("決済画面を開始できませんでした。時間をおいて再度お試しください。");
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div className="mx-auto w-full max-w-md px-4 py-6">
       <section className="space-y-2">
@@ -30,17 +126,21 @@ export default function BillingUpgradePage() {
         </div>
       </section>
 
-      <section className="mt-6 rounded-xl border bg-amber-50 p-4 text-sm text-amber-900">
-        プレミアム機能は現在順次準備中です。利用可能になり次第、この画面から案内します。
-      </section>
+      {error ? (
+        <section role="alert" className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+          {error}
+        </section>
+      ) : null}
 
       <div className="mt-6 flex flex-col gap-2">
-        <Link
-          href="/concierge"
+        <button
+          type="button"
+          onClick={startCheckout}
+          disabled={auth.loading || submitting}
           className="inline-flex items-center justify-center rounded-md bg-slate-900 px-4 py-3 text-sm font-semibold text-white"
         >
-          無料でコンシェルジュを使う
-        </Link>
+          {submitting ? "決済画面を準備中…" : "プレミアムにする"}
+        </button>
         <Link
           href="/billing"
           className="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-800"
@@ -49,5 +149,19 @@ export default function BillingUpgradePage() {
         </Link>
       </div>
     </div>
+  );
+}
+
+export default function BillingUpgradePage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="mx-auto w-full max-w-md px-4 py-6">
+          <p className="text-sm leading-6 text-slate-600">プレミアム登録画面を準備しています...</p>
+        </main>
+      }
+    >
+      <BillingUpgradeContent />
+    </Suspense>
   );
 }

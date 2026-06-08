@@ -13,8 +13,9 @@ NEED_LABEL = {
     "money": "金運",
     "rest": "休息",
     "courage": "前進・後押し",
-    "protection": "厄除け・守護",
+    "protection": "厄除け・守り",
     "focus": "集中・継続",
+    "travel_safe": "移動・安全",
 }
 
 
@@ -35,10 +36,14 @@ def _take3(xs: List[dict]) -> List[dict]:
     strength_pri = {"high": 0, "mid": 1, "low": 2}
     code_pri = {
         "USER_CONDITION": 0,
+        "USER_SELECTED_TAG": 0,
         "AREA_MATCH": 1,
+        "GOGYOU_CONTEXT": 1,
+        "HISTORY_CONTEXT": 1,
         "ELEMENT_MATCH": 2,
         "NEED_MATCH": 3,
         "WISH_MATCH": 4,
+        "VISIT_STYLE_MATCH": 4,
         "REASON_SOURCE": 5,
         "SHRINE_FEATURE": 6,
         "START_POINT": 7,
@@ -92,12 +97,114 @@ def _get_secondary_reasons(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
         return []
     return [x for x in value if isinstance(x, dict)]
 
+
+def _get_gogyou_context(payload: Dict[str, Any]) -> Dict[str, Any]:
+    value = payload.get("gogyou_context")
+    if isinstance(value, dict):
+        return value
+    return {}
+
+
+
+def _get_history_context(payload: Dict[str, Any]) -> Dict[str, Any]:
+    value = payload.get("history_context")
+    if isinstance(value, dict):
+        return value
+    return {}
+
+
+def _get_visit_style_feature(rec: Dict[str, Any]) -> Dict[str, Any]:
+    features = (rec.get("breakdown_detail") or {}).get("features") or {}
+    visit_style = features.get("visit_style")
+    if isinstance(visit_style, dict):
+        return visit_style
+    return {}
+
+
+# need tag と history theme の組み合わせから説明文を生成
+def _build_history_alignment_text(
+    *,
+    matched_need_tags: Optional[List[str]],
+    history_context: Optional[Dict[str, Any]],
+) -> Optional[str]:
+    tags = {
+        str(tag).strip()
+        for tag in (matched_need_tags or [])
+        if str(tag).strip()
+    }
+    history_label = str((history_context or {}).get("label") or "").strip()
+
+    if not tags or not history_label:
+        return None
+
+    if history_label == "静寂":
+        if {"career", "mental"}.issubset(tags):
+            return "転職や仕事の不安を急いで結論づける前に、気持ちを落ち着けて次の判断を整理する文脈として受け取りやすい神社です。"
+        if {"mental", "rest"}.issubset(tags):
+            return "疲れや不安をゆるめ、静かに心を整え直す文脈として受け取りやすい神社です。"
+        if "courage" in tags:
+            return "一歩踏み出す前に、気持ちを静かに整えてから動き出す文脈として受け取りやすい神社です。"
+
+    if history_label == "守り":
+        if "travel_safe" in tags:
+            return "移動や出張の前に、安全に進むための備えを整える文脈として受け取りやすい神社です。"
+        if "protection" in tags:
+            return "厄除けや身を守りたい気持ちを、不安を煽らずに整える文脈として受け取りやすい神社です。"
+        if "mental" in tags:
+            return "不安を抱えたまま進むのではなく、自分を守る境界線を整える文脈として受け取りやすい神社です。"
+
+    if history_label == "勝負":
+        if {"career", "courage"}.issubset(tags):
+            return "仕事や転機に向き合い、次の一歩を選ぶための勝負前の整理として受け取りやすい神社です。"
+        if "courage" in tags:
+            return "迷いを抱えたまま勢いで進むのではなく、踏み出す対象を一つに絞る文脈として受け取りやすい神社です。"
+        if "money" in tags:
+            return "金運を結果として求めるだけでなく、事業やお金の流れをどう動かすか整理する文脈として受け取りやすい神社です。"
+
+    if history_label == "縁" and "travel_safe" in tags:
+        return "移動先や道中での人・場所とのつながりを見直し、安全に進む文脈として受け取りやすい神社です。"
+
+    return None
+
 def _build_summary_from_primary_reason(
     *,
     primary_reason: Optional[Dict[str, Any]],
     original_reason: Optional[str],
     highlights: List[str],
+    gogyou_context: Optional[Dict[str, Any]] = None,
+    history_context: Optional[Dict[str, Any]] = None,
+    matched_need_tags: Optional[List[str]] = None,
 ) -> str:
+    gogyou = str((gogyou_context or {}).get("gogyou") or "").strip()
+    gogyou_tone = str((gogyou_context or {}).get("tone") or "").strip()
+    history_label = str((history_context or {}).get("label") or "").strip()
+    history_tone = str((history_context or {}).get("tone") or "").strip()
+    history_alignment_text = _build_history_alignment_text(
+        matched_need_tags=matched_need_tags,
+        history_context=history_context,
+    )
+
+    if isinstance(primary_reason, dict):
+        reason_type = str(primary_reason.get("type") or "").strip()
+        label_ja = str(primary_reason.get("label_ja") or primary_reason.get("label") or "").strip()
+
+        if reason_type == "user_selected_tag" and label_ja:
+            if label_ja == "美容":
+                return "美容や見せ方を整え直したい願いと重なる候補としておすすめしています。"
+            return f"{label_ja}に関わる願いごとと重なる候補としておすすめしています。"
+
+    if history_alignment_text:
+        return history_alignment_text
+
+    if gogyou and gogyou_tone and history_tone:
+        return f"今は「{gogyou}」の傾向として、{gogyou_tone}と、{history_tone}が重なる神社です。"
+
+    if gogyou and gogyou_tone:
+        return f"今は「{gogyou}」の傾向として、{gogyou_tone}に合う神社です。"
+
+    if history_label and history_tone:
+        return f"{history_label}に関わる文脈を持ち、{history_tone}として受け取りやすい神社です。"
+
     if isinstance(primary_reason, dict):
         reason_type = str(primary_reason.get("type") or "").strip()
         label_ja = str(primary_reason.get("label_ja") or "").strip()
@@ -112,7 +219,7 @@ def _build_summary_from_primary_reason(
             return f"{label_ja}に関わる相談内容との重なりが見られます。"
 
         if reason_type == "element":
-            return "生年月日から見た相性を中心におすすめしています。"
+            return "生年月日から見た相性も補助的に見ながら、おすすめしています。"
 
         if reason_type == "fallback":
             return "今の条件に近い候補としておすすめしています。"
@@ -131,6 +238,9 @@ def _build_reason_entry_from_primary_reason(
     *,
     primary_reason: Optional[Dict[str, Any]],
     birthdate: Optional[str],
+    gogyou_context: Optional[Dict[str, Any]] = None,
+    history_context: Optional[Dict[str, Any]] = None,
+    matched_need_tags: Optional[List[str]] = None,
 ) -> Optional[dict]:
     if not isinstance(primary_reason, dict):
         return None
@@ -138,6 +248,65 @@ def _build_reason_entry_from_primary_reason(
     reason_type = str(primary_reason.get("type") or "").strip()
     label_ja = str(primary_reason.get("label_ja") or "").strip()
     evidence = primary_reason.get("evidence") if isinstance(primary_reason.get("evidence"), list) else []
+
+    gogyou = str((gogyou_context or {}).get("gogyou") or "").strip()
+    tone = str((gogyou_context or {}).get("tone") or "").strip()
+    eto = str((gogyou_context or {}).get("eto") or "").strip()
+    history_label = str((history_context or {}).get("label") or "").strip()
+    history_tone = str((history_context or {}).get("tone") or "").strip()
+    history_alignment_text = _build_history_alignment_text(
+        matched_need_tags=matched_need_tags,
+        history_context=history_context,
+    )
+
+    if reason_type == "user_selected_tag" and label_ja:
+        if label_ja == "美容":
+            text = "美容や見せ方を整え直したい願いとの一致が見られます。"
+        else:
+            text = f"{label_ja}に関わる願いごととの一致が見られます。"
+
+        return _reason(
+            "USER_SELECTED_TAG",
+            "選択した願いとの一致",
+            text,
+            strength="high",
+            evidence={"primary_reason": primary_reason, "evidence": evidence},
+        )
+
+    if gogyou and tone:
+        return _reason(
+            "GOGYOU_CONTEXT",
+            "今の巡り",
+            f"生年月日から見た今の巡りでは、「{gogyou}」の傾向として{tone}が見られます。",
+            strength="high",
+            evidence={
+                "gogyou_context": gogyou_context,
+                "history_context": history_context or None,
+                "birthdate": bool(birthdate),
+                "eto": eto or None,
+            },
+        )
+
+    if history_alignment_text:
+        return _reason(
+            "HISTORY_CONTEXT",
+            "相談と神社の文脈",
+            history_alignment_text,
+            strength="high",
+            evidence={
+                "history_context": history_context,
+                "matched_need_tags": matched_need_tags or [],
+            },
+        )
+
+    if history_label and history_tone:
+        return _reason(
+            "HISTORY_CONTEXT",
+            "神社の文脈",
+            f"この神社には「{history_label}」の文脈があり、{history_tone}として受け取りやすい候補です。",
+            strength="high",
+            evidence={"history_context": history_context},
+        )
 
     if reason_type == "need_tag":
         return _reason(
@@ -169,9 +338,9 @@ def _build_reason_entry_from_primary_reason(
     if reason_type == "element":
         return _reason(
             "ELEMENT_MATCH",
-            "生年月日との相性",
-            "生年月日から見た傾向との相性を考慮しています。",
-            strength="high",
+            "生年月日との相性補助",
+            "西洋占星術の要素は、補助的な相性として参考にしています。",
+            strength="mid",
             evidence={"primary_reason": primary_reason, "birthdate": bool(birthdate)},
         )
 
@@ -208,11 +377,16 @@ def build_explanation_for_chat_rec(
     )
 
     primary_reason = _get_primary_reason(payload)
+    gogyou_context = _get_gogyou_context(payload)
+    history_context = _get_history_context(payload)
 
     summary = _build_summary_from_primary_reason(
         primary_reason=primary_reason,
         original_reason=original_reason,
         highlights=bullets,
+        gogyou_context=gogyou_context,
+        history_context=history_context,
+        matched_need_tags=matched,
     )
 
     reason_source = str(payload.get("reason_source") or "").strip()
@@ -224,9 +398,40 @@ def build_explanation_for_chat_rec(
     primary_entry = _build_reason_entry_from_primary_reason(
         primary_reason=primary_reason,
         birthdate=birthdate,
+        gogyou_context=gogyou_context,
+        history_context=history_context,
+        matched_need_tags=matched,
     )
     if primary_entry:
         reasons.append(primary_entry)
+
+    visit_style = _get_visit_style_feature(rec)
+    matched_visit_style_tags = [
+        str(x).strip()
+        for x in (visit_style.get("matched_tags") or [])
+        if str(x).strip()
+    ]
+
+    if matched_visit_style_tags:
+        if "quiet" in matched_visit_style_tags and "less_crowded" in matched_visit_style_tags:
+            text = "静かで人が少なめの雰囲気を求める条件と重なっています。"
+        elif "quiet" in matched_visit_style_tags:
+            text = "静かで落ち着いた雰囲気を求める条件と重なっています。"
+        elif "less_crowded" in matched_visit_style_tags:
+            text = "人が少なめで落ち着いて参拝したい条件と重なっています。"
+        else:
+            text = "参拝スタイルの希望と重なる特徴があります。"
+
+        reasons.append(_reason(
+            "VISIT_STYLE_MATCH",
+            "参拝スタイルとの一致",
+            text,
+            strength="high",
+            evidence={
+                "matched_visit_style_tags": matched_visit_style_tags,
+                "visit_style": visit_style,
+            },
+        ))
 
     if bullets:
         reasons.append(_reason(
@@ -267,6 +472,9 @@ def build_explanation_for_plan_rec(
 ) -> Dict[str, Any]:
     payload = _get_explanation_payload(rec)
 
+    matched = payload.get("matched_need_tags") or []
+    matched = [str(x) for x in matched if str(x).strip()]
+
     bullets = payload.get("highlights") or []
     bullets = [str(x).strip() for x in bullets if isinstance(x, str) and str(x).strip()]
 
@@ -276,11 +484,16 @@ def build_explanation_for_plan_rec(
     )
 
     primary_reason = _get_primary_reason(payload)
+    gogyou_context = _get_gogyou_context(payload)
+    history_context = _get_history_context(payload)
 
     summary = _build_summary_from_primary_reason(
         primary_reason=primary_reason,
         original_reason=original_reason,
         highlights=bullets,
+        gogyou_context=gogyou_context,
+        history_context=history_context,
+        matched_need_tags=matched,
     )
 
     reasons: List[dict] = []
@@ -288,6 +501,9 @@ def build_explanation_for_plan_rec(
     primary_entry = _build_reason_entry_from_primary_reason(
         primary_reason=primary_reason,
         birthdate=birthdate,
+        gogyou_context=gogyou_context,
+        history_context=history_context,
+        matched_need_tags=matched,
     )
     if primary_entry:
         reasons.append(primary_entry)

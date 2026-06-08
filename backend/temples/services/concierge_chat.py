@@ -4,6 +4,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from django.conf import settings as dj_settings
+from temples.models import GoriyakuTag
 
 from temples.services.concierge_candidate_utils import _normalize_candidate_fields
 from temples.services.concierge_chat_extra_condition import (
@@ -43,6 +44,16 @@ from temples.services.concierge_explanations import (
     attach_explanations_for_chat,
 )
 
+from temples.services.concierge_chat_observation import (
+    build_trim_observation,
+    observe_candidate_pool,
+    observe_candidate_pool_debug,
+    observe_ranking_breakdown,
+    observe_trim_after,
+    observe_trim_before,
+    observe_visit_style_before_trim,
+)
+
 
 log = logging.getLogger(__name__)
 
@@ -61,26 +72,52 @@ def _resolve_astro_profile(
         return None
 
 
+def _build_goriyaku_tag_label_by_id(goriyaku_tag_ids: Optional[List[int]]) -> Dict[int, str]:
+    ids = [
+        int(x)
+        for x in (goriyaku_tag_ids or [])
+        if isinstance(x, int) or (isinstance(x, str) and str(x).strip().isdigit())
+    ]
+    if not ids:
+        return {}
+
+    try:
+        return dict(GoriyakuTag.objects.filter(id__in=ids).values_list("id", "name"))
+    except Exception:
+        return {}
+
+
 def _attach_chat_rec_enrichment(
     recs: Dict[str, Any],
     *,
     public_mode: str,
+    query: str,
     birthdate: Optional[str],
     need_tags: List[str],
     weights: Dict[str, float],
     astro_bonus_enabled: bool,
     soft_signal_tags: set[str],
+    visit_style_tags: set[str],
+    goriyaku_tag_ids: Optional[List[int]],
+    goriyaku_tag_label_by_id: Dict[int, str],
+    user_origin: Optional[Dict[str, Any]] = None,
+    user=None,
 ) -> Dict[str, Any]:
     for rec in recs.get("recommendations") or []:
         if not isinstance(rec, dict):
             continue
-
         _attach_breakdown(
             rec,
+            query=query,
             birthdate=birthdate,
             need_tags=need_tags,
             weights=weights,
             astro_bonus_enabled=astro_bonus_enabled,
+            visit_style_tags=visit_style_tags,
+            requested_goriyaku_tag_ids=goriyaku_tag_ids,
+            goriyaku_tag_label_by_id=goriyaku_tag_label_by_id,
+            user_origin=user_origin,
+            user=user,
         )
         _apply_soft_signal_highlights(
             rec,
@@ -174,6 +211,7 @@ def build_chat_recommendations(
     flow="A",
     need_tags: list[str] | None = None,
     llm_enabled: bool | None = None,
+    user=None,
 ) -> Dict[str, Any]:
     """
     候補リストからおすすめ神社を選んで返す関数。
@@ -193,22 +231,61 @@ def build_chat_recommendations(
     need_tags = need_payload["tags"]
 
     log.info(
-        "[dbg] need_tags query=%r tags=%r language=%r flow=%r mode=%r extra=%r goriyaku=%r",
-        (query or "")[:60],
+        "[dbg] need_tags has_query=%s query_len=%d tags=%r language=%r flow=%r mode=%r has_extra=%s has_goriyaku=%s",
+        bool(query),
+        len(query or ""),
         need_tags,
         language,
         flow,
         public_mode,
-        extra_condition,
-        goriyaku_tag_ids,
+        bool(str(extra_condition or "").strip()),
+        bool(goriyaku_tag_ids),
     )
 
     astro_profile = _resolve_astro_profile(birthdate)
 
-    extra_tags = resolve_extra_condition_tags(extra_condition)
+    extra_tags = resolve_extra_condition_tags(
+        " ".join(
+            part
+            for part in [query or "", extra_condition or ""]
+            if str(part).strip()
+        )
+    )
     sort_tags = extra_tags["sort_tags"]
     hard_filter_tags = extra_tags["hard_filter_tags"]
     soft_signal_tags = extra_tags["soft_signal_tags"]
+    visit_style_tags = extra_tags["visit_style_tags"]
+
+    log.info(
+        "[dbg] extra_tags resolved sort=%r soft=%r visit_style=%r raw_query=%r raw_extra=%r",
+        sorted(sort_tags),
+        sorted(soft_signal_tags),
+        sorted(visit_style_tags),
+        query,
+        extra_condition,
+    )
+
+    observe_candidate_pool(
+        valid_candidates=valid_candidates,
+        visit_style_tags=visit_style_tags,
+        need_tags=need_tags,
+    )
+
+    candidate_pool_observation = observe_candidate_pool_debug(
+        valid_candidates=valid_candidates,
+        filter_context={
+            "public_mode": public_mode,
+            "flow": flow,
+            "has_query": bool(query),
+            "query_len": len(query or ""),
+            "has_extra_condition": bool(str(extra_condition or "").strip()),
+            "has_goriyaku_tag_ids": bool(goriyaku_tag_ids),
+            "need_tags": need_tags,
+            "sort_tags": sorted(sort_tags),
+            "hard_filter_tags": sorted(hard_filter_tags),
+            "visit_style_tags": sorted(visit_style_tags),
+        },
+    )
 
     weights = _resolve_mode_weights(
         public_mode=public_mode,  # type: ignore[arg-type]
@@ -227,6 +304,7 @@ def build_chat_recommendations(
     )
 
     recs = route["recs"]
+    recs.setdefault("_debug", {})["candidate_pool_observation"] = candidate_pool_observation
     requested_llm_enabled = bool(route["requested_llm_enabled"])
     effective_llm_enabled = bool(route["effective_llm_enabled"])
     llm_used = bool(route["llm_used"])
@@ -247,7 +325,7 @@ def build_chat_recommendations(
     recs = _ensure_pool_size(
         recs,
         candidates=valid_candidates,
-        size=12,
+        size=20,
     )
     recs = _merge_candidate_fields(
         recs,
@@ -260,17 +338,25 @@ def build_chat_recommendations(
         [r.get("name") for r in (recs.get("recommendations") or [])[:5] if isinstance(r, dict)],
     )
 
+    goriyaku_tag_label_by_id = _build_goriyaku_tag_label_by_id(goriyaku_tag_ids)
+
     recs = _attach_chat_rec_enrichment(
         recs,
         public_mode=public_mode,
+        query=query or "",
         birthdate=birthdate,
         need_tags=need_tags,
         weights=weights,
         astro_bonus_enabled=astro_bonus_enabled,
         soft_signal_tags=soft_signal_tags,
+        visit_style_tags=visit_style_tags,
+        goriyaku_tag_ids=goriyaku_tag_ids,
+        goriyaku_tag_label_by_id=goriyaku_tag_label_by_id,
+        user_origin=bias,
+        user=user,
     )
 
-    recs = attach_explanation_payload(recs)
+    recs = attach_explanation_payload(recs, birthdate=birthdate)
 
     try:
         log.info(
@@ -282,6 +368,7 @@ def build_chat_recommendations(
                     "breakdown_matched_need_tags": (r.get("breakdown") or {}).get(
                         "matched_need_tags"
                     ),
+                    "visit_style": ((r.get("breakdown_detail") or {}).get("features") or {}).get("visit_style"),
                     "breakdown_score_need": (r.get("breakdown") or {}).get("score_need"),
                     "explanation_payload": r.get("_explanation_payload"),
                 }
@@ -297,6 +384,19 @@ def build_chat_recommendations(
         sort_tags=sort_tags,
     )
     recs["recommendations"] = _attach_rank_comparison(recs.get("recommendations") or [])
+    recs.setdefault("_debug", {})["ranking_breakdown_observation"] = observe_ranking_breakdown(
+        recs=recs,
+    )
+
+    observation = observe_visit_style_before_trim(
+        recs=recs,
+        query=query or "",
+        extra_condition=extra_condition,
+        visit_style_tags=visit_style_tags,
+    )
+    recs.setdefault("_debug", {})["visit_style_observation"] = observation
+
+    trim_before = observe_trim_before(recs)
 
     _fill_location_from_existing_address(recs)
     _backfill_location_from_name(
@@ -305,6 +405,12 @@ def build_chat_recommendations(
         language=language,
     )
     _trim_to_top3_and_fill_message(recs)
+
+    trim_after = observe_trim_after(recs)
+    recs.setdefault("_debug", {})["trim_observation"] = build_trim_observation(
+        before=trim_before,
+        after=trim_after,
+    )
 
     try:
         log.info(
@@ -316,6 +422,7 @@ def build_chat_recommendations(
                     "score_total": r.get("_score_total"),
                     "score_need": (r.get("breakdown") or {}).get("score_need"),
                     "matched_need_tags": (r.get("breakdown") or {}).get("matched_need_tags"),
+                    "visit_style": ((r.get("breakdown_detail") or {}).get("features") or {}).get("visit_style"),
                     "goriyaku": r.get("goriyaku"),
                     "reason": r.get("reason"),
                 }
@@ -342,6 +449,7 @@ def build_chat_recommendations(
         flow=flow,
         weights=weights,
         astro_bonus_enabled=astro_bonus_enabled,
+        birthdate=birthdate,
         effective_llm_enabled=effective_llm_enabled,
         llm_used=llm_used,
         llm_error=llm_error,

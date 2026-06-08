@@ -14,6 +14,7 @@ def test_concierge_chat_need_and_breakdown_contract(client, monkeypatch, setting
         - result_state に fallback 情報が入る
         - displayed_count / pool_count が recommendations 件数と一致する
         - recommendations[i].reason_source が "reason:" prefix を持つ
+        - weights: {element, need, popular, direction_bonus}
     """
     settings.CONCIERGE_USE_LLM = True
 
@@ -128,7 +129,12 @@ def test_concierge_chat_need_and_breakdown_contract(client, monkeypatch, setting
     assert "breakdown" in a and isinstance(a["breakdown"], dict)
     bd = a["breakdown"]
 
-    assert bd["weights"] == {"element": 0.6, "need": 0.3, "popular": 0.1}
+    assert bd["weights"] == {
+        "element": 0.6,
+        "need": 0.3,
+        "popular": 0.1,
+        "direction_bonus": 0.0,
+    }
     assert bd["score_element"] == 2
     assert bd["matched_need_tags"] == ["career", "rest"]
     assert bd["score_need"] == 2
@@ -146,6 +152,7 @@ def test_concierge_chat_need_and_breakdown_contract(client, monkeypatch, setting
             "score_need",
             "score_popular",
             "score_total",
+            "direction_bonus",
             "weights",
             "matched_need_tags",
         }
@@ -239,56 +246,6 @@ def test_concierge_chat_result_state_and_reason_source_contract(client, monkeypa
         assert isinstance(it.get("reason_source"), str)
         assert it["reason_source"].startswith("reason:")
 
-
-@pytest.mark.django_db
-def test_concierge_chat_explanation_payload_v2_contract(client, monkeypatch, settings):
-    settings.CONCIERGE_USE_LLM = False
-
-    payload = {
-        "message": "転職が不安",
-        "lat": 35.0,
-        "lng": 139.0,
-        "candidates": [
-            {
-                "name": "A",
-                "goriyaku": "仕事運・勝運",
-                "astro_tags": ["career"],
-                "goriyaku_tag_ids": [1],
-                "popular_score": 8.0,
-            }
-        ],
-    }
-
-    r = client.post(URL, data=json.dumps(payload), content_type="application/json")
-    assert r.status_code == 200
-
-    j = r.json()
-    recs = j["data"]["recommendations"]
-    assert isinstance(recs, list)
-    assert len(recs) >= 1
-
-    rec = recs[0]
-
-    assert "_explanation_payload" in rec
-    payload2 = rec["_explanation_payload"]
-    assert payload2["version"] == 2
-    assert "primary_reason" in payload2
-    assert isinstance(payload2["primary_reason"], dict)
-    assert payload2["primary_reason"]["type"] in {
-        "need_tag",
-        "goriyaku_tag",
-        "text_hint",
-        "element",
-        "fallback",
-    }
-
-    assert "explanation" in rec
-    exp = rec["explanation"]
-    assert exp["version"] == 2
-    assert isinstance(exp["summary"], str)
-    assert exp["summary"]
-    assert isinstance(exp["reasons"], list)
-    assert len(exp["reasons"]) >= 1
 
 @pytest.mark.django_db
 def test_concierge_chat_explanation_payload_v2_contract(client, monkeypatch, settings):

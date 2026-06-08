@@ -364,9 +364,21 @@ def _resolve_request_location_inputs(
     *,
     area: Any,
 ) -> tuple[Optional[float], Optional[float]]:
+    # Priority 1: explicit top-level lat/lng.
     lat = _to_float(data.get("lat"))
     lng = _to_float(data.get("lng"))
-    if (lat is None or lng is None) and area:
+    if lat is not None and lng is not None:
+        return lat, lng
+
+    # Priority 2: frontend conciergeChat sends location: { lat, lng }.
+    location = data.get("location") if isinstance(data.get("location"), dict) else {}
+    lat = _to_float(location.get("lat"))
+    lng = _to_float(location.get("lng"))
+    if lat is not None and lng is not None:
+        return lat, lng
+
+    # Priority 3: area text geocode fallback.
+    if area:
         pt = _geocode_area_for_chat(area=area)
         if pt:
             lat, lng = pt
@@ -612,11 +624,18 @@ class ConciergeChatView(APIView):
             if public_mode not in {"need", "compat"}:
                 public_mode = "compat" if birthdate and not query else "need"
 
-            flow = (
-                str(data.get("flow")).upper()
-                if str(data.get("flow")).upper() in {"A", "B"}
-                else ("B" if public_mode == "compat" else "A")
-            )
+            requested_flow = str(data.get("flow") or "").strip().upper()
+            has_extra_condition = bool(str(extra_condition or "").strip())
+            has_goriyaku_tags = bool(goriyaku_tag_ids)
+
+            if requested_flow in {"A", "B"}:
+                flow = requested_flow
+            elif has_extra_condition or has_goriyaku_tags:
+                flow = "B"
+            elif public_mode == "compat":
+                flow = "B"
+            else:
+                flow = "A"
             intent = extract_intent(query or "")
 
             request._concierge_trace_id = rid
@@ -783,6 +802,7 @@ class ConciergeChatView(APIView):
                     extra_condition=extra_condition,
                     public_mode=public_mode,
                     flow=flow,
+                    user=user if getattr(user, "is_authenticated", False) else None,
                 )
             except Exception:
                 log.exception(
@@ -845,6 +865,13 @@ class ConciergeChatView(APIView):
             append_user = user if getattr(user, "is_authenticated", False) else None
             append_anonymous_id = None if append_user is not None else getattr(plan_context, "anon_id", None)
 
+            log.warning(
+                "[AUTH DEBUG] user=%r authenticated=%s anonymous_id=%r",
+                getattr(user, "id", None),
+                getattr(user, "is_authenticated", False),
+                getattr(plan_context, "anon_id", None),
+            )
+
             try:
                 saved = append_chat(
                     user=append_user,
@@ -856,6 +883,12 @@ class ConciergeChatView(APIView):
                     recommendations_v2=thread_recommendations_v2,
                 )
                 thread_obj = saved.thread
+                log.warning(
+                    "[THREAD DEBUG] thread=%r user_id=%r anonymous_id=%r",
+                    getattr(thread_obj, "id", None),
+                    getattr(thread_obj, "user_id", None),
+                    getattr(thread_obj, "anonymous_id", None),
+                )
             except ConciergeThread.DoesNotExist:
                 saved = append_chat(
                     user=append_user,
@@ -867,6 +900,12 @@ class ConciergeChatView(APIView):
                     recommendations_v2=thread_recommendations_v2,
                 )
                 thread_obj = saved.thread
+                log.warning(
+                    "[THREAD DEBUG] thread=%r user_id=%r anonymous_id=%r",
+                    getattr(thread_obj, "id", None),
+                    getattr(thread_obj, "user_id", None),
+                    getattr(thread_obj, "anonymous_id", None),
+                )
 
             log.warning(
                 "[concierge/chat] THREAD_SAVED rid=%s thread_pk=%r recommendations_saved=%s recommendations_v2_saved=%s",

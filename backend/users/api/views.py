@@ -1,9 +1,7 @@
 # users/api/views.py
 from __future__ import annotations
 
-import json
 import logging
-from typing import Any
 
 from django.conf import settings
 from django.db.models import Count, Sum
@@ -17,8 +15,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from temples.models import GoshuinImage
+from temples.api.views.billing import BillingStripeWebhookView
 from users.models import UserProfile
-from users.services.stripe_webhook import apply_stripe_subscription_event
 
 from .serializers import SignupSerializer, UserMeSerializer, UserProfileUpdateSerializer
 
@@ -127,64 +125,4 @@ class SignupView(APIView):
 @extend_schema(exclude=True)
 @csrf_exempt
 def stripe_webhook(request: HttpRequest) -> HttpResponse:
-    payload = request.body
-    sig_header = request.headers.get("Stripe-Signature", "")
-
-    try:
-        import stripe
-    except Exception:
-        log.exception("[stripe] stripe sdk not installed")
-        return HttpResponse(status=500)
-
-    webhook_secret = getattr(settings, "STRIPE_WEBHOOK_SECRET", "")
-    if not webhook_secret:
-        log.error("[stripe] STRIPE_WEBHOOK_SECRET is missing")
-        return HttpResponse(status=500)
-
-    try:
-        event = stripe.Webhook.construct_event(
-            payload=payload,
-            sig_header=sig_header,
-            secret=webhook_secret,
-        )
-    except stripe.error.SignatureVerificationError:
-        return HttpResponse(status=400)
-    except Exception:
-        log.exception("[stripe] construct_event failed")
-        return HttpResponse(status=400)
-
-    try:
-        event_dict: dict[str, Any] = json.loads(json.dumps(event))
-    except Exception:
-        event_dict = {"type": getattr(event, "type", None), "data": {}}
-
-    etype = event_dict.get("type") or ""
-    obj = (event_dict.get("data") or {}).get("object") or {}
-
-    if getattr(settings, "STRIPE_WEBHOOK_DEBUG", False) and isinstance(obj, dict):
-        if etype.startswith("customer.subscription"):
-            items = obj.get("items")
-            first_item_cpe = None
-            try:
-                data0 = ((items or {}).get("data") or [None])[0]
-                if isinstance(data0, dict):
-                    first_item_cpe = data0.get("current_period_end")
-            except Exception:
-                pass
-
-            log.debug(
-                "[stripe] etype=%s obj.current_period_end=%r item0.current_period_end=%r items_type=%s items_keys=%s",
-                etype,
-                obj.get("current_period_end"),
-                first_item_cpe,
-                type(items).__name__,
-                sorted(items.keys()) if isinstance(items, dict) else None,
-            )
-
-    try:
-        apply_stripe_subscription_event(event=event_dict)
-    except Exception:
-        log.exception("[stripe] apply event failed etype=%s", etype)
-        return HttpResponse(status=500)
-
-    return HttpResponse(status=200)
+    return BillingStripeWebhookView.as_view()(request)

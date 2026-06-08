@@ -17,7 +17,11 @@ type NormalizedItemBase = {
   description: string;
   imageUrl: string | null;
   breakdown: any | null;
+  breakdown_detail?: any | null;
   reasonFacts?: ConciergeReasonFacts | null;
+  trustMetadata?: any | null;
+  historyTheme?: string | null;
+  historyContext?: string | null;
   detailHref?: string;
   isDummy?: boolean;
 };
@@ -37,6 +41,13 @@ type NormalizedPlace = NormalizedItemBase & {
 };
 
 type NormalizedItem = NormalizedRegistered | NormalizedPlace;
+
+type DetailAnalyticsContext = {
+  mode?: "need" | "compat";
+  flow?: "A" | "B";
+  hasBirthdate?: boolean;
+  recommendationCount?: number;
+};
 
 function asTrimmedString(v: unknown): string | null {
   if (typeof v !== "string") return null;
@@ -58,7 +69,7 @@ function pickFirstString(...vals: unknown[]): string | null {
 }
 
 // 登録済み=shrine_idあり → /shrines/:id, 未登録=place_idのみ → /shrines/resolve, どちらも無い→除外
-function normalizeRecommendation(r: any, tid: string | null): NormalizedItem | null {
+function normalizeRecommendation(r: any, tid: string | null, analyticsContext: DetailAnalyticsContext): NormalizedItem | null {
   const shrineId = asPositiveInt(r?.shrine_id ?? r?.shrine?.id ?? null);
 
   const placeId =
@@ -68,7 +79,12 @@ function normalizeRecommendation(r: any, tid: string | null): NormalizedItem | n
     (r?.placeId != null ? String(r.placeId).trim() : null);
 
   const isDummy = r?.is_dummy === true || r?.__dummy === true;
-  const rawHref = detailHrefFromRecommendation(r, { ctx: "concierge", tid: tid ?? undefined }) ?? undefined;
+  const rawHref =
+    detailHrefFromRecommendation(r, {
+      ctx: "concierge",
+      tid: tid ?? undefined,
+      ...analyticsContext,
+    }) ?? undefined;
   const detailHref = isDummy ? undefined : rawHref;
 
   const title = pickFirstString(r?.display_name, r?.name) ?? "名称不明";
@@ -76,7 +92,11 @@ function normalizeRecommendation(r: any, tid: string | null): NormalizedItem | n
   const description = pickFirstString(r?.reason) ?? "";
   const imageUrl = asTrimmedString(r?.photo_url);
   const breakdown = r?.breakdown ?? null;
+  const breakdownDetail = r?.breakdown_detail ?? r?.breakdownDetail ?? null;
   const reasonFacts = r?.reason_facts ?? r?.reasonFacts ?? null;
+  const trustMetadata = r?.trust_metadata ?? r?.trustMetadata ?? null;
+  const historyTheme = pickFirstString(r?.history_theme, r?.historyTheme);
+  const historyContext = pickFirstString(r?.history_context, r?.historyContext);
 
   if (shrineId) {
     return {
@@ -88,7 +108,11 @@ function normalizeRecommendation(r: any, tid: string | null): NormalizedItem | n
       description,
       imageUrl,
       breakdown,
+      breakdown_detail: breakdownDetail,
       reasonFacts,
+      trustMetadata,
+      historyTheme,
+      historyContext,
       detailHref,
       isDummy,
       goriyakuTags: [],
@@ -105,7 +129,11 @@ function normalizeRecommendation(r: any, tid: string | null): NormalizedItem | n
       description,
       imageUrl,
       breakdown,
+      breakdown_detail: breakdownDetail,
       reasonFacts,
+      trustMetadata,
+      historyTheme,
+      historyContext,
       detailHref,
       isDummy,
       detailLabel: "神社の詳細を見る",
@@ -152,7 +180,7 @@ function dedupeItems(items: NormalizedItem[]): NormalizedItem[] {
     if (!k) continue;
 
     if (seenPlace.has(k)) {
-      // ★ breakdown だけ救出
+      // ★ breakdown / breakdown_detail を救出
       const idx = registeredByPlace.get(k);
       if (idx != null) {
         const reg = out[idx];
@@ -162,7 +190,29 @@ function dedupeItems(items: NormalizedItem[]): NormalizedItem[] {
           item.breakdown &&
           typeof item.breakdown === "object"
         ) {
-          out[idx] = { ...reg, breakdown: item.breakdown };
+          out[idx] = { ...reg, breakdown: item.breakdown, breakdown_detail: item.breakdown_detail ?? reg.breakdown_detail ?? null };
+        }
+        if (
+          reg?.kind === "registered" &&
+          (reg.breakdown_detail == null || typeof reg.breakdown_detail !== "object") &&
+          item.breakdown_detail &&
+          typeof item.breakdown_detail === "object"
+        ) {
+          out[idx] = { ...reg, breakdown_detail: item.breakdown_detail };
+        }
+        if (
+          reg?.kind === "registered" &&
+          (reg.trustMetadata == null || typeof reg.trustMetadata !== "object") &&
+          item.trustMetadata &&
+          typeof item.trustMetadata === "object"
+        ) {
+          out[idx] = { ...reg, trustMetadata: item.trustMetadata };
+        }
+        if (reg?.kind === "registered" && !reg.historyTheme && item.historyTheme) {
+          out[idx] = { ...out[idx], historyTheme: item.historyTheme };
+        }
+        if (reg?.kind === "registered" && !reg.historyContext && item.historyContext) {
+          out[idx] = { ...out[idx], historyContext: item.historyContext };
         }
       }
       continue;
@@ -200,6 +250,15 @@ export function buildPayloadFromUnified(
   const isLimitReached = limitReached;
 
   const mode = (u as any)?.data?._signals?.mode ?? null;
+  const analyticsMode = mode?.mode === "need" || mode?.mode === "compat" ? mode.mode : undefined;
+  const analyticsFlow = mode?.flow === "A" || mode?.flow === "B" ? mode.flow : undefined;
+  const analyticsContext: DetailAnalyticsContext = {
+    mode: analyticsMode,
+    flow: analyticsFlow,
+    hasBirthdate: Boolean(filterState.birthdate?.trim()),
+    recommendationCount: Array.isArray(recs) ? recs.length : undefined,
+  };
+
   const rsRaw = (u as any)?.data?._signals?.result_state ?? (u as any)?.data?._signals?.resultState ?? null;
 
   const resultState =
@@ -240,7 +299,9 @@ export function buildPayloadFromUnified(
 
   if (!hasRecs) return null;
 
-  let items = recs.map((r: any) => normalizeRecommendation(r, tid)).filter((x): x is NormalizedItem => x !== null);
+  let items = recs
+    .map((r: any) => normalizeRecommendation(r, tid, analyticsContext))
+    .filter((x): x is NormalizedItem => x !== null);
   items = dedupeItems(items);
 
   if (items.length === 0) return null;

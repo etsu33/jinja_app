@@ -2,52 +2,38 @@
 
 import Link from "next/link";
 
-import { SectionCard } from "@/components/layout/SectionCard";
-import { HomeConciergeInlineClient } from "./HomeConciergeInlineClient";
 import { HomeNearbySection } from "./HomeNearbySection";
-import HomeGoshuinFeedSection from "@/features/home/components/HomeGoshuinFeedSection";
+import { HomeHero } from "./HomeHero";
 
 export function HomeMainClient() {
   return (
-    <div className="space-y-6">
-      <div className="space-y-2 px-1">
-        <p className="text-xs font-semibold text-emerald-700">神社コンシェルジュ</p>
-        <h1 className="text-2xl font-semibold leading-tight text-slate-950">今のあなたに合う探し方を選んでください</h1>
-        <p className="text-sm leading-6 text-slate-600">
-          迷っている時は相談から、近くで探したい時は地図から、条件が決まっている時は検索から進めます。
-        </p>
-      </div>
+    <div className="space-y-16">
+      <HomeHero />
 
-      <HomeConciergeInlineClient />
+      <section className="space-y-9">
+        <div className="space-y-2 px-1">
+          <p className="text-[9px] font-normal tracking-[0.24em] text-stone-500">QUIET PATHS</p>
+          <h2 className="text-lg font-medium text-stone-900">近くの空気を、静かにたどる</h2>
+        </div>
 
-      <div className="space-y-4 pt-2">
-        <SectionCard
-          variant="subtle"
-          title="今すぐ行きたい方へ"
-          description="位置情報をもとに、徒歩圏内の神社を優先して表示します。"
-        >
-          <div className="space-y-4">
+        <div className="space-y-10">
+          <div className="ml-2 max-w-[34rem]">
             <HomeNearbySection />
+          </div>
 
-            <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-none">
-              <p className="text-sm font-semibold text-slate-900">探したい神社が決まっている方へ</p>
-              <p className="mt-2 text-xs leading-5 text-slate-600">
-                神社名がわかる時や、縁結び・金運などのご利益から探したい時は検索ページを使えます。
-              </p>
+          <div className="ml-auto max-w-[30rem] rounded-3xl border border-stone-200/20 bg-white/55 px-6 py-10 sm:py-11">
+            <p className="text-sm font-medium text-stone-900">心に浮かぶ場所を、そっと見る</p>
+            <div className="mt-7">
               <Link
                 href="/shrines"
-                className="mt-4 inline-flex rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-emerald-200 hover:text-emerald-700"
+                className="inline-flex min-h-[36px] rounded-full border border-stone-200/55 bg-stone-50/80 px-4 py-1.5 text-sm font-normal text-stone-700 transition hover:bg-stone-100"
               >
-                神社を検索する
+                場所一覧を見る
               </Link>
             </div>
           </div>
-        </SectionCard>
-
-        <SectionCard variant="subtle" title="参拝の記録" description="みんなの御朱印から、参拝後の雰囲気を見られます。">
-          <HomeGoshuinFeedSection limit={6} />
-        </SectionCard>
-      </div>
+        </div>
+      </section>
     </div>
   );
 }

@@ -6,7 +6,7 @@ UXの肥大化と責務の混在を防ぐ。
 ### 検索（/shrines）
 
 - 目的：候補の発見と比較
-- 提供価値：**軽い判断補助**
+- 提供価値：**軽い判断補助**（主価値ではなく補助導線）
 - 表現：
   - ご利益タグ
   - 簡易的な「選ぶ理由」
@@ -34,6 +34,7 @@ UXの肥大化と責務の混在を防ぐ。
 
 - 過度な推薦ロジックは持たない
 - パーソナライズは最小限
+- 情報レイヤの詳細は `docs/shrine-detail-layer.md` を正本とする
 
 ---
 
@@ -51,6 +52,74 @@ UXの肥大化と責務の混在を防ぐ。
 - ユーザーの入力（悩み・願い）を解釈する
 - ご利益・神社特性と接続する
 - 意味のある文脈を生成する
+
+Premium 体験では、この文脈生成をパーソナル理由・相性・継続分析・保存/記録拡張へ深める。詳細は `docs/premium-experience.md` を参照する。
+
+---
+
+## Recommendation Snapshot Policy
+
+コンシェルジュ推薦結果の `score_v2` は、**推薦生成時点のスナップショット**として扱う。
+
+目的:
+
+- 過去の相談結果の再現性を保つ
+- 保存済み thread の推薦理由が後から変わることを防ぐ
+- 行動状態の現在値と、推薦生成時点の評価値を分離する
+
+### score_v2
+
+`score_v2` は推薦生成時点の評価値であり、`ConciergeThread.recommendations` / `recommendations_v2` に保存された後は再計算しない。
+
+含まれる主な要素:
+
+- user_state_match
+- shrine_meaning_match
+- context_match
+- element_match
+- distance_score
+- popularity_score
+- astro_bonus
+- behavior_signal
+- ranking_applied
+
+`behavior_signal` は Favorite / Visit / ShrineReflection など、推薦生成時点で確認できたユーザー行動を数値化したものとする。
+
+### action_state
+
+`action_state` は保存済み thread 表示時点の現在DBから判定する。
+
+想定状態:
+
+- none
+- saved
+- visited
+- reflected
+
+そのため、保存済み `score_v2.components.behavior_signal` と現在の `action_state` は一致しない場合がある。
+
+例:
+
+- 推薦生成時点では saved + visited により `behavior_signal = 6.0`
+- その後 favorite が削除され、現在DBでは visited のみ
+- thread詳細では `score_v2` は 6.0 のまま保持し、`action_state` は visited として表示する
+
+### ranking_applied
+
+`ranking_applied` は、`score_v2` を実際の推薦順位に反映したかを示す。
+
+- `false`: score_v2 は観測・説明用であり、既存ランキングには未反映
+- `true`: 新規 recommendation 生成時に score_v2 をランキングへ反映済み
+
+保存済み thread の `score_v2` は再ランキングしない。`ranking_applied=true` の適用対象は、新規 recommendation 生成時のみとする。
+
+### 責務分離
+
+- `score_v2`: 推薦生成時点の評価スナップショット
+- `action_state`: 現在DBにもとづくユーザー行動状態
+- `ranking_applied`: score_v2 が推薦順位へ反映されたかのフラグ
+
+この分離により、履歴の再現性と現在状態の表示を両立する。
 
 ---
 
@@ -78,7 +147,17 @@ UXの肥大化と責務の混在を防ぐ。
 - 投稿入口は `/shrines/new`
 - `returnTo` により検索画面へ復帰する（詳細は `docs/auth-flow.md` を参照）
 
-## 正本ドキュメント
+## 体験境界の正本ドキュメント
+
+体験境界に関する詳細仕様は以下を正本とする：
+
+- `docs/pricing.md`（free / premium の価値境界）
+- `docs/premium-experience.md`（Premium 体験境界）
+- `docs/shrine-detail-layer.md`（神社詳細の情報レイヤ）
+
+---
+
+## Shrine Submission の正本ドキュメント
 
 Shrine Submission に関する詳細仕様は以下を正本とする：
 

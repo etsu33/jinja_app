@@ -5,34 +5,27 @@ import Link from "next/link";
 
 export function HomeHero() {
   return (
-    <div className="flex flex-col gap-4 pt-2">
-      <div>
-        <div className="text-3xl mb-1">⛩</div>
-        <h1 className="text-2xl font-semibold leading-tight text-slate-950">
-          人生の節目を整理する
-          <br />
-          神社コンシェルジュ
-        </h1>
-        <p className="mt-2 text-sm leading-6 text-slate-600">
-          今の悩みや迷いを書くだけで
-          <br />
-          相性のよい神社を整理して提案します
-        </p>
+    <section className="rounded-3xl bg-stone-100/80 px-6 py-16 sm:px-10 sm:py-24">
+      <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-10 text-center">
+        <div className="space-y-4">
+          <p className="text-xs font-medium tracking-[0.35em] text-stone-500">KAMI MUSUBI</p>
+          <h1 className="text-3xl font-semibold leading-tight text-stone-900 sm:text-4xl">
+            静かに、自分を整える場所へ
+          </h1>
+          <p className="mx-auto max-w-xl text-sm leading-7 text-stone-500">
+            今の気持ちに寄り添い、静かな出会いを届けます。
+          </p>
+        </div>
+
+        <div className="flex w-full justify-center">
+          <Link
+            href="/concierge"
+            className="inline-flex min-h-10 w-full max-w-[220px] items-center justify-center rounded-full border border-emerald-200/70 bg-emerald-50/90 px-5 py-2 text-sm font-medium text-emerald-900 transition hover:bg-emerald-100"
+          >
+            相談して選ぶ
+          </Link>
+        </div>
       </div>
-
-      <Link
-        href="/concierge"
-        className="inline-flex items-center justify-center rounded-full bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 active:scale-[0.98]"
-      >
-        相談して神社を見つける
-      </Link>
-
-      <Link
-        href="/map"
-        className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-sm transition hover:border-emerald-200 hover:text-emerald-700 active:scale-[0.98]"
-      >
-        地図から神社を見る
-      </Link>
-    </div>
+    </section>
   );
 }

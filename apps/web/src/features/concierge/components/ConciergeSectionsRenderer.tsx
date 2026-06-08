@@ -1,14 +1,24 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useAuth } from "@/lib/auth/AuthProvider";
 import DetailSection from "@/components/shrine/DetailSection";
 import PlaceShrineCard from "@/components/shrine/PlaceShrineCard";
+import ShrineSaveButton from "@/components/shrine/ShrineSaveButton";
 import ConciergeFilterPanel from "@/features/concierge/components/ConciergeFilterPanel";
 import ModeBadge from "@/features/concierge/components/ModeBadge";
 import { buildRecommendationReasonViewModel } from "@/lib/concierge/buildRecommendationReasonViewModel";
 import ConciergeTopRecommendationHero from "@/features/concierge/components/ConciergeTopRecommendationHero";
-import ConciergeConsultationSummary from "@/features/concierge/components/ConciergeConsultationSummary";
 import ShrineCardCompact from "@/components/shrines/ShrineCardCompact";
+
+import { labelNeedDisplayTag } from "@/features/concierge/copy/needDisplayCopy";
+import { buildLoginHref } from "@/lib/nav/login";
+import { resolveAccessLevel } from "@/lib/premium/accessLevel";
+import { getVisibilityForCard } from "@/lib/premium/cardVisibility";
+import ConciergeConsultationSummary from "@/features/concierge/components/ConciergeConsultationSummary";
+
+import { trackCardEvent, type CardAnalyticsPayload } from "@/lib/analytics/cardEvents";
+import { trackSearchEvent } from "@/lib/analytics/searchEvents";
 
 import type {
   ConciergeSectionsPayload,
@@ -19,11 +29,17 @@ import type {
   RendererAction,
 } from "@/features/concierge/sections/types";
 
-type MetaMode = NonNullable<ConciergeSectionsPayload["meta"]>["mode"];
+import { buildConciergeCardRoutes } from "@/lib/concierge/conciergeCardRoutes";
 
+type MetaMode = NonNullable<ConciergeSectionsPayload["meta"]>["mode"];
+type AnalyticsContext = Pick<
+  CardAnalyticsPayload,
+  "mode" | "flow" | "hasBirthdate" | "recommendationCount" | "historyTheme"
+>;
 
 const conciergeSoftCardClass = "rounded-2xl border border-slate-200 bg-slate-50 shadow-sm p-4";
 const conciergeNoticeCardClass = "rounded-2xl border border-amber-200 bg-amber-50 shadow-sm p-4";
+const conciergePremiumCardClass = "rounded-2xl border border-amber-200 bg-amber-50/80 shadow-sm p-4";
 
 /**
  * Conciergeではfavorite操作を提供しない。
@@ -63,13 +79,58 @@ function AstroCard(props: { sunSign?: string; element?: string; reason?: string 
   );
 }
 
+function ConciergePremiumEntryCard(props: {
+  shrineId?: number | null;
+  tid?: string | null;
+  isGuestUser?: boolean;
+  accessLevel: "anonymous" | "free" | "premium";
+  analyticsContext?: AnalyticsContext;
+}) {
+  const href = props.isGuestUser ? buildLoginHref("/billing/upgrade") : "/billing/upgrade";
+  const ctaLabel = props.isGuestUser ? "ログインして変化を見返す" : "変化を見返せるようにする";
+  return (
+    <section className={conciergePremiumCardClass}>
+      <div className="space-y-2">
+        <p className="text-sm font-semibold leading-6 text-amber-950">
+          {props.isGuestUser
+            ? "相談を保存すると、今の状態や選んだ理由をあとから見返せます。"
+            : "Premiumでは、前回との違いや状態の変化をあとから見返せます。"}
+        </p>
+        <p className="text-xs leading-6 text-slate-600">相談内容に基づく状態整理、選んだ理由、行動の意味を記録として残せます。</p>
+        <a
+          href={href}
+          className="inline-flex items-center rounded-xl bg-amber-700 px-3 py-2 text-xs font-semibold text-white hover:bg-amber-800"
+          onClick={() => {
+            trackCardEvent({
+              event: "premium_preview_click",
+              cardId: "premium_preview",
+              source: "concierge_result",
+              accessLevel: props.accessLevel,
+              visibility: "teaser",
+              ctaType: "continue_with_premium",
+              ...props.analyticsContext,
+              shrineId: props.shrineId ?? undefined,
+              threadId: props.tid ?? undefined,
+            });
+          }}
+        >
+          {ctaLabel}
+        </a>
+      </div>
+    </section>
+  );
+}
+
 type Props = {
   payload: ConciergeSectionsPayload;
   onAction?: (action: RendererAction) => void;
   sending?: boolean;
   threadId?: number | null;
   isEntryRoute?: boolean;
+  isPremiumActive?: boolean;
+  analyticsContext?: AnalyticsContext;
 };
+
 
 function parseExtraTokens(extra: string | undefined | null): string[] {
   return (extra || "")
@@ -78,13 +139,107 @@ function parseExtraTokens(extra: string | undefined | null): string[] {
     .filter(Boolean);
 }
 
+function buildHistoryThemeDisplay(theme: string | null | undefined): { title: string; body: string } | null {
+  const normalized = typeof theme === "string" ? theme.trim() : "";
+  if (!normalized) return null;
+
+  const map: Record<string, { title: string; body: string }> = {
+    再出発: {
+      title: "歴史的には、区切りと再出発を象徴する神社です",
+      body: "過去を否定するためではなく、次へ進む前に一度流れを区切る場所として受け取りやすい候補です。",
+    },
+    静寂: {
+      title: "歴史的には、静かに整える時間を象徴する神社です",
+      body: "刺激を増やすより、外の情報から少し距離を置いて、自分の状態を見直す場所として受け取りやすい候補です。",
+    },
+    勝負: {
+      title: "歴史的には、決断や覚悟を象徴する神社です",
+      body: "結果を保証する場所ではなく、迷いを抱えながらも次に動かす方向を確認する場所として受け取りやすい候補です。",
+    },
+    縁: {
+      title: "歴史的には、人や機会との結びつきを象徴する神社です",
+      body: "関係をただ増やすのではなく、今あるつながりやこれから選びたい縁を見直す場所として受け取りやすい候補です。",
+    },
+    学び: {
+      title: "歴史的には、積み重ねと集中を象徴する神社です",
+      body: "結果だけを急ぐより、今続ける対象を絞り、努力の向け方を整える場所として受け取りやすい候補です。",
+    },
+    守り: {
+      title: "歴史的には、暮らしの土台を守ることを象徴する神社です",
+      body: "不安を消し切るためではなく、今守りたいものや生活の土台を確認する場所として受け取りやすい候補です。",
+    },
+    復興: {
+      title: "歴史的には、回復と立て直しを象徴する神社です",
+      body: "一気に元へ戻すのではなく、疲れや停滞を抱えたまま少しずつ整え直す場所として受け取りやすい候補です。",
+    },
+    浄化: {
+      title: "歴史的には、抱えたものを手放すことを象徴する神社です",
+      body: "問題を消すためではなく、抱え込みすぎた感情や情報をいったん外へ置く場所として受け取りやすい候補です。",
+    },
+    導き: {
+      title: "歴史的には、進む方向を見直すことを象徴する神社です",
+      body: "答えを与える場所ではなく、迷いの中で次に向かう方向を静かに確認する場所として受け取りやすい候補です。",
+    },
+    巡り: {
+      title: "歴史的には、流れや循環を象徴する神社です",
+      body: "停滞を責めるのではなく、止まっている流れを小さく巡らせ直す場所として受け取りやすい候補です。",
+    },
+  };
+
+  return map[normalized] ?? null;
+}
+
+function scrollToConciergeInput() {
+  if (typeof window === "undefined") return;
+
+  const scroll = () => {
+    const target = document.getElementById("concierge-input");
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+      if (target instanceof HTMLTextAreaElement || target instanceof HTMLInputElement) {
+        target.focus({ preventScroll: true });
+      }
+      return;
+    }
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  window.requestAnimationFrame(scroll);
+  window.setTimeout(scroll, 120);
+}
+
 export default function ConciergeSectionsRenderer({
   payload,
   onAction,
   sending = false,
-  threadId: _threadId = null,
+  threadId = null,
   isEntryRoute = false,
+  isPremiumActive: isPremiumActiveProp,
+  analyticsContext,
 }: Props) {
+  const trackedImpressionKeysRef = useRef<Set<string>>(new Set());
+  const trackedCardEventKeysRef = useRef<Set<string>>(new Set());
+  const [showOtherRecommendations, setShowOtherRecommendations] = useState(false);
+
+  const { isLoggedIn, loading: authLoading } = useAuth();
+  const isGuestUser = !authLoading && !isLoggedIn;
+
+  function resolveFirstResultClick(resultSetId: string) {
+    if (typeof window === "undefined") return false;
+
+    const key = `firstClick:${resultSetId}`;
+
+    try {
+      if (window.localStorage.getItem(key)) return false;
+
+      window.localStorage.setItem(key, "1");
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   useEffect(() => {
     const onOpen = () => onAction?.({ type: "add_condition" });
     window.addEventListener("concierge:open-filter", onOpen);
@@ -98,11 +253,285 @@ export default function ConciergeSectionsRenderer({
 
   const appliedTokens = parseExtraTokens(filterState?.extraCondition);
   const appliedLabel = appliedTokens.length ? `条件: ${appliedTokens.join(" / ")}` : null;
+  const normalizedModeForTracking = normalizeConciergeMode(payload?.meta?.mode);
+  const tid = threadId != null ? String(threadId) : null;
+  const isPremiumActive =
+    typeof isPremiumActiveProp === "boolean"
+      ? isPremiumActiveProp
+      : Boolean((payload?.meta as any)?.billing?.is_active || (payload?.meta as any)?.isPremiumActive);
+
+  const accessLevel = resolveAccessLevel(
+    {
+      plan: isPremiumActive ? "premium" : "free",
+      is_active: isPremiumActive,
+    },
+    !authLoading && isLoggedIn,
+  );
+
+  const premiumPreviewVisibility = getVisibilityForCard("premium_preview", accessLevel);
+  const savePromptVisibility = getVisibilityForCard("save_prompt", accessLevel);
+  const consultationSummaryVisibility = getVisibilityForCard("consultation_summary", accessLevel);
+  const shrineMeaningVisibility = getVisibilityForCard("shrine_meaning", accessLevel);
+  const actionMeaningVisibility = getVisibilityForCard("action_meaning", accessLevel);
+
+  const conciergeCardRoutes = useMemo(
+    () =>
+      buildConciergeCardRoutes([
+        { cardId: "premium_preview", visibility: premiumPreviewVisibility },
+        { cardId: "save_prompt", visibility: savePromptVisibility },
+        { cardId: "consultation_summary", visibility: consultationSummaryVisibility },
+        { cardId: "shrine_meaning", visibility: shrineMeaningVisibility },
+        { cardId: "action_meaning", visibility: actionMeaningVisibility },
+      ]),
+    [
+      actionMeaningVisibility,
+      consultationSummaryVisibility,
+      premiumPreviewVisibility,
+      savePromptVisibility,
+      shrineMeaningVisibility,
+    ],
+  );
+
+  const resultImpressions = useMemo(() => {
+    if (!payload || !Array.isArray(payload.sections)) return [];
+
+    return payload.sections.flatMap((sec: ConciergeSection) => {
+      if (sec.type !== "recommendations") return [];
+
+      const items = ((sec as any).items ?? []).filter(
+        (item: RegisteredShrineItem | PlaceShrineItem): item is RegisteredShrineItem => item.kind === "registered",
+      );
+
+      return items.map((item: RegisteredShrineItem, index: number) => ({
+        shrineId: item.shrineId,
+        name: item.title,
+        position: index === 0 ? "hero" : "compact",
+        rank: index + 1,
+        mode: normalizedModeForTracking,
+        historyTheme:
+          typeof (item as any).history_theme === "string"
+            ? (item as any).history_theme
+            : typeof (item as any).historyTheme === "string"
+              ? (item as any).historyTheme
+              : null,
+      }));
+    });
+  }, [payload, normalizedModeForTracking]);
+
+  const resultSetId = useMemo(() => {
+    const signature = resultImpressions.map((item) => `${item.rank}:${item.position}:${item.shrineId}`).join("|");
+    return `${tid ?? "unknown"}:${signature || "empty"}`;
+  }, [resultImpressions, tid]);
+
+  useEffect(() => {
+    resultImpressions.forEach((item) => {
+      const impressionKey = `${resultSetId}:concierge_result_impression:${item.shrineId}:${item.position}:${item.rank}`;
+      if (trackedImpressionKeysRef.current.has(impressionKey)) return;
+
+      trackedImpressionKeysRef.current.add(impressionKey);
+      console.log("IMPRESSION_EVENT", {
+        resultSetId,
+        item,
+        resultImpressionsLength: resultImpressions.length,
+        trackedImpressionKeysCount: trackedImpressionKeysRef.current.size,
+      });
+      trackSearchEvent("concierge_result_impression", {
+        source: "concierge_result",
+        threadId: tid ?? undefined,
+        resultSetId,
+        shrineId: item.shrineId,
+        position: item.position === "hero" ? "hero_primary" : "compact",
+        recommendationRank: item.rank,
+        mode: item.mode,
+        historyTheme: item.historyTheme ?? analyticsContext?.historyTheme,
+      });
+    });
+  }, [analyticsContext?.historyTheme, resultImpressions, resultSetId, tid]);
+
+  useEffect(() => {
+    const heroItem = resultImpressions.find((item) => item.position === "hero");
+    if (!heroItem) return;
+
+    const routeByCardId = new Map(conciergeCardRoutes.map((route) => [route.cardId, route]));
+
+    const consultationSummaryRoute = routeByCardId.get("consultation_summary");
+    if (consultationSummaryRoute) {
+      const consultationSummaryEventKey = `${resultSetId}:${consultationSummaryRoute.viewEvent}:consultation_summary`;
+
+      if (!trackedCardEventKeysRef.current.has(consultationSummaryEventKey)) {
+        trackedCardEventKeysRef.current.add(consultationSummaryEventKey);
+        trackCardEvent({
+          event: consultationSummaryRoute.viewEvent,
+          cardId: "consultation_summary",
+          source: "concierge_result",
+          accessLevel,
+          visibility: consultationSummaryRoute.visibility,
+          mode: heroItem.mode,
+          historyTheme: heroItem.historyTheme ?? analyticsContext?.historyTheme,
+          threadId: tid ?? undefined,
+          resultSetId,
+        });
+      }
+    }
+
+    const shrineMeaningRoute = routeByCardId.get("shrine_meaning");
+    if (shrineMeaningRoute) {
+      const shrineMeaningEventKey = `${resultSetId}:${shrineMeaningRoute.viewEvent}:shrine_meaning:${heroItem.shrineId}`;
+
+      if (!trackedCardEventKeysRef.current.has(shrineMeaningEventKey)) {
+        trackedCardEventKeysRef.current.add(shrineMeaningEventKey);
+        trackCardEvent({
+          event: shrineMeaningRoute.viewEvent,
+          cardId: "shrine_meaning",
+          source: "concierge_result",
+          accessLevel,
+          visibility: shrineMeaningRoute.visibility,
+          shrineId: heroItem.shrineId,
+          recommendationRank: heroItem.rank,
+          mode: heroItem.mode,
+          historyTheme: heroItem.historyTheme ?? analyticsContext?.historyTheme,
+          threadId: tid ?? undefined,
+          resultSetId,
+        });
+      }
+    }
+
+    const actionMeaningRoute = routeByCardId.get("action_meaning");
+    if (actionMeaningRoute) {
+      const actionMeaningEventKey = `${resultSetId}:${actionMeaningRoute.viewEvent}:action_meaning:${heroItem.shrineId}`;
+
+      if (!trackedCardEventKeysRef.current.has(actionMeaningEventKey)) {
+        trackedCardEventKeysRef.current.add(actionMeaningEventKey);
+        trackCardEvent({
+          event: actionMeaningRoute.viewEvent,
+          cardId: "action_meaning",
+          source: "concierge_result",
+          accessLevel,
+          visibility: actionMeaningRoute.visibility,
+          shrineId: heroItem.shrineId,
+          recommendationRank: heroItem.rank,
+          mode: heroItem.mode,
+          historyTheme: heroItem.historyTheme ?? analyticsContext?.historyTheme,
+          threadId: tid ?? undefined,
+          resultSetId,
+        });
+      }
+    }
+
+    if (!isEntryRoute) {
+      const savePromptEventKey = `${resultSetId}:save_prompt_view:${accessLevel}`;
+      if (!trackedCardEventKeysRef.current.has(savePromptEventKey)) {
+        trackedCardEventKeysRef.current.add(savePromptEventKey);
+        trackCardEvent({
+          event: "save_prompt_view",
+          cardId: "save_prompt",
+          source: "concierge_result",
+          accessLevel,
+          visibility: savePromptVisibility,
+          ctaType: isGuestUser ? "login_to_save" : "save",
+          ...analyticsContext,
+          threadId: tid ?? undefined,
+          resultSetId,
+        });
+      }
+    }
+
+    const heroEventKey = `${resultSetId}:card_view:shrine_hero:${heroItem.shrineId}`;
+    if (!trackedCardEventKeysRef.current.has(heroEventKey)) {
+      trackedCardEventKeysRef.current.add(heroEventKey);
+      trackCardEvent({
+        event: "card_view",
+        cardId: "shrine_hero",
+        source: "concierge_result",
+        accessLevel,
+        visibility: "visible",
+        shrineId: heroItem.shrineId,
+        recommendationRank: heroItem.rank,
+        mode: heroItem.mode,
+        historyTheme: heroItem.historyTheme ?? analyticsContext?.historyTheme,
+        threadId: tid ?? undefined,
+        resultSetId,
+      });
+    }
+
+    if (showOtherRecommendations) {
+      const compactItems = resultImpressions.filter((item) => item.position === "compact");
+
+      if (compactItems.length > 0) {
+        const otherShrinesEventKey = `${resultSetId}:card_view:other_shrines`;
+        if (!trackedCardEventKeysRef.current.has(otherShrinesEventKey)) {
+          trackedCardEventKeysRef.current.add(otherShrinesEventKey);
+          trackCardEvent({
+            event: "card_view",
+            cardId: "other_shrines",
+            source: "concierge_result",
+            accessLevel,
+            visibility: "visible",
+            historyTheme: analyticsContext?.historyTheme,
+            threadId: tid ?? undefined,
+            resultSetId,
+          });
+        }
+
+        compactItems.forEach((item) => {
+          const compactEventKey = `${resultSetId}:card_view:shrine_compact:${item.shrineId}`;
+          if (trackedCardEventKeysRef.current.has(compactEventKey)) return;
+
+          trackedCardEventKeysRef.current.add(compactEventKey);
+          trackCardEvent({
+            event: "card_view",
+            cardId: "shrine_compact",
+            source: "concierge_result",
+            accessLevel,
+            visibility: "visible",
+            shrineId: item.shrineId,
+            recommendationRank: item.rank,
+            mode: item.mode,
+            historyTheme: item.historyTheme ?? analyticsContext?.historyTheme,
+            threadId: tid ?? undefined,
+            resultSetId,
+          });
+        });
+      }
+    }
+
+    if (isPremiumActive) return;
+
+    const premiumPreviewEventKey = `${resultSetId}:card_teaser_view:premium_preview:${heroItem.shrineId}`;
+    if (trackedCardEventKeysRef.current.has(premiumPreviewEventKey)) return;
+
+    trackedCardEventKeysRef.current.add(premiumPreviewEventKey);
+    trackCardEvent({
+      event: "card_teaser_view",
+      cardId: "premium_preview",
+      source: "concierge_result",
+      accessLevel,
+      visibility: "teaser",
+      shrineId: heroItem.shrineId,
+      recommendationRank: heroItem.rank,
+      mode: heroItem.mode,
+      historyTheme: heroItem.historyTheme ?? analyticsContext?.historyTheme,
+      threadId: tid ?? undefined,
+      resultSetId,
+    });
+  }, [
+    accessLevel,
+    analyticsContext,
+    conciergeCardRoutes,
+    isGuestUser,
+    isPremiumActive,
+    isEntryRoute,
+    resultImpressions,
+    resultSetId,
+    savePromptVisibility,
+    showOtherRecommendations,
+    tid,
+  ]);
 
   if (!payload || !Array.isArray(payload.sections) || payload.sections.length === 0) return null;
 
   return (
-    <div className="mx-auto w-full max-w-md min-w-0 space-y-4 pb-0">
+    <div className="mx-auto w-full max-w-md min-w-0 space-y-4 pb-0 lg:max-w-2xl">
       {payload.sections.map((sec: ConciergeSection, i: number) => {
         switch (sec.type) {
           case "guide":
@@ -113,9 +542,7 @@ export default function ConciergeSectionsRenderer({
             const title = (sec as any).title ?? "条件を追加して絞る";
 
             const canApplyCompatFilter =
-              !!state.birthdate?.trim() ||
-              (state.selectedTagIds?.length ?? 0) > 0 ||
-              !!state.extraCondition?.trim();
+              !!state.birthdate?.trim() || (state.selectedTagIds?.length ?? 0) > 0 || !!state.extraCondition?.trim();
 
             // 閉じ状態（プリセット選択 + 即絞り）
             if (!state.isOpen) {
@@ -165,16 +592,19 @@ export default function ConciergeSectionsRenderer({
                       </div>
                     )}
 
-                    {!isEntryRoute && (
+                    {!isEntryRoute ? (
                       <button
                         type="button"
                         className="mt-2 w-full rounded-xl border px-4 py-3 text-sm font-semibold"
-                        onClick={() => onAction?.({ type: "back_to_entry" })}
+                        onClick={() => {
+                          onAction?.({ type: "back_to_entry" });
+                          scrollToConciergeInput();
+                        }}
                         disabled={sending}
                       >
                         入口に戻る
                       </button>
-                    )}
+                    ) : null}
 
                     <button
                       type="button"
@@ -208,6 +638,7 @@ export default function ConciergeSectionsRenderer({
                       title={title}
                       onClose={() => onAction?.({ type: "filter_close" })}
                       onApply={() => {
+                        console.log("RENDERER_FILTER_APPLY_ACTION", { canApplyCompatFilter, state });
                         onAction?.({ type: "filter_apply" });
                       }}
                       canApply={canApplyCompatFilter}
@@ -231,8 +662,6 @@ export default function ConciergeSectionsRenderer({
             );
           }
 
-            
-
           case "recommendations": {
             const items = (sec as any).items ?? [];
 
@@ -245,34 +674,7 @@ export default function ConciergeSectionsRenderer({
               (typeof rs?.ui_disclaimer_ja === "string" && rs.ui_disclaimer_ja) ||
               (hasDummy ? "条件に合う候補が少ないため、まずは選びやすい候補から表示しています。" : null);
 
-            const topRegisteredItem = items.find(
-              (x: RegisteredShrineItem | PlaceShrineItem) => x.kind === "registered",
-            ) as RegisteredShrineItem | undefined;
-
             const normalizedMode = normalizeConciergeMode(payload?.meta?.mode);
-
-            const topReasonVm =
-              topRegisteredItem && topRegisteredItem.kind === "registered"
-                ? buildRecommendationReasonViewModel({
-                    rec: {
-                      display_name: topRegisteredItem.title,
-                      name: topRegisteredItem.title,
-                      breakdown: topRegisteredItem.breakdown ?? null,
-                      reason: topRegisteredItem.description ?? null,
-                      fallback_mode: payload?.meta?.resultState?.fallback_mode ?? null,
-                      distance_m: (topRegisteredItem as any).distance_m ?? null,
-                      popular_score: (topRegisteredItem as any).popular_score ?? null,
-                      astro_elements: (topRegisteredItem as any).astro_elements ?? null,
-                      astro_priority: (topRegisteredItem as any).astro_priority ?? null,
-                      explanation: (topRegisteredItem as any).explanation ?? null,
-                      reason_facts: (topRegisteredItem as any).reasonFacts ?? null,
-                    },
-                    index: 0,
-                    mode: normalizedMode,
-                    birthdate: filterState?.birthdate ?? null,
-                    needTags: topRegisteredItem.breakdown?.matched_need_tags ?? [],
-                  })
-                : null;
 
             const registeredItems = items.filter(
               (x: RegisteredShrineItem | PlaceShrineItem): x is RegisteredShrineItem => x.kind === "registered",
@@ -290,16 +692,6 @@ export default function ConciergeSectionsRenderer({
                 <div className="mb-2 flex items-center justify-end">
                   <ModeBadge mode={payload?.meta?.mode} />
                 </div>
-
-                {topReasonVm?.detail.consultationSummary ? (
-                  <div className="mb-4">
-                    <ConciergeConsultationSummary
-                      summary={topReasonVm.detail.consultationSummary}
-                      modeLabel={normalizedMode === "compat" ? "相性をもとに見ています" : "相談内容をもとに見ています"}
-                      appliedLabel={appliedLabel}
-                    />
-                  </div>
-                ) : null}
 
                 {typeof payload?.meta?.remaining === "number" && payload.meta.remaining > 0 && (
                   <div className="mb-2 text-xs leading-6 text-slate-500">
@@ -320,7 +712,7 @@ export default function ConciergeSectionsRenderer({
                       className="rounded-xl border px-4 py-3 text-sm font-semibold"
                       onClick={() => onAction?.({ type: "open_map" })}
                     >
-                      近くの候補を優先して探す
+                      近くの候補を静かに見る
                     </button>
                     <button
                       type="button"
@@ -355,6 +747,7 @@ export default function ConciergeSectionsRenderer({
                             display_name: heroItem.title,
                             name: heroItem.title,
                             breakdown: heroItem.breakdown ?? null,
+                            breakdown_detail: (heroItem as any).breakdown_detail ?? null,
                             reason: heroItem.description ?? null,
                             fallback_mode: payload?.meta?.resultState?.fallback_mode ?? null,
                             distance_m: (heroItem as any).distance_m ?? null,
@@ -369,22 +762,159 @@ export default function ConciergeSectionsRenderer({
                           birthdate: filterState?.birthdate ?? null,
                           needTags: heroItem.breakdown?.matched_need_tags ?? [],
                         });
+                        const trustMetadata = (heroItem as any).trustMetadata ?? null;
+                        const trustLabels = [
+                          trustMetadata?.rank_class ?? trustMetadata?.rankClass,
+                          ...(trustMetadata?.cultural_status ?? trustMetadata?.culturalStatus ?? []),
+                          trustMetadata?.lineage,
+                        ].filter(Boolean);
+
+                        const historyTheme =
+                          typeof (heroItem as any).history_theme === "string"
+                            ? (heroItem as any).history_theme
+                            : typeof (heroItem as any).historyTheme === "string"
+                              ? (heroItem as any).historyTheme
+                              : null;
+                        const historyContext =
+                          typeof (heroItem as any).history_context === "string"
+                            ? (heroItem as any).history_context
+                            : typeof (heroItem as any).historyContext === "string"
+                              ? (heroItem as any).historyContext
+                              : null;
+                        const historyThemeDisplay = historyContext
+                          ? {
+                              title: "この神社が歴史的に象徴すること",
+                              body: historyContext,
+                            }
+                          : buildHistoryThemeDisplay(historyTheme);
 
                         return (
                           <div key={`rec-${i}-hero-${heroItem.shrineId}`} className="space-y-2">
+                            {consultationSummaryVisibility !== "hidden" && reasonVm.detail.consultationSummary ? (
+                              <ConciergeConsultationSummary
+                                summary={reasonVm.detail.consultationSummary}
+                                modeLabel={normalizedMode === "compat" ? "相性ベース" : "悩みベース"}
+                              />
+                            ) : null}
+
                             <ConciergeTopRecommendationHero
                               name={heroItem.title}
                               href={heroItem.detailHref}
                               imageUrl={heroItem.imageUrl}
                               address={null}
                               topReasonLabel={reasonVm.hero.topReasonLabel ?? null}
+                              eyebrowLabel={reasonVm.hero.eyebrowLabel ?? null}
+                              subtitle={reasonVm.hero.subtitle ?? null}
                               catchCopy={reasonVm.hero.catchCopy}
-                              whyTop={reasonVm.rank.whyTop ?? null}
-                              primaryReason={reasonVm.list.primaryPhrase}
-                              secondaryReason={reasonVm.list.secondaryPhrase ?? null}
-                              differenceFromOthers={reasonVm.rank.differenceFromOthers ?? null}
-                              tags={(heroItem.breakdown?.matched_need_tags ?? []).slice(0, 3)}
-                              onRouteClick={() => onAction?.({ type: "open_map" })}
+                              whyTop={null}
+                              primaryReason={null}
+                              secondaryReason={null}
+                              differenceFromOthers={null}
+                              tags={(heroItem.breakdown?.matched_need_tags ?? []).map(labelNeedDisplayTag).slice(0, 3)}
+                              actionSuggestions={(heroItem as any).actionSuggestions ?? []}
+                              analyticsSource="concierge_result"
+                              threadId={tid ?? null}
+                              resultSetId={resultSetId}
+                              shrineId={heroItem.shrineId}
+                              recommendationRank={1}
+                              historyTheme={historyTheme ?? analyticsContext?.historyTheme ?? null}
+                              routeLabel="神社の詳細を見る"
+                              onDetailClick={() =>
+                                trackSearchEvent("shrine_detail_transition", {
+                                  source: "concierge_result",
+                                  threadId: tid ?? undefined,
+                                  resultSetId,
+                                  position: "hero_primary",
+                                  recommendationRank: 1,
+                                  shrineId: heroItem.shrineId,
+                                  mode: analyticsContext?.mode ?? normalizedMode,
+                                  flow: analyticsContext?.flow,
+                                  hasBirthdate: analyticsContext?.hasBirthdate,
+                                  recommendationCount: analyticsContext?.recommendationCount,
+                                  historyTheme: historyTheme ?? analyticsContext?.historyTheme,
+                                  firstClick: resolveFirstResultClick(resultSetId),
+                                })
+                              }
+                            />
+
+                            {trustMetadata ? (
+                              <section className={conciergeSoftCardClass}>
+                                <div className="space-y-2">
+                                  <div className="flex flex-wrap gap-1">
+                                    {trustLabels.slice(0, 4).map((label: string) => (
+                                      <span
+                                        key={label}
+                                        className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600"
+                                      >
+                                        {label}
+                                      </span>
+                                    ))}
+                                  </div>
+                                  {trustMetadata.origin_summary || trustMetadata.originSummary ? (
+                                    <p className="text-xs leading-6 text-slate-600">
+                                      {trustMetadata.origin_summary ?? trustMetadata.originSummary}
+                                    </p>
+                                  ) : null}
+                                </div>
+                              </section>
+                            ) : null}
+
+                            {shrineMeaningVisibility !== "hidden" ? (
+                              <section className={conciergeSoftCardClass}>
+                                <div className="space-y-2">
+                                  <p className="text-xs font-semibold tracking-[0.12em] text-slate-500">
+                                    この神社が合う理由
+                                  </p>
+                                  <p className="text-sm leading-7 text-slate-700">{reasonVm.detail.shrineMeaning}</p>
+                                </div>
+                              </section>
+                            ) : null}
+
+                            {historyThemeDisplay ? (
+                              <section className={conciergeSoftCardClass}>
+                                <div className="space-y-2">
+                                  <p className="text-xs font-semibold tracking-[0.12em] text-slate-500">
+                                    この神社が歴史的に象徴すること
+                                  </p>
+                                  <p className="text-sm font-semibold leading-7 text-slate-800">
+                                    {historyThemeDisplay.title}
+                                  </p>
+                                  <p className="text-sm leading-7 text-slate-700">{historyThemeDisplay.body}</p>
+                                </div>
+                              </section>
+                            ) : null}
+
+                            {actionMeaningVisibility !== "hidden" ? (
+                              <section className={conciergeSoftCardClass}>
+                                <div className="space-y-2">
+                                  <p className="text-xs font-semibold tracking-[0.12em] text-slate-500">
+                                    次にできること
+                                  </p>
+                                  <p className="text-sm leading-7 text-slate-700">
+                                    {actionMeaningVisibility === "teaser"
+                                      ? "この結果を保存すると、今の状態や選んだ理由をあとから見返せます。"
+                                      : (reasonVm.detail.actionMeaning ?? reasonVm.detail.shrineMeaning)}
+                                  </p>
+                                </div>
+                              </section>
+                            ) : null}
+
+                            {premiumPreviewVisibility !== "hidden" ? (
+                              <ConciergePremiumEntryCard
+                                shrineId={heroItem.shrineId}
+                                tid={tid}
+                                isGuestUser={isGuestUser}
+                                accessLevel={accessLevel}
+                                analyticsContext={analyticsContext}
+                              />
+                            ) : null}
+
+                            <ShrineSaveButton
+                              shrineId={heroItem.shrineId}
+                              ctx="concierge"
+                              tid={tid}
+                              nextPath={heroItem.detailHref}
+                              variant="subtle"
                             />
                           </div>
                         );
@@ -393,49 +923,60 @@ export default function ConciergeSectionsRenderer({
 
                   {otherRegisteredItems.length > 0 ? (
                     <div className="pt-8">
-                      <div className="mb-2 text-sm font-semibold text-slate-900">他の候補</div>
-                      <p className="mb-3 text-xs leading-6 text-slate-500">
-                        比較候補として、今回の相談と相性のある神社も紹介します。
-                      </p>
+                      {!showOtherRecommendations ? (
+                        <button
+                          type="button"
+                          className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs font-semibold text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
+                          onClick={() => setShowOtherRecommendations(true)}
+                        >
+                          迷った時だけ、ほかの候補を見る
+                        </button>
+                      ) : (
+                        <div>
+                          <div className="mb-2 text-xs font-semibold tracking-[0.16em] text-slate-500">ほかの候補</div>
+                          <p className="mb-3 text-xs leading-5 text-slate-500">迷った時の参考です。</p>
 
-                      <div className="space-y-3">
-                        {otherRegisteredItems.map((item: RegisteredShrineItem, compactIdx: number) => {
-                          const reasonVm = buildRecommendationReasonViewModel({
-                            rec: {
-                              display_name: item.title,
-                              name: item.title,
-                              breakdown: item.breakdown ?? null,
-                              reason: item.description ?? null,
-                              fallback_mode: payload?.meta?.resultState?.fallback_mode ?? null,
-                              distance_m: (item as any).distance_m ?? null,
-                              popular_score: (item as any).popular_score ?? null,
-                              astro_elements: (item as any).astro_elements ?? null,
-                              astro_priority: (item as any).astro_priority ?? null,
-                              explanation: (item as any).explanation ?? null,
-                              reason_facts: (item as any).reasonFacts ?? null,
-                            },
-                            index: compactIdx + 1,
-                            mode: normalizedMode,
-                            birthdate: filterState?.birthdate ?? null,
-                            needTags: item.breakdown?.matched_need_tags ?? [],
-                          });
-
-                          return (
-                            <div key={`rec-${i}-compact-${item.shrineId}`} className="space-y-2">
-                              <ShrineCardCompact
-                                name={item.title}
-                                href={item.detailHref}
-                                imageUrl={item.imageUrl}
-                                address={null}
-                                summary={reasonVm.list.summary}
-                                primaryReason={reasonVm.list.primaryPhrase}
-                                tags={(item.breakdown?.matched_need_tags ?? []).slice(0, 1)}
-                                distanceM={(item as any).distance_m ?? null}
-                              />
-                            </div>
-                          );
-                        })}
-                      </div>
+                          <div className="space-y-3">
+                            {otherRegisteredItems.map((item: RegisteredShrineItem, compactIdx: number) => {
+                              return (
+                                <div key={`rec-${i}-compact-${item.shrineId}`} className="space-y-2">
+                                  <ShrineCardCompact
+                                    name={item.title}
+                                    href={item.detailHref}
+                                    imageUrl={item.imageUrl}
+                                    address={null}
+                                    summary={null}
+                                    primaryReason={null}
+                                    tags={[]}
+                                    distanceM={(item as any).distance_m ?? null}
+                                    onDetailClick={() =>
+                                      trackSearchEvent("shrine_detail_transition", {
+                                        source: "concierge_result",
+                                        threadId: tid ?? undefined,
+                                        resultSetId,
+                                        position: "compact",
+                                        recommendationRank: compactIdx + 2,
+                                        shrineId: item.shrineId,
+                                        mode: analyticsContext?.mode ?? normalizedMode,
+                                        flow: analyticsContext?.flow,
+                                        hasBirthdate: analyticsContext?.hasBirthdate,
+                                        recommendationCount: analyticsContext?.recommendationCount,
+                                        historyTheme:
+                                          typeof (item as any).history_theme === "string"
+                                            ? (item as any).history_theme
+                                            : typeof (item as any).historyTheme === "string"
+                                              ? (item as any).historyTheme
+                                              : analyticsContext?.historyTheme,
+                                        firstClick: resolveFirstResultClick(resultSetId),
+                                      })
+                                    }
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ) : null}
 
@@ -457,15 +998,29 @@ export default function ConciergeSectionsRenderer({
                     </div>
                   ) : null}
 
-                  {!isEntryRoute ? (
+                  {!isEntryRoute && savePromptVisibility !== "hidden" ? (
                     <div className="pt-4">
                       <button
                         type="button"
                         className="w-full rounded-xl border px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                        onClick={() => onAction?.({ type: "save_concierge_thread" })}
+                        onClick={() => {
+                          trackCardEvent({
+                            event: "save_prompt_click",
+                            cardId: "save_prompt",
+                            source: "concierge_result",
+                            accessLevel,
+                            visibility: savePromptVisibility,
+                            ctaType: isGuestUser ? "login_to_save" : "save",
+                            ...analyticsContext,
+                            threadId: tid ?? undefined,
+                            resultSetId,
+                          });
+
+                          onAction?.({ type: "save_concierge_thread" });
+                        }}
                         disabled={sending}
                       >
-                        この相談を保存する
+                        {isGuestUser ? "ログインしてあとで見返す" : "あとで見返すために保存"}
                       </button>
                     </div>
                   ) : null}

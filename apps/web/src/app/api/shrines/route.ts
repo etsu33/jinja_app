@@ -28,6 +28,7 @@ async function passthrough(upstream: Response) {
   upstream.headers.forEach((value, key) => {
     const k = key.toLowerCase();
     if (hopByHop.has(k)) return;
+    if (k === "content-encoding" || k === "content-length") return;
     if (k === "set-cookie") {
       res.headers.append("set-cookie", value);
       return;

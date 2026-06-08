@@ -7,6 +7,11 @@ export type BillingStatus = {
   cancel_at_period_end: boolean;
 };
 
+export type BillingCheckoutSession = {
+  session_id: string;
+  checkout_url: string;
+};
+
 
 
 export async function getBillingStatus(): Promise<BillingStatus> {
@@ -16,4 +21,19 @@ export async function getBillingStatus(): Promise<BillingStatus> {
   });
   if (!res.ok) throw new Error(`billing status ${res.status}`);
   return (await res.json()) as BillingStatus;
+}
+
+export async function startBillingCheckout(): Promise<BillingCheckoutSession> {
+  const res = await fetch("/api/billings/checkout", {
+    method: "POST",
+    cache: "no-store",
+    credentials: "include",
+    headers: { Accept: "application/json" },
+  });
+
+  if (!res.ok) throw new Error(`billing checkout ${res.status}`);
+
+  const data = (await res.json()) as BillingCheckoutSession;
+  if (!data.checkout_url) throw new Error("checkout url missing");
+  return data;
 }

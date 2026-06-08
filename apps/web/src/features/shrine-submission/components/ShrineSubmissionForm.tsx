@@ -8,6 +8,7 @@ import { getGoriyakuTags } from "@/lib/api/tags";
 import { isApiError } from "@/lib/api/errors";
 import { createShrineSubmission } from "@/lib/api/shrineSubmissions";
 import { fetchShrineSuggest } from "@/lib/api/shrinesSuggest";
+import { track } from "@/lib/analytics/track";
 import type {
   ShrineSubmissionFieldErrors,
   ShrineSubmissionFormValues,
@@ -227,6 +228,11 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
         goriyaku_tags: selectedTagNames,
         note,
       });
+      track("shrine_submission_complete", {
+        q: name,
+        name: created.name ?? name,
+        status: created.status ?? "pending",
+      });
       onSubmitted(created);
       router.replace(`/shrines?q=${encodeURIComponent(name)}&submitted=1&status=pending`);
     } catch (err: unknown) {
@@ -310,7 +316,9 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
                     >
                       <p className="font-medium text-slate-900">{candidate.name}</p>
                       <p className="mt-1 text-xs font-medium text-slate-700">{candidate.address || "住所未登録"}</p>
-                      <p className="mt-1 text-[11px] text-red-700">住所が一致する場合は、既存の神社の可能性が高いです。</p>
+                      <p className="mt-1 text-[11px] text-red-700">
+                        住所が一致する場合は、既存の神社の可能性が高いです。
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -360,10 +368,15 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
               <>
                 <div className="space-y-2">
                   {nameSuggestions.map((candidate) => (
-                    <div key={candidate.id} className="rounded-lg border border-slate-200 bg-white/90 px-3 py-3 text-sm text-slate-700">
+                    <div
+                      key={candidate.id}
+                      className="rounded-lg border border-slate-200 bg-white/90 px-3 py-3 text-sm text-slate-700"
+                    >
                       <p className="font-medium text-slate-900">{candidate.name}</p>
                       <p className="mt-1 text-xs font-medium text-slate-700">{candidate.address || "住所未登録"}</p>
-                      <p className="mt-1 text-[11px] text-slate-500">住所が近い場合は、この神社と同じ可能性があります。</p>
+                      <p className="mt-1 text-[11px] text-slate-500">
+                        住所が近い場合は、この神社と同じ可能性があります。
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -423,7 +436,9 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
           </div>
           <span
             className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-              selectedTagNames.length > 0 ? "bg-emerald-600 text-white" : "bg-white text-slate-500 ring-1 ring-slate-200"
+              selectedTagNames.length > 0
+                ? "bg-emerald-600 text-white"
+                : "bg-white text-slate-500 ring-1 ring-slate-200"
             }`}
           >
             {tagStatusText}
@@ -465,7 +480,7 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
         )}
 
         {selectedTagNames.length > 0 ? (
-          <div className="rounded-xl bg-white px-3 py-2 text-xs font-medium text-emerald-800 ring-1 ring-emerald-100">
+          <div className="rounded-xl bg-white px-3 py-2 text-xs font-medium text-emerald-700 ring-1 ring-emerald-100">
             選択中: {selectedTagNames.join("、")}
           </div>
         ) : !tagsLoading && !errors.tags && tags.length > 0 ? (

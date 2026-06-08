@@ -52,6 +52,7 @@ function unifiedToConciergeResponse(u: UnifiedConciergeResponse): ConciergeRespo
         shrine_id: r?.shrine_id ?? null,
         popular_score: r?.popular_score ?? null,
         breakdown: r?.breakdown ?? null,
+        breakdown_detail: r?.breakdown_detail ?? r?.breakdownDetail ?? null,
       })),
     },
   };

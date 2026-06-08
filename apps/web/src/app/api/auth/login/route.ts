@@ -45,14 +45,6 @@ export async function POST(req: NextRequest) {
   const requestId = getRequestId(req);
   const { usernameRaw, passwordRaw } = await readCredentialsRaw(req);
 
-  console.log("[AUTH_LOGIN_INPUT]", {
-    requestId,
-    usernameRaw,
-    passwordRaw,
-    passwordLen: passwordRaw.length,
-    usernameTrimmed: usernameRaw.trim(),
-    passwordTrimmedEq: passwordRaw === passwordRaw.trim(),
-  });
 
   if (!usernameRaw || !passwordRaw) {
     return NextResponse.json({ detail: "Invalid credentials" }, { status: 400 });
@@ -71,8 +63,6 @@ export async function POST(req: NextRequest) {
       requestId,
       upstreamPath,
       username,
-      password,
-      passwordLen: password.length,
       djangoOrigin: process.env.DJANGO_ORIGIN || process.env.BACKEND_ORIGIN || "http://127.0.0.1:8000",
     });
 

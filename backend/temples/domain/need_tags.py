@@ -65,9 +65,11 @@ KEYWORDS: Dict[NeedTag, List[str]] = {
         "つらい", "辛い", "苦しい",
         "心を整えたい", "心を整える", "気持ちを整えたい", "整えたい", "癒し",
         "疲れ", "疲れて", "疲れている", "疲労",
+        "流れが悪い", "最近うまくいかない",
     ],
     "protection": [
-        "厄除", "厄払い", "浄化", "邪気", "お祓い", "災難", "守護",
+        "厄", "厄除", "厄払い", "厄を落としたい", "浄化", "邪気", "お祓い",
+        "お祓いしたい", "清めたい", "災難", "守護", "流れが悪い", "悪い流れ",
         "守って", "守ってほしい", "守られたい",
     ],
     "courage": [
@@ -93,6 +95,10 @@ KEYWORDS: Dict[NeedTag, List[str]] = {
 REGEX: Dict[NeedTag, List[re.Pattern]] = {
     "protection": [
         re.compile(r"厄(除|払)"),
+        re.compile(r"厄を落としたい"),
+        re.compile(r"流れが悪い"),
+        re.compile(r"悪い流れ"),
+        re.compile(r"清めたい"),
         re.compile(r"お祓い"),
         re.compile(r"守って"),
         re.compile(r"守られたい"),
@@ -106,6 +112,8 @@ REGEX: Dict[NeedTag, List[re.Pattern]] = {
         re.compile(r"苦しい"),
         re.compile(r"心を整え"),
         re.compile(r"疲れ(て|が|た)?"),
+        re.compile(r"流れが悪い"),
+        re.compile(r"最近うまくいかない"),
     ],
     "rest": [
         re.compile(r"(穏やか|静か|落ち着|リセット|休息|癒し|ひと息|一息)")
@@ -114,6 +122,7 @@ REGEX: Dict[NeedTag, List[re.Pattern]] = {
         re.compile(r"背中を押して"),
         re.compile(r"運を開きたい"),
         re.compile(r"流れを良くしたい"),
+        re.compile(r"流れを変えたい"),
         re.compile(r"開運(祈願)?"),
         re.compile(r"(行動|動き出|踏み出)"),
         re.compile(r"きっかけ(が)?ほしい"),
@@ -129,12 +138,17 @@ NEED_TEXT_HINTS = {
         "疲れ", "疲れている", "しんどい",
         "落ち着きたい", "落ち着ける",
         "心を整えたい", "気持ちを整えたい",
+        "流れが悪い", "最近うまくいかない",
+    ],
+    "protection": [
+        "厄", "厄を落としたい", "清めたい", "お祓いしたい", "流れが悪い",
     ],
     "rest": [
         "休みたい", "休息", "静か", "リセット", "ひと息",
     ],
     "courage": [
         "背中を押してほしい", "前向き", "一歩踏み出したい",
+        "流れを変えたい",
     ],
 }
 

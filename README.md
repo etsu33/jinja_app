@@ -17,6 +17,7 @@
 - 検索結果カードは、神社を比較するための**軽い判断補助**に留めます。
 - 神社詳細ページは、由緒・所在地・ご利益・公開御朱印などを確認する**神社の情報理解**を担います。
 - コンシェルジュは、ユーザーの相談内容と神社を結びつける**今の自分との意味づけ**を担います。
+- Premium は、Map/Search の高機能化ではなく、パーソナル理由・相性・継続分析・保存/記録拡張を担います。
 
 検索画面で過度な解釈や長い理由付けは行わず、深い意味づけはコンシェルジュ側に集約します。
 
@@ -114,6 +115,8 @@ python manage.py runserver
 ```bash
 PLACES_API_NEW=1 python manage.py runserver 8000
 ```
+
+cd /Users/morietsu/Desktop/jinja_app/backend && BILLING_STUB_PLAN=premium BILLING_STUB_ACTIVE=1 DISABLE_THROTTLE=1 python manage.py runserver 127.0.0.1:8000
 
 ### 起動時（プロジェクトルート）
 
@@ -321,6 +324,8 @@ export async function GET(req: NextRequest) {
 - **インフラ・デプロイ**: `docs/40_infra_deploy.md`
 - **TODO・ロードマップ**: `docs/90_roadmap.md`
 - **UI メモ**: `docs/ui/concierge_sp_notes.md`
+- **Premium 価値境界**: `docs/pricing.md`, `docs/premium-experience.md`
+- **神社詳細レイヤ**: `docs/shrine-detail-layer.md`
 
 ---
 
@@ -374,7 +379,7 @@ export async function GET(req: NextRequest) {
 	•	premium 判定の正本は backend billing state
 	•	フロントは billing 状態を表示・再取得するだけ
 	•	checkout 後は success / cancel / refetch を必須にする
-	•	premium UI の対象を明文化する
+	•	premium UI の対象は `docs/premium-experience.md` に従う
 	•	投稿機能は現時点では premium 条件と結びつけない
 
 ---

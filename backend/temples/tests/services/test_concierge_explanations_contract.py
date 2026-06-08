@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import copy
 
+from temples.services.concierge_explanation_payload import attach_explanation_payload
 from temples.services.concierge_explanations import attach_explanations_for_chat
 
 
@@ -145,9 +146,9 @@ def test_attach_explanations_chat_uses_element_primary_reason():
     exp = rec["explanation"]
 
     assert exp["version"] == 2
-    assert exp["summary"] == "生年月日から見た相性を中心におすすめしています。"
+    assert exp["summary"] == "生年月日から見た相性も補助的に見ながら、おすすめしています。"
     assert exp["reasons"][0]["code"] == "ELEMENT_MATCH"
-    assert exp["reasons"][0]["label"] == "生年月日との相性"
+    assert exp["reasons"][0]["label"] == "生年月日との相性補助"
 
 def test_attach_explanations_chat_uses_fallback_primary_reason():
     recs = {
@@ -189,3 +190,138 @@ def test_attach_explanations_chat_uses_fallback_primary_reason():
     assert exp["version"] == 2
     assert exp["summary"] == "今の条件に近い候補としておすすめしています。"
     assert exp["reasons"][0]["code"] == "REASON_SOURCE"
+
+
+def test_attach_explanation_payload_adds_gogyou_context_from_birthdate():
+    recs = {
+        "recommendations": [
+            {
+                "name": "神社D",
+                "reason": "旧理由",
+                "reason_source": "reason:compat",
+                "breakdown": {
+                    "score_element": 2,
+                    "score_need": 0,
+                    "score_total": 1.6,
+                    "matched_need_tags": [],
+                },
+            }
+        ]
+    }
+
+    out = attach_explanation_payload(recs, birthdate="1984-05-15")
+
+    payload = out["recommendations"][0]["_explanation_payload"]
+    assert payload["version"] == 2
+    assert payload["gogyou_context"] == {
+        "gogyou": "水",
+        "eto": "子",
+        "tone": "静かに整え直す流れ",
+    }
+
+
+def test_attach_explanations_chat_uses_gogyou_and_history_context_for_summary_and_reason():
+    recs = {
+        "recommendations": [
+            {
+                "name": "神社E",
+                "reason": "旧理由",
+                "reason_source": "reason:compat",
+                "_explanation_payload": {
+                    "version": 2,
+                    "matched_need_tags": [],
+                    "highlights": [],
+                    "primary_reason": {
+                        "type": "element",
+                        "label": "element",
+                        "label_ja": "生年月日との相性",
+                        "evidence": ["score_element:2"],
+                        "score": 2.0,
+                        "is_primary": True,
+                    },
+                    "secondary_reasons": [],
+                    "original_reason": "旧理由",
+                    "gogyou_context": {
+                        "gogyou": "水",
+                        "eto": "子",
+                        "tone": "静かに整え直す流れ",
+                    },
+                    "history_context": {
+                        "theme": "静寂",
+                        "label": "静寂",
+                        "tone": "静かに心を整える文脈",
+                    },
+                },
+            }
+        ]
+    }
+
+    out = attach_explanations_for_chat(
+        recs,
+        query="",
+        bias=None,
+        birthdate="1984-05-15",
+        extra_condition=None,
+    )
+
+    exp = out["recommendations"][0]["explanation"]
+    assert exp["version"] == 2
+    assert exp["summary"] == "今は「水」の傾向として、静かに整え直す流れと、静かに心を整える文脈が重なる神社です。"
+    assert exp["reasons"][0]["code"] == "GOGYOU_CONTEXT"
+    assert exp["reasons"][0]["label"] == "今の巡り"
+    assert exp["reasons"][0]["evidence"]["gogyou_context"]["gogyou"] == "水"
+    assert exp["reasons"][0]["evidence"]["history_context"]["theme"] == "静寂"
+
+
+def test_attach_explanation_payload_adds_action_suggestions_from_history_theme():
+    recs = {
+        "recommendations": [
+            {
+                "name": "神社Action",
+                "reason": "旧理由",
+                "reason_source": "reason:history_theme",
+                "history_theme": "勝負",
+                "breakdown": {
+                    "score_element": 0,
+                    "score_need": 1,
+                    "score_total": 1.0,
+                    "matched_need_tags": ["career"],
+                },
+            }
+        ]
+    }
+
+    out = attach_explanation_payload(recs, birthdate=None)
+
+    payload = out["recommendations"][0]["_explanation_payload"]
+    assert payload["version"] == 2
+    assert payload["action_suggestions"]
+    assert payload["action_suggestions"][0]["history_theme"] == "勝負"
+    assert payload["action_suggestions"][0]["id"] == "challenge_choose_this_week"
+    assert payload["action_suggestions"][0]["category"] == "prepare"
+
+
+def test_attach_explanation_payload_action_suggestions_fallback_when_history_theme_missing():
+    recs = {
+        "recommendations": [
+            {
+                "name": "神社FallbackAction",
+                "reason": "旧理由",
+                "reason_source": "reason:fallback",
+                "breakdown": {
+                    "score_element": 0,
+                    "score_need": 0,
+                    "score_total": 0.0,
+                    "matched_need_tags": [],
+                },
+            }
+        ]
+    }
+
+    out = attach_explanation_payload(recs, birthdate=None)
+
+    payload = out["recommendations"][0]["_explanation_payload"]
+    assert payload["version"] == 2
+    assert payload["history_context"] is None
+    assert payload["action_suggestions"]
+    assert payload["action_suggestions"][0]["history_theme"] == "静寂"

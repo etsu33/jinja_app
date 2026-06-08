@@ -6,7 +6,12 @@ from drf_spectacular.utils import extend_schema
 from rest_framework.routers import DefaultRouter
 
 from temples import api_views_concierge as concierge
-from temples.api.views.billing import BillingStatusLegacyView, BillingStatusView
+from temples.api.views.billing import (
+    BillingCheckoutView,
+    BillingStatusLegacyView,
+    BillingStatusView,
+    BillingStripeWebhookView,
+)
 from temples.api.views.compat import concierge_chat_compat
 from temples.api.views.concierge import (
     ConciergeThreadDetailView,
@@ -36,12 +41,18 @@ from temples.api.views.shrine import (
 )
 from temples.api.views.shrine_public import PublicShrineDetailView
 from temples.api.views.tags import goriyaku_tags_list
+from temples.api.views.shrine_meaning import ShrineMeaningView
+from temples.api.views.visit import VisitCreateView, UserVisitListView
+from temples.api.views.reflection import ShrineReflectionCreateView
+from temples.api.views.shrine_interaction import ShrineInteractionLogCreateView
+from temples.api.views.action_event import ActionEventCreateView
+from temples.api.views.debug_behavior_funnel import DebugBehaviorFunnelView
 from temples.api_views import FavoriteViewSet
+
 
 app_name = "temples"
 
 
-# geocode 名称ゆれ吸収
 try:
     from temples.api.views.geocode import search as geocode_search
 except ImportError:
@@ -52,8 +63,6 @@ try:
 except ImportError:
     from temples.api.views.geocode import reverse_geocode as geocode_reverse  # type: ignore
 
-
-# route フォールバック
 try:
     from temples.api.views.route import RouteAPIView, RouteView, route_health, route_legacy  # type: ignore
 except Exception:
@@ -62,8 +71,6 @@ except Exception:
     def route_health(request):
         return JsonResponse({"status": "ok", "service": "route"})
 
-
-# /api/places/<id>/ のショート版フォールバック
 try:
     from temples.api.views.search import detail_short  # type: ignore
 except Exception:
@@ -90,8 +97,6 @@ router.register(r"my/goshuins", MyGoshuinViewSet, basename="my-goshuins")
 router.register(r"shrines", ShrineViewSet, basename="shrine")
 router.register(r"favorites", FavoriteViewSet, basename="favorite")
 
-
-# ViewSet の明示エイリアス
 shrine_list_view = ShrineViewSet.as_view({"get": "list", "post": "create"})
 shrine_detail_view = ShrineViewSet.as_view({"get": "retrieve"})
 
@@ -103,40 +108,36 @@ def concierge_chat_compat_noslash(request, *args, **kwargs):
 
 
 urlpatterns = [
-    # ---- Routes -----------------------------------------------------------
     path("routes/", RouteAPIView.as_view(), name="routes"),
     path("shrines/<int:pk>/route/", RouteView.as_view(), name="shrine_route"),
     path("routes/health/", route_health, name="route_health"),
     path("route/", route_legacy, name="route-legacy"),
-
-    # ---- Shrines ----------------------------------------------------------
     path("shrines/", shrine_list_view, name="shrine_list"),
     path("shrines/<int:pk>/", shrine_detail_view, name="shrine_detail"),
     path("shrines/<int:pk>/data/", shrine_detail_view, name="shrine_detail_data"),
+    path("shrines/<int:pk>/meaning/", ShrineMeaningView.as_view(), name="shrine_meaning"),
     path("shrines/nearby/", NearestShrinesAPIView.as_view(), name="nearby"),
+    path("shrines/<int:id>/visit/", VisitCreateView.as_view(), name="shrine-visit"),
+    path("shrines/<int:pk>/reflection/", ShrineReflectionCreateView.as_view(), name="shrine-reflection-create"),
+    path("shrine-interactions/", ShrineInteractionLogCreateView.as_view(), name="shrine-interaction-create"),
+    path("action-events/", ActionEventCreateView.as_view(), name="action-event-create"),
+    path("debug/behavior-funnel/", DebugBehaviorFunnelView.as_view(), name="debug-behavior-funnel"),
+    path("visits/", UserVisitListView.as_view(), name="visit-list"),
     path("public/shrines/<int:pk>/", PublicShrineDetailView.as_view(), name="public-shrine-detail"),
-
-    # ---- Popular ----------------------------------------------------------
     path("populars/", PopularShrineListView.as_view(), name="popular-shrines"),
-
-    # ---- Concierge --------------------------------------------------------
     path("concierge/chat/", concierge_chat_compat, name="concierge-chat"),
     path("concierge/chat", concierge_chat_compat_noslash, name="concierge-chat-noslash"),
     path("concierge/plan/", concierge.plan, name="concierge-plan"),
-    path("concierge/thread/", concierge.thread, name="concierge-thread"), 
+    path("concierge/thread/", concierge.thread, name="concierge-thread"),
     path("concierge-threads/", ConciergeThreadListView.as_view(), name="concierge-thread-list"),
     path("concierge-threads/<int:pk>/", ConciergeThreadDetailView.as_view(), name="concierge-thread-detail"),
-
-    # ---- Billing ----------------------------------------------------------
     path("billing/status/", BillingStatusLegacyView.as_view(), name="billing-status-legacy"),
+    path("billings/checkout/", BillingCheckoutView.as_view(), name="billing-checkout"),
     path("billings/status/", BillingStatusView.as_view(), name="billing-status"),
-
-    # ---- Profiles / Tags / Feed ------------------------------------------
+    path("billings/webhook/", BillingStripeWebhookView.as_view(), name="billing-stripe-webhook"),
     path("profiles/<str:username>/", public_profile, name="public_profile"),
     path("goriyaku-tags/", goriyaku_tags_list, name="goriyaku-tags"),
     path("goshuins/feed/", PublicGoshuinFeedView.as_view(), name="public-goshuin-feed"),
-
-    # ---- Places -----------------------------------------------------------
     path("places/search/", search, name="places-search"),
     path("places/text-search/", text_search, name="places-text-search"),
     path("places/text_search/", text_search_legacy, name="places-text-search-legacy"),
@@ -150,13 +151,9 @@ urlpatterns = [
     path("places/resolve/", PlacesResolveView.as_view(), name="places-resolve"),
     path("places/<str:id>/", detail_short, name="places-detail-short"),
     path("place-caches/", place_cache_list, name="place-cache-list"),
-
-    # ---- Geocodes ---------------------------------------------------------
     path("geocodes/search/", geocode_search, name="geocodes-search"),
     path("geocodes/reverse/", geocode_reverse, name="geocodes-reverse"),
     path("geocode/search/", geocode_search_legacy, name="geocode-search-legacy"),
     path("geocode/reverse/", geocode_reverse_legacy, name="geocode-reverse-legacy"),
-
-    # ---- Router -----------------------------------------------------------
     path("", include(router.urls)),
 ]

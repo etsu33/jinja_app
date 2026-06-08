@@ -35,7 +35,7 @@ describe("buildRecommendationReasonViewModel", () => {
     expect(vm.inputType).toBe("birthdate");
     expect(vm.why.reasonKeys.primary).toBe("element_match");
     expect(vm.why.primaryReason.length).toBeGreaterThan(0);
-    expect(vm.hero.topReasonLabel).toBe("相性との一致が強い");
+    expect(vm.hero.topReasonLabel).toBe("生年月日との重なりが強い");
   });
 
   it("fallback時に need文が出ない", () => {
@@ -132,7 +132,7 @@ describe("buildRecommendationReasonViewModel", () => {
     expect(samples).toMatchSnapshot();
   });
 
-  it("③の shrineMeaning が 2文構造で今ここに行く意味になる", () => {
+  it("③の shrineMeaning が神社側の意味だけに絞られる", () => {
     const cases = [
       {
         label: "厄除け",
@@ -200,13 +200,25 @@ describe("buildRecommendationReasonViewModel", () => {
       const vm = buildRecommendationReasonViewModel(sample.params);
       const sentences = vm.detail.shrineMeaning.match(/[^。]+。/g) ?? [];
 
-      expect(sentences, sample.label).toHaveLength(2);
-      expect(vm.detail.shrineMeaning, sample.label).toContain("今は、");
+      expect(sentences, sample.label).toHaveLength(1);
       expect(vm.detail.shrineMeaning, sample.label).toMatch(/置きやすい場所です/);
+      expect(vm.detail.shrineMeaning, sample.label).not.toContain("今は、");
       expect(vm.detail.shrineMeaning, sample.label).not.toContain("ご利益");
       expect(vm.detail.shrineMeaning, sample.label).not.toContain("由緒");
       expect(vm.detail.shrineMeaning, sample.label).not.toBe(vm.detail.heroMeaningCopy);
     }
+  });
+
+  it("actionMeaning が次の向き合い方を補完する", () => {
+    const vm = buildRecommendationReasonViewModel({
+      rec: { breakdown: { matched_need_tags: ["転機"] }, fallback_mode: "none" },
+      index: 0,
+      mode: "need",
+      needTags: ["転機"],
+    });
+
+    expect(vm.detail.actionMeaning).toContain("どこを切り替えるかを見直す");
+    expect(vm.detail.actionMeaning).not.toBe(vm.detail.shrineMeaning);
   });
 
   it("reason_facts.primary_axis=distance を優先できる", () => {

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import ShrineSaveButton from "../ShrineSaveButton";
@@ -6,6 +6,7 @@ import ShrineSaveButton from "../ShrineSaveButton";
 const pushMock = vi.fn();
 const useAuthMock = vi.fn();
 const useFavoriteMock = vi.fn();
+const trackMock = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -19,6 +20,10 @@ vi.mock("@/lib/auth/AuthProvider", () => ({
 
 vi.mock("@/hooks/useFavorite", () => ({
   useFavorite: (args: unknown) => useFavoriteMock(args),
+}));
+
+vi.mock("@/lib/analytics/track", () => ({
+  track: (...args: unknown[]) => trackMock(...args),
 }));
 
 describe("ShrineSaveButton", () => {
@@ -42,6 +47,8 @@ describe("ShrineSaveButton", () => {
     const { rerender } = render(
       <ShrineSaveButton
         shrineId={17}
+        ctx="concierge"
+        tid="thread-123"
         nextPath="/shrines/17?ctx=concierge"
         guestMode={false}
         initial={{
@@ -57,6 +64,18 @@ describe("ShrineSaveButton", () => {
 
     expect(toggleMock).toHaveBeenCalledTimes(1);
 
+    await waitFor(() => {
+      expect(trackMock).toHaveBeenCalledWith("favorite_click", {
+        shrineId: 17,
+        ctx: "concierge",
+        tid: "thread-123",
+        nextFav: false,
+        source: "shrine_detail",
+        cardId: "saved_record",
+        accessLevel: "free",
+      });
+    });
+
     useFavoriteMock.mockImplementation(() => ({
       fav: false,
       busy: false,
@@ -66,6 +85,8 @@ describe("ShrineSaveButton", () => {
     rerender(
       <ShrineSaveButton
         shrineId={17}
+        ctx="concierge"
+        tid="thread-123"
         nextPath="/shrines/17?ctx=concierge"
         guestMode={false}
         initial={{
@@ -75,7 +96,7 @@ describe("ShrineSaveButton", () => {
       />,
     );
 
-    expect(screen.getByRole("button", { name: "保存する" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "あとで見返すために保存" })).toBeInTheDocument();
     expect(pushMock).not.toHaveBeenCalled();
   });
 
@@ -102,5 +123,6 @@ describe("ShrineSaveButton", () => {
 
     expect(await screen.findByText("保存の更新に失敗しました")).toBeInTheDocument();
     expect(pushMock).not.toHaveBeenCalled();
+    expect(trackMock).not.toHaveBeenCalled();
   });
 });

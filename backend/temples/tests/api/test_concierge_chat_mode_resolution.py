@@ -60,6 +60,7 @@ def patch_chat_dependencies(monkeypatch):
         extra_condition,
         public_mode,
         flow,
+        user=None,
     ):
         captured["query"] = query
         captured["birthdate"] = birthdate
@@ -258,3 +259,35 @@ def test_chat_explicit_need_wins_even_with_birthdate(client, patch_chat_dependen
     assert patch_chat_dependencies["flow"] == "A"
     assert patch_chat_dependencies["query"] == "試験に向けて気持ちを整えたい"
     assert patch_chat_dependencies["birthdate"] == "1991-05-10"
+
+
+@pytest.mark.django_db
+def test_chat_filters_extra_condition_resolves_to_flow_b(client, patch_chat_dependencies):
+    res = client.post(
+        "/api/concierge/chat/",
+        {
+            "query": "自然を感じながら参拝したい",
+            "filters": {
+                "extra_condition": "自然や緑を感じられる神社がいい",
+            },
+            "lat": 35.681236,
+            "lng": 139.767125,
+        },
+        format="json",
+    )
+
+    assert res.status_code == 200, res.content
+
+    body = res.json()
+
+    assert body["_debug"]["mode"] == "need"
+    assert body["_debug"]["flow"] == "B"
+
+    assert patch_chat_dependencies["public_mode"] == "need"
+    assert patch_chat_dependencies["flow"] == "B"
+    assert patch_chat_dependencies["query"] == "自然を感じながら参拝したい"
+
+    signals = body["data"].get("_signals") or {}
+    mode_meta = signals.get("mode") or {}
+    assert mode_meta.get("mode") == "need"
+    assert mode_meta.get("flow") == "B"
