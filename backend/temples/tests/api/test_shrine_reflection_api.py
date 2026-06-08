@@ -74,6 +74,10 @@ def test_create_shrine_reflection_authenticated():
     assert body["answer"] == "境内を歩いたことで、考えが少し整理されました。"
     assert body["mood_before"] == "anxious"
     assert body["mood_after"] == "calm"
+    assert body["state_change_direction"] == "unknown"
+    assert body["state_change_summary"] == "参拝後の状態変化はまだ明確には判定できません。 次回推薦では、振り返り内容を補助情報として扱います。"
+    assert body["next_need_hint"] == []
+    assert body["next_history_theme_hint"] == ["静寂"]
 
     reflection = ShrineReflection.objects.get(id=body["id"])
     assert reflection.user_id == user.id
