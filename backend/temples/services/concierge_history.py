@@ -17,6 +17,8 @@ from temples.models import (
     Visit,
 )
 
+from temples.services.reflection_state_change import build_reflection_state_change
+
 
 HistoryActionState = str
 
@@ -184,6 +186,38 @@ def calculate_shrine_behavior_signal_v2(*, user, shrine_id: int | None) -> float
         score += 4.0 * _recency_multiplier(reflection_latest)
 
     return min(score, 10.0)
+
+
+def build_recent_reflection_hint(*, user, shrine_id: int | None = None) -> dict[str, Any] | None:
+    """Return the latest reflection-derived hint for recommendation support.
+
+    This helper exposes reflection content as a safe audit payload only.
+    It does not change ranking by itself.
+    """
+    if user is None or not getattr(user, "is_authenticated", False):
+        return None
+
+    qs = ShrineReflection.objects.filter(user=user).select_related("shrine")
+    if shrine_id is not None:
+        qs = qs.filter(shrine_id=shrine_id)
+
+    reflection = qs.order_by("-created_at").first()
+    if reflection is None:
+        return None
+
+    state_change = build_reflection_state_change(reflection)
+
+    return {
+        "state_change_direction": state_change.state_change_direction,
+        "state_change_summary": state_change.state_change_summary,
+        "next_need_hint": state_change.next_need_hint,
+        "next_history_theme_hint": state_change.next_history_theme_hint,
+        "source_reflection_id": reflection.id,
+        "source_shrine_id": reflection.shrine_id,
+        "source_shrine_name": getattr(reflection.shrine, "name_jp", "") or "",
+        "source_history_theme": reflection.history_theme,
+        "created_at": reflection.created_at.isoformat() if reflection.created_at else None,
+    }
 
 
 @dataclass
