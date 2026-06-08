@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional, TypedDict
 from temples.domain.need_to_goriyaku_tag_ids import need_tags_to_goriyaku_ids
 from temples.services.concierge_history import (
     build_recent_reflection_hint,
-    calculate_shrine_behavior_signal_v2,
+    calculate_shrine_behavior_signal_breakdown,
     classify_shrine_action_state,
 )
 from typing import Literal
@@ -661,10 +661,13 @@ def _attach_breakdown(
     except (TypeError, ValueError):
         shrine_id_int = None
 
-    behavior_signal = calculate_shrine_behavior_signal_v2(
+    behavior_breakdown = calculate_shrine_behavior_signal_breakdown(
         user=user,
         shrine_id=shrine_id_int,
     )
+    behavior_signal = float(behavior_breakdown.get("total") or 0.0)
+    visit_signal = float(behavior_breakdown.get("visit_signal") or 0.0)
+    reflection_signal = float(behavior_breakdown.get("reflection_signal") or 0.0)
     action_state = classify_shrine_action_state(
         user=user,
         shrine_id=shrine_id_int,
@@ -759,6 +762,11 @@ def _attach_breakdown(
                 "capped_contribution": float(capped_behavior_contribution),
                 "cap": float(behavior_cap),
                 "ratio": float(behavior_ratio),
+                "detail_view_signal": float(behavior_breakdown.get("detail_view_signal") or 0.0),
+                "route_open_signal": float(behavior_breakdown.get("route_open_signal") or 0.0),
+                "save_signal": float(behavior_breakdown.get("save_signal") or 0.0),
+                "visit_signal": float(visit_signal),
+                "reflection_signal": float(reflection_signal),
             },
             "reflection_hint": reflection_hint,
             "direction_bonus": {
@@ -792,6 +800,8 @@ def _attach_breakdown(
             "behavior_contribution": float(behavior_contribution),
             "capped_behavior_contribution": float(capped_behavior_contribution),
             "behavior_ratio": float(behavior_ratio),
+            "visit_signal": float(visit_signal),
+            "reflection_signal": float(reflection_signal),
             "direction_bonus": float(direction_bonus),
             "direction_reason": direction_reason,
         },
@@ -802,6 +812,7 @@ def _attach_breakdown(
             "matched_by_gid": matched_by_gid,
             "matched_visit_style_tags": matched_visit_style_tags,
             "matched_user_selected_goriyaku_tag_ids": matched_by_user_selected_gid,
+            "behavior_breakdown": behavior_breakdown,
             "reflection_hint": reflection_hint,
         },
     }
