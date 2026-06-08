@@ -112,12 +112,59 @@ def _get_history_context(payload: Dict[str, Any]) -> Dict[str, Any]:
         return value
     return {}
 
+
 def _get_visit_style_feature(rec: Dict[str, Any]) -> Dict[str, Any]:
     features = (rec.get("breakdown_detail") or {}).get("features") or {}
     visit_style = features.get("visit_style")
     if isinstance(visit_style, dict):
         return visit_style
     return {}
+
+
+# need tag と history theme の組み合わせから説明文を生成
+def _build_history_alignment_text(
+    *,
+    matched_need_tags: Optional[List[str]],
+    history_context: Optional[Dict[str, Any]],
+) -> Optional[str]:
+    tags = {
+        str(tag).strip()
+        for tag in (matched_need_tags or [])
+        if str(tag).strip()
+    }
+    history_label = str((history_context or {}).get("label") or "").strip()
+
+    if not tags or not history_label:
+        return None
+
+    if history_label == "静寂":
+        if {"career", "mental"}.issubset(tags):
+            return "転職や仕事の不安を急いで結論づける前に、気持ちを落ち着けて次の判断を整理する文脈として受け取りやすい神社です。"
+        if {"mental", "rest"}.issubset(tags):
+            return "疲れや不安をゆるめ、静かに心を整え直す文脈として受け取りやすい神社です。"
+        if "courage" in tags:
+            return "一歩踏み出す前に、気持ちを静かに整えてから動き出す文脈として受け取りやすい神社です。"
+
+    if history_label == "守り":
+        if "travel_safe" in tags:
+            return "移動や出張の前に、安全に進むための備えを整える文脈として受け取りやすい神社です。"
+        if "protection" in tags:
+            return "厄除けや身を守りたい気持ちを、不安を煽らずに整える文脈として受け取りやすい神社です。"
+        if "mental" in tags:
+            return "不安を抱えたまま進むのではなく、自分を守る境界線を整える文脈として受け取りやすい神社です。"
+
+    if history_label == "勝負":
+        if {"career", "courage"}.issubset(tags):
+            return "仕事や転機に向き合い、次の一歩を選ぶための勝負前の整理として受け取りやすい神社です。"
+        if "courage" in tags:
+            return "迷いを抱えたまま勢いで進むのではなく、踏み出す対象を一つに絞る文脈として受け取りやすい神社です。"
+        if "money" in tags:
+            return "金運を結果として求めるだけでなく、事業やお金の流れをどう動かすか整理する文脈として受け取りやすい神社です。"
+
+    if history_label == "縁" and "travel_safe" in tags:
+        return "移動先や道中での人・場所とのつながりを見直し、安全に進む文脈として受け取りやすい神社です。"
+
+    return None
 
 def _build_summary_from_primary_reason(
     *,
@@ -126,11 +173,16 @@ def _build_summary_from_primary_reason(
     highlights: List[str],
     gogyou_context: Optional[Dict[str, Any]] = None,
     history_context: Optional[Dict[str, Any]] = None,
+    matched_need_tags: Optional[List[str]] = None,
 ) -> str:
     gogyou = str((gogyou_context or {}).get("gogyou") or "").strip()
     gogyou_tone = str((gogyou_context or {}).get("tone") or "").strip()
     history_label = str((history_context or {}).get("label") or "").strip()
     history_tone = str((history_context or {}).get("tone") or "").strip()
+    history_alignment_text = _build_history_alignment_text(
+        matched_need_tags=matched_need_tags,
+        history_context=history_context,
+    )
 
     if isinstance(primary_reason, dict):
         reason_type = str(primary_reason.get("type") or "").strip()
@@ -140,6 +192,9 @@ def _build_summary_from_primary_reason(
             if label_ja == "美容":
                 return "美容や見せ方を整え直したい願いと重なる候補としておすすめしています。"
             return f"{label_ja}に関わる願いごとと重なる候補としておすすめしています。"
+
+    if history_alignment_text:
+        return history_alignment_text
 
     if gogyou and gogyou_tone and history_tone:
         return f"今は「{gogyou}」の傾向として、{gogyou_tone}と、{history_tone}が重なる神社です。"
@@ -185,6 +240,7 @@ def _build_reason_entry_from_primary_reason(
     birthdate: Optional[str],
     gogyou_context: Optional[Dict[str, Any]] = None,
     history_context: Optional[Dict[str, Any]] = None,
+    matched_need_tags: Optional[List[str]] = None,
 ) -> Optional[dict]:
     if not isinstance(primary_reason, dict):
         return None
@@ -198,6 +254,10 @@ def _build_reason_entry_from_primary_reason(
     eto = str((gogyou_context or {}).get("eto") or "").strip()
     history_label = str((history_context or {}).get("label") or "").strip()
     history_tone = str((history_context or {}).get("tone") or "").strip()
+    history_alignment_text = _build_history_alignment_text(
+        matched_need_tags=matched_need_tags,
+        history_context=history_context,
+    )
 
     if reason_type == "user_selected_tag" and label_ja:
         if label_ja == "美容":
@@ -224,6 +284,18 @@ def _build_reason_entry_from_primary_reason(
                 "history_context": history_context or None,
                 "birthdate": bool(birthdate),
                 "eto": eto or None,
+            },
+        )
+
+    if history_alignment_text:
+        return _reason(
+            "HISTORY_CONTEXT",
+            "相談と神社の文脈",
+            history_alignment_text,
+            strength="high",
+            evidence={
+                "history_context": history_context,
+                "matched_need_tags": matched_need_tags or [],
             },
         )
 
@@ -314,6 +386,7 @@ def build_explanation_for_chat_rec(
         highlights=bullets,
         gogyou_context=gogyou_context,
         history_context=history_context,
+        matched_need_tags=matched,
     )
 
     reason_source = str(payload.get("reason_source") or "").strip()
@@ -327,6 +400,7 @@ def build_explanation_for_chat_rec(
         birthdate=birthdate,
         gogyou_context=gogyou_context,
         history_context=history_context,
+        matched_need_tags=matched,
     )
     if primary_entry:
         reasons.append(primary_entry)
@@ -398,6 +472,9 @@ def build_explanation_for_plan_rec(
 ) -> Dict[str, Any]:
     payload = _get_explanation_payload(rec)
 
+    matched = payload.get("matched_need_tags") or []
+    matched = [str(x) for x in matched if str(x).strip()]
+
     bullets = payload.get("highlights") or []
     bullets = [str(x).strip() for x in bullets if isinstance(x, str) and str(x).strip()]
 
@@ -416,6 +493,7 @@ def build_explanation_for_plan_rec(
         highlights=bullets,
         gogyou_context=gogyou_context,
         history_context=history_context,
+        matched_need_tags=matched,
     )
 
     reasons: List[dict] = []
@@ -425,6 +503,7 @@ def build_explanation_for_plan_rec(
         birthdate=birthdate,
         gogyou_context=gogyou_context,
         history_context=history_context,
+        matched_need_tags=matched,
     )
     if primary_entry:
         reasons.append(primary_entry)
