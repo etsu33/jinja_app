@@ -173,6 +173,8 @@ def _format_component_table(score_v2: dict[str, Any]) -> list[str]:
 
 def _format_recommendation(rec: dict[str, Any], rank: int) -> list[str]:
     score_v2 = _safe_dict(rec.get("score_v2"))
+    score_v2_signals = _safe_dict(score_v2.get("signals"))
+    reflection_hint = _safe_dict(rec.get("reflection_hint") or score_v2_signals.get("reflection_hint"))
     rank_explanation = _safe_dict(rec.get("rank_explanation"))
     rank_comparison = _safe_dict(rec.get("rank_comparison"))
     explanation_payload = _safe_dict(rec.get("_explanation_payload"))
@@ -195,8 +197,12 @@ def _format_recommendation(rec: dict[str, Any], rank: int) -> list[str]:
         f"- reason_source: `{_text_or_dash(rec.get('reason_source'))}`",
         f"- action_state: `{_text_or_dash(rec.get('action_state'))}`",
         f"- matched_need_tags: `{_join_or_dash(breakdown.get('matched_need_tags'))}`",
-        f"- matched_visit_style_tags: `{_join_or_dash((_safe_dict(score_v2.get('signals'))).get('matched_visit_style_tags'))}`",
+        f"- matched_visit_style_tags: `{_join_or_dash(score_v2_signals.get('matched_visit_style_tags'))}`",
         f"- score_v2.total: `{_text_or_dash(score_v2.get('total'))}`",
+        f"- reflection_hint.state_change_direction: `{_text_or_dash(reflection_hint.get('state_change_direction'))}`",
+        f"- reflection_hint.next_need_hint: `{_join_or_dash(reflection_hint.get('next_need_hint'))}`",
+        f"- reflection_hint.next_history_theme_hint: `{_join_or_dash(reflection_hint.get('next_history_theme_hint'))}`",
+        f"- reflection_hint.source_history_theme: `{_text_or_dash(reflection_hint.get('source_history_theme'))}`",
         "",
         "##### score_v2.components",
         "",
