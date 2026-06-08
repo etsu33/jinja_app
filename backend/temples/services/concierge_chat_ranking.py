@@ -5,6 +5,7 @@ import logging
 from typing import Any, Dict, List, Optional, TypedDict
 from temples.domain.need_to_goriyaku_tag_ids import need_tags_to_goriyaku_ids
 from temples.services.concierge_history import (
+    build_recent_reflection_hint,
     calculate_shrine_behavior_signal_v2,
     classify_shrine_action_state,
 )
@@ -668,7 +669,12 @@ def _attach_breakdown(
         user=user,
         shrine_id=shrine_id_int,
     )
+    reflection_hint = build_recent_reflection_hint(
+        user=user,
+        shrine_id=shrine_id_int,
+    )
     rec["action_state"] = action_state
+    rec["reflection_hint"] = reflection_hint
     behavior_weight = 0.1
     behavior_contribution = float(behavior_signal) * behavior_weight
 
@@ -754,6 +760,7 @@ def _attach_breakdown(
                 "cap": float(behavior_cap),
                 "ratio": float(behavior_ratio),
             },
+            "reflection_hint": reflection_hint,
             "direction_bonus": {
                 "raw": float(direction_bonus),
                 "weight": 1.0,
@@ -795,6 +802,7 @@ def _attach_breakdown(
             "matched_by_gid": matched_by_gid,
             "matched_visit_style_tags": matched_visit_style_tags,
             "matched_user_selected_goriyaku_tag_ids": matched_by_user_selected_gid,
+            "reflection_hint": reflection_hint,
         },
     }
 
