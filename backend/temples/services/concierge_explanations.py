@@ -13,8 +13,9 @@ NEED_LABEL = {
     "money": "金運",
     "rest": "休息",
     "courage": "前進・後押し",
-    "protection": "厄除け・守護",
+    "protection": "厄除け・守り",
     "focus": "集中・継続",
+    "travel_safe": "移動・安全",
 }
 
 
