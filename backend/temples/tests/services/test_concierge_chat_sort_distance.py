@@ -1,5 +1,6 @@
 # temples/tests/services/test_concierge_chat_sort_distance.py
 import pytest
+
 from temples.services.concierge_chat import build_chat_recommendations
 
 @pytest.mark.django_db
@@ -17,6 +18,7 @@ def test_sort_distance_forces_distance_order(monkeypatch):
 
     import temples.llm.orchestrator as orch
     monkeypatch.setattr(orch, "ConciergeOrchestrator", DummyOrchestrator, raising=True)
+
 
     # candidates 側に distance_m を持たせる（Aが最短）
     candidates = [

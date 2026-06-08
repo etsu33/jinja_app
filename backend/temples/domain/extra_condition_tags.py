@@ -7,7 +7,15 @@ from typing import Dict, List, Tuple
 
 EXTRA_TAG_META: Dict[str, Dict[str, str]] = {
     "sort_distance": {"kind": "sort_override"},
-    "sort_popular": {"kind": "sort_override"},
+
+    "quiet": {"kind": "visit_style"},
+    "less_crowded": {"kind": "visit_style"},
+    "nearby": {"kind": "visit_style"},
+    "nature": {"kind": "visit_style"},
+    "reset": {"kind": "visit_style"},
+    "classic": {"kind": "visit_style"},
+    "business": {"kind": "visit_style"},
+    "study": {"kind": "visit_style"},
 
     "energize": {"kind": "soft_signal"},
     "calm": {"kind": "soft_signal"},
@@ -24,7 +32,7 @@ def tag_kind(tag: str) -> str:
     return (EXTRA_TAG_META.get(tag) or {}).get("kind") or "unknown"
 
 def split_tags_by_kind(tags: List[str]) -> Dict[str, List[str]]:
-    out: Dict[str, List[str]] = {"sort_override": [], "hard_filter": [], "soft_signal": [], "unknown": []}
+    out: Dict[str, List[str]] = {"sort_override": [], "hard_filter": [], "soft_signal": [], "visit_style": [], "unknown": []}
     for t in tags or []:
         k = tag_kind(t)
         if k not in out:
@@ -37,12 +45,21 @@ def split_tags_by_kind(tags: List[str]) -> Dict[str, List[str]]:
 EXTRA_TAGS: Dict[str, List[str]] = {
     # sort 指示
     "sort_distance": ["近い", "近く", "徒歩", "できるだけ近", "最寄り", "距離優先"],
-    "sort_popular": ["人気", "有名", "評判", "人が多い", "賑やか"],
+
+    # 参拝スタイル（UIチップと対応）
+    "quiet": ["静か", "落ち着", "穏やか", "整え", "リラックス"],
+    "less_crowded": ["人混み", "混雑", "人が少な", "空いて", "落ち着いた場所", "混雑しにくい"],
+    "nearby": ["近場", "近い場所", "近く", "できるだけ近", "無理なく行", "距離優先"],
+    "nature": ["自然", "緑", "木々", "森", "庭", "水辺", "空気が良い"],
+    "reset": ["気持ちを切り替え", "切り替え", "リセット", "気分転換", "前向き", "流れを変え"],
+    "classic": ["有名", "定番", "安心", "評判", "知名度", "初めてでも行きやすい"],
+    "business": ["ビジネス", "仕事向き", "商売", "成果", "出世"],
+    "study": ["学業", "勉強", "合格", "受験", "試験"],
 
     # 気分・エネルギー
     "energize": ["前向き", "活力", "元気", "やる気", "パワー", "エネルギー", "背中を押", "勇気"],
-    "calm": ["落ち着", "静か", "穏やか", "ゆっくり", "整え", "安心", "リラックス"],
-    "refresh": ["気分転換", "スッキリ", "浄化", "リセット", "切り替え", "リフレッシュ"],
+    "calm": ["落ち着", "穏やか", "整え", "安心", "リラックス"],
+    "refresh": ["スッキリ", "浄化", "リフレッシュ"],
 
     # 集中・思考
     "focus": ["集中", "整える", "思考", "頭が回", "クリア", "決めたい", "判断", "迷い"],
@@ -98,7 +115,7 @@ def extract_extra_tags(text: str, *, max_tags: int = 3) -> ExtraExtract:
             scores.append((tag, len(matched)))
 
     # ヒット数→タグ優先度
-    scores.sort(key=lambda x: x[1], reverse=True)
+    scores.sort(key=lambda x: (-x[1], list(EXTRA_TAGS.keys()).index(x[0])))
     tags = [tag for tag, _ in scores][:max_tags]
 
     return ExtraExtract(tags=tags, hits=hits)

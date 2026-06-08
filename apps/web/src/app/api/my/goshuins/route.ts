@@ -2,15 +2,15 @@
 import { NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import sharp from "sharp";
+import { bffFetchWithAuthFromReq } from "@/lib/server/bffFetch";
+import { getDjangoOrigin } from "@/lib/server/backend";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 function apiBaseUrl() {
-  const v = process.env.API_BASE_URL;
-  if (!v) throw new Error("API_BASE_URL is missing");
-  return v.replace(/\/$/, "");
+  return getDjangoOrigin();
 }
 
 async function getAccessTokenFromCookie() {
@@ -32,13 +32,9 @@ async function proxyUpstream(path: string, init: RequestInit) {
   });
 }
 
-export async function GET() {
-  const token = await getAccessTokenFromCookie();
-  if (!token) return Response.json({ detail: "missing access_token cookie" }, { status: 401 });
-
-  return proxyUpstream("/api/my/goshuins/", {
+export async function GET(req: NextRequest) {
+  return bffFetchWithAuthFromReq(req, "/api/my/goshuins/", {
     method: "GET",
-    headers: { Authorization: `Bearer ${token}` },
   });
 }
 

@@ -5,6 +5,7 @@ import type { Close } from "@/lib/navigation/shrineClose";
 import ShrineCloseLink from "@/components/shrine/ShrineCloseLink";
 import { LABELS } from "@/lib/ui/labels";
 import DetailSection from "@/components/shrine/DetailSection";
+import GoogleMapRouteLink from "@/components/shrine/GoogleMapRouteLink";
 
 type SaveAction = {
   shrineId: number;
@@ -16,6 +17,7 @@ type Props = {
   title: string;
   subtitle?: string | null;
   close: Close;
+  shrineId?: number | string | null;
 
   // CTA
   addGoshuinHref?: string | null;
@@ -29,6 +31,10 @@ type Props = {
 
   // ✅ concierge 等で「操作」を消すためのスイッチ
   hideActions?: boolean;
+
+  ctx?: string | null;
+  tid?: string | number | null;
+  historyTheme?: string | null;
 };
 
 export default function ShrineDetailShell({
@@ -42,11 +48,16 @@ export default function ShrineDetailShell({
   saveAction = null,
   children,
   hideActions = false,
+
+  shrineId = null,
+  ctx = null,
+  tid = null,
+  historyTheme = null,
 }: Props) {
   const shouldShowActions = !hideActions && Boolean(googleDirHref || saveAction?.node || addGoshuinHref);
 
   return (
-    <main className="mx-auto min-h-[calc(100vh-64px)] max-w-md space-y-4 p-4">
+    <main className="mx-auto min-h-[calc(100vh-64px)] max-w-md space-y-4 p-4 lg:max-w-2xl">
       {/* ✅ Close をヘッダー左固定 */}
       <header className="flex items-center justify-between">
         <div className="shrink-0">
@@ -68,14 +79,15 @@ export default function ShrineDetailShell({
           <div className="grid gap-2">
             {/* primary: 経路案内 */}
             {googleDirHref ? (
-              <a
+              <GoogleMapRouteLink
                 href={googleDirHref}
-                target="_blank"
-                rel="noopener noreferrer"
+                label={googleDirLabel}
+                shrineId={shrineId}
+                ctx={ctx}
+                tid={tid}
+                historyTheme={historyTheme}
                 className="inline-flex min-h-[44px] w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800"
-              >
-                {googleDirLabel}
-              </a>
+              />
             ) : null}
 
             {/* secondary: 保存 */}

@@ -40,7 +40,7 @@ export function HomeToastClient() {
 
   return (
     <div className="pointer-events-none fixed left-0 right-0 top-3 z-50 flex justify-center px-4">
-      <div className="pointer-events-auto w-full max-w-md rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 shadow">
+      <div className="pointer-events-auto w-full max-w-md rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 shadow-sm">
         {toast.msg}
         <button type="button" onClick={() => setToast(null)} className="ml-3 text-xs text-red-700 underline">
           閉じる

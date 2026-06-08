@@ -1,6 +1,4 @@
-//apps / web / src / features / concierge / sections / types.ts;
-
-import type { ConciergeBreakdown } from "@/lib/api/concierge";
+import type { ConciergeBreakdown, ConciergeReasonFacts } from "@/lib/api/concierge";
 import type { ConciergeModeSignal } from "@/features/concierge/types/unified";
 
 /* =========================
@@ -31,12 +29,22 @@ export type RegisteredShrineItem = {
   address?: string | null;
   description: string;
   imageUrl?: string | null;
-  breakdown?: any | null;
-  isDummy?: boolean;
-  goriyakuTags: { id: number; name: string }[];
-  initialFav: boolean;
-
   detailHref?: string;
+  breakdown?: ConciergeBreakdown | null;
+  breakdown_detail?: any | null;
+  reasonFacts?: ConciergeReasonFacts | null;
+  explanation?: {
+    version?: number | null;
+    summary?: string | null;
+    reasons?: Array<{
+      code?: string | null;
+      label?: string | null;
+      text?: string | null;
+      strength?: "low" | "mid" | "high" | null;
+      evidence?: Record<string, unknown> | null;
+    }> | null;
+    disclaimer?: string | null;
+  } | null;
 };
 
 export type PlaceShrineItem = {
@@ -46,10 +54,11 @@ export type PlaceShrineItem = {
   address?: string | null;
   description: string;
   imageUrl?: string | null;
-
   detailHref?: string;
   detailLabel?: string;
   breakdown?: ConciergeBreakdown | null;
+  breakdown_detail?: any | null;
+  reasonFacts?: ConciergeReasonFacts | null;
   isDummy?: boolean;
 };
 
@@ -103,9 +112,9 @@ export type ConciergeSectionsPayload = {
   sections: readonly ConciergeSection[];
   meta?: {
     mode?: ConciergeModeSignal | null;
-    note?: string | null;
     reply?: string | null;
-    remainingFree?: number | null;
+    remaining?: number | null;
+    limitReached?: boolean;
     tid?: string | null;
     resultState?: {
       matched_count?: number;
@@ -122,11 +131,12 @@ export type ConciergeSectionsPayload = {
  * ========================= */
 export type RendererAction =
   | { type: "back_to_entry" }
-  | { type: "open_map" }
+  | { type: "open_map"; shrineId?: number | null; rank?: number | null; routeHref?: string | null }
   | { type: "add_condition" }
   | { type: "filter_close" }
   | { type: "filter_apply" }
   | { type: "filter_set_birthdate"; birthdate: string }
   | { type: "filter_toggle_tag"; tagId: number }
   | { type: "filter_set_extra"; extraCondition: string }
-  | { type: "filter_clear" };
+  | { type: "filter_clear" }
+  | { type: "save_concierge_thread" };

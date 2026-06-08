@@ -103,6 +103,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ConciergeHistoryDetail"
 
+
   /api/concierge/chat/:
     post:
       tags: [Concierge]
@@ -122,6 +123,53 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ConciergeChatResponse"
+
+  /api/concierge/plan/:
+    post:
+      tags: [Concierge]
+      summary: Concierge plan (route / shrine suggestions)
+      description: >
+        クエリをもとに参拝プランを生成する。おすすめ候補、中心候補、ルート情報を返す。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConciergePlanRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConciergePlanResponse"
+        "400":
+          description: Validation Error
+        "401":
+          description: Unauthorized
+
+  /api/shrine-submissions/:
+    post:
+      summary: 神社投稿submissionを作成
+      description: ログインユーザーが神社登録候補を pending 状態で投稿する
+      tags: [Shrines]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShrineSubmissionCreateRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShrineSubmissionResponse"
+        "400":
+          description: Validation Error
+        "401":
+          description: Unauthorized
 
 
   /api/directions/:
@@ -158,6 +206,39 @@ paths:
 
 components:
   schemas:
+    ShrineSubmissionCreateRequest:
+      type: object
+      required: [name, address]
+      properties:
+        name: { type: string }
+        address: { type: string }
+        lat: { type: number, nullable: true }
+        lng: { type: number, nullable: true }
+        goriyaku_tags:
+          type: array
+          items: { type: string }
+        note: { type: string }
+
+    ShrineSubmissionResponse:
+      type: object
+      required: [id, name, address, goriyaku_tags, note, status, created_at]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        address: { type: string }
+        lat: { type: number, nullable: true }
+        lng: { type: number, nullable: true }
+        goriyaku_tags:
+          type: array
+          items: { type: string }
+        note: { type: string }
+        status:
+          type: string
+          enum: [pending, approved, rejected]
+        created_at:
+          type: string
+          format: date-time
+
     ShrineLite:
       type: object
       required: [id, name, lat, lng]
@@ -503,3 +584,164 @@ components:
         ok: { type: boolean }
         data:
           $ref: "#/components/schemas/ConciergeChatData"
+
+    ConciergePlanRequest:
+      type: object
+      required: [query]
+      properties:
+        query:
+          type: string
+          description: "参拝プランの元となる検索クエリ"
+        language:
+          type: string
+          nullable: true
+          default: ja
+          description: "応答言語。既定は ja"
+        transportation:
+          type: string
+          enum: [walk, driving]
+          default: walk
+          description: "移動手段"
+        area:
+          type: string
+          nullable: true
+          description: "地名ベースの検索補助入力"
+        lat:
+          type: number
+          nullable: true
+          description: "現在地または検索基準点の緯度"
+        lng:
+          type: number
+          nullable: true
+          description: "現在地または検索基準点の経度"
+        radius_m:
+          type: number
+          nullable: true
+          description: "検索半径（メートル）"
+        radius_km:
+          oneOf:
+            - type: number
+            - type: string
+          nullable: true
+          description: "検索半径（キロメートル）。互換入力を許可する"
+        locationbias:
+          type: string
+          nullable: true
+          description: "location bias 用の補助パラメータ"
+
+
+    ConciergePlanLocation:
+      type: object
+      required: [lat, lng]
+      properties:
+        lat:
+          type: number
+        lng:
+          type: number
+
+    ConciergePlanMain:
+      type: object
+      additionalProperties: true
+      properties:
+        location:
+          $ref: "#/components/schemas/ConciergePlanLocation"
+
+    ConciergePlanRouteHints:
+      type: object
+      additionalProperties: true
+      properties:
+        mode:
+          type: string
+          enum: [walk, driving]
+
+    ConciergePlanRecommendation:
+      type: object
+      additionalProperties: true
+      properties:
+        name:
+          type: string
+          nullable: true
+        display_name:
+          type: string
+          nullable: true
+        reason:
+          type: string
+          nullable: true
+        bullets:
+          type: array
+          nullable: true
+          items:
+            type: string
+        highlights:
+          type: array
+          nullable: true
+          items:
+            type: string
+        display_address:
+          type: string
+          nullable: true
+        location:
+          nullable: true
+          oneOf:
+            - $ref: "#/components/schemas/ConciergePlanLocation"
+            - type: string
+
+    ConciergePlanStop:
+      type: object
+      required: [order, name, display_address, location, eta_minutes, travel_minutes, stay_minutes]
+      additionalProperties: true
+      properties:
+        order:
+          type: integer
+        name:
+          type: string
+        display_address:
+          type: string
+        location:
+          $ref: "#/components/schemas/ConciergePlanLocation"
+        eta_minutes:
+          type: number
+        travel_minutes:
+          type: number
+        stay_minutes:
+          type: number
+
+    ConciergePlanData:
+      type: object
+      required: [recommendations]
+      additionalProperties: true
+      properties:
+        recommendations:
+          type: array
+          items:
+            $ref: "#/components/schemas/ConciergePlanRecommendation"
+        _explanations:
+          nullable: true
+
+    ConciergePlanResponse:
+      type: object
+      required: [ok, query, stops, data]
+      additionalProperties: true
+      properties:
+        ok:
+          type: boolean
+        query:
+          type: string
+        transportation:
+          type: string
+          nullable: true
+          enum: [walk, driving]
+        main:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ConciergePlanMain"
+        route_hints:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ConciergePlanRouteHints"
+        stops:
+          type: array
+          items:
+            $ref: "#/components/schemas/ConciergePlanStop"
+        data:
+          $ref: "#/components/schemas/ConciergePlanData"

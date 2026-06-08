@@ -18,6 +18,19 @@ function apiBase() {
   return getDjangoOrigin().replace(/\/$/, "");
 }
 
+function getUpstreamSetCookies(upstream: Response): string[] {
+  const headersAny = upstream.headers as Headers & {
+    getSetCookie?: () => string[];
+  };
+
+  if (typeof headersAny.getSetCookie === "function") {
+    return headersAny.getSetCookie().filter(Boolean);
+  }
+
+  const single = upstream.headers.get("set-cookie");
+  return single ? [single] : [];
+}
+
 let refreshInFlight: Promise<string | null> | null = null;
 
 async function refreshAccessViaBackendMutex(refresh: string): Promise<string | null> {
@@ -108,7 +121,32 @@ export async function bffFetchWithAuthFromReq(
 
   const doFetch = (overrideAccess?: string | null) => {
     const auth = buildAuth(overrideAccess);
-    const cookieHeader = req.headers.get("cookie");
+    const cookieHeader = req.headers.get("cookie") ?? "";
+
+    const hasAnonCookie = /(?:^|;\s*)concierge_anon_id=/.test(cookieHeader);
+    const hasAccessCookie = /(?:^|;\s*)access_token=/.test(cookieHeader);
+    const hasRefreshCookie = /(?:^|;\s*)refresh_token=/.test(cookieHeader);
+
+    console.log("[BFF_THREAD_UPSTREAM_REQUEST]", {
+      upstreamPath,
+      method: init.method ?? "GET",
+      hasAuthorization: Boolean(auth),
+      authSource: headerAuth
+        ? "incoming_header"
+        : overrideAccess
+          ? "override_access"
+          : preRefreshedAccess
+            ? "pre_refreshed_access"
+            : access
+              ? "access_cookie"
+              : null,
+      hasCookieHeader: Boolean(cookieHeader),
+      hasAnonCookie,
+      hasAccessCookie,
+      hasRefreshCookie,
+    });
+
+    console.log("[BFF_FETCH_URL]", `${apiBase()}${upstreamPath}`);
 
     return fetch(`${apiBase()}${upstreamPath}`, {
       ...init,
@@ -130,13 +168,32 @@ export async function bffFetchWithAuthFromReq(
   }
 
   const text = upstream.status === 204 ? "" : await upstream.text().catch(() => "");
+  const contentType = upstream.headers.get("content-type");
+
+  console.log("[BFF_UPSTREAM]", {
+    upstreamPath,
+    status: upstream.status,
+    contentType,
+    hasSetCookie: Boolean(upstream.headers.get("set-cookie")),
+    isJson: contentType?.includes("application/json") ?? false,
+    bodyPreview: text.slice(0, 1000),
+  });
+
+
   const res =
     upstream.status === 204
       ? new NextResponse(null, { status: 204 })
       : new NextResponse(text, {
           status: upstream.status,
-          headers: { "Content-Type": upstream.headers.get("content-type") ?? "application/json" },
+          headers: {
+            "Content-Type": contentType ?? "application/json",
+          },
         });
+
+  const upstreamSetCookies = getUpstreamSetCookies(upstream);
+  for (const value of upstreamSetCookies) {
+    res.headers.append("set-cookie", value);
+  }
 
   const tokenToSet = newAccess ?? preRefreshedAccess;
   if (tokenToSet && setAccessCookie) {

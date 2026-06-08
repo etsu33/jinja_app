@@ -2,6 +2,7 @@ from rest_framework import serializers
 from temples.models import ConciergeHistory
 from temples.models import ConciergeThread, ConciergeMessage
 
+
 class ConciergeHistorySerializer(serializers.ModelSerializer):
     # 外部I/Fは以前どおり 'query' で返すが、実体は 'reason'
     query = serializers.CharField(source="reason")
@@ -11,6 +12,7 @@ class ConciergeHistorySerializer(serializers.ModelSerializer):
     class Meta:
         model = ConciergeHistory
         fields = ["id", "created_at", "query", "tags", "shrine"]
+
 
 class ConciergeThreadListSerializer(serializers.ModelSerializer):
     last_message = serializers.SerializerMethodField()
@@ -42,6 +44,7 @@ class ConciergeThreadListSerializer(serializers.ModelSerializer):
             return cnt
         return obj.messages.count()
 
+
 class ConciergeMessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ConciergeMessage
@@ -50,17 +53,15 @@ class ConciergeMessageSerializer(serializers.ModelSerializer):
 
 class ConciergeThreadDetailSerializer(serializers.ModelSerializer):
     messages = ConciergeMessageSerializer(many=True, read_only=True)
-    message_count = serializers.SerializerMethodField()
 
     class Meta:
         model = ConciergeThread
         fields = [
             "id",
             "title",
-            "created_at",
-            "updated_at",
             "last_message_at",
-            "message_count",
+            "recommendations",
+            "recommendations_v2",
             "messages",
         ]
 
