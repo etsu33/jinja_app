@@ -687,8 +687,8 @@ def _attach_breakdown(
         + astro_bonus
         + direction_bonus
     )
-    # 行動の影響を相談内容に対して最大30％に制限
-    behavior_cap = score_total_ranked_base * 0.3
+    # 行動の影響を相談内容に対して最大30％または0.5に制限
+    behavior_cap = min(score_total_ranked_base * 0.3, 0.5)
     capped_behavior_contribution = min(behavior_contribution, behavior_cap)
     behavior_ratio = (
         capped_behavior_contribution / score_total_ranked_base
