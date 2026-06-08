@@ -24,6 +24,7 @@ DisplayBlockId = Literal[
     "public_info",
     "today_flow",
     "after_visit_reflection",
+    "direction_support",
 ]
 
 
@@ -40,6 +41,8 @@ class ShrineMeaningSourceV2(TypedDict, total=False):
     historyTheme: str | None
     element: str | None
     placeTags: list[str]
+    directionBonus: float | None
+    directionReason: str | None
 
 
 class ShrineMeaningGeneratedV2(TypedDict):
@@ -52,6 +55,7 @@ class ShrineMeaningGeneratedV2(TypedDict):
     benefitActionContext: str | None
     todayFlowContext: str | None
     afterVisitReflection: str | None
+    directionSupportCopy: str | None
 
 
 class ShrineMeaningDisplayBlockV2(TypedDict):
@@ -329,6 +333,8 @@ class ShrineMeaningInput:
     history_theme: str | None = None
     element: str | None = None
     place_tags: tuple[str, ...] = ()
+    direction_bonus: float | None = None
+    direction_reason: str | None = None
 
 
 def _clean_str(value: Any) -> str | None:
@@ -432,6 +438,8 @@ def normalize_shrine_meaning_source(source: Any) -> ShrineMeaningInput:
         history_theme=_clean_str(_read_value(source, "history_theme", "historyTheme")),
         element=_clean_str(_read_value(source, "element")),
         place_tags=_clean_str_list(_read_value(source, "place_tags", "placeTags")),
+        direction_bonus=_clean_float(_read_value(source, "direction_bonus", "directionBonus")),
+        direction_reason=_clean_str(_read_value(source, "direction_reason", "directionReason")),
     )
 
 
@@ -676,10 +684,27 @@ def _build_today_flow_context(input_: ShrineMeaningInput) -> str | None:
 # 参拝前・参拝中の行動指示は禁止
 # 実際に参拝しなければ価値がない表現にしない
 # 参拝後に何を持ち帰るかを扱う
+
 def _build_after_visit_reflection(input_: ShrineMeaningInput) -> str | None:
     if not input_.history_theme:
         return None
     return "参拝後は、答えが出たかどうかより、次の一歩が少し見えたかを見直します。迷いが残っていても、保存した内容やもう一度の相談から整理し直せます。"
+
+
+def _build_direction_support_copy(input_: ShrineMeaningInput) -> str | None:
+    """Return weak supplemental copy for future direction-based scoring.
+
+    Direction support must never become the main reason for recommendation.
+    It is only shown when score_v2 provides both a positive direction_bonus and
+    a human-readable direction_reason.
+    """
+
+    if input_.direction_bonus is None or input_.direction_bonus <= 0:
+        return None
+    if not input_.direction_reason:
+        return None
+
+    return f"方位は主理由ではなく、補助要素として「{_clip(input_.direction_reason, 40)}」を参考にしています。"
 
 
 def build_generated_fields(input_: ShrineMeaningInput) -> ShrineMeaningGeneratedV2:
@@ -693,6 +718,7 @@ def build_generated_fields(input_: ShrineMeaningInput) -> ShrineMeaningGenerated
         "benefitActionContext": _build_benefit_action_context(input_),
         "todayFlowContext": _build_today_flow_context(input_),
         "afterVisitReflection": _build_after_visit_reflection(input_),
+        "directionSupportCopy": _build_direction_support_copy(input_),
     }
 
 
@@ -710,6 +736,8 @@ def build_source_fields(input_: ShrineMeaningInput) -> ShrineMeaningSourceV2:
         "historyTheme": input_.history_theme,
         "element": input_.element,
         "placeTags": list(input_.place_tags),
+        "directionBonus": input_.direction_bonus,
+        "directionReason": input_.direction_reason,
     }
 
 
@@ -750,6 +778,7 @@ def build_display_fields(generated: ShrineMeaningGeneratedV2) -> ShrineMeaningDi
         # _block("today_flow", "今日の向き合い方", generated["todayFlowContext"], "premium"),
         _block("action_meaning", "ここで試したいこと", generated["actionMeaning"], "premium"),
         _block("after_visit_reflection", "あとで見直したいこと", generated["afterVisitReflection"], "premium"),
+        # direction_support is intentionally not displayed yet. Frontend weak display will be handled in a later PR.
         _block("history_context", "この神社の背景", generated["historyContext"], "premium"),
         _block("deity_symbol", "祭神の象徴", generated["deitySymbolContext"], "premium"),
         _block("benefit_action", "ご利益の受け取り方", generated["benefitActionContext"], "premium"),
@@ -781,6 +810,7 @@ __all__ = [
     "HISTORY_THEME_DEFINITION",
     "SHRINE_HISTORY_STORY_OVERRIDES",
     "_has_specific_context",
+    "_build_direction_support_copy",
     "ShrineHistoryStoryOverride",
     "build_display_fields",
     "build_generated_fields",

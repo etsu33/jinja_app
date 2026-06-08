@@ -15,6 +15,13 @@ from temples.services.concierge_chat_observation import (
 )
 
 from temples.services.concierge_chat import build_chat_recommendations
+from temples.services.concierge_chat_ranking import (
+    DIRECTION_BONUS_MAX,
+    _attach_breakdown,
+    _build_reason_facts,
+    _resolve_direction_bonus,
+    _resolve_primary_reason,
+)
 
 
 def assert_visit_style_observation_schema(observation):
@@ -117,9 +124,25 @@ def assert_ranking_breakdown_observation_schema(observation):
     assert set(observation.keys()) == {
         "ranked_count",
         "top10",
+        "_debug",
     }
     assert isinstance(observation["ranked_count"], int)
     assert isinstance(observation["top10"], list)
+    assert isinstance(observation["_debug"], dict)
+    assert set(observation["_debug"].keys()) == {
+        "query",
+        "need_tags",
+        "matched_need_tags",
+        "visit_style_tags",
+        "matched_visit_style_tags",
+        "score_total_ranked_base",
+        "capped_behavior_contribution",
+        "behavior_ratio",
+        "reflection_hint_state_change_direction",
+        "reflection_hint_next_need_hint",
+        "reflection_hint_next_history_theme_hint",
+        "reflection_hint_source_history_theme",
+    }
 
 
 def assert_ranking_breakdown_top_row_schema(row):
@@ -130,31 +153,51 @@ def assert_ranking_breakdown_top_row_schema(row):
         "score_raw",
         "score_total",
         "score_total_ranked",
+        "score_total_ranked_base",
+        "capped_behavior_contribution",
+        "behavior_ratio",
         "score_need",
         "score_need_rank_weighted",
         "score_distance",
         "score_popular",
         "score_visit_style",
         "score_element",
+        "visit_style_tags",
+        "behavior_signal",
+        "behavior_contribution",
         "contributions",
         "matched_need_tags",
         "matched_visit_style_tags",
         "primary_reason_source",
         "primary_reason_label",
+        "reflection_hint",
+        "reflection_hint_state_change_direction",
+        "reflection_hint_next_need_hint",
+        "reflection_hint_next_history_theme_hint",
+        "reflection_hint_source_history_theme",
     }
     assert isinstance(row["rank"], int)
     assert isinstance(row["score_raw"], float)
     assert isinstance(row["score_total"], float)
     assert isinstance(row["score_total_ranked"], float)
+    assert isinstance(row["score_total_ranked_base"], float)
+    assert isinstance(row["capped_behavior_contribution"], float)
+    assert isinstance(row["behavior_ratio"], float)
     assert isinstance(row["score_need"], int)
     assert isinstance(row["score_need_rank_weighted"], float)
     assert isinstance(row["score_distance"], float)
     assert isinstance(row["score_popular"], float)
     assert isinstance(row["score_visit_style"], int)
     assert isinstance(row["score_element"], int)
+    assert isinstance(row["visit_style_tags"], list)
+    assert isinstance(row["behavior_signal"], float)
+    assert isinstance(row["behavior_contribution"], float)
     assert isinstance(row["contributions"], dict)
     assert isinstance(row["matched_need_tags"], list)
     assert isinstance(row["matched_visit_style_tags"], list)
+    assert isinstance(row["reflection_hint"], dict)
+    assert isinstance(row["reflection_hint_next_need_hint"], list)
+    assert isinstance(row["reflection_hint_next_history_theme_hint"], list)
 
 
 def test_observe_candidate_pool_logs_counts(caplog):
@@ -607,11 +650,14 @@ def test_observe_candidate_pool_debug_empty_contract_has_stable_schema():
 def test_observe_ranking_breakdown_returns_stable_schema():
     observation = observe_ranking_breakdown(
         recs={
+            "_query": "",
+            "_need_tags": [],
             "recommendations": [
                 {
                     "id": 1,
                     "shrine_id": 101,
                     "name": "根津神社",
+                    "visit_style_tags": ["nature"],
                     "_score_total": 1.23,
                     "breakdown": {
                         "score_need": 1,
@@ -643,6 +689,9 @@ def test_observe_ranking_breakdown_returns_stable_schema():
                             },
                             "astro_bonus": 0.0,
                             "score_total_ranked": 1.23,
+                            "score_total_ranked_base": 1.23,
+                            "capped_behavior_contribution": 0.0,
+                            "behavior_ratio": 0.0,
                         }
                     },
                     "_primary_reason_source": "text_hint",
@@ -651,6 +700,17 @@ def test_observe_ranking_breakdown_returns_stable_schema():
             ]
         }
     )
+
+    # Assert _debug fields
+    _debug = observation.get("_debug", {})
+    assert _debug["query"] == ""
+    assert _debug["need_tags"] == []
+    assert _debug["matched_need_tags"] == [["rest"]]
+    assert _debug["visit_style_tags"] == [["nature"]]
+    assert _debug["matched_visit_style_tags"] == [["nature"]]
+    assert _debug["score_total_ranked_base"] == [1.23]
+    assert _debug["capped_behavior_contribution"] == [0.0]
+    assert _debug["behavior_ratio"] == [0.0]
 
     assert_ranking_breakdown_observation_schema(observation)
     assert_ranking_breakdown_top_row_schema(observation["top10"][0])
@@ -672,6 +732,253 @@ def test_observe_ranking_breakdown_returns_stable_schema():
     assert row["primary_reason_label"] == "rest"
 
 
+def test_observe_ranking_breakdown_supports_user_selected_tag_reason():
+    observation = observe_ranking_breakdown(
+        recs={
+            "recommendations": [
+                {
+                    "shrine_id": 101,
+                    "name": "美容神社",
+                    "_score_total": 1.5,
+                    "breakdown": {
+                        "score_need": 0,
+                        "score_total": 0.5,
+                        "matched_need_tags": [],
+                    },
+                    "breakdown_detail": {
+                        "features": {
+                            "need": {
+                                "rank_weighted": 0.0,
+                                "rank_weighted_contribution": 0.0,
+                            },
+                            "distance": {
+                                "raw": 0.0,
+                                "contribution": 0.0,
+                            },
+                            "popular": {
+                                "raw": 0.0,
+                                "contribution": 0.0,
+                            },
+                            "visit_style": {
+                                "raw": 0,
+                                "matched_tags": [],
+                                "contribution": 0.0,
+                            },
+                            "element": {
+                                "raw": 0,
+                                "contribution": 0.0,
+                            },
+                            "astro_bonus": 0.0,
+                            "score_total_ranked": 1.5,
+                        }
+                    },
+                    "_reason_facts": [
+                        {
+                            "type": "user_selected_tag",
+                            "label": "goriyaku_tag:1",
+                            "label_ja": "美容",
+                            "evidence": ["requested_goriyaku_tag_ids"],
+                            "score": 3.0,
+                            "is_primary": True,
+                        }
+                    ],
+                    "_primary_reason_source": "user_selected_tag",
+                    "_primary_reason_label": "goriyaku_tag:1",
+                }
+            ]
+        }
+    )
+
+    row = observation["top10"][0]
+    assert row["primary_reason_source"] == "user_selected_tag"
+    assert row["primary_reason_label"] == "goriyaku_tag:1"
+
+
+def test_build_reason_facts_generates_user_selected_tag_reason():
+    facts = _build_reason_facts(
+        matched_by_tag=[],
+        matched_by_gid=[],
+        matched_by_text=[],
+        matched_by_user_selected_gid=[1],
+        goriyaku_tag_label_by_id={1: "美容"},
+        text_score_by_tag={},
+        score_element=0,
+        astro_bonus_enabled=False,
+    )
+
+    assert facts[0] == {
+        "type": "user_selected_tag",
+        "label": "美容",
+        "label_ja": "美容",
+        "evidence": ["requested_goriyaku_tag_ids"],
+        "score": 3.0,
+        "is_primary": False,
+    }
+
+
+def test_resolve_primary_reason_prefers_user_selected_tag():
+    facts = _build_reason_facts(
+        matched_by_tag=["rest"],
+        matched_by_gid=["money"],
+        matched_by_text=["mental"],
+        matched_by_user_selected_gid=[1],
+        goriyaku_tag_label_by_id={1: "美容"},
+        text_score_by_tag={"mental": 5},
+        score_element=2,
+        astro_bonus_enabled=True,
+    )
+
+    primary = _resolve_primary_reason(facts)
+
+    assert primary["type"] == "user_selected_tag"
+    assert primary["label"] == "美容"
+    assert primary["evidence"] == ["requested_goriyaku_tag_ids"]
+
+
+def test_attach_breakdown_sets_user_selected_tag_as_primary_reason():
+    rec = {
+        "shrine_id": 101,
+        "name": "美容神社",
+        "goriyaku_tag_ids": [1],
+        "astro_elements": [],
+        "astro_tags": [],
+        "goriyaku": "",
+        "description": "",
+        "popular_score": 0,
+        "distance_m": None,
+        "visit_style_tags": [],
+    }
+
+    _attach_breakdown(
+        rec,
+        birthdate=None,
+        need_tags=["rest"],
+        weights={"element": 0.0, "need": 0.3, "popular": 0.0, "distance": 0.0},
+        astro_bonus_enabled=False,
+        visit_style_tags=set(),
+        query="美容で整えたい",
+        requested_goriyaku_tag_ids=[1],
+        goriyaku_tag_label_by_id={1: "美容"},
+    )
+
+    assert rec["_primary_reason_source"] == "user_selected_tag"
+    assert rec["_primary_reason_label"] == "美容"
+    assert rec["_reason_facts"][0]["type"] == "user_selected_tag"
+    assert rec["_reason_facts"][0]["is_primary"] is True
+    assert rec["_reason_facts"][0]["evidence"] == ["requested_goriyaku_tag_ids"]
+
+
+def test_resolve_direction_bonus_returns_zero_without_birthdate_or_location():
+    assert _resolve_direction_bonus(
+        rec={"shrine_id": 101, "name": "方位未設定神社"},
+        birthdate=None,
+    ) == {"bonus": 0.0, "reason": None}
+
+    assert _resolve_direction_bonus(
+        rec={"shrine_id": 101, "name": "方位未設定神社", "latitude": 35.0, "longitude": 139.0},
+        birthdate="",
+    ) == {"bonus": 0.0, "reason": None}
+
+
+def test_resolve_direction_bonus_returns_bonus_with_user_origin_birthdate_and_location():
+    result = _resolve_direction_bonus(
+        rec={"shrine_id": 101, "name": "東方面神社", "latitude": 35.0, "longitude": 140.0},
+        birthdate="1990-01-01",
+        user_origin={"lat": 35.0, "lng": 139.0},
+    )
+
+    assert result["bonus"] == 0.1
+    assert result["reason"] == "現在地から見て東方面の候補です"
+
+
+def test_attach_breakdown_reflects_direction_bonus_in_score_v2_and_breakdown_detail():
+    rec = {
+        "shrine_id": 101,
+        "name": "東方面神社",
+        "latitude": 35.0,
+        "longitude": 140.0,
+        "goriyaku_tag_ids": [],
+        "astro_elements": [],
+        "astro_tags": [],
+        "goriyaku": "",
+        "description": "",
+        "popular_score": 0,
+        "distance_m": None,
+        "visit_style_tags": [],
+    }
+
+    _attach_breakdown(
+        rec,
+        birthdate="1990-01-01",
+        need_tags=[],
+        weights={"element": 0.0, "need": 0.3, "popular": 0.0, "distance": 0.0},
+        astro_bonus_enabled=False,
+        visit_style_tags=set(),
+        query=None,
+        user_origin={"lat": 35.0, "lng": 139.0},
+    )
+
+    assert rec["score_v2"]["components"]["direction_bonus"] == 0.1
+    assert rec["score_v2"]["components"]["direction_reason"] == "現在地から見て東方面の候補です"
+
+    direction_feature = rec["breakdown_detail"]["features"]["direction_bonus"]
+    assert direction_feature["raw"] == 0.1
+    assert direction_feature["contribution"] == 0.1
+    assert direction_feature["reason"] == "現在地から見て東方面の候補です"
+
+def test_resolve_direction_bonus_stays_zero_without_user_origin_even_with_birthdate_and_location():
+    # direction calculation stays zero when user origin lat/lng is absent.
+    result = _resolve_direction_bonus(
+        rec={"shrine_id": 101, "name": "方位候補神社", "latitude": 35.0, "longitude": 139.0},
+        birthdate="1990-01-01",
+    )
+
+    assert result == {"bonus": 0.0, "reason": None}
+    assert result["bonus"] <= DIRECTION_BONUS_MAX
+
+
+def test_attach_breakdown_attaches_direction_bonus_contract():
+    rec = {
+        "shrine_id": 101,
+        "name": "方位候補神社",
+        "latitude": 35.0,
+        "longitude": 139.0,
+        "goriyaku_tag_ids": [],
+        "astro_elements": [],
+        "astro_tags": [],
+        "goriyaku": "",
+        "description": "",
+        "popular_score": 0,
+        "distance_m": None,
+        "visit_style_tags": [],
+    }
+
+    _attach_breakdown(
+        rec,
+        birthdate="1990-01-01",
+        need_tags=[],
+        weights={"element": 0.0, "need": 0.3, "popular": 0.0, "distance": 0.0},
+        astro_bonus_enabled=False,
+        visit_style_tags=set(),
+        query=None,
+    )
+
+    assert rec["breakdown"]["direction_bonus"] == 0.0
+    assert rec["breakdown"]["weights"]["direction_bonus"] == 0.0
+
+    direction_feature = rec["breakdown_detail"]["features"]["direction_bonus"]
+    assert direction_feature == {
+        "raw": 0.0,
+        "weight": 1.0,
+        "contribution": 0.0,
+        "reason": None,
+        "max": DIRECTION_BONUS_MAX,
+    }
+
+    assert rec["score_v2"]["components"]["direction_bonus"] == 0.0
+    assert rec["score_v2"]["components"]["direction_reason"] is None
+
+
 def test_observe_ranking_breakdown_empty_contract_has_stable_schema():
     observation = observe_ranking_breakdown(recs={"recommendations": []})
 
@@ -679,4 +986,18 @@ def test_observe_ranking_breakdown_empty_contract_has_stable_schema():
     assert observation == {
         "ranked_count": 0,
         "top10": [],
+        "_debug": {
+            "query": "",
+            "need_tags": [],
+            "matched_need_tags": [],
+            "visit_style_tags": [],
+            "matched_visit_style_tags": [],
+            "score_total_ranked_base": [],
+            "capped_behavior_contribution": [],
+            "behavior_ratio": [],
+            "reflection_hint_state_change_direction": [],
+            "reflection_hint_next_need_hint": [],
+            "reflection_hint_next_history_theme_hint": [],
+            "reflection_hint_source_history_theme": [],
+        },
     }

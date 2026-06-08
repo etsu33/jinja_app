@@ -9,18 +9,29 @@ function unique(values: string[]): string[] {
   return [...new Set(values.filter(Boolean))];
 }
 
-function buildSummary(
-  changedNeedTags: string[],
-  continuedNeedTags: string[],
-): string | null {
+type BuildSummaryArgs = {
+  changedNeedTags: string[];
+  continuedNeedTags: string[];
+  hasPreviousAction: boolean;
+};
+
+function buildSummary({
+  changedNeedTags,
+  continuedNeedTags,
+  hasPreviousAction,
+}: BuildSummaryArgs): string | null {
   if (changedNeedTags.length > 0) {
     const labels = changedNeedTags.map(toNeedTagLabel);
-    return `前回より「${labels.join("」「")}」を意識する流れが強まっています。`;
+    return hasPreviousAction
+      ? `前回の行動を踏まえると、今回は「${labels.join("」「")}」を意識する流れが強まっています。`
+      : `今回は小さく行動へ移すために、「${labels.join("」「")}」を意識する流れが強まっています。`;
   }
 
   if (continuedNeedTags.length > 0) {
     const labels = continuedNeedTags.map(toNeedTagLabel);
-    return `前回から継続して「${labels.join("」「")}」がテーマになっています。`;
+    return hasPreviousAction
+      ? `前回の行動を踏まえて、今回も「${labels.join("」「")}」が継続したテーマになっています。`
+      : `今回は小さく行動へ移すために、前回から継続して「${labels.join("」「")}」を見直す流れです。`;
   }
 
   return null;
@@ -108,6 +119,16 @@ function buildActionReflection(
 ): StateDelta["actionReflection"] {
   const actionState = previous?.actionState ?? null;
 
+  if (actionState === "reflected") {
+    return {
+      type: "reflected",
+      title: "前回の提案を振り返りまでつなげています",
+      summary:
+        "前回の神社について、参拝後の振り返りが保存されています。今回は、その時に見えた変化を踏まえて、次に整えたいテーマを確認する流れです。",
+      nextActionLabel: "前回の変化を踏まえて相談する",
+    };
+  }
+
   if (actionState === "visited") {
     return {
       type: "visited",
@@ -166,6 +187,8 @@ export function compareState(
     continuedNeedTags,
     combinationChanged: combinationChange.changed,
   });
+  const previousActionState = previous?.actionState ?? null;
+  const hasPreviousAction = previousActionState === "saved" || previousActionState === "visited" || previousActionState === "reflected";
 
   return {
     previous,
@@ -174,9 +197,14 @@ export function compareState(
     continuedNeedTags,
     daysSincePrevious,
     within7DaysSincePrevious,
-    summary: buildSummary(changedNeedTags, continuedNeedTags),
+    summary: buildSummary({
+      changedNeedTags,
+      continuedNeedTags,
+      hasPreviousAction,
+    }),
     combinationChange,
     transitionNarrative,
+    hasPreviousAction,
     actionReflection: buildActionReflection(previous),
   };
 }

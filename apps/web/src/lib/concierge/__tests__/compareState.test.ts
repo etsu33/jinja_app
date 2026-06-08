@@ -112,4 +112,48 @@ describe("compareState", () => {
 
     expect(result.transitionNarrative.type).toBe("unknown");
   });
+
+  it("previous の actionState が reflected なら振り返り済みの actionReflection を返す", () => {
+    const result = compareState(
+      makeSummary({ actionState: "reflected" }),
+      makeSummary(),
+    );
+
+    expect(result.actionReflection).toEqual({
+      type: "reflected",
+      title: "前回の提案を振り返りまでつなげています",
+      summary:
+        "前回の神社について、参拝後の振り返りが保存されています。今回は、その時に見えた変化を踏まえて、次に整えたいテーマを確認する流れです。",
+      nextActionLabel: "前回の変化を踏まえて相談する",
+    });
+  });
+
+  it("previous の actionState が null または none なら hasPreviousAction=false を返す", () => {
+    expect(compareState(makeSummary({ actionState: null }), makeSummary()).hasPreviousAction).toBe(false);
+    expect(compareState(makeSummary({ actionState: "none" }), makeSummary()).hasPreviousAction).toBe(false);
+  });
+
+  it("previous の actionState が saved / visited / reflected なら hasPreviousAction=true を返す", () => {
+    expect(compareState(makeSummary({ actionState: "saved" }), makeSummary()).hasPreviousAction).toBe(true);
+    expect(compareState(makeSummary({ actionState: "visited" }), makeSummary()).hasPreviousAction).toBe(true);
+    expect(compareState(makeSummary({ actionState: "reflected" }), makeSummary()).hasPreviousAction).toBe(true);
+  });
+
+  it("前回行動ありなら前回の行動を踏まえた summary を返す", () => {
+    const result = compareState(
+      makeSummary({ actionState: "visited", matchedNeedTags: ["mental"] }),
+      makeSummary({ matchedNeedTags: ["career"] }),
+    );
+
+    expect(result.summary).toBe("前回の行動を踏まえると、今回は「仕事や転機を見直したい」を意識する流れが強まっています。");
+  });
+
+  it("前回行動なしなら小さく行動へ移す summary を返す", () => {
+    const result = compareState(
+      makeSummary({ actionState: "none", matchedNeedTags: ["mental"] }),
+      makeSummary({ matchedNeedTags: ["career"] }),
+    );
+
+    expect(result.summary).toBe("今回は小さく行動へ移すために、「仕事や転機を見直したい」を意識する流れが強まっています。");
+  });
 });

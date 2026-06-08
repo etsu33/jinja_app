@@ -125,6 +125,21 @@ export function conciergeToShrineListItems(resp: ConciergeResponse): ConciergeRe
       const id = safeId(r);
       const name = r.display_name ?? r.name;
       const trustMetadata = normalizeTrustMetadata(r.trust_metadata ?? r.trustMetadata ?? null);
+      const actionSuggestions = Array.isArray(r._explanation_payload?.action_suggestions)
+        ? r._explanation_payload.action_suggestions
+            .map((item: any) => ({
+              id: String(item.id ?? ""),
+              historyTheme: String(item.history_theme ?? ""),
+              title: String(item.title ?? ""),
+              description: String(item.description ?? ""),
+              category: String(item.category ?? ""),
+              timing: String(item.timing ?? ""),
+              difficulty: String(item.difficulty ?? ""),
+              timeEstimate: String(item.time_estimate ?? ""),
+              measurementKey: String(item.measurement_key ?? ""),
+            }))
+            .filter((item: any) => item.id && item.title)
+        : [];
 
       const matchedTags = normalizeTagList(r.breakdown?.matched_need_tags);
       const rawTags = matchedTags.length ? matchedTags : normalizeTagList(resp.data?._need?.tags);
@@ -188,6 +203,7 @@ export function conciergeToShrineListItems(resp: ConciergeResponse): ConciergeRe
         tid: threadId,
         detailHref,
         trustMetadata,
+        actionSuggestions,
         cardProps: {
           shrineId: r.shrine_id,
           title: name,

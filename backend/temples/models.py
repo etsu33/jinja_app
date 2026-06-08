@@ -554,6 +554,107 @@ class ShrineReflection(models.Model):
         return f"Reflection #{self.pk} shrine={self.shrine_id} user={self.user_id}"
 
 
+
+class ShrineInteractionLog(models.Model):
+    class ActionType(models.TextChoices):
+        DETAIL_VIEW = "detail_view", "Detail view"
+        ROUTE_OPEN = "route_open", "Route open"
+        SHRINE_CARD_CLICK = "shrine_card_click", "Shrine card click"
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="shrine_interaction_logs",
+    )
+    shrine = models.ForeignKey(
+        Shrine,
+        on_delete=models.CASCADE,
+        related_name="interaction_logs",
+    )
+    action_type = models.CharField(
+        max_length=32,
+        choices=ActionType.choices,
+        db_index=True,
+    )
+    source = models.CharField(max_length=64, blank=True, default="", db_index=True)
+    thread = models.ForeignKey(
+        ConciergeThread,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="shrine_interaction_logs",
+    )
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user", "shrine", "action_type"], name="idx_interact_user_shrine_act"),
+            models.Index(fields=["user", "-created_at"], name="idx_interaction_user_created"),
+            models.Index(fields=["shrine", "-created_at"], name="idx_interaction_shrine_created"),
+        ]
+
+    def __str__(self) -> str:
+        return f"Interaction #{self.pk} shrine={self.shrine_id} user={self.user_id} action={self.action_type}"
+
+
+class ActionEvent(models.Model):
+    """Track user actions for action suggestions.
+
+    ShrineInteractionLog tracks behavior toward a shrine, such as detail_view and route_open.
+    ActionEvent tracks behavior toward an action suggestion, such as action_started and action_completed.
+    Keeping them separate prevents shrine behavior metrics and action recommendation metrics from mixing.
+    """
+
+    class ActionType(models.TextChoices):
+        ACTION_STARTED = "action_started", "Action started"
+        ACTION_COMPLETED = "action_completed", "Action completed"
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="action_events",
+    )
+    shrine = models.ForeignKey(
+        Shrine,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="action_events",
+    )
+    thread = models.ForeignKey(
+        ConciergeThread,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="action_events",
+    )
+    action_type = models.CharField(
+        max_length=32,
+        choices=ActionType.choices,
+        db_index=True,
+    )
+    action_suggestion_id = models.CharField(max_length=128, db_index=True)
+    history_theme = models.CharField(max_length=32, blank=True, default="", db_index=True)
+    action_category = models.CharField(max_length=32, blank=True, default="", db_index=True)
+    source = models.CharField(max_length=64, blank=True, default="", db_index=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user", "action_type"], name="idx_action_user_type"),
+            models.Index(fields=["user", "-created_at"], name="idx_action_user_created"),
+            models.Index(fields=["history_theme", "action_type"], name="idx_action_theme_type"),
+            models.Index(fields=["action_suggestion_id", "action_type"], name="idx_action_suggestion_type"),
+        ]
+
+    def __str__(self) -> str:
+        return f"ActionEvent #{self.pk} user={self.user_id} action={self.action_type} suggestion={self.action_suggestion_id}"
+
+
 class Goshuin(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,

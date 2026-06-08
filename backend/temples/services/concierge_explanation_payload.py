@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+
 from typing import Any, Dict, List, Optional
+
+from temples.services.action_suggestions import get_action_suggestions_for_theme
 
 
 NEED_LABELS_JA: Dict[str, str] = {
@@ -11,6 +14,9 @@ NEED_LABELS_JA: Dict[str, str] = {
     "money": "金運",
     "rest": "休息",
     "courage": "前進・後押し",
+    "protection": "厄除け・守り",
+    "focus": "集中・継続",
+    "travel_safe": "移動・安全",
     "element": "生年月日との相性",
     "fallback": "近い候補",
     "visit_style": "参拝スタイル",
@@ -217,6 +223,8 @@ def build_explanation_payload(rec: Dict[str, Any], *, birthdate: Optional[str] =
             (breakdown_detail["features"].get("score_total_ranked") or 0.0)
         )
 
+    score_v2 = rec.get("score_v2") if isinstance(rec.get("score_v2"), dict) else None
+
     # 候補採用理由
     reason_facts = _normalize_reason_facts(
         rec.get("_reason_facts"),
@@ -255,6 +263,9 @@ def build_explanation_payload(rec: Dict[str, Any], *, birthdate: Optional[str] =
 
     gogyou_context = _build_gogyou_context(birthdate)
     history_context = _build_history_context(rec)
+    action_suggestions = get_action_suggestions_for_theme(
+        history_context.get("theme") if isinstance(history_context, dict) else None,
+    )
 
     return {
         "version": 2,
@@ -268,12 +279,14 @@ def build_explanation_payload(rec: Dict[str, Any], *, birthdate: Optional[str] =
         "original_reason": original_reason,
         "gogyou_context": gogyou_context,
         "history_context": history_context,
+        "action_suggestions": action_suggestions,
         "score": {
             "element": score_element,
             "need": score_need,
             "total": score_total,
             "total_ranked": score_total_ranked,
         },
+        "score_v2": score_v2,
     }
 
 

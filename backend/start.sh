@@ -12,11 +12,36 @@ echo "USE_GIS=${USE_GIS:-unset}"
 echo "USE_SQLITE=${USE_SQLITE:-unset}"
 python manage.py check
 python manage.py showmigrations temples | tail -20
+python manage.py showmigrations temples | grep 0087 || true
 
 echo "Running migrations..."
+echo "Migration status before migrate:"
+python manage.py showmigrations temples | grep "0087_shrinereflection" || true
+python manage.py shell -c "from django.db import connection; print('HAS temples_shrinereflection=', 'temples_shrinereflection' in connection.introspection.table_names())" || true
 python manage.py migrate --noinput
-python manage.py repair_favorite_table || echo "repair_favorite_table failed; continue startup"
 
+echo "Ensuring ShrineReflection table exists..."
+python manage.py shell <<'PY'
+from django.db import connection
+from temples.models import ShrineReflection
+
+table_name = ShrineReflection._meta.db_table
+exists = table_name in connection.introspection.table_names()
+print("HAS ShrineReflection table after migrate=", exists, "table=", table_name)
+
+if not exists:
+    print("Creating missing ShrineReflection table via schema_editor because migration state and DB schema are inconsistent")
+    with connection.schema_editor() as schema_editor:
+        schema_editor.create_model(ShrineReflection)
+    print("Created ShrineReflection table")
+
+print("HAS ShrineReflection table final=", table_name in connection.introspection.table_names())
+PY
+
+python manage.py repair_favorite_table || echo "repair_favorite_table failed; continue startup"
+echo "Migration status after migrate:"
+python manage.py showmigrations temples | grep "0087_shrinereflection" || true
+python manage.py shell -c "from django.db import connection; print('HAS temples_shrinereflection=', 'temples_shrinereflection' in connection.introspection.table_names())" || true
 echo "Repairing FeatureUsage table..."
 python manage.py repair_featureusage_table
 echo "FeatureUsage repair completed."

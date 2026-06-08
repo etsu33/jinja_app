@@ -47,6 +47,62 @@ def test_build_explanation_payload_prefers_visit_style_over_fallback_primary_rea
     assert payload["matched_need_tags"] == []
 
 
+# New test for user_selected_tag primary reason
+def test_build_explanation_payload_keeps_user_selected_tag_primary_reason():
+    payload = build_explanation_payload(
+        {
+            "reason": "候補としておすすめしています。",
+            "_reason_facts": [
+                {
+                    "type": "user_selected_tag",
+                    "label": "goriyaku_tag:1",
+                    "label_ja": "goriyaku_tag:1",
+                    "evidence": ["requested_goriyaku_tag_ids"],
+                    "score": 3.0,
+                    "is_primary": True,
+                },
+                {
+                    "type": "text_hint",
+                    "label": "rest",
+                    "label_ja": "休息",
+                    "evidence": ["text_score:3"],
+                    "score": 3.0,
+                    "is_primary": False,
+                },
+            ],
+            "breakdown": {
+                "score_need": 1,
+                "score_total": 0.3,
+                "matched_need_tags": ["rest"],
+            },
+            "breakdown_detail": {
+                "features": {
+                    "score_total_ranked": 0.9,
+                }
+            },
+        }
+    )
+
+    assert payload["primary_reason"] == {
+        "type": "user_selected_tag",
+        "label": "goriyaku_tag:1",
+        "label_ja": "goriyaku_tag:1",
+        "evidence": ["requested_goriyaku_tag_ids"],
+        "score": 3.0,
+        "is_primary": True,
+    }
+    assert payload["secondary_reasons"] == [
+        {
+            "type": "text_hint",
+            "label": "rest",
+            "label_ja": "休息",
+            "evidence": ["text_score:3"],
+            "score": 3.0,
+            "is_primary": False,
+        }
+    ]
+
+
 def test_build_explanation_for_chat_rec_adds_quiet_visit_style_reason():
     result = build_explanation_for_chat_rec(
         {
@@ -125,3 +181,30 @@ def test_build_explanation_for_chat_rec_adds_less_crowded_visit_style_reason():
     assert visit_style_reason["text"] == "人が少なめで落ち着いて参拝したい条件と重なっています。"
     assert visit_style_reason["strength"] == "high"
     assert visit_style_reason["evidence"]["matched_visit_style_tags"] == ["less_crowded"]
+
+def test_build_explanation_for_chat_rec_prioritizes_user_selected_beauty_over_gogyou():
+    exp = build_explanation_for_chat_rec(
+        {
+            "name": "美容神社",
+            "_explanation_payload": {
+                "primary_reason": {
+                    "type": "user_selected_tag",
+                    "label": "美容",
+                    "label_ja": "美容",
+                    "evidence": ["requested_goriyaku_tag_ids"],
+                    "score": 3.0,
+                    "is_primary": True,
+                },
+                "gogyou_context": {
+                    "gogyou": "土",
+                    "tone": "足元を固め、落ち着いて整えやすい流れ",
+                },
+            },
+        },
+        query="美容で整えたい",
+        bias=None,
+        birthdate="1984-05-15",
+    )
+
+    assert "美容" in exp["summary"]
+    assert exp["reasons"][0]["code"] == "USER_SELECTED_TAG"

@@ -44,6 +44,9 @@ export type ShrineMeaningSourceFieldsV2 = {
 
   /** 土地性・場所性の補助タグ。 */
   placeTags?: string[];
+
+  directionBonus?: number | null;
+  directionReason?: string | null;
 };
 
 export type ShrineMeaningGeneratedFieldsV2 = {
@@ -67,6 +70,8 @@ export type ShrineMeaningGeneratedFieldsV2 = {
 
   /** goriyaku 由来の行動接続。願望成就の断定ではない。 */
   benefitActionContext?: string | null;
+
+  directionSupportCopy?: string | null;
 };
 
 export type ShrineMeaningDisplayBlockV2 = {

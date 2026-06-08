@@ -1,4 +1,4 @@
-<file name=0 path=/Users/morietsu/Desktop/jinja_app/docs/roadmap.md># 🚀 開発ロードマップ（ポストMVP / ゼロコスト運用版）
+# 🚀 開発ロードマップ（ポストMVP / ゼロコスト運用版）
 
 本ドキュメントは **返金待ち期間〜β公開** までを **月額¥0** を前提に進めるためのロードマップです。
 既存のロードマップを、無料プロバイダ運用・安全装置・低コストCIに合わせて更新しています。
@@ -24,6 +24,128 @@
 ---
 
 ## 🗂 マイルストーン（チェックリスト）
+### Recommendation Engine v2: score_v2 / behavior_signal 運用方針
+
+#### Recommendation Score v2 の軸
+
+主軸:
+
+- 相談内容
+- history_theme
+- ご利益
+- 神社固有文脈
+- 神社タイプ
+
+補助軸:
+
+- 生年月日との相性
+- astro_elements
+- direction_bonus
+- 行動ログ補正
+
+将来モード:
+
+- 吉方位入力UI
+- 方位計算
+- 九星接続
+- 旅行モード連携
+
+運用メモ:
+
+- `direction_bonus` は Recommendation Score v2 の補助加点として扱う。
+- `direction_bonus` は主軸を上書きしない。
+- 吉方位入力UI / 方位計算 / 九星接続 / 旅行モード連携は MVP 外の将来モードとして隔離する。
+- UI 文言では吉方位を主理由にせず、必要な場合も方位の補助要素として弱く扱う。
+
+- [x] `score_v2` を推薦生成時点の評価スナップショットとして扱う
+- [x] 保存済み thread の `score_v2` は再計算・再ランキングしない
+- [x] `action_state` は現在DBにもとづく状態として表示する
+- [x] `behavior_signal` は Favorite / Visit / ShrineReflection などの行動データを数値化する
+- [x] `ranking_applied=false` の間は、`score_v2` を観測・説明用として扱う
+- [ ] `behavior_signal` の分布を継続監査する
+- [ ] `behavior_signal` を `score_total_ranked` に加算する重みを設計する
+- [ ] 新規 recommendation 生成時のみ `ranking_applied=true` を有効化する
+- [ ] 保存済み thread の履歴再現性と、現在の `action_state` 表示を両立する
+
+運用方針:
+
+- `score_v2`: 推薦生成時点の評価値。履歴の再現性を優先し、保存後は変更しない。
+- `behavior_signal`: ユーザー行動を推薦改善に使うための観測値。初期対象は Favorite / Visit / ShrineReflection とする。
+- `ranking_applied`: `score_v2` を実際の推薦順位へ反映したかを示すフラグ。true 化は新規推薦生成時のみ対象とする。
+- `action_state`: saved / visited / reflected / none など、現在DBにもとづく状態表示。保存済み `score_v2` と一致しない場合がある。
+
+
+次フェーズでは、`behavior_signal` を直接ランキングへ反映する前に、分布・偏り・重みの妥当性を確認する。
+
+#### behavior_signal v2 の責務分離方針
+
+行動ログは、意味の違う行動を混ぜずに扱う。
+Favorite / Visit / ShrineReflection は既存DBモデルとして維持し、detail_view / route_open は将来の軽量 interaction として分離する。
+
+行動種別:
+
+- Favorite
+  - 役割: 保存・候補化
+  - 意味: あとで見返したい / 候補として残したい
+  - 現状: DB保存あり
+  - action_state: saved
+  - behavior_signal: 中程度の補正
+
+- Visit
+  - 役割: 参拝実行
+  - 意味: 実際に行動へ移した記録
+  - 現状: DB保存あり
+  - action_state: visited
+  - behavior_signal: 強めの補正
+
+- ShrineReflection
+  - 役割: 参拝後の内省
+  - 意味: 参拝後に体験を振り返った記録
+  - 現状: DB保存あり
+  - action_state: reflected
+  - behavior_signal: 最も強い補正
+
+- detail_view
+  - 役割: 軽量 interaction
+  - 意味: 詳細を見た / 関心を持った
+  - 現状: analytics 発火のみ。DB保存なし
+  - action_state: 将来 detail_viewed
+  - behavior_signal: 弱い補正候補
+
+- route_open
+  - 役割: 軽量 interaction
+  - 意味: 行き方を確認した / 行動直前の関心
+  - 現状: analytics 発火のみ。DB保存なし
+  - action_state: 将来 route_opened
+  - behavior_signal: detail_view より強く、Visit より弱い補正候補
+
+優先順位:
+
+```text
+reflected
+> visited
+> saved
+> route_opened
+> detail_viewed
+> none
+```
+
+運用メモ:
+
+- 現状の `behavior_signal` は Favorite / Visit / ShrineReflection のみで運用する。
+- detail_view / route_open は analytics には存在するが、DB保存がないため現時点では `behavior_signal` に使わない。
+- detail_viewed / route_opened を `action_state` に追加する場合は、先に `ShrineInteractionLog` などの行動ログモデルを設計する。
+- Favorite と Visit は上下関係ではなく、保存・候補化と参拝実行として別概念で扱う。
+- 将来の `behavior_signal v2` では、軽量 interaction を弱い補正として追加する。
+
+- [x] Favorite を保存・候補化として定義
+- [x] Visit を参拝実行として定義
+- [x] ShrineReflection を参拝後の内省として定義
+- [ ] detail_view / route_open を軽量 interaction として分離
+- [ ] ShrineInteractionLog の将来設計を作成
+- [ ] behavior_signal v2 の重みを仮置きする
+- [ ] score_v2 には将来 behavior_bonus として接続する方針を維持する
+
 ### 完了: Premium 体験境界の明文化
 
 - [x] Premium 価値を Map/Search ではなく、パーソナル理由・相性・継続分析・保存/記録拡張に固定
@@ -176,4 +298,3 @@
 - [ ] 投稿履歴の表示（mypage）
 - [ ] 投稿→お気に入り / 回遊導線の強化
 - [ ] 投稿貢献の可視化（ランキング / バッジなど）
-</file>

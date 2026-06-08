@@ -1,12 +1,24 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import timedelta
 from typing import Optional, Any
 
 from django.db import transaction
 from django.utils import timezone
 
-from temples.models import ConciergeHistory, ConciergeMessage, ConciergeThread, Favorite, Visit
+from temples.models import (
+    ConciergeHistory,
+    ConciergeMessage,
+    ConciergeThread,
+    Favorite,
+    ShrineInteractionLog,
+    ShrineReflection,
+    Visit,
+)
+
+from temples.services.reflection_state_change import build_reflection_state_change
+
 
 HistoryActionState = str
 
@@ -23,6 +35,13 @@ def classify_shrine_action_state(*, user, shrine_id: int | None) -> HistoryActio
     if shrine_id is None:
         return "none"
 
+    has_reflection = ShrineReflection.objects.filter(
+        user=user,
+        shrine_id=shrine_id,
+    ).exists()
+    if has_reflection:
+        return "reflected"
+
     has_visit = Visit.objects.filter(
         user=user,
         shrine_id=shrine_id,
@@ -38,7 +57,168 @@ def classify_shrine_action_state(*, user, shrine_id: int | None) -> HistoryActio
     if has_favorite:
         return "saved"
 
+    has_route_open = ShrineInteractionLog.objects.filter(
+        user=user,
+        shrine_id=shrine_id,
+        action_type=ShrineInteractionLog.ActionType.ROUTE_OPEN,
+    ).exists()
+    if has_route_open:
+        return "route_opened"
+
+    has_detail_view = ShrineInteractionLog.objects.filter(
+        user=user,
+        shrine_id=shrine_id,
+        action_type=ShrineInteractionLog.ActionType.DETAIL_VIEW,
+    ).exists()
+    if has_detail_view:
+        return "detail_viewed"
+
     return "none"
+
+
+def calculate_shrine_behavior_signal(*, user, shrine_id: int | None) -> float:
+    if user is None or not getattr(user, "is_authenticated", False):
+        return 0.0
+
+    if shrine_id is None:
+        return 0.0
+
+    score = 0.0
+
+    if ShrineInteractionLog.objects.filter(
+        user=user,
+        shrine_id=shrine_id,
+        action_type=ShrineInteractionLog.ActionType.DETAIL_VIEW,
+    ).exists():
+        score += 0.5
+
+    if ShrineInteractionLog.objects.filter(
+        user=user,
+        shrine_id=shrine_id,
+        action_type=ShrineInteractionLog.ActionType.ROUTE_OPEN,
+    ).exists():
+        score += 1.0
+
+    if Favorite.objects.filter(user=user, shrine_id=shrine_id).exists():
+        score += 2.0
+
+    if Visit.objects.filter(user=user, shrine_id=shrine_id, status="added").exists():
+        score += 4.0
+
+    if ShrineReflection.objects.filter(user=user, shrine_id=shrine_id).exists():
+        score += 5.0
+
+    return min(score, 10.0)
+
+
+def _recency_multiplier(latest_at) -> float:
+    if latest_at is None:
+        return 0.0
+
+    now = timezone.now()
+    age = now - latest_at
+
+    if age <= timedelta(days=30):
+        return 1.0
+    if age <= timedelta(days=90):
+        return 0.5
+    return 0.2
+
+
+def calculate_shrine_behavior_signal_v2(*, user, shrine_id: int | None) -> float:
+    if user is None or not getattr(user, "is_authenticated", False):
+        return 0.0
+
+    if shrine_id is None:
+        return 0.0
+
+    score = 0.0
+
+    detail_view_qs = ShrineInteractionLog.objects.filter(
+        user=user,
+        shrine_id=shrine_id,
+        action_type=ShrineInteractionLog.ActionType.DETAIL_VIEW,
+    )
+    detail_view_latest = (
+        detail_view_qs.order_by("-created_at")
+        .values_list("created_at", flat=True)
+        .first()
+    )
+    score += detail_view_qs.count() * 0.2 * _recency_multiplier(detail_view_latest)
+
+    route_open_qs = ShrineInteractionLog.objects.filter(
+        user=user,
+        shrine_id=shrine_id,
+        action_type=ShrineInteractionLog.ActionType.ROUTE_OPEN,
+    )
+    route_open_latest = (
+        route_open_qs.order_by("-created_at")
+        .values_list("created_at", flat=True)
+        .first()
+    )
+    score += route_open_qs.count() * 0.6 * _recency_multiplier(route_open_latest)
+
+    favorite_latest = (
+        Favorite.objects.filter(user=user, shrine_id=shrine_id)
+        .order_by("-created_at")
+        .values_list("created_at", flat=True)
+        .first()
+    )
+    if favorite_latest is not None:
+        score += 1.5 * _recency_multiplier(favorite_latest)
+
+    visit_latest = (
+        Visit.objects.filter(user=user, shrine_id=shrine_id, status="added")
+        .order_by("-visited_at")
+        .values_list("visited_at", flat=True)
+        .first()
+    )
+    if visit_latest is not None:
+        score += 3.0 * _recency_multiplier(visit_latest)
+
+    reflection_latest = (
+        ShrineReflection.objects.filter(user=user, shrine_id=shrine_id)
+        .order_by("-created_at")
+        .values_list("created_at", flat=True)
+        .first()
+    )
+    if reflection_latest is not None:
+        score += 4.0 * _recency_multiplier(reflection_latest)
+
+    return min(score, 10.0)
+
+
+def build_recent_reflection_hint(*, user, shrine_id: int | None = None) -> dict[str, Any] | None:
+    """Return the latest reflection-derived hint for recommendation support.
+
+    This helper exposes reflection content as a safe audit payload only.
+    It does not change ranking by itself.
+    """
+    if user is None or not getattr(user, "is_authenticated", False):
+        return None
+
+    qs = ShrineReflection.objects.filter(user=user).select_related("shrine")
+    if shrine_id is not None:
+        qs = qs.filter(shrine_id=shrine_id)
+
+    reflection = qs.order_by("-created_at").first()
+    if reflection is None:
+        return None
+
+    state_change = build_reflection_state_change(reflection)
+
+    return {
+        "state_change_direction": state_change.state_change_direction,
+        "state_change_summary": state_change.state_change_summary,
+        "next_need_hint": state_change.next_need_hint,
+        "next_history_theme_hint": state_change.next_history_theme_hint,
+        "source_reflection_id": reflection.id,
+        "source_shrine_id": reflection.shrine_id,
+        "source_shrine_name": getattr(reflection.shrine, "name_jp", "") or "",
+        "source_history_theme": reflection.history_theme,
+        "created_at": reflection.created_at.isoformat() if reflection.created_at else None,
+    }
+
 
 @dataclass
 class ChatSaveResult:

@@ -189,6 +189,8 @@ def observe_ranking_breakdown(
             distance = features.get("distance") or {}
             visit_style = features.get("visit_style") or {}
             element = features.get("element") or {}
+            behavior = features.get("behavior") or {}
+            reflection_hint = rec.get("reflection_hint") or {}
 
             rows.append(
                 {
@@ -204,11 +206,14 @@ def observe_ranking_breakdown(
                     "score_popular": float(popular.get("raw") or 0.0),
                     "score_visit_style": int(visit_style.get("raw") or 0),
                     "score_element": int(element.get("raw") or 0),
+                    "behavior_signal": float(behavior.get("raw") or 0.0),
+                    "behavior_contribution": float(behavior.get("contribution") or 0.0),
                     "contributions": {
                         "need": float(need.get("rank_weighted_contribution") or 0.0),
                         "distance": float(distance.get("contribution") or 0.0),
                         "popular": float(popular.get("contribution") or 0.0),
                         "visit_style": float(visit_style.get("contribution") or 0.0),
+                        "behavior": float(behavior.get("contribution") or 0.0),
                         "element": float(element.get("contribution") or 0.0),
                         "astro_bonus": float(features.get("astro_bonus") or 0.0),
                     },
@@ -216,18 +221,72 @@ def observe_ranking_breakdown(
                     "matched_visit_style_tags": list(visit_style.get("matched_tags") or []),
                     "primary_reason_source": rec.get("_primary_reason_source"),
                     "primary_reason_label": rec.get("_primary_reason_label"),
+                    "score_total_ranked_base": float(features.get("score_total_ranked_base") or 0.0),
+                    "capped_behavior_contribution": float(features.get("capped_behavior_contribution") or 0.0),
+                    "behavior_ratio": float(features.get("behavior_ratio") or 0.0),
+                    "visit_style_tags": list(rec.get("visit_style_tags") or []),
+                    "reflection_hint": reflection_hint,
+                    "reflection_hint_state_change_direction": reflection_hint.get("state_change_direction"),
+                    "reflection_hint_next_need_hint": list(reflection_hint.get("next_need_hint") or []),
+                    "reflection_hint_next_history_theme_hint": list(reflection_hint.get("next_history_theme_hint") or []),
+                    "reflection_hint_source_history_theme": reflection_hint.get("source_history_theme"),
                 }
             )
+
+        debug = {
+            "query": recs.get("_query") or "",
+            "need_tags": recs.get("_need_tags") or [],
+            "matched_need_tags": [r.get("matched_need_tags") or [] for r in rows],
+            "visit_style_tags": [
+                list(dict.fromkeys((r.get("visit_style_tags") or []) + (r.get("matched_visit_style_tags") or [])))
+                for r in rows
+            ],
+            "matched_visit_style_tags": [r.get("matched_visit_style_tags") or [] for r in rows],
+            "score_total_ranked_base": [r.get("score_total_ranked_base") for r in rows],
+            "capped_behavior_contribution": [r.get("capped_behavior_contribution") for r in rows],
+            "behavior_ratio": [r.get("behavior_ratio") or 0.0 for r in rows],
+            "reflection_hint_state_change_direction": [
+                r.get("reflection_hint_state_change_direction")
+                for r in rows
+            ],
+            "reflection_hint_next_need_hint": [
+                r.get("reflection_hint_next_need_hint") or []
+                for r in rows
+            ],
+            "reflection_hint_next_history_theme_hint": [
+                r.get("reflection_hint_next_history_theme_hint") or []
+                for r in rows
+            ],
+            "reflection_hint_source_history_theme": [
+                r.get("reflection_hint_source_history_theme")
+                for r in rows
+            ],
+        }
 
         return {
             "ranked_count": len(recommendations),
             "top10": rows,
+            "_debug": debug,
         }
     except Exception:
         log.exception("[ranking_breakdown_observation] failed")
         return {
             "ranked_count": 0,
             "top10": [],
+            "_debug": {
+                "query": "",
+                "need_tags": [],
+                "matched_need_tags": [],
+                "visit_style_tags": [],
+                "matched_visit_style_tags": [],
+                "score_total_ranked_base": [],
+                "capped_behavior_contribution": [],
+                "behavior_ratio": [],
+                "reflection_hint_state_change_direction": [],
+                "reflection_hint_next_need_hint": [],
+                "reflection_hint_next_history_theme_hint": [],
+                "reflection_hint_source_history_theme": [],
+            },
         }
 
 

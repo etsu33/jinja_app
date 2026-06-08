@@ -2,12 +2,26 @@ from __future__ import annotations
 
 import math
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TypedDict
 from temples.domain.need_to_goriyaku_tag_ids import need_tags_to_goriyaku_ids
+from temples.services.concierge_history import (
+    build_recent_reflection_hint,
+    calculate_shrine_behavior_signal_v2,
+    classify_shrine_action_state,
+)
 from typing import Literal
 
 
+
 PublicMode = Literal["need", "compat"]
+
+
+class DirectionBonusResult(TypedDict):
+    bonus: float
+    reason: str | None
+
+
+DIRECTION_BONUS_MAX = 0.3
 
 
 log = logging.getLogger(__name__)
@@ -121,15 +135,19 @@ NEED_LABELS_JA: Dict[str, str] = {
     "money": "金運",
     "rest": "休息",
     "courage": "前進・後押し",
+    "protection": "厄除け・守り",
+    "focus": "集中・継続",
+    "travel_safe": "移動・安全",
     "element": "生年月日との相性",
     "fallback": "近い候補",
 }
 
 PRIMARY_REASON_PRIORITY: Dict[str, int] = {
-    "need_tag": 0,
-    "goriyaku_tag": 1,
-    "text_hint": 2,
-    "element": 3,
+    "user_selected_tag": 0,
+    "need_tag": 1,
+    "goriyaku_tag": 2,
+    "text_hint": 3,
+    "element": 4,
     "fallback": 9,
 }
 
@@ -159,6 +177,9 @@ NEED_TAG_LABELS_JA = {
     "money": "金運",
     "courage": "前進・後押し",
     "study": "学業・合格",
+    "protection": "厄除け・守り",
+    "focus": "集中・継続",
+    "travel_safe": "移動・安全",
 }
 
 
@@ -171,11 +192,25 @@ def _build_reason_facts(
     matched_by_tag: List[str],
     matched_by_gid: List[str],
     matched_by_text: List[str],
+    matched_by_user_selected_gid: List[int],
+    goriyaku_tag_label_by_id: Optional[Dict[int, str]],
     text_score_by_tag: Dict[str, int],
     score_element: int,
     astro_bonus_enabled: bool,
 ) -> List[Dict[str, Any]]:
     facts: List[Dict[str, Any]] = []
+
+    label_map = goriyaku_tag_label_by_id or {}
+    for gid in matched_by_user_selected_gid:
+        label = str(label_map.get(gid) or f"goriyaku_tag:{gid}")
+        facts.append(
+            _make_reason_fact(
+                type_="user_selected_tag",
+                label=label,
+                evidence=["requested_goriyaku_tag_ids"],
+                score=3.0,
+            )
+        )
 
     for tag in matched_by_tag:
         facts.append(
@@ -277,6 +312,33 @@ def _distance_decay(distance_m: Optional[float]) -> float:
         return 0.0
     return math.exp(-distance_m / 2500.0)
 
+DIRECTION_LABELS_JA = ["北", "北東", "東", "南東", "南", "南西", "西", "北西"]
+
+
+def _to_float_or_none(value: Any) -> float | None:
+    try:
+        if value in (None, ""):
+            return None
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _bearing_degrees(*, from_lat: float, from_lng: float, to_lat: float, to_lng: float) -> float:
+    lat1 = math.radians(from_lat)
+    lat2 = math.radians(to_lat)
+    delta_lng = math.radians(to_lng - from_lng)
+
+    y = math.sin(delta_lng) * math.cos(lat2)
+    x = math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(delta_lng)
+
+    return (math.degrees(math.atan2(y, x)) + 360.0) % 360.0
+
+
+def _direction_label_ja(bearing: float) -> str:
+    index = int((bearing + 22.5) // 45) % 8
+    return DIRECTION_LABELS_JA[index]
+
 
 def _resolve_mode_weights(
     *,
@@ -370,6 +432,54 @@ def _build_entry_context(
     }
 
 
+def _resolve_direction_bonus(
+    *,
+    rec: Dict[str, Any],
+    birthdate: Optional[str],
+    user_origin: Optional[Dict[str, Any]] = None,
+) -> DirectionBonusResult:
+    """Resolve the future direction bonus for score_v2.
+
+    Current phase:
+      - direction input UI is not implemented
+      - direction calculation is not implemented
+      - DB persistence is not used
+
+    Therefore this helper always returns zero, while keeping the score_v2
+    contract ready for future direction-based scoring.
+    """
+
+    has_birthdate = bool(str(birthdate or "").strip())
+    latitude = rec.get("latitude") or rec.get("lat")
+    longitude = rec.get("longitude") or rec.get("lng")
+    has_location = latitude not in (None, "") and longitude not in (None, "")
+    has_user_origin = bool(user_origin)
+
+    if not has_birthdate or not has_location or not has_user_origin:
+        return {"bonus": 0.0, "reason": None}
+
+    origin_lat = _to_float_or_none(user_origin.get("lat") if user_origin else None)
+    origin_lng = _to_float_or_none(user_origin.get("lng") if user_origin else None)
+    shrine_lat = _to_float_or_none(latitude)
+    shrine_lng = _to_float_or_none(longitude)
+
+    if origin_lat is None or origin_lng is None or shrine_lat is None or shrine_lng is None:
+        return {"bonus": 0.0, "reason": None}
+
+    bearing = _bearing_degrees(
+        from_lat=origin_lat,
+        from_lng=origin_lng,
+        to_lat=shrine_lat,
+        to_lng=shrine_lng,
+    )
+    direction_label = _direction_label_ja(bearing)
+
+    return {
+        "bonus": 0.1,
+        "reason": f"現在地から見て{direction_label}方面の候補です",
+    }
+
+
 def _attach_breakdown(
     rec: Dict[str, Any],
     *,
@@ -379,6 +489,10 @@ def _attach_breakdown(
     astro_bonus_enabled: bool,
     visit_style_tags: set[str] | None = None,
     query: Optional[str] = None,
+    requested_goriyaku_tag_ids: Optional[List[int]] = None,
+    goriyaku_tag_label_by_id: Optional[Dict[int, str]] = None,
+    user_origin: Optional[Dict[str, Any]] = None,
+    user=None,
 ) -> None:
     """
     rec（1件の神社辞書）にスコアの内訳を追加する。
@@ -446,6 +560,13 @@ def _attach_breakdown(
         if isinstance(x, int) or (isinstance(x, str) and str(x).strip().isdigit())
     }
 
+    requested_gid_set = {
+        int(x)
+        for x in (requested_goriyaku_tag_ids or [])
+        if isinstance(x, int) or (isinstance(x, str) and str(x).strip().isdigit())
+    }
+    matched_by_user_selected_gid = sorted(candidate_gid_set & requested_gid_set)
+
     matched_by_gid: List[str] = []
     for tag in need_tags_clean:
         expected_gids = need_tags_to_goriyaku_ids([tag])
@@ -485,6 +606,13 @@ def _attach_breakdown(
     w3 = float(weights.get("popular", 0.0))
     w4 = float(weights.get("distance", 0.0))
     w5 = 0.35
+    direction_result = _resolve_direction_bonus(
+        rec=rec,
+        birthdate=birthdate,
+        user_origin=user_origin,
+    )
+    direction_bonus = min(float(direction_result["bonus"]), DIRECTION_BONUS_MAX)
+    direction_reason = direction_result["reason"]
 
     astro_bonus = 0.0
     if astro_bonus_enabled:
@@ -525,16 +653,50 @@ def _attach_breakdown(
     # _score_total:
     #   実際の並び順に使う内部ランキング用スコア。
     #   need の強一致・距離減衰まで含めた ranked score を入れる。
-    score_total = score_element * w1 + score_need * w2 + score_popular * w3 + astro_bonus
+    score_total = score_element * w1 + score_need * w2 + score_popular * w3 + astro_bonus + direction_bonus
 
-    score_total_ranked = (
+    shrine_id = rec.get("shrine_id") or rec.get("id")
+    try:
+        shrine_id_int = int(shrine_id) if shrine_id is not None else None
+    except (TypeError, ValueError):
+        shrine_id_int = None
+
+    behavior_signal = calculate_shrine_behavior_signal_v2(
+        user=user,
+        shrine_id=shrine_id_int,
+    )
+    action_state = classify_shrine_action_state(
+        user=user,
+        shrine_id=shrine_id_int,
+    )
+    reflection_hint = build_recent_reflection_hint(
+        user=user,
+        shrine_id=shrine_id_int,
+    )
+    rec["action_state"] = action_state
+    rec["reflection_hint"] = reflection_hint
+    behavior_weight = 0.1
+    behavior_contribution = float(behavior_signal) * behavior_weight
+
+    score_total_ranked_base = (
         score_element * w1
         + score_need_rank_weighted * w2
         + score_popular * w3
         + score_distance * w4
         + score_visit_style * w5
         + astro_bonus
+        + direction_bonus
     )
+    # 行動の影響を相談内容に対して最大30％または0.5に制限
+    behavior_cap = min(score_total_ranked_base * 0.3, 0.5)
+    capped_behavior_contribution = min(behavior_contribution, behavior_cap)
+    behavior_ratio = (
+        capped_behavior_contribution / score_total_ranked_base
+        if score_total_ranked_base > 0
+        else 0.0
+    )
+    # For now, direction_bonus is 0.0 and does not reverse ranking
+    score_total_ranked = score_total_ranked_base + capped_behavior_contribution
 
     rec["_score_total"] = float(score_total_ranked)
 
@@ -543,10 +705,12 @@ def _attach_breakdown(
         "score_need": int(score_need),
         "score_popular": float(score_popular),
         "score_total": float(score_total),
+        "direction_bonus": float(direction_bonus),
         "weights": {
             "element": float(w1),
             "need": float(w2),
             "popular": float(w3),
+            "direction_bonus": 0.0,
         },
         "matched_need_tags": matched_all,
     }
@@ -588,8 +752,57 @@ def _attach_breakdown(
                 "matched_tags": matched_visit_style_tags,
                 "contribution": float(score_visit_style * w5),
             },
+            "behavior": {
+                "raw": float(behavior_signal),
+                "weight": float(behavior_weight),
+                "contribution": float(behavior_contribution),
+                "capped_contribution": float(capped_behavior_contribution),
+                "cap": float(behavior_cap),
+                "ratio": float(behavior_ratio),
+            },
+            "reflection_hint": reflection_hint,
+            "direction_bonus": {
+                "raw": float(direction_bonus),
+                "weight": 1.0,
+                "contribution": float(direction_bonus),
+                "reason": direction_reason,
+                "max": float(DIRECTION_BONUS_MAX),
+            },
             "astro_bonus": float(astro_bonus) if astro_bonus_enabled else 0.0,
+            "score_total_ranked_base": float(score_total_ranked_base),
+            "capped_behavior_contribution": float(capped_behavior_contribution),
+            "behavior_ratio": float(behavior_ratio),
             "score_total_ranked": float(score_total_ranked),
+        },
+    }
+
+    rec["score_v2"] = {
+        "version": 1,
+        "ranking_applied": True,
+        "total": float(score_total_ranked),
+        "components": {
+            "user_state_match": float(score_need_rank_weighted * w2),
+            "shrine_meaning_match": float(score_need * w2),
+            "context_match": float(score_visit_style * w5),
+            "element_match": float(score_element * w1),
+            "distance_score": float(score_distance * w4),
+            "popularity_score": float(score_popular * w3),
+            "astro_bonus": float(astro_bonus) if astro_bonus_enabled else 0.0,
+            "behavior_signal": float(behavior_signal),
+            "behavior_contribution": float(behavior_contribution),
+            "capped_behavior_contribution": float(capped_behavior_contribution),
+            "behavior_ratio": float(behavior_ratio),
+            "direction_bonus": float(direction_bonus),
+            "direction_reason": direction_reason,
+        },
+        "signals": {
+            "matched_need_tags": matched_all,
+            "matched_by_tag": matched_by_tag,
+            "matched_by_text": matched_by_text,
+            "matched_by_gid": matched_by_gid,
+            "matched_visit_style_tags": matched_visit_style_tags,
+            "matched_user_selected_goriyaku_tag_ids": matched_by_user_selected_gid,
+            "reflection_hint": reflection_hint,
         },
     }
 
@@ -597,6 +810,8 @@ def _attach_breakdown(
         matched_by_tag=matched_by_tag,
         matched_by_gid=matched_by_gid,
         matched_by_text=matched_by_text,
+        matched_by_user_selected_gid=matched_by_user_selected_gid,
+        goriyaku_tag_label_by_id=goriyaku_tag_label_by_id,
         text_score_by_tag=text_score_by_tag,
         score_element=score_element,
         astro_bonus_enabled=astro_bonus_enabled,
@@ -634,7 +849,7 @@ def _attach_breakdown(
 
     try:
         log.info(
-            "[dbg] attach_breakdown shrine_id=%r name=%r need_tags=%r prefilter_matched=%r matched_by_tag=%r matched_by_text=%r matched_by_gid=%r matched_all=%r score_need=%r need_score_reason=%r primary_reason_source=%r primary_reason_label=%r",
+            "[dbg] attach_breakdown shrine_id=%r name=%r need_tags=%r prefilter_matched=%r matched_by_tag=%r matched_by_text=%r matched_by_gid=%r matched_by_user_selected_gid=%r matched_all=%r score_need=%r need_score_reason=%r primary_reason_source=%r primary_reason_label=%r",
             rec.get("shrine_id"),
             rec.get("name"),
             need_tags_clean,
@@ -642,6 +857,7 @@ def _attach_breakdown(
             matched_by_tag,
             matched_by_text,
             matched_by_gid,
+            matched_by_user_selected_gid,
             matched_all,
             score_need,
             need_score_reason,
@@ -1022,7 +1238,7 @@ def _to_rank_explanation(
     top_contributors = [c for c in contributors if float(c.get("contribution") or 0.0) > 0][:2]
 
     primary_axis = "fallback"
-    if primary_source in {"need_tag", "goriyaku_tag", "text_hint"}:
+    if primary_source in {"user_selected_tag", "need_tag", "goriyaku_tag", "text_hint"}:
         primary_axis = "need"
     elif primary_source == "element":
         primary_axis = "element"
@@ -1178,6 +1394,7 @@ __all__ = [
     "_resolve_mode_weights",
     "_resolve_mode_meta",
     "_build_entry_context",
+    "_resolve_direction_bonus",
     "_attach_breakdown",
     "_attach_rank_comparison",
     "_prefilter_candidates_for_need",

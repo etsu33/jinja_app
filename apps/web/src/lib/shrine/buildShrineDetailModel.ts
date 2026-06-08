@@ -32,6 +32,8 @@ import { buildPsychologicalTags } from "@/lib/concierge/narrative/buildPsycholog
 import { buildSymbolTags } from "@/lib/concierge/narrative/buildSymbolTags";
 import { resolveNeedCombinationNarrative } from "@/lib/concierge/narrative/needCombinationMap";
 
+type ShrineActionState = "none" | "detail_viewed" | "saved" | "route_opened" | "visited" | "reflected";
+
 type Args = {
   shrine: Shrine;
   shrineMeaningPayloadV2?: ShrineMeaningPayloadV2 | null;
@@ -56,6 +58,7 @@ type Args = {
     views30d?: number;
     fav30d?: number;
   };
+  actionState?: ShrineActionState | null;
 };
 
 type ShrineDetailDisplayTier = "free" | "premium";
@@ -1271,6 +1274,44 @@ function buildHeroMeaningCopy(args: {
   return "今の流れを整え、次の見方を作る神社";
 }
 
+/**
+ * ShrineDetailModel output type (partial, inferred from function below).
+ * Added: actionState?: "none" | "detail_viewed" | "saved" | "route_opened" | "visited" | "reflected" | null;
+ */
+// If you have a shared type file, move this there.
+// Here, just use inline JSDoc for now.
+/**
+ * @typedef {object} ShrineDetailModel
+ * @property {string} shrineId
+ * @property {any} cardProps
+ * @property {string|null} heroImageUrl
+ * @property {string|null} heroMeaningCopy
+ * @property {string[]} benefitLabels
+ * @property {any[]} tags
+ * @property {any} judge
+ * @property {any|null} conciergeBreakdown
+ * @property {any} exp
+ * @property {"v2"|"fallback"} meaningPayloadSource
+ * @property {any[]} sections
+ * @property {any[]} freeDisplaySections
+ * @property {any[]} premiumDisplaySections
+ * @property {any|null} reasonSection
+ * @property {any|null} proposalSection
+ * @property {any} meaningSection
+ * @property {any|null} supplementSection
+ * @property {string} proposal
+ * @property {string} proposalLead
+ * @property {any} proposalWhy
+ * @property {any} explanation
+ * @property {any[]} publicGoshuinsPreview
+ * @property {string} publicGoshuinsViewAllHref
+ * @property {any} judgeSection
+ * @property {string|null} rankReason
+ * @property {any|null} recommendationMeta
+ * @property {string[]|null} psychologicalTags
+ * @property {string[]|null} symbolTags
+ * @property {"none"|"detail_viewed"|"saved"|"route_opened"|"visited"|"reflected"|null} [actionState]
+ */
 export function buildShrineDetailModel({
   shrine,
   shrineMeaningPayloadV2 = null,
@@ -1286,6 +1327,7 @@ export function buildShrineDetailModel({
   ctx = null,
   tid = null,
   signals,
+  actionState = null,
 }: Args) {
   const { cardProps } = buildShrineCardProps(shrine);
 
@@ -1546,6 +1588,8 @@ export function buildShrineDetailModel({
     ...premiumDisplaySections.map((item) => item.section),
   ];
 
+  const directionSupportCopy = shrineMeaningPayloadV2?.generated?.directionSupportCopy?.trim() || null;
+
   return {
     shrineId: shrine.id,
     cardProps,
@@ -1575,5 +1619,7 @@ export function buildShrineDetailModel({
     recommendationMeta,
     psychologicalTags,
     symbolTags,
+    actionState,
+    directionSupportCopy,
   };
 }
