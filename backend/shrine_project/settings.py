@@ -74,6 +74,9 @@ candidates = [
     REPO_ROOT / ".env",
 ]
 
+if IS_PYTEST:
+    candidates.insert(0, BASE_DIR / ".env.test")
+
 
 for p in candidates:
     if p.exists():
@@ -131,6 +134,9 @@ DB_NAME = os.getenv("DB_NAME") or os.getenv("POSTGRES_DB", "jinja_db")
 DB_USER = os.getenv("DB_USER") or os.getenv("POSTGRES_USER", "admin")
 DB_PASSWORD = os.getenv("DB_PASSWORD") or os.getenv("POSTGRES_PASSWORD", "")
 DATABASE_URL = os.getenv("DATABASE_URL")
+
+if IS_PYTEST and USE_SQLITE:
+    raise RuntimeError("pytest は PostgreSQL/PostGIS 前提です。USE_SQLITE=1 は使用しないでください。")
 
 
 def build_database_config() -> dict:
