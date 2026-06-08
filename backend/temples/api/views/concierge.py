@@ -1,18 +1,22 @@
-# backend/temples/api/views/concierge.py
 from __future__ import annotations
 
+import logging
+import time
+
+from django.db import connection, reset_queries
 from django.shortcuts import get_object_or_404
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
-from rest_framework import serializers
-
-from temples.models import ConciergeThread, ConciergeMessage
 from drf_spectacular.utils import extend_schema, extend_schema_view
+from rest_framework import serializers, status
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
+from temples.models import ConciergeMessage, ConciergeThread
+from temples.services.anonymous_id import get_anonymous_id
+from temples.services.concierge_history import classify_shrine_action_state
 
-# ---- serializers (schema用。嘘つかない最低限) -------------------------------
+logger = logging.getLogger(__name__)
+
 
 class ConciergeThreadListItemSerializer(serializers.Serializer):
     id = serializers.IntegerField()
@@ -21,14 +25,17 @@ class ConciergeThreadListItemSerializer(serializers.Serializer):
     last_message_at = serializers.CharField(allow_null=True, required=False)
     message_count = serializers.IntegerField()
 
+
 class ConciergeThreadListResponseSerializer(serializers.Serializer):
     results = ConciergeThreadListItemSerializer(many=True)
+
 
 class ConciergeMessageSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     role = serializers.CharField()
     content = serializers.CharField()
     created_at = serializers.CharField(allow_null=True, required=False)
+
 
 class ConciergeThreadDetailResponseSerializer(serializers.Serializer):
     id = serializers.IntegerField()
@@ -40,7 +47,6 @@ class ConciergeThreadDetailResponseSerializer(serializers.Serializer):
     recommendations = serializers.JSONField(required=False, allow_null=True)
     recommendations_v2 = serializers.JSONField(required=False, allow_null=True)
 
-# ---- views ------------------------------------------------------------------
 
 @extend_schema_view(
     get=extend_schema(
@@ -64,11 +70,13 @@ class ConciergeThreadListView(APIView):
                     "id": t.id,
                     "title": t.title,
                     "last_message": _thread_last_message(t),
-                    "last_message_at": (t.last_message_at.isoformat() if t.last_message_at else None),
+                    "last_message_at": t.last_message_at.isoformat() if t.last_message_at else None,
                     "message_count": _thread_message_count(t),
                 }
             )
+
         return Response({"results": items}, status=status.HTTP_200_OK)
+
 
 @extend_schema_view(
     get=extend_schema(
@@ -78,37 +86,216 @@ class ConciergeThreadListView(APIView):
     )
 )
 class ConciergeThreadDetailView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
     throttle_scope = "concierge"
 
     def get(self, request, pk: int, *args, **kwargs):
-        user = request.user
-        thread = get_object_or_404(ConciergeThread, pk=pk, user=user)
+        reset_queries()
+        started = time.perf_counter()
 
-        msgs = ConciergeMessage.objects.filter(thread=thread).order_by("created_at", "id")
+        try:
+            base_qs = ConciergeThread.objects.filter(pk=pk)
 
-        payload = {
-            "id": thread.id,
-            "title": thread.title,
-            "last_message": _thread_last_message(thread),
-            "last_message_at": (thread.last_message_at.isoformat() if thread.last_message_at else None),
-            "message_count": msgs.count(),
-            "messages": [
+            logger.warning(
+                "THREAD_DETAIL_LOOKUP %s",
                 {
-                    "id": m.id,
-                    "role": m.role,
-                    "content": m.content,
-                    "created_at": m.created_at.isoformat() if m.created_at else None,
-                }
-                for m in msgs
-            ],
-            "recommendations": getattr(thread, "recommendations", None),
-            "recommendations_v2": getattr(thread, "recommendations_v2", None),
-        }
-        return Response(payload, status=status.HTTP_200_OK)
+                    "thread_id": pk,
+                    "user_id": getattr(getattr(request, "user", None), "id", None),
+                    "is_authenticated": bool(
+                        getattr(getattr(request, "user", None), "is_authenticated", False)
+                    ),
+                    "anon_id_cookie": request.COOKIES.get("concierge_anon_id"),
+                    "cookies": dict(getattr(request, "COOKIES", {}) or {}),
+                },
+            )
+
+            user = getattr(request, "user", None)
+            authenticated = bool(user is not None and getattr(user, "is_authenticated", False))
+
+            raw_req = getattr(request, "_request", None)
+            anon_from_request = get_anonymous_id(request)
+            anon_from_raw_request = get_anonymous_id(raw_req) if raw_req else None
+            anonymous_id = anon_from_request or anon_from_raw_request
+
+            logger.warning(
+                "THREAD_DETAIL_ANON_RESOLVE %s",
+                {
+                    "pk": pk,
+                    "anon_from_request": anon_from_request,
+                    "anon_from_raw_request": anon_from_raw_request,
+                    "anonymous_id_final": anonymous_id,
+                },
+            )
+
+            thread_row = ConciergeThread.objects.filter(pk=pk).values(
+                "id", "user_id", "anonymous_id"
+            ).first()
+
+            logger.warning(
+                "THREAD_DETAIL_DB_ROW %s",
+                {
+                    "pk": pk,
+                    "thread_row": thread_row,
+                },
+            )
+
+            logger.warning(
+                "THREAD_DETAIL_DEBUG %s",
+                {
+                    "pk": pk,
+                    "is_authenticated": authenticated,
+                    "cookies": dict(getattr(request, "COOKIES", {}) or {}),
+                    "_request_cookies": (
+                        dict(getattr(raw_req, "COOKIES", {}) or {}) if raw_req else None
+                    ),
+                    "anonymous_id": anonymous_id,
+                },
+            )
+
+            thread = None
+
+            if authenticated:
+                logger.warning(
+                    "THREAD_DETAIL_QUERYSET %s",
+                    {
+                        "pk": pk,
+                        "is_authenticated": authenticated,
+                        "queryset_filter": {"user_id": getattr(user, "id", None)},
+                    },
+                )
+                thread = base_qs.filter(user=user).first()
+
+            if thread is None and anonymous_id:
+                logger.warning(
+                    "THREAD_DETAIL_QUERYSET %s",
+                    {
+                        "pk": pk,
+                        "is_authenticated": authenticated,
+                        "queryset_filter": {"user__isnull": True, "anonymous_id": anonymous_id},
+                    },
+                )
+                thread = base_qs.filter(user__isnull=True, anonymous_id=anonymous_id).first()
+
+            if thread is None:
+                return Response({"detail": "not found"}, status=status.HTTP_404_NOT_FOUND)
+
+            msgs = ConciergeMessage.objects.filter(thread=thread).order_by("created_at", "id")
 
 
-# ---- helpers ----------------------------------------------------------------
+            recommendations = getattr(thread, "recommendations", None)
+            recommendations_v2 = getattr(thread, "recommendations_v2", None)
+
+            def _extract_shrine_id(item):
+                if not isinstance(item, dict):
+                    return None
+
+                raw_shrine_id = item.get("shrine_id") or item.get("id")
+                try:
+                    return int(raw_shrine_id)
+                except (TypeError, ValueError):
+                    return None
+
+            def _with_action_state(items):
+                if not isinstance(items, list):
+                    return items
+
+                enriched = []
+                for item in items:
+                    if not isinstance(item, dict):
+                        enriched.append(item)
+                        continue
+
+                    shrine_id = _extract_shrine_id(item)
+                    enriched.append(
+                        {
+                            **item,
+                            "action_state": classify_shrine_action_state(
+                                user=user if authenticated else None,
+                                shrine_id=shrine_id,
+                            ),
+                        }
+                    )
+
+                return enriched
+
+            recommendations = _with_action_state(recommendations)
+            recommendations_v2 = _with_action_state(recommendations_v2)
+
+            logger.warning(
+                "THREAD_DETAIL_RECOMMENDATION_KEYS %s",
+                {
+                    "pk": pk,
+                    "recommendations": [
+                        {
+                            "shrine_id": r.get("shrine_id"),
+                            "id": r.get("id"),
+                            "keys": sorted(list(r.keys())),
+                            "has_rank_explanation": "rank_explanation" in r,
+                            "has_rank_comparison": "rank_comparison" in r,
+                        }
+                        for r in (recommendations or [])[:3]
+                        if isinstance(r, dict)
+                    ],
+                    "recommendations_v2": [
+                        {
+                            "shrine_id": r.get("shrine_id"),
+                            "id": r.get("id"),
+                            "keys": sorted(list(r.keys())),
+                            "has_rank_explanation": "rank_explanation" in r,
+                            "has_rank_comparison": "rank_comparison" in r,
+                        }
+                        for r in (recommendations_v2 or [])[:3]
+                        if isinstance(r, dict)
+                    ],
+                },
+            )
+
+            payload = {
+                "id": thread.id,
+                "title": thread.title,
+                "last_message": _thread_last_message(thread),
+                "last_message_at": thread.last_message_at.isoformat() if thread.last_message_at else None,
+                "message_count": msgs.count(),
+                "messages": [
+                    {
+                        "id": m.id,
+                        "role": m.role,
+                        "content": m.content,
+                        "created_at": m.created_at.isoformat() if m.created_at else None,
+                    }
+                    for m in msgs
+                ],
+                "recommendations": recommendations,
+                "recommendations_v2": recommendations_v2,
+            }
+            return Response(payload, status=status.HTTP_200_OK)
+
+        finally:
+            total_ms = round((time.perf_counter() - started) * 1000, 1)
+            sql_total_ms = round(sum(float(q["time"]) * 1000 for q in connection.queries), 1)
+
+            logger.info(
+                "[perf] thread_detail total_ms=%s sql_count=%s sql_total_ms=%s pk=%s",
+                total_ms,
+                len(connection.queries),
+                sql_total_ms,
+                pk,
+            )
+
+            slow_queries = sorted(
+                connection.queries,
+                key=lambda q: float(q["time"]),
+                reverse=True,
+            )[:5]
+
+            for i, q in enumerate(slow_queries, start=1):
+                logger.info(
+                    "[perf] slow_sql rank=%s time_ms=%s sql=%s",
+                    i,
+                    round(float(q["time"]) * 1000, 1),
+                    q["sql"][:1000],
+                )
+
 
 def _thread_last_message(thread: ConciergeThread) -> str | None:
     return (
@@ -117,6 +304,7 @@ def _thread_last_message(thread: ConciergeThread) -> str | None:
         .values_list("content", flat=True)
         .first()
     )
+
 
 def _thread_message_count(thread: ConciergeThread) -> int:
     return ConciergeMessage.objects.filter(thread=thread).count()

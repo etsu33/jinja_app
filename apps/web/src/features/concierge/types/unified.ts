@@ -1,4 +1,3 @@
-// apps/web/src/features/concierge/types/unified.ts
 import type { ConciergeThread, ConciergeRecommendation, ConciergeNeed } from "@/lib/api/concierge";
 
 export type StopReason = "design" | "paywall" | null;
@@ -19,26 +18,25 @@ export type ConciergeSignals = {
   user_filters?: unknown;
 };
 
+export type ViewerPlan = "anonymous" | "free" | "premium";
+
 export type UnifiedConciergeResponse = {
   ok: boolean;
   stop_reason: StopReason;
-  note?: string | null;
   reply?: string | null;
-  remaining_free?: number | null;
+  plan?: ViewerPlan | null;
+  remaining?: number | null;
+  limit?: number | null;
+  limitReached?: boolean;
+  thread_id?: string | null;
 
   thread?: ConciergeThread | null;
 
   data: {
     recommendations: ConciergeRecommendation[];
-
-    // ✅ 既存
+    recommendations_v2?: ConciergeRecommendation[];
     _need?: ConciergeNeed;
     _astro?: any;
-
-    // ✅ 追加（optionalで互換維持）
     _signals?: ConciergeSignals;
-
-    // （あれば）_explain も後で足せるけど、今は要らない
-    // _explain?: unknown;
   };
 };

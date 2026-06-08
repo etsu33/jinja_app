@@ -18,7 +18,10 @@ from temples.route_service import Point, build_route
 from temples.serializers.routes import (
     RouteRequestSerializer,
     RouteResponseSerializer,
+    SimpleRouteResponseSerializer,
 )
+
+from drf_spectacular.utils import extend_schema
 
 UserModel = get_user_model()
 
@@ -67,10 +70,9 @@ def _is_owner(user, shrine: Shrine) -> bool:
 
     return False
 
-
+@extend_schema(exclude=True)
 class RouteAPIView(APIView):
     # drf-spectacular: このビューはスキーマ対象外
-    schema = None
     permission_classes = [AllowAny]
     throttle_classes = []
 
@@ -94,7 +96,7 @@ class RouteAPIView(APIView):
                 description="driving|car（car.luaのみならdriving固定でも可）",
             ),
         ],
-        responses={200: RouteResponseSerializer},
+        responses={200: SimpleRouteResponseSerializer},
     )
     def get(self, request):
         try:
@@ -176,7 +178,6 @@ class RouteView(APIView):
     @extend_schema(
         summary="Route page for a shrine",
         parameters=[
-            OpenApiParameter("pk", OpenApiTypes.INT, OpenApiParameter.PATH, required=True),
             OpenApiParameter("lat", OpenApiTypes.FLOAT, OpenApiParameter.QUERY, required=False),
             OpenApiParameter("lng", OpenApiTypes.FLOAT, OpenApiParameter.QUERY, required=False),
         ],
@@ -184,8 +185,9 @@ class RouteView(APIView):
         tags=["routes"],
     )
     @method_decorator(login_required)
-    def get(self, request, pk=None):
-        shrine = get_object_or_404(Shrine, pk=pk)
+    def get(self, request, pk=None, id=None, *args, **kwargs):
+        shrine_id = pk if pk is not None else id
+        shrine = get_object_or_404(Shrine, pk=shrine_id)
 
         lat = request.GET.get("lat")
         lng = request.GET.get("lng")
@@ -235,4 +237,3 @@ def route_legacy(request, *args, **kwargs):
         return RouteAPIView.as_view()(raw_request, *args, **kwargs)
     except Exception:
         return RouteView.as_view()(raw_request, *args, **kwargs)
-

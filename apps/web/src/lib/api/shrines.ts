@@ -1,39 +1,36 @@
-// apps/web/src/lib/api/shrines.ts
 import api from "./client";
 import type { Paginated, Shrine } from "./types";
 
+export type { Shrine } from "./types";
 export { fetchPopular as getPopularShrines } from "./popular";
 
-export type { Shrine } from "./types";
-
-// Next(3000) の /api を叩く（server/client どっちでも同じ）
-const WEB_BASE = process.env.PLAYWRIGHT_BASE_URL || process.env.NEXT_PUBLIC_WEB_BASE_URL || "http://localhost:3000";
-
-const WEB_API_BASE = `${WEB_BASE}/api`;
-
-// ✅ 詳細は Next の /api 経由で叩く（直叩き禁止）
-export async function getShrine(id: number): Promise<Shrine> {
-  const url = `${WEB_API_BASE}/shrines/${id}/data/`;
-
-  const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) throw new Error(`failed to fetch shrine(data): ${res.status}`);
-  return (await res.json()) as Shrine;
+export async function getShrinePublic(id: number): Promise<Shrine> {
+  const { getShrinePublicClient } = await import("./shrines.client");
+  return getShrinePublicClient(id);
 }
 
 export async function getShrines(params?: { q?: string }): Promise<Shrine[]> {
-  const sp = new URLSearchParams();
-  if (params?.q) sp.set("q", params.q);
-
-  const url = `${WEB_API_BASE}/shrines/${sp.toString() ? `?${sp.toString()}` : ""}`;
-  const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) throw new Error(`failed to fetch shrines: ${res.status}`);
-
-  const data = await res.json();
-  if (Array.isArray(data)) return data;
-  return data.results ?? [];
+  const { getShrinesClient } = await import("./shrines.list.client");
+  return getShrinesClient(params);
 }
 
-// 近くの神社（axios の baseURL が /api ならこのままでOK）
+/**
+ * CSR専用（cookieが乗る前提）
+ */
+export async function getShrinePrivate(id: number): Promise<any> {
+  const url = `/api/shrines/${id}/data/`;
+  const res = await fetch(url, { cache: "no-store", credentials: "include" });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "<failed to read body>");
+    throw new Error(`getShrinePrivate failed: ${res.status} body=${body.slice(0, 800)}`);
+  }
+
+  return res.json();
+}
+
+export const getShrine = getShrinePublic;
+
 export async function fetchNearestShrines(params: {
   lat: number;
   lng: number;
@@ -44,11 +41,15 @@ export async function fetchNearestShrines(params: {
 }): Promise<Paginated<Shrine>> {
   const res = await api.get("/shrines/nearest/", { params });
   const data = res.data;
-  if (Array.isArray(data)) return { count: data.length, next: null, previous: null, results: data };
+
+  if (Array.isArray(data)) {
+    return { count: data.length, next: null, previous: null, results: data };
+  }
+
   return res.data as Paginated<Shrine>;
 }
 
 export async function createShrine(payload: Partial<Shrine> & Record<string, any>) {
-  const res = await api.post("/shrines/", payload);
+  const res = await api.post("/my/shrines/", payload);
   return res.data as Shrine;
 }

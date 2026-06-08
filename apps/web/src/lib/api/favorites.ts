@@ -6,12 +6,49 @@ export type Favorite = {
   place_id?: string | null;
   target_type?: "shrine" | "place" | string;
   target_id?: number | string | null;
-  shrine?: { id?: number | null; name_jp?: string | null; address?: string | null } | null;
+  public_goshuin_count?: number | null;
+  created_at?: string | null;
+  shrine?: {
+    id?: number | null;
+    name_jp?: string | null;
+    address?: string | null;
+  } | null;
 };
+
+export type FavoritePreloadState = {
+  fav: boolean;
+  favorite_id: number | null;
+};
+
+export type FavoritePreloadMap = Record<string, FavoritePreloadState>;
 
 export async function getFavorites(): Promise<Favorite[]> {
   const r = await api.get("/favorites/");
   return Array.isArray(r.data) ? r.data : (r.data?.results ?? []);
+}
+
+export async function preloadFavoritesByShrineIds(shrineIds: number[]): Promise<FavoritePreloadMap> {
+  const uniqueShrineIds = Array.from(
+    new Set(shrineIds.filter((id): id is number => Number.isFinite(id) && id > 0)),
+  );
+
+  if (uniqueShrineIds.length === 0) return {};
+
+  const res = await fetch("/api/favorites/preload/", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ shrine_ids: uniqueShrineIds }),
+  });
+
+  if (res.status === 401) return {};
+  if (!res.ok) {
+    const msg = await res.text().catch(() => "");
+    throw new Error(msg || `preloadFavoritesByShrineIds failed: ${res.status}`);
+  }
+
+  const json = await res.json();
+  return (json?.by_shrine_id ?? {}) as FavoritePreloadMap;
 }
 
 export async function createFavoriteByShrineId(shrineId: number): Promise<Favorite> {
@@ -26,8 +63,6 @@ export async function createFavoriteByShrineId(shrineId: number): Promise<Favori
   };
 }
 
-
-
 export async function removeFavoriteByPk(pk: number) {
   await api.delete(`/favorites/${pk}/`);
 }
@@ -35,5 +70,3 @@ export async function removeFavoriteByPk(pk: number) {
 export async function removeFavoriteByShrineId(shrineId: number) {
   await api.delete(`/favorites/by-shrine/${shrineId}/`);
 }
-
-

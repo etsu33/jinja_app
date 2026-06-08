@@ -83,7 +83,7 @@ for p in candidates:
 
 
 # --- security / DEBUG ---
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY") or os.environ.get("SECRET_KEY")
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
 if not SECRET_KEY:
     if os.getenv("CI") or IS_PYTEST:
         SECRET_KEY = "django-insecure-ci-only-secret-key-please-override"
@@ -123,31 +123,34 @@ if sys.platform == "darwin":
     GDAL_LIBRARY_PATH = "/opt/homebrew/opt/gdal/lib/libgdal.dylib"  # noqa: F841
     GEOS_LIBRARY_PATH = "/opt/homebrew/opt/geos/lib/libgeos_c.dylib"  # noqa: F841
 
+
 # --- DB envs ---
 DB_HOST = os.getenv("DB_HOST", "db")
 DB_PORT = int(os.getenv("DB_PORT", "5432"))
 DB_NAME = os.getenv("DB_NAME") or os.getenv("POSTGRES_DB", "jinja_db")
 DB_USER = os.getenv("DB_USER") or os.getenv("POSTGRES_USER", "admin")
 DB_PASSWORD = os.getenv("DB_PASSWORD") or os.getenv("POSTGRES_PASSWORD", "")
-
-# --- DATABASES（SQLite を選ぶ時だけ SQLite。デフォルトは Postgres / USE_GIS で切替） ---
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-if USE_SQLITE:
-    # SQLite を使う場合、GIS=1 なら spatialite、GIS=0 なら通常 sqlite3
-    sqlite_engine = (
-        "django.contrib.gis.db.backends.spatialite" if USE_GIS else "django.db.backends.sqlite3"
-    )
-    DATABASES = {
-        "default": {
+
+def build_database_config() -> dict:
+    conn_max_age = 0 if DEBUG else 600
+
+    if USE_SQLITE:
+        sqlite_engine = (
+            "django.contrib.gis.db.backends.spatialite"
+            if USE_GIS
+            else "django.db.backends.sqlite3"
+        )
+        return {
             "ENGINE": sqlite_engine,
             "NAME": os.path.join(BASE_DIR, "db.sqlite3"),
             "TEST": {"NAME": f"test_{DB_NAME}"},
         }
-    }
-else:
+
     if DATABASE_URL:
-        db = dj_database_url.parse(DATABASE_URL, conn_max_age=600)
+        db = dj_database_url.parse(DATABASE_URL, conn_max_age=conn_max_age)
+
         scheme = DATABASE_URL.split(":", 1)[0].lower()
         if scheme == "postgis":
             db["ENGINE"] = "django.contrib.gis.db.backends.postgis"
@@ -157,92 +160,38 @@ else:
                 if USE_GIS
                 else "django.db.backends.postgresql"
             )
-        DATABASES = {"default": db}
-    else:
-        # DATABASE_URL が無い時の既定：PostgreSQL（GISはフラグで切替）
-        DATABASES = {
-            "default": {
-                "ENGINE": (
-                    "django.contrib.gis.db.backends.postgis"
-                    if USE_GIS
-                    else "django.db.backends.postgresql"
-                ),
-                "NAME": DB_NAME,
-                "USER": DB_USER,
-                "PASSWORD": DB_PASSWORD,
-                "HOST": DB_HOST,
-                "PORT": DB_PORT,
-                "CONN_MAX_AGE": 60,
-                "OPTIONS": {"connect_timeout": 5},
-                "TEST": {"NAME": f"test_{DB_NAME}"},
-            }
-        }
-engine = DATABASES["default"]["ENGINE"]
+
+        db.setdefault("OPTIONS", {})
+        db["OPTIONS"].setdefault("connect_timeout", 5)
+        db.setdefault("TEST", {"NAME": f"test_{DB_NAME}"})
+        return db
+
+    return {
+        "ENGINE": (
+            "django.contrib.gis.db.backends.postgis"
+            if USE_GIS
+            else "django.db.backends.postgresql"
+        ),
+        "NAME": DB_NAME,
+        "USER": DB_USER,
+        "PASSWORD": DB_PASSWORD,
+        "HOST": DB_HOST,
+        "PORT": DB_PORT,
+        "CONN_MAX_AGE": conn_max_age,
+        "OPTIONS": {"connect_timeout": 5},
+        "TEST": {"NAME": f"test_{DB_NAME}"},
+    }
 
 
-# sqlite/spatialite を判定
-def _is_sqlite_engine(e: str) -> bool:
-    e = (e or "").lower()
-    return ("sqlite3" in e) or ("spatialite" in e)
+DATABASES = {
+    "default": build_database_config()
+}
 
-
-# (A) 早期の不要OPTIONS除去
-if _is_sqlite_engine(engine):
-    DATABASES["default"].pop("OPTIONS", None)
-
-# ---- NoGIS固定 …(略)…
-
-# (B) エンジン別の最終調整（再度 engine 取得）
-engine = DATABASES["default"]["ENGINE"]
-
-if _is_sqlite_engine(engine):
-    # SQLite/Spatialite のときは PG 系のキーは全部外す
-    for k in ("USER", "PASSWORD", "HOST", "PORT", "OPTIONS", "CONN_MAX_AGE"):
-        DATABASES["default"].pop(k, None)
-else:
-    # PostgreSQL/POSTGIS のときだけ connect_timeout 等を設定
-    DATABASES["default"].setdefault("OPTIONS", {})
-    DATABASES["default"]["OPTIONS"].setdefault("connect_timeout", 5)
-    DATABASES["default"].setdefault("HOST", DB_HOST)
-    DATABASES["default"].setdefault("PORT", DB_PORT)
-    DATABASES["default"].setdefault("USER", DB_USER)
-    DATABASES["default"].setdefault("PASSWORD", DB_PASSWORD)
-
-# SQLite の場合はOPTIONSごと落とす or 該当キーだけ除去
-if engine.endswith("sqlite3"):
-    # どちらか一方でOK
-    DATABASES["default"].pop("OPTIONS", None)
-# ---- NoGIS固定（テスト/CIで使う）: DB決定後に一度だけ適用 ----
-if IS_PYTEST and DISABLE_GIS_FOR_TESTS and not USE_SQLITE:
-    USE_GIS = False
-    DATABASES["default"]["ENGINE"] = "django.db.backends.postgresql"
+# ---- NoGIS固定（テスト/CIで使う）: DB構成は変えず migration だけ切り替える ----
+if not USE_GIS and not USE_SQLITE:
     MIGRATION_MODULES = {**globals().get("MIGRATION_MODULES", {})}
     MIGRATION_MODULES["temples"] = "temples.migrations_nogis"
 
-# CI は接続プーリング無効
-if os.getenv("CI") == "true":
-    DATABASES["default"]["CONN_MAX_AGE"] = 0
-
-# エンジン別の最終調整
-engine = (DATABASES["default"]["ENGINE"] or "").lower()
-
-
-def _is_sqlite_like(e: str) -> bool:
-    return ("sqlite" in e) or ("spatialite" in e)
-
-
-if _is_sqlite_like(engine):
-    # SQLite / Spatialite は PG系キーを全撤去し、OPTIONS も消す
-    for k in ("USER", "PASSWORD", "HOST", "PORT", "CONN_MAX_AGE", "OPTIONS"):
-        DATABASES["default"].pop(k, None)
-else:
-    # PostgreSQL / PostGIS のみ OPTIONS.connect_timeout を設定
-    DATABASES["default"].setdefault("OPTIONS", {})
-    DATABASES["default"]["OPTIONS"].setdefault("connect_timeout", 5)
-    DATABASES["default"].setdefault("HOST", DB_HOST)
-    DATABASES["default"].setdefault("PORT", DB_PORT)
-    DATABASES["default"].setdefault("USER", DB_USER)
-    DATABASES["default"].setdefault("PASSWORD", DB_PASSWORD)
 # --- 起動時サマリ（DEBUG または CI） ---
 if DEBUG or os.getenv("CI") == "true":
     try:
@@ -409,6 +358,8 @@ GOOGLE_PLACES_API_KEY = os.getenv("GOOGLE_PLACES_API_KEY", "") or GOOGLE_MAPS_AP
 # Stripe
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
+STRIPE_PRICE_ID = os.getenv("STRIPE_PRICE_ID", "")
+STRIPE_PREMIUM_PRICE_ID = os.getenv("STRIPE_PREMIUM_PRICE_ID", "") or STRIPE_PRICE_ID
 STRIPE_WEBHOOK_DEBUG = os.getenv("STRIPE_WEBHOOK_DEBUG", "0") == "1"
 
 
@@ -419,15 +370,33 @@ def _split_csv(s, default=None):
     return [x.strip() for x in s.split(",") if x.strip()]
 
 
+
 ALLOWED_HOSTS = _split_csv(os.environ.get("ALLOWED_HOSTS"), ["localhost", "127.0.0.1", "web"])
+for host in ["localhost", "127.0.0.1", "0.0.0.0", "web"]:
+    if host not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(host)
+RENDER_EXTERNAL_HOSTNAME = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
+if RENDER_EXTERNAL_HOSTNAME and RENDER_EXTERNAL_HOSTNAME not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+if ".onrender.com" not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(".onrender.com")
 
 
-CSRF_TRUSTED_ORIGINS = [
+CORS_TRUSTED_ORIGINS_DEFAULTS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://localhost:3001",
     "http://127.0.0.1:3001",
 ]
+CSRF_TRUSTED_ORIGINS = _split_csv(
+    os.environ.get("CSRF_TRUSTED_ORIGINS"),
+    CORS_TRUSTED_ORIGINS_DEFAULTS,
+)
+if RENDER_EXTERNAL_HOSTNAME:
+    render_origin = f"https://{RENDER_EXTERNAL_HOSTNAME}"
+    if render_origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(render_origin)
+
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = _split_csv(
     os.environ.get("CORS_ALLOWED_ORIGINS"),
@@ -443,8 +412,7 @@ CORS_ALLOWED_ORIGINS = _split_csv(
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-MEDIA_URL = "/media/"
-MEDIA_ROOT = Path(os.getenv("MEDIA_ROOT", str(BASE_DIR / "media")))
+
 
 LANGUAGE_CODE = "ja"
 TIME_ZONE = "Asia/Tokyo"
@@ -459,7 +427,6 @@ RELEASE = os.getenv("RENDER_GIT_COMMIT", "local")
 STORAGE_BACKEND = os.getenv("STORAGE_BACKEND", "local")  # local / r2
 
 if STORAGE_BACKEND == "r2":
-    # R2(S3互換) は django-storages の S3Boto3Storage を使う
     STORAGES = {
         "default": {"BACKEND": "storages.backends.s3boto3.S3Boto3Storage"},
         "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
@@ -468,24 +435,20 @@ if STORAGE_BACKEND == "r2":
     AWS_ACCESS_KEY_ID = os.environ["R2_ACCESS_KEY_ID"]
     AWS_SECRET_ACCESS_KEY = os.environ["R2_SECRET_ACCESS_KEY"]
     AWS_STORAGE_BUCKET_NAME = os.environ["R2_BUCKET"]
-    AWS_S3_ENDPOINT_URL = os.environ["R2_ENDPOINT_URL"]  # https://<accountid>.r2.cloudflarestorage.com
+    AWS_S3_ENDPOINT_URL = os.environ["R2_ENDPOINT_URL"]
 
     AWS_S3_REGION_NAME = "auto"
     AWS_S3_SIGNATURE_VERSION = "s3v4"
     AWS_DEFAULT_ACL = None
     AWS_QUERYSTRING_AUTH = False
     AWS_S3_FILE_OVERWRITE = False
-
-    # R2 はまず path が無難（virtual でハマりやすい）
     AWS_S3_ADDRESSING_STYLE = "path"
 
-    # 公開URL（必須）例: https://pub-xxxx.r2.dev
     R2_PUBLIC_BASE_URL = os.environ["R2_PUBLIC_BASE_URL"].rstrip("/")
     AWS_S3_CUSTOM_DOMAIN = urlparse(R2_PUBLIC_BASE_URL).netloc
     MEDIA_URL = R2_PUBLIC_BASE_URL + "/"
-
+    MEDIA_ROOT = None
 else:
-    # local
     MEDIA_URL = "/media/"
     MEDIA_ROOT = Path(os.getenv("MEDIA_ROOT", str(BASE_DIR / "media")))
 

@@ -31,11 +31,16 @@ export default function MyGoshuinList({
 
   if (loading) {
     return (
-      <section className="rounded-2xl border bg-white p-6 shadow-sm" role="status" aria-busy="true" aria-live="polite">
-        <h3 className="mb-3 text-sm font-medium text-gray-800">登録済みの御朱印</h3>
+      <section
+        className="rounded-2xl border border-stone-200/20 bg-stone-50/20 p-6"
+        role="status"
+        aria-busy="true"
+        aria-live="polite"
+      >
+        <h3 className="mb-3 text-sm font-medium text-stone-800">登録済みの御朱印</h3>
         <div className="grid grid-cols-2 gap-5 sm:gap-6">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="aspect-[4/5] rounded-3xl bg-muted animate-pulse" />
+            <div key={i} className="aspect-[4/5] animate-pulse rounded-3xl bg-stone-100/50" />
           ))}
         </div>
       </section>
@@ -44,20 +49,18 @@ export default function MyGoshuinList({
 
   if (error) {
     return (
-      <section className="rounded-2xl border bg-white p-6 shadow-sm">
-        <h3 className="mb-3 text-sm font-medium text-gray-800">登録済みの御朱印</h3>
-        <p className="text-sm text-red-600">{error}</p>
+      <section className="rounded-2xl border border-stone-200/20 bg-stone-50/20 p-6">
+        <h3 className="mb-3 text-sm font-medium text-stone-800">登録済みの御朱印</h3>
+        <p className="text-sm text-rose-700">{error}</p>
       </section>
     );
   }
 
   if (!items || items.length === 0) {
     return (
-      <section className="rounded-2xl border bg-white p-6 shadow-sm">
-        <h3 className="mb-3 text-sm font-medium text-gray-800">登録済みの御朱印</h3>
-        <p className="text-sm text-gray-500">
-          まだ御朱印が登録されていません。上のフォームからアップロードしてみてください。
-        </p>
+      <section className="rounded-2xl border border-stone-200/20 bg-stone-50/20 p-6">
+        <h3 className="mb-3 text-sm font-medium text-stone-800">登録済みの御朱印</h3>
+        <p className="text-sm text-stone-500">まだ御朱印が登録されていません。</p>
       </section>
     );
   }
@@ -93,8 +96,8 @@ export default function MyGoshuinList({
 
   return (
     <>
-      <section className="space-y-3 rounded-2xl border bg-white p-6 shadow-sm">
-        <h3 className="text-sm font-medium text-gray-800">登録済みの御朱印</h3>
+      <section className="space-y-3 rounded-2xl border border-stone-200/20 bg-stone-50/20 p-6">
+        <h3 className="text-sm font-medium text-stone-800">登録済みの御朱印</h3>
 
         <div className="grid grid-cols-2 gap-5 sm:gap-6">
           {items.map((g) => {

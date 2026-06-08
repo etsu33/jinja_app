@@ -7,13 +7,19 @@ const api = axios.create({
   withCredentials: true,
 });
 
-// CSRF だけ付与（GET/HEAD/OPTIONS 以外）
+// Authorization ヘッダーと CSRF だけ付与（GET/HEAD/OPTIONS 以外）
 api.interceptors.request.use((config) => {
+  config.headers = config.headers ?? {};
+
+  const accessToken = getCookie("access_token");
+  if (accessToken) {
+    (config.headers as any).Authorization = `Bearer ${accessToken}`;
+  }
+
   const method = (config.method || "get").toLowerCase();
   if (!["get", "head", "options"].includes(method)) {
     const token = getCookie("csrftoken");
     if (token) {
-      config.headers = config.headers ?? {};
       (config.headers as any)["X-CSRFToken"] = token;
     }
   }

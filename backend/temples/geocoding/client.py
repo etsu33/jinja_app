@@ -24,6 +24,99 @@ class GeocodingError(Exception):
     pass
 
 
+def _google_maps_api_key() -> str | None:
+    key = (
+        os.getenv("GOOGLE_MAPS_API_KEY")
+        or os.getenv("GOOGLE_API_KEY")
+        or os.getenv("MAPS_API_KEY")
+        or os.getenv("PLACES_API_KEY")
+    )
+    if key:
+        return key
+    try:
+        from django.conf import settings as dj_settings
+
+        return (
+            getattr(dj_settings, "GOOGLE_MAPS_API_KEY", None)
+            or getattr(dj_settings, "GOOGLE_API_KEY", None)
+        )
+    except Exception:
+        return None
+
+def geocode_google_point(
+    area: str,
+    *,
+    language: str = "ja",
+    region: str = "jp",
+    timeout: float = 6.0,
+) -> tuple[float, float] | None:
+    area = (area or "").strip()
+    key = _google_maps_api_key()
+    if not key or not area:
+        print(
+            "[geocode_google_point] skip",
+            {"has_key": bool(key), "area": area},
+        )
+        return None
+
+    try:
+        r = requests.get(
+            "https://maps.googleapis.com/maps/api/geocode/json",
+            params={
+                "key": key,
+                "address": area,
+                "language": language,
+                "region": region,
+            },
+            timeout=timeout,
+        )
+        r.raise_for_status()
+
+        payload = r.json()
+        status = payload.get("status")
+        results = payload.get("results") or []
+
+        print(
+            "[geocode_google_point] response",
+            {
+                "area": area,
+                "status": status,
+                "result_count": len(results),
+                "error_message": payload.get("error_message"),
+            },
+        )
+
+        if status in {
+            "ZERO_RESULTS",
+            "OVER_QUERY_LIMIT",
+            "REQUEST_DENIED",
+            "INVALID_REQUEST",
+            "UNKNOWN_ERROR",
+        }:
+            return None
+
+        if not results:
+            return None
+
+        loc = (results[0].get("geometry") or {}).get("location") or {}
+        lat, lng = loc.get("lat"), loc.get("lng")
+        if lat is None or lng is None:
+            print("[geocode_google_point] missing location", {"area": area})
+            return None
+
+        return float(lat), float(lng)
+
+    except Exception as e:
+        print(
+            "[geocode_google_point] exception",
+            {
+                "area": area,
+                "type": type(e).__name__,
+                "message": str(e),
+            },
+        )
+        return None
+
 class GeocodingClient:
     def __init__(self, session: t.Optional[requests.Session] = None):
         self.session = session or requests.Session()
