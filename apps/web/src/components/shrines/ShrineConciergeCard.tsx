@@ -1,20 +1,20 @@
-// apps/web/src/components/shrines/ShrineConciergeCard.tsx
 "use client";
 
 import * as React from "react";
 import ConciergeCard from "@/components/ConciergeCard";
 import { useFavorite } from "@/hooks/useFavorite";
 import type { ConciergeBreakdown } from "@/lib/api/concierge";
-import { buildOneLiner } from "@/lib/concierge/pickAClause";
-import ConciergeBreakdownBody, { pickReasonLabel } from "@/components/concierge/ConciergeBreakdownBody";
 import { buildShrineHref } from "@/lib/nav/buildShrineHref";
 
 export type ShrineConciergeCardProps = {
   shrineId: number;
   title: string;
   address?: string | null;
-  description: string;
+  description?: string | null;
   imageUrl?: string | null;
+
+  explanationSummary?: string | null;
+  explanationPrimaryReason?: string | null;
 
   hideDescription?: boolean;
 
@@ -33,31 +33,130 @@ export type ShrineConciergeCardProps = {
 
   hideDisclosure?: boolean;
   variant?: "list" | "detail" | "hero";
+
+  suppressHeroCopy?: boolean;
 };
 
-function DisclosureSection({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-xl border border-slate-200 bg-white p-3">
-      <div className="text-xs font-semibold text-slate-500">{title}</div>
-      <div className="mt-2 text-sm leading-6 text-slate-700">{children}</div>
-    </div>
-  );
+function buildHeroClaimFromTags(tags?: string[] | null): string {
+  const set = new Set((tags ?? []).filter(Boolean));
+
+  if (set.has("mental") && set.has("rest")) {
+    return "今の疲れを整えたいなら、この神社が最適です。";
+  }
+
+  if (set.has("career") && set.has("mental") && set.has("courage")) {
+    return "不安を整えながら次の一歩を踏み出すなら、この神社が最適です。";
+  }
+
+  if (set.has("career") && set.has("courage")) {
+    return "仕事や転機で前に進みたいなら、この神社が最適です。";
+  }
+
+  if (set.has("money") && set.has("courage")) {
+    return "金運と行動の流れを変えたいなら、この神社が最適です。";
+  }
+
+  if (set.has("love")) {
+    return "良縁を前向きに育てたいなら、この神社が最適です。";
+  }
+
+  if (set.has("study")) {
+    return "学業や合格に集中したいなら、この神社が最適です。";
+  }
+
+  if (set.has("mental")) {
+    return "心の不安を整えたいなら、この神社が最適です。";
+  }
+
+  if (set.has("rest")) {
+    return "落ち着いて心身を休めたいなら、この神社が最適です。";
+  }
+
+  return "今の相談に最も合う参拝先です。";
 }
+
+function buildHeroReason(reason?: string | null): string {
+  const s = (reason ?? "").trim();
+  if (!s) return "→ 今の状態と強く一致しています。";
+
+  if (s.includes("不安") && s.includes("前")) {
+    return "→ 不安を整えつつ前進したい状態と強く一致しています。";
+  }
+
+  if (s.includes("疲れ") || s.includes("休息") || s.includes("落ち着")) {
+    return "→ 今の不安を静かに整えたいなら、この神社が最適です。";
+  }
+
+  if (s.includes("金運") && (s.includes("行動") || s.includes("前向き"))) {
+    return "→ 金運と行動の両方を求める状態と強く一致しています。";
+  }
+
+  if (s.includes("恋愛") || s.includes("良縁")) {
+    return "→ 良縁を前向きに進めたい状態と強く一致しています。";
+  }
+
+  if (s.includes("学業") || s.includes("資格") || s.includes("試験")) {
+    return "→ 学業や合格に集中したい状態と強く一致しています。";
+  }
+
+  return "→ 今の状態と強く一致しています。";
+}
+
+
+function buildListDescriptionFromReason(reason?: string | null): string {
+  const s = (reason ?? "").trim();
+
+  if (!s) return "今の悩みに合わせて選びやすい神社です。";
+
+  if (s.includes("流れを切り替え")) {
+    return "流れを切り替えたい時に選びやすい神社です。";
+  }
+
+  if (s.includes("巡りを整え")) {
+    return "巡りを整えたい時に選びやすい神社です。";
+  }
+
+  if (s.includes("気持ちを切り替え")) {
+    return "気持ちを切り替えたい時に選びやすい神社です。";
+  }
+
+  if (s.includes("不安や気持ちを整え")) {
+    return "不安や気持ちを整えたい時に選びやすい神社です。";
+  }
+
+  if (s.includes("仕事") || s.includes("転機")) {
+    return "仕事や転機を整えたい時に選びやすい神社です。";
+  }
+
+  if (s.includes("集中") || s.includes("目標")) {
+    return "集中や目標を定めたい時に選びやすい神社です。";
+  }
+
+  if (s.includes("良縁") || s.includes("関係性")) {
+    return "良縁や関係を整えたい時に選びやすい神社です。";
+  }
+
+  if (s.includes("休み") || s.includes("休息")) {
+    return "落ち着いて休みたい時に選びやすい神社です。";
+  }
+
+  return `${s.replace(/時に$/, "").replace(/たい$/, "たい")}時に選びやすい神社です。`;
+}
+
 
 export default function ShrineConciergeCard({
   shrineId,
   title,
   address,
-  description,
+  description: _description,
   imageUrl,
-
+  explanationSummary,
+  explanationPrimaryReason,
   hideDescription = false,
-
-  subtitle,
+  subtitle: _subtitle,
   hideBadges = false,
   hideLeftMark = false,
   hideAddress = false,
-
   showFavorite = true,
   initialFav = false,
   readOnly = false,
@@ -65,26 +164,23 @@ export default function ShrineConciergeCard({
   breakdown,
   badgesOverride,
   hideDetailLink = false,
-
-  hideDisclosure = false,
+  hideDisclosure: _hideDisclosure = true,
   variant = "list",
+  suppressHeroCopy = false,
 }: ShrineConciergeCardProps) {
   const isHero = variant === "hero";
 
-  const effHideDescription = isHero ? true : hideDescription;
-  const effHideBadges = isHero ? true : hideBadges;
+  const effHideBadges = isHero ? false : hideBadges;
   const effHideLeftMark = isHero ? true : hideLeftMark;
-  const effHideAddress = isHero ? true : hideAddress;
+  const effHideAddress = isHero ? false : hideAddress;
   const effShowFavorite = isHero ? false : showFavorite;
-  const effHideDetailLink = isHero ? true : hideDetailLink;
-  const effHideDisclosure = isHero ? true : hideDisclosure;
+  const effHideDetailLink = hideDetailLink;
 
-  const effBreakdown = isHero ? null : breakdown;
-  const effBadgesOverride = isHero ? [] : badgesOverride;
+  const { fav, busy, toggle } = useFavorite({
+    shrineId,
+    initial: { fav: initialFav, favorite_id: null },
+  });
 
-  const { fav, busy, toggle } = useFavorite({ shrineId, initial: initialFav });
-
-  const safeDescription = effHideDescription ? "" : (description ?? "");
   const addr = effHideAddress ? "" : (address ?? "").trim() || "住所情報は準備中です。";
   const safeDetailHref = detailHref ?? (Number.isFinite(shrineId) ? buildShrineHref(shrineId) : undefined);
   const cardDetailHref = effHideDetailLink ? undefined : safeDetailHref;
@@ -102,47 +198,36 @@ export default function ShrineConciergeCard({
     </button>
   );
 
-  const reasonLabel = pickReasonLabel(effBreakdown);
-  const defaultBadges = ["正式登録", reasonLabel ? `おすすめ理由：${reasonLabel}` : null]
-    .filter((v): v is string => typeof v === "string" && v.trim().length > 0)
-    .slice(0, 2);
+  const mainSummary = explanationSummary?.trim() || "条件に合う候補から選びました。";
+  const primaryReason = explanationPrimaryReason?.trim() || "";
+
+  const matchedTags = breakdown?.matched_need_tags ?? [];
+  const heroClaim = suppressHeroCopy ? "" : buildHeroClaimFromTags(matchedTags);
+  const heroReason = hideDescription || suppressHeroCopy ? "" : buildHeroReason(primaryReason);
+
+  const listSubtitle = "";
+  const listDescription = hideDescription ? "" : buildListDescriptionFromReason(primaryReason || mainSummary);
 
   const badges =
-    effBadgesOverride?.filter((v): v is string => typeof v === "string" && v.trim().length > 0) ?? defaultBadges;
-
-  const shouldHideDisclosure = effHideDisclosure || variant === "detail";
-  const disclosureTitle = shouldHideDisclosure ? undefined : "おすすめ理由を見る";
-  const disclosureBody = shouldHideDisclosure ? undefined : (
-    <div className="space-y-3">
-      {effBreakdown ? (
-        <DisclosureSection title="おすすめ理由（内訳）">
-          <ConciergeBreakdownBody breakdown={effBreakdown} />
-        </DisclosureSection>
-      ) : null}
-
-      <DisclosureSection title="要点">
-        <p className="text-sm text-slate-700 line-clamp-2">
-          {effBreakdown ? buildOneLiner(effBreakdown) : "条件に合う候補から選びました。"}
-        </p>
-      </DisclosureSection>
-    </div>
-  );
+    badgesOverride?.filter((v): v is string => typeof v === "string" && v.trim().length > 0).slice(0, 3) ?? [];
 
   return (
     <ConciergeCard
       title={title}
       address={addr || undefined}
       imageUrl={imageUrl}
-      description={safeDescription}
-      subtitle={subtitle}
+      subtitle={isHero ? heroClaim : listSubtitle}
+      description={isHero ? heroReason : listDescription}
       hideBadges={effHideBadges}
       hideLeftMark={effHideLeftMark}
-      isPrimary
+      isPrimary={variant !== "detail"}
       badges={badges}
       detailHref={cardDetailHref}
+      detailLabel={isHero ? "この神社を詳しく見る" : "詳細を見る"}
       headerRight={favButton}
-      disclosureTitle={disclosureTitle}
-      disclosureBody={disclosureBody}
+      disclosureTitle={undefined}
+      disclosureBody={undefined}
+      variant={variant}
     />
   );
 }

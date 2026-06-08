@@ -10,7 +10,7 @@ export default function HomePage() {
     <div className="min-h-0 bg-slate-50">
       <HomeToastClient />
 
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-4 py-8">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8">
         <Suspense fallback={null}>
           <HomeMainClient />
         </Suspense>

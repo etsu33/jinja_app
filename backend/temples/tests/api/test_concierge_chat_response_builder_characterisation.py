@@ -17,7 +17,7 @@ def _stub_base_dependencies(monkeypatch, recommendations):
 
 
 @pytest.mark.django_db
-def test_chat_response_builder_includes_remaining_and_limit_only_for_authenticated_non_premium(
+def test_chat_response_builder_includes_remaining_and_limit_for_authenticated_and_guest_but_not_premium(
     user, monkeypatch
 ):
     _stub_base_dependencies(
@@ -35,8 +35,12 @@ def test_chat_response_builder_includes_remaining_and_limit_only_for_authenticat
     )
     assert r_auth.status_code == 200
     body_auth = r_auth.json()
-    assert "remaining_free" in body_auth
+    assert body_auth["plan"] == "free"
+    assert "remaining" in body_auth
     assert "limit" in body_auth
+    assert body_auth["limit"] == 5
+    assert body_auth["limitReached"] is False
+    assert 0 <= body_auth["remaining"] <= body_auth["limit"]
 
     guest_client = APIClient()
     r_guest = guest_client.post(
@@ -46,12 +50,16 @@ def test_chat_response_builder_includes_remaining_and_limit_only_for_authenticat
     )
     assert r_guest.status_code == 200
     body_guest = r_guest.json()
-    assert "remaining_free" not in body_guest
-    assert "limit" not in body_guest
+    assert body_guest["plan"] == "anonymous"
+    assert "remaining" in body_guest
+    assert "limit" in body_guest
+    assert body_guest["limit"] == 3
+    assert body_guest["limitReached"] is False
+    assert 0 <= body_guest["remaining"] <= body_guest["limit"]
 
 
 @pytest.mark.django_db
-def test_chat_response_builder_guest_response_has_no_remaining_or_limit(client, monkeypatch):
+def test_chat_response_builder_guest_response_includes_remaining_and_limit(client, monkeypatch):
     _stub_base_dependencies(
         monkeypatch,
         [{"name": "神社A", "reason": "ok", "reason_source": "reason:test"}],
@@ -64,8 +72,14 @@ def test_chat_response_builder_guest_response_has_no_remaining_or_limit(client, 
     )
     assert r.status_code == 200
     body = r.json()
-    assert "remaining_free" not in body
-    assert "limit" not in body
+    assert body["plan"] == "anonymous"
+    assert "remaining" in body
+    assert "limit" in body
+    assert isinstance(body["remaining"], int)
+    assert isinstance(body["limit"], int)
+    assert body["limit"] == 3
+    assert body["limitReached"] is False
+    assert 0 <= body["remaining"] <= body["limit"]
 
 
 @pytest.mark.django_db

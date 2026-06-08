@@ -1,12 +1,17 @@
 // apps/web/src/features/concierge/detailHref.ts
+import { buildShrineHref } from "@/lib/nav/buildShrineHref";
+import { buildShrineResolveHref } from "@/lib/nav/buildShrineResolveHref";
+
 /**
  * Concierge recommendation → detail href (product spec)
  *
- * - 登録済み: shrine_id / shrineId（または互換で id）を持つ → /shrines/:id
- * - 未登録: place_id / placeId（など）だけを持つ → /places/:placeId
+ * - 登録済み: shrine_id / shrineId / shrine.id を持つ → /shrines/:id
+ * - 未登録: place_id / placeId（など）だけを持つ → /shrines/resolve?place_id=...
  * - IDなし: null（UIは詳細導線を表示しない）
  *
- * 注意: `id` を shrine_id とみなすのが危険になったら、pickShrineId から `id` を外す。
+ * 注意:
+ * recommendation の `id` は shrine_id ではない可能性があるため使わない。
+ * 実在 shrine への導線は shrine_id / shrineId / shrine.id のみを採用する。
  */
 
 type AnyObj = Record<string, any>;
@@ -18,27 +23,47 @@ export function pickPlaceId(item: AnyObj): string | null {
 }
 
 export function pickShrineId(item: AnyObj): number | null {
-  const v = item?.shrine_id ?? item?.shrineId ?? item?.id ?? null;
-  // id を shrine_id とみなすのが危ないなら、ここは shrine_id/shrineId のみに絞る
+  const v = item?.shrine_id ?? item?.shrineId ?? item?.shrine?.id ?? null;
   const n = typeof v === "string" ? Number(v) : v;
   return Number.isFinite(n) ? n : null;
 }
 
 export function detailHrefFromRecommendation(
   item: AnyObj,
-  ctx?: { ctx?: string; tid?: string | number },
+  ctx?: {
+    ctx?: string;
+    tid?: string | number;
+    mode?: "need" | "compat";
+    flow?: "A" | "B";
+    hasBirthdate?: boolean;
+    recommendationCount?: number;
+  },
 ): string | null {
-  const q = new URLSearchParams();
-  if (ctx?.ctx) q.set("ctx", ctx.ctx);
-  if (ctx?.tid != null) q.set("tid", String(ctx.tid));
-  const qs = q.toString();
-  const suffix = qs ? `?${qs}` : "";
-
   const shrineId = pickShrineId(item);
-  if (shrineId != null) return `/shrines/${shrineId}${suffix}`;
+  const analyticsQuery = {
+    mode: ctx?.mode,
+    flow: ctx?.flow,
+    hasBirthdate: typeof ctx?.hasBirthdate === "boolean" ? String(ctx.hasBirthdate) : undefined,
+    recommendationCount:
+      typeof ctx?.recommendationCount === "number" ? String(ctx.recommendationCount) : undefined,
+  };
+
+  if (shrineId != null) {
+    return buildShrineHref(shrineId, {
+      ctx: ctx?.ctx,
+      tid: ctx?.tid ?? undefined,
+      query: analyticsQuery,
+    });
+  }
 
   const placeId = pickPlaceId(item);
-  if (placeId) return `/places/${encodeURIComponent(placeId)}${suffix}`;
+  if (placeId) {
+    return buildShrineResolveHref(placeId, {
+      ctx: ctx?.ctx === "map" || ctx?.ctx === "concierge" ? ctx.ctx : "concierge",
+      tid: ctx?.tid != null ? String(ctx.tid) : null,
+      query: analyticsQuery,
+    });
+  }
 
   return null;
 }

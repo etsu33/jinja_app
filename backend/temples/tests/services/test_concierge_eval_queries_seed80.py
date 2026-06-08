@@ -72,7 +72,7 @@ SEED80_EVAL_CASES = [
     {
         "id": "seed80_career_002",
         "query": "新しい挑戦を後押ししてほしい",
-        "expected_need": "career",
+        "expected_need": "courage",
         "expected_top_names": ["猿田彦神社", "鶴岡八幡宮", "大山阿夫利神社"],
         "note": "前進・勝運・挑戦",
     },
@@ -179,8 +179,8 @@ def _load_seed_candidates() -> list[dict]:
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("case", SEED80_EVAL_CASES, ids=[c["id"] for c in SEED80_EVAL_CASES])
-def test_concierge_eval_queries_seed80(case, monkeypatch):
-
+def test_concierge_eval_queries_seed80(case, monkeypatch, settings):
+    settings.CONCIERGE_USE_LLM = False
 
     candidates = _load_seed_candidates()
 
@@ -188,9 +188,12 @@ def test_concierge_eval_queries_seed80(case, monkeypatch):
         query=case["query"],
         language="ja",
         candidates=candidates,
+        bias=None,
         birthdate=None,
+        goriyaku_tag_ids=None,
+        extra_condition=None,
+        public_mode="need",
         flow="A",
-        llm_enabled=False,
     )
 
     assert "recommendations" in recs

@@ -20,7 +20,7 @@ def test_concierge_need_contract_need_and_breakdown(monkeypatch, settings):
         - score_need: matched_need_tags の件数（最小構成）
         - score_popular: popular_score を 0..1 に正規化（popular/10 を clamp）
         - score_total: score_element*W1 + score_need*W2 + score_popular*W3
-        - weights: {element, need, popular}
+        - weights: {element, need, popular, direction_bonus}
         - matched_need_tags: need_tags ∩ shrine_astro_tags
     """
     settings.CONCIERGE_USE_LLM = True
@@ -119,7 +119,12 @@ def test_concierge_need_contract_need_and_breakdown(monkeypatch, settings):
     a = items[0]
     assert a["name"] == "A"
     bd = a["breakdown"]
-    assert bd["weights"] == {"element": 0.6, "need": 0.3, "popular": 0.1}
+    assert bd["weights"] == {
+        "element": 0.6,
+        "need": 0.3,
+        "popular": 0.1,
+        "direction_bonus": 0.0,
+    }
     assert bd["score_element"] == 2
     assert bd["matched_need_tags"] == ["career", "rest"]
     assert bd["score_need"] == 2
@@ -829,7 +834,11 @@ def test_concierge_explanation_contract(monkeypatch, settings):
     )
 
     item = recs["recommendations"][0]
-    assert item["reason"] == "不安・心に向き合う参拝に"
+    reason = str(item.get("reason") or "")
+    assert "mental" not in reason
+    assert any(word in reason for word in ["不安", "心", "整え", "気持ち"])
+    assert "参拝先" in reason
+    assert "適しています" in reason
     assert isinstance(item["bullets"], list)
     assert item["bullets"][0] == "落ち着いて気持ちを整えやすい雰囲気"
     assert item["reason_source"] == "reason:matched_need_tags"

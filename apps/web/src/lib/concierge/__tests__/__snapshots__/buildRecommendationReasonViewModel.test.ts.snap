@@ -1,0 +1,144 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`buildRecommendationReasonViewModel > reason文の代表パターンを snapshot で固定する 1`] = `
+{
+  "birthdate": {
+    "debug": {
+      "reasonKeys": {
+        "primary": "element_match",
+        "secondary": "sign_match",
+        "summary": "element_match",
+      },
+    },
+    "detail": {
+      "actionMeaning": "自分の感覚を整えながら、相性の受け取り方を見直す節目として向き合いやすい場所です。",
+      "consultationSummary": "今は勢いで答えを出すほど感覚がぶれやすく、合う・合わないを静かに見極めたい状態です。 今は結論を急ぐより、相性として無理がないか、落ち着いて受け取れる場所かを先に整理するのが合っています。",
+      "heroMeaningCopy": "相性の無理が少なく、落ち着いて受け取りやすい神社",
+      "shrineMeaning": "この神社は、今の自分に無理なく向き合いたい願いを整えながら、落ち着いて受け止め直し、自分にとって無理のない向き合い方を整えるために立ち止まれる場所であり、相性を静かに見直す節目として置きやすい場所です。",
+    },
+    "hero": {
+      "catchCopy": "相性から静かに選びたい時の神社",
+      "eyebrowLabel": "今の相性に合いそうな神社",
+      "subtitle": "生年月日の傾向を補助的に重ねると、比較の軸にしやすい候補です。",
+      "topReasonLabel": "生年月日との重なりが強い",
+    },
+    "inputType": "birthdate",
+    "interpretation": {
+      "actionMeaning": "自分の感覚を整えながら、相性の受け取り方を見直す節目として向き合いやすい場所です。",
+      "consultationSummary": "今は勢いで答えを出すほど感覚がぶれやすく、合う・合わないを静かに見極めたい状態です。 今は結論を急ぐより、相性として無理がないか、落ち着いて受け取れる場所かを先に整理するのが合っています。",
+      "shrineMeaning": "この神社は、今の自分に無理なく向き合いたい願いを整えながら、落ち着いて受け止め直し、自分にとって無理のない向き合い方を整えるために立ち止まれる場所であり、相性を静かに見直す節目として置きやすい場所です。",
+    },
+    "list": {
+      "primaryPhrase": "生年月日から見た「water」の要素との相性が強く重なるため、この神社が候補に入っています。",
+      "secondaryPhrase": "気質とのなじみも補助的に見られます。",
+      "summary": "生年月日との相性の重なりを主軸に、この神社が選ばれています。",
+    },
+    "rank": {
+      "differenceFromOthers": "他候補と比べると、気質に無理なく馴染みやすい位置づけです。",
+      "whyTop": "今回の候補の中でも、生年月日との相性の重なりが見えやすい候補です。",
+    },
+    "why": {
+      "primaryReason": "生年月日から見た「water」の要素との相性が強く重なるため、この神社が候補に入っています。",
+      "reasonKeys": {
+        "primary": "element_match",
+        "secondary": "sign_match",
+        "summary": "element_match",
+      },
+      "secondaryReason": "気質とのなじみも補助的に見られます。",
+      "summary": "生年月日との相性の重なりを主軸に、この神社が選ばれています。",
+    },
+  },
+  "fallback": {
+    "debug": {
+      "reasonKeys": {
+        "primary": "need_match",
+        "secondary": "popular",
+        "summary": "distance",
+      },
+    },
+    "detail": {
+      "actionMeaning": "迷いがある時でも、参拝先として思い描きやすい安定感があります。",
+      "consultationSummary": "切り替えたい気持ちが強い時ほど、急いで結論を出そうとして判断が粗くなり、流れの見極めが雑になりやすくなります。 今は答えを急いで決めるより先に、どこを切り替えて何を残すかを整理できる場を優先するのが合っています。",
+      "heroMeaningCopy": "切り替えの流れを整え、次の見方を作る神社",
+      "shrineMeaning": "この神社は、切り替えや節目を整え、次の見方を作りたい願いを整えながら、見直し、切り替えたい流れを整え直すために立ち止まれる場所であり、切り替えの節目として置きやすい場所です。",
+    },
+    "hero": {
+      "catchCopy": "今の状態に重ねて見やすい神社",
+      "eyebrowLabel": "今の相談に近い方向の神社",
+      "subtitle": "仕事や次の動きを整理したい相談として、判断軸を立て直しやすい候補です。",
+      "topReasonLabel": "見やすい候補",
+    },
+    "inputType": "fallback",
+    "interpretation": {
+      "actionMeaning": "迷いがある時でも、参拝先として思い描きやすい安定感があります。",
+      "consultationSummary": "切り替えたい気持ちが強い時ほど、急いで結論を出そうとして判断が粗くなり、流れの見極めが雑になりやすくなります。 今は答えを急いで決めるより先に、どこを切り替えて何を残すかを整理できる場を優先するのが合っています。",
+      "shrineMeaning": "この神社は、切り替えや節目を整え、次の見方を作りたい願いを整えながら、見直し、切り替えたい流れを整え直すために立ち止まれる場所であり、切り替えの節目として置きやすい場所です。",
+    },
+    "list": {
+      "primaryPhrase": "今回の相談の中心にある「切り替え」のテーマと重なるため、この神社が候補に入っています。",
+      "secondaryPhrase": "参拝先として選びやすい安定感もあります。",
+      "summary": "今回はまず動きやすさを優先して、この神社が選ばれています。",
+    },
+    "rank": {
+      "differenceFromOthers": "他候補と比べると、今回優先したいテーマにまっすぐ重なりやすい位置づけです。",
+      "whyTop": "今回の候補の中でも、相談内容との重なりが見えやすい候補です。",
+    },
+    "why": {
+      "primaryReason": "今回の相談の中心にある「切り替え」のテーマと重なるため、この神社が候補に入っています。",
+      "reasonKeys": {
+        "primary": "need_match",
+        "secondary": "popular",
+        "summary": "distance",
+      },
+      "secondaryReason": "参拝先として選びやすい安定感もあります。",
+      "summary": "今回はまず動きやすさを優先して、この神社が選ばれています。",
+    },
+  },
+  "query": {
+    "debug": {
+      "reasonKeys": {
+        "primary": "need_match",
+        "secondary": undefined,
+        "summary": "need_match",
+      },
+    },
+    "detail": {
+      "actionMeaning": "流れを整えながら、どこを切り替えるかを見直す節目として向き合いやすい場所です。",
+      "consultationSummary": "切り替えたい気持ちが強い時ほど、急いで結論を出そうとして判断が粗くなり、流れの見極めが雑になりやすくなります。 今は答えを急いで決めるより先に、どこを切り替えて何を残すかを整理できる場を優先するのが合っています。",
+      "heroMeaningCopy": "切り替えの流れを整え、次の見方を作る神社",
+      "shrineMeaning": "この神社は、切り替えや節目を整え、次の見方を作りたい願いを整えながら、見直し、切り替えたい流れを整え直すために立ち止まれる場所であり、切り替えの節目として置きやすい場所です。",
+    },
+    "hero": {
+      "catchCopy": "今の状態に重ねて見やすい神社",
+      "eyebrowLabel": "今の相談に近い方向の神社",
+      "subtitle": "仕事や次の動きを整理したい相談として、判断軸を立て直しやすい候補です。",
+      "topReasonLabel": "相談との一致が強い",
+    },
+    "inputType": "query",
+    "interpretation": {
+      "actionMeaning": "流れを整えながら、どこを切り替えるかを見直す節目として向き合いやすい場所です。",
+      "consultationSummary": "切り替えたい気持ちが強い時ほど、急いで結論を出そうとして判断が粗くなり、流れの見極めが雑になりやすくなります。 今は答えを急いで決めるより先に、どこを切り替えて何を残すかを整理できる場を優先するのが合っています。",
+      "shrineMeaning": "この神社は、切り替えや節目を整え、次の見方を作りたい願いを整えながら、見直し、切り替えたい流れを整え直すために立ち止まれる場所であり、切り替えの節目として置きやすい場所です。",
+    },
+    "list": {
+      "primaryPhrase": "今回の相談の中心にある「切り替え」のテーマと重なるため、この神社が候補に入っています。",
+      "secondaryPhrase": undefined,
+      "summary": "相談内容と神社の性質が重なるため、この神社が選ばれています。",
+    },
+    "rank": {
+      "differenceFromOthers": "他候補と比べると、今回優先したいテーマにまっすぐ重なりやすい位置づけです。",
+      "whyTop": "今回の候補の中でも、相談内容との重なりが見えやすい候補です。",
+    },
+    "why": {
+      "primaryReason": "今回の相談の中心にある「切り替え」のテーマと重なるため、この神社が候補に入っています。",
+      "reasonKeys": {
+        "primary": "need_match",
+        "secondary": undefined,
+        "summary": "need_match",
+      },
+      "secondaryReason": undefined,
+      "summary": "相談内容と神社の性質が重なるため、この神社が選ばれています。",
+    },
+  },
+}
+`;

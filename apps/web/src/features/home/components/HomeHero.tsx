@@ -5,33 +5,27 @@ import Link from "next/link";
 
 export function HomeHero() {
   return (
-    <div className="flex flex-col gap-3 pt-2">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight mb-1">神社ナビ</h1>
-        <p className="text-xs text-gray-600 leading-relaxed">
-          今の気持ちや悩みを伝えると、
-          <br />
-          あなたに合った神社をコンシェルジュが提案します。
-        </p>
+    <section className="rounded-3xl bg-stone-100/80 px-6 py-16 sm:px-10 sm:py-24">
+      <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-10 text-center">
+        <div className="space-y-4">
+          <p className="text-xs font-medium tracking-[0.35em] text-stone-500">KAMI MUSUBI</p>
+          <h1 className="text-3xl font-semibold leading-tight text-stone-900 sm:text-4xl">
+            静かに、自分を整える場所へ
+          </h1>
+          <p className="mx-auto max-w-xl text-sm leading-7 text-stone-500">
+            今の気持ちに寄り添い、静かな出会いを届けます。
+          </p>
+        </div>
+
+        <div className="flex w-full justify-center">
+          <Link
+            href="/concierge"
+            className="inline-flex min-h-10 w-full max-w-[220px] items-center justify-center rounded-full border border-emerald-200/70 bg-emerald-50/90 px-5 py-2 text-sm font-medium text-emerald-900 transition hover:bg-emerald-100"
+          >
+            相談して選ぶ
+          </Link>
+        </div>
       </div>
-
-      <Link
-        href="/concierge"
-        className="inline-flex items-center justify-center rounded-full px-4 py-3 text-sm font-semibold bg-black text-white shadow-md active:scale-[0.98] transition"
-      >
-        今の気持ちから神社を探す
-      </Link>
-
-      <Link href="/concierge/history" className="text-[11px] text-gray-500 underline">
-        過去の相談を見る
-      </Link>
-
-      <Link
-        href="/map"
-        className="inline-flex items-center justify-center rounded-full px-4 py-3 text-sm font-semibold bg-emerald-600 text-white shadow-md active:scale-[0.98] transition"
-      >
-        キーワードで神社を検索
-      </Link>
-    </div>
+    </section>
   );
 }

@@ -1,18 +1,10 @@
 import { Suspense } from "react";
-import ConciergeClientSimple from "./ConciergeClientSimple";
-
-function Fallback() {
-  return (
-    <main className="mx-auto max-w-3xl p-6">
-      <div className="rounded-2xl border bg-white p-4 text-sm text-slate-600">読み込み中…</div>
-    </main>
-  );
-}
+import ConciergeClientFull from "./ConciergeClientFull";
 
 export default function Page() {
   return (
-    <Suspense fallback={<Fallback />}>
-      <ConciergeClientSimple />
+    <Suspense fallback={null}>
+      <ConciergeClientFull />
     </Suspense>
   );
 }

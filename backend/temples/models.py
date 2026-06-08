@@ -9,6 +9,7 @@ from django.db.models import CheckConstraint, Q, UniqueConstraint
 from django.utils import timezone
 from .models_places_seeds import PlacesSeed, PlacesSeedState  # noqa
 from .models_concierge_analytics import ConciergeRecommendationLog
+from .models_usage import FeatureUsage  # noqa
 
 # GeoDjango switch
 USE_REAL_GIS = bool(getattr(settings, "USE_GIS", False)) and not bool(
@@ -74,6 +75,40 @@ class CrawlTile(models.Model):
 
     def __str__(self) -> str:
         return f"tile({self.status}) step={self.step_km} bbox=({self.min_lat},{self.min_lng})-({self.max_lat},{self.max_lng})"
+
+
+class ProductionDataBootstrapRun(models.Model):
+    class Status(models.TextChoices):
+        RUNNING = "running", "Running"
+        SUCCESS = "success", "Success"
+        FAILED = "failed", "Failed"
+
+    step = models.CharField(max_length=100)
+    version = models.CharField(max_length=100)
+    command = models.CharField(max_length=100)
+    args = models.JSONField(default=list, blank=True)
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.RUNNING)
+    attempts = models.PositiveIntegerField(default=0)
+    last_error = models.TextField(blank=True, default="")
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["step", "version"],
+                name="uniq_production_bootstrap_step_version",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["status", "updated_at"], name="idx_bootstrap_status_updated"),
+            models.Index(fields=["step", "version"], name="idx_bootstrap_step_version"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.step}@{self.version} ({self.status})"
 
 
 
@@ -214,6 +249,14 @@ class Shrine(dj_models.Model):
         max_length=10, blank=True, null=True, help_text="五行属性: 木火土金水"
     )
 
+    # 歴史・文脈タグ（推薦理由の説明補助）
+    history_theme = models.CharField(
+        max_length=32,
+        blank=True,
+        default="",
+        help_text="神社の歴史文脈タグ: 再出発 / 静寂 / 復興 / 勝負 / 縁 / 学び / 守り",
+    )
+
     # 九星（任意入力・タグ用途）
     kyusei = models.CharField(
         max_length=8,
@@ -232,6 +275,7 @@ class Shrine(dj_models.Model):
     popular_score = models.FloatField(default=0.0)
     last_popular_calc_at = models.DateTimeField(null=True, blank=True)
     astro_elements = models.JSONField(default=list, blank=True, help_text="西洋占星術エレメント: ['火','土','風','水']")
+    visit_style_tags = models.JSONField(default=list, blank=True, help_text="参拝スタイルタグ: ['quiet','nature','classic'] など")
 
     place_ref = models.OneToOneField(
         "PlaceRef",
@@ -262,6 +306,7 @@ class Shrine(dj_models.Model):
             models.Index(fields=["longitude"], name="idx_shrine_lng"),
             models.Index(fields=["latitude", "longitude"], name="idx_shrine_lat_lng"),
             models.Index(fields=["kyusei"], name="idx_shrine_kyusei"),
+            models.Index(fields=["history_theme"], name="idx_shrine_history_theme"),
             models.Index(fields=["kind"], name="idx_shrine_kind"),
         ]
         constraints = [
@@ -382,9 +427,12 @@ class ConciergeThread(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="concierge_threads",
+        null=True,
+        blank=True,
     )
+    anonymous_id = models.CharField(max_length=64, null=True, blank=True, db_index=True)
+
     title = models.CharField(max_length=255, blank=True, default="")
-    # メインで紐づける神社（あれば）
     main_shrine = models.ForeignKey(
         "Shrine",
         on_delete=models.SET_NULL,
@@ -396,8 +444,6 @@ class ConciergeThread(models.Model):
 
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
-
-    # 最後のメッセージ時間（ソート用）
     last_message_at = models.DateTimeField(null=True, blank=True)
 
     recommendations = models.JSONField(null=True, blank=True)
@@ -407,6 +453,13 @@ class ConciergeThread(models.Model):
         ordering = ["-last_message_at", "-id"]
         indexes = [
             models.Index(fields=["user", "last_message_at"]),
+            models.Index(fields=["anonymous_id", "last_message_at"]),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                check=Q(user__isnull=False) | Q(anonymous_id__isnull=False),
+                name="concierge_thread_user_or_anonymous_required",
+            ),
         ]
 
     def __str__(self) -> str:
@@ -459,8 +512,147 @@ class Visit(models.Model):
     note = models.TextField(blank=True)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="added")
 
+
     class Meta:
         ordering = ["-visited_at"]
+
+
+# --- ShrineReflection model ---
+
+class ShrineReflection(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="shrine_reflections",
+    )
+    shrine = models.ForeignKey(
+        Shrine,
+        on_delete=models.CASCADE,
+        related_name="reflections",
+    )
+    history_theme = models.CharField(
+        max_length=32,
+        blank=True,
+        default="",
+        help_text="保存時点の history_theme スナップショット",
+    )
+    prompt = models.TextField(blank=True, default="")
+    answer = models.TextField()
+    mood_before = models.CharField(max_length=50, blank=True, default="")
+    mood_after = models.CharField(max_length=50, blank=True, default="")
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user", "-created_at"], name="idx_reflection_user_created"),
+            models.Index(fields=["shrine", "-created_at"], name="idx_reflection_shrine_created"),
+            models.Index(fields=["history_theme"], name="idx_reflection_history_theme"),
+        ]
+
+    def __str__(self) -> str:
+        return f"Reflection #{self.pk} shrine={self.shrine_id} user={self.user_id}"
+
+
+
+class ShrineInteractionLog(models.Model):
+    class ActionType(models.TextChoices):
+        DETAIL_VIEW = "detail_view", "Detail view"
+        ROUTE_OPEN = "route_open", "Route open"
+        SHRINE_CARD_CLICK = "shrine_card_click", "Shrine card click"
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="shrine_interaction_logs",
+    )
+    shrine = models.ForeignKey(
+        Shrine,
+        on_delete=models.CASCADE,
+        related_name="interaction_logs",
+    )
+    action_type = models.CharField(
+        max_length=32,
+        choices=ActionType.choices,
+        db_index=True,
+    )
+    source = models.CharField(max_length=64, blank=True, default="", db_index=True)
+    thread = models.ForeignKey(
+        ConciergeThread,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="shrine_interaction_logs",
+    )
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user", "shrine", "action_type"], name="idx_interact_user_shrine_act"),
+            models.Index(fields=["user", "-created_at"], name="idx_interaction_user_created"),
+            models.Index(fields=["shrine", "-created_at"], name="idx_interaction_shrine_created"),
+        ]
+
+    def __str__(self) -> str:
+        return f"Interaction #{self.pk} shrine={self.shrine_id} user={self.user_id} action={self.action_type}"
+
+
+class ActionEvent(models.Model):
+    """Track user actions for action suggestions.
+
+    ShrineInteractionLog tracks behavior toward a shrine, such as detail_view and route_open.
+    ActionEvent tracks behavior toward an action suggestion, such as action_started and action_completed.
+    Keeping them separate prevents shrine behavior metrics and action recommendation metrics from mixing.
+    """
+
+    class ActionType(models.TextChoices):
+        ACTION_STARTED = "action_started", "Action started"
+        ACTION_COMPLETED = "action_completed", "Action completed"
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="action_events",
+    )
+    shrine = models.ForeignKey(
+        Shrine,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="action_events",
+    )
+    thread = models.ForeignKey(
+        ConciergeThread,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="action_events",
+    )
+    action_type = models.CharField(
+        max_length=32,
+        choices=ActionType.choices,
+        db_index=True,
+    )
+    action_suggestion_id = models.CharField(max_length=128, db_index=True)
+    history_theme = models.CharField(max_length=32, blank=True, default="", db_index=True)
+    action_category = models.CharField(max_length=32, blank=True, default="", db_index=True)
+    source = models.CharField(max_length=64, blank=True, default="", db_index=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user", "action_type"], name="idx_action_user_type"),
+            models.Index(fields=["user", "-created_at"], name="idx_action_user_created"),
+            models.Index(fields=["history_theme", "action_type"], name="idx_action_theme_type"),
+            models.Index(fields=["action_suggestion_id", "action_type"], name="idx_action_suggestion_type"),
+        ]
+
+    def __str__(self) -> str:
+        return f"ActionEvent #{self.pk} user={self.user_id} action={self.action_type} suggestion={self.action_suggestion_id}"
 
 
 class Goshuin(models.Model):
@@ -580,9 +772,74 @@ class ConciergeUsage(models.Model):
     def __str__(self) -> str:
         return f"{self.user} @ {self.date}: {self.count}"
 
-# Shrine に ManyToMany を追加（既存 Shrine クラス内）
-# deities = models.ManyToManyField("Deity", related_name="shrines", blank=True)
 
+class ShrineSubmission(dj_models.Model):
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        APPROVED = "approved", "Approved"
+        REJECTED = "rejected", "Rejected"
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="shrine_submissions",
+    )
+
+    name = models.CharField(max_length=255)
+    address = models.CharField(max_length=512)
+
+    lat = models.FloatField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(-90.0), MaxValueValidator(90.0)],
+    )
+    lng = models.FloatField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(-180.0), MaxValueValidator(180.0)],
+    )
+
+    goriyaku_tags = models.JSONField(default=list, blank=True)
+    note = models.TextField(blank=True, default="")
+
+    status = models.CharField(
+        max_length=16,
+        choices=Status.choices,
+        default=Status.PENDING,
+        db_index=True,
+    )
+
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="reviewed_shrine_submissions",
+    )
+    review_comment = models.TextField(blank=True, default="")
+
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["status", "created_at"], name="idx_submission_status_created"),
+            models.Index(fields=["user", "created_at"], name="idx_submission_user_created"),
+        ]
+        constraints = [
+            CheckConstraint(
+                condition=(
+                    Q(lat__isnull=True, lng__isnull=True)
+                    | Q(lat__isnull=False, lng__isnull=False)
+                ),
+                name="chk_submission_lat_lng_both_or_none",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"[{self.status}] {self.name}"
 
 class ShrineCandidate(dj_models.Model):
     class Status(models.TextChoices):
@@ -668,5 +925,3 @@ class PlaceCache(models.Model):
 
     def __str__(self) -> str:
         return f"{self.name} ({self.place_id})"
-
-    
