@@ -177,14 +177,21 @@ def _format_recommendation(rec: dict[str, Any], rank: int) -> list[str]:
     rank_comparison = _safe_dict(rec.get("rank_comparison"))
     explanation_payload = _safe_dict(rec.get("_explanation_payload"))
     breakdown = _safe_dict(rec.get("breakdown"))
-    generated = _safe_dict(explanation_payload.get("generated"))
-    source = _safe_dict(explanation_payload.get("source"))
+    payload_primary_reason = _safe_dict(explanation_payload.get("primary_reason"))
+    payload_history_context = _safe_dict(explanation_payload.get("history_context"))
+    payload_score_v2 = _safe_dict(explanation_payload.get("score_v2"))
+    payload_action_suggestions = explanation_payload.get("action_suggestions") or []
+    payload_action_titles = [
+        str(item.get("title") or "").strip()
+        for item in payload_action_suggestions
+        if isinstance(item, dict) and str(item.get("title") or "").strip()
+    ]
 
     lines = [
         f"#### {rank}. {_text_or_dash(rec.get('display_name') or rec.get('name'))}",
         "",
         f"- shrine_id: `{_text_or_dash(rec.get('shrine_id') or rec.get('id'))}`",
-        f"- history_theme: `{_text_or_dash(rec.get('history_theme') or source.get('historyTheme'))}`",
+        f"- history_theme: `{_text_or_dash(rec.get('history_theme') or payload_history_context.get('theme'))}`",
         f"- reason_source: `{_text_or_dash(rec.get('reason_source'))}`",
         f"- action_state: `{_text_or_dash(rec.get('action_state'))}`",
         f"- matched_need_tags: `{_join_or_dash(breakdown.get('matched_need_tags'))}`",
@@ -209,11 +216,19 @@ def _format_recommendation(rec: dict[str, Any], rank: int) -> list[str]:
         "",
         "##### _explanation_payload",
         "",
-        f"- heroMeaningCopy: {_text_or_dash(generated.get('heroMeaningCopy'))}",
-        f"- consultationSummary: {_text_or_dash(generated.get('consultationSummary'))}",
-        f"- shrineMeaning: {_text_or_dash(generated.get('shrineMeaning'))}",
-        f"- actionMeaning: {_text_or_dash(generated.get('actionMeaning'))}",
-        f"- benefitActionContext: {_text_or_dash(generated.get('benefitActionContext'))}",
+        f"- matched_need_tags: `{_join_or_dash(explanation_payload.get('matched_need_tags'))}`",
+        f"- primary_need_tag: `{_text_or_dash(explanation_payload.get('primary_need_tag'))}`",
+        f"- primary_need_label_ja: `{_text_or_dash(explanation_payload.get('primary_need_label_ja'))}`",
+        f"- primary_reason.type: `{_text_or_dash(payload_primary_reason.get('type'))}`",
+        f"- primary_reason.label: `{_text_or_dash(payload_primary_reason.get('label'))}`",
+        f"- primary_reason.label_ja: `{_text_or_dash(payload_primary_reason.get('label_ja'))}`",
+        f"- primary_reason.evidence: `{_join_or_dash(payload_primary_reason.get('evidence'))}`",
+        f"- primary_reason.score: `{_text_or_dash(payload_primary_reason.get('score'))}`",
+        f"- history_context.theme: `{_text_or_dash(payload_history_context.get('theme'))}`",
+        f"- history_context.label: `{_text_or_dash(payload_history_context.get('label'))}`",
+        f"- history_context.tone: {_text_or_dash(payload_history_context.get('tone'))}",
+        f"- action_suggestions: `{_join_or_dash(payload_action_titles)}`",
+        f"- score_v2.total: `{_text_or_dash(payload_score_v2.get('total'))}`",
         "",
     ]
     return lines
