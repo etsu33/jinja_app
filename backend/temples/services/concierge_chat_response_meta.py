@@ -88,9 +88,11 @@ def build_stats(
 
 def build_signals(
     *,
+    public_mode: str,
     flow: str,
     weights: Dict[str, float],
     astro_bonus_enabled: bool,
+    birthdate: Optional[str],
     effective_llm_enabled: bool,
     llm_used: bool,
     llm_error: Optional[str],
@@ -100,9 +102,11 @@ def build_signals(
 ) -> Dict[str, Any]:
     return {
         "mode": _resolve_mode_meta(
+            public_mode=public_mode,
             flow=flow,
             weights=weights,
             astro_bonus_enabled=astro_bonus_enabled,
+            birthdate=birthdate,
         ),
         "llm": {
             "enabled": bool(effective_llm_enabled),
@@ -125,9 +129,11 @@ def build_signals(
 def attach_response_meta(
     recs: Dict[str, Any],
     *,
+    public_mode: str,
     flow: str,
     weights: Dict[str, float],
     astro_bonus_enabled: bool,
+    birthdate: Optional[str],
     effective_llm_enabled: bool,
     llm_used: bool,
     llm_error: Optional[str],
@@ -149,9 +155,11 @@ def attach_response_meta(
     )
 
     recs["_signals"] = build_signals(
+        public_mode=public_mode,
         flow=flow,
         weights=weights,
         astro_bonus_enabled=astro_bonus_enabled,
+        birthdate=birthdate,
         effective_llm_enabled=effective_llm_enabled,
         llm_used=llm_used,
         llm_error=llm_error,

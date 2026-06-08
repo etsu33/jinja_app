@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import math
 from typing import Any, Dict, List, Optional
+from dataclasses import asdict
 
 from django.db.models import Q
 
@@ -11,10 +12,13 @@ from temples.services.concierge_candidate_utils import (
     _dedupe_candidates,
     _to_float,
 )
+from temples.services.shrine_trust_metadata import get_shrine_trust_metadata
+
+from temples.services.shrine_meaning_composer import compose_shrine_meaning_payload
 
 log = logging.getLogger(__name__)
 
-DEFAULT_LIMIT = 12
+DEFAULT_LIMIT = 20
 
 
 def _distance_m(
@@ -98,6 +102,10 @@ def build_chat_candidates(
 
         pref = getattr(s, "place_ref", None)
         place_id = getattr(pref, "place_id", None) if pref else None
+        trust_metadata = get_shrine_trust_metadata(s.id)
+
+        meaning_payload = compose_shrine_meaning_payload(s)
+        generated_meaning = meaning_payload.get("generated") or {}
 
         candidates.append(
             {
@@ -113,11 +121,15 @@ def build_chat_candidates(
                 "description": getattr(s, "description", None),
                 "astro_tags": getattr(s, "astro_tags", None),
                 "astro_elements": getattr(s, "astro_elements", None),
+                "visit_style_tags": getattr(s, "visit_style_tags", None),
+                "history_theme": getattr(s, "history_theme", ""),
                 "astro_priority": getattr(s, "astro_priority", None),
                 "goriyaku_tag_ids": list(s.goriyaku_tags.values_list("id", flat=True))
                 if hasattr(s, "goriyaku_tags")
                 else [],
                 "popular_score": getattr(s, "popular_score", None),
+                "trust_metadata": asdict(trust_metadata) if trust_metadata else None,
+                "history_context": generated_meaning.get("historyContext"),
             }
         )
 

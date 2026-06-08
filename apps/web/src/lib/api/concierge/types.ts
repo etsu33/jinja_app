@@ -16,51 +16,6 @@ export type ConciergeMessage = {
   created_at: string;
 };
 
-export type ConciergeRecommendation = {
-  id?: number | null;
-  place_id?: string | null;
-
-  name: string;
-  display_name?: string;
-
-  address?: string | null;
-  display_address?: string | null;
-
-  location?: string | null;
-
-  lat?: number | null;
-  lng?: number | null;
-
-  distance_m?: number | null;
-  duration_min?: number | null;
-  score?: number | null;
-  popular_score?: number | null;
-  breakdown?: ConciergeBreakdown | null;
-
-  tags?: string[];
-  deities?: string[];
-
-  reason?: string | null;
-  reason_source?: string | null;
-
-  bullets?: string[] | null;
-  explanation?: {
-    version?: number | null;
-    summary?: string | null;
-    reasons?: Array<{
-      code?: string | null;
-      label?: string | null;
-      text?: string | null;
-      strength?: "low" | "mid" | "high" | null;
-      evidence?: Record<string, unknown> | null;
-    }> | null;
-    disclaimer?: string | null;
-  } | null;
-
-  photo_url?: string | null;
-  is_dummy?: boolean;
-  __dummy?: boolean;
-};
 
 export type ConciergeChatRequest = {
   query: string;
@@ -82,18 +37,19 @@ export type ConciergeChatResponse = {
   ok: boolean;
   data?: ConciergeChatData;
   reply?: string;
-  note?: string;
   thread?: ConciergeThread;
 
-  // ★ backendが返してきたら表示できるように「任意」で受ける
-  remaining_free?: number;
-  limit?: number;
+  plan?: "anonymous" | "free" | "premium" | null;
+  remaining?: number | null;
+  limit?: number | null;
+  limitReached?: boolean;
 };
 
 export type ConciergeThreadDetail = {
   thread: ConciergeThread;
   messages: ConciergeMessage[];
   recommendations?: ConciergeRecommendation[];
+  recommendations_v2?: ConciergeRecommendation[];
 };
 
 export type ConciergeNeed = {
@@ -112,4 +68,115 @@ export type ConciergeBreakdown = {
     popular: number;
   };
   matched_need_tags: string[];
+};
+
+export type ConciergeReasonFactAxis =
+  | "need"
+  | "benefit"
+  | "feature"
+  | "element"
+  | "distance"
+  | "popularity"
+  | "fallback";
+
+export type ConciergeReasonFacts = {
+  version?: 1;
+  primary_axis?: ConciergeReasonFactAxis | null;
+  secondary_axis?: ConciergeReasonFactAxis | null;
+
+  matched_need_tags?: string[];
+  matched_benefits?: string[];
+
+  shrine_feature?: string | null;
+  shrine_benefit?: string | null;
+  visit_fit?: string | null;
+
+  matched_element?: string | null;
+  matched_sign?: string | null;
+
+  distance_label?: string | null;
+  popularity_label?: string | null;
+
+  fallback_reason?: string | null;
+  confidence?: "high" | "mid" | "low" | null;
+};
+
+export type ConciergeRecommendation = {
+  id?: number | null;
+  shrine_id?: number | null;
+  place_id?: string | null;
+
+  name: string;
+  display_name?: string;
+
+  address?: string | null;
+  display_address?: string | null;
+
+  location?: string | null;
+
+  lat?: number | null;
+  lng?: number | null;
+
+  distance_m?: number | null;
+  duration_min?: number | null;
+  score?: number | null;
+  popular_score?: number | null;
+  breakdown?: ConciergeBreakdown | null;
+  breakdown_detail?: any | null;
+
+  action_state?: "reflected" | "visited" | "saved" | "none" | null;
+
+  trust_metadata?: {
+    rank_class?: string | null;
+    cultural_status?: string[] | null;
+    lineage?: string | null;
+    origin_summary?: string | null;
+  } | null;
+
+  tags?: string[];
+  deities?: string[];
+
+  reason?: string | null;
+  reason_source?: string | null;
+
+  bullets?: string[] | null;
+  explanation?: {
+    version?: number | null;
+    summary?: string | null;
+    reasons?: Array<{
+      code?: string | null;
+      label?: string | null;
+      text?: string | null;
+      strength?: "low" | "mid" | "high" | null;
+      evidence?: Record<string, unknown> | null;
+    }> | null;
+    disclaimer?: string | null;
+  } | null;
+
+  reason_facts?: ConciergeReasonFacts | null;
+
+  rank_explanation?: ConciergeRankExplanation | null;
+  rank_comparison?: ConciergeRankComparison | null;
+
+  photo_url?: string | null;
+  is_dummy?: boolean;
+  __dummy?: boolean;
+};
+
+export type ConciergeRankExplanation = {
+  version: number;
+  summary?: string | null;
+  primary_axis?: string | null;
+  primary_axis_ja?: string | null;
+  primary_label?: string | null;
+  primary_label_ja?: string | null;
+};
+
+export type ConciergeRankComparison = {
+  version: number;
+  rank?: number;
+  is_top?: boolean;
+  top_name?: string | null;
+  gap_from_top?: number;
+  comparison_summary?: string | null;
 };

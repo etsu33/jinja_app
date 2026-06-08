@@ -7,8 +7,18 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => ({ get: (k: string) => (k === "tab" ? "goshuin" : null) }),
 }));
 
+vi.mock("@/lib/auth/AuthProvider", () => ({
+  useAuth: () => ({
+    user: null,
+    loading: false,
+    isLoggedIn: false,
+    login: vi.fn(),
+    logout: vi.fn(),
+    refreshMe: vi.fn(),
+  }),
+}));
+
 vi.mock("@/lib/api/users", () => ({
-  getCurrentUser: vi.fn(async () => null),
   updateUser: vi.fn(),
 }));
 
@@ -18,6 +28,6 @@ describe("MyPage 未ログイン", () => {
 
     // MyPageView は初回 loading を経由するので findByRole にする
     const link = await screen.findByRole("link", { name: "ログインへ" });
-    expect(link).toHaveAttribute("href", "/login?next=%2Fmypage%3Ftab%3Dgoshuin");
+    expect(link).toHaveAttribute("href", "/auth/login?returnTo=%2Fmypage%3Ftab%3Dprofile");
   });
 });

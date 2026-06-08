@@ -15,6 +15,17 @@ const STUB = {
 } as const;
 
 export async function GET(req: NextRequest) {
+  const forcedPlan = process.env.NEXT_PUBLIC_FORCE_BILLING_PLAN;
+
+  if (process.env.NODE_ENV !== "production" && forcedPlan === "free") {
+    return NextResponse.json({
+      ...STUB,
+      plan: "free",
+      is_active: false,
+      provider: "stub",
+    });
+  }
+
   const upstream = await bffFetchWithAuthFromReq(req, "/api/billings/status/", {
     method: "GET",
     headers: { Accept: "application/json" },

@@ -1,19 +1,12 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-
 export function HomeConciergeInlineClient({ className }: { className?: string }) {
-  const router = useRouter();
-
   return (
     <div className={className}>
-      <button
-        type="button"
-        onClick={() => router.push("/concierge")}
-        className="w-full rounded-full bg-amber-500 py-3 text-sm font-semibold text-slate-950 transition-colors hover:bg-amber-400"
-      >
-        今の気持ちから神社を探す
-      </button>
+      <div className="rounded-3xl border border-stone-200/25 bg-stone-50/50 px-6 py-8 sm:px-7 sm:py-9">
+        <p className="text-[9px] font-normal tracking-[0.24em] text-stone-500">QUIET GUIDE</p>
+        <p className="mt-3 text-sm leading-7 text-stone-500">必要なときにだけ、言葉を静かに整えられます。</p>
+      </div>
     </div>
   );
 }

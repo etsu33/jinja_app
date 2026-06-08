@@ -121,6 +121,35 @@ def test_chat_view_uses_area_geocode_when_latlng_absent(client, monkeypatch):
 
 
 @pytest.mark.django_db
+def test_chat_view_uses_nested_location_latlng_as_bias(client, monkeypatch):
+    captured_recs = _stub_recommendations(monkeypatch)
+    captured_cands = {}
+
+    def fake_build_chat_candidates(**kwargs):
+        captured_cands.update(kwargs)
+        return []
+
+    monkeypatch.setattr("temples.api_views_concierge.build_chat_candidates", fake_build_chat_candidates)
+
+    payload = {
+        "message": "近場で参拝したい",
+        "location": {"lat": 35.6812, "lng": 139.7671},
+        "radius_m": 12000,
+    }
+    r = client.post(URL, data=json.dumps(payload), content_type="application/json")
+    assert r.status_code == 200
+
+    assert captured_cands["lat"] == pytest.approx(35.6812)
+    assert captured_cands["lng"] == pytest.approx(139.7671)
+    assert captured_recs["bias"] == {
+        "lat": pytest.approx(35.6812),
+        "lng": pytest.approx(139.7671),
+        "radius": 12000,
+        "radius_m": 12000,
+    }
+
+
+@pytest.mark.django_db
 def test_chat_view_prefers_direct_latlng_even_with_area(client, monkeypatch):
     captured_recs = _stub_recommendations(monkeypatch)
     captured_cands = {}
@@ -146,7 +175,6 @@ def test_chat_view_prefers_direct_latlng_even_with_area(client, monkeypatch):
     assert captured_recs["bias"]["lng"] == pytest.approx(139.1)
 
 
-@pytest.mark.django_db
 @pytest.mark.parametrize(
     "extra,expected_flow",
     [

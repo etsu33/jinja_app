@@ -22,17 +22,17 @@
     "pnpm": ">=9"
   },
   "devDependencies": {
-    "@next/eslint-plugin-next": "^16.1.6",
-    "@stoplight/spectral-cli": "^6.15.0",
-    "baseline-browser-mapping": "^2.10.8",
-    "eslint": "^9.7.0",
+    "@next/eslint-plugin-next": "^16.2.4",
+    "@stoplight/spectral-cli": "^6.15.1",
+    "baseline-browser-mapping": "^2.10.24",
+    "eslint": "^9.39.4",
     "eslint-plugin-react": "^7.37.5",
-    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "husky": "^9.1.7",
     "markdownlint-cli": "^0.47.0",
-    "prettier": "^3.8.1",
+    "prettier": "^3.8.3",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.55.0",
+    "typescript-eslint": "^8.59.1",
     "vite-tsconfig-paths": "^6.1.1"
   },
   "pnpm": {

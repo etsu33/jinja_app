@@ -57,10 +57,9 @@ NEED_TAG_ALIASES: Dict[str, str] = {
     "career_change": "career",
     "work": "career",
     "fortune": "money",
-    "courage": "career",
-    "challenge": "career",
-    "ambition": "career",
-    "success": "career",
+    "challenge": "courage",
+    "ambition": "courage",
+    "success": "courage",
 }
 
 
@@ -179,6 +178,9 @@ def resolve_need_payload(
             "tags": normalize_need_tags(need_tags, max_tags=max_tags),
             "hits": {},
         }
+
+    if not str(query or "").strip():
+        return {"tags": [], "hits": {}}
 
     try:
         from temples.domain.need_tags import extract_need_tags  # type: ignore

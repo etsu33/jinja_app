@@ -1,3 +1,4 @@
+// apps/web/src/lib/api/conciergeClient.ts
 import { postConciergeChat } from "@/lib/api/concierge";
 import type { ConciergeResponse } from "@/viewmodels/conciergeToShrineList";
 import type { UnifiedConciergeResponse } from "@/features/concierge/types/unified";
@@ -20,9 +21,16 @@ function unifiedToConciergeResponse(u: UnifiedConciergeResponse): ConciergeRespo
 
   const recs = Array.isArray(data.recommendations) ? data.recommendations : [];
   const needTags = Array.isArray(data._need?.tags) ? data._need.tags : [];
+  const threadId = typeof u.thread_id === "string" && u.thread_id.trim() ? u.thread_id.trim() : null;
 
   return {
     ok: !!u?.ok,
+    plan: typeof u?.plan === "string" ? u.plan : null,
+    remaining: typeof u?.remaining === "number" ? u.remaining : null,
+    limit: typeof u?.limit === "number" ? u.limit : null,
+    limitReached: !!u?.limitReached,
+    reply: typeof u?.reply === "string" ? u.reply : null,
+    thread_id: threadId,
     data: {
       _need: { tags: needTags },
       _signals: data._signals ?? null,
@@ -34,7 +42,9 @@ function unifiedToConciergeResponse(u: UnifiedConciergeResponse): ConciergeRespo
         reason_source: r?.reason_source ?? null,
         bullets: Array.isArray(r?.bullets) ? r.bullets : null,
         explanation: r?.explanation ?? null,
-        location: r?.display_address ?? r?.location ?? r?.address ?? null,
+        _explanation_payload: r?._explanation_payload ?? null,
+        address: r?.address ?? null,
+        location: r?.location ?? r?.address ?? null,
         lat: r?.lat ?? null,
         lng: r?.lng ?? null,
         distance_m: r?.distance_m ?? null,
@@ -42,6 +52,7 @@ function unifiedToConciergeResponse(u: UnifiedConciergeResponse): ConciergeRespo
         shrine_id: r?.shrine_id ?? null,
         popular_score: r?.popular_score ?? null,
         breakdown: r?.breakdown ?? null,
+        breakdown_detail: r?.breakdown_detail ?? r?.breakdownDetail ?? null,
       })),
     },
   };
@@ -53,33 +64,38 @@ export async function searchConcierge(req: ConciergeRequest): Promise<ConciergeR
 
   const raw = await postConciergeChat({ query: text });
   const rawObj = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : null;
-  const payload = rawObj && "data" in rawObj ? rawObj.data : raw;
 
-  const payloadData =
-    payload && typeof payload === "object" && !Array.isArray(payload)
-      ? (payload as Record<string, unknown>).data &&
-        typeof (payload as Record<string, unknown>).data === "object" &&
-        !Array.isArray((payload as Record<string, unknown>).data)
-        ? ((payload as Record<string, unknown>).data as Record<string, unknown>)
-        : (payload as Record<string, unknown>)
+  const rawData =
+    rawObj?.data && typeof rawObj.data === "object" && !Array.isArray(rawObj.data)
+      ? (rawObj.data as Record<string, unknown>)
       : {};
 
-  const recs = normalizeRecommendations(payloadData.recommendations);
+  const threadObj =
+    rawObj?.thread && typeof rawObj.thread === "object" && !Array.isArray(rawObj.thread)
+      ? (rawObj.thread as Record<string, unknown>)
+      : null;
 
-  const ok = (payload as any)?.ok !== false;
+  const threadObjId = threadObj?.["id"];
+
+  const threadId =
+    (typeof rawObj?.thread_id === "string" && rawObj.thread_id.trim()) ||
+    (typeof threadObjId === "number" && String(threadObjId)) ||
+    null;
+
+  const recs = normalizeRecommendations(rawData.recommendations);
 
   const unified: UnifiedConciergeResponse = {
-    ok,
-    stop_reason: (payload as any)?.stop_reason ?? null,
-    note: (payload as any)?.note ?? null,
-    reply:
-      typeof ((payload as any)?.reply ?? payloadData.reply) === "string"
-        ? (((payload as any)?.reply ?? payloadData.reply) as string)
-        : null,
-    remaining_free: typeof (payload as any)?.remaining_free === "number" ? (payload as any).remaining_free : null,
-    thread: (payload as any)?.thread ?? null,
+    ok: rawObj?.ok !== false,
+    stop_reason: (rawObj?.stop_reason as any) ?? null,
+    reply: typeof rawObj?.reply === "string" ? rawObj.reply : null,
+    plan: rawObj?.plan === "anonymous" || rawObj?.plan === "free" || rawObj?.plan === "premium" ? rawObj.plan : null,
+    remaining: typeof rawObj?.remaining === "number" ? rawObj.remaining : null,
+    limit: typeof rawObj?.limit === "number" ? rawObj.limit : null,
+    limitReached: rawObj?.limitReached === true,
+    thread_id: threadId,
+    thread: (rawObj?.thread as any) ?? null,
     data: {
-      ...payloadData,
+      ...rawData,
       recommendations: recs,
     },
   };
