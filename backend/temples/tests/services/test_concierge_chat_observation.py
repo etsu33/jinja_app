@@ -174,6 +174,7 @@ def assert_ranking_breakdown_top_row_schema(row):
         "primary_reason_label",
         "context_profile",
         "shrine_meaning_profile",
+        "behavior_profile",
         "reflection_hint",
         "reflection_hint_state_change_direction",
         "reflection_hint_next_need_hint",
@@ -201,6 +202,7 @@ def assert_ranking_breakdown_top_row_schema(row):
     assert isinstance(row["matched_visit_style_tags"], list)
     assert isinstance(row["context_profile"], dict)
     assert isinstance(row["shrine_meaning_profile"], dict)
+    assert isinstance(row["behavior_profile"], dict)
     assert isinstance(row["reflection_hint"], dict)
     assert isinstance(row["reflection_hint_next_need_hint"], list)
     assert isinstance(row["reflection_hint_next_history_theme_hint"], list)
@@ -728,6 +730,25 @@ def test_observe_ranking_breakdown_returns_stable_schema():
                                 "matched_by_text": [],
                                 "matched_by_gid": [],
                                 "matched_user_selected_goriyaku_tag_ids": [],
+                            },
+                            "behavior_profile": {
+                                "version": 1,
+                                "action_state": "none",
+                                "behavior_breakdown": {
+                                    "detail_view_signal": 0.0,
+                                    "route_open_signal": 0.0,
+                                    "save_signal": 0.0,
+                                    "visit_signal": 0.0,
+                                    "reflection_signal": 0.0,
+                                    "total": 0.0,
+                                },
+                                "behavior_signal": 0.0,
+                                "behavior_contribution": 0.0,
+                                "capped_behavior_contribution": 0.0,
+                                "behavior_ratio": 0.0,
+                                "visit_signal": 0.0,
+                                "reflection_signal": 0.0,
+                                "reflection_hint": None,
                             }
                         }
                     },
@@ -772,6 +793,8 @@ def test_observe_ranking_breakdown_returns_stable_schema():
     assert row["context_profile"]["score_visit_style"] == 1
     assert row["shrine_meaning_profile"]["history_theme"] == "静寂"
     assert row["shrine_meaning_profile"]["matched_need_tags"] == ["rest"]
+    assert row["behavior_profile"]["action_state"] == "none"
+    assert row["behavior_profile"]["behavior_signal"] == 0.0
 
 
 def test_observe_ranking_breakdown_supports_user_selected_tag_reason():

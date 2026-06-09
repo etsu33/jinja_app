@@ -206,6 +206,11 @@ def observe_ranking_breakdown(
                 if isinstance(score_v2_signals.get("shrine_meaning_profile"), dict)
                 else {}
             )
+            behavior_profile = (
+                score_v2_signals.get("behavior_profile")
+                if isinstance(score_v2_signals.get("behavior_profile"), dict)
+                else {}
+            )
             reflection_hint = rec.get("reflection_hint") or score_v2_signals.get("reflection_hint") or {}
 
             rows.append(
@@ -243,6 +248,7 @@ def observe_ranking_breakdown(
                     "visit_style_tags": list(rec.get("visit_style_tags") or []),
                     "context_profile": context_profile,
                     "shrine_meaning_profile": shrine_meaning_profile,
+                    "behavior_profile": behavior_profile,
                     "reflection_hint": reflection_hint,
                     "reflection_hint_state_change_direction": reflection_hint.get("state_change_direction"),
                     "reflection_hint_next_need_hint": list(reflection_hint.get("next_need_hint") or []),
