@@ -132,6 +132,7 @@ def assert_ranking_breakdown_observation_schema(observation):
     assert set(observation["_debug"].keys()) == {
         "query",
         "need_tags",
+        "user_state_profile",
         "matched_need_tags",
         "visit_style_tags",
         "matched_visit_style_tags",
@@ -143,6 +144,7 @@ def assert_ranking_breakdown_observation_schema(observation):
         "reflection_hint_next_history_theme_hint",
         "reflection_hint_source_history_theme",
     }
+    assert isinstance(observation["_debug"]["user_state_profile"], dict)
 
 
 def assert_ranking_breakdown_top_row_schema(row):
@@ -705,6 +707,7 @@ def test_observe_ranking_breakdown_returns_stable_schema():
     _debug = observation.get("_debug", {})
     assert _debug["query"] == ""
     assert _debug["need_tags"] == []
+    assert _debug["user_state_profile"] == {}
     assert _debug["matched_need_tags"] == [["rest"]]
     assert _debug["visit_style_tags"] == [["nature"]]
     assert _debug["matched_visit_style_tags"] == [["nature"]]
@@ -989,6 +992,7 @@ def test_observe_ranking_breakdown_empty_contract_has_stable_schema():
         "_debug": {
             "query": "",
             "need_tags": [],
+            "user_state_profile": {},
             "matched_need_tags": [],
             "visit_style_tags": [],
             "matched_visit_style_tags": [],

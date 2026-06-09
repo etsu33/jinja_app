@@ -233,9 +233,17 @@ def observe_ranking_breakdown(
                 }
             )
 
+        recs_debug = recs.get("_debug") if isinstance(recs.get("_debug"), dict) else {}
+        user_state_profile = (
+            recs_debug.get("user_state_profile")
+            if isinstance(recs_debug.get("user_state_profile"), dict)
+            else {}
+        )
+
         debug = {
             "query": recs.get("_query") or "",
             "need_tags": recs.get("_need_tags") or [],
+            "user_state_profile": user_state_profile,
             "matched_need_tags": [r.get("matched_need_tags") or [] for r in rows],
             "visit_style_tags": [
                 list(dict.fromkeys((r.get("visit_style_tags") or []) + (r.get("matched_visit_style_tags") or [])))
@@ -276,6 +284,7 @@ def observe_ranking_breakdown(
             "_debug": {
                 "query": "",
                 "need_tags": [],
+                "user_state_profile": {},
                 "matched_need_tags": [],
                 "visit_style_tags": [],
                 "matched_visit_style_tags": [],
