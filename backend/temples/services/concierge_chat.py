@@ -87,6 +87,68 @@ def _build_goriyaku_tag_label_by_id(goriyaku_tag_ids: Optional[List[int]]) -> Di
         return {}
 
 
+def _normalize_int_list(values: Optional[List[int]]) -> List[int]:
+    normalized: List[int] = []
+    for value in values or []:
+        try:
+            normalized.append(int(value))
+        except (TypeError, ValueError):
+            continue
+    return normalized
+
+
+def _build_user_state_profile(
+    *,
+    query: str,
+    extra_condition: Optional[str],
+    need_payload: Dict[str, Any],
+    need_tags: List[str],
+    goriyaku_tag_ids: Optional[List[int]],
+    recommendations: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    """Build a debug-only user state profile from current recommendation inputs.
+
+    This payload keeps user-side state signals in one place.
+    matched_need_tags and primary_need_tag are derived from the ranked top recommendation,
+    because they are not pure user input; they are user × shrine match results.
+    """
+    top = recommendations[0] if recommendations else {}
+    top_breakdown = top.get("breakdown") if isinstance(top.get("breakdown"), dict) else {}
+    top_explanation_payload = (
+        top.get("_explanation_payload")
+        if isinstance(top.get("_explanation_payload"), dict)
+        else {}
+    )
+    top_score_v2 = top.get("score_v2") if isinstance(top.get("score_v2"), dict) else {}
+    top_score_v2_signals = (
+        top_score_v2.get("signals")
+        if isinstance(top_score_v2.get("signals"), dict)
+        else {}
+    )
+
+    matched_need_tags = list(
+        top_breakdown.get("matched_need_tags")
+        or top_explanation_payload.get("matched_need_tags")
+        or top_score_v2_signals.get("matched_need_tags")
+        or []
+    )
+    primary_need_tag = (
+        top_explanation_payload.get("primary_need_tag")
+        or (matched_need_tags[0] if matched_need_tags else None)
+    )
+
+    return {
+        "version": 1,
+        "raw_query": query or "",
+        "extra_condition": extra_condition or "",
+        "need_tags": list(need_tags or []),
+        "need_hits": need_payload.get("hits") or {},
+        "selected_goriyaku_tag_ids": _normalize_int_list(goriyaku_tag_ids),
+        "matched_need_tags": matched_need_tags,
+        "primary_need_tag": primary_need_tag,
+    }
+
+
 def _attach_chat_rec_enrichment(
     recs: Dict[str, Any],
     *,
@@ -384,6 +446,18 @@ def build_chat_recommendations(
         sort_tags=sort_tags,
     )
     recs["recommendations"] = _attach_rank_comparison(recs.get("recommendations") or [])
+    recs.setdefault("_debug", {})["user_state_profile"] = _build_user_state_profile(
+        query=query or "",
+        extra_condition=extra_condition,
+        need_payload=need_payload,
+        need_tags=need_tags,
+        goriyaku_tag_ids=goriyaku_tag_ids,
+        recommendations=[
+            r
+            for r in (recs.get("recommendations") or [])
+            if isinstance(r, dict)
+        ],
+    )
     recs.setdefault("_debug", {})["ranking_breakdown_observation"] = observe_ranking_breakdown(
         recs=recs,
     )

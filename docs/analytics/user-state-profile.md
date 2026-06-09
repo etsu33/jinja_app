@@ -576,3 +576,47 @@ User State Match
 + Context Match
 + Behavior Signal
 ```
+## 実装状態（UserStateProfile v1）
+
+現在は build_chat_recommendations 内で
+UserStateProfile を生成している。
+
+保存先:
+
+- recs["_debug"]["user_state_profile"]
+- ranking_breakdown_observation["_debug"]["user_state_profile"]
+
+payload:
+
+{
+  "version": 1,
+  "raw_query": "...",
+  "extra_condition": "...",
+  "need_tags": [],
+  "need_hits": {},
+  "selected_goriyaku_tag_ids": [],
+  "matched_need_tags": [],
+  "primary_need_tag": null
+}
+
+### UserStateProfile と matched_need_tags の責務
+
+need_tags は User State の正本である。
+
+matched_need_tags は User State Profile 単体ではなく、
+User State × Shrine Meaning の一致結果である。
+
+そのため UserStateProfile v1 では、
+
+- need_tags
+- need_hits
+- selected_goriyaku_tag_ids
+
+をユーザー入力由来として保持する。
+
+一方で、
+
+- matched_need_tags
+- primary_need_tag
+
+はトップ候補との一致結果を観測するための補助情報として保持する。
