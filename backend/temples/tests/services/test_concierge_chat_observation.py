@@ -172,6 +172,7 @@ def assert_ranking_breakdown_top_row_schema(row):
         "matched_visit_style_tags",
         "primary_reason_source",
         "primary_reason_label",
+        "context_profile",
         "shrine_meaning_profile",
         "reflection_hint",
         "reflection_hint_state_change_direction",
@@ -198,6 +199,7 @@ def assert_ranking_breakdown_top_row_schema(row):
     assert isinstance(row["contributions"], dict)
     assert isinstance(row["matched_need_tags"], list)
     assert isinstance(row["matched_visit_style_tags"], list)
+    assert isinstance(row["context_profile"], dict)
     assert isinstance(row["shrine_meaning_profile"], dict)
     assert isinstance(row["reflection_hint"], dict)
     assert isinstance(row["reflection_hint_next_need_hint"], list)
@@ -700,6 +702,17 @@ def test_observe_ranking_breakdown_returns_stable_schema():
                     },
                     "score_v2": {
                         "signals": {
+                            "context_profile": {
+                                "version": 1,
+                                "distance_m": 1200.0,
+                                "score_distance": 0.7,
+                                "requested_visit_style_tags": ["nature"],
+                                "visit_style_tags": ["nature"],
+                                "matched_visit_style_tags": ["nature"],
+                                "score_visit_style": 1,
+                                "direction_bonus": 0.0,
+                                "direction_reason": None,
+                            },
                             "shrine_meaning_profile": {
                                 "version": 1,
                                 "shrine_id": 101,
@@ -755,6 +768,8 @@ def test_observe_ranking_breakdown_returns_stable_schema():
     assert row["matched_visit_style_tags"] == ["nature"]
     assert row["primary_reason_source"] == "text_hint"
     assert row["primary_reason_label"] == "rest"
+    assert row["context_profile"]["matched_visit_style_tags"] == ["nature"]
+    assert row["context_profile"]["score_visit_style"] == 1
     assert row["shrine_meaning_profile"]["history_theme"] == "静寂"
     assert row["shrine_meaning_profile"]["matched_need_tags"] == ["rest"]
 

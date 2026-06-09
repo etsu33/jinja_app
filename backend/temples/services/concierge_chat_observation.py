@@ -196,6 +196,11 @@ def observe_ranking_breakdown(
                 if isinstance(score_v2.get("signals"), dict)
                 else {}
             )
+            context_profile = (
+                score_v2_signals.get("context_profile")
+                if isinstance(score_v2_signals.get("context_profile"), dict)
+                else {}
+            )
             shrine_meaning_profile = (
                 score_v2_signals.get("shrine_meaning_profile")
                 if isinstance(score_v2_signals.get("shrine_meaning_profile"), dict)
@@ -236,6 +241,7 @@ def observe_ranking_breakdown(
                     "capped_behavior_contribution": float(features.get("capped_behavior_contribution") or 0.0),
                     "behavior_ratio": float(features.get("behavior_ratio") or 0.0),
                     "visit_style_tags": list(rec.get("visit_style_tags") or []),
+                    "context_profile": context_profile,
                     "shrine_meaning_profile": shrine_meaning_profile,
                     "reflection_hint": reflection_hint,
                     "reflection_hint_state_change_direction": reflection_hint.get("state_change_direction"),
