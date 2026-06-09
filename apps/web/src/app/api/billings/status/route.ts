@@ -17,11 +17,11 @@ const STUB = {
 export async function GET(req: NextRequest) {
   const forcedPlan = process.env.NEXT_PUBLIC_FORCE_BILLING_PLAN;
 
-  if (process.env.NODE_ENV !== "production" && forcedPlan === "free") {
+  if (process.env.NODE_ENV !== "production" && forcedPlan === "premium") {
     return NextResponse.json({
       ...STUB,
-      plan: "free",
-      is_active: false,
+      plan: "premium",
+      is_active: true,
       provider: "stub",
     });
   }
