@@ -561,6 +561,38 @@ def _build_context_profile(
     }
 
 
+# New helper function: _build_behavior_profile
+def _build_behavior_profile(
+    *,
+    action_state: str,
+    behavior_breakdown: Dict[str, float],
+    behavior_signal: float,
+    behavior_contribution: float,
+    capped_behavior_contribution: float,
+    behavior_ratio: float,
+    visit_signal: float,
+    reflection_signal: float,
+    reflection_hint: Dict[str, Any] | None,
+) -> Dict[str, Any]:
+    """Build a debug-friendly Behavior Profile for score_v2 observation.
+
+    This profile keeps user behavior signals in one place.
+    It is observational and does not add any new ranking contribution by itself.
+    """
+    return {
+        "version": 1,
+        "action_state": action_state,
+        "behavior_breakdown": behavior_breakdown,
+        "behavior_signal": float(behavior_signal),
+        "behavior_contribution": float(behavior_contribution),
+        "capped_behavior_contribution": float(capped_behavior_contribution),
+        "behavior_ratio": float(behavior_ratio),
+        "visit_signal": float(visit_signal),
+        "reflection_signal": float(reflection_signal),
+        "reflection_hint": reflection_hint,
+    }
+
+
 def _attach_breakdown(
     rec: Dict[str, Any],
     *,
@@ -802,6 +834,17 @@ def _attach_breakdown(
         if score_total_ranked_base > 0
         else 0.0
     )
+    behavior_profile = _build_behavior_profile(
+        action_state=action_state,
+        behavior_breakdown=behavior_breakdown,
+        behavior_signal=behavior_signal,
+        behavior_contribution=behavior_contribution,
+        capped_behavior_contribution=capped_behavior_contribution,
+        behavior_ratio=behavior_ratio,
+        visit_signal=visit_signal,
+        reflection_signal=reflection_signal,
+        reflection_hint=reflection_hint,
+    )
     # For now, direction_bonus is 0.0 and does not reverse ranking
     score_total_ranked = score_total_ranked_base + capped_behavior_contribution
 
@@ -918,6 +961,7 @@ def _attach_breakdown(
             "context_profile": context_profile,
             "matched_user_selected_goriyaku_tag_ids": matched_by_user_selected_gid,
             "shrine_meaning_profile": shrine_meaning_profile,
+            "behavior_profile": behavior_profile,
             "behavior_breakdown": behavior_breakdown,
             "reflection_hint": reflection_hint,
         },
