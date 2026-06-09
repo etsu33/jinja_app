@@ -172,6 +172,7 @@ def assert_ranking_breakdown_top_row_schema(row):
         "matched_visit_style_tags",
         "primary_reason_source",
         "primary_reason_label",
+        "shrine_meaning_profile",
         "reflection_hint",
         "reflection_hint_state_change_direction",
         "reflection_hint_next_need_hint",
@@ -197,6 +198,7 @@ def assert_ranking_breakdown_top_row_schema(row):
     assert isinstance(row["contributions"], dict)
     assert isinstance(row["matched_need_tags"], list)
     assert isinstance(row["matched_visit_style_tags"], list)
+    assert isinstance(row["shrine_meaning_profile"], dict)
     assert isinstance(row["reflection_hint"], dict)
     assert isinstance(row["reflection_hint_next_need_hint"], list)
     assert isinstance(row["reflection_hint_next_history_theme_hint"], list)
@@ -696,6 +698,26 @@ def test_observe_ranking_breakdown_returns_stable_schema():
                             "behavior_ratio": 0.0,
                         }
                     },
+                    "score_v2": {
+                        "signals": {
+                            "shrine_meaning_profile": {
+                                "version": 1,
+                                "shrine_id": 101,
+                                "name": "根津神社",
+                                "goriyaku": "",
+                                "goriyaku_tags": [],
+                                "goriyaku_tag_ids": [],
+                                "history_theme": "静寂",
+                                "culture_translation_present": False,
+                                "origin_summary_present": False,
+                                "matched_need_tags": ["rest"],
+                                "matched_by_tag": ["rest"],
+                                "matched_by_text": [],
+                                "matched_by_gid": [],
+                                "matched_user_selected_goriyaku_tag_ids": [],
+                            }
+                        }
+                    },
                     "_primary_reason_source": "text_hint",
                     "_primary_reason_label": "rest",
                 }
@@ -733,6 +755,8 @@ def test_observe_ranking_breakdown_returns_stable_schema():
     assert row["matched_visit_style_tags"] == ["nature"]
     assert row["primary_reason_source"] == "text_hint"
     assert row["primary_reason_label"] == "rest"
+    assert row["shrine_meaning_profile"]["history_theme"] == "静寂"
+    assert row["shrine_meaning_profile"]["matched_need_tags"] == ["rest"]
 
 
 def test_observe_ranking_breakdown_supports_user_selected_tag_reason():
