@@ -355,6 +355,7 @@ next action suggestion
 history card
 ```
 
+
 ### 8.2 中期
 
 `next_need_hint` と `next_history_theme_hint` を次回推薦の補助シグナルにする。
@@ -363,13 +364,20 @@ history card
 
 ```text
 query need_tags
-+
++ 
 reflection next_need_hint
-+
++ 
 recent history_theme
 ```
 
 ただし、補助シグナルとして扱い、query 由来の need_tags を上書きしない。
+
+### reflection_hint ranking policy
+
+- reflection_hint は現時点では ranking に直接加点しない
+- next_need_hint / next_history_theme_hint は次回推薦補助候補として扱う
+- 次回相談の need_tags と next_need_hint の一致率を観測する
+- 一致率が高ければ weak boost として別PRで設計する
 
 ### 8.3 長期
 
