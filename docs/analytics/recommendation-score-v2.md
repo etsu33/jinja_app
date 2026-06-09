@@ -770,3 +770,55 @@ score_total_ranked
 Behavior は重要だが、相談意図・神社意味・Context を上書きしすぎないよう cap を維持する。
 
 ActionEvent / direction_bonus / culture_translation は、初期段階では補助または未実装扱いとして切り分ける。
+
+## score_v2.signals 現在形
+
+score_v2.signals には、推薦スコアの根拠となる観測用 payload を入れる。
+
+### user_state_profile
+
+配置:
+- recs["_debug"]["user_state_profile"]
+- ranking_breakdown_observation["_debug"]["user_state_profile"]
+
+責務:
+- query / extra_condition / need_tags / need_hits / selected_goriyaku_tag_ids を保持する
+- matched_need_tags / primary_need_tag は top recommendation 由来の User × Shrine 一致結果として扱う
+
+### shrine_meaning_profile
+
+配置:
+- score_v2.signals.shrine_meaning_profile
+- ranking_breakdown_observation.top10[*].shrine_meaning_profile
+
+責務:
+- goriyaku / goriyaku_tags / goriyaku_tag_ids / history_theme を保持する
+- culture_translation / origin_summary の有無を観測する
+- matched_by_tag / matched_by_text / matched_by_gid を Shrine Meaning 側の一致経路として保持する
+
+### context_profile
+
+配置:
+- score_v2.signals.context_profile
+- ranking_breakdown_observation.top10[*].context_profile
+
+責務:
+- distance_m / score_distance を保持する
+- requested_visit_style_tags / visit_style_tags / matched_visit_style_tags を保持する
+- direction_bonus / direction_reason を方位補助として保持する
+
+### behavior_profile
+
+配置:
+- score_v2.signals.behavior_profile
+- ranking_breakdown_observation.top10[*].behavior_profile
+
+責務:
+- action_state を保持する
+- behavior_breakdown / behavior_signal / behavior_contribution / capped_behavior_contribution / behavior_ratio を保持する
+- visit_signal / reflection_signal / reflection_hint を保持する
+
+### 注意
+
+これらの Profile は観測契約であり、追加しただけでは新しいランキング加点を発生させない。
+score_v2.total を変える場合は、別PRで重み設計と検証を行う。
