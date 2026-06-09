@@ -531,6 +531,36 @@ def _build_shrine_meaning_profile(
     }
 
 
+# New helper function: _build_context_profile
+def _build_context_profile(
+    *,
+    distance_m: float | None,
+    score_distance: float,
+    user_visit_style_tags: set[str],
+    shrine_visit_style_tags: set[str],
+    matched_visit_style_tags: List[str],
+    score_visit_style: int,
+    direction_bonus: float,
+    direction_reason: str | None,
+) -> Dict[str, Any]:
+    """Build a debug-friendly Context Profile for score_v2 observation.
+
+    This profile keeps distance, visit style, and direction signals in one place.
+    It is observational and does not add any new ranking contribution by itself.
+    """
+    return {
+        "version": 1,
+        "distance_m": float(distance_m) if distance_m is not None else None,
+        "score_distance": float(score_distance),
+        "requested_visit_style_tags": sorted(user_visit_style_tags),
+        "visit_style_tags": sorted(shrine_visit_style_tags),
+        "matched_visit_style_tags": list(matched_visit_style_tags or []),
+        "score_visit_style": int(score_visit_style),
+        "direction_bonus": float(direction_bonus),
+        "direction_reason": direction_reason,
+    }
+
+
 def _attach_breakdown(
     rec: Dict[str, Any],
     *,
@@ -714,6 +744,17 @@ def _attach_breakdown(
     matched_visit_style_tags = sorted(user_visit_style_tag_set & shrine_visit_style_tag_set)
     score_visit_style = len(matched_visit_style_tags)
 
+    context_profile = _build_context_profile(
+        distance_m=distance_m,
+        score_distance=score_distance,
+        user_visit_style_tags=user_visit_style_tag_set,
+        shrine_visit_style_tags=shrine_visit_style_tag_set,
+        matched_visit_style_tags=matched_visit_style_tags,
+        score_visit_style=score_visit_style,
+        direction_bonus=direction_bonus,
+        direction_reason=direction_reason,
+    )
+
     # score_total:
     #   API 契約用の公開スコア。
     #   画面表示や explanation の基本値として使う。
@@ -874,6 +915,7 @@ def _attach_breakdown(
             "matched_by_text": matched_by_text,
             "matched_by_gid": matched_by_gid,
             "matched_visit_style_tags": matched_visit_style_tags,
+            "context_profile": context_profile,
             "matched_user_selected_goriyaku_tag_ids": matched_by_user_selected_gid,
             "shrine_meaning_profile": shrine_meaning_profile,
             "behavior_breakdown": behavior_breakdown,
