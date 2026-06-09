@@ -190,7 +190,18 @@ def observe_ranking_breakdown(
             visit_style = features.get("visit_style") or {}
             element = features.get("element") or {}
             behavior = features.get("behavior") or {}
-            reflection_hint = rec.get("reflection_hint") or {}
+            score_v2 = rec.get("score_v2") if isinstance(rec.get("score_v2"), dict) else {}
+            score_v2_signals = (
+                score_v2.get("signals")
+                if isinstance(score_v2.get("signals"), dict)
+                else {}
+            )
+            shrine_meaning_profile = (
+                score_v2_signals.get("shrine_meaning_profile")
+                if isinstance(score_v2_signals.get("shrine_meaning_profile"), dict)
+                else {}
+            )
+            reflection_hint = rec.get("reflection_hint") or score_v2_signals.get("reflection_hint") or {}
 
             rows.append(
                 {
@@ -225,6 +236,7 @@ def observe_ranking_breakdown(
                     "capped_behavior_contribution": float(features.get("capped_behavior_contribution") or 0.0),
                     "behavior_ratio": float(features.get("behavior_ratio") or 0.0),
                     "visit_style_tags": list(rec.get("visit_style_tags") or []),
+                    "shrine_meaning_profile": shrine_meaning_profile,
                     "reflection_hint": reflection_hint,
                     "reflection_hint_state_change_direction": reflection_hint.get("state_change_direction"),
                     "reflection_hint_next_need_hint": list(reflection_hint.get("next_need_hint") or []),

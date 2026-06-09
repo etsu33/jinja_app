@@ -480,6 +480,57 @@ def _resolve_direction_bonus(
     }
 
 
+def _normalize_int_signal_list(values: Any) -> List[int]:
+    normalized: List[int] = []
+    for value in values or []:
+        try:
+            normalized.append(int(value))
+        except (TypeError, ValueError):
+            continue
+    return normalized
+
+
+def _build_shrine_meaning_profile(
+    *,
+    rec: Dict[str, Any],
+    shrine_id_int: int | None,
+    matched_all: List[str],
+    matched_by_tag: List[str],
+    matched_by_text: List[str],
+    matched_by_gid: List[str],
+    matched_by_user_selected_gid: List[int],
+) -> Dict[str, Any]:
+    """Build a debug-friendly Shrine Meaning Profile for score_v2 observation.
+
+    This profile keeps shrine-side meaning signals in one place.
+    matched_* values are user × shrine match results, but are included here as
+    the observation bridge between User State Profile and Shrine Meaning Profile.
+    """
+    culture_translation = rec.get("culture_translation")
+    origin_summary = rec.get("origin_summary")
+
+    return {
+        "version": 1,
+        "shrine_id": shrine_id_int,
+        "name": rec.get("name") or rec.get("name_jp") or "",
+        "goriyaku": rec.get("goriyaku") or "",
+        "goriyaku_tags": [
+            str(tag).strip()
+            for tag in (rec.get("goriyaku_tags") or [])
+            if isinstance(tag, str) and str(tag).strip()
+        ],
+        "goriyaku_tag_ids": _normalize_int_signal_list(rec.get("goriyaku_tag_ids") or []),
+        "history_theme": rec.get("history_theme") or "",
+        "culture_translation_present": bool(culture_translation),
+        "origin_summary_present": bool(origin_summary),
+        "matched_need_tags": list(matched_all or []),
+        "matched_by_tag": list(matched_by_tag or []),
+        "matched_by_text": list(matched_by_text or []),
+        "matched_by_gid": list(matched_by_gid or []),
+        "matched_user_selected_goriyaku_tag_ids": list(matched_by_user_selected_gid or []),
+    }
+
+
 def _attach_breakdown(
     rec: Dict[str, Any],
     *,
@@ -587,6 +638,22 @@ def _attach_breakdown(
 
     score_need = len(matched_all)
 
+    shrine_id = rec.get("shrine_id") or rec.get("id")
+    try:
+        shrine_id_int = int(shrine_id) if shrine_id is not None else None
+    except (TypeError, ValueError):
+        shrine_id_int = None
+
+    shrine_meaning_profile = _build_shrine_meaning_profile(
+        rec=rec,
+        shrine_id_int=shrine_id_int,
+        matched_all=matched_all,
+        matched_by_tag=matched_by_tag,
+        matched_by_text=matched_by_text,
+        matched_by_gid=matched_by_gid,
+        matched_by_user_selected_gid=matched_by_user_selected_gid,
+    )
+
     score_need_rank = (
         len(matched_by_tag) * 2
         + len(matched_by_gid) * 2
@@ -655,11 +722,7 @@ def _attach_breakdown(
     #   need の強一致・距離減衰まで含めた ranked score を入れる。
     score_total = score_element * w1 + score_need * w2 + score_popular * w3 + astro_bonus + direction_bonus
 
-    shrine_id = rec.get("shrine_id") or rec.get("id")
-    try:
-        shrine_id_int = int(shrine_id) if shrine_id is not None else None
-    except (TypeError, ValueError):
-        shrine_id_int = None
+    # shrine_id_int is already computed above for use in behavior_breakdown etc.
 
     behavior_breakdown = calculate_shrine_behavior_signal_breakdown(
         user=user,
@@ -812,6 +875,7 @@ def _attach_breakdown(
             "matched_by_gid": matched_by_gid,
             "matched_visit_style_tags": matched_visit_style_tags,
             "matched_user_selected_goriyaku_tag_ids": matched_by_user_selected_gid,
+            "shrine_meaning_profile": shrine_meaning_profile,
             "behavior_breakdown": behavior_breakdown,
             "reflection_hint": reflection_hint,
         },
