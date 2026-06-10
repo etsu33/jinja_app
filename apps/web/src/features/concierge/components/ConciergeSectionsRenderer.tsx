@@ -869,9 +869,7 @@ export default function ConciergeSectionsRenderer({
                                   <p className="text-xs font-semibold tracking-[0.12em] text-slate-500">
                                     {heroItem.title}が象徴するもの
                                   </p>
-                                  <p className="text-sm font-semibold leading-7 text-slate-800">
-                                    {historyThemeDisplay.title}
-                                  </p>
+                                  
                                   <p className="text-sm leading-7 text-slate-700">{historyThemeDisplay.body}</p>
                                 </div>
                               </section>
