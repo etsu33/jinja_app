@@ -744,6 +744,7 @@ export default function ConciergeSectionsRenderer({
                     ? (() => {
                         const reasonVm = buildRecommendationReasonViewModel({
                           rec: {
+                            id: heroItem.shrineId,
                             display_name: heroItem.title,
                             name: heroItem.title,
                             breakdown: heroItem.breakdown ?? null,
