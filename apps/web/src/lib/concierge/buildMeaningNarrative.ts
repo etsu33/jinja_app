@@ -30,6 +30,7 @@ import type {
   ConsultationMeaningSlots,
   ShrineMeaningSlots,
 } from "./buildRecommendationReasonViewModel";
+import { toNeedTagLabel } from "./needTagLabelMap";
 
 // ---------------------------------------------------------------------------
 // Output type
@@ -139,6 +140,13 @@ const SHRINE_CONTEXT_TABLE: Record<number, ShrineContextEntry> = {
     pattern: "人生の転機や、流れを切り替える節目を置きたい時に選ばれやすい神社です。",
   },
 
+  100017: {
+    place: "mountain",
+    symbol: "古くから節目や鍛錬の場として向き合われてきた場所でもあり",
+    ritual: "高低差や道のりを進みながら、切り替えたい流れをいったん引き受け直す参拝につなげやすい場所です。",
+    pattern: "人生の転機や、流れを切り替える節目を置きたい時に選ばれやすい神社です。",
+  },
+
   59: {
     place: "city",
     symbol: "姿勢を整え、目標へ向き直る節目として受け取られやすい神社でもあり",
@@ -220,7 +228,15 @@ function contextFromPlace(place: ShrineContextEntry["place"] | undefined): Shrin
 
 function resolveShrineContext(params: BuildParams): ShrineNarrativeContext {
   // 1. SHRINE_CONTEXT_TABLE: shrine_id による直接参照（最優先）
-  const shrineId = typeof params.rec.id === "number" ? params.rec.id : null;
+  const shrineId = (() => {
+    const rawId = params.rec.id;
+    if (typeof rawId === "number") return rawId;
+    if (typeof rawId === "string") {
+      const parsed = Number(rawId);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+  })();
   if (shrineId !== null && shrineId in SHRINE_CONTEXT_TABLE) {
     return SHRINE_CONTEXT_TABLE[shrineId];
   }
@@ -271,8 +287,8 @@ function buildMeaningCore(args: {
   context: ShrineNarrativeContext;
 }): string {
   const needFact = (() => {
-    if (args.mode === "compat") return "生年月日から見た相性を補助線として";
-    if (args.need) return `「${args.need}」を中心テーマとして`;
+    if (args.mode === "compat") return "生年月日から見た相性を補助線にしながら";
+    if (args.need) return `「${toNeedTagLabel(args.need)}」という相談テーマに対して`;
     return "今の状態を整理する入口として";
   })();
 
@@ -287,11 +303,11 @@ function buildMeaningCore(args: {
 
     const symbol = clean(args.context.symbol);
 
-    if (symbol && place) return `${symbol}${place}を持つ場所として`;
-    if (symbol) return `${symbol}文脈を持つ場所として`;
-    if (place) return `${place}を持つ場所として`;
+    if (symbol && place) return `${symbol}${place}を持つ場所で`;
+    if (symbol) return `${symbol}文脈を持つ場所で`;
+    if (place) return `${place}を持つ場所で`;
 
-    return "今回の候補の中で相談内容との接点が見られる場所として";
+    return "今回の候補の中で相談内容との接点が見られる場所で";
   })();
 
   const meaning = (() => {
@@ -336,7 +352,7 @@ function buildMeaningCore(args: {
     return "今の状態を整理し、次の見方を確認する候補として置きやすい場所です。";
   })();
 
-  return `この神社は、${needFact}、${shrineFact}、${meaning}`;
+  return `この神社は、${needFact}、${shrineFact}${meaning}`;
 }
 
 // ---------------------------------------------------------------------------
