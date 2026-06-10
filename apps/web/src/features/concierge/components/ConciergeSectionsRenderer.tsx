@@ -790,13 +790,6 @@ export default function ConciergeSectionsRenderer({
 
                         return (
                           <div key={`rec-${i}-hero-${heroItem.shrineId}`} className="space-y-2">
-                            {consultationSummaryVisibility !== "hidden" && reasonVm.detail.consultationSummary ? (
-                              <ConciergeConsultationSummary
-                                summary={reasonVm.detail.consultationSummary}
-                                modeLabel={normalizedMode === "compat" ? "相性ベース" : "悩みベース"}
-                              />
-                            ) : null}
-
                             <ConciergeTopRecommendationHero
                               name={heroItem.title}
                               href={heroItem.detailHref}
@@ -899,13 +892,10 @@ export default function ConciergeSectionsRenderer({
                               </section>
                             ) : null}
 
-                            {premiumPreviewVisibility !== "hidden" ? (
-                              <ConciergePremiumEntryCard
-                                shrineId={heroItem.shrineId}
-                                tid={tid}
-                                isGuestUser={isGuestUser}
-                                accessLevel={accessLevel}
-                                analyticsContext={analyticsContext}
+                            {consultationSummaryVisibility !== "hidden" && reasonVm.detail.consultationSummary ? (
+                              <ConciergeConsultationSummary
+                                summary={reasonVm.detail.consultationSummary}
+                                modeLabel={normalizedMode === "compat" ? "相性ベース" : "悩みベース"}
                               />
                             ) : null}
 
@@ -916,6 +906,16 @@ export default function ConciergeSectionsRenderer({
                               nextPath={heroItem.detailHref}
                               variant="subtle"
                             />
+
+                            {premiumPreviewVisibility !== "hidden" ? (
+                              <ConciergePremiumEntryCard
+                                shrineId={heroItem.shrineId}
+                                tid={tid}
+                                isGuestUser={isGuestUser}
+                                accessLevel={accessLevel}
+                                analyticsContext={analyticsContext}
+                              />
+                            ) : null}
                           </div>
                         );
                       })()
