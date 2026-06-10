@@ -23,6 +23,6 @@ mypy>=1.10.0
 django-stubs[compatible-mypy]
 types-requests
 types-psycopg2
-pyyaml>=6.0.2
+pyyaml>=6.0.3
 
 
