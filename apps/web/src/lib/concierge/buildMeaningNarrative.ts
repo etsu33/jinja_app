@@ -359,7 +359,7 @@ function buildMeaningCore(args: {
 
   const buildThreeActionMeaningCore = (actionBase: string, placementBase: string): string => {
     const introClause = introText ? `${introText}` : "";
-    return `この神社は、${introClause}${args.receiver}に向き合いながら、${actionBase}場所であり、${placementBase}として置きやすい場所です。`;
+    return `この神社は、${introClause}${args.receiver}を抱えたまま、${actionBase}場所であり、${placementBase}として置きやすい場所です。`;
   };
 
   if (args.mode === "compat") {
