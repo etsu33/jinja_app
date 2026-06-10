@@ -209,7 +209,7 @@ describe("buildRecommendationReasonViewModel", () => {
     }
   });
 
-  it("actionMeaning が次の向き合い方を補完する", () => {
+  it("actionMeaning が今の自分への問いになる", () => {
     const vm = buildRecommendationReasonViewModel({
       rec: { breakdown: { matched_need_tags: ["転機"] }, fallback_mode: "none" },
       index: 0,
@@ -217,7 +217,8 @@ describe("buildRecommendationReasonViewModel", () => {
       needTags: ["転機"],
     });
 
-    expect(vm.detail.actionMeaning).toContain("どこを切り替えるかを見直す");
+    expect(vm.detail.actionMeaning).toContain("今の自分は何を続け、何を終わらせ");
+    expect(vm.detail.actionMeaning).toContain("でしょうか");
     expect(vm.detail.actionMeaning).not.toBe(vm.detail.shrineMeaning);
   });
 
