@@ -262,3 +262,98 @@ Recommendation Score v2 は、すでに実装骨格がある。
 このPRではコードを変更せず、現行式・行動シグナル・計測対応を正本化する。
 
 重み変更は、PostHogとDB集計で実データを確認してから行う。
+
+
+## DB移行中のPostHog計測方針
+
+PostHogイベントはフロントエンドから `posthog-js` 経由で送信されるため、DB移行中でも収集可能。
+
+確認箇所:
+
+- `apps/web/src/lib/analytics/providers.ts`
+- `apps/web/src/app/providers/ClientBootstrap.tsx`
+
+実装上の条件:
+
+```text
+NODE_ENV === "production"
+NEXT_PUBLIC_POSTHOG_KEY が設定されている
+```
+
+PostHog送信はDB保存とは別系統。
+
+| 種別 | 依存先 | DB移行の影響 |
+|---|---|---|
+| PostHogイベント | ブラウザ → PostHog | 受けにくい |
+| DBイベント | API → backend DB | 受ける |
+| behavior_signal | backend DB集計 | 受ける |
+| Recommendation Score v2の行動反映 | backend DB集計 | 受ける |
+
+### 判断
+
+DB移行中でも、以下のようなフロント送信イベントはPostHogで観測できる。
+
+- `shrine_card_click`
+- `shrine_detail_view`
+- `route_open`
+- `favorite_click`
+- `shrine_decision` with `action=save`
+- `visit_done`
+- `reflection_saved`
+- `premium_preview_view`
+- `premium_preview_click`
+- `checkout_started`
+
+ただし、推薦スコアに反映される行動シグナルはDB側の正本データに依存する。
+
+そのため、DB移行中は以下のように役割を分ける。
+
+- PostHog: 行動観測・CVR確認の一時正本
+- DB: Recommendation Score v2へ反映する正本
+
+本番環境で確認すべきこと:
+
+- `NEXT_PUBLIC_POSTHOG_KEY` が設定されていること
+- `NEXT_PUBLIC_POSTHOG_HOST` が設定されていること
+- `posthog_health_check` がPostHog上で確認できること
+- `route_open` / `shrine_detail_view` / `favorite_click` が本番で発火していること
+
+---
+
+## Event Source Audit
+
+### Behavior Signal に利用中
+
+| action | DB | PostHog | ranking利用 |
+|---|---|---|---|
+| detail_view | ○ | ○ | ○ |
+| route_open | ○ | ○ | ○ |
+| save | ○ | ○ | ○ |
+| visit_done | ○ | ○ | ○ |
+| reflection_saved | ○ | ○ | ○ |
+
+### 未利用
+
+| action | DB実装 | DB保存中 | PostHog | ranking利用 |
+|---|---|---|---|---|
+| shrine_card_click | ○ | × | ○ | × |
+| recommendation_click | ○ | × | × | × |
+| concierge_result_click | × | × | × | × |
+
+## Weight Resolution Audit
+
+### need mode
+
+element: 0.6
+need: 0.3
+popular: 0.1
+distance: 0.35
+visit_style: 0.35
+
+### compat mode
+
+element: 0.8
+need: 0.2
+popular: 0.0
+distance: 0.15
+visit_style: 0.35
