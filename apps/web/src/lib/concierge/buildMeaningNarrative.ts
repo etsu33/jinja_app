@@ -359,81 +359,81 @@ function buildMeaningCore(args: {
 
   const buildThreeActionMeaningCore = (actionBase: string, placementBase: string): string => {
     const introClause = introText ? `${introText}` : "";
-    return `この神社は、${introClause}${args.receiver}を整えながら、${actionBase}場所であり、${placementBase}として置きやすい場所です。`;
+    return `この神社は、${introClause}${args.receiver}に向き合いながら、${actionBase}場所であり、${placementBase}として置きやすい場所です。`;
   };
 
   if (args.mode === "compat") {
     return buildThreeActionMeaningCore(
-      "落ち着いて受け止め直し、自分にとって無理のない向き合い方を整えるために立ち止まれる",
-      "相性を静かに見直す節目"
+      "落ち着いて受け止め直し、自分にとって無理のない距離感を確かめるために立ち止まれる",
+      "相性を静かに確かめる節目"
     );
   }
 
   if (args.need === "厄除け") {
     return buildThreeActionMeaningCore(
-      "抱え直すのではなく、ほどきながら整え直すために立ち止まれる",
-      "気持ちの引っかかりを見直す節目"
+      "抱え込むのではなく、引っかかりをほどくために立ち止まれる",
+      "気持ちの重さを置き直す節目"
     );
   }
   if (args.need === "仕事") {
     return buildThreeActionMeaningCore(
-      "見直し、仕事の流れと判断軸を整え直すために立ち止まれる",
-      "優先順位を整え直す節目"
+      "仕事の向き合い方と判断軸を立て直すために立ち止まれる",
+      "優先順位を選び直す節目"
     );
   }
   if (args.need === "転機") {
     return buildThreeActionMeaningCore(
-      "見直し、切り替えたい流れを整え直すために立ち止まれる",
+      "何を残し、何を切り替えるかを確かめるために立ち止まれる",
       "切り替えの節目"
     );
   }
   if (args.need === "恋愛") {
     return buildThreeActionMeaningCore(
-      "見つめ直し、関係性の受け取り方を整えるために立ち止まれる",
-      "関係の見方を整え直す節目"
+      "関係性の受け取り方と距離感を確かめるために立ち止まれる",
+      "関係の見方を置き直す節目"
     );
   }
   if (args.need === "健康") {
     return buildThreeActionMeaningCore(
-      "急がず見直し、心身を整え直す順番を取り戻すために立ち止まれる",
-      "整える順番を見直す節目"
+      "急がず、心身を立て直す順番を取り戻すために立ち止まれる",
+      "回復の順番を確かめる節目"
     );
   }
   if (args.need === "学業") {
     return buildThreeActionMeaningCore(
-      "見直し、集中の軸と取り組み方を整え直すために立ち止まれる",
-      "学び方を整え直す節目"
+      "集中の軸と取り組み方を立て直すために立ち止まれる",
+      "学び方を選び直す節目"
     );
   }
 
   if (args.shrine.tone === "strong") {
     return buildThreeActionMeaningCore(
-      "いまの流れを切り替えるために立ち止まれる",
-      "流れを切り替える節目"
+      "いまの向きを切り替えるために立ち止まれる",
+      "一歩を切り替える節目"
     );
   }
   if (args.shrine.tone === "quiet") {
     return buildThreeActionMeaningCore(
-      "静かに受け止め直し、判断を急がず整え直すために立ち止まれる",
-      "受け取り方を整え直す節目"
+      "静かに受け止め直し、判断を急がず置き直すために立ち止まれる",
+      "受け取り方を確かめる節目"
     );
   }
   if (args.shrine.tone === "tight") {
     return buildThreeActionMeaningCore(
-      "広げすぎず、判断と集中の軸を定め直すために立ち止まれる",
-      "判断軸を絞り直す節目"
+      "広げすぎず、判断と集中の軸を絞るために立ち止まれる",
+      "判断軸を絞る節目"
     );
   }
   if (args.shrine.tone === "open") {
     return buildThreeActionMeaningCore(
-      "抱えたまま閉じるのではなく、巡りと視野を開き直すために立ち止まれる",
-      "視野を開き直す節目"
+      "抱えたまま閉じるのではなく、巡りと視野を広げるために立ち止まれる",
+      "視野を開く節目"
     );
   }
 
   return buildThreeActionMeaningCore(
-    "見直し、今の流れを整え直すために立ち止まれる",
-    "今の流れを整え直す節目"
+    "今の向き合い方を確かめるために立ち止まれる",
+    "次の見方を作る節目"
   );
 }
 
