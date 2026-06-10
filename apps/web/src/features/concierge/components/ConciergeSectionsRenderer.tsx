@@ -783,7 +783,7 @@ export default function ConciergeSectionsRenderer({
                               : null;
                         const historyThemeDisplay = historyContext
                           ? {
-                              title: "この神社が歴史的に象徴すること",
+                              title: `${heroItem.title}が象徴するもの`,
                               body: historyContext,
                             }
                           : buildHistoryThemeDisplay(historyTheme);
@@ -856,7 +856,7 @@ export default function ConciergeSectionsRenderer({
                               <section className={conciergeSoftCardClass}>
                                 <div className="space-y-2">
                                   <p className="text-xs font-semibold tracking-[0.12em] text-slate-500">
-                                    この神社が合う理由
+                                    なぜ{heroItem.title}？
                                   </p>
                                   <p className="text-sm leading-7 text-slate-700">{reasonVm.detail.shrineMeaning}</p>
                                 </div>
@@ -867,7 +867,7 @@ export default function ConciergeSectionsRenderer({
                               <section className={conciergeSoftCardClass}>
                                 <div className="space-y-2">
                                   <p className="text-xs font-semibold tracking-[0.12em] text-slate-500">
-                                    この神社が歴史的に象徴すること
+                                    {heroItem.title}が象徴するもの
                                   </p>
                                   <p className="text-sm font-semibold leading-7 text-slate-800">
                                     {historyThemeDisplay.title}
@@ -881,7 +881,7 @@ export default function ConciergeSectionsRenderer({
                               <section className={conciergeSoftCardClass}>
                                 <div className="space-y-2">
                                   <p className="text-xs font-semibold tracking-[0.12em] text-slate-500">
-                                    次にできること
+                                    今の自分への問い
                                   </p>
                                   <p className="text-sm leading-7 text-slate-700">
                                     {actionMeaningVisibility === "teaser"
