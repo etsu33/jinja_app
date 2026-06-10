@@ -6,6 +6,7 @@
  *   - meaningCore    : 「この神社は、...節目として置きやすい場所です。」
  *   - meaningContext : 「...今は、...節目として向き合いやすい場所です。」
  *   - meaningAction  : 距離・人気など補助要因がある場合の付加文
+ *   - actionMeaning  : 「今の自分への問い」として表示する内省文
  *
  * boundary:
  * - 推薦判断（①）は扱わない
@@ -44,9 +45,73 @@ export type MeaningNarrative = {
   meaningAction?: string;
   /** backward compat: `${meaningCore}\n\n${meaningContext}` */
   shrineMeaning: string;
-  /** backward compat alias for meaningAction */
+  /** 「今の自分への問い」カードに表示する内省文 */
   actionMeaning?: string;
 };
+function buildReflectionQuestion(args: {
+  mode: BuildParams["mode"];
+  need: string | null;
+  shrine: ShrineMeaningSlots;
+  consultation: ConsultationMeaningSlots;
+  primary: Candidate;
+  context: ShrineNarrativeContext;
+}): string {
+  if (args.mode === "compat") {
+    return "この神社を前にしたとき、今の自分は何を無理なく受け取り、何を急いで決めようとしているのでしょうか。";
+  }
+
+  if (args.need === "厄除け") {
+    if (args.shrine.tone === "strong") {
+      return "今の自分が本当にほどきたい不安は何で、どこから切り替えれば次の一歩が軽くなるのでしょうか。";
+    }
+    return "今の自分が抱え直してしまっている不安は何で、まず何を手放すと整いやすくなるのでしょうか。";
+  }
+  if (args.need === "仕事") {
+    return "今の仕事で守りたい軸は何で、逆に手放した方がいい優先順位は何でしょうか。";
+  }
+  if (args.need === "転機") {
+    return "今の自分は何を続け、何を終わらせ、どこから流れを切り替えたいのでしょうか。";
+  }
+  if (args.need === "恋愛") {
+    return "相手の反応ではなく、自分の中で大切にしたい関係の置き方は何でしょうか。";
+  }
+  if (args.need === "健康") {
+    return "今の自分に必要なのは頑張ることか、休むことか、どちらを先に整えることなのでしょうか。";
+  }
+  if (args.need === "学業") {
+    return "結果を急ぐ前に、今の自分が集中を戻すために整えるべき一つの軸は何でしょうか。";
+  }
+
+  if (args.shrine.tone === "strong") {
+    return "今の自分が切り替えたい流れは何で、そのために最初に動かす一歩は何でしょうか。";
+  }
+  if (args.shrine.tone === "quiet") {
+    return "急いで答えを出す前に、今の自分が静かに受け止め直すべきことは何でしょうか。";
+  }
+  if (args.shrine.tone === "tight") {
+    return "今の自分が広げすぎていることは何で、まず一つに絞るなら何を選ぶのでしょうか。";
+  }
+  if (args.shrine.tone === "open") {
+    return "今の自分が閉じ込めている見方は何で、少し視野を開くなら何から見直せるでしょうか。";
+  }
+
+  if (!clean(args.consultation.needPrimary)) {
+    if (args.primary.key === "distance") {
+      return "遠くの正解を探す前に、今の自分がまず足を運べる場所で確かめたいことは何でしょうか。";
+    }
+    if (args.primary.key === "element_match" || args.primary.key === "sign_match") {
+      return "強い刺激ではなく無理なく受け取れる場所で、今の自分は何を整え直したいのでしょうか。";
+    }
+  }
+
+  if (args.context.ritual) {
+    return "この参拝の中で、今の自分が一度立ち止まって見直したいことは何でしょうか。";
+  }
+
+  return "今の自分が整え直したい流れは何で、次に見方を変えるならどこから始めるのでしょうか。";
+}
+
+
 
 // ---------------------------------------------------------------------------
 // SHRINE_CONTEXT_TABLE: shrine_id による直接参照（source of truth）
@@ -515,6 +580,7 @@ export function buildMeaningNarrative(args: {
   const whyNow     = buildWhyNow({ mode: params.mode, need, consultation, primary });
   const actionRole = buildActionRole({ mode: params.mode, need, shrine, consultation, primary, context });
   const meaningContext = `${whyNow}${actionRole}`;
+  const reflectionQuestion = buildReflectionQuestion({ mode: params.mode, need, shrine, consultation, primary, context });
 
   const meaningAction = buildMeaningAction({ secondary, context, rec: params.rec });
 
@@ -525,6 +591,6 @@ export function buildMeaningNarrative(args: {
     meaningAction,
     // backward compat
     shrineMeaning: meaningCore,
-    actionMeaning: meaningAction ?? actionRole,
+    actionMeaning: reflectionQuestion,
   };
 }
