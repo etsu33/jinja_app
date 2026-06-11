@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect } from "react";
 import type { ReactNode } from "react";
 import { trackSearchEvent } from "@/lib/analytics/searchEvents";
+import { trackActionEvent } from "@/lib/api/actionEvents";
+import { trackActionAnalytics } from "@/lib/analytics/actionEvents";
 import type { ActionSuggestionViewModel } from "@/viewmodels/conciergeResultItem";
 
 type Props = {
@@ -93,23 +95,70 @@ export default function ConciergeTopRecommendationHero({
     });
   }, [analyticsSource, historyTheme, recommendationRank, resultSetId, shrineId, threadId, visibleActionSuggestionIds]);
 
+  const buildActionEventPayload = (item: ActionSuggestionViewModel, index: number) => ({
+    source: analyticsSource,
+    threadId,
+    resultSetId,
+    shrineId,
+    recommendationRank,
+    position: "hero_primary" as const,
+    historyTheme: historyTheme ?? item.historyTheme,
+    actionSuggestionId: item.id,
+    actionCategory: item.category,
+    actionTheme: item.historyTheme,
+    actionPosition: index + 1,
+  });
+
   const trackActionSuggestionEvent = (
     eventName: "action_suggestion_click" | "action_done",
     item: ActionSuggestionViewModel,
     index: number,
   ) => {
-    trackSearchEvent(eventName, {
+    trackSearchEvent(eventName, buildActionEventPayload(item, index));
+  };
+
+  const handleActionEvent = (
+    actionType: "action_started" | "action_completed",
+    legacyEventName: "action_suggestion_click" | "action_done",
+    item: ActionSuggestionViewModel,
+    index: number,
+  ) => {
+    const payload = buildActionEventPayload(item, index);
+
+    trackSearchEvent(legacyEventName, payload);
+    trackActionAnalytics({
+      actionType,
+      actionSuggestionId: item.id,
       source: analyticsSource,
-      threadId,
-      resultSetId,
       shrineId,
+      threadId,
+      historyTheme: historyTheme ?? item.historyTheme,
+      actionCategory: item.category,
+      resultSetId,
       recommendationRank,
       position: "hero_primary",
-      historyTheme: historyTheme ?? item.historyTheme,
-      actionSuggestionId: item.id,
-      actionCategory: item.category,
-      actionTheme: item.historyTheme,
       actionPosition: index + 1,
+      metadata: {
+        legacyEventName,
+        actionTheme: item.historyTheme,
+      },
+    });
+
+    void trackActionEvent({
+      actionType,
+      actionSuggestionId: item.id,
+      source: analyticsSource,
+      shrineId,
+      threadId,
+      historyTheme: historyTheme ?? item.historyTheme,
+      actionCategory: item.category,
+      metadata: {
+        legacyEventName,
+        actionTheme: item.historyTheme,
+        resultSetId,
+        recommendationRank,
+        actionPosition: index + 1,
+      },
     });
   };
 
@@ -170,14 +219,14 @@ export default function ConciergeTopRecommendationHero({
                       <button
                         type="button"
                         className="rounded-lg border border-amber-200 bg-white px-2 py-1.5 text-xs font-semibold text-amber-800 transition hover:bg-amber-50"
-                        onClick={() => trackActionSuggestionEvent("action_suggestion_click", item, index)}
+                        onClick={() => handleActionEvent("action_started", "action_suggestion_click", item, index)}
                       >
                         試してみる
                       </button>
                       <button
                         type="button"
                         className="rounded-lg bg-amber-600 px-2 py-1.5 text-xs font-semibold text-white transition hover:bg-amber-700"
-                        onClick={() => trackActionSuggestionEvent("action_done", item, index)}
+                        onClick={() => handleActionEvent("action_completed", "action_done", item, index)}
                       >
                         完了
                       </button>
