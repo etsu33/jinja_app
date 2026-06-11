@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import type { ReactNode } from "react";
 import { trackSearchEvent } from "@/lib/analytics/searchEvents";
 import { trackActionEvent } from "@/lib/api/actionEvents";
@@ -68,7 +68,10 @@ export default function ConciergeTopRecommendationHero({
   onDetailClick,
 }: Props) {
   const visibleTrustLabels = trustLabels.filter(Boolean).slice(0, 4);
-  const visibleActionSuggestions = actionSuggestions.filter((item) => item.id && item.title).slice(0, 2);
+  const visibleActionSuggestions = useMemo(
+    () => actionSuggestions.filter((item) => item.id && item.title).slice(0, 2),
+    [actionSuggestions],
+  );
   const visibleActionSuggestionIds = visibleActionSuggestions.map((item) => item.id).join(",");
   const entranceCopySource = subtitle ?? catchCopy;
   const entranceCopy = entranceCopySource.split("。")[0]
@@ -93,7 +96,16 @@ export default function ConciergeTopRecommendationHero({
         actionPosition: index + 1,
       });
     });
-  }, [analyticsSource, historyTheme, recommendationRank, resultSetId, shrineId, threadId, visibleActionSuggestionIds]);
+  }, [
+    analyticsSource,
+    historyTheme,
+    recommendationRank,
+    resultSetId,
+    shrineId,
+    threadId,
+    visibleActionSuggestionIds,
+    visibleActionSuggestions,
+  ]);
 
   const buildActionEventPayload = (item: ActionSuggestionViewModel, index: number) => ({
     source: analyticsSource,
@@ -109,13 +121,6 @@ export default function ConciergeTopRecommendationHero({
     actionPosition: index + 1,
   });
 
-  const trackActionSuggestionEvent = (
-    eventName: "action_suggestion_click" | "action_done",
-    item: ActionSuggestionViewModel,
-    index: number,
-  ) => {
-    trackSearchEvent(eventName, buildActionEventPayload(item, index));
-  };
 
   const handleActionEvent = (
     actionType: "action_started" | "action_completed",
