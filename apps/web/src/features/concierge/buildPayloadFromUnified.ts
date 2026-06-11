@@ -22,6 +22,17 @@ type NormalizedItemBase = {
   trustMetadata?: any | null;
   historyTheme?: string | null;
   historyContext?: string | null;
+  actionSuggestions?: Array<{
+    id: string;
+    historyTheme: string;
+    title: string;
+    description: string;
+    category: string;
+    timing: string;
+    difficulty: string;
+    timeEstimate: string;
+    measurementKey: string;
+  }>;
   detailHref?: string;
   isDummy?: boolean;
 };
@@ -68,6 +79,25 @@ function pickFirstString(...vals: unknown[]): string | null {
   return null;
 }
 
+function normalizeActionSuggestions(r: any): NonNullable<NormalizedItemBase["actionSuggestions"]> {
+  const raw = r?._explanation_payload?.action_suggestions;
+  if (!Array.isArray(raw)) return [];
+
+  return raw
+    .map((item: any) => ({
+      id: String(item?.id ?? "").trim(),
+      historyTheme: String(item?.history_theme ?? "").trim(),
+      title: String(item?.title ?? "").trim(),
+      description: String(item?.description ?? "").trim(),
+      category: String(item?.category ?? "").trim(),
+      timing: String(item?.timing ?? "").trim(),
+      difficulty: String(item?.difficulty ?? "").trim(),
+      timeEstimate: String(item?.time_estimate ?? "").trim(),
+      measurementKey: String(item?.measurement_key ?? "").trim(),
+    }))
+    .filter((item) => item.id && item.title);
+}
+
 // 登録済み=shrine_idあり → /shrines/:id, 未登録=place_idのみ → /shrines/resolve, どちらも無い→除外
 function normalizeRecommendation(r: any, tid: string | null, analyticsContext: DetailAnalyticsContext): NormalizedItem | null {
   const shrineId = asPositiveInt(r?.shrine_id ?? r?.shrine?.id ?? null);
@@ -97,6 +127,7 @@ function normalizeRecommendation(r: any, tid: string | null, analyticsContext: D
   const trustMetadata = r?.trust_metadata ?? r?.trustMetadata ?? null;
   const historyTheme = pickFirstString(r?.history_theme, r?.historyTheme);
   const historyContext = pickFirstString(r?.history_context, r?.historyContext);
+  const actionSuggestions = normalizeActionSuggestions(r);
 
   if (shrineId) {
     return {
@@ -113,6 +144,7 @@ function normalizeRecommendation(r: any, tid: string | null, analyticsContext: D
       trustMetadata,
       historyTheme,
       historyContext,
+      actionSuggestions,
       detailHref,
       isDummy,
       goriyakuTags: [],
@@ -134,6 +166,7 @@ function normalizeRecommendation(r: any, tid: string | null, analyticsContext: D
       trustMetadata,
       historyTheme,
       historyContext,
+      actionSuggestions,
       detailHref,
       isDummy,
       detailLabel: "神社の詳細を見る",
