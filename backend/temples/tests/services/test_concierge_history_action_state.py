@@ -1,11 +1,12 @@
 import pytest
 from django.contrib.auth.models import AnonymousUser
 
-from temples.models import Favorite, Shrine, ShrineInteractionLog, ShrineReflection, Visit
+from temples.models import ActionEvent, Favorite, Shrine, ShrineInteractionLog, ShrineReflection, Visit
 
 from temples.services.concierge_history import (
     build_recent_reflection_hint,
     calculate_shrine_behavior_signal,
+    calculate_shrine_behavior_signal_breakdown,
     calculate_shrine_behavior_signal_v2,
     classify_shrine_action_state,
 )
@@ -187,6 +188,23 @@ def test_calculate_shrine_behavior_signal_v2_adds_save_visit_and_reflection(user
 
     assert calculate_shrine_behavior_signal_v2(user=user, shrine_id=shrine.id) == 8.5
 
+
+@pytest.mark.django_db
+def test_calculate_shrine_behavior_signal_v2_adds_action_completed_signal(user, shrine):
+    ActionEvent.objects.create(
+        user=user,
+        shrine=shrine,
+        action_type=ActionEvent.ActionType.ACTION_COMPLETED,
+        action_suggestion_id="challenge_choose_this_week",
+        history_theme="勝負",
+        action_category="prepare",
+        source="concierge_result",
+    )
+
+    breakdown = calculate_shrine_behavior_signal_breakdown(user=user, shrine_id=shrine.id)
+
+    assert breakdown["action_completed_signal"] == 2.0
+    assert calculate_shrine_behavior_signal_v2(user=user, shrine_id=shrine.id) == 2.0
 
 
 @pytest.mark.django_db

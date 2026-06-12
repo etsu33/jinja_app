@@ -8,6 +8,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from temples.models import (
+    ActionEvent,
     ConciergeHistory,
     ConciergeMessage,
     ConciergeThread,
@@ -134,6 +135,7 @@ def calculate_shrine_behavior_signal_breakdown(*, user, shrine_id: int | None) -
             "save_signal": 0.0,
             "visit_signal": 0.0,
             "reflection_signal": 0.0,
+            "action_completed_signal": 0.0,
             "total": 0.0,
         }
 
@@ -144,6 +146,7 @@ def calculate_shrine_behavior_signal_breakdown(*, user, shrine_id: int | None) -
             "save_signal": 0.0,
             "visit_signal": 0.0,
             "reflection_signal": 0.0,
+            "action_completed_signal": 0.0,
             "total": 0.0,
         }
 
@@ -201,12 +204,27 @@ def calculate_shrine_behavior_signal_breakdown(*, user, shrine_id: int | None) -
     if reflection_latest is not None:
         reflection_signal = 4.0 * _recency_multiplier(reflection_latest)
 
+    action_completed_latest = (
+        ActionEvent.objects.filter(
+            user=user,
+            shrine_id=shrine_id,
+            action_type=ActionEvent.ActionType.ACTION_COMPLETED,
+        )
+        .order_by("-created_at")
+        .values_list("created_at", flat=True)
+        .first()
+    )
+    action_completed_signal = 0.0
+    if action_completed_latest is not None:
+        action_completed_signal = 2.0 * _recency_multiplier(action_completed_latest)
+
     total = min(
         detail_view_signal
         + route_open_signal
         + save_signal
         + visit_signal
-        + reflection_signal,
+        + reflection_signal
+        + action_completed_signal,
         10.0,
     )
 
@@ -216,6 +234,7 @@ def calculate_shrine_behavior_signal_breakdown(*, user, shrine_id: int | None) -
         "save_signal": float(save_signal),
         "visit_signal": float(visit_signal),
         "reflection_signal": float(reflection_signal),
+        "action_completed_signal": float(action_completed_signal),
         "total": float(total),
     }
 
@@ -279,7 +298,7 @@ def append_chat(
     *,
     user=None,
     anonymous_id: Optional[str] = None,
-    query: str,
+    query: str = "",
     reply_text: Optional[str] = None,
     thread_id: Optional[int] = None,
     recommendations: Optional[list[dict[str, Any]]] = None,
