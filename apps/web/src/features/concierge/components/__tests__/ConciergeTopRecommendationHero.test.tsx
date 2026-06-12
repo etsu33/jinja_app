@@ -42,7 +42,7 @@ describe("ConciergeTopRecommendationHero", () => {
   });
 
 
-  it("renders action suggestions and tracks view, click, and done events", async () => {
+  it("renders before-visit action suggestions and tracks legacy and canonical events", async () => {
     render(
       <ConciergeTopRecommendationHero
         name="検証神社"
@@ -55,7 +55,7 @@ describe("ConciergeTopRecommendationHero", () => {
             title: "今週やることを1つ選ぶ",
             description: "迷っていることから、まず1つだけ選んで動きます。",
             category: "prepare",
-            timing: "today",
+            timing: "before_visit",
             difficulty: "easy",
             timeEstimate: "5分",
             measurementKey: "weekly_choice",
@@ -75,6 +75,8 @@ describe("ConciergeTopRecommendationHero", () => {
     expect(screen.getByText("次の小さな一歩")).toBeInTheDocument();
     expect(screen.getByText("今週やることを1つ選ぶ")).toBeInTheDocument();
     expect(screen.getByText("迷っていることから、まず1つだけ選んで動きます。")).toBeInTheDocument();
+    expect(screen.queryByText("参拝後")).not.toBeInTheDocument();
+    expect(screen.queryByText("記録")).not.toBeInTheDocument();
 
     await waitFor(() => {
       expect(analyticsMocks.trackSearchEvent).toHaveBeenCalledWith(
@@ -105,6 +107,16 @@ describe("ConciergeTopRecommendationHero", () => {
         actionPosition: 1,
       }),
     );
+    expect(analyticsMocks.trackSearchEvent).toHaveBeenCalledWith(
+      "action_started",
+      expect.objectContaining({
+        actionSuggestionId: "challenge_choose_this_week",
+        actionCategory: "prepare",
+        actionTheme: "勝負",
+        actionPosition: 1,
+        legacyEventName: "action_suggestion_click",
+      }),
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "完了" }));
     expect(analyticsMocks.trackSearchEvent).toHaveBeenCalledWith(
@@ -114,6 +126,16 @@ describe("ConciergeTopRecommendationHero", () => {
         actionCategory: "prepare",
         actionTheme: "勝負",
         actionPosition: 1,
+      }),
+    );
+    expect(analyticsMocks.trackSearchEvent).toHaveBeenCalledWith(
+      "action_completed",
+      expect.objectContaining({
+        actionSuggestionId: "challenge_choose_this_week",
+        actionCategory: "prepare",
+        actionTheme: "勝負",
+        actionPosition: 1,
+        legacyEventName: "action_done",
       }),
     );
   });
