@@ -24,6 +24,61 @@
 ---
 
 ## 🗂 マイルストーン（チェックリスト）
+
+## Concierge First
+
+### Phase 1: 仕様固定・ドキュメント整備
+
+- [x] docs/product/concierge-first.md を作成
+- [x] トップ画面とコンシェルジュ画面を統合する方針を定義
+- [x] 相談テーマを主入力として定義
+- [x] 参拝スタイルを条件追加として定義
+- [x] 誕生日を任意・補助入力として定義
+- [x] ご利益タグを補助条件として定義
+- [x] 占星術・九星気学・風水を補助シグナルとして定義
+- [x] 吉方位・相性を詳細レイヤー限定として定義
+- [x] README / architecture / roadmap の参照関係を整理
+
+### Phase 2: Concierge First UI
+
+- [ ] トップ画面とコンシェルジュ画面を統合
+- [ ] 相談テーマ入力をヒーロー領域へ配置
+- [ ] 条件追加UIを実装
+- [ ] 参拝スタイルを条件追加へ移動
+- [ ] 誕生日を条件追加へ移動
+- [ ] ご利益タグを条件追加へ移動
+- [ ] 自由入力を補助導線へ移動
+- [ ] 神社一覧導線をサブ導線へ変更
+- [ ] 地図導線をサブ導線へ変更
+
+### Phase 3: Recommendation Responsibility Separation
+
+- [ ] need_tags を主推薦軸として固定
+- [ ] history_theme を意味レイヤへ接続
+- [ ] 神社固有文脈を推薦理由へ統合
+- [ ] ご利益を補助説明へ整理
+- [ ] 誕生日シグナルの重みを監査
+- [ ] astro_elements の寄与率を監査
+- [ ] direction_bonus の寄与率を監査
+
+### Phase 4: Behavior Loop
+
+- [ ] save → detail → route → visit → reflection の計測を完成
+- [ ] reflection を次回推薦へ接続
+- [ ] history_theme 遷移分析を追加
+- [ ] 継続利用ユーザー分析を追加
+- [ ] behavior_signal を Recommendation Score v2 と統合
+
+運用方針:
+
+- Concierge First をプロダクト全体の主導線とする。
+- 神社検索は主機能ではなく補助導線として扱う。
+- 推薦理由の中心は相談テーマと need_tags とする。
+- 誕生日・占術・方位は補助シグナルとして扱う。
+- Meaning Layer は推薦後の解釈レイヤとして責務を分離する。
+
+---
+
 ### Recommendation Engine v2: score_v2 / behavior_signal 運用方針
 
 #### Recommendation Score v2 の軸
