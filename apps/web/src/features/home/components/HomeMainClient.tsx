@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 
+import { HomeConciergeInlineClient } from "./HomeConciergeInlineClient";
 import { HomeNearbySection } from "./HomeNearbySection";
 import { HomeHero } from "./HomeHero";
 
@@ -9,6 +10,8 @@ export function HomeMainClient() {
   return (
     <div className="space-y-16">
       <HomeHero />
+
+      <HomeConciergeInlineClient className="mx-auto max-w-3xl px-1" />
 
       <section className="space-y-9">
         <div className="space-y-2 px-1">

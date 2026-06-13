@@ -499,6 +499,13 @@ export default function ConciergeClientFull() {
   const [needText, setNeedText] = useState("");
   const [entryValidationError, setEntryValidationError] = useState<string | null>(null);
 
+  useEffect(() => {
+    const theme = (sp.get("theme") ?? "").trim();
+    if (!theme) return;
+
+    setNeedText((current) => (current.trim() ? current : theme));
+  }, [sp]);
+
   const displayName = useMemo(
     () =>
       resolveDisplayName({
