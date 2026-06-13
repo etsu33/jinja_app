@@ -1,5 +1,3 @@
-
-
 # Concierge First Wireframe
 
 ## 目的
@@ -15,22 +13,16 @@ KAMI MUSUBI のトップ画面を「神社を探す入口」ではなく、「�
 ```text
 HomeMainClient
 ├─ HomeHero
-│  └─ CTA: 今の相談から選ぶ
-│     └─ /concierge
-│
-├─ HomeConciergeInlineClient
-│  ├─ 相談テーマチップ
-│  │  ├─ 気持ちを切り替えたい
-│  │  ├─ 静かな場所で整えたい
-│  │  └─ 仕事やこれからを相談したい
-│  │     └─ /concierge?theme=...
-│  │
-│  └─ CTA: 相談を書いて選ぶ
-│     └─ /concierge
+│  ├─ KAMI MUSUBI
+│  ├─ 今の相談から、向かう神社を見つける
+│  ├─ HomeHeroConsultationInput
+│  │  ├─ 相談入力
+│  │  ├─ テーマチップ
+│  │  └─ /concierge?theme=...
 │
 └─ SUB PATHS
    ├─ HomeNearbySection
-   │  └─ 近くの神社導線
+   │  └─ 地図でも確認する
    │
    └─ 神社一覧リンク
       └─ /shrines
@@ -38,9 +30,10 @@ HomeMainClient
 
 ### 現状評価
 
-- Top はすでに「相談 → 場所確認 → 神社一覧」の順に近づいている。
-- ただし HomeHero と HomeConciergeInlineClient の役割が近く、相談導線が分散している。
-- Top 上ではまだ本格的な相談入力は完結しない。
+- Top で相談入力が完結できる状態になった。
+- HomeHeroConsultationInput が相談導線の主導線になっている。
+- HomeConciergeInlineClient は削除済み。
+- 神社一覧と地図導線は SUB PATHS に集約されている。
 
 ---
 
@@ -88,11 +81,9 @@ ConciergeClientFull
 
 ```text
 HomeHero
-└─ /concierge CTA
-
-HomeConciergeInlineClient
-├─ /concierge CTA
-└─ /concierge?theme=... CTA
+└─ HomeHeroConsultationInput
+   ├─ テーマチップ
+   └─ 相談入力
 
 ConciergeEntryCard
 └─ 本命の相談入力
@@ -100,10 +91,10 @@ ConciergeEntryCard
 
 ### 整理方針
 
-- Top では「相談への入口」を短縮する。
-- `/concierge` では「相談入力の正本」を維持する。
-- Top に `/concierge` と同等の状態管理を持ち込まない。
-- 神社一覧・地図・近くの神社はサブ導線として扱う。
+- HomeConciergeInlineClient の重複導線は解消済み。
+- Top は相談入口として機能する。
+- Concierge は相談処理と結果表示の正本として維持する。
+- 神社一覧・地図・近くの神社は補助導線として維持する。
 
 ---
 
@@ -114,24 +105,22 @@ Top / Concierge First
 ├─ Hero相談入力
 │  ├─ KAMI MUSUBI
 │  ├─ 今の相談から、向かう神社を見つける
-│  ├─ 相談入力 textarea
-│  │  └─ 例: 気持ちを切り替えたい、静かな時間を持ちたい
-│  ├─ ことばのきっかけ
-│  │  ├─ 気持ちを切り替えたい
-│  │  ├─ 静かな場所で整えたい
-│  │  └─ 仕事やこれからを相談したい
-│  ├─ CTA: 言葉を整える
-│  │  └─ /concierge?theme=...
-│  └─ 条件を追加する
-│     └─ /concierge で補助条件を開く
+│  ├─ 相談入力
+│  ├─ テーマチップ
+│  └─ /concierge?theme=...
 │
-├─ 補助導線
-│  ├─ 近くの神社を見る
-│  ├─ 地図から見る
-│  └─ 神社一覧を見る
+├─ SUB PATHS
+│  ├─ 地図でも確認する
+│  └─ 神社一覧も見る
 │
-└─ 補足説明
-   └─ 相談内容・誕生日・希望条件をもとに候補を整理する
+└─ Concierge
+   ├─ 相談入力
+   ├─ 補助条件
+   │  ├─ 誕生日
+   │  ├─ 過ごし方の希望
+   │  ├─ 願いに近いもの
+   │  └─ 自由補足
+   └─ 結果表示
 ```
 
 ---
@@ -193,18 +182,20 @@ CTA:
 ### 配置対象
 
 ```text
-QUIET FILTER
+補助条件
 ├─ 誕生日
 │  └─ 相性・傾向の補助情報として扱う
 │
 ├─ ご利益
 │  └─ 相談内容を補強する希望タグとして扱う
 │
-└─ 参拝スタイル
-   ├─ 近くで行きたい
-   ├─ 静かに過ごしたい
-   ├─ 歴史を感じたい
-   └─ しっかり巡りたい
+└─ 過ごし方の希望
+   ├─ 静かに整えたい
+   ├─ 人混みが苦手
+   ├─ 近場優先
+   ├─ 自然を感じたい
+   ├─ 気持ちを切り替えたい
+   └─ 有名な神社が安心
 ```
 
 ### 注意点
@@ -314,20 +305,24 @@ apps/web/src/app/concierge/ConciergeClientFull.tsx
 - [x] 重複導線を整理
 
 # Concierge First設計
-- [ ] トップ画面とコンシェルジュ画面統合
-- [ ] Heroを相談入力化
-- [x] Concierge Firstワイヤー作成
-- [x] Hero相談入力案作成
+- [x] トップ画面とコンシェルジュ画面統合
+- [x] Concierge Firstワイヤー最終化
 
 # 条件追加エリア
 - [x] 条件追加エリア設計
 - [x] 誕生日を補助条件へ移動
 - [x] ご利益を補助条件へ移動
 - [x] 参拝スタイルを補助条件へ移動
+- [x] 補助条件コピーへ変更
 
 # サブ導線
 - [x] 神社一覧をサブ導線化
 - [x] 地図導線をサブ導線化
+
+# 次の候補
+- [x] Concierge Firstワイヤー最終確定
+- [x] openFilter導線の要否判断
+- [x] TopとConciergeの責務境界を最終確認
 ```
 
 ---
@@ -337,8 +332,7 @@ apps/web/src/app/concierge/ConciergeClientFull.tsx
 以下は実装前に母艦判断へ差し戻す。
 
 ```text
-- HomeHero と HomeConciergeInlineClient を統合するか
-- HomeConciergeInlineClient を廃止するか
-- Top上で textarea 入力まで許可するか
-- 条件追加をTop上で開くか、/concierge側へ送るだけにするか
+- Top上で条件追加は扱わない
+- openFilter=1 は実装済み
+- 補助条件は Concierge 側へ集約する
 ```
