@@ -167,10 +167,10 @@ describe("/shrines page", () => {
 
     render(<ShrinesPage />);
 
-    expect(await screen.findByText("TAGS")).toBeInTheDocument();
+    expect(await screen.findByText("願いに近いもの")).toBeInTheDocument();
 
-    const tagButton = await screen.findByRole("button", { name: "縁結び" });
-    fireEvent.click(tagButton);
+    const tagButtons = await screen.findAllByRole("button", { name: "縁結び" });
+    fireEvent.click(tagButtons[tagButtons.length - 1]);
 
     expect(pushMock).toHaveBeenCalledWith("/shrines?q=%E7%B8%81%E7%B5%90%E3%81%B3");
   });
