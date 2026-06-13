@@ -13,6 +13,7 @@ from rest_framework.views import APIView
 
 from temples.models import ConciergeMessage, ConciergeThread
 from temples.services.anonymous_id import get_anonymous_id
+from temples.services.concierge_history import classify_shrine_action_state
 
 logger = logging.getLogger(__name__)
 
@@ -180,8 +181,45 @@ class ConciergeThreadDetailView(APIView):
 
             msgs = ConciergeMessage.objects.filter(thread=thread).order_by("created_at", "id")
 
+
             recommendations = getattr(thread, "recommendations", None)
             recommendations_v2 = getattr(thread, "recommendations_v2", None)
+
+            def _extract_shrine_id(item):
+                if not isinstance(item, dict):
+                    return None
+
+                raw_shrine_id = item.get("shrine_id") or item.get("id")
+                try:
+                    return int(raw_shrine_id)
+                except (TypeError, ValueError):
+                    return None
+
+            def _with_action_state(items):
+                if not isinstance(items, list):
+                    return items
+
+                enriched = []
+                for item in items:
+                    if not isinstance(item, dict):
+                        enriched.append(item)
+                        continue
+
+                    shrine_id = _extract_shrine_id(item)
+                    enriched.append(
+                        {
+                            **item,
+                            "action_state": classify_shrine_action_state(
+                                user=user if authenticated else None,
+                                shrine_id=shrine_id,
+                            ),
+                        }
+                    )
+
+                return enriched
+
+            recommendations = _with_action_state(recommendations)
+            recommendations_v2 = _with_action_state(recommendations_v2)
 
             logger.warning(
                 "THREAD_DETAIL_RECOMMENDATION_KEYS %s",

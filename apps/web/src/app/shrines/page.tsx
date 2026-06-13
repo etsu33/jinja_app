@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, Suspense, useEffect, useState } from "react";
+import { FormEvent, Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { isSubmissionPendingParams } from "@/features/shrine-submission/lib/submissionReturnState";
@@ -10,6 +10,7 @@ import type { ShrineCardAdapterProps } from "@/components/shrine/buildShrineCard
 import { fetchShrines } from "@/lib/api/shrinesSearch";
 import { getGoriyakuTags, type GoriyakuTag } from "@/lib/api/tags";
 import { buildShrineListCardModel } from "@/lib/shrine/buildShrineListCardModel";
+import { trackSearchEvent } from "@/lib/analytics/searchEvents";
 
 function ShrinesPageContent() {
   const router = useRouter();
@@ -26,9 +27,11 @@ function ShrinesPageContent() {
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadedQuery, setLoadedQuery] = useState<string | null>(null);
   const [goriyakuTags, setGoriyakuTags] = useState<GoriyakuTag[]>([]);
   const [tagsLoading, setTagsLoading] = useState(false);
   const [tagsError, setTagsError] = useState<string | null>(null);
+  const trackedEmptyStateKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(searchParams.toString());
@@ -80,6 +83,7 @@ function ShrinesPageContent() {
       setCards([]);
       setCount(0);
       setError(null);
+      setLoadedQuery(q);
       setLoading(false);
       return () => {
         alive = false;
@@ -88,6 +92,7 @@ function ShrinesPageContent() {
 
     setLoading(true);
     setError(null);
+    setLoadedQuery(null);
 
     fetchShrines({ q })
       .then((data) => {
@@ -95,11 +100,13 @@ function ShrinesPageContent() {
         const nextCards = data.results.map((shrine) => buildShrineListCardModel(shrine));
         setCards(nextCards);
         setCount(data.count);
+        setLoadedQuery(q);
       })
       .catch(() => {
         if (!alive) return;
         setCards([]);
         setCount(0);
+        setLoadedQuery(q);
         setError("神社データの取得に失敗しました");
       })
       .finally(() => {
@@ -113,7 +120,21 @@ function ShrinesPageContent() {
   }, [q, shouldShowSearchResults]);
 
   const hasSearched = q.length > 0;
-  const isEmpty = shouldShowSearchResults && !loading && !error && hasSearched && count === 0;
+  const isEmpty = shouldShowSearchResults && !loading && !error && hasSearched && loadedQuery === q && count === 0;
+
+  useEffect(() => {
+    if (!isEmpty) return;
+
+    const emptyStateKey = q || "__empty__";
+    if (trackedEmptyStateKeyRef.current === emptyStateKey) return;
+
+    trackedEmptyStateKeyRef.current = emptyStateKey;
+    trackSearchEvent("empty_state_view", {
+      source: "shrines",
+      query: q,
+    });
+  }, [isEmpty, q]);
+
   const submissionNoticeTitle = submittedName ? `「${submittedName}」の投稿を受け付けました` : "投稿を受け付けました";
   const activeGoriyakuTag = goriyakuTags.find((tag) => tag.name === q) ?? null;
   const submissionNoticeBody = showSubmissionPendingBanner
@@ -158,6 +179,11 @@ function ShrinesPageContent() {
 
   const handleAddShrine = () => {
     const returnTo = `/shrines${q ? `?q=${encodeURIComponent(q)}` : ""}`;
+    trackSearchEvent("add_shrine_click", {
+      source: "shrines",
+      query: q,
+      returnTo,
+    });
     router.push(`/shrines/new?returnTo=${encodeURIComponent(returnTo)}`);
   };
 
@@ -170,32 +196,32 @@ function ShrinesPageContent() {
   };
 
   return (
-    <main className="p-4">
-      <h1 className="mb-4 text-xl font-bold">神社を探す</h1>
+    <main className="px-4 py-6">
+      <h1 className="mb-6 text-xl font-medium text-stone-900">神社をたどる</h1>
 
       {shouldShowSearchResults && (
-        <div className="mb-6 space-y-3">
-          <form onSubmit={handleSearch} className="flex flex-col gap-3 sm:flex-row">
+        <div className="mb-8 space-y-4">
+          <form onSubmit={handleSearch} className="flex flex-col gap-2 sm:flex-row sm:items-end">
             <input
               type="search"
               value={inputValue}
               onChange={(e) => setInputValue(e.currentTarget.value)}
-              placeholder="神社名で検索"
-              className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-900"
+              placeholder="神社名や願いごとを、そっと入力"
+              className="w-full rounded-3xl border border-stone-200/35 bg-stone-50/25 px-3 py-2 text-sm text-stone-900"
             />
             <button
               type="submit"
-              className="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-medium text-white"
+              className="rounded-full border border-emerald-200/50 bg-emerald-50/40 px-3 py-2 text-xs font-medium text-emerald-700 hover:bg-emerald-100/30"
             >
-              検索する
+              ひらく
             </button>
           </form>
 
           <div className="space-y-2">
-            <p className="text-xs font-semibold text-slate-500">ご利益から探す</p>
+            <p className="text-[11px] font-medium tracking-[0.2em] text-stone-500">TAGS</p>
 
             {tagsLoading ? (
-              <p className="text-xs text-slate-400">ご利益タグを読み込み中…</p>
+              <p className="text-xs text-stone-400 opacity-70">ご利益タグを読み込み中…</p>
             ) : tagsError ? (
               <p className="text-xs text-rose-600">{tagsError}</p>
             ) : goriyakuTags.length > 0 ? (
@@ -210,10 +236,10 @@ function ShrinesPageContent() {
                       aria-pressed={isActive}
                       onClick={() => handleTagSearch(tag.name)}
                       className={[
-                        "rounded-full border px-3 py-1.5 text-xs font-semibold transition",
+                        "rounded-full border px-2.5 py-1 text-xs font-medium transition",
                         isActive
-                          ? "border-emerald-600 bg-emerald-600 text-white shadow-sm"
-                          : "border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50",
+                          ? "border-emerald-200/70 bg-emerald-50/70 text-emerald-700"
+                          : "border-stone-200/40 bg-stone-50/25 text-stone-500 hover:bg-stone-100/30 opacity-65",
                       ].join(" ")}
                     >
                       {tag.name}
@@ -221,7 +247,9 @@ function ShrinesPageContent() {
                   );
                 })}
                 {activeGoriyakuTag ? (
-                  <p className="text-xs text-emerald-700">{activeGoriyakuTag.name}で検索中です。もう一度押すと解除できます。</p>
+                  <p className="text-xs text-emerald-700 opacity-70">
+                    {activeGoriyakuTag.name}で表示中です。もう一度押すと解除できます。
+                  </p>
                 ) : null}
               </div>
             ) : null}
@@ -230,18 +258,18 @@ function ShrinesPageContent() {
       )}
 
       {submissionNoticeBody && (
-        <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-900">
-          <div className="mb-4 space-y-2">
-            <p className="text-base font-semibold text-emerald-950">{submissionNoticeTitle}</p>
-            <p className="leading-relaxed text-emerald-900">{submissionNoticeBody}</p>
-            <p className="text-xs leading-relaxed text-emerald-800">
+        <div className="mb-8 rounded-3xl border border-emerald-200/40 bg-emerald-50/50 p-4 text-sm text-emerald-700">
+          <div className="mb-3 space-y-1.5">
+            <p className="text-base font-semibold text-emerald-900">{submissionNoticeTitle}</p>
+            <p className="leading-relaxed text-emerald-700 opacity-90">{submissionNoticeBody}</p>
+            <p className="text-xs leading-relaxed text-emerald-700 opacity-70">
               ご利益タグなどの内容は確認時の参考情報として扱います。
             </p>
           </div>
           <button
             type="button"
             onClick={handleReturnToSearch}
-            className="rounded-xl border border-emerald-200 bg-white px-4 py-2 text-sm font-medium text-emerald-700 shadow-sm transition hover:bg-emerald-100"
+            className="rounded-full border border-emerald-200/50 bg-emerald-50/40 px-3 py-1.5 text-xs font-medium text-emerald-700 transition hover:bg-emerald-100/40"
           >
             神社を探すへ戻る
           </button>
@@ -250,20 +278,21 @@ function ShrinesPageContent() {
 
       {error && <p className="text-red-500">{error}</p>}
 
-      {shouldShowSearchResults && loading ? <p className="mb-4 text-sm text-slate-500">検索しています...</p> : null}
+      {shouldShowSearchResults && loading ? <p className="mb-5 text-sm text-stone-500">探しています...</p> : null}
 
-      {shouldShowSearchResults && hasSearched &&
+      {shouldShowSearchResults &&
+        hasSearched &&
         (isEmpty ? (
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <p className="text-sm text-slate-700">
+          <div className="rounded-3xl border border-stone-200/30 bg-stone-50/50 p-5">
+            <p className="text-sm text-stone-700 opacity-85">
               {activeGoriyakuTag
                 ? `${activeGoriyakuTag.name}に合う神社はまだ登録されていません。`
                 : "お探しの神社が見つかりませんか？"}
             </p>
-            <div className="mt-4">
+            <div className="mt-3">
               <button
                 type="button"
-                className="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-medium text-white"
+                className="rounded-full border border-emerald-200/50 bg-emerald-50/40 px-3 py-2 text-xs font-medium text-emerald-700 hover:bg-emerald-100/30"
                 onClick={handleAddShrine}
               >
                 神社を追加する
@@ -288,16 +317,16 @@ function ShrinesPageContent() {
               ))}
             </ul>
 
-            <section className="mt-6 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-5 shadow-sm">
-              <p className="text-sm font-semibold text-emerald-950">なんとなく選びきれない場合はこちら</p>
-              <p className="mt-2 text-sm leading-6 text-emerald-900">
-                今の気持ちや願いから、どの神社が合いそうかをコンシェルジュで整理できます。
+            <section className="mt-8 rounded-3xl border border-stone-200/25 bg-stone-50/25 p-5">
+              <p className="text-sm font-medium text-stone-800">迷いが残るときは</p>
+              <p className="mt-1.5 text-sm leading-6 text-stone-700 opacity-65">
+                気持ちから静かに整える導線があります。
               </p>
               <Link
                 href="/concierge"
-                className="mt-4 inline-flex rounded-xl bg-emerald-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-emerald-700"
+                className="mt-3 inline-flex rounded-full border border-emerald-200/50 bg-emerald-50/40 px-3 py-2 text-xs font-medium text-emerald-700 transition hover:bg-emerald-100/30"
               >
-                あなたに合う理由を詳しく知る
+                言葉を整える
               </Link>
             </section>
           </>

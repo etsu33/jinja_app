@@ -1,11 +1,10 @@
 import re
+
 import pytest
+from django.utils import timezone
 from rest_framework.test import APIClient
-import os
-print("TEST_ENV",
-      os.getenv("BILLING_STUB_PLAN"),
-      os.getenv("BILLING_STUB_ACTIVE"),
-      os.getenv("BILLING_PROVIDER"))
+
+from users.models import UserProfile
       
 
 ISO_Z_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$")
@@ -56,3 +55,63 @@ def test_billing_status_contract_premium_active(monkeypatch, client: APIClient):
     assert data["provider"] == "stripe"
     # active のときは current_period_end が入る想定（入らないならここで落ちる）
     assert data["current_period_end"] is not None
+
+
+
+@pytest.mark.django_db
+def test_billing_status_stub_provider_ignores_authenticated_user_db_state(monkeypatch, django_user_model):
+    monkeypatch.setenv("BILLING_PROVIDER", "stub")
+    monkeypatch.setenv("BILLING_STUB_PLAN", "free")
+    monkeypatch.setenv("BILLING_STUB_ACTIVE", "0")
+
+    user = django_user_model.objects.create_user(username="stub-user", password="password")
+    UserProfile.objects.update_or_create(
+        user=user,
+        defaults={
+            "subscription_status": "active",
+            "current_period_end": timezone.now() + timezone.timedelta(days=30),
+        },
+    )
+
+    client = APIClient()
+    client.force_authenticate(user=user)
+    res = client.get("/api/billings/status/")
+
+    assert res.status_code == 200
+    data = res.json()
+    assert data["plan"] == "free"
+    assert data["is_active"] is False
+    assert data["provider"] == "stub"
+    assert data["current_period_end"] is None
+
+
+@pytest.mark.django_db
+def test_billing_status_stub_premium_without_active_env_defaults_to_active(monkeypatch, client: APIClient):
+    monkeypatch.setenv("BILLING_PROVIDER", "stub")
+    monkeypatch.setenv("BILLING_STUB_PLAN", "premium")
+    monkeypatch.delenv("BILLING_STUB_ACTIVE", raising=False)
+
+    res = client.get("/api/billings/status/")
+
+    assert res.status_code == 200
+    data = res.json()
+    assert data["plan"] == "premium"
+    assert data["is_active"] is True
+    assert data["provider"] == "stripe"
+    assert data["current_period_end"] is not None
+
+
+@pytest.mark.django_db
+def test_billing_status_stub_inactive_env_returns_free(monkeypatch, client: APIClient):
+    monkeypatch.setenv("BILLING_PROVIDER", "stub")
+    monkeypatch.setenv("BILLING_STUB_PLAN", "premium")
+    monkeypatch.setenv("BILLING_STUB_ACTIVE", "0")
+
+    res = client.get("/api/billings/status/")
+
+    assert res.status_code == 200
+    data = res.json()
+    assert data["plan"] == "premium"
+    assert data["is_active"] is False
+    assert data["provider"] == "stripe"
+    assert data["current_period_end"] is None

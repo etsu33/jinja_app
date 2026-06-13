@@ -17,7 +17,6 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/shrines",
 }));
 
-
 vi.mock("@/lib/api/shrinesSearch", () => ({
   fetchShrines: vi.fn(),
 }));
@@ -27,11 +26,7 @@ vi.mock("@/lib/api/tags", () => ({
 }));
 
 vi.mock("@/lib/shrine/buildShrineListCardModel", () => ({
-  buildShrineListCardModel: (shrine: {
-    id: number;
-    name_jp: string;
-    address?: string | null;
-  }) => ({
+  buildShrineListCardModel: (shrine: { id: number; name_jp: string; address?: string | null }) => ({
     shrineId: shrine.id,
     title: shrine.name_jp,
     address: shrine.address ?? null,
@@ -123,7 +118,9 @@ describe("/shrines page", () => {
 
     await waitFor(() => {
       expect(screen.getByText("「未登録テスト神社20260419」の投稿を受け付けました")).toBeInTheDocument();
-      expect(screen.getByText("現在公開準備中です。確認が完了するまで公開検索には表示されません。")).toBeInTheDocument();
+      expect(
+        screen.getByText("現在公開準備中です。確認が完了するまで公開検索には表示されません。"),
+      ).toBeInTheDocument();
       expect(screen.getByText("ご利益タグなどの内容は確認時の参考情報として扱います。")).toBeInTheDocument();
     });
 
@@ -153,11 +150,11 @@ describe("/shrines page", () => {
   it("検索語を入力して検索すると検索URLへ遷移する", async () => {
     render(<ShrinesPage />);
 
-    fireEvent.change(screen.getByPlaceholderText("神社名で検索"), {
+    fireEvent.change(screen.getByPlaceholderText("神社名や願いごとを、そっと入力"), {
       target: { value: "稲荷" },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "検索する" }));
+    fireEvent.click(screen.getByRole("button", { name: "ひらく" }));
 
     expect(pushMock).toHaveBeenCalledWith("/shrines?q=%E7%A8%B2%E8%8D%B7");
   });
@@ -170,7 +167,7 @@ describe("/shrines page", () => {
 
     render(<ShrinesPage />);
 
-    expect(await screen.findByText("ご利益から探す")).toBeInTheDocument();
+    expect(await screen.findByText("TAGS")).toBeInTheDocument();
 
     const tagButton = await screen.findByRole("button", { name: "縁結び" });
     fireEvent.click(tagButton);

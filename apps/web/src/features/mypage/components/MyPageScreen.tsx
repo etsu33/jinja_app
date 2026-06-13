@@ -91,12 +91,12 @@ export default function MyPageScreen({ activeTab }: MyPageScreenProps) {
 
   if (!isLoggedIn || !user) {
     return (
-      <main className="mx-auto max-w-3xl p-6">
-        <h1 className="mb-4 text-xl font-bold">マイページ</h1>
-        <div className="rounded-lg border bg-white p-6">
-          <p className="mb-3">御朱印帳を利用するにはログインしてください。</p>
+      <main className="mx-auto max-w-3xl p-6 text-stone-800">
+        <h1 className="mb-4 text-xl font-semibold">マイページ</h1>
+        <div className="rounded-2xl border border-stone-200/20 bg-stone-50/30 p-6">
+          <p className="mb-3 text-sm text-stone-600">御朱印帳はログイン後に使えます。</p>
           <Link
-            className="inline-block rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+            className="inline-block rounded-full border border-emerald-700/20 bg-emerald-800 px-4 py-2 text-sm text-white transition hover:bg-emerald-900"
             href={buildLoginHref(hasShrine ? `/mypage?tab=goshuin&shrine=${shrineId}` : `/mypage?tab=goshuin`)}
           >
             ログインへ
@@ -107,9 +107,9 @@ export default function MyPageScreen({ activeTab }: MyPageScreenProps) {
   }
 
   return (
-    <main className="mx-auto max-w-4xl space-y-6 p-6">
+    <div className="space-y-6">
       <header className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">マイページ</h1>
+        <h1 className="text-xl font-semibold text-stone-900">マイページ</h1>
 
         <button
           type="button"
@@ -117,7 +117,7 @@ export default function MyPageScreen({ activeTab }: MyPageScreenProps) {
             await logout();
             router.replace("/");
           }}
-          className="rounded-full border bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+          className="rounded-full border border-stone-200/40 bg-stone-50/20 px-3 py-1.5 text-xs font-medium text-stone-500 transition hover:bg-stone-100/50 hover:text-stone-700"
         >
           ログアウト
         </button>
@@ -125,13 +125,13 @@ export default function MyPageScreen({ activeTab }: MyPageScreenProps) {
 
       {showSubmissionPendingBanner && (
         <div
-          className="whitespace-pre-line rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+          className="whitespace-pre-line rounded-xl border border-emerald-700/10 bg-emerald-50/40 px-4 py-3 text-sm leading-6 text-emerald-900/80"
           role="status"
           aria-live="polite"
         >
           {submittedShrineName
-            ? `「${submittedShrineName}」の投稿を受け付けました。\n現在審査中のため、公開検索にはまだ表示されません。\n審査完了後に公開されます。`
-            : "投稿を受け付けました。\n現在審査中のため、公開検索にはまだ表示されません。\n審査完了後に公開されます。"}
+            ? `「${submittedShrineName}」の投稿を受け付けました。\n公開までしばらくお待ちください。`
+            : "投稿を受け付けました。\n公開までしばらくお待ちください。"}
         </div>
       )}
 
@@ -139,21 +139,21 @@ export default function MyPageScreen({ activeTab }: MyPageScreenProps) {
         {activeTab === "submissions" && (
           <SectionCard
             title="投稿状況"
-            description="追加申請した神社の審査状況を確認できます。公開済みになると検索から確認できます。"
+            description="投稿した神社の状態を確認できます。"
           >
             {submissionsLoading ? (
-              <p className="text-sm text-slate-500">投稿履歴を読み込み中…</p>
+              <p className="text-sm text-stone-500">読み込み中…</p>
             ) : submissionsError ? (
               <p className="text-sm text-rose-700">{submissionsError}</p>
             ) : submissions.length === 0 ? (
-              <p className="text-sm text-slate-500">投稿した神社はまだありません。</p>
+              <p className="text-sm text-stone-500">投稿した神社はまだありません。</p>
             ) : (
               <div className="space-y-5">
                 <section className="space-y-3">
-                  <h3 className="text-sm font-semibold text-emerald-900">公開済み</h3>
+                  <h3 className="text-sm font-medium text-stone-700">公開済み</h3>
 
                   {approvedSubmissions.length === 0 ? (
-                    <p className="rounded-xl border border-emerald-100 bg-emerald-50 p-4 text-sm text-emerald-900">
+                    <p className="rounded-xl border border-stone-200/20 bg-stone-50/30 p-4 text-sm text-stone-500">
                       まだ公開された神社はありません。
                     </p>
                   ) : (
@@ -161,26 +161,24 @@ export default function MyPageScreen({ activeTab }: MyPageScreenProps) {
                       const searchHref = `/shrines?q=${encodeURIComponent(submission.name)}`;
 
                       return (
-                        <div key={submission.id} className="rounded-xl border border-emerald-100 bg-emerald-50 p-4">
+                        <div key={submission.id} className="rounded-xl border border-stone-200/20 bg-stone-50/30 p-4">
                           <div className="flex items-start justify-between gap-3">
                             <div>
-                              <p className="font-semibold text-slate-900">{submission.name}</p>
-                              <p className="mt-1 text-xs text-slate-500">{submission.address}</p>
+                              <p className="font-medium text-stone-900">{submission.name}</p>
+                              <p className="mt-1 text-xs text-stone-500">{submission.address}</p>
                             </div>
-                            <span className="rounded-full border border-emerald-200 bg-white px-2 py-1 text-xs font-semibold text-emerald-700">
+                            <span className="rounded-full border border-emerald-700/10 bg-emerald-50/50 px-2 py-1 text-xs font-medium text-emerald-800/80">
                               公開済み
                             </span>
                           </div>
 
-                          <p className="mt-3 text-xs leading-6 text-emerald-900">
-                            この神社は公開されました。検索から確認できます。
-                          </p>
+                          <p className="mt-3 text-xs leading-6 text-stone-500">検索から確認できます。</p>
 
                           <Link
-                            className="mt-2 inline-flex w-fit items-center rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+                            className="mt-2 inline-flex w-fit items-center rounded-full border border-emerald-700/20 bg-emerald-800 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-emerald-900"
                             href={searchHref}
                           >
-                            公開検索で確認する
+                            検索で見る
                           </Link>
                         </div>
                       );
@@ -190,23 +188,21 @@ export default function MyPageScreen({ activeTab }: MyPageScreenProps) {
 
                 {pendingSubmissions.length > 0 && (
                   <section className="space-y-3">
-                    <h3 className="text-sm font-semibold text-amber-900">審査中</h3>
+                    <h3 className="text-sm font-medium text-stone-700">審査中</h3>
 
                     {pendingSubmissions.map((submission) => (
-                      <div key={submission.id} className="rounded-xl border border-amber-100 bg-amber-50 p-4">
+                      <div key={submission.id} className="rounded-xl border border-stone-200/20 bg-stone-50/30 p-4">
                         <div className="flex items-start justify-between gap-3">
                           <div>
-                            <p className="font-semibold text-slate-900">{submission.name}</p>
-                            <p className="mt-1 text-xs text-slate-500">{submission.address}</p>
+                            <p className="font-medium text-stone-900">{submission.name}</p>
+                            <p className="mt-1 text-xs text-stone-500">{submission.address}</p>
                           </div>
-                          <span className="rounded-full border border-amber-200 bg-white px-2 py-1 text-xs font-semibold text-amber-700">
+                          <span className="rounded-full border border-stone-300/30 bg-stone-100/50 px-2 py-1 text-xs font-medium text-stone-600">
                             審査中
                           </span>
                         </div>
 
-                        <p className="mt-3 text-xs leading-6 text-amber-900">
-                          現在審査中です。公開されると検索に表示されます。
-                        </p>
+                        <p className="mt-3 text-xs leading-6 text-stone-500">公開までしばらくお待ちください。</p>
                       </div>
                     ))}
                   </section>
@@ -218,44 +214,44 @@ export default function MyPageScreen({ activeTab }: MyPageScreenProps) {
 
         {activeTab === "goshuin" && (
           <section className="space-y-4" aria-labelledby="goshuin-section-title">
-          <div className="space-y-1">
-            <h2 id="goshuin-section-title" className="text-lg font-semibold text-slate-900">
-              御朱印帳
-            </h2>
-            <p className="text-sm text-slate-500">御朱印画像の登録と、登録済みの御朱印を確認できます。</p>
-          </div>
+            <div className="space-y-1">
+              <h2 id="goshuin-section-title" className="text-lg font-semibold text-stone-900">
+                御朱印帳
+              </h2>
+              <p className="text-sm text-stone-500">御朱印を静かに残します。</p>
+            </div>
 
-          <div id="goshuin-upload">
-            <SectionCard
-              title="御朱印アップロード"
-              description="御朱印画像（推奨サイズ：5MB 以下）をアップロードできます。画像とタイトルを選んで登録してください。"
-            >
-              <GoshuinUploadForm
-                onUploaded={(created) => {
-                  addItem(created);
-                  const href = hasShrine
-                    ? buildShrineHref(shrineId, { query: { toast: "goshuin_saved" }, hash: "goshuins" })
-                    : `/mypage?tab=goshuin&toast=goshuin_saved#goshuin-upload`;
+            <div id="goshuin-upload">
+              <SectionCard
+                title="御朱印アップロード"
+                description="画像を選んで登録します。"
+              >
+                <GoshuinUploadForm
+                  onUploaded={(created) => {
+                    addItem(created);
+                    const href = hasShrine
+                      ? buildShrineHref(shrineId, { query: { toast: "goshuin_saved" }, hash: "goshuins" })
+                      : `/mypage?tab=goshuin&toast=goshuin_saved#goshuin-upload`;
 
-                  router.push(href);
-                }}
+                    router.push(href);
+                  }}
+                />
+              </SectionCard>
+            </div>
+
+            <SectionCard title="登録済みの御朱印">
+              <MyGoshuinList
+                items={items}
+                loading={goshuinLoading}
+                error={goshuinError}
+                onDelete={removeItem}
+                onToggleVisibility={toggleVisibility}
+                navigateOnCardClick
               />
             </SectionCard>
-          </div>
-
-          <SectionCard title="登録済みの御朱印">
-            <MyGoshuinList
-              items={items}
-              loading={goshuinLoading}
-              error={goshuinError}
-              onDelete={removeItem}
-              onToggleVisibility={toggleVisibility}
-              navigateOnCardClick
-            />
-          </SectionCard>
           </section>
         )}
       </div>
-    </main>
+    </div>
   );
 }

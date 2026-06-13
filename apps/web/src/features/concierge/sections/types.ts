@@ -31,6 +31,7 @@ export type RegisteredShrineItem = {
   imageUrl?: string | null;
   detailHref?: string;
   breakdown?: ConciergeBreakdown | null;
+  breakdown_detail?: any | null;
   reasonFacts?: ConciergeReasonFacts | null;
   explanation?: {
     version?: number | null;
@@ -56,6 +57,7 @@ export type PlaceShrineItem = {
   detailHref?: string;
   detailLabel?: string;
   breakdown?: ConciergeBreakdown | null;
+  breakdown_detail?: any | null;
   reasonFacts?: ConciergeReasonFacts | null;
   isDummy?: boolean;
 };
@@ -129,7 +131,7 @@ export type ConciergeSectionsPayload = {
  * ========================= */
 export type RendererAction =
   | { type: "back_to_entry" }
-  | { type: "open_map" }
+  | { type: "open_map"; shrineId?: number | null; rank?: number | null; routeHref?: string | null }
   | { type: "add_condition" }
   | { type: "filter_close" }
   | { type: "filter_apply" }

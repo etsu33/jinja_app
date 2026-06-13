@@ -215,7 +215,7 @@ describe("ShrineSubmissionForm", () => {
     });
 
     // 重複メッセージが表示される
-    expect(screen.getByText("この神社はすでに登録されている可能性があります。")).toBeInTheDocument();
+    expect(await screen.findByText("この神社はすでに登録されている可能性があります。")).toBeInTheDocument();
     expect(screen.getByText("同じ神社がすでに登録されている場合、追加投稿は不要です。")).toBeInTheDocument();
 
     // 複数候補の場合は各候補が個別に表示される

@@ -20,7 +20,9 @@ export function sanitizeNext(next: string | null | undefined): string | null {
 
   if (
     t.startsWith("/shrines") ||
-    t.startsWith("/mypage")
+    t.startsWith("/mypage") ||
+    t.startsWith("/concierge") ||
+    t.startsWith("/billing")
   ) {
     return t;
   }

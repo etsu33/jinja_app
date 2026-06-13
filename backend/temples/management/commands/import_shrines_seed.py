@@ -64,6 +64,7 @@ class Command(BaseCommand):
                     "goriyaku": row.get("goriyaku") or "",
                     "kyusei": row.get("kyusei"),
                     "astro_elements": row.get("astro_elements") or [],
+                    "visit_style_tags": row.get("visit_style_tags") or [],
                     "name_romaji": row.get("name_romaji"),
                     "sajin": row.get("sajin") or "",
                     "description": row.get("description"),

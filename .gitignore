@@ -95,3 +95,5 @@ apps/web/debug-storybook.log
 
 
 .claude
+.vercel
+.env*.local

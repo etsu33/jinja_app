@@ -1,7 +1,11 @@
 // apps/web/src/app/api/auth/register/route.ts
 import { NextRequest, NextResponse } from "next/server";
 
-const BACKEND_BASE_URL = process.env.BACKEND_BASE_URL || "http://127.0.0.1:8000";
+const BACKEND_BASE_URL =
+  process.env.DJANGO_API_BASE_URL ||
+  process.env.BACKEND_ORIGIN ||
+  process.env.BACKEND_BASE_URL ||
+  "http://127.0.0.1:8000";
 
 export async function POST(req: NextRequest) {
   try {
@@ -24,7 +28,12 @@ export async function POST(req: NextRequest) {
         "Content-Type": upstream.headers.get("content-type") || "application/json",
       },
     });
-  } catch {
+  } catch (e) {
+    console.error("[AUTH_REGISTER_PROXY_FAILED]", {
+      backendBaseUrl: BACKEND_BASE_URL,
+      error: e instanceof Error ? e.message : String(e),
+    });
+
     return NextResponse.json({ detail: "register proxy failed" }, { status: 500 });
   }
 }

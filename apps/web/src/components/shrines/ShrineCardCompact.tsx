@@ -1,5 +1,3 @@
-// apps/web/src/components/shrines/ShrineCardCompact.tsx
-
 import Link from "next/link";
 import Image from "next/image";
 
@@ -9,9 +7,12 @@ function formatDistance(m?: number | null) {
   return `${(m / 1000).toFixed(1)}km`;
 }
 
-function clean(value?: string | null) {
-  return (value ?? "").replace(/\s+/g, " ").trim();
-}
+export type ShrineCardCompactTrustMetadata = {
+  rankClass?: string | null;
+  culturalStatus?: string[] | null;
+  lineage?: string | null;
+  originSummary?: string | null;
+};
 
 export type ShrineCardCompactProps = {
   name: string;
@@ -20,8 +21,10 @@ export type ShrineCardCompactProps = {
   address?: string | null;
   summary?: string | null;
   primaryReason?: string | null;
+  trustMetadata?: ShrineCardCompactTrustMetadata | null;
   tags?: string[];
   distanceM?: number | null;
+  onDetailClick?: () => void;
 };
 
 export default function ShrineCardCompact({
@@ -29,57 +32,62 @@ export default function ShrineCardCompact({
   href = null,
   imageUrl = null,
   address = null,
-  summary = null,
-  primaryReason = null,
-  tags = [],
+  summary: _summary = null,
+  primaryReason: _primaryReason = null,
+  trustMetadata = null,
+  tags: _tags = [],
   distanceM = null,
+  onDetailClick,
 }: ShrineCardCompactProps) {
   const distText = formatDistance(distanceM);
-  const resolvedPrimaryReason = clean(primaryReason) || null;
-  const resolvedSummary = clean(summary) && clean(summary) !== resolvedPrimaryReason ? clean(summary) : null;
-
-  const visibleTags = tags.filter(Boolean).slice(0, 1);
+  const trustLabels = [
+    trustMetadata?.rankClass,
+    ...(trustMetadata?.culturalStatus ?? []),
+    trustMetadata?.lineage,
+  ].filter((label): label is string => typeof label === "string" && label.trim().length > 0);
+  const visibleTrustLabels = trustLabels.slice(0, 2);
+  const originSummary = trustMetadata?.originSummary?.trim() || null;
 
   return (
-    <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <article className="rounded-2xl border border-slate-100 bg-white/90 p-3">
       <div className="flex gap-3">
-        <div className="h-16 w-20 shrink-0 overflow-hidden rounded-xl bg-slate-100">
+        <div className="h-14 w-16 shrink-0 overflow-hidden rounded-xl bg-slate-100">
           {imageUrl ? (
-            <Image src={imageUrl} alt={name} width={80} height={64} className="h-full w-full object-cover" />
+            <Image src={imageUrl} alt={name} width={64} height={56} className="h-full w-full object-cover" />
           ) : null}
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="space-y-1">
-            <h3 className="truncate text-[15px] font-semibold text-slate-900">{name}</h3>
-
-            {resolvedPrimaryReason ? (
-              <p className="line-clamp-2 text-[13px] leading-6 text-slate-700">{resolvedPrimaryReason}</p>
+          <div className="space-y-1.5">
+            <h3 className="truncate text-sm font-semibold text-slate-900">{name}</h3>
+            {visibleTrustLabels.length > 0 ? (
+              <div className="flex flex-wrap gap-1">
+                {visibleTrustLabels.map((label) => (
+                  <span
+                    key={label}
+                    className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600"
+                  >
+                    {label}
+                  </span>
+                ))}
+              </div>
             ) : null}
-
-            {resolvedSummary ? (
-              <p className="line-clamp-1 text-[12px] leading-5 text-slate-500">{resolvedSummary}</p>
-            ) : null}
+            {originSummary ? <p className="line-clamp-1 text-xs leading-5 text-slate-500">{originSummary}</p> : null}
           </div>
 
-          {address || distText || visibleTags.length > 0 || href ? (
-            <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+          {address || distText || href ? (
+            <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
               {address ? <span className="truncate text-xs text-slate-500">{address}</span> : null}
 
               {!address && distText ? <span className="text-xs text-slate-500">{distText}</span> : null}
 
-              {visibleTags.map((tag) => (
-                <span key={tag} className="rounded-full bg-slate-100 px-2 py-1 text-[11px] text-slate-500">
-                  {tag}
-                </span>
-              ))}
-
               {href ? (
                 <Link
                   href={href}
-                  className="ml-auto inline-flex items-center text-sm font-medium text-slate-600 transition hover:text-slate-900"
+                  onClick={onDetailClick}
+                  className="ml-auto inline-flex items-center text-[11px] font-normal text-slate-400 transition hover:text-slate-600"
                 >
-                  → 詳細
+                  詳細だけ見る
                 </Link>
               ) : null}
             </div>

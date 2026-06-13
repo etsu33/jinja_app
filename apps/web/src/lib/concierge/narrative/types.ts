@@ -1,5 +1,6 @@
 import type { ConciergeBreakdown } from "@/lib/api/concierge";
 import type { SymbolTag } from "@/lib/concierge/narrative/symbolTags";
+import type { ShrineMeaningSchema } from "@/lib/shrineMeaning/types";
 
 export type ConciergeMode = "need" | "compat";
 
@@ -55,6 +56,7 @@ export type BuildNarrativeBaseArgs = {
   deepReason?: NarrativeFallback | null;
   conciergeReason?: string | null;
   shrineSymbolTags?: SymbolTag[] | null;
+  shrineMeaningSchema?: ShrineMeaningSchema | null;
 };
 
 export type RecommendationNarrative = {
@@ -88,4 +90,11 @@ export type RecommendationNarrative = {
   shrine: {
     shrineMeaning: string | null;
   };
+  combination: {
+    key: string;
+    title: string;
+    summary: string;
+    priorityHint: string;
+    actionHint: string;
+  } | null;
 };

@@ -4,8 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import ConciergeLayout from "@/features/concierge/components/ConciergeLayout";
-import { useConciergeChat } from "@/features/concierge/hooks";
-
+import { useConciergeChat, useConciergeThreads } from "@/features/concierge/hooks";
 import {
   getConciergeThread,
   type ConciergeMessage,
@@ -20,28 +19,32 @@ import type { ConciergeChatRequestV1, ConciergeChatFilters } from "@/features/co
 import { buildDummySections } from "@/features/concierge/sections/dummy";
 
 import ConciergeSectionsRenderer from "@/features/concierge/components/ConciergeSectionsRenderer";
+import ConciergeEntryCard from "@/features/concierge/components/ConciergeEntryCard";
 import { buildPayloadFromUnified } from "@/features/concierge/buildPayloadFromUnified";
 import { SHOW_NEW_RENDERER } from "@/features/concierge/rendererMode";
 
-import type {
-  RendererAction,
-  ConciergeSectionsPayload,
-} from "@/features/concierge/sections/types";
+import type { RendererAction, ConciergeSectionsPayload } from "@/features/concierge/sections/types";
 import { getGoriyakuTags } from "@/lib/api/tags";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { useBilling } from "@/features/billing/hooks/useBilling";
 import { isAuthRequiredForAction } from "@/lib/auth/actionGuards";
-import {
-  initialConciergeSessionState,
-  type ConciergeSessionState,
-} from "@/features/concierge/types";
+import { initialConciergeSessionState, type ConciergeSessionState } from "@/features/concierge/types";
 import { resolveDisplayLabel, resolveDisplayName } from "@/lib/profile/resolveDisplayName";
 
 import { conciergeLog } from "@/lib/log/concierge";
 import { EVT_CLOSE_CONCIERGE } from "@/lib/events";
-const conciergeCardClass = "rounded-2xl border border-slate-200 bg-white shadow-sm p-6";
+const conciergeCardClass = "rounded-3xl border border-stone-200/45 bg-white/75 p-6";
 
 import { isValidISODate, normalizeBirthdateInput } from "@/lib/date/normalizeBirthdateInput";
+import { track } from "@/lib/analytics/track";
+import { buildPreviousConsultationSummary } from "@/lib/concierge/buildPreviousConsultationSummary";
+import { compareState } from "@/lib/concierge/compareState";
+import PremiumStateDeltaCard from "@/features/concierge/components/PremiumStateDeltaCard";
+
+import { resolveAccessLevel } from "@/lib/premium/accessLevel";
+import { getVisibilityForCard } from "@/lib/premium/cardVisibility";
+import { trackCardEvent } from "@/lib/analytics/cardEvents";
 
 /* ========================================
  * 型定義とデータ設定
@@ -54,9 +57,7 @@ type LocalEvent = ChatEvent | AssistantStateEvent;
 
 type EventsByThread = Record<number, LocalEvent[]>;
 
-
 const STORAGE_KEY = "concierge:eventsByThread";
-
 
 type AnonymousConciergeSnapshot = {
   version: 1;
@@ -85,8 +86,6 @@ const ELEMENT_TO_GORIYAKU: Record<Element4, string[]> = {
  * ====================================== */
 function snap(_label: string, _extra: Record<string, any> = {}) {}
 
-
-
 /**
  * UI補助用の簡易変換。
  * 推薦根拠の正本ではない。
@@ -109,6 +108,19 @@ function birthdateToElement4(birthdateISO: string): Element4 | null {
   if (md >= 1222 || md <= 119) return "地";
   if (md >= 120 && md <= 218) return "風";
   return "水";
+}
+
+function isBirthdateOnlyText(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  return normalizeBirthdateInput(trimmed) !== null;
+}
+
+function normalizeQueryText(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  if (isBirthdateOnlyText(trimmed)) return "";
+  return trimmed;
 }
 
 function deriveMessages(events: LocalEvent[], threadId: number): ConciergeMessage[] {
@@ -157,7 +169,13 @@ function threadDetailToUnified(thread: ConciergeThreadDetail | null): UnifiedCon
   const dataLike =
     (root?.data && typeof root.data === "object" && !Array.isArray(root.data) ? root.data : null) ?? root;
 
+  const recommendationsV2 =
+    (Array.isArray(dataLike?.recommendations_v2) ? dataLike.recommendations_v2 : null) ??
+    (Array.isArray(root?.recommendations_v2) ? root.recommendations_v2 : null) ??
+    null;
+
   const recommendations =
+    recommendationsV2 ??
     (Array.isArray(dataLike?.recommendations) ? dataLike.recommendations : null) ??
     (Array.isArray(root?.recommendations) ? root.recommendations : null) ??
     [];
@@ -195,6 +213,7 @@ function threadDetailToUnified(thread: ConciergeThreadDetail | null): UnifiedCon
     data: {
       ...(dataLike ?? {}),
       recommendations,
+      recommendations_v2: recommendationsV2,
       _signals: signals,
     },
     reply,
@@ -249,8 +268,158 @@ function isRecommendationsPayload(
   );
 }
 
+function ConciergeDebugPanel({ unified }: { unified: UnifiedConciergeResponse | null }) {
+  if (process.env.NEXT_PUBLIC_ENABLE_CONCIERGE_DEBUG_PANEL !== "1") return null;
 
+  const data = (unified?.data ?? {}) as any;
+  const debug = data?._debug && typeof data._debug === "object" ? data._debug : null;
+  const signals = data?._signals && typeof data._signals === "object" ? data._signals : null;
+  const mode = signals?.mode && typeof signals.mode === "object" ? signals.mode : null;
 
+  if (!debug && !mode) return null;
+
+  const candidatePool = debug?.candidate_pool_observation ?? null;
+  const visitStyle = debug?.visit_style_observation ?? null;
+  const rankingBreakdown = debug?.ranking_breakdown_observation ?? null;
+  const trim = debug?.trim_observation ?? null;
+
+  return (
+    <details className="mt-4 rounded-2xl border border-dashed border-amber-400 bg-amber-50 p-3 text-xs text-slate-700">
+      <summary className="cursor-pointer select-none font-semibold text-slate-700">Debug: concierge response</summary>
+
+      <div className="mt-3 grid gap-3">
+        <section className="rounded-xl border border-slate-200 bg-white p-3">
+          <p className="font-semibold text-slate-800">Flow / Mode</p>
+          <dl className="mt-2 grid grid-cols-2 gap-2">
+            <div>
+              <dt className="text-slate-400">mode</dt>
+              <dd className="font-mono text-slate-700">{String(mode?.mode ?? "-")}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-400">flow</dt>
+              <dd className="font-mono text-slate-700">{String(mode?.flow ?? "-")}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-400">llm_used</dt>
+              <dd className="font-mono text-slate-700">{String(signals?.llm?.used ?? "-")}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-400">fallback</dt>
+              <dd className="font-mono text-slate-700">{String(signals?.result_state?.fallback_mode ?? "-")}</dd>
+            </div>
+          </dl>
+        </section>
+
+        {candidatePool ? (
+          <section className="rounded-xl border border-slate-200 bg-white p-3">
+            <p className="font-semibold text-slate-800">Candidate Pool Observation</p>
+            <dl className="mt-2 grid grid-cols-3 gap-2">
+              <div>
+                <dt className="text-slate-400">valid</dt>
+                <dd className="font-mono text-slate-700">{String(candidatePool.valid_candidate_count ?? "-")}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-400">with_place_id</dt>
+                <dd className="font-mono text-slate-700">{String(candidatePool.with_place_id ?? "-")}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-400">distance_none</dt>
+                <dd className="font-mono text-slate-700">{String(candidatePool.distance_none ?? "-")}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-400">missing_latlng</dt>
+                <dd className="font-mono text-slate-700">{String(candidatePool.missing_latlng ?? "-")}</dd>
+              </div>
+            </dl>
+            <pre className="mt-2 max-h-40 overflow-auto rounded-lg bg-slate-900 p-2 text-[11px] leading-5 text-slate-100">
+              {JSON.stringify(
+                {
+                  filter_context: candidatePool.filter_context ?? {},
+                  score_top10: candidatePool.score_top10 ?? [],
+                },
+                null,
+                2,
+              )}
+            </pre>
+          </section>
+        ) : null}
+
+        {rankingBreakdown ? (
+          <section className="rounded-xl border border-slate-200 bg-white p-3">
+            <p className="font-semibold text-slate-800">Ranking Breakdown Observation</p>
+            <dl className="mt-2 grid grid-cols-3 gap-2">
+              <div>
+                <dt className="text-slate-400">ranked_count</dt>
+                <dd className="font-mono text-slate-700">{String(rankingBreakdown.ranked_count ?? "-")}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-400">top1_score</dt>
+                <dd className="font-mono text-slate-700">
+                  {String(rankingBreakdown.top10?.[0]?.score_total_ranked ?? "-")}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-slate-400">top1_name</dt>
+                <dd className="font-mono text-slate-700">{String(rankingBreakdown.top10?.[0]?.name ?? "-")}</dd>
+              </div>
+            </dl>
+            <pre className="mt-2 max-h-40 overflow-auto rounded-lg bg-slate-900 p-2 text-[11px] leading-5 text-slate-100">
+              {JSON.stringify(rankingBreakdown.top10 ?? [], null, 2)}
+            </pre>
+          </section>
+        ) : null}
+
+        {visitStyle ? (
+          <section className="rounded-xl border border-slate-200 bg-white p-3">
+            <p className="font-semibold text-slate-800">Visit Style Observation</p>
+            <dl className="mt-2 grid grid-cols-3 gap-2">
+              <div>
+                <dt className="text-slate-400">pool_size</dt>
+                <dd className="font-mono text-slate-700">{String(visitStyle.pool_size ?? "-")}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-400">hit_count</dt>
+                <dd className="font-mono text-slate-700">{String(visitStyle.hit_count ?? "-")}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-400">matched_tags</dt>
+                <dd className="font-mono text-slate-700">
+                  {Object.keys(visitStyle.matched_tag_counts ?? {}).join(", ") || "-"}
+                </dd>
+              </div>
+            </dl>
+            <pre className="mt-2 max-h-40 overflow-auto rounded-lg bg-slate-900 p-2 text-[11px] leading-5 text-slate-100">
+              {JSON.stringify(visitStyle.rows ?? [], null, 2)}
+            </pre>
+          </section>
+        ) : null}
+
+        {trim ? (
+          <section className="rounded-xl border border-slate-200 bg-white p-3">
+            <p className="font-semibold text-slate-800">Trim Observation</p>
+            <dl className="mt-2 grid grid-cols-3 gap-2">
+              <div>
+                <dt className="text-slate-400">before</dt>
+                <dd className="font-mono text-slate-700">{String(trim.before_count ?? "-")}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-400">after</dt>
+                <dd className="font-mono text-slate-700">{String(trim.after_count ?? "-")}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-400">dropped</dt>
+                <dd className="font-mono text-slate-700">{String(trim.dropped_count ?? "-")}</dd>
+              </div>
+            </dl>
+            <pre className="mt-2 max-h-40 overflow-auto rounded-lg bg-slate-900 p-2 text-[11px] leading-5 text-slate-100">
+              {JSON.stringify(trim.dropped ?? [], null, 2)}
+            </pre>
+          </section>
+        ) : null}
+      </div>
+    </details>
+  );
+}
 
 /* ========================================
  * メインコンポーネント
@@ -265,6 +434,7 @@ export default function ConciergeClientFull() {
 
   const lastNavAtRef = useRef(0);
   const isClosingRef = useRef(false);
+  const filterApplyPendingRef = useRef(false);
 
   const navReplace = useCallback(
     (to: string, meta?: any) => {
@@ -297,9 +467,16 @@ export default function ConciergeClientFull() {
   );
 
   const { user, isLoggedIn } = useAuth();
+  const billing = useBilling();
+  const isPremiumActive = billing.status?.plan === "premium" && billing.status?.is_active === true;
 
-  const canSaveConciergeThread =
-    !isAuthRequiredForAction("save_concierge_thread") || isLoggedIn;
+  const accessLevel = resolveAccessLevel(billing.status, isLoggedIn);
+  const previousComparisonVisibility = getVisibilityForCard("previous_comparison", accessLevel);
+  const historyShiftVisibility = getVisibilityForCard("history_shift", accessLevel);
+  const deepReflectionVisibility = getVisibilityForCard("deep_reflection", accessLevel);
+
+  const canSaveConciergeThread = !isAuthRequiredForAction("save_concierge_thread") || isLoggedIn;
+  const { threads } = useConciergeThreads();
 
   const [eventsByThread, setEventsByThread] = useState<EventsByThread>({});
   const [hydrated, setHydrated] = useState(false);
@@ -308,6 +485,7 @@ export default function ConciergeClientFull() {
   const activeThreadIdRef = useRef(0);
 
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isFiltering, setIsFiltering] = useState(false);
   const [extraCondition, setExtraCondition] = useState("");
 
   const [goriyakuTags, setGoriyakuTags] = useState<Tag[]>([]);
@@ -319,6 +497,7 @@ export default function ConciergeClientFull() {
 
   const [entrySubmitting, setEntrySubmitting] = useState(false);
   const [needText, setNeedText] = useState("");
+  const [entryValidationError, setEntryValidationError] = useState<string | null>(null);
 
   const displayName = useMemo(
     () =>
@@ -342,6 +521,77 @@ export default function ConciergeClientFull() {
   const [liveRecs, setLiveRecs] = useState<ConciergeRecommendation[]>([]);
 
   const [threadDetail, setThreadDetail] = useState<ConciergeThreadDetail | null>(null);
+  const [previousThreadDetail, setPreviousThreadDetail] = useState<ConciergeThreadDetail | null>(null);
+
+  const currentConsultationSummary = useMemo(() => buildPreviousConsultationSummary(threadDetail), [threadDetail]);
+
+  const previousConsultationSummary = useMemo(
+    () => buildPreviousConsultationSummary(previousThreadDetail),
+    [previousThreadDetail],
+  );
+
+  const stateDelta = useMemo(
+    () => compareState(previousConsultationSummary, currentConsultationSummary),
+    [currentConsultationSummary, previousConsultationSummary],
+  );
+
+  const shouldTrackHistoryShiftView = Boolean(stateDelta?.transitionNarrative?.summary);
+  const shouldTrackDeepReflectionView = Boolean(
+    stateDelta?.combinationChange?.summary ||
+    (stateDelta?.changedNeedTags?.length ?? 0) > 0 ||
+    (stateDelta?.continuedNeedTags?.length ?? 0) > 0,
+  );
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    if (!stateDelta) return;
+
+    const sessionId = activeThreadId ? String(activeThreadId) : undefined;
+
+    if (previousComparisonVisibility !== "hidden") {
+      trackCardEvent({
+        event: "card_view",
+        cardId: "previous_comparison",
+        source: "concierge_result",
+        accessLevel,
+        visibility: previousComparisonVisibility,
+        sessionId,
+      });
+    }
+
+    if (historyShiftVisibility !== "hidden" && shouldTrackHistoryShiftView) {
+      trackCardEvent({
+        event: "card_view",
+        cardId: "history_shift",
+        source: "concierge_result",
+        accessLevel,
+        visibility: historyShiftVisibility,
+        sessionId,
+      });
+    }
+
+    if (deepReflectionVisibility !== "hidden" && shouldTrackDeepReflectionView) {
+      trackCardEvent({
+        event: "card_view",
+        cardId: "deep_reflection",
+        source: "concierge_result",
+        accessLevel,
+        visibility: deepReflectionVisibility,
+        sessionId,
+      });
+    }
+  }, [
+    accessLevel,
+    activeThreadId,
+    deepReflectionVisibility,
+    historyShiftVisibility,
+    isLoggedIn,
+    previousComparisonVisibility,
+    shouldTrackDeepReflectionView,
+    shouldTrackHistoryShiftView,
+    stateDelta,
+  ]);
+
   const [, setThreadLoading] = useState(false);
 
   const setActiveTid = (tid: number) => {
@@ -349,7 +599,6 @@ export default function ConciergeClientFull() {
     activeThreadIdRef.current = tid;
     setActiveThreadId(tid);
   };
-
 
   /* ----------------------------------------
    * URLパラメータ
@@ -365,12 +614,25 @@ export default function ConciergeClientFull() {
     return n;
   }, [rawTid]);
 
+  const previousThreadId = useMemo(() => {
+    if (!isLoggedIn) return null;
+    const currentId = tidNum ?? activeThreadId;
+    if (!currentId || !Array.isArray(threads) || threads.length === 0) return null;
+
+    const currentIndex = threads.findIndex((t) => Number(t.id) === Number(currentId));
+
+    if (currentIndex < 0) {
+      const fallbackPreviousThread = threads.find((t) => t != null && Number(t.id) !== Number(currentId)) ?? null;
+
+      return typeof fallbackPreviousThread?.id === "number" ? fallbackPreviousThread.id : null;
+    }
+
+    const previousThread = threads[currentIndex + 1] ?? null;
+    return typeof previousThread?.id === "number" ? previousThread.id : null;
+  }, [activeThreadId, isLoggedIn, threads, tidNum]);
+
   const isEntryRoute = tidNum === null;
   const tidFromQuery = tidNum ?? 0;
-
-
-
-
 
   // 入口でtidパラメータがある場合は削除
   useEffect(() => {
@@ -440,9 +702,6 @@ export default function ConciergeClientFull() {
     }, 250);
     return () => window.clearTimeout(id);
   }, [eventsByThread, hydrated]);
-
-
-
 
   /* ----------------------------------------
    * スレッド切り替え（URLパラメータ反応）
@@ -523,6 +782,31 @@ export default function ConciergeClientFull() {
     };
   }, [hydrated, tidNum]);
 
+  useEffect(() => {
+    if (!hydrated) return;
+    if (!previousThreadId) {
+      setPreviousThreadDetail(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const data = await getConciergeThread(String(previousThreadId));
+        if (cancelled) return;
+        setPreviousThreadDetail(data);
+      } catch {
+        if (cancelled) return;
+        setPreviousThreadDetail(null);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hydrated, previousThreadId]);
+
   /* ----------------------------------------
    * タグ取得（フィルター開いたら）
    * -------------------------------------- */
@@ -583,13 +867,22 @@ export default function ConciergeClientFull() {
     const fallbackData = lastUnified?.data ?? null;
     const primaryData = primary.data ?? null;
 
-    const primaryRecommendations = Array.isArray(primaryData?.recommendations)
-      ? primaryData.recommendations
+    const primaryRecommendationsV2 = Array.isArray(primaryData?.recommendations_v2)
+      ? primaryData.recommendations_v2
       : [];
+    const primaryRecommendations = Array.isArray(primaryData?.recommendations) ? primaryData.recommendations : [];
+    const primaryRecommendationCandidates =
+      primaryRecommendationsV2.length > 0 ? primaryRecommendationsV2 : primaryRecommendations;
 
-    const fallbackRecommendations = Array.isArray(fallbackData?.recommendations)
-      ? fallbackData.recommendations
+    const fallbackRecommendationsV2 = Array.isArray(fallbackData?.recommendations_v2)
+      ? fallbackData.recommendations_v2
       : [];
+    const fallbackRecommendations = Array.isArray(fallbackData?.recommendations) ? fallbackData.recommendations : [];
+    const fallbackRecommendationCandidates =
+      fallbackRecommendationsV2.length > 0 ? fallbackRecommendationsV2 : fallbackRecommendations;
+
+    const recommendations =
+      primaryRecommendationCandidates.length > 0 ? primaryRecommendationCandidates : fallbackRecommendationCandidates;
 
     return {
       ...primary,
@@ -602,15 +895,17 @@ export default function ConciergeClientFull() {
       data: {
         ...(fallbackData ?? {}),
         ...(primaryData ?? {}),
-        recommendations:
-          primaryRecommendations.length > 0 ? primaryRecommendations : fallbackRecommendations,
+        recommendations,
+        recommendations_v2: primaryRecommendationsV2.length > 0 ? primaryRecommendationsV2 : fallbackRecommendationsV2,
       },
     } as UnifiedConciergeResponse;
   }, [liveUnified, backendUnified, lastUnified]);
 
   const displayRecommendations = useMemo(() => {
     if (liveRecs.length > 0) return liveRecs;
+    const recsV2 = displayUnified?.data?.recommendations_v2;
     const recs = displayUnified?.data?.recommendations;
+    if (Array.isArray(recsV2) && recsV2.length > 0) return recsV2 as ConciergeRecommendation[];
     return Array.isArray(recs) ? (recs as ConciergeRecommendation[]) : [];
   }, [liveRecs, displayUnified]);
 
@@ -625,10 +920,7 @@ export default function ConciergeClientFull() {
     activeThreadId !== 0 ? String(activeThreadId) : typeof thread?.id === "number" ? String(thread.id) : null;
 
   const element4 = useMemo(
-    () =>
-      sessionState.temporaryBirthdate
-        ? birthdateToElement4(sessionState.temporaryBirthdate)
-        : null,
+    () => (sessionState.temporaryBirthdate ? birthdateToElement4(sessionState.temporaryBirthdate) : null),
     [sessionState.temporaryBirthdate],
   );
 
@@ -640,15 +932,17 @@ export default function ConciergeClientFull() {
     return goriyakuTags.filter((t) => setNames.has(t.name));
   }, [element4, goriyakuTags]);
 
-  const stopReason: StopReason =
+  const rawStopReason: StopReason =
     process.env.NODE_ENV !== "production" && forced ? forced : (displayUnified?.stop_reason ?? null);
-  const canSend = stopReason === null || (process.env.NODE_ENV !== "production" && !!forced);
+  const stopReason: StopReason = isPremiumActive && rawStopReason === "paywall" ? null : rawStopReason;
+  const canSend = stopReason === null || isPremiumActive || (process.env.NODE_ENV !== "production" && !!forced);
   const isUiPaywall =
-    stopReason === "paywall" ||
-    displayUnified?.limitReached === true ||
-    ((displayUnified?.plan === "anonymous" || displayUnified?.plan === "free") &&
-      typeof displayUnified?.remaining === "number" &&
-      displayUnified.remaining <= 0);
+    !isPremiumActive &&
+    (stopReason === "paywall" ||
+      displayUnified?.limitReached === true ||
+      ((displayUnified?.plan === "anonymous" || displayUnified?.plan === "free") &&
+        typeof displayUnified?.remaining === "number" &&
+        displayUnified.remaining <= 0));
 
   const baseFilters: ConciergeChatFilters = useMemo(() => {
     const bd = normalizeBirthdateInput(sessionState.temporaryBirthdate ?? "") ?? undefined;
@@ -680,24 +974,38 @@ export default function ConciergeClientFull() {
       },
     ): Omit<ConciergeChatRequestV1, "thread_id"> => {
       const birthdate = normalizeBirthdateInput(sessionState.temporaryBirthdate ?? "") ?? undefined;
-      const query = (input?.query ?? needText).trim();
+      const payloadBirthdate = input?.birthdate ?? birthdate;
+      const payloadGoriyakuTagIds = input?.goriyaku_tag_ids ?? baseFilters.goriyaku_tag_ids;
+      const payloadExtraCondition = input?.extra_condition ?? baseFilters.extra_condition;
+      const payloadCrowd = input?.crowd ?? baseFilters.crowd;
+      const payloadDurationMaxMin = input?.duration_max_min ?? baseFilters.duration_max_min;
+      const payloadFreeText = input?.free_text ?? input?.extra_condition ?? baseFilters.free_text;
+      const rawQuery = normalizeQueryText(input?.query ?? needText);
+      const hasPayloadFilter =
+        !!payloadBirthdate ||
+        (payloadGoriyakuTagIds?.length ?? 0) > 0 ||
+        !!payloadExtraCondition ||
+        !!payloadCrowd?.length ||
+        typeof payloadDurationMaxMin === "number" ||
+        !!payloadFreeText;
+      const query = rawQuery || (hasPayloadFilter ? "追加した条件に合う神社を提案してください。" : "");
 
-     return {
-       version: input?.version ?? 1,
-       mode: input?.mode ?? "need",
-       query,
-       birthdate: input?.birthdate ?? birthdate,
-       filters: {
-         birthdate: input?.birthdate ?? birthdate,
-         goriyaku_tag_ids: input?.goriyaku_tag_ids ?? baseFilters.goriyaku_tag_ids,
-         extra_condition: input?.extra_condition ?? baseFilters.extra_condition,
-         crowd: input?.crowd ?? baseFilters.crowd,
-         duration_max_min: input?.duration_max_min ?? baseFilters.duration_max_min,
-         free_text: input?.free_text ?? input?.extra_condition ?? baseFilters.free_text,
-       },
-       goriyaku_tag_ids: input?.goriyaku_tag_ids ?? baseFilters.goriyaku_tag_ids,
-       extra_condition: input?.extra_condition ?? baseFilters.extra_condition,
-     };
+      return {
+        version: input?.version ?? 1,
+        mode: input?.mode ?? "need",
+        query,
+        birthdate: payloadBirthdate,
+        filters: {
+          birthdate: payloadBirthdate,
+          goriyaku_tag_ids: payloadGoriyakuTagIds,
+          extra_condition: payloadExtraCondition,
+          crowd: payloadCrowd,
+          duration_max_min: payloadDurationMaxMin,
+          free_text: payloadFreeText,
+        },
+        goriyaku_tag_ids: payloadGoriyakuTagIds,
+        extra_condition: payloadExtraCondition,
+      };
     },
     [sessionState.temporaryBirthdate, needText, baseFilters],
   );
@@ -743,8 +1051,26 @@ export default function ConciergeClientFull() {
     [displayUnified, filterState],
   );
 
+  const modeAnalyticsPayload = useMemo(() => {
+    const modeRaw = (displayUnified?.data as any)?._signals?.mode;
+    const mode = modeRaw?.mode === "need" || modeRaw?.mode === "compat" ? modeRaw.mode : undefined;
+    const flow = modeRaw?.flow === "A" || modeRaw?.flow === "B" ? modeRaw.flow : undefined;
+    const topRecommendation = displayRecommendations[0] as Record<string, unknown> | undefined;
+    const historyTheme =
+      typeof topRecommendation?.history_theme === "string"
+        ? topRecommendation.history_theme
+        : typeof topRecommendation?.historyTheme === "string"
+          ? topRecommendation.historyTheme
+          : undefined;
 
-
+    return {
+      mode,
+      flow,
+      hasBirthdate: Boolean(normalizedBirthdate),
+      recommendationCount: displayRecommendations.length,
+      historyTheme,
+    };
+  }, [displayUnified, displayRecommendations, normalizedBirthdate]);
 
   const messages = useMemo(
     () => deriveMessages(events, thread?.id ?? activeThreadId),
@@ -785,8 +1111,49 @@ export default function ConciergeClientFull() {
         },
       });
 
+      const completedRecommendations = Array.isArray((u.data as any)?.recommendations_v2)
+        ? (u.data as any).recommendations_v2
+        : Array.isArray(u.data?.recommendations)
+          ? u.data.recommendations
+          : [];
+
+      const completedModeRaw = (u.data as any)?._signals?.mode;
+      const completedTopRecommendation = completedRecommendations[0] as Record<string, unknown> | undefined;
+      const completedHistoryTheme =
+        typeof completedTopRecommendation?.history_theme === "string"
+          ? completedTopRecommendation.history_theme
+          : typeof completedTopRecommendation?.historyTheme === "string"
+            ? completedTopRecommendation.historyTheme
+            : undefined;
+
+      track("consultation_completed", {
+        threadId: nextTid || currentTid ? String(nextTid || currentTid) : undefined,
+        mode: completedModeRaw?.mode,
+        flow: completedModeRaw?.flow,
+        hasBirthdate: Boolean(normalizedBirthdate || baseFilters.birthdate),
+        recommendationCount: completedRecommendations.length,
+        historyTheme: completedHistoryTheme,
+        source: fromEntry ? "entry" : "thread",
+      });
+      if (filterApplyPendingRef.current) {
+        const recommendationCount = Array.isArray(u.data?.recommendations) ? u.data.recommendations.length : 0;
+
+        track("filter_result", {
+          source: "concierge_result",
+          threadId: nextTid || currentTid ? String(nextTid || currentTid) : undefined,
+          mode: "compat",
+          recommendation_count: recommendationCount,
+          is_zero_result: recommendationCount === 0,
+          hasFilter,
+        });
+
+        filterApplyPendingRef.current = false;
+      }
+
       setLiveUnified(u);
-      setLiveRecs(Array.isArray(u.data?.recommendations) ? (u.data.recommendations as any) : []);
+      const unifiedRecommendationsV2 = Array.isArray(u.data?.recommendations_v2) ? u.data.recommendations_v2 : [];
+      const unifiedRecommendations = Array.isArray(u.data?.recommendations) ? u.data.recommendations : [];
+      setLiveRecs((unifiedRecommendationsV2.length > 0 ? unifiedRecommendationsV2 : unifiedRecommendations) as any);
 
       if (isAnonymousLikeUnified(u)) {
         saveAnonymousSnapshot({
@@ -838,17 +1205,13 @@ export default function ConciergeClientFull() {
   /* ----------------------------------------
    * ロック統一：isBusy
    * -------------------------------------- */
-  const isBusy = sending || (isEntryRoute && entrySubmitting);
+  const isBusy = sending || isFiltering || (isEntryRoute && entrySubmitting);
 
   /* ----------------------------------------
    * 安全な送信関数（共通化）
    * -------------------------------------- */
   const safeSend = useCallback(
-    async (
-      textOrPayload: any,
-      logMeta?: Record<string, any>,
-      options?: { ignoreStopReason?: boolean },
-    ) => {
+    async (textOrPayload: any, logMeta?: Record<string, any>, options?: { ignoreStopReason?: boolean }) => {
       snap("safeSend:start", { isEntryRoute, sending, entrySubmitting, canSend });
       const ignoreStopReason = options?.ignoreStopReason === true;
       const effectiveCanSend = ignoreStopReason ? true : canSend;
@@ -863,6 +1226,21 @@ export default function ConciergeClientFull() {
       }
       if (isEntryRoute && entrySubmitting) {
         snap("safeSend:blocked_entrySubmitting", {});
+        return;
+      }
+
+      const rawInputQuery = typeof textOrPayload === "string" ? textOrPayload : textOrPayload?.query;
+      const normalizedInputBirthdate =
+        typeof rawInputQuery === "string" ? normalizeBirthdateInput(rawInputQuery) : null;
+
+      if (typeof rawInputQuery === "string" && isBirthdateOnlyText(rawInputQuery)) {
+        setSessionState((prev) => ({
+          ...prev,
+          temporaryBirthdate: normalizedInputBirthdate,
+        }));
+        setNeedText("");
+        setEntryValidationError("生年月日は補助条件として受け取りました。今の状態も一言添えてください。");
+        snap("safeSend:blocked_birthdate_only_query", { birthdate: normalizedInputBirthdate });
         return;
       }
 
@@ -885,6 +1263,17 @@ export default function ConciergeClientFull() {
               version: textOrPayload?.version ?? 1,
               query: typeof textOrPayload?.query === "string" ? textOrPayload.query : undefined,
             });
+
+      if (!normalizedPayload.query.trim()) {
+        setEntryValidationError("今の状態を一言だけ入力してください。");
+        snap("safeSend:blocked_empty_query", { hasBirthdate: !!normalizedPayload.birthdate });
+        if (isEntrySend) {
+          setEntrySubmitting(false);
+        }
+        return;
+      }
+
+      setEntryValidationError(null);
 
       try {
         if (logMeta) {
@@ -923,6 +1312,7 @@ export default function ConciergeClientFull() {
   const shouldShowThreadRenderer = hydrated && !shouldShowEntry;
   const hideChatPanel = !hydrated || (isEntryRoute && !hasRestoredCandidates);
 
+  const shouldShowEntryError = !isBusy && !isFiltering && !entryValidationError && !!error && !hasCandidates;
 
   const entryViewedRef = useRef(false);
 
@@ -936,8 +1326,6 @@ export default function ConciergeClientFull() {
       meta: {},
     });
   }, [shouldShowEntry]);
-
-  
 
   useEffect(() => {
     if (!isEntryRoute && entrySubmitting) {
@@ -987,6 +1375,7 @@ export default function ConciergeClientFull() {
 
   const onPickExample = (text: string) => {
     setNeedText(text);
+    setEntryValidationError(null);
     snap("action:pick_example", { text });
   };
 
@@ -1016,9 +1405,25 @@ export default function ConciergeClientFull() {
     snap("action:renderer", { type: a.type });
 
     switch (a.type) {
-      case "open_map":
-        navPush("/map", { reason: "open_map" });
+      case "open_map": {
+        if (typeof a.shrineId === "number") {
+          track("shrine_decision", {
+            shrineId: a.shrineId,
+            action: "route",
+            rank: typeof a.rank === "number" ? a.rank : null,
+            tid: activeThreadIdRef.current || null,
+          });
+        }
+
+        const routeHref = typeof a.routeHref === "string" && a.routeHref.length > 0 ? a.routeHref : null;
+        if (routeHref) {
+          window.location.assign(routeHref);
+          return;
+        }
+
+        navPush("/map", { reason: "open_map_fallback", shrineId: a.shrineId ?? null, rank: a.rank ?? null });
         return;
+      }
 
       case "save_concierge_thread":
         snap("action:save_concierge_thread", {
@@ -1047,14 +1452,26 @@ export default function ConciergeClientFull() {
 
       case "back_to_entry":
         snap("action:back_to_entry", { fromTid: activeThreadIdRef.current });
+        trackCardEvent({
+          event: "card_cta_click",
+          cardId: "filter_panel",
+          source: "concierge_result",
+          accessLevel,
+          visibility: "visible",
+          ctaType: "back_to_entry",
+          ...modeAnalyticsPayload,
+          threadId: activeThreadIdRef.current ? String(activeThreadIdRef.current) : undefined,
+        });
         conciergeLog("back_to_entry", {
           tid: activeThreadIdRef.current,
           meta: { fromTid: activeThreadIdRef.current },
         });
         setLiveUnified(null);
         setLiveRecs([]);
+        setIsFiltering(false);
         setEntrySubmitting(false);
         setNeedText("");
+        setEntryValidationError(null);
         setActiveTid(0);
         clearAnonymousSnapshot();
         setSessionState((prev) => ({
@@ -1062,8 +1479,7 @@ export default function ConciergeClientFull() {
           sessionNickname: null,
           temporaryBirthdate: null,
         }));
-        snap("nav:push", { to: "/concierge", reason: "back_to_entry" });
-        router.push("/concierge");
+        navReplace("/concierge", { reason: "back_to_entry" });
         return;
 
       case "filter_close":
@@ -1086,6 +1502,17 @@ export default function ConciergeClientFull() {
           : null;
         if (!compatPayload) return;
         snap("action:filter_apply", { baseFilters, payload: compatPayload });
+        filterApplyPendingRef.current = true;
+        trackCardEvent({
+          event: "card_cta_click",
+          cardId: "filter_panel",
+          source: "concierge_result",
+          accessLevel,
+          visibility: "visible",
+          ctaType: "filter_apply",
+          ...modeAnalyticsPayload,
+          threadId: activeThreadIdRef.current ? String(activeThreadIdRef.current) : undefined,
+        });
         conciergeLog("filter_apply", {
           tid: activeThreadIdRef.current,
           meta: { baseFilters, payload: compatPayload },
@@ -1093,7 +1520,10 @@ export default function ConciergeClientFull() {
         if (!isEntryRoute) {
           setIsFilterOpen(false);
         }
-        void safeSend(compatPayload, { kind: "filter_apply" }, { ignoreStopReason: true });
+        setIsFiltering(true);
+        void safeSend(compatPayload, { kind: "filter_apply" }, { ignoreStopReason: true }).finally(() => {
+          setIsFiltering(false);
+        });
         return;
       }
 
@@ -1122,6 +1552,7 @@ export default function ConciergeClientFull() {
         conciergeLog("filter_clear", { tid: activeThreadIdRef.current });
         setExtraCondition("");
         setSelectedTagIds([]);
+        setEntryValidationError(null);
         setSessionState((prev) => ({
           ...prev,
           temporaryBirthdate: null,
@@ -1143,7 +1574,10 @@ export default function ConciergeClientFull() {
       hideChatPanel={hideChatPanel}
       onSend={(text) => {
         const trimmed = text.trim();
-        if (!trimmed) return;
+        if (!trimmed) {
+          setEntryValidationError("今の状態を一言だけ入力してください。");
+          return;
+        }
         snap("action:onSend", { textLen: trimmed.length });
         void safeSend(trimmed, { kind: "chat" });
       }}
@@ -1151,8 +1585,10 @@ export default function ConciergeClientFull() {
         snap("action:onNewThread", {});
         setLiveUnified(null);
         setLiveRecs([]);
+        setIsFiltering(false);
         setEntrySubmitting(false);
         setNeedText("");
+        setEntryValidationError(null);
         setActiveTid(0);
         clearAnonymousSnapshot();
         snap("nav:replace", { to: "/concierge", reason: "onNewThread" });
@@ -1164,206 +1600,133 @@ export default function ConciergeClientFull() {
     >
       {/* ===== 入口（tidなし） ===== */}
       {shouldShowEntry ? (
-        <div className="px-4 pt-4">
-          <div
-            className={`relative ${conciergeCardClass}`}
-          >
-            {/* ロック中のオーバーレイ */}
+        <div className="px-4 pt-6">
+          <div className={`relative ${conciergeCardClass}`}>
             {isBusy ? (
-              <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-white/70 backdrop-blur-sm">
-                <div className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">選定中です…</div>
-              </div>
-            ) : null}
-
-            <div className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-700">
-              {displayName
-                ? `${displayLabel}さん向けに、今の状態に合う神社を探します。`
-                : "今の状態に合う神社を探します。"}
-            </div>
-            <div className="mt-3">
-              <label className="mb-1 block text-xs font-semibold text-slate-600">呼び名（任意）</label>
-              <input
-                type="text"
-                value={sessionState.sessionNickname ?? ""}
-                onChange={(e) =>
-                  setSessionState((prev) => ({
-                    ...prev,
-                    sessionNickname: e.target.value,
-                  }))
-                }
-                placeholder="例: えつこ"
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
-                maxLength={20}
-              />
-            </div>
-            {!canSaveConciergeThread ? (
-              <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                <p>未ログインでも検索できます。保存にはログインが必要です。</p>
-                <div className="mt-2 flex gap-2">
-                  <button
-                    type="button"
-                    className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white"
-                    onClick={() => redirectToAuth("login")}
-                  >
-                    ログイン
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700"
-                    onClick={() => redirectToAuth("register")}
-                  >
-                    新規登録
-                  </button>
+              <div className="absolute inset-0 z-10 flex items-center justify-center rounded-3xl bg-white/65 backdrop-blur-sm">
+                <div className="rounded-full border border-stone-200/60 bg-stone-50/90 px-3 py-1.5 text-sm text-stone-700">
+                  選定中です…
                 </div>
               </div>
             ) : null}
-            {/* コンテンツ */}
-            <div className="mt-3 space-y-3">
-              <div>
-                <label className="mb-1 block text-xs font-semibold text-slate-600">今の気持ち・状況・願いごと</label>
-                <textarea
-                  value={needText}
-                  onChange={(e) => setNeedText(e.target.value)}
-                  placeholder="今の気分・願い・状況を、そのまま書いてください"
-                  rows={5}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
-                />
-              </div>
 
-              <div>
-                <p className="text-xs font-semibold text-slate-600">入力例</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {feelExamples.map((example) => {
-                    const isSelected = needText.trim() === example.text;
-                    return (
-                      <button
-                        key={example.label}
-                        type="button"
-                        className={[
-                          "rounded-full border px-3 py-2 text-sm font-semibold transition shadow-sm",
-                          isSelected
-                            ? "border-emerald-600 bg-emerald-600 text-white"
-                            : "border-slate-300 bg-white text-slate-800 hover:border-emerald-300 hover:bg-emerald-50 active:bg-emerald-100",
-                          "disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none",
-                        ].join(" ")}
-                        onClick={() => onPickExample(example.text)}
-                        disabled={isBusy || !canSend}
-                        aria-pressed={isSelected}
-                        title={example.text}
-                      >
-                        {example.label}
-                      </button>
-                    );
-                  })}
+            <ConciergeEntryCard
+              displayName={displayName}
+              displayLabel={displayLabel}
+              sessionState={sessionState}
+              setSessionNickname={(value) =>
+                setSessionState((prev) => ({
+                  ...prev,
+                  sessionNickname: value,
+                }))
+              }
+              canSaveConciergeThread={canSaveConciergeThread}
+              isUiPaywall={isUiPaywall}
+              redirectToAuth={redirectToAuth}
+              needText={needText}
+              setNeedText={setNeedText}
+              feelExamples={feelExamples}
+              onPickExample={onPickExample}
+              isBusy={isBusy}
+              canSend={canSend}
+              onSubmit={() => void safeSend(needText.trim(), { kind: "need_submit", textLen: needText.trim().length })}
+              onClear={() => {
+                setNeedText("");
+                setEntryValidationError(null);
+              }}
+            />
+
+            <div className="mt-7 rounded-3xl border border-stone-200/45 bg-stone-50/60 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-medium tracking-[0.2em] text-stone-500">QUIET FILTER</p>
+                  <p className="mt-0.5 text-[11px] text-stone-500">必要なときだけ条件を添える</p>
                 </div>
-              </div>
-
-              <div className="flex flex-col gap-2 sm:flex-row">
                 <button
                   type="button"
-                  className="w-full rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 active:bg-slate-950 disabled:cursor-not-allowed disabled:opacity-50"
-                  disabled={isBusy || !needText.trim() || !canSend}
-                  onClick={() =>
-                    void safeSend(needText.trim(), { kind: "need_submit", textLen: needText.trim().length })
-                  }
-                >
-                  この内容で探す
-                </button>
-
-                <button
-                  type="button"
-                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 active:bg-slate-100 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
+                  className="shrink-0 rounded-full border border-stone-200/70 bg-white/80 px-3 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-50"
+                  onClick={() => setIsFilterOpen((prev) => !prev)}
                   disabled={isBusy}
-                  onClick={() => setNeedText("")}
                 >
-                  クリア
+                  {isFilterOpen ? "閉じる" : "条件を追加する"}
                 </button>
               </div>
 
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-semibold text-slate-700">希望を補足する</p>
-                    <p className="mt-0.5 text-[11px] text-slate-500">誕生日や希望条件を追加して、候補を絞れます。</p>
-                  </div>
-                  <button
-                    type="button"
-                    className="shrink-0 rounded-lg border bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                    onClick={() => setIsFilterOpen((prev) => !prev)}
-                    disabled={isBusy}
-                  >
-                    {isFilterOpen ? "閉じる" : "条件を追加する"}
-                  </button>
-                </div>
+              {!isFilterOpen && hasFilter ? (
+                <div className="mt-4 rounded-2xl border border-stone-200/50 bg-white/80 px-3 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[11px] font-medium text-stone-500">追加済みの条件</p>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {baseFilters.birthdate ? (
+                          <span className="rounded-full border border-stone-200/70 bg-stone-50 px-3 py-1 text-xs font-medium text-stone-700">
+                            誕生日あり
+                          </span>
+                        ) : null}
 
-                {!isFilterOpen && hasFilter ? (
-                  <div className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-2">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-[11px] font-semibold text-slate-600">追加済みの条件</p>
-                        <div className="mt-2 flex flex-wrap gap-1.5">
-                          {baseFilters.birthdate ? (
-                            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
-                              誕生日あり
-                            </span>
-                          ) : null}
+                        {selectedTagNames.length ? (
+                          <span className="rounded-full border border-stone-200/70 bg-stone-50 px-3 py-1 text-xs font-medium text-stone-700">
+                            希望: {selectedTagNames[0]}
+                            {selectedTagNames.length > 1 ? ` 他${selectedTagNames.length - 1}` : ""}
+                          </span>
+                        ) : null}
 
-                          {selectedTagNames.length ? (
-                            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
-                              希望: {selectedTagNames[0]}
-                              {selectedTagNames.length > 1 ? ` 他${selectedTagNames.length - 1}` : ""}
-                            </span>
-                          ) : null}
-
-                          {baseFilters.extra_condition ? (
-                            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
-                              希望の補足あり
-                            </span>
-                          ) : null}
-                        </div>
+                        {baseFilters.extra_condition ? (
+                          <span className="rounded-full border border-stone-200/70 bg-stone-50 px-3 py-1 text-xs font-medium text-stone-700">
+                            希望の補足あり
+                          </span>
+                        ) : null}
                       </div>
-
-                      <button
-                        type="button"
-                        className="shrink-0 rounded-md px-2 py-1 text-[11px] font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-700"
-                        onClick={() => onRendererAction({ type: "filter_clear" })}
-                        disabled={isBusy}
-                      >
-                        クリア
-                      </button>
                     </div>
-                  </div>
-                ) : null}
 
-                {SHOW_NEW_RENDERER && isFilterOpen ? (
-                  <div className="mt-3">
-                    <ConciergeSectionsRenderer
-                      payload={payload}
-                      onAction={onRendererAction}
-                      sending={sending}
-                      threadId={thread?.id ?? activeThreadId}
-                      isEntryRoute={isEntryRoute}
-                    />
+                    <button
+                      type="button"
+                      className="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium text-stone-500 hover:bg-stone-100 hover:text-stone-700"
+                      onClick={() => onRendererAction({ type: "filter_clear" })}
+                      disabled={isBusy}
+                    >
+                      クリア
+                    </button>
                   </div>
-                ) : null}
-              </div>
+                </div>
+              ) : null}
+
+              {SHOW_NEW_RENDERER && isFilterOpen ? (
+                <div className="mt-3">
+                  <ConciergeSectionsRenderer
+                    payload={payload}
+                    analyticsContext={modeAnalyticsPayload}
+                    onAction={onRendererAction}
+                    sending={sending || isFiltering}
+                    threadId={thread?.id ?? activeThreadId}
+                    isEntryRoute={isEntryRoute}
+                    isPremiumActive={isPremiumActive}
+                  />
+                </div>
+              ) : null}
             </div>
 
             {!isBusy && isUiPaywall ? (
-              <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-                <p className="font-medium text-slate-800">無料回数を使い切りました。</p>
-                <p className="mt-1 text-xs leading-6 text-slate-500">続けるにはログイン、または有料プランへの切り替えが必要です。</p>
-                <div className="mt-3 flex gap-2">
-                  <button
-                    type="button"
-                    className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
-                    onClick={() => redirectToAuth("login")}
-                  >
-                    ログイン
-                  </button>
+              <div className="mt-5 rounded-3xl border border-stone-200/50 bg-stone-50/70 px-5 py-4 text-sm text-stone-700">
+                <p className="font-medium text-stone-800">無料回数を使い切りました。</p>
+                <p className="mt-1 text-xs leading-6 text-stone-500">
+                  {isLoggedIn
+                    ? "続けるには有料プランへの切り替えが必要です。"
+                    : "続けるにはログイン、または有料プランへの切り替えが必要です。"}
+                </p>
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                  {!isLoggedIn ? (
+                    <button
+                      type="button"
+                      className="w-full rounded-full border border-stone-200/70 bg-white/85 px-4 py-2 text-sm font-medium text-stone-700 sm:w-auto"
+                      onClick={() => redirectToAuth("login")}
+                    >
+                      ログイン
+                    </button>
+                  ) : null}
                   <Link
                     href="/billing/upgrade"
-                    className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
+                    className="w-full rounded-full border border-emerald-200/70 bg-emerald-50/90 px-4 py-2 text-center text-sm font-medium text-emerald-900 sm:w-auto"
                   >
                     有料プランを見る
                   </Link>
@@ -1371,8 +1734,13 @@ export default function ConciergeClientFull() {
               </div>
             ) : null}
 
-            {/* エラー表示 */}
-            {!isBusy && error ? (
+            {!isBusy && entryValidationError ? (
+              <div className="mt-3 rounded-3xl border border-amber-200/70 bg-amber-50/70 px-5 py-4 text-sm text-amber-900">
+                <p className="font-medium">{entryValidationError}</p>
+              </div>
+            ) : null}
+
+            {shouldShowEntryError ? (
               <div className={`mt-3 ${conciergeCardClass}`}>
                 <p className="text-sm font-semibold text-rose-600">うまく取得できませんでした</p>
                 <div className="mt-2 grid gap-2">
@@ -1402,30 +1770,52 @@ export default function ConciergeClientFull() {
       {/* ===== 通常（tidあり） ===== */}
       {hydrated && shouldShowThreadRenderer ? (
         SHOW_NEW_RENDERER ? (
-          <div className="p-4 space-y-3">
+          <div className="p-4 space-y-5">
+            {isFiltering ? (
+              <div className="rounded-3xl border border-emerald-100 bg-emerald-50/70 px-5 py-4 text-sm text-emerald-900">
+                <p className="font-semibold">条件に合わせて再提案しています</p>
+                <p className="mt-1 text-xs leading-6 text-slate-600">
+                  候補を絞り直しているため、少しだけお待ちください。
+                </p>
+              </div>
+            ) : null}
             <ConciergeSectionsRenderer
               payload={payload}
+              analyticsContext={modeAnalyticsPayload}
               onAction={onRendererAction}
-              sending={sending}
+              sending={sending || isFiltering}
               threadId={thread?.id ?? activeThreadId}
               isEntryRoute={isEntryRoute}
+              isPremiumActive={isPremiumActive}
             />
 
+            {isLoggedIn && stateDelta && previousComparisonVisibility !== "hidden" ? (
+              <PremiumStateDeltaCard stateDelta={stateDelta} isPremium={isPremiumActive} />
+            ) : null}
+
+            <ConciergeDebugPanel unified={displayUnified} />
+
             {!isBusy && isUiPaywall ? (
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-                <p className="font-medium text-slate-800">無料回数を使い切りました。</p>
-                <p className="mt-1 text-xs leading-6 text-slate-500">続けるにはログイン、または有料プランへの切り替えが必要です。</p>
-                <div className="mt-3 flex gap-2">
-                  <button
-                    type="button"
-                    className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
-                    onClick={() => redirectToAuth("login")}
-                  >
-                    ログイン
-                  </button>
+              <div className="rounded-3xl border border-stone-200/50 bg-stone-50/70 px-5 py-4 text-sm text-stone-700">
+                <p className="font-medium text-stone-800">無料回数を使い切りました。</p>
+                <p className="mt-1 text-xs leading-6 text-stone-500">
+                  {isLoggedIn
+                    ? "続けるには有料プランへの切り替えが必要です。"
+                    : "続けるにはログイン、または有料プランへの切り替えが必要です。"}
+                </p>
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                  {!isLoggedIn ? (
+                    <button
+                      type="button"
+                      className="w-full rounded-full border border-stone-200/70 bg-white/85 px-4 py-2 text-sm font-medium text-stone-700 sm:w-auto"
+                      onClick={() => redirectToAuth("login")}
+                    >
+                      ログイン
+                    </button>
+                  ) : null}
                   <Link
                     href="/billing/upgrade"
-                    className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
+                    className="w-full rounded-full border border-emerald-200/70 bg-emerald-50/90 px-4 py-2 text-center text-sm font-medium text-emerald-900 sm:w-auto"
                   >
                     有料プランを見る
                   </Link>

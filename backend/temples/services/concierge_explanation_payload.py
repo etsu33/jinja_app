@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List
+
+from typing import Any, Dict, List, Optional
+
+from temples.services.action_suggestions import get_action_suggestions_for_theme
 
 
 NEED_LABELS_JA: Dict[str, str] = {
@@ -11,9 +14,79 @@ NEED_LABELS_JA: Dict[str, str] = {
     "money": "金運",
     "rest": "休息",
     "courage": "前進・後押し",
+    "protection": "厄除け・守り",
+    "focus": "集中・継続",
+    "travel_safe": "移動・安全",
     "element": "生年月日との相性",
     "fallback": "近い候補",
+    "visit_style": "参拝スタイル",
 }
+
+
+GOGYOU_TONE_JA: Dict[str, str] = {
+    "木": "伸びていく力を受け取りやすい流れ",
+    "火": "前へ進む力や活力を受け取りやすい流れ",
+    "土": "足元を固め、落ち着いて整えやすい流れ",
+    "金": "区切りをつけ、選び直しやすい流れ",
+    "水": "静かに整え直す流れ",
+}
+
+
+# --- HISTORY THEME LABELS & TONES ---
+HISTORY_THEME_LABELS_JA: Dict[str, str] = {
+    "再出発": "再出発",
+    "静寂": "静寂",
+    "復興": "復興",
+    "勝負": "勝負",
+    "縁": "縁",
+    "学び": "学び",
+    "守り": "守り",
+}
+
+HISTORY_THEME_TONE_JA: Dict[str, str] = {
+    "再出発": "切り替えや新しい一歩を支える文脈",
+    "静寂": "静かに心を整える文脈",
+    "復興": "立て直しや回復を支える文脈",
+    "勝負": "決断や挑戦に向き合う文脈",
+    "縁": "人や機会とのつながりを見直す文脈",
+    "学び": "積み重ねや理解を深める文脈",
+    "守り": "不安を鎮め、安心を得る文脈",
+}
+
+
+def _build_history_context(rec: Dict[str, Any]) -> Dict[str, Any] | None:
+    raw_theme = str(rec.get("history_theme") or "").strip()
+    if not raw_theme:
+        return None
+
+    return {
+        "theme": raw_theme,
+        "label": HISTORY_THEME_LABELS_JA.get(raw_theme, raw_theme),
+        "tone": HISTORY_THEME_TONE_JA.get(raw_theme, "神社の歴史や土地の文脈"),
+    }
+
+
+def _build_gogyou_context(birthdate: Optional[str]) -> Dict[str, Any] | None:
+    if not birthdate:
+        return None
+
+    try:
+        from temples.domain.fortune import fortune_profile
+    except Exception:
+        return None
+
+    profile = fortune_profile(birthdate)
+    gogyou = str(getattr(profile, "gogyou", "") or "").strip()
+    eto = str(getattr(profile, "eto", "") or "").strip()
+
+    if not gogyou:
+        return None
+
+    return {
+        "gogyou": gogyou,
+        "eto": eto or None,
+        "tone": GOGYOU_TONE_JA.get(gogyou, "今の流れを受け取りやすい状態"),
+    }
 
 
 def _safe_str_list(value: Any, *, limit: int | None = None) -> List[str]:
@@ -70,7 +143,39 @@ def _normalize_reason_facts(value: Any, *, limit: int | None = None) -> List[Dic
     return out
 
 
-def build_explanation_payload(rec: Dict[str, Any]) -> Dict[str, Any]:
+def _build_visit_style_primary_reason(rec: Dict[str, Any]) -> Dict[str, Any] | None:
+    breakdown_detail = (
+        rec.get("breakdown_detail")
+        if isinstance(rec.get("breakdown_detail"), dict)
+        else {}
+    )
+    features = breakdown_detail.get("features") if isinstance(breakdown_detail, dict) else {}
+    if not isinstance(features, dict):
+        return None
+
+    visit_style = features.get("visit_style")
+    if not isinstance(visit_style, dict):
+        return None
+
+    matched_tags = _safe_str_list(visit_style.get("matched_tags"), limit=5)
+    if not matched_tags:
+        return None
+
+    contribution = float(visit_style.get("contribution") or 0.0)
+    if contribution <= 0:
+        return None
+
+    return {
+        "type": "visit_style",
+        "label": matched_tags[0],
+        "label_ja": NEED_LABELS_JA["visit_style"],
+        "evidence": matched_tags,
+        "score": contribution,
+        "is_primary": True,
+    }
+
+
+def build_explanation_payload(rec: Dict[str, Any], *, birthdate: Optional[str] = None) -> Dict[str, Any]:
     """
     explanation 用の正規化 payload を作る。
 
@@ -118,6 +223,8 @@ def build_explanation_payload(rec: Dict[str, Any]) -> Dict[str, Any]:
             (breakdown_detail["features"].get("score_total_ranked") or 0.0)
         )
 
+    score_v2 = rec.get("score_v2") if isinstance(rec.get("score_v2"), dict) else None
+
     # 候補採用理由
     reason_facts = _normalize_reason_facts(
         rec.get("_reason_facts"),
@@ -128,6 +235,16 @@ def build_explanation_payload(rec: Dict[str, Any]) -> Dict[str, Any]:
         (x for x in reason_facts if x.get("is_primary")),
         None,
     )
+
+    visit_style_primary_reason = _build_visit_style_primary_reason(rec)
+    if (
+        visit_style_primary_reason is not None
+        and (
+            primary_reason is None
+            or str(primary_reason.get("type") or "").strip() == "fallback"
+        )
+    ):
+        primary_reason = visit_style_primary_reason
 
     if primary_reason is None:
         source = str(rec.get("_primary_reason_source") or "").strip()
@@ -144,6 +261,12 @@ def build_explanation_payload(rec: Dict[str, Any]) -> Dict[str, Any]:
 
     secondary_reasons = [x for x in reason_facts if not x.get("is_primary")]
 
+    gogyou_context = _build_gogyou_context(birthdate)
+    history_context = _build_history_context(rec)
+    action_suggestions = get_action_suggestions_for_theme(
+        history_context.get("theme") if isinstance(history_context, dict) else None,
+    )
+
     return {
         "version": 2,
         "matched_need_tags": matched_need_tags,
@@ -154,16 +277,20 @@ def build_explanation_payload(rec: Dict[str, Any]) -> Dict[str, Any]:
         "highlights": highlights,
         "reason_source": reason_source,
         "original_reason": original_reason,
+        "gogyou_context": gogyou_context,
+        "history_context": history_context,
+        "action_suggestions": action_suggestions,
         "score": {
             "element": score_element,
             "need": score_need,
             "total": score_total,
             "total_ranked": score_total_ranked,
         },
+        "score_v2": score_v2,
     }
 
 
-def attach_explanation_payload(recs: Dict[str, Any]) -> Dict[str, Any]:
+def attach_explanation_payload(recs: Dict[str, Any], *, birthdate: Optional[str] = None) -> Dict[str, Any]:
     items = recs.get("recommendations") or []
     if not isinstance(items, list):
         return recs
@@ -171,7 +298,7 @@ def attach_explanation_payload(recs: Dict[str, Any]) -> Dict[str, Any]:
     for rec in items:
         if not isinstance(rec, dict):
             continue
-        rec["_explanation_payload"] = build_explanation_payload(rec)
+        rec["_explanation_payload"] = build_explanation_payload(rec, birthdate=birthdate)
 
     return recs
 

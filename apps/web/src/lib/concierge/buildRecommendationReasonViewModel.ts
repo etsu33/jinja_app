@@ -1,6 +1,12 @@
 import { buildReasonNarrative } from "./buildReasonNarrative";
 import { buildStateNarrative } from "./buildStateNarrative";
 import { buildMeaningNarrative } from "./buildMeaningNarrative";
+import {
+  HERO_COMPAT_SUBTITLE,
+  HERO_EYEBROW_LABELS,
+  getHeroThemeSubtitle,
+  type HeroTheme,
+} from "@/lib/concierge/copy/heroThemeCopies";
 
 export type ReasonInputType = "query" | "birthdate" | "fallback";
 
@@ -29,6 +35,7 @@ export type RecommendationLike = {
   breakdown?: {
     matched_need_tags?: string[] | null;
   } | null;
+  breakdown_detail?: any | null;
   reason_facts?: {
     primary_axis?: "need" | "benefit" | "feature" | "element" | "distance" | "popularity" | "fallback" | null;
     confidence?: "high" | "mid" | "low" | null;
@@ -47,6 +54,8 @@ export type RecommendationReasonViewModel = {
   inputType: ReasonInputType;
   hero: {
     topReasonLabel?: string;
+    eyebrowLabel?: string;
+    subtitle?: string;
     catchCopy: string;
   };
   list: {
@@ -159,6 +168,84 @@ export type RecommendationMatchModel = {
 
 export function clean(value?: string | null): string {
   return (value ?? "").trim();
+}
+
+function compactText(value?: string | null, maxLength = 54): string {
+  const text = clean(value);
+  if (!text) return "";
+  if (text.length <= maxLength) return text;
+
+  const sentenceEndIndex = text.slice(0, maxLength).search(/[。.!?！？]/);
+  if (sentenceEndIndex > 0) return text.slice(0, sentenceEndIndex + 1).trim();
+
+  return text;
+}
+
+function compactOptionalText(value?: string | null, maxLength = 54): string | undefined {
+  const text = compactText(value, maxLength);
+  return text || undefined;
+}
+
+function compactReasonViewModel(reason: ReturnType<typeof buildReasonNarrative>) {
+  return {
+    hero: {
+      ...reason.hero,
+      catchCopy: compactText(reason.hero.catchCopy, 32),
+    },
+    list: {
+      ...reason.list,
+      primaryPhrase: compactText(reason.list.primaryPhrase, 44),
+      summary: compactText(reason.list.summary, 38),
+      secondaryPhrase: compactOptionalText(reason.list.secondaryPhrase, 42),
+    },
+    rank: {
+      ...reason.rank,
+      whyTop: compactOptionalText(reason.rank.whyTop, 48),
+      differenceFromOthers: compactOptionalText(reason.rank.differenceFromOthers, 42),
+    },
+    why: {
+      ...reason.why,
+      primaryReason: compactText(reason.why.primaryReason, 44),
+      summary: compactText(reason.why.summary, 38),
+      secondaryReason: compactOptionalText(reason.why.secondaryReason, 42),
+    },
+  };
+}
+
+function resolveHeroTheme(needTags?: string[] | null): HeroTheme {
+  const tags = (Array.isArray(needTags) ? needTags : []).map((tag) => clean(tag)).filter(Boolean);
+  const joined = tags.join(" ");
+
+  if (tags.includes("money") || joined.includes("金運") || joined.includes("巡り")) return "money";
+  if (tags.includes("career") || joined.includes("仕事") || joined.includes("転機")) return "work";
+  if (tags.includes("love") || joined.includes("恋愛") || joined.includes("関係") || joined.includes("縁")) return "relationship";
+  if (tags.includes("mental") || tags.includes("rest") || joined.includes("静か") || joined.includes("休息") || joined.includes("落ち着")) return "quiet";
+  if (tags.includes("courage") || joined.includes("切り替え") || joined.includes("前向き") || joined.includes("厄除")) return "reset";
+
+  return "default";
+}
+
+
+function buildHeroCopy(args: {
+  mode?: BuildParams["mode"];
+  inputType: ReasonInputType;
+  needTags?: string[] | null;
+  hero: ReturnType<typeof compactReasonViewModel>["hero"];
+}): RecommendationReasonViewModel["hero"] {
+  if (args.mode === "compat" || args.inputType === "birthdate") {
+    return {
+      ...args.hero,
+      topReasonLabel: "生年月日との重なりが強い",
+      eyebrowLabel: HERO_EYEBROW_LABELS.compat,
+      subtitle: HERO_COMPAT_SUBTITLE,
+    };
+  }
+
+  return {
+    ...args.hero,
+    eyebrowLabel: HERO_EYEBROW_LABELS.need,
+    subtitle: getHeroThemeSubtitle(resolveHeroTheme(args.needTags)),
+  };
 }
 
 export function uniq<T>(arr: T[]): T[] {
@@ -422,6 +509,15 @@ export function buildRecommendationMatchModel(args: {
  */
 export function buildRecommendationReasonViewModel(params: BuildParams): RecommendationReasonViewModel {
   const reason = buildReasonNarrative(params);
+  const compactReason = compactReasonViewModel(reason);
+
+  const inputType = resolveInputType(params);
+  const hero = buildHeroCopy({
+    mode: params.mode,
+    inputType,
+    needTags: params.needTags,
+    hero: compactReason.hero,
+  });
 
   const state = buildStateNarrative({
     params,
@@ -436,18 +532,18 @@ export function buildRecommendationReasonViewModel(params: BuildParams): Recomme
   });
 
   return {
-    inputType: resolveInputType(params),
-    hero: reason.hero,
-    list: reason.list,
+    inputType,
+    hero,
+    list: compactReason.list,
     detail: {
       heroMeaningCopy: meaning.heroMeaningCopy,
       consultationSummary: state.consultationSummary,
       shrineMeaning: meaning.shrineMeaning,
       actionMeaning: meaning.actionMeaning,
     },
-    rank: reason.rank,
+    rank: compactReason.rank,
     debug: reason.debug,
-    why: reason.why,
+    why: compactReason.why,
     interpretation: {
       consultationSummary: state.consultationSummary,
       shrineMeaning: meaning.shrineMeaning,

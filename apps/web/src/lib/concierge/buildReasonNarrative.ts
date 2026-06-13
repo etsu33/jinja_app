@@ -72,6 +72,14 @@ function buildNeedThemeLabel(need?: string | null): string | null {
   const normalized = clean(need);
   if (!normalized) return null;
 
+  if (normalized === "money") return "流れの立て直し";
+  if (normalized === "career") return "仕事";
+  if (normalized === "mental") return "気持ちの立て直し";
+  if (normalized === "rest") return "休息";
+  if (normalized === "courage") return "前進のきっかけ";
+  if (normalized === "love") return "関係性";
+  if (normalized === "study") return "学業";
+
   if (normalized === "厄除け") return "立て直し";
   if (normalized === "仕事") return "仕事";
   if (normalized === "金運") return "流れの立て直し";
@@ -138,6 +146,64 @@ function buildShrineAxisLabel(args: {
 
   if (benefitMeaning) return benefitMeaning;
   if (featureMeaning) return featureMeaning;
+  return null;
+}
+
+function getMatchedVisitStyleTags(rec: BuildParams["rec"]): string[] {
+  const features = (rec as any)?.breakdown_detail?.features;
+  const visitStyle = features && typeof features === "object" ? (features as any).visit_style : null;
+  const matched = visitStyle && typeof visitStyle === "object" ? (visitStyle as any).matched_tags : null;
+  if (!Array.isArray(matched)) return [];
+  return matched.filter((tag): tag is string => typeof tag === "string" && clean(tag).length > 0);
+}
+
+function normalizeVisitStyleTag(tag: string): string {
+  const normalized = clean(tag);
+  if (!normalized) return "";
+
+  if (normalized === "quiet" || normalized === "静か") return "quiet";
+  if (normalized === "nature" || normalized === "自然") return "nature";
+  if (normalized === "reset" || normalized === "切り替え") return "reset";
+  if (normalized === "less_crowded" || normalized === "混雑少なめ" || normalized === "人混み少なめ") return "less_crowded";
+  if (normalized === "classic" || normalized === "定番") return "classic";
+  if (normalized === "nearby" || normalized === "近場") return "nearby";
+
+  return normalized;
+}
+
+function buildVisitStyleLabel(tag: string): string | null {
+  const normalized = normalizeVisitStyleTag(tag);
+  if (!normalized) return null;
+
+  if (normalized === "quiet") return "静かに落ち着いて過ごしたい気持ち";
+  if (normalized === "nature") return "自然を感じながら整えたい気持ち";
+  if (normalized === "reset") return "気持ちを切り替えたい流れ";
+  if (normalized === "less_crowded") return "人混みを避けて落ち着きたい条件";
+  if (normalized === "classic") return "定番感があり安心して選びたい条件";
+  if (normalized === "nearby") return "近場で無理なく向かいたい条件";
+
+  return null;
+}
+
+function buildVisitStylePrimaryText(rec: BuildParams["rec"]): string | null {
+  const tag = getMatchedVisitStyleTags(rec)[0];
+  const label = tag ? buildVisitStyleLabel(tag) : null;
+  if (!label) return null;
+  return `選んだ参拝スタイルの「${label}」にも合うため、この神社が候補に入っています。`;
+}
+
+function buildVisitStyleCatchCopy(rec: BuildParams["rec"]): string | null {
+  const tag = getMatchedVisitStyleTags(rec)[0];
+  const normalized = tag ? normalizeVisitStyleTag(tag) : "";
+  if (!normalized) return null;
+
+  if (normalized === "quiet") return "静かに落ち着いて過ごしたい時の神社";
+  if (normalized === "nature") return "自然を感じながら整えたい時の神社";
+  if (normalized === "reset") return "気持ちを切り替えたい時の神社";
+  if (normalized === "less_crowded") return "人混みを避けて落ち着きたい時の神社";
+  if (normalized === "classic") return "安心して選びたい時の神社";
+  if (normalized === "nearby") return "無理なく向かいやすい神社";
+
   return null;
 }
 
@@ -213,6 +279,11 @@ function buildQueryCandidates(params: BuildParams): Candidate[] {
     out.push({ key: "need_match", text: buildBenefitSupportText(shrine.benefitPrimary, shrine.tone) });
   } else if (shrine.feature) {
     out.push({ key: "text_match", text: buildFeatureSupportText(shrine.feature, shrine.tone) });
+  }
+
+  const visitStyleText = buildVisitStylePrimaryText(rec);
+  if (visitStyleText) {
+    out.push({ key: "text_match", text: visitStyleText });
   }
 
   if (typeof rec.astro_priority === "number" && rec.astro_priority > 0) {
@@ -362,6 +433,11 @@ function buildFactsCandidates(params: BuildParams, inputType: ReturnType<typeof 
       break;
   }
 
+  const visitStyleText = buildVisitStylePrimaryText(rec);
+  if (visitStyleText) {
+    out.push({ key: "text_match", text: visitStyleText });
+  }
+
   for (const secondaryType of match.secondaryReasonTypes) {
     switch (secondaryType) {
       case "secondary_need_match":
@@ -444,12 +520,15 @@ function buildTopReasonLabel(inputType: ReturnType<typeof resolveInputType>, pri
   if (inputType === "fallback") {
     if (primaryKey === "distance") return "まず動きやすい";
     if (primaryKey === "popular") return "まず選びやすい";
-    return "おすすめ";
+    return "見やすい候補";
   }
   return undefined;
 }
 
 function buildHeroCatchCopy(params: BuildParams, primary: Candidate): string {
+  const visitStyleCatchCopy = buildVisitStyleCatchCopy(params.rec);
+  if (visitStyleCatchCopy) return visitStyleCatchCopy;
+
   if (params.mode === "compat") {
     return "相性から静かに選びたい時の神社";
   }
@@ -493,54 +572,54 @@ function buildRankReason(
     case "strongest_theme_match": {
       if (tone === "strong") {
         return {
-          whyTop: "今回の候補の中でも、切り替えや踏み出しに向けた重なりが最も強く見られる候補です。",
-          differenceFromOthers: "他候補よりも、流れを切り替える方向へ気持ちを動かしやすい点で比較上の強みがあります。",
+          whyTop: "今回の候補の中でも、切り替えや踏み出しに向けた重なりが見えやすい候補です。",
+          differenceFromOthers: "他候補と比べると、流れを切り替える方向へ気持ちを向けやすい位置づけです。",
         };
       }
       if (tone === "quiet") {
         return {
-          whyTop: "今回の候補の中でも、落ち着いて受け止めやすい重なりが強い候補です。",
-          differenceFromOthers: "他候補よりも、今の状態を静かに整えながら向き合いやすい点で比較上の強みがあります。",
+          whyTop: "今回の候補の中でも、落ち着いて受け止めやすい重なりが見えやすい候補です。",
+          differenceFromOthers: "他候補と比べると、今の状態を静かに整えながら向き合いやすい位置づけです。",
         };
       }
       if (tone === "tight") {
         return {
-          whyTop: "今回の候補の中でも、判断を絞りやすい重なりが強い候補です。",
-          differenceFromOthers: "他候補よりも、優先順位を定め直しながら向き合いやすい点で比較上の強みがあります。",
+          whyTop: "今回の候補の中でも、判断を絞りやすい重なりが見えやすい候補です。",
+          differenceFromOthers: "他候補と比べると、優先順位を定め直しながら向き合いやすい位置づけです。",
         };
       }
       if (tone === "open") {
         return {
-          whyTop: "今回の候補の中でも、巡りや視野を開きやすい重なりが強い候補です。",
-          differenceFromOthers: "他候補よりも、滞りをほどいて流れを通し直しやすい点で比較上の強みがあります。",
+          whyTop: "今回の候補の中でも、巡りや視野を開きやすい重なりが見えやすい候補です。",
+          differenceFromOthers: "他候補と比べると、滞りをほどいて流れを通し直しやすい位置づけです。",
         };
       }
       if (needPrimary === "学業") {
         return {
           whyTop: "今回の候補の中でも、学業への集中に重ねやすい候補です。",
-          differenceFromOthers: "他候補よりも、目標に向けて意識を絞りやすい点で比較上の強みがあります。",
+          differenceFromOthers: "他候補と比べると、目標に向けて意識を絞りやすい位置づけです。",
         };
       }
       return {
-        whyTop: "今回の候補の中でも、相談内容との一致が最も強く見られる候補です。",
-        differenceFromOthers: "他候補よりも、今回いちばん優先したいテーマによりまっすぐ重なりやすい位置づけです。",
+        whyTop: "今回の候補の中でも、相談内容との重なりが見えやすい候補です。",
+        differenceFromOthers: "他候補と比べると、今回優先したいテーマにまっすぐ重なりやすい位置づけです。",
       };
     }
     case "strongest_compat_match":
       return {
-        whyTop: "今回の候補の中でも、生年月日との相性の重なりが最も強い候補です。",
-        differenceFromOthers: "他候補よりも、気質に無理なく馴染みやすい点が比較上の強みになっています。",
+        whyTop: "今回の候補の中でも、生年月日との相性の重なりが見えやすい候補です。",
+        differenceFromOthers: "他候補と比べると、気質に無理なく馴染みやすい位置づけです。",
       };
     case "most_actionable":
       return {
-        whyTop: "今回の候補の中でも、実際に動きやすい条件が強い候補です。",
-        differenceFromOthers: "他候補よりも、足を運ぶこと自体が負担になりにくい点で比較上の優位があります。",
+        whyTop: "今回の候補の中でも、実際に動きやすい条件が見えやすい候補です。",
+        differenceFromOthers: "他候補と比べると、足を運ぶこと自体が負担になりにくい位置づけです。",
       };
     case "most_stable_choice":
     default:
       return {
-        whyTop: "今回の候補の中でも、選びやすさの安定感が強い候補です。",
-        differenceFromOthers: "他候補よりも、迷いがある段階でも選択しやすい点で比較上の安定感があります。",
+        whyTop: "今回の候補の中でも、選びやすさの安定感が見えやすい候補です。",
+        differenceFromOthers: "他候補と比べると、迷いがある段階でも選択しやすい位置づけです。",
       };
   }
 }
