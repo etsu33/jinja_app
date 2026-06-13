@@ -506,6 +506,13 @@ export default function ConciergeClientFull() {
     setNeedText((current) => (current.trim() ? current : theme));
   }, [sp]);
 
+  useEffect(() => {
+    const openFilter = (sp.get("openFilter") ?? "").trim();
+    if (openFilter !== "1") return;
+
+    setIsFilterOpen(true);
+  }, [sp]);
+
   const displayName = useMemo(
     () =>
       resolveDisplayName({
