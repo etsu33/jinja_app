@@ -30,14 +30,14 @@ export function HomeHeroConsultationInput() {
   return (
     <div className="w-full max-w-2xl rounded-[2rem] border border-white/70 bg-white/70 p-4 text-left shadow-sm shadow-stone-900/5 sm:p-5">
       <label htmlFor="home-hero-consultation" className="block text-[11px] font-medium text-stone-500">
-        今の相談を一言で書く
+        今の気持ちを少しだけ書く
       </label>
 
       <textarea
         id="home-hero-consultation"
         value={theme}
         onChange={(event) => setTheme(event.target.value)}
-        placeholder="例: 気持ちを切り替えたい、静かな時間を持ちたい"
+        placeholder="例: 気持ちを切り替えたい、これからのことを考えたい"
         rows={3}
         className="mt-2 w-full resize-none rounded-3xl border border-stone-200/50 bg-stone-50/70 px-4 py-3 text-sm leading-7 text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-emerald-200 focus:ring-1 focus:ring-emerald-100"
       />
@@ -62,7 +62,7 @@ export function HomeHeroConsultationInput() {
           disabled={!canSubmit}
           onClick={() => submitTheme(theme)}
         >
-          言葉を整える
+          この相談ではじめる
         </button>
 
         <button
@@ -70,7 +70,7 @@ export function HomeHeroConsultationInput() {
           className="inline-flex min-h-[40px] w-full items-center justify-center rounded-full border border-stone-200/70 bg-white/70 px-5 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100"
           onClick={() => router.push("/concierge?openFilter=1")}
         >
-          条件を追加する
+          必要なら条件を添える
         </button>
       </div>
     </div>

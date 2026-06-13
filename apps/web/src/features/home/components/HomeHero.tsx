@@ -12,7 +12,7 @@ export function HomeHero() {
             今の相談から、向かう神社を見つける
           </h1>
           <p className="mx-auto max-w-xl text-sm leading-7 text-stone-500">
-            悩みや願いをもとに、今の状態に合う神社を提案します。
+            迷っていることを一言にすると、今の気持ちに合わせて神社との出会いを整えます。
           </p>
         </div>
 
