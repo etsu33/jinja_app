@@ -1653,8 +1653,8 @@ export default function ConciergeClientFull() {
             <div className="mt-7 rounded-3xl border border-stone-200/45 bg-stone-50/60 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-[11px] font-medium tracking-[0.2em] text-stone-500">QUIET FILTER</p>
-                  <p className="mt-0.5 text-[11px] text-stone-500">必要なときだけ条件を添える</p>
+                  <p className="text-[11px] font-medium tracking-[0.2em] text-stone-500">補助条件</p>
+                  <p className="mt-0.5 text-[11px] text-stone-500">相談に少し条件を添える</p>
                 </div>
                 <button
                   type="button"

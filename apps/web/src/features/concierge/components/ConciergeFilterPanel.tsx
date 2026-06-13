@@ -90,7 +90,7 @@ export default function ConciergeFilterPanel({
       <div className="grid gap-0.5 rounded-xl border border-slate-200 bg-white p-2">
         <div className="space-y-0.5">
           <div className="text-[10px] font-semibold text-slate-500">誕生日（任意）</div>
-          <div className="text-[10px] text-slate-400">相性の参考にします</div>
+          <div className="text-[10px] text-slate-400">提案の補助として使います</div>
           <input
             type="date"
             value={birthdate}
@@ -107,7 +107,7 @@ export default function ConciergeFilterPanel({
 
         <div className="space-y-1">
           <div>
-            <div className="text-[10px] font-semibold text-slate-600">参拝スタイル</div>
+            <div className="text-[10px] font-semibold text-slate-600">過ごし方の希望</div>
             <p className="mt-0.5 text-[10px] leading-4 text-slate-400">
               どう過ごしたいかを選ぶと、候補の並び方の参考にします。
             </p>
@@ -154,7 +154,7 @@ export default function ConciergeFilterPanel({
       {tagsLoading || tagsError || visibleGoriyakuTags.length > 0 || hiddenGoriyakuCount > 0 ? (
         <div className="space-y-1 rounded-xl border border-slate-200 bg-white p-2">
           <div>
-            <div className="text-[10px] font-semibold text-slate-600">願いごと・ご利益</div>
+            <div className="text-[10px] font-semibold text-slate-600">願いに近いもの</div>
             <p className="mt-0.5 text-[10px] leading-4 text-slate-400">
               願いたいことに近いものを選ぶと、神社の特徴との一致を見ます。
             </p>

@@ -562,8 +562,8 @@ export default function ConciergeSectionsRenderer({
 
               return (
                 <div key={`filter-${i}-closed`}>
-                  <DetailSection title="条件で絞る">
-                    <p className="mb-2 text-xs text-slate-500">まずは条件を追加</p>
+                  <DetailSection title="補助条件を添える">
+                    <p className="mb-2 text-xs text-slate-500">必要なものだけ選んでください</p>
 
                     <div className="mb-3 flex flex-wrap gap-2">
                       {presets.map((p) => {
@@ -614,7 +614,7 @@ export default function ConciergeSectionsRenderer({
                         onAction?.({ type: "filter_apply" });
                       }}
                     >
-                      {sending ? "絞り込み中…" : "この条件で絞り込む"}
+                      {sending ? "絞り込み中…" : "この内容で反映する"}
                     </button>
 
                     <button
@@ -622,7 +622,7 @@ export default function ConciergeSectionsRenderer({
                       className="mt-2 w-full rounded-xl border px-4 py-3 text-sm font-semibold"
                       onClick={() => onAction?.({ type: "add_condition" })}
                     >
-                      詳細条件を設定する
+                      もう少し詳しく添える
                     </button>
                   </DetailSection>
                 </div>
