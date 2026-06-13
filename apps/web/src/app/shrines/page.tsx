@@ -12,6 +12,9 @@ import { getGoriyakuTags, type GoriyakuTag } from "@/lib/api/tags";
 import { buildShrineListCardModel } from "@/lib/shrine/buildShrineListCardModel";
 import { trackSearchEvent } from "@/lib/analytics/searchEvents";
 
+const VISIT_STYLE_TAGS = ["静か", "自然", "駅近", "ひとり", "落ち着く"] as const;
+const HISTORY_THEME_TAGS = ["縁結び", "武運", "商売", "学問", "稲荷", "八幡"] as const;
+
 function ShrinesPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -137,6 +140,8 @@ function ShrinesPageContent() {
 
   const submissionNoticeTitle = submittedName ? `「${submittedName}」の投稿を受け付けました` : "投稿を受け付けました";
   const activeGoriyakuTag = goriyakuTags.find((tag) => tag.name === q) ?? null;
+  const activeVisitStyleTag = VISIT_STYLE_TAGS.find((tag) => tag === q) ?? null;
+  const activeHistoryThemeTag = HISTORY_THEME_TAGS.find((tag) => tag === q) ?? null;
   const submissionNoticeBody = showSubmissionPendingBanner
     ? "現在公開準備中です。確認が完了するまで公開検索には表示されません。"
     : null;
@@ -201,59 +206,132 @@ function ShrinesPageContent() {
 
       {shouldShowSearchResults && (
         <div className="mb-8 space-y-4">
-          <form onSubmit={handleSearch} className="flex flex-col gap-2 sm:flex-row sm:items-end">
-            <input
-              type="search"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.currentTarget.value)}
-              placeholder="神社名や願いごとを、そっと入力"
-              className="w-full rounded-3xl border border-stone-200/35 bg-stone-50/25 px-3 py-2 text-sm text-stone-900"
-            />
-            <button
-              type="submit"
-              className="rounded-full border border-emerald-200/50 bg-emerald-50/40 px-3 py-2 text-xs font-medium text-emerald-700 hover:bg-emerald-100/30"
-            >
-              ひらく
-            </button>
-          </form>
+          <section className="rounded-3xl border border-stone-200/25 bg-stone-50/30 p-4">
+            <div className="space-y-1">
+              <p className="text-[11px] font-medium tracking-[0.2em] text-stone-500">EXPERIENCE</p>
+              <h2 className="text-sm font-medium text-stone-800">どんな時間を過ごしたいですか</h2>
+            </div>
 
-          <div className="space-y-2">
-            <p className="text-[11px] font-medium tracking-[0.2em] text-stone-500">TAGS</p>
+            <div className="mt-4 space-y-4">
+              <div className="space-y-2">
+                <p className="text-[11px] font-medium text-stone-500">過ごし方</p>
+                <div className="flex flex-wrap gap-2">
+                  {VISIT_STYLE_TAGS.map((tag) => {
+                    const isActive = tag === q;
 
-            {tagsLoading ? (
-              <p className="text-xs text-stone-400 opacity-70">ご利益タグを読み込み中…</p>
-            ) : tagsError ? (
-              <p className="text-xs text-rose-600">{tagsError}</p>
-            ) : goriyakuTags.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {goriyakuTags.slice(0, 8).map((tag) => {
-                  const isActive = tag.name === q;
+                    return (
+                      <button
+                        key={tag}
+                        type="button"
+                        aria-pressed={isActive}
+                        onClick={() => handleTagSearch(tag)}
+                        className={[
+                          "rounded-full border px-3 py-1.5 text-xs font-medium transition",
+                          isActive
+                            ? "border-emerald-200/70 bg-emerald-50/80 text-emerald-700"
+                            : "border-stone-200/40 bg-white/65 text-stone-600 hover:bg-stone-100/45",
+                        ].join(" ")}
+                      >
+                        {tag}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
-                  return (
-                    <button
-                      key={tag.id}
-                      type="button"
-                      aria-pressed={isActive}
-                      onClick={() => handleTagSearch(tag.name)}
-                      className={[
-                        "rounded-full border px-2.5 py-1 text-xs font-medium transition",
-                        isActive
-                          ? "border-emerald-200/70 bg-emerald-50/70 text-emerald-700"
-                          : "border-stone-200/40 bg-stone-50/25 text-stone-500 hover:bg-stone-100/30 opacity-65",
-                      ].join(" ")}
-                    >
-                      {tag.name}
-                    </button>
-                  );
-                })}
-                {activeGoriyakuTag ? (
-                  <p className="text-xs text-emerald-700 opacity-70">
-                    {activeGoriyakuTag.name}で表示中です。もう一度押すと解除できます。
-                  </p>
+              <div className="space-y-2">
+                <p className="text-[11px] font-medium text-stone-500">歴史テーマ</p>
+                <div className="flex flex-wrap gap-2">
+                  {HISTORY_THEME_TAGS.map((tag) => {
+                    const isActive = tag === q;
+
+                    return (
+                      <button
+                        key={tag}
+                        type="button"
+                        aria-pressed={isActive}
+                        onClick={() => handleTagSearch(tag)}
+                        className={[
+                          "rounded-full border px-3 py-1.5 text-xs font-medium transition",
+                          isActive
+                            ? "border-emerald-200/70 bg-emerald-50/80 text-emerald-700"
+                            : "border-stone-200/40 bg-white/65 text-stone-600 hover:bg-stone-100/45",
+                        ].join(" ")}
+                      >
+                        {tag}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {activeVisitStyleTag || activeHistoryThemeTag ? (
+              <p className="mt-3 text-xs text-emerald-700 opacity-70">
+                {activeVisitStyleTag ?? activeHistoryThemeTag}で表示中です。もう一度押すと解除できます。
+              </p>
+            ) : null}
+          </section>
+
+          <details className="rounded-3xl border border-stone-200/20 bg-white/55 p-4">
+            <summary className="cursor-pointer text-sm font-medium text-stone-700">詳しく探す</summary>
+
+            <div className="mt-4 space-y-4">
+              <form onSubmit={handleSearch} className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                <input
+                  type="search"
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.currentTarget.value)}
+                  placeholder="神社名や願いごとを、そっと入力"
+                  className="w-full rounded-3xl border border-stone-200/35 bg-stone-50/25 px-3 py-2 text-sm text-stone-900"
+                />
+                <button
+                  type="submit"
+                  className="rounded-full border border-emerald-200/50 bg-emerald-50/40 px-3 py-2 text-xs font-medium text-emerald-700 hover:bg-emerald-100/30"
+                >
+                  ひらく
+                </button>
+              </form>
+
+              <div className="space-y-2">
+                <p className="text-[11px] font-medium tracking-[0.2em] text-stone-500">願いに近いもの</p>
+
+                {tagsLoading ? (
+                  <p className="text-xs text-stone-400 opacity-70">ご利益タグを読み込み中…</p>
+                ) : tagsError ? (
+                  <p className="text-xs text-rose-600">{tagsError}</p>
+                ) : goriyakuTags.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {goriyakuTags.slice(0, 8).map((tag) => {
+                      const isActive = tag.name === q;
+
+                      return (
+                        <button
+                          key={tag.id}
+                          type="button"
+                          aria-pressed={isActive}
+                          onClick={() => handleTagSearch(tag.name)}
+                          className={[
+                            "rounded-full border px-2.5 py-1 text-xs font-medium transition",
+                            isActive
+                              ? "border-emerald-200/70 bg-emerald-50/70 text-emerald-700"
+                              : "border-stone-200/40 bg-stone-50/25 text-stone-500 hover:bg-stone-100/30 opacity-65",
+                          ].join(" ")}
+                        >
+                          {tag.name}
+                        </button>
+                      );
+                    })}
+                    {activeGoriyakuTag ? (
+                      <p className="text-xs text-emerald-700 opacity-70">
+                        {activeGoriyakuTag.name}で表示中です。もう一度押すと解除できます。
+                      </p>
+                    ) : null}
+                  </div>
                 ) : null}
               </div>
-            ) : null}
-          </div>
+            </div>
+          </details>
         </div>
       )}
 
