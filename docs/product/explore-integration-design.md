@@ -326,6 +326,126 @@ ExploreLayout.test.tsx
 
 ---
 
+## Search / Map 共通Filter設計
+
+Search / Map 共通Filter は、Explore 上で使う検索条件の意味を揃えるための設計レイヤーとして扱う。
+
+### 目的
+
+```text
+共通Filterの目的
+├─ /shrines と /map の入力条件を揃える
+├─ ExploreLayout 接続時の props 境界を明確にする
+├─ Search State と Nearby State を混ぜない
+└─ 将来の Explore Route 統合に備える
+```
+
+---
+
+## Common Filter State
+
+```text
+CommonFilterState
+├─ keyword
+│  └─ 神社名 / 地域名 / 願いごと
+│
+├─ experienceTag
+│  └─ 過ごし方
+│
+├─ historyTheme
+│  └─ 歴史テーマ
+│
+└─ goriyakuTag
+   └─ ご利益タグ
+```
+
+### 方針
+
+- keyword は `/shrines` の q 検索を正本とする
+- experienceTag / historyTheme は体験チップ由来の条件として扱う
+- goriyakuTag は DetailSearchAccordion 配下の補助条件として扱う
+- 1つの tag 文字列に寄せる現状実装は維持しつつ、将来的に filter object へ拡張できる形にする
+
+---
+
+## `/shrines` 側 Filter 入力
+
+```text
+/shrines
+├─ keyword
+│  └─ inputValue / q
+│
+├─ experienceTag
+│  └─ ExperienceFilterSection
+│
+├─ historyTheme
+│  └─ ExperienceFilterSection
+│
+└─ goriyakuTag
+   └─ DetailSearchAccordion
+```
+
+責務:
+
+- `/shrines` は list mode の検索状態を保持する
+- URL の `q` は当面維持する
+- fetchShrines() の呼び出しは `/shrines` 側に残す
+- ExploreLayout は検索結果を解釈しない
+
+---
+
+## `/map` 側 Filter 入力
+
+```text
+/map
+├─ keyword
+│  └─ PlaceSuggestBox
+│
+├─ nearby
+│  └─ NearbyShrineCardListClient
+│
+└─ viewMode
+   └─ map / nearby
+```
+
+責務:
+
+- `/map` は map / nearby mode の状態を保持する
+- 現在地取得・fallback・nearby fetch は NearbyShrineCardListClient 側に閉じ込める
+- PlaceSuggestBox は map 側の keyword 入力として扱う
+- ExploreLayout 接続時も nearby 処理を ExploreLayout に持ち込まない
+
+---
+
+## ExploreLayout 接続前の制約
+
+```text
+接続前の制約
+├─ ExploreLayout は API を呼ばない
+├─ ExploreLayout は URL を更新しない
+├─ ExploreLayout は Search State を持たない
+├─ ExploreLayout は Nearby State を持たない
+└─ ExploreLayout は children を ResultArea として描画するだけにする
+```
+
+### 段階的接続
+
+```text
+Phase 1
+└─ /shrines の上部UIだけ ExploreLayout に接続
+
+Phase 2
+└─ list result を children として渡す
+
+Phase 3
+└─ /map の上部UIを ExploreLayout に接続
+
+Phase 4
+└─ NearbySection / Map result の統合範囲を再判断する
+```
+
+---
+
 ## TODO
 
 ```markdown
@@ -344,7 +464,7 @@ ExploreLayout.test.tsx
 - [x] ExploreLayout設計
 - [x] 一覧/地図切替タブ設計
 - [x] 近くの神社セクション統合設計
-- [ ] Search/Map共通Filter設計
+- [x] Search/Map共通Filter設計
 
 # ExploreLayout Usage
 - [x] ExploreLayout利用方針を追加
