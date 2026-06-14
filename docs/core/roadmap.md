@@ -98,22 +98,32 @@
 
 ### Phase 2: Explore UI Foundation
 
-- [ ] 一覧 / 地図切替タブを設計
-- [ ] NearbySection の責務を整理
-- [ ] Search / Map 共通Filterを設計
-- [ ] `/shrines` 上の体験チップを Exploreコンポーネントへ分離
-- [ ] 神社名検索を DetailSearchAccordion として分離
-- [ ] `/map` の NearbyShrineCardListClient を Explore 側で再利用できるか確認
-- [ ] ExploreResultArea の List / Map 表示方針を決める
+- [x] 一覧 / 地図切替タブを設計
+- [x] NearbySection の責務を整理
+- [x] Search / Map 共通Filterを設計
+- [x] `/shrines` 上の体験チップを Exploreコンポーネントへ分離
+- [x] 神社名検索を DetailSearchAccordion として分離
+- [x] `/map` の NearbyShrineCardListClient を Explore 側で再利用できるか確認
+- [x] ExploreResultArea の List / Map 表示方針を決める
+- [x] ExploreLayout Story を追加
+- [x] Search Slot 方針を整理
 
 ### Phase 3: Explore実装統合
 
-- [ ] ExploreLayout コンポーネントを作成
-- [ ] `/shrines` を Explore List Mode として接続
-- [ ] `/map` を Explore Map / Nearby Mode として接続
-- [ ] 既存URLの互換導線を維持
-- [ ] typecheck
+- [x] ExploreLayout コンポーネントを作成
+- [x] `/shrines` を Explore List Mode として接続
+- [x] `/map` を Explore Map / Nearby Mode として接続
+- [x] 既存URLの互換導線を維持
+- [x] Search Slot を実装
+- [x] typecheck
 - [ ] test:contract
+
+### Phase 4: Explore実装状態のドキュメント反映
+
+- [x] ExploreLayout の実装状態を `docs/core/architecture.md` に反映
+- [x] `/shrines` / `/map` が ExploreLayout 配下になったことを反映
+- [x] Search Slot の責務を architecture に反映
+- [ ] Explore Route 統合判断を将来フェーズとして整理
 
 運用方針:
 
