@@ -1653,8 +1653,8 @@ export default function ConciergeClientFull() {
             <div className="mt-7 rounded-3xl border border-stone-200/45 bg-stone-50/60 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-[11px] font-medium tracking-[0.2em] text-stone-500">補助条件</p>
-                  <p className="mt-0.5 text-[11px] text-stone-500">相談に少し条件を添える</p>
+                  <p className="text-[11px] font-medium tracking-[0.2em] text-stone-500">条件を追加（任意）</p>
+                  <p className="mt-0.5 text-[11px] text-stone-500">誕生日・ご利益・参拝スタイルは、相談テーマを補う条件として扱います。</p>
                 </div>
                 <button
                   type="button"
@@ -1662,7 +1662,7 @@ export default function ConciergeClientFull() {
                   onClick={() => setIsFilterOpen((prev) => !prev)}
                   disabled={isBusy}
                 >
-                  {isFilterOpen ? "閉じる" : "条件を追加する"}
+                  {isFilterOpen ? "閉じる" : "条件を開く"}
                 </button>
               </div>
 
@@ -1670,24 +1670,24 @@ export default function ConciergeClientFull() {
                 <div className="mt-4 rounded-2xl border border-stone-200/50 bg-white/80 px-3 py-3">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-[11px] font-medium text-stone-500">追加済みの条件</p>
+                      <p className="text-[11px] font-medium text-stone-500">相談に添えた条件</p>
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         {baseFilters.birthdate ? (
                           <span className="rounded-full border border-stone-200/70 bg-stone-50 px-3 py-1 text-xs font-medium text-stone-700">
-                            誕生日あり
+                            誕生日を補助条件に追加
                           </span>
                         ) : null}
 
                         {selectedTagNames.length ? (
                           <span className="rounded-full border border-stone-200/70 bg-stone-50 px-3 py-1 text-xs font-medium text-stone-700">
-                            希望: {selectedTagNames[0]}
+                            ご利益: {selectedTagNames[0]}
                             {selectedTagNames.length > 1 ? ` 他${selectedTagNames.length - 1}` : ""}
                           </span>
                         ) : null}
 
                         {baseFilters.extra_condition ? (
                           <span className="rounded-full border border-stone-200/70 bg-stone-50 px-3 py-1 text-xs font-medium text-stone-700">
-                            希望の補足あり
+                            参拝スタイルあり
                           </span>
                         ) : null}
                       </div>
@@ -1699,7 +1699,7 @@ export default function ConciergeClientFull() {
                       onClick={() => onRendererAction({ type: "filter_clear" })}
                       disabled={isBusy}
                     >
-                      クリア
+                      条件をクリア
                     </button>
                   </div>
                 </div>
