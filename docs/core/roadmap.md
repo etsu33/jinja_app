@@ -51,6 +51,17 @@
 - [x] 神社一覧導線をサブ導線へ変更
 - [x] 地図導線をサブ導線へ変更
 
+### Phase 2.5: Concierge First 実装状態反映
+
+- [x] Top Hero から `/concierge?theme=...` へ相談テーマを渡す
+- [x] ConciergeEntryCard の見出しを相談主導へ変更
+- [x] ConciergeEntryCard の主CTAを神社提案導線へ変更
+- [x] 未ログイン時コピーを「検索」ではなく「相談」へ変更
+- [x] 条件追加UIを任意の補助条件として明記
+- [x] 誕生日・ご利益・参拝スタイルを相談テーマの補助条件として表示
+- [x] ConciergeEntryCard の contract test を更新
+- [x] typecheck / test:contract 通過
+
 ### Phase 3: Recommendation Responsibility Separation
 
 - [ ] need_tags を主推薦軸として固定
