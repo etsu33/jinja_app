@@ -136,6 +136,60 @@ Meaning Layer の責務は「正解を提示すること」ではなく、「な
 - Recommendation Score は参照しない
 - Concierge の結果を補完する探索レイヤーとして扱う
 
+### ExploreLayout（実装済み）
+
+Explore は共通レイアウトとして `ExploreLayout` を利用する。
+
+```text
+ExploreLayout
+├─ ExperienceFilterSection
+├─ searchSlot
+├─ NearbySection
+├─ ViewModeTabs
+└─ ResultArea
+```
+
+責務：
+
+- Explore UI を配置する
+- ResultArea を children として描画する
+- ViewMode を表示する
+
+責務外：
+
+- API呼び出し
+- Recommendation Logic
+- Meaning Layer
+- URL管理
+- Search State管理
+- Nearby State管理
+
+### Search Slot
+
+Explore の検索UIは slot として扱う。
+
+```text
+/shrines
+└─ DetailSearchAccordion
+
+/map
+└─ PlaceSuggestBox
+```
+
+ExploreLayout は検索UIの実装を持たず、親コンポーネントから `searchSlot` を受け取る。
+
+### 実装状態
+
+```text
+/shrines
+└─ ExploreLayout 接続済み
+
+/map
+└─ ExploreLayout 接続済み
+```
+
+Explore は List / Map の共通UIレイヤとして扱う。
+
 正本：
 
 - `docs/product/explore-integration-design.md`
