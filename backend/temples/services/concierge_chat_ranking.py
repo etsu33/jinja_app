@@ -142,6 +142,12 @@ NEED_LABELS_JA: Dict[str, str] = {
     "fallback": "近い候補",
 }
 
+# Recommendation Reason Responsibility:
+# - need_tag は相談テーマ由来のユーザー状態として扱う。
+# - goriyaku_tag / user_selected_tag は神社側分類・追加条件として扱う。
+# - 「仕事」「金運」「恋愛」など語彙は重複してよいが、入力側と神社側で責務を分ける。
+# - primary_reason は固定相談文ではなく、フリーワードや短いキーワードから抽出された相談テーマとの接続を優先する。
+
 PRIMARY_REASON_PRIORITY: Dict[str, int] = {
     "user_selected_tag": 0,
     "need_tag": 1,
