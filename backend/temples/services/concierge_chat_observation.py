@@ -227,6 +227,7 @@ def observe_ranking_breakdown(
                     "score_popular": float(popular.get("raw") or 0.0),
                     "score_visit_style": int(visit_style.get("raw") or 0),
                     "score_element": int(element.get("raw") or 0),
+                    "direction_bonus": float(context_profile.get("direction_bonus") or 0.0),
                     "behavior_signal": float(behavior.get("raw") or 0.0),
                     "behavior_contribution": float(behavior.get("contribution") or 0.0),
                     "contributions": {
@@ -264,10 +265,53 @@ def observe_ranking_breakdown(
             else {}
         )
 
+        score_element_distribution: dict[str, int] = {}
+        primary_reason_source_counts: dict[str, int] = {}
+        for row in rows:
+            score_element_key = str(int(row.get("score_element") or 0))
+            score_element_distribution[score_element_key] = score_element_distribution.get(score_element_key, 0) + 1
+
+            primary_reason_source = str(row.get("primary_reason_source") or "fallback")
+            primary_reason_source_counts[primary_reason_source] = primary_reason_source_counts.get(primary_reason_source, 0) + 1
+
+        row_count = len(rows)
+        astro_bonus_hit_count = sum(
+            1
+            for row in rows
+            if float((row.get("contributions") or {}).get("astro_bonus") or 0.0) > 0
+        )
+        direction_bonus_hit_count = sum(
+            1
+            for row in rows
+            if float(row.get("direction_bonus") or 0.0) > 0
+        )
+
+        def _rate(count: int) -> float:
+            return float(count / row_count) if row_count else 0.0
+
+        score_audit = {
+            "row_count": row_count,
+            "score_element_distribution": score_element_distribution,
+            "astro_bonus_hit_count": astro_bonus_hit_count,
+            "astro_bonus_hit_rate": _rate(astro_bonus_hit_count),
+            "direction_bonus_hit_count": direction_bonus_hit_count,
+            "direction_bonus_hit_rate": _rate(direction_bonus_hit_count),
+            "primary_reason_source_counts": primary_reason_source_counts,
+            "top10_element_primary_count": primary_reason_source_counts.get("element", 0),
+            "top10_element_primary_rate": _rate(primary_reason_source_counts.get("element", 0)),
+            "history_theme_primary_count": primary_reason_source_counts.get("history_theme", 0),
+            "history_theme_primary_rate": _rate(primary_reason_source_counts.get("history_theme", 0)),
+            "culture_translation_primary_count": primary_reason_source_counts.get("culture_translation", 0),
+            "culture_translation_primary_rate": _rate(primary_reason_source_counts.get("culture_translation", 0)),
+            "need_tag_primary_count": primary_reason_source_counts.get("need_tag", 0),
+            "need_tag_primary_rate": _rate(primary_reason_source_counts.get("need_tag", 0)),
+        }
+
         debug = {
             "query": recs.get("_query") or "",
             "need_tags": recs.get("_need_tags") or [],
             "user_state_profile": user_state_profile,
+            "score_audit": score_audit,
             "matched_need_tags": [r.get("matched_need_tags") or [] for r in rows],
             "visit_style_tags": [
                 list(dict.fromkeys((r.get("visit_style_tags") or []) + (r.get("matched_visit_style_tags") or [])))
@@ -309,6 +353,23 @@ def observe_ranking_breakdown(
                 "query": "",
                 "need_tags": [],
                 "user_state_profile": {},
+                "score_audit": {
+                    "row_count": 0,
+                    "score_element_distribution": {},
+                    "astro_bonus_hit_count": 0,
+                    "astro_bonus_hit_rate": 0.0,
+                    "direction_bonus_hit_count": 0,
+                    "direction_bonus_hit_rate": 0.0,
+                    "primary_reason_source_counts": {},
+                    "top10_element_primary_count": 0,
+                    "top10_element_primary_rate": 0.0,
+                    "history_theme_primary_count": 0,
+                    "history_theme_primary_rate": 0.0,
+                    "culture_translation_primary_count": 0,
+                    "culture_translation_primary_rate": 0.0,
+                    "need_tag_primary_count": 0,
+                    "need_tag_primary_rate": 0.0,
+                },
                 "matched_need_tags": [],
                 "visit_style_tags": [],
                 "matched_visit_style_tags": [],
