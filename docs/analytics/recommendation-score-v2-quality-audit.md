@@ -558,7 +558,21 @@ need_tag_primary_rate
 
 top10_element_primary_rate
 ```
+## 金運を上げたい
 
+1位: 伏見稲荷大社
+
+納得度: 4.5/5
+
+分類:
+- データ不足: なし
+- score問題: 軽微
+- 説明不足: あり
+
+メモ:
+1位は妥当。
+ただし2位・3位候補の理由が見えない。
+候補間の差分説明が必要。
 ---
 
 ## 10. Recommendation Score Audit
