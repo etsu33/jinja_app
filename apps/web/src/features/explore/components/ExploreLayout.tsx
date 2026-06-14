@@ -1,5 +1,3 @@
-
-
 "use client";
 
 import type { FormEvent, ReactNode } from "react";
@@ -24,6 +22,7 @@ type ExploreLayoutProps = {
   viewMode: ExploreViewMode;
   onViewModeChange: (viewMode: ExploreViewMode) => void;
   showNearbyList?: boolean;
+  experienceFeedback?: ReactNode;
   children: ReactNode;
 };
 
@@ -40,6 +39,7 @@ export function ExploreLayout({
   viewMode,
   onViewModeChange,
   showNearbyList = false,
+  experienceFeedback,
   children,
 }: ExploreLayoutProps) {
   return (
@@ -50,6 +50,8 @@ export function ExploreLayout({
       </header>
 
       <ExperienceFilterSection activeTag={activeTag} onSelectTag={onSelectTag} />
+
+      {experienceFeedback ? <div>{experienceFeedback}</div> : null}
 
       <DetailSearchAccordion
         inputValue={inputValue}
