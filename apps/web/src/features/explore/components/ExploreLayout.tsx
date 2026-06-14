@@ -23,6 +23,7 @@ type ExploreLayoutProps = {
   onViewModeChange: (viewMode: ExploreViewMode) => void;
   showNearbyList?: boolean;
   experienceFeedback?: ReactNode;
+  searchSlot?: ReactNode;
   children: ReactNode;
 };
 
@@ -40,6 +41,7 @@ export function ExploreLayout({
   onViewModeChange,
   showNearbyList = false,
   experienceFeedback,
+  searchSlot,
   children,
 }: ExploreLayoutProps) {
   return (
@@ -53,17 +55,19 @@ export function ExploreLayout({
 
       {experienceFeedback ? <div>{experienceFeedback}</div> : null}
 
-      <DetailSearchAccordion
-        inputValue={inputValue}
-        onInputValueChange={onInputValueChange}
-        onSubmit={onSearchSubmit}
-        goriyakuTags={goriyakuTags}
-        tagsLoading={tagsLoading}
-        tagsError={tagsError}
-        activeTag={activeTag}
-        activeGoriyakuTag={activeGoriyakuTag}
-        onSelectTag={onSelectTag}
-      />
+      {searchSlot ?? (
+        <DetailSearchAccordion
+          inputValue={inputValue}
+          onInputValueChange={onInputValueChange}
+          onSubmit={onSearchSubmit}
+          goriyakuTags={goriyakuTags}
+          tagsLoading={tagsLoading}
+          tagsError={tagsError}
+          activeTag={activeTag}
+          activeGoriyakuTag={activeGoriyakuTag}
+          onSelectTag={onSelectTag}
+        />
+      )}
 
       <NearbySection showNearbyList={showNearbyList} />
 

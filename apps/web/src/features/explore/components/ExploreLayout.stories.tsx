@@ -10,6 +10,22 @@ const mockGoriyakuTags = [
   { id: 3, name: "厄除け", slug: "yakuyoke" },
 ];
 
+function MockPlaceSuggestBoxSlot() {
+  return (
+    <div className="rounded-3xl border border-stone-200/20 bg-white/55 p-4">
+      <p className="mb-2 text-[11px] font-medium tracking-[0.2em] text-stone-500">MAP SEARCH</p>
+      <input
+        type="search"
+        value="浅草"
+        readOnly
+        className="w-full rounded-3xl border border-stone-200/35 bg-stone-50/25 px-3 py-2 text-sm text-stone-900"
+        aria-label="地図検索"
+      />
+      <p className="mt-2 text-xs text-stone-500">PlaceSuggestBox を差し込む想定の searchSlot です。</p>
+    </div>
+  );
+}
+
 const meta = {
   title: "Explore/ExploreLayout",
   component: ExploreLayout,
@@ -47,7 +63,8 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const DefaultList: Story = {};
+export const DetailSearchAccordionSlot: Story = {};
+
 
 export const MapMode: Story = {
   args: {
@@ -55,6 +72,18 @@ export const MapMode: Story = {
     children: (
       <div className="rounded-3xl border border-stone-200/30 bg-stone-50/60 p-8 text-center text-sm text-stone-500">
         地図表示エリア
+      </div>
+    ),
+  },
+};
+
+export const PlaceSuggestBoxSlot: Story = {
+  args: {
+    viewMode: "map",
+    searchSlot: <MockPlaceSuggestBoxSlot />,
+    children: (
+      <div className="rounded-3xl border border-stone-200/30 bg-stone-50/60 p-8 text-center text-sm text-stone-500">
+        PlaceSuggestBox で選択した場所の表示エリア
       </div>
     ),
   },
