@@ -318,6 +318,10 @@ SHRINE_HISTORY_STORY_OVERRIDES: dict[int, ShrineHistoryStoryOverride] = {
 }
 
 
+# Meaning Layer Responsibility:
+# - history_theme は神社固有文脈と相談テーマを接続する主な意味レイヤ要素として扱う。
+# - goriyaku / goriyaku_tags は願いごとの補助説明・表示要素として扱う。
+# - direction_bonus / direction_reason は方位の補助要素であり、意味生成の主理由にはしない。
 
 @dataclass(frozen=True)
 class ShrineMeaningInput:

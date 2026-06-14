@@ -280,6 +280,12 @@ def build_chat_recommendations(
 
     facade はこのファイルに残し、
     ranking / pool / presentation の責務は各モジュールへ分離する。
+
+    Responsibility:
+      - need_tags は相談テーマ由来の主推薦軸として扱う。
+      - goriyaku_tag_ids はユーザー追加の補助条件として扱う。
+      - extra_condition は参拝スタイルなどの補助条件として扱う。
+      - birthdate / astro / direction は主軸を上書きしない補助シグナルとして扱う。
     """
     valid_candidates = [
         _normalize_candidate_fields(c) for c in (candidates or []) if isinstance(c, dict)
