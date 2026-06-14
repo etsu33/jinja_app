@@ -91,20 +91,93 @@ Meaning Layer の責務は「正解を提示すること」ではなく、「な
 
 ---
 
-### 検索（/shrines）
+### Explore（/shrines / /map）
 
-- 目的：候補の発見と比較
-- 提供価値：**軽い判断補助**（主価値ではなく補助導線）
-- 表現：
-  - ご利益タグ
-  - 簡易的な「選ぶ理由」
-  - 距離・基本情報
+- 目的：実際に行ける神社候補の発見・比較・位置確認
+- 提供価値：**体験から探す補助導線**（主価値ではなく、相談後の探索導線）
+
+表現：
+
+- 過ごし方チップ
+- 歴史テーマ
+- 神社名 / 地域名 / 願いごと検索
+- ご利益タグ
+- 距離・基本情報
+- 近くの神社
+- 一覧 / 地図表示
+
+責務：
+
+- `/shrines` は Explore の List Mode として扱う
+- `/map` は Explore の Map Mode / Nearby Mode として扱う
+- 検索・地図・近くの神社を将来的に Explore 画面へ統合する
+- 体験チップを Explore の主導線とする
+- 神社名検索は維持するが「詳しく探す」配下に配置する
+- 現在地探索は NearbySection に閉じ込める
+- Explore は候補探索までを責務とする
+- 推薦理由の生成は Concierge が担う
+- 神社理解は Detail が担う
+- 行動記録・振り返りは Visit / Reflection が担う
 
 制約：
 
 - 長文の推薦理由は出さない
-- ユーザーの状態解釈は行わない
-- 意味づけは行わない（コンシェルジュに委譲）
+- ユーザー状態の解釈は行わない
+- 意味づけは行わない（Concierge に委譲）
+- 近いだけで推薦理由を完結させない
+- 地図機能を主価値として扱わない
+- 占術・相性・方位を Explore の主導線にしない
+
+データ責務：
+
+- Explore は検索条件を保持する
+- Recommendation Logic は持たない
+- Meaning Layer は持たない
+- Recommendation Score は参照しない
+- Concierge の結果を補完する探索レイヤーとして扱う
+
+正本：
+
+- `docs/product/explore-integration-design.md`
+
+---
+
+### Journey Flow
+
+```text
+Top
+↓
+Concierge
+↓
+Explore
+↓
+Detail
+↓
+Route
+↓
+Visit
+↓
+Reflection
+```
+
+役割：
+
+- Top は相談開始
+- Concierge は推薦理由の生成
+- Explore は候補探索
+- Detail は神社理解
+- Route は移動支援
+- Visit は参拝行動
+- Reflection は振り返り
+
+責務境界：
+
+- Concierge が「なぜこの神社か」を担う
+- Explore が「どこへ行くか」を担う
+- Detail が「どんな神社か」を担う
+- Route が「どう行くか」を担う
+- Visit が「行った事実」を担う
+- Reflection が「行動後の意味整理」を担う
 
 ---
 
