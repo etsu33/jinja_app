@@ -11,9 +11,11 @@ import { fetchShrines } from "@/lib/api/shrinesSearch";
 import { getGoriyakuTags, type GoriyakuTag } from "@/lib/api/tags";
 import { buildShrineListCardModel } from "@/lib/shrine/buildShrineListCardModel";
 import { trackSearchEvent } from "@/lib/analytics/searchEvents";
-
-const VISIT_STYLE_TAGS = ["静か", "自然", "駅近", "ひとり", "落ち着く"] as const;
-const HISTORY_THEME_TAGS = ["縁結び", "武運", "商売", "学問", "稲荷", "八幡"] as const;
+import {
+  ExperienceFilterSection,
+  HISTORY_THEME_TAGS,
+  VISIT_STYLE_TAGS,
+} from "@/features/explore/components/ExperienceFilterSection";
 
 function ShrinesPageContent() {
   const router = useRouter();
@@ -206,72 +208,13 @@ function ShrinesPageContent() {
 
       {shouldShowSearchResults && (
         <div className="mb-8 space-y-4">
-          <section className="rounded-3xl border border-stone-200/25 bg-stone-50/30 p-4">
-            <div className="space-y-1">
-              <p className="text-[11px] font-medium tracking-[0.2em] text-stone-500">EXPERIENCE</p>
-              <h2 className="text-sm font-medium text-stone-800">どんな時間を過ごしたいですか</h2>
-            </div>
+          <ExperienceFilterSection activeTag={q} onSelectTag={handleTagSearch} />
 
-            <div className="mt-4 space-y-4">
-              <div className="space-y-2">
-                <p className="text-[11px] font-medium text-stone-500">過ごし方</p>
-                <div className="flex flex-wrap gap-2">
-                  {VISIT_STYLE_TAGS.map((tag) => {
-                    const isActive = tag === q;
-
-                    return (
-                      <button
-                        key={tag}
-                        type="button"
-                        aria-pressed={isActive}
-                        onClick={() => handleTagSearch(tag)}
-                        className={[
-                          "rounded-full border px-3 py-1.5 text-xs font-medium transition",
-                          isActive
-                            ? "border-emerald-200/70 bg-emerald-50/80 text-emerald-700"
-                            : "border-stone-200/40 bg-white/65 text-stone-600 hover:bg-stone-100/45",
-                        ].join(" ")}
-                      >
-                        {tag}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <p className="text-[11px] font-medium text-stone-500">歴史テーマ</p>
-                <div className="flex flex-wrap gap-2">
-                  {HISTORY_THEME_TAGS.map((tag) => {
-                    const isActive = tag === q;
-
-                    return (
-                      <button
-                        key={tag}
-                        type="button"
-                        aria-pressed={isActive}
-                        onClick={() => handleTagSearch(tag)}
-                        className={[
-                          "rounded-full border px-3 py-1.5 text-xs font-medium transition",
-                          isActive
-                            ? "border-emerald-200/70 bg-emerald-50/80 text-emerald-700"
-                            : "border-stone-200/40 bg-white/65 text-stone-600 hover:bg-stone-100/45",
-                        ].join(" ")}
-                      >
-                        {tag}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
-            {activeVisitStyleTag || activeHistoryThemeTag ? (
-              <p className="mt-3 text-xs text-emerald-700 opacity-70">
-                {activeVisitStyleTag ?? activeHistoryThemeTag}で表示中です。もう一度押すと解除できます。
-              </p>
-            ) : null}
-          </section>
+          {activeVisitStyleTag || activeHistoryThemeTag ? (
+            <p className="text-xs text-emerald-700 opacity-70">
+              {activeVisitStyleTag ?? activeHistoryThemeTag}で表示中です。もう一度押すと解除できます。
+            </p>
+          ) : null}
 
           <details className="rounded-3xl border border-stone-200/20 bg-white/55 p-4">
             <summary className="cursor-pointer text-sm font-medium text-stone-700">詳しく探す</summary>
