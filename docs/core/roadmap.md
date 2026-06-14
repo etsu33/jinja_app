@@ -70,6 +70,8 @@
 - [x] ご利益を補助説明へ整理
 - [x] 誕生日 / astro / direction を補助シグナルとして明文化
 - [x] Recommendation Reason 契約を `docs/analytics/recommendation-score-v2-current-design.md` に文書化
+- [x] Recommendation Score 監査集計を `_debug.score_audit` に追加
+- [x] Recommendation Score Audit を `docs/analytics/recommendation-score-v2-quality-audit.md` に文書化
 - [ ] 誕生日シグナルの重みを監査
 - [ ] astro_elements の寄与率を監査
 - [ ] direction_bonus の寄与率を監査

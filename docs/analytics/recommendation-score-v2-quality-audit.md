@@ -485,7 +485,171 @@ behavior_signal で再提案補正
 補助 = 占星術 / 十二支・五行 / 方位 / 人気 / 距離
 ```
 
-これにより、Recommendation Score v2 は検索エンジンではなく、状態整理型の推薦エンジンとして成立しやすくなる。
+## 9. Recommendation Reason Audit
+
+### 目的
+
+Recommendation Reason Contract が、実際の推薦結果で機能しているか確認する。
+
+この監査では、表示上の主理由が「検索条件」や「占術補助」に寄りすぎず、相談テーマと神社固有文脈の接続として成立しているかを見る。
+
+### 確認対象
+
+- history_theme
+- culture_translation
+- need_tag
+- text_hint
+- user_selected_tag
+- goriyaku_tag
+- element
+
+### primary_reason 優先順位
+
+```text
+history_theme
+↓
+culture_translation
+↓
+need_tag
+↓
+text_hint
+↓
+user_selected_tag
+↓
+goriyaku_tag
+↓
+element
+↓
+fallback
+```
+
+### 計測元
+
+`observe_ranking_breakdown()` の `_debug.score_audit` を確認する。
+
+```text
+_debug.score_audit
+```
+
+### 確認項目
+
+| 項目 | 意味 |
+|---|---|
+| score_element_distribution | top10内の element score 分布 |
+| astro_bonus_hit_rate | astro_bonus が発火した割合 |
+| direction_bonus_hit_rate | direction_bonus が発火した割合 |
+| top10_element_primary_rate | element が主理由になった割合 |
+| history_theme_primary_rate | history_theme が主理由になった割合 |
+| culture_translation_primary_rate | culture_translation が主理由になった割合 |
+| need_tag_primary_rate | need_tag が主理由になった割合 |
+
+### 判定
+
+以下の状態なら、Recommendation Reason Contract は維持されている。
+
+```text
+history_theme_primary_rate
++
+culture_translation_primary_rate
++
+need_tag_primary_rate
+
+>>
+
+top10_element_primary_rate
+```
+
+---
+
+## 10. Recommendation Score Audit
+
+### 目的
+
+補助シグナルが、推薦理由やランキングの主軸を乗っ取っていないか確認する。
+
+この監査では、`element_match` / `astro_bonus` / `direction_bonus` が発火していても、主理由として前面に出すぎていないかを見る。
+
+### 理想状態
+
+主理由:
+
+- history_theme
+- culture_translation
+- need_tag
+
+補助理由:
+
+- element
+- astro_bonus
+- direction_bonus
+
+### 監査観点
+
+#### element
+
+確認:
+
+```text
+top10_element_primary_rate
+```
+
+期待:
+
+```text
+0%〜5%
+```
+
+`element` が主理由になるケースは例外として扱う。
+
+#### astro_bonus
+
+確認:
+
+```text
+astro_bonus_hit_rate
+```
+
+期待:
+
+```text
+発火しても主理由にならない
+```
+
+`astro_bonus` は相性補正として使い、相談テーマや神社固有文脈を上書きしない。
+
+#### direction_bonus
+
+確認:
+
+```text
+direction_bonus_hit_rate
+```
+
+期待:
+
+```text
+発火しても主理由にならない
+```
+
+`direction_bonus` は方位の補助要素として扱い、推薦理由の主軸にはしない。
+
+### 判定
+
+以下なら、Recommendation Score v2 は検索エンジンではなく、状態整理型の推薦エンジンとして成立しやすい。
+
+```text
+history_theme_primary_rate
++
+culture_translation_primary_rate
++
+need_tag_primary_rate
+
+>>
+
+top10_element_primary_rate
+```
+
+補助シグナルが発火していても、主理由が `history_theme` / `culture_translation` / `need_tag` に寄っていれば、Concierge First の責務は維持されている。
 
 ---
 
