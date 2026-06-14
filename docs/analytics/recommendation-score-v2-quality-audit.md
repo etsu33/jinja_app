@@ -166,6 +166,28 @@ rest
 
 ただし、長期的には fallback も15タグ体系に合わせる方が安全。
 
+## 1.5 Intent Audit Matrix
+
+### 目的
+
+ユーザー入力が、どの need_tags に変換され、最終的にどの神社推薦へ接続されているかを確認する。
+
+この監査では、推薦結果だけでなく、以下の変換過程を見る。
+
+```text
+ユーザー入力
+↓
+raw consultation
+↓
+extracted tags
+↓
+hits
+↓
+top3 shrine
+↓
+primary_reason
+```
+
 ---
 
 ## 2. need_tags → goriyaku_tag_ids 接続監査
