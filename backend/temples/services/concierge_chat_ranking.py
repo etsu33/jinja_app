@@ -149,10 +149,10 @@ NEED_LABELS_JA: Dict[str, str] = {
 # - primary_reason は固定相談文ではなく、フリーワードや短いキーワードから抽出された相談テーマとの接続を優先する。
 
 PRIMARY_REASON_PRIORITY: Dict[str, int] = {
-    "user_selected_tag": 0,
-    "need_tag": 1,
-    "goriyaku_tag": 2,
-    "text_hint": 3,
+    "need_tag": 0,
+    "text_hint": 1,
+    "user_selected_tag": 2,
+    "goriyaku_tag": 3,
     "element": 4,
     "fallback": 9,
 }
