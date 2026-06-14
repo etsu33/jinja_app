@@ -1,8 +1,10 @@
 // apps/web/src/features/map/components/MapPageClient.tsx
 "use client";
 
-import { useState } from "react";
+import { type FormEvent, useState } from "react";
 import { PlaceSuggestBox } from "@/components/PlaceSuggestBox";
+import { ExploreLayout } from "@/features/explore/components/ExploreLayout";
+import type { ExploreViewMode } from "@/features/explore/components/ViewModeTabs";
 import type { Shrine } from "@/lib/api/shrines";
 import NearbyShrineCardListClient from "@/features/map/components/NearbyShrineCardListClient";
 
@@ -23,13 +25,36 @@ function PlaceSelectedCard({ item }: { item: Shrine }) {
 export default function MapPageClient() {
   const [keyword, setKeyword] = useState("");
   const [selected, setSelected] = useState<Shrine | null>(null);
+  const [viewMode, setViewMode] = useState<ExploreViewMode>("map");
 
   const mode: "nearby" | "search" = selected ? "search" : "nearby";
 
-  return (
-    <div className="space-y-6">
-      <PlaceSuggestBox value={keyword} onChange={setKeyword} onSelect={(it) => setSelected(it)} />
+  const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+  };
 
+  const handleSelectTag = (tagName: string) => {
+    setKeyword(tagName);
+    setSelected(null);
+  };
+
+  return (
+    <ExploreLayout
+      activeTag={keyword}
+      inputValue={keyword}
+      onInputValueChange={setKeyword}
+      onSearchSubmit={handleSearchSubmit}
+      goriyakuTags={[]}
+      tagsLoading={false}
+      tagsError={null}
+      activeGoriyakuTag={null}
+      onSelectTag={handleSelectTag}
+      viewMode={viewMode}
+      onViewModeChange={setViewMode}
+      searchSlot={
+        <PlaceSuggestBox value={keyword} onChange={setKeyword} onSelect={(it) => setSelected(it)} />
+      }
+    >
       {mode === "nearby" && <NearbyShrineCardListClient />}
 
       {mode === "search" && selected && (
@@ -38,6 +63,6 @@ export default function MapPageClient() {
           <PlaceSelectedCard item={selected} />
         </div>
       )}
-    </div>
+    </ExploreLayout>
   );
 }
