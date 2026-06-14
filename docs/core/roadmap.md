@@ -41,15 +41,15 @@
 
 ### Phase 2: Concierge First UI
 
-- [ ] トップ画面とコンシェルジュ画面を統合
-- [ ] 相談テーマ入力をヒーロー領域へ配置
-- [ ] 条件追加UIを実装
-- [ ] 参拝スタイルを条件追加へ移動
-- [ ] 誕生日を条件追加へ移動
-- [ ] ご利益タグを条件追加へ移動
-- [ ] 自由入力を補助導線へ移動
-- [ ] 神社一覧導線をサブ導線へ変更
-- [ ] 地図導線をサブ導線へ変更
+- [x] トップ画面とコンシェルジュ画面を統合
+- [x] 相談テーマ入力をヒーロー領域へ配置
+- [x] 条件追加UIをコンシェルジュ側へ集約
+- [x] 参拝スタイルを Explore / Search 側へ整理
+- [x] 誕生日を補助条件として維持
+- [x] ご利益タグを補助条件として維持
+- [x] 自由入力を相談入力の主導線へ整理
+- [x] 神社一覧導線をサブ導線へ変更
+- [x] 地図導線をサブ導線へ変更
 
 ### Phase 3: Recommendation Responsibility Separation
 
@@ -72,10 +72,57 @@
 運用方針:
 
 - Concierge First をプロダクト全体の主導線とする。
-- 神社検索は主機能ではなく補助導線として扱う。
+- 神社検索・地図は Explore として扱い、主機能ではなく相談後の探索導線として位置づける。
 - 推薦理由の中心は相談テーマと need_tags とする。
 - 誕生日・占術・方位は補助シグナルとして扱う。
 - Meaning Layer は推薦後の解釈レイヤとして責務を分離する。
+
+---
+
+## Explore Integration
+
+### Phase 1: Explore責務・状態管理設計
+
+- [x] `/shrines` と `/map` を Explore として統合する方針を定義
+- [x] `/shrines` を Explore の List Mode として定義
+- [x] `/map` を Explore の Map Mode / Nearby Mode として定義
+- [x] Explore画面の責務を確定
+- [x] `/shrines` と `/map` の共通要素を洗い出し
+- [x] ExploreState を設計
+- [x] ViewMode を定義
+- [x] FilterState を定義
+- [x] NearbyState を定義
+- [x] ExploreLayout 案を設計
+- [x] Explore責務を `docs/core/architecture.md` に反映
+- [x] Journey Flow を `docs/core/architecture.md` に追加
+
+### Phase 2: Explore UI Foundation
+
+- [ ] 一覧 / 地図切替タブを設計
+- [ ] NearbySection の責務を整理
+- [ ] Search / Map 共通Filterを設計
+- [ ] `/shrines` 上の体験チップを Exploreコンポーネントへ分離
+- [ ] 神社名検索を DetailSearchAccordion として分離
+- [ ] `/map` の NearbyShrineCardListClient を Explore 側で再利用できるか確認
+- [ ] ExploreResultArea の List / Map 表示方針を決める
+
+### Phase 3: Explore実装統合
+
+- [ ] ExploreLayout コンポーネントを作成
+- [ ] `/shrines` を Explore List Mode として接続
+- [ ] `/map` を Explore Map / Nearby Mode として接続
+- [ ] 既存URLの互換導線を維持
+- [ ] typecheck
+- [ ] test:contract
+
+運用方針:
+
+- Explore は候補探索までを責務とする。
+- 推薦理由の生成は Concierge が担う。
+- 神社理解は Detail が担う。
+- 行動記録・振り返りは Visit / Reflection が担う。
+- Explore は Recommendation Logic / Meaning Layer / Recommendation Score を持たない。
+- Map / Search は Premium 価値の中心にしない。
 
 ---
 
