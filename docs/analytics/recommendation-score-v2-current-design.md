@@ -166,6 +166,55 @@ return {
 
 ---
 
+## Recommendation Reason Contract
+
+Recommendation Reason は、表示用の「なぜこの神社なのか」を説明するための契約である。
+
+スコアそのものではなく、推薦結果をユーザーに説明するための理由候補を扱う。
+
+### 入力責務
+
+| 要素 | 責務 |
+|---|---|
+| need_tag | 相談テーマ由来のユーザー状態 |
+| text_hint | フリーワード / 短いキーワードから拾った相談文脈 |
+| history_theme | 神社固有文脈と相談テーマを接続する意味レイヤ |
+| culture_translation | 神社固有の歴史・場所意味を翻訳した文脈 |
+| user_selected_tag | ユーザーが追加したご利益条件 |
+| goriyaku_tag | 神社側のご利益分類 |
+| element | 生年月日・相性系の補助シグナル |
+
+### primary_reason 優先順位
+
+```text
+history_theme
+↓
+culture_translation
+↓
+need_tag
+↓
+text_hint
+↓
+user_selected_tag
+↓
+goriyaku_tag
+↓
+element
+↓
+fallback
+```
+
+### 契約
+
+* need_tag は相談テーマ由来の主理由として扱う。
+* history_theme は matched_need_tags がある場合のみ主理由候補に入れる。
+* culture_translation は matched_need_tags があり、かつ神社固有文脈が存在する場合のみ主理由候補に入れる。
+* user_selected_tag は主理由ではなく、追加条件として扱う。
+* goriyaku_tag は神社側の分類・補助説明として扱う。
+* element / birthdate / direction は主理由を上書きしない。
+* 「仕事」「金運」「恋愛」などの語彙は need_tag と goriyaku_tag で重複してよい。
+* 同じ語彙でも、入力側は相談テーマ、神社側は分類として扱う。
+
 ## 行動シグナル式
 
 実装箇所:

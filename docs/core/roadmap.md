@@ -66,9 +66,10 @@
 
 - [x] need_tags を主推薦軸として固定
 - [x] history_theme を意味レイヤへ接続
-- [ ] 神社固有文脈を推薦理由へ統合
+- [x] 神社固有文脈を推薦理由へ統合
 - [x] ご利益を補助説明へ整理
 - [x] 誕生日 / astro / direction を補助シグナルとして明文化
+- [x] Recommendation Reason 契約を `docs/analytics/recommendation-score-v2-current-design.md` に文書化
 - [ ] 誕生日シグナルの重みを監査
 - [ ] astro_elements の寄与率を監査
 - [ ] direction_bonus の寄与率を監査
