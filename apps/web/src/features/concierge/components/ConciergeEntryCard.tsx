@@ -49,10 +49,12 @@ export default function ConciergeEntryCard({
       <div className="space-y-1.5 rounded-3xl border border-stone-200/10 bg-stone-50/30 px-4 py-4">
         <div>
           <p className="text-[9px] font-normal tracking-[0.24em] text-stone-500 opacity-70">KAMI MUSUBI GUIDE</p>
-          <h1 className="mt-1.5 text-lg font-medium leading-7 text-stone-900">静かに言葉を整える</h1>
+          <h1 className="mt-1.5 text-lg font-medium leading-7 text-stone-900">相談から、向かう神社を見つける</h1>
         </div>
         <p className="text-sm leading-6 text-stone-500 opacity-85">
-          {displayName ? `${displayLabel}さんの言葉を、ゆっくり整えます。` : "言葉を、ゆっくり整えます。"}
+          {displayName
+            ? `${displayLabel}さんの相談をもとに、今向かいやすい神社との出会いを整えます。`
+            : "相談をもとに、今向かいやすい神社との出会いを整えます。"}
         </p>
       </div>
 
@@ -76,7 +78,7 @@ export default function ConciergeEntryCard({
 
       {!canSaveConciergeThread && !isUiPaywall ? (
         <div className="mt-3 rounded-xl border border-amber-200/50 bg-amber-50/50 px-3 py-2 text-xs text-amber-800 opacity-85">
-          <p>未ログインでも検索できます。保存にはログインが必要です。</p>
+          <p>未ログインでも相談できます。保存にはログインが必要です。</p>
           <div className="mt-2 flex gap-2">
             <button
               type="button"
@@ -102,20 +104,20 @@ export default function ConciergeEntryCard({
             htmlFor="concierge-input"
             className="mb-0.5 block text-[11px] font-medium text-stone-500 opacity-65"
           >
-            今の言葉を、静かに書く
+            今の相談テーマを書く
           </label>
           <textarea
             id="concierge-input"
             value={needText}
             onChange={(e) => setNeedText(e.target.value)}
-            placeholder="例：気持ちを切り替えたい、静かな時間を持ちたい"
+            placeholder="例：気持ちを切り替えたい、これからのことを考えたい"
             rows={4}
             className="w-full rounded-3xl border border-stone-200/20 bg-stone-50/30 px-3 py-2.5 text-sm leading-7 text-stone-900 outline-none transition placeholder:text-stone-400 placeholder:opacity-60 focus:border-emerald-200/40 focus:ring-1 focus:ring-emerald-100/40"
           />
         </div>
 
         <div>
-          <p className="text-[11px] font-medium text-stone-500 opacity-75">ことばのきっかけ</p>
+          <p className="text-[11px] font-medium text-stone-500 opacity-75">相談テーマのきっかけ</p>
           <div className="mt-2.5 flex flex-wrap gap-2">
             {feelExamples.map((example) => {
               const isSelected = needText.trim() === example.text;
@@ -149,7 +151,7 @@ export default function ConciergeEntryCard({
             disabled={isBusy || !needText.trim() || !canSend}
             onClick={onSubmit}
           >
-            言葉を整える
+            相談して神社を提案してもらう
           </button>
 
           <button
