@@ -64,10 +64,11 @@
 
 ### Phase 3: Recommendation Responsibility Separation
 
-- [ ] need_tags を主推薦軸として固定
-- [ ] history_theme を意味レイヤへ接続
+- [x] need_tags を主推薦軸として固定
+- [x] history_theme を意味レイヤへ接続
 - [ ] 神社固有文脈を推薦理由へ統合
-- [ ] ご利益を補助説明へ整理
+- [x] ご利益を補助説明へ整理
+- [x] 誕生日 / astro / direction を補助シグナルとして明文化
 - [ ] 誕生日シグナルの重みを監査
 - [ ] astro_elements の寄与率を監査
 - [ ] direction_bonus の寄与率を監査
