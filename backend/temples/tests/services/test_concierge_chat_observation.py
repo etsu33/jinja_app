@@ -881,7 +881,7 @@ def test_build_reason_facts_generates_user_selected_tag_reason():
     }
 
 
-def test_resolve_primary_reason_prefers_user_selected_tag():
+def test_resolve_primary_reason_prefers_need_tag_over_user_selected_tag():
     facts = _build_reason_facts(
         matched_by_tag=["rest"],
         matched_by_gid=["money"],
@@ -895,9 +895,9 @@ def test_resolve_primary_reason_prefers_user_selected_tag():
 
     primary = _resolve_primary_reason(facts)
 
-    assert primary["type"] == "user_selected_tag"
-    assert primary["label"] == "美容"
-    assert primary["evidence"] == ["requested_goriyaku_tag_ids"]
+    assert primary["type"] == "need_tag"
+    assert primary["label"] == "rest"
+    assert primary["evidence"] == ["rest"]
 
 
 def test_attach_breakdown_sets_user_selected_tag_as_primary_reason():
