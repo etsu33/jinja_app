@@ -236,6 +236,96 @@ ExploreLayout
 
 ---
 
+## ExploreLayout 利用方針
+
+ExploreLayout は Container として扱う。
+
+責務:
+
+- Explore UIを並べる
+- childrenを描画する
+
+責務外:
+
+- API呼び出し
+- Recommendation Logic
+- Meaning Layer
+- URL管理
+- Search State管理
+
+---
+
+## Props Boundary
+
+```text
+ExploreLayout
+├─ activeTag
+├─ inputValue
+├─ viewMode
+├─ goriyakuTags
+├─ callbacks
+└─ children
+```
+
+方針:
+
+- State は親が保持する
+- ExploreLayout は Presentational Component として扱う
+- ExploreLayout は結果表示の中身を解釈しない
+- ExploreLayout は `children` を ResultArea として描画する
+
+---
+
+## Integration Strategy
+
+```text
+Phase 1
+└─ ExploreLayout 作成
+
+Phase 2
+└─ /shrines 接続
+
+Phase 3
+└─ /map 接続
+
+Phase 4
+└─ Explore Route 統合
+```
+
+### 接続方針
+
+- `/shrines` は list mode の親として State を保持する
+- `/map` は map / nearby mode の親として State を保持する
+- ExploreLayout は `/shrines` と `/map` の共通UIとして段階的に接続する
+- 既存URLは維持し、統合Routeは後続フェーズで検討する
+
+---
+
+## Story / Test Strategy
+
+```text
+ExploreLayout.story.tsx
+├─ list mode
+├─ map mode
+├─ active tag
+└─ empty result
+
+ExploreLayout.test.tsx
+├─ children render
+├─ viewMode render
+├─ tag callback
+└─ search callback
+```
+
+方針:
+
+- 本番ページ接続前に props 構造を固定する
+- Story では UI状態を確認する
+- Test では callback と children 描画を確認する
+- API呼び出しは ExploreLayout のテスト対象にしない
+
+---
+
 ## TODO
 
 ```markdown
@@ -252,9 +342,15 @@ ExploreLayout
 
 # Layout
 - [x] ExploreLayout設計
-- [ ] 一覧/地図切替タブ設計
-- [ ] 近くの神社セクション統合設計
+- [x] 一覧/地図切替タブ設計
+- [x] 近くの神社セクション統合設計
 - [ ] Search/Map共通Filter設計
+
+# ExploreLayout Usage
+- [x] ExploreLayout利用方針を追加
+- [x] Props Boundaryを追加
+- [x] Integration Strategyを追加
+- [x] Story/Test Strategyを追加
 
 # Docs
 - [ ] architecture.md更新
