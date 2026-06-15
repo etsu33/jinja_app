@@ -17,4 +17,5 @@ INTENT_SYSTEM_PROMPT = f"""
 - atmosphere: string[]
 - avoid: string[]
 - summary: string（120文字以内）
+- consultation_axis: "career" | "money" | "relationship" | "study" | "health" | "protection" | "travel_safe" | "other"
 """.strip()

@@ -153,6 +153,70 @@ LLMクラスタ分析前のため未確定。現時点では候補を固定せ�
 | nature_reset | 自然を感じながら参拝したい | rest | 場所体験・環境条件寄り |
 | study_success | 合格祈願をしたい | study | かなり明確 |
 
+## Consultation Axis Taxonomy
+
+### 目的
+
+`consultation_axis` は、`need_tags` より一段深い相談意図の正規化レイヤーとして扱う。
+
+`need_tags` は「願い・ご利益カテゴリ」を表し、`consultation_axis` は「ユーザーがなぜそれを求めているか」を表す。
+
+```text
+相談文
+↓
+consultation_axis
+↓
+need_tags
+↓
+recommendation
+```
+
+### Axis定義
+
+| axis | 定義 | 代表入力 | primary need_tags | 補助 need_tags |
+|---|---|---|---|---|
+| money_growth | 収入・年収・売上・事業拡大など、経済的な成長や増加を求める相談。単なる金運祈願ではなく、稼ぐ力や経済活動の前進に関する意図を扱う。 | お金が欲しい / 収入を増やしたい / 年収を上げたい / もっと稼ぎたい / 売上を増やしたい | money | career / courage |
+| career_change | 転職・退職・仕事運・好きな仕事など、仕事そのものの方向転換や職業選択に関する相談。 | 転職したい / 今の仕事を辞めたい / 好きな仕事をしたい / 仕事運を上げたい | career | courage / mental |
+| independence | 独立・起業・副業・自由な働き方・組織から離れることに関する相談。収入よりも、自立や裁量の獲得を主目的とする。 | 独立したい / 起業したい / 副業したい / 会社を作りたい / 会社に縛られたくない / 自由に働きたい | career | money / courage |
+| rest_healing | 疲労・落ち着き・静けさ・人の少なさなど、回復や安心できる参拝体験を求める相談。 | 最近疲れている / 落ち着ける神社 / 静かな場所 / 人が少ない場所 | rest | mental |
+| restart_mindset | 気持ちの切り替え・前向きさ・再出発など、心理的な転換点を求める相談。現状ログでは need_tags 未取得が多く、補強対象。 | 気持ちを切り替えたい / 前向きになりたい / 気持ちを切り替えて前向きになれる参拝がしたい | mental | courage / rest |
+| nature_reset | 自然・緑・開放感など、場所体験を通じたリセットを求める相談。願望というより参拝環境の希望に近い。 | 自然を感じながら参拝したい | rest | mental |
+| study_success | 合格祈願・資格試験・学業成就など、学習や試験の成果を求める相談。 | 合格祈願をしたい | study | focus / courage |
+| other | 上記に分類できない相談。taxonomy確定前の逃げ道として使い、分類不能ケースを後続監査対象にする。 | 未分類相談 | - | - |
+
+### axis → need_tag マッピング
+
+| axis | need_tags | 備考 |
+|---|---|---|
+| money_growth | money / career / courage | moneyを主軸にしつつ、収入行動・挑戦文脈を補助する |
+| career_change | career / courage / mental | 仕事の転機を主軸にし、決断不安を補助する |
+| independence | career / money / courage | 自立・起業・副業はcareerだけに潰さず、moneyとcourageも持たせる |
+| rest_healing | rest / mental | 回復体験を主軸にし、心理的負荷も扱う |
+| restart_mindset | mental / courage / rest | 現状では未取得が多いため、need_tags補強候補 |
+| nature_reset | rest / mental | 場所体験としての休息を扱う |
+| study_success | study / focus / courage | studyを主軸にし、集中・継続・挑戦を補助する |
+| other | - | 未分類として保存し、後続監査で見直す |
+
+### axis判定ルール
+
+| 優先順 | 条件 | axis |
+|---:|---|---|
+| 1 | 合格 / 試験 / 資格 / 受験 / 学業 | study_success |
+| 2 | 独立 / 起業 / 副業 / 会社を作りたい / 自由に働きたい / 会社に縛られたくない / フリーランス | independence |
+| 3 | 転職 / 仕事を辞めたい / 好きな仕事 / 天職 / 仕事運 | career_change |
+| 4 | 年収 / 収入 / 稼ぎたい / 売上 / 収益 / お金を増やしたい / 金運 | money_growth |
+| 5 | 気持ちを切り替えたい / 前向き / 再出発 / 流れを変えたい | restart_mindset |
+| 6 | 疲れ / 落ち着きたい / 静か / 人が少ない / 休みたい | rest_healing |
+| 7 | 自然 / 緑 / 開放感 / 散歩 / 空気 | nature_reset |
+| 8 | どれにも該当しない | other |
+
+### 注意点
+
+- `consultation_axis` は神社側の `history_theme` とは分離する。
+- `history_theme` は神社側の文脈、`consultation_axis` はユーザー側の相談軸として扱う。
+- `need_tags` を削除するのではなく、`consultation_axis` から補助的に接続する。
+- taxonomyは確定ではなく、今後の相談ログ増加に応じて更新する。
+
 ## 次にLLMクラスタ分析で見る観点
 
 - 相談文が表す主目的: 仕事、金運、恋愛、人間関係、学業、健康、厄除け、移動安全など。
