@@ -188,6 +188,65 @@ top3 shrine
 primary_reason
 ```
 
+### 代表入力30件
+
+| Cluster | Input | Expected tags | Extracted tags | Hits | Top3 shrine | Primary reason | 差分 | 修正案 |
+|---|---|---|---|---|---|---|---|---|
+| money | お金が欲しい | money | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| money | 収入を増やしたい | money | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| money | 年収を上げたい | money | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| money | もっと稼ぎたい | money | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| money | 売上を増やしたい | money | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| money | 収益を伸ばしたい | money | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| career | 転職したい | career | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| career | 今の仕事を辞めたい | career | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| career | 副業したい | career | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| career | 好きな仕事をしたい | career | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| career | 天職を見つけたい | career | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| career | 働き方を変えたい | career | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| courage | 挑戦したい | courage | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| courage | 一歩踏み出したい | courage | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| courage | 勇気が欲しい | courage | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| courage | 決断したい | courage | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| courage | 背中を押してほしい | courage | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| courage | 流れを変えたい | courage | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| entrepreneur | 独立したい | career, courage | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| entrepreneur | 起業したい | career, courage, money | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| entrepreneur | 会社を作りたい | career, money | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| entrepreneur | 事業を大きくしたい | money, courage | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| entrepreneur | 経営者になりたい | money, career | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| entrepreneur | 自分のサービスを作りたい | career, courage | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| freedom | 自由に働きたい | courage, career | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| freedom | 会社に縛られたくない | courage, career | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| freedom | フリーランスになりたい | career, courage | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| freedom | 場所に縛られず働きたい | courage, career | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| freedom | 自分らしく働きたい | career, courage | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| freedom | 組織に依存しない働き方をしたい | career, courage | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+
+### 判定基準
+
+| 判定 | 条件 |
+|---|---|
+| OK | expected tags と extracted tags が概ね一致し、top3 shrine の理由も納得できる |
+| 要確認 | extracted tags は一致しているが、top3 shrine または primary_reason に違和感がある |
+| 修正候補 | expected tags と extracted tags がズレている |
+
+### 修正方針
+
+```text
+1. expected tags と extracted tags のズレ
+↓
+need_tags.py の keyword / regex を補強
+
+2. extracted tags は合っているが top3 shrine がズレる
+↓
+ranking / score_v2 / goriyaku_tag_ids 接続を確認
+
+3. top3 shrine は合っているが説明が弱い
+↓
+Recommendation Reason / reason copy を修正
+```
+
 ---
 
 ## 2. need_tags → goriyaku_tag_ids 接続監査
