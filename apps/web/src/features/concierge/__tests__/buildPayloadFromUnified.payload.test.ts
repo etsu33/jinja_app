@@ -139,3 +139,38 @@ it("reason_facts を recommendation item に通す", () => {
     }),
   );
 });
+
+it("consultation_axis を meta と recommendation item に通す", () => {
+  const u: any = {
+    data: {
+      consultation_axis: "money_growth",
+      _need: { consultation_axis: "career_change" },
+      _signals: {
+        consultation_axis: "restart_mindset",
+        result_state: { consultation_axis: "rest_healing" },
+      },
+      recommendations: [
+        {
+          shrine_id: 10,
+          display_name: "S1",
+          reason: "R1",
+          consultation_axis: "independence",
+        },
+        {
+          place_id: "P2",
+          display_name: "S2",
+          reason: "R2",
+          consultationAxis: "nature_reset",
+        },
+      ],
+    },
+    thread: { id: 1 },
+  };
+
+  const p = buildPayloadFromUnified(u, baseFilterState);
+  const recSec = p?.sections.find((s: any) => s.type === "recommendations") as any;
+
+  expect(p?.meta?.consultationAxis).toBe("money_growth");
+  expect(recSec.items[0].consultationAxis).toBe("independence");
+  expect(recSec.items[1].consultationAxis).toBe("nature_reset");
+});

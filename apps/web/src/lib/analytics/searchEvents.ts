@@ -33,6 +33,7 @@ export type SearchAnalyticsPayload = {
   query?: string | null;
   routeTarget?: "google_maps" | "internal_map" | null;
   historyTheme?: string | null;
+  consultationAxis?: string | null;
   actionTheme?: string | null;
   promptType?: string | null;
   answerLength?: number | null;

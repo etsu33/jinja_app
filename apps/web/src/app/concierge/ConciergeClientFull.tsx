@@ -1070,12 +1070,37 @@ export default function ConciergeClientFull() {
     const mode = modeRaw?.mode === "need" || modeRaw?.mode === "compat" ? modeRaw.mode : undefined;
     const flow = modeRaw?.flow === "A" || modeRaw?.flow === "B" ? modeRaw.flow : undefined;
     const topRecommendation = displayRecommendations[0] as Record<string, unknown> | undefined;
+    const data = (displayUnified?.data as any) ?? {};
+    const signals = data?._signals ?? {};
+    const resultState = signals?.result_state ?? signals?.resultState ?? {};
     const historyTheme =
       typeof topRecommendation?.history_theme === "string"
         ? topRecommendation.history_theme
         : typeof topRecommendation?.historyTheme === "string"
           ? topRecommendation.historyTheme
           : undefined;
+    const consultationAxis =
+      typeof topRecommendation?.consultation_axis === "string"
+        ? topRecommendation.consultation_axis
+        : typeof topRecommendation?.consultationAxis === "string"
+          ? topRecommendation.consultationAxis
+          : typeof data?.consultation_axis === "string"
+            ? data.consultation_axis
+            : typeof data?.consultationAxis === "string"
+              ? data.consultationAxis
+              : typeof data?._need?.consultation_axis === "string"
+                ? data._need.consultation_axis
+                : typeof data?._need?.consultationAxis === "string"
+                  ? data._need.consultationAxis
+                  : typeof signals?.consultation_axis === "string"
+                    ? signals.consultation_axis
+                    : typeof signals?.consultationAxis === "string"
+                      ? signals.consultationAxis
+                      : typeof resultState?.consultation_axis === "string"
+                        ? resultState.consultation_axis
+                        : typeof resultState?.consultationAxis === "string"
+                          ? resultState.consultationAxis
+                          : undefined;
 
     return {
       mode,
@@ -1083,6 +1108,7 @@ export default function ConciergeClientFull() {
       hasBirthdate: Boolean(normalizedBirthdate),
       recommendationCount: displayRecommendations.length,
       historyTheme,
+      ...(consultationAxis ? { consultationAxis } : {}),
     };
   }, [displayUnified, displayRecommendations, normalizedBirthdate]);
 
@@ -1133,12 +1159,37 @@ export default function ConciergeClientFull() {
 
       const completedModeRaw = (u.data as any)?._signals?.mode;
       const completedTopRecommendation = completedRecommendations[0] as Record<string, unknown> | undefined;
+      const completedData = (u.data as any) ?? {};
+      const completedSignals = completedData?._signals ?? {};
+      const completedResultState = completedSignals?.result_state ?? completedSignals?.resultState ?? {};
       const completedHistoryTheme =
         typeof completedTopRecommendation?.history_theme === "string"
           ? completedTopRecommendation.history_theme
           : typeof completedTopRecommendation?.historyTheme === "string"
             ? completedTopRecommendation.historyTheme
             : undefined;
+      const completedConsultationAxis =
+        typeof completedTopRecommendation?.consultation_axis === "string"
+          ? completedTopRecommendation.consultation_axis
+          : typeof completedTopRecommendation?.consultationAxis === "string"
+            ? completedTopRecommendation.consultationAxis
+            : typeof completedData?.consultation_axis === "string"
+              ? completedData.consultation_axis
+              : typeof completedData?.consultationAxis === "string"
+                ? completedData.consultationAxis
+                : typeof completedData?._need?.consultation_axis === "string"
+                  ? completedData._need.consultation_axis
+                  : typeof completedData?._need?.consultationAxis === "string"
+                    ? completedData._need.consultationAxis
+                    : typeof completedSignals?.consultation_axis === "string"
+                      ? completedSignals.consultation_axis
+                      : typeof completedSignals?.consultationAxis === "string"
+                        ? completedSignals.consultationAxis
+                        : typeof completedResultState?.consultation_axis === "string"
+                          ? completedResultState.consultation_axis
+                          : typeof completedResultState?.consultationAxis === "string"
+                            ? completedResultState.consultationAxis
+                            : undefined;
 
       track("consultation_completed", {
         threadId: nextTid || currentTid ? String(nextTid || currentTid) : undefined,
@@ -1147,6 +1198,7 @@ export default function ConciergeClientFull() {
         hasBirthdate: Boolean(normalizedBirthdate || baseFilters.birthdate),
         recommendationCount: completedRecommendations.length,
         historyTheme: completedHistoryTheme,
+        ...(completedConsultationAxis ? { consultationAxis: completedConsultationAxis } : {}),
         source: fromEntry ? "entry" : "thread",
       });
       if (filterApplyPendingRef.current) {
@@ -1426,6 +1478,7 @@ export default function ConciergeClientFull() {
             action: "route",
             rank: typeof a.rank === "number" ? a.rank : null,
             tid: activeThreadIdRef.current || null,
+            ...(modeAnalyticsPayload.consultationAxis ? { consultationAxis: modeAnalyticsPayload.consultationAxis } : {}),
           });
         }
 
