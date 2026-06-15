@@ -28,6 +28,7 @@ from temples.api.serializers.concierge import (
 )
 from temples.geocoding.client import geocode_google_point
 from temples.models import ConciergeThread
+from temples.domain.consultation_axis import resolve_consultation_axis
 from temples.services import places as Places
 
 from temples.services.plan_service import resolve_plan_context
@@ -131,13 +132,14 @@ def _safe_extract_intent(text: str):
     t = text or ""
 
     def _heuristic():
+        axis = resolve_consultation_axis(query=t, need_tags=[]).axis
         if any(k in t for k in ("縁結び", "恋", "結婚")):
-            return {"kind": "love"}
+            return {"kind": "love", "consultation_axis": axis}
         if any(k in t for k in ("金運", "仕事", "商売")):
-            return {"kind": "money_work"}
+            return {"kind": "money_work", "consultation_axis": axis}
         if any(k in t for k in ("厄", "厄除", "厄払い")):
-            return {"kind": "purification"}
-        return {"kind": "general"}
+            return {"kind": "purification", "consultation_axis": axis}
+        return {"kind": "general", "consultation_axis": axis}
 
     if not _use_llm():
         return _heuristic()

@@ -90,6 +90,7 @@ def test_matched_need_tags_are_user_shrine_match_result_not_raw_user_input():
         extra_condition="静かな場所がいい",
         need_payload={"tags": ["career"], "hits": {"career": ["転職"]}},
         need_tags=["career"],
+        consultation_axis="career",
         goriyaku_tag_ids=[1, "2", "invalid"],
         recommendations=[
             {
@@ -102,6 +103,7 @@ def test_matched_need_tags_are_user_shrine_match_result_not_raw_user_input():
 
     assert profile["need_tags"] == ["career"]
     assert profile["need_hits"] == {"career": ["転職"]}
+    assert profile["consultation_axis"] == "career"
     assert profile["selected_goriyaku_tag_ids"] == [1, 2]
     assert profile["matched_need_tags"] == ["career"]
     assert profile["primary_need_tag"] == "career"

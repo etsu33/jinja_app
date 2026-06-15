@@ -11,6 +11,7 @@ def build_result_state(
     extra_condition: Optional[str],
     goriyaku_tag_ids: Optional[List[int]],
     hard_filter_tags: set[str],
+    consultation_axis: str,
 ) -> Dict[str, Any]:
     displayed_count = len(
         [r for r in (recommendations or []) if isinstance(r, dict)]
@@ -39,6 +40,7 @@ def build_result_state(
         "fallback_reason_ja": fallback_reason_ja,
         "ui_disclaimer_ja": ui_disclaimer_ja,
         "requested_extra_condition": requested_extra,
+        "consultation_axis": consultation_axis,
     }
 
 
@@ -99,6 +101,7 @@ def build_signals(
     valid_candidates: List[Dict[str, Any]],
     recommendations: List[Dict[str, Any]],
     result_state: Dict[str, Any],
+    consultation_axis: str,
 ) -> Dict[str, Any]:
     return {
         "mode": _resolve_mode_meta(
@@ -123,6 +126,7 @@ def build_signals(
             recommendations=recommendations,
         ),
         "result_state": result_state,
+        "consultation_axis": consultation_axis,
     }
 
 
@@ -141,6 +145,7 @@ def attach_response_meta(
     extra_condition: Optional[str],
     goriyaku_tag_ids: Optional[List[int]],
     hard_filter_tags: set[str],
+    consultation_axis: str = "other",
 ) -> Dict[str, Any]:
     recommendations = [
         r for r in (recs.get("recommendations") or [])
@@ -152,6 +157,7 @@ def attach_response_meta(
         extra_condition=extra_condition,
         goriyaku_tag_ids=goriyaku_tag_ids,
         hard_filter_tags=hard_filter_tags,
+        consultation_axis=consultation_axis,
     )
 
     recs["_signals"] = build_signals(
@@ -166,6 +172,7 @@ def attach_response_meta(
         valid_candidates=valid_candidates,
         recommendations=recommendations,
         result_state=result_state,
+        consultation_axis=consultation_axis,
     )
 
     return recs
