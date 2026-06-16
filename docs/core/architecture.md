@@ -545,4 +545,145 @@ duplicate_candidate の詳細契約は以下を正本とする：
 
 `ShrineSubmission.goriyaku_tags` は投稿者の意図を示す参考情報であり、`Shrine.goriyaku_tags` とは別物として扱う。検索・推薦に使う正本タグは、管理者が `Shrine.goriyaku_tags` として確定する。
 
-承認時に自動反映するのは `name / address / lat / lng / owner` のみとし、タグ・note は自動反映しない。
+
+---
+
+## 認証アーキテクチャ
+
+### 目的
+
+KAMI MUSUBI の認証経路は、frontend / BFF / backend の責務を分離し、認証入口の乱立を防ぐ構成とする。
+
+認証付き機能は、課金状態・マイページ・御朱印・お気に入り・コンシェルジュ保存・参拝記録など、ユーザー状態に依存するため、認証経路を一本化して保守する。
+
+---
+
+### 現在の正本フロー
+
+```text
+Frontend
+  ↓
+/api/auth/login
+  ↓
+Next.js BFF
+  ↓
+Django backend /api/auth/jwt/create/
+  ↓
+access_token / refresh_token を HttpOnly Cookie に保存
+  ↓
+認証付き API は BFF 経由で backend へ転送
+```
+
+frontend のログイン入口は `/api/auth/login` を正本とする。
+
+frontend 側に JWT 発行用の `/api/auth/jwt/create` route は持たない。
+
+---
+
+### Frontend の責務
+
+```text
+- ログインフォームから /api/auth/login を呼ぶ
+- JWT を JavaScript で直接保持しない
+- 認証状態は AuthProvider で扱う
+- access_token / refresh_token は HttpOnly Cookie として扱う
+```
+
+正本ファイル:
+
+```text
+apps/web/src/lib/auth/AuthProvider.tsx
+apps/web/src/app/api/auth/login/route.ts
+apps/web/src/lib/api/auth.ts
+```
+
+---
+
+### BFF の責務
+
+認証付き API route は、原則として `bffFetchWithAuthFromReq` を経由する。
+
+```text
+apps/web/src/lib/server/bffFetch.ts
+```
+
+BFF は以下を担当する。
+
+```text
+- request cookie から access_token / refresh_token を読む
+- backend へ Authorization: Bearer <token> を付与する
+- access_token 期限切れ時に refresh を試す
+- refresh 成功時は access_token Cookie を更新する
+- backend response を frontend に返す
+```
+
+frontend component から backend origin を直接組み立てない。
+
+---
+
+### Backend の責務
+
+backend は JWTAuthentication を認証の正本とする。
+
+```text
+Django backend
+  ↓
+JWTAuthentication
+  ↓
+request.user を解決
+  ↓
+課金状態・ユーザー情報・保存情報などを判定
+```
+
+課金判定は backend 側で `request.user` をもとに行う。
+
+```text
+/api/billings/status/
+```
+
+---
+
+### 禁止方針
+
+```text
+- frontend route 内で backend URL を直接組み立てる
+- route.ts ごとに Authorization 付与ロジックを重複実装する
+- NEXT_PUBLIC_API_BASE / API_BASE_URL を認証付き route で直接参照する
+- frontend に JWT 発行 route を複数持つ
+- access_token / refresh_token を localStorage に保存する
+```
+
+---
+
+### SessionAuthentication の扱い
+
+現時点では SessionAuthentication を即削除しない。
+
+理由:
+
+```text
+- 依存箇所がまだ完全には確定していない
+- Goshuin / Users / Billing などに影響する可能性がある
+- 開発初期や互換目的で残っている可能性がある
+```
+
+今後の監査で以下に分類する。
+
+```text
+削除可能:
+- JWTAuthentication のみで動作確認できる API
+
+保留:
+- 影響範囲が未確認の API
+
+残す:
+- 明確に SessionAuthentication が必要な API
+```
+
+---
+
+### 関連ドキュメント
+
+```text
+docs/authentication-flow.md
+```

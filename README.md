@@ -224,6 +224,7 @@ apps/web/src/app/
 
 ## アーキテクチャ設計
 
+
 ### 認証フロー
 
 ```
@@ -238,6 +239,34 @@ Cookie (HttpOnly)
 2. BFFがDjangoからJWTトークンを取得
 3. HttpOnly Cookieに保存
 4. 以降のリクエストでBFFが自動でトークンをヘッダーに付与
+
+### 認証の正本（2026-06時点）
+
+#### Frontend
+
+- ログイン入口は `/api/auth/login`
+- AuthProvider は `/api/auth/login` を利用
+- `lib/api/auth.ts` も `/api/auth/login` を利用
+- ブラウザは JWT を直接保持しない
+- access_token / refresh_token は HttpOnly Cookie で管理する
+
+#### BFF
+
+- 認証付き通信は Next.js Route Handler（BFF）を経由する
+- `bffFetchWithAuthFromReq` を認証転送の正本とする
+- Cookie → Authorization Header の変換は BFF が行う
+- access token のリフレッシュも BFF が担当する
+
+#### Backend
+
+- Django API は JWTAuthentication を正本とする
+- Billing / Favorite / User / Concierge は JWT ベースで認証する
+- SessionAuthentication は監査対象であり、段階的な整理候補とする
+
+#### 廃止済み
+
+- `/api/auth/jwt/create`（frontend route）は削除済み
+- JWT 発行は backend `/api/auth/jwt/create/` を利用し、frontend は `/api/auth/login` のみを利用する
 
 ### BFFパターン
 
