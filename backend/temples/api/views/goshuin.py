@@ -5,7 +5,6 @@ import logging
 from django.db import transaction
 
 from rest_framework import permissions, status, viewsets
-from rest_framework.authentication import SessionAuthentication
 from rest_framework.decorators import action
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import AllowAny
@@ -24,12 +23,6 @@ MAX_MY_GOSHUINS_FREE = 10
 
 # ✅ 後方互換（tests が直importしてる）
 MAX_MY_GOSHUINS = MAX_MY_GOSHUINS_FREE
-
-class CsrfExemptSessionAuthentication(SessionAuthentication):
-    """SessionAuthentication だけど CSRF チェックをスキップ（開発用）"""
-    def enforce_csrf(self, request):
-        return
-
 
 class PublicGoshuinViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [AllowAny]
@@ -69,7 +62,7 @@ class MyGoshuinViewSet(viewsets.ViewSet):
     /api/my/goshuins/ 用（自分の御朱印 CRUD）
     """
     serializer_class = GoshuinSerializer
-    authentication_classes = [JWTAuthentication, CsrfExemptSessionAuthentication]
+    authentication_classes = [JWTAuthentication]
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = [JSONParser, MultiPartParser, FormParser]
 
