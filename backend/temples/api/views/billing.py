@@ -52,6 +52,7 @@ class BillingStatusView(APIView):
 
     def get(self, request):
         st = get_billing_status(user=getattr(request, "user", None))
+        print("[BILLING_STATUS_AUTH]", request.user, getattr(request.user, "is_authenticated", None), getattr(request.user, "id", None), getattr(request.user, "email", None))
         ser = BillingStatusSerializer(
             instance={
                 "plan": st.plan,
