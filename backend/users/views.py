@@ -7,7 +7,6 @@ from django.shortcuts import redirect, render
 from django.views import View
 
 from rest_framework import status
-from rest_framework.authentication import SessionAuthentication
 from rest_framework.generics import GenericAPIView
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
@@ -22,7 +21,7 @@ log = logging.getLogger(__name__)
 
 
 class MeView(GenericAPIView):
-    authentication_classes = [JWTAuthentication, SessionAuthentication]
+    authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
     serializer_class = MeSerializer
     http_method_names = ["get", "patch"]
@@ -66,7 +65,7 @@ class CurrentUserView(GenericAPIView):
 
 class MeIconUploadView(GenericAPIView):
     serializer_class = MeIconUploadSerializer
-    authentication_classes = [JWTAuthentication, SessionAuthentication]
+    authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
 
