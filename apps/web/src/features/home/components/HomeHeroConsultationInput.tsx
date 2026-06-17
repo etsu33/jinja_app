@@ -27,28 +27,36 @@ function buildConciergeHref(theme: string, options: BuildConciergeHrefOptions = 
 
 const CONSULTATION_THEME_CHIPS = [
   {
-    label: "疲れを整えたい",
-    text: "最近少し疲れていて、気持ちを落ち着ける参拝がしたいです",
+    label: "仕事について考えたい",
+    text: "仕事や働き方について、今の流れを整理したいです",
   },
   {
-    label: "迷いを整理したい",
-    text: "今の迷いを整理して、落ち着いて考えられる場所に行きたいです",
+    label: "人との関係を整えたい",
+    text: "人との関係やご縁について、落ち着いて見つめ直したいです",
   },
   {
-    label: "前に進みたい",
-    text: "気持ちを切り替えて、前に進むきっかけがほしいです",
+    label: "お金の流れを整えたい",
+    text: "お金や生活の流れについて、不安を整理して次の動きを考えたいです",
   },
   {
-    label: "静かに考えたい",
-    text: "静かな場所で、これからのことをゆっくり考えたいです",
+    label: "一歩踏み出したい",
+    text: "迷いを整理して、次の一歩を踏み出すきっかけがほしいです",
   },
   {
-    label: "人との縁を見直したい",
-    text: "人とのご縁を見つめ直して、大切にできる参拝がしたいです",
+    label: "少し休みたい",
+    text: "最近少し疲れていて、気持ちを落ち着ける時間がほしいです",
   },
   {
-    label: "仕事の流れを整えたい",
-    text: "仕事の流れを整えて、次に進むきっかけがほしいです",
+    label: "体調を整えたい",
+    text: "心身の調子を整えて、無理なく過ごせるようにしたいです",
+  },
+  {
+    label: "学びを深めたい",
+    text: "学びや積み重ねに向き合い、集中し直すきっかけがほしいです",
+  },
+  {
+    label: "これからを考えたい",
+    text: "これからの方向性について、静かに考え直す時間がほしいです",
   },
 ] as const;
 
@@ -66,20 +74,20 @@ export function HomeHeroConsultationInput() {
   return (
     <div className="w-full max-w-2xl rounded-[2rem] border border-white/70 bg-white/70 p-4 text-left shadow-sm shadow-stone-900/5 sm:p-5">
       <label htmlFor="home-hero-consultation" className="block text-[11px] font-medium text-stone-500">
-        今の気持ちを少しだけ書く
+        必要なら、今の状況を少しだけ書く
       </label>
 
       <textarea
         id="home-hero-consultation"
         value={theme}
         onChange={(event) => setTheme(event.target.value)}
-        placeholder="例: 気持ちを切り替えたい、これからのことを考えたい"
+        placeholder="例: 仕事の迷いを整理したい、少し休みたい"
         rows={3}
         className="mt-2 w-full resize-none rounded-3xl border border-stone-200/50 bg-stone-50/70 px-4 py-3 text-sm leading-7 text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-emerald-200 focus:ring-1 focus:ring-emerald-100"
       />
 
       <div className="mt-3">
-        <p className="text-[11px] font-medium text-stone-500">相談のきっかけ</p>
+        <p className="text-[11px] font-medium text-stone-500">相談テーマ</p>
         <div className="mt-2 flex flex-wrap gap-2">
           {CONSULTATION_THEME_CHIPS.map((chip) => {
             const isSelected = theme.trim() === chip.text;
@@ -113,7 +121,7 @@ export function HomeHeroConsultationInput() {
           ＋ 条件を追加する
         </button>
         <p className="mt-2 rounded-2xl border border-stone-200/55 bg-stone-50/70 px-3 py-2 text-xs leading-6 text-stone-500">
-          誕生日やご利益、参拝スタイルなどの条件は次のステップで追加できます。
+          誕生日・ご利益・参拝スタイルは、補助条件として次のステップで追加できます。
         </p>
       </div>
 
