@@ -4,6 +4,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from django.conf import settings as dj_settings
+from temples.domain.consultation_axis import resolve_consultation_axis
 from temples.models import GoriyakuTag
 
 from temples.services.concierge_candidate_utils import _normalize_candidate_fields
@@ -103,6 +104,7 @@ def _build_user_state_profile(
     extra_condition: Optional[str],
     need_payload: Dict[str, Any],
     need_tags: List[str],
+    consultation_axis: str,
     goriyaku_tag_ids: Optional[List[int]],
     recommendations: List[Dict[str, Any]],
 ) -> Dict[str, Any]:
@@ -143,6 +145,7 @@ def _build_user_state_profile(
         "extra_condition": extra_condition or "",
         "need_tags": list(need_tags or []),
         "need_hits": need_payload.get("hits") or {},
+        "consultation_axis": consultation_axis,
         "selected_goriyaku_tag_ids": _normalize_int_list(goriyaku_tag_ids),
         "matched_need_tags": matched_need_tags,
         "primary_need_tag": primary_need_tag,
@@ -272,6 +275,7 @@ def build_chat_recommendations(
     public_mode="need",
     flow="A",
     need_tags: list[str] | None = None,
+    consultation_axis: str | None = None,
     llm_enabled: bool | None = None,
     user=None,
 ) -> Dict[str, Any]:
@@ -280,6 +284,12 @@ def build_chat_recommendations(
 
     facade はこのファイルに残し、
     ranking / pool / presentation の責務は各モジュールへ分離する。
+
+    Responsibility:
+      - need_tags は相談テーマ由来の主推薦軸として扱う。
+      - goriyaku_tag_ids はユーザー追加の補助条件として扱う。
+      - extra_condition は参拝スタイルなどの補助条件として扱う。
+      - birthdate / astro / direction は主軸を上書きしない補助シグナルとして扱う。
     """
     valid_candidates = [
         _normalize_candidate_fields(c) for c in (candidates or []) if isinstance(c, dict)
@@ -291,12 +301,22 @@ def build_chat_recommendations(
         max_tags=3,
     )
     need_tags = need_payload["tags"]
+    consultation_axis_extract = resolve_consultation_axis(
+        query=query or "",
+        need_tags=need_tags,
+        llm_axis=consultation_axis,
+    )
+    consultation_axis_value = consultation_axis_extract.axis
+    need_payload["consultation_axis"] = consultation_axis_value
+    need_payload["consultation_axis_source"] = consultation_axis_extract.source
+    need_payload["consultation_axis_hits"] = consultation_axis_extract.hits
 
     log.info(
-        "[dbg] need_tags has_query=%s query_len=%d tags=%r language=%r flow=%r mode=%r has_extra=%s has_goriyaku=%s",
+        "[dbg] need_tags has_query=%s query_len=%d tags=%r consultation_axis=%r language=%r flow=%r mode=%r has_extra=%s has_goriyaku=%s",
         bool(query),
         len(query or ""),
         need_tags,
+        consultation_axis_value,
         language,
         flow,
         public_mode,
@@ -343,6 +363,7 @@ def build_chat_recommendations(
             "has_extra_condition": bool(str(extra_condition or "").strip()),
             "has_goriyaku_tag_ids": bool(goriyaku_tag_ids),
             "need_tags": need_tags,
+            "consultation_axis": consultation_axis_value,
             "sort_tags": sorted(sort_tags),
             "hard_filter_tags": sorted(hard_filter_tags),
             "visit_style_tags": sorted(visit_style_tags),
@@ -417,6 +438,10 @@ def build_chat_recommendations(
         user_origin=bias,
         user=user,
     )
+    recs["consultation_axis"] = consultation_axis_value
+    for rec in recs.get("recommendations") or []:
+        if isinstance(rec, dict):
+            rec["consultation_axis"] = consultation_axis_value
 
     recs = attach_explanation_payload(recs, birthdate=birthdate)
 
@@ -451,6 +476,7 @@ def build_chat_recommendations(
         extra_condition=extra_condition,
         need_payload=need_payload,
         need_tags=need_tags,
+        consultation_axis=consultation_axis_value,
         goriyaku_tag_ids=goriyaku_tag_ids,
         recommendations=[
             r
@@ -515,6 +541,11 @@ def build_chat_recommendations(
         astro_profile=astro_profile,
     )
 
+    recs["consultation_axis"] = consultation_axis_value
+    for rec in recs.get("recommendations") or []:
+        if isinstance(rec, dict):
+            rec["consultation_axis"] = consultation_axis_value
+
     recs["_need"] = need_payload
 
     recs = attach_response_meta(
@@ -531,6 +562,7 @@ def build_chat_recommendations(
         extra_condition=extra_condition,
         goriyaku_tag_ids=goriyaku_tag_ids,
         hard_filter_tags=hard_filter_tags,
+        consultation_axis=consultation_axis_value,
     )
 
     recs = attach_explanations_for_chat(

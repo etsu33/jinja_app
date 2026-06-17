@@ -2,15 +2,29 @@
 
 ## プロダクト導線
 
-本アプリは「神社コンシェルジュ」を中心にした導線で設計されています。
+本アプリは Concierge First を採用し、「神社検索」ではなく「相談テーマから神社と出会う体験」を中心に設計されています。詳細は docs/product/concierge-first.md を参照してください。
 
 主導線は以下です。
 
-コンシェルジュ → 神社詳細 → 経路案内
+相談テーマ → コンシェルジュ → 神社詳細 → 経路案内
 
 1. コンシェルジュで相談
 2. 推薦された神社の詳細を見る
 3. 経路案内で参拝する
+
+```markdown
+### Concierge First
+
+Concierge First では、トップ画面とコンシェルジュ画面を統合し、相談テーマを主入力として扱います。
+
+- 主入力: 相談テーマ
+- 条件追加: 参拝スタイル / 誕生日 / ご利益タグ
+- 占星術・九星気学・風水: 補助シグナル
+- 吉方位・相性: 詳細ページの補足情報
+- 神社一覧・地図: サブ導線
+
+詳細仕様は `docs/product/concierge-first.md` を参照してください。
+```
 
 ### 体験設計の責務分離
 
@@ -210,6 +224,7 @@ apps/web/src/app/
 
 ## アーキテクチャ設計
 
+
 ### 認証フロー
 
 ```
@@ -224,6 +239,34 @@ Cookie (HttpOnly)
 2. BFFがDjangoからJWTトークンを取得
 3. HttpOnly Cookieに保存
 4. 以降のリクエストでBFFが自動でトークンをヘッダーに付与
+
+### 認証の正本（2026-06時点）
+
+#### Frontend
+
+- ログイン入口は `/api/auth/login`
+- AuthProvider は `/api/auth/login` を利用
+- `lib/api/auth.ts` も `/api/auth/login` を利用
+- ブラウザは JWT を直接保持しない
+- access_token / refresh_token は HttpOnly Cookie で管理する
+
+#### BFF
+
+- 認証付き通信は Next.js Route Handler（BFF）を経由する
+- `bffFetchWithAuthFromReq` を認証転送の正本とする
+- Cookie → Authorization Header の変換は BFF が行う
+- access token のリフレッシュも BFF が担当する
+
+#### Backend
+
+- Django API は JWTAuthentication を正本とする
+- Billing / Favorite / User / Concierge は JWT ベースで認証する
+- SessionAuthentication は監査対象であり、段階的な整理候補とする
+
+#### 廃止済み
+
+- `/api/auth/jwt/create`（frontend route）は削除済み
+- JWT 発行は backend `/api/auth/jwt/create/` を利用し、frontend は `/api/auth/login` のみを利用する
 
 ### BFFパターン
 
@@ -318,6 +361,8 @@ export async function GET(req: NextRequest) {
 
 詳細設計・運用ルールは `docs/` 配下に集約しています。
 
+- **Concierge First**: docs/product/concierge-first.md
+- **Concierge Modes**: docs/product/concierge-modes.md
 - **アーキテクチャ・認証**: `docs/10_arch_auth_proxy.md`
 - **ローカル動作確認**: `docs/20_smoke_checks.md`
 - **API概要**: `docs/30_api_overview.md`

@@ -133,6 +133,7 @@ def assert_ranking_breakdown_observation_schema(observation):
         "query",
         "need_tags",
         "user_state_profile",
+        "score_audit",
         "matched_need_tags",
         "visit_style_tags",
         "matched_visit_style_tags",
@@ -145,6 +146,7 @@ def assert_ranking_breakdown_observation_schema(observation):
         "reflection_hint_source_history_theme",
     }
     assert isinstance(observation["_debug"]["user_state_profile"], dict)
+    assert isinstance(observation["_debug"]["score_audit"], dict)
 
 
 def assert_ranking_breakdown_top_row_schema(row):
@@ -164,6 +166,7 @@ def assert_ranking_breakdown_top_row_schema(row):
         "score_popular",
         "score_visit_style",
         "score_element",
+        "direction_bonus",
         "visit_style_tags",
         "behavior_signal",
         "behavior_contribution",
@@ -194,6 +197,7 @@ def assert_ranking_breakdown_top_row_schema(row):
     assert isinstance(row["score_popular"], float)
     assert isinstance(row["score_visit_style"], int)
     assert isinstance(row["score_element"], int)
+    assert isinstance(row["direction_bonus"], float)
     assert isinstance(row["visit_style_tags"], list)
     assert isinstance(row["behavior_signal"], float)
     assert isinstance(row["behavior_contribution"], float)
@@ -764,6 +768,23 @@ def test_observe_ranking_breakdown_returns_stable_schema():
     assert _debug["query"] == ""
     assert _debug["need_tags"] == []
     assert _debug["user_state_profile"] == {}
+    assert _debug["score_audit"] == {
+        "row_count": 1,
+        "score_element_distribution": {"0": 1},
+        "astro_bonus_hit_count": 0,
+        "astro_bonus_hit_rate": 0.0,
+        "direction_bonus_hit_count": 0,
+        "direction_bonus_hit_rate": 0.0,
+        "primary_reason_source_counts": {"text_hint": 1},
+        "top10_element_primary_count": 0,
+        "top10_element_primary_rate": 0.0,
+        "history_theme_primary_count": 0,
+        "history_theme_primary_rate": 0.0,
+        "culture_translation_primary_count": 0,
+        "culture_translation_primary_rate": 0.0,
+        "need_tag_primary_count": 0,
+        "need_tag_primary_rate": 0.0,
+    }
     assert _debug["matched_need_tags"] == [["rest"]]
     assert _debug["visit_style_tags"] == [["nature"]]
     assert _debug["matched_visit_style_tags"] == [["nature"]]
@@ -881,7 +902,7 @@ def test_build_reason_facts_generates_user_selected_tag_reason():
     }
 
 
-def test_resolve_primary_reason_prefers_user_selected_tag():
+def test_resolve_primary_reason_prefers_need_tag_over_user_selected_tag():
     facts = _build_reason_facts(
         matched_by_tag=["rest"],
         matched_by_gid=["money"],
@@ -895,9 +916,9 @@ def test_resolve_primary_reason_prefers_user_selected_tag():
 
     primary = _resolve_primary_reason(facts)
 
-    assert primary["type"] == "user_selected_tag"
-    assert primary["label"] == "美容"
-    assert primary["evidence"] == ["requested_goriyaku_tag_ids"]
+    assert primary["type"] == "need_tag"
+    assert primary["label"] == "rest"
+    assert primary["evidence"] == ["rest"]
 
 
 def test_attach_breakdown_sets_user_selected_tag_as_primary_reason():
@@ -1055,6 +1076,23 @@ def test_observe_ranking_breakdown_empty_contract_has_stable_schema():
             "query": "",
             "need_tags": [],
             "user_state_profile": {},
+            "score_audit": {
+                "row_count": 0,
+                "score_element_distribution": {},
+                "astro_bonus_hit_count": 0,
+                "astro_bonus_hit_rate": 0.0,
+                "direction_bonus_hit_count": 0,
+                "direction_bonus_hit_rate": 0.0,
+                "primary_reason_source_counts": {},
+                "top10_element_primary_count": 0,
+                "top10_element_primary_rate": 0.0,
+                "history_theme_primary_count": 0,
+                "history_theme_primary_rate": 0.0,
+                "culture_translation_primary_count": 0,
+                "culture_translation_primary_rate": 0.0,
+                "need_tag_primary_count": 0,
+                "need_tag_primary_rate": 0.0,
+            },
             "matched_need_tags": [],
             "visit_style_tags": [],
             "matched_visit_style_tags": [],

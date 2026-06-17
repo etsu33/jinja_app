@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 
+from temples.domain.need_tags import extract_need_tags
 from temples.services.concierge_chat import build_chat_recommendations
 from temples.tests.fixtures.concierge_core_candidates import CONCIERGE_CORE_CANDIDATES
 
@@ -46,3 +47,30 @@ def test_need_taxonomy_detects_protection_cleansing_context(monkeypatch):
     assert "protection" in tags
     assert "mental" in tags
     assert recs["recommendations"][0]["reason_source"] != "reason:original"
+
+
+@pytest.mark.parametrize(
+    ("query", "expected_tag", "expected_hit"),
+    [
+        ("年収を上げたい", "money", "年収"),
+        ("もっと稼ぎたい", "money", "もっと稼ぎたい"),
+        ("収益を伸ばしたい", "money", "収益"),
+        ("副業したい", "career", "副業"),
+        ("好きな仕事をしたい", "career", "好きな仕事"),
+        ("仕事を辞めたい", "career", "仕事を辞めたい"),
+        ("会社を作りたい", "career", "会社を作りたい"),
+        ("気持ちを切り替えたい", "mental", "気持ちを切り替えたい"),
+        ("前向きになれる参拝がしたい", "courage", "前向きになれる"),
+        ("自由に働きたい", "courage", "自由に働きたい"),
+        ("会社に縛られたくない", "courage", "会社に縛られたくない"),
+    ],
+)
+def test_need_taxonomy_detects_money_career_and_courage_keyword_boundaries(
+    query,
+    expected_tag,
+    expected_hit,
+):
+    extracted = extract_need_tags(query)
+
+    assert expected_tag in extracted.tags
+    assert expected_hit in extracted.hits[expected_tag]

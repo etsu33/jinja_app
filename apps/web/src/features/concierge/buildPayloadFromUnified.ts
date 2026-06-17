@@ -22,6 +22,18 @@ type NormalizedItemBase = {
   trustMetadata?: any | null;
   historyTheme?: string | null;
   historyContext?: string | null;
+  consultationAxis?: string | null;
+  actionSuggestions?: Array<{
+    id: string;
+    historyTheme: string;
+    title: string;
+    description: string;
+    category: string;
+    timing: string;
+    difficulty: string;
+    timeEstimate: string;
+    measurementKey: string;
+  }>;
   detailHref?: string;
   isDummy?: boolean;
 };
@@ -47,6 +59,7 @@ type DetailAnalyticsContext = {
   flow?: "A" | "B";
   hasBirthdate?: boolean;
   recommendationCount?: number;
+  consultationAxis?: string | null;
 };
 
 function asTrimmedString(v: unknown): string | null {
@@ -66,6 +79,29 @@ function pickFirstString(...vals: unknown[]): string | null {
     if (s) return s;
   }
   return null;
+}
+
+function pickConsultationAxis(...vals: unknown[]): string | null {
+  return pickFirstString(...vals);
+}
+
+function normalizeActionSuggestions(r: any): NonNullable<NormalizedItemBase["actionSuggestions"]> {
+  const raw = r?._explanation_payload?.action_suggestions;
+  if (!Array.isArray(raw)) return [];
+
+  return raw
+    .map((item: any) => ({
+      id: String(item?.id ?? "").trim(),
+      historyTheme: String(item?.history_theme ?? "").trim(),
+      title: String(item?.title ?? "").trim(),
+      description: String(item?.description ?? "").trim(),
+      category: String(item?.category ?? "").trim(),
+      timing: String(item?.timing ?? "").trim(),
+      difficulty: String(item?.difficulty ?? "").trim(),
+      timeEstimate: String(item?.time_estimate ?? "").trim(),
+      measurementKey: String(item?.measurement_key ?? "").trim(),
+    }))
+    .filter((item) => item.id && item.title);
 }
 
 // 登録済み=shrine_idあり → /shrines/:id, 未登録=place_idのみ → /shrines/resolve, どちらも無い→除外
@@ -97,6 +133,12 @@ function normalizeRecommendation(r: any, tid: string | null, analyticsContext: D
   const trustMetadata = r?.trust_metadata ?? r?.trustMetadata ?? null;
   const historyTheme = pickFirstString(r?.history_theme, r?.historyTheme);
   const historyContext = pickFirstString(r?.history_context, r?.historyContext);
+  const consultationAxis = pickConsultationAxis(
+    r?.consultation_axis,
+    r?.consultationAxis,
+    analyticsContext.consultationAxis,
+  );
+  const actionSuggestions = normalizeActionSuggestions(r);
 
   if (shrineId) {
     return {
@@ -113,6 +155,8 @@ function normalizeRecommendation(r: any, tid: string | null, analyticsContext: D
       trustMetadata,
       historyTheme,
       historyContext,
+      consultationAxis,
+      actionSuggestions,
       detailHref,
       isDummy,
       goriyakuTags: [],
@@ -134,6 +178,8 @@ function normalizeRecommendation(r: any, tid: string | null, analyticsContext: D
       trustMetadata,
       historyTheme,
       historyContext,
+      consultationAxis,
+      actionSuggestions,
       detailHref,
       isDummy,
       detailLabel: "神社の詳細を見る",
@@ -214,6 +260,9 @@ function dedupeItems(items: NormalizedItem[]): NormalizedItem[] {
         if (reg?.kind === "registered" && !reg.historyContext && item.historyContext) {
           out[idx] = { ...out[idx], historyContext: item.historyContext };
         }
+        if (reg?.kind === "registered" && !reg.consultationAxis && item.consultationAxis) {
+          out[idx] = { ...out[idx], consultationAxis: item.consultationAxis };
+        }
       }
       continue;
     }
@@ -252,11 +301,24 @@ export function buildPayloadFromUnified(
   const mode = (u as any)?.data?._signals?.mode ?? null;
   const analyticsMode = mode?.mode === "need" || mode?.mode === "compat" ? mode.mode : undefined;
   const analyticsFlow = mode?.flow === "A" || mode?.flow === "B" ? mode.flow : undefined;
+  const consultationAxis = pickConsultationAxis(
+    (u as any)?.data?.consultation_axis,
+    (u as any)?.data?.consultationAxis,
+    (u as any)?.data?._need?.consultation_axis,
+    (u as any)?.data?._need?.consultationAxis,
+    (u as any)?.data?._signals?.consultation_axis,
+    (u as any)?.data?._signals?.consultationAxis,
+    (u as any)?.data?._signals?.result_state?.consultation_axis,
+    (u as any)?.data?._signals?.result_state?.consultationAxis,
+    (u as any)?.data?._signals?.resultState?.consultation_axis,
+    (u as any)?.data?._signals?.resultState?.consultationAxis,
+  );
   const analyticsContext: DetailAnalyticsContext = {
     mode: analyticsMode,
     flow: analyticsFlow,
     hasBirthdate: Boolean(filterState.birthdate?.trim()),
     recommendationCount: Array.isArray(recs) ? recs.length : undefined,
+    consultationAxis,
   };
 
   const rsRaw = (u as any)?.data?._signals?.result_state ?? (u as any)?.data?._signals?.resultState ?? null;
@@ -293,7 +355,7 @@ export function buildPayloadFromUnified(
     return {
       version: 1,
       sections,
-      meta: { mode, reply, remaining, limitReached, tid, resultState },
+      meta: { mode, reply, remaining, limitReached, tid, resultState, consultationAxis },
     };
   }
 
@@ -343,7 +405,7 @@ export function buildPayloadFromUnified(
   return {
     version: 1,
     sections,
-    meta: { mode, reply, remaining, limitReached, tid, resultState },
+    meta: { mode, reply, remaining, limitReached, tid, resultState, consultationAxis },
   };
 }
 

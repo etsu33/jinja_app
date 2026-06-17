@@ -1,22 +1,237 @@
+
 ## 🎯 体験設計の責務分離
 
 本プロダクトは「検索・詳細・コンシェルジュ」の役割を明確に分離することで、
 UXの肥大化と責務の混在を防ぐ。
 
-### 検索（/shrines）
+## Concierge First
 
-- 目的：候補の発見と比較
-- 提供価値：**軽い判断補助**（主価値ではなく補助導線）
-- 表現：
-  - ご利益タグ
-  - 簡易的な「選ぶ理由」
-  - 距離・基本情報
+KAMI MUSUBI は Concierge First を採用する。
+
+本プロダクトの主導線は神社検索ではなく、相談テーマから神社と出会う体験とする。
+
+```text
+相談テーマ
+↓
+状態整理
+↓
+need_tags
+↓
+history_theme
+↓
+神社提案
+↓
+詳細確認
+↓
+経路案内 / 保存 / 振り返り
+```
+
+### 入力責務
+
+主入力:
+
+- 相談テーマ
+
+条件追加:
+
+- 参拝スタイル
+- 誕生日
+- ご利益タグ
+
+補助シグナル:
+
+- 占星術
+- 九星気学
+- 風水
+- 吉方位
+- 相性
+
+### 責務境界
+
+相談テーマは推薦理由の中心とする。
+
+誕生日・占術・吉方位は推薦理由の主軸にしない。
+
+神社一覧や地図は補助導線として扱い、意思決定の中心はコンシェルジュが担う。
+
+### concierge-first.md との関係
+
+- `docs/product/concierge-first.md`
+  - 画面導線
+  - 入力責務
+  - UX方針
+
+### concierge-modes.md との関係
+
+- `docs/product/concierge-modes.md`
+  - need mode
+  - compat mode
+  - mode resolver
+  - 推薦ロジック
+
+### Meaning Layer との関係
+
+コンシェルジュは以下の流れで意味生成を行う。
+
+```text
+相談テーマ
+↓
+need_tags
+↓
+history_theme
+↓
+神社固有文脈
+↓
+Meaning Layer
+↓
+行動提案
+```
+
+Meaning Layer の責務は「正解を提示すること」ではなく、「なぜこの神社が今の相談テーマと接続するのか」を説明することである。
+
+---
+
+### Explore（/shrines / /map）
+
+- 目的：実際に行ける神社候補の発見・比較・位置確認
+- 提供価値：**体験から探す補助導線**（主価値ではなく、相談後の探索導線）
+
+表現：
+
+- 過ごし方チップ
+- 歴史テーマ
+- 神社名 / 地域名 / 願いごと検索
+- ご利益タグ
+- 距離・基本情報
+- 近くの神社
+- 一覧 / 地図表示
+
+責務：
+
+- `/shrines` は Explore の List Mode として扱う
+- `/map` は Explore の Map Mode / Nearby Mode として扱う
+- 検索・地図・近くの神社を将来的に Explore 画面へ統合する
+- 体験チップを Explore の主導線とする
+- 神社名検索は維持するが「詳しく探す」配下に配置する
+- 現在地探索は NearbySection に閉じ込める
+- Explore は候補探索までを責務とする
+- 推薦理由の生成は Concierge が担う
+- 神社理解は Detail が担う
+- 行動記録・振り返りは Visit / Reflection が担う
 
 制約：
 
 - 長文の推薦理由は出さない
-- ユーザーの状態解釈は行わない
-- 意味づけは行わない（コンシェルジュに委譲）
+- ユーザー状態の解釈は行わない
+- 意味づけは行わない（Concierge に委譲）
+- 近いだけで推薦理由を完結させない
+- 地図機能を主価値として扱わない
+- 占術・相性・方位を Explore の主導線にしない
+
+データ責務：
+
+- Explore は検索条件を保持する
+- Recommendation Logic は持たない
+- Meaning Layer は持たない
+- Recommendation Score は参照しない
+- Concierge の結果を補完する探索レイヤーとして扱う
+
+### ExploreLayout（実装済み）
+
+Explore は共通レイアウトとして `ExploreLayout` を利用する。
+
+```text
+ExploreLayout
+├─ ExperienceFilterSection
+├─ searchSlot
+├─ NearbySection
+├─ ViewModeTabs
+└─ ResultArea
+```
+
+責務：
+
+- Explore UI を配置する
+- ResultArea を children として描画する
+- ViewMode を表示する
+
+責務外：
+
+- API呼び出し
+- Recommendation Logic
+- Meaning Layer
+- URL管理
+- Search State管理
+- Nearby State管理
+
+### Search Slot
+
+Explore の検索UIは slot として扱う。
+
+```text
+/shrines
+└─ DetailSearchAccordion
+
+/map
+└─ PlaceSuggestBox
+```
+
+ExploreLayout は検索UIの実装を持たず、親コンポーネントから `searchSlot` を受け取る。
+
+### 実装状態
+
+```text
+/shrines
+└─ ExploreLayout 接続済み
+
+/map
+└─ ExploreLayout 接続済み
+```
+
+Explore は List / Map の共通UIレイヤとして扱う。
+
+正本：
+
+- `docs/product/explore-integration-design.md`
+
+---
+
+### Journey Flow
+
+```text
+Top
+↓
+Concierge
+↓
+Explore
+↓
+Detail
+↓
+Route
+↓
+Visit
+↓
+Reflection
+```
+
+役割：
+
+- Top は相談開始
+- Concierge は推薦理由の生成
+- Explore は候補探索
+- Detail は神社理解
+- Route は移動支援
+- Visit は参拝行動
+- Reflection は振り返り
+
+責務境界：
+
+- Concierge が「なぜこの神社か」を担う
+- Explore が「どこへ行くか」を担う
+- Detail が「どんな神社か」を担う
+- Route が「どう行くか」を担う
+- Visit が「行った事実」を担う
+- Reflection が「行動後の意味整理」を担う
 
 ---
 
@@ -330,4 +545,145 @@ duplicate_candidate の詳細契約は以下を正本とする：
 
 `ShrineSubmission.goriyaku_tags` は投稿者の意図を示す参考情報であり、`Shrine.goriyaku_tags` とは別物として扱う。検索・推薦に使う正本タグは、管理者が `Shrine.goriyaku_tags` として確定する。
 
-承認時に自動反映するのは `name / address / lat / lng / owner` のみとし、タグ・note は自動反映しない。
+
+---
+
+## 認証アーキテクチャ
+
+### 目的
+
+KAMI MUSUBI の認証経路は、frontend / BFF / backend の責務を分離し、認証入口の乱立を防ぐ構成とする。
+
+認証付き機能は、課金状態・マイページ・御朱印・お気に入り・コンシェルジュ保存・参拝記録など、ユーザー状態に依存するため、認証経路を一本化して保守する。
+
+---
+
+### 現在の正本フロー
+
+```text
+Frontend
+  ↓
+/api/auth/login
+  ↓
+Next.js BFF
+  ↓
+Django backend /api/auth/jwt/create/
+  ↓
+access_token / refresh_token を HttpOnly Cookie に保存
+  ↓
+認証付き API は BFF 経由で backend へ転送
+```
+
+frontend のログイン入口は `/api/auth/login` を正本とする。
+
+frontend 側に JWT 発行用の `/api/auth/jwt/create` route は持たない。
+
+---
+
+### Frontend の責務
+
+```text
+- ログインフォームから /api/auth/login を呼ぶ
+- JWT を JavaScript で直接保持しない
+- 認証状態は AuthProvider で扱う
+- access_token / refresh_token は HttpOnly Cookie として扱う
+```
+
+正本ファイル:
+
+```text
+apps/web/src/lib/auth/AuthProvider.tsx
+apps/web/src/app/api/auth/login/route.ts
+apps/web/src/lib/api/auth.ts
+```
+
+---
+
+### BFF の責務
+
+認証付き API route は、原則として `bffFetchWithAuthFromReq` を経由する。
+
+```text
+apps/web/src/lib/server/bffFetch.ts
+```
+
+BFF は以下を担当する。
+
+```text
+- request cookie から access_token / refresh_token を読む
+- backend へ Authorization: Bearer <token> を付与する
+- access_token 期限切れ時に refresh を試す
+- refresh 成功時は access_token Cookie を更新する
+- backend response を frontend に返す
+```
+
+frontend component から backend origin を直接組み立てない。
+
+---
+
+### Backend の責務
+
+backend は JWTAuthentication を認証の正本とする。
+
+```text
+Django backend
+  ↓
+JWTAuthentication
+  ↓
+request.user を解決
+  ↓
+課金状態・ユーザー情報・保存情報などを判定
+```
+
+課金判定は backend 側で `request.user` をもとに行う。
+
+```text
+/api/billings/status/
+```
+
+---
+
+### 禁止方針
+
+```text
+- frontend route 内で backend URL を直接組み立てる
+- route.ts ごとに Authorization 付与ロジックを重複実装する
+- NEXT_PUBLIC_API_BASE / API_BASE_URL を認証付き route で直接参照する
+- frontend に JWT 発行 route を複数持つ
+- access_token / refresh_token を localStorage に保存する
+```
+
+---
+
+### SessionAuthentication の扱い
+
+現時点では SessionAuthentication を即削除しない。
+
+理由:
+
+```text
+- 依存箇所がまだ完全には確定していない
+- Goshuin / Users / Billing などに影響する可能性がある
+- 開発初期や互換目的で残っている可能性がある
+```
+
+今後の監査で以下に分類する。
+
+```text
+削除可能:
+- JWTAuthentication のみで動作確認できる API
+
+保留:
+- 影響範囲が未確認の API
+
+残す:
+- 明確に SessionAuthentication が必要な API
+```
+
+---
+
+### 関連ドキュメント
+
+```text
+docs/authentication-flow.md
+```

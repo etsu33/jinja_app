@@ -318,6 +318,10 @@ SHRINE_HISTORY_STORY_OVERRIDES: dict[int, ShrineHistoryStoryOverride] = {
 }
 
 
+# Meaning Layer Responsibility:
+# - history_theme は神社固有文脈と相談テーマを接続する主な意味レイヤ要素として扱う。
+# - goriyaku / goriyaku_tags は願いごとの補助説明・表示要素として扱う。
+# - direction_bonus / direction_reason は方位の補助要素であり、意味生成の主理由にはしない。
 
 @dataclass(frozen=True)
 class ShrineMeaningInput:
@@ -511,6 +515,23 @@ def _has_specific_context(input_: ShrineMeaningInput) -> bool:
         or _has_history_theme(input_)
     )
 
+def _is_basic_info_only_shrine(input_: ShrineMeaningInput) -> bool:
+    """Return whether this shrine only has basic verified information.
+
+    Basic-info-only shrines must not receive strong cultural, historical,
+    deity, or benefit-based meaning copy.
+    """
+
+    return not (
+        _has_culture_translation(input_)
+        or _has_story_override(input_)
+        or _has_history_theme(input_)
+        or input_.description
+        or input_.sajin
+        or input_.goriyaku
+        or input_.goriyaku_tags
+    )
+
 
 # hero:
 # 今の自分との接点を返す
@@ -520,6 +541,9 @@ def _has_specific_context(input_: ShrineMeaningInput) -> bool:
 
 def _build_hero_meaning(input_: ShrineMeaningInput) -> str:
     override = SHRINE_HISTORY_STORY_OVERRIDES.get(input_.shrine_id)
+    if _is_basic_info_only_shrine(input_):
+        return f"{input_.name_jp}は、確認済みの基本情報をもとに参拝先候補として表示しています。"
+
     if override:
         return override["heroMeaningCopy"]
     if input_.history_theme:
@@ -538,6 +562,8 @@ def _build_hero_meaning(input_: ShrineMeaningInput) -> str:
 
 def _build_consultation_summary(input_: ShrineMeaningInput) -> str:
     flow_context = _cultural_flow_context(input_)
+    if _is_basic_info_only_shrine(input_):
+        return "この神社は、名称・住所・位置情報などの確認済み情報を中心に表示しています。相談内容との強い結びつきは断定せず、参拝先を選ぶための基本情報として扱います。"
     if flow_context:
         return f"{flow_context} 気になっていることを一つに絞ると、次の判断が見えやすくなります。"
     if _has_specific_context(input_):
@@ -553,6 +579,8 @@ def _build_consultation_summary(input_: ShrineMeaningInput) -> str:
 
 def _build_shrine_meaning(input_: ShrineMeaningInput) -> str:
     culture = get_shrine_culture_translation(input_.shrine_id)
+    if _is_basic_info_only_shrine(input_):
+        return f"{input_.name_jp}は、登録されている基本情報をもとに確認できる神社です。詳しい由緒・祭神・ご利益は未確認のため、現時点では断定的な説明を行いません。"
     if culture:
         return f"{culture.historical_background}{culture.place_meaning}"
 
@@ -582,6 +610,8 @@ def _build_shrine_meaning(input_: ShrineMeaningInput) -> str:
 
 def _build_action_meaning(input_: ShrineMeaningInput) -> str:
     override = SHRINE_HISTORY_STORY_OVERRIDES.get(input_.shrine_id)
+    if _is_basic_info_only_shrine(input_):
+        return "参拝前に、場所・移動距離・周辺状況を確認します。意味やご利益を決めつけず、静かに立ち寄れる参拝先かどうかを確かめるための候補として扱います。"
     if override:
         return override["actionMeaning"]
     benefit = _primary_benefit(input_)
@@ -810,6 +840,7 @@ __all__ = [
     "HISTORY_THEME_DEFINITION",
     "SHRINE_HISTORY_STORY_OVERRIDES",
     "_has_specific_context",
+    "_is_basic_info_only_shrine",
     "_build_direction_support_copy",
     "ShrineHistoryStoryOverride",
     "build_display_fields",

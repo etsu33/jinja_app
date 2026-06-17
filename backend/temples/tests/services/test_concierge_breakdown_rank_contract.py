@@ -216,3 +216,178 @@ def test_visit_style_weight_does_not_override_stronger_need_match(monkeypatch):
     }
 
     assert strong_need["_score_total"] > quiet["_score_total"]
+
+
+
+@pytest.mark.django_db
+def test_visit_style_nature_condition_matches_nature_candidate(monkeypatch):
+    """
+    nature は体験スタイルとして扱う。
+    自然を感じたい条件は、visit_style_tags に nature を持つ候補と一致する。
+    """
+
+    candidates = [
+        {
+            "id": 1,
+            "shrine_id": 1,
+            "name": "街中の候補神社",
+            "distance_m": 1000,
+            "astro_tags": ["rest"],
+            "goriyaku": "休息",
+            "description": "",
+            "astro_elements": [],
+            "visit_style_tags": ["classic"],
+            "popular_score": 0,
+        },
+        {
+            "id": 2,
+            "shrine_id": 2,
+            "name": "自然を感じる神社",
+            "distance_m": 1000,
+            "astro_tags": ["rest"],
+            "goriyaku": "休息",
+            "description": "",
+            "astro_elements": [],
+            "visit_style_tags": ["nature"],
+            "popular_score": 0,
+        },
+    ]
+
+    recs = build_chat_recommendations(
+        query="疲れたので休みたい",
+        language="ja",
+        candidates=candidates,
+        birthdate=None,
+        flow="A",
+        need_tags=["rest"],
+        extra_condition="自然を感じながら、ゆっくり参拝できる場所がいい",
+        llm_enabled=False,
+    )
+
+    top = recs["recommendations"]
+    assert [x["name"] for x in top[:2]] == ["自然を感じる神社", "街中の候補神社"]
+
+    nature = {x["name"]: x for x in top}["自然を感じる神社"]
+    assert nature["breakdown_detail"]["features"]["visit_style"] == {
+        "raw": 1,
+        "weight": 0.35,
+        "matched_tags": ["nature"],
+        "contribution": 0.35,
+    }
+    assert nature["score_v2"]["signals"]["matched_visit_style_tags"] == ["nature"]
+
+
+@pytest.mark.django_db
+def test_visit_style_classic_condition_matches_classic_candidate(monkeypatch):
+    """
+    classic は実用条件寄りの安心・定番として扱う。
+    有名で安心という条件は、visit_style_tags に classic を持つ候補と一致する。
+    """
+
+    candidates = [
+        {
+            "id": 1,
+            "shrine_id": 1,
+            "name": "静かな候補神社",
+            "distance_m": 1000,
+            "astro_tags": ["mental"],
+            "goriyaku": "心願成就",
+            "description": "",
+            "astro_elements": [],
+            "visit_style_tags": ["quiet"],
+            "popular_score": 0,
+        },
+        {
+            "id": 2,
+            "shrine_id": 2,
+            "name": "定番で安心の神社",
+            "distance_m": 1000,
+            "astro_tags": ["mental"],
+            "goriyaku": "心願成就",
+            "description": "",
+            "astro_elements": [],
+            "visit_style_tags": ["classic"],
+            "popular_score": 0,
+        },
+    ]
+
+    recs = build_chat_recommendations(
+        query="不安なので気持ちを整えたい",
+        language="ja",
+        candidates=candidates,
+        birthdate=None,
+        flow="A",
+        need_tags=["mental"],
+        extra_condition="有名で定番感があり、安心して参拝しやすい場所がいい",
+        llm_enabled=False,
+    )
+
+    top = recs["recommendations"]
+    assert [x["name"] for x in top[:2]] == ["定番で安心の神社", "静かな候補神社"]
+
+    classic = {x["name"]: x for x in top}["定番で安心の神社"]
+    assert classic["breakdown_detail"]["features"]["visit_style"] == {
+        "raw": 1,
+        "weight": 0.35,
+        "matched_tags": ["classic"],
+        "contribution": 0.35,
+    }
+    assert classic["score_v2"]["signals"]["matched_visit_style_tags"] == ["classic"]
+
+
+@pytest.mark.django_db
+def test_visit_style_nearby_condition_is_recorded_as_context_signal(monkeypatch):
+    """
+    nearby は距離そのものの並び替えとは別に、参拝スタイル補助シグナルとしても扱う。
+    近場優先の条件は、visit_style_tags に nearby を持つ候補と一致する。
+    """
+
+    candidates = [
+        {
+            "id": 1,
+            "shrine_id": 1,
+            "name": "通常距離の神社",
+            "distance_m": 1000,
+            "astro_tags": ["career"],
+            "goriyaku": "仕事運",
+            "description": "",
+            "astro_elements": [],
+            "visit_style_tags": ["classic"],
+            "popular_score": 0,
+        },
+        {
+            "id": 2,
+            "shrine_id": 2,
+            "name": "近場向きの神社",
+            "distance_m": 1000,
+            "astro_tags": ["career"],
+            "goriyaku": "仕事運",
+            "description": "",
+            "astro_elements": [],
+            "visit_style_tags": ["nearby"],
+            "popular_score": 0,
+        },
+    ]
+
+    recs = build_chat_recommendations(
+        query="仕事で良い流れを作りたい",
+        language="ja",
+        candidates=candidates,
+        birthdate=None,
+        flow="A",
+        need_tags=["career"],
+        extra_condition="できるだけ近い場所を優先して",
+        llm_enabled=False,
+    )
+
+    top = recs["recommendations"]
+    assert [x["name"] for x in top[:2]] == ["近場向きの神社", "通常距離の神社"]
+
+    nearby = {x["name"]: x for x in top}["近場向きの神社"]
+    assert nearby["breakdown_detail"]["features"]["visit_style"] == {
+        "raw": 1,
+        "weight": 0.35,
+        "matched_tags": ["nearby"],
+        "contribution": 0.35,
+    }
+    assert nearby["score_v2"]["signals"]["matched_visit_style_tags"] == ["nearby"]

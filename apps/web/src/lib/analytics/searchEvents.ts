@@ -11,6 +11,8 @@ export type SearchAnalyticsEventName =
   | "concierge_result_impression"
   | "action_suggestion_view"
   | "action_suggestion_click"
+  | "action_started"
+  | "action_completed"
   | "action_done"
   | "empty_state_view"
   | "add_shrine_click"
@@ -31,6 +33,7 @@ export type SearchAnalyticsPayload = {
   query?: string | null;
   routeTarget?: "google_maps" | "internal_map" | null;
   historyTheme?: string | null;
+  consultationAxis?: string | null;
   actionTheme?: string | null;
   promptType?: string | null;
   answerLength?: number | null;

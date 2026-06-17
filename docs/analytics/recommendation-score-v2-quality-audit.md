@@ -166,6 +166,87 @@ rest
 
 ただし、長期的には fallback も15タグ体系に合わせる方が安全。
 
+## 1.5 Intent Audit Matrix
+
+### 目的
+
+ユーザー入力が、どの need_tags に変換され、最終的にどの神社推薦へ接続されているかを確認する。
+
+この監査では、推薦結果だけでなく、以下の変換過程を見る。
+
+```text
+ユーザー入力
+↓
+raw consultation
+↓
+extracted tags
+↓
+hits
+↓
+top3 shrine
+↓
+primary_reason
+```
+
+### 代表入力30件
+
+| Cluster | Input | Expected tags | Extracted tags | Hits | Top3 shrine | Primary reason | 差分 | 修正案 |
+|---|---|---|---|---|---|---|---|---|
+| money | お金が欲しい | money | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| money | 収入を増やしたい | money | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| money | 年収を上げたい | money | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| money | もっと稼ぎたい | money | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| money | 売上を増やしたい | money | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| money | 収益を伸ばしたい | money | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| career | 転職したい | career | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| career | 今の仕事を辞めたい | career | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| career | 副業したい | career | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| career | 好きな仕事をしたい | career | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| career | 天職を見つけたい | career | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| career | 働き方を変えたい | career | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| courage | 挑戦したい | courage | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| courage | 一歩踏み出したい | courage | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| courage | 勇気が欲しい | courage | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| courage | 決断したい | courage | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| courage | 背中を押してほしい | courage | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| courage | 流れを変えたい | courage | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| entrepreneur | 独立したい | career, courage | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| entrepreneur | 起業したい | career, courage, money | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| entrepreneur | 会社を作りたい | career, money | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| entrepreneur | 事業を大きくしたい | money, courage | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| entrepreneur | 経営者になりたい | money, career | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| entrepreneur | 自分のサービスを作りたい | career, courage | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| freedom | 自由に働きたい | courage, career | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| freedom | 会社に縛られたくない | courage, career | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| freedom | フリーランスになりたい | career, courage | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| freedom | 場所に縛られず働きたい | courage, career | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| freedom | 自分らしく働きたい | career, courage | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+| freedom | 組織に依存しない働き方をしたい | career, courage | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 | 未測定 |
+
+### 判定基準
+
+| 判定 | 条件 |
+|---|---|
+| OK | expected tags と extracted tags が概ね一致し、top3 shrine の理由も納得できる |
+| 要確認 | extracted tags は一致しているが、top3 shrine または primary_reason に違和感がある |
+| 修正候補 | expected tags と extracted tags がズレている |
+
+### 修正方針
+
+```text
+1. expected tags と extracted tags のズレ
+↓
+need_tags.py の keyword / regex を補強
+
+2. extracted tags は合っているが top3 shrine がズレる
+↓
+ranking / score_v2 / goriyaku_tag_ids 接続を確認
+
+3. top3 shrine は合っているが説明が弱い
+↓
+Recommendation Reason / reason copy を修正
+```
+
 ---
 
 ## 2. need_tags → goriyaku_tag_ids 接続監査
@@ -485,7 +566,185 @@ behavior_signal で再提案補正
 補助 = 占星術 / 十二支・五行 / 方位 / 人気 / 距離
 ```
 
-これにより、Recommendation Score v2 は検索エンジンではなく、状態整理型の推薦エンジンとして成立しやすくなる。
+## 9. Recommendation Reason Audit
+
+### 目的
+
+Recommendation Reason Contract が、実際の推薦結果で機能しているか確認する。
+
+この監査では、表示上の主理由が「検索条件」や「占術補助」に寄りすぎず、相談テーマと神社固有文脈の接続として成立しているかを見る。
+
+### 確認対象
+
+- history_theme
+- culture_translation
+- need_tag
+- text_hint
+- user_selected_tag
+- goriyaku_tag
+- element
+
+### primary_reason 優先順位
+
+```text
+history_theme
+↓
+culture_translation
+↓
+need_tag
+↓
+text_hint
+↓
+user_selected_tag
+↓
+goriyaku_tag
+↓
+element
+↓
+fallback
+```
+
+### 計測元
+
+`observe_ranking_breakdown()` の `_debug.score_audit` を確認する。
+
+```text
+_debug.score_audit
+```
+
+### 確認項目
+
+| 項目 | 意味 |
+|---|---|
+| score_element_distribution | top10内の element score 分布 |
+| astro_bonus_hit_rate | astro_bonus が発火した割合 |
+| direction_bonus_hit_rate | direction_bonus が発火した割合 |
+| top10_element_primary_rate | element が主理由になった割合 |
+| history_theme_primary_rate | history_theme が主理由になった割合 |
+| culture_translation_primary_rate | culture_translation が主理由になった割合 |
+| need_tag_primary_rate | need_tag が主理由になった割合 |
+
+### 判定
+
+以下の状態なら、Recommendation Reason Contract は維持されている。
+
+```text
+history_theme_primary_rate
++
+culture_translation_primary_rate
++
+need_tag_primary_rate
+
+>>
+
+top10_element_primary_rate
+```
+## 金運を上げたい
+
+1位: 伏見稲荷大社
+
+納得度: 4.5/5
+
+分類:
+- データ不足: なし
+- score問題: 軽微
+- 説明不足: あり
+
+メモ:
+1位は妥当。
+ただし2位・3位候補の理由が見えない。
+候補間の差分説明が必要。
+---
+
+## 10. Recommendation Score Audit
+
+### 目的
+
+補助シグナルが、推薦理由やランキングの主軸を乗っ取っていないか確認する。
+
+この監査では、`element_match` / `astro_bonus` / `direction_bonus` が発火していても、主理由として前面に出すぎていないかを見る。
+
+### 理想状態
+
+主理由:
+
+- history_theme
+- culture_translation
+- need_tag
+
+補助理由:
+
+- element
+- astro_bonus
+- direction_bonus
+
+### 監査観点
+
+#### element
+
+確認:
+
+```text
+top10_element_primary_rate
+```
+
+期待:
+
+```text
+0%〜5%
+```
+
+`element` が主理由になるケースは例外として扱う。
+
+#### astro_bonus
+
+確認:
+
+```text
+astro_bonus_hit_rate
+```
+
+期待:
+
+```text
+発火しても主理由にならない
+```
+
+`astro_bonus` は相性補正として使い、相談テーマや神社固有文脈を上書きしない。
+
+#### direction_bonus
+
+確認:
+
+```text
+direction_bonus_hit_rate
+```
+
+期待:
+
+```text
+発火しても主理由にならない
+```
+
+`direction_bonus` は方位の補助要素として扱い、推薦理由の主軸にはしない。
+
+### 判定
+
+以下なら、Recommendation Score v2 は検索エンジンではなく、状態整理型の推薦エンジンとして成立しやすい。
+
+```text
+history_theme_primary_rate
++
+culture_translation_primary_rate
++
+need_tag_primary_rate
+
+>>
+
+top10_element_primary_rate
+```
+
+補助シグナルが発火していても、主理由が `history_theme` / `culture_translation` / `need_tag` に寄っていれば、Concierge First の責務は維持されている。
 
 ---
 

@@ -33,6 +33,7 @@ export type RegisteredShrineItem = {
   breakdown?: ConciergeBreakdown | null;
   breakdown_detail?: any | null;
   reasonFacts?: ConciergeReasonFacts | null;
+  consultationAxis?: string | null;
   explanation?: {
     version?: number | null;
     summary?: string | null;
@@ -59,6 +60,7 @@ export type PlaceShrineItem = {
   breakdown?: ConciergeBreakdown | null;
   breakdown_detail?: any | null;
   reasonFacts?: ConciergeReasonFacts | null;
+  consultationAxis?: string | null;
   isDummy?: boolean;
 };
 
@@ -116,6 +118,7 @@ export type ConciergeSectionsPayload = {
     remaining?: number | null;
     limitReached?: boolean;
     tid?: string | null;
+    consultationAxis?: string | null;
     resultState?: {
       matched_count?: number;
       fallback_mode?: "none" | "nearby_unfiltered" | string;

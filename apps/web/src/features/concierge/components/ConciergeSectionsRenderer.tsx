@@ -34,7 +34,7 @@ import { buildConciergeCardRoutes } from "@/lib/concierge/conciergeCardRoutes";
 type MetaMode = NonNullable<ConciergeSectionsPayload["meta"]>["mode"];
 type AnalyticsContext = Pick<
   CardAnalyticsPayload,
-  "mode" | "flow" | "hasBirthdate" | "recommendationCount" | "historyTheme"
+  "mode" | "flow" | "hasBirthdate" | "recommendationCount" | "historyTheme" | "consultationAxis"
 >;
 
 const conciergeSoftCardClass = "rounded-2xl border border-slate-200 bg-slate-50 shadow-sm p-4";
@@ -63,6 +63,20 @@ function normalizeConciergeMode(mode: MetaMode | null | undefined): "need" | "co
   }
 
   return "need";
+}
+
+function pickAnalyticsString(...values: unknown[]): string | undefined {
+  for (const value of values) {
+    if (typeof value !== "string") continue;
+    const trimmed = value.trim();
+    if (trimmed) return trimmed;
+  }
+  return undefined;
+}
+
+function consultationAxisAnalytics(axis: unknown): Pick<CardAnalyticsPayload, "consultationAxis"> | Record<string, never> {
+  const consultationAxis = pickAnalyticsString(axis);
+  return consultationAxis ? { consultationAxis } : {};
 }
 
 function AstroCard(props: { sunSign?: string; element?: string; reason?: string }) {
@@ -109,6 +123,7 @@ function ConciergePremiumEntryCard(props: {
               visibility: "teaser",
               ctaType: "continue_with_premium",
               ...props.analyticsContext,
+              ...consultationAxisAnalytics(props.analyticsContext?.consultationAxis),
               shrineId: props.shrineId ?? undefined,
               threadId: props.tid ?? undefined,
             });
@@ -314,6 +329,11 @@ export default function ConciergeSectionsRenderer({
             : typeof (item as any).historyTheme === "string"
               ? (item as any).historyTheme
               : null,
+        consultationAxis: pickAnalyticsString(
+          (item as any).consultation_axis,
+          (item as any).consultationAxis,
+          payload.meta?.consultationAxis,
+        ),
       }));
     });
   }, [payload, normalizedModeForTracking]);
@@ -344,9 +364,10 @@ export default function ConciergeSectionsRenderer({
         recommendationRank: item.rank,
         mode: item.mode,
         historyTheme: item.historyTheme ?? analyticsContext?.historyTheme,
+        ...consultationAxisAnalytics(item.consultationAxis ?? analyticsContext?.consultationAxis),
       });
     });
-  }, [analyticsContext?.historyTheme, resultImpressions, resultSetId, tid]);
+  }, [analyticsContext?.consultationAxis, analyticsContext?.historyTheme, resultImpressions, resultSetId, tid]);
 
   useEffect(() => {
     const heroItem = resultImpressions.find((item) => item.position === "hero");
@@ -368,6 +389,7 @@ export default function ConciergeSectionsRenderer({
           visibility: consultationSummaryRoute.visibility,
           mode: heroItem.mode,
           historyTheme: heroItem.historyTheme ?? analyticsContext?.historyTheme,
+          ...consultationAxisAnalytics(heroItem.consultationAxis ?? analyticsContext?.consultationAxis),
           threadId: tid ?? undefined,
           resultSetId,
         });
@@ -390,6 +412,7 @@ export default function ConciergeSectionsRenderer({
           recommendationRank: heroItem.rank,
           mode: heroItem.mode,
           historyTheme: heroItem.historyTheme ?? analyticsContext?.historyTheme,
+          ...consultationAxisAnalytics(heroItem.consultationAxis ?? analyticsContext?.consultationAxis),
           threadId: tid ?? undefined,
           resultSetId,
         });
@@ -412,6 +435,7 @@ export default function ConciergeSectionsRenderer({
           recommendationRank: heroItem.rank,
           mode: heroItem.mode,
           historyTheme: heroItem.historyTheme ?? analyticsContext?.historyTheme,
+          ...consultationAxisAnalytics(heroItem.consultationAxis ?? analyticsContext?.consultationAxis),
           threadId: tid ?? undefined,
           resultSetId,
         });
@@ -430,6 +454,7 @@ export default function ConciergeSectionsRenderer({
           visibility: savePromptVisibility,
           ctaType: isGuestUser ? "login_to_save" : "save",
           ...analyticsContext,
+          ...consultationAxisAnalytics(analyticsContext?.consultationAxis),
           threadId: tid ?? undefined,
           resultSetId,
         });
@@ -449,6 +474,7 @@ export default function ConciergeSectionsRenderer({
         recommendationRank: heroItem.rank,
         mode: heroItem.mode,
         historyTheme: heroItem.historyTheme ?? analyticsContext?.historyTheme,
+        ...consultationAxisAnalytics(heroItem.consultationAxis ?? analyticsContext?.consultationAxis),
         threadId: tid ?? undefined,
         resultSetId,
       });
@@ -468,6 +494,7 @@ export default function ConciergeSectionsRenderer({
             accessLevel,
             visibility: "visible",
             historyTheme: analyticsContext?.historyTheme,
+            ...consultationAxisAnalytics(analyticsContext?.consultationAxis),
             threadId: tid ?? undefined,
             resultSetId,
           });
@@ -488,6 +515,7 @@ export default function ConciergeSectionsRenderer({
             recommendationRank: item.rank,
             mode: item.mode,
             historyTheme: item.historyTheme ?? analyticsContext?.historyTheme,
+            ...consultationAxisAnalytics(item.consultationAxis ?? analyticsContext?.consultationAxis),
             threadId: tid ?? undefined,
             resultSetId,
           });
@@ -511,6 +539,7 @@ export default function ConciergeSectionsRenderer({
       recommendationRank: heroItem.rank,
       mode: heroItem.mode,
       historyTheme: heroItem.historyTheme ?? analyticsContext?.historyTheme,
+      ...consultationAxisAnalytics(heroItem.consultationAxis ?? analyticsContext?.consultationAxis),
       threadId: tid ?? undefined,
       resultSetId,
     });
@@ -562,8 +591,8 @@ export default function ConciergeSectionsRenderer({
 
               return (
                 <div key={`filter-${i}-closed`}>
-                  <DetailSection title="条件で絞る">
-                    <p className="mb-2 text-xs text-slate-500">まずは条件を追加</p>
+                  <DetailSection title="補助条件を添える">
+                    <p className="mb-2 text-xs text-slate-500">必要なものだけ選んでください</p>
 
                     <div className="mb-3 flex flex-wrap gap-2">
                       {presets.map((p) => {
@@ -614,7 +643,7 @@ export default function ConciergeSectionsRenderer({
                         onAction?.({ type: "filter_apply" });
                       }}
                     >
-                      {sending ? "絞り込み中…" : "この条件で絞り込む"}
+                      {sending ? "絞り込み中…" : "この内容で反映する"}
                     </button>
 
                     <button
@@ -622,7 +651,7 @@ export default function ConciergeSectionsRenderer({
                       className="mt-2 w-full rounded-xl border px-4 py-3 text-sm font-semibold"
                       onClick={() => onAction?.({ type: "add_condition" })}
                     >
-                      詳細条件を設定する
+                      もう少し詳しく添える
                     </button>
                   </DetailSection>
                 </div>
@@ -826,6 +855,7 @@ export default function ConciergeSectionsRenderer({
                                   hasBirthdate: analyticsContext?.hasBirthdate,
                                   recommendationCount: analyticsContext?.recommendationCount,
                                   historyTheme: historyTheme ?? analyticsContext?.historyTheme,
+                                  ...consultationAxisAnalytics(heroItem.consultationAxis ?? analyticsContext?.consultationAxis),
                                   firstClick: resolveFirstResultClick(resultSetId),
                                 })
                               }
@@ -966,6 +996,9 @@ export default function ConciergeSectionsRenderer({
                                             : typeof (item as any).historyTheme === "string"
                                               ? (item as any).historyTheme
                                               : analyticsContext?.historyTheme,
+                                        ...consultationAxisAnalytics(
+                                          (item as any).consultationAxis ?? analyticsContext?.consultationAxis,
+                                        ),
                                         firstClick: resolveFirstResultClick(resultSetId),
                                       })
                                     }
@@ -1011,6 +1044,7 @@ export default function ConciergeSectionsRenderer({
                             visibility: savePromptVisibility,
                             ctaType: isGuestUser ? "login_to_save" : "save",
                             ...analyticsContext,
+                            ...consultationAxisAnalytics(analyticsContext?.consultationAxis),
                             threadId: tid ?? undefined,
                             resultSetId,
                           });

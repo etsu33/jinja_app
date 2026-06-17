@@ -11,6 +11,9 @@ import { fetchShrines } from "@/lib/api/shrinesSearch";
 import { getGoriyakuTags, type GoriyakuTag } from "@/lib/api/tags";
 import { buildShrineListCardModel } from "@/lib/shrine/buildShrineListCardModel";
 import { trackSearchEvent } from "@/lib/analytics/searchEvents";
+import { HISTORY_THEME_TAGS, VISIT_STYLE_TAGS } from "@/features/explore/components/ExperienceFilterSection";
+import { ExploreLayout } from "@/features/explore/components/ExploreLayout";
+import type { ExploreViewMode } from "@/features/explore/components/ViewModeTabs";
 
 function ShrinesPageContent() {
   const router = useRouter();
@@ -20,6 +23,7 @@ function ShrinesPageContent() {
   const [submitted, setSubmitted] = useState(false);
   const [submittedName, setSubmittedName] = useState("");
   const [inputValue, setInputValue] = useState("");
+  const [viewMode, setViewMode] = useState<ExploreViewMode>("list");
   const showSubmissionPendingBanner = submitted;
   const shouldShowSearchResults = !showSubmissionPendingBanner;
 
@@ -137,6 +141,8 @@ function ShrinesPageContent() {
 
   const submissionNoticeTitle = submittedName ? `「${submittedName}」の投稿を受け付けました` : "投稿を受け付けました";
   const activeGoriyakuTag = goriyakuTags.find((tag) => tag.name === q) ?? null;
+  const activeVisitStyleTag = VISIT_STYLE_TAGS.find((tag) => tag === q) ?? null;
+  const activeHistoryThemeTag = HISTORY_THEME_TAGS.find((tag) => tag === q) ?? null;
   const submissionNoticeBody = showSubmissionPendingBanner
     ? "現在公開準備中です。確認が完了するまで公開検索には表示されません。"
     : null;
@@ -197,65 +203,85 @@ function ShrinesPageContent() {
 
   return (
     <main className="px-4 py-6">
-      <h1 className="mb-6 text-xl font-medium text-stone-900">神社をたどる</h1>
+      {shouldShowSearchResults ? (
+        <div className="mb-8">
+          <ExploreLayout
+            activeTag={q}
+            inputValue={inputValue}
+            onInputValueChange={setInputValue}
+            onSearchSubmit={handleSearch}
+            goriyakuTags={goriyakuTags}
+            tagsLoading={tagsLoading}
+            tagsError={tagsError}
+            activeGoriyakuTag={activeGoriyakuTag}
+            onSelectTag={handleTagSearch}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+            experienceFeedback={
+              activeVisitStyleTag || activeHistoryThemeTag ? (
+                <p className="text-xs text-emerald-700 opacity-70">
+                  {activeVisitStyleTag ?? activeHistoryThemeTag}で表示中です。もう一度押すと解除できます。
+                </p>
+              ) : null
+            }
+          >
+            {error && <p className="text-red-500">{error}</p>}
 
-      {shouldShowSearchResults && (
-        <div className="mb-8 space-y-4">
-          <form onSubmit={handleSearch} className="flex flex-col gap-2 sm:flex-row sm:items-end">
-            <input
-              type="search"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.currentTarget.value)}
-              placeholder="神社名や願いごとを、そっと入力"
-              className="w-full rounded-3xl border border-stone-200/35 bg-stone-50/25 px-3 py-2 text-sm text-stone-900"
-            />
-            <button
-              type="submit"
-              className="rounded-full border border-emerald-200/50 bg-emerald-50/40 px-3 py-2 text-xs font-medium text-emerald-700 hover:bg-emerald-100/30"
-            >
-              ひらく
-            </button>
-          </form>
+            {loading ? <p className="mb-5 text-sm text-stone-500">探しています...</p> : null}
 
-          <div className="space-y-2">
-            <p className="text-[11px] font-medium tracking-[0.2em] text-stone-500">TAGS</p>
-
-            {tagsLoading ? (
-              <p className="text-xs text-stone-400 opacity-70">ご利益タグを読み込み中…</p>
-            ) : tagsError ? (
-              <p className="text-xs text-rose-600">{tagsError}</p>
-            ) : goriyakuTags.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {goriyakuTags.slice(0, 8).map((tag) => {
-                  const isActive = tag.name === q;
-
-                  return (
-                    <button
-                      key={tag.id}
-                      type="button"
-                      aria-pressed={isActive}
-                      onClick={() => handleTagSearch(tag.name)}
-                      className={[
-                        "rounded-full border px-2.5 py-1 text-xs font-medium transition",
-                        isActive
-                          ? "border-emerald-200/70 bg-emerald-50/70 text-emerald-700"
-                          : "border-stone-200/40 bg-stone-50/25 text-stone-500 hover:bg-stone-100/30 opacity-65",
-                      ].join(" ")}
-                    >
-                      {tag.name}
-                    </button>
-                  );
-                })}
-                {activeGoriyakuTag ? (
-                  <p className="text-xs text-emerald-700 opacity-70">
-                    {activeGoriyakuTag.name}で表示中です。もう一度押すと解除できます。
+            {hasSearched &&
+              (isEmpty ? (
+                <div className="rounded-3xl border border-stone-200/30 bg-stone-50/50 p-5">
+                  <p className="text-sm text-stone-700 opacity-85">
+                    {activeGoriyakuTag
+                      ? `${activeGoriyakuTag.name}に合う神社はまだ登録されていません。`
+                      : "お探しの神社が見つかりませんか？"}
                   </p>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      className="rounded-full border border-emerald-200/50 bg-emerald-50/40 px-3 py-2 text-xs font-medium text-emerald-700 hover:bg-emerald-100/30"
+                      onClick={handleAddShrine}
+                    >
+                      神社を追加する
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <ul className="grid gap-4">
+                    {cards.map((p) => (
+                      <li key={p.shrineId}>
+                        <ShrineCard
+                          name={p.title}
+                          shrineId={p.shrineId}
+                          address={p.address ?? undefined}
+                          recommendReason={p.description ?? undefined}
+                          imageUrl={p.imageUrl ?? undefined}
+                          tags={p.badges ?? []}
+                          href={`/shrines/${p.shrineId}`}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+
+                  <section className="mt-8 rounded-3xl border border-stone-200/25 bg-stone-50/25 p-5">
+                    <p className="text-sm font-medium text-stone-800">迷いが残るときは</p>
+                    <p className="mt-1.5 text-sm leading-6 text-stone-700 opacity-65">
+                      気持ちから静かに整える導線があります。
+                    </p>
+                    <Link
+                      href="/concierge"
+                      className="mt-3 inline-flex rounded-full border border-emerald-200/50 bg-emerald-50/40 px-3 py-2 text-xs font-medium text-emerald-700 transition hover:bg-emerald-100/30"
+                    >
+                      言葉を整える
+                    </Link>
+                  </section>
+                </>
+              ))}
+          </ExploreLayout>
         </div>
-      )}
+      ) : null}
 
       {submissionNoticeBody && (
         <div className="mb-8 rounded-3xl border border-emerald-200/40 bg-emerald-50/50 p-4 text-sm text-emerald-700">
@@ -276,61 +302,6 @@ function ShrinesPageContent() {
         </div>
       )}
 
-      {error && <p className="text-red-500">{error}</p>}
-
-      {shouldShowSearchResults && loading ? <p className="mb-5 text-sm text-stone-500">探しています...</p> : null}
-
-      {shouldShowSearchResults &&
-        hasSearched &&
-        (isEmpty ? (
-          <div className="rounded-3xl border border-stone-200/30 bg-stone-50/50 p-5">
-            <p className="text-sm text-stone-700 opacity-85">
-              {activeGoriyakuTag
-                ? `${activeGoriyakuTag.name}に合う神社はまだ登録されていません。`
-                : "お探しの神社が見つかりませんか？"}
-            </p>
-            <div className="mt-3">
-              <button
-                type="button"
-                className="rounded-full border border-emerald-200/50 bg-emerald-50/40 px-3 py-2 text-xs font-medium text-emerald-700 hover:bg-emerald-100/30"
-                onClick={handleAddShrine}
-              >
-                神社を追加する
-              </button>
-            </div>
-          </div>
-        ) : (
-          <>
-            <ul className="grid gap-4">
-              {cards.map((p) => (
-                <li key={p.shrineId}>
-                  <ShrineCard
-                    name={p.title}
-                    shrineId={p.shrineId}
-                    address={p.address ?? undefined}
-                    recommendReason={p.description ?? undefined}
-                    imageUrl={p.imageUrl ?? undefined}
-                    tags={p.badges ?? []}
-                    href={`/shrines/${p.shrineId}`}
-                  />
-                </li>
-              ))}
-            </ul>
-
-            <section className="mt-8 rounded-3xl border border-stone-200/25 bg-stone-50/25 p-5">
-              <p className="text-sm font-medium text-stone-800">迷いが残るときは</p>
-              <p className="mt-1.5 text-sm leading-6 text-stone-700 opacity-65">
-                気持ちから静かに整える導線があります。
-              </p>
-              <Link
-                href="/concierge"
-                className="mt-3 inline-flex rounded-full border border-emerald-200/50 bg-emerald-50/40 px-3 py-2 text-xs font-medium text-emerald-700 transition hover:bg-emerald-100/30"
-              >
-                言葉を整える
-              </Link>
-            </section>
-          </>
-        ))}
     </main>
   );
 }

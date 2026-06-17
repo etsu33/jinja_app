@@ -1,12 +1,10 @@
-
-
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 from typing import Literal
 
 HistoryTheme = Literal["守り", "静寂", "再出発", "復興", "勝負", "学び", "縁"]
-ActionCategory = Literal["reflect", "prepare", "connect", "visit", "record"]
+ActionCategory = Literal["reflect", "prepare", "connect", "visit"]
 ActionTiming = Literal["before_visit", "during_visit", "after_visit", "anytime"]
 ActionDifficulty = Literal["easy", "normal"]
 ActionTimeEstimate = Literal["3min", "10min", "30min"]
@@ -69,15 +67,15 @@ HISTORY_THEME_ACTION_SUGGESTIONS: dict[str, tuple[ActionSuggestion, ...]] = {
             measurement_key="seijaku_reflect_notifications_off",
         ),
         ActionSuggestion(
-            id="silence_record_after_visit",
+            id="silence_prepare_one_question",
             history_theme="静寂",
-            title="参拝後の変化を一言だけ残す",
-            description="参拝後に、気持ちが少し変わった点を一言だけ記録します。",
-            category="record",
-            timing="after_visit",
+            title="参拝前に、今日持っていく問いを1つだけ決める",
+            description="答えを急がず、参拝中に静かに置いておきたい問いを1つだけ決めます。",
+            category="prepare",
+            timing="before_visit",
             difficulty="easy",
             time_estimate="3min",
-            measurement_key="seijaku_record_after_visit",
+            measurement_key="seijaku_prepare_one_question",
         ),
     ),
     "再出発": (
@@ -93,15 +91,15 @@ HISTORY_THEME_ACTION_SUGGESTIONS: dict[str, tuple[ActionSuggestion, ...]] = {
             measurement_key="saishuppatsu_reflect_stop_start",
         ),
         ActionSuggestion(
-            id="restart_choose_next_step",
+            id="restart_choose_before_visit_focus",
             history_theme="再出発",
-            title="次に動くことを1つ保存する",
-            description="参拝後に、次の一歩として実行できる小さな行動を1つ保存します。",
-            category="record",
-            timing="after_visit",
+            title="参拝前に、区切りたいことを1つだけ決める",
+            description="参拝前に、今の流れの中で一区切りにしたいことを1つだけ決めます。",
+            category="prepare",
+            timing="before_visit",
             difficulty="easy",
             time_estimate="3min",
-            measurement_key="saishuppatsu_record_next_step",
+            measurement_key="saishuppatsu_prepare_before_visit_focus",
         ),
     ),
     "復興": (
@@ -165,15 +163,15 @@ HISTORY_THEME_ACTION_SUGGESTIONS: dict[str, tuple[ActionSuggestion, ...]] = {
             measurement_key="manabi_prepare_scope",
         ),
         ActionSuggestion(
-            id="learning_note_question",
+            id="learning_prepare_one_question",
             history_theme="学び",
-            title="分からないことを1つメモする",
-            description="次に調べるために、今分からないことを1つだけ残します。",
-            category="record",
-            timing="anytime",
+            title="参拝前に、問いを1つだけ決める",
+            description="学びを広げすぎず、参拝前に今日持っていく問いを1つだけ決めます。",
+            category="prepare",
+            timing="before_visit",
             difficulty="easy",
             time_estimate="3min",
-            measurement_key="manabi_record_question",
+            measurement_key="manabi_prepare_one_question",
         ),
     ),
     "縁": (

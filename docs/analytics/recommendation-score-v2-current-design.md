@@ -1,5 +1,3 @@
-
-
 # Recommendation Score v2 現行設計
 
 ## 目的
@@ -166,6 +164,55 @@ return {
 
 ---
 
+## Recommendation Reason Contract
+
+Recommendation Reason は、表示用の「なぜこの神社なのか」を説明するための契約である。
+
+スコアそのものではなく、推薦結果をユーザーに説明するための理由候補を扱う。
+
+### 入力責務
+
+| 要素 | 責務 |
+|---|---|
+| need_tag | 相談テーマ由来のユーザー状態 |
+| text_hint | フリーワード / 短いキーワードから拾った相談文脈 |
+| history_theme | 神社固有文脈と相談テーマを接続する意味レイヤ |
+| culture_translation | 神社固有の歴史・場所意味を翻訳した文脈 |
+| user_selected_tag | ユーザーが追加したご利益条件 |
+| goriyaku_tag | 神社側のご利益分類 |
+| element | 生年月日・相性系の補助シグナル |
+
+### primary_reason 優先順位
+
+```text
+history_theme
+↓
+culture_translation
+↓
+need_tag
+↓
+text_hint
+↓
+user_selected_tag
+↓
+goriyaku_tag
+↓
+element
+↓
+fallback
+```
+
+### 契約
+
+* need_tag は相談テーマ由来の主理由として扱う。
+* history_theme は matched_need_tags がある場合のみ主理由候補に入れる。
+* culture_translation は matched_need_tags があり、かつ神社固有文脈が存在する場合のみ主理由候補に入れる。
+* user_selected_tag は主理由ではなく、追加条件として扱う。
+* goriyaku_tag は神社側の分類・補助説明として扱う。
+* element / birthdate / direction は主理由を上書きしない。
+* 「仕事」「金運」「恋愛」などの語彙は need_tag と goriyaku_tag で重複してよい。
+* 同じ語彙でも、入力側は相談テーマ、神社側は分類として扱う。
+
 ## 行動シグナル式
 
 実装箇所:
@@ -262,3 +309,98 @@ Recommendation Score v2 は、すでに実装骨格がある。
 このPRではコードを変更せず、現行式・行動シグナル・計測対応を正本化する。
 
 重み変更は、PostHogとDB集計で実データを確認してから行う。
+
+
+## DB移行中のPostHog計測方針
+
+PostHogイベントはフロントエンドから `posthog-js` 経由で送信されるため、DB移行中でも収集可能。
+
+確認箇所:
+
+- `apps/web/src/lib/analytics/providers.ts`
+- `apps/web/src/app/providers/ClientBootstrap.tsx`
+
+実装上の条件:
+
+```text
+NODE_ENV === "production"
+NEXT_PUBLIC_POSTHOG_KEY が設定されている
+```
+
+PostHog送信はDB保存とは別系統。
+
+| 種別 | 依存先 | DB移行の影響 |
+|---|---|---|
+| PostHogイベント | ブラウザ → PostHog | 受けにくい |
+| DBイベント | API → backend DB | 受ける |
+| behavior_signal | backend DB集計 | 受ける |
+| Recommendation Score v2の行動反映 | backend DB集計 | 受ける |
+
+### 判断
+
+DB移行中でも、以下のようなフロント送信イベントはPostHogで観測できる。
+
+- `shrine_card_click`
+- `shrine_detail_view`
+- `route_open`
+- `favorite_click`
+- `shrine_decision` with `action=save`
+- `visit_done`
+- `reflection_saved`
+- `premium_preview_view`
+- `premium_preview_click`
+- `checkout_started`
+
+ただし、推薦スコアに反映される行動シグナルはDB側の正本データに依存する。
+
+そのため、DB移行中は以下のように役割を分ける。
+
+- PostHog: 行動観測・CVR確認の一時正本
+- DB: Recommendation Score v2へ反映する正本
+
+本番環境で確認すべきこと:
+
+- `NEXT_PUBLIC_POSTHOG_KEY` が設定されていること
+- `NEXT_PUBLIC_POSTHOG_HOST` が設定されていること
+- `posthog_health_check` がPostHog上で確認できること
+- `route_open` / `shrine_detail_view` / `favorite_click` が本番で発火していること
+
+---
+
+## Event Source Audit
+
+### Behavior Signal に利用中
+
+| action | DB | PostHog | ranking利用 |
+|---|---|---|---|
+| detail_view | ○ | ○ | ○ |
+| route_open | ○ | ○ | ○ |
+| save | ○ | ○ | ○ |
+| visit_done | ○ | ○ | ○ |
+| reflection_saved | ○ | ○ | ○ |
+
+### 未利用
+
+| action | DB実装 | DB保存中 | PostHog | ranking利用 |
+|---|---|---|---|---|
+| shrine_card_click | ○ | × | ○ | × |
+| recommendation_click | ○ | × | × | × |
+| concierge_result_click | × | × | × | × |
+
+## Weight Resolution Audit
+
+### need mode
+
+element: 0.6
+need: 0.3
+popular: 0.1
+distance: 0.35
+visit_style: 0.35
+
+### compat mode
+
+element: 0.8
+need: 0.2
+popular: 0.0
+distance: 0.15
+visit_style: 0.35

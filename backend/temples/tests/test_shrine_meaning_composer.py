@@ -199,3 +199,75 @@ def test_compose_shrine_meaning_payload_adds_direction_support_copy_without_chan
 
     block_ids = [block["id"] for block in payload["display"]["blocks"]]
     assert "direction_support" not in block_ids
+
+
+def test_meaning_layer_keeps_consultation_summary_as_display_copy_only():
+    payload = compose_shrine_meaning_payload(
+        {
+            "id": 101,
+            "name_jp": "整理神社",
+            "history_theme": "再出発",
+            "goriyaku": "開運",
+            "description": "気持ちを切り替える節目に参拝される神社。",
+        }
+    )
+
+    summary = payload["generated"]["consultationSummary"]
+
+    assert summary
+    assert "整理神社" not in summary
+    assert "参拝前" not in summary
+    assert "参拝中" not in summary
+    assert payload["source"]["historyTheme"] == "再出発"
+
+
+def test_meaning_layer_keeps_history_theme_in_source_and_uses_it_for_meaning_copy():
+    payload = compose_shrine_meaning_payload(
+        {
+            "id": 102,
+            "name_jp": "勝負神社",
+            "history_theme": "勝負",
+            "goriyaku": "仕事運",
+        }
+    )
+
+    generated = payload["generated"]
+
+    assert payload["source"]["historyTheme"] == "勝負"
+    assert "勝負神社" in generated["shrineMeaning"]
+    assert "決断や挑戦" in generated["shrineMeaning"]
+    assert "急いで叶えるためではなく" in generated["actionMeaning"]
+
+
+def test_meaning_layer_action_meaning_uses_history_theme_action_context():
+    payload = compose_shrine_meaning_payload(
+        {
+            "id": 103,
+            "name_jp": "静寂神社",
+            "history_theme": "静寂",
+        }
+    )
+
+    action_meaning = payload["generated"]["actionMeaning"]
+
+    assert action_meaning
+    assert "参拝中" in action_meaning
+    assert "意識します" in action_meaning
+    assert "結果" not in action_meaning
+
+
+def test_meaning_layer_basic_info_only_does_not_invent_strong_meaning():
+    payload = compose_shrine_meaning_payload(
+        {
+            "id": 104,
+            "name_jp": "基本情報神社",
+            "address": "東京都千代田区",
+        }
+    )
+
+    generated = payload["generated"]
+
+    assert "確認済みの基本情報" in generated["heroMeaningCopy"]
+    assert "相談内容との強い結びつきは断定せず" in generated["consultationSummary"]
+    assert "断定的な説明を行いません" in generated["shrineMeaning"]
+    assert "意味やご利益を決めつけず" in generated["actionMeaning"]

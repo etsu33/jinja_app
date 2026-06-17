@@ -10,7 +10,6 @@ from rest_framework.exceptions import APIException
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.authentication import SessionAuthentication
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from temples.services.billing_checkout import create_checkout_session
@@ -48,10 +47,11 @@ class BillingStatusSerializer(serializers.Serializer):
 )
 class BillingStatusView(APIView):
     permission_classes = [AllowAny]
-    authentication_classes = [JWTAuthentication, SessionAuthentication]
+    authentication_classes = [JWTAuthentication]
 
     def get(self, request):
         st = get_billing_status(user=getattr(request, "user", None))
+        print("[BILLING_STATUS_AUTH]", request.user, getattr(request.user, "is_authenticated", None), getattr(request.user, "id", None), getattr(request.user, "email", None))
         ser = BillingStatusSerializer(
             instance={
                 "plan": st.plan,
@@ -88,7 +88,7 @@ class CheckoutResponseSerializer(serializers.Serializer):
 )
 class BillingCheckoutView(APIView):
     permission_classes = [IsAuthenticated]
-    authentication_classes = [JWTAuthentication, SessionAuthentication]
+    authentication_classes = [JWTAuthentication]
 
     def post(self, request):
         req = CheckoutRequestSerializer(data=request.data)

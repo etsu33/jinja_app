@@ -140,14 +140,24 @@ NEED_LABELS_JA: Dict[str, str] = {
     "travel_safe": "移動・安全",
     "element": "生年月日との相性",
     "fallback": "近い候補",
+    "history_theme": "歴史文脈",
+    "culture_translation": "神社固有文脈",
 }
 
+# Recommendation Reason Responsibility:
+# - need_tag は相談テーマ由来のユーザー状態として扱う。
+# - goriyaku_tag / user_selected_tag は神社側分類・追加条件として扱う。
+# - 「仕事」「金運」「恋愛」など語彙は重複してよいが、入力側と神社側で責務を分ける。
+# - primary_reason は固定相談文ではなく、フリーワードや短いキーワードから抽出された相談テーマとの接続を優先する。
+
 PRIMARY_REASON_PRIORITY: Dict[str, int] = {
-    "user_selected_tag": 0,
-    "need_tag": 1,
-    "goriyaku_tag": 2,
+    "history_theme": 0,
+    "culture_translation": 1,
+    "need_tag": 2,
     "text_hint": 3,
-    "element": 4,
+    "user_selected_tag": 4,
+    "goriyaku_tag": 5,
+    "element": 6,
     "fallback": 9,
 }
 
@@ -197,8 +207,37 @@ def _build_reason_facts(
     text_score_by_tag: Dict[str, int],
     score_element: int,
     astro_bonus_enabled: bool,
+    shrine_meaning_profile: Optional[Dict[str, Any]] = None,
 ) -> List[Dict[str, Any]]:
     facts: List[Dict[str, Any]] = []
+    profile = shrine_meaning_profile or {}
+    profile_matched_need_tags = [
+        str(tag).strip()
+        for tag in (profile.get("matched_need_tags") or [])
+        if isinstance(tag, str) and str(tag).strip()
+    ]
+    history_theme = str(profile.get("history_theme") or "").strip()
+    culture_translation_present = bool(profile.get("culture_translation_present"))
+
+    if profile_matched_need_tags and history_theme:
+        facts.append(
+            _make_reason_fact(
+                type_="history_theme",
+                label=history_theme,
+                evidence=["history_theme", "matched_need_tags"],
+                score=4.0,
+            )
+        )
+
+    if profile_matched_need_tags and culture_translation_present:
+        facts.append(
+            _make_reason_fact(
+                type_="culture_translation",
+                label="culture_translation",
+                evidence=["culture_translation_present", "matched_need_tags"],
+                score=3.5,
+            )
+        )
 
     label_map = goriyaku_tag_label_by_id or {}
     for gid in matched_by_user_selected_gid:
@@ -976,6 +1015,7 @@ def _attach_breakdown(
         text_score_by_tag=text_score_by_tag,
         score_element=score_element,
         astro_bonus_enabled=astro_bonus_enabled,
+        shrine_meaning_profile=shrine_meaning_profile,
     )
     primary_reason = _resolve_primary_reason(reason_facts)
 

@@ -36,6 +36,7 @@ export type CardAnalyticsPayload = {
   ctaType?: CtaType;
   shrineId?: number | string;
   historyTheme?: string | null;
+  consultationAxis?: string | null;
   recommendationRank?: number;
   mode?: "need" | "compat";
   flow?: "A" | "B";

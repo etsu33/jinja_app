@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Literal
 
+from temples.domain.consultation_axis import normalize_consultation_axis
+
 Tone = Literal["soft", "neutral", "strong"]
 
-INTENT_KEYS = ["goriyaku", "tone", "atmosphere", "avoid", "summary"]
+INTENT_KEYS = ["goriyaku", "tone", "atmosphere", "avoid", "summary", "consultation_axis"]
 
 DEFAULT_INTENT: Dict[str, Any] = {
     "goriyaku": [],
@@ -12,6 +14,7 @@ DEFAULT_INTENT: Dict[str, Any] = {
     "atmosphere": [],
     "avoid": [],
     "summary": "",
+    "consultation_axis": "other",
 }
 
 
@@ -38,6 +41,7 @@ def normalize_intent(obj: Any) -> Dict[str, Any]:
         out["avoid"] = []
     if not isinstance(out["summary"], str):
         out["summary"] = ""
+    out["consultation_axis"] = normalize_consultation_axis(out.get("consultation_axis"))
 
     # listはstrに寄せる
     out["goriyaku"] = [str(x).strip() for x in out["goriyaku"] if str(x).strip()]

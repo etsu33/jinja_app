@@ -498,6 +498,24 @@ export default function ConciergeClientFull() {
   const [entrySubmitting, setEntrySubmitting] = useState(false);
   const [needText, setNeedText] = useState("");
   const [entryValidationError, setEntryValidationError] = useState<string | null>(null);
+  const autoSubmitThemeRef = useRef<string | null>(null);
+  const autoSubmitConsumedThemeRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const theme = (sp.get("theme") ?? "").trim();
+    if (!theme) return;
+    if (autoSubmitConsumedThemeRef.current === theme) return;
+
+    autoSubmitThemeRef.current = theme;
+    setNeedText((current) => (current.trim() ? current : theme));
+  }, [sp]);
+
+  useEffect(() => {
+    const openFilter = (sp.get("openFilter") ?? "").trim();
+    if (openFilter !== "1") return;
+
+    setIsFilterOpen(true);
+  }, [sp]);
 
   const displayName = useMemo(
     () =>
@@ -1056,12 +1074,37 @@ export default function ConciergeClientFull() {
     const mode = modeRaw?.mode === "need" || modeRaw?.mode === "compat" ? modeRaw.mode : undefined;
     const flow = modeRaw?.flow === "A" || modeRaw?.flow === "B" ? modeRaw.flow : undefined;
     const topRecommendation = displayRecommendations[0] as Record<string, unknown> | undefined;
+    const data = (displayUnified?.data as any) ?? {};
+    const signals = data?._signals ?? {};
+    const resultState = signals?.result_state ?? signals?.resultState ?? {};
     const historyTheme =
       typeof topRecommendation?.history_theme === "string"
         ? topRecommendation.history_theme
         : typeof topRecommendation?.historyTheme === "string"
           ? topRecommendation.historyTheme
           : undefined;
+    const consultationAxis =
+      typeof topRecommendation?.consultation_axis === "string"
+        ? topRecommendation.consultation_axis
+        : typeof topRecommendation?.consultationAxis === "string"
+          ? topRecommendation.consultationAxis
+          : typeof data?.consultation_axis === "string"
+            ? data.consultation_axis
+            : typeof data?.consultationAxis === "string"
+              ? data.consultationAxis
+              : typeof data?._need?.consultation_axis === "string"
+                ? data._need.consultation_axis
+                : typeof data?._need?.consultationAxis === "string"
+                  ? data._need.consultationAxis
+                  : typeof signals?.consultation_axis === "string"
+                    ? signals.consultation_axis
+                    : typeof signals?.consultationAxis === "string"
+                      ? signals.consultationAxis
+                      : typeof resultState?.consultation_axis === "string"
+                        ? resultState.consultation_axis
+                        : typeof resultState?.consultationAxis === "string"
+                          ? resultState.consultationAxis
+                          : undefined;
 
     return {
       mode,
@@ -1069,6 +1112,7 @@ export default function ConciergeClientFull() {
       hasBirthdate: Boolean(normalizedBirthdate),
       recommendationCount: displayRecommendations.length,
       historyTheme,
+      ...(consultationAxis ? { consultationAxis } : {}),
     };
   }, [displayUnified, displayRecommendations, normalizedBirthdate]);
 
@@ -1119,12 +1163,37 @@ export default function ConciergeClientFull() {
 
       const completedModeRaw = (u.data as any)?._signals?.mode;
       const completedTopRecommendation = completedRecommendations[0] as Record<string, unknown> | undefined;
+      const completedData = (u.data as any) ?? {};
+      const completedSignals = completedData?._signals ?? {};
+      const completedResultState = completedSignals?.result_state ?? completedSignals?.resultState ?? {};
       const completedHistoryTheme =
         typeof completedTopRecommendation?.history_theme === "string"
           ? completedTopRecommendation.history_theme
           : typeof completedTopRecommendation?.historyTheme === "string"
             ? completedTopRecommendation.historyTheme
             : undefined;
+      const completedConsultationAxis =
+        typeof completedTopRecommendation?.consultation_axis === "string"
+          ? completedTopRecommendation.consultation_axis
+          : typeof completedTopRecommendation?.consultationAxis === "string"
+            ? completedTopRecommendation.consultationAxis
+            : typeof completedData?.consultation_axis === "string"
+              ? completedData.consultation_axis
+              : typeof completedData?.consultationAxis === "string"
+                ? completedData.consultationAxis
+                : typeof completedData?._need?.consultation_axis === "string"
+                  ? completedData._need.consultation_axis
+                  : typeof completedData?._need?.consultationAxis === "string"
+                    ? completedData._need.consultationAxis
+                    : typeof completedSignals?.consultation_axis === "string"
+                      ? completedSignals.consultation_axis
+                      : typeof completedSignals?.consultationAxis === "string"
+                        ? completedSignals.consultationAxis
+                        : typeof completedResultState?.consultation_axis === "string"
+                          ? completedResultState.consultation_axis
+                          : typeof completedResultState?.consultationAxis === "string"
+                            ? completedResultState.consultationAxis
+                            : undefined;
 
       track("consultation_completed", {
         threadId: nextTid || currentTid ? String(nextTid || currentTid) : undefined,
@@ -1133,6 +1202,7 @@ export default function ConciergeClientFull() {
         hasBirthdate: Boolean(normalizedBirthdate || baseFilters.birthdate),
         recommendationCount: completedRecommendations.length,
         historyTheme: completedHistoryTheme,
+        ...(completedConsultationAxis ? { consultationAxis: completedConsultationAxis } : {}),
         source: fromEntry ? "entry" : "thread",
       });
       if (filterApplyPendingRef.current) {
@@ -1298,6 +1368,22 @@ export default function ConciergeClientFull() {
     [canSend, sending, entrySubmitting, send, isEntryRoute, buildConciergePayload],
   );
 
+  useEffect(() => {
+    const theme = autoSubmitThemeRef.current;
+    if (!theme) return;
+    if (!hydrated) return;
+    if (!isEntryRoute) return;
+    if (!canSend) return;
+    if (sending) return;
+    if (entrySubmitting) return;
+
+    autoSubmitThemeRef.current = null;
+    autoSubmitConsumedThemeRef.current = theme;
+    setNeedText(theme);
+    setEntryValidationError(null);
+    void safeSend(theme, { kind: "home_theme_submit", textLen: theme.length });
+  }, [canSend, entrySubmitting, hydrated, isEntryRoute, safeSend, sending]);
+
   /* ----------------------------------------
    * UI表示の判定
    * -------------------------------------- */
@@ -1360,23 +1446,49 @@ export default function ConciergeClientFull() {
    * -------------------------------------- */
   const feelExamples = [
     {
-      label: "最近ちょっと疲れている",
+      label: "疲れを整えたい",
       text: "最近ちょっと疲れていて、落ち着ける神社がいいです",
     },
     {
-      label: "前向きになれる参拝がしたい",
+      label: "前向きになりたい",
       text: "気持ちを切り替えて前向きになれる参拝がしたいです",
     },
     {
-      label: "静かな場所で参拝したい",
+      label: "静かに参拝したい",
       text: "人が少なくて静かな場所でお参りしたいです",
+    },
+    {
+      label: "仕事を整えたい",
+      text: "仕事の流れを整えて、次に進むきっかけがほしいです",
+    },
+    {
+      label: "良縁を願いたい",
+      text: "人とのご縁を大切にできるような参拝がしたいです",
+    },
+    {
+      label: "健康を祈りたい",
+      text: "心身を整えて、健やかに過ごせるようお参りしたいです",
+    },
+    {
+      label: "迷いを整理したい",
+      text: "今の迷いを整理して、落ち着いて考えられる場所に行きたいです",
+    },
+    {
+      label: "近場で参拝したい",
+      text: "無理なく行ける範囲で、今の相談に合う神社を知りたいです",
     },
   ] as const;
 
-  const onPickExample = (text: string) => {
-    setNeedText(text);
+  const onPickExample = (example: { label: string; text: string }) => {
+    // チップは固定診断ではなく入力補助なので、既存の自由入力欄を置き換えてから編集可能にする。
+    setNeedText(example.text);
     setEntryValidationError(null);
-    snap("action:pick_example", { text });
+    track("consultation_theme_click", {
+      label: example.label,
+      text: example.text,
+      source: "concierge_entry",
+    });
+    snap("action:pick_example", { label: example.label, text: example.text });
   };
 
   const buildFilterPayload = useCallback((): Omit<ConciergeChatRequestV1, "thread_id"> | null => {
@@ -1412,6 +1524,7 @@ export default function ConciergeClientFull() {
             action: "route",
             rank: typeof a.rank === "number" ? a.rank : null,
             tid: activeThreadIdRef.current || null,
+            ...(modeAnalyticsPayload.consultationAxis ? { consultationAxis: modeAnalyticsPayload.consultationAxis } : {}),
           });
         }
 
@@ -1639,8 +1752,8 @@ export default function ConciergeClientFull() {
             <div className="mt-7 rounded-3xl border border-stone-200/45 bg-stone-50/60 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-[11px] font-medium tracking-[0.2em] text-stone-500">QUIET FILTER</p>
-                  <p className="mt-0.5 text-[11px] text-stone-500">必要なときだけ条件を添える</p>
+                  <p className="text-[11px] font-medium tracking-[0.2em] text-stone-500">条件を追加（任意）</p>
+                  <p className="mt-0.5 text-[11px] text-stone-500">誕生日・ご利益・参拝スタイルは、相談テーマを補う条件として扱います。</p>
                 </div>
                 <button
                   type="button"
@@ -1648,7 +1761,7 @@ export default function ConciergeClientFull() {
                   onClick={() => setIsFilterOpen((prev) => !prev)}
                   disabled={isBusy}
                 >
-                  {isFilterOpen ? "閉じる" : "条件を追加する"}
+                  {isFilterOpen ? "閉じる" : "条件を開く"}
                 </button>
               </div>
 
@@ -1656,24 +1769,24 @@ export default function ConciergeClientFull() {
                 <div className="mt-4 rounded-2xl border border-stone-200/50 bg-white/80 px-3 py-3">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-[11px] font-medium text-stone-500">追加済みの条件</p>
+                      <p className="text-[11px] font-medium text-stone-500">相談に添えた条件</p>
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         {baseFilters.birthdate ? (
                           <span className="rounded-full border border-stone-200/70 bg-stone-50 px-3 py-1 text-xs font-medium text-stone-700">
-                            誕生日あり
+                            誕生日を補助条件に追加
                           </span>
                         ) : null}
 
                         {selectedTagNames.length ? (
                           <span className="rounded-full border border-stone-200/70 bg-stone-50 px-3 py-1 text-xs font-medium text-stone-700">
-                            希望: {selectedTagNames[0]}
+                            ご利益: {selectedTagNames[0]}
                             {selectedTagNames.length > 1 ? ` 他${selectedTagNames.length - 1}` : ""}
                           </span>
                         ) : null}
 
                         {baseFilters.extra_condition ? (
                           <span className="rounded-full border border-stone-200/70 bg-stone-50 px-3 py-1 text-xs font-medium text-stone-700">
-                            希望の補足あり
+                            参拝スタイルあり
                           </span>
                         ) : null}
                       </div>
@@ -1685,7 +1798,7 @@ export default function ConciergeClientFull() {
                       onClick={() => onRendererAction({ type: "filter_clear" })}
                       disabled={isBusy}
                     >
-                      クリア
+                      条件をクリア
                     </button>
                   </div>
                 </div>

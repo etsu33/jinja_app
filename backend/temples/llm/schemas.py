@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
+from temples.domain.consultation_axis import normalize_consultation_axis
+
 
 def normalize_recs(data: Dict[str, Any] | None, *, query: str = "") -> Dict[str, Any]:
     """
@@ -26,6 +28,9 @@ def normalize_recs(data: Dict[str, Any] | None, *, query: str = "") -> Dict[str,
                     "place_id": it.get("place_id"),
                     "lat": it.get("lat"),
                     "lng": it.get("lng"),
+                    "consultation_axis": normalize_consultation_axis(
+                        it.get("consultation_axis") or data.get("consultation_axis")
+                    ),
                 }
             )
     return {"recommendations": recs}
@@ -51,6 +56,9 @@ def complete_recommendations(
                     "place_id": it.get("place_id"),
                     "lat": it.get("lat"),
                     "lng": it.get("lng"),
+                    "consultation_axis": normalize_consultation_axis(
+                        it.get("consultation_axis") or payload.get("consultation_axis")
+                    ),
                 }
             )
     return {"recommendations": out}

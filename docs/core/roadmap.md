@@ -24,6 +24,133 @@
 ---
 
 ## 🗂 マイルストーン（チェックリスト）
+
+## Concierge First
+
+### Phase 1: 仕様固定・ドキュメント整備
+
+- [x] docs/product/concierge-first.md を作成
+- [x] トップ画面とコンシェルジュ画面を統合する方針を定義
+- [x] 相談テーマを主入力として定義
+- [x] 参拝スタイルを条件追加として定義
+- [x] 誕生日を任意・補助入力として定義
+- [x] ご利益タグを補助条件として定義
+- [x] 占星術・九星気学・風水を補助シグナルとして定義
+- [x] 吉方位・相性を詳細レイヤー限定として定義
+- [x] README / architecture / roadmap の参照関係を整理
+
+### Phase 2: Concierge First UI
+
+- [x] トップ画面とコンシェルジュ画面を統合
+- [x] 相談テーマ入力をヒーロー領域へ配置
+- [x] 条件追加UIをコンシェルジュ側へ集約
+- [x] 参拝スタイルを Explore / Search 側へ整理
+- [x] 誕生日を補助条件として維持
+- [x] ご利益タグを補助条件として維持
+- [x] 自由入力を相談入力の主導線へ整理
+- [x] 神社一覧導線をサブ導線へ変更
+- [x] 地図導線をサブ導線へ変更
+
+### Phase 2.5: Concierge First 実装状態反映
+
+- [x] Top Hero から `/concierge?theme=...` へ相談テーマを渡す
+- [x] ConciergeEntryCard の見出しを相談主導へ変更
+- [x] ConciergeEntryCard の主CTAを神社提案導線へ変更
+- [x] 未ログイン時コピーを「検索」ではなく「相談」へ変更
+- [x] 条件追加UIを任意の補助条件として明記
+- [x] 誕生日・ご利益・参拝スタイルを相談テーマの補助条件として表示
+- [x] ConciergeEntryCard の contract test を更新
+- [x] typecheck / test:contract 通過
+
+### Phase 3: Recommendation Responsibility Separation
+
+- [x] need_tags を主推薦軸として固定
+- [x] history_theme を意味レイヤへ接続
+- [x] 神社固有文脈を推薦理由へ統合
+- [x] ご利益を補助説明へ整理
+- [x] 誕生日 / astro / direction を補助シグナルとして明文化
+- [x] Recommendation Reason 契約を `docs/analytics/recommendation-score-v2-current-design.md` に文書化
+- [x] Recommendation Score 監査集計を `_debug.score_audit` に追加
+- [x] Recommendation Score Audit を `docs/analytics/recommendation-score-v2-quality-audit.md` に文書化
+- [ ] 誕生日シグナルの重みを監査
+- [ ] astro_elements の寄与率を監査
+- [ ] direction_bonus の寄与率を監査
+
+### Phase 4: Behavior Loop
+
+- [ ] save → detail → route → visit → reflection の計測を完成
+- [ ] reflection を次回推薦へ接続
+- [ ] history_theme 遷移分析を追加
+- [ ] 継続利用ユーザー分析を追加
+- [ ] behavior_signal を Recommendation Score v2 と統合
+
+運用方針:
+
+- Concierge First をプロダクト全体の主導線とする。
+- 神社検索・地図は Explore として扱い、主機能ではなく相談後の探索導線として位置づける。
+- 推薦理由の中心は相談テーマと need_tags とする。
+- 誕生日・占術・方位は補助シグナルとして扱う。
+- Meaning Layer は推薦後の解釈レイヤとして責務を分離する。
+
+---
+
+## Explore Integration
+
+### Phase 1: Explore責務・状態管理設計
+
+- [x] `/shrines` と `/map` を Explore として統合する方針を定義
+- [x] `/shrines` を Explore の List Mode として定義
+- [x] `/map` を Explore の Map Mode / Nearby Mode として定義
+- [x] Explore画面の責務を確定
+- [x] `/shrines` と `/map` の共通要素を洗い出し
+- [x] ExploreState を設計
+- [x] ViewMode を定義
+- [x] FilterState を定義
+- [x] NearbyState を定義
+- [x] ExploreLayout 案を設計
+- [x] Explore責務を `docs/core/architecture.md` に反映
+- [x] Journey Flow を `docs/core/architecture.md` に追加
+
+### Phase 2: Explore UI Foundation
+
+- [x] 一覧 / 地図切替タブを設計
+- [x] NearbySection の責務を整理
+- [x] Search / Map 共通Filterを設計
+- [x] `/shrines` 上の体験チップを Exploreコンポーネントへ分離
+- [x] 神社名検索を DetailSearchAccordion として分離
+- [x] `/map` の NearbyShrineCardListClient を Explore 側で再利用できるか確認
+- [x] ExploreResultArea の List / Map 表示方針を決める
+- [x] ExploreLayout Story を追加
+- [x] Search Slot 方針を整理
+
+### Phase 3: Explore実装統合
+
+- [x] ExploreLayout コンポーネントを作成
+- [x] `/shrines` を Explore List Mode として接続
+- [x] `/map` を Explore Map / Nearby Mode として接続
+- [x] 既存URLの互換導線を維持
+- [x] Search Slot を実装
+- [x] typecheck
+- [ ] test:contract
+
+### Phase 4: Explore実装状態のドキュメント反映
+
+- [x] ExploreLayout の実装状態を `docs/core/architecture.md` に反映
+- [x] `/shrines` / `/map` が ExploreLayout 配下になったことを反映
+- [x] Search Slot の責務を architecture に反映
+- [ ] Explore Route 統合判断を将来フェーズとして整理
+
+運用方針:
+
+- Explore は候補探索までを責務とする。
+- 推薦理由の生成は Concierge が担う。
+- 神社理解は Detail が担う。
+- 行動記録・振り返りは Visit / Reflection が担う。
+- Explore は Recommendation Logic / Meaning Layer / Recommendation Score を持たない。
+- Map / Search は Premium 価値の中心にしない。
+
+---
+
 ### Recommendation Engine v2: score_v2 / behavior_signal 運用方針
 
 #### Recommendation Score v2 の軸
