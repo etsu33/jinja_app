@@ -9,6 +9,10 @@ from temples.services.concierge_history import (
     calculate_shrine_behavior_signal_breakdown,
     classify_shrine_action_state,
 )
+from temples.services.recommendation_score_v2 import (
+    ScoreV2Input,
+    calculate_recommendation_score_v2,
+)
 from typing import Literal
 
 
@@ -970,41 +974,44 @@ def _attach_breakdown(
         },
     }
 
-    rec["score_v2"] = {
-        "version": 1,
-        "ranking_applied": True,
-        "total": float(score_total_ranked),
-        "components": {
-            "user_state_match": float(score_need_rank_weighted * w2),
-            "shrine_meaning_match": float(score_need * w2),
-            "context_match": float(score_visit_style * w5),
-            "element_match": float(score_element * w1),
-            "distance_score": float(score_distance * w4),
-            "popularity_score": float(score_popular * w3),
-            "astro_bonus": float(astro_bonus) if astro_bonus_enabled else 0.0,
-            "behavior_signal": float(behavior_signal),
-            "behavior_contribution": float(behavior_contribution),
-            "capped_behavior_contribution": float(capped_behavior_contribution),
-            "behavior_ratio": float(behavior_ratio),
-            "visit_signal": float(visit_signal),
-            "reflection_signal": float(reflection_signal),
-            "direction_bonus": float(direction_bonus),
-            "direction_reason": direction_reason,
-        },
-        "signals": {
-            "matched_need_tags": matched_all,
-            "matched_by_tag": matched_by_tag,
-            "matched_by_text": matched_by_text,
-            "matched_by_gid": matched_by_gid,
-            "matched_visit_style_tags": matched_visit_style_tags,
-            "context_profile": context_profile,
-            "matched_user_selected_goriyaku_tag_ids": matched_by_user_selected_gid,
-            "shrine_meaning_profile": shrine_meaning_profile,
-            "behavior_profile": behavior_profile,
-            "behavior_breakdown": behavior_breakdown,
-            "reflection_hint": reflection_hint,
-        },
-    }
+    score_v2_result = calculate_recommendation_score_v2(
+        ScoreV2Input(
+            score_total_ranked=float(score_total_ranked),
+            score_total_ranked_base=float(score_total_ranked_base),
+            score_need_rank_weighted=float(score_need_rank_weighted),
+            score_need=int(score_need),
+            score_visit_style=int(score_visit_style),
+            score_element=int(score_element),
+            score_distance=float(score_distance),
+            score_popular=float(score_popular),
+            astro_bonus=float(astro_bonus) if astro_bonus_enabled else 0.0,
+            direction_bonus=float(direction_bonus),
+            direction_reason=direction_reason,
+            behavior_signal=float(behavior_signal),
+            behavior_contribution=float(behavior_contribution),
+            capped_behavior_contribution=float(capped_behavior_contribution),
+            behavior_ratio=float(behavior_ratio),
+            visit_signal=float(visit_signal),
+            reflection_signal=float(reflection_signal),
+            need_weight=float(w2),
+            element_weight=float(w1),
+            distance_weight=float(w4),
+            popular_weight=float(w3),
+            visit_style_weight=float(w5),
+            matched_need_tags=matched_all,
+            matched_by_tag=matched_by_tag,
+            matched_by_text=matched_by_text,
+            matched_by_gid=matched_by_gid,
+            matched_visit_style_tags=matched_visit_style_tags,
+            matched_user_selected_goriyaku_tag_ids=matched_by_user_selected_gid,
+            context_profile=context_profile,
+            shrine_meaning_profile=shrine_meaning_profile,
+            behavior_profile=behavior_profile,
+            behavior_breakdown=behavior_breakdown,
+            reflection_hint=reflection_hint,
+        )
+    )
+    rec["score_v2"] = score_v2_result.as_dict()
 
     reason_facts = _build_reason_facts(
         matched_by_tag=matched_by_tag,
