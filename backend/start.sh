@@ -1,27 +1,30 @@
 #!/usr/bin/env bash
 set -e
 
-echo "=== Render diagnostics ==="
+export PORT="${PORT:-10000}"
+export WEB_CONCURRENCY="${WEB_CONCURRENCY:-1}"
+
+echo "=== Render startup ==="
 echo "PWD=$(pwd)"
-echo "PORT=${PORT:-unset}"
-echo "WEB_CONCURRENCY=${WEB_CONCURRENCY:-unset}"
+echo "PORT=${PORT}"
+echo "WEB_CONCURRENCY=${WEB_CONCURRENCY}"
 echo "DATABASE_URL_SET=$([ -n "${DATABASE_URL:-}" ] && echo 1 || echo 0)"
 echo "ALLOWED_HOSTS=${ALLOWED_HOSTS:-unset}"
 echo "RENDER_EXTERNAL_HOSTNAME=${RENDER_EXTERNAL_HOSTNAME:-unset}"
 echo "USE_GIS=${USE_GIS:-unset}"
 echo "USE_SQLITE=${USE_SQLITE:-unset}"
-python manage.py check
-python manage.py showmigrations temples | tail -20
-python manage.py showmigrations temples | grep 0087 || true
+
+if [ "${RUN_STARTUP_CHECK:-0}" = "1" ]; then
+  echo "Running startup system check because RUN_STARTUP_CHECK=1..."
+  python manage.py check
+fi
 
 echo "Running migrations..."
-echo "Migration status before migrate:"
-python manage.py showmigrations temples | grep "0087_shrinereflection" || true
-python manage.py shell -c "from django.db import connection; print('HAS temples_shrinereflection=', 'temples_shrinereflection' in connection.introspection.table_names())" || true
 python manage.py migrate --noinput
 
-echo "Ensuring ShrineReflection table exists..."
-python manage.py shell <<'PY'
+if [ "${RUN_SHRINE_REFLECTION_REPAIR:-0}" = "1" ]; then
+  echo "Ensuring ShrineReflection table exists because RUN_SHRINE_REFLECTION_REPAIR=1..."
+  python manage.py shell <<'PY'
 from django.db import connection
 from temples.models import ShrineReflection
 
@@ -37,14 +40,24 @@ if not exists:
 
 print("HAS ShrineReflection table final=", table_name in connection.introspection.table_names())
 PY
+else
+  echo "Skipping ShrineReflection repair. Set RUN_SHRINE_REFLECTION_REPAIR=1 to run it explicitly."
+fi
 
-python manage.py repair_favorite_table || echo "repair_favorite_table failed; continue startup"
-echo "Migration status after migrate:"
-python manage.py showmigrations temples | grep "0087_shrinereflection" || true
-python manage.py shell -c "from django.db import connection; print('HAS temples_shrinereflection=', 'temples_shrinereflection' in connection.introspection.table_names())" || true
-echo "Repairing FeatureUsage table..."
-python manage.py repair_featureusage_table
-echo "FeatureUsage repair completed."
+if [ "${RUN_FAVORITE_REPAIR_ON_START:-0}" = "1" ]; then
+  echo "Repairing Favorite table because RUN_FAVORITE_REPAIR_ON_START=1..."
+  python manage.py repair_favorite_table || echo "repair_favorite_table failed; continue startup"
+else
+  echo "Skipping Favorite table repair. Set RUN_FAVORITE_REPAIR_ON_START=1 to run it explicitly."
+fi
+
+if [ "${RUN_FEATUREUSAGE_REPAIR_ON_START:-0}" = "1" ]; then
+  echo "Repairing FeatureUsage table because RUN_FEATUREUSAGE_REPAIR_ON_START=1..."
+  python manage.py repair_featureusage_table
+  echo "FeatureUsage repair completed."
+else
+  echo "Skipping FeatureUsage repair. Set RUN_FEATUREUSAGE_REPAIR_ON_START=1 to run it explicitly."
+fi
 
 if [ "${RUN_BOOTSTRAP_ON_START:-0}" = "1" ]; then
   if python manage.py showmigrations temples | grep -q "\[X\] 0083"; then
@@ -56,12 +69,8 @@ if [ "${RUN_BOOTSTRAP_ON_START:-0}" = "1" ]; then
     python manage.py backfill_goriyaku_tags --with-visit-style --force
   fi
 else
-  echo "Skipping production data bootstrap on start. Set RUN_BOOTSTRAP_ON_START=1 to run it explicitly."
+  echo "Skipping production data bootstrap. Set RUN_BOOTSTRAP_ON_START=1 to run it explicitly."
 fi
 
-export PORT="${PORT:-10000}"
-echo "Final diagnostics before gunicorn:"
-echo "PORT=${PORT}"
-echo "WEB_CONCURRENCY=${WEB_CONCURRENCY:-1}"
 echo "Starting gunicorn on 0.0.0.0:${PORT}..."
-exec gunicorn shrine_project.wsgi:application --bind "0.0.0.0:${PORT}" --workers "${WEB_CONCURRENCY:-1}" --timeout 120 --worker-tmp-dir /dev/shm --log-level debug --access-logfile - --error-logfile - --capture-output
+exec gunicorn shrine_project.wsgi:application --bind "0.0.0.0:${PORT}" --workers "${WEB_CONCURRENCY}" --timeout 120 --worker-tmp-dir /dev/shm --access-logfile - --error-logfile - --capture-output
