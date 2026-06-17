@@ -68,7 +68,7 @@ describe("ConciergeEntryCard", () => {
 
     expect(setSessionNickname).toHaveBeenCalledWith("なまえ");
     expect(setNeedText).toHaveBeenCalledWith("静かな場所に行きたい");
-    expect(onPickExample).toHaveBeenCalledWith("気持ちを切り替えたい");
+    expect(onPickExample).toHaveBeenCalledWith({ label: "切り替え", text: "気持ちを切り替えたい" });
     expect(onSubmit).toHaveBeenCalledTimes(1);
     expect(onClear).toHaveBeenCalledTimes(1);
   });
