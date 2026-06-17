@@ -1,5 +1,3 @@
-
-
 # Recommendation Score v2 現行設計
 
 ## 目的
