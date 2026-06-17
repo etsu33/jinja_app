@@ -1,5 +1,3 @@
-
-
 # Recommendation Funnel Analysis
 
 ## 目的
@@ -130,3 +128,33 @@ apps/web/src/features/concierge/components/ConciergeSectionsRenderer.tsx
 - [ ] PostHogで concierge_result_impression → shrine_detail_transition を確認する
 ```
 
+## 次フェーズTODO
+
+### Recommendation Funnel
+
+```markdown
+- [ ] recommendation_view の正本を決める
+- [ ] recommendation_click の正本を決める
+- [ ] recommendation_to_detail_cvr の定義を決める
+- [ ] detail_to_route_cvr の定義を決める
+- [ ] route_to_save_cvr の定義を決める
+```
+
+### PostHog監査
+
+```markdown
+- [ ] concierge_result_impression 件数確認
+- [ ] shrine_detail_transition 件数確認
+- [ ] route_open 件数確認
+- [ ] visit_done 件数確認
+- [ ] reflection_saved 件数確認
+```
+
+### Recommendation Score v2
+
+```markdown
+- [ ] recommendation_view を重みに使うか判断
+- [ ] recommendation_click を重みに使うか判断
+- [ ] shrine_card_click を重みに使うか判断
+- [ ] 実行シグナル優先方針を維持するか確認
+```
