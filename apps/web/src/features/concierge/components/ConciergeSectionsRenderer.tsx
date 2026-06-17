@@ -813,7 +813,7 @@ export default function ConciergeSectionsRenderer({
                               : null;
                         const historyThemeDisplay = historyContext
                           ? {
-                              title: `${heroItem.title}が象徴するもの`,
+                              title: "この神社が持つ文脈",
                               body: historyContext,
                             }
                           : buildHistoryThemeDisplay(historyTheme);
@@ -887,7 +887,7 @@ export default function ConciergeSectionsRenderer({
                               <section className={conciergeSoftCardClass}>
                                 <div className="space-y-2">
                                   <p className="text-xs font-semibold tracking-[0.12em] text-slate-500">
-                                    なぜ{heroItem.title}？
+                                    相談から見た意味
                                   </p>
                                   <p className="text-sm leading-7 text-slate-700">{reasonVm.detail.shrineMeaning}</p>
                                 </div>
@@ -898,7 +898,7 @@ export default function ConciergeSectionsRenderer({
                               <section className={conciergeSoftCardClass}>
                                 <div className="space-y-2">
                                   <p className="text-xs font-semibold tracking-[0.12em] text-slate-500">
-                                    {heroItem.title}が象徴するもの
+                                    この神社が持つ文脈
                                   </p>
                                   
                                   <p className="text-sm leading-7 text-slate-700">{historyThemeDisplay.body}</p>
