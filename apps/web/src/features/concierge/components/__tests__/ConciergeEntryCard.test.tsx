@@ -1,5 +1,3 @@
-
-
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import ConciergeEntryCard from "../ConciergeEntryCard";
@@ -16,8 +14,8 @@ describe("ConciergeEntryCard", () => {
     needText: "",
     setNeedText: vi.fn(),
     feelExamples: [
-      { label: "金運", text: "金運を整えたい" },
-      { label: "切り替え", text: "気持ちを切り替えたい" },
+      { label: "仕事について考えたい", text: "仕事や働き方について、今の流れを整理したいです" },
+      { label: "少し休みたい", text: "最近少し疲れていて、気持ちを落ち着ける時間がほしいです" },
     ],
     onPickExample: vi.fn(),
     isBusy: false,
@@ -27,17 +25,17 @@ describe("ConciergeEntryCard", () => {
   };
 
   it("renders the entry copy, input prompt, examples, and primary CTA", () => {
-    render(<ConciergeEntryCard {...baseProps} needText="金運を整えたい" />);
+    render(<ConciergeEntryCard {...baseProps} needText="仕事や働き方について、今の流れを整理したいです" />);
 
     expect(screen.getByText("KAMI MUSUBI GUIDE")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "相談から、向かう神社を見つける" })).toBeInTheDocument();
     expect(screen.getByText("相談をもとに、今向かいやすい神社との出会いを整えます。")).toBeInTheDocument();
-    expect(screen.getByLabelText("今の相談テーマを書く")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("例：気持ちを切り替えたい、これからのことを考えたい")).toBeInTheDocument();
-    expect(screen.getByText("相談テーマのきっかけ")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "金運" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "切り替え" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "相談して神社を提案してもらう" })).toBeEnabled();
+    expect(screen.getByLabelText("必要なら、今の状況を少しだけ書く")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("例: 仕事の迷いを整理したい、少し休みたい")).toBeInTheDocument();
+    expect(screen.getByText("相談テーマ")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "仕事について考えたい" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "少し休みたい" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "この相談で神社を提案してもらう" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "クリア" })).toBeEnabled();
   });
 
@@ -51,7 +49,7 @@ describe("ConciergeEntryCard", () => {
     render(
       <ConciergeEntryCard
         {...baseProps}
-        needText="金運を整えたい"
+        needText="仕事や働き方について、今の流れを整理したいです"
         setSessionNickname={setSessionNickname}
         setNeedText={setNeedText}
         onPickExample={onPickExample}
@@ -61,14 +59,14 @@ describe("ConciergeEntryCard", () => {
     );
 
     fireEvent.change(screen.getByPlaceholderText("例: なまえ"), { target: { value: "なまえ" } });
-    fireEvent.change(screen.getByLabelText("今の相談テーマを書く"), { target: { value: "静かな場所に行きたい" } });
-    fireEvent.click(screen.getByRole("button", { name: "切り替え" }));
-    fireEvent.click(screen.getByRole("button", { name: "相談して神社を提案してもらう" }));
+    fireEvent.change(screen.getByLabelText("必要なら、今の状況を少しだけ書く"), { target: { value: "静かな場所に行きたい" } });
+    fireEvent.click(screen.getByRole("button", { name: "少し休みたい" }));
+    fireEvent.click(screen.getByRole("button", { name: "この相談で神社を提案してもらう" }));
     fireEvent.click(screen.getByRole("button", { name: "クリア" }));
 
     expect(setSessionNickname).toHaveBeenCalledWith("なまえ");
     expect(setNeedText).toHaveBeenCalledWith("静かな場所に行きたい");
-    expect(onPickExample).toHaveBeenCalledWith({ label: "切り替え", text: "気持ちを切り替えたい" });
+    expect(onPickExample).toHaveBeenCalledWith({ label: "少し休みたい", text: "最近少し疲れていて、気持ちを落ち着ける時間がほしいです" });
     expect(onSubmit).toHaveBeenCalledTimes(1);
     expect(onClear).toHaveBeenCalledTimes(1);
   });

@@ -104,20 +104,20 @@ export default function ConciergeEntryCard({
             htmlFor="concierge-input"
             className="mb-0.5 block text-[11px] font-medium text-stone-500 opacity-65"
           >
-            今の相談テーマを書く
+            必要なら、今の状況を少しだけ書く
           </label>
           <textarea
             id="concierge-input"
             value={needText}
             onChange={(e) => setNeedText(e.target.value)}
-            placeholder="例：気持ちを切り替えたい、これからのことを考えたい"
+            placeholder="例: 仕事の迷いを整理したい、少し休みたい"
             rows={4}
             className="w-full rounded-3xl border border-stone-200/20 bg-stone-50/30 px-3 py-2.5 text-sm leading-7 text-stone-900 outline-none transition placeholder:text-stone-400 placeholder:opacity-60 focus:border-emerald-200/40 focus:ring-1 focus:ring-emerald-100/40"
           />
         </div>
 
         <div>
-          <p className="text-[11px] font-medium text-stone-500 opacity-75">相談テーマのきっかけ</p>
+          <p className="text-[11px] font-medium text-stone-500 opacity-75">相談テーマ</p>
           <div className="mt-2.5 flex flex-wrap gap-2">
             {feelExamples.map((example) => {
               const isSelected = needText.trim() === example.text;
@@ -151,7 +151,7 @@ export default function ConciergeEntryCard({
             disabled={isBusy || !needText.trim() || !canSend}
             onClick={onSubmit}
           >
-            相談して神社を提案してもらう
+            この相談で神社を提案してもらう
           </button>
 
           <button
