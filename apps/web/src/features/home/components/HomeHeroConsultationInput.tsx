@@ -3,11 +3,26 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-function buildConciergeHref(theme: string): string {
-  const trimmed = theme.trim();
-  if (!trimmed) return "/concierge";
+type BuildConciergeHrefOptions = {
+  openFilter?: boolean;
+};
 
-  return `/concierge?theme=${encodeURIComponent(trimmed)}`;
+function buildConciergeHref(theme: string, options: BuildConciergeHrefOptions = {}): string {
+  const trimmed = theme.trim();
+  const params = new URLSearchParams();
+
+  if (trimmed) {
+    params.set("theme", trimmed);
+  }
+
+  if (options.openFilter) {
+    params.set("openFilter", "1");
+  }
+
+  const query = params.toString();
+  if (!query) return "/concierge";
+
+  return `/concierge?${query}`;
 }
 
 const CONSULTATION_THEME_CHIPS = [
@@ -40,7 +55,6 @@ const CONSULTATION_THEME_CHIPS = [
 export function HomeHeroConsultationInput() {
   const router = useRouter();
   const [theme, setTheme] = useState("");
-  const [isConditionHintOpen, setIsConditionHintOpen] = useState(false);
 
   const canSubmit = useMemo(() => theme.trim().length > 0, [theme]);
 
@@ -94,16 +108,13 @@ export function HomeHeroConsultationInput() {
         <button
           type="button"
           className="inline-flex items-center rounded-full px-1 text-xs font-medium text-stone-600 transition hover:text-emerald-800"
-          onClick={() => setIsConditionHintOpen((current) => !current)}
-          aria-expanded={isConditionHintOpen}
+          onClick={() => router.push(buildConciergeHref(theme, { openFilter: true }))}
         >
           ＋ 条件を追加する
         </button>
-        {isConditionHintOpen ? (
-          <p className="mt-2 rounded-2xl border border-stone-200/55 bg-stone-50/70 px-3 py-2 text-xs leading-6 text-stone-500">
-            誕生日やご利益、参拝スタイルなどの条件は次のステップで追加できます。
-          </p>
-        ) : null}
+        <p className="mt-2 rounded-2xl border border-stone-200/55 bg-stone-50/70 px-3 py-2 text-xs leading-6 text-stone-500">
+          誕生日やご利益、参拝スタイルなどの条件は次のステップで追加できます。
+        </p>
       </div>
 
       <div className="mt-4 flex flex-col gap-2 sm:flex-row">
