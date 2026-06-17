@@ -1426,23 +1426,49 @@ export default function ConciergeClientFull() {
    * -------------------------------------- */
   const feelExamples = [
     {
-      label: "最近ちょっと疲れている",
+      label: "疲れを整えたい",
       text: "最近ちょっと疲れていて、落ち着ける神社がいいです",
     },
     {
-      label: "前向きになれる参拝がしたい",
+      label: "前向きになりたい",
       text: "気持ちを切り替えて前向きになれる参拝がしたいです",
     },
     {
-      label: "静かな場所で参拝したい",
+      label: "静かに参拝したい",
       text: "人が少なくて静かな場所でお参りしたいです",
+    },
+    {
+      label: "仕事を整えたい",
+      text: "仕事の流れを整えて、次に進むきっかけがほしいです",
+    },
+    {
+      label: "良縁を願いたい",
+      text: "人とのご縁を大切にできるような参拝がしたいです",
+    },
+    {
+      label: "健康を祈りたい",
+      text: "心身を整えて、健やかに過ごせるようお参りしたいです",
+    },
+    {
+      label: "迷いを整理したい",
+      text: "今の迷いを整理して、落ち着いて考えられる場所に行きたいです",
+    },
+    {
+      label: "近場で参拝したい",
+      text: "無理なく行ける範囲で、今の相談に合う神社を知りたいです",
     },
   ] as const;
 
-  const onPickExample = (text: string) => {
-    setNeedText(text);
+  const onPickExample = (example: { label: string; text: string }) => {
+    // チップは固定診断ではなく入力補助なので、既存の自由入力欄を置き換えてから編集可能にする。
+    setNeedText(example.text);
     setEntryValidationError(null);
-    snap("action:pick_example", { text });
+    track("consultation_theme_click", {
+      label: example.label,
+      text: example.text,
+      source: "concierge_entry",
+    });
+    snap("action:pick_example", { label: example.label, text: example.text });
   };
 
   const buildFilterPayload = useCallback((): Omit<ConciergeChatRequestV1, "thread_id"> | null => {

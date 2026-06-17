@@ -20,7 +20,7 @@ type Props = {
   needText: string;
   setNeedText: (value: string) => void;
   feelExamples: readonly ConciergeEntryExample[];
-  onPickExample: (text: string) => void;
+  onPickExample: (example: ConciergeEntryExample) => void;
   isBusy: boolean;
   canSend: boolean;
   onSubmit: () => void;
@@ -132,7 +132,7 @@ export default function ConciergeEntryCard({
                       : "border-stone-200/35 bg-stone-50/25 text-stone-500 hover:bg-stone-100/30 opacity-65",
                     "disabled:border-stone-200 disabled:bg-stone-100 disabled:text-stone-400 disabled:opacity-50",
                   ].join(" ")}
-                  onClick={() => onPickExample(example.text)}
+                  onClick={() => onPickExample(example)}
                   disabled={isBusy || !canSend}
                   aria-pressed={isSelected}
                   title={example.text}
