@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -74,6 +72,37 @@ def _safe_float(value: Any, default: float = 0.0) -> float:
         return default
 
 
+def calculate_user_state_match(input_data: ScoreV2Input) -> float:
+    """Calculate how strongly the shrine matches the user's current need state."""
+
+    return float(input_data.score_need_rank_weighted * input_data.need_weight)
+
+
+def calculate_shrine_meaning_match(input_data: ScoreV2Input) -> float:
+    """Calculate how strongly the shrine meaning matches the resolved user need."""
+
+    return float(input_data.score_need * input_data.need_weight)
+
+
+def calculate_context_match(input_data: ScoreV2Input) -> float:
+    """Calculate the context fit, such as visit style match."""
+
+    return float(input_data.score_visit_style * input_data.visit_style_weight)
+
+
+def calculate_behavior_match(input_data: ScoreV2Input) -> Dict[str, float]:
+    """Calculate behavior-related score components without changing ranking math."""
+
+    return {
+        "behavior_signal": float(input_data.behavior_signal),
+        "behavior_contribution": float(input_data.behavior_contribution),
+        "capped_behavior_contribution": float(input_data.capped_behavior_contribution),
+        "behavior_ratio": float(input_data.behavior_ratio),
+        "visit_signal": float(input_data.visit_signal),
+        "reflection_signal": float(input_data.reflection_signal),
+    }
+
+
 def calculate_recommendation_score_v2(input_data: ScoreV2Input) -> ScoreV2Result:
     """Build the score_v2 payload from already-computed ranking signals.
 
@@ -82,20 +111,17 @@ def calculate_recommendation_score_v2(input_data: ScoreV2Input) -> ScoreV2Result
     centralized here.
     """
 
+    behavior_match = calculate_behavior_match(input_data)
+
     components: Dict[str, Any] = {
-        "user_state_match": float(input_data.score_need_rank_weighted * input_data.need_weight),
-        "shrine_meaning_match": float(input_data.score_need * input_data.need_weight),
-        "context_match": float(input_data.score_visit_style * input_data.visit_style_weight),
+        "user_state_match": calculate_user_state_match(input_data),
+        "shrine_meaning_match": calculate_shrine_meaning_match(input_data),
+        "context_match": calculate_context_match(input_data),
         "element_match": float(input_data.score_element * input_data.element_weight),
         "distance_score": float(input_data.score_distance * input_data.distance_weight),
         "popularity_score": float(input_data.score_popular * input_data.popular_weight),
         "astro_bonus": float(input_data.astro_bonus),
-        "behavior_signal": float(input_data.behavior_signal),
-        "behavior_contribution": float(input_data.behavior_contribution),
-        "capped_behavior_contribution": float(input_data.capped_behavior_contribution),
-        "behavior_ratio": float(input_data.behavior_ratio),
-        "visit_signal": float(input_data.visit_signal),
-        "reflection_signal": float(input_data.reflection_signal),
+        **behavior_match,
         "direction_bonus": float(input_data.direction_bonus),
         "direction_reason": input_data.direction_reason,
     }
