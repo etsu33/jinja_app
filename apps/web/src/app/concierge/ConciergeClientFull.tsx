@@ -498,11 +498,15 @@ export default function ConciergeClientFull() {
   const [entrySubmitting, setEntrySubmitting] = useState(false);
   const [needText, setNeedText] = useState("");
   const [entryValidationError, setEntryValidationError] = useState<string | null>(null);
+  const autoSubmitThemeRef = useRef<string | null>(null);
+  const autoSubmitConsumedThemeRef = useRef<string | null>(null);
 
   useEffect(() => {
     const theme = (sp.get("theme") ?? "").trim();
     if (!theme) return;
+    if (autoSubmitConsumedThemeRef.current === theme) return;
 
+    autoSubmitThemeRef.current = theme;
     setNeedText((current) => (current.trim() ? current : theme));
   }, [sp]);
 
@@ -1363,6 +1367,22 @@ export default function ConciergeClientFull() {
     },
     [canSend, sending, entrySubmitting, send, isEntryRoute, buildConciergePayload],
   );
+
+  useEffect(() => {
+    const theme = autoSubmitThemeRef.current;
+    if (!theme) return;
+    if (!hydrated) return;
+    if (!isEntryRoute) return;
+    if (!canSend) return;
+    if (sending) return;
+    if (entrySubmitting) return;
+
+    autoSubmitThemeRef.current = null;
+    autoSubmitConsumedThemeRef.current = theme;
+    setNeedText(theme);
+    setEntryValidationError(null);
+    void safeSend(theme, { kind: "home_theme_submit", textLen: theme.length });
+  }, [canSend, entrySubmitting, hydrated, isEntryRoute, safeSend, sending]);
 
   /* ----------------------------------------
    * UI表示の判定
