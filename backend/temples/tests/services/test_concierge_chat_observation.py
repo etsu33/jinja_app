@@ -138,6 +138,10 @@ def assert_ranking_breakdown_observation_schema(observation):
         "visit_style_tags",
         "matched_visit_style_tags",
         "score_total_ranked_base",
+        "score_v2_total",
+        "user_state_match",
+        "shrine_meaning_match",
+        "context_match",
         "capped_behavior_contribution",
         "behavior_ratio",
         "reflection_hint_state_change_direction",
@@ -157,7 +161,15 @@ def assert_ranking_breakdown_top_row_schema(row):
         "score_raw",
         "score_total",
         "score_total_ranked",
+        "score_v2_total",
+        "user_state_match",
+        "shrine_meaning_match",
+        "context_match",
         "score_total_ranked_base",
+        "score_v2_total",
+        "user_state_match",
+        "shrine_meaning_match",
+        "context_match",
         "capped_behavior_contribution",
         "behavior_ratio",
         "score_need",
@@ -188,6 +200,10 @@ def assert_ranking_breakdown_top_row_schema(row):
     assert isinstance(row["score_raw"], float)
     assert isinstance(row["score_total"], float)
     assert isinstance(row["score_total_ranked"], float)
+    assert isinstance(row["score_v2_total"], float)
+    assert isinstance(row["user_state_match"], float)
+    assert isinstance(row["shrine_meaning_match"], float)
+    assert isinstance(row["context_match"], float)
     assert isinstance(row["score_total_ranked_base"], float)
     assert isinstance(row["capped_behavior_contribution"], float)
     assert isinstance(row["behavior_ratio"], float)
@@ -1097,6 +1113,10 @@ def test_observe_ranking_breakdown_empty_contract_has_stable_schema():
             "visit_style_tags": [],
             "matched_visit_style_tags": [],
             "score_total_ranked_base": [],
+            "score_v2_total": [],
+            "user_state_match": [],
+            "shrine_meaning_match": [],
+            "context_match": [],
             "capped_behavior_contribution": [],
             "behavior_ratio": [],
             "reflection_hint_state_change_direction": [],

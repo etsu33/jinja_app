@@ -196,6 +196,11 @@ def observe_ranking_breakdown(
                 if isinstance(score_v2.get("signals"), dict)
                 else {}
             )
+            score_v2_components = (
+                score_v2.get("components")
+                if isinstance(score_v2.get("components"), dict)
+                else {}
+            )
             context_profile = (
                 score_v2_signals.get("context_profile")
                 if isinstance(score_v2_signals.get("context_profile"), dict)
@@ -221,6 +226,10 @@ def observe_ranking_breakdown(
                     "score_raw": float(rec.get("_score_total") or 0.0),
                     "score_total": float(breakdown.get("score_total") or 0.0),
                     "score_total_ranked": float(features.get("score_total_ranked") or 0.0),
+                    "score_v2_total": float(score_v2.get("total") or 0.0),
+                    "user_state_match": float(score_v2_components.get("user_state_match") or 0.0),
+                    "shrine_meaning_match": float(score_v2_components.get("shrine_meaning_match") or 0.0),
+                    "context_match": float(score_v2_components.get("context_match") or 0.0),
                     "score_need": int(breakdown.get("score_need") or 0),
                     "score_need_rank_weighted": float(need.get("rank_weighted") or 0.0),
                     "score_distance": float(distance.get("raw") or 0.0),
@@ -319,6 +328,10 @@ def observe_ranking_breakdown(
             ],
             "matched_visit_style_tags": [r.get("matched_visit_style_tags") or [] for r in rows],
             "score_total_ranked_base": [r.get("score_total_ranked_base") for r in rows],
+            "score_v2_total": [r.get("score_v2_total") for r in rows],
+            "user_state_match": [r.get("user_state_match") for r in rows],
+            "shrine_meaning_match": [r.get("shrine_meaning_match") for r in rows],
+            "context_match": [r.get("context_match") for r in rows],
             "capped_behavior_contribution": [r.get("capped_behavior_contribution") for r in rows],
             "behavior_ratio": [r.get("behavior_ratio") or 0.0 for r in rows],
             "reflection_hint_state_change_direction": [
@@ -374,6 +387,10 @@ def observe_ranking_breakdown(
                 "visit_style_tags": [],
                 "matched_visit_style_tags": [],
                 "score_total_ranked_base": [],
+                "score_v2_total": [],
+                "user_state_match": [],
+                "shrine_meaning_match": [],
+                "context_match": [],
                 "capped_behavior_contribution": [],
                 "behavior_ratio": [],
                 "reflection_hint_state_change_direction": [],
