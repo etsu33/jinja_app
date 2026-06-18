@@ -19,8 +19,12 @@ if [ "${RUN_STARTUP_CHECK:-0}" = "1" ]; then
   python manage.py check
 fi
 
-echo "Running migrations..."
-python manage.py migrate --noinput
+if [ "${RUN_MIGRATIONS_ON_START:-0}" = "1" ]; then
+  echo "Running migrations because RUN_MIGRATIONS_ON_START=1..."
+  python manage.py migrate --noinput
+else
+  echo "Skipping migrations. Set RUN_MIGRATIONS_ON_START=1 to run them on startup."
+fi
 
 if [ "${RUN_SHRINE_REFLECTION_REPAIR:-0}" = "1" ]; then
   echo "Ensuring ShrineReflection table exists because RUN_SHRINE_REFLECTION_REPAIR=1..."
