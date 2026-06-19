@@ -265,7 +265,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.background,
   },
   scrollContent: {
-    paddingBottom: 120,
+    paddingBottom: 180,
   },
 
   // ヘッダー
@@ -465,19 +465,18 @@ const styles = StyleSheet.create({
 
   // 入力バー
   inputBar: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
+    width: "100%",
+    maxWidth: 430,
+    alignSelf: "center",
     flexDirection: "row",
     alignItems: "flex-end",
     gap: 10,
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: 24,
+    paddingBottom: 18,
     backgroundColor: theme.background,
     borderTopWidth: 1,
-    borderTopColor: theme.borderHeader,
+    borderColor: theme.borderHeader,
   },
   input: {
     flex: 1,
