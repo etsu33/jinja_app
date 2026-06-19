@@ -3,11 +3,15 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-function buildConciergeHref(theme: string): string {
+function buildConciergeHref(theme: string, options?: { openFilter?: boolean }): string {
+  const params = new URLSearchParams();
   const trimmed = theme.trim();
-  if (!trimmed) return "/concierge";
 
-  return `/concierge?theme=${encodeURIComponent(trimmed)}`;
+  if (trimmed) params.set("theme", trimmed);
+  if (options?.openFilter) params.set("openFilter", "1");
+
+  const qs = params.toString();
+  return qs ? `/concierge?${qs}` : "/concierge";
 }
 
 const CONSULTATION_THEME_CHIPS = [
@@ -45,7 +49,7 @@ export function HomeHeroConsultationInput() {
   const canSubmit = useMemo(() => theme.trim().length > 0, [theme]);
 
   const submitTheme = (value: string) => {
-    const href = buildConciergeHref(value);
+    const href = buildConciergeHref(value, { openFilter: isConditionHintOpen });
     router.push(href);
   };
 
