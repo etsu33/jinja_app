@@ -1,6 +1,7 @@
 import * as React from "react";
 import { useRouter } from "expo-router";
 import { ScrollView, View, Text, TextInput, StyleSheet, Pressable } from "react-native";
+import { kamimusubiDark as theme } from "../../app/theme";
 
 export default function Home() {
   const router = useRouter();
@@ -41,7 +42,7 @@ export default function Home() {
       <View style={styles.chatCard}>
         <TextInput
           placeholder="最近ちょっと疲れていて、これからの方向を整理したくて…"
-          placeholderTextColor="#8F846E"
+          placeholderTextColor={theme.mutedDark}
           style={styles.chatInput}
           value={consultation}
           onChangeText={setConsultation}
@@ -59,15 +60,15 @@ export default function Home() {
       <View style={styles.themeSection}>
         <Text style={styles.themeLabel}>ことばが浮かばないときは、ここから</Text>
         <View style={styles.themeGrid}>
-          {themes.map((theme) => {
-            const active = selectedTheme === theme;
+          {themes.map((themeItem) => {
+            const active = selectedTheme === themeItem;
             return (
               <Pressable
-                key={theme}
-                onPress={() => setSelectedTheme(active ? null : theme)}
+                key={themeItem}
+                onPress={() => setSelectedTheme(active ? null : themeItem)}
                 style={[styles.themePill, active && styles.themePillActive]}
               >
-                <Text style={[styles.themePillText, active && styles.themePillTextActive]}>□ {theme}</Text>
+                <Text style={[styles.themePillText, active && styles.themePillTextActive]}>□ {themeItem}</Text>
               </Pressable>
             );
           })}
@@ -131,14 +132,14 @@ export default function Home() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#F4EFE3",
+    backgroundColor: theme.outside,
   },
   content: {
     width: "100%",
     maxWidth: 430,
     alignSelf: "center",
     minHeight: "100%",
-    backgroundColor: "#07101F",
+    backgroundColor: theme.background,
     paddingHorizontal: 20,
     paddingTop: 22,
     paddingBottom: 0,
@@ -149,7 +150,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     borderBottomWidth: 1,
-    borderBottomColor: "#1F2A3E",
+    borderBottomColor: theme.borderHeader,
     marginHorizontal: -20,
     paddingHorizontal: 20,
     marginBottom: 28,
@@ -163,16 +164,16 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderWidth: 2,
-    borderColor: "#E0B963",
+    borderColor: theme.gold,
   },
   brandName: {
-    color: "#F7F0E3",
+    color: theme.text,
     fontSize: 20,
     fontWeight: "900",
     letterSpacing: 1,
   },
   brandRuby: {
-    color: "#A99B80",
+    color: theme.muted,
     fontSize: 12,
     letterSpacing: 4,
     marginTop: 1,
@@ -182,12 +183,12 @@ const styles = StyleSheet.create({
     height: 34,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#4B3F2E",
+    borderColor: theme.borderGoldDark,
     alignItems: "center",
     justifyContent: "center",
   },
   menuIconText: {
-    color: "#E0B963",
+    color: theme.gold,
     fontSize: 18,
     fontWeight: "900",
   },
@@ -195,14 +196,14 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   heroLead: {
-    color: "#B7AA8E",
+    color: theme.mutedSoft,
     fontSize: 15,
     fontWeight: "700",
     marginBottom: 12,
     letterSpacing: 0.8,
   },
   heroTitle: {
-    color: "#F7F0E3",
+    color: theme.text,
     fontSize: 31,
     fontWeight: "900",
     lineHeight: 42,
@@ -211,9 +212,9 @@ const styles = StyleSheet.create({
   chatCard: {
     minHeight: 154,
     borderRadius: 22,
-    backgroundColor: "#101827",
+    backgroundColor: theme.surface,
     borderWidth: 1,
-    borderColor: "#384154",
+    borderColor: theme.border,
     padding: 16,
     shadowColor: "#000",
     shadowOpacity: 0.25,
@@ -223,7 +224,7 @@ const styles = StyleSheet.create({
   },
   chatInput: {
     minHeight: 78,
-    color: "#F7F0E3",
+    color: theme.text,
     fontSize: 16,
     lineHeight: 24,
     padding: 0,
@@ -237,7 +238,7 @@ const styles = StyleSheet.create({
   },
   aiHint: {
     flex: 1,
-    color: "#8F846E",
+    color: theme.mutedDark,
     fontSize: 12,
     lineHeight: 18,
   },
@@ -245,12 +246,12 @@ const styles = StyleSheet.create({
     width: 54,
     height: 54,
     borderRadius: 27,
-    backgroundColor: "#E0B963",
+    backgroundColor: theme.gold,
     alignItems: "center",
     justifyContent: "center",
   },
   sendButtonText: {
-    color: "#07101F",
+    color: theme.background,
     fontSize: 22,
     fontWeight: "900",
   },
@@ -258,7 +259,7 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
   themeLabel: {
-    color: "#A99B80",
+    color: theme.muted,
     fontSize: 13,
     fontWeight: "700",
     marginBottom: 12,
@@ -272,41 +273,41 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 999,
-    backgroundColor: "#0B1424",
+    backgroundColor: theme.surfaceSoft,
     borderWidth: 1,
-    borderColor: "#374056",
+    borderColor: theme.borderMuted,
   },
   themePillActive: {
-    backgroundColor: "#E0B963",
-    borderColor: "#E0B963",
+    backgroundColor: theme.gold,
+    borderColor: theme.gold,
   },
   themePillText: {
-    color: "#BDB093",
+    color: theme.mutedSoft,
     fontSize: 13,
     fontWeight: "800",
   },
   themePillTextActive: {
-    color: "#07101F",
+    color: theme.background,
   },
   accordionToggle: {
     marginTop: 18,
     paddingVertical: 8,
   },
   accordionToggleText: {
-    color: "#BDB093",
+    color: theme.mutedSoft,
     fontSize: 14,
     fontWeight: "800",
   },
   conditionList: {
     borderRadius: 18,
-    backgroundColor: "#101827",
+    backgroundColor: theme.surface,
     borderWidth: 1,
-    borderColor: "#384154",
+    borderColor: theme.border,
     padding: 14,
     gap: 10,
   },
   conditionItem: {
-    color: "#F7F0E3",
+    color: theme.text,
     fontSize: 14,
     fontWeight: "800",
   },
@@ -315,11 +316,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#E0B963",
+    backgroundColor: theme.gold,
     marginTop: 18,
   },
   primaryCtaText: {
-    color: "#07101F",
+    color: theme.background,
     fontSize: 16,
     fontWeight: "900",
   },
@@ -334,29 +335,29 @@ const styles = StyleSheet.create({
     width: "48%",
     minHeight: 116,
     borderRadius: 18,
-    backgroundColor: "#101827",
+    backgroundColor: theme.surface,
     borderWidth: 1,
-    borderColor: "#2B3448",
+    borderColor: theme.borderSoft,
     padding: 16,
     justifyContent: "center",
   },
   navTileActive: {
-    borderColor: "#8A6C32",
+    borderColor: theme.borderGold,
   },
   tileIcon: {
-    color: "#D9C177",
+    color: theme.goldSoft,
     fontSize: 20,
     fontWeight: "900",
     marginBottom: 18,
   },
   tileTitle: {
-    color: "#F7F0E3",
+    color: theme.text,
     fontSize: 17,
     fontWeight: "900",
     marginBottom: 6,
   },
   tileDescription: {
-    color: "#8F846E",
+    color: theme.mutedDark,
     fontSize: 13,
     fontWeight: "700",
   },
@@ -364,18 +365,18 @@ const styles = StyleSheet.create({
     height: 78,
     marginHorizontal: -20,
     borderTopWidth: 1,
-    borderTopColor: "#1F2A3E",
+    borderTopColor: theme.borderHeader,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-around",
   },
   bottomNavItemActive: {
-    color: "#E0B963",
+    color: theme.gold,
     fontSize: 22,
     fontWeight: "900",
   },
   bottomNavItem: {
-    color: "#7A735F",
+    color: theme.navMuted,
     fontSize: 22,
     fontWeight: "900",
   },
