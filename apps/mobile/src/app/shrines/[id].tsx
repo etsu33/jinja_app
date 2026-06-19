@@ -2,9 +2,9 @@
 import * as React from "react";
 import { View, Text, Image, Pressable, StyleSheet, ScrollView, Linking, Platform } from "react-native";
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
-import { SHRINES } from "../../data/shrines";
-import { incVisits, isFavorite, toggleFavorite, pushRecent } from "../../lib/storage";
-import { kamimusubiDark as theme } from "../theme";
+import { SHRINES } from "../../../data/shrines";
+import { incVisits, isFavorite, toggleFavorite, pushRecent } from "../../../lib/storage";
+import { kamimusubiDark as theme } from "../../../app/theme";
 
 type Shrine = {
   id: string | number;
@@ -83,7 +83,7 @@ export default function ShrineDetail() {
     return (
       <View style={styles.errorScreen}>
         <Text style={styles.errorText}>パラメータ `id` が不正です。</Text>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
+        <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace("/")} style={styles.backBtn}>
           <Text style={styles.backBtnText}>← 戻る</Text>
         </Pressable>
       </View>
@@ -94,7 +94,7 @@ export default function ShrineDetail() {
     return (
       <View style={styles.errorScreen}>
         <Text style={styles.errorText}>該当の神社が見つかりませんでした。</Text>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
+        <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace("/")} style={styles.backBtn}>
           <Text style={styles.backBtnText}>← 戻る</Text>
         </Pressable>
       </View>
@@ -114,7 +114,7 @@ export default function ShrineDetail() {
 
       {/* ヘッダー（戻る + お気に入り） */}
       <View style={styles.headerBar}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
+        <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace("/")} style={styles.backBtn}>
           <Text style={styles.backBtnText}>← 戻る</Text>
         </Pressable>
         <Pressable
