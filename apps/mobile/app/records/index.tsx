@@ -1,6 +1,8 @@
-import { useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Pressable, ScrollView, Text, View } from "react-native";
 import { kamimusubiDark } from "../theme";
+
+import { getRecentViewed } from "../shrines/storage";
 
 type RecordCardProps = {
   title: string;
@@ -133,6 +135,48 @@ function RecordCard({ title, description, meta, iconText, routeLabel }: RecordCa
 }
 
 export default function RecordsScreen() {
+  const [recentCount, setRecentCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    getRecentViewed(3)
+      .then((items) => {
+        if (mounted) {
+          setRecentCount(items.length);
+        }
+      })
+      .catch(() => {
+        if (mounted) {
+          setRecentCount(0);
+        }
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const recordItemsWithRecentMeta = useMemo(
+    () =>
+      recordItems.map((item) => {
+        if (item.routeLabel !== "recently-viewed") {
+          return item;
+        }
+
+        return {
+          ...item,
+          meta:
+            recentCount === null
+              ? "閲覧履歴を確認中"
+              : recentCount > 0
+                ? `${recentCount}件の閲覧履歴`
+                : "閲覧履歴はまだありません",
+        };
+      }),
+    [recentCount],
+  );
+
   return (
     <ScrollView
       style={{ backgroundColor: kamimusubiDark.background, flex: 1 }}
@@ -160,9 +204,41 @@ export default function RecordsScreen() {
         </Text>
       </View>
 
-      {recordItems.map((item) => (
+      {recordItemsWithRecentMeta.map((item) => (
         <RecordCard key={item.routeLabel} {...item} />
       ))}
+
+      {recentCount === 0 ? (
+        <View
+          style={{
+            backgroundColor: kamimusubiDark.surfaceSoft,
+            borderColor: kamimusubiDark.borderHeader,
+            borderRadius: 16,
+            borderWidth: 1,
+            padding: 16,
+          }}
+        >
+          <Text
+            style={{
+              color: kamimusubiDark.text,
+              fontSize: 14,
+              fontWeight: "700",
+            }}
+          >
+            最近見た神社はまだありません
+          </Text>
+          <Text
+            style={{
+              color: kamimusubiDark.muted,
+              fontSize: 12,
+              lineHeight: 18,
+              marginTop: 6,
+            }}
+          >
+            神社詳細を見ると、閲覧履歴としてここに反映されます。
+          </Text>
+        </View>
+      ) : null}
     </ScrollView>
   );
 }
