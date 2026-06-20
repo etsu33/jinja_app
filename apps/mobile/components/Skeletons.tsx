@@ -1,4 +1,5 @@
 import { View, StyleSheet } from "react-native";
+import { kamimusubiDark as theme } from "../app/theme";
 
 export function CardSkeleton() {
   return (
@@ -10,6 +11,15 @@ export function CardSkeleton() {
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: "#fff", borderRadius: 12, padding: 12, gap: 6, elevation: 2 },
-  shimmer: { backgroundColor: "#eee", borderRadius: 8 },
+  card: {
+    width: 160,
+    backgroundColor: theme.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: theme.border,
+    padding: 14,
+    gap: 6,
+    elevation: 2,
+  },
+  shimmer: { backgroundColor: theme.borderSoft, borderRadius: 8 },
 });
