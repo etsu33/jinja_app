@@ -1,4 +1,5 @@
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { useRef } from "react";
+import { Animated, Pressable, ScrollView, Text, View } from "react-native";
 import { kamimusubiDark } from "../theme";
 
 type RecordCardProps = {
@@ -40,90 +41,94 @@ const recordItems: readonly RecordCardProps[] = [
   },
 ];
 
-function RecordCard({
-  title,
-  description,
-  meta,
-  iconText,
-  routeLabel,
-}: RecordCardProps) {
+function RecordCard({ title, description, meta, iconText, routeLabel }: RecordCardProps) {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  const animateScale = (toValue: number) => {
+    Animated.timing(scale, {
+      toValue,
+      duration: 80,
+      useNativeDriver: true,
+    }).start();
+  };
+
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${title}を開く`}
-      onPress={() => console.log(`Record route: ${routeLabel}`)}
-      style={({ pressed }) => ({
-        alignItems: "center",
-        backgroundColor: kamimusubiDark.surface,
-        borderColor: kamimusubiDark.borderHeader,
-        borderRadius: 16,
-        borderWidth: 1,
-        flexDirection: "row",
-        gap: 16,
-        minHeight: 104,
-        opacity: pressed ? 0.72 : 1,
-        padding: 16,
-      })}
-    >
-      <View
+    <Animated.View style={{ transform: [{ scale }] }}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${title}を開く`}
+        onPress={() => console.log(`Record route: ${routeLabel}`)}
+        onPressIn={() => animateScale(0.98)}
+        onPressOut={() => animateScale(1)}
         style={{
           alignItems: "center",
-          borderColor: kamimusubiDark.borderGold,
-          borderRadius: 14,
+          backgroundColor: kamimusubiDark.surface,
+          borderColor: kamimusubiDark.borderHeader,
+          borderRadius: 16,
           borderWidth: 1,
-          height: 48,
-          justifyContent: "center",
-          width: 48,
+          flexDirection: "row",
+          gap: 16,
+          minHeight: 104,
+          padding: 16,
         }}
       >
-        <Text
+        <View
           style={{
-            color: kamimusubiDark.gold,
-            fontSize: 22,
-            fontWeight: "700",
+            alignItems: "center",
+            borderColor: kamimusubiDark.borderGold,
+            borderRadius: 14,
+            borderWidth: 1,
+            height: 48,
+            justifyContent: "center",
+            width: 48,
           }}
         >
-          {iconText}
-        </Text>
-      </View>
+          <Text
+            style={{
+              color: kamimusubiDark.gold,
+              fontSize: 22,
+              fontWeight: "700",
+            }}
+          >
+            {iconText}
+          </Text>
+        </View>
 
-      <View style={{ flex: 1 }}>
-        <Text
-          style={{
-            color: kamimusubiDark.gold,
-            fontSize: 18,
-            fontWeight: "700",
-          }}
-        >
-          {title}
-        </Text>
-        <Text
-          style={{
-            color: kamimusubiDark.text,
-            fontSize: 14,
-            marginTop: 5,
-          }}
-        >
-          {description}
-        </Text>
-        <Text
-          style={{
-            color: kamimusubiDark.muted,
-            fontSize: 12,
-            marginTop: 5,
-          }}
-        >
-          {meta}
-        </Text>
-      </View>
+        <View style={{ flex: 1 }}>
+          <Text
+            style={{
+              color: kamimusubiDark.gold,
+              fontSize: 18,
+              fontWeight: "700",
+            }}
+          >
+            {title}
+          </Text>
+          <Text
+            style={{
+              color: kamimusubiDark.text,
+              fontSize: 14,
+              marginTop: 5,
+            }}
+          >
+            {description}
+          </Text>
+          <Text
+            style={{
+              color: kamimusubiDark.muted,
+              fontSize: 12,
+              marginTop: 5,
+            }}
+          >
+            {meta}
+          </Text>
+        </View>
 
-      <Text
-        accessibilityElementsHidden
-        style={{ color: kamimusubiDark.muted, fontSize: 20 }}
-      >
-        ›
-      </Text>
-    </Pressable>
+        <Text accessibilityElementsHidden style={{ color: kamimusubiDark.muted, fontSize: 20 }}>
+          ›
+        </Text>
+      </Pressable>
+    </Animated.View>
   );
 }
 
