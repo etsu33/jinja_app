@@ -39,6 +39,16 @@ function toRecentShrineItem(shrine: ShrineSourceItem): RecentShrineItem {
   };
 }
 
+export async function getFavoriteShrines(): Promise<RecentShrineItem[]> {
+  const { getFavorites } = await import("../../lib/storage");
+  const ids = await getFavorites();
+
+  return ids
+    .map(findShrineById)
+    .filter((shrine): shrine is ShrineSourceItem => shrine !== undefined)
+    .map(toRecentShrineItem);
+}
+
 export async function getRecentViewed(
   limit = 10,
 ): Promise<RecentShrineItem[]> {

@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Pressable, ScrollView, Text, View } from "react-native";
+import { useRouter } from "expo-router";
 import { kamimusubiDark } from "../theme";
 
-import { getRecentViewed } from "../shrines/storage";
+import { getFavoriteShrines, getRecentViewed } from "../shrines/storage";
 
 type RecordCardProps = {
   title: string;
@@ -43,7 +44,12 @@ const recordItems: readonly RecordCardProps[] = [
   },
 ];
 
+const ROUTE_MAP: Record<string, string> = {
+  favorites: "/favorites",
+};
+
 function RecordCard({ title, description, meta, iconText, routeLabel }: RecordCardProps) {
+  const router = useRouter();
   const scale = useRef(new Animated.Value(1)).current;
 
   const animateScale = (toValue: number) => {
@@ -59,7 +65,10 @@ function RecordCard({ title, description, meta, iconText, routeLabel }: RecordCa
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${title}を開く`}
-        onPress={() => console.log(`Record route: ${routeLabel}`)}
+        onPress={() => {
+          const route = ROUTE_MAP[routeLabel];
+          if (route) router.push(route as any);
+        }}
         onPressIn={() => animateScale(0.98)}
         onPressOut={() => animateScale(1)}
         style={{
@@ -136,45 +145,50 @@ function RecordCard({ title, description, meta, iconText, routeLabel }: RecordCa
 
 export default function RecordsScreen() {
   const [recentCount, setRecentCount] = useState<number | null>(null);
+  const [favCount, setFavCount] = useState<number | null>(null);
 
   useEffect(() => {
     let mounted = true;
 
     getRecentViewed(3)
-      .then((items) => {
-        if (mounted) {
-          setRecentCount(items.length);
-        }
-      })
-      .catch(() => {
-        if (mounted) {
-          setRecentCount(0);
-        }
-      });
+      .then((items) => { if (mounted) setRecentCount(items.length); })
+      .catch(() => { if (mounted) setRecentCount(0); });
 
-    return () => {
-      mounted = false;
-    };
+    getFavoriteShrines()
+      .then((items) => { if (mounted) setFavCount(items.length); })
+      .catch(() => { if (mounted) setFavCount(0); });
+
+    return () => { mounted = false; };
   }, []);
 
   const recordItemsWithRecentMeta = useMemo(
     () =>
       recordItems.map((item) => {
-        if (item.routeLabel !== "recently-viewed") {
-          return item;
+        if (item.routeLabel === "recently-viewed") {
+          return {
+            ...item,
+            meta:
+              recentCount === null
+                ? "閲覧履歴を確認中"
+                : recentCount > 0
+                  ? `${recentCount}件の閲覧履歴`
+                  : "閲覧履歴はまだありません",
+          };
         }
-
-        return {
-          ...item,
-          meta:
-            recentCount === null
-              ? "閲覧履歴を確認中"
-              : recentCount > 0
-                ? `${recentCount}件の閲覧履歴`
-                : "閲覧履歴はまだありません",
-        };
+        if (item.routeLabel === "favorites") {
+          return {
+            ...item,
+            meta:
+              favCount === null
+                ? "確認中"
+                : favCount > 0
+                  ? `${favCount}件保存済み`
+                  : "まだ保存されていません",
+          };
+        }
+        return item;
       }),
-    [recentCount],
+    [recentCount, favCount],
   );
 
   return (
