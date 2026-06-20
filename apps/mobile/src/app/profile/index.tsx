@@ -71,6 +71,12 @@ export default function MyPage() {
     >
       {/* ヘッダー */}
       <View style={styles.header}>
+        <Pressable
+          onPress={() => router.push("/")}
+          style={({ pressed }) => [styles.homeLink, pressed && styles.homeLinkPressed]}
+        >
+          <Text style={styles.homeLinkText}>← ホーム</Text>
+        </Pressable>
         <Text style={styles.h1}>マイページ</Text>
         <Text style={styles.subtitle}>参拝の記録、最近見た神社、ご縁の履歴をここから確認できます。</Text>
       </View>
@@ -104,7 +110,10 @@ export default function MyPage() {
 
       <View style={styles.section}>
         <View style={styles.row}>
-          <Text style={styles.h2}>最近見た神社</Text>
+          <View style={styles.sectionTitleBlock}>
+            <Text style={styles.h2}>最近見た神社</Text>
+            <Text style={styles.sectionHint}>お気に入りではなく、閲覧履歴です</Text>
+          </View>
           <Link href="/search" asChild>
             <Text style={styles.link}>神社を探す</Text>
           </Link>
@@ -121,7 +130,7 @@ export default function MyPage() {
         {items?.length === 0 ? (
           <View style={styles.empty}>
             <Text style={styles.emptyTitle}>まだ閲覧履歴がありません</Text>
-            <Text style={styles.emptyText}>ホームや検索から神社を見てみましょう</Text>
+            <Text style={styles.emptyText}>ホームや検索から神社を見ると、閲覧履歴として表示されます</Text>
           </View>
         ) : null}
 
@@ -161,6 +170,18 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: 24,
     gap: 6,
+  },
+  homeLink: {
+    alignSelf: "flex-start",
+    marginBottom: 8,
+  },
+  homeLinkPressed: {
+    opacity: 0.5,
+  },
+  homeLinkText: {
+    color: theme.gold,
+    fontSize: 13,
+    fontWeight: "700",
   },
   h1: {
     color: theme.text,
@@ -224,10 +245,18 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
+  sectionTitleBlock: {
+    flex: 1,
+    gap: 3,
+  },
   h2: {
     color: theme.text,
     fontSize: 17,
     fontWeight: "800",
+  },
+  sectionHint: {
+    color: theme.muted,
+    fontSize: 12,
   },
   link: {
     color: theme.gold,
