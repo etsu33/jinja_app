@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { kamimusubiDark } from "../theme";
 
 import { getFavoriteShrines, getRecentViewed } from "../shrines/storage";
+import { getCounts } from "../../lib/storage";
 
 type RecordCardProps = {
   title: string;
@@ -146,6 +147,7 @@ function RecordCard({ title, description, meta, iconText, routeLabel }: RecordCa
 export default function RecordsScreen() {
   const [recentCount, setRecentCount] = useState<number | null>(null);
   const [favCount, setFavCount] = useState<number | null>(null);
+  const [visitCount, setVisitCount] = useState<number | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -157,6 +159,10 @@ export default function RecordsScreen() {
     getFavoriteShrines()
       .then((items) => { if (mounted) setFavCount(items.length); })
       .catch(() => { if (mounted) setFavCount(0); });
+
+    getCounts()
+      .then(({ visits }) => { if (mounted) setVisitCount(visits); })
+      .catch(() => { if (mounted) setVisitCount(0); });
 
     return () => { mounted = false; };
   }, []);
@@ -175,6 +181,17 @@ export default function RecordsScreen() {
                   : "閲覧履歴はまだありません",
           };
         }
+        if (item.routeLabel === "visit-history") {
+          return {
+            ...item,
+            meta:
+              visitCount === null
+                ? "参拝履歴を確認中"
+                : visitCount === 0
+                  ? "参拝記録はまだありません"
+                  : `参拝 ${visitCount}回`,
+          };
+        }
         if (item.routeLabel === "favorites") {
           return {
             ...item,
@@ -188,7 +205,7 @@ export default function RecordsScreen() {
         }
         return item;
       }),
-    [recentCount, favCount],
+    [recentCount, favCount, visitCount],
   );
 
   return (
