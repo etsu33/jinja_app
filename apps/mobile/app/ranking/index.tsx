@@ -88,7 +88,7 @@ export default function RankingPage() {
               fontSize: 12,
             }}
           >
-            {favOnly ? "お気に入りのみ表示中" : "お気に入りだけ"}
+            {favOnly ? "保存済みだけ表示中" : "お気に入りだけ"}
           </Text>
         </Pressable>
         <Text
@@ -116,6 +116,9 @@ export default function RankingPage() {
               <Text style={styles.name}>{s.name}</Text>
               <Text style={styles.sub}>{s.prefecture}</Text>
               <Text style={styles.meta}>★ {(s.rating ?? 4.6).toFixed(1)}　♡ {s.favorites ?? 0}</Text>
+              {favored && (
+                <Text style={styles.savedHint}>記録タブで確認できます</Text>
+              )}
             </View>
 
             <Pressable
@@ -126,7 +129,9 @@ export default function RankingPage() {
               style={[styles.heartBtn, favored && styles.heartBtnFav]}
               hitSlop={8}
             >
-              <Text style={[styles.heartText, favored && styles.heartTextFav]}>♡</Text>
+              <Text style={[styles.heartText, favored && styles.heartTextFav]}>
+                {favored ? "♥" : "♡"}
+              </Text>
             </Pressable>
           </Pressable>
         );
@@ -182,6 +187,11 @@ const styles = StyleSheet.create({
     color: kamimusubiDark.goldSoft,
     fontSize: 12,
     marginTop: 5,
+  },
+  savedHint: {
+    color: kamimusubiDark.mutedSoft,
+    fontSize: 11,
+    marginTop: 6,
   },
   heartBtn: {
     paddingVertical: 6,
