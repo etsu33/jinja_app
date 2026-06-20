@@ -22,9 +22,9 @@ export default function GoshuinUpload() {
   const goBack = React.useCallback(() => {
     if (router.canGoBack()) {
       router.back();
-      return;
+    } else {
+      router.replace("/records");
     }
-    router.replace("/goshuin");
   }, [router]);
 
   const pickFromLibrary = async () => {

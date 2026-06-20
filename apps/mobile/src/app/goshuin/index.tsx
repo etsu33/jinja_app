@@ -29,7 +29,16 @@ export default function GoshuinList() {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.headerBar}>
-        <Pressable onPress={() => router.back()} style={styles.back}>
+        <Pressable
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace("/records");
+            }
+          }}
+          style={styles.back}
+        >
           <Text style={styles.backText}>← 戻る</Text>
         </Pressable>
         <Pressable onPress={() => router.push("/goshuin/upload")} style={styles.addButton}>
