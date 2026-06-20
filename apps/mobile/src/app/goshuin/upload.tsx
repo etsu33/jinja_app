@@ -25,7 +25,6 @@ export default function GoshuinUpload() {
     } else {
       router.replace("/records");
     }
-    router.replace("/goshuin");
   }, [router]);
 
   const pickFromLibrary = async () => {
