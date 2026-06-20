@@ -3,13 +3,20 @@ import { useRouter } from "expo-router";
 import { ScrollView, View, Text, TextInput, StyleSheet, Pressable } from "react-native";
 import { kamimusubiDark as theme } from "../../app/theme";
 
+const THEMES = [
+  "疲れを整えたい",
+  "迷いを整理したい",
+  "前に進みたい",
+  "静かに考えたい",
+  "人との縁を見直したい",
+  "仕事の流れを整えたい",
+] as const;
+
 export default function Home() {
   const router = useRouter();
   const [consultation, setConsultation] = React.useState("");
-  const [selectedTheme, setSelectedTheme] = React.useState<string | null>("心を整える");
+  const [selectedTheme, setSelectedTheme] = React.useState<string | null>(null);
   const [showConditions, setShowConditions] = React.useState(false);
-
-  const themes = ["仕事", "恋愛", "人間関係", "金運", "健康", "心を整える", "その他"];
 
   const openConcierge = () => {
     const params = new URLSearchParams();
@@ -21,27 +28,29 @@ export default function Home() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+      {/* ブランドヘッダー */}
       <View style={styles.header}>
         <View style={styles.brandRow}>
-          <View style={styles.logoMark} />
+          <Text style={styles.logoMark}>⛩️</Text>
           <View>
             <Text style={styles.brandName}>神結び</Text>
             <Text style={styles.brandRuby}>kami musubi</Text>
           </View>
         </View>
-        <View style={styles.menuIcon}>
-          <Text style={styles.menuIconText}>☰</Text>
-        </View>
       </View>
 
+      {/* Hero */}
       <View style={styles.hero}>
-        <Text style={styles.heroLead}>今の悩みや願いから</Text>
-        <Text style={styles.heroTitle}>心にあることを、{`\n`}話してみてください</Text>
+        <Text style={styles.heroLead}>今の相談から、向かう神社を見つける</Text>
+        <Text style={styles.heroSub}>
+          悩みや願いを一言にすると、今の状態に合う神社を探しやすくなります。
+        </Text>
       </View>
 
+      {/* 自由入力カード */}
       <View style={styles.chatCard}>
         <TextInput
-          placeholder="最近ちょっと疲れていて、これからの方向を整理したくて…"
+          placeholder="例: 気持ちを切り替えたい、前に進みたい"
           placeholderTextColor={theme.mutedDark}
           style={styles.chatInput}
           value={consultation}
@@ -50,80 +59,69 @@ export default function Home() {
           textAlignVertical="top"
         />
         <View style={styles.chatFooter}>
-          <Text style={styles.aiHint}>□ AIがあなたの言葉からご縁を結びます</Text>
+          <Text style={styles.aiHint}>AIがあなたの言葉からご縁を結びます</Text>
           <Pressable onPress={openConcierge} style={styles.sendButton}>
             <Text style={styles.sendButtonText}>↑</Text>
           </Pressable>
         </View>
       </View>
 
+      {/* テーマチップ */}
       <View style={styles.themeSection}>
         <Text style={styles.themeLabel}>ことばが浮かばないときは、ここから</Text>
         <View style={styles.themeGrid}>
-          {themes.map((themeItem) => {
-            const active = selectedTheme === themeItem;
+          {THEMES.map((t) => {
+            const active = selectedTheme === t;
             return (
               <Pressable
-                key={themeItem}
-                onPress={() => setSelectedTheme(active ? null : themeItem)}
+                key={t}
+                onPress={() => setSelectedTheme(active ? null : t)}
                 style={[styles.themePill, active && styles.themePillActive]}
               >
-                <Text style={[styles.themePillText, active && styles.themePillTextActive]}>□ {themeItem}</Text>
+                <Text style={[styles.themePillText, active && styles.themePillTextActive]}>{t}</Text>
               </Pressable>
             );
           })}
         </View>
       </View>
 
-      <Pressable onPress={() => setShowConditions((current) => !current)} style={styles.accordionToggle}>
-        <Text style={styles.accordionToggleText}>{showConditions ? "− 条件を閉じる" : "+ 条件を追加"}</Text>
+      {/* 条件追加トグル */}
+      <Pressable
+        onPress={() => setShowConditions((c) => !c)}
+        style={styles.accordionToggle}
+      >
+        <Text style={styles.accordionToggleText}>
+          {showConditions ? "− 条件を閉じる" : "+ 条件を追加"}
+        </Text>
       </Pressable>
 
       {showConditions ? (
-        <View style={styles.conditionList}>
-          <Text style={styles.conditionItem}>□ 誕生日</Text>
-          <Text style={styles.conditionItem}>□ エリア</Text>
-          <Text style={styles.conditionItem}>□ ご利益</Text>
-          <Text style={styles.conditionItem}>□ 参拝スタイル</Text>
+        <View style={styles.conditionHint}>
+          <Text style={styles.conditionHintText}>
+            誕生日・ご利益・参拝スタイルは次のステップで追加できます。
+          </Text>
         </View>
       ) : null}
 
+      {/* 主CTA */}
       <Pressable onPress={openConcierge} style={styles.primaryCta}>
-        <Text style={styles.primaryCtaText}>□ 神社とのご縁を探す</Text>
+        <Text style={styles.primaryCtaText}>この相談ではじめる</Text>
       </Pressable>
 
-      <View style={styles.tileGrid}>
-        <Pressable onPress={() => router.push("/search")} style={[styles.navTile, styles.navTileActive]}>
-          <Text style={styles.tileIcon}>□</Text>
-          <Text style={styles.tileTitle}>地図から探す</Text>
-          <Text style={styles.tileDescription}>近くの神社を巡る</Text>
+      {/* サブ導線（控えめ） */}
+      <View style={styles.subNav}>
+        <Pressable onPress={() => router.push("/search")} style={styles.subNavItem}>
+          <Text style={styles.subNavText}>地図でも確認する</Text>
         </Pressable>
-
-        <Pressable onPress={() => router.push("/search")} style={styles.navTile}>
-          <Text style={styles.tileIcon}>□</Text>
-          <Text style={styles.tileTitle}>神社一覧</Text>
-          <Text style={styles.tileDescription}>ご利益から見る</Text>
+        <Pressable onPress={() => router.push("/search")} style={styles.subNavItem}>
+          <Text style={styles.subNavText}>神社一覧も見る</Text>
         </Pressable>
-
-        <Pressable onPress={() => router.push("/search")} style={styles.navTile}>
-          <Text style={styles.tileIcon}>□</Text>
-          <Text style={styles.tileTitle}>よく見られている</Text>
-          <Text style={styles.tileDescription}>今戸・神田明神 ほか</Text>
+        <Pressable onPress={() => router.push("/ranking")} style={styles.subNavItem}>
+          <Text style={styles.subNavText}>人気の神社を見る</Text>
         </Pressable>
-
-        <Pressable onPress={() => router.push("/profile")} style={styles.navTile}>
-          <Text style={styles.tileIcon}>□</Text>
-          <Text style={styles.tileTitle}>参拝の記録</Text>
-          <Text style={styles.tileDescription}>結んだご縁を残す</Text>
+        <Pressable onPress={() => router.push("/profile")} style={styles.subNavItem}>
+          <Text style={styles.subNavText}>記録を見る</Text>
         </Pressable>
-      </View>
-
-      <View style={styles.bottomNav}>
-        <Text style={styles.bottomNavItemActive}>□</Text>
-        <Text style={styles.bottomNavItem}>□</Text>
-        <Text style={styles.bottomNavItem}>□</Text>
-        <Text style={styles.bottomNavItem}>□</Text>
-        <Text style={styles.bottomNavItem}>□</Text>
       </View>
     </ScrollView>
   );
@@ -142,8 +140,10 @@ const styles = StyleSheet.create({
     backgroundColor: theme.background,
     paddingHorizontal: 20,
     paddingTop: 22,
-    paddingBottom: 0,
+    paddingBottom: 48,
   },
+
+  // ヘッダー
   header: {
     height: 60,
     flexDirection: "row",
@@ -161,10 +161,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   logoMark: {
-    width: 22,
-    height: 22,
-    borderWidth: 2,
-    borderColor: theme.gold,
+    fontSize: 22,
   },
   brandName: {
     color: theme.text,
@@ -178,37 +175,27 @@ const styles = StyleSheet.create({
     letterSpacing: 4,
     marginTop: 1,
   },
-  menuIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: theme.borderGoldDark,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  menuIconText: {
-    color: theme.gold,
-    fontSize: 18,
-    fontWeight: "900",
-  },
+
+  // Hero
   hero: {
     paddingBottom: 24,
+    gap: 10,
   },
   heroLead: {
-    color: theme.mutedSoft,
-    fontSize: 15,
-    fontWeight: "700",
-    marginBottom: 12,
-    letterSpacing: 0.8,
-  },
-  heroTitle: {
     color: theme.text,
-    fontSize: 31,
+    fontSize: 20,
     fontWeight: "900",
-    lineHeight: 42,
-    letterSpacing: 1.2,
+    lineHeight: 30,
+    letterSpacing: 0.4,
   },
+  heroSub: {
+    color: theme.mutedSoft,
+    fontSize: 13,
+    lineHeight: 21,
+    fontWeight: "500",
+  },
+
+  // 入力カード
   chatCard: {
     minHeight: 154,
     borderRadius: 22,
@@ -225,7 +212,7 @@ const styles = StyleSheet.create({
   chatInput: {
     minHeight: 78,
     color: theme.text,
-    fontSize: 16,
+    fontSize: 15,
     lineHeight: 24,
     padding: 0,
   },
@@ -255,23 +242,26 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "900",
   },
+
+  // テーマチップ
   themeSection: {
     marginTop: 24,
   },
   themeLabel: {
     color: theme.muted,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "700",
     marginBottom: 12,
+    letterSpacing: 0.3,
   },
   themeGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 10,
+    gap: 8,
   },
   themePill: {
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: 9,
     borderRadius: 999,
     backgroundColor: theme.surfaceSoft,
     borderWidth: 1,
@@ -284,100 +274,79 @@ const styles = StyleSheet.create({
   themePillText: {
     color: theme.mutedSoft,
     fontSize: 13,
-    fontWeight: "800",
+    fontWeight: "700",
   },
   themePillTextActive: {
     color: theme.background,
   },
+
+  // 条件追加
   accordionToggle: {
     marginTop: 18,
     paddingVertical: 8,
   },
   accordionToggleText: {
     color: theme.mutedSoft,
-    fontSize: 14,
-    fontWeight: "800",
+    fontSize: 13,
+    fontWeight: "700",
   },
-  conditionList: {
-    borderRadius: 18,
+  conditionHint: {
+    borderRadius: 14,
     backgroundColor: theme.surface,
     borderWidth: 1,
     borderColor: theme.border,
-    padding: 14,
-    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
-  conditionItem: {
-    color: theme.text,
-    fontSize: 14,
-    fontWeight: "800",
+  conditionHintText: {
+    color: theme.muted,
+    fontSize: 13,
+    lineHeight: 20,
+    fontWeight: "500",
   },
+
+  // 主CTA
   primaryCta: {
-    height: 56,
-    borderRadius: 8,
+    height: 54,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: theme.gold,
-    marginTop: 18,
+    marginTop: 20,
+    shadowColor: theme.gold,
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
   },
   primaryCtaText: {
     color: theme.background,
     fontSize: 16,
     fontWeight: "900",
+    letterSpacing: 0.3,
   },
-  tileGrid: {
+
+  // サブ導線（控えめ）
+  subNav: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 14,
-    marginTop: 18,
-    paddingBottom: 24,
+    gap: 8,
+    marginTop: 32,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: theme.borderSoft,
   },
-  navTile: {
-    width: "48%",
-    minHeight: 116,
-    borderRadius: 18,
-    backgroundColor: theme.surface,
+  subNavItem: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
     borderWidth: 1,
     borderColor: theme.borderSoft,
-    padding: 16,
-    justifyContent: "center",
+    backgroundColor: "transparent",
   },
-  navTileActive: {
-    borderColor: theme.borderGold,
-  },
-  tileIcon: {
-    color: theme.goldSoft,
-    fontSize: 20,
-    fontWeight: "900",
-    marginBottom: 18,
-  },
-  tileTitle: {
-    color: theme.text,
-    fontSize: 17,
-    fontWeight: "900",
-    marginBottom: 6,
-  },
-  tileDescription: {
-    color: theme.mutedDark,
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  bottomNav: {
-    height: 78,
-    marginHorizontal: -20,
-    borderTopWidth: 1,
-    borderTopColor: theme.borderHeader,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-  },
-  bottomNavItemActive: {
-    color: theme.gold,
-    fontSize: 22,
-    fontWeight: "900",
-  },
-  bottomNavItem: {
+  subNavText: {
     color: theme.navMuted,
-    fontSize: 22,
-    fontWeight: "900",
+    fontSize: 12,
+    fontWeight: "600",
   },
 });
