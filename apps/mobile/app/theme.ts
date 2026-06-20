@@ -5,7 +5,7 @@ export const colors = {
   text: "#111",
   muted: "#555",
   border: "#e6e6e6",
-};
+} as const;
 
 export const kamimusubiDark = {
   background: "#07101F",
@@ -25,4 +25,7 @@ export const kamimusubiDark = {
   mutedSoft: "#C4B89A",
   navMuted: "#5A6478",
   outside: "#F4EFE3",
-};
+} as const;
+
+export type AppColorKey = keyof typeof colors;
+export type KamimusubiDarkColorKey = keyof typeof kamimusubiDark;
