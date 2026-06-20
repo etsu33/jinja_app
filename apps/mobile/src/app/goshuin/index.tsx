@@ -2,8 +2,8 @@
 import * as React from "react";
 import { View, Text, Image, Pressable, StyleSheet, ScrollView, Dimensions } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
-import { getStamps } from "../../lib/storage";
-import { kamimusubiDark as theme } from "../theme";
+import { getStamps } from "../../../lib/storage";
+import { kamimusubiDark as theme } from "../../../app/theme";
 
 const GAP = 10;
 const COLS = 3;

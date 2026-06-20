@@ -3,6 +3,7 @@ import React from "react";
 import { Pressable, View, Text, StyleSheet, Image } from "react-native";
 import { Link } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
+import { kamimusubiDark as theme } from "../app/theme";
 // import { useFavorite } from "@/hooks/useFavorite"; // 共有フックがあるなら使用
 
 type BaseProps = {
@@ -56,7 +57,7 @@ function BaseCard({
           </Text>
         ) : null}
         <View style={styles.ratingRow}>
-          <MaterialIcons name="star" size={14} />
+          <MaterialIcons name="star" size={14} color={theme.gold} />
           <Text style={styles.ratingText}>{rating ?? "—"}</Text>
         </View>
       </View>
@@ -132,7 +133,7 @@ function CardWithFavorite(props: BaseProps) {
         ) : null}
 
         <View style={styles.ratingRow}>
-          <MaterialIcons name="star" size={14} />
+          <MaterialIcons name="star" size={14} color={theme.gold} />
           <Text style={styles.ratingText}>{props.rating ?? "—"}</Text>
         </View>
       </View>
@@ -167,40 +168,61 @@ export default function PopularShrineCard(props: WithFavProps) {
 
 const styles = StyleSheet.create({
   card: {
-    width: 240,
-    marginRight: 12,
-    borderRadius: 14,
-    backgroundColor: "#fff",
+    width: 220,
+    borderRadius: 16,
+    backgroundColor: theme.surface,
+    borderWidth: 1,
+    borderColor: theme.border,
     shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 2,
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 4,
     overflow: "hidden",
   },
-  pressed: { opacity: 0.9 },
-  cardInner: { backgroundColor: "#fff" },
+  pressed: { opacity: 0.85 },
+  cardInner: { backgroundColor: theme.surface },
   image: { width: "100%", aspectRatio: 16 / 9, resizeMode: "cover" },
-  content: { padding: 10, gap: 4 },
+  content: { padding: 12, gap: 5 },
   row: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
-  name: { fontSize: 16, fontWeight: "700", flexShrink: 1, marginRight: 8 },
-  addr: { fontSize: 13, color: "#666" },
+  name: {
+    color: theme.text,
+    fontSize: 15,
+    fontWeight: "800",
+    flexShrink: 1,
+    marginRight: 6,
+  },
+  addr: {
+    color: theme.muted,
+    fontSize: 12,
+    fontWeight: "600",
+  },
   ratingRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
     marginTop: 2,
   },
-  ratingText: { color: "#444", fontWeight: "600" },
+  ratingText: {
+    color: theme.goldSoft,
+    fontSize: 13,
+    fontWeight: "700",
+  },
   badge: {
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 9999,
-    backgroundColor: "#EFEFEF",
+    borderWidth: 1,
+    borderColor: theme.borderGold,
+    backgroundColor: "transparent",
   },
-  badgeText: { fontSize: 12, fontWeight: "700" },
+  badgeText: {
+    color: theme.gold,
+    fontSize: 11,
+    fontWeight: "700",
+  },
 });
