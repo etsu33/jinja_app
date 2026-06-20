@@ -7,9 +7,17 @@ export default function Root() {
         headerShown: false,
         tabBarActiveTintColor: "#E0B963",
         tabBarInactiveTintColor: "#8F846E",
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: "600",
+        },
         tabBarStyle: {
           backgroundColor: "#07101F",
           borderTopColor: "#1E2A3A",
+          borderTopWidth: 1,
+          height: 64,
+          paddingBottom: 8,
+          paddingTop: 6,
         },
       }}
     >
