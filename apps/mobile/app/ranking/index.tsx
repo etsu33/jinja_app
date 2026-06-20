@@ -1,19 +1,57 @@
 // apps/mobile/app/ranking/index.tsx
 import * as React from "react";
-import { ScrollView, View, Text, Image, Pressable, StyleSheet } from "react-native";
+import { Animated, ScrollView, View, Text, Image, Pressable, StyleSheet } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { SHRINES } from "../../data/shrines";
 import { getFavorites, toggleFavorite } from "../../lib/storage";
 import { kamimusubiDark } from "../theme";
 
+type FavoriteHeartButtonProps = {
+  favored: boolean;
+  onPress: () => void;
+};
+
+function FavoriteHeartButton({ favored, onPress }: FavoriteHeartButtonProps) {
+  const scale = React.useRef(new Animated.Value(1)).current;
+
+  const handlePress = () => {
+    Animated.sequence([
+      Animated.timing(scale, {
+        toValue: 1.16,
+        duration: 90,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scale, {
+        toValue: 1,
+        duration: 90,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    onPress();
+  };
+
+  return (
+    <Pressable
+      onPress={(event) => {
+        event.stopPropagation();
+        handlePress();
+      }}
+      style={[styles.heartBtn, favored && styles.heartBtnFav]}
+      hitSlop={8}
+    >
+      <Animated.Text style={[styles.heartText, favored && styles.heartTextFav, { transform: [{ scale }] }]}>
+        {favored ? "♥" : "♡"}
+      </Animated.Text>
+    </Pressable>
+  );
+}
+
 export default function RankingPage() {
   const router = useRouter();
 
   // お気に入り数の多い順で表示
-  const items = React.useMemo(
-    () => [...SHRINES].sort((a, b) => (b.favorites ?? 0) - (a.favorites ?? 0)),
-    []
-  );
+  const items = React.useMemo(() => [...SHRINES].sort((a, b) => (b.favorites ?? 0) - (a.favorites ?? 0)), []);
 
   // お気に入り集合（ハイライト判定用）
   const [favSet, setFavSet] = React.useState<Set<string>>(new Set());
@@ -24,7 +62,11 @@ export default function RankingPage() {
     setFavSet(new Set(favs));
   }, []);
 
-  useFocusEffect(React.useCallback(() => { refreshFavs(); }, [refreshFavs]));
+  useFocusEffect(
+    React.useCallback(() => {
+      refreshFavs();
+    }, [refreshFavs]),
+  );
 
   const onToggleFav = async (id: string) => {
     await toggleFavorite(id);
@@ -32,8 +74,8 @@ export default function RankingPage() {
   };
 
   const list = React.useMemo(
-    () => items.filter(s => !favOnly || favSet.has(s.id)), // ← 絞り込み
-    [items, favOnly, favSet]
+    () => items.filter((s) => !favOnly || favSet.has(s.id)), // ← 絞り込み
+    [items, favOnly, favSet],
   );
 
   return (
@@ -62,29 +104,21 @@ export default function RankingPage() {
         保存数の多い神社を、参拝先選びの補助として見られます。
       </Text>
 
-      <View
-        style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}
-      >
+      <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
         <Pressable
-          onPress={() => setFavOnly(v => !v)}
+          onPress={() => setFavOnly((v) => !v)}
           style={{
             paddingHorizontal: 10,
             paddingVertical: 6,
             borderRadius: 999,
             borderWidth: 1,
-            borderColor: favOnly
-              ? kamimusubiDark.gold
-              : kamimusubiDark.borderHeader,
-            backgroundColor: favOnly
-              ? kamimusubiDark.gold
-              : kamimusubiDark.surface,
+            borderColor: favOnly ? kamimusubiDark.gold : kamimusubiDark.borderHeader,
+            backgroundColor: favOnly ? kamimusubiDark.gold : kamimusubiDark.surface,
           }}
         >
           <Text
             style={{
-              color: favOnly
-                ? kamimusubiDark.background
-                : kamimusubiDark.text,
+              color: favOnly ? kamimusubiDark.background : kamimusubiDark.text,
               fontSize: 12,
             }}
           >
@@ -115,24 +149,13 @@ export default function RankingPage() {
             <View style={{ flex: 1 }}>
               <Text style={styles.name}>{s.name}</Text>
               <Text style={styles.sub}>{s.prefecture}</Text>
-              <Text style={styles.meta}>★ {(s.rating ?? 4.6).toFixed(1)}　♡ {s.favorites ?? 0}</Text>
-              {favored && (
-                <Text style={styles.savedHint}>記録タブで確認できます</Text>
-              )}
+              <Text style={styles.meta}>
+                ★ {(s.rating ?? 4.6).toFixed(1)}　♡ {s.favorites ?? 0}
+              </Text>
+              {favored && <Text style={styles.savedHint}>記録タブで確認できます</Text>}
             </View>
 
-            <Pressable
-              onPress={(event) => {
-                event.stopPropagation();
-                onToggleFav(s.id);
-              }}
-              style={[styles.heartBtn, favored && styles.heartBtnFav]}
-              hitSlop={8}
-            >
-              <Text style={[styles.heartText, favored && styles.heartTextFav]}>
-                {favored ? "♥" : "♡"}
-              </Text>
-            </Pressable>
+            <FavoriteHeartButton favored={favored} onPress={() => onToggleFav(s.id)} />
           </Pressable>
         );
       })}
