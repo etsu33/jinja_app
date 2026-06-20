@@ -73,13 +73,18 @@ function ResultCard({
 }) {
   return (
     <View style={styles.card}>
-      {/* ランク + 神社名 */}
-      <View style={styles.cardHeader}>
-        <Text style={styles.rankBadge}>{rank}</Text>
-        <View style={styles.cardTitleBlock}>
-          <Text style={styles.cardName}>{card.name}</Text>
-          <Text style={styles.cardArea}>{card.area}</Text>
+      {/* ランクバッジ */}
+      <View style={styles.rankRow}>
+        <View style={styles.rankBadge}>
+          <Text style={styles.rankBadgeText}>{rank}</Text>
         </View>
+        <View style={styles.rankLine} />
+      </View>
+
+      {/* 神社名 + エリア */}
+      <View style={styles.cardTitleBlock}>
+        <Text style={styles.cardName}>{card.name}</Text>
+        <Text style={styles.cardArea}>{card.area}</Text>
       </View>
 
       {/* 推薦理由 */}
@@ -219,7 +224,11 @@ export default function ConciergeScreen() {
         {/* 結果カード */}
         {submitted && results.length > 0 ? (
           <View style={styles.resultsArea}>
-            <Text style={styles.resultsLabel}>推薦結果</Text>
+            <View style={styles.resultsLabelRow}>
+              <View style={styles.resultsLabelLine} />
+              <Text style={styles.resultsLabel}>推薦結果</Text>
+              <View style={styles.resultsLabelLine} />
+            </View>
             {results.map((card, i) => (
               <ResultCard
                 key={card.id}
@@ -265,7 +274,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.background,
   },
   scrollContent: {
-    paddingBottom: 180,
+    paddingBottom: 120,
   },
 
   // ヘッダー
@@ -346,65 +355,90 @@ const styles = StyleSheet.create({
     paddingTop: 24,
     gap: 14,
   },
+  resultsLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 4,
+  },
+  resultsLabelLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: theme.borderHeader,
+  },
   resultsLabel: {
     color: theme.mutedSoft,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "700",
     letterSpacing: 2,
-    textTransform: "uppercase",
-    marginBottom: 4,
   },
 
   // カード
   card: {
     backgroundColor: theme.surface,
-    borderRadius: 20,
+    borderRadius: 24,
     borderWidth: 1,
     borderColor: theme.border,
-    padding: 18,
-    gap: 12,
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 20,
+    gap: 14,
     shadowColor: "#000",
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 5,
   },
-  cardHeader: {
+
+  // ランク
+  rankRow: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 12,
+    alignItems: "center",
+    gap: 10,
   },
   rankBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: theme.borderGold,
-    color: theme.gold,
-    fontSize: 13,
-    fontWeight: "900",
-    textAlign: "center",
-    lineHeight: 28,
-    overflow: "hidden",
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 1,
+    borderColor: theme.borderGold,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  cardTitleBlock: {
+  rankBadgeText: {
+    color: theme.gold,
+    fontSize: 12,
+    fontWeight: "900",
+    lineHeight: 14,
+  },
+  rankLine: {
     flex: 1,
-    gap: 2,
+    height: 1,
+    backgroundColor: theme.borderSoft,
+  },
+
+  // 神社名・エリア
+  cardTitleBlock: {
+    gap: 3,
   },
   cardName: {
     color: theme.text,
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "900",
-    letterSpacing: 0.3,
+    letterSpacing: 0.4,
   },
   cardArea: {
     color: theme.muted,
     fontSize: 12,
     fontWeight: "600",
+    letterSpacing: 0.2,
   },
+
+  // 推薦理由
   cardReason: {
     color: theme.mutedSoft,
     fontSize: 14,
-    lineHeight: 22,
+    lineHeight: 23,
     fontWeight: "600",
   },
 
@@ -412,10 +446,10 @@ const styles = StyleSheet.create({
   tagRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 6,
+    gap: 7,
   },
   tagPill: {
-    paddingHorizontal: 10,
+    paddingHorizontal: 11,
     paddingVertical: 5,
     borderRadius: 999,
     borderWidth: 1,
@@ -426,31 +460,37 @@ const styles = StyleSheet.create({
     color: theme.goldSoft,
     fontSize: 12,
     fontWeight: "700",
+    letterSpacing: 0.3,
   },
 
   // CTA
   ctaRow: {
     flexDirection: "row",
     gap: 8,
-    marginTop: 4,
+    marginTop: 2,
   },
   ctaPrimary: {
     flex: 1,
-    height: 44,
-    borderRadius: 12,
+    height: 48,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: theme.gold,
+    shadowColor: theme.gold,
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
   },
   ctaPrimaryText: {
     color: theme.background,
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: "800",
+    letterSpacing: 0.3,
   },
   ctaSecondary: {
-    width: 64,
-    height: 44,
-    borderRadius: 12,
+    width: 72,
+    height: 48,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
@@ -465,18 +505,19 @@ const styles = StyleSheet.create({
 
   // 入力バー
   inputBar: {
-    width: "100%",
-    maxWidth: 430,
-    alignSelf: "center",
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
     flexDirection: "row",
     alignItems: "flex-end",
     gap: 10,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 18,
+    paddingBottom: 24,
     backgroundColor: theme.background,
     borderTopWidth: 1,
-    borderColor: theme.borderHeader,
+    borderTopColor: theme.borderHeader,
   },
   input: {
     flex: 1,
