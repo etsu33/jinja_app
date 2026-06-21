@@ -25,10 +25,36 @@ type RecommendationCard = {
   shrineId?: string;
 };
 
+type RecommendationApiCard = {
+  id?: string;
+  name?: string;
+  area?: string;
+  connection?: string;
+  reason?: string;
+  tags?: string[];
+  shrineId?: string;
+};
+
+function toRecommendationCard(item: RecommendationApiCard, index: number): RecommendationCard {
+  return {
+    id: item.id ?? `recommendation-${index + 1}`,
+    name: item.name ?? "名称未設定の神社",
+    area: item.area ?? "所在地未設定",
+    connection: item.connection ?? "今の相談内容と近い意味を持つご縁",
+    reason: item.reason ?? "相談内容に近い意味やご利益をもとに選ばれた神社です。",
+    tags: item.tags ?? [],
+    shrineId: item.shrineId,
+  };
+}
+
+function normalizeRecommendations(items: RecommendationApiCard[]): RecommendationCard[] {
+  return items.map(toRecommendationCard);
+}
+
 // ────────────────────────────────────────────
 // ダミーデータ（APIが繋がったら差し替え）
 // ────────────────────────────────────────────
-const DUMMY_RESULTS: RecommendationCard[] = [
+const DUMMY_RESULTS: RecommendationApiCard[] = [
   {
     id: "r1",
     name: "明治神宮",
@@ -156,7 +182,7 @@ export default function ConciergeScreen() {
     // ダミー遅延（APIに差し替え予定）
     await new Promise((r) => setTimeout(r, 1200));
 
-    setResults(DUMMY_RESULTS);
+    setResults(normalizeRecommendations(DUMMY_RESULTS));
     setLoading(false);
     setSubmitted(true);
   };
@@ -180,7 +206,7 @@ export default function ConciergeScreen() {
           <Pressable onPress={() => router.back()} style={styles.backBtn}>
             <Text style={styles.backText}>← 戻る</Text>
           </Pressable>
-          <Text style={styles.headerTitle}>おすすめの神社</Text>
+          <Text style={styles.headerTitle}>ご縁の候補</Text>
         </View>
 
         {/* 相談内容 */}
@@ -204,7 +230,7 @@ export default function ConciergeScreen() {
           <View style={styles.resultsArea}>
             <View style={styles.resultsIntro}>
               <Text style={styles.resultsLabel}>今の相談から結ばれた神社</Text>
-              <Text style={styles.resultsLead}>ホームで選んだ相談内容に近い意味やご利益を持つ神社です。</Text>
+              <Text style={styles.resultsLead}>必要な時だけ、下の入力欄から条件を変えて再相談できます。</Text>
             </View>
             {results.map((card, i) => (
               <ResultCard
@@ -223,7 +249,7 @@ export default function ConciergeScreen() {
         <TextInput
           value={input}
           onChangeText={setInput}
-          placeholder="条件を変えたい時だけ、追加で相談を書く"
+          placeholder="条件を変える時だけ、追加で相談する"
           placeholderTextColor={theme.mutedDark}
           style={styles.input}
           multiline
