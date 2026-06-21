@@ -64,12 +64,10 @@ function ResultCard({
   card,
   rank,
   onDetail,
-  onMap,
 }: {
   card: RecommendationCard;
   rank: number;
   onDetail: () => void;
-  onMap: () => void;
 }) {
   return (
     <View style={styles.card}>
@@ -105,9 +103,6 @@ function ResultCard({
       <View style={styles.ctaRow}>
         <Pressable onPress={onDetail} style={styles.ctaPrimary}>
           <Text style={styles.ctaPrimaryText}>詳細を見る</Text>
-        </Pressable>
-        <Pressable onPress={onMap} style={styles.ctaSecondary}>
-          <Text style={styles.ctaSecondaryText}>地図</Text>
         </Pressable>
       </View>
     </View>
@@ -177,10 +172,6 @@ export default function ConciergeScreen() {
     }
   };
 
-  const handleMap = (_card: RecommendationCard) => {
-    router.push("/search");
-  };
-
   return (
     <KeyboardAvoidingView
       style={styles.screen}
@@ -235,7 +226,6 @@ export default function ConciergeScreen() {
                 card={card}
                 rank={i + 1}
                 onDetail={() => handleDetail(card)}
-                onMap={() => handleMap(card)}
               />
             ))}
           </View>
@@ -486,21 +476,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "800",
     letterSpacing: 0.3,
-  },
-  ctaSecondary: {
-    width: 72,
-    height: 48,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: theme.borderGold,
-    backgroundColor: "transparent",
-  },
-  ctaSecondaryText: {
-    color: theme.gold,
-    fontSize: 13,
-    fontWeight: "700",
   },
 
   // 入力バー
