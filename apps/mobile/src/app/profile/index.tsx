@@ -1,6 +1,6 @@
 import * as React from "react";
 import { View, Text, StyleSheet, ScrollView, RefreshControl, Pressable } from "react-native";
-import { Link, useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import PopularShrineCard from "../../../components/PopularShrineCard";
 import { CardSkeleton } from "../../../components/Skeletons";
 import { getRecents } from "../../../lib/storage";
@@ -78,34 +78,17 @@ export default function MyPage() {
           <Text style={styles.homeLinkText}>← ホーム</Text>
         </Pressable>
         <Text style={styles.h1}>マイページ</Text>
-        <Text style={styles.subtitle}>参拝の記録、最近見た神社、ご縁の履歴をここから確認できます。</Text>
+        <Text style={styles.subtitle}>プロフィール情報や最近見た神社を確認できます。</Text>
       </View>
 
-      {/* 導線カード */}
-      <View style={styles.navCards}>
-        <Pressable
-          onPress={() => router.push("/goshuin")}
-          style={({ pressed }) => [styles.navCard, pressed && styles.navCardPressed]}
-        >
-          <Text style={styles.navCardIcon}>⛩</Text>
-          <View style={styles.navCardBody}>
-            <Text style={styles.navCardTitle}>御朱印・参拝の記録</Text>
-            <Text style={styles.navCardDesc}>結んだご縁を残す</Text>
-          </View>
-          <Text style={styles.navCardChevron}>›</Text>
-        </Pressable>
-
-        <Pressable
-          onPress={() => router.push("/search")}
-          style={({ pressed }) => [styles.navCard, pressed && styles.navCardPressed]}
-        >
-          <Text style={styles.navCardIcon}>🔍</Text>
-          <View style={styles.navCardBody}>
-            <Text style={styles.navCardTitle}>神社を探す</Text>
-            <Text style={styles.navCardDesc}>今の気持ちに合う神社を探す</Text>
-          </View>
-          <Text style={styles.navCardChevron}>›</Text>
-        </Pressable>
+      <View style={styles.profileCard}>
+        <View style={styles.profileIcon}>
+          <Text style={styles.profileIconText}>人</Text>
+        </View>
+        <View style={styles.profileBody}>
+          <Text style={styles.profileTitle}>プロフィール</Text>
+          <Text style={styles.profileDesc}>名前・設定・利用状況は今後ここにまとめます。</Text>
+        </View>
       </View>
 
       <View style={styles.section}>
@@ -114,9 +97,6 @@ export default function MyPage() {
             <Text style={styles.h2}>最近見た神社</Text>
             <Text style={styles.sectionHint}>お気に入りではなく、閲覧履歴です</Text>
           </View>
-          <Link href="/search" asChild>
-            <Text style={styles.link}>神社を探す</Text>
-          </Link>
         </View>
 
         {items === null ? (
@@ -195,11 +175,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontWeight: "500",
   },
-  navCards: {
-    gap: 12,
-    marginBottom: 28,
-  },
-  navCard: {
+  profileCard: {
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
@@ -209,33 +185,37 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     paddingHorizontal: 18,
     paddingVertical: 16,
+    marginBottom: 28,
   },
-  navCardPressed: {
-    opacity: 0.75,
+  profileIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: theme.borderGold,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  navCardIcon: {
-    fontSize: 22,
+  profileIconText: {
+    color: theme.gold,
+    fontSize: 18,
+    fontWeight: "900",
   },
-  navCardBody: {
+  profileBody: {
     flex: 1,
     gap: 3,
   },
-  navCardTitle: {
+  profileTitle: {
     color: theme.text,
     fontSize: 15,
     fontWeight: "800",
     letterSpacing: 0.2,
   },
-  navCardDesc: {
+  profileDesc: {
     color: theme.muted,
     fontSize: 12,
     fontWeight: "600",
-  },
-  navCardChevron: {
-    color: theme.gold,
-    fontSize: 22,
-    fontWeight: "700",
-    lineHeight: 26,
+    lineHeight: 18,
   },
   section: {
     gap: 12,
@@ -257,11 +237,6 @@ const styles = StyleSheet.create({
   sectionHint: {
     color: theme.muted,
     fontSize: 12,
-  },
-  link: {
-    color: theme.gold,
-    fontSize: 13,
-    fontWeight: "700",
   },
   skeletonRow: {
     flexDirection: "row",
