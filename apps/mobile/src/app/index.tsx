@@ -47,25 +47,6 @@ export default function Home() {
         </Text>
       </View>
 
-      {/* 自由入力カード */}
-      <View style={styles.chatCard}>
-        <TextInput
-          placeholder="例: 気持ちを切り替えたい、前に進みたい"
-          placeholderTextColor={theme.mutedDark}
-          style={styles.chatInput}
-          value={consultation}
-          onChangeText={setConsultation}
-          multiline
-          textAlignVertical="top"
-        />
-        <View style={styles.chatFooter}>
-          <Text style={styles.aiHint}>AIがあなたの言葉からご縁を結びます</Text>
-          <Pressable onPress={openConcierge} style={styles.sendButton}>
-            <Text style={styles.sendButtonText}>↑</Text>
-          </Pressable>
-        </View>
-      </View>
-
       {/* テーマチップ */}
       <View style={styles.themeSection}>
         <Text style={styles.themeLabel}>ことばが浮かばないときは、ここから</Text>
@@ -82,6 +63,25 @@ export default function Home() {
               </Pressable>
             );
           })}
+        </View>
+      </View>
+
+      {/* 自由入力カード */}
+      <View style={styles.chatCard}>
+        <TextInput
+          placeholder="例: 気持ちを切り替えたい、前に進みたい"
+          placeholderTextColor={theme.mutedDark}
+          style={styles.chatInput}
+          value={consultation}
+          onChangeText={setConsultation}
+          multiline
+          textAlignVertical="top"
+        />
+        <View style={styles.chatFooter}>
+          <Text style={styles.aiHint}>AIがあなたの言葉からご縁を結びます</Text>
+          <Pressable onPress={openConcierge} style={styles.sendButton}>
+            <Text style={styles.sendButtonText}>↑</Text>
+          </Pressable>
         </View>
       </View>
 
@@ -187,6 +187,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.surface,
     borderWidth: 1,
     borderColor: theme.border,
+    marginTop: 24,
     padding: 16,
     shadowColor: "#000",
     shadowOpacity: 0.25,
@@ -230,7 +231,7 @@ const styles = StyleSheet.create({
 
   // テーマチップ
   themeSection: {
-    marginTop: 24,
+    marginTop: 0,
   },
   themeLabel: {
     color: theme.muted,
