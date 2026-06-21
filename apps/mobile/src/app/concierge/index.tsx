@@ -181,7 +181,7 @@ export default function ConciergeScreen() {
 
           {loading ? (
             <View style={styles.loadingRow}>
-              <Text style={styles.loadingText}>ご縁を探しています…</Text>
+              <Text style={styles.loadingText}>相談内容をもとに、神社とのご縁を見直しています…</Text>
             </View>
           ) : null}
         </View>
@@ -209,7 +209,7 @@ export default function ConciergeScreen() {
         <TextInput
           value={input}
           onChangeText={setInput}
-          placeholder="今の気持ちや願いを書いてください"
+          placeholder="追加で相談したいことを書いてください"
           placeholderTextColor={theme.mutedDark}
           style={styles.input}
           multiline
