@@ -5,6 +5,7 @@ import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import { SHRINES } from "../../../data/shrines";
 import { incVisits, isFavorite, toggleFavorite, pushRecent } from "../../../lib/storage";
 import { kamimusubiDark as theme } from "../../../app/theme";
+import { get } from "../../../lib/http";
 
 type Shrine = {
   id: string | number;
@@ -17,6 +18,34 @@ type Shrine = {
   longitude?: number;
 };
 
+type ShrineApiResponse = {
+  id: string | number;
+  name?: string;
+  name_jp?: string;
+  address?: string;
+  prefecture?: string;
+  description?: string | null;
+  imageUrl?: string;
+  image_url?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  goriyaku?: string | null;
+  goriyaku_tags?: Array<{ id: number; name: string; category?: string }>;
+};
+
+function toShrine(api: ShrineApiResponse): Shrine {
+  return {
+    id: api.id,
+    name: api.name_jp ?? api.name ?? "名称未設定の神社",
+    prefecture: api.prefecture ?? api.address,
+    description: api.description ?? api.goriyaku ?? undefined,
+    imageUrl: api.imageUrl ?? api.image_url,
+    tags: api.goriyaku_tags?.map((tag) => tag.name) ?? [],
+    latitude: typeof api.latitude === "number" ? api.latitude : undefined,
+    longitude: typeof api.longitude === "number" ? api.longitude : undefined,
+  };
+}
+
 export default function ShrineDetail() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const shrineId = React.useMemo(() => {
@@ -26,12 +55,16 @@ export default function ShrineDetail() {
   }, [params.id]);
 
   const router = useRouter();
-  const shrine: Shrine | undefined = React.useMemo(
+  const localShrine: Shrine | undefined = React.useMemo(
     () => SHRINES.find((x: Shrine) => String(x.id) === String(shrineId)),
     [shrineId],
   );
 
+  const [apiShrine, setApiShrine] = React.useState<Shrine | undefined>();
+  const [loading, setLoading] = React.useState(false);
+  const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
   const [fav, setFav] = React.useState(false);
+  const shrine = apiShrine ?? localShrine;
   const tags = shrine?.tags ?? [];
 
   const countedRef = React.useRef(false);
@@ -44,6 +77,33 @@ export default function ShrineDetail() {
       return () => {};
     }, [shrineId]),
   );
+
+  React.useEffect(() => {
+    if (!shrineId) return;
+
+    let active = true;
+    setLoading(true);
+    setErrorMessage(null);
+
+    get<ShrineApiResponse>(`/shrines/${shrineId}/`)
+      .then((data) => {
+        if (!active) return;
+        setApiShrine(toShrine(data));
+      })
+      .catch(() => {
+        if (!active) return;
+        setApiShrine(undefined);
+        setErrorMessage(localShrine ? null : "神社情報を取得できませんでした。");
+      })
+      .finally(() => {
+        if (!active) return;
+        setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [shrineId, localShrine]);
 
   React.useEffect(() => {
     if (!shrineId) return;
@@ -79,13 +139,10 @@ export default function ShrineDetail() {
     Linking.openURL(googleMapsWebUrl).catch(() => {});
   }, [shrine]);
 
-  if (!shrineId) {
+  if (loading && !shrine) {
     return (
       <View style={styles.errorScreen}>
-        <Text style={styles.errorText}>パラメータ `id` が不正です。</Text>
-        <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace("/")} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>← 戻る</Text>
-        </Pressable>
+        <Text style={styles.errorText}>神社情報を読み込んでいます…</Text>
       </View>
     );
   }
@@ -153,6 +210,12 @@ export default function ShrineDetail() {
           {shrine.description ?? "ご利益や混雑、アクセス、御朱印情報などをここに表示します。"}
         </Text>
       </View>
+
+      {errorMessage ? (
+        <View style={styles.noticeCard}>
+          <Text style={styles.noticeText}>{errorMessage}</Text>
+        </View>
+      ) : null}
 
       {/* CTA */}
       <View style={styles.ctaBlock}>
@@ -314,6 +377,23 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 25,
     fontWeight: "500",
+  },
+
+  noticeCard: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    backgroundColor: theme.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.borderSoft,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  noticeText: {
+    color: theme.muted,
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: "600",
   },
 
   // CTA
