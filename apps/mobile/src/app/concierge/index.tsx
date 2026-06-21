@@ -52,6 +52,12 @@ function normalizeRecommendations(items: RecommendationApiCard[]): Recommendatio
   return items.map(toRecommendationCard);
 }
 
+async function fetchConciergeRecommendations(_consultation: string): Promise<RecommendationCard[]> {
+  // TODO: API接続時はここを実API呼び出しへ差し替える
+  await new Promise((resolve) => setTimeout(resolve, 1200));
+  return normalizeRecommendations(DUMMY_RESULTS);
+}
+
 // ────────────────────────────────────────────
 // ダミーデータ（APIが繋がったら差し替え）
 // ────────────────────────────────────────────
@@ -157,6 +163,7 @@ export default function ConciergeScreen() {
   const [consultationText, setConsultationText] = React.useState(initialQuery);
   const [submitted, setSubmitted] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
+  const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
   const [results, setResults] = React.useState<RecommendationCard[]>([]);
   const lastInitialQueryRef = React.useRef<string | null>(null);
 
@@ -179,13 +186,17 @@ export default function ConciergeScreen() {
     setInput("");
     setLoading(true);
     setSubmitted(false);
+    setErrorMessage(null);
 
-    // ダミー遅延（APIに差し替え予定）
-    await new Promise((r) => setTimeout(r, 1200));
-
-    setResults(normalizeRecommendations(DUMMY_RESULTS));
-    setLoading(false);
-    setSubmitted(true);
+    try {
+      const recommendations = await fetchConciergeRecommendations(trimmed);
+      setResults(recommendations);
+    } catch {
+      setErrorMessage("通信に失敗しました。前回の候補を表示したまま、もう一度相談できます。");
+    } finally {
+      setLoading(false);
+      setSubmitted(true);
+    }
   };
 
   const handleSend = () => void submit(input);
@@ -222,6 +233,12 @@ export default function ConciergeScreen() {
           {loading ? (
             <View style={styles.loadingRow}>
               <Text style={styles.loadingText}>新しい相談内容から、ご縁を結び直しています…</Text>
+            </View>
+          ) : null}
+
+          {errorMessage ? (
+            <View style={styles.errorNotice}>
+              <Text style={styles.errorNoticeText}>{errorMessage}</Text>
             </View>
           ) : null}
         </View>
@@ -340,6 +357,20 @@ const styles = StyleSheet.create({
   loadingText: {
     color: theme.muted,
     fontSize: 14,
+    fontWeight: "600",
+  },
+  errorNotice: {
+    backgroundColor: theme.surface,
+    borderWidth: 1,
+    borderColor: theme.borderSoft,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  errorNoticeText: {
+    color: theme.muted,
+    fontSize: 12,
+    lineHeight: 18,
     fontWeight: "600",
   },
 
