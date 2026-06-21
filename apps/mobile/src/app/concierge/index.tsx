@@ -141,7 +141,6 @@ export default function ConciergeScreen() {
     setInput("");
     setLoading(true);
     setSubmitted(false);
-    setResults([]);
 
     // ダミー遅延（APIに差し替え予定）
     await new Promise((r) => setTimeout(r, 1200));
@@ -184,7 +183,7 @@ export default function ConciergeScreen() {
 
           {loading ? (
             <View style={styles.loadingRow}>
-              <Text style={styles.loadingText}>相談内容をもとに、神社とのご縁を見直しています…</Text>
+              <Text style={styles.loadingText}>新しい相談内容から、ご縁を結び直しています…</Text>
             </View>
           ) : null}
         </View>
@@ -192,8 +191,9 @@ export default function ConciergeScreen() {
         {/* 結果カード */}
         {submitted && results.length > 0 ? (
           <View style={styles.resultsArea}>
-            <View style={styles.resultsLabelRow}>
-              <Text style={styles.resultsLabel}>今の相談に近い神社</Text>
+            <View style={styles.resultsIntro}>
+              <Text style={styles.resultsLabel}>今の相談から結ばれた神社</Text>
+              <Text style={styles.resultsLead}>相談内容に近い意味やご利益を持つ神社を表示しています。</Text>
             </View>
             {results.map((card, i) => (
               <ResultCard
@@ -277,14 +277,14 @@ const styles = StyleSheet.create({
   consultationCard: {
     backgroundColor: theme.surface,
     borderWidth: 1,
-    borderColor: theme.border,
+    borderColor: theme.borderGold,
     borderRadius: 18,
     paddingHorizontal: 16,
     paddingVertical: 14,
     gap: 6,
   },
   consultationLabel: {
-    color: theme.mutedSoft,
+    color: theme.goldSoft,
     fontSize: 11,
     fontWeight: "800",
     letterSpacing: 1.2,
@@ -310,14 +310,21 @@ const styles = StyleSheet.create({
     paddingTop: 18,
     gap: 12,
   },
-  resultsLabelRow: {
+  resultsIntro: {
+    gap: 4,
     marginBottom: 2,
   },
   resultsLabel: {
-    color: theme.mutedSoft,
+    color: theme.goldSoft,
+    fontSize: 13,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+  },
+  resultsLead: {
+    color: theme.muted,
     fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 0.6,
+    lineHeight: 18,
+    fontWeight: "600",
   },
 
   // カード
