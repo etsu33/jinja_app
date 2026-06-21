@@ -23,6 +23,14 @@ export default function SearchPage() {
     return textHit && tagsHit;
   });
 
+  const popularShrines = [...SHRINES]
+    .sort(
+      (a, b) =>
+        (b.favorites ?? 0) - (a.favorites ?? 0) ||
+        (b.rating ?? 0) - (a.rating ?? 0),
+    )
+    .slice(0, 3);
+
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <Pressable
@@ -54,6 +62,34 @@ export default function SearchPage() {
         ) : (
           <Text style={styles.summaryHint}>条件なしで、登録神社を一覧表示しています。</Text>
         )}
+      </View>
+
+      <View style={styles.popularSection}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>人気の神社</Text>
+          <Text style={styles.sectionCount}>3件</Text>
+        </View>
+
+        <View style={styles.popularList}>
+          {popularShrines.map((s, index) => (
+            <Pressable
+              key={s.id}
+              onPress={() => router.push(`/shrines/${s.id}`)}
+              style={({ pressed }) => [styles.popularCard, pressed && styles.cardPressed]}
+            >
+              <Text style={styles.popularRank}>{index + 1}</Text>
+              <Image source={{ uri: s.imageUrl }} style={styles.popularImage} />
+              <View style={styles.cardBody}>
+                <Text style={styles.cardName}>{s.name}</Text>
+                <Text style={styles.cardArea}>{s.prefecture}</Text>
+                <Text style={styles.popularMeta}>
+                  ★ {(s.rating ?? 4.6).toFixed(1)}　♡ {s.favorites ?? 0}
+                </Text>
+              </View>
+              <Text accessibilityElementsHidden style={styles.chevron}>›</Text>
+            </Pressable>
+          ))}
+        </View>
       </View>
 
       <View style={styles.sectionHeader}>
@@ -209,6 +245,45 @@ const styles = StyleSheet.create({
     color: theme.gold,
     fontSize: 13,
     fontWeight: "800",
+  },
+  popularSection: {
+    marginBottom: 26,
+  },
+  popularList: {
+    gap: 10,
+  },
+  popularCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: theme.surface,
+    borderWidth: 1,
+    borderColor: theme.borderGold,
+    borderRadius: 18,
+    padding: 12,
+    gap: 12,
+  },
+  popularRank: {
+    width: 28,
+    height: 28,
+    borderRadius: 999,
+    backgroundColor: theme.surfaceSoft,
+    color: theme.gold,
+    fontSize: 13,
+    fontWeight: "900",
+    lineHeight: 28,
+    textAlign: "center",
+  },
+  popularImage: {
+    width: 62,
+    height: 54,
+    borderRadius: 13,
+    backgroundColor: theme.surfaceSoft,
+  },
+  popularMeta: {
+    color: theme.goldSoft,
+    fontSize: 12,
+    fontWeight: "700",
+    marginTop: 2,
   },
   list: {
     gap: 12,
