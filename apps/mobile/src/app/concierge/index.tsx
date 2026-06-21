@@ -33,6 +33,7 @@ type RecommendationApiCard = {
   reason?: string;
   tags?: string[];
   shrineId?: string;
+  shrine_id?: string;
 };
 
 function toRecommendationCard(item: RecommendationApiCard, index: number): RecommendationCard {
@@ -43,7 +44,7 @@ function toRecommendationCard(item: RecommendationApiCard, index: number): Recom
     connection: item.connection ?? "今の相談内容と近い意味を持つご縁",
     reason: item.reason ?? "相談内容に近い意味やご利益をもとに選ばれた神社です。",
     tags: item.tags ?? [],
-    shrineId: item.shrineId,
+    shrineId: item.shrineId ?? item.shrine_id,
   };
 }
 
