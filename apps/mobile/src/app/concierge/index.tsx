@@ -8,7 +8,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  ActivityIndicator,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { kamimusubiDark as theme } from "../../../app/theme";
@@ -24,8 +23,6 @@ type RecommendationCard = {
   tags: string[];
   shrineId?: string;
 };
-
-type Msg = { id: string; role: "user" | "assistant"; content: string };
 
 // ────────────────────────────────────────────
 // ダミーデータ（APIが繋がったら差し替え）
@@ -119,46 +116,35 @@ export default function ConciergeScreen() {
   const initialQuery = [params.q, params.theme].filter(Boolean).join(" ").trim();
 
   const [input, setInput] = React.useState(initialQuery);
+  const [consultationText, setConsultationText] = React.useState(initialQuery);
   const [submitted, setSubmitted] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [results, setResults] = React.useState<RecommendationCard[]>([]);
-  const [messages, setMessages] = React.useState<Msg[]>([
-    {
-      id: "sys1",
-      role: "assistant",
-      content: "今の気持ちや願いを教えてください。あなたに合う神社とのご縁を探します。",
-    },
-  ]);
+  const lastInitialQueryRef = React.useRef<string | null>(null);
 
-  // 初期クエリがあれば自動送信
+  // URLの相談内容が変わったら自動送信する
   React.useEffect(() => {
-    if (initialQuery) {
-      void submit(initialQuery);
-    }
-    // 初回のみ
+    if (!initialQuery || lastInitialQueryRef.current === initialQuery) return;
+
+    lastInitialQueryRef.current = initialQuery;
+    setInput(initialQuery);
+    void submit(initialQuery);
+    // submitはこの画面内の状態更新関数だけを使うため、initialQueryの変更だけを監視する
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [initialQuery]);
 
   const submit = async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed) return;
 
-    const userMsg: Msg = { id: String(Date.now()), role: "user", content: trimmed };
-    setMessages((prev) => [...prev, userMsg]);
+    setConsultationText(trimmed);
     setInput("");
     setLoading(true);
     setSubmitted(false);
-    setResults([]);
 
     // ダミー遅延（APIに差し替え予定）
     await new Promise((r) => setTimeout(r, 1200));
 
-    const aiMsg: Msg = {
-      id: String(Date.now() + 1),
-      role: "assistant",
-      content: `「${trimmed}」をもとに、あなたに合う神社を3社選びました。`,
-    };
-    setMessages((prev) => [...prev, aiMsg]);
     setResults(DUMMY_RESULTS);
     setLoading(false);
     setSubmitted(true);
@@ -183,31 +169,21 @@ export default function ConciergeScreen() {
           <Pressable onPress={() => router.back()} style={styles.backBtn}>
             <Text style={styles.backText}>← 戻る</Text>
           </Pressable>
-          <Text style={styles.headerTitle}>神社との縁を探す</Text>
+          <Text style={styles.headerTitle}>おすすめの神社</Text>
         </View>
 
-        {/* チャット */}
-        <View style={styles.chatArea}>
-          {messages.map((m) => (
-            <View
-              key={m.id}
-              style={[styles.bubble, m.role === "user" ? styles.bubbleUser : styles.bubbleAssistant]}
-            >
-              <Text
-                style={[
-                  styles.bubbleText,
-                  m.role === "user" ? styles.bubbleTextUser : styles.bubbleTextAssistant,
-                ]}
-              >
-                {m.content}
-              </Text>
-            </View>
-          ))}
+        {/* 相談内容 */}
+        <View style={styles.consultationArea}>
+          <View style={styles.consultationCard}>
+            <Text style={styles.consultationLabel}>相談内容</Text>
+            <Text style={styles.consultationText}>
+              {consultationText || "今の気持ちや願いを入力してください。"}
+            </Text>
+          </View>
 
           {loading ? (
             <View style={styles.loadingRow}>
-              <ActivityIndicator size="small" color={theme.gold} />
-              <Text style={styles.loadingText}>ご縁を探しています…</Text>
+              <Text style={styles.loadingText}>新しい相談内容から、ご縁を結び直しています…</Text>
             </View>
           ) : null}
         </View>
@@ -215,10 +191,9 @@ export default function ConciergeScreen() {
         {/* 結果カード */}
         {submitted && results.length > 0 ? (
           <View style={styles.resultsArea}>
-            <View style={styles.resultsLabelRow}>
-              <View style={styles.resultsLabelLine} />
-              <Text style={styles.resultsLabel}>推薦結果</Text>
-              <View style={styles.resultsLabelLine} />
+            <View style={styles.resultsIntro}>
+              <Text style={styles.resultsLabel}>今の相談から結ばれた神社</Text>
+              <Text style={styles.resultsLead}>相談内容に近い意味やご利益を持つ神社を表示しています。</Text>
             </View>
             {results.map((card, i) => (
               <ResultCard
@@ -237,7 +212,7 @@ export default function ConciergeScreen() {
         <TextInput
           value={input}
           onChangeText={setInput}
-          placeholder="今の気持ちや願いを書いてください"
+          placeholder="追加で相談したいことを書いてください"
           placeholderTextColor={theme.mutedDark}
           style={styles.input}
           multiline
@@ -264,7 +239,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.background,
   },
   scrollContent: {
-    paddingBottom: 120,
+    paddingBottom: 104,
   },
 
   // ヘッダー
@@ -272,9 +247,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
+    paddingHorizontal: 18,
+    paddingTop: 18,
+    paddingBottom: 14,
     borderBottomWidth: 1,
     borderBottomColor: theme.borderHeader,
   },
@@ -294,43 +269,34 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 
-  // チャット
-  chatArea: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    gap: 10,
+  consultationArea: {
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    gap: 8,
   },
-  bubble: {
-    maxWidth: "84%",
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  bubbleUser: {
-    alignSelf: "flex-end",
-    backgroundColor: theme.gold,
-  },
-  bubbleAssistant: {
-    alignSelf: "flex-start",
+  consultationCard: {
     backgroundColor: theme.surface,
     borderWidth: 1,
-    borderColor: theme.border,
+    borderColor: theme.borderGold,
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 6,
   },
-  bubbleText: {
+  consultationLabel: {
+    color: theme.goldSoft,
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1.2,
+  },
+  consultationText: {
+    color: theme.text,
     fontSize: 15,
     lineHeight: 22,
-    fontWeight: "600",
+    fontWeight: "800",
   },
-  bubbleTextUser: {
-    color: theme.background,
-  },
-  bubbleTextAssistant: {
-    color: theme.text,
-  },
+
   loadingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
     paddingVertical: 8,
   },
   loadingText: {
@@ -339,28 +305,26 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  // 結果
   resultsArea: {
     paddingHorizontal: 16,
-    paddingTop: 24,
-    gap: 14,
-  },
-  resultsLabelRow: {
-    flexDirection: "row",
-    alignItems: "center",
+    paddingTop: 18,
     gap: 12,
-    marginBottom: 4,
   },
-  resultsLabelLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: theme.borderHeader,
+  resultsIntro: {
+    gap: 4,
+    marginBottom: 2,
   },
   resultsLabel: {
-    color: theme.mutedSoft,
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 2,
+    color: theme.goldSoft,
+    fontSize: 13,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+  },
+  resultsLead: {
+    color: theme.muted,
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: "600",
   },
 
   // カード
@@ -486,34 +450,34 @@ const styles = StyleSheet.create({
     bottom: 0,
     flexDirection: "row",
     alignItems: "flex-end",
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 24,
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: 18,
     backgroundColor: theme.background,
     borderTopWidth: 1,
     borderTopColor: theme.borderHeader,
   },
   input: {
     flex: 1,
-    minHeight: 50,
+    minHeight: 46,
     maxHeight: 120,
     backgroundColor: theme.surface,
     borderWidth: 1,
     borderColor: theme.border,
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    borderRadius: 16,
+    paddingHorizontal: 13,
+    paddingVertical: 10,
     color: theme.text,
     fontSize: 15,
     lineHeight: 22,
   },
   sendBtn: {
-    width: 54,
-    height: 54,
+    width: 50,
+    height: 50,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 27,
+    borderRadius: 25,
     backgroundColor: theme.gold,
   },
   sendBtnDisabled: {
