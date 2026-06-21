@@ -12,13 +12,22 @@ const W = (Math.min(Dimensions.get("window").width, 430) - 20 * 2 - GAP * (COLS 
 export default function GoshuinList() {
   const router = useRouter();
   const [stamps, setStamps] = React.useState<{ id: string; uri: string; createdAt: number }[]>([]);
+  const [loading, setLoading] = React.useState(true);
 
   useFocusEffect(
     React.useCallback(() => {
       let alive = true;
+      setLoading(true);
+
       (async () => {
-        const list = await getStamps();
-        if (alive) setStamps(list);
+        try {
+          const list = await getStamps();
+          if (alive) setStamps(list);
+        } catch {
+          if (alive) setStamps([]);
+        } finally {
+          if (alive) setLoading(false);
+        }
       })();
       return () => {
         alive = false;
@@ -52,7 +61,9 @@ export default function GoshuinList() {
         <Text style={styles.heroCount}>{stamps.length} 件の御朱印</Text>
       </View>
 
-      {stamps.length > 0 ? (
+      {loading ? (
+        <Text style={styles.stateText}>確認中…</Text>
+      ) : stamps.length > 0 ? (
         <View style={styles.gridCard}>
           <Text style={styles.sectionLabel}>GOSHUIN</Text>
           <View style={styles.grid}>
@@ -157,6 +168,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
     marginTop: 12,
+  },
+  stateText: {
+    color: theme.muted,
+    fontSize: 15,
+    fontWeight: "700",
+    marginTop: 40,
+    textAlign: "center",
   },
   gridCard: {
     backgroundColor: theme.surface,
