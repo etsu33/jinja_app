@@ -1,6 +1,10 @@
-import { useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Pressable, ScrollView, Text, View } from "react-native";
+import { useRouter } from "expo-router";
 import { kamimusubiDark } from "../theme";
+
+import { getFavoriteShrines, getRecentViewed } from "../shrines/storage";
+import { getCounts } from "../../lib/storage";
 
 type RecordCardProps = {
   title: string;
@@ -41,7 +45,12 @@ const recordItems: readonly RecordCardProps[] = [
   },
 ];
 
+const ROUTE_MAP: Record<string, string> = {
+  favorites: "/favorites",
+};
+
 function RecordCard({ title, description, meta, iconText, routeLabel }: RecordCardProps) {
+  const router = useRouter();
   const scale = useRef(new Animated.Value(1)).current;
 
   const animateScale = (toValue: number) => {
@@ -57,7 +66,10 @@ function RecordCard({ title, description, meta, iconText, routeLabel }: RecordCa
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${title}を開く`}
-        onPress={() => console.log(`Record route: ${routeLabel}`)}
+        onPress={() => {
+          const route = ROUTE_MAP[routeLabel];
+          if (route) router.push(route as any);
+        }}
         onPressIn={() => animateScale(0.98)}
         onPressOut={() => animateScale(1)}
         style={{
@@ -133,6 +145,69 @@ function RecordCard({ title, description, meta, iconText, routeLabel }: RecordCa
 }
 
 export default function RecordsScreen() {
+  const [recentCount, setRecentCount] = useState<number | null>(null);
+  const [favCount, setFavCount] = useState<number | null>(null);
+  const [visitCount, setVisitCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    getRecentViewed(3)
+      .then((items) => { if (mounted) setRecentCount(items.length); })
+      .catch(() => { if (mounted) setRecentCount(0); });
+
+    getFavoriteShrines()
+      .then((items) => { if (mounted) setFavCount(items.length); })
+      .catch(() => { if (mounted) setFavCount(0); });
+
+    getCounts()
+      .then(({ visits }) => { if (mounted) setVisitCount(visits); })
+      .catch(() => { if (mounted) setVisitCount(0); });
+
+    return () => { mounted = false; };
+  }, []);
+
+  const recordItemsWithRecentMeta = useMemo(
+    () =>
+      recordItems.map((item) => {
+        if (item.routeLabel === "recently-viewed") {
+          return {
+            ...item,
+            meta:
+              recentCount === null
+                ? "閲覧履歴を確認中"
+                : recentCount > 0
+                  ? `${recentCount}件の閲覧履歴`
+                  : "閲覧履歴はまだありません",
+          };
+        }
+        if (item.routeLabel === "visit-history") {
+          return {
+            ...item,
+            meta:
+              visitCount === null
+                ? "参拝履歴を確認中"
+                : visitCount === 0
+                  ? "参拝記録はまだありません"
+                  : `参拝 ${visitCount}回`,
+          };
+        }
+        if (item.routeLabel === "favorites") {
+          return {
+            ...item,
+            meta:
+              favCount === null
+                ? "確認中"
+                : favCount > 0
+                  ? `${favCount}件保存済み`
+                  : "まだ保存されていません",
+          };
+        }
+        return item;
+      }),
+    [recentCount, favCount, visitCount],
+  );
+
   return (
     <ScrollView
       style={{ backgroundColor: kamimusubiDark.background, flex: 1 }}
@@ -160,9 +235,41 @@ export default function RecordsScreen() {
         </Text>
       </View>
 
-      {recordItems.map((item) => (
+      {recordItemsWithRecentMeta.map((item) => (
         <RecordCard key={item.routeLabel} {...item} />
       ))}
+
+      {recentCount === 0 ? (
+        <View
+          style={{
+            backgroundColor: kamimusubiDark.surfaceSoft,
+            borderColor: kamimusubiDark.borderHeader,
+            borderRadius: 16,
+            borderWidth: 1,
+            padding: 16,
+          }}
+        >
+          <Text
+            style={{
+              color: kamimusubiDark.text,
+              fontSize: 14,
+              fontWeight: "700",
+            }}
+          >
+            最近見た神社はまだありません
+          </Text>
+          <Text
+            style={{
+              color: kamimusubiDark.muted,
+              fontSize: 12,
+              lineHeight: 18,
+              marginTop: 6,
+            }}
+          >
+            神社詳細を見ると、閲覧履歴としてここに反映されます。
+          </Text>
+        </View>
+      ) : null}
     </ScrollView>
   );
 }

@@ -26,6 +26,7 @@ export default function Root() {
       <Tabs.Screen name="records/index" options={{ title: "記録" }} />
       <Tabs.Screen name="ranking/index" options={{ title: "ランキング" }} />
       <Tabs.Screen name="mypage/index" options={{ title: "マイページ" }} />
+      <Tabs.Screen name="favorites/index" options={{ href: null }} />
       <Tabs.Screen name="shrines/storage" options={{ href: null }} />
     </Tabs>
   );
