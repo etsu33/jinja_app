@@ -19,6 +19,7 @@ type RecommendationCard = {
   id: string;
   name: string;
   area: string;
+  connection: string;
   reason: string;
   tags: string[];
   shrineId?: string;
@@ -32,6 +33,7 @@ const DUMMY_RESULTS: RecommendationCard[] = [
     id: "r1",
     name: "明治神宮",
     area: "東京都渋谷区",
+    connection: "迷いや転機を、静かに整えるご縁",
     reason: "仕事の迷いや転機に向き合う際、静かな杜の中で自分を見つめ直せる神域です。",
     tags: ["開運招福", "厄除け", "縁結び"],
     shrineId: "meiji",
@@ -40,6 +42,7 @@ const DUMMY_RESULTS: RecommendationCard[] = [
     id: "r2",
     name: "神田明神",
     area: "東京都千代田区",
+    connection: "仕事や前進の流れを結び直すご縁",
     reason: "仕事運・商売繁盛の御利益で知られ、新しい一歩を踏み出す力を授けてくれます。",
     tags: ["仕事運", "商売繁盛", "厄除け"],
     shrineId: "kanda",
@@ -48,6 +51,7 @@ const DUMMY_RESULTS: RecommendationCard[] = [
     id: "r3",
     name: "根津神社",
     area: "東京都文京区",
+    connection: "心を落ち着かせ、今の自分に戻るご縁",
     reason: "静かな境内で心を落ち着かせ、今の気持ちを整理するのに向いています。",
     tags: ["縁結び", "健康長寿"],
     shrineId: "nezu",
@@ -73,7 +77,7 @@ function ResultCard({
         <View style={styles.rankBadge}>
           <Text style={styles.rankBadgeText}>{rank}</Text>
         </View>
-        <Text style={styles.rankLabel}>おすすめ候補</Text>
+        <Text style={styles.rankLabel}>ご縁{rank}</Text>
         <View style={styles.rankLine} />
       </View>
 
@@ -83,13 +87,19 @@ function ResultCard({
         <Text style={styles.cardArea}>{card.area}</Text>
       </View>
 
+      {/* 今の相談とのつながり */}
+      <View style={styles.connectionBlock}>
+        <Text style={styles.connectionLabel}>今の相談とのつながり</Text>
+        <Text style={styles.connectionText}>{card.connection}</Text>
+      </View>
+
       {/* 推薦理由 */}
-      <Text style={styles.cardReason}>{card.reason}</Text>
+      <Text style={styles.cardReason} numberOfLines={3}>{card.reason}</Text>
 
       {/* タグ */}
       {card.tags.length > 0 ? (
         <View style={styles.tagRow}>
-          {card.tags.map((tag) => (
+          {card.tags.slice(0, 2).map((tag) => (
             <View key={tag} style={styles.tagPill}>
               <Text style={styles.tagText}>{tag}</Text>
             </View>
@@ -100,7 +110,7 @@ function ResultCard({
       {/* CTA */}
       <View style={styles.ctaRow}>
         <Pressable onPress={onDetail} style={styles.ctaPrimary}>
-          <Text style={styles.ctaPrimaryText}>詳細を見る</Text>
+          <Text style={styles.ctaPrimaryText}>この神社を詳しく見る</Text>
         </Pressable>
       </View>
     </View>
@@ -367,8 +377,8 @@ const styles = StyleSheet.create({
   },
   rankLabel: {
     color: theme.goldSoft,
-    fontSize: 11,
-    fontWeight: "800",
+    fontSize: 12,
+    fontWeight: "900",
     letterSpacing: 0.8,
   },
   rankLine: {
@@ -394,11 +404,30 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
 
+  connectionBlock: {
+    borderLeftWidth: 2,
+    borderLeftColor: theme.borderGold,
+    paddingLeft: 10,
+    gap: 4,
+  },
+  connectionLabel: {
+    color: theme.goldSoft,
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.7,
+  },
+  connectionText: {
+    color: theme.text,
+    fontSize: 14,
+    lineHeight: 21,
+    fontWeight: "800",
+  },
+
   // 推薦理由
   cardReason: {
     color: theme.mutedSoft,
-    fontSize: 14,
-    lineHeight: 24,
+    fontSize: 13,
+    lineHeight: 22,
     fontWeight: "600",
   },
 
@@ -419,7 +448,7 @@ const styles = StyleSheet.create({
   tagText: {
     color: theme.goldSoft,
     fontSize: 11,
-    fontWeight: "700",
+    fontWeight: "800",
     letterSpacing: 0.2,
   },
 
