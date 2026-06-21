@@ -178,7 +178,7 @@ export default function ConciergeScreen() {
           <View style={styles.consultationCard}>
             <Text style={styles.consultationLabel}>相談内容</Text>
             <Text style={styles.consultationText}>
-              {consultationText || "今の気持ちや願いを入力してください。"}
+              {consultationText || "ホームで選んだ相談内容をもとに、おすすめの神社を表示します。"}
             </Text>
           </View>
 
@@ -194,7 +194,7 @@ export default function ConciergeScreen() {
           <View style={styles.resultsArea}>
             <View style={styles.resultsIntro}>
               <Text style={styles.resultsLabel}>今の相談から結ばれた神社</Text>
-              <Text style={styles.resultsLead}>相談内容に近い意味やご利益を持つ神社を表示しています。</Text>
+              <Text style={styles.resultsLead}>ホームで選んだ相談内容に近い意味やご利益を持つ神社です。</Text>
             </View>
             {results.map((card, i) => (
               <ResultCard
@@ -213,7 +213,7 @@ export default function ConciergeScreen() {
         <TextInput
           value={input}
           onChangeText={setInput}
-          placeholder="追加で相談したいことを書いてください"
+          placeholder="条件を変えたい時だけ、追加で相談を書く"
           placeholderTextColor={theme.mutedDark}
           style={styles.input}
           multiline
