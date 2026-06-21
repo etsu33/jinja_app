@@ -9,35 +9,35 @@ export default function SearchPage() {
   const query = (q ?? "").toLowerCase();
   const selected = (filters ?? "").split(",").filter(Boolean);
 
-  const filtered = SHRINES.filter(s => {
+  const filtered = SHRINES.filter((s) => {
     const textHit =
       !query ||
       s.name.toLowerCase().includes(query) ||
-      s.tags.some(t => t.toLowerCase().includes(query)) ||
+      s.tags.some((t) => t.toLowerCase().includes(query)) ||
       (s.prefecture ?? "").toLowerCase().includes(query);
 
-    const tagsHit =
-      selected.length === 0 ||
-      selected.every(sel => s.tags.includes(sel) || s.prefecture === sel);
+    const tagsHit = selected.length === 0 || selected.every((sel) => s.tags.includes(sel) || s.prefecture === sel);
 
     return textHit && tagsHit;
   });
 
+  const popularShrines = [...SHRINES]
+    .sort((a, b) => (b.favorites ?? 0) - (a.favorites ?? 0) || (b.rating ?? 0) - (a.rating ?? 0))
+    .slice(0, 3);
+
+  const popularShrineIds = new Set(popularShrines.map((s) => String(s.id)));
+  const visibleShrines = filtered.filter((s) => !popularShrineIds.has(String(s.id)));
+
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Pressable
-        onPress={() => router.canGoBack() ? router.back() : router.replace("/")}
-        style={styles.back}
-      >
+      <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))} style={styles.back}>
         <Text style={styles.backText}>← 戻る</Text>
       </Pressable>
 
       <View style={styles.hero}>
         <Text style={styles.heroLead}>神社を探す</Text>
         <Text style={styles.heroTitle}>今の気持ちに合う神社を、{`\n`}静かに見つける</Text>
-        <Text style={styles.heroSub}>
-          地域やご利益、気になる言葉から、参拝先の候補を確認できます。
-        </Text>
+        <Text style={styles.heroSub}>地域やご利益、気になる言葉から、参拝先の候補を確認できます。</Text>
       </View>
 
       <View style={styles.summaryCard}>
@@ -56,41 +56,70 @@ export default function SearchPage() {
         )}
       </View>
 
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>神社一覧</Text>
-        <Text style={styles.sectionCount}>{filtered.length}件</Text>
-      </View>
+      <View style={styles.popularSection}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>人気の神社</Text>
+          <Text style={styles.sectionCount}>3件</Text>
+        </View>
 
-      <View style={styles.list}>
-        {filtered.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyTitle}>該当する神社がありませんでした</Text>
-            <Text style={styles.emptyText}>条件を変えるか、相談タブから今の気持ちを入力して探してみてください。</Text>
-          </View>
-        ) : null}
-
-        {filtered.map((s) => (
-          <Pressable
-            key={s.id}
-            onPress={() => router.push(`/shrines/${s.id}`)}
-            style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-          >
-            <Image source={{ uri: s.imageUrl }} style={styles.cardImage} />
-            <View style={styles.cardBody}>
-              <Text style={styles.cardName}>{s.name}</Text>
-              <Text style={styles.cardArea}>{s.prefecture}</Text>
-              <View style={styles.miniTagRow}>
-                {s.tags.slice(0, 3).map((t) => (
-                  <View key={t} style={styles.miniTag}>
-                    <Text style={styles.miniTagText}>{t}</Text>
-                  </View>
-                ))}
+        <View style={styles.popularList}>
+          {popularShrines.map((s, index) => (
+            <Pressable
+              key={s.id}
+              onPress={() => router.push(`/shrines/${s.id}`)}
+              style={({ pressed }) => [styles.popularCard, pressed && styles.cardPressed]}
+            >
+              <Text style={styles.popularRank}>{index + 1}</Text>
+              <Image source={{ uri: s.imageUrl }} style={styles.popularImage} />
+              <View style={styles.cardBody}>
+                <Text style={styles.cardName}>{s.name}</Text>
+                <Text style={styles.cardArea}>{s.prefecture}</Text>
+                <Text style={styles.popularMeta}>
+                  ★ {(s.rating ?? 4.6).toFixed(1)}　♡ {s.favorites ?? 0}
+                </Text>
               </View>
-            </View>
-            <Text accessibilityElementsHidden style={styles.chevron}>›</Text>
-          </Pressable>
-        ))}
+              <Text accessibilityElementsHidden style={styles.chevron}>
+                ›
+              </Text>
+            </Pressable>
+          ))}
+        </View>
       </View>
+
+      {visibleShrines.length > 0 ? (
+        <>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>神社一覧</Text>
+            <Text style={styles.sectionCount}>{visibleShrines.length}件</Text>
+          </View>
+
+          <View style={styles.list}>
+            {visibleShrines.map((s) => (
+              <Pressable
+                key={s.id}
+                onPress={() => router.push(`/shrines/${s.id}`)}
+                style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+              >
+                <Image source={{ uri: s.imageUrl }} style={styles.cardImage} />
+                <View style={styles.cardBody}>
+                  <Text style={styles.cardName}>{s.name}</Text>
+                  <Text style={styles.cardArea}>{s.prefecture}</Text>
+                  <View style={styles.miniTagRow}>
+                    {s.tags.slice(0, 3).map((t) => (
+                      <View key={t} style={styles.miniTag}>
+                        <Text style={styles.miniTagText}>{t}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+                <Text accessibilityElementsHidden style={styles.chevron}>
+                  ›
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </>
+      ) : null}
     </ScrollView>
   );
 }
@@ -210,27 +239,47 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "800",
   },
-  list: {
-    gap: 12,
+  popularSection: {
+    marginBottom: 26,
   },
-  emptyCard: {
+  popularList: {
+    gap: 10,
+  },
+  popularCard: {
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: theme.surface,
     borderWidth: 1,
-    borderColor: theme.border,
+    borderColor: theme.borderGold,
     borderRadius: 18,
-    padding: 18,
-    gap: 8,
+    padding: 12,
+    gap: 12,
   },
-  emptyTitle: {
-    color: theme.text,
-    fontSize: 15,
-    fontWeight: "900",
-  },
-  emptyText: {
-    color: theme.muted,
+  popularRank: {
+    width: 28,
+    height: 28,
+    borderRadius: 999,
+    backgroundColor: theme.surfaceSoft,
+    color: theme.gold,
     fontSize: 13,
-    lineHeight: 20,
-    fontWeight: "600",
+    fontWeight: "900",
+    lineHeight: 28,
+    textAlign: "center",
+  },
+  popularImage: {
+    width: 62,
+    height: 54,
+    borderRadius: 13,
+    backgroundColor: theme.surfaceSoft,
+  },
+  popularMeta: {
+    color: theme.goldSoft,
+    fontSize: 12,
+    fontWeight: "700",
+    marginTop: 2,
+  },
+  list: {
+    gap: 12,
   },
   card: {
     flexDirection: "row",
