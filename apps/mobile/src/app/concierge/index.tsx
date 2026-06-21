@@ -73,6 +73,7 @@ function ResultCard({
         <View style={styles.rankBadge}>
           <Text style={styles.rankBadgeText}>{rank}</Text>
         </View>
+        <Text style={styles.rankLabel}>おすすめ候補</Text>
         <View style={styles.rankLine} />
       </View>
 
@@ -308,7 +309,7 @@ const styles = StyleSheet.create({
   resultsArea: {
     paddingHorizontal: 16,
     paddingTop: 18,
-    gap: 12,
+    gap: 14,
   },
   resultsIntro: {
     gap: 4,
@@ -332,16 +333,16 @@ const styles = StyleSheet.create({
     backgroundColor: theme.surface,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: theme.border,
-    paddingHorizontal: 20,
-    paddingTop: 18,
-    paddingBottom: 20,
-    gap: 14,
+    borderColor: theme.borderGold,
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    paddingBottom: 18,
+    gap: 12,
     shadowColor: "#000",
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 5,
+    shadowOpacity: 0.28,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 7 },
+    elevation: 4,
   },
 
   // ランク
@@ -351,19 +352,24 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   rankBadge: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    borderWidth: 1,
-    borderColor: theme.borderGold,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: theme.gold,
     alignItems: "center",
     justifyContent: "center",
   },
   rankBadgeText: {
-    color: theme.gold,
+    color: theme.background,
     fontSize: 12,
     fontWeight: "900",
     lineHeight: 14,
+  },
+  rankLabel: {
+    color: theme.goldSoft,
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.8,
   },
   rankLine: {
     flex: 1,
@@ -377,9 +383,9 @@ const styles = StyleSheet.create({
   },
   cardName: {
     color: theme.text,
-    fontSize: 20,
+    fontSize: 19,
     fontWeight: "900",
-    letterSpacing: 0.4,
+    letterSpacing: 0.3,
   },
   cardArea: {
     color: theme.muted,
@@ -392,7 +398,7 @@ const styles = StyleSheet.create({
   cardReason: {
     color: theme.mutedSoft,
     fontSize: 14,
-    lineHeight: 23,
+    lineHeight: 24,
     fontWeight: "600",
   },
 
@@ -400,33 +406,33 @@ const styles = StyleSheet.create({
   tagRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 7,
+    gap: 6,
   },
   tagPill: {
-    paddingHorizontal: 11,
+    paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: theme.borderGold,
-    backgroundColor: "transparent",
+    borderColor: theme.borderSoft,
+    backgroundColor: theme.surfaceSoft,
   },
   tagText: {
     color: theme.goldSoft,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "700",
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
 
   // CTA
   ctaRow: {
     flexDirection: "row",
     gap: 8,
-    marginTop: 2,
+    marginTop: 4,
   },
   ctaPrimary: {
     flex: 1,
-    height: 48,
-    borderRadius: 14,
+    height: 50,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: theme.gold,
