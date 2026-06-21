@@ -108,21 +108,6 @@ export default function Home() {
         <Text style={styles.primaryCtaText}>この相談ではじめる</Text>
       </Pressable>
 
-      {/* サブ導線（控えめ） */}
-      <View style={styles.subNav}>
-        <Pressable onPress={() => router.push("/search")} style={styles.subNavItem}>
-          <Text style={styles.subNavText}>地図でも確認する</Text>
-        </Pressable>
-        <Pressable onPress={() => router.push("/search")} style={styles.subNavItem}>
-          <Text style={styles.subNavText}>神社一覧も見る</Text>
-        </Pressable>
-        <Pressable onPress={() => router.push("/ranking")} style={styles.subNavItem}>
-          <Text style={styles.subNavText}>人気の神社を見る</Text>
-        </Pressable>
-        <Pressable onPress={() => router.push("/profile")} style={styles.subNavItem}>
-          <Text style={styles.subNavText}>記録を見る</Text>
-        </Pressable>
-      </View>
     </ScrollView>
   );
 }
@@ -326,27 +311,4 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
 
-  // サブ導線（控えめ）
-  subNav: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginTop: 32,
-    paddingTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: theme.borderSoft,
-  },
-  subNavItem: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: theme.borderSoft,
-    backgroundColor: "transparent",
-  },
-  subNavText: {
-    color: theme.navMuted,
-    fontSize: 12,
-    fontWeight: "600",
-  },
 });
