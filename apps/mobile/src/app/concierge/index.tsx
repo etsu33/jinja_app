@@ -120,15 +120,18 @@ export default function ConciergeScreen() {
   const [submitted, setSubmitted] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [results, setResults] = React.useState<RecommendationCard[]>([]);
+  const lastInitialQueryRef = React.useRef<string | null>(null);
 
-  // 初期クエリがあれば自動送信
+  // URLの相談内容が変わったら自動送信する
   React.useEffect(() => {
-    if (initialQuery) {
-      void submit(initialQuery);
-    }
-    // 初回のみ
+    if (!initialQuery || lastInitialQueryRef.current === initialQuery) return;
+
+    lastInitialQueryRef.current = initialQuery;
+    setInput(initialQuery);
+    void submit(initialQuery);
+    // submitはこの画面内の状態更新関数だけを使うため、initialQueryの変更だけを監視する
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [initialQuery]);
 
   const submit = async (text: string) => {
     const trimmed = text.trim();
