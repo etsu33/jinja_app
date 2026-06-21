@@ -86,43 +86,40 @@ export default function SearchPage() {
         </View>
       </View>
 
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>神社一覧</Text>
-        <Text style={styles.sectionCount}>{visibleShrines.length}件</Text>
-      </View>
-
-      <View style={styles.list}>
-        {visibleShrines.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyTitle}>該当する神社がありませんでした</Text>
-            <Text style={styles.emptyText}>条件を変えるか、相談タブから今の気持ちを入力して探してみてください。</Text>
+      {visibleShrines.length > 0 ? (
+        <>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>神社一覧</Text>
+            <Text style={styles.sectionCount}>{visibleShrines.length}件</Text>
           </View>
-        ) : null}
 
-        {visibleShrines.map((s) => (
-          <Pressable
-            key={s.id}
-            onPress={() => router.push(`/shrines/${s.id}`)}
-            style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-          >
-            <Image source={{ uri: s.imageUrl }} style={styles.cardImage} />
-            <View style={styles.cardBody}>
-              <Text style={styles.cardName}>{s.name}</Text>
-              <Text style={styles.cardArea}>{s.prefecture}</Text>
-              <View style={styles.miniTagRow}>
-                {s.tags.slice(0, 3).map((t) => (
-                  <View key={t} style={styles.miniTag}>
-                    <Text style={styles.miniTagText}>{t}</Text>
+          <View style={styles.list}>
+            {visibleShrines.map((s) => (
+              <Pressable
+                key={s.id}
+                onPress={() => router.push(`/shrines/${s.id}`)}
+                style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+              >
+                <Image source={{ uri: s.imageUrl }} style={styles.cardImage} />
+                <View style={styles.cardBody}>
+                  <Text style={styles.cardName}>{s.name}</Text>
+                  <Text style={styles.cardArea}>{s.prefecture}</Text>
+                  <View style={styles.miniTagRow}>
+                    {s.tags.slice(0, 3).map((t) => (
+                      <View key={t} style={styles.miniTag}>
+                        <Text style={styles.miniTagText}>{t}</Text>
+                      </View>
+                    ))}
                   </View>
-                ))}
-              </View>
-            </View>
-            <Text accessibilityElementsHidden style={styles.chevron}>
-              ›
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+                </View>
+                <Text accessibilityElementsHidden style={styles.chevron}>
+                  ›
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </>
+      ) : null}
     </ScrollView>
   );
 }
@@ -283,25 +280,6 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: 12,
-  },
-  emptyCard: {
-    backgroundColor: theme.surface,
-    borderWidth: 1,
-    borderColor: theme.border,
-    borderRadius: 18,
-    padding: 18,
-    gap: 8,
-  },
-  emptyTitle: {
-    color: theme.text,
-    fontSize: 15,
-    fontWeight: "900",
-  },
-  emptyText: {
-    color: theme.muted,
-    fontSize: 13,
-    lineHeight: 20,
-    fontWeight: "600",
   },
   card: {
     flexDirection: "row",
