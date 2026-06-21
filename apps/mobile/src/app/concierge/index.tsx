@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { kamimusubiDark as theme } from "../../../app/theme";
+import { post } from "../../../lib/http";
 
 // ────────────────────────────────────────────
 // 型
@@ -36,6 +37,12 @@ type RecommendationApiCard = {
   shrine_id?: string;
 };
 
+type ConciergeChatResponse = {
+  data?: {
+    recommendations?: RecommendationApiCard[];
+  };
+};
+
 function toRecommendationCard(item: RecommendationApiCard, index: number): RecommendationCard {
   return {
     id: item.id ?? `recommendation-${index + 1}`,
@@ -52,10 +59,12 @@ function normalizeRecommendations(items: RecommendationApiCard[]): Recommendatio
   return items.map(toRecommendationCard);
 }
 
-async function fetchConciergeRecommendations(_consultation: string): Promise<RecommendationCard[]> {
-  // TODO: API接続時はここを実API呼び出しへ差し替える
-  await new Promise((resolve) => setTimeout(resolve, 1200));
-  return normalizeRecommendations(DUMMY_RESULTS);
+async function fetchConciergeRecommendations(consultation: string): Promise<RecommendationCard[]> {
+  const body = await post<ConciergeChatResponse>("/concierge/chat/", {
+    query: consultation,
+  });
+
+  return normalizeRecommendations(body.data?.recommendations ?? []);
 }
 
 // ────────────────────────────────────────────
