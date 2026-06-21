@@ -9,43 +9,35 @@ export default function SearchPage() {
   const query = (q ?? "").toLowerCase();
   const selected = (filters ?? "").split(",").filter(Boolean);
 
-  const filtered = SHRINES.filter(s => {
+  const filtered = SHRINES.filter((s) => {
     const textHit =
       !query ||
       s.name.toLowerCase().includes(query) ||
-      s.tags.some(t => t.toLowerCase().includes(query)) ||
+      s.tags.some((t) => t.toLowerCase().includes(query)) ||
       (s.prefecture ?? "").toLowerCase().includes(query);
 
-    const tagsHit =
-      selected.length === 0 ||
-      selected.every(sel => s.tags.includes(sel) || s.prefecture === sel);
+    const tagsHit = selected.length === 0 || selected.every((sel) => s.tags.includes(sel) || s.prefecture === sel);
 
     return textHit && tagsHit;
   });
 
   const popularShrines = [...SHRINES]
-    .sort(
-      (a, b) =>
-        (b.favorites ?? 0) - (a.favorites ?? 0) ||
-        (b.rating ?? 0) - (a.rating ?? 0),
-    )
+    .sort((a, b) => (b.favorites ?? 0) - (a.favorites ?? 0) || (b.rating ?? 0) - (a.rating ?? 0))
     .slice(0, 3);
+
+  const popularShrineIds = new Set(popularShrines.map((s) => String(s.id)));
+  const visibleShrines = filtered.filter((s) => !popularShrineIds.has(String(s.id)));
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Pressable
-        onPress={() => router.canGoBack() ? router.back() : router.replace("/")}
-        style={styles.back}
-      >
+      <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))} style={styles.back}>
         <Text style={styles.backText}>← 戻る</Text>
       </Pressable>
 
       <View style={styles.hero}>
         <Text style={styles.heroLead}>神社を探す</Text>
         <Text style={styles.heroTitle}>今の気持ちに合う神社を、{`\n`}静かに見つける</Text>
-        <Text style={styles.heroSub}>
-          地域やご利益、気になる言葉から、参拝先の候補を確認できます。
-        </Text>
+        <Text style={styles.heroSub}>地域やご利益、気になる言葉から、参拝先の候補を確認できます。</Text>
       </View>
 
       <View style={styles.summaryCard}>
@@ -86,7 +78,9 @@ export default function SearchPage() {
                   ★ {(s.rating ?? 4.6).toFixed(1)}　♡ {s.favorites ?? 0}
                 </Text>
               </View>
-              <Text accessibilityElementsHidden style={styles.chevron}>›</Text>
+              <Text accessibilityElementsHidden style={styles.chevron}>
+                ›
+              </Text>
             </Pressable>
           ))}
         </View>
@@ -94,18 +88,18 @@ export default function SearchPage() {
 
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>神社一覧</Text>
-        <Text style={styles.sectionCount}>{filtered.length}件</Text>
+        <Text style={styles.sectionCount}>{visibleShrines.length}件</Text>
       </View>
 
       <View style={styles.list}>
-        {filtered.length === 0 ? (
+        {visibleShrines.length === 0 ? (
           <View style={styles.emptyCard}>
             <Text style={styles.emptyTitle}>該当する神社がありませんでした</Text>
             <Text style={styles.emptyText}>条件を変えるか、相談タブから今の気持ちを入力して探してみてください。</Text>
           </View>
         ) : null}
 
-        {filtered.map((s) => (
+        {visibleShrines.map((s) => (
           <Pressable
             key={s.id}
             onPress={() => router.push(`/shrines/${s.id}`)}
@@ -123,7 +117,9 @@ export default function SearchPage() {
                 ))}
               </View>
             </View>
-            <Text accessibilityElementsHidden style={styles.chevron}>›</Text>
+            <Text accessibilityElementsHidden style={styles.chevron}>
+              ›
+            </Text>
           </Pressable>
         ))}
       </View>
