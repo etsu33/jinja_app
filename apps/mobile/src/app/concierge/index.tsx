@@ -183,7 +183,7 @@ export default function ConciergeScreen() {
           <Pressable onPress={() => router.back()} style={styles.backBtn}>
             <Text style={styles.backText}>← 戻る</Text>
           </Pressable>
-          <Text style={styles.headerTitle}>神社との縁を探す</Text>
+          <Text style={styles.headerTitle}>おすすめの神社</Text>
         </View>
 
         {/* チャット */}
@@ -216,9 +216,7 @@ export default function ConciergeScreen() {
         {submitted && results.length > 0 ? (
           <View style={styles.resultsArea}>
             <View style={styles.resultsLabelRow}>
-              <View style={styles.resultsLabelLine} />
-              <Text style={styles.resultsLabel}>推薦結果</Text>
-              <View style={styles.resultsLabelLine} />
+              <Text style={styles.resultsLabel}>今の相談に近い神社</Text>
             </View>
             {results.map((card, i) => (
               <ResultCard
@@ -264,7 +262,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.background,
   },
   scrollContent: {
-    paddingBottom: 120,
+    paddingBottom: 104,
   },
 
   // ヘッダー
@@ -272,9 +270,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
+    paddingHorizontal: 18,
+    paddingTop: 18,
+    paddingBottom: 14,
     borderBottomWidth: 1,
     borderBottomColor: theme.borderHeader,
   },
@@ -296,9 +294,9 @@ const styles = StyleSheet.create({
 
   // チャット
   chatArea: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    gap: 10,
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    gap: 8,
   },
   bubble: {
     maxWidth: "84%",
@@ -342,25 +340,17 @@ const styles = StyleSheet.create({
   // 結果
   resultsArea: {
     paddingHorizontal: 16,
-    paddingTop: 24,
-    gap: 14,
+    paddingTop: 18,
+    gap: 12,
   },
   resultsLabelRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 4,
-  },
-  resultsLabelLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: theme.borderHeader,
+    marginBottom: 2,
   },
   resultsLabel: {
     color: theme.mutedSoft,
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "700",
-    letterSpacing: 2,
+    letterSpacing: 0.6,
   },
 
   // カード
@@ -486,34 +476,34 @@ const styles = StyleSheet.create({
     bottom: 0,
     flexDirection: "row",
     alignItems: "flex-end",
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 24,
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: 18,
     backgroundColor: theme.background,
     borderTopWidth: 1,
     borderTopColor: theme.borderHeader,
   },
   input: {
     flex: 1,
-    minHeight: 50,
+    minHeight: 46,
     maxHeight: 120,
     backgroundColor: theme.surface,
     borderWidth: 1,
     borderColor: theme.border,
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    borderRadius: 16,
+    paddingHorizontal: 13,
+    paddingVertical: 10,
     color: theme.text,
     fontSize: 15,
     lineHeight: 22,
   },
   sendBtn: {
-    width: 54,
-    height: 54,
+    width: 50,
+    height: 50,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 27,
+    borderRadius: 25,
     backgroundColor: theme.gold,
   },
   sendBtnDisabled: {
