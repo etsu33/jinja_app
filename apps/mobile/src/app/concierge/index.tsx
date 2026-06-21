@@ -8,7 +8,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  ActivityIndicator,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { kamimusubiDark as theme } from "../../../app/theme";
@@ -20,21 +19,48 @@ type RecommendationCard = {
   id: string;
   name: string;
   area: string;
+  connection: string;
   reason: string;
   tags: string[];
   shrineId?: string;
 };
 
-type Msg = { id: string; role: "user" | "assistant"; content: string };
+type RecommendationApiCard = {
+  id?: string;
+  name?: string;
+  area?: string;
+  connection?: string;
+  reason?: string;
+  tags?: string[];
+  shrineId?: string;
+  shrine_id?: string;
+};
+
+function toRecommendationCard(item: RecommendationApiCard, index: number): RecommendationCard {
+  return {
+    id: item.id ?? `recommendation-${index + 1}`,
+    name: item.name ?? "名称未設定の神社",
+    area: item.area ?? "所在地未設定",
+    connection: item.connection ?? "今の相談内容と近い意味を持つご縁",
+    reason: item.reason ?? "相談内容に近い意味やご利益をもとに選ばれた神社です。",
+    tags: item.tags ?? [],
+    shrineId: item.shrineId ?? item.shrine_id,
+  };
+}
+
+function normalizeRecommendations(items: RecommendationApiCard[]): RecommendationCard[] {
+  return items.map(toRecommendationCard);
+}
 
 // ────────────────────────────────────────────
 // ダミーデータ（APIが繋がったら差し替え）
 // ────────────────────────────────────────────
-const DUMMY_RESULTS: RecommendationCard[] = [
+const DUMMY_RESULTS: RecommendationApiCard[] = [
   {
     id: "r1",
     name: "明治神宮",
     area: "東京都渋谷区",
+    connection: "迷いや転機を、静かに整えるご縁",
     reason: "仕事の迷いや転機に向き合う際、静かな杜の中で自分を見つめ直せる神域です。",
     tags: ["開運招福", "厄除け", "縁結び"],
     shrineId: "meiji",
@@ -43,6 +69,7 @@ const DUMMY_RESULTS: RecommendationCard[] = [
     id: "r2",
     name: "神田明神",
     area: "東京都千代田区",
+    connection: "仕事や前進の流れを結び直すご縁",
     reason: "仕事運・商売繁盛の御利益で知られ、新しい一歩を踏み出す力を授けてくれます。",
     tags: ["仕事運", "商売繁盛", "厄除け"],
     shrineId: "kanda",
@@ -51,6 +78,7 @@ const DUMMY_RESULTS: RecommendationCard[] = [
     id: "r3",
     name: "根津神社",
     area: "東京都文京区",
+    connection: "心を落ち着かせ、今の自分に戻るご縁",
     reason: "静かな境内で心を落ち着かせ、今の気持ちを整理するのに向いています。",
     tags: ["縁結び", "健康長寿"],
     shrineId: "nezu",
@@ -76,6 +104,7 @@ function ResultCard({
         <View style={styles.rankBadge}>
           <Text style={styles.rankBadgeText}>{rank}</Text>
         </View>
+        <Text style={styles.rankLabel}>ご縁{rank}</Text>
         <View style={styles.rankLine} />
       </View>
 
@@ -85,13 +114,19 @@ function ResultCard({
         <Text style={styles.cardArea}>{card.area}</Text>
       </View>
 
+      {/* 今の相談とのつながり */}
+      <View style={styles.connectionBlock}>
+        <Text style={styles.connectionLabel}>今の相談とのつながり</Text>
+        <Text style={styles.connectionText}>{card.connection}</Text>
+      </View>
+
       {/* 推薦理由 */}
-      <Text style={styles.cardReason}>{card.reason}</Text>
+      <Text style={styles.cardReason} numberOfLines={3}>{card.reason}</Text>
 
       {/* タグ */}
       {card.tags.length > 0 ? (
         <View style={styles.tagRow}>
-          {card.tags.map((tag) => (
+          {card.tags.slice(0, 2).map((tag) => (
             <View key={tag} style={styles.tagPill}>
               <Text style={styles.tagText}>{tag}</Text>
             </View>
@@ -102,7 +137,7 @@ function ResultCard({
       {/* CTA */}
       <View style={styles.ctaRow}>
         <Pressable onPress={onDetail} style={styles.ctaPrimary}>
-          <Text style={styles.ctaPrimaryText}>詳細を見る</Text>
+          <Text style={styles.ctaPrimaryText}>この神社を詳しく見る</Text>
         </Pressable>
       </View>
     </View>
@@ -119,47 +154,36 @@ export default function ConciergeScreen() {
   const initialQuery = [params.q, params.theme].filter(Boolean).join(" ").trim();
 
   const [input, setInput] = React.useState(initialQuery);
+  const [consultationText, setConsultationText] = React.useState(initialQuery);
   const [submitted, setSubmitted] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [results, setResults] = React.useState<RecommendationCard[]>([]);
-  const [messages, setMessages] = React.useState<Msg[]>([
-    {
-      id: "sys1",
-      role: "assistant",
-      content: "今の気持ちや願いを教えてください。あなたに合う神社とのご縁を探します。",
-    },
-  ]);
+  const lastInitialQueryRef = React.useRef<string | null>(null);
 
-  // 初期クエリがあれば自動送信
+  // URLの相談内容が変わったら自動送信する
   React.useEffect(() => {
-    if (initialQuery) {
-      void submit(initialQuery);
-    }
-    // 初回のみ
+    if (!initialQuery || lastInitialQueryRef.current === initialQuery) return;
+
+    lastInitialQueryRef.current = initialQuery;
+    setInput(initialQuery);
+    void submit(initialQuery);
+    // submitはこの画面内の状態更新関数だけを使うため、initialQueryの変更だけを監視する
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [initialQuery]);
 
   const submit = async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed) return;
 
-    const userMsg: Msg = { id: String(Date.now()), role: "user", content: trimmed };
-    setMessages((prev) => [...prev, userMsg]);
+    setConsultationText(trimmed);
     setInput("");
     setLoading(true);
     setSubmitted(false);
-    setResults([]);
 
     // ダミー遅延（APIに差し替え予定）
     await new Promise((r) => setTimeout(r, 1200));
 
-    const aiMsg: Msg = {
-      id: String(Date.now() + 1),
-      role: "assistant",
-      content: `「${trimmed}」をもとに、あなたに合う神社を3社選びました。`,
-    };
-    setMessages((prev) => [...prev, aiMsg]);
-    setResults(DUMMY_RESULTS);
+    setResults(normalizeRecommendations(DUMMY_RESULTS));
     setLoading(false);
     setSubmitted(true);
   };
@@ -183,31 +207,21 @@ export default function ConciergeScreen() {
           <Pressable onPress={() => router.back()} style={styles.backBtn}>
             <Text style={styles.backText}>← 戻る</Text>
           </Pressable>
-          <Text style={styles.headerTitle}>おすすめの神社</Text>
+          <Text style={styles.headerTitle}>ご縁の候補</Text>
         </View>
 
-        {/* チャット */}
-        <View style={styles.chatArea}>
-          {messages.map((m) => (
-            <View
-              key={m.id}
-              style={[styles.bubble, m.role === "user" ? styles.bubbleUser : styles.bubbleAssistant]}
-            >
-              <Text
-                style={[
-                  styles.bubbleText,
-                  m.role === "user" ? styles.bubbleTextUser : styles.bubbleTextAssistant,
-                ]}
-              >
-                {m.content}
-              </Text>
-            </View>
-          ))}
+        {/* 相談内容 */}
+        <View style={styles.consultationArea}>
+          <View style={styles.consultationCard}>
+            <Text style={styles.consultationLabel}>相談内容</Text>
+            <Text style={styles.consultationText}>
+              {consultationText || "ホームで選んだ相談内容をもとに、おすすめの神社を表示します。"}
+            </Text>
+          </View>
 
           {loading ? (
             <View style={styles.loadingRow}>
-              <ActivityIndicator size="small" color={theme.gold} />
-              <Text style={styles.loadingText}>ご縁を探しています…</Text>
+              <Text style={styles.loadingText}>新しい相談内容から、ご縁を結び直しています…</Text>
             </View>
           ) : null}
         </View>
@@ -215,8 +229,9 @@ export default function ConciergeScreen() {
         {/* 結果カード */}
         {submitted && results.length > 0 ? (
           <View style={styles.resultsArea}>
-            <View style={styles.resultsLabelRow}>
-              <Text style={styles.resultsLabel}>今の相談に近い神社</Text>
+            <View style={styles.resultsIntro}>
+              <Text style={styles.resultsLabel}>今の相談から結ばれた神社</Text>
+              <Text style={styles.resultsLead}>必要な時だけ、下の入力欄から条件を変えて再相談できます。</Text>
             </View>
             {results.map((card, i) => (
               <ResultCard
@@ -235,7 +250,7 @@ export default function ConciergeScreen() {
         <TextInput
           value={input}
           onChangeText={setInput}
-          placeholder="今の気持ちや願いを書いてください"
+          placeholder="条件を変える時だけ、追加で相談する"
           placeholderTextColor={theme.mutedDark}
           style={styles.input}
           multiline
@@ -292,43 +307,34 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 
-  // チャット
-  chatArea: {
+  consultationArea: {
     paddingHorizontal: 18,
     paddingTop: 16,
     gap: 8,
   },
-  bubble: {
-    maxWidth: "84%",
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  bubbleUser: {
-    alignSelf: "flex-end",
-    backgroundColor: theme.gold,
-  },
-  bubbleAssistant: {
-    alignSelf: "flex-start",
+  consultationCard: {
     backgroundColor: theme.surface,
     borderWidth: 1,
-    borderColor: theme.border,
+    borderColor: theme.borderGold,
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 6,
   },
-  bubbleText: {
+  consultationLabel: {
+    color: theme.goldSoft,
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1.2,
+  },
+  consultationText: {
+    color: theme.text,
     fontSize: 15,
     lineHeight: 22,
-    fontWeight: "600",
+    fontWeight: "800",
   },
-  bubbleTextUser: {
-    color: theme.background,
-  },
-  bubbleTextAssistant: {
-    color: theme.text,
-  },
+
   loadingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
     paddingVertical: 8,
   },
   loadingText: {
@@ -337,20 +343,26 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  // 結果
   resultsArea: {
     paddingHorizontal: 16,
     paddingTop: 18,
-    gap: 12,
+    gap: 14,
   },
-  resultsLabelRow: {
+  resultsIntro: {
+    gap: 4,
     marginBottom: 2,
   },
   resultsLabel: {
-    color: theme.mutedSoft,
+    color: theme.goldSoft,
+    fontSize: 13,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+  },
+  resultsLead: {
+    color: theme.muted,
     fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 0.6,
+    lineHeight: 18,
+    fontWeight: "600",
   },
 
   // カード
@@ -358,16 +370,16 @@ const styles = StyleSheet.create({
     backgroundColor: theme.surface,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: theme.border,
-    paddingHorizontal: 20,
-    paddingTop: 18,
-    paddingBottom: 20,
-    gap: 14,
+    borderColor: theme.borderGold,
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    paddingBottom: 18,
+    gap: 12,
     shadowColor: "#000",
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 5,
+    shadowOpacity: 0.28,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 7 },
+    elevation: 4,
   },
 
   // ランク
@@ -377,19 +389,24 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   rankBadge: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    borderWidth: 1,
-    borderColor: theme.borderGold,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: theme.gold,
     alignItems: "center",
     justifyContent: "center",
   },
   rankBadgeText: {
-    color: theme.gold,
+    color: theme.background,
     fontSize: 12,
     fontWeight: "900",
     lineHeight: 14,
+  },
+  rankLabel: {
+    color: theme.goldSoft,
+    fontSize: 12,
+    fontWeight: "900",
+    letterSpacing: 0.8,
   },
   rankLine: {
     flex: 1,
@@ -403,9 +420,9 @@ const styles = StyleSheet.create({
   },
   cardName: {
     color: theme.text,
-    fontSize: 20,
+    fontSize: 19,
     fontWeight: "900",
-    letterSpacing: 0.4,
+    letterSpacing: 0.3,
   },
   cardArea: {
     color: theme.muted,
@@ -414,11 +431,30 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
 
+  connectionBlock: {
+    borderLeftWidth: 2,
+    borderLeftColor: theme.borderGold,
+    paddingLeft: 10,
+    gap: 4,
+  },
+  connectionLabel: {
+    color: theme.goldSoft,
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.7,
+  },
+  connectionText: {
+    color: theme.text,
+    fontSize: 14,
+    lineHeight: 21,
+    fontWeight: "800",
+  },
+
   // 推薦理由
   cardReason: {
     color: theme.mutedSoft,
-    fontSize: 14,
-    lineHeight: 23,
+    fontSize: 13,
+    lineHeight: 22,
     fontWeight: "600",
   },
 
@@ -426,33 +462,33 @@ const styles = StyleSheet.create({
   tagRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 7,
+    gap: 6,
   },
   tagPill: {
-    paddingHorizontal: 11,
+    paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: theme.borderGold,
-    backgroundColor: "transparent",
+    borderColor: theme.borderSoft,
+    backgroundColor: theme.surfaceSoft,
   },
   tagText: {
     color: theme.goldSoft,
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 0.3,
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.2,
   },
 
   // CTA
   ctaRow: {
     flexDirection: "row",
     gap: 8,
-    marginTop: 2,
+    marginTop: 4,
   },
   ctaPrimary: {
     flex: 1,
-    height: 48,
-    borderRadius: 14,
+    height: 50,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: theme.gold,

@@ -41,15 +41,15 @@ export default function Home() {
 
       {/* Hero */}
       <View style={styles.hero}>
-        <Text style={styles.heroLead}>今の相談から、向かう神社を見つける</Text>
+        <Text style={styles.heroLead}>今の相談を、神社とのご縁につなげる</Text>
         <Text style={styles.heroSub}>
-          悩みや願いを一言にすると、今の状態に合う神社を探しやすくなります。
+          ここでは相談内容だけを整えます。次の画面で、今の相談から結ばれた神社を確認できます。
         </Text>
       </View>
 
       {/* テーマチップ */}
       <View style={styles.themeSection}>
-        <Text style={styles.themeLabel}>ことばが浮かばないときは、ここから</Text>
+        <Text style={styles.themeLabel}>まずは近い相談テーマを選ぶ</Text>
         <View style={styles.themeGrid}>
           {THEMES.map((t) => {
             const active = selectedTheme === t;
@@ -69,7 +69,7 @@ export default function Home() {
       {/* 自由入力カード */}
       <View style={styles.chatCard}>
         <TextInput
-          placeholder="例: 気持ちを切り替えたい、前に進みたい"
+          placeholder="例: 迷いを整理して、前に進むきっかけがほしい"
           placeholderTextColor={theme.mutedDark}
           style={styles.chatInput}
           value={consultation}
@@ -78,7 +78,7 @@ export default function Home() {
           textAlignVertical="top"
         />
         <View style={styles.chatFooter}>
-          <Text style={styles.aiHint}>AIがあなたの言葉からご縁を結びます</Text>
+          <Text style={styles.aiHint}>相談内容を整えて、ご縁の候補へ進みます</Text>
           <Pressable onPress={openConcierge} style={styles.sendButton}>
             <Text style={styles.sendButtonText}>↑</Text>
           </Pressable>
@@ -98,14 +98,14 @@ export default function Home() {
       {showConditions ? (
         <View style={styles.conditionHint}>
           <Text style={styles.conditionHintText}>
-            誕生日・ご利益・参拝スタイルは次のステップで追加できます。
+            誕生日・ご利益・参拝スタイルは、相談内容を補う条件として後続で追加します。
           </Text>
         </View>
       ) : null}
 
       {/* 主CTA */}
       <Pressable onPress={openConcierge} style={styles.primaryCta}>
-        <Text style={styles.primaryCtaText}>この相談ではじめる</Text>
+        <Text style={styles.primaryCtaText}>この相談からご縁を見る</Text>
       </Pressable>
 
     </ScrollView>
