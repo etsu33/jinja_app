@@ -207,6 +207,14 @@ export default function ShrineDetail() {
         </View>
       ) : null}
 
+      {/* 参拝前のヒント */}
+      <View style={styles.visitHintCard}>
+        <Text style={styles.visitHintLabel}>参拝前のヒント</Text>
+        <Text style={styles.visitHintText}>
+          まずは由緒やご利益を確認してから、必要なら経路案内を開けます。
+        </Text>
+      </View>
+
       {/* 説明文 */}
       <View style={styles.descCard}>
         <Text style={styles.descLabel}>神社について</Text>
@@ -223,8 +231,9 @@ export default function ShrineDetail() {
 
       {/* CTA */}
       <View style={styles.ctaBlock}>
-        <Pressable onPress={openDirections} style={styles.ctaPrimary}>
-          <Text style={styles.ctaPrimaryText}>経路案内を開く</Text>
+        <Text style={styles.ctaCaption}>参拝に行くと決めたら、地図で経路を確認できます。</Text>
+        <Pressable onPress={openDirections} style={styles.ctaSecondary}>
+          <Text style={styles.ctaSecondaryText}>地図で経路を確認する</Text>
         </Pressable>
       </View>
     </ScrollView>
@@ -359,6 +368,31 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
 
+  // 参拝前のヒント
+  visitHintCard: {
+    marginHorizontal: spacing.screenX,
+    marginTop: spacing.sectionTop,
+    backgroundColor: theme.surfaceSoft,
+    borderRadius: radius.md,
+    borderWidth: cardSizes.borderWidth,
+    borderColor: theme.borderSoft,
+    paddingHorizontal: cardSizes.cardPaddingMd,
+    paddingVertical: spacing.lgGap,
+    gap: spacing.tightGap,
+  },
+  visitHintLabel: {
+    color: theme.goldSoft,
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1.2,
+  },
+  visitHintText: {
+    color: theme.mutedSoft,
+    fontSize: 13,
+    lineHeight: 20,
+    fontWeight: "600",
+  },
+
   // 説明文カード
   descCard: {
     marginHorizontal: spacing.screenX,
@@ -403,24 +437,28 @@ const styles = StyleSheet.create({
   // CTA
   ctaBlock: {
     paddingHorizontal: spacing.screenX,
-    marginTop: spacing.sectionTop,
+    marginTop: spacing.xlGap,
     gap: spacing.mdGap,
   },
-  ctaPrimary: {
-    height: ctaSizes.primaryHeight,
-    borderRadius: ctaSizes.primaryRadius,
+  ctaCaption: {
+    color: theme.muted,
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  ctaSecondary: {
+    height: ctaSizes.mediumHeight,
+    borderRadius: ctaSizes.mediumRadius,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: theme.gold,
-    shadowColor: theme.gold,
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
+    backgroundColor: "transparent",
+    borderWidth: cardSizes.borderWidth,
+    borderColor: theme.borderGold,
   },
-  ctaPrimaryText: {
-    color: theme.background,
-    fontSize: 16,
+  ctaSecondaryText: {
+    color: theme.gold,
+    fontSize: 14,
     fontWeight: "800",
     letterSpacing: 0.3,
   },
