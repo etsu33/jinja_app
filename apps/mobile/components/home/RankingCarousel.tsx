@@ -1,10 +1,12 @@
 // apps/mobile/components/home/RankingCarousel.tsx
 import * as React from "react";
-import { Image, ScrollView, Text, View, StyleSheet, Pressable, Platform } from "react-native";
+import { Image, ScrollView, Text, View, StyleSheet, Pressable } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { getFavorites, toggleFavorite } from "../../lib/storage";
 import { spacing } from "../../app/design/spacing";
 import { cardSizes } from "../../app/design/cardSizes";
+import { shadows } from "../../app/design/shadow";
+import { kamimusubiDark as theme } from "../../app/theme";
 
 type Shrine = {
   id: string;
@@ -100,11 +102,19 @@ export default function RankingCarousel({ items }: { items: Shrine[] }) {
   );
 }
 
-const shadow = Platform.select({
-  ios: { shadowColor: "#000", shadowOpacity: 0.08, shadowRadius: 12, shadowOffset: { width: 0, height: 6 } },
-  android: { elevation: 3 },
-  default: { boxShadow: "0 6px 16px rgba(0,0,0,0.08)" } as any,
-});
+const rankingCarouselColors = {
+  badgeBackground: theme.gold,
+  badgeText: theme.background,
+  cardBackground: theme.text,
+  cardBorder: theme.border,
+  favoriteBorder: theme.gold,
+  favoriteBackground: theme.borderGoldDark,
+  tagBackground: theme.outside,
+  metaText: theme.mutedDark,
+  heartBackground: theme.text,
+  heartText: theme.background,
+  heartTextFav: theme.gold,
+} as const;
 
 const styles = StyleSheet.create({
   headerRow: {
@@ -129,26 +139,26 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 18, fontWeight: "600" },
   badge: {
-    backgroundColor: "#F2C94C",
+    backgroundColor: rankingCarouselColors.badgeBackground,
     paddingHorizontal: spacing.smGap,
     paddingVertical: spacing.tightGap,
     borderRadius: cardSizes.radiusSm / 2,
   },
-  badgeText: { fontSize: 12, fontWeight: "500", color: "#111" },
+  badgeText: { fontSize: 12, fontWeight: "500", color: rankingCarouselColors.badgeText },
 
   card: {
     width: cardSizes.carouselWidthLg,
     borderRadius: cardSizes.radiusMd,
-    backgroundColor: "white",
+    backgroundColor: rankingCarouselColors.cardBackground,
     borderWidth: cardSizes.borderWidth,
-    borderColor: "#e6e6e6",
+    borderColor: rankingCarouselColors.cardBorder,
     overflow: "hidden",
     position: "relative",
-    ...shadow,
+    ...shadows.lightCard,
   },
   cardFav: {
-    borderColor: "#E24E33",
-    backgroundColor: "rgba(226,78,51,0.06)",
+    borderColor: rankingCarouselColors.favoriteBorder,
+    backgroundColor: rankingCarouselColors.favoriteBackground,
   },
   img: {
     width: "100%",
@@ -167,7 +177,7 @@ const styles = StyleSheet.create({
   },
   tag: {
     borderRadius: cardSizes.pillRadius,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: rankingCarouselColors.tagBackground,
     paddingHorizontal: spacing.smGap,
     paddingVertical: 2,
     marginRight: spacing.inlineGap - 1,
@@ -175,7 +185,7 @@ const styles = StyleSheet.create({
   },
   tagText: { fontSize: 11 },
   rowSpace: { flexDirection: "row", justifyContent: "space-between" },
-  meta: { color: "#666", fontSize: 12 },
+  meta: { color: rankingCarouselColors.metaText, fontSize: 12 },
 
   heartFab: {
     position: "absolute",
@@ -185,14 +195,14 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.tightGap,
     paddingHorizontal: spacing.smGap,
     borderRadius: cardSizes.pillRadius,
-    backgroundColor: "#fff",
+    backgroundColor: rankingCarouselColors.heartBackground,
     borderWidth: cardSizes.borderWidth,
-    borderColor: "#e6e6e6",
+    borderColor: rankingCarouselColors.cardBorder,
   },
   heartFabFav: {
-    borderColor: "#E24E33",
-    backgroundColor: "#fff",
+    borderColor: rankingCarouselColors.favoriteBorder,
+    backgroundColor: rankingCarouselColors.heartBackground,
   },
-  heartFabText: { fontSize: 14, color: "#111" },
-  heartFabTextFav: { color: "#E24E33" },
+  heartFabText: { fontSize: 14, color: rankingCarouselColors.heartText },
+  heartFabTextFav: { color: rankingCarouselColors.heartTextFav },
 });
