@@ -4,6 +4,8 @@ import { Pressable, View, Text, StyleSheet, Image } from "react-native";
 import { Link } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { kamimusubiDark as theme } from "../app/theme";
+import { spacing } from "../app/design/spacing";
+import { cardSizes } from "../app/design/cardSizes";
 // import { useFavorite } from "@/hooks/useFavorite"; // 共有フックがあるなら使用
 
 type BaseProps = {
@@ -117,7 +119,7 @@ function CardWithFavorite(props: BaseProps) {
           </Text>
 
           {/* 右上に☆ボタン */}
-          <Pressable onPress={toggle} disabled={busy} hitSlop={8}>
+          <Pressable onPress={toggle} disabled={busy} hitSlop={spacing.smGap}>
             <MaterialIcons
               name={fav ? "star" : "star-border"}
               size={20}
@@ -168,10 +170,10 @@ export default function PopularShrineCard(props: WithFavProps) {
 
 const styles = StyleSheet.create({
   card: {
-    width: 220,
-    borderRadius: 16,
+    width: cardSizes.carouselWidth,
+    borderRadius: cardSizes.radiusMd,
     backgroundColor: theme.surface,
-    borderWidth: 1,
+    borderWidth: cardSizes.borderWidth,
     borderColor: theme.border,
     shadowColor: "#000",
     shadowOpacity: 0.3,
@@ -183,7 +185,7 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.85 },
   cardInner: { backgroundColor: theme.surface },
   image: { width: "100%", aspectRatio: 16 / 9, resizeMode: "cover" },
-  content: { padding: 12, gap: 5 },
+  content: { padding: cardSizes.cardPaddingSm, gap: spacing.inlineGap - 2 },
   row: {
     flexDirection: "row",
     alignItems: "center",
@@ -194,7 +196,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "800",
     flexShrink: 1,
-    marginRight: 6,
+    marginRight: spacing.inlineGap - 1,
   },
   addr: {
     color: theme.muted,
@@ -204,8 +206,8 @@ const styles = StyleSheet.create({
   ratingRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    marginTop: 2,
+    gap: spacing.tightGap,
+    marginTop: spacing.tightGap / 2,
   },
   ratingText: {
     color: theme.goldSoft,
@@ -213,10 +215,10 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 9999,
-    borderWidth: 1,
+    paddingHorizontal: spacing.smGap,
+    paddingVertical: spacing.tightGap / 2,
+    borderRadius: cardSizes.pillRadius,
+    borderWidth: cardSizes.borderWidth,
     borderColor: theme.borderGold,
     backgroundColor: "transparent",
   },
