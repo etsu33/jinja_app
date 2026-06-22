@@ -7,6 +7,7 @@ import { kamimusubiDark as theme } from "../app/theme";
 import { spacing } from "../app/design/spacing";
 import { cardSizes } from "../app/design/cardSizes";
 import { radius } from "../app/design/radius";
+import { shadows } from "../app/design/shadow";
 // import { useFavorite } from "@/hooks/useFavorite"; // 共有フックがあるなら使用
 
 type BaseProps = {
@@ -176,11 +177,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.surface,
     borderWidth: cardSizes.borderWidth,
     borderColor: theme.border,
-    shadowColor: "#000",
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 4,
+    ...shadows.card,
     overflow: "hidden",
   },
   pressed: { opacity: 0.85 },
