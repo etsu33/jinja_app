@@ -5,6 +5,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { SHRINES } from "../../data/shrines";
 import { colors } from "../../app/theme";
+import { radius } from "../../app/design/radius";
 
 const KEY = "recent_shrines"; // string[] の ID を保存
 
@@ -37,10 +38,22 @@ export default function RecentViewed() {
             <Pressable
               key={s.id}
               onPress={() => router.push(`/shrines/${s.id}`)}
-              style={{ width: 200, marginRight: 12, padding: 12, borderRadius: 12, backgroundColor: colors.surfaceLight, borderWidth: 1, borderColor: colors.borderLight }}
+              style={{
+                width: 200,
+                marginRight: 12,
+                padding: 12,
+                borderRadius: radius.xs,
+                backgroundColor: colors.surfaceLight,
+                borderWidth: 1,
+                borderColor: colors.borderLight,
+              }}
             >
-              <Text style={{ fontWeight: "700" }} numberOfLines={1}>{s.name}</Text>
-              <Text style={{ color: colors.textMuted }} numberOfLines={1}>{s.address}</Text>
+              <Text style={{ fontWeight: "700" }} numberOfLines={1}>
+                {s.name}
+              </Text>
+              <Text style={{ color: colors.textMuted }} numberOfLines={1}>
+                {s.address}
+              </Text>
             </Pressable>
           ))}
         </ScrollView>
