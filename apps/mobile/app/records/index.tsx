@@ -47,6 +47,9 @@ const recordItems: readonly RecordCardProps[] = [
 
 const ROUTE_MAP: Record<string, string> = {
   favorites: "/favorites",
+  goshuin: "/goshuin",
+  "visit-history": "/visit-history",
+  "recently-viewed": "/recently-viewed",
 };
 
 function RecordCard({ title, description, meta, iconText, routeLabel }: RecordCardProps) {
