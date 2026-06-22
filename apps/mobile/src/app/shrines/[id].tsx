@@ -6,6 +6,10 @@ import { SHRINES } from "../../../data/shrines";
 import { incVisits, isFavorite, toggleFavorite, pushRecent } from "../../../lib/storage";
 import { kamimusubiDark as theme } from "../../../app/theme";
 import { get } from "../../../lib/http";
+import { spacing } from "../../../app/design/spacing";
+import { cardSizes } from "../../../app/design/cardSizes";
+import { ctaSizes } from "../../../app/design/ctaSizes";
+
 
 type Shrine = {
   id: string | number;
@@ -233,7 +237,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.background,
   },
   content: {
-    paddingBottom: 48,
+    paddingBottom: spacing.bottomSpaceLg,
   },
 
   // エラー画面
@@ -242,7 +246,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: theme.background,
-    gap: 16,
+    gap: spacing.xlGap,
   },
   errorText: {
     color: theme.muted,
@@ -261,7 +265,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.surface,
     alignItems: "center",
     justifyContent: "center",
-    borderBottomWidth: 1,
+    borderBottomWidth: cardSizes.borderWidth,
     borderBottomColor: theme.border,
   },
   heroPlaceholderText: {
@@ -273,15 +277,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
+    paddingHorizontal: spacing.screenX,
+    paddingTop: spacing.xlGap,
+    paddingBottom: spacing.smGap,
   },
   backBtn: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 999,
-    borderWidth: 1,
+    paddingVertical: ctaSizes.pillPaddingY,
+    paddingHorizontal: ctaSizes.pillPaddingX,
+    borderRadius: cardSizes.pillRadius,
+    borderWidth: cardSizes.borderWidth,
     borderColor: theme.borderGold,
     backgroundColor: "transparent",
   },
@@ -291,10 +295,10 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   favBtn: {
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderRadius: 999,
-    borderWidth: 1,
+    paddingVertical: ctaSizes.pillPaddingY,
+    paddingHorizontal: cardSizes.cardPaddingMd,
+    borderRadius: cardSizes.pillRadius,
+    borderWidth: cardSizes.borderWidth,
     borderColor: theme.border,
     backgroundColor: "transparent",
   },
@@ -313,10 +317,10 @@ const styles = StyleSheet.create({
 
   // 神社名・所在地
   titleBlock: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 4,
-    gap: 4,
+    paddingHorizontal: spacing.contentX,
+    paddingTop: spacing.lgGap,
+    paddingBottom: spacing.tightGap,
+    gap: spacing.tightGap,
   },
   shrineName: {
     color: theme.text,
@@ -336,15 +340,15 @@ const styles = StyleSheet.create({
   tagRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 7,
-    paddingHorizontal: 20,
-    paddingTop: 12,
+    gap: spacing.inlineGap,
+    paddingHorizontal: spacing.contentX,
+    paddingTop: spacing.lgGap,
   },
   tagPill: {
-    paddingHorizontal: 12,
+    paddingHorizontal: ctaSizes.pillPaddingX,
     paddingVertical: 5,
-    borderRadius: 999,
-    borderWidth: 1,
+    borderRadius: cardSizes.pillRadius,
+    borderWidth: cardSizes.borderWidth,
     borderColor: theme.borderGold,
     backgroundColor: "transparent",
   },
@@ -357,14 +361,14 @@ const styles = StyleSheet.create({
 
   // 説明文カード
   descCard: {
-    marginHorizontal: 16,
-    marginTop: 20,
+    marginHorizontal: spacing.screenX,
+    marginTop: spacing.sectionTop,
     backgroundColor: theme.surface,
-    borderRadius: 20,
-    borderWidth: 1,
+    borderRadius: cardSizes.radiusLg,
+    borderWidth: cardSizes.borderWidth,
     borderColor: theme.border,
-    padding: 18,
-    gap: 8,
+    padding: cardSizes.cardPaddingLg,
+    gap: spacing.smGap,
   },
   descLabel: {
     color: theme.mutedSoft,
@@ -380,14 +384,14 @@ const styles = StyleSheet.create({
   },
 
   noticeCard: {
-    marginHorizontal: 16,
-    marginTop: 16,
+    marginHorizontal: spacing.screenX,
+    marginTop: spacing.xlGap,
     backgroundColor: theme.surface,
-    borderRadius: 16,
-    borderWidth: 1,
+    borderRadius: cardSizes.radiusMd,
+    borderWidth: cardSizes.borderWidth,
     borderColor: theme.borderSoft,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: cardSizes.cardPaddingMd,
+    paddingVertical: spacing.lgGap,
   },
   noticeText: {
     color: theme.muted,
@@ -398,13 +402,13 @@ const styles = StyleSheet.create({
 
   // CTA
   ctaBlock: {
-    paddingHorizontal: 16,
-    marginTop: 20,
-    gap: 10,
+    paddingHorizontal: spacing.screenX,
+    marginTop: spacing.sectionTop,
+    gap: spacing.mdGap,
   },
   ctaPrimary: {
-    height: 52,
-    borderRadius: 16,
+    height: ctaSizes.primaryHeight,
+    borderRadius: ctaSizes.primaryRadius,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: theme.gold,
