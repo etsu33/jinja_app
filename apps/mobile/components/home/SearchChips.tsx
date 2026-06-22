@@ -44,11 +44,11 @@ export default function SearchChips({ onChange }: { onChange?: (v: string[]) => 
 
 const styles = StyleSheet.create({
   wrap: { paddingHorizontal: 16 },
-  groupLabel: { marginBottom: 4, fontSize: 12, color: "#6b7280" },
+  groupLabel: { marginBottom: 4, fontSize: 12, color: colors.textGray },
   rowWrap: { flexDirection: "row", flexWrap: "wrap" },
   chip: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8, marginRight: 8, marginBottom: 8 },
-  chipInactive: { borderWidth: 1, borderColor: "#d1d5db", backgroundColor: "white" },
-  chipActive: { backgroundColor: "#111" },
-  chipText: { color: "#111" },
-  chipTextActive: { color: "white" },
+  chipInactive: { borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surfaceLight },
+  chipActive: { backgroundColor: colors.textDark },
+  chipText: { color: colors.textDark },
+  chipTextActive: { color: colors.surfaceLight },
 });

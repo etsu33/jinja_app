@@ -4,6 +4,7 @@ import { View, Text, Pressable } from "react-native";
 import * as Location from "expo-location";
 import { useRouter } from "expo-router";
 import { SHRINES } from "../../data/shrines";
+import { colors } from "../../app/theme";
 
 function haversine(lat1:number, lon1:number, lat2:number, lon2:number) {
   const R = 6371e3;
@@ -60,19 +61,19 @@ export default function NearbyShrines() {
       <Text style={{ fontSize: 18, fontWeight: "700", marginBottom: 8 }}>近くの神社</Text>
 
       {state.loading ? (
-        <Text style={{ color:"#777" }}>読み込み中...</Text>
+        <Text style={{ color: colors.textMuted }}>読み込み中...</Text>
       ) : state.error ? (
-        <Text style={{ color:"#b00" }}>{state.error}</Text>
+        <Text style={{ color: colors.error }}>{state.error}</Text>
       ) : (
         <View>
           {state.items.map((s) => (
             <Pressable
               key={s.id}
               onPress={() => router.push(`/shrines/${s.id}`)}
-              style={{ paddingVertical: 10, borderBottomWidth: 1, borderColor: "#eee" }}
+              style={{ paddingVertical: 10, borderBottomWidth: 1, borderColor: colors.borderLight }}
             >
               <Text style={{ fontWeight: "700" }}>{s.name}</Text>
-              <Text style={{ color:"#777" }}>
+              <Text style={{ color: colors.textMuted }}>
                 {s.address} ・ {(s.distance/1000).toFixed(1)} km
               </Text>
             </Pressable>

@@ -5,6 +5,16 @@ export const colors = {
   text: "#111",
   muted: "#555",
   border: "#e6e6e6",
+  surfaceLight: "#fff",
+  surfaceMuted: "#F4F4F5",
+  textDark: "#111",
+  textGray: "#666",
+  textMuted: "#777",
+  borderLight: "#eee",
+  error: "#b00020",
+  errorBackground: "#fff3f3",
+  link: "#2f6ee5",
+  favorite: "#E24E33",
 } as const;
 
 export const kamimusubiDark = {
