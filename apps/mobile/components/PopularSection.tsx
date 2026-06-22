@@ -6,6 +6,7 @@ import { useRouter } from "expo-router";
 import { spacing } from "../app/design/spacing";
 import { cardSizes } from "../app/design/cardSizes";
 import { radius } from "../app/design/radius";
+import { colors } from "../app/theme";
 
 export default function PopularSection() {
   const router = useRouter();
@@ -69,7 +70,7 @@ const styles = StyleSheet.create({
   box: {
     paddingHorizontal: spacing.screenX,
     paddingVertical: spacing.lgGap,
-    backgroundColor: "#f8f8f8",
+    backgroundColor: colors.surfaceMuted,
   },
   header: {
     flexDirection: "row",
@@ -78,7 +79,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.smGap,
   },
   title: { fontSize: 18, fontWeight: "700" },
-  link: { color: "#2f6ee5", fontWeight: "600" },
+  link: { color: colors.link, fontWeight: "600" },
   skeletonList: {
     gap: spacing.mdGap,
   },
@@ -87,12 +88,12 @@ const styles = StyleSheet.create({
     gap: spacing.lgGap,
   },
   error: {
-    backgroundColor: "#fff3f3",
+    backgroundColor: colors.errorBackground,
     borderRadius: radius.xs,
     padding: cardSizes.cardPaddingSm,
     alignItems: "center",
     gap: spacing.smGap,
   },
-  errorText: { color: "#b00020" },
-  retry: { color: "#2f6ee5", fontWeight: "600" },
+  errorText: { color: colors.error },
+  retry: { color: colors.link, fontWeight: "600" },
 });
