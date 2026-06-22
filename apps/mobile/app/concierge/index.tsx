@@ -28,14 +28,19 @@ type RecommendationCard = {
 };
 
 type RecommendationApiCard = {
-  id?: string;
+  id?: string | number;
   name?: string;
+  display_name?: string;
   area?: string;
+  location?: string;
+  address?: string;
+  formatted_address?: string;
   connection?: string;
   reason?: string;
   tags?: string[];
-  shrineId?: string;
-  shrine_id?: string;
+  shrineId?: string | number;
+  shrine_id?: string | number;
+  place_id?: string | number;
 };
 
 type ConciergeChatResponse = {
@@ -76,14 +81,17 @@ function buildExtraCondition({
 }
 
 function toRecommendationCard(item: RecommendationApiCard, index: number): RecommendationCard {
+  const id = item.id ?? item.shrine_id ?? item.place_id ?? `recommendation-${index + 1}`;
+  const shrineId = item.shrineId ?? item.shrine_id ?? item.id ?? item.place_id;
+
   return {
-    id: item.id ?? `recommendation-${index + 1}`,
-    name: item.name ?? "名称未設定の神社",
-    area: item.area ?? "所在地未設定",
+    id: String(id),
+    name: item.display_name ?? item.name ?? "名称未設定の神社",
+    area: item.area ?? item.location ?? item.address ?? item.formatted_address ?? "所在地未設定",
     connection: item.connection ?? "今の相談内容と近い意味を持つご縁",
     reason: item.reason ?? "相談内容に近い意味やご利益をもとに選ばれた神社です。",
     tags: item.tags ?? [],
-    shrineId: item.shrineId ?? item.shrine_id,
+    shrineId: shrineId !== undefined && shrineId !== null ? String(shrineId) : undefined,
   };
 }
 
