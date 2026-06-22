@@ -8,6 +8,7 @@ import { kamimusubiDark as theme } from "../theme";
 import { get } from "../../lib/http";
 import { spacing } from "../design/spacing";
 import { cardSizes } from "../design/cardSizes";
+import { radius } from "../design/radius";
 import { ctaSizes } from "../design/ctaSizes";
 
 type Shrine = {
@@ -283,7 +284,7 @@ const styles = StyleSheet.create({
   backBtn: {
     paddingVertical: ctaSizes.pillPaddingY,
     paddingHorizontal: ctaSizes.pillPaddingX,
-    borderRadius: cardSizes.pillRadius,
+    borderRadius: radius.pill,
     borderWidth: cardSizes.borderWidth,
     borderColor: theme.borderGold,
     backgroundColor: "transparent",
@@ -296,7 +297,7 @@ const styles = StyleSheet.create({
   favBtn: {
     paddingVertical: ctaSizes.pillPaddingY,
     paddingHorizontal: cardSizes.cardPaddingMd,
-    borderRadius: cardSizes.pillRadius,
+    borderRadius: radius.pill,
     borderWidth: cardSizes.borderWidth,
     borderColor: theme.border,
     backgroundColor: "transparent",
@@ -346,7 +347,7 @@ const styles = StyleSheet.create({
   tagPill: {
     paddingHorizontal: ctaSizes.pillPaddingX,
     paddingVertical: 5,
-    borderRadius: cardSizes.pillRadius,
+    borderRadius: radius.pill,
     borderWidth: cardSizes.borderWidth,
     borderColor: theme.borderGold,
     backgroundColor: "transparent",
@@ -363,7 +364,7 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.screenX,
     marginTop: spacing.sectionTop,
     backgroundColor: theme.surface,
-    borderRadius: cardSizes.radiusLg,
+    borderRadius: radius.xl,
     borderWidth: cardSizes.borderWidth,
     borderColor: theme.border,
     padding: cardSizes.cardPaddingLg,
@@ -386,7 +387,7 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.screenX,
     marginTop: spacing.xlGap,
     backgroundColor: theme.surface,
-    borderRadius: cardSizes.radiusMd,
+    borderRadius: radius.md,
     borderWidth: cardSizes.borderWidth,
     borderColor: theme.borderSoft,
     paddingHorizontal: cardSizes.cardPaddingMd,

@@ -7,6 +7,7 @@ import { getFavorites, toggleFavorite } from "../../lib/storage";
 import { kamimusubiDark } from "../theme";
 import { spacing } from "../design/spacing";
 import { cardSizes } from "../design/cardSizes";
+import { radius } from "../design/radius";
 
 type FavoriteHeartButtonProps = {
   favored: boolean;
@@ -112,7 +113,7 @@ export default function RankingPage() {
           style={{
             paddingHorizontal: spacing.mdGap,
             paddingVertical: spacing.inlineGap - 1,
-            borderRadius: cardSizes.pillRadius,
+            borderRadius: radius.pill,
             borderWidth: cardSizes.borderWidth,
             borderColor: favOnly ? kamimusubiDark.gold : kamimusubiDark.borderHeader,
             backgroundColor: favOnly ? kamimusubiDark.gold : kamimusubiDark.surface,
@@ -172,7 +173,7 @@ const styles = StyleSheet.create({
     backgroundColor: kamimusubiDark.surface,
     borderWidth: cardSizes.borderWidth,
     borderColor: kamimusubiDark.borderHeader,
-    borderRadius: cardSizes.radiusMd,
+    borderRadius: radius.md,
     padding: cardSizes.cardPaddingSm,
     marginBottom: spacing.lgGap,
   },
@@ -183,7 +184,7 @@ const styles = StyleSheet.create({
   rank: {
     width: cardSizes.rankBadgeSize,
     height: cardSizes.rankBadgeSize,
-    borderRadius: cardSizes.pillRadius,
+    borderRadius: radius.pill,
     backgroundColor: kamimusubiDark.surfaceSoft,
     color: kamimusubiDark.gold,
     textAlign: "center",
@@ -194,7 +195,7 @@ const styles = StyleSheet.create({
   thumb: {
     width: 68,
     height: 52,
-    borderRadius: cardSizes.imageRadius,
+    borderRadius: radius.xs,
     marginRight: spacing.lgGap,
     backgroundColor: kamimusubiDark.surfaceSoft,
   },
@@ -221,7 +222,7 @@ const styles = StyleSheet.create({
   heartBtn: {
     paddingVertical: 6,
     paddingHorizontal: spacing.mdGap,
-    borderRadius: cardSizes.pillRadius,
+    borderRadius: radius.pill,
     borderWidth: cardSizes.borderWidth,
     borderColor: kamimusubiDark.borderHeader,
     backgroundColor: kamimusubiDark.surfaceSoft,
