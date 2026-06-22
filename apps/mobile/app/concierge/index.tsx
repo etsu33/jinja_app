@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { kamimusubiDark as theme } from "../theme";
+import { shadows } from "../design/shadow";
 import { post } from "../../lib/http";
 
 // ────────────────────────────────────────────
@@ -383,11 +384,7 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 18,
     gap: 12,
-    shadowColor: "#000",
-    shadowOpacity: 0.28,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 7 },
-    elevation: 4,
+    ...shadows.card,
   },
 
   // ランク
@@ -501,9 +498,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: theme.gold,
     shadowColor: theme.gold,
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
+    ...shadows.goldCta,
   },
   ctaPrimaryText: {
     color: theme.background,

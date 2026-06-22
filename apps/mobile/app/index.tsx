@@ -2,6 +2,7 @@ import * as React from "react";
 import { useRouter } from "expo-router";
 import { ScrollView, View, Text, TextInput, StyleSheet, Pressable } from "react-native";
 import { kamimusubiDark as theme } from "./theme";
+import { shadows } from "./design/shadow";
 
 const THEMES = [
   "疲れを整えたい",
@@ -189,11 +190,7 @@ const styles = StyleSheet.create({
     borderColor: theme.border,
     marginTop: 24,
     padding: 16,
-    shadowColor: "#000",
-    shadowOpacity: 0.25,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 3,
+    ...shadows.softCard,
   },
   chatInput: {
     minHeight: 78,
@@ -300,10 +297,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.gold,
     marginTop: 20,
     shadowColor: theme.gold,
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
+    ...shadows.goldCta,
   },
   primaryCtaText: {
     color: theme.background,
