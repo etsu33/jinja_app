@@ -3,7 +3,7 @@ import { Animated, Pressable, ScrollView, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { kamimusubiDark } from "../theme";
 
-import { getFavoriteShrines, getRecentViewed } from "../shrines/storage";
+import { getFavoriteShrines, getRecentViewed } from "../../lib/shrineStorage";
 import { getCounts } from "../../lib/storage";
 
 type RecordCardProps = {

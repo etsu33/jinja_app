@@ -1,6 +1,6 @@
-// apps/mobile/app/shrines/storage.ts
-import { getRecents } from "../../lib/storage";
-import { SHRINES } from "../../data/shrines";
+// apps/mobile/lib/shrineStorage.ts
+import { SHRINES } from "../data/shrines";
+import { getFavorites, getRecents } from "./storage";
 
 type ShrineSourceItem = {
   id: number | string;
@@ -40,7 +40,6 @@ function toRecentShrineItem(shrine: ShrineSourceItem): RecentShrineItem {
 }
 
 export async function getFavoriteShrines(): Promise<RecentShrineItem[]> {
-  const { getFavorites } = await import("../../lib/storage");
   const ids = await getFavorites();
 
   return ids
@@ -49,9 +48,7 @@ export async function getFavoriteShrines(): Promise<RecentShrineItem[]> {
     .map(toRecentShrineItem);
 }
 
-export async function getRecentViewed(
-  limit = 10,
-): Promise<RecentShrineItem[]> {
+export async function getRecentViewed(limit = 10): Promise<RecentShrineItem[]> {
   const ids = await getRecents();
 
   return ids

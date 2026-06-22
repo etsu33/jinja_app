@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { Image, Pressable, ScrollView, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
-import { getFavoriteShrines, RecentShrineItem } from "../shrines/storage";
+import { getFavoriteShrines, RecentShrineItem } from "../../lib/shrineStorage";
 import { toggleFavorite } from "../../lib/storage";
 import { kamimusubiDark as theme } from "../theme";
 import { spacing } from "../design/spacing";
