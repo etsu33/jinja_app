@@ -101,7 +101,6 @@ export default function Root() {
       <Tabs.Screen name="profile/index" options={{ href: null }} />
       <Tabs.Screen name="search/index" options={{ href: null }} />
       <Tabs.Screen name="shrines/[id]" options={{ href: null }} />
-      <Tabs.Screen name="shrines/storage" options={{ href: null }} />
     </Tabs>
   );
 }
