@@ -4,6 +4,8 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { getFavoriteShrines, RecentShrineItem } from "../shrines/storage";
 import { toggleFavorite } from "../../lib/storage";
 import { kamimusubiDark as theme } from "../theme";
+import { spacing } from "../design/spacing";
+import { cardSizes } from "../design/cardSizes";
 
 export default function FavoritesScreen() {
   const router = useRouter();
@@ -28,12 +30,12 @@ export default function FavoritesScreen() {
   return (
     <ScrollView
       style={{ backgroundColor: theme.background, flex: 1 }}
-      contentContainerStyle={{ padding: 24, paddingBottom: 40, gap: 12 }}
+      contentContainerStyle={{ padding: spacing.screenXWide, paddingBottom: spacing.bottomSpace, gap: spacing.lgGap }}
     >
-      <View style={{ marginBottom: 12 }}>
+      <View style={{ marginBottom: spacing.lgGap }}>
         <Pressable
           onPress={() => router.canGoBack() ? router.back() : router.replace("/")}
-          style={{ marginBottom: 16 }}
+          style={{ marginBottom: spacing.xlGap }}
         >
           <Text style={{ color: theme.gold, fontSize: 13, fontWeight: "700" }}>
             ← 戻る
@@ -42,17 +44,17 @@ export default function FavoritesScreen() {
         <Text style={{ color: theme.gold, fontSize: 26, fontWeight: "700" }}>
           お気に入り
         </Text>
-        <Text style={{ color: theme.text, fontSize: 15, lineHeight: 23, marginTop: 10 }}>
+        <Text style={{ color: theme.text, fontSize: 15, lineHeight: 23, marginTop: spacing.mdGap }}>
           保存した神社を確認できます。
         </Text>
       </View>
 
       {loading ? (
-        <Text style={{ color: theme.muted, textAlign: "center", marginTop: 40 }}>
+        <Text style={{ color: theme.muted, textAlign: "center", marginTop: spacing.bottomSpace }}>
           読み込み中…
         </Text>
       ) : items.length === 0 ? (
-        <View style={{ alignItems: "center", marginTop: 60, gap: 12 }}>
+        <View style={{ alignItems: "center", marginTop: spacing.bottomSpace + spacing.sectionTop, gap: spacing.lgGap }}>
           <Text style={{ fontSize: 40 }}>♡</Text>
           <Text style={{ color: theme.muted, fontSize: 15 }}>
             お気に入りの神社はまだありません
@@ -90,27 +92,27 @@ function FavoriteCard({
       style={{
         backgroundColor: theme.surface,
         borderColor: theme.borderHeader,
-        borderRadius: 16,
-        borderWidth: 1,
+        borderRadius: cardSizes.radiusMd,
+        borderWidth: cardSizes.borderWidth,
         flexDirection: "row",
-        gap: 14,
-        padding: 14,
+        gap: cardSizes.cardPaddingMd,
+        padding: cardSizes.cardPaddingMd,
         alignItems: "center",
       }}
     >
       {shrine.photo_url ? (
         <Image
           source={{ uri: shrine.photo_url }}
-          style={{ width: 64, height: 64, borderRadius: 12 }}
+          style={{ width: cardSizes.imageSm, height: cardSizes.imageSm, borderRadius: cardSizes.imageRadius }}
         />
       ) : (
         <View
           style={{
-            width: 64,
-            height: 64,
-            borderRadius: 12,
+            width: cardSizes.imageSm,
+            height: cardSizes.imageSm,
+            borderRadius: cardSizes.imageRadius,
             backgroundColor: theme.surfaceSoft,
-            borderWidth: 1,
+            borderWidth: cardSizes.borderWidth,
             borderColor: theme.border,
             alignItems: "center",
             justifyContent: "center",
@@ -120,7 +122,7 @@ function FavoriteCard({
         </View>
       )}
 
-      <View style={{ flex: 1, gap: 4 }}>
+      <View style={{ flex: 1, gap: spacing.tightGap }}>
         <Text style={{ color: theme.text, fontSize: 16, fontWeight: "700" }}>
           {shrine.name}
         </Text>
@@ -138,8 +140,8 @@ function FavoriteCard({
         style={{
           paddingVertical: 6,
           paddingHorizontal: 10,
-          borderRadius: 999,
-          borderWidth: 1,
+          borderRadius: cardSizes.pillRadius,
+          borderWidth: cardSizes.borderWidth,
           borderColor: theme.borderGold,
         }}
       >
