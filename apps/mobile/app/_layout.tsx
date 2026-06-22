@@ -1,23 +1,31 @@
 import { Tabs } from "expo-router";
+import { kamimusubiDark as theme } from "./theme";
+import { spacing } from "./design/spacing";
+import { cardSizes } from "./design/cardSizes";
+
+const bottomNavigationSizes = {
+  height: 64,
+  labelFontSize: 11,
+} as const;
 
 export default function Root() {
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#E0B963",
-        tabBarInactiveTintColor: "#8F846E",
+        tabBarActiveTintColor: theme.gold,
+        tabBarInactiveTintColor: theme.muted,
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: bottomNavigationSizes.labelFontSize,
           fontWeight: "600",
         },
         tabBarStyle: {
-          backgroundColor: "#07101F",
-          borderTopColor: "#1E2A3A",
-          borderTopWidth: 1,
-          height: 64,
-          paddingBottom: 8,
-          paddingTop: 6,
+          backgroundColor: theme.background,
+          borderTopColor: theme.borderHeader,
+          borderTopWidth: cardSizes.borderWidth,
+          height: bottomNavigationSizes.height,
+          paddingBottom: spacing.smGap,
+          paddingTop: spacing.inlineGap - 1,
         },
       }}
     >
