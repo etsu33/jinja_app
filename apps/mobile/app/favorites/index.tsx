@@ -6,6 +6,7 @@ import { toggleFavorite } from "../../lib/storage";
 import { kamimusubiDark as theme } from "../theme";
 import { spacing } from "../design/spacing";
 import { cardSizes } from "../design/cardSizes";
+import { radius } from "../design/radius";
 
 export default function FavoritesScreen() {
   const router = useRouter();
@@ -92,7 +93,7 @@ function FavoriteCard({
       style={{
         backgroundColor: theme.surface,
         borderColor: theme.borderHeader,
-        borderRadius: cardSizes.radiusMd,
+        borderRadius: radius.md,
         borderWidth: cardSizes.borderWidth,
         flexDirection: "row",
         gap: cardSizes.cardPaddingMd,
@@ -103,14 +104,14 @@ function FavoriteCard({
       {shrine.photo_url ? (
         <Image
           source={{ uri: shrine.photo_url }}
-          style={{ width: cardSizes.imageSm, height: cardSizes.imageSm, borderRadius: cardSizes.imageRadius }}
+          style={{ width: cardSizes.imageSm, height: cardSizes.imageSm, borderRadius: radius.xs }}
         />
       ) : (
         <View
           style={{
             width: cardSizes.imageSm,
             height: cardSizes.imageSm,
-            borderRadius: cardSizes.imageRadius,
+            borderRadius: radius.xs,
             backgroundColor: theme.surfaceSoft,
             borderWidth: cardSizes.borderWidth,
             borderColor: theme.border,
@@ -140,7 +141,7 @@ function FavoriteCard({
         style={{
           paddingVertical: 6,
           paddingHorizontal: 10,
-          borderRadius: cardSizes.pillRadius,
+          borderRadius: radius.pill,
           borderWidth: cardSizes.borderWidth,
           borderColor: theme.borderGold,
         }}
