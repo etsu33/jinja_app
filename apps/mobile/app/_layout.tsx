@@ -96,6 +96,11 @@ export default function Root() {
         }}
       />
       <Tabs.Screen name="favorites/index" options={{ href: null }} />
+      <Tabs.Screen name="goshuin/index" options={{ href: null }} />
+      <Tabs.Screen name="goshuin/upload" options={{ href: null }} />
+      <Tabs.Screen name="profile/index" options={{ href: null }} />
+      <Tabs.Screen name="search/index" options={{ href: null }} />
+      <Tabs.Screen name="shrines/[id]" options={{ href: null }} />
       <Tabs.Screen name="shrines/storage" options={{ href: null }} />
     </Tabs>
   );
