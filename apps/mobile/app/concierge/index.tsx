@@ -44,12 +44,36 @@ type ConciergeChatResponse = {
   };
 };
 
+
 const VISIT_STYLE_OPTIONS = [
   "静かに整えたい",
   "人混みを避けたい",
   "近場を優先したい",
   "自然を感じたい",
 ] as const;
+
+const GORIYAKU_OPTIONS = ["仕事運", "金運", "縁結び", "厄除け", "学業成就", "健康"] as const;
+
+function buildExtraCondition({
+  visitStyle,
+  birthdate,
+  goriyaku,
+  supportText,
+}: {
+  visitStyle?: string;
+  birthdate?: string;
+  goriyaku?: string;
+  supportText?: string;
+}) {
+  return [
+    visitStyle ? `参拝スタイル: ${visitStyle}` : undefined,
+    birthdate ? `誕生日: ${birthdate}` : undefined,
+    goriyaku ? `ご利益: ${goriyaku}` : undefined,
+    supportText?.trim() ? `補助条件: ${supportText.trim()}` : undefined,
+  ]
+    .filter(Boolean)
+    .join(" / ");
+}
 
 function toRecommendationCard(item: RecommendationApiCard, index: number): RecommendationCard {
   return {
@@ -69,11 +93,11 @@ function normalizeRecommendations(items: RecommendationApiCard[]): Recommendatio
 
 async function fetchConciergeRecommendations(
   consultation: string,
-  visitStyle?: string,
+  extraCondition?: string,
 ): Promise<RecommendationCard[]> {
   const body = await post<ConciergeChatResponse>("/concierge/chat/", {
     query: consultation,
-    extra_condition: visitStyle,
+    extra_condition: extraCondition,
   });
 
   return normalizeRecommendations(body.data?.recommendations ?? []);
@@ -155,6 +179,10 @@ export default function ConciergeScreen() {
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
   const [results, setResults] = React.useState<RecommendationCard[]>([]);
   const [selectedVisitStyle, setSelectedVisitStyle] = React.useState<string | undefined>();
+  const [birthdate, setBirthdate] = React.useState("");
+  const [selectedGoriyaku, setSelectedGoriyaku] = React.useState<string | undefined>();
+  const [supportText, setSupportText] = React.useState("");
+  const hasAnyCondition = Boolean(selectedVisitStyle || birthdate.trim() || selectedGoriyaku || supportText.trim());
   const lastInitialQueryRef = React.useRef<string | null>(null);
 
   // URLの相談内容が変わったら自動送信する
@@ -168,18 +196,25 @@ export default function ConciergeScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialQuery]);
 
-  const submit = async (text: string, visitStyle = selectedVisitStyle) => {
+  const submit = async (text: string) => {
     const trimmed = text.trim();
-    if (!trimmed) return;
+    if (!trimmed && !hasAnyCondition) return;
+    const queryText = trimmed || "条件から合う神社を知りたい";
 
-    setConsultationText(trimmed);
+    setConsultationText(queryText);
     setInput("");
     setLoading(true);
     setSubmitted(false);
     setErrorMessage(null);
 
     try {
-      const recommendations = await fetchConciergeRecommendations(trimmed, visitStyle);
+      const extraCondition = buildExtraCondition({
+        visitStyle: selectedVisitStyle,
+        birthdate,
+        goriyaku: selectedGoriyaku,
+        supportText,
+      });
+      const recommendations = await fetchConciergeRecommendations(queryText, extraCondition || undefined);
       setResults(recommendations);
     } catch {
       setErrorMessage("通信に失敗しました。前回の候補を表示したまま、もう一度相談できます。");
@@ -196,7 +231,7 @@ export default function ConciergeScreen() {
   };
 
   const handleResuggest = () => {
-    void submit(consultationText, selectedVisitStyle);
+    void submit(consultationText);
   };
 
   const handleDetail = (card: RecommendationCard) => {
@@ -246,6 +281,18 @@ export default function ConciergeScreen() {
               </Text>
             </View>
 
+            <View style={styles.conditionInputBlock}>
+              <Text style={styles.visitStyleLabel}>誕生日</Text>
+              <TextInput
+                value={birthdate}
+                onChangeText={setBirthdate}
+                placeholder="例: 1984-05-15"
+                placeholderTextColor={theme.mutedDark}
+                style={styles.conditionInput}
+                editable={!loading}
+              />
+            </View>
+
             <View style={styles.visitStyleBlock}>
               <Text style={styles.visitStyleLabel}>参拝スタイル</Text>
               <View style={styles.visitStyleRow}>
@@ -264,10 +311,41 @@ export default function ConciergeScreen() {
               </View>
             </View>
 
+            <View style={styles.visitStyleBlock}>
+              <Text style={styles.visitStyleLabel}>ご利益</Text>
+              <View style={styles.visitStyleRow}>
+                {GORIYAKU_OPTIONS.map((option) => {
+                  const active = selectedGoriyaku === option;
+                  return (
+                    <Pressable
+                      key={option}
+                      onPress={() => setSelectedGoriyaku(active ? undefined : option)}
+                      style={[styles.visitStylePill, active && styles.visitStylePillActive]}
+                    >
+                      <Text style={[styles.visitStyleText, active && styles.visitStyleTextActive]}>{option}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+
+            <View style={styles.conditionInputBlock}>
+              <Text style={styles.visitStyleLabel}>相談補助条件</Text>
+              <TextInput
+                value={supportText}
+                onChangeText={setSupportText}
+                placeholder="例: 駅から近い場所、静かな場所、短時間で行ける場所"
+                placeholderTextColor={theme.mutedDark}
+                style={[styles.conditionInput, styles.conditionTextarea]}
+                multiline
+                editable={!loading}
+              />
+            </View>
+
             <Pressable
               onPress={handleResuggest}
-              style={[styles.resuggestButton, loading && styles.resuggestButtonDisabled]}
-              disabled={loading || !consultationText}
+              style={[styles.resuggestButton, (loading || (!consultationText && !hasAnyCondition)) && styles.resuggestButtonDisabled]}
+              disabled={loading || (!consultationText && !hasAnyCondition)}
             >
               <Text style={styles.resuggestButtonText}>この条件で再提案する</Text>
             </Pressable>
@@ -318,8 +396,8 @@ export default function ConciergeScreen() {
         />
         <Pressable
           onPress={handleSend}
-          style={[styles.sendBtn, loading && styles.sendBtnDisabled]}
-          disabled={loading}
+          style={[styles.sendBtn, (loading || (!input.trim() && !hasAnyCondition)) && styles.sendBtnDisabled]}
+          disabled={loading || (!input.trim() && !hasAnyCondition)}
         >
           <Text style={styles.sendText}>↑</Text>
         </Pressable>
@@ -454,6 +532,26 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     fontWeight: "700",
+  },
+  conditionInputBlock: {
+    gap: 8,
+  },
+  conditionInput: {
+    minHeight: 44,
+    backgroundColor: theme.surface,
+    borderWidth: 1,
+    borderColor: theme.borderSoft,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: theme.text,
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: "700",
+  },
+  conditionTextarea: {
+    minHeight: 76,
+    textAlignVertical: "top",
   },
   visitStyleBlock: {
     gap: 8,
