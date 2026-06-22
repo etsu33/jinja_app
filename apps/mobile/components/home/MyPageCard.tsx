@@ -5,6 +5,7 @@ import { getCounts } from "../../lib/storage";
 import { spacing } from "../../app/design/spacing";
 import { cardSizes } from "../../app/design/cardSizes";
 import { ctaSizes } from "../../app/design/ctaSizes";
+import { colors } from "../../app/theme";
 
 export default function MyPageCard() {
   const [counts, setCounts] = React.useState({ favorites: 0, visits: 0, stamps: 0 });
@@ -59,18 +60,18 @@ const styles = StyleSheet.create({
   card: {
     marginHorizontal: spacing.screenX,
     marginTop: spacing.lgGap,
-    backgroundColor: "#fff",
+    backgroundColor: colors.surfaceLight,
     borderWidth: cardSizes.borderWidth,
-    borderColor: "#e6e6e6",
+    borderColor: colors.border,
     borderRadius: cardSizes.radiusSm,
     padding: cardSizes.cardPaddingSm,
   },
   title: { fontWeight: "700" },
-  sub: { color: "#666", marginTop: spacing.tightGap, fontSize: 12 },
+  sub: { color: colors.textGray, marginTop: spacing.tightGap, fontSize: 12 },
   metrics: { flexDirection: "row", marginTop: spacing.lgGap },
   pill: {
     marginRight: spacing.smGap,
-    backgroundColor: "#F4F4F5",
+    backgroundColor: colors.surfaceMuted,
     borderRadius: cardSizes.pillRadius,
     paddingHorizontal: ctaSizes.pillPaddingXSm,
     paddingVertical: ctaSizes.pillPaddingYSm,
@@ -85,9 +86,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: ctaSizes.smallRadius,
-    backgroundColor: "#F2C94C",
+    backgroundColor: colors.accent,
     borderWidth: cardSizes.borderWidth,
-    borderColor: "#e6e6e6",
+    borderColor: colors.border,
   },
   btnPrimary: {
     height: ctaSizes.smallHeight,
@@ -95,10 +96,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: ctaSizes.smallRadius,
-    backgroundColor: "#F2C94C",
+    backgroundColor: colors.accent,
     borderWidth: cardSizes.borderWidth,
-    borderColor: "#e6e6e6",
+    borderColor: colors.border,
   },
-  btnText: { fontWeight: "700", color: "#111" },
-  btnTextDark:{ fontWeight:"700", color:"#111" },
+  btnText: { fontWeight: "700", color: colors.textDark },
+  btnTextDark: { fontWeight: "700", color: colors.textDark },
 });
