@@ -5,6 +5,8 @@ import { useRouter, useFocusEffect } from "expo-router";
 import { SHRINES } from "../../data/shrines";
 import { getFavorites, toggleFavorite } from "../../lib/storage";
 import { kamimusubiDark } from "../theme";
+import { spacing } from "../design/spacing";
+import { cardSizes } from "../design/cardSizes";
 
 type FavoriteHeartButtonProps = {
   favored: boolean;
@@ -38,7 +40,7 @@ function FavoriteHeartButton({ favored, onPress }: FavoriteHeartButtonProps) {
         handlePress();
       }}
       style={[styles.heartBtn, favored && styles.heartBtnFav]}
-      hitSlop={8}
+      hitSlop={spacing.smGap}
     >
       <Animated.Text style={[styles.heartText, favored && styles.heartTextFav, { transform: [{ scale }] }]}>
         {favored ? "♥" : "♡"}
@@ -81,7 +83,7 @@ export default function RankingPage() {
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: kamimusubiDark.background }}
-      contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+      contentContainerStyle={{ padding: spacing.screenX, paddingBottom: spacing.bottomSpace }}
     >
       <Text
         style={{
@@ -97,21 +99,21 @@ export default function RankingPage() {
           color: kamimusubiDark.text,
           fontSize: 14,
           lineHeight: 21,
-          marginTop: 8,
-          marginBottom: 16,
+          marginTop: spacing.smGap,
+          marginBottom: spacing.xlGap,
         }}
       >
         保存数の多い神社を、参拝先選びの補助として見られます。
       </Text>
 
-      <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", marginBottom: spacing.lgGap }}>
         <Pressable
           onPress={() => setFavOnly((v) => !v)}
           style={{
-            paddingHorizontal: 10,
-            paddingVertical: 6,
-            borderRadius: 999,
-            borderWidth: 1,
+            paddingHorizontal: spacing.mdGap,
+            paddingVertical: spacing.inlineGap - 1,
+            borderRadius: cardSizes.pillRadius,
+            borderWidth: cardSizes.borderWidth,
             borderColor: favOnly ? kamimusubiDark.gold : kamimusubiDark.borderHeader,
             backgroundColor: favOnly ? kamimusubiDark.gold : kamimusubiDark.surface,
           }}
@@ -127,7 +129,7 @@ export default function RankingPage() {
         </Pressable>
         <Text
           style={{
-            marginLeft: 8,
+            marginLeft: spacing.smGap,
             fontSize: 12,
             color: kamimusubiDark.muted,
           }}
@@ -168,32 +170,32 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: kamimusubiDark.surface,
-    borderWidth: 1,
+    borderWidth: cardSizes.borderWidth,
     borderColor: kamimusubiDark.borderHeader,
-    borderRadius: 16,
-    padding: 12,
-    marginBottom: 12,
+    borderRadius: cardSizes.radiusMd,
+    padding: cardSizes.cardPaddingSm,
+    marginBottom: spacing.lgGap,
   },
   cardFav: {
     borderColor: kamimusubiDark.gold,
     backgroundColor: kamimusubiDark.surfaceSoft,
   },
   rank: {
-    width: 32,
-    height: 32,
-    borderRadius: 999,
+    width: cardSizes.rankBadgeSize,
+    height: cardSizes.rankBadgeSize,
+    borderRadius: cardSizes.pillRadius,
     backgroundColor: kamimusubiDark.surfaceSoft,
     color: kamimusubiDark.gold,
     textAlign: "center",
     textAlignVertical: "center",
     fontWeight: "700",
-    marginRight: 10,
+    marginRight: spacing.mdGap,
   },
   thumb: {
     width: 68,
     height: 52,
-    borderRadius: 12,
-    marginRight: 12,
+    borderRadius: cardSizes.imageRadius,
+    marginRight: spacing.lgGap,
     backgroundColor: kamimusubiDark.surfaceSoft,
   },
   name: {
@@ -218,9 +220,9 @@ const styles = StyleSheet.create({
   },
   heartBtn: {
     paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 999,
-    borderWidth: 1,
+    paddingHorizontal: spacing.mdGap,
+    borderRadius: cardSizes.pillRadius,
+    borderWidth: cardSizes.borderWidth,
     borderColor: kamimusubiDark.borderHeader,
     backgroundColor: kamimusubiDark.surfaceSoft,
   },
