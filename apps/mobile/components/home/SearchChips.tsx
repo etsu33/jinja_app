@@ -3,6 +3,7 @@ import { useState } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { colors } from "../../app/theme";
 import { radius } from "../../app/design/radius";
+import { cardSizes } from "../../app/design/cardSizes";
 
 const CANDS = {
   地域: ["東京都", "京都府"],
@@ -48,7 +49,7 @@ const styles = StyleSheet.create({
   groupLabel: { marginBottom: 4, fontSize: 12, color: colors.textGray },
   rowWrap: { flexDirection: "row", flexWrap: "wrap" },
   chip: { borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 8, marginRight: 8, marginBottom: 8 },
-  chipInactive: { borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surfaceLight },
+  chipInactive: { borderWidth: cardSizes.borderWidth, borderColor: colors.border, backgroundColor: colors.surfaceLight },
   chipActive: { backgroundColor: colors.textDark },
   chipText: { color: colors.textDark },
   chipTextActive: { color: colors.surfaceLight },

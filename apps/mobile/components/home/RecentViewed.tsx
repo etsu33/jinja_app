@@ -6,6 +6,7 @@ import { useRouter } from "expo-router";
 import { SHRINES } from "../../data/shrines";
 import { colors } from "../../app/theme";
 import { radius } from "../../app/design/radius";
+import { cardSizes } from "../../app/design/cardSizes";
 
 const KEY = "recent_shrines"; // string[] の ID を保存
 
@@ -44,7 +45,7 @@ export default function RecentViewed() {
                 padding: 12,
                 borderRadius: radius.xs,
                 backgroundColor: colors.surfaceLight,
-                borderWidth: 1,
+                borderWidth: cardSizes.borderWidth,
                 borderColor: colors.borderLight,
               }}
             >
