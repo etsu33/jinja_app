@@ -99,7 +99,7 @@ export default function Home() {
       {showConditions ? (
         <View style={styles.conditionHint}>
           <Text style={styles.conditionHintText}>
-            誕生日・ご利益・参拝スタイルは、相談内容を補う条件として後続で追加します。
+            誕生日・ご利益・参拝スタイルは、次の相談画面で追加できます。相談テーマがまだ決まっていない場合も、条件だけで候補を見られます。
           </Text>
         </View>
       ) : null}
