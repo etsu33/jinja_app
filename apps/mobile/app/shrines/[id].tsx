@@ -37,6 +37,10 @@ type ShrineApiResponse = {
   goriyaku_tags?: Array<{ id: number; name: string; category?: string }>;
 };
 
+const SHRINE_API_ID_BY_LOCAL_ID: Record<string, string> = {
+  fushimi: "2",
+};
+
 function toShrine(api: ShrineApiResponse): Shrine {
   return {
     id: api.id,
@@ -57,6 +61,11 @@ export default function ShrineDetail() {
     if (!raw) return undefined;
     return Array.isArray(raw) ? raw[0] : raw;
   }, [params.id]);
+
+  const apiShrineId = React.useMemo(() => {
+    if (!shrineId) return undefined;
+    return SHRINE_API_ID_BY_LOCAL_ID[shrineId] ?? shrineId;
+  }, [shrineId]);
 
   const router = useRouter();
   const localShrine: Shrine | undefined = React.useMemo(
@@ -83,13 +92,13 @@ export default function ShrineDetail() {
   );
 
   React.useEffect(() => {
-    if (!shrineId) return;
+    if (!apiShrineId) return;
 
     let active = true;
     setLoading(true);
     setErrorMessage(null);
 
-    get<ShrineApiResponse>(`/shrines/${shrineId}/`)
+    get<ShrineApiResponse>(`/shrines/${apiShrineId}/`)
       .then((data) => {
         if (!active) return;
         setApiShrine(toShrine(data));
@@ -107,7 +116,7 @@ export default function ShrineDetail() {
     return () => {
       active = false;
     };
-  }, [shrineId, localShrine]);
+  }, [apiShrineId, localShrine]);
 
   React.useEffect(() => {
     if (!shrineId) return;
