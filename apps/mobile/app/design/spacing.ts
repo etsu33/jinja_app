@@ -1,0 +1,16 @@
+export const spacing = {
+  screenX: 16,
+  screenXWide: 24,
+  contentX: 20,
+  sectionY: 12,
+  sectionTop: 20,
+  sectionTopSm: 16,
+  bottomSpace: 40,
+  bottomSpaceLg: 48,
+  tightGap: 4,
+  inlineGap: 7,
+  smGap: 8,
+  mdGap: 10,
+  lgGap: 12,
+  xlGap: 16,
+} as const;
