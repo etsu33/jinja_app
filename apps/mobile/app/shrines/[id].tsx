@@ -16,6 +16,9 @@ type Shrine = {
   name: string;
   prefecture?: string;
   description?: string;
+  recommendationReason?: string;
+  explanation?: string;
+  actionSuggestion?: string;
   imageUrl?: string;
   tags?: string[];
   latitude?: number;
@@ -29,6 +32,11 @@ type ShrineApiResponse = {
   address?: string;
   prefecture?: string;
   description?: string | null;
+  recommendation_reason?: string | null;
+  recommendationReason?: string | null;
+  explanation?: string | null;
+  action_suggestion?: string | null;
+  actionSuggestion?: string | null;
   imageUrl?: string;
   image_url?: string;
   latitude?: number | null;
@@ -47,6 +55,9 @@ function toShrine(api: ShrineApiResponse): Shrine {
     name: api.name_jp ?? api.name ?? "名称未設定の神社",
     prefecture: api.prefecture ?? api.address,
     description: api.description ?? api.goriyaku ?? undefined,
+    recommendationReason: api.recommendationReason ?? api.recommendation_reason ?? undefined,
+    explanation: api.explanation ?? undefined,
+    actionSuggestion: api.actionSuggestion ?? api.action_suggestion ?? undefined,
     imageUrl: api.imageUrl ?? api.image_url,
     tags: api.goriyaku_tags?.map((tag) => tag.name) ?? [],
     latitude: typeof api.latitude === "number" ? api.latitude : undefined,
@@ -77,8 +88,24 @@ export default function ShrineDetail() {
   const [loading, setLoading] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
   const [fav, setFav] = React.useState(false);
+  const [visited, setVisited] = React.useState(false);
   const shrine = apiShrine ?? localShrine;
   const tags = shrine?.tags ?? [];
+
+  const recommendationReason = React.useMemo(() => {
+    if (!shrine) return undefined;
+    return shrine.recommendationReason ?? `${shrine.name}は、今の相談や願いを一度落ち着いて整理する場所として受け取りやすい候補です。`;
+  }, [shrine]);
+
+  const explanation = React.useMemo(() => {
+    if (!shrine) return undefined;
+    return shrine.explanation ?? shrine.description ?? `${shrine.name}の由緒やご利益を確認しながら、今の自分に必要な意味を探しやすい神社です。`;
+  }, [shrine]);
+
+  const actionSuggestion = React.useMemo(() => {
+    if (!shrine) return undefined;
+    return shrine.actionSuggestion ?? "参拝前に、今考えていることを一つだけ言葉にしてから向かうと、帰ってきたあとに変化を振り返りやすくなります。";
+  }, [shrine]);
 
   const countedRef = React.useRef(false);
   useFocusEffect(
@@ -129,6 +156,10 @@ export default function ShrineDetail() {
     const now = await toggleFavorite(String(shrineId));
     setFav(now);
   };
+
+  const onVisitDone = React.useCallback(() => {
+    setVisited(true);
+  }, []);
 
   const openDirections = React.useCallback(() => {
     if (!shrine) return;
@@ -216,12 +247,25 @@ export default function ShrineDetail() {
         </View>
       ) : null}
 
-      {/* 参拝前のヒント */}
-      <View style={styles.visitHintCard}>
-        <Text style={styles.visitHintLabel}>参拝前のヒント</Text>
-        <Text style={styles.visitHintText}>
-          まずは由緒やご利益を確認してから、必要なら経路案内を開けます。
-        </Text>
+      {/* 推薦理由 */}
+      <View style={styles.recommendationCard}>
+        <Text style={styles.cardEyebrow}>RECOMMENDATION</Text>
+        <Text style={styles.cardTitle}>この神社が候補に入った理由</Text>
+        <Text style={styles.cardBody}>{recommendationReason}</Text>
+      </View>
+
+      {/* explanation */}
+      <View style={styles.explanationCard}>
+        <Text style={styles.cardEyebrow}>EXPLANATION</Text>
+        <Text style={styles.cardTitle}>神社の意味を知る</Text>
+        <Text style={styles.cardBody}>{explanation}</Text>
+      </View>
+
+      {/* action suggestion */}
+      <View style={styles.actionCard}>
+        <Text style={styles.cardEyebrow}>NEXT ACTION</Text>
+        <Text style={styles.cardTitle}>参拝前にできること</Text>
+        <Text style={styles.cardBody}>{actionSuggestion}</Text>
       </View>
 
       {/* 説明文 */}
@@ -244,7 +288,21 @@ export default function ShrineDetail() {
         <Pressable onPress={openDirections} style={styles.ctaSecondary}>
           <Text style={styles.ctaSecondaryText}>地図で経路を確認する</Text>
         </Pressable>
+        <Pressable onPress={onVisitDone} style={[styles.ctaPrimary, visited && styles.ctaPrimaryDone]}>
+          <Text style={styles.ctaPrimaryText}>{visited ? "参拝済みとして記録しました" : "参拝したことを記録する"}</Text>
+        </Pressable>
       </View>
+
+      {visited ? (
+        <View style={styles.reflectionCard}>
+          <Text style={styles.cardEyebrow}>REFLECTION</Text>
+          <Text style={styles.cardTitle}>参拝後の振り返り</Text>
+          <Text style={styles.cardBody}>参拝して感じたことを残しておくと、次の相談や再訪時に自分の変化を見返しやすくなります。</Text>
+          <Pressable style={styles.reflectionButton} onPress={() => router.push("/records") }>
+            <Text style={styles.reflectionButtonText}>振り返りを残す</Text>
+          </Pressable>
+        </View>
+      ) : null}
     </ScrollView>
   );
 }
@@ -377,28 +435,53 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
 
-  // 参拝前のヒント
-  visitHintCard: {
+  // v2カード共通
+  recommendationCard: {
     marginHorizontal: spacing.screenX,
     marginTop: spacing.sectionTop,
     backgroundColor: theme.surfaceSoft,
-    borderRadius: radius.md,
+    borderRadius: radius.xl,
+    borderWidth: cardSizes.borderWidth,
+    borderColor: theme.borderGold,
+    padding: cardSizes.cardPaddingLg,
+    gap: spacing.smGap,
+  },
+  explanationCard: {
+    marginHorizontal: spacing.screenX,
+    marginTop: spacing.sectionTop,
+    backgroundColor: theme.surface,
+    borderRadius: radius.xl,
+    borderWidth: cardSizes.borderWidth,
+    borderColor: theme.border,
+    padding: cardSizes.cardPaddingLg,
+    gap: spacing.smGap,
+  },
+  actionCard: {
+    marginHorizontal: spacing.screenX,
+    marginTop: spacing.sectionTop,
+    backgroundColor: theme.surfaceSoft,
+    borderRadius: radius.xl,
     borderWidth: cardSizes.borderWidth,
     borderColor: theme.borderSoft,
-    paddingHorizontal: cardSizes.cardPaddingMd,
-    paddingVertical: spacing.lgGap,
-    gap: spacing.tightGap,
+    padding: cardSizes.cardPaddingLg,
+    gap: spacing.smGap,
   },
-  visitHintLabel: {
+  cardEyebrow: {
     color: theme.goldSoft,
     fontSize: 11,
     fontWeight: "800",
-    letterSpacing: 1.2,
+    letterSpacing: 1.4,
   },
-  visitHintText: {
+  cardTitle: {
+    color: theme.text,
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: "900",
+  },
+  cardBody: {
     color: theme.mutedSoft,
-    fontSize: 13,
-    lineHeight: 20,
+    fontSize: 14,
+    lineHeight: 22,
     fontWeight: "600",
   },
 
@@ -466,6 +549,49 @@ const styles = StyleSheet.create({
     borderColor: theme.borderGold,
   },
   ctaSecondaryText: {
+    color: theme.gold,
+    fontSize: 14,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+  },
+  ctaPrimary: {
+    height: ctaSizes.mediumHeight,
+    borderRadius: ctaSizes.mediumRadius,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: theme.gold,
+  },
+  ctaPrimaryDone: {
+    backgroundColor: theme.borderGoldDark,
+    borderWidth: cardSizes.borderWidth,
+    borderColor: theme.borderGold,
+  },
+  ctaPrimaryText: {
+    color: theme.background,
+    fontSize: 14,
+    fontWeight: "900",
+    letterSpacing: 0.3,
+  },
+  reflectionCard: {
+    marginHorizontal: spacing.screenX,
+    marginTop: spacing.sectionTop,
+    backgroundColor: theme.surface,
+    borderRadius: radius.xl,
+    borderWidth: cardSizes.borderWidth,
+    borderColor: theme.borderGold,
+    padding: cardSizes.cardPaddingLg,
+    gap: spacing.mdGap,
+  },
+  reflectionButton: {
+    height: ctaSizes.mediumHeight,
+    borderRadius: ctaSizes.mediumRadius,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "transparent",
+    borderWidth: cardSizes.borderWidth,
+    borderColor: theme.borderGold,
+  },
+  reflectionButtonText: {
     color: theme.gold,
     fontSize: 14,
     fontWeight: "800",
