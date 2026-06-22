@@ -393,6 +393,8 @@ CORS_TRUSTED_ORIGINS_DEFAULTS = [
     "http://127.0.0.1:3000",
     "http://localhost:3001",
     "http://127.0.0.1:3001",
+    "http://localhost:8081",
+    "http://127.0.0.1:8081",
 ]
 CSRF_TRUSTED_ORIGINS = _split_csv(
     os.environ.get("CSRF_TRUSTED_ORIGINS"),
@@ -411,6 +413,8 @@ CORS_ALLOWED_ORIGINS = _split_csv(
         "http://127.0.0.1:3001",
         "http://localhost:3000",
         "http://127.0.0.1:3000",
+        "http://localhost:8081",
+        "http://127.0.0.1:8081",
     ],
 )
 
