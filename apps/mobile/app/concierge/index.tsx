@@ -44,6 +44,13 @@ type ConciergeChatResponse = {
   };
 };
 
+const VISIT_STYLE_OPTIONS = [
+  "静かに整えたい",
+  "人混みを避けたい",
+  "近場を優先したい",
+  "自然を感じたい",
+] as const;
+
 function toRecommendationCard(item: RecommendationApiCard, index: number): RecommendationCard {
   return {
     id: item.id ?? `recommendation-${index + 1}`,
@@ -60,9 +67,13 @@ function normalizeRecommendations(items: RecommendationApiCard[]): Recommendatio
   return items.map(toRecommendationCard);
 }
 
-async function fetchConciergeRecommendations(consultation: string): Promise<RecommendationCard[]> {
+async function fetchConciergeRecommendations(
+  consultation: string,
+  visitStyle?: string,
+): Promise<RecommendationCard[]> {
   const body = await post<ConciergeChatResponse>("/concierge/chat/", {
     query: consultation,
+    extra_condition: visitStyle,
   });
 
   return normalizeRecommendations(body.data?.recommendations ?? []);
@@ -143,6 +154,7 @@ export default function ConciergeScreen() {
   const [loading, setLoading] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
   const [results, setResults] = React.useState<RecommendationCard[]>([]);
+  const [selectedVisitStyle, setSelectedVisitStyle] = React.useState<string | undefined>();
   const lastInitialQueryRef = React.useRef<string | null>(null);
 
   // URLの相談内容が変わったら自動送信する
@@ -156,7 +168,7 @@ export default function ConciergeScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialQuery]);
 
-  const submit = async (text: string) => {
+  const submit = async (text: string, visitStyle = selectedVisitStyle) => {
     const trimmed = text.trim();
     if (!trimmed) return;
 
@@ -167,7 +179,7 @@ export default function ConciergeScreen() {
     setErrorMessage(null);
 
     try {
-      const recommendations = await fetchConciergeRecommendations(trimmed);
+      const recommendations = await fetchConciergeRecommendations(trimmed, visitStyle);
       setResults(recommendations);
     } catch {
       setErrorMessage("通信に失敗しました。前回の候補を表示したまま、もう一度相談できます。");
@@ -178,6 +190,14 @@ export default function ConciergeScreen() {
   };
 
   const handleSend = () => void submit(input);
+
+  const handleChangeConditions = () => {
+    setInput(consultationText);
+  };
+
+  const handleResuggest = () => {
+    void submit(consultationText, selectedVisitStyle);
+  };
 
   const handleDetail = (card: RecommendationCard) => {
     if (card.shrineId) {
@@ -206,6 +226,51 @@ export default function ConciergeScreen() {
             <Text style={styles.consultationText}>
               {consultationText || "ホームで選んだ相談内容をもとに、おすすめの神社を表示します。"}
             </Text>
+          </View>
+
+          <View style={styles.conditionCard}>
+            <View style={styles.conditionHeaderRow}>
+              <View style={styles.conditionTitleBlock}>
+                <Text style={styles.conditionLabel}>条件レイヤー</Text>
+                <Text style={styles.conditionTitle}>今回の相談に反映する条件</Text>
+              </View>
+              <Pressable onPress={handleChangeConditions} style={styles.conditionEditButton}>
+                <Text style={styles.conditionEditText}>条件を変える</Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.conditionSummaryRow}>
+              <Text style={styles.conditionSummaryLabel}>相談テーマ</Text>
+              <Text style={styles.conditionSummaryText} numberOfLines={2}>
+                {consultationText || "未入力"}
+              </Text>
+            </View>
+
+            <View style={styles.visitStyleBlock}>
+              <Text style={styles.visitStyleLabel}>参拝スタイル</Text>
+              <View style={styles.visitStyleRow}>
+                {VISIT_STYLE_OPTIONS.map((option) => {
+                  const active = selectedVisitStyle === option;
+                  return (
+                    <Pressable
+                      key={option}
+                      onPress={() => setSelectedVisitStyle(active ? undefined : option)}
+                      style={[styles.visitStylePill, active && styles.visitStylePillActive]}
+                    >
+                      <Text style={[styles.visitStyleText, active && styles.visitStyleTextActive]}>{option}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+
+            <Pressable
+              onPress={handleResuggest}
+              style={[styles.resuggestButton, loading && styles.resuggestButtonDisabled]}
+              disabled={loading || !consultationText}
+            >
+              <Text style={styles.resuggestButtonText}>この条件で再提案する</Text>
+            </Pressable>
           </View>
 
           {loading ? (
@@ -327,6 +392,118 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     fontWeight: "800",
+  },
+
+  conditionCard: {
+    backgroundColor: theme.surfaceSoft,
+    borderWidth: 1,
+    borderColor: theme.borderSoft,
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 12,
+  },
+  conditionHeaderRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  conditionTitleBlock: {
+    flex: 1,
+    gap: 4,
+  },
+  conditionLabel: {
+    color: theme.goldSoft,
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1.2,
+  },
+  conditionTitle: {
+    color: theme.text,
+    fontSize: 15,
+    lineHeight: 21,
+    fontWeight: "900",
+  },
+  conditionEditButton: {
+    borderWidth: 1,
+    borderColor: theme.borderGold,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  conditionEditText: {
+    color: theme.gold,
+    fontSize: 11,
+    fontWeight: "800",
+  },
+  conditionSummaryRow: {
+    borderLeftWidth: 2,
+    borderLeftColor: theme.borderGold,
+    paddingLeft: 10,
+    gap: 3,
+  },
+  conditionSummaryLabel: {
+    color: theme.goldSoft,
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.7,
+  },
+  conditionSummaryText: {
+    color: theme.mutedSoft,
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: "700",
+  },
+  visitStyleBlock: {
+    gap: 8,
+  },
+  visitStyleLabel: {
+    color: theme.goldSoft,
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.7,
+  },
+  visitStyleRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  visitStylePill: {
+    borderWidth: 1,
+    borderColor: theme.borderSoft,
+    borderRadius: 999,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    backgroundColor: theme.surface,
+  },
+  visitStylePillActive: {
+    borderColor: theme.borderGold,
+    backgroundColor: theme.gold,
+  },
+  visitStyleText: {
+    color: theme.mutedSoft,
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  visitStyleTextActive: {
+    color: theme.background,
+  },
+  resuggestButton: {
+    height: 46,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: theme.gold,
+  },
+  resuggestButtonDisabled: {
+    opacity: 0.45,
+  },
+  resuggestButtonText: {
+    color: theme.background,
+    fontSize: 14,
+    fontWeight: "900",
+    letterSpacing: 0.3,
   },
 
   loadingRow: {
