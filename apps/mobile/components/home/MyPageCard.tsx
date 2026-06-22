@@ -4,6 +4,7 @@ import { Link, useFocusEffect } from "expo-router";
 import { getCounts } from "../../lib/storage";
 import { spacing } from "../../app/design/spacing";
 import { cardSizes } from "../../app/design/cardSizes";
+import { radius } from "../../app/design/radius";
 import { ctaSizes } from "../../app/design/ctaSizes";
 import { colors } from "../../app/theme";
 
@@ -63,7 +64,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceLight,
     borderWidth: cardSizes.borderWidth,
     borderColor: colors.border,
-    borderRadius: cardSizes.radiusSm,
+    borderRadius: radius.xs,
     padding: cardSizes.cardPaddingSm,
   },
   title: { fontWeight: "700" },
@@ -72,7 +73,7 @@ const styles = StyleSheet.create({
   pill: {
     marginRight: spacing.smGap,
     backgroundColor: colors.surfaceMuted,
-    borderRadius: cardSizes.pillRadius,
+    borderRadius: radius.pill,
     paddingHorizontal: ctaSizes.pillPaddingXSm,
     paddingVertical: ctaSizes.pillPaddingYSm,
   },

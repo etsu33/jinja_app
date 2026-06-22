@@ -5,6 +5,7 @@ import { usePopularShrines } from "../hooks/usePopularShrines";
 import { useRouter } from "expo-router";
 import { spacing } from "../app/design/spacing";
 import { cardSizes } from "../app/design/cardSizes";
+import { radius } from "../app/design/radius";
 
 export default function PopularSection() {
   const router = useRouter();
@@ -87,7 +88,7 @@ const styles = StyleSheet.create({
   },
   error: {
     backgroundColor: "#fff3f3",
-    borderRadius: cardSizes.radiusSm,
+    borderRadius: radius.xs,
     padding: cardSizes.cardPaddingSm,
     alignItems: "center",
     gap: spacing.smGap,
