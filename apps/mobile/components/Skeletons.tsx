@@ -2,6 +2,7 @@ import { View, StyleSheet } from "react-native";
 import { kamimusubiDark as theme } from "../app/theme";
 import { spacing } from "../app/design/spacing";
 import { cardSizes } from "../app/design/cardSizes";
+import { radius } from "../app/design/radius";
 
 export function CardSkeleton() {
   return (
@@ -16,12 +17,12 @@ const styles = StyleSheet.create({
   card: {
     width: cardSizes.skeletonWidth,
     backgroundColor: theme.surface,
-    borderRadius: cardSizes.skeletonRadius,
+    borderRadius: radius.sm,
     borderWidth: cardSizes.borderWidth,
     borderColor: theme.border,
     padding: cardSizes.cardPaddingMd,
     gap: spacing.inlineGap - 1,
     elevation: 2,
   },
-  shimmer: { backgroundColor: theme.borderSoft, borderRadius: cardSizes.shimmerRadius },
+  shimmer: { backgroundColor: theme.borderSoft, borderRadius: spacing.smGap },
 });

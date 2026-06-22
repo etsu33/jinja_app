@@ -5,6 +5,7 @@ import { useRouter, useFocusEffect } from "expo-router";
 import { getFavorites, toggleFavorite } from "../../lib/storage";
 import { spacing } from "../../app/design/spacing";
 import { cardSizes } from "../../app/design/cardSizes";
+import { radius } from "../../app/design/radius";
 import { shadows } from "../../app/design/shadow";
 import { kamimusubiDark as theme } from "../../app/theme";
 
@@ -142,13 +143,13 @@ const styles = StyleSheet.create({
     backgroundColor: rankingCarouselColors.badgeBackground,
     paddingHorizontal: spacing.smGap,
     paddingVertical: spacing.tightGap,
-    borderRadius: cardSizes.radiusSm / 2,
+    borderRadius: spacing.tightGap,
   },
   badgeText: { fontSize: 12, fontWeight: "500", color: rankingCarouselColors.badgeText },
 
   card: {
     width: cardSizes.carouselWidthLg,
-    borderRadius: cardSizes.radiusMd,
+    borderRadius: radius.md,
     backgroundColor: rankingCarouselColors.cardBackground,
     borderWidth: cardSizes.borderWidth,
     borderColor: rankingCarouselColors.cardBorder,
@@ -163,8 +164,8 @@ const styles = StyleSheet.create({
   img: {
     width: "100%",
     aspectRatio: 16 / 9,
-    borderTopLeftRadius: cardSizes.radiusMd,
-    borderTopRightRadius: cardSizes.radiusMd,
+    borderTopLeftRadius: radius.md,
+    borderTopRightRadius: radius.md,
   },
   cardContent: {
     padding: cardSizes.cardPaddingSm,
@@ -176,7 +177,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.inlineGap - 1,
   },
   tag: {
-    borderRadius: cardSizes.pillRadius,
+    borderRadius: radius.pill,
     backgroundColor: rankingCarouselColors.tagBackground,
     paddingHorizontal: spacing.smGap,
     paddingVertical: 2,
@@ -194,7 +195,7 @@ const styles = StyleSheet.create({
     zIndex: 2,
     paddingVertical: spacing.tightGap,
     paddingHorizontal: spacing.smGap,
-    borderRadius: cardSizes.pillRadius,
+    borderRadius: radius.pill,
     backgroundColor: rankingCarouselColors.heartBackground,
     borderWidth: cardSizes.borderWidth,
     borderColor: rankingCarouselColors.cardBorder,

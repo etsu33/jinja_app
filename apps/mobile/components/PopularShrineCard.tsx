@@ -6,6 +6,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { kamimusubiDark as theme } from "../app/theme";
 import { spacing } from "../app/design/spacing";
 import { cardSizes } from "../app/design/cardSizes";
+import { radius } from "../app/design/radius";
 // import { useFavorite } from "@/hooks/useFavorite"; // 共有フックがあるなら使用
 
 type BaseProps = {
@@ -171,7 +172,7 @@ export default function PopularShrineCard(props: WithFavProps) {
 const styles = StyleSheet.create({
   card: {
     width: cardSizes.carouselWidth,
-    borderRadius: cardSizes.radiusMd,
+    borderRadius: radius.md,
     backgroundColor: theme.surface,
     borderWidth: cardSizes.borderWidth,
     borderColor: theme.border,
@@ -217,7 +218,7 @@ const styles = StyleSheet.create({
   badge: {
     paddingHorizontal: spacing.smGap,
     paddingVertical: spacing.tightGap / 2,
-    borderRadius: cardSizes.pillRadius,
+    borderRadius: radius.pill,
     borderWidth: cardSizes.borderWidth,
     borderColor: theme.borderGold,
     backgroundColor: "transparent",
