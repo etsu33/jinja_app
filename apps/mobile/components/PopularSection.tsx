@@ -3,6 +3,8 @@ import PopularShrineCard from "./PopularShrineCard";
 import { CardSkeleton } from "./Skeletons";
 import { usePopularShrines } from "../hooks/usePopularShrines";
 import { useRouter } from "expo-router";
+import { spacing } from "../app/design/spacing";
+import { cardSizes } from "../app/design/cardSizes";
 
 export default function PopularSection() {
   const router = useRouter();
@@ -23,7 +25,7 @@ export default function PopularSection() {
       </View>
 
       {state.status === "loading" && (
-        <View style={{ gap: 10 }}>
+        <View style={styles.skeletonList}>
           <CardSkeleton />
           <CardSkeleton />
           <CardSkeleton />
@@ -43,7 +45,7 @@ export default function PopularSection() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingRight: 16, gap: 12 }}
+          contentContainerStyle={styles.listContent}
         >
           {state.data.map((s) => (
             <PopularShrineCard
@@ -63,11 +65,33 @@ export default function PopularSection() {
 }
 
 const styles = StyleSheet.create({
-  box: { paddingHorizontal: 16, paddingVertical: 12, backgroundColor: "#f8f8f8" },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
+  box: {
+    paddingHorizontal: spacing.screenX,
+    paddingVertical: spacing.lgGap,
+    backgroundColor: "#f8f8f8",
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: spacing.smGap,
+  },
   title: { fontSize: 18, fontWeight: "700" },
   link: { color: "#2f6ee5", fontWeight: "600" },
-  error: { backgroundColor: "#fff3f3", borderRadius: 12, padding: 12, alignItems: "center", gap: 8 },
+  skeletonList: {
+    gap: spacing.mdGap,
+  },
+  listContent: {
+    paddingRight: spacing.screenX,
+    gap: spacing.lgGap,
+  },
+  error: {
+    backgroundColor: "#fff3f3",
+    borderRadius: cardSizes.radiusSm,
+    padding: cardSizes.cardPaddingSm,
+    alignItems: "center",
+    gap: spacing.smGap,
+  },
   errorText: { color: "#b00020" },
   retry: { color: "#2f6ee5", fontWeight: "600" },
 });

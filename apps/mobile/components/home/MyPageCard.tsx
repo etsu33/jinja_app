@@ -2,6 +2,9 @@ import * as React from "react";
 import { View, Text, StyleSheet, Pressable } from "react-native";
 import { Link, useFocusEffect } from "expo-router";
 import { getCounts } from "../../lib/storage";
+import { spacing } from "../../app/design/spacing";
+import { cardSizes } from "../../app/design/cardSizes";
+import { ctaSizes } from "../../app/design/ctaSizes";
 
 export default function MyPageCard() {
   const [counts, setCounts] = React.useState({ favorites: 0, visits: 0, stamps: 0 });
@@ -19,8 +22,8 @@ export default function MyPageCard() {
 
   return (
     <View style={styles.card}>
-      <Text style={{ fontWeight: "700" }}>マイページ</Text>
-      <Text style={{ color: "#666", marginTop: 4, fontSize: 12 }}>
+      <Text style={styles.title}>マイページ</Text>
+      <Text style={styles.sub}>
         御朱印の登録・お気に入り管理・参拝履歴
       </Text>
 
@@ -30,18 +33,18 @@ export default function MyPageCard() {
         <View style={styles.pill}><Text style={styles.pillText}>御朱印 {counts.stamps}</Text></View>
       </View>
 
-      <View style={{ flexDirection: "row", marginTop: 12 }}>
+      <View style={styles.actionRow}>
         <Link href="/goshuin/upload" asChild>
           <Pressable style={styles.btnPrimary}><Text style={styles.btnTextDark}>御朱印を登録</Text></Pressable>
         </Link>
         {/* 任意：一覧を見る導線 */}
-        <View style={{ width: 8 }} />
+        <View style={styles.inlineSpacer} />
         <Link href="/goshuin" asChild>
           <Pressable style={styles.btn}><Text style={styles.btnText}>一覧を見る</Text></Pressable>
         </Link>
       </View>
 
-      <View style={{ width: 8 }} />
+      <View style={styles.verticalSpacer} />
 
   {/* ★ マイページ（プロフィール）を開く */}
   <Link href="/profile" asChild>
@@ -54,30 +57,48 @@ export default function MyPageCard() {
 
 const styles = StyleSheet.create({
   card: {
-    marginHorizontal: 16,
-    marginTop: 12,
+    marginHorizontal: spacing.screenX,
+    marginTop: spacing.lgGap,
     backgroundColor: "#fff",
-    borderWidth: 1,
+    borderWidth: cardSizes.borderWidth,
     borderColor: "#e6e6e6",
-    borderRadius: 12,
-    padding: 12,
+    borderRadius: cardSizes.radiusSm,
+    padding: cardSizes.cardPaddingSm,
   },
   title: { fontWeight: "700" },
-  sub: { color: "#666", marginTop: 4, fontSize: 12 },
-  metrics:{ flexDirection:"row", marginTop:12 },
-  pill:{ marginRight:8, backgroundColor:"#F4F4F5", borderRadius:999, paddingHorizontal:10, paddingVertical:6 },
+  sub: { color: "#666", marginTop: spacing.tightGap, fontSize: 12 },
+  metrics: { flexDirection: "row", marginTop: spacing.lgGap },
+  pill: {
+    marginRight: spacing.smGap,
+    backgroundColor: "#F4F4F5",
+    borderRadius: cardSizes.pillRadius,
+    paddingHorizontal: ctaSizes.pillPaddingXSm,
+    paddingVertical: ctaSizes.pillPaddingYSm,
+  },
   pillText:{ fontSize:12 },
+  actionRow: { flexDirection: "row", marginTop: spacing.lgGap },
+  inlineSpacer: { width: spacing.smGap },
+  verticalSpacer: { height: spacing.smGap },
   btn: {
-    height: 44,
-    paddingHorizontal: 14,
+    height: ctaSizes.smallHeight,
+    paddingHorizontal: cardSizes.cardPaddingMd,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 10,
+    borderRadius: ctaSizes.smallRadius,
     backgroundColor: "#F2C94C",
-    borderWidth: 1,
+    borderWidth: cardSizes.borderWidth,
     borderColor: "#e6e6e6",
   },
-  btnPrimary:{ height:44, paddingHorizontal:14, alignItems:"center", justifyContent:"center", borderRadius:10, backgroundColor:"#F2C94C", borderWidth:1, borderColor:"#e6e6e6" },
+  btnPrimary: {
+    height: ctaSizes.smallHeight,
+    paddingHorizontal: cardSizes.cardPaddingMd,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: ctaSizes.smallRadius,
+    backgroundColor: "#F2C94C",
+    borderWidth: cardSizes.borderWidth,
+    borderColor: "#e6e6e6",
+  },
   btnText: { fontWeight: "700", color: "#111" },
   btnTextDark:{ fontWeight:"700", color:"#111" },
 });

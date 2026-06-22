@@ -3,6 +3,8 @@ import * as React from "react";
 import { Image, ScrollView, Text, View, StyleSheet, Pressable, Platform } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { getFavorites, toggleFavorite } from "../../lib/storage";
+import { spacing } from "../../app/design/spacing";
+import { cardSizes } from "../../app/design/cardSizes";
 
 type Shrine = {
   id: string;
@@ -37,27 +39,27 @@ export default function RankingCarousel({ items }: { items: Shrine[] }) {
   };
 
   return (
-    <View style={{ marginTop: 8, paddingHorizontal: 16 }}>
+    <View style={{ marginTop: spacing.smGap, paddingHorizontal: spacing.screenX }}>
       {/* ヘッダー */}
       <View style={styles.headerRow}>
         <Text style={styles.title}>人気神社ランキング</Text>
-        <View style={{ flexDirection: "row", alignItems: "center" }}>
-          <Pressable onPress={() => router.push("/ranking")} style={{ marginRight: 8 }}>
-            <Text style={{ fontSize: 12, textDecorationLine: "underline" }}>もっと見る</Text>
+        <View style={styles.headerActionRow}>
+          <Pressable onPress={() => router.push("/ranking")} style={styles.moreLink}>
+            <Text style={styles.moreLinkText}>もっと見る</Text>
           </Pressable>
           <View style={styles.badge}><Text style={styles.badgeText}>今週</Text></View>
         </View>
       </View>
 
       {/* 横スクロール */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 16 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.listContent}>
         {items.map((s, i) => {
           const favored = favSet.has(s.id);
           return (
             <Pressable
               key={s.id}
               onPress={() => router.push(`/shrines/${s.id}`)}
-              style={[styles.card, { marginRight: i === items.length - 1 ? 0 : 12 }, favored && styles.cardFav]}
+              style={[styles.card, { marginRight: i === items.length - 1 ? 0 : spacing.lgGap }, favored && styles.cardFav]}
             >
               {/* ハートの小ボタン（カード右上・タップでトグル／ナビは発火させない） */}
               <Pressable
@@ -66,13 +68,13 @@ export default function RankingCarousel({ items }: { items: Shrine[] }) {
                   onToggleFav(s.id);
                 }}
                 style={[styles.heartFab, favored && styles.heartFabFav]}
-                hitSlop={8}
+                hitSlop={spacing.smGap}
               >
                 <Text style={[styles.heartFabText, favored && styles.heartFabTextFav]}>{favored ? "♡" : "♡"}</Text>
               </Pressable>
 
               <Image source={{ uri: s.imageUrl }} style={styles.img} />
-              <View style={{ padding: 12 }}>
+              <View style={styles.cardContent}>
                 <Text numberOfLines={1} style={styles.name}>
                   {s.name}
                 </Text>
@@ -105,16 +107,40 @@ const shadow = Platform.select({
 });
 
 const styles = StyleSheet.create({
-  headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: spacing.smGap,
+  },
+  headerActionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  moreLink: {
+    marginRight: spacing.smGap,
+  },
+  moreLinkText: {
+    fontSize: 12,
+    textDecorationLine: "underline",
+  },
+  listContent: {
+    paddingRight: spacing.screenX,
+  },
   title: { fontSize: 18, fontWeight: "600" },
-  badge: { backgroundColor: "#F2C94C", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  badge: {
+    backgroundColor: "#F2C94C",
+    paddingHorizontal: spacing.smGap,
+    paddingVertical: spacing.tightGap,
+    borderRadius: cardSizes.radiusSm / 2,
+  },
   badgeText: { fontSize: 12, fontWeight: "500", color: "#111" },
 
   card: {
-    width: 256,
-    borderRadius: 16,
+    width: cardSizes.carouselWidthLg,
+    borderRadius: cardSizes.radiusMd,
     backgroundColor: "white",
-    borderWidth: 1,
+    borderWidth: cardSizes.borderWidth,
     borderColor: "#e6e6e6",
     overflow: "hidden",
     position: "relative",
@@ -124,24 +150,43 @@ const styles = StyleSheet.create({
     borderColor: "#E24E33",
     backgroundColor: "rgba(226,78,51,0.06)",
   },
-  img: { width: "100%", aspectRatio: 16 / 9, borderTopLeftRadius: 16, borderTopRightRadius: 16 },
+  img: {
+    width: "100%",
+    aspectRatio: 16 / 9,
+    borderTopLeftRadius: cardSizes.radiusMd,
+    borderTopRightRadius: cardSizes.radiusMd,
+  },
+  cardContent: {
+    padding: cardSizes.cardPaddingSm,
+  },
   name: { fontWeight: "600" },
-  tagRow: { flexDirection: "row", flexWrap: "wrap", marginTop: 6 },
-  tag: { borderRadius: 999, backgroundColor: "#F4F4F5", paddingHorizontal: 8, paddingVertical: 2, marginRight: 6, marginBottom: 6 },
+  tagRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginTop: spacing.inlineGap - 1,
+  },
+  tag: {
+    borderRadius: cardSizes.pillRadius,
+    backgroundColor: "#F4F4F5",
+    paddingHorizontal: spacing.smGap,
+    paddingVertical: 2,
+    marginRight: spacing.inlineGap - 1,
+    marginBottom: spacing.inlineGap - 1,
+  },
   tagText: { fontSize: 11 },
   rowSpace: { flexDirection: "row", justifyContent: "space-between" },
   meta: { color: "#666", fontSize: 12 },
 
   heartFab: {
     position: "absolute",
-    top: 8,
-    right: 8,
+    top: spacing.smGap,
+    right: spacing.smGap,
     zIndex: 2,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 999,
+    paddingVertical: spacing.tightGap,
+    paddingHorizontal: spacing.smGap,
+    borderRadius: cardSizes.pillRadius,
     backgroundColor: "#fff",
-    borderWidth: 1,
+    borderWidth: cardSizes.borderWidth,
     borderColor: "#e6e6e6",
   },
   heartFabFav: {
