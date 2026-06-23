@@ -436,3 +436,56 @@ Behavior Profile 更新
 ↓
 次回推薦
 ```
+---
+
+## Recommendation Score v3 Final Criteria
+
+### Active 化条件
+
+以下を複数期間で満たした場合のみ active 化を許可する。
+
+| 指標 | 条件 |
+|---|---|
+| top1_changed_rate_avg | 0.10 以下 |
+| activation_candidate_rate | 0.80 以上 |
+| max_abs_delta_max | 0.50 未満 |
+| route_open_rate | 現行以上 |
+| save_rate | 現行以上 |
+| visit_done_rate | 現行以上 |
+| reflection_saved_rate | 現行以上 |
+
+### Rollback 条件
+
+以下のいずれかを満たした場合は `SCORE_V3_MODE=shadow` に戻す。
+
+| 指標 | 条件 |
+|---|---|
+| top1_changed_rate_avg | 0.20 超 |
+| max_abs_delta_max | 1.00 超 |
+| route_open_rate | 悪化 |
+| visit_done_rate | 悪化 |
+| reflection_saved_rate | 悪化 |
+| activation_candidate_rate | 0.50 未満 |
+
+### Weight 調整ルール
+
+| 状況 | 対応 |
+|---|---|
+| top1_changed_rate が高い | state weight を上げる |
+| max_abs_delta が大きい | 補助シグナル weight を下げる |
+| route_open が改善しない | behavior weight を見直す |
+| visit_done が改善しない | action weight を見直す |
+| reflection_saved が改善しない | reflection weight を見直す |
+
+### Score v3 Final Weight
+
+```text
+state       = 0.45
+behavior    = 0.25
+profile     = 0.05
+direction   = 0.02
+action      = 0.02
+reflection  = 0.01
+history     = 0.10
+distance    = 0.10
+```
