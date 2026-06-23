@@ -203,3 +203,97 @@ class TestSummarizeScoreV3AbObservations:
             "max_abs_delta_avg",
             "max_abs_delta_max",
         }
+
+
+# ---------------------------------------------------------------------------
+# build_score_v3_funnel_correlation_summary
+# ---------------------------------------------------------------------------
+
+class TestBuildScoreV3FunnelCorrelationSummary:
+    def _funnel(self, dv=10, ro=3, save=2, visit=1, ref=0):
+        return {
+            "detail_view_count": dv,
+            "route_open_count": ro,
+            "save_count": save,
+            "visit_count": visit,
+            "reflection_count": ref,
+        }
+
+    def _v3(self, top1=0.1, cand=0.8, avg=-0.05, max_d=0.45):
+        return {
+            "top1_changed_rate_avg": top1,
+            "activation_candidate_rate": cand,
+            "avg_delta": avg,
+            "max_abs_delta_max": max_d,
+        }
+
+    def test_required_keys(self):
+        from temples.services.behavior_funnel import build_score_v3_funnel_correlation_summary
+        result = build_score_v3_funnel_correlation_summary(self._funnel(), self._v3())
+        assert set(result.keys()) == {"score_v3", "funnel", "analysis_hint"}
+        assert set(result["funnel"].keys()) == {
+            "route_open_rate", "save_rate", "visit_done_rate", "reflection_saved_rate"
+        }
+        assert set(result["score_v3"].keys()) == {
+            "top1_changed_rate_avg", "activation_candidate_rate", "avg_delta", "max_abs_delta_max"
+        }
+
+    def test_rates_calculated_from_detail_view(self):
+        from temples.services.behavior_funnel import build_score_v3_funnel_correlation_summary
+        result = build_score_v3_funnel_correlation_summary(
+            self._funnel(dv=10, ro=3, save=2, visit=1, ref=0), self._v3()
+        )
+        assert result["funnel"]["route_open_rate"] == pytest.approx(0.3)
+        assert result["funnel"]["save_rate"] == pytest.approx(0.2)
+        assert result["funnel"]["visit_done_rate"] == pytest.approx(0.1)
+        assert result["funnel"]["reflection_saved_rate"] == pytest.approx(0.0)
+
+    def test_zero_detail_view_returns_all_zero_rates(self):
+        from temples.services.behavior_funnel import build_score_v3_funnel_correlation_summary
+        result = build_score_v3_funnel_correlation_summary(
+            self._funnel(dv=0, ro=5, save=3, visit=2, ref=1), self._v3()
+        )
+        assert result["funnel"]["route_open_rate"] == pytest.approx(0.0)
+        assert result["funnel"]["save_rate"] == pytest.approx(0.0)
+
+    def test_score_v3_passthrough(self):
+        from temples.services.behavior_funnel import build_score_v3_funnel_correlation_summary
+        result = build_score_v3_funnel_correlation_summary(
+            self._funnel(), self._v3(top1=0.2, cand=0.6, avg=-0.1, max_d=0.3)
+        )
+        assert result["score_v3"]["top1_changed_rate_avg"] == pytest.approx(0.2)
+        assert result["score_v3"]["activation_candidate_rate"] == pytest.approx(0.6)
+        assert result["score_v3"]["avg_delta"] == pytest.approx(-0.1)
+        assert result["score_v3"]["max_abs_delta_max"] == pytest.approx(0.3)
+
+    def test_analysis_hint_value(self):
+        from temples.services.behavior_funnel import build_score_v3_funnel_correlation_summary
+        result = build_score_v3_funnel_correlation_summary(self._funnel(), self._v3())
+        assert result["analysis_hint"] == "compare_score_v3_delta_with_behavior_funnel"
+
+
+# ---------------------------------------------------------------------------
+# correlate_score_v3_with_funnel
+# ---------------------------------------------------------------------------
+
+class TestCorrelateScoreV3WithFunnel:
+    def test_combines_summarize_and_correlation(self):
+        from temples.services.concierge_observability import correlate_score_v3_with_funnel
+        obs = [
+            {"top1_changed_rate": 0.0, "avg_delta": -0.1, "max_abs_delta": 0.2, "activation_candidate": True},
+            {"top1_changed_rate": 1.0, "avg_delta": -0.2, "max_abs_delta": 0.4, "activation_candidate": False},
+        ]
+        funnel = {"detail_view_count": 20, "route_open_count": 6, "save_count": 4, "visit_count": 2, "reflection_count": 1}
+        result = correlate_score_v3_with_funnel(score_v3_observations=obs, funnel=funnel)
+        assert result["funnel"]["route_open_rate"] == pytest.approx(6 / 20)
+        assert result["score_v3"]["top1_changed_rate_avg"] == pytest.approx(0.5)
+        assert result["analysis_hint"] == "compare_score_v3_delta_with_behavior_funnel"
+
+    def test_empty_observations(self):
+        from temples.services.concierge_observability import correlate_score_v3_with_funnel
+        result = correlate_score_v3_with_funnel(
+            score_v3_observations=[],
+            funnel={"detail_view_count": 10, "route_open_count": 3, "save_count": 1, "visit_count": 0, "reflection_count": 0},
+        )
+        assert result["score_v3"]["top1_changed_rate_avg"] == pytest.approx(0.0)
+        assert result["funnel"]["route_open_rate"] == pytest.approx(0.3)

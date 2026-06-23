@@ -336,9 +336,42 @@ summary = summarize_score_v3_ab_observations([
 `avg_delta` / `max_abs_delta` を突合し、行動シグナルの効き具合を確認する。
 
 ```python
-# behavior_funnel.py の集計と突合する想定（別 PR）
-from temples.services.behavior_funnel import get_behavior_funnel_summary
+from temples.services.concierge_observability import correlate_score_v3_with_funnel
+from temples.services.behavior_funnel import get_behavior_funnel_metrics
+import dataclasses
+
+funnel = dataclasses.asdict(get_behavior_funnel_metrics())
+result = correlate_score_v3_with_funnel(
+    score_v3_observations=[...],  # _debug["score_v3_ab_observation"] のリスト
+    funnel=funnel,
+)
+# {
+#   "score_v3": {
+#     "top1_changed_rate_avg": 0.1,
+#     "activation_candidate_rate": 0.8,
+#     "avg_delta": -0.05,
+#     "max_abs_delta_max": 0.45,
+#   },
+#   "funnel": {
+#     "route_open_rate": 0.3,
+#     "save_rate": 0.2,
+#     "visit_done_rate": 0.1,
+#     "reflection_saved_rate": 0.05,
+#   },
+#   "analysis_hint": "compare_score_v3_delta_with_behavior_funnel",
+# }
 ```
+
+#### 突合による判断基準
+
+| 状況 | 判断 |
+|---|---|
+| `top1_changed_rate` 低 ＋ funnel 改善（route_open / save 増）| score_v3 の重みは有望、active 化を検討 |
+| `top1_changed_rate` 高 ＋ funnel 悪化 | 補助シグナルの重みを弱める、active 化を延期 |
+| `max_abs_delta` 大 ＋ `visit_done_rate` 低 | action_signal の weight を下げる |
+| `activation_candidate_rate` 低 ＋ `reflection_saved_rate` 高 | reflection_signal が score_v3 に強く出すぎている可能性 |
+
+active 化の最終判断には funnel 指標を必ず含める。`activation_candidate_rate` だけで判断しない。
 
 ### 重み変更の手順（別 PR）
 
