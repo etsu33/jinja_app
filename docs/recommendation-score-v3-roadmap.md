@@ -253,6 +253,24 @@ pytest -k concierge
 SCORE_V3_MODE=active pytest -k concierge
 ```
 
+### 重み調整基準
+
+shadow observation の `summary` を見て以下を判断する。
+
+| 指標 | 対応 |
+|---|---|
+| `top1_changed_rate` が高い | `state` weight を上げる（need スコアの影響を強くする）|
+| `max_abs_delta` が大きい | `profile` / `direction` / `action` / `reflection` の補助重みを下げる |
+| `activation_candidate` が不安定 | active 化を延期し、shadow observation を継続する |
+| active 化後も top1 変動が多い | `SCORE_V3_MODE=shadow` に戻して原因調査 |
+
+activation_candidate = true の目安:
+- `top1_changed_rate = 0.0`（複数セッションで継続）
+- `max_abs_delta < 0.5`
+- `score_v3_available_count == recommendation_count`
+
+active 化後も shadow observation を維持する（`_debug.score_v3_shadow_observation` は常に出力される）。
+
 ### やらないこと（この段階）
 
 - `score_total` を変更しない
@@ -260,6 +278,20 @@ SCORE_V3_MODE=active pytest -k concierge
 - `mode="active"` をデフォルトにしない
 - DB 変更・migration しない
 - ranking.py のスコア計算ロジックを変更しない
+
+### PostHog 対応 TODO
+
+PostHog 送信 helper が未実装のため、以下をイベントとして送ることを検討する（別 PR）。
+
+```
+イベント名: score_v3_ab_observed
+properties:
+  - mode
+  - top1_changed_rate
+  - avg_delta
+  - max_abs_delta
+  - activation_candidate
+```
 
 ---
 

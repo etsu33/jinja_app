@@ -495,6 +495,8 @@ def observe_score_v3_shadow(
             "top1_changed_rate": 0.0,
             "avg_delta": 0.0,
             "max_abs_delta": 0.0,
+            "min_delta": 0.0,
+            "max_delta": 0.0,
             "score_v3_available_count": score_v3_available_count,
             "recommendation_count": recommendation_count,
             "activation_candidate": False,
@@ -530,9 +532,12 @@ def observe_score_v3_shadow(
             "score_v3": score_v3_top1_item["score_v3"],
         }
 
-        deltas = [abs(it["delta"]) for it in items]
-        avg_delta = round(sum(it["delta"] for it in items) / len(items), 6)
-        max_abs_delta = round(max(deltas), 6)
+        raw_deltas = [it["delta"] for it in items]
+        abs_deltas = [abs(d) for d in raw_deltas]
+        avg_delta = round(sum(raw_deltas) / len(raw_deltas), 6)
+        max_abs_delta = round(max(abs_deltas), 6)
+        min_delta = round(min(raw_deltas), 6)
+        max_delta = round(max(raw_deltas), 6)
         top1_changed_rate = 1.0 if top1_changed else 0.0
         activation_candidate = (
             not top1_changed
@@ -545,6 +550,8 @@ def observe_score_v3_shadow(
             "top1_changed_rate": top1_changed_rate,
             "avg_delta": avg_delta,
             "max_abs_delta": max_abs_delta,
+            "min_delta": min_delta,
+            "max_delta": max_delta,
             "score_v3_available_count": score_v3_available_count,
             "recommendation_count": recommendation_count,
             "activation_candidate": activation_candidate,
@@ -588,6 +595,8 @@ def observe_score_v3_shadow(
                 "top1_changed_rate": 0.0,
                 "avg_delta": 0.0,
                 "max_abs_delta": 0.0,
+                "min_delta": 0.0,
+                "max_delta": 0.0,
                 "score_v3_available_count": 0,
                 "recommendation_count": 0,
                 "activation_candidate": False,

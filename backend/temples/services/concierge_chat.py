@@ -538,10 +538,32 @@ def build_chat_recommendations(
 
     # Score v3 shadow observation（score_total との差分を観測のみ、ranking 変更なし）
     _v3_recs = [r for r in (recs.get("recommendations") or []) if isinstance(r, dict)]
+    _v3_obs: dict[str, Any] = {}
     if any((r.get("breakdown") or {}).get("score_v3") is not None for r in _v3_recs):
-        recs.setdefault("_debug", {})["score_v3_shadow_observation"] = observe_score_v3_shadow(
-            recommendations=_v3_recs,
-        )
+        _v3_obs = observe_score_v3_shadow(recommendations=_v3_recs)
+        recs.setdefault("_debug", {})["score_v3_shadow_observation"] = _v3_obs
+
+    # A/B observation summary（mode 付き）
+    _v3_summary = _v3_obs.get("summary") or {}
+    score_v3_ab_observation: dict[str, Any] = {
+        "mode": score_v3_mode,
+        "top1_changed_rate": float(_v3_summary.get("top1_changed_rate") or 0.0),
+        "avg_delta": float(_v3_summary.get("avg_delta") or 0.0),
+        "max_abs_delta": float(_v3_summary.get("max_abs_delta") or 0.0),
+        "activation_candidate": bool(_v3_summary.get("activation_candidate") or False),
+    }
+    recs.setdefault("_debug", {})["score_v3_ab_observation"] = score_v3_ab_observation
+
+    # dashboard summary
+    recs.setdefault("_debug", {})["dashboard_summary"] = {
+        "score_v3": {
+            "mode": score_v3_mode,
+            "top1_changed_rate": score_v3_ab_observation["top1_changed_rate"],
+            "avg_delta": score_v3_ab_observation["avg_delta"],
+            "max_abs_delta": score_v3_ab_observation["max_abs_delta"],
+            "activation_candidate": score_v3_ab_observation["activation_candidate"],
+        }
+    }
 
     try:
         log.info(
