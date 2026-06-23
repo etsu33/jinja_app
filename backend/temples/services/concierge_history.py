@@ -261,6 +261,25 @@ def calculate_light_behavior_profile_breakdown(
     }
 
 
+def calculate_reflection_profile_breakdown(
+    *,
+    behavior_breakdown: dict[str, float] | None = None,
+) -> dict[str, Any]:
+    """
+    Reflection Profile v1: reflection_signal のみを対象にする。
+    behavior_breakdown から抽出するため DB 再クエリなし。
+    reflection 内容の意味解析はこの PR では行わない。
+    """
+    bd = behavior_breakdown or {}
+    reflection = float(bd.get("reflection_signal") or 0.0)
+    return {
+        "score": reflection,
+        "reflection_signal": reflection,
+        "status": "reflected" if reflection > 0 else "not_reflected",
+        "reason": "reflection_saved_only",
+    }
+
+
 def calculate_action_profile_breakdown(
     *,
     behavior_breakdown: dict[str, float] | None = None,

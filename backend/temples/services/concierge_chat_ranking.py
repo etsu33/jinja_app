@@ -8,6 +8,7 @@ from temples.services.concierge_history import (
     build_recent_reflection_hint,
     calculate_action_profile_breakdown,
     calculate_light_behavior_profile_breakdown,
+    calculate_reflection_profile_breakdown,
     calculate_shrine_behavior_signal_breakdown,
     classify_shrine_action_state,
 )
@@ -999,6 +1000,9 @@ def _attach_breakdown(
     # Action Profile v1: visit_signal のみ（スコアへの加算はまだしない）
     action_profile = calculate_action_profile_breakdown(behavior_breakdown=behavior_breakdown)
 
+    # Reflection Profile v1: reflection_signal のみ（意味解析はまだしない）
+    reflection_profile = calculate_reflection_profile_breakdown(behavior_breakdown=behavior_breakdown)
+
     # profile_context 補助シグナル（最大 +0.03、主重みには影響しない）
     profile_signal_score, profile_signal_matched = _score_profile_signal(rec, profile_context)
 
@@ -1050,6 +1054,12 @@ def _attach_breakdown(
             "visit_signal": float(action_profile["visit_signal"]),
             "status": str(action_profile["status"]),
             "reason": str(action_profile["reason"]),
+        },
+        "reflection_profile": {
+            "score": float(reflection_profile["score"]),
+            "reflection_signal": float(reflection_profile["reflection_signal"]),
+            "status": str(reflection_profile["status"]),
+            "reason": str(reflection_profile["reason"]),
         },
     }
 
