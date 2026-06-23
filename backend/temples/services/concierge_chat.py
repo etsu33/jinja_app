@@ -52,6 +52,7 @@ from temples.services.concierge_chat_observation import (
     observe_direction_signal,
     observe_profile_signal,
     observe_ranking_breakdown,
+    observe_score_v3_shadow,
     observe_trim_after,
     observe_trim_before,
     observe_visit_style_before_trim,
@@ -525,6 +526,13 @@ def build_chat_recommendations(
         recs=recs,
         profile_context=profile_context,
     )
+
+    # Score v3 shadow observation（score_total との差分を観測のみ、ranking 変更なし）
+    _v3_recs = [r for r in (recs.get("recommendations") or []) if isinstance(r, dict)]
+    if any((r.get("breakdown") or {}).get("score_v3") is not None for r in _v3_recs):
+        recs.setdefault("_debug", {})["score_v3_shadow_observation"] = observe_score_v3_shadow(
+            recommendations=_v3_recs,
+        )
 
     try:
         log.info(
