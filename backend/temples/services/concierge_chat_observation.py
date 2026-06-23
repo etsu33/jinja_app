@@ -487,6 +487,19 @@ def observe_score_v3_shadow(
                 }
             )
 
+        recommendation_count = len(recommendations or [])
+        score_v3_available_count = len(items)
+
+        _empty_summary = {
+            "top1_changed": False,
+            "top1_changed_rate": 0.0,
+            "avg_delta": 0.0,
+            "max_abs_delta": 0.0,
+            "score_v3_available_count": score_v3_available_count,
+            "recommendation_count": recommendation_count,
+            "activation_candidate": False,
+        }
+
         if not items:
             return {
                 "mode": "shadow",
@@ -495,6 +508,7 @@ def observe_score_v3_shadow(
                 "score_total_top1": None,
                 "score_v3_top1": None,
                 "items": [],
+                "summary": _empty_summary,
             }
 
         # score_total 順（現在の ranking 順）で top1
@@ -516,12 +530,39 @@ def observe_score_v3_shadow(
             "score_v3": score_v3_top1_item["score_v3"],
         }
 
+        deltas = [abs(it["delta"]) for it in items]
+        avg_delta = round(sum(it["delta"] for it in items) / len(items), 6)
+        max_abs_delta = round(max(deltas), 6)
+        top1_changed_rate = 1.0 if top1_changed else 0.0
+        activation_candidate = (
+            not top1_changed
+            and max_abs_delta < 0.5
+            and score_v3_available_count == recommendation_count
+        )
+
+        summary = {
+            "top1_changed": top1_changed,
+            "top1_changed_rate": top1_changed_rate,
+            "avg_delta": avg_delta,
+            "max_abs_delta": max_abs_delta,
+            "score_v3_available_count": score_v3_available_count,
+            "recommendation_count": recommendation_count,
+            "activation_candidate": activation_candidate,
+        }
+
         log.info(
             "[score_v3_shadow] count=%s top1_changed=%s score_total_top1=%s score_v3_top1=%s",
             len(items),
             top1_changed,
             score_total_top1,
             score_v3_top1,
+        )
+        log.info(
+            "[score_v3_shadow_summary] top1_changed=%s avg_delta=%s max_abs_delta=%s activation_candidate=%s",
+            top1_changed,
+            avg_delta,
+            max_abs_delta,
+            activation_candidate,
         )
 
         return {
@@ -531,6 +572,7 @@ def observe_score_v3_shadow(
             "score_total_top1": score_total_top1,
             "score_v3_top1": score_v3_top1,
             "items": items,
+            "summary": summary,
         }
     except Exception:
         log.exception("[observe_score_v3_shadow] failed")
@@ -541,6 +583,15 @@ def observe_score_v3_shadow(
             "score_total_top1": None,
             "score_v3_top1": None,
             "items": [],
+            "summary": {
+                "top1_changed": False,
+                "top1_changed_rate": 0.0,
+                "avg_delta": 0.0,
+                "max_abs_delta": 0.0,
+                "score_v3_available_count": 0,
+                "recommendation_count": 0,
+                "activation_candidate": False,
+            },
         }
 
 

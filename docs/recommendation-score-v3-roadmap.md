@@ -187,6 +187,44 @@ score_v3 =
 
 ---
 
+---
+
+## Activate 準備方針
+
+### Shadow Observation の確認
+
+`_debug.score_v3_shadow_observation.summary` で以下を確認する。
+
+| 指標 | 条件 | 意味 |
+|---|---|---|
+| `top1_changed_rate` | 0.0（top1 が変わらない）| 既存 ranking と乖離がない |
+| `max_abs_delta` | 0.5 未満 | 個別スコアの変動が小さい |
+| `activation_candidate` | `true` | 上記2条件 + score_v3 が全件計算済み |
+
+ログ確認例:
+
+```
+[score_v3_shadow_summary] top1_changed=False avg_delta=-0.12 max_abs_delta=0.25 activation_candidate=True
+```
+
+### Active 化の手順
+
+1. shadow observation を複数セッションにわたって確認する
+2. `activation_candidate` が安定して `true` になることを確認する
+3. `_score_total` の sort_key を score_v3 に切り替える **別 PR** で実施する
+4. sort_key 切替は ranking.py の `_attach_breakdown` を変更する
+5. デフォルトは shadow のまま維持する
+
+### やらないこと（この段階）
+
+- `score_total` を変更しない
+- `_score_total`（sort key）を変更しない
+- `mode="active"` にしない
+- DB 変更・migration しない
+- ranking.py のスコア計算ロジックを変更しない
+
+---
+
 ## やらないこと
 
 - 占術だけで順位を決める
