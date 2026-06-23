@@ -46,6 +46,69 @@ _GOGYO_TO_ELEMENTS: Dict[str, List[str]] = {
 
 DIRECTION_SIGNAL_MAX = 0.02
 
+_SCORE_V3_WEIGHTS: Dict[str, float] = {
+    "state": 0.45,
+    "history": 0.10,
+    "distance": 0.10,
+    "behavior": 0.25,
+    "profile": 0.05,
+    "direction": 0.02,
+    "action": 0.02,
+    "reflection": 0.01,
+}
+
+
+def build_recommendation_score_v3_breakdown(
+    *,
+    state_signal: float,
+    history_signal: float,
+    distance_signal: float,
+    behavior_profile: Dict[str, Any],
+    profile_signal: Dict[str, Any],
+    direction_signal: Dict[str, Any],
+    action_profile: Dict[str, Any],
+    reflection_profile: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Score v3 統合ヘルパー（shadow モード）。
+
+    既存の score_total / ranking には一切影響しない。
+    breakdown.score_v3 / score_v3_detail として観測用に付与するのみ。
+    """
+    w = _SCORE_V3_WEIGHTS
+    behavior_score = float((behavior_profile or {}).get("total", 0.0))
+    profile_score = float((profile_signal or {}).get("score", 0.0))
+    direction_score = float((direction_signal or {}).get("score", 0.0))
+    action_score = float((action_profile or {}).get("score", 0.0))
+    reflection_score = float((reflection_profile or {}).get("score", 0.0))
+
+    score = (
+        state_signal * w["state"]
+        + history_signal * w["history"]
+        + distance_signal * w["distance"]
+        + behavior_score * w["behavior"]
+        + profile_score * w["profile"]
+        + direction_score * w["direction"]
+        + action_score * w["action"]
+        + reflection_score * w["reflection"]
+    )
+
+    return {
+        "score": float(score),
+        "components": {
+            "state_signal": float(state_signal),
+            "history_signal": float(history_signal),
+            "distance_signal": float(distance_signal),
+            "behavior_signal": float(behavior_score),
+            "profile_signal": float(profile_score),
+            "direction_signal": float(direction_score),
+            "action_signal": float(action_score),
+            "reflection_signal": float(reflection_score),
+        },
+        "weights": {k: float(v) for k, v in w.items()},
+        "mode": "shadow",
+    }
+
+
 # 方角ラベル（日本語）→ shrine 側の direction/direction_tags で使われうる値
 _DIRECTION_LABELS_JA: set[str] = {"東", "西", "南", "北", "北東", "南東", "南西", "北西"}
 
@@ -1062,6 +1125,20 @@ def _attach_breakdown(
             "reason": str(reflection_profile["reason"]),
         },
     }
+
+    # Score v3 統合（shadow モード: 既存 score_total / sort 順に影響しない）
+    score_v3_breakdown = build_recommendation_score_v3_breakdown(
+        state_signal=float(score_need),
+        history_signal=0.0,
+        distance_signal=float(score_distance),
+        behavior_profile={"total": light_behavior["total"]},
+        profile_signal={"score": profile_signal_score},
+        direction_signal={"score": direction_signal_score},
+        action_profile=action_profile,
+        reflection_profile=reflection_profile,
+    )
+    rec["breakdown"]["score_v3"] = float(score_v3_breakdown["score"])
+    rec["breakdown"]["score_v3_detail"] = score_v3_breakdown
 
     rec["breakdown_detail"] = {
         "version": 1,
