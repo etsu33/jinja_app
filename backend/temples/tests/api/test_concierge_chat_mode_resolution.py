@@ -61,6 +61,7 @@ def patch_chat_dependencies(monkeypatch):
         public_mode,
         flow,
         user=None,
+        profile_context=None,
     ):
         captured["query"] = query
         captured["birthdate"] = birthdate

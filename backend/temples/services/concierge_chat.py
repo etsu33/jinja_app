@@ -49,6 +49,7 @@ from temples.services.concierge_chat_observation import (
     build_trim_observation,
     observe_candidate_pool,
     observe_candidate_pool_debug,
+    observe_profile_signal,
     observe_ranking_breakdown,
     observe_trim_after,
     observe_trim_before,
@@ -167,6 +168,7 @@ def _attach_chat_rec_enrichment(
     goriyaku_tag_label_by_id: Dict[int, str],
     user_origin: Optional[Dict[str, Any]] = None,
     user=None,
+    profile_context: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     for rec in recs.get("recommendations") or []:
         if not isinstance(rec, dict):
@@ -183,6 +185,7 @@ def _attach_chat_rec_enrichment(
             goriyaku_tag_label_by_id=goriyaku_tag_label_by_id,
             user_origin=user_origin,
             user=user,
+            profile_context=profile_context,
         )
         _apply_soft_signal_highlights(
             rec,
@@ -278,6 +281,7 @@ def build_chat_recommendations(
     consultation_axis: str | None = None,
     llm_enabled: bool | None = None,
     user=None,
+    profile_context: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     候補リストからおすすめ神社を選んで返す関数。
@@ -437,6 +441,7 @@ def build_chat_recommendations(
         goriyaku_tag_label_by_id=goriyaku_tag_label_by_id,
         user_origin=bias,
         user=user,
+        profile_context=profile_context,
     )
     recs["consultation_axis"] = consultation_axis_value
     for rec in recs.get("recommendations") or []:
@@ -510,6 +515,10 @@ def build_chat_recommendations(
     recs.setdefault("_debug", {})["trim_observation"] = build_trim_observation(
         before=trim_before,
         after=trim_after,
+    )
+    recs.setdefault("_debug", {})["profile_signal_observation"] = observe_profile_signal(
+        recs=recs,
+        profile_context=profile_context,
     )
 
     try:

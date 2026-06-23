@@ -155,6 +155,7 @@ def test_concierge_chat_need_and_breakdown_contract(client, monkeypatch, setting
             "direction_bonus",
             "weights",
             "matched_need_tags",
+            "profile_signal",
         }
         assert isinstance(bd["score_element"], int)
         assert isinstance(bd["score_need"], int)
