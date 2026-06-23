@@ -15,6 +15,7 @@ import { shadows } from "../design/shadow";
 import type { ConciergeContext } from "../../lib/conciergeContext";
 import { buildDerivedProfile } from "../../lib/profile";
 import { post } from "../../lib/http";
+import { useProfileStore } from "../../store/profileStore";
 
 // ────────────────────────────────────────────
 // 型
@@ -105,10 +106,12 @@ async function fetchConciergeRecommendations(
   consultation: string,
   extraCondition?: string,
   _context?: ConciergeContext,
+  profileContext?: { user_profile: Record<string, string | undefined>; derived_profile: Record<string, string | undefined> },
 ): Promise<RecommendationCard[]> {
   const body = await post<ConciergeChatResponse>("/concierge/chat/", {
     query: consultation,
     extra_condition: extraCondition,
+    ...(profileContext ? { profile_context: profileContext } : {}),
   });
 
   return normalizeRecommendations(body.data?.recommendations ?? []);
@@ -180,6 +183,7 @@ function ResultCard({
 export default function ConciergeScreen() {
   const params = useLocalSearchParams<{ q?: string; theme?: string }>();
   const router = useRouter();
+  const { userProfile, derivedProfile } = useProfileStore();
 
   const initialQuery = [params.q, params.theme].filter(Boolean).join(" ").trim();
 
@@ -238,7 +242,20 @@ export default function ConciergeScreen() {
         goriyaku: selectedGoriyaku,
         supportText,
       });
-      const recommendations = await fetchConciergeRecommendations(queryText, extraCondition || undefined, conciergeContext);
+      const profileContext = {
+        user_profile: {
+          birthday: userProfile.birthday,
+          birthTime: userProfile.birthTime,
+          birthPlace: userProfile.birthPlace,
+          worshipStyle: userProfile.worshipStyle,
+        },
+        derived_profile: {
+          kyusei: derivedProfile.kyusei,
+          gogyo: derivedProfile.gogyo,
+          lifePath: derivedProfile.lifePath,
+        },
+      };
+      const recommendations = await fetchConciergeRecommendations(queryText, extraCondition || undefined, conciergeContext, profileContext);
       setResults(recommendations);
     } catch {
       setErrorMessage("通信に失敗しました。前回の候補を表示したまま、もう一度相談できます。");
