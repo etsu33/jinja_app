@@ -36,6 +36,7 @@ from temples.services.concierge_chat_ranking import (
     build_recommendation_reason,
     resolve_score_sort_key,
     resolve_score_v3_mode,
+    resolve_score_v3_mode_detail,
 )
 from temples.services.concierge_chat_response_meta import (
     attach_response_meta,
@@ -476,13 +477,15 @@ def build_chat_recommendations(
     except Exception:
         pass
 
-    score_v3_mode = resolve_score_v3_mode()
+    score_v3_mode_detail = resolve_score_v3_mode_detail()
+    score_v3_mode = score_v3_mode_detail["mode"]
     recs = _sort_chat_recommendations(
         recs,
         sort_tags=sort_tags,
         score_v3_mode=score_v3_mode,
     )
     recs.setdefault("_debug", {})["score_v3_mode"] = score_v3_mode
+    recs.setdefault("_debug", {})["score_v3_mode_source"] = score_v3_mode_detail["source"]
     recs["recommendations"] = _attach_rank_comparison(recs.get("recommendations") or [])
     recs.setdefault("_debug", {})["user_state_profile"] = _build_user_state_profile(
         query=query or "",
