@@ -38,9 +38,7 @@ export default function Root() {
         name="index"
         options={{
           title: "ホーム",
-          tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name="home" size={size} color={color} />
-          ),
+          tabBarIcon: ({ color, size }) => <MaterialIcons name="home" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -72,27 +70,15 @@ export default function Root() {
         name="records/index"
         options={{
           title: "記録",
-          tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name="book" size={size} color={color} />
-          ),
+          tabBarIcon: ({ color, size }) => <MaterialIcons name="book" size={size} color={color} />,
         }}
       />
-      <Tabs.Screen
-        name="ranking/index"
-        options={{
-          title: "ランキング",
-          tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name="leaderboard" size={size} color={color} />
-          ),
-        }}
-      />
+
       <Tabs.Screen
         name="mypage/index"
         options={{
           title: "マイページ",
-          tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name="person" size={size} color={color} />
-          ),
+          tabBarIcon: ({ color, size }) => <MaterialIcons name="person" size={size} color={color} />,
         }}
       />
       <Tabs.Screen name="favorites/index" options={{ href: null }} />
@@ -103,6 +89,7 @@ export default function Root() {
       <Tabs.Screen name="profile/index" options={{ href: null }} />
       <Tabs.Screen name="search/index" options={{ href: null }} />
       <Tabs.Screen name="shrines/[id]" options={{ href: null }} />
+      <Tabs.Screen name="ranking/index" options={{ href: null }} />
     </Tabs>
   );
 }
