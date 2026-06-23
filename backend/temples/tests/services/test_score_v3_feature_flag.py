@@ -132,3 +132,74 @@ class TestResolveScoreSortKey:
             resolve_score_sort_key(r, score_v3_mode="active") for r in [rec_a, rec_b]
         ]
         assert active_keys[0] < active_keys[1]
+
+
+# ---------------------------------------------------------------------------
+# summarize_score_v3_ab_observations
+# ---------------------------------------------------------------------------
+
+class TestSummarizeScoreV3AbObservations:
+    def _obs(self, top1_changed_rate=0.0, avg_delta=0.0, max_abs_delta=0.0, activation_candidate=True):
+        return {
+            "mode": "shadow",
+            "top1_changed_rate": top1_changed_rate,
+            "avg_delta": avg_delta,
+            "max_abs_delta": max_abs_delta,
+            "activation_candidate": activation_candidate,
+        }
+
+    def test_empty_returns_zeros(self):
+        from temples.services.concierge_observability import summarize_score_v3_ab_observations
+        result = summarize_score_v3_ab_observations([])
+        assert result == {
+            "count": 0,
+            "top1_changed_rate_avg": 0.0,
+            "activation_candidate_rate": 0.0,
+            "avg_delta": 0.0,
+            "max_abs_delta_avg": 0.0,
+            "max_abs_delta_max": 0.0,
+        }
+
+    def test_single_observation(self):
+        from temples.services.concierge_observability import summarize_score_v3_ab_observations
+        obs = [self._obs(top1_changed_rate=0.0, avg_delta=-0.12, max_abs_delta=0.25, activation_candidate=True)]
+        result = summarize_score_v3_ab_observations(obs)
+        assert result["count"] == 1
+        assert result["top1_changed_rate_avg"] == pytest.approx(0.0)
+        assert result["activation_candidate_rate"] == pytest.approx(1.0)
+        assert result["avg_delta"] == pytest.approx(-0.12)
+        assert result["max_abs_delta_avg"] == pytest.approx(0.25)
+        assert result["max_abs_delta_max"] == pytest.approx(0.25)
+
+    def test_multiple_observations_averages(self):
+        from temples.services.concierge_observability import summarize_score_v3_ab_observations
+        obs = [
+            self._obs(top1_changed_rate=0.0, avg_delta=-0.1, max_abs_delta=0.2, activation_candidate=True),
+            self._obs(top1_changed_rate=1.0, avg_delta=-0.2, max_abs_delta=0.4, activation_candidate=False),
+            self._obs(top1_changed_rate=0.0, avg_delta=0.0, max_abs_delta=0.1, activation_candidate=True),
+        ]
+        result = summarize_score_v3_ab_observations(obs)
+        assert result["count"] == 3
+        assert result["top1_changed_rate_avg"] == pytest.approx(1.0 / 3, rel=1e-5)
+        assert result["activation_candidate_rate"] == pytest.approx(2.0 / 3, rel=1e-5)
+        assert result["avg_delta"] == pytest.approx((-0.1 - 0.2 + 0.0) / 3, rel=1e-5)
+        assert result["max_abs_delta_avg"] == pytest.approx((0.2 + 0.4 + 0.1) / 3, rel=1e-5)
+        assert result["max_abs_delta_max"] == pytest.approx(0.4)
+
+    def test_none_and_missing_fields_tolerated(self):
+        from temples.services.concierge_observability import summarize_score_v3_ab_observations
+        result = summarize_score_v3_ab_observations([{}, {"top1_changed_rate": None}])
+        assert result["count"] == 2
+        assert result["top1_changed_rate_avg"] == pytest.approx(0.0)
+
+    def test_returns_required_keys(self):
+        from temples.services.concierge_observability import summarize_score_v3_ab_observations
+        result = summarize_score_v3_ab_observations([self._obs()])
+        assert set(result.keys()) == {
+            "count",
+            "top1_changed_rate_avg",
+            "activation_candidate_rate",
+            "avg_delta",
+            "max_abs_delta_avg",
+            "max_abs_delta_max",
+        }

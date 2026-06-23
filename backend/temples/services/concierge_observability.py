@@ -5,6 +5,50 @@ import logging
 from typing import Any, Dict, List, Optional
 from temples.models_concierge_analytics import ConciergeRecommendationLog
 
+
+def summarize_score_v3_ab_observations(observations: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """score_v3_ab_observation のリストを集計して重み調整判断用サマリを返す。
+
+    Weight Optimization の判断基準:
+    - top1_changed_rate_avg が高い → state weight を上げる
+    - max_abs_delta_max が大きい  → 補助シグナルの weight を下げる
+    - activation_candidate_rate が安定して高い → active 化を検討する
+    """
+    valid = [o for o in (observations or []) if isinstance(o, dict)]
+    count = len(valid)
+
+    if count == 0:
+        return {
+            "count": 0,
+            "top1_changed_rate_avg": 0.0,
+            "activation_candidate_rate": 0.0,
+            "avg_delta": 0.0,
+            "max_abs_delta_avg": 0.0,
+            "max_abs_delta_max": 0.0,
+        }
+
+    top1_changed_rate_avg = round(
+        sum(float(o.get("top1_changed_rate") or 0.0) for o in valid) / count, 6
+    )
+    activation_candidate_rate = round(
+        sum(1 for o in valid if o.get("activation_candidate")) / count, 6
+    )
+    avg_delta = round(
+        sum(float(o.get("avg_delta") or 0.0) for o in valid) / count, 6
+    )
+    max_abs_delta_values = [float(o.get("max_abs_delta") or 0.0) for o in valid]
+    max_abs_delta_avg = round(sum(max_abs_delta_values) / count, 6)
+    max_abs_delta_max = round(max(max_abs_delta_values), 6)
+
+    return {
+        "count": count,
+        "top1_changed_rate_avg": top1_changed_rate_avg,
+        "activation_candidate_rate": activation_candidate_rate,
+        "avg_delta": avg_delta,
+        "max_abs_delta_avg": max_abs_delta_avg,
+        "max_abs_delta_max": max_abs_delta_max,
+    }
+
 logger = logging.getLogger("concierge.observability")
 
 
