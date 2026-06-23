@@ -158,3 +158,22 @@ def save_concierge_recommendation_log(
         )
     except Exception:
         logger.exception("failed_to_save_concierge_log")
+
+
+def correlate_score_v3_with_funnel(
+    *,
+    score_v3_observations: List[Dict[str, Any]],
+    funnel: Dict[str, Any],
+) -> Dict[str, Any]:
+    """score_v3_ab_observation のリストと behavior_funnel 指標を突合する。
+
+    DB 再クエリなし。既存 dict を受け取って合成するのみ。
+    summarize_score_v3_ab_observations() + build_score_v3_funnel_correlation_summary() の組み合わせ。
+    """
+    from temples.services.behavior_funnel import build_score_v3_funnel_correlation_summary
+
+    score_v3_summary = summarize_score_v3_ab_observations(score_v3_observations)
+    return build_score_v3_funnel_correlation_summary(
+        funnel=funnel,
+        score_v3_summary=score_v3_summary,
+    )
