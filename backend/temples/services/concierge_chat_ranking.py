@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional, TypedDict
 from temples.domain.need_to_goriyaku_tag_ids import need_tags_to_goriyaku_ids
 from temples.services.concierge_history import (
     build_recent_reflection_hint,
+    calculate_light_behavior_profile_breakdown,
     calculate_shrine_behavior_signal_breakdown,
     classify_shrine_action_state,
 )
@@ -991,6 +992,9 @@ def _attach_breakdown(
         reflection_signal=reflection_signal,
         reflection_hint=reflection_hint,
     )
+    # Behavior Profile v1: light signals のみ（visit / reflection は含まない）
+    light_behavior = calculate_light_behavior_profile_breakdown(behavior_breakdown=behavior_breakdown)
+
     # profile_context 補助シグナル（最大 +0.03、主重みには影響しない）
     profile_signal_score, profile_signal_matched = _score_profile_signal(rec, profile_context)
 
@@ -1029,6 +1033,13 @@ def _attach_breakdown(
             "score": float(direction_signal_score),
             "matched": direction_signal_matched,
             "reason": "luckyDirection一致" if direction_signal_matched else "direction_profile未適用",
+        },
+        "behavior_profile": {
+            "score": float(light_behavior["total"]),
+            "detail_view_signal": float(light_behavior["detail_view_signal"]),
+            "route_open_signal": float(light_behavior["route_open_signal"]),
+            "save_signal": float(light_behavior["save_signal"]),
+            "reason": "light_behavior_only",
         },
     }
 
