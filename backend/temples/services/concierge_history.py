@@ -239,6 +239,28 @@ def calculate_shrine_behavior_signal_breakdown(*, user, shrine_id: int | None) -
     }
 
 
+def calculate_light_behavior_profile_breakdown(
+    *,
+    behavior_breakdown: dict[str, float] | None = None,
+) -> dict[str, float]:
+    """
+    Behavior Profile v1: detail_view / route_open / save のみを対象にする。
+    visit_signal / reflection_signal は含めない。
+
+    behavior_breakdown が渡された場合はそこから light signals を抽出する（DB再クエリなし）。
+    """
+    bd = behavior_breakdown or {}
+    detail = float(bd.get("detail_view_signal") or 0.0)
+    route = float(bd.get("route_open_signal") or 0.0)
+    save = float(bd.get("save_signal") or 0.0)
+    return {
+        "detail_view_signal": detail,
+        "route_open_signal": route,
+        "save_signal": save,
+        "total": detail + route + save,
+    }
+
+
 def calculate_shrine_behavior_signal_v2(*, user, shrine_id: int | None) -> float:
     breakdown = calculate_shrine_behavior_signal_breakdown(
         user=user,
