@@ -1,23 +1,18 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 import { kamimusubiDark as theme } from "../theme";
 import { spacing } from "../design/spacing";
 import { cardSizes } from "../design/cardSizes";
 import { radius } from "../design/radius";
-import { buildDerivedProfile } from "../../lib/profile";
-import type { UserProfile } from "../../types/profile";
+import { useProfileStore } from "../../store/profileStore";
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const userProfile: UserProfile = {
-    birthday: undefined,
-    birthTime: undefined,
-    birthPlace: undefined,
-    worshipStyle: undefined,
-  };
-  const derivedProfile = buildDerivedProfile(userProfile);
-  const formatValue = (value?: string) => value ?? "未設定";
-  const formatDerivedValue = (value?: string) => value ?? "未計算";
+  const { userProfile, derivedProfile, setBirthday, setBirthTime, setBirthPlace, setWorshipStyle } =
+    useProfileStore();
+
+  const fmt = (v?: string) => v ?? "未設定";
+  const fmtDerived = (v?: string) => v ?? "未計算";
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -28,50 +23,86 @@ export default function ProfileScreen() {
         <Text style={styles.eyebrow}>PROFILE</Text>
         <Text style={styles.title}>プロフィール</Text>
         <Text style={styles.subtitle}>
-          表示名やプロフィール情報を確認する場所です。最近見た神社や参拝記録は、記録タブにまとめます。
+          あなたの基本情報を入力すると、神社提案に活用されます。
         </Text>
       </View>
 
+      {/* UserProfile */}
       <View style={styles.sectionCard}>
         <Text style={styles.sectionTitle}>基本情報</Text>
+
         <View style={styles.row}>
           <Text style={styles.label}>生年月日</Text>
-          <Text style={styles.value}>{formatValue(userProfile.birthday)}</Text>
+          <TextInput
+            style={styles.input}
+            value={userProfile.birthday ?? ""}
+            onChangeText={setBirthday}
+            placeholder="例: 1990-04-01"
+            placeholderTextColor={theme.muted}
+            keyboardType="numbers-and-punctuation"
+          />
         </View>
+
         <View style={styles.row}>
           <Text style={styles.label}>出生時間</Text>
-          <Text style={styles.value}>{formatValue(userProfile.birthTime)}</Text>
+          <TextInput
+            style={styles.input}
+            value={userProfile.birthTime ?? ""}
+            onChangeText={setBirthTime}
+            placeholder="例: 08:30"
+            placeholderTextColor={theme.muted}
+            keyboardType="numbers-and-punctuation"
+          />
         </View>
+
         <View style={styles.row}>
           <Text style={styles.label}>出生地</Text>
-          <Text style={styles.value}>{formatValue(userProfile.birthPlace)}</Text>
+          <TextInput
+            style={styles.input}
+            value={userProfile.birthPlace ?? ""}
+            onChangeText={setBirthPlace}
+            placeholder="例: 東京都"
+            placeholderTextColor={theme.muted}
+          />
         </View>
+
         <View style={styles.row}>
           <Text style={styles.label}>参拝スタイル</Text>
-          <Text style={styles.value}>{formatValue(userProfile.worshipStyle)}</Text>
+          <TextInput
+            style={styles.input}
+            value={userProfile.worshipStyle ?? ""}
+            onChangeText={setWorshipStyle}
+            placeholder="例: 朝参り"
+            placeholderTextColor={theme.muted}
+          />
         </View>
       </View>
 
+      {/* DerivedProfile */}
       <View style={styles.sectionCard}>
         <Text style={styles.sectionTitle}>派生プロフィール</Text>
+
         <View style={styles.row}>
           <Text style={styles.label}>九星気学</Text>
-          <Text style={styles.value}>{formatDerivedValue(derivedProfile.kyusei)}</Text>
+          <Text style={styles.value}>{fmtDerived(derivedProfile.kyusei)}</Text>
         </View>
+
         <View style={styles.row}>
           <Text style={styles.label}>五行</Text>
-          <Text style={styles.value}>{formatDerivedValue(derivedProfile.gogyo)}</Text>
+          <Text style={styles.value}>{fmtDerived(derivedProfile.gogyo)}</Text>
         </View>
+
         <View style={styles.row}>
           <Text style={styles.label}>ライフパス</Text>
-          <Text style={styles.value}>{formatDerivedValue(derivedProfile.lifePath)}</Text>
+          <Text style={styles.value}>{fmtDerived(derivedProfile.lifePath)}</Text>
         </View>
       </View>
 
+      {/* Concierge */}
       <View style={styles.sectionCard}>
         <Text style={styles.sectionTitle}>コンシェルジュへの反映</Text>
         <Text style={styles.noticeText}>
-          プロフィール情報は、{"\n"}神社提案の補助情報として利用されます。
+          プロフィール情報は、神社提案の補助情報として利用されます。
         </Text>
       </View>
     </ScrollView>
@@ -143,11 +174,19 @@ const styles = StyleSheet.create({
     color: theme.text,
     fontSize: 14,
     fontWeight: "700",
+    flex: 1,
   },
   value: {
     color: theme.muted,
     fontSize: 14,
     fontWeight: "600",
+  },
+  input: {
+    flex: 1,
+    color: theme.text,
+    fontSize: 14,
+    fontWeight: "600",
+    textAlign: "right",
   },
   noticeText: {
     color: theme.muted,

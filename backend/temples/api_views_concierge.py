@@ -611,6 +611,19 @@ class ConciergeChatView(APIView):
                 time.perf_counter() - t0,
             )
 
+            # profile_context ログ（まだ推薦には使わない）
+            raw_profile_context = data.get("profile_context")
+            if isinstance(raw_profile_context, dict):
+                has_user = isinstance(raw_profile_context.get("user_profile"), dict)
+                has_derived = isinstance(raw_profile_context.get("derived_profile"), dict)
+                log.info(
+                    "[concierge/profile_context] received=Y user_profile=%s derived_profile=%s",
+                    "Y" if has_user else "N",
+                    "Y" if has_derived else "N",
+                )
+            else:
+                log.info("[concierge/profile_context] received=N")
+
             is_message_mode = bool(message)
             mode_label = "message" if is_message_mode else "query"
             query_len = len(query or "")
