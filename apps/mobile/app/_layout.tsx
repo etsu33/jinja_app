@@ -78,15 +78,6 @@ export default function Root() {
         }}
       />
       <Tabs.Screen
-        name="ranking/index"
-        options={{
-          title: "ランキング",
-          tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name="leaderboard" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="mypage/index"
         options={{
           title: "マイページ",
@@ -101,8 +92,10 @@ export default function Root() {
       <Tabs.Screen name="visit-history/index" options={{ href: null }} />
       <Tabs.Screen name="recently-viewed/index" options={{ href: null }} />
       <Tabs.Screen name="profile/index" options={{ href: null }} />
+      <Tabs.Screen name="birthday/index" options={{ href: null }} />
       <Tabs.Screen name="search/index" options={{ href: null }} />
       <Tabs.Screen name="shrines/[id]" options={{ href: null }} />
+      <Tabs.Screen name="ranking/index" options={{ href: null }} />
     </Tabs>
   );
 }
