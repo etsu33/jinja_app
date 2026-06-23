@@ -261,6 +261,24 @@ def calculate_light_behavior_profile_breakdown(
     }
 
 
+def calculate_action_profile_breakdown(
+    *,
+    behavior_breakdown: dict[str, float] | None = None,
+) -> dict[str, Any]:
+    """
+    Action Profile v1: visit_signal のみを対象にする。
+    behavior_breakdown から抽出するため DB 再クエリなし。
+    """
+    bd = behavior_breakdown or {}
+    visit = float(bd.get("visit_signal") or 0.0)
+    return {
+        "score": visit,
+        "visit_signal": visit,
+        "status": "visited" if visit > 0 else "not_visited",
+        "reason": "visit_done_only",
+    }
+
+
 def calculate_shrine_behavior_signal_v2(*, user, shrine_id: int | None) -> float:
     breakdown = calculate_shrine_behavior_signal_breakdown(
         user=user,
