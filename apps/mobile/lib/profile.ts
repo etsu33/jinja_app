@@ -1,4 +1,4 @@
-import type { DerivedProfile, UserProfile } from "../types/profile";
+import type { DerivedProfile, DirectionProfile, UserProfile } from "../types/profile";
 
 // ライフパス：生年月日の全桁を1桁になるまで繰り返し足す（11, 22はマスターナンバーとして保持）
 export function calculateLifePath(birthday: string): string {
@@ -35,6 +35,16 @@ const KYUSEI_TO_GOGYO: Record<string, string> = {
 export function calculateGogyo(birthday: string): string {
   const kyusei = calculateKyusei(birthday);
   return KYUSEI_TO_GOGYO[kyusei] ?? "不明";
+}
+
+export function buildDirectionProfile(userProfile: UserProfile): DirectionProfile {
+  if (!userProfile.birthday) {
+    return {};
+  }
+  return {
+    luckyDirection: "東",
+    source: "placeholder",
+  };
 }
 
 export function buildDerivedProfile(userProfile: UserProfile): DerivedProfile {

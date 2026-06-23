@@ -102,11 +102,17 @@ function normalizeRecommendations(items: RecommendationApiCard[]): Recommendatio
   return items.map(toRecommendationCard);
 }
 
+type ProfileContextPayload = {
+  user_profile: Record<string, string | undefined>;
+  derived_profile: Record<string, string | undefined>;
+  direction_profile: Record<string, string | undefined>;
+};
+
 async function fetchConciergeRecommendations(
   consultation: string,
   extraCondition?: string,
   _context?: ConciergeContext,
-  profileContext?: { user_profile: Record<string, string | undefined>; derived_profile: Record<string, string | undefined> },
+  profileContext?: ProfileContextPayload,
 ): Promise<RecommendationCard[]> {
   const body = await post<ConciergeChatResponse>("/concierge/chat/", {
     query: consultation,
@@ -183,7 +189,7 @@ function ResultCard({
 export default function ConciergeScreen() {
   const params = useLocalSearchParams<{ q?: string; theme?: string }>();
   const router = useRouter();
-  const { userProfile, derivedProfile } = useProfileStore();
+  const { userProfile, derivedProfile, directionProfile } = useProfileStore();
 
   const initialQuery = [params.q, params.theme].filter(Boolean).join(" ").trim();
 
@@ -242,7 +248,7 @@ export default function ConciergeScreen() {
         goriyaku: selectedGoriyaku,
         supportText,
       });
-      const profileContext = {
+      const profileContext: ProfileContextPayload = {
         user_profile: {
           birthday: userProfile.birthday,
           birthTime: userProfile.birthTime,
@@ -253,6 +259,10 @@ export default function ConciergeScreen() {
           kyusei: derivedProfile.kyusei,
           gogyo: derivedProfile.gogyo,
           lifePath: derivedProfile.lifePath,
+        },
+        direction_profile: {
+          luckyDirection: directionProfile.luckyDirection,
+          source: directionProfile.source,
         },
       };
       const recommendations = await fetchConciergeRecommendations(queryText, extraCondition || undefined, conciergeContext, profileContext);

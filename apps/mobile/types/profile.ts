@@ -10,3 +10,8 @@ export type DerivedProfile = {
   gogyo?: string;
   lifePath?: string;
 };
+
+export type DirectionProfile = {
+  luckyDirection?: string;
+  source?: "placeholder" | "calculated";
+};
