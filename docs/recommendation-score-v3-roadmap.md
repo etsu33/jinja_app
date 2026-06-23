@@ -295,6 +295,78 @@ properties:
 
 ---
 
+## Weight Optimization 準備
+
+### 集計 helper
+
+`summarize_score_v3_ab_observations(observations)` で複数レスポンスの `score_v3_ab_observation` を集計する。
+
+```python
+from temples.services.concierge_observability import summarize_score_v3_ab_observations
+
+summary = summarize_score_v3_ab_observations([
+    {"mode": "shadow", "top1_changed_rate": 0.0, "avg_delta": -0.12,
+     "max_abs_delta": 0.25, "activation_candidate": True},
+    ...
+])
+# {
+#   "count": N,
+#   "top1_changed_rate_avg": 0.1,
+#   "activation_candidate_rate": 0.8,
+#   "avg_delta": -0.05,
+#   "max_abs_delta_avg": 0.2,
+#   "max_abs_delta_max": 0.45,
+# }
+```
+
+### 重み調整基準
+
+集計結果をもとに以下を判断する。
+
+| 指標 | 閾値 | 対応 |
+|---|---|---|
+| `top1_changed_rate_avg` | > 0.1 | `state` weight を上げる（need スコアの影響を強める）|
+| `max_abs_delta_max` | > 0.5 | `profile` / `direction` / `action` / `reflection` の補助 weight を下げる |
+| `activation_candidate_rate` | < 0.8 | active 化を延期し、shadow 観測を継続する |
+| `avg_delta` | 負方向に大きい | score_v3 が score_total より体系的に低い → behavior weight を調整 |
+
+### behavior_funnel との突合
+
+`route_open` / `save` / `visit_done` / `reflection_saved` の発生率と  
+`avg_delta` / `max_abs_delta` を突合し、行動シグナルの効き具合を確認する。
+
+```python
+# behavior_funnel.py の集計と突合する想定（別 PR）
+from temples.services.behavior_funnel import get_behavior_funnel_summary
+```
+
+### 重み変更の手順（別 PR）
+
+1. `summarize_score_v3_ab_observations` で集計・判断
+2. `_SCORE_V3_WEIGHTS` の定数を変更（`concierge_chat_ranking.py`）
+3. shadow observation で再度 `activation_candidate_rate` を確認
+4. 安定したら active 化（`SCORE_V3_MODE=active`）
+
+**本 PR では score_v3 の重みを変更しない。**
+
+---
+
+### PostHog 対応 TODO
+
+PostHog 送信 helper が未実装のため、以下をイベントとして送ることを検討する（別 PR）。
+
+```
+イベント名: score_v3_ab_observed
+properties:
+  - mode
+  - top1_changed_rate
+  - avg_delta
+  - max_abs_delta
+  - activation_candidate
+```
+
+---
+
 ## やらないこと
 
 - 占術だけで順位を決める
