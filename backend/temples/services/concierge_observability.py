@@ -88,8 +88,16 @@ def save_concierge_recommendation_log(
     lat=None,
     lng=None,
     radius_m=None,
+    score_v3_mode: Optional[str] = None,
+    score_v3_ab_observation: Optional[Dict[str, Any]] = None,
 ):
     try:
+        debug_payload: Dict[str, Any] = {}
+        if score_v3_mode is not None:
+            debug_payload["score_v3_mode"] = score_v3_mode
+        if score_v3_ab_observation is not None:
+            debug_payload["score_v3_ab_observation"] = score_v3_ab_observation
+
         ConciergeRecommendationLog.objects.create(
             user=user,
             thread=thread,
@@ -99,7 +107,7 @@ def save_concierge_recommendation_log(
             llm_enabled=bool(llm_enabled),
             llm_used=bool(llm_used),
             recommendations=recommendations or [],
-            result_state=result_state or {},
+            result_state={**(result_state or {}), **({"_score_v3_debug": debug_payload} if debug_payload else {})},
             lat=lat,
             lng=lng,
             radius_m=radius_m,

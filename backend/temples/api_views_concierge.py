@@ -953,6 +953,7 @@ class ConciergeChatView(APIView):
             radius_m = _parse_radius(data)
 
             try:
+                _recs_debug = recs.get("_debug") or {}
                 save_concierge_recommendation_log(
                     user=user if getattr(user, "is_authenticated", False) else None,
                     thread=thread_obj,
@@ -966,6 +967,8 @@ class ConciergeChatView(APIView):
                     lat=lat,
                     lng=lng,
                     radius_m=radius_m,
+                    score_v3_mode=_recs_debug.get("score_v3_mode"),
+                    score_v3_ab_observation=_recs_debug.get("score_v3_ab_observation"),
                 )
             except Exception:
                 log.exception("[concierge/reco] save_concierge_recommendation_log failed rid=%s", rid)
