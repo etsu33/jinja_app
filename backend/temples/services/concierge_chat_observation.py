@@ -461,6 +461,89 @@ def observe_profile_signal(
         return {"has_profile_context": False, "hit_count": 0, "total_score": 0.0}
 
 
+def observe_score_v3_shadow(
+    *,
+    recommendations: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """score_v3 と score_total の差分を観測する（shadow モード）。
+
+    既存の ranking / sort 順には影響しない。
+    """
+    try:
+        items: list[dict[str, Any]] = []
+        for idx, rec in enumerate(recommendations or [], start=1):
+            if not isinstance(rec, dict):
+                continue
+            breakdown = rec.get("breakdown") or {}
+            score_total = float(breakdown.get("score_total") or 0.0)
+            score_v3 = float(breakdown.get("score_v3") or 0.0)
+            items.append(
+                {
+                    "rank": idx,
+                    "name": rec.get("name"),
+                    "score_total": round(score_total, 6),
+                    "score_v3": round(score_v3, 6),
+                    "delta": round(score_v3 - score_total, 6),
+                }
+            )
+
+        if not items:
+            return {
+                "mode": "shadow",
+                "count": 0,
+                "top1_changed": False,
+                "score_total_top1": None,
+                "score_v3_top1": None,
+                "items": [],
+            }
+
+        # score_total 順（現在の ranking 順）で top1
+        score_total_top1_item = max(items, key=lambda x: x["score_total"])
+        # score_v3 順で top1
+        score_v3_sorted = sorted(items, key=lambda x: -x["score_v3"])
+        score_v3_top1_item = score_v3_sorted[0]
+
+        top1_changed = score_total_top1_item["name"] != score_v3_top1_item["name"]
+
+        score_total_top1 = {
+            "rank": score_total_top1_item["rank"],
+            "name": score_total_top1_item["name"],
+            "score_total": score_total_top1_item["score_total"],
+        }
+        score_v3_top1 = {
+            "rank": score_v3_top1_item["rank"],
+            "name": score_v3_top1_item["name"],
+            "score_v3": score_v3_top1_item["score_v3"],
+        }
+
+        log.info(
+            "[score_v3_shadow] count=%s top1_changed=%s score_total_top1=%s score_v3_top1=%s",
+            len(items),
+            top1_changed,
+            score_total_top1,
+            score_v3_top1,
+        )
+
+        return {
+            "mode": "shadow",
+            "count": len(items),
+            "top1_changed": top1_changed,
+            "score_total_top1": score_total_top1,
+            "score_v3_top1": score_v3_top1,
+            "items": items,
+        }
+    except Exception:
+        log.exception("[observe_score_v3_shadow] failed")
+        return {
+            "mode": "shadow",
+            "count": 0,
+            "top1_changed": False,
+            "score_total_top1": None,
+            "score_v3_top1": None,
+            "items": [],
+        }
+
+
 def observe_visit_style_before_trim(
     *,
     recs: dict[str, Any],
