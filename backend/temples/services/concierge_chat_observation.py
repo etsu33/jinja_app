@@ -401,6 +401,35 @@ def observe_ranking_breakdown(
         }
 
 
+def observe_profile_signal(
+    *,
+    recs: dict[str, Any],
+    profile_context: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """profile_context が推薦に使われたかを記録する。"""
+    try:
+        has_context = isinstance(profile_context, dict)
+        hit_count = 0
+        total_score = 0.0
+
+        for rec in (recs.get("recommendations") or []):
+            if not isinstance(rec, dict):
+                continue
+            ps = (rec.get("breakdown") or {}).get("profile_signal") or {}
+            if isinstance(ps, dict) and ps.get("matched"):
+                hit_count += 1
+                total_score += float(ps.get("score") or 0.0)
+
+        return {
+            "has_profile_context": has_context,
+            "hit_count": hit_count,
+            "total_score": round(total_score, 6),
+        }
+    except Exception:
+        log.exception("[observe_profile_signal] failed")
+        return {"has_profile_context": False, "hit_count": 0, "total_score": 0.0}
+
+
 def observe_visit_style_before_trim(
     *,
     recs: dict[str, Any],

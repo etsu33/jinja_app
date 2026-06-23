@@ -26,9 +26,67 @@ class DirectionBonusResult(TypedDict):
 
 
 DIRECTION_BONUS_MAX = 0.3
+PROFILE_SIGNAL_MAX = 0.03
 
 
 log = logging.getLogger(__name__)
+
+# 五行 → astro_elements マッピング
+_GOGYO_TO_ELEMENTS: Dict[str, List[str]] = {
+    "木": ["木", "Wood", "tree", "木星"],
+    "火": ["火", "Fire", "flame", "火星"],
+    "土": ["土", "Earth", "ground", "土星"],
+    "金": ["金", "Metal", "gold", "金星"],
+    "水": ["水", "Water", "water", "水星"],
+}
+
+
+def _score_profile_signal(
+    rec: Dict[str, Any],
+    profile_context: Optional[Dict[str, Any]],
+) -> tuple[float, List[str]]:
+    """
+    profile_context（参拝スタイル・五行）を補助シグナルとして評価する。
+    最大 PROFILE_SIGNAL_MAX (+0.03) を返す。
+    既存の need / distance / history_theme スコアを上書きしない。
+    """
+    if not isinstance(profile_context, dict):
+        return 0.0, []
+
+    score = 0.0
+    matched: List[str] = []
+
+    derived = profile_context.get("derived_profile") or {}
+    user = profile_context.get("user_profile") or {}
+
+    # 五行マッチ (+0.02)
+    gogyo = str(derived.get("gogyo") or "").strip()
+    if gogyo:
+        shrine_elements = [
+            str(e).strip()
+            for e in (rec.get("astro_elements") or [])
+            if isinstance(e, str) and str(e).strip()
+        ]
+        target_elements = _GOGYO_TO_ELEMENTS.get(gogyo, [])
+        if any(e in target_elements for e in shrine_elements):
+            score += 0.02
+            matched.append(f"gogyo:{gogyo}")
+
+    # 参拝スタイルマッチ (+0.01)
+    worship_style = str(user.get("worshipStyle") or "").strip()
+    if worship_style:
+        shrine_material = " ".join(
+            filter(None, [
+                rec.get("goriyaku") or "",
+                rec.get("description") or "",
+                " ".join(rec.get("visit_style_tags") or []),
+            ])
+        )
+        if worship_style in shrine_material:
+            score += 0.01
+            matched.append(f"worshipStyle:{worship_style}")
+
+    return min(score, PROFILE_SIGNAL_MAX), matched
 
 NEED_TAG_ALIASES: Dict[str, str] = {
     "marriage": "love",
@@ -649,6 +707,7 @@ def _attach_breakdown(
     goriyaku_tag_label_by_id: Optional[Dict[int, str]] = None,
     user_origin: Optional[Dict[str, Any]] = None,
     user=None,
+    profile_context: Optional[Dict[str, Any]] = None,
 ) -> None:
     """
     rec（1件の神社辞書）にスコアの内訳を追加する。
@@ -888,8 +947,11 @@ def _attach_breakdown(
         reflection_signal=reflection_signal,
         reflection_hint=reflection_hint,
     )
+    # profile_context 補助シグナル（最大 +0.03、主重みには影響しない）
+    profile_signal_score, profile_signal_matched = _score_profile_signal(rec, profile_context)
+
     # For now, direction_bonus is 0.0 and does not reverse ranking
-    score_total_ranked = score_total_ranked_base + capped_behavior_contribution
+    score_total_ranked = score_total_ranked_base + capped_behavior_contribution + profile_signal_score
 
     rec["_score_total"] = float(score_total_ranked)
 
@@ -906,6 +968,11 @@ def _attach_breakdown(
             "direction_bonus": 0.0,
         },
         "matched_need_tags": matched_all,
+        "profile_signal": {
+            "score": float(profile_signal_score),
+            "matched": profile_signal_matched,
+            "reason": "profile_context補助" if profile_signal_matched else None,
+        },
     }
 
     rec["breakdown_detail"] = {
@@ -967,6 +1034,13 @@ def _attach_breakdown(
                 "max": float(DIRECTION_BONUS_MAX),
             },
             "astro_bonus": float(astro_bonus) if astro_bonus_enabled else 0.0,
+            "profile_signal": {
+                "raw": float(profile_signal_score),
+                "weight": 1.0,
+                "contribution": float(profile_signal_score),
+                "matched": profile_signal_matched,
+                "max": float(PROFILE_SIGNAL_MAX),
+            },
             "score_total_ranked_base": float(score_total_ranked_base),
             "capped_behavior_contribution": float(capped_behavior_contribution),
             "behavior_ratio": float(behavior_ratio),
@@ -1595,6 +1669,7 @@ def _build_need_reason_text(
 __all__ = [
     "NEED_TEXT_WEIGHTS",
     "STUDY_SHRINE_HINTS",
+    "_score_profile_signal",
     "_clamp01",
     "_distance_decay",
     "_resolve_public_mode",

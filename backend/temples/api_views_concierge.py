@@ -818,6 +818,7 @@ class ConciergeChatView(APIView):
                     public_mode=public_mode,
                     flow=flow,
                     user=user if getattr(user, "is_authenticated", False) else None,
+                    profile_context=raw_profile_context if isinstance(raw_profile_context, dict) else None,
                 )
             except Exception:
                 log.exception(
