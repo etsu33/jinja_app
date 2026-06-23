@@ -59,11 +59,33 @@ _SCORE_V3_WEIGHTS: Dict[str, float] = {
 
 
 def resolve_score_v3_mode() -> str:
-    """Score v3 のモードを返す。現時点では shadow 固定。
+    """Score v3 のモードを返す。
 
-    将来: 環境変数 SCORE_V3_ACTIVE=1 で "active" に切り替える（別 PR）。
+    SCORE_V3_MODE=active の場合のみ "active"。未設定・不正値は "shadow"。
+    呼び出し元との互換を保つため文字列を返す。
+    詳細（source）は resolve_score_v3_mode_detail() で取得する。
     """
-    return "shadow"
+    return resolve_score_v3_mode_detail()["mode"]
+
+
+def resolve_score_v3_mode_detail() -> Dict[str, str]:
+    """Score v3 モードと source を返す。
+
+    Returns:
+        {"mode": "shadow" | "active", "source": "default" | "env" | "invalid_env"}
+    """
+    import os
+
+    raw = os.environ.get("SCORE_V3_MODE", "")
+    stripped = raw.strip().lower()
+
+    if stripped == "active":
+        return {"mode": "active", "source": "env"}
+    if stripped == "shadow":
+        return {"mode": "shadow", "source": "env"}
+    if stripped == "":
+        return {"mode": "shadow", "source": "default"}
+    return {"mode": "shadow", "source": "invalid_env"}
 
 
 def resolve_score_sort_key(rec: Dict[str, Any], *, score_v3_mode: str) -> float:
@@ -1878,5 +1900,6 @@ __all__ = [
     "_diversify_by_need",
     "build_recommendation_reason",
     "resolve_score_v3_mode",
+    "resolve_score_v3_mode_detail",
     "resolve_score_sort_key",
 ]
