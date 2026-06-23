@@ -1,5 +1,6 @@
 import * as React from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useRouter } from "expo-router";
 import { kamimusubiDark as theme } from "../theme";
 import { getFavoriteShrines, getRecentViewed } from "../../lib/shrineStorage";
 import { getCounts } from "../../lib/storage";
@@ -10,6 +11,7 @@ type MyPageCardProps = {
   meta?: string;
   iconText: string;
   actionLabel?: string;
+  onPress?: () => void;
 };
 
 type UsageStatProps = {
@@ -18,9 +20,14 @@ type UsageStatProps = {
   helper: string;
 };
 
-function MyPageCard({ title, description, meta, iconText, actionLabel }: MyPageCardProps) {
+function MyPageCard({ title, description, meta, iconText, actionLabel, onPress }: MyPageCardProps) {
   return (
-    <View style={styles.card}>
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+      accessibilityRole={onPress ? "button" : undefined}
+    >
       <View style={styles.iconBox}>
         <Text style={styles.iconText}>{iconText}</Text>
       </View>
@@ -30,11 +37,11 @@ function MyPageCard({ title, description, meta, iconText, actionLabel }: MyPageC
         {meta ? <Text style={styles.cardMeta}>{meta}</Text> : null}
       </View>
       {actionLabel ? (
-        <Pressable style={styles.cardAction} accessibilityRole="button">
+        <View style={styles.cardAction}>
           <Text style={styles.cardActionText}>{actionLabel}</Text>
-        </Pressable>
+        </View>
       ) : null}
-    </View>
+    </Pressable>
   );
 }
 
@@ -49,6 +56,7 @@ function UsageStat({ label, value, helper }: UsageStatProps) {
 }
 
 export default function MyPageScreen() {
+  const router = useRouter();
   const [favoriteCount, setFavoriteCount] = React.useState<number | null>(null);
   const [recentCount, setRecentCount] = React.useState<number | null>(null);
   const [visitCount, setVisitCount] = React.useState<number | null>(null);
@@ -107,6 +115,7 @@ export default function MyPageScreen() {
           meta="表示名は今後プロフィール設定と連携します。"
           iconText="人"
           actionLabel="確認"
+          onPress={() => router.push("/profile")}
         />
         <MyPageCard
           title="誕生日"
@@ -265,6 +274,9 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     paddingHorizontal: 16,
     paddingVertical: 15,
+  },
+  cardPressed: {
+    opacity: 0.72,
   },
   iconBox: {
     width: 46,
