@@ -58,6 +58,26 @@ _SCORE_V3_WEIGHTS: Dict[str, float] = {
 }
 
 
+def resolve_score_v3_mode() -> str:
+    """Score v3 のモードを返す。現時点では shadow 固定。
+
+    将来: 環境変数 SCORE_V3_ACTIVE=1 で "active" に切り替える（別 PR）。
+    """
+    return "shadow"
+
+
+def resolve_score_sort_key(rec: Dict[str, Any], *, score_v3_mode: str) -> float:
+    """並び順に使うスコアを返す。
+
+    score_v3_mode == "active" の場合は breakdown.score_v3 を使う。
+    それ以外（shadow）は既存の rec["_score_total"] を使う。
+    現時点では resolve_score_v3_mode() が "shadow" 固定なので sort 順は変わらない。
+    """
+    if score_v3_mode == "active":
+        return float((rec.get("breakdown") or {}).get("score_v3") or 0.0)
+    return float(rec.get("_score_total") or 0.0)
+
+
 def build_recommendation_score_v3_breakdown(
     *,
     state_signal: float,
@@ -1857,4 +1877,6 @@ __all__ = [
     "_prefilter_candidates_for_need",
     "_diversify_by_need",
     "build_recommendation_reason",
+    "resolve_score_v3_mode",
+    "resolve_score_sort_key",
 ]

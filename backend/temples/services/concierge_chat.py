@@ -34,6 +34,8 @@ from temples.services.concierge_chat_ranking import (
     _diversify_by_need,
     _resolve_mode_weights,
     build_recommendation_reason,
+    resolve_score_sort_key,
+    resolve_score_v3_mode,
 )
 from temples.services.concierge_chat_response_meta import (
     attach_response_meta,
@@ -211,6 +213,7 @@ def _sort_chat_recommendations(
     recs: Dict[str, Any],
     *,
     sort_tags: set[str],
+    score_v3_mode: str = "shadow",
 ) -> Dict[str, Any]:
     recommendations = [r for r in (recs.get("recommendations") or []) if isinstance(r, dict)]
 
@@ -221,7 +224,7 @@ def _sort_chat_recommendations(
             recommendations,
             key=lambda r: (
                 float(r.get("distance_m") or 1e12),
-                -float(r.get("_score_total") or 0),
+                -resolve_score_sort_key(r, score_v3_mode=score_v3_mode),
                 str(r.get("name") or ""),
             ),
         )
@@ -229,7 +232,7 @@ def _sort_chat_recommendations(
         recommendations = sorted(
             recommendations,
             key=lambda r: (
-                -float(r.get("_score_total") or 0),
+                -resolve_score_sort_key(r, score_v3_mode=score_v3_mode),
                 float(r.get("distance_m") or 1e12),
                 str(r.get("name") or ""),
             ),
@@ -473,10 +476,13 @@ def build_chat_recommendations(
     except Exception:
         pass
 
+    score_v3_mode = resolve_score_v3_mode()
     recs = _sort_chat_recommendations(
         recs,
         sort_tags=sort_tags,
+        score_v3_mode=score_v3_mode,
     )
+    recs.setdefault("_debug", {})["score_v3_mode"] = score_v3_mode
     recs["recommendations"] = _attach_rank_comparison(recs.get("recommendations") or [])
     recs.setdefault("_debug", {})["user_state_profile"] = _build_user_state_profile(
         query=query or "",

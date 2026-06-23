@@ -207,12 +207,22 @@ score_v3 =
 [score_v3_shadow_summary] top1_changed=False avg_delta=-0.12 max_abs_delta=0.25 activation_candidate=True
 ```
 
+### Active Mode 準備（実装済み）
+
+`concierge_chat_ranking.py` に以下の helper を追加済み。
+
+- `resolve_score_v3_mode()` — 現在は `"shadow"` 固定。将来は環境変数 `SCORE_V3_ACTIVE=1` で `"active"` に切り替える（別 PR）
+- `resolve_score_sort_key(rec, *, score_v3_mode)` — sort_key の切替口。`"active"` 時は `breakdown.score_v3`、それ以外は `rec["_score_total"]` を返す
+
+`concierge_chat.py` の `_sort_chat_recommendations()` は `resolve_score_sort_key()` 経由でソートする。
+`_debug["score_v3_mode"]` に現在のモードを記録する。
+
 ### Active 化の手順
 
 1. shadow observation を複数セッションにわたって確認する
 2. `activation_candidate` が安定して `true` になることを確認する
-3. `_score_total` の sort_key を score_v3 に切り替える **別 PR** で実施する
-4. sort_key 切替は ranking.py の `_attach_breakdown` を変更する
+3. 環境変数 `SCORE_V3_ACTIVE=1` を `resolve_score_v3_mode()` に組み込む（別 PR）
+4. `_score_total` の sort_key を score_v3 に切り替えることで active 化する
 5. デフォルトは shadow のまま維持する
 
 ### やらないこと（この段階）
