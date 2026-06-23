@@ -41,6 +41,50 @@ _GOGYO_TO_ELEMENTS: Dict[str, List[str]] = {
 }
 
 
+DIRECTION_SIGNAL_MAX = 0.02
+
+# 方角ラベル（日本語）→ shrine 側の direction/direction_tags で使われうる値
+_DIRECTION_LABELS_JA: set[str] = {"東", "西", "南", "北", "北東", "南東", "南西", "北西"}
+
+
+def _score_direction_signal(
+    rec: Dict[str, Any],
+    profile_context: Optional[Dict[str, Any]],
+) -> tuple[float, List[str]]:
+    """
+    profile_context.direction_profile.luckyDirection を補助シグナルとして評価する。
+    候補神社に direction / direction_tags が存在する場合のみ最大 +0.02 を加算する。
+    存在しない場合はスコア 0 で reason="direction_profile未適用" を返す。
+    """
+    if not isinstance(profile_context, dict):
+        return 0.0, []
+
+    direction_profile = profile_context.get("direction_profile") or {}
+    if not isinstance(direction_profile, dict):
+        return 0.0, []
+
+    lucky = str(direction_profile.get("luckyDirection") or "").strip()
+    if not lucky:
+        return 0.0, []
+
+    # 候補神社の方位情報を確認（direction / direction_tags フィールド）
+    shrine_direction = str(rec.get("direction") or "").strip()
+    shrine_direction_tags: List[str] = [
+        str(t).strip()
+        for t in (rec.get("direction_tags") or [])
+        if isinstance(t, str) and str(t).strip()
+    ]
+
+    if not shrine_direction and not shrine_direction_tags:
+        return 0.0, []
+
+    all_shrine_directions = set(filter(None, [shrine_direction] + shrine_direction_tags))
+    if lucky in all_shrine_directions:
+        return DIRECTION_SIGNAL_MAX, [f"luckyDirection:{lucky}"]
+
+    return 0.0, []
+
+
 def _score_profile_signal(
     rec: Dict[str, Any],
     profile_context: Optional[Dict[str, Any]],
@@ -950,8 +994,16 @@ def _attach_breakdown(
     # profile_context 補助シグナル（最大 +0.03、主重みには影響しない）
     profile_signal_score, profile_signal_matched = _score_profile_signal(rec, profile_context)
 
+    # direction_profile 補助シグナル（最大 +0.02、候補に方位情報がある場合のみ加算）
+    direction_signal_score, direction_signal_matched = _score_direction_signal(rec, profile_context)
+
     # For now, direction_bonus is 0.0 and does not reverse ranking
-    score_total_ranked = score_total_ranked_base + capped_behavior_contribution + profile_signal_score
+    score_total_ranked = (
+        score_total_ranked_base
+        + capped_behavior_contribution
+        + profile_signal_score
+        + direction_signal_score
+    )
 
     rec["_score_total"] = float(score_total_ranked)
 
@@ -972,6 +1024,11 @@ def _attach_breakdown(
             "score": float(profile_signal_score),
             "matched": profile_signal_matched,
             "reason": "profile_context補助" if profile_signal_matched else None,
+        },
+        "direction_signal": {
+            "score": float(direction_signal_score),
+            "matched": direction_signal_matched,
+            "reason": "luckyDirection一致" if direction_signal_matched else "direction_profile未適用",
         },
     }
 
@@ -1040,6 +1097,14 @@ def _attach_breakdown(
                 "contribution": float(profile_signal_score),
                 "matched": profile_signal_matched,
                 "max": float(PROFILE_SIGNAL_MAX),
+            },
+            "direction_signal": {
+                "raw": float(direction_signal_score),
+                "weight": 1.0,
+                "contribution": float(direction_signal_score),
+                "matched": direction_signal_matched,
+                "max": float(DIRECTION_SIGNAL_MAX),
+                "reason": "luckyDirection一致" if direction_signal_matched else "direction_profile未適用",
             },
             "score_total_ranked_base": float(score_total_ranked_base),
             "capped_behavior_contribution": float(capped_behavior_contribution),
@@ -1670,6 +1735,7 @@ __all__ = [
     "NEED_TEXT_WEIGHTS",
     "STUDY_SHRINE_HINTS",
     "_score_profile_signal",
+    "_score_direction_signal",
     "_clamp01",
     "_distance_decay",
     "_resolve_public_mode",

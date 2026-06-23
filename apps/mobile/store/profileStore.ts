@@ -1,10 +1,11 @@
 import { create } from "zustand";
-import { buildDerivedProfile } from "../lib/profile";
-import type { DerivedProfile, UserProfile } from "../types/profile";
+import { buildDerivedProfile, buildDirectionProfile } from "../lib/profile";
+import type { DerivedProfile, DirectionProfile, UserProfile } from "../types/profile";
 
 type ProfileState = {
   userProfile: UserProfile;
   derivedProfile: DerivedProfile;
+  directionProfile: DirectionProfile;
   setBirthday: (value: string) => void;
   setBirthTime: (value: string) => void;
   setBirthPlace: (value: string) => void;
@@ -14,38 +15,41 @@ type ProfileState = {
 
 const initialUserProfile: UserProfile = {};
 
-function derived(userProfile: UserProfile): DerivedProfile {
-  return buildDerivedProfile(userProfile);
+function recompute(userProfile: UserProfile): { derivedProfile: DerivedProfile; directionProfile: DirectionProfile } {
+  return {
+    derivedProfile: buildDerivedProfile(userProfile),
+    directionProfile: buildDirectionProfile(userProfile),
+  };
 }
 
 export const useProfileStore = create<ProfileState>((set) => ({
   userProfile: initialUserProfile,
-  derivedProfile: derived(initialUserProfile),
+  ...recompute(initialUserProfile),
 
   setBirthday: (value) =>
     set((s) => {
       const next = { ...s.userProfile, birthday: value };
-      return { userProfile: next, derivedProfile: derived(next) };
+      return { userProfile: next, ...recompute(next) };
     }),
 
   setBirthTime: (value) =>
     set((s) => {
       const next = { ...s.userProfile, birthTime: value };
-      return { userProfile: next, derivedProfile: derived(next) };
+      return { userProfile: next, ...recompute(next) };
     }),
 
   setBirthPlace: (value) =>
     set((s) => {
       const next = { ...s.userProfile, birthPlace: value };
-      return { userProfile: next, derivedProfile: derived(next) };
+      return { userProfile: next, ...recompute(next) };
     }),
 
   setWorshipStyle: (value) =>
     set((s) => {
       const next = { ...s.userProfile, worshipStyle: value };
-      return { userProfile: next, derivedProfile: derived(next) };
+      return { userProfile: next, ...recompute(next) };
     }),
 
   resetProfile: () =>
-    set({ userProfile: initialUserProfile, derivedProfile: derived(initialUserProfile) }),
+    set({ userProfile: initialUserProfile, ...recompute(initialUserProfile) }),
 }));

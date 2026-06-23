@@ -8,7 +8,7 @@ import { useProfileStore } from "../../store/profileStore";
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { userProfile, derivedProfile, setBirthday, setBirthTime, setBirthPlace, setWorshipStyle } =
+  const { userProfile, derivedProfile, directionProfile, setBirthday, setBirthTime, setBirthPlace, setWorshipStyle } =
     useProfileStore();
 
   const fmt = (v?: string) => v ?? "未設定";
@@ -95,6 +95,15 @@ export default function ProfileScreen() {
         <View style={styles.row}>
           <Text style={styles.label}>ライフパス</Text>
           <Text style={styles.value}>{fmtDerived(derivedProfile.lifePath)}</Text>
+        </View>
+      </View>
+
+      {/* DirectionProfile */}
+      <View style={styles.sectionCard}>
+        <Text style={styles.sectionTitle}>方位プロフィール</Text>
+        <View style={styles.row}>
+          <Text style={styles.label}>吉方位</Text>
+          <Text style={styles.value}>{fmtDerived(directionProfile.luckyDirection)}</Text>
         </View>
       </View>
 

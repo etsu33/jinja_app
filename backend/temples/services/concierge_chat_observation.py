@@ -401,6 +401,37 @@ def observe_ranking_breakdown(
         }
 
 
+def observe_direction_signal(
+    *,
+    recs: dict[str, Any],
+    profile_context: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """direction_profile が推薦に使われたかを記録する。"""
+    try:
+        direction_profile = (profile_context or {}).get("direction_profile") or {}
+        lucky = str(direction_profile.get("luckyDirection") or "").strip() if isinstance(direction_profile, dict) else ""
+        hit_count = 0
+        total_score = 0.0
+
+        for rec in (recs.get("recommendations") or []):
+            if not isinstance(rec, dict):
+                continue
+            ds = (rec.get("breakdown") or {}).get("direction_signal") or {}
+            if isinstance(ds, dict) and ds.get("matched"):
+                hit_count += 1
+                total_score += float(ds.get("score") or 0.0)
+
+        return {
+            "has_direction_profile": bool(lucky),
+            "lucky_direction": lucky or None,
+            "hit_count": hit_count,
+            "total_score": round(total_score, 6),
+        }
+    except Exception:
+        log.exception("[observe_direction_signal] failed")
+        return {"has_direction_profile": False, "lucky_direction": None, "hit_count": 0, "total_score": 0.0}
+
+
 def observe_profile_signal(
     *,
     recs: dict[str, Any],

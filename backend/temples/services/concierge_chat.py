@@ -49,6 +49,7 @@ from temples.services.concierge_chat_observation import (
     build_trim_observation,
     observe_candidate_pool,
     observe_candidate_pool_debug,
+    observe_direction_signal,
     observe_profile_signal,
     observe_ranking_breakdown,
     observe_trim_after,
@@ -517,6 +518,10 @@ def build_chat_recommendations(
         after=trim_after,
     )
     recs.setdefault("_debug", {})["profile_signal_observation"] = observe_profile_signal(
+        recs=recs,
+        profile_context=profile_context,
+    )
+    recs.setdefault("_debug", {})["direction_signal_observation"] = observe_direction_signal(
         recs=recs,
         profile_context=profile_context,
     )
