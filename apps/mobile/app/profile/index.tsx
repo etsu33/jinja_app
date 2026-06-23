@@ -4,9 +4,20 @@ import { kamimusubiDark as theme } from "../theme";
 import { spacing } from "../design/spacing";
 import { cardSizes } from "../design/cardSizes";
 import { radius } from "../design/radius";
+import { buildDerivedProfile } from "../../lib/profile";
+import type { UserProfile } from "../../types/profile";
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const userProfile: UserProfile = {
+    birthday: undefined,
+    birthTime: undefined,
+    birthPlace: undefined,
+    worshipStyle: undefined,
+  };
+  const derivedProfile = buildDerivedProfile(userProfile);
+  const formatValue = (value?: string) => value ?? "未設定";
+  const formatDerivedValue = (value?: string) => value ?? "未計算";
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -21,21 +32,46 @@ export default function ProfileScreen() {
         </Text>
       </View>
 
-      <View style={styles.card}>
-        <View style={styles.iconBox}>
-          <Text style={styles.iconText}>人</Text>
+      <View style={styles.sectionCard}>
+        <Text style={styles.sectionTitle}>基本情報</Text>
+        <View style={styles.row}>
+          <Text style={styles.label}>生年月日</Text>
+          <Text style={styles.value}>{formatValue(userProfile.birthday)}</Text>
         </View>
-        <View style={styles.cardBody}>
-          <Text style={styles.cardTitle}>プロフィールカード</Text>
-          <Text style={styles.cardDescription}>名前・表示名・アカウント情報は今後ここにまとめます。</Text>
-          <Text style={styles.cardMeta}>現在はプロフィール設定の準備中です。</Text>
+        <View style={styles.row}>
+          <Text style={styles.label}>出生時間</Text>
+          <Text style={styles.value}>{formatValue(userProfile.birthTime)}</Text>
+        </View>
+        <View style={styles.row}>
+          <Text style={styles.label}>出生地</Text>
+          <Text style={styles.value}>{formatValue(userProfile.birthPlace)}</Text>
+        </View>
+        <View style={styles.row}>
+          <Text style={styles.label}>参拝スタイル</Text>
+          <Text style={styles.value}>{formatValue(userProfile.worshipStyle)}</Text>
         </View>
       </View>
 
-      <View style={styles.noticeCard}>
-        <Text style={styles.noticeTitle}>この画面に置くもの</Text>
+      <View style={styles.sectionCard}>
+        <Text style={styles.sectionTitle}>派生プロフィール</Text>
+        <View style={styles.row}>
+          <Text style={styles.label}>九星気学</Text>
+          <Text style={styles.value}>{formatDerivedValue(derivedProfile.kyusei)}</Text>
+        </View>
+        <View style={styles.row}>
+          <Text style={styles.label}>五行</Text>
+          <Text style={styles.value}>{formatDerivedValue(derivedProfile.gogyo)}</Text>
+        </View>
+        <View style={styles.row}>
+          <Text style={styles.label}>ライフパス</Text>
+          <Text style={styles.value}>{formatDerivedValue(derivedProfile.lifePath)}</Text>
+        </View>
+      </View>
+
+      <View style={styles.sectionCard}>
+        <Text style={styles.sectionTitle}>コンシェルジュへの反映</Text>
         <Text style={styles.noticeText}>
-          表示名、プロフィール画像、アカウント状態など、ユーザー自身の情報だけを扱います。
+          プロフィール情報は、{"\n"}神社提案の補助情報として利用されます。
         </Text>
       </View>
     </ScrollView>
@@ -81,63 +117,37 @@ const styles = StyleSheet.create({
     lineHeight: 23,
     fontWeight: "600",
   },
-  card: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
+  sectionCard: {
     backgroundColor: theme.surface,
     borderWidth: cardSizes.borderWidth,
     borderColor: theme.borderHeader,
     borderRadius: radius.lg,
     padding: cardSizes.cardPaddingLg,
-  },
-  iconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.md,
-    borderWidth: cardSizes.borderWidth,
-    borderColor: theme.borderGold,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  iconText: {
-    color: theme.gold,
-    fontSize: 20,
-    fontWeight: "900",
-  },
-  cardBody: {
-    flex: 1,
-    gap: spacing.tightGap,
-  },
-  cardTitle: {
-    color: theme.text,
-    fontSize: 16,
-    fontWeight: "900",
-  },
-  cardDescription: {
-    color: theme.mutedSoft,
-    fontSize: 13,
-    lineHeight: 20,
-    fontWeight: "700",
-  },
-  cardMeta: {
-    color: theme.muted,
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: "600",
-  },
-  noticeCard: {
-    backgroundColor: theme.surfaceSoft,
-    borderColor: theme.borderHeader,
-    borderRadius: radius.md,
-    borderWidth: cardSizes.borderWidth,
-    padding: cardSizes.cardPaddingMd,
     gap: spacing.smGap,
   },
-  noticeTitle: {
-    color: theme.text,
+  sectionTitle: {
+    color: theme.gold,
     fontSize: 15,
     fontWeight: "900",
+    marginBottom: spacing.tightGap,
+  },
+  row: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: spacing.tightGap,
+    borderBottomWidth: cardSizes.borderWidth,
+    borderBottomColor: theme.borderHeader,
+  },
+  label: {
+    color: theme.text,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  value: {
+    color: theme.muted,
+    fontSize: 14,
+    fontWeight: "600",
   },
   noticeText: {
     color: theme.muted,
