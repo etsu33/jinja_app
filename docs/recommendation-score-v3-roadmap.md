@@ -225,11 +225,39 @@ score_v3 =
 4. `_score_total` の sort_key を score_v3 に切り替えることで active 化する
 5. デフォルトは shadow のまま維持する
 
+### 有効化手順
+
+1. shadow observation ログで `activation_candidate` が安定して `true` になることを確認する
+   - `top1_changed_rate` が 0.0
+   - `max_abs_delta` が 0.5 未満
+2. 環境変数を設定して active にする
+
+   ```bash
+   # Render / .env
+   SCORE_V3_MODE=active
+   ```
+
+3. 不正値・未設定は自動的に `shadow` にフォールバックする
+4. Rollback は `SCORE_V3_MODE=shadow` に戻すだけ（コード変更不要）
+
+### active モード時のテスト注意
+
+順位固定を前提とした eval テスト（`test_concierge_eval_queries` 等）は `SCORE_V3_MODE=active` 時に skip される。  
+これは active モードで score_v3 によって順位が変わることが**正しい動作**であるため。
+
+```bash
+# shadow（本番デフォルト）: 298 passed
+pytest -k concierge
+
+# active smoke: 264 passed / 34 skipped（順位固定テストが skip）
+SCORE_V3_MODE=active pytest -k concierge
+```
+
 ### やらないこと（この段階）
 
 - `score_total` を変更しない
 - `_score_total`（sort key）を変更しない
-- `mode="active"` にしない
+- `mode="active"` をデフォルトにしない
 - DB 変更・migration しない
 - ranking.py のスコア計算ロジックを変更しない
 
