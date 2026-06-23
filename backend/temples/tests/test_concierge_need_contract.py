@@ -645,6 +645,10 @@ def test_concierge_sort_distance_override_sorts_by_distance(monkeypatch, setting
 
 
 @pytest.mark.django_db
+@pytest.mark.skipif(
+    __import__("os").environ.get("SCORE_V3_MODE") == "active",
+    reason="active モードでは score_v3 で順位が変わるため shadow 専用",
+)
 def test_concierge_soft_signal_affects_highlights_not_score(monkeypatch, settings):
     settings.CONCIERGE_USE_LLM = False
     monkeypatch.setenv("CHAT_MAX_ADDRESS_LOOKUPS", "0")

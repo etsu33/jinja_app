@@ -78,6 +78,10 @@ def test_breakdown_score_total_is_contract_value_but_sort_uses_ranked_score(monk
 
 
 @pytest.mark.django_db
+@pytest.mark.skipif(
+    __import__("os").environ.get("SCORE_V3_MODE") == "active",
+    reason="active モードでは score_v3 で順位が変わるため shadow 専用",
+)
 def test_visit_style_weight_can_reorder_same_need_strength_candidates(monkeypatch):
     """
     visit_style は補助軸として、need の強さが同じ候補同士の順位を微調整できる。
