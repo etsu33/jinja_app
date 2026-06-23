@@ -12,6 +12,8 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { kamimusubiDark as theme } from "../theme";
 import { shadows } from "../design/shadow";
+import type { ConciergeContext } from "../../lib/conciergeContext";
+import { buildDerivedProfile } from "../../lib/profile";
 import { post } from "../../lib/http";
 
 // ────────────────────────────────────────────
@@ -102,6 +104,7 @@ function normalizeRecommendations(items: RecommendationApiCard[]): Recommendatio
 async function fetchConciergeRecommendations(
   consultation: string,
   extraCondition?: string,
+  _context?: ConciergeContext,
 ): Promise<RecommendationCard[]> {
   const body = await post<ConciergeChatResponse>("/concierge/chat/", {
     query: consultation,
@@ -192,6 +195,19 @@ export default function ConciergeScreen() {
   const [supportText, setSupportText] = React.useState("");
   const hasAnyCondition = Boolean(selectedVisitStyle || birthdate.trim() || selectedGoriyaku || supportText.trim());
   const lastInitialQueryRef = React.useRef<string | null>(null);
+  const conciergeContext = React.useMemo<ConciergeContext>(() => {
+    const userProfile = {
+      birthday: birthdate.trim() || undefined,
+      birthTime: undefined,
+      birthPlace: undefined,
+      worshipStyle: selectedVisitStyle,
+    };
+
+    return {
+      userProfile,
+      derivedProfile: buildDerivedProfile(userProfile),
+    };
+  }, [birthdate, selectedVisitStyle]);
 
   // URLの相談内容が変わったら自動送信する
   React.useEffect(() => {
@@ -222,7 +238,7 @@ export default function ConciergeScreen() {
         goriyaku: selectedGoriyaku,
         supportText,
       });
-      const recommendations = await fetchConciergeRecommendations(queryText, extraCondition || undefined);
+      const recommendations = await fetchConciergeRecommendations(queryText, extraCondition || undefined, conciergeContext);
       setResults(recommendations);
     } catch {
       setErrorMessage("通信に失敗しました。前回の候補を表示したまま、もう一度相談できます。");
