@@ -52,6 +52,24 @@ type ConciergeChatResponse = {
   };
 };
 
+type ConciergeChatRequestPayload = {
+  version: 1;
+  mode: "need";
+  query: string;
+  birthdate?: string;
+  filters: {
+    birthdate?: string;
+    goriyaku_tag_ids?: number[];
+    extra_condition?: string;
+    crowd?: string[];
+    duration_max_min?: number;
+    free_text?: string;
+  };
+  goriyaku_tag_ids?: number[];
+  extra_condition?: string;
+  profile_context?: ProfileContextPayload;
+};
+
 
 const VISIT_STYLE_OPTIONS = [
   "静かに整えたい",
@@ -108,17 +126,38 @@ type ProfileContextPayload = {
   direction_profile: Record<string, string | undefined>;
 };
 
-async function fetchConciergeRecommendations(
-  consultation: string,
-  extraCondition?: string,
-  _context?: ConciergeContext,
-  profileContext?: ProfileContextPayload,
-): Promise<RecommendationCard[]> {
-  const body = await post<ConciergeChatResponse>("/concierge/chat/", {
+async function fetchConciergeRecommendations({
+  consultation,
+  extraCondition,
+  birthdate,
+  profileContext,
+}: {
+  consultation: string;
+  extraCondition?: string;
+  birthdate?: string;
+  profileContext?: ProfileContextPayload;
+}): Promise<RecommendationCard[]> {
+  const normalizedBirthdate = birthdate?.trim() || undefined;
+  const normalizedExtraCondition = extraCondition?.trim() || undefined;
+  const payload: ConciergeChatRequestPayload = {
+    version: 1,
+    mode: "need",
     query: consultation,
-    extra_condition: extraCondition,
+    birthdate: normalizedBirthdate,
+    filters: {
+      birthdate: normalizedBirthdate,
+      goriyaku_tag_ids: undefined,
+      extra_condition: normalizedExtraCondition,
+      crowd: undefined,
+      duration_max_min: undefined,
+      free_text: normalizedExtraCondition,
+    },
+    goriyaku_tag_ids: undefined,
+    extra_condition: normalizedExtraCondition,
     ...(profileContext ? { profile_context: profileContext } : {}),
-  });
+  };
+
+  const body = await post<ConciergeChatResponse>("/concierge/chat/", payload);
 
   return normalizeRecommendations(body.data?.recommendations ?? []);
 }
@@ -265,7 +304,12 @@ export default function ConciergeScreen() {
           source: directionProfile.source,
         },
       };
-      const recommendations = await fetchConciergeRecommendations(queryText, extraCondition || undefined, conciergeContext, profileContext);
+      const recommendations = await fetchConciergeRecommendations({
+        consultation: queryText,
+        extraCondition: extraCondition || undefined,
+        birthdate,
+        profileContext,
+      });
       setResults(recommendations);
     } catch {
       setErrorMessage("通信に失敗しました。前回の候補を表示したまま、もう一度相談できます。");
