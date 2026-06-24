@@ -683,8 +683,86 @@ active 化は以下を満たした場合のみ検討する。
 - funnel 指標が悪化していない
 - rollback 手順が確認済み
 
+
 ### やらないこと
 
 - 実データなしで weight を変更しない
 - dashboard を見ずに active 化しない
 - `SCORE_V3_MODE=active` をデフォルトにしない
+
+
+### Observation Report Template
+
+Score v3 の active 化判断では、以下の形式で観測結果を記録する。
+
+```markdown
+# Score v3 Observation Report
+
+## 観測期間
+
+- 開始日:
+- 終了日:
+- 観測セッション数:
+- 観測モード: shadow
+
+## Dashboard API Snapshot
+
+- top1_changed_rate_avg:
+- activation_candidate_rate:
+- avg_delta:
+- max_abs_delta_max:
+
+## Funnel Snapshot
+
+- route_open_rate:
+- save_rate:
+- visit_done_rate:
+- reflection_saved_rate:
+
+## Active 化判定
+
+- active_candidate:
+- rollback_required:
+- 判定理由:
+
+## Weight Review
+
+- state weight 0.45:
+- behavior weight 0.25:
+- profile weight 0.05:
+- direction weight 0.02:
+- action weight 0.02:
+- reflection weight 0.01:
+
+## Rollback 確認
+
+- `SCORE_V3_MODE=shadow` へ戻せること:
+- rollback_required 条件に該当していないこと:
+- active 化後も dashboard API で継続観測できること:
+
+## Final Decision
+
+- active 化する / 延期する:
+- 理由:
+- 次の対応:
+```
+
+### Rollback Checklist
+
+active 化前に以下を確認する。
+
+- [ ] `SCORE_V3_MODE=shadow` に戻すだけで rollback できる
+- [ ] rollback_required の条件が dashboard API で確認できる
+- [ ] active 化後も `_debug.score_v3_ab_observation` が出力される
+- [ ] top1_changed_rate_avg が 0.20 を超えた場合の対応が決まっている
+- [ ] max_abs_delta_max が 1.00 を超えた場合の対応が決まっている
+- [ ] funnel 指標が悪化した場合は active 化を停止する
+
+### Observation TODO
+
+- [ ] dashboard API の現在レスポンスを確認
+- [ ] 30〜100セッション観測する
+- [ ] Observation Report Template に実測値を記録する
+- [ ] active 化判定レポートを作成する
+- [ ] rollback 条件を確認する
+- [ ] `SCORE_V3_MODE=active` の適用可否を判断する
