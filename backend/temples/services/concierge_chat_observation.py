@@ -475,15 +475,23 @@ def observe_score_v3_shadow(
             if not isinstance(rec, dict):
                 continue
             breakdown = rec.get("breakdown") or {}
+            features = (rec.get("breakdown_detail") or {}).get("features") or {}
             score_total = float(breakdown.get("score_total") or 0.0)
+            score_total_ranked = float(
+                features.get("score_total_ranked")
+                or rec.get("_score_total")
+                or score_total
+                or 0.0
+            )
             score_v3 = float(breakdown.get("score_v3") or 0.0)
             items.append(
                 {
                     "rank": idx,
                     "name": rec.get("name"),
                     "score_total": round(score_total, 6),
+                    "score_total_ranked": round(score_total_ranked, 6),
                     "score_v3": round(score_v3, 6),
-                    "delta": round(score_v3 - score_total, 6),
+                    "delta": round(score_v3 - score_total_ranked, 6),
                 }
             )
 
@@ -513,8 +521,8 @@ def observe_score_v3_shadow(
                 "summary": _empty_summary,
             }
 
-        # score_total 順（現在の ranking 順）で top1
-        score_total_top1_item = max(items, key=lambda x: x["score_total"])
+        # score_total_ranked 順（現在の表示順位に使う ranking score）で top1
+        score_total_top1_item = max(items, key=lambda x: x["score_total_ranked"])
         # score_v3 順で top1
         score_v3_sorted = sorted(items, key=lambda x: -x["score_v3"])
         score_v3_top1_item = score_v3_sorted[0]
@@ -525,6 +533,7 @@ def observe_score_v3_shadow(
             "rank": score_total_top1_item["rank"],
             "name": score_total_top1_item["name"],
             "score_total": score_total_top1_item["score_total"],
+            "score_total_ranked": score_total_top1_item["score_total_ranked"],
         }
         score_v3_top1 = {
             "rank": score_v3_top1_item["rank"],

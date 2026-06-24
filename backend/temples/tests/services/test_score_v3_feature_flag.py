@@ -135,6 +135,63 @@ class TestResolveScoreSortKey:
 
 
 # ---------------------------------------------------------------------------
+# observe_score_v3_shadow
+# ---------------------------------------------------------------------------
+
+class TestObserveScoreV3Shadow:
+    def test_top1_changed_uses_ranked_score_not_raw_score_total(self):
+        from temples.services.concierge_chat_observation import observe_score_v3_shadow
+
+        recommendations = [
+            {
+                "name": "三峯神社",
+                "_score_total": 1.67,
+                "breakdown": {"score_total": 0.3, "score_v3": 0.45},
+            },
+            {
+                "name": "九頭龍神社 新宮",
+                "_score_total": 1.2,
+                "breakdown": {"score_total": 0.6, "score_v3": 0.9},
+            },
+        ]
+
+        result = observe_score_v3_shadow(recommendations=recommendations)
+
+        assert result["top1_changed"] is True
+        assert result["score_total_top1"]["name"] == "三峯神社"
+        assert result["score_total_top1"]["score_total_ranked"] == pytest.approx(1.67)
+        assert result["score_v3_top1"]["name"] == "九頭龍神社 新宮"
+        assert result["summary"]["top1_changed_rate"] == pytest.approx(1.0)
+
+    def test_score_total_ranked_from_breakdown_detail_takes_priority(self):
+        from temples.services.concierge_chat_observation import observe_score_v3_shadow
+
+        recommendations = [
+            {
+                "name": "A神社",
+                "_score_total": 1.0,
+                "breakdown": {"score_total": 0.2, "score_v3": 0.4},
+                "breakdown_detail": {
+                    "features": {
+                        "score_total_ranked": 2.0,
+                    }
+                },
+            },
+            {
+                "name": "B神社",
+                "_score_total": 1.8,
+                "breakdown": {"score_total": 0.9, "score_v3": 1.2},
+            },
+        ]
+
+        result = observe_score_v3_shadow(recommendations=recommendations)
+
+        assert result["score_total_top1"]["name"] == "A神社"
+        assert result["score_total_top1"]["score_total_ranked"] == pytest.approx(2.0)
+        assert result["score_v3_top1"]["name"] == "B神社"
+        assert result["top1_changed"] is True
+
+# ---------------------------------------------------------------------------
 # summarize_score_v3_ab_observations
 # ---------------------------------------------------------------------------
 
