@@ -632,3 +632,59 @@ distance    = 0.10
 | `activation_candidate_rate` | 0.50 未満 |
 
 `rollback_required = true` の場合、`reasons` に該当条件を列挙する。
+
+
+## Score v3 Data Collection Plan
+
+### 目的
+
+Score v3 を active 化する前に、十分な推薦ログと行動ファネルを蓄積し、active 化判断をデータで行う。
+
+### 観測期間
+
+- 最低 30 セッション
+- 推奨 100 セッション
+- 最低 7 日間は shadow mode で観測する
+
+### 観測指標
+
+- top1_changed_rate
+- activation_candidate_rate
+- avg_delta
+- max_abs_delta
+
+### Funnel Correlation
+
+以下の行動指標と突合する。
+
+- route_open_rate
+- save_rate
+- visit_done_rate
+- reflection_saved_rate
+
+### Weight Optimization
+
+以下の weight を実測値で検証する。
+
+- state = 0.45
+- behavior = 0.25
+- profile = 0.05
+- direction = 0.02
+- action = 0.02
+- reflection = 0.01
+
+### Final Decision
+
+active 化は以下を満たした場合のみ検討する。
+
+- top1_changed_rate_avg <= 0.10
+- activation_candidate_rate >= 0.80
+- max_abs_delta_max < 0.50
+- funnel 指標が悪化していない
+- rollback 手順が確認済み
+
+### やらないこと
+
+- 実データなしで weight を変更しない
+- dashboard を見ずに active 化しない
+- `SCORE_V3_MODE=active` をデフォルトにしない
