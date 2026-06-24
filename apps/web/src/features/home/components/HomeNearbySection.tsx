@@ -5,18 +5,18 @@ import Link from "next/link";
 
 export function HomeNearbySection() {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+    <div className="rounded-3xl border border-stone-200/25 bg-white/60 px-5 py-7 sm:py-8">
       <div className="space-y-1">
-        <p className="text-sm font-semibold text-slate-900">近くの神社を探す</p>
-        <p className="text-xs text-slate-600">地図から周辺の神社を探せます。</p>
+        <p className="text-sm font-medium text-stone-800">近くの神社を地図でも確認する</p>
+        <p className="text-xs text-stone-500">相談のあとに、距離や周辺を補助的に見る</p>
       </div>
 
-      <div className="mt-3">
+      <div className="mt-5">
         <Link
           href="/map"
-          className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+          className="inline-flex min-h-[36px] items-center justify-center rounded-full border border-stone-200/55 bg-stone-50/80 px-4 py-1.5 text-sm font-normal text-stone-700 transition hover:bg-stone-100"
         >
-          地図を開く
+          地図でも確認する
         </Link>
       </div>
     </div>

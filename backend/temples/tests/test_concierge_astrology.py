@@ -14,6 +14,10 @@ def fake_element_priority(user_element, rec_elements):
 
 @override_settings(CONCIERGE_USE_LLM=True)
 @pytest.mark.django_db
+@pytest.mark.skipif(
+    __import__("os").environ.get("SCORE_V3_MODE") == "active",
+    reason="active モードでは score_v3 で順位が変わるため shadow 専用",
+)
 def test_chat_astrology_picks_top3_by_element_priority(monkeypatch):
     """
     birthdate が有効なとき：

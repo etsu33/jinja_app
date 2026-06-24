@@ -17,7 +17,7 @@ class ShrinePermissionTests(TestCase):
     @pytest.mark.slow
     def test_non_owner_cannot_view_detail(self):
         self.client.login(username="u2", password="p")
-        resp = self.client.get(reverse("temples:shrine_detail", args=[self.s1.pk]))
+        resp = self.client.get("/shrines/{}/".format(self.s1.pk))
         self.assertEqual(resp.status_code, 404)
 
     @pytest.mark.slow

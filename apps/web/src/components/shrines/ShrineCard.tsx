@@ -1,6 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { trackSearchEvent } from "@/lib/analytics/searchEvents";
 
 function formatDistance(m?: number | null) {
   if (typeof m !== "number" || !Number.isFinite(m)) return null;
@@ -8,11 +9,46 @@ function formatDistance(m?: number | null) {
   return `${(m / 1000).toFixed(1)}km`;
 }
 
+function clean(value?: string | null) {
+  return (value ?? "").replace(/\s+/g, " ").trim();
+}
+
+const BENEFIT_PROMPTS: Record<string, string> = {
+  縁結び: "人とのご縁や関係性を整えたい時の候補です。",
+  "子宝・安産": "家族や新しい命に関する願いを大切にしたい時の候補です。",
+  学業成就: "学びや試験に向けて気持ちを整えたい時の候補です。",
+  合格祈願: "試験や選考など、結果に向けて集中したい時の候補です。",
+  "金運・商売繁盛": "仕事やお金の流れを整えたい時の候補です。",
+  "仕事運・出世": "仕事の前進や役割の変化を意識したい時の候補です。",
+  健康長寿: "心身の健やかさを大切にしたい時の候補です。",
+  病気平癒: "回復や体調面への願いを込めたい時の候補です。",
+  家内安全: "家族や暮らしの安心を大切にしたい時の候補です。",
+  交通安全: "移動や日々の安全を意識したい時の候補です。",
+  "厄除け・方除け": "不安や節目を切り替えたい時の候補です。",
+  "勝運・必勝祈願": "挑戦や勝負どころに向けて気持ちを整えたい時の候補です。",
+  五穀豊穣: "実りや日々の恵みに意識を向けたい時の候補です。",
+  地域安泰: "土地や地域とのつながりを大切にしたい時の候補です。",
+  開運招福: "流れを変えたい時や、前向きなきっかけが欲しい時の候補です。",
+};
+
+function buildBenefitPrompt(tags: string[]) {
+  const firstTag = tags.map((tag) => clean(tag)).find(Boolean);
+  if (!firstTag) return null;
+  return BENEFIT_PROMPTS[firstTag] ?? `${firstTag}を意識して参拝先を選びたい時の候補です。`;
+}
+
 export type ShrineCardProps = {
   name: string;
+  shrineId?: string | number;
   address?: string | null;
+
   recommendReason?: string | null;
   subReason?: string | null;
+
+  topReasonLabel?: string | null;
+  primaryReason?: string | null;
+  secondaryReason?: string | null;
+
   compatibilityLabels?: string[];
   distanceM?: number | null;
   rating?: number | null;
@@ -23,6 +59,7 @@ export type ShrineCardProps = {
   isFavorited?: boolean;
   onToggleFavorite?: () => void;
   isTopPick?: boolean;
+
   explanationSummary?: string | null;
   explanationReasons?: Array<{
     code?: string | null;
@@ -35,10 +72,14 @@ export type ShrineCardProps = {
 export function ShrineCard(props: ShrineCardProps) {
   const {
     name,
+    shrineId,
     address,
     recommendReason,
-    subReason,
-    compatibilityLabels = [],
+    subReason: _subReason,
+    topReasonLabel,
+    primaryReason,
+    secondaryReason: _secondaryReason,
+    compatibilityLabels: _compatibilityLabels = [],
     distanceM,
     rating,
     reviewCount,
@@ -54,46 +95,78 @@ export function ShrineCard(props: ShrineCardProps) {
 
   const distText = formatDistance(distanceM);
 
-  const maxReasonCount = isTopPick ? 3 : 2;
+  const benefitPrompt = buildBenefitPrompt(tags);
+  const resolvedSummary = clean(explanationSummary) || clean(recommendReason) || benefitPrompt;
 
-  const cleanReasons = Array.isArray(explanationReasons)
-    ? explanationReasons.filter((r) => r && (r.label || r.text)).slice(0, maxReasonCount)
-    : [];
+  const resolvedPrimaryReason =
+    clean(primaryReason) ||
+    (Array.isArray(explanationReasons) ? clean(explanationReasons.find((r) => clean(r?.text))?.text) : null) ||
+    null;
 
-  console.log({
-    name,
-    isTopPick,
-    explanationReasons,
-    cleanReasons,
-  });
+  const finalPrimaryReason =
+    resolvedPrimaryReason && resolvedPrimaryReason !== resolvedSummary ? resolvedPrimaryReason : null;
 
-  const hasExplanation = Boolean((explanationSummary && explanationSummary.trim()) || cleanReasons.length > 0);
+  const cardClass = [
+    "rounded-2xl border p-4 shadow-sm transition-colors",
+    isTopPick ? "border-amber-300 bg-amber-50/40" : "border-slate-200 bg-white",
+  ].join(" ");
 
-  const cardClass = ["rounded-xl border p-4", isTopPick ? "border-amber-300 bg-amber-50/40" : "bg-white"].join(" ");
+  const summaryClass = [
+    "mt-2 line-clamp-1",
+    isTopPick ? "text-[12px] leading-5 text-slate-500" : "text-[12px] leading-5 text-slate-600",
+  ].join(" ");
+
+  const primaryClass = [
+    "mt-1 line-clamp-2",
+    isTopPick
+      ? "text-[14px] font-semibold leading-6 text-slate-900"
+      : "text-[13px] font-medium leading-6 text-slate-700",
+  ].join(" ");
 
   const MainContent = (
     <div className="flex gap-4">
-      <div className="w-28 h-20 rounded-lg bg-gray-100 overflow-hidden shrink-0">
+      <div className="h-20 w-28 shrink-0 overflow-hidden rounded-xl bg-slate-100">
         {imageUrl ? (
-          <Image src={imageUrl} alt={name} width={112} height={80} className="w-full h-full object-cover" />
+          <Image src={imageUrl} alt={name} width={112} height={80} className="h-full w-full object-cover" />
         ) : null}
       </div>
 
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            {isTopPick ? (
-              <div className="mb-1 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
-                いちばんおすすめ
+            {isTopPick || topReasonLabel ? (
+              <div className="mb-2 flex flex-wrap gap-2">
+                {isTopPick ? (
+                  <div className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+                    いちばんおすすめ
+                  </div>
+                ) : null}
+
+                {topReasonLabel ? (
+                  <div className="inline-flex rounded-full border border-amber-200 bg-white px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                    {topReasonLabel}
+                  </div>
+                ) : null}
               </div>
             ) : null}
 
-            <div className="font-semibold truncate">{name}</div>
+            <div
+              className={["truncate font-semibold text-slate-900", isTopPick ? "text-[16px]" : "text-[15px]"].join(" ")}
+            >
+              {name}
+            </div>
 
-            {recommendReason ? <div className="mt-1 text-sm text-gray-800 line-clamp-2">{recommendReason}</div> : null}
+            {finalPrimaryReason ? <div className={primaryClass}>{finalPrimaryReason}</div> : null}
+
+            {resolvedSummary ? (
+              <div className={summaryClass}>
+                <span className="font-semibold text-emerald-700">選ぶ理由：</span>
+                {resolvedSummary}
+              </div>
+            ) : null}
 
             {distText || typeof rating === "number" ? (
-              <div className="mt-2 flex gap-3 text-sm text-gray-700">
+              <div className="mt-2 flex gap-3 text-sm text-slate-600">
                 {distText ? <span>{distText}</span> : null}
                 {typeof rating === "number" ? (
                   <span>
@@ -104,13 +177,7 @@ export function ShrineCard(props: ShrineCardProps) {
               </div>
             ) : null}
 
-            {address ? <div className="mt-1 text-xs text-gray-500 truncate">{address}</div> : null}
-
-            {compatibilityLabels.length ? (
-              <div className="mt-1 text-[11px] text-gray-500">相性: {compatibilityLabels.join(" / ")}</div>
-            ) : null}
-
-            {subReason ? <div className="mt-1 text-[11px] text-gray-500 line-clamp-1">{subReason}</div> : null}
+            {address ? <div className="mt-1 truncate text-xs text-slate-500">{address}</div> : null}
           </div>
 
           {typeof isFavorited === "boolean" && onToggleFavorite ? (
@@ -121,7 +188,7 @@ export function ShrineCard(props: ShrineCardProps) {
                 e.stopPropagation();
                 onToggleFavorite?.();
               }}
-              className="text-sm px-2 py-1 border rounded-md shrink-0"
+              className="shrink-0 rounded-md border px-2 py-1 text-sm"
               aria-label={isFavorited ? "お気に入り解除" : "お気に入り追加"}
             >
               {isFavorited ? "★" : "☆"}
@@ -130,9 +197,9 @@ export function ShrineCard(props: ShrineCardProps) {
         </div>
 
         {tags.length ? (
-          <div className="mt-2 flex flex-wrap gap-2">
-            {tags.slice(0, 5).map((t) => (
-              <span key={t} className="text-xs px-2 py-1 bg-gray-100 rounded-full text-gray-700">
+          <div className="mt-3 flex flex-wrap gap-2">
+            {tags.slice(0, 3).map((t) => (
+              <span key={t} className="rounded-full bg-slate-100 px-2 py-1 text-[11px] text-slate-500">
                 {t}
               </span>
             ))}
@@ -142,48 +209,24 @@ export function ShrineCard(props: ShrineCardProps) {
     </div>
   );
 
-  const ExplanationContent = hasExplanation ? (
-    <div className="mt-4 border-t border-slate-200 pt-3">
-      <details open={isTopPick} className="group">
-        <summary className="list-none cursor-pointer text-xs font-medium text-slate-600 hover:text-slate-800 flex items-center justify-between">
-          <span>なぜこの神社？</span>
-          <span className="text-slate-400 text-[10px] transition-transform group-open:rotate-180">▲</span>
-        </summary>
-
-        <div className="mt-2 space-y-2">
-          {cleanReasons.length ? (
-            <ul className="space-y-1">
-              {cleanReasons.map((reason, idx) => (
-                <li key={`${reason.code ?? "reason"}_${idx}`} className="text-[11px] leading-5 text-slate-600">
-                  {reason.label ? (
-                    <>
-                      <span className="text-slate-400">{reason.label}</span>
-                      <span className="mx-1 text-slate-300">-</span>
-                    </>
-                  ) : null}
-                  <span>{reason.text}</span>
-                </li>
-              ))}
-            </ul>
-          ) : explanationSummary ? (
-            <div className="text-[11px] leading-5 text-slate-600">{explanationSummary}</div>
-          ) : null}
-        </div>
-      </details>
-    </div>
-  ) : null;
-
   return (
     <div className={cardClass}>
       {href ? (
-        <Link href={href} className="block">
+        <Link
+          href={href}
+          className="block"
+          onClick={() => {
+            trackSearchEvent("shrine_card_click", {
+              source: "shrines",
+              shrineId,
+            });
+          }}
+        >
           {MainContent}
         </Link>
       ) : (
         MainContent
       )}
-
-      {ExplanationContent}
     </div>
   );
 }

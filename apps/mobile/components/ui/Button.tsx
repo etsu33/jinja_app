@@ -1,6 +1,7 @@
 // apps/mobile/components/ui/Button.tsx
 import { Pressable, Text, StyleSheet, ViewStyle } from "react-native";
 import { colors } from "../../app/theme";
+import { ctaSizes } from "../../app/design/ctaSizes";
 
 type Props = {
   title: string;
@@ -22,7 +23,12 @@ export default function Button({ title, variant="neutral", style, onPress }: Pro
 }
 
 const styles = StyleSheet.create({
-  btn: { height: 48, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  btn: {
+    height: ctaSizes.mediumHeight,
+    borderRadius: ctaSizes.mediumRadius,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   btnPrimary: { backgroundColor: colors.primary },
   btnAccent:  { backgroundColor: colors.accent },
   btnNeutral: { backgroundColor: "#111" },

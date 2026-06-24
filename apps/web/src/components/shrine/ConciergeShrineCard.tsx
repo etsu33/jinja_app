@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { buildShrineHref } from "@/lib/nav/buildShrineHref";
 
 import ShrineCard from "@/components/shrines/ShrineConciergeCard";
 
@@ -12,11 +13,13 @@ export default function ConciergeShrineCard(props: Props) {
 
   const { shrineId, tid, detailHref, ...rest } = props;
 
+  
+
   const qs = new URLSearchParams();
   qs.set("ctx", "concierge");
   if (tid) qs.set("tid", tid);
 
-  const href = detailHref ?? `/shrines/${shrineId}?${qs.toString()}`;
+  const href = detailHref ?? buildShrineHref(shrineId, { ctx: "concierge", tid: tid ?? undefined });
 
   return (
     <ShrineCard

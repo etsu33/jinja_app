@@ -29,16 +29,18 @@ describe("buildPayloadFromUnified (payload/meta/astro)", () => {
     expect(p?.meta?.tid).toBe("123");
   });
 
-  it("recs無しでも remainingFree=0 なら limit として payload を返す", () => {
+  it("recs無しでも limitReached=true なら limit として payload を返す", () => {
     const u: any = {
-      meta: { remainingFree: 0 },
+      limitReached: true,
+      remaining: 0,
       data: { recommendations: [] },
       thread_id: 9,
     };
 
     const p = buildPayloadFromUnified(u, baseFilterState);
     expect(p).not.toBeNull();
-    expect(p?.meta?.remainingFree).toBe(0);
+    expect(p?.meta?.limitReached).toBe(true);
+    expect(p?.meta?.remaining).toBe(0);
     expect(p?.meta?.tid).toBe("9");
   });
 
@@ -90,10 +92,10 @@ describe("buildPayloadFromUnified (payload/meta/astro)", () => {
     expect(p?.meta?.mode).toBe("B");
   });
 
-  it("meta の揺れ: note/reply/remaining_free を u 側からも拾える", () => {
+  it("meta の揺れ: reply / remaining / limitReached を u 側からも拾える", () => {
     const u: any = {
-      note: "limit-reached",
-      remaining_free: 0,
+      remaining: 0,
+      limitReached: true,
       reply: "上限です",
       data: { recommendations: [] },
       thread_id: 555,
@@ -101,9 +103,74 @@ describe("buildPayloadFromUnified (payload/meta/astro)", () => {
 
     const p = buildPayloadFromUnified(u, baseFilterState);
     expect(p).not.toBeNull();
-    expect(p?.meta?.note).toBe("limit-reached");
-    expect(p?.meta?.remainingFree).toBe(0);
+    expect(p?.meta?.remaining).toBe(0);
+    expect(p?.meta?.limitReached).toBe(true);
     expect(p?.meta?.reply).toBe("上限です");
     expect(p?.meta?.tid).toBe("555");
   });
+});
+
+it("reason_facts を recommendation item に通す", () => {
+  const u: any = {
+    data: {
+      recommendations: [
+        {
+          shrine_id: 10,
+          display_name: "S1",
+          reason: "R1",
+          reason_facts: {
+            version: 1,
+            primary_axis: "need",
+            matched_need_tags: ["厄除け"],
+            shrine_feature: "静かに歩ける",
+          },
+        },
+      ],
+    },
+    thread: { id: 1 },
+  };
+
+  const p = buildPayloadFromUnified(u, baseFilterState);
+  const recSec = p?.sections.find((s: any) => s.type === "recommendations") as any;
+  expect(recSec.items[0].reasonFacts).toEqual(
+    expect.objectContaining({
+      primary_axis: "need",
+      matched_need_tags: ["厄除け"],
+    }),
+  );
+});
+
+it("consultation_axis を meta と recommendation item に通す", () => {
+  const u: any = {
+    data: {
+      consultation_axis: "money_growth",
+      _need: { consultation_axis: "career_change" },
+      _signals: {
+        consultation_axis: "restart_mindset",
+        result_state: { consultation_axis: "rest_healing" },
+      },
+      recommendations: [
+        {
+          shrine_id: 10,
+          display_name: "S1",
+          reason: "R1",
+          consultation_axis: "independence",
+        },
+        {
+          place_id: "P2",
+          display_name: "S2",
+          reason: "R2",
+          consultationAxis: "nature_reset",
+        },
+      ],
+    },
+    thread: { id: 1 },
+  };
+
+  const p = buildPayloadFromUnified(u, baseFilterState);
+  const recSec = p?.sections.find((s: any) => s.type === "recommendations") as any;
+
+  expect(p?.meta?.consultationAxis).toBe("money_growth");
+  expect(recSec.items[0].consultationAxis).toBe("independence");
+  expect(recSec.items[1].consultationAxis).toBe("nature_reset");
 });

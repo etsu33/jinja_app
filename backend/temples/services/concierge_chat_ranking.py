@@ -2,9 +2,243 @@ from __future__ import annotations
 
 import math
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TypedDict
 from temples.domain.need_to_goriyaku_tag_ids import need_tags_to_goriyaku_ids
+from temples.services.concierge_history import (
+    build_recent_reflection_hint,
+    calculate_action_profile_breakdown,
+    calculate_light_behavior_profile_breakdown,
+    calculate_reflection_profile_breakdown,
+    calculate_shrine_behavior_signal_breakdown,
+    classify_shrine_action_state,
+)
+from temples.services.recommendation_score_v2 import (
+    ScoreV2Input,
+    calculate_recommendation_score_v2,
+)
+from typing import Literal
+
+
+
+PublicMode = Literal["need", "compat"]
+
+
+class DirectionBonusResult(TypedDict):
+    bonus: float
+    reason: str | None
+
+
+DIRECTION_BONUS_MAX = 0.3
+PROFILE_SIGNAL_MAX = 0.03
+
+
 log = logging.getLogger(__name__)
+
+# 五行 → astro_elements マッピング
+_GOGYO_TO_ELEMENTS: Dict[str, List[str]] = {
+    "木": ["木", "Wood", "tree", "木星"],
+    "火": ["火", "Fire", "flame", "火星"],
+    "土": ["土", "Earth", "ground", "土星"],
+    "金": ["金", "Metal", "gold", "金星"],
+    "水": ["水", "Water", "water", "水星"],
+}
+
+
+DIRECTION_SIGNAL_MAX = 0.02
+
+_SCORE_V3_WEIGHTS: Dict[str, float] = {
+    "state": 0.45,
+    "history": 0.10,
+    "distance": 0.10,
+    "behavior": 0.25,
+    "profile": 0.05,
+    "direction": 0.02,
+    "action": 0.02,
+    "reflection": 0.01,
+}
+
+
+def resolve_score_v3_mode() -> str:
+    """Score v3 のモードを返す。
+
+    SCORE_V3_MODE=active の場合のみ "active"。未設定・不正値は "shadow"。
+    呼び出し元との互換を保つため文字列を返す。
+    詳細（source）は resolve_score_v3_mode_detail() で取得する。
+    """
+    return resolve_score_v3_mode_detail()["mode"]
+
+
+def resolve_score_v3_mode_detail() -> Dict[str, str]:
+    """Score v3 モードと source を返す。
+
+    Returns:
+        {"mode": "shadow" | "active", "source": "default" | "env" | "invalid_env"}
+    """
+    import os
+
+    raw = os.environ.get("SCORE_V3_MODE", "")
+    stripped = raw.strip().lower()
+
+    if stripped == "active":
+        return {"mode": "active", "source": "env"}
+    if stripped == "shadow":
+        return {"mode": "shadow", "source": "env"}
+    if stripped == "":
+        return {"mode": "shadow", "source": "default"}
+    return {"mode": "shadow", "source": "invalid_env"}
+
+
+def resolve_score_sort_key(rec: Dict[str, Any], *, score_v3_mode: str) -> float:
+    """並び順に使うスコアを返す。
+
+    score_v3_mode == "active" の場合は breakdown.score_v3 を使う。
+    それ以外（shadow）は既存の rec["_score_total"] を使う。
+    現時点では resolve_score_v3_mode() が "shadow" 固定なので sort 順は変わらない。
+    """
+    if score_v3_mode == "active":
+        return float((rec.get("breakdown") or {}).get("score_v3") or 0.0)
+    return float(rec.get("_score_total") or 0.0)
+
+
+def build_recommendation_score_v3_breakdown(
+    *,
+    state_signal: float,
+    history_signal: float,
+    distance_signal: float,
+    behavior_profile: Dict[str, Any],
+    profile_signal: Dict[str, Any],
+    direction_signal: Dict[str, Any],
+    action_profile: Dict[str, Any],
+    reflection_profile: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Score v3 統合ヘルパー（shadow モード）。
+
+    既存の score_total / ranking には一切影響しない。
+    breakdown.score_v3 / score_v3_detail として観測用に付与するのみ。
+    """
+    w = _SCORE_V3_WEIGHTS
+    behavior_score = float((behavior_profile or {}).get("total", 0.0))
+    profile_score = float((profile_signal or {}).get("score", 0.0))
+    direction_score = float((direction_signal or {}).get("score", 0.0))
+    action_score = float((action_profile or {}).get("score", 0.0))
+    reflection_score = float((reflection_profile or {}).get("score", 0.0))
+
+    score = (
+        state_signal * w["state"]
+        + history_signal * w["history"]
+        + distance_signal * w["distance"]
+        + behavior_score * w["behavior"]
+        + profile_score * w["profile"]
+        + direction_score * w["direction"]
+        + action_score * w["action"]
+        + reflection_score * w["reflection"]
+    )
+
+    return {
+        "score": float(score),
+        "components": {
+            "state_signal": float(state_signal),
+            "history_signal": float(history_signal),
+            "distance_signal": float(distance_signal),
+            "behavior_signal": float(behavior_score),
+            "profile_signal": float(profile_score),
+            "direction_signal": float(direction_score),
+            "action_signal": float(action_score),
+            "reflection_signal": float(reflection_score),
+        },
+        "weights": {k: float(v) for k, v in w.items()},
+        "mode": "shadow",
+    }
+
+
+# 方角ラベル（日本語）→ shrine 側の direction/direction_tags で使われうる値
+_DIRECTION_LABELS_JA: set[str] = {"東", "西", "南", "北", "北東", "南東", "南西", "北西"}
+
+
+def _score_direction_signal(
+    rec: Dict[str, Any],
+    profile_context: Optional[Dict[str, Any]],
+) -> tuple[float, List[str]]:
+    """
+    profile_context.direction_profile.luckyDirection を補助シグナルとして評価する。
+    候補神社に direction / direction_tags が存在する場合のみ最大 +0.02 を加算する。
+    存在しない場合はスコア 0 で reason="direction_profile未適用" を返す。
+    """
+    if not isinstance(profile_context, dict):
+        return 0.0, []
+
+    direction_profile = profile_context.get("direction_profile") or {}
+    if not isinstance(direction_profile, dict):
+        return 0.0, []
+
+    lucky = str(direction_profile.get("luckyDirection") or "").strip()
+    if not lucky:
+        return 0.0, []
+
+    # 候補神社の方位情報を確認（direction / direction_tags フィールド）
+    shrine_direction = str(rec.get("direction") or "").strip()
+    shrine_direction_tags: List[str] = [
+        str(t).strip()
+        for t in (rec.get("direction_tags") or [])
+        if isinstance(t, str) and str(t).strip()
+    ]
+
+    if not shrine_direction and not shrine_direction_tags:
+        return 0.0, []
+
+    all_shrine_directions = set(filter(None, [shrine_direction] + shrine_direction_tags))
+    if lucky in all_shrine_directions:
+        return DIRECTION_SIGNAL_MAX, [f"luckyDirection:{lucky}"]
+
+    return 0.0, []
+
+
+def _score_profile_signal(
+    rec: Dict[str, Any],
+    profile_context: Optional[Dict[str, Any]],
+) -> tuple[float, List[str]]:
+    """
+    profile_context（参拝スタイル・五行）を補助シグナルとして評価する。
+    最大 PROFILE_SIGNAL_MAX (+0.03) を返す。
+    既存の need / distance / history_theme スコアを上書きしない。
+    """
+    if not isinstance(profile_context, dict):
+        return 0.0, []
+
+    score = 0.0
+    matched: List[str] = []
+
+    derived = profile_context.get("derived_profile") or {}
+    user = profile_context.get("user_profile") or {}
+
+    # 五行マッチ (+0.02)
+    gogyo = str(derived.get("gogyo") or "").strip()
+    if gogyo:
+        shrine_elements = [
+            str(e).strip()
+            for e in (rec.get("astro_elements") or [])
+            if isinstance(e, str) and str(e).strip()
+        ]
+        target_elements = _GOGYO_TO_ELEMENTS.get(gogyo, [])
+        if any(e in target_elements for e in shrine_elements):
+            score += 0.02
+            matched.append(f"gogyo:{gogyo}")
+
+    # 参拝スタイルマッチ (+0.01)
+    worship_style = str(user.get("worshipStyle") or "").strip()
+    if worship_style:
+        shrine_material = " ".join(
+            filter(None, [
+                rec.get("goriyaku") or "",
+                rec.get("description") or "",
+                " ".join(rec.get("visit_style_tags") or []),
+            ])
+        )
+        if worship_style in shrine_material:
+            score += 0.01
+            matched.append(f"worshipStyle:{worship_style}")
+
+    return min(score, PROFILE_SIGNAL_MAX), matched
 
 NEED_TAG_ALIASES: Dict[str, str] = {
     "marriage": "love",
@@ -107,6 +341,199 @@ STUDY_SHRINE_HINTS = [
     "学問",
 ]
 
+NEED_LABELS_JA: Dict[str, str] = {
+    "study": "学業・合格",
+    "career": "転機・仕事",
+    "mental": "不安・心",
+    "love": "恋愛",
+    "money": "金運",
+    "rest": "休息",
+    "courage": "前進・後押し",
+    "protection": "厄除け・守り",
+    "focus": "集中・継続",
+    "travel_safe": "移動・安全",
+    "element": "生年月日との相性",
+    "fallback": "近い候補",
+    "history_theme": "歴史文脈",
+    "culture_translation": "神社固有文脈",
+}
+
+# Recommendation Reason Responsibility:
+# - need_tag は相談テーマ由来のユーザー状態として扱う。
+# - goriyaku_tag / user_selected_tag は神社側分類・追加条件として扱う。
+# - 「仕事」「金運」「恋愛」など語彙は重複してよいが、入力側と神社側で責務を分ける。
+# - primary_reason は固定相談文ではなく、フリーワードや短いキーワードから抽出された相談テーマとの接続を優先する。
+
+PRIMARY_REASON_PRIORITY: Dict[str, int] = {
+    "history_theme": 0,
+    "culture_translation": 1,
+    "need_tag": 2,
+    "text_hint": 3,
+    "user_selected_tag": 4,
+    "goriyaku_tag": 5,
+    "element": 6,
+    "fallback": 9,
+}
+
+
+def _make_reason_fact(
+    *,
+    type_: str,
+    label: str,
+    evidence: List[str],
+    score: float,
+) -> Dict[str, Any]:
+    return {
+        "type": type_,
+        "label": label,
+        "label_ja": NEED_LABELS_JA.get(label, label),
+        "evidence": [str(x).strip() for x in evidence if isinstance(x, str) and str(x).strip()],
+        "score": float(score),
+        "is_primary": False,
+    }
+
+
+NEED_TAG_LABELS_JA = {
+    "love": "恋愛",
+    "career": "転機・仕事",
+    "mental": "不安・心",
+    "rest": "休息",
+    "money": "金運",
+    "courage": "前進・後押し",
+    "study": "学業・合格",
+    "protection": "厄除け・守り",
+    "focus": "集中・継続",
+    "travel_safe": "移動・安全",
+}
+
+
+def _need_tag_to_ja(tag: str) -> str:
+    return NEED_TAG_LABELS_JA.get(tag, tag)
+
+
+def _build_reason_facts(
+    *,
+    matched_by_tag: List[str],
+    matched_by_gid: List[str],
+    matched_by_text: List[str],
+    matched_by_user_selected_gid: List[int],
+    goriyaku_tag_label_by_id: Optional[Dict[int, str]],
+    text_score_by_tag: Dict[str, int],
+    score_element: int,
+    astro_bonus_enabled: bool,
+    shrine_meaning_profile: Optional[Dict[str, Any]] = None,
+) -> List[Dict[str, Any]]:
+    facts: List[Dict[str, Any]] = []
+    profile = shrine_meaning_profile or {}
+    profile_matched_need_tags = [
+        str(tag).strip()
+        for tag in (profile.get("matched_need_tags") or [])
+        if isinstance(tag, str) and str(tag).strip()
+    ]
+    history_theme = str(profile.get("history_theme") or "").strip()
+    culture_translation_present = bool(profile.get("culture_translation_present"))
+
+    if profile_matched_need_tags and history_theme:
+        facts.append(
+            _make_reason_fact(
+                type_="history_theme",
+                label=history_theme,
+                evidence=["history_theme", "matched_need_tags"],
+                score=4.0,
+            )
+        )
+
+    if profile_matched_need_tags and culture_translation_present:
+        facts.append(
+            _make_reason_fact(
+                type_="culture_translation",
+                label="culture_translation",
+                evidence=["culture_translation_present", "matched_need_tags"],
+                score=3.5,
+            )
+        )
+
+    label_map = goriyaku_tag_label_by_id or {}
+    for gid in matched_by_user_selected_gid:
+        label = str(label_map.get(gid) or f"goriyaku_tag:{gid}")
+        facts.append(
+            _make_reason_fact(
+                type_="user_selected_tag",
+                label=label,
+                evidence=["requested_goriyaku_tag_ids"],
+                score=3.0,
+            )
+        )
+
+    for tag in matched_by_tag:
+        facts.append(
+            _make_reason_fact(
+                type_="need_tag",
+                label=tag,
+                evidence=[tag],
+                score=2.0,
+            )
+        )
+
+    for tag in matched_by_gid:
+        facts.append(
+            _make_reason_fact(
+                type_="goriyaku_tag",
+                label=tag,
+                evidence=["goriyaku_tag_ids"],
+                score=2.0,
+            )
+        )
+
+    for tag in matched_by_text:
+        facts.append(
+            _make_reason_fact(
+                type_="text_hint",
+                label=tag,
+                evidence=[f"text_score:{text_score_by_tag.get(tag, 0)}"],
+                score=float(text_score_by_tag.get(tag, 0)),
+            )
+        )
+
+    if astro_bonus_enabled and score_element > 0:
+        facts.append(
+            _make_reason_fact(
+                type_="element",
+                label="element",
+                evidence=[f"score_element:{score_element}"],
+                score=float(score_element),
+            )
+        )
+
+    return facts
+
+
+def _resolve_primary_reason(
+    facts: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    if not facts:
+        return {
+            "type": "fallback",
+            "label": "fallback",
+            "label_ja": "近い候補",
+            "evidence": [],
+            "score": 0.0,
+            "is_primary": True,
+        }
+
+    ordered = sorted(
+        facts,
+        key=lambda x: (
+            PRIMARY_REASON_PRIORITY.get(str(x.get("type") or "").strip(), 99),
+            -float(x.get("score") or 0.0),
+            str(x.get("label") or ""),
+        ),
+    )
+
+    primary = dict(ordered[0])
+    primary["is_primary"] = True
+    return primary
+
 
 def _normalize_need_tag(tag: Any) -> str:
     s = str(tag or "").strip().lower()
@@ -138,9 +565,37 @@ def _distance_decay(distance_m: Optional[float]) -> float:
         return 0.0
     return math.exp(-distance_m / 2500.0)
 
+DIRECTION_LABELS_JA = ["北", "北東", "東", "南東", "南", "南西", "西", "北西"]
+
+
+def _to_float_or_none(value: Any) -> float | None:
+    try:
+        if value in (None, ""):
+            return None
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _bearing_degrees(*, from_lat: float, from_lng: float, to_lat: float, to_lng: float) -> float:
+    lat1 = math.radians(from_lat)
+    lat2 = math.radians(to_lat)
+    delta_lng = math.radians(to_lng - from_lng)
+
+    y = math.sin(delta_lng) * math.cos(lat2)
+    x = math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(delta_lng)
+
+    return (math.degrees(math.atan2(y, x)) + 360.0) % 360.0
+
+
+def _direction_label_ja(bearing: float) -> str:
+    index = int((bearing + 22.5) // 45) % 8
+    return DIRECTION_LABELS_JA[index]
+
 
 def _resolve_mode_weights(
     *,
+    public_mode: PublicMode,
     flow: str,
     weights: Optional[Dict[str, float]],
 ) -> Dict[str, float]:
@@ -152,7 +607,7 @@ def _resolve_mode_weights(
             "distance": float(weights.get("distance", 0.0)),
         }
 
-    if flow == "B":
+    if public_mode == "compat":
         return {
             "element": 0.8,
             "need": 0.2,
@@ -170,31 +625,224 @@ def _resolve_mode_weights(
 
 def _resolve_mode_meta(
     *,
+    public_mode: PublicMode,
     flow: str,
     weights: Dict[str, float],
     astro_bonus_enabled: bool,
+    birthdate: Optional[str] = None,
 ) -> Dict[str, Any]:
     public_weights = {
         "element": float(weights.get("element", 0.0)),
         "need": float(weights.get("need", 0.0)),
         "popular": float(weights.get("popular", 0.0)),
     }
+    has_birthdate = bool(str(birthdate or "").strip())
 
-    if flow == "B":
+    if public_mode == "compat":
         return {
-            "flow": "B",
+            "mode": "compat",
+            "flow": flow,
             "weights": public_weights,
             "astro_bonus_enabled": bool(astro_bonus_enabled),
-            "ui_label_ja": "占星術強め",
-            "ui_note_ja": "生年月日（星座/四元素）を強く反映して並べ替えています",
+            "ui_label_ja": "相性重視" if has_birthdate else "条件重視",
+            "ui_note_ja": (
+                "生年月日との相性を中心に並べ替えています"
+                if has_birthdate
+                else "追加条件との一致を中心に並べ替えています"
+            ),
         }
 
     return {
-        "flow": "A",
+        "mode": "need",
+        "flow": flow,
         "weights": public_weights,
         "astro_bonus_enabled": bool(astro_bonus_enabled),
-        "ui_label_ja": "標準",
+        "ui_label_ja": "悩み重視",
         "ui_note_ja": "相談内容と近さをもとに並べ替えています",
+    }
+
+
+# Standalone helper: _build_entry_context
+def _build_entry_context(
+    *,
+    query: Optional[str],
+    birthdate: Optional[str],
+) -> Dict[str, Any]:
+    has_query = bool(str(query or "").strip())
+    has_birthdate = bool(str(birthdate or "").strip())
+
+    if has_query:
+        entry_type = "consultation"
+    else:
+        entry_type = "flow"
+
+    return {
+        "version": 1,
+        "entry_type": entry_type,
+        "has_query": has_query,
+        "has_consultation_axis": has_query,
+        "has_birthdate": has_birthdate,
+    }
+
+
+def _resolve_direction_bonus(
+    *,
+    rec: Dict[str, Any],
+    birthdate: Optional[str],
+    user_origin: Optional[Dict[str, Any]] = None,
+) -> DirectionBonusResult:
+    """Resolve the future direction bonus for score_v2.
+
+    Current phase:
+      - direction input UI is not implemented
+      - direction calculation is not implemented
+      - DB persistence is not used
+
+    Therefore this helper always returns zero, while keeping the score_v2
+    contract ready for future direction-based scoring.
+    """
+
+    has_birthdate = bool(str(birthdate or "").strip())
+    latitude = rec.get("latitude") or rec.get("lat")
+    longitude = rec.get("longitude") or rec.get("lng")
+    has_location = latitude not in (None, "") and longitude not in (None, "")
+    has_user_origin = bool(user_origin)
+
+    if not has_birthdate or not has_location or not has_user_origin:
+        return {"bonus": 0.0, "reason": None}
+
+    origin_lat = _to_float_or_none(user_origin.get("lat") if user_origin else None)
+    origin_lng = _to_float_or_none(user_origin.get("lng") if user_origin else None)
+    shrine_lat = _to_float_or_none(latitude)
+    shrine_lng = _to_float_or_none(longitude)
+
+    if origin_lat is None or origin_lng is None or shrine_lat is None or shrine_lng is None:
+        return {"bonus": 0.0, "reason": None}
+
+    bearing = _bearing_degrees(
+        from_lat=origin_lat,
+        from_lng=origin_lng,
+        to_lat=shrine_lat,
+        to_lng=shrine_lng,
+    )
+    direction_label = _direction_label_ja(bearing)
+
+    return {
+        "bonus": 0.1,
+        "reason": f"現在地から見て{direction_label}方面の候補です",
+    }
+
+
+def _normalize_int_signal_list(values: Any) -> List[int]:
+    normalized: List[int] = []
+    for value in values or []:
+        try:
+            normalized.append(int(value))
+        except (TypeError, ValueError):
+            continue
+    return normalized
+
+
+def _build_shrine_meaning_profile(
+    *,
+    rec: Dict[str, Any],
+    shrine_id_int: int | None,
+    matched_all: List[str],
+    matched_by_tag: List[str],
+    matched_by_text: List[str],
+    matched_by_gid: List[str],
+    matched_by_user_selected_gid: List[int],
+) -> Dict[str, Any]:
+    """Build a debug-friendly Shrine Meaning Profile for score_v2 observation.
+
+    This profile keeps shrine-side meaning signals in one place.
+    matched_* values are user × shrine match results, but are included here as
+    the observation bridge between User State Profile and Shrine Meaning Profile.
+    """
+    culture_translation = rec.get("culture_translation")
+    origin_summary = rec.get("origin_summary")
+
+    return {
+        "version": 1,
+        "shrine_id": shrine_id_int,
+        "name": rec.get("name") or rec.get("name_jp") or "",
+        "goriyaku": rec.get("goriyaku") or "",
+        "goriyaku_tags": [
+            str(tag).strip()
+            for tag in (rec.get("goriyaku_tags") or [])
+            if isinstance(tag, str) and str(tag).strip()
+        ],
+        "goriyaku_tag_ids": _normalize_int_signal_list(rec.get("goriyaku_tag_ids") or []),
+        "history_theme": rec.get("history_theme") or "",
+        "culture_translation_present": bool(culture_translation),
+        "origin_summary_present": bool(origin_summary),
+        "matched_need_tags": list(matched_all or []),
+        "matched_by_tag": list(matched_by_tag or []),
+        "matched_by_text": list(matched_by_text or []),
+        "matched_by_gid": list(matched_by_gid or []),
+        "matched_user_selected_goriyaku_tag_ids": list(matched_by_user_selected_gid or []),
+    }
+
+
+# New helper function: _build_context_profile
+def _build_context_profile(
+    *,
+    distance_m: float | None,
+    score_distance: float,
+    user_visit_style_tags: set[str],
+    shrine_visit_style_tags: set[str],
+    matched_visit_style_tags: List[str],
+    score_visit_style: int,
+    direction_bonus: float,
+    direction_reason: str | None,
+) -> Dict[str, Any]:
+    """Build a debug-friendly Context Profile for score_v2 observation.
+
+    This profile keeps distance, visit style, and direction signals in one place.
+    It is observational and does not add any new ranking contribution by itself.
+    """
+    return {
+        "version": 1,
+        "distance_m": float(distance_m) if distance_m is not None else None,
+        "score_distance": float(score_distance),
+        "requested_visit_style_tags": sorted(user_visit_style_tags),
+        "visit_style_tags": sorted(shrine_visit_style_tags),
+        "matched_visit_style_tags": list(matched_visit_style_tags or []),
+        "score_visit_style": int(score_visit_style),
+        "direction_bonus": float(direction_bonus),
+        "direction_reason": direction_reason,
+    }
+
+
+# New helper function: _build_behavior_profile
+def _build_behavior_profile(
+    *,
+    action_state: str,
+    behavior_breakdown: Dict[str, float],
+    behavior_signal: float,
+    behavior_contribution: float,
+    capped_behavior_contribution: float,
+    behavior_ratio: float,
+    visit_signal: float,
+    reflection_signal: float,
+    reflection_hint: Dict[str, Any] | None,
+) -> Dict[str, Any]:
+    """Build a debug-friendly Behavior Profile for score_v2 observation.
+
+    This profile keeps user behavior signals in one place.
+    It is observational and does not add any new ranking contribution by itself.
+    """
+    return {
+        "version": 1,
+        "action_state": action_state,
+        "behavior_breakdown": behavior_breakdown,
+        "behavior_signal": float(behavior_signal),
+        "behavior_contribution": float(behavior_contribution),
+        "capped_behavior_contribution": float(capped_behavior_contribution),
+        "behavior_ratio": float(behavior_ratio),
+        "visit_signal": float(visit_signal),
+        "reflection_signal": float(reflection_signal),
+        "reflection_hint": reflection_hint,
     }
 
 
@@ -205,6 +853,13 @@ def _attach_breakdown(
     need_tags: List[str],
     weights: Dict[str, float],
     astro_bonus_enabled: bool,
+    visit_style_tags: set[str] | None = None,
+    query: Optional[str] = None,
+    requested_goriyaku_tag_ids: Optional[List[int]] = None,
+    goriyaku_tag_label_by_id: Optional[Dict[int, str]] = None,
+    user_origin: Optional[Dict[str, Any]] = None,
+    user=None,
+    profile_context: Optional[Dict[str, Any]] = None,
 ) -> None:
     """
     rec（1件の神社辞書）にスコアの内訳を追加する。
@@ -220,9 +875,7 @@ def _attach_breakdown(
 
     astro_elements = rec.get("astro_elements")
     if isinstance(astro_elements, list):
-        rec["astro_elements"] = [
-            e for e in astro_elements if isinstance(e, str) and e.strip()
-        ]
+        rec["astro_elements"] = [e for e in astro_elements if isinstance(e, str) and e.strip()]
 
     pri_raw = rec.get("astro_priority")
     pri = int(pri_raw) if isinstance(pri_raw, int) else 0
@@ -274,6 +927,13 @@ def _attach_breakdown(
         if isinstance(x, int) or (isinstance(x, str) and str(x).strip().isdigit())
     }
 
+    requested_gid_set = {
+        int(x)
+        for x in (requested_goriyaku_tag_ids or [])
+        if isinstance(x, int) or (isinstance(x, str) and str(x).strip().isdigit())
+    }
+    matched_by_user_selected_gid = sorted(candidate_gid_set & requested_gid_set)
+
     matched_by_gid: List[str] = []
     for tag in need_tags_clean:
         expected_gids = need_tags_to_goriyaku_ids([tag])
@@ -292,10 +952,24 @@ def _attach_breakdown(
             matched_all.append(t)
             seen.add(t)
 
-    # 契約用
     score_need = len(matched_all)
 
-    # 既存契約テストと相性のよい整数 rank
+    shrine_id = rec.get("shrine_id") or rec.get("id")
+    try:
+        shrine_id_int = int(shrine_id) if shrine_id is not None else None
+    except (TypeError, ValueError):
+        shrine_id_int = None
+
+    shrine_meaning_profile = _build_shrine_meaning_profile(
+        rec=rec,
+        shrine_id_int=shrine_id_int,
+        matched_all=matched_all,
+        matched_by_tag=matched_by_tag,
+        matched_by_text=matched_by_text,
+        matched_by_gid=matched_by_gid,
+        matched_by_user_selected_gid=matched_by_user_selected_gid,
+    )
+
     score_need_rank = (
         len(matched_by_tag) * 2
         + len(matched_by_gid) * 2
@@ -303,7 +977,6 @@ def _attach_breakdown(
         + study_bonus
     )
 
-    # 内部ランキング専用の強化版
     score_need_rank_weighted = (
         len(matched_by_tag) * 2.0
         + len(matched_by_gid) * 2.0
@@ -315,6 +988,14 @@ def _attach_breakdown(
     w2 = float(weights.get("need", 0.0))
     w3 = float(weights.get("popular", 0.0))
     w4 = float(weights.get("distance", 0.0))
+    w5 = 0.35
+    direction_result = _resolve_direction_bonus(
+        rec=rec,
+        birthdate=birthdate,
+        user_origin=user_origin,
+    )
+    direction_bonus = min(float(direction_result["bonus"]), DIRECTION_BONUS_MAX)
+    direction_reason = direction_result["reason"]
 
     astro_bonus = 0.0
     if astro_bonus_enabled:
@@ -336,21 +1017,109 @@ def _attach_breakdown(
         distance_m = None
     score_distance = _distance_decay(distance_m)
 
-    # 契約用 total には distance を入れない
-    score_total = (
-        score_element * w1
-        + score_need * w2
-        + score_popular * w3
-        + astro_bonus
+    user_visit_style_tag_set = {
+        str(t).strip()
+        for t in (visit_style_tags or set())
+        if isinstance(t, str) and str(t).strip()
+    }
+    shrine_visit_style_tag_set = {
+        str(t).strip()
+        for t in (rec.get("visit_style_tags") or [])
+        if isinstance(t, str) and str(t).strip()
+    }
+    matched_visit_style_tags = sorted(user_visit_style_tag_set & shrine_visit_style_tag_set)
+    score_visit_style = len(matched_visit_style_tags)
+
+    context_profile = _build_context_profile(
+        distance_m=distance_m,
+        score_distance=score_distance,
+        user_visit_style_tags=user_visit_style_tag_set,
+        shrine_visit_style_tags=shrine_visit_style_tag_set,
+        matched_visit_style_tags=matched_visit_style_tags,
+        score_visit_style=score_visit_style,
+        direction_bonus=direction_bonus,
+        direction_reason=direction_reason,
     )
 
-    # 内部ランキング用 total
-    score_total_ranked = (
+    # score_total:
+    #   API 契約用の公開スコア。
+    #   画面表示や explanation の基本値として使う。
+    # _score_total:
+    #   実際の並び順に使う内部ランキング用スコア。
+    #   need の強一致・距離減衰まで含めた ranked score を入れる。
+    score_total = score_element * w1 + score_need * w2 + score_popular * w3 + astro_bonus + direction_bonus
+
+    # shrine_id_int is already computed above for use in behavior_breakdown etc.
+
+    behavior_breakdown = calculate_shrine_behavior_signal_breakdown(
+        user=user,
+        shrine_id=shrine_id_int,
+    )
+    behavior_signal = float(behavior_breakdown.get("total") or 0.0)
+    visit_signal = float(behavior_breakdown.get("visit_signal") or 0.0)
+    reflection_signal = float(behavior_breakdown.get("reflection_signal") or 0.0)
+    action_state = classify_shrine_action_state(
+        user=user,
+        shrine_id=shrine_id_int,
+    )
+    reflection_hint = build_recent_reflection_hint(
+        user=user,
+        shrine_id=shrine_id_int,
+    )
+    rec["action_state"] = action_state
+    rec["reflection_hint"] = reflection_hint
+    behavior_weight = 0.1
+    behavior_contribution = float(behavior_signal) * behavior_weight
+
+    score_total_ranked_base = (
         score_element * w1
         + score_need_rank_weighted * w2
         + score_popular * w3
         + score_distance * w4
+        + score_visit_style * w5
         + astro_bonus
+        + direction_bonus
+    )
+    # 行動の影響を相談内容に対して最大30％または0.5に制限
+    behavior_cap = min(score_total_ranked_base * 0.3, 0.5)
+    capped_behavior_contribution = min(behavior_contribution, behavior_cap)
+    behavior_ratio = (
+        capped_behavior_contribution / score_total_ranked_base
+        if score_total_ranked_base > 0
+        else 0.0
+    )
+    behavior_profile = _build_behavior_profile(
+        action_state=action_state,
+        behavior_breakdown=behavior_breakdown,
+        behavior_signal=behavior_signal,
+        behavior_contribution=behavior_contribution,
+        capped_behavior_contribution=capped_behavior_contribution,
+        behavior_ratio=behavior_ratio,
+        visit_signal=visit_signal,
+        reflection_signal=reflection_signal,
+        reflection_hint=reflection_hint,
+    )
+    # Behavior Profile v1: light signals のみ（visit / reflection は含まない）
+    light_behavior = calculate_light_behavior_profile_breakdown(behavior_breakdown=behavior_breakdown)
+
+    # Action Profile v1: visit_signal のみ（スコアへの加算はまだしない）
+    action_profile = calculate_action_profile_breakdown(behavior_breakdown=behavior_breakdown)
+
+    # Reflection Profile v1: reflection_signal のみ（意味解析はまだしない）
+    reflection_profile = calculate_reflection_profile_breakdown(behavior_breakdown=behavior_breakdown)
+
+    # profile_context 補助シグナル（最大 +0.03、主重みには影響しない）
+    profile_signal_score, profile_signal_matched = _score_profile_signal(rec, profile_context)
+
+    # direction_profile 補助シグナル（最大 +0.02、候補に方位情報がある場合のみ加算）
+    direction_signal_score, direction_signal_matched = _score_direction_signal(rec, profile_context)
+
+    # For now, direction_bonus is 0.0 and does not reverse ranking
+    score_total_ranked = (
+        score_total_ranked_base
+        + capped_behavior_contribution
+        + profile_signal_score
+        + direction_signal_score
     )
 
     rec["_score_total"] = float(score_total_ranked)
@@ -360,13 +1129,58 @@ def _attach_breakdown(
         "score_need": int(score_need),
         "score_popular": float(score_popular),
         "score_total": float(score_total),
+        "direction_bonus": float(direction_bonus),
         "weights": {
             "element": float(w1),
             "need": float(w2),
             "popular": float(w3),
+            "direction_bonus": 0.0,
         },
         "matched_need_tags": matched_all,
+        "profile_signal": {
+            "score": float(profile_signal_score),
+            "matched": profile_signal_matched,
+            "reason": "profile_context補助" if profile_signal_matched else None,
+        },
+        "direction_signal": {
+            "score": float(direction_signal_score),
+            "matched": direction_signal_matched,
+            "reason": "luckyDirection一致" if direction_signal_matched else "direction_profile未適用",
+        },
+        "behavior_profile": {
+            "score": float(light_behavior["total"]),
+            "detail_view_signal": float(light_behavior["detail_view_signal"]),
+            "route_open_signal": float(light_behavior["route_open_signal"]),
+            "save_signal": float(light_behavior["save_signal"]),
+            "reason": "light_behavior_only",
+        },
+        "action_profile": {
+            "score": float(action_profile["score"]),
+            "visit_signal": float(action_profile["visit_signal"]),
+            "status": str(action_profile["status"]),
+            "reason": str(action_profile["reason"]),
+        },
+        "reflection_profile": {
+            "score": float(reflection_profile["score"]),
+            "reflection_signal": float(reflection_profile["reflection_signal"]),
+            "status": str(reflection_profile["status"]),
+            "reason": str(reflection_profile["reason"]),
+        },
     }
+
+    # Score v3 統合（shadow モード: 既存 score_total / sort 順に影響しない）
+    score_v3_breakdown = build_recommendation_score_v3_breakdown(
+        state_signal=float(score_need),
+        history_signal=0.0,
+        distance_signal=float(score_distance),
+        behavior_profile={"total": light_behavior["total"]},
+        profile_signal={"score": profile_signal_score},
+        direction_signal={"score": direction_signal_score},
+        action_profile=action_profile,
+        reflection_profile=reflection_profile,
+    )
+    rec["breakdown"]["score_v3"] = float(score_v3_breakdown["score"])
+    rec["breakdown"]["score_v3_detail"] = score_v3_breakdown
 
     rec["breakdown_detail"] = {
         "version": 1,
@@ -399,10 +1213,157 @@ def _attach_breakdown(
                 "weight": float(w4),
                 "contribution": float(score_distance * w4),
             },
+            "visit_style": {
+                "raw": int(score_visit_style),
+                "weight": float(w5),
+                "matched_tags": matched_visit_style_tags,
+                "contribution": float(score_visit_style * w5),
+            },
+            "behavior": {
+                "raw": float(behavior_signal),
+                "weight": float(behavior_weight),
+                "contribution": float(behavior_contribution),
+                "capped_contribution": float(capped_behavior_contribution),
+                "cap": float(behavior_cap),
+                "ratio": float(behavior_ratio),
+                "detail_view_signal": float(behavior_breakdown.get("detail_view_signal") or 0.0),
+                "route_open_signal": float(behavior_breakdown.get("route_open_signal") or 0.0),
+                "save_signal": float(behavior_breakdown.get("save_signal") or 0.0),
+                "visit_signal": float(visit_signal),
+                "reflection_signal": float(reflection_signal),
+            },
+            "reflection_hint": reflection_hint,
+            "direction_bonus": {
+                "raw": float(direction_bonus),
+                "weight": 1.0,
+                "contribution": float(direction_bonus),
+                "reason": direction_reason,
+                "max": float(DIRECTION_BONUS_MAX),
+            },
             "astro_bonus": float(astro_bonus) if astro_bonus_enabled else 0.0,
+            "profile_signal": {
+                "raw": float(profile_signal_score),
+                "weight": 1.0,
+                "contribution": float(profile_signal_score),
+                "matched": profile_signal_matched,
+                "max": float(PROFILE_SIGNAL_MAX),
+            },
+            "direction_signal": {
+                "raw": float(direction_signal_score),
+                "weight": 1.0,
+                "contribution": float(direction_signal_score),
+                "matched": direction_signal_matched,
+                "max": float(DIRECTION_SIGNAL_MAX),
+                "reason": "luckyDirection一致" if direction_signal_matched else "direction_profile未適用",
+            },
+            "score_total_ranked_base": float(score_total_ranked_base),
+            "capped_behavior_contribution": float(capped_behavior_contribution),
+            "behavior_ratio": float(behavior_ratio),
             "score_total_ranked": float(score_total_ranked),
         },
     }
+
+    score_v2_result = calculate_recommendation_score_v2(
+        ScoreV2Input(
+            score_total_ranked=float(score_total_ranked),
+            score_total_ranked_base=float(score_total_ranked_base),
+            score_need_rank_weighted=float(score_need_rank_weighted),
+            score_need=int(score_need),
+            score_visit_style=int(score_visit_style),
+            score_element=int(score_element),
+            score_distance=float(score_distance),
+            score_popular=float(score_popular),
+            astro_bonus=float(astro_bonus) if astro_bonus_enabled else 0.0,
+            direction_bonus=float(direction_bonus),
+            direction_reason=direction_reason,
+            behavior_signal=float(behavior_signal),
+            behavior_contribution=float(behavior_contribution),
+            capped_behavior_contribution=float(capped_behavior_contribution),
+            behavior_ratio=float(behavior_ratio),
+            visit_signal=float(visit_signal),
+            reflection_signal=float(reflection_signal),
+            need_weight=float(w2),
+            element_weight=float(w1),
+            distance_weight=float(w4),
+            popular_weight=float(w3),
+            visit_style_weight=float(w5),
+            matched_need_tags=matched_all,
+            matched_by_tag=matched_by_tag,
+            matched_by_text=matched_by_text,
+            matched_by_gid=matched_by_gid,
+            matched_visit_style_tags=matched_visit_style_tags,
+            matched_user_selected_goriyaku_tag_ids=matched_by_user_selected_gid,
+            context_profile=context_profile,
+            shrine_meaning_profile=shrine_meaning_profile,
+            behavior_profile=behavior_profile,
+            behavior_breakdown=behavior_breakdown,
+            reflection_hint=reflection_hint,
+        )
+    )
+    rec["score_v2"] = score_v2_result.as_dict()
+
+    reason_facts = _build_reason_facts(
+        matched_by_tag=matched_by_tag,
+        matched_by_gid=matched_by_gid,
+        matched_by_text=matched_by_text,
+        matched_by_user_selected_gid=matched_by_user_selected_gid,
+        goriyaku_tag_label_by_id=goriyaku_tag_label_by_id,
+        text_score_by_tag=text_score_by_tag,
+        score_element=score_element,
+        astro_bonus_enabled=astro_bonus_enabled,
+        shrine_meaning_profile=shrine_meaning_profile,
+    )
+    primary_reason = _resolve_primary_reason(reason_facts)
+
+    if reason_facts:
+        for fact in reason_facts:
+            if (
+                str(fact.get("type") or "") == str(primary_reason.get("type") or "")
+                and str(fact.get("label") or "") == str(primary_reason.get("label") or "")
+                and list(fact.get("evidence") or []) == list(primary_reason.get("evidence") or [])
+            ):
+                fact["is_primary"] = True
+                break
+    else:
+        reason_facts = [primary_reason]
+
+    rec["_reason_facts"] = reason_facts
+    rec["_primary_reason_source"] = str(primary_reason.get("type") or "")
+    rec["_primary_reason_label"] = str(primary_reason.get("label") or "")
+    entry_context = _build_entry_context(query=query, birthdate=birthdate)
+    rec["rank_explanation"] = _to_rank_explanation(rec=rec, entry_context=entry_context)
+
+    need_score_reason = "normal_scored"
+    if not need_tags_clean:
+        need_score_reason = "no_need_tags"
+    elif not matched_all:
+        if not candidate_gid_set and not shrine_tag_set and not material.strip():
+            need_score_reason = "no_candidate_material"
+        elif matched_by_tag or matched_by_text or matched_by_gid:
+            need_score_reason = "unexpected_empty_after_match"
+        else:
+            need_score_reason = "no_overlap"
+
+    try:
+        log.info(
+            "[dbg] attach_breakdown shrine_id=%r name=%r need_tags=%r prefilter_matched=%r matched_by_tag=%r matched_by_text=%r matched_by_gid=%r matched_by_user_selected_gid=%r matched_all=%r score_need=%r need_score_reason=%r primary_reason_source=%r primary_reason_label=%r",
+            rec.get("shrine_id"),
+            rec.get("name"),
+            need_tags_clean,
+            (rec.get("_prefilter_debug") or {}).get("matched"),
+            matched_by_tag,
+            matched_by_text,
+            matched_by_gid,
+            matched_by_user_selected_gid,
+            matched_all,
+            score_need,
+            need_score_reason,
+            rec.get("_primary_reason_source"),
+            rec.get("_primary_reason_label"),
+        )
+    except Exception:
+        pass
+
 
 def _prefilter_candidates_for_need(
     candidates: List[Dict[str, Any]],
@@ -422,9 +1383,7 @@ def _prefilter_candidates_for_need(
         if not isinstance(astro_tags, list):
             astro_tags = []
         astro_tag_set = {
-            str(t).strip()
-            for t in astro_tags
-            if isinstance(t, str) and str(t).strip()
+            str(t).strip() for t in astro_tags if isinstance(t, str) and str(t).strip()
         }
 
         candidate_gid_set = {
@@ -491,11 +1450,15 @@ def _prefilter_candidates_for_need(
             "[dbg] prefiltered_top12=%r",
             [
                 {
+                    "shrine_id": r.get("shrine_id"),
                     "name": r.get("name") or r.get("name_jp"),
-                    "prefilter": r.get("_prefilter_debug"),
+                    "prefilter_score": (r.get("_prefilter_debug") or {}).get("score"),
+                    "prefilter_matched": (r.get("_prefilter_debug") or {}).get("matched"),
+                    "text_score_by_tag": (r.get("_prefilter_debug") or {}).get("text_score_by_tag"),
+                    "matched_gid_tags": (r.get("_prefilter_debug") or {}).get("matched_gid_tags"),
                     "astro_tags": r.get("astro_tags"),
-                    "goriyaku": r.get("goriyaku"),
                     "goriyaku_tag_ids": r.get("goriyaku_tag_ids"),
+                    "goriyaku": r.get("goriyaku"),
                 }
                 for r in ordered[:12]
             ],
@@ -504,6 +1467,7 @@ def _prefilter_candidates_for_need(
         pass
 
     return ordered
+
 
 def _diversify_by_need(
     recs: List[Dict[str, Any]],
@@ -529,9 +1493,7 @@ def _diversify_by_need(
         for i, r in enumerate(pool):
             tags = (r.get("breakdown") or {}).get("matched_need_tags") or []
             normalized_tags = [
-                str(t).strip()
-                for t in tags
-                if isinstance(t, str) and str(t).strip()
+                str(t).strip() for t in tags if isinstance(t, str) and str(t).strip()
             ]
 
             if not normalized_tags:
@@ -549,23 +1511,395 @@ def _diversify_by_need(
 
         picked_tags = (picked_row.get("breakdown") or {}).get("matched_need_tags") or []
         used_tags.update(
-            str(t).strip()
-            for t in picked_tags
-            if isinstance(t, str) and str(t).strip()
+            str(t).strip() for t in picked_tags if isinstance(t, str) and str(t).strip()
         )
 
     picked.extend(pool)
     return picked
 
 
+def _resolve_public_mode(
+    *,
+    mode: str | None,
+    birthdate: str | None,
+    query: str | None,
+) -> str:
+    explicit = str(mode or "").strip().lower()
+    if explicit in {"need", "compat"}:
+        return explicit
+
+    has_birthdate = bool(str(birthdate or "").strip())
+    has_query = bool(str(query or "").strip())
+
+    if has_birthdate and not has_query:
+        return "compat"
+
+    return "need"
+
+
+def _resolve_flow_from_mode(
+    *,
+    public_mode: PublicMode,
+    flow: Optional[str],
+) -> str:
+    flow_norm = str(flow or "").strip().upper()
+
+    if flow_norm in {"A", "B"}:
+        return flow_norm
+
+    if public_mode == "compat":
+        return "B"
+
+    return "A"
+
+
+def build_recommendation_reason(
+    rec: Dict[str, Any],
+    *,
+    public_mode: PublicMode,
+    birthdate: Optional[str],
+    need_tags: List[str],
+) -> str:
+    if public_mode == "compat":
+        user_element = None
+        if birthdate:
+            try:
+                from temples.domain.astrology import sun_sign_and_element  # type: ignore
+
+                prof = sun_sign_and_element(birthdate)
+                if prof:
+                    user_element = getattr(prof, "element", None)
+            except Exception:
+                user_element = None
+
+        shrine_elements = [
+            str(x).strip()
+            for x in (rec.get("astro_elements") or [])
+            if isinstance(x, str) and str(x).strip()
+        ]
+
+        if user_element and shrine_elements:
+            shrine_elements_text = "・".join(shrine_elements)
+            return (
+                f"あなたの生年月日から見た「{user_element}」の要素と、"
+                f"この神社の性質（{shrine_elements_text}）が噛み合っています。"
+            )
+
+        return "あなたの生年月日との相性を中心に、この神社をおすすめしています。"
+
+    matched = (rec.get("breakdown") or {}).get("matched_need_tags") or []
+    matched_tags = [
+        str(tag).strip() for tag in matched if isinstance(tag, str) and str(tag).strip()
+    ]
+    primary_label = str(rec.get("_primary_reason_label") or "").strip()
+
+    try:
+        log.info(
+            "[dbg] build_reason shrine_id=%r name=%r public_mode=%r matched_need_tags=%r primary_reason_label=%r score_need=%r",
+            rec.get("shrine_id"),
+            rec.get("name"),
+            public_mode,
+            matched_tags,
+            primary_label,
+            (rec.get("breakdown") or {}).get("score_need"),
+        )
+    except Exception:
+        pass
+
+    name = str(rec.get("name") or "").strip()
+    goriyaku = str(rec.get("goriyaku") or "").strip()
+
+    if primary_label:
+        return _build_need_reason_text(
+            primary_label,
+            name=name,
+            goriyaku=goriyaku,
+        )
+
+    if matched_tags:
+        return _build_need_reason_text(
+            matched_tags[0],
+            name=name,
+            goriyaku=goriyaku,
+        )
+
+    if name:
+        return f"{name}は、今の悩みや願いに合わせて参拝先の候補に入れています。"
+    return "今の悩みや願いに合わせた参拝先の候補としておすすめしています。"
+
+
+def _build_need_lead(tag: str, goriyaku: str) -> str:
+    if goriyaku:
+        normalized = goriyaku.replace("、", "・").replace("，", "・").replace("/", "・")
+        parts = [p.strip() for p in normalized.split("・") if p.strip()]
+        if parts:
+            return parts[0]
+
+    fallback = {
+        "study": "学業成就",
+        "mental": "心願成就",
+        "rest": "心身浄化",
+        "love": "良縁成就",
+        "career": "仕事運",
+        "money": "金運",
+        "courage": "開運",
+    }
+    return fallback.get(tag, "ご利益")
+
+
+def _axis_label_ja(axis: str) -> str:
+    mapping = {
+        "need": "悩みとの一致",
+        "element": "生年月日との相性",
+        "direction": "風水・方角との相性",
+        "distance": "距離",
+        "popular": "定番性",
+        "astro_bonus": "相性補正",
+        "fallback": "近さ",
+    }
+    return mapping.get(axis, axis)
+
+
+def _to_rank_explanation(
+    *,
+    rec: Dict[str, Any],
+    entry_context: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    breakdown = rec.get("breakdown") or {}
+    detail = (rec.get("breakdown_detail") or {}).get("features") or {}
+
+    primary_source = str(rec.get("_primary_reason_source") or "").strip()
+    primary_label = str(rec.get("_primary_reason_label") or "").strip()
+
+    need_feature = detail.get("need") or {}
+    element_feature = detail.get("element") or {}
+    direction_feature = detail.get("direction") or {}
+    popular_feature = detail.get("popular") or {}
+    distance_feature = detail.get("distance") or {}
+
+    contributors = [
+        {
+            "axis": "need",
+            "axis_ja": _axis_label_ja("need"),
+            "raw": float(need_feature.get("rank_weighted") or 0.0),
+            "weight": float(need_feature.get("weight") or 0.0),
+            "contribution": float(need_feature.get("rank_weighted_contribution") or 0.0),
+        },
+        {
+            "axis": "element",
+            "axis_ja": _axis_label_ja("element"),
+            "raw": float(element_feature.get("raw") or 0.0),
+            "weight": float(element_feature.get("weight") or 0.0),
+            "contribution": float(element_feature.get("contribution") or 0.0),
+        },
+        {
+            "axis": "direction",
+            "axis_ja": _axis_label_ja("direction"),
+            "raw": float(direction_feature.get("raw") or 0.0),
+            "weight": float(direction_feature.get("weight") or 0.0),
+            "contribution": float(direction_feature.get("contribution") or 0.0),
+        },
+        {
+            "axis": "distance",
+            "axis_ja": _axis_label_ja("distance"),
+            "raw": float(distance_feature.get("raw") or 0.0),
+            "weight": float(distance_feature.get("weight") or 0.0),
+            "contribution": float(distance_feature.get("contribution") or 0.0),
+        },
+        {
+            "axis": "popular",
+            "axis_ja": _axis_label_ja("popular"),
+            "raw": float(popular_feature.get("raw") or 0.0),
+            "weight": float(popular_feature.get("weight") or 0.0),
+            "contribution": float(popular_feature.get("contribution") or 0.0),
+        },
+    ]
+
+    astro_bonus = float(detail.get("astro_bonus") or 0.0)
+    if astro_bonus > 0:
+        contributors.append(
+            {
+                "axis": "astro_bonus",
+                "axis_ja": _axis_label_ja("astro_bonus"),
+                "raw": astro_bonus,
+                "weight": 1.0,
+                "contribution": astro_bonus,
+            }
+        )
+
+    contributors = sorted(
+        contributors,
+        key=lambda x: (-float(x.get("contribution") or 0.0), str(x.get("axis") or "")),
+    )
+
+    top_contributors = [c for c in contributors if float(c.get("contribution") or 0.0) > 0][:2]
+
+    primary_axis = "fallback"
+    if primary_source in {"user_selected_tag", "need_tag", "goriyaku_tag", "text_hint"}:
+        primary_axis = "need"
+    elif primary_source == "element":
+        primary_axis = "element"
+
+    if primary_label == "element":
+        primary_label_ja = "生年月日との相性"
+    else:
+        primary_label_ja = _need_tag_to_ja(primary_label) if primary_label else None
+
+    summary_parts: List[str] = []
+
+    if primary_axis == "need" and primary_label_ja:
+        summary_parts.append(f"相談内容との一致は「{primary_label_ja}」が主因です")
+    elif primary_axis == "element":
+        summary_parts.append("生年月日との相性が主因です")
+    else:
+        summary_parts.append("近さや候補条件を含めた総合順位です")
+
+    if top_contributors:
+        tail = "・".join(c["axis_ja"] for c in top_contributors)
+        summary_parts.append(f"特に {tail} が順位を押し上げています")
+
+    return {
+        "version": 1,
+        "entry_context": entry_context or {},
+        "primary_axis": primary_axis,
+        "primary_axis_ja": _axis_label_ja(primary_axis),
+        "primary_reason_source": primary_source or "fallback",
+        "primary_label": primary_label or None,
+        "primary_label_ja": primary_label_ja,
+        "matched_need_tags": list(breakdown.get("matched_need_tags") or []),
+        "score_total": float(breakdown.get("score_total") or 0.0),
+        "score_total_ranked": float(detail.get("score_total_ranked") or 0.0),
+        "contributors": contributors,
+        "top_contributors": top_contributors,
+        "summary": "。".join(summary_parts) + "。",
+    }
+
+
+# New helper function: _attach_rank_comparison
+def _attach_rank_comparison(
+    recs: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    items = [r for r in recs if isinstance(r, dict)]
+    if not items:
+        return items
+
+    top = items[0]
+    top_score = float(top.get("_score_total") or 0.0)
+    top_need_tags = list(((top.get("breakdown") or {}).get("matched_need_tags") or []))
+    top_primary = str(top.get("_primary_reason_label") or "").strip()
+    top_name = str(top.get("name") or "").strip()
+
+    for index, rec in enumerate(items):
+        rank_explanation = rec.get("rank_explanation") or {}
+        rec_score = float(rec.get("_score_total") or 0.0)
+        gap_from_top = round(top_score - rec_score, 6)
+
+        shared_need_tags = [
+            tag
+            for tag in list(((rec.get("breakdown") or {}).get("matched_need_tags") or []))
+            if tag in top_need_tags
+        ]
+        shared_need_tags_ja = [_need_tag_to_ja(tag) for tag in shared_need_tags]
+
+        same_primary_reason = str(rec.get("_primary_reason_label") or "").strip() == top_primary
+
+        comparison: Dict[str, Any] = {
+            "version": 1,
+            "rank": index + 1,
+            "is_top": index == 0,
+            "top_name": top_name or None,
+            "gap_from_top": gap_from_top,
+            "same_primary_reason": same_primary_reason,
+            "shared_need_tags": shared_need_tags,
+            "shared_need_tags_ja": shared_need_tags_ja,
+            "top_summary": rank_explanation.get("summary") if index == 0 else None,
+            "comparison_summary": None,
+        }
+
+        if index == 0:
+            comparison["comparison_summary"] = "この神社が現在の1位です。"
+        else:
+            shared_label_text = "・".join(shared_need_tags_ja) if shared_need_tags_ja else ""
+
+            if gap_from_top == 0:
+                if shared_need_tags_ja:
+                    comparison["comparison_summary"] = (
+                        f"1位と同点です。共通する悩み軸は「{shared_label_text}」で、"
+                        f"並び順上はこの順位になっています。"
+                    )
+                else:
+                    comparison["comparison_summary"] = (
+                        "1位と同点ですが、重なる主軸は異なり、並び順上はこの順位になっています。"
+                    )
+            else:
+                if shared_need_tags_ja:
+                    comparison["comparison_summary"] = (
+                        f"1位と共通する悩み軸は「{shared_label_text}」です。"
+                        f"1位との差は {gap_from_top:.2f} です。"
+                    )
+                else:
+                    comparison["comparison_summary"] = (
+                        f"1位とは別の軸で選ばれており、1位との差は {gap_from_top:.2f} です。"
+                    )
+
+        rec["rank_comparison"] = comparison
+
+    return items
+
+
+def _build_need_reason_text(
+    tag: str,
+    *,
+    name: str = "",
+    goriyaku: str = "",
+) -> str:
+    intent_map = {
+        "study": "学業や合格",
+        "mental": "不安や心の安定",
+        "rest": "休息や気持ちの切り替え",
+        "love": "恋愛や良縁",
+        "career": "仕事や転機",
+        "money": "金運向上",
+        "courage": "前進や後押し",
+    }
+
+    user_intent = intent_map.get(tag, "今の願い")
+
+    if name:
+        lead = _build_need_lead(tag, goriyaku)
+        return f"{lead}のご利益で知られる{name}は、{user_intent}を願う参拝先として適しています。"
+
+    mapping = {
+        "study": "学業や合格を願う今の気持ちに寄り添いやすく、参拝にも向いています。",
+        "mental": "不安や心を整えたい今の気持ちに寄り添いやすく、参拝にも向いています。",
+        "rest": "気持ちを静かに整えて、ひと息つきたい時の参拝に向いています。",
+        "love": "恋愛やご縁を願う今の気持ちに寄り添いやすく、参拝にも向いています。",
+        "career": "仕事や転機を後押ししたい今の願いに寄り添いやすく、参拝にも向いています。",
+        "money": "金運や仕事の流れを整えたい今の願いに寄り添いやすく、参拝にも向いています。",
+        "courage": "前に進みたい、流れを変えたい今の気持ちを後押しする参拝に向いています。",
+    }
+    return mapping.get(tag, "今の悩みや願いに寄り添いやすい神社としておすすめしています。")
+
+
 __all__ = [
     "NEED_TEXT_WEIGHTS",
     "STUDY_SHRINE_HINTS",
+    "_score_profile_signal",
+    "_score_direction_signal",
     "_clamp01",
     "_distance_decay",
+    "_resolve_public_mode",
+    "_resolve_flow_from_mode",
     "_resolve_mode_weights",
     "_resolve_mode_meta",
+    "_build_entry_context",
+    "_resolve_direction_bonus",
     "_attach_breakdown",
+    "_attach_rank_comparison",
     "_prefilter_candidates_for_need",
     "_diversify_by_need",
+    "build_recommendation_reason",
+    "resolve_score_v3_mode",
+    "resolve_score_v3_mode_detail",
+    "resolve_score_sort_key",
 ]

@@ -1,131 +1,206 @@
-// apps/mobile/app/profile/index.tsx
-import * as React from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  RefreshControl,
-} from "react-native";
-import { Link, useFocusEffect } from "expo-router";
-import PopularShrineCard from "../../components/PopularShrineCard";
-import { CardSkeleton } from "../../components/Skeletons";
-import { getRecentViewed } from "../shrines/storage"; // ← 既存の閲覧履歴ユーティリティを想定
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { useRouter } from "expo-router";
+import { kamimusubiDark as theme } from "../theme";
+import { spacing } from "../design/spacing";
+import { cardSizes } from "../design/cardSizes";
+import { radius } from "../design/radius";
+import { useProfileStore } from "../../store/profileStore";
 
-type RecentItem = {
-  id: number | string;
-  name: string;
-  address?: string;
-  rating?: number;
-  photo_url?: string;
-  popularity?: number;
-};
+export default function ProfileScreen() {
+  const router = useRouter();
+  const { userProfile, derivedProfile, directionProfile, setBirthday, setBirthTime, setBirthPlace, setWorshipStyle } =
+    useProfileStore();
 
-export default function MyPage() {
-  const [items, setItems] = React.useState<RecentItem[] | null>(null);
-  const [refreshing, setRefreshing] = React.useState(false);
-
-  const load = React.useCallback(async () => {
-    try {
-      const list = await getRecentViewed(); // 例: [{ id, name, address, photo_url, rating }]
-      setItems(Array.isArray(list) ? list : []);
-    } catch {
-      setItems([]); // 読み込み失敗時は空扱い（ここでエラーUIにしてもOK）
-    }
-  }, []);
-
-  // 画面に戻ってきた時も最新を読みにいく
-  useFocusEffect(
-    React.useCallback(() => {
-      let alive = true;
-      (async () => {
-        await load();
-      })();
-      return () => {
-        alive = false;
-      };
-    }, [load])
-  );
-
-  const onRefresh = React.useCallback(async () => {
-    setRefreshing(true);
-    await load();
-    setRefreshing(false);
-  }, [load]);
+  const fmt = (v?: string) => v ?? "未設定";
+  const fmtDerived = (v?: string) => v ?? "未計算";
 
   return (
-    <ScrollView
-      contentContainerStyle={styles.container}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-    >
-      {/* ヘッダー */}
-      <Text style={styles.h1}>マイページ</Text>
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <View style={styles.header}>
+        <Pressable onPress={() => router.replace("/mypage")} style={styles.backButton}>
+          <Text style={styles.backText}>← マイページへ戻る</Text>
+        </Pressable>
+        <Text style={styles.eyebrow}>PROFILE</Text>
+        <Text style={styles.title}>プロフィール</Text>
+        <Text style={styles.subtitle}>
+          あなたの基本情報を入力すると、神社提案に活用されます。
+        </Text>
+      </View>
 
-      {/* 最近見た神社 */}
-      <View style={styles.section}>
+      {/* UserProfile */}
+      <View style={styles.sectionCard}>
+        <Text style={styles.sectionTitle}>基本情報</Text>
+
         <View style={styles.row}>
-          <Text style={styles.h2}>最近見た神社</Text>
-          <Link href="/search" asChild>
-            <Text style={styles.link}>神社を探す</Text>
-          </Link>
+          <Text style={styles.label}>生年月日</Text>
+          <TextInput
+            style={styles.input}
+            value={userProfile.birthday ?? ""}
+            onChangeText={setBirthday}
+            placeholder="例: 1990-04-01"
+            placeholderTextColor={theme.muted}
+            keyboardType="numbers-and-punctuation"
+          />
         </View>
 
-        {/* ローディング */}
-        {items === null && (
-          <View style={{ flexDirection: "row", marginTop: 8 }}>
-            <CardSkeleton />
-            <CardSkeleton />
-            <CardSkeleton />
-          </View>
-        )}
+        <View style={styles.row}>
+          <Text style={styles.label}>出生時間</Text>
+          <TextInput
+            style={styles.input}
+            value={userProfile.birthTime ?? ""}
+            onChangeText={setBirthTime}
+            placeholder="例: 08:30"
+            placeholderTextColor={theme.muted}
+            keyboardType="numbers-and-punctuation"
+          />
+        </View>
 
-        {/* 空状態 */}
-        {items?.length === 0 && (
-          <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>まだ閲覧履歴がありません</Text>
-            <Text style={styles.emptyText}>ホームや検索から神社を見てみましょう</Text>
-          </View>
-        )}
+        <View style={styles.row}>
+          <Text style={styles.label}>出生地</Text>
+          <TextInput
+            style={styles.input}
+            value={userProfile.birthPlace ?? ""}
+            onChangeText={setBirthPlace}
+            placeholder="例: 東京都"
+            placeholderTextColor={theme.muted}
+          />
+        </View>
 
-        {/* 横スクロールリスト */}
-        {items && items.length > 0 && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
-            {items.map((s) => (
-              <PopularShrineCard
-                key={String(s.id)}
-                id={s.id}
-                name={s.name}
-                address={s.address}
-                rating={s.rating}
-                photo_url={s.photo_url}
-                popularity={s.popularity}
-              />
-            ))}
-          </ScrollView>
-        )}
+        <View style={styles.row}>
+          <Text style={styles.label}>参拝スタイル</Text>
+          <TextInput
+            style={styles.input}
+            value={userProfile.worshipStyle ?? ""}
+            onChangeText={setWorshipStyle}
+            placeholder="例: 朝参り"
+            placeholderTextColor={theme.muted}
+          />
+        </View>
+      </View>
+
+      {/* DerivedProfile */}
+      <View style={styles.sectionCard}>
+        <Text style={styles.sectionTitle}>派生プロフィール</Text>
+
+        <View style={styles.row}>
+          <Text style={styles.label}>九星気学</Text>
+          <Text style={styles.value}>{fmtDerived(derivedProfile.kyusei)}</Text>
+        </View>
+
+        <View style={styles.row}>
+          <Text style={styles.label}>五行</Text>
+          <Text style={styles.value}>{fmtDerived(derivedProfile.gogyo)}</Text>
+        </View>
+
+        <View style={styles.row}>
+          <Text style={styles.label}>ライフパス</Text>
+          <Text style={styles.value}>{fmtDerived(derivedProfile.lifePath)}</Text>
+        </View>
+      </View>
+
+      {/* DirectionProfile */}
+      <View style={styles.sectionCard}>
+        <Text style={styles.sectionTitle}>方位プロフィール</Text>
+        <View style={styles.row}>
+          <Text style={styles.label}>吉方位</Text>
+          <Text style={styles.value}>{fmtDerived(directionProfile.luckyDirection)}</Text>
+        </View>
+      </View>
+
+      {/* Concierge */}
+      <View style={styles.sectionCard}>
+        <Text style={styles.sectionTitle}>コンシェルジュへの反映</Text>
+        <Text style={styles.noticeText}>
+          プロフィール情報は、神社提案の補助情報として利用されます。
+        </Text>
       </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 16, backgroundColor: "#F6F3EE" },
-  h1: { fontSize: 22, fontWeight: "700", marginBottom: 12 },
-  section: { marginTop: 8 },
+  screen: {
+    flex: 1,
+    backgroundColor: theme.background,
+  },
+  content: {
+    padding: spacing.screenXWide,
+    paddingBottom: spacing.bottomSpace,
+    gap: spacing.lgGap,
+  },
+  header: {
+    gap: spacing.mdGap,
+  },
+  backButton: {
+    alignSelf: "flex-start",
+    marginBottom: spacing.smGap,
+  },
+  backText: {
+    color: theme.gold,
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  eyebrow: {
+    color: theme.goldSoft,
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 2,
+  },
+  title: {
+    color: theme.gold,
+    fontSize: 26,
+    fontWeight: "900",
+  },
+  subtitle: {
+    color: theme.text,
+    fontSize: 15,
+    lineHeight: 23,
+    fontWeight: "600",
+  },
+  sectionCard: {
+    backgroundColor: theme.surface,
+    borderWidth: cardSizes.borderWidth,
+    borderColor: theme.borderHeader,
+    borderRadius: radius.lg,
+    padding: cardSizes.cardPaddingLg,
+    gap: spacing.smGap,
+  },
+  sectionTitle: {
+    color: theme.gold,
+    fontSize: 15,
+    fontWeight: "900",
+    marginBottom: spacing.tightGap,
+  },
   row: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    paddingVertical: spacing.tightGap,
+    borderBottomWidth: cardSizes.borderWidth,
+    borderBottomColor: theme.borderHeader,
   },
-  h2: { fontSize: 18, fontWeight: "700" },
-  link: { color: "#2f6ee5", fontWeight: "600" },
-  empty: {
-    backgroundColor: "#fff",
-    padding: 16,
-    borderRadius: 12,
-    marginTop: 8,
+  label: {
+    color: theme.text,
+    fontSize: 14,
+    fontWeight: "700",
+    flex: 1,
   },
-  emptyTitle: { fontWeight: "700", marginBottom: 4 },
-  emptyText: { color: "#666" },
-  horizontalList: { paddingVertical: 8, paddingRight: 4, gap: 12 },
+  value: {
+    color: theme.muted,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  input: {
+    flex: 1,
+    color: theme.text,
+    fontSize: 14,
+    fontWeight: "600",
+    textAlign: "right",
+  },
+  noticeText: {
+    color: theme.muted,
+    fontSize: 13,
+    lineHeight: 20,
+    fontWeight: "600",
+  },
 });

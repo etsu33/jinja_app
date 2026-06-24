@@ -3,6 +3,11 @@ import React from "react";
 import { Pressable, View, Text, StyleSheet, Image } from "react-native";
 import { Link } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
+import { kamimusubiDark as theme } from "../app/theme";
+import { spacing } from "../app/design/spacing";
+import { cardSizes } from "../app/design/cardSizes";
+import { radius } from "../app/design/radius";
+import { shadows } from "../app/design/shadow";
 // import { useFavorite } from "@/hooks/useFavorite"; // 共有フックがあるなら使用
 
 type BaseProps = {
@@ -56,7 +61,7 @@ function BaseCard({
           </Text>
         ) : null}
         <View style={styles.ratingRow}>
-          <MaterialIcons name="star" size={14} />
+          <MaterialIcons name="star" size={14} color={theme.gold} />
           <Text style={styles.ratingText}>{rating ?? "—"}</Text>
         </View>
       </View>
@@ -116,7 +121,7 @@ function CardWithFavorite(props: BaseProps) {
           </Text>
 
           {/* 右上に☆ボタン */}
-          <Pressable onPress={toggle} disabled={busy} hitSlop={8}>
+          <Pressable onPress={toggle} disabled={busy} hitSlop={spacing.smGap}>
             <MaterialIcons
               name={fav ? "star" : "star-border"}
               size={20}
@@ -132,7 +137,7 @@ function CardWithFavorite(props: BaseProps) {
         ) : null}
 
         <View style={styles.ratingRow}>
-          <MaterialIcons name="star" size={14} />
+          <MaterialIcons name="star" size={14} color={theme.gold} />
           <Text style={styles.ratingText}>{props.rating ?? "—"}</Text>
         </View>
       </View>
@@ -167,40 +172,57 @@ export default function PopularShrineCard(props: WithFavProps) {
 
 const styles = StyleSheet.create({
   card: {
-    width: 240,
-    marginRight: 12,
-    borderRadius: 14,
-    backgroundColor: "#fff",
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 2,
+    width: cardSizes.carouselWidth,
+    borderRadius: radius.md,
+    backgroundColor: theme.surface,
+    borderWidth: cardSizes.borderWidth,
+    borderColor: theme.border,
+    ...shadows.card,
     overflow: "hidden",
   },
-  pressed: { opacity: 0.9 },
-  cardInner: { backgroundColor: "#fff" },
+  pressed: { opacity: 0.85 },
+  cardInner: { backgroundColor: theme.surface },
   image: { width: "100%", aspectRatio: 16 / 9, resizeMode: "cover" },
-  content: { padding: 10, gap: 4 },
+  content: { padding: cardSizes.cardPaddingSm, gap: spacing.inlineGap - 2 },
   row: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
-  name: { fontSize: 16, fontWeight: "700", flexShrink: 1, marginRight: 8 },
-  addr: { fontSize: 13, color: "#666" },
+  name: {
+    color: theme.text,
+    fontSize: 15,
+    fontWeight: "800",
+    flexShrink: 1,
+    marginRight: spacing.inlineGap - 1,
+  },
+  addr: {
+    color: theme.muted,
+    fontSize: 12,
+    fontWeight: "600",
+  },
   ratingRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    marginTop: 2,
+    gap: spacing.tightGap,
+    marginTop: spacing.tightGap / 2,
   },
-  ratingText: { color: "#444", fontWeight: "600" },
+  ratingText: {
+    color: theme.goldSoft,
+    fontSize: 13,
+    fontWeight: "700",
+  },
   badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 9999,
-    backgroundColor: "#EFEFEF",
+    paddingHorizontal: spacing.smGap,
+    paddingVertical: spacing.tightGap / 2,
+    borderRadius: radius.pill,
+    borderWidth: cardSizes.borderWidth,
+    borderColor: theme.borderGold,
+    backgroundColor: "transparent",
   },
-  badgeText: { fontSize: 12, fontWeight: "700" },
+  badgeText: {
+    color: theme.gold,
+    fontSize: 11,
+    fontWeight: "700",
+  },
 });

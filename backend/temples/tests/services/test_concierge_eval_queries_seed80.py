@@ -179,8 +179,12 @@ def _load_seed_candidates() -> list[dict]:
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("case", SEED80_EVAL_CASES, ids=[c["id"] for c in SEED80_EVAL_CASES])
-def test_concierge_eval_queries_seed80(case, monkeypatch):
-
+@pytest.mark.skipif(
+    __import__("os").environ.get("SCORE_V3_MODE") == "active",
+    reason="active モードでは score_v3 で順位が変わるため top3 固定 eval は shadow 専用",
+)
+def test_concierge_eval_queries_seed80(case, monkeypatch, settings):
+    settings.CONCIERGE_USE_LLM = False
 
     candidates = _load_seed_candidates()
 
@@ -188,9 +192,12 @@ def test_concierge_eval_queries_seed80(case, monkeypatch):
         query=case["query"],
         language="ja",
         candidates=candidates,
+        bias=None,
         birthdate=None,
+        goriyaku_tag_ids=None,
+        extra_condition=None,
+        public_mode="need",
         flow="A",
-        llm_enabled=False,
     )
 
     assert "recommendations" in recs

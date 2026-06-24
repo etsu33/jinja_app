@@ -1,16 +1,20 @@
 # backend/temples/api_views_concierge.py
 from __future__ import annotations
-
+import requests  # test monkeypatch compatibility
 import logging
-import os
+import re
 import uuid
+import time
+from django.db import connection, reset_queries
+
+from datetime import date
 from typing import Any, Dict, List, Optional, Tuple
 
-import requests
+
 from django.conf import settings as dj_settings
-from django.utils import timezone
+
 from drf_spectacular.utils import OpenApiTypes, extend_schema
-from rest_framework import serializers, status
+from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -20,21 +24,58 @@ from rest_framework_simplejwt.exceptions import TokenError
 from temples.api.serializers.concierge import (
     ConciergePlanRequestSerializer,
     ConciergePlanResponseSerializer,
+    ConciergeThreadSerializer,
 )
 from temples.geocoding.client import geocode_google_point
 from temples.models import ConciergeThread
-from temples.models import ConciergeUsage
+from temples.domain.consultation_axis import resolve_consultation_axis
 from temples.services import places as Places
-from temples.services.billing_state import is_premium_for_user
+
+from temples.services.plan_service import resolve_plan_context
+from temples.services.quota_service import check_quota, consume_quota
+from temples.services.anonymous_id import attach_anonymous_cookie, build_anonymous_cookie_value
 from temples.services.concierge_candidate_utils import (
-    _candidate_key,
     _dedupe_candidates,
     _to_float,
 )
 from temples.services.concierge_chat import build_chat_recommendations
+from temples.services.concierge_chat_ranking import (
+    _resolve_public_mode,
+)
 from temples.services.concierge_chat_candidates import build_chat_candidates
 from temples.services.concierge_history import append_chat
 from temples.services.concierge_plan import build_plan_response
+from temples.services.billing_state import is_premium_for_user  # test monkeypatch compatibility
+
+
+
+BIRTHDATE_PATTERNS = (
+    re.compile(r"^(\d{4})-(\d{2})-(\d{2})$"),
+    re.compile(r"^(\d{4})/(\d{2})/(\d{2})$"),
+    re.compile(r"^(\d{4})(\d{2})(\d{2})$"),
+)
+
+def normalize_birthdate(value: Any) -> str | None:
+    s = str(value or "").strip()
+    if not s:
+        return None
+
+    for pattern in BIRTHDATE_PATTERNS:
+        m = pattern.match(s)
+        if not m:
+            continue
+
+        yyyy, mm, dd = m.groups()
+
+        try:
+            normalized = date(int(yyyy), int(mm), int(dd))
+        except ValueError:
+            return None
+
+        return normalized.isoformat()
+
+    return None
+
 
 log = logging.getLogger(__name__)
 
@@ -91,13 +132,14 @@ def _safe_extract_intent(text: str):
     t = text or ""
 
     def _heuristic():
+        axis = resolve_consultation_axis(query=t, need_tags=[]).axis
         if any(k in t for k in ("縁結び", "恋", "結婚")):
-            return {"kind": "love"}
+            return {"kind": "love", "consultation_axis": axis}
         if any(k in t for k in ("金運", "仕事", "商売")):
-            return {"kind": "money_work"}
+            return {"kind": "money_work", "consultation_axis": axis}
         if any(k in t for k in ("厄", "厄除", "厄払い")):
-            return {"kind": "purification"}
-        return {"kind": "general"}
+            return {"kind": "purification", "consultation_axis": axis}
+        return {"kind": "general", "consultation_axis": axis}
 
     if not _use_llm():
         return _heuristic()
@@ -213,8 +255,15 @@ def _parse_radius(data: Dict[str, Any]) -> int:
 
 
 def _geocode_area_for_chat(*, area: str) -> tuple[float, float] | None:
+    t0 = time.perf_counter()
     pt = geocode_google_point(area, language="ja", region="jp", timeout=6.0)
-    log.warning("[api/chat] geocode_area area=%r result=%r", area, pt)
+    elapsed = time.perf_counter() - t0
+    log.info(
+        "[concierge/perf] step=geocode elapsed=%.3f ok=%s area_len=%d",
+        elapsed,
+        pt is not None,
+        len(area or ""),
+    )
     return pt
 
 def _probe_area_locationbias_for_chat(*, area: str | None) -> None:
@@ -224,14 +273,17 @@ def _probe_area_locationbias_for_chat(*, area: str | None) -> None:
     """
     area = (area or "").strip()
     if not area:
+        log.info("[concierge/perf] step=probe_locationbias skipped=no_area")
         return
 
     pt = _geocode_area_for_chat(area=area)
     if not pt:
+        log.info("[concierge/perf] step=probe_locationbias skipped=no_geocode_result")
         return
 
     lb = f"circle:8000@{pt[0]:.3f},{pt[1]:.3f}"
 
+    t0 = time.perf_counter()
     try:
         Places.findplacefromtext(
             input=area,
@@ -239,22 +291,28 @@ def _probe_area_locationbias_for_chat(*, area: str | None) -> None:
             fields="place_id",
             locationbias=lb,
         )
+        elapsed = time.perf_counter() - t0
+        log.info(
+            "[concierge/perf] step=probe_locationbias elapsed=%.3f ok=1 area_len=%d",
+            elapsed,
+            len(area),
+        )
     except Exception:
-        pass
+        elapsed = time.perf_counter() - t0
+        log.exception(
+            "[concierge/perf] step=probe_locationbias elapsed=%.3f ok=0 area_len=%d",
+            elapsed,
+            len(area),
+        )
 
 
-def _resolve_request_inputs(data: Dict[str, Any]):
+
+def _resolve_request_inputs_basic(data: Dict[str, Any]):
     filters = data.get("filters") if isinstance(data.get("filters"), dict) else {}
     for k in ("birthdate", "goriyaku_tag_ids", "extra_condition"):
         if data.get(k) in (None, "", []) and filters.get(k) not in (None, "", []):
             data[k] = filters.get(k)
 
-    log.debug(
-        "[concierge_chat] merged birthdate=%r goriyaku_tag_ids=%r extra_condition=%r",
-        data.get("birthdate"),
-        data.get("goriyaku_tag_ids"),
-        data.get("extra_condition"),
-    )
 
     filters = data.get("filters") or {}
     if isinstance(filters, dict):
@@ -270,15 +328,23 @@ def _resolve_request_inputs(data: Dict[str, Any]):
     query = (data.get("query") or "").strip()
     query = message or query
 
+    # backend救済: query が日付文字列なら birthdate に寄せる
+    birthdate_raw = normalize_birthdate(data.get("birthdate"))
+
+    if not birthdate_raw and isinstance(filters, dict):
+        birthdate_raw = normalize_birthdate(filters.get("birthdate"))
+        if birthdate_raw:
+            data["birthdate"] = birthdate_raw
+
+    if not birthdate_raw:
+        rescued_birthdate = normalize_birthdate(query)
+        if rescued_birthdate:
+            data["birthdate"] = rescued_birthdate
+            birthdate_raw = rescued_birthdate
+            query = ""
+
     language = (data.get("language") or "ja").strip()
     area = data.get("area") or data.get("where") or data.get("location_text")
-
-    lat = _to_float(data.get("lat"))
-    lng = _to_float(data.get("lng"))
-    if (lat is None or lng is None) and area:
-        pt = _geocode_area_for_chat(area=area)
-        if pt:
-            lat, lng = pt
 
     birthdate = data.get("birthdate")
     goriyaku_tag_ids = data.get("goriyaku_tag_ids")
@@ -289,33 +355,139 @@ def _resolve_request_inputs(data: Dict[str, Any]):
         message,
         language,
         area,
-        lat,
-        lng,
         birthdate,
         goriyaku_tag_ids,
         extra_condition,
     )
 
 
+def _resolve_request_location_inputs(
+    data: Dict[str, Any],
+    *,
+    area: Any,
+) -> tuple[Optional[float], Optional[float]]:
+    # Priority 1: explicit top-level lat/lng.
+    lat = _to_float(data.get("lat"))
+    lng = _to_float(data.get("lng"))
+    if lat is not None and lng is not None:
+        return lat, lng
+
+    # Priority 2: frontend conciergeChat sends location: { lat, lng }.
+    location = data.get("location") if isinstance(data.get("location"), dict) else {}
+    lat = _to_float(location.get("lat"))
+    lng = _to_float(location.get("lng"))
+    if lat is not None and lng is not None:
+        return lat, lng
+
+    # Priority 3: area text geocode fallback.
+    if area:
+        pt = _geocode_area_for_chat(area=area)
+        if pt:
+            lat, lng = pt
+    return lat, lng
+
 def _build_chat_response(
     intent: Dict[str, Any],
     recs: Dict[str, Any],
     reply: Optional[str],
-    remaining_free: Optional[int],
+    plan: Optional[str],
+    remaining: Optional[int],
     limit: Optional[int],
+    limit_reached: bool,
     thread: Optional[Any],
     debug: Optional[Dict[str, Any]],
+    anon_cookie_value: Optional[str],
 ) -> Dict[str, Any]:
-    body: Dict[str, Any] = {"ok": True, "intent": intent, "data": recs}
+    thread_id = str(thread.id) if thread is not None else None
+
+    data = dict(recs or {})
+    data["thread_id"] = thread_id
+
+    body: Dict[str, Any] = {
+        "ok": True,
+        "intent": intent,
+        "thread_id": thread_id,
+        "data": data,
+        "plan": plan,
+        "reply": reply,
+    }
+
+    if remaining is not None:
+        body["remaining"] = remaining
+
+    if limit is not None:
+        body["limit"] = limit
+
+    if remaining is not None or limit is not None or limit_reached:
+        body["limitReached"] = limit_reached
+
     if debug is not None:
         body["_debug"] = debug
-    if remaining_free is not None and limit is not None:
-        body["remaining_free"] = remaining_free
-        body["limit"] = limit
-    body["reply"] = reply
     if thread is not None:
         body["thread"] = {"id": thread.id}
+    if anon_cookie_value is not None:
+        body["_anon_cookie_value"] = anon_cookie_value
+
     return body
+
+def build_reason_facts(
+    *,
+    matched_need_tags: list[str],
+    shrine_benefit: str | None,
+    shrine_feature: str | None,
+    visit_fit: str | None,
+    astro_label_ja: str | None,
+    distance_m: float | None,
+    popular_score: float | None,
+    fallback_mode: str | None,
+    fallback_reason_ja: str | None,
+    score_need: float | None,
+    score_element: float | None,
+) -> dict:
+    if fallback_mode == "nearby_unfiltered":
+        primary_axis = "fallback"
+    elif score_need and score_need > 0:
+        primary_axis = "need"
+    elif shrine_feature:
+        primary_axis = "feature"
+    elif score_element and score_element > 0 and astro_label_ja:
+        primary_axis = "element"
+    elif distance_m is not None:
+        primary_axis = "distance"
+    elif popular_score is not None:
+        primary_axis = "popularity"
+    else:
+        primary_axis = "fallback"
+
+    distance_label = None
+    if distance_m is not None:
+        if distance_m < 1000:
+            distance_label = f"{round(distance_m)}m"
+        else:
+            distance_label = f"{distance_m / 1000:.1f}km"
+
+    popularity_label = None
+    if popular_score is not None and popular_score >= 4:
+        popularity_label = "定番として選びやすい候補です"
+
+    return {
+        "version": 1,
+        "primary_axis": primary_axis,
+        "matched_need_tags": matched_need_tags[:2],
+        "shrine_benefit": shrine_benefit,
+        "shrine_feature": shrine_feature,
+        "visit_fit": visit_fit,
+        "matched_element": astro_label_ja,
+        "distance_label": distance_label,
+        "popularity_label": popularity_label,
+        "fallback_reason": fallback_reason_ja,
+        "confidence": "high" if (score_need or 0) + (score_element or 0) >= 2 else "mid",
+    }
+
+def _chat_quota_fields(*, plan: Optional[str], quota: Any) -> tuple[Optional[int], Optional[int]]:
+    if getattr(quota, "unlimited", False):
+        return None, None
+    return quota.remaining, quota.limit
 
 
 def _build_chat_candidates_pipeline(
@@ -331,14 +503,6 @@ def _build_chat_candidates_pipeline(
     raw_candidates = data.get("candidates") if isinstance(data.get("candidates"), list) else []
     user_candidates = [c for c in raw_candidates if isinstance(c, dict)]
 
-    log.warning(
-        "[api/chat] build_candidates_input trace=%s area=%r lat=%r lng=%r goriyaku=%r",
-        getattr(request, "_concierge_trace_id", ""),
-        area,
-        lat,
-        lng,
-        data.get("goriyaku_tag_ids"),
-    )
 
     raw_built_candidates = build_chat_candidates(
         goriyaku_tag_ids=data.get("goriyaku_tag_ids"),
@@ -351,7 +515,7 @@ def _build_chat_candidates_pipeline(
     merged_candidates = user_candidates + raw_built_candidates
     deduped_candidates = _dedupe_candidates(merged_candidates)
 
-    log.warning(
+    log.info(
         "[api/chat] build_candidates_output trace=%s user=%d built=%d merged=%d deduped=%d",
         getattr(request, "_concierge_trace_id", ""),
         len(user_candidates),
@@ -368,17 +532,25 @@ def _build_chat_candidates_pipeline(
         len(merged_candidates),
     )
 
-
-def _resolve_flow(goriyaku_tag_ids: Any, extra_condition: Any) -> str:
-    gids = goriyaku_tag_ids
-    has_goriyaku = isinstance(gids, list) and len(
-        [x for x in gids if x is not None and str(x).strip() != ""]
-    ) > 0
-    has_extra = bool((extra_condition or "").strip())
-    return "B" if (has_goriyaku or has_extra) else "A"
-
-
 class ConciergeChatView(APIView):
+    """
+    concierge の主API。
+
+    この view の責務:
+    - 相談文 / 生年月日 / 条件を受けて候補を返す
+    - reply / thread を含む chat 用レスポンスを返す
+    - 認証済み free user に対して remaining_free / limit を返す
+    - 利用上限到達時は paywall 判定の起点になる
+
+    この view を正本とするもの:
+    - 残回数表示
+    - limit-reached 判定
+    - chat 用のレスポンス契約
+
+    この view が持たない責務:
+    - 経路計画専用レスポンス
+    - plan API の route_hints / main 構築
+    """
     permission_classes = [AllowAny]
     authentication_classes = [JWTAuthentication]
     throttle_scope = "concierge"
@@ -391,202 +563,309 @@ class ConciergeChatView(APIView):
         responses={200: OpenApiTypes.OBJECT},
     )
     def post(self, request, *args, **kwargs):
+        reset_queries()
+        t0_total = time.perf_counter()
         rid = uuid.uuid4().hex[:8]
         log.info("[concierge] chat.post rid=%s", rid)
-        data = request.data or {}
+        log.info("🔥 CHAT ENTRY HIT 🔥")
 
-        log.info("[api/chat] raw keys=%s", sorted(list(data.keys()))[:60])
-        log.info("[api/chat] raw bias=%r", data.get("bias"))
-        log.info(
-            "[api/chat] raw lat/lng/radius_m=%r/%r/%r",
-            data.get("lat"),
-            data.get("lng"),
-            data.get("radius_m"),
-        )
-        filters0 = data.get("filters") if isinstance(data.get("filters"), dict) else None
-        log.info("[api/chat] raw filters=%r", filters0)
-
-        payload_lat = _to_float(data.get("lat"))
-        payload_lng = _to_float(data.get("lng"))
-
-        (
-            query,
-            message,
-            language,
-            area,
-            lat,
-            lng,
-            birthdate_raw,
-            goriyaku_tag_ids,
-            extra_condition,
-        ) = _resolve_request_inputs(data)
-
-        log.info(
-            "[api/chat] after_merge birthdate=%r goriyaku=%r extra=%r",
-            birthdate_raw or None,
-            goriyaku_tag_ids,
-            extra_condition,
-        )
-
-        is_message_mode = bool(message)
-
-        if not query:
-            return Response({"detail": "query is required"}, status=status.HTTP_400_BAD_REQUEST)
-
-        lat_src = "payload"
-        if (payload_lat is None or payload_lng is None) and area and lat is not None and lng is not None:
-            lat_src = "geocode(area)"
-
-        log.info("[api/chat] lat/lng=%r/%r src=%s area=%r", lat, lng, lat_src, area)
-
-        request._concierge_trace_id = rid
-
-        log.warning(
-            "[api/chat] pipeline_input rid=%s area=%r payload_lat=%r payload_lng=%r resolved_lat=%r resolved_lng=%r raw_candidates=%d",
-            rid,
-            area,
-            payload_lat,
-            payload_lng,
-            lat,
-            lng,
-            len(data.get("candidates") or []) if isinstance(data.get("candidates"), list) else 0,
-        )
-
-        candidates, user_n, built_n, merged_n = _build_chat_candidates_pipeline(
-            request=request,
-            lat=lat,
-            lng=lng,
-            area=area,
-            language=language,
-        )
-
-        log.info(
-            "[concierge/reco] candidates_raw rid=%s user=%d built=%d merged=%d deduped=%d",
-            rid,
-            user_n,
-            built_n,
-            merged_n,
-            len(candidates),
-        )
-
+        response = None
+        total_status = 500
+        limit_reached = False
+        mode_label = "unknown"
+        phase = "init"
+        query_len = 0
+        candidate_count = 0
+        rec_count = 0
         try:
-            _probe_area_locationbias_for_chat(area=area)
-        except Exception:
-            pass
+            data = request.data or {}
 
-        bias = None
-        if lat is not None and lng is not None:
-            r_m = _parse_radius(data)
-            bias = {"lat": lat, "lng": lng, "radius": r_m, "radius_m": r_m}
-            log.info("[api/chat] computed bias=%r (from lat/lng/radius_m)", bias)
+            log.info(
+                "[api/chat] has_lat=%s has_lng=%s has_radius_m=%s",
+                data.get("lat") is not None,
+                data.get("lng") is not None,
+                data.get("radius_m") is not None,
+            )
 
-        intent = extract_intent(query)
+            # -------------------------
+            # ① 入力解決
+            # -------------------------
+            phase = "resolve_inputs"
+            t0 = time.perf_counter()
 
-        user, token = _resolve_user_and_token(request)
-        if user is not None:
-            request.user = user
-            request.auth = token
+            (
+                query,
+                message,
+                language,
+                area,
+                birthdate_value,
+                goriyaku_tag_ids,
+                extra_condition,
+            ) = _resolve_request_inputs_basic(data)
 
-        is_premium = is_premium_for_user(user)
-        today = timezone.localdate()
-        daily_limit = getattr(dj_settings, "CONCIERGE_DAILY_FREE_LIMIT", 5)
-        remaining = None
+            birthdate = (birthdate_value or "").strip() or None
 
-        if user is not None and not is_premium:
-            usage, _ = ConciergeUsage.objects.get_or_create(user=user, date=today)
+            log.info(
+                "[concierge/perf] step=resolve_inputs rid=%s elapsed=%.3f",
+                rid,
+                time.perf_counter() - t0,
+            )
 
-            if usage.count >= daily_limit:
+            # profile_context ログ（まだ推薦には使わない）
+            raw_profile_context = data.get("profile_context")
+            if isinstance(raw_profile_context, dict):
+                has_user = isinstance(raw_profile_context.get("user_profile"), dict)
+                has_derived = isinstance(raw_profile_context.get("derived_profile"), dict)
+                log.info(
+                    "[concierge/profile_context] received=Y user_profile=%s derived_profile=%s",
+                    "Y" if has_user else "N",
+                    "Y" if has_derived else "N",
+                )
+            else:
+                log.info("[concierge/profile_context] received=N")
+
+            is_message_mode = bool(message)
+            mode_label = "message" if is_message_mode else "query"
+            query_len = len(query or "")
+
+
+            public_mode = _resolve_public_mode(
+                mode=str(data.get("mode") or "").strip().lower() or None,
+                birthdate=birthdate,
+                query=query,
+            )
+
+            # 念のための安全柵
+            if public_mode not in {"need", "compat"}:
+                public_mode = "compat" if birthdate and not query else "need"
+
+            requested_flow = str(data.get("flow") or "").strip().upper()
+            has_extra_condition = bool(str(extra_condition or "").strip())
+            has_goriyaku_tags = bool(goriyaku_tag_ids)
+
+            if requested_flow in {"A", "B"}:
+                flow = requested_flow
+            elif has_extra_condition or has_goriyaku_tags:
+                flow = "B"
+            elif public_mode == "compat":
+                flow = "B"
+            else:
+                flow = "A"
+            intent = extract_intent(query or "")
+
+            request._concierge_trace_id = rid
+
+            # compat は query 空を許可
+            if not query and public_mode != "compat":
+                response = Response(
+                    {"detail": "query is required"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+                total_status = 400
+                return response
+
+            
+
+            
+            # -------------------------
+            # ④ auth / plan_context / quota
+            # -------------------------
+            phase = "quota_check"
+            t0 = time.perf_counter()
+
+            user, token = _resolve_user_and_token(request)
+            if user is not None:
+                request.user = user
+                request.auth = token
+
+            plan_context = resolve_plan_context(request)
+            try:
+                quota = check_quota(plan_context, "concierge")
+            except Exception:
+                raise
+
+            log.info(
+                "[concierge/perf] step=quota_check rid=%s elapsed=%.3f allowed=%s plan=%s remaining=%r limit=%r",
+                rid,
+                time.perf_counter() - t0,
+                quota.allowed,
+                plan_context.plan,
+                quota.remaining,
+                quota.limit,
+            )
+
+            if not quota.allowed:
+                limit_reached = True
                 recs = {"recommendations": []}
+                remaining, limit_value = _chat_quota_fields(plan=plan_context.plan, quota=quota)
                 body = _build_chat_response(
                     intent=intent,
                     recs=recs,
                     reply=LIMIT_MSG,
-                    remaining_free=0,
-                    limit=daily_limit,
+                    plan=plan_context.plan,
+                    remaining=0 if remaining is not None else None,
+                    limit=limit_value,
+                    limit_reached=True,
                     thread=None,
                     debug=None,
+                    anon_cookie_value=(
+                        build_anonymous_cookie_value(plan_context.anon_id)
+                        if plan_context.plan == "anonymous" and plan_context.anon_id
+                        else None
+                    ),
                 )
-                body["note"] = "limit-reached"
+                # 互換が不要なら削除
+                # body["note"] = "limit-reached"
+
 
                 if is_message_mode:
-                    names = []
-                    for r in (recs.get("recommendations") or [])[:3]:
-                        if isinstance(r, dict):
-                            nm = (r.get("display_name") or r.get("name") or "").strip()
-                            if nm:
-                                names.append(nm)
-                    body["reply"] = f"候補: {', '.join(names)}" if names else "候補: "
+                    body["reply"] = "候補: "
 
-                return Response(body, status=status.HTTP_200_OK)
+                response = Response(body, status=status.HTTP_200_OK)
+                total_status = 200
 
-            usage.count += 1
-            usage.save(update_fields=["count"])
-            remaining = max(daily_limit - usage.count, 0)
+                if plan_context.plan == "anonymous" and plan_context.anon_id:
+                    attach_anonymous_cookie(response, plan_context.anon_id)
+                    log.info(
+                        "[concierge/chat] after_attach_limit rid=%s cookies=%r",
+                        rid,
+                        response.cookies.output(),
+                    )
 
-        birthdate = (birthdate_raw or "").strip() or None
+                log.info("[concierge/chat] before_return rid=%s", rid)
+                return response
 
-        flow = _resolve_flow(goriyaku_tag_ids, extra_condition)
-        log.info(
-            "[concierge/reco] input rid=%s flow=%s birthdate=%r goriyaku=%r extra=%r",
-            rid,
-            flow,
-            birthdate,
-            goriyaku_tag_ids,
-            extra_condition,
-        )
-        log.warning(
-            "[concierge_chat] birthdate=%r (raw=%r, filters=%r)",
-            birthdate,
-            birthdate_raw,
-            (data.get("filters") if isinstance(data.get("filters"), dict) else None),
-        )
+            remaining, limit_value = _chat_quota_fields(plan=plan_context.plan, quota=quota)
 
-        before_n = len(candidates)
-        applied = []
-        if goriyaku_tag_ids:
-            applied.append("goriyaku_tag_ids")
-        if (extra_condition or "").strip():
-            applied.append("extra_condition")
+            lat, lng = _resolve_request_location_inputs(data, area=area)
 
-        recs = build_chat_recommendations(
-            query=query,
-            language=language,
-            candidates=candidates,
-            bias=bias,
-            birthdate=birthdate,
-            goriyaku_tag_ids=goriyaku_tag_ids,
-            extra_condition=extra_condition,
-            flow=flow,
-        )
+            # -------------------------
+            # ② candidate build
+            # -------------------------
+            phase = "candidates"
+            t0 = time.perf_counter()
 
-        after_n = len(recs.get("recommendations") or [])
-        log.info(
-            "[concierge/reco] recs_after rid=%s count=%d applied=%s flow=%s",
-            rid,
-            after_n,
-            applied,
-            flow,
-        )
+            candidates, user_n, built_n, merged_n = _build_chat_candidates_pipeline(
+                request=request,
+                lat=lat,
+                lng=lng,
+                area=area,
+                language=language,
+            )
+            candidate_count = len(candidates)
 
-        try:
-            b0 = ((recs.get("recommendations") or [{}])[0] or {}).get("breakdown")
-            log.info("[api/chat] breakdown0=%s", "Y" if isinstance(b0, dict) else "N")
-        except Exception:
-            pass
+            log.info(
+                "[concierge/perf] step=candidates rid=%s elapsed=%.3f user=%d built=%d merged=%d deduped=%d",
+                rid,
+                time.perf_counter() - t0,
+                user_n,
+                built_n,
+                merged_n,
+                len(candidates),
+            )
 
-        if is_message_mode:
-            names = []
-            for r in (recs.get("recommendations") or [])[:3]:
-                if isinstance(r, dict):
-                    nm = (r.get("display_name") or r.get("name") or "").strip()
-                    if nm:
-                        names.append(nm)
-            reply = f"候補: {', '.join(names)}" if names else "候補: "
-        else:
+            # -------------------------
+            # ③ probe / bias / intent
+            # -------------------------
+            phase = "pre_recommend"
+            t0 = time.perf_counter()
+            try:
+                _probe_area_locationbias_for_chat(area=area)
+            except Exception:
+                log.exception("[concierge/perf] step=probe rid=%s failed", rid)
+
+            bias = None
+            if lat is not None and lng is not None:
+                r_m = _parse_radius(data)
+                bias = {"lat": lat, "lng": lng, "radius": r_m, "radius_m": r_m}
+                log.info(
+                    "[api/chat] computed_bias has_bias=%s radius_m=%d",
+                    bias is not None,
+                    r_m,
+                )
+
+            log.info(
+                "[concierge/perf] step=pre_recommend rid=%s elapsed=%.3f",
+                rid,
+                time.perf_counter() - t0,
+            )
+
+
+            # -------------------------
+            # ⑤ recommendation
+            # -------------------------
+            phase = "recommend"
+            before_n = len(candidates)
+            applied = []
+            if goriyaku_tag_ids:
+                applied.append("goriyaku_tag_ids")
+            if (extra_condition or "").strip():
+                applied.append("extra_condition")
+            if public_mode == "compat":
+                applied.append("mode:compat")
+
+            t0 = time.perf_counter()
+
+            try:
+                recs = build_chat_recommendations(
+                    query=query or "",
+                    language=language,
+                    candidates=candidates,
+                    bias=bias,
+                    birthdate=birthdate,
+                    goriyaku_tag_ids=goriyaku_tag_ids,
+                    extra_condition=extra_condition,
+                    public_mode=public_mode,
+                    flow=flow,
+                    user=user if getattr(user, "is_authenticated", False) else None,
+                    profile_context=raw_profile_context if isinstance(raw_profile_context, dict) else None,
+                )
+            except Exception:
+                log.exception(
+                    "[concierge/chat] recommend failed rid=%s mode=%s flow=%s candidates=%d has_bias=%s has_birthdate=%s",
+                    rid,
+                    public_mode,
+                    flow,
+                    len(candidates),
+                    bias is not None,
+                    birthdate is not None,
+                )
+                raise
+
+            after_n = len(recs.get("recommendations") or [])
+            rec_count = after_n
+
+            log.info(
+                "[concierge/perf] step=recommend rid=%s elapsed=%.3f recs=%d",
+                rid,
+                time.perf_counter() - t0,
+                after_n,
+            )
+
+            try:
+                b0 = ((recs.get("recommendations") or [{}])[0] or {}).get("breakdown")
+                log.info("[api/chat] breakdown0=%s", "Y" if isinstance(b0, dict) else "N")
+            except Exception:
+                pass
+
+            # -------------------------
+            # ⑥ thread append
+            # -------------------------
+            phase = "append_chat"
+            t0 = time.perf_counter()
+
             reply = None
+            if is_message_mode:
+                names = []
+                for r in (recs.get("recommendations") or [])[:3]:
+                    if isinstance(r, dict):
+                        nm = (r.get("display_name") or r.get("name") or "").strip()
+                        if nm:
+                            names.append(nm)
+                reply = f"候補: {', '.join(names)}" if names else "候補: "
 
-        thread_obj = None
-        if user is not None and getattr(user, "is_authenticated", False):
+            thread_obj = None
+
             thread_id_raw = data.get("thread_id") or data.get("threadId")
             try:
                 thread_id = int(thread_id_raw) if thread_id_raw not in (None, "", 0, "0") else None
@@ -594,59 +873,236 @@ class ConciergeChatView(APIView):
                 thread_id = None
 
             reply_text = reply if isinstance(reply, str) else None
+            saved_query = query or "生年月日から相性を見てほしい"
+
+            thread_recommendations = recs.get("recommendations") or []
+            thread_recommendations_v2 = recs.get("recommendations_v2") or thread_recommendations
+
+            append_user = user if getattr(user, "is_authenticated", False) else None
+            append_anonymous_id = None if append_user is not None else getattr(plan_context, "anon_id", None)
+
+            log.warning(
+                "[AUTH DEBUG] user=%r authenticated=%s anonymous_id=%r",
+                getattr(user, "id", None),
+                getattr(user, "is_authenticated", False),
+                getattr(plan_context, "anon_id", None),
+            )
 
             try:
-                saved = append_chat(user=user, query=query, reply_text=reply_text, thread_id=thread_id)
+                saved = append_chat(
+                    user=append_user,
+                    anonymous_id=append_anonymous_id,
+                    query=saved_query,
+                    reply_text=reply_text,
+                    thread_id=thread_id,
+                    recommendations=thread_recommendations,
+                    recommendations_v2=thread_recommendations_v2,
+                )
                 thread_obj = saved.thread
+                log.warning(
+                    "[THREAD DEBUG] thread=%r user_id=%r anonymous_id=%r",
+                    getattr(thread_obj, "id", None),
+                    getattr(thread_obj, "user_id", None),
+                    getattr(thread_obj, "anonymous_id", None),
+                )
             except ConciergeThread.DoesNotExist:
-                saved = append_chat(user=user, query=query, reply_text=reply_text, thread_id=None)
+                saved = append_chat(
+                    user=append_user,
+                    anonymous_id=append_anonymous_id,
+                    query=saved_query,
+                    reply_text=reply_text,
+                    thread_id=None,
+                    recommendations=thread_recommendations,
+                    recommendations_v2=thread_recommendations_v2,
+                )
                 thread_obj = saved.thread
+                log.warning(
+                    "[THREAD DEBUG] thread=%r user_id=%r anonymous_id=%r",
+                    getattr(thread_obj, "id", None),
+                    getattr(thread_obj, "user_id", None),
+                    getattr(thread_obj, "anonymous_id", None),
+                )
 
-        from temples.services.concierge_observability import save_concierge_recommendation_log
-
-        signals = recs.get("_signals") or {}
-        llm_meta = signals.get("llm") or {}
-        result_state = signals.get("result_state") or {}
-        need_meta = recs.get("_need") or {}
-        need_tags_for_log = need_meta.get("tags") or []
-        radius_m = _parse_radius(data)
-
-        try:
-            save_concierge_recommendation_log(
-                user=user if getattr(user, "is_authenticated", False) else None,
-                thread=thread_obj,
-                query=query,
-                need_tags=need_tags_for_log,
-                flow=flow,
-                llm_enabled=bool(llm_meta.get("enabled")),
-                llm_used=bool(llm_meta.get("used")),
-                recommendations=recs.get("recommendations") or [],
-                result_state=result_state,
-                lat=lat,
-                lng=lng,
-                radius_m=radius_m,
+            log.warning(
+                "[concierge/chat] THREAD_SAVED rid=%s thread_pk=%r recommendations_saved=%s recommendations_v2_saved=%s",
+                rid,
+                getattr(thread_obj, "id", None),
+                len(getattr(thread_obj, "recommendations", None) or []),
+                len(getattr(thread_obj, "recommendations_v2", None) or []),
             )
-        except Exception:
-            log.exception("[concierge/reco] save_concierge_recommendation_log failed rid=%s", rid)
+            log.info(
+                "[concierge/perf] step=append_chat rid=%s elapsed=%.3f thread=%r",
+                rid,
+                time.perf_counter() - t0,
+                getattr(thread_obj, "id", None),
+            )
 
-        body = _build_chat_response(
-            intent=intent,
-            recs=recs,
-            reply=reply,
-            remaining_free=remaining if (user is not None and not is_premium) else None,
-            limit=daily_limit if (user is not None and not is_premium) else None,
-            thread=thread_obj,
-            debug={"rid": rid, "before": before_n, "after": after_n, "applied": applied, "flow": flow},
-        )
+            # -------------------------
+            # ⑦ observability save
+            # -------------------------
+            phase = "observability"
+            t0 = time.perf_counter()
 
-        return Response(body, status=status.HTTP_200_OK)
+            from temples.services.concierge_observability import save_concierge_recommendation_log
 
+            signals = recs.get("_signals") or {}
+            llm_meta = signals.get("llm") or {}
+            result_state = signals.get("result_state") or {}
+            need_meta = recs.get("_need") or {}
+            need_tags_for_log = need_meta.get("tags") or []
+            radius_m = _parse_radius(data)
+
+            try:
+                _recs_debug = recs.get("_debug") or {}
+                save_concierge_recommendation_log(
+                    user=user if getattr(user, "is_authenticated", False) else None,
+                    thread=thread_obj,
+                    query=query or "",
+                    need_tags=need_tags_for_log,
+                    flow=flow,
+                    llm_enabled=bool(llm_meta.get("enabled")),
+                    llm_used=bool(llm_meta.get("used")),
+                    recommendations=recs.get("recommendations") or [],
+                    result_state=result_state,
+                    lat=lat,
+                    lng=lng,
+                    radius_m=radius_m,
+                    score_v3_mode=_recs_debug.get("score_v3_mode"),
+                    score_v3_ab_observation=_recs_debug.get("score_v3_ab_observation"),
+                )
+            except Exception:
+                log.exception("[concierge/reco] save_concierge_recommendation_log failed rid=%s", rid)
+
+            log.info(
+                "[concierge/perf] step=observability rid=%s elapsed=%.3f",
+                rid,
+                time.perf_counter() - t0,
+            )
+
+            # -------------------------
+            # ⑧ quota consume
+            # -------------------------
+            phase = "consume"
+            t0 = time.perf_counter()
+
+            try:
+                consume_quota(plan_context, "concierge")
+            except Exception:
+                log.exception(
+                    "[concierge/chat] consume_quota failed rid=%s plan=%s",
+                    rid,
+                    getattr(plan_context, "plan", None),
+                )
+                raise
+
+            log.info(
+                "[concierge/perf] step=consume rid=%s elapsed=%.3f",
+                rid,
+                time.perf_counter() - t0,
+            )
+
+            if not quota.unlimited and remaining is not None:
+                remaining = max(remaining - 1, 0)
+
+            body = _build_chat_response(
+                    intent=intent,
+                    recs=recs,
+                    reply=reply,
+                    plan=plan_context.plan,
+                    remaining=remaining,
+                    limit=limit_value,
+                    limit_reached=False,
+                    thread=thread_obj,
+                    debug={
+                        "rid": rid,
+                        "before": before_n,
+                        "after": after_n,
+                        "applied": applied,
+                        "flow": flow,
+                        "mode": public_mode,
+                    },
+                    anon_cookie_value=(
+                        build_anonymous_cookie_value(plan_context.anon_id)
+                        if plan_context.plan == "anonymous" and plan_context.anon_id
+                        else None
+                    ),
+                )
+
+            phase = "response"
+            response = Response(body, status=status.HTTP_200_OK)
+            total_status = 200
+
+            if plan_context.plan == "anonymous" and plan_context.anon_id:
+                attach_anonymous_cookie(response, plan_context.anon_id)
+                log.info(
+                    "[concierge/chat] after_attach_success rid=%s cookies=%r",
+                    rid,
+                    response.cookies.output(),
+                )
+
+            log.info(
+                "[concierge/chat] cookie_state rid=%s cookies=%r",
+                rid,
+                response.cookies.output(),
+            )
+            log.info("[concierge/chat] before_return rid=%s", rid)
+            return response
+        finally:
+            total_ms = round((time.perf_counter() - t0_total) * 1000, 1)
+            sql_total_ms = round(sum(float(q["time"]) * 1000 for q in connection.queries), 1)
+
+            log.info(
+                "[concierge/perf] TOTAL rid=%s total_ms=%s status=%s phase=%s mode=%s query_len=%d candidates=%d recs=%d limit_reached=%s sql_count=%s sql_total_ms=%s",
+                rid,
+                total_ms,
+                total_status,
+                phase,
+                mode_label,
+                query_len,
+                candidate_count,
+                rec_count,
+                1 if limit_reached else 0,
+                len(connection.queries),
+                sql_total_ms,
+            )
+
+            slow_queries = sorted(
+                connection.queries,
+                key=lambda q: float(q["time"]),
+                reverse=True,
+            )[:5]
+
+            for i, q in enumerate(slow_queries, start=1):
+                log.info(
+                    "[concierge/perf] slow_sql rid=%s rank=%s time_ms=%s sql=%s",
+                    rid,
+                    i,
+                    round(float(q["time"]) * 1000, 1),
+                    q["sql"][:1000],
+                )
 
 class ConciergeChatViewLegacy(ConciergeChatView):
     schema = None
 
 
 class ConciergePlanView(APIView):
+    """
+    経路・候補計画専用API。
+
+    この view の責務:
+    - area / latlng をもとに plan レスポンスを返す
+    - main / route_hints など plan 専用情報を返す
+
+    この view が返さないもの:
+    - remaining_free
+    - limit
+    - reply
+    - thread
+    - chat 用 recommendations 契約
+
+    つまり、課金表示や paywall 判定の正本は chat 側であり、
+    plan 側には持ち込まない。
+    """
     permission_classes = [AllowAny]
     throttle_scope = "concierge"
 
@@ -677,18 +1133,38 @@ class ConciergePlanViewLegacy(ConciergePlanView):
     schema = None
 
 
+@extend_schema(exclude=True)
+class ConciergeThreadView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        tid = request.query_params.get("tid")
+        if not tid:
+            return Response({"error": "tid required"}, status=400)
+
+        try:
+            thread = ConciergeThread.objects.get(id=tid)
+        except ConciergeThread.DoesNotExist:
+            return Response({"error": "not found"}, status=404)
+
+        return Response(ConciergeThreadSerializer(thread).data)
+
+
 chat = ConciergeChatView.as_view()
 plan = ConciergePlanView.as_view()
+thread = ConciergeThreadView.as_view()
 chat_legacy = ConciergeChatViewLegacy.as_view()
 plan_legacy = ConciergePlanViewLegacy.as_view()
 
 __all__ = [
     "chat",
     "plan",
+    "thread",
     "chat_legacy",
     "plan_legacy",
     "ConciergeChatView",
     "ConciergePlanView",
+    "ConciergeThreadView",
     "ConciergeChatViewLegacy",
     "ConciergePlanViewLegacy",
 ]

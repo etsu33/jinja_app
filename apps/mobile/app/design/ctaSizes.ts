@@ -1,0 +1,15 @@
+export const ctaSizes = {
+  primaryHeight: 52,
+  primaryRadius: 16,
+  mediumHeight: 48,
+  mediumRadius: 12,
+  smallHeight: 44,
+  smallRadius: 10,
+  pillPaddingX: 12,
+  pillPaddingY: 6,
+  pillPaddingXSm: 10,
+  pillPaddingYSm: 6,
+  fabPaddingX: 8,
+  fabPaddingY: 4,
+  hitSlopSm: 8,
+} as const;

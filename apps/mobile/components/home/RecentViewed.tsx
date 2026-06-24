@@ -4,6 +4,9 @@ import { View, Text, ScrollView, Pressable } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { SHRINES } from "../../data/shrines";
+import { colors } from "../../app/theme";
+import { radius } from "../../app/design/radius";
+import { cardSizes } from "../../app/design/cardSizes";
 
 const KEY = "recent_shrines"; // string[] の ID を保存
 
@@ -29,17 +32,29 @@ export default function RecentViewed() {
     <View style={{ paddingHorizontal: 16, marginTop: 24 }}>
       <Text style={{ fontSize: 18, fontWeight: "700", marginBottom: 8 }}>最近見た神社</Text>
       {items.length === 0 ? (
-        <Text style={{ color: "#777" }}>最近見た神社はまだありません。</Text>
+        <Text style={{ color: colors.textMuted }}>最近見た神社はまだありません。</Text>
       ) : (
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {items.map((s) => (
             <Pressable
               key={s.id}
               onPress={() => router.push(`/shrines/${s.id}`)}
-              style={{ width: 200, marginRight: 12, padding: 12, borderRadius: 12, backgroundColor: "white", borderWidth: 1, borderColor: "#eee" }}
+              style={{
+                width: 200,
+                marginRight: 12,
+                padding: 12,
+                borderRadius: radius.xs,
+                backgroundColor: colors.surfaceLight,
+                borderWidth: cardSizes.borderWidth,
+                borderColor: colors.borderLight,
+              }}
             >
-              <Text style={{ fontWeight: "700" }} numberOfLines={1}>{s.name}</Text>
-              <Text style={{ color: "#777" }} numberOfLines={1}>{s.address}</Text>
+              <Text style={{ fontWeight: "700" }} numberOfLines={1}>
+                {s.name}
+              </Text>
+              <Text style={{ color: colors.textMuted }} numberOfLines={1}>
+                {s.address}
+              </Text>
             </Pressable>
           ))}
         </ScrollView>

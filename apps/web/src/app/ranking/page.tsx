@@ -1,22 +1,40 @@
 "use client";
 
 import { buildShrineHref } from "@/lib/nav/buildShrineHref";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { fetchRanking } from "@/lib/api/ranking";
 import type { RankingItem } from "@/lib/api/ranking";
 import { useFavorite } from "@/hooks/useFavorite";
+import {
+  preloadFavoritesByShrineIds,
+  type FavoritePreloadMap,
+} from "@/lib/api/favorites";
 import { usePopularShrines } from "../../hooks/usePopularShrines";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
+const EMPTY_FAVORITE_INITIAL = { fav: false, favorite_id: null } as const;
 
-
-
+function getInitialFavorite(
+  shrineId: number,
+  initialFavorites?: FavoritePreloadMap,
+) {
+  return initialFavorites?.[String(shrineId)] ?? EMPTY_FAVORITE_INITIAL;
+}
 
 /* --- 小物: お気に入り --- */
-function FavButton({ shrineId }: { shrineId: number }) {
-  const { fav, busy, toggle } = useFavorite({ shrineId, initial: false });
+function FavButton({
+  shrineId,
+  initial,
+}: {
+  shrineId: number;
+  initial?: { fav: boolean; favorite_id: number | null };
+}) {
+  const { fav, busy, toggle } = useFavorite({
+    shrineId,
+    initial: initial ?? EMPTY_FAVORITE_INITIAL,
+  });
   return (
     <button
       onClick={toggle}
@@ -30,7 +48,13 @@ function FavButton({ shrineId }: { shrineId: number }) {
 }
 
 /* --- 小物: ランキングカードリスト --- */
-function RankingList({ data }: { data: RankingItem[] }) {
+function RankingList({
+  data,
+  initialFavorites,
+}: {
+  data: RankingItem[];
+  initialFavorites?: FavoritePreloadMap;
+}) {
   const hasData = Array.isArray(data) && data.length > 0;
   return (
     <ol role="list" className="space-y-4">
@@ -57,7 +81,10 @@ function RankingList({ data }: { data: RankingItem[] }) {
                   <span className="font-bold">{shrine?.name_jp ?? "名称不明"}</span>
                   {typeof shrine.id === "number" && (
                     <span className="ml-auto">
-                      <FavButton shrineId={shrine.id} />
+                      <FavButton
+                        shrineId={shrine.id}
+                        initial={getInitialFavorite(shrine.id, initialFavorites)}
+                      />
                     </span>
                   )}
                 </CardTitle>
@@ -100,6 +127,7 @@ function RankingList({ data }: { data: RankingItem[] }) {
 function PopularTab() {
   const [useNear, setUseNear] = useState(false);
   const [near, setNear] = useState<string | undefined>(undefined);
+  const [initialFavorites, setInitialFavorites] = useState<FavoritePreloadMap>({});
 
   const { items, loading, error, next, loadMore, isFallback } = usePopularShrines({
     limit: 20,
@@ -122,17 +150,48 @@ function PopularTab() {
   }
 
   // /api/populars/ のレスポンスを RankingItem に寄せる
-  const normalized: RankingItem[] = (items as any[]).map((s) => ({
-    id: s.id,
-    name_jp: s.name_jp ?? s.name ?? "",
-    address: s.address ?? "",
-    latitude: s.latitude ?? 0,
-    longitude: s.longitude ?? 0,
-    score: s.popular_score ?? 0,
-    visit_count: s.visit_count ?? 0,
-    favorite_count: s.favorite_count ?? 0,
-    goriyaku_tags: s.goriyaku_tags ?? [],
-  }));
+  const normalized: RankingItem[] = useMemo(
+    () =>
+      (items as any[]).map((s) => ({
+        id: s.id,
+        name_jp: s.name_jp ?? s.name ?? "",
+        address: s.address ?? "",
+        latitude: s.latitude ?? 0,
+        longitude: s.longitude ?? 0,
+        score: s.popular_score ?? 0,
+        visit_count: s.visit_count ?? 0,
+        favorite_count: s.favorite_count ?? 0,
+        goriyaku_tags: s.goriyaku_tags ?? [],
+      })),
+    [items],
+  );
+
+  const shrineIds = useMemo(
+    () => normalized.map((s) => s.id).filter((id): id is number => typeof id === "number"),
+    [normalized],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (shrineIds.length === 0) {
+      setInitialFavorites({});
+      return;
+    }
+
+    (async () => {
+      try {
+        const map = await preloadFavoritesByShrineIds(shrineIds);
+        if (!cancelled) setInitialFavorites(map);
+      } catch {
+        if (!cancelled) setInitialFavorites({});
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [shrineIds]);
 
   return (
     <section className="space-y-4">
@@ -163,7 +222,7 @@ function PopularTab() {
       )}
 
       {/* ★ ここを RankingList に統一 */}
-      <RankingList data={normalized} />
+      <RankingList data={normalized} initialFavorites={initialFavorites} />
 
       {next && !loading && (
         <button onClick={loadMore} className="px-4 py-2 rounded border w-full text-sm">
@@ -180,6 +239,8 @@ function PopularTab() {
 export default function RankingPage() {
   const [monthly, setMonthly] = useState<RankingItem[]>([]);
   const [yearly, setYearly] = useState<RankingItem[]>([]);
+  const [monthlyInitialFavorites, setMonthlyInitialFavorites] = useState<FavoritePreloadMap>({});
+  const [yearlyInitialFavorites, setYearlyInitialFavorites] = useState<FavoritePreloadMap>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -199,6 +260,59 @@ export default function RankingPage() {
       }
     })();
   }, []);
+
+  const monthlyShrineIds = useMemo(
+    () => monthly.map((s) => s.id).filter((id): id is number => typeof id === "number"),
+    [monthly],
+  );
+  const yearlyShrineIds = useMemo(
+    () => yearly.map((s) => s.id).filter((id): id is number => typeof id === "number"),
+    [yearly],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (monthlyShrineIds.length === 0) {
+      setMonthlyInitialFavorites({});
+      return;
+    }
+
+    (async () => {
+      try {
+        const map = await preloadFavoritesByShrineIds(monthlyShrineIds);
+        if (!cancelled) setMonthlyInitialFavorites(map);
+      } catch {
+        if (!cancelled) setMonthlyInitialFavorites({});
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [monthlyShrineIds]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (yearlyShrineIds.length === 0) {
+      setYearlyInitialFavorites({});
+      return;
+    }
+
+    (async () => {
+      try {
+        const map = await preloadFavoritesByShrineIds(yearlyShrineIds);
+        if (!cancelled) setYearlyInitialFavorites(map);
+      } catch {
+        if (!cancelled) setYearlyInitialFavorites({});
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [yearlyShrineIds]);
 
   return (
     <main className="p-4 mx-auto max-w-3xl">
@@ -223,11 +337,11 @@ export default function RankingPage() {
         </TabsContent>
 
         <TabsContent value="monthly">
-          <RankingList data={monthly ?? []} />
+          <RankingList data={monthly ?? []} initialFavorites={monthlyInitialFavorites} />
         </TabsContent>
 
         <TabsContent value="yearly">
-          <RankingList data={yearly ?? []} />
+          <RankingList data={yearly ?? []} initialFavorites={yearlyInitialFavorites} />
         </TabsContent>
       </Tabs>
     </main>

@@ -1,143 +1,280 @@
-//apps/web/src/viewmodels/__tests__/conciergeToShrineList.test.ts
-import { describe, expect, it } from "vitest";
+import { expect, it } from "vitest";
 import { conciergeToShrineListItems } from "../conciergeToShrineList";
 
-describe("conciergeToShrineListItems", () => {
-  it("matched_need_tags を優先し、reason と distance を cardProps に写す", () => {
-    const resp = {
-      ok: true,
-      data: {
-        _need: { tags: ["mental", "rest"] },
-        recommendations: [
-          {
-            name: "神社A",
-            display_name: "神社A",
-            reason: "転機・仕事に向き合う参拝に",
-            reason_source: "reason:matched_need_tags",
-            location: "東京都千代田区",
-            distance_m: 123,
-            shrine_id: 10,
-            breakdown: {
-              matched_need_tags: ["career"],
-              score_total: 1.23,
-            },
+it("money × strong では三峯神社の短句を返す", () => {
+  const resp = {
+    ok: true,
+    data: {
+      recommendations: [
+        {
+          name: "三峯神社",
+          shrine_id: 101,
+          reason: "金運を上げたい",
+          breakdown: {
+            score_element: 0,
+            score_need: 1,
+            score_popular: 0,
+            score_total: 1.0,
+            weights: { element: 0, need: 1, popular: 0 },
+            matched_need_tags: ["money"],
           },
-        ],
-      },
-    };
+        },
+      ],
+    },
+  };
 
-    const items = conciergeToShrineListItems(resp);
-
-    expect(items).toHaveLength(1);
-    expect(items[0].id).toBe("shrine_10");
-    expect(items[0].cardProps.name).toBe("神社A");
-    expect(items[0].cardProps.address).toBe("東京都千代田区");
-    expect(items[0].cardProps.recommendReason).toBe("転機・仕事に向き合う参拝に");
-    expect(items[0].cardProps.distanceM).toBe(123);
-    expect(items[0].cardProps.tags).toEqual(["転機・仕事"]);
-    expect(items[0].cardProps.href).toBe("/shrines/10");
-  });
-
-  it("_need.tags を fallback tag として使う", () => {
-    const resp = {
-      ok: true,
-      data: {
-        _need: { tags: ["mental", "rest"] },
-        recommendations: [
-          {
-            name: "神社B",
-            reason: "心を整えたいときの参拝に",
-            location: "東京都港区",
-            distance_m: 456,
-            breakdown: {
-              matched_need_tags: [],
-              score_total: 0.8,
-            },
-          },
-        ],
-      },
-    };
-
-    const items = conciergeToShrineListItems(resp);
-
-    expect(items).toHaveLength(1);
-    expect(items[0].id).toBe("name_%E7%A5%9E%E7%A4%BEB");
-    expect(items[0].cardProps.name).toBe("神社B");
-    expect(items[0].cardProps.address).toBe("東京都港区");
-    expect(items[0].cardProps.recommendReason).toBe("心を整えたいときの参拝に");
-    expect(items[0].cardProps.distanceM).toBe(456);
-    expect(items[0].cardProps.tags).toEqual(["不安・心", "休息"]);
-    expect(items[0].cardProps.href).toBeUndefined();
-  });
-
-  it("ok=false のときは空配列を返す", () => {
-    const items = conciergeToShrineListItems({ ok: false });
-    expect(items).toEqual([]);
-  });
-
-
-  it("compatibilityLabels / subReason / 日本語タグ化 を cardProps に写す", () => {
-    const resp = {
-      ok: true,
-      data: {
-        _need: { tags: ["mental", "rest"] },
-        recommendations: [
-          {
-            name: "神社C",
-            display_name: "神社C",
-            reason: "不安・心に向き合う参拝に",
-            location: "東京都渋谷区",
-            distance_m: 789,
-            bullets: ["落ち着いて気持ちを整えやすい雰囲気", "静かに参拝しやすい"],
-            breakdown: {
-              matched_need_tags: ["mental", "rest"],
-              score_total: 1.1,
-            },
-          },
-        ],
-      },
-    };
-
-    const items = conciergeToShrineListItems(resp);
-
-    expect(items).toHaveLength(1);
-    expect(items[0].cardProps.name).toBe("神社C");
-    expect(items[0].cardProps.recommendReason).toBe("不安・心に向き合う参拝に");
-    expect(items[0].cardProps.distanceM).toBe(789);
-
-    // 日本語化された tags
-    expect(items[0].cardProps.tags).toEqual(["不安・心", "休息"]);
-
-    // matched_need_tags 由来の相性ラベル
-    expect(items[0].cardProps.compatibilityLabels).toEqual(["不安・心", "休息"]);
-
-    // bullets[0] が subReason に入る
-    expect(items[0].cardProps.subReason).toBe("落ち着いて気持ちを整えやすい雰囲気");
-  });
-
-  it("explanation を cardProps に写す", () => {
-    const resp = {
-      ok: true,
-      data: {
-        recommendations: [
-          {
-            name: "神社A",
-            explanation: {
-              summary: "不安・心に向き合う参拝に",
-              reasons: [
-                { code: "NEED_MATCH", label: "相談との一致", text: "不安・心に関する相談内容との一致が見られます。" },
-                { code: "SHRINE_FEATURE", label: "神社の特徴", text: "落ち着いて気持ちを整えやすい雰囲気" },
-              ],
-            },
-          },
-        ],
-      },
-    };
-
-    const items = conciergeToShrineListItems(resp as any);
-
-    expect(items[0].cardProps.explanationSummary).toBe("不安・心に向き合う参拝に");
-    expect(items[0].cardProps.explanationReasons).toHaveLength(2);
-    expect(items[0].cardProps.explanationReasons?.[0].code).toBe("NEED_MATCH");
-  });
+  const items = conciergeToShrineListItems(resp as any);
+  expect(items[0].cardProps.explanationPrimaryReason).toBe("金運や流れを動かす");
 });
+
+it("money × quiet では伊勢神宮（内宮）の短句を返す", () => {
+  const resp = {
+    ok: true,
+    data: {
+      recommendations: [
+        {
+          name: "伊勢神宮（内宮）",
+          shrine_id: 102,
+          reason: "金運を整えたい",
+          breakdown: {
+            score_element: 0,
+            score_need: 1,
+            score_popular: 0,
+            score_total: 1.0,
+            weights: { element: 0, need: 1, popular: 0 },
+            matched_need_tags: ["money"],
+          },
+        },
+      ],
+    },
+  };
+
+  const items = conciergeToShrineListItems(resp as any);
+  expect(items[0].cardProps.explanationPrimaryReason).toBe("金運や巡りを整える");
+});
+
+it("study × tight では乃木神社の短句を返す", () => {
+  const resp = {
+    ok: true,
+    data: {
+      recommendations: [
+        {
+          name: "乃木神社",
+          shrine_id: 103,
+          reason: "集中したい",
+          breakdown: {
+            score_element: 0,
+            score_need: 1,
+            score_popular: 0,
+            score_total: 1.0,
+            weights: { element: 0, need: 1, popular: 0 },
+            matched_need_tags: ["study"],
+          },
+        },
+      ],
+    },
+  };
+
+  const items = conciergeToShrineListItems(resp as any);
+  expect(items[0].cardProps.explanationPrimaryReason).toBe("集中や目標を定める");
+});
+
+it("primary が取れないときは fallbackText を返す", () => {
+  const resp = {
+    ok: true,
+    data: {
+      _need: { tags: ["protection"] },
+      recommendations: [
+        {
+          name: "神社Z",
+          shrine_id: 104,
+          reason: "厄除けを願う参拝に",
+          breakdown: {
+            score_element: 0,
+            score_need: 0,
+            score_popular: 0,
+            score_total: 0.5,
+            weights: { element: 0, need: 1, popular: 0 },
+            matched_need_tags: [],
+          },
+        },
+      ],
+    },
+  };
+
+  const items = conciergeToShrineListItems(resp as any);
+  expect(items[0].cardProps.explanationPrimaryReason).toBe("厄除けを願う参拝に");
+});
+
+it("resp.ok=false のときは空配列を返す", () => {
+  const items = conciergeToShrineListItems({ ok: false } as any);
+  expect(items).toEqual([]);
+});
+
+it("top-level thread_id を tid に入れる", () => {
+  const resp = {
+    ok: true,
+    thread_id: "thread-top",
+    data: {
+      recommendations: [
+        {
+          name: "神社A",
+          shrine_id: 201,
+          reason: "前に進みたい",
+          breakdown: { matched_need_tags: ["courage"] },
+        },
+      ],
+    },
+  };
+
+  const items = conciergeToShrineListItems(resp as any);
+  expect(items[0].tid).toBe("thread-top");
+});
+
+it("data.thread_id を tid に入れる", () => {
+  const resp = {
+    ok: true,
+    data: {
+      thread_id: "thread-data",
+      recommendations: [
+        {
+          name: "神社B",
+          shrine_id: 202,
+          reason: "休みたい",
+          breakdown: { matched_need_tags: ["rest"] },
+        },
+      ],
+    },
+  };
+
+  const items = conciergeToShrineListItems(resp as any);
+  expect(items[0].tid).toBe("thread-data");
+});
+
+it("display_name を title に優先し、address を表示する", () => {
+  const resp = {
+    ok: true,
+    data: {
+      recommendations: [
+        {
+          name: "正式名",
+          display_name: "表示名",
+          shrine_id: 203,
+          address: "東京都千代田区1-1",
+          reason: "仕事を整えたい",
+          breakdown: { matched_need_tags: ["career"] },
+        },
+      ],
+    },
+  };
+
+  const items = conciergeToShrineListItems(resp as any);
+  expect(items[0].cardProps.title).toBe("表示名");
+  expect(items[0].cardProps.address).toBe("東京都千代田区1-1");
+});
+
+it("address が無いときは location を使う", () => {
+  const resp = {
+    ok: true,
+    data: {
+      recommendations: [
+        {
+          name: "神社C",
+          shrine_id: 204,
+          location: "渋谷エリア",
+          reason: "恋愛を進めたい",
+          breakdown: { matched_need_tags: ["love"] },
+        },
+      ],
+    },
+  };
+
+  const items = conciergeToShrineListItems(resp as any);
+  expect(items[0].cardProps.address).toBe("渋谷エリア");
+});
+
+it("primary_reason.label があるとそれを優先して短句を作る", () => {
+  const resp = {
+    ok: true,
+    data: {
+      recommendations: [
+        {
+          name: "三峯神社",
+          shrine_id: 205,
+          reason: "別の理由文",
+          _explanation_payload: {
+            primary_reason: { label: "courage" },
+            original_reason: "元の理由文",
+          },
+          breakdown: { matched_need_tags: ["money"] },
+        },
+      ],
+    },
+  };
+
+  const items = conciergeToShrineListItems(resp as any);
+  expect(items[0].cardProps.explanationPrimaryReason).toBe("止まった流れを動かす");
+});
+
+it("explanation.summary があれば explanationSummary と rawReason に使う", () => {
+  const resp = {
+    ok: true,
+    data: {
+      recommendations: [
+        {
+          name: "神社D",
+          shrine_id: 206,
+          explanation: {
+            summary: "気持ちを整えたい時に向いています",
+          },
+          breakdown: { matched_need_tags: ["mental"] },
+        },
+      ],
+    },
+  };
+
+  const items = conciergeToShrineListItems(resp as any);
+  expect(items[0].cardProps.explanationSummary).toBe("気持ちを整えたい時に向いています");
+  expect(items[0].cardProps.explanationPrimaryReason).toBe("不安や気持ちを整える");
+});
+
+it("matched_need_tags が空なら _need.tags を badgesOverride に使う", () => {
+  const resp = {
+    ok: true,
+    data: {
+      _need: { tags: ["money", "rest"] },
+      recommendations: [
+        {
+          name: "神社E",
+          shrine_id: 207,
+          reason: "整えたい",
+          breakdown: { matched_need_tags: [] },
+        },
+      ],
+    },
+  };
+
+  const items = conciergeToShrineListItems(resp as any);
+  expect(items[0].cardProps.badgesOverride).toEqual(["金運", "休息"]);
+});
+
+it("shrine_id がない recommendation は除外される", () => {
+  const resp = {
+    ok: true,
+    data: {
+      recommendations: [
+        {
+          name: "place only shrine",
+          place_id: "place_123",
+          reason: "理由あり",
+          breakdown: { matched_need_tags: ["money"] },
+        },
+      ],
+    },
+  };
+
+  const items = conciergeToShrineListItems(resp as any);
+  expect(items).toEqual([]);
+});
+
+

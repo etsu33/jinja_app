@@ -2,16 +2,16 @@
 "use client";
 
 import * as React from "react";
-import type { SignalLevel } from "@/lib/shrine/buildShrineExplanation";
 
-type LevelLike = SignalLevel | "low";
+
+type SignalLevel = "strong" | "mid" | "soft";
 
 type Props = {
   title: string;
   summary: string;
   defaultOpen?: boolean;
   children: React.ReactNode;
-  level?: LevelLike;
+  level?: "strong" | "mid" | "soft";
   hint?: string | null;
   materials?: Array<{ label: string; value: string }>;
 };
@@ -20,12 +20,11 @@ function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
-function levelLabel(level?: LevelLike) {
-  if (!level) return null;
-  if (level === "low") return "低";
+function levelLabel(level?: SignalLevel) {
   if (level === "strong") return "高";
-  if (level === "medium") return "中";
-  return "低"; // weak
+  if (level === "soft") return "低";
+  if (level === "mid") return "中";
+  return "中";
 }
 
 export default function DetailDisclosureBlock({
@@ -73,7 +72,10 @@ export default function DetailDisclosureBlock({
           <div className="mt-1 line-clamp-2 text-xs text-slate-600">{summary}</div>
         </div>
 
-        <span className={cn("shrink-0 text-slate-500 transition-transform", open && "rotate-180")} aria-hidden="true">
+        <span
+          className={cn("size-4 transition-transform duration-200", open ? "rotate-0" : "rotate-180")}
+          aria-hidden="true"
+        >
           ▼
         </span>
       </button>

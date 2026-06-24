@@ -12,22 +12,36 @@ export default function FavoritesSection({ initialFavorites }: Props) {
   const { items, count, unSave, error } = useFavorites({ initialFavorites });
 
   const hasData = count > 0;
-  const visible = items.slice(0, 3);
 
+  const sorted = [...items].sort((a, b) => {
+    const aCount = Number(a.public_goshuin_count ?? 0);
+    const bCount = Number(b.public_goshuin_count ?? 0);
 
-  
+    const aHas = aCount > 0;
+    const bHas = bCount > 0;
+
+    if (aHas !== bHas) return aHas ? -1 : 1;
+    if (aCount !== bCount) return bCount - aCount;
+
+    const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
+
+    return bTime - aTime;
+  });
+
+  const visible = sorted.slice(0, 3);
 
   return (
-    <section className="space-y-3 pt-1 pb-2">
-      <header className="flex items-center justify-between gap-2 text-xs text-gray-500">
+    <section className="space-y-3 rounded-2xl border border-stone-200/20 bg-stone-50/30 p-5 sm:p-6">
+      <header className="flex items-center justify-between gap-2 text-xs text-stone-500">
         <p>
-          <span className="font-medium text-gray-700">保存した神社</span>
-          <span className="ml-2 text-[11px] text-gray-500">{hasData ? `${count}件` : "0件"}</span>
+          <span className="font-medium text-stone-700">保存した神社</span>
+          <span className="ml-2 text-[11px] text-stone-400">{hasData ? `${count}件` : "0件"}</span>
         </p>
         {hasData && (
           <Link
             href="/favorites"
-            className="rounded-full border border-gray-200 bg-white px-3 py-1 text-[11px] text-gray-700 hover:bg-gray-50"
+            className="rounded-full border border-stone-200/40 bg-stone-50/20 px-3 py-1 text-[11px] text-stone-600 transition hover:bg-stone-100/50"
           >
             すべて見る
           </Link>
@@ -35,17 +49,16 @@ export default function FavoritesSection({ initialFavorites }: Props) {
       </header>
 
       {error && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+        <div className="rounded-xl border border-rose-700/10 bg-rose-50/50 px-3 py-2 text-sm text-rose-700">{error}</div>
       )}
 
       {!hasData ? (
-        <div className="space-y-2 rounded-lg border border-dashed bg-orange-50/50 px-4 py-6 text-center text-sm text-gray-700">
-          <div className="text-2xl">📌</div>
-          <p className="font-semibold">保存した神社はまだありません</p>
-          <p className="text-xs text-gray-500">神社詳細ページで「保存」をタップすると、ここに一覧で表示されます。</p>
+        <div className="space-y-2 rounded-2xl border border-stone-200/20 bg-stone-50/20 px-4 py-6 text-center text-sm text-stone-700">
+          <p className="font-medium">保存した神社はまだありません</p>
+          <p className="text-xs text-stone-500">気になる神社を保存できます。</p>
           <Link
             href="/map"
-            className="mt-2 inline-block rounded-full bg-orange-500 px-4 py-1 text-xs font-medium text-white hover:bg-orange-600"
+            className="mt-2 inline-block rounded-full border border-emerald-700/20 bg-emerald-800 px-4 py-1.5 text-xs font-medium text-white transition hover:bg-emerald-900"
           >
             近くの神社を探す
           </Link>

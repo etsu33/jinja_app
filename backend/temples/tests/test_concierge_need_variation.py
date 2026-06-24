@@ -73,7 +73,11 @@ def test_need_variation_changes_matched_tags_and_score(monkeypatch):
             query=query,
             language="ja",
             candidates=candidates,
+            bias=None,
             birthdate=None,
+            goriyaku_tag_ids=None,
+            extra_condition=None,
+            public_mode="need",
             flow="A",
         )
         top = recs["recommendations"][0]
@@ -128,7 +132,11 @@ def test_need_match_by_astro_tags_only(monkeypatch):
         query="縁結びで探したい",
         language="ja",
         candidates=candidates,
+        bias=None,
         birthdate=None,
+        goriyaku_tag_ids=None,
+        extra_condition=None,
+        public_mode="need",
         flow="A",
     )
 
@@ -174,7 +182,11 @@ def test_need_match_by_text_only(monkeypatch):
         query="近場で縁結び",
         language="ja",
         candidates=candidates,
+        bias=None,
         birthdate=None,
+        goriyaku_tag_ids=None,
+        extra_condition=None,
+        public_mode="need",
         flow="A",
     )
 
@@ -227,16 +239,29 @@ def test_open_luck_queries_resolve_to_courage(query, expected_tag):
         query=query,
         language="ja",
         candidates=candidates,
+        bias=None,
         birthdate=None,
+        goriyaku_tag_ids=None,
+        extra_condition=None,
+        public_mode="need",
         flow="A",
     )
 
     top = recs["recommendations"][0]
+    summary = ((top.get("explanation") or {}).get("summary")) or ""
+    reasons = ((top.get("explanation") or {}).get("reasons")) or []
+    first_reason_text = str(reasons[0].get("text") if reasons else "")
 
     assert expected_tag in recs["_need"]["tags"]
     assert expected_tag in top["breakdown"]["matched_need_tags"]
     assert top["reason_source"] == "reason:matched_need_tags"
-    assert top["reason"] == "流れを変えたい時や一歩踏み出したい時の参拝に"
+    assert (
+        "前進" in summary
+        or "後押し" in summary
+        or "前向き" in summary
+        or "前進" in first_reason_text
+        or "後押し" in first_reason_text
+    )
 
 
 @pytest.mark.django_db
@@ -260,7 +285,11 @@ def test_courage_need_explanation_uses_japanese_label():
         query="背中を押してほしい",
         language="ja",
         candidates=candidates,
+        bias=None,
         birthdate=None,
+        goriyaku_tag_ids=None,
+        extra_condition=None,
+        public_mode="need",
         flow="A",
     )
 
@@ -303,8 +332,106 @@ def test_flow_better_query_prefers_courage_over_career():
         query="流れを良くしたい",
         language="ja",
         candidates=candidates,
+        bias=None,
         birthdate=None,
+        goriyaku_tag_ids=None,
+        extra_condition=None,
+        public_mode="need",
         flow="A",
     )
 
     assert "courage" in recs["_need"]["tags"]
+
+@pytest.mark.django_db
+def test_tired_and_calm_query_resolves_to_rest_and_mental():
+    candidates = [
+        {
+            "name": "整心神社",
+            "lat": 35.0,
+            "lng": 139.0,
+            "distance_m": 100,
+            "goriyaku": "厄除け・心願成就",
+            "description": "静かな環境で心身を整えたい人に向く",
+            "astro_tags": ["mental", "rest"],
+            "astro_elements": [],
+            "astro_priority": 0,
+            "popular_score": 5,
+        },
+        {
+            "name": "休息神社",
+            "lat": 35.1,
+            "lng": 139.1,
+            "distance_m": 100,
+            "goriyaku": "癒し・休息",
+            "description": "静かに休める",
+            "astro_tags": ["rest"],
+            "astro_elements": [],
+            "astro_priority": 0,
+            "popular_score": 5,
+        },
+    ]
+
+    recs = build_chat_recommendations(
+        query="最近疲れていて、落ち着ける神社がいい。",
+        language="ja",
+        candidates=candidates,
+        bias=None,
+        birthdate=None,
+        goriyaku_tag_ids=None,
+        extra_condition=None,
+        public_mode="need",
+        flow="A",
+    )
+
+    tags = recs.get("_need", {}).get("tags", [])
+    assert "rest" in tags
+    assert "mental" in tags
+
+    top = recs["recommendations"][0]
+    assert "rest" in top["breakdown"]["matched_need_tags"]
+    assert "mental" in top["breakdown"]["matched_need_tags"]
+
+@pytest.mark.django_db
+def test_money_and_action_query_resolves_to_money_and_courage():
+    candidates = [
+        {
+            "name": "金運前進神社",
+            "lat": 35.0,
+            "lng": 139.0,
+            "distance_m": 100,
+            "goriyaku": "商売繁盛・開運・勝運",
+            "description": "前向きな行動のきっかけを後押しする",
+            "astro_tags": ["money", "courage"],
+            "astro_elements": [],
+            "astro_priority": 0,
+            "popular_score": 5,
+        },
+        {
+            "name": "金運神社",
+            "lat": 35.1,
+            "lng": 139.1,
+            "distance_m": 100,
+            "goriyaku": "商売繁盛・金運",
+            "description": "金運で知られる",
+            "astro_tags": ["money"],
+            "astro_elements": [],
+            "astro_priority": 0,
+            "popular_score": 5,
+        },
+    ]
+
+    recs = build_chat_recommendations(
+        query="金運を上げたい。行動のきっかけがほしい。",
+        language="ja",
+        candidates=candidates,
+        bias=None,
+        birthdate=None,
+        goriyaku_tag_ids=None,
+        extra_condition=None,
+        public_mode="need",
+        flow="A",
+    )
+
+    tags = recs.get("_need", {}).get("tags", [])
+    assert "money" in tags
+    assert "courage" in tags

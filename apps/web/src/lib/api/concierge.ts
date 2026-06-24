@@ -3,24 +3,6 @@ import axios from "axios";
 import api from "./client";
 import { apiPost } from "./http";
 
-export type ConciergeNeed = {
-  tags?: string[];
-  hits?: Record<string, string[]>;
-};
-
-export type ConciergeBreakdown = {
-  score_element: number; // 0/1/2
-  score_need: number;
-  score_popular: number; // 0..1
-  score_total: number;
-  weights: {
-    element: number;
-    need: number;
-    popular: number;
-  };
-  matched_need_tags: string[];
-};
-
 export type {
   ConciergeThread,
   ConciergeMessage,
@@ -29,6 +11,10 @@ export type {
   ConciergeChatData,
   ConciergeChatResponse,
   ConciergeThreadDetail,
+  ConciergeNeed,
+  ConciergeBreakdown,
+  ConciergeReasonFactAxis,
+  ConciergeReasonFacts,
 } from "./concierge/types";
 
 import type {
@@ -41,14 +27,12 @@ import type {
 /* ====== チャット API ====== */
 
 export async function postConciergeChat(body: ConciergeChatRequest): Promise<ConciergeChatResponse> {
-  // ★ ここは今まで通り Next の /api/concierge/chat/ プロキシを叩く
   return apiPost<ConciergeChatResponse>("/concierge/chat/", body);
 }
 
 /* ====== スレッド API ====== */
 
 export async function fetchThreads(): Promise<ConciergeThread[]> {
-  // ★ ここも Next 経由（/api/concierge-threads/）にそろえる
   const res = await api.get<ConciergeThread[] | { results: ConciergeThread[] }>("/concierge-threads/");
   const data = res.data as any;
 
@@ -58,15 +42,14 @@ export async function fetchThreads(): Promise<ConciergeThread[]> {
   return [];
 }
 
-export async function fetchThreadDetail(threadId: string): Promise<ConciergeThreadDetail | null> {
+export async function getConciergeThread(tid: string): Promise<ConciergeThreadDetail | null> {
   try {
-    const res = await api.get<ConciergeThreadDetail>(`/concierge-threads/${threadId}/`);
+    const res = await api.get<ConciergeThreadDetail>(`/concierge-threads/${encodeURIComponent(tid)}/`);
     return res.data;
   } catch (err) {
     if (axios.isAxiosError(err)) {
       const status = err.response?.status;
       if (status === 401 || status === 403 || status === 404) {
-        // 未ログイン or 見えない/消えたスレッド
         return null;
       }
     }
@@ -74,11 +57,6 @@ export async function fetchThreadDetail(threadId: string): Promise<ConciergeThre
   }
 }
 
-export async function getConciergeThread(tid: string) {
-  const res = await fetch(`/api/concierge-threads/${encodeURIComponent(tid)}/`, {
-    cache: "no-store",
-    credentials: "include",
-  });
-  if (!res.ok) throw new Error(`getConciergeThread failed: ${res.status}`);
-  return res.json();
+export async function fetchThreadDetail(threadId: string): Promise<ConciergeThreadDetail | null> {
+  return getConciergeThread(threadId);
 }

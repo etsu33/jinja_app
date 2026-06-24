@@ -9,6 +9,11 @@
     "astro_elements": [
       "火"
     ],
+    "visit_style_tags": [
+      "nature",
+      "quiet",
+      "classic"
+    ],
     "location": {
       "lat": 35.6764,
       "lng": 139.6993
@@ -42,7 +47,12 @@
     "location": {
       "lat": 34.455,
       "lng": 136.7256
-    }
+    },
+    "visit_style_tags": [
+      "classic",
+      "reset",
+      "nature"
+    ]
   },
   {
     "name_jp": "出雲大社",
@@ -72,7 +82,12 @@
     "location": {
       "lat": 34.6814,
       "lng": 135.8481
-    }
+    },
+    "visit_style_tags": [
+      "classic",
+      "reset",
+      "nature"
+    ]
   },
   {
     "name_jp": "太宰府天満宮",
@@ -87,7 +102,12 @@
     "location": {
       "lat": 33.5213,
       "lng": 130.5351
-    }
+    },
+    "visit_style_tags": [
+      "study",
+      "classic",
+      "reset"
+    ]
   },
   {
     "name_jp": "熱田神宮",
@@ -102,7 +122,12 @@
     "location": {
       "lat": 35.1279,
       "lng": 136.9114
-    }
+    },
+    "visit_style_tags": [
+      "classic",
+      "reset",
+      "business"
+    ]
   },
   {
     "name_jp": "宇佐神宮",
@@ -147,7 +172,12 @@
     "location": {
       "lat": 35.3256,
       "lng": 139.5566
-    }
+    },
+    "visit_style_tags": [
+      "classic",
+      "business",
+      "reset"
+    ]
   },
   {
     "name_jp": "住吉大社",
@@ -252,7 +282,12 @@
     "location": {
       "lat": 35.9221,
       "lng": 138.9336
-    }
+    },
+    "visit_style_tags": [
+      "nature",
+      "reset",
+      "quiet"
+    ]
   },
   {
     "name_jp": "箱根神社",
@@ -267,7 +302,12 @@
     "location": {
       "lat": 35.2067,
       "lng": 139.0237
-    }
+    },
+    "visit_style_tags": [
+      "nature",
+      "reset",
+      "classic"
+    ]
   },
   {
     "name_jp": "富士山本宮浅間大社",
@@ -282,7 +322,12 @@
     "location": {
       "lat": 35.2229,
       "lng": 138.6216
-    }
+    },
+    "visit_style_tags": [
+      "nature",
+      "classic",
+      "reset"
+    ]
   },
   {
     "name_jp": "諏訪大社（上社本宮）",
@@ -297,7 +342,12 @@
     "location": {
       "lat": 36.0404,
       "lng": 138.1184
-    }
+    },
+    "visit_style_tags": [
+      "nature",
+      "classic",
+      "reset"
+    ]
   },
   {
     "name_jp": "長太稲荷神社",
@@ -339,6 +389,11 @@
     "astro_elements": [
       "風"
     ],
+    "visit_style_tags": [
+      "classic",
+      "urban",
+      "business"
+    ],
     "location": {
       "lat": 35.7019,
       "lng": 139.7674
@@ -354,6 +409,11 @@
     "astro_elements": [
       "水"
     ],
+    "visit_style_tags": [
+      "classic",
+      "tourism",
+      "less_crowded"
+    ],
     "location": {
       "lat": 35.7152,
       "lng": 139.7974
@@ -367,6 +427,11 @@
     "goriyaku": "厄除け・縁結び・開運",
     "kyusei": null,
     "astro_elements": [],
+    "visit_style_tags": [
+      "classic",
+      "urban",
+      "reset"
+    ],
     "location": {
       "lat": 35.6681,
       "lng": 139.4776
@@ -380,6 +445,11 @@
     "goriyaku": "八方除・厄除け・開運",
     "kyusei": null,
     "astro_elements": [],
+    "visit_style_tags": [
+      "classic",
+      "reset",
+      "less_crowded"
+    ],
     "location": {
       "lat": 35.3869,
       "lng": 139.3856
@@ -419,6 +489,11 @@
     "goriyaku": "厄除け・八難除・縁結び",
     "kyusei": null,
     "astro_elements": [],
+    "visit_style_tags": [
+      "quiet",
+      "urban",
+      "reset"
+    ],
     "location": {
       "lat": 35.705,
       "lng": 139.6353
@@ -474,7 +549,12 @@
     "location": {
       "lat": 34.8893,
       "lng": 136.4204
-    }
+    },
+    "visit_style_tags": [
+      "business",
+      "reset",
+      "classic"
+    ]
   },
   {
     "name_jp": "賀茂御祖神社（下鴨神社）",
@@ -526,7 +606,12 @@
     "location": {
       "lat": 34.6863,
       "lng": 133.8483
-    }
+    },
+    "visit_style_tags": [
+      "study",
+      "classic",
+      "reset"
+    ]
   },
   {
     "name_jp": "厳島神社",
@@ -539,7 +624,12 @@
     "location": {
       "lat": 34.2959,
       "lng": 132.3199
-    }
+    },
+    "visit_style_tags": [
+      "nature",
+      "classic",
+      "reset"
+    ]
   },
   {
     "name_jp": "宮地嶽神社",
@@ -562,6 +652,11 @@
     "goriyaku": "縁結び・家庭円満・厄除け",
     "kyusei": null,
     "astro_elements": [],
+    "visit_style_tags": [
+      "classic",
+      "love",
+      "nature"
+    ],
     "location": {
       "lat": 35.9258,
       "lng": 139.4912
@@ -591,7 +686,12 @@
     "location": {
       "lat": 32.7118,
       "lng": 131.3078
-    }
+    },
+    "visit_style_tags": [
+      "nature",
+      "classic",
+      "reset"
+    ]
   },
   {
     "name_jp": "日枝神社",
@@ -602,6 +702,11 @@
     "kyusei": null,
     "astro_elements": [
       "火"
+    ],
+    "visit_style_tags": [
+      "quiet",
+      "formal",
+      "classic"
     ],
     "location": {
       "lat": 35.6745,
@@ -618,6 +723,11 @@
     "astro_elements": [
       "水"
     ],
+    "visit_style_tags": [
+      "quiet",
+      "urban",
+      "love"
+    ],
     "location": {
       "lat": 35.7006,
       "lng": 139.7454
@@ -632,6 +742,11 @@
     "kyusei": null,
     "astro_elements": [
       "風"
+    ],
+    "visit_style_tags": [
+      "classic",
+      "urban",
+      "business"
     ],
     "location": {
       "lat": 35.6581,
@@ -648,6 +763,11 @@
     "astro_elements": [
       "火"
     ],
+    "visit_style_tags": [
+      "reset",
+      "urban",
+      "business"
+    ],
     "location": {
       "lat": 35.6627,
       "lng": 139.7487
@@ -662,6 +782,11 @@
     "kyusei": null,
     "astro_elements": [
       "土"
+    ],
+    "visit_style_tags": [
+      "classic",
+      "urban",
+      "study"
     ],
     "location": {
       "lat": 35.7034,
@@ -678,6 +803,11 @@
     "astro_elements": [
       "水"
     ],
+    "visit_style_tags": [
+      "quiet",
+      "classic",
+      "nature"
+    ],
     "location": {
       "lat": 35.7174,
       "lng": 139.7603
@@ -692,6 +822,11 @@
     "kyusei": null,
     "astro_elements": [
       "土"
+    ],
+    "visit_style_tags": [
+      "classic",
+      "urban",
+      "business"
     ],
     "location": {
       "lat": 35.6733,
@@ -708,6 +843,11 @@
     "astro_elements": [
       "火"
     ],
+    "visit_style_tags": [
+      "reset",
+      "urban",
+      "business"
+    ],
     "location": {
       "lat": 35.6229,
       "lng": 139.7426
@@ -723,6 +863,11 @@
     "astro_elements": [
       "水"
     ],
+    "visit_style_tags": [
+      "quiet",
+      "nature",
+      "classic"
+    ],
     "location": {
       "lat": 35.6835,
       "lng": 139.6295
@@ -737,6 +882,11 @@
     "kyusei": null,
     "astro_elements": [
       "水"
+    ],
+    "visit_style_tags": [
+      "nature",
+      "love",
+      "reset"
     ],
     "location": {
       "lat": 35.3013,
@@ -786,7 +936,12 @@
     "location": {
       "lat": 35.1217,
       "lng": 135.762
-    }
+    },
+    "visit_style_tags": [
+      "nature",
+      "quiet",
+      "love"
+    ]
   },
   {
     "name_jp": "八坂神社",
@@ -818,7 +973,6 @@
       "lng": 130.4086
     }
   },
-
   {
     "name_jp": "靖國神社",
     "address": "東京都千代田区九段北3-1-1",
@@ -826,8 +980,13 @@
     "longitude": 139.743,
     "goriyaku": "厄除け・家内安全・勝運",
     "kyusei": null,
-    "astro_elements": ["火"],
-    "location": { "lat": 35.6944, "lng": 139.743 }
+    "astro_elements": [
+      "火"
+    ],
+    "location": {
+      "lat": 35.6944,
+      "lng": 139.743
+    }
   },
   {
     "name_jp": "乃木神社",
@@ -836,8 +995,18 @@
     "longitude": 139.7268,
     "goriyaku": "仕事運・勝運・家内安全",
     "kyusei": null,
-    "astro_elements": ["土"],
-    "location": { "lat": 35.6698, "lng": 139.7268 }
+    "astro_elements": [
+      "土"
+    ],
+    "visit_style_tags": [
+      "quiet",
+      "urban",
+      "classic"
+    ],
+    "location": {
+      "lat": 35.6698,
+      "lng": 139.7268
+    }
   },
   {
     "name_jp": "赤坂氷川神社",
@@ -846,8 +1015,18 @@
     "longitude": 139.7361,
     "goriyaku": "縁結び・厄除け・仕事運",
     "kyusei": null,
-    "astro_elements": ["水"],
-    "location": { "lat": 35.671, "lng": 139.7361 }
+    "astro_elements": [
+      "水"
+    ],
+    "visit_style_tags": [
+      "quiet",
+      "urban",
+      "love"
+    ],
+    "location": {
+      "lat": 35.671,
+      "lng": 139.7361
+    }
   },
   {
     "name_jp": "花園神社",
@@ -856,8 +1035,18 @@
     "longitude": 139.7046,
     "goriyaku": "商売繁盛・芸能運・開運",
     "kyusei": null,
-    "astro_elements": ["火"],
-    "location": { "lat": 35.6941, "lng": 139.7046 }
+    "astro_elements": [
+      "火"
+    ],
+    "visit_style_tags": [
+      "urban",
+      "business",
+      "classic"
+    ],
+    "location": {
+      "lat": 35.6941,
+      "lng": 139.7046
+    }
   },
   {
     "name_jp": "小網神社",
@@ -866,8 +1055,18 @@
     "longitude": 139.7832,
     "goriyaku": "強運厄除け・金運・商売繁盛",
     "kyusei": null,
-    "astro_elements": ["水"],
-    "location": { "lat": 35.6843, "lng": 139.7832 }
+    "astro_elements": [
+      "水"
+    ],
+    "visit_style_tags": [
+      "business",
+      "reset",
+      "urban"
+    ],
+    "location": {
+      "lat": 35.6843,
+      "lng": 139.7832
+    }
   },
   {
     "name_jp": "鳥越神社",
@@ -876,8 +1075,18 @@
     "longitude": 139.7852,
     "goriyaku": "開運・厄除け・商売繁盛",
     "kyusei": null,
-    "astro_elements": ["土"],
-    "location": { "lat": 35.7037, "lng": 139.7852 }
+    "astro_elements": [
+      "土"
+    ],
+    "visit_style_tags": [
+      "classic",
+      "urban",
+      "business"
+    ],
+    "location": {
+      "lat": 35.7037,
+      "lng": 139.7852
+    }
   },
   {
     "name_jp": "湯島天満宮",
@@ -886,8 +1095,18 @@
     "longitude": 139.7695,
     "goriyaku": "学業成就・合格祈願・開運",
     "kyusei": null,
-    "astro_elements": ["土"],
-    "location": { "lat": 35.7088, "lng": 139.7695 }
+    "astro_elements": [
+      "土"
+    ],
+    "visit_style_tags": [
+      "study",
+      "classic",
+      "urban"
+    ],
+    "location": {
+      "lat": 35.7088,
+      "lng": 139.7695
+    }
   },
   {
     "name_jp": "白山神社",
@@ -896,8 +1115,18 @@
     "longitude": 139.7469,
     "goriyaku": "厄除け・縁結び・家内安全",
     "kyusei": null,
-    "astro_elements": ["水"],
-    "location": { "lat": 35.7214, "lng": 139.7469 }
+    "astro_elements": [
+      "水"
+    ],
+    "visit_style_tags": [
+      "quiet",
+      "urban",
+      "love"
+    ],
+    "location": {
+      "lat": 35.7214,
+      "lng": 139.7469
+    }
   },
   {
     "name_jp": "王子神社",
@@ -906,8 +1135,18 @@
     "longitude": 139.738,
     "goriyaku": "開運・厄除け・家内安全",
     "kyusei": null,
-    "astro_elements": ["風"],
-    "location": { "lat": 35.754, "lng": 139.738 }
+    "astro_elements": [
+      "風"
+    ],
+    "visit_style_tags": [
+      "quiet",
+      "classic",
+      "reset"
+    ],
+    "location": {
+      "lat": 35.754,
+      "lng": 139.738
+    }
   },
   {
     "name_jp": "千住神社",
@@ -916,8 +1155,18 @@
     "longitude": 139.7952,
     "goriyaku": "開運・厄除け・商売繁盛",
     "kyusei": null,
-    "astro_elements": ["火"],
-    "location": { "lat": 35.7489, "lng": 139.7952 }
+    "astro_elements": [
+      "火"
+    ],
+    "visit_style_tags": [
+      "classic",
+      "urban",
+      "business"
+    ],
+    "location": {
+      "lat": 35.7489,
+      "lng": 139.7952
+    }
   },
   {
     "name_jp": "葛西神社",
@@ -926,8 +1175,18 @@
     "longitude": 139.8698,
     "goriyaku": "厄除け・勝運・家内安全",
     "kyusei": null,
-    "astro_elements": ["土"],
-    "location": { "lat": 35.7692, "lng": 139.8698 }
+    "astro_elements": [
+      "土"
+    ],
+    "visit_style_tags": [
+      "classic",
+      "urban",
+      "reset"
+    ],
+    "location": {
+      "lat": 35.7692,
+      "lng": 139.8698
+    }
   },
   {
     "name_jp": "穴守稲荷神社",
@@ -936,8 +1195,18 @@
     "longitude": 139.7462,
     "goriyaku": "商売繁盛・開運・交通安全",
     "kyusei": null,
-    "astro_elements": ["火"],
-    "location": { "lat": 35.5516, "lng": 139.7462 }
+    "astro_elements": [
+      "火"
+    ],
+    "visit_style_tags": [
+      "business",
+      "urban",
+      "reset"
+    ],
+    "location": {
+      "lat": 35.5516,
+      "lng": 139.7462
+    }
   },
   {
     "name_jp": "多摩川浅間神社",
@@ -946,8 +1215,18 @@
     "longitude": 139.6688,
     "goriyaku": "開運・縁結び・家内安全",
     "kyusei": null,
-    "astro_elements": ["水"],
-    "location": { "lat": 35.5898, "lng": 139.6688 }
+    "astro_elements": [
+      "水"
+    ],
+    "visit_style_tags": [
+      "nature",
+      "quiet",
+      "love"
+    ],
+    "location": {
+      "lat": 35.5898,
+      "lng": 139.6688
+    }
   },
   {
     "name_jp": "武蔵御嶽神社",
@@ -956,8 +1235,18 @@
     "longitude": 139.1825,
     "goriyaku": "厄除け・開運・勝運",
     "kyusei": null,
-    "astro_elements": ["土"],
-    "location": { "lat": 35.8019, "lng": 139.1825 }
+    "astro_elements": [
+      "土"
+    ],
+    "visit_style_tags": [
+      "nature",
+      "reset",
+      "quiet"
+    ],
+    "location": {
+      "lat": 35.8019,
+      "lng": 139.1825
+    }
   },
   {
     "name_jp": "武蔵一宮 氷川女體神社",
@@ -966,8 +1255,13 @@
     "longitude": 139.6828,
     "goriyaku": "縁結び・安産・家内安全",
     "kyusei": null,
-    "astro_elements": ["水"],
-    "location": { "lat": 35.8614, "lng": 139.6828 }
+    "astro_elements": [
+      "水"
+    ],
+    "location": {
+      "lat": 35.8614,
+      "lng": 139.6828
+    }
   },
   {
     "name_jp": "調神社",
@@ -976,8 +1270,18 @@
     "longitude": 139.6497,
     "goriyaku": "開運・勝運・厄除け",
     "kyusei": null,
-    "astro_elements": ["土"],
-    "location": { "lat": 35.8538, "lng": 139.6497 }
+    "astro_elements": [
+      "土"
+    ],
+    "visit_style_tags": [
+      "classic",
+      "reset",
+      "less_crowded"
+    ],
+    "location": {
+      "lat": 35.8538,
+      "lng": 139.6497
+    }
   },
   {
     "name_jp": "秩父神社",
@@ -986,8 +1290,18 @@
     "longitude": 139.0848,
     "goriyaku": "開運・学業成就・家内安全",
     "kyusei": null,
-    "astro_elements": ["風"],
-    "location": { "lat": 35.9917, "lng": 139.0848 }
+    "astro_elements": [
+      "風"
+    ],
+    "location": {
+      "lat": 35.9917,
+      "lng": 139.0848
+    },
+    "visit_style_tags": [
+      "study",
+      "classic",
+      "urban"
+    ]
   },
   {
     "name_jp": "鷲宮神社",
@@ -996,8 +1310,13 @@
     "longitude": 139.669,
     "goriyaku": "開運・厄除け・家内安全",
     "kyusei": null,
-    "astro_elements": ["火"],
-    "location": { "lat": 36.0958, "lng": 139.669 }
+    "astro_elements": [
+      "火"
+    ],
+    "location": {
+      "lat": 36.0958,
+      "lng": 139.669
+    }
   },
   {
     "name_jp": "箭弓稲荷神社",
@@ -1006,8 +1325,13 @@
     "longitude": 139.4014,
     "goriyaku": "商売繁盛・開運・芸能運",
     "kyusei": null,
-    "astro_elements": ["土"],
-    "location": { "lat": 36.0412, "lng": 139.4014 }
+    "astro_elements": [
+      "土"
+    ],
+    "location": {
+      "lat": 36.0412,
+      "lng": 139.4014
+    }
   },
   {
     "name_jp": "安房神社",
@@ -1016,8 +1340,13 @@
     "longitude": 139.8297,
     "goriyaku": "仕事運・開運・技芸上達",
     "kyusei": null,
-    "astro_elements": ["風"],
-    "location": { "lat": 34.9724, "lng": 139.8297 }
+    "astro_elements": [
+      "風"
+    ],
+    "location": {
+      "lat": 34.9724,
+      "lng": 139.8297
+    }
   },
   {
     "name_jp": "千葉神社",
@@ -1026,8 +1355,13 @@
     "longitude": 140.1246,
     "goriyaku": "厄除け・八方除け・開運",
     "kyusei": null,
-    "astro_elements": ["水"],
-    "location": { "lat": 35.6114, "lng": 140.1246 }
+    "astro_elements": [
+      "水"
+    ],
+    "location": {
+      "lat": 35.6114,
+      "lng": 140.1246
+    }
   },
   {
     "name_jp": "玉前神社",
@@ -1036,8 +1370,13 @@
     "longitude": 140.365,
     "goriyaku": "縁結び・安産・開運",
     "kyusei": null,
-    "astro_elements": ["水"],
-    "location": { "lat": 35.3722, "lng": 140.365 }
+    "astro_elements": [
+      "水"
+    ],
+    "location": {
+      "lat": 35.3722,
+      "lng": 140.365
+    }
   },
   {
     "name_jp": "櫻木神社",
@@ -1046,8 +1385,18 @@
     "longitude": 139.8678,
     "goriyaku": "縁結び・開運・学業成就",
     "kyusei": null,
-    "astro_elements": ["火"],
-    "location": { "lat": 35.9559, "lng": 139.8678 }
+    "astro_elements": [
+      "火"
+    ],
+    "location": {
+      "lat": 35.9559,
+      "lng": 139.8678
+    },
+    "visit_style_tags": [
+      "study",
+      "love",
+      "reset"
+    ]
   },
   {
     "name_jp": "大洗磯前神社",
@@ -1056,8 +1405,18 @@
     "longitude": 140.5749,
     "goriyaku": "海上安全・厄除け・開運",
     "kyusei": null,
-    "astro_elements": ["水"],
-    "location": { "lat": 36.314, "lng": 140.5749 }
+    "astro_elements": [
+      "水"
+    ],
+    "location": {
+      "lat": 36.314,
+      "lng": 140.5749
+    },
+    "visit_style_tags": [
+      "nature",
+      "reset",
+      "classic"
+    ]
   },
   {
     "name_jp": "笠間稲荷神社",
@@ -1066,8 +1425,13 @@
     "longitude": 140.2669,
     "goriyaku": "商売繁盛・五穀豊穣・開運",
     "kyusei": null,
-    "astro_elements": ["火"],
-    "location": { "lat": 36.3846, "lng": 140.2669 }
+    "astro_elements": [
+      "火"
+    ],
+    "location": {
+      "lat": 36.3846,
+      "lng": 140.2669
+    }
   },
   {
     "name_jp": "酒列磯前神社",
@@ -1076,8 +1440,13 @@
     "longitude": 140.6165,
     "goriyaku": "病気平癒・厄除け・開運",
     "kyusei": null,
-    "astro_elements": ["土"],
-    "location": { "lat": 36.3941, "lng": 140.6165 }
+    "astro_elements": [
+      "土"
+    ],
+    "location": {
+      "lat": 36.3941,
+      "lng": 140.6165
+    }
   },
   {
     "name_jp": "宇都宮二荒山神社",
@@ -1086,8 +1455,13 @@
     "longitude": 139.8827,
     "goriyaku": "開運・縁結び・家内安全",
     "kyusei": null,
-    "astro_elements": ["風"],
-    "location": { "lat": 36.5607, "lng": 139.8827 }
+    "astro_elements": [
+      "風"
+    ],
+    "location": {
+      "lat": 36.5607,
+      "lng": 139.8827
+    }
   },
   {
     "name_jp": "足利織姫神社",
@@ -1096,8 +1470,18 @@
     "longitude": 139.4568,
     "goriyaku": "縁結び・仕事運・学業成就",
     "kyusei": null,
-    "astro_elements": ["水"],
-    "location": { "lat": 36.3418, "lng": 139.4568 }
+    "astro_elements": [
+      "水"
+    ],
+    "location": {
+      "lat": 36.3418,
+      "lng": 139.4568
+    },
+    "visit_style_tags": [
+      "study",
+      "love",
+      "business"
+    ]
   },
   {
     "name_jp": "古峯神社",
@@ -1106,8 +1490,13 @@
     "longitude": 139.5208,
     "goriyaku": "火防・厄除け・開運",
     "kyusei": null,
-    "astro_elements": ["火"],
-    "location": { "lat": 36.7427, "lng": 139.5208 }
+    "astro_elements": [
+      "火"
+    ],
+    "location": {
+      "lat": 36.7427,
+      "lng": 139.5208
+    }
   },
   {
     "name_jp": "冠稲荷神社",
@@ -1116,8 +1505,13 @@
     "longitude": 139.3565,
     "goriyaku": "縁結び・子宝・安産",
     "kyusei": null,
-    "astro_elements": ["水"],
-    "location": { "lat": 36.2717, "lng": 139.3565 }
+    "astro_elements": [
+      "水"
+    ],
+    "location": {
+      "lat": 36.2717,
+      "lng": 139.3565
+    }
   },
   {
     "name_jp": "妙義神社",
@@ -1126,8 +1520,13 @@
     "longitude": 138.7547,
     "goriyaku": "開運・厄除け・勝運",
     "kyusei": null,
-    "astro_elements": ["土"],
-    "location": { "lat": 36.294, "lng": 138.7547 }
+    "astro_elements": [
+      "土"
+    ],
+    "location": {
+      "lat": 36.294,
+      "lng": 138.7547
+    }
   },
   {
     "name_jp": "赤城神社",
@@ -1136,8 +1535,13 @@
     "longitude": 139.1936,
     "goriyaku": "縁結び・開運・心願成就",
     "kyusei": null,
-    "astro_elements": ["火"],
-    "location": { "lat": 36.5601, "lng": 139.1936 }
+    "astro_elements": [
+      "火"
+    ],
+    "location": {
+      "lat": 36.5601,
+      "lng": 139.1936
+    }
   },
   {
     "name_jp": "鶴嶺八幡宮",
@@ -1146,8 +1550,13 @@
     "longitude": 139.4047,
     "goriyaku": "勝運・厄除け・家内安全",
     "kyusei": null,
-    "astro_elements": ["土"],
-    "location": { "lat": 35.3375, "lng": 139.4047 }
+    "astro_elements": [
+      "土"
+    ],
+    "location": {
+      "lat": 35.3375,
+      "lng": 139.4047
+    }
   },
   {
     "name_jp": "森戸大明神",
@@ -1156,8 +1565,18 @@
     "longitude": 139.578,
     "goriyaku": "開運・縁結び・海上安全",
     "kyusei": null,
-    "astro_elements": ["水"],
-    "location": { "lat": 35.2747, "lng": 139.578 }
+    "astro_elements": [
+      "水"
+    ],
+    "location": {
+      "lat": 35.2747,
+      "lng": 139.578
+    },
+    "visit_style_tags": [
+      "nature",
+      "love",
+      "reset"
+    ]
   },
   {
     "name_jp": "報徳二宮神社",
@@ -1166,8 +1585,13 @@
     "longitude": 139.1548,
     "goriyaku": "仕事運・学業成就・開運",
     "kyusei": null,
-    "astro_elements": ["風"],
-    "location": { "lat": 35.2508, "lng": 139.1548 }
+    "astro_elements": [
+      "風"
+    ],
+    "location": {
+      "lat": 35.2508,
+      "lng": 139.1548
+    }
   },
   {
     "name_jp": "九頭龍神社 新宮",
@@ -1176,8 +1600,18 @@
     "longitude": 139.0227,
     "goriyaku": "縁結び・開運・心願成就",
     "kyusei": null,
-    "astro_elements": ["水"],
-    "location": { "lat": 35.2049, "lng": 139.0227 }
+    "astro_elements": [
+      "水"
+    ],
+    "location": {
+      "lat": 35.2049,
+      "lng": 139.0227
+    },
+    "visit_style_tags": [
+      "nature",
+      "love",
+      "reset"
+    ]
   },
   {
     "name_jp": "平塚八幡宮",
@@ -1186,8 +1620,13 @@
     "longitude": 139.352,
     "goriyaku": "厄除け・勝運・家内安全",
     "kyusei": null,
-    "astro_elements": ["火"],
-    "location": { "lat": 35.3291, "lng": 139.352 }
+    "astro_elements": [
+      "火"
+    ],
+    "location": {
+      "lat": 35.3291,
+      "lng": 139.352
+    }
   },
   {
     "name_jp": "忌宮神社",
@@ -1196,8 +1635,13 @@
     "longitude": 130.9876,
     "goriyaku": "厄除け・開運・家内安全",
     "kyusei": null,
-    "astro_elements": ["土"],
-    "location": { "lat": 34.0415, "lng": 130.9876 }
+    "astro_elements": [
+      "土"
+    ],
+    "location": {
+      "lat": 34.0415,
+      "lng": 130.9876
+    }
   },
   {
     "name_jp": "高良大社",
@@ -1206,8 +1650,13 @@
     "longitude": 130.5603,
     "goriyaku": "厄除け・延命長寿・開運",
     "kyusei": null,
-    "astro_elements": ["風"],
-    "location": { "lat": 33.3058, "lng": 130.5603 }
+    "astro_elements": [
+      "風"
+    ],
+    "location": {
+      "lat": 33.3058,
+      "lng": 130.5603
+    }
   },
   {
     "name_jp": "寳登山神社",
@@ -1216,7 +1665,9 @@
     "longitude": 139.1039652,
     "goriyaku": "開運・火防・家内安全",
     "kyusei": null,
-    "astro_elements": ["風"],
+    "astro_elements": [
+      "風"
+    ],
     "location": {
       "lat": 36.0924821,
       "lng": 139.1039652
@@ -1229,7 +1680,9 @@
     "longitude": 135.6516,
     "goriyaku": "開運・厄除け・商売繁盛",
     "kyusei": null,
-    "astro_elements": ["火"],
+    "astro_elements": [
+      "火"
+    ],
     "location": {
       "lat": 34.6716,
       "lng": 135.6516
@@ -1242,7 +1695,9 @@
     "longitude": 135.7583,
     "goriyaku": "足腰健康・厄除け・勝運",
     "kyusei": null,
-    "astro_elements": ["水"],
+    "astro_elements": [
+      "水"
+    ],
     "location": {
       "lat": 35.0186,
       "lng": 135.7583
@@ -1255,7 +1710,9 @@
     "longitude": 131.1211,
     "goriyaku": "開運・家内安全・農業守護",
     "kyusei": null,
-    "astro_elements": ["風"],
+    "astro_elements": [
+      "風"
+    ],
     "location": {
       "lat": 32.9519,
       "lng": 131.1211

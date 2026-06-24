@@ -4,28 +4,47 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import ConciergeLayout from "@/features/concierge/components/ConciergeLayout";
-import { useConciergeChat } from "@/features/concierge/hooks";
+import { useConciergeChat, useConciergeThreads } from "@/features/concierge/hooks";
+import {
+  getConciergeThread,
+  type ConciergeMessage,
+  type ConciergeThread,
+  type ConciergeRecommendation,
+  type ConciergeThreadDetail,
+} from "@/lib/api/concierge";
 
-import type { ConciergeMessage, ConciergeThread, ConciergeRecommendation } from "@/lib/api/concierge";
 import type { StopReason, UnifiedConciergeResponse } from "@/features/concierge/types/unified";
 import type { ChatEvent } from "@/features/concierge/types/chat";
 import type { ConciergeChatRequestV1, ConciergeChatFilters } from "@/features/concierge/types/chatRequest";
 import { buildDummySections } from "@/features/concierge/sections/dummy";
 
 import ConciergeSectionsRenderer from "@/features/concierge/components/ConciergeSectionsRenderer";
+import ConciergeEntryCard from "@/features/concierge/components/ConciergeEntryCard";
 import { buildPayloadFromUnified } from "@/features/concierge/buildPayloadFromUnified";
 import { SHOW_NEW_RENDERER } from "@/features/concierge/rendererMode";
 
-import type { RendererAction } from "@/features/concierge/sections/types";
+import type { RendererAction, ConciergeSectionsPayload } from "@/features/concierge/sections/types";
 import { getGoriyakuTags } from "@/lib/api/tags";
 import Link from "next/link";
+import { useAuth } from "@/lib/auth/AuthProvider";
+import { useBilling } from "@/features/billing/hooks/useBilling";
+import { isAuthRequiredForAction } from "@/lib/auth/actionGuards";
+import { initialConciergeSessionState, type ConciergeSessionState } from "@/features/concierge/types";
+import { resolveDisplayLabel, resolveDisplayName } from "@/lib/profile/resolveDisplayName";
 
 import { conciergeLog } from "@/lib/log/concierge";
-
 import { EVT_CLOSE_CONCIERGE } from "@/lib/events";
+const conciergeCardClass = "rounded-3xl border border-stone-200/45 bg-white/75 p-6";
 
-console.log("DEBUG_FLAG", process.env.NEXT_PUBLIC_DEBUG_LOG);
+import { isValidISODate, normalizeBirthdateInput } from "@/lib/date/normalizeBirthdateInput";
+import { track } from "@/lib/analytics/track";
+import { buildPreviousConsultationSummary } from "@/lib/concierge/buildPreviousConsultationSummary";
+import { compareState } from "@/lib/concierge/compareState";
+import PremiumStateDeltaCard from "@/features/concierge/components/PremiumStateDeltaCard";
 
+import { resolveAccessLevel } from "@/lib/premium/accessLevel";
+import { getVisibilityForCard } from "@/lib/premium/cardVisibility";
+import { trackCardEvent } from "@/lib/analytics/cardEvents";
 
 /* ========================================
  * 型定義とデータ設定
@@ -37,11 +56,23 @@ type AssistantStateEvent = { type: "assistant_state"; unified: UnifiedConciergeR
 type LocalEvent = ChatEvent | AssistantStateEvent;
 
 type EventsByThread = Record<number, LocalEvent[]>;
-type EntryMode = "feel" | "filter";
 
 const STORAGE_KEY = "concierge:eventsByThread";
-const LS_BIRTHDATE_KEY = "concierge:birthdate";
-const LS_ENTRY_MODE = "concierge:entryMode";
+
+type AnonymousConciergeSnapshot = {
+  version: 1;
+  savedAt: string;
+  unified: UnifiedConciergeResponse;
+  filters: {
+    selectedTagIds: number[];
+    extraCondition: string;
+  };
+  session: {
+    sessionNickname: string | null;
+  };
+};
+
+const SS_ANON_SNAPSHOT_KEY = "concierge:anonymousSnapshot:v1";
 
 const ELEMENT_TO_GORIYAKU: Record<Element4, string[]> = {
   火: ["仕事運・出世", "勝運・必勝祈願", "開運招福", "厄除け・方除け"],
@@ -53,43 +84,13 @@ const ELEMENT_TO_GORIYAKU: Record<Element4, string[]> = {
 /* ========================================
  * snap（ナビ/状態遷移を１箇所に集約してログを強制出力）
  * ====================================== */
-function snap(label: string, extra: Record<string, any> = {}) {
-  const s = {
-    label,
-    path: typeof window !== "undefined" ? window.location.pathname + window.location.search : "",
-    t: Number(performance.now().toFixed(1)),
-    ...extra,
-  };
-  console.log("%c[FLOW]", "color:#7c3aed;font-weight:bold", s);
-}
+function snap(_label: string, _extra: Record<string, any> = {}) {}
 
-/* ========================================
- * 便利な関数群
- * ====================================== */
-function isValidISODate(s: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
-  const d = new Date(`${s}T00:00:00Z`);
-  if (Number.isNaN(d.getTime())) return false;
-  const [y, m, dd] = s.split("-").map(Number);
-  return d.getUTCFullYear() === y && d.getUTCMonth() + 1 === m && d.getUTCDate() === dd;
-}
-
-function normalizeISODate(s: string): string | null {
-  const t = (s || "").trim();
-  if (!t) return null;
-
-  const m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-  if (m) {
-    const y = m[1];
-    const mm = m[2].padStart(2, "0");
-    const dd = m[3].padStart(2, "0");
-    const iso = `${y}-${mm}-${dd}`;
-    return isValidISODate(iso) ? iso : null;
-  }
-
-  return isValidISODate(t) ? t : null;
-}
-
+/**
+ * UI補助用の簡易変換。
+ * 推薦根拠の正本ではない。
+ * 正本は backend domain/astrology.py の判定を使う。
+ */
 function birthdateToElement4(birthdateISO: string): Element4 | null {
   if (!isValidISODate(birthdateISO)) return null;
   const [, mm, dd] = birthdateISO.split("-");
@@ -107,6 +108,19 @@ function birthdateToElement4(birthdateISO: string): Element4 | null {
   if (md >= 1222 || md <= 119) return "地";
   if (md >= 120 && md <= 218) return "風";
   return "水";
+}
+
+function isBirthdateOnlyText(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  return normalizeBirthdateInput(trimmed) !== null;
+}
+
+function normalizeQueryText(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  if (isBirthdateOnlyText(trimmed)) return "";
+  return trimmed;
 }
 
 function deriveMessages(events: LocalEvent[], threadId: number): ConciergeMessage[] {
@@ -148,11 +162,263 @@ function promoteThread(map: EventsByThread, fromTid: number, toTid: number): Eve
   return next;
 }
 
-function getMetaReply(payload: any): { reply: string | null; isLimitReached: boolean } {
-  const meta = payload?.meta;
-  const reply = typeof meta?.reply === "string" ? meta.reply : null;
-  const isLimitReached = meta?.note === "limit-reached" || meta?.remainingFree === 0;
-  return { reply, isLimitReached };
+function threadDetailToUnified(thread: ConciergeThreadDetail | null): UnifiedConciergeResponse | null {
+  if (!thread) return null;
+
+  const root = thread as any;
+  const dataLike =
+    (root?.data && typeof root.data === "object" && !Array.isArray(root.data) ? root.data : null) ?? root;
+
+  const recommendationsV2 =
+    (Array.isArray(dataLike?.recommendations_v2) ? dataLike.recommendations_v2 : null) ??
+    (Array.isArray(root?.recommendations_v2) ? root.recommendations_v2 : null) ??
+    null;
+
+  const recommendations =
+    recommendationsV2 ??
+    (Array.isArray(dataLike?.recommendations) ? dataLike.recommendations : null) ??
+    (Array.isArray(root?.recommendations) ? root.recommendations : null) ??
+    [];
+
+  const signals =
+    (dataLike?._signals && typeof dataLike._signals === "object" ? dataLike._signals : null) ??
+    (root?._signals && typeof root._signals === "object" ? root._signals : null) ??
+    null;
+
+  const reply =
+    typeof root?.reply === "string" ? root.reply : typeof dataLike?.reply === "string" ? dataLike.reply : null;
+
+  const plan =
+    root?.plan === "anonymous" || root?.plan === "free" || root?.plan === "premium"
+      ? root.plan
+      : dataLike?.plan === "anonymous" || dataLike?.plan === "free" || dataLike?.plan === "premium"
+        ? dataLike.plan
+        : null;
+
+  const remaining =
+    typeof root?.remaining === "number"
+      ? root.remaining
+      : typeof dataLike?.remaining === "number"
+        ? dataLike.remaining
+        : null;
+
+  const limit =
+    typeof root?.limit === "number" ? root.limit : typeof dataLike?.limit === "number" ? dataLike.limit : null;
+
+  const limitReached = root?.limitReached === true || dataLike?.limitReached === true;
+
+  return {
+    ok: true,
+    thread: typeof root?.id === "number" ? ({ id: root.id } as any) : undefined,
+    data: {
+      ...(dataLike ?? {}),
+      recommendations,
+      recommendations_v2: recommendationsV2,
+      _signals: signals,
+    },
+    reply,
+    plan,
+    remaining,
+    limit,
+    limitReached,
+    stop_reason: null,
+  } as UnifiedConciergeResponse;
+}
+
+function isAnonymousLikeUnified(u: UnifiedConciergeResponse | null | undefined): boolean {
+  if (!u) return false;
+  const tid = (u as any)?.thread?.id ?? (u as any)?.thread_id ?? (u as any)?.data?.thread_id ?? null;
+  return tid == null || tid === "" || Number(tid) === 0;
+}
+
+function saveAnonymousSnapshot(snapshot: AnonymousConciergeSnapshot) {
+  try {
+    sessionStorage.setItem(SS_ANON_SNAPSHOT_KEY, JSON.stringify(snapshot));
+  } catch {
+    // ignore
+  }
+}
+
+function loadAnonymousSnapshot(): AnonymousConciergeSnapshot | null {
+  try {
+    const raw = sessionStorage.getItem(SS_ANON_SNAPSHOT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as AnonymousConciergeSnapshot;
+    if (parsed?.version !== 1) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function clearAnonymousSnapshot() {
+  try {
+    sessionStorage.removeItem(SS_ANON_SNAPSHOT_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+function isRecommendationsPayload(
+  payload: ConciergeSectionsPayload | null | undefined,
+): payload is ConciergeSectionsPayload {
+  if (!payload || !Array.isArray(payload.sections)) return false;
+  return payload.sections.some(
+    (s) => s.type === "recommendations" && Array.isArray((s as any).items) && (s as any).items.length > 0,
+  );
+}
+
+function ConciergeDebugPanel({ unified }: { unified: UnifiedConciergeResponse | null }) {
+  if (process.env.NEXT_PUBLIC_ENABLE_CONCIERGE_DEBUG_PANEL !== "1") return null;
+
+  const data = (unified?.data ?? {}) as any;
+  const debug = data?._debug && typeof data._debug === "object" ? data._debug : null;
+  const signals = data?._signals && typeof data._signals === "object" ? data._signals : null;
+  const mode = signals?.mode && typeof signals.mode === "object" ? signals.mode : null;
+
+  if (!debug && !mode) return null;
+
+  const candidatePool = debug?.candidate_pool_observation ?? null;
+  const visitStyle = debug?.visit_style_observation ?? null;
+  const rankingBreakdown = debug?.ranking_breakdown_observation ?? null;
+  const trim = debug?.trim_observation ?? null;
+
+  return (
+    <details className="mt-4 rounded-2xl border border-dashed border-amber-400 bg-amber-50 p-3 text-xs text-slate-700">
+      <summary className="cursor-pointer select-none font-semibold text-slate-700">Debug: concierge response</summary>
+
+      <div className="mt-3 grid gap-3">
+        <section className="rounded-xl border border-slate-200 bg-white p-3">
+          <p className="font-semibold text-slate-800">Flow / Mode</p>
+          <dl className="mt-2 grid grid-cols-2 gap-2">
+            <div>
+              <dt className="text-slate-400">mode</dt>
+              <dd className="font-mono text-slate-700">{String(mode?.mode ?? "-")}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-400">flow</dt>
+              <dd className="font-mono text-slate-700">{String(mode?.flow ?? "-")}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-400">llm_used</dt>
+              <dd className="font-mono text-slate-700">{String(signals?.llm?.used ?? "-")}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-400">fallback</dt>
+              <dd className="font-mono text-slate-700">{String(signals?.result_state?.fallback_mode ?? "-")}</dd>
+            </div>
+          </dl>
+        </section>
+
+        {candidatePool ? (
+          <section className="rounded-xl border border-slate-200 bg-white p-3">
+            <p className="font-semibold text-slate-800">Candidate Pool Observation</p>
+            <dl className="mt-2 grid grid-cols-3 gap-2">
+              <div>
+                <dt className="text-slate-400">valid</dt>
+                <dd className="font-mono text-slate-700">{String(candidatePool.valid_candidate_count ?? "-")}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-400">with_place_id</dt>
+                <dd className="font-mono text-slate-700">{String(candidatePool.with_place_id ?? "-")}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-400">distance_none</dt>
+                <dd className="font-mono text-slate-700">{String(candidatePool.distance_none ?? "-")}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-400">missing_latlng</dt>
+                <dd className="font-mono text-slate-700">{String(candidatePool.missing_latlng ?? "-")}</dd>
+              </div>
+            </dl>
+            <pre className="mt-2 max-h-40 overflow-auto rounded-lg bg-slate-900 p-2 text-[11px] leading-5 text-slate-100">
+              {JSON.stringify(
+                {
+                  filter_context: candidatePool.filter_context ?? {},
+                  score_top10: candidatePool.score_top10 ?? [],
+                },
+                null,
+                2,
+              )}
+            </pre>
+          </section>
+        ) : null}
+
+        {rankingBreakdown ? (
+          <section className="rounded-xl border border-slate-200 bg-white p-3">
+            <p className="font-semibold text-slate-800">Ranking Breakdown Observation</p>
+            <dl className="mt-2 grid grid-cols-3 gap-2">
+              <div>
+                <dt className="text-slate-400">ranked_count</dt>
+                <dd className="font-mono text-slate-700">{String(rankingBreakdown.ranked_count ?? "-")}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-400">top1_score</dt>
+                <dd className="font-mono text-slate-700">
+                  {String(rankingBreakdown.top10?.[0]?.score_total_ranked ?? "-")}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-slate-400">top1_name</dt>
+                <dd className="font-mono text-slate-700">{String(rankingBreakdown.top10?.[0]?.name ?? "-")}</dd>
+              </div>
+            </dl>
+            <pre className="mt-2 max-h-40 overflow-auto rounded-lg bg-slate-900 p-2 text-[11px] leading-5 text-slate-100">
+              {JSON.stringify(rankingBreakdown.top10 ?? [], null, 2)}
+            </pre>
+          </section>
+        ) : null}
+
+        {visitStyle ? (
+          <section className="rounded-xl border border-slate-200 bg-white p-3">
+            <p className="font-semibold text-slate-800">Visit Style Observation</p>
+            <dl className="mt-2 grid grid-cols-3 gap-2">
+              <div>
+                <dt className="text-slate-400">pool_size</dt>
+                <dd className="font-mono text-slate-700">{String(visitStyle.pool_size ?? "-")}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-400">hit_count</dt>
+                <dd className="font-mono text-slate-700">{String(visitStyle.hit_count ?? "-")}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-400">matched_tags</dt>
+                <dd className="font-mono text-slate-700">
+                  {Object.keys(visitStyle.matched_tag_counts ?? {}).join(", ") || "-"}
+                </dd>
+              </div>
+            </dl>
+            <pre className="mt-2 max-h-40 overflow-auto rounded-lg bg-slate-900 p-2 text-[11px] leading-5 text-slate-100">
+              {JSON.stringify(visitStyle.rows ?? [], null, 2)}
+            </pre>
+          </section>
+        ) : null}
+
+        {trim ? (
+          <section className="rounded-xl border border-slate-200 bg-white p-3">
+            <p className="font-semibold text-slate-800">Trim Observation</p>
+            <dl className="mt-2 grid grid-cols-3 gap-2">
+              <div>
+                <dt className="text-slate-400">before</dt>
+                <dd className="font-mono text-slate-700">{String(trim.before_count ?? "-")}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-400">after</dt>
+                <dd className="font-mono text-slate-700">{String(trim.after_count ?? "-")}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-400">dropped</dt>
+                <dd className="font-mono text-slate-700">{String(trim.dropped_count ?? "-")}</dd>
+              </div>
+            </dl>
+            <pre className="mt-2 max-h-40 overflow-auto rounded-lg bg-slate-900 p-2 text-[11px] leading-5 text-slate-100">
+              {JSON.stringify(trim.dropped ?? [], null, 2)}
+            </pre>
+          </section>
+        ) : null}
+      </div>
+    </details>
+  );
 }
 
 /* ========================================
@@ -163,47 +429,12 @@ export default function ConciergeClientFull() {
   const sp = useSearchParams();
 
   useEffect(() => {
-    const orig = window.dispatchEvent;
-    window.dispatchEvent = ((ev: Event) => {
-      const t = (ev as any)?.type;
-      if (t === "jinja:close-concierge") {
-        console.log("[DISPATCHED close-concierge]", ev, new Error("dispatch stack").stack);
-      }
-      return orig.call(window, ev);
-    }) as any;
-
-    return () => {
-      window.dispatchEvent = orig;
-    };
-  }, []);
-
-  useEffect(() => {
     snap("component_render", {});
   }, []);
 
-  // ✅ デバッグ用：router.push/replace をフック
-  useEffect(() => {
-    const origPush = router.push;
-    const origReplace = router.replace;
-
-    router.push = ((...args: any[]) => {
-      console.log("[NAV] push", ...args);
-      return (origPush as any)(...args);
-    }) as any;
-
-    router.replace = ((...args: any[]) => {
-      console.log("[NAV] replace", ...args);
-      return (origReplace as any)(...args);
-    }) as any;
-
-    return () => {
-      router.push = origPush as any;
-      router.replace = origReplace as any;
-    };
-  }, [router]);
-
   const lastNavAtRef = useRef(0);
   const isClosingRef = useRef(false);
+  const filterApplyPendingRef = useRef(false);
 
   const navReplace = useCallback(
     (to: string, meta?: any) => {
@@ -223,6 +454,30 @@ export default function ConciergeClientFull() {
     [router],
   );
 
+  const redirectToAuth = useCallback(
+    (kind: "login" | "register") => {
+      const returnTo = "/concierge";
+      navPush(`/auth/${kind}?returnTo=${encodeURIComponent(returnTo)}`, {
+        reason: "auth_required",
+        kind,
+        returnTo,
+      });
+    },
+    [navPush],
+  );
+
+  const { user, isLoggedIn } = useAuth();
+  const billing = useBilling();
+  const isPremiumActive = billing.status?.plan === "premium" && billing.status?.is_active === true;
+
+  const accessLevel = resolveAccessLevel(billing.status, isLoggedIn);
+  const previousComparisonVisibility = getVisibilityForCard("previous_comparison", accessLevel);
+  const historyShiftVisibility = getVisibilityForCard("history_shift", accessLevel);
+  const deepReflectionVisibility = getVisibilityForCard("deep_reflection", accessLevel);
+
+  const canSaveConciergeThread = !isAuthRequiredForAction("save_concierge_thread") || isLoggedIn;
+  const { threads } = useConciergeThreads();
+
   const [eventsByThread, setEventsByThread] = useState<EventsByThread>({});
   const [hydrated, setHydrated] = useState(false);
 
@@ -230,19 +485,132 @@ export default function ConciergeClientFull() {
   const activeThreadIdRef = useRef(0);
 
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isFiltering, setIsFiltering] = useState(false);
   const [extraCondition, setExtraCondition] = useState("");
 
   const [goriyakuTags, setGoriyakuTags] = useState<Tag[]>([]);
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
 
-  const [birthdate, setBirthdate] = useState("");
+  const [sessionState, setSessionState] = useState<ConciergeSessionState>(initialConciergeSessionState);
   const [tagsError, setTagsError] = useState<string | null>(null);
   const [tagsLoading, setTagsLoading] = useState(false);
 
   const [entrySubmitting, setEntrySubmitting] = useState(false);
+  const [needText, setNeedText] = useState("");
+  const [entryValidationError, setEntryValidationError] = useState<string | null>(null);
+  const autoSubmitThemeRef = useRef<string | null>(null);
+  const autoSubmitConsumedThemeRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const theme = (sp.get("theme") ?? "").trim();
+    if (!theme) return;
+    if (autoSubmitConsumedThemeRef.current === theme) return;
+
+    autoSubmitThemeRef.current = theme;
+    setNeedText((current) => (current.trim() ? current : theme));
+  }, [sp]);
+
+  useEffect(() => {
+    const openFilter = (sp.get("openFilter") ?? "").trim();
+    if (openFilter !== "1") return;
+
+    setIsFilterOpen(true);
+  }, [sp]);
+
+  const displayName = useMemo(
+    () =>
+      resolveDisplayName({
+        sessionNickname: sessionState.sessionNickname,
+        profileNickname: user?.nickname ?? null,
+      }),
+    [sessionState.sessionNickname, user?.nickname],
+  );
+
+  const displayLabel = useMemo(
+    () =>
+      resolveDisplayLabel({
+        sessionNickname: sessionState.sessionNickname,
+        profileNickname: user?.nickname ?? null,
+      }),
+    [sessionState.sessionNickname, user?.nickname],
+  );
 
   const [liveUnified, setLiveUnified] = useState<UnifiedConciergeResponse | null>(null);
   const [liveRecs, setLiveRecs] = useState<ConciergeRecommendation[]>([]);
+
+  const [threadDetail, setThreadDetail] = useState<ConciergeThreadDetail | null>(null);
+  const [previousThreadDetail, setPreviousThreadDetail] = useState<ConciergeThreadDetail | null>(null);
+
+  const currentConsultationSummary = useMemo(() => buildPreviousConsultationSummary(threadDetail), [threadDetail]);
+
+  const previousConsultationSummary = useMemo(
+    () => buildPreviousConsultationSummary(previousThreadDetail),
+    [previousThreadDetail],
+  );
+
+  const stateDelta = useMemo(
+    () => compareState(previousConsultationSummary, currentConsultationSummary),
+    [currentConsultationSummary, previousConsultationSummary],
+  );
+
+  const shouldTrackHistoryShiftView = Boolean(stateDelta?.transitionNarrative?.summary);
+  const shouldTrackDeepReflectionView = Boolean(
+    stateDelta?.combinationChange?.summary ||
+    (stateDelta?.changedNeedTags?.length ?? 0) > 0 ||
+    (stateDelta?.continuedNeedTags?.length ?? 0) > 0,
+  );
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    if (!stateDelta) return;
+
+    const sessionId = activeThreadId ? String(activeThreadId) : undefined;
+
+    if (previousComparisonVisibility !== "hidden") {
+      trackCardEvent({
+        event: "card_view",
+        cardId: "previous_comparison",
+        source: "concierge_result",
+        accessLevel,
+        visibility: previousComparisonVisibility,
+        sessionId,
+      });
+    }
+
+    if (historyShiftVisibility !== "hidden" && shouldTrackHistoryShiftView) {
+      trackCardEvent({
+        event: "card_view",
+        cardId: "history_shift",
+        source: "concierge_result",
+        accessLevel,
+        visibility: historyShiftVisibility,
+        sessionId,
+      });
+    }
+
+    if (deepReflectionVisibility !== "hidden" && shouldTrackDeepReflectionView) {
+      trackCardEvent({
+        event: "card_view",
+        cardId: "deep_reflection",
+        source: "concierge_result",
+        accessLevel,
+        visibility: deepReflectionVisibility,
+        sessionId,
+      });
+    }
+  }, [
+    accessLevel,
+    activeThreadId,
+    deepReflectionVisibility,
+    historyShiftVisibility,
+    isLoggedIn,
+    previousComparisonVisibility,
+    shouldTrackDeepReflectionView,
+    shouldTrackHistoryShiftView,
+    stateDelta,
+  ]);
+
+  const [, setThreadLoading] = useState(false);
 
   const setActiveTid = (tid: number) => {
     snap("setActiveTid", { from: activeThreadIdRef.current, to: tid });
@@ -264,41 +632,27 @@ export default function ConciergeClientFull() {
     return n;
   }, [rawTid]);
 
+  const previousThreadId = useMemo(() => {
+    if (!isLoggedIn) return null;
+    const currentId = tidNum ?? activeThreadId;
+    if (!currentId || !Array.isArray(threads) || threads.length === 0) return null;
+
+    const currentIndex = threads.findIndex((t) => Number(t.id) === Number(currentId));
+
+    if (currentIndex < 0) {
+      const fallbackPreviousThread = threads.find((t) => t != null && Number(t.id) !== Number(currentId)) ?? null;
+
+      return typeof fallbackPreviousThread?.id === "number" ? fallbackPreviousThread.id : null;
+    }
+
+    const previousThread = threads[currentIndex + 1] ?? null;
+    return typeof previousThread?.id === "number" ? previousThread.id : null;
+  }, [activeThreadId, isLoggedIn, threads, tidNum]);
+
   const isEntryRoute = tidNum === null;
   const tidFromQuery = tidNum ?? 0;
 
-  const rawMode = useMemo(() => (sp.get("mode") ?? "").trim(), [sp]);
-
-  /* ----------------------------------------
-   * entryMode（LS）
-   * -------------------------------------- */
-  const [entryMode, setEntryMode] = useState<EntryMode>(() => {
-    if (typeof window === "undefined") return "filter";
-    const v = localStorage.getItem(LS_ENTRY_MODE);
-    return v === "feel" ? "feel" : "filter";
-  });
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(LS_ENTRY_MODE, entryMode);
-    } catch {
-      // ignore
-    }
-  }, [entryMode]);
-
-  // ✅ ?mode=feel/filter を直叩き
-  useEffect(() => {
-    snap("url:mode_effect", { rawMode, isEntryRoute });
-
-    if (!isEntryRoute) return;
-    if (!rawMode) return;
-
-    setEntryMode(rawMode === "feel" ? "feel" : "filter");
-    snap("nav:replace", { to: "/concierge", reason: "mode_cleanup" });
-    router.replace("/concierge");
-  }, [rawMode, isEntryRoute, router]);
-
-  // ✅ 入口でtidパラメータがある場合は削除
+  // 入口でtidパラメータがある場合は削除
   useEffect(() => {
     if (!isEntryRoute) return;
     if (!rawTid) return;
@@ -368,32 +722,10 @@ export default function ConciergeClientFull() {
   }, [eventsByThread, hydrated]);
 
   /* ----------------------------------------
-   * LS: birthdate
-   * -------------------------------------- */
-  useEffect(() => {
-    try {
-      const v = localStorage.getItem(LS_BIRTHDATE_KEY);
-      if (v && isValidISODate(v)) setBirthdate(v);
-    } catch {
-      // ignore
-    }
-  }, []);
-
-  useEffect(() => {
-    try {
-      if (birthdate && isValidISODate(birthdate)) localStorage.setItem(LS_BIRTHDATE_KEY, birthdate);
-      else localStorage.removeItem(LS_BIRTHDATE_KEY);
-    } catch {
-      // ignore
-    }
-  }, [birthdate]);
-
-  /* ----------------------------------------
    * スレッド切り替え（URLパラメータ反応）
    * -------------------------------------- */
   useEffect(() => {
     snap("url:tid_effect", { rawTid, tidNum, tidFromQuery, hydrated });
-
     if (!hydrated) return;
     if (tidFromQuery === activeThreadIdRef.current) return;
     setActiveTid(tidFromQuery);
@@ -403,11 +735,95 @@ export default function ConciergeClientFull() {
     if (!hydrated) return;
     if (!isEntryRoute) return;
 
-    snap("entry:reset_state", {});
+    const snapshot = loadAnonymousSnapshot();
+
+    snap("entry:reset_state", { hasSnapshot: !!snapshot });
     setActiveTid(0);
-    setLiveUnified(null);
-    setLiveRecs([]);
+    setThreadDetail(null);
+    setThreadLoading(false);
+
+    if (!snapshot) {
+      setLiveUnified(null);
+      setLiveRecs([]);
+    }
   }, [hydrated, isEntryRoute]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    if (!isEntryRoute) return;
+    if (liveUnified) return;
+
+    const snapshot = loadAnonymousSnapshot();
+    if (!snapshot) return;
+
+    setSelectedTagIds(Array.isArray(snapshot.filters.selectedTagIds) ? snapshot.filters.selectedTagIds : []);
+    setExtraCondition(snapshot.filters.extraCondition ?? "");
+    setSessionState((prev) => ({
+      ...prev,
+      sessionNickname: snapshot.session?.sessionNickname ?? null,
+    }));
+    setLiveUnified(snapshot.unified);
+    setLiveRecs(
+      Array.isArray(snapshot.unified?.data?.recommendations)
+        ? (snapshot.unified.data.recommendations as ConciergeRecommendation[])
+        : [],
+    );
+  }, [hydrated, isEntryRoute, liveUnified]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+
+    if (!tidNum) {
+      setThreadDetail(null);
+      setThreadLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        setThreadLoading(true);
+        const data = await getConciergeThread(String(tidNum));
+        if (cancelled) return;
+        setThreadDetail(data);
+      } catch {
+        if (cancelled) return;
+        setThreadDetail(null);
+      } finally {
+        if (!cancelled) setThreadLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hydrated, tidNum]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    if (!previousThreadId) {
+      setPreviousThreadDetail(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const data = await getConciergeThread(String(previousThreadId));
+        if (cancelled) return;
+        setPreviousThreadDetail(data);
+      } catch {
+        if (cancelled) return;
+        setPreviousThreadDetail(null);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hydrated, previousThreadId]);
 
   /* ----------------------------------------
    * タグ取得（フィルター開いたら）
@@ -460,17 +876,56 @@ export default function ConciergeClientFull() {
     return null;
   }, [events]);
 
+  const backendUnified = useMemo(() => threadDetailToUnified(threadDetail), [threadDetail]);
+
   const displayUnified = useMemo(() => {
-    if (isEntryRoute) return null;
-    return liveUnified ?? (isEntryRoute ? null : lastUnified);
-  }, [isEntryRoute, lastUnified, liveUnified]);
+    const primary = liveUnified ?? backendUnified ?? lastUnified;
+    if (!primary) return null;
+
+    const fallbackData = lastUnified?.data ?? null;
+    const primaryData = primary.data ?? null;
+
+    const primaryRecommendationsV2 = Array.isArray(primaryData?.recommendations_v2)
+      ? primaryData.recommendations_v2
+      : [];
+    const primaryRecommendations = Array.isArray(primaryData?.recommendations) ? primaryData.recommendations : [];
+    const primaryRecommendationCandidates =
+      primaryRecommendationsV2.length > 0 ? primaryRecommendationsV2 : primaryRecommendations;
+
+    const fallbackRecommendationsV2 = Array.isArray(fallbackData?.recommendations_v2)
+      ? fallbackData.recommendations_v2
+      : [];
+    const fallbackRecommendations = Array.isArray(fallbackData?.recommendations) ? fallbackData.recommendations : [];
+    const fallbackRecommendationCandidates =
+      fallbackRecommendationsV2.length > 0 ? fallbackRecommendationsV2 : fallbackRecommendations;
+
+    const recommendations =
+      primaryRecommendationCandidates.length > 0 ? primaryRecommendationCandidates : fallbackRecommendationCandidates;
+
+    return {
+      ...primary,
+      stop_reason: primary.stop_reason ?? lastUnified?.stop_reason ?? null,
+      plan: primary.plan ?? lastUnified?.plan ?? null,
+      remaining: primary.remaining ?? lastUnified?.remaining ?? null,
+      limit: primary.limit ?? lastUnified?.limit ?? null,
+      limitReached: primary.limitReached ?? lastUnified?.limitReached ?? false,
+      thread: primary.thread ?? lastUnified?.thread ?? null,
+      data: {
+        ...(fallbackData ?? {}),
+        ...(primaryData ?? {}),
+        recommendations,
+        recommendations_v2: primaryRecommendationsV2.length > 0 ? primaryRecommendationsV2 : fallbackRecommendationsV2,
+      },
+    } as UnifiedConciergeResponse;
+  }, [liveUnified, backendUnified, lastUnified]);
 
   const displayRecommendations = useMemo(() => {
-    if (isEntryRoute) return [];
     if (liveRecs.length > 0) return liveRecs;
+    const recsV2 = displayUnified?.data?.recommendations_v2;
     const recs = displayUnified?.data?.recommendations;
+    if (Array.isArray(recsV2) && recsV2.length > 0) return recsV2 as ConciergeRecommendation[];
     return Array.isArray(recs) ? (recs as ConciergeRecommendation[]) : [];
-  }, [isEntryRoute, liveRecs, displayUnified]);
+  }, [liveRecs, displayUnified]);
 
   const hasCandidates = displayRecommendations.length > 0;
 
@@ -482,7 +937,10 @@ export default function ConciergeClientFull() {
   const chatThreadId =
     activeThreadId !== 0 ? String(activeThreadId) : typeof thread?.id === "number" ? String(thread.id) : null;
 
-  const element4 = useMemo(() => (birthdate ? birthdateToElement4(birthdate) : null), [birthdate]);
+  const element4 = useMemo(
+    () => (sessionState.temporaryBirthdate ? birthdateToElement4(sessionState.temporaryBirthdate) : null),
+    [sessionState.temporaryBirthdate],
+  );
 
   const suggestedTags = useMemo(() => {
     if (!element4) return [];
@@ -492,12 +950,20 @@ export default function ConciergeClientFull() {
     return goriyakuTags.filter((t) => setNames.has(t.name));
   }, [element4, goriyakuTags]);
 
-  const stopReason: StopReason =
+  const rawStopReason: StopReason =
     process.env.NODE_ENV !== "production" && forced ? forced : (displayUnified?.stop_reason ?? null);
-  const canSend = stopReason === null || (process.env.NODE_ENV !== "production" && !!forced);
+  const stopReason: StopReason = isPremiumActive && rawStopReason === "paywall" ? null : rawStopReason;
+  const canSend = stopReason === null || isPremiumActive || (process.env.NODE_ENV !== "production" && !!forced);
+  const isUiPaywall =
+    !isPremiumActive &&
+    (stopReason === "paywall" ||
+      displayUnified?.limitReached === true ||
+      ((displayUnified?.plan === "anonymous" || displayUnified?.plan === "free") &&
+        typeof displayUnified?.remaining === "number" &&
+        displayUnified.remaining <= 0));
 
   const baseFilters: ConciergeChatFilters = useMemo(() => {
-    const bd = normalizeISODate(birthdate) ?? undefined;
+    const bd = normalizeBirthdateInput(sessionState.temporaryBirthdate ?? "") ?? undefined;
     const extra = extraCondition.trim() || undefined;
 
     const crowd: ConciergeChatFilters["crowd"] = [];
@@ -514,52 +980,146 @@ export default function ConciergeClientFull() {
       duration_max_min,
       free_text: extra,
     };
-  }, [birthdate, selectedTagIds, extraCondition]);
+  }, [sessionState.temporaryBirthdate, selectedTagIds, extraCondition]);
 
-    const hasFilter =
-      (baseFilters.goriyaku_tag_ids?.length ?? 0) > 0 || !!baseFilters.birthdate || !!baseFilters.extra_condition;
+  const buildConciergePayload = useCallback(
+    (
+      input?: Partial<Omit<ConciergeChatRequestV1, "thread_id">> & {
+        query?: string;
+        crowd?: ConciergeChatFilters["crowd"];
+        duration_max_min?: number;
+        free_text?: string;
+      },
+    ): Omit<ConciergeChatRequestV1, "thread_id"> => {
+      const birthdate = normalizeBirthdateInput(sessionState.temporaryBirthdate ?? "") ?? undefined;
+      const payloadBirthdate = input?.birthdate ?? birthdate;
+      const payloadGoriyakuTagIds = input?.goriyaku_tag_ids ?? baseFilters.goriyaku_tag_ids;
+      const payloadExtraCondition = input?.extra_condition ?? baseFilters.extra_condition;
+      const payloadCrowd = input?.crowd ?? baseFilters.crowd;
+      const payloadDurationMaxMin = input?.duration_max_min ?? baseFilters.duration_max_min;
+      const payloadFreeText = input?.free_text ?? input?.extra_condition ?? baseFilters.free_text;
+      const rawQuery = normalizeQueryText(input?.query ?? needText);
+      const hasPayloadFilter =
+        !!payloadBirthdate ||
+        (payloadGoriyakuTagIds?.length ?? 0) > 0 ||
+        !!payloadExtraCondition ||
+        !!payloadCrowd?.length ||
+        typeof payloadDurationMaxMin === "number" ||
+        !!payloadFreeText;
+      const query = rawQuery || (hasPayloadFilter ? "追加した条件に合う神社を提案してください。" : "");
 
-    const selectedTagNames = useMemo(() => {
-      if (!goriyakuTags.length || !selectedTagIds.length) return [];
-      const set = new Set(selectedTagIds);
-      return goriyakuTags.filter((t) => set.has(t.id)).map((t) => t.name);
-    }, [goriyakuTags, selectedTagIds]);
+      return {
+        version: input?.version ?? 1,
+        mode: input?.mode ?? "need",
+        query,
+        birthdate: payloadBirthdate,
+        filters: {
+          birthdate: payloadBirthdate,
+          goriyaku_tag_ids: payloadGoriyakuTagIds,
+          extra_condition: payloadExtraCondition,
+          crowd: payloadCrowd,
+          duration_max_min: payloadDurationMaxMin,
+          free_text: payloadFreeText,
+        },
+        goriyaku_tag_ids: payloadGoriyakuTagIds,
+        extra_condition: payloadExtraCondition,
+      };
+    },
+    [sessionState.temporaryBirthdate, needText, baseFilters],
+  );
 
-    const filterState = useMemo(
-      () => ({
-        isOpen: isFilterOpen,
-        birthdate,
-        element4,
-        goriyakuTags,
-        suggestedTags,
-        selectedTagIds,
-        tagsLoading,
-        tagsError,
-        extraCondition,
-      }),
-      [
-        isFilterOpen,
-        birthdate,
-        element4,
-        goriyakuTags,
-        suggestedTags,
-        selectedTagIds,
-        tagsLoading,
-        tagsError,
-        extraCondition,
-      ],
-    );
+  const hasFilter =
+    (baseFilters.goriyaku_tag_ids?.length ?? 0) > 0 || !!baseFilters.birthdate || !!baseFilters.extra_condition;
 
-    const payload = useMemo(() => {
-      return buildPayloadFromUnified(displayUnified, filterState) ?? buildDummySections(filterState);
-    }, [displayUnified, filterState]);
+  const selectedTagNames = useMemo(() => {
+    if (!goriyakuTags.length || !selectedTagIds.length) return [];
+    const set = new Set(selectedTagIds);
+    return goriyakuTags.filter((t) => set.has(t.id)).map((t) => t.name);
+  }, [goriyakuTags, selectedTagIds]);
 
-    const { reply: metaReply, isLimitReached } = useMemo(() => getMetaReply(payload as any), [payload]);
+  const normalizedBirthdate = normalizeBirthdateInput(sessionState.temporaryBirthdate ?? "") ?? "";
 
-    const messages = useMemo(
-      () => deriveMessages(events, thread?.id ?? activeThreadId),
-      [events, thread, activeThreadId],
-    );
+  const filterState = useMemo(
+    () => ({
+      isOpen: isFilterOpen,
+      birthdate: normalizedBirthdate,
+      element4,
+      goriyakuTags,
+      suggestedTags,
+      selectedTagIds,
+      tagsLoading,
+      tagsError,
+      extraCondition,
+    }),
+    [
+      isFilterOpen,
+      normalizedBirthdate,
+      element4,
+      goriyakuTags,
+      suggestedTags,
+      selectedTagIds,
+      tagsLoading,
+      tagsError,
+      extraCondition,
+    ],
+  );
+
+  const payload = useMemo(
+    () => buildPayloadFromUnified(displayUnified, filterState) ?? buildDummySections(filterState),
+    [displayUnified, filterState],
+  );
+
+  const modeAnalyticsPayload = useMemo(() => {
+    const modeRaw = (displayUnified?.data as any)?._signals?.mode;
+    const mode = modeRaw?.mode === "need" || modeRaw?.mode === "compat" ? modeRaw.mode : undefined;
+    const flow = modeRaw?.flow === "A" || modeRaw?.flow === "B" ? modeRaw.flow : undefined;
+    const topRecommendation = displayRecommendations[0] as Record<string, unknown> | undefined;
+    const data = (displayUnified?.data as any) ?? {};
+    const signals = data?._signals ?? {};
+    const resultState = signals?.result_state ?? signals?.resultState ?? {};
+    const historyTheme =
+      typeof topRecommendation?.history_theme === "string"
+        ? topRecommendation.history_theme
+        : typeof topRecommendation?.historyTheme === "string"
+          ? topRecommendation.historyTheme
+          : undefined;
+    const consultationAxis =
+      typeof topRecommendation?.consultation_axis === "string"
+        ? topRecommendation.consultation_axis
+        : typeof topRecommendation?.consultationAxis === "string"
+          ? topRecommendation.consultationAxis
+          : typeof data?.consultation_axis === "string"
+            ? data.consultation_axis
+            : typeof data?.consultationAxis === "string"
+              ? data.consultationAxis
+              : typeof data?._need?.consultation_axis === "string"
+                ? data._need.consultation_axis
+                : typeof data?._need?.consultationAxis === "string"
+                  ? data._need.consultationAxis
+                  : typeof signals?.consultation_axis === "string"
+                    ? signals.consultation_axis
+                    : typeof signals?.consultationAxis === "string"
+                      ? signals.consultationAxis
+                      : typeof resultState?.consultation_axis === "string"
+                        ? resultState.consultation_axis
+                        : typeof resultState?.consultationAxis === "string"
+                          ? resultState.consultationAxis
+                          : undefined;
+
+    return {
+      mode,
+      flow,
+      hasBirthdate: Boolean(normalizedBirthdate),
+      recommendationCount: displayRecommendations.length,
+      historyTheme,
+      ...(consultationAxis ? { consultationAxis } : {}),
+    };
+  }, [displayUnified, displayRecommendations, normalizedBirthdate]);
+
+  const messages = useMemo(
+    () => deriveMessages(events, thread?.id ?? activeThreadId),
+    [events, thread, activeThreadId],
+  );
 
   /* ----------------------------------------
    * チャット
@@ -569,37 +1129,6 @@ export default function ConciergeClientFull() {
     filters: baseFilters,
 
     onUnified: (u) => {
-      // ✅ 1回だけ unified 全体を出す（ログ洪水を防ぐ）
-      const dumpedRef = (globalThis as any).__jinjaUnifiedDumpedRef ?? { done: false };
-      (globalThis as any).__jinjaUnifiedDumpedRef = dumpedRef;
-
-      if (process.env.NEXT_PUBLIC_DEBUG_LOG === "1" && !dumpedRef.done) {
-        dumpedRef.done = true;
-        console.log("[concierge] unified FULL (once)", u);
-
-        // ついでに「どこに何があるか」だけ抜粋
-        console.log("[concierge] unified SHAPE", {
-          thread: (u as any)?.thread,
-          thread_id: (u as any)?.thread_id,
-          data_thread_id: (u as any)?.data?.thread_id,
-          stop_reason: (u as any)?.stop_reason,
-          reply: (u as any)?.reply,
-          meta: (u as any)?.meta,
-          recs_len: Array.isArray((u as any)?.data?.recommendations) ? (u as any).data.recommendations.length : null,
-          recs_type: typeof (u as any)?.data?.recommendations,
-          data_keys: (u as any)?.data ? Object.keys((u as any).data) : null,
-        });
-      }
-
-      if (process.env.NEXT_PUBLIC_DEBUG_LOG === "1") {
-        const recs = u?.data?.recommendations ?? [];
-        console.log("[concierge] unified recs sample", {
-          count: Array.isArray(recs) ? recs.length : 0,
-          first: Array.isArray(recs) ? recs[0] : null,
-          keysFirst: Array.isArray(recs) && recs[0] ? Object.keys(recs[0] as any) : [],
-        });
-      }
-
       if (isClosingRef.current) return;
 
       const now = new Date().toISOString();
@@ -626,8 +1155,90 @@ export default function ConciergeClientFull() {
         },
       });
 
+      const completedRecommendations = Array.isArray((u.data as any)?.recommendations_v2)
+        ? (u.data as any).recommendations_v2
+        : Array.isArray(u.data?.recommendations)
+          ? u.data.recommendations
+          : [];
+
+      const completedModeRaw = (u.data as any)?._signals?.mode;
+      const completedTopRecommendation = completedRecommendations[0] as Record<string, unknown> | undefined;
+      const completedData = (u.data as any) ?? {};
+      const completedSignals = completedData?._signals ?? {};
+      const completedResultState = completedSignals?.result_state ?? completedSignals?.resultState ?? {};
+      const completedHistoryTheme =
+        typeof completedTopRecommendation?.history_theme === "string"
+          ? completedTopRecommendation.history_theme
+          : typeof completedTopRecommendation?.historyTheme === "string"
+            ? completedTopRecommendation.historyTheme
+            : undefined;
+      const completedConsultationAxis =
+        typeof completedTopRecommendation?.consultation_axis === "string"
+          ? completedTopRecommendation.consultation_axis
+          : typeof completedTopRecommendation?.consultationAxis === "string"
+            ? completedTopRecommendation.consultationAxis
+            : typeof completedData?.consultation_axis === "string"
+              ? completedData.consultation_axis
+              : typeof completedData?.consultationAxis === "string"
+                ? completedData.consultationAxis
+                : typeof completedData?._need?.consultation_axis === "string"
+                  ? completedData._need.consultation_axis
+                  : typeof completedData?._need?.consultationAxis === "string"
+                    ? completedData._need.consultationAxis
+                    : typeof completedSignals?.consultation_axis === "string"
+                      ? completedSignals.consultation_axis
+                      : typeof completedSignals?.consultationAxis === "string"
+                        ? completedSignals.consultationAxis
+                        : typeof completedResultState?.consultation_axis === "string"
+                          ? completedResultState.consultation_axis
+                          : typeof completedResultState?.consultationAxis === "string"
+                            ? completedResultState.consultationAxis
+                            : undefined;
+
+      track("consultation_completed", {
+        threadId: nextTid || currentTid ? String(nextTid || currentTid) : undefined,
+        mode: completedModeRaw?.mode,
+        flow: completedModeRaw?.flow,
+        hasBirthdate: Boolean(normalizedBirthdate || baseFilters.birthdate),
+        recommendationCount: completedRecommendations.length,
+        historyTheme: completedHistoryTheme,
+        ...(completedConsultationAxis ? { consultationAxis: completedConsultationAxis } : {}),
+        source: fromEntry ? "entry" : "thread",
+      });
+      if (filterApplyPendingRef.current) {
+        const recommendationCount = Array.isArray(u.data?.recommendations) ? u.data.recommendations.length : 0;
+
+        track("filter_result", {
+          source: "concierge_result",
+          threadId: nextTid || currentTid ? String(nextTid || currentTid) : undefined,
+          mode: "compat",
+          recommendation_count: recommendationCount,
+          is_zero_result: recommendationCount === 0,
+          hasFilter,
+        });
+
+        filterApplyPendingRef.current = false;
+      }
+
       setLiveUnified(u);
-      setLiveRecs(Array.isArray(u.data?.recommendations) ? (u.data.recommendations as any) : []);
+      const unifiedRecommendationsV2 = Array.isArray(u.data?.recommendations_v2) ? u.data.recommendations_v2 : [];
+      const unifiedRecommendations = Array.isArray(u.data?.recommendations) ? u.data.recommendations : [];
+      setLiveRecs((unifiedRecommendationsV2.length > 0 ? unifiedRecommendationsV2 : unifiedRecommendations) as any);
+
+      if (isAnonymousLikeUnified(u)) {
+        saveAnonymousSnapshot({
+          version: 1,
+          savedAt: new Date().toISOString(),
+          unified: u,
+          filters: {
+            selectedTagIds,
+            extraCondition,
+          },
+          session: {
+            sessionNickname: sessionState.sessionNickname,
+          },
+        });
+      }
 
       if (currentTid === 0) {
         snap("onUnified:setEntrySubmitting_false", {});
@@ -661,39 +1272,22 @@ export default function ConciergeClientFull() {
     },
   });
 
-  /* ========================================
-   * Refs for Closure safety
-   * ====================================== */
-  const baseFiltersRef = useRef(baseFilters);
-  useEffect(() => {
-    baseFiltersRef.current = baseFilters;
-  }, [baseFilters]);
-
-  const chatThreadIdRef = useRef(chatThreadId);
-  useEffect(() => {
-    chatThreadIdRef.current = chatThreadId;
-  }, [chatThreadId]);
-
   /* ----------------------------------------
-   * 🔥 ロック統一：isBusy
+   * ロック統一：isBusy
    * -------------------------------------- */
-  const isBusy = sending || (isEntryRoute && entrySubmitting);
+  const isBusy = sending || isFiltering || (isEntryRoute && entrySubmitting);
 
   /* ----------------------------------------
    * 安全な送信関数（共通化）
    * -------------------------------------- */
   const safeSend = useCallback(
-    async (textOrPayload: any, logMeta?: Record<string, any>) => {
-      if (process.env.NEXT_PUBLIC_DEBUG_LOG === "1") {
-        console.log("[concierge] send payload", textOrPayload);
-        console.log("[concierge] send filters", baseFiltersRef.current);
-        console.log("[concierge] chatThreadId", chatThreadIdRef.current);
-      }
-
+    async (textOrPayload: any, logMeta?: Record<string, any>, options?: { ignoreStopReason?: boolean }) => {
       snap("safeSend:start", { isEntryRoute, sending, entrySubmitting, canSend });
+      const ignoreStopReason = options?.ignoreStopReason === true;
+      const effectiveCanSend = ignoreStopReason ? true : canSend;
 
-      if (!canSend) {
-        snap("safeSend:blocked_canSend", {});
+      if (!effectiveCanSend) {
+        snap("safeSend:blocked_canSend", { ignoreStopReason });
         return;
       }
       if (sending) {
@@ -702,6 +1296,21 @@ export default function ConciergeClientFull() {
       }
       if (isEntryRoute && entrySubmitting) {
         snap("safeSend:blocked_entrySubmitting", {});
+        return;
+      }
+
+      const rawInputQuery = typeof textOrPayload === "string" ? textOrPayload : textOrPayload?.query;
+      const normalizedInputBirthdate =
+        typeof rawInputQuery === "string" ? normalizeBirthdateInput(rawInputQuery) : null;
+
+      if (typeof rawInputQuery === "string" && isBirthdateOnlyText(rawInputQuery)) {
+        setSessionState((prev) => ({
+          ...prev,
+          temporaryBirthdate: normalizedInputBirthdate,
+        }));
+        setNeedText("");
+        setEntryValidationError("生年月日は補助条件として受け取りました。今の状態も一言添えてください。");
+        snap("safeSend:blocked_birthdate_only_query", { birthdate: normalizedInputBirthdate });
         return;
       }
 
@@ -714,20 +1323,40 @@ export default function ConciergeClientFull() {
         setLiveRecs([]);
       }
 
+      const normalizedPayload =
+        typeof textOrPayload === "string"
+          ? buildConciergePayload({
+              query: textOrPayload,
+            })
+          : buildConciergePayload({
+              ...(textOrPayload ?? {}),
+              version: textOrPayload?.version ?? 1,
+              query: typeof textOrPayload?.query === "string" ? textOrPayload.query : undefined,
+            });
+
+      if (!normalizedPayload.query.trim()) {
+        setEntryValidationError("今の状態を一言だけ入力してください。");
+        snap("safeSend:blocked_empty_query", { hasBirthdate: !!normalizedPayload.birthdate });
+        if (isEntrySend) {
+          setEntrySubmitting(false);
+        }
+        return;
+      }
+
+      setEntryValidationError(null);
+
       try {
         if (logMeta) {
           conciergeLog("entry_send", {
             tid: activeThreadIdRef.current,
-            meta: { ...logMeta, isEntryRoute, entryMode },
+            meta: { ...logMeta, isEntryRoute },
           });
         }
 
-        console.log("[SEND] start", { isEntryRoute, payload: textOrPayload });
-        await (send as any)(textOrPayload);
+        await (send as any)(normalizedPayload);
         snap("safeSend:awaited", {});
       } catch (e) {
         snap("safeSend:error", { e: String(e) });
-        console.warn("[SEND] failed", e);
       } finally {
         snap("safeSend:finally", { isEntryRoute, sending, entrySubmitting });
         if (isEntrySend) {
@@ -736,15 +1365,40 @@ export default function ConciergeClientFull() {
         }
       }
     },
-    [canSend, sending, entrySubmitting, send, isEntryRoute, entryMode],
+    [canSend, sending, entrySubmitting, send, isEntryRoute, buildConciergePayload],
   );
 
+  useEffect(() => {
+    const theme = autoSubmitThemeRef.current;
+    if (!theme) return;
+    if (!hydrated) return;
+    if (!isEntryRoute) return;
+    if (!canSend) return;
+    if (sending) return;
+    if (entrySubmitting) return;
+
+    autoSubmitThemeRef.current = null;
+    autoSubmitConsumedThemeRef.current = theme;
+    setNeedText(theme);
+    setEntryValidationError(null);
+    void safeSend(theme, { kind: "home_theme_submit", textLen: theme.length });
+  }, [canSend, entrySubmitting, hydrated, isEntryRoute, safeSend, sending]);
 
   /* ----------------------------------------
    * UI表示の判定
    * -------------------------------------- */
-  const shouldShowEntry = hydrated && isEntryRoute;
-  const hideChatPanel = !hydrated || isEntryRoute;
+  const hasRestoredCandidates =
+    hydrated &&
+    isEntryRoute &&
+    Array.isArray(displayRecommendations) &&
+    displayRecommendations.length > 0 &&
+    isRecommendationsPayload(payload);
+
+  const shouldShowEntry = hydrated && isEntryRoute && !hasRestoredCandidates;
+  const shouldShowThreadRenderer = hydrated && !shouldShowEntry;
+  const hideChatPanel = !hydrated || (isEntryRoute && !hasRestoredCandidates);
+
+  const shouldShowEntryError = !isBusy && !isFiltering && !entryValidationError && !!error && !hasCandidates;
 
   const entryViewedRef = useRef(false);
 
@@ -752,19 +1406,12 @@ export default function ConciergeClientFull() {
     if (!shouldShowEntry) return;
     if (entryViewedRef.current) return;
     entryViewedRef.current = true;
-
-    snap("entry_view", { entryMode });
-
+    snap("entry_view", {});
     conciergeLog("entry_view", {
       tid: 0,
-      meta: { entryMode },
+      meta: {},
     });
-  }, [shouldShowEntry, entryMode]);
-
-  useEffect(() => {
-    if (!shouldShowEntry) return;
-    if (entryMode === "filter") setIsFilterOpen(true);
-  }, [entryMode, shouldShowEntry]);
+  }, [shouldShowEntry]);
 
   useEffect(() => {
     if (!isEntryRoute && entrySubmitting) {
@@ -798,23 +1445,70 @@ export default function ConciergeClientFull() {
    * 入口UI
    * -------------------------------------- */
   const feelExamples = [
-    "最近ちょっと疲れていて、落ち着ける神社がいいです",
-    "気持ちを切り替えて前向きになれる参拝がしたいです",
-    "人が少なくて静かな場所でお参りしたいです",
-  ];
+    {
+      label: "仕事について考えたい",
+      text: "仕事や働き方について、今の流れを整理したいです",
+    },
+    {
+      label: "人との関係を整えたい",
+      text: "人との関係やご縁について、落ち着いて見つめ直したいです",
+    },
+    {
+      label: "お金の流れを整えたい",
+      text: "お金や生活の流れについて、不安を整理して次の動きを考えたいです",
+    },
+    {
+      label: "一歩踏み出したい",
+      text: "迷いを整理して、次の一歩を踏み出すきっかけがほしいです",
+    },
+    {
+      label: "少し休みたい",
+      text: "最近少し疲れていて、気持ちを落ち着ける時間がほしいです",
+    },
+    {
+      label: "体調を整えたい",
+      text: "心身の調子を整えて、無理なく過ごせるようにしたいです",
+    },
+    {
+      label: "学びを深めたい",
+      text: "学びや積み重ねに向き合い、集中し直すきっかけがほしいです",
+    },
+    {
+      label: "これからを考えたい",
+      text: "これからの方向性について、静かに考え直す時間がほしいです",
+    },
+  ] as const;
 
-  const onPickExample = (text: string) => {
-    snap("action:pick_example", { text });
-    void safeSend(text, { kind: "example", textLen: text.length });
+  const onPickExample = (example: { label: string; text: string }) => {
+    // チップは固定診断ではなく入力補助なので、既存の自由入力欄を置き換えてから編集可能にする。
+    setNeedText(example.text);
+    setEntryValidationError(null);
+    track("consultation_theme_click", {
+      label: example.label,
+      text: example.text,
+      source: "concierge_entry",
+    });
+    snap("action:pick_example", { label: example.label, text: example.text });
   };
 
   const buildFilterPayload = useCallback((): Omit<ConciergeChatRequestV1, "thread_id"> | null => {
-    const has =
-      (baseFilters.goriyaku_tag_ids?.length ?? 0) > 0 || !!baseFilters.birthdate || !!baseFilters.extra_condition;
+    const hasFilterInput =
+      !!normalizeBirthdateInput(sessionState.temporaryBirthdate ?? "") ||
+      (baseFilters.goriyaku_tag_ids?.length ?? 0) > 0 ||
+      !!baseFilters.extra_condition;
 
-    if (!has) return null;
-    return { version: 1, query: "条件を追加して絞り込みたいです。" };
-  }, [baseFilters]);
+    const hasQuery = needText.trim().length > 0;
+
+    if (!hasFilterInput && !hasQuery) return null;
+
+    return buildConciergePayload();
+  }, [
+    sessionState.temporaryBirthdate,
+    baseFilters.goriyaku_tag_ids,
+    baseFilters.extra_condition,
+    needText,
+    buildConciergePayload,
+  ]);
 
   /* ----------------------------------------
    * UIアクション
@@ -823,46 +1517,87 @@ export default function ConciergeClientFull() {
     snap("action:renderer", { type: a.type });
 
     switch (a.type) {
-      case "open_map":
-        navPush("/map", { reason: "open_map" });
+      case "open_map": {
+        if (typeof a.shrineId === "number") {
+          track("shrine_decision", {
+            shrineId: a.shrineId,
+            action: "route",
+            rank: typeof a.rank === "number" ? a.rank : null,
+            tid: activeThreadIdRef.current || null,
+            ...(modeAnalyticsPayload.consultationAxis ? { consultationAxis: modeAnalyticsPayload.consultationAxis } : {}),
+          });
+        }
+
+        const routeHref = typeof a.routeHref === "string" && a.routeHref.length > 0 ? a.routeHref : null;
+        if (routeHref) {
+          window.location.assign(routeHref);
+          return;
+        }
+
+        navPush("/map", { reason: "open_map_fallback", shrineId: a.shrineId ?? null, rank: a.rank ?? null });
+        return;
+      }
+
+      case "save_concierge_thread":
+        snap("action:save_concierge_thread", {
+          tid: activeThreadIdRef.current,
+          canSaveConciergeThread,
+          isLoggedIn,
+        });
+
+        conciergeLog("save_concierge_thread_click", {
+          tid: activeThreadIdRef.current,
+          meta: {
+            canSaveConciergeThread,
+            isLoggedIn,
+            path: window.location.pathname + window.location.search,
+          },
+        });
+
+        if (!canSaveConciergeThread) {
+          redirectToAuth("login");
+          return;
+        }
+
+        // 現時点では server 保存API未接続。
+        // 認証済みユーザーは、thread URL がある状態自体を保存済み導線とみなす。
         return;
 
       case "back_to_entry":
-        snap("action:back_to_entry", {
-          fromTid: activeThreadIdRef.current,
-          entryMode,
+        snap("action:back_to_entry", { fromTid: activeThreadIdRef.current });
+        trackCardEvent({
+          event: "card_cta_click",
+          cardId: "filter_panel",
+          source: "concierge_result",
+          accessLevel,
+          visibility: "visible",
+          ctaType: "back_to_entry",
+          ...modeAnalyticsPayload,
+          threadId: activeThreadIdRef.current ? String(activeThreadIdRef.current) : undefined,
         });
-
         conciergeLog("back_to_entry", {
           tid: activeThreadIdRef.current,
-          meta: {
-            fromTid: activeThreadIdRef.current,
-            entryMode,
-          },
+          meta: { fromTid: activeThreadIdRef.current },
         });
-
         setLiveUnified(null);
         setLiveRecs([]);
+        setIsFiltering(false);
         setEntrySubmitting(false);
+        setNeedText("");
+        setEntryValidationError(null);
         setActiveTid(0);
-
-        snap("nav:push", { to: "/concierge", reason: "back_to_entry" });
-        router.push("/concierge");
+        clearAnonymousSnapshot();
+        setSessionState((prev) => ({
+          ...prev,
+          sessionNickname: null,
+          temporaryBirthdate: null,
+        }));
+        navReplace("/concierge", { reason: "back_to_entry" });
         return;
 
       case "filter_close":
-        snap("action:filter_close", { isEntryRoute, entryMode });
-
-        conciergeLog("filter_close", {
-          tid: activeThreadIdRef.current,
-          meta: {
-            isEntryRoute,
-            entryMode,
-          },
-        });
-
-        if (isEntryRoute) setIsFilterOpen(true);
-        else setIsFilterOpen(false);
+        snap("action:filter_close", { isEntryRoute });
+        setIsFilterOpen(false);
         return;
 
       case "add_condition":
@@ -872,22 +1607,44 @@ export default function ConciergeClientFull() {
 
       case "filter_apply": {
         const p = buildFilterPayload();
-        if (!p) return;
-
-        snap("action:filter_apply", { baseFilters });
-
+        const compatPayload = p
+          ? {
+              ...p,
+              mode: "compat" as const,
+            }
+          : null;
+        if (!compatPayload) return;
+        snap("action:filter_apply", { baseFilters, payload: compatPayload });
+        filterApplyPendingRef.current = true;
+        trackCardEvent({
+          event: "card_cta_click",
+          cardId: "filter_panel",
+          source: "concierge_result",
+          accessLevel,
+          visibility: "visible",
+          ctaType: "filter_apply",
+          ...modeAnalyticsPayload,
+          threadId: activeThreadIdRef.current ? String(activeThreadIdRef.current) : undefined,
+        });
         conciergeLog("filter_apply", {
           tid: activeThreadIdRef.current,
-          meta: { baseFilters },
+          meta: { baseFilters, payload: compatPayload },
         });
-
-        setIsFilterOpen(true);
-        void safeSend(p, { kind: "filter_apply" });
+        if (!isEntryRoute) {
+          setIsFilterOpen(false);
+        }
+        setIsFiltering(true);
+        void safeSend(compatPayload, { kind: "filter_apply" }, { ignoreStopReason: true }).finally(() => {
+          setIsFiltering(false);
+        });
         return;
       }
 
       case "filter_set_birthdate":
-        setBirthdate(a.birthdate);
+        setSessionState((prev) => ({
+          ...prev,
+          temporaryBirthdate: a.birthdate,
+        }));
         return;
 
       case "filter_toggle_tag":
@@ -905,21 +1662,23 @@ export default function ConciergeClientFull() {
 
       case "filter_clear":
         snap("action:filter_clear", {});
-
         conciergeLog("filter_clear", { tid: activeThreadIdRef.current });
-
         setExtraCondition("");
         setSelectedTagIds([]);
-        setBirthdate("");
-        try {
-          localStorage.removeItem(LS_BIRTHDATE_KEY);
-        } catch {
-          // ignore
-        }
+        setEntryValidationError(null);
+        setSessionState((prev) => ({
+          ...prev,
+          temporaryBirthdate: null,
+          sessionNickname: null,
+        }));
+        clearAnonymousSnapshot();
         return;
     }
   };
 
+  /* ========================================
+   * JSX
+   * ====================================== */
   return (
     <ConciergeLayout
       messages={messages}
@@ -928,18 +1687,23 @@ export default function ConciergeClientFull() {
       hideChatPanel={hideChatPanel}
       onSend={(text) => {
         const trimmed = text.trim();
-        if (!trimmed) return;
+        if (!trimmed) {
+          setEntryValidationError("今の状態を一言だけ入力してください。");
+          return;
+        }
         snap("action:onSend", { textLen: trimmed.length });
         void safeSend(trimmed, { kind: "chat" });
       }}
       onNewThread={() => {
         snap("action:onNewThread", {});
-
         setLiveUnified(null);
         setLiveRecs([]);
+        setIsFiltering(false);
         setEntrySubmitting(false);
+        setNeedText("");
+        setEntryValidationError(null);
         setActiveTid(0);
-
+        clearAnonymousSnapshot();
         snap("nav:replace", { to: "/concierge", reason: "onNewThread" });
         router.replace("/concierge");
       }}
@@ -949,122 +1713,148 @@ export default function ConciergeClientFull() {
     >
       {/* ===== 入口（tidなし） ===== */}
       {shouldShowEntry ? (
-        <div className="px-4 pt-4">
-          <div className="relative rounded-2xl border bg-white p-3">
-            {/* ✅ ロック統一 */}
+        <div className="px-4 pt-6">
+          <div className={`relative ${conciergeCardClass}`}>
             {isBusy ? (
-              <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-white/70 backdrop-blur-sm">
-                <div className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">選定中です…</div>
+              <div className="absolute inset-0 z-10 flex items-center justify-center rounded-3xl bg-white/65 backdrop-blur-sm">
+                <div className="rounded-full border border-stone-200/60 bg-stone-50/90 px-3 py-1.5 text-sm text-stone-700">
+                  選定中です…
+                </div>
               </div>
             ) : null}
 
-            {/* タブ */}
-            <div className="flex gap-2">
-              <button
-                type="button"
-                className={[
-                  "flex-1 rounded-xl px-3 py-2 text-sm font-semibold border",
-                  entryMode === "feel" ? "bg-emerald-600 text-white border-emerald-600" : "bg-white text-slate-700",
-                ].join(" ")}
-                onClick={() => {
-                  snap("action:entryMode_feel", {});
-                  setEntryMode("feel");
-                  setIsFilterOpen(false);
-                }}
-                disabled={isBusy}
-              >
-                気分から探す
-              </button>
+            <ConciergeEntryCard
+              displayName={displayName}
+              displayLabel={displayLabel}
+              sessionState={sessionState}
+              setSessionNickname={(value) =>
+                setSessionState((prev) => ({
+                  ...prev,
+                  sessionNickname: value,
+                }))
+              }
+              canSaveConciergeThread={canSaveConciergeThread}
+              isUiPaywall={isUiPaywall}
+              redirectToAuth={redirectToAuth}
+              needText={needText}
+              setNeedText={setNeedText}
+              feelExamples={feelExamples}
+              onPickExample={onPickExample}
+              isBusy={isBusy}
+              canSend={canSend}
+              onSubmit={() => void safeSend(needText.trim(), { kind: "need_submit", textLen: needText.trim().length })}
+              onClear={() => {
+                setNeedText("");
+                setEntryValidationError(null);
+              }}
+            />
 
-              <button
-                type="button"
-                className={[
-                  "flex-1 rounded-xl px-3 py-2 text-sm font-semibold border",
-                  entryMode === "filter" ? "bg-indigo-600 text-white border-indigo-600" : "bg-white text-slate-700",
-                ].join(" ")}
-                onClick={() => {
-                  snap("action:entryMode_filter", {});
-                  setEntryMode("filter");
-                  setIsFilterOpen(true);
-                }}
-                disabled={isBusy}
-              >
-                条件で絞る
-              </button>
-            </div>
-
-            {/* 入口でも条件チップ */}
-            {hasFilter ? (
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                {baseFilters.birthdate ? (
-                  <span className="rounded-full border bg-white px-3 py-1 text-xs font-semibold">
-                    誕生日: {baseFilters.birthdate}
-                  </span>
-                ) : null}
-
-                {selectedTagNames.length ? (
-                  <span className="rounded-full border bg-white px-3 py-1 text-xs font-semibold">
-                    ご利益: {selectedTagNames.slice(0, 2).join(" / ")}
-                    {selectedTagNames.length > 2 ? ` 他${selectedTagNames.length - 2}` : ""}
-                  </span>
-                ) : null}
-
-                {baseFilters.extra_condition ? (
-                  <span className="rounded-full border bg-white px-3 py-1 text-xs font-semibold">補足: あり</span>
-                ) : null}
-
+            <div className="mt-7 rounded-3xl border border-stone-200/45 bg-stone-50/60 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-medium tracking-[0.2em] text-stone-500">条件を追加（任意）</p>
+                  <p className="mt-0.5 text-[11px] text-stone-500">誕生日・ご利益・参拝スタイルは、相談テーマを補う条件として扱います。</p>
+                </div>
                 <button
                   type="button"
-                  className="rounded-full border bg-white px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50"
-                  onClick={() => onRendererAction({ type: "filter_clear" })}
+                  className="shrink-0 rounded-full border border-stone-200/70 bg-white/80 px-3 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-50"
+                  onClick={() => setIsFilterOpen((prev) => !prev)}
                   disabled={isBusy}
                 >
-                  クリア
+                  {isFilterOpen ? "閉じる" : "条件を開く"}
                 </button>
+              </div>
+
+              {!isFilterOpen && hasFilter ? (
+                <div className="mt-4 rounded-2xl border border-stone-200/50 bg-white/80 px-3 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[11px] font-medium text-stone-500">相談に添えた条件</p>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {baseFilters.birthdate ? (
+                          <span className="rounded-full border border-stone-200/70 bg-stone-50 px-3 py-1 text-xs font-medium text-stone-700">
+                            誕生日を補助条件に追加
+                          </span>
+                        ) : null}
+
+                        {selectedTagNames.length ? (
+                          <span className="rounded-full border border-stone-200/70 bg-stone-50 px-3 py-1 text-xs font-medium text-stone-700">
+                            ご利益: {selectedTagNames[0]}
+                            {selectedTagNames.length > 1 ? ` 他${selectedTagNames.length - 1}` : ""}
+                          </span>
+                        ) : null}
+
+                        {baseFilters.extra_condition ? (
+                          <span className="rounded-full border border-stone-200/70 bg-stone-50 px-3 py-1 text-xs font-medium text-stone-700">
+                            参拝スタイルあり
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium text-stone-500 hover:bg-stone-100 hover:text-stone-700"
+                      onClick={() => onRendererAction({ type: "filter_clear" })}
+                      disabled={isBusy}
+                    >
+                      条件をクリア
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
+              {SHOW_NEW_RENDERER && isFilterOpen ? (
+                <div className="mt-3">
+                  <ConciergeSectionsRenderer
+                    payload={payload}
+                    analyticsContext={modeAnalyticsPayload}
+                    onAction={onRendererAction}
+                    sending={sending || isFiltering}
+                    threadId={thread?.id ?? activeThreadId}
+                    isEntryRoute={isEntryRoute}
+                    isPremiumActive={isPremiumActive}
+                  />
+                </div>
+              ) : null}
+            </div>
+
+            {!isBusy && isUiPaywall ? (
+              <div className="mt-5 rounded-3xl border border-stone-200/50 bg-stone-50/70 px-5 py-4 text-sm text-stone-700">
+                <p className="font-medium text-stone-800">無料回数を使い切りました。</p>
+                <p className="mt-1 text-xs leading-6 text-stone-500">
+                  {isLoggedIn
+                    ? "続けるには有料プランへの切り替えが必要です。"
+                    : "続けるにはログイン、または有料プランへの切り替えが必要です。"}
+                </p>
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                  {!isLoggedIn ? (
+                    <button
+                      type="button"
+                      className="w-full rounded-full border border-stone-200/70 bg-white/85 px-4 py-2 text-sm font-medium text-stone-700 sm:w-auto"
+                      onClick={() => redirectToAuth("login")}
+                    >
+                      ログイン
+                    </button>
+                  ) : null}
+                  <Link
+                    href="/billing/upgrade"
+                    className="w-full rounded-full border border-emerald-200/70 bg-emerald-50/90 px-4 py-2 text-center text-sm font-medium text-emerald-900 sm:w-auto"
+                  >
+                    有料プランを見る
+                  </Link>
+                </div>
               </div>
             ) : null}
 
-            {/* コンテンツ */}
-            {entryMode === "feel" ? (
-              <div className="mt-3">
-                <p className="text-xs font-semibold text-slate-600">例（タップで送信）</p>
-                <div className="mt-2 grid gap-2">
-                  {feelExamples.map((t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      className="text-left rounded-xl border bg-slate-50 px-3 py-2 text-sm text-slate-800 hover:bg-slate-100 disabled:opacity-60"
-                      onClick={() => onPickExample(t)}
-                      disabled={isBusy || !canSend}
-                    >
-                      {t}
-                    </button>
-                  ))}
-                </div>
-                <p className="mt-2 text-[11px] text-slate-500">
-                  1回送るだけでOK。会話はしない設計です（必要なら質問は1つだけ返します）。
-                </p>
+            {!isBusy && entryValidationError ? (
+              <div className="mt-3 rounded-3xl border border-amber-200/70 bg-amber-50/70 px-5 py-4 text-sm text-amber-900">
+                <p className="font-medium">{entryValidationError}</p>
               </div>
-            ) : (
-              <div className="mt-3">
-                {SHOW_NEW_RENDERER ? (
-                  <ConciergeSectionsRenderer
-                    payload={payload}
-                    onAction={onRendererAction}
-                    sending={sending}
-                    threadId={thread?.id ?? activeThreadId}
-                    isEntryRoute={isEntryRoute}
-                  />
-                ) : (
-                  <div className="rounded-xl border bg-slate-50 p-3 text-sm text-slate-700">
-                    この画面は SHOW_NEW_RENDERER 前提です
-                  </div>
-                )}
-              </div>
-            )}
+            ) : null}
 
-            {!isBusy && error ? (
-              <div className="mt-3 rounded-xl border bg-white p-3">
+            {shouldShowEntryError ? (
+              <div className={`mt-3 ${conciergeCardClass}`}>
                 <p className="text-sm font-semibold text-rose-600">うまく取得できませんでした</p>
                 <div className="mt-2 grid gap-2">
                   <Link
@@ -1078,10 +1868,10 @@ export default function ConciergeClientFull() {
                     className="w-full rounded-xl border bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                     onClick={() => {
                       snap("action:error_retry_filter", {});
-                      setEntryMode("filter");
+                      setIsFilterOpen(true);
                     }}
                   >
-                    条件で絞って再挑戦
+                    補助条件を見直して再挑戦
                   </button>
                 </div>
               </div>
@@ -1091,49 +1881,64 @@ export default function ConciergeClientFull() {
       ) : null}
 
       {/* ===== 通常（tidあり） ===== */}
-      {!shouldShowEntry ? (
+      {hydrated && shouldShowThreadRenderer ? (
         SHOW_NEW_RENDERER ? (
-          <div className="p-4 space-y-3">
-            {metaReply ? (
-              <div className="rounded-2xl border bg-white p-4">
-                <p className="text-sm font-semibold text-slate-900">{metaReply}</p>
-                {isLimitReached ? (
-                  <p className="mt-1 text-xs text-slate-500">
-                    近くの神社は地図から探せます。条件を変えるか、別の探索を試してください。
-                  </p>
-                ) : null}
-                <div className="mt-3 flex gap-2">
-                  <button
-                    type="button"
-                    className="flex-1 rounded-xl border bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                    onClick={() => onRendererAction({ type: "add_condition" })}
-                    disabled={isBusy}
+          <div className="p-4 space-y-5">
+            {isFiltering ? (
+              <div className="rounded-3xl border border-emerald-100 bg-emerald-50/70 px-5 py-4 text-sm text-emerald-900">
+                <p className="font-semibold">条件に合わせて再提案しています</p>
+                <p className="mt-1 text-xs leading-6 text-slate-600">
+                  候補を絞り直しているため、少しだけお待ちください。
+                </p>
+              </div>
+            ) : null}
+            <ConciergeSectionsRenderer
+              payload={payload}
+              analyticsContext={modeAnalyticsPayload}
+              onAction={onRendererAction}
+              sending={sending || isFiltering}
+              threadId={thread?.id ?? activeThreadId}
+              isEntryRoute={isEntryRoute}
+              isPremiumActive={isPremiumActive}
+            />
+
+            {isLoggedIn && stateDelta && previousComparisonVisibility !== "hidden" ? (
+              <PremiumStateDeltaCard stateDelta={stateDelta} isPremium={isPremiumActive} />
+            ) : null}
+
+            <ConciergeDebugPanel unified={displayUnified} />
+
+            {!isBusy && isUiPaywall ? (
+              <div className="rounded-3xl border border-stone-200/50 bg-stone-50/70 px-5 py-4 text-sm text-stone-700">
+                <p className="font-medium text-stone-800">無料回数を使い切りました。</p>
+                <p className="mt-1 text-xs leading-6 text-stone-500">
+                  {isLoggedIn
+                    ? "続けるには有料プランへの切り替えが必要です。"
+                    : "続けるにはログイン、または有料プランへの切り替えが必要です。"}
+                </p>
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                  {!isLoggedIn ? (
+                    <button
+                      type="button"
+                      className="w-full rounded-full border border-stone-200/70 bg-white/85 px-4 py-2 text-sm font-medium text-stone-700 sm:w-auto"
+                      onClick={() => redirectToAuth("login")}
+                    >
+                      ログイン
+                    </button>
+                  ) : null}
+                  <Link
+                    href="/billing/upgrade"
+                    className="w-full rounded-full border border-emerald-200/70 bg-emerald-50/90 px-4 py-2 text-center text-sm font-medium text-emerald-900 sm:w-auto"
                   >
-                    条件を追加
-                  </button>
-                  <button
-                    type="button"
-                    className="flex-1 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
-                    onClick={() => onRendererAction({ type: "open_map" })}
-                    disabled={isBusy}
-                  >
-                    地図で探す
-                  </button>
+                    有料プランを見る
+                  </Link>
                 </div>
               </div>
             ) : null}
-
-            <ConciergeSectionsRenderer
-              payload={payload}
-              onAction={onRendererAction}
-              sending={sending}
-              threadId={thread?.id ?? activeThreadId}
-              isEntryRoute={isEntryRoute}
-            />
           </div>
         ) : (
           <div className="p-4">
-            <div className="rounded-2xl border bg-white p-4 text-sm text-slate-600">
+            <div className={`${conciergeCardClass} text-sm text-slate-600`}>
               SHOW_NEW_RENDERER が false です（この画面は新レンダラー前提）
             </div>
           </div>
