@@ -840,7 +840,7 @@ Score v3 active 化判断に必要な funnel 指標が dashboard API に反映�
 - route_open: `POST /api/shrine-interactions/` で 201 Created
 - save: `POST /api/favorites/` で 201 Created
 - visit_done: `POST /api/shrines/17/visit/` で 201 Created
-- reflection_saved: 既存または事前データにより dashboard 上は反映済み。今回の手順では新規保存確認の対象外
+- reflection_saved: `POST /api/shrines/17/reflection/` で 201 Created。新規保存と dashboard 反映を確認済み
 
 #### Dashboard API Snapshot
 
@@ -856,7 +856,7 @@ Score v3 active 化判断に必要な funnel 指標が dashboard API に反映�
     "route_open_rate": 1.0,
     "save_rate": 1.0,
     "visit_done_rate": 1.0,
-    "reflection_saved_rate": 1.0
+    "reflection_saved_rate": 2.0
   },
   "decision": {
     "active_candidate": true,
@@ -872,13 +872,14 @@ Score v3 active 化判断に必要な funnel 指標が dashboard API に反映�
 
 - route_open / save / visit_done は backend API 保存と dashboard 反映を確認済み
 - dashboard API で funnel rate が 0.0 から動くことを確認済み
-- reflection_saved_rate は 1.0 だが、今回の manual check では新規 reflection 保存を確認していないため、別途 UI または API で確認する
+- reflection_saved_rate は 2.0。detail_view_count=1 に対して reflection_count=2 のため、rate が 1.0 を超える可能性がある
+- 今回の値は manual curl による疎通確認値であり、自然行動 baseline ではない
 - dashboard は引き続き `funnel_degradation_check_pending: no baseline to compare` を返しているため、本番 active 化判断には自然行動 baseline が必要
 
 #### 次の対応
 
 - UIクリック由来の route_open 保存を確認する
-- UI操作または API 経由で reflection_saved の新規保存を確認する
+- UI操作由来の reflection_saved 保存を確認する
 - staging で `SCORE_V3_MODE=active` を一時確認する
 - production active は自然行動 baseline 取得後に再判断する
 
