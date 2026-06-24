@@ -819,6 +819,69 @@ Score v3 の active 化判断では、以下の形式で観測結果を記録す
   - funnel event が記録される状態で追加観測する
   - production active は funnel baseline 取得後に再判断する
 
+### Funnel Baseline Snapshot: 2026-06-24 Local Manual API Check
+
+#### 観測目的
+
+Score v3 active 化判断に必要な funnel 指標が dashboard API に反映されるかを確認する。
+
+#### 観測条件
+
+- 観測日: 2026-06-24
+- 環境: local
+- 観測モード: shadow
+- 実行方法: manual curl
+- 対象神社: 三峯神社 shrine_id=17
+- 注意: この値は自然行動 baseline ではなく、API 疎通と dashboard 集計反映の確認値として扱う
+
+#### 実行結果
+
+- detail_view: `POST /api/shrine-interactions/` で 201 Created
+- route_open: `POST /api/shrine-interactions/` で 201 Created
+- save: `POST /api/favorites/` で 201 Created
+- visit_done: `POST /api/shrines/17/visit/` で 201 Created
+- reflection_saved: 既存または事前データにより dashboard 上は反映済み。今回の手順では新規保存確認の対象外
+
+#### Dashboard API Snapshot
+
+```json
+{
+  "score_v3": {
+    "top1_changed_rate_avg": 0.071429,
+    "activation_candidate_rate": 0.928571,
+    "avg_delta": 0.154286,
+    "max_abs_delta_max": 0.36
+  },
+  "funnel": {
+    "route_open_rate": 1.0,
+    "save_rate": 1.0,
+    "visit_done_rate": 1.0,
+    "reflection_saved_rate": 1.0
+  },
+  "decision": {
+    "active_candidate": true,
+    "rollback_required": false,
+    "reasons": [
+      "funnel_degradation_check_pending: no baseline to compare"
+    ]
+  }
+}
+```
+
+#### 判定
+
+- route_open / save / visit_done は backend API 保存と dashboard 反映を確認済み
+- dashboard API で funnel rate が 0.0 から動くことを確認済み
+- reflection_saved_rate は 1.0 だが、今回の manual check では新規 reflection 保存を確認していないため、別途 UI または API で確認する
+- dashboard は引き続き `funnel_degradation_check_pending: no baseline to compare` を返しているため、本番 active 化判断には自然行動 baseline が必要
+
+#### 次の対応
+
+- UIクリック由来の route_open 保存を確認する
+- UI操作または API 経由で reflection_saved の新規保存を確認する
+- staging で `SCORE_V3_MODE=active` を一時確認する
+- production active は自然行動 baseline 取得後に再判断する
+
 ### Rollback Checklist
 
 active 化前に以下を確認する。
