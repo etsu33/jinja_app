@@ -47,6 +47,7 @@ from temples.api.views.reflection import ShrineReflectionCreateView
 from temples.api.views.shrine_interaction import ShrineInteractionLogCreateView
 from temples.api.views.action_event import ActionEventCreateView
 from temples.api.views.debug_behavior_funnel import DebugBehaviorFunnelView
+from temples.api.views.score_v3_dashboard import ScoreV3DashboardView
 from temples.api_views import FavoriteViewSet
 
 
@@ -122,6 +123,7 @@ urlpatterns = [
     path("shrine-interactions/", ShrineInteractionLogCreateView.as_view(), name="shrine-interaction-create"),
     path("action-events/", ActionEventCreateView.as_view(), name="action-event-create"),
     path("debug/behavior-funnel/", DebugBehaviorFunnelView.as_view(), name="debug-behavior-funnel"),
+    path("concierge/score-v3/dashboard/", ScoreV3DashboardView.as_view(), name="score-v3-dashboard"),
     path("visits/", UserVisitListView.as_view(), name="visit-list"),
     path("public/shrines/<int:pk>/", PublicShrineDetailView.as_view(), name="public-shrine-detail"),
     path("populars/", PopularShrineListView.as_view(), name="popular-shrines"),
