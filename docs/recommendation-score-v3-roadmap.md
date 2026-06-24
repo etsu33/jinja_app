@@ -438,6 +438,47 @@ Behavior Profile 更新
 ```
 ---
 
+---
+
+## Score v3 Dashboard Design
+
+### 目的
+
+Score v3 の shadow / active 観測結果と behavior funnel を突合し、active 化判断と rollback 判断に使える dashboard を設計する。
+
+### 保存元
+
+- `result_state._score_v3_debug`
+- `_debug.score_v3_ab_observation`
+- `_debug.dashboard_summary.score_v3`
+- behavior funnel metrics
+
+### Dashboard API 出力案
+
+- top1_changed_rate
+- activation_candidate_rate
+- avg_delta
+- max_abs_delta
+- route_open_rate
+- save_rate
+- visit_done_rate
+- reflection_saved_rate
+
+### Active 判定レポート
+
+- active 化してよいか
+- rollback 条件に触れていないか
+- funnel 指標が現行以上か
+- score_v3 の delta が大きすぎないか
+
+### 実装フェーズ
+
+1. dashboard API 設計
+2. backend 集計 API 実装
+3. admin / debug 表示
+4. active 判定レポート生成
+5. PostHog / 外部 dashboard 連携
+
 ## Recommendation Score v3 Final Criteria
 
 ### Active 化条件
