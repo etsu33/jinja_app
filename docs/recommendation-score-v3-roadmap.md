@@ -747,6 +747,78 @@ Score v3 の active 化判断では、以下の形式で観測結果を記録す
 - 次の対応:
 ```
 
+
+### Observation Report: 2026-06-24 Local Dashboard Snapshot
+
+#### 観測期間
+
+- 開始日: 2026-06-24
+- 終了日: 2026-06-24
+- 観測セッション数: dashboard API 集計値に依存
+- 観測モード: shadow
+- 環境: local
+
+#### Dashboard API Snapshot
+
+```json
+{
+  "score_v3": {
+    "top1_changed_rate_avg": 0.083333,
+    "activation_candidate_rate": 0.916667,
+    "avg_delta": 0.18,
+    "max_abs_delta_max": 0.36
+  },
+  "funnel": {
+    "route_open_rate": 0.0,
+    "save_rate": 0.0,
+    "visit_done_rate": 0.0,
+    "reflection_saved_rate": 0.0
+  },
+  "decision": {
+    "active_candidate": true,
+    "rollback_required": false,
+    "reasons": [
+      "funnel_degradation_check_pending: no baseline to compare"
+    ]
+  }
+}
+```
+
+#### Active 化判定
+
+- active_candidate: true
+- rollback_required: false
+- 判定理由:
+  - top1_changed_rate_avg は 0.10 以下
+  - activation_candidate_rate は 0.80 以上
+  - max_abs_delta_max は 0.50 未満
+  - rollback 条件には該当していない
+
+#### Funnel Snapshot
+
+- route_open_rate: 0.0
+- save_rate: 0.0
+- visit_done_rate: 0.0
+- reflection_saved_rate: 0.0
+
+#### 保留事項
+
+- funnel 指標はすべて 0.0 のため、行動ファネルの改善・悪化は未判定
+- dashboard API は `funnel_degradation_check_pending: no baseline to compare` を返している
+- 本番 active 化の前に、route_open / save / visit_done / reflection_saved の実測値を追加で観測する
+
+#### Final Decision
+
+- local / staging active: 可
+- production active: 延期
+- 理由:
+  - Score v3 の順位変動指標は active 条件を満たしている
+  - ただし、funnel baseline が未取得のため、本番 active 化の根拠としては不足
+- 次の対応:
+  - local または staging で `SCORE_V3_MODE=active` を確認する
+  - funnel event が記録される状態で追加観測する
+  - production active は funnel baseline 取得後に再判断する
+
 ### Rollback Checklist
 
 active 化前に以下を確認する。
