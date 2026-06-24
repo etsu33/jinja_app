@@ -883,6 +883,87 @@ Score v3 active 化判断に必要な funnel 指標が dashboard API に反映�
 - staging で `SCORE_V3_MODE=active` を一時確認する
 - production active は自然行動 baseline 取得後に再判断する
 
+
+### Mobile Tracking Validation Snapshot: 2026-06-24 Local Expo Check
+
+#### 観測目的
+
+mobile / Expo 側から、認証付きで `detail_view` / `route_open` が `ShrineInteractionLog` に保存され、dashboard API に反映されるかを確認する。
+
+#### 観測条件
+
+- 観測日: 2026-06-24
+- 環境: local
+- 観測モード: shadow
+- 実行方法: mobile / Expo UI 操作
+- 対象神社: 三峯神社 shrine_id=17
+- 前提:
+  - `apps/mobile/app/login.tsx` から `POST /api/auth/jwt/create/` を実行
+  - `setTokens(access, refresh)` により mobile 側に JWT を保存
+  - `postAuth` 経由で `POST /api/shrine-interactions/` を実行
+
+#### 実行結果
+
+- mobile login: 成功
+- JWT access / refresh 取得: 成功
+- mobile detail_view: `source=mobile_shrine_detail` で DB 保存確認済み
+- mobile route_open: `source=mobile_shrine_detail` で DB 保存確認済み
+- dashboard API 反映: 確認済み
+
+#### DB Snapshot
+
+```text
+id=3 action_type=detail_view source=mobile_shrine_detail metadata={"ctx":"mobile_shrine_detail","event":"shrine_detail_view","platform":"mobile"}
+id=4 action_type=route_open source=mobile_shrine_detail metadata={"ctx":"mobile_shrine_detail","event":"route_open","platform":"mobile","routeTarget":"google_maps"}
+```
+
+#### Dashboard API Snapshot
+
+```json
+{
+  "score_v3": {
+    "top1_changed_rate_avg": 0.117647,
+    "activation_candidate_rate": 0.882353,
+    "avg_delta": 0.073333,
+    "max_abs_delta_max": 1.22
+  },
+  "funnel": {
+    "route_open_rate": 1.0,
+    "save_rate": 0.5,
+    "visit_done_rate": 0.5,
+    "reflection_saved_rate": 1.0
+  },
+  "decision": {
+    "active_candidate": false,
+    "rollback_required": false,
+    "reasons": []
+  }
+}
+```
+
+#### 判定
+
+- mobile detail_view / route_open は DB 保存と dashboard 反映を確認済み
+- mobile 側の行動ログ欠損は、detail_view / route_open について解消済み
+- active_candidate は false
+- top1_changed_rate_avg は 0.117647 で active 条件（0.10以下）を未達
+- max_abs_delta_max は 1.22 で active 条件（0.50未満）を未達
+- max_abs_delta_max は rollback 条件（1.00超）に該当するが、dashboard API は rollback_required=false を返しているため判定ロジックの確認が必要
+
+#### Final Decision
+
+- local / staging active: 検証目的なら可
+- production active: 延期
+- 理由:
+  - mobile 行動ログは取得可能になった
+  - Score v3 の順位変動指標が active 条件を満たしていない
+  - 30〜100セッションの shadow 観測が未完了
+- 次の対応:
+  - 30〜100セッションの追加観測
+  - rollback_required 判定ロジック確認
+  - Active 判定レポート作成
+
+
 ### Rollback Checklist
 
 active 化前に以下を確認する。
