@@ -6,7 +6,7 @@ import { SHRINES } from "../../data/shrines";
 import { incVisits, isFavorite, toggleFavorite, pushRecent } from "../../lib/storage";
 import { kamimusubiDark as theme } from "../theme";
 import { get } from "../../lib/http";
-import { trackShrineDetailView } from "../../lib/shrineInteractions";
+import { trackShrineDetailView, trackShrineRouteOpen } from "../../lib/shrineInteractions";
 import { spacing } from "../design/spacing";
 import { cardSizes } from "../design/cardSizes";
 import { radius } from "../design/radius";
@@ -183,6 +183,16 @@ export default function ShrineDetail() {
 
   const openDirections = React.useCallback(() => {
     if (!shrine) return;
+    const shrineIdNumber = apiShrineId != null ? Number(apiShrineId) : null;
+    if (shrineIdNumber != null && Number.isFinite(shrineIdNumber) && shrineIdNumber > 0) {
+      void trackShrineRouteOpen({
+        shrineId: shrineIdNumber,
+        source: "mobile_shrine_detail",
+        metadata: {
+          ctx: "mobile_shrine_detail",
+        },
+      });
+    }
     const hasLatLng = typeof shrine.latitude === "number" && typeof shrine.longitude === "number";
     const destination = hasLatLng ? `${shrine.latitude},${shrine.longitude}` : encodeURIComponent(shrine.name);
     const googleMapsAppUrl = hasLatLng
@@ -201,7 +211,7 @@ export default function ShrineDetail() {
       return;
     }
     Linking.openURL(googleMapsWebUrl).catch(() => {});
-  }, [shrine]);
+  }, [apiShrineId, shrine]);
 
   if (loading && !shrine) {
     return (
