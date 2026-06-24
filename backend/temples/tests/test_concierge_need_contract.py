@@ -20,7 +20,7 @@ def test_concierge_need_contract_need_and_breakdown(monkeypatch, settings):
         - score_need: matched_need_tags の件数（最小構成）
         - score_popular: popular_score を 0..1 に正規化（popular/10 を clamp）
         - score_total: score_element*W1 + score_need*W2 + score_popular*W3
-        - weights: {element, need, popular}
+        - weights: {element, need, popular, direction_bonus}
         - matched_need_tags: need_tags ∩ shrine_astro_tags
     """
     settings.CONCIERGE_USE_LLM = True
@@ -119,7 +119,12 @@ def test_concierge_need_contract_need_and_breakdown(monkeypatch, settings):
     a = items[0]
     assert a["name"] == "A"
     bd = a["breakdown"]
-    assert bd["weights"] == {"element": 0.6, "need": 0.3, "popular": 0.1}
+    assert bd["weights"] == {
+        "element": 0.6,
+        "need": 0.3,
+        "popular": 0.1,
+        "direction_bonus": 0.0,
+    }
     assert bd["score_element"] == 2
     assert bd["matched_need_tags"] == ["career", "rest"]
     assert bd["score_need"] == 2
@@ -640,6 +645,10 @@ def test_concierge_sort_distance_override_sorts_by_distance(monkeypatch, setting
 
 
 @pytest.mark.django_db
+@pytest.mark.skipif(
+    __import__("os").environ.get("SCORE_V3_MODE") == "active",
+    reason="active モードでは score_v3 で順位が変わるため shadow 専用",
+)
 def test_concierge_soft_signal_affects_highlights_not_score(monkeypatch, settings):
     settings.CONCIERGE_USE_LLM = False
     monkeypatch.setenv("CHAT_MAX_ADDRESS_LOOKUPS", "0")

@@ -46,6 +46,29 @@ python manage.py runserver 127.0.0.1:8000
 
 ---
 
+## BackendテストDB方針
+
+Backend の pytest は **PostgreSQL / PostGIS 前提**で実行します。
+SQLite は backend テストでは使用しません。
+
+`backend/.env.test` にテスト用の `DATABASE_URL` を定義します。
+
+```bash
+DATABASE_URL=postgis://admin:jdb50515@127.0.0.1:5432/jinja_db
+USE_SQLITE=0
+```
+
+pytest 実行時は `backend/.env.test` が最優先で読み込まれます。
+`USE_SQLITE=1` が指定されている場合は、誤って SQLite に落ちないように起動時に明示エラーにします。
+
+例:
+
+```bash
+DATABASE_URL=postgis://admin:jdb50515@127.0.0.1:5432/jinja_db USE_SQLITE=0 pytest temples/tests/api/test_shrine_reflection_api.py temples/tests/services/test_reflection_state_change.py
+```
+
+---
+
 # Billing: 運用契約（Single Source of Truth）
 
 ## 目的

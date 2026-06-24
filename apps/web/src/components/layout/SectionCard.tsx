@@ -4,16 +4,22 @@ import type { ReactNode } from "react";
 type Props = {
   title?: string;
   description?: string;
+  variant?: "default" | "subtle";
   children: ReactNode;
 };
 
-export function SectionCard({ title, description, children }: Props) {
+export function SectionCard({ title, description, variant = "default", children }: Props) {
+  const sectionClassName =
+    variant === "subtle"
+      ? "space-y-4 rounded-2xl border border-stone-200/15 bg-stone-50/20 p-5 shadow-none sm:p-6"
+      : "space-y-4 rounded-2xl border border-stone-200/20 bg-stone-50/30 p-6 shadow-none";
+
   return (
-    <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <section className={sectionClassName}>
       {(title || description) && (
         <header>
-          {title && <h2 className="text-sm font-semibold text-slate-800">{title}</h2>}
-          {description && <p className="mt-1 text-xs text-slate-500">{description}</p>}
+          {title && <h2 className="text-base font-semibold text-stone-900">{title}</h2>}
+          {description && <p className="mt-2 text-sm leading-6 text-stone-500">{description}</p>}
         </header>
       )}
       {children}

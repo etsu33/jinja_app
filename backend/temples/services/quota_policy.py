@@ -1,6 +1,9 @@
 # temples/services/quota_policy.py
 from __future__ import annotations
 
+import os
+from copy import deepcopy
+
 QUOTA_POLICY = {
     "anonymous": {
         "concierge": {"limit": 3, "unlimited": False},
@@ -23,5 +26,23 @@ QUOTA_POLICY = {
 }
 
 
+def _demo_concierge_limit() -> int | None:
+    raw = os.getenv("CONCIERGE_DEMO_LIMIT", "").strip()
+    if not raw:
+        return None
+    try:
+        value = int(raw)
+    except ValueError:
+        return None
+    return value if value > 0 else None
+
+
 def get_feature_policy(plan: str, feature: str) -> dict:
-    return QUOTA_POLICY[plan][feature]
+    policy = deepcopy(QUOTA_POLICY[plan][feature])
+
+    demo_limit = _demo_concierge_limit()
+    if feature == "concierge" and plan in {"anonymous", "free"} and demo_limit is not None:
+        policy["limit"] = demo_limit
+        policy["unlimited"] = False
+
+    return policy

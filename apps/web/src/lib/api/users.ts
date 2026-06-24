@@ -1,8 +1,11 @@
 // apps/web/src/lib/api/users.ts
 /* istanbul ignore file */
 import api from "@/lib/api/client";
-import { fetchOnce } from "@/lib/api/inflight";
 
+
+// ⚠️ 認証状態の取得（/api/users/me/）は AuthProvider のみで扱うこと。
+// このファイルから getCurrentUser のような read API は提供しない。
+// useAuth() を経由して参照すること。
 
 export type UpdateMePayload = Partial<{
   nickname: string;
@@ -52,29 +55,6 @@ export type UserMe = {
     website?: string | null;
   } | null;
 };
-
-// users/me read の共通入口。
-// グローバル認証確認でもページ固有の current user 取得でもここを使う。
-// 401 は未ログインとして `null` を返し、それ以外の異常系だけ throw する。
-export async function getCurrentUser(signal?: AbortSignal): Promise<UserMe | null> {
-  return fetchOnce("GET:/api/users/me/", async () => {
-    const res = await fetch("/api/users/me/", {
-      method: "GET",
-      credentials: "same-origin",
-      cache: "no-store",
-      signal,
-    });
-    if (res.status === 401) return null;
-    if (!res.ok) {
-      const msg = await res.text().catch(() => "");
-      throw new Error(msg || `getCurrentUser failed: ${res.status}`);
-    }
-
-    const json = await res.json();
-    const data = (json as any).user ?? json;
-    return data as UserMe;
-  });
-}
 
 export async function updateUser(patch: Partial<UserMe>): Promise<UserMe> {
   const res = await fetch("/api/users/me/", {

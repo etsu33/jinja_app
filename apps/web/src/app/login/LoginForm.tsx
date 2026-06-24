@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { sanitizeNext } from "@/lib/nav/login";
 
 type Props = { next?: string | null };
 
@@ -17,7 +18,8 @@ export default function LoginForm({ next }: Props) {
   const [error, setError] = useState<string | null>(null);
   const inFlight = useRef(false);
 
-  const afterLogin = next || DEFAULT_AFTER_LOGIN;
+  const safeNext = sanitizeNext(next);
+  const afterLogin = safeNext || DEFAULT_AFTER_LOGIN;
   const registerHref = `/auth/register?returnTo=${encodeURIComponent(afterLogin)}`;
 
   async function handleSubmit(e: React.FormEvent) {
@@ -40,6 +42,7 @@ export default function LoginForm({ next }: Props) {
       }
 
       await login(username, password);
+
       window.location.assign(afterLogin);
       return;
     } catch {

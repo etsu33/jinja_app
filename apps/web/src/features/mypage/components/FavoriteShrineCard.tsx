@@ -46,15 +46,15 @@ export function FavoriteShrineCard({
   const allowAdd = canAddGoshuin ?? Boolean(shrineId || placeId);
 
   return (
-    <div className="rounded-lg border bg-white p-3 shadow-sm">
+    <div className="rounded-2xl border border-stone-200/20 bg-stone-50/20 p-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-gray-900">{title}</p>
-          {sub && <p className="mt-0.5 truncate text-xs text-gray-500">{sub}</p>}
+          <p className="truncate text-sm font-medium text-stone-900">{title}</p>
+          {sub && <p className="mt-0.5 truncate text-xs text-stone-500">{sub}</p>}
 
           {hasPublicGoshuins ? (
             <div className="mt-2">
-              <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+              <span className="inline-flex items-center rounded-full border border-emerald-700/10 bg-emerald-50/50 px-2 py-0.5 text-[11px] font-medium text-emerald-800/80">
                 御朱印 {publicGoshuinCount}件
               </span>
             </div>
@@ -62,13 +62,13 @@ export function FavoriteShrineCard({
 
           <div className="mt-2 flex flex-wrap items-center gap-3">
             {href && (
-              <Link href={href} className="text-xs text-blue-600 hover:underline">
+              <Link href={href} className="text-xs text-stone-600 hover:text-stone-900 hover:underline">
                 {LABELS.shrineDetail}
               </Link>
             )}
 
             {goshuinHref && (
-              <Link href={goshuinHref} className="text-xs text-emerald-700 hover:underline">
+              <Link href={goshuinHref} className="text-xs text-emerald-800/80 hover:text-emerald-900 hover:underline">
                 御朱印を見る
               </Link>
             )}
@@ -81,7 +81,7 @@ export function FavoriteShrineCard({
               type="button"
               onClick={onAddGoshuin}
               disabled={disabled || addLoading || !allowAdd}
-              className="rounded-md border px-3 py-1 text-xs font-semibold hover:bg-slate-50 disabled:opacity-40"
+              className="rounded-full border border-stone-200/40 bg-stone-50/20 px-3 py-1 text-xs font-medium text-stone-700 transition hover:bg-stone-100/50 disabled:opacity-40"
             >
               {addLoading ? LABELS.moving : LABELS.addGoshuin}
             </button>
@@ -92,7 +92,7 @@ export function FavoriteShrineCard({
               type="button"
               onClick={onUnsave}
               disabled={disabled || unsaveLoading}
-              className="rounded-md border px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+              className="rounded-full border border-stone-200/40 bg-stone-50/20 px-3 py-1 text-xs font-medium text-stone-600 transition hover:bg-stone-100/50 disabled:opacity-40"
             >
               {unsaveLoading ? LABELS.removing : LABELS.unsave}
             </button>

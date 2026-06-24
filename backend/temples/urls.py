@@ -4,6 +4,8 @@ from rest_framework.routers import DefaultRouter
 
 from temples.views.admin_seed import seed_initial_shrine
 from temples.api.views.route import RouteView
+from temples.api.views.reflection import ShrineReflectionCreateView
+from temples.api.views.shrine_submission import ShrineSubmissionCreateView
 from temples.api.views.search import search
 from temples.views.places import (
     PlacesTextSearchView,
@@ -27,6 +29,8 @@ urlpatterns = [
     path("shrines/", shrine_list, name="shrine_list"),
     path("shrines/<int:pk>/", shrine_detail, name="shrine_detail"),
     path("shrines/<int:pk>/route/", shrine_route, name="shrine_route"),
+    path("shrines/<int:pk>/reflection/", ShrineReflectionCreateView.as_view(), name="shrine-reflection-create"),
+    path("shrine-submissions/", ShrineSubmissionCreateView.as_view(), name="shrine-submissions"),
     path("search/", search, name="search"),
     path("shrines/nearby", ShrineNearbyView.as_view(), name="shrines-nearby"),
     path("", include(router.urls)),

@@ -1,25 +1,39 @@
-// apps/web/src/features/home/components/HomeMainClient.tsx
 "use client";
 
-import { SectionCard } from "@/components/layout/SectionCard";
-import { HomeConciergeInlineClient } from "./HomeConciergeInlineClient";
+import Link from "next/link";
+
 import { HomeNearbySection } from "./HomeNearbySection";
-import HomeGoshuinFeedSection from "@/features/home/components/HomeGoshuinFeedSection";
+import { HomeHero } from "./HomeHero";
 
 export function HomeMainClient() {
   return (
-    <>
-      <SectionCard>
-        <HomeConciergeInlineClient />
-      </SectionCard>
+    <div className="space-y-16">
+      <HomeHero />
 
-      <SectionCard title="最新の公開御朱印" description="タップで神社詳細へ">
-        <HomeGoshuinFeedSection limit={12} />
-      </SectionCard>
+      <section className="space-y-9">
+        <div className="space-y-2 px-1">
+          <p className="text-[9px] font-normal tracking-[0.24em] text-stone-400">SUB PATHS</p>
+          <h2 className="text-lg font-medium text-stone-800">相談のあとに、場所でも確かめる</h2>
+        </div>
 
-      <SectionCard title="今いる場所の近くの神社" description="位置情報をもとに、徒歩圏内の神社を優先して表示します。">
-        <HomeNearbySection />
-      </SectionCard>
-    </>
+        <div className="space-y-10">
+          <div className="ml-2 max-w-[34rem]">
+            <HomeNearbySection />
+          </div>
+
+          <div className="ml-auto max-w-[30rem] rounded-3xl border border-stone-200/20 bg-white/55 px-6 py-10 sm:py-11">
+            <p className="text-sm font-medium text-stone-800">神社名や地域からも確認する</p>
+            <div className="mt-7">
+              <Link
+                href="/shrines"
+                className="inline-flex min-h-[36px] rounded-full border border-stone-200/55 bg-stone-50/80 px-4 py-1.5 text-sm font-normal text-stone-700 transition hover:bg-stone-100"
+              >
+                神社一覧も見る
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
   );
 }

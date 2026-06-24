@@ -17,6 +17,8 @@ tags:
     description: コンシェルジュ機能の履歴参照
   - name: Routes
     description: 経路検索（距離・時間・ポリライン）
+  - name: ScoreV3Admin
+    description: Score v3 観測・判定ダッシュボード（IsAdminUser 専用）
 
 paths:
   /api/populars/:
@@ -103,6 +105,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ConciergeHistoryDetail"
 
+
   /api/concierge/chat/:
     post:
       tags: [Concierge]
@@ -122,6 +125,30 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ConciergeChatResponse"
+
+  /api/concierge/plan/:
+    post:
+      tags: [Concierge]
+      summary: Concierge plan (route / shrine suggestions)
+      description: >
+        クエリをもとに参拝プランを生成する。おすすめ候補、中心候補、ルート情報を返す。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConciergePlanRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConciergePlanResponse"
+        "400":
+          description: Validation Error
+        "401":
+          description: Unauthorized
 
   /api/shrine-submissions/:
     post:
@@ -146,6 +173,41 @@ paths:
         "401":
           description: Unauthorized
 
+
+  /api/concierge/score-v3/dashboard/:
+    get:
+      tags: [ScoreV3Admin]
+      summary: Score v3 観測結果と funnel の突合ダッシュボード
+      description: >
+        score_v3 の shadow/active 観測集計値と behavior funnel を突合し、
+        active_candidate / rollback_required の判定結果を返す。
+        IsAdminUser 専用。未認証は 401、非 staff は 403 を返す。
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScoreV3DashboardResponse"
+              example:
+                score_v3:
+                  top1_changed_rate_avg: 0.05
+                  activation_candidate_rate: 0.92
+                  avg_delta: -0.08
+                  max_abs_delta_max: 0.31
+                funnel:
+                  route_open_rate: 0.34
+                  save_rate: 0.22
+                  visit_done_rate: 0.11
+                  reflection_saved_rate: 0.06
+                decision:
+                  active_candidate: true
+                  rollback_required: false
+                  reasons: []
+        "401":
+          description: Unauthorized — 未認証リクエスト
+        "403":
+          description: Forbidden — staff 権限がないユーザー
 
   /api/directions/:
     get:
@@ -559,3 +621,268 @@ components:
         ok: { type: boolean }
         data:
           $ref: "#/components/schemas/ConciergeChatData"
+
+    ConciergePlanRequest:
+      type: object
+      required: [query]
+      properties:
+        query:
+          type: string
+          description: "参拝プランの元となる検索クエリ"
+        language:
+          type: string
+          nullable: true
+          default: ja
+          description: "応答言語。既定は ja"
+        transportation:
+          type: string
+          enum: [walk, driving]
+          default: walk
+          description: "移動手段"
+        area:
+          type: string
+          nullable: true
+          description: "地名ベースの検索補助入力"
+        lat:
+          type: number
+          nullable: true
+          description: "現在地または検索基準点の緯度"
+        lng:
+          type: number
+          nullable: true
+          description: "現在地または検索基準点の経度"
+        radius_m:
+          type: number
+          nullable: true
+          description: "検索半径（メートル）"
+        radius_km:
+          oneOf:
+            - type: number
+            - type: string
+          nullable: true
+          description: "検索半径（キロメートル）。互換入力を許可する"
+        locationbias:
+          type: string
+          nullable: true
+          description: "location bias 用の補助パラメータ"
+
+
+    ConciergePlanLocation:
+      type: object
+      required: [lat, lng]
+      properties:
+        lat:
+          type: number
+        lng:
+          type: number
+
+    ConciergePlanMain:
+      type: object
+      additionalProperties: true
+      properties:
+        location:
+          $ref: "#/components/schemas/ConciergePlanLocation"
+
+    ConciergePlanRouteHints:
+      type: object
+      additionalProperties: true
+      properties:
+        mode:
+          type: string
+          enum: [walk, driving]
+
+    ConciergePlanRecommendation:
+      type: object
+      additionalProperties: true
+      properties:
+        name:
+          type: string
+          nullable: true
+        display_name:
+          type: string
+          nullable: true
+        reason:
+          type: string
+          nullable: true
+        bullets:
+          type: array
+          nullable: true
+          items:
+            type: string
+        highlights:
+          type: array
+          nullable: true
+          items:
+            type: string
+        display_address:
+          type: string
+          nullable: true
+        location:
+          nullable: true
+          oneOf:
+            - $ref: "#/components/schemas/ConciergePlanLocation"
+            - type: string
+
+    ConciergePlanStop:
+      type: object
+      required: [order, name, display_address, location, eta_minutes, travel_minutes, stay_minutes]
+      additionalProperties: true
+      properties:
+        order:
+          type: integer
+        name:
+          type: string
+        display_address:
+          type: string
+        location:
+          $ref: "#/components/schemas/ConciergePlanLocation"
+        eta_minutes:
+          type: number
+        travel_minutes:
+          type: number
+        stay_minutes:
+          type: number
+
+    ConciergePlanData:
+      type: object
+      required: [recommendations]
+      additionalProperties: true
+      properties:
+        recommendations:
+          type: array
+          items:
+            $ref: "#/components/schemas/ConciergePlanRecommendation"
+        _explanations:
+          nullable: true
+
+    ScoreV3Metrics:
+      type: object
+      required:
+        - top1_changed_rate_avg
+        - activation_candidate_rate
+        - avg_delta
+        - max_abs_delta_max
+      properties:
+        top1_changed_rate_avg:
+          type: number
+          format: float
+          description: "観測期間中の top1 変動率の平均。0.10 以下が active 化目安。"
+          example: 0.05
+        activation_candidate_rate:
+          type: number
+          format: float
+          description: "activation_candidate=true だったセッション比率。0.80 以上が active 化目安。"
+          example: 0.92
+        avg_delta:
+          type: number
+          format: float
+          description: "score_v3 と score_total の平均差分（score_v3 − score_total）。"
+          example: -0.08
+        max_abs_delta_max:
+          type: number
+          format: float
+          description: "各セッションの max_abs_delta の最大値。0.50 未満が active 化目安。"
+          example: 0.31
+
+    ScoreV3FunnelMetrics:
+      type: object
+      required:
+        - route_open_rate
+        - save_rate
+        - visit_done_rate
+        - reflection_saved_rate
+      properties:
+        route_open_rate:
+          type: number
+          format: float
+          description: "推薦候補に対して route_open アクションが発生した比率。"
+          example: 0.34
+        save_rate:
+          type: number
+          format: float
+          description: "推薦候補に対して save アクションが発生した比率。"
+          example: 0.22
+        visit_done_rate:
+          type: number
+          format: float
+          description: "推薦候補に対して visit_done が記録された比率。"
+          example: 0.11
+        reflection_saved_rate:
+          type: number
+          format: float
+          description: "visit_done のうち reflection_saved が記録された比率。"
+          example: 0.06
+
+    ScoreV3Decision:
+      type: object
+      required:
+        - active_candidate
+        - rollback_required
+        - reasons
+      properties:
+        active_candidate:
+          type: boolean
+          description: >
+            以下をすべて満たす場合 true:
+            top1_changed_rate_avg ≤ 0.10,
+            activation_candidate_rate ≥ 0.80,
+            max_abs_delta_max < 0.50,
+            funnel 各指標がベースライン以上。
+          example: true
+        rollback_required:
+          type: boolean
+          description: >
+            以下のいずれかを満たす場合 true:
+            top1_changed_rate_avg > 0.20,
+            max_abs_delta_max > 1.00,
+            route_open_rate / visit_done_rate / reflection_saved_rate がベースラインより悪化,
+            activation_candidate_rate < 0.50。
+          example: false
+        reasons:
+          type: array
+          items:
+            type: string
+          description: "active_candidate=false または rollback_required=true の原因を示す文字列リスト。条件を満たす場合は空配列。"
+          example: []
+
+    ScoreV3DashboardResponse:
+      type: object
+      required:
+        - score_v3
+        - funnel
+        - decision
+      properties:
+        score_v3:
+          $ref: "#/components/schemas/ScoreV3Metrics"
+        funnel:
+          $ref: "#/components/schemas/ScoreV3FunnelMetrics"
+        decision:
+          $ref: "#/components/schemas/ScoreV3Decision"
+
+    ConciergePlanResponse:
+      type: object
+      required: [ok, query, stops, data]
+      additionalProperties: true
+      properties:
+        ok:
+          type: boolean
+        query:
+          type: string
+        transportation:
+          type: string
+          nullable: true
+          enum: [walk, driving]
+        main:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ConciergePlanMain"
+        route_hints:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ConciergePlanRouteHints"
+        stops:
+          type: array
+          items:
+            $ref: "#/components/schemas/ConciergePlanStop"
+        data:
+          $ref: "#/components/schemas/ConciergePlanData"

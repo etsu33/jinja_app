@@ -1,6 +1,13 @@
 import type { ConciergeResultItem } from "@/viewmodels/conciergeResultItem";
 import { buildRecommendationReasonViewModel } from "@/lib/concierge/buildRecommendationReasonViewModel";
 import { buildShrineHref } from "@/lib/nav/buildShrineHref";
+import {
+  buildNeedPrimaryShortCopy,
+  isNeedDisplayTag,
+  labelNeedDisplayTag,
+  type NeedDisplayTag,
+  type ShrineTone,
+} from "@/features/concierge/copy/needDisplayCopy";
 
 export type ConciergeResponse = {
   ok: boolean;
@@ -19,20 +26,6 @@ export type ConciergeResponse = {
   };
 };
 
-const NEED_LABELS: Record<string, string> = {
-  career: "転機・仕事",
-  mental: "不安・心",
-  love: "恋愛",
-  money: "金運",
-  rest: "休息",
-  courage: "前進・後押し",
-  protection: "厄除け・守護",
-  focus: "集中・継続",
-};
-
-type NeedTag = "money" | "courage" | "career" | "mental" | "rest" | "love" | "study";
-type ShrineTone = "strong" | "quiet" | "tight" | "neutral";
-
 function normalizeShrineName(name?: string | null): string {
   return (name ?? "").replace(/\s+/g, "").trim();
 }
@@ -47,17 +40,13 @@ function getShrineTone(shrineName?: string | null): ShrineTone {
   return "neutral";
 }
 
-function isPrimaryNeedTag(tag: string): tag is NeedTag {
-  return ["money", "courage", "career", "mental", "rest", "love", "study"].includes(tag);
-}
-
 function resolveListPrimaryTag(args: {
   primaryReasonLabel?: string | null;
   fallbackTags?: string[] | null;
-}): NeedTag | null {
+}): NeedDisplayTag | null {
   const primaryReasonLabel = (args.primaryReasonLabel ?? "").trim();
 
-  if (isPrimaryNeedTag(primaryReasonLabel)) {
+  if (isNeedDisplayTag(primaryReasonLabel)) {
     return primaryReasonLabel;
   }
 
@@ -65,7 +54,7 @@ function resolveListPrimaryTag(args: {
   const tags = fallbackTags
     .filter((t): t is string => typeof t === "string")
     .map((t) => t.trim())
-    .filter(isPrimaryNeedTag);
+    .filter(isNeedDisplayTag);
 
   if (tags.includes("courage")) return "courage";
   if (tags.includes("money")) return "money";
@@ -76,58 +65,6 @@ function resolveListPrimaryTag(args: {
   if (tags.includes("study")) return "study";
 
   return tags[0] ?? null;
-}
-
-function buildListPrimaryReason(
-  shrineName?: string | null,
-  primaryTag?: NeedTag | null,
-  fallbackText?: string | null,
-): string | null {
-  if (!primaryTag) return fallbackText ?? null;
-
-  const tone = getShrineTone(shrineName);
-
-  if (primaryTag === "courage") {
-    if (tone === "strong") return "止まった流れを動かす";
-    if (tone === "tight") return "次の一歩を定める";
-    if (tone === "quiet") return "気持ちを整えて一歩を決める";
-    return "次の一歩を後押しする";
-  }
-
-  if (primaryTag === "mental") {
-    if (tone === "strong") return "気持ちを切り替える";
-    if (tone === "tight") return "気持ちを引き締めて整える";
-    return "不安や気持ちを整える";
-  }
-
-  if (primaryTag === "career") {
-    if (tone === "strong") return "仕事の停滞を動かす";
-    if (tone === "tight") return "仕事や転機の判断を定める";
-    return "仕事や転機を整える";
-  }
-
-  if (primaryTag === "money") {
-    if (tone === "strong") return "金運や流れを動かす";
-    if (tone === "quiet") return "金運や巡りを整える";
-    return "金運や流れを立て直す";
-  }
-
-  if (primaryTag === "rest") {
-    if (tone === "quiet") return "心身を休める";
-    return "心身を整える";
-  }
-
-  if (primaryTag === "love") {
-    if (tone === "quiet") return "関係性を見直す";
-    return "良縁や関係性を進める";
-  }
-
-  if (primaryTag === "study") {
-    if (tone === "tight") return "集中や目標を定める";
-    return "集中や学業の流れを整える";
-  }
-
-  return fallbackText ?? null;
 }
 
 function safeId(r: NonNullable<NonNullable<ConciergeResponse["data"]>["recommendations"]>[number]) {
@@ -144,8 +81,29 @@ function normalizeTagList(tags: string[] | null | undefined): string[] {
     .filter(Boolean);
 }
 
+function normalizeTrustMetadata(raw: any) {
+  if (!raw || typeof raw !== "object") return null;
+
+  const culturalStatusRaw = raw.cultural_status ?? raw.culturalStatus;
+  const culturalStatus = Array.isArray(culturalStatusRaw)
+    ? culturalStatusRaw.filter((v): v is string => typeof v === "string" && v.trim().length > 0).map((v) => v.trim())
+    : [];
+
+  return {
+    rankClass: typeof raw.rank_class === "string" ? raw.rank_class : typeof raw.rankClass === "string" ? raw.rankClass : null,
+    culturalStatus,
+    lineage: typeof raw.lineage === "string" ? raw.lineage : null,
+    originSummary:
+      typeof raw.origin_summary === "string"
+        ? raw.origin_summary
+        : typeof raw.originSummary === "string"
+          ? raw.originSummary
+          : null,
+  };
+}
+
 function toDisplayTag(tag: string): string {
-  return NEED_LABELS[tag] ?? tag;
+  return labelNeedDisplayTag(tag);
 }
 
 export function conciergeToShrineListItems(resp: ConciergeResponse): ConciergeResultItem[] {
@@ -166,6 +124,22 @@ export function conciergeToShrineListItems(resp: ConciergeResponse): ConciergeRe
     .map((r, index) => {
       const id = safeId(r);
       const name = r.display_name ?? r.name;
+      const trustMetadata = normalizeTrustMetadata(r.trust_metadata ?? r.trustMetadata ?? null);
+      const actionSuggestions = Array.isArray(r._explanation_payload?.action_suggestions)
+        ? r._explanation_payload.action_suggestions
+            .map((item: any) => ({
+              id: String(item.id ?? ""),
+              historyTheme: String(item.history_theme ?? ""),
+              title: String(item.title ?? ""),
+              description: String(item.description ?? ""),
+              category: String(item.category ?? ""),
+              timing: String(item.timing ?? ""),
+              difficulty: String(item.difficulty ?? ""),
+              timeEstimate: String(item.time_estimate ?? ""),
+              measurementKey: String(item.measurement_key ?? ""),
+            }))
+            .filter((item: any) => item.id && item.title)
+        : [];
 
       const matchedTags = normalizeTagList(r.breakdown?.matched_need_tags);
       const rawTags = matchedTags.length ? matchedTags : normalizeTagList(resp.data?._need?.tags);
@@ -198,7 +172,12 @@ export function conciergeToShrineListItems(resp: ConciergeResponse): ConciergeRe
         primaryReasonLabel,
         fallbackTags: rawTags,
       });
-      const primaryMeaning = buildListPrimaryReason(name, primaryTag, rawReason) ?? reasonVm.list.primaryPhrase;
+      const primaryMeaning =
+        buildNeedPrimaryShortCopy({
+          primaryTag,
+          shrineTone: getShrineTone(name),
+          fallbackText: rawReason,
+        }) ?? reasonVm.list.primaryPhrase;
 
       const deepReason = {
         interpretation: reasonVm.detail.consultationSummary,
@@ -223,6 +202,8 @@ export function conciergeToShrineListItems(resp: ConciergeResponse): ConciergeRe
         id,
         tid: threadId,
         detailHref,
+        trustMetadata,
+        actionSuggestions,
         cardProps: {
           shrineId: r.shrine_id,
           title: name,

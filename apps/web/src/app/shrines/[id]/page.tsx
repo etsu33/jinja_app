@@ -2,7 +2,8 @@ import Link from "next/link";
 
 import type { Shrine } from "@/lib/api/shrines";
 import type { ConciergeBreakdown } from "@/lib/api/concierge";
-import { getConciergeThreadServer } from "@/lib/api/concierge.server";
+import { getConciergeThreadServer, getConciergeThreadsServer } from "@/lib/api/concierge.server";
+import { getBillingStatusServer } from "@/lib/api/billing.server";
 import { getShrinePublicServer } from "@/lib/api/shrines.server";
 import { fetchPublicGoshuinsForShrineServer } from "@/lib/api/publicGoshuins.server";
 import { getShrineFavoriteInitialState } from "@/lib/server/favorites.server";
@@ -25,13 +26,25 @@ import { pickReasonFromThread } from "@/lib/concierge/pickReasonFromThread";
 import { pickModeFromThread } from "@/lib/concierge/pickModeFromThread";
 
 import { ShrineDetailToast } from "@/components/shrine/ShrineDetailToast";
+import { ShrineDetailViewTracker } from "@/components/shrine/ShrineDetailViewTracker";
 import ShrineSaveButton from "@/components/shrine/ShrineSaveButton";
 import ShrineDetailShell from "@/components/shrine/ShrineDetailShell";
 import ShrineDetailArticle from "@/components/shrine/detail/ShrineDetailArticle";
 import ScrollToTopOnMount from "@/components/navigation/ScrollToTopOnMount";
 
 import { getBenefitLabels } from "@/lib/shrine/getBenefitLabels";
+import {
+  buildNeedPrimaryShortCopy,
+  isNeedDisplayTag,
+  type NeedDisplayTag,
+  type ShrineTone,
+} from "@/features/concierge/copy/needDisplayCopy";
 
+import { fetchShrineMeaningPayloadV2Server } from "@/lib/api/shrineMeaning.server";
+
+import { buildPreviousConsultationSummary } from "@/lib/concierge/buildPreviousConsultationSummary";
+import { compareState } from "@/lib/concierge/compareState";
+import type { StateDelta } from "@/lib/concierge/stateComparison";
 
 function normalizeCtx(v?: string | null): "map" | "concierge" | null {
   return v === "map" || v === "concierge" ? v : null;
@@ -60,19 +73,11 @@ type RecommendationReasonDetailBuildArgs = {
 function resolvePrimaryTagFromConcierge(args: {
   primaryReasonLabel?: string | null;
   fallbackTags?: string[] | null;
-}): "money" | "courage" | "career" | "mental" | "rest" | "love" | "study" | null {
-  const primaryReasonLabel = args.primaryReasonLabel ?? null;
+}): NeedDisplayTag | null {
+  const primaryReasonLabel = (args.primaryReasonLabel ?? "").trim();
   const fallbackTags = Array.isArray(args.fallbackTags) ? args.fallbackTags : [];
 
-  if (
-    primaryReasonLabel === "money" ||
-    primaryReasonLabel === "courage" ||
-    primaryReasonLabel === "career" ||
-    primaryReasonLabel === "mental" ||
-    primaryReasonLabel === "rest" ||
-    primaryReasonLabel === "love" ||
-    primaryReasonLabel === "study"
-  ) {
+  if (isNeedDisplayTag(primaryReasonLabel)) {
     return primaryReasonLabel;
   }
 
@@ -87,7 +92,7 @@ function resolvePrimaryTagFromConcierge(args: {
   return null;
 }
 
-function resolveShrineToneForNarrativeFallback(shrineName: string): "strong" | "quiet" | "tight" | "neutral" {
+function resolveShrineToneForNarrativeFallback(shrineName: string): ShrineTone {
   const normalizedName = shrineName.replace(/\s+/g, "").trim();
 
   if (normalizedName.includes("三峯")) return "strong";
@@ -97,53 +102,6 @@ function resolveShrineToneForNarrativeFallback(shrineName: string): "strong" | "
   return "neutral";
 }
 
-function buildFallbackShortFromPrimaryTag(args: {
-  primaryTag: "money" | "courage" | "career" | "mental" | "rest" | "love" | "study" | null;
-  shrineTone: "strong" | "quiet" | "tight" | "neutral";
-  rawReason: string | null;
-}): string | null {
-  const { primaryTag, shrineTone, rawReason } = args;
-
-  return primaryTag === "courage"
-    ? shrineTone === "strong"
-      ? "止まった流れを動かす"
-      : shrineTone === "tight"
-        ? "次の一歩を定める"
-        : shrineTone === "quiet"
-          ? "気持ちを整えて一歩を決める"
-          : "次の一歩を後押しする"
-    : primaryTag === "mental"
-      ? shrineTone === "strong"
-        ? "気持ちを切り替える"
-        : shrineTone === "tight"
-          ? "気持ちを引き締めて整える"
-          : "不安や気持ちを整える"
-      : primaryTag === "career"
-        ? shrineTone === "strong"
-          ? "仕事の停滞を動かす"
-          : shrineTone === "tight"
-            ? "仕事や転機の判断を定める"
-            : "仕事や転機を整える"
-        : primaryTag === "money"
-          ? shrineTone === "strong"
-            ? "金運や流れを動かす"
-            : shrineTone === "quiet"
-              ? "金運や巡りを整える"
-              : "金運や流れを立て直す"
-          : primaryTag === "rest"
-            ? shrineTone === "quiet"
-              ? "心身を休める"
-              : "心身を整える"
-            : primaryTag === "love"
-              ? shrineTone === "quiet"
-                ? "関係性を見直す"
-                : "良縁や関係性を進める"
-              : primaryTag === "study"
-                ? shrineTone === "tight"
-                  ? "集中や目標を定める"
-                  : "集中や学業の流れを整える"
-                : rawReason;
-}
 
 export function buildRecommendationReasonDetailInput(
   args: RecommendationReasonDetailBuildArgs,
@@ -159,10 +117,10 @@ export function buildRecommendationReasonDetailInput(
   });
   const rawReason = args.conciergeExplanationPayload?.original_reason?.trim() || args.conciergeReason?.trim() || null;
   const shrineTone = resolveShrineToneForNarrativeFallback(args.shrineName);
-  const fallbackShort = buildFallbackShortFromPrimaryTag({
+  const fallbackShort = buildNeedPrimaryShortCopy({
     primaryTag,
     shrineTone,
-    rawReason,
+    fallbackText: rawReason,
   });
 
   const reasonVm = buildRecommendationReasonViewModel({
@@ -251,6 +209,8 @@ export default async function Page({ params, searchParams }: Props) {
         title="神社の詳細"
         subtitle={null}
         close={close}
+        ctx={ctx}
+        tid={tid}
         addGoshuinHref={null}
         saveAction={null}
         googleDirHref={null}
@@ -266,6 +226,8 @@ export default async function Page({ params, searchParams }: Props) {
 
   const s = shrine;
   const pageTitle = (s.name_jp ?? "").trim() || `神社 #${numericId}`;
+  const shrineMeaningPayloadV2 = await fetchShrineMeaningPayloadV2Server(numericId);
+  const historyThemeForAnalytics = shrineMeaningPayloadV2?.source?.historyTheme ?? null;
 
   const latNum = Number(s.latitude ?? NaN);
   const lngNum = Number(s.longitude ?? NaN);
@@ -290,6 +252,10 @@ export default async function Page({ params, searchParams }: Props) {
   const addGoshuinHref = `/goshuin/new?${addQ.toString()}`;
   const shrineBenefitLabels = getBenefitLabels(s);
   const shrineFeatureLabels: string[] = [];
+
+  const billingStatus = await getBillingStatusServer();
+  const isPremiumActive = billingStatus.plan === "premium" && billingStatus.is_active === true;
+
 
   const { guestMode, ...initialFavorite } = await getShrineFavoriteInitialState(numericId);
 
@@ -330,8 +296,11 @@ export default async function Page({ params, searchParams }: Props) {
     gap_from_top?: number;
     comparison_summary?: string | null;
   } | null = null;
+
+  let stateDelta: StateDelta | null = null;
   
   let selectedRecommendation: Record<string, any> | null = null;
+  // actionState will be set after selectedRecommendation is determined
 
   if (ctx === "concierge" && tid) {
     try {
@@ -345,11 +314,28 @@ export default async function Page({ params, searchParams }: Props) {
         const recommendation = (thread.recommendations ?? []).find((r) => Number(r?.shrine_id ?? r?.id) === numericId);
         selectedRecommendation = recommendation ?? null;
 
-
         recommendationRankExplanation = recommendation?.rank_explanation as typeof recommendationRankExplanation;
-
         recommendationRankComparison = recommendation?.rank_comparison as typeof recommendationRankComparison;
 
+        const threads = await getConciergeThreadsServer();
+        const currentThreadId = Number(tid);
+        const currentIndex = threads.findIndex((t) => t != null && Number(t.id) === currentThreadId);
+        const previousThread = currentIndex >= 0 ? (threads[currentIndex + 1] ?? null) : null;
+        const previousThreadId = previousThread?.id ?? null;
+
+        if (previousThreadId != null) {
+          const previousThreadDetail = await getConciergeThreadServer(String(previousThreadId));
+          const currentSummary = buildPreviousConsultationSummary(thread);
+          const previousSummary = buildPreviousConsultationSummary(previousThreadDetail);
+          stateDelta = compareState(previousSummary, currentSummary);
+          serverLog("info", "SHRINE_DETAIL_PREVIOUS_THREAD_RESOLVED", {
+            shrineId: numericId,
+            tid,
+            previousThreadId,
+            hasPreviousThreadDetail: Boolean(previousThreadDetail),
+            hasStateDelta: Boolean(stateDelta),
+          });
+        }
       }
     } catch (e) {
       serverLog("warn", "GET_CONCIERGE_THREAD_FAILED", {
@@ -363,10 +349,12 @@ export default async function Page({ params, searchParams }: Props) {
       conciergeMode = null;
       recommendationRankExplanation = null;
       recommendationRankComparison = null;
+      stateDelta = null;
     }
   }
 
-  
+  // Set actionState after determining selectedRecommendation
+  const actionState = selectedRecommendation?.action_state ?? null;
 
   if (ctx === "concierge" && !tid) {
     conciergeMode = "compat";
@@ -420,6 +408,7 @@ export default async function Page({ params, searchParams }: Props) {
 
   const model = buildShrineDetailModel({
     shrine: s,
+    shrineMeaningPayloadV2,
     publicGoshuins,
     conciergeBreakdown,
     conciergeReason,
@@ -429,6 +418,7 @@ export default async function Page({ params, searchParams }: Props) {
     recommendationReasonDetail,
     recommendationRankExplanation,
     recommendationRankComparison,
+    actionState,
     ctx,
     tid,
     signals,
@@ -436,11 +426,16 @@ export default async function Page({ params, searchParams }: Props) {
   return (
     <>
       <ScrollToTopOnMount />
+      <ShrineDetailViewTracker shrineId={numericId} ctx={ctx} tid={tid} />
       <ShrineDetailToast shrineId={numericId} />
       <ShrineDetailShell
         title={pageTitle}
         subtitle={null}
         close={close}
+        shrineId={numericId}
+        ctx={ctx}
+        tid={tid}
+        historyTheme={historyThemeForAnalytics}
         addGoshuinHref={null}
         googleDirHref={googleDirHref}
         googleDirLabel="Googleマップで経路案内"
@@ -449,10 +444,16 @@ export default async function Page({ params, searchParams }: Props) {
       >
         <ShrineDetailArticle
           {...model}
+          stateDelta={stateDelta}
+          isPremiumActive={isPremiumActive}
+          historyTheme={historyThemeForAnalytics}
           addGoshuinHref={addGoshuinHref}
           saveActionNode={
             <ShrineSaveButton
+              key={`shrine-save-${numericId}`}
               shrineId={numericId}
+              ctx={ctx}
+              tid={tid}
               nextPath={nextPath}
               guestMode={guestMode}
               initial={initialFavorite}

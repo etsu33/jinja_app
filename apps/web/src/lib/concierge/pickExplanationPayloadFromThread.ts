@@ -23,6 +23,7 @@ export type PickedExplanationPayload = {
   } | null;
 };
 
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -63,7 +64,10 @@ export function pickExplanationPayloadFromThread(thread: unknown, shrineId: numb
   if (!isRecord(thread)) return null;
 
   const data = isRecord(thread.data) ? thread.data : null;
-  const recs = Array.isArray(data?.recommendations) ? data!.recommendations : [];
+  const recs =
+    (Array.isArray(data?.recommendations_v2) ? data.recommendations_v2 : null) ??
+    (Array.isArray(data?.recommendations) ? data.recommendations : null) ??
+    [];
 
   const hit = recs.find((item) => {
     if (!isRecord(item)) return false;

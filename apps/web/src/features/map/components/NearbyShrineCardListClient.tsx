@@ -37,7 +37,6 @@ function logDedupe(label: string, arr: any[]) {
   // console.log(keys);
 }
 
-
 function clientLog(event: string, payload?: Record<string, unknown>) {
   if (!DEBUG) return;
   console.log(`[map] ${event}`, payload ?? {});
@@ -46,6 +45,10 @@ function clientLog(event: string, payload?: Record<string, unknown>) {
 export default function NearbyShrineCardListClient() {
   const sp = useSearchParams();
   const tid = sp.get("tid");
+  const submitted = sp.get("submitted");
+  const submissionStatus = sp.get("status");
+  const submittedShrineName = sp.get("name")?.trim() ?? "";
+  const showSubmissionPendingBanner = submitted === "1" && submissionStatus === "pending";
 
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [loadingLoc, setLoadingLoc] = useState(true);
@@ -131,9 +134,6 @@ export default function NearbyShrineCardListClient() {
         const data = (await r.json()) as PlacesNearbyResponse;
         const results = Array.isArray(data?.results) ? data.results : [];
 
-        
-        
-        
         // ✅ ここで一括で View Model 化
         const viewItems: NearbyItemView[] = results.map((p) => ({
           ...p,
@@ -143,8 +143,6 @@ export default function NearbyShrineCardListClient() {
             tid,
           }),
         }));
-
-
 
         setItems(viewItems);
         setState(viewItems.length === 0 ? "empty" : "ready");
@@ -179,7 +177,7 @@ export default function NearbyShrineCardListClient() {
   }, [usedFallback]);
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-6">
       {/* デバッグ用表示：必要なら残す */}
       {DEBUG && (
         <div className="text-[10px] text-slate-400">
@@ -187,14 +185,26 @@ export default function NearbyShrineCardListClient() {
         </div>
       )}
 
+      {showSubmissionPendingBanner && (
+        <div
+          className="whitespace-pre-line rounded-3xl border border-emerald-200/60 bg-emerald-50/70 px-5 py-4 text-sm text-emerald-900"
+          role="status"
+          aria-live="polite"
+        >
+          {submittedShrineName
+            ? `「${submittedShrineName}」の投稿を受け付けました。\n現在審査中のため、公開検索にはまだ表示されません。\n審査完了後に公開されます。`
+            : "投稿を受け付けました。\n現在審査中のため、公開検索にはまだ表示されません。\n審査完了後に公開されます。"}
+        </div>
+      )}
+
       {usedFallback && !loadingLoc && (
-        <div className="rounded-xl border bg-amber-50 px-3 py-2 text-[11px] text-amber-700">
+        <div className="rounded-2xl border border-stone-200/50 bg-stone-50/70 px-4 py-3 text-[11px] text-stone-500">
           現在地が取れないため仮の場所（東京駅）で検索中
         </div>
       )}
 
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold text-gray-700">{title}</p>
+        <p className="text-[11px] font-medium tracking-[0.2em] text-stone-500">{title}</p>
         <button
           type="button"
           onClick={() => {
@@ -202,7 +212,7 @@ export default function NearbyShrineCardListClient() {
             lastKeyRef.current = ""; // ✅ 更新ボタンだけ強制リフレッシュ
             void fetchNearby(coords.lat, coords.lng);
           }}
-          className="rounded-full border px-3 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+          className="rounded-full border border-stone-200/70 bg-white/80 px-3 py-1 text-[11px] font-medium text-stone-700 hover:bg-stone-50 disabled:opacity-50"
           disabled={!canAction}
         >
           {state === "loading" ? "更新中…" : "更新"}
@@ -211,7 +221,7 @@ export default function NearbyShrineCardListClient() {
 
       {/* エラー表示 */}
       {err && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700">
+        <div className="rounded-2xl border border-rose-200/70 bg-rose-50/70 p-4 text-xs text-rose-700">
           取得に失敗しました: {err}
         </div>
       )}
@@ -220,20 +230,35 @@ export default function NearbyShrineCardListClient() {
       {state === "loading" && items.length === 0 && (
         <div className="space-y-2">
           {[0, 1, 2].map((i) => (
-            <div key={i} className="h-24 animate-pulse rounded-2xl bg-slate-100" />
+            <div key={i} className="h-24 animate-pulse rounded-3xl bg-stone-100" />
           ))}
         </div>
       )}
 
       {/* 空・エラー時のフォールバック */}
       {(state === "empty" || state === "error") && (
-        <div className="rounded-xl border bg-white p-4 text-center">
-          <p className="text-sm text-slate-500">
-            {state === "error" ? "情報の取得に失敗しました。" : "近くに候補が見つかりませんでした。"}
-          </p>
-          <div className="mt-3 flex gap-2">
+        <div className="space-y-4 rounded-3xl border border-stone-200/25 bg-white/70 p-5 text-center">
+          <div className="space-y-1">
+            <p className="text-sm text-stone-500">
+              {state === "error" ? "情報の取得に失敗しました。" : "近くに候補が見つかりませんでした。"}
+            </p>
+            {state === "empty" && (
+              <p className="text-xs text-stone-500">この場所にはまだ登録がない可能性があります。</p>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-2 sm:flex-row">
+            {state === "empty" && (
+              <Link
+                href="/shrines/new?returnTo=/map"
+                className="inline-flex flex-1 items-center justify-center rounded-full border border-emerald-200/70 bg-emerald-50/90 px-3 py-2 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
+              >
+                神社を追加する
+              </Link>
+            )}
+
             <a
-              className="flex-1 rounded-xl bg-emerald-600 px-3 py-2 text-center text-xs font-semibold text-white"
+              className="flex-1 rounded-full border border-stone-200/70 bg-stone-50 px-3 py-2 text-center text-xs font-medium text-stone-700 hover:bg-stone-100"
               href={googleSearchNearbyUrl}
               target="_blank"
               rel="noreferrer"
@@ -246,8 +271,8 @@ export default function NearbyShrineCardListClient() {
 
       {/* リスト表示 */}
       {state !== "loading" && items.length > 0 ? (
-        <ul className="space-y-3">
-          {items.map((p) => {
+        <ul className="space-y-8">
+          {items.map((p, idx) => {
             const shrineId = (p as any).shrine_id ?? null;
 
             const key =
@@ -255,16 +280,22 @@ export default function NearbyShrineCardListClient() {
               (shrineId ? `shrine:${shrineId}` : `fallback:${p.name}:${p.lat ?? ""},${p.lng ?? ""}:${p.address ?? ""}`);
 
             return (
-              <li key={key} className="rounded-2xl border bg-white p-4 shadow-sm">
+              <li
+                key={key}
+                className={[
+                  "rounded-3xl border border-stone-200/25 bg-white/70 px-5",
+                  idx % 2 === 0 ? "mr-3 py-6 sm:mr-8" : "ml-3 py-8 sm:ml-10",
+                ].join(" ")}
+              >
                 <div className="space-y-1">
-                  <p className="text-sm font-semibold text-slate-900">{p.name}</p>
-                  {p.address ? <p className="text-xs text-slate-500">{p.address}</p> : null}
+                  <p className="text-sm font-medium text-stone-900">{p.name}</p>
+                  {p.address ? <p className="text-xs text-stone-500">{p.address}</p> : null}
                 </div>
 
-                <div className="mt-3 grid grid-cols-2 gap-2">
+                <div className="mt-6 grid grid-cols-2 gap-2">
                   {p.detailHref ? (
                     <Link
-                      className="rounded-xl bg-slate-900 px-3 py-2 text-center text-xs font-semibold text-white hover:opacity-95"
+                      className="rounded-full border border-stone-200/55 bg-stone-50/80 px-3 py-1.5 text-center text-xs font-normal text-stone-700 hover:bg-stone-100"
                       href={p.detailHref}
                       prefetch={false}
                     >
@@ -272,7 +303,7 @@ export default function NearbyShrineCardListClient() {
                     </Link>
                   ) : (
                     <a
-                      className="rounded-xl border px-3 py-2 text-center text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                      className="rounded-full border border-stone-200/55 bg-white/75 px-3 py-1.5 text-center text-xs font-normal text-stone-700 hover:bg-stone-50"
                       href={buildGoogleMapsSearchUrl(p.name, p.address ?? undefined)}
                       target="_blank"
                       rel="noreferrer"
@@ -282,7 +313,7 @@ export default function NearbyShrineCardListClient() {
                   )}
 
                   <a
-                    className="rounded-xl bg-emerald-600 px-3 py-2 text-center text-xs font-semibold text-white hover:opacity-95"
+                    className="rounded-full border border-emerald-200/55 bg-emerald-50/80 px-3 py-1.5 text-center text-xs font-normal text-emerald-900 hover:bg-emerald-100"
                     href={buildGoogleMapsDirUrl({
                       lat: p.lat ?? undefined,
                       lng: p.lng ?? undefined,

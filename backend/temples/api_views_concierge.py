@@ -28,6 +28,7 @@ from temples.api.serializers.concierge import (
 )
 from temples.geocoding.client import geocode_google_point
 from temples.models import ConciergeThread
+from temples.domain.consultation_axis import resolve_consultation_axis
 from temples.services import places as Places
 
 from temples.services.plan_service import resolve_plan_context
@@ -131,13 +132,14 @@ def _safe_extract_intent(text: str):
     t = text or ""
 
     def _heuristic():
+        axis = resolve_consultation_axis(query=t, need_tags=[]).axis
         if any(k in t for k in ("縁結び", "恋", "結婚")):
-            return {"kind": "love"}
+            return {"kind": "love", "consultation_axis": axis}
         if any(k in t for k in ("金運", "仕事", "商売")):
-            return {"kind": "money_work"}
+            return {"kind": "money_work", "consultation_axis": axis}
         if any(k in t for k in ("厄", "厄除", "厄払い")):
-            return {"kind": "purification"}
-        return {"kind": "general"}
+            return {"kind": "purification", "consultation_axis": axis}
+        return {"kind": "general", "consultation_axis": axis}
 
     if not _use_llm():
         return _heuristic()
@@ -364,9 +366,21 @@ def _resolve_request_location_inputs(
     *,
     area: Any,
 ) -> tuple[Optional[float], Optional[float]]:
+    # Priority 1: explicit top-level lat/lng.
     lat = _to_float(data.get("lat"))
     lng = _to_float(data.get("lng"))
-    if (lat is None or lng is None) and area:
+    if lat is not None and lng is not None:
+        return lat, lng
+
+    # Priority 2: frontend conciergeChat sends location: { lat, lng }.
+    location = data.get("location") if isinstance(data.get("location"), dict) else {}
+    lat = _to_float(location.get("lat"))
+    lng = _to_float(location.get("lng"))
+    if lat is not None and lng is not None:
+        return lat, lng
+
+    # Priority 3: area text geocode fallback.
+    if area:
         pt = _geocode_area_for_chat(area=area)
         if pt:
             lat, lng = pt
@@ -597,6 +611,19 @@ class ConciergeChatView(APIView):
                 time.perf_counter() - t0,
             )
 
+            # profile_context ログ（まだ推薦には使わない）
+            raw_profile_context = data.get("profile_context")
+            if isinstance(raw_profile_context, dict):
+                has_user = isinstance(raw_profile_context.get("user_profile"), dict)
+                has_derived = isinstance(raw_profile_context.get("derived_profile"), dict)
+                log.info(
+                    "[concierge/profile_context] received=Y user_profile=%s derived_profile=%s",
+                    "Y" if has_user else "N",
+                    "Y" if has_derived else "N",
+                )
+            else:
+                log.info("[concierge/profile_context] received=N")
+
             is_message_mode = bool(message)
             mode_label = "message" if is_message_mode else "query"
             query_len = len(query or "")
@@ -612,11 +639,18 @@ class ConciergeChatView(APIView):
             if public_mode not in {"need", "compat"}:
                 public_mode = "compat" if birthdate and not query else "need"
 
-            flow = (
-                str(data.get("flow")).upper()
-                if str(data.get("flow")).upper() in {"A", "B"}
-                else ("B" if public_mode == "compat" else "A")
-            )
+            requested_flow = str(data.get("flow") or "").strip().upper()
+            has_extra_condition = bool(str(extra_condition or "").strip())
+            has_goriyaku_tags = bool(goriyaku_tag_ids)
+
+            if requested_flow in {"A", "B"}:
+                flow = requested_flow
+            elif has_extra_condition or has_goriyaku_tags:
+                flow = "B"
+            elif public_mode == "compat":
+                flow = "B"
+            else:
+                flow = "A"
             intent = extract_intent(query or "")
 
             request._concierge_trace_id = rid
@@ -783,6 +817,8 @@ class ConciergeChatView(APIView):
                     extra_condition=extra_condition,
                     public_mode=public_mode,
                     flow=flow,
+                    user=user if getattr(user, "is_authenticated", False) else None,
+                    profile_context=raw_profile_context if isinstance(raw_profile_context, dict) else None,
                 )
             except Exception:
                 log.exception(
@@ -845,6 +881,13 @@ class ConciergeChatView(APIView):
             append_user = user if getattr(user, "is_authenticated", False) else None
             append_anonymous_id = None if append_user is not None else getattr(plan_context, "anon_id", None)
 
+            log.warning(
+                "[AUTH DEBUG] user=%r authenticated=%s anonymous_id=%r",
+                getattr(user, "id", None),
+                getattr(user, "is_authenticated", False),
+                getattr(plan_context, "anon_id", None),
+            )
+
             try:
                 saved = append_chat(
                     user=append_user,
@@ -856,6 +899,12 @@ class ConciergeChatView(APIView):
                     recommendations_v2=thread_recommendations_v2,
                 )
                 thread_obj = saved.thread
+                log.warning(
+                    "[THREAD DEBUG] thread=%r user_id=%r anonymous_id=%r",
+                    getattr(thread_obj, "id", None),
+                    getattr(thread_obj, "user_id", None),
+                    getattr(thread_obj, "anonymous_id", None),
+                )
             except ConciergeThread.DoesNotExist:
                 saved = append_chat(
                     user=append_user,
@@ -867,6 +916,12 @@ class ConciergeChatView(APIView):
                     recommendations_v2=thread_recommendations_v2,
                 )
                 thread_obj = saved.thread
+                log.warning(
+                    "[THREAD DEBUG] thread=%r user_id=%r anonymous_id=%r",
+                    getattr(thread_obj, "id", None),
+                    getattr(thread_obj, "user_id", None),
+                    getattr(thread_obj, "anonymous_id", None),
+                )
 
             log.warning(
                 "[concierge/chat] THREAD_SAVED rid=%s thread_pk=%r recommendations_saved=%s recommendations_v2_saved=%s",
@@ -898,6 +953,7 @@ class ConciergeChatView(APIView):
             radius_m = _parse_radius(data)
 
             try:
+                _recs_debug = recs.get("_debug") or {}
                 save_concierge_recommendation_log(
                     user=user if getattr(user, "is_authenticated", False) else None,
                     thread=thread_obj,
@@ -911,6 +967,8 @@ class ConciergeChatView(APIView):
                     lat=lat,
                     lng=lng,
                     radius_m=radius_m,
+                    score_v3_mode=_recs_debug.get("score_v3_mode"),
+                    score_v3_ab_observation=_recs_debug.get("score_v3_ab_observation"),
                 )
             except Exception:
                 log.exception("[concierge/reco] save_concierge_recommendation_log failed rid=%s", rid)

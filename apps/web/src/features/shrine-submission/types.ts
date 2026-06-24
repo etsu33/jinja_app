@@ -24,6 +24,8 @@ export type ShrineSubmissionResponse = {
   note: string;
   status: ShrineSubmissionStatus;
   created_at: string;
+  reviewed_at?: string | null;
+  review_comment?: string | null;
 };
 
 export type ShrineSubmissionFieldErrors = Record<string, string>;

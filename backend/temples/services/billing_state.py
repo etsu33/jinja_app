@@ -57,7 +57,12 @@ def get_billing_status(*, user=None, now: Optional[datetime] = None) -> BillingS
 
     # ---- stripe/revenuecat運用: 認証済みは DB(profile) を見る ----
     if user is not None and getattr(user, "is_authenticated", False):
-        prof = getattr(user, "profile", None)
+        try:
+            from users.models import UserProfile
+
+            prof = UserProfile.objects.filter(user=user).first()
+        except Exception:
+            prof = getattr(user, "profile", None)
         status = getattr(prof, "subscription_status", None) if prof else None
         cpe = getattr(prof, "current_period_end", None) if prof else None
 

@@ -1,90 +1,128 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import React from "react";
-
-const push = vi.fn();
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push }),
-}));
-
-let authState = { isLoggedIn: false, loading: false };
-vi.mock("@/lib/auth/AuthProvider", () => ({
-  useAuth: () => authState,
-}));
-
-const post = vi.fn();
-const del = vi.fn();
-vi.mock("@/lib/api/client", () => ({
-  default: {
-    post,
-    delete: del,
-    get: vi.fn(),
-  },
-}));
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import ShrineSaveButton from "../ShrineSaveButton";
+
+const pushMock = vi.fn();
+const useAuthMock = vi.fn();
+const useFavoriteMock = vi.fn();
+const trackMock = vi.fn();
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: pushMock,
+  }),
+}));
+
+vi.mock("@/lib/auth/AuthProvider", () => ({
+  useAuth: () => useAuthMock(),
+}));
+
+vi.mock("@/hooks/useFavorite", () => ({
+  useFavorite: (args: unknown) => useFavoriteMock(args),
+}));
+
+vi.mock("@/lib/analytics/track", () => ({
+  track: (...args: unknown[]) => trackMock(...args),
+}));
 
 describe("ShrineSaveButton", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    authState = { isLoggedIn: false, loading: false };
-  });
-
-  it("未ログイン時はクリックで login に遷移し API は呼ばれない", async () => {
-    render(<ShrineSaveButton shrineId={1} />);
-
-    fireEvent.click(screen.getByRole("button"));
-
-    await waitFor(() => {
-      expect(push).toHaveBeenCalled();
+    useAuthMock.mockReturnValue({
+      isLoggedIn: true,
+      loading: false,
     });
-
-    expect(post).not.toHaveBeenCalled();
-    expect(del).not.toHaveBeenCalled();
   });
 
-  it("initial=true なら初期表示が保存済みになる", () => {
-    authState = { isLoggedIn: true, loading: false };
+  it("解除後表示が `保存する` に戻る", async () => {
+    const toggleMock = vi.fn().mockResolvedValue(undefined);
 
-    render(<ShrineSaveButton shrineId={1} initial />);
+    useFavoriteMock.mockImplementation(() => ({
+      fav: true,
+      busy: false,
+      toggle: toggleMock,
+    }));
 
-    expect(screen.getByRole("button")).toHaveTextContent("保存しました");
-  });
+    const { rerender } = render(
+      <ShrineSaveButton
+        shrineId={17}
+        ctx="concierge"
+        tid="thread-123"
+        nextPath="/shrines/17?ctx=concierge"
+        guestMode={false}
+        initial={{
+          fav: true,
+          favorite_id: 123,
+        }}
+      />,
+    );
 
-  it("ログイン済み時は保存 API が呼ばれ、状態が切り替わる", async () => {
-    authState = { isLoggedIn: true, loading: false };
-    post.mockResolvedValue({ data: { id: 10 } });
-
-    render(<ShrineSaveButton shrineId={1} />);
-
-    fireEvent.click(screen.getByRole("button", { name: "保存する" }));
-
-    await waitFor(() => {
-      expect(post).toHaveBeenCalledWith("/favorites/", { shrine_id: 1 });
-    });
-
-    expect(screen.getByRole("button")).toHaveTextContent("保存しました");
-  });
-
-  it("保存する → 保存しました → もう一度で 保存する に戻る", async () => {
-    authState = { isLoggedIn: true, loading: false };
-    post.mockResolvedValue({ data: { id: 10 } });
-    del.mockResolvedValue({});
-
-    render(<ShrineSaveButton shrineId={1} />);
-
-    fireEvent.click(screen.getByRole("button", { name: "保存する" }));
-
-    await waitFor(() => {
-      expect(screen.getByRole("button")).toHaveTextContent("保存しました");
-    });
+    expect(screen.getByRole("button", { name: "保存しました" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "保存しました" }));
 
+    expect(toggleMock).toHaveBeenCalledTimes(1);
+
     await waitFor(() => {
-      expect(del).toHaveBeenCalledWith("/favorites/10/");
+      expect(trackMock).toHaveBeenCalledWith("favorite_click", {
+        shrineId: 17,
+        ctx: "concierge",
+        tid: "thread-123",
+        nextFav: false,
+        source: "shrine_detail",
+        cardId: "saved_record",
+        accessLevel: "free",
+      });
     });
 
-    expect(screen.getByRole("button")).toHaveTextContent("保存する");
+    useFavoriteMock.mockImplementation(() => ({
+      fav: false,
+      busy: false,
+      toggle: toggleMock,
+    }));
+
+    rerender(
+      <ShrineSaveButton
+        shrineId={17}
+        ctx="concierge"
+        tid="thread-123"
+        nextPath="/shrines/17?ctx=concierge"
+        guestMode={false}
+        initial={{
+          fav: true,
+          favorite_id: 123,
+        }}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "あとで見返すために保存" })).toBeInTheDocument();
+    expect(pushMock).not.toHaveBeenCalled();
+  });
+
+  it("解除失敗時にエラー表示を出す", async () => {
+    useFavoriteMock.mockImplementation(() => ({
+      fav: true,
+      busy: false,
+      toggle: vi.fn().mockRejectedValue(new Error("remove failed")),
+    }));
+
+    render(
+      <ShrineSaveButton
+        shrineId={17}
+        nextPath="/shrines/17?ctx=concierge"
+        guestMode={false}
+        initial={{
+          fav: true,
+          favorite_id: 123,
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "保存しました" }));
+
+    expect(await screen.findByText("保存の更新に失敗しました")).toBeInTheDocument();
+    expect(pushMock).not.toHaveBeenCalled();
+    expect(trackMock).not.toHaveBeenCalled();
   });
 });

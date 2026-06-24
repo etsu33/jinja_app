@@ -154,6 +154,19 @@ class ConciergeRecommendationSerializer(serializers.Serializer):
     duration_min = serializers.IntegerField()
     reason = serializers.CharField()
     photo_url = serializers.CharField(required=False, allow_null=True)
+    consultation_axis = serializers.ChoiceField(
+        choices=[
+            "career",
+            "money",
+            "relationship",
+            "study",
+            "health",
+            "protection",
+            "travel_safe",
+            "other",
+        ],
+        required=False,
+    )
 
 
 class ConciergeChatRequestSerializer(serializers.Serializer):
