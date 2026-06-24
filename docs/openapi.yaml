@@ -17,6 +17,8 @@ tags:
     description: コンシェルジュ機能の履歴参照
   - name: Routes
     description: 経路検索（距離・時間・ポリライン）
+  - name: ScoreV3Admin
+    description: Score v3 観測・判定ダッシュボード（IsAdminUser 専用）
 
 paths:
   /api/populars/:
@@ -171,6 +173,41 @@ paths:
         "401":
           description: Unauthorized
 
+
+  /api/concierge/score-v3/dashboard/:
+    get:
+      tags: [ScoreV3Admin]
+      summary: Score v3 観測結果と funnel の突合ダッシュボード
+      description: >
+        score_v3 の shadow/active 観測集計値と behavior funnel を突合し、
+        active_candidate / rollback_required の判定結果を返す。
+        IsAdminUser 専用。未認証は 401、非 staff は 403 を返す。
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScoreV3DashboardResponse"
+              example:
+                score_v3:
+                  top1_changed_rate_avg: 0.05
+                  activation_candidate_rate: 0.92
+                  avg_delta: -0.08
+                  max_abs_delta_max: 0.31
+                funnel:
+                  route_open_rate: 0.34
+                  save_rate: 0.22
+                  visit_done_rate: 0.11
+                  reflection_saved_rate: 0.06
+                decision:
+                  active_candidate: true
+                  rollback_required: false
+                  reasons: []
+        "401":
+          description: Unauthorized — 未認証リクエスト
+        "403":
+          description: Forbidden — staff 権限がないユーザー
 
   /api/directions/:
     get:
@@ -717,6 +754,110 @@ components:
             $ref: "#/components/schemas/ConciergePlanRecommendation"
         _explanations:
           nullable: true
+
+    ScoreV3Metrics:
+      type: object
+      required:
+        - top1_changed_rate_avg
+        - activation_candidate_rate
+        - avg_delta
+        - max_abs_delta_max
+      properties:
+        top1_changed_rate_avg:
+          type: number
+          format: float
+          description: "観測期間中の top1 変動率の平均。0.10 以下が active 化目安。"
+          example: 0.05
+        activation_candidate_rate:
+          type: number
+          format: float
+          description: "activation_candidate=true だったセッション比率。0.80 以上が active 化目安。"
+          example: 0.92
+        avg_delta:
+          type: number
+          format: float
+          description: "score_v3 と score_total の平均差分（score_v3 − score_total）。"
+          example: -0.08
+        max_abs_delta_max:
+          type: number
+          format: float
+          description: "各セッションの max_abs_delta の最大値。0.50 未満が active 化目安。"
+          example: 0.31
+
+    ScoreV3FunnelMetrics:
+      type: object
+      required:
+        - route_open_rate
+        - save_rate
+        - visit_done_rate
+        - reflection_saved_rate
+      properties:
+        route_open_rate:
+          type: number
+          format: float
+          description: "推薦候補に対して route_open アクションが発生した比率。"
+          example: 0.34
+        save_rate:
+          type: number
+          format: float
+          description: "推薦候補に対して save アクションが発生した比率。"
+          example: 0.22
+        visit_done_rate:
+          type: number
+          format: float
+          description: "推薦候補に対して visit_done が記録された比率。"
+          example: 0.11
+        reflection_saved_rate:
+          type: number
+          format: float
+          description: "visit_done のうち reflection_saved が記録された比率。"
+          example: 0.06
+
+    ScoreV3Decision:
+      type: object
+      required:
+        - active_candidate
+        - rollback_required
+        - reasons
+      properties:
+        active_candidate:
+          type: boolean
+          description: >
+            以下をすべて満たす場合 true:
+            top1_changed_rate_avg ≤ 0.10,
+            activation_candidate_rate ≥ 0.80,
+            max_abs_delta_max < 0.50,
+            funnel 各指標がベースライン以上。
+          example: true
+        rollback_required:
+          type: boolean
+          description: >
+            以下のいずれかを満たす場合 true:
+            top1_changed_rate_avg > 0.20,
+            max_abs_delta_max > 1.00,
+            route_open_rate / visit_done_rate / reflection_saved_rate がベースラインより悪化,
+            activation_candidate_rate < 0.50。
+          example: false
+        reasons:
+          type: array
+          items:
+            type: string
+          description: "active_candidate=false または rollback_required=true の原因を示す文字列リスト。条件を満たす場合は空配列。"
+          example: []
+
+    ScoreV3DashboardResponse:
+      type: object
+      required:
+        - score_v3
+        - funnel
+        - decision
+      properties:
+        score_v3:
+          $ref: "#/components/schemas/ScoreV3Metrics"
+        funnel:
+          $ref: "#/components/schemas/ScoreV3FunnelMetrics"
+        decision:
+          $ref: "#/components/schemas/ScoreV3Decision"
 
     ConciergePlanResponse:
       type: object
