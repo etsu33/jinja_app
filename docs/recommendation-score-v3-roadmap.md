@@ -530,3 +530,76 @@ reflection  = 0.01
 history     = 0.10
 distance    = 0.10
 ```
+
+---
+
+## Score v3 Dashboard API
+
+### エンドポイント
+
+`GET /api/concierge/score-v3/dashboard/`
+
+### 権限
+
+| 権限 | ステータス |
+|---|---|
+| 未認証 | 401 Unauthorized |
+| 認証済み・非 staff | 403 Forbidden |
+| admin / superuser | 200 OK |
+
+権限クラス: `IsAdminUser`
+
+### Response 例
+
+```json
+{
+  "score_v3": {
+    "top1_changed_rate_avg": 0.05,
+    "activation_candidate_rate": 0.92,
+    "avg_delta": -0.08,
+    "max_abs_delta_max": 0.31
+  },
+  "funnel": {
+    "route_open_rate": 0.34,
+    "save_rate": 0.22,
+    "visit_done_rate": 0.11,
+    "reflection_saved_rate": 0.06
+  },
+  "decision": {
+    "active_candidate": true,
+    "rollback_required": false,
+    "reasons": []
+  }
+}
+```
+
+### `active_candidate` 判定条件
+
+以下をすべて満たす場合に `true`。
+
+| 指標 | 条件 |
+|---|---|
+| `top1_changed_rate_avg` | 0.10 以下 |
+| `activation_candidate_rate` | 0.80 以上 |
+| `max_abs_delta_max` | 0.50 未満 |
+| `route_open_rate` | ベースライン以上 |
+| `save_rate` | ベースライン以上 |
+| `visit_done_rate` | ベースライン以上 |
+| `reflection_saved_rate` | ベースライン以上 |
+
+いずれか1つでも満たさない場合は `false`。`reasons` にどの条件が未達かを文字列リストで返す。
+
+### `rollback_required` 判定条件
+
+以下のいずれかを満たす場合に `true`。
+
+| 指標 | 条件 |
+|---|---|
+| `top1_changed_rate_avg` | 0.20 超 |
+| `max_abs_delta_max` | 1.00 超 |
+| `route_open_rate` | ベースラインより悪化 |
+| `visit_done_rate` | ベースラインより悪化 |
+| `reflection_saved_rate` | ベースラインより悪化 |
+| `activation_candidate_rate` | 0.50 未満 |
+
+`rollback_required = true` の場合、`reasons` に該当条件を列挙する。
