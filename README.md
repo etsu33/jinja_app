@@ -1,5 +1,40 @@
 # AI参拝ナビ（MVP）統合ドキュメント
 
+## プロダクト導線
+
+本アプリは Concierge First を採用し、「神社検索」ではなく「相談テーマから神社と出会う体験」を中心に設計されています。詳細は docs/product/concierge-first.md を参照してください。
+
+主導線は以下です。
+
+相談テーマ → コンシェルジュ → 神社詳細 → 経路案内
+
+1. コンシェルジュで相談
+2. 推薦された神社の詳細を見る
+3. 経路案内で参拝する
+
+```markdown
+### Concierge First
+
+Concierge First では、トップ画面とコンシェルジュ画面を統合し、相談テーマを主入力として扱います。
+
+- 主入力: 相談テーマ
+- 条件追加: 参拝スタイル / 誕生日 / ご利益タグ
+- 占星術・九星気学・風水: 補助シグナル
+- 吉方位・相性: 詳細ページの補足情報
+- 神社一覧・地図: サブ導線
+
+詳細仕様は `docs/product/concierge-first.md` を参照してください。
+```
+
+### 体験設計の責務分離
+
+- 検索結果カードは、神社を比較するための**軽い判断補助**に留めます。
+- 神社詳細ページは、由緒・所在地・ご利益・公開御朱印などを確認する**神社の情報理解**を担います。
+- コンシェルジュは、ユーザーの相談内容と神社を結びつける**今の自分との意味づけ**を担います。
+- Premium は、Map/Search の高機能化ではなく、パーソナル理由・相性・継続分析・保存/記録拡張を担います。
+
+検索画面で過度な解釈や長い理由付けは行わず、深い意味づけはコンシェルジュ側に集約します。
+
 ## 目次
 
 1. [概要](#概要)
@@ -22,7 +57,7 @@
 
 ## 概要
 
-**AI参拝ナビ（MVP）**は、ユーザーの**現在地・ご利益・移動手段**から、参拝ルートとおすすめ神社を提案する**AIコンシェルジュアプリ**です。Webを中心に開発し、将来的にMobile（Expo）へ展開予定です。
+**AI参拝ナビ（MVP）**は、ユーザーの悩みや願いごとに応じて神社を提案し、神社詳細の確認から経路案内までつなぐ**神社コンシェルジュアプリ**です。Webを中心に開発し、将来的にMobile（Expo）へ展開予定です。
 
 ### AIの役割
 
@@ -40,9 +75,10 @@
 
 ## 主な機能
 
-- 参拝ルート提案（徒歩・車）
-- 周辺神社の推薦（人気・距離）
-- AIコンシェルジュ（失敗時は距離順 top3 フォールバック）
+- AIコンシェルジュ（悩みや願いごとに応じた神社提案。失敗時は距離順 top3 フォールバック）
+- 神社詳細の確認（推薦理由、基本情報、公開御朱印を確認）
+- 経路案内（神社詳細から参拝導線をつなぐ）
+- 地図ページ `/map` による周辺探索（補助機能）
 - お気に入り・御朱印（補助機能）
 
 ---
@@ -93,6 +129,8 @@ python manage.py runserver
 ```bash
 PLACES_API_NEW=1 python manage.py runserver 8000
 ```
+
+cd /Users/morietsu/Desktop/jinja_app/backend && BILLING_STUB_PLAN=premium BILLING_STUB_ACTIVE=1 DISABLE_THROTTLE=1 python manage.py runserver 127.0.0.1:8000
 
 ### 起動時（プロジェクトルート）
 
@@ -186,6 +224,7 @@ apps/web/src/app/
 
 ## アーキテクチャ設計
 
+
 ### 認証フロー
 
 ```
@@ -200,6 +239,34 @@ Cookie (HttpOnly)
 2. BFFがDjangoからJWTトークンを取得
 3. HttpOnly Cookieに保存
 4. 以降のリクエストでBFFが自動でトークンをヘッダーに付与
+
+### 認証の正本（2026-06時点）
+
+#### Frontend
+
+- ログイン入口は `/api/auth/login`
+- AuthProvider は `/api/auth/login` を利用
+- `lib/api/auth.ts` も `/api/auth/login` を利用
+- ブラウザは JWT を直接保持しない
+- access_token / refresh_token は HttpOnly Cookie で管理する
+
+#### BFF
+
+- 認証付き通信は Next.js Route Handler（BFF）を経由する
+- `bffFetchWithAuthFromReq` を認証転送の正本とする
+- Cookie → Authorization Header の変換は BFF が行う
+- access token のリフレッシュも BFF が担当する
+
+#### Backend
+
+- Django API は JWTAuthentication を正本とする
+- Billing / Favorite / User / Concierge は JWT ベースで認証する
+- SessionAuthentication は監査対象であり、段階的な整理候補とする
+
+#### 廃止済み
+
+- `/api/auth/jwt/create`（frontend route）は削除済み
+- JWT 発行は backend `/api/auth/jwt/create/` を利用し、frontend は `/api/auth/login` のみを利用する
 
 ### BFFパターン
 
@@ -294,12 +361,16 @@ export async function GET(req: NextRequest) {
 
 詳細設計・運用ルールは `docs/` 配下に集約しています。
 
+- **Concierge First**: docs/product/concierge-first.md
+- **Concierge Modes**: docs/product/concierge-modes.md
 - **アーキテクチャ・認証**: `docs/10_arch_auth_proxy.md`
 - **ローカル動作確認**: `docs/20_smoke_checks.md`
 - **API概要**: `docs/30_api_overview.md`
 - **インフラ・デプロイ**: `docs/40_infra_deploy.md`
 - **TODO・ロードマップ**: `docs/90_roadmap.md`
 - **UI メモ**: `docs/ui/concierge_sp_notes.md`
+- **Premium 価値境界**: `docs/pricing.md`, `docs/premium-experience.md`
+- **神社詳細レイヤ**: `docs/shrine-detail-layer.md`
 
 ---
 
@@ -312,8 +383,9 @@ export async function GET(req: NextRequest) {
 
 ### 地図ページ（`/map`）
 
-- 近くの神社を地図で確認
-- 現在地ベースの検索
+- 探索用の補助機能
+- 近くの神社を地図で確認するためのページ
+- 主導線ではなく、補助的に利用する
 
 ### 神社詳細ページ（`/shrines/[id]`）
 
@@ -337,6 +409,23 @@ export async function GET(req: NextRequest) {
 
 - 保存した神社の一覧
 - お気に入り解除機能
+
+## 神社登録（Shrine Submission）の責務境界
+	•	神社登録は shrine 本体への直接追加ではない
+	•	submission を別責務として扱う
+	•	投稿主体はログインユーザーのみ
+	•	状態は pending / approved / rejected
+	•	approved 後に shrine 本体へ反映
+	•	画像アップロード、即公開、御朱印同時実装はスコープ外
+	•	duplication detection は name + address を基本に扱う
+
+
+## Billing State と Premium UI 制御
+	•	premium 判定の正本は backend billing state
+	•	フロントは billing 状態を表示・再取得するだけ
+	•	checkout 後は success / cancel / refetch を必須にする
+	•	premium UI の対象は `docs/premium-experience.md` に従う
+	•	投稿機能は現時点では premium 条件と結びつけない
 
 ---
 

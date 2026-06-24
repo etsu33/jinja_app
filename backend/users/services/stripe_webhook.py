@@ -16,6 +16,53 @@ User = get_user_model()
 DEBUG_WEBHOOK = bool(getattr(settings, "STRIPE_WEBHOOK_DEBUG", False))
 
 
+class StripeWebhookError(RuntimeError):
+    pass
+
+
+class StripeWebhookNotConfigured(StripeWebhookError):
+    pass
+
+
+class StripeWebhookInvalidSignature(StripeWebhookError):
+    pass
+
+
+def construct_stripe_event(*, payload: bytes, sig_header: str) -> dict[str, Any]:
+    """
+    Verify Stripe webhook signature and return a plain event dict.
+    """
+    try:
+        import stripe  # type: ignore
+    except Exception as exc:  # pragma: no cover - depends on optional deployment package
+        raise StripeWebhookNotConfigured("stripe sdk is not installed") from exc
+
+    webhook_secret = (getattr(settings, "STRIPE_WEBHOOK_SECRET", "") or "").strip()
+    if not webhook_secret:
+        raise StripeWebhookNotConfigured("STRIPE_WEBHOOK_SECRET is missing")
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload=payload,
+            sig_header=sig_header,
+            secret=webhook_secret,
+        )
+    except stripe.error.SignatureVerificationError as exc:
+        raise StripeWebhookInvalidSignature("invalid stripe signature") from exc
+    except ValueError as exc:
+        raise StripeWebhookInvalidSignature("invalid stripe payload") from exc
+
+    if isinstance(event, dict):
+        return event
+
+    try:
+        import json
+
+        return json.loads(json.dumps(event))
+    except Exception:
+        return {"type": getattr(event, "type", None), "data": {}}
+
+
 def _to_dt_from_unix(ts: Any) -> Optional[datetime]:
     try:
         if ts is None:
@@ -200,10 +247,13 @@ def _apply_checkout_session_completed(obj: dict[str, Any]) -> None:
     if isinstance(sub_id, str) and sub_id.strip():
         profile.stripe_subscription_id = sub_id.strip()
 
+    profile.subscription_status = "active"
+
     profile.save(
         update_fields=[
             "stripe_customer_id",
             "stripe_subscription_id",
+            "subscription_status",
             "updated_at",
         ]
     )
@@ -264,7 +314,11 @@ def _apply_subscription_object(obj: dict[str, Any], *, etype: str) -> None:
 
     # status
     status = obj.get("status")
-    if isinstance(status, str) and status.strip():
+    if etype == "customer.subscription.deleted":
+        profile.subscription_status = status.strip() if isinstance(status, str) and status.strip() else "canceled"
+        profile.current_period_end = None
+        update_fields.extend(["subscription_status", "current_period_end"])
+    elif isinstance(status, str) and status.strip():
         profile.subscription_status = status.strip()
         update_fields.append("subscription_status")
 
@@ -317,7 +371,7 @@ def _apply_subscription_object(obj: dict[str, Any], *, etype: str) -> None:
         period_end,
     )
 
-    if period_end is not None:
+    if etype != "customer.subscription.deleted" and period_end is not None:
         profile.current_period_end = period_end
         update_fields.append("current_period_end")
 

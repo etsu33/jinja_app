@@ -5,16 +5,36 @@ import type {
   ConciergeSection,
   ConciergeFilterState,
 } from "@/features/concierge/sections/types";
+import type { ConciergeReasonFacts } from "@/lib/api/concierge";
+
 
 import { detailHrefFromRecommendation } from "@/features/concierge/detailHref";
+
 
 type NormalizedItemBase = {
   title: string;
   address: string | null;
-  description: string; // null禁止
+  description: string;
   imageUrl: string | null;
   breakdown: any | null;
-  detailHref?: string; // ない時は undefined（nullは使わない）
+  breakdown_detail?: any | null;
+  reasonFacts?: ConciergeReasonFacts | null;
+  trustMetadata?: any | null;
+  historyTheme?: string | null;
+  historyContext?: string | null;
+  consultationAxis?: string | null;
+  actionSuggestions?: Array<{
+    id: string;
+    historyTheme: string;
+    title: string;
+    description: string;
+    category: string;
+    timing: string;
+    difficulty: string;
+    timeEstimate: string;
+    measurementKey: string;
+  }>;
+  detailHref?: string;
   isDummy?: boolean;
 };
 
@@ -33,6 +53,14 @@ type NormalizedPlace = NormalizedItemBase & {
 };
 
 type NormalizedItem = NormalizedRegistered | NormalizedPlace;
+
+type DetailAnalyticsContext = {
+  mode?: "need" | "compat";
+  flow?: "A" | "B";
+  hasBirthdate?: boolean;
+  recommendationCount?: number;
+  consultationAxis?: string | null;
+};
 
 function asTrimmedString(v: unknown): string | null {
   if (typeof v !== "string") return null;
@@ -53,8 +81,31 @@ function pickFirstString(...vals: unknown[]): string | null {
   return null;
 }
 
+function pickConsultationAxis(...vals: unknown[]): string | null {
+  return pickFirstString(...vals);
+}
+
+function normalizeActionSuggestions(r: any): NonNullable<NormalizedItemBase["actionSuggestions"]> {
+  const raw = r?._explanation_payload?.action_suggestions;
+  if (!Array.isArray(raw)) return [];
+
+  return raw
+    .map((item: any) => ({
+      id: String(item?.id ?? "").trim(),
+      historyTheme: String(item?.history_theme ?? "").trim(),
+      title: String(item?.title ?? "").trim(),
+      description: String(item?.description ?? "").trim(),
+      category: String(item?.category ?? "").trim(),
+      timing: String(item?.timing ?? "").trim(),
+      difficulty: String(item?.difficulty ?? "").trim(),
+      timeEstimate: String(item?.time_estimate ?? "").trim(),
+      measurementKey: String(item?.measurement_key ?? "").trim(),
+    }))
+    .filter((item) => item.id && item.title);
+}
+
 // 登録済み=shrine_idあり → /shrines/:id, 未登録=place_idのみ → /shrines/resolve, どちらも無い→除外
-function normalizeRecommendation(r: any, tid: string | null): NormalizedItem | null {
+function normalizeRecommendation(r: any, tid: string | null, analyticsContext: DetailAnalyticsContext): NormalizedItem | null {
   const shrineId = asPositiveInt(r?.shrine_id ?? r?.shrine?.id ?? null);
 
   const placeId =
@@ -64,7 +115,12 @@ function normalizeRecommendation(r: any, tid: string | null): NormalizedItem | n
     (r?.placeId != null ? String(r.placeId).trim() : null);
 
   const isDummy = r?.is_dummy === true || r?.__dummy === true;
-  const rawHref = detailHrefFromRecommendation(r, { ctx: "concierge", tid: tid ?? undefined }) ?? undefined;
+  const rawHref =
+    detailHrefFromRecommendation(r, {
+      ctx: "concierge",
+      tid: tid ?? undefined,
+      ...analyticsContext,
+    }) ?? undefined;
   const detailHref = isDummy ? undefined : rawHref;
 
   const title = pickFirstString(r?.display_name, r?.name) ?? "名称不明";
@@ -72,6 +128,17 @@ function normalizeRecommendation(r: any, tid: string | null): NormalizedItem | n
   const description = pickFirstString(r?.reason) ?? "";
   const imageUrl = asTrimmedString(r?.photo_url);
   const breakdown = r?.breakdown ?? null;
+  const breakdownDetail = r?.breakdown_detail ?? r?.breakdownDetail ?? null;
+  const reasonFacts = r?.reason_facts ?? r?.reasonFacts ?? null;
+  const trustMetadata = r?.trust_metadata ?? r?.trustMetadata ?? null;
+  const historyTheme = pickFirstString(r?.history_theme, r?.historyTheme);
+  const historyContext = pickFirstString(r?.history_context, r?.historyContext);
+  const consultationAxis = pickConsultationAxis(
+    r?.consultation_axis,
+    r?.consultationAxis,
+    analyticsContext.consultationAxis,
+  );
+  const actionSuggestions = normalizeActionSuggestions(r);
 
   if (shrineId) {
     return {
@@ -83,6 +150,13 @@ function normalizeRecommendation(r: any, tid: string | null): NormalizedItem | n
       description,
       imageUrl,
       breakdown,
+      breakdown_detail: breakdownDetail,
+      reasonFacts,
+      trustMetadata,
+      historyTheme,
+      historyContext,
+      consultationAxis,
+      actionSuggestions,
       detailHref,
       isDummy,
       goriyakuTags: [],
@@ -99,6 +173,13 @@ function normalizeRecommendation(r: any, tid: string | null): NormalizedItem | n
       description,
       imageUrl,
       breakdown,
+      breakdown_detail: breakdownDetail,
+      reasonFacts,
+      trustMetadata,
+      historyTheme,
+      historyContext,
+      consultationAxis,
+      actionSuggestions,
       detailHref,
       isDummy,
       detailLabel: "神社の詳細を見る",
@@ -145,7 +226,7 @@ function dedupeItems(items: NormalizedItem[]): NormalizedItem[] {
     if (!k) continue;
 
     if (seenPlace.has(k)) {
-      // ★ breakdown だけ救出
+      // ★ breakdown / breakdown_detail を救出
       const idx = registeredByPlace.get(k);
       if (idx != null) {
         const reg = out[idx];
@@ -155,7 +236,32 @@ function dedupeItems(items: NormalizedItem[]): NormalizedItem[] {
           item.breakdown &&
           typeof item.breakdown === "object"
         ) {
-          out[idx] = { ...reg, breakdown: item.breakdown };
+          out[idx] = { ...reg, breakdown: item.breakdown, breakdown_detail: item.breakdown_detail ?? reg.breakdown_detail ?? null };
+        }
+        if (
+          reg?.kind === "registered" &&
+          (reg.breakdown_detail == null || typeof reg.breakdown_detail !== "object") &&
+          item.breakdown_detail &&
+          typeof item.breakdown_detail === "object"
+        ) {
+          out[idx] = { ...reg, breakdown_detail: item.breakdown_detail };
+        }
+        if (
+          reg?.kind === "registered" &&
+          (reg.trustMetadata == null || typeof reg.trustMetadata !== "object") &&
+          item.trustMetadata &&
+          typeof item.trustMetadata === "object"
+        ) {
+          out[idx] = { ...reg, trustMetadata: item.trustMetadata };
+        }
+        if (reg?.kind === "registered" && !reg.historyTheme && item.historyTheme) {
+          out[idx] = { ...out[idx], historyTheme: item.historyTheme };
+        }
+        if (reg?.kind === "registered" && !reg.historyContext && item.historyContext) {
+          out[idx] = { ...out[idx], historyContext: item.historyContext };
+        }
+        if (reg?.kind === "registered" && !reg.consultationAxis && item.consultationAxis) {
+          out[idx] = { ...out[idx], consultationAxis: item.consultationAxis };
         }
       }
       continue;
@@ -173,34 +279,48 @@ export function buildPayloadFromUnified(
   filterState: ConciergeFilterState,
 ): ConciergeSectionsPayload | null {
   const recs = u?.data?.recommendations;
-
-  // ✅ meta の場所が揺れてる前提で吸収する
   const metaObj = (u as any)?.meta ?? null;
-
-  const note =
-    (typeof metaObj?.note === "string" ? metaObj.note : null) ??
-    (typeof (u as any)?.note === "string" ? (u as any).note : null) ??
-    null;
 
   const reply =
     (typeof (u as any)?.reply === "string" ? (u as any).reply : null) ??
     (typeof metaObj?.reply === "string" ? metaObj.reply : null) ??
     null;
 
-  const remainingFree =
-    (typeof metaObj?.remainingFree === "number" ? metaObj.remainingFree : null) ??
-    (typeof metaObj?.remaining_free === "number" ? metaObj.remaining_free : null) ??
-    (typeof (u as any)?.remaining_free === "number" ? (u as any).remaining_free : null) ??
-    (typeof (u as any)?.remainingFree === "number" ? (u as any).remainingFree : null) ??
+  const remaining =
+    (typeof metaObj?.remaining === "number" ? metaObj.remaining : null) ??
+    (typeof (u as any)?.remaining === "number" ? (u as any).remaining : null) ??
     null;
 
+  const limitReached = metaObj?.limitReached === true || (u as any)?.limitReached === true;
   const tidRaw = (u as any)?.thread?.id ?? (u as any)?.thread_id ?? (u as any)?.data?.thread_id ?? null;
   const tid = tidRaw != null ? String(tidRaw) : null;
 
   const hasRecs = Array.isArray(recs) && recs.length > 0;
-  const isLimitReached = note === "limit-reached" || remainingFree === 0;
+  const isLimitReached = limitReached;
 
   const mode = (u as any)?.data?._signals?.mode ?? null;
+  const analyticsMode = mode?.mode === "need" || mode?.mode === "compat" ? mode.mode : undefined;
+  const analyticsFlow = mode?.flow === "A" || mode?.flow === "B" ? mode.flow : undefined;
+  const consultationAxis = pickConsultationAxis(
+    (u as any)?.data?.consultation_axis,
+    (u as any)?.data?.consultationAxis,
+    (u as any)?.data?._need?.consultation_axis,
+    (u as any)?.data?._need?.consultationAxis,
+    (u as any)?.data?._signals?.consultation_axis,
+    (u as any)?.data?._signals?.consultationAxis,
+    (u as any)?.data?._signals?.result_state?.consultation_axis,
+    (u as any)?.data?._signals?.result_state?.consultationAxis,
+    (u as any)?.data?._signals?.resultState?.consultation_axis,
+    (u as any)?.data?._signals?.resultState?.consultationAxis,
+  );
+  const analyticsContext: DetailAnalyticsContext = {
+    mode: analyticsMode,
+    flow: analyticsFlow,
+    hasBirthdate: Boolean(filterState.birthdate?.trim()),
+    recommendationCount: Array.isArray(recs) ? recs.length : undefined,
+    consultationAxis,
+  };
+
   const rsRaw = (u as any)?.data?._signals?.result_state ?? (u as any)?.data?._signals?.resultState ?? null;
 
   const resultState =
@@ -215,7 +335,6 @@ export function buildPayloadFromUnified(
         }
       : null;
 
-  // ✅ recommendations が無いが理由はある → payload 返す
   if (!hasRecs && (reply || isLimitReached)) {
     const sections: ConciergeSection[] = [
       {
@@ -233,19 +352,18 @@ export function buildPayloadFromUnified(
       },
     ];
 
-    
-
     return {
       version: 1,
       sections,
-      meta: { mode, note, reply, remainingFree, tid, resultState },
+      meta: { mode, reply, remaining, limitReached, tid, resultState, consultationAxis },
     };
   }
 
   if (!hasRecs) return null;
 
-  let items = recs.map((r: any) => normalizeRecommendation(r, tid)).filter((x): x is NormalizedItem => x !== null);
-
+  let items = recs
+    .map((r: any) => normalizeRecommendation(r, tid, analyticsContext))
+    .filter((x): x is NormalizedItem => x !== null);
   items = dedupeItems(items);
 
   if (items.length === 0) return null;
@@ -284,13 +402,13 @@ export function buildPayloadFromUnified(
     });
   }
 
-  // ✅ hasRecs のときも meta を揃える（UIが metaReply / limit を参照しても死なない）
   return {
     version: 1,
     sections,
-    meta: { mode, note, reply, remainingFree, tid, resultState },
+    meta: { mode, reply, remaining, limitReached, tid, resultState, consultationAxis },
   };
 }
+
 
 export function __dedupeItemsForTest(items: NormalizedItem[]): NormalizedItem[] {
   return dedupeItems(items);

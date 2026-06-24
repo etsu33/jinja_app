@@ -1,4 +1,3 @@
-// apps/web/src/features/concierge/hooks.ts
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
@@ -17,6 +16,7 @@ import {
 } from "@/lib/api/concierge";
 
 import type { ConciergeChatRequestV1, ConciergeChatFilters } from "@/features/concierge/types/chatRequest";
+import { normalizeBirthdateInput } from "@/lib/date/normalizeBirthdateInput";
 
 /* ====== スレッド一覧 ====== */
 
@@ -102,41 +102,42 @@ export type UseConciergeChatOptions = {
     thread: ConciergeThread;
     messages?: ConciergeMessage[];
     recommendations?: ConciergeRecommendation[] | null;
+    plan?: "anonymous" | "free" | "premium" | null;
+    remaining?: number | null;
+    limit?: number | null;
+    limitReached?: boolean;
+  }) => void;
 
-    // paywallなど将来拡張用
-    remaining_free?: number;
-    limit?: number;
-    note?: string;
+  onPaywall?: (payload: {
+    plan?: "anonymous" | "free" | "premium" | null;
+    remaining?: number | null;
+    limit?: number | null;
+    limitReached?: boolean;
   }) => void;
 
   onReply?: (reply: string) => void;
   onRecommendations?: (recs: ConciergeRecommendation[]) => void;
-
-  // thread が無いケースでも paywall だけ出したいなら使う
-  onPaywall?: (payload: { remaining_free?: number; limit?: number; note?: string }) => void;
 };
 
 type SendInput = string | Omit<ConciergeChatRequestV1, "thread_id">;
 
 function normalizeConciergeResponse(raw: any, recs: ConciergeRecommendation[]): UnifiedConciergeResponse {
-  const stop: StopReason =
-    raw?.stop_reason === "design" || raw?.stop_reason === "paywall"
-      ? raw.stop_reason
-      : typeof raw?.remaining_free === "number" && raw.remaining_free <= 0
-        ? "paywall"
-        : null;
+  const limitReached = raw?.limitReached === true;
 
-  const note = typeof raw?.note === "string" ? raw.note : null;
+  const stop: StopReason =
+    raw?.stop_reason === "design" || raw?.stop_reason === "paywall" ? raw.stop_reason : limitReached ? "paywall" : null;
+
   const replyCandidate = raw?.reply ?? raw?.data?.reply ?? raw?.data?.raw ?? null;
   const reply = typeof replyCandidate === "string" ? replyCandidate : null;
 
   const ok = raw?.ok === false ? false : true;
-  const remaining_free = typeof raw?.remaining_free === "number" ? raw.remaining_free : null;
+  const plan = raw?.plan === "anonymous" || raw?.plan === "free" || raw?.plan === "premium" ? raw.plan : null;
+  const remaining = typeof raw?.remaining === "number" ? raw.remaining : null;
+  const limit = typeof raw?.limit === "number" ? raw.limit : null;
 
   const tid = Number(raw?.thread?.id);
   const thread = raw?.thread && Number.isFinite(tid) ? ({ ...raw.thread, id: tid } as ConciergeThread) : null;
 
-  // ✅ raw.data を保持（objectのみ）。arrayは捨てる
   const rawData = raw?.data && typeof raw.data === "object" && !Array.isArray(raw.data) ? raw.data : {};
 
   const sig = (rawData as any)?._signals;
@@ -147,9 +148,11 @@ function normalizeConciergeResponse(raw: any, recs: ConciergeRecommendation[]): 
   return {
     ok,
     stop_reason: stop,
-    note,
     reply,
-    remaining_free,
+    plan,
+    remaining,
+    limit,
+    limitReached,
     thread,
     data: { ...rawData, recommendations: recs },
   };
@@ -167,16 +170,39 @@ export function useConciergeChat(threadId: string | null, options?: UseConcierge
     async (input: SendInput) => {
       const baseFilters = options?.filters;
 
+      const inputBirthdate =
+        typeof input === "string"
+          ? undefined
+          : typeof input.birthdate === "string" && input.birthdate.trim()
+            ? normalizeBirthdateInput(input.birthdate.trim()) ?? undefined
+            : undefined;
+
       const req: ConciergeChatRequestV1 =
         typeof input === "string"
           ? { version: 1, query: input.trim(), thread_id: threadId ?? undefined }
           : { ...input, version: 1, thread_id: threadId ?? undefined };
+
+      const normalizedQuery = typeof req.query === "string" ? req.query.trim() : "";
+      const rescuedBirthdate = !inputBirthdate && req.mode === "compat" ? normalizeBirthdateInput(normalizedQuery) ?? undefined : undefined;
+
+      if (rescuedBirthdate) {
+        req.query = "";
+      } else {
+        req.query = normalizedQuery;
+      }
 
       // ✅ filters を必ず合成（input 側が優先、無ければ base）
       const mergedFiltersRaw: Record<string, any> = {
         ...(baseFilters ?? {}),
         ...((req as any).filters ?? {}),
       };
+
+      if (!mergedFiltersRaw.birthdate && inputBirthdate) {
+        mergedFiltersRaw.birthdate = inputBirthdate;
+      }
+      if (!mergedFiltersRaw.birthdate && rescuedBirthdate) {
+        mergedFiltersRaw.birthdate = rescuedBirthdate;
+      }
 
       // ✅ undefined / null / 空文字 / 空配列 を落とす
       const mergedFiltersClean = Object.fromEntries(
@@ -219,47 +245,38 @@ export function useConciergeChat(threadId: string | null, options?: UseConcierge
       if (Array.isArray(compat.goriyaku_tag_ids) && compat.goriyaku_tag_ids.length > 0) {
         (req as any).goriyaku_tag_ids = compat.goriyaku_tag_ids;
       }
-      if (typeof compat.birthdate === "string" && compat.birthdate.trim()) {
+      if (inputBirthdate) {
+        (req as any).birthdate = inputBirthdate;
+      } else if (rescuedBirthdate) {
+        (req as any).birthdate = rescuedBirthdate;
+      } else if (typeof compat.birthdate === "string" && compat.birthdate.trim()) {
         (req as any).birthdate = compat.birthdate.trim();
       }
 
-      // query は必須（空なら送らない）
-      if (!req.query?.trim()) return;
+      const mode = req.mode;
+      const hasBirthdate = typeof (req as any).birthdate === "string" && (req as any).birthdate.trim().length > 0;
+
+      const hasUsableFilters =
+        (Array.isArray((req as any).goriyaku_tag_ids) && (req as any).goriyaku_tag_ids.length > 0) ||
+        (typeof (req as any).extra_condition === "string" && (req as any).extra_condition.trim().length > 0) ||
+        (typeof (req as any).filters?.birthdate === "string" && (req as any).filters.birthdate.trim().length > 0) ||
+        (Array.isArray((req as any).filters?.goriyaku_tag_ids) && (req as any).filters.goriyaku_tag_ids.length > 0) ||
+        (typeof (req as any).filters?.extra_condition === "string" &&
+          (req as any).filters.extra_condition.trim().length > 0);
+
+      if (mode === "compat") {
+        if (!req.query?.trim() && !hasBirthdate && !hasUsableFilters) {
+          return;
+        }
+      } else {
+        if (!req.query?.trim() && !hasUsableFilters) {
+          return;
+        }
+      }
 
       setSending(true);
       setError(null);
 
-      const label = options?.debugLabel ?? "useConciergeChat";
-
-      console.log(`[concierge] ${label} filters-build`, {
-        threadId,
-        baseFilters,
-        mergedFiltersRaw,
-        mergedFiltersClean,
-        compat,
-        finalReq: req, // ← これが一番大事
-        finalReqFilters: (req as any).filters,
-        topLevelCompat: {
-          birthdate: (req as any).birthdate,
-          goriyaku_tag_ids: (req as any).goriyaku_tag_ids,
-          extra_condition: (req as any).extra_condition,
-        },
-      });
-
-      console.debug(`[concierge] ${label} POST /chat`, {
-        threadId,
-        query: req.query,
-        filters: (req as any).filters,
-        req, // ✅ 最終形（version/query/thread_id/filters）を丸ごと出す
-      });
-
-      console.log("[concierge] filters-build", {
-        baseFilters,
-        mergedFiltersRaw,
-        mergedFiltersClean,
-        compat,
-        finalReq: { ...req, filters: (req as any).filters },
-      });
 
       try {
         const res = await postConciergeChat(req);
@@ -283,18 +300,20 @@ export function useConciergeChat(threadId: string | null, options?: UseConcierge
         options?.onRecommendations?.(recs);
 
         options?.onPaywall?.({
-          remaining_free: payload?.remaining_free,
-          limit: payload?.limit,
-          note: payload?.note,
+          plan: payload?.plan ?? null,
+          remaining: typeof payload?.remaining === "number" ? payload.remaining : null,
+          limit: typeof payload?.limit === "number" ? payload.limit : null,
+          limitReached: payload?.limitReached === true,
         });
 
         if (payload?.thread) {
           options?.onUpdated?.({
             thread: payload?.thread ?? null,
             recommendations: recs,
-            remaining_free: payload?.remaining_free,
-            limit: payload?.limit,
-            note: payload?.note,
+            plan: payload?.plan ?? null,
+            remaining: typeof payload?.remaining === "number" ? payload.remaining : null,
+            limit: typeof payload?.limit === "number" ? payload.limit : null,
+            limitReached: payload?.limitReached === true,
           });
         }
 
@@ -305,16 +324,23 @@ export function useConciergeChat(threadId: string | null, options?: UseConcierge
         const unified: UnifiedConciergeResponse = {
           ok: false,
           stop_reason: null,
-          note: "チャット送信に失敗しました",
           reply: null,
+          plan: null,
+          remaining: null,
+          limit: null,
+          limitReached: false,
           data: { recommendations: [] },
           thread: null,
-          remaining_free: null,
         };
         options?.onUnified?.(unified);
 
         let msg = "チャット送信に失敗しました";
         if (axios.isAxiosError(err)) {
+          console.error("CONCIERGE_CHAT_ERROR", {
+            status: err.response?.status,
+            data: err.response?.data,
+            message: err.message,
+          });
           msg = `チャット送信に失敗しました (${err.response?.status ?? "network error"})`;
         }
         setError(msg);

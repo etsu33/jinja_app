@@ -46,6 +46,7 @@ export default function ConciergeCard(props: BaseCardProps) {
     hideLeftMark = false,
     detailHref,
     detailLabel = "詳細を見る",
+    onDetailClick,
     headerRight,
     disclosureTitle,
     disclosureBody,
@@ -132,20 +133,20 @@ export default function ConciergeCard(props: BaseCardProps) {
           <div className="min-w-0 flex-1">
             {isHero && sub ? <p className="mb-1 text-[18px] font-bold leading-8 text-neutral-950">{sub}</p> : null}
 
+            {!isHero && sub ? (
+              <p className="text-[15px] font-semibold leading-6 text-neutral-900 line-clamp-2">{sub}</p>
+            ) : null}
+
             <h3
               className={cn(
-                "font-semibold leading-snug",
-                isHero ? "text-[14px] text-neutral-700" : "text-[15px] text-neutral-900",
+                "mt-1 font-semibold leading-snug",
+                isHero ? "text-[14px] text-neutral-700" : "text-[15px] text-neutral-700",
               )}
             >
               {title}
             </h3>
 
             {address ? <p className="mt-1 truncate text-xs text-neutral-500">{address}</p> : null}
-
-            {!isHero && sub ? (
-              <p className="mt-2 text-[15px] font-semibold leading-6 text-neutral-900 line-clamp-2">{sub}</p>
-            ) : null}
 
             {desc ? (
               <p
@@ -168,7 +169,10 @@ export default function ConciergeCard(props: BaseCardProps) {
                   "ring-1 ring-inset ring-black/10 transition active:scale-[0.99] hover:bg-neutral-800",
                   "focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400",
                 )}
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDetailClick?.();
+                }}
               >
                 {detailLabel}
               </Link>

@@ -13,6 +13,7 @@ from rest_framework.views import APIView
 
 from temples.models import ConciergeMessage, ConciergeThread
 from temples.services.anonymous_id import get_anonymous_id
+from temples.services.concierge_history import classify_shrine_action_state
 
 logger = logging.getLogger(__name__)
 
@@ -93,33 +94,161 @@ class ConciergeThreadDetailView(APIView):
         started = time.perf_counter()
 
         try:
-            qs = ConciergeThread.objects.filter(pk=pk)
+            base_qs = ConciergeThread.objects.filter(pk=pk)
+
+            logger.warning(
+                "THREAD_DETAIL_LOOKUP %s",
+                {
+                    "thread_id": pk,
+                    "user_id": getattr(getattr(request, "user", None), "id", None),
+                    "is_authenticated": bool(
+                        getattr(getattr(request, "user", None), "is_authenticated", False)
+                    ),
+                    "anon_id_cookie": request.COOKIES.get("concierge_anon_id"),
+                    "cookies": dict(getattr(request, "COOKIES", {}) or {}),
+                },
+            )
 
             user = getattr(request, "user", None)
-            if user is not None and getattr(user, "is_authenticated", False):
-                qs = qs.filter(user=user)
-            else:
-                raw_req = getattr(request, "_request", None)
-                anonymous_id = get_anonymous_id(request) or (get_anonymous_id(raw_req) if raw_req else None)
+            authenticated = bool(user is not None and getattr(user, "is_authenticated", False))
 
-                print(
-                    "THREAD_DETAIL_DEBUG",
+            raw_req = getattr(request, "_request", None)
+            anon_from_request = get_anonymous_id(request)
+            anon_from_raw_request = get_anonymous_id(raw_req) if raw_req else None
+            anonymous_id = anon_from_request or anon_from_raw_request
+
+            logger.warning(
+                "THREAD_DETAIL_ANON_RESOLVE %s",
+                {
+                    "pk": pk,
+                    "anon_from_request": anon_from_request,
+                    "anon_from_raw_request": anon_from_raw_request,
+                    "anonymous_id_final": anonymous_id,
+                },
+            )
+
+            thread_row = ConciergeThread.objects.filter(pk=pk).values(
+                "id", "user_id", "anonymous_id"
+            ).first()
+
+            logger.warning(
+                "THREAD_DETAIL_DB_ROW %s",
+                {
+                    "pk": pk,
+                    "thread_row": thread_row,
+                },
+            )
+
+            logger.warning(
+                "THREAD_DETAIL_DEBUG %s",
+                {
+                    "pk": pk,
+                    "is_authenticated": authenticated,
+                    "cookies": dict(getattr(request, "COOKIES", {}) or {}),
+                    "_request_cookies": (
+                        dict(getattr(raw_req, "COOKIES", {}) or {}) if raw_req else None
+                    ),
+                    "anonymous_id": anonymous_id,
+                },
+            )
+
+            thread = None
+
+            if authenticated:
+                logger.warning(
+                    "THREAD_DETAIL_QUERYSET %s",
                     {
                         "pk": pk,
-                        "is_authenticated": bool(getattr(user, "is_authenticated", False)),
-                        "cookies": dict(getattr(request, "COOKIES", {}) or {}),
-                        "_request_cookies": dict(getattr(raw_req, "COOKIES", {}) or {}) if raw_req else None,
-                        "anonymous_id": anonymous_id,
+                        "is_authenticated": authenticated,
+                        "queryset_filter": {"user_id": getattr(user, "id", None)},
                     },
                 )
+                thread = base_qs.filter(user=user).first()
 
-                if not anonymous_id:
-                    return Response({"detail": "not found"}, status=status.HTTP_404_NOT_FOUND)
+            if thread is None and anonymous_id:
+                logger.warning(
+                    "THREAD_DETAIL_QUERYSET %s",
+                    {
+                        "pk": pk,
+                        "is_authenticated": authenticated,
+                        "queryset_filter": {"user__isnull": True, "anonymous_id": anonymous_id},
+                    },
+                )
+                thread = base_qs.filter(user__isnull=True, anonymous_id=anonymous_id).first()
 
-                qs = qs.filter(user__isnull=True, anonymous_id=anonymous_id)
+            if thread is None:
+                return Response({"detail": "not found"}, status=status.HTTP_404_NOT_FOUND)
 
-            thread = get_object_or_404(qs)
             msgs = ConciergeMessage.objects.filter(thread=thread).order_by("created_at", "id")
+
+
+            recommendations = getattr(thread, "recommendations", None)
+            recommendations_v2 = getattr(thread, "recommendations_v2", None)
+
+            def _extract_shrine_id(item):
+                if not isinstance(item, dict):
+                    return None
+
+                raw_shrine_id = item.get("shrine_id") or item.get("id")
+                try:
+                    return int(raw_shrine_id)
+                except (TypeError, ValueError):
+                    return None
+
+            def _with_action_state(items):
+                if not isinstance(items, list):
+                    return items
+
+                enriched = []
+                for item in items:
+                    if not isinstance(item, dict):
+                        enriched.append(item)
+                        continue
+
+                    shrine_id = _extract_shrine_id(item)
+                    enriched.append(
+                        {
+                            **item,
+                            "action_state": classify_shrine_action_state(
+                                user=user if authenticated else None,
+                                shrine_id=shrine_id,
+                            ),
+                        }
+                    )
+
+                return enriched
+
+            recommendations = _with_action_state(recommendations)
+            recommendations_v2 = _with_action_state(recommendations_v2)
+
+            logger.warning(
+                "THREAD_DETAIL_RECOMMENDATION_KEYS %s",
+                {
+                    "pk": pk,
+                    "recommendations": [
+                        {
+                            "shrine_id": r.get("shrine_id"),
+                            "id": r.get("id"),
+                            "keys": sorted(list(r.keys())),
+                            "has_rank_explanation": "rank_explanation" in r,
+                            "has_rank_comparison": "rank_comparison" in r,
+                        }
+                        for r in (recommendations or [])[:3]
+                        if isinstance(r, dict)
+                    ],
+                    "recommendations_v2": [
+                        {
+                            "shrine_id": r.get("shrine_id"),
+                            "id": r.get("id"),
+                            "keys": sorted(list(r.keys())),
+                            "has_rank_explanation": "rank_explanation" in r,
+                            "has_rank_comparison": "rank_comparison" in r,
+                        }
+                        for r in (recommendations_v2 or [])[:3]
+                        if isinstance(r, dict)
+                    ],
+                },
+            )
 
             payload = {
                 "id": thread.id,
@@ -136,8 +265,8 @@ class ConciergeThreadDetailView(APIView):
                     }
                     for m in msgs
                 ],
-                "recommendations": getattr(thread, "recommendations", None),
-                "recommendations_v2": getattr(thread, "recommendations_v2", None),
+                "recommendations": recommendations,
+                "recommendations_v2": recommendations_v2,
             }
             return Response(payload, status=status.HTTP_200_OK)
 

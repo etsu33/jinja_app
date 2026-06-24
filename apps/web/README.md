@@ -53,6 +53,76 @@
 
 ---
 
+## 認証状態と認証導線
+
+### 認証状態の source of truth
+- 認証状態は `AuthProvider` を正本として扱う
+- `/api/users/me/` は認証復元と認証状態確認のために使う
+- 画面ごとに個別の `me` 取得を増やさない
+
+### 状態の分離
+- `AuthState`
+  - ログイン状態そのもの
+- `ProfileState`
+  - 保存済みプロフィール情報（`nickname`, `birthday`）
+- `ConciergeSessionState`
+  - コンシェルジュ利用中だけ使う一時入力（`sessionNickname`, `temporaryBirthdate`）
+
+保存済みプロフィールとコンシェルジュ内一時入力は混在させない。
+
+### 表示名の優先順位
+表示名は以下の順で解決する。
+
+1. `sessionNickname`
+2. `profile.nickname`
+3. 未設定時は「あなた」
+
+## 認証導線
+- 相談・閲覧は未ログインでも利用可能
+- 保存系操作とマイページはログイン必須
+- 未ログイン時は login/register に遷移し、完了後は `returnTo` で元画面へ復帰する
+- 例:
+  - `/auth/login?returnTo=/concierge`
+  - `/auth/register?returnTo=/concierge`
+  - `/auth/login?returnTo=/mypage?tab=goshuin`
+
+### 画面ごとの扱い
+- `/concierge`
+  - 未ログインでも利用可能
+  - 保存系アクションのみログイン必須
+- `/mypage`
+  - ログイン必須
+- お気に入り保存 / 相談保存 / プロフィール保存
+  - ログイン必須
+
+
+## 神社登録導線（Web実装ルール）
+
+- 神社登録は `shrine` 本体APIへの直接追加ではなく、`submission API` を使う
+- Web は shrine 本体を直接作成・更新する前提を持たない
+- 投稿入口は `/shrines/new` を正規ルートとする
+- mypage 起点の投稿も `/shrines/new?returnTo=/mypage` で吸収する
+- 投稿はログインユーザーのみを前提とし、未ログイン時は login/register に遷移する
+- 投稿完了時点では即公開扱いにせず、`pending` 前提でUIを構成する
+
+### 投稿UI/UXポリシー（現行MVP）
+
+- 投稿は「データを増やす行為」として扱い、審査主体の表現は避ける
+- 文言は「確認後に反映される」など、ユーザー貢献が伝わる形に寄せる
+- 必須項目は最小限（神社名のみ）にし、入力ハードルを下げる
+- 任意項目（住所 / ご利益タグ / 補足文）は「あると見つかりやすくなる」価値訴求に統一する
+- 重複候補（duplicate_candidate）は「ブロック」ではなく「確認導線」として提示する
+- suggestion / duplicate のUIは「既存データへの回遊」を促す設計にする
+- 投稿完了後は returnTo を用いて自然に元導線へ復帰させる
+
+## Billing / Premium UI ルール（Web実装ルール）
+
+- premium UI 分岐は `/api/billings/status/` のレスポンスを基準に行う
+- フロントは課金状態の正本を持たず、表示と再取得だけを責務とする
+- UI分岐の判断は `plan` と `is_active` を基準にし、provider の値を分岐根拠にしない
+- checkout / portal からの復帰後は billing status を refetch する
+- checkout 完了直後の一時状態だけで premium 表示を確定しない
+
 ## Places / place_id の扱い（統一方針）
 - `place_id` は常に `/places/resolve/` で `shrine_id` に解決して正規化する
 - from-place 導線は廃止（今後復活させない）
@@ -94,4 +164,3 @@ Route Handlers（`src/app/api/**/route.ts`）から Django(API) へアクセス�
 ### Forbidden
 - server コード（`src/lib/server/**`, `src/app/api/**`）で `NEXT_PUBLIC_*` を参照すること
 - route.ts 内で base URL を直に組むこと（API_BASE, DJANGO_BASE 等を自前で持たない）
-

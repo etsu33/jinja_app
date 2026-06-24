@@ -9,6 +9,10 @@ from temples.tests.fixtures.concierge_core_candidates import CONCIERGE_CORE_CAND
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("case", CONCIERGE_EVAL_QUERIES)
+@pytest.mark.skipif(
+    __import__("os").environ.get("SCORE_V3_MODE") == "active",
+    reason="active モードでは score_v3 で順位が変わるため shadow 専用",
+)
 def test_concierge_eval_queries(case, monkeypatch):
 
 

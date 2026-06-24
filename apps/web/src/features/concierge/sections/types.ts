@@ -1,6 +1,4 @@
-//apps / web / src / features / concierge / sections / types.ts;
-
-import type { ConciergeBreakdown } from "@/lib/api/concierge";
+import type { ConciergeBreakdown, ConciergeReasonFacts } from "@/lib/api/concierge";
 import type { ConciergeModeSignal } from "@/features/concierge/types/unified";
 
 /* =========================
@@ -33,6 +31,9 @@ export type RegisteredShrineItem = {
   imageUrl?: string | null;
   detailHref?: string;
   breakdown?: ConciergeBreakdown | null;
+  breakdown_detail?: any | null;
+  reasonFacts?: ConciergeReasonFacts | null;
+  consultationAxis?: string | null;
   explanation?: {
     version?: number | null;
     summary?: string | null;
@@ -54,12 +55,13 @@ export type PlaceShrineItem = {
   address?: string | null;
   description: string;
   imageUrl?: string | null;
-
   detailHref?: string;
   detailLabel?: string;
   breakdown?: ConciergeBreakdown | null;
+  breakdown_detail?: any | null;
+  reasonFacts?: ConciergeReasonFacts | null;
+  consultationAxis?: string | null;
   isDummy?: boolean;
-
 };
 
 /* =========================
@@ -112,10 +114,11 @@ export type ConciergeSectionsPayload = {
   sections: readonly ConciergeSection[];
   meta?: {
     mode?: ConciergeModeSignal | null;
-    note?: string | null;
     reply?: string | null;
-    remainingFree?: number | null;
+    remaining?: number | null;
+    limitReached?: boolean;
     tid?: string | null;
+    consultationAxis?: string | null;
     resultState?: {
       matched_count?: number;
       fallback_mode?: "none" | "nearby_unfiltered" | string;
@@ -131,11 +134,12 @@ export type ConciergeSectionsPayload = {
  * ========================= */
 export type RendererAction =
   | { type: "back_to_entry" }
-  | { type: "open_map" }
+  | { type: "open_map"; shrineId?: number | null; rank?: number | null; routeHref?: string | null }
   | { type: "add_condition" }
   | { type: "filter_close" }
   | { type: "filter_apply" }
   | { type: "filter_set_birthdate"; birthdate: string }
   | { type: "filter_toggle_tag"; tagId: number }
   | { type: "filter_set_extra"; extraCondition: string }
-  | { type: "filter_clear" };
+  | { type: "filter_clear" }
+  | { type: "save_concierge_thread" };

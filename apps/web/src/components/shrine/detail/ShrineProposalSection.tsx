@@ -1,49 +1,15 @@
 // apps/web/src/components/shrine/detail/ShrineProposalSection.tsx
+import type { DetailProposalSection } from "@/components/shrine/detail/types";
 
-type ProposalWhyItem = {
-  label: "相談との一致" | "神社のご利益" | "補助的な一致";
-  text: string;
-};
-
-export default function ShrineProposalSection({
-  proposal,
-  proposalLead,
-  proposalWhy = [],
-}: {
-  proposal?: string;
-  proposalLead?: string;
-  proposalWhy?: ProposalWhyItem[];
-}) {
-  if (!proposal && !proposalLead && proposalWhy.length === 0) return null;
-
+export default function ShrineProposalSection({ section }: { section: DetailProposalSection }) {
   return (
-    <section className="rounded-2xl border bg-white p-4 space-y-4">
-      {proposal ? (
-        <div>
-          <h2 className="text-sm font-semibold text-slate-900">{proposal}</h2>
-        </div>
-      ) : null}
+    <section className="rounded-2xl border border-slate-200 bg-white p-4">
+      <h2 className="text-base font-semibold text-slate-900">{section.heading}</h2>
 
-      {proposalLead ? (
-        <div className="rounded-xl bg-slate-50 px-4 py-3">
-          <div className="text-xs font-semibold text-slate-500">主軸</div>
-          <p className="mt-1 text-sm leading-6 text-slate-800">{proposalLead}</p>
-        </div>
-      ) : null}
-
-      {proposalWhy.length > 0 ? (
-        <div className="space-y-3">
-          <div className="text-xs font-semibold text-slate-500">なぜこの神社か</div>
-          <div className="space-y-3">
-            {proposalWhy.map((item) => (
-              <div key={item.label} className="rounded-xl border border-slate-200 px-4 py-3">
-                <div className="text-xs font-semibold text-slate-600">{item.label}</div>
-                <p className="mt-1 text-sm leading-6 text-slate-800">{item.text}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : null}
+      <div className="mt-3 space-y-2">
+        <p className="text-sm leading-7 text-slate-800">{section.lead}</p>
+        {section.body ? <p className="text-sm leading-7 text-slate-600">{section.body}</p> : null}
+      </div>
     </section>
   );
 }

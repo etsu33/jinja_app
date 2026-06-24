@@ -28,6 +28,7 @@ async function passthrough(upstream: Response) {
   upstream.headers.forEach((value, key) => {
     const k = key.toLowerCase();
     if (hopByHop.has(k)) return;
+    if (k === "content-encoding" || k === "content-length") return;
     if (k === "set-cookie") {
       res.headers.append("set-cookie", value);
       return;
@@ -40,10 +41,11 @@ async function passthrough(upstream: Response) {
 }
 
 export async function GET(req: NextRequest) {
-  // ✅ Django 側に public 一覧があるならここを /api/public/shrines/ に寄せる
-  // まだ無いなら暫定で /api/shrines/ のままでもOK（ただし “public扱い” と決める）
   const upstreamPath = buildUpstreamPath(req, "/api/shrines/");
-  const upstream = await djFetch(req, upstreamPath, { method: "GET" });
+  const upstream = await djFetch(req, upstreamPath, {
+    method: "GET",
+    forwardAuth: false,
+  });
   return passthrough(upstream);
 }
 

@@ -1,9 +1,41 @@
-// apps/mobile/app/theme.ts
 export const colors = {
-  paper:  "#F6F3EE", // 和紙
-  primary:"#E24E33", // 朱
-  accent: "#F2C94C", // 金
-  text:   "#111",
-  muted:  "#555",
+  paper: "#F6F3EE",
+  primary: "#E24E33",
+  accent: "#F2C94C",
+  text: "#111",
+  muted: "#555",
   border: "#e6e6e6",
-};
+  surfaceLight: "#fff",
+  surfaceMuted: "#F4F4F5",
+  textDark: "#111",
+  textGray: "#666",
+  textMuted: "#777",
+  borderLight: "#eee",
+  error: "#b00020",
+  errorBackground: "#fff3f3",
+  link: "#2f6ee5",
+  favorite: "#E24E33",
+} as const;
+
+export const kamimusubiDark = {
+  background: "#07101F",
+  surface: "#101827",
+  surfaceSoft: "#0B1424",
+  border: "#384154",
+  borderGold: "#8A6C32",
+  borderGoldDark: "#6B5128",
+  borderHeader: "#1E2A3A",
+  borderMuted: "#2A3548",
+  borderSoft: "#1A2336",
+  gold: "#E0B963",
+  goldSoft: "#D9C177",
+  text: "#F7F0E3",
+  muted: "#A99B80",
+  mutedDark: "#8F846E",
+  mutedSoft: "#C4B89A",
+  navMuted: "#5A6478",
+  outside: "#F4EFE3",
+} as const;
+
+export type AppColorKey = keyof typeof colors;
+export type KamimusubiDarkColorKey = keyof typeof kamimusubiDark;

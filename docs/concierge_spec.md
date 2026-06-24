@@ -245,6 +245,26 @@ Disabled は「叩けない」ではなく「叩かない」。
 
 ---
 
+
+---
+
+# 3.4 Concierge結果一覧の favorite 方針
+
+Concierge結果一覧では favorite 操作を提供しない。
+
+理由:
+
+- 本画面は discovery / comparison の導線に特化する
+- 保存操作は shrine詳細に集約する
+- Hero / Compact に保存UIを載せると責務が肥大化する
+- favorite 状態管理の複雑化を避ける
+
+運用方針:
+
+- shrine詳細では SSR initial により保存状態を正として扱う
+- 一覧系で favorite を出す場合は preload を使う
+- Concierge に favorite を導入する場合は、Hero / Compact 両方のUI責務を再設計してから行う
+
 # 4. 将来の改善点（未確定）
 
 - `llm_used` の意味整理

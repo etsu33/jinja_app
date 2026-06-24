@@ -9,12 +9,13 @@ def resolve_extra_condition_tags(
     extra_condition: Optional[str],
 ) -> Dict[str, Set[str]]:
     """
-    extra_condition から sort / hard_filter / soft_signal のタグ群を取り出す。
+    extra_condition から sort / hard_filter / soft_signal / visit_style のタグ群を取り出す。
     失敗時は空集合を返す。
     """
     sort_tags: Set[str] = set()
     hard_filter_tags: Set[str] = set()
     soft_signal_tags: Set[str] = set()
+    visit_style_tags: Set[str] = set()
 
     try:
         ex = extract_extra_tags(extra_condition or "", max_tags=3)
@@ -22,15 +23,18 @@ def resolve_extra_condition_tags(
         sort_tags = set(kinds.get("sort_override") or [])
         hard_filter_tags = set(kinds.get("hard_filter") or [])
         soft_signal_tags = set(kinds.get("soft_signal") or [])
+        visit_style_tags = set(kinds.get("visit_style") or [])
     except Exception:
         sort_tags = set()
         hard_filter_tags = set()
         soft_signal_tags = set()
+        visit_style_tags = set()
 
     return {
         "sort_tags": sort_tags,
         "hard_filter_tags": hard_filter_tags,
         "soft_signal_tags": soft_signal_tags,
+        "visit_style_tags": visit_style_tags,
     }
 
 

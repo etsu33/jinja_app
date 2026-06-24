@@ -1,8 +1,13 @@
 // apps/mobile/components/home/RankingCarousel.tsx
 import * as React from "react";
-import { Image, ScrollView, Text, View, StyleSheet, Pressable, Platform } from "react-native";
+import { Image, ScrollView, Text, View, StyleSheet, Pressable } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { getFavorites, toggleFavorite } from "../../lib/storage";
+import { spacing } from "../../app/design/spacing";
+import { cardSizes } from "../../app/design/cardSizes";
+import { radius } from "../../app/design/radius";
+import { shadows } from "../../app/design/shadow";
+import { kamimusubiDark as theme } from "../../app/theme";
 
 type Shrine = {
   id: string;
@@ -37,27 +42,27 @@ export default function RankingCarousel({ items }: { items: Shrine[] }) {
   };
 
   return (
-    <View style={{ marginTop: 8, paddingHorizontal: 16 }}>
+    <View style={{ marginTop: spacing.smGap, paddingHorizontal: spacing.screenX }}>
       {/* ヘッダー */}
       <View style={styles.headerRow}>
         <Text style={styles.title}>人気神社ランキング</Text>
-        <View style={{ flexDirection: "row", alignItems: "center" }}>
-          <Pressable onPress={() => router.push("/ranking")} style={{ marginRight: 8 }}>
-            <Text style={{ fontSize: 12, textDecorationLine: "underline" }}>もっと見る</Text>
+        <View style={styles.headerActionRow}>
+          <Pressable onPress={() => router.push("/ranking")} style={styles.moreLink}>
+            <Text style={styles.moreLinkText}>もっと見る</Text>
           </Pressable>
           <View style={styles.badge}><Text style={styles.badgeText}>今週</Text></View>
         </View>
       </View>
 
       {/* 横スクロール */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 16 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.listContent}>
         {items.map((s, i) => {
           const favored = favSet.has(s.id);
           return (
             <Pressable
               key={s.id}
               onPress={() => router.push(`/shrines/${s.id}`)}
-              style={[styles.card, { marginRight: i === items.length - 1 ? 0 : 12 }, favored && styles.cardFav]}
+              style={[styles.card, { marginRight: i === items.length - 1 ? 0 : spacing.lgGap }, favored && styles.cardFav]}
             >
               {/* ハートの小ボタン（カード右上・タップでトグル／ナビは発火させない） */}
               <Pressable
@@ -66,13 +71,13 @@ export default function RankingCarousel({ items }: { items: Shrine[] }) {
                   onToggleFav(s.id);
                 }}
                 style={[styles.heartFab, favored && styles.heartFabFav]}
-                hitSlop={8}
+                hitSlop={spacing.smGap}
               >
                 <Text style={[styles.heartFabText, favored && styles.heartFabTextFav]}>{favored ? "♡" : "♡"}</Text>
               </Pressable>
 
               <Image source={{ uri: s.imageUrl }} style={styles.img} />
-              <View style={{ padding: 12 }}>
+              <View style={styles.cardContent}>
                 <Text numberOfLines={1} style={styles.name}>
                   {s.name}
                 </Text>
@@ -98,56 +103,107 @@ export default function RankingCarousel({ items }: { items: Shrine[] }) {
   );
 }
 
-const shadow = Platform.select({
-  ios: { shadowColor: "#000", shadowOpacity: 0.08, shadowRadius: 12, shadowOffset: { width: 0, height: 6 } },
-  android: { elevation: 3 },
-  default: { boxShadow: "0 6px 16px rgba(0,0,0,0.08)" } as any,
-});
+const rankingCarouselColors = {
+  badgeBackground: theme.gold,
+  badgeText: theme.background,
+  cardBackground: theme.text,
+  cardBorder: theme.border,
+  favoriteBorder: theme.gold,
+  favoriteBackground: theme.borderGoldDark,
+  tagBackground: theme.outside,
+  metaText: theme.mutedDark,
+  heartBackground: theme.text,
+  heartText: theme.background,
+  heartTextFav: theme.gold,
+} as const;
 
 const styles = StyleSheet.create({
-  headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: spacing.smGap,
+  },
+  headerActionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  moreLink: {
+    marginRight: spacing.smGap,
+  },
+  moreLinkText: {
+    fontSize: 12,
+    textDecorationLine: "underline",
+  },
+  listContent: {
+    paddingRight: spacing.screenX,
+  },
   title: { fontSize: 18, fontWeight: "600" },
-  badge: { backgroundColor: "#F2C94C", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-  badgeText: { fontSize: 12, fontWeight: "500", color: "#111" },
+  badge: {
+    backgroundColor: rankingCarouselColors.badgeBackground,
+    paddingHorizontal: spacing.smGap,
+    paddingVertical: spacing.tightGap,
+    borderRadius: spacing.tightGap,
+  },
+  badgeText: { fontSize: 12, fontWeight: "500", color: rankingCarouselColors.badgeText },
 
   card: {
-    width: 256,
-    borderRadius: 16,
-    backgroundColor: "white",
-    borderWidth: 1,
-    borderColor: "#e6e6e6",
+    width: cardSizes.carouselWidthLg,
+    borderRadius: radius.md,
+    backgroundColor: rankingCarouselColors.cardBackground,
+    borderWidth: cardSizes.borderWidth,
+    borderColor: rankingCarouselColors.cardBorder,
     overflow: "hidden",
     position: "relative",
-    ...shadow,
+    ...shadows.lightCard,
   },
   cardFav: {
-    borderColor: "#E24E33",
-    backgroundColor: "rgba(226,78,51,0.06)",
+    borderColor: rankingCarouselColors.favoriteBorder,
+    backgroundColor: rankingCarouselColors.favoriteBackground,
   },
-  img: { width: "100%", aspectRatio: 16 / 9, borderTopLeftRadius: 16, borderTopRightRadius: 16 },
+  img: {
+    width: "100%",
+    aspectRatio: 16 / 9,
+    borderTopLeftRadius: radius.md,
+    borderTopRightRadius: radius.md,
+  },
+  cardContent: {
+    padding: cardSizes.cardPaddingSm,
+  },
   name: { fontWeight: "600" },
-  tagRow: { flexDirection: "row", flexWrap: "wrap", marginTop: 6 },
-  tag: { borderRadius: 999, backgroundColor: "#F4F4F5", paddingHorizontal: 8, paddingVertical: 2, marginRight: 6, marginBottom: 6 },
+  tagRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginTop: spacing.inlineGap - 1,
+  },
+  tag: {
+    borderRadius: radius.pill,
+    backgroundColor: rankingCarouselColors.tagBackground,
+    paddingHorizontal: spacing.smGap,
+    paddingVertical: 2,
+    marginRight: spacing.inlineGap - 1,
+    marginBottom: spacing.inlineGap - 1,
+  },
   tagText: { fontSize: 11 },
   rowSpace: { flexDirection: "row", justifyContent: "space-between" },
-  meta: { color: "#666", fontSize: 12 },
+  meta: { color: rankingCarouselColors.metaText, fontSize: 12 },
 
   heartFab: {
     position: "absolute",
-    top: 8,
-    right: 8,
+    top: spacing.smGap,
+    right: spacing.smGap,
     zIndex: 2,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 999,
-    backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: "#e6e6e6",
+    paddingVertical: spacing.tightGap,
+    paddingHorizontal: spacing.smGap,
+    borderRadius: radius.pill,
+    backgroundColor: rankingCarouselColors.heartBackground,
+    borderWidth: cardSizes.borderWidth,
+    borderColor: rankingCarouselColors.cardBorder,
   },
   heartFabFav: {
-    borderColor: "#E24E33",
-    backgroundColor: "#fff",
+    borderColor: rankingCarouselColors.favoriteBorder,
+    backgroundColor: rankingCarouselColors.heartBackground,
   },
-  heartFabText: { fontSize: 14, color: "#111" },
-  heartFabTextFav: { color: "#E24E33" },
+  heartFabText: { fontSize: 14, color: rankingCarouselColors.heartText },
+  heartFabTextFav: { color: rankingCarouselColors.heartTextFav },
 });

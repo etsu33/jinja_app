@@ -1,33 +1,23 @@
-// src/features/home/components/HomeHero.tsx
 "use client";
 
-import Link from "next/link";
+import { HomeHeroConsultationInput } from "./HomeHeroConsultationInput";
 
 export function HomeHero() {
   return (
-    <div className="flex flex-col gap-3 pt-2">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight mb-1">神社ナビ</h1>
-        <p className="text-xs text-gray-600 leading-relaxed">
-          今の気持ちや悩みを伝えると、
-          <br />
-          あなたに合った神社をコンシェルジュが提案します。
-        </p>
+    <section className="rounded-3xl bg-stone-100/80 px-6 py-16 sm:px-10 sm:py-24">
+      <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-10 text-center">
+        <div className="space-y-4">
+          <p className="text-xs font-medium tracking-[0.35em] text-stone-500">KAMI MUSUBI</p>
+          <h1 className="text-3xl font-semibold leading-tight text-stone-900 sm:text-4xl">
+            今の相談から、向かう神社を見つける
+          </h1>
+          <p className="mx-auto max-w-xl text-sm leading-7 text-stone-500">
+            迷っていることを一言にすると、今の気持ちに合わせて神社との出会いを整えます。
+          </p>
+        </div>
+
+        <HomeHeroConsultationInput />
       </div>
-
-      <Link
-        href="/concierge"
-        className="inline-flex items-center justify-center rounded-full px-4 py-3 text-sm font-semibold bg-black text-white shadow-md active:scale-[0.98] transition"
-      >
-        今の気持ちから神社を探す
-      </Link>
-
-      <Link
-        href="/map"
-        className="inline-flex items-center justify-center rounded-full px-4 py-3 text-sm font-semibold bg-emerald-600 text-white shadow-md active:scale-[0.98] transition"
-      >
-        キーワードで神社を検索
-      </Link>
-    </div>
+    </section>
   );
 }

@@ -1,315 +1,553 @@
-// apps/web/src/lib/concierge/buildRecommendationReasonViewModel.ts
+import { buildReasonNarrative } from "./buildReasonNarrative";
+import { buildStateNarrative } from "./buildStateNarrative";
+import { buildMeaningNarrative } from "./buildMeaningNarrative";
+import {
+  HERO_COMPAT_SUBTITLE,
+  HERO_EYEBROW_LABELS,
+  getHeroThemeSubtitle,
+  type HeroTheme,
+} from "@/lib/concierge/copy/heroThemeCopies";
+
 export type ReasonInputType = "query" | "birthdate" | "fallback";
-export type ReasonKey = "need_match" | "text_match" | "element_match" | "sign_match" | "distance" | "popular";
 
-export type RecommendationReasonViewModel = {
-  inputType: ReasonInputType;
-  primaryReason: string;
-  secondaryReason?: string;
-  topReasonLabel?: string;
-  summary: string;
-  reasonKeys: {
-    primary: ReasonKey;
-    secondary?: ReasonKey;
-    summary: ReasonKey;
-  };
-};
+export type ReasonKey =
+  | "need_match"
+  | "text_match"
+  | "sign_match"
+  | "distance"
+  | "popular"
+  | "element_match";
 
-type BreakdownLike = {
-  matched_need_tags?: string[];
-  score_need?: number;
-  score_element?: number;
-  score_popular?: number;
-  score_total?: number;
-  weights?: {
-    element?: number;
-    need?: number;
-    popular?: number;
-  };
-};
-
-type RecommendationLike = {
+export type RecommendationLike = {
+  id?: number | null;
   name?: string | null;
   display_name?: string | null;
+  title?: string | null;
+  address?: string | null;
+  location?: string | null;
   reason?: string | null;
-  breakdown?: BreakdownLike | null;
+  explanation?: { summary?: string | null } | null;
   distance_m?: number | null;
   popular_score?: number | null;
+  fallback_mode?: string | null;
   astro_elements?: string[] | null;
   astro_priority?: number | null;
-  fallback_mode?: string | null;
-  explanation?: {
-    summary?: string | null;
-    reasons?: Array<{ text?: string | null }> | null;
+  breakdown?: {
+    matched_need_tags?: string[] | null;
+  } | null;
+  breakdown_detail?: any | null;
+  reason_facts?: {
+    primary_axis?: "need" | "benefit" | "feature" | "element" | "distance" | "popularity" | "fallback" | null;
+    confidence?: "high" | "mid" | "low" | null;
+    matched_element?: string | null;
+    distance_label?: string | null;
+    popularity_label?: string | null;
+    shrine_benefit?: string | null;
+    shrine_feature?: string | null;
+    visit_fit?: string | null;
+    matched_benefits?: string[] | null;
+    fallback_reason?: string | null;
   } | null;
 };
 
-type BuildParams = {
+export type RecommendationReasonViewModel = {
+  inputType: ReasonInputType;
+  hero: {
+    topReasonLabel?: string;
+    eyebrowLabel?: string;
+    subtitle?: string;
+    catchCopy: string;
+  };
+  list: {
+    primaryPhrase: string;
+    summary: string;
+    secondaryPhrase?: string;
+  };
+  detail: {
+    heroMeaningCopy: string;
+    consultationSummary: string;
+    shrineMeaning: string;
+    actionMeaning?: string;
+  };
+  rank: {
+    whyTop?: string;
+    differenceFromOthers?: string;
+  };
+  debug?: {
+    reasonKeys: {
+      primary: ReasonKey;
+      secondary?: ReasonKey;
+      summary: ReasonKey;
+    };
+  };
+  /**
+   * legacy compatibility field
+   * - 既存一覧 / 旧 UI 契約が参照するため保持
+   * - 依存箇所がなくなったら削除可
+   */
+  why: {
+    primaryReason: string;
+    secondaryReason?: string;
+    summary: string;
+    reasonKeys: {
+      primary: ReasonKey;
+      secondary?: ReasonKey;
+      summary: ReasonKey;
+    };
+  };
+  /**
+   * legacy compatibility field
+   * - 旧 detail interpretation 契約のため保持
+   * - detail.* へ完全移行できたら削除可
+   */
+  interpretation: {
+    consultationSummary: string;
+    shrineMeaning: string;
+    actionMeaning?: string;
+  };
+};
+
+export type BuildParams = {
   rec: RecommendationLike;
   index: number;
   mode?: "need" | "compat" | string | null;
+  needTags: string[];
   birthdate?: string | null;
-  needTags?: string[];
+  shrineBenefitLabels?: string[];
+  shrineFeatureLabels?: string[];
 };
 
-type Candidate = {
+export type Candidate = {
   key: ReasonKey;
   text: string;
 };
 
-const ELEMENT_LABELS: Record<string, string> = {
-  fire: "火",
-  earth: "土",
-  air: "風",
-  water: "水",
+export type ConsultationMeaningSlots = {
+  needPrimary: string | null;
+  needSecondary?: string | null;
+  state: string | null;
+  wish: string | null;
+  urgency?: "low" | "mid" | "high" | null;
+  posture?: "quiet" | "active" | "reset" | "focus" | null;
+  emotionalTone?: "anxious" | "tired" | "stuck" | "hopeful" | null;
 };
 
-const NEED_PRIMARY_TEXT: Record<string, string> = {
-  転機: "切り替えたい今に合いやすい候補です",
-  仕事: "仕事の流れを整えたい時に向く候補です",
-  厄除け: "気持ちを立て直したい時に合う候補です",
-  恋愛: "ご縁を整えたい気持ちに寄り添いやすい候補です",
-  健康: "心身を整えたい時に向きやすい候補です",
-  金運: "流れを立て直したい時に意識しやすい候補です",
-  学業: "集中して力を伸ばしたい時に向く候補です",
+export type ShrineMeaningSlots = {
+  benefitPrimary: string | null;
+  benefitSecondary?: string | null;
+  feature?: string | null;
+  symbol?: string | null;
+  tone?: "strong" | "quiet" | "tight" | "open" | "neutral" | null;
+  actionRole?: string | null;
+  visitStyle?: "quiet" | "active" | "grounding" | "decision" | null;
 };
 
-const ELEMENT_PRIMARY_TEXT: Record<string, string> = {
-  火: "前向きに動きたい気質と合いやすい候補です",
-  土: "落ち着いて整えたい時に向きやすい候補です",
-  風: "流れを変えたい時に軽やかに選びやすい候補です",
-  水: "静かに気持ちを整えたい時に馴染みやすい候補です",
+export type RecommendationMatchModel = {
+  primaryReasonType:
+    | "need_benefit_match"
+    | "need_feature_match"
+    | "compat_element_match"
+    | "distance_fit"
+    | "popularity_fit"
+    | "fallback_choice";
+  secondaryReasonTypes: Array<
+    | "secondary_need_match"
+    | "benefit_support"
+    | "feature_support"
+    | "sign_support"
+    | "distance_support"
+    | "popularity_support"
+  >;
+  rankingReasonType?:
+    | "strongest_theme_match"
+    | "strongest_compat_match"
+    | "most_actionable"
+    | "most_stable_choice";
+  confidence?: "high" | "mid" | "low" | null;
 };
 
-function clean(value?: string | null): string {
-  return (value ?? "").replace(/\s+/g, " ").trim();
+export function clean(value?: string | null): string {
+  return (value ?? "").trim();
 }
 
-function uniq<T>(arr: T[]): T[] {
-  return [...new Set(arr)];
+function compactText(value?: string | null, maxLength = 54): string {
+  const text = clean(value);
+  if (!text) return "";
+  if (text.length <= maxLength) return text;
+
+  const sentenceEndIndex = text.slice(0, maxLength).search(/[。.!?！？]/);
+  if (sentenceEndIndex > 0) return text.slice(0, sentenceEndIndex + 1).trim();
+
+  return text;
 }
 
-function formatDistance(distanceM?: number | null): string | null {
+function compactOptionalText(value?: string | null, maxLength = 54): string | undefined {
+  const text = compactText(value, maxLength);
+  return text || undefined;
+}
+
+function compactReasonViewModel(reason: ReturnType<typeof buildReasonNarrative>) {
+  return {
+    hero: {
+      ...reason.hero,
+      catchCopy: compactText(reason.hero.catchCopy, 32),
+    },
+    list: {
+      ...reason.list,
+      primaryPhrase: compactText(reason.list.primaryPhrase, 44),
+      summary: compactText(reason.list.summary, 38),
+      secondaryPhrase: compactOptionalText(reason.list.secondaryPhrase, 42),
+    },
+    rank: {
+      ...reason.rank,
+      whyTop: compactOptionalText(reason.rank.whyTop, 48),
+      differenceFromOthers: compactOptionalText(reason.rank.differenceFromOthers, 42),
+    },
+    why: {
+      ...reason.why,
+      primaryReason: compactText(reason.why.primaryReason, 44),
+      summary: compactText(reason.why.summary, 38),
+      secondaryReason: compactOptionalText(reason.why.secondaryReason, 42),
+    },
+  };
+}
+
+function resolveHeroTheme(needTags?: string[] | null): HeroTheme {
+  const tags = (Array.isArray(needTags) ? needTags : []).map((tag) => clean(tag)).filter(Boolean);
+  const joined = tags.join(" ");
+
+  if (tags.includes("money") || joined.includes("金運") || joined.includes("巡り")) return "money";
+  if (tags.includes("career") || joined.includes("仕事") || joined.includes("転機")) return "work";
+  if (tags.includes("love") || joined.includes("恋愛") || joined.includes("関係") || joined.includes("縁")) return "relationship";
+  if (tags.includes("mental") || tags.includes("rest") || joined.includes("静か") || joined.includes("休息") || joined.includes("落ち着")) return "quiet";
+  if (tags.includes("courage") || joined.includes("切り替え") || joined.includes("前向き") || joined.includes("厄除")) return "reset";
+
+  return "default";
+}
+
+
+function buildHeroCopy(args: {
+  mode?: BuildParams["mode"];
+  inputType: ReasonInputType;
+  needTags?: string[] | null;
+  hero: ReturnType<typeof compactReasonViewModel>["hero"];
+}): RecommendationReasonViewModel["hero"] {
+  if (args.mode === "compat" || args.inputType === "birthdate") {
+    return {
+      ...args.hero,
+      topReasonLabel: "生年月日との重なりが強い",
+      eyebrowLabel: HERO_EYEBROW_LABELS.compat,
+      subtitle: HERO_COMPAT_SUBTITLE,
+    };
+  }
+
+  return {
+    ...args.hero,
+    eyebrowLabel: HERO_EYEBROW_LABELS.need,
+    subtitle: getHeroThemeSubtitle(resolveHeroTheme(args.needTags)),
+  };
+}
+
+export function uniq<T>(arr: T[]): T[] {
+  return Array.from(new Set(arr));
+}
+
+export function formatDistance(distanceM?: number | null): string | null {
   if (typeof distanceM !== "number" || Number.isNaN(distanceM)) return null;
   if (distanceM < 1000) return `${Math.round(distanceM)}m`;
   return `${(distanceM / 1000).toFixed(1)}km`;
 }
 
-function resolveInputType(params: BuildParams): ReasonInputType {
-  const { rec, mode, birthdate } = params;
-
-  if (rec.fallback_mode === "nearby_unfiltered") return "fallback";
-  if (mode === "compat") return "birthdate";
-  if (birthdate && !clean(params.needTags?.join(" "))) return "birthdate";
+export function resolveInputType(params: BuildParams): ReasonInputType {
+  if (params.birthdate) return "birthdate";
+  if (params.mode === "compat") return "birthdate";
+  if (params.rec.fallback_mode && params.rec.fallback_mode !== "none") return "fallback";
   return "query";
 }
 
-function getPrimaryElement(rec: RecommendationLike): string | null {
-  const raw = rec.astro_elements?.[0];
-  if (!raw) return null;
-  return ELEMENT_LABELS[String(raw).toLowerCase()] ?? String(raw);
+export function getPrimaryElement(rec: RecommendationLike): string | null {
+  const element = clean(rec.reason_facts?.matched_element);
+  if (element) return element;
+  const first = rec.astro_elements?.[0];
+  return clean(first) || null;
 }
 
-function buildNeedPrimaryText(need: string): string {
-  return NEED_PRIMARY_TEXT[need] ?? `${need}を意識した今に合いやすい候補です`;
-}
-function buildElementPrimaryText(element: string): string {
-  return ELEMENT_PRIMARY_TEXT[element] ?? `${element}の要素と相性が良い候補です`;
-}
+function getPrimaryNeedBenefitLabel(rec: RecommendationLike, shrineBenefitLabels?: string[]): string | null {
+  const preferredBenefit = (shrineBenefitLabels ?? []).map(clean).find(Boolean);
+  if (preferredBenefit) return preferredBenefit;
 
-function buildQueryCandidates(rec: RecommendationLike, needTags?: string[]): Candidate[] {
-  const matched = uniq((rec.breakdown?.matched_need_tags ?? []).map(clean).filter(Boolean));
-  const needs = uniq((needTags ?? []).map(clean).filter(Boolean));
-  const mainNeed = matched[0] ?? needs[0];
+  const shrineBenefit = clean(rec.reason_facts?.shrine_benefit);
+  if (shrineBenefit) return shrineBenefit;
 
-  const out: Candidate[] = [];
+  const matchedBenefit = clean(rec.reason_facts?.matched_benefits?.[0]);
+  if (matchedBenefit) return matchedBenefit;
 
-  if (mainNeed) {
-    out.push({ key: "need_match", text: buildNeedPrimaryText(mainNeed) });
-  }
-
-  if (matched.length >= 2) {
-    out.push({ key: "text_match", text: `${matched[1]}の観点も含む候補です` });
-  } else if (matched.length === 1) {
-    out.push({ key: "text_match", text: "入力内容に沿って選びやすい候補です" });
-  }
-
-  if (typeof rec.astro_priority === "number" && rec.astro_priority > 0) {
-    out.push({ key: "sign_match", text: "気質とのなじみも見られる候補です" });
-  }
-
-  const distance = formatDistance(rec.distance_m);
-  if (distance) {
-    out.push({ key: "distance", text: `${distance}圏内で無理なく動きやすい候補です` });
-  }
-
-  if (typeof rec.popular_score === "number") {
-    out.push({ key: "popular", text: "定番としての安定感もあります" });
-  }
-
-  return out;
+  return null;
 }
 
-function buildBirthdateCandidates(rec: RecommendationLike): Candidate[] {
-  const out: Candidate[] = [];
-  const element = getPrimaryElement(rec);
+function getShrineFeatureLabel(rec: RecommendationLike, shrineFeatureLabels?: string[]): string | null {
+  const preferredFeature = (shrineFeatureLabels ?? []).map(clean).find(Boolean);
+  if (preferredFeature) return preferredFeature;
 
-  if (element) {
-    out.push({ key: "element_match", text: buildElementPrimaryText(element) });
-  }
+  const feature = clean(rec.reason_facts?.shrine_feature);
+  if (feature) return feature;
 
-  if (typeof rec.astro_priority === "number" && rec.astro_priority > 0) {
-    out.push({ key: "sign_match", text: "気質とのなじみも見られる候補です" });
-  }
+  const visitFit = clean(rec.reason_facts?.visit_fit);
+  if (visitFit) return visitFit;
 
-  const distance = formatDistance(rec.distance_m);
-  if (distance) {
-    out.push({ key: "distance", text: `${distance}圏内で落ち着いて向かいやすい候補です` });
-  }
-
-  if (typeof rec.popular_score === "number") {
-    out.push({ key: "popular", text: "定番としての安定感もあります" });
-  }
-
-  return out;
+  return null;
 }
 
-function buildFallbackCandidates(rec: RecommendationLike): Candidate[] {
-  const out: Candidate[] = [];
-  const distance = formatDistance(rec.distance_m);
-  const hasPopular = typeof rec.popular_score === "number";
+export function buildConsultationMeaningSlots(params: BuildParams): ConsultationMeaningSlots {
+  const needPrimary = clean(params.needTags?.[0]) || null;
+  const needSecondary = clean(params.needTags?.[1]) || null;
 
-  if (distance) {
-    out.push({
-      key: "distance",
-      text: "まず動きやすさを優先して見られる候補です",
-    });
-    if (hasPopular) {
-      out.push({
-        key: "popular",
-        text: "定番として選びやすい候補です",
-      });
-    }
-    return out;
+  if (params.mode === "compat") {
+    return {
+      needPrimary,
+      needSecondary,
+      state: "感覚がぶれやすい",
+      wish: "今の自分に無理なく向き合いたい",
+      urgency: "mid",
+      posture: "quiet",
+      emotionalTone: "stuck",
+    };
   }
 
-  if (hasPopular) {
-    out.push({
-      key: "popular",
-      text: "まず選びやすさを優先して見られる候補です",
-    });
-    out.push({
-      key: "distance",
-      text: "無理なく選びやすい候補です",
-    });
-    return out;
+  if (needPrimary === "厄除け") {
+    return {
+      needPrimary,
+      needSecondary,
+      state: "不安や引っかかりが続きやすい",
+      wish: "気持ちを整え直したい",
+      urgency: "mid",
+      posture: "reset",
+      emotionalTone: "anxious",
+    };
+  }
+  if (needPrimary === "仕事") {
+    return {
+      needPrimary,
+      needSecondary,
+      state: "優先順位が崩れやすい",
+      wish: "仕事の流れを整え直したい",
+      urgency: "mid",
+      posture: "focus",
+      emotionalTone: "stuck",
+    };
+  }
+  if (needPrimary === "金運") {
+    return {
+      needPrimary,
+      needSecondary,
+      state: "流れの立て直しが必要",
+      wish: "巡りを整え直したい",
+      urgency: "mid",
+      posture: "reset",
+      emotionalTone: "stuck",
+    };
+  }
+  if (needPrimary === "転機") {
+    return {
+      needPrimary,
+      needSecondary,
+      state: "切り替えの見極めが必要",
+      wish: "流れを切り替えたい",
+      urgency: "mid",
+      posture: "active",
+      emotionalTone: "hopeful",
+    };
+  }
+  if (needPrimary === "恋愛") {
+    return {
+      needPrimary,
+      needSecondary,
+      state: "受け取り方が揺れやすい",
+      wish: "関係の見方を整えたい",
+      urgency: "mid",
+      posture: "quiet",
+      emotionalTone: "anxious",
+    };
+  }
+  if (needPrimary === "健康") {
+    return {
+      needPrimary,
+      needSecondary,
+      state: "整える順番が崩れやすい",
+      wish: "心身を整え直したい",
+      urgency: "mid",
+      posture: "quiet",
+      emotionalTone: "tired",
+    };
+  }
+  if (needPrimary === "学業") {
+    return {
+      needPrimary,
+      needSecondary,
+      state: "集中の軸がぶれやすい",
+      wish: "集中と向き合い方を整えたい",
+      urgency: "mid",
+      posture: "focus",
+      emotionalTone: "stuck",
+    };
   }
 
-  out.push({
-    key: "distance",
-    text: "まず動きやすさを優先して見られる候補です",
-  });
-
-  return out;
-}
-
-function dedupeCandidates(candidates: Candidate[]): Candidate[] {
-  const seenKeys = new Set<string>();
-  const seenTexts = new Set<string>();
-
-  return candidates.filter((c) => {
-    const text = clean(c.text);
-    if (!text) return false;
-    if (seenKeys.has(c.key)) return false;
-    if (seenTexts.has(text)) return false;
-    seenKeys.add(c.key);
-    seenTexts.add(text);
-    return true;
-  });
-}
-
-function buildSummary(
-  inputType: ReasonInputType,
-  primary: Candidate,
-  secondary?: Candidate,
-): { key: ReasonKey; text: string } {
-  const blocked = new Set([clean(primary.text), clean(secondary?.text)]);
-
-  const byType: Record<ReasonInputType, Array<{ key: ReasonKey; text: string }>> = {
-    query: [
-      { key: "need_match", text: "今の気持ちに合いやすい候補です" },
-      { key: "text_match", text: "相談内容に沿って見やすい候補です" },
-    ],
-    birthdate: [
-      { key: "element_match", text: "相性を軸に見やすい候補です" },
-      { key: "sign_match", text: "気質とのなじみを見やすい候補です" },
-    ],
-    fallback: [
-      { key: "distance", text: "まず動きやすさで見やすい候補です" },
-      { key: "popular", text: "まず選びやすさで見やすい候補です" },
-    ],
+  return {
+    needPrimary,
+    needSecondary,
+    state: "判断が散りやすい",
+    wish: "今の流れを整え直したい",
+    urgency: "mid",
+    posture: "reset",
+    emotionalTone: "stuck",
   };
-
-  const found = byType[inputType].find((x) => !blocked.has(clean(x.text)));
-  return found ?? byType[inputType][0];
 }
 
-function buildTopReasonLabel(inputType: ReasonInputType, primaryKey: ReasonKey, index: number) {
-  if (index !== 0) return undefined;
+export function buildShrineMeaningSlots(params: BuildParams): ShrineMeaningSlots {
+  const benefitPrimary = getPrimaryNeedBenefitLabel(params.rec, params.shrineBenefitLabels);
+  const benefitSecondary = clean(params.rec.reason_facts?.matched_benefits?.[0]) || undefined;
+  const feature = getShrineFeatureLabel(params.rec, params.shrineFeatureLabels) || undefined;
+  const shrineName = clean(params.rec.display_name ?? params.rec.name ?? params.rec.title);
 
-  if (inputType === "query") {
-    return primaryKey === "need_match" ? "相談に合う" : "内容に合う";
+  let tone: ShrineMeaningSlots["tone"] = "neutral";
+  if (shrineName.includes("三峯")) tone = "strong";
+  else if (shrineName.includes("伊勢") || shrineName.includes("内宮")) tone = "quiet";
+  else if (shrineName.includes("乃木")) tone = "tight";
+
+  let actionRole: string | undefined;
+  let visitStyle: ShrineMeaningSlots["visitStyle"] = "grounding";
+
+  if (tone === "strong") {
+    actionRole = "流れを切り替える節目";
+    visitStyle = "active";
+  } else if (tone === "quiet") {
+    actionRole = "静かに整え直す節目";
+    visitStyle = "quiet";
+  } else if (tone === "tight") {
+    actionRole = "判断を定める節目";
+    visitStyle = "decision";
   }
+
+  return {
+    benefitPrimary,
+    benefitSecondary,
+    feature,
+    symbol: undefined,
+    tone,
+    actionRole,
+    visitStyle,
+  };
+}
+
+export function buildRecommendationMatchModel(args: {
+  params: BuildParams;
+  consultation: ConsultationMeaningSlots;
+  shrine: ShrineMeaningSlots;
+  inputType: ReasonInputType;
+  rec: RecommendationLike;
+}): RecommendationMatchModel {
+  const { consultation, shrine, inputType, rec } = args;
+  const f = rec.reason_facts;
+
+  let primaryReasonType: RecommendationMatchModel["primaryReasonType"] = "fallback_choice";
+
   if (inputType === "birthdate") {
-    return "相性が最も高い";
-  }
-  if (inputType === "fallback") {
-    if (primaryKey === "distance") return "まず動きやすい";
-    if (primaryKey === "popular") return "まず選びやすい";
-    return "おすすめ";
+    primaryReasonType = "compat_element_match";
+  } else if (f?.primary_axis === "popularity") {
+    primaryReasonType = "popularity_fit";
+  } else if (f?.primary_axis === "distance") {
+    primaryReasonType = "distance_fit";
+  } else if (consultation.needPrimary && shrine.benefitPrimary) {
+    primaryReasonType = "need_benefit_match";
+  } else if (consultation.needPrimary && shrine.feature) {
+    primaryReasonType = "need_feature_match";
+  } else if (consultation.needPrimary) {
+    primaryReasonType = "need_benefit_match";
+  } else if (rec.fallback_mode === "nearby_unfiltered") {
+    primaryReasonType = "fallback_choice";
   }
 
-  return undefined;
+  const secondaryReasonTypes: RecommendationMatchModel["secondaryReasonTypes"] = [];
+  if (consultation.needSecondary) secondaryReasonTypes.push("secondary_need_match");
+  if (shrine.benefitPrimary && f?.primary_axis !== "benefit") secondaryReasonTypes.push("benefit_support");
+  if (shrine.feature && f?.primary_axis !== "feature") secondaryReasonTypes.push("feature_support");
+  if (typeof rec.astro_priority === "number" && rec.astro_priority > 0) secondaryReasonTypes.push("sign_support");
+  if ((typeof rec.distance_m === "number" || clean(rec.reason_facts?.distance_label)) && f?.primary_axis !== "distance") {
+    secondaryReasonTypes.push("distance_support");
+  }
+  if (typeof rec.popular_score === "number" && f?.primary_axis !== "popularity") {
+    secondaryReasonTypes.push("popularity_support");
+  }
+
+  let rankingReasonType: RecommendationMatchModel["rankingReasonType"] | undefined;
+  if (primaryReasonType === "need_benefit_match" || primaryReasonType === "need_feature_match") {
+    rankingReasonType = "strongest_theme_match";
+  } else if (primaryReasonType === "compat_element_match") {
+    rankingReasonType = "strongest_compat_match";
+  } else if (primaryReasonType === "distance_fit") {
+    rankingReasonType = "most_actionable";
+  } else {
+    rankingReasonType = "most_stable_choice";
+  }
+
+  return {
+    primaryReasonType,
+    secondaryReasonTypes,
+    rankingReasonType,
+    confidence: f?.confidence ?? null,
+  };
 }
 
+/**
+ * buildRecommendationReasonViewModel
+ *
+ * responsibility:
+ * - reason を呼ぶ
+ * - state を呼ぶ
+ * - meaning を呼ぶ
+ * - UI shape に詰める
+ */
 export function buildRecommendationReasonViewModel(params: BuildParams): RecommendationReasonViewModel {
+  const reason = buildReasonNarrative(params);
+  const compactReason = compactReasonViewModel(reason);
+
   const inputType = resolveInputType(params);
+  const hero = buildHeroCopy({
+    mode: params.mode,
+    inputType,
+    needTags: params.needTags,
+    hero: compactReason.hero,
+  });
 
-  const raw =
-    inputType === "query"
-      ? buildQueryCandidates(params.rec, params.needTags)
-      : inputType === "birthdate"
-        ? buildBirthdateCandidates(params.rec)
-        : buildFallbackCandidates(params.rec);
+  const state = buildStateNarrative({
+    params,
+    primary: reason._meta.primary,
+    secondary: reason._meta.secondary,
+  });
 
-  const candidates = dedupeCandidates(raw);
-
-  const primary =
-    candidates[0] ??
-    ({
-      key: inputType === "birthdate" ? "element_match" : inputType === "fallback" ? "distance" : "need_match",
-      text:
-        inputType === "birthdate"
-          ? "生年月日との相性を軸に選びやすい候補です"
-          : inputType === "fallback"
-            ? "まずは動きやすさを優先して見られる候補です"
-            : "今の気持ちに沿って選びやすい候補です",
-    } satisfies Candidate);
-
-  const secondary = candidates.slice(1).find((x) => x.key !== primary.key && clean(x.text) !== clean(primary.text));
-
-  const summary = buildSummary(inputType, primary, secondary);
+  const meaning = buildMeaningNarrative({
+    params,
+    primary: reason._meta.primary,
+    secondary: reason._meta.secondary,
+  });
 
   return {
     inputType,
-    primaryReason: primary.text,
-    secondaryReason: secondary?.text,
-    topReasonLabel: buildTopReasonLabel(inputType, primary.key, params.index),
-    summary: summary.text,
-    reasonKeys: {
-      primary: primary.key,
-      secondary: secondary?.key,
-      summary: summary.key,
+    hero,
+    list: compactReason.list,
+    detail: {
+      heroMeaningCopy: meaning.heroMeaningCopy,
+      consultationSummary: state.consultationSummary,
+      shrineMeaning: meaning.shrineMeaning,
+      actionMeaning: meaning.actionMeaning,
+    },
+    rank: compactReason.rank,
+    debug: reason.debug,
+    why: compactReason.why,
+    interpretation: {
+      consultationSummary: state.consultationSummary,
+      shrineMeaning: meaning.shrineMeaning,
+      actionMeaning: meaning.actionMeaning,
     },
   };
 }

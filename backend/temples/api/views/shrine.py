@@ -252,10 +252,8 @@ class ShrineViewSet(viewsets.ModelViewSet):
     search_fields = ["name_jp", "name_romaji", "address", "goriyaku"]
 
     def get_permissions(self):
-        if self.action in ("list", "nearest", "ingest"):
+        if self.action in ("list", "retrieve", "nearest", "ingest"):
             return [AllowAny()]
-        if self.action == "retrieve":
-            return [IsAuthenticated()]
         return [IsAuthenticated()]
 
     def get_serializer_class(self):
@@ -274,16 +272,21 @@ class ShrineViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = super().get_queryset()
 
-        if getattr(self, "action", None) == "retrieve":
-            u = getattr(self.request, "user", None)
-            if not u or not u.is_authenticated:
-                return qs.none()
+        params = self.request.query_params
 
-            if getattr(u, "is_staff", False) or getattr(u, "is_superuser", False):
-                return qs.distinct()
+        kind = (params.get("kind") or "shrine").lower()
+        if kind in ("shrine", "temple"):
+            qs = qs.filter(kind=kind)
+        elif kind != "all":
+            qs = qs.filter(kind="shrine")
 
-            return qs.filter(owner=u).distinct()
+        qs = _apply_q_terms(qs, params)
 
+        name = params.get("name")
+        if name:
+            qs = qs.filter(Q(name_jp__icontains=name) | Q(name_romaji__icontains=name))
+
+        qs = annotate_is_favorite(qs, self.request)
         return qs.distinct()
     
     
