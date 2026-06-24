@@ -6,6 +6,7 @@ import { SHRINES } from "../../data/shrines";
 import { incVisits, isFavorite, toggleFavorite, pushRecent } from "../../lib/storage";
 import { kamimusubiDark as theme } from "../theme";
 import { get } from "../../lib/http";
+import { trackShrineDetailView } from "../../lib/shrineInteractions";
 import { spacing } from "../design/spacing";
 import { cardSizes } from "../design/cardSizes";
 import { radius } from "../design/radius";
@@ -108,14 +109,33 @@ export default function ShrineDetail() {
   }, [shrine]);
 
   const countedRef = React.useRef(false);
+  const detailTrackedRef = React.useRef<string | null>(null);
+
   useFocusEffect(
     React.useCallback(() => {
       if (!countedRef.current) {
         countedRef.current = true;
         incVisits(1).catch(() => {});
       }
+
+      const shrineIdNumber = apiShrineId != null ? Number(apiShrineId) : null;
+      const detailTrackKey = shrineIdNumber != null && Number.isFinite(shrineIdNumber) && shrineIdNumber > 0
+        ? String(shrineIdNumber)
+        : null;
+
+      if (shrineIdNumber != null && detailTrackKey && detailTrackedRef.current !== detailTrackKey) {
+        detailTrackedRef.current = detailTrackKey;
+        void trackShrineDetailView({
+          shrineId: shrineIdNumber,
+          source: "mobile_shrine_detail",
+          metadata: {
+            ctx: "mobile_shrine_detail",
+          },
+        });
+      }
+
       return () => {};
-    }, [shrineId]),
+    }, [apiShrineId]),
   );
 
   React.useEffect(() => {
