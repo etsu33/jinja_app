@@ -384,19 +384,48 @@ active 化の最終判断には funnel 指標を必ず含める。`activation_ca
 
 ---
 
-### PostHog 対応 TODO
+### PostHog 連携方針
 
-PostHog 送信 helper が未実装のため、以下をイベントとして送ることを検討する（別 PR）。
+#### 現時点の方針
+
+PostHog 送信 helper は**未実装**。Score v3 の一次観測は以下を正本とする。
+
+| 正本 | 用途 |
+|---|---|
+| recommendation log（`_debug.score_v3_ab_observation`） | セッション単位の生観測値 |
+| dashboard API（`GET /api/concierge/score-v3/dashboard/`） | 集計値・判定結果 |
+
+PostHog への送信は、将来 helper を追加した場合のみ行う。現時点では実装しない。
+
+#### 将来実装する場合の event 定義
 
 ```
 イベント名: score_v3_ab_observed
+
 properties:
-  - mode
-  - top1_changed_rate
-  - avg_delta
-  - max_abs_delta
-  - activation_candidate
+  mode                  # "shadow" | "active"
+  top1_changed_rate     # セッション内の top1 変動率
+  activation_candidate  # bool — セッション単位の activation_candidate
+  avg_delta             # score_v3 - score_total の平均差分
+  max_abs_delta         # セッション内の max_abs_delta
+  route_open_rate       # funnel: route_open 発生率
+  save_rate             # funnel: save 発生率
+  visit_done_rate       # funnel: visit_done 発生率
+  reflection_saved_rate # funnel: reflection_saved 発生率
 ```
+
+#### dashboard との整合確認方針
+
+- PostHog の各 property 値は dashboard API のレスポンス値と一致させる
+- 不一致が生じた場合は dashboard API の値を正本とする
+- PostHog は可視化・時系列分析用途に限定し、active 化 / rollback の判断には使わない
+
+| 用途 | 使用するデータ源 |
+|---|---|
+| active 化 / rollback 判断 | dashboard API |
+| 重み調整判断 | dashboard API + recommendation log |
+| 時系列トレンド可視化 | PostHog（将来） |
+| アラート・通知 | PostHog（将来） |
 
 ---
 
@@ -603,3 +632,59 @@ distance    = 0.10
 | `activation_candidate_rate` | 0.50 未満 |
 
 `rollback_required = true` の場合、`reasons` に該当条件を列挙する。
+
+
+## Score v3 Data Collection Plan
+
+### 目的
+
+Score v3 を active 化する前に、十分な推薦ログと行動ファネルを蓄積し、active 化判断をデータで行う。
+
+### 観測期間
+
+- 最低 30 セッション
+- 推奨 100 セッション
+- 最低 7 日間は shadow mode で観測する
+
+### 観測指標
+
+- top1_changed_rate
+- activation_candidate_rate
+- avg_delta
+- max_abs_delta
+
+### Funnel Correlation
+
+以下の行動指標と突合する。
+
+- route_open_rate
+- save_rate
+- visit_done_rate
+- reflection_saved_rate
+
+### Weight Optimization
+
+以下の weight を実測値で検証する。
+
+- state = 0.45
+- behavior = 0.25
+- profile = 0.05
+- direction = 0.02
+- action = 0.02
+- reflection = 0.01
+
+### Final Decision
+
+active 化は以下を満たした場合のみ検討する。
+
+- top1_changed_rate_avg <= 0.10
+- activation_candidate_rate >= 0.80
+- max_abs_delta_max < 0.50
+- funnel 指標が悪化していない
+- rollback 手順が確認済み
+
+### やらないこと
+
+- 実データなしで weight を変更しない
+- dashboard を見ずに active 化しない
+- `SCORE_V3_MODE=active` をデフォルトにしない
