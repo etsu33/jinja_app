@@ -43,6 +43,7 @@ class ShrineMeaningSourceV2(TypedDict, total=False):
     placeTags: list[str]
     directionBonus: float | None
     directionReason: str | None
+    interpretationProfile: dict[str, Any] | None
 
 
 class ShrineMeaningGeneratedV2(TypedDict):
@@ -339,6 +340,7 @@ class ShrineMeaningInput:
     place_tags: tuple[str, ...] = ()
     direction_bonus: float | None = None
     direction_reason: str | None = None
+    interpretation_profile: dict[str, Any] | None = None
 
 
 def _clean_str(value: Any) -> str | None:
@@ -444,6 +446,7 @@ def normalize_shrine_meaning_source(source: Any) -> ShrineMeaningInput:
         place_tags=_clean_str_list(_read_value(source, "place_tags", "placeTags")),
         direction_bonus=_clean_float(_read_value(source, "direction_bonus", "directionBonus")),
         direction_reason=_clean_str(_read_value(source, "direction_reason", "directionReason")),
+        interpretation_profile=_read_value(source, "interpretation_profile", "interpretationProfile"),
     )
 
 
@@ -768,6 +771,7 @@ def build_source_fields(input_: ShrineMeaningInput) -> ShrineMeaningSourceV2:
         "placeTags": list(input_.place_tags),
         "directionBonus": input_.direction_bonus,
         "directionReason": input_.direction_reason,
+        "interpretationProfile": input_.interpretation_profile,
     }
 
 
