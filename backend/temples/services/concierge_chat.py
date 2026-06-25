@@ -8,6 +8,7 @@ from temples.domain.consultation_axis import resolve_consultation_axis
 from temples.models import GoriyakuTag
 
 from temples.services.concierge_candidate_utils import _normalize_candidate_fields
+from temples.services.consultation_interpreter import interpret_consultation
 from temples.services.concierge_chat_extra_condition import (
     resolve_extra_condition_tags,
 )
@@ -499,6 +500,11 @@ def build_chat_recommendations(
             for r in (recs.get("recommendations") or [])
             if isinstance(r, dict)
         ],
+    )
+    recs.setdefault("_debug", {})["interpretation_profile"] = interpret_consultation(
+        query=query or "",
+        need_tags=need_tags,
+        selected_goriyaku_tag_ids=goriyaku_tag_ids,
     )
     recs.setdefault("_debug", {})["ranking_breakdown_observation"] = observe_ranking_breakdown(
         recs=recs,
