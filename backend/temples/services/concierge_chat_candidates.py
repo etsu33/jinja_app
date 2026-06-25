@@ -53,6 +53,7 @@ def build_chat_candidates(
     lng: Optional[float] = None,
     limit: int = DEFAULT_LIMIT,
     trace_id: str | None = None,
+    interpretation_profile: dict[str, Any] | None = None,
 ) -> List[Dict[str, Any]]:
     qs = Shrine.objects.all()
 
@@ -104,7 +105,11 @@ def build_chat_candidates(
         place_id = getattr(pref, "place_id", None) if pref else None
         trust_metadata = get_shrine_trust_metadata(s.id)
 
-        meaning_payload = compose_shrine_meaning_payload(s)
+        meaning_source = s
+        if interpretation_profile is not None:
+            setattr(meaning_source, "interpretation_profile", interpretation_profile)
+
+        meaning_payload = compose_shrine_meaning_payload(meaning_source)
         generated_meaning = meaning_payload.get("generated") or {}
 
         candidates.append(

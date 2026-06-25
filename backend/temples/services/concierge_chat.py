@@ -289,6 +289,7 @@ def build_chat_recommendations(
     llm_enabled: bool | None = None,
     user=None,
     profile_context: Optional[Dict[str, Any]] = None,
+    interpretation_profile: dict[str, Any] | None = None,
 ) -> Dict[str, Any]:
     """
     候補リストからおすすめ神社を選んで返す関数。
@@ -501,7 +502,7 @@ def build_chat_recommendations(
             if isinstance(r, dict)
         ],
     )
-    recs.setdefault("_debug", {})["interpretation_profile"] = interpret_consultation(
+    recs.setdefault("_debug", {})["interpretation_profile"] = interpretation_profile or interpret_consultation(
         query=query or "",
         need_tags=need_tags,
         selected_goriyaku_tag_ids=goriyaku_tag_ids,
