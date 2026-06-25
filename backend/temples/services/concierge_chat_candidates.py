@@ -15,6 +15,7 @@ from temples.services.concierge_candidate_utils import (
 from temples.services.shrine_trust_metadata import get_shrine_trust_metadata
 
 from temples.services.shrine_meaning_composer import compose_shrine_meaning_payload
+from temples.services.meaning_translation import translate_meaning
 
 log = logging.getLogger(__name__)
 
@@ -107,7 +108,9 @@ def build_chat_candidates(
 
         meaning_source = s
         if interpretation_profile is not None:
+            translation_result = translate_meaning(interpretation_profile)
             setattr(meaning_source, "interpretation_profile", interpretation_profile)
+            setattr(meaning_source, "translation_result", translation_result)
 
         meaning_payload = compose_shrine_meaning_payload(meaning_source)
         generated_meaning = meaning_payload.get("generated") or {}
