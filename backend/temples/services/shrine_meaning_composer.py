@@ -637,13 +637,22 @@ def _build_action_meaning(input_: ShrineMeaningInput) -> str:
 # 固有名詞紹介で終わらせない
 # 「だから今の状態と接続する」を返す
 
+def _effective_history_theme(input_: ShrineMeaningInput) -> str | None:
+    translation_result = input_.translation_result or {}
+    translated_theme = translation_result.get("history_theme") if isinstance(translation_result, dict) else None
+    return _clean_str(translated_theme) or input_.history_theme
+
+
 def _build_history_context(input_: ShrineMeaningInput) -> str | None:
     override = SHRINE_HISTORY_STORY_OVERRIDES.get(input_.shrine_id)
     if override:
         return override["shrineMeaning"]
-    if not input_.history_theme:
+
+    history_theme = _effective_history_theme(input_)
+    if not history_theme:
         return None
-    definition = HISTORY_THEME_DEFINITION.get(input_.history_theme)
+
+    definition = HISTORY_THEME_DEFINITION.get(history_theme)
     if definition:
         return " ".join(
             [
@@ -652,7 +661,7 @@ def _build_history_context(input_: ShrineMeaningInput) -> str | None:
                 definition["modern_interpretation"],
             ]
         )
-    history_context = HISTORY_THEME_CONTEXT.get(input_.history_theme)
+    history_context = HISTORY_THEME_CONTEXT.get(history_theme)
     if history_context:
         return f"{history_context} 歴史や土地の背景を断定的な答えにせず、今の状態を見直す補助材料として扱います。"
     return "神社の歴史や土地の文脈を、今の状態を見直す補助材料として扱います。"
