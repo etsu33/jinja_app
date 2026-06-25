@@ -613,6 +613,10 @@ def _build_shrine_meaning(input_: ShrineMeaningInput) -> str:
 # 参拝後・帰り道・保存後の振り返りは禁止
 # 結果保証は禁止
 # 「次の一歩」を具体化する
+def _translated_action_context(input_: ShrineMeaningInput) -> str | None:
+    translation_result = input_.translation_result or {}
+    action_context = translation_result.get("action_context") if isinstance(translation_result, dict) else None
+    return _clean_str(action_context)
 
 def _build_action_meaning(input_: ShrineMeaningInput) -> str:
     override = SHRINE_HISTORY_STORY_OVERRIDES.get(input_.shrine_id)
@@ -621,8 +625,9 @@ def _build_action_meaning(input_: ShrineMeaningInput) -> str:
     if override:
         return override["actionMeaning"]
     benefit = _primary_benefit(input_)
+    translated_action = _translated_action_context(input_)
     definition = HISTORY_THEME_DEFINITION.get(input_.history_theme or "")
-    theme_action = definition["action_translation"] if definition else HISTORY_THEME_ACTION_CONTEXT.get(input_.history_theme or "")
+    theme_action = translated_action or (definition["action_translation"] if definition else HISTORY_THEME_ACTION_CONTEXT.get(input_.history_theme or ""))
     if benefit and theme_action:
         return f"参拝を、{_clip(benefit, 32)}という願いを急いで叶えるためではなく、{theme_action}ことに使います。"
     if theme_action:
