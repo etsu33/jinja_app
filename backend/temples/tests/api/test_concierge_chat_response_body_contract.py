@@ -205,6 +205,14 @@ def test_chat_response_includes_debug_observation_contract_fields(client, monkey
                     "score_top10": [],
                     "filter_context": {},
                 },
+                "interpretation_profile": {
+                    "raw_query": "近場で参拝したい",
+                    "state_profile": {},
+                    "need_profile": {},
+                    "direction_profile": {},
+                    "emotion_profile": {},
+                    "action_intent": {},
+                },
                 "visit_style_observation": {
                     "pool_size": 1,
                     "hit_count": 0,
@@ -238,10 +246,27 @@ def test_chat_response_includes_debug_observation_contract_fields(client, monkey
 
     assert set(debug.keys()) == {
         "candidate_pool_observation",
+        "interpretation_profile",
         "visit_style_observation",
         "ranking_breakdown_observation",
         "trim_observation",
     }
+
+    interpretation_profile = debug["interpretation_profile"]
+    assert set(interpretation_profile.keys()) == {
+        "raw_query",
+        "state_profile",
+        "need_profile",
+        "direction_profile",
+        "emotion_profile",
+        "action_intent",
+    }
+    assert interpretation_profile["raw_query"] == "近場で参拝したい"
+    assert isinstance(interpretation_profile["state_profile"], dict)
+    assert isinstance(interpretation_profile["need_profile"], dict)
+    assert isinstance(interpretation_profile["direction_profile"], dict)
+    assert isinstance(interpretation_profile["emotion_profile"], dict)
+    assert isinstance(interpretation_profile["action_intent"], dict)
 
     candidate_pool = debug["candidate_pool_observation"]
     assert set(candidate_pool.keys()) == {
