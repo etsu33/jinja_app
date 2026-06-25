@@ -10,6 +10,7 @@ KAMI MUSUBI は Concierge First を採用する。
 
 本プロダクトの主導線は神社検索ではなく、相談テーマから神社と出会う体験とする。
 
+
 ```text
 相談テーマ
 ↓
@@ -24,6 +25,266 @@ history_theme
 詳細確認
 ↓
 経路案内 / 保存 / 振り返り
+```
+
+### Consultation Interpretation Engine
+
+Consultation Interpretation Engine は、ユーザーの相談入力を推薦・意味変換・表示に渡す前に、backend 側で構造化する中間レイヤーである。
+
+目的は、相談文をそのまま推薦ロジックへ渡すのではなく、ユーザーの入力を以下の構造へ分解し、後続レイヤーが扱いやすい形に整えることである。
+
+```text
+raw_query
+↓
+state_profile
+↓
+need_profile
+↓
+direction_profile
+↓
+emotion_profile
+↓
+action_intent
+↓
+Meaning Translation Layer
+↓
+Recommendation Algorithm
+```
+
+#### 正本
+
+Consultation Interpretation Engine の正本は backend 実装とする。
+
+frontend / mobile は、相談入力・補助条件・表示のみを担い、相談解釈の判定ロジックを持たない。
+
+理由:
+
+- Web / Mobile で解釈結果を一致させる
+- UI 側に心理・意味判定ロジックを分散させない
+- Recommendation Algorithm と Meaning Translation Layer の入力を安定させる
+- Score v3 接続前に shadow mode で観測できる構造にする
+
+#### raw_query
+
+`raw_query` は、ユーザーが入力した相談文の原文である。
+
+用途:
+
+- 解釈前の入力保存
+- need / state / emotion / action の抽出元
+- debug / analytics / shadow 比較
+- 将来的な再解析
+
+制約:
+
+- `raw_query` を直接スコア加点しない
+- 表示コピーの正本にしない
+- LLM 出力で上書きしない
+
+#### state_profile
+
+`state_profile` は、相談文から読み取れる現在状態を構造化したものとする。
+
+例:
+
+```json
+{
+  "primary_state": "tired",
+  "secondary_states": ["uncertain"],
+  "confidence": 0.72
+}
+```
+
+役割:
+
+- ユーザーの相談状態を整理する
+- history_theme への変換材料にする
+- consultationSummary の材料にする
+
+制約:
+
+- 心理状態を断定しない
+- 診断・治療・宗教的断定に使わない
+- 表示時は「〜かもしれない」「〜として受け取れる」程度に弱める
+
+#### need_profile
+
+`need_profile` は、相談文から抽出された目的・願い・テーマを表す。
+
+既存の `need_tags` / `need_hits` / `primary_need_tag` と接続する。
+
+例:
+
+```json
+{
+  "need_tags": ["mental", "career"],
+  "need_hits": {
+    "mental": ["不安"],
+    "career": ["仕事"]
+  },
+  "primary_need_tag": "mental"
+}
+```
+
+役割:
+
+- Recommendation Algorithm の主要入力にする
+- User State Match の材料にする
+- ご利益タグよりも相談テーマを優先する
+
+制約:
+
+- ご利益だけで推薦理由を完結させない
+- selected_goriyaku_tag_ids は明示意図として扱うが、need_profile を上書きしない
+
+#### direction_profile
+
+`direction_profile` は、ユーザーが向かいたい方向性を表す。
+
+例:
+
+```json
+{
+  "direction": "reset",
+  "themes": ["再出発", "静寂"]
+}
+```
+
+役割:
+
+- history_theme 変換の補助にする
+- Meaning Translation Layer で行動文脈へ接続する
+- action suggestion の材料にする
+
+制約:
+
+- ユーザーに行動を強制しない
+- 「この方向が正しい」と断定しない
+
+#### emotion_profile
+
+`emotion_profile` は、相談文に含まれる感情表現の傾向を表す。
+
+例:
+
+```json
+{
+  "tone": "anxious",
+  "intensity": "medium",
+  "signals": ["不安", "迷い"]
+}
+```
+
+役割:
+
+- 表示文言の温度調整
+- consultationSummary の補助
+- reflection_question_seed の材料
+
+制約:
+
+- 感情を診断しない
+- 性格や人格の断定に使わない
+- Recommendation Score の主軸にしない
+
+#### action_intent
+
+`action_intent` は、ユーザーが次に取りたい行動の方向を表す。
+
+例:
+
+```json
+{
+  "intent": "visit",
+  "strength": "soft",
+  "candidates": ["静かな場所へ行く", "気持ちを切り替える"]
+}
+```
+
+役割:
+
+- 神社提案後の行動導線に接続する
+- route_open / save / visit_done / reflection_saved の分析軸にする
+- Meaning Translation Layer の action_context へ渡す
+
+制約:
+
+- 行動を命令しない
+- 参拝を結果保証と結びつけない
+- route / visit / reflection のどれかへ無理に分類しない
+
+#### Meaning Translation Layer との接続
+
+Consultation Interpretation Engine は、相談入力を Meaning Translation Layer に渡す前の構造化を担う。
+
+```text
+Consultation Interpretation Engine
+↓
+state_profile / need_profile / direction_profile / emotion_profile / action_intent
+↓
+Meaning Translation Layer
+↓
+history_theme / visit_intent / shrine_context_need / action_context / reflection_question_seed
+```
+
+Meaning Translation Layer は、解釈済み profile をもとに、神社固有文脈・history_theme・行動意味へ翻訳する。
+
+#### Recommendation Algorithm への入力方針
+
+Recommendation Algorithm は、Consultation Interpretation Engine の出力をそのまま順位決定に使うのではなく、以下のように入力を分離して扱う。
+
+```text
+need_profile
+→ User State Match の主材料
+
+state_profile
+→ history_theme / explanation の補助材料
+
+direction_profile
+→ Meaning Match / action suggestion の補助材料
+
+emotion_profile
+→ 表示文言・reflection の補助材料
+
+action_intent
+→ behavior funnel / action_context の補助材料
+```
+
+初期段階では、既存の `need_tags` を推薦主軸として維持する。
+
+#### Score v3 との関係
+
+Consultation Interpretation Engine は、現時点では Score v3 に接続しない。
+
+方針:
+
+- まず docs で責務境界を固定する
+- Web / Mobile Parity 完了後に backend 側で shadow 実装する
+- shadow mode では recommendation 順位を変更しない
+- 既存 Score v2 / current ranking との差分を観測する
+- active 化は推薦ログと行動ファネルの実測後に判断する
+
+観測対象:
+
+- top1_changed_rate
+- activation_candidate_rate
+- avg_delta
+- max_abs_delta
+- route_open_rate
+- save_rate
+- visit_done_rate
+- reflection_saved_rate
+
+#### 実装フェーズ
+
+```markdown
+- [ ] docs で Consultation Interpretation Engine の責務を固定
+- [ ] backend/temples/services/consultation_interpreter.py を shadow 実装
+- [ ] response / debug payload に interpretation profile を含める
+- [ ] 既存推薦順位には反映しない
+- [ ] Meaning Translation Layer へ profile を渡す
+- [ ] Recommendation Algorithm との差分をログ観測する
+- [ ] Web / Mobile Parity 完了後に有効化判断へ進む
 ```
 
 ### 入力責務
