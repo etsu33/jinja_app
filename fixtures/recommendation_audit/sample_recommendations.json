@@ -1,14 +1,134 @@
 [
   {
     "case_id": "career_001",
-    "user_query": "仕事の方向性に迷っている。今の働き方を続けていいのか決めきれない。",
+    "user_query": "転職するか今の会社で専門性を伸ばすか迷っている。キャリアの方向性を決めたい。",
     "recommendations": [
       {
         "rank": 1,
         "shrine_name": "神田明神",
         "history_theme": "career",
+        "reason": "商売と仕事の節目を支えてきた歴史があり、転職か継続かを感情ではなく役割と実績から見直したい相談に合っています。",
+        "action_suggestion": "参拝後に、今の職場で伸ばせる専門性と転職で得たい条件を三つずつ書き出してください。"
+      },
+      {
+        "rank": 2,
+        "shrine_name": "東京大神宮",
+        "history_theme": "love",
+        "reason": "良いご縁がある神社です。",
+        "action_suggestion": "前向きに行動しましょう。"
+      }
+    ]
+  },
+  {
+    "case_id": "career_002",
+    "user_query": "昇進の話が来たが、管理職になる自信がない。仕事で責任を引き受ける勇気がほしい。",
+    "recommendations": [
+      {
+        "rank": 1,
+        "shrine_name": "日枝神社",
+        "history_theme": "career",
+        "reason": "組織の中で役割を引き受ける場面に向いた由緒があり、昇進への不安を責任感と準備に分けて考える助けになります。",
+        "action_suggestion": "管理職として最初の30日で確認したい業務、相談相手、避けたい判断を各一つメモしてください。"
+      },
+      {
+        "rank": 2,
+        "shrine_name": "小網神社",
+        "history_theme": "money",
+        "reason": "金運にご利益があるためおすすめです。",
+        "action_suggestion": "気持ちを整えましょう。"
+      }
+    ]
+  },
+  {
+    "case_id": "love_001",
+    "user_query": "恋愛で同じ失敗を繰り返している。次のパートナーとは落ち着いた関係を築きたい。",
+    "recommendations": [
+      {
+        "rank": 1,
+        "shrine_name": "東京大神宮",
+        "history_theme": "love",
+        "reason": "縁結びで知られるだけでなく、相手任せの期待を整理して自分の関係性の癖を見直したい相談に向いています。",
+        "action_suggestion": "過去の交際で我慢しすぎた点と早めに伝えるべき条件を、参拝後に一つずつ書いてください。"
+      },
+      {
+        "rank": 2,
+        "shrine_name": "神田明神",
+        "history_theme": "career",
         "reason": "仕事運にご利益があるためおすすめです。",
         "action_suggestion": "前向きに行動しましょう。"
+      }
+    ]
+  },
+  {
+    "case_id": "love_002",
+    "user_query": "結婚の話が進んでいるが、家族同士の価値観の違いが気になっている。",
+    "recommendations": [
+      {
+        "rank": 1,
+        "shrine_name": "赤坂氷川神社",
+        "history_theme": "love",
+        "reason": "夫婦や家族の縁を意識しやすい場所で、結婚そのものより結婚後の暮らし方を確認したい不安に合っています。",
+        "action_suggestion": "相手と次に話す場で、お金、親族行事、住む場所の三項目から一つだけ具体的に確認してください。"
+      },
+      {
+        "rank": 2,
+        "shrine_name": "東京大神宮",
+        "history_theme": "love",
+        "reason": "良いご縁がある神社です。",
+        "action_suggestion": "大切にしましょう。"
+      }
+    ]
+  },
+  {
+    "case_id": "money_001",
+    "user_query": "収入はあるのに貯金が増えない。お金の使い方を見直して安心したい。",
+    "recommendations": [
+      {
+        "rank": 1,
+        "shrine_name": "小網神社",
+        "history_theme": "money",
+        "reason": "金銭面の守りを意識しやすい神社で、収入を増やす祈願より支出の癖を点検したい相談に合っています。",
+        "action_suggestion": "参拝した日の夜に、直近一週間の不要だった支出を三件だけ家計アプリかメモに記録してください。"
+      },
+      {
+        "rank": 2,
+        "shrine_name": "水天宮",
+        "history_theme": "family",
+        "reason": "良い神社なのでおすすめです。",
+        "action_suggestion": "意識しましょう。"
+      }
+    ]
+  },
+  {
+    "case_id": "money_002",
+    "user_query": "副業を始めたいが、損をするのが怖くて最初の一歩が出ない。",
+    "recommendations": [
+      {
+        "rank": 1,
+        "shrine_name": "穴八幡宮",
+        "history_theme": "money",
+        "reason": "商売や金銭の巡りを意識する参拝先として、副業を大きく始める前に小さく検証したい気持ちに合います。",
+        "action_suggestion": "初期費用を一万円以内に区切り、最初の販売先候補を一つだけ決めてから申し込みをしてください。"
+      },
+      {
+        "rank": 2,
+        "shrine_name": "神田明神",
+        "history_theme": "career",
+        "reason": "仕事運にご利益があるためおすすめです。",
+        "action_suggestion": "前向きに行動しましょう。"
+      }
+    ]
+  },
+  {
+    "case_id": "health_001",
+    "user_query": "最近体調を崩しやすく、生活習慣を立て直したい。無理なく健康を守りたい。",
+    "recommendations": [
+      {
+        "rank": 1,
+        "shrine_name": "五條天神社",
+        "history_theme": "health",
+        "reason": "医薬や健康への祈りと結びつく由緒があり、不調を根性で押し切らず生活を整え直す相談に向いています。",
+        "action_suggestion": "参拝前後のどちらかで、睡眠時間、食事時間、受診予定のうち一つを今日の予定表に入れてください。"
       },
       {
         "rank": 2,
@@ -16,6 +136,266 @@
         "history_theme": "love",
         "reason": "良いご縁がある神社です。",
         "action_suggestion": "気持ちを整えましょう。"
+      }
+    ]
+  },
+  {
+    "case_id": "health_002",
+    "user_query": "検査結果が気になって落ち着かない。医師の説明を待つ間、不安を抱えすぎないようにしたい。",
+    "recommendations": [
+      {
+        "rank": 1,
+        "shrine_name": "湯島天満宮",
+        "history_theme": "mental",
+        "reason": "不安で考えが散らばる時に、結果を待つ時間と今できる準備を切り分けたい相談として扱いやすい参拝先です。",
+        "action_suggestion": "医師に聞きたい質問を三つまで紙に書き、検索する時間は一日15分に区切ってください。"
+      },
+      {
+        "rank": 2,
+        "shrine_name": "五條天神社",
+        "history_theme": "health",
+        "reason": "健康にご利益があるためおすすめです。",
+        "action_suggestion": "前向きに行動しましょう。"
+      }
+    ]
+  },
+  {
+    "case_id": "family_001",
+    "user_query": "親との距離感に悩んでいる。家族を大事にしたいが、自分の生活も守りたい。",
+    "recommendations": [
+      {
+        "rank": 1,
+        "shrine_name": "水天宮",
+        "history_theme": "family",
+        "reason": "家族の守りを意識しやすい場所で、親を拒絶するのではなく境界線を作りたい相談に合っています。",
+        "action_suggestion": "次に連絡する前に、対応できる時間帯と断る用件を一つずつ決めてメモしておいてください。"
+      },
+      {
+        "rank": 2,
+        "shrine_name": "小網神社",
+        "history_theme": "money",
+        "reason": "金運で有名なのでおすすめです。",
+        "action_suggestion": "意識しましょう。"
+      }
+    ]
+  },
+  {
+    "case_id": "family_002",
+    "user_query": "子育てと仕事の両立で家族に余裕がない。家庭内の空気を少しでも良くしたい。",
+    "recommendations": [
+      {
+        "rank": 1,
+        "shrine_name": "赤坂氷川神社",
+        "history_theme": "family",
+        "reason": "家庭の関係性を静かに見直す場として、誰か一人の努力に偏った両立ではなく役割分担を整えたい相談に向いています。",
+        "action_suggestion": "家族会議を15分だけ取り、今週減らす家事と頼る相手を一つずつ決めてください。"
+      },
+      {
+        "rank": 2,
+        "shrine_name": "日枝神社",
+        "history_theme": "career",
+        "reason": "仕事運にご利益があります。",
+        "action_suggestion": "行動しましょう。"
+      }
+    ]
+  },
+  {
+    "case_id": "study_001",
+    "user_query": "資格試験の勉強が続かない。合格に向けて学習習慣を作りたい。",
+    "recommendations": [
+      {
+        "rank": 1,
+        "shrine_name": "湯島天満宮",
+        "history_theme": "study",
+        "reason": "学問の神様として知られ、合格祈願だけでなく毎日の勉強量を現実的に積み上げたい相談に合っています。",
+        "action_suggestion": "参拝後、過去問を解く曜日を二日だけ固定し、最初の一回分をカレンダーに登録してください。"
+      },
+      {
+        "rank": 2,
+        "shrine_name": "東京大神宮",
+        "history_theme": "love",
+        "reason": "良いご縁があります。",
+        "action_suggestion": "気持ちを整えましょう。"
+      }
+    ]
+  },
+  {
+    "case_id": "study_002",
+    "user_query": "大学受験が近いのに集中できない。焦りを減らして勉強に戻りたい。",
+    "recommendations": [
+      {
+        "rank": 1,
+        "shrine_name": "亀戸天神社",
+        "history_theme": "study",
+        "reason": "学業成就の参拝先として、受験直前の焦りを長時間学習ではなく復習範囲の選択に変える相談に向いています。",
+        "action_suggestion": "今日やる範囲を参考書10ページ以内に絞り、終わったら間違えた問題番号だけを記録してください。"
+      },
+      {
+        "rank": 2,
+        "shrine_name": "小網神社",
+        "history_theme": "money",
+        "reason": "ご利益があるためおすすめです。",
+        "action_suggestion": "前向きに行動しましょう。"
+      }
+    ]
+  },
+  {
+    "case_id": "purpose_001",
+    "user_query": "何のために頑張っているのか分からなくなった。人生の目的を見直したい。",
+    "recommendations": [
+      {
+        "rank": 1,
+        "shrine_name": "明治神宮",
+        "history_theme": "purpose",
+        "reason": "広い杜の中で日常の役割から少し離れ、自分が守りたい価値や時間の使い方を見直す相談に合っています。",
+        "action_suggestion": "参拝後に、続けたいこと、手放したいこと、誰のために使いたい時間かを一行ずつ書いてください。"
+      },
+      {
+        "rank": 2,
+        "shrine_name": "日枝神社",
+        "history_theme": "career",
+        "reason": "仕事運にご利益があるためおすすめです。",
+        "action_suggestion": "意識しましょう。"
+      }
+    ]
+  },
+  {
+    "case_id": "purpose_002",
+    "user_query": "周りの期待に合わせ続けて、自分が本当に選びたい道が分からない。",
+    "recommendations": [
+      {
+        "rank": 1,
+        "shrine_name": "根津神社",
+        "history_theme": "purpose",
+        "reason": "静かな境内で自分の本音を確かめやすく、他人の評価と自分の選択を分けたい相談に向いています。",
+        "action_suggestion": "今週断りたい依頼を一つ選び、代替案を添えて短く返事する文面を作ってください。"
+      },
+      {
+        "rank": 2,
+        "shrine_name": "東京大神宮",
+        "history_theme": "love",
+        "reason": "良いのでおすすめです。",
+        "action_suggestion": "大切にしましょう。"
+      }
+    ]
+  },
+  {
+    "case_id": "rest_001",
+    "user_query": "休んでも疲れが取れない。罪悪感なく休むきっかけがほしい。",
+    "recommendations": [
+      {
+        "rank": 1,
+        "shrine_name": "等々力不動尊",
+        "history_theme": "rest",
+        "reason": "水音や緑を感じながら歩ける環境があり、予定を詰める癖から離れて回復の時間を確保したい相談に合っています。",
+        "action_suggestion": "参拝日は移動後に30分の空白を予定表へ入れ、追加の用事を一つ断るか翌日に回してください。"
+      },
+      {
+        "rank": 2,
+        "shrine_name": "神田明神",
+        "history_theme": "career",
+        "reason": "仕事運にご利益があります。",
+        "action_suggestion": "前向きに行動しましょう。"
+      }
+    ]
+  },
+  {
+    "case_id": "rest_002",
+    "user_query": "休日も仕事のことを考えてしまう。頭を休ませる習慣を作りたい。",
+    "recommendations": [
+      {
+        "rank": 1,
+        "shrine_name": "代々木八幡宮",
+        "history_theme": "rest",
+        "reason": "街中でも落ち着いて過ごせる雰囲気があり、休日に仕事の思考を止める練習を始めたい相談に向いています。",
+        "action_suggestion": "参拝の前後二時間は仕事用通知を切り、浮かんだタスクは一枚のメモに退避してください。"
+      },
+      {
+        "rank": 2,
+        "shrine_name": "湯島天満宮",
+        "history_theme": "study",
+        "reason": "良いご利益があるためおすすめです。",
+        "action_suggestion": "整えましょう。"
+      }
+    ]
+  },
+  {
+    "case_id": "courage_001",
+    "user_query": "ずっと謝りたい相手がいるが、連絡する勇気が出ない。",
+    "recommendations": [
+      {
+        "rank": 1,
+        "shrine_name": "愛宕神社",
+        "history_theme": "courage",
+        "reason": "急な階段を上る体験が小さな決意と結びつきやすく、怖さを抱えたまま一歩だけ動きたい相談に合っています。",
+        "action_suggestion": "参拝後すぐ送らず、謝りたい内容、言い訳しない一文、返信を求めない一文を下書きしてください。"
+      },
+      {
+        "rank": 2,
+        "shrine_name": "小網神社",
+        "history_theme": "money",
+        "reason": "金運にご利益があるためおすすめです。",
+        "action_suggestion": "前向きに行動しましょう。"
+      }
+    ]
+  },
+  {
+    "case_id": "courage_002",
+    "user_query": "人前で意見を言うのが怖い。会議で一度だけ自分の考えを伝えたい。",
+    "recommendations": [
+      {
+        "rank": 1,
+        "shrine_name": "日枝神社",
+        "history_theme": "courage",
+        "reason": "組織の場で役目を果たす意識を持ちやすく、会議で完璧な発言より一度伝えることを目標にする相談に合います。",
+        "action_suggestion": "次の会議前に、賛成点、懸念点、確認したい点のうち一つだけ発言文を20秒分で用意してください。"
+      },
+      {
+        "rank": 2,
+        "shrine_name": "東京大神宮",
+        "history_theme": "love",
+        "reason": "良いご縁がある神社です。",
+        "action_suggestion": "気持ちを整えましょう。"
+      }
+    ]
+  },
+  {
+    "case_id": "mental_001",
+    "user_query": "不安が強く、まだ起きていないことまで考えて眠れない。",
+    "recommendations": [
+      {
+        "rank": 1,
+        "shrine_name": "明治神宮",
+        "history_theme": "mental",
+        "reason": "広い参道を歩きながら思考の速度を落としやすく、未来の不安と今日できる対処を分けたい相談に合っています。",
+        "action_suggestion": "寝る前に不安を三つ書き、今夜できる対処があるものだけ丸を付けて残りは翌朝見返してください。"
+      },
+      {
+        "rank": 2,
+        "shrine_name": "五條天神社",
+        "history_theme": "health",
+        "reason": "健康にご利益があるためおすすめです。",
+        "action_suggestion": "前向きに行動しましょう。"
+      }
+    ]
+  },
+  {
+    "case_id": "mental_002",
+    "user_query": "失敗を引きずって自己嫌悪が止まらない。気持ちを立て直したい。",
+    "recommendations": [
+      {
+        "rank": 1,
+        "shrine_name": "根津神社",
+        "history_theme": "mental",
+        "reason": "落ち着いた境内で反省と自己否定を分けて考えやすく、失敗後の再出発を静かに整えたい相談に向いています。",
+        "action_suggestion": "失敗から次に変える行動を一つだけ書き、同じ紙に自分を責める言葉は書かないでください。"
+      },
+      {
+        "rank": 2,
+        "shrine_name": "神田明神",
+        "history_theme": "career",
+        "reason": "仕事運にご利益があります。",
+        "action_suggestion": "意識しましょう。"
       }
     ]
   }
