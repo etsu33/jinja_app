@@ -735,7 +735,17 @@ def _build_today_flow_context(input_: ShrineMeaningInput) -> str | None:
 # 実際に参拝しなければ価値がない表現にしない
 # 参拝後に何を持ち帰るかを扱う
 
+
+def _translated_reflection_question_seed(input_: ShrineMeaningInput) -> str | None:
+    translation_result = input_.translation_result or {}
+    reflection_question_seed = translation_result.get("reflection_question_seed") if isinstance(translation_result, dict) else None
+    return _clean_str(reflection_question_seed)
+
+
 def _build_after_visit_reflection(input_: ShrineMeaningInput) -> str | None:
+    reflection_question_seed = _translated_reflection_question_seed(input_)
+    if reflection_question_seed:
+        return f"参拝後は、答えが出たかどうかより、「{reflection_question_seed}」を手がかりに見直します。迷いが残っていても、保存した内容やもう一度の相談から整理し直せます。"
     if not input_.history_theme:
         return None
     return "参拝後は、答えが出たかどうかより、次の一歩が少し見えたかを見直します。迷いが残っていても、保存した内容やもう一度の相談から整理し直せます。"

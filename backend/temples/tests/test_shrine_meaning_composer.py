@@ -275,6 +275,25 @@ def test_meaning_layer_action_meaning_prefers_translation_result_action_context(
     assert "判断を急がず" not in action_meaning
 
 
+def test_meaning_layer_after_visit_reflection_prefers_translation_result_reflection_seed():
+    payload = compose_shrine_meaning_payload(
+        {
+            "id": 106,
+            "name_jp": "振り返り神社",
+            "history_theme": "再出発",
+            "translation_result": {
+                "reflection_question_seed": "次に小さく動かすなら、何から始めますか？",
+            },
+        }
+    )
+
+    after_visit_reflection = payload["generated"]["afterVisitReflection"]
+
+    assert payload["source"]["translationResult"]["reflection_question_seed"] == "次に小さく動かすなら、何から始めますか？"
+    assert "次に小さく動かすなら、何から始めますか？" in after_visit_reflection
+    assert "次の一歩が少し見えたか" not in after_visit_reflection
+
+    
 def test_meaning_layer_basic_info_only_does_not_invent_strong_meaning():
     payload = compose_shrine_meaning_payload(
         {
