@@ -32,6 +32,87 @@ permissions: { contents: read }
 #   CONCIERGE_THROTTLE: ${{ inputs.concierge_throttle || github.event.inputs.concierge_throttle || '1000/min' }}
 
 jobs:
+  recommendation-quality-audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Prepare audit Python
+        run: python -m venv .venv
+
+      - name: Run recommendation quality audit (report only)
+        id: recommendation_quality_audit
+        continue-on-error: true
+        run: .venv/bin/python scripts/audit_recommendation_quality.py
+
+      - name: Print recommendation quality audit summary
+        if: always()
+        run: |
+          if [ ! -f logs/recommendation_quality_audit.json ]; then
+            echo "Recommendation quality audit did not produce logs/recommendation_quality_audit.json"
+            {
+              echo "## Recommendation Quality Audit"
+              echo ""
+              echo "Audit report was not generated."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          .venv/bin/python - <<'PY'
+          import json
+          from pathlib import Path
+
+          report_path = Path("logs/recommendation_quality_audit.json")
+          report = json.loads(report_path.read_text(encoding="utf-8"))
+          cases = report.get("results", [])
+          recommendations = [
+              recommendation
+              for case in cases
+              for recommendation in case.get("results", [])
+          ]
+          status_counts = {}
+          for recommendation in recommendations:
+              status = recommendation.get("audit_status", "unknown")
+              status_counts[status] = status_counts.get(status, 0) + 1
+
+          duplication_warnings = sum(
+              1
+              for case in cases
+              if case.get("semantic_duplication", {}).get("issues")
+          )
+
+          print("Recommendation quality audit summary")
+          print(f"- status: {report.get('status')}")
+          print(f"- audit_type: {report.get('audit_type')}")
+          print(f"- cases: {len(cases)}")
+          print(f"- recommendations: {len(recommendations)}")
+          print(f"- audit_status counts: {status_counts}")
+          print(f"- cases with semantic duplication issues: {duplication_warnings}")
+
+          with Path(__import__("os").environ["GITHUB_STEP_SUMMARY"]).open("a", encoding="utf-8") as summary:
+              summary.write("## Recommendation Quality Audit\n\n")
+              summary.write(f"- Status: `{report.get('status')}`\n")
+              summary.write(f"- Audit type: `{report.get('audit_type')}`\n")
+              summary.write(f"- Cases: `{len(cases)}`\n")
+              summary.write(f"- Recommendations: `{len(recommendations)}`\n")
+              summary.write(f"- Audit status counts: `{status_counts}`\n")
+              summary.write(f"- Cases with semantic duplication issues: `{duplication_warnings}`\n")
+              summary.write("\nReport-only: audit statuses do not fail CI yet.\n")
+          PY
+
+      - name: Upload recommendation quality audit report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: recommendation-quality-audit
+          path: logs/recommendation_quality_audit.json
+          if-no-files-found: ignore
+
   unit:
     if: ${{ inputs.mode != 'integration' }}
     runs-on: ubuntu-24.04
@@ -336,5 +417,3 @@ jobs:
           fi
 
       # 例: .github/workflows/backend-tests.yml の jobs.test.steps に追記
-      
-      
