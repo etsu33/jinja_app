@@ -227,7 +227,67 @@ Meaning Translation Layer
 history_theme / visit_intent / shrine_context_need / action_context / reflection_question_seed
 ```
 
+
 Meaning Translation Layer は、解釈済み profile をもとに、神社固有文脈・history_theme・行動意味へ翻訳する。
+
+#### Meaning Translation Layer 実装状態
+
+Meaning Translation Layer は、`interpretation_profile` を入力に受け取り、`translation_result` を生成する backend service として実装する。
+
+現時点の接続状態:
+
+```text
+Consultation Interpretation Engine
+↓
+interpretation_profile
+↓
+translate_meaning()
+↓
+translation_result
+↓
+ShrineMeaningComposer
+↓
+generated / source
+```
+
+`translation_result` は `source.translationResult` として返却し、debug / payload 上で確認可能な契約として維持する。
+
+Composer では以下の項目を `translation_result` 優先で利用する。
+
+```text
+translation_result.history_theme
+→ generated.historyContext
+
+translation_result.action_context
+→ generated.actionMeaning
+
+translation_result.reflection_question_seed
+→ generated.afterVisitReflection
+```
+
+fallback 方針:
+
+- `history_theme` がない場合は既存の `Shrine.history_theme` を使う
+- `action_context` がない場合は既存の `HISTORY_THEME_ACTION_CONTEXT` / `HISTORY_THEME_DEFINITION` を使う
+- `reflection_question_seed` がない場合は既存の `afterVisitReflection` を使う
+
+制約:
+
+- `translation_result` は現時点では推薦順位を変更しない
+- Recommendation Algorithm にはまだ接続しない
+- Score v3 active 化にはまだ利用しない
+- 表示文言は Composer の責務とし、Meaning Translation Layer は意味入力の構造化に留める
+- `source.translationResult` は観測・debug・契約確認のために維持する
+
+確認済み:
+
+- `translate_meaning()` は `interpretation_profile` から `translation_result` を生成する
+- `concierge_chat_candidates.py` は `translation_result` を `meaning_source` に付与する
+- `ShrineMeaningComposer` は `translation_result` を受け取る
+- `generated.historyContext` / `generated.actionMeaning` / `generated.afterVisitReflection` は `translation_result` を優先できる
+- `source.translationResult` は payload に保持される
+- 推薦順位は変更しない
+```
 
 #### Recommendation Algorithm への入力方針
 
