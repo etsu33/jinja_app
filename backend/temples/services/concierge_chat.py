@@ -9,6 +9,12 @@ from temples.models import GoriyakuTag
 
 from temples.services.concierge_candidate_utils import _normalize_candidate_fields
 from temples.services.consultation_interpreter import interpret_consultation
+from temples.services.recommendation_algorithm_v3 import (
+    run_recommendation_algorithm_v3_shadow,
+)
+from temples.services.recommendation_input_profile import (
+    build_recommendation_input_profile,
+)
 from temples.services.concierge_chat_extra_condition import (
     resolve_extra_condition_tags,
 )
@@ -273,6 +279,64 @@ def _attach_astro_meta(
     return recs
 
 
+def _first_recommendation(recs: dict[str, Any]) -> dict[str, Any]:
+    recommendations = [
+        rec
+        for rec in (recs.get("recommendations") or [])
+        if isinstance(rec, dict)
+    ]
+    return recommendations[0] if recommendations else {}
+
+
+def _build_score_v3_candidate_profile(rec: dict[str, Any]) -> dict[str, Any]:
+    meaning_payload = rec.get("meaning_payload") if isinstance(rec.get("meaning_payload"), dict) else {}
+    source = meaning_payload.get("source") if isinstance(meaning_payload.get("source"), dict) else {}
+    breakdown = rec.get("breakdown") if isinstance(rec.get("breakdown"), dict) else {}
+    breakdown_detail = rec.get("breakdown_detail") if isinstance(rec.get("breakdown_detail"), dict) else {}
+    features = breakdown_detail.get("features") if isinstance(breakdown_detail.get("features"), dict) else {}
+
+    return {
+        "shrine_id": rec.get("shrine_id") or rec.get("id") or source.get("shrineId"),
+        "name": rec.get("name") or source.get("nameJp"),
+        "history_theme": rec.get("history_theme") or source.get("historyTheme"),
+        "goriyaku": rec.get("goriyaku") or source.get("goriyaku"),
+        "goriyaku_tags": rec.get("goriyaku_tags") or source.get("goriyakuTags") or breakdown.get("matched_need_tags") or [],
+        "visit_style_tags": rec.get("visit_style_tags") or features.get("visit_style") or [],
+        "place_id": rec.get("place_id"),
+        "behavior_signals": rec.get("behavior_signals") if isinstance(rec.get("behavior_signals"), dict) else {},
+    }
+
+
+def _build_score_v3_score_v2_fields(rec: dict[str, Any]) -> dict[str, Any]:
+    breakdown = rec.get("breakdown") if isinstance(rec.get("breakdown"), dict) else {}
+    score_v2 = rec.get("score_v2") if isinstance(rec.get("score_v2"), dict) else {}
+
+    return {
+        "score_total": rec.get("score_total") or breakdown.get("score_total"),
+        "score_v2_total": rec.get("score_v2_total") or score_v2.get("total") or breakdown.get("score_v2_total"),
+        "score_total_ranked": rec.get("score_total_ranked"),
+    }
+
+
+def _build_score_v3_debug_payload(
+    *,
+    recs: dict[str, Any],
+    interpretation_profile: dict[str, Any],
+) -> dict[str, Any]:
+    top_rec = _first_recommendation(recs)
+    meaning_payload = top_rec.get("meaning_payload") if isinstance(top_rec.get("meaning_payload"), dict) else {}
+    source = meaning_payload.get("source") if isinstance(meaning_payload.get("source"), dict) else {}
+    translation_result = source.get("translationResult") if isinstance(source.get("translationResult"), dict) else {}
+
+    recommendation_input_profile = build_recommendation_input_profile(
+        interpretation_profile=interpretation_profile,
+        translation_result=translation_result,
+        candidate_profile=_build_score_v3_candidate_profile(top_rec),
+        score_v2_fields=_build_score_v3_score_v2_fields(top_rec),
+    )
+    return run_recommendation_algorithm_v3_shadow(recommendation_input_profile)
+
+
 def build_chat_recommendations(
     *,
     query: str,
@@ -502,13 +566,18 @@ def build_chat_recommendations(
             if isinstance(r, dict)
         ],
     )
-    recs.setdefault("_debug", {})["interpretation_profile"] = interpretation_profile or interpret_consultation(
+    debug_interpretation_profile = interpretation_profile or interpret_consultation(
         query=query or "",
         need_tags=need_tags,
         selected_goriyaku_tag_ids=goriyaku_tag_ids,
     )
+    recs.setdefault("_debug", {})["interpretation_profile"] = debug_interpretation_profile
     recs.setdefault("_debug", {})["ranking_breakdown_observation"] = observe_ranking_breakdown(
         recs=recs,
+    )
+    recs.setdefault("_debug", {})["score_v3"] = _build_score_v3_debug_payload(
+        recs=recs,
+        interpretation_profile=debug_interpretation_profile,
     )
 
     observation = observe_visit_style_before_trim(
