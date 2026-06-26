@@ -223,6 +223,28 @@ def test_chat_response_includes_debug_observation_contract_fields(client, monkey
                     "ranked_count": 1,
                     "top10": [],
                 },
+                "score_v3": {
+                    "mode": "shadow",
+                    "shadow_mode": True,
+                    "ranking_applied": False,
+                    "score_v3": {
+                        "mode": "shadow",
+                        "ranking_applied": False,
+                        "components": {
+                            "state_match_score": 0.0,
+                            "meaning_match_score": 0.0,
+                            "shrine_profile_score": 0.0,
+                            "behavior_score": 0.0,
+                            "history_score": 0.0,
+                            "final_score": 0.0,
+                        },
+                        "observation": {
+                            "top1_changed": False,
+                            "delta": 0.0,
+                            "reason": [],
+                        },
+                    },
+                },
                 "trim_observation": {
                     "before_count": 1,
                     "after_count": 1,
@@ -249,6 +271,7 @@ def test_chat_response_includes_debug_observation_contract_fields(client, monkey
         "interpretation_profile",
         "visit_style_observation",
         "ranking_breakdown_observation",
+        "score_v3",
         "trim_observation",
     }
 
@@ -290,6 +313,40 @@ def test_chat_response_includes_debug_observation_contract_fields(client, monkey
     assert set(ranking_breakdown.keys()) == {
         "ranked_count",
         "top10",
+    }
+
+    score_v3 = debug["score_v3"]
+    assert set(score_v3.keys()) == {
+        "mode",
+        "shadow_mode",
+        "ranking_applied",
+        "score_v3",
+    }
+    assert score_v3["mode"] == "shadow"
+    assert score_v3["shadow_mode"] is True
+    assert score_v3["ranking_applied"] is False
+
+    score_v3_payload = score_v3["score_v3"]
+    assert set(score_v3_payload.keys()) == {
+        "mode",
+        "ranking_applied",
+        "components",
+        "observation",
+    }
+    assert score_v3_payload["mode"] == "shadow"
+    assert score_v3_payload["ranking_applied"] is False
+    assert set(score_v3_payload["components"].keys()) == {
+        "state_match_score",
+        "meaning_match_score",
+        "shrine_profile_score",
+        "behavior_score",
+        "history_score",
+        "final_score",
+    }
+    assert score_v3_payload["observation"] == {
+        "top1_changed": False,
+        "delta": 0.0,
+        "reason": [],
     }
 
     trim = debug["trim_observation"]
