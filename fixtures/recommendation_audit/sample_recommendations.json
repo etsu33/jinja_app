@@ -1,0 +1,22 @@
+[
+  {
+    "case_id": "career_001",
+    "user_query": "仕事の方向性に迷っている。今の働き方を続けていいのか決めきれない。",
+    "recommendations": [
+      {
+        "rank": 1,
+        "shrine_name": "神田明神",
+        "history_theme": "career",
+        "reason": "仕事運にご利益があるためおすすめです。",
+        "action_suggestion": "前向きに行動しましょう。"
+      },
+      {
+        "rank": 2,
+        "shrine_name": "東京大神宮",
+        "history_theme": "love",
+        "reason": "良いご縁がある神社です。",
+        "action_suggestion": "気持ちを整えましょう。"
+      }
+    ]
+  }
+]
