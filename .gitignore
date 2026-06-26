@@ -97,3 +97,4 @@ apps/web/debug-storybook.log
 .claude
 .vercel
 .env*.local
+logs/recommendation_quality_audit.json
