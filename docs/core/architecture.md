@@ -312,6 +312,217 @@ action_intent
 
 初期段階では、既存の `need_tags` を推薦主軸として維持する。
 
+#### Recommendation Algorithm v3 設計方針
+
+Recommendation Algorithm v3 は、Consultation Interpretation Engine と Meaning Translation Layer の出力をもとに、推薦候補ごとの score component を観測するための shadow scoring layer として設計する。
+
+目的は、既存の Score v2 / current ranking をすぐに置き換えることではなく、相談解釈・意味翻訳・神社文脈・行動シグナルの寄与を分解して観測できる状態にすることである。
+
+##### Recommendation Input Profile
+
+Recommendation Input Profile は、推薦候補ごとの score 計算に渡す正規化済み入力である。
+
+含める主な入力:
+
+```text
+interpretation_profile
+translation_result
+candidate shrine profile
+existing score_v2 fields
+behavior signals
+history_theme
+visit / save / route / reflection signals
+```
+
+責務:
+
+- Score v3 の入力を一箇所に集約する
+- Consultation Interpretation Engine の出力を直接 ranking に使わない
+- Meaning Translation Layer の出力を score component の材料として扱う
+- candidate ごとの比較可能な debug payload を作る
+
+制約:
+
+- frontend / mobile に Score v3 入力生成ロジックを持たせない
+- Recommendation Input Profile は backend 側で生成する
+- 既存 `need_tags` / `score_v2` / current ranking を破壊しない
+
+##### score component
+
+Score v3 は、以下の component に分解して観測する。
+
+```text
+state_match_score
+meaning_match_score
+shrine_profile_score
+behavior_score
+history_score
+final_score
+```
+
+###### state_match_score
+
+`state_match_score` は、`interpretation_profile.state_profile` と candidate の need / context / history_theme との接続度を表す。
+
+用途:
+
+- ユーザーの現在状態と候補神社の文脈が接続しているかを観測する
+- `state_profile.primary_state` / `secondary_states` を score component として可視化する
+
+制約:
+
+- 心理状態の診断には使わない
+- 表示文言で断定しない
+- active ranking にはまだ反映しない
+
+###### meaning_match_score
+
+`meaning_match_score` は、`translation_result.history_theme` / `action_context` / `reflection_question_seed` と candidate の meaning payload の接続度を表す。
+
+用途:
+
+- Meaning Translation Layer の出力が推薦候補にどれだけ寄与しうるかを観測する
+- Composer で利用している意味要素と score component を対応させる
+
+制約:
+
+- 意味が深いだけで高評価にしない
+- ご利益タグだけで加点を完結させない
+
+###### shrine_profile_score
+
+`shrine_profile_score` は、candidate shrine の基本情報・ご利益・visit_style_tags・場所文脈・神社固有文脈の充実度を表す。
+
+用途:
+
+- 候補神社側の情報品質を score component として分離する
+- 情報不足の候補を無理に意味づけしない
+
+制約:
+
+- 情報量だけで推薦順位を上げない
+- 固有文脈がない場合は fallback を弱める
+
+###### behavior_score
+
+`behavior_score` は、save / detail_view / route_open / visit_done / reflection_saved などの行動シグナルを扱う。
+
+用途:
+
+- 実際の行動に近い候補を観測する
+- 推薦後の funnel と score component の相関を見る
+
+制約:
+
+- 初期段階では active ranking に反映しない
+- 行動履歴がないユーザーを不利にしすぎない
+- popular / favorite だけで推薦理由を作らない
+
+###### history_score
+
+`history_score` は、history_theme と候補神社の歴史・土地・文化文脈の接続度を表す。
+
+用途:
+
+- 神社固有性を score component として観測する
+- Meaning Layer の historyContext と推薦候補の接続を評価する
+
+制約:
+
+- 歴史説明の量だけで加点しない
+- 神社側情報だけからユーザー状態を断定しない
+
+##### final_score
+
+`final_score` は、各 score component を重みづけした観測用スコアである。
+
+初期方針:
+
+```text
+final_score =
+  state_match_score
++ meaning_match_score
++ shrine_profile_score
++ behavior_score
++ history_score
+```
+
+実際の重みは実測データを見て調整する。
+
+制約:
+
+- 初期実装では recommendation 順位を変更しない
+- Score v2 / current ranking の代替として扱わない
+- active 化は shadow observation 後に判断する
+
+##### shadow mode
+
+Score v3 は最初に shadow mode として実装する。
+
+shadow mode の方針:
+
+- 既存推薦順位を変更しない
+- candidate ごとに score component を計算する
+- `debug.score_v3` に観測結果を出す
+- Score v2 / current ranking との差分を比較する
+- top1_changed_rate / avg_delta / max_abs_delta を観測する
+
+##### debug.score_v3
+
+`debug.score_v3` は、Score v3 の観測結果を返す debug payload とする。
+
+想定 schema:
+
+```json
+{
+  "mode": "shadow",
+  "ranking_applied": false,
+  "components": {
+    "state_match_score": 0.0,
+    "meaning_match_score": 0.0,
+    "shrine_profile_score": 0.0,
+    "behavior_score": 0.0,
+    "history_score": 0.0,
+    "final_score": 0.0
+  },
+  "observation": {
+    "top1_changed": false,
+    "delta": 0.0,
+    "reason": []
+  }
+}
+```
+
+制約:
+
+- debug payload は観測用であり、表示UIの正本にしない
+- frontend / mobile は debug score を ranking 判定に使わない
+- debug schema は pytest で固定する
+
+##### pytest 方針
+
+Score v3 は以下の観点で pytest を追加する。
+
+```markdown
+- Recommendation Input Profile の schema 固定
+- 各 score component の単体テスト
+- final_score の合成テスト
+- shadow mode で ranking が変わらないことのテスト
+- debug.score_v3 の schema 固定
+- empty / missing profile でも安全に動くことのテスト
+```
+
+##### Score v2 / current ranking との関係
+
+Score v3 は現時点では Score v2 / current ranking を変更しない。
+
+方針:
+
+- Score v2 は既存の推薦・説明・snapshot 用として維持する
+- current ranking は既存挙動を維持する
+- Score v3 は shadow observation と debug payload に限定する
+- active 化は十分な推薦ログと行動ファネルの実測後に判断する
+
 #### Score v3 との関係
 
 Consultation Interpretation Engine は、現時点では Score v3 に接続しない。
