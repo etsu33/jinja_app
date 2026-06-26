@@ -15,6 +15,9 @@ from temples.services.recommendation_algorithm_v3 import (
 from temples.services.recommendation_input_profile import (
     build_recommendation_input_profile,
 )
+from temples.services.score_v3_observer import (
+    build_score_v3_shadow_observation_payload,
+)
 from temples.services.concierge_chat_extra_condition import (
     resolve_extra_condition_tags,
 )
@@ -62,7 +65,6 @@ from temples.services.concierge_chat_observation import (
     observe_direction_signal,
     observe_profile_signal,
     observe_ranking_breakdown,
-    observe_score_v3_shadow,
     observe_trim_after,
     observe_trim_before,
     observe_visit_style_before_trim,
@@ -335,6 +337,22 @@ def _build_score_v3_debug_payload(
         score_v2_fields=_build_score_v3_score_v2_fields(top_rec),
     )
     return run_recommendation_algorithm_v3_shadow(recommendation_input_profile)
+
+
+def _build_score_v3_observer_items(score_v3_debug: dict[str, Any]) -> list[dict[str, Any]]:
+    score_v3_payload = score_v3_debug.get("score_v3") if isinstance(score_v3_debug.get("score_v3"), dict) else {}
+    observation = score_v3_payload.get("observation") if isinstance(score_v3_payload.get("observation"), dict) else {}
+    components = score_v3_payload.get("components") if isinstance(score_v3_payload.get("components"), dict) else {}
+
+    return [
+        {
+            "top1_changed": observation.get("top1_changed") is True,
+            "delta": observation.get("delta") or 0.0,
+            "component_summary": components,
+            "reason": observation.get("reason") if isinstance(observation.get("reason"), list) else [],
+        }
+    ]
+
 
 
 def build_chat_recommendations(
@@ -612,25 +630,24 @@ def build_chat_recommendations(
         profile_context=profile_context,
     )
 
-    # Score v3 shadow observation（score_total との差分を観測のみ、ranking 変更なし）
-    _v3_recs = [r for r in (recs.get("recommendations") or []) if isinstance(r, dict)]
-    _v3_obs: dict[str, Any] = {}
-    if any((r.get("breakdown") or {}).get("score_v3") is not None for r in _v3_recs):
-        _v3_obs = observe_score_v3_shadow(recommendations=_v3_recs)
-        recs.setdefault("_debug", {})["score_v3_shadow_observation"] = _v3_obs
+    # Score v3 shadow observation（observer に一元化、ranking 変更なし）
+    score_v3_debug = recs.setdefault("_debug", {}).get("score_v3")
+    score_v3_observer_payload = build_score_v3_shadow_observation_payload(
+        _build_score_v3_observer_items(score_v3_debug if isinstance(score_v3_debug, dict) else {})
+    )
+    recs.setdefault("_debug", {})["score_v3_shadow_observation"] = score_v3_observer_payload
 
-    # A/B observation summary（mode 付き）
-    _v3_summary = _v3_obs.get("summary") or {}
+    # A/B observation summary（mode 付き、observer 値を正本にする）
     score_v3_ab_observation: dict[str, Any] = {
         "mode": score_v3_mode,
-        "top1_changed_rate": float(_v3_summary.get("top1_changed_rate") or 0.0),
-        "avg_delta": float(_v3_summary.get("avg_delta") or 0.0),
-        "max_abs_delta": float(_v3_summary.get("max_abs_delta") or 0.0),
-        "activation_candidate": bool(_v3_summary.get("activation_candidate") or False),
+        "top1_changed_rate": float(score_v3_observer_payload.get("top1_changed_rate") or 0.0),
+        "avg_delta": float(score_v3_observer_payload.get("avg_delta") or 0.0),
+        "max_abs_delta": float(score_v3_observer_payload.get("max_abs_delta") or 0.0),
+        "activation_candidate": bool(score_v3_observer_payload.get("activation_candidate") or False),
     }
     recs.setdefault("_debug", {})["score_v3_ab_observation"] = score_v3_ab_observation
 
-    # dashboard summary
+    # dashboard summary（observer 値を正本にする）
     recs.setdefault("_debug", {})["dashboard_summary"] = {
         "score_v3": {
             "mode": score_v3_mode,
