@@ -28,6 +28,41 @@ type RecommendationCard = {
   reason: string;
   tags: string[];
   shrineId?: string;
+  actionSuggestionV4Preview?: ActionSuggestionV4Preview | null;
+};
+
+type ActionSuggestionV4Action = {
+  label: string;
+  description: string;
+  actionType: "detail_open" | "route_open" | "save" | "visit" | "reflect" | "pause";
+  confidence: number;
+};
+
+type ActionSuggestionV4ReflectionPrompt = {
+  question: string;
+  promptType: "before_visit" | "after_visit" | "decision" | "emotion" | "constraint";
+  sourceSeed: string;
+};
+
+type ActionSuggestionV4Source = {
+  source:
+    | "decision_context"
+    | "constraint_profile"
+    | "outcome_hint"
+    | "action_context"
+    | "reflection_question_seed"
+    | "fallback";
+  reason: string;
+};
+
+type ActionSuggestionV4Preview = {
+  primaryAction: ActionSuggestionV4Action;
+  secondaryAction: ActionSuggestionV4Action;
+  reflectionPrompt: ActionSuggestionV4ReflectionPrompt;
+  actionSource: ActionSuggestionV4Source;
+  preview: boolean;
+  version: "v4";
+  sourceKeys: string[];
 };
 
 type RecommendationApiCard = {
@@ -44,6 +79,8 @@ type RecommendationApiCard = {
   shrineId?: string | number;
   shrine_id?: string | number;
   place_id?: string | number;
+  action_suggestion_v4_preview?: unknown;
+  actionSuggestionV4Preview?: unknown;
 };
 
 type ConciergeChatResponse = {
@@ -101,9 +138,125 @@ function buildExtraCondition({
     .join(" / ");
 }
 
+const ACTION_SUGGESTION_V4_ACTION_TYPES = ["detail_open", "route_open", "save", "visit", "reflect", "pause"] as const;
+const ACTION_SUGGESTION_V4_PROMPT_TYPES = ["before_visit", "after_visit", "decision", "emotion", "constraint"] as const;
+const ACTION_SUGGESTION_V4_SOURCES = [
+  "decision_context",
+  "constraint_profile",
+  "outcome_hint",
+  "action_context",
+  "reflection_question_seed",
+  "fallback",
+] as const;
+
+function asTrimmedString(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length ? trimmed : null;
+}
+
+function isActionSuggestionV4ActionType(value: unknown): value is ActionSuggestionV4Action["actionType"] {
+  return typeof value === "string" && ACTION_SUGGESTION_V4_ACTION_TYPES.includes(value as any);
+}
+
+function isActionSuggestionV4PromptType(value: unknown): value is ActionSuggestionV4ReflectionPrompt["promptType"] {
+  return typeof value === "string" && ACTION_SUGGESTION_V4_PROMPT_TYPES.includes(value as any);
+}
+
+function isActionSuggestionV4Source(value: unknown): value is ActionSuggestionV4Source["source"] {
+  return typeof value === "string" && ACTION_SUGGESTION_V4_SOURCES.includes(value as any);
+}
+
+function normalizeActionSuggestionV4Action(raw: any): ActionSuggestionV4Action | null {
+  if (!raw || typeof raw !== "object") return null;
+
+  const label = asTrimmedString(raw.label);
+  const description = asTrimmedString(raw.description);
+  const actionTypeRaw = raw.action_type ?? raw.actionType;
+  const confidenceRaw = typeof raw.confidence === "number" ? raw.confidence : Number(raw.confidence);
+
+  if (!label || !description || !isActionSuggestionV4ActionType(actionTypeRaw) || !Number.isFinite(confidenceRaw)) {
+    return null;
+  }
+
+  return {
+    label,
+    description,
+    actionType: actionTypeRaw,
+    confidence: Math.max(0, Math.min(1, confidenceRaw)),
+  };
+}
+
+function normalizeActionSuggestionV4ReflectionPrompt(raw: any): ActionSuggestionV4ReflectionPrompt | null {
+  if (!raw || typeof raw !== "object") return null;
+
+  const question = asTrimmedString(raw.question);
+  const promptTypeRaw = raw.prompt_type ?? raw.promptType;
+  const sourceSeed = asTrimmedString(raw.source_seed ?? raw.sourceSeed);
+
+  if (!question || !isActionSuggestionV4PromptType(promptTypeRaw) || !sourceSeed) {
+    return null;
+  }
+
+  return {
+    question,
+    promptType: promptTypeRaw,
+    sourceSeed,
+  };
+}
+
+function normalizeActionSuggestionV4Source(raw: any): ActionSuggestionV4Source | null {
+  if (!raw || typeof raw !== "object") return null;
+
+  const sourceRaw = raw.source;
+  const reason = asTrimmedString(raw.reason);
+
+  if (!isActionSuggestionV4Source(sourceRaw) || !reason) {
+    return null;
+  }
+
+  return {
+    source: sourceRaw,
+    reason,
+  };
+}
+
+function normalizeActionSuggestionV4Preview(raw: unknown): ActionSuggestionV4Preview | null {
+  if (!raw || typeof raw !== "object") return null;
+
+  const value = raw as any;
+  const primaryAction = normalizeActionSuggestionV4Action(value.primary_action ?? value.primaryAction);
+  const secondaryAction = normalizeActionSuggestionV4Action(value.secondary_action ?? value.secondaryAction);
+  const reflectionPrompt = normalizeActionSuggestionV4ReflectionPrompt(value.reflection_prompt ?? value.reflectionPrompt);
+  const actionSource = normalizeActionSuggestionV4Source(value.action_source ?? value.actionSource);
+  const sourceKeysRaw = value.source_keys ?? value.sourceKeys;
+  const sourceKeys = Array.isArray(sourceKeysRaw)
+    ? sourceKeysRaw
+        .map((item) => asTrimmedString(item))
+        .filter((item): item is string => Boolean(item))
+    : [];
+
+  if (!primaryAction || !secondaryAction || !reflectionPrompt || !actionSource) {
+    return null;
+  }
+
+  return {
+    primaryAction,
+    secondaryAction,
+    reflectionPrompt,
+    actionSource,
+    preview: value.preview === true,
+    version: "v4",
+    sourceKeys,
+  };
+}
+
 function toRecommendationCard(item: RecommendationApiCard, index: number): RecommendationCard {
   const id = item.id ?? item.shrine_id ?? item.place_id ?? `recommendation-${index + 1}`;
   const shrineId = item.shrineId ?? item.shrine_id ?? item.id ?? item.place_id;
+  const actionSuggestionV4Preview = normalizeActionSuggestionV4Preview(
+    item.action_suggestion_v4_preview ?? item.actionSuggestionV4Preview,
+  );
 
   return {
     id: String(id),
@@ -113,6 +266,7 @@ function toRecommendationCard(item: RecommendationApiCard, index: number): Recom
     reason: item.reason ?? "相談内容に近い意味やご利益をもとに選ばれた神社です。",
     tags: item.tags ?? [],
     shrineId: shrineId !== undefined && shrineId !== null ? String(shrineId) : undefined,
+    actionSuggestionV4Preview,
   };
 }
 
@@ -200,6 +354,32 @@ function ResultCard({
 
       {/* 推薦理由 */}
       <Text style={styles.cardReason} numberOfLines={3}>{card.reason}</Text>
+
+      {card.actionSuggestionV4Preview?.preview ? (
+        <View style={styles.actionV4Card}>
+          <View style={styles.actionV4Header}>
+            <Text style={styles.actionV4Label}>次に取りやすい行動</Text>
+            <Text style={styles.actionV4SubLabel}>この候補を見たあとに、無理なく進めるための整理です。</Text>
+          </View>
+
+          <View style={styles.actionV4Item}>
+            <Text style={styles.actionV4ItemLabel}>まずやること</Text>
+            <Text style={styles.actionV4Title}>{card.actionSuggestionV4Preview.primaryAction.label}</Text>
+            <Text style={styles.actionV4Description}>{card.actionSuggestionV4Preview.primaryAction.description}</Text>
+          </View>
+
+          <View style={styles.actionV4Item}>
+            <Text style={styles.actionV4ItemLabel}>次の候補</Text>
+            <Text style={styles.actionV4Title}>{card.actionSuggestionV4Preview.secondaryAction.label}</Text>
+            <Text style={styles.actionV4Description}>{card.actionSuggestionV4Preview.secondaryAction.description}</Text>
+          </View>
+
+          <View style={styles.actionV4Item}>
+            <Text style={styles.actionV4ItemLabel}>参拝前の問い</Text>
+            <Text style={styles.actionV4Title}>{card.actionSuggestionV4Preview.reflectionPrompt.question}</Text>
+          </View>
+        </View>
+      ) : null}
 
       {/* タグ */}
       {card.tags.length > 0 ? (
@@ -830,6 +1010,58 @@ const styles = StyleSheet.create({
     color: theme.mutedSoft,
     fontSize: 13,
     lineHeight: 22,
+    fontWeight: "600",
+  },
+
+  actionV4Card: {
+    backgroundColor: theme.surfaceSoft,
+    borderWidth: 1,
+    borderColor: theme.borderSoft,
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 10,
+  },
+  actionV4Header: {
+    gap: 3,
+  },
+  actionV4Label: {
+    color: theme.goldSoft,
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 0.8,
+  },
+  actionV4SubLabel: {
+    color: theme.muted,
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: "600",
+  },
+  actionV4Item: {
+    backgroundColor: theme.surface,
+    borderWidth: 1,
+    borderColor: theme.borderSoft,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 4,
+  },
+  actionV4ItemLabel: {
+    color: theme.goldSoft,
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 0.7,
+  },
+  actionV4Title: {
+    color: theme.text,
+    fontSize: 13,
+    lineHeight: 20,
+    fontWeight: "900",
+  },
+  actionV4Description: {
+    color: theme.mutedSoft,
+    fontSize: 12,
+    lineHeight: 18,
     fontWeight: "600",
   },
 
