@@ -6,7 +6,10 @@ import type { ReactNode } from "react";
 import { trackSearchEvent } from "@/lib/analytics/searchEvents";
 import { trackActionEvent } from "@/lib/api/actionEvents";
 import { trackActionAnalytics } from "@/lib/analytics/actionEvents";
-import type { ActionSuggestionViewModel } from "@/viewmodels/conciergeResultItem";
+import type {
+  ActionSuggestionV4PreviewViewModel,
+  ActionSuggestionViewModel,
+} from "@/viewmodels/conciergeResultItem";
 
 type Props = {
   name: string;
@@ -26,6 +29,7 @@ type Props = {
   nextActionHint?: string | null;
   tags?: string[];
   actionSuggestions?: ActionSuggestionViewModel[];
+  actionSuggestionV4Preview?: ActionSuggestionV4PreviewViewModel | null;
   analyticsSource?: "concierge_result" | "shrine_detail" | "map" | "shrines" | null;
   threadId?: string | null;
   resultSetId?: string | null;
@@ -56,6 +60,7 @@ export default function ConciergeTopRecommendationHero({
   nextActionHint: _nextActionHint = null,
   tags: _tags = [],
   actionSuggestions = [],
+  actionSuggestionV4Preview = null,
   analyticsSource = "concierge_result",
   threadId = null,
   resultSetId = null,
@@ -73,7 +78,9 @@ export default function ConciergeTopRecommendationHero({
     [actionSuggestions],
   );
   const visibleActionSuggestionIds = visibleActionSuggestions.map((item) => item.id).join(",");
+  const visibleActionSuggestionV4Preview = actionSuggestionV4Preview?.preview === true ? actionSuggestionV4Preview : null;
   const entranceCopySource = subtitle ?? catchCopy;
+
   const entranceCopy = entranceCopySource.split("。")[0]
     ? `${entranceCopySource.split("。")[0]}。`
     : entranceCopySource;
@@ -238,6 +245,47 @@ export default function ConciergeTopRecommendationHero({
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {visibleActionSuggestionV4Preview ? (
+          <div
+            className="rounded-2xl border border-teal-100 bg-teal-50/70 px-4 py-3 shadow-sm shadow-teal-900/5"
+            data-testid="hero-action-suggestion-v4-preview"
+          >
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <p className="text-[11px] font-semibold tracking-[0.14em] text-teal-700">次に取りやすい行動</p>
+                <p className="text-xs leading-5 text-slate-600">この候補を見たあとに、無理なく進めるための整理です。</p>
+              </div>
+
+              <div className="rounded-xl bg-white/85 px-3 py-2 ring-1 ring-teal-100">
+                <p className="text-[11px] font-semibold tracking-[0.12em] text-teal-700">まずやること</p>
+                <p className="mt-1 text-sm font-semibold leading-6 text-slate-800">
+                  {visibleActionSuggestionV4Preview.primaryAction.label}
+                </p>
+                <p className="mt-0.5 text-xs leading-5 text-slate-600">
+                  {visibleActionSuggestionV4Preview.primaryAction.description}
+                </p>
+              </div>
+
+              <div className="rounded-xl bg-white/85 px-3 py-2 ring-1 ring-teal-100">
+                <p className="text-[11px] font-semibold tracking-[0.12em] text-teal-700">次の候補</p>
+                <p className="mt-1 text-sm font-semibold leading-6 text-slate-800">
+                  {visibleActionSuggestionV4Preview.secondaryAction.label}
+                </p>
+                <p className="mt-0.5 text-xs leading-5 text-slate-600">
+                  {visibleActionSuggestionV4Preview.secondaryAction.description}
+                </p>
+              </div>
+
+              <div className="rounded-xl bg-white/85 px-3 py-2 ring-1 ring-teal-100">
+                <p className="text-[11px] font-semibold tracking-[0.12em] text-teal-700">参拝前の問い</p>
+                <p className="mt-1 text-sm font-semibold leading-6 text-slate-800">
+                  {visibleActionSuggestionV4Preview.reflectionPrompt.question}
+                </p>
               </div>
             </div>
           </div>
