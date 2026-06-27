@@ -51,6 +51,7 @@ from temples.services.concierge_chat_ranking import (
 from temples.services.concierge_chat_response_meta import (
     attach_response_meta,
 )
+from temples.services.action_suggestion_builder import attach_action_suggestion_v4_preview
 from temples.services.concierge_explanation_payload import (
     attach_explanation_payload,
 )
@@ -718,5 +719,7 @@ def build_chat_recommendations(
         birthdate=birthdate,
         extra_condition=extra_condition,
     )
+
+    recs = attach_action_suggestion_v4_preview(recs)
 
     return recs
