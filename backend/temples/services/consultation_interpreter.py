@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -38,6 +36,27 @@ ACTION_KEYWORDS: dict[str, tuple[str, ...]] = {
     "save": ("残したい", "保存", "記録"),
 }
 
+DECISION_KEYWORDS: dict[str, tuple[str, ...]] = {
+    "career_decision": ("転職", "独立", "仕事", "働き方", "キャリア"),
+    "relationship_decision": ("恋愛", "結婚", "人間関係", "仲直り", "関係"),
+    "money_decision": ("お金", "金運", "収入", "生活費", "商売", "売上"),
+    "rest_or_action": ("休む", "動く", "始めたい", "前に進", "切り替え"),
+}
+
+CONSTRAINT_KEYWORDS: dict[str, tuple[str, ...]] = {
+    "time": ("時間がない", "忙しい", "余裕がない"),
+    "money": ("お金が不安", "生活費", "収入", "金銭"),
+    "energy": ("疲れ", "しんど", "体力", "休みたい"),
+    "relationship": ("人間関係", "家族", "職場", "相手"),
+}
+
+OUTCOME_KEYWORDS: dict[str, tuple[str, ...]] = {
+    "decide": ("決めたい", "決断", "選びたい"),
+    "calm": ("落ち着", "安心", "整え"),
+    "move_forward": ("前に進", "背中", "始めたい"),
+    "clarify": ("整理", "見直", "考えたい"),
+}
+
 
 @dataclass(frozen=True)
 class InterpretationProfile:
@@ -47,6 +66,9 @@ class InterpretationProfile:
     direction_profile: dict[str, Any] = field(default_factory=dict)
     emotion_profile: dict[str, Any] = field(default_factory=dict)
     action_intent: dict[str, Any] = field(default_factory=dict)
+    decision_context: dict[str, Any] = field(default_factory=dict)
+    constraint_profile: dict[str, Any] = field(default_factory=dict)
+    outcome_hint: dict[str, Any] = field(default_factory=dict)
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -56,6 +78,9 @@ class InterpretationProfile:
             "direction_profile": self.direction_profile,
             "emotion_profile": self.emotion_profile,
             "action_intent": self.action_intent,
+            "decision_context": self.decision_context,
+            "constraint_profile": self.constraint_profile,
+            "outcome_hint": self.outcome_hint,
         }
 
 
@@ -151,6 +176,39 @@ def build_action_intent(query: str) -> dict[str, Any]:
     }
 
 
+def build_decision_context(query: str) -> dict[str, Any]:
+    hits = _collect_hits(query, DECISION_KEYWORDS)
+    contexts = list(hits.keys())
+
+    return {
+        "primary_decision": contexts[0] if contexts else None,
+        "decision_candidates": contexts,
+        "decision_hits": hits,
+    }
+
+
+def build_constraint_profile(query: str) -> dict[str, Any]:
+    hits = _collect_hits(query, CONSTRAINT_KEYWORDS)
+    constraints = list(hits.keys())
+
+    return {
+        "primary_constraint": constraints[0] if constraints else None,
+        "constraints": constraints,
+        "constraint_hits": hits,
+    }
+
+
+def build_outcome_hint(query: str) -> dict[str, Any]:
+    hits = _collect_hits(query, OUTCOME_KEYWORDS)
+    outcomes = list(hits.keys())
+
+    return {
+        "primary_outcome": outcomes[0] if outcomes else None,
+        "outcome_candidates": outcomes,
+        "outcome_hits": hits,
+    }
+
+
 def interpret_consultation(
     query: str | None,
     *,
@@ -174,6 +232,9 @@ def interpret_consultation(
     direction_profile = build_direction_profile(state_profile)
     emotion_profile = build_emotion_profile(raw_query, state_profile)
     action_intent = build_action_intent(raw_query)
+    decision_context = build_decision_context(raw_query)
+    constraint_profile = build_constraint_profile(raw_query)
+    outcome_hint = build_outcome_hint(raw_query)
 
     return InterpretationProfile(
         raw_query=raw_query,
@@ -182,4 +243,7 @@ def interpret_consultation(
         direction_profile=direction_profile,
         emotion_profile=emotion_profile,
         action_intent=action_intent,
+        decision_context=decision_context,
+        constraint_profile=constraint_profile,
+        outcome_hint=outcome_hint,
     ).as_dict()
