@@ -45,6 +45,50 @@ def _first_string(*values: Any) -> str | None:
     return None
 
 
+NEED_COPY: dict[str, str] = {
+    "mental": "気持ちを落ち着け、今の状態を整理したい",
+    "rest": "疲れを整え、静かに回復したい",
+    "career": "仕事や働き方を見直したい",
+    "money": "生活や収入の土台を整えたい",
+    "love": "人との縁や関係性を見直したい",
+    "study": "学びや積み重ねを続けたい",
+    "courage": "次に進むための一歩を決めたい",
+}
+
+DECISION_COPY: dict[str, str] = {
+    "career_decision": "仕事や働き方について判断したい",
+    "relationship_decision": "人との関係について見直したい",
+    "money_decision": "お金や生活の判断を整えたい",
+    "rest_or_action": "休むか動くかを見極めたい",
+}
+
+CONSTRAINT_COPY: dict[str, str] = {
+    "time": "時間の余裕が少ない",
+    "money": "お金や収入への不安がある",
+    "energy": "体力や気力が落ちている",
+    "relationship": "人間関係の制約がある",
+}
+
+OUTCOME_COPY: dict[str, str] = {
+    "decide": "判断材料を持ち帰りたい",
+    "calm": "気持ちを落ち着けたい",
+    "move_forward": "小さく前に進みたい",
+    "clarify": "考えを整理したい",
+}
+
+ACTION_INTENT_COPY: dict[str, str] = {
+    "visit": "実際に足を運んで確認したい",
+    "reflect": "問いを一つに絞って整理したい",
+    "save": "今回の相談を残して振り返りたい",
+}
+
+
+def _copy_for_key(mapping: dict[str, str], key: str | None) -> str | None:
+    if not key:
+        return None
+    return mapping.get(key, key)
+
+
 def _build_fact(candidate_profile: dict[str, Any], meaning_translation: dict[str, Any]) -> dict[str, Any]:
     history_theme = _first_string(candidate_profile.get("history_theme"), meaning_translation.get("history_theme"))
     goriyaku = _first_string(candidate_profile.get("goriyaku"), candidate_profile.get("goriyaku_tags"))
@@ -84,24 +128,36 @@ def _build_interpretation(
     ) or "相談文脈"
 
     shrine_context_need = _first_string(meaning_translation.get("shrine_context_need"))
-    primary_need = _first_string(need_profile.get("primary_need_tag"), need_profile.get("need_tags"))
-    primary_decision = _first_string(decision_context.get("primary_decision"), decision_context.get("decision_candidates"))
-    primary_constraint = _first_string(constraint_profile.get("primary_constraint"), constraint_profile.get("constraints"))
-    primary_outcome = _first_string(outcome_hint.get("primary_outcome"), outcome_hint.get("outcome_candidates"))
+    primary_need = _copy_for_key(
+        NEED_COPY,
+        _first_string(need_profile.get("primary_need_tag"), need_profile.get("need_tags")),
+    )
+    primary_decision = _copy_for_key(
+        DECISION_COPY,
+        _first_string(decision_context.get("primary_decision"), decision_context.get("decision_candidates")),
+    )
+    primary_constraint = _copy_for_key(
+        CONSTRAINT_COPY,
+        _first_string(constraint_profile.get("primary_constraint"), constraint_profile.get("constraints")),
+    )
+    primary_outcome = _copy_for_key(
+        OUTCOME_COPY,
+        _first_string(outcome_hint.get("primary_outcome"), outcome_hint.get("outcome_candidates")),
+    )
 
     parts: list[str] = []
     if shrine_context_need:
         parts.append(shrine_context_need)
-    if primary_need:
-        parts.append(f"相談テーマ:{primary_need}")
+    if primary_need and primary_need not in parts:
+        parts.append(f"{primary_need}相談として受け取れます")
     if primary_decision:
-        parts.append(f"判断文脈:{primary_decision}")
+        parts.append(f"{primary_decision}文脈があります")
     if primary_constraint:
-        parts.append(f"制約:{primary_constraint}")
+        parts.append(f"{primary_constraint}ことも考慮します")
     if primary_outcome:
-        parts.append(f"着地点:{primary_outcome}")
+        parts.append(f"{primary_outcome}方向に整理できます")
 
-    text = " / ".join(parts) if parts else "相談内容と神社側の文脈を照合する候補です。"
+    text = "。".join(parts) + "。" if parts else "相談内容と神社側の文脈を照合する候補です。"
 
     return {
         "theme": theme,
@@ -128,10 +184,12 @@ def _build_action(interpretation_profile: dict[str, Any], meaning_translation: d
         text = f"振り返りでは「{reflection_question_seed}」を確認します。"
         source = "meaning_translation.reflection_question_seed"
     elif intent:
-        text = f"次に取る行動として、{intent}を小さく確認します。"
+        intent_copy = _copy_for_key(ACTION_INTENT_COPY, intent) or "次に取りたい行動"
+        text = f"次に取る行動として、{intent_copy}ことを小さく確認します。"
         source = "interpretation_profile.action_intent"
     elif outcome:
-        text = f"望む着地点として、{outcome}に向けた小さな確認を行います。"
+        outcome_copy = _copy_for_key(OUTCOME_COPY, outcome) or outcome
+        text = f"望む着地点として、{outcome_copy}方向に向けた小さな確認を行います。"
         source = "interpretation_profile.outcome_hint"
     else:
         text = "次に確認したいことを一つだけ決めます。"
@@ -144,11 +202,16 @@ def _build_action(interpretation_profile: dict[str, Any], meaning_translation: d
 
 
 def _build_reason_text(fact: dict[str, Any], interpretation: dict[str, Any], action: dict[str, Any]) -> str:
-    fact_label = _first_string(fact.get("label")) or "この候補"
+    fact_label = _first_string(fact.get("label")) or "候補神社"
     interpretation_text = _first_string(interpretation.get("text")) or "相談内容と神社側の文脈を照合しています。"
     action_text = _first_string(action.get("text")) or "次に確認したいことを一つだけ決めます。"
 
-    return f"{fact_label}は、{interpretation_text} {action_text}"
+    if fact_label == "候補神社":
+        fact_text = "この候補は、相談内容と神社側の文脈を照合する候補です。"
+    else:
+        fact_text = f"この候補には、{fact_label}という文脈が含まれています。"
+
+    return "".join([fact_text, interpretation_text, action_text])
 
 
 def build_recommendation_reason_v4(

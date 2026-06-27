@@ -110,7 +110,7 @@ def test_build_recommendation_reason_v4_builds_interpretation_layer_from_profile
 
     assert result["interpretation"] == {
         "theme": "再出発",
-        "text": "仕事や進路の流れを見直したい / 相談テーマ:career / 判断文脈:career_decision / 制約:money / 着地点:decide",
+        "text": "仕事や進路の流れを見直したい。仕事や働き方を見直したい相談として受け取れます。仕事や働き方について判断したい文脈があります。お金や収入への不安があることも考慮します。判断材料を持ち帰りたい方向に整理できます。",
     }
     assert result["source"]["interpretation"] == "interpretation_profile|meaning_translation"
 
@@ -174,7 +174,7 @@ def test_build_recommendation_reason_v4_handles_missing_inputs_safely():
     result = build_recommendation_reason_v4()
 
     assert result == {
-        "reason_text": "候補神社は、相談内容と神社側の文脈を照合する候補です。 次に確認したいことを一つだけ決めます。",
+        "reason_text": "この候補は、相談内容と神社側の文脈を照合する候補です。相談内容と神社側の文脈を照合する候補です。次に確認したいことを一つだけ決めます。",
         "fact": {
             "label": "候補神社",
             "evidence": [],
