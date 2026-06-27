@@ -15,6 +15,9 @@ def test_interpret_consultation_returns_stable_schema():
         "direction_profile",
         "emotion_profile",
         "action_intent",
+        "decision_context",
+        "constraint_profile",
+        "outcome_hint",
     }
     assert profile["raw_query"] == "仕事で迷っていて、気持ちを切り替えて前に進みたい。神社に行きたい。"
     assert isinstance(profile["state_profile"], dict)
@@ -22,6 +25,9 @@ def test_interpret_consultation_returns_stable_schema():
     assert isinstance(profile["direction_profile"], dict)
     assert isinstance(profile["emotion_profile"], dict)
     assert isinstance(profile["action_intent"], dict)
+    assert isinstance(profile["decision_context"], dict)
+    assert isinstance(profile["constraint_profile"], dict)
+    assert isinstance(profile["outcome_hint"], dict)
 
 
 def test_interpret_consultation_extracts_state_need_direction_and_action():
@@ -39,6 +45,38 @@ def test_interpret_consultation_extracts_state_need_direction_and_action():
     }
     assert profile["action_intent"]["intent"] == "visit"
     assert profile["action_intent"]["strength"] == "soft"
+
+
+def test_interpret_consultation_extracts_v4_fields():
+    profile = interpret_consultation(
+        "転職するか迷っている。お金が不安で、時間がないけど、前に進むために決めたい。"
+    )
+
+    assert profile["decision_context"] == {
+        "primary_decision": "career_decision",
+        "decision_candidates": ["career_decision", "money_decision", "rest_or_action"],
+        "decision_hits": {
+            "career_decision": ["転職"],
+            "money_decision": ["お金"],
+            "rest_or_action": ["前に進"],
+        },
+    }
+    assert profile["constraint_profile"] == {
+        "primary_constraint": "time",
+        "constraints": ["time", "money"],
+        "constraint_hits": {
+            "time": ["時間がない"],
+            "money": ["お金が不安"],
+        },
+    }
+    assert profile["outcome_hint"] == {
+        "primary_outcome": "decide",
+        "outcome_candidates": ["decide", "move_forward"],
+        "outcome_hits": {
+            "decide": ["決めたい"],
+            "move_forward": ["前に進"],
+        },
+    }
 
 
 def test_interpret_consultation_merges_explicit_need_tags_before_extracted_need_tags():
@@ -97,5 +135,20 @@ def test_interpret_consultation_handles_empty_query_safely():
             "strength": "unknown",
             "candidates": [],
             "intent_hits": {},
+        },
+        "decision_context": {
+            "primary_decision": None,
+            "decision_candidates": [],
+            "decision_hits": {},
+        },
+        "constraint_profile": {
+            "primary_constraint": None,
+            "constraints": [],
+            "constraint_hits": {},
+        },
+        "outcome_hint": {
+            "primary_outcome": None,
+            "outcome_candidates": [],
+            "outcome_hits": {},
         },
     }
