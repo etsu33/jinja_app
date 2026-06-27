@@ -79,6 +79,108 @@ def test_chat_response_query_mode_reply_is_none(client, monkeypatch):
 
 
 @pytest.mark.django_db
+def test_chat_response_preserves_action_suggestion_v4_preview_contract(client, monkeypatch):
+    _stub_candidates(monkeypatch)
+    _stub_recommendations(
+        monkeypatch,
+        [
+            {
+                "name": "神社A",
+                "reason": "ok-a",
+                "reason_source": "reason:test",
+                "_score_total": 10.0,
+                "action_suggestion_v4_preview": {
+                    "primary_action": {
+                        "label": "まず詳細を見て、行く理由を確認する",
+                        "description": "候補神社の詳細を見て判断材料を増やします。",
+                        "action_type": "detail_open",
+                        "confidence": 0.82,
+                    },
+                    "secondary_action": {
+                        "label": "候補として保存して、あとで見返す",
+                        "description": "後から相談内容と一緒に見返せます。",
+                        "action_type": "save",
+                        "confidence": 0.74,
+                    },
+                    "reflection_prompt": {
+                        "question": "この神社に行くとしたら、何を整理する時間にしたいですか？",
+                        "prompt_type": "before_visit",
+                        "source_seed": "fallback",
+                    },
+                    "action_source": {
+                        "source": "fallback",
+                        "reason": "入力が不足しているため、詳細確認と保存を安全な初期提案にした",
+                    },
+                    "preview": True,
+                    "version": "v4",
+                    "source_keys": ["meaning_translation"],
+                },
+            },
+            {
+                "name": "神社B",
+                "reason": "ok-b",
+                "reason_source": "reason:test",
+                "_score_total": 9.0,
+                "action_suggestion_v4_preview": {
+                    "primary_action": {
+                        "label": "行く前に、今日の問いを一つだけ決める",
+                        "description": "問いを一つに絞ります。",
+                        "action_type": "reflect",
+                        "confidence": 0.78,
+                    },
+                    "secondary_action": {
+                        "label": "候補として保存して、あとで見返す",
+                        "description": "後から相談内容と一緒に見返せます。",
+                        "action_type": "save",
+                        "confidence": 0.74,
+                    },
+                    "reflection_prompt": {
+                        "question": "今日持っていく問いは何ですか？",
+                        "prompt_type": "before_visit",
+                        "source_seed": "今日持っていく問いは何ですか？",
+                    },
+                    "action_source": {
+                        "source": "action_context",
+                        "reason": "意味変換層の行動文脈をもとに提案した",
+                    },
+                    "preview": True,
+                    "version": "v4",
+                    "source_keys": ["meaning_translation"],
+                },
+            },
+        ],
+    )
+
+    r = client.post(
+        URL,
+        data=json.dumps({"query": "近場で参拝したい", "lat": 35.0, "lng": 139.0}),
+        content_type="application/json",
+    )
+    assert r.status_code == 200
+
+    recommendations = r.json()["data"]["recommendations"]
+    assert [rec["name"] for rec in recommendations] == ["神社A", "神社B"]
+    assert [rec["_score_total"] for rec in recommendations] == [10.0, 9.0]
+
+    preview = recommendations[0]["action_suggestion_v4_preview"]
+    assert set(preview.keys()) == {
+        "primary_action",
+        "secondary_action",
+        "reflection_prompt",
+        "action_source",
+        "preview",
+        "version",
+        "source_keys",
+    }
+    assert preview["preview"] is True
+    assert preview["version"] == "v4"
+    assert preview["primary_action"]["action_type"] == "detail_open"
+    assert preview["secondary_action"]["action_type"] == "save"
+    assert preview["reflection_prompt"]["prompt_type"] == "before_visit"
+    assert preview["action_source"]["source"] == "fallback"
+
+
+@pytest.mark.django_db
 def test_chat_response_authenticated_non_premium_includes_remaining_and_limit(user, monkeypatch):
     _stub_candidates(monkeypatch)
     _stub_recommendations(monkeypatch, [{"name": "神社A", "reason": "ok", "reason_source": "reason:test"}])
