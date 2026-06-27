@@ -347,6 +347,33 @@ def test_chat_response_includes_debug_observation_contract_fields(client, monkey
                         },
                     },
                 },
+                "reason_v4_preview": [
+                    {
+                        "rank": 1,
+                        "shrine_id": 1,
+                        "name": "神社A",
+                        "preview": {
+                            "reason_text": "神社Aは、相談内容と神社側の文脈を照合する候補です。 次に確認したいことを一つだけ決めます。",
+                            "fact": {
+                                "label": "神社A",
+                                "evidence": ["name:神社A"],
+                            },
+                            "interpretation": {
+                                "theme": "相談文脈",
+                                "text": "相談内容と神社側の文脈を照合する候補です。",
+                            },
+                            "action": {
+                                "text": "次に確認したいことを一つだけ決めます。",
+                                "source": "fallback",
+                            },
+                            "source": {
+                                "fact": "candidate_profile|meaning_translation",
+                                "interpretation": "interpretation_profile|meaning_translation",
+                                "action": "fallback",
+                            },
+                        },
+                    }
+                ],
                 "trim_observation": {
                     "before_count": 1,
                     "after_count": 1,
@@ -374,6 +401,7 @@ def test_chat_response_includes_debug_observation_contract_fields(client, monkey
         "visit_style_observation",
         "ranking_breakdown_observation",
         "score_v3",
+        "reason_v4_preview",
         "trim_observation",
     }
 
@@ -451,12 +479,30 @@ def test_chat_response_includes_debug_observation_contract_fields(client, monkey
         "reason": [],
     }
 
-    trim = debug["trim_observation"]
-    assert set(trim.keys()) == {
-        "before_count",
-        "after_count",
-        "dropped_count",
-        "before",
-        "after",
-        "dropped",
+    reason_v4_preview = debug["reason_v4_preview"]
+    assert isinstance(reason_v4_preview, list)
+    assert len(reason_v4_preview) == 1
+
+    reason_v4_item = reason_v4_preview[0]
+    assert set(reason_v4_item.keys()) == {
+        "rank",
+        "shrine_id",
+        "name",
+        "preview",
     }
+    assert reason_v4_item["rank"] == 1
+    assert reason_v4_item["name"] == "神社A"
+
+    preview = reason_v4_item["preview"]
+    assert set(preview.keys()) == {
+        "reason_text",
+        "fact",
+        "interpretation",
+        "action",
+        "source",
+    }
+    assert isinstance(preview["reason_text"], str)
+    assert set(preview["fact"].keys()) == {"label", "evidence"}
+    assert set(preview["interpretation"].keys()) == {"theme", "text"}
+    assert set(preview["action"].keys()) == {"text", "source"}
+    assert set(preview["source"].keys()) == {"fact", "interpretation", "action"}
