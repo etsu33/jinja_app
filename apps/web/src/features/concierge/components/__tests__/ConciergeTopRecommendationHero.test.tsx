@@ -139,4 +139,129 @@ describe("ConciergeTopRecommendationHero", () => {
       }),
     );
   });
+  it("renders v4 preview actions and tracks preview and click events", async () => {
+    render(
+      <ConciergeTopRecommendationHero
+        name="検証神社"
+        href="/shrines/17?ctx=concierge"
+        catchCopy="今の相談に合う候補です。"
+        actionSuggestionV4Preview={{
+          primaryAction: {
+            label: "まず詳細を見て、行く理由を確認する",
+            description: "候補神社の詳細を見て判断材料を増やします。",
+            actionType: "detail_open",
+            confidence: 0.82,
+          },
+          secondaryAction: {
+            label: "候補として保存して、あとで見返す",
+            description: "後から相談内容と一緒に見返せます。",
+            actionType: "save",
+            confidence: 0.74,
+          },
+          reflectionPrompt: {
+            question: "この神社に行くとしたら、何を整理する時間にしたいですか？",
+            promptType: "before_visit",
+            sourceSeed: "fallback",
+          },
+          actionSource: {
+            source: "fallback",
+            reason: "入力が不足しているため、詳細確認と保存を安全な初期提案にした",
+          },
+          preview: true,
+          version: "v4",
+          sourceKeys: ["meaning_translation"],
+        }}
+        analyticsSource="concierge_result"
+        threadId="thread-1"
+        resultSetId="result-set-1"
+        shrineId={17}
+        recommendationRank={1}
+        historyTheme="勝負"
+        routeLabel="詳しく見る"
+      />,
+    );
+
+    expect(screen.getByTestId("hero-action-suggestion-v4-preview")).toBeInTheDocument();
+    expect(screen.getByText("次に取りやすい行動")).toBeInTheDocument();
+    expect(screen.getByText("まず詳細を見て、行く理由を確認する")).toBeInTheDocument();
+    expect(screen.getByText("候補として保存して、あとで見返す")).toBeInTheDocument();
+    expect(screen.getByText("この神社に行くとしたら、何を整理する時間にしたいですか？")).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(analyticsMocks.trackSearchEvent).toHaveBeenCalledWith(
+        "action_suggestion_preview_view",
+        expect.objectContaining({
+          source: "concierge_result",
+          threadId: "thread-1",
+          resultSetId: "result-set-1",
+          shrineId: 17,
+          recommendationRank: 1,
+          position: "hero_primary",
+          historyTheme: "勝負",
+          actionSuggestionVersion: "v4",
+          primaryActionType: "detail_open",
+          secondaryActionType: "save",
+          promptType: "before_visit",
+          actionSource: "fallback",
+          sourceKeys: "meaning_translation",
+        }),
+      );
+    });
+
+    expect(analyticsMocks.trackSearchEvent).toHaveBeenCalledWith(
+      "reflection_prompt_view",
+      expect.objectContaining({
+        promptType: "before_visit",
+        reflectionPromptSourceSeed: "fallback",
+      }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "この行動で進める" }));
+    expect(analyticsMocks.trackSearchEvent).toHaveBeenCalledWith(
+      "primary_action_click",
+      expect.objectContaining({
+        actionSuggestionVersion: "v4",
+        actionRole: "primary",
+        actionType: "detail_open",
+        actionLabel: "まず詳細を見て、行く理由を確認する",
+        promptType: "before_visit",
+        actionSource: "fallback",
+        sourceKeys: "meaning_translation",
+      }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "この候補を使う" }));
+    expect(analyticsMocks.trackSearchEvent).toHaveBeenCalledWith(
+      "secondary_action_click",
+      expect.objectContaining({
+        actionSuggestionVersion: "v4",
+        actionRole: "secondary",
+        actionType: "save",
+        actionLabel: "候補として保存して、あとで見返す",
+        promptType: "before_visit",
+        actionSource: "fallback",
+        sourceKeys: "meaning_translation",
+      }),
+    );
+  });
+  it("calls the detail click handler and renders secondary action slot", () => {
+    const onDetailClick = vi.fn();
+
+    render(
+      <ConciergeTopRecommendationHero
+        name="検証神社"
+        href="/shrines/17?ctx=concierge"
+        catchCopy="今の相談に合う候補です。"
+        routeLabel="神社の詳細を見る"
+        onDetailClick={onDetailClick}
+        secondaryActionSlot={<button type="button">あとで見る</button>}
+      />,
+    );
+
+    expect(screen.getByTestId("hero-secondary-actions")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "あとで見る" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("link", { name: "神社の詳細を見る" }));
+    expect(onDetailClick).toHaveBeenCalledTimes(1);
+  });
 });

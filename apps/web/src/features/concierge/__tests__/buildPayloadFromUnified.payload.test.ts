@@ -174,3 +174,68 @@ it("consultation_axis を meta と recommendation item に通す", () => {
   expect(recSec.items[0].consultationAxis).toBe("independence");
   expect(recSec.items[1].consultationAxis).toBe("nature_reset");
 });
+
+
+it("place候補の詳細情報とresult_stateをpayloadへ通す", () => {
+  const u: any = {
+    data: {
+      _signals: {
+        mode: { mode: "need", flow: "A" },
+        result_state: {
+          matched_count: 0,
+          fallback_mode: "nearby_unfiltered",
+          fallback_reason_ja: "条件に一致する神社が見つかりませんでした（0件）",
+          ui_disclaimer_ja: "代わりに近い神社を表示しています",
+          requested_extra_condition: "静かな場所",
+          consultation_axis: "rest_healing",
+        },
+      },
+      recommendations: [
+        {
+          placeId: " P-PLACE-1 ",
+          display_name: "未登録神社",
+          display_address: "東京都",
+          reason: "静かに整える候補です。",
+          photo_url: "https://example.com/photo.jpg",
+          breakdown: { score_total: 1 },
+          breakdownDetail: { features: { visit_style: "quiet" } },
+          reasonFacts: { primary_axis: "feature" },
+          trustMetadata: { rank_class: "local" },
+          historyTheme: "静寂",
+          historyContext: "静けさの文脈",
+        },
+      ],
+    },
+    thread: { id: 88 },
+  };
+
+  const p = buildPayloadFromUnified(u, {
+    ...baseFilterState,
+    birthdate: "1984-05-15",
+  });
+
+  expect(p).not.toBeNull();
+  expect(p?.meta?.resultState).toEqual(
+    expect.objectContaining({
+      matched_count: 0,
+      fallback_mode: "nearby_unfiltered",
+      requested_extra_condition: "静かな場所",
+    }),
+  );
+  expect(p?.meta?.consultationAxis).toBe("rest_healing");
+
+  const recSec = p?.sections.find((s: any) => s.type === "recommendations") as any;
+  expect(recSec.items[0]).toEqual(
+    expect.objectContaining({
+      kind: "place",
+      placeId: "P-PLACE-1",
+      title: "未登録神社",
+      address: "東京都",
+      imageUrl: "https://example.com/photo.jpg",
+      historyTheme: "静寂",
+      historyContext: "静けさの文脈",
+      consultationAxis: "rest_healing",
+      detailLabel: "神社の詳細を見る",
+    }),
+  );
+});
