@@ -15,6 +15,9 @@ from temples.services.recommendation_algorithm_v3 import (
 from temples.services.recommendation_input_profile import (
     build_recommendation_input_profile,
 )
+from temples.services.recommendation_reason_v4 import (
+    build_recommendation_reason_v4,
+)
 from temples.services.score_v3_observer import (
     build_score_v3_shadow_observation_payload,
 )
@@ -339,6 +342,39 @@ def _build_score_v3_debug_payload(
     return run_recommendation_algorithm_v3_shadow(recommendation_input_profile)
 
 
+def _build_reason_v4_preview_payload(
+    *,
+    recs: dict[str, Any],
+    interpretation_profile: dict[str, Any],
+) -> list[dict[str, Any]]:
+    previews: list[dict[str, Any]] = []
+    
+    for index, rec in enumerate(
+        r for r in (recs.get("recommendations") or []) if isinstance(r, dict)
+    ):
+
+        meaning_payload = rec.get("meaning_payload") if isinstance(rec.get("meaning_payload"), dict) else {}
+        source = meaning_payload.get("source") if isinstance(meaning_payload.get("source"), dict) else {}
+        translation_result = source.get("translationResult") if isinstance(source.get("translationResult"), dict) else {}
+        recommendation_input_profile = build_recommendation_input_profile(
+
+            interpretation_profile=interpretation_profile,
+            translation_result=translation_result,
+            candidate_profile=_build_score_v3_candidate_profile(rec),
+            score_v2_fields=_build_score_v3_score_v2_fields(rec),
+        )
+
+        previews.append({
+            "rank": index + 1,
+            "shrine_id": rec.get("shrine_id") or rec.get("id"),
+            "name": rec.get("name"),
+            "preview": build_recommendation_reason_v4(
+                recommendation_input_profile=recommendation_input_profile,
+            ),
+        })
+    return previews
+
+
 def _build_score_v3_observer_items(score_v3_debug: dict[str, Any]) -> list[dict[str, Any]]:
     score_v3_payload = score_v3_debug.get("score_v3") if isinstance(score_v3_debug.get("score_v3"), dict) else {}
     observation = score_v3_payload.get("observation") if isinstance(score_v3_payload.get("observation"), dict) else {}
@@ -594,6 +630,10 @@ def build_chat_recommendations(
         recs=recs,
     )
     recs.setdefault("_debug", {})["score_v3"] = _build_score_v3_debug_payload(
+        recs=recs,
+        interpretation_profile=debug_interpretation_profile,
+    )
+    recs.setdefault("_debug", {})["reason_v4_preview"] = _build_reason_v4_preview_payload(
         recs=recs,
         interpretation_profile=debug_interpretation_profile,
     )
