@@ -8,7 +8,7 @@
 
 ## Current Output
 
-`interpret_consultation()` は以下を返す。
+`interpret_consultation()` は以下の構造を返す。
 
 - raw_query
 - state_profile
@@ -16,6 +16,25 @@
 - direction_profile
 - emotion_profile
 - action_intent
+- decision_context
+- constraint_profile
+- outcome_hint
+
+これらは Recommendation v4 における consultation_axis 相当の入力として利用される。
+
+各フィールドの責務は以下の通り。
+
+| Field | Responsibility | Used By |
+|-------|----------------|---------|
+| raw_query | 正規化済み相談文 | recommendation reason / debug |
+| state_profile | 現在状態 | direction / meaning translation |
+| need_profile | 相談テーマ・ご利益 | scoring / shrine matching |
+| direction_profile | 推薦方向 | history_theme |
+| emotion_profile | 感情トーン | recommendation reason / action suggestion |
+| action_intent | 行動意図 | action suggestion / CTA |
+| decision_context | 判断したい内容 | meaning translation / recommendation reason |
+| constraint_profile | 制約条件 | meaning translation / recommendation reason |
+| outcome_hint | 望む着地点 | meaning translation / recommendation reason |
 
 ## Field Contract
 
@@ -156,15 +175,16 @@
 - route_open CTA
 - reflection flow
 
-## v4 Candidate Additions
+## Additional Interpretation Fields
 
-以下は実装候補。今回のcontractではまだ必須にしない。
+以下のフィールドは Recommendation v4 で利用する追加解釈情報である。
 
 ### decision_context
 
 ユーザーが何を決めようとしているか。
 
 例:
+
 - 転職するか
 - 関係を続けるか
 - 休むか動くか
@@ -175,6 +195,7 @@
 ユーザーの制約条件。
 
 例:
+
 - 時間がない
 - お金が不安
 - 体力が落ちている
@@ -185,6 +206,7 @@
 ユーザーが望む着地点。
 
 例:
+
 - 決めたい
 - 落ち着きたい
 - 背中を押されたい
