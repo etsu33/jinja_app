@@ -79,6 +79,17 @@ export default function ConciergeTopRecommendationHero({
   );
   const visibleActionSuggestionIds = visibleActionSuggestions.map((item) => item.id).join(",");
   const visibleActionSuggestionV4Preview = actionSuggestionV4Preview?.preview === true ? actionSuggestionV4Preview : null;
+  const visibleActionSuggestionV4PreviewKey = visibleActionSuggestionV4Preview
+    ? [
+        visibleActionSuggestionV4Preview.primaryAction.actionType,
+        visibleActionSuggestionV4Preview.primaryAction.label,
+        visibleActionSuggestionV4Preview.secondaryAction.actionType,
+        visibleActionSuggestionV4Preview.secondaryAction.label,
+        visibleActionSuggestionV4Preview.reflectionPrompt.promptType,
+        visibleActionSuggestionV4Preview.reflectionPrompt.question,
+        visibleActionSuggestionV4Preview.actionSource.source,
+      ].join("|")
+    : "";
   const entranceCopySource = subtitle ?? catchCopy;
 
   const entranceCopy = entranceCopySource.split("。")[0]
@@ -112,6 +123,41 @@ export default function ConciergeTopRecommendationHero({
     threadId,
     visibleActionSuggestionIds,
     visibleActionSuggestions,
+  ]);
+
+  useEffect(() => {
+    if (!visibleActionSuggestionV4Preview) return;
+
+    const basePayload = {
+      source: analyticsSource,
+      threadId,
+      resultSetId,
+      shrineId,
+      recommendationRank,
+      position: "hero_primary" as const,
+      historyTheme,
+      actionSuggestionVersion: visibleActionSuggestionV4Preview.version,
+      primaryActionType: visibleActionSuggestionV4Preview.primaryAction.actionType,
+      secondaryActionType: visibleActionSuggestionV4Preview.secondaryAction.actionType,
+      promptType: visibleActionSuggestionV4Preview.reflectionPrompt.promptType,
+      actionSource: visibleActionSuggestionV4Preview.actionSource.source,
+      sourceKeys: visibleActionSuggestionV4Preview.sourceKeys.join(","),
+    };
+
+    trackSearchEvent("action_suggestion_preview_view", basePayload);
+    trackSearchEvent("reflection_prompt_view", {
+      ...basePayload,
+      reflectionPromptSourceSeed: visibleActionSuggestionV4Preview.reflectionPrompt.sourceSeed,
+    });
+  }, [
+    analyticsSource,
+    historyTheme,
+    recommendationRank,
+    resultSetId,
+    shrineId,
+    threadId,
+    visibleActionSuggestionV4Preview,
+    visibleActionSuggestionV4PreviewKey,
   ]);
 
   const buildActionEventPayload = (item: ActionSuggestionViewModel, index: number) => ({
@@ -171,6 +217,31 @@ export default function ConciergeTopRecommendationHero({
         recommendationRank,
         actionPosition: index + 1,
       },
+    });
+  };
+
+  const handleActionSuggestionV4Click = (actionRole: "primary" | "secondary") => {
+    if (!visibleActionSuggestionV4Preview) return;
+
+    const action = actionRole === "primary"
+      ? visibleActionSuggestionV4Preview.primaryAction
+      : visibleActionSuggestionV4Preview.secondaryAction;
+
+    trackSearchEvent(actionRole === "primary" ? "primary_action_click" : "secondary_action_click", {
+      source: analyticsSource,
+      threadId,
+      resultSetId,
+      shrineId,
+      recommendationRank,
+      position: "hero_primary",
+      historyTheme,
+      actionSuggestionVersion: visibleActionSuggestionV4Preview.version,
+      actionRole,
+      actionType: action.actionType,
+      actionLabel: action.label,
+      promptType: visibleActionSuggestionV4Preview.reflectionPrompt.promptType,
+      actionSource: visibleActionSuggestionV4Preview.actionSource.source,
+      sourceKeys: visibleActionSuggestionV4Preview.sourceKeys.join(","),
     });
   };
 
@@ -269,6 +340,13 @@ export default function ConciergeTopRecommendationHero({
                 <p className="mt-0.5 text-xs leading-5 text-slate-600">
                   {visibleActionSuggestionV4Preview.primaryAction.description}
                 </p>
+                <button
+                  type="button"
+                  className="mt-2 rounded-lg border border-teal-200 bg-white px-2 py-1.5 text-xs font-semibold text-teal-800 transition hover:bg-teal-50"
+                  onClick={() => handleActionSuggestionV4Click("primary")}
+                >
+                  この行動で進める
+                </button>
               </div>
 
               <div className="rounded-xl bg-white/85 px-3 py-2 ring-1 ring-teal-100">
@@ -279,6 +357,13 @@ export default function ConciergeTopRecommendationHero({
                 <p className="mt-0.5 text-xs leading-5 text-slate-600">
                   {visibleActionSuggestionV4Preview.secondaryAction.description}
                 </p>
+                <button
+                  type="button"
+                  className="mt-2 rounded-lg border border-teal-200 bg-white px-2 py-1.5 text-xs font-semibold text-teal-800 transition hover:bg-teal-50"
+                  onClick={() => handleActionSuggestionV4Click("secondary")}
+                >
+                  この候補を使う
+                </button>
               </div>
 
               <div className="rounded-xl bg-white/85 px-3 py-2 ring-1 ring-teal-100">
