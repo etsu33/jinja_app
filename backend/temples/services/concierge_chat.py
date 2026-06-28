@@ -517,6 +517,7 @@ def build_chat_recommendations(
         valid_candidates=valid_candidates,
         need_tags=need_tags,
         llm_enabled=llm_enabled,
+        consultation_axis=consultation_axis_value,
     )
 
     recs = route["recs"]
