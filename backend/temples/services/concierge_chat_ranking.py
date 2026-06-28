@@ -1438,8 +1438,9 @@ def _prefilter_candidates_for_need(
     candidates: List[Dict[str, Any]],
     *,
     need_tags: List[str],
+    consultation_axis: str | None = None,
 ) -> List[Dict[str, Any]]:
-    scored: List[tuple[int, float, str, Dict[str, Any]]] = []
+    scored: List[tuple[float, float, str, Dict[str, Any]]] = []
 
     need_tags_clean = _normalize_need_tags(need_tags, max_tags=10)
     is_study_need = "study" in need_tags_clean
@@ -1493,6 +1494,14 @@ def _prefilter_candidates_for_need(
             score += 2
             matched.append("study:text_bonus")
 
+        history_theme_candidate_boost = resolve_history_theme_candidate_boost(
+            consultation_axis=consultation_axis,
+            history_theme=c.get("history_theme"),
+        )
+        if history_theme_candidate_boost > 0:
+            score += history_theme_candidate_boost
+            matched.append(f"history_theme:{c.get('history_theme')}")
+
         row = dict(c)
         row["_prefilter_debug"] = {
             "score": score,
@@ -1500,6 +1509,9 @@ def _prefilter_candidates_for_need(
             "text_score_by_tag": text_score_by_tag,
             "matched_text_hints_by_tag": matched_text_hints_by_tag,
             "matched_gid_tags": matched_gid_tags,
+            "history_theme_candidate_boost": float(history_theme_candidate_boost),
+            "consultation_axis": str(consultation_axis or "") or None,
+            "history_theme": str(c.get("history_theme") or "") or None,
         }
 
         scored.append(
