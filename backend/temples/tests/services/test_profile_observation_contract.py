@@ -6,7 +6,7 @@ from temples.services.concierge_chat import build_chat_recommendations
 
 
 def test_build_chat_recommendations_exposes_profile_observation_contracts(monkeypatch):
-    def fake_resolve_llm_route(*, query, valid_candidates, need_tags, llm_enabled):
+    def fake_resolve_llm_route(*, query, valid_candidates, need_tags, llm_enabled, consultation_axis=None):
         return {
             "recs": {
                 "recommendations": [
