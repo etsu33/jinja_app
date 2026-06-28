@@ -158,7 +158,7 @@ def build_chat_candidates(
             )
         )
 
-    candidates = candidates[:limit]
+    candidates = candidates[:pool_limit]
     candidates = _dedupe_candidates(candidates)
 
     with_pid = sum(1 for c in candidates if c.get("place_id"))
