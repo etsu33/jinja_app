@@ -314,6 +314,9 @@ def test_chat_response_includes_debug_observation_contract_fields(client, monkey
                     "direction_profile": {},
                     "emotion_profile": {},
                     "action_intent": {},
+                    "decision_context": {},
+                    "constraint_profile": {},
+                    "outcome_hint": {},
                 },
                 "visit_style_observation": {
                     "pool_size": 1,
@@ -413,6 +416,9 @@ def test_chat_response_includes_debug_observation_contract_fields(client, monkey
         "direction_profile",
         "emotion_profile",
         "action_intent",
+        "decision_context",
+        "constraint_profile",
+        "outcome_hint",
     }
     assert interpretation_profile["raw_query"] == "近場で参拝したい"
     assert isinstance(interpretation_profile["state_profile"], dict)
@@ -420,6 +426,9 @@ def test_chat_response_includes_debug_observation_contract_fields(client, monkey
     assert isinstance(interpretation_profile["direction_profile"], dict)
     assert isinstance(interpretation_profile["emotion_profile"], dict)
     assert isinstance(interpretation_profile["action_intent"], dict)
+    assert isinstance(interpretation_profile["decision_context"], dict)
+    assert isinstance(interpretation_profile["constraint_profile"], dict)
+    assert isinstance(interpretation_profile["outcome_hint"], dict)
 
     candidate_pool = debug["candidate_pool_observation"]
     assert set(candidate_pool.keys()) == {
