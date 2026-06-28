@@ -150,7 +150,18 @@ def build_recommendation_score_v3_breakdown(
         "mode": "shadow",
     }
 
+
 SCORE_V3_HISTORY_THEME_BY_AXIS: dict[str, dict[str, float]] = {
+    "rest_healing": {
+        "静寂": 1.0,
+        "復興": 0.8,
+        "守り": 0.6,
+        "縁": 0.2,
+        "勝負": 0.0,
+    },
+}
+
+SCORE_V3_HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS: dict[str, dict[str, float]] = {
     "rest_healing": {
         "静寂": 1.0,
         "復興": 0.8,
@@ -173,6 +184,22 @@ def resolve_score_v3_history_signal(
         return 0.0
 
     return float(SCORE_V3_HISTORY_THEME_BY_AXIS.get(axis, {}).get(theme, 0.0))
+
+
+def resolve_history_theme_candidate_boost(
+    *,
+    consultation_axis: str | None,
+    history_theme: str | None,
+) -> float:
+    axis = str(consultation_axis or "").strip()
+    theme = str(history_theme or "").strip()
+
+    if not axis or not theme:
+        return 0.0
+
+    return float(
+        SCORE_V3_HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS.get(axis, {}).get(theme, 0.0)
+    )
 
 
 # 方角ラベル（日本語）→ shrine 側の direction/direction_tags で使われうる値
@@ -1009,6 +1036,12 @@ def _attach_breakdown(
         + study_bonus
     )
 
+    history_theme_candidate_boost = resolve_history_theme_candidate_boost(
+        consultation_axis=consultation_axis,
+        history_theme=rec.get("history_theme"),
+    )
+    score_need_rank_weighted += history_theme_candidate_boost
+
     w1 = float(weights.get("element", 0.0))
     w2 = float(weights.get("need", 0.0))
     w3 = float(weights.get("popular", 0.0))
@@ -1222,6 +1255,7 @@ def _attach_breakdown(
                 "raw": int(score_need),
                 "rank_raw": int(score_need_rank),
                 "rank_weighted": float(score_need_rank_weighted),
+                "history_theme_candidate_boost": float(history_theme_candidate_boost),
                 "weight": float(w2),
                 "matched_tags": matched_all,
                 "matched_by_tag_count": len(matched_by_tag),
@@ -1230,6 +1264,13 @@ def _attach_breakdown(
                 "contribution": float(score_need * w2),
                 "rank_contribution": float(score_need_rank * w2),
                 "rank_weighted_contribution": float(score_need_rank_weighted * w2),
+            },
+            "history_theme_candidate_boost": {
+                "raw": float(history_theme_candidate_boost),
+                "weight": float(w2),
+                "contribution": float(history_theme_candidate_boost * w2),
+                "consultation_axis": str(consultation_axis or "") or None,
+                "history_theme": str(rec.get("history_theme") or "") or None,
             },
             "popular": {
                 "raw": float(score_popular),
@@ -1930,4 +1971,6 @@ __all__ = [
     "resolve_score_v3_mode",
     "resolve_score_v3_mode_detail",
     "resolve_score_sort_key",
+    "resolve_score_v3_history_signal",
+    "resolve_history_theme_candidate_boost",
 ]
