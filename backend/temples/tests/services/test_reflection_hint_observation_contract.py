@@ -27,7 +27,7 @@ def test_reflection_hint_flows_into_recommendation_observation_contract(
         mood_after="落ち着いた",
     )
 
-    def fake_resolve_llm_route(*, query, valid_candidates, need_tags, llm_enabled):
+    def fake_resolve_llm_route(*, query, valid_candidates, need_tags, llm_enabled, consultation_axis=None):
         return {
             "recs": {
                 "recommendations": [
