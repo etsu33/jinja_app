@@ -106,3 +106,87 @@ def test_discomfort_cure_keeps_health():
     extracted = extract_need_tags("不調を治す")
 
     assert "health" in extracted.tags
+
+
+@pytest.mark.parametrize(
+    ("query", "expected_tag", "unexpected_tags"),
+    [
+        ("静かな場所でゆっくり休みたい", "rest", ["protection", "career"]),
+        ("不安が強くて気持ちを整えたい", "mental", ["career", "money"]),
+        ("落ち込んでいて、少し心を整えたい", "mental", ["career", "money"]),
+        ("眠れないので穏やかに過ごしたい", "rest", ["career", "money"]),
+    ],
+)
+def test_need_taxonomy_separates_rest_and_mental_boundaries(
+    query,
+    expected_tag,
+    unexpected_tags,
+):
+    extracted = extract_need_tags(query)
+
+    assert expected_tag in extracted.tags
+    for unexpected_tag in unexpected_tags:
+        assert unexpected_tag not in extracted.tags
+
+
+@pytest.mark.parametrize(
+    ("query", "expected_tag", "unexpected_tags"),
+    [
+        ("転職するかどうか考えたい", "career", ["money"]),
+        ("キャリアの方向性を見直したい", "career", ["money"]),
+        ("一歩踏み出す勇気がほしい", "courage", ["career", "money"]),
+        ("新しい行動を始めたい", "courage", ["money"]),
+    ],
+)
+def test_need_taxonomy_separates_courage_and_career_boundaries(
+    query,
+    expected_tag,
+    unexpected_tags,
+):
+    extracted = extract_need_tags(query)
+
+    assert expected_tag in extracted.tags
+    for unexpected_tag in unexpected_tags:
+        assert unexpected_tag not in extracted.tags
+
+
+@pytest.mark.parametrize(
+    ("query", "expected_tag", "unexpected_tags"),
+    [
+        ("恋愛で良い出会いがほしい", "love", ["career", "money"]),
+        ("復縁について気持ちを整理したい", "love", ["career", "money"]),
+        ("職場の人間関係を整えたい", "relationship", ["love", "money"]),
+        ("友達との関係を見直したい", "relationship", ["love", "money"]),
+    ],
+)
+def test_need_taxonomy_separates_love_and_relationship_boundaries(
+    query,
+    expected_tag,
+    unexpected_tags,
+):
+    extracted = extract_need_tags(query)
+
+    assert expected_tag in extracted.tags
+    for unexpected_tag in unexpected_tags:
+        assert unexpected_tag not in extracted.tags
+
+
+@pytest.mark.parametrize(
+    ("query", "expected_tag", "unexpected_tags"),
+    [
+        ("収入を増やしたい", "money", ["love"]),
+        ("売上を伸ばしたい", "money", ["love"]),
+        ("仕事の方向性を考えたい", "career", ["money", "love"]),
+        ("副業の始め方を考えたい", "career", ["love"]),
+    ],
+)
+def test_need_taxonomy_separates_money_and_career_boundaries(
+    query,
+    expected_tag,
+    unexpected_tags,
+):
+    extracted = extract_need_tags(query)
+
+    assert expected_tag in extracted.tags
+    for unexpected_tag in unexpected_tags:
+        assert unexpected_tag not in extracted.tags
