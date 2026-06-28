@@ -54,6 +54,8 @@ def test_normalize_consultation_axis(raw, expected):
         ("独立して自由に働きたい", "independence"),
         ("会社を作りたい", "independence"),
         ("疲れていて静かに回復したい", "rest_healing"),
+        ("最近落ち込んでいて、立て直したい", "rest_healing"),
+        ("気分が沈んでいるので静かに整えたい", "rest_healing"),
         ("気持ちを切り替えて前向きになれる参拝がしたい", "restart_mindset"),
         ("自然を感じながら参拝したい", "nature_reset"),
         ("資格試験に合格したい", "study_success"),
