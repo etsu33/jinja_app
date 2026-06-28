@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 from temples.services.concierge_chat import build_chat_recommendations
