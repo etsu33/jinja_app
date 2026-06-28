@@ -74,3 +74,35 @@ def test_need_taxonomy_detects_money_career_and_courage_keyword_boundaries(
 
     assert expected_tag in extracted.tags
     assert expected_hit in extracted.hits[expected_tag]
+
+
+def test_recovery_without_health_context_resolves_to_rest_only():
+    extracted = extract_need_tags("無理せず回復できる場所に行きたい")
+
+    assert "rest" in extracted.tags
+    assert "health" not in extracted.tags
+
+
+def test_tired_recovery_resolves_to_rest_without_health():
+    extracted = extract_need_tags("疲れを回復したい")
+
+    assert "rest" in extracted.tags
+    assert "health" not in extracted.tags
+
+
+def test_illness_recovery_keeps_health():
+    extracted = extract_need_tags("病気から回復したい")
+
+    assert "health" in extracted.tags
+
+
+def test_physical_condition_recovery_keeps_health():
+    extracted = extract_need_tags("体調を回復したい")
+
+    assert "health" in extracted.tags
+
+
+def test_discomfort_cure_keeps_health():
+    extracted = extract_need_tags("不調を治す")
+
+    assert "health" in extracted.tags
