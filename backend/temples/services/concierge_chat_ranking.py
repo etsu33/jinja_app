@@ -150,6 +150,30 @@ def build_recommendation_score_v3_breakdown(
         "mode": "shadow",
     }
 
+SCORE_V3_HISTORY_THEME_BY_AXIS: dict[str, dict[str, float]] = {
+    "rest_healing": {
+        "静寂": 1.0,
+        "復興": 0.8,
+        "守り": 0.6,
+        "縁": 0.2,
+        "勝負": 0.0,
+    },
+}
+
+
+def resolve_score_v3_history_signal(
+    *,
+    consultation_axis: str | None,
+    history_theme: str | None,
+) -> float:
+    axis = str(consultation_axis or "").strip()
+    theme = str(history_theme or "").strip()
+
+    if not axis or not theme:
+        return 0.0
+
+    return float(SCORE_V3_HISTORY_THEME_BY_AXIS.get(axis, {}).get(theme, 0.0))
+
 
 # 方角ラベル（日本語）→ shrine 側の direction/direction_tags で使われうる値
 _DIRECTION_LABELS_JA: set[str] = {"東", "西", "南", "北", "北東", "南東", "南西", "北西"}
@@ -860,6 +884,7 @@ def _attach_breakdown(
     user_origin: Optional[Dict[str, Any]] = None,
     user=None,
     profile_context: Optional[Dict[str, Any]] = None,
+    consultation_axis: Optional[str] = None,
 ) -> None:
     """
     rec（1件の神社辞書）にスコアの内訳を追加する。
@@ -1171,7 +1196,10 @@ def _attach_breakdown(
     # Score v3 統合（shadow モード: 既存 score_total / sort 順に影響しない）
     score_v3_breakdown = build_recommendation_score_v3_breakdown(
         state_signal=float(score_need),
-        history_signal=0.0,
+        history_signal=resolve_score_v3_history_signal(
+            consultation_axis=consultation_axis,
+            history_theme=rec.get("history_theme"),
+        ),
         distance_signal=float(score_distance),
         behavior_profile={"total": light_behavior["total"]},
         profile_signal={"score": profile_signal_score},

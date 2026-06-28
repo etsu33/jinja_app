@@ -187,6 +187,7 @@ def _attach_chat_rec_enrichment(
     user_origin: Optional[Dict[str, Any]] = None,
     user=None,
     profile_context: Optional[Dict[str, Any]] = None,
+    consultation_axis: Optional[str] = None,
 ) -> Dict[str, Any]:
     for rec in recs.get("recommendations") or []:
         if not isinstance(rec, dict):
@@ -204,6 +205,7 @@ def _attach_chat_rec_enrichment(
             user_origin=user_origin,
             user=user,
             profile_context=profile_context,
+            consultation_axis=consultation_axis,
         )
         _apply_soft_signal_highlights(
             rec,
@@ -569,6 +571,7 @@ def build_chat_recommendations(
         user_origin=bias,
         user=user,
         profile_context=profile_context,
+        consultation_axis=consultation_axis_value,
     )
     recs["consultation_axis"] = consultation_axis_value
     for rec in recs.get("recommendations") or []:
