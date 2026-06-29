@@ -219,6 +219,9 @@ def _build_reason_text(fact: dict[str, Any], interpretation: dict[str, Any], act
     else:
         fact_text = f"この候補には、{fact_label}という文脈が含まれています。"
 
+    if fact_label == "候補神社" and interpretation_text == "相談内容と神社側の文脈を照合する候補です。":
+        interpretation_text = "相談内容に合う神社側の手がかりを確認しています。"
+
     return "".join([fact_text, interpretation_text, action_text])
 
 
@@ -261,5 +264,4 @@ __all__ = [
     "RecommendationReasonV4",
     "build_recommendation_reason_v4",
 ]
-
 
