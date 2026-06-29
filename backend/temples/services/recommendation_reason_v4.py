@@ -250,14 +250,22 @@ def _build_reason_text(fact: dict[str, Any], interpretation: dict[str, Any], act
     if fact_goriyaku and fact_goriyaku != fact_label:
         fact_details.append(f"{fact_goriyaku}の要素")
     if visit_style_copies:
-        fact_details.append("、".join(visit_style_copies[:2]))
+        fact_details.extend(visit_style_copies[:2])
     if fact_details:
-        fact_text = f"{fact_text[:-1]}。{ '。'.join(fact_details) }も確認材料になります。"
+        detail_text = "、".join(fact_details)
+        if fact_text.endswith("という文脈があります。"):
+            fact_text = fact_text.replace(
+                "という文脈があります。",
+                f"という文脈があり、{detail_text}も確認材料になります。",
+            )
+        else:
+            fact_text = f"{fact_text.rstrip('。')}。{detail_text}も確認材料になります。"
 
     if fact_label == "候補神社" and interpretation_text == "相談内容と神社側の文脈を照合する候補です。":
         interpretation_text = "相談内容に合う神社側の手がかりを確認しています。"
 
-    return "".join([fact_text, interpretation_text, action_text])
+    reason_parts = [fact_text, interpretation_text, action_text]
+    return "".join(reason_parts[:3])
 
 
 def build_recommendation_reason_v4(
