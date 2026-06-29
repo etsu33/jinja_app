@@ -1,5 +1,3 @@
-
-
 # Recommendation v4 Copy Guideline
 
 ## Goal
@@ -65,6 +63,56 @@ Recommendation v4 のコピーは、以下の順で組み立てる。
 
 推薦理由は、ユーザーを説得する文章ではなく、ユーザーが「なぜこの神社が候補なのか」を理解するための説明である。
 
+## Writing Policy
+
+Recommendation Reason v4 は「構造化データ → 自然文」の変換層として扱う。
+
+### state_profile
+
+目的:
+- 現在状態を自然文へ変換する
+
+ルール:
+- 状態を断定しない
+- 「〜が含まれる相談」「〜という様子がうかがえる」程度に留める
+- 心理診断のような表現を避ける
+
+良い例:
+- 今回の相談には、判断に迷う様子が含まれています。
+- 少し立ち止まって整理したい文脈が見受けられます。
+
+避ける例:
+- あなたは迷っています。
+- あなたは疲れています。
+
+### direction_profile
+
+目的:
+- 推薦方向を history_theme へ接続する
+
+ルール:
+- direction は直接表示しない
+- history_theme に自然変換する
+- 同じ theme を本文で繰り返さない
+
+### emotion_profile
+
+目的:
+- 文体の強さを調整する
+
+ルール:
+- 情報は増やさない
+- 断定を弱める
+- 「考えられます」「受け取れます」「〜という文脈があります」を優先する
+
+### Sentence Length
+
+- Fact は1文
+- Interpretation は1〜2文
+- Action は1文
+- reason_text は最大3文を基本とする
+- 1文60文字程度を目安とする
+
 ## Layer Responsibility
 
 ### Fact Layer
@@ -109,17 +157,18 @@ Interpretation Layer は、相談内容と神社側事実をつなぐ説明を�
 
 使用してよい材料:
 
+- state_profile
+- direction_profile
 - need_profile
 - decision_context
 - constraint_profile
 - outcome_hint
 - emotion_profile
-- meaning_translation.shrine_context_need
-- meaning_translation.history_theme
 
 表示方針:
 
 - 内部キーをそのまま表示しない
+- emotion_profile は情報ではなく文体調整にのみ利用する
 - 「あなたは〜です」と断定しない
 - 「今の相談には〜が含まれています」程度に留める
 - `history_theme` を本文内で繰り返しすぎない
@@ -270,6 +319,15 @@ Action Layer は、次に取れる小さな行動を提示する。
 この候補には、再出発というテーマが含まれています。仕事や働き方を見直したい相談として受け取れます。参拝前に、今いちばん決めたいことを一つだけ書き出すと、行動につなげやすくなります。
 ```
 
+追加ルール:
+
+- Fact / Interpretation / Action を1文ずつ対応させる
+- 1つの文に複数責務を書かない
+- 同じ意味の動詞を繰り返さない
+- history_theme は原則1回まで
+- action_context は原則1回まで
+- 最大3文を維持する
+
 ### fact.text
 
 Fact は短くする。
@@ -401,6 +459,11 @@ Action は、小さく、実行単位で書く。
 - [ ] 行動提案が小さな実行単位になっている
 - [ ] 医療・宗教・占術的な断定をしていない
 - [ ] 結果保証をしていない
+- [ ] state_profile が断定表現になっていない
+- [ ] direction_profile が history_theme に自然変換されている
+- [ ] emotion_profile が文体調整のみに使われている
+- [ ] reason_text が3文以内に収まっている
+- [ ] Fact / Interpretation / Action が1文ずつ対応している
 ```
 
 ## Quality Metrics

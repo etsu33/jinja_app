@@ -36,6 +36,9 @@ Recommendation Reason v4 は以下を担当する。
 - Meaning Translation の結果を表示理由に反映する
 - decision_context / constraint_profile / outcome_hint を補助材料として使う
 - history_theme / action_context の重複表現を減らす
+- need_tags.py を相談分類の正本として扱い、reason_v4 はその分類結果を説明文に変換する
+- consultation_interpreter.py の出力を、補助解釈として fact / interpretation / action の接続に使う
+- reason_v4 は ranking を変更せず、推薦結果を説明する表示層に限定する
 
 ## Non Goals
 
@@ -44,10 +47,25 @@ Recommendation Reason v4 は以下を担当する。
 - 神社DB構造を変更しない
 - UI layout を変更しない
 - Premium導線を変更しない
+- need_tags.py の分類ロジックを reason_v4 内で再定義しない
+- consultation_interpreter.py の補助解釈だけで推薦順位を変更しない
 
 ## Input Contract
 
 Reason v4 は以下の入力を読む。
+
+### need_tags.py as source of truth
+
+`backend/temples/domain/need_tags.py` は、相談文から need_tags を抽出する正本である。
+
+Reason v4 は need_tags の分類結果を再判定しない。
+`need_profile.need_tags` / `need_profile.primary_need_tag` を、相談テーマの入力として読む。
+
+使用目的:
+
+- 相談テーマをユーザー向け自然文に変換する
+- 神社側の history_theme / goriyaku / goriyaku_tags との接続を説明する
+- recommendation_reason_v4 の interpretation layer に反映する
 
 ### recommendation_input_profile
 
@@ -74,6 +92,15 @@ Reason v4 は以下の入力を読む。
 - decision_context
 - constraint_profile
 - outcome_hint
+
+`backend/temples/services/consultation_interpreter.py` は、need_tags の正本ではなく補助解釈レイヤーである。
+
+使用方針:
+
+- need_profile は need_tags.py の結果を優先する
+- decision_context / constraint_profile / outcome_hint は説明文の補助材料として使う
+- state_profile / direction_profile / emotion_profile は現状の reason_v4 本文では直接使わない
+- state_profile / direction_profile / emotion_profile は次フェーズで文体調整・テーマ接続・感情トーン調整の候補とする
 
 ### meaning_translation
 
@@ -151,13 +178,18 @@ Interpretation Layer は、相談内容と神社側事実をつなぐ説明を�
 
 使用材料:
 
-- state_profile
 - need_profile
 - decision_context
 - constraint_profile
 - outcome_hint
 - history_theme
 - shrine_context_need
+
+次フェーズ接続候補:
+
+- state_profile: 現在状態を断定せずに補助説明へ反映する候補
+- direction_profile: history_theme との接続理由を強める候補
+- emotion_profile: 表現の強さやトーンを調整する候補
 
 方針:
 
@@ -217,6 +249,8 @@ Recommendation Quality Audit の以下指標と接続する。
 - action_specificity
 - history_theme_fit
 - semantic_duplication
+- shrine_specificity
+- consultation_fit
 
 ## Implementation Plan
 
