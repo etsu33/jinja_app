@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 from temples.services.recommendation_reason_v4 import build_recommendation_reason_v4
@@ -8,9 +6,19 @@ from temples.services.recommendation_reason_v4 import build_recommendation_reaso
 def test_build_recommendation_reason_v4_returns_stable_schema():
     result = build_recommendation_reason_v4(
         interpretation_profile={
+            "state_profile": {
+                "primary_state": "uncertain",
+            },
             "need_profile": {
                 "primary_need_tag": "career",
                 "need_tags": ["career"],
+            },
+            "direction_profile": {
+                "direction": "review",
+                "themes": ["静寂", "再出発"],
+            },
+            "emotion_profile": {
+                "intensity": "medium",
             },
             "decision_context": {
                 "primary_decision": "career_decision",
@@ -85,9 +93,19 @@ def test_build_recommendation_reason_v4_builds_fact_layer_from_candidate_and_mea
 def test_build_recommendation_reason_v4_builds_interpretation_layer_from_profiles():
     result = build_recommendation_reason_v4(
         interpretation_profile={
+            "state_profile": {
+                "primary_state": "uncertain",
+            },
             "need_profile": {
                 "primary_need_tag": "career",
                 "need_tags": ["career"],
+            },
+            "direction_profile": {
+                "direction": "review",
+                "themes": ["静寂", "再出発"],
+            },
+            "emotion_profile": {
+                "intensity": "medium",
             },
             "decision_context": {
                 "primary_decision": "career_decision",
@@ -110,7 +128,7 @@ def test_build_recommendation_reason_v4_builds_interpretation_layer_from_profile
 
     assert result["interpretation"] == {
         "theme": "再出発",
-        "text": "仕事や進路の流れを見直したい。仕事や働き方を見直したい相談として受け取れます。仕事や働き方について判断したい文脈があります。お金や収入への不安があることも考慮します。判断材料を持ち帰りたい方向に整理できます。",
+        "text": "仕事や進路の流れを見直したい。判断に迷う様子を中心に、文脈があります。",
     }
     assert result["source"]["interpretation"] == "interpretation_profile|meaning_translation"
 
@@ -134,10 +152,10 @@ def test_build_recommendation_reason_v4_builds_action_layer_from_meaning_transla
     )
 
     assert result["action"] == {
-        "text": "問いを一つに絞り、今の状態を整理する。振り返りでは「次に小さく動かすなら、何から始めますか？」を確認します。",
-        "source": "meaning_translation.action_context+reflection_question_seed",
+        "text": "参拝後は「次に小さく動かすなら、何から始めますか？」を一つだけ振り返ると、次の行動に残しやすくなります。",
+        "source": "meaning_translation.reflection_question_seed",
     }
-    assert result["source"]["action"] == "meaning_translation.action_context+reflection_question_seed"
+    assert result["source"]["action"] == "meaning_translation.reflection_question_seed"
 
 
 def test_build_recommendation_reason_v4_uses_recommendation_input_profile_when_direct_inputs_are_missing():
@@ -167,14 +185,14 @@ def test_build_recommendation_reason_v4_uses_recommendation_input_profile_when_d
 
     assert result["fact"]["label"] == "縁"
     assert result["interpretation"]["theme"] == "縁"
-    assert result["action"]["text"] == "気持ちを落ち着け、今の状態を静かに見直す"
+    assert result["action"]["text"] == "参拝前に、気持ちを落ち着け、今の状態を静かに見直すことを一つだけ決めておくと、行動につなげやすくなります。"
 
 
 def test_build_recommendation_reason_v4_handles_missing_inputs_safely():
     result = build_recommendation_reason_v4()
 
     assert result == {
-        "reason_text": "この候補は、相談内容と神社側の文脈を照合する候補です。相談内容と神社側の文脈を照合する候補です。次に確認したいことを一つだけ決めます。",
+        "reason_text": "この候補は、相談内容と神社側の文脈を照合する候補です。相談内容と神社側の文脈を照合する候補です。参拝前に、次に確認したいことを一つだけ決めておきます。",
         "fact": {
             "label": "候補神社",
             "evidence": [],
@@ -184,7 +202,7 @@ def test_build_recommendation_reason_v4_handles_missing_inputs_safely():
             "text": "相談内容と神社側の文脈を照合する候補です。",
         },
         "action": {
-            "text": "次に確認したいことを一つだけ決めます。",
+            "text": "参拝前に、次に確認したいことを一つだけ決めておきます。",
             "source": "fallback",
         },
         "source": {
@@ -193,3 +211,67 @@ def test_build_recommendation_reason_v4_handles_missing_inputs_safely():
             "action": "fallback",
         },
     }
+
+
+def test_build_recommendation_reason_v4_does_not_expose_internal_keys_in_reason_text():
+    result = build_recommendation_reason_v4(
+        interpretation_profile={
+            "need_profile": {
+                "primary_need_tag": "career",
+                "need_tags": ["career"],
+            },
+            "decision_context": {
+                "primary_decision": "career_decision",
+            },
+            "constraint_profile": {
+                "primary_constraint": "money",
+            },
+            "outcome_hint": {
+                "primary_outcome": "decide",
+            },
+        },
+        candidate_profile={
+            "history_theme": "再出発",
+            "goriyaku": "仕事運",
+        },
+    )
+
+    assert "career" not in result["reason_text"]
+    assert "career_decision" not in result["reason_text"]
+    assert "money" not in result["reason_text"]
+    assert "decide" not in result["reason_text"]
+    assert "相談テーマ:" not in result["reason_text"]
+    assert "判断文脈:" not in result["reason_text"]
+
+
+def test_build_recommendation_reason_v4_uses_state_direction_and_emotion_profiles():
+    result = build_recommendation_reason_v4(
+        interpretation_profile={
+            "state_profile": {
+                "primary_state": "anxious",
+            },
+            "need_profile": {
+                "primary_need_tag": "mental",
+            },
+            "direction_profile": {
+                "direction": "stabilize",
+                "themes": ["守り", "静寂"],
+            },
+            "emotion_profile": {
+                "intensity": "high",
+            },
+        },
+        meaning_translation={
+            "history_theme": "守り",
+        },
+        candidate_profile={
+            "name": "神社C",
+            "history_theme": "守り",
+        },
+    )
+
+    assert result["interpretation"] == {
+        "theme": "守り",
+        "text": "気持ちを落ち着け、今の状態を整理したい相談として受け取れます。不安や心配を中心に、文脈が強めに含まれています。",
+    }
+    assert "あなたは" not in result["reason_text"]
