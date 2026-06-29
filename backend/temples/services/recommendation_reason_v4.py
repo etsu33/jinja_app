@@ -106,6 +106,7 @@ def _build_fact(candidate_profile: dict[str, Any], meaning_translation: dict[str
 
     return {
         "label": label,
+        "name": name,
         "evidence": evidence,
     }
 
@@ -205,10 +206,15 @@ def _build_action(interpretation_profile: dict[str, Any], meaning_translation: d
 
 def _build_reason_text(fact: dict[str, Any], interpretation: dict[str, Any], action: dict[str, Any]) -> str:
     fact_label = _first_string(fact.get("label")) or "候補神社"
+    fact_name = _first_string(fact.get("name"))
     interpretation_text = _first_string(interpretation.get("text")) or "相談内容と神社側の文脈を照合しています。"
     action_text = _first_string(action.get("text")) or "次に確認したいことを一つだけ決めます。"
 
-    if fact_label == "候補神社":
+    if fact_name and fact_label != "候補神社":
+        fact_text = f"{fact_name}には、{fact_label}という文脈が含まれています。"
+    elif fact_name:
+        fact_text = f"{fact_name}は、相談内容と神社側の文脈を照合する候補です。"
+    elif fact_label == "候補神社":
         fact_text = "この候補は、相談内容と神社側の文脈を照合する候補です。"
     else:
         fact_text = f"この候補には、{fact_label}という文脈が含まれています。"
@@ -255,3 +261,5 @@ __all__ = [
     "RecommendationReasonV4",
     "build_recommendation_reason_v4",
 ]
+
+
