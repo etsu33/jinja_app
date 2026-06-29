@@ -212,7 +212,7 @@ def test_build_recommendation_reason_v4_handles_missing_inputs_safely():
     result = build_recommendation_reason_v4()
 
     assert result == {
-        "reason_text": "この候補は、相談内容と神社側の文脈を照合する候補です。相談内容と神社側の文脈を照合する候補です。参拝前に、次に確認したいことを一つだけ決めておきます。",
+        "reason_text": "この候補は、相談内容と神社側の文脈を照合する候補です。相談内容に合う神社側の手がかりを確認しています。参拝前に、次に確認したいことを一つだけ決めておきます。",
         "fact": {
             "label": "候補神社",
             "name": None,
