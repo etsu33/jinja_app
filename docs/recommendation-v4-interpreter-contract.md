@@ -97,10 +97,27 @@
 - primary_need_tag
 - selected_goriyaku_tag_ids
 
+
 #### Used By
 - recommendation scoring
 - shrine matching
 - recommendation reason
+
+#### Source of Truth
+
+`need_tags.py` is the canonical source of need classification.
+
+Responsibilities:
+
+- Define the 15 need tag taxonomy.
+- Manage keyword and regex matching.
+- Resolve boundary cases between tags.
+- Provide stable `need_tags` for downstream consumers.
+
+`consultation_interpreter.py` must not define an independent taxonomy.
+Its `NEED_KEYWORDS` exist only as a lightweight interpretation aid for building `need_profile` and must remain aligned with `need_tags.py`.
+
+Any addition, deletion, or rename of a need tag must be performed in `need_tags.py` first and then synchronized to `consultation_interpreter.py`.
 
 ---
 
@@ -227,3 +244,22 @@
 - save_rate
 - route_open_rate
 - reflection_saved_rate
+
+## Recommendation Reason v4 Integration
+
+The interpretation layer prepares structured inputs for `recommendation_reason_v4`; it does not generate recommendation copy directly.
+
+Expected mapping:
+
+| Interpreter Field | recommendation_reason_v4 usage |
+|-------------------|--------------------------------|
+| state_profile | Describe the user's current situation. |
+| need_profile | Explain why the shrine matches the user's needs. |
+| direction_profile | Determine the recommended direction or theme. |
+| emotion_profile | Adjust tone and wording. |
+| decision_context | Reflect the decision the user is trying to make. |
+| constraint_profile | Mention practical constraints when appropriate. |
+| outcome_hint | Connect the recommendation to the desired outcome. |
+| action_intent | Generate action suggestions and CTA. |
+
+Recommendation copy should be generated from the structured interpretation rather than directly from the raw query whenever possible.
