@@ -111,7 +111,7 @@ def test_build_recommendation_reason_v4_includes_shrine_name_in_reason_text():
         },
     )
 
-    assert "神社Aには、再出発という文脈があります。仕事運の要素も確認材料になります。" in result["reason_text"]
+    assert "神社Aには、再出発という文脈があり、仕事運の要素も確認材料になります。" in result["reason_text"]
 
 
 def test_build_recommendation_reason_v4_keeps_goriyaku_and_visit_style_in_fact():
@@ -139,8 +139,8 @@ def test_build_recommendation_reason_v4_reflects_goriyaku_and_visit_style_in_fac
         },
     )
 
-    assert "神社Eには、再出発という文脈があります。" in result["reason_text"]
-    assert "仕事運の要素。静かに参拝しやすい、自然を感じながら過ごしやすいも確認材料になります。" in result["reason_text"]
+    assert "神社Eには、再出発という文脈があり、仕事運の要素、静かに参拝しやすい、自然を感じながら過ごしやすいも確認材料になります。" in result["reason_text"]
+    
 
 
 def test_build_recommendation_reason_v4_builds_interpretation_layer_from_profiles():
