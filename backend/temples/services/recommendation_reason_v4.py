@@ -92,6 +92,7 @@ def _copy_for_key(mapping: dict[str, str], key: str | None) -> str | None:
 def _build_fact(candidate_profile: dict[str, Any], meaning_translation: dict[str, Any]) -> dict[str, Any]:
     history_theme = _first_string(candidate_profile.get("history_theme"), meaning_translation.get("history_theme"))
     goriyaku = _first_string(candidate_profile.get("goriyaku"), candidate_profile.get("goriyaku_tags"))
+    visit_style_tags = _as_list(candidate_profile.get("visit_style_tags"))
     name = _first_string(candidate_profile.get("name"))
 
     label = _first_string(history_theme, goriyaku, name, "候補神社") or "候補神社"
@@ -101,12 +102,16 @@ def _build_fact(candidate_profile: dict[str, Any], meaning_translation: dict[str
         evidence.append(f"history_theme:{history_theme}")
     if goriyaku:
         evidence.append(f"goriyaku:{goriyaku}")
+    if visit_style_tags:
+        evidence.append(f"visit_style_tags:{','.join(str(tag) for tag in visit_style_tags)}")
     if name:
         evidence.append(f"name:{name}")
 
     return {
         "label": label,
         "name": name,
+        "goriyaku": goriyaku,
+        "visit_style_tags": visit_style_tags,
         "evidence": evidence,
     }
 
@@ -264,4 +269,6 @@ __all__ = [
     "RecommendationReasonV4",
     "build_recommendation_reason_v4",
 ]
+
+
 
