@@ -63,7 +63,7 @@ def test_build_recommendation_reason_v4_returns_stable_schema():
     assert isinstance(result["interpretation"], dict)
     assert isinstance(result["action"], dict)
     assert isinstance(result["source"], dict)
-    assert set(result["fact"].keys()) == {"label", "evidence"}
+    assert set(result["fact"].keys()) == {"label", "name", "evidence"}
     assert set(result["interpretation"].keys()) == {"theme", "text"}
     assert set(result["action"].keys()) == {"text", "source"}
     assert set(result["source"].keys()) == {"fact", "interpretation", "action"}
@@ -81,6 +81,7 @@ def test_build_recommendation_reason_v4_builds_fact_layer_from_candidate_and_mea
 
     assert result["fact"] == {
         "label": "再出発",
+        "name": "神社A",
         "evidence": [
             "history_theme:再出発",
             "goriyaku:仕事運",
@@ -88,6 +89,25 @@ def test_build_recommendation_reason_v4_builds_fact_layer_from_candidate_and_mea
         ],
     }
     assert result["source"]["fact"] == "candidate_profile|meaning_translation"
+
+
+def test_build_recommendation_reason_v4_includes_shrine_name_in_reason_text():
+    result = build_recommendation_reason_v4(
+        interpretation_profile={
+            "need_profile": {
+                "primary_need_tag": "career",
+                "need_tags": ["career"],
+            },
+        },
+        meaning_translation={"history_theme": "再出発"},
+        candidate_profile={
+            "name": "神社A",
+            "history_theme": "再出発",
+            "goriyaku": "仕事運",
+        },
+    )
+
+    assert "神社Aには、再出発という文脈が含まれています。" in result["reason_text"]
 
 
 def test_build_recommendation_reason_v4_builds_interpretation_layer_from_profiles():
@@ -195,6 +215,7 @@ def test_build_recommendation_reason_v4_handles_missing_inputs_safely():
         "reason_text": "この候補は、相談内容と神社側の文脈を照合する候補です。相談内容と神社側の文脈を照合する候補です。参拝前に、次に確認したいことを一つだけ決めておきます。",
         "fact": {
             "label": "候補神社",
+            "name": None,
             "evidence": [],
         },
         "interpretation": {
