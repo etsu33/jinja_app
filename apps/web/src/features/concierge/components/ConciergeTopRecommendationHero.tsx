@@ -6,7 +6,10 @@ import type { ReactNode } from "react";
 import { trackSearchEvent } from "@/lib/analytics/searchEvents";
 import { trackActionEvent } from "@/lib/api/actionEvents";
 import { trackActionAnalytics } from "@/lib/analytics/actionEvents";
-import type { ActionSuggestionViewModel } from "@/viewmodels/conciergeResultItem";
+import type {
+  ActionSuggestionV4PreviewViewModel,
+  ActionSuggestionViewModel,
+} from "@/viewmodels/conciergeResultItem";
 
 type Props = {
   name: string;
@@ -26,6 +29,7 @@ type Props = {
   nextActionHint?: string | null;
   tags?: string[];
   actionSuggestions?: ActionSuggestionViewModel[];
+  actionSuggestionV4Preview?: ActionSuggestionV4PreviewViewModel | null;
   analyticsSource?: "concierge_result" | "shrine_detail" | "map" | "shrines" | null;
   threadId?: string | null;
   resultSetId?: string | null;
@@ -56,6 +60,7 @@ export default function ConciergeTopRecommendationHero({
   nextActionHint: _nextActionHint = null,
   tags: _tags = [],
   actionSuggestions = [],
+  actionSuggestionV4Preview = null,
   analyticsSource = "concierge_result",
   threadId = null,
   resultSetId = null,
@@ -73,7 +78,20 @@ export default function ConciergeTopRecommendationHero({
     [actionSuggestions],
   );
   const visibleActionSuggestionIds = visibleActionSuggestions.map((item) => item.id).join(",");
+  const visibleActionSuggestionV4Preview = actionSuggestionV4Preview?.preview === true ? actionSuggestionV4Preview : null;
+  const visibleActionSuggestionV4PreviewKey = visibleActionSuggestionV4Preview
+    ? [
+        visibleActionSuggestionV4Preview.primaryAction.actionType,
+        visibleActionSuggestionV4Preview.primaryAction.label,
+        visibleActionSuggestionV4Preview.secondaryAction.actionType,
+        visibleActionSuggestionV4Preview.secondaryAction.label,
+        visibleActionSuggestionV4Preview.reflectionPrompt.promptType,
+        visibleActionSuggestionV4Preview.reflectionPrompt.question,
+        visibleActionSuggestionV4Preview.actionSource.source,
+      ].join("|")
+    : "";
   const entranceCopySource = subtitle ?? catchCopy;
+
   const entranceCopy = entranceCopySource.split("。")[0]
     ? `${entranceCopySource.split("。")[0]}。`
     : entranceCopySource;
@@ -105,6 +123,41 @@ export default function ConciergeTopRecommendationHero({
     threadId,
     visibleActionSuggestionIds,
     visibleActionSuggestions,
+  ]);
+
+  useEffect(() => {
+    if (!visibleActionSuggestionV4Preview) return;
+
+    const basePayload = {
+      source: analyticsSource,
+      threadId,
+      resultSetId,
+      shrineId,
+      recommendationRank,
+      position: "hero_primary" as const,
+      historyTheme,
+      actionSuggestionVersion: visibleActionSuggestionV4Preview.version,
+      primaryActionType: visibleActionSuggestionV4Preview.primaryAction.actionType,
+      secondaryActionType: visibleActionSuggestionV4Preview.secondaryAction.actionType,
+      promptType: visibleActionSuggestionV4Preview.reflectionPrompt.promptType,
+      actionSource: visibleActionSuggestionV4Preview.actionSource.source,
+      sourceKeys: visibleActionSuggestionV4Preview.sourceKeys.join(","),
+    };
+
+    trackSearchEvent("action_suggestion_preview_view", basePayload);
+    trackSearchEvent("reflection_prompt_view", {
+      ...basePayload,
+      reflectionPromptSourceSeed: visibleActionSuggestionV4Preview.reflectionPrompt.sourceSeed,
+    });
+  }, [
+    analyticsSource,
+    historyTheme,
+    recommendationRank,
+    resultSetId,
+    shrineId,
+    threadId,
+    visibleActionSuggestionV4Preview,
+    visibleActionSuggestionV4PreviewKey,
   ]);
 
   const buildActionEventPayload = (item: ActionSuggestionViewModel, index: number) => ({
@@ -164,6 +217,31 @@ export default function ConciergeTopRecommendationHero({
         recommendationRank,
         actionPosition: index + 1,
       },
+    });
+  };
+
+  const handleActionSuggestionV4Click = (actionRole: "primary" | "secondary") => {
+    if (!visibleActionSuggestionV4Preview) return;
+
+    const action = actionRole === "primary"
+      ? visibleActionSuggestionV4Preview.primaryAction
+      : visibleActionSuggestionV4Preview.secondaryAction;
+
+    trackSearchEvent(actionRole === "primary" ? "primary_action_click" : "secondary_action_click", {
+      source: analyticsSource,
+      threadId,
+      resultSetId,
+      shrineId,
+      recommendationRank,
+      position: "hero_primary",
+      historyTheme,
+      actionSuggestionVersion: visibleActionSuggestionV4Preview.version,
+      actionRole,
+      actionType: action.actionType,
+      actionLabel: action.label,
+      promptType: visibleActionSuggestionV4Preview.reflectionPrompt.promptType,
+      actionSource: visibleActionSuggestionV4Preview.actionSource.source,
+      sourceKeys: visibleActionSuggestionV4Preview.sourceKeys.join(","),
     });
   };
 
@@ -238,6 +316,61 @@ export default function ConciergeTopRecommendationHero({
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {visibleActionSuggestionV4Preview ? (
+          <div
+            className="rounded-2xl border border-teal-100 bg-teal-50/70 px-4 py-3 shadow-sm shadow-teal-900/5"
+            data-testid="hero-action-suggestion-v4-preview"
+          >
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <p className="text-[11px] font-semibold tracking-[0.14em] text-teal-700">次に取りやすい行動</p>
+                <p className="text-xs leading-5 text-slate-600">この候補を見たあとに、無理なく進めるための整理です。</p>
+              </div>
+
+              <div className="rounded-xl bg-white/85 px-3 py-2 ring-1 ring-teal-100">
+                <p className="text-[11px] font-semibold tracking-[0.12em] text-teal-700">まずやること</p>
+                <p className="mt-1 text-sm font-semibold leading-6 text-slate-800">
+                  {visibleActionSuggestionV4Preview.primaryAction.label}
+                </p>
+                <p className="mt-0.5 text-xs leading-5 text-slate-600">
+                  {visibleActionSuggestionV4Preview.primaryAction.description}
+                </p>
+                <button
+                  type="button"
+                  className="mt-2 rounded-lg border border-teal-200 bg-white px-2 py-1.5 text-xs font-semibold text-teal-800 transition hover:bg-teal-50"
+                  onClick={() => handleActionSuggestionV4Click("primary")}
+                >
+                  この行動で進める
+                </button>
+              </div>
+
+              <div className="rounded-xl bg-white/85 px-3 py-2 ring-1 ring-teal-100">
+                <p className="text-[11px] font-semibold tracking-[0.12em] text-teal-700">次の候補</p>
+                <p className="mt-1 text-sm font-semibold leading-6 text-slate-800">
+                  {visibleActionSuggestionV4Preview.secondaryAction.label}
+                </p>
+                <p className="mt-0.5 text-xs leading-5 text-slate-600">
+                  {visibleActionSuggestionV4Preview.secondaryAction.description}
+                </p>
+                <button
+                  type="button"
+                  className="mt-2 rounded-lg border border-teal-200 bg-white px-2 py-1.5 text-xs font-semibold text-teal-800 transition hover:bg-teal-50"
+                  onClick={() => handleActionSuggestionV4Click("secondary")}
+                >
+                  この候補を使う
+                </button>
+              </div>
+
+              <div className="rounded-xl bg-white/85 px-3 py-2 ring-1 ring-teal-100">
+                <p className="text-[11px] font-semibold tracking-[0.12em] text-teal-700">参拝前の問い</p>
+                <p className="mt-1 text-sm font-semibold leading-6 text-slate-800">
+                  {visibleActionSuggestionV4Preview.reflectionPrompt.question}
+                </p>
               </div>
             </div>
           </div>

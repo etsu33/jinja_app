@@ -835,6 +835,7 @@ export default function ConciergeSectionsRenderer({
                               differenceFromOthers={null}
                               tags={(heroItem.breakdown?.matched_need_tags ?? []).map(labelNeedDisplayTag).slice(0, 3)}
                               actionSuggestions={(heroItem as any).actionSuggestions ?? []}
+                              actionSuggestionV4Preview={(heroItem as any).actionSuggestionV4Preview ?? null}
                               analyticsSource="concierge_result"
                               threadId={tid ?? null}
                               resultSetId={resultSetId}

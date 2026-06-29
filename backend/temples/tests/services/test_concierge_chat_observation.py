@@ -374,7 +374,7 @@ def test_observe_visit_style_before_trim_returns_empty_result_on_invalid_recs(ca
 
 
 def test_build_chat_recommendations_attaches_visit_style_observation_debug(monkeypatch):
-    def fake_resolve_llm_route(*, query, valid_candidates, need_tags, llm_enabled):
+    def fake_resolve_llm_route(*, query, valid_candidates, need_tags, llm_enabled, consultation_axis=None):
         return {
             "recs": {
                 "recommendations": [
@@ -477,7 +477,7 @@ def test_build_chat_recommendations_attaches_visit_style_observation_debug(monke
 
 
 def test_build_chat_recommendations_uses_query_for_visit_style_tags(monkeypatch):
-    def fake_resolve_llm_route(*, query, valid_candidates, need_tags, llm_enabled):
+    def fake_resolve_llm_route(*, query, valid_candidates, need_tags, llm_enabled, consultation_axis=None):
         return {
             "recs": {
                 "recommendations": [

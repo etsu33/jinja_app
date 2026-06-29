@@ -17,6 +17,7 @@ def resolve_llm_route(
     valid_candidates: List[Dict[str, Any]],
     need_tags: List[str],
     llm_enabled: bool,
+    consultation_axis: str | None = None,
 ) -> Dict[str, Any]:
     """
     LLM 利用可否を判定し、recommendations の初期 recs を返す。
@@ -54,12 +55,14 @@ def resolve_llm_route(
             prefiltered = _prefilter_candidates_for_need(
                 valid_candidates,
                 need_tags=need_tags,
+                consultation_axis=consultation_axis,
             )
             recs = _seed_recs_from_candidates(prefiltered, size=12)
     else:
         prefiltered = _prefilter_candidates_for_need(
             valid_candidates,
             need_tags=need_tags,
+            consultation_axis=consultation_axis,
         )
         recs = _seed_recs_from_candidates(prefiltered, size=12)
 
