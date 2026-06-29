@@ -114,6 +114,8 @@ def _build_interpretation(
     interpretation_profile: dict[str, Any],
     meaning_translation: dict[str, Any],
 ) -> dict[str, Any]:
+    state_profile = _as_dict(interpretation_profile.get("state_profile"))
+    emotion_profile = _as_dict(interpretation_profile.get("emotion_profile"))
     need_profile = _as_dict(interpretation_profile.get("need_profile"))
     decision_context = _as_dict(interpretation_profile.get("decision_context"))
     constraint_profile = _as_dict(interpretation_profile.get("constraint_profile"))
@@ -132,30 +134,33 @@ def _build_interpretation(
         NEED_COPY,
         _first_string(need_profile.get("primary_need_tag"), need_profile.get("need_tags")),
     )
-    primary_decision = _copy_for_key(
-        DECISION_COPY,
-        _first_string(decision_context.get("primary_decision"), decision_context.get("decision_candidates")),
-    )
-    primary_constraint = _copy_for_key(
-        CONSTRAINT_COPY,
-        _first_string(constraint_profile.get("primary_constraint"), constraint_profile.get("constraints")),
-    )
-    primary_outcome = _copy_for_key(
-        OUTCOME_COPY,
-        _first_string(outcome_hint.get("primary_outcome"), outcome_hint.get("outcome_candidates")),
-    )
+    primary_state = _first_string(state_profile.get("primary_state"))
+    emotion_intensity = _first_string(emotion_profile.get("intensity"))
+    state_copy = {
+        "uncertain": "判断に迷う様子",
+        "tired": "無理なく休みたい様子",
+        "anxious": "不安や心配",
+        "stuck": "停滞を見直したい様子",
+        "ready_to_change": "流れを切り替えたい様子",
+    }.get(primary_state)
 
     parts: list[str] = []
     if shrine_context_need:
         parts.append(shrine_context_need)
-    if primary_need and primary_need not in parts:
-        parts.append(f"{primary_need}相談として受け取れます")
-    if primary_decision:
-        parts.append(f"{primary_decision}文脈があります")
-    if primary_constraint:
-        parts.append(f"{primary_constraint}ことも考慮します")
-    if primary_outcome:
-        parts.append(f"{primary_outcome}方向に整理できます")
+    if state_copy:
+        if primary_need and not shrine_context_need:
+            parts.append(f"{primary_need}相談として受け取れます")
+        state_suffix = "文脈が強めに含まれています" if emotion_intensity == "high" else "文脈があります"
+        parts.append(f"{state_copy}を中心に、{state_suffix}")
+    else:
+        primary_decision = _copy_for_key(
+            DECISION_COPY,
+            _first_string(decision_context.get("primary_decision"), decision_context.get("decision_candidates")),
+        )
+        if primary_need:
+            parts.append(f"{primary_need}相談として受け取れます")
+        elif primary_decision:
+            parts.append(f"{primary_decision}文脈があります")
 
     text = "。".join(parts) + "。" if parts else "相談内容と神社側の文脈を照合する候補です。"
 
@@ -174,15 +179,12 @@ def _build_action(interpretation_profile: dict[str, Any], meaning_translation: d
     intent = _first_string(action_intent.get("intent"), action_intent.get("candidates"))
     outcome = _first_string(outcome_hint.get("primary_outcome"), outcome_hint.get("outcome_candidates"))
 
-    if action_context and reflection_question_seed:
-        text = f"{action_context}。振り返りでは「{reflection_question_seed}」を確認します。"
-        source = "meaning_translation.action_context+reflection_question_seed"
-    elif action_context:
-        text = action_context
-        source = "meaning_translation.action_context"
-    elif reflection_question_seed:
-        text = f"振り返りでは「{reflection_question_seed}」を確認します。"
+    if reflection_question_seed:
+        text = f"参拝後は「{reflection_question_seed}」を一つだけ振り返ると、次の行動に残しやすくなります。"
         source = "meaning_translation.reflection_question_seed"
+    elif action_context:
+        text = f"参拝前に、{action_context}ことを一つだけ決めておくと、行動につなげやすくなります。"
+        source = "meaning_translation.action_context"
     elif intent:
         intent_copy = _copy_for_key(ACTION_INTENT_COPY, intent) or "次に取りたい行動"
         text = f"次に取る行動として、{intent_copy}ことを小さく確認します。"
@@ -192,7 +194,7 @@ def _build_action(interpretation_profile: dict[str, Any], meaning_translation: d
         text = f"望む着地点として、{outcome_copy}方向に向けた小さな確認を行います。"
         source = "interpretation_profile.outcome_hint"
     else:
-        text = "次に確認したいことを一つだけ決めます。"
+        text = "参拝前に、次に確認したいことを一つだけ決めておきます。"
         source = "fallback"
 
     return {
