@@ -20,12 +20,50 @@ import { useProfileStore } from "../../store/profileStore";
 // ────────────────────────────────────────────
 // 型
 // ────────────────────────────────────────────
+type RecommendationReasonFactAxis =
+  | "need"
+  | "benefit"
+  | "feature"
+  | "element"
+  | "distance"
+  | "popularity"
+  | "fallback";
+
+type RecommendationReasonFacts = {
+  version?: 1;
+  primary_axis?: RecommendationReasonFactAxis | null;
+  secondary_axis?: RecommendationReasonFactAxis | null;
+  matched_need_tags?: string[];
+  matched_benefits?: string[];
+  shrine_feature?: string | null;
+  shrine_benefit?: string | null;
+  visit_fit?: string | null;
+  matched_element?: string | null;
+  matched_sign?: string | null;
+  distance_label?: string | null;
+  popularity_label?: string | null;
+  fallback_reason?: string | null;
+  confidence?: "high" | "mid" | "low" | null;
+};
+
+type RecommendationReasonQuality = {
+  shrine_data_rate?: number | null;
+  consultation_reflection_rate?: number | null;
+  fallback_reason_rate?: number | null;
+  evidence_rate?: number | null;
+  action_grounding_rate?: number | null;
+  is_ai_inference_only?: boolean | null;
+  fallback_source?: string | null;
+};
 type RecommendationCard = {
   id: string;
   name: string;
   area: string;
   connection: string;
   reason: string;
+  recommendationReasonV4?: string | null;
+  reasonFacts?: RecommendationReasonFacts | null;
+  recommendationReasonQuality?: RecommendationReasonQuality | null;
   tags: string[];
   shrineId?: string;
   actionSuggestionV4Preview?: ActionSuggestionV4Preview | null;
@@ -75,6 +113,12 @@ type RecommendationApiCard = {
   formatted_address?: string;
   connection?: string;
   reason?: string;
+  recommendation_reason_v4?: string | null;
+  recommendationReasonV4?: string | null;
+  reason_facts?: RecommendationReasonFacts | null;
+  reasonFacts?: RecommendationReasonFacts | null;
+  recommendation_reason_quality?: RecommendationReasonQuality | null;
+  recommendationReasonQuality?: RecommendationReasonQuality | null;
   tags?: string[];
   shrineId?: string | number;
   shrine_id?: string | number;
@@ -251,19 +295,56 @@ function normalizeActionSuggestionV4Preview(raw: unknown): ActionSuggestionV4Pre
   };
 }
 
+function resolveRecommendationReason({
+  recommendationReasonV4,
+  reasonFacts,
+  fallbackReason,
+}: {
+  recommendationReasonV4?: string | null;
+  reasonFacts?: RecommendationReasonFacts | null;
+  fallbackReason?: string | null;
+}) {
+  const v4Reason = asTrimmedString(recommendationReasonV4);
+  if (v4Reason) return v4Reason;
+
+  const factBasedReason =
+    asTrimmedString(reasonFacts?.shrine_feature) ??
+    asTrimmedString(reasonFacts?.shrine_benefit) ??
+    asTrimmedString(reasonFacts?.visit_fit) ??
+    asTrimmedString(reasonFacts?.fallback_reason);
+
+  if (factBasedReason) return factBasedReason;
+
+  const legacyReason = asTrimmedString(fallbackReason);
+  if (legacyReason) return legacyReason;
+
+  return "相談内容と神社情報をもとに選ばれた候補です。";
+}
+
 function toRecommendationCard(item: RecommendationApiCard, index: number): RecommendationCard {
   const id = item.id ?? item.shrine_id ?? item.place_id ?? `recommendation-${index + 1}`;
   const shrineId = item.shrineId ?? item.shrine_id ?? item.id ?? item.place_id;
   const actionSuggestionV4Preview = normalizeActionSuggestionV4Preview(
     item.action_suggestion_v4_preview ?? item.actionSuggestionV4Preview,
   );
+  const recommendationReasonV4 = item.recommendation_reason_v4 ?? item.recommendationReasonV4 ?? null;
+  const reasonFacts = item.reason_facts ?? item.reasonFacts ?? null;
+  const recommendationReasonQuality = item.recommendation_reason_quality ?? item.recommendationReasonQuality ?? null;
+  const reason = resolveRecommendationReason({
+    recommendationReasonV4,
+    reasonFacts,
+    fallbackReason: item.reason,
+  });
 
   return {
     id: String(id),
     name: item.display_name ?? item.name ?? "名称未設定の神社",
     area: item.area ?? item.location ?? item.address ?? item.formatted_address ?? "所在地未設定",
     connection: item.connection ?? "今の相談内容と近い意味を持つご縁",
-    reason: item.reason ?? "相談内容に近い意味やご利益をもとに選ばれた神社です。",
+    reason,
+    recommendationReasonV4,
+    reasonFacts,
+    recommendationReasonQuality,
     tags: item.tags ?? [],
     shrineId: shrineId !== undefined && shrineId !== null ? String(shrineId) : undefined,
     actionSuggestionV4Preview,
