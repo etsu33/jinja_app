@@ -9,6 +9,7 @@ export type SearchAnalyticsEventName =
   | "reflection_saved"
   | "shrine_detail_transition"
   | "concierge_result_impression"
+  | "recommendation_quality"
   | "action_suggestion_view"
   | "action_suggestion_click"
   | "action_started"
@@ -31,6 +32,14 @@ export type SearchAnalyticsPayload = {
   resultSetId?: string | null;
   shrineId?: number | string | null;
   recommendationRank?: number | null;
+  accessLevel?: "anonymous" | "free" | "premium" | null;
+  shrine_data_rate?: number | null;
+  consultation_reflection_rate?: number | null;
+  fallback_reason_rate?: number | null;
+  evidence_rate?: number | null;
+  action_grounding_rate?: number | null;
+  is_ai_inference_only?: boolean | null;
+  fallback_source?: string | null;
   position?: "hero_primary" | "compact" | "map" | "list" | null;
   firstClick?: boolean | null;
   query?: string | null;
@@ -82,4 +91,24 @@ export function trackSearchEvent(eventName: SearchAnalyticsEventName, payload: S
       console.warn("[search analytics]", eventName, serializedPayload, error);
     }
   }
+}
+
+export type RecommendationQualityAnalyticsPayload = {
+  source: "concierge_result" | "shrine_detail";
+  threadId?: string | null;
+  shrineId?: number | string | null;
+  recommendationRank?: number | null;
+  resultSetId?: string | null;
+  accessLevel?: "anonymous" | "free" | "premium" | null;
+  shrine_data_rate?: number | null;
+  consultation_reflection_rate?: number | null;
+  fallback_reason_rate?: number | null;
+  evidence_rate?: number | null;
+  action_grounding_rate?: number | null;
+  is_ai_inference_only?: boolean | null;
+  fallback_source?: string | null;
+};
+
+export function trackRecommendationQuality(payload: RecommendationQualityAnalyticsPayload) {
+  trackSearchEvent("recommendation_quality", payload);
 }
