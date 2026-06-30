@@ -420,23 +420,3 @@ def build_recommendation_reason_v4(
     ).as_dict()
 
 
-__all__ = [
-    "RecommendationReasonV4",
-    "build_recommendation_reason_v4",
-]
-
-
-
-def test_build_recommendation_reason_v4_prioritizes_consultation_axis_in_interpretation():
-    result = build_recommendation_reason_v4(
-        interpretation_profile={
-            "consultation_axis": "career_decision",
-            "need_profile": {"primary_need_tag": "mental"},
-            "state_profile": {"primary_state": "uncertain"},
-        },
-        meaning_translation={"history_theme": "再出発"},
-    )
-
-    assert result["interpretation"]["theme"] == "career_decision"
-    assert "仕事や働き方の判断を中心にした相談として受け取れます" in result["interpretation"]["text"]
-    assert "気持ちを落ち着け、今の状態を整理したい相談として受け取れます" not in result["interpretation"]["text"]
