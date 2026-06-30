@@ -111,7 +111,7 @@ def test_build_recommendation_reason_v4_includes_shrine_name_in_reason_text():
         },
     )
 
-    assert "神社Aには、再出発という文脈があり、仕事運の要素も確認材料になります。" in result["reason_text"]
+    assert "神社Aには、再出発の特徴があり、仕事運の要素も材料になります。" in result["reason_text"]
 
 
 def test_build_recommendation_reason_v4_keeps_goriyaku_and_visit_style_in_fact():
@@ -139,7 +139,7 @@ def test_build_recommendation_reason_v4_reflects_goriyaku_and_visit_style_in_fac
         },
     )
 
-    assert "神社Eには、再出発という文脈があり、仕事運の要素、静かに参拝しやすい、自然を感じながら過ごしやすいも確認材料になります。" in result["reason_text"]
+    assert "神社Eには、再出発の特徴があり、仕事運の要素、静かに参拝しやすい、自然を感じながら過ごしやすいも材料になります。" in result["reason_text"]
 
 
 def test_build_recommendation_reason_v4_builds_interpretation_layer_from_profiles():
@@ -180,7 +180,7 @@ def test_build_recommendation_reason_v4_builds_interpretation_layer_from_profile
 
     assert result["interpretation"] == {
         "theme": "再出発",
-        "text": "仕事や進路の流れを見直したい。判断に迷う様子を中心に、文脈があります。",
+        "text": "仕事や進路の流れを見直したい。判断に迷う様子を中心に、要素があります。",
     }
     assert result["source"]["interpretation"] == "interpretation_profile|meaning_translation"
 
@@ -244,7 +244,7 @@ def test_build_recommendation_reason_v4_handles_missing_inputs_safely():
     result = build_recommendation_reason_v4()
 
     assert result == {
-        "reason_text": "この候補は、相談内容と神社側の文脈を照合する候補です。相談内容に合う神社側の手がかりを確認しています。参拝前に、次に確認したいことを一つだけ決めておきます。",
+        "reason_text": "この候補は、相談内容と神社側の情報を照合する候補です。相談内容から、今扱いたいテーマを読み取っています。参拝前に、次に確認したいことを一つだけ決めておきます。",
         "fact": {
             "label": "候補神社",
             "name": None,
@@ -254,7 +254,7 @@ def test_build_recommendation_reason_v4_handles_missing_inputs_safely():
         },
         "interpretation": {
             "theme": "相談文脈",
-            "text": "相談内容と神社側の文脈を照合する候補です。",
+            "text": "相談内容から、今扱いたいテーマを読み取る候補です。",
         },
         "action": {
             "text": "参拝前に、次に確認したいことを一つだけ決めておきます。",
@@ -327,6 +327,6 @@ def test_build_recommendation_reason_v4_uses_state_direction_and_emotion_profile
 
     assert result["interpretation"] == {
         "theme": "守り",
-        "text": "気持ちを落ち着け、今の状態を整理したい相談として受け取れます。不安や心配を中心に、文脈が強めに含まれています。",
+        "text": "気持ちを落ち着け、今の状態を整理したい相談として受け取れます。不安や心配を中心に、要素が強めに出ています。",
     }
     assert "あなたは" not in result["reason_text"]

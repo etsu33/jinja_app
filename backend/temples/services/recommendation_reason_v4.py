@@ -110,6 +110,10 @@ def _copy_for_key(mapping: dict[str, str], key: str | None) -> str | None:
 
 
 def _build_fact(candidate_profile: dict[str, Any], meaning_translation: dict[str, Any]) -> dict[str, Any]:
+    """Build the Fact layer from shrine-side information only.
+
+    Fact must not interpret the user's state or suggest the next action.
+    """
     history_theme = _first_string(candidate_profile.get("history_theme"), meaning_translation.get("history_theme"))
     goriyaku = _first_string(candidate_profile.get("goriyaku"), candidate_profile.get("goriyaku_tags"))
     visit_style_tags = _as_list(candidate_profile.get("visit_style_tags"))
@@ -140,6 +144,10 @@ def _build_interpretation(
     interpretation_profile: dict[str, Any],
     meaning_translation: dict[str, Any],
 ) -> dict[str, Any]:
+    """Build the Interpretation layer from the consultation profile only.
+
+    Interpretation may use history_theme as a meaning label, but must not write shrine facts or action steps.
+    """
     state_profile = _as_dict(interpretation_profile.get("state_profile"))
     emotion_profile = _as_dict(interpretation_profile.get("emotion_profile"))
     need_profile = _as_dict(interpretation_profile.get("need_profile"))
@@ -176,7 +184,7 @@ def _build_interpretation(
     if state_copy:
         if primary_need and not shrine_context_need:
             parts.append(f"{primary_need}相談として受け取れます")
-        state_suffix = "文脈が強めに含まれています" if emotion_intensity == "high" else "文脈があります"
+        state_suffix = "要素が強めに出ています" if emotion_intensity == "high" else "要素があります"
         parts.append(f"{state_copy}を中心に、{state_suffix}")
     else:
         primary_decision = _copy_for_key(
@@ -186,9 +194,9 @@ def _build_interpretation(
         if primary_need:
             parts.append(f"{primary_need}相談として受け取れます")
         elif primary_decision:
-            parts.append(f"{primary_decision}文脈があります")
+            parts.append(f"{primary_decision}相談として受け取れます")
 
-    text = "。".join(parts) + "。" if parts else "相談内容と神社側の文脈を照合する候補です。"
+    text = "。".join(parts) + "。" if parts else "相談内容から、今扱いたいテーマを読み取る候補です。"
 
     return {
         "theme": theme,
@@ -197,6 +205,10 @@ def _build_interpretation(
 
 
 def _build_action(interpretation_profile: dict[str, Any], meaning_translation: dict[str, Any]) -> dict[str, Any]:
+    """Build the Action layer as one concrete next step.
+
+    Action must not explain history_theme or repeat the consultation interpretation.
+    """
     action_intent = _as_dict(interpretation_profile.get("action_intent"))
     outcome_hint = _as_dict(interpretation_profile.get("outcome_hint"))
 
@@ -230,21 +242,25 @@ def _build_action(interpretation_profile: dict[str, Any], meaning_translation: d
 
 
 def _build_reason_text(fact: dict[str, Any], interpretation: dict[str, Any], action: dict[str, Any]) -> str:
+    """Compose reason_text as Fact -> Interpretation -> Action.
+
+    Keep each sentence responsible for one layer only.
+    """
     fact_label = _first_string(fact.get("label")) or "候補神社"
     fact_name = _first_string(fact.get("name"))
     fact_goriyaku = _first_string(fact.get("goriyaku"))
     visit_style_copies = _copy_visit_style_tags(_as_list(fact.get("visit_style_tags")))
-    interpretation_text = _first_string(interpretation.get("text")) or "相談内容と神社側の文脈を照合しています。"
+    interpretation_text = _first_string(interpretation.get("text")) or "相談内容から、今扱いたいテーマを読み取っています。"
     action_text = _first_string(action.get("text")) or "次に確認したいことを一つだけ決めます。"
 
     if fact_name and fact_label != "候補神社":
-        fact_text = f"{fact_name}には、{fact_label}という文脈があります。"
+        fact_text = f"{fact_name}には、{fact_label}の特徴があります。"
     elif fact_name:
-        fact_text = f"{fact_name}は、相談内容と神社側の文脈を照合する候補です。"
+        fact_text = f"{fact_name}は、相談内容と神社側の情報を照合する候補です。"
     elif fact_label == "候補神社":
-        fact_text = "この候補は、相談内容と神社側の文脈を照合する候補です。"
+        fact_text = "この候補は、相談内容と神社側の情報を照合する候補です。"
     else:
-        fact_text = f"この候補には、{fact_label}という文脈があります。"
+        fact_text = f"この候補には、{fact_label}の特徴があります。"
 
     fact_details: list[str] = []
     if fact_goriyaku and fact_goriyaku != fact_label:
@@ -253,16 +269,16 @@ def _build_reason_text(fact: dict[str, Any], interpretation: dict[str, Any], act
         fact_details.extend(visit_style_copies[:2])
     if fact_details:
         detail_text = "、".join(fact_details)
-        if fact_text.endswith("という文脈があります。"):
+        if fact_text.endswith("の特徴があります。"):
             fact_text = fact_text.replace(
-                "という文脈があります。",
-                f"という文脈があり、{detail_text}も確認材料になります。",
+                "の特徴があります。",
+                f"の特徴があり、{detail_text}も材料になります。",
             )
         else:
             fact_text = f"{fact_text.rstrip('。')}。{detail_text}も確認材料になります。"
 
-    if fact_label == "候補神社" and interpretation_text == "相談内容と神社側の文脈を照合する候補です。":
-        interpretation_text = "相談内容に合う神社側の手がかりを確認しています。"
+    if fact_label == "候補神社" and interpretation_text == "相談内容から、今扱いたいテーマを読み取る候補です。":
+        interpretation_text = "相談内容から、今扱いたいテーマを読み取っています。"
 
     reason_parts = [fact_text, interpretation_text, action_text]
     return "".join(reason_parts[:3])
