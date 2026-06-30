@@ -82,6 +82,26 @@ ACTION_INTENT_COPY: dict[str, str] = {
     "save": "今回の相談を残して振り返りたい",
 }
 
+VISIT_STYLE_COPY: dict[str, str] = {
+    "quiet": "静かに参拝しやすい",
+    "nature": "自然を感じながら過ごしやすい",
+    "classic": "昔ながらの神社らしさを感じやすい",
+    "less_crowded": "人の多さを避けて落ち着きやすい",
+    "business": "仕事や日々の判断を意識しやすい",
+    "reset": "気持ちを切り替えやすい",
+}
+
+
+def _copy_visit_style_tags(tags: list[Any]) -> list[str]:
+    copies: list[str] = []
+    for tag in tags:
+        if not isinstance(tag, str):
+            continue
+        copied = VISIT_STYLE_COPY.get(tag.strip())
+        if copied:
+            copies.append(copied)
+    return copies
+
 
 def _copy_for_key(mapping: dict[str, str], key: str | None) -> str | None:
     if not key:
@@ -92,6 +112,7 @@ def _copy_for_key(mapping: dict[str, str], key: str | None) -> str | None:
 def _build_fact(candidate_profile: dict[str, Any], meaning_translation: dict[str, Any]) -> dict[str, Any]:
     history_theme = _first_string(candidate_profile.get("history_theme"), meaning_translation.get("history_theme"))
     goriyaku = _first_string(candidate_profile.get("goriyaku"), candidate_profile.get("goriyaku_tags"))
+    visit_style_tags = _as_list(candidate_profile.get("visit_style_tags"))
     name = _first_string(candidate_profile.get("name"))
 
     label = _first_string(history_theme, goriyaku, name, "候補神社") or "候補神社"
@@ -101,12 +122,16 @@ def _build_fact(candidate_profile: dict[str, Any], meaning_translation: dict[str
         evidence.append(f"history_theme:{history_theme}")
     if goriyaku:
         evidence.append(f"goriyaku:{goriyaku}")
+    if visit_style_tags:
+        evidence.append(f"visit_style_tags:{','.join(str(tag) for tag in visit_style_tags)}")
     if name:
         evidence.append(f"name:{name}")
 
     return {
         "label": label,
         "name": name,
+        "goriyaku": goriyaku,
+        "visit_style_tags": visit_style_tags,
         "evidence": evidence,
     }
 
@@ -207,19 +232,40 @@ def _build_action(interpretation_profile: dict[str, Any], meaning_translation: d
 def _build_reason_text(fact: dict[str, Any], interpretation: dict[str, Any], action: dict[str, Any]) -> str:
     fact_label = _first_string(fact.get("label")) or "候補神社"
     fact_name = _first_string(fact.get("name"))
+    fact_goriyaku = _first_string(fact.get("goriyaku"))
+    visit_style_copies = _copy_visit_style_tags(_as_list(fact.get("visit_style_tags")))
     interpretation_text = _first_string(interpretation.get("text")) or "相談内容と神社側の文脈を照合しています。"
     action_text = _first_string(action.get("text")) or "次に確認したいことを一つだけ決めます。"
 
     if fact_name and fact_label != "候補神社":
-        fact_text = f"{fact_name}には、{fact_label}という文脈が含まれています。"
+        fact_text = f"{fact_name}には、{fact_label}という文脈があります。"
     elif fact_name:
         fact_text = f"{fact_name}は、相談内容と神社側の文脈を照合する候補です。"
     elif fact_label == "候補神社":
         fact_text = "この候補は、相談内容と神社側の文脈を照合する候補です。"
     else:
-        fact_text = f"この候補には、{fact_label}という文脈が含まれています。"
+        fact_text = f"この候補には、{fact_label}という文脈があります。"
 
-    return "".join([fact_text, interpretation_text, action_text])
+    fact_details: list[str] = []
+    if fact_goriyaku and fact_goriyaku != fact_label:
+        fact_details.append(f"{fact_goriyaku}の要素")
+    if visit_style_copies:
+        fact_details.extend(visit_style_copies[:2])
+    if fact_details:
+        detail_text = "、".join(fact_details)
+        if fact_text.endswith("という文脈があります。"):
+            fact_text = fact_text.replace(
+                "という文脈があります。",
+                f"という文脈があり、{detail_text}も確認材料になります。",
+            )
+        else:
+            fact_text = f"{fact_text.rstrip('。')}。{detail_text}も確認材料になります。"
+
+    if fact_label == "候補神社" and interpretation_text == "相談内容と神社側の文脈を照合する候補です。":
+        interpretation_text = "相談内容に合う神社側の手がかりを確認しています。"
+
+    reason_parts = [fact_text, interpretation_text, action_text]
+    return "".join(reason_parts[:3])
 
 
 def build_recommendation_reason_v4(

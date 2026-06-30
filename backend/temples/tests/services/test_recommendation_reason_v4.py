@@ -63,7 +63,7 @@ def test_build_recommendation_reason_v4_returns_stable_schema():
     assert isinstance(result["interpretation"], dict)
     assert isinstance(result["action"], dict)
     assert isinstance(result["source"], dict)
-    assert set(result["fact"].keys()) == {"label", "name", "evidence"}
+    assert set(result["fact"].keys()) == {"label", "name", "goriyaku", "visit_style_tags", "evidence"}
     assert set(result["interpretation"].keys()) == {"theme", "text"}
     assert set(result["action"].keys()) == {"text", "source"}
     assert set(result["source"].keys()) == {"fact", "interpretation", "action"}
@@ -76,15 +76,19 @@ def test_build_recommendation_reason_v4_builds_fact_layer_from_candidate_and_mea
             "name": "神社A",
             "history_theme": "再出発",
             "goriyaku": "仕事運",
+            "visit_style_tags": ["quiet", "nature"],
         },
     )
 
     assert result["fact"] == {
         "label": "再出発",
         "name": "神社A",
+        "goriyaku": "仕事運",
+        "visit_style_tags": ["quiet", "nature"],
         "evidence": [
             "history_theme:再出発",
             "goriyaku:仕事運",
+            "visit_style_tags:quiet,nature",
             "name:神社A",
         ],
     }
@@ -107,7 +111,35 @@ def test_build_recommendation_reason_v4_includes_shrine_name_in_reason_text():
         },
     )
 
-    assert "神社Aには、再出発という文脈が含まれています。" in result["reason_text"]
+    assert "神社Aには、再出発という文脈があり、仕事運の要素も確認材料になります。" in result["reason_text"]
+
+
+def test_build_recommendation_reason_v4_keeps_goriyaku_and_visit_style_in_fact():
+    result = build_recommendation_reason_v4(
+        candidate_profile={
+            "name": "神社D",
+            "goriyaku": "縁結び",
+            "visit_style_tags": ["quiet", "less_crowded"],
+        },
+    )
+
+    assert result["fact"]["goriyaku"] == "縁結び"
+    assert result["fact"]["visit_style_tags"] == ["quiet", "less_crowded"]
+    assert "goriyaku:縁結び" in result["fact"]["evidence"]
+    assert "visit_style_tags:quiet,less_crowded" in result["fact"]["evidence"]
+
+
+def test_build_recommendation_reason_v4_reflects_goriyaku_and_visit_style_in_fact_text():
+    result = build_recommendation_reason_v4(
+        candidate_profile={
+            "name": "神社E",
+            "history_theme": "再出発",
+            "goriyaku": "仕事運",
+            "visit_style_tags": ["quiet", "nature"],
+        },
+    )
+
+    assert "神社Eには、再出発という文脈があり、仕事運の要素、静かに参拝しやすい、自然を感じながら過ごしやすいも確認材料になります。" in result["reason_text"]
 
 
 def test_build_recommendation_reason_v4_builds_interpretation_layer_from_profiles():
@@ -212,10 +244,12 @@ def test_build_recommendation_reason_v4_handles_missing_inputs_safely():
     result = build_recommendation_reason_v4()
 
     assert result == {
-        "reason_text": "この候補は、相談内容と神社側の文脈を照合する候補です。相談内容と神社側の文脈を照合する候補です。参拝前に、次に確認したいことを一つだけ決めておきます。",
+        "reason_text": "この候補は、相談内容と神社側の文脈を照合する候補です。相談内容に合う神社側の手がかりを確認しています。参拝前に、次に確認したいことを一つだけ決めておきます。",
         "fact": {
             "label": "候補神社",
             "name": None,
+            "goriyaku": None,
+            "visit_style_tags": [],
             "evidence": [],
         },
         "interpretation": {
