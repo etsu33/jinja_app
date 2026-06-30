@@ -13,6 +13,7 @@ class RecommendationReasonV4:
     used_fact: dict[str, Any] = field(default_factory=dict)
     used_interpretation: dict[str, Any] = field(default_factory=dict)
     used_action: dict[str, Any] = field(default_factory=dict)
+    quality: dict[str, Any] = field(default_factory=dict)
     source: dict[str, Any] = field(default_factory=dict)
 
     def as_dict(self) -> dict[str, Any]:
@@ -24,6 +25,7 @@ class RecommendationReasonV4:
             "used_fact": self.used_fact,
             "used_interpretation": self.used_interpretation,
             "used_action": self.used_action,
+            "quality": self.quality,
             "source": self.source,
         }
 
@@ -325,6 +327,7 @@ def _build_action(interpretation_profile: dict[str, Any], meaning_translation: d
     }
 
 
+
 def _build_used_action(interpretation_profile: dict[str, Any], meaning_translation: dict[str, Any], action: dict[str, Any]) -> dict[str, Any]:
     """Return action-side values used to build the next-step suggestion."""
     action_intent = _as_dict(interpretation_profile.get("action_intent"))
@@ -333,6 +336,53 @@ def _build_used_action(interpretation_profile: dict[str, Any], meaning_translati
         "reflection_question_seed": _first_string(meaning_translation.get("reflection_question_seed")),
         "action_intent": _first_string(action_intent.get("intent"), action_intent.get("candidates")),
         "source": action.get("source") or "fallback",
+    }
+
+
+def _rate(count: int, total: int) -> float:
+    if total <= 0:
+        return 0.0
+    return round(count / total, 4)
+
+
+def build_recommendation_reason_quality_audit(reason: dict[str, Any]) -> dict[str, Any]:
+    """Calculate lightweight quality metrics for Recommendation Reason v4.
+
+    This audit is deterministic and only evaluates the generated payload.
+    It does not change recommendation ranking or copy generation.
+    """
+    used_fact = _as_dict(reason.get("used_fact"))
+    used_interpretation = _as_dict(reason.get("used_interpretation"))
+    used_action = _as_dict(reason.get("used_action"))
+
+    shrine_fact_keys = ["deity", "shrine_history", "place_context", "goriyaku", "history_theme"]
+    consultation_keys = ["consultation_axis", "need_profile", "state_profile", "historical_interpretation"]
+    action_keys = ["action_context", "reflection_question_seed", "action_intent"]
+
+    shrine_data_count = sum(1 for key in shrine_fact_keys if used_fact.get(key))
+    evidence_count = len(_as_list(used_fact.get("evidence")))
+    consultation_count = 0
+    for key in consultation_keys:
+        value = used_interpretation.get(key)
+        if isinstance(value, dict):
+            if any(v for v in value.values()):
+                consultation_count += 1
+        elif value:
+            consultation_count += 1
+    action_count = sum(1 for key in action_keys if used_action.get(key))
+
+    source = _first_string(used_action.get("source")) or "fallback"
+    is_fallback = source == "fallback"
+    is_ai_inference_only = shrine_data_count == 0 and evidence_count == 0
+
+    return {
+        "shrine_data_rate": _rate(shrine_data_count, len(shrine_fact_keys)),
+        "consultation_reflection_rate": _rate(consultation_count, len(consultation_keys)),
+        "fallback_reason_rate": 1.0 if is_fallback else 0.0,
+        "evidence_rate": _rate(evidence_count, len(shrine_fact_keys)),
+        "action_grounding_rate": _rate(action_count, len(action_keys)),
+        "is_ai_inference_only": is_ai_inference_only,
+        "fallback_source": source if is_fallback else None,
     }
 
 
@@ -404,7 +454,7 @@ def build_recommendation_reason_v4(
     used_interpretation = _build_used_interpretation(interpretation, meaning, interpretation_layer, fact)
     used_action = _build_used_action(interpretation, meaning, action)
 
-    return RecommendationReasonV4(
+    reason = RecommendationReasonV4(
         reason_text=_build_reason_text(fact, interpretation_layer, action),
         fact=fact,
         interpretation=interpretation_layer,
@@ -418,5 +468,13 @@ def build_recommendation_reason_v4(
             "action": action.get("source") or "fallback",
         },
     ).as_dict()
+    reason["quality"] = build_recommendation_reason_quality_audit(reason)
+    return reason
 
 
+
+__all__ = [
+    "RecommendationReasonV4",
+    "build_recommendation_reason_quality_audit",
+    "build_recommendation_reason_v4",
+]
