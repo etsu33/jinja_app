@@ -12,12 +12,41 @@ import { cardSizes } from "../design/cardSizes";
 import { radius } from "../design/radius";
 import { ctaSizes } from "../design/ctaSizes";
 
+
+type RecommendationReasonFactAxis =
+  | "need"
+  | "benefit"
+  | "feature"
+  | "element"
+  | "distance"
+  | "popularity"
+  | "fallback";
+
+type RecommendationReasonFacts = {
+  version?: 1;
+  primary_axis?: RecommendationReasonFactAxis | null;
+  secondary_axis?: RecommendationReasonFactAxis | null;
+  matched_need_tags?: string[];
+  matched_benefits?: string[];
+  shrine_feature?: string | null;
+  shrine_benefit?: string | null;
+  visit_fit?: string | null;
+  matched_element?: string | null;
+  matched_sign?: string | null;
+  distance_label?: string | null;
+  popularity_label?: string | null;
+  fallback_reason?: string | null;
+  confidence?: "high" | "mid" | "low" | null;
+};
+
 type Shrine = {
   id: string | number;
   name: string;
   prefecture?: string;
   description?: string;
   recommendationReason?: string;
+  recommendationReasonV4?: string;
+  reasonFacts?: RecommendationReasonFacts | null;
   explanation?: string;
   actionSuggestion?: string;
   imageUrl?: string;
@@ -35,6 +64,10 @@ type ShrineApiResponse = {
   description?: string | null;
   recommendation_reason?: string | null;
   recommendationReason?: string | null;
+  recommendation_reason_v4?: string | null;
+  recommendationReasonV4?: string | null;
+  reason_facts?: RecommendationReasonFacts | null;
+  reasonFacts?: RecommendationReasonFacts | null;
   explanation?: string | null;
   action_suggestion?: string | null;
   actionSuggestion?: string | null;
@@ -50,6 +83,30 @@ const SHRINE_API_ID_BY_LOCAL_ID: Record<string, string> = {
   fushimi: "2",
 };
 
+function asTrimmedString(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length ? trimmed : null;
+}
+
+function resolveRecommendationReason(shrine: Shrine) {
+  const v4Reason = asTrimmedString(shrine.recommendationReasonV4);
+  if (v4Reason) return v4Reason;
+
+  const factBasedReason =
+    asTrimmedString(shrine.reasonFacts?.shrine_feature) ??
+    asTrimmedString(shrine.reasonFacts?.shrine_benefit) ??
+    asTrimmedString(shrine.reasonFacts?.visit_fit) ??
+    asTrimmedString(shrine.reasonFacts?.fallback_reason);
+
+  if (factBasedReason) return factBasedReason;
+
+  const legacyReason = asTrimmedString(shrine.recommendationReason);
+  if (legacyReason) return legacyReason;
+
+  return "相談内容と神社情報をもとに選ばれた候補です。";
+}
+
 function toShrine(api: ShrineApiResponse): Shrine {
   return {
     id: api.id,
@@ -57,6 +114,8 @@ function toShrine(api: ShrineApiResponse): Shrine {
     prefecture: api.prefecture ?? api.address,
     description: api.description ?? api.goriyaku ?? undefined,
     recommendationReason: api.recommendationReason ?? api.recommendation_reason ?? undefined,
+    recommendationReasonV4: api.recommendationReasonV4 ?? api.recommendation_reason_v4 ?? undefined,
+    reasonFacts: api.reasonFacts ?? api.reason_facts ?? null,
     explanation: api.explanation ?? undefined,
     actionSuggestion: api.actionSuggestion ?? api.action_suggestion ?? undefined,
     imageUrl: api.imageUrl ?? api.image_url,
@@ -95,7 +154,7 @@ export default function ShrineDetail() {
 
   const recommendationReason = React.useMemo(() => {
     if (!shrine) return undefined;
-    return shrine.recommendationReason ?? `${shrine.name}は、今の相談や願いを一度落ち着いて整理する場所として受け取りやすい候補です。`;
+    return resolveRecommendationReason(shrine);
   }, [shrine]);
 
   const explanation = React.useMemo(() => {
