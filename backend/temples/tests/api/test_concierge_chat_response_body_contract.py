@@ -289,6 +289,80 @@ def test_chat_response_anonymous_includes_thread_when_append_chat_succeeds(clien
     assert body["data"]["thread_id"] == "1"
 
 
+# New test: test_chat_response_passes_recommendation_reason_quality_to_thread_storage
+@pytest.mark.django_db
+def test_chat_response_passes_recommendation_reason_quality_to_thread_storage(client, monkeypatch):
+    _stub_candidates(monkeypatch)
+    _stub_recommendations(
+        monkeypatch,
+        [
+            {
+                "id": 10,
+                "shrine_id": 10,
+                "name": "神社A",
+                "reason": "ok",
+                "reason_source": "reason:test",
+                "history_theme": "再出発",
+                "goriyaku": "仕事運",
+                "meaning_payload": {
+                    "source": {
+                        "translationResult": {
+                            "history_theme": "再出発",
+                            "action_context": "問いを一つに絞る",
+                        }
+                    }
+                },
+                "recommendation_reason_quality": {
+                    "shrine_data_rate": 0.4,
+                    "consultation_reflection_rate": 0.5,
+                    "fallback_reason_rate": 0.0,
+                    "evidence_rate": 0.4,
+                    "action_grounding_rate": 0.3333,
+                    "is_ai_inference_only": False,
+                    "fallback_source": None,
+                },
+            }
+        ],
+    )
+
+    captured = {}
+
+    def _append_chat_stub(**kwargs):
+        captured["recommendations"] = kwargs.get("recommendations")
+        captured["recommendations_v2"] = kwargs.get("recommendations_v2")
+        return SimpleNamespace(thread=SimpleNamespace(id=321))
+
+    monkeypatch.setattr("temples.api_views_concierge.append_chat", _append_chat_stub)
+    monkeypatch.setattr(
+        "temples.services.concierge_observability.save_concierge_recommendation_log",
+        lambda **kwargs: None,
+    )
+
+    r = client.post(
+        URL,
+        data=json.dumps({"query": "仕事で迷っている", "lat": 35.0, "lng": 139.0}),
+        content_type="application/json",
+    )
+    assert r.status_code == 200
+
+    recommendations = r.json()["data"]["recommendations"]
+    assert "recommendation_reason_quality" in recommendations[0]
+
+    quality = recommendations[0]["recommendation_reason_quality"]
+    assert set(quality.keys()) == {
+        "shrine_data_rate",
+        "consultation_reflection_rate",
+        "fallback_reason_rate",
+        "evidence_rate",
+        "action_grounding_rate",
+        "is_ai_inference_only",
+        "fallback_source",
+    }
+
+    assert captured["recommendations"][0]["recommendation_reason_quality"] == quality
+    assert captured["recommendations_v2"][0]["recommendation_reason_quality"] == quality
+
+
 @pytest.mark.django_db
 def test_chat_response_includes_debug_observation_contract_fields(client, monkeypatch):
     _stub_candidates(monkeypatch)
