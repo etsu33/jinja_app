@@ -76,6 +76,16 @@ OUTCOME_COPY: dict[str, str] = {
     "clarify": "考えを整理したい",
 }
 
+CONSULTATION_AXIS_COPY: dict[str, str] = {
+    "career_decision": "仕事や働き方の判断",
+    "relationship_review": "人との関係の見直し",
+    "money_foundation": "生活や収入の土台",
+    "rest_or_action": "休むか動くかの見極め",
+    "mental_reset": "気持ちの切り替え",
+    "study_growth": "学びや成長の積み重ね",
+    "love_relationship": "人との縁や関係性",
+}
+
 ACTION_INTENT_COPY: dict[str, str] = {
     "visit": "実際に足を運んで確認したい",
     "reflect": "問いを一つに絞って整理したい",
@@ -167,7 +177,15 @@ def _build_interpretation(
     constraint_profile = _as_dict(interpretation_profile.get("constraint_profile"))
     outcome_hint = _as_dict(interpretation_profile.get("outcome_hint"))
 
+    consultation_axis = _first_string(
+        interpretation_profile.get("consultation_axis"),
+        interpretation_profile.get("axis"),
+        need_profile.get("consultation_axis"),
+    )
+    consultation_axis_copy = _copy_for_key(CONSULTATION_AXIS_COPY, consultation_axis)
+
     theme = _first_string(
+        consultation_axis,
         meaning_translation.get("history_theme"),
         need_profile.get("primary_need_tag"),
         decision_context.get("primary_decision"),
@@ -191,10 +209,12 @@ def _build_interpretation(
     }.get(primary_state)
 
     parts: list[str] = []
+    if consultation_axis_copy:
+        parts.append(f"{consultation_axis_copy}を中心にした相談として受け取れます")
     if shrine_context_need:
         parts.append(shrine_context_need)
     if state_copy:
-        if primary_need and not shrine_context_need:
+        if primary_need and not shrine_context_need and not consultation_axis_copy:
             parts.append(f"{primary_need}相談として受け取れます")
         state_suffix = "要素が強めに出ています" if emotion_intensity == "high" else "要素があります"
         parts.append(f"{state_copy}を中心に、{state_suffix}")
@@ -203,9 +223,9 @@ def _build_interpretation(
             DECISION_COPY,
             _first_string(decision_context.get("primary_decision"), decision_context.get("decision_candidates")),
         )
-        if primary_need:
+        if primary_need and not consultation_axis_copy:
             parts.append(f"{primary_need}相談として受け取れます")
-        elif primary_decision:
+        elif primary_decision and not consultation_axis_copy:
             parts.append(f"{primary_decision}相談として受け取れます")
 
     text = "。".join(parts) + "。" if parts else "相談内容から、今扱いたいテーマを読み取る候補です。"
@@ -335,3 +355,19 @@ __all__ = [
     "RecommendationReasonV4",
     "build_recommendation_reason_v4",
 ]
+
+
+
+def test_build_recommendation_reason_v4_prioritizes_consultation_axis_in_interpretation():
+    result = build_recommendation_reason_v4(
+        interpretation_profile={
+            "consultation_axis": "career_decision",
+            "need_profile": {"primary_need_tag": "mental"},
+            "state_profile": {"primary_state": "uncertain"},
+        },
+        meaning_translation={"history_theme": "再出発"},
+    )
+
+    assert result["interpretation"]["theme"] == "career_decision"
+    assert "仕事や働き方の判断を中心にした相談として受け取れます" in result["interpretation"]["text"]
+    assert "気持ちを落ち着け、今の状態を整理したい相談として受け取れます" not in result["interpretation"]["text"]
