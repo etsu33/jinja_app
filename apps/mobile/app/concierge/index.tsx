@@ -321,6 +321,28 @@ function resolveRecommendationReason({
   return "相談内容と神社情報をもとに選ばれた候補です。";
 }
 
+function buildReasonFactItems(reasonFacts?: RecommendationReasonFacts | null) {
+  if (!reasonFacts) return [];
+
+  return [
+    reasonFacts.shrine_feature
+      ? { label: "神社固有の文脈", value: reasonFacts.shrine_feature }
+      : null,
+    reasonFacts.shrine_benefit
+      ? { label: "ご利益・意味", value: reasonFacts.shrine_benefit }
+      : null,
+    reasonFacts.visit_fit
+      ? { label: "参拝との相性", value: reasonFacts.visit_fit }
+      : null,
+    reasonFacts.distance_label
+      ? { label: "行きやすさ", value: reasonFacts.distance_label }
+      : null,
+    reasonFacts.popularity_label
+      ? { label: "参考情報", value: reasonFacts.popularity_label }
+      : null,
+  ].filter((item): item is { label: string; value: string } => Boolean(item?.value?.trim()));
+}
+
 function toRecommendationCard(item: RecommendationApiCard, index: number): RecommendationCard {
   const id = item.id ?? item.shrine_id ?? item.place_id ?? `recommendation-${index + 1}`;
   const shrineId = item.shrineId ?? item.shrine_id ?? item.id ?? item.place_id;
@@ -410,6 +432,7 @@ function ResultCard({
   rank: number;
   onDetail: () => void;
 }) {
+  const reasonFactItems = buildReasonFactItems(card.reasonFacts);
   return (
     <View style={styles.card}>
       {/* ランクバッジ */}
@@ -434,7 +457,22 @@ function ResultCard({
       </View>
 
       {/* 推薦理由 */}
-      <Text style={styles.cardReason} numberOfLines={3}>{card.reason}</Text>
+      <View style={styles.reasonBlock}>
+        <Text style={styles.reasonLabel}>この候補を出した理由</Text>
+        <Text style={styles.cardReason} numberOfLines={3}>{card.reason}</Text>
+      </View>
+
+      {reasonFactItems.length > 0 ? (
+        <View style={styles.reasonFactsCard}>
+          <Text style={styles.reasonFactsLabel}>根拠として見ている情報</Text>
+          {reasonFactItems.slice(0, 3).map((item) => (
+            <View key={`${item.label}-${item.value}`} style={styles.reasonFactItem}>
+              <Text style={styles.reasonFactLabel}>{item.label}</Text>
+              <Text style={styles.reasonFactText}>{item.value}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
 
       {card.actionSuggestionV4Preview?.preview ? (
         <View style={styles.actionV4Card}>
@@ -1087,10 +1125,55 @@ const styles = StyleSheet.create({
   },
 
   // 推薦理由
+  reasonBlock: {
+    backgroundColor: theme.surfaceSoft,
+    borderWidth: 1,
+    borderColor: theme.borderSoft,
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 5,
+  },
+  reasonLabel: {
+    color: theme.goldSoft,
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 0.7,
+  },
   cardReason: {
     color: theme.mutedSoft,
     fontSize: 13,
     lineHeight: 22,
+    fontWeight: "700",
+  },
+  reasonFactsCard: {
+    backgroundColor: theme.surface,
+    borderWidth: 1,
+    borderColor: theme.borderSoft,
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 9,
+  },
+  reasonFactsLabel: {
+    color: theme.goldSoft,
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 0.7,
+  },
+  reasonFactItem: {
+    gap: 3,
+  },
+  reasonFactLabel: {
+    color: theme.muted,
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+  },
+  reasonFactText: {
+    color: theme.mutedSoft,
+    fontSize: 12,
+    lineHeight: 18,
     fontWeight: "600",
   },
 
