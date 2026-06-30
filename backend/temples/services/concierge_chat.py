@@ -355,27 +355,68 @@ def _build_reason_v4_preview_payload(
     for index, rec in enumerate(
         r for r in (recs.get("recommendations") or []) if isinstance(r, dict)
     ):
-
         meaning_payload = rec.get("meaning_payload") if isinstance(rec.get("meaning_payload"), dict) else {}
         source = meaning_payload.get("source") if isinstance(meaning_payload.get("source"), dict) else {}
         translation_result = source.get("translationResult") if isinstance(source.get("translationResult"), dict) else {}
         recommendation_input_profile = build_recommendation_input_profile(
-
             interpretation_profile=interpretation_profile,
             translation_result=translation_result,
             candidate_profile=_build_score_v3_candidate_profile(rec),
             score_v2_fields=_build_score_v3_score_v2_fields(rec),
+        )
+        preview = build_recommendation_reason_v4(
+            recommendation_input_profile=recommendation_input_profile,
         )
 
         previews.append({
             "rank": index + 1,
             "shrine_id": rec.get("shrine_id") or rec.get("id"),
             "name": rec.get("name"),
-            "preview": build_recommendation_reason_v4(
-                recommendation_input_profile=recommendation_input_profile,
-            ),
+            "preview": preview,
         })
     return previews
+
+
+def _attach_recommendation_reason_quality(
+    *,
+    recs: dict[str, Any],
+    interpretation_profile: dict[str, Any],
+) -> None:
+    """Attach Recommendation Reason quality metrics to recommendation items.
+
+    This keeps the lightweight quality payload on normal recommendations so API
+    response and thread storage do not depend on debug preview visibility.
+    """
+    quality_by_key: dict[Any, dict[str, Any]] = {}
+
+    for rec in (r for r in (recs.get("recommendations") or []) if isinstance(r, dict)):
+        meaning_payload = rec.get("meaning_payload") if isinstance(rec.get("meaning_payload"), dict) else {}
+        source = meaning_payload.get("source") if isinstance(meaning_payload.get("source"), dict) else {}
+        translation_result = source.get("translationResult") if isinstance(source.get("translationResult"), dict) else {}
+        recommendation_input_profile = build_recommendation_input_profile(
+            interpretation_profile=interpretation_profile,
+            translation_result=translation_result,
+            candidate_profile=_build_score_v3_candidate_profile(rec),
+            score_v2_fields=_build_score_v3_score_v2_fields(rec),
+        )
+        preview = build_recommendation_reason_v4(
+            recommendation_input_profile=recommendation_input_profile,
+        )
+        quality = preview.get("quality") or {}
+        rec["recommendation_reason_quality"] = quality
+
+        key = rec.get("shrine_id") or rec.get("id") or rec.get("name")
+        if key is not None:
+            quality_by_key[key] = quality
+
+    recommendations_v2 = recs.get("recommendations_v2")
+    if not isinstance(recommendations_v2, list):
+        return
+
+    for rec in (r for r in recommendations_v2 if isinstance(r, dict)):
+        key = rec.get("shrine_id") or rec.get("id") or rec.get("name")
+        if key in quality_by_key:
+            rec["recommendation_reason_quality"] = quality_by_key[key]
 
 
 def _build_score_v3_observer_items(score_v3_debug: dict[str, Any]) -> list[dict[str, Any]]:
@@ -635,6 +676,10 @@ def build_chat_recommendations(
         recs=recs,
     )
     recs.setdefault("_debug", {})["score_v3"] = _build_score_v3_debug_payload(
+        recs=recs,
+        interpretation_profile=debug_interpretation_profile,
+    )
+    _attach_recommendation_reason_quality(
         recs=recs,
         interpretation_profile=debug_interpretation_profile,
     )
