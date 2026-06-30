@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-from temples.services.recommendation_reason_v4 import build_recommendation_reason_v4
-
+from temples.services.recommendation_reason_v4 import (
+    build_recommendation_reason_quality_audit,
+    build_recommendation_reason_v4,
+)
 
 def test_build_recommendation_reason_v4_returns_stable_schema():
     result = build_recommendation_reason_v4(
@@ -59,6 +61,7 @@ def test_build_recommendation_reason_v4_returns_stable_schema():
         "used_fact",
         "used_interpretation",
         "used_action",
+        "quality",
         "source",
     }
     assert isinstance(result["reason_text"], str)
@@ -68,12 +71,14 @@ def test_build_recommendation_reason_v4_returns_stable_schema():
     assert isinstance(result["used_fact"], dict)
     assert isinstance(result["used_interpretation"], dict)
     assert isinstance(result["used_action"], dict)
+    assert isinstance(result["quality"], dict)
     assert set(result["fact"].keys()) == {"label", "name", "deity", "shrine_history", "place_context", "goriyaku", "visit_style_tags", "evidence"}
     assert set(result["interpretation"].keys()) == {"theme", "text"}
     assert set(result["action"].keys()) == {"text", "source"}
     assert set(result["used_fact"].keys()) == {"deity", "shrine_history", "place_context", "goriyaku", "history_theme", "evidence"}
     assert set(result["used_interpretation"].keys()) == {"consultation_axis", "need_profile", "state_profile", "historical_interpretation", "theme"}
     assert set(result["used_action"].keys()) == {"action_context", "reflection_question_seed", "action_intent", "source"}
+    assert set(result["quality"].keys()) == {"shrine_data_rate", "consultation_reflection_rate", "fallback_reason_rate", "evidence_rate", "action_grounding_rate", "is_ai_inference_only", "fallback_source"}
     assert set(result["source"].keys()) == {"fact", "interpretation", "action"}
 
 
@@ -339,6 +344,80 @@ def test_build_recommendation_reason_v4_uses_recommendation_input_profile_when_d
     assert result["action"]["text"] == "参拝前に、気持ちを落ち着け、今の状態を静かに見直すことを一つだけ決めておくと、行動につなげやすくなります。"
 
 
+def test_build_recommendation_reason_quality_audit_calculates_rates_from_used_payload():
+    reason = {
+        "used_fact": {
+            "deity": "武神",
+            "shrine_history": "古くから武運の祈願で知られる",
+            "place_context": "静かな境内",
+            "goriyaku": "仕事運",
+            "history_theme": None,
+            "evidence": [
+                "deity:武神",
+                "shrine_history:古くから武運の祈願で知られる",
+                "place_context:静かな境内",
+            ],
+        },
+        "used_interpretation": {
+            "consultation_axis": "career_decision",
+            "need_profile": {"primary_need_tag": "career", "need_tags": ["career"]},
+            "state_profile": {"primary_state": "uncertain", "secondary_states": []},
+            "historical_interpretation": "古くから武運の祈願で知られるを、今回の相談を受け取る補助材料として参照しています。",
+        },
+        "used_action": {
+            "action_context": "問いを一つに絞る",
+            "reflection_question_seed": None,
+            "action_intent": "reflect",
+            "source": "meaning_translation.action_context",
+        },
+    }
+
+    assert build_recommendation_reason_quality_audit(reason) == {
+        "shrine_data_rate": 0.8,
+        "consultation_reflection_rate": 1.0,
+        "fallback_reason_rate": 0.0,
+        "evidence_rate": 0.6,
+        "action_grounding_rate": 0.6667,
+        "is_ai_inference_only": False,
+        "fallback_source": None,
+    }
+
+
+def test_build_recommendation_reason_quality_audit_detects_fallback_and_ai_inference_only():
+    reason = {
+        "used_fact": {
+            "deity": None,
+            "shrine_history": None,
+            "place_context": None,
+            "goriyaku": None,
+            "history_theme": None,
+            "evidence": [],
+        },
+        "used_interpretation": {
+            "consultation_axis": None,
+            "need_profile": {"primary_need_tag": None, "need_tags": []},
+            "state_profile": {"primary_state": None, "secondary_states": []},
+            "historical_interpretation": None,
+        },
+        "used_action": {
+            "action_context": None,
+            "reflection_question_seed": None,
+            "action_intent": None,
+            "source": "fallback",
+        },
+    }
+
+    assert build_recommendation_reason_quality_audit(reason) == {
+        "shrine_data_rate": 0.0,
+        "consultation_reflection_rate": 0.0,
+        "fallback_reason_rate": 1.0,
+        "evidence_rate": 0.0,
+        "action_grounding_rate": 0.0,
+        "is_ai_inference_only": True,
+        "fallback_source": "fallback",
+    }
+
+    
 def test_build_recommendation_reason_v4_handles_missing_inputs_safely():
     result = build_recommendation_reason_v4()
 
@@ -388,6 +467,15 @@ def test_build_recommendation_reason_v4_handles_missing_inputs_safely():
             "reflection_question_seed": None,
             "action_intent": None,
             "source": "fallback",
+        },
+        "quality": {
+            "shrine_data_rate": 0.0,
+            "consultation_reflection_rate": 0.0,
+            "fallback_reason_rate": 1.0,
+            "evidence_rate": 0.0,
+            "action_grounding_rate": 0.0,
+            "is_ai_inference_only": True,
+            "fallback_source": "fallback",
         },
         "source": {
             "fact": "candidate_profile|meaning_translation",
