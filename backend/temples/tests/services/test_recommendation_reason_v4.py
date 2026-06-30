@@ -63,7 +63,7 @@ def test_build_recommendation_reason_v4_returns_stable_schema():
     assert isinstance(result["interpretation"], dict)
     assert isinstance(result["action"], dict)
     assert isinstance(result["source"], dict)
-    assert set(result["fact"].keys()) == {"label", "name", "goriyaku", "visit_style_tags", "evidence"}
+    assert set(result["fact"].keys()) == {"label", "name", "deity", "shrine_history", "place_context", "goriyaku", "visit_style_tags", "evidence"}
     assert set(result["interpretation"].keys()) == {"theme", "text"}
     assert set(result["action"].keys()) == {"text", "source"}
     assert set(result["source"].keys()) == {"fact", "interpretation", "action"}
@@ -74,6 +74,9 @@ def test_build_recommendation_reason_v4_builds_fact_layer_from_candidate_and_mea
         meaning_translation={"history_theme": "再出発"},
         candidate_profile={
             "name": "神社A",
+            "deity": "武神",
+            "shrine_history": "古くから勝負の祈願で知られる",
+            "place_context": "静かな丘の上",
             "history_theme": "再出発",
             "goriyaku": "仕事運",
             "visit_style_tags": ["quiet", "nature"],
@@ -81,11 +84,17 @@ def test_build_recommendation_reason_v4_builds_fact_layer_from_candidate_and_mea
     )
 
     assert result["fact"] == {
-        "label": "再出発",
+        "label": "武神",
         "name": "神社A",
+        "deity": "武神",
+        "shrine_history": "古くから勝負の祈願で知られる",
+        "place_context": "静かな丘の上",
         "goriyaku": "仕事運",
         "visit_style_tags": ["quiet", "nature"],
         "evidence": [
+            "deity:武神",
+            "shrine_history:古くから勝負の祈願で知られる",
+            "place_context:静かな丘の上",
             "history_theme:再出発",
             "goriyaku:仕事運",
             "visit_style_tags:quiet,nature",
@@ -140,6 +149,27 @@ def test_build_recommendation_reason_v4_reflects_goriyaku_and_visit_style_in_fac
     )
 
     assert "神社Eには、再出発の特徴があり、仕事運の要素、静かに参拝しやすい、自然を感じながら過ごしやすいも材料になります。" in result["reason_text"]
+
+
+def test_build_recommendation_reason_v4_prioritizes_shrine_specific_fact_fields():
+    result = build_recommendation_reason_v4(
+        candidate_profile={
+            "name": "神社F",
+            "history_theme": "勝負",
+            "goriyaku": "仕事運",
+            "deity": "武神",
+            "shrine_history": "古くから武運の祈願で知られる",
+            "place_context": "駅から少し離れた静かな境内",
+        },
+    )
+
+    assert result["fact"]["label"] == "武神"
+    assert result["fact"]["deity"] == "武神"
+    assert result["fact"]["shrine_history"] == "古くから武運の祈願で知られる"
+    assert result["fact"]["place_context"] == "駅から少し離れた静かな境内"
+    assert "deity:武神" in result["fact"]["evidence"]
+    assert "shrine_history:古くから武運の祈願で知られる" in result["fact"]["evidence"]
+    assert "place_context:駅から少し離れた静かな境内" in result["fact"]["evidence"]
 
 
 def test_build_recommendation_reason_v4_builds_interpretation_layer_from_profiles():
@@ -248,6 +278,9 @@ def test_build_recommendation_reason_v4_handles_missing_inputs_safely():
         "fact": {
             "label": "候補神社",
             "name": None,
+            "deity": None,
+            "shrine_history": None,
+            "place_context": None,
             "goriyaku": None,
             "visit_style_tags": [],
             "evidence": [],

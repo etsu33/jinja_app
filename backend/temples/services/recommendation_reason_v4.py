@@ -115,13 +115,22 @@ def _build_fact(candidate_profile: dict[str, Any], meaning_translation: dict[str
     Fact must not interpret the user's state or suggest the next action.
     """
     history_theme = _first_string(candidate_profile.get("history_theme"), meaning_translation.get("history_theme"))
+    deity = _first_string(candidate_profile.get("deity"), candidate_profile.get("main_deity"), candidate_profile.get("enshrined_deity"))
+    shrine_history = _first_string(candidate_profile.get("history"), candidate_profile.get("shrine_history"), candidate_profile.get("origin"))
+    place_context = _first_string(candidate_profile.get("place_context"), candidate_profile.get("area_context"), candidate_profile.get("location_context"))
     goriyaku = _first_string(candidate_profile.get("goriyaku"), candidate_profile.get("goriyaku_tags"))
     visit_style_tags = _as_list(candidate_profile.get("visit_style_tags"))
     name = _first_string(candidate_profile.get("name"))
 
-    label = _first_string(history_theme, goriyaku, name, "候補神社") or "候補神社"
+    label = _first_string(deity, shrine_history, place_context, history_theme, goriyaku, name, "候補神社") or "候補神社"
     evidence: list[str] = []
 
+    if deity:
+        evidence.append(f"deity:{deity}")
+    if shrine_history:
+        evidence.append(f"shrine_history:{shrine_history}")
+    if place_context:
+        evidence.append(f"place_context:{place_context}")
     if history_theme:
         evidence.append(f"history_theme:{history_theme}")
     if goriyaku:
@@ -134,6 +143,9 @@ def _build_fact(candidate_profile: dict[str, Any], meaning_translation: dict[str
     return {
         "label": label,
         "name": name,
+        "deity": deity,
+        "shrine_history": shrine_history,
+        "place_context": place_context,
         "goriyaku": goriyaku,
         "visit_style_tags": visit_style_tags,
         "evidence": evidence,
