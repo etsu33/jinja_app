@@ -10,6 +10,9 @@ class RecommendationReasonV4:
     fact: dict[str, Any] = field(default_factory=dict)
     interpretation: dict[str, Any] = field(default_factory=dict)
     action: dict[str, Any] = field(default_factory=dict)
+    used_fact: dict[str, Any] = field(default_factory=dict)
+    used_interpretation: dict[str, Any] = field(default_factory=dict)
+    used_action: dict[str, Any] = field(default_factory=dict)
     source: dict[str, Any] = field(default_factory=dict)
 
     def as_dict(self) -> dict[str, Any]:
@@ -18,6 +21,9 @@ class RecommendationReasonV4:
             "fact": self.fact,
             "interpretation": self.interpretation,
             "action": self.action,
+            "used_fact": self.used_fact,
+            "used_interpretation": self.used_interpretation,
+            "used_action": self.used_action,
             "source": self.source,
         }
 
@@ -162,6 +168,18 @@ def _build_fact(candidate_profile: dict[str, Any], meaning_translation: dict[str
     }
 
 
+def _build_used_fact(fact: dict[str, Any]) -> dict[str, Any]:
+    """Return shrine-side values actually available for the recommendation reason."""
+    return {
+        "deity": fact.get("deity"),
+        "shrine_history": fact.get("shrine_history"),
+        "place_context": fact.get("place_context"),
+        "goriyaku": fact.get("goriyaku"),
+        "history_theme": fact.get("label") if fact.get("label") not in {fact.get("deity"), fact.get("shrine_history"), fact.get("place_context"), fact.get("goriyaku"), "候補神社"} else None,
+        "evidence": fact.get("evidence") or [],
+    }
+
+
 def _build_interpretation(
     interpretation_profile: dict[str, Any],
     meaning_translation: dict[str, Any],
@@ -236,6 +254,40 @@ def _build_interpretation(
     }
 
 
+def _build_used_interpretation(
+    interpretation_profile: dict[str, Any],
+    meaning_translation: dict[str, Any],
+    interpretation: dict[str, Any],
+    fact: dict[str, Any],
+) -> dict[str, Any]:
+    """Return consultation-side values used to explain the recommendation."""
+    state_profile = _as_dict(interpretation_profile.get("state_profile"))
+    need_profile = _as_dict(interpretation_profile.get("need_profile"))
+    consultation_axis = _first_string(
+        interpretation_profile.get("consultation_axis"),
+        interpretation_profile.get("axis"),
+        need_profile.get("consultation_axis"),
+    )
+    historical_interpretation = None
+    shrine_history = _first_string(fact.get("shrine_history"))
+    if shrine_history:
+        historical_interpretation = f"{shrine_history}を、今回の相談を受け取る補助材料として参照しています。"
+
+    return {
+        "consultation_axis": consultation_axis,
+        "need_profile": {
+            "primary_need_tag": _first_string(need_profile.get("primary_need_tag"), need_profile.get("need_tags")),
+            "need_tags": _as_list(need_profile.get("need_tags")),
+        },
+        "state_profile": {
+            "primary_state": _first_string(state_profile.get("primary_state")),
+            "secondary_states": _as_list(state_profile.get("secondary_states")),
+        },
+        "historical_interpretation": historical_interpretation,
+        "theme": interpretation.get("theme"),
+    }
+
+
 def _build_action(interpretation_profile: dict[str, Any], meaning_translation: dict[str, Any]) -> dict[str, Any]:
     """Build the Action layer as one concrete next step.
 
@@ -270,6 +322,17 @@ def _build_action(interpretation_profile: dict[str, Any], meaning_translation: d
     return {
         "text": text,
         "source": source,
+    }
+
+
+def _build_used_action(interpretation_profile: dict[str, Any], meaning_translation: dict[str, Any], action: dict[str, Any]) -> dict[str, Any]:
+    """Return action-side values used to build the next-step suggestion."""
+    action_intent = _as_dict(interpretation_profile.get("action_intent"))
+    return {
+        "action_context": _first_string(meaning_translation.get("action_context")),
+        "reflection_question_seed": _first_string(meaning_translation.get("reflection_question_seed")),
+        "action_intent": _first_string(action_intent.get("intent"), action_intent.get("candidates")),
+        "source": action.get("source") or "fallback",
     }
 
 
@@ -337,12 +400,18 @@ def build_recommendation_reason_v4(
     fact = _build_fact(candidate, meaning)
     interpretation_layer = _build_interpretation(interpretation, meaning)
     action = _build_action(interpretation, meaning)
+    used_fact = _build_used_fact(fact)
+    used_interpretation = _build_used_interpretation(interpretation, meaning, interpretation_layer, fact)
+    used_action = _build_used_action(interpretation, meaning, action)
 
     return RecommendationReasonV4(
         reason_text=_build_reason_text(fact, interpretation_layer, action),
         fact=fact,
         interpretation=interpretation_layer,
         action=action,
+        used_fact=used_fact,
+        used_interpretation=used_interpretation,
+        used_action=used_action,
         source={
             "fact": "candidate_profile|meaning_translation",
             "interpretation": "interpretation_profile|meaning_translation",

@@ -56,16 +56,24 @@ def test_build_recommendation_reason_v4_returns_stable_schema():
         "fact",
         "interpretation",
         "action",
+        "used_fact",
+        "used_interpretation",
+        "used_action",
         "source",
     }
     assert isinstance(result["reason_text"], str)
     assert isinstance(result["fact"], dict)
     assert isinstance(result["interpretation"], dict)
     assert isinstance(result["action"], dict)
-    assert isinstance(result["source"], dict)
+    assert isinstance(result["used_fact"], dict)
+    assert isinstance(result["used_interpretation"], dict)
+    assert isinstance(result["used_action"], dict)
     assert set(result["fact"].keys()) == {"label", "name", "deity", "shrine_history", "place_context", "goriyaku", "visit_style_tags", "evidence"}
     assert set(result["interpretation"].keys()) == {"theme", "text"}
     assert set(result["action"].keys()) == {"text", "source"}
+    assert set(result["used_fact"].keys()) == {"deity", "shrine_history", "place_context", "goriyaku", "history_theme", "evidence"}
+    assert set(result["used_interpretation"].keys()) == {"consultation_axis", "need_profile", "state_profile", "historical_interpretation", "theme"}
+    assert set(result["used_action"].keys()) == {"action_context", "reflection_question_seed", "action_intent", "source"}
     assert set(result["source"].keys()) == {"fact", "interpretation", "action"}
 
 
@@ -102,6 +110,22 @@ def test_build_recommendation_reason_v4_builds_fact_layer_from_candidate_and_mea
         ],
     }
     assert result["source"]["fact"] == "candidate_profile|meaning_translation"
+    assert result["used_fact"] == {
+        "deity": "武神",
+        "shrine_history": "古くから勝負の祈願で知られる",
+        "place_context": "静かな丘の上",
+        "goriyaku": "仕事運",
+        "history_theme": None,
+        "evidence": [
+            "deity:武神",
+            "shrine_history:古くから勝負の祈願で知られる",
+            "place_context:静かな丘の上",
+            "history_theme:再出発",
+            "goriyaku:仕事運",
+            "visit_style_tags:quiet,nature",
+            "name:神社A",
+        ],
+    }
 
 
 def test_build_recommendation_reason_v4_includes_shrine_name_in_reason_text():
@@ -213,6 +237,43 @@ def test_build_recommendation_reason_v4_builds_interpretation_layer_from_profile
         "text": "仕事や進路の流れを見直したい。判断に迷う様子を中心に、要素があります。",
     }
     assert result["source"]["interpretation"] == "interpretation_profile|meaning_translation"
+    assert result["used_interpretation"] == {
+        "consultation_axis": None,
+        "need_profile": {
+            "primary_need_tag": "career",
+            "need_tags": ["career"],
+        },
+        "state_profile": {
+            "primary_state": "uncertain",
+            "secondary_states": [],
+        },
+        "historical_interpretation": None,
+        "theme": "再出発",
+    }
+
+
+def test_build_recommendation_reason_v4_prioritizes_consultation_axis_in_interpretation():
+    result = build_recommendation_reason_v4(
+        interpretation_profile={
+            "consultation_axis": "career_decision",
+            "need_profile": {"primary_need_tag": "mental"},
+            "state_profile": {"primary_state": "uncertain"},
+        },
+        meaning_translation={"history_theme": "再出発"},
+    )
+
+    assert result["interpretation"]["theme"] == "career_decision"
+    assert "仕事や働き方の判断を中心にした相談として受け取れます" in result["interpretation"]["text"]
+    assert "気持ちを落ち着け、今の状態を整理したい相談として受け取れます" not in result["interpretation"]["text"]
+    assert result["used_interpretation"]["consultation_axis"] == "career_decision"
+    assert result["used_interpretation"]["need_profile"] == {
+        "primary_need_tag": "mental",
+        "need_tags": [],
+    }
+    assert result["used_interpretation"]["state_profile"] == {
+        "primary_state": "uncertain",
+        "secondary_states": [],
+    }
 
 
 def test_build_recommendation_reason_v4_prioritizes_consultation_axis_in_interpretation():
@@ -252,6 +313,12 @@ def test_build_recommendation_reason_v4_builds_action_layer_from_meaning_transla
         "source": "meaning_translation.reflection_question_seed",
     }
     assert result["source"]["action"] == "meaning_translation.reflection_question_seed"
+    assert result["used_action"] == {
+        "action_context": "問いを一つに絞り、今の状態を整理する",
+        "reflection_question_seed": "次に小さく動かすなら、何から始めますか？",
+        "action_intent": "reflect",
+        "source": "meaning_translation.reflection_question_seed",
+    }
 
 
 def test_build_recommendation_reason_v4_uses_recommendation_input_profile_when_direct_inputs_are_missing():
@@ -307,12 +374,54 @@ def test_build_recommendation_reason_v4_handles_missing_inputs_safely():
             "text": "参拝前に、次に確認したいことを一つだけ決めておきます。",
             "source": "fallback",
         },
+        "used_fact": {
+            "deity": None,
+            "shrine_history": None,
+            "place_context": None,
+            "goriyaku": None,
+            "history_theme": None,
+            "evidence": [],
+        },
+        "used_interpretation": {
+            "consultation_axis": None,
+            "need_profile": {
+                "primary_need_tag": None,
+                "need_tags": [],
+            },
+            "state_profile": {
+                "primary_state": None,
+                "secondary_states": [],
+            },
+            "historical_interpretation": None,
+            "theme": "相談文脈",
+        },
+        "used_action": {
+            "action_context": None,
+            "reflection_question_seed": None,
+            "action_intent": None,
+            "source": "fallback",
+        },
         "source": {
             "fact": "candidate_profile|meaning_translation",
             "interpretation": "interpretation_profile|meaning_translation",
             "action": "fallback",
         },
     }
+
+
+def test_build_recommendation_reason_v4_keeps_historical_interpretation_as_auxiliary_context():
+    result = build_recommendation_reason_v4(
+        interpretation_profile={
+            "consultation_axis": "career_decision",
+        },
+        candidate_profile={
+            "name": "神社G",
+            "shrine_history": "古くから道を開く祈願で知られる",
+        },
+    )
+
+    assert result["used_interpretation"]["historical_interpretation"] == "古くから道を開く祈願で知られるを、今回の相談を受け取る補助材料として参照しています。"
+    assert "古くから道を開く祈願で知られるを、今回の相談を受け取る補助材料として参照しています。" not in result["action"]["text"]
 
 
 def test_build_recommendation_reason_v4_does_not_expose_internal_keys_in_reason_text():
