@@ -107,6 +107,18 @@ function resolveRecommendationReason(shrine: Shrine) {
   return "相談内容と神社情報をもとに選ばれた候補です。";
 }
 
+function buildReasonFactItems(reasonFacts?: RecommendationReasonFacts | null) {
+  if (!reasonFacts) return [];
+
+  return [
+    reasonFacts.shrine_feature ? { label: "神社固有の文脈", value: reasonFacts.shrine_feature } : null,
+    reasonFacts.shrine_benefit ? { label: "ご利益・意味", value: reasonFacts.shrine_benefit } : null,
+    reasonFacts.visit_fit ? { label: "参拝との相性", value: reasonFacts.visit_fit } : null,
+    reasonFacts.distance_label ? { label: "行きやすさ", value: reasonFacts.distance_label } : null,
+    reasonFacts.popularity_label ? { label: "参考情報", value: reasonFacts.popularity_label } : null,
+  ].filter((item): item is { label: string; value: string } => Boolean(item?.value?.trim()));
+}
+
 function toShrine(api: ShrineApiResponse): Shrine {
   return {
     id: api.id,
@@ -176,6 +188,8 @@ export default function ShrineDetail() {
   const [visited, setVisited] = React.useState(false);
   const shrine = apiShrine ?? localShrine;
   const tags = shrine?.tags ?? [];
+
+  const reasonFactItems = buildReasonFactItems(contextReasonFacts ?? shrine?.reasonFacts);
 
   const recommendationReason = React.useMemo(() => {
     if (!shrine) return undefined;
@@ -371,6 +385,18 @@ export default function ShrineDetail() {
         <Text style={styles.cardTitle}>この神社が候補に入った理由</Text>
         <Text style={styles.cardBody}>{recommendationReason}</Text>
       </View>
+
+      {reasonFactItems.length > 0 ? (
+        <View style={styles.reasonFactsCard}>
+          <Text style={styles.reasonFactsLabel}>根拠として見ている情報</Text>
+          {reasonFactItems.slice(0, 3).map((item) => (
+            <View key={`${item.label}-${item.value}`} style={styles.reasonFactItem}>
+              <Text style={styles.reasonFactLabel}>{item.label}</Text>
+              <Text style={styles.reasonFactText}>{item.value}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
 
       {/* explanation */}
       <View style={styles.explanationCard}>
@@ -600,6 +626,37 @@ const styles = StyleSheet.create({
     color: theme.mutedSoft,
     fontSize: 14,
     lineHeight: 22,
+    fontWeight: "600",
+  },
+  reasonFactsCard: {
+    marginHorizontal: spacing.screenX,
+    marginTop: spacing.mdGap,
+    backgroundColor: theme.surface,
+    borderRadius: radius.xl,
+    borderWidth: cardSizes.borderWidth,
+    borderColor: theme.borderSoft,
+    padding: cardSizes.cardPaddingLg,
+    gap: spacing.mdGap,
+  },
+  reasonFactsLabel: {
+    color: theme.goldSoft,
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 1.1,
+  },
+  reasonFactItem: {
+    gap: spacing.tightGap,
+  },
+  reasonFactLabel: {
+    color: theme.muted,
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.4,
+  },
+  reasonFactText: {
+    color: theme.mutedSoft,
+    fontSize: 13,
+    lineHeight: 20,
     fontWeight: "600",
   },
 
