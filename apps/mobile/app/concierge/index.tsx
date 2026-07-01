@@ -125,6 +125,7 @@ type RecommendationApiCard = {
   place_id?: string | number;
   action_suggestion_v4_preview?: unknown;
   actionSuggestionV4Preview?: unknown;
+  _reason_facts?: RecommendationReasonFacts[] | RecommendationReasonFacts | null;
 };
 
 type ConciergeChatResponse = {
@@ -350,8 +351,9 @@ function toRecommendationCard(item: RecommendationApiCard, index: number): Recom
     item.action_suggestion_v4_preview ?? item.actionSuggestionV4Preview,
   );
   const recommendationReasonV4 = item.recommendation_reason_v4 ?? item.recommendationReasonV4 ?? null;
-  const reasonFacts = item.reason_facts ?? item.reasonFacts ?? null;
   const recommendationReasonQuality = item.recommendation_reason_quality ?? item.recommendationReasonQuality ?? null;
+  const reasonFactsRaw = item.reason_facts ?? item.reasonFacts ?? item._reason_facts ?? null;
+  const reasonFacts = Array.isArray(reasonFactsRaw) ? (reasonFactsRaw[0] ?? null) : reasonFactsRaw;
   const reason = resolveRecommendationReason({
     recommendationReasonV4,
     reasonFacts,
@@ -415,7 +417,6 @@ async function fetchConciergeRecommendations({
   };
 
   const body = await post<ConciergeChatResponse>("/concierge/chat/", payload);
-
   return normalizeRecommendations(body.data?.recommendations ?? []);
 }
 
@@ -630,7 +631,6 @@ export default function ConciergeScreen() {
 
   const handleDetail = (card: RecommendationCard) => {
     if (!card.shrineId) return;
-
     router.push({
       pathname: "/shrines/[id]",
       params: {
