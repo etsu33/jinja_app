@@ -629,9 +629,16 @@ export default function ConciergeScreen() {
   };
 
   const handleDetail = (card: RecommendationCard) => {
-    if (card.shrineId) {
-      router.push(`/shrines/${card.shrineId}`);
-    }
+    if (!card.shrineId) return;
+
+    router.push({
+      pathname: "/shrines/[id]",
+      params: {
+        id: card.shrineId,
+        recommendationReasonV4: card.recommendationReasonV4 ?? "",
+        reasonFacts: card.reasonFacts ? JSON.stringify(card.reasonFacts) : "",
+      },
+    });
   };
 
   return (

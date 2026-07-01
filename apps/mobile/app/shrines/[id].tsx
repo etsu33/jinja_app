@@ -126,12 +126,37 @@ function toShrine(api: ShrineApiResponse): Shrine {
 }
 
 export default function ShrineDetail() {
-  const params = useLocalSearchParams<{ id?: string | string[] }>();
+  const params = useLocalSearchParams<{
+    id?: string | string[];
+    recommendationReasonV4?: string | string[];
+    reasonFacts?: string | string[];
+  }>();
   const shrineId = React.useMemo(() => {
     const raw = params.id;
     if (!raw) return undefined;
     return Array.isArray(raw) ? raw[0] : raw;
   }, [params.id]);
+
+  const contextRecommendationReasonV4 = React.useMemo(() => {
+    const raw = params.recommendationReasonV4;
+    const value = Array.isArray(raw) ? raw[0] : raw;
+    return asTrimmedString(value) ?? undefined;
+  }, [params.recommendationReasonV4]);
+
+  const contextReasonFacts = React.useMemo<RecommendationReasonFacts | null>(() => {
+    const raw = params.reasonFacts;
+    const value = Array.isArray(raw) ? raw[0] : raw;
+    if (!value) return null;
+
+    try {
+      const parsed = JSON.parse(value);
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+        ? (parsed as RecommendationReasonFacts)
+        : null;
+    } catch {
+      return null;
+    }
+  }, [params.reasonFacts]);
 
   const apiShrineId = React.useMemo(() => {
     if (!shrineId) return undefined;
@@ -154,8 +179,12 @@ export default function ShrineDetail() {
 
   const recommendationReason = React.useMemo(() => {
     if (!shrine) return undefined;
-    return resolveRecommendationReason(shrine);
-  }, [shrine]);
+    return resolveRecommendationReason({
+      ...shrine,
+      recommendationReasonV4: contextRecommendationReasonV4 ?? shrine.recommendationReasonV4,
+      reasonFacts: contextReasonFacts ?? shrine.reasonFacts,
+    });
+  }, [contextReasonFacts, contextRecommendationReasonV4, shrine]);
 
   const explanation = React.useMemo(() => {
     if (!shrine) return undefined;
