@@ -443,7 +443,6 @@ export default function ShrineDetail() {
 
       {/* 推薦理由 */}
       <View style={styles.recommendationCard}>
-        <Text style={styles.cardEyebrow}>RECOMMENDATION</Text>
         <Text style={styles.cardTitle}>この神社が候補に入った理由</Text>
         <Text style={styles.cardBody}>{recommendationReason}</Text>
       </View>
@@ -462,7 +461,6 @@ export default function ShrineDetail() {
 
       {hasConsultationSummary ? (
         <View style={styles.contextCard}>
-          <Text style={styles.cardEyebrow}>CONTEXT</Text>
           <Text style={styles.cardTitle}>今回の相談の整理</Text>
           {contextRecommendationReasonDetail?.consultationSummary ? (
             <Text style={styles.cardBody}>{contextRecommendationReasonDetail.consultationSummary}</Text>
@@ -472,7 +470,6 @@ export default function ShrineDetail() {
 
       {hasMeaningConnection ? (
         <View style={styles.meaningCard}>
-          <Text style={styles.cardEyebrow}>MEANING</Text>
           <Text style={styles.cardTitle}>神社との意味の接続</Text>
           {contextRecommendationReasonDetail?.shrineMeaning ? (
             <Text style={styles.cardBody}>{contextRecommendationReasonDetail.shrineMeaning}</Text>
@@ -488,14 +485,12 @@ export default function ShrineDetail() {
 
       {/* explanation */}
       <View style={styles.explanationCard}>
-        <Text style={styles.cardEyebrow}>EXPLANATION</Text>
         <Text style={styles.cardTitle}>神社の意味を知る</Text>
         <Text style={styles.cardBody}>{explanation}</Text>
       </View>
 
       {/* action suggestion */}
       <View style={styles.actionCard}>
-        <Text style={styles.cardEyebrow}>NEXT ACTION</Text>
         <Text style={styles.cardTitle}>参拝前にできること</Text>
         <Text style={styles.cardBody}>{actionSuggestion}</Text>
       </View>
@@ -527,7 +522,6 @@ export default function ShrineDetail() {
 
       {visited ? (
         <View style={styles.reflectionCard}>
-          <Text style={styles.cardEyebrow}>REFLECTION</Text>
           <Text style={styles.cardTitle}>参拝後の振り返り</Text>
           <Text style={styles.cardBody}>
             参拝して感じたことを残しておくと、次の相談や再訪時に自分の変化を見返しやすくなります。
