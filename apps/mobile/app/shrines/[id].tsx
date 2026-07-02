@@ -37,6 +37,10 @@ type RecommendationReasonFacts = {
   popularity_label?: string | null;
   fallback_reason?: string | null;
   confidence?: "high" | "mid" | "low" | null;
+  type?: string | null;
+  label?: string | null;
+  label_ja?: string | null;
+  evidence?: Array<string | { label?: string | null; value?: string | null; text?: string | null }>;
 };
 
 type Shrine = {
@@ -107,16 +111,41 @@ function resolveRecommendationReason(shrine: Shrine) {
   return "相談内容と神社情報をもとに選ばれた候補です。";
 }
 
-function buildReasonFactItems(reasonFacts?: RecommendationReasonFacts | null) {
+function buildReasonFactItems(reasonFacts?: RecommendationReasonFacts | RecommendationReasonFacts[] | null) {
   if (!reasonFacts) return [];
 
-  return [
-    reasonFacts.shrine_feature ? { label: "神社固有の文脈", value: reasonFacts.shrine_feature } : null,
-    reasonFacts.shrine_benefit ? { label: "ご利益・意味", value: reasonFacts.shrine_benefit } : null,
-    reasonFacts.visit_fit ? { label: "参拝との相性", value: reasonFacts.visit_fit } : null,
-    reasonFacts.distance_label ? { label: "行きやすさ", value: reasonFacts.distance_label } : null,
-    reasonFacts.popularity_label ? { label: "参考情報", value: reasonFacts.popularity_label } : null,
-  ].filter((item): item is { label: string; value: string } => Boolean(item?.value?.trim()));
+  const facts = Array.isArray(reasonFacts) ? reasonFacts : [reasonFacts];
+  const technicalValues = new Set(["history_theme", "matched_need_tags", "fallback"]);
+
+  return facts
+    .flatMap((fact) => {
+      const structuredItems = [
+        fact.shrine_feature ? { label: "神社固有の文脈", value: fact.shrine_feature } : null,
+        fact.shrine_benefit ? { label: "ご利益・意味", value: fact.shrine_benefit } : null,
+        fact.visit_fit ? { label: "参拝との相性", value: fact.visit_fit } : null,
+        fact.distance_label ? { label: "行きやすさ", value: fact.distance_label } : null,
+        fact.popularity_label ? { label: "参考情報", value: fact.popularity_label } : null,
+      ];
+
+      const labelValue = asTrimmedString(fact.label_ja ?? fact.label);
+      const labelItem = labelValue ? { label: "推薦の文脈", value: labelValue } : null;
+
+      const evidenceItems = Array.isArray(fact.evidence)
+        ? fact.evidence.map((evidence) => {
+            const rawValue =
+              typeof evidence === "string"
+                ? evidence
+                : evidence.value ?? evidence.text ?? null;
+            const value = asTrimmedString(rawValue);
+            if (!value || technicalValues.has(value) || value === labelValue) return null;
+
+            return { label: "判断材料", value };
+          })
+        : [];
+
+      return [labelItem, ...structuredItems, ...evidenceItems];
+    })
+    .filter((item): item is { label: string; value: string } => Boolean(item?.value?.trim()));
 }
 
 function toShrine(api: ShrineApiResponse): Shrine {
@@ -189,7 +218,7 @@ export default function ShrineDetail() {
   const shrine = apiShrine ?? localShrine;
   const tags = shrine?.tags ?? [];
 
-  const reasonFactItems = buildReasonFactItems(contextReasonFacts ?? shrine?.reasonFacts);
+  const reasonFactItems = buildReasonFactItems(contextReasonFacts ?? shrine?.reasonFacts).slice(0, 3);
 
   const recommendationReason = React.useMemo(() => {
     if (!shrine) return undefined;
@@ -389,7 +418,7 @@ export default function ShrineDetail() {
       {reasonFactItems.length > 0 ? (
         <View style={styles.reasonFactsCard}>
           <Text style={styles.reasonFactsLabel}>根拠として見ている情報</Text>
-          {reasonFactItems.slice(0, 3).map((item) => (
+          {reasonFactItems.map((item) => (
             <View key={`${item.label}-${item.value}`} style={styles.reasonFactItem}>
               <Text style={styles.reasonFactLabel}>{item.label}</Text>
               <Text style={styles.reasonFactText}>{item.value}</Text>
