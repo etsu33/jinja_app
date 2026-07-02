@@ -43,6 +43,13 @@ type RecommendationReasonFacts = {
   evidence?: Array<string | { label?: string | null; value?: string | null; text?: string | null }>;
 };
 
+type RecommendationReasonDetail = {
+  heroMeaningCopy?: string | null;
+  consultationSummary?: string | null;
+  shrineMeaning?: string | null;
+  actionMeaning?: string | null;
+};
+
 type Shrine = {
   id: string | number;
   name: string;
@@ -171,6 +178,7 @@ export default function ShrineDetail() {
     id?: string | string[];
     recommendationReasonV4?: string | string[];
     reasonFacts?: string | string[];
+    recommendationReasonDetail?: string | string[];
   }>();
   const shrineId = React.useMemo(() => {
     const raw = params.id;
@@ -199,6 +207,28 @@ export default function ShrineDetail() {
     }
   }, [params.reasonFacts]);
 
+  const contextRecommendationReasonDetail = React.useMemo<RecommendationReasonDetail | null>(() => {
+    const raw = params.recommendationReasonDetail;
+    const value = Array.isArray(raw) ? raw[0] : raw;
+    if (!value) return null;
+
+    try {
+      const parsed = JSON.parse(value);
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+
+      const detail: RecommendationReasonDetail = {
+        heroMeaningCopy: asTrimmedString((parsed as any).heroMeaningCopy ?? (parsed as any).hero_meaning_copy),
+        consultationSummary: asTrimmedString((parsed as any).consultationSummary ?? (parsed as any).consultation_summary),
+        shrineMeaning: asTrimmedString((parsed as any).shrineMeaning ?? (parsed as any).shrine_meaning),
+        actionMeaning: asTrimmedString((parsed as any).actionMeaning ?? (parsed as any).action_meaning),
+      };
+
+      return detail.heroMeaningCopy || detail.consultationSummary || detail.shrineMeaning || detail.actionMeaning ? detail : null;
+    } catch {
+      return null;
+    }
+  }, [params.recommendationReasonDetail]);
+
   const apiShrineId = React.useMemo(() => {
     if (!shrineId) return undefined;
     return SHRINE_API_ID_BY_LOCAL_ID[shrineId] ?? shrineId;
@@ -219,6 +249,11 @@ export default function ShrineDetail() {
   const tags = shrine?.tags ?? [];
 
   const reasonFactItems = buildReasonFactItems(contextReasonFacts ?? shrine?.reasonFacts).slice(0, 3);
+
+  const hasConsultationSummary = Boolean(contextRecommendationReasonDetail?.consultationSummary);
+  const hasMeaningConnection = Boolean(
+    contextRecommendationReasonDetail?.shrineMeaning || contextRecommendationReasonDetail?.actionMeaning,
+  );
 
   const recommendationReason = React.useMemo(() => {
     if (!shrine) return undefined;
@@ -422,6 +457,32 @@ export default function ShrineDetail() {
               <Text style={styles.reasonFactText}>{item.value}</Text>
             </View>
           ))}
+        </View>
+      ) : null}
+
+      {hasConsultationSummary ? (
+        <View style={styles.contextCard}>
+          <Text style={styles.cardEyebrow}>CONTEXT</Text>
+          <Text style={styles.cardTitle}>今回の相談の整理</Text>
+          {contextRecommendationReasonDetail?.consultationSummary ? (
+            <Text style={styles.cardBody}>{contextRecommendationReasonDetail.consultationSummary}</Text>
+          ) : null}
+        </View>
+      ) : null}
+
+      {hasMeaningConnection ? (
+        <View style={styles.meaningCard}>
+          <Text style={styles.cardEyebrow}>MEANING</Text>
+          <Text style={styles.cardTitle}>神社との意味の接続</Text>
+          {contextRecommendationReasonDetail?.shrineMeaning ? (
+            <Text style={styles.cardBody}>{contextRecommendationReasonDetail.shrineMeaning}</Text>
+          ) : null}
+          {contextRecommendationReasonDetail?.actionMeaning ? (
+            <View style={styles.meaningActionBlock}>
+              <Text style={styles.meaningActionLabel}>参拝前の問い</Text>
+              <Text style={styles.cardBody}>{contextRecommendationReasonDetail.actionMeaning}</Text>
+            </View>
+          ) : null}
         </View>
       ) : null}
 
@@ -638,6 +699,36 @@ const styles = StyleSheet.create({
     borderColor: theme.borderSoft,
     padding: cardSizes.cardPaddingLg,
     gap: spacing.smGap,
+  },
+  contextCard: {
+    marginHorizontal: spacing.screenX,
+    marginTop: spacing.sectionTop,
+    backgroundColor: theme.surfaceSoft,
+    borderRadius: radius.xl,
+    borderWidth: cardSizes.borderWidth,
+    borderColor: theme.borderSoft,
+    padding: cardSizes.cardPaddingLg,
+    gap: spacing.smGap,
+  },
+  meaningCard: {
+    marginHorizontal: spacing.screenX,
+    marginTop: spacing.sectionTop,
+    backgroundColor: theme.surface,
+    borderRadius: radius.xl,
+    borderWidth: cardSizes.borderWidth,
+    borderColor: theme.borderGold,
+    padding: cardSizes.cardPaddingLg,
+    gap: spacing.smGap,
+  },
+  meaningActionBlock: {
+    marginTop: spacing.smGap,
+    gap: spacing.tightGap,
+  },
+  meaningActionLabel: {
+    color: theme.goldSoft,
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1.1,
   },
   cardEyebrow: {
     color: theme.goldSoft,
