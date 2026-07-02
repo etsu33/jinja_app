@@ -55,6 +55,13 @@ type RecommendationReasonQuality = {
   is_ai_inference_only?: boolean | null;
   fallback_source?: string | null;
 };
+
+type RecommendationReasonDetail = {
+  heroMeaningCopy?: string | null;
+  consultationSummary?: string | null;
+  shrineMeaning?: string | null;
+  actionMeaning?: string | null;
+};
 type RecommendationCard = {
   id: string;
   name: string;
@@ -64,6 +71,7 @@ type RecommendationCard = {
   recommendationReasonV4?: string | null;
   reasonFacts?: RecommendationReasonFacts | null;
   recommendationReasonQuality?: RecommendationReasonQuality | null;
+  recommendationReasonDetail?: RecommendationReasonDetail | null;
   tags: string[];
   shrineId?: string;
   actionSuggestionV4Preview?: ActionSuggestionV4Preview | null;
@@ -119,6 +127,10 @@ type RecommendationApiCard = {
   reasonFacts?: RecommendationReasonFacts | null;
   recommendation_reason_quality?: RecommendationReasonQuality | null;
   recommendationReasonQuality?: RecommendationReasonQuality | null;
+  recommendation_reason_detail?: RecommendationReasonDetail | null;
+  recommendationReasonDetail?: RecommendationReasonDetail | null;
+  reason_detail?: RecommendationReasonDetail | null;
+  reasonDetail?: RecommendationReasonDetail | null;
   tags?: string[];
   shrineId?: string | number;
   shrine_id?: string | number;
@@ -127,6 +139,19 @@ type RecommendationApiCard = {
   actionSuggestionV4Preview?: unknown;
   _reason_facts?: RecommendationReasonFacts[] | RecommendationReasonFacts | null;
 };
+function normalizeRecommendationReasonDetail(raw: unknown): RecommendationReasonDetail | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+
+  const value = raw as any;
+  const detail: RecommendationReasonDetail = {
+    heroMeaningCopy: asTrimmedString(value.heroMeaningCopy ?? value.hero_meaning_copy),
+    consultationSummary: asTrimmedString(value.consultationSummary ?? value.consultation_summary),
+    shrineMeaning: asTrimmedString(value.shrineMeaning ?? value.shrine_meaning),
+    actionMeaning: asTrimmedString(value.actionMeaning ?? value.action_meaning),
+  };
+
+  return detail.heroMeaningCopy || detail.consultationSummary || detail.shrineMeaning || detail.actionMeaning ? detail : null;
+}
 
 type ConciergeChatResponse = {
   data?: {
@@ -352,6 +377,9 @@ function toRecommendationCard(item: RecommendationApiCard, index: number): Recom
   );
   const recommendationReasonV4 = item.recommendation_reason_v4 ?? item.recommendationReasonV4 ?? null;
   const recommendationReasonQuality = item.recommendation_reason_quality ?? item.recommendationReasonQuality ?? null;
+  const recommendationReasonDetail = normalizeRecommendationReasonDetail(
+    item.recommendation_reason_detail ?? item.recommendationReasonDetail ?? item.reason_detail ?? item.reasonDetail,
+  );
   const reasonFactsRaw = item.reason_facts ?? item.reasonFacts ?? item._reason_facts ?? null;
   const reasonFacts = Array.isArray(reasonFactsRaw) ? (reasonFactsRaw[0] ?? null) : reasonFactsRaw;
   const reason = resolveRecommendationReason({
@@ -369,6 +397,7 @@ function toRecommendationCard(item: RecommendationApiCard, index: number): Recom
     recommendationReasonV4,
     reasonFacts,
     recommendationReasonQuality,
+    recommendationReasonDetail,
     tags: item.tags ?? [],
     shrineId: shrineId !== undefined && shrineId !== null ? String(shrineId) : undefined,
     actionSuggestionV4Preview,
@@ -637,6 +666,7 @@ export default function ConciergeScreen() {
         id: card.shrineId,
         recommendationReasonV4: card.recommendationReasonV4 ?? "",
         reasonFacts: card.reasonFacts ? JSON.stringify(card.reasonFacts) : "",
+        recommendationReasonDetail: card.recommendationReasonDetail ? JSON.stringify(card.recommendationReasonDetail) : "",
       },
     });
   };
