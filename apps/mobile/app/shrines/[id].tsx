@@ -376,7 +376,7 @@ export default function ShrineDetail() {
 
       {/* ヘッダー（戻る + お気に入り） */}
       <View style={styles.headerBar}>
-        <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace("/")} style={styles.backBtn}>
+        <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))} style={styles.backBtn}>
           <Text style={styles.backBtnText}>← 戻る</Text>
         </Pressable>
         <Pressable
@@ -385,9 +385,7 @@ export default function ShrineDetail() {
           accessibilityRole="button"
           accessibilityLabel="お気に入りの切り替え"
         >
-          <Text style={[styles.favBtnText, fav && styles.favBtnTextActive]}>
-            {fav ? "♡ 登録済み" : "♡ お気に入り"}
-          </Text>
+          <Text style={[styles.favBtnText, fav && styles.favBtnTextActive]}>{fav ? "♡ 登録済み" : "♡ お気に入り"}</Text>
         </Pressable>
       </View>
 
@@ -417,7 +415,7 @@ export default function ShrineDetail() {
 
       {reasonFactItems.length > 0 ? (
         <View style={styles.reasonFactsCard}>
-          <Text style={styles.reasonFactsLabel}>根拠として見ている情報</Text>
+          <Text style={styles.reasonFactsLabel}>選定のポイント</Text>
           {reasonFactItems.map((item) => (
             <View key={`${item.label}-${item.value}`} style={styles.reasonFactItem}>
               <Text style={styles.reasonFactLabel}>{item.label}</Text>
@@ -470,8 +468,10 @@ export default function ShrineDetail() {
         <View style={styles.reflectionCard}>
           <Text style={styles.cardEyebrow}>REFLECTION</Text>
           <Text style={styles.cardTitle}>参拝後の振り返り</Text>
-          <Text style={styles.cardBody}>参拝して感じたことを残しておくと、次の相談や再訪時に自分の変化を見返しやすくなります。</Text>
-          <Pressable style={styles.reflectionButton} onPress={() => router.push("/records") }>
+          <Text style={styles.cardBody}>
+            参拝して感じたことを残しておくと、次の相談や再訪時に自分の変化を見返しやすくなります。
+          </Text>
+          <Pressable style={styles.reflectionButton} onPress={() => router.push("/records")}>
             <Text style={styles.reflectionButtonText}>振り返りを残す</Text>
           </Pressable>
         </View>
