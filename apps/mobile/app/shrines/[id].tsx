@@ -417,7 +417,7 @@ export default function ShrineDetail() {
 
       {reasonFactItems.length > 0 ? (
         <View style={styles.reasonFactsCard}>
-          <Text style={styles.reasonFactsLabel}>根拠として見ている情報</Text>
+          <Text style={styles.reasonFactsLabel}>選んだ手がかり</Text>
           {reasonFactItems.map((item) => (
             <View key={`${item.label}-${item.value}`} style={styles.reasonFactItem}>
               <Text style={styles.reasonFactLabel}>{item.label}</Text>
