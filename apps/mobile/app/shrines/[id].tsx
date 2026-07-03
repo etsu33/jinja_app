@@ -115,7 +115,7 @@ function resolveRecommendationReason(shrine: Shrine) {
   const legacyReason = asTrimmedString(shrine.recommendationReason);
   if (legacyReason) return legacyReason;
 
-  return "相談内容と神社情報をもとに選ばれた候補です。";
+  return "相談内容と神社情報をもとに選ばれた神社です。";
 }
 
 function buildReasonFactItems(reasonFacts?: RecommendationReasonFacts | RecommendationReasonFacts[] | null) {
@@ -443,7 +443,7 @@ export default function ShrineDetail() {
 
       {/* 推薦理由 */}
       <View style={styles.recommendationCard}>
-        <Text style={styles.cardTitle}>この神社が候補に入った理由</Text>
+        <Text style={styles.cardTitle}>この神社が選ばれた理由</Text>
         <Text style={styles.cardBody}>{recommendationReason}</Text>
       </View>
 

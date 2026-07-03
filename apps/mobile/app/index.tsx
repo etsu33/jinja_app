@@ -79,7 +79,7 @@ export default function Home() {
           textAlignVertical="top"
         />
         <View style={styles.chatFooter}>
-          <Text style={styles.aiHint}>相談内容を整えて、ご縁の候補へ進みます</Text>
+          <Text style={styles.aiHint}>相談内容を整えて、ご縁の神社へ進みます</Text>
           <Pressable onPress={openConcierge} style={styles.sendButton}>
             <Text style={styles.sendButtonText}>↑</Text>
           </Pressable>
@@ -99,7 +99,7 @@ export default function Home() {
       {showConditions ? (
         <View style={styles.conditionHint}>
           <Text style={styles.conditionHintText}>
-            誕生日・ご利益・参拝スタイルは、次の相談画面で追加できます。相談テーマがまだ決まっていない場合も、条件だけで候補を見られます。
+            誕生日・ご利益・参拝スタイルは、次の相談画面で追加できます。相談テーマがまだ決まっていない場合も、条件だけでも神社との接点を見られます。
           </Text>
         </View>
       ) : null}

@@ -344,7 +344,7 @@ function resolveRecommendationReason({
   const legacyReason = asTrimmedString(fallbackReason);
   if (legacyReason) return legacyReason;
 
-  return "相談内容と神社情報をもとに選ばれた候補です。";
+  return "相談内容と神社情報をもとに選ばれた神社です。";
 }
 
 function buildReasonFactItems(reasonFacts?: RecommendationReasonFacts | null) {
@@ -488,7 +488,7 @@ function ResultCard({
 
       {/* 推薦理由 */}
       <View style={styles.reasonBlock}>
-        <Text style={styles.reasonLabel}>この候補を出した理由</Text>
+        <Text style={styles.reasonLabel}>この神社を選んだ理由</Text>
         <Text style={styles.cardReason} numberOfLines={3}>{card.reason}</Text>
       </View>
 
@@ -508,7 +508,7 @@ function ResultCard({
         <View style={styles.actionV4Card}>
           <View style={styles.actionV4Header}>
             <Text style={styles.actionV4Label}>次に取りやすい行動</Text>
-            <Text style={styles.actionV4SubLabel}>この候補を見たあとに、無理なく進めるための整理です。</Text>
+            <Text style={styles.actionV4SubLabel}>この神社を見たあとに、無理なく進めるための整理です。</Text>
           </View>
 
           <View style={styles.actionV4Item}>
@@ -518,7 +518,7 @@ function ResultCard({
           </View>
 
           <View style={styles.actionV4Item}>
-            <Text style={styles.actionV4ItemLabel}>次の候補</Text>
+            <Text style={styles.actionV4ItemLabel}>次にできること</Text>
             <Text style={styles.actionV4Title}>{card.actionSuggestionV4Preview.secondaryAction.label}</Text>
             <Text style={styles.actionV4Description}>{card.actionSuggestionV4Preview.secondaryAction.description}</Text>
           </View>
@@ -641,7 +641,7 @@ export default function ConciergeScreen() {
       });
       setResults(recommendations);
     } catch {
-      setErrorMessage("通信に失敗しました。前回の候補を表示したまま、もう一度相談できます。");
+      setErrorMessage("通信に失敗しました。前回の結果を表示したまま、もう一度相談できます。");
     } finally {
       setLoading(false);
       setSubmitted(true);
@@ -682,7 +682,7 @@ export default function ConciergeScreen() {
           <Pressable onPress={() => router.back()} style={styles.backBtn}>
             <Text style={styles.backText}>← 戻る</Text>
           </Pressable>
-          <Text style={styles.headerTitle}>ご縁の候補</Text>
+          <Text style={styles.headerTitle}>ご縁の神社</Text>
         </View>
 
         {/* 相談内容 */}
