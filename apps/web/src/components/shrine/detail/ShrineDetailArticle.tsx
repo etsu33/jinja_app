@@ -203,7 +203,7 @@ function PremiumUpgradePrompt({
 }
 
 function ShrineDetailHeroHeader(props: { title: string; heroMeaningCopy?: string | null; address?: string | null }) {
-  const resolvedHeroMeaningCopy = props.heroMeaningCopy?.trim() || "今の状態と相性が良い候補です。";
+  const resolvedHeroMeaningCopy = props.heroMeaningCopy?.trim() || "今のあなたと静かに重なる神社です。";
 
   return (
     <section className="rounded-2xl border bg-white p-5 shadow-sm">
@@ -634,7 +634,7 @@ export default function ShrineDetailArticle({
       <section className="space-y-5">
         <ShrineDetailHeroHeader
           title={cardProps.title}
-          heroMeaningCopy={isPremiumActive ? heroMeaningCopy : "今の状態と相性が良い候補です。"}
+          heroMeaningCopy={isPremiumActive ? heroMeaningCopy : "今のあなたと静かに重なる神社です。"}
           address={cardProps.address ?? null}
         />
         <ShrineDetailHeroCard title={cardProps.title} imageUrl={heroImageUrl} />
