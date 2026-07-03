@@ -104,7 +104,7 @@ function PrimarySection({
 
       {items.length > 1 ? (
         <div className="mt-3">
-          <DetailSection title="他の候補">
+          <DetailSection title="他の神社">
             <RecommendationSwitchList items={items} primaryIndex={idx} onPick={setPrimaryIndex} needTags={needTags} />
           </DetailSection>
         </div>

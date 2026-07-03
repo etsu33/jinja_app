@@ -230,7 +230,7 @@ describe("ConciergeTopRecommendationHero", () => {
       }),
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "この候補を使う" }));
+    fireEvent.click(screen.getByRole("button", { name: "この神社を見る" }));
     expect(analyticsMocks.trackSearchEvent).toHaveBeenCalledWith(
       "secondary_action_click",
       expect.objectContaining({

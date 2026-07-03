@@ -251,7 +251,7 @@ export default function ConciergeTopRecommendationHero({
         <div className="space-y-3">
           <div className="space-y-2">
             <div className="text-xs font-semibold tracking-[0.18em] text-emerald-700">
-              {eyebrowLabel ?? "信頼できる神社候補"}
+              {eyebrowLabel ?? "今の相談に近い神社"}
             </div>
             <h2 className="text-xl font-semibold leading-8 text-slate-950">{name}</h2>
 
@@ -329,7 +329,7 @@ export default function ConciergeTopRecommendationHero({
             <div className="space-y-3">
               <div className="space-y-1">
                 <p className="text-[11px] font-semibold tracking-[0.14em] text-teal-700">次に取りやすい行動</p>
-                <p className="text-xs leading-5 text-slate-600">この候補を見たあとに、無理なく進めるための整理です。</p>
+                <p className="text-xs leading-5 text-slate-600">この神社を見たあとに、無理なく進めるための整理です。</p>
               </div>
 
               <div className="rounded-xl bg-white/85 px-3 py-2 ring-1 ring-teal-100">
@@ -350,7 +350,7 @@ export default function ConciergeTopRecommendationHero({
               </div>
 
               <div className="rounded-xl bg-white/85 px-3 py-2 ring-1 ring-teal-100">
-                <p className="text-[11px] font-semibold tracking-[0.12em] text-teal-700">次の候補</p>
+                <p className="text-[11px] font-semibold tracking-[0.12em] text-teal-700">次にできること</p>
                 <p className="mt-1 text-sm font-semibold leading-6 text-slate-800">
                   {visibleActionSuggestionV4Preview.secondaryAction.label}
                 </p>
@@ -362,7 +362,7 @@ export default function ConciergeTopRecommendationHero({
                   className="mt-2 rounded-lg border border-teal-200 bg-white px-2 py-1.5 text-xs font-semibold text-teal-800 transition hover:bg-teal-50"
                   onClick={() => handleActionSuggestionV4Click("secondary")}
                 >
-                  この候補を使う
+                  この神社を見る
                 </button>
               </div>
 
