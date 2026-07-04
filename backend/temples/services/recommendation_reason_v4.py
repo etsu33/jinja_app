@@ -248,7 +248,7 @@ def _build_interpretation(
         elif primary_decision and not consultation_axis_copy:
             parts.append(f"{primary_decision}相談として受け取れます")
 
-    text = "。".join(parts) + "。" if parts else "相談内容から、今扱いたいテーマを読み取る候補です。"
+    text = "。".join(parts) + "。" if parts else "相談内容から、今扱いたいテーマを読み取っています。"
 
     return {
         "theme": theme,
@@ -401,11 +401,11 @@ def _build_reason_text(fact: dict[str, Any], interpretation: dict[str, Any], act
     if fact_name and fact_label != "候補神社":
         fact_text = f"{fact_name}には、{fact_label}の特徴があります。"
     elif fact_name:
-        fact_text = f"{fact_name}は、相談内容と神社側の情報を照合する候補です。"
+        fact_text = f"{fact_name}は、相談内容と神社側の情報を重ねて見ています。"
     elif fact_label == "候補神社":
-        fact_text = "この候補は、相談内容と神社側の情報を照合する候補です。"
+        fact_text = "この神社は、相談内容と神社側の情報を重ねて見ています。"
     else:
-        fact_text = f"この候補には、{fact_label}の特徴があります。"
+        fact_text = f"この神社には、{fact_label}の特徴があります。"
 
     fact_details: list[str] = []
     if fact_goriyaku and fact_goriyaku != fact_label:
@@ -422,7 +422,7 @@ def _build_reason_text(fact: dict[str, Any], interpretation: dict[str, Any], act
         else:
             fact_text = f"{fact_text.rstrip('。')}。{detail_text}も確認材料になります。"
 
-    if fact_label == "候補神社" and interpretation_text == "相談内容から、今扱いたいテーマを読み取る候補です。":
+    if fact_label == "候補神社" and interpretation_text == "相談内容から、今扱いたいテーマを読み取っています。":
         interpretation_text = "相談内容から、今扱いたいテーマを読み取っています。"
 
     reason_parts = [fact_text, interpretation_text, action_text]
