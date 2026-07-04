@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -165,7 +163,7 @@ def _build_primary_action(
 
     return ActionItem(
         label="まず詳細を見て、行く理由を確認する",
-        description="入力が少ないため、候補神社の詳細を見て判断材料を増やします。",
+        description="入力が少ないため、この神社の詳細を見て判断材料を増やします。",
         action_type="detail_open",
         confidence=_confidence(0.66),
     )
@@ -175,21 +173,21 @@ def _build_secondary_action(primary_action_type: str) -> ActionItem:
     if primary_action_type == "save":
         return ActionItem(
             label="経路を確認して、行ける日を考える",
-            description="候補として残したあと、無理なく行ける距離かを確認します。",
+            description="気になる神社として残したあと、無理なく行ける距離かを確認します。",
             action_type="route_open",
             confidence=_confidence(0.72),
         )
 
     if primary_action_type == "route_open":
         return ActionItem(
-            label="候補として保存して、あとで見返す",
+            label="この神社を保存して、あとで見返す",
             description="今すぐ行けない場合でも、判断材料として残しておけます。",
             action_type="save",
             confidence=_confidence(0.74),
         )
 
     return ActionItem(
-        label="候補として保存して、あとで見返す",
+        label="この神社を保存して、あとで見返す",
         description="今すぐ決めきれない場合でも、後から相談内容と一緒に見返せます。",
         action_type="save",
         confidence=_confidence(0.74),
@@ -232,7 +230,7 @@ def _build_reflection_prompt(
         )
 
     return ReflectionPrompt(
-        question="この神社に行くとしたら、何を決めるためではなく、何を整理する時間にしたいですか？",
+        question="この神社を見たあと、何を整理したいですか？",
         prompt_type="before_visit",
         source_seed="fallback",
     )
@@ -387,7 +385,7 @@ def attach_action_suggestion_v4_preview(recs: dict[str, Any]) -> dict[str, Any]:
             ),
             "reflection_question_seed": _first_string(
                 first_action_suggestion.get("title"),
-                "この候補を見たあと、何を整理したいですか？",
+                "この神社を見たあと、何を整理したいですか？",
             ),
         }
 
