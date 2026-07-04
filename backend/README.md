@@ -46,6 +46,49 @@ python manage.py runserver 127.0.0.1:8000
 
 ---
 
+## 環境変数（Environment）
+
+開発環境では **`backend/.env.local`** を使用します。
+
+### ファイル構成
+
+| ファイル | 用途 |
+|----------|------|
+| `.env.local` | 開発用（Git管理しない） |
+| `.env.test` | pytest専用 |
+| `.env.example` | サンプル・初期設定 |
+
+### 読み込み順
+
+通常起動
+
+```
+.env.local
+```
+
+pytest実行時
+
+```
+.env.local
+↓
+.env.test（上書き）
+```
+
+### 注意事項
+
+- `.env` は使用しません。
+- `.env.dev` は使用しません。
+- `.env.local` は Git にコミットしません。
+- 新しい開発者は `.env.example` をコピーして `.env.local` を作成してください。
+
+例
+
+```bash
+cp .env.example .env.local
+```
+
+---
+
 ## BackendテストDB方針
 
 Backend の pytest は **PostgreSQL / PostGIS 前提**で実行します。
@@ -58,8 +101,8 @@ DATABASE_URL=postgis://admin:jdb50515@127.0.0.1:5432/jinja_db
 USE_SQLITE=0
 ```
 
-pytest 実行時は `backend/.env.test` が最優先で読み込まれます。
-`USE_SQLITE=1` が指定されている場合は、誤って SQLite に落ちないように起動時に明示エラーにします。
+pytest 実行時は通常 `backend/.env.local` を読み込み、その後 `backend/.env.test` を上書き読み込みします。
+pytest 実行時に `USE_SQLITE=1` が指定されている場合は、誤って SQLite に落ちないよう起動時に明示エラーにします。
 
 例:
 
