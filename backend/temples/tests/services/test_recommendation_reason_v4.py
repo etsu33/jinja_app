@@ -422,7 +422,7 @@ def test_build_recommendation_reason_v4_handles_missing_inputs_safely():
     result = build_recommendation_reason_v4()
 
     assert result == {
-        "reason_text": "この候補は、相談内容と神社側の情報を照合する候補です。相談内容から、今扱いたいテーマを読み取っています。参拝前に、次に確認したいことを一つだけ決めておきます。",
+        "reason_text": "この神社は、相談内容と神社側の情報を重ねて見ています。相談内容から、今扱いたいテーマを読み取っています。参拝前に、次に確認したいことを一つだけ決めておきます。",
         "fact": {
             "label": "候補神社",
             "name": None,
@@ -435,7 +435,7 @@ def test_build_recommendation_reason_v4_handles_missing_inputs_safely():
         },
         "interpretation": {
             "theme": "相談文脈",
-            "text": "相談内容から、今扱いたいテーマを読み取る候補です。",
+            "text": "相談内容から、今扱いたいテーマを読み取っています。",
         },
         "action": {
             "text": "参拝前に、次に確認したいことを一つだけ決めておきます。",
