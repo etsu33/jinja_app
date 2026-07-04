@@ -4,8 +4,9 @@ import pytest
 from django.utils import timezone
 from rest_framework.test import APIClient
 
+from temples.services.billing_state import is_premium_for_user
 from users.models import UserProfile
-      
+
 
 ISO_Z_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$")
 
@@ -115,3 +116,18 @@ def test_billing_status_stub_inactive_env_returns_free(monkeypatch, client: APIC
     assert data["is_active"] is False
     assert data["provider"] == "stripe"
     assert data["current_period_end"] is None
+
+
+@pytest.mark.django_db
+def test_is_premium_for_user_allows_staff_bypass(monkeypatch, django_user_model):
+    monkeypatch.setenv("BILLING_PROVIDER", "stripe")
+    monkeypatch.setenv("BILLING_STUB_PLAN", "free")
+    monkeypatch.setenv("BILLING_STUB_ACTIVE", "0")
+
+    user = django_user_model.objects.create_user(
+        username="staff-bypass-user",
+        password="password",
+        is_staff=True,
+    )
+
+    assert is_premium_for_user(user) is True
