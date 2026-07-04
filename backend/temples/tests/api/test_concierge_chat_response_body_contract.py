@@ -589,3 +589,125 @@ def test_chat_response_includes_debug_observation_contract_fields(client, monkey
     assert set(preview["interpretation"].keys()) == {"theme", "text"}
     assert set(preview["action"].keys()) == {"text", "source"}
     assert set(preview["source"].keys()) == {"fact", "interpretation", "action"}
+
+
+# New test: test_chat_response_recommendation_item_exposes_snake_case_contract_keys
+@pytest.mark.django_db
+def test_chat_response_recommendation_item_exposes_snake_case_contract_keys(client, monkeypatch):
+    _stub_candidates(monkeypatch)
+    _stub_recommendations(
+        monkeypatch,
+        {
+            "consultation_axis": "restart_mindset",
+            "recommendations": [
+                {
+                    "id": 10,
+                    "shrine_id": 10,
+                    "name": "神社A",
+                    "reason": "ok",
+                    "reason_source": "reason:test",
+                    "consultation_axis": "restart_mindset",
+                    "explanation": {
+                        "version": 2,
+                        "summary": "気持ちを整理して次に進む参拝先です。",
+                        "reasons": [
+                            {
+                                "code": "NEED_MATCH",
+                                "label": "相談との一致",
+                                "text": "再出発に関する願いごととの一致が見られます。",
+                                "strength": "high",
+                                "evidence": {},
+                            }
+                        ],
+                    },
+                    "reason_facts": {
+                        "primary_axis": "need",
+                        "shrine_benefit": "再出発",
+                        "shrine_feature": "気持ちを切り替える文脈",
+                    },
+                    "recommendation_reason_v4": "神社Aは、再出発の相談に向き合うための参拝先です。",
+                    "recommendation_reason_quality": {
+                        "shrine_data_rate": 0.4,
+                        "consultation_reflection_rate": 0.5,
+                        "fallback_reason_rate": 0.0,
+                        "evidence_rate": 0.4,
+                        "action_grounding_rate": 0.3333,
+                        "is_ai_inference_only": False,
+                        "fallback_source": None,
+                    },
+                    "action_suggestion_v4_preview": {
+                        "primary_action": {
+                            "label": "まず詳細を見て、行く理由を確認する",
+                            "description": "この神社の詳細を見て判断材料を増やします。",
+                            "action_type": "detail_open",
+                            "confidence": 0.82,
+                        },
+                        "secondary_action": {
+                            "label": "候補として保存して、あとで見返す",
+                            "description": "後から相談内容と一緒に見返せます。",
+                            "action_type": "save",
+                            "confidence": 0.74,
+                        },
+                        "reflection_prompt": {
+                            "question": "この神社を見たあと、何を整理したいですか？",
+                            "prompt_type": "before_visit",
+                            "source_seed": "fallback",
+                        },
+                        "action_source": {
+                            "source": "fallback",
+                            "reason": "入力が不足しているため、詳細確認と保存を安全な初期提案にした",
+                        },
+                        "preview": True,
+                        "version": "v4",
+                        "source_keys": ["recommendation_reason_v4"],
+                    },
+                    "rank_explanation": {
+                        "version": 1,
+                        "summary": "相談内容との一致をもとに並べています。",
+                    },
+                }
+            ],
+        },
+    )
+
+    r = client.post(
+        URL,
+        data=json.dumps({"query": "気持ちを切り替えたい", "lat": 35.0, "lng": 139.0}),
+        content_type="application/json",
+    )
+    assert r.status_code == 200
+
+    data = r.json()["data"]
+    assert data["consultation_axis"] == "restart_mindset"
+
+    rec = data["recommendations"][0]
+    for key in (
+        "consultation_axis",
+        "explanation",
+        "reason_facts",
+        "recommendation_reason_v4",
+        "recommendation_reason_quality",
+        "action_suggestion_v4_preview",
+        "rank_explanation",
+    ):
+        assert key in rec
+
+    assert rec["consultation_axis"] == "restart_mindset"
+    assert rec["recommendation_reason_v4"] == "神社Aは、再出発の相談に向き合うための参拝先です。"
+    assert rec["reason_facts"]["primary_axis"] == "need"
+    assert rec["explanation"]["version"] == 2
+    assert isinstance(rec["explanation"]["summary"], str)
+    assert isinstance(rec["explanation"]["reasons"], list)
+    assert rec["recommendation_reason_quality"]["is_ai_inference_only"] is False
+    assert rec["action_suggestion_v4_preview"]["preview"] is True
+    assert rec["action_suggestion_v4_preview"]["version"] == "v4"
+    assert rec["rank_explanation"]["version"] == 1
+
+    for legacy_key in (
+        "consultationAxis",
+        "reasonFacts",
+        "recommendationReasonV4",
+        "recommendationReasonQuality",
+        "actionSuggestionV4Preview",
+    ):
+        assert legacy_key not in rec
