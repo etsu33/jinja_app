@@ -146,7 +146,7 @@ def test_attach_explanations_chat_uses_element_primary_reason():
     exp = rec["explanation"]
 
     assert exp["version"] == 2
-    assert exp["summary"] == "生年月日から見た相性も補助的に見ながら、おすすめしています。"
+    assert exp["summary"] == "生年月日から見た傾向も、補助情報として重ねています。"
     assert exp["reasons"][0]["code"] == "ELEMENT_MATCH"
     assert exp["reasons"][0]["label"] == "生年月日との相性補助"
 
@@ -188,7 +188,7 @@ def test_attach_explanations_chat_uses_fallback_primary_reason():
     exp = rec["explanation"]
 
     assert exp["version"] == 2
-    assert exp["summary"] == "今の条件に近い候補としておすすめしています。"
+    assert exp["summary"] == "今の条件に近い神社として整理しています。"
     assert exp["reasons"][0]["code"] == "REASON_SOURCE"
 
 

@@ -190,8 +190,8 @@ def _build_summary_from_primary_reason(
 
         if reason_type == "user_selected_tag" and label_ja:
             if label_ja == "美容":
-                return "美容や見せ方を整え直したい願いと重なる候補としておすすめしています。"
-            return f"{label_ja}に関わる願いごとと重なる候補としておすすめしています。"
+                return "美容や見せ方を整え直したい願いと重なる神社として見ています。"
+            return f"{label_ja}に関わる願いごとと重なる神社として見ています。"
 
     if history_alignment_text:
         return history_alignment_text
@@ -200,7 +200,7 @@ def _build_summary_from_primary_reason(
         return f"今は「{gogyou}」の傾向として、{gogyou_tone}と、{history_tone}が重なる神社です。"
 
     if gogyou and gogyou_tone:
-        return f"今は「{gogyou}」の傾向として、{gogyou_tone}に合う神社です。"
+        return f"今は「{gogyou}」の傾向として、{gogyou_tone}と重ねて見やすい神社です。"
 
     if history_label and history_tone:
         return f"{history_label}に関わる文脈を持ち、{history_tone}として受け取りやすい神社です。"
@@ -213,16 +213,16 @@ def _build_summary_from_primary_reason(
             return f"{label_ja}に関わる願いごとと重なる神社です。"
 
         if reason_type == "goriyaku_tag" and label_ja:
-            return f"{label_ja}のご利益と重なる候補としておすすめしています。"
+            return f"{label_ja}のご利益と重なる神社として見ています。"
 
         if reason_type == "text_hint" and label_ja:
             return f"{label_ja}に関わる相談内容との重なりが見られます。"
 
         if reason_type == "element":
-            return "生年月日から見た相性も補助的に見ながら、おすすめしています。"
+            return "生年月日から見た傾向も、補助情報として重ねています。"
 
         if reason_type == "fallback":
-            return "今の条件に近い候補としておすすめしています。"
+            return "今の条件に近い神社として整理しています。"
 
     if original_reason:
         return original_reason
@@ -230,7 +230,7 @@ def _build_summary_from_primary_reason(
     if highlights:
         return highlights[0]
 
-    return "条件に合わせて候補を整理しました。"
+    return "条件に合わせて神社を整理しました。"
 
 
 
@@ -303,7 +303,7 @@ def _build_reason_entry_from_primary_reason(
         return _reason(
             "HISTORY_CONTEXT",
             "神社の文脈",
-            f"この神社には「{history_label}」の文脈があり、{history_tone}として受け取りやすい候補です。",
+            f"この神社には「{history_label}」の文脈があり、{history_tone}として受け取りやすい神社です。",
             strength="high",
             evidence={"history_context": history_context},
         )
@@ -347,8 +347,8 @@ def _build_reason_entry_from_primary_reason(
     if reason_type == "fallback":
         return _reason(
             "REASON_SOURCE",
-            "候補の整理",
-            "明確な一致が弱いため、今の条件に近い候補として整理しています。",
+            "提案の整理",
+            "明確な一致が弱いため、今の条件に近い神社として整理しています。",
             strength="mid",
             evidence={"primary_reason": primary_reason},
         )
@@ -456,7 +456,7 @@ def build_explanation_for_chat_rec(
 
     return {
         "version": 2,
-        "summary": summary or "条件に合わせて候補を整理しました。",
+        "summary": summary or "条件に合わせて神社を整理しました。",
         "reasons": reasons,
         "disclaimer": "提案は参考情報です。安全と現地状況を優先してください。",
     }
@@ -530,7 +530,7 @@ def build_explanation_for_plan_rec(
         reasons.append(_reason(
             "WISH_MATCH",
             "願いごととの一致",
-            f"願いごと「{wish}」も踏まえて候補を整理しています。",
+            f"願いごと「{wish}」も踏まえて神社を整理しています。",
             strength="mid",
             evidence={"wish": wish},
         ))
@@ -539,7 +539,7 @@ def build_explanation_for_plan_rec(
 
     return {
         "version": 2,
-        "summary": summary or "条件に合わせて候補を整理しました。",
+        "summary": summary or "条件に合わせて神社を整理しました。",
         "reasons": reasons,
         "disclaimer": "提案は参考情報です。安全と現地状況を優先してください。",
     }
