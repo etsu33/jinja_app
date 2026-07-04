@@ -141,13 +141,13 @@ def test_build_action_suggestion_handles_missing_inputs_safely():
     _assert_stable_schema(result)
     assert result["primary_action"] == {
         "label": "まず詳細を見て、行く理由を確認する",
-        "description": "入力が少ないため、候補神社の詳細を見て判断材料を増やします。",
+        "description": "入力が少ないため、この神社の詳細を見て判断材料を増やします。",
         "action_type": "detail_open",
         "confidence": 0.66,
     }
     assert result["secondary_action"]["action_type"] == "save"
     assert result["reflection_prompt"] == {
-        "question": "この神社に行くとしたら、何を決めるためではなく、何を整理する時間にしたいですか？",
+        "question": "この神社を見たあと、何を整理したいですか？",
         "prompt_type": "before_visit",
         "source_seed": "fallback",
     }
