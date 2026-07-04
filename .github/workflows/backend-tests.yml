@@ -120,14 +120,29 @@ jobs:
     concurrency:
       group: backend-tests-unit-${{ github.ref }}
       cancel-in-progress: true
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: jinja_db
+          POSTGRES_USER: admin
+          POSTGRES_PASSWORD: jdb50515
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U admin -d jinja_db"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 60
+          --health-start-period 30s
     env:
       CI: "true"
       DJANGO_SETTINGS_MODULE: shrine_project.settings
       PYTHONPATH: ${{ github.workspace }}/backend
       IS_PYTEST: "1"
       DISABLE_GIS_FOR_TESTS: "1"
-      USE_SQLITE: "1"
+      USE_SQLITE: "0"
       USE_GIS: "0"
+      DATABASE_URL: postgres://admin:jdb50515@localhost:5432/jinja_db
 
       CONCIERGE_USE_LLM: "1"
       AUTO_GEOCODE_ON_SAVE: "0"
@@ -192,6 +207,15 @@ jobs:
               print("temples NG:", repr(e))
           PY
 
+      - name: Wait for DB
+        run: |
+          for i in $(seq 1 60); do
+            pg_isready -h localhost -p 5432 -U admin -d jinja_db && break
+            if [ $((i % 10)) -eq 0 ]; then echo "waiting for Postgres... ($i/60)"; fi
+            sleep 2
+          done
+          pg_isready -h localhost -p 5432 -U admin -d jinja_db
+
       - name: Check Django schema drift (no new migrations)
         working-directory: backend
         run: |
@@ -215,7 +239,7 @@ jobs:
           echo "---- shrine.py (first 220 lines, with line numbers) ----"
           nl -ba temples/api/views/shrine.py | sed -n '1,220p'
       
-      - name: Run pytest (unit, sqlite)
+      - name: Run pytest (unit, postgres nogis)
         env:
           PYTHONPATH: ${{ github.workspace }}/backend
         run: |
