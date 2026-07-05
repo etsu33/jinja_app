@@ -402,6 +402,7 @@ def _attach_recommendation_reason_quality(
         preview = build_recommendation_reason_v4(
             recommendation_input_profile=recommendation_input_profile,
         )
+        rec["recommendation_reason_v4"] = str(preview.get("reason_text") or "")
         quality = preview.get("quality") or {}
         rec["recommendation_reason_quality"] = quality
 
