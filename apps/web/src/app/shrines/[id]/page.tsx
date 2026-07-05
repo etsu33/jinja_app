@@ -133,7 +133,7 @@ export function buildRecommendationReasonDetailInput(
       popular_score: args.recommendation?.popular_score ?? null,
       astro_elements: args.recommendation?.astro_elements ?? null,
       astro_priority: args.recommendation?.astro_priority ?? null,
-      reason_facts: args.recommendation?.reason_facts ?? args.recommendation?._reason_facts ?? null,
+      reason_facts: args.recommendation?.reason_facts ?? null,
     },
     index: typeof args.recommendation?.rank === "number" ? Math.max(args.recommendation.rank - 1, 0) : 0,
     mode: args.conciergeMode ?? "need",
