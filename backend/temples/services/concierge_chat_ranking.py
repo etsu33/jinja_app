@@ -1397,6 +1397,7 @@ def _attach_breakdown(
         reason_facts = [primary_reason]
 
     rec["_reason_facts"] = reason_facts
+    rec["reason_facts"] = reason_facts
     rec["_primary_reason_source"] = str(primary_reason.get("type") or "")
     rec["_primary_reason_label"] = str(primary_reason.get("label") or "")
     entry_context = _build_entry_context(query=query, birthdate=birthdate)
