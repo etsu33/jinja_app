@@ -96,8 +96,7 @@ function normalizeTrustMetadata(raw: any) {
     : [];
 
   return {
-    rankClass:
-      typeof raw.rank_class === "string" ? raw.rank_class : typeof raw.rankClass === "string" ? raw.rankClass : null,
+    rankClass: typeof raw.rank_class === "string" ? raw.rank_class : typeof raw.rankClass === "string" ? raw.rankClass : null,
     culturalStatus,
     lineage: typeof raw.lineage === "string" ? raw.lineage : null,
     originSummary:
@@ -128,9 +127,7 @@ function isActionSuggestionV4ActionType(value: unknown): value is ActionSuggesti
   return typeof value === "string" && ACTION_SUGGESTION_V4_ACTION_TYPES.includes(value as any);
 }
 
-function isActionSuggestionV4PromptType(
-  value: unknown,
-): value is ActionSuggestionV4ReflectionPromptViewModel["promptType"] {
+function isActionSuggestionV4PromptType(value: unknown): value is ActionSuggestionV4ReflectionPromptViewModel["promptType"] {
   return typeof value === "string" && ACTION_SUGGESTION_V4_PROMPT_TYPES.includes(value as any);
 }
 
@@ -205,7 +202,9 @@ function normalizeActionSuggestionV4Preview(raw: any): ActionSuggestionV4Preview
   const actionSource = normalizeActionSuggestionV4Source(raw.action_source ?? raw.actionSource);
   const sourceKeysRaw = raw.source_keys ?? raw.sourceKeys;
   const sourceKeys = Array.isArray(sourceKeysRaw)
-    ? sourceKeysRaw.map((item) => asTrimmedString(item)).filter((item): item is string => Boolean(item))
+    ? sourceKeysRaw
+        .map((item) => asTrimmedString(item))
+        .filter((item): item is string => Boolean(item))
     : [];
 
   if (!primaryAction || !secondaryAction || !reflectionPrompt || !actionSource) {
@@ -258,9 +257,7 @@ export function conciergeToShrineListItems(resp: ConciergeResponse): ConciergeRe
             .filter((item: any) => item.id && item.title)
         : [];
 
-      const actionSuggestionV4Preview = normalizeActionSuggestionV4Preview(
-        r.action_suggestion_v4_preview ?? r.actionSuggestionV4Preview,
-      );
+      const actionSuggestionV4Preview = normalizeActionSuggestionV4Preview(r.action_suggestion_v4_preview ?? r.actionSuggestionV4Preview);
 
       const matchedTags = normalizeTagList(r.breakdown?.matched_need_tags);
       const rawTags = matchedTags.length ? matchedTags : normalizeTagList(resp.data?._need?.tags);
