@@ -43,12 +43,24 @@ type RecommendationReasonFacts = {
   evidence?: Array<string | { label?: string | null; value?: string | null; text?: string | null }>;
 };
 
+
 type RecommendationReasonDetail = {
   heroMeaningCopy?: string | null;
   consultationSummary?: string | null;
   shrineMeaning?: string | null;
   actionMeaning?: string | null;
 };
+
+type RecommendationExplanation =
+  | string
+  | {
+      summary?: string | null;
+      reasons?: Array<{
+        text?: string | null;
+        label?: string | null;
+      }> | null;
+    }
+  | null;
 
 type Shrine = {
   id: string | number;
@@ -58,7 +70,7 @@ type Shrine = {
   recommendationReason?: string;
   recommendationReasonV4?: string;
   reasonFacts?: RecommendationReasonFacts | null;
-  explanation?: string;
+  explanation?: RecommendationExplanation;
   actionSuggestion?: string;
   imageUrl?: string;
   tags?: string[];
@@ -79,7 +91,7 @@ type ShrineApiResponse = {
   recommendationReasonV4?: string | null;
   reason_facts?: RecommendationReasonFacts | null;
   reasonFacts?: RecommendationReasonFacts | null;
-  explanation?: string | null;
+  explanation?: RecommendationExplanation;
   action_suggestion?: string | null;
   actionSuggestion?: string | null;
   imageUrl?: string;
@@ -98,6 +110,29 @@ function asTrimmedString(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   return trimmed.length ? trimmed : null;
+}
+
+function resolveExplanationText(
+  explanation: RecommendationExplanation | undefined,
+  fallback?: string,
+): string | undefined {
+  if (typeof explanation === "string") {
+    const value = asTrimmedString(explanation);
+    if (value) return value;
+  }
+
+  if (explanation && typeof explanation === "object") {
+    const summary = asTrimmedString(explanation.summary);
+    if (summary) return summary;
+
+    const reasonText = explanation.reasons
+      ?.map((reason) => asTrimmedString(reason?.text))
+      .find((text): text is string => Boolean(text));
+
+    if (reasonText) return reasonText;
+  }
+
+  return fallback;
 }
 
 function resolveRecommendationReason(shrine: Shrine) {
@@ -266,7 +301,10 @@ export default function ShrineDetail() {
 
   const explanation = React.useMemo(() => {
     if (!shrine) return undefined;
-    return shrine.explanation ?? shrine.description ?? `${shrine.name}の由緒やご利益を確認しながら、今の自分に必要な意味を探しやすい神社です。`;
+    return resolveExplanationText(
+      shrine.explanation,
+      shrine.description ?? `${shrine.name}の由緒やご利益を確認しながら、今の自分に必要な意味を探しやすい神社です。`,
+    );
   }, [shrine]);
 
   const actionSuggestion = React.useMemo(() => {
