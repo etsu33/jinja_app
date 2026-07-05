@@ -148,6 +148,7 @@ export type ConciergeRecommendation = {
 
   reason?: string | null;
   reason_source?: string | null;
+  recommendation_reason_v4?: string | null;
   recommendation_reason_quality?: RecommendationReasonQuality | null;
 
   bullets?: string[] | null;

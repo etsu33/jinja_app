@@ -283,7 +283,11 @@ export function conciergeToShrineListItems(resp: ConciergeResponse): ConciergeRe
 
       const explanationSummary = r.explanation?.summary?.trim() || reasonVm.list.summary;
       const rawReason =
-        r._explanation_payload?.original_reason?.trim() || r.reason?.trim() || explanationSummary || null;
+        r.recommendation_reason_v4?.trim() ||
+        r._explanation_payload?.original_reason?.trim() ||
+        r.reason?.trim() ||
+        explanationSummary ||
+        null;
 
       const primaryReasonLabel = r._explanation_payload?.primary_reason?.label?.trim() || null;
       const primaryTag = resolveListPrimaryTag({
