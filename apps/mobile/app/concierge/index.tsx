@@ -665,7 +665,10 @@ export default function ConciergeScreen() {
         id: card.shrineId,
         recommendationReasonV4: card.recommendationReasonV4 ?? "",
         reasonFacts: card.reasonFacts ? JSON.stringify(card.reasonFacts) : "",
-        recommendationReasonDetail: card.recommendationReasonDetail ? JSON.stringify(card.recommendationReasonDetail) : "",
+        recommendationReasonDetail: card.recommendationReasonDetail
+          ? JSON.stringify(card.recommendationReasonDetail)
+          : "",
+        actionSuggestionV4Preview: card.actionSuggestionV4Preview ? JSON.stringify(card.actionSuggestionV4Preview) : "",
       },
     });
   };

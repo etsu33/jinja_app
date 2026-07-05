@@ -44,11 +44,31 @@ type RecommendationReasonFacts = {
 };
 
 
+
 type RecommendationReasonDetail = {
   heroMeaningCopy?: string | null;
   consultationSummary?: string | null;
   shrineMeaning?: string | null;
   actionMeaning?: string | null;
+};
+
+type ActionSuggestionV4Action = {
+  label?: string | null;
+  description?: string | null;
+};
+
+type ActionSuggestionV4ReflectionPrompt = {
+  question?: string | null;
+};
+
+type ActionSuggestionV4Preview = {
+  preview?: boolean;
+  primaryAction?: ActionSuggestionV4Action | null;
+  primary_action?: ActionSuggestionV4Action | null;
+  secondaryAction?: ActionSuggestionV4Action | null;
+  secondary_action?: ActionSuggestionV4Action | null;
+  reflectionPrompt?: ActionSuggestionV4ReflectionPrompt | null;
+  reflection_prompt?: ActionSuggestionV4ReflectionPrompt | null;
 };
 
 type RecommendationExplanation =
@@ -72,6 +92,7 @@ type Shrine = {
   reasonFacts?: RecommendationReasonFacts | null;
   explanation?: RecommendationExplanation;
   actionSuggestion?: string;
+  actionSuggestionV4Preview?: ActionSuggestionV4Preview | null;
   imageUrl?: string;
   tags?: string[];
   latitude?: number;
@@ -94,6 +115,8 @@ type ShrineApiResponse = {
   explanation?: RecommendationExplanation;
   action_suggestion?: string | null;
   actionSuggestion?: string | null;
+  action_suggestion_v4_preview?: ActionSuggestionV4Preview | null;
+  actionSuggestionV4Preview?: ActionSuggestionV4Preview | null;
   imageUrl?: string;
   image_url?: string;
   latitude?: number | null;
@@ -201,6 +224,7 @@ function toShrine(api: ShrineApiResponse): Shrine {
     reasonFacts: api.reasonFacts ?? api.reason_facts ?? null,
     explanation: api.explanation ?? undefined,
     actionSuggestion: api.actionSuggestion ?? api.action_suggestion ?? undefined,
+    actionSuggestionV4Preview: api.actionSuggestionV4Preview ?? api.action_suggestion_v4_preview ?? null,
     imageUrl: api.imageUrl ?? api.image_url,
     tags: api.goriyaku_tags?.map((tag) => tag.name) ?? [],
     latitude: typeof api.latitude === "number" ? api.latitude : undefined,
@@ -214,6 +238,7 @@ export default function ShrineDetail() {
     recommendationReasonV4?: string | string[];
     reasonFacts?: string | string[];
     recommendationReasonDetail?: string | string[];
+    actionSuggestionV4Preview?: string | string[];
   }>();
   const shrineId = React.useMemo(() => {
     const raw = params.id;
@@ -264,6 +289,21 @@ export default function ShrineDetail() {
     }
   }, [params.recommendationReasonDetail]);
 
+  const contextActionSuggestionV4Preview = React.useMemo<ActionSuggestionV4Preview | null>(() => {
+    const raw = params.actionSuggestionV4Preview;
+    const value = Array.isArray(raw) ? raw[0] : raw;
+    if (!value) return null;
+
+    try {
+      const parsed = JSON.parse(value);
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+        ? (parsed as ActionSuggestionV4Preview)
+        : null;
+    } catch {
+      return null;
+    }
+  }, [params.actionSuggestionV4Preview]);
+
   const apiShrineId = React.useMemo(() => {
     if (!shrineId) return undefined;
     return SHRINE_API_ID_BY_LOCAL_ID[shrineId] ?? shrineId;
@@ -311,6 +351,18 @@ export default function ShrineDetail() {
     if (!shrine) return undefined;
     return shrine.actionSuggestion ?? "参拝前に、今考えていることを一つだけ言葉にしてから向かうと、帰ってきたあとに変化を振り返りやすくなります。";
   }, [shrine]);
+
+  const actionSuggestionV4Preview = contextActionSuggestionV4Preview ?? shrine?.actionSuggestionV4Preview ?? null;
+  const primaryAction = actionSuggestionV4Preview?.primaryAction ?? actionSuggestionV4Preview?.primary_action ?? null;
+  const secondaryAction = actionSuggestionV4Preview?.secondaryAction ?? actionSuggestionV4Preview?.secondary_action ?? null;
+  const reflectionPrompt = actionSuggestionV4Preview?.reflectionPrompt ?? actionSuggestionV4Preview?.reflection_prompt ?? null;
+  const shouldShowActionSuggestionV4 = actionSuggestionV4Preview?.preview === true && Boolean(
+    asTrimmedString(primaryAction?.label) ||
+    asTrimmedString(primaryAction?.description) ||
+    asTrimmedString(secondaryAction?.label) ||
+    asTrimmedString(secondaryAction?.description) ||
+    asTrimmedString(reflectionPrompt?.question),
+  );
 
   const countedRef = React.useRef(false);
   const detailTrackedRef = React.useRef<string | null>(null);
@@ -528,10 +580,39 @@ export default function ShrineDetail() {
       </View>
 
       {/* action suggestion */}
-      <View style={styles.actionCard}>
-        <Text style={styles.cardTitle}>参拝前にできること</Text>
-        <Text style={styles.cardBody}>{actionSuggestion}</Text>
-      </View>
+      {shouldShowActionSuggestionV4 ? (
+        <View style={styles.actionCard}>
+          <Text style={styles.cardEyebrow}>NEXT ACTION</Text>
+          <Text style={styles.cardTitle}>参拝前にできること</Text>
+          {asTrimmedString(primaryAction?.label) ? (
+            <Text style={styles.actionV4Title}>{primaryAction?.label}</Text>
+          ) : null}
+          {asTrimmedString(primaryAction?.description) ? (
+            <Text style={styles.cardBody}>{primaryAction?.description}</Text>
+          ) : null}
+          {asTrimmedString(secondaryAction?.label) || asTrimmedString(secondaryAction?.description) ? (
+            <View style={styles.actionV4SecondaryBlock}>
+              {asTrimmedString(secondaryAction?.label) ? (
+                <Text style={styles.actionV4SubTitle}>{secondaryAction?.label}</Text>
+              ) : null}
+              {asTrimmedString(secondaryAction?.description) ? (
+                <Text style={styles.cardBody}>{secondaryAction?.description}</Text>
+              ) : null}
+            </View>
+          ) : null}
+          {asTrimmedString(reflectionPrompt?.question) ? (
+            <View style={styles.actionV4SecondaryBlock}>
+              <Text style={styles.meaningActionLabel}>参拝前の問い</Text>
+              <Text style={styles.cardBody}>{reflectionPrompt?.question}</Text>
+            </View>
+          ) : null}
+        </View>
+      ) : (
+        <View style={styles.actionCard}>
+          <Text style={styles.cardTitle}>参拝前にできること</Text>
+          <Text style={styles.cardBody}>{actionSuggestion}</Text>
+        </View>
+      )}
 
       {/* 説明文 */}
       <View style={styles.descCard}>
@@ -779,6 +860,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 22,
     fontWeight: "600",
+  },
+  actionV4Title: {
+    color: theme.text,
+    fontSize: 15,
+    lineHeight: 22,
+    fontWeight: "900",
+  },
+  actionV4SubTitle: {
+    color: theme.goldSoft,
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: "900",
+  },
+  actionV4SecondaryBlock: {
+    marginTop: spacing.smGap,
+    gap: spacing.tightGap,
   },
   reasonFactsCard: {
     marginHorizontal: spacing.screenX,
