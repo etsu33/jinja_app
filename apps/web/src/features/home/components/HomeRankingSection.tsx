@@ -38,11 +38,11 @@ export function HomeRankingSection() {
     <section className="space-y-4">
       <div className="flex items-baseline justify-between gap-4">
         <div>
-          <h2 className="text-base font-semibold text-slate-900">今人気の神社ランキング（30日）</h2>
-          <p className="mt-2 text-xs text-slate-600">最近30日間のスコア（お気に入り数＋閲覧数）で集計しています。</p>
+          <h2 className="text-base font-semibold text-slate-900">参考にしたい人気の神社</h2>
+          <p className="mt-2 text-xs text-slate-600">相談で迷ったあとに、みんなが見ている神社も参考にできます。</p>
         </div>
         <Link href="/ranking" className="text-xs font-medium text-slate-600 underline-offset-2 hover:text-emerald-700 hover:underline">
-          ランキング詳細へ
+          参考ランキングを見る
         </Link>
       </div>
 
