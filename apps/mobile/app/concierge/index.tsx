@@ -137,7 +137,6 @@ type RecommendationApiCard = {
   place_id?: string | number;
   action_suggestion_v4_preview?: unknown;
   actionSuggestionV4Preview?: unknown;
-  _reason_facts?: RecommendationReasonFacts[] | RecommendationReasonFacts | null;
 };
 function normalizeRecommendationReasonDetail(raw: unknown): RecommendationReasonDetail | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
@@ -380,7 +379,7 @@ function toRecommendationCard(item: RecommendationApiCard, index: number): Recom
   const recommendationReasonDetail = normalizeRecommendationReasonDetail(
     item.recommendation_reason_detail ?? item.recommendationReasonDetail ?? item.reason_detail ?? item.reasonDetail,
   );
-  const reasonFactsRaw = item.reason_facts ?? item.reasonFacts ?? item._reason_facts ?? null;
+  const reasonFactsRaw = item.reason_facts ?? item.reasonFacts ?? null;
   const reasonFacts = Array.isArray(reasonFactsRaw) ? (reasonFactsRaw[0] ?? null) : reasonFactsRaw;
   const reason = resolveRecommendationReason({
     recommendationReasonV4,
