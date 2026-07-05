@@ -238,6 +238,84 @@ it("explanation.summary があれば explanationSummary と rawReason に使う"
   expect(items[0].cardProps.explanationPrimaryReason).toBe("不安や気持ちを整える");
 });
 
+it("action_suggestion_v4_preview を actionSuggestionV4Preview より優先する", () => {
+  const resp = {
+    ok: true,
+    data: {
+      recommendations: [
+        {
+          name: "神社F",
+          shrine_id: 208,
+          reason: "行動を決めたい",
+          breakdown: { matched_need_tags: ["courage"] },
+          action_suggestion_v4_preview: {
+            primary_action: {
+              label: "snake_case側の行動",
+              description: "snake_case側の説明",
+              action_type: "detail_open",
+              confidence: 0.82,
+            },
+            secondary_action: {
+              label: "保存する",
+              description: "あとで見返します。",
+              action_type: "save",
+              confidence: 0.74,
+            },
+            reflection_prompt: {
+              question: "何を整理したいですか？",
+              prompt_type: "before_visit",
+              source_seed: "fallback",
+            },
+            action_source: {
+              source: "fallback",
+              reason: "安全な初期提案",
+            },
+            preview: true,
+            version: "v4",
+            source_keys: ["recommendation_reason_v4"],
+          },
+          actionSuggestionV4Preview: {
+            primaryAction: {
+              label: "camelCase側の行動",
+              description: "camelCase側の説明",
+              actionType: "save",
+              confidence: 0.5,
+            },
+            secondaryAction: {
+              label: "別の行動",
+              description: "別の説明",
+              actionType: "route_open",
+              confidence: 0.4,
+            },
+            reflectionPrompt: {
+              question: "別の問い",
+              promptType: "after_visit",
+              sourceSeed: "legacy",
+            },
+            actionSource: {
+              source: "legacy",
+              reason: "旧形式",
+            },
+            preview: true,
+            version: "legacy",
+            sourceKeys: ["legacy"],
+          },
+        },
+      ],
+    },
+  };
+
+  const items = conciergeToShrineListItems(resp as any);
+  const preview = items[0].actionSuggestionV4Preview;
+
+  expect(preview?.preview).toBe(true);
+  expect(preview?.version).toBe("v4");
+  expect(preview?.primaryAction.label).toBe("snake_case側の行動");
+  expect(preview?.primaryAction.description).toBe("snake_case側の説明");
+  expect(preview?.primaryAction.actionType).toBe("detail_open");
+  expect(preview?.sourceKeys).toEqual(["recommendation_reason_v4"]);
+});
+
 it("matched_need_tags が空なら _need.tags を badgesOverride に使う", () => {
   const resp = {
     ok: true,
