@@ -239,3 +239,37 @@ it("place候補の詳細情報とresult_stateをpayloadへ通す", () => {
     }),
   );
 });
+
+
+it("reason_facts を reasonFacts より優先する", () => {
+  const u: any = {
+    data: {
+      recommendations: [
+        {
+          shrine_id: 10,
+          display_name: "S1",
+          reason: "R1",
+          reason_facts: {
+            primary_axis: "need",
+            shrine_feature: "snake_case側",
+          },
+          reasonFacts: {
+            primary_axis: "feature",
+            shrine_feature: "camelCase側",
+          },
+        },
+      ],
+    },
+    thread: { id: 1 },
+  };
+
+  const p = buildPayloadFromUnified(u, baseFilterState);
+  const recSec = p?.sections.find((s: any) => s.type === "recommendations") as any;
+
+  expect(recSec.items[0].reasonFacts).toEqual(
+    expect.objectContaining({
+      primary_axis: "need",
+      shrine_feature: "snake_case側",
+    }),
+  );
+});
