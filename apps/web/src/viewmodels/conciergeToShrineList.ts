@@ -277,7 +277,7 @@ export function conciergeToShrineListItems(resp: ConciergeResponse): ConciergeRe
           astro_priority: r.astro_priority ?? null,
           fallback_mode: r.fallback_mode ?? null,
           explanation: r.explanation ?? null,
-          reason_facts: r.reason_facts ?? r._reason_facts ?? null,
+          reason_facts: r.reason_facts ?? null,
         },
       });
 
