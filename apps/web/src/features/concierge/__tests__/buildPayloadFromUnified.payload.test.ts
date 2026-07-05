@@ -175,6 +175,30 @@ it("consultation_axis を meta と recommendation item に通す", () => {
   expect(recSec.items[1].consultationAxis).toBe("nature_reset");
 });
 
+it("consultation_axis を consultationAxis より優先する", () => {
+  const u: any = {
+    data: {
+      consultation_axis: "snake_meta",
+      consultationAxis: "camel_meta",
+      recommendations: [
+        {
+          shrine_id: 10,
+          display_name: "S1",
+          reason: "R1",
+          consultation_axis: "snake_item",
+          consultationAxis: "camel_item",
+        },
+      ],
+    },
+    thread: { id: 1 },
+  };
+
+  const p = buildPayloadFromUnified(u, baseFilterState);
+  const recSec = p?.sections.find((s: any) => s.type === "recommendations") as any;
+
+  expect(p?.meta?.consultationAxis).toBe("snake_meta");
+  expect(recSec.items[0].consultationAxis).toBe("snake_item");
+});
 
 it("place候補の詳細情報とresult_stateをpayloadへ通す", () => {
   const u: any = {
