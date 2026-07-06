@@ -11,7 +11,7 @@ import { spacing } from "../design/spacing";
 import { cardSizes } from "../design/cardSizes";
 import { radius } from "../design/radius";
 import { ctaSizes } from "../design/ctaSizes";
-
+import { createFavoriteByShrineId } from "../../lib/favorites";
 
 type RecommendationReasonFactAxis =
   | "need"
@@ -431,6 +431,10 @@ export default function ShrineDetail() {
     if (!shrineId) return;
     const now = await toggleFavorite(String(shrineId));
     setFav(now);
+
+    if (now) {
+      await createFavoriteByShrineId(apiShrineId ?? shrineId);
+    }
   };
 
   const onVisitDone = React.useCallback(() => {
