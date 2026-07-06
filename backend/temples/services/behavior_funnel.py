@@ -152,6 +152,8 @@ def build_score_v3_funnel_correlation_summary(
         "save_rate": _rate(funnel.get("save_count")),
         "visit_done_rate": _rate(funnel.get("visit_count")),
         "reflection_saved_rate": _rate(funnel.get("reflection_count")),
+        "save_to_visit_cvr": float(funnel.get("save_to_visit_cvr") or 0.0),
+        "visit_to_reflection_cvr": float(funnel.get("visit_to_reflection_cvr") or 0.0),
     }
 
     score_v3_slice = {

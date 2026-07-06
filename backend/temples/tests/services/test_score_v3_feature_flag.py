@@ -289,10 +289,23 @@ class TestBuildScoreV3FunnelCorrelationSummary:
         result = build_score_v3_funnel_correlation_summary(self._funnel(), self._v3())
         assert set(result.keys()) == {"score_v3", "funnel", "analysis_hint"}
         assert set(result["funnel"].keys()) == {
-            "route_open_rate", "save_rate", "visit_done_rate", "reflection_saved_rate"
+            "detail_view_count",
+            "route_open_count",
+            "save_count",
+            "visit_count",
+            "reflection_count",
+            "route_open_rate",
+            "save_rate",
+            "visit_done_rate",
+            "reflection_saved_rate",
+            "save_to_visit_cvr",
+            "visit_to_reflection_cvr",
         }
         assert set(result["score_v3"].keys()) == {
-            "top1_changed_rate_avg", "activation_candidate_rate", "avg_delta", "max_abs_delta_max"
+            "top1_changed_rate_avg",
+            "activation_candidate_rate",
+            "avg_delta",
+            "max_abs_delta_max",
         }
 
     def test_rates_calculated_from_detail_view(self):
