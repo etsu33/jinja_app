@@ -5,6 +5,7 @@ import { kamimusubiDark } from "../theme";
 
 import { getFavoriteShrines, getRecentViewed } from "../../lib/shrineStorage";
 import { getCounts } from "../../lib/storage";
+import { listShrineReflections, type ShrineReflectionResponse } from "../../lib/reflections";
 
 type RecordCardProps = {
   title: string;
@@ -151,6 +152,9 @@ export default function RecordsScreen() {
   const [recentCount, setRecentCount] = useState<number | null>(null);
   const [favCount, setFavCount] = useState<number | null>(null);
   const [visitCount, setVisitCount] = useState<number | null>(null);
+  const [reflections, setReflections] = useState<ShrineReflectionResponse[]>([]);
+  const [reflectionLoading, setReflectionLoading] = useState(true);
+  const [reflectionError, setReflectionError] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -166,6 +170,23 @@ export default function RecordsScreen() {
     getCounts()
       .then(({ visits }) => { if (mounted) setVisitCount(visits); })
       .catch(() => { if (mounted) setVisitCount(0); });
+
+    listShrineReflections()
+      .then((items) => {
+        if (mounted) {
+          setReflections(items);
+          setReflectionError(false);
+        }
+      })
+      .catch(() => {
+        if (mounted) {
+          setReflections([]);
+          setReflectionError(true);
+        }
+      })
+      .finally(() => {
+        if (mounted) setReflectionLoading(false);
+      });
 
     return () => { mounted = false; };
   }, []);
@@ -188,11 +209,13 @@ export default function RecordsScreen() {
           return {
             ...item,
             meta:
-              visitCount === null
+              visitCount === null || reflectionLoading
                 ? "参拝履歴を確認中"
-                : visitCount === 0
-                  ? "参拝記録はまだありません"
-                  : `参拝 ${visitCount}回`,
+                : reflectionError
+                  ? "振り返り履歴を確認できません"
+                  : visitCount === 0 && reflections.length === 0
+                    ? "参拝記録はまだありません"
+                    : `参拝 ${visitCount ?? 0}回 / 振り返り ${reflections.length}件`,
           };
         }
         if (item.routeLabel === "favorites") {
@@ -208,7 +231,7 @@ export default function RecordsScreen() {
         }
         return item;
       }),
-    [recentCount, favCount, visitCount],
+    [recentCount, favCount, visitCount, reflectionLoading, reflectionError, reflections.length],
   );
 
   return (
