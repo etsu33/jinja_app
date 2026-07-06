@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 
 import { listShrineReflections, type ShrineReflectionResponse } from "../../lib/reflections";
@@ -21,11 +21,62 @@ function formatDate(value: string | null | undefined): string {
   });
 }
 
+function formatDateGroupLabel(value: string | null | undefined): string {
+  if (!value) return "日付未記録";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "日付未記録";
+
+  return date.toLocaleDateString("ja-JP", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    weekday: "short",
+  });
+}
+
+function resolveDirectionView(direction: string | null | undefined): { icon: string; label: string } {
+  switch (direction) {
+    case "improved":
+      return { icon: "↗", label: "前進" };
+    case "unchanged":
+      return { icon: "→", label: "維持" };
+    case "worsened":
+      return { icon: "↘", label: "要調整" };
+    default:
+      return { icon: "•", label: "未判定" };
+  }
+}
+
+function normalizeHints(values: string[] | null | undefined): string[] {
+  return [...new Set((values ?? []).map((value) => value.trim()).filter(Boolean))].slice(0, 3);
+}
+
+type ReflectionGroup = {
+  label: string;
+  items: ShrineReflectionResponse[];
+};
+
+function groupReflectionsByDate(reflections: ShrineReflectionResponse[]): ReflectionGroup[] {
+  const groups = new Map<string, ShrineReflectionResponse[]>();
+
+  reflections.forEach((reflection) => {
+    const label = formatDateGroupLabel(reflection.created_at);
+    const current = groups.get(label) ?? [];
+    current.push(reflection);
+    groups.set(label, current);
+  });
+
+  return Array.from(groups.entries()).map(([label, items]) => ({ label, items }));
+}
+
 function ReflectionCard({ reflection }: { reflection: ShrineReflectionResponse }) {
   const shrineName = reflection.shrine_name?.trim() || "神社名未設定";
   const historyTheme = reflection.history_theme?.trim() || "テーマ未設定";
   const answer = reflection.answer?.trim() || "振り返り本文はまだありません。";
   const createdAt = formatDate(reflection.created_at);
+  const direction = resolveDirectionView(reflection.state_change_direction);
+  const nextNeedHints = normalizeHints(reflection.next_need_hint);
 
   return (
     <View style={styles.reflectionCard}>
@@ -34,8 +85,13 @@ function ReflectionCard({ reflection }: { reflection: ShrineReflectionResponse }
         <Text style={styles.createdAt}>{createdAt}</Text>
       </View>
 
-      <View style={styles.themePill}>
-        <Text style={styles.themePillText}>{historyTheme}</Text>
+      <View style={styles.metaRow}>
+        <View style={styles.themePill}>
+          <Text style={styles.themePillText}>{historyTheme}</Text>
+        </View>
+        <View style={styles.directionPill}>
+          <Text style={styles.directionPillText}>{direction.icon} {direction.label}</Text>
+        </View>
       </View>
 
       <Text style={styles.answerText}>{answer}</Text>
@@ -44,6 +100,19 @@ function ReflectionCard({ reflection }: { reflection: ShrineReflectionResponse }
         <View style={styles.summaryBlock}>
           <Text style={styles.summaryLabel}>変化のメモ</Text>
           <Text style={styles.summaryText}>{reflection.state_change_summary}</Text>
+        </View>
+      ) : null}
+
+      {nextNeedHints.length > 0 ? (
+        <View style={styles.hintBlock}>
+          <Text style={styles.summaryLabel}>次に出やすいテーマ</Text>
+          <View style={styles.hintRow}>
+            {nextNeedHints.map((hint) => (
+              <View key={hint} style={styles.hintPill}>
+                <Text style={styles.hintPillText}>{hint}</Text>
+              </View>
+            ))}
+          </View>
         </View>
       ) : null}
     </View>
@@ -55,34 +124,42 @@ export default function ReflectionHistoryScreen() {
   const [reflections, setReflections] = React.useState<ShrineReflectionResponse[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(false);
+  const [refreshing, setRefreshing] = React.useState(false);
 
-  React.useEffect(() => {
-    let mounted = true;
+  const loadReflections = React.useCallback(async (options?: { showInitialLoading?: boolean; showRefreshing?: boolean }) => {
+    if (options?.showInitialLoading) setLoading(true);
+    if (options?.showRefreshing) setRefreshing(true);
 
-    listShrineReflections()
-      .then((items) => {
-        if (mounted) {
-          setReflections(items);
-          setError(false);
-        }
-      })
-      .catch(() => {
-        if (mounted) {
-          setReflections([]);
-          setError(true);
-        }
-      })
-      .finally(() => {
-        if (mounted) setLoading(false);
-      });
-
-    return () => {
-      mounted = false;
-    };
+    try {
+      const items = await listShrineReflections();
+      setReflections(items);
+      setError(false);
+    } catch {
+      setReflections([]);
+      setError(true);
+    } finally {
+      if (options?.showInitialLoading) setLoading(false);
+      if (options?.showRefreshing) setRefreshing(false);
+    }
   }, []);
 
+  React.useEffect(() => {
+    void loadReflections({ showInitialLoading: true });
+  }, [loadReflections]);
+
+  const groupedReflections = React.useMemo(() => groupReflectionsByDate(reflections), [reflections]);
+
+  const onRefresh = React.useCallback(() => {
+    void loadReflections({ showRefreshing: true });
+  }, [loadReflections]);
+
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.gold} />}
+    >
       <View style={styles.header}>
         <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace("/records"))} style={styles.backButton}>
           <Text style={styles.backText}>← 記録へ戻る</Text>
@@ -117,10 +194,17 @@ export default function ReflectionHistoryScreen() {
         </View>
       ) : null}
 
-      {!loading && !error && reflections.length > 0 ? (
-        <View style={styles.list}>
-          {reflections.map((reflection) => (
-            <ReflectionCard key={reflection.id} reflection={reflection} />
+      {!loading && !error && groupedReflections.length > 0 ? (
+        <View style={styles.timeline}>
+          {groupedReflections.map((group) => (
+            <View key={group.label} style={styles.timelineGroup}>
+              <Text style={styles.groupLabel}>{group.label}</Text>
+              <View style={styles.list}>
+                {group.items.map((reflection) => (
+                  <ReflectionCard key={reflection.id} reflection={reflection} />
+                ))}
+              </View>
+            </View>
           ))}
         </View>
       ) : null}
@@ -161,6 +245,18 @@ const styles = StyleSheet.create({
     lineHeight: 23,
     fontWeight: "600",
   },
+  timeline: {
+    gap: spacing.lgGap,
+  },
+  timelineGroup: {
+    gap: spacing.smGap,
+  },
+  groupLabel: {
+    color: theme.goldSoft,
+    fontSize: 13,
+    fontWeight: "900",
+    letterSpacing: 0.8,
+  },
   list: {
     gap: spacing.mdGap,
   },
@@ -185,6 +281,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
   },
+  metaRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.tightGap,
+  },
   themePill: {
     alignSelf: "flex-start",
     borderColor: theme.borderGold,
@@ -198,6 +299,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "800",
     letterSpacing: 0.8,
+  },
+  directionPill: {
+    alignSelf: "flex-start",
+    backgroundColor: theme.surfaceSoft,
+    borderColor: theme.borderHeader,
+    borderRadius: 999,
+    borderWidth: cardSizes.borderWidth,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  directionPillText: {
+    color: theme.text,
+    fontSize: 12,
+    fontWeight: "800",
+    letterSpacing: 0.6,
   },
   answerText: {
     color: theme.text,
@@ -224,6 +340,31 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 20,
     fontWeight: "600",
+  },
+  hintBlock: {
+    backgroundColor: theme.surfaceSoft,
+    borderColor: theme.borderHeader,
+    borderRadius: radius.md,
+    borderWidth: cardSizes.borderWidth,
+    padding: cardSizes.cardPaddingMd,
+    gap: spacing.tightGap,
+  },
+  hintRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.tightGap,
+  },
+  hintPill: {
+    borderColor: theme.borderGold,
+    borderRadius: 999,
+    borderWidth: cardSizes.borderWidth,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+  },
+  hintPillText: {
+    color: theme.goldSoft,
+    fontSize: 11,
+    fontWeight: "800",
   },
   stateCard: {
     backgroundColor: theme.surfaceSoft,
