@@ -779,6 +779,10 @@ export default function ShrineDetailArticle({
                 </div>
               ) : null}
 
+              <p className="text-xs leading-5 text-slate-500">
+                参拝したら記録しておくと、あとで振り返りを残せます。
+              </p>
+
               <button
                 type="button"
                 disabled={visitSubmitting}
