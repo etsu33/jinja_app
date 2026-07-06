@@ -476,7 +476,7 @@ function buildReasonSection(args: {
     return groups.length > 0
       ? {
           kind: "reason",
-          heading: "① 選ばれた理由",
+          heading: "② 選ばれた理由",
           groups,
         }
       : null;
@@ -502,7 +502,7 @@ function buildReasonSection(args: {
   return groups.length > 0
     ? {
         kind: "reason",
-        heading: "① 選ばれた理由",
+        heading: "② 選ばれた理由",
         groups,
       }
     : null;
@@ -528,7 +528,7 @@ function buildProposalSection(args: {
 
   return {
     kind: "proposal",
-    heading: "② 今回の相談の整理",
+    heading: "① 今回の相談の整理",
     lead: args.consultationSummary ?? args.lead ?? "",
     body,
   };
@@ -1126,19 +1126,19 @@ function buildPremiumDisplaySections(args: {
   // 検索・map から直接来た場合は、過度な個人向け理由を出さない。
   if (!args.isConciergeContext) return sections;
 
-  if (args.reasonSection) {
-    sections.push({
-      tier: "premium",
-      layer: "context",
-      section: args.reasonSection,
-    });
-  }
-
   if (args.proposalSection) {
     sections.push({
       tier: "premium",
       layer: "context",
       section: args.proposalSection,
+    });
+  }
+
+  if (args.reasonSection) {
+    sections.push({
+      tier: "premium",
+      layer: "context",
+      section: args.reasonSection,
     });
   }
 
