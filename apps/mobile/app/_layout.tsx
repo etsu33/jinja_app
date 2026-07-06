@@ -38,9 +38,7 @@ export default function Root() {
         name="index"
         options={{
           title: "ホーム",
-          tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name="home" size={size} color={color} />
-          ),
+          tabBarIcon: ({ color, size }) => <MaterialIcons name="home" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -72,24 +70,21 @@ export default function Root() {
         name="records/index"
         options={{
           title: "記録",
-          tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name="book" size={size} color={color} />
-          ),
+          tabBarIcon: ({ color, size }) => <MaterialIcons name="book" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="mypage/index"
         options={{
           title: "マイページ",
-          tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name="person" size={size} color={color} />
-          ),
+          tabBarIcon: ({ color, size }) => <MaterialIcons name="person" size={size} color={color} />,
         }}
       />
       <Tabs.Screen name="favorites/index" options={{ href: null }} />
       <Tabs.Screen name="goshuin/index" options={{ href: null }} />
       <Tabs.Screen name="goshuin/upload" options={{ href: null }} />
       <Tabs.Screen name="visit-history/index" options={{ href: null }} />
+      <Tabs.Screen name="reflection-history/index" options={{ href: null }} />
       <Tabs.Screen name="recently-viewed/index" options={{ href: null }} />
       <Tabs.Screen name="profile/index" options={{ href: null }} />
       <Tabs.Screen name="birthday/index" options={{ href: null }} />
