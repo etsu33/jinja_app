@@ -709,9 +709,25 @@ export default function ConciergeScreen() {
     action: ActionSuggestionV4Action;
     slot: "primary" | "secondary";
   }) => {
+    const actionSuggestionId = buildActionSuggestionId({ card, action, slot, rank });
+    const hasPreview = Boolean(card.actionSuggestionV4Preview?.preview);
+
+    if (__DEV__) {
+      console.info("[ConciergeScreen] action event requested", {
+        actionType,
+        actionSuggestionId,
+        hasPreview,
+        cardId: card.id,
+        shrineId: card.shrineId ?? null,
+        rank,
+        slot,
+        actionTypeFromSuggestion: action.actionType,
+      });
+    }
+
     void trackActionEvent({
       actionType,
-      actionSuggestionId: buildActionSuggestionId({ card, action, slot, rank }),
+      actionSuggestionId,
       source: "mobile_concierge_result",
       shrineId: card.shrineId ?? null,
       threadId: null,
@@ -721,6 +737,7 @@ export default function ConciergeScreen() {
         platform: "mobile",
         rank,
         slot,
+        has_preview: hasPreview,
         action_label: action.label,
         action_description: action.description,
         action_source: card.actionSuggestionV4Preview?.actionSource.source ?? null,

@@ -1,5 +1,3 @@
-
-
 import { postAuth } from "./http";
 
 export type ActionEventActionType = "action_started" | "action_completed";
@@ -53,22 +51,57 @@ export async function trackActionEvent({
   metadata = {},
 }: TrackActionEventParams): Promise<ActionEventResponse | null> {
   const normalizedActionSuggestionId = actionSuggestionId.trim();
-  if (!normalizedActionSuggestionId) return null;
+  if (!normalizedActionSuggestionId) {
+    if (__DEV__) {
+      console.warn("[trackActionEvent] skipped: actionSuggestionId is empty", {
+        actionType,
+        source,
+        shrineId,
+        threadId,
+        historyTheme,
+        actionCategory,
+        metadata,
+      });
+    }
+    return null;
+  }
+
+  const payload = {
+    action_type: actionType,
+    action_suggestion_id: normalizedActionSuggestionId,
+    source: source ?? "",
+    shrine_id: normalizePositiveInt(shrineId),
+    thread_id: normalizePositiveInt(threadId),
+    history_theme: historyTheme ?? "",
+    action_category: actionCategory ?? "",
+    metadata,
+  };
+
+  if (__DEV__) {
+    console.info("[trackActionEvent] sending", payload);
+  }
 
   try {
-    return await postAuth<ActionEventResponse>("/action-events/", {
-      action_type: actionType,
-      action_suggestion_id: normalizedActionSuggestionId,
-      source: source ?? "",
-      shrine_id: normalizePositiveInt(shrineId),
-      thread_id: normalizePositiveInt(threadId),
-      history_theme: historyTheme ?? "",
-      action_category: actionCategory ?? "",
-      metadata,
-    });
+    const response = await postAuth<ActionEventResponse>("/action-events/", payload);
+    if (__DEV__) {
+      console.info("[trackActionEvent] created", response);
+    }
+    return response;
   } catch (error) {
     if (__DEV__) {
-      console.warn("[trackActionEvent] failed", error);
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn("[trackActionEvent] failed", {
+        message,
+        payload,
+        hint:
+          message.includes("HTTP 401")
+            ? "auth_failed"
+            : message.includes("HTTP 400")
+              ? "bad_request"
+              : message.includes("Network") || message.includes("Failed to fetch")
+                ? "network_error"
+                : "unknown_error",
+      });
     }
     return null;
   }
