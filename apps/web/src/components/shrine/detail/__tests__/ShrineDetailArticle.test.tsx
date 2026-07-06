@@ -157,6 +157,90 @@ describe("ShrineDetailArticle", () => {
     expect(screen.queryByText("方位は主理由ではなく、補助要素として参考にしています。")).not.toBeInTheDocument();
   });
 
+  it("context reason はHero直下の詳細sectionとして表示し、premium meaning より先に出す", () => {
+    render(
+      <ShrineDetailArticle
+        cardProps={{
+          shrineId: 17,
+          title: "乃木神社",
+          href: "/shrines/17",
+          imageUrl: null,
+          badges: [],
+          metaChips: [],
+          address: "東京都港区赤坂",
+        } as any}
+        heroImageUrl={null}
+        heroMeaningCopy={null}
+        benefitLabels={[]}
+        tags={[]}
+        publicGoshuinsPreview={[]}
+        publicGoshuinsViewAllHref=""
+        sections={[]}
+        freeDisplaySections={[
+          {
+            tier: "free",
+            layer: "context",
+            section: { kind: "reason" },
+          },
+        ] as any}
+        premiumDisplaySections={[
+          {
+            tier: "premium",
+            layer: "context",
+            section: { kind: "meaning", items: [] },
+          },
+        ] as any}
+        isPremiumActive
+        recommendationMeta={null}
+        saveActionNode={null}
+      />,
+    );
+
+    const reason = screen.getByTestId("shrine-reason-section");
+    const meaning = screen.getByTestId("shrine-judge-section");
+
+    expect(reason).toBeInTheDocument();
+    expect(meaning).toBeInTheDocument();
+    expect(reason.compareDocumentPosition(meaning) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("free では personal meaning section を表示せず、context reason のみを表示する", () => {
+    render(
+      <ShrineDetailArticle
+        cardProps={{
+          shrineId: 17,
+          title: "乃木神社",
+          href: "/shrines/17",
+          imageUrl: null,
+          badges: [],
+          metaChips: [],
+          address: "東京都港区赤坂",
+        } as any}
+        heroImageUrl={null}
+        heroMeaningCopy={null}
+        benefitLabels={[]}
+        tags={[]}
+        publicGoshuinsPreview={[]}
+        publicGoshuinsViewAllHref=""
+        sections={[]}
+        freeDisplaySections={[
+          {
+            tier: "free",
+            layer: "context",
+            section: { kind: "reason" },
+          },
+        ] as any}
+        premiumDisplaySections={[]}
+        isPremiumActive={false}
+        recommendationMeta={null}
+        saveActionNode={null}
+      />,
+    );
+
+    expect(screen.getByTestId("shrine-reason-section")).toBeInTheDocument();
+    expect(screen.queryByTestId("shrine-judge-section")).not.toBeInTheDocument();
+  });
+
   it("推薦理由と前回比較の view イベントを送信する", async () => {
     render(
       <ShrineDetailArticle
