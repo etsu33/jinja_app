@@ -134,12 +134,12 @@ describe("buildShrineDetailModel", () => {
     expect(result.judgeSection.items).toEqual([
       {
         key: "meaning",
-        title: "この神社をすすめる理由",
+        title: "この神社と今の状態の重なり",
         body: "三峯神社は、停滞を断ち切る節目として置きやすい神社です。",
       },
       {
         key: "action",
-        title: "参拝を置く意味",
+        title: "参拝するときの視点",
         body: "先延ばしを止めて一歩を決める参拝に向いています。",
       },
     ]);

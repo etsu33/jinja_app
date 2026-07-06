@@ -475,7 +475,7 @@ function buildReasonSection(args: {
     return groups.length > 0
       ? {
           kind: "reason",
-          heading: "① この神社が出てきた理由",
+          heading: "① 選ばれた理由",
           groups,
         }
       : null;
@@ -501,7 +501,7 @@ function buildReasonSection(args: {
   return groups.length > 0
     ? {
         kind: "reason",
-        heading: "① この神社が出てきた理由",
+        heading: "① 選ばれた理由",
         groups,
       }
     : null;
@@ -969,7 +969,7 @@ function buildJudgeItemsFromNarrativeSources(args: {
   if (shrineMeaningText) {
     items.push({
       key: "meaning",
-      title: "この神社をすすめる理由",
+      title: "この神社と今の状態の重なり",
       body: shrineMeaningText,
     });
   }
@@ -977,7 +977,7 @@ function buildJudgeItemsFromNarrativeSources(args: {
   if (actionText) {
     items.push({
       key: "action",
-      title: "参拝を置く意味",
+      title: "参拝するときの視点",
       body: actionText,
     });
   }
@@ -1005,14 +1005,14 @@ function buildMeaningSection(args: {
     args.recommendationReasonDetail?.shrineMeaning
       ? {
           key: "meaning",
-          title: "この神社をすすめる理由",
+          title: "この神社と今の状態の重なり",
           body: args.recommendationReasonDetail.shrineMeaning,
         }
       : null,
     args.recommendationReasonDetail?.actionMeaning
       ? {
           key: "action",
-          title: "参拝を置く意味",
+          title: "参拝するときの視点",
           body: args.recommendationReasonDetail.actionMeaning,
         }
       : null,
@@ -1029,7 +1029,7 @@ function buildMeaningSection(args: {
       : (deepReasonItems ?? [
           {
             key: "meaning",
-            title: "この神社をすすめる理由",
+            title: "この神社と今の状態の重なり",
             body: buildBenefitText(
               args.shrineName?.trim() || "この神社",
               args.benefitLabels,
@@ -1039,7 +1039,7 @@ function buildMeaningSection(args: {
           },
           {
             key: "action",
-            title: "参拝を置く意味",
+            title: "参拝するときの視点",
             body: buildSecondaryText(
               getPrimaryNeedTag(args.breakdown),
               getSecondaryNeedTags(args.breakdown),
@@ -1050,7 +1050,7 @@ function buildMeaningSection(args: {
 
   return {
     kind: "meaning",
-    heading: "③ 神社との意味の接続",
+    heading: "③ この神社で受け取る意味",
     lead: args.lead?.trim() || undefined,
     items: fallbackItems,
   };
