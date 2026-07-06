@@ -15,6 +15,8 @@ export type ScoreV3FunnelMetrics = {
   save_rate: number;
   visit_done_rate: number;
   reflection_saved_rate: number;
+  save_to_visit_cvr: number;
+  visit_to_reflection_cvr: number;
 };
 
 export type ScoreV3Decision = {

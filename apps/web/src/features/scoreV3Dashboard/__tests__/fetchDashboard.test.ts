@@ -19,6 +19,8 @@ const mockResponse: ScoreV3DashboardResponse = {
     save_rate: 0.22,
     visit_done_rate: 0.11,
     reflection_saved_rate: 0.06,
+    save_to_visit_cvr: 0.67,
+    visit_to_reflection_cvr: 0.5,
   },
   decision: {
     active_candidate: true,

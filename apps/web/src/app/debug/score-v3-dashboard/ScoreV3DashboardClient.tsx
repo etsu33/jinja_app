@@ -136,6 +136,8 @@ export default function ScoreV3DashboardClient() {
             <Metric label="save_rate" value={pct(state.data.funnel.save_rate)} />
             <Metric label="visit_done_rate" value={pct(state.data.funnel.visit_done_rate)} />
             <Metric label="reflection_saved_rate" value={pct(state.data.funnel.reflection_saved_rate)} />
+            <Metric label="save_to_visit_cvr" value={pct(state.data.funnel.save_to_visit_cvr)} />
+            <Metric label="visit_to_reflection_cvr" value={pct(state.data.funnel.visit_to_reflection_cvr)} />
           </div>
         </>
       )}
