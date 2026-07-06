@@ -139,6 +139,19 @@ export default function ScoreV3DashboardClient() {
             <Metric label="save_to_visit_cvr" value={pct(state.data.funnel.save_to_visit_cvr)} />
             <Metric label="visit_to_reflection_cvr" value={pct(state.data.funnel.visit_to_reflection_cvr)} />
           </div>
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 space-y-2">
+            <div className="text-sm font-semibold text-amber-800">Dashboard利用時の注意</div>
+
+            <ul className="list-disc pl-5 text-xs text-amber-700 space-y-1">
+              <li>
+                Mobile版では Favorite / Visit / Reflection の一部イベントが未同期のため、件数・CVRは過小評価される可能性があります。
+              </li>
+              <li>reflection_saved_rate は detail_view_count を分母としているため、100%を超える場合があります。</li>
+              <li>
+                Score v3 の active 判断は、このDashboardだけでなく件数・CVR・Mobile同期状況も合わせて確認してください。
+              </li>
+            </ul>
+          </div>
         </>
       )}
 
