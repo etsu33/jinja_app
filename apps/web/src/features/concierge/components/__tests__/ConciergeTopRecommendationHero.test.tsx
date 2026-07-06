@@ -42,7 +42,7 @@ describe("ConciergeTopRecommendationHero", () => {
   });
 
 
-  it("renders before-visit action suggestions and tracks legacy and canonical events", async () => {
+  it("does not render legacy action suggestions on the hero card", () => {
     render(
       <ConciergeTopRecommendationHero
         name="検証神社"
@@ -71,75 +71,16 @@ describe("ConciergeTopRecommendationHero", () => {
       />,
     );
 
-    expect(screen.getByTestId("hero-action-suggestions")).toBeInTheDocument();
-    expect(screen.getByText("次の小さな一歩")).toBeInTheDocument();
-    expect(screen.getByText("今週やることを1つ選ぶ")).toBeInTheDocument();
-    expect(screen.getByText("迷っていることから、まず1つだけ選んで動きます。")).toBeInTheDocument();
-    expect(screen.queryByText("参拝後")).not.toBeInTheDocument();
-    expect(screen.queryByText("記録")).not.toBeInTheDocument();
-
-    await waitFor(() => {
-      expect(analyticsMocks.trackSearchEvent).toHaveBeenCalledWith(
-        "action_suggestion_view",
-        expect.objectContaining({
-          source: "concierge_result",
-          threadId: "thread-1",
-          resultSetId: "result-set-1",
-          shrineId: 17,
-          recommendationRank: 1,
-          position: "hero_primary",
-          historyTheme: "勝負",
-          actionSuggestionId: "challenge_choose_this_week",
-          actionCategory: "prepare",
-          actionTheme: "勝負",
-          actionPosition: 1,
-        }),
-      );
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: "試してみる" }));
-    expect(analyticsMocks.trackSearchEvent).toHaveBeenCalledWith(
-      "action_suggestion_click",
-      expect.objectContaining({
-        actionSuggestionId: "challenge_choose_this_week",
-        actionCategory: "prepare",
-        actionTheme: "勝負",
-        actionPosition: 1,
-      }),
-    );
-    expect(analyticsMocks.trackSearchEvent).toHaveBeenCalledWith(
-      "action_started",
-      expect.objectContaining({
-        actionSuggestionId: "challenge_choose_this_week",
-        actionCategory: "prepare",
-        actionTheme: "勝負",
-        actionPosition: 1,
-        legacyEventName: "action_suggestion_click",
-      }),
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "完了" }));
-    expect(analyticsMocks.trackSearchEvent).toHaveBeenCalledWith(
-      "action_done",
-      expect.objectContaining({
-        actionSuggestionId: "challenge_choose_this_week",
-        actionCategory: "prepare",
-        actionTheme: "勝負",
-        actionPosition: 1,
-      }),
-    );
-    expect(analyticsMocks.trackSearchEvent).toHaveBeenCalledWith(
-      "action_completed",
-      expect.objectContaining({
-        actionSuggestionId: "challenge_choose_this_week",
-        actionCategory: "prepare",
-        actionTheme: "勝負",
-        actionPosition: 1,
-        legacyEventName: "action_done",
-      }),
-    );
+    expect(screen.queryByTestId("hero-action-suggestions")).not.toBeInTheDocument();
+    expect(screen.queryByText("次の小さな一歩")).not.toBeInTheDocument();
+    expect(screen.queryByText("今週やることを1つ選ぶ")).not.toBeInTheDocument();
+    expect(screen.queryByText("迷っていることから、まず1つだけ選んで動きます。")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "試してみる" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "完了" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "詳しく見る" })).toHaveAttribute("href", "/shrines/17?ctx=concierge");
+    expect(analyticsMocks.trackSearchEvent).not.toHaveBeenCalled();
   });
-  it("renders v4 preview actions and tracks preview and click events", async () => {
+  it("renders v4 preview as a one-line summary and tracks preview views", async () => {
     render(
       <ConciergeTopRecommendationHero
         name="検証神社"
@@ -182,10 +123,13 @@ describe("ConciergeTopRecommendationHero", () => {
     );
 
     expect(screen.getByTestId("hero-action-suggestion-v4-preview")).toBeInTheDocument();
-    expect(screen.getByText("次に取りやすい行動")).toBeInTheDocument();
+    expect(screen.getByText("次の一歩")).toBeInTheDocument();
     expect(screen.getByText("まず詳細を見て、行く理由を確認する")).toBeInTheDocument();
-    expect(screen.getByText("候補として保存して、あとで見返す")).toBeInTheDocument();
-    expect(screen.getByText("この神社に行くとしたら、何を整理する時間にしたいですか？")).toBeInTheDocument();
+    expect(screen.queryByText("候補として保存して、あとで見返す")).not.toBeInTheDocument();
+    expect(screen.queryByText("後から相談内容と一緒に見返せます。")).not.toBeInTheDocument();
+    expect(screen.queryByText("この神社に行くとしたら、何を整理する時間にしたいですか？")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "この行動で進める" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "この神社を見る" })).not.toBeInTheDocument();
 
     await waitFor(() => {
       expect(analyticsMocks.trackSearchEvent).toHaveBeenCalledWith(
@@ -204,6 +148,7 @@ describe("ConciergeTopRecommendationHero", () => {
           promptType: "before_visit",
           actionSource: "fallback",
           sourceKeys: "meaning_translation",
+          summaryLine: "まず詳細を見て、行く理由を確認する",
         }),
       );
     });
@@ -213,34 +158,6 @@ describe("ConciergeTopRecommendationHero", () => {
       expect.objectContaining({
         promptType: "before_visit",
         reflectionPromptSourceSeed: "fallback",
-      }),
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "この行動で進める" }));
-    expect(analyticsMocks.trackSearchEvent).toHaveBeenCalledWith(
-      "primary_action_click",
-      expect.objectContaining({
-        actionSuggestionVersion: "v4",
-        actionRole: "primary",
-        actionType: "detail_open",
-        actionLabel: "まず詳細を見て、行く理由を確認する",
-        promptType: "before_visit",
-        actionSource: "fallback",
-        sourceKeys: "meaning_translation",
-      }),
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "この神社を見る" }));
-    expect(analyticsMocks.trackSearchEvent).toHaveBeenCalledWith(
-      "secondary_action_click",
-      expect.objectContaining({
-        actionSuggestionVersion: "v4",
-        actionRole: "secondary",
-        actionType: "save",
-        actionLabel: "候補として保存して、あとで見返す",
-        promptType: "before_visit",
-        actionSource: "fallback",
-        sourceKeys: "meaning_translation",
       }),
     );
   });
