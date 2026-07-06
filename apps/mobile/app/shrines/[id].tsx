@@ -12,6 +12,7 @@ import { cardSizes } from "../design/cardSizes";
 import { radius } from "../design/radius";
 import { ctaSizes } from "../design/ctaSizes";
 import { createFavoriteByShrineId } from "../../lib/favorites";
+import { createVisitByShrineId } from "../../lib/visits";
 
 type RecommendationReasonFactAxis =
   | "need"
@@ -439,7 +440,11 @@ export default function ShrineDetail() {
 
   const onVisitDone = React.useCallback(() => {
     setVisited(true);
-  }, []);
+
+    if (apiShrineId ?? shrineId) {
+      void createVisitByShrineId(apiShrineId ?? shrineId);
+    }
+  }, [apiShrineId, shrineId]);
 
   const openDirections = React.useCallback(() => {
     if (!shrine) return;
