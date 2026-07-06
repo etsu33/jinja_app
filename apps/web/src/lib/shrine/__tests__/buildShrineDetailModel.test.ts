@@ -187,7 +187,7 @@ describe("buildShrineDetailModel", () => {
     });
 
     const premiumKinds = result.premiumDisplaySections.map((item: { section: { kind: string } }) => item.section.kind);
-    expect(premiumKinds).toEqual(["reason", "proposal", "meaning", "action"]);
+    expect(premiumKinds).toEqual(["proposal", "reason", "meaning", "action"]);
   });
 
   it("concierge文脈でも conciergeDeepReason が無ければ従来ロジックへフォールバックする", () => {
