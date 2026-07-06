@@ -4,6 +4,7 @@ import type { ShrineMeaningPayloadV2 } from "@/lib/shrineMeaning/payloadV2";
 import type { ShrineTag } from "@/lib/shrine/tags/types";
 import type { PublicGoshuinItem } from "@/components/shrine/detail/PublicGoshuinSection";
 import type {
+  DetailActionSection,
   DetailMeaningItem,
   DetailMeaningSection,
   DetailProposalSection,
@@ -990,7 +991,6 @@ function buildMeaningSection(args: {
   deepReason?: NarrativeFallback | null;
   recommendationReasonDetail?: {
     shrineMeaning?: string | null;
-    actionMeaning?: string | null;
   } | null;
   shrineName?: string | null;
   benefitLabels: string[];
@@ -1001,58 +1001,62 @@ function buildMeaningSection(args: {
   // 1. recommendationReasonDetail
   // 2. conciergeDeepReason
   // 3. buildMeaningSection 内 fallback
-  const detailItems: DetailMeaningItem[] = [
-    args.recommendationReasonDetail?.shrineMeaning
-      ? {
-          key: "meaning",
-          title: "この神社と今の状態の重なり",
-          body: args.recommendationReasonDetail.shrineMeaning,
-        }
-      : null,
-    args.recommendationReasonDetail?.actionMeaning
-      ? {
-          key: "action",
-          title: "参拝するときの視点",
-          body: args.recommendationReasonDetail.actionMeaning,
-        }
-      : null,
-  ].filter((item): item is DetailMeaningItem => Boolean(item));
-
-  const deepReasonItems = buildJudgeItemsFromNarrativeSources({
-    recommendationReasonDetail: null,
-    deepReason: args.deepReason,
-  });
-
-  const fallbackItems: DetailMeaningItem[] =
-    detailItems.length > 0
-      ? detailItems
-      : (deepReasonItems ?? [
-          {
-            key: "meaning",
-            title: "この神社と今の状態の重なり",
-            body: buildBenefitText(
-              args.shrineName?.trim() || "この神社",
-              args.benefitLabels,
-              getPrimaryNeedTag(args.breakdown),
-              getShrineTone(args.shrineName ?? null),
-            ),
-          },
-          {
-            key: "action",
-            title: "参拝するときの視点",
-            body: buildSecondaryText(
-              getPrimaryNeedTag(args.breakdown),
-              getSecondaryNeedTags(args.breakdown),
-              args.shrineName ?? undefined,
-            ),
-          },
-        ]);
+  const body =
+    args.recommendationReasonDetail?.shrineMeaning?.trim() ||
+    args.deepReason?.shrineMeaning?.trim() ||
+    buildBenefitText(
+      args.shrineName?.trim() || "この神社",
+      args.benefitLabels,
+      getPrimaryNeedTag(args.breakdown),
+      getShrineTone(args.shrineName ?? null),
+    );
 
   return {
     kind: "meaning",
     heading: "③ この神社で受け取る意味",
     lead: args.lead?.trim() || undefined,
-    items: fallbackItems,
+    items: [
+      {
+        key: "meaning",
+        title: "この神社と今の状態の重なり",
+        body,
+      },
+    ],
+  };
+}
+
+function buildActionSection(args: {
+  deepReason?: NarrativeFallback | null;
+  recommendationReasonDetail?: {
+    actionMeaning?: string | null;
+  } | null;
+  shrineName?: string | null;
+  breakdown?: ConciergeBreakdown | null;
+}): DetailActionSection {
+  // ④ の表示優先順位:
+  // 1. recommendationReasonDetail
+  // 2. conciergeDeepReason
+  // 3. buildActionSection 内 fallback
+  const body =
+    args.recommendationReasonDetail?.actionMeaning?.trim() ||
+    args.deepReason?.action?.trim() ||
+    buildSecondaryText(
+      getPrimaryNeedTag(args.breakdown),
+      getSecondaryNeedTags(args.breakdown),
+      args.shrineName ?? undefined,
+    ) ||
+    "参拝前に、今の自分が何を整えたいのかを一つ決めておくと、振り返りにつなげやすくなります。";
+
+  return {
+    kind: "action",
+    heading: "④ 参拝するときの視点",
+    items: [
+      {
+        key: "action",
+        title: "参拝するときの視点",
+        body,
+      },
+    ],
   };
 }
 
@@ -1081,7 +1085,7 @@ function buildSupplementSection(args: {
   return groups.length > 0
     ? {
         kind: "supplement",
-        heading: "④ 補足（象徴・ご利益）",
+        heading: "⑤ 補足（象徴・ご利益）",
         groups,
       }
     : null;
@@ -1114,6 +1118,7 @@ function buildPremiumDisplaySections(args: {
   reasonSection: DetailReasonSection | null;
   proposalSection: DetailProposalSection | null;
   meaningSection: DetailMeaningSection;
+  actionSection: DetailActionSection;
 }): ShrineDetailDisplaySection[] {
   const sections: ShrineDetailDisplaySection[] = [];
 
@@ -1142,6 +1147,14 @@ function buildPremiumDisplaySections(args: {
       tier: "premium",
       layer: "context",
       section: args.meaningSection,
+    });
+  }
+
+  if (args.actionSection) {
+    sections.push({
+      tier: "premium",
+      layer: "context",
+      section: args.actionSection,
     });
   }
 
@@ -1553,6 +1566,17 @@ export function buildShrineDetailModel({
     breakdown: conciergeBreakdown,
   });
 
+  // actionSection fallback order is handled inside buildActionSection:
+  // 1. recommendationReasonDetail
+  // 2. conciergeDeepReason
+  // 3. generated fallback
+  const actionSection = buildActionSection({
+    deepReason: conciergeDeepReason,
+    recommendationReasonDetail,
+    shrineName: cardProps.title ?? null,
+    breakdown: conciergeBreakdown,
+  });
+
   const supplementSection = buildSupplementSection({
     benefitLabels,
     psychologicalTags,
@@ -1581,6 +1605,7 @@ export function buildShrineDetailModel({
       reasonSection,
       proposalSection,
       meaningSection,
+      actionSection,
     });
 
   const sections: ShrineDetailSectionModel[] = [
@@ -1607,6 +1632,7 @@ export function buildShrineDetailModel({
     reasonSection,
     proposalSection,
     meaningSection,
+    actionSection,
     supplementSection,
     proposal: explanation.proposal,
     proposalLead: explanation.proposalLead,

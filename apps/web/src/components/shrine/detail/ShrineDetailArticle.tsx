@@ -16,20 +16,24 @@
  * - 判断が散りやすい理由 / 今の優先順位を扱う
  * - 神社説明や推薦判断はここに混ぜない
  *
- * ③ 行動意味
+ * ③ この神社で受け取る意味
  * - detail.shrineMeaning
- * - 今この神社をどう置くかを表示する
- * - 行動意味の接続を扱う
- * - 推薦判断や神社情報はここに混ぜない
+ * - 今この神社と今の状態がどう重なるかを表示する
+ * - 参拝するときの視点（行動意味）はここに混ぜない
  *
- * ④ 神社情報
+ * ④ 参拝するときの視点
+ * - detail.actionMeaning
+ * - 参拝時にどう向き合うかを独立したsectionとして表示する
+ * - 推薦判断や状態整理、神社情報はここに混ぜない
+ *
+ * 神社情報（補足）
  * - Shrine API / shrine detail model 側
  * - ご利益 / 象徴 / 相性タグ / 基本情報を補助表示する
  * - 説得の主戦場にしない
  *
  * note:
- * - 詳細画面は「①推薦判断 → ②状態整理 → ③行動意味 → ④神社情報」の順で理解を進める
- * - heroMeaningCopy は ③ 行動意味の入口コピーとして扱う
+ * - 詳細画面は「①推薦判断 → ②状態整理 → ③この神社で受け取る意味 → ④参拝するときの視点」の順で理解を進める
+ * - heroMeaningCopy は ③ の入口コピーとして扱う
  * - 比較情報は本文ではなく補助導線として扱う
  * - 比較はデフォルト非表示にし、必要な時だけ開く
  * - 比較カードは主導線（①〜④）の下に置く
@@ -38,6 +42,7 @@ import Link from "next/link";
 import React, { useEffect, useMemo, useState } from "react";
 
 import PublicGoshuinSection, { type PublicGoshuinItem } from "@/components/shrine/detail/PublicGoshuinSection";
+import ShrineActionSection from "@/components/shrine/detail/ShrineActionSection";
 import ShrineJudgeSection from "@/components/shrine/detail/ShrineJudgeSection";
 import ShrineProposalSection from "@/components/shrine/detail/ShrineProposalSection";
 import ShrineReasonSection from "@/components/shrine/detail/ShrineReasonSection";
@@ -78,6 +83,8 @@ function ShrineDetailSections({ sections }: { sections: ShrineDetailSectionModel
             return <ShrineProposalSection key={key} section={section} />;
           case "meaning":
             return <ShrineJudgeSection key={key} section={section} />;
+          case "action":
+            return <ShrineActionSection key={key} section={section} />;
           case "supplement":
             return <ShrineSupplementSection key={key} section={section} />;
           default:

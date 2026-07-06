@@ -29,6 +29,12 @@ export type DetailMeaningSection = {
   items: DetailMeaningItem[];
 };
 
+export type DetailActionSection = {
+  kind: "action";
+  heading: string;
+  items: DetailMeaningItem[];
+};
+
 export type DetailSupplementGroup = {
   title: string;
   items: string[];
@@ -44,4 +50,5 @@ export type ShrineDetailSectionModel =
   | DetailReasonSection
   | DetailProposalSection
   | DetailMeaningSection
+  | DetailActionSection
   | DetailSupplementSection;
