@@ -26,4 +26,22 @@ describe("detailHrefFromRecommendation", () => {
   it("どちらも無ければ null（導線を出さない用）", () => {
     expect(detailHrefFromRecommendation({} as any)).toBeNull();
   });
+
+  it("分析用 query は URL に載せない", () => {
+    const analytics = {
+      ctx: "concierge",
+      tid: 139,
+      mode: "need" as const,
+      flow: "A" as const,
+      hasBirthdate: true,
+      recommendationCount: 3,
+    };
+
+    expect(detailHrefFromRecommendation({ shrine_id: 100001 } as any, analytics)).toBe(
+      "/shrines/100001?ctx=concierge&tid=139",
+    );
+    expect(detailHrefFromRecommendation({ place_id: "ChIJxxx" } as any, analytics)).toBe(
+      "/shrines/resolve?place_id=ChIJxxx&ctx=concierge&tid=139",
+    );
+  });
 });
