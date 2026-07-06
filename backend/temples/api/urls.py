@@ -43,7 +43,7 @@ from temples.api.views.shrine_public import PublicShrineDetailView
 from temples.api.views.tags import goriyaku_tags_list
 from temples.api.views.shrine_meaning import ShrineMeaningView
 from temples.api.views.visit import VisitCreateView, UserVisitListView
-from temples.api.views.reflection import ShrineReflectionCreateView
+from temples.api.views.reflection import ShrineReflectionCreateView, ShrineReflectionListView
 from temples.api.views.shrine_interaction import ShrineInteractionLogCreateView
 from temples.api.views.action_event import ActionEventCreateView
 from temples.api.views.debug_behavior_funnel import DebugBehaviorFunnelView
@@ -120,6 +120,7 @@ urlpatterns = [
     path("shrines/nearby/", NearestShrinesAPIView.as_view(), name="nearby"),
     path("shrines/<int:id>/visit/", VisitCreateView.as_view(), name="shrine-visit"),
     path("shrines/<int:pk>/reflection/", ShrineReflectionCreateView.as_view(), name="shrine-reflection-create"),
+    path("reflections/", ShrineReflectionListView.as_view(), name="reflection-list"),
     path("shrine-interactions/", ShrineInteractionLogCreateView.as_view(), name="shrine-interaction-create"),
     path("action-events/", ActionEventCreateView.as_view(), name="action-event-create"),
     path("debug/behavior-funnel/", DebugBehaviorFunnelView.as_view(), name="debug-behavior-funnel"),
