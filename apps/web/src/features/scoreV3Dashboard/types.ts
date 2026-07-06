@@ -6,6 +6,11 @@ export type ScoreV3Metrics = {
 };
 
 export type ScoreV3FunnelMetrics = {
+  detail_view_count: number;
+  route_open_count: number;
+  save_count: number;
+  visit_count: number;
+  reflection_count: number;
   route_open_rate: number;
   save_rate: number;
   visit_done_rate: number;
