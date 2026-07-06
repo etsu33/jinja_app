@@ -26,6 +26,10 @@ function Metric({ label, value, note }: { label: string; value: string; note?: s
   );
 }
 
+function count(v: number) {
+  return v.toLocaleString("ja-JP");
+}
+
 function DecisionBadge({ ok, label }: { ok: boolean; label: string }) {
   return (
     <div className="flex items-center justify-between text-sm py-1">
@@ -123,6 +127,11 @@ export default function ScoreV3DashboardClient() {
           {/* funnel */}
           <div className="rounded-2xl border bg-white p-4 space-y-0">
             <div className="text-sm font-semibold mb-2">Behavior Funnel</div>
+            <Metric label="detail_view_count" value={count(state.data.funnel.detail_view_count)} />
+            <Metric label="route_open_count" value={count(state.data.funnel.route_open_count)} />
+            <Metric label="save_count" value={count(state.data.funnel.save_count)} />
+            <Metric label="visit_count" value={count(state.data.funnel.visit_count)} />
+            <Metric label="reflection_count" value={count(state.data.funnel.reflection_count)} />
             <Metric label="route_open_rate" value={pct(state.data.funnel.route_open_rate)} />
             <Metric label="save_rate" value={pct(state.data.funnel.save_rate)} />
             <Metric label="visit_done_rate" value={pct(state.data.funnel.visit_done_rate)} />

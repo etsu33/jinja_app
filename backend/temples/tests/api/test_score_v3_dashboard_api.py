@@ -71,6 +71,11 @@ class ScoreV3DashboardAPITests(APITestCase):
         assert "save_rate" in funnel
         assert "visit_done_rate" in funnel
         assert "reflection_saved_rate" in funnel
+        assert "detail_view_count" in funnel
+        assert "route_open_count" in funnel
+        assert "save_count" in funnel
+        assert "visit_count" in funnel
+        assert "reflection_count" in funnel
 
     def test_with_observation_data_aggregated(self):
         ConciergeRecommendationLog.objects.create(
