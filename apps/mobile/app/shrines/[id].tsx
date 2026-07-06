@@ -599,7 +599,7 @@ export default function ShrineDetail() {
       ) : null}
 
       {hasActionMeaning ? (
-        <View style={styles.meaningCard}>
+        <View style={styles.actionCard}>
           <Text style={styles.cardTitle}>④ 参拝するときの視点</Text>
           <Text style={styles.cardBody}>{contextRecommendationReasonDetail?.actionMeaning}</Text>
         </View>
