@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+from datetime import timedelta
+
 import pytest
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from temples.models import Shrine, ShrineReflection
@@ -82,6 +85,59 @@ def test_create_shrine_reflection_authenticated():
     reflection = ShrineReflection.objects.get(id=body["id"])
     assert reflection.user_id == user.id
     assert reflection.shrine_id == shrine.id
+
+
+def test_list_shrine_reflections_requires_auth():
+    client = APIClient()
+
+    resp = client.get("/api/reflections/")
+
+    assert resp.status_code in (401, 403)
+
+
+def test_list_shrine_reflections_returns_only_own_reflections_ordered_by_created_at_desc():
+    user = _create_user(username="reflection_list_owner")
+    other_user = _create_user(username="reflection_list_other")
+    shrine = _create_shrine(name="一覧テスト神社")
+
+    older = ShrineReflection.objects.create(
+        user=user,
+        shrine=shrine,
+        history_theme="静寂",
+        prompt="最初の問い",
+        answer="最初の回答",
+    )
+    ShrineReflection.objects.filter(pk=older.pk).update(
+        created_at=timezone.now() - timedelta(days=1)
+    )
+
+    newer = ShrineReflection.objects.create(
+        user=user,
+        shrine=shrine,
+        history_theme="再出発",
+        prompt="次の問い",
+        answer="次の回答",
+    )
+
+    ShrineReflection.objects.create(
+        user=other_user,
+        shrine=shrine,
+        history_theme="静寂",
+        prompt="他人の問い",
+        answer="他人の回答",
+    )
+
+    client = APIClient()
+    client.force_authenticate(user=user)
+
+    resp = client.get("/api/reflections/")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    results = body["results"] if isinstance(body, dict) and "results" in body else body
+
+    assert [item["id"] for item in results] == [newer.id, older.id]
+    assert all(item["user"] == user.id for item in results)
 
 
 def test_create_shrine_reflection_returns_404_for_unknown_shrine():

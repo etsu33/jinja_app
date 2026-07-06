@@ -1,4 +1,4 @@
-from rest_framework import status
+from rest_framework import generics, permissions, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -39,4 +39,16 @@ class ShrineReflectionCreateView(APIView):
         return Response(
             ShrineReflectionSerializer(reflection).data,
             status=status.HTTP_201_CREATED,
+        )
+
+
+class ShrineReflectionListView(generics.ListAPIView):
+    serializer_class = ShrineReflectionSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return (
+            ShrineReflection.objects.filter(user=self.request.user)
+            .select_related("shrine")
+            .order_by("-created_at")
         )
