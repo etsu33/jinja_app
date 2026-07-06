@@ -331,9 +331,8 @@ export default function ShrineDetail() {
   const reasonFactItems = buildReasonFactItems(contextReasonFacts ?? shrine?.reasonFacts).slice(0, 3);
 
   const hasConsultationSummary = Boolean(contextRecommendationReasonDetail?.consultationSummary);
-  const hasMeaningConnection = Boolean(
-    contextRecommendationReasonDetail?.shrineMeaning || contextRecommendationReasonDetail?.actionMeaning,
-  );
+  const hasShrineMeaning = Boolean(contextRecommendationReasonDetail?.shrineMeaning);
+  const hasActionMeaning = Boolean(contextRecommendationReasonDetail?.actionMeaning);
 
   const recommendationReason = React.useMemo(() => {
     if (!shrine) return undefined;
@@ -565,9 +564,18 @@ export default function ShrineDetail() {
         </View>
       ) : null}
 
+      {hasConsultationSummary ? (
+        <View style={styles.contextCard}>
+          <Text style={styles.cardTitle}>① 今回の相談の整理</Text>
+          {contextRecommendationReasonDetail?.consultationSummary ? (
+            <Text style={styles.cardBody}>{contextRecommendationReasonDetail.consultationSummary}</Text>
+          ) : null}
+        </View>
+      ) : null}
+
       {/* 推薦理由 */}
       <View style={styles.recommendationCard}>
-        <Text style={styles.cardTitle}>この神社が選ばれた理由</Text>
+        <Text style={styles.cardTitle}>② 選ばれた理由</Text>
         <Text style={styles.cardBody}>{recommendationReason}</Text>
       </View>
 
@@ -583,27 +591,17 @@ export default function ShrineDetail() {
         </View>
       ) : null}
 
-      {hasConsultationSummary ? (
-        <View style={styles.contextCard}>
-          <Text style={styles.cardTitle}>今回の相談の整理</Text>
-          {contextRecommendationReasonDetail?.consultationSummary ? (
-            <Text style={styles.cardBody}>{contextRecommendationReasonDetail.consultationSummary}</Text>
-          ) : null}
+      {hasShrineMeaning ? (
+        <View style={styles.meaningCard}>
+          <Text style={styles.cardTitle}>③ この神社で受け取る意味</Text>
+          <Text style={styles.cardBody}>{contextRecommendationReasonDetail?.shrineMeaning}</Text>
         </View>
       ) : null}
 
-      {hasMeaningConnection ? (
+      {hasActionMeaning ? (
         <View style={styles.meaningCard}>
-          <Text style={styles.cardTitle}>神社との意味の接続</Text>
-          {contextRecommendationReasonDetail?.shrineMeaning ? (
-            <Text style={styles.cardBody}>{contextRecommendationReasonDetail.shrineMeaning}</Text>
-          ) : null}
-          {contextRecommendationReasonDetail?.actionMeaning ? (
-            <View style={styles.meaningActionBlock}>
-              <Text style={styles.meaningActionLabel}>参拝前の問い</Text>
-              <Text style={styles.cardBody}>{contextRecommendationReasonDetail.actionMeaning}</Text>
-            </View>
-          ) : null}
+          <Text style={styles.cardTitle}>④ 参拝するときの視点</Text>
+          <Text style={styles.cardBody}>{contextRecommendationReasonDetail?.actionMeaning}</Text>
         </View>
       ) : null}
 
@@ -888,10 +886,6 @@ const styles = StyleSheet.create({
     borderColor: theme.borderGold,
     padding: cardSizes.cardPaddingLg,
     gap: spacing.smGap,
-  },
-  meaningActionBlock: {
-    marginTop: spacing.smGap,
-    gap: spacing.tightGap,
   },
   meaningActionLabel: {
     color: theme.goldSoft,
