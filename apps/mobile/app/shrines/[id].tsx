@@ -1,6 +1,6 @@
 // apps/mobile/app/shrines/[id].tsx
 import * as React from "react";
-import { View, Text, Image, Pressable, StyleSheet, ScrollView, Linking, Platform } from "react-native";
+import { View, Text, Image, Pressable, StyleSheet, ScrollView, Linking, Platform, TextInput } from "react-native";
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import { SHRINES } from "../../data/shrines";
 import { incVisits, isFavorite, toggleFavorite, pushRecent } from "../../lib/storage";
@@ -13,6 +13,7 @@ import { radius } from "../design/radius";
 import { ctaSizes } from "../design/ctaSizes";
 import { createFavoriteByShrineId } from "../../lib/favorites";
 import { createVisitByShrineId } from "../../lib/visits";
+import { createShrineReflection } from "../../lib/reflections";
 
 type RecommendationReasonFactAxis =
   | "need"
@@ -321,6 +322,9 @@ export default function ShrineDetail() {
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
   const [fav, setFav] = React.useState(false);
   const [visited, setVisited] = React.useState(false);
+  const [reflectionAnswer, setReflectionAnswer] = React.useState("");
+  const [reflectionSaved, setReflectionSaved] = React.useState(false);
+  const [reflectionSaving, setReflectionSaving] = React.useState(false);
   const shrine = apiShrine ?? localShrine;
   const tags = shrine?.tags ?? [];
 
@@ -445,6 +449,27 @@ export default function ShrineDetail() {
       void createVisitByShrineId(apiShrineId ?? shrineId);
     }
   }, [apiShrineId, shrineId]);
+
+  const onSaveReflection = React.useCallback(async () => {
+    const targetShrineId = apiShrineId ?? shrineId;
+    const answer = reflectionAnswer.trim();
+    if (!targetShrineId || !answer || reflectionSaving) return;
+
+    setReflectionSaving(true);
+    const saved = await createShrineReflection({
+      shrineId: targetShrineId,
+      answer,
+      prompt: asTrimmedString(reflectionPrompt?.question) ?? "参拝後に何を感じましたか？",
+      historyTheme: contextReasonFacts?.primary_axis ?? shrine?.reasonFacts?.primary_axis ?? "",
+      moodBefore: "",
+      moodAfter: "",
+    });
+    setReflectionSaving(false);
+
+    if (saved) {
+      setReflectionSaved(true);
+    }
+  }, [apiShrineId, contextReasonFacts, reflectionAnswer, reflectionPrompt, reflectionSaving, shrine, shrineId]);
 
   const openDirections = React.useCallback(() => {
     if (!shrine) return;
@@ -654,8 +679,30 @@ export default function ShrineDetail() {
           <Text style={styles.cardBody}>
             参拝して感じたことを残しておくと、次の相談や再訪時に自分の変化を見返しやすくなります。
           </Text>
-          <Pressable style={styles.reflectionButton} onPress={() => router.push("/records")}>
-            <Text style={styles.reflectionButtonText}>振り返りを残す</Text>
+          <TextInput
+            value={reflectionAnswer}
+            onChangeText={(text) => {
+              setReflectionAnswer(text);
+              if (reflectionSaved) setReflectionSaved(false);
+            }}
+            placeholder="参拝して感じたことを一言で残す"
+            placeholderTextColor={theme.muted}
+            multiline
+            style={styles.reflectionInput}
+            textAlignVertical="top"
+          />
+          <Pressable
+            style={[
+              styles.reflectionButton,
+              (!reflectionAnswer.trim() || reflectionSaving) && styles.reflectionButtonDisabled,
+              reflectionSaved && styles.reflectionButtonSaved,
+            ]}
+            onPress={onSaveReflection}
+            disabled={!reflectionAnswer.trim() || reflectionSaving}
+          >
+            <Text style={styles.reflectionButtonText}>
+              {reflectionSaving ? "保存中…" : reflectionSaved ? "振り返りを保存しました" : "振り返りを保存する"}
+            </Text>
           </Pressable>
         </View>
       ) : null}
@@ -1015,6 +1062,19 @@ const styles = StyleSheet.create({
     padding: cardSizes.cardPaddingLg,
     gap: spacing.mdGap,
   },
+  reflectionInput: {
+    minHeight: 96,
+    borderRadius: radius.lg,
+    borderWidth: cardSizes.borderWidth,
+    borderColor: theme.borderSoft,
+    backgroundColor: theme.surfaceSoft,
+    color: theme.text,
+    fontSize: 14,
+    lineHeight: 22,
+    fontWeight: "600",
+    paddingHorizontal: cardSizes.cardPaddingMd,
+    paddingVertical: spacing.mdGap,
+  },
   reflectionButton: {
     height: ctaSizes.mediumHeight,
     borderRadius: ctaSizes.mediumRadius,
@@ -1023,6 +1083,12 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
     borderWidth: cardSizes.borderWidth,
     borderColor: theme.borderGold,
+  },
+  reflectionButtonDisabled: {
+    opacity: 0.5,
+  },
+  reflectionButtonSaved: {
+    backgroundColor: theme.borderGoldDark,
   },
   reflectionButtonText: {
     color: theme.gold,
