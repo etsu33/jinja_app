@@ -19,6 +19,10 @@ vi.mock("@/components/shrine/detail/ShrineJudgeSection", () => ({
   default: () => <div data-testid="shrine-judge-section" />,
 }));
 
+vi.mock("@/components/shrine/detail/ShrineActionSection", () => ({
+  default: () => <div data-testid="shrine-action-section" />,
+}));
+
 vi.mock("@/components/shrine/detail/ShrineProposalSection", () => ({
   default: () => <div data-testid="shrine-proposal-section" />,
 }));
@@ -202,6 +206,52 @@ describe("ShrineDetailArticle", () => {
     expect(reason).toBeInTheDocument();
     expect(meaning).toBeInTheDocument();
     expect(reason.compareDocumentPosition(meaning) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("action section は meaning section の後に表示する", () => {
+    render(
+      <ShrineDetailArticle
+        cardProps={{
+          shrineId: 17,
+          title: "乃木神社",
+          href: "/shrines/17",
+          imageUrl: null,
+          badges: [],
+          metaChips: [],
+          address: "東京都港区赤坂",
+        } as any}
+        heroImageUrl={null}
+        heroMeaningCopy={null}
+        benefitLabels={[]}
+        tags={[]}
+        publicGoshuinsPreview={[]}
+        publicGoshuinsViewAllHref=""
+        sections={[]}
+        freeDisplaySections={[]}
+        premiumDisplaySections={[
+          {
+            tier: "premium",
+            layer: "context",
+            section: { kind: "meaning", items: [] },
+          },
+          {
+            tier: "premium",
+            layer: "context",
+            section: { kind: "action", items: [] },
+          },
+        ] as any}
+        isPremiumActive
+        recommendationMeta={null}
+        saveActionNode={null}
+      />,
+    );
+
+    const meaning = screen.getByTestId("shrine-judge-section");
+    const action = screen.getByTestId("shrine-action-section");
+
+    expect(meaning).toBeInTheDocument();
+    expect(action).toBeInTheDocument();
+    expect(meaning.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("free では personal meaning section を表示せず、context reason のみを表示する", () => {

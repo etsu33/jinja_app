@@ -145,6 +145,51 @@ describe("buildShrineDetailModel", () => {
     ]);
   });
 
+  it("meaningSection と actionSection を独立したsectionとして分離する", () => {
+    const result = buildShrineDetailModel({
+      shrine: shrineStub,
+      publicGoshuins: publicGoshuinsStub,
+      conciergeBreakdown: conciergeBreakdownStub,
+      conciergeDeepReason: {
+        interpretation: "迷いが長い時は、まず流れを切り替える視点が必要です。",
+        shrineMeaning: "三峯神社は、停滞を断ち切る節目として置きやすい神社です。",
+        action: "先延ばしを止めて一歩を決める参拝に向いています。",
+        short: "止まった流れを動かす",
+      },
+      conciergeMode: "need",
+      ctx: "concierge",
+      tid: "thread-1",
+    });
+
+    expect(result.meaningSection).toEqual({
+      kind: "meaning",
+      heading: "③ この神社で受け取る意味",
+      lead: undefined,
+      items: [
+        {
+          key: "meaning",
+          title: "この神社と今の状態の重なり",
+          body: "三峯神社は、停滞を断ち切る節目として置きやすい神社です。",
+        },
+      ],
+    });
+
+    expect(result.actionSection).toEqual({
+      kind: "action",
+      heading: "④ 参拝するときの視点",
+      items: [
+        {
+          key: "action",
+          title: "参拝するときの視点",
+          body: "先延ばしを止めて一歩を決める参拝に向いています。",
+        },
+      ],
+    });
+
+    const premiumKinds = result.premiumDisplaySections.map((item: { section: { kind: string } }) => item.section.kind);
+    expect(premiumKinds).toEqual(["reason", "proposal", "meaning", "action"]);
+  });
+
   it("concierge文脈でも conciergeDeepReason が無ければ従来ロジックへフォールバックする", () => {
     const result = buildShrineDetailModel({
       shrine: shrineStub,
