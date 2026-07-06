@@ -31,7 +31,17 @@ Behavior Funnelでは以下を利用する。
 - Visit
 - ShrineReflection
 
-ActionEventはAction Completion Observationで利用され、現時点ではBehavior Funnel集計対象ではない。
+
+## ActionEvent 実測確認
+
+ログイン後、Mobileコンシェルジュ結果画面で「まずやること」「次にできること」を押下し、`/api/action-events/` が `201 Created` を返すことを確認した。
+
+DB上でも以下の2件を確認した。
+
+- action_started: shrine_id=71, action_suggestion_id=71:1:primary:reflect
+- action_completed: shrine_id=71, action_suggestion_id=71:1:secondary:save
+
+初回確認時に `401 Unauthorized` が発生した原因は、未ログインまたは期限切れtokenであり、ログイン後は正常に送信された。
 
 ## Phase6監査結果
 
