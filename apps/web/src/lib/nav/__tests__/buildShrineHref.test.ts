@@ -14,20 +14,48 @@ describe("buildShrineHref", () => {
     expect(buildShrineHref(1, { tid: null })).toBe("/shrines/1");
   });
 
-  it("query: null/undefined/空文字/空白は無視。booleanは1/0", () => {
+  it("query: place_id/toast のみ許可し、それ以外は無視", () => {
     const href = buildShrineHref(1, {
-      query: { toast: "ok", empty: "", space: "   ", n: 0, t: true, f: false, nu: null, un: undefined },
+      query: {
+        toast: "ok",
+        place_id: "abc",
+        mode: "need",
+        flow: "A",
+        recommendationReason: "long text",
+        empty: "",
+        space: "   ",
+        n: 0,
+        t: true,
+        f: false,
+        nu: null,
+        un: undefined,
+      },
     });
 
-    expect(href.startsWith("/shrines/1?")).toBe(true);
-    expect(href).toContain("toast=ok");
-    expect(href).toContain("n=0");
-    expect(href).toContain("t=1");
-    expect(href).toContain("f=0");
-    expect(href).not.toContain("empty=");
-    expect(href).not.toContain("space=");
-    expect(href).not.toContain("nu=");
-    expect(href).not.toContain("un=");
+    const url = new URL(href, "http://localhost");
+    const p = url.searchParams;
+
+    expect(url.pathname).toBe("/shrines/1");
+    expect(p.get("toast")).toBe("ok");
+    expect(p.get("place_id")).toBe("abc");
+    expect(p.has("mode")).toBe(false);
+    expect(p.has("flow")).toBe(false);
+    expect(p.has("recommendationReason")).toBe(false);
+    expect(p.has("empty")).toBe(false);
+    expect(p.has("space")).toBe(false);
+    expect(p.has("n")).toBe(false);
+    expect(p.has("t")).toBe(false);
+    expect(p.has("f")).toBe(false);
+    expect(p.has("nu")).toBe(false);
+    expect(p.has("un")).toBe(false);
+  });
+
+  it("query 内の ctx/tid は opts 相当として扱う", () => {
+    expect(
+      buildShrineHref(1, {
+        query: { ctx: "concierge", tid: "42", toast: "saved" },
+      }),
+    ).toBe("/shrines/1?ctx=concierge&tid=42&toast=saved");
   });
 
   it("subpath: 先頭スラッシュを除去して付与。空白/nullは無視", () => {
