@@ -15,6 +15,7 @@ import { shadows } from "../design/shadow";
 import type { ConciergeContext } from "../../lib/conciergeContext";
 import { buildDerivedProfile } from "../../lib/profile";
 import { post } from "../../lib/http";
+import { trackActionEvent, type ActionEventActionType } from "../../lib/actionEvents";
 import { useProfileStore } from "../../store/profileStore";
 
 // ────────────────────────────────────────────
@@ -407,6 +408,20 @@ function normalizeRecommendations(items: RecommendationApiCard[]): Recommendatio
   return items.map(toRecommendationCard);
 }
 
+function buildActionSuggestionId({
+  card,
+  action,
+  slot,
+  rank,
+}: {
+  card: RecommendationCard;
+  action: ActionSuggestionV4Action;
+  slot: "primary" | "secondary";
+  rank: number;
+}) {
+  return [card.shrineId ?? card.id, rank, slot, action.actionType].filter(Boolean).join(":");
+}
+
 type ProfileContextPayload = {
   user_profile: Record<string, string | undefined>;
   derived_profile: Record<string, string | undefined>;
@@ -456,10 +471,16 @@ function ResultCard({
   card,
   rank,
   onDetail,
+  onActionEvent,
 }: {
   card: RecommendationCard;
   rank: number;
   onDetail: () => void;
+  onActionEvent: (params: {
+    actionType: ActionEventActionType;
+    action: ActionSuggestionV4Action;
+    slot: "primary" | "secondary";
+  }) => void;
 }) {
   const reasonFactItems = buildReasonFactItems(card.reasonFacts);
   return (
@@ -510,17 +531,35 @@ function ResultCard({
             <Text style={styles.actionV4SubLabel}>この神社を見たあとに、無理なく進めるための整理です。</Text>
           </View>
 
-          <View style={styles.actionV4Item}>
+          <Pressable
+            onPress={() =>
+              onActionEvent({
+                actionType: "action_started",
+                action: card.actionSuggestionV4Preview.primaryAction,
+                slot: "primary",
+              })
+            }
+            style={styles.actionV4Item}
+          >
             <Text style={styles.actionV4ItemLabel}>まずやること</Text>
             <Text style={styles.actionV4Title}>{card.actionSuggestionV4Preview.primaryAction.label}</Text>
             <Text style={styles.actionV4Description}>{card.actionSuggestionV4Preview.primaryAction.description}</Text>
-          </View>
+          </Pressable>
 
-          <View style={styles.actionV4Item}>
+          <Pressable
+            onPress={() =>
+              onActionEvent({
+                actionType: "action_completed",
+                action: card.actionSuggestionV4Preview.secondaryAction,
+                slot: "secondary",
+              })
+            }
+            style={styles.actionV4Item}
+          >
             <Text style={styles.actionV4ItemLabel}>次にできること</Text>
             <Text style={styles.actionV4Title}>{card.actionSuggestionV4Preview.secondaryAction.label}</Text>
             <Text style={styles.actionV4Description}>{card.actionSuggestionV4Preview.secondaryAction.description}</Text>
-          </View>
+          </Pressable>
 
           <View style={styles.actionV4Item}>
             <Text style={styles.actionV4ItemLabel}>参拝前の問い</Text>
@@ -655,6 +694,39 @@ export default function ConciergeScreen() {
 
   const handleResuggest = () => {
     void submit(consultationText);
+  };
+
+  const handleActionEvent = ({
+    card,
+    rank,
+    actionType,
+    action,
+    slot,
+  }: {
+    card: RecommendationCard;
+    rank: number;
+    actionType: ActionEventActionType;
+    action: ActionSuggestionV4Action;
+    slot: "primary" | "secondary";
+  }) => {
+    void trackActionEvent({
+      actionType,
+      actionSuggestionId: buildActionSuggestionId({ card, action, slot, rank }),
+      source: "mobile_concierge_result",
+      shrineId: card.shrineId ?? null,
+      threadId: null,
+      historyTheme: card.reasonFacts?.primary_axis ?? "",
+      actionCategory: action.actionType,
+      metadata: {
+        platform: "mobile",
+        rank,
+        slot,
+        action_label: action.label,
+        action_description: action.description,
+        action_source: card.actionSuggestionV4Preview?.actionSource.source ?? null,
+        source_keys: card.actionSuggestionV4Preview?.sourceKeys ?? [],
+      },
+    });
   };
 
   const handleDetail = (card: RecommendationCard) => {
@@ -810,6 +882,15 @@ export default function ConciergeScreen() {
                 card={card}
                 rank={i + 1}
                 onDetail={() => handleDetail(card)}
+                onActionEvent={({ actionType, action, slot }) =>
+                  handleActionEvent({
+                    card,
+                    rank: i + 1,
+                    actionType,
+                    action,
+                    slot,
+                  })
+                }
               />
             ))}
           </View>
