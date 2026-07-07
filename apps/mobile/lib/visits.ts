@@ -1,10 +1,25 @@
 
 
-import { postAuth } from "./http";
+import { getAuth, postAuth } from "./http";
 
 export type VisitCreateResponse = {
   id: number;
   created: boolean;
+};
+
+export type VisitHistoryItem = {
+  id: number;
+  user: number;
+  shrine: number;
+  shrine_name?: string | null;
+  shrine_address?: string | null;
+  visited_at: string;
+  note?: string | null;
+  status: "added" | "removed" | string;
+};
+
+type PaginatedResponse<T> = {
+  results: T[];
 };
 
 function normalizePositiveInt(value: number | string | null | undefined): number | null {
@@ -28,5 +43,18 @@ export async function createVisitByShrineId(shrineId: number | string): Promise<
       console.warn("[createVisitByShrineId] failed", error);
     }
     return null;
+  }
+}
+
+export async function listVisits(): Promise<VisitHistoryItem[]> {
+  try {
+    const data = await getAuth<VisitHistoryItem[] | PaginatedResponse<VisitHistoryItem>>("/visits/");
+    const items = Array.isArray(data) ? data : (data.results ?? []);
+    return items.filter((item) => item.status !== "removed");
+  } catch (error) {
+    if (__DEV__) {
+      console.warn("[listVisits] failed", error);
+    }
+    return [];
   }
 }
