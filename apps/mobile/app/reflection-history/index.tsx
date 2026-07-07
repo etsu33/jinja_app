@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 
 import { listShrineReflections, type ShrineReflectionResponse } from "../../lib/reflections";
@@ -70,7 +70,13 @@ function groupReflectionsByDate(reflections: ShrineReflectionResponse[]): Reflec
   return Array.from(groups.entries()).map(([label, items]) => ({ label, items }));
 }
 
-function ReflectionCard({ reflection }: { reflection: ShrineReflectionResponse }) {
+function ReflectionCard({
+  reflection,
+  onPress,
+}: {
+  reflection: ShrineReflectionResponse;
+  onPress: (reflection: ShrineReflectionResponse) => void;
+}) {
   const shrineName = reflection.shrine_name?.trim() || "神社名未設定";
   const historyTheme = reflection.history_theme?.trim() || "テーマ未設定";
   const answer = reflection.answer?.trim() || "振り返り本文はまだありません。";
@@ -79,7 +85,10 @@ function ReflectionCard({ reflection }: { reflection: ShrineReflectionResponse }
   const nextNeedHints = normalizeHints(reflection.next_need_hint);
 
   return (
-    <View style={styles.reflectionCard}>
+    <Pressable
+      style={({ pressed }) => [styles.reflectionCard, pressed ? styles.reflectionCardPressed : null]}
+      onPress={() => onPress(reflection)}
+    >
       <View style={styles.cardHeader}>
         <Text style={styles.shrineName}>{shrineName}</Text>
         <Text style={styles.createdAt}>{createdAt}</Text>
@@ -115,7 +124,53 @@ function ReflectionCard({ reflection }: { reflection: ShrineReflectionResponse }
           </View>
         </View>
       ) : null}
-    </View>
+    </Pressable>
+  );
+}
+
+function ReflectionDetailModal({
+  reflection,
+  onClose,
+}: {
+  reflection: ShrineReflectionResponse | null;
+  onClose: () => void;
+}) {
+  return (
+    <Modal
+      visible={reflection !== null}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalCard}>
+          <ScrollView showsVerticalScrollIndicator={false} style={styles.modalScroll}>
+            <Text style={styles.modalLabel}>問いかけ</Text>
+            <Text style={styles.modalText}>{reflection?.prompt?.trim() || "問いかけは記録されていません。"}</Text>
+
+            <Text style={styles.modalLabel}>振り返り</Text>
+            <Text style={styles.modalText}>{reflection?.answer?.trim() || "振り返り本文はまだありません。"}</Text>
+
+            <Text style={styles.modalLabel}>参拝前の気持ち</Text>
+            <Text style={styles.modalText}>{reflection?.mood_before?.trim() || "記録されていません。"}</Text>
+
+            <Text style={styles.modalLabel}>参拝後の気持ち</Text>
+            <Text style={styles.modalText}>{reflection?.mood_after?.trim() || "記録されていません。"}</Text>
+
+            {reflection?.state_change_summary ? (
+              <>
+                <Text style={styles.modalLabel}>変化のメモ</Text>
+                <Text style={styles.modalText}>{reflection.state_change_summary}</Text>
+              </>
+            ) : null}
+          </ScrollView>
+
+          <Pressable style={styles.modalCloseButton} onPress={onClose}>
+            <Text style={styles.modalCloseText}>閉じる</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -125,6 +180,7 @@ export default function ReflectionHistoryScreen() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
+  const [selectedReflection, setSelectedReflection] = React.useState<ShrineReflectionResponse | null>(null);
 
   const loadReflections = React.useCallback(async (options?: { showInitialLoading?: boolean; showRefreshing?: boolean }) => {
     if (options?.showInitialLoading) setLoading(true);
@@ -201,13 +257,15 @@ export default function ReflectionHistoryScreen() {
               <Text style={styles.groupLabel}>{group.label}</Text>
               <View style={styles.list}>
                 {group.items.map((reflection) => (
-                  <ReflectionCard key={reflection.id} reflection={reflection} />
+                  <ReflectionCard key={reflection.id} reflection={reflection} onPress={setSelectedReflection} />
                 ))}
               </View>
             </View>
           ))}
         </View>
       ) : null}
+
+      <ReflectionDetailModal reflection={selectedReflection} onClose={() => setSelectedReflection(null)} />
     </ScrollView>
   );
 }
@@ -267,6 +325,9 @@ const styles = StyleSheet.create({
     borderWidth: cardSizes.borderWidth,
     padding: cardSizes.cardPaddingLg,
     gap: spacing.smGap,
+  },
+  reflectionCardPressed: {
+    opacity: 0.7,
   },
   cardHeader: {
     gap: spacing.tightGap,
@@ -384,5 +445,51 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 20,
     fontWeight: "600",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(7, 16, 31, 0.82)",
+    justifyContent: "center",
+    padding: spacing.screenXWide,
+  },
+  modalCard: {
+    maxHeight: "80%",
+    backgroundColor: theme.surface,
+    borderColor: theme.borderGold,
+    borderRadius: radius.lg,
+    borderWidth: cardSizes.borderWidth,
+    padding: cardSizes.cardPaddingLg,
+    gap: spacing.mdGap,
+  },
+  modalScroll: {
+    flexGrow: 0,
+  },
+  modalLabel: {
+    color: theme.goldSoft,
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1.1,
+    marginTop: spacing.mdGap,
+  },
+  modalText: {
+    color: theme.text,
+    fontSize: 14,
+    lineHeight: 22,
+    fontWeight: "600",
+    marginTop: spacing.tightGap,
+  },
+  modalCloseButton: {
+    alignSelf: "center",
+    backgroundColor: theme.surfaceSoft,
+    borderColor: theme.borderGold,
+    borderRadius: 999,
+    borderWidth: cardSizes.borderWidth,
+    paddingHorizontal: spacing.lgGap,
+    paddingVertical: spacing.smGap,
+  },
+  modalCloseText: {
+    color: theme.gold,
+    fontSize: 14,
+    fontWeight: "800",
   },
 });
