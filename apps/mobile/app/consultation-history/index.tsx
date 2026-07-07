@@ -3,6 +3,7 @@ import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "r
 import { useRouter } from "expo-router";
 
 import { listConciergeThreads, type ConciergeThreadListItem } from "../../lib/consultationHistory";
+import { StateCard } from "../../components/common/StateCard";
 import { kamimusubiDark as theme } from "../theme";
 import { spacing } from "../design/spacing";
 import { cardSizes } from "../design/cardSizes";
@@ -137,24 +138,24 @@ export default function ConsultationHistoryScreen() {
       </View>
 
       {loading ? (
-        <View style={styles.stateCard}>
-          <Text style={styles.stateTitle}>相談履歴を読み込み中</Text>
-          <Text style={styles.stateText}>保存された相談を確認しています。</Text>
-        </View>
+        <StateCard
+          title="相談履歴を読み込み中"
+          description="保存された相談を確認しています。"
+        />
       ) : null}
 
       {!loading && error ? (
-        <View style={styles.stateCard}>
-          <Text style={styles.stateTitle}>相談履歴を読み込めませんでした</Text>
-          <Text style={styles.stateText}>通信状況を確認して、もう一度開き直してください。</Text>
-        </View>
+        <StateCard
+          title="相談履歴を読み込めませんでした"
+          description="通信状況を確認して、もう一度開き直してください。"
+        />
       ) : null}
 
       {!loading && !error && threads.length === 0 ? (
-        <View style={styles.stateCard}>
-          <Text style={styles.stateTitle}>相談履歴はまだありません</Text>
-          <Text style={styles.stateText}>コンシェルジュで相談すると、ここに履歴として表示されます。</Text>
-        </View>
+        <StateCard
+          title="相談履歴はまだありません"
+          description="コンシェルジュで相談すると、ここに履歴として表示されます。"
+        />
       ) : null}
 
       {!loading && !error && groupedThreads.length > 0 ? (
@@ -269,24 +270,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "800",
     letterSpacing: 0.6,
-  },
-  stateCard: {
-    backgroundColor: theme.surfaceSoft,
-    borderColor: theme.borderHeader,
-    borderRadius: radius.md,
-    borderWidth: cardSizes.borderWidth,
-    padding: cardSizes.cardPaddingLg,
-    gap: spacing.smGap,
-  },
-  stateTitle: {
-    color: theme.text,
-    fontSize: 15,
-    fontWeight: "800",
-  },
-  stateText: {
-    color: theme.muted,
-    fontSize: 13,
-    lineHeight: 20,
-    fontWeight: "600",
   },
 });

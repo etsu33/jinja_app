@@ -3,6 +3,7 @@ import { Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } 
 import { useRouter } from "expo-router";
 
 import { listShrineReflections, type ShrineReflectionResponse } from "../../lib/reflections";
+import { StateCard } from "../../components/common/StateCard";
 import { kamimusubiDark as theme } from "../theme";
 import { spacing } from "../design/spacing";
 import { cardSizes } from "../design/cardSizes";
@@ -228,26 +229,24 @@ export default function ReflectionHistoryScreen() {
       </View>
 
       {loading ? (
-        <View style={styles.stateCard}>
-          <Text style={styles.stateTitle}>振り返りを読み込み中</Text>
-          <Text style={styles.stateText}>保存した振り返りを確認しています。</Text>
-        </View>
+        <StateCard
+          title="振り返りを読み込み中"
+          description="保存した振り返りを確認しています。"
+        />
       ) : null}
 
       {!loading && error ? (
-        <View style={styles.stateCard}>
-          <Text style={styles.stateTitle}>振り返り履歴を読み込めませんでした</Text>
-          <Text style={styles.stateText}>通信状況を確認して、もう一度開き直してください。</Text>
-        </View>
+        <StateCard
+          title="振り返り履歴を読み込めませんでした"
+          description="通信状況を確認して、もう一度開き直してください。"
+        />
       ) : null}
 
       {!loading && !error && reflections.length === 0 ? (
-        <View style={styles.stateCard}>
-          <Text style={styles.stateTitle}>振り返りはまだありません</Text>
-          <Text style={styles.stateText}>
-            神社詳細で参拝記録をしたあと、感じたことを保存するとここに表示されます。
-          </Text>
-        </View>
+        <StateCard
+          title="振り返りはまだありません"
+          description="神社詳細で参拝記録をしたあと、感じたことを保存するとここに表示されます。"
+        />
       ) : null}
 
       {!loading && !error && groupedReflections.length > 0 ? (
@@ -426,25 +425,6 @@ const styles = StyleSheet.create({
     color: theme.goldSoft,
     fontSize: 11,
     fontWeight: "800",
-  },
-  stateCard: {
-    backgroundColor: theme.surfaceSoft,
-    borderColor: theme.borderHeader,
-    borderRadius: radius.md,
-    borderWidth: cardSizes.borderWidth,
-    padding: cardSizes.cardPaddingLg,
-    gap: spacing.smGap,
-  },
-  stateTitle: {
-    color: theme.text,
-    fontSize: 15,
-    fontWeight: "800",
-  },
-  stateText: {
-    color: theme.muted,
-    fontSize: 13,
-    lineHeight: 20,
-    fontWeight: "600",
   },
   modalOverlay: {
     flex: 1,
