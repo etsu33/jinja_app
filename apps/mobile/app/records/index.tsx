@@ -38,6 +38,13 @@ const recordItems: readonly RecordCardProps[] = [
     routeLabel: "visit-history",
   },
   {
+    title: "相談履歴",
+    description: "これまでの相談を見返す",
+    meta: "迷いや願いの記録",
+    iconText: "相",
+    routeLabel: "consultation-history",
+  },
+  {
     title: "最近見た神社",
     description: "閲覧した神社をもう一度見る",
     meta: "閲覧履歴",
@@ -50,6 +57,7 @@ const ROUTE_MAP: Record<string, string> = {
   favorites: "/favorites",
   goshuin: "/goshuin",
   "visit-history": "/visit-history",
+  "consultation-history": "/consultation-history",
   "recently-viewed": "/recently-viewed",
 };
 
