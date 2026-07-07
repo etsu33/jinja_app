@@ -3,6 +3,7 @@ import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "r
 import { useRouter } from "expo-router";
 
 import { listVisits, type VisitHistoryItem } from "../../lib/visits";
+import { StateCard } from "../../components/common/StateCard";
 import { kamimusubiDark as theme } from "../theme";
 import { spacing } from "../design/spacing";
 import { cardSizes } from "../design/cardSizes";
@@ -150,24 +151,24 @@ export default function VisitHistoryScreen() {
       </View>
 
       {loading ? (
-        <View style={styles.stateCard}>
-          <Text style={styles.stateTitle}>参拝履歴を読み込み中</Text>
-          <Text style={styles.stateText}>保存された参拝記録を確認しています。</Text>
-        </View>
+        <StateCard
+          title="参拝履歴を読み込み中"
+          description="保存された参拝記録を確認しています。"
+        />
       ) : null}
 
       {!loading && error ? (
-        <View style={styles.stateCard}>
-          <Text style={styles.stateTitle}>参拝履歴を読み込めませんでした</Text>
-          <Text style={styles.stateText}>通信状況を確認して、もう一度開き直してください。</Text>
-        </View>
+        <StateCard
+          title="参拝履歴を読み込めませんでした"
+          description="通信状況を確認して、もう一度開き直してください。"
+        />
       ) : null}
 
       {!loading && !error && visits.length === 0 ? (
-        <View style={styles.stateCard}>
-          <Text style={styles.stateTitle}>参拝履歴はまだありません</Text>
-          <Text style={styles.stateText}>神社詳細で参拝済みにすると、ここに履歴として表示されます。</Text>
-        </View>
+        <StateCard
+          title="参拝履歴はまだありません"
+          description="神社詳細で参拝済みにすると、ここに履歴として表示されます。"
+        />
       ) : null}
 
       {!loading && !error && groupedVisits.length > 0 ? (
@@ -328,25 +329,6 @@ const styles = StyleSheet.create({
   },
   noteText: {
     color: theme.mutedSoft,
-    fontSize: 13,
-    lineHeight: 20,
-    fontWeight: "600",
-  },
-  stateCard: {
-    backgroundColor: theme.surfaceSoft,
-    borderColor: theme.borderHeader,
-    borderRadius: radius.md,
-    borderWidth: cardSizes.borderWidth,
-    padding: cardSizes.cardPaddingLg,
-    gap: spacing.smGap,
-  },
-  stateTitle: {
-    color: theme.text,
-    fontSize: 15,
-    fontWeight: "800",
-  },
-  stateText: {
-    color: theme.muted,
     fontSize: 13,
     lineHeight: 20,
     fontWeight: "600",
