@@ -35,11 +35,11 @@ export default function FavoritesScreen() {
     >
       <View style={{ marginBottom: spacing.lgGap }}>
         <Pressable
-          onPress={() => router.canGoBack() ? router.back() : router.replace("/")}
+          onPress={() => router.replace("/records")}
           style={{ marginBottom: spacing.xlGap }}
         >
           <Text style={{ color: theme.gold, fontSize: 13, fontWeight: "700" }}>
-            ← 戻る
+            ← 記録へ戻る
           </Text>
         </Pressable>
         <Text style={{ color: theme.gold, fontSize: 26, fontWeight: "700" }}>
