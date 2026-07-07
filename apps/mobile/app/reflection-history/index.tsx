@@ -217,7 +217,7 @@ export default function ReflectionHistoryScreen() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.gold} />}
     >
       <View style={styles.header}>
-        <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace("/records"))} style={styles.backButton}>
+        <Pressable onPress={() => router.replace("/records")} style={styles.backButton}>
           <Text style={styles.backText}>← 記録へ戻る</Text>
         </Pressable>
 

@@ -35,7 +35,7 @@ export default function VisitHistoryScreen() {
     >
       <View style={styles.header}>
         <Pressable
-          onPress={() => router.canGoBack() ? router.back() : router.replace("/records")}
+          onPress={() => router.replace("/records")}
           style={styles.backButton}
         >
           <Text style={styles.backText}>← 記録へ戻る</Text>

@@ -92,6 +92,13 @@ export default function Root() {
       <Tabs.Screen name="search/index" options={{ href: null }} />
       <Tabs.Screen name="shrines/[id]" options={{ href: null }} />
       <Tabs.Screen name="ranking/index" options={{ href: null }} />
+      <Tabs.Screen name="login" options={{ href: null }} />
+      <Tabs.Screen name="theme" options={{ href: null }} />
+      <Tabs.Screen name="design/cardSizes" options={{ href: null }} />
+      <Tabs.Screen name="design/ctaSizes" options={{ href: null }} />
+      <Tabs.Screen name="design/radius" options={{ href: null }} />
+      <Tabs.Screen name="design/shadow" options={{ href: null }} />
+      <Tabs.Screen name="design/spacing" options={{ href: null }} />
     </Tabs>
   );
 }
