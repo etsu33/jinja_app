@@ -30,7 +30,7 @@ def shrine():
 
 
 def test_journey_timeline_requires_authentication(api_client):
-    response = api_client.get("/api/journey/timeline/")
+    response = api_client.get("/api/journeys/timeline/")
 
     assert response.status_code in (401, 403)
 
@@ -67,7 +67,7 @@ def test_journey_timeline_returns_results_wrapper_and_events(api_client, user, s
         status="removed",
     )
 
-    response = api_client.get("/api/journey/timeline/")
+    response = api_client.get("/api/journeys/timeline/")
 
     assert response.status_code == 200
     body = response.json()

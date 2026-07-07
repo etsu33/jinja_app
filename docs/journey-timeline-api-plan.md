@@ -111,7 +111,7 @@ MVP では favorite はタイムライン外の「保存した神社」として
 Endpoint:
 
 ```text
-GET /api/journey/timeline/
+GET /api/journeys/timeline/
 ```
 
 Response:
@@ -184,7 +184,7 @@ Phase2 以降で、以下のどちらかを検討する。
 
 ### Phase1: Journey Timeline API MVP
 
-- `GET /api/journey/timeline/` を追加
+- `GET /api/journeys/timeline/` を追加
 - `consultation_created` を返す
 - `recommendation_shown` を返す
 - `visit_completed` を返す
