@@ -20,6 +20,7 @@ from temples.api.views.concierge import (
 from temples.api.views.geocode import geocode_reverse_legacy, geocode_search_legacy
 from temples.api.views.goshuin import MyGoshuinViewSet, PublicGoshuinViewSet
 from temples.api.views.goshuin_feed import PublicGoshuinFeedView
+from temples.api.views.journey import JourneyTimelineView
 from temples.api.views.place_cache import place_cache_list
 from temples.api.views.places_resolve import PlacesResolveView
 from temples.api.views.public_profile import public_profile
@@ -126,6 +127,7 @@ urlpatterns = [
     path("debug/behavior-funnel/", DebugBehaviorFunnelView.as_view(), name="debug-behavior-funnel"),
     path("concierge/score-v3/dashboard/", ScoreV3DashboardView.as_view(), name="score-v3-dashboard"),
     path("visits/", UserVisitListView.as_view(), name="visit-list"),
+    path("journey/timeline/", JourneyTimelineView.as_view(), name="journey-timeline"),
     path("public/shrines/<int:pk>/", PublicShrineDetailView.as_view(), name="public-shrine-detail"),
     path("populars/", PopularShrineListView.as_view(), name="popular-shrines"),
     path("concierge/chat/", concierge_chat_compat, name="concierge-chat"),
