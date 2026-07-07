@@ -80,6 +80,7 @@ export default function Root() {
           tabBarIcon: ({ color, size }) => <MaterialIcons name="person" size={size} color={color} />,
         }}
       />
+      <Tabs.Screen name="journey/index" options={{ href: null }} />
       <Tabs.Screen name="favorites/index" options={{ href: null }} />
       <Tabs.Screen name="goshuin/index" options={{ href: null }} />
       <Tabs.Screen name="goshuin/upload" options={{ href: null }} />
