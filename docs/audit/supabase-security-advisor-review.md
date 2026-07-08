@@ -6,18 +6,16 @@ Supabase Security Advisor に表示されている Error / Warning を精査し�
 
 ## この監査のスコープと前提（重要）
 
-このセッションでは Supabase ダッシュボードへの直接アクセス手段（MCP接続等）がなく、Advisor画面の Error/Warning 全件を今回新たに取得することはできなかった。ユーザーとの合意により、今回は以下の情報のみで整理する。
+このセッションでは Supabase ダッシュボードへの直接アクセス手段（MCP接続等）がなく、Advisor画面の Error/Warning 全件を当初は取得できていなかった。その後、ユーザーから Advisor Center 画面（Security / Severity: Critical フィルタ）のスクリーンショットが共有され、`RLS Disabled in Public` の対象テーブルの一部を実データで確認できた（2026-07-08）。
 
-- 既存doc [`supabase-security-advisor-rls.md`](./supabase-security-advisor-rls.md) に記録済みの `RLS Disabled in Public` の一部情報
-- 本リポジトリのDjangoモデル定義から機械的に洗い出せるテーブル一覧（`backend/temples/models.py` ・ `backend/favorites/models.py` ・ `backend/users/models.py` ・ `INSTALLED_APPS`）
-
-`Function Search Path Mutable` / `Security Definer View` / Auth設定 / API公開設定 は、対象オブジェクトの実名がAdvisor画面から未取得のため、**すべて「未確認」として枠のみ整備**した。次アクションで実データを埋める前提の骨子ドキュメントである。
+- 確認済み: `RLS Disabled in Public` の対象テーブル（画面の可視範囲分。スクロール未実施のため全件ではない可能性がある）
+- 未確認: `Function Search Path Mutable` / `Security Definer View` / Auth設定 / API公開設定 は、対象オブジェクトの実名が未取得のため、**引き続き「未確認」として枠のみ整備**している。
 
 ## Error / Warning 一覧（現時点で分かっている範囲）
 
 | # | 項目 | 種別 | ステータス |
 |---|------|------|-----------|
-| 1 | RLS Disabled in Public | Error | 一部テーブル名を確認済み（全件ではない） |
+| 1 | RLS Disabled in Public | Error（Supabase上はCRITICAL表示） | スクリーンショットで15件確認済み。画面はスクロール可能で、さらに続きがある可能性が高い（全件ではない） |
 | 2 | Function Search Path Mutable | Warning | 未確認（対象関数名なし） |
 | 3 | Security Definer View | Warning/Error | 未確認（対象view名なし） |
 | 4 | Auth設定関連（OTP有効期限 / Leaked Password Protection 等） | Warning | 未確認 |
@@ -29,30 +27,50 @@ Supabase Security Advisor に表示されている Error / Warning を精査し�
 
 - **内容**: public schema のテーブルで Row Level Security が無効になっている。
 - **原因**: Django が直接DB接続（psycopg経由、テーブル所有者相当のロール）で利用しているテーブル群に対し、Supabase側で個別にRLSを設定していないため。Django自体はPostgresの通常権限モデルで動作しており、RLSの有無を前提にしていない。
-- **危険度**: 高（対象テーブルがPostgREST/Supabase API経由で公開されている場合、認可なしでデータ露出・改ざんのリスク）。ただしDjangoの直接DB接続経路には影響しない。
+- **危険度**: Supabase自身が全件 **CRITICAL** として表示している（スクリーンショットで確認済み）。対象テーブルがPostgREST/Supabase API経由で公開されている場合、認可なしでデータ露出・改ざんのリスク。ただしDjangoの直接DB接続経路には影響しない。
 - **Djangoへの影響**: RLSを安易に有効化すると、Django接続ロールの種類（テーブル所有者 or 汎用ロール）次第では既存クエリ・migrationが影響を受ける可能性がある。特にmigration実行ロールとRLS対象ロールが同一だと予期せぬブロックは起きにくいが、未検証。
 - **Supabase APIへの影響**: PostgRESTでexposeされているschemaに対象テーブルが含まれる場合、RLSが無いと anon/authenticated ロールからテーブル全件が読み書き可能になり得る（API公開設定の確認が前提）。
 - **修正優先度**: テーブル種別により異なる（下記「Django内部テーブル vs 業務テーブル」参照）。
 
-#### 既存docで確認済みのテーブル
+#### 確認済みテーブル（2026-07-08 Advisor Center スクリーンショットより、severity: CRITICAL）
 
-- ユーザーデータ系（優先度A想定）: `auth_user`, `favorites_favorite`, `django_session`
-- Django内部系（優先度D想定）: `django_migrations`, `django_content_type`, `auth_permission`, `auth_group`
+Advisor画面（Security / Severity: Critical フィルタ）で実際に `RLS Disabled in Public` として表示されていたテーブル。画面はスクロール可能で、可視範囲は先頭15件のみ。全件かどうかは未確定。
 
-#### 今回モデル定義から新たに洗い出した業務テーブル（Advisor上での確認は未実施）
+1. `public.django_migrations`
+2. `public.django_content_type`
+3. `public.auth_permission`
+4. `public.auth_group`
+5. `public.auth_group_permissions`
+6. `public.auth_user_groups`
+7. `public.auth_user_user_permissions`
+8. `public.django_admin_log`
+9. `public.auth_user`
+10. `public.favorites_favorite`
+11. `public.django_session`
+12. `public.place_ref`
+13. `public.temples_shrine_deities`（※要注記、下記参照）
+14. `public.temples_deity`
+15. `public.temples_visit`
 
-`backend/temples/models.py` ・ `backend/favorites/models.py` ・ `backend/users/models.py` に定義された全モデルのDBテーブル名（Django既定命名規則。Metaで`db_table`指定があるものは注記）。
+1〜11は既存doc（[`supabase-security-advisor-rls.md`](./supabase-security-advisor-rls.md)）に一部記載済みだった内容と一致し、今回のスクリーンショットで裏付けが取れた。12〜15は本ドキュメントでモデル定義から予測していた業務テーブル一覧と一致する（後述の予測一覧のうち `place_ref` / `temples_deity` / `temples_visit` を実データで確認できた）。
+
+> **注記: `public.temples_shrine_deities` について**
+> `backend/temples/migrations/0040_shrine_deities.py` で `Shrine.deities`（M2Mフィールド）が追加されたが、`backend/temples/migrations/0072_remove_shrine_deities_alter_shrine_address.py` で当該フィールドは削除済みで、現在の `temples/models.py` にも `deities` フィールドは存在しない。にもかかわらず Advisor 上に `temples_shrine_deities` テーブルが表示されているのは、**本番DBでmigration 0072が未適用、もしくはテーブルが物理的に残存している**可能性を示唆する。これはRLS云々以前に、モデル定義とDBスキーマの乖離（migration drift）の疑いがあるため、RLS対応より先に `python manage.py showmigrations temples` 相当の確認を本番環境に対して行うことを推奨する（今回はSQL実行禁止のため未実施）。
+
+#### モデル定義から洗い出した業務テーブル一覧（Advisor実データとの突合は一部のみ）
+
+`backend/temples/models.py` ・ `backend/favorites/models.py` ・ `backend/users/models.py` に定義された全モデルのDBテーブル名（Django既定命名規則。Metaで`db_table`指定があるものは注記）。上記「確認済み」に含まれるものは注記した。
 
 - `users_userprofile`
-- `favorites_favorite`（favoritesアプリ）
+- `favorites_favorite`（favoritesアプリ／**確認済み**）
 - `temples_favorite`（temples内の別Favoriteモデル。favoritesアプリの`favorites_favorite`とは別実体）
-- `place_ref`（`Meta.db_table`指定）
+- `place_ref`（`Meta.db_table`指定／**確認済み**）
 - `place_cache`（`Meta.db_table`指定）
 - `temples_goriyakutag`
 - `temples_shrine`
 - `temples_conciergethread`
 - `temples_conciergemessage`
-- `temples_visit`
+- `temples_visit`（**確認済み**）
 - `temples_shrinereflection`
 - `temples_shrineinteractionlog`
 - `temples_actionevent`
@@ -61,14 +79,14 @@ Supabase Security Advisor に表示されている Error / Warning を精査し�
 - `temples_like`
 - `temples_rankinglog`
 - `temples_conciergehistory`
-- `temples_deity`
+- `temples_deity`（**確認済み**）
 - `temples_conciergeusage`
 - `temples_shrinesubmission`
 - `temples_shrinecandidate`
 - `temples_crawltile`（運用ジョブ用の内部データ寄り）
 - `temples_productiondatabootstraprun`（運用ジョブ用の内部データ寄り）
 
-これらが Advisor 上で実際に `RLS Disabled in Public` として検出されているかは未確認。次アクションでAdvisor実データと突合する。
+上記のうち「確認済み」以外が Advisor 上で実際に `RLS Disabled in Public` として検出されているかは未確認（スクリーンショットの可視範囲外の可能性が高い）。次アクションで画面をスクロールした続きのデータと突合する。
 
 ### 2. Function Search Path Mutable
 
@@ -124,13 +142,13 @@ Supabase Security Advisor に表示されている Error / Warning を精査し�
 
 ### 業務テーブル（ユーザー影響あり、優先度A/B想定）
 
-- `auth_user`（Django標準テーブルだが実体はユーザーデータそのもの）
+- `auth_user`（Django標準テーブルだが実体はユーザーデータそのもの、**確認済み**）
 - `users_userprofile`
-- `favorites_favorite` / `temples_favorite`
-- `place_ref` / `place_cache`
-- `temples_shrine` / `temples_goriyakutag` / `temples_deity`
+- `favorites_favorite`（**確認済み**） / `temples_favorite`
+- `place_ref`（**確認済み**） / `place_cache`
+- `temples_shrine` / `temples_goriyakutag` / `temples_deity`（**確認済み**）
 - `temples_conciergethread` / `temples_conciergemessage` / `temples_conciergehistory` / `temples_conciergeusage`
-- `temples_visit` / `temples_shrinereflection` / `temples_shrineinteractionlog` / `temples_actionevent`
+- `temples_visit`（**確認済み**） / `temples_shrinereflection` / `temples_shrineinteractionlog` / `temples_actionevent`
 - `temples_goshuin` / `temples_goshuinimage` / `temples_like` / `temples_rankinglog`
 - `temples_shrinesubmission` / `temples_shrinecandidate`
 
@@ -139,14 +157,20 @@ Supabase Security Advisor に表示されている Error / Warning を精査し�
 - `temples_crawltile`
 - `temples_productiondatabootstraprun`
 
+### 要調査（分類保留）
+
+- `temples_shrine_deities`（**確認済み／Advisor上に実在**）: 現行モデル定義には対応するフィールドが存在しない（migration 0072で削除済み）。Django内部/業務テーブルのどちらにも機械的に分類できないため、まず「なぜ本番DBに存在するか」の確認が先決。RLS対応の優先度を議論する前段階として扱う。
+
 ## 対応レベル分類（A/B/C/D）
 
 **A：今すぐ確認**
 - API公開設定（exposed schema / anon key 権限）— 他項目の実害を左右するため最優先
-- RLS Disabled: `auth_user`, `users_userprofile`, `favorites_favorite`, `temples_favorite`, `django_session`
+- `temples_shrine_deities` が本番DBに存在する理由の確認（migration drift の疑い。RLSより先に確認すべき）
+- RLS Disabled（**確認済み**）: `auth_user`, `favorites_favorite`, `django_session`, `place_ref`, `temples_deity`, `temples_visit`
+- RLS Disabled（未確認だが同種のためA相当で扱う）: `users_userprofile`, `temples_favorite`
 
 **B：本番前に修正**
-- RLS Disabled: 上記A以外の業務テーブル全般（`temples_shrine`, `concierge_*`, `visit`, `shrine_reflection`, `shrine_interaction_log`, `action_event`, `goshuin*`, `like`, `ranking_log`, `shrine_submission`, `shrine_candidate` 等）
+- RLS Disabled: 上記A以外の業務テーブル全般（`temples_shrine`, `concierge_*`, `shrine_reflection`, `shrine_interaction_log`, `action_event`, `goshuin*`, `like`, `ranking_log`, `shrine_submission`, `shrine_candidate` 等。いずれも未確認、Advisor続きデータで裏付けが必要）
 - Security Definer View（対象view確認後に本判定を維持するか見直す）
 
 **C：保留（追加確認待ち）**
@@ -154,20 +178,22 @@ Supabase Security Advisor に表示されている Error / Warning を精査し�
 - Auth設定（Supabase Authの利用有無の確認待ち）
 
 **D：Supabase特有の警告で対応不要（または影響小と推測）**
-- RLS Disabled: `django_migrations`, `django_content_type`, `django_admin_log`, `auth_permission`, `auth_group`, `auth_group_permissions`, `auth_user_groups`, `auth_user_user_permissions`, `token_blacklist_*`
+- RLS Disabled（**確認済み**）: `django_migrations`, `django_content_type`, `auth_permission`, `auth_group`, `auth_group_permissions`, `auth_user_groups`, `auth_user_user_permissions`, `django_admin_log`
   - 理由: Django内部テーブルで業務ロジック上の個人情報を直接保持しない。Supabase API側でexposeさえ止めれば実害は小さいと推測されるため、RLS即時適用よりAPI露出回避を優先する。
+- RLS Disabled（未確認だが同種のためD相当で扱う）: `token_blacklist_outstandingtoken`, `token_blacklist_blacklistedtoken`
 - `temples_crawltile` / `temples_productiondatabootstraprun`（運用バッチ内部データ、個人情報を含まない）
 
 ## 未確認事項（次アクション）
 
-1. Security Advisor画面の Error/Warning 全件をエクスポート（スクリーンショット or テキスト）し、本ドキュメントの「一覧」を実データで置き換える。
+1. ~~Security Advisor画面の Error/Warning 全件を取得する~~ → `RLS Disabled in Public` の先頭15件はスクリーンショットで確認済み（2026-07-08）。**ただし画面はスクロール可能で、続きが未取得**。Security Advisorを `All` タブ・全severityで見た場合に `Function Search Path Mutable` / `Security Definer View` / Auth設定 / API公開設定 に相当する項目が表示されるか、続きのスクリーンショットで確認する。
 2. `Function Search Path Mutable` / `Security Definer View` の対象オブジェクト実名を確認する（本タスクではSQL実行禁止のため、次PRでダッシュボードの詳細画面またはCLIで確認）。
 3. Supabase Authを実際に利用しているか（DjangoのJWT認証と併用しているか、していないか）を確認する。
 4. Database Settings > API の exposed schemas 設定、および anon/authenticated ロールの権限範囲を確認する。
-5. 上記1〜4の結果を踏まえ、C評価の項目をA/B/Dへ再分類する。
+5. **新規**: `temples_shrine_deities` テーブルが本番DBに存在する理由を確認する（`Shrine.deities` フィールドはmigration 0072で削除済みのため、モデル定義とDBスキーマの乖離＝migration drift の疑いがある）。`python manage.py showmigrations temples` を本番環境に対して実行し、0072が適用済みかどうかを確認するのが次アクション。
+6. 上記の結果を踏まえ、C評価の項目をA/B/Dへ再分類する。
 
 ## Decision
 
 今回はdocsの更新のみ。SQL実行・migration作成・backendコード変更・Supabase設定変更は行わない。
 
-次のアクションとして、Advisor全件データの取得と、Function/View実名の特定を優先する。それまでは本ドキュメントの分類は「既知の一部情報からの推測を含む暫定分類」として扱うこと。
+`RLS Disabled in Public` の一部はスクリーンショットで実データとして確認できたが、全件ではなく、他4項目（Function Search Path Mutable / Security Definer View / Auth設定 / API公開設定）も未確認のまま。次のアクションとして、Advisor残りデータの取得と、`temples_shrine_deities` のmigration drift疑いの確認を優先する。それまでは本ドキュメントの分類は「一部確認済み・一部推測を含む暫定分類」として扱うこと。
