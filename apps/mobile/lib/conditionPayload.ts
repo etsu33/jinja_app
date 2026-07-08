@@ -41,7 +41,10 @@ export async function resolveGoriyakuTagIds(label: string | undefined): Promise<
 
   try {
     const tags = await fetchGoriyakuTagIndex();
-    const matched = tags.find((tag) => tag.name === label || tag.name.startsWith(label));
+    // 完全一致を優先する。前方一致だけで探すと「厄除け・方除け」のような
+    // 旧・複合ラベル（id順で先に来るが紐づく神社が無い場合がある）に
+    // 誤ってマッチし、候補が0件になることがあるため。
+    const matched = tags.find((tag) => tag.name === label) ?? tags.find((tag) => tag.name.startsWith(label));
     return matched ? [matched.id] : undefined;
   } catch {
     if (__DEV__) {
