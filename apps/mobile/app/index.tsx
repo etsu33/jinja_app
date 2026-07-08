@@ -28,9 +28,17 @@ export default function Home() {
   const conditionCount = [birthdate.trim(), selectedVisitStyle, selectedGoriyaku, supportText.trim()].filter(
     Boolean,
   ).length;
-  const conditionToggleLabel = `${showConditions ? "− 条件を閉じる" : "+ 条件を追加"}${
+  const conditionToggleLabel = `${showConditions ? "条件を閉じる" : "条件を追加"}${
     conditionCount > 0 ? `（${conditionCount}）` : ""
   }`;
+  const conditionSummaryText = [
+    selectedVisitStyle,
+    selectedGoriyaku,
+    birthdate.trim() ? "誕生日あり" : undefined,
+    supportText.trim() ? "補助条件あり" : undefined,
+  ]
+    .filter(Boolean)
+    .join(" / ");
 
   const openConcierge = () => {
     // Concierge画面側のgoriyaku_tag_ids解決(resolveGoriyakuTagIds)が使うキャッシュを先読みしておく。
@@ -114,6 +122,10 @@ export default function Home() {
       >
         <Text style={styles.accordionToggleText}>{conditionToggleLabel}</Text>
       </Pressable>
+
+      {!showConditions && conditionSummaryText ? (
+        <Text style={styles.conditionSummaryText}>{conditionSummaryText}</Text>
+      ) : null}
 
       {showConditions ? (
         <View style={styles.conditionHint}>
@@ -301,6 +313,13 @@ const styles = StyleSheet.create({
     color: theme.mutedSoft,
     fontSize: 13,
     fontWeight: "700",
+  },
+  conditionSummaryText: {
+    color: theme.muted,
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: -4,
+    marginBottom: 4,
   },
   conditionHint: {
     borderRadius: 14,
