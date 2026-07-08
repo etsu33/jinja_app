@@ -14,7 +14,7 @@ import { kamimusubiDark as theme } from "../theme";
 import { shadows } from "../design/shadow";
 import type { ConciergeContext } from "../../lib/conciergeContext";
 import { buildDerivedProfile } from "../../lib/profile";
-import { post } from "../../lib/http";
+import { get, post } from "../../lib/http";
 import { trackActionEvent, type ActionEventActionType } from "../../lib/actionEvents";
 import { useProfileStore } from "../../store/profileStore";
 
@@ -186,6 +186,35 @@ const VISIT_STYLE_OPTIONS = [
 ] as const;
 
 const GORIYAKU_OPTIONS = ["仕事運", "金運", "縁結び", "厄除け", "学業成就", "健康"] as const;
+
+type GoriyakuTagIndexEntry = { id: number; name: string };
+
+let goriyakuTagIndexPromise: Promise<GoriyakuTagIndexEntry[]> | null = null;
+
+function fetchGoriyakuTagIndex(): Promise<GoriyakuTagIndexEntry[]> {
+  if (!goriyakuTagIndexPromise) {
+    goriyakuTagIndexPromise = get<GoriyakuTagIndexEntry[]>("/goriyaku-tags/").catch((error) => {
+      goriyakuTagIndexPromise = null;
+      throw error;
+    });
+  }
+  return goriyakuTagIndexPromise;
+}
+
+async function resolveGoriyakuTagIds(label: string | undefined): Promise<number[] | undefined> {
+  if (!label) return undefined;
+
+  try {
+    const tags = await fetchGoriyakuTagIndex();
+    const matched = tags.find((tag) => tag.name === label || tag.name.startsWith(label));
+    return matched ? [matched.id] : undefined;
+  } catch {
+    if (__DEV__) {
+      console.warn("[ConciergeScreen] failed to resolve goriyaku_tag_ids", label);
+    }
+    return undefined;
+  }
+}
 
 function buildExtraCondition({
   visitStyle,
@@ -432,11 +461,13 @@ async function fetchConciergeRecommendations({
   consultation,
   extraCondition,
   birthdate,
+  goriyakuTagIds,
   profileContext,
 }: {
   consultation: string;
   extraCondition?: string;
   birthdate?: string;
+  goriyakuTagIds?: number[];
   profileContext?: ProfileContextPayload;
 }): Promise<RecommendationCard[]> {
   const normalizedBirthdate = birthdate?.trim() || undefined;
@@ -448,13 +479,13 @@ async function fetchConciergeRecommendations({
     birthdate: normalizedBirthdate,
     filters: {
       birthdate: normalizedBirthdate,
-      goriyaku_tag_ids: undefined,
+      goriyaku_tag_ids: goriyakuTagIds,
       extra_condition: normalizedExtraCondition,
       crowd: undefined,
       duration_max_min: undefined,
       free_text: normalizedExtraCondition,
     },
-    goriyaku_tag_ids: undefined,
+    goriyaku_tag_ids: goriyakuTagIds,
     extra_condition: normalizedExtraCondition,
     ...(profileContext ? { profile_context: profileContext } : {}),
   };
@@ -654,6 +685,7 @@ export default function ConciergeScreen() {
         goriyaku: selectedGoriyaku,
         supportText,
       });
+      const goriyakuTagIds = await resolveGoriyakuTagIds(selectedGoriyaku);
       const profileContext: ProfileContextPayload = {
         user_profile: {
           birthday: userProfile.birthday,
@@ -675,6 +707,7 @@ export default function ConciergeScreen() {
         consultation: queryText,
         extraCondition: extraCondition || undefined,
         birthdate,
+        goriyakuTagIds,
         profileContext,
       });
       setResults(recommendations);
