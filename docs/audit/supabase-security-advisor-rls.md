@@ -74,3 +74,54 @@ Security Advisor画面から対象テーブルを追加確認する。
 現時点では SQL 修正は行わない。
 
 まずは Error の棚卸しと分類を行い、次PRで対応方針を決める。
+
+
+## Local DB Check
+
+Local DB では `temples.0072_remove_shrine_deities_alter_shrine_address` は適用済み。
+
+
+```sql
+select app, name, applied from django_migrations where app = 'temples' and name like '0072%';
+```
+
+結果:
+
+- `0072_remove_shrine_deities_alter_shrine_address` 適用済み
+
+また、Local DB では `public.temples_shrine_deities` は存在しないことを確認した。
+
+```sql
+select to_regclass('public.temples_shrine_deities');
+```
+
+結果:
+
+- `NULL`（テーブルは存在しない）
+
+### Assessment
+
+- Local DBでは migration 0072 は正常に適用済み。
+- `temples_shrine_deities` テーブルは削除済みであり、migration drift は確認されなかった。
+- Security Advisor 上に同テーブルが表示される場合は、Supabase側環境との差異である可能性が高い。
+
+## Pending (Supabase)
+
+以下は Supabase 環境で追加確認する。
+
+```sql
+select app, name, applied
+from django_migrations
+where app = 'temples'
+  and name like '0072%';
+```
+
+```sql
+select to_regclass('public.temples_shrine_deities');
+```
+
+確認項目:
+
+- Supabase側でも migration 0072 が適用済みか
+- `public.temples_shrine_deities` が残存していないか
+- Security Advisor が古い情報を参照していないか
