@@ -29,8 +29,20 @@ export function ConditionFieldsCard({
 }: ConditionFieldsCardProps) {
   return (
     <View style={styles.wrap}>
+      <View style={styles.intro}>
+        <Text style={styles.introBadge}>任意</Text>
+        <Text style={styles.introText}>
+          すべて任意の補助条件です。必要な項目だけ選ぶと、次の相談画面でその条件を反映したご縁を確認できます。
+        </Text>
+      </View>
+
+      <View style={styles.divider} />
+
       <View style={styles.inputBlock}>
-        <Text style={styles.label}>誕生日</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.label}>誕生日</Text>
+          <Text style={styles.caption}>命式や吉方位の参考にします</Text>
+        </View>
         <TextInput
           value={birthdate}
           onChangeText={onChangeBirthdate}
@@ -41,8 +53,13 @@ export function ConditionFieldsCard({
         />
       </View>
 
+      <View style={styles.divider} />
+
       <View style={styles.block}>
-        <Text style={styles.label}>参拝スタイル</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.label}>参拝スタイル</Text>
+          <Text style={styles.caption}>今の気分に近いものを一つ選べます</Text>
+        </View>
         <View style={styles.row}>
           {VISIT_STYLE_OPTIONS.map((option) => {
             const active = selectedVisitStyle === option;
@@ -59,8 +76,13 @@ export function ConditionFieldsCard({
         </View>
       </View>
 
+      <View style={styles.divider} />
+
       <View style={styles.block}>
-        <Text style={styles.label}>ご利益</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.label}>ご利益</Text>
+          <Text style={styles.caption}>気になるものを一つ選べます</Text>
+        </View>
         <View style={styles.row}>
           {GORIYAKU_OPTIONS.map((option) => {
             const active = selectedGoriyaku === option;
@@ -77,8 +99,13 @@ export function ConditionFieldsCard({
         </View>
       </View>
 
+      <View style={styles.divider} />
+
       <View style={styles.inputBlock}>
-        <Text style={styles.label}>相談補助条件</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.label}>相談補助条件</Text>
+          <Text style={styles.caption}>場所や時間の希望があれば自由にどうぞ</Text>
+        </View>
         <TextInput
           value={supportText}
           onChangeText={onChangeSupportText}
@@ -95,7 +122,35 @@ export function ConditionFieldsCard({
 
 const styles = StyleSheet.create({
   wrap: {
-    gap: 12,
+    gap: 16,
+  },
+  intro: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+  },
+  introBadge: {
+    color: theme.goldSoft,
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+    borderWidth: 1,
+    borderColor: theme.borderGoldDark,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    overflow: "hidden",
+  },
+  introText: {
+    flex: 1,
+    color: theme.muted,
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: "500",
+  },
+  divider: {
+    height: 1,
+    backgroundColor: theme.borderSoft,
   },
   inputBlock: {
     gap: 8,
@@ -120,11 +175,20 @@ const styles = StyleSheet.create({
   block: {
     gap: 8,
   },
+  sectionHeader: {
+    gap: 2,
+  },
   label: {
-    color: theme.goldSoft,
+    color: theme.mutedSoft,
     fontSize: 11,
     fontWeight: "800",
-    letterSpacing: 0.7,
+    letterSpacing: 0.6,
+  },
+  caption: {
+    color: theme.mutedDark,
+    fontSize: 11,
+    lineHeight: 16,
+    fontWeight: "500",
   },
   row: {
     flexDirection: "row",
@@ -136,8 +200,8 @@ const styles = StyleSheet.create({
     borderColor: theme.borderSoft,
     borderRadius: 999,
     paddingHorizontal: 11,
-    paddingVertical: 7,
-    backgroundColor: theme.surface,
+    paddingVertical: 6,
+    backgroundColor: "transparent",
   },
   pillActive: {
     borderColor: theme.borderGold,
@@ -146,7 +210,7 @@ const styles = StyleSheet.create({
   pillText: {
     color: theme.mutedSoft,
     fontSize: 12,
-    fontWeight: "800",
+    fontWeight: "700",
   },
   pillTextActive: {
     color: theme.background,

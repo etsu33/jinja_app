@@ -129,9 +129,6 @@ export default function Home() {
 
       {showConditions ? (
         <View style={styles.conditionHint}>
-          <Text style={styles.conditionHintText}>
-            すべて任意です。必要な時だけ追加してください。誕生日・ご利益・参拝スタイルを追加すると、次の相談画面でその条件を反映したご縁を確認できます。
-          </Text>
           <ConditionFieldsCard
             birthdate={birthdate}
             onChangeBirthdate={setBirthdate}
@@ -327,14 +324,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.border,
     paddingHorizontal: 14,
-    paddingVertical: 12,
-    gap: 12,
-  },
-  conditionHintText: {
-    color: theme.muted,
-    fontSize: 13,
-    lineHeight: 20,
-    fontWeight: "500",
+    paddingVertical: 14,
   },
 
   // 主CTA
