@@ -5,7 +5,8 @@ import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import { SHRINES } from "../../data/shrines";
 import { incVisits, isFavorite, toggleFavorite, pushRecent } from "../../lib/storage";
 import { kamimusubiDark as theme } from "../theme";
-import { get } from "../../lib/http";
+import { get, isUnauthenticatedError } from "../../lib/http";
+import { isLoggedIn } from "../../lib/authTokens";
 import { trackShrineDetailView, trackShrineRouteOpen } from "../../lib/shrineInteractions";
 import { spacing } from "../design/spacing";
 import { cardSizes } from "../design/cardSizes";
@@ -14,6 +15,7 @@ import { ctaSizes } from "../design/ctaSizes";
 import { createFavoriteByShrineId } from "../../lib/favorites";
 import { createVisitByShrineId } from "../../lib/visits";
 import { createShrineReflection } from "../../lib/reflections";
+import { AuthPrompt } from "../../components/common/AuthPrompt";
 
 type RecommendationReasonFactAxis =
   | "need"
@@ -325,6 +327,7 @@ export default function ShrineDetail() {
   const [reflectionAnswer, setReflectionAnswer] = React.useState("");
   const [reflectionSaved, setReflectionSaved] = React.useState(false);
   const [reflectionSaving, setReflectionSaving] = React.useState(false);
+  const [authPromptVisible, setAuthPromptVisible] = React.useState(false);
   const shrine = apiShrine ?? localShrine;
   const tags = shrine?.tags ?? [];
 
@@ -433,19 +436,42 @@ export default function ShrineDetail() {
 
   const onToggleFav = async () => {
     if (!shrineId) return;
+
+    if (!(await isLoggedIn())) {
+      setAuthPromptVisible(true);
+      return;
+    }
+
     const now = await toggleFavorite(String(shrineId));
     setFav(now);
 
     if (now) {
-      await createFavoriteByShrineId(apiShrineId ?? shrineId);
+      try {
+        await createFavoriteByShrineId(apiShrineId ?? shrineId);
+      } catch (error) {
+        if (isUnauthenticatedError(error)) {
+          setAuthPromptVisible(true);
+        }
+      }
     }
   };
 
-  const onVisitDone = React.useCallback(() => {
-    setVisited(true);
+  const onVisitDone = React.useCallback(async () => {
+    const targetShrineId = apiShrineId ?? shrineId;
+    if (!targetShrineId) return;
 
-    if (apiShrineId ?? shrineId) {
-      void createVisitByShrineId(apiShrineId ?? shrineId);
+    if (!(await isLoggedIn())) {
+      setAuthPromptVisible(true);
+      return;
+    }
+
+    try {
+      await createVisitByShrineId(targetShrineId);
+      setVisited(true);
+    } catch (error) {
+      if (isUnauthenticatedError(error)) {
+        setAuthPromptVisible(true);
+      }
     }
   }, [apiShrineId, shrineId]);
 
@@ -455,18 +481,25 @@ export default function ShrineDetail() {
     if (!targetShrineId || !answer || reflectionSaving) return;
 
     setReflectionSaving(true);
-    const saved = await createShrineReflection({
-      shrineId: targetShrineId,
-      answer,
-      prompt: asTrimmedString(reflectionPrompt?.question) ?? "参拝後に何を感じましたか？",
-      historyTheme: contextReasonFacts?.primary_axis ?? shrine?.reasonFacts?.primary_axis ?? "",
-      moodBefore: "",
-      moodAfter: "",
-    });
-    setReflectionSaving(false);
+    try {
+      const saved = await createShrineReflection({
+        shrineId: targetShrineId,
+        answer,
+        prompt: asTrimmedString(reflectionPrompt?.question) ?? "参拝後に何を感じましたか？",
+        historyTheme: contextReasonFacts?.primary_axis ?? shrine?.reasonFacts?.primary_axis ?? "",
+        moodBefore: "",
+        moodAfter: "",
+      });
 
-    if (saved) {
-      setReflectionSaved(true);
+      if (saved) {
+        setReflectionSaved(true);
+      }
+    } catch (error) {
+      if (isUnauthenticatedError(error)) {
+        setAuthPromptVisible(true);
+      }
+    } finally {
+      setReflectionSaving(false);
     }
   }, [apiShrineId, contextReasonFacts, reflectionAnswer, reflectionPrompt, reflectionSaving, shrine, shrineId]);
 
@@ -522,6 +555,7 @@ export default function ShrineDetail() {
   }
 
   return (
+    <>
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       {/* ヒーロー画像 */}
       {shrine.imageUrl ? (
@@ -705,6 +739,8 @@ export default function ShrineDetail() {
         </View>
       ) : null}
     </ScrollView>
+    <AuthPrompt visible={authPromptVisible} onClose={() => setAuthPromptVisible(false)} />
+    </>
   );
 }
 

@@ -3,7 +3,9 @@ import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "r
 import { useRouter } from "expo-router";
 
 import { listJourneyEvents, type JourneyEvent, type JourneyEventType } from "../../lib/journey";
+import { isUnauthenticatedError } from "../../lib/http";
 import { StateCard } from "../../components/common/StateCard";
+import { AuthPrompt } from "../../components/common/AuthPrompt";
 import { kamimusubiDark as theme } from "../theme";
 import { spacing } from "../design/spacing";
 import { cardSizes } from "../design/cardSizes";
@@ -105,6 +107,7 @@ export default function JourneyScreen() {
   const [events, setEvents] = React.useState<JourneyEvent[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(false);
+  const [unauthenticated, setUnauthenticated] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
 
   const loadEvents = React.useCallback(
@@ -116,12 +119,19 @@ export default function JourneyScreen() {
         const items = await listJourneyEvents();
         setEvents(items);
         setError(false);
+        setUnauthenticated(false);
       } catch (err) {
-        if (__DEV__) {
-          console.warn("[JourneyScreen] failed to load timeline", err);
+        if (isUnauthenticatedError(err)) {
+          setEvents([]);
+          setError(false);
+          setUnauthenticated(true);
+        } else {
+          if (__DEV__) {
+            console.warn("[JourneyScreen] failed to load timeline", err);
+          }
+          setEvents([]);
+          setError(true);
         }
-        setEvents([]);
-        setError(true);
       } finally {
         if (options?.showInitialLoading) setLoading(false);
         if (options?.showRefreshing) setRefreshing(false);
@@ -141,6 +151,7 @@ export default function JourneyScreen() {
   }, [loadEvents]);
 
   return (
+    <>
     <ScrollView
       style={styles.screen}
       contentContainerStyle={styles.content}
@@ -168,14 +179,21 @@ export default function JourneyScreen() {
         />
       ) : null}
 
-      {!loading && !error && events.length === 0 ? (
+      {!loading && unauthenticated ? (
+        <StateCard
+          title="ログインが必要です"
+          description="ご縁の歩みを見るには、ログインしてください。"
+        />
+      ) : null}
+
+      {!loading && !error && !unauthenticated && events.length === 0 ? (
         <StateCard
           title="ご縁の歩みはまだありません"
           description="相談や参拝、振り返りを記録すると、ここに時系列で表示されます。"
         />
       ) : null}
 
-      {!loading && !error && groupedEvents.length > 0 ? (
+      {!loading && !error && !unauthenticated && groupedEvents.length > 0 ? (
         <View style={styles.timeline}>
           {groupedEvents.map((group) => (
             <View key={group.label} style={styles.timelineGroup}>
@@ -190,6 +208,13 @@ export default function JourneyScreen() {
         </View>
       ) : null}
     </ScrollView>
+
+    <AuthPrompt
+      visible={unauthenticated}
+      onClose={() => router.replace("/records")}
+      description="ご縁の歩みを見るには、ログインが必要です。"
+    />
+    </>
   );
 }
 

@@ -1,6 +1,6 @@
 
 
-import { postAuth } from "./http";
+import { isUnauthenticatedError, postAuth } from "./http";
 
 export type Favorite = {
   id: number;
@@ -41,6 +41,7 @@ export async function createFavoriteByShrineId(shrineId: number | string): Promi
       shrine: favorite.shrine ?? { id: normalizedShrineId },
     };
   } catch (error) {
+    if (isUnauthenticatedError(error)) throw error;
     if (__DEV__) {
       console.warn("[createFavoriteByShrineId] failed", error);
     }
