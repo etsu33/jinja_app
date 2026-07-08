@@ -1,6 +1,6 @@
 
 
-import { getAuth, postAuth } from "./http";
+import { getAuth, isUnauthenticatedError, postAuth } from "./http";
 
 export type VisitCreateResponse = {
   id: number;
@@ -39,6 +39,7 @@ export async function createVisitByShrineId(shrineId: number | string): Promise<
       visited_at: new Date().toISOString(),
     });
   } catch (error) {
+    if (isUnauthenticatedError(error)) throw error;
     if (__DEV__) {
       console.warn("[createVisitByShrineId] failed", error);
     }

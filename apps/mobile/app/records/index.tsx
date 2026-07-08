@@ -7,8 +7,12 @@ import { cardSizes } from "../design/cardSizes";
 import { radius } from "../design/radius";
 
 import { getFavoriteShrines } from "../../lib/shrineStorage";
+import { isLoggedIn } from "../../lib/authTokens";
+import { AuthPrompt } from "../../components/common/AuthPrompt";
 
-type RecordCardProps = {
+const AUTH_REQUIRED_ROUTES = new Set(["journey"]);
+
+type RecordItemConfig = {
   title: string;
   description: string;
   meta: string;
@@ -16,7 +20,11 @@ type RecordCardProps = {
   routeLabel: string;
 };
 
-const recordItems: readonly RecordCardProps[] = [
+type RecordCardProps = RecordItemConfig & {
+  onPress: (routeLabel: string) => void;
+};
+
+const recordItems: readonly RecordItemConfig[] = [
   {
     title: "ご縁の歩み",
     description: "相談から提案、参拝、振り返りまでを時系列で見返す",
@@ -46,8 +54,7 @@ const ROUTE_MAP: Record<string, string> = {
   goshuin: "/goshuin",
 };
 
-function RecordCard({ title, description, meta, iconText, routeLabel }: RecordCardProps) {
-  const router = useRouter();
+function RecordCard({ title, description, meta, iconText, routeLabel, onPress }: RecordCardProps) {
   const scale = useRef(new Animated.Value(1)).current;
 
   const animateScale = (toValue: number) => {
@@ -63,10 +70,7 @@ function RecordCard({ title, description, meta, iconText, routeLabel }: RecordCa
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${title}を開く`}
-        onPress={() => {
-          const route = ROUTE_MAP[routeLabel];
-          if (route) router.push(route as any);
-        }}
+        onPress={() => onPress(routeLabel)}
         onPressIn={() => animateScale(0.98)}
         onPressOut={() => animateScale(1)}
         style={{
@@ -142,7 +146,21 @@ function RecordCard({ title, description, meta, iconText, routeLabel }: RecordCa
 }
 
 export default function RecordsScreen() {
+  const router = useRouter();
   const [favCount, setFavCount] = useState<number | null>(null);
+  const [authPromptVisible, setAuthPromptVisible] = useState(false);
+
+  const handlePress = async (routeLabel: string) => {
+    const route = ROUTE_MAP[routeLabel];
+    if (!route) return;
+
+    if (AUTH_REQUIRED_ROUTES.has(routeLabel) && !(await isLoggedIn())) {
+      setAuthPromptVisible(true);
+      return;
+    }
+
+    router.push(route as any);
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -174,6 +192,7 @@ export default function RecordsScreen() {
   );
 
   return (
+    <>
     <ScrollView
       style={{ backgroundColor: kamimusubiDark.background, flex: 1 }}
       contentContainerStyle={{ gap: spacing.lgGap, padding: spacing.screenXWide, paddingBottom: spacing.bottomSpace }}
@@ -201,8 +220,15 @@ export default function RecordsScreen() {
       </View>
 
       {recordItemsWithMeta.map((item) => (
-        <RecordCard key={item.routeLabel} {...item} />
+        <RecordCard key={item.routeLabel} {...item} onPress={handlePress} />
       ))}
     </ScrollView>
+
+    <AuthPrompt
+      visible={authPromptVisible}
+      onClose={() => setAuthPromptVisible(false)}
+      description="ご縁の歩みを見るには、ログインが必要です。"
+    />
+    </>
   );
 }

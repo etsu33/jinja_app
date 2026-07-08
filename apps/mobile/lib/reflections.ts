@@ -1,4 +1,4 @@
-import { getAuth, postAuth } from "./http";
+import { getAuth, isUnauthenticatedError, postAuth } from "./http";
 
 export type ShrineReflectionResponse = {
   id: number;
@@ -55,6 +55,7 @@ export async function createShrineReflection({
       mood_after: moodAfter ?? "",
     });
   } catch (error) {
+    if (isUnauthenticatedError(error)) throw error;
     if (__DEV__) {
       console.warn("[createShrineReflection] failed", error);
     }

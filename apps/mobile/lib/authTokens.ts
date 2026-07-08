@@ -31,6 +31,11 @@ export async function clearTokens(): Promise<void> {
   ]);
 }
 
+export async function isLoggedIn(): Promise<boolean> {
+  const [access, refresh] = await Promise.all([getAccessToken(), getRefreshToken()]);
+  return Boolean(access || refresh);
+}
+
 // ---- JWT helpers ----
 
 type JwtPayload = { exp?: number };
