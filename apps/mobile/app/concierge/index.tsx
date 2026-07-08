@@ -12,9 +12,16 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { kamimusubiDark as theme } from "../theme";
 import { shadows } from "../design/shadow";
-import type { ConciergeContext } from "../../lib/conciergeContext";
-import { buildDerivedProfile } from "../../lib/profile";
-import { get, post } from "../../lib/http";
+import { ConditionFieldsCard } from "../../components/ConditionFieldsCard";
+import {
+  buildConditionFilters,
+  buildConditionProfileContext,
+  resolveGoriyakuTagIds,
+  type ConditionFilters,
+  type ConditionState,
+  type ProfileContextPayload,
+} from "../../lib/conditionPayload";
+import { post } from "../../lib/http";
 import { trackActionEvent, type ActionEventActionType } from "../../lib/actionEvents";
 import { useProfileStore } from "../../store/profileStore";
 
@@ -167,6 +174,7 @@ type ConciergeChatRequestPayload = {
   filters: {
     birthdate?: string;
     goriyaku_tag_ids?: number[];
+    visit_style_tags?: string[];
     extra_condition?: string;
     crowd?: string[];
     duration_max_min?: number;
@@ -177,65 +185,6 @@ type ConciergeChatRequestPayload = {
   profile_context?: ProfileContextPayload;
 };
 
-
-const VISIT_STYLE_OPTIONS = [
-  "静かに整えたい",
-  "人混みを避けたい",
-  "近場を優先したい",
-  "自然を感じたい",
-] as const;
-
-const GORIYAKU_OPTIONS = ["仕事運", "金運", "縁結び", "厄除け", "学業成就", "健康"] as const;
-
-type GoriyakuTagIndexEntry = { id: number; name: string };
-
-let goriyakuTagIndexPromise: Promise<GoriyakuTagIndexEntry[]> | null = null;
-
-function fetchGoriyakuTagIndex(): Promise<GoriyakuTagIndexEntry[]> {
-  if (!goriyakuTagIndexPromise) {
-    goriyakuTagIndexPromise = get<GoriyakuTagIndexEntry[]>("/goriyaku-tags/").catch((error) => {
-      goriyakuTagIndexPromise = null;
-      throw error;
-    });
-  }
-  return goriyakuTagIndexPromise;
-}
-
-async function resolveGoriyakuTagIds(label: string | undefined): Promise<number[] | undefined> {
-  if (!label) return undefined;
-
-  try {
-    const tags = await fetchGoriyakuTagIndex();
-    const matched = tags.find((tag) => tag.name === label || tag.name.startsWith(label));
-    return matched ? [matched.id] : undefined;
-  } catch {
-    if (__DEV__) {
-      console.warn("[ConciergeScreen] failed to resolve goriyaku_tag_ids", label);
-    }
-    return undefined;
-  }
-}
-
-function buildExtraCondition({
-  visitStyle,
-  birthdate,
-  goriyaku,
-  supportText,
-}: {
-  visitStyle?: string;
-  birthdate?: string;
-  goriyaku?: string;
-  supportText?: string;
-}) {
-  return [
-    visitStyle ? `参拝スタイル: ${visitStyle}` : undefined,
-    birthdate ? `誕生日: ${birthdate}` : undefined,
-    goriyaku ? `ご利益: ${goriyaku}` : undefined,
-    supportText?.trim() ? `補助条件: ${supportText.trim()}` : undefined,
-  ]
-    .filter(Boolean)
-    .join(" / ");
-}
 
 const ACTION_SUGGESTION_V4_ACTION_TYPES = ["detail_open", "route_open", "save", "visit", "reflect", "pause"] as const;
 const ACTION_SUGGESTION_V4_PROMPT_TYPES = ["before_visit", "after_visit", "decision", "emotion", "constraint"] as const;
@@ -451,42 +400,31 @@ function buildActionSuggestionId({
   return [card.shrineId ?? card.id, rank, slot, action.actionType].filter(Boolean).join(":");
 }
 
-type ProfileContextPayload = {
-  user_profile: Record<string, string | undefined>;
-  derived_profile: Record<string, string | undefined>;
-  direction_profile: Record<string, string | undefined>;
-};
-
 async function fetchConciergeRecommendations({
   consultation,
-  extraCondition,
-  birthdate,
-  goriyakuTagIds,
+  conditionFilters,
   profileContext,
 }: {
   consultation: string;
-  extraCondition?: string;
-  birthdate?: string;
-  goriyakuTagIds?: number[];
+  conditionFilters: ConditionFilters;
   profileContext?: ProfileContextPayload;
 }): Promise<RecommendationCard[]> {
-  const normalizedBirthdate = birthdate?.trim() || undefined;
-  const normalizedExtraCondition = extraCondition?.trim() || undefined;
   const payload: ConciergeChatRequestPayload = {
     version: 1,
     mode: "need",
     query: consultation,
-    birthdate: normalizedBirthdate,
+    birthdate: conditionFilters.birthdate,
     filters: {
-      birthdate: normalizedBirthdate,
-      goriyaku_tag_ids: goriyakuTagIds,
-      extra_condition: normalizedExtraCondition,
+      birthdate: conditionFilters.birthdate,
+      goriyaku_tag_ids: conditionFilters.goriyaku_tag_ids,
+      visit_style_tags: conditionFilters.visit_style_tags,
+      extra_condition: conditionFilters.extra_condition,
       crowd: undefined,
       duration_max_min: undefined,
-      free_text: normalizedExtraCondition,
+      free_text: conditionFilters.extra_condition,
     },
-    goriyaku_tag_ids: goriyakuTagIds,
-    extra_condition: normalizedExtraCondition,
+    goriyaku_tag_ids: conditionFilters.goriyaku_tag_ids,
+    extra_condition: conditionFilters.extra_condition,
     ...(profileContext ? { profile_context: profileContext } : {}),
   };
 
@@ -514,6 +452,7 @@ function ResultCard({
   }) => void;
 }) {
   const reasonFactItems = buildReasonFactItems(card.reasonFacts);
+  const actionSuggestionV4Preview = card.actionSuggestionV4Preview;
   return (
     <View style={styles.card}>
       {/* ランクバッジ */}
@@ -555,46 +494,50 @@ function ResultCard({
         </View>
       ) : null}
 
-      {card.actionSuggestionV4Preview?.preview ? (
+      {actionSuggestionV4Preview?.preview ? (
         <View style={styles.actionV4Card}>
           <View style={styles.actionV4Header}>
             <Text style={styles.actionV4Label}>次に取りやすい行動</Text>
             <Text style={styles.actionV4SubLabel}>この神社を見たあとに、無理なく進めるための整理です。</Text>
           </View>
 
-          <Pressable
-            onPress={() =>
-              onActionEvent({
-                actionType: "action_started",
-                action: card.actionSuggestionV4Preview.primaryAction,
-                slot: "primary",
-              })
-            }
-            style={styles.actionV4Item}
-          >
-            <Text style={styles.actionV4ItemLabel}>まずやること</Text>
-            <Text style={styles.actionV4Title}>{card.actionSuggestionV4Preview.primaryAction.label}</Text>
-            <Text style={styles.actionV4Description}>{card.actionSuggestionV4Preview.primaryAction.description}</Text>
-          </Pressable>
+          {actionSuggestionV4Preview?.primaryAction ? (
+            <Pressable
+              onPress={() =>
+                onActionEvent({
+                  actionType: "action_started",
+                  action: actionSuggestionV4Preview.primaryAction,
+                  slot: "primary",
+                })
+              }
+              style={styles.actionV4Item}
+            >
+              <Text style={styles.actionV4ItemLabel}>まずやること</Text>
+              <Text style={styles.actionV4Title}>{actionSuggestionV4Preview.primaryAction.label}</Text>
+              <Text style={styles.actionV4Description}>{actionSuggestionV4Preview.primaryAction.description}</Text>
+            </Pressable>
+          ) : null}
 
-          <Pressable
-            onPress={() =>
-              onActionEvent({
-                actionType: "action_completed",
-                action: card.actionSuggestionV4Preview.secondaryAction,
-                slot: "secondary",
-              })
-            }
-            style={styles.actionV4Item}
-          >
-            <Text style={styles.actionV4ItemLabel}>次にできること</Text>
-            <Text style={styles.actionV4Title}>{card.actionSuggestionV4Preview.secondaryAction.label}</Text>
-            <Text style={styles.actionV4Description}>{card.actionSuggestionV4Preview.secondaryAction.description}</Text>
-          </Pressable>
+          {actionSuggestionV4Preview?.secondaryAction ? (
+            <Pressable
+              onPress={() =>
+                onActionEvent({
+                  actionType: "action_completed",
+                  action: actionSuggestionV4Preview.secondaryAction,
+                  slot: "secondary",
+                })
+              }
+              style={styles.actionV4Item}
+            >
+              <Text style={styles.actionV4ItemLabel}>次にできること</Text>
+              <Text style={styles.actionV4Title}>{actionSuggestionV4Preview.secondaryAction.label}</Text>
+              <Text style={styles.actionV4Description}>{actionSuggestionV4Preview.secondaryAction.description}</Text>
+            </Pressable>
+          ) : null}
 
           <View style={styles.actionV4Item}>
             <Text style={styles.actionV4ItemLabel}>参拝前の問い</Text>
-            <Text style={styles.actionV4Title}>{card.actionSuggestionV4Preview.reflectionPrompt.question}</Text>
+            <Text style={styles.actionV4Title}>{actionSuggestionV4Preview.reflectionPrompt.question}</Text>
           </View>
         </View>
       ) : null}
@@ -624,11 +567,20 @@ function ResultCard({
 // メイン画面
 // ────────────────────────────────────────────
 export default function ConciergeScreen() {
-  const params = useLocalSearchParams<{ q?: string; theme?: string }>();
+  const params = useLocalSearchParams<{
+    q?: string;
+    theme?: string;
+    birthdate?: string;
+    visitStyle?: string;
+    goriyaku?: string;
+    support?: string;
+  }>();
   const router = useRouter();
-  const { userProfile, derivedProfile, directionProfile } = useProfileStore();
+  const { userProfile: globalUserProfile } = useProfileStore();
 
   const initialQuery = [params.q, params.theme].filter(Boolean).join(" ").trim();
+  // Homeの条件レイヤーで入力済みの場合、相談文が空でも初回送信できるようにする
+  const initialHasCondition = Boolean(params.birthdate || params.visitStyle || params.goriyaku || params.support);
 
   const [input, setInput] = React.useState(initialQuery);
   const [consultationText, setConsultationText] = React.useState(initialQuery);
@@ -636,36 +588,24 @@ export default function ConciergeScreen() {
   const [loading, setLoading] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
   const [results, setResults] = React.useState<RecommendationCard[]>([]);
-  const [selectedVisitStyle, setSelectedVisitStyle] = React.useState<string | undefined>();
-  const [birthdate, setBirthdate] = React.useState("");
-  const [selectedGoriyaku, setSelectedGoriyaku] = React.useState<string | undefined>();
-  const [supportText, setSupportText] = React.useState("");
+  const [selectedVisitStyle, setSelectedVisitStyle] = React.useState<string | undefined>(params.visitStyle || undefined);
+  const [birthdate, setBirthdate] = React.useState(params.birthdate ?? "");
+  const [selectedGoriyaku, setSelectedGoriyaku] = React.useState<string | undefined>(params.goriyaku || undefined);
+  const [supportText, setSupportText] = React.useState(params.support ?? "");
   const hasAnyCondition = Boolean(selectedVisitStyle || birthdate.trim() || selectedGoriyaku || supportText.trim());
   const lastInitialQueryRef = React.useRef<string | null>(null);
-  const conciergeContext = React.useMemo<ConciergeContext>(() => {
-    const userProfile = {
-      birthday: birthdate.trim() || undefined,
-      birthTime: undefined,
-      birthPlace: undefined,
-      worshipStyle: selectedVisitStyle,
-    };
 
-    return {
-      userProfile,
-      derivedProfile: buildDerivedProfile(userProfile),
-    };
-  }, [birthdate, selectedVisitStyle]);
-
-  // URLの相談内容が変わったら自動送信する
+  // Homeからの相談内容・条件が変わったら自動送信する
   React.useEffect(() => {
-    if (!initialQuery || lastInitialQueryRef.current === initialQuery) return;
+    const autoSubmitKey = initialQuery || (initialHasCondition ? "__condition_only__" : "");
+    if (!autoSubmitKey || lastInitialQueryRef.current === autoSubmitKey) return;
 
-    lastInitialQueryRef.current = initialQuery;
+    lastInitialQueryRef.current = autoSubmitKey;
     setInput(initialQuery);
     void submit(initialQuery);
-    // submitはこの画面内の状態更新関数だけを使うため、initialQueryの変更だけを監視する
+    // submitはこの画面内の状態更新関数だけを使うため、initialQuery / initialHasConditionの変更だけを監視する
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialQuery]);
+  }, [initialQuery, initialHasCondition]);
 
   const submit = async (text: string) => {
     const trimmed = text.trim();
@@ -679,35 +619,19 @@ export default function ConciergeScreen() {
     setErrorMessage(null);
 
     try {
-      const extraCondition = buildExtraCondition({
-        visitStyle: selectedVisitStyle,
-        birthdate,
-        goriyaku: selectedGoriyaku,
-        supportText,
-      });
       const goriyakuTagIds = await resolveGoriyakuTagIds(selectedGoriyaku);
-      const profileContext: ProfileContextPayload = {
-        user_profile: {
-          birthday: userProfile.birthday,
-          birthTime: userProfile.birthTime,
-          birthPlace: userProfile.birthPlace,
-          worshipStyle: userProfile.worshipStyle,
-        },
-        derived_profile: {
-          kyusei: derivedProfile.kyusei,
-          gogyo: derivedProfile.gogyo,
-          lifePath: derivedProfile.lifePath,
-        },
-        direction_profile: {
-          luckyDirection: directionProfile.luckyDirection,
-          source: directionProfile.source,
-        },
+      const condition: ConditionState = {
+        birthdate,
+        visitStyleLabel: selectedVisitStyle,
+        goriyakuLabel: selectedGoriyaku,
+        goriyakuTagIds,
+        supportText,
       };
+      const conditionFilters = buildConditionFilters(condition);
+      const profileContext = buildConditionProfileContext({ condition, globalUserProfile });
       const recommendations = await fetchConciergeRecommendations({
         consultation: queryText,
-        extraCondition: extraCondition || undefined,
-        birthdate,
-        goriyakuTagIds,
+        conditionFilters,
         profileContext,
       });
       setResults(recommendations);
@@ -836,66 +760,17 @@ export default function ConciergeScreen() {
               </Text>
             </View>
 
-            <View style={styles.conditionInputBlock}>
-              <Text style={styles.visitStyleLabel}>誕生日</Text>
-              <TextInput
-                value={birthdate}
-                onChangeText={setBirthdate}
-                placeholder="例: 1984-05-15"
-                placeholderTextColor={theme.mutedDark}
-                style={styles.conditionInput}
-                editable={!loading}
-              />
-            </View>
-
-            <View style={styles.visitStyleBlock}>
-              <Text style={styles.visitStyleLabel}>参拝スタイル</Text>
-              <View style={styles.visitStyleRow}>
-                {VISIT_STYLE_OPTIONS.map((option) => {
-                  const active = selectedVisitStyle === option;
-                  return (
-                    <Pressable
-                      key={option}
-                      onPress={() => setSelectedVisitStyle(active ? undefined : option)}
-                      style={[styles.visitStylePill, active && styles.visitStylePillActive]}
-                    >
-                      <Text style={[styles.visitStyleText, active && styles.visitStyleTextActive]}>{option}</Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </View>
-
-            <View style={styles.visitStyleBlock}>
-              <Text style={styles.visitStyleLabel}>ご利益</Text>
-              <View style={styles.visitStyleRow}>
-                {GORIYAKU_OPTIONS.map((option) => {
-                  const active = selectedGoriyaku === option;
-                  return (
-                    <Pressable
-                      key={option}
-                      onPress={() => setSelectedGoriyaku(active ? undefined : option)}
-                      style={[styles.visitStylePill, active && styles.visitStylePillActive]}
-                    >
-                      <Text style={[styles.visitStyleText, active && styles.visitStyleTextActive]}>{option}</Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </View>
-
-            <View style={styles.conditionInputBlock}>
-              <Text style={styles.visitStyleLabel}>相談補助条件</Text>
-              <TextInput
-                value={supportText}
-                onChangeText={setSupportText}
-                placeholder="例: 駅から近い場所、静かな場所、短時間で行ける場所"
-                placeholderTextColor={theme.mutedDark}
-                style={[styles.conditionInput, styles.conditionTextarea]}
-                multiline
-                editable={!loading}
-              />
-            </View>
+            <ConditionFieldsCard
+              birthdate={birthdate}
+              onChangeBirthdate={setBirthdate}
+              selectedVisitStyle={selectedVisitStyle}
+              onSelectVisitStyle={setSelectedVisitStyle}
+              selectedGoriyaku={selectedGoriyaku}
+              onSelectGoriyaku={setSelectedGoriyaku}
+              supportText={supportText}
+              onChangeSupportText={setSupportText}
+              disabled={loading}
+            />
 
             <Pressable
               onPress={handleResuggest}
@@ -1096,60 +971,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     fontWeight: "700",
-  },
-  conditionInputBlock: {
-    gap: 8,
-  },
-  conditionInput: {
-    minHeight: 44,
-    backgroundColor: theme.surface,
-    borderWidth: 1,
-    borderColor: theme.borderSoft,
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    color: theme.text,
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: "700",
-  },
-  conditionTextarea: {
-    minHeight: 76,
-    textAlignVertical: "top",
-  },
-  visitStyleBlock: {
-    gap: 8,
-  },
-  visitStyleLabel: {
-    color: theme.goldSoft,
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 0.7,
-  },
-  visitStyleRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  visitStylePill: {
-    borderWidth: 1,
-    borderColor: theme.borderSoft,
-    borderRadius: 999,
-    paddingHorizontal: 11,
-    paddingVertical: 7,
-    backgroundColor: theme.surface,
-  },
-  visitStylePillActive: {
-    borderColor: theme.borderGold,
-    backgroundColor: theme.gold,
-  },
-  visitStyleText: {
-    color: theme.mutedSoft,
-    fontSize: 12,
-    fontWeight: "800",
-  },
-  visitStyleTextActive: {
-    color: theme.background,
   },
   resuggestButton: {
     height: 46,

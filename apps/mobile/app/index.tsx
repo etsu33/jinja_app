@@ -3,6 +3,8 @@ import { useRouter } from "expo-router";
 import { ScrollView, View, Text, TextInput, StyleSheet, Pressable } from "react-native";
 import { kamimusubiDark as theme } from "./theme";
 import { shadows } from "./design/shadow";
+import { ConditionFieldsCard } from "../components/ConditionFieldsCard";
+import { resolveGoriyakuTagIds } from "../lib/conditionPayload";
 
 const THEMES = [
   "疲れを整えたい",
@@ -18,11 +20,30 @@ export default function Home() {
   const [consultation, setConsultation] = React.useState("");
   const [selectedTheme, setSelectedTheme] = React.useState<string | null>(null);
   const [showConditions, setShowConditions] = React.useState(false);
+  const [selectedVisitStyle, setSelectedVisitStyle] = React.useState<string | undefined>();
+  const [birthdate, setBirthdate] = React.useState("");
+  const [selectedGoriyaku, setSelectedGoriyaku] = React.useState<string | undefined>();
+  const [supportText, setSupportText] = React.useState("");
+
+  const conditionCount = [birthdate.trim(), selectedVisitStyle, selectedGoriyaku, supportText.trim()].filter(
+    Boolean,
+  ).length;
+  const conditionToggleLabel = `${showConditions ? "− 条件を閉じる" : "+ 条件を追加"}${
+    conditionCount > 0 ? `（${conditionCount}）` : ""
+  }`;
 
   const openConcierge = () => {
+    // Concierge画面側のgoriyaku_tag_ids解決(resolveGoriyakuTagIds)が使うキャッシュを先読みしておく。
+    // payload構築は引き続きConcierge画面のsubmit()が担うため、ここでの結果は使わない。
+    void resolveGoriyakuTagIds(selectedGoriyaku);
+
     const params = new URLSearchParams();
     if (consultation.trim()) params.set("q", consultation.trim());
     if (selectedTheme) params.set("theme", selectedTheme);
+    if (birthdate.trim()) params.set("birthdate", birthdate.trim());
+    if (selectedVisitStyle) params.set("visitStyle", selectedVisitStyle);
+    if (selectedGoriyaku) params.set("goriyaku", selectedGoriyaku);
+    if (supportText.trim()) params.set("support", supportText.trim());
     const query = params.toString();
     router.push(query ? `/concierge?${query}` : "/concierge");
   };
@@ -91,16 +112,24 @@ export default function Home() {
         onPress={() => setShowConditions((c) => !c)}
         style={styles.accordionToggle}
       >
-        <Text style={styles.accordionToggleText}>
-          {showConditions ? "− 条件を閉じる" : "+ 条件を追加"}
-        </Text>
+        <Text style={styles.accordionToggleText}>{conditionToggleLabel}</Text>
       </Pressable>
 
       {showConditions ? (
         <View style={styles.conditionHint}>
           <Text style={styles.conditionHintText}>
-            誕生日・ご利益・参拝スタイルは、次の相談画面で追加できます。相談テーマがまだ決まっていない場合も、条件だけでも神社との接点を見られます。
+            すべて任意です。必要な時だけ追加してください。誕生日・ご利益・参拝スタイルを追加すると、次の相談画面でその条件を反映したご縁を確認できます。
           </Text>
+          <ConditionFieldsCard
+            birthdate={birthdate}
+            onChangeBirthdate={setBirthdate}
+            selectedVisitStyle={selectedVisitStyle}
+            onSelectVisitStyle={setSelectedVisitStyle}
+            selectedGoriyaku={selectedGoriyaku}
+            onSelectGoriyaku={setSelectedGoriyaku}
+            supportText={supportText}
+            onChangeSupportText={setSupportText}
+          />
         </View>
       ) : null}
 
@@ -280,6 +309,7 @@ const styles = StyleSheet.create({
     borderColor: theme.border,
     paddingHorizontal: 14,
     paddingVertical: 12,
+    gap: 12,
   },
   conditionHintText: {
     color: theme.muted,
