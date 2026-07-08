@@ -11,7 +11,7 @@ pytest-env==1.6.0
 factory-boy==3.3.3
 Faker==40.27.0
 freezegun>=1.5.1
-responses>=0.26.2,<1.0
+responses>=0.26.1,<1.0
 requests-mock>=1.12.1
 
 # lint/format
