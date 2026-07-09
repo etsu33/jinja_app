@@ -28,6 +28,34 @@ class StripeWebhookInvalidSignature(StripeWebhookError):
     pass
 
 
+def _stripe_object_to_plain(value: Any) -> Any:
+    """Convert StripeObject-like values into plain Python containers.
+
+    Stripe SDK versions may return nested StripeObject instances even when the
+    top-level event behaves like a dict. The webhook handlers expect plain dicts,
+    so normalize recursively before reading data.object / metadata.
+    """
+    if isinstance(value, dict):
+        return {str(k): _stripe_object_to_plain(v) for k, v in value.items()}
+
+    if isinstance(value, list):
+        return [_stripe_object_to_plain(v) for v in value]
+
+    if hasattr(value, "to_dict_recursive"):
+        try:
+            return _stripe_object_to_plain(value.to_dict_recursive())
+        except Exception:
+            pass
+
+    if hasattr(value, "to_dict"):
+        try:
+            return _stripe_object_to_plain(value.to_dict())
+        except Exception:
+            pass
+
+    return value
+
+
 def construct_stripe_event(*, payload: bytes, sig_header: str) -> dict[str, Any]:
     """
     Verify Stripe webhook signature and return a plain event dict.
@@ -52,15 +80,11 @@ def construct_stripe_event(*, payload: bytes, sig_header: str) -> dict[str, Any]
     except ValueError as exc:
         raise StripeWebhookInvalidSignature("invalid stripe payload") from exc
 
-    if isinstance(event, dict):
-        return event
+    plain_event = _stripe_object_to_plain(event)
+    if isinstance(plain_event, dict):
+        return plain_event
 
-    try:
-        import json
-
-        return json.loads(json.dumps(event))
-    except Exception:
-        return {"type": getattr(event, "type", None), "data": {}}
+    return {"type": getattr(event, "type", None), "data": {}}
 
 
 def _to_dt_from_unix(ts: Any) -> Optional[datetime]:
@@ -76,12 +100,23 @@ def _to_dt_from_unix(ts: Any) -> Optional[datetime]:
 
 
 def _get_event_type(event: dict[str, Any]) -> str:
-    t = event.get("type")
+    event_dict = _stripe_object_to_plain(event)
+    if not isinstance(event_dict, dict):
+        return ""
+    t = event_dict.get("type")
     return t if isinstance(t, str) else ""
 
 
 def _get_object(event: dict[str, Any]) -> dict[str, Any]:
-    obj = (event.get("data") or {}).get("object") or {}
+    event_dict = _stripe_object_to_plain(event)
+    if not isinstance(event_dict, dict):
+        return {}
+
+    data = _stripe_object_to_plain(event_dict.get("data") or {})
+    if not isinstance(data, dict):
+        return {}
+
+    obj = _stripe_object_to_plain(data.get("object") or {})
     return obj if isinstance(obj, dict) else {}
 
 
@@ -315,7 +350,9 @@ def _apply_subscription_object(obj: dict[str, Any], *, etype: str) -> None:
     # status
     status = obj.get("status")
     if etype == "customer.subscription.deleted":
-        profile.subscription_status = status.strip() if isinstance(status, str) and status.strip() else "canceled"
+        profile.subscription_status = (
+            status.strip() if isinstance(status, str) and status.strip() else "canceled"
+        )
         profile.current_period_end = None
         update_fields.extend(["subscription_status", "current_period_end"])
     elif isinstance(status, str) and status.strip():
