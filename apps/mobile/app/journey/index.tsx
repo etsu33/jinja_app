@@ -2,7 +2,13 @@ import * as React from "react";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 
-import { listJourneyEvents, type JourneyEvent, type JourneyEventType } from "../../lib/journey";
+import {
+  buildJourneyTimeline,
+  listJourneyEvents,
+  type JourneyEvent,
+  type JourneyEventType,
+  type JourneyTimelineItem,
+} from "../../lib/journey";
 import { isUnauthenticatedError } from "../../lib/http";
 import { StateCard } from "../../components/common/StateCard";
 import { AuthPrompt } from "../../components/common/AuthPrompt";
@@ -57,16 +63,16 @@ function resolveEventTypeView(eventType: JourneyEventType): EventTypeView {
 
 type JourneyGroup = {
   label: string;
-  items: JourneyEvent[];
+  items: JourneyTimelineItem[];
 };
 
-function groupEventsByDate(events: JourneyEvent[]): JourneyGroup[] {
-  const groups = new Map<string, JourneyEvent[]>();
+function groupTimelineByDate(items: JourneyTimelineItem[]): JourneyGroup[] {
+  const groups = new Map<string, JourneyTimelineItem[]>();
 
-  events.forEach((event) => {
-    const label = formatDateGroupLabel(event.occurred_at);
+  items.forEach((item) => {
+    const label = formatDateGroupLabel(item.occurredAt);
     const current = groups.get(label) ?? [];
-    current.push(event);
+    current.push(item);
     groups.set(label, current);
   });
 
@@ -100,6 +106,65 @@ function EventCard({ event }: { event: JourneyEvent }) {
       ) : null}
     </View>
   );
+}
+
+function VisitExperienceCard({ visit, reflection }: { visit: JourneyEvent; reflection: JourneyEvent | null }) {
+  const shrineName = visit.shrine_name?.trim();
+  const occurredAtTime = formatTime(visit.occurred_at);
+  const visitNote = normalizeText(String(visit.metadata?.note ?? ""), "");
+
+  const reflectionBody = reflection ? normalizeText(reflection.description, "") : "";
+  const historyTheme = reflection ? normalizeText(String(reflection.metadata?.history_theme ?? ""), "") : "";
+  const moodBefore = reflection ? normalizeText(String(reflection.metadata?.mood_before ?? ""), "") : "";
+  const moodAfter = reflection ? normalizeText(String(reflection.metadata?.mood_after ?? ""), "") : "";
+
+  return (
+    <View style={styles.eventCard}>
+      <View style={styles.cardHeader}>
+        <View style={styles.typePill}>
+          <Text style={styles.typePillText}>参拝</Text>
+        </View>
+        {occurredAtTime ? <Text style={styles.occurredAt}>{occurredAtTime}</Text> : null}
+      </View>
+
+      <Text style={styles.eventTitle}>参拝しました</Text>
+
+      {shrineName ? <Text style={styles.shrineName}>{shrineName}</Text> : null}
+
+      {visitNote ? (
+        <Text style={styles.descriptionText} numberOfLines={2}>
+          {visitNote}
+        </Text>
+      ) : null}
+
+      {reflection ? (
+        <View style={styles.reflectionBlock}>
+          <View style={styles.cardHeader}>
+            <View style={styles.typePillMuted}>
+              <Text style={styles.typePillText}>振り返り</Text>
+            </View>
+            {historyTheme ? <Text style={styles.occurredAt}>{historyTheme}</Text> : null}
+          </View>
+
+          {reflectionBody ? <Text style={styles.descriptionText}>{reflectionBody}</Text> : null}
+
+          {moodBefore || moodAfter ? (
+            <Text style={styles.moodText}>
+              {moodBefore || "―"} → {moodAfter || "―"}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+function TimelineItemCard({ item }: { item: JourneyTimelineItem }) {
+  if (item.kind === "visit_experience") {
+    return <VisitExperienceCard visit={item.visit} reflection={item.reflection} />;
+  }
+
+  return <EventCard event={item.event} />;
 }
 
 export default function JourneyScreen() {
@@ -144,7 +209,7 @@ export default function JourneyScreen() {
     void loadEvents({ showInitialLoading: true });
   }, [loadEvents]);
 
-  const groupedEvents = React.useMemo(() => groupEventsByDate(events), [events]);
+  const groupedEvents = React.useMemo(() => groupTimelineByDate(buildJourneyTimeline(events)), [events]);
 
   const onRefresh = React.useCallback(() => {
     void loadEvents({ showRefreshing: true });
@@ -199,8 +264,8 @@ export default function JourneyScreen() {
             <View key={group.label} style={styles.timelineGroup}>
               <Text style={styles.groupLabel}>{group.label}</Text>
               <View style={styles.list}>
-                {group.items.map((event) => (
-                  <EventCard key={event.id} event={event} />
+                {group.items.map((item) => (
+                  <TimelineItemCard key={item.kind === "visit_experience" ? item.visit.id : item.event.id} item={item} />
                 ))}
               </View>
             </View>
@@ -293,6 +358,26 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "800",
     letterSpacing: 0.8,
+  },
+  typePillMuted: {
+    alignSelf: "flex-start",
+    borderColor: theme.borderHeader,
+    borderRadius: radius.pill,
+    borderWidth: cardSizes.borderWidth,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  reflectionBlock: {
+    borderTopColor: theme.borderHeader,
+    borderTopWidth: cardSizes.borderWidth,
+    paddingTop: spacing.smGap,
+    marginTop: spacing.smGap,
+    gap: spacing.smGap,
+  },
+  moodText: {
+    color: theme.goldSoft,
+    fontSize: 12,
+    fontWeight: "700",
   },
   occurredAt: {
     color: theme.muted,
