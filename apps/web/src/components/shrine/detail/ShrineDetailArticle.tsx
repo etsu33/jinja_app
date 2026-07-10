@@ -257,19 +257,6 @@ function getVisitTime(value: string | null) {
   return Number.isNaN(time) ? 0 : time;
 }
 
-function formatVisitDateTime(value: string | null) {
-  if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("ja-JP", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
-}
-
 function buildVisitSummary(visits: Visit[], shrineId: number | string): VisitSummary {
   const currentShrineId = String(shrineId);
   const matchedVisits = visits.filter((visit) => {
@@ -451,7 +438,7 @@ export default function ShrineDetailArticle({
 
   const contextReasonVisibility = getVisibilityForCard("context_reason", accessLevel);
   const personalMeaningVisibility = getVisibilityForCard("personal_meaning", accessLevel);
-  const savedRecordVisibility = getVisibilityForCard("saved_record", accessLevel);
+  const savedRecordVisibility: CardVisibilityState = "visible";
   const recommendationMetaVisibility = getVisibilityForCard("recommendation_meta", accessLevel);
   const previousComparisonVisibility: CardVisibilityState = isPremiumActive
     ? getVisibilityForCard("previous_comparison", accessLevel)
@@ -484,11 +471,10 @@ export default function ShrineDetailArticle({
 
   const [favoriteNoticeState, setFavoriteNoticeState] = useState<"saved" | "removed" | null>(null);
   const [visitSubmitting, setVisitSubmitting] = useState(false);
-  const [visitNotice, setVisitNotice] = useState<"saved" | "error" | null>(null);
-  const [showReflectionPrompt, setShowReflectionPrompt] = useState(false);
+  const [visitError, setVisitError] = useState(false);
+  const visitSubmittingRef = React.useRef(false);
   const [visitSummary, setVisitSummary] = useState<VisitSummary>({ visitCount: 0, latestVisitedAt: null });
   const hasVisitHistory = visitSummary.visitCount > 0;
-  const latestVisitedAtLabel = formatVisitDateTime(visitSummary.latestVisitedAt);
 
   const resolvedSaveActionNode = useMemo(() => {
     if (!saveActionNode || !React.isValidElement(saveActionNode)) return saveActionNode;
@@ -676,107 +662,90 @@ export default function ShrineDetailArticle({
 
       {/* Premium比較カードは後続PRで再設計する。 */}
 
-      {savedRecordVisibility === "visible" && resolvedSaveActionNode ? (
+      {resolvedSaveActionNode ? (
         <section className="pt-4">
-          <div className="rounded-2xl border bg-emerald-50 p-4">
-            <div className="mb-3 space-y-1">
-              <p className="text-sm font-semibold text-emerald-900">この神社から始める</p>
-              <p className="text-xs leading-5 text-slate-600">{FAVORITE_LABELS.lead}</p>
+          <div className="overflow-hidden rounded-2xl border border-emerald-200 bg-white">
+            <div className="space-y-2 p-4">
+              {resolvedSaveActionNode}
+              <p className="text-xs leading-5 text-slate-600">あとで記録から見返せます</p>
+              <Link
+                href="/favorites"
+                className="inline-flex items-center text-sm font-semibold text-emerald-700 hover:underline"
+              >
+                保存した神社を見る
+              </Link>
+
+              {favoriteNoticeState === "saved" ? (
+                <p className="text-xs font-semibold text-emerald-700">{FAVORITE_LABELS.saved}</p>
+              ) : null}
+
+              {favoriteNoticeState === "removed" ? (
+                <p className="text-xs font-semibold text-slate-600">{FAVORITE_LABELS.removed}</p>
+              ) : null}
             </div>
 
-            {favoriteNoticeState === "saved" ? (
-              <div className="mb-3 rounded-xl border border-emerald-200 bg-white p-3">
-                <p className="text-sm font-semibold text-emerald-700">{FAVORITE_LABELS.saved}</p>
-                <p className="mt-1 text-xs text-slate-600">{FAVORITE_LABELS.guide}</p>
-                <div className="mt-2">
-                  <Link
-                    href="/mypage?tab=favorites"
-                    className="inline-flex items-center text-sm font-semibold text-emerald-700 hover:underline"
+            <div className="border-t border-slate-200 p-4">
+              <div className="space-y-2">
+                {hasVisitHistory ? (
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3">
+                    <p className="text-sm font-semibold text-emerald-700">参拝を記録しました</p>
+                    <p className="mt-1 text-xs text-slate-600">次回の相談で、前回の行動として振り返れます。</p>
+                  </div>
+                ) : (
+                  <p className="text-xs leading-5 text-slate-500">参拝後に記録できます</p>
+                )}
+
+                {hasVisitHistory ? (
+                  <ShrineReflectionPrompt
+                    shrineId={cardProps.shrineId}
+                    historyTheme={historyTheme}
+                    threadId={tid != null ? String(tid) : null}
+                    ctx={ctx}
+                  />
+                ) : null}
+
+                {visitError ? (
+                  <div className="rounded-xl border border-rose-200 bg-white p-3">
+                    <p className="text-sm font-semibold text-rose-700">参拝記録に失敗しました</p>
+                  </div>
+                ) : null}
+
+                {!hasVisitHistory ? (
+                  <button
+                    type="button"
+                    disabled={visitSubmitting}
+                    onClick={async () => {
+                      if (visitSubmittingRef.current) return;
+                      visitSubmittingRef.current = true;
+                      setVisitSubmitting(true);
+                      setVisitError(false);
+                      try {
+                        await addVisit(cardProps.shrineId);
+                        trackSearchEvent("visit_done", {
+                          source: "shrine_detail",
+                          shrineId: cardProps.shrineId,
+                          threadId: tid != null ? String(tid) : undefined,
+                          historyTheme: historyTheme ?? undefined,
+                          ctx,
+                        });
+                        const now = new Date().toISOString();
+                        setVisitSummary((current) => ({
+                          visitCount: current.visitCount + 1,
+                          latestVisitedAt: now,
+                        }));
+                      } catch {
+                        setVisitError(true);
+                      } finally {
+                        visitSubmittingRef.current = false;
+                        setVisitSubmitting(false);
+                      }
+                    }}
+                    className="w-full rounded-2xl border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-50 disabled:opacity-60"
                   >
-                    {FAVORITE_LABELS.cta}
-                  </Link>
-                </div>
+                    {visitSubmitting ? "記録中..." : "参拝しました"}
+                  </button>
+                ) : null}
               </div>
-            ) : null}
-
-            {favoriteNoticeState === "removed" ? (
-              <div className="mb-3 rounded-xl border border-slate-200 bg-white p-3">
-                <p className="text-sm font-semibold text-emerald-700">{FAVORITE_LABELS.removed}</p>
-              </div>
-            ) : null}
-
-            {resolvedSaveActionNode}
-
-            <div className="mt-3 space-y-2">
-              {showAfterVisitCopy && hasVisitHistory ? (
-                <div className="rounded-xl border border-emerald-200 bg-white p-3">
-                  <p className="text-sm font-semibold text-emerald-700">参拝したことがあります</p>
-                  <p className="mt-1 text-xs text-slate-600">参拝回数：{visitSummary.visitCount}回</p>
-                  {latestVisitedAtLabel ? (
-                    <p className="mt-1 text-xs text-slate-600">最終参拝：{latestVisitedAtLabel}</p>
-                  ) : null}
-                </div>
-              ) : null}
-
-              {visitNotice === "saved" ? (
-                <div className="rounded-xl border border-emerald-200 bg-white p-3">
-                  <p className="text-sm font-semibold text-emerald-700">参拝記録しました</p>
-                  <p className="mt-1 text-xs text-slate-600">次回の相談で、前回の行動として振り返れます。</p>
-                </div>
-              ) : null}
-
-              {showReflectionPrompt ? (
-                <ShrineReflectionPrompt
-                  shrineId={cardProps.shrineId}
-                  historyTheme={historyTheme}
-                  threadId={tid != null ? String(tid) : null}
-                  ctx={ctx}
-                  onSaved={() => setShowReflectionPrompt(false)}
-                />
-              ) : null}
-
-              {visitNotice === "error" ? (
-                <div className="rounded-xl border border-rose-200 bg-white p-3">
-                  <p className="text-sm font-semibold text-rose-700">参拝記録に失敗しました</p>
-                </div>
-              ) : null}
-
-              <p className="text-xs leading-5 text-slate-500">
-                参拝したら記録しておくと、あとで振り返りを残せます。
-              </p>
-
-              <button
-                type="button"
-                disabled={visitSubmitting}
-                onClick={async () => {
-                  try {
-                    setVisitSubmitting(true);
-                    setVisitNotice(null);
-                    await addVisit(cardProps.shrineId);
-                    trackSearchEvent("visit_done", {
-                      source: "shrine_detail",
-                      shrineId: cardProps.shrineId,
-                      threadId: tid != null ? String(tid) : undefined,
-                      historyTheme: historyTheme ?? undefined,
-                      ctx,
-                    });
-                    const now = new Date().toISOString();
-                    setVisitSummary((current) => ({
-                      visitCount: current.visitCount + 1,
-                      latestVisitedAt: now,
-                    }));
-                    setVisitNotice("saved");
-                    setShowReflectionPrompt(true);
-                  } catch {
-                    setVisitNotice("error");
-                  } finally {
-                    setVisitSubmitting(false);
-                  }
-                }}
-                className="w-full rounded-2xl border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-50 disabled:opacity-60"
-              >
-                {visitSubmitting ? "記録中..." : hasVisitHistory ? "もう一度参拝記録する" : "参拝済みにする"}
-              </button>
             </div>
           </div>
         </section>
