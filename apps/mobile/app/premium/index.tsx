@@ -1,5 +1,15 @@
 import * as React from "react";
-import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  AppState,
+  Linking,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  type AppStateStatus,
+} from "react-native";
 import { useRouter } from "expo-router";
 
 import {
@@ -11,7 +21,9 @@ import {
 } from "../../lib/billing";
 import { isUnauthenticatedError } from "../../lib/http";
 import {
+  trackPremiumActive,
   trackPremiumCheckoutFailed,
+  trackPremiumCheckoutReturned,
   trackPremiumCheckoutStarted,
   trackPremiumScreenView,
   trackPremiumStatusView,
@@ -78,6 +90,10 @@ export default function PremiumScreen() {
   const checkoutInFlightRef = React.useRef(false);
   const hasTrackedScreenViewRef = React.useRef(false);
   const lastTrackedStatusKeyRef = React.useRef<string | null>(null);
+  // Checkoutを開いた後、外部ブラウザへ一度backgroundし復帰したことを検知するためのフラグ。
+  // Checkoutを開始していない通常のAppState復帰では何もしない(awaitingCheckoutReturnRefがfalseのまま)。
+  const awaitingCheckoutReturnRef = React.useRef(false);
+  const hasBackgroundedSinceCheckoutRef = React.useRef(false);
 
   // premium_screen_view: 画面表示は1回だけ計測する(二重計測防止)
   React.useEffect(() => {
@@ -94,11 +110,12 @@ export default function PremiumScreen() {
       const status = await getAuthenticatedBillingStatus();
       if (status) {
         setState({ kind: "ready", status });
-        // premium_status_view: 同じstatusへの再計測は避ける(タブ復帰・再試行での重複送信防止)
+        // premium_status_view / premium_active: 同じstatusへの再計測は避ける(タブ復帰・再試行・Checkout復帰再取得での重複送信防止)
         const statusKey = `${status.plan}|${status.is_active}|${status.provider}`;
         if (lastTrackedStatusKeyRef.current !== statusKey) {
           lastTrackedStatusKeyRef.current = statusKey;
           trackPremiumStatusView(status);
+          trackPremiumActive(status);
         }
       } else {
         setState({ kind: "error" });
@@ -119,6 +136,29 @@ export default function PremiumScreen() {
     void loadStatus();
   }, [loadStatus]);
 
+  // Checkout復帰計測: Checkout開始後に一度background/inactiveへ遷移したことを確認してから
+  // active復帰を「Checkoutから戻ってきた」と判定する(通常のAppState復帰では何もしない)。
+  React.useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState: AppStateStatus) => {
+      if (!awaitingCheckoutReturnRef.current) return;
+
+      if (nextState === "background" || nextState === "inactive") {
+        hasBackgroundedSinceCheckoutRef.current = true;
+        return;
+      }
+
+      if (nextState === "active" && hasBackgroundedSinceCheckoutRef.current) {
+        // 同じCheckout試行での重複送信防止: 検知した時点でフラグを倒す
+        awaitingCheckoutReturnRef.current = false;
+        hasBackgroundedSinceCheckoutRef.current = false;
+        trackPremiumCheckoutReturned();
+        void loadStatus();
+      }
+    });
+
+    return () => subscription.remove();
+  }, [loadStatus]);
+
   const onStartCheckout = React.useCallback(async () => {
     // Checkout開始中の二重送信防止: refで即時ガードし、setState反映前の連打も弾く
     // このガードを通過した1回分だけ upgrade_click / checkout_started を計測する(二重計測防止)
@@ -126,6 +166,8 @@ export default function PremiumScreen() {
     checkoutInFlightRef.current = true;
     setCheckoutLoading(true);
     setCheckoutError(null);
+    awaitingCheckoutReturnRef.current = false;
+    hasBackgroundedSinceCheckoutRef.current = false;
     trackPremiumUpgradeClick();
 
     try {
@@ -137,9 +179,17 @@ export default function PremiumScreen() {
 
       trackPremiumCheckoutStarted();
 
+      // openURL呼び出し中にOSがbackgroundへ遷移させる場合があるため、
+      // 呼び出し前に復帰検知を有効化しておく(成功後に立てるとbackground遷移を取りこぼす)
+      awaitingCheckoutReturnRef.current = true;
+      hasBackgroundedSinceCheckoutRef.current = false;
+
       try {
         await Linking.openURL(session.checkout_url);
       } catch (error) {
+        awaitingCheckoutReturnRef.current = false;
+        hasBackgroundedSinceCheckoutRef.current = false;
+
         trackPremiumCheckoutFailed("open_url_failed");
         setCheckoutError("お支払いページを開けませんでした。通信状況を確認してもう一度お試しください。");
         if (__DEV__) {

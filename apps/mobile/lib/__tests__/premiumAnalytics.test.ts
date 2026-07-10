@@ -4,8 +4,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 (globalThis as unknown as { __DEV__: boolean }).__DEV__ = false;
 
 import { setAnalyticsProvider, type AnalyticsProvider } from "../analytics";
+import type { BillingProvider } from "../billing";
 import {
+  trackPremiumActive,
   trackPremiumCheckoutFailed,
+  trackPremiumCheckoutReturned,
   trackPremiumCheckoutStarted,
   trackPremiumScreenView,
   trackPremiumStatusView,
@@ -74,6 +77,38 @@ describe("premiumAnalytics", () => {
         source: "mobile_premium",
         failureType,
       });
+    },
+  );
+
+  it("trackPremiumCheckoutReturnedはsourceのみを送る", () => {
+    trackPremiumCheckoutReturned();
+
+    expect(trackSpy).toHaveBeenCalledWith("premium_checkout_returned", {
+      source: "mobile_premium",
+    });
+  });
+
+  it("trackPremiumActiveはplan===premium かつ is_active===trueのときのみ送る", () => {
+    trackPremiumActive({ plan: "premium", is_active: true, provider: "stripe" });
+
+    expect(trackSpy).toHaveBeenCalledWith("premium_active", {
+      plan: "premium",
+      isActive: true,
+      provider: "stripe",
+      source: "mobile_premium",
+    });
+  });
+
+  it.each([
+    { plan: "free", is_active: true, provider: "stripe" },
+    { plan: "premium", is_active: false, provider: "stripe" },
+    { plan: "free", is_active: false, provider: "unknown" },
+  ] as const)(
+    "trackPremiumActiveはplan=%s is_active=%sでは送らない",
+    (status: { plan: "free" | "premium"; is_active: boolean; provider: BillingProvider }) => {
+      trackPremiumActive(status);
+
+      expect(trackSpy).not.toHaveBeenCalled();
     },
   );
 });
