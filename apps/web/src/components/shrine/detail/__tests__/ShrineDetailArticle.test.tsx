@@ -9,6 +9,16 @@ vi.mock("@/lib/analytics/cardEvents", () => ({
   trackCardEvent: analyticsMocks.trackCardEvent,
 }));
 
+const visitsMocks = vi.hoisted(() => ({
+  addVisit: vi.fn(),
+  getVisits: vi.fn(),
+}));
+
+vi.mock("@/lib/api/visits", () => ({
+  addVisit: visitsMocks.addVisit,
+  getVisits: visitsMocks.getVisits,
+}));
+
 import ShrineDetailArticle from "../ShrineDetailArticle";
 
 vi.mock("@/components/shrine/detail/PublicGoshuinSection", () => ({
@@ -61,6 +71,9 @@ function SaveActionStub({ onToggleSuccess }: { onToggleSuccess?: (nextFav: boole
 describe("ShrineDetailArticle", () => {
   beforeEach(() => {
     analyticsMocks.trackCardEvent.mockClear();
+    visitsMocks.addVisit.mockReset();
+    visitsMocks.getVisits.mockReset();
+    visitsMocks.getVisits.mockResolvedValue([]);
   });
   it("保存成功時の notice と保存先導線を表示する", () => {
     render(
@@ -88,10 +101,10 @@ describe("ShrineDetailArticle", () => {
     fireEvent.click(screen.getByRole("button", { name: "emit-save" }));
 
     expect(screen.getByText("保存しました")).toBeInTheDocument();
-    expect(screen.getByText("マイページの保存した神社から見返せます")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "保存先を見る" })).toHaveAttribute(
+    expect(screen.getByText("あとで記録から見返せます")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "保存した神社を見る" })).toHaveAttribute(
       "href",
-      "/mypage?tab=favorites",
+      "/favorites",
     );
     expect(screen.queryByText("保存を解除しました")).not.toBeInTheDocument();
   });
@@ -123,7 +136,10 @@ describe("ShrineDetailArticle", () => {
 
     expect(screen.getByText("保存を解除しました")).toBeInTheDocument();
     expect(screen.queryByText("保存しました")).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "保存先を見る" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "保存した神社を見る" })).toHaveAttribute(
+      "href",
+      "/favorites",
+    );
   });
 
   it("保存・参拝ブロックを御朱印セクションより前に表示する", () => {
@@ -436,4 +452,101 @@ describe("ShrineDetailArticle", () => {
       }
     },
   );
+
+  describe("参拝CTA", () => {
+    function renderWithVisitCta() {
+      return render(
+        <ShrineDetailArticle
+          cardProps={{
+            shrineId: 17,
+            title: "乃木神社",
+            href: "/shrines/17",
+            imageUrl: null,
+            badges: [],
+            metaChips: [],
+            address: "東京都港区赤坂",
+          } as any}
+          heroImageUrl={null}
+          heroMeaningCopy={null}
+          benefitLabels={[]}
+          tags={[]}
+          publicGoshuinsPreview={[]}
+          publicGoshuinsViewAllHref=""
+          sections={[]}
+          recommendationMeta={null}
+          saveActionNode={<SaveActionStub />}
+        />,
+      );
+    }
+
+    it("未参拝時は補助説明と「参拝しました」ボタンを表示する", () => {
+      renderWithVisitCta();
+
+      expect(screen.getByText("参拝後に記録できます")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "参拝しました" })).toBeInTheDocument();
+    });
+
+    it("送信中はボタンが「記録中...」でdisabledになる", async () => {
+      let resolveAddVisit: (value?: unknown) => void = () => {};
+      visitsMocks.addVisit.mockReturnValue(
+        new Promise((resolve) => {
+          resolveAddVisit = resolve;
+        }),
+      );
+
+      renderWithVisitCta();
+      fireEvent.click(screen.getByRole("button", { name: "参拝しました" }));
+
+      const submittingButton = await screen.findByRole("button", { name: "記録中..." });
+      expect(submittingButton).toBeDisabled();
+
+      resolveAddVisit();
+      await waitFor(() => expect(screen.queryByRole("button", { name: "記録中..." })).not.toBeInTheDocument());
+    });
+
+    it("二重クリックしてもaddVisitは1回しか呼ばれない", async () => {
+      let resolveAddVisit: (value?: unknown) => void = () => {};
+      visitsMocks.addVisit.mockReturnValue(
+        new Promise((resolve) => {
+          resolveAddVisit = resolve;
+        }),
+      );
+
+      renderWithVisitCta();
+      const button = screen.getByRole("button", { name: "参拝しました" });
+      fireEvent.click(button);
+      fireEvent.click(button);
+
+      expect(visitsMocks.addVisit).toHaveBeenCalledTimes(1);
+
+      resolveAddVisit();
+      await waitFor(() => expect(screen.getByText("参拝を記録しました")).toBeInTheDocument());
+    });
+
+    it("成功後はCTAが消え、完了表示とReflectionPromptが表示される", async () => {
+      visitsMocks.addVisit.mockResolvedValue({});
+
+      renderWithVisitCta();
+      fireEvent.click(screen.getByRole("button", { name: "参拝しました" }));
+
+      await waitFor(() => {
+        expect(screen.queryByRole("button", { name: "参拝しました" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "記録中..." })).not.toBeInTheDocument();
+      });
+
+      expect(screen.getByText("参拝を記録しました")).toBeInTheDocument();
+      expect(screen.getByText("参拝後の振り返り")).toBeInTheDocument();
+    });
+
+    it("失敗後はエラー表示になり、再操作可能な状態に戻る", async () => {
+      visitsMocks.addVisit.mockRejectedValue(new Error("failed"));
+
+      renderWithVisitCta();
+      fireEvent.click(screen.getByRole("button", { name: "参拝しました" }));
+
+      const retryButton = await screen.findByRole("button", { name: "参拝しました" });
+      expect(screen.getByText("参拝記録に失敗しました")).toBeInTheDocument();
+      expect(retryButton).not.toBeDisabled();
+    });
+  });
 });
