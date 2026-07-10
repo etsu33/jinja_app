@@ -6,7 +6,7 @@ vi.mock("../http", () => ({
   getAuth: vi.fn(),
 }));
 
-import { buildJourneyTimeline, type JourneyEvent } from "../journey";
+import { buildJourneyTimeline, parseRecommendationMetadata, type JourneyEvent } from "../journey";
 
 function makeEvent(
   overrides: Partial<JourneyEvent> & Pick<JourneyEvent, "id" | "event_type" | "occurred_at">,
@@ -188,5 +188,109 @@ describe("buildJourneyTimeline", () => {
 
     expect(aItem).toMatchObject({ reflection: null });
     expect(bItem).toMatchObject({ reflection: reflectionForB });
+  });
+});
+
+describe("parseRecommendationMetadata", () => {
+  it("正常系: reason/history_theme/matched_benefits/action_suggestionをすべて抽出する", () => {
+    const result = parseRecommendationMetadata({
+      rank: 1,
+      history_theme: "静寂",
+      reason: "静けさを求める相談内容と一致しました。",
+      reason_facts: [{ type: "goriyaku_tag", label: "厄除け" }],
+      matched_benefits: ["厄除け", "縁結び"],
+      action_suggestion: {
+        primary_action: { label: "詳細を見る", description: "判断材料を増やします。" },
+        secondary_action: { label: "保存する", description: "あとで見返せます。" },
+        reflection_prompt: { question: "何を整理したいですか？" },
+        action_source: { source: "fallback", reason: "安全な初期提案にした" },
+      },
+    });
+
+    expect(result).toEqual({
+      history_theme: "静寂",
+      reason: "静けさを求める相談内容と一致しました。",
+      reason_facts: [{ type: "goriyaku_tag", label: "厄除け" }],
+      matched_benefits: ["厄除け", "縁結び"],
+      action_suggestion: {
+        primary_action: { label: "詳細を見る", description: "判断材料を増やします。" },
+        secondary_action: { label: "保存する", description: "あとで見返せます。" },
+        reflection_prompt: { question: "何を整理したいですか？" },
+        action_source: { source: "fallback", reason: "安全な初期提案にした" },
+      },
+    });
+  });
+
+  it("metadataが空の場合は空/nullにフォールバックする(表示側は各ブロックを描画しない)", () => {
+    const result = parseRecommendationMetadata({ rank: 1 });
+
+    expect(result).toEqual({
+      history_theme: "",
+      reason: "",
+      reason_facts: [],
+      matched_benefits: [],
+      action_suggestion: null,
+    });
+  });
+
+  it("action_suggestionがprimary_actionのみを持つ場合、secondary/reflection_prompt/action_sourceはnullになる", () => {
+    const result = parseRecommendationMetadata({
+      action_suggestion: {
+        primary_action: { label: "詳細を見る", description: "" },
+      },
+    });
+
+    expect(result.action_suggestion).toEqual({
+      primary_action: { label: "詳細を見る", description: "" },
+      secondary_action: null,
+      reflection_prompt: null,
+      action_source: null,
+    });
+  });
+
+  it("不正な型(文字列/数値/nullなど)が混入しても例外を投げず安全な既定値を返す", () => {
+    const result = parseRecommendationMetadata({
+      history_theme: 123,
+      reason: null,
+      reason_facts: "not-an-array",
+      matched_benefits: "not-an-array",
+      action_suggestion: "not-an-object",
+    });
+
+    expect(result).toEqual({
+      history_theme: "",
+      reason: "",
+      reason_facts: [],
+      matched_benefits: [],
+      action_suggestion: null,
+    });
+  });
+
+  it("metadataがnull/undefinedでも例外を投げない", () => {
+    expect(parseRecommendationMetadata(null)).toEqual({
+      history_theme: "",
+      reason: "",
+      reason_facts: [],
+      matched_benefits: [],
+      action_suggestion: null,
+    });
+    expect(parseRecommendationMetadata(undefined)).toEqual({
+      history_theme: "",
+      reason: "",
+      reason_facts: [],
+      matched_benefits: [],
+      action_suggestion: null,
+    });
+  });
+
+  it("reflection_prompt.questionが空文字の場合はnullになる(空ブロックを表示しない)", () => {
+    const result = parseRecommendationMetadata({
+      action_suggestion: {
+        primary_action: { label: "詳細を見る", description: "" },
+        reflection_prompt: { question: "" },
+      },
+    });
+
+    expect(result.action_suggestion?.reflection_prompt).toBeNull();
   });
 });

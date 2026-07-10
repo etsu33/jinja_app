@@ -40,7 +40,21 @@ def test_journey_timeline_returns_results_wrapper_and_events(api_client, user, s
     base = timezone.now()
     thread = ConciergeThread.objects.create(
         user=user,
-        recommendations_v2=[{"id": shrine.id, "name": shrine.name_jp, "history_theme": "静寂"}],
+        recommendations_v2=[
+            {
+                "id": shrine.id,
+                "name": shrine.name_jp,
+                "history_theme": "静寂",
+                "reason": "静けさを求める相談内容と一致しました。",
+                "reason_facts": [{"type": "goriyaku_tag", "label": "厄除け"}],
+                "action_suggestion_v4_preview": {
+                    "primary_action": {"label": "詳細を見る", "description": "判断材料を増やします。"},
+                    "secondary_action": {"label": "保存する", "description": "あとで見返せます。"},
+                    "reflection_prompt": {"question": "何を整理したいですか？"},
+                    "action_source": {"source": "fallback", "reason": "安全な初期提案にした"},
+                },
+            }
+        ],
     )
     ConciergeMessage.objects.create(
         thread=thread,
@@ -92,6 +106,18 @@ def test_journey_timeline_returns_results_wrapper_and_events(api_client, user, s
     }
     assert results[1]["id"] == f"thread:{thread.id}:recommendation:{shrine.id}"
     assert results[1]["thread_id"] == thread.id
-    assert results[1]["metadata"] == {"rank": 1, "history_theme": "静寂"}
+    assert results[1]["metadata"] == {
+        "rank": 1,
+        "history_theme": "静寂",
+        "reason": "静けさを求める相談内容と一致しました。",
+        "reason_facts": [{"type": "goriyaku_tag", "label": "厄除け"}],
+        "matched_benefits": ["厄除け"],
+        "action_suggestion": {
+            "primary_action": {"label": "詳細を見る", "description": "判断材料を増やします。"},
+            "secondary_action": {"label": "保存する", "description": "あとで見返せます。"},
+            "reflection_prompt": {"question": "何を整理したいですか？"},
+            "action_source": {"source": "fallback", "reason": "安全な初期提案にした"},
+        },
+    }
     assert results[2]["id"] == f"thread:{thread.id}:consultation"
     assert results[2]["shrine_id"] is None

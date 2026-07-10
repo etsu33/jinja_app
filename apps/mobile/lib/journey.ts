@@ -18,6 +18,115 @@ export type JourneyEvent = {
   metadata: Record<string, unknown>;
 };
 
+// --- recommendation_shown の metadata 契約 ---
+// backend/temples/services/journey_timeline.py の _extract_* 群が付与する構造に対応する。
+// 欠損・不正な値でも例外を投げず null/空配列にフォールバックする。
+
+export type JourneyActionItem = {
+  label: string;
+  description: string;
+};
+
+export type JourneyReflectionPromptMeta = {
+  question: string;
+};
+
+export type JourneyActionSourceMeta = {
+  source: string;
+  reason: string;
+};
+
+export type JourneyActionSuggestionMeta = {
+  primary_action: JourneyActionItem | null;
+  secondary_action: JourneyActionItem | null;
+  reflection_prompt: JourneyReflectionPromptMeta | null;
+  action_source: JourneyActionSourceMeta | null;
+};
+
+export type JourneyReasonFact = {
+  type?: string;
+  label?: string;
+  label_ja?: string;
+  evidence?: string[];
+  score?: number;
+  is_primary?: boolean;
+};
+
+export type JourneyRecommendationMetadata = {
+  history_theme: string;
+  reason: string;
+  reason_facts: JourneyReasonFact[];
+  matched_benefits: string[];
+  action_suggestion: JourneyActionSuggestionMeta | null;
+};
+
+function asString(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function asStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
+}
+
+function asActionItem(value: unknown): JourneyActionItem | null {
+  const record = asRecord(value);
+  if (!record) return null;
+  const label = asString(record.label);
+  const description = asString(record.description);
+  if (!label && !description) return null;
+  return { label, description };
+}
+
+function asReflectionPromptMeta(value: unknown): JourneyReflectionPromptMeta | null {
+  const record = asRecord(value);
+  if (!record) return null;
+  const question = asString(record.question);
+  return question ? { question } : null;
+}
+
+function asActionSourceMeta(value: unknown): JourneyActionSourceMeta | null {
+  const record = asRecord(value);
+  if (!record) return null;
+  const source = asString(record.source);
+  const reason = asString(record.reason);
+  if (!source && !reason) return null;
+  return { source, reason };
+}
+
+function asActionSuggestionMeta(value: unknown): JourneyActionSuggestionMeta | null {
+  const record = asRecord(value);
+  if (!record) return null;
+  const primary_action = asActionItem(record.primary_action);
+  const secondary_action = asActionItem(record.secondary_action);
+  const reflection_prompt = asReflectionPromptMeta(record.reflection_prompt);
+  const action_source = asActionSourceMeta(record.action_source);
+  if (!primary_action && !secondary_action && !reflection_prompt && !action_source) return null;
+  return { primary_action, secondary_action, reflection_prompt, action_source };
+}
+
+function asReasonFacts(value: unknown): JourneyReasonFact[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is JourneyReasonFact => !!item && typeof item === "object");
+}
+
+export function parseRecommendationMetadata(
+  metadata: Record<string, unknown> | null | undefined,
+): JourneyRecommendationMetadata {
+  const source = metadata ?? {};
+  return {
+    history_theme: asString(source.history_theme),
+    reason: asString(source.reason),
+    reason_facts: asReasonFacts(source.reason_facts),
+    matched_benefits: asStringArray(source.matched_benefits),
+    action_suggestion: asActionSuggestionMeta(source.action_suggestion),
+  };
+}
+
 type PaginatedResponse<T> = {
   results: T[];
 };
