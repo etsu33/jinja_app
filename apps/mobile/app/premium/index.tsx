@@ -10,7 +10,14 @@ import {
   type BillingStatus,
 } from "../../lib/billing";
 import { isUnauthenticatedError } from "../../lib/http";
-import { track } from "../../lib/analytics";
+import {
+  trackPremiumCheckoutFailed,
+  trackPremiumCheckoutStarted,
+  trackPremiumScreenView,
+  trackPremiumStatusView,
+  trackPremiumUpgradeClick,
+  type PremiumCheckoutFailureType,
+} from "../../lib/premiumAnalytics";
 import { StateCard } from "../../components/common/StateCard";
 import { AuthPrompt } from "../../components/common/AuthPrompt";
 import { kamimusubiDark as theme } from "../theme";
@@ -63,8 +70,6 @@ function describeStatus(status: BillingStatus): { label: string; helper: string 
   };
 }
 
-type CheckoutFailureReason = "unauthenticated" | "invalid_response" | "unknown";
-
 export default function PremiumScreen() {
   const router = useRouter();
   const [state, setState] = React.useState<StatusState>({ kind: "loading" });
@@ -72,12 +77,13 @@ export default function PremiumScreen() {
   const [checkoutError, setCheckoutError] = React.useState<string | null>(null);
   const checkoutInFlightRef = React.useRef(false);
   const hasTrackedScreenViewRef = React.useRef(false);
+  const lastTrackedStatusKeyRef = React.useRef<string | null>(null);
 
   // premium_screen_view: 画面表示は1回だけ計測する(二重計測防止)
   React.useEffect(() => {
     if (hasTrackedScreenViewRef.current) return;
     hasTrackedScreenViewRef.current = true;
-    track("premium_screen_view");
+    trackPremiumScreenView();
   }, []);
 
   const loadStatus = React.useCallback(async () => {
@@ -88,7 +94,12 @@ export default function PremiumScreen() {
       const status = await getAuthenticatedBillingStatus();
       if (status) {
         setState({ kind: "ready", status });
-        track("premium_status_view", { plan: status.plan, is_active: status.is_active });
+        // premium_status_view: 同じstatusへの再計測は避ける(タブ復帰・再試行での重複送信防止)
+        const statusKey = `${status.plan}|${status.is_active}|${status.provider}`;
+        if (lastTrackedStatusKeyRef.current !== statusKey) {
+          lastTrackedStatusKeyRef.current = statusKey;
+          trackPremiumStatusView(status);
+        }
       } else {
         setState({ kind: "error" });
       }
@@ -115,29 +126,39 @@ export default function PremiumScreen() {
     checkoutInFlightRef.current = true;
     setCheckoutLoading(true);
     setCheckoutError(null);
-    track("premium_upgrade_click");
+    trackPremiumUpgradeClick();
 
     try {
-      track("premium_checkout_started");
       // checkout session ID はここで取得できるが、analyticsのpayloadには含めない
       const session = await createBillingCheckoutSession({
         successUrl: CHECKOUT_SUCCESS_URL,
         cancelUrl: CHECKOUT_CANCEL_URL,
       });
-      await Linking.openURL(session.checkout_url);
+
+      trackPremiumCheckoutStarted();
+
+      try {
+        await Linking.openURL(session.checkout_url);
+      } catch (error) {
+        trackPremiumCheckoutFailed("open_url_failed");
+        setCheckoutError("お支払いページを開けませんでした。通信状況を確認してもう一度お試しください。");
+        if (__DEV__) {
+          console.warn("[PremiumScreen] failed to open checkout url", error);
+        }
+      }
     } catch (error) {
-      let reason: CheckoutFailureReason = "unknown";
+      let failureType: PremiumCheckoutFailureType = "unknown";
 
       if (isUnauthenticatedError(error)) {
-        reason = "unauthenticated";
+        failureType = "unauthenticated";
         setState({ kind: "unauthenticated" });
       } else if (error instanceof InvalidCheckoutResponseError) {
-        reason = "invalid_response";
+        failureType = "invalid_response";
         setCheckoutError("お支払いページの準備に失敗しました。しばらくしてからもう一度お試しください。");
       } else {
         setCheckoutError("お支払いページを開けませんでした。通信状況を確認してもう一度お試しください。");
       }
-      track("premium_checkout_failed", { reason });
+      trackPremiumCheckoutFailed(failureType);
       if (__DEV__) {
         console.warn("[PremiumScreen] checkout failed", error);
       }
