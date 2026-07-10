@@ -676,51 +676,6 @@ export default function ShrineDetailArticle({
 
       {/* Premium比較カードは後続PRで再設計する。 */}
 
-      {showGoshuinSection ? (
-        <section id="goshuins">
-          <PublicGoshuinSection
-            items={publicGoshuinsPreview}
-            addGoshuinHref={addGoshuinHref}
-            sendingLabel={undefined}
-            limit={3}
-            seeAllHref={publicGoshuinsViewAllHref ? publicGoshuinsViewAllHref : null}
-            seeAllLabel="すべて見る"
-          />
-        </section>
-      ) : null}
-
-      {!hasSections ? (
-        <div className="space-y-2">
-          <DetailDisclosureBlock title="ご利益" summary={benefitSummary} defaultOpen={false}>
-            {benefitTagObjs.length ? (
-              <div className="flex flex-wrap gap-1">
-                {benefitTagObjs.map((t) => (
-                  <span
-                    key={t.id}
-                    className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700"
-                  >
-                    {t.label}
-                  </span>
-                ))}
-              </div>
-            ) : benefitLabels.length ? (
-              <div className="flex flex-wrap gap-1">
-                {benefitLabels.map((label) => (
-                  <span
-                    key={label}
-                    className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700"
-                  >
-                    {label}
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-slate-400">ご利益情報は準備中です。</p>
-            )}
-          </DetailDisclosureBlock>
-        </div>
-      ) : null}
-
       {savedRecordVisibility === "visible" && resolvedSaveActionNode ? (
         <section className="pt-4">
           <div className="rounded-2xl border bg-emerald-50 p-4">
@@ -825,6 +780,51 @@ export default function ShrineDetailArticle({
             </div>
           </div>
         </section>
+      ) : null}
+
+      {showGoshuinSection ? (
+        <section id="goshuins">
+          <PublicGoshuinSection
+            items={publicGoshuinsPreview}
+            addGoshuinHref={addGoshuinHref}
+            sendingLabel={undefined}
+            limit={3}
+            seeAllHref={publicGoshuinsViewAllHref ? publicGoshuinsViewAllHref : null}
+            seeAllLabel="すべて見る"
+          />
+        </section>
+      ) : null}
+
+      {!hasSections ? (
+        <div className="space-y-2">
+          <DetailDisclosureBlock title="ご利益" summary={benefitSummary} defaultOpen={false}>
+            {benefitTagObjs.length ? (
+              <div className="flex flex-wrap gap-1">
+                {benefitTagObjs.map((t) => (
+                  <span
+                    key={t.id}
+                    className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700"
+                  >
+                    {t.label}
+                  </span>
+                ))}
+              </div>
+            ) : benefitLabels.length ? (
+              <div className="flex flex-wrap gap-1">
+                {benefitLabels.map((label) => (
+                  <span
+                    key={label}
+                    className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700"
+                  >
+                    {label}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-slate-400">ご利益情報は準備中です。</p>
+            )}
+          </DetailDisclosureBlock>
+        </div>
       ) : null}
     </article>
   );
