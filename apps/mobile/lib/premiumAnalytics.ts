@@ -32,3 +32,22 @@ export function trackPremiumCheckoutStarted(): void {
 export function trackPremiumCheckoutFailed(failureType: PremiumCheckoutFailureType): void {
   track("premium_checkout_failed", { source: SOURCE, failureType });
 }
+
+// Checkout(外部ブラウザ)からMobileへ復帰したタイミングで送信する。
+// 決済成功を証明するものではなく、あくまで「復帰を検知した」計測。
+export function trackPremiumCheckoutReturned(): void {
+  track("premium_checkout_returned", { source: SOURCE });
+}
+
+// Billing Status再取得後、plan === "premium" && is_active === true の場合のみ送信する。
+// ガードをここに置くことで、呼び出し側の条件分岐漏れによる誤送信を防ぐ。
+export function trackPremiumActive(status: Pick<BillingStatus, "plan" | "is_active" | "provider">): void {
+  if (status.plan !== "premium" || !status.is_active) return;
+
+  track("premium_active", {
+    plan: "premium",
+    isActive: true,
+    provider: status.provider,
+    source: SOURCE,
+  });
+}
