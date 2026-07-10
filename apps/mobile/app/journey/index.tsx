@@ -5,8 +5,11 @@ import { useRouter } from "expo-router";
 import {
   buildJourneyTimeline,
   listJourneyEvents,
+  parseRecommendationMetadata,
+  type JourneyActionSuggestionMeta,
   type JourneyEvent,
   type JourneyEventType,
+  type JourneyRecommendationMetadata,
   type JourneyTimelineItem,
 } from "../../lib/journey";
 import { isUnauthenticatedError } from "../../lib/http";
@@ -79,12 +82,75 @@ function groupTimelineByDate(items: JourneyTimelineItem[]): JourneyGroup[] {
   return Array.from(groups.entries()).map(([label, items]) => ({ label, items }));
 }
 
+function RecommendationActionSuggestionBlock({ actionSuggestion }: { actionSuggestion: JourneyActionSuggestionMeta }) {
+  const { primary_action, secondary_action, reflection_prompt } = actionSuggestion;
+
+  if (!primary_action && !secondary_action && !reflection_prompt) return null;
+
+  return (
+    <View style={styles.actionSuggestionBlock}>
+      {primary_action ? (
+        <View style={styles.actionItem}>
+          <Text style={styles.actionItemLabel}>{primary_action.label}</Text>
+          {primary_action.description ? (
+            <Text style={styles.actionItemDescription}>{primary_action.description}</Text>
+          ) : null}
+        </View>
+      ) : null}
+
+      {secondary_action ? (
+        <View style={styles.actionItemSecondary}>
+          <Text style={styles.actionItemSecondaryLabel}>{secondary_action.label}</Text>
+          {secondary_action.description ? (
+            <Text style={styles.actionItemSecondaryDescription}>{secondary_action.description}</Text>
+          ) : null}
+        </View>
+      ) : null}
+
+      {reflection_prompt ? <Text style={styles.reflectionPromptText}>{reflection_prompt.question}</Text> : null}
+    </View>
+  );
+}
+
+function RecommendationContextBlock({ metadata }: { metadata: JourneyRecommendationMetadata }) {
+  const { history_theme, reason, matched_benefits, action_suggestion } = metadata;
+  const hasContext = Boolean(history_theme) || Boolean(reason) || matched_benefits.length > 0 || Boolean(action_suggestion);
+
+  if (!hasContext) return null;
+
+  return (
+    <View style={styles.reasonBlock}>
+      {history_theme ? (
+        <View style={styles.typePillMuted}>
+          <Text style={styles.typePillText}>{history_theme}</Text>
+        </View>
+      ) : null}
+
+      {reason ? <Text style={styles.descriptionText}>{reason}</Text> : null}
+
+      {matched_benefits.length > 0 ? (
+        <View style={styles.benefitRow}>
+          {matched_benefits.map((benefit) => (
+            <View key={benefit} style={styles.benefitChip}>
+              <Text style={styles.benefitChipText}>{benefit}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+
+      {action_suggestion ? <RecommendationActionSuggestionBlock actionSuggestion={action_suggestion} /> : null}
+    </View>
+  );
+}
+
 function EventCard({ event }: { event: JourneyEvent }) {
   const typeView = resolveEventTypeView(event.event_type);
   const title = normalizeText(event.title, typeView.fallbackTitle);
   const description = normalizeText(event.description, "");
   const occurredAtTime = formatTime(event.occurred_at);
   const shrineName = event.shrine_name?.trim();
+  const recommendationMetadata =
+    event.event_type === "recommendation_shown" ? parseRecommendationMetadata(event.metadata) : null;
 
   return (
     <View style={styles.eventCard}>
@@ -104,6 +170,8 @@ function EventCard({ event }: { event: JourneyEvent }) {
           {description}
         </Text>
       ) : null}
+
+      {recommendationMetadata ? <RecommendationContextBlock metadata={recommendationMetadata} /> : null}
     </View>
   );
 }
@@ -377,6 +445,68 @@ const styles = StyleSheet.create({
   moodText: {
     color: theme.goldSoft,
     fontSize: 12,
+    fontWeight: "700",
+  },
+  reasonBlock: {
+    borderTopColor: theme.borderHeader,
+    borderTopWidth: cardSizes.borderWidth,
+    paddingTop: spacing.smGap,
+    marginTop: spacing.smGap,
+    gap: spacing.smGap,
+  },
+  benefitRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.tightGap,
+  },
+  benefitChip: {
+    backgroundColor: theme.surfaceSoft,
+    borderColor: theme.borderHeader,
+    borderRadius: radius.pill,
+    borderWidth: cardSizes.borderWidth,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  benefitChipText: {
+    color: theme.goldSoft,
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  actionSuggestionBlock: {
+    gap: spacing.tightGap,
+  },
+  actionItem: {
+    gap: 2,
+  },
+  actionItemLabel: {
+    color: theme.gold,
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  actionItemDescription: {
+    color: theme.mutedSoft,
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: "600",
+  },
+  actionItemSecondary: {
+    gap: 2,
+  },
+  actionItemSecondaryLabel: {
+    color: theme.muted,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  actionItemSecondaryDescription: {
+    color: theme.mutedSoft,
+    fontSize: 11,
+    lineHeight: 16,
+    fontWeight: "600",
+  },
+  reflectionPromptText: {
+    color: theme.goldSoft,
+    fontSize: 12,
+    fontStyle: "italic",
     fontWeight: "700",
   },
   occurredAt: {

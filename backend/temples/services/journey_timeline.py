@@ -73,6 +73,7 @@ def _thread_events(thread, recommendation_shrines: dict[int, Shrine]) -> list[Jo
         shrine = recommendation_shrines.get(shrine_id) if shrine_id else None
         shrine_name = _recommendation_shrine_name(recommendation, shrine)
         event_key = shrine_id or index
+        reason_facts = _extract_reason_facts(recommendation)
 
         events.append(
             {
@@ -87,6 +88,10 @@ def _thread_events(thread, recommendation_shrines: dict[int, Shrine]) -> list[Jo
                 "metadata": {
                     "rank": index,
                     "history_theme": _string_or_empty(recommendation.get("history_theme")),
+                    "reason": _extract_reason(recommendation),
+                    "reason_facts": reason_facts,
+                    "matched_benefits": _extract_matched_benefits(reason_facts),
+                    "action_suggestion": _extract_action_suggestion(recommendation),
                 },
             }
         )
@@ -194,3 +199,79 @@ def _reflection_events(user) -> list[JourneyEvent]:
 
 def _string_or_empty(value: Any) -> str:
     return value if isinstance(value, str) else ""
+
+
+_BENEFIT_FACT_TYPES = {"goriyaku_tag", "user_selected_tag"}
+
+
+def _extract_reason(recommendation: dict[str, Any]) -> str:
+    reason = recommendation.get("reason")
+    return reason.strip() if isinstance(reason, str) else ""
+
+
+def _extract_reason_facts(recommendation: dict[str, Any]) -> list[dict[str, Any]]:
+    raw = recommendation.get("reason_facts")
+    if not isinstance(raw, list):
+        return []
+    return [fact for fact in raw if isinstance(fact, dict)]
+
+
+def _extract_matched_benefits(reason_facts: list[dict[str, Any]]) -> list[str]:
+    benefits: list[str] = []
+    for fact in reason_facts:
+        if fact.get("type") not in _BENEFIT_FACT_TYPES:
+            continue
+        label = fact.get("label")
+        if isinstance(label, str) and label.strip() and label.strip() not in benefits:
+            benefits.append(label.strip())
+    return benefits
+
+
+def _extract_action_item(value: Any) -> dict[str, str] | None:
+    if not isinstance(value, dict):
+        return None
+    label = _string_or_empty(value.get("label")).strip()
+    description = _string_or_empty(value.get("description")).strip()
+    if not label and not description:
+        return None
+    return {"label": label, "description": description}
+
+
+def _extract_reflection_prompt(value: Any) -> dict[str, str] | None:
+    if not isinstance(value, dict):
+        return None
+    question = _string_or_empty(value.get("question")).strip()
+    if not question:
+        return None
+    return {"question": question}
+
+
+def _extract_action_source(value: Any) -> dict[str, str] | None:
+    if not isinstance(value, dict):
+        return None
+    source = _string_or_empty(value.get("source")).strip()
+    reason = _string_or_empty(value.get("reason")).strip()
+    if not source and not reason:
+        return None
+    return {"source": source, "reason": reason}
+
+
+def _extract_action_suggestion(recommendation: dict[str, Any]) -> dict[str, Any] | None:
+    preview = recommendation.get("action_suggestion_v4_preview")
+    if not isinstance(preview, dict):
+        return None
+
+    primary_action = _extract_action_item(preview.get("primary_action"))
+    secondary_action = _extract_action_item(preview.get("secondary_action"))
+    reflection_prompt = _extract_reflection_prompt(preview.get("reflection_prompt"))
+    action_source = _extract_action_source(preview.get("action_source"))
+
+    if not any([primary_action, secondary_action, reflection_prompt, action_source]):
+        return None
+
+    return {
+        "primary_action": primary_action,
+        "secondary_action": secondary_action,
+        "reflection_prompt": reflection_prompt,
+        "action_source": action_source,
+    }

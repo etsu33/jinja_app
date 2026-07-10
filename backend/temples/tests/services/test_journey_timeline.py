@@ -43,6 +43,29 @@ def test_build_journey_timeline_returns_phase1_events_ordered_desc(user, shrine)
                 "id": shrine.id,
                 "name": shrine.name_jp,
                 "history_theme": "静寂",
+                "reason": "静けさを求める相談内容と一致しました。",
+                "reason_facts": [
+                    {"type": "history_theme", "label": "静寂"},
+                    {"type": "goriyaku_tag", "label": "厄除け"},
+                    {"type": "user_selected_tag", "label": "縁結び"},
+                ],
+                "action_suggestion_v4_preview": {
+                    "primary_action": {
+                        "label": "詳細を見て、行く理由を確認する",
+                        "description": "入力が少ないため、詳細を見て判断材料を増やします。",
+                    },
+                    "secondary_action": {
+                        "label": "この神社を保存して、あとで見返す",
+                        "description": "今すぐ決めきれない場合でも後から見返せます。",
+                    },
+                    "reflection_prompt": {
+                        "question": "この神社を見たあと、何を整理したいですか？",
+                    },
+                    "action_source": {
+                        "source": "fallback",
+                        "reason": "入力が不足しているため安全な初期提案にした",
+                    },
+                },
             }
         ],
     )
@@ -92,7 +115,34 @@ def test_build_journey_timeline_returns_phase1_events_ordered_desc(user, shrine)
     assert events[2]["id"] == f"thread:{thread.id}:recommendation:{shrine.id}"
     assert events[2]["thread_id"] == thread.id
     assert events[2]["shrine_name"] == shrine.name_jp
-    assert events[2]["metadata"] == {"rank": 1, "history_theme": "静寂"}
+    assert events[2]["metadata"] == {
+        "rank": 1,
+        "history_theme": "静寂",
+        "reason": "静けさを求める相談内容と一致しました。",
+        "reason_facts": [
+            {"type": "history_theme", "label": "静寂"},
+            {"type": "goriyaku_tag", "label": "厄除け"},
+            {"type": "user_selected_tag", "label": "縁結び"},
+        ],
+        "matched_benefits": ["厄除け", "縁結び"],
+        "action_suggestion": {
+            "primary_action": {
+                "label": "詳細を見て、行く理由を確認する",
+                "description": "入力が少ないため、詳細を見て判断材料を増やします。",
+            },
+            "secondary_action": {
+                "label": "この神社を保存して、あとで見返す",
+                "description": "今すぐ決めきれない場合でも後から見返せます。",
+            },
+            "reflection_prompt": {
+                "question": "この神社を見たあと、何を整理したいですか？",
+            },
+            "action_source": {
+                "source": "fallback",
+                "reason": "入力が不足しているため安全な初期提案にした",
+            },
+        },
+    }
     assert events[3]["id"] == f"thread:{thread.id}:consultation"
     assert events[3]["description"] == "仕事について相談しました"
 
@@ -146,3 +196,66 @@ def test_recommendations_field_is_used_when_recommendations_v2_is_empty(user, sh
     assert events[0]["event_type"] == "recommendation_shown"
     assert events[0]["shrine_id"] == shrine.id
     assert events[0]["shrine_name"] == shrine.name_jp
+    assert events[0]["metadata"] == {
+        "rank": 1,
+        "history_theme": "再出発",
+        "reason": "",
+        "reason_facts": [],
+        "matched_benefits": [],
+        "action_suggestion": None,
+    }
+
+
+def test_recommendation_metadata_survives_malformed_context_without_raising(user, shrine):
+    thread = ConciergeThread.objects.create(
+        user=user,
+        recommendations_v2=[
+            {
+                "id": shrine.id,
+                "name": shrine.name_jp,
+                "reason": 12345,
+                "reason_facts": "not-a-list",
+                "action_suggestion_v4_preview": {
+                    "primary_action": {"label": "詳細を見る"},
+                    "secondary_action": "not-a-dict",
+                    "reflection_prompt": {"question": ""},
+                    "action_source": None,
+                },
+            }
+        ],
+    )
+    ConciergeMessage.objects.create(
+        thread=thread,
+        role=ConciergeMessage.ROLE_ASSISTANT,
+        content="おすすめです",
+    )
+
+    events = build_journey_timeline(user)
+
+    assert len(events) == 1
+    metadata = events[0]["metadata"]
+    assert metadata["reason"] == ""
+    assert metadata["reason_facts"] == []
+    assert metadata["matched_benefits"] == []
+    assert metadata["action_suggestion"] == {
+        "primary_action": {"label": "詳細を見る", "description": ""},
+        "secondary_action": None,
+        "reflection_prompt": None,
+        "action_source": None,
+    }
+
+
+def test_recommendation_metadata_action_suggestion_missing_is_none(user, shrine):
+    thread = ConciergeThread.objects.create(
+        user=user,
+        recommendations_v2=[{"id": shrine.id, "name": shrine.name_jp}],
+    )
+    ConciergeMessage.objects.create(
+        thread=thread,
+        role=ConciergeMessage.ROLE_ASSISTANT,
+        content="おすすめです",
+    )
+
+    events = build_journey_timeline(user)
+
+    assert events[0]["metadata"]["action_suggestion"] is None
