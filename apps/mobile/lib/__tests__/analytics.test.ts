@@ -62,6 +62,25 @@ describe("serializeAnalyticsPayload", () => {
   it("空文字列 / 0 / falseはfalsyだが保持する", () => {
     expect(serializeAnalyticsPayload({ a: "", b: 0, c: false })).toEqual({ a: "", b: 0, c: false });
   });
+
+  it("checkout_session_id / checkout_url / token(camelCase含む)を除外する", () => {
+    expect(
+      serializeAnalyticsPayload({
+        source: "mobile_premium",
+        checkout_session_id: "cs_test_1",
+        checkoutSessionId: "cs_test_2",
+        checkout_url: "https://checkout.example.com/pay",
+        checkoutUrl: "https://checkout.example.com/pay2",
+        token: "secret-token",
+        access_token: "secret-access",
+        accessToken: "secret-access-2",
+        refresh_token: "secret-refresh",
+        refreshToken: "secret-refresh-2",
+      }),
+    ).toEqual({
+      source: "mobile_premium",
+    });
+  });
 });
 
 describe("track / provider差し替え", () => {

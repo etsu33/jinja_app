@@ -14,6 +14,22 @@ function isPrimitiveValue(value: unknown): value is string | number | boolean {
   return false;
 }
 
+// 送信先(PostHog等)へ渡してはいけないキー。認証情報・決済識別子は
+// アプリ側の組み立てミスに依存せず、ここで構造的に除外する。
+const EXCLUDED_PAYLOAD_KEYS = new Set([
+  "session_id",
+  "sessionId",
+  "checkout_session_id",
+  "checkoutSessionId",
+  "checkout_url",
+  "checkoutUrl",
+  "token",
+  "access_token",
+  "accessToken",
+  "refresh_token",
+  "refreshToken",
+]);
+
 // serializer
 // object/array/null/undefined/NaN等の非プリミティブ値は破棄し、
 // プリミティブ型のフィールドだけを残す(送信先の型崩れを防ぐため)。
@@ -22,7 +38,7 @@ export function serializeAnalyticsPayload(payload: Record<string, unknown> | nul
   const result: AnalyticsPayload = {};
 
   for (const [key, value] of Object.entries(source)) {
-    if (key === "session_id" || key === "sessionId") continue;
+    if (EXCLUDED_PAYLOAD_KEYS.has(key)) continue;
 
     if (isPrimitiveValue(value)) {
       result[key] = value;
