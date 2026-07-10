@@ -4,6 +4,22 @@ import { useRouter } from "expo-router";
 import { kamimusubiDark as theme } from "../theme";
 import { getFavoriteShrines, getRecentViewed } from "../../lib/shrineStorage";
 import { getCounts } from "../../lib/storage";
+import { getAuthenticatedBillingStatus, isPremiumStatus, type BillingStatus } from "../../lib/billing";
+import { isUnauthenticatedError } from "../../lib/http";
+
+type PremiumMetaState =
+  | { kind: "loading" }
+  | { kind: "unauthenticated" }
+  | { kind: "error" }
+  | { kind: "ready"; status: BillingStatus };
+
+// billing.ts の isPremiumStatus をそのまま利用し、Free/Premium判定ロジックはここで持たない。
+function describePremiumMeta(state: PremiumMetaState): string {
+  if (state.kind === "loading") return "確認中...";
+  if (state.kind === "unauthenticated") return "ログインすると確認できます";
+  if (state.kind === "error") return "登録状況を確認できませんでした";
+  return isPremiumStatus(state.status) ? "Premium登録済み" : "現在はFreeプラン";
+}
 
 type MyPageCardProps = {
   title: string;
@@ -60,6 +76,25 @@ export default function MyPageScreen() {
   const [favoriteCount, setFavoriteCount] = React.useState<number | null>(null);
   const [recentCount, setRecentCount] = React.useState<number | null>(null);
   const [visitCount, setVisitCount] = React.useState<number | null>(null);
+  const [premiumMeta, setPremiumMeta] = React.useState<PremiumMetaState>({ kind: "loading" });
+
+  React.useEffect(() => {
+    let mounted = true;
+
+    getAuthenticatedBillingStatus()
+      .then((status) => {
+        if (!mounted) return;
+        setPremiumMeta(status ? { kind: "ready", status } : { kind: "error" });
+      })
+      .catch((error) => {
+        if (!mounted) return;
+        setPremiumMeta(isUnauthenticatedError(error) ? { kind: "unauthenticated" } : { kind: "error" });
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   React.useEffect(() => {
     let mounted = true;
@@ -157,9 +192,10 @@ export default function MyPageScreen() {
         <MyPageCard
           title="Premium"
           description="前回比較、深い振り返り、保存した相談の整理を使えるようにします。"
-          meta="現在はFreeプラン"
+          meta={describePremiumMeta(premiumMeta)}
           iconText="P"
           actionLabel="確認"
+          onPress={() => router.push("/premium")}
         />
       </View>
 
