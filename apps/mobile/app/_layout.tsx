@@ -1,9 +1,11 @@
+import * as React from "react";
 import { View } from "react-native";
 import { Tabs } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { kamimusubiDark as theme } from "./theme";
 import { spacing } from "./design/spacing";
 import { cardSizes } from "./design/cardSizes";
+import { initAnalyticsProvider } from "../lib/posthogAnalyticsProvider";
 
 const bottomNavigationSizes = {
   height: 64,
@@ -14,6 +16,11 @@ const bottomNavigationSizes = {
 } as const;
 
 export default function Root() {
+  // Analytics Provider初期化: アプリ起動中に一度だけ行う(initAnalyticsProvider内部で多重呼び出しをガード)
+  React.useEffect(() => {
+    initAnalyticsProvider();
+  }, []);
+
   return (
     <Tabs
       screenOptions={{
