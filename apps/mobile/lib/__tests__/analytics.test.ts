@@ -58,6 +58,10 @@ describe("serializeAnalyticsPayload", () => {
   it("空オブジェクトを渡すと空オブジェクトを返す", () => {
     expect(serializeAnalyticsPayload({})).toEqual({});
   });
+
+  it("空文字列 / 0 / falseはfalsyだが保持する", () => {
+    expect(serializeAnalyticsPayload({ a: "", b: 0, c: false })).toEqual({ a: "", b: 0, c: false });
+  });
 });
 
 describe("track / provider差し替え", () => {
