@@ -81,6 +81,7 @@ export default function Root() {
         }}
       />
       <Tabs.Screen name="journey/index" options={{ href: null }} />
+      <Tabs.Screen name="premium/index" options={{ href: null }} />
       <Tabs.Screen name="favorites/index" options={{ href: null }} />
       <Tabs.Screen name="goshuin/index" options={{ href: null }} />
       <Tabs.Screen name="goshuin/upload" options={{ href: null }} />
