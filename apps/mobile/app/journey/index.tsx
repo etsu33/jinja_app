@@ -107,7 +107,12 @@ function RecommendationActionSuggestionBlock({ actionSuggestion }: { actionSugge
         </View>
       ) : null}
 
-      {reflection_prompt ? <Text style={styles.reflectionPromptText}>{reflection_prompt.question}</Text> : null}
+      {reflection_prompt ? (
+        <View style={styles.reflectionPromptBlock}>
+          <Text style={styles.reflectionPromptLabel}>参拝前の問い</Text>
+          <Text style={styles.reflectionPromptText}>{reflection_prompt.question}</Text>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -126,19 +131,32 @@ function RecommendationContextBlock({ metadata }: { metadata: JourneyRecommendat
         </View>
       ) : null}
 
-      {reason ? <Text style={styles.descriptionText}>{reason}</Text> : null}
-
-      {matched_benefits.length > 0 ? (
-        <View style={styles.benefitRow}>
-          {matched_benefits.map((benefit) => (
-            <View key={benefit} style={styles.benefitChip}>
-              <Text style={styles.benefitChipText}>{benefit}</Text>
-            </View>
-          ))}
+      {reason ? (
+        <View style={styles.contextSection}>
+          <Text style={styles.sectionHeading}>提案された理由</Text>
+          <Text style={styles.descriptionText}>{reason}</Text>
         </View>
       ) : null}
 
-      {action_suggestion ? <RecommendationActionSuggestionBlock actionSuggestion={action_suggestion} /> : null}
+      {matched_benefits.length > 0 ? (
+        <View style={styles.contextSection}>
+          <Text style={styles.sectionHeading}>ご利益</Text>
+          <View style={styles.benefitRow}>
+            {matched_benefits.map((benefit) => (
+              <View key={benefit} style={styles.benefitChip}>
+                <Text style={styles.benefitChipText}>{benefit}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      ) : null}
+
+      {action_suggestion ? (
+        <View style={styles.contextSection}>
+          <Text style={styles.sectionHeading}>参拝前にできること</Text>
+          <RecommendationActionSuggestionBlock actionSuggestion={action_suggestion} />
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -151,6 +169,7 @@ function EventCard({ event }: { event: JourneyEvent }) {
   const shrineName = event.shrine_name?.trim();
   const recommendationMetadata =
     event.event_type === "recommendation_shown" ? parseRecommendationMetadata(event.metadata) : null;
+  const descriptionMaxLines = event.event_type === "consultation_created" ? 4 : 2;
 
   return (
     <View style={styles.eventCard}>
@@ -166,7 +185,7 @@ function EventCard({ event }: { event: JourneyEvent }) {
       {shrineName ? <Text style={styles.shrineName}>{shrineName}</Text> : null}
 
       {description ? (
-        <Text style={styles.descriptionText} numberOfLines={2}>
+        <Text style={styles.descriptionText} numberOfLines={descriptionMaxLines}>
           {description}
         </Text>
       ) : null}
@@ -185,6 +204,7 @@ function VisitExperienceCard({ visit, reflection }: { visit: JourneyEvent; refle
   const historyTheme = reflection ? normalizeText(String(reflection.metadata?.history_theme ?? ""), "") : "";
   const moodBefore = reflection ? normalizeText(String(reflection.metadata?.mood_before ?? ""), "") : "";
   const moodAfter = reflection ? normalizeText(String(reflection.metadata?.mood_after ?? ""), "") : "";
+  const hasMood = Boolean(moodBefore) || Boolean(moodAfter);
 
   return (
     <View style={styles.eventCard}>
@@ -214,12 +234,20 @@ function VisitExperienceCard({ visit, reflection }: { visit: JourneyEvent; refle
             {historyTheme ? <Text style={styles.occurredAt}>{historyTheme}</Text> : null}
           </View>
 
-          {reflectionBody ? <Text style={styles.descriptionText}>{reflectionBody}</Text> : null}
+          {reflectionBody ? (
+            <View style={styles.contextSection}>
+              <Text style={styles.sectionHeading}>参拝後の振り返り</Text>
+              <Text style={styles.descriptionText}>{reflectionBody}</Text>
+            </View>
+          ) : null}
 
-          {moodBefore || moodAfter ? (
-            <Text style={styles.moodText}>
-              {moodBefore || "―"} → {moodAfter || "―"}
-            </Text>
+          {hasMood ? (
+            <View style={styles.contextSection}>
+              <Text style={styles.sectionHeading}>気分の変化</Text>
+              <Text style={styles.moodText}>
+                {moodBefore || "―"} → {moodAfter || "―"}
+              </Text>
+            </View>
           ) : null}
         </View>
       ) : null}
@@ -233,6 +261,18 @@ function TimelineItemCard({ item }: { item: JourneyTimelineItem }) {
   }
 
   return <EventCard event={item.event} />;
+}
+
+function TimelineRow({ isLast, children }: { isLast: boolean; children: React.ReactNode }) {
+  return (
+    <View style={styles.timelineRow}>
+      <View style={styles.timelineRail}>
+        <View style={styles.timelineNode} />
+        {!isLast ? <View style={styles.timelineConnector} /> : null}
+      </View>
+      <View style={styles.timelineRowContent}>{children}</View>
+    </View>
+  );
 }
 
 export default function JourneyScreen() {
@@ -332,8 +372,13 @@ export default function JourneyScreen() {
             <View key={group.label} style={styles.timelineGroup}>
               <Text style={styles.groupLabel}>{group.label}</Text>
               <View style={styles.list}>
-                {group.items.map((item) => (
-                  <TimelineItemCard key={item.kind === "visit_experience" ? item.visit.id : item.event.id} item={item} />
+                {group.items.map((item, index) => (
+                  <TimelineRow
+                    key={item.kind === "visit_experience" ? item.visit.id : item.event.id}
+                    isLast={index === group.items.length - 1}
+                  >
+                    <TimelineItemCard item={item} />
+                  </TimelineRow>
                 ))}
               </View>
             </View>
@@ -396,8 +441,31 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     letterSpacing: 0.8,
   },
-  list: {
-    gap: spacing.mdGap,
+  list: {},
+  timelineRow: {
+    flexDirection: "row",
+  },
+  timelineRail: {
+    width: 20,
+    alignItems: "center",
+  },
+  timelineNode: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginTop: 10,
+    backgroundColor: theme.gold,
+  },
+  timelineConnector: {
+    flex: 1,
+    width: 2,
+    marginTop: 4,
+    backgroundColor: theme.borderHeader,
+  },
+  timelineRowContent: {
+    flex: 1,
+    marginLeft: spacing.smGap,
+    paddingBottom: spacing.mdGap,
   },
   eventCard: {
     backgroundColor: theme.surface,
@@ -472,6 +540,15 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "700",
   },
+  contextSection: {
+    gap: spacing.tightGap,
+  },
+  sectionHeading: {
+    color: theme.goldSoft,
+    fontSize: 12,
+    fontWeight: "800",
+    letterSpacing: 0.4,
+  },
   actionSuggestionBlock: {
     gap: spacing.tightGap,
   },
@@ -502,6 +579,14 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 16,
     fontWeight: "600",
+  },
+  reflectionPromptBlock: {
+    gap: 2,
+  },
+  reflectionPromptLabel: {
+    color: theme.muted,
+    fontSize: 11,
+    fontWeight: "700",
   },
   reflectionPromptText: {
     color: theme.goldSoft,
