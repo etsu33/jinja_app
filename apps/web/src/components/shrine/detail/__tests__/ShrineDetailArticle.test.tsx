@@ -126,6 +126,37 @@ describe("ShrineDetailArticle", () => {
     expect(screen.queryByRole("link", { name: "保存先を見る" })).not.toBeInTheDocument();
   });
 
+  it("保存・参拝ブロックを御朱印セクションより前に表示する", () => {
+    render(
+      <ShrineDetailArticle
+        cardProps={{
+          shrineId: 17,
+          title: "乃木神社",
+          href: "/shrines/17",
+          imageUrl: null,
+          badges: [],
+          metaChips: [],
+          address: "東京都港区赤坂",
+        } as any}
+        heroImageUrl={null}
+        heroMeaningCopy={null}
+        benefitLabels={[]}
+        tags={[]}
+        publicGoshuinsPreview={[]}
+        publicGoshuinsViewAllHref="/shrines/17/goshuins"
+        showGoshuinSection
+        sections={[]}
+        recommendationMeta={null}
+        saveActionNode={<SaveActionStub />}
+      />,
+    );
+
+    const saveAction = screen.getByRole("button", { name: "emit-save" });
+    const goshuinSection = screen.getByTestId("public-goshuin-section");
+
+    expect(saveAction.compareDocumentPosition(goshuinSection) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("directionSupportCopy がある場合だけ方位補助コピーを弱表示する", () => {
     const baseProps = {
       cardProps: {
