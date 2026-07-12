@@ -20,7 +20,7 @@
 | 分類 | ファイル数 | 方針 |
 |---|---:|---|
 | 正本 | 8 | READMEを入口に、体験、モード、分類体系、意味変換、参拝後導線、Action契約を維持する |
-| Reference | 10 | UI詳細、補助条件、画面遷移、分析、Explore設計、本監査表として正本を補足する |
+| Reference | 9 | UI詳細、補助条件、分析、Explore設計、本監査表として正本を補足する |
 | Archive | 4 | 過去の設計過程や統合作業メモとして保持し、現行判断には使わない |
 | Delete | 0 | 現時点で追加の削除対象は未確定 |
 
@@ -77,12 +77,11 @@ UIワイヤー、補助条件、分析、Explore設計は、正本を補足す�
 | `meaning-translation-mapping.md` | 正本 | 相談テーマ、相談状態、ご利益、神社情報を `history_theme` へ接続し、Action・Reflectionまでの変換方針を統合して定義するため。 | `consultation-theme-taxonomy.md`, `history-theme-taxonomy.md`, `concierge-modes.md`, `visit-reflection-flow.md`, `action_suggestion_v4.md` | なし |
 | `visit-reflection-flow.md` | 正本 | 参拝完了から振り返り保存、状態記録、次回相談への接続を定義するため。 | `history-theme-taxonomy.md`, `meaning-translation-mapping.md`, `reflection-funnel-dashboard.md` | なし |
 | `action_suggestion_v4.md` | 正本 | Recommendation v4から受け取るAction Suggestionのschema、責務分離、Preview契約を固定するため。 | `meaning-translation-mapping.md`, `visit-reflection-flow.md`, `concierge-modes.md` | なし |
-| `home-hero-final-wireframe.md` | Reference | Home Heroの画面構成を確認する資料として有用だが、体験全体の判断は `concierge-first-final-spec.md` が担うため。 | `concierge-first-final-spec.md`, `home-to-concierge-flow.md`, `consultation-theme-taxonomy.md` | `concierge-first-final-spec.md` |
-| `concierge-entry-final-wireframe.md` | Reference | Concierge EntryのUI詳細として有用だが、入力責務とMVP方針は正本へ従属するため。 | `concierge-first-final-spec.md`, `home-to-concierge-flow.md`, `concierge-filter-area.md` | `concierge-first-final-spec.md` |
+| `home-hero-final-wireframe.md` | Reference | Home Heroの画面構成を確認する資料として有用だが、体験全体の判断は `concierge-first-final-spec.md` が担うため。 | `concierge-first-final-spec.md`, `consultation-theme-taxonomy.md` | `concierge-first-final-spec.md` |
+| `concierge-entry-final-wireframe.md` | Reference | Concierge EntryのUI詳細として有用だが、入力責務とMVP方針は正本へ従属するため。 | `concierge-first-final-spec.md`, `concierge-filter-area.md` | `concierge-first-final-spec.md` |
 | `concierge-filter-area.md` | Reference | 補助条件エリアのUI詳細として参照価値があるが、Filterの責務は統合仕様に従属するため。 | `concierge-first-final-spec.md`, `compat-mode-ui-flow.md`, `visit-style-taxonomy.md` | `concierge-first-final-spec.md` |
 | `need-mode-ui-flow.md` | Reference | Need Modeの画面導線を補足する資料であり、Mode責務は `concierge-modes.md` が正本であるため。 | `concierge-modes.md`, `consultation-theme-taxonomy.md`, `meaning-translation-mapping.md` | `concierge-modes.md` |
 | `compat-mode-ui-flow.md` | Reference | Compat Modeの画面導線を補足する資料であり、Mode責務は `concierge-modes.md` が正本であるため。 | `concierge-modes.md`, `concierge-filter-area.md`, `concierge-first-final-spec.md` | `concierge-modes.md` |
-| `home-to-concierge-flow.md` | Reference | HomeからConciergeへのURL・状態受け渡しを確認する実装参照資料であり、体験全体の正本ではないため。 | `home-hero-final-wireframe.md`, `concierge-entry-final-wireframe.md`, `concierge-first-final-spec.md`, `meaning-translation-mapping.md` | `concierge-first-final-spec.md` |
 | `visit-style-taxonomy.md` | Reference | 参拝スタイル補助条件の分類として有用だが、相談解釈や推薦入力の主軸ではないため。 | `concierge-filter-area.md`, `meaning-translation-mapping.md`, `concierge-first-final-spec.md` | `concierge-filter-area.md` |
 | `reflection-funnel-dashboard.md` | Reference | 振り返り導線のKPIとダッシュボード設計を扱う分析資料であり、イベント・保存導線は `visit-reflection-flow.md` が正本であるため。 | `visit-reflection-flow.md`, `history-theme-taxonomy.md` | `visit-reflection-flow.md` |
 | `explore-integration-design.md` | Reference | `/shrines` と `/map` のExplore統合設計を扱う。候補探索の詳細資料として残すが、Concierge First全体の正本ではないため。 | `concierge-first-final-spec.md` | `concierge-first-final-spec.md` |

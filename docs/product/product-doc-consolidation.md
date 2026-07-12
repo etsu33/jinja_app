@@ -4,10 +4,9 @@
 
 Google Docs の `product` ドキュメントを、現行の Concierge First 最新仕様へ統合する。
 
-このドキュメントは、Google Docs 側を直接更新する前に、Git上で統合方針を固定するための作業メモである。
+このドキュメントは、Google Docs 側を直接更新する前に、Git上で統合方針を固定するための方針書である。
 
-正本は `docs/product/concierge-first-final-spec.md` とし、Google Docs の `product`
-は最新仕様を読むための1枚のハブドキュメントとして再構成する。
+正本は `docs/product/concierge-first-final-spec.md` とし、Google Docs の `product` は最新仕様を読むための1枚のハブドキュメントとして再構成する。
 
 ---
 
@@ -44,7 +43,6 @@ docs/product/concierge-first-final-spec.md
 - docs/product/visit-style-taxonomy.md
 - docs/product/need-mode-ui-flow.md
 - docs/product/compat-mode-ui-flow.md
-- docs/product/home-to-concierge-flow.md
 ```
 
 Google Docs `product` は、これらをすべて並列に載せるのではなく、`concierge-first-final-spec.md` を中心に再構成する。
@@ -62,7 +60,6 @@ Google Docs `product` は、これらをすべて並列に載せるのではな�
 - Need Mode / Compat Mode境界
 - Recommendation Score v2との接続
 - User State Profileとの接続
-- Concierge First実装順
 - MVP実装対象
 - 将来構想としてのExplore
 ```
@@ -74,7 +71,6 @@ Google Docs `product` は、これらをすべて並列に載せるのではな�
 - 古いHomeHero案
 - 古い条件追加エリア案
 - 古い実装Phase
-- theme_key / openFilter整理前の遷移仕様
 ```
 
 ### 下部へ移動するもの
@@ -137,21 +133,13 @@ Need Modeを推薦理由の中心にする。Compat Modeは補足理由として
 
 ## 6. Recommendation Score v2接続
 
-主入力は query / need_tags / consultation_axis / matched_need_tags。補助入力は visit_style_tags / birthdate / element4 /
-selected_goriyaku_tag_ids。
+主入力は query / need_tags / consultation_axis / matched_need_tags。補助入力は visit_style_tags / birthdate / element4 / selected_goriyaku_tag_ids。
 
 ## 7. User State Profile
 
 query と need_tags を正本として扱う。theme_key や誕生日は補助情報として扱う。
 
-## 8. 実装順
-
-1. HomeHero / ConciergeEntry UI整合
-2. Filter UI整理
-3. Home→Concierge遷移テスト固定
-4. Meaning Card設計接続
-
-## 9. MVP実装対象
+## 8. MVP実装対象
 
 - HomeHero相談テーマチップ整理
 - ConciergeEntry相談確認UI整理
@@ -160,7 +148,7 @@ query と need_tags を正本として扱う。theme_key や誕生日は補助�
 - Home→Concierge遷移仕様固定
 - Meaning Cardの主文脈整理
 
-## 10. 実装しないもの
+## 9. 実装しないもの
 
 - theme_keyのURL渡し
 - 吉方位の前面表示
@@ -168,73 +156,9 @@ query と need_tags を正本として扱う。theme_key や誕生日は補助�
 - 方角計算本実装
 - 神社一覧・地図の主導線化
 
-## 11. Future: Explore
+## 10. Future: Explore
 
-Exploreは将来構想として保持する。Topは相談開始、Conciergeは推薦理由、Exploreは実際に行ける神社を探す体験として分離する。
-```
+Exploreは将来構想として保持する。
 
----
-
-## README / roadmap への反映要否
-
-### README
-
-反映候補あり。
-
-```markdown
-- Concierge Firstの正本リンクを追加
-- Product Visionを「神社検索」から「相談体験」へ更新
-```
-
-### roadmap
-
-反映候補あり。
-
-```markdown
-- Concierge First設計完了を反映
-- 次フェーズをUI実装へ移動
-- Recommendation Score v2 / Meaning Card接続を次タスクへ整理
-```
-
-### architecture
-
-現時点では必須ではない。
-
-ただし、Need Mode / Compat Modeの責務分離をArchitectureへ反映する余地はある。
-
----
-
-## 次PR候補
-
-### PR1: Google Docs product 更新
-
-```markdown
-- [ ] Google Docs product を concierge-first-final-spec ベースに再構成
-- [ ] 古い Concierge First Wireframe を最新版へ置換
-- [ ] Explore案は将来構想として下部へ移動
-- [ ] Source of Truth を明記
-- [ ] 実装順を最新化
-```
-
-### PR2: README / roadmap 反映
-
-```markdown
-- [ ] READMEにConcierge First正本リンクを追加
-- [ ] roadmapに設計完了と実装フェーズを反映
-- [ ] 必要に応じてarchitectureへNeed / Compat境界を追記
-```
-
----
-
-## TODO
-
-```markdown
-- [x] develop最新化
-- [x] docs/product-doc-consolidation作成
-- [x] Google Docs product を concierge-first-final-spec ベースに再構成
-- [x] 古い Concierge First Wireframe を最新版へ置換
-- [x] Explore案は将来構想として下部へ移動
-- [x] Source of Truth を明記
-- [x] 実装順を最新化
-- [x] README / roadmap への反映要否を確認
+Topは相談開始、Conciergeは推薦理由、Exploreは実際に行ける神社を探す体験として分離する。
 ```

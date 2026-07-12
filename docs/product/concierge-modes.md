@@ -2,163 +2,62 @@
 
 ## 目的
 
-本ドキュメントは、KAMI MUSUBI におけるコンシェルジュの推薦入口（Mode）の責務を定義する。
+本ドキュメントは、KAMI MUSUBI における各コンシェルジュモードの責務と役割を定義する。
 
-各Modeの役割、入力責務、優先順位を整理し、Recommendation・Meaning Layer・Consultation Interpretationへの接続方針を定義する。
-
----
-
-## 推薦フロー
-
-```text
-User Input
-↓
-Mode Resolver
-↓
-Consultation Interpretation
-↓
-Meaning Translation
-↓
-Recommendation
-↓
-Action / Reflection
-```
-
-Modeは推薦アルゴリズムではなく、「どの文脈から相談を解釈するか」を決定する入口として扱う。
-
----
-
-## 基本方針
-
-MVPでは以下の2つを正式な推薦モードとする。
-
-| Mode | 目的 |
-|------|------|
-| Need Mode | 悩み・状態・願いごとから神社を提案する |
-| Compat Mode | 生年月日を補助情報として神社を提案する |
-
-将来的なModeは保持するが、MVPでは推薦の主軸としない。
+推薦ロジックや実装仕様ではなく、「どの入力を受け取り、どのような役割を持つか」の責務のみを扱う。
 
 ---
 
 ## Mode一覧
 
-| Mode | 主入力 | 役割 | 推薦への影響 |
-|------|--------|------|--------------|
-| Need Mode | 相談テーマ・状態 | 推薦の主軸 | 主入力 |
-| Compat Mode | 生年月日 | 相性情報の補助 | 補助入力 |
-| Route Mode | 現在地 | 行きやすさ | 将来拡張 |
-| Theme Mode | history_theme | テーマ探索 | 将来拡張 |
-| Shrine Search Mode | 神社名・地域名 | 通常検索 | 探索導線 |
+| Mode | 主な役割 | 主入力 |
+|------|----------|---------|
+| Need Mode | 相談内容を起点に推薦する | 相談テーマ・自由入力 |
+| Compat Mode | 生年月日を補助情報として利用する | 生年月日 |
+| Route Mode | 移動しやすさを補助する | 現在地 |
+| Theme Mode | 人生テーマから探索する | history_theme |
+| Shrine Search Mode | 神社名・地域名から検索する | 神社名・地域名 |
 
 ---
 
-## Need Mode
+## 基本原則
 
-### 目的
-
-現在の悩み・状態・願いごとを起点に神社を提案する。
-
-### 主入力
-
-- 相談テーマ
-- ご利益タグ
-- 補助条件
-- エリア
-- 位置情報
-- 生年月日（任意）
-
-### 基本方針
-
-- Recommendation の中心となるMode
-- history_theme を主軸に意味を生成する
-- ご利益だけで推薦理由を作らない
-- 神社固有の文脈と相談内容を接続する
+- Need Mode を推薦の主軸とする
+- Compat Mode は補助シグナルとして扱う
+- Route・Theme・Shrine Search は探索導線として扱う
+- 推薦順位は Backend が決定する
+- Mode は推薦アルゴリズムではなく入力文脈を決定する
 
 ---
 
-## Compat Mode
+## Mode責務
 
-### 目的
+### Need Mode
 
-生年月日から得られる情報を補助シグナルとして利用する。
+- 相談内容を解釈する入口
+- Recommendation の主入力となる
+- Meaning Layer へ状態情報を渡す
 
-### 主入力
+### Compat Mode
 
-- 生年月日
-- エリア
-- 位置情報
+- 生年月日情報を補助入力として利用する
+- Need Mode を置き換えない
+- 占術情報のみで推薦を決定しない
 
-### 基本方針
+### Route Mode
 
-- Recommendation の補助入力として扱う
-- Need Mode より優先しない
-- 性格・運命・未来を断定しない
-- 占術情報だけで推薦を決定しない
+- 現在地や移動条件を補助する
+- 推薦順位ではなく移動体験を支援する
 
----
+### Theme Mode
 
-## Mode優先順位
+- history_theme を起点とした探索を担当する
+- 推薦ではなくテーマ別閲覧を支援する
 
-状態相談が存在する場合は Need Mode を優先する。
+### Shrine Search Mode
 
-```text
-相談テーマ
-↓
-Need Mode
-↓
-Recommendation
-
-生年月日のみ
-↓
-Compat Mode
-↓
-Recommendation
-```
-
-優先順位
-
-```text
-相談テーマ
-＞
-ご利益
-＞
-生年月日
-```
-
----
-
-## Recommendationとの関係
-
-Modeは Recommendation の順位を直接決定しない。
-
-Recommendation Input Profile を生成するための入口として利用する。
-
-```text
-User Input
-↓
-Mode Resolver
-↓
-Consultation Interpretation
-↓
-Recommendation Input Profile
-↓
-Meaning Translation
-↓
-Recommendation
-```
-
-Recommendation順位の決定は Backend を正本とする。
-
----
-
-## Meaning Layerとの関係
-
-Modeは Meaning Layer の入力を決定する。
-
-Need Mode は状態理解を中心に Meaning Translation を行い、Compat Mode は補助シグナルとして利用する。
-
-Meaning Layer は Recommendation の説明文や Action・Reflection の生成へ接続する。
+- 神社名・地域名による検索を担当する
+- Concierge とは独立した探索導線とする
 
 ---
 
@@ -166,27 +65,23 @@ Meaning Layer は Recommendation の説明文や Action・Reflection の生成�
 
 | ドキュメント | 責務 |
 |--------------|------|
-| `docs/product/concierge-modes.md` | 推薦Mode・入力責務・優先順位 |
-| `docs/product/concierge-first.md` | 体験導線・画面責務 |
+| `docs/product/concierge-modes.md` | Modeの役割・責務 |
+| `docs/product/concierge-first.md` | 体験導線 |
 | `docs/core/meaning-layer.md` | 意味変換 |
-| `docs/core/architecture.md` | 全体構造・責務境界 |
+| `docs/core/architecture.md` | システム全体の責務 |
 
 ---
 
 ## 関連ドキュメント
 
-- `docs/core/architecture.md`
-- `docs/core/meaning-layer.md`
 - `docs/product/concierge-first.md`
-- `docs/product/history-theme-taxonomy.md`
-- `docs/product/meaning-translation-mapping.md`
+- `docs/core/meaning-layer.md`
+- `docs/core/architecture.md`
 
 ---
 
 ## 更新ルール
 
-- 推薦ロジックの詳細は本書へ記載しない
-- 実装履歴・TODO・チェックリストは本書へ記載しない
-- API仕様・Score設計・テスト仕様は専用ドキュメントへ分離する
-- Modeの責務または入力体系が変更された場合のみ更新する
-- 実装状態の変更だけでは本書を更新しない
+- 本書には推薦ロジック・API仕様・実装手順を記載しない
+- Modeの責務または種類が変更された場合のみ更新する
+- 詳細仕様は各正本ドキュメントで管理する
