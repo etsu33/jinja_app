@@ -1,5 +1,3 @@
-
-
 # History Theme Taxonomy
 
 ## 目的
