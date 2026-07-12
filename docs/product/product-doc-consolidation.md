@@ -6,7 +6,8 @@ Google Docs の `product` ドキュメントを、現行の Concierge First 最�
 
 このドキュメントは、Google Docs 側を直接更新する前に、Git上で統合方針を固定するための作業メモである。
 
-正本は `docs/product/concierge-first-final-spec.md` とし、Google Docs の `product` は最新仕様を読むための1枚のハブドキュメントとして再構成する。
+正本は `docs/product/concierge-first-final-spec.md` とし、Google Docs の `product`
+は最新仕様を読むための1枚のハブドキュメントとして再構成する。
 
 ---
 
@@ -39,7 +40,7 @@ docs/product/concierge-first-final-spec.md
 - docs/product/home-hero-final-wireframe.md
 - docs/product/concierge-entry-final-wireframe.md
 - docs/product/consultation-theme-taxonomy.md
-- docs/product/theme-to-recommendation-input-mapping.md
+- docs/product/meaning-translation-mapping.md
 - docs/product/visit-style-taxonomy.md
 - docs/product/need-mode-ui-flow.md
 - docs/product/compat-mode-ui-flow.md
@@ -101,12 +102,15 @@ Google Docs `product` は、これらをすべて並列に載せるのではな�
 # KAMI MUSUBI Product
 
 ## 1. Product Vision
+
 KAMI MUSUBI は、神社検索アプリではなく、今の相談テーマから神社と出会うAIコンシェルジュ体験である。
 
 ## 2. Source of Truth
+
 現時点の正本は `docs/product/concierge-first-final-spec.md` とする。
 
 ## 3. Concierge First MVP
+
 - Need Modeを主導線にする
 - Compat Modeは補助条件に留める
 - 誕生日は残すが前面化しない
@@ -114,31 +118,41 @@ KAMI MUSUBI は、神社検索アプリではなく、今の相談テーマか�
 - 神社一覧・地図はサブ導線にする
 
 ## 4. UI責務
+
 ### HomeHero
+
 相談テーマ / 自由入力 / 開始CTA / 条件追加導線
 
 ### ConciergeEntry
+
 相談内容の確認・編集 / 推薦生成CTA / Filter導線
 
 ### Filter
+
 誕生日 / ご利益 / 参拝スタイル / 相性候補 / extraCondition
 
 ## 5. Need Mode / Compat Mode
+
 Need Modeを推薦理由の中心にする。Compat Modeは補足理由として扱う。
 
 ## 6. Recommendation Score v2接続
-主入力は query / need_tags / consultation_axis / matched_need_tags。補助入力は visit_style_tags / birthdate / element4 / selected_goriyaku_tag_ids。
+
+主入力は query / need_tags / consultation_axis / matched_need_tags。補助入力は visit_style_tags / birthdate / element4 /
+selected_goriyaku_tag_ids。
 
 ## 7. User State Profile
+
 query と need_tags を正本として扱う。theme_key や誕生日は補助情報として扱う。
 
 ## 8. 実装順
+
 1. HomeHero / ConciergeEntry UI整合
 2. Filter UI整理
 3. Home→Concierge遷移テスト固定
 4. Meaning Card設計接続
 
 ## 9. MVP実装対象
+
 - HomeHero相談テーマチップ整理
 - ConciergeEntry相談確認UI整理
 - Filter内の補助条件集約
@@ -147,6 +161,7 @@ query と need_tags を正本として扱う。theme_key や誕生日は補助�
 - Meaning Cardの主文脈整理
 
 ## 10. 実装しないもの
+
 - theme_keyのURL渡し
 - 吉方位の前面表示
 - 九星気学ロジック本実装
@@ -154,6 +169,7 @@ query と need_tags を正本として扱う。theme_key や誕生日は補助�
 - 神社一覧・地図の主導線化
 
 ## 11. Future: Explore
+
 Exploreは将来構想として保持する。Topは相談開始、Conciergeは推薦理由、Exploreは実際に行ける神社を探す体験として分離する。
 ```
 
@@ -222,4 +238,3 @@ Exploreは将来構想として保持する。Topは相談開始、Conciergeは�
 - [x] 実装順を最新化
 - [x] README / roadmap への反映要否を確認
 ```
-

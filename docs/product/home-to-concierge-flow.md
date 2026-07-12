@@ -140,7 +140,7 @@ need_tags抽出
 - theme_keyと自由入力が矛盾した時の優先順位
 ```
 
-すでに `consultation-theme-taxonomy.md` と `theme-to-recommendation-input-mapping.md` で、`theme_key` はUI用の中間キーとして整理済みである。
+すでに `consultation-theme-taxonomy.md` と `meaning-translation-mapping.md` で、`theme_key` はUI用の中間キーとして整理済みである。
 
 そのため、初期MVPではURLに出さず、将来の共通定数化PRで扱う。
 
