@@ -1,244 +1,104 @@
+# KAMI MUSUBI Architecture
 
-## 🎯 体験設計の責務分離
+## 目的
 
-本プロダクトは「検索・詳細・コンシェルジュ」の役割を明確に分離することで、
-UXの肥大化と責務の混在を防ぐ。
+本ドキュメントは、KAMI MUSUBI の主要レイヤーと責務境界を1ページで確認するための概要を定義する。
 
-## Concierge First
+詳細仕様、API契約、実装履歴、テスト方針は各正本ドキュメントへ分離し、本書には全体構造と依存関係のみを残す。
+
+---
+
+## 全体フロー
+
+```text
+User Input
+↓
+Consultation Interpretation
+↓
+Meaning Translation
+↓
+Recommendation
+↓
+Explore / Detail
+↓
+Route / Save / Visit
+↓
+Reflection
+```
 
 KAMI MUSUBI は Concierge First を採用する。
 
-本プロダクトの主導線は神社検索ではなく、相談テーマから神社と出会う体験とする。
+主導線は神社検索ではなく、相談テーマから神社と出会い、参拝と振り返りへ進む体験とする。
 
+---
 
-```text
-相談テーマ
-↓
-状態整理
-↓
-need_tags
-↓
-history_theme
-↓
-神社提案
-↓
-詳細確認
-↓
-経路案内 / 保存 / 振り返り
-```
+## レイヤーと責務
 
-### Consultation Interpretation Engine
+| レイヤー | 責務 | 主な出力 | 責務外 |
+|----------|------|----------|--------|
+| Consultation Interpretation | ユーザー入力を構造化する | state_profile / need_profile / direction_profile / emotion_profile / action_intent | 推薦順位の決定、心理診断 |
+| Meaning Translation | 相談状態と神社文脈を意味情報へ変換する | history_theme / action_context / reflection_question_seed | 表示文言の最終決定、順位変更 |
+| Recommendation | 神社候補の選定と推薦理由生成を行う | 候補、理由、Runtime Snapshot | UI表示責務、神社マスター更新 |
+| Explore | 候補の発見・比較・位置確認を行う | 一覧、地図、検索結果 | 長文推薦理由、ユーザー状態の解釈 |
+| Detail | 神社固有情報を正確に表示する | 由緒、祭神、ご利益、御朱印、位置情報 | 過度な推薦ロジック |
+| Action | 参拝前後の具体的な一歩へ接続する | route / save / visit 導線 | 効果保証、行動強制 |
+| Reflection | 参拝後の気づきを整理する | prompt / answer / mood / next action | 診断、正解提示 |
 
-Consultation Interpretation Engine は、ユーザーの相談入力を推薦・意味変換・表示に渡す前に、backend 側で構造化する中間レイヤーである。
+---
 
-目的は、相談文をそのまま推薦ロジックへ渡すのではなく、ユーザーの入力を以下の構造へ分解し、後続レイヤーが扱いやすい形に整えることである。
+## Consultation Interpretation
+
+Consultation Interpretation Engine の正本は backend 実装とする。
+
+frontend / mobile は入力、補助条件、表示のみを担当し、相談解釈の判定ロジックを持たない。
 
 ```text
 raw_query
 ↓
 state_profile
-↓
 need_profile
-↓
 direction_profile
-↓
 emotion_profile
-↓
 action_intent
-↓
-Meaning Translation Layer
-↓
-Recommendation Algorithm
 ```
 
-#### 正本
+### 入力の扱い
 
-Consultation Interpretation Engine の正本は backend 実装とする。
+**主入力**
 
-frontend / mobile は、相談入力・補助条件・表示のみを担い、相談解釈の判定ロジックを持たない。
+- 相談テーマ
 
-理由:
+**条件追加**
 
-- Web / Mobile で解釈結果を一致させる
-- UI 側に心理・意味判定ロジックを分散させない
-- Recommendation Algorithm と Meaning Translation Layer の入力を安定させる
-- Score v3 接続前に shadow mode で観測できる構造にする
+- 参拝スタイル
+- 誕生日
+- ご利益タグ
 
-#### raw_query
+**補助シグナル**
 
-`raw_query` は、ユーザーが入力した相談文の原文である。
+- 占星術
+- 九星気学
+- 風水
+- 吉方位
+- 相性
 
-用途:
+need_profile を推薦の主要入力とし、誕生日、占術、方位、相性は補助シグナルに限定する。
 
-- 解釈前の入力保存
-- need / state / emotion / action の抽出元
-- debug / analytics / shadow 比較
-- 将来的な再解析
+### 禁止事項
 
-制約:
+- 心理状態、性格、運命を断定しない
+- raw_query を直接スコア加点しない
+- ご利益タグだけで推薦理由を完結させない
+- frontend / mobile に判定ロジックを重複実装しない
+- LLM出力でユーザーの原文を上書きしない
 
-- `raw_query` を直接スコア加点しない
-- 表示コピーの正本にしない
-- LLM 出力で上書きしない
+---
 
-#### state_profile
+## Meaning Translation
 
-`state_profile` は、相談文から読み取れる現在状態を構造化したものとする。
-
-例:
-
-```json
-{
-  "primary_state": "tired",
-  "secondary_states": ["uncertain"],
-  "confidence": 0.72
-}
-```
-
-役割:
-
-- ユーザーの相談状態を整理する
-- history_theme への変換材料にする
-- consultationSummary の材料にする
-
-制約:
-
-- 心理状態を断定しない
-- 診断・治療・宗教的断定に使わない
-- 表示時は「〜かもしれない」「〜として受け取れる」程度に弱める
-
-#### need_profile
-
-`need_profile` は、相談文から抽出された目的・願い・テーマを表す。
-
-既存の `need_tags` / `need_hits` / `primary_need_tag` と接続する。
-
-例:
-
-```json
-{
-  "need_tags": ["mental", "career"],
-  "need_hits": {
-    "mental": ["不安"],
-    "career": ["仕事"]
-  },
-  "primary_need_tag": "mental"
-}
-```
-
-役割:
-
-- Recommendation Algorithm の主要入力にする
-- User State Match の材料にする
-- ご利益タグよりも相談テーマを優先する
-
-制約:
-
-- ご利益だけで推薦理由を完結させない
-- selected_goriyaku_tag_ids は明示意図として扱うが、need_profile を上書きしない
-
-#### direction_profile
-
-`direction_profile` は、ユーザーが向かいたい方向性を表す。
-
-例:
-
-```json
-{
-  "direction": "reset",
-  "themes": ["再出発", "静寂"]
-}
-```
-
-役割:
-
-- history_theme 変換の補助にする
-- Meaning Translation Layer で行動文脈へ接続する
-- action suggestion の材料にする
-
-制約:
-
-- ユーザーに行動を強制しない
-- 「この方向が正しい」と断定しない
-
-#### emotion_profile
-
-`emotion_profile` は、相談文に含まれる感情表現の傾向を表す。
-
-例:
-
-```json
-{
-  "tone": "anxious",
-  "intensity": "medium",
-  "signals": ["不安", "迷い"]
-}
-```
-
-役割:
-
-- 表示文言の温度調整
-- consultationSummary の補助
-- reflection_question_seed の材料
-
-制約:
-
-- 感情を診断しない
-- 性格や人格の断定に使わない
-- Recommendation Score の主軸にしない
-
-#### action_intent
-
-`action_intent` は、ユーザーが次に取りたい行動の方向を表す。
-
-例:
-
-```json
-{
-  "intent": "visit",
-  "strength": "soft",
-  "candidates": ["静かな場所へ行く", "気持ちを切り替える"]
-}
-```
-
-役割:
-
-- 神社提案後の行動導線に接続する
-- route_open / save / visit_done / reflection_saved の分析軸にする
-- Meaning Translation Layer の action_context へ渡す
-
-制約:
-
-- 行動を命令しない
-- 参拝を結果保証と結びつけない
-- route / visit / reflection のどれかへ無理に分類しない
-
-#### Meaning Translation Layer との接続
-
-Consultation Interpretation Engine は、相談入力を Meaning Translation Layer に渡す前の構造化を担う。
+Meaning Translation Layer は interpretation_profile を受け取り、translation_result を生成する。
 
 ```text
-Consultation Interpretation Engine
-↓
-state_profile / need_profile / direction_profile / emotion_profile / action_intent
-↓
-Meaning Translation Layer
-↓
-history_theme / visit_intent / shrine_context_need / action_context / reflection_question_seed
-```
-
-
-Meaning Translation Layer は、解釈済み profile をもとに、神社固有文脈・history_theme・行動意味へ翻訳する。
-
-#### Meaning Translation Layer 実装状態
-
-Meaning Translation Layer は、`interpretation_profile` を入力に受け取り、`translation_result` を生成する backend service として実装する。
-
-現時点の接続状態:
-
-```text
-Consultation Interpretation Engine
-↓
 interpretation_profile
 ↓
 translate_meaning()
@@ -246,13 +106,9 @@ translate_meaning()
 translation_result
 ↓
 ShrineMeaningComposer
-↓
-generated / source
 ```
 
-`translation_result` は `source.translationResult` として返却し、debug / payload 上で確認可能な契約として維持する。
-
-Composer では以下の項目を `translation_result` 優先で利用する。
+主な接続は以下とする。
 
 ```text
 translation_result.history_theme
@@ -265,470 +121,78 @@ translation_result.reflection_question_seed
 → generated.afterVisitReflection
 ```
 
-fallback 方針:
+現時点では推薦順位を変更せず、以下に限定する。
 
-- `history_theme` がない場合は既存の `Shrine.history_theme` を使う
-- `action_context` がない場合は既存の `HISTORY_THEME_ACTION_CONTEXT` / `HISTORY_THEME_DEFINITION` を使う
-- `reflection_question_seed` がない場合は既存の `afterVisitReflection` を使う
+- 意味入力の構造化
+- 表示文言の補助
+- debug / payload上の観測
+- Action / Reflection生成の材料
 
-制約:
-
-- `translation_result` は現時点では推薦順位を変更しない
-- Recommendation Algorithm にはまだ接続しない
-- Score v3 active 化にはまだ利用しない
-- 表示文言は Composer の責務とし、Meaning Translation Layer は意味入力の構造化に留める
-- `source.translationResult` は観測・debug・契約確認のために維持する
-
-確認済み:
-
-- `translate_meaning()` は `interpretation_profile` から `translation_result` を生成する
-- `concierge_chat_candidates.py` は `translation_result` を `meaning_source` に付与する
-- `ShrineMeaningComposer` は `translation_result` を受け取る
-- `generated.historyContext` / `generated.actionMeaning` / `generated.afterVisitReflection` は `translation_result` を優先できる
-- `source.translationResult` は payload に保持される
-- 推薦順位は変更しない
-```
-
-#### Recommendation Algorithm への入力方針
-
-Recommendation Algorithm は、Consultation Interpretation Engine の出力をそのまま順位決定に使うのではなく、以下のように入力を分離して扱う。
-
-```text
-need_profile
-→ User State Match の主材料
-
-state_profile
-→ history_theme / explanation の補助材料
-
-direction_profile
-→ Meaning Match / action suggestion の補助材料
-
-emotion_profile
-→ 表示文言・reflection の補助材料
-
-action_intent
-→ behavior funnel / action_context の補助材料
-```
-
-初期段階では、既存の `need_tags` を推薦主軸として維持する。
-
-#### Recommendation Algorithm v3 設計方針
-
-Recommendation Algorithm v3 は、Consultation Interpretation Engine と Meaning Translation Layer の出力をもとに、推薦候補ごとの score component を観測するための shadow scoring layer として設計する。
-
-目的は、既存の Score v2 / current ranking をすぐに置き換えることではなく、相談解釈・意味翻訳・神社文脈・行動シグナルの寄与を分解して観測できる状態にすることである。
-
-##### Recommendation Input Profile
-
-Recommendation Input Profile は、推薦候補ごとの score 計算に渡す正規化済み入力である。
-
-含める主な入力:
-
-```text
-interpretation_profile
-translation_result
-candidate shrine profile
-existing score_v2 fields
-behavior signals
-history_theme
-visit / save / route / reflection signals
-```
-
-責務:
-
-- Score v3 の入力を一箇所に集約する
-- Consultation Interpretation Engine の出力を直接 ranking に使わない
-- Meaning Translation Layer の出力を score component の材料として扱う
-- candidate ごとの比較可能な debug payload を作る
-
-制約:
-
-- frontend / mobile に Score v3 入力生成ロジックを持たせない
-- Recommendation Input Profile は backend 側で生成する
-- 既存 `need_tags` / `score_v2` / current ranking を破壊しない
-
-##### score component
-
-Score v3 は、以下の component に分解して観測する。
-
-```text
-state_match_score
-meaning_match_score
-shrine_profile_score
-behavior_score
-history_score
-final_score
-```
-
-###### state_match_score
-
-`state_match_score` は、`interpretation_profile.state_profile` と candidate の need / context / history_theme との接続度を表す。
-
-用途:
-
-- ユーザーの現在状態と候補神社の文脈が接続しているかを観測する
-- `state_profile.primary_state` / `secondary_states` を score component として可視化する
-
-制約:
-
-- 心理状態の診断には使わない
-- 表示文言で断定しない
-- active ranking にはまだ反映しない
-
-###### meaning_match_score
-
-`meaning_match_score` は、`translation_result.history_theme` / `action_context` / `reflection_question_seed` と candidate の meaning payload の接続度を表す。
-
-用途:
-
-- Meaning Translation Layer の出力が推薦候補にどれだけ寄与しうるかを観測する
-- Composer で利用している意味要素と score component を対応させる
-
-制約:
-
-- 意味が深いだけで高評価にしない
-- ご利益タグだけで加点を完結させない
-
-###### shrine_profile_score
-
-`shrine_profile_score` は、candidate shrine の基本情報・ご利益・visit_style_tags・場所文脈・神社固有文脈の充実度を表す。
-
-用途:
-
-- 候補神社側の情報品質を score component として分離する
-- 情報不足の候補を無理に意味づけしない
-
-制約:
-
-- 情報量だけで推薦順位を上げない
-- 固有文脈がない場合は fallback を弱める
-
-###### behavior_score
-
-`behavior_score` は、save / detail_view / route_open / visit_done / reflection_saved などの行動シグナルを扱う。
-
-用途:
-
-- 実際の行動に近い候補を観測する
-- 推薦後の funnel と score component の相関を見る
-
-制約:
-
-- 初期段階では active ranking に反映しない
-- 行動履歴がないユーザーを不利にしすぎない
-- popular / favorite だけで推薦理由を作らない
-
-###### history_score
-
-`history_score` は、history_theme と候補神社の歴史・土地・文化文脈の接続度を表す。
-
-用途:
-
-- 神社固有性を score component として観測する
-- Meaning Layer の historyContext と推薦候補の接続を評価する
-
-制約:
-
-- 歴史説明の量だけで加点しない
-- 神社側情報だけからユーザー状態を断定しない
-
-##### final_score
-
-`final_score` は、各 score component を重みづけした観測用スコアである。
-
-初期方針:
-
-```text
-final_score =
-  state_match_score
-+ meaning_match_score
-+ shrine_profile_score
-+ behavior_score
-+ history_score
-```
-
-実際の重みは実測データを見て調整する。
-
-制約:
-
-- 初期実装では recommendation 順位を変更しない
-- Score v2 / current ranking の代替として扱わない
-- active 化は shadow observation 後に判断する
-
-##### shadow mode
-
-Score v3 は最初に shadow mode として実装する。
-
-shadow mode の方針:
-
-- 既存推薦順位を変更しない
-- candidate ごとに score component を計算する
-- `debug.score_v3` に観測結果を出す
-- Score v2 / current ranking との差分を比較する
-- top1_changed_rate / avg_delta / max_abs_delta を観測する
-
-##### debug.score_v3
-
-`debug.score_v3` は、Score v3 の観測結果を返す debug payload とする。
-
-想定 schema:
-
-```json
-{
-  "mode": "shadow",
-  "ranking_applied": false,
-  "components": {
-    "state_match_score": 0.0,
-    "meaning_match_score": 0.0,
-    "shrine_profile_score": 0.0,
-    "behavior_score": 0.0,
-    "history_score": 0.0,
-    "final_score": 0.0
-  },
-  "observation": {
-    "top1_changed": false,
-    "delta": 0.0,
-    "reason": []
-  }
-}
-```
-
-制約:
-
-- debug payload は観測用であり、表示UIの正本にしない
-- frontend / mobile は debug score を ranking 判定に使わない
-- debug schema は pytest で固定する
-
-##### pytest 方針
-
-Score v3 は以下の観点で pytest を追加する。
-
-```markdown
-- Recommendation Input Profile の schema 固定
-- 各 score component の単体テスト
-- final_score の合成テスト
-- shadow mode で ranking が変わらないことのテスト
-- debug.score_v3 の schema 固定
-- empty / missing profile でも安全に動くことのテスト
-```
-
-##### Score v2 / current ranking との関係
-
-Score v3 は現時点では Score v2 / current ranking を変更しない。
-
-方針:
-
-- Score v2 は既存の推薦・説明・snapshot 用として維持する
-- current ranking は既存挙動を維持する
-- Score v3 は shadow observation と debug payload に限定する
-- active 化は十分な推薦ログと行動ファネルの実測後に判断する
-
-#### Score v3 との関係
-
-Consultation Interpretation Engine は、現時点では Score v3 に接続しない。
-
-方針:
-
-- まず docs で責務境界を固定する
-- Web / Mobile Parity 完了後に backend 側で shadow 実装する
-- shadow mode では recommendation 順位を変更しない
-- 既存 Score v2 / current ranking との差分を観測する
-- active 化は推薦ログと行動ファネルの実測後に判断する
-
-観測対象:
-
-- top1_changed_rate
-- activation_candidate_rate
-- avg_delta
-- max_abs_delta
-- route_open_rate
-- save_rate
-- visit_done_rate
-- reflection_saved_rate
-
-#### 実装フェーズ
-
-```markdown
-- [ ] docs で Consultation Interpretation Engine の責務を固定
-- [ ] backend/temples/services/consultation_interpreter.py を shadow 実装
-- [ ] response / debug payload に interpretation profile を含める
-- [ ] 既存推薦順位には反映しない
-- [ ] Meaning Translation Layer へ profile を渡す
-- [ ] Recommendation Algorithm との差分をログ観測する
-- [ ] Web / Mobile Parity 完了後に有効化判断へ進む
-```
-
-### 入力責務
-
-主入力:
-
-- 相談テーマ
-
-条件追加:
-
-- 参拝スタイル
-- 誕生日
-- ご利益タグ
-
-補助シグナル:
-
-- 占星術
-- 九星気学
-- 風水
-- 吉方位
-- 相性
-
-### 責務境界
-
-相談テーマは推薦理由の中心とする。
-
-誕生日・占術・吉方位は推薦理由の主軸にしない。
-
-神社一覧や地図は補助導線として扱い、意思決定の中心はコンシェルジュが担う。
-
-### concierge-first.md との関係
-
-- `docs/product/concierge-first.md`
-  - 画面導線
-  - 入力責務
-  - UX方針
-
-### concierge-modes.md との関係
-
-- `docs/product/concierge-modes.md`
-  - need mode
-  - compat mode
-  - mode resolver
-  - 推薦ロジック
-
-### Meaning Layer との関係
-
-コンシェルジュは以下の流れで意味生成を行う。
-
-```text
-相談テーマ
-↓
-need_tags
-↓
-history_theme
-↓
-神社固有文脈
-↓
-Meaning Layer
-↓
-行動提案
-```
-
-Meaning Layer の責務は「正解を提示すること」ではなく、「なぜこの神社が今の相談テーマと接続するのか」を説明することである。
+表示文言の最終決定は Composer が担当する。
 
 ---
 
-### Explore（/shrines / /map）
+## Recommendation
 
-- 目的：実際に行ける神社候補の発見・比較・位置確認
-- 提供価値：**体験から探す補助導線**（主価値ではなく、相談後の探索導線）
-
-表現：
-
-- 過ごし方チップ
-- 歴史テーマ
-- 神社名 / 地域名 / 願いごと検索
-- ご利益タグ
-- 距離・基本情報
-- 近くの神社
-- 一覧 / 地図表示
-
-責務：
-
-- `/shrines` は Explore の List Mode として扱う
-- `/map` は Explore の Map Mode / Nearby Mode として扱う
-- 検索・地図・近くの神社を将来的に Explore 画面へ統合する
-- 体験チップを Explore の主導線とする
-- 神社名検索は維持するが「詳しく探す」配下に配置する
-- 現在地探索は NearbySection に閉じ込める
-- Explore は候補探索までを責務とする
-- 推薦理由の生成は Concierge が担う
-- 神社理解は Detail が担う
-- 行動記録・振り返りは Visit / Reflection が担う
-
-制約：
-
-- 長文の推薦理由は出さない
-- ユーザー状態の解釈は行わない
-- 意味づけは行わない（Concierge に委譲）
-- 近いだけで推薦理由を完結させない
-- 地図機能を主価値として扱わない
-- 占術・相性・方位を Explore の主導線にしない
-
-データ責務：
-
-- Explore は検索条件を保持する
-- Recommendation Logic は持たない
-- Meaning Layer は持たない
-- Recommendation Score は参照しない
-- Concierge の結果を補完する探索レイヤーとして扱う
-
-### ExploreLayout（実装済み）
-
-Explore は共通レイアウトとして `ExploreLayout` を利用する。
+Recommendation は、神社側の事実・意味情報と、ユーザー側の相談解釈を結合して生成する。
 
 ```text
-ExploreLayout
-├─ ExperienceFilterSection
-├─ searchSlot
-├─ NearbySection
-├─ ViewModeTabs
-└─ ResultArea
+Shrine Fact / Meaning
++
+Consultation Interpretation
+↓
+Recommendation Match
+↓
+Recommendation Reason
 ```
 
-責務：
+Recommendation は以下を分離して扱う。
 
-- Explore UI を配置する
-- ResultArea を children として描画する
-- ViewMode を表示する
+- 候補選定
+- マッチング結果
+- 推薦理由
+- 表示用コピー
+- 行動提案
 
-責務外：
+推薦生成時点の評価値、理由、Actionは、`ConciergeThread.recommendations_v2` へ Runtime Snapshot として保存する。
 
-- API呼び出し
-- Recommendation Logic
-- Meaning Layer
-- URL管理
-- Search State管理
-- Nearby State管理
+### Snapshot Policy
 
-### Search Slot
+- score_v2：推薦生成時点の評価スナップショット
+- action_state：現在DBに基づく状態
+- ranking_applied：推薦順位へ反映済みかを示すフラグ
 
-Explore の検索UIは slot として扱う。
+保存済み推薦は再計算・再ランキングしない。
 
-```text
-/shrines
-└─ DetailSearchAccordion
-
-/map
-└─ PlaceSuggestBox
-```
-
-ExploreLayout は検索UIの実装を持たず、親コンポーネントから `searchSlot` を受け取る。
-
-### 実装状態
-
-```text
-/shrines
-└─ ExploreLayout 接続済み
-
-/map
-└─ ExploreLayout 接続済み
-```
-
-Explore は List / Map の共通UIレイヤとして扱う。
-
-正本：
-
-- `docs/product/explore-integration-design.md`
+現在の Favorite、Visit、Reflection 状態が変化しても、過去の推薦結果は生成時点の値を維持する。
 
 ---
 
-### Journey Flow
+## Score v3
+
+Score v3 は shadow mode とし、既存順位を変更しない。
+
+### 観測する component
+
+- state_match_score
+- meaning_match_score
+- shrine_profile_score
+- behavior_score
+- history_score
+- final_score
+
+### 用途
+
+- 既存ランキングとの差分確認
+- componentごとの寄与分析
+- Behavior Funnelとの相関確認
+- active化判断のための実測
+
+frontend / mobile は `debug.score_v3` を順位決定に利用しない。
+
+---
+
+## 画面責務
 
 ```text
 Top
@@ -746,476 +210,126 @@ Visit
 Reflection
 ```
 
-役割：
-
-- Top は相談開始
-- Concierge は推薦理由の生成
-- Explore は候補探索
-- Detail は神社理解
-- Route は移動支援
-- Visit は参拝行動
-- Reflection は振り返り
-
-責務境界：
-
-- Concierge が「なぜこの神社か」を担う
-- Explore が「どこへ行くか」を担う
-- Detail が「どんな神社か」を担う
-- Route が「どう行くか」を担う
-- Visit が「行った事実」を担う
-- Reflection が「行動後の意味整理」を担う
-
----
-
-### 神社詳細（/shrines/[id]）
-
-- 目的：神社の理解
-- 提供価値：**情報理解**
-- 表現：
-  - ご利益
-  - 由緒・説明
-  - 御朱印
-  - 位置情報
-
-制約：
-
-- 過度な推薦ロジックは持たない
-- パーソナライズは最小限
-- 情報レイヤの詳細は `docs/shrine-detail-layer.md` を正本とする
-
----
-
-### コンシェルジュ（/concierge）
-
-- 目的：意思決定支援
-- 提供価値：**今の自分との意味づけ**
-- 表現：
-  - なぜこの神社なのか
-  - どの状態に対して合っているか
-  - 言語化された推薦理由
-
-責務：
-
-- ユーザーの入力（悩み・願い）を解釈する
-- ご利益・神社特性と接続する
-- 意味のある文脈を生成する
-
-Premium 体験では、この文脈生成をパーソナル理由・相性・継続分析・保存/記録拡張へ深める。詳細は `docs/premium-experience.md` を参照する。
-
----
-
-## Recommendation Snapshot Policy
-
-コンシェルジュ推薦結果の `score_v2` は、**推薦生成時点のスナップショット**として扱う。
-
-目的:
-
-- 過去の相談結果の再現性を保つ
-- 保存済み thread の推薦理由が後から変わることを防ぐ
-- 行動状態の現在値と、推薦生成時点の評価値を分離する
-
-### score_v2
-
-`score_v2` は推薦生成時点の評価値であり、`ConciergeThread.recommendations` / `recommendations_v2` に保存された後は再計算しない。
-
-含まれる主な要素:
-
-- user_state_match
-- shrine_meaning_match
-- context_match
-- element_match
-- distance_score
-- popularity_score
-- astro_bonus
-- behavior_signal
-- ranking_applied
-
-`behavior_signal` は Favorite / Visit / ShrineReflection など、推薦生成時点で確認できたユーザー行動を数値化したものとする。
-
-### action_state
-
-`action_state` は保存済み thread 表示時点の現在DBから判定する。
-
-想定状態:
-
-- none
-- saved
-- visited
-- reflected
-
-そのため、保存済み `score_v2.components.behavior_signal` と現在の `action_state` は一致しない場合がある。
-
-例:
-
-- 推薦生成時点では saved + visited により `behavior_signal = 6.0`
-- その後 favorite が削除され、現在DBでは visited のみ
-- thread詳細では `score_v2` は 6.0 のまま保持し、`action_state` は visited として表示する
-
-### ranking_applied
-
-`ranking_applied` は、`score_v2` を実際の推薦順位に反映したかを示す。
-
-- `false`: score_v2 は観測・説明用であり、既存ランキングには未反映
-- `true`: 新規 recommendation 生成時に score_v2 をランキングへ反映済み
-
-保存済み thread の `score_v2` は再ランキングしない。`ranking_applied=true` の適用対象は、新規 recommendation 生成時のみとする。
-
-### 責務分離
-
-- `score_v2`: 推薦生成時点の評価スナップショット
-- `action_state`: 現在DBにもとづくユーザー行動状態
-- `ranking_applied`: score_v2 が推薦順位へ反映されたかのフラグ
-
-この分離により、履歴の再現性と現在状態の表示を両立する。
-
----
+| 画面 | 役割 |
+|------|------|
+| Top | 相談開始 |
+| Concierge | 「なぜこの神社か」の生成 |
+| Explore | 「どこへ行くか」の探索 |
+| Detail | 「どんな神社か」の理解 |
+| Route | 「どう行くか」の支援 |
+| Visit | 「行った事実」の保存 |
+| Reflection | 行動後の意味整理 |
 
 ### 設計原則
 
-- 検索は「浅く広く」
-- 詳細は「正確に」
-- コンシェルジュは「深く」
+- 検索は浅く広く
+- 詳細は正確に
+- コンシェルジュは深く
 
-この分離を崩さないことで、UXの一貫性と拡張性を維持する。
+Explore は Recommendation Logic、Meaning Layer、Recommendation Score を持たない。
 
-## 🏛 Shrine Submission Pipeline
-
-神社登録は `shrine` 本体への直接追加ではなく、**`submission` リソースを経由する投稿フロー**として扱う。
-
-目的:
-
-- 神社データ品質の保護
-- 投稿責任の追跡
-- 承認フローの維持
-
-## Shrine Submission 導線
-
-- 主導線は `shrines search → 0件 → CTA → submission`
-- 投稿入口は `/shrines/new`
-- `returnTo` により検索画面へ復帰する（詳細は `docs/auth-flow.md` を参照）
-
-## 体験境界の正本ドキュメント
-
-体験境界に関する詳細仕様は以下を正本とする：
-
-- `docs/pricing.md`（free / premium の価値境界）
-- `docs/premium-experience.md`（Premium 体験境界）
-- `docs/shrine-detail-layer.md`（神社詳細の情報レイヤ）
+Detail は神社理解を担当し、過度なパーソナライズを行わない。
 
 ---
 
-## Shrine Submission の正本ドキュメント
+## データ責務
 
-Shrine Submission に関する詳細仕様は以下を正本とする：
+### Shrine
 
-- `docs/shrine-submission-flow.md`（導線 / duplicate_candidate 契約）
-- `docs/auth-flow.md`（認証復帰 / returnTo）
+公開検索、ランキング、コンシェルジュ推薦で参照される神社マスター。
 
-本ドキュメントは責務境界の説明に限定する。
+### ShrineSubmission
 
----
+ユーザー投稿の受付・審査用データ。
 
-## 投稿主体
+pending、rejected の状態では、公開検索・ランキング・推薦対象に含めない。
 
-投稿は **ログインユーザーのみ** とする。
-
-理由:
-
-- 投稿責任の所在を持てる
-- 重複投稿の追跡が可能
-- 荒らし対策
-
-anonymous 投稿は採用しない。
-
----
-
-## Submission 状態
-
-投稿データは `shrine_submission` として保存され、以下の状態を持つ。
-
-- pending
-- approved
-- rejected
-
-### pending
-
-- 投稿直後の状態
-- 公開されない
-- 管理レビュー待ち
-
-### approved
-
-- 管理承認済み
-- shrine 本体へ反映
-
-### rejected
-
-- 不正・重複・不完全投稿
-
----
-
-## データモデル（実装済み）
-
-```sql
-shrine_submissions
--------------------
-id
-user_id
-name
-address
-lat
-lng
-goriyaku_tags
-note
-status
-created_at
-reviewed_at
-reviewed_by
--------------------
-```
-
----
-
-## Shrine 反映フロー
-
-```
+```text
 User
- ↓
-POST /api/shrine-submissions
- ↓
-shrine_submission (pending)
- ↓
-admin review
- ↓
+↓
+ShrineSubmission（pending）
+↓
+Admin Review
+↓
 approved
- ↓
-shrine table insert
+↓
+Shrine
 ```
 
----
+重複判定、承認、却下、API契約は投稿フローの正本ドキュメントへ委譲する。
 
-## Duplicate Detection
+### Runtime Snapshot
 
-投稿時に既存神社との重複をチェックする。
+以下は Shrine 固定プロフィールへ保存せず、推薦生成時点のスナップショットとして保持する。
 
-基本キー:
+- matched_need_tags
+- consultation_axis
+- text_score
+- text_hint
+- score_element
+- evidence
+- recommendation_reason
+- action_suggestion
+- score_components
 
-- name + address
+### Behavior Data
 
-一致する shrine が存在する場合:
+行動の意味を混在させない。
 
-- submission を reject
-- または既存 shrine への関連付けを提示する
-
-
-## duplicate_candidate 契約（正本参照）
-
-duplicate_candidate の詳細契約は以下を正本とする：
-
-- `docs/shrine-submission-flow.md`
-
-本ドキュメントでは責務のみを定義する。
-
-### 責務
-
-- `POST /api/shrine-submissions/` は重複候補がある場合に `duplicate_candidate` を返す
-- 判定は serializer ではなく view / service 層で行う
-- frontend は response をもとに以下の導線を分岐する
-  - 1件: shrine detail へ遷移
-  - 複数件: 検索/一覧導線へ遷移
-
-※ JSON構造・フィールド定義は正本ドキュメントを参照すること
-
----
-
-## MVP スコープ外
-
-以下は今回の投稿機能には含めない。
-
-- 画像アップロード
-- 御朱印登録の同時実装
-- 出典必須化
-- 即公開
-
-投稿データは最小構成のみ扱う。
-
-## Shrine Submission Review Flow（実装済み）
-- `POST /api/shrine-submissions/` を実装済み
-- ログインユーザーのみ投稿可能
-- 成功時は `ShrineSubmission(status=pending)` を作成して返す
-- 投稿時に以下の重複を検査する
-  - 既存 `Shrine(name + address)`
-  - 既存 `pending ShrineSubmission(name + address)`
-- 投稿時点では `Shrine` 本体は作成しない
-
-`ShrineSubmission` は Django model として実装済み。
-
-### approve
-- `approve_shrine_submission()` を経由して承認する
-- `pending` のみ承認可能
-- 既存 `Shrine(name + address)` と重複する場合は承認しない
-- 承認成功時は `Shrine` を新規作成する
-- `reviewed_at` / `reviewed_by` を保存する
-
-### reject
-- `reject_shrine_submission()` を経由して却下する
-- `status=rejected`
-- `reviewed_at` / `reviewed_by` / `review_comment` を保存する
-
-### admin
-- Django admin の action から approve / reject を実行できる
-- approve は service 経由で Shrine 本体へ反映する
-- reject は review 情報を保存し、Shrine 本体は作成しない
-
----
-
-## Shrine / ShrineSubmission の責務分離
-
-`Shrine` は公開検索・ランキング・concierge 推薦で参照される公開マスターとする。
-
-`ShrineSubmission` はユーザー投稿の受付・審査用データであり、pending / rejected の状態では公開検索・推薦対象に含めない。
-
-`ShrineSubmission.goriyaku_tags` は投稿者の意図を示す参考情報であり、`Shrine.goriyaku_tags` とは別物として扱う。検索・推薦に使う正本タグは、管理者が `Shrine.goriyaku_tags` として確定する。
-
+- Favorite：保存・候補化
+- Visit：参拝実行
+- ShrineReflection：参拝後の内省
+- ShrineInteractionLog：detail view、route open、card click
+- ActionEvent：Action Suggestion の開始・完了
 
 ---
 
 ## 認証アーキテクチャ
 
-### 目的
-
-KAMI MUSUBI の認証経路は、frontend / BFF / backend の責務を分離し、認証入口の乱立を防ぐ構成とする。
-
-認証付き機能は、課金状態・マイページ・御朱印・お気に入り・コンシェルジュ保存・参拝記録など、ユーザー状態に依存するため、認証経路を一本化して保守する。
-
----
-
-### 現在の正本フロー
-
 ```text
 Frontend
-  ↓
-/api/auth/login
-  ↓
+↓
 Next.js BFF
-  ↓
-Django backend /api/auth/jwt/create/
-  ↓
-access_token / refresh_token を HttpOnly Cookie に保存
-  ↓
-認証付き API は BFF 経由で backend へ転送
-```
-
-frontend のログイン入口は `/api/auth/login` を正本とする。
-
-frontend 側に JWT 発行用の `/api/auth/jwt/create` route は持たない。
-
----
-
-### Frontend の責務
-
-```text
-- ログインフォームから /api/auth/login を呼ぶ
-- JWT を JavaScript で直接保持しない
-- 認証状態は AuthProvider で扱う
-- access_token / refresh_token は HttpOnly Cookie として扱う
-```
-
-正本ファイル:
-
-```text
-apps/web/src/lib/auth/AuthProvider.tsx
-apps/web/src/app/api/auth/login/route.ts
-apps/web/src/lib/api/auth.ts
-```
-
----
-
-### BFF の責務
-
-認証付き API route は、原則として `bffFetchWithAuthFromReq` を経由する。
-
-```text
-apps/web/src/lib/server/bffFetch.ts
-```
-
-BFF は以下を担当する。
-
-```text
-- request cookie から access_token / refresh_token を読む
-- backend へ Authorization: Bearer <token> を付与する
-- access_token 期限切れ時に refresh を試す
-- refresh 成功時は access_token Cookie を更新する
-- backend response を frontend に返す
-```
-
-frontend component から backend origin を直接組み立てない。
-
----
-
-### Backend の責務
-
-backend は JWTAuthentication を認証の正本とする。
-
-```text
-Django backend
-  ↓
+↓
+Django API
+↓
 JWTAuthentication
-  ↓
-request.user を解決
-  ↓
-課金状態・ユーザー情報・保存情報などを判定
 ```
 
-課金判定は backend 側で `request.user` をもとに行う。
+### 基本方針
 
-```text
-/api/billings/status/
-```
+- frontend のログイン入口は `/api/auth/login`
+- access token / refresh token は HttpOnly Cookie に保存する
+- 認証付きAPIは `bffFetchWithAuthFromReq` を経由する
+- frontend から backend origin を直接組み立てない
+- JWT を localStorage へ保存しない
+- 課金、保存、ユーザー状態の判定は backend の `request.user` を正本とする
+
+SessionAuthentication は依存監査が完了するまで即削除しない。
 
 ---
 
-### 禁止方針
+## 正本ドキュメント
 
-```text
-- frontend route 内で backend URL を直接組み立てる
-- route.ts ごとに Authorization 付与ロジックを重複実装する
-- NEXT_PUBLIC_API_BASE / API_BASE_URL を認証付き route で直接参照する
-- frontend に JWT 発行 route を複数持つ
-- access_token / refresh_token を localStorage に保存する
-```
+詳細仕様は以下へ分離する。
 
----
-
-### SessionAuthentication の扱い
-
-現時点では SessionAuthentication を即削除しない。
-
-理由:
-
-```text
-- 依存箇所がまだ完全には確定していない
-- Goshuin / Users / Billing などに影響する可能性がある
-- 開発初期や互換目的で残っている可能性がある
-```
-
-今後の監査で以下に分類する。
-
-```text
-削除可能:
-- JWTAuthentication のみで動作確認できる API
-
-保留:
-- 影響範囲が未確認の API
-
-残す:
-- 明確に SessionAuthentication が必要な API
-```
+- Concierge First：`docs/product/concierge-first.md`
+- Concierge Modes：`docs/product/concierge-modes.md`
+- Explore：`docs/product/explore-integration-design.md`
+- Meaning Layer：`docs/core/meaning-layer.md`
+- 神社詳細：`docs/shrine-detail-layer.md`
+- Premium：`docs/premium-experience.md`
+- 投稿フロー：`docs/shrine-submission-flow.md`
+- 認証：`docs/authentication-flow.md`
+- Recommendation / Knowledge：`docs/knowledge/`
+- 監査：`docs/audit/`
 
 ---
 
-### 関連ドキュメント
+## 変更ルール
 
-```text
-docs/authentication-flow.md
-```
+- 詳細仕様を本書へ再掲しない
+- 実装履歴や完了チェックリストを本書へ置かない
+- API schema、migration、テストケースは専用ドキュメントへ分離する
+- 責務境界または全体依存関係が変わる場合のみ本書を更新する
+- 実装状態の細かな変更だけでは本書を更新しない
