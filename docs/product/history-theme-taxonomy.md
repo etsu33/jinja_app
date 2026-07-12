@@ -273,4 +273,4 @@ MVPでは採用しないが、将来的な候補として保持する。
 - 継承
 - 感謝
 
-追加時は state-history-theme-mapping.md と goriyaku-history-theme-mapping.md を同時更新すること。
+追加時は `meaning-translation-mapping.md` の相談状態・ご利益・神社分類・行動接続を同時に更新すること。

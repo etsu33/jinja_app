@@ -410,7 +410,7 @@ MVPではURLに渡さない。
 - docs/product/home-hero-final-wireframe.md
 - docs/product/concierge-entry-final-wireframe.md
 - docs/product/consultation-theme-taxonomy.md
-- docs/product/theme-to-recommendation-input-mapping.md
+- docs/product/meaning-translation-mapping.md
 - docs/product/visit-style-taxonomy.md
 - docs/product/need-mode-ui-flow.md
 - docs/product/compat-mode-ui-flow.md
