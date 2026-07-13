@@ -1,12 +1,10 @@
-
-
 # Visit Reflection Flow
 
 ## 目的
 
-KAMI MUSUBIにおける、参拝完了から振り返り保存までの導線を定義する。
+本ドキュメントは、KAMI MUSUBIにおける参拝完了から振り返り保存までの体験、イベント、保存責務を定義する。
 
-このドキュメントは、`visit_done` event、`reflection_prompt_view` event、`reflection_saved` event、reflection保存テーブル、PostHog分析、history_theme履歴保存の正本として扱う。
+参拝完了を体験の終点ではなく、ユーザーが行動後の気づきを整理し、次回相談へ接続する入口として扱う。
 
 ```text
 route_open
@@ -19,64 +17,75 @@ reflection_saved
 ↓
 history_theme履歴
 ↓
-変化記録
+next_consultation
 ```
 
 ---
 
-## 基本方針
+## 基本原則
 
-- 参拝完了はゴールではなく、振り返りの入口として扱う
-- 振り返りは長文日記ではなく、短い変化記録として扱う
-- 宗教的・心理的な断定をしない
-- 参拝しなかったユーザーにも、日常行動の振り返りを許容する
-- Premium価値は、履歴比較・テーマ推移・変化記録に置く
+- 参拝完了は振り返りの入口として扱う
+- 振り返りは短い変化記録として扱う
+- 長文日記を前提にしない
+- 心理状態を診断しない
+- 宗教的な効果や達成を判定しない
+- 参拝しなかった場合も、日常行動の振り返りを許容する
+- 保存行為と履歴分析の価値を分離する
+- `history_theme` を変化記録の共通軸として扱う
 
 ---
 
-## 全体フロー
+## 体験フロー
 
 ```text
-1. concierge_result_impression
-   ↓
-2. shrine_detail_transition
-   ↓
-3. route_open
-   ↓
-4. visit_done
-   ↓
-5. reflection_prompt_view
-   ↓
-6. reflection_saved
-   ↓
-7. next_consultation_started
+concierge_result_impression
+↓
+shrine_detail_transition
+↓
+route_open
+↓
+visit_done
+↓
+reflection_prompt_view
+↓
+reflection_saved
+↓
+next_consultation_started
 ```
+
+各段階の責務は以下とする。
+
+| 段階 | 責務 |
+|---|---|
+| `route_open` | 現地への移動検討を記録する |
+| `visit_done` | 参拝・訪問完了を記録する |
+| `reflection_prompt_view` | 振り返り入力の表示を記録する |
+| `reflection_saved` | 振り返り保存を記録する |
+| `next_consultation_started` | 次回相談への再接続を記録する |
 
 ---
 
-# 1. visit_done event設計
+## visit_done
 
-## 目的
+### 責務
 
-ユーザーが参拝・訪問・または推薦後の行動を完了したことを記録する。
+ユーザーが参拝・訪問を完了した事実を記録し、振り返り導線を開始する。
 
-`visit_done` は「神社に行ったこと」だけでなく、KAMI MUSUBI上では次の振り返り導線へ進むトリガーとして扱う。
+`visit_done` は神社へ行った事実を表し、心理的変化や効果を判定しない。
 
-## 発火タイミング
+### 発火条件
 
-```markdown
-- 神社詳細画面で「参拝しました」ボタンを押した時
-- route_open後に、一定時間後または後日「行ってきた」を押した時
-- 保存済み神社から「参拝済みにする」を押した時
-```
+- 神社詳細で参拝完了を明示したとき
+- 経路確認後に訪問完了を明示したとき
+- 保存済み神社を参拝済みに変更したとき
 
-## event name
+### Event名
 
 ```text
 visit_done
 ```
 
-## payload
+### Payload
 
 ```ts
 type VisitDonePayload = {
@@ -84,62 +93,46 @@ type VisitDonePayload = {
   shrineId: number | string;
   threadId?: string | null;
   resultSetId?: string | null;
-  historyTheme?: string | null;
+  historyTheme: string;
   recommendationRank?: number | null;
   mode?: "need" | "compat";
   accessLevel?: "anonymous" | "free" | "premium";
   routeOpenedBefore?: boolean;
-  visitedAt?: string;
+  visitedAt?: string | null;
 };
 ```
 
-## 最低限必要なpayload
+### 必須項目
 
-```markdown
-- source
-- shrineId
-- historyTheme
-```
+- `source`
+- `shrineId`
+- `historyTheme`
 
-## 注意
-
-`historyTheme` が欠損すると、参拝後の分析ができなくなる。
-
-```text
-historyTheme
-↓
-visit_done率
-↓
-reflection_saved率
-↓
-再相談率
-```
-
-の比較が崩れるため、本番推薦対象の神社では `historyTheme` を原則必須とする。
+`historyTheme` は参拝後の分析と振り返り接続に使用する。
 
 ---
 
-# 2. reflection_prompt_view event設計
+## reflection_prompt_view
 
-## 目的
+### 責務
 
-参拝完了後、ユーザーに短い振り返り入力を促す表示を記録する。
+振り返り入力UIが表示された事実を記録する。
 
-## 発火タイミング
+表示されたことだけを扱い、回答や保存完了は扱わない。
 
-```markdown
-- visit_done後に振り返りカードが表示された時
-- マイページの保存済み神社から振り返り導線が表示された時
-- 夜の振り返り通知・導線が表示された時
-```
+### 発火条件
 
-## event name
+- `visit_done` 後に振り返りUIを表示したとき
+- マイページから振り返り導線を表示したとき
+- 振り返り通知から入力画面を表示したとき
+
+### Event名
 
 ```text
 reflection_prompt_view
 ```
 
-## payload
+### Payload
 
 ```ts
 type ReflectionPromptViewPayload = {
@@ -147,16 +140,16 @@ type ReflectionPromptViewPayload = {
   shrineId: number | string;
   threadId?: string | null;
   resultSetId?: string | null;
-  historyTheme?: string | null;
+  historyTheme: string;
   actionTheme?: string | null;
   promptType: "one_line" | "mood_delta" | "theme_reflection";
   accessLevel?: "anonymous" | "free" | "premium";
 };
 ```
 
-## 表示する質問
+### 質問生成
 
-質問は `history_theme` に応じて切り替える。
+振り返り質問は`history_theme`を参照できる。
 
 | history_theme | 質問例 |
 |---|---|
@@ -168,23 +161,25 @@ type ReflectionPromptViewPayload = {
 | 学び | 今日、積み上げたことは何か |
 | 縁 | 今日、大切にしたい縁に対して何ができたか |
 
+質問は答えを誘導せず、状態整理を補助する表現にする。
+
 ---
 
-# 3. reflection_saved event設計
+## reflection_saved
 
-## 目的
+### 責務
 
-ユーザーが振り返りを保存したことを記録する。
+ユーザーが振り返りを保存した事実を記録する。
 
-KAMI MUSUBIの継続価値は、この `reflection_saved` から始まる。
+`reflection_saved` は保存完了を表し、内容の正しさや心理的改善を判定しない。
 
-## event name
+### Event名
 
 ```text
 reflection_saved
 ```
 
-## payload
+### Payload
 
 ```ts
 type ReflectionSavedPayload = {
@@ -202,43 +197,78 @@ type ReflectionSavedPayload = {
 };
 ```
 
-## 分析で見ること
+### 必須項目
 
-```markdown
-- visit_done → reflection_saved CVR
-- historyTheme別 reflection_saved率
-- reflection_saved後の再相談率
-- reflection_saved後のpremium_preview_click率
-```
+- `source`
+- `shrineId`
+- `historyTheme`
+- `promptType`
+- `answerLength`
 
 ---
 
-# 4. reflection保存テーブル設計
+## Reflection保存責務
 
-## 目的
-
-参拝後・行動後の短い振り返りを保存し、後続の前回比較・月次推移・Premium変化記録に利用する。
-
-## 最小テーブル案
+振り返りデータは`ShrineReflection`を正本として保存する。
 
 ```python
 class ShrineReflection(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    shrine = models.ForeignKey("temples.Shrine", on_delete=models.CASCADE)
-    thread_id = models.CharField(max_length=64, blank=True, default="")
-    result_set_id = models.CharField(max_length=255, blank=True, default="")
-    history_theme = models.CharField(max_length=32, db_index=True)
-    action_theme = models.CharField(max_length=64, blank=True, default="")
-    prompt = models.TextField(blank=True, default="")
-    answer = models.TextField(blank=True, default="")
-    mood_before = models.PositiveSmallIntegerField(null=True, blank=True)
-    mood_after = models.PositiveSmallIntegerField(null=True, blank=True)
-    visited_at = models.DateTimeField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+    )
+    shrine = models.ForeignKey(
+        "temples.Shrine",
+        on_delete=models.CASCADE,
+    )
+    thread_id = models.CharField(
+        max_length=64,
+        blank=True,
+        default="",
+    )
+    result_set_id = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+    )
+    history_theme = models.CharField(
+        max_length=32,
+        db_index=True,
+    )
+    action_theme = models.CharField(
+        max_length=64,
+        blank=True,
+        default="",
+    )
+    prompt = models.TextField(
+        blank=True,
+        default="",
+    )
+    answer = models.TextField(
+        blank=True,
+        default="",
+    )
+    mood_before = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+    )
+    mood_after = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+    )
+    visited_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
 ```
 
-## index候補
+### Index
 
 ```python
 models.Index(fields=["user", "created_at"])
@@ -246,90 +276,63 @@ models.Index(fields=["user", "history_theme"])
 models.Index(fields=["shrine", "history_theme"])
 ```
 
-## MVPで保存するもの
+### 必須保存項目
 
-```markdown
-- user
-- shrine
-- history_theme
-- prompt
-- answer
-- created_at
-```
+- `user`
+- `shrine`
+- `history_theme`
+- `prompt`
+- `answer`
+- `created_at`
 
-## MVPで任意にするもの
+### 任意保存項目
 
-```markdown
-- mood_before
-- mood_after
-- thread_id
-- result_set_id
-- action_theme
-- visited_at
-```
+- `mood_before`
+- `mood_after`
+- `thread_id`
+- `result_set_id`
+- `action_theme`
+- `visited_at`
 
-## 保存しないもの
+### 保存しないもの
 
-```markdown
 - 医療的な状態評価
 - 宗教的な達成判定
 - AIによる断定的な心理分析
-- 長文日記を前提にした本文
-```
+- 成功・失敗の自動判定
 
 ---
 
-# 5. history_theme履歴保存方針
+## history_theme履歴
 
-## 目的
-
-`history_theme` を、単なる推薦理由ではなく、ユーザーの変化記録の軸として保存する。
+`history_theme` は、推薦理由だけでなく、行動後の変化を整理する軸として保存する。
 
 ```text
-相談
+consultation
 ↓
 history_theme
 ↓
-参拝 / 行動
+visit / action
 ↓
 reflection
 ↓
 history_theme履歴
 ```
 
-## 保存タイミング
+### 保存責務
 
-```markdown
-- consultation saved
-- visit_done
-- reflection_saved
-```
+- 推薦時点の`history_theme`はRecommendation Snapshotに保持する
+- 振り返り時点の`history_theme`は`ShrineReflection`に保持する
+- 過去のRecommendation Snapshotは再計算しない
+- 現在のReflection状態はDBから取得する
 
-## 保存先候補
-
-```markdown
-- ConciergeThread / ConsultationHistory 側に保存
-- ShrineReflection 側に保存
-- 将来、ThemeHistory集計テーブルを追加
-```
-
-## MVP方針
-
-MVPでは、まず `ShrineReflection.history_theme` に保存する。
-
-理由:
-
-```markdown
-- 参拝後・行動後の変化と直接接続できる
-- historyTheme別 reflection_saved率を集計できる
-- Premium変化記録に転用しやすい
-```
+この分離により、推薦時点の文脈と行動後の記録を混在させない。
 
 ---
 
-# 6. PostHog event payload定義
+## Analytics Contract
 
-## 共通payload
+### 共通Payload
 
 ```ts
 type ReflectionAnalyticsBasePayload = {
@@ -342,88 +345,124 @@ type ReflectionAnalyticsBasePayload = {
 };
 ```
 
-## events
+### Events
 
-```markdown
-- visit_done
-- reflection_prompt_view
-- reflection_saved
-```
+- `visit_done`
+- `reflection_prompt_view`
+- `reflection_saved`
 
-## event別必須項目
+### 必須Payload
 
-| event | 必須payload |
+| Event | 必須項目 |
 |---|---|
-| visit_done | source / shrineId / historyTheme |
-| reflection_prompt_view | source / shrineId / historyTheme / promptType |
-| reflection_saved | source / shrineId / historyTheme / answerLength |
+| `visit_done` | `source`, `shrineId`, `historyTheme` |
+| `reflection_prompt_view` | `source`, `shrineId`, `historyTheme`, `promptType` |
+| `reflection_saved` | `source`, `shrineId`, `historyTheme`, `answerLength` |
 
-## 集計KPI
+### 集計指標
 
-```markdown
-- route_open → visit_done CVR
-- visit_done → reflection_prompt_view CVR
-- reflection_prompt_view → reflection_saved CVR
-- historyTheme別 visit_done率
-- historyTheme別 reflection_saved率
-- reflection_saved → next_consultation_started率
-```
+- `route_open → visit_done` CVR
+- `visit_done → reflection_prompt_view` CVR
+- `reflection_prompt_view → reflection_saved` CVR
+- `historyTheme`別`visit_done`率
+- `historyTheme`別`reflection_saved`率
+- `reflection_saved → next_consultation_started`率
+
+Analyticsは体験改善の観測に利用し、個別ユーザーの心理状態判定には利用しない。
 
 ---
 
-# 7. Free / Premium 境界
+## Free / Premium境界
 
-## Free
+### Free
 
-Freeでは、短い振り返り保存まで許可する。
+Freeでは、参拝記録と短い振り返り保存を提供する。
 
-```markdown
-- 参拝しました
+- 参拝完了の記録
 - ひとこと振り返り
-- 最新数件の表示
-```
+- 直近履歴の表示
 
-## Premium
+### Premium
 
-Premiumでは、履歴比較・月次推移・テーマ変化を表示する。
+Premiumでは、保存された記録の比較・整理・継続分析を提供する。
 
-```markdown
-- 前回reflectionとの比較
-- history_theme月次推移
-- よく出る人生テーマ
-- 次の参拝提案
-```
+- 前回Reflectionとの比較
+- `history_theme`の月次推移
+- 繰り返し現れるテーマの表示
+- 過去記録をもとにした振り返り支援
 
-## 方針
-
-Premiumは、保存行為そのものではなく、保存された変化を整理して見返す価値に置く。
+Premium価値は保存機能そのものではなく、蓄積した変化を比較・整理できることに置く。
 
 ---
 
-# 8. 今後の実装順
+## 責務境界
 
-```markdown
-- [ ] analytics event typeに visit_done / reflection_prompt_view / reflection_saved を追加
-- [ ] ShrineReflection modelを追加
-- [ ] migration作成
-- [ ] reflection保存APIを追加
-- [ ] 神社詳細に visit_done CTA を追加
-- [ ] visit_done後に reflection prompt を表示
-- [ ] reflection_saved をPostHogへ送信
-- [ ] マイページでreflection履歴を表示
-- [ ] Premiumで月次推移を表示
-```
+### Visit
+
+担当するもの:
+
+- 参拝・訪問完了の事実
+- `visited_at`
+- 訪問対象の神社
+- 振り返り導線の開始
+
+担当しないもの:
+
+- 心理状態の判定
+- Reflection回答の保存
+- 推薦理由の再生成
+
+### Reflection
+
+担当するもの:
+
+- 振り返り質問
+- 回答保存
+- moodの任意記録
+- `history_theme`との接続
+
+担当しないもの:
+
+- Visit完了判定
+- 神社推薦順位
+- 医療・心理診断
+- 宗教的効果判定
+
+### Analytics
+
+担当するもの:
+
+- 表示・遷移・保存イベントの計測
+- Funnel集計
+- `historyTheme`別の傾向確認
+
+担当しないもの:
+
+- ユーザー状態の断定
+- 推薦理由の生成
+- UIの表示判断
 
 ---
 
-# TODO
+## 関連ドキュメント
 
-```markdown
-- [x] visit_done event設計
-- [x] reflection_prompt_view event設計
-- [x] reflection_saved event設計
-- [x] reflection保存テーブル設計
-- [x] history_theme履歴保存方針を整理
-- [x] PostHog event payload を定義
-- [x] docs/product/visit-reflection-flow.md 作成
-```
+- `docs/product/action_suggestion_v4.md`
+- `docs/product/meaning-translation-mapping.md`
+- `docs/product/history-theme-taxonomy.md`
+- `docs/product/reflection-funnel-dashboard.md`
+- `docs/core/architecture.md`
+- `docs/core/narrative-guideline.md`
+
+---
+
+## 更新ルール
+
+本ドキュメントは以下の場合のみ更新する。
+
+- Visit / Reflectionの責務が変更された場合
+- Event名またはPayload契約が変更された場合
+- `ShrineReflection`の保存責務が変更された場合
+- Free / Premium境界が変更された場合
+- `history_theme`の保存方針が変更された場合
+
+実装進捗、作業手順、PR計画、TODO、テスト実行履歴は本書へ記載しない。
