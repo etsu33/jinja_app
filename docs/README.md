@@ -23,21 +23,33 @@
 
 ## 🧭 全体設計（まずここ）
 
-- **アーキテクチャ / 認証 / プロキシ（最重要）**  
-  - `10_arch_auth_proxy.md`
+- **Architecture・システム境界**
 
-- **API 全体概要**  
-  - `30_api_overview.md`
+  - `core/architecture.md`
+
+- **認証・通信**
+
+  - `auth-flow.md`
+
+  - `authentication-flow.md`
+
+- **API契約**
+
+  - `openapi.yaml`
+
+  - Backendの実装・起動・運用は `../backend/README.md`
 
 ---
 
 ## 🔐 認証・通信
 
-- **ローカル疎通確認（curl / fetch）**  
-  - `20_smoke_checks.md`
+Webは、FrontendからBackend APIを直接呼び出さず、Next.jsの`/api` Route Handlerを経由する。
 
-> Web は必ず `/api`（Next Route Handler = BFF）経由で API を叩く。  
-> Backend 直叩き（例：`http://127.0.0.1:8000/...`）をフロントコードに書かない。
+認証の現行責務は以下を参照する。
+
+- `auth-flow.md`
+
+- `authentication-flow.md`
 
 ---
 
@@ -56,18 +68,27 @@
 
 ## 🧪 開発・検証
 
-（必要になったら追加予定）
-- `ci/testing_policy.md`（予定）
+- **Test方針**
+
+  - `ci/testing_policy.md`
+
+- **本番Smoke Check**
+
+  - `ops/production-smoke-checklist.md`
+
+検証結果の時点記録は`ops/production-smoke-log.md`で管理する。
 
 ---
 
 ## 🚀 インフラ / デプロイ
 
-- Render / Vercel 構成  
-  - `40_infra_deploy.md`
+- **環境変数・Infra方針**
 
-（必要になったら追加予定）
-- `infra/env_policy.md`（予定）
+  - `infra/env_policy.md`
+
+- **Render起動契約**
+
+  - `infra/render-startup.md`
 
 ---
 
