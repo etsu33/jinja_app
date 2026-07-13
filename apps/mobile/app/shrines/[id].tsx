@@ -15,6 +15,7 @@ import { ctaSizes } from "../design/ctaSizes";
 import { createFavoriteByShrineId } from "../../lib/favorites";
 import { createVisitByShrineId } from "../../lib/visits";
 import { createShrineReflection } from "../../lib/reflections";
+import { trackVisitDone, trackReflectionPromptView, trackReflectionSaved } from "../../lib/visitReflectionAnalytics";
 import { AuthPrompt } from "../../components/common/AuthPrompt";
 
 type RecommendationReasonFactAxis =
@@ -468,12 +469,29 @@ export default function ShrineDetail() {
     try {
       await createVisitByShrineId(targetShrineId);
       setVisited(true);
+      trackVisitDone({
+        shrineId: targetShrineId,
+        historyTheme: contextReasonFacts?.primary_axis ?? shrine?.reasonFacts?.primary_axis,
+      });
     } catch (error) {
       if (isUnauthenticatedError(error)) {
         setAuthPromptVisible(true);
       }
     }
-  }, [apiShrineId, shrineId]);
+  }, [apiShrineId, contextReasonFacts, shrine, shrineId]);
+
+  React.useEffect(() => {
+    const targetShrineId = apiShrineId ?? shrineId;
+    if (!visited || !targetShrineId) return;
+
+    trackReflectionPromptView({
+      shrineId: targetShrineId,
+      historyTheme: contextReasonFacts?.primary_axis ?? shrine?.reasonFacts?.primary_axis,
+      reflectionFormType: "one_line",
+      reflectionContext: "visit_done",
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visited]);
 
   const onSaveReflection = React.useCallback(async () => {
     const targetShrineId = apiShrineId ?? shrineId;
@@ -493,6 +511,13 @@ export default function ShrineDetail() {
 
       if (saved) {
         setReflectionSaved(true);
+        trackReflectionSaved({
+          shrineId: targetShrineId,
+          historyTheme: contextReasonFacts?.primary_axis ?? shrine?.reasonFacts?.primary_axis,
+          reflectionFormType: "one_line",
+          reflectionContext: "visit_done",
+          answerLength: answer.length,
+        });
       }
     } catch (error) {
       if (isUnauthenticatedError(error)) {

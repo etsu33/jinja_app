@@ -438,6 +438,21 @@ type ReflectionAnalyticsBasePayload = {
 
 `ctx`（`"map" | "concierge" | null`、遷移元を示すURLクエリパラメータ）は、`visit_done` / `reflection_prompt_view` / `reflection_saved` のpayloadへ直接含めない。`ctx === "concierge"`の場合のみ`mode: "need"`へ変換して送信する（他の`trackCardEvent`系イベントと同じ変換規則）。`ctx`という生のパラメータ名はAnalytics Payload契約に含めない。
 
+### Mobile送信状況
+
+Mobile（`apps/mobile`）は神社詳細画面（`app/shrines/[id].tsx`）に参拝記録・振り返り保存の実UIを持ち、`visit_done` / `reflection_prompt_view` / `reflection_saved` を同一イベント名・同一フィールド意味でPostHogへ送信する（`apps/mobile/lib/visitReflectionAnalytics.ts`）。Web/MobileのイベントはPostHog上の同一プロジェクトに集約される。
+
+Mobileでは以下の項目を送信しない。理由は「取得できない値を無理に埋めない」という方針（前項「historyTheme欠損時の扱い」と同じ考え方）に基づく。
+
+| 項目 | 扱い |
+|---|---|
+| `threadId` | Mobileの神社詳細画面はConcierge相談スレッドからの遷移パラメータを受け取っていないため、常に未送信。導線を追加する場合は本項を更新する |
+| `mode` / `ctx` / `accessLevel` | Mobileの神社詳細画面にConcierge文脈・Free/Premium文脈を渡す導線が現時点で存在しないため未送信 |
+| `resultSetId` | Backendに対応する概念がなく、Web側でもDB保存とは接続しない値のため、Mobileでも送信しない |
+| `moodBefore` / `moodAfter` | Mobileの振り返り入力UIは自由記述の一言のみで、気分の前後入力欄を持たない（`reflectionFormType: "one_line"`固定）。常に空のため送信しない |
+
+Web/Mobile間で型定義そのものを共有する基盤（`packages/shared`）は未整備であり（`pnpm-workspace.yaml`で`apps/mobile`がworkspace対象から除外されている）、契約（イベント名・フィールドの意味）のみを揃え、型定義は各アプリ側で個別に持つ。
+
 ### 集計指標
 
 - `route_open → visit_done` CVR
