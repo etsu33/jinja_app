@@ -1,238 +1,141 @@
-
+> **Status: Reference**
+>
+> 本ドキュメントは、Concierge Firstで使用する参拝スタイルの分類・表示文言・内部値との対応を定義するReference文書である。
+>
+> 補助条件UIの画面責務は `docs/product/concierge-filter-area.md`、
+> 推薦全体の責務は `docs/product/concierge-first-final-spec.md` を正本とする。
 
 # Visit Style Taxonomy
 
 ## 目的
 
-Concierge First の補助条件として使う参拝スタイルを整理する。
+Concierge Firstの補助条件として使用する参拝スタイルの分類、表示文言、内部値との対応を定義する。
 
-このドキュメントでは、現行の `QUICK_PRESETS`、`extraCondition`、`visit_style_tags`、Recommendation Score v2 との接続を整理し、UIで扱う参拝スタイルを3レイヤーに分けて定義する。
-
-参拝スタイルは相談テーマを上書きするものではなく、候補神社の並び替えや説明補強に使う補助条件として扱う。
+参拝スタイルは相談テーマを上書きせず、候補神社の体験面・実用面との一致を補足する条件として扱う。
 
 ---
 
-## 結論
+## 基本原則
 
-MVPでは、参拝スタイルを以下の3レイヤーで扱う。
-
-```markdown
-# 体験スタイル
-- 静かな時間を過ごしたい
-- 気分を切り替えたい
-- 自然を感じたい
-- 歴史や文化に触れたい
-- 特別な体験をしたい
-- 写真を楽しみたい
-
-# 実用条件
-- 近場がいい
-- アクセスしやすい場所がいい
-- 有名な神社が安心
-- 人混みを避けたい
-
-# 神社好き向け
-- 由緒を知りたい
-- 御朱印を楽しみたい
-- 神話に触れたい
-- 境内をゆっくり歩きたい
-```
-
-初期実装では、既存 `visit_style_tags` にあるタグへ寄せて扱う。
-
-存在しないタグは、すぐにDBタグ追加せず、まずは `extraCondition` の自然文として保持する。
+- 相談テーマと自由入力を主入力とする
+- 参拝スタイルは補助条件として扱う
+- 参拝スタイルだけで推薦順位を決定しない
+- 表示文言と内部タグを分離する
+- 既存タグで表現できない条件は `extraCondition` の自然文として保持する
+- UIの配置や開閉方法は `docs/product/concierge-filter-area.md` で管理する
+- 推薦判定はBackendを正本とする
 
 ---
 
-## 現在のQUICK_PRESETS
+## 分類
 
-現在の `ConciergeFilterPanel.tsx` では、以下の `QUICK_PRESETS` が存在する。
+参拝スタイルは以下の3レイヤーで扱う。
 
-```markdown
-- 静かに整えたい
-- 人混みが苦手
-- 近場優先
-- 自然を感じたい
-- 気持ちを切り替えたい
-- 有名な神社が安心
-```
-
-### 現在の扱い
-
-`QUICK_PRESETS` は専用 state を持たず、`extraCondition` に文章として追加される。
-
-```text
-QUICK_PRESETS
-↓
-extraCondition
-↓
-extra_condition_tags.py
-↓
-visit_style_tags
-↓
-score_visit_style
-```
-
-### 判断
-
-現行構造は維持する。
-
-ただし、UI表示は3レイヤーに整理する。
-
----
-
-## 現在のvisit_style_tags
-
-現行コード上で確認できる主な `visit_style_tags` は以下。
-
-```markdown
-- quiet
-- less_crowded
-- nearby
-- nature
-- reset
-- classic
-- business
-- study
-- urban
-```
-
-### 主な定義元
-
-```text
-backend/temples/domain/extra_condition_tags.py
-backend/temples/models.py
-backend/temples/services/concierge_chat_ranking.py
-backend/temples/data/shrines_seed_clean.json
-```
-
-### 現在の役割
-
-`visit_style_tags` は、ユーザーの補助条件と神社側の空間・体験特徴の一致を見るために使われる。
+| レイヤー | 役割 |
+|---|---|
+| 体験スタイル | 神社でどのように過ごしたいか |
+| 実用条件 | 距離・アクセス・混雑などの現実条件 |
+| 神社好き向け | 由緒・御朱印・神話など神社自体への関心 |
 
 ---
 
 ## 体験スタイル
 
-体験スタイルは、ユーザーが「その神社でどう過ごしたいか」を表す。
-
-| 表示文言 | visit_style_tag候補 | extraCondition文言 | 初期実装方針 |
+| 表示文言 | 内部タグ | `extraCondition`への表現 | 扱い |
 |---|---|---|---|
-| 静かな時間を過ごしたい | quiet | 静かな雰囲気で、気持ちを落ち着けて整理できる場所がいい | 既存タグへ接続 |
-| 気分を切り替えたい | reset | 気持ちを切り替えて、前向きになれる場所がいい | 既存タグへ接続 |
-| 自然を感じたい | nature | 自然を感じながら、ゆっくり参拝できる場所がいい | 既存タグへ接続 |
-| 歴史や文化に触れたい | classic | 歴史や文化を感じながら参拝できる場所がいい | 既存タグへ寄せる |
-| 特別な体験をしたい | classic | 日常から少し離れて、特別感のある参拝がしたい | 自然文として保持 |
-| 写真を楽しみたい | urban | 写真を撮りながら楽しめる雰囲気の場所がいい | 既存タグへ寄せるか保留 |
-
-### 判断
-
-- `quiet` / `reset` / `nature` は既存タグとして採用する
-- `classic` は「有名・定番」だけでなく、歴史文化寄りにも使えるが、意味が広がりすぎるため注意する
-- `special` / `photo` のような新タグは初期MVPでは追加しない
+| 静かな時間を過ごしたい | `quiet` | 静かな雰囲気で、気持ちを落ち着けて過ごしたい | 既存タグへ接続 |
+| 気分を切り替えたい | `reset` | 気持ちを切り替えられる場所で過ごしたい | 既存タグへ接続 |
+| 自然を感じたい | `nature` | 自然を感じながら、ゆっくり参拝したい | 既存タグへ接続 |
+| 歴史や文化に触れたい | `classic` | 歴史や文化を感じながら参拝したい | 既存タグへ補助接続 |
+| 特別な体験をしたい | なし | 日常から少し離れた体験をしたい | 自然文として保持 |
+| 写真を楽しみたい | なし | 写真を楽しめる雰囲気の場所を訪れたい | 自然文として保持 |
 
 ---
 
 ## 実用条件
 
-実用条件は、参拝しやすさ・移動しやすさ・混雑回避などの現実条件を表す。
-
-| 表示文言 | visit_style_tag候補 | extraCondition文言 | 初期実装方針 |
+| 表示文言 | 内部タグ | `extraCondition`への表現 | 扱い |
 |---|---|---|---|
-| 近場がいい | nearby | できるだけ近い場所を優先して | 既存タグへ接続 |
-| アクセスしやすい場所がいい | nearby | 駅から行きやすい、アクセスしやすい場所がいい | `duration_max_min` と併用検討 |
-| 有名な神社が安心 | classic | 有名で定番感があり、安心して参拝しやすい場所がいい | 既存タグへ接続 |
-| 人混みを避けたい | less_crowded | 混雑しにくい、落ち着いた場所がいい | 既存タグへ接続 |
+| 近場がいい | `nearby` | できるだけ近い場所を優先したい | 既存タグへ接続 |
+| アクセスしやすい場所がいい | `nearby` | 駅や公共交通から行きやすい場所がいい | アクセス情報と併用 |
+| 有名な神社が安心 | `classic` | 有名で定番感のある神社を選びたい | 既存タグへ接続 |
+| 人混みを避けたい | `less_crowded` | 混雑しにくい、落ち着いた場所がいい | 既存タグへ接続 |
 
-### 注意
+`nearby` はユーザーの希望を表す補助タグであり、実際の距離・現在地・経路計算とは分離する。
 
-`nearby` は現在地や距離計算と混同しない。
-
-現状では、あくまでユーザーの希望タグとして扱う。
-
-本当に距離・現在地を使う場合は、Location / Route Mode 側で扱う。
+距離や移動時間の判定は、位置情報・経路機能の責務として扱う。
 
 ---
 
 ## 神社好き向け
 
-神社好き向けは、神社そのものへの関心が強いユーザー向けの補助条件である。
-
-| 表示文言 | visit_style_tag候補 | extraCondition文言 | 初期実装方針 |
+| 表示文言 | 内部タグ | `extraCondition`への表現 | 扱い |
 |---|---|---|---|
-| 由緒を知りたい | classic | 由緒や歴史を知りながら参拝したい | `classic` へ寄せる |
-| 御朱印を楽しみたい | なし | 御朱印も楽しめる神社がいい | 自然文として保持 |
-| 神話に触れたい | classic | 神話や由緒に触れられる神社がいい | `classic` へ寄せる |
-| 境内をゆっくり歩きたい | quiet / nature | 境内をゆっくり歩きながら参拝したい | 既存タグの組み合わせで対応 |
+| 由緒を知りたい | `classic` | 由緒や歴史を知りながら参拝したい | 既存タグへ補助接続 |
+| 御朱印を楽しみたい | なし | 御朱印も楽しめる神社を訪れたい | 自然文として保持 |
+| 神話に触れたい | `classic` | 神話や由緒に触れられる神社を訪れたい | 既存タグへ補助接続 |
+| 境内をゆっくり歩きたい | `quiet` / `nature` | 境内をゆっくり歩きながら過ごしたい | 既存タグの組み合わせ |
 
-### 判断
-
-神社好き向けはMVPでは弱めに扱う。
-
-理由は、Kamimusubiの主導線が「神社好きの検索」ではなく「相談テーマから神社と出会う体験」だから。
-
-ただし、Premiumやリピート体験では価値が出る可能性があるため、設計上は残す。
+神社好き向け条件は、相談体験の主導線にはせず、補助的に表示する。
 
 ---
 
-## extraConditionとの対応
+## 内部タグ
 
-現状、参拝スタイルは `extraCondition` に自然文として保存される。
+参拝スタイルで使用する主要な内部タグは以下とする。
 
-### 現在の流れ
+| タグ | 意味 |
+|---|---|
+| `quiet` | 静かに過ごせる |
+| `less_crowded` | 混雑を避けやすい |
+| `nearby` | 近さ・アクセスを希望する |
+| `nature` | 自然を感じられる |
+| `reset` | 気分転換・切り替え |
+| `classic` | 有名・定番・歴史文化 |
+| `business` | 仕事・商売との関連 |
+| `study` | 学び・資格との関連 |
+| `urban` | 都市型・市街地型 |
+
+`business`、`study`、`urban` は既存の内部タグとして保持するが、参拝スタイルUIの主要選択肢にはしない。
+
+---
+
+## extraConditionとの接続
+
+参拝スタイルは、既存の `extraCondition` を通じてBackendへ渡す。
 
 ```text
-ConciergeFilterPanel
-↓
-onExtraConditionChange
+Concierge Filter
 ↓
 extraCondition
 ↓
-baseFilters.extra_condition
-↓
-compatPayload.filters.extra_condition
-↓
-backend extra_condition_tags.py
+extra_condition_tags
 ↓
 visit_style_tags
+↓
+Recommendation
 ```
 
-### 既存判定
+### 変換例
 
-`extra_condition_tags.py` では、自然文のキーワードから以下のようなタグへ変換している。
-
-| キーワード例 | tag |
+| 自然文に含まれる語 | 内部タグ |
 |---|---|
-| 静か / 落ち着いた | quiet |
-| 人混み / 混雑 / 空いて | less_crowded |
-| 近い / 近場 / 駅近 | nearby |
-| 自然 | nature |
-| 切り替え / 前向き | reset |
-| 有名 / 定番 / 安心 | classic |
-| 仕事 / 商売 | business |
-| 学び / 勉強 / 資格 | study |
+| 静か・落ち着いた | `quiet` |
+| 人混み・混雑・空いている | `less_crowded` |
+| 近い・近場・駅近 | `nearby` |
+| 自然 | `nature` |
+| 切り替え・前向き | `reset` |
+| 有名・定番・安心 | `classic` |
+| 仕事・商売 | `business` |
+| 学び・勉強・資格 | `study` |
 
-### 判断
-
-MVPでは `extraCondition` を維持する。
-
-`visitStyle` 専用 state はまだ作らない。
-
-理由は、既存の推薦ロジックが `extraCondition` から `visit_style_tags` を抽出する前提で動いているため。
+Frontendは、自然文から内部タグを確定する業務ロジックを重複実装しない。
 
 ---
 
-## Recommendation Score v2での扱い
+## Recommendationとの接続
 
-Recommendation Score v2 では、参拝スタイルは補助スコアとして扱われている。
-
-現行設計では、以下の重みがある。
-
-```text
-score_visit_style × 0.35
-```
-
-### 現在の構造
+参拝スタイルは、相談内容と神社情報が同程度に一致する候補間で、体験面の一致を補足するために使用する。
 
 ```text
 user_visit_style_tags
@@ -243,60 +146,45 @@ matched_visit_style_tags
 ↓
 score_visit_style
 ↓
-context_match
+Recommendation
 ```
 
-### 判断
+### ルール
 
-参拝スタイルは、need一致を上書きしない。
-
-つまり、相談テーマとの一致が弱い神社を、参拝スタイルだけで上位にしすぎない。
-
-現行テストでも、visit_style は補助軸として、同程度のneed一致候補の順位調整に使う方針になっている。
+- need_tagsとの一致を優先する
+- 参拝スタイルだけで候補を上位化しすぎない
+- matched_visit_style_tagsは推薦理由の補足として扱う
+- スコア計算と重みはBackendを正本とする
+- Frontendは順位計算を持たない
 
 ---
 
-## UIでの表示方針
+## UI表示方針
 
-### 表示場所
+参拝スタイルは ConciergeFilterPanel 内の補助条件として表示する。
 
-参拝スタイルは `ConciergeFilterPanel` 内に置く。
+### 表示優先度
 
-HomeHeroには置かない。
+1. 体験スタイル
+2. 実用条件
+3. 神社好き向け
 
-### 表示ルール
+### 表示原則
 
-```markdown
 - 相談テーマより目立たせない
-- Accordion内の補助条件として扱う
-- 3レイヤーに分けて表示する
-- 一度に全部見せすぎない
-- 初期表示は体験スタイル + 実用条件を優先する
-- 神社好き向けは折りたたみ、または後段表示にする
-```
+- 一度にすべての選択肢を強く表示しない
+- 神社好き向けは折りたたみまたは後段に配置する
+- 選択しなくても推薦へ進める
+- 条件を増やすほど推薦精度が上がるとは断定しない
 
-### 初期表示案
-
-```text
-どんな参拝にしたいですか？
-
-体験スタイル
-[静かな時間] [気分を切り替える] [自然を感じる]
-
-実用条件
-[近場] [アクセスしやすい] [有名で安心] [人混みを避ける]
-
-神社好き向け
-[由緒] [御朱印] [神話] [境内を歩く]
-```
+UIのレイアウト、開閉、選択状態の表示は `docs/product/concierge-filter-area.md` で管理する。
 
 ---
 
-## 初期MVPで採用する項目
+## MVPで扱う項目
 
-### 採用
+### 主要項目
 
-```markdown
 - 静かな時間を過ごしたい
 - 気分を切り替えたい
 - 自然を感じたい
@@ -304,67 +192,67 @@ HomeHeroには置かない。
 - アクセスしやすい場所がいい
 - 有名な神社が安心
 - 人混みを避けたい
-```
 
-### 表示は残すが弱める
+### 補助項目
 
-```markdown
 - 歴史や文化に触れたい
 - 由緒を知りたい
 - 境内をゆっくり歩きたい
-```
 
-### 初期MVPでは保留
+### 自然文として保持する項目
 
-```markdown
 - 特別な体験をしたい
 - 写真を楽しみたい
 - 御朱印を楽しみたい
 - 神話に触れたい
-```
+
+自然文として保持する項目について、専用タグの追加は本書では決定しない。
 
 ---
 
-## 次PR候補
+## 責務境界
 
-### PR1: Visit Style Taxonomy UI反映
+### Visit Style Taxonomy
 
-```markdown
-- [ ] ConciergeFilterPanel の QUICK_PRESETS を3レイヤー表示へ整理
-- [ ] 既存 extraCondition への反映方式は維持
-- [ ] quiet / reset / nature / nearby / classic / less_crowded を優先表示
-- [ ] 神社好き向けは控えめに表示
-- [ ] typecheck
-```
+- 参拝スタイルの分類
+- 表示文言
+- 内部タグとの対応
+- extraConditionへの表現
+- Recommendationとの接続方針
 
-### PR2: visit_style_tags表示説明の改善
+### Concierge Filter
 
-```markdown
-- [ ] 推薦理由で「参拝スタイルとの一致」を補助理由として表示
-- [ ] matched_visit_style_tags をユーザー向け文言へ変換
-- [ ] 吉方位・相性とは混ぜない
-- [ ] Meaning Cardとの表示順を確認
-```
+- 選択肢の配置
+- 開閉UI
+- 選択状態
+- 条件の適用・解除
+- 補助条件の画面表示
 
-### PR3: visit_style_tags拡張検討
+### Backend
 
-```markdown
-- [ ] photo / goshuin / mythology / special のタグ追加要否を検討
-- [ ] 追加する場合はShrine.visit_style_tagsの既存データ補完を設計
-- [ ] CVRを見てから追加判断する
-```
+- 自然文から内部タグへの変換
+- 神社側タグとの一致判定
+- スコア計算
+- 推薦順位への反映
 
 ---
 
-## TODO
+## 関連ドキュメント
 
-```markdown
-- [x] develop最新化
-- [x] audit/visit-style-taxonomy作成
-- [x] 現在のQUICK_PRESETSを棚卸し
-- [x] 体験スタイルを確定
-- [x] 実用条件を確定
-- [x] 神社好き向けを確定
-- [x] extraCondition / visit_style_tags との対応を整理
-- [x] docsへ参拝スタイルTaxonomyを追記
-```
+- `docs/product/README.md`
+- `docs/product/concierge-first-final-spec.md`
+- `docs/product/concierge-filter-area.md`
+- `docs/product/concierge-modes.md`
+- `docs/product/meaning-translation-mapping.md`
+- `docs/product/need-mode-ui-flow.md`
+- `docs/product/compat-mode-ui-flow.md`
+
+---
+
+## 更新ルール
+
+- 本書は参拝スタイルの分類・表示文言・内部値との対応を管理する。
+- Concierge Filterの画面構成は本書で重複管理しない。
+- スコア計算、タグ抽出ロジック、API契約はBackend側の正本で管理する。
+- 表示文言・内部タグ・対応関係が変更された場合のみ更新する。
+- TODO、PR計画、実装進捗、作業履歴は本書へ記載しない。

@@ -1,3 +1,7 @@
+> **Status: Active**
+>
+> 本ドキュメントは、KAMI MUSUBIにおける参拝完了から振り返り保存までの体験・イベント・保存責務を定義する正本である。
+
 # Visit Reflection Flow
 
 ## 目的

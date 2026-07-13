@@ -1,3 +1,7 @@
+> **Status: Active**
+>
+> 本ドキュメントは、Action Suggestion v4のInput/Output Contract・生成ルールを定義する正本である。
+
 # Action Suggestion v4 Contract
 
 ## 目的
@@ -192,7 +196,6 @@ primary_action を補完する行動。
 ## 関連ドキュメント
 
 - `docs/product/meaning-translation-mapping.md`
-- `docs/product/action_suggestion_v4.md`
 - `docs/product/visit-reflection-flow.md`
 
 ---

@@ -1,20 +1,24 @@
+> **Status: Reference**
+>
+> 本ドキュメントは Compat Mode のUI導線と表示責務を補足する Reference 文書である。
+>
+> Mode全体の責務は `docs/product/concierge-modes.md`、
+> 補助条件UIは `docs/product/concierge-filter-area.md`、
+> Meaning変換は `docs/product/meaning-translation-mapping.md` を正本とする。
+
 # Compat Mode UI Flow
 
 ## 目的
 
-Concierge First における Compat Mode のUI導線を定義する。
+Concierge FirstにおけるCompat ModeのUI導線と表示責務を定義する。
 
-Compat Mode は、誕生日・element4・相性候補・占術補助・方位補助などを扱う補助モードである。
+Compat Modeは、誕生日・`element4`・相性情報・占術・方位情報などを、相談内容に対する補助シグナルとして扱う。
 
-このドキュメントでは、Compat Mode の役割、Need Mode との境界、HomeHero / ConciergeEntry / Meaning Card での表示方針を整理する。
+推薦の主導線はNeed Modeとし、Compat Modeは相談テーマや自由入力を上書きしない。
 
 ---
 
-## 結論
-
-MVPでは、Compat Mode を推薦の主導線にはしない。
-
-主導線は Need Mode とし、Compat Mode は補助条件Accordion内に置く。
+## 基本方針
 
 ```text
 Need Mode
@@ -23,419 +27,341 @@ Need Mode
 推薦理由の中心
 
 Compat Mode
-誕生日 / element4 / 相性候補 / 方位補助
+誕生日 / element4 / 相性情報 / 方位情報
 ↓
-補足理由・補助条件
+推薦理由の補足
 ```
 
-誕生日や相性は残す。
-
-ただし、UI前面には出さない。
-
-吉方位は、現在地・方角計算・九星気学ロジックの根拠が確認できるまで前面化しない。
+- Need Modeを推薦の主導線とする
+- Compat Modeは補助条件として扱う
+- 誕生日入力は任意とする
+- Compat Modeだけで推薦候補を決定しない
+- 相性・占術・方位を断定的に表示しない
+- 吉方位は計算根拠が確認できる場合のみ補助情報として扱う
+- Backendを推薦判定の正本とする
 
 ---
 
-## Compat Modeの役割
-
-Compat Mode は、相談テーマに対する神社推薦を補助するための相性・文脈補助レイヤーである。
+## Compat Modeの責務
 
 ### 担当するもの
 
-```markdown
 - 誕生日入力
-- element4算出
-- 相性から見た候補
-- 占術補助シグナル
-- 方位補助シグナル
-- 吉方位候補の将来設計
-```
+- element4
+- 相性に関する補助情報
+- 占術由来の補助シグナル
+- 方位に関する補助情報
+- 推薦理由の補足文脈
 
 ### 担当しないもの
 
-```markdown
-- 相談テーマの正本化
-- need_tags の主判定
-- 推薦理由の主語
-- ユーザー状態の断定
-- 参拝すべき方向の断定
-```
+- 相談テーマの決定
+- need_tagsの主判定
+- 推薦理由の主文脈
+- 推薦順位の単独決定
+- ユーザーの性格・運命・未来の断定
+- 参拝すべき神社や方角の断定
 
 ---
 
-## 誕生日入力の責務
+## 誕生日入力
 
-誕生日入力は、相性補助のための任意入力として扱う。
+誕生日は、相性や傾向を補足する任意入力として扱う。
 
 ### UI上の扱い
 
-```markdown
-- HomeHeroには置かない
-- ConciergeEntryにも主入力として置かない
-- ConciergeFilterPanel内の補助条件として置く
-- 必須入力にしない
-- 「提案の補助として使います」と明記する
-```
+- Home Heroには配置しない
+- Concierge Entryの主入力にしない
+- Concierge Filter内に配置する
+- 未入力でも推薦へ進める
+- 補助情報として利用することを明示する
 
-### 役割
+### 利用目的
 
-```markdown
 - element4算出の入力
-- 相性候補の初期ヒント
-- analytics上の hasBirthdate 判定
-- Compat Mode の補助シグナル
-```
+- 相性情報の補助
+- hasBirthdateの判定
+- Compat Modeの補助シグナル
 
-### 表示文言候補
+### 表示文言
 
 ```text
 誕生日（任意）
 提案の補助として使います
 ```
 
-### 注意
+### 表示原則
 
-誕生日からユーザーの性格や運命を断定しない。
-
-「あなたは〇〇だから、この神社が正しい」とは表示しない。
+- 性格診断として見せない
+- 運命や未来を断定しない
+- 誕生日情報だけで神社を決定しない
+- 相談テーマより強く表示しない
 
 ---
 
-## element4の責務
+## element4
 
-`element4` は、誕生日から算出される相性補助ラベルとして扱う。
-
-### 現在の位置付け
-
-現行UIでは、`ConciergeFilterPanel` 内で以下のように表示される。
-
-```text
-あなたの傾向: {element4}
-```
+element4は、誕生日から得られる相性補助ラベルとして扱う。
 
 ### 役割
 
-```markdown
-- suggestedTags の補助条件
-- 相性から見た候補の表示補助
+- 相性情報の補助
 - Compat Modeの説明材料
-```
+- 推薦候補間の補助シグナル
 
-### 表示方針
+### 表示原則
 
-`element4` は、ユーザーの本質や人格を断定する表現にしない。
+- ユーザーの本質や人格を表すものとして扱わない
+- 固定的なタイプ診断として表示しない
+- 相談内容より優先しない
+- 推薦理由の主語にしない
 
-#### NG
+### 使用しない表現
 
-```markdown
-- あなたは火タイプなので、この神社に行くべきです
-- あなたの性格は〇〇です
-- この属性の人はこの神社と相性が良いです
-```
+- あなたはこのタイプです
+- この属性だから、この神社へ行くべきです
+- あなたの性格にはこの神社が正解です
 
-#### OK
+### 使用する表現
 
-```markdown
-- 誕生日から見た補助傾向です
-- 相性候補を出すための参考情報です
-- 相談テーマを補助する材料として使います
-```
+- 誕生日情報から見た補助的な傾向です
+- 相性情報を整理するための参考として利用します
+- 相談内容を補足する情報として扱います
 
 ---
 
-## 相性表示の責務
+## 相性情報
 
-相性表示は、Need Modeで抽出した相談テーマに対して、神社候補を補助的に並べる材料として扱う。
+相性情報は、Need Modeで整理された相談内容に対し、神社候補を補足的に説明するために使用する。
 
 ### UI上の扱い
 
-```markdown
-- ConciergeFilterPanel内に置く
-- 「相性から見た候補」として表示する
-- 推薦結果の主理由にはしない
-- Meaning Cardでは補足欄に置く
-```
+- Concierge Filter内に配置する
+- 推薦結果の主理由にしない
+- Meaning Cardでは補足情報として表示する
+- ユーザーの相談内容と矛盾する候補を強制しない
 
-### 役割
-
-```markdown
-- 誕生日由来の補助シグナル
-- suggestedTags の表示
-- ご利益タグ選択の補助
-```
-
-### 表示文言候補
+### 表示文言
 
 ```text
-相性から見た候補
-誕生日情報をもとに、補助的に近いテーマを表示しています。
+相性から見た補助情報
+誕生日情報をもとに、相談内容を補足する参考情報を表示しています。
 ```
-
-### 注意
-
-相性表示は、Need Modeの相談テーマより上位に置かない。
-
-ユーザーが選んだ相談内容と矛盾する相性候補を強制しない。
 
 ---
 
-## 吉方位表示の責務
+## 方位情報
 
-吉方位は現時点では前面化しない。
+方位情報は、現在地・神社位置・計算根拠が確認できる場合のみ補助情報として扱う。
 
-### 理由
+### 表示原則
 
-現時点で未確認の論点がある。
+- 推薦の主理由にしない
+- 相性情報と混同しない
+- 吉凶を断定しない
+- 参拝を強制しない
+- 計算根拠が確認できない場合は表示しない
 
-```markdown
-- 現在地を推薦計算に使っているか
-- 神社との方角計算をしているか
-- 九星気学ロジックがあるか
-- 吉方位表示のデータソースは何か
-- 相性候補と吉方位候補が混同されていないか
-```
+### 使用しない表現
 
-### MVP方針
-
-```markdown
-- 吉方位は補足表示にもまだ強く出さない
-- Direction Audit が完了するまで前面化しない
-- 使う場合は「方位の参考情報」として弱く扱う
-- 参拝を促す断定表現は使わない
-```
-
-### NG
-
-```markdown
 - 今日はこの方角が吉です
-- 吉方位なのでこの神社に行くべきです
-- この方角なら運気が上がります
-```
+- 吉方位なので、この神社へ行くべきです
+- この方角へ行けば運気が上がります
 
-### OK
+### 使用する表現
 
-```markdown
 - 方位情報は補助的な参考として扱います
-- 現在地や方角計算の根拠が確認できた場合のみ表示します
-- 相性候補とは分けて扱います
-```
+- 現在地と神社位置にもとづく参考情報です
+- 相談内容との一致を優先して提案しています
 
 ---
 
-## Need Modeとの境界
-
-Need Mode と Compat Mode は明確に分離する。
+## Need Modeとの責務境界
 
 | 項目 | Need Mode | Compat Mode |
 |---|---|---|
-| 主入力 | 相談テーマ / 自由入力 | 誕生日 |
-| 主データ | need_tags / consultation_axis | element4 / suggestedTags |
-| 推薦理由 | 主理由 | 補足理由 |
-| UI位置 | HomeHero / ConciergeEntryの主導線 | ConciergeFilterPanel内の補助条件 |
-| スコア影響 | 主軸 | 補助シグナル |
-| 表示トーン | 今の相談から見る | 補助的に見る |
+| 主入力 | 相談テーマ・自由入力 | 誕生日 |
+| 主データ | need_tags・consultation_axis | element4・相性情報 |
+| 推薦理由 | 主文脈 | 補足文脈 |
+| UI位置 | Home Hero・Concierge Entry | Concierge Filter |
+| スコアへの影響 | 主軸 | 補助シグナル |
+| 表示トーン | 相談内容から整理する | 補助情報として参照する |
 
 ### 境界ルール
 
-```markdown
-- Need Modeを主導線にする
-- Compat Modeは補助条件に閉じる
-- Compat Modeは相談テーマを上書きしない
-- Compat ModeはRecommendation Score v2で強い重みにしない
-- Compat Mode由来の情報はMeaning Cardの補足欄に置く
-```
+- Need Modeを主導線とする
+- Compat Modeは相談内容を上書きしない
+- Compat Mode由来の情報を推薦理由の主語にしない
+- 相性・占術・方位だけで推薦順位を決定しない
+- Compat Mode由来の情報は補足表示に留める
 
 ---
 
-## HomeHeroでの表示方針
+## Home Heroでの表示
 
-HomeHeroでは Compat Mode を表示しない。
+Home HeroではCompat Modeの入力項目を表示しない。
 
 ### 表示するもの
 
-```markdown
-- 相談テーマチップ
+- 相談テーマ
 - 自由入力
+- コンシェルジュ開始CTA
 - 条件追加導線
-- この相談ではじめるCTA
-```
 
 ### 表示しないもの
 
-```markdown
 - 誕生日入力
 - element4
-- 相性表示
-- 吉方位表示
+- 相性情報
+- 方位情報
 - 占術説明
-```
 
-### 理由
-
-HomeHeroは相談体験の入口であり、相性診断の入口ではない。
-
-ここで誕生日や占術を前面化すると、神社検索 / 占い診断アプリに見える。
+Home Heroは相談開始の入口であり、相性診断や占術の入口として扱わない。
 
 ---
 
-## ConciergeEntryでの表示方針
+## Concierge Entryでの表示
 
-ConciergeEntryでも Compat Mode を主入力として扱わない。
+Concierge EntryではCompat Modeを主入力として扱わない。
 
 ### 表示するもの
 
-```markdown
-- 相談テーマの確認
-- 自由入力の編集
-- 補助条件Accordionへの導線
-```
+- 相談内容
+- 自由入力
+- 補助条件への導線
+- 推薦生成CTA
 
-### Compat Modeへの導線
+Compat Modeへの導線は以下とする。
 
 ```text
 ＋ 条件を追加する
 ```
 
-Accordionを開いた先に、誕生日・相性候補を表示する。
-
-### 注意
-
-ConciergeEntryの主CTAは、Need Mode由来の相談開始である。
-
-誕生日を入れないと進めない構造にしない。
+誕生日や相性情報は、Concierge Filterを開いた先で扱う。
 
 ---
 
-## Meaning Cardでの表示方針
+## Concierge Filterでの表示
 
-Meaning Cardでは、Need Mode由来の推薦理由を主表示にする。
+Compat Modeの入力と補助情報はConcierge Filterが担当する。
 
-Compat Mode由来の情報は補足欄に置く。
+```text
+Concierge Entry
+↓
+条件を追加する
+↓
+Concierge Filter
+├─ 誕生日
+├─ 相性に関する補助情報
+└─ その他の補助条件
+```
+
+補助条件の画面構成と責務は `docs/product/concierge-filter-area.md` を参照する。
+
+---
+
+## Meaning Cardでの表示
+
+Meaning Cardでは、Need Mode由来の推薦理由を主表示とし、Compat Mode由来の情報を補足表示とする。
 
 ### 表示順
 
 ```text
-1. 相談テーマとの一致
+1. 相談内容との一致
 2. 神社側の意味文脈
-3. 参拝前に意識すること
+3. 次に取りやすい行動
 4. 補足情報
-   - 誕生日由来の相性補助
+   - 誕生日由来の相性情報
    - 参拝スタイルとの一致
-   - 方位情報がある場合の参考表示
+   - 根拠が確認できる場合の方位情報
 ```
 
-### 表示文言候補
+### 表示原則
 
-```text
-補足として、誕生日情報から見た相性候補とも一部重なっています。
-```
-
-```text
-方位情報は、現在地と計算根拠が確認できる場合のみ参考として表示します。
-```
+- 相性情報だけで推薦理由を完結させない
+- 占術情報を確定事項として表示しない
+- Need Modeの推薦理由より強く表示しない
+- 方位情報と相性情報を分離する
 
 ---
 
-## Recommendation Score v2での扱い
+## Recommendationとの接続
 
-Compat Mode は補助シグナルとして扱う。
+Compat Modeは、Recommendationの補助入力を提供する。
 
-### 主軸にしないもの
+### 補助入力
 
-```markdown
 - birthdate
-- element4
-- suggestedTags
-- direction_bonus
-- zodiac / astrology /九星気学系の補助情報
-```
-
-### 補助として使う可能性があるもの
-
-```markdown
 - hasBirthdate
 - element4
-- selected_goriyaku_tag_ids
 - suggestedTags
+- selected_goriyaku_tag_ids
 - direction_bonus
-```
 
-### 判断
+### ルール
 
-`need_tags` / `matched_need_tags` / `consultation_axis` を主軸にする。
-
-Compat Modeは、同程度の候補間で補助的に効く程度に留める。
+- query・need_tags・matched_need_tagsを主軸とする
+- Compat Modeの入力は主入力を上書きしない
+- 補助シグナルだけで順位を決定しない
+- 推薦順位の判定はBackendを正本とする
+- Frontendは相性・占術・方位の判定ロジックを重複実装しない
 
 ---
 
-## UI文言方針
+## UI文言
 
-### NG
+### 使用しない表現
 
-```markdown
-- あなたは〇〇タイプです
+- あなたはこのタイプです
 - この神社が運命的に合っています
 - 吉方位なので行くべきです
-- 誕生日から見るとこれが正解です
-```
+- 誕生日から見ると、これが正解です
+- この神社へ行けば運気が上がります
 
-### OK
+### 使用する表現
 
-```markdown
 - 誕生日情報は、相性を見る補助として使います
-- 相談テーマとの一致を優先して提案しています
+- 相談内容との一致を優先して提案しています
 - 相性情報は補足として参考にできます
-- 方位情報は計算根拠が確認できる場合のみ表示します
-```
+- 方位情報は根拠が確認できる場合のみ参考として表示します
 
 ---
 
-## 次PR候補
+## 責務境界
 
-### PR1: Compat Mode 表示整理
+### Frontend
 
-```markdown
-- [ ] ConciergeFilterPanelの誕生日説明を補助表現へ調整
-- [ ] element4表示文言を弱める
-- [ ] 相性候補の説明を追加
-- [ ] 吉方位表示を前面化しない方針を反映
-- [ ] typecheck
-```
+- 誕生日入力を受け付ける
+- 補助情報を表示する
+- Compat Modeの情報をPayloadへ渡す
+- Need Modeより控えめに表示する
 
-### PR2: Meaning Card補足欄整理
+### Backend
 
-```markdown
-- [ ] Need Mode由来の推薦理由を主表示にする
-- [ ] Compat Mode由来の情報を補足欄へ移動する
-- [ ] 誕生日・相性・方位の表示順を整理する
-- [ ] 説明文の断定表現を避ける
-```
-
-### PR3: Direction Audit
-
-```markdown
-- [ ] 現在地を推薦計算に使っているか確認
-- [ ] 神社との方角計算をしているか確認
-- [ ] 九星気学ロジックがあるか確認
-- [ ] 吉方位表示のデータソース確認
-- [ ] 相性候補と吉方位候補を分離する
-```
+- 誕生日由来の補助情報を生成する
+- Compat Modeの入力を推薦へ反映する
+- 相性・占術・方位情報の利用可否を判定する
+- 推薦順位と推薦理由への影響を決定する
 
 ---
 
-## TODO
+## 関連ドキュメント
 
-```markdown
-- [x] develop最新化
-- [x] audit/compat-mode-ui-flow作成
-- [x] Compat Modeの役割を定義
-- [x] 誕生日入力の責務を整理
-- [x] element4の責務を整理
-- [x] 相性表示の責務を整理
-- [x] 吉方位表示の責務を整理
-- [x] Need Modeとの境界を整理
-- [x] HomeHeroでの表示方針を整理
-- [x] ConciergeEntryでの表示方針を整理
-- [x] Meaning Cardでの表示方針を整理
-- [x] docsへCompat Mode UI Flowを追記
-```
+- `docs/product/README.md`
+- `docs/product/concierge-first-final-spec.md`
+- `docs/product/concierge-modes.md`
+- `docs/product/need-mode-ui-flow.md`
+- `docs/product/concierge-filter-area.md`
+- `docs/product/meaning-translation-mapping.md`
+- `docs/product/home-hero-final-wireframe.md`
+- `docs/product/concierge-entry-final-wireframe.md`
+
+---
+
+## 更新ルール
+
+- 本書はCompat ModeのUI導線と表示責務のみを管理する。
+- 推薦ロジック・占術ロジック・方位計算・API契約は各正本で管理する。
+- Need ModeとCompat Modeの責務境界を重複定義しない。
+- Compat ModeのUI導線または表示責務が変更された場合のみ更新する。
+- TODO・PR計画・実装進捗・監査途中の判断は本書へ記載しない。
