@@ -367,8 +367,7 @@ export async function GET(req: NextRequest) {
 - **ローカル動作確認**: `docs/20_smoke_checks.md`
 - **API概要**: `docs/30_api_overview.md`
 - **インフラ・デプロイ**: `docs/40_infra_deploy.md`
-- **TODO・ロードマップ**: `docs/90_roadmap.md`
-- **UI メモ**: `docs/ui/concierge_sp_notes.md`
+- **TODO・ロードマップ**: `docs/core/roadmap.md`
 - **Premium 価値境界**: `docs/pricing.md`, `docs/premium-experience.md`
 - **神社詳細レイヤ**: `docs/shrine-detail-layer.md`
 

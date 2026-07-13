@@ -73,15 +73,13 @@
 
 ## 🎨 UI / UX メモ
 
-- Concierge（SP幅）UI 違和感メモ  
-  - `ui/concierge_sp_notes.md`
 
 ---
 
 ## 🗺 ロードマップ / TODO
 
 - 開発 TODO / 優先度  
-  - `90_roadmap.md`
+  - `core/roadmap.md`
 
 ## 🧭 Concierge（仕様）
 
