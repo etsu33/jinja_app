@@ -1,233 +1,372 @@
-
+> **Status: Archive**
+>
+> 本ドキュメントは、Mobile / Expo側へ認証付きAPI Clientを導入する前に作成された設計記録である。
+>
+> 記載内容は実装前時点のスナップショットであり、現行仕様判断には使用しない。
+>
+> 現在のMobile認証・HTTP Client・行動ログ実装は、以下のコードとテストを正本とする。
+>
+> - `apps/mobile/lib/authTokens.ts`
+> - `apps/mobile/lib/http.ts`
+> - `apps/mobile/lib/shrineInteractions.ts`
+> - `apps/mobile/app/shrines/[id].tsx`
+> - Backendの認証・行動ログAPI実装
+> - 関連するMobile / Backend Test
 
 # Mobile Authenticated API Client Design
 
 ## 目的
 
-mobile / Expo 側から backend の認証必須 API を安全に呼び出せるようにする。
+Mobile / Expo側から認証必須APIを安全に呼び出すために、Token Storage、HTTP Client、行動ログ送信の責務を分離した設計記録である。
 
-Score v3 の UI route_open 確認では、mobile 詳細画面の「地図で経路を確認する」クリックが `ShrineInteractionLog` に保存されていないことを確認した。
+本書は、Mobile側に認証付き通信基盤を導入した背景と判断を保存するArchive文書として扱う。
 
-原因は、mobile 側に JWT 保存・Authorization ヘッダー付与の仕組みがなく、backend の `IsAuthenticated` API に到達できないためと考えられる。
+---
 
-## 現状
+## 背景
 
-### backend
+設計時点では、Mobile詳細画面から送信する`route_open`などの行動ログがBackendへ保存されない状態が確認されていた。
 
-- JWT 発行 API は存在する
-  - `POST /api/auth/jwt/create/`
-- 行動ログ API は認証必須
-  - `POST /api/shrine-interactions/`
-- route_open / detail_view は `ShrineInteractionLog` に保存される
-- manual curl では保存確認済み
+主な原因として、Mobile側に以下の仕組みが不足していた。
 
-### web
+- JWT Access Tokenの保存
+- JWT Refresh Tokenの保存
+- `Authorization` Headerの付与
+- 認証必須API向けのHTTP Helper
+- 行動ログ送信用Client
+- 認証失敗時の共通処理
 
-- Next.js BFF 経由で backend API を呼び出す構成
-- `apps/web/src/app/api/shrine-interactions/route.ts` が存在する
-- `apps/web/src/components/shrine/GoogleMapRouteLink.tsx` は `trackShrineInteraction` を呼び出す
+Backend側の行動ログAPIは認証必須であり、Tokenを持たないMobile ClientからのRequestは`401 Unauthorized`となる構造だった。
 
-### mobile
+---
 
-- Expo / mobile web は `localhost:8081` で動作する
-- `apps/mobile/lib/http.ts` は `BASE_URL` に対して `get` / `post` を行うだけ
-- `Authorization` ヘッダー付与は未実装
-- JWT access / refresh token の保存箇所は未確認、現状ほぼ未実装
-- AsyncStorage 利用は birthday / recently-viewed などのローカル保存用途に限られる
+## 当時のシステム構成
 
-## 課題
+### Backend
 
-mobile から以下の API を呼び出すには認証が必要。
+Backendは以下の責務を持つ構成だった。
 
-- `POST /api/shrine-interactions/`
-- `POST /api/favorites/`
-- `POST /api/shrines/{id}/visit/`
-- `POST /api/shrines/{id}/reflection/`
+- JWT発行
+- 認証済みUserの識別
+- Shrine Interactionの保存
+- Favoriteの保存
+- Visitの保存
+- Reflectionの保存
+- 認証必須APIの保護
 
-現状の `http.ts` では JWT を付与できないため、mobile UI から route_open を保存しようとしても `401 Unauthorized` になる可能性が高い。
+認証制約を緩めるのではなく、Mobile側へ認証Clientを追加する方針とした。
 
-## 方針
+### Web
 
-### 1. token storage を分離する
+WebはNext.jsのBFFまたは認証済みRequest経路を通じてBackend APIへ接続していた。
 
-mobile 専用の token storage を追加する。
+### Mobile
 
-想定ファイル:
+設計時点のMobile HTTP Clientは、Base URLへ単純な`GET`・`POST`を送る責務に限定されていた。
+
+Token Storageや`Authorization` Headerの付与は分離されておらず、認証必須APIを安定して利用できない状態だった。
+
+---
+
+## 設計原則
+
+Mobile認証Clientは、以下の原則で設計された。
+
+- Token保存とHTTP通信を分離する
+- 非認証APIと認証必須APIを分離する
+- Backendの認証制約を変更しない
+- 行動ログ送信失敗で主要導線を停止しない
+- Refresh処理をHTTP Client内部へ閉じ込める
+- 認証状態の消失時は安全にTokenを削除する
+- Mobile固有の認証処理を各画面へ重複実装しない
+
+---
+
+## Token Storageの責務
+
+Token Storageは、Mobile端末上のJWT管理を担当する。
+
+### 保持対象
+
+- Access Token
+- Refresh Token
+
+### 責務
+
+- Tokenの保存
+- Tokenの取得
+- Tokenの削除
+- 認証状態リセット時の一括削除
+- HTTP Clientから利用できる共通Interfaceの提供
+
+### 責務外
+
+- API Requestの送信
+- Refresh APIの呼び出し
+- Login UIの表示
+- User Profileの管理
+- Backendの認証判定
+
+Token保存の実装詳細は、現行の`apps/mobile/lib/authTokens.ts`を正本とする。
+
+---
+
+## HTTP Clientの責務
+
+Mobile HTTP Clientは、非認証Requestと認証付きRequestを分離して扱う。
+
+### 非認証Request
+
+以下の用途で使用する。
+
+- 公開API
+- Login
+- JWT発行
+- 認証不要の一覧・検索
+
+### 認証付きRequest
+
+以下の処理を共通化する。
+
+- Access Tokenの取得
+- `Authorization: Bearer <token>`の付与
+- JSON Headerの付与
+- 認証失敗の検知
+- 必要に応じたToken Refresh
+- Refresh失敗時のToken削除
+- 共通Errorへの変換
+
+### 責務外
+
+- Tokenの保存実装
+- 各画面固有のUI処理
+- 行動ログのPayload組み立て
+- Google Mapsなど外部アプリの起動
+- Backendの権限判定
+
+現行のRequest契約は`apps/mobile/lib/http.ts`と関連テストを正本とする。
+
+---
+
+## 行動ログClientの責務
+
+Shrine Interaction用Clientは、Mobile画面からBackendの行動ログAPIへ送信する責務を持つ。
+
+### 主なAction Type
+
+- `detail_view`
+- `route_open`
+- `shrine_card_click`
+
+Action Typeの正式な定義はBackendのModel・Serializer・API Contractを正本とする。
+
+### Payloadの基本要素
+
+- Shrine ID
+- Action Type
+- Source
+- Thread ID
+- Metadata
+
+Mobile固有の情報は`source`または`metadata`へ保持し、Backendの業務ロジックと混在させない。
+
+---
+
+## `route_open`の扱い
+
+`route_open`は、神社詳細画面から経路確認を開始した行動として記録する。
+
+### 設計原則
+
+- 行動ログ送信後に地図を開く
+- 行動ログ保存に失敗しても地図起動を止めない
+- Analyticsや行動ログの失敗を主要体験の失敗にしない
+- 開発環境では送信失敗を確認できる
+- 同一操作の二重送信を避ける
+
+```text
+経路確認CTA
+↓
+route_open送信
+↓
+送信成否にかかわらず地図を開く
+```
+
+---
+
+## `detail_view`の扱い
+
+`detail_view`は、神社詳細画面の表示を記録するActionとして扱う。
+
+### 設計原則
+
+- 画面表示ごとに無制限送信しない
+- Re-renderによる二重送信を避ける
+- 1画面表示につき1回を基本とする
+- 認証状態がない場合の扱いは共通Clientの契約に従う
+
+---
+
+## 認証失敗時の扱い
+
+認証付きRequestでTokenが利用できない場合は、認証状態がないことを明示的に扱う。
+
+### Access Token期限切れ
+
+Refresh Tokenが利用可能な場合は、Access Tokenの再発行を試みる。
+
+### Refresh失敗
+
+- 保存済みTokenを削除する
+- 認証状態を失効させる
+- 呼び出し元へ認証Errorを返す
+
+### 行動ログ送信時
+
+行動ログの失敗によって、地図表示・詳細閲覧・参拝導線などの主要体験を停止しない。
+
+---
+
+## Security方針
+
+設計時点ではToken Storageの導入を優先し、保存方式を差し替え可能な責務分離とした。
+
+### 原則
+
+- Tokenを画面Componentへ直接保持しない
+- Token保存処理をHTTP Clientへ混在させない
+- Token値を通常ログへ出力しない
+- 認証Error時にTokenを安全に削除する
+- 保存方式を変更してもHTTP Clientの呼び出し側へ影響を広げない
+
+Tokenの保存方式およびSecurity要件は、現行実装とMobileのSecurity方針を正本とする。
+
+---
+
+## Backendとの責務境界
+
+### Mobile
+
+- Token保存
+- Authorization Header付与
+- Refresh処理
+- 行動ログRequest送信
+- Error処理
+- 主要導線を止めないFail Safe
+
+### Backend
+
+- JWT発行・検証
+- User認証
+- Permission判定
+- Payload検証
+- 行動ログ保存
+- API Response生成
+
+Mobile側の都合でBackendの`IsAuthenticated`制約を緩めない。
+
+---
+
+## Webとの責務境界
+
+WebとMobileは、Backend API Contractを共有する。
+
+ただし、認証Tokenの管理方法は各Clientの実行環境に応じて分離する。
+
+| 項目 | Web | Mobile |
+|---|---|---|
+| Token管理 | Web / BFF契約に従う | Mobile Token Storage |
+| Authorization付与 | Web Request層 | Mobile HTTP Client |
+| 行動ログAPI | 共通Backend API | 共通Backend API |
+| UI実装 | Web Component | Expo / React Native画面 |
+| Action Type | Backend契約を共有 | Backend契約を共有 |
+
+---
+
+## Fail Safe
+
+行動ログは重要な分析材料だが、主要体験より優先しない。
+
+以下の操作は、行動ログ送信に失敗しても継続する。
+
+- 地図を開く
+- 神社詳細を見る
+- 保存画面へ進む
+- 参拝導線へ進む
+
+一方で、開発時には失敗を把握できるよう、共通Errorや開発ログを利用する。
+
+---
+
+## 後続実装への接続
+
+本書で整理された設計は、以下の実装へ引き継がれた。
+
+```text
+Token Storage
+↓
+Authenticated HTTP Client
+↓
+Shrine Interaction Client
+↓
+Mobile Shrine Detail
+↓
+Backend Interaction API
+```
+
+現行の正確な仕様と実装状態は、冒頭に記載したコードとテストを参照する。
+
+---
+
+## 現行仕様との責務境界
+
+### 本書が保持するもの
+
+- Mobile認証Clientを導入した背景
+- Token StorageとHTTP Clientの責務分離
+- 行動ログ失敗時のFail Safe方針
+- Web・Mobile・Backendの責務境界
+- 後続実装へ至った判断経路
+
+### 本書が扱わないもの
+
+- 現在のToken保存形式
+- 現在のRefresh実装
+- 現在のAPI Path
+- 現在のAction Type一覧
+- 現在のPayload Field
+- 現在のLogin UI
+- 現在のMobile Navigation
+- 現在のAnalytics契約
+- 実装計画
+- 検証手順
+- 開発タスク
+
+---
+
+## 関連ドキュメント・実装
+
+### 現行実装
 
 - `apps/mobile/lib/authTokens.ts`
-
-役割:
-
-- access token の保存
-- refresh token の保存
-- token の取得
-- token の削除
-
-保存先:
-
-- MVP では `AsyncStorage` を利用する
-- 将来的には `expo-secure-store` への移行を検討する
-
-理由:
-
-- まず route_open / save / visit_done / reflection_saved の実測を進める
-- token保存の責務を `http.ts` に混ぜない
-- 後で SecureStore に差し替えやすくする
-
-### 2. authenticated request helper を追加する
-
-`apps/mobile/lib/http.ts` に認証付き helper を追加する。
-
-想定関数:
-
-- `getAuth<T>(path: string, init?: RequestInit): Promise<T>`
-- `postAuth<T>(path: string, body: unknown, init?: RequestInit): Promise<T>`
-
-方針:
-
-- `authTokens.ts` から access token を取得する
-- token がある場合のみ `Authorization: Bearer <access>` を付与する
-- token がない場合は明示的に `Unauthenticated` エラーを返す
-- 既存の `get` / `post` は非認証 API 用として維持する
-
-### 3. refresh は次フェーズに分離する
-
-初期実装では refresh token 自動更新を必須にしない。
-
-理由:
-
-- 現在の目的は UI 行動ログの保存確認
-- refresh 実装まで含めるとスコープが肥大化する
-- JWT の短命問題は確認済みだが、まず MVP の最小認証導線を作る
-
-ただし、将来的には以下を追加する。
-
-- access token 期限切れ時に refresh token で再発行
-- refresh 失敗時に token を削除
-- ログイン画面へ誘導
-
-## route_open 保存の実装順序
-
-### Step 1: auth token storage
-
-- `authTokens.ts` を追加
-- access / refresh の保存・取得・削除を実装
-
-### Step 2: authenticated http helper
-
-- `http.ts` に `getAuth` / `postAuth` を追加
-- Authorization ヘッダーを付与
-- token 未保存時のエラーを定義
-
-### Step 3: interaction API helper
-
-- `apps/mobile/lib/shrineInteractions.ts` を追加
-- `postShrineInteraction` を定義
-- `action_type` は backend と同じ値を使う
-  - `detail_view`
-  - `route_open`
-  - `shrine_card_click`
-
-### Step 4: shrine detail に route_open 保存を追加
-
-対象:
-
+- `apps/mobile/lib/http.ts`
+- `apps/mobile/lib/shrineInteractions.ts`
 - `apps/mobile/app/shrines/[id].tsx`
 
-方針:
+### Backend契約
 
-- `openDirections` の中で `route_open` を送信する
-- 送信成功 / 失敗に関係なく地図は開く
-- ログ保存失敗で参拝導線を止めない
+- JWT発行・Refresh API
+- Shrine Interaction API
+- Favorite API
+- Visit API
+- Reflection API
+- 関連するSerializer・Permission・Test
 
-保存 payload 例:
+---
 
-```json
-{
-  "shrine_id": 17,
-  "action_type": "route_open",
-  "source": "mobile_shrine_detail",
-  "thread_id": null,
-  "metadata": {
-    "event": "route_open",
-    "routeTarget": "google_maps",
-    "platform": "mobile"
-  }
-}
-```
+## 更新ルール
 
-### Step 5: detail_view 保存を追加
-
-route_open と同じ仕組みで、詳細画面表示時に `detail_view` を保存する。
-
-ただし二重送信防止のため、`useRef` などで1画面1回に制限する。
-
-## 実装制約
-
-- route_open 保存失敗で Google Maps 起動を止めない
-- 認証未設定時は silent fail ではなく、開発中に検知できるログを出す
-- `http.ts` に token保存責務を持たせない
-- refresh token 自動更新は別PRに分離する
-- backend の `IsAuthenticated` は変更しない
-- 匿名 route_open 記録はこのPRでは扱わない
-
-## 検証手順
-
-### 事前確認
-
-- mobileでログインし、access token が保存されていること
-- `getAuth` / `postAuth` が Authorization ヘッダーを付与すること
-
-### route_open確認
-
-1. `apps/mobile` を起動する
-2. `/shrines/17` を開く
-3. 「地図で経路を確認する」を押す
-4. backend DB を確認する
-
-確認コマンド:
-
-```bash
-cd backend && python manage.py shell -c "from temples.models import ShrineInteractionLog; print(list(ShrineInteractionLog.objects.filter(shrine_id=17, action_type='route_open').values('id','source','metadata','created_at').order_by('-id')[:10]))"
-```
-
-期待値:
-
-- `source=mobile_shrine_detail` の `route_open` が増える
-
-### dashboard確認
-
-```bash
-curl -s http://127.0.0.1:8000/api/concierge/score-v3/dashboard/ -H "Authorization: Bearer $ACCESS" | python -m json.tool
-```
-
-期待値:
-
-- `route_open_rate` に反映される
-
-## 完了条件
-
-- mobile 側で JWT access token を保存・取得できる
-- mobile HTTP helper が Authorization ヘッダーを付与できる
-- mobile shrine detail の route_open が DB に保存される
-- dashboard API に route_open が反映される
-- route_open 保存失敗時も地図起動は止まらない
-
-## 次PR候補
-
-- `feature/mobile-authenticated-api-client`
-- `feature/mobile-route-open-interaction-log`
-- `feature/mobile-detail-view-interaction-log`
-
-## TODO
-
-```markdown
-- [ ] authTokens.ts を追加
-- [ ] access / refresh token の保存・取得・削除を実装
-- [ ] http.ts に getAuth / postAuth を追加
-- [ ] shrineInteractions.ts を追加
-- [ ] route_open を mobile 詳細画面から送信
-- [ ] detail_view を mobile 詳細画面から送信
-- [ ] route_open DB保存確認
-- [ ] dashboard反映確認
-```
+- 本書はMobile認証付きAPI Client導入前の設計記録として保持する
+- 現行仕様や実装変更に合わせて更新しない
+- 当時の設計判断に重大な事実誤認が確認された場合のみ修正する
+- TODO、PR候補、実装順序、検証手順、作業進捗は記載しない
