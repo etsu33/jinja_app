@@ -1,3 +1,0 @@
-POST /api/token/ -> 200 OK, access/refresh が返却
-GET /api/me/ (without token) -> 401 Unauthorized
-GET /api/me/ (with Bearer access) -> 200 OK, { "id": 1, "username": "admin" }
