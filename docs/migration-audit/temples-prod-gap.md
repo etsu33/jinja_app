@@ -1,290 +1,331 @@
-# 🧾 temples migration 本番差分
+> **Status: Archive**
+>
+> 本ドキュメントは、2026年3月時点における本番DatabaseとDjango Migration履歴の差分を調査した監査記録である。
+>
+> 記載されているTable一覧・Migration適用状況・修復対象・`--fake`判断は監査時点のスナップショットであり、現行のSchema判断や本番復旧手順には使用しない。
+>
+> 現在のModel・Schema・Migration・修復処理は、以下を正本とする。
+>
+> - `backend/temples/models.py`
+> - `backend/temples/models_usage.py`
+> - `backend/temples/migrations/`
+> - `backend/temples/management/commands/repair_featureusage_table.py`
+> - `backend/start.sh`
+> - Production Databaseの`django_migrations`
+> - Production Databaseの実Table・Index・Constraint
+> - `docs/infra/render-startup.md`
+>
+> FeatureUsage障害の手動復旧履歴は、`docs/runbooks/render-featureusage-recovery.md`を参照する。
 
-## ゴール
-migration履歴と実テーブルの不整合を可視化する
+# Temples Migration本番差分監査
 
----
+## 目的
 
-## 現在の本番状態
+本番Databaseの実体とDjango Migration履歴が一致していなかった時点において、差分・リスク・修復単位を調査した記録である。
 
-### django_migrations
-- 0001_initial
-- 0002_goshuin_shrine
-- 0003_backfill_missing_tables
-
-### 実テーブル（抜粋）
-- temples_conciergethread
-- temples_conciergemessage
-- temples_conciergeusage
-- temples_shrine
-- temples_visit
-- temples_featureusage（手動作成）
-
----
-
-## 差分表
-
-| migration | 想定内容 | 本番テーブル | migration適用 | 状態 |
-|----------|--------|------------|------------|------|
-| 0001_initial | 基本テーブル | Yes | Yes | OK |
-| 0002_goshuin_shrine | 追加 | Yes | Yes | OK |
-| 0003_backfill_missing_tables | 補完 | Yes | Yes | OK |
-| 0077_featureusage | FeatureUsage作成 | Yes（手動） | No | 不整合 |
+本書は、Database Driftの発生状況と調査過程を保存するArchive文書として扱う。
 
 ---
 
-## 分類
+## 監査時点の背景
 
-### 手動補完済み
-- 0077_featureusage
+監査時点では、Django上でMigration適用済みと記録されている一方、本番Databaseに対応Tableが存在しない、または手動作成されたTableが存在する状態が確認された。
 
-### fake候補
-- FeatureUsage（テーブル・index・constraintが既に存在）
+```text
+django_migrations
+↓
+適用済みと記録
 
-### 要調査
-- concierge系テーブルがどの migration に紐づくか
+Production Database
+↓
+一部Tableが存在しない
+または手動補完されている
+```
+
+この不一致により、以下のリスクがあった。
+
+- `migrate`実行時の重複作成
+- Migration履歴だけが進んだ状態
+- Rollback不能
+- ModelとDatabase Schemaの乖離
+- 未使用機能を呼び出した際のServer Error
+- Database Driftの拡大
 
 ---
 
-## リスク
+## FeatureUsageで確認された差分
 
-- migrate実行で重複作成エラー
-- rollback不可
-- schema driftが拡大
+監査時点では、`FeatureUsage`を参照するApplication Codeが本番へ反映されていた一方、対応TableがMigrationから正常に作成されていなかった。
+
+そのため、当時は以下の対応が行われた。
+
+- `temples_featureusage`の手動作成
+- 必要なIndex・Constraintの手動補完
+- Migration履歴の`--fake`適用
+- Concierge Chat APIの復旧確認
+
+この対応は障害復旧時の一時的な措置であり、現行運用では固定SQLによる手動作成を第一選択にしない。
+
+現在のFeatureUsage構造は、Model・Migration・修復コマンドを正本とする。
 
 ---
 
-## 方針（仮）
+## ローカル空Databaseによる比較
 
-- FeatureUsageは `--fake` で履歴だけ合わせる
-- それ以外は個別に安全確認
+監査では、ローカルDatabaseを空の状態からMigrationで再構築し、生成された`temples_*` Tableを本来の再現結果として利用した。
 
+```text
+空Database
+↓
+python manage.py migrate
+↓
+生成Table一覧
+↓
+Production Databaseと比較
+```
 
-## 2026-03-22 実体監査結果
+この比較により、Migration履歴上は存在するはずだが、本番Databaseでは存在しないTable候補を抽出した。
 
-`django_migrations` 上は `temples` が 0077 まで適用済みだが、
-本番DBで主要テーブル実在を確認したところ、以下のみ存在した。
+ローカル再構築結果と本番状態はいずれも監査時点の情報であり、現在のTable一覧としては使用しない。
 
-- temples_conciergemessage
-- temples_conciergethread
-- temples_conciergeusage
-- temples_featureusage
-- temples_shrinecandidate
+---
 
-以下は存在しなかった。
+## 当時の修復単位
 
-- temples_conciergerecommendationlog
-- temples_placecache
-- temples_placesseed
-- temples_placesseedstate
-- temples_goshuin
-- temples_goshuinimage
-- temples_crawltile
+差分Tableは、機能依存と修復リスクに基づいて以下の単位へ分類された。
 
-### 判断
-`temples` の migration 履歴は本番実体と不整合。
-ただし以下は疎通確認済み。
-- concierge chat
-- FeatureUsage
+### 基盤Table
 
+神社・御祭神・ご利益・参拝など、他機能の土台となるTable。
 
-## 2026-03-22 ローカル空DB再構築結果
+### 神社関連の補助Table
 
-ローカル `jinja_db` を空にして `python manage.py migrate` を実行し、
-以下の `temples_%` テーブル生成を確認した。
+神社と分類・候補情報を接続する中間Table。
 
-- temples_concierge_recommendation_click_log
-- temples_concierge_recommendation_log
-- temples_conciergehistory
-- temples_conciergemessage
-- temples_conciergethread
-- temples_conciergeusage
-- temples_crawltile
-- temples_deity
-- temples_favorite
-- temples_featureusage
-- temples_goriyakutag
-- temples_goshuin
-- temples_goshuinimage
-- temples_like
-- temples_rankinglog
-- temples_shrine
-- temples_shrine_goriyaku_tags
-- temples_shrinecandidate
-- temples_visit
+### Concierge系Table
 
-この一覧をローカル再現時の正解側とみなし、
-本番実体との差分監査に用いる。
+相談・会話・推薦・利用回数など、Concierge機能に関係するTable。
 
-## 本番との差分表（2026-03-22）
+### User Interaction系Table
 
-| table_name | ローカル空DB | 本番 | 状態 | 対応方針 |
-|---|---:|---:|---|---|
-| temples_concierge_recommendation_click_log | Yes | No/未確認 | 差分候補 | 要確認 |
-| temples_concierge_recommendation_log | Yes | Yes | OK | 維持 |
-| temples_conciergehistory | Yes | No/未確認 | 差分候補 | 要確認 |
-| temples_conciergemessage | Yes | Yes | OK | 維持 |
-| temples_conciergethread | Yes | Yes | OK | 維持 |
-| temples_conciergeusage | Yes | Yes | OK | 維持 |
-| temples_crawltile | Yes | No/未確認 | 差分候補 | 要確認 |
-| temples_deity | Yes | Yes | OK | 維持 |
-| temples_favorite | Yes | No/未確認 | 差分候補 | 要確認 |
-| temples_featureusage | Yes | Yes | 手動補完 + fake済み | 維持 |
-| temples_goriyakutag | Yes | Yes | OK | 維持 |
-| temples_goshuin | Yes | No/未確認 | 差分候補 | 要確認 |
-| temples_goshuinimage | Yes | No/未確認 | 差分候補 | 要確認 |
-| temples_like | Yes | No/未確認 | 差分候補 | 要確認 |
-| temples_rankinglog | Yes | No/未確認 | 差分候補 | 要確認 |
-| temples_shrine | Yes | Yes | OK | 維持 |
-| temples_shrine_goriyaku_tags | Yes | Yes | OK | 維持 |
-| temples_shrinecandidate | Yes | Yes | OK | 維持 |
-| temples_visit | Yes | Yes | OK | 維持 |
+御朱印・Favorite・Like・Rankingなど、ユーザー操作に関係するTable。
 
+### 収集・Cache系Table
 
-## 差分テーブルの修復単位分類（A〜E）
+外部情報収集・Cache・Seed処理など、運用補助に関係するTable。
 
-本番とローカル空DB再構築結果の差分を、修復の安全性と依存関係に基づいて以下の単位に分類する。
+この分類はDjango Modelの正式なDomain分類ではなく、当時の本番整合回復を安全に分割するための運用上の分類だった。
 
-### A. 基盤テーブル
-最も土台に近いテーブル群。他機能の前提になりやすく、修復時は存在・列・制約の確認を優先する。
+---
 
-- temples_shrine
-- temples_goriyakutag
-- temples_deity
-- temples_visit
+## 当時の修復判断
 
-### B. 神社関連の中間・補助テーブル
-A の基盤テーブルに依存する補助テーブル。神社関連の機能差分を埋める単位として扱う。
+監査時点では、以下の原則が採用された。
 
-- temples_shrine_goriyaku_tags
-- temples_shrinecandidate
+- 本番主機能に直結する差分を優先する
+- 一度に複数のTableを手動修復しない
+- `--fake`は実Table・Column・Index・Constraintを確認した場合に限定する
+- 手動補完は障害に直結し、Schema定義が明確な場合に限定する
+- 全面再構築は最終手段とする
+- 補助的なAnalytics Tableは主機能と分離する
 
-### C. concierge系テーブル
-今回の主障害に最も近い機能単位。稼働中APIに影響するため、最優先で監査・整合回復対象とする。
+これらは当時のDatabase状態に対する判断であり、現在の修復順序を規定するものではない。
 
-- temples_conciergemessage
-- temples_conciergethread
-- temples_conciergehistory
-- temples_conciergeusage
-- temples_concierge_recommendation_log
-- temples_concierge_recommendation_click_log
-- temples_featureusage
+---
 
-### D. 御朱印・お気に入り・反応系テーブル
-ユーザー操作に関わるが、今回の concierge 復旧とは別束で扱う。C と混ぜて修復しない。
+## Concierge系Tableの調査
 
-- temples_goshuin
-- temples_goshuinimage
-- temples_favorite
-- temples_like
-- temples_rankinglog
+監査では、Conciergeに関連するTableについて、以下を個別に確認した。
 
-### E. 収集・キャッシュ系テーブル
-運用補助・収集処理・キャッシュ用途の可能性が高い。主系統の修復完了後に扱う。
+- Table実体
+- Column
+- Index
+- Foreign Key
+- Constraint
+- Migration履歴
+- Application Codeからの参照
+- API・Serializer・Frontendとの接続
+- 保存処理の有無
 
-- temples_crawltile
-- temples_placecache
-- temples_placesseed
-- temples_placesseedstate
+一部Tableについては、調査の進行に伴って判定が変更された。
 
-## 修復順序の方針
+特に、ModelやAPI定義の存在と、実際の保存処理・本番主機能での必要性が一致しないケースが確認された。
 
-修復は以下の順に進める。
+このため、本書内の当時の途中判定は現行仕様として採用せず、現在のコードとDatabaseを再確認する。
 
-1. C（concierge系）
-2. A（基盤テーブル）
-3. B（神社関連の中間・補助）
-4. D（御朱印・お気に入り・反応系）
-5. E（収集・キャッシュ系）
+---
 
-## 判断基準
+## 調査過程で確認された問題
 
-- fake適用は「実体が既に存在し、列・制約も確認済み」のものに限定する
-- 手動補完は「本番障害に直結し、定義が明確なもの」に限定する
-- 全面再構築は最終手段とし、現時点では採用しない
+### Migrationはあるが本番Tableがない
 
-※ この分類は実装上のモデル分類ではなく、本番整合回復のための運用上の修復単位として扱う。
+Migration履歴上は適用済みでも、実Tableが存在しない状態があった。
 
-## C束（concierge系）監査表
+### ModelはあるがMigrationがない
 
-| table_name | 実体 | 列確認 | index/constraint確認 | migration履歴整合 | 判定 |
-|---|---|---|---|---|---|
-| temples_conciergemessage | Yes | 確認済み | 確認済み | 要確認 | 維持候補 |
-| temples_conciergethread | Yes | 確認済み | 確認済み | 要確認 | 維持候補 |
-| temples_conciergehistory | No | - | - | 不整合の可能性 | 要修復候補 |
-| temples_conciergeusage | Yes | 確認済み | 確認済み | 要確認 | 維持候補 |
-| temples_concierge_recommendation_log | Yes | 確認済み | 確認済み | 要確認 | 維持候補 |
-| temples_concierge_recommendation_click_log | No | - | - | 不整合の可能性 | 要保留候補 |
-| temples_featureusage | Yes | 確認済み | 確認済み | fake適用済み | 維持 |
+Model定義が存在しても、空Databaseから再現できないTable候補があった。
 
+### 定義はあるが実行コードから利用されない
 
-### 中間判断
-C束は 7 テーブル中 5 テーブルの実体を確認。
-`temples_conciergehistory` と `temples_concierge_recommendation_click_log` は本番に存在せず、
-C束の未修復候補として扱う。
-一方で `temples_concierge_recommendation_log` は index / FK / NOT NULL を確認できており、
-本番実体としては比較的整っている。
+API・Serializer・Modelなどの定義だけが残り、主導線から利用されていない可能性がある機能があった。
 
-### C束の欠損2テーブルの必要性判断
+### Tableはあるが保存経路が不明
 
-#### temples_conciergehistory
-- 現時点では本番主機能の必須土台ではない
-- `thread` / `message` 系で主導線が成立しているため、即時修復対象にはしない
-- 旧履歴導線または互換資産の可能性があるため、参照コード確認後に要否を再判定する
+AnalyticsやClick Logなど、Table・Modelが存在しても、実際の保存処理が確認できないケースがあった。
 
-#### temples_concierge_recommendation_click_log
-- 推薦クリック観測のための補助テーブルとみなす
-- 観測・分析価値はあるが、現時点で API 主契約の必須土台ではない
-- 即時修復対象にはせず、保存コードの有無と利用目的を確認後に再判定する
+これらは一律に手動修復せず、機能要否・Migration・実行経路を確認してから判断する方針だった。
 
-### 現時点の判断
-C束の欠損2テーブルは、いずれも「無いと本番主機能が壊れる」カテゴリではない。
-したがって、C束の即時修復対象からは外し、保留管理とする。
+---
 
-### 欠損2テーブルの参照コード確認結果
+## 恒久対応への移行
 
-#### temples_conciergehistory
+監査後、FeatureUsageについてはMigrationおよび専用修復コマンドが追加された。
 
-- model: 存在
-- migration: 存在しない
-- DB: 本番に存在しない
-- usage: 実行コードから参照なし
-- API/UI: 定義のみ存在
+### Migration
 
-→ 判定:
-未実装機能の残骸（ゴーストテーブル）
+現在のMigration依存関係とSchema定義は、以下を正本とする。
 
-→ リスク:
-- 将来的にAPI叩いたときに500になる可能性
-- migrationで再現できない
+```text
+backend/temples/migrations/
+```
 
-→ 方針:
-削除 or 正式実装のどちらかに寄せる必要あり
+### 修復コマンド
 
-#### temples_concierge_recommendation_click_log
-- migration / model 定義は存在
-- ただし保存処理の参照は現時点で確認できていない
-- 直近の本番主機能に必須とは言い切れないため、要保留候補として扱う
+FeatureUsage Tableの欠損確認と補完には、専用の管理コマンドが用意された。
 
-## C束 修復方針（確定）
+```text
+python manage.py repair_featureusage_table
+```
 
-### 方針
-- 必要最小限の修復のみ行う
-- スコープは1テーブル単位で管理する
+正確な処理内容は以下を正本とする。
 
-### 修復対象
-- temples_conciergehistory
-  - 理由: API / frontend / serializer で参照あり
-  - 状態: 本番DBに実体なし
-  - 判定: 要修復（必須）
+```text
+backend/temples/management/commands/repair_featureusage_table.py
+```
 
-### 保留対象
-- temples_concierge_recommendation_click_log
-  - 理由: 参照コードはあるが保存処理未確認
-  - 状態: 本番DBに実体なし
-  - 判定: 要保留
+### 起動時制御
 
-### 非対象
-- その他C束テーブル
-  - 状態: 実体 / index / constraint 確認済み
-  - 判定: 維持
+起動時の修復処理は、`backend/start.sh`と環境変数によって明示的に制御する。
+
+現行契約は以下を参照する。
+
+- `backend/start.sh`
+- `docs/infra/render-startup.md`
+
+---
+
+## 現行の確認順序
+
+Database差分を調査する場合は、固定された過去のTable一覧ではなく、以下を基準に確認する。
+
+```text
+現在のModel
+↓
+現在のMigration
+↓
+django_migrations
+↓
+実Table
+↓
+Column・Index・Constraint
+↓
+Application Codeの参照
+↓
+API・Test
+```
+
+Production Databaseへの直接変更は、現行Model・Migrationとの一致を確認したうえで、個別の復旧対応として扱う。
+
+---
+
+## 手動SQLとの責務境界
+
+### Migrationが担当するもの
+
+- Schema変更
+- Table作成
+- Column追加・変更
+- Index作成
+- Constraint作成
+- Migration履歴管理
+
+### 修復コマンドが担当するもの
+
+- 過去のDatabase Drift確認
+- 欠損Tableの補完
+- 必要構造の存在確認
+- 限定的な復旧補助
+
+### 手動SQL
+
+通常運用の第一選択にしない。
+
+手動SQLが必要な場合は、以下を確認する。
+
+- 現行Modelとの一致
+- 現行Migrationとの一致
+- 既存Table・Columnの存在
+- Index・Constraintの重複
+- Rollback方法
+- Backup
+- 適用後のAPI・Test
+
+---
+
+## 本書が保持するもの
+
+- 本番DatabaseとMigration履歴に差分があった事実
+- FeatureUsageを手動補完した背景
+- 空Database再構築との比較方法
+- Tableを修復単位へ分類した考え方
+- `--fake`や手動補完を限定した判断
+- 調査途中で判定が変化した経緯
+- 恒久対応へ移行した背景
+
+---
+
+## 本書が扱わないもの
+
+- 現在のProduction Table一覧
+- 現在のMigration適用状況
+- 現在の欠損Table
+- 現在の修復対象
+- 現在の修復順序
+- 現在のModel要否
+- 現在のAPI利用状況
+- 現在のIndex・Constraint
+- 本番SQLの実行指示
+- `--fake`適用指示
+- Migration計画
+- TODO
+- PR候補
+- 作業進捗
+
+---
+
+## 関連実装・文書
+
+### 現行Schema
+
+- `backend/temples/models.py`
+- `backend/temples/models_usage.py`
+- `backend/temples/migrations/`
+
+### FeatureUsage修復
+
+- `backend/temples/management/commands/repair_featureusage_table.py`
+- `backend/start.sh`
+- `docs/infra/render-startup.md`
+
+### 障害履歴
+
+- `docs/runbooks/render-featureusage-recovery.md`
+
+---
+
+## 更新ルール
+
+- 本書は2026年3月時点の本番Migration差分監査記録として保持する
+- 現行Model・Migration・Production Databaseの変更に合わせて更新しない
+- 当時の事象や調査内容に重大な事実誤認が確認された場合のみ修正する
+- 現在の修復手順、SQL、TODO、PR候補、Migration計画、作業進捗は記載しない
