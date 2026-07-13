@@ -98,9 +98,12 @@ type VisitDonePayload = {
   source: "concierge_result" | "shrine_detail" | "mypage";
   shrineId: number | string;
   threadId?: string | null;
+  /** Concierge結果画面など、resultSetIdを取得できる経路からのみ送信する */
   resultSetId?: string | null;
-  historyTheme: string;
+  historyTheme?: string | null;
+  /** Concierge結果画面など、recommendationRankを取得できる経路からのみ送信する */
   recommendationRank?: number | null;
+  /** 遷移元の`ctx`クエリパラメータから導出する。`ctx`自体はpayloadへ含めない */
   mode?: "need" | "compat";
   accessLevel?: "anonymous" | "free" | "premium";
   routeOpenedBefore?: boolean;
@@ -112,9 +115,8 @@ type VisitDonePayload = {
 
 - `source`
 - `shrineId`
-- `historyTheme`
 
-`historyTheme` は参拝後の分析と振り返り接続に使用する。
+`historyTheme` は参拝後の分析と振り返り接続に使用するが、値が取得できない場合はキー自体を省略してよい（空文字を送らない）。イベント自体は`historyTheme`の有無にかかわらず必ず送信する。詳細は「Analytics Contract」節の「historyTheme欠損時の扱い」を参照する。
 
 ---
 
@@ -144,11 +146,12 @@ reflection_prompt_view
 
 ```ts
 type ReflectionPromptViewPayload = {
-  source: "visit_done" | "mypage" | "night_reflection";
+  /** 画面ソース。visit_done等の「表示文脈」は`reflectionContext`が担うため、sourceはここでは混在させない */
+  source: "concierge_result" | "shrine_detail" | "map" | "shrines";
   shrineId: number | string;
   threadId?: string | null;
   resultSetId?: string | null;
-  historyTheme: string;
+  historyTheme?: string | null;
   actionTheme?: string | null;
   /** どのフォーム構造でReflectionを入力させたか */
   reflectionFormType: "one_line" | "mood_delta" | "theme_reflection";
@@ -159,6 +162,8 @@ type ReflectionPromptViewPayload = {
 ```
 
 `reflectionFormType` と `reflectionContext` は、Action Suggestion v4の `reflection_prompt.prompt_type`（`before_visit` / `after_visit` / `decision` / `emotion` / `constraint`）とは異なる語彙である。両者を混在させない。
+
+`source` は「どの画面から送信されたか」を表す全Event共通の語彙とし、`visit_done`/`mypage`/`night_reflection`のような「表示文脈」は`reflectionContext`が単独で担う。両者を混在させない。
 
 ### 質問生成
 
@@ -196,29 +201,32 @@ reflection_saved
 
 ```ts
 type ReflectionSavedPayload = {
-  source: "visit_done" | "mypage" | "night_reflection";
+  source: "concierge_result" | "shrine_detail" | "map" | "shrines";
   shrineId: number | string;
   threadId?: string | null;
   resultSetId?: string | null;
-  historyTheme: string;
+  historyTheme?: string | null;
   actionTheme?: string | null;
   reflectionFormType: "one_line" | "mood_delta" | "theme_reflection";
   reflectionContext: "visit_done" | "mypage" | "night_reflection";
   answerLength: number;
-  moodBefore?: number | null;
-  moodAfter?: number | null;
+  moodBefore?: string | null;
+  moodAfter?: string | null;
   accessLevel?: "anonymous" | "free" | "premium";
 };
 ```
+
+`moodBefore`/`moodAfter` はUI入力値をそのまま送信する文字列とする（`ShrineReflection.mood_before`/`mood_after`と同じ`CharField`型に合わせる）。
 
 ### 必須項目
 
 - `source`
 - `shrineId`
-- `historyTheme`
 - `reflectionFormType`
 - `reflectionContext`
 - `answerLength`
+
+`historyTheme`は`visit_done`と同様、値が取得できない場合はキーを省略してよい。
 
 ---
 
@@ -356,6 +364,7 @@ type ReflectionAnalyticsBasePayload = {
   threadId?: string | null;
   resultSetId?: string | null;
   historyTheme?: string | null;
+  mode?: "need" | "compat";
   accessLevel?: "anonymous" | "free" | "premium";
 };
 ```
@@ -370,9 +379,26 @@ type ReflectionAnalyticsBasePayload = {
 
 | Event | 必須項目 |
 |---|---|
-| `visit_done` | `source`, `shrineId`, `historyTheme` |
-| `reflection_prompt_view` | `source`, `shrineId`, `historyTheme`, `reflectionFormType`, `reflectionContext` |
-| `reflection_saved` | `source`, `shrineId`, `historyTheme`, `reflectionFormType`, `reflectionContext`, `answerLength` |
+| `visit_done` | `source`, `shrineId` |
+| `reflection_prompt_view` | `source`, `shrineId`, `reflectionFormType`, `reflectionContext` |
+| `reflection_saved` | `source`, `shrineId`, `reflectionFormType`, `reflectionContext`, `answerLength` |
+
+`historyTheme`はいずれのEventでも必須項目に含めない。値が取得できる場合のみpayloadへ含める任意項目として扱う（詳細は次項）。
+
+### historyTheme欠損時の扱い
+
+`Shrine.history_theme`は`blank=True, default=""`であり、本番推薦対象の神社でも値が未設定（空文字）のケースが存在しうる。また神社詳細画面へConcierge経由でなく直接アクセスした場合は、Meaning Layerの意味変換結果（`shrineMeaningPayloadV2`）自体が存在せず、`historyTheme`を取得できない。
+
+以下の方針とする。
+
+- `historyTheme`が取得できない場合でも、`visit_done` / `reflection_prompt_view` / `reflection_saved` のEvent送信自体は行う（Eventを破棄しない）。Funnelの母数（`shrine_detail_view → visit_done → ...`）を`historyTheme`の有無で歪めないことを優先する。
+- `historyTheme`の値が取得できない場合は、空文字（`""`）を送らず、payloadから`historyTheme`キー自体を省略する。
+- `historyTheme: null`を明示的に送る運用は採用しない（Analytics送信の共通シリアライズ処理が`null`/`undefined`のキーを一律で除外する実装のため、値なし状態はキー省略で統一する）。
+- `historyTheme`別の集計では、キーが存在しないレコードを「欠損」として扱う。
+
+### ctxパラメータの扱い
+
+`ctx`（`"map" | "concierge" | null`、遷移元を示すURLクエリパラメータ）は、`visit_done` / `reflection_prompt_view` / `reflection_saved` のpayloadへ直接含めない。`ctx === "concierge"`の場合のみ`mode: "need"`へ変換して送信する（他の`trackCardEvent`系イベントと同じ変換規則）。`ctx`という生のパラメータ名はAnalytics Payload契約に含めない。
 
 ### 集計指標
 

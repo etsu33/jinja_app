@@ -71,4 +71,44 @@ describe("searchEvents契約", () => {
       actionPromptType: "emotion",
     });
   });
+
+  it("historyThemeがnull/undefinedの場合、payloadからキー自体が省略される(空文字は送らない)", () => {
+    trackSearchEvent("visit_done", {
+      source: "shrine_detail",
+      shrineId: 1,
+      historyTheme: null,
+    });
+
+    expect(trackMock).toHaveBeenCalledTimes(1);
+    const [, payload] = trackMock.mock.calls[0] ?? [];
+    expect(payload).not.toHaveProperty("historyTheme");
+    expect(payload?.historyTheme).not.toBe("");
+  });
+
+  it("visit_doneはhistoryThemeの有無にかかわらず必ず送信される", () => {
+    trackSearchEvent("visit_done", { source: "shrine_detail", shrineId: 1 });
+    trackSearchEvent("visit_done", { source: "shrine_detail", shrineId: 2, historyTheme: "縁" });
+
+    expect(trackMock).toHaveBeenCalledTimes(2);
+    expect(trackMock).toHaveBeenNthCalledWith(1, "visit_done", expect.objectContaining({ shrineId: 1 }));
+    expect(trackMock).toHaveBeenNthCalledWith(
+      2,
+      "visit_done",
+      expect.objectContaining({ shrineId: 2, historyTheme: "縁" }),
+    );
+  });
+
+  it("modeはctx由来の値のみを受け付け、ctxというキー自体は型として存在しない", () => {
+    trackSearchEvent("visit_done", {
+      source: "shrine_detail",
+      shrineId: 1,
+      mode: "need",
+    });
+
+    expect(trackMock).toHaveBeenCalledWith(
+      "visit_done",
+      expect.objectContaining({ mode: "need" }),
+    );
+    expect(trackMock.mock.calls[0]?.[1]).not.toHaveProperty("ctx");
+  });
 });

@@ -23,7 +23,15 @@ describe("ShrineReflectionPrompt", () => {
   });
 
   it("表示時に reflection_prompt_view を送信する", () => {
-    render(<ShrineReflectionPrompt shrineId={17} historyTheme="静寂" threadId="tid-1" ctx="concierge" />);
+    render(
+      <ShrineReflectionPrompt
+        shrineId={17}
+        historyTheme="静寂"
+        threadId="tid-1"
+        ctx="concierge"
+        accessLevel="free"
+      />,
+    );
 
     expect(screen.getByText("参拝後の振り返り")).toBeInTheDocument();
     expect(mockedTrackSearchEvent).toHaveBeenCalledWith("reflection_prompt_view", {
@@ -33,7 +41,8 @@ describe("ShrineReflectionPrompt", () => {
       historyTheme: "静寂",
       reflectionFormType: "mood_delta",
       reflectionContext: "visit_done",
-      ctx: "concierge",
+      mode: "need",
+      accessLevel: "free",
     });
   });
 
@@ -52,7 +61,14 @@ describe("ShrineReflectionPrompt", () => {
     });
 
     render(
-      <ShrineReflectionPrompt shrineId={17} historyTheme="静寂" threadId="tid-1" ctx="concierge" onSaved={onSaved} />,
+      <ShrineReflectionPrompt
+        shrineId={17}
+        historyTheme="静寂"
+        threadId="tid-1"
+        ctx="concierge"
+        accessLevel="free"
+        onSaved={onSaved}
+      />,
     );
 
     fireEvent.change(screen.getByPlaceholderText(/少し落ち着いた/), {
@@ -87,7 +103,8 @@ describe("ShrineReflectionPrompt", () => {
       answerLength: 10,
       moodBefore: "anxious",
       moodAfter: "calm",
-      ctx: "concierge",
+      mode: "need",
+      accessLevel: "free",
     });
     expect(onSaved).toHaveBeenCalled();
   });

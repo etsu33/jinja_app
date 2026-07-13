@@ -3,10 +3,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const analyticsMocks = vi.hoisted(() => ({
   trackCardEvent: vi.fn(),
+  trackSearchEvent: vi.fn(),
 }));
 
 vi.mock("@/lib/analytics/cardEvents", () => ({
   trackCardEvent: analyticsMocks.trackCardEvent,
+}));
+
+vi.mock("@/lib/analytics/searchEvents", () => ({
+  trackSearchEvent: analyticsMocks.trackSearchEvent,
 }));
 
 const visitsMocks = vi.hoisted(() => ({
@@ -71,6 +76,7 @@ function SaveActionStub({ onToggleSuccess }: { onToggleSuccess?: (nextFav: boole
 describe("ShrineDetailArticle", () => {
   beforeEach(() => {
     analyticsMocks.trackCardEvent.mockClear();
+    analyticsMocks.trackSearchEvent.mockClear();
     visitsMocks.addVisit.mockReset();
     visitsMocks.getVisits.mockReset();
     visitsMocks.getVisits.mockResolvedValue([]);
@@ -454,7 +460,7 @@ describe("ShrineDetailArticle", () => {
   );
 
   describe("参拝CTA", () => {
-    function renderWithVisitCta() {
+    function renderWithVisitCta(overrides: { ctx?: string | null; historyTheme?: string | null; tid?: string | number | null } = {}) {
       return render(
         <ShrineDetailArticle
           cardProps={{
@@ -475,6 +481,9 @@ describe("ShrineDetailArticle", () => {
           sections={[]}
           recommendationMeta={null}
           saveActionNode={<SaveActionStub />}
+          ctx={overrides.ctx ?? null}
+          historyTheme={overrides.historyTheme ?? null}
+          tid={overrides.tid ?? null}
         />,
       );
     }
@@ -536,6 +545,44 @@ describe("ShrineDetailArticle", () => {
 
       expect(screen.getByText("参拝を記録しました")).toBeInTheDocument();
       expect(screen.getByText("参拝後の振り返り")).toBeInTheDocument();
+    });
+
+    it("visit_doneはsource/shrineId/historyTheme/accessLevelを送信し、ctxは含まない", async () => {
+      visitsMocks.addVisit.mockResolvedValue({});
+
+      renderWithVisitCta({ ctx: "map", historyTheme: "静寂", tid: "tid-1" });
+      fireEvent.click(screen.getByRole("button", { name: "参拝しました" }));
+
+      await waitFor(() => {
+        expect(analyticsMocks.trackSearchEvent).toHaveBeenCalledWith(
+          "visit_done",
+          expect.objectContaining({
+            source: "shrine_detail",
+            shrineId: 17,
+            threadId: "tid-1",
+            historyTheme: "静寂",
+            accessLevel: expect.any(String),
+          }),
+        );
+      });
+
+      const visitDoneCall = analyticsMocks.trackSearchEvent.mock.calls.find(([eventName]) => eventName === "visit_done");
+      expect(visitDoneCall?.[1]).not.toHaveProperty("ctx");
+      expect(visitDoneCall?.[1]?.mode).toBeUndefined();
+    });
+
+    it("ctx=concierge の場合、visit_doneはmode:needを送信する", async () => {
+      visitsMocks.addVisit.mockResolvedValue({});
+
+      renderWithVisitCta({ ctx: "concierge" });
+      fireEvent.click(screen.getByRole("button", { name: "参拝しました" }));
+
+      await waitFor(() => {
+        expect(analyticsMocks.trackSearchEvent).toHaveBeenCalledWith(
+          "visit_done",
+          expect.objectContaining({ mode: "need" }),
+        );
+      });
     });
 
     it("失敗後はエラー表示になり、再操作可能な状態に戻る", async () => {

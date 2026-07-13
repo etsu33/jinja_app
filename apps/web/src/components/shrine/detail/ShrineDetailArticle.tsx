@@ -701,6 +701,7 @@ export default function ShrineDetailArticle({
                     historyTheme={historyTheme}
                     threadId={tid != null ? String(tid) : null}
                     ctx={ctx}
+                    accessLevel={accessLevel}
                   />
                 ) : null}
 
@@ -726,7 +727,8 @@ export default function ShrineDetailArticle({
                           shrineId: cardProps.shrineId,
                           threadId: tid != null ? String(tid) : undefined,
                           historyTheme: historyTheme ?? undefined,
-                          ctx,
+                          accessLevel,
+                          mode: ctx === "concierge" ? "need" : undefined,
                         });
                         const now = new Date().toISOString();
                         setVisitSummary((current) => ({

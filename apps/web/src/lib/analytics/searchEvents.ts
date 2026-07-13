@@ -33,6 +33,11 @@ export type SearchAnalyticsPayload = {
   resultSetId?: string | null;
   shrineId?: number | string | null;
   recommendationRank?: number | null;
+  /**
+   * 遷移元URLの `ctx` クエリパラメータから導出する（`ctx === "concierge"` の場合 `"need"`）。
+   * `ctx` の値自体をpayloadへ直接送信しない。
+   */
+  mode?: "need" | "compat" | null;
   accessLevel?: "anonymous" | "free" | "premium" | null;
   shrine_data_rate?: number | null;
   consultation_reflection_rate?: number | null;
