@@ -92,6 +92,61 @@ describe("ShrineReflectionPrompt", () => {
     expect(onSaved).toHaveBeenCalled();
   });
 
+  it("threadIdが数値変換できる場合、createShrineReflectionへthread_idとして渡す", async () => {
+    mockedCreateShrineReflection.mockResolvedValueOnce({
+      id: 1,
+      user: 10,
+      shrine: 17,
+      history_theme: "静寂",
+      prompt: "参拝して、今どんな変化がありましたか？",
+      answer: "落ち着きました。",
+      mood_before: "",
+      mood_after: "",
+      created_at: "2026-06-03T00:00:00Z",
+    });
+
+    render(<ShrineReflectionPrompt shrineId={17} historyTheme="静寂" threadId="42" />);
+
+    fireEvent.change(screen.getByPlaceholderText(/少し落ち着いた/), {
+      target: { value: "落ち着きました。" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "振り返りを保存する" }));
+
+    await waitFor(() => {
+      expect(mockedCreateShrineReflection).toHaveBeenCalledWith(
+        17,
+        expect.objectContaining({ thread_id: 42 }),
+      );
+    });
+  });
+
+  it("threadIdが数値変換できない場合、thread_idを渡さない", async () => {
+    mockedCreateShrineReflection.mockResolvedValueOnce({
+      id: 1,
+      user: 10,
+      shrine: 17,
+      history_theme: "",
+      prompt: "",
+      answer: "落ち着きました。",
+      mood_before: "",
+      mood_after: "",
+      created_at: "2026-06-03T00:00:00Z",
+    });
+
+    render(<ShrineReflectionPrompt shrineId={17} threadId="tid-1" />);
+
+    fireEvent.change(screen.getByPlaceholderText(/少し落ち着いた/), {
+      target: { value: "落ち着きました。" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "振り返りを保存する" }));
+
+    await waitFor(() => {
+      expect(mockedCreateShrineReflection).toHaveBeenCalled();
+    });
+    const [, payload] = mockedCreateShrineReflection.mock.calls[0] ?? [];
+    expect(payload?.thread_id).toBeUndefined();
+  });
+
   it("保存失敗時はエラー表示する", async () => {
     mockedCreateShrineReflection.mockRejectedValueOnce(new Error("failed"));
 

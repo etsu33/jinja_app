@@ -47,7 +47,10 @@ export function ShrineReflectionPrompt({ shrineId, historyTheme = null, threadId
       setSubmitting(true);
       setStatus("idle");
 
+      const numericThreadId = threadId != null ? Number(threadId) : undefined;
+
       await createShrineReflection(shrineId, {
+        thread_id: numericThreadId != null && Number.isFinite(numericThreadId) ? numericThreadId : undefined,
         history_theme: historyTheme ?? "",
         prompt: PROMPT_TEXT,
         answer: trimmedAnswer,

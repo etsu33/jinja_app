@@ -720,7 +720,7 @@ export default function ShrineDetailArticle({
                       setVisitSubmitting(true);
                       setVisitError(false);
                       try {
-                        await addVisit(cardProps.shrineId);
+                        await addVisit(cardProps.shrineId, tid);
                         trackSearchEvent("visit_done", {
                           source: "shrine_detail",
                           shrineId: cardProps.shrineId,

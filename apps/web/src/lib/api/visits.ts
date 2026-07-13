@@ -6,14 +6,21 @@ export type Visit = {
   shrine: Shrine | number;
   shrine_name?: string;
   shrine_address?: string;
+  thread_id?: number | null;
   visited_at: string;
   note?: string;
   status?: string;
 };
 
 // 参拝チェックイン（トグル）
-export async function addVisit(shrineId: number) {
-  const res = await api.post(`/shrines/${shrineId}/visit`);
+// threadIdを渡すと、参拝のきっかけとなった相談スレッドとして紐付ける（本人のスレッドのみ有効）。
+export async function addVisit(shrineId: number, threadId?: string | number | null) {
+  const numericThreadId = threadId != null ? Number(threadId) : undefined;
+  const hasThreadId = numericThreadId != null && Number.isFinite(numericThreadId);
+
+  const res = hasThreadId
+    ? await api.post(`/shrines/${shrineId}/visit`, { thread_id: numericThreadId })
+    : await api.post(`/shrines/${shrineId}/visit`);
   return res.data;
 }
 

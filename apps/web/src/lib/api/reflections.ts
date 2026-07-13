@@ -1,6 +1,7 @@
 import api from "./client";
 
 export type ShrineReflectionPayload = {
+  thread_id?: number | null;
   history_theme?: string | null;
   prompt?: string;
   answer: string;
@@ -14,6 +15,7 @@ export type ShrineReflection = {
   shrine: number;
   shrine_name?: string;
   shrine_address?: string;
+  thread_id?: number | null;
   history_theme: string;
   prompt: string;
   answer: string;
