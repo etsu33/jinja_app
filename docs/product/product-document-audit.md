@@ -76,7 +76,7 @@ UIワイヤー、補助条件、分析、Explore設計は、正本を補足す�
 | `history-theme-taxonomy.md` | 正本 | `history_theme` のカテゴリ定義を担い、推薦理由、履歴保存、分析、行動設計の基盤となるため。 | `meaning-translation-mapping.md` | なし |
 | `meaning-translation-mapping.md` | 正本 | 相談テーマ、相談状態、ご利益、神社情報を `history_theme` へ接続し、Action・Reflectionまでの変換方針を統合して定義するため。 | `consultation-theme-taxonomy.md`, `history-theme-taxonomy.md`, `concierge-modes.md`, `visit-reflection-flow.md`, `action_suggestion_v4.md` | なし |
 | `visit-reflection-flow.md` | 正本 | 参拝完了から振り返り保存、状態記録、次回相談への接続を定義するため。 | `history-theme-taxonomy.md`, `meaning-translation-mapping.md`, `reflection-funnel-dashboard.md` | なし |
-| `action_suggestion_v4.md` | 正本 | Recommendation v4から受け取るAction Suggestionのschema、責務分離、Preview契約を固定するため。 | `meaning-translation-mapping.md`, `visit-reflection-flow.md`, `concierge-modes.md` | なし |
+| `action_suggestion_v4.md` | 正本 | Recommendation v4から受け取るAction SuggestionのInput / Output schema、責務分離、生成ルールを固定するため。 | `meaning-translation-mapping.md`, `visit-reflection-flow.md`, `concierge-modes.md` | なし |
 | `home-hero-final-wireframe.md` | Reference | Home Heroの画面構成を確認する資料として有用だが、体験全体の判断は `concierge-first-final-spec.md` が担うため。 | `concierge-first-final-spec.md`, `consultation-theme-taxonomy.md` | `concierge-first-final-spec.md` |
 | `concierge-entry-final-wireframe.md` | Reference | Concierge EntryのUI詳細として有用だが、入力責務とMVP方針は正本へ従属するため。 | `concierge-first-final-spec.md`, `concierge-filter-area.md` | `concierge-first-final-spec.md` |
 | `concierge-filter-area.md` | Reference | 補助条件エリアのUI詳細として参照価値があるが、Filterの責務は統合仕様に従属するため。 | `concierge-first-final-spec.md`, `compat-mode-ui-flow.md`, `visit-style-taxonomy.md` | `concierge-first-final-spec.md` |

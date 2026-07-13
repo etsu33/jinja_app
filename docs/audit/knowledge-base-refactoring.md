@@ -64,8 +64,8 @@ Claudeは禁止
 
 | カテゴリ | 監査 | ChatGPTレビュー | 修正 | PR | Merge | 状態 | 備考 |
 |----------|:---:|:--------------:|:---:|:--:|:----:|:----:|------|
-| README / 管理文書 | 🟩 | ⬜ | ⬜ | ⬜ | ⬜ | 🟦 | README・監査文書 |
-| Concierge | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Entry・Need・Compat・Filter |
+| README / 管理文書 | 🟩 | 🟩 | 🟩 | ⬜ | ⬜ | 🟦 | README・監査文書の分類と役割境界を同期済み |
+| Concierge | 🟩 | 🟩 | 🟩 | ⬜ | ⬜ | 🟦 | 現行正本・Reference・Archiveの責務整理済み |
 | Taxonomy | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Theme・Visit Style・Meaning |
 | Visit / Reflection | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Visit・Reflection・Analytics |
 | Archive | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Legacy・Archive整理 |
@@ -131,7 +131,25 @@ Claudeは禁止
 
 ### 監査結果
 
-未着手
+【状態】concierge-first-wireframe.md=判断保留 / 他7ファイル=Active
+
+【事実】
+- concierge-first-final-spec.mdは自らを「実装前仕様として束ねる正本」と明記し、need-mode-ui-flow.md・compat-mode-ui-flow.md・concierge-entry-final-wireframe.mdを参照ドキュメントとして明示。
+- concierge-first.mdとconcierge-modes.mdは責務境界表で相互参照し一貫性あり。
+- 相談テーマチップ8項目（concierge-entry-final-wireframe.md／need-mode-ui-flow.md）と参拝スタイル6項目（concierge-first-wireframe.md／concierge-filter-area.md）がそれぞれ完全一致で重複掲載。
+- concierge-first-wireframe.mdはTODO全完了だが「実装前に母艦判断へ差し戻す」という判断保留事項を自己申告、Archiveマーカーなし。
+- concierge-modes.mdが定義するRoute/Theme/ShrineSearch Modeは他7ファイルに未登場。
+- Home/Top主CTA文言が「この相談ではじめる」（concierge-first-final-spec.md）と「言葉を整える」（concierge-first-wireframe.md）で不一致。
+- Compat Modeの配置場所呼称が「Filter」「補助条件Accordion」「ConciergeFilterPanel」で揺れ。
+
+【重複】4件：①Need/Compat Mode境界ルール（4ファイル）②相談テーマチップ8項目 ③参拝スタイル6項目 ④ConciergeEntry責務定義。いずれも正本判断は対象ファイル内情報のみでは不可。
+
+【判断保留】
+- concierge-first-wireframe.mdの現在位置づけ（現行仕様か検討記録か）。
+- concierge-first.mdとconcierge-first-final-spec.mdのどちらが「Concierge First」定義の一次情報か。
+- 相談テーマチップ8項目・参拝スタイル6項目の一次情報源。
+
+詳細は当該監査セッションの出力を参照。
 
 ### ChatGPT判断
 
