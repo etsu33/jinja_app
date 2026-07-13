@@ -1,167 +1,115 @@
+> **Status: Reference**
+>
+> 本ドキュメントは Home Hero の画面構成を補足する Reference 文書である。
+>
+> 体験全体の責務は `docs/product/concierge-first-final-spec.md`、
+> 相談テーマの分類は `docs/product/consultation-theme-taxonomy.md` を正本とする。
 
-# HomeHero Final Wireframe
+# Home Hero Final Wireframe
 
-## HomeHeroの役割
+## 目的
 
-HomeHeroは「神社を探す場所」ではなく、
-「今の相談から神社と出会う入口」とする。
+Home Hero の画面構成とUI責務を定義する。
 
-目的は以下の3つ。
-
-- ユーザーが相談テーマを選ぶ
-- コンシェルジュ体験へ自然に遷移する
-- 神社検索アプリではなく相談体験であることを伝える
-
-HomeHeroで推薦を完結させない。
-
-推薦体験の開始地点として扱う。
+Home Hero は「神社を探す画面」ではなく、「相談を始める入口」として扱い、相談内容を Concierge へ渡す役割を担う。
 
 ---
 
-## HomeHeroに残す要素
+## Home Heroの役割
 
-### 残す
+- 相談を始める
+- 相談テーマを選ぶ
+- 自由入力を受け付ける
+- Conciergeへ遷移する
+
+Home Hero では推薦を行わない。
+
+---
+
+## 画面構成
+
+### 表示する要素
 
 - Heroタイトル
 - Heroサブコピー
 - 相談テーマチップ
-- 自由入力 textarea
+- 自由入力
 - 条件追加導線
 - コンシェルジュ開始CTA
 
-### 残さない
+### 表示しない要素
 
 - 誕生日入力
 - ご利益選択
-- 参拝スタイル選択
+- 参拝スタイル入力
 - 詳細条件入力
 - 神社検索UI
 
-これらはすべて Concierge Filter へ集約する。
+補助条件は Concierge Filter が担当する。
 
 ---
 
-## HomeHeroConsultationInputとの責務境界
+## 相談テーマ
 
-### HomeHero
+相談テーマは入力補助として表示する。
 
-役割:
+自由入力を制限せず、ユーザーが自分の言葉で相談内容を書けることを優先する。
 
-- 相談を始める
-- テーマを選ぶ
-- コンシェルジュへ送客する
-
-### Concierge
-
-役割:
-
-- Need推定
-- 条件調整
-- 推薦生成
-- 推薦理由表示
-
-HomeHeroは入口。
-
-推薦ロジックは持たない。
+相談テーマの分類・表示文言・内部キーは、`docs/product/consultation-theme-taxonomy.md` を正本とする。
 
 ---
 
-## 相談テーマチップ最終一覧
+## 条件追加導線
 
-第一候補。
+### 表示文言
 
-- 仕事
-- 人間関係
-- お金
-- 挑戦
-- 休息
-- 健康
-- 学び
-- 将来
+```text
+＋ 条件を追加する
+```
 
-補足:
+### 補足文
 
-- 自由入力は維持
-- チップは入力補助として扱う
-- テーマ固定を強制しない
+```text
+誕生日・ご利益・参拝スタイルなどの条件を追加できます
+```
+
+補助条件は相談テーマより目立たせない。
 
 ---
 
-## 条件追加導線の文言
+## Home HeroとConciergeの責務
 
-表示:
+| Home Hero | Concierge |
+|------------|------------|
+| 相談開始 | 相談内容の解釈 |
+| 相談テーマ入力 | 条件入力 |
+| 自由入力 | 推薦生成 |
+| Conciergeへの遷移 | 推薦理由の表示 |
 
-「＋ 条件を追加する」
-
-補足:
-
-「誕生日・ご利益・参拝スタイルなどの条件を追加できます」
-
-条件は主役ではない。
-
-相談テーマより目立たせない。
+Home Hero は入口、Concierge は推薦体験を担当する。
 
 ---
 
-## Home→Concierge遷移仕様
+## 役割境界
 
-### 通常
-
-Home
-↓
-/concierge?theme=...
-
-### 条件追加
-
-Home
-↓
-/concierge?theme=...&openFilter=1
-
-### テーマ未入力
-
-Home
-↓
-/concierge
-
-### 条件追加のみ
-
-Home
-↓
-/concierge?openFilter=1
+- Home Hero は推薦ロジックを持たない。
+- Home Hero は意味変換を行わない。
+- Home Hero は相談内容を Concierge へ渡すことだけを担当する。
+- 補助条件は Concierge Filter が担当する。
 
 ---
 
-## 次PR候補
+## 関連ドキュメント
 
-### PR1
-
-HomeHero最終UI整理
-
-- テーマチップを最終版へ更新
-- 文言整理
-- Hero余白整理
-
-### PR2
-
-Filter統合作業
-
-- 誕生日をFilterへ集約
-- ご利益をFilterへ集約
-- 参拝スタイルをFilterへ集約
-
-### PR3
-
-Home / Concierge入力統一
-
-- 共通Input定義
-- 共通テーマ一覧定義
-- 共通型定義
+- `docs/product/README.md`
+- `docs/product/concierge-first-final-spec.md`
+- `docs/product/consultation-theme-taxonomy.md`
+- `docs/product/concierge-filter-area.md`
 
 ---
 
-## この段階の完成定義
+## 更新ルール
 
-- Homeは相談開始に特化
-- 条件入力はFilterへ集約
-- HomeとConciergeの責務が重複しない
-- Concierge First方針と整合する
+- 本書は Home Hero の画面構成とUI責務のみを管理する。
+- 推薦ロジック・相談テーマ分類・実装仕様は各正本ドキュメントで管理する。
+- Home Hero の画面構成または責務が変更された場合のみ更新する。
