@@ -84,27 +84,50 @@ Claudeは禁止
 
 ### 監査結果
 
-【状態】README.md=判断保留 / product-document-audit.md=Active / product-doc-consolidation.md=Archive候補
+【状態】
 
-【事実】
-- README.mdの「読む順番」節は`1. 2. 3.`のまま空欄。
-- product-document-audit.mdは21ファイルを4分類し、本カテゴリ3ファイルをREADME.md=正本、product-document-audit.md=Reference（自己分類）、product-doc-consolidation.md=Archive（置き換え先README.md）としている。
-- README.mdとproduct-document-audit.mdのファイル分類が`concierge-first.md`・`explore-integration-design.md`・`concierge-first-final-spec.md`・`consultation-theme-taxonomy.md`について不一致。
-- product-doc-consolidation.mdは自らを「Git上で統合方針を固定するための方針書」と説明（恒久文書ではなく一時方針書の性格）。
-- product-document-audit.mdはproduct-doc-consolidation.mdの依存ファイルに「README.md」を挙げるが、product-doc-consolidation.md本文にREADME.mdへの言及は確認できず。
+- `docs/product/README.md`: Active
+- `docs/product/product-document-audit.md`: Active
+- `docs/product/product-doc-consolidation.md`: Archive
 
-【重複】README.md ⇔ product-document-audit.md：「入口・分類・読む順番」の責務重複。正本判断は対象ファイル内情報のみでは不可。
+【確定事項】
 
-【判断保留】
-- README.mdが現在も正確な入口として機能しているか、更新滞留状態かは本カテゴリ内情報だけでは不明。
-- product-doc-consolidation.mdが記すGoogle Docs側統合作業の完了有無はリポジトリ外状態に依存し確認不能。
-- README.mdとproduct-document-audit.mdのどちらを「入口・分類の正本」とするかは確定不可。
+- `README.md` は `docs/product` の入口として、読む順番・分類・役割境界のみを管理する。
+- `product-document-audit.md` は文書分類・監査根拠・統合履歴を管理する。
+- `product-doc-consolidation.md` は統合作業履歴を保持するArchive文書として扱う。
+- READMEと監査表の分類は、正本8件・Reference9件・Archive4件で一致している。
+- Archive文書には `Status: Archive` と現在の正本への参照を明記した。
+- READMEには詳細仕様、TODO、PR候補、実装履歴を記載しない。
 
-詳細は当該監査セッションの出力を参照。
+【解消した問題】
+
+- READMEの読む順番が未完成だった問題
+- READMEと監査表の分類不一致
+- READMEと監査文書の役割重複
+- `product-doc-consolidation.md` が現行仕様に見える問題
+- 正本・Reference・Archiveの入口上の不明確さ
+
+【残課題】
+
+- 正本・Reference・Archiveの変更時にREADMEと監査表を同時更新する運用を維持する。
 
 ### ChatGPT判断
 
-未着手
+README / 管理文書カテゴリの責務分離は完了した。
+
+文書管理の判断順序は以下とする。
+
+```text
+README.md
+↓
+各正本ドキュメント
+↓
+Reference文書
+```
+
+文書の分類根拠や変更履歴を確認する場合は、`product-document-audit.md` を参照する。
+
+`product-doc-consolidation.md` はArchiveとして保持し、現行仕様判断には使用しない。
 
 ### 修正内容
 
@@ -131,25 +154,44 @@ Claudeは禁止
 
 ### 監査結果
 
-【状態】concierge-first-wireframe.md=判断保留 / 他7ファイル=Active
+【状態】
 
-【事実】
-- concierge-first-final-spec.mdは自らを「実装前仕様として束ねる正本」と明記し、need-mode-ui-flow.md・compat-mode-ui-flow.md・concierge-entry-final-wireframe.mdを参照ドキュメントとして明示。
-- concierge-first.mdとconcierge-modes.mdは責務境界表で相互参照し一貫性あり。
-- 相談テーマチップ8項目（concierge-entry-final-wireframe.md／need-mode-ui-flow.md）と参拝スタイル6項目（concierge-first-wireframe.md／concierge-filter-area.md）がそれぞれ完全一致で重複掲載。
-- concierge-first-wireframe.mdはTODO全完了だが「実装前に母艦判断へ差し戻す」という判断保留事項を自己申告、Archiveマーカーなし。
-- concierge-modes.mdが定義するRoute/Theme/ShrineSearch Modeは他7ファイルに未登場。
-- Home/Top主CTA文言が「この相談ではじめる」（concierge-first-final-spec.md）と「言葉を整える」（concierge-first-wireframe.md）で不一致。
-- Compat Modeの配置場所呼称が「Filter」「補助条件Accordion」「ConciergeFilterPanel」で揺れ。
+- 正本:
+  - `concierge-first-final-spec.md`
+  - `concierge-modes.md`
+  - `consultation-theme-taxonomy.md`
+- Reference:
+  - `concierge-entry-final-wireframe.md`
+  - `concierge-filter-area.md`
+  - `need-mode-ui-flow.md`
+  - `compat-mode-ui-flow.md`
+- Archive:
+  - `concierge-first.md`
+  - `concierge-first-wireframe.md`
 
-【重複】4件：①Need/Compat Mode境界ルール（4ファイル）②相談テーマチップ8項目 ③参拝スタイル6項目 ④ConciergeEntry責務定義。いずれも正本判断は対象ファイル内情報のみでは不可。
+【確定事項】
 
-【判断保留】
-- concierge-first-wireframe.mdの現在位置づけ（現行仕様か検討記録か）。
-- concierge-first.mdとconcierge-first-final-spec.mdのどちらが「Concierge First」定義の一次情報か。
-- 相談テーマチップ8項目・参拝スタイル6項目の一次情報源。
+- Concierge First全体仕様は `concierge-first-final-spec.md` を正本とする。
+- 推薦Modeの責務は `concierge-modes.md` を正本とする。
+- 相談テーマの表示文言・内部キー・対応関係は `consultation-theme-taxonomy.md` を正本とする。
+- UI詳細文書は正本を補足するReferenceとして扱う。
+- `concierge-first.md` と `concierge-first-wireframe.md` はArchiveとして扱い、現行仕様判断には使用しない。
+- Archive文書には `Status: Archive` と現在の正本への参照を明記した。
+- Home Heroの相談テーマ文言は `consultation-theme-taxonomy.md` を参照する構造へ統一した。
+- TODO、PR候補、実装フェーズ、判断保留などの作業管理情報は正本・Referenceから除外した。
 
-詳細は当該監査セッションの出力を参照。
+【解消した問題】
+
+- Concierge Firstの一次情報源の曖昧さ
+- Archive文書の現行仕様との誤認
+- 相談テーマ表示文言の重複管理
+- Home / Concierge責務の重複
+- 作業履歴と現行仕様の混在
+
+【残課題】
+
+- `concierge-filter-area.md` と `visit-style-taxonomy.md` の表示文言統一
+- Need Mode / Compat Mode詳細UI文書の重複範囲確認
 
 ### ChatGPT判断
 
