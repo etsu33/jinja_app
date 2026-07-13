@@ -231,27 +231,22 @@ class ShrineReflection(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
+        related_name="shrine_reflections",
     )
     shrine = models.ForeignKey(
         "temples.Shrine",
         on_delete=models.CASCADE,
+        related_name="reflections",
     )
-    thread_id = models.CharField(
-        max_length=64,
+    thread = models.ForeignKey(
+        "temples.ConciergeThread",
+        on_delete=models.SET_NULL,
+        null=True,
         blank=True,
-        default="",
-    )
-    result_set_id = models.CharField(
-        max_length=255,
-        blank=True,
-        default="",
+        related_name="reflections",
     )
     history_theme = models.CharField(
         max_length=32,
-        db_index=True,
-    )
-    action_theme = models.CharField(
-        max_length=64,
         blank=True,
         default="",
     )
@@ -259,55 +254,63 @@ class ShrineReflection(models.Model):
         blank=True,
         default="",
     )
-    answer = models.TextField(
+    answer = models.TextField()
+    mood_before = models.CharField(
+        max_length=50,
         blank=True,
         default="",
     )
-    mood_before = models.PositiveSmallIntegerField(
-        null=True,
+    mood_after = models.CharField(
+        max_length=50,
         blank=True,
-    )
-    mood_after = models.PositiveSmallIntegerField(
-        null=True,
-        blank=True,
-    )
-    visited_at = models.DateTimeField(
-        null=True,
-        blank=True,
+        default="",
     )
     created_at = models.DateTimeField(
-        auto_now_add=True,
-    )
-    updated_at = models.DateTimeField(
-        auto_now=True,
+        default=timezone.now,
     )
 ```
 
 ### Index
 
 ```python
-models.Index(fields=["user", "created_at"])
-models.Index(fields=["user", "history_theme"])
-models.Index(fields=["shrine", "history_theme"])
+models.Index(fields=["user", "-created_at"])
+models.Index(fields=["shrine", "-created_at"])
+models.Index(fields=["history_theme"])
 ```
 
 ### 必須保存項目
 
 - `user`
 - `shrine`
-- `history_theme`
-- `prompt`
 - `answer`
 - `created_at`
 
+`answer`は空文字を許容しない。UI側も回答が空の間は保存操作をできなくする（「あとで書く」の保存は提供しない）。
+
 ### 任意保存項目
 
+- `thread`（`thread_id`としてAPIで送受信する。振り返り対象の参拝のきっかけとなった相談スレッドへの接続キー）
+- `history_theme`
+- `prompt`
 - `mood_before`
 - `mood_after`
-- `thread_id`
-- `result_set_id`
-- `action_theme`
-- `visited_at`
+
+`history_theme`は値が取得できない場合、空文字ではなくフィールド省略（デフォルト空文字）で扱う。
+
+### 採用しないフィールド
+
+以下は過去検討したが採用しない。理由を明記する。
+
+| フィールド | 採用しない理由 |
+|---|---|
+| `result_set_id` | Backend側に「推薦結果セット」を一意識別する概念・モデルが存在しない。`thread`（Recommendation Snapshotへの接続キー）を正本とし、`result_set_id`は追加しない |
+| `action_theme` | Action Suggestionの実行・完了は`ActionEvent`モデルが別途管理しており、`ShrineReflection`への重複保存にあたる |
+| `visited_at` | 「いつ参拝したか」は`Visit.visited_at`の責務であり、Reflection側に重複保存しない |
+| `updated_at` | Reflection編集（Update API）が存在しないため、更新日時を持つ意味がない。編集機能を追加する際に再検討する |
+
+### mood_before / mood_after の型
+
+`CharField`（自由記述の文字列）とする。UIは数値スケールではなく自由記述テキストとして`moodBefore`/`moodAfter`を入力させており、Model・Serializer・API・Frontend UI・Analytics Payloadのすべてでこの型に統一済みである。
 
 ### 保存しないもの
 
@@ -315,6 +318,39 @@ models.Index(fields=["shrine", "history_theme"])
 - 宗教的な達成判定
 - AIによる断定的な心理分析
 - 成功・失敗の自動判定
+
+---
+
+## Visit保存責務
+
+`Visit`は参拝・訪問の完了事実を保存する。
+
+```python
+class Visit(models.Model):
+    STATUS_CHOICES = [("added", "Added"), ("removed", "Removed")]
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="visits",
+    )
+    shrine = models.ForeignKey(
+        "temples.Shrine",
+        on_delete=models.CASCADE,
+        related_name="visits",
+    )
+    thread = models.ForeignKey(
+        "temples.ConciergeThread",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="visits",
+    )
+    visited_at = models.DateTimeField(default=timezone.now)
+    note = models.TextField(blank=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="added")
+```
+
+`thread`は`ShrineReflection`と同様、参拝のきっかけとなった相談スレッドへの接続キーとして任意で保存する。`history_theme`はVisitへ重複保存しない（Analytics Eventのpayloadで扱えば十分であり、DB保存の必要性がない）。
 
 ---
 
@@ -336,12 +372,14 @@ history_theme履歴
 
 ### 保存責務
 
-- 推薦時点の`history_theme`はRecommendation Snapshotに保持する
+- 推薦時点の`history_theme`はRecommendation Snapshot（`ConciergeThread.recommendations_v2`）に保持する
 - 振り返り時点の`history_theme`は`ShrineReflection`に保持する
 - 過去のRecommendation Snapshotは再計算しない
 - 現在のReflection状態はDBから取得する
 
 この分離により、推薦時点の文脈と行動後の記録を混在させない。
+
+推薦時点のSnapshotと、Visit/Reflectionを接続する正本キーは`thread`（`ConciergeThread`への外部キー、API上は`thread_id`）である。`result_set_id`という概念はBackendに存在しないため、接続キーとして採用しない。
 
 ---
 

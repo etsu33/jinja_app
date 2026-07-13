@@ -23,12 +23,13 @@ class ShrineReflectionCreateView(APIView):
         data = request.data.copy()
         data["shrine"] = shrine.id
 
-        serializer = ShrineReflectionSerializer(data=data)
+        serializer = ShrineReflectionSerializer(data=data, context={"request": request})
         serializer.is_valid(raise_exception=True)
 
         reflection = ShrineReflection.objects.create(
             user=request.user,
             shrine=shrine,
+            thread_id=serializer.validated_data.get("thread_id"),
             history_theme=serializer.validated_data.get("history_theme") or "",
             prompt=serializer.validated_data.get("prompt") or "",
             answer=serializer.validated_data["answer"],

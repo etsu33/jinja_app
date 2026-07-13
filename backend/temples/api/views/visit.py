@@ -6,7 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from temples.api.serializers.visit import VisitSerializer
-from temples.models import Shrine, Visit
+from temples.models import ConciergeThread, Shrine, Visit
 
 
 class VisitCreateView(APIView):
@@ -38,7 +38,19 @@ class VisitCreateView(APIView):
         else:
             visited_at = timezone.now()
 
-        v = Visit.objects.create(user=request.user, shrine=shrine, visited_at=visited_at)
+        # thread_id は任意。指定された場合は本人のスレッドであることを確認する。
+        thread_id = request.data.get("thread_id")
+        thread = None
+        if thread_id:
+            try:
+                thread = ConciergeThread.objects.get(id=thread_id, user=request.user)
+            except (ConciergeThread.DoesNotExist, ValueError, TypeError):
+                return Response(
+                    {"detail": "指定されたスレッドが見つかりません。"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        v = Visit.objects.create(user=request.user, shrine=shrine, thread=thread, visited_at=visited_at)
         # 必要ならシリアライザで返す
         return Response({"id": v.id, "created": True}, status=status.HTTP_201_CREATED)
 
