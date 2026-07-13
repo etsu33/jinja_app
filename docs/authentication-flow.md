@@ -1,381 +1,336 @@
-
+> **Status: Active**
+>
+> 本ドキュメントは、KAMI MUSUBI Web版における認証アーキテクチャ、Frontend・BFF・Backendの責務、およびJWT・Cookieの利用方針を管理する正本である。
+>
+> 認証が必要になった際の画面遷移、`returnTo`、Concierge保存・My Page・神社投稿からの復帰導線は、`docs/auth-flow.md`を参照する。
+>
+> 正確なEndpoint・Cookie処理・認証方式は、関連する実装コードとテストを最終的な正本とする。
 
 # Authentication Flow
 
 ## 目的
 
-KAMI MUSUBI の認証経路を整理し、frontend / BFF / backend の責務を明確にする。
+KAMI MUSUBIの認証経路を一本化し、Frontend・Next.js BFF・Django Backendの責務を明確にする。
 
-このドキュメントは、認証入口の乱立を防ぎ、今後の課金判定・マイページ・御朱印・お気に入り・コンシェルジュ保存などの認証付き機能を安全に保守するための正本とする。
+認証入口の乱立、JWT処理の重複、Backendへの直接通信を防ぎ、課金・My Page・御朱印・お気に入り・Concierge保存・参拝記録などの認証付き機能を安全に保守する。
 
 ---
 
-## 現在の結論
+## 基本方針
 
-frontend のログイン入口は `/api/auth/login` を正本とする。
-
-frontend から backend の JWT 発行 API を直接呼ぶ入口は持たない。
+Web版の認証経路は、以下を正本とする。
 
 ```text
 Frontend
-  ↓
-/api/auth/login
-  ↓
+↓
 Next.js BFF
-  ↓
-Django backend /api/auth/jwt/create/
-  ↓
-access_token / refresh_token を HttpOnly Cookie に保存
+↓
+Django Backend
+↓
+JWTAuthentication
+↓
+request.user
 ```
+
+Frontendのログイン入口は、Next.js BFFの`/api/auth/login`とする。
+
+FrontendからDjango BackendのJWT発行Endpointを直接呼び出さない。
 
 ---
 
-## 認証フロー
-
-### 1. ログイン
+## ログインフロー
 
 ```text
 Login Form
-  ↓
-AuthProvider.login(username, password)
-  ↓
+↓
+AuthProvider.login
+↓
 POST /api/auth/login
-  ↓
+↓
 Next.js API Route
-  ↓
+↓
 Django /api/auth/jwt/create/
-  ↓
-JWT access / refresh を受け取る
-  ↓
-HttpOnly Cookie に保存
+↓
+access_token / refresh_tokenを取得
+↓
+HttpOnly Cookieへ保存
+↓
+認証状態をFrontendへ反映
 ```
 
-### 正本ファイル
+### Frontendの正本実装
+
+- `apps/web/src/lib/auth/AuthProvider.tsx`
+- `apps/web/src/lib/api/auth.ts`
+
+### BFFの正本実装
+
+- `apps/web/src/app/api/auth/login/route.ts`
+- `apps/web/src/app/api/auth/logout/route.ts`
+- `apps/web/src/app/api/auth/register/route.ts`
+
+### Backendの認証Endpoint
 
 ```text
-apps/web/src/lib/auth/AuthProvider.tsx
-apps/web/src/app/api/auth/login/route.ts
+/api/auth/jwt/create/
 ```
 
-### backend 正本
-
-```text
-backend 側 /api/auth/jwt/create/
-```
-
-frontend 側の `/api/auth/jwt/create` route は未使用だったため削除済み。
+Frontend側にJWT発行用の`/api/auth/jwt/create` Routeは持たない。
 
 ---
 
-## Cookie 方針
+## Cookie方針
 
-### 使用する Cookie
+Web版では、以下のCookieを使用する。
 
 ```text
 access_token
 refresh_token
 ```
 
-### 方針
+### Cookie属性
 
 ```text
 HttpOnly: true
 SameSite: lax
-Secure: production では true
+Secure: productionではtrue
 Path: /
 ```
 
-access_token / refresh_token は JavaScript から直接読まない。
+### ルール
+
+- JWTをFrontend JavaScriptから直接読み取らない
+- JWTを`localStorage`へ保存しない
+- Access TokenとRefresh TokenはHttpOnly Cookieで管理する
+- Cookieの生成・更新・削除はBFF側で行う
 
 ---
 
-## BFF の責務
+## Frontendの責務
 
-認証付き API route は、原則として `bffFetchWithAuthFromReq` を使う。
+Frontendは、認証画面・認証状態・認証要求時のUIを担当する。
 
-### 正本 helper
+### 担当すること
+
+- Login Formから`/api/auth/login`を呼び出す
+- Signup Formから`/api/auth/register`を呼び出す
+- Logout時に`/api/auth/logout`を呼び出す
+- `AuthProvider`で認証状態を管理する
+- 未ログイン時に認証画面へ遷移する
+- 認証後の復帰先を保持する
+
+### 担当しないこと
+
+- JWTの直接保存
+- JWTの直接解析
+- Backend Originの組み立て
+- Authorization Headerの生成
+- Refresh Tokenによる再発行処理
+- Backendの課金状態・権限判定
+
+画面遷移と`returnTo`の詳細は`docs/auth-flow.md`で管理する。
+
+---
+
+## BFFの責務
+
+認証付きAPI Routeは、原則として`bffFetchWithAuthFromReq`を利用する。
+
+### 正本Helper
 
 ```text
 apps/web/src/lib/server/bffFetch.ts
 ```
 
-### 主な責務
+### 担当すること
 
-```text
-- request cookie から access_token / refresh_token を読む
-- backend へ Authorization: Bearer <token> を付与する
-- access_token 期限切れ時に refresh を試す
-- refresh 成功時は access_token Cookie を更新する
-- backend response を frontend に返す
-```
+- Request CookieからAccess Token・Refresh Tokenを取得する
+- Backendへ`Authorization: Bearer <token>`を付与する
+- Access Token期限切れ時にRefreshを試行する
+- Refresh成功時にAccess Token Cookieを更新する
+- Backend ResponseをFrontendへ返す
+- 認証失敗時のResponseを統一する
+
+### 担当しないこと
+
+- UI表示
+- Login画面への遷移
+- 課金状態の最終判定
+- Backendの業務ロジック
 
 ---
 
-## 認証付き route の方針
+## 認証付きAPIの通信経路
 
-### 原則
+認証付き機能は、次の経路を利用する。
 
 ```text
-Frontend component
-  ↓
+Frontend Component
+↓
 Next.js API Route
-  ↓
+↓
 bffFetchWithAuthFromReq
-  ↓
-Django backend
+↓
+Django Backend
 ```
 
-frontend から backend origin を直接組み立てない。
-
-### 禁止方針
-
-```text
-- route.ts 内で backend URL を直接組み立てる
-- route.ts 内で NEXT_PUBLIC_API_BASE / API_BASE_URL を直接参照する
-- route.ts ごとに Authorization 付与ロジックを重複実装する
-- frontend 側に JWT 発行 route を複数持つ
-```
+Frontend ComponentからBackend APIを直接呼び出さない。
 
 ---
 
-## 現在確認済みの整理
+## Backendの責務
 
-### frontend 認証入口
-
-```text
-残す:
-- /api/auth/login
-- /api/auth/logout
-- /api/auth/register
-
-削除済み:
-- /api/auth/jwt/create
-```
-
-### BFF 統一済み route
+Backendは認証情報から`request.user`を解決し、権限・課金状態・保存対象の判定を行う。
 
 ```text
-apps/web/src/app/api/shrines/[id]/visit/route.ts
-apps/web/src/app/api/shrines/[id]/reflection/route.ts
-apps/web/src/app/api/visits/route.ts
-apps/web/src/app/api/shrine-interactions/route.ts
-```
-
----
-
-## backend 認証方式
-
-backend は主に `JWTAuthentication` を使う。
-
-一部に `SessionAuthentication` が残っているため、削除可否は別途監査する。
-
-### 監査対象
-
-```text
-BillingStatusView
-UsersMeView
-Goshuin 系 API
-Favorite 系 API
-Concierge 系 API
-```
-
----
-
-## SessionAuthentication の扱い
-
-現時点では即削除しない。
-
-### 理由
-
-```text
-- どの API が SessionAuthentication に依存しているか未確定
-- Goshuin / Users / Billing に影響する可能性がある
-- 管理画面や開発時の互換目的で残っている可能性がある
-```
-
-### 判断分類
-
-```text
-削除可能:
-- JWTAuthentication のみで動作確認できる API
-
-保留:
-- 影響範囲が未確認の API
-
-残す:
-- 明確に SessionAuthentication が必要な API
-```
-
----
-
-## 検証チェックリスト
-
-```markdown
-- [ ] /api/auth/login でログインできる
-- [ ] access_token / refresh_token が HttpOnly Cookie に保存される
-- [ ] /api/users/me/ が認証済みユーザーを返す
-- [ ] /api/billings/status/ が premium 状態を返す
-- [ ] コンシェルジュ送信ができる
-- [ ] お気に入り保存ができる
-- [ ] 参拝完了 visit API が動く
-- [ ] 振り返り reflection API が動く
-- [ ] 御朱印 my/goshuins API が動く
-```
-
----
-
-## 次の監査 TODO
-
-```markdown
-- [ ] SessionAuthentication利用箇所を一覧化
-- [ ] JWTAuthentication利用箇所を一覧化
-- [ ] BillingView の認証方式を確認
-- [ ] UsersView の認証方式を確認
-- [ ] Goshuin系APIの認証方式を確認
-- [ ] SessionAuthentication削除可否を分類
-- [ ] 削除可能 / 保留 / 残す を分ける
-- [ ] 次PR用の実装指示書を作成
-```
-
-
----
-
-## 認証アーキテクチャ
-
-### 目的
-
-KAMI MUSUBI の認証経路は、frontend / BFF / backend の責務を分離し、認証入口の乱立を防ぐ構成とする。
-
-認証付き機能は、課金状態・マイページ・御朱印・お気に入り・コンシェルジュ保存・参拝記録など、ユーザー状態に依存するため、認証経路を一本化して保守する。
-
----
-
-### 現在の正本フロー
-
-```text
-Frontend
-  ↓
-/api/auth/login
-  ↓
-Next.js BFF
-  ↓
-Django backend /api/auth/jwt/create/
-  ↓
-access_token / refresh_token を HttpOnly Cookie に保存
-  ↓
-認証付き API は BFF 経由で backend へ転送
-```
-
-frontend のログイン入口は `/api/auth/login` を正本とする。
-
-frontend 側に JWT 発行用の `/api/auth/jwt/create` route は持たない。
-
----
-
-### Frontend の責務
-
-```text
-- ログインフォームから /api/auth/login を呼ぶ
-- JWT を JavaScript で直接保持しない
-- 認証状態は AuthProvider で扱う
-- access_token / refresh_token は HttpOnly Cookie として扱う
-```
-
-正本ファイル:
-
-```text
-apps/web/src/lib/auth/AuthProvider.tsx
-apps/web/src/app/api/auth/login/route.ts
-apps/web/src/lib/api/auth.ts
-```
-
----
-
-### BFF の責務
-
-認証付き API route は、原則として `bffFetchWithAuthFromReq` を経由する。
-
-```text
-apps/web/src/lib/server/bffFetch.ts
-```
-
-BFF は以下を担当する。
-
-```text
-- request cookie から access_token / refresh_token を読む
-- backend へ Authorization: Bearer <token> を付与する
-- access_token 期限切れ時に refresh を試す
-- refresh 成功時は access_token Cookie を更新する
-- backend response を frontend に返す
-```
-
-frontend component から backend origin を直接組み立てない。
-
----
-
-### Backend の責務
-
-backend は JWTAuthentication を認証の正本とする。
-
-```text
-Django backend
-  ↓
+Authorization Header
+↓
 JWTAuthentication
-  ↓
-request.user を解決
-  ↓
-課金状態・ユーザー情報・保存情報などを判定
+↓
+request.user
+↓
+Permission・Billing・Ownership判定
 ```
 
-課金判定は backend 側で `request.user` をもとに行う。
+### 担当すること
 
-```text
-/api/billings/status/
-```
+- JWTの検証
+- `request.user`の解決
+- Permission Classによるアクセス制御
+- User単位の保存・取得
+- 課金状態の判定
+- 所有者判定
+- 認証失敗Responseの返却
+
+### 担当しないこと
+
+- HttpOnly Cookieの直接管理
+- Frontend画面遷移
+- `returnTo`の保持
+- Frontend Auth Stateの管理
 
 ---
 
-### 禁止方針
+## 認証入口
+
+Frontendで使用する認証入口は次の3つとする。
 
 ```text
-- frontend route 内で backend URL を直接組み立てる
-- route.ts ごとに Authorization 付与ロジックを重複実装する
-- NEXT_PUBLIC_API_BASE / API_BASE_URL を認証付き route で直接参照する
-- frontend に JWT 発行 route を複数持つ
-- access_token / refresh_token を localStorage に保存する
+/api/auth/login
+/api/auth/logout
+/api/auth/register
 ```
+
+Django BackendのJWT Endpointは、BFFから呼び出す内部経路として扱う。
+
+Frontend Componentから直接利用しない。
 
 ---
 
-### SessionAuthentication の扱い
+## 認証付き機能
 
-現時点では SessionAuthentication を即削除しない。
+次の機能は、認証済みユーザーを前提とする。
 
-理由:
+- お気に入り保存
+- 参拝記録
+- 振り返り保存
+- My Page
+- 自分の御朱印管理
+- 神社情報の投稿
+- 課金状態の取得
+- User固有情報の取得
+- Concierge結果の保存
 
-```text
-- 依存箇所がまだ完全には確定していない
-- Goshuin / Users / Billing などに影響する可能性がある
-- 開発初期や互換目的で残っている可能性がある
-```
+相談・閲覧など、認証不要と定義された機能は未ログインでも利用できる。
 
-今後の監査で以下に分類する。
-
-```text
-削除可能:
-- JWTAuthentication のみで動作確認できる API
-
-保留:
-- 影響範囲が未確認の API
-
-残す:
-- 明確に SessionAuthentication が必要な API
-```
+認証が必要になるタイミングと画面復帰は`docs/auth-flow.md`で管理する。
 
 ---
 
-### 関連ドキュメント
+## SessionAuthenticationの扱い
 
-```text
-docs/authentication-flow.md
-```
+Web版の認証主経路はJWTとする。
+
+ただし、Backend内に残る`SessionAuthentication`は、この文書だけを根拠として削除しない。
+
+### ルール
+
+- Django Adminなど、Sessionを必要とする経路と分離して判断する
+- APIごとのAuthentication Classは実装コードを正本とする
+- JWTのみで動作確認できたAPIでも、影響範囲を確認してから変更する
+- Session依存の有無はテストと実装監査で確認する
+
+`SessionAuthentication`の削除可否は、本書の現行仕様ではなく、個別の監査・実装PRで扱う。
+
+---
+
+## 禁止事項
+
+- Frontend Route内でBackend URLを直接組み立てる
+- Frontend ComponentからBackend Originを直接呼び出す
+- RouteごとにAuthorization付与処理を重複実装する
+- 認証付きRouteで`NEXT_PUBLIC_API_BASE`や`API_BASE_URL`を直接参照する
+- FrontendにJWT発行Routeを複数持つ
+- Access Token・Refresh Tokenを`localStorage`へ保存する
+- JWTをClient JavaScriptから直接読み取る
+- 課金状態や権限をFrontendだけで確定する
+
+---
+
+## 責務境界
+
+| 項目 | Frontend | BFF | Backend |
+|---|:---:|:---:|:---:|
+| Login Form | 担当 | 受理 | 認証 |
+| Cookie保存 | 担当しない | 担当 | 担当しない |
+| Authorization Header | 担当しない | 担当 | 検証 |
+| Token Refresh | 担当しない | 担当 | 発行 |
+| 認証状態UI | 担当 | 補助 | 担当しない |
+| `request.user` | 担当しない | 転送 | 担当 |
+| Permission判定 | 担当しない | 担当しない | 担当 |
+| 課金状態判定 | 表示のみ | 転送 | 担当 |
+| `returnTo` | 担当 | 保持・転送 | 担当しない |
+
+---
+
+## 正本実装
+
+### Frontend
+
+- `apps/web/src/lib/auth/AuthProvider.tsx`
+- `apps/web/src/lib/api/auth.ts`
+
+### BFF
+
+- `apps/web/src/app/api/auth/login/route.ts`
+- `apps/web/src/app/api/auth/logout/route.ts`
+- `apps/web/src/app/api/auth/register/route.ts`
+- `apps/web/src/lib/server/bffFetch.ts`
+
+### Backend
+
+- JWT発行Endpoint
+- Authentication Class設定
+- Permission Class設定
+- 認証対象となる各API View
+
+Endpoint、Cookie名、Response、Authentication Classの正確な契約は実装コードとテストを正本とする。
+
+---
+
+## 関連ドキュメント
+
+- `docs/auth-flow.md`
+- `docs/README.md`
+- `docs/core/architecture.md`
+- `backend/README.md`
+
+---
+
+## 更新ルール
+
+- 本書はWeb版の認証アーキテクチャと責務境界を管理する
+- 認証経路、Cookie、BFF、JWT方針が変更された場合のみ更新する
+- 画面遷移・`returnTo`・認証後の復帰導線は`docs/auth-flow.md`で管理する
+- Mobile固有のToken保存・認証経路はMobile側文書と実装で管理する
+- 検証チェックリスト、TODO、監査計画、PR候補、実装進捗は記載しない
