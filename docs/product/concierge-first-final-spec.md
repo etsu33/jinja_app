@@ -1,4 +1,6 @@
-
+> **Status: Active**
+>
+> 本ドキュメントは、Concierge First MVPにおけるHomeHero・ConciergeEntry・Filter・Need Mode・Compat Mode・Recommendation Score v2・User State Profileの責務を統合する正本である。
 
 # Concierge First Final Spec
 

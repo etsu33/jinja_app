@@ -1,3 +1,9 @@
+> **Status: Reference**
+>
+> 本ドキュメントは、Exploreの役割・画面責務を補足するReference文書である。
+>
+> Concierge First全体の責務は `docs/product/concierge-first-final-spec.md` を正本とする。
+
 # Explore Integration Design
 
 ## 目的
@@ -68,7 +74,7 @@ Explore は「どこへ行くか」を支援し、「なぜその神社なのか
 | ドキュメント | 責務 |
 |--------------|------|
 | `docs/product/explore-integration-design.md` | Explore の役割・画面責務 |
-| `docs/product/concierge-first.md` | 体験導線 |
+| `docs/product/concierge-first-final-spec.md` | 体験導線 |
 | `docs/product/concierge-modes.md` | 推薦モード |
 | `docs/core/meaning-layer.md` | 意味変換 |
 | `docs/core/architecture.md` | システム全体の責務 |
@@ -77,7 +83,7 @@ Explore は「どこへ行くか」を支援し、「なぜその神社なのか
 
 ## 関連ドキュメント
 
-- `docs/product/concierge-first.md`
+- `docs/product/concierge-first-final-spec.md`
 - `docs/product/concierge-modes.md`
 - `docs/core/meaning-layer.md`
 - `docs/core/architecture.md`

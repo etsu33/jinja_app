@@ -1,32 +1,37 @@
+> **Status: Reference**
+>
+> 本ドキュメントは Concierge Entry の画面構成とUI責務を補足する Reference 文書である。
+>
+> 体験全体の責務は `docs/product/concierge-first-final-spec.md`、
+> 相談テーマの分類は `docs/product/consultation-theme-taxonomy.md` を正本とする。
 
-
-# ConciergeEntry Final Wireframe
+# Concierge Entry Final Wireframe
 
 ## 目的
 
-`ConciergeEntry` は、HomeHero から始まった相談を受け取り、推薦生成へ進む前の確認・補足画面として扱う。
+`ConciergeEntry` の画面構成とUI責務を定義する。
 
-この画面は「検索フォーム」ではなく、相談テーマを確認し、必要な補助条件だけを追加するための入口である。
+`ConciergeEntry` は、Home Heroから始まった相談を受け取り、推薦生成前に相談内容を確認・補足する画面として扱う。
 
----
-
-## ConciergeEntryの役割
-
-ConciergeEntry の役割は以下。
-
-- HomeHero から渡された相談テーマを受け取る
-- 直接 `/concierge` に来たユーザーにも相談開始口を提供する
-- 相談テーマを確認・微修正できるようにする
-- 補助条件Accordionへ誘導する
-- 推薦生成CTAへつなぐ
-
-ConciergeEntry は推薦結果を表示しない。
-
-推薦結果の表示責務は `ConciergeSectionsRenderer` 側に寄せる。
+検索フォームではなく、相談内容を整え、必要な補助条件を追加して推薦へ進む入口とする。
 
 ---
 
-## HomeHeroから来た時の表示
+## Concierge Entryの役割
+
+- Home Heroから渡された相談内容を受け取る
+- 相談内容を確認・修正できるようにする
+- 直接アクセスしたユーザーへ相談開始口を提供する
+- 補助条件入力へ誘導する
+- 推薦生成CTAへ接続する
+
+`ConciergeEntry` は推薦結果を表示しない。
+
+推薦結果の表示は `ConciergeSectionsRenderer` が担当する。
+
+---
+
+## Home Heroから遷移した場合
 
 ### URL
 
@@ -37,31 +42,31 @@ ConciergeEntry は推薦結果を表示しない。
 
 ### 表示方針
 
-HomeHeroから theme が渡された場合、ConciergeEntry は「新しく相談を書かせる画面」ではなく、「相談内容を確認する画面」として表示する。
+theme が渡された場合は、新しく相談を書かせる画面ではなく、相談内容を確認・補足する画面として表示する。
 
 ### 表示構造
 
 ```text
-相談テーマを確認する
+相談内容を確認する
 
-[HomeHeroから渡された相談文]
+[Home Heroから渡された相談内容]
 
-必要なら少しだけ補足できます。
+必要な場合のみ内容を補足する
 
 [＋ 条件を追加する]
 [この内容で神社を提案してもらう]
 ```
 
-### 注意
+### ルール
 
-- HomeHeroで選んだテーマを消さない
-- theme がある場合は textarea を空にしない
-- `openFilter=1` がある場合は補助条件Accordionを開く
-- 相談テーマチップは控えめに表示する
+- Home Heroから渡された相談内容を初期表示する
+- theme がある場合は入力欄を空にしない
+- openFilter=1 の場合は補助条件エリアを開く
+- 相談テーマチップは補助的に表示する
 
 ---
 
-## 直接/conciergeに来た時の表示
+## 直接アクセスした場合
 
 ### URL
 
@@ -72,143 +77,85 @@ HomeHeroから theme が渡された場合、ConciergeEntry は「新しく相�
 
 ### 表示方針
 
-直接アクセスの場合は、ConciergeEntry が相談開始画面になる。
-
-ただし、検索UIではなく相談体験の入口として表示する。
+直接アクセスの場合は、ConciergeEntry を相談開始画面として表示する。
 
 ### 表示構造
 
 ```text
-今のテーマを選ぶ
+今の相談テーマを選ぶ
 
-[仕事について考えたい]
-[人との関係を整えたい]
-[お金の流れを整えたい]
-[一歩踏み出したい]
-[少し休みたい]
-[体調を整えたい]
-[学びを深めたい]
-[これからを考えたい]
+[相談テーマチップ]
 
-必要なら一言だけ補足する
+必要なら一言補足する
 [textarea]
 
 [＋ 条件を追加する]
 [この内容で神社を提案してもらう]
 ```
 
+相談テーマの表示文言・内部キー・対応関係は、`docs/product/consultation-theme-taxonomy.md` を正本とする。
+
 ---
 
-## ConciergeEntryCardに残す要素
+## 画面構成
 
-### 残す
+### 表示する要素
 
-- 相談テーマ表示
+- 相談内容
 - 相談テーマチップ
-- 自由入力 textarea
+- 自由入力
 - 条件追加導線
+- 推薦生成CTA
+- クリア操作
 - 未ログイン時の保存案内
-- 相談開始CTA
-- クリア
 
-### 控えめにする
+### 控えめに表示する要素
 
 - 呼び名入力
-- 自由入力 textarea
+- 自由入力
 - 未ログイン案内
 
-### 削除候補
+### 表示しない要素
 
-- HomeHeroと重複する強い説明文
-- 過度な補足文
+- 推薦結果
+- 推薦順位
 - 条件入力本体
+- 長い説明文
+- Meaning Layerの内部情報
 
 ---
 
-## ConciergeFilterPanelとの責務境界
+## 相談テーマ
 
-### ConciergeEntryCard
+相談テーマは、カテゴリ検索ではなく、相談を始めやすくする入力補助として扱う。
 
-担当:
+### ルール
 
-- 相談テーマ
-- 相談文の確認
-- 相談開始CTA
-
-### ConciergeFilterPanel
-
-担当:
-
-- 誕生日
-- ご利益
-- 参拝スタイル
-- 相性から見た候補
-- 補助条件
-
-### 判断
-
-ConciergeEntryCard に条件入力本体を置かない。
-
-条件追加は `ConciergeFilterPanel` に集約する。
+- 相談テーマの選択を強制しない
+- 自由入力による補足・修正を許可する
+- 表示文言と内部キーをUI内で独自管理しない
+- 正式な分類は `docs/product/consultation-theme-taxonomy.md` を参照する
 
 ---
 
-## 相談テーマチップの扱い
+## 自由入力
 
-相談テーマチップは、カテゴリ検索ではなく「今の状態を選びやすくする入口」として扱う。
-
-### 最終候補
-
-```markdown
-- 仕事について考えたい
-- 人との関係を整えたい
-- お金の流れを整えたい
-- 一歩踏み出したい
-- 少し休みたい
-- 体調を整えたい
-- 学びを深めたい
-- これからを考えたい
-```
-
-### 対応する内部テーマ
-
-| 表示 | 内部テーマ |
-|---|---|
-| 仕事について考えたい | work |
-| 人との関係を整えたい | relationship |
-| お金の流れを整えたい | money |
-| 一歩踏み出したい | challenge |
-| 少し休みたい | rest |
-| 体調を整えたい | health |
-| 学びを深めたい | study |
-| これからを考えたい | future |
-
-### 注意
-
-- UIでは状態ベースの文言にする
-- payloadでは need / axis 判定に使いやすい値へ変換する
-- チップ選択を強制しない
-- 自由入力で上書き可能にする
-
----
-
-## 自由入力textareaの扱い
-
-自由入力は主役ではなく補助入力として扱う。
+自由入力は、相談テーマだけでは表現しきれない内容を補足するために使用する。
 
 ### 役割
 
-- チップだけでは表現できない相談を補足する
-- HomeHeroから渡された theme を微修正する
-- need推定の補助材料にする
+- Home Heroから渡された相談内容を修正する
+- 相談テーマを自分の言葉で補足する
+- 相談解釈の入力としてBackendへ渡す
 
 ### 表示方針
 
-- Heroより控えめにする
-- 「必須入力」感を出しすぎない
-- placeholder は短くする
+- 必須入力であるように見せすぎない
+- 長文入力を前提にしない
+- 相談テーマより強く見せない
+- ユーザーの原文を維持する
 
-### placeholder候補
+### Placeholder
 
 ```text
 例: 気持ちを切り替えたい、これからのことを考えたい
@@ -216,18 +163,26 @@ ConciergeEntryCard に条件入力本体を置かない。
 
 ---
 
-## CTA文言
+## 条件追加導線
+
+### 表示文言
+
+```text
+＋ 条件を追加する
+```
+
+補助条件入力は `ConciergeFilterPanel` が担当する。
+
+`ConciergeEntry` 内に条件入力本体を重複して配置しない。
+
+---
+
+## CTA
 
 ### メインCTA
 
 ```text
 この内容で神社を提案してもらう
-```
-
-### 補助条件CTA
-
-```text
-＋ 条件を追加する
 ```
 
 ### クリア
@@ -244,83 +199,67 @@ ConciergeEntryCard に条件入力本体を置かない。
 
 ---
 
-## Home→Concierge→Result Flow
+## Concierge Filterとの責務境界
+
+| Concierge Entry | Concierge Filter |
+|---|---|
+| 相談テーマ | 誕生日 |
+| 相談内容の確認・修正 | ご利益 |
+| 自由入力 | 参拝スタイル |
+| 推薦生成CTA | 相性に関する補助情報 |
+| 条件追加導線 | その他の補助条件 |
+
+`ConciergeEntry` は相談の主入力を扱い、`ConciergeFilterPanel` は推薦を補完する条件を扱う。
+
+---
+
+## 推薦結果との責務境界
+
+| Concierge Entry | ConciergeSectionsRenderer |
+|---|---|
+| 相談入力 | 推薦結果 |
+| 入力確認 | 推薦理由 |
+| 条件追加への導線 | Action Suggestion |
+| 推薦生成CTA | 神社候補の表示 |
+
+`ConciergeEntry` は推薦生成前までを担当する。
+
+---
+
+## 画面フロー
 
 ```text
-HomeHero
+Home Hero
 ↓
-theme / openFilter をURLで渡す
+theme / openFilter
 ↓
-ConciergeEntry
+Concierge Entry
 ↓
-相談テーマを確認
+相談内容の確認・補足
 ↓
-必要ならFilterを追加
+必要に応じてConcierge Filter
 ↓
-filter_apply または send
+推薦生成
 ↓
 ConciergeSectionsRenderer
-↓
-推薦結果表示
 ```
 
 ---
 
-## 次PR候補
+## 関連ドキュメント
 
-### PR1: ConciergeEntry UI整理
-
-```markdown
-- [ ] HomeHeroから渡されたtheme表示を確認
-- [ ] 直接アクセス時のテーマチップ表示を整理
-- [ ] textareaを補助入力として調整
-- [ ] 条件追加導線を整理
-- [ ] CTA文言を統一
-- [ ] typecheck
-```
-
-### PR2: 相談テーマ定義の共通化
-
-```markdown
-- [ ] 相談テーマ一覧を共通定数化
-- [ ] HomeHeroとConciergeEntryで同じテーマ定義を使う
-- [ ] 表示文言と内部テーマを分離
-- [ ] payload変換を確認
-- [ ] typecheck
-```
-
-### PR3: ConciergeFilterPanel整理
-
-```markdown
-- [ ] 誕生日を補助相性として表示
-- [ ] ご利益を神社側特徴条件として表示
-- [ ] 参拝スタイルを3レイヤーに整理
-- [ ] 相性候補と吉方位候補を混同しない
-- [ ] typecheck
-```
+- `docs/product/README.md`
+- `docs/product/concierge-first-final-spec.md`
+- `docs/product/concierge-modes.md`
+- `docs/product/consultation-theme-taxonomy.md`
+- `docs/product/concierge-filter-area.md`
 
 ---
 
-## 完成定義
+## 更新ルール
 
-- HomeHeroから来たユーザーが相談内容を確認できる
-- 直接/conciergeに来たユーザーも相談開始できる
-- ConciergeEntryとConciergeFilterPanelの責務が重複しない
-- 自由入力が主役化しすぎない
-- Concierge First方針と整合する
-
----
-
-## TODO
-
-```markdown
-- [x] ConciergeEntryの役割を定義
-- [x] HomeHeroから来た時の表示を定義
-- [x] 直接/conciergeに来た時の表示を定義
-- [x] ConciergeEntryCardに残す要素を確定
-- [x] ConciergeFilterPanelとの責務境界を整理
-- [x] 相談テーマチップの扱いを確定
-- [x] 自由入力textareaの扱いを確定
-- [x] CTA文言を確定
-- [x] 次PR候補を整理
-```
+- 本書は Concierge Entry の画面構成とUI責務のみを管理する。
+- 相談テーマの分類・表示文言・内部キーは本書で重複管理しない。
+- 推薦ロジック・Meaning Layer・API契約は各正本ドキュメントで管理する。
+- Concierge Entryの画面構成またはUI責務が変更された場合のみ更新する。
+- TODO・PR計画・実装進捗・作業履歴は本書へ記載しない。

@@ -1,3 +1,7 @@
+> **Status: Active**
+>
+> 本ドキュメントは、KAMI MUSUBIにおける各コンシェルジュモード（Need Mode / Compat Mode / Route Mode / Theme Mode / Shrine Search Mode）の責務を定義する正本である。
+
 # Concierge Modes
 
 ## 目的
@@ -66,7 +70,7 @@
 | ドキュメント | 責務 |
 |--------------|------|
 | `docs/product/concierge-modes.md` | Modeの役割・責務 |
-| `docs/product/concierge-first.md` | 体験導線 |
+| `docs/product/concierge-first-final-spec.md` | 体験導線 |
 | `docs/core/meaning-layer.md` | 意味変換 |
 | `docs/core/architecture.md` | システム全体の責務 |
 
@@ -74,7 +78,7 @@
 
 ## 関連ドキュメント
 
-- `docs/product/concierge-first.md`
+- `docs/product/concierge-first-final-spec.md`
 - `docs/core/meaning-layer.md`
 - `docs/core/architecture.md`
 
