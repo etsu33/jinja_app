@@ -64,11 +64,11 @@ Claudeは禁止
 
 | カテゴリ | 監査 | ChatGPTレビュー | 修正 | PR | Merge | 状態 | 備考 |
 |----------|:---:|:--------------:|:---:|:--:|:----:|:----:|------|
-| README / 管理文書 | 🟩 | 🟩 | 🟩 | ⬜ | ⬜ | 🟦 | README・監査文書の分類と役割境界を同期済み |
-| Concierge | 🟩 | 🟩 | 🟩 | ⬜ | ⬜ | 🟦 | 現行正本・Reference・Archiveの責務整理済み |
-| Taxonomy | 🟩 | ⬜ | 🟩 | ⬜ | ⬜ | 🟦 | Status表記・重複管理を確認、Meaning⇔Consultation Taxonomyの重複1件は判断保留 |
-| Visit / Reflection | 🟩 | ⬜ | 🟩 | ⬜ | ⬜ | 🟦 | Status表記付与・historyTheme命名揺れ（境界→縁）を修正 |
-| Archive | 🟩 | ⬜ | 🟩 | ⬜ | ⬜ | 🟦 | Archive4件のStatus表記・置き換え先参照を確認 |
+| README / 管理文書 | 🟩 | 🟩 | 🟩 | 🟩 | ⬜ | 🟦 | README・監査文書の分類と役割境界を同期済み（PR #1986） |
+| Concierge | 🟩 | 🟩 | 🟩 | 🟩 | ⬜ | 🟦 | 現行正本・Reference・Archiveの責務整理済み（PR #1986） |
+| Taxonomy | 🟩 | ⬜ | 🟩 | 🟩 | ⬜ | 🟦 | Status表記・重複管理を確認、Meaning⇔Consultation Taxonomyの重複1件は判断保留（PR #1986） |
+| Visit / Reflection | 🟩 | ⬜ | 🟩 | 🟩 | ⬜ | 🟦 | Status表記付与・historyTheme命名揺れ（境界→縁）を修正（PR #1986） |
+| Archive | 🟩 | ⬜ | 🟩 | 🟩 | ⬜ | 🟦 | Archive4件のStatus表記・置き換え先参照・見出し名の紛らわしさを解消（PR #1986） |
 
 ---
 
@@ -131,11 +131,12 @@ Reference文書
 
 ### 修正内容
 
-未着手
+- README.md・product-document-audit.mdへの追加修正は不要（前回セッションで完了済みの内容と実ファイルの一致を再確認）。
+- `product-doc-consolidation.md`で、コードブロックが閉じられずMarkdownが崩れていた箇所を修正（Status表記・分類・置き換え先の内容自体は既に完了済み）。
 
 ### PR
 
--
+#1986
 
 ---
 
@@ -190,11 +191,11 @@ Reference文書
 
 【残課題】
 
-- `visit-style-taxonomy.md` 自体のTODO・PR候補除去状況の確認（`concierge-filter-area.md`側は`visit-style-taxonomy.md`への委譲構造に統一済み）
+なし（`visit-style-taxonomy.md`のTODO・PR候補除去状況はTaxonomyカテゴリの監査でPASSを確認済み）
 
 ### ChatGPT判断
 
-未着手
+Concierge First全体仕様（`concierge-first-final-spec.md`）・Modeの責務（`concierge-modes.md`）・相談テーマの正本化（`consultation-theme-taxonomy.md`）は確定済み。Archive2件（`concierge-first.md`、`concierge-first-wireframe.md`）は現行仕様判断に使用しない。正本2件へのStatus表記追加、Reference4件のTODO・次PR候補除去、Archive参照の整合をもって、Conciergeカテゴリの責務分離は完了とする。
 
 ### 修正内容
 
@@ -220,7 +221,7 @@ Reference文書
 
 ### PR
 
--
+#1986
 
 ---
 
@@ -248,7 +249,7 @@ Reference文書
 
 ### ChatGPT判断
 
-未着手
+`consultation-theme-taxonomy.md`・`history-theme-taxonomy.md`・`visit-style-taxonomy.md`はPASS。`meaning-translation-mapping.md`と`consultation-theme-taxonomy.md`間のtheme_key対応表の重複は、どちらを正本とするか設計判断が必要なため引き続き判断保留とし、次回以降の課題として持ち越す。それ以外にTaxonomyカテゴリの問題はない。
 
 ### 修正内容
 
@@ -258,7 +259,7 @@ Reference文書
 
 ### PR
 
--
+#1986
 
 ---
 
@@ -281,7 +282,7 @@ Reference文書
 
 ### ChatGPT判断
 
-未着手
+`visit-reflection-flow.md`はPASS。`reflection-funnel-dashboard.md`のStatus表記欠落・historyTheme命名揺れ・更新ルール欠如はすべて解消済み。Visit / Reflectionカテゴリの責務分離は完了とする。
 
 ### 修正内容
 
@@ -291,7 +292,7 @@ Reference文書
 
 ### PR
 
--
+#1986
 
 ---
 
@@ -310,29 +311,28 @@ Reference文書
 
 【PASS / WARNING / FAIL】
 
-- `concierge-first.md`: PASS（`Status: Archive`明記、現行仕様への置き換え先明記）。WARNING：本文中の「## 現行仕様」という見出し名がArchive方針と紛らわしい（未修正、残課題として維持）。
-- `concierge-first-wireframe.md`: PASS（同上の構造）。同様のWARNING（「## 現行仕様」見出し名）が残存。
-- `action-suggestion-layer.md`: PASS（`Status: Archive`、Archive理由表、現行正本一覧が明確）。
-- `product-doc-consolidation.md`: PASS（`Status: Archive`、置き換え先明記）。WARNING：「## 統合方針」という同名見出しが本文中に2箇所存在（未修正、残課題として維持）。
+- `concierge-first.md`: PASS（`Status: Archive`明記、現行仕様への置き換え先明記）。WARNING（「## 現行仕様」という見出し名がArchive方針と紛らわしい）→解消済み：見出しを「## 現在の正本」へ変更し、あわせて本文中の改行崩れ（「KAMI\nMUSUBI」）も修正。
+- `concierge-first-wireframe.md`: PASS。同様のWARNING（「## 現行仕様」見出し名）→解消済み：見出しを「## 現在の正本」へ変更。
+- `action-suggestion-layer.md`: PASS（`Status: Archive`、Archive理由表、現行正本一覧が明確）。WARNINGなし。
+- `product-doc-consolidation.md`: PASS（`Status: Archive`、置き換え先明記）。WARNING（「## 統合方針」という同名見出しが本文中に2箇所存在）→解消済み：「## 現在の参照先」（フロー図）と「## 統合ルール」（方針一覧）へ分離。加えてコードブロックが閉じられずMarkdownが崩れていた箇所を修正。
 
 4ファイルとも、TODO・次PR候補の残存はgrepで確認し該当なし。現行仕様判断への使用を禁止する旨と置き換え先は、いずれも冒頭Statusブロックに明記済み。
 
 ### ChatGPT判断
 
-未着手
+Archive4件（`concierge-first.md`、`concierge-first-wireframe.md`、`action-suggestion-layer.md`、`product-doc-consolidation.md`）はすべて`Status: Archive`・置き換え先明記済み。見出し名の紛らわしさと見出し重複というWARNINGはいずれも解消し、現行仕様として誤読されるリスクはなくなった。Archiveカテゴリの整理は完了とする。
 
 ### 修正内容
 
-Archiveカテゴリ自体への追加修正は今回実施していない（既存のStatus表記・置き換え先明記は前回セッションで完了済みのため）。台帳の対象ファイル一覧を実態（README.md・product-document-audit.mdのArchive分類）へ同期した。
+- `concierge-first.md`／`concierge-first-wireframe.md`の「## 現行仕様」見出しを「## 現在の正本」へ変更。
+- `product-doc-consolidation.md`の見出し重複を「## 現在の参照先」／「## 統合ルール」へ分離し、あわせてコードブロック未クローズによるMarkdown崩れを修正。
+- `concierge-first.md`本文中の改行崩れ（「KAMI」「MUSUBI」が分割されていた箇所）を修正。
 
-【未対応（残課題）】
-
-- `concierge-first.md`／`concierge-first-wireframe.md`の「## 現行仕様」見出し名の紛らわしさ
-- `product-doc-consolidation.md`の「## 統合方針」見出しの重複
+台帳の対象ファイル一覧も実態（README.md・product-document-audit.mdのArchive分類）へ同期した。
 
 ### PR
 
--
+#1986
 
 ---
 
