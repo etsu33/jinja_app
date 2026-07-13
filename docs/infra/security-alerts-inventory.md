@@ -1,50 +1,56 @@
-
+> **Status: Archive**
+>
+> 本ドキュメントは、GitHub Dependabot Security Alertの初回棚卸し時点の監査記録である。
+>
+> 記載されているAlert件数・優先順位・対象ライブラリは監査時点のスナップショットであり、現行のSecurity Alert管理には使用しない。
+>
+> 現在のSecurity AlertはGitHub Dependabotを正本とする。
+>
+> 関連文書:
+>
+> - `docs/infra/security-alerts-triage.md`
 
 # Security Alerts Inventory
 
 ## 目的
 
-GitHub Dependabot に表示されている Security Alert を分類し、対応優先度を整理する。
+GitHub Dependabot Security Alertの初回棚卸し時点における対象ライブラリおよび対応優先度の整理内容を保存する。
 
-現時点では修正を行わず、棚卸しのみ実施する。
-
----
-
-## 現状
-
-- Alert数: 71件
-- 対象: default branch
-- 状態: triage前
+本書は当時の判断経緯を残すArchive文書として扱う。
 
 ---
 
-## 分類ルール
+## 当時の監査結果
 
-### Priority A（最優先）
+監査時点では、GitHub Dependabotに表示されたSecurity Alertを対象に、優先度別の分類を実施した。
 
-本番実行時に利用される依存関係。
+当時は以下の考え方で分類した。
 
-例:
+### Priority A
+
+本番環境で利用される依存ライブラリ。
+
+代表例
 
 - Next.js
-- axios
+- Axios
 - Django
-- DRF
+- Django REST Framework
 - Stripe SDK
 
-対応:
+対応方針
 
-- 個別PR
+- 個別PRで更新
 - 契約テスト実施
-- smoke test実施
+- Smoke Test実施
 
 ---
 
-### Priority B（中優先）
+### Priority B
 
-開発環境のみで利用される依存関係。
+開発・ビルド環境のみで利用する依存ライブラリ。
 
-例:
+代表例
 
 - Vite
 - Vitest
@@ -52,69 +58,56 @@ GitHub Dependabot に表示されている Security Alert を分類し、対応�
 - ESLint
 - Testing Library
 
-対応:
+対応方針
 
-- まとめて更新可能
-- typecheck実施
-- test実施
-
----
-
-### Priority C（低優先）
-
-transitive dependency。
-
-例:
-
-- lockfile由来
-- 間接依存
-
-対応:
-
-- Priority A/B解消後に対応
-- pnpm updateで解消できるか確認
+- まとめて更新
+- Type Check
+- Test実施
 
 ---
 
-## Priority A 候補
+### Priority C
 
-本番実行時に影響する可能性が高いため、最優先で確認する。
+間接依存（Transitive Dependency）。
 
-- [ ] Next.js SSRF
-- [ ] Next.js Middleware Bypass
-- [ ] Axios MITM
-- [ ] Axios NO_PROXY Bypass
-- [ ] Axios Proxy Credential Leak
+対応方針
 
----
-
-## Priority B 候補
-
-開発環境・ビルド環境中心の影響として扱い、Priority A の次に確認する。
-
-- [ ] Vite Arbitrary File Read
-- [ ] Vite server.fs.deny bypass
-- [ ] Vite Path Traversal
-- [ ] lodash template imports
-- [ ] Babel systemjs transform
+- Priority A・B対応後に確認
+- パッケージ更新で解消できるものを優先
 
 ---
 
-## 調査TODO
+## 当時の運用方針
 
-- [ ] GitHub Security Alerts一覧を取得
-- [ ] direct dependency を抽出
-- [ ] dev dependency を抽出
-- [ ] transitive dependency を抽出
-- [ ] Priority A一覧を作成
-- [ ] Priority B一覧を作成
-- [ ] Priority C一覧を作成
-- [ ] 修正対象PRを分割する
+Security Alert対応は、プロダクト機能開発とは分離して実施する方針とした。
+
+依存ライブラリ更新は、小さなPRへ分割し、テストを伴って段階的に実施することを前提としていた。
 
 ---
 
-## 対応方針
+## 責務
 
-現フェーズでは Concierge First / Meaning Layer / Recommendation改善を優先する。
+### 本書が保持するもの
 
-Security Alertは棚卸し後に別PRで段階的に解消する。
+- 初回棚卸し時の分類基準
+- 当時の優先順位判断
+- Security Alert対応方針の履歴
+
+### 本書が扱わないもの
+
+- 現在のAlert件数
+- 現在のPriority
+- 現在のDependabot一覧
+- 現在の更新対象ライブラリ
+- 修正計画
+- 作業タスク
+
+---
+
+## 現行仕様
+
+現在のSecurity Alert管理は以下を正本とする。
+
+- GitHub Dependabot Alerts
+- GitHub Security Advisories
+- リポジトリの依存関係管理
