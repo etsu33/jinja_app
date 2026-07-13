@@ -111,14 +111,16 @@ export default function ConciergeTopRecommendationHero({
       actionSuggestionVersion: visibleActionSuggestionV4Preview.version,
       primaryActionType: visibleActionSuggestionV4Preview.primaryAction.actionType,
       secondaryActionType: visibleActionSuggestionV4Preview.secondaryAction.actionType,
-      promptType: visibleActionSuggestionV4Preview.reflectionPrompt.promptType,
+      actionPromptType: visibleActionSuggestionV4Preview.reflectionPrompt.promptType,
       actionSource: visibleActionSuggestionV4Preview.actionSource.source,
       sourceKeys: visibleActionSuggestionV4Preview.sourceKeys.join(","),
       summaryLine: actionSuggestionV4Summary,
     };
 
     trackSearchEvent("action_suggestion_preview_view", basePayload);
-    trackSearchEvent("reflection_prompt_view", {
+    // Action Suggestionのreflection promptは「実際にReflection入力UIが表示された」ことを意味しないため、
+    // reflection_prompt_view ではなく専用イベントで計測する。
+    trackSearchEvent("action_suggestion_reflection_preview_view", {
       ...basePayload,
       reflectionPromptSourceSeed: visibleActionSuggestionV4Preview.reflectionPrompt.sourceSeed,
     });

@@ -133,6 +133,18 @@ primary_action を補完する行動。
 - 宗教的な正解を示さない
 - 行動前後の整理を支援する
 
+### Analytics Event
+
+`reflection_prompt` はConcierge結果画面で回答不可のプレビューとして表示されることがある。この表示は、ユーザーが実際に回答できるReflection入力UIの表示ではないため、`docs/product/visit-reflection-flow.md` が定義する `reflection_prompt_view` には含めない。
+
+プレビュー表示の計測には以下の専用イベントを使用する。
+
+```text
+action_suggestion_reflection_preview_view
+```
+
+Payloadには `prompt_type`（`before_visit | after_visit | decision | emotion | constraint`）を `actionPromptType` として渡す。`visit-reflection-flow.md` が定義する `reflectionFormType` / `reflectionContext` とは別の語彙であり、混在させない。
+
 ---
 
 ## action_source

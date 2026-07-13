@@ -63,9 +63,11 @@ next_consultation_started
 |---|---|
 | `route_open` | 現地への移動検討を記録する |
 | `visit_done` | 参拝・訪問完了を記録する |
-| `reflection_prompt_view` | 振り返り入力の表示を記録する |
+| `reflection_prompt_view` | 実際のReflection入力UIが表示されたことだけを記録する |
 | `reflection_saved` | 振り返り保存を記録する |
 | `next_consultation_started` | 次回相談への再接続を記録する |
+
+`reflection_prompt_view` は、ユーザーが回答できるReflection入力UIの表示のみを対象とする。Concierge結果画面でAction Suggestionの振り返り質問プレビューを表示した場合は、`reflection_prompt_view` ではなく `docs/product/action_suggestion_v4.md` が定義する別イベントを使用する（詳細は本書「reflection_prompt_view」節を参照）。
 
 ---
 
@@ -120,9 +122,11 @@ type VisitDonePayload = {
 
 ### 責務
 
-振り返り入力UIが表示された事実を記録する。
+ユーザーが回答できるReflection入力UIが実際に表示された事実を記録する。
 
 表示されたことだけを扱い、回答や保存完了は扱わない。
+
+`reflection_prompt_view` は、ユーザーが実際に回答可能なReflection入力フォームの表示にのみ使用する。Action Suggestionの振り返り質問プレビュー（Concierge結果画面で表示される、回答不可のプレビューテキスト）はこのイベントに含めない。プレビュー表示の計測は `docs/product/action_suggestion_v4.md` が定義する `action_suggestion_reflection_preview_view` を使用する。
 
 ### 発火条件
 
@@ -146,10 +150,15 @@ type ReflectionPromptViewPayload = {
   resultSetId?: string | null;
   historyTheme: string;
   actionTheme?: string | null;
-  promptType: "one_line" | "mood_delta" | "theme_reflection";
+  /** どのフォーム構造でReflectionを入力させたか */
+  reflectionFormType: "one_line" | "mood_delta" | "theme_reflection";
+  /** Reflectionがどの文脈で表示されたか */
+  reflectionContext: "visit_done" | "mypage" | "night_reflection";
   accessLevel?: "anonymous" | "free" | "premium";
 };
 ```
+
+`reflectionFormType` と `reflectionContext` は、Action Suggestion v4の `reflection_prompt.prompt_type`（`before_visit` / `after_visit` / `decision` / `emotion` / `constraint`）とは異なる語彙である。両者を混在させない。
 
 ### 質問生成
 
@@ -193,7 +202,8 @@ type ReflectionSavedPayload = {
   resultSetId?: string | null;
   historyTheme: string;
   actionTheme?: string | null;
-  promptType: "one_line" | "mood_delta" | "theme_reflection";
+  reflectionFormType: "one_line" | "mood_delta" | "theme_reflection";
+  reflectionContext: "visit_done" | "mypage" | "night_reflection";
   answerLength: number;
   moodBefore?: number | null;
   moodAfter?: number | null;
@@ -206,7 +216,8 @@ type ReflectionSavedPayload = {
 - `source`
 - `shrineId`
 - `historyTheme`
-- `promptType`
+- `reflectionFormType`
+- `reflectionContext`
 - `answerLength`
 
 ---
@@ -360,8 +371,8 @@ type ReflectionAnalyticsBasePayload = {
 | Event | 必須項目 |
 |---|---|
 | `visit_done` | `source`, `shrineId`, `historyTheme` |
-| `reflection_prompt_view` | `source`, `shrineId`, `historyTheme`, `promptType` |
-| `reflection_saved` | `source`, `shrineId`, `historyTheme`, `answerLength` |
+| `reflection_prompt_view` | `source`, `shrineId`, `historyTheme`, `reflectionFormType`, `reflectionContext` |
+| `reflection_saved` | `source`, `shrineId`, `historyTheme`, `reflectionFormType`, `reflectionContext`, `answerLength` |
 
 ### 集計指標
 

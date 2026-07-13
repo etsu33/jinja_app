@@ -31,7 +31,8 @@ describe("ShrineReflectionPrompt", () => {
       shrineId: 17,
       threadId: "tid-1",
       historyTheme: "静寂",
-      promptType: "visit_done_reflection",
+      reflectionFormType: "mood_delta",
+      reflectionContext: "visit_done",
       ctx: "concierge",
     });
   });
@@ -81,7 +82,8 @@ describe("ShrineReflectionPrompt", () => {
       shrineId: 17,
       threadId: "tid-1",
       historyTheme: "静寂",
-      promptType: "visit_done_reflection",
+      reflectionFormType: "mood_delta",
+      reflectionContext: "visit_done",
       answerLength: 10,
       moodBefore: "anxious",
       moodAfter: "calm",
