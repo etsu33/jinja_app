@@ -1,14 +1,24 @@
+> **Status: Archive**
+>
+> 本ドキュメントは、Concierge First の初期設計を記録するArchive文書である。
+>
+> 現行の仕様判断には使用しない。
+>
+> 最新の仕様は `docs/product/concierge-first-final-spec.md` を正本とする。
+
 # Concierge First
 
 ## 目的
 
-本ドキュメントは、KAMI MUSUBI の主導体験を「神社検索」ではなく、「相談から神社と出会い、現実の行動へつなげる体験」として定義する。
+KAMI MUSUBI における Concierge First の設計思想と、体験全体の方向性を記録する。
 
-詳細なUI仕様、推薦ロジック、Meaning Layer、実装仕様は各正本ドキュメントへ委譲し、本書では体験全体の原則と責務のみを定義する。
+本書は初期設計の保存を目的とし、現行の仕様・実装判断には使用しない。
 
 ---
 
-## 体験フロー
+## 初期コンセプト
+
+KAMI MUSUBI の体験は、「神社を探す」ことではなく、「相談から神社と出会い、現実の行動へつなげる」ことを目的として設計された。
 
 ```text
 相談
@@ -24,34 +34,21 @@ Visit
 Reflection
 ```
 
-KAMI MUSUBI は Concierge First を採用し、検索ではなく相談から体験を開始する。
+検索を起点とするのではなく、相談を起点とすることを基本思想としている。
 
 ---
 
 ## 基本原則
 
-- 相談をプロダクトの主入口とする
+- 相談をプロダクトの入口とする
 - 神社検索・地図は補助導線とする
 - 補助条件（参拝スタイル・誕生日・ご利益）は推薦を補完する
 - 占術・相性・吉方位は補助シグナルとして扱う
-- Backend を推薦入力の正本とする
 - AIは心理・宗教・人生を断定しない
 
 ---
 
-## 入力責務
-
-| 区分 | 内容 |
-|------|------|
-| 主入力 | 相談テーマ・自由入力 |
-| 補助条件 | 参拝スタイル・誕生日・ご利益タグ |
-| 補助シグナル | 占星術・九星気学・吉方位・相性 |
-
-相談内容を推薦理由の中心とし、その他の情報は補助的に利用する。
-
----
-
-## 画面責務
+## 初期の責務整理
 
 | 画面 | 役割 |
 |------|------|
@@ -63,37 +60,22 @@ KAMI MUSUBI は Concierge First を採用し、検索ではなく相談から体
 | Visit | 参拝記録 |
 | Reflection | 振り返り |
 
-### 設計原則
-
-- Concierge が推薦を担当する
-- Explore は探索のみを担当する
-- Detail は神社情報を正確に伝える
-- Reflection は行動後の変化を整理する
-
 ---
 
-## 責務境界
+## 現行仕様
 
-| ドキュメント | 役割 |
-|--------------|------|
-| `docs/product/concierge-first.md` | 体験全体・画面責務 |
-| `docs/product/concierge-modes.md` | 推薦モード |
-| `docs/core/meaning-layer.md` | 意味変換 |
-| `docs/core/architecture.md` | 全体構造 |
+現在の Concierge First の正式仕様は、以下の正本で管理する。
+
+- `docs/product/concierge-first-final-spec.md`
+- `docs/product/concierge-modes.md`
+- `docs/product/consultation-theme-taxonomy.md`
+- `docs/product/meaning-translation-mapping.md`
 
 ---
 
 ## 関連ドキュメント
 
+- `docs/product/concierge-first-final-spec.md`
+- `docs/product/concierge-modes.md`
 - `docs/core/architecture.md`
 - `docs/core/meaning-layer.md`
-- `docs/product/concierge-modes.md`
-- `docs/product/explore-integration-design.md`
-
----
-
-## 更新ルール
-
-- 本書には詳細仕様・実装手順・TODOを記載しない
-- 体験導線・画面責務・設計原則が変更された場合のみ更新する
-- 詳細設計は各正本ドキュメントで管理する

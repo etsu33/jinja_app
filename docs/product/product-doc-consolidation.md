@@ -1,164 +1,92 @@
+> **Status: Archive**
+>
+> 本ドキュメントは、Google Docs とリポジトリ間の統合作業方針を記録したアーカイブである。
+>
+> 現行の仕様判断には使用しない。
+>
+> 最新のプロダクト仕様は以下を正本とする。
+>
+> - `docs/product/README.md`
+> - `docs/product/concierge-first-final-spec.md`
+> - `docs/product/product-document-audit.md`
+
 # Product Doc Consolidation
 
 ## 目的
 
-Google Docs の `product` ドキュメントを、現行の Concierge First 最新仕様へ統合する。
+Google Docs の Product ドキュメントを、現行のプロダクト仕様へ統合するための方針を記録する。
 
-このドキュメントは、Google Docs 側を直接更新する前に、Git上で統合方針を固定するための方針書である。
-
-正本は `docs/product/concierge-first-final-spec.md` とし、Google Docs の `product` は最新仕様を読むための1枚のハブドキュメントとして再構成する。
+本書は統合作業の履歴を保存することを目的とし、現行仕様の判断には利用しない。
 
 ---
 
-## 結論
+## 統合方針
 
-Google Docs `product` は、以下の役割へ整理する。
+Google Docs の Product ドキュメントは、リポジトリ内の正本ドキュメントを参照する構成へ整理する。
 
 ```text
-KAMI MUSUBI Product
-= 事業・UX・MVP仕様の最新ハブ
+Google Docs
+        │
+        ▼
+README
+        │
+        ▼
+各正本ドキュメント
 ```
 
-古い Concierge First Wireframe は、`concierge-first-final-spec.md` ベースの最新版へ置き換える。
-
-Explore案は削除せず、将来構想として下部へ移動する。
+Google Docs 側では仕様を重複管理せず、最新仕様への入口として利用する。
 
 ---
 
-## Source of Truth
+## 当時の統合対象
 
-現時点の正本は以下。
-
-```text
-docs/product/concierge-first-final-spec.md
-```
-
-補助参照は以下。
-
-```markdown
-- docs/product/home-hero-final-wireframe.md
-- docs/product/concierge-entry-final-wireframe.md
-- docs/product/consultation-theme-taxonomy.md
-- docs/product/meaning-translation-mapping.md
-- docs/product/visit-style-taxonomy.md
-- docs/product/need-mode-ui-flow.md
-- docs/product/compat-mode-ui-flow.md
-```
-
-Google Docs `product` は、これらをすべて並列に載せるのではなく、`concierge-first-final-spec.md` を中心に再構成する。
+- Concierge First
+- HomeHero
+- Concierge Entry
+- Filter
+- Need Mode
+- Compat Mode
+- Meaning Translation
+- Explore
 
 ---
 
-## Google Docs product 再構成方針
+## 統合方針
 
-### 残すもの
-
-```markdown
-- Product Vision
-- Concierge First MVP結論
-- HomeHero / ConciergeEntry / Filter責務
-- Need Mode / Compat Mode境界
-- Recommendation Score v2との接続
-- User State Profileとの接続
-- MVP実装対象
-- 将来構想としてのExplore
-```
-
-### 置き換えるもの
-
-```markdown
-- 古い Concierge First Wireframe
-- 古いHomeHero案
-- 古い条件追加エリア案
-- 古い実装Phase
-```
-
-### 下部へ移動するもの
-
-```markdown
-- Explore Integration Design
-- /shrines と /map の将来統合案
-- 神社検索・地図・一覧の拡張構想
-```
-
-### 削除してよいもの
-
-```markdown
-- 重複している古いワイヤー
-- HomeConciergeInlineClient前提の記述
-- 誕生日・相性・吉方位を主導線に見せる記述
-- 現行仕様と矛盾するCTA文言
-```
+- 古いワイヤーフレームは現行仕様へ置き換える
+- 重複する仕様は削除する
+- Google Docs を単独の正本にしない
+- 実装判断は Git リポジトリ内の正本を参照する
 
 ---
 
-## Google Docs product 新構成案
+## 現行の正本
 
-```markdown
-# KAMI MUSUBI Product
+現在の仕様は以下のドキュメントで管理する。
 
-## 1. Product Vision
+- `docs/product/README.md`
+- `docs/product/concierge-first-final-spec.md`
+- `docs/product/concierge-modes.md`
+- `docs/product/consultation-theme-taxonomy.md`
+- `docs/product/history-theme-taxonomy.md`
+- `docs/product/meaning-translation-mapping.md`
+- `docs/product/visit-reflection-flow.md`
+- `docs/product/action_suggestion_v4.md`
 
-KAMI MUSUBI は、神社検索アプリではなく、今の相談テーマから神社と出会うAIコンシェルジュ体験である。
+---
 
-## 2. Source of Truth
+## 関連ドキュメント
 
-現時点の正本は `docs/product/concierge-first-final-spec.md` とする。
+- `docs/product/README.md`
+- `docs/product/product-document-audit.md`
+- `docs/product/concierge-first-final-spec.md`
+- `docs/core/architecture.md`
 
-## 3. Concierge First MVP
+---
 
-- Need Modeを主導線にする
-- Compat Modeは補助条件に留める
-- 誕生日は残すが前面化しない
-- 吉方位はDirection Audit完了まで前面化しない
-- 神社一覧・地図はサブ導線にする
+## 更新ルール
 
-## 4. UI責務
-
-### HomeHero
-
-相談テーマ / 自由入力 / 開始CTA / 条件追加導線
-
-### ConciergeEntry
-
-相談内容の確認・編集 / 推薦生成CTA / Filter導線
-
-### Filter
-
-誕生日 / ご利益 / 参拝スタイル / 相性候補 / extraCondition
-
-## 5. Need Mode / Compat Mode
-
-Need Modeを推薦理由の中心にする。Compat Modeは補足理由として扱う。
-
-## 6. Recommendation Score v2接続
-
-主入力は query / need_tags / consultation_axis / matched_need_tags。補助入力は visit_style_tags / birthdate / element4 / selected_goriyaku_tag_ids。
-
-## 7. User State Profile
-
-query と need_tags を正本として扱う。theme_key や誕生日は補助情報として扱う。
-
-## 8. MVP実装対象
-
-- HomeHero相談テーマチップ整理
-- ConciergeEntry相談確認UI整理
-- Filter内の補助条件集約
-- Need Mode / Compat Mode表示分離
-- Home→Concierge遷移仕様固定
-- Meaning Cardの主文脈整理
-
-## 9. 実装しないもの
-
-- theme_keyのURL渡し
-- 吉方位の前面表示
-- 九星気学ロジック本実装
-- 方角計算本実装
-- 神社一覧・地図の主導線化
-
-## 10. Future: Explore
-
-Exploreは将来構想として保持する。
-
-Topは相談開始、Conciergeは推薦理由、Exploreは実際に行ける神社を探す体験として分離する。
-```
+- 本書は統合作業の履歴として保持する
+- 現行仕様の変更では更新しない
+- 新たな統合作業を行う場合のみ更新する
+- 実装判断・仕様判断は正本ドキュメントで管理する
