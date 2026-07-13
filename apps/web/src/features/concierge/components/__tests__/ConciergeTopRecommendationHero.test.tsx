@@ -145,7 +145,7 @@ describe("ConciergeTopRecommendationHero", () => {
           actionSuggestionVersion: "v4",
           primaryActionType: "detail_open",
           secondaryActionType: "save",
-          promptType: "before_visit",
+          actionPromptType: "before_visit",
           actionSource: "fallback",
           sourceKeys: "meaning_translation",
           summaryLine: "まず詳細を見て、行く理由を確認する",
@@ -154,11 +154,15 @@ describe("ConciergeTopRecommendationHero", () => {
     });
 
     expect(analyticsMocks.trackSearchEvent).toHaveBeenCalledWith(
-      "reflection_prompt_view",
+      "action_suggestion_reflection_preview_view",
       expect.objectContaining({
-        promptType: "before_visit",
+        actionPromptType: "before_visit",
         reflectionPromptSourceSeed: "fallback",
       }),
+    );
+    expect(analyticsMocks.trackSearchEvent).not.toHaveBeenCalledWith(
+      "reflection_prompt_view",
+      expect.anything(),
     );
   });
   it("calls the detail click handler and renders secondary action slot", () => {

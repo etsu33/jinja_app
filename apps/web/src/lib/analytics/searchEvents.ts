@@ -12,6 +12,7 @@ export type SearchAnalyticsEventName =
   | "recommendation_quality"
   | "action_suggestion_view"
   | "action_suggestion_click"
+  | "action_suggestion_reflection_preview_view"
   | "action_started"
   | "action_completed"
   | "action_done"
@@ -47,7 +48,21 @@ export type SearchAnalyticsPayload = {
   historyTheme?: string | null;
   consultationAxis?: string | null;
   actionTheme?: string | null;
-  promptType?: string | null;
+  /**
+   * 実際のReflection入力UI（reflection_prompt_view / reflection_saved）でのみ使用する。
+   * どのフォーム構造で入力させたかを表す。
+   */
+  reflectionFormType?: "one_line" | "mood_delta" | "theme_reflection" | null;
+  /**
+   * 実際のReflection入力UI（reflection_prompt_view / reflection_saved）でのみ使用する。
+   * Reflectionがどの文脈で表示されたかを表す。
+   */
+  reflectionContext?: "visit_done" | "mypage" | "night_reflection" | null;
+  /**
+   * Action Suggestion v4のreflection_prompt.prompt_typeをそのまま転記する。
+   * action_suggestion_preview_view / action_suggestion_reflection_preview_viewでのみ使用する。
+   */
+  actionPromptType?: "before_visit" | "after_visit" | "decision" | "emotion" | "constraint" | null;
   answerLength?: number | null;
   moodBefore?: string | null;
   moodAfter?: string | null;

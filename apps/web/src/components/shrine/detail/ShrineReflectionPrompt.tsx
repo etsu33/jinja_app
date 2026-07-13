@@ -34,7 +34,8 @@ export function ShrineReflectionPrompt({ shrineId, historyTheme = null, threadId
       shrineId,
       threadId: threadId ?? undefined,
       historyTheme: historyTheme ?? undefined,
-      promptType: "visit_done_reflection",
+      reflectionFormType: "mood_delta",
+      reflectionContext: "visit_done",
       ctx,
     });
   }, [ctx, historyTheme, shrineId, threadId]);
@@ -59,7 +60,8 @@ export function ShrineReflectionPrompt({ shrineId, historyTheme = null, threadId
         shrineId,
         threadId: threadId ?? undefined,
         historyTheme: historyTheme ?? undefined,
-        promptType: "visit_done_reflection",
+        reflectionFormType: "mood_delta",
+        reflectionContext: "visit_done",
         answerLength,
         moodBefore: moodBefore || undefined,
         moodAfter: moodAfter || undefined,
