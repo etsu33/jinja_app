@@ -1,190 +1,79 @@
-
+> **Status: Archive**
+>
+> 本ドキュメントは、旧Phase 7においてKAMI MUSUBIのUX、継続利用、Visit・Reflection、Premium価値および収益化導線を統合して整理した設計記録である。
+>
+> 記載されたPhase番号、画面Version、UI構成、KPI、Release順序およびPremium機能は当時のスナップショットであり、現行仕様判断には使用しない。
+>
+> 現在の参照先は以下とする。
+>
+> - 全体開発方針：`docs/core/roadmap.md`
+> - 全体Architecture：`docs/core/architecture.md`
+> - Concierge仕様：`docs/product/concierge-first-final-spec.md`
+> - Recommendation Mode：`docs/product/concierge-modes.md`
+> - Visit / Reflection契約：`docs/product/visit-reflection-flow.md`
+> - Reflection Funnel：`docs/product/reflection-funnel-dashboard.md`
+> - Shrine Detail設計：`docs/shrine-detail-v3-design.md`
+> - Reflection Timeline設計：`docs/reflection-timeline-design.md`
+> - Premium設計：`docs/premium-plan-design.md`
+> - 収益化導線：`docs/monetization-flow-design.md`
 
 # Phase7 UX Monetization Roadmap
 
-## 1. Purpose
+## 目的
 
-Phase7 は、KAMI MUSUBI を「神社を検索するアプリ」から「相談を起点に行動と振り返りが循環する体験」へ引き上げるためのUX・収益化フェーズである。
+本書は、KAMI MUSUBIを神社の検索・一覧表示を中心とする体験から、相談を起点として行動・参拝・振り返り・再相談が循環する体験へ移行するために作成された設計記録である。
 
-これまでのフェーズでは、推薦ロジック、Score v3、Recommendation Reason v4、Action Suggestion v4、Visit、Reflection、Behavior Funnel の基盤を整備してきた。
+旧Phase 7では、Recommendation、Recommendation Reason、Action Suggestion、Visit、Reflection、Timeline、Premiumを個別機能として扱わず、ユーザー体験として一つにつなげることを目指していた。
 
-Phase7 では、これらの機能を個別に見せるのではなく、ユーザーが自然に以下の流れを進められるように再設計する。
-
-```text
-相談する
-↓
-神社を提案される
-↓
-行動する
-↓
-参拝または記録する
-↓
-振り返る
-↓
-変化が蓄積される
-↓
-また相談する
-```
-
-この循環を強化することで、継続率、参拝率、振り返り率、Premium転換率を改善する。
-
----
-
-## 2. Product Positioning
-
-KAMI MUSUBI は、神社データベースでも観光アプリでもない。
-
-ユーザーの言葉、願い、迷い、疲れ、節目を受け取り、その時点で意味のある神社との出会いを提案するAIコンシェルジュアプリである。
-
-Phase7 で目指す体験は、以下である。
+当時想定していた中心体験は以下である。
 
 ```text
-悩みを入力するアプリ
-ではなく、
-人生の節目で開き、行動し、変化を記録するアプリ
-```
-
-推薦の価値は、神社を当てることだけではない。
-
-推薦後に、ユーザーが「行ってみよう」「保存しておこう」「振り返ってみよう」と思えるかが、プロダクト価値を決める。
-
----
-
-## 3. External App Pattern Reference
-
-他カテゴリの継続型アプリでは、以下のような行動ループが使われている。
-
-### 3.1 Learning and Habit Apps
-
-学習アプリや習慣化アプリでは、ユーザーに大きな成果をすぐ求めず、小さな行動を積み重ねさせる。
-
-代表的な流れは以下である。
-
-```text
-今日の課題
+相談
 ↓
-短い実行
+推薦
 ↓
-完了演出
+行動
 ↓
-連続記録
-↓
-次回の理由
-```
-
-KAMI MUSUBI では、これを以下に置き換える。
-
-```text
-今日の相談
-↓
-おすすめ神社
-↓
-今日できる小さな行動
-↓
-参拝・保存・ルート確認
+参拝または記録
 ↓
 振り返り
 ↓
-次の相談
+変化の蓄積
+↓
+再相談
 ```
 
-### 3.2 Meditation and Mental Wellness Apps
-
-瞑想・睡眠・メンタルウェルネス系アプリでは、ユーザーの状態を受け取り、すぐにできる短い行動へ接続する。
-
-代表的な流れは以下である。
-
-```text
-今の状態を選ぶ
-↓
-短いセッションを提案
-↓
-実行
-↓
-気分を記録
-↓
-履歴として蓄積
-```
-
-KAMI MUSUBI では、相談内容や補助条件をもとに、神社提案と行動提案へ接続する。
-
-```text
-今の相談を入力
-↓
-相性のよい神社を提案
-↓
-参拝前にできる行動を提示
-↓
-参拝後の気持ちを記録
-↓
-変化の履歴として蓄積
-```
-
-### 3.3 Mood Tracking and Journaling Apps
-
-気分記録・日記アプリでは、記録そのものが報酬になる。
-
-ユーザーは過去の記録を見返すことで、自分の状態変化に気づく。
-
-代表的な流れは以下である。
-
-```text
-今日の気分を記録
-↓
-一言メモ
-↓
-カレンダーやタイムラインで可視化
-↓
-傾向を知る
-```
-
-KAMI MUSUBI では、単なる気分記録ではなく、相談、神社、行動、振り返りをつなげる。
-
-```text
-相談内容
-↓
-提案された神社
-↓
-実際に取った行動
-↓
-参拝後の気持ち
-↓
-自分の変化の流れ
-```
-
-### 3.4 Travel and Place Discovery Apps
-
-旅行・場所発見系アプリでは、場所の魅力、保存、ルート、訪問記録が行動導線になる。
-
-代表的な流れは以下である。
-
-```text
-場所を見る
-↓
-保存する
-↓
-ルートを見る
-↓
-訪問する
-↓
-写真やメモを残す
-```
-
-KAMI MUSUBI では、場所発見だけでなく、相談理由と訪問理由を結びつける。
-
-```text
-なぜ今この神社なのか
-↓
-どんな気持ちで行くのか
-↓
-行った後に何が変わったのか
-```
+この循環を成立させることで、単発利用ではなく、参拝・記録・振り返りを通じた継続利用へ接続する方針としていた。
 
 ---
 
-## 4. Core Experience Loop
+## 当時のProduct Positioning
 
-Phase7 の中心体験は、以下のループで設計する。
+旧Phase 7では、KAMI MUSUBIを神社Databaseや観光案内Appとして扱わない方針を明確にした。
+
+中心に置いた価値は、ユーザーの言葉、願い、迷い、疲れ、節目を受け取り、その時点で意味を置きやすい神社と行動を提案することである。
+
+```text
+神社を探す
+ことだけではなく、
+今の状態を整理する
+↓
+意味のある場所を知る
+↓
+小さく行動する
+↓
+自分の変化を記録する
+```
+
+ことをProduct価値として捉えた。
+
+Recommendationの価値は神社を提示することだけでなく、ユーザーが次の行動を理解できることにあると整理した。
+
+---
+
+## 当時のCore Experience Loop
+
+旧Phase 7では、以下を一つのExperience Loopとして設計した。
 
 ```text
 Consultation
@@ -202,581 +91,505 @@ Timeline
 Next Consultation
 ```
 
-### 4.1 Consultation
+### Consultation
 
-ユーザーが今の状態や願いを入力する入口。
+ユーザーの現在の状態や相談を受け取る入口として扱う。
 
-重要なのは、入力負荷を下げることと、相談したくなる空気を作ることである。
+相談Theme、自由入力、補助条件は役割を分ける方針とした。
 
-相談テーマ、自由入力、任意条件はそれぞれ役割を分ける。
-
-| Layer | Role |
+| 入力 | 当時想定した役割 |
 | --- | --- |
-| 相談テーマ | 入力のきっかけ |
-| 自由入力 | 本音や具体的な状況 |
-| 任意条件 | 誕生日、参拝スタイル、ご利益などの補助 |
+| 相談Theme | 入力を始めるきっかけ |
+| 自由入力 | 本音や具体的状況 |
+| 任意条件 | 誕生日、参拝Style、ご利益などの補助情報 |
 
-### 4.2 Recommendation
+相談入力は診断や分類を目的とせず、Recommendationへ必要な文脈をBackendへ渡すための入口として扱った。
 
-推薦結果では、神社名を並べるだけでは不十分である。
+### Recommendation
 
-ユーザーが知りたいのは、以下である。
+推薦結果では神社名の一覧だけを表示せず、以下の問いへ答える方針とした。
 
-```text
-なぜこの神社なのか
-今の自分にどう関係するのか
-行くとしたら何をすればいいのか
-```
+- なぜこの神社なのか
+- 今の自分とどうつながるのか
+- 次に何をすればよいか
 
-Recommendation Reason v4 と Action Suggestion v4 は、この疑問に答えるための中核である。
+Recommendation ReasonとAction Suggestionは、推薦結果を説明と行動へ接続する責務として整理した。
 
-### 4.3 Action
+### Action
 
-推薦後に必要なのは、次の小さな行動である。
+Recommendation後の行動は、参拝だけに限定しない方針とした。
 
-行動は重くしない。
+当時想定していた小さな行動には以下があった。
 
-```text
-詳細を見る
-保存する
-ルートを見る
-あとで行く
-今日できる一言を書く
-```
+- 神社詳細を見る
+- 保存する
+- Routeを確認する
+- 後で行く候補として残す
+- 参拝前の問いや一言を記録する
 
-KAMI MUSUBI では、参拝そのものだけでなく、参拝前の準備行動も価値として扱う。
+ユーザーへ大きな決断を要求せず、次の一歩を小さくすることを重視した。
 
-### 4.4 Visit
+### Visit
 
-Visit は、実際に神社へ行ったことを記録する行動である。
-
-ここでは、行動完了の達成感と、振り返りへの自然な接続が重要になる。
+Visitは、神社へ行った事実を記録し、Reflectionへ接続する行動として扱った。
 
 ```text
-参拝しました
+参拝を記録
 ↓
-写真または御朱印を残す
+写真・御朱印・Memoを残す
 ↓
-一言メモを書く
-↓
-振り返りへ進む
+Reflectionへ進む
 ```
 
-### 4.5 Reflection
+Visitの保存自体を目的にせず、相談・推薦・行動・振り返りをつなぐ接続点とした。
 
-Reflection は、KAMI MUSUBI の継続価値の中心である。
+### Reflection
 
-参拝後に、ユーザーが自分の変化を言葉にできると、アプリを使う意味が強くなる。
+Reflectionは、参拝後にユーザー自身が変化を言葉にするための機能として位置付けた。
+
+当時想定していた問いは以下である。
+
+- 参拝後にどう感じたか
+- 行く前と何が違うか
+- 次に何をしたいか
+
+Reflectionは診断、評価、正解提示を行わず、ユーザー自身の言語化を補助する方針とした。
+
+### Timeline
+
+Timelineは単なる操作履歴ではなく、相談・推薦・参拝・振り返りを一つの体験単位として見返す場所として設計した。
 
 ```text
-参拝後どう感じたか
-行く前と何が違うか
-次に何をしたいか
-```
-
-### 4.6 Timeline
-
-Timeline は、過去の相談、提案、参拝、振り返りを蓄積する場所である。
-
-単なる履歴ではなく、ユーザーが自分の変化を見返すための画面として扱う。
-
-```text
-あの時の相談
+当時の相談
 ↓
 提案された神社
 ↓
-実際に取った行動
-↓
-その後の振り返り
-```
-
----
-
-## 5. Home UX v2
-
-Home は、最初に相談したくなる画面である。
-
-Phase7 の Home では、検索入口ではなく、状態に合わせた相談入口として設計する。
-
-### 5.1 Goal
-
-Home のゴールは、ユーザーが迷わず相談を始められること。
-
-```text
-何をすればいいかわからない
-↓
-今の状態に近い入口がある
-↓
-相談してみる
-```
-
-### 5.2 Key Sections
-
-Home では以下の情報を優先する。
-
-| Section | Role |
-| --- | --- |
-| Hero Consultation | 今の相談を入力する主導線 |
-| Theme Chips | 入力のきっかけ |
-| Condition Summary | 任意条件の状態表示 |
-| Recent Recommendation | 前回の続き |
-| Popular Shrines | 軽い探索導線 |
-| Premium Teaser | 履歴・分析への期待づけ |
-
-### 5.3 Design Direction
-
-Home は情報を詰め込みすぎない。
-
-最初の画面では、ユーザーに以下だけ伝える。
-
-```text
-今の気持ちを入れれば、神社を提案してもらえる
-```
-
-条件入力、ランキング、履歴、Premium は主役ではなく補助として扱う。
-
----
-
-## 6. Concierge UX v2
-
-Concierge は、KAMI MUSUBI の中心体験である。
-
-Phase7 では、相談入力から推薦結果までの心理的な流れを整える。
-
-### 6.1 Goal
-
-Concierge のゴールは、相談入力と推薦結果の納得感を高めること。
-
-```text
-入力する
-↓
-受け取られた感覚がある
-↓
-理由つきで提案される
-↓
-次の行動がわかる
-```
-
-### 6.2 Result Structure
-
-推薦結果は、以下の順で表示する。
-
-```text
-相談の受け取り
-↓
-おすすめ神社
-↓
-なぜこの神社か
-↓
-今日できる行動
-↓
-保存・ルート・詳細
-```
-
-### 6.3 Psychological Safety
-
-相談内容は、断定的に解釈しない。
-
-避ける表現:
-
-```text
-あなたはこういう状態です
-この神社が正解です
-必ず行くべきです
-```
-
-採用する表現:
-
-```text
-今の相談には、この文脈が近そうです
-この神社は、今のテーマと接点があります
-まずは詳細を見て、合いそうか確認できます
-```
-
----
-
-## 7. Shrine Detail v3
-
-Shrine Detail は、推薦から行動へ移る画面である。
-
-Phase7 では、情報ページではなく、行動を促す体験ページとして再設計する。
-
-### 7.1 Goal
-
-Detail のゴールは、ユーザーが「行ってみたい」または「保存しておきたい」と思えること。
-
-### 7.2 Proposed Structure
-
-```text
-Hero Image / Visual
-↓
-あなたへのおすすめ理由
-↓
-この神社の意味文脈
-↓
-参拝前にできること
-↓
-ルートを見る
-↓
-保存する
-↓
-参拝しました
-↓
-振り返りを書く
-```
-
-### 7.3 Important UX Rule
-
-神社情報を先に長く読ませすぎない。
-
-最初に必要なのは、百科事典的な情報ではなく、ユーザーの相談との接点である。
-
-```text
-この神社の一般情報
-より先に、
-今の相談とどうつながるか
-```
-
----
-
-## 8. Visit Flow
-
-Visit Flow は、参拝行動を記録する導線である。
-
-### 8.1 Goal
-
-参拝完了を簡単に記録できること。
-
-### 8.2 Flow
-
-```text
-参拝しました
-↓
-日付を記録
-↓
-写真または御朱印を追加
-↓
-一言メモ
-↓
-振り返りへ進む
-```
-
-### 8.3 Design Direction
-
-Visit 記録は軽くする。
-
-ユーザーに長い入力を求めない。
-
-最初は以下だけでよい。
-
-```text
-参拝日
-写真
-一言
-```
-
-詳細な振り返りは Reflection に分離する。
-
----
-
-## 9. Reflection Timeline
-
-Reflection Timeline は、KAMI MUSUBI の継続価値を作る画面である。
-
-### 9.1 Goal
-
-ユーザーが過去の相談と変化を見返せること。
-
-### 9.2 Timeline Unit
-
-1つのTimeline item は、以下を持つ。
-
-```text
-相談テーマ
-提案された神社
 取った行動
-参拝日
-振り返り
-次の一手
+↓
+参拝後の振り返り
 ```
 
-### 9.3 Reflection Prompt
+Timelineを通じて、自分の状態や行動の変化に気づけることを継続利用の中心価値とした。
 
-振り返りは、自由記述だけにしない。
+## 当時の画面別UX方針
 
-入力しやすい選択肢を先に置く。
+### Home
 
-```text
-参拝後の気持ちは？
+Homeは検索画面ではなく、相談を始めるための入口として設計する方針だった。
 
-- 少し軽くなった
-- 整理できた
-- まだ迷っている
-- 行動したくなった
-- 変化はまだわからない
-```
+ユーザーが何を入力すべきか迷う状態から、現在の状態に近いThemeを選び、必要に応じて自由入力へ進める構造を想定した。
 
-その後に一言メモを置く。
+当時重視した役割は以下である。
 
-### 9.4 Premium Connection
+- 相談開始の主導線を一つにする
+- Themeを自由入力の補助として使う
+- 人気・Ranking・Mapを主役にしない
+- 未ログインでも相談を始められる
+- 保存など必要な場面でのみ認証を要求する
 
-Reflection Timeline は Premium と相性がよい。
-
-無料では直近の記録を見せ、Premium では長期的な変化や傾向を見せる。
-
-```text
-無料: 直近の相談・参拝・振り返り
-Premium: 月別レポート、テーマ傾向、変化の分析、再提案
-```
+現在のHome・Concierge入口仕様は、`docs/product/concierge-first-final-spec.md`および関連する現行UI文書を正本とする。
 
 ---
 
-## 10. Premium Plan Design
+### Concierge
 
-Premium は、単にAI回数を増やすだけでは弱い。
+Conciergeは、入力からRecommendationまでの心理的な流れを整える責務として扱った。
 
-KAMI MUSUBI のPremium価値は、過去の相談、参拝、振り返りをもとに、自分の変化を見られることに置く。
-
-### 10.1 Free Plan
-
-Free は、初回体験と軽い継続に十分な価値を持たせる。
-
-| Feature | Free |
-| --- | --- |
-| AI相談 | 回数制限あり |
-| 神社推薦 | 利用可能 |
-| 詳細閲覧 | 利用可能 |
-| 保存 | 上限あり |
-| 参拝記録 | 基本機能のみ |
-| 振り返り | 直近のみ |
-| 履歴分析 | なし |
-
-### 10.2 Premium Plan
-
-Premium は、相談と行動の蓄積に価値を置く。
-
-| Feature | Premium |
-| --- | --- |
-| AI相談 | 実質無制限または大幅増加 |
-| 相談履歴 | 無制限 |
-| 保存 | 無制限 |
-| 参拝記録 | 無制限 |
-| 振り返り | 無制限 |
-| 月次レポート | 利用可能 |
-| 相談テーマ分析 | 利用可能 |
-| 参拝傾向分析 | 利用可能 |
-| 再提案 | 利用可能 |
-
-### 10.3 Premium Value Message
-
-Premium の訴求は以下に寄せる。
+当時想定していた流れは以下である。
 
 ```text
-相談を残す
-行動を残す
-変化を見返す
-次の一歩を見つける
+相談を入力
+↓
+相談内容を整理
+↓
+最も関連する神社を提示
+↓
+理由を説明
+↓
+小さな行動を提示
 ```
 
-避ける訴求:
+Recommendation画面では、候補数を増やすより、最上位候補と理由を理解しやすくすることを優先した。
 
-```text
-AIをたくさん使える
-占い精度が上がる
-正解の神社がわかる
-```
+心理的安全性の観点から、以下を原則とした。
+
+- 宗教的な断定を行わない
+- 心理状態を診断しない
+- 「必ず変わる」「運命」などの断定表現を避ける
+- ユーザーの選択余地を残す
+- 神社を唯一の解決策として扱わない
+- Recommendationは提案であり決定ではない
+
+現在のConcierge契約は、以下を正本とする。
+
+- `docs/product/concierge-first-final-spec.md`
+- `docs/product/concierge-modes.md`
+- `docs/product/consultation-theme-taxonomy.md`
 
 ---
 
-## 11. Monetization Flow
+### Shrine Detail
 
-課金導線は、初回起動直後に強く出さない。
+Shrine Detailは、神社情報を並べるだけのInformation Pageではなく、Recommendation理由を理解し、次の行動を選ぶためのExperience Pageとして設計する方針だった。
 
-ユーザーが価値を感じた後に提示する。
-
-### 11.1 Best Timing
-
-Premium 導線を出すタイミングは以下。
-
-| Timing | Reason |
-| --- | --- |
-| 相談回数上限に近づいた時 | 継続利用の意思がある |
-| 保存上限に達した時 | 神社を残す価値を感じている |
-| 振り返り後 | 変化記録の価値を感じやすい |
-| Timeline閲覧時 | 履歴分析の価値が伝わりやすい |
-| 月次レポート表示時 | Premium価値が最も自然 |
-
-### 11.2 Upgrade Copy Direction
-
-課金コピーは、機能羅列ではなく、ユーザーの変化に寄せる。
+当時の基本順序は以下である。
 
 ```text
-過去の相談と参拝を残して、自分の変化を見返せます
+今の相談とのつながり
+↓
+この神社をすすめる理由
+↓
+神社の意味
+↓
+参拝・保存・Route確認
+↓
+Visit・Reflection
+↓
+事実情報
 ```
 
-```text
-相談履歴から、今のテーマの傾向を確認できます
-```
+神社の由緒・祭神・ご利益・場所情報は重要だが、ユーザーの状態との接続より前面に出しすぎない方針とした。
 
-```text
-前回の振り返りをもとに、次の一歩を提案します
-```
+Shrine Detailで重視した行動は以下である。
+
+- 保存
+- Route確認
+- 参拝記録
+- Reflection
+- Timelineへの接続
+
+現在のShrine Detail仕様は、`docs/shrine-detail-v3-design.md`および関連実装を正本とする。
 
 ---
 
-## 12. KPI Design
+### Visit Flow
 
-Phase7 では、機能完成ではなく行動指標で評価する。
+Visit Flowでは、参拝完了の記録を重くしないことを重視した。
 
-### 12.1 Core Funnel
-
-| Step | KPI |
-| --- | --- |
-| Home | consultation_start_rate |
-| Concierge | recommendation_view_rate |
-| Result | detail_open_rate |
-| Detail | route_open_rate |
-| Detail | save_rate |
-| Visit | visit_done_rate |
-| Reflection | reflection_saved_rate |
-| Premium | upgrade_click_rate |
-| Premium | purchase_conversion_rate |
-
-### 12.2 Target Direction
-
-初期目標は以下。
-
-| KPI | Target |
-| --- | ---: |
-| consultation_start_rate | 60% |
-| recommendation_view_rate | 90% |
-| detail_open_rate | 80% |
-| save_rate | 25% |
-| route_open_rate | 20% |
-| visit_done_rate | 10% |
-| reflection_saved_rate | 50% of visits |
-| upgrade_click_rate | 5% |
-| purchase_conversion_rate | 3% |
-
-### 12.3 Measurement Principle
-
-すべての改善は、以下のループで見る。
+当時想定していた流れは以下である。
 
 ```text
-仮説
+神社詳細
 ↓
-実装
+Route確認
 ↓
-計測
+参拝
 ↓
-改善
+参拝済みとして記録
+↓
+Reflection Prompt
+↓
+Timelineへ保存
 ```
+
+Visit登録時に長い入力を要求せず、参拝後の振り返りへ自然につなげる方針とした。
+
+Visitは以下の文脈と接続する構想だった。
+
+- Recommendation Thread
+- 推薦された神社
+- Recommendation Reason
+- Action Suggestion
+- Visit日時
+- Reflection
+
+現在の保存Model・Event・Payload契約は、以下を正本とする。
+
+- `docs/product/visit-reflection-flow.md`
+- `docs/audit/visit-reflection-implementation-consistency.md`
+- 関連するBackend・Frontend実装とTest
 
 ---
 
-## 13. Funnel Improvement Plan
+### Reflection Timeline
 
-Phase7 の改善対象は、以下の順で進める。
+Reflection Timelineは、KAMI MUSUBIの継続価値を可視化する場所として設計した。
 
-### 13.1 Detail Open Improvement
+Timeline上の一単位は、単なるReflection本文ではなく、相談から振り返りまでのまとまりとして扱う方針だった。
 
-推薦結果から詳細閲覧への遷移を改善する。
+Reflection Promptは回答を誘導しすぎず、短く答えられる形を想定した。
 
-理由:
+当時重視した原則は以下である。
 
-Detail を見ないと、保存、ルート、参拝、振り返りへ進まないため。
+- 記録を義務化しない
+- 長文を要求しない
+- Moodの良し悪しを評価しない
+- 変化がなくても保存できる
+- 過去の相談と参拝を接続する
+- ユーザー自身の言葉を中心にする
 
-### 13.2 Route Open and Save Improvement
+現在のReflection・Timeline仕様は、以下を参照する。
 
-Detail からルート表示・保存への導線を強化する。
-
-理由:
-
-保存とルート表示は、実際の参拝意欲に近い行動であるため。
-
-### 13.3 Visit Done Improvement
-
-参拝記録を軽くする。
-
-理由:
-
-参拝記録が重いと、Reflection へ進まないため。
-
-### 13.4 Reflection Saved Improvement
-
-振り返りを選択式＋一言入力にする。
-
-理由:
-
-自由記述だけだと入力負荷が高い。
-
-### 13.5 Premium Conversion Improvement
-
-Premium は、履歴・分析・再提案と接続する。
-
-理由:
-
-KAMI MUSUBI の月額価値は、単発の推薦ではなく、相談と行動の蓄積にあるため。
+- `docs/product/visit-reflection-flow.md`
+- `docs/product/reflection-funnel-dashboard.md`
+- `docs/reflection-timeline-design.md`
 
 ---
 
-## 14. Release Strategy
+### 当時のPremium価値
 
-Phase7 は、以下の順で小さくリリースする。
+旧Phase 7では、Premiumを検索回数や地図機能の制限として設計しない方針を採用した。
 
-### 14.1 Design First
+Premiumの中心価値は、継続利用によって蓄積された相談・参拝・Reflectionを、より深く見返せることに置いた。
 
-まず UX と収益導線を docs に固定する。
+当時想定していたPremium価値は以下である。
 
-実装前に、各画面の目的、KPI、導線を明確にする。
+- より深いRecommendation Reason
+- Action Meaningの詳細
+- 過去の相談履歴
+- Visit・Reflection履歴の拡張
+- 過去との比較
+- 継続的な変化の整理
+- Timelineの拡張
+- Reflectionの補助
+- 月次または期間単位の振り返り
 
-### 14.2 Small PRs
+Premiumの中心にしないものは以下である。
 
-画面単位でPRを分ける。
+- 基本的な神社検索
+- 地図表示
+- Route確認
+- 基本Recommendation
+- 占術結果だけの表示
+- 単純な利用回数増加
 
-```text
-Home UX v2
-Concierge UX v2
-Shrine Detail v3
-Visit Flow v1
-Reflection Timeline v1
-Premium Teaser v1
-```
+無料ユーザーも相談・推薦・詳細・基本行動を完了でき、Premiumは履歴と継続価値を拡張する位置付けとした。
 
-### 14.3 No Payment First
-
-決済実装は最後にする。
-
-先に、Premium 価値の見せ方、導線、コピー、制限ポイントを検証する。
-
-### 14.4 Payment Last
-
-Stripe / App Store / Google Play の決済導入は、Premium 導線が固まってから行う。
+現在のPremium仕様は、`docs/premium-plan-design.md`および課金関連の実装契約を正本とする。
 
 ---
 
-## 15. Phase7 Decision
+### 当時のMonetization方針
 
-Phase7 では、以下を優先する。
+Upgrade導線は、機能利用前に強く出すのではなく、ユーザーが記録価値や継続価値を理解したタイミングで提示する方針だった。
+
+当時想定した自然な表示タイミングは以下である。
+
+- 深いRecommendation Reasonを確認するとき
+- 過去のReflectionを比較するとき
+- Timelineの拡張機能を利用するとき
+- 継続的な変化を見返すとき
+- 期間単位のReportを見るとき
+
+Upgrade Copyは不安や損失を過度に刺激せず、追加される価値を具体的に説明する方針とした。
+
+「続きを見るために支払う」ではなく、「これまでの相談や参拝を、より深く見返す」という価値で表現することを重視した。
+
+現在のMonetization Flowは、`docs/monetization-flow-design.md`およびBilling関連の現行契約を正本とする。
+
+## 当時のKPI設計
+
+旧Phase 7では、機能が実装されたかではなく、相談からReflectionまでの行動がつながったかを評価する方針だった。
+
+### Core Funnel
+
+当時想定していた主要Funnelは以下である。
 
 ```text
-機能追加より、行動導線
-画面追加より、循環設計
-課金実装より、課金したくなる理由
+Consultation Started
+↓
+Recommendation Viewed
+↓
+Shrine Detail Viewed
+↓
+Save / Route Open
+↓
+Visit Done
+↓
+Reflection Saved
+↓
+Return Visit
+↓
+Premium Conversion
 ```
 
-当面の中心は、以下である。
+### 当時の評価指標
+
+- 相談開始率
+- 相談完了率
+- Recommendation表示率
+- RecommendationからDetailへの遷移率
+- Save率
+- Route Open率
+- Visit Done率
+- Reflection保存率
+- Timeline再訪率
+- 再相談率
+- Premium導線表示率
+- Premium導線Click率
+- 課金転換率
+- 継続率
+
+### 計測原則
+
+当時は以下を計測原則とした。
+
+- Event名とPayload契約を先に固定する
+- WebとMobileで意味をそろえる
+- 表示Eventと実行Eventを分ける
+- Recommendation文脈を可能な範囲で保持する
+- 少数Dataから結論を出さない
+- 改善前後で同じ指標を比較する
+- Premium転換だけでなくVisit・Reflectionも評価する
+
+現在のEvent・Payload・Funnel契約は、現行Analytics文書と実装を正本とする。
+
+---
+
+## 当時のFunnel改善順序
+
+旧Phase 7では、下流だけを改善するのではなく、上流から順にFunnelを確認する方針だった。
 
 ```text
-相談
+RecommendationからDetailへ進むか
 ↓
-提案
+DetailからSave・Routeへ進むか
 ↓
-行動
+RouteからVisit記録へ進むか
 ↓
-振り返り
+VisitからReflectionへ進むか
 ↓
-変化の可視化
+継続価値を理解した後にPremiumへ進むか
 ```
 
-この循環が回る状態を作ってから、Premium を本格実装する。
+### Detail遷移が弱い場合
+
+当時想定していた確認観点は以下である。
+
+- Recommendation Reasonが理解しにくくないか
+- 神社名・場所・距離などの判断材料が不足していないか
+- Top Recommendationが主役になっているか
+- CTAが見つけやすいか
+
+### Save・Routeが弱い場合
+
+当時想定していた確認観点は以下である。
+
+- 保存する理由が伝わっているか
+- Route CTAが適切な位置にあるか
+- Access情報が不足していないか
+- Action Suggestionが次の行動を明確にしているか
+
+### Visit Doneが弱い場合
+
+当時想定していた確認観点は以下である。
+
+- 参拝記録の入力負荷が高くないか
+- Route後にAppへ戻る理由があるか
+- Visit登録の意味が説明されているか
+- Reflectionへの接続が自然か
+
+### Reflection Savedが弱い場合
+
+当時想定していた確認観点は以下である。
+
+- Promptが重すぎないか
+- 記録価値が伝わっているか
+- Visitとの関係が見えるか
+- 過去の相談やAction Suggestionが引き継がれているか
+
+### Premium Conversionが弱い場合
+
+当時想定していた確認観点は以下である。
+
+- 無料体験だけで中核価値を理解できているか
+- Upgradeを表示する時点が早すぎないか
+- 継続利用による追加価値が明確か
+- 制限の説明だけになっていないか
+- 課金後に利用できる内容が具体的か
+
+これらは当時の改善仮説であり、現在のUI変更やKPI判断を直接決定するものではない。
+
+---
+
+## 当時のRelease方針
+
+旧Phase 7では、一度に全画面を変更せず、体験単位で小さくReleaseする方針を採用した。
+
+当時想定していた原則は以下である。
+
+- Designと契約を先に固定する
+- 画面・機能単位で変更を分ける
+- 既存導線を壊さない
+- Visit・Reflectionの基盤を先に整える
+- Payment接続は最後に行う
+- 課金前に無料・Premium境界を確認する
+- Analyticsで変更前後を比較できる状態にする
+
+Paymentを先に接続すると、価値検証前に課金状態だけが複雑になるため、UXと継続価値を先に確認する方針だった。
+
+現在のRelease順序は、`docs/core/roadmap.md`、GitHub Issue、Pull Requestおよび現行のRelease計画を参照する。
+
+---
+
+## 旧Phase 7で確定した設計思想
+
+旧Phase 7では、以下を優先する判断を行った。
+
+- 神社検索ではなく相談を体験の入口にする
+- Recommendation Reasonを理解と納得へつなげる
+- Action Suggestionを小さな行動へつなげる
+- VisitをReflectionへの接続点として扱う
+- ReflectionとTimelineを継続価値の中心にする
+- Premiumを履歴・比較・振り返りの拡張として設計する
+- Paymentを価値検証後に接続する
+- UX改善を行動Funnelで評価する
+- WebとMobileでBackendの業務契約を共有する
+- 宗教的・心理的な断定を行わない
+- ユーザー自身の選択と変化を主役にする
+
+---
+
+## 本書が保持するもの
+
+- 相談から再相談までを循環として捉えた背景
+- Recommendationを説明と行動へ接続する考え方
+- Visit・Reflection・Timelineを継続価値とした判断
+- Premiumを履歴・比較・内省支援として設計した背景
+- Paymentを最後に接続する方針
+- Funnelを用いてUXを改善する考え方
+- 小さなRelease単位を重視した判断
+
+---
+
+## 本書が扱わないもの
+
+- 現在の開発Phase
+- 現在の画面構造
+- 現在のHome・Concierge・Shrine Detail仕様
+- 現在のVisit・Reflection契約
+- 現在のPremium機能
+- 現在の料金
+- 現在のPayment Provider
+- 現在のEvent・Payload契約
+- 現在のKPI目標値
+- 現在のRelease順序
+- TODO
+- PR候補
+- 実装計画
+- 作業進捗
+
+---
+
+## 関連ドキュメント
+
+- `docs/core/roadmap.md`
+- `docs/core/architecture.md`
+- `docs/product/concierge-first-final-spec.md`
+- `docs/product/concierge-modes.md`
+- `docs/product/visit-reflection-flow.md`
+- `docs/product/reflection-funnel-dashboard.md`
+- `docs/shrine-detail-v3-design.md`
+- `docs/reflection-timeline-design.md`
+- `docs/premium-plan-design.md`
+- `docs/monetization-flow-design.md`
+
+---
+
+## 更新ルール
+
+- 本書は旧Phase 7におけるUX・継続利用・Premium・収益化設計の記録を保持するArchive文書である
+- 現行仕様、実装状態、料金、KPI、Release順序に合わせて更新しない
+- 現在の仕様判断には、関連するActive・Reference文書と実装コードを使用する
+- 当時の判断内容に重大な事実誤認が確認された場合のみ修正する
+- TODO、PR候補、実装Phase、作業進捗、新しい仕様は追記しない
