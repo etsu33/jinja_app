@@ -771,6 +771,10 @@ export default function ConciergeSectionsRenderer({
                 <div className="space-y-3">
                   {heroItem
                     ? (() => {
+                        const inputNeedTags = payload?.meta?.needTags ?? [];
+                        const matchedNeedTags = heroItem.breakdown?.matched_need_tags ?? [];
+                        const effectiveNeedTags = inputNeedTags.length > 0 ? inputNeedTags : matchedNeedTags;
+
                         const reasonVm = buildRecommendationReasonViewModel({
                           rec: {
                             id: heroItem.shrineId,
@@ -790,7 +794,7 @@ export default function ConciergeSectionsRenderer({
                           index: 0,
                           mode: normalizedMode,
                           birthdate: filterState?.birthdate ?? null,
-                          needTags: heroItem.breakdown?.matched_need_tags ?? [],
+                          needTags: effectiveNeedTags,
                         });
                         const trustMetadata = (heroItem as any).trustMetadata ?? null;
                         const trustLabels = [
@@ -833,7 +837,7 @@ export default function ConciergeSectionsRenderer({
                               primaryReason={null}
                               secondaryReason={null}
                               differenceFromOthers={null}
-                              tags={(heroItem.breakdown?.matched_need_tags ?? []).map(labelNeedDisplayTag).slice(0, 3)}
+                              tags={matchedNeedTags.map(labelNeedDisplayTag).slice(0, 3)}
                               actionSuggestions={(heroItem as any).actionSuggestions ?? []}
                               actionSuggestionV4Preview={(heroItem as any).actionSuggestionV4Preview ?? null}
                               analyticsSource="concierge_result"

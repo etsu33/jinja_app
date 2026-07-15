@@ -265,6 +265,45 @@ it("place候補の詳細情報とresult_stateをpayloadへ通す", () => {
 });
 
 
+it("data._need.tags を meta.needTags へ通す（入力側need_tagsの経路）", () => {
+  const u: any = {
+    data: {
+      _need: { tags: ["career", "mental", ""] },
+      recommendations: [
+        {
+          shrine_id: 10,
+          display_name: "S1",
+          reason: "R1",
+          breakdown: { matched_need_tags: ["money"] },
+        },
+      ],
+    },
+    thread: { id: 1 },
+  };
+
+  const p = buildPayloadFromUnified(u, baseFilterState);
+  expect(p?.meta?.needTags).toEqual(["career", "mental"]);
+});
+
+it("data._need.tags が無ければ meta.needTags は空配列になる", () => {
+  const u: any = {
+    data: {
+      recommendations: [
+        {
+          shrine_id: 10,
+          display_name: "S1",
+          reason: "R1",
+          breakdown: { matched_need_tags: ["rest"] },
+        },
+      ],
+    },
+    thread: { id: 1 },
+  };
+
+  const p = buildPayloadFromUnified(u, baseFilterState);
+  expect(p?.meta?.needTags).toEqual([]);
+});
+
 it("reason_facts を reasonFacts より優先する", () => {
   const u: any = {
     data: {

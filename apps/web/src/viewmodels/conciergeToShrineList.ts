@@ -259,13 +259,14 @@ export function conciergeToShrineListItems(resp: ConciergeResponse): ConciergeRe
 
       const actionSuggestionV4Preview = normalizeActionSuggestionV4Preview(r.action_suggestion_v4_preview ?? r.actionSuggestionV4Preview);
 
-      const matchedTags = normalizeTagList(r.breakdown?.matched_need_tags);
-      const rawTags = matchedTags.length ? matchedTags : normalizeTagList(resp.data?._need?.tags);
-      const tags = rawTags.map(toDisplayTag).slice(0, 3);
+      const inputNeedTags = normalizeTagList(resp.data?._need?.tags);
+      const matchedNeedTags = normalizeTagList(r.breakdown?.matched_need_tags);
+      const effectiveNeedTags = inputNeedTags.length > 0 ? inputNeedTags : matchedNeedTags;
+      const tags = matchedNeedTags.map(toDisplayTag).slice(0, 3);
 
       const reasonVm = buildRecommendationReasonViewModel({
         index,
-        needTags: rawTags,
+        needTags: effectiveNeedTags,
         rec: {
           display_name: name,
           name,
@@ -292,7 +293,7 @@ export function conciergeToShrineListItems(resp: ConciergeResponse): ConciergeRe
       const primaryReasonLabel = r._explanation_payload?.primary_reason?.label?.trim() || null;
       const primaryTag = resolveListPrimaryTag({
         primaryReasonLabel,
-        fallbackTags: rawTags,
+        fallbackTags: matchedNeedTags,
       });
       const primaryMeaning =
         buildNeedPrimaryShortCopy({
