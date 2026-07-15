@@ -1,3 +1,9 @@
+> **Status: Active**
+>
+> 本ドキュメントは、Concierge機能の入力、LLMモード、API契約および運用ログの基本契約を管理する現行仕様書である。
+>
+> Concierge First全体体験は`docs/product/concierge-first-final-spec.md`、Modeごとの責務は`docs/product/concierge-modes.md`、正確な物理実装は関連するBackend・Frontend実装およびテストを最終的な正本とする。
+
 # Concierge 仕様（設計・契約・運用）
 
 本ドキュメントは、Concierge機能の

@@ -26,6 +26,8 @@
 - premium-experience.md
 - pricing.md
 - recommendation-v4-interpreter-contract.md
+- concierge_spec.md
+- kami-musubi-experience-design.md
 
 ## Reference確定
 
@@ -35,6 +37,10 @@
 - monetization-flow-design.md
 - premium-plan-design.md
 - premium-retention-strategy.md
+- mobile-bottom-navigation.md
+- card-visibility-renderer-split.md
+- concierge-card-architecture.md
+- concierge_risk_register.md
 
 ## Archive確定
 
@@ -763,3 +769,55 @@ Search相当の探索機能に触れているが、Mode名としての実装対�
 
 参照切れ2件（root
 `README.md`の3箇所、`docs/core`4文書）は`docs/audit/archive-final-classification.md`（A8）で修正済み。root直下Archive21ファイルの物理移動・Delete候補3件の最終確認・実行計画は同文書を参照する。
+
+## A9 Root Active / Reference Finalization
+
+### 判定一覧
+
+| 文書 | 判定 | 判断根拠 | 最終的な正本 |
+| --- | --- | --- | --- |
+| `docs/concierge_spec.md` | Active | Conciergeの入力、LLMモード、API契約および運用ログの基本契約を管理する現行仕様書である | 詳細な物理挙動は関連するBackend・Frontend実装およびテスト |
+| `docs/kami-musubi-experience-design.md` | Active | 相談・推薦・参拝・振り返りを一本の体験として接続する最上位の体験設計である | 各機能の詳細は対応するCore・Product文書、実装およびテスト |
+| `docs/card-visibility-renderer-split.md` | Reference | Card VisibilityとRenderer責務を整理した設計補足であり、TODO・次PR候補を含む | 現行の表示可否、Access LevelおよびCard構成はProduct文書、Frontend実装およびテスト |
+| `docs/concierge-card-architecture.md` | Reference | Card Tree、Props、RendererおよびSection Routingを整理した設計補足であり、物理実装の正本ではない | 現行の表示構造はFrontend実装およびテスト |
+| `docs/concierge_risk_register.md` | Reference | Concierge周辺の変更リスクと保護手段を管理する運用資料であり、仕様契約そのものではない | 現行仕様はCore・Product契約文書、正確な挙動は実装およびテスト |
+| `docs/mobile-bottom-navigation.md` | Reference | 本文の5タブ構成案と現行の4タブ実装が一致していない | `apps/mobile/app/_layout.tsx`および関連テスト |
+
+### Active文書の責務境界
+
+`docs/kami-musubi-experience-design.md`は体験設計の最上位正本とする。
+
+`docs/core/architecture.md`はシステム構造、レイヤー、技術責務および依存関係の正本とする。
+
+両文書は以下の責務に分離する。
+
+| 文書 | 責務 |
+| --- | --- |
+| `docs/kami-musubi-experience-design.md` | ユーザー体験の全体構造、画面ごとの体験責務、相談から振り返りまでの接続 |
+| `docs/core/architecture.md` | Backend・Frontend・BFF・DB・各レイヤーの技術責務と依存関係 |
+
+`docs/concierge_spec.md`はConciergeの入力・LLM・API・運用契約を管理する。
+
+Concierge Firstの体験仕様は`docs/product/concierge-first-final-spec.md`、Mode責務は`docs/product/concierge-modes.md`を正本とする。
+
+### Mobile Bottom Navigationの実装差分
+
+現行実装`apps/mobile/app/_layout.tsx`は以下の4タブを表示する。
+
+| 順序 | Route | 表示名 |
+| ---: | --- | --- |
+| 1 | `index` | ホーム |
+| 2 | `concierge/index` | 相談 |
+| 3 | `records/index` | 記録 |
+| 4 | `mypage/index` | マイページ |
+
+`docs/mobile-bottom-navigation.md`が記載する5タブ構成、表示順、Routeおよびランキングタブとは一致しない。
+
+### A9結論
+
+root直下の追加監査対象6文書を、以下のとおり確定する。
+
+- Active：2文書
+- Reference：4文書
+
+個別文書のStatus、冒頭の分類一覧および`docs/audit/archive-final-classification.md`の最終集計を、この判定に統一する。

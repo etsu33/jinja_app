@@ -1,3 +1,8 @@
+> **Status: Reference**
+>
+> 本ドキュメントは、Concierge周辺の変更リスク、保護手段および追加確認事項を管理するリスク台帳である。
+>
+> 現行仕様は各Core・Product契約文書、正確な挙動は関連するBackend・Frontend実装およびテストを最終的な正本とする。
 # Concierge Risk Register
 
 最終更新: 2026-03-11  

@@ -1,3 +1,11 @@
+> **Status: Reference**
+>
+> 本ドキュメントは、モバイルアプリのBottom Navigationに関する5タブ構成案と設計意図を記録した補足資料である。
+>
+> 現行実装では、`apps/mobile/app/_layout.tsx`において「ホーム / 相談 / 記録 / マイページ」の4タブを表示しており、本書が定義する5タブ構成・順序・Routeとは一致していない。
+>
+> 正確な表示タブ、順序、Route、アイコンおよび表示条件は、`apps/mobile/app/_layout.tsx`と関連テストを最終的な正本とする。
+
 # Mobile Bottom Navigation 設計方針
 
 ## 概要

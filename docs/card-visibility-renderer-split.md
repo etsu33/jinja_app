@@ -1,3 +1,8 @@
+> **Status: Reference**
+>
+> 本ドキュメントは、Concierge ResultにおけるCard VisibilityとRenderer責務の分離方針を記録した設計補足資料である。
+>
+> 現行の表示可否、Access LevelおよびCard構成は、関連するProduct文書、Frontend実装およびテストを最終的な正本とする。
 # Card Visibility Renderer Split
 
 最終更新: 2026-05-18  
