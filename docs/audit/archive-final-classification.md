@@ -106,17 +106,19 @@ A1〜A7（`docs/audit/root-docs-classification-audit.md`）で挙がったArchiv
 
 ## 最終分類（統合）
 
-`docs/audit/root-docs-classification-audit.md`のA1〜A7確定分類に、後続のA9判定を反映し、以下のとおり更新する。
+`docs/audit/root-docs-classification-audit.md`のA1〜A7確定分類に、後続のA9およびRoot Documents Final Closureの判定を反映し、以下のとおり更新する。
 
-| 区分                                  | 件数 | 内訳                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| ------------------------------------- | ---: | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Active                                |   19 | A3: `docs/core/recommendation-reason-contract.md`, `recommendation-v4-interpreter-contract.md` / A4: `billing-paywall.md`, `premium-experience.md`, `pricing.md` / A5: `reflection-timeline-design.md`, `shrine-detail-layer.md`, `shrine-detail-v3-design.md`, `shrine-submission-flow.md` / A7: `concierge-first-final-spec.md`, `concierge-modes.md`, `consultation-theme-taxonomy.md`, `history-theme-taxonomy.md`, `meaning-translation-mapping.md`, `visit-reflection-flow.md`, `action_suggestion_v4.md` / A9: `concierge_spec.md`, `kami-musubi-experience-design.md`                                                                  |
-| Reference                             |   21 | A1: `analytics-payload-audit.md` / A3: `recommendation-score-v3-design.md`, `recommendation-v4-copy-guideline.md` / A4: `monetization-flow-design.md`, `premium-plan-design.md`, `premium-retention-strategy.md` / A5: `journey-timeline-design.md`, `shrine-detail-meaning-layer.md` / A7: `home-hero-final-wireframe.md`, `concierge-entry-final-wireframe.md`, `concierge-filter-area.md`, `need-mode-ui-flow.md`, `compat-mode-ui-flow.md`, `visit-style-taxonomy.md`, `reflection-funnel-dashboard.md`, `explore-integration-design.md` / A9: `mobile-bottom-navigation.md`, `card-visibility-renderer-split.md`, `concierge-card-architecture.md`, `concierge_risk_register.md` |
-| Archive（要移動）                     |   21 | 上記「docs/archive候補」表のとおり                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| Archive（配置済み）                   |    2 | A7: `concierge-first.md`, `concierge-first-wireframe.md`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| Delete                                |    3 | `action-suggestion-layer.md`, `product-doc-consolidation.md`, `action_state_behavior_checklist.md`（削除完了）                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| 判断保留                              |    1 | `direction-ranking-design.md`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| docs/core・docs/knowledge（全Active） |   13 | A6確定分（変更なし）                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| 区分                                  | 件数 | 内訳 |
+| ------------------------------------- | ---: | ---- |
+| Active                                |   19 | A3: `docs/core/recommendation-reason-contract.md`, `recommendation-v4-interpreter-contract.md` / A4: `billing-paywall.md`, `premium-experience.md`, `pricing.md` / A5: `reflection-timeline-design.md`, `shrine-detail-layer.md`, `shrine-detail-v3-design.md`, `shrine-submission-flow.md` / A7: `concierge-first-final-spec.md`, `concierge-modes.md`, `consultation-theme-taxonomy.md`, `history-theme-taxonomy.md`, `meaning-translation-mapping.md`, `visit-reflection-flow.md`, `action_suggestion_v4.md` / A9: `concierge_spec.md`, `kami-musubi-experience-design.md` |
+| Reference                             |   22 | A1: `analytics-payload-audit.md` / A3: `recommendation-score-v3-design.md`, `recommendation-v4-copy-guideline.md` / A4: `monetization-flow-design.md`, `premium-plan-design.md`, `premium-retention-strategy.md` / A5: `journey-timeline-design.md`, `shrine-detail-meaning-layer.md` / A7: `home-hero-final-wireframe.md`, `concierge-entry-final-wireframe.md`, `concierge-filter-area.md`, `need-mode-ui-flow.md`, `compat-mode-ui-flow.md`, `visit-style-taxonomy.md`, `reflection-funnel-dashboard.md`, `explore-integration-design.md` / A9: `mobile-bottom-navigation.md`, `card-visibility-renderer-split.md`, `concierge-card-architecture.md`, `concierge_risk_register.md` / Final Closure: `direction-ranking-design.md` |
+| Archive（移動済み）                   |   20 | A1〜A5でArchive確定した21候補のうち、Delete対象`action_state_behavior_checklist.md`を除く20文書 |
+| Archive（配置済み）                   |    2 | A7: `concierge-first.md`, `concierge-first-wireframe.md` |
+| Delete                                |    3 | `action-suggestion-layer.md`, `product-doc-consolidation.md`, `action_state_behavior_checklist.md`（削除完了） |
+| 判断保留                              |    0 | なし |
+| docs/core・docs/knowledge（全Active） |   13 | A6確定分（変更なし） |
+
+> 件数は監査カテゴリごとの集計であり、`docs/core・docs/knowledge`の13文書はActive全体の内数であるため、各行を単純合計しない。
 
 ---
 
@@ -140,7 +142,13 @@ A1〜A7（`docs/audit/root-docs-classification-audit.md`）で挙がったArchiv
 
 ### 3. Delete実行（完了）
 
-上記Delete候補最終リスト3ファイルの削除は、ユーザーの明示的な承認を得てから実行する。
+ユーザーの明示的な承認後、以下3ファイルを削除した。
+
+1. `docs/product/action-suggestion-layer.md`
+2. `docs/product/product-doc-consolidation.md`
+3. `docs/action_state_behavior_checklist.md`
+
+`docs/product/README.md`および`docs/product/product-document-audit.md`の分類表も更新済みである。
 
 ### 4. 分類表の更新
 
@@ -170,3 +178,29 @@ A1〜A7（`docs/audit/root-docs-classification-audit.md`）で挙がったArchiv
 | 分類表更新（README.md / product-document-audit.md） | 2文書 | 完了 |
 
 これにより、root直下は入口文書（`billing-paywall.md`・`premium-experience.md`・`pricing.md`・`recommendation-v4-interpreter-contract.md`等のActive/Reference文書）のみを残し、Archive相当の時点記録は`docs/audit/`・`docs/analytics/`へ集約する構成に統一した。
+
+### 後続判定による判断保留の解除
+
+`docs/direction-ranking-design.md`は、後続のRoot Documents Final Closureで現行実装との対応を再確認した。
+
+現行実装には、`direction_profile.luckyDirection`と候補神社の`direction` / `direction_tags`との一致を最大`0.02`の補助シグナルとして評価する処理が存在する。
+
+一方、本書が定義する方角入力UI、吉方位計算、Direction Mode、`score_direction_angle`、`score_direction_protection`、`score_direction_kyusei`は現行実装と一致していない。
+
+このため、同文書は現行契約ではなく、実装へ一部接続された将来設計を保持するReference文書とする。これにより判断保留は0件となった。
+
+## Root Documents Final Closure
+
+後続のRoot Documents Final Closureにより、root直下のMarkdown文書について以下を確認した。
+
+- root直下の全Markdown文書を一覧化した
+- `docs/README.md`を除く全対象文書に`Status: Active`、`Status: Reference`または`Status: Archive`が付与されている
+- 個別文書のStatusと`docs/audit/root-docs-classification-audit.md`の分類が一致している
+- `docs/direction-ranking-design.md`は、現行実装に方角補助シグナルが存在する一方、本文のDirection Mode・吉方位計算全体は未実装であるためReferenceと確定した
+- 判断保留文書は0件となった
+- `docs/README.md`へActive文書および主要Reference文書の入口を追加した
+- 未実装機能や文書と実装の差分は、文書分類とは分離した後続実装課題として扱う
+- 旧パスまたは旧正本への参照は、監査履歴として保持する記述を除き解消した
+- `git diff --check`でMarkdown差分に空白エラーがないことを確認した
+
+以上をもって、Root Documents Classification Audit、Archive Final ClassificationおよびRoot Documents Final Closureを完了とする。

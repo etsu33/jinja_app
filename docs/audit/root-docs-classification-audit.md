@@ -67,7 +67,7 @@
 
 ## 判断保留
 
-- direction-ranking-design.md
+
 - analytics-payload-audit.mdと現行実装の一致確認
 - premium-card-matrix.mdの現行実装反映確認
 - analytics-card-events.mdの現行Analytics契約との最終照合
@@ -176,7 +176,7 @@ Archive化前に、現在も有効な責務定義が現行正本文書へ反映�
 
 | 文書                                         | Status候補    | 移動先候補        | 参照状況                      | 判断根拠                                                                                  |
 | -------------------------------------------- | ------------- | ----------------- | ----------------------------- | ----------------------------------------------------------------------------------------- |
-| `direction-ranking-design.md`                | 判断保留      | `docs/product/`   | 参照なし                      | Direction SignalとRanking Priorityを定義するが、現行Score実装との一致が未確認             |
+| `direction-ranking-design.md` | Reference | `docs/product/` | 参照なし | 方角・吉方位を補助軸として扱う将来設計。現行実装では`direction_profile.luckyDirection`一致による最大`0.02`の補助シグナルのみ実装され、Direction Mode・方角入力・吉方位計算・九星別スコアは未実装 |
 | `recommendation-score-v3-design.md`          | Reference | `docs/analytics/` | Score v3監査から参照          | Score v3のSignalと計算式の設計背景。実装Phaseとドラフトを含むため現行値は実装を正本とする |
 | `recommendation-score-v3-roadmap.md`         | Archive       | `docs/audit/`     | Score v3監査から参照          | Roadmap、Active化、Dashboard、観測Snapshot、TODOが混在する時点記録                        |
 | `recommendation-v4-consultation-brush-up.md` | Archive       | `docs/audit/`     | 参照なし                      | Consultation改善作業のScope・KPIを整理した短期計画                                        |
@@ -821,3 +821,22 @@ root直下の追加監査対象6文書を、以下のとおり確定する。
 - Reference：4文書
 
 個別文書のStatus、冒頭の分類一覧および`docs/audit/archive-final-classification.md`の最終集計を、この判定に統一する。
+
+### `docs/direction-ranking-design.md`
+
+#### 判定
+
+Referenceとする。
+
+#### 判断根拠
+
+- 現行Rankingには`direction_profile.luckyDirection`を利用する最大`0.02`の補助シグナルが存在する
+- `direction_signal`はbreakdown、debug、observationへ接続されている
+- 一方で、本文が定義する方角入力、吉方位計算、Direction Mode、angle / protection / kyuseiの独立スコアは実装されていない
+- 文書全体を現行契約として扱うと、未実装機能を実装済みと誤認する可能性がある
+
+#### 結論
+
+`docs/direction-ranking-design.md`は、現行実装へ一部接続された将来設計を保持するReference文書とする。
+
+正確なDirection Signalの計算、Weight、適用条件および出力は、`backend/temples/services/concierge_chat_ranking.py`と関連テストを最終的な正本とする。

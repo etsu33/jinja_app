@@ -1,3 +1,4 @@
+
 # docs/（設計・運用ドキュメント）
 
 このディレクトリは **AI参拝ナビの設計・運用・実装判断の根拠**を集約します。  
@@ -106,16 +107,98 @@ Webは、FrontendからBackend APIを直接呼び出さず、Next.jsの`/api` Ro
 ---
 
 ## 🎨 UI / UX メモ
+## 🧭 プロダクト・体験設計
 
+現行のユーザー体験、画面責務および機能契約は以下を参照する。
+
+- `kami-musubi-experience-design.md`
+  - 相談・推薦・参拝・振り返りを一本の体験として接続する最上位体験設計
+
+- `product/README.md`
+  - Concierge First、Mode、相談テーマ、Meaning Translation、Visit / Reflection、Action Suggestionの入口
+
+- `concierge_spec.md`
+  - Conciergeの入力、LLMモード、API契約および運用ログ
+
+- `recommendation-v4-interpreter-contract.md`
+  - Consultation InterpreterのInput / Output契約
+
+---
+
+## 💳 Premium・課金
+
+Premiumの価値、体験差および課金判定は以下を参照する。
+
+- `billing-paywall.md`
+  - 課金状態、利用可否、Paywall判定およびServer責務
+
+- `pricing.md`
+  - Free / Premiumの価値境界と価格表現
+
+- `premium-experience.md`
+  - Free / Premiumの画面別体験差
+
+---
+
+## 🏮 神社詳細・参拝・記録
+
+神社詳細、参拝後導線および記録体験は以下を参照する。
+
+- `shrine-detail-layer.md`
+  - 神社詳細のPublic / Context / Personal Layer
+
+- `shrine-detail-v3-design.md`
+  - 神社詳細v3のUX、AnalyticsおよびPremium接続
+
+- `shrine-submission-flow.md`
+  - 神社追加、重複候補および投稿後導線
+
+- `reflection-timeline-design.md`
+  - 相談・参拝・振り返りを時系列で蓄積する体験設計
+
+---
+
+## 📚 Reference Documents
+
+以下は現行仕様の補足、設計背景または運用上の参照資料である。
+
+現行判断では、各文書が指定するActive文書、実装コードおよびテストを優先する。
+
+### Recommendation・Analytics
+
+- `analytics-payload-audit.md`
+- `recommendation-score-v3-design.md`
+- `recommendation-v4-copy-guideline.md`
+- `direction-ranking-design.md`
+
+### Premium・Journey
+
+- `monetization-flow-design.md`
+- `premium-plan-design.md`
+- `premium-retention-strategy.md`
+- `journey-timeline-design.md`
+
+### Concierge UI
+
+- `card-visibility-renderer-split.md`
+- `concierge-card-architecture.md`
+- `concierge_risk_register.md`
+
+### Shrine Detail・Mobile
+
+- `shrine-detail-meaning-layer.md`
+- `mobile-bottom-navigation.md`
 
 ---
 
 ## 🗺 ロードマップ / TODO
 
-- 開発 TODO / 優先度  
+- 開発TODO・優先度
   - `core/roadmap.md`
 
-## 🧭 Concierge（仕様）
+---
 
-- Concierge仕様（LLMモード / Contract / 運用）
-  - `concierge_spec.md`
+## 🗺 ロードマップ / TODO
+
+- 開発 TODO / 優先度
+  - `core/roadmap.md`
