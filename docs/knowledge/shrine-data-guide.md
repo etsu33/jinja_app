@@ -15,6 +15,39 @@
 
 入力者や入力時期が変わっても、事実・解釈・提案の境界と品質が変わらない状態を目的とする。
 
+Recommendation ReadinessのLevel、Coverage、推薦可能条件および責務境界の詳細は、以下を正本とする。
+
+- `docs/core/recommendation-readiness.md`
+
+本書では、正本で定義された品質基準を満たすためのデータ入力・確認・運用上のルールを扱う。
+
+---
+
+## 責務境界
+
+本書が扱うものは以下とする。
+
+- 神社データの入力基準
+- 事実と解釈の分離方法
+- 出典確認のルール
+- 神社固有情報の記述方法
+- Action・Reflectionへ接続できる入力品質
+- Recommendation Readiness判定に必要なデータの準備
+- 未確認事項の記録方法
+
+本書では以下を定義しない。
+
+- Recommendation ReadinessのLevel定義
+- Coverageの定義
+- Recommendation可能条件
+- Recommendation Score
+- Rankingの重み
+- Recommendation Reasonの生成ロジック
+- Action Suggestionの出力契約
+- Reflection Promptの出力契約
+
+これらは各専用ドキュメントを正本とする。
+
 ---
 
 ## 入力原則
@@ -49,6 +82,8 @@ Reflection
 再起・立て直しを象徴する文脈として扱う
 ```
 
+事実はStored情報として管理し、意味はStored情報を根拠としたDerived情報として扱う。
+
 ---
 
 ### 2. 宗教的・心理的効果を断定しない
@@ -64,6 +99,8 @@ Reflection
 ```text
 再出発を考える時、自分の次の一歩を整理する場所として紹介できる
 ```
+
+神社の由緒やご利益は、未来の結果やユーザーの心理状態を保証する根拠として利用しない。
 
 ---
 
@@ -82,16 +119,25 @@ Reflection
 再起という文脈を説明できる。
 ```
 
+神社名を別の神社へ置き換えても成立する文章は、神社固有性が不足している可能性が高い。
+
+Meaning、Recommendation、Action、Reflectionへ利用する情報には、可能な限り神社固有の事実を含める。
+
 ---
 
-### 4. Stored / Derived / Runtime / Governance を分離する
+### 4. Stored / Derived / Runtime / Governanceを分離する
 
-| 区分 | 定義 |
-|------|------|
-| Stored | 神社プロフィールとして保存される事実 |
-| Derived | Storedから生成される意味情報 |
-| Runtime | 相談ごとに生成される情報 |
-| Governance | 品質・出典・Readinessを管理する情報 |
+| 区分 | 定義 | 本書での扱い |
+|------|------|------|
+| Stored | 神社プロフィールとして保存される事実 | 出典を確認して入力する |
+| Derived | Storedから生成される意味情報 | 根拠となるStoredを追跡可能にする |
+| Runtime | 相談ごとに生成される情報 | 神社プロフィールへ保存しない |
+| Governance | 品質・出典・Readinessを管理する情報 | 入力品質と確認状態を記録する |
+
+各区分の詳細な責務境界は、以下を参照する。
+
+- `docs/knowledge/shrine-profile-spec.md`
+- `docs/core/recommendation-readiness.md`
 
 ---
 
@@ -100,6 +146,15 @@ Reflection
 確認できない情報は「未確認」とする。
 
 AI生成だけで事実項目を確定しない。
+
+祭神、由緒、ご利益、所在地などの事実情報は、公式サイト、神社庁、自治体、文化財資料など、確認可能な根拠を参照する。
+
+確認できない場合は、次のいずれかで扱う。
+
+- 値を空欄にする
+- 未確認状態として記録する
+- `editor_notes`に確認事項を残す
+- Recommendation Readinessの判定対象として扱う
 
 ---
 
@@ -117,57 +172,103 @@ recovery
 再出発や立て直しを考える時の文脈
 ```
 
+内部タグは検索、分類、推薦処理に利用するための値であり、原則としてユーザーへ直接表示しない。
+
+表示文は、Knowledge Baseで定義された用語とコピー原則に従う。
+
 ---
 
-## 必須項目
+### 7. 出典と解釈ラベルを分離する
 
-Recommendation Readinessに応じて段階的に定義する。
+事実情報には出典が必要である。
 
-### Level0 表示可能
+解釈情報には一次情報としての出典ではなく、「KAMI MUSUBIによる解釈であること」が分かる管理が必要である。
 
-| 項目 | 必須 | 備考 |
-|------|------|------|
-| name_jp | 必須 | 神社名 |
-| kind | 必須 | shrine / temple |
-| place_context | 必須 | 所在地 |
-| latitude / longitude | 推奨 | 地図表示 |
-
-### Level1 最低限推薦可能
-
-以下のどちらかを満たす。
-
-| 項目 | 必須 |
+| 情報種別 | 必要な管理 |
 |------|------|
-| goriyaku_tags | 条件付き必須 |
-| history_theme | 条件付き必須 |
+| 祭神、由緒、所在地、ご利益 | 出典URL・確認日 |
+| history_theme | 根拠となるStored情報 |
+| culture_translation | 解釈である旨と生成根拠 |
+| matched_need_tags | Runtimeの一致結果として管理 |
+| Recommendation Reason | 事実・解釈・提案を分離 |
 
-最小条件:
+---
 
-```text
-place_context
-AND
-(goriyaku_tags OR history_theme)
-```
+## 入力項目の考え方
 
-これは「推薦可能」の最低条件であり、高品質推薦を意味しない。
+入力対象はRecommendation Readinessの段階に応じて異なる。
 
-### Level2 標準推薦
+Levelごとの条件と利用可能範囲は、以下を参照する。
 
-| 項目 | 必須 |
-|------|------|
-| deity | 推奨 |
-| shrine_history | 推奨 |
-| source_url | 必須 |
-| verified_at | 必須 |
+- `docs/core/recommendation-readiness.md`
 
-### Level3 高品質推薦
+本書では、各利用段階で必要となる入力作業を以下のように整理する。
 
-| 項目 | 必須 |
-|------|------|
-| shrine_feature | 推奨 |
-| action_source | 推奨 |
-| reflection_source | 推奨 |
-| multiple_sources | 推奨 |
+### 基本表示に必要な入力
+
+神社詳細、一覧、地図などの基本表示に利用する。
+
+主な確認対象:
+
+- `name_jp`
+- `kind`
+- `place_context`
+- `latitude`
+- `longitude`
+
+神社名、種別、所在地は、表示および識別に必要な基礎情報として確認する。
+
+---
+
+### Recommendationに必要な入力
+
+最低限のRecommendationを行うため、神社の場所情報に加えて、相談と接続可能な意味またはご利益情報を準備する。
+
+主な確認対象:
+
+- `place_context`
+- `history_theme`
+- `goriyaku_tags`
+
+推薦可能条件そのものは、本書で再定義せず、以下を正本とする。
+
+- `docs/core/recommendation-readiness.md`
+
+`history_theme`を入力・生成する場合は、根拠となる由緒、歴史、祭神、ご利益などのStored情報を追跡可能にする。
+
+---
+
+### Actionに必要な入力
+
+神社固有のActionを生成するため、一般論ではなく、その神社で行える行動の根拠を入力する。
+
+主な確認対象:
+
+- `deity`
+- `shrine_history`
+- `source_url`
+- `verified_at`
+- `shrine_feature`
+- `place_context`
+
+Actionの根拠として、実在しない施設、文化財、由緒書、境内設備を使用しない。
+
+---
+
+### Reflectionに必要な入力
+
+参拝後の振り返りを神社体験と接続するため、問いの根拠となる情報を準備する。
+
+主な確認対象:
+
+- `history_theme`
+- `shrine_history`
+- `goriyaku`
+- `shrine_feature`
+- `reflection_source`
+- 相談時のRuntime情報と接続可能な識別情報
+
+Reflectionは心理診断を行うものではなく、参拝前後のユーザー自身の気づきを記録するための問いとして設計する。
 
 ---
 
@@ -175,7 +276,7 @@ AND
 
 ここでは、事実・解釈・Action・Reflectionがどのように接続されるかを示す。
 
-### 良い例①（事実 → 解釈）
+### 良い例①：事実から解釈へ接続する
 
 #### 事実
 
@@ -191,9 +292,11 @@ AND
 新しい場所で役割を果たしてきた歴史として解釈できる。
 ```
 
+解釈だけを保存せず、根拠となる事実と出典を追跡可能にする。
+
 ---
 
-### 良い例②（事実 → Recommendation）
+### 良い例②：事実からRecommendationへ接続する
 
 #### Stored
 
@@ -215,9 +318,13 @@ AND
 再建の歴史を持つこの神社が、一つの象徴的な場所になるかもしれません。
 ```
 
+Recommendationでは、事実とユーザーの相談内容との接点を示す。
+
+事実のみでユーザーの状態や将来を断定しない。
+
 ---
 
-### 良い例③（Action）
+### 良い例③：神社固有のActionへ接続する
 
 ```text
 境内の由緒書を読みながら、
@@ -229,11 +336,13 @@ AND
 を一つずつ整理してみる。
 ```
 
-Actionは必ず神社固有の事実を根拠に生成する。
+Actionは、神社固有の事実または現地で実行可能な行動を根拠に生成する。
+
+由緒書の存在を確認できない場合は、このActionを使用しない。
 
 ---
 
-### 良い例④（Reflection）
+### 良い例④：Reflectionへ接続する
 
 ```text
 今回の参拝で、
@@ -247,45 +356,47 @@ Actionは必ず神社固有の事実を根拠に生成する。
 
 Reflectionは神社の歴史・意味・相談内容を接続する。
 
+回答を誘導せず、正解や望ましい感情を設定しない。
+
 ---
 
-### 悪い例①
+### 悪い例①：効果を保証する
 
 ```text
 この神社へ行けば転職が成功する。
 ```
 
-問題点
+問題点:
 
 - 効果を保証している
-- 出典がない
+- 出典で証明できない
 - 神社固有情報がない
-- 事実と解釈が混在している
+- 事実と提案が混在している
 
 ---
 
-### 悪い例②
+### 悪い例②：神社固有性がない
 
 ```text
 心を整えたい人におすすめです。
 ```
 
-問題点
+問題点:
 
 - どの神社にも当てはまる
-- 神社固有性がない
-- Recommendationとして弱い
+- 神社固有情報がない
+- Recommendationの根拠が分からない
 
 ---
 
-### 悪い例③
+### 悪い例③：人格や心理を断定する
 
 ```text
 祭神が○○なので、
 あなたの性格は○○です。
 ```
 
-問題点
+問題点:
 
 - 心理・人格を断定している
 - 神社データから導けない
@@ -303,14 +414,18 @@ Reflectionは神社の歴史・意味・相談内容を接続する。
 - 出典不明の内容を事実として保存する
 - Wikipediaのみを唯一の根拠とする
 - 推測で空欄を埋める
+- 確認していない施設や文化財を存在するものとして記載する
+- Derived情報を一次情報として扱う
 
 ---
 
 ### Meaning
 
-- Stored情報が存在しないままhistory_themeを付与する
+- Stored情報が存在しないまま`history_theme`を付与する
 - 根拠のない文化解釈を生成する
 - 神社固有性のない抽象語だけで終わらせる
+- Derived情報を事実としてユーザーへ表示する
+- 生成根拠を追跡できないMeaningを確定値として扱う
 
 ---
 
@@ -320,6 +435,8 @@ Reflectionは神社の歴史・意味・相談内容を接続する。
 - 心理状態を断定する
 - 占い結果のように未来を断定する
 - Recommendationの主役を誕生日・九星・五行にする
+- Runtimeの一致結果を神社固有の事実として扱う
+- Recommendation Readinessを満たさないデータを無条件で推薦に利用する
 
 ---
 
@@ -328,6 +445,8 @@ Reflectionは神社の歴史・意味・相談内容を接続する。
 - 神社固有の根拠がない行動を提案する
 - 一般論だけでActionを構成する
 - 実在しない施設・文化財を前提にする
+- 危険または禁止されている行動を提案する
+- 参拝作法や宗教的実践を唯一の正解として強制する
 
 ---
 
@@ -337,15 +456,20 @@ Reflectionは神社の歴史・意味・相談内容を接続する。
 - 回答を誘導する
 - 正解・不正解を作る
 - 神社と関係のない質問を生成する
+- 感情の改善や行動変化を保証する
+- ネガティブな感情を失敗として扱う
 
 ---
 
 ### データ管理
 
-- Runtime情報をShrineプロフィールへ保存する
-- 内部タグをユーザーへ表示する
+- Runtime情報をShrineプロフィールへ固定情報として保存する
+- 内部タグをそのままユーザーへ表示する
 - 出典情報を削除する
-- Readiness未判定のまま運用開始する
+- Readiness未判定のまま本番運用へ投入する
+- 未確認情報を確認済みとして扱う
+- `verified_at`を事実確認なしで更新する
+- Recommendation Readinessの詳細基準を本書へ重複定義する
 
 ---
 
@@ -358,57 +482,100 @@ Reflectionは神社の歴史・意味・相談内容を接続する。
 ```markdown
 - [ ] 神社名を確認した
 - [ ] 所在地を確認した
+- [ ] 緯度・経度を確認した
 - [ ] 祭神の出典を確認した
 - [ ] 由緒・歴史の出典を確認した
 - [ ] ご利益の出典を確認した
 - [ ] 事実と解釈を分離した
-- [ ] Runtime情報を保存していない
+- [ ] Derived情報の根拠となるStored情報を確認した
+- [ ] Runtime情報を神社プロフィールへ保存していない
 - [ ] 内部タグを正規化した
-- [ ] Action生成の根拠がある
+- [ ] 内部タグを表示文へ直接出していない
+- [ ] Action生成の神社固有根拠がある
 - [ ] Reflection生成の根拠がある
+- [ ] Recommendation Readinessを判定した
+- [ ] source_urlを記録した
 - [ ] verified_atを更新した
+- [ ] 未確認事項をeditor_notesへ記録した
 ```
 
 ---
 
-### Coverage区分
+### Recommendation Readinessの確認
 
-Coverageは用途ごとに区別する。
+Recommendation Readinessの判定基準は、以下を正本とする。
 
-| 区分 | 定義 |
-|------|------|
-| Schema Coverage | 項目の器が存在する |
-| Populated Coverage | 値が入力されている |
-| Verified Coverage | 出典確認済みである |
-| Usable Coverage | Recommendationで利用可能である |
+- `docs/core/recommendation-readiness.md`
 
-Coverageは単純な入力率ではなく、用途に対する利用可能性を表す。
+入力作業では、次の順序で確認する。
+
+1. 神社の基本情報が表示に利用できるか
+2. Recommendationに利用できる情報が存在するか
+3. Actionの根拠となる神社固有情報が存在するか
+4. Reflectionの根拠となる情報が存在するか
+5. 事実情報の出典が確認されているか
+6. Derived情報がStored情報を参照可能か
+7. 未確認項目がGovernance情報として記録されているか
+
+Readinessは入力者の印象で決めず、正本の条件に従って判定する。
 
 ---
 
-### Recommendation Readiness
+### Coverageの確認
 
-| Level | 条件 | 利用可能範囲 |
-|------|------|------|
-| Level0 | 基本情報のみ | 詳細ページ表示 |
-| Level1 | place_context + (history_theme または goriyaku_tags) | Recommendation |
-| Level2 | deity・history・出典あり | Recommendation + Action |
-| Level3 | 固有特徴・Action・Reflection根拠あり | 全機能 |
+Coverageの定義は、以下を正本とする。
 
-Readinessは二値ではなく段階的に評価する。
+- `docs/core/recommendation-readiness.md`
+
+本書では、入力・監査時に各Coverageをどのように確認するかを扱う。
+
+#### Schema Coverageの確認
+
+- 必要な項目または保存先が存在するか
+- 入力フォーム、DB、管理画面、取込データのいずれで管理するか
+- 項目が存在していても利用経路がない状態になっていないか
+
+#### Populated Coverageの確認
+
+- 値が入力されているか
+- 空文字、仮値、ダミーデータを入力済みとして扱っていないか
+- 神社ごとの未入力項目を集計できるか
+
+#### Verified Coverageの確認
+
+- 出典が記録されているか
+- 出典内容と入力値が一致しているか
+- 確認日が記録されているか
+- 出典切れや内容変更を識別できるか
+
+#### Usable Coverageの確認
+
+- Recommendation処理が実際に参照できる形式か
+- 内部タグが正規化されているか
+- Derived情報の根拠が存在するか
+- Recommendation Readinessの条件を満たしているか
+
+Coverageは単純な入力率ではなく、用途に対して利用できる状態かを確認する。
 
 ---
 
 ### 完了条件
 
-神社データは以下を満たした時点で完了とする。
+神社データは、対象とするRecommendation ReadinessのLevelに応じた条件を満たし、以下を確認できた時点で入力完了とする。
 
-- 必須項目が入力されている
-- 出典が確認されている
+- 対象Levelに必要な項目が入力されている
+- 事実情報の出典が確認されている
 - Recommendation Readinessが判定されている
 - 事実と解釈が分離されている
-- Action・Reflectionへ接続可能である
-- editor_notesに未確認事項が記録されている
+- Derived情報の根拠となるStored情報が追跡可能である
+- Runtime情報が固定プロフィールへ混在していない
+- 対象Levelで必要なAction・Reflectionへ接続可能である
+- `editor_notes`に未確認事項が記録されている
+- `verified_at`が実際の確認日に更新されている
+
+すべての神社が最初から最高Levelである必要はない。
+
+どのLevelまで利用可能かを明示し、未整備項目を追跡可能にすることを優先する。
 
 ---
 
@@ -419,25 +586,38 @@ Readinessは二値ではなく段階的に評価する。
 ### データモデル
 
 - source情報をShrine本体へ保持するか別モデルへ分離するか
-- history_themeを単一値のまま維持するか複数値へ変更するか
-- culture_translationの保存形式
+- `history_theme`を単一値のまま維持するか複数値へ変更するか
+- `culture_translation`の保存形式
+- `editor_notes`の物理的な保存先
+- Derived情報と根拠となるStored情報の紐付け方法
 
 ---
 
 ### 運用
 
-- deity / shrine_historyの入力担当
+- `deity` / `shrine_history`の入力担当
 - 更新フロー
 - 現地調査情報の管理方法
 - 出典レビュー体制
+- 出典切れの再確認周期
+- 複数入力者によるレビュー方法
 
 ---
 
 ### Recommendation
 
+Recommendation Readinessの定義自体は、以下を正本とする。
+
+- `docs/core/recommendation-readiness.md`
+
+本書に残る未確定事項は、実装および運用方法に限定する。
+
 - ReadinessをDBへ保持するかRuntime計算とするか
 - Coverageの自動集計方法
 - 品質監査の自動化
+- Readiness判定結果の更新タイミング
+- Readiness低下時の既存推薦データの扱い
+- 管理画面でのReadiness表示方法
 
 ---
 
@@ -446,18 +626,54 @@ Readinessは二値ではなく段階的に評価する。
 - Reflection専用プロフィール項目の追加要否
 - 参拝記録との関連付け
 - Reflectionテンプレートの管理方法
+- 参拝前の問いと参拝後の回答を紐付ける識別方法
 
 ---
 
-### 今後の関連仕様
+## 関連ドキュメント
 
-本書は以下のKnowledge Baseを前提として利用する。
+本書は以下の正本を前提として利用する。
 
-- shrine-profile-spec.md
-- meaning-layer-spec.md
-- recommendation-copy-guide.md
-- action-guide.md
-- reflection-guide.md
-- glossary.md
+### Core
 
-これらの仕様と矛盾する変更を行う場合は、Knowledge Base全体の整合性を確認した上で更新する。
+- `docs/core/recommendation-readiness.md`
+- `docs/core/meaning-layer.md`
+- `docs/core/narrative-guideline.md`
+
+### Knowledge
+
+- `docs/knowledge/shrine-profile-spec.md`
+- `docs/knowledge/meaning-layer-spec.md`
+- `docs/knowledge/recommendation-copy-guide.md`
+- `docs/knowledge/action-guide.md`
+- `docs/knowledge/reflection-guide.md`
+- `docs/knowledge/glossary.md`
+
+### Product
+
+- `docs/product/action_suggestion_v4.md`
+- `docs/product/visit-reflection-flow.md`
+
+これらの仕様と矛盾する変更を行う場合は、責務を持つ正本文書を先に更新し、Knowledge Base全体の整合性を確認する。
+
+---
+
+## 更新ルール
+
+本書は、以下の場合に更新する。
+
+- 神社データの入力項目が変更された場合
+- 出典確認ルールが変更された場合
+- Stored / Derived / Runtime / Governanceの入力運用が変更された場合
+- Action・Reflectionへ必要な入力基準が変更された場合
+- データ品質チェックの手順が変更された場合
+- 未確認情報の管理方法が変更された場合
+
+以下の場合は、本書ではなく各正本文書を更新する。
+
+- Recommendation ReadinessのLevel変更
+- Coverage定義の変更
+- Recommendation可能条件の変更
+- Recommendation ScoreまたはRankingの変更
+- Action Suggestionの出力契約変更
+- Reflection Flowの変更
