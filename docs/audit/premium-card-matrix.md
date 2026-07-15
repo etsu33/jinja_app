@@ -2,6 +2,12 @@
 
 # Premium Card Matrix
 
+> **Status: Archive**
+>
+> 本ドキュメントは、Access Level別Card表示設計の履歴（実装TODO含む）である。
+>
+> 現行のFree / Premium表示境界は `docs/product/premium-experience.md` を正本とする。
+
 最終更新: 2026-05-18  
 対象: Concierge結果画面 / Shrine詳細画面 / Premium導線
 

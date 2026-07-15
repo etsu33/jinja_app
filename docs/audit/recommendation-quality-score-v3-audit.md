@@ -28,7 +28,7 @@ backend/temples/services/concierge_chat_ranking.py
 backend/temples/services/score_v3_observer.py
 backend/temples/services/score_v3_observation_summary.py
 docs/recommendation-score-v3-design.md
-docs/recommendation-score-v3-roadmap.md
+docs/audit/recommendation-score-v3-roadmap.md
 ```
 
 ### 関連テスト
@@ -192,7 +192,7 @@ visit_style_tags
 
 - visit_style が need / state を上書きしない
 - 一致候補が少ない場合でもランキングを壊しにくい
-- `docs/concierge-ranking-observation.md` でも、visit_style は hard filter ではなく補助ランキング軸として扱う方針が確認されている
+- `docs/audit/concierge-ranking-observation.md` でも、visit_style は hard filter ではなく補助ランキング軸として扱う方針が確認されている
 
 ### Decision
 

@@ -129,7 +129,7 @@ Detailed specifications are maintained in:
 - `docs/core/architecture.md`
 - `docs/core/meaning-layer.md`
 - `docs/core/meaning-layer-connection.md`
-- `docs/product/concierge-first.md`
+- `docs/product/concierge-first-final-spec.md`
 - `docs/product/concierge-modes.md`
 
 This document defines only the writing principles for narrative generation.

@@ -1,5 +1,11 @@
 # Analytics Card Events
 
+> **Status: Archive**
+>
+> 本ドキュメントは、Event契約・監査・移行計画・PR履歴が混在するArchive文書である。現行実装との差異が確認されており、現行契約としては継続利用しない。
+>
+> 現行のAnalytics実装は `apps/web/src/lib/analytics/cardEvents.ts` / `retentionEvents.ts` / `searchEvents.ts` / `billing.ts` / `track.ts` / `providers.ts` を正本とする。
+
 最終更新: 2026-05-18  
 対象: Concierge結果画面 / Shrine詳細画面 / Premium導線 / card単位 analytics
 

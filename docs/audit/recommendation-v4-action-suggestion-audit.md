@@ -2,6 +2,12 @@
 
 # Recommendation v4 Action Suggestion Audit
 
+> **Status: Archive**
+>
+> 本ドキュメントは、Action Suggestion v4の責務を確認したPhase2時点監査である。
+>
+> Recommendation ReasonとAction Suggestionの責務境界は `docs/product/action_suggestion_v4.md` を正本とする。
+
 ## Goal
 
 Recommendation v4 Phase2 における `action_suggestion_v4` の責務、入力、出力、既存 `recommendation_reason_v4` との境界を整理する。

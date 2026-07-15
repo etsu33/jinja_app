@@ -2,6 +2,12 @@
 
 # Recommendation Score v3 Roadmap
 
+> **Status: Archive**
+>
+> 本ドキュメントは、Roadmap・Active化・Dashboard・観測Snapshot・TODOが混在する時点記録である。
+>
+> 現行のScore v3設計背景は `recommendation-score-v3-design.md` を参照する。
+
 ## 目的
 
 Recommendation Score v3 を、いきなり本実装せず、行動・プロフィール・方位・参拝・振り返りの順に段階実装する。

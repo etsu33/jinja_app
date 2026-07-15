@@ -2,6 +2,12 @@
 
 # Card CTR Aggregation 設計
 
+> **Status: Archive**
+>
+> 本ドキュメントは、集計設計と未実装Phase・次PR計画を含む時点設計である。
+>
+> 現行の実装状況は `apps/web/src/lib/analytics/` 配下のコードを正本とする。
+
 最終更新: 2026-05-18  
 対象: card analytics / premium funnel / CTR aggregation
 

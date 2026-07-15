@@ -2,7 +2,7 @@
 
 ## プロダクト導線
 
-本アプリは Concierge First を採用し、「神社検索」ではなく「相談テーマから神社と出会う体験」を中心に設計されています。詳細は docs/product/concierge-first.md を参照してください。
+本アプリは Concierge First を採用し、「神社検索」ではなく「相談テーマから神社と出会う体験」を中心に設計されています。詳細は docs/product/concierge-first-final-spec.md を参照してください。
 
 主導線は以下です。
 
@@ -23,7 +23,7 @@ Concierge First では、トップ画面とコンシェルジュ画面を統合�
 - 吉方位・相性: 詳細ページの補足情報
 - 神社一覧・地図: サブ導線
 
-詳細仕様は `docs/product/concierge-first.md` を参照してください。
+詳細仕様は `docs/product/concierge-first-final-spec.md` を参照してください。
 ```
 
 ### 体験設計の責務分離
@@ -361,7 +361,7 @@ export async function GET(req: NextRequest) {
 
 詳細設計・運用ルールは `docs/` 配下に集約しています。
 
-- **Concierge First**: docs/product/concierge-first.md
+- **Concierge First**: docs/product/concierge-first-final-spec.md
 - **Concierge Modes**: docs/product/concierge-modes.md
 - **アーキテクチャ・認証**: `docs/10_arch_auth_proxy.md`
 - **ローカル動作確認**: `docs/20_smoke_checks.md`
