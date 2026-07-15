@@ -1,8 +1,10 @@
-> **Status: Reference**
+> **Status: Archive**
 >
-> 本ドキュメントは、対象機能の設計背景・補足方針を記録した参照資料である。
+> 本ドキュメントは、Premiumの長期構想、AI Memory、Journey View、比較、統計、月次・年次レビュー等を整理した設計記録である。
 >
-> 現行仕様は関連するActive文書、実装コードおよびテストを最終的な正本とする。
+> 現行のPremium価値境界は`docs/pricing.md`および`docs/premium-experience.md`、課金状態とPaywall判定は`docs/billing-paywall.md`を正本とする。
+>
+> 本書に記載された将来機能は、実装済みまたは提供確定を意味しない。
 # Premium Plan Design
 
 ## 概要

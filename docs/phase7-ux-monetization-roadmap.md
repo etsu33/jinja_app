@@ -1,6 +1,7 @@
 > **Status: Archive**
 >
-> 本ドキュメントは、旧Phase 7においてKAMI MUSUBIのUX、継続利用、Visit・Reflection、Premium価値および収益化導線を統合して整理した設計記録である。
+> 本ドキュメントは、旧Phase 7においてKAMI
+> MUSUBIのUX、継続利用、Visit・Reflection、Premium価値および収益化導線を統合して整理した設計記録である。
 >
 > 記載されたPhase番号、画面Version、UI構成、KPI、Release順序およびPremium機能は当時のスナップショットであり、現行仕様判断には使用しない。
 >
@@ -14,16 +15,21 @@
 > - Reflection Funnel：`docs/product/reflection-funnel-dashboard.md`
 > - Shrine Detail設計：`docs/shrine-detail-v3-design.md`
 > - Reflection Timeline設計：`docs/reflection-timeline-design.md`
-> - Premium設計：`docs/premium-plan-design.md`
-> - 収益化導線：`docs/monetization-flow-design.md`
+> - Premium価値境界：`docs/pricing.md`
+> - Premium体験境界：`docs/premium-experience.md`
+> - 収益導線・継続計測：`docs/monetization-flow-design.md`
+> - Premium長期構想の履歴：`docs/audit/premium-plan-design.md`
+
 
 # Phase7 UX Monetization Roadmap
 
 ## 目的
 
-本書は、KAMI MUSUBIを神社の検索・一覧表示を中心とする体験から、相談を起点として行動・参拝・振り返り・再相談が循環する体験へ移行するために作成された設計記録である。
+本書は、KAMI
+MUSUBIを神社の検索・一覧表示を中心とする体験から、相談を起点として行動・参拝・振り返り・再相談が循環する体験へ移行するために作成された設計記録である。
 
-旧Phase 7では、Recommendation、Recommendation Reason、Action Suggestion、Visit、Reflection、Timeline、Premiumを個別機能として扱わず、ユーザー体験として一つにつなげることを目指していた。
+旧Phase 7では、Recommendation、Recommendation Reason、Action
+Suggestion、Visit、Reflection、Timeline、Premiumを個別機能として扱わず、ユーザー体験として一つにつなげることを目指していた。
 
 当時想定していた中心体験は以下である。
 
@@ -97,11 +103,11 @@ Next Consultation
 
 相談Theme、自由入力、補助条件は役割を分ける方針とした。
 
-| 入力 | 当時想定した役割 |
-| --- | --- |
-| 相談Theme | 入力を始めるきっかけ |
-| 自由入力 | 本音や具体的状況 |
-| 任意条件 | 誕生日、参拝Style、ご利益などの補助情報 |
+| 入力      | 当時想定した役割                        |
+| --------- | --------------------------------------- |
+| 相談Theme | 入力を始めるきっかけ                    |
+| 自由入力  | 本音や具体的状況                        |
+| 任意条件  | 誕生日、参拝Style、ご利益などの補助情報 |
 
 相談入力は診断や分類を目的とせず、Recommendationへ必要な文脈をBackendへ渡すための入口として扱った。
 
@@ -230,7 +236,8 @@ Recommendation画面では、候補数を増やすより、最上位候補と理
 
 ### Shrine Detail
 
-Shrine Detailは、神社情報を並べるだけのInformation Pageではなく、Recommendation理由を理解し、次の行動を選ぶためのExperience Pageとして設計する方針だった。
+Shrine Detailは、神社情報を並べるだけのInformation
+Pageではなく、Recommendation理由を理解し、次の行動を選ぶためのExperience Pageとして設計する方針だった。
 
 当時の基本順序は以下である。
 
@@ -355,7 +362,7 @@ Premiumの中心にしないものは以下である。
 
 無料ユーザーも相談・推薦・詳細・基本行動を完了でき、Premiumは履歴と継続価値を拡張する位置付けとした。
 
-現在のPremium仕様は、`docs/premium-plan-design.md`および課金関連の実装契約を正本とする。
+現在のPremium価値境界は`docs/pricing.md`、体験境界は`docs/premium-experience.md`、課金状態とPaywall判定は`docs/billing-paywall.md`を正本とする。長期構想の履歴は`docs/audit/premium-plan-design.md`を参照する。
 
 ---
 
@@ -581,8 +588,11 @@ Paymentを先に接続すると、価値検証前に課金状態だけが複雑�
 - `docs/product/reflection-funnel-dashboard.md`
 - `docs/shrine-detail-v3-design.md`
 - `docs/reflection-timeline-design.md`
-- `docs/premium-plan-design.md`
+- `docs/pricing.md`
+- `docs/premium-experience.md`
+- `docs/billing-paywall.md`
 - `docs/monetization-flow-design.md`
+- `docs/audit/premium-plan-design.md`
 
 ---
 
