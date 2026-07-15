@@ -19,6 +19,9 @@
 - `core/meaning-layer.md`
   - 神社を「意味ある場所」として扱うための意味構造
 
+- `core/recommendation-readiness.md`
+  - Recommendation品質・Coverage・Readiness判定の正本
+
 ---
 
 ## 🧭 全体設計（まずここ）
@@ -26,6 +29,10 @@
 - **Architecture・システム境界**
 
   - `core/architecture.md`
+
+- **Recommendation品質**
+
+  - `core/recommendation-readiness.md`
 
 - **認証・通信**
 
