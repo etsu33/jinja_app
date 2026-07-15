@@ -1,4 +1,8 @@
-
+> **Status: Active**
+>
+> 本ドキュメントは、相談・推薦・参拝・振り返りを一本の体験として接続するKAMI MUSUBIの最上位体験設計を管理する正本である。
+>
+> 各機能のInput / Output、保存、画面遷移および実装詳細は、対応するCore・Product文書と関連する実装コード・テストを最終的な正本とする。
 
 # KAMI MUSUBI Experience Design
 
