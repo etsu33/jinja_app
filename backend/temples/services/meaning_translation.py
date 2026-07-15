@@ -72,6 +72,9 @@ REFLECTION_QUESTION_BY_HISTORY_THEME: dict[str, str] = {
 @dataclass(frozen=True)
 class MeaningTranslationResult:
     history_theme: str | None = None
+    # direction_profile.themes[1]相当の副次候補。Score v3のhistory_score専用で、
+    # Fact/Interpretation層のhistory_theme（主値）とは責務が異なる。
+    history_theme_secondary: str | None = None
     shrine_context_need: str | None = None
     action_context: str | None = None
     reflection_question_seed: str | None = None
@@ -80,6 +83,7 @@ class MeaningTranslationResult:
     def as_dict(self) -> dict[str, Any]:
         return {
             "history_theme": self.history_theme,
+            "history_theme_secondary": self.history_theme_secondary,
             "shrine_context_need": self.shrine_context_need,
             "action_context": self.action_context,
             "reflection_question_seed": self.reflection_question_seed,
@@ -133,6 +137,24 @@ def _resolve_history_theme(
     if decision_candidate and decision_candidate in HISTORY_THEME_BY_DECISION:
         return HISTORY_THEME_BY_DECISION[decision_candidate], "decision_context.decision_candidates"
 
+    return None, "fallback.none"
+
+
+def _resolve_history_theme_secondary(direction_profile: dict[str, Any]) -> tuple[str | None, str]:
+    """Resolve a secondary history_theme candidate from direction_profile.themes.
+
+    consultation_interpreter.build_direction_profile()（DIRECTION_BY_STATE経由）は、
+    primary/secondaryの2値を"themes"として既に計算している（例: tired -> ["静寂", "復興"]）。
+    _resolve_history_theme()のprimary解決はHISTORY_THEME_BY_DIRECTION（単一値）のみを見るため、
+    themes[1]相当の値（"復興"等）が計算されているにもかかわらず捨てられていた。
+    ここでその2番目の値だけを拾い、Score v3のcalculate_history_score()で
+    副次一致として利用できるようにする（判定順位・主値の決定ロジックは変更しない）。
+    """
+    themes = direction_profile.get("themes")
+    if isinstance(themes, list) and len(themes) > 1:
+        secondary = _first_string(themes[1])
+        if secondary:
+            return secondary, "direction_profile.themes"
     return None, "fallback.none"
 
 
@@ -214,6 +236,7 @@ def translate_meaning(interpretation_profile: dict[str, Any] | None) -> dict[str
         need_profile=need_profile,
         decision_context=decision_context,
     )
+    history_theme_secondary, history_theme_secondary_source = _resolve_history_theme_secondary(direction_profile)
     shrine_context_need, shrine_context_need_source = _resolve_shrine_context_need(
         need_profile=need_profile,
         constraint_profile=constraint_profile,
@@ -226,11 +249,13 @@ def translate_meaning(interpretation_profile: dict[str, Any] | None) -> dict[str
 
     return MeaningTranslationResult(
         history_theme=history_theme,
+        history_theme_secondary=history_theme_secondary,
         shrine_context_need=shrine_context_need,
         action_context=action_context,
         reflection_question_seed=reflection_question_seed,
         source={
             "history_theme": history_theme_source,
+            "history_theme_secondary": history_theme_secondary_source,
             "shrine_context_need": shrine_context_need_source,
             "action_context": action_context_source,
             "reflection_question_seed": reflection_question_seed_source,

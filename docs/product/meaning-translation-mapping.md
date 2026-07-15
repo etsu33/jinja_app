@@ -178,6 +178,14 @@ history_theme
 | 商売を伸ばしたい | 勝負 | 再出発 | 成長と変化 |
 | 自分を見つめ直したい | 静寂 | 学び | 内省と理解 |
 
+### 実装状況（Runtime変換）
+
+`backend/temples/services/meaning_translation.py`の`translate_meaning()`が、上記のprimary/secondaryを`history_theme` / `history_theme_secondary`として出力する。ただし現時点でsecondaryを生成できるのは、`state_profile.primary_state`が`tired` / `anxious` / `uncertain` / `stuck` / `ready_to_change`のいずれかに一致し、`direction_profile.themes`（`consultation_interpreter.DIRECTION_BY_STATE`）を経由した場合のみである。
+
+`need_profile` / `decision_context`経由の解決（`HISTORY_THEME_BY_NEED` / `HISTORY_THEME_BY_DECISION`）はprimaryの単一値のみを返し、secondaryは生成しない。上記表の全16行を機械的に再現するものではなく、対応関係は今後拡張しうる。
+
+`history_theme_secondary`はScore v3の`calculate_history_score`（副次一致=0.6）でのみ使用し、Recommendation ReasonのFact/Interpretation層には使用しない。
+
 ---
 
 ## ご利益からhistory_themeへの変換

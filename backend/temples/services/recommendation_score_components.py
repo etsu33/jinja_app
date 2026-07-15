@@ -153,12 +153,17 @@ def calculate_history_score(profile: dict[str, Any] | None) -> float:
     candidate_profile = _as_dict(data.get("candidate_profile"))
 
     translated_theme = translation_result.get("history_theme")
+    translated_theme_secondary = translation_result.get("history_theme_secondary")
     candidate_theme = candidate_profile.get("history_theme")
 
-    if not translated_theme or not candidate_theme:
+    if not candidate_theme or not (translated_theme or translated_theme_secondary):
         return 0.0
-    if translated_theme == candidate_theme:
+    if translated_theme and translated_theme == candidate_theme:
         return 1.0
+    # 副次候補（例: "疲れている" -> primary=静寂, secondary=復興）との一致は、
+    # 主値一致より弱いが不一致より強い中間値として扱う。
+    if translated_theme_secondary and translated_theme_secondary == candidate_theme:
+        return 0.6
     return 0.35
 
 
