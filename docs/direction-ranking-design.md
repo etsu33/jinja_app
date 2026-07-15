@@ -1,3 +1,12 @@
+> **Status: Reference**
+>
+> 本ドキュメントは、方角・吉方位を推薦ロジックの補助軸として扱うための将来設計を記録した補足資料である。
+>
+> 現行実装では、`backend/temples/services/concierge_chat_ranking.py`において、`direction_profile.luckyDirection`と候補神社の`direction` / `direction_tags`の一致を最大`0.02`の補助シグナルとして評価している。
+>
+> 一方、本書が定義する方角入力UI、吉方位計算、Direction Mode、`score_direction_angle`、`score_direction_protection`、`score_direction_kyusei`は現行実装と一致していない。
+>
+> 正確なRanking計算、Weight、入力、出力および適用条件は、関連するBackend実装とテストを最終的な正本とする。
 # Direction Ranking Design
 
 ## Goal
