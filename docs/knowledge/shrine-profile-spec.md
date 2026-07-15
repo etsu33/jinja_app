@@ -530,7 +530,7 @@ P0は、DB適用、Prompt反映、Recommendation v5等へ進む前の前提条�
 
 引き継ぎ先候補:
 
-- `docs/knowledge/meaning-layer-spec.md`
+- `docs/product/meaning-translation-mapping.md`
 - `docs/knowledge/reflection-guide.md`
 - `docs/knowledge/shrine-data-guide.md`
 - `docs/core/recommendation-readiness.md`
@@ -670,7 +670,6 @@ Recommendation ReadinessのLevel条件に従って段階的に扱う。
 
 - `docs/knowledge/README.md`
 - `docs/knowledge/shrine-data-guide.md`
-- `docs/knowledge/meaning-layer-spec.md`
 - `docs/knowledge/recommendation-copy-guide.md`
 - `docs/knowledge/action-guide.md`
 - `docs/knowledge/reflection-guide.md`

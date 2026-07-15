@@ -19,6 +19,9 @@
 - `core/meaning-layer.md`
   - 神社を「意味ある場所」として扱うための意味構造
 
+- `core/meaning-layer-connection.md`
+  - Meaning LayerとConsultation Interpretation / Composer / Recommendationの接続責務
+
 - `core/recommendation-readiness.md`
   - Recommendation品質・Coverage・Readiness判定の正本
 

@@ -14,7 +14,6 @@ KAMI MUSUBIらしい提案品質を維持するための正本とする。
 | --- | --- |
 | shrine-profile-spec.md | 神社知識モデルと推薦可能品質を定義 |
 | shrine-data-guide.md | 神社データの入力・出典・品質基準を定義 |
-| meaning-layer-spec.md | 事実を意味へ変換するルールを定義 |
 | recommendation-copy-guide.md | 推薦理由の文章構造を定義 |
 | action-guide.md | 行動提案の生成原則を定義 |
 | reflection-guide.md | 振り返りの問いと接続方法を定義 |
@@ -63,11 +62,12 @@ Knowledge Baseは以下の順序で更新する。
 
 1. shrine-profile-spec.md
 2. shrine-data-guide.md
-3. meaning-layer-spec.md
-4. recommendation-copy-guide.md
-5. action-guide.md
-6. reflection-guide.md
-7. glossary.md
+3. recommendation-copy-guide.md
+4. action-guide.md
+5. reflection-guide.md
+6. glossary.md
+
+Stored/Meaning変換の責務は`docs/product/meaning-translation-mapping.md`（history_themeの生成源）と`docs/core/recommendation-reason-contract.md`（Fact/Interpretation/Action）を正本とする。
 
 上流の仕様変更は、下流ドキュメントへ反映する。
 下流だけを更新し、上流仕様と矛盾する変更は禁止する。

@@ -1,5 +1,11 @@
 # History Theme Contract Audit
 
+> **Status: Reference**
+>
+> 本監査の結論（Stored / Runtime-Translated / Snapshotの概念区分、責務対応表、P0対応内容）は、`docs/product/meaning-translation-mapping.md`「history_themeの生成源」節へ正式仕様として統合済み。
+>
+> 本文書は、統合判断の経緯・調査過程の記録としてReference維持する。以後の仕様変更は`meaning-translation-mapping.md`側で行う。
+
 ## 目的
 
 `history_theme`という単一の物理名の裏に存在する複数の生成源（Stored / Runtime-Translated / Snapshot）を切り分け、Backend・Frontend・Docsそれぞれの責務と、現行実装がドキュメント上の定義と一致しているかを監査する。

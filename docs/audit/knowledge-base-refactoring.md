@@ -51,24 +51,24 @@ Claudeは禁止
 
 ## ステータス
 
-| 状態 | 意味 |
-|------|------|
-| ⬜ | 未着手 |
-| 🟨 | 作業中 |
-| 🟦 | レビュー待ち |
-| 🟩 | 完了 |
+| 状態 | 意味         |
+| ---- | ------------ |
+| ⬜   | 未着手       |
+| 🟨   | 作業中       |
+| 🟦   | レビュー待ち |
+| 🟩   | 完了         |
 
 ---
 
 # Progress
 
-| カテゴリ | 監査 | ChatGPTレビュー | 修正 | PR | Merge | 状態 | 備考 |
-|----------|:---:|:--------------:|:---:|:--:|:----:|:----:|------|
-| README / 管理文書 | 🟩 | 🟩 | 🟩 | 🟩 | 🟨 | 🟦 | README・監査文書の分類と役割境界を同期済み（PR #1986マージ済み, #1987レビュー待ち） |
-| Concierge | 🟩 | 🟩 | 🟩 | 🟩 | 🟨 | 🟦 | 現行正本・Reference・Archiveの責務整理済み（PR #1986マージ済み, #1987レビュー待ち） |
-| Taxonomy | 🟩 | ⬜ | 🟩 | 🟩 | 🟨 | 🟦 | Status表記・重複管理を確認、Meaning⇔Consultation Taxonomyの重複1件は判断保留（PR #1986マージ済み, #1987レビュー待ち） |
-| Visit / Reflection | 🟩 | ⬜ | 🟩 | 🟩 | 🟨 | 🟦 | Status表記付与・historyTheme命名揺れ（境界→縁）を修正（PR #1986マージ済み, #1987レビュー待ち） |
-| Archive | 🟩 | ⬜ | 🟩 | 🟩 | 🟨 | 🟦 | Archive4件のStatus表記・置き換え先参照・見出し名の紛らわしさを解消（PR #1986マージ済み, #1987レビュー待ち） |
+| カテゴリ           | 監査 | ChatGPTレビュー | 修正 | PR  | Merge | 状態 | 備考                                                                                                                  |
+| ------------------ | :--: | :-------------: | :--: | :-: | :---: | :--: | --------------------------------------------------------------------------------------------------------------------- |
+| README / 管理文書  |  🟩  |       🟩        |  🟩  | 🟩  |  🟨   |  🟦  | README・監査文書の分類と役割境界を同期済み（PR #1986マージ済み, #1987レビュー待ち）                                   |
+| Concierge          |  🟩  |       🟩        |  🟩  | 🟩  |  🟨   |  🟦  | 現行正本・Reference・Archiveの責務整理済み（PR #1986マージ済み, #1987レビュー待ち）                                   |
+| Taxonomy           |  🟩  |       ⬜        |  🟩  | 🟩  |  🟨   |  🟦  | Status表記・重複管理を確認、Meaning⇔Consultation Taxonomyの重複1件は判断保留（PR #1986マージ済み, #1987レビュー待ち） |
+| Visit / Reflection |  🟩  |       ⬜        |  🟩  | 🟩  |  🟨   |  🟦  | Status表記付与・historyTheme命名揺れ（境界→縁）を修正（PR #1986マージ済み, #1987レビュー待ち）                        |
+| Archive            |  🟩  |       ⬜        |  🟩  | 🟩  |  🟨   |  🟦  | Archive4件のStatus表記・置き換え先参照・見出し名の紛らわしさを解消（PR #1986マージ済み, #1987レビュー待ち）           |
 
 ---
 
@@ -195,14 +195,16 @@ Reference文書
 
 ### ChatGPT判断
 
-Concierge First全体仕様（`concierge-first-final-spec.md`）・Modeの責務（`concierge-modes.md`）・相談テーマの正本化（`consultation-theme-taxonomy.md`）は確定済み。Archive2件（`concierge-first.md`、`concierge-first-wireframe.md`）は現行仕様判断に使用しない。正本2件へのStatus表記追加、Reference4件のTODO・次PR候補除去、Archive参照の整合をもって、Conciergeカテゴリの責務分離は完了とする。
+Concierge
+First全体仕様（`concierge-first-final-spec.md`）・Modeの責務（`concierge-modes.md`）・相談テーマの正本化（`consultation-theme-taxonomy.md`）は確定済み。Archive2件（`concierge-first.md`、`concierge-first-wireframe.md`）は現行仕様判断に使用しない。正本2件へのStatus表記追加、Reference4件のTODO・次PR候補除去、Archive参照の整合をもって、Conciergeカテゴリの責務分離は完了とする。
 
 ### 修正内容
 
 【再監査結果（PASS / WARNING / FAIL）の反映】
 
 - FAIL（`concierge-entry-final-wireframe.md`／`concierge-filter-area.md`／`need-mode-ui-flow.md`／`compat-mode-ui-flow.md`にTODO・次PR候補が残存し、台帳の「除外済み」記載と矛盾）: 解消。4ファイルとも`Status: Reference`バナーを保持し、TODO・次PR候補セクションは存在しないことをgrepで再確認済み。
-- WARNING（`concierge-entry-final-wireframe.md`／`concierge-filter-area.md`の一部にMarkdownのコードブロックが閉じられておらず、見出し・箇条書き・表が未整形のまま残存）: `concierge-entry-final-wireframe.md`と`compat-mode-ui-flow.md`のコードブロック未クローズを修正し、`##`/`###`見出し・表・コードブロックを他ファイルと同じ規約へ復元。
+- WARNING（`concierge-entry-final-wireframe.md`／`concierge-filter-area.md`の一部にMarkdownのコードブロックが閉じられておらず、見出し・箇条書き・表が未整形のまま残存）:
+  `concierge-entry-final-wireframe.md`と`compat-mode-ui-flow.md`のコードブロック未クローズを修正し、`##`/`###`見出し・表・コードブロックを他ファイルと同じ規約へ復元。
 - WARNING（相談テーマ8項目が`consultation-theme-taxonomy.md`と`concierge-entry-final-wireframe.md`／`need-mode-ui-flow.md`に重複掲載）: 解消。両Reference文書とも一覧を保持せず`consultation-theme-taxonomy.md`へ委譲する記述に統一済みであることを確認。
 - WARNING（Archive化済み`concierge-first.md`への参照が`meaning-translation-mapping.md`／`concierge-modes.md`／`explore-integration-design.md`に残存）: 解消。3ファイルの関連ドキュメント・責務境界表の参照先を`concierge-first-final-spec.md`へ変更。
 - WARNING（`action_suggestion_v4.md`の関連ドキュメントに自己参照）: 解消。自己参照行を削除。
@@ -234,7 +236,8 @@ Concierge First全体仕様（`concierge-first-final-spec.md`）・Modeの責務
 
 【PASS / WARNING / FAIL】
 
-- `consultation-theme-taxonomy.md`: PASS（Status表記・正本責務・TODO/PR候補なし・重複管理なし・関連ドキュメント・更新ルールすべて確認済み）
+- `consultation-theme-taxonomy.md`:
+  PASS（Status表記・正本責務・TODO/PR候補なし・重複管理なし・関連ドキュメント・更新ルールすべて確認済み）
 - `history-theme-taxonomy.md`: PASS（同上）
 - `visit-style-taxonomy.md`: PASS（Status: Reference、TODO/PR候補なし、参拝スタイル一覧の一次情報源として重複なし）
 - `meaning-translation-mapping.md`: WARNING（下記「重複管理」参照）
@@ -271,7 +274,8 @@ Concierge First全体仕様（`concierge-first-final-spec.md`）・Modeの責務
 
 【PASS / WARNING / FAIL】
 
-- `visit-reflection-flow.md`: PASS（正本、TODO/PR候補なし、Event/Payload契約・保存責務が明確）。Status表記が欠落していたためFAIL相当だったが本対応で解消。
+- `visit-reflection-flow.md`:
+  PASS（正本、TODO/PR候補なし、Event/Payload契約・保存責務が明確）。Status表記が欠落していたためFAIL相当だったが本対応で解消。
 - `reflection-funnel-dashboard.md`: WARNING → 解消。以下の問題を修正。
   - Status表記が欠落していた（Reference文書として付与）
   - `## 更新ルール`節が存在しなかった（他文書と同じ規約で追加）
@@ -279,7 +283,8 @@ Concierge First全体仕様（`concierge-first-final-spec.md`）・Modeの責務
 
 ### ChatGPT判断
 
-`visit-reflection-flow.md`はPASS。`reflection-funnel-dashboard.md`のStatus表記欠落・historyTheme命名揺れ・更新ルール欠如はすべて解消済み。Visit / Reflectionカテゴリの責務分離は完了とする。
+`visit-reflection-flow.md`はPASS。`reflection-funnel-dashboard.md`のStatus表記欠落・historyTheme命名揺れ・更新ルール欠如はすべて解消済み。Visit
+/ Reflectionカテゴリの責務分離は完了とする。
 
 ### 修正内容
 
@@ -302,16 +307,19 @@ Concierge First全体仕様（`concierge-first-final-spec.md`）・Modeの責務
 - action-suggestion-layer.md
 - product-doc-consolidation.md
 
-（旧版では`home-hero-final-wireframe.md`と「その他Archive候補」を対象に含めていたが、`home-hero-final-wireframe.md`は実際にはReference分類のため対象から除外し、README.md・product-document-audit.mdが確定しているArchive4件へ同期した）
+（旧版では`home-hero-final-wireframe.md`と「その他Archive」を対象に含めていたが、`home-hero-final-wireframe.md`は実際にはReference分類のため対象から除外し、README.md・product-document-audit.mdが確定しているArchive4件へ同期した）
 
 ### 監査結果
 
 【PASS / WARNING / FAIL】
 
-- `concierge-first.md`: PASS（`Status: Archive`明記、現行仕様への置き換え先明記）。WARNING（「## 現行仕様」という見出し名がArchive方針と紛らわしい）→解消済み：見出しを「## 現在の正本」へ変更し、あわせて本文中の改行崩れ（「KAMI\nMUSUBI」）も修正。
-- `concierge-first-wireframe.md`: PASS。同様のWARNING（「## 現行仕様」見出し名）→解消済み：見出しを「## 現在の正本」へ変更。
+- `concierge-first.md`:
+  PASS（`Status: Archive`明記、現行仕様への置き換え先明記）。WARNING（「## 現行仕様」という見出し名がArchive方針と紛らわしい）→解消済み：見出しを「## 現在の正本」へ変更し、あわせて本文中の改行崩れ（「KAMI\nMUSUBI」）も修正。
+- `concierge-first-wireframe.md`:
+  PASS。同様のWARNING（「## 現行仕様」見出し名）→解消済み：見出しを「## 現在の正本」へ変更。
 - `action-suggestion-layer.md`: PASS（`Status: Archive`、Archive理由表、現行正本一覧が明確）。WARNINGなし。
-- `product-doc-consolidation.md`: PASS（`Status: Archive`、置き換え先明記）。WARNING（「## 統合方針」という同名見出しが本文中に2箇所存在）→解消済み：「## 現在の参照先」（フロー図）と「## 統合ルール」（方針一覧）へ分離。加えてコードブロックが閉じられずMarkdownが崩れていた箇所を修正。
+- `product-doc-consolidation.md`:
+  PASS（`Status: Archive`、置き換え先明記）。WARNING（「## 統合方針」という同名見出しが本文中に2箇所存在）→解消済み：「## 現在の参照先」（フロー図）と「## 統合ルール」（方針一覧）へ分離。加えてコードブロックが閉じられずMarkdownが崩れていた箇所を修正。
 
 4ファイルとも、TODO・次PR候補の残存はgrepで確認し該当なし。現行仕様判断への使用を禁止する旨と置き換え先は、いずれも冒頭Statusブロックに明記済み。
 
