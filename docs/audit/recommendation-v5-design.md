@@ -4,11 +4,12 @@
 >
 > 本ドキュメントは、未実装のv5設計と次PR候補を含む将来計画である。
 >
-> 現行の推薦契約は `docs/product/recommendation-reason-v4-contract.md` を正本とする。
+> 現行のRecommendation Reason契約は `docs/core/recommendation-reason-contract.md` を正本とする。
 
 ## 目的
 
-Recommendation v5 は、推薦順位を急に変更する実装ではなく、相談解釈・意味変換・行動シグナル・振り返りシグナルを整理し、次の推薦改善に向けた設計方針を固定する。
+Recommendation
+v5 は、推薦順位を急に変更する実装ではなく、相談解釈・意味変換・行動シグナル・振り返りシグナルを整理し、次の推薦改善に向けた設計方針を固定する。
 
 現時点では Score v3 が shadow mode で評価中のため、v5では active score の変更は行わない。
 
@@ -158,13 +159,13 @@ meaning translation は以下の順に整理する。
 
 behavior を関心段階として整理する。
 
-| action | 意味 |
-| --- | --- |
-| detail_view | 興味あり |
-| route_open | 行く可能性あり |
-| save | 保留・比較・再検討 |
-| visit_done | 実行済み |
-| reflection_saved | 体験後の意味化 |
+| action           | 意味               |
+| ---------------- | ------------------ |
+| detail_view      | 興味あり           |
+| route_open       | 行く可能性あり     |
+| save             | 保留・比較・再検討 |
+| visit_done       | 実行済み           |
+| reflection_saved | 体験後の意味化     |
 
 ### 改善候補
 
@@ -200,12 +201,12 @@ behavior を関心段階として整理する。
 
 reflection は「参拝後の状態変化」として扱う。
 
-| state_change | 次回推薦方針 |
-| --- | --- |
-| improved | 少し前進するテーマを提案 |
-| unchanged | 同系統または守り・静寂を維持 |
-| worsened | 負荷を下げ、静寂・守りへ戻す |
-| unknown | 通常推薦に補助情報として扱う |
+| state_change | 次回推薦方針                 |
+| ------------ | ---------------------------- |
+| improved     | 少し前進するテーマを提案     |
+| unchanged    | 同系統または守り・静寂を維持 |
+| worsened     | 負荷を下げ、静寂・守りへ戻す |
+| unknown      | 通常推薦に補助情報として扱う |
 
 ### 改善候補
 

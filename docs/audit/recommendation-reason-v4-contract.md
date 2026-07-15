@@ -1,4 +1,11 @@
+> **Status: Archive**
+>
+> 本ドキュメントは、Recommendation Reason v4導入時点の責務、入力、出力、実装計画およびActive化条件を記録した過去設計である。
+>
+> 現行のRecommendation Reasonに関するInput / Output / 保存 / 表示 / 互換責務は、`docs/core/recommendation-reason-contract.md`を正本とする。
+
 # Recommendation Reason v4 Contract
+
 
 ## Goal
 
