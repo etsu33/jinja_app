@@ -670,3 +670,7 @@ Search相当の探索機能に触れているが、Mode名としての実装対�
 2. `docs/core`4文書の「正本ドキュメント」委譲先も同様にArchive文書を指している
 
 これらは`docs/product`内部の分類には影響しないが、リポジトリ入口としての参照整合性に関わるため、A8以降での修正を推奨する。Delete候補として`action-suggestion-layer.md`・`product-doc-consolidation.md`の2文書を提示するが、最終判断はユーザー確認後に確定する。
+
+### A8以降の進捗
+
+参照切れ2件（root `README.md`の3箇所、`docs/core`4文書）は`docs/audit/archive-final-classification.md`（A8）で修正済み。root直下Archive候補21ファイルの物理移動・Delete候補3件の最終確認・実行計画は同文書を参照する。

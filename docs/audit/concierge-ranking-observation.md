@@ -1,5 +1,11 @@
 # Concierge Ranking Observation
 
+> **Status: Archive**
+>
+> 本ドキュメントは、Ranking WeightとCandidate Poolの観測履歴を記録したArchive文書である。
+>
+> 現行のRanking実装は `docs/audit/recommendation-quality-score-v3-audit.md` を参照する。
+
 ## 現在のranking構造
 
 実際の並び順は `breakdown.score_total` ではなく、内部値 `_score_total` で決まる。

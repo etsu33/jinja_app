@@ -2,6 +2,12 @@
 
 # Access Tier Copy Audit
 
+> **Status: Archive**
+>
+> 本ドキュメントは、Access Tier Copy接続時点の判断とTODOを記録したArchive文書である。
+>
+> 現行のAccess Tier判定・Paywall責務は `docs/product/billing-paywall.md` を正本とする。
+
 ## ConciergeResult Premium card 接続方針
 
 ### ゴール

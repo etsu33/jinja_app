@@ -2,6 +2,12 @@
 
 # ShrineDetail policy 接続監査
 
+> **Status: Archive**
+>
+> 本ドキュメントは、Shrine Detailのカード接続候補と優先順位を整理した時点監査である。
+>
+> Context Reason・Personal Meaning・Saved Recordの責務は `docs/product/shrine-detail-layer.md` を正本とする。
+
 最終更新: 2026-05-18  
 対象: ShrineDetail / ContextReason / PersonalMeaning / SavedRecord
 

@@ -1,5 +1,11 @@
 # Recommendation v5 Design
 
+> **Status: Archive**
+>
+> 本ドキュメントは、未実装のv5設計と次PR候補を含む将来計画である。
+>
+> 現行の推薦契約は `docs/product/recommendation-reason-v4-contract.md` を正本とする。
+
 ## 目的
 
 Recommendation v5 は、推薦順位を急に変更する実装ではなく、相談解釈・意味変換・行動シグナル・振り返りシグナルを整理し、次の推薦改善に向けた設計方針を固定する。

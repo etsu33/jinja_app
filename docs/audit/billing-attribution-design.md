@@ -2,6 +2,12 @@
 
 # Billing Attribution Design
 
+> **Status: Archive**
+>
+> 本ドキュメントは、Card AnalyticsからCheckoutまでのAttribution課題・候補案を整理した時点設計である。
+>
+> 現行の課金判定は `docs/product/billing-paywall.md` を正本とする。
+
 最終更新: 2026-05-19  
 対象: billing funnel / premium click attribution / card analytics
 

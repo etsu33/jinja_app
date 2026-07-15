@@ -66,8 +66,6 @@ action_suggestion_v4.md
 |---|---|
 | `concierge-first.md` | Concierge First 初期設計 |
 | `concierge-first-wireframe.md` | 初期ワイヤーフレーム |
-| `action-suggestion-layer.md` | Action Suggestion 初期設計 |
-| `product-doc-consolidation.md` | Google Docs統合作業履歴 |
 
 ---
 

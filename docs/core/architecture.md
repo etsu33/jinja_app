@@ -313,7 +313,7 @@ SessionAuthentication は依存監査が完了するまで即削除しない。
 
 詳細仕様は以下へ分離する。
 
-- Concierge First：`docs/product/concierge-first.md`
+- Concierge First：`docs/product/concierge-first-final-spec.md`
 - Concierge Modes：`docs/product/concierge-modes.md`
 - Explore：`docs/product/explore-integration-design.md`
 - Meaning Layer：`docs/core/meaning-layer.md`

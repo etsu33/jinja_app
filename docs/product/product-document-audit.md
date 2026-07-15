@@ -21,8 +21,8 @@
 |---|---:|---|
 | 正本 | 8 | READMEを入口に、体験、モード、分類体系、意味変換、参拝後導線、Action契約を維持する |
 | Reference | 9 | UI詳細、補助条件、分析、Explore設計、本監査表として正本を補足する |
-| Archive | 4 | 過去の設計過程や統合作業メモとして保持し、現行判断には使わない |
-| Delete | 0 | 現時点で追加の削除対象は未確定 |
+| Archive | 2 | 過去の設計過程を記録として保持し、現行判断には使わない |
+| Delete | 2（削除済み） | `action-suggestion-layer.md`・`product-doc-consolidation.md`は責務が現行文書へ完全移行済みのため削除した |
 
 ---
 
@@ -88,8 +88,6 @@ UIワイヤー、補助条件、分析、Explore設計は、正本を補足す�
 | `product-document-audit.md` | Reference | `docs/product` の分類と整理判断を記録する管理資料であり、プロダクト仕様そのものではないため。 | `README.md`, `concierge-first-final-spec.md`, `meaning-translation-mapping.md` | なし |
 | `concierge-first.md` | Archive | Concierge First方針の初期設計として履歴価値はあるが、現行内容は `concierge-first-final-spec.md` へ統合されているため。 | `concierge-first-final-spec.md`, `concierge-modes.md` | `concierge-first-final-spec.md` |
 | `concierge-first-wireframe.md` | Archive | Top / Concierge統合前後の検討過程として価値はあるが、現行UI判断には使用しないため。 | `home-hero-final-wireframe.md`, `concierge-entry-final-wireframe.md`, `concierge-first-final-spec.md` | `concierge-first-final-spec.md` |
-| `product-doc-consolidation.md` | Archive | Google Docsおよびリポジトリ文書の統合作業メモであり、現行仕様判断には使用しないため。 | `README.md`, `concierge-first-final-spec.md` | `README.md` |
-| `action-suggestion-layer.md` | Archive | 過去のAction Suggestion設計として履歴価値はあるが、現行契約は `action_suggestion_v4.md` が担うため。 | `meaning-translation-mapping.md`, `visit-reflection-flow.md`, `action_suggestion_v4.md` | `action_suggestion_v4.md` |
 
 ---
 
@@ -116,6 +114,8 @@ history-theme-action-mapping.md
 | `history_theme` からAction・Reflectionへの接続 | `meaning-translation-mapping.md` |
 
 `shrine-classification-policy.md` も神社分類方針へ吸収済みのため削除した。
+
+`action-suggestion-layer.md`（Action Suggestionの旧責務は`action_suggestion_v4.md`・`meaning-translation-mapping.md`・`visit-reflection-flow.md`へ移行済み）・`product-doc-consolidation.md`（Google Docs統合作業の履歴メモ）は、独自情報・参照元がともに残っていないことを`docs/audit/archive-final-classification.md`（A8）で確認し、削除した。
 
 削除済み文書の変更経緯はGit履歴およびPRで追跡する。
 

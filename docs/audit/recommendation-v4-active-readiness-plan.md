@@ -2,6 +2,12 @@
 
 # Recommendation v4 Active Readiness Plan
 
+> **Status: Archive**
+>
+> 本ドキュメントは、Active化判断・観測条件・Rollback・Implementation Phaseを含む時点計画である。
+>
+> Active化GuardrailとRollback条件は、現行のRecommendation実装・監査文書を正本とする。
+
 ## Goal
 
 Recommendation v4 / Score v3 を Active 化する前に、Shadow Mode の実測、CVR計測、重み調整、Active化条件を固定する。

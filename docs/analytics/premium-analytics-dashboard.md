@@ -1,5 +1,11 @@
 # Premium Analytics Dashboard 設計
 
+> **Status: Archive**
+>
+> 本ドキュメントは、Dashboard・AB Test・後続実装計画を記録した時点設計である。
+>
+> 現行のPremium体験境界は `docs/product/premium-experience.md` を正本とする。
+
 最終更新: 2026-05-18  
 対象: Premium / card analytics / funnel / CTR / favorite correlation
 

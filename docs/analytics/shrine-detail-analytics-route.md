@@ -1,5 +1,11 @@
 # Shrine Detail Analytics Route
 
+> **Status: Archive**
+>
+> 本ドキュメントは、Shrine Detail Analytics導入時のEvent棚卸しと次PR計画を記録した時点設計である。
+>
+> 現行のShrine Detail仕様は `docs/product/shrine-detail-layer.md` を正本とする。
+
 最終更新: 2026-05-18
 
 ---

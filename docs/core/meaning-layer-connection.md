@@ -177,7 +177,7 @@ Meaning Layer 自体は Snapshot の保存責務を持たない。
 
 - `docs/core/architecture.md`
 - `docs/core/meaning-layer.md`
-- `docs/product/concierge-first.md`
+- `docs/product/concierge-first-final-spec.md`
 - `docs/product/concierge-modes.md`
 - `docs/shrine-detail-layer.md`
 - `docs/premium-experience.md`

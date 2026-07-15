@@ -2,6 +2,12 @@
 
 # Analytics Event Storage Audit
 
+> **Status: Archive**
+>
+> 本ドキュメントは、Analytics保存先とProvider接続状況を確認した時点監査である。
+>
+> 現行のAnalytics実装は `apps/web/src/lib/analytics/providers.ts` 等を正本とする。
+
 最終更新: 2026-05-18  
 対象: analytics / billing funnel / shrine detail card events
 

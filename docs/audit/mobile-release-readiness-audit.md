@@ -2,6 +2,12 @@
 
 # Mobile Release Readiness Audit
 
+> **Status: Archive**
+>
+> 本ドキュメントは、Mobile Release前提のチェックリストと進捗を記録した時点監査である。
+>
+> EAS・実機・API・認証のRelease条件は、現行の実装・運用ドキュメントを正本とする。
+
 ## 目的
 
 神社_APP のモバイル版を本番配布へ進める前に、主要導線・API接続・認証・EAS移行準備の未完了項目を整理する。

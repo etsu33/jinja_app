@@ -2,6 +2,12 @@
 
 # HistoryShift / DeepReflection 分離監査
 
+> **Status: Archive**
+>
+> 本ドキュメントは、Premium Cardの責務分離を検討した時点監査である。
+>
+> 現行のPremium体験境界は `docs/product/premium-experience.md`（Previous Comparison / History Shift / Deep Reflectionの責務）を正本とする。
+
 最終更新: 2026-05-18  
 対象: `PremiumStateDeltaCard` / `previous_comparison` / `history_shift` / `deep_reflection`
 

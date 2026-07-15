@@ -222,7 +222,7 @@ AIによって意味を整理し、
 本レイヤーの詳細仕様は以下を正本とする。
 
 - `docs/core/architecture.md`
-- `docs/product/concierge-first.md`
+- `docs/product/concierge-first-final-spec.md`
 - `docs/product/concierge-modes.md`
 - `docs/shrine-detail-layer.md`
 - `docs/premium-experience.md`

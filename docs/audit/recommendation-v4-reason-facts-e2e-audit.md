@@ -2,6 +2,12 @@
 
 # Recommendation v4 reason_facts Backend E2E Audit
 
+> **Status: Archive**
+>
+> 本ドキュメントは、reason_factsのBackend E2Eと不足Testを確認した時点監査である。
+>
+> Field Responsibility・Primary Reason・E2E契約は `recommendation-reason-v4-contract.md` を正本とする。
+
 ## Goal
 
 Recommendation v4 Phase2 における `reason_facts` の backend E2E 責務を整理する。

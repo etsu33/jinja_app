@@ -2,6 +2,12 @@
 
 # Recommendation v4 Explanation Audit
 
+> **Status: Archive**
+>
+> 本ドキュメントは、Explanationレイヤーの実装状態と境界を確認した時点監査である。
+>
+> Reason・Explanation・Action・reason_factsの責務境界は `docs/product/action_suggestion_v4.md` および `recommendation-reason-v4-contract.md` を正本とする。
+
 ## Goal
 
 Recommendation v4 Phase2 における `explanation` レイヤーの責務、入力、出力、`recommendation_reason_v4` / `action_suggestion_v4` / `reason_facts` との境界を整理する。

@@ -1,5 +1,11 @@
 # Journey Timeline API Plan
 
+> **Status: Archive**
+>
+> 本ドキュメントは、Journey Timeline APIのPhase計画・Backend/Mobile変更候補を含む時点設計である。
+>
+> 現行の設計思想は `docs/product/journey-timeline-design.md` を参照する。
+
 ## 1. Goal
 ## 2. Current Data Sources
 ## 3. MVP Policy

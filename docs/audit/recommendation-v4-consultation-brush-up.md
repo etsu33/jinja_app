@@ -1,5 +1,11 @@
 # Recommendation v4 / Consultation Brush-up
 
+> **Status: Archive**
+>
+> 本ドキュメントは、Consultation改善作業のScope・KPIを整理した短期計画である。
+>
+> Scope記載の各Profile項目は `backend/temples/services/consultation_interpreter.py` 等の実装を正本とする。
+
 ## Goal
 
 相談文の解釈精度と推薦理由の深さを改善し、detail_open_rate / save_rate / route_open_rate / reflection_saved_rate の改善につなげる。
