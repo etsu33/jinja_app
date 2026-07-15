@@ -76,6 +76,24 @@ def test_calculate_history_score_returns_partial_score_when_both_themes_exist_bu
     assert calculate_history_score(profile) == 0.35
 
 
+def test_calculate_history_score_returns_mid_score_when_secondary_theme_matches():
+    profile = _profile()
+    profile["translation_result"]["history_theme"] = "静寂"
+    profile["translation_result"]["history_theme_secondary"] = "復興"
+    profile["candidate_profile"]["history_theme"] = "復興"
+
+    assert calculate_history_score(profile) == 0.6
+
+
+def test_calculate_history_score_prefers_primary_match_over_secondary():
+    profile = _profile()
+    profile["translation_result"]["history_theme"] = "再出発"
+    profile["translation_result"]["history_theme_secondary"] = "再出発"
+    profile["candidate_profile"]["history_theme"] = "再出発"
+
+    assert calculate_history_score(profile) == 1.0
+
+
 def test_calculate_recommendation_score_components_returns_stable_schema():
     result = calculate_recommendation_score_components(_profile())
 

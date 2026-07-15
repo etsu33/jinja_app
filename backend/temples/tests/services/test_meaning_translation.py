@@ -23,21 +23,63 @@ def test_translate_meaning_returns_stable_schema_from_interpretation_profile():
 
     assert set(result.keys()) == {
         "history_theme",
+        "history_theme_secondary",
         "shrine_context_need",
         "action_context",
         "reflection_question_seed",
         "source",
     }
     assert result["history_theme"] == "再出発"
+    assert result["history_theme_secondary"] is None
     assert result["shrine_context_need"] == "仕事や進路の流れを見直したい"
     assert result["action_context"] == "実際に足を運び、今の状態を確認する"
     assert result["reflection_question_seed"] == "次に小さく動かすなら、何から始めますか？"
     assert result["source"] == {
         "history_theme": "direction_profile.direction",
+        "history_theme_secondary": "fallback.none",
         "shrine_context_need": "need_profile.primary_need_tag",
         "action_context": "action_intent.intent",
         "reflection_question_seed": "history_theme",
     }
+
+
+def test_translate_meaning_resolves_secondary_history_theme_from_direction_profile_themes():
+    """direction_profile.themes（DIRECTION_BY_STATE由来）の2番目の値を副次候補として拾う。
+
+    例: "疲れている"(tired) は state_profile.primary_state 経由で
+    themes=["静寂", "復興"] を持つが、主値の解決はHISTORY_THEME_BY_DIRECTIONのみを見るため、
+    "復興"はこれまでどこにも現れなかった（history-theme-contract-audit.mdのP0）。
+    """
+    result = translate_meaning(
+        {
+            "need_profile": {},
+            "direction_profile": {
+                "direction": "rest",
+                "themes": ["静寂", "復興"],
+            },
+            "action_intent": {},
+        }
+    )
+
+    assert result["history_theme"] == "静寂"
+    assert result["history_theme_secondary"] == "復興"
+    assert result["source"]["history_theme_secondary"] == "direction_profile.themes"
+
+
+def test_translate_meaning_secondary_history_theme_is_none_when_themes_has_one_item():
+    result = translate_meaning(
+        {
+            "need_profile": {},
+            "direction_profile": {
+                "direction": "reset",
+                "themes": ["再出発"],
+            },
+            "action_intent": {},
+        }
+    )
+
+    assert result["history_theme_secondary"] is None
+    assert result["source"]["history_theme_secondary"] == "fallback.none"
 
 
 def test_translate_meaning_falls_back_to_need_when_direction_is_missing():
@@ -153,11 +195,13 @@ def test_translate_meaning_handles_empty_profile_safely():
 
     assert result == {
         "history_theme": None,
+        "history_theme_secondary": None,
         "shrine_context_need": None,
         "action_context": None,
         "reflection_question_seed": None,
         "source": {
             "history_theme": "fallback.none",
+            "history_theme_secondary": "fallback.none",
             "shrine_context_need": "fallback.none",
             "action_context": "fallback.none",
             "reflection_question_seed": "fallback.none",
