@@ -2,7 +2,8 @@
 
 ## Goal
 
-Recommendation v4 Copy Guideline は、Recommendation Reason v4 の推薦理由を、ユーザーが理解しやすく、行動につながりやすい文面に整えるためのコピー品質ルールである。
+Recommendation v4 Copy Guideline は、Recommendation Reason
+v4 の推薦理由を、ユーザーが理解しやすく、行動につながりやすい文面に整えるためのコピー品質ルールである。
 
 このガイドラインは以下を目的とする。
 
@@ -22,7 +23,7 @@ Recommendation v4 Copy Guideline は、Recommendation Reason v4 の推薦理由�
 - `fact`
 - `interpretation`
 - `action`
-- `docs/recommendation-reason-v4-contract.md`
+- `docs/core/recommendation-reason-contract.md`
 - `docs/recommendation-v4-interpreter-contract.md`
 
 ## Non Goals
@@ -70,27 +71,33 @@ Recommendation Reason v4 は「構造化データ → 自然文」の変換層�
 ### state_profile
 
 目的:
+
 - 現在状態を自然文へ変換する
 
 ルール:
+
 - 状態を断定しない
 - 「〜が含まれる相談」「〜という様子がうかがえる」程度に留める
 - 心理診断のような表現を避ける
 
 良い例:
+
 - 今回の相談には、判断に迷う様子が含まれています。
 - 少し立ち止まって整理したい文脈が見受けられます。
 
 避ける例:
+
 - あなたは迷っています。
 - あなたは疲れています。
 
 ### direction_profile
 
 目的:
+
 - 推薦方向を history_theme へ接続する
 
 ルール:
+
 - direction は直接表示しない
 - history_theme に自然変換する
 - 同じ theme を本文で繰り返さない
@@ -98,9 +105,11 @@ Recommendation Reason v4 は「構造化データ → 自然文」の変換層�
 ### emotion_profile
 
 目的:
+
 - 文体の強さを調整する
 
 ルール:
+
 - 情報は増やさない
 - 断定を弱める
 - 「考えられます」「受け取れます」「〜という文脈があります」を優先する
@@ -227,16 +236,16 @@ Action Layer は、次に取れる小さな行動を提示する。
 
 `consultation_axis` は実装上の単一フィールドではなく、Recommendation v4 で利用する相談解釈フィールド群の総称として扱う。
 
-| consultation_axis 相当 | 実装名 | 役割 | Copy Rule |
-|---|---|---|---|
-| 相談テーマ | need_profile | 何に悩んでいるか | ユーザー向けの自然語に変換する |
-| 判断文脈 | decision_context | 何を決めようとしているか | 「〜を見直したい相談」として表現する |
-| 制約 | constraint_profile | 何が制約になっているか | 「〜が気になっている文脈」と弱く表現する |
-| 着地点 | outcome_hint | どうなりたいか | 「〜したい方向」として表現する |
-| 行動意図 | action_intent | 次に何をしたいか | 小さな行動に変換する |
-| 現在状態 | state_profile | 今の心理・行動状態 | 断定せず「〜が含まれる」と表現する |
-| 推薦方向 | direction_profile | 提案する参拝体験の方向 | history_theme に接続する |
-| 感情トーン | emotion_profile | 感情の強度・傾向 | 文体の強さを調整する |
+| consultation_axis 相当 | 実装名             | 役割                     | Copy Rule                                |
+| ---------------------- | ------------------ | ------------------------ | ---------------------------------------- |
+| 相談テーマ             | need_profile       | 何に悩んでいるか         | ユーザー向けの自然語に変換する           |
+| 判断文脈               | decision_context   | 何を決めようとしているか | 「〜を見直したい相談」として表現する     |
+| 制約                   | constraint_profile | 何が制約になっているか   | 「〜が気になっている文脈」と弱く表現する |
+| 着地点                 | outcome_hint       | どうなりたいか           | 「〜したい方向」として表現する           |
+| 行動意図               | action_intent      | 次に何をしたいか         | 小さな行動に変換する                     |
+| 現在状態               | state_profile      | 今の心理・行動状態       | 断定せず「〜が含まれる」と表現する       |
+| 推薦方向               | direction_profile  | 提案する参拝体験の方向   | history_theme に接続する                 |
+| 感情トーン             | emotion_profile    | 感情の強度・傾向         | 文体の強さを調整する                     |
 
 ## Internal Key Copy Mapping
 
@@ -244,50 +253,50 @@ Action Layer は、次に取れる小さな行動を提示する。
 
 ### need_profile
 
-| key | User-facing copy |
-|---|---|
-| mental | 気持ちを落ち着け、今の状態を整理したい |
-| rest | 疲れを整え、静かに回復したい |
-| career | 仕事や働き方を見直したい |
-| money | 生活や収入の土台を整えたい |
-| love | 人との縁や関係性を見直したい |
-| study | 学びや積み重ねを続けたい |
-| courage | 次に進むための一歩を決めたい |
+| key     | User-facing copy                       |
+| ------- | -------------------------------------- |
+| mental  | 気持ちを落ち着け、今の状態を整理したい |
+| rest    | 疲れを整え、静かに回復したい           |
+| career  | 仕事や働き方を見直したい               |
+| money   | 生活や収入の土台を整えたい             |
+| love    | 人との縁や関係性を見直したい           |
+| study   | 学びや積み重ねを続けたい               |
+| courage | 次に進むための一歩を決めたい           |
 
 ### decision_context
 
-| key | User-facing copy |
-|---|---|
-| career_decision | 仕事や働き方について判断したい |
-| relationship_decision | 人との関係について見直したい |
-| money_decision | お金や生活の判断を整えたい |
-| rest_or_action | 休むか動くかを見極めたい |
+| key                   | User-facing copy               |
+| --------------------- | ------------------------------ |
+| career_decision       | 仕事や働き方について判断したい |
+| relationship_decision | 人との関係について見直したい   |
+| money_decision        | お金や生活の判断を整えたい     |
+| rest_or_action        | 休むか動くかを見極めたい       |
 
 ### constraint_profile
 
-| key | User-facing copy |
-|---|---|
-| time | 時間の余裕が少ない |
-| money | お金や収入への不安がある |
-| energy | 体力や気力が落ちている |
-| relationship | 人間関係の制約がある |
+| key          | User-facing copy         |
+| ------------ | ------------------------ |
+| time         | 時間の余裕が少ない       |
+| money        | お金や収入への不安がある |
+| energy       | 体力や気力が落ちている   |
+| relationship | 人間関係の制約がある     |
 
 ### outcome_hint
 
-| key | User-facing copy |
-|---|---|
-| decide | 判断材料を持ち帰りたい |
-| calm | 気持ちを落ち着けたい |
-| move_forward | 小さく前に進みたい |
-| clarify | 考えを整理したい |
+| key          | User-facing copy       |
+| ------------ | ---------------------- |
+| decide       | 判断材料を持ち帰りたい |
+| calm         | 気持ちを落ち着けたい   |
+| move_forward | 小さく前に進みたい     |
+| clarify      | 考えを整理したい       |
 
 ### action_intent
 
-| key | User-facing copy |
-|---|---|
-| visit | 実際に足を運んで確認したい |
-| reflect | 問いを一つに絞って整理したい |
-| save | 今回の相談を残して振り返りたい |
+| key     | User-facing copy               |
+| ------- | ------------------------------ |
+| visit   | 実際に足を運んで確認したい     |
+| reflect | 問いを一つに絞って整理したい   |
+| save    | 今回の相談を残して振り返りたい |
 
 ## recommendation_reason_v4 Copy Rule
 
@@ -470,14 +479,14 @@ Action は、小さく、実行単位で書く。
 
 Recommendation Quality Audit では、以下の観点で評価する。
 
-| Metric | Meaning | Target |
-|---|---|---|
-| reason_depth | 推薦理由の深さ | 神社事実 + 相談文脈 + 行動が入っている |
-| action_specificity | 行動提案の具体性 | 参拝前 / 中 / 後のどれかが明確 |
-| history_theme_fit | history_theme との整合 | 相談軸とテーマが矛盾しない |
-| semantic_duplication | 意味重複 | 同じ単語・同じ意味を繰り返さない |
-| shrine_specificity | 神社固有性 | 神社名 / ご利益 / history_theme のいずれかが入る |
-| consultation_fit | 相談文脈との整合 | need / decision / constraint / outcome のいずれかが反映される |
+| Metric               | Meaning                | Target                                                        |
+| -------------------- | ---------------------- | ------------------------------------------------------------- |
+| reason_depth         | 推薦理由の深さ         | 神社事実 + 相談文脈 + 行動が入っている                        |
+| action_specificity   | 行動提案の具体性       | 参拝前 / 中 / 後のどれかが明確                                |
+| history_theme_fit    | history_theme との整合 | 相談軸とテーマが矛盾しない                                    |
+| semantic_duplication | 意味重複               | 同じ単語・同じ意味を繰り返さない                              |
+| shrine_specificity   | 神社固有性             | 神社名 / ご利益 / history_theme のいずれかが入る              |
+| consultation_fit     | 相談文脈との整合       | need / decision / constraint / outcome のいずれかが反映される |
 
 ## Implementation Order
 
