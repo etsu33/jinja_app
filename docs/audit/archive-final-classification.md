@@ -10,7 +10,7 @@ A1〜A7（`docs/audit/root-docs-classification-audit.md`）で挙がったArchiv
 
 ## docs/archive候補（root直下、A1〜A5判定）
 
-以下21ファイルは、A1〜A5で「Archive」または「Archive候補」と判定済みだが、本日時点で物理移動は未実施（`docs/`直下に残存）。
+以下21ファイルは、A1〜A5で「Archive」または「Archive候補」と判定された。最終的にDelete対象1件を除く20件を物理移動した。
 
 | 文書 | 現在地 | 移動先候補 | 由来 | Archive理由（要約） | 現行参照 |
 |---|---|---|---|---|---|
@@ -69,7 +69,7 @@ A1〜A7（`docs/audit/root-docs-classification-audit.md`）で挙がったArchiv
 | `docs/product/concierge-first.md` | 初期コンセプトとして独自の設計思想を持つ。ただし現行正本ではなく参照切れの原因になっているため、参照修正を優先する（下記参照） |
 | `docs/product/concierge-first-wireframe.md` | 初期ワイヤーフレーム検討記録として独自の責務整理を持つ |
 
-### Delete候補最終リスト（ユーザー確認待ち）
+### Delete対象最終リスト（承認済み・削除完了）
 
 1. `docs/product/action-suggestion-layer.md`
 2. `docs/product/product-doc-consolidation.md`
@@ -113,7 +113,7 @@ A1〜A7（`docs/audit/root-docs-classification-audit.md`）で挙がったArchiv
 | Reference | 17 | A1: `analytics-payload-audit.md` / A3: `recommendation-score-v3-design.md`, `recommendation-v4-copy-guideline.md` / A4: `monetization-flow-design.md`, `premium-plan-design.md`, `premium-retention-strategy.md` / A5: `journey-timeline-design.md`, `shrine-detail-meaning-layer.md` / A7: `home-hero-final-wireframe.md`, `concierge-entry-final-wireframe.md`, `concierge-filter-area.md`, `need-mode-ui-flow.md`, `compat-mode-ui-flow.md`, `visit-style-taxonomy.md`, `reflection-funnel-dashboard.md`, `explore-integration-design.md` |
 | Archive（要移動） | 21 | 上記「docs/archive候補」表のとおり |
 | Archive（配置済み） | 4 | A7: `concierge-first.md`, `concierge-first-wireframe.md`, `action-suggestion-layer.md`, `product-doc-consolidation.md` |
-| Delete候補 | 3 | `action-suggestion-layer.md`, `product-doc-consolidation.md`, `action_state_behavior_checklist.md`（ユーザー確認待ち） |
+| Delete | 3 | `action-suggestion-layer.md`, `product-doc-consolidation.md`, `action_state_behavior_checklist.md`（削除完了） |
 | 判断保留 | 1 | `direction-ranking-design.md` |
 | docs/core・docs/knowledge（全Active） | 13 | A6確定分（変更なし） |
 
@@ -137,7 +137,7 @@ A1〜A7（`docs/audit/root-docs-classification-audit.md`）で挙がったArchiv
 
 上記21ファイルを移動先候補（`docs/audit/`または`docs/analytics/`）へ`git mv`し、各ファイル冒頭に`docs/product`・`docs/core`と同形式の`> **Status: Archive**`ブロックを追加する。移動後、移動元パス（`docs/xxx.md`）を参照している文書があれば新パスへ更新する。
 
-### 3. Delete実行（ユーザー承認後）
+### 3. Delete実行（完了）
 
 上記Delete候補最終リスト3ファイルの削除は、ユーザーの明示的な承認を得てから実行する。
 
