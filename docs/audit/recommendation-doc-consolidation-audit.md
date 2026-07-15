@@ -70,7 +70,7 @@ Recommendation Reasonには、生成・保存・表示・互換境界を一つ�
 - 現時点では見出し・論点一覧のみ
 - 詳細な仕様本文は存在しない
 
-判定: 独自の確定仕様がほぼなく、他の正本に責務が存在する。Archiveまたは削除候補。
+判定: 独自の確定仕様がほぼなく、他の正本に責務が存在する。現時点ではArchive候補とする。削除可否は参照元と独自情報を再確認した上でFフェーズに判断する。
 
 ### `docs/knowledge/recommendation-copy-guide.md`
 
@@ -112,23 +112,30 @@ Stored / Translated / Snapshotの概念区分は、`docs/product/meaning-transla
 - `docs/audit/recommendation-terminology-contract.md`
 - `docs/audit/recommendation-reason-responsibility-audit.md`
 - `docs/audit/history-theme-contract-audit.md`
+Referenceに分類した以下の文書は、現時点で独自情報を持つため維持する。
+
+- `docs/core/meaning-layer-connection.md`
+- `docs/knowledge/recommendation-copy-guide.md`
+
+E3の統合完了後に独自情報と参照元を再確認し、
+Archive可否を改めて判定する。
 
 ### Archive候補
 
 - `docs/knowledge/meaning-layer-spec.md`
 
-### 保留
-
-- `docs/core/meaning-layer-connection.md`
-- `docs/knowledge/recommendation-copy-guide.md`
-
-統合後に独自情報が残っているか再確認する。
 
 ## PR分割
 
 ### E1
 
-Recommendation Reason正本作成。
+## 本PR（E1）の完了条件
+
+- `docs/core/recommendation-reason-contract.md`が作成されている
+- Recommendation ReasonのInput / Output / 保存 / 表示 / 互換責務が定義されている
+- `docs/audit/recommendation-doc-consolidation-audit.md`に文書分類と後続PRが記録されている
+- READMEまたは該当する入口文書から新しい正本へ参照できる
+- 既存文書の移動・Archive・削除は行わない
 
 ### E2
 

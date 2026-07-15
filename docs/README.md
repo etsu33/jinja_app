@@ -22,6 +22,9 @@
 - `core/recommendation-readiness.md`
   - Recommendation品質・Coverage・Readiness判定の正本
 
+- `core/recommendation-reason-contract.md`
+  - Recommendation ReasonのInput / Output / 保存 / 表示 / 互換責務
+
 ---
 
 ## 🧭 全体設計（まずここ）
