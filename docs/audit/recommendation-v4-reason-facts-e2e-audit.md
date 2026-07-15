@@ -6,7 +6,7 @@
 >
 > 本ドキュメントは、reason_factsのBackend E2Eと不足Testを確認した時点監査である。
 >
-> Field Responsibility・Primary Reason・E2E契約は `recommendation-reason-v4-contract.md` を正本とする。
+> Field Responsibility・Primary Reason・E2E契約は `docs/core/recommendation-reason-contract.md` を正本とする。
 
 ## Goal
 

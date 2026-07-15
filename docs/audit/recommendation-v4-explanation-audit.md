@@ -6,7 +6,7 @@
 >
 > 本ドキュメントは、Explanationレイヤーの実装状態と境界を確認した時点監査である。
 >
-> Reason・Explanation・Action・reason_factsの責務境界は `docs/product/action_suggestion_v4.md` および `recommendation-reason-v4-contract.md` を正本とする。
+> Reason・Explanation・Action・reason_factsの責務境界は `docs/product/action_suggestion_v4.md` および `docs/core/recommendation-reason-contract.md` を正本とする。
 
 ## Goal
 
