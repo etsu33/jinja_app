@@ -222,11 +222,16 @@ AIによって意味を整理し、
 本レイヤーの詳細仕様は以下を正本とする。
 
 - `docs/core/architecture.md`
+- `docs/core/meaning-layer-connection.md`
+- `docs/core/recommendation-reason-contract.md`
+- `docs/product/meaning-translation-mapping.md`
 - `docs/product/concierge-first-final-spec.md`
 - `docs/product/concierge-modes.md`
 - `docs/shrine-detail-layer.md`
 - `docs/premium-experience.md`
 
 本ドキュメントは Meaning Layer の思想・責務を定義する。
+
+Consultation Interpretation・Composer・Recommendationとの接続仕様は`docs/core/meaning-layer-connection.md`、Recommendation Reasonの生成・保存・表示契約は`docs/core/recommendation-reason-contract.md`を正本とする。
 
 API契約、実装詳細、表示コピー、Recommendation の実装仕様は各正本ドキュメントで管理する。

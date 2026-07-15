@@ -2,9 +2,8 @@
 
 ## 目的
 
-Recommendation、Meaning Layer、history_theme、
-Action、Reflection関連文書について、
-正本・Reference・統合・Archive候補を整理する。
+Recommendation、Meaning Layer、history_theme、Action、Reflection関連文書について、
+正本・Reference・統合・Archiveを整理する。
 
 ## 結論
 
@@ -17,14 +16,14 @@ history_themeについては新規正本を増やさず、以下の既存2正本
 
 ## 現行正本
 
-| 領域 | 正本 |
-|---|---|
-| Meaning Layer思想 | `docs/core/meaning-layer.md` |
-| Recommendation Readiness | `docs/core/recommendation-readiness.md` |
-| history_themeカテゴリ | `docs/product/history-theme-taxonomy.md` |
-| Meaning Translation | `docs/product/meaning-translation-mapping.md` |
-| Action Suggestion | `docs/product/action_suggestion_v4.md` |
-| Visit / Reflection | `docs/product/visit-reflection-flow.md` |
+| 領域                     | 正本                                          |
+| ------------------------ | --------------------------------------------- |
+| Meaning Layer思想        | `docs/core/meaning-layer.md`                  |
+| Recommendation Readiness | `docs/core/recommendation-readiness.md`       |
+| history_themeカテゴリ    | `docs/product/history-theme-taxonomy.md`      |
+| Meaning Translation      | `docs/product/meaning-translation-mapping.md` |
+| Action Suggestion        | `docs/product/action_suggestion_v4.md`        |
+| Visit / Reflection       | `docs/product/visit-reflection-flow.md`       |
 
 ## 正本欠落
 
@@ -61,7 +60,13 @@ Recommendation Reasonには、生成・保存・表示・互換境界を一つ�
 - fallback
 - Runtime Snapshot保存責務
 
-判定: 内容は有用だが、`meaning-layer.md`、`meaning-translation-mapping.md`、`recommendation-reason-contract.md`へ分割統合できる可能性が高い。現時点ではReference維持。統合完了後にArchive候補とする。
+判定（E3で本文確認済み・確定）:
+
+`meaning-layer.md`（思想）とは抽象度が異なり、`meaning-translation-mapping.md`（変換規則）や`recommendation-reason-contract.md`（Recommendation Reason契約）とも扱う範囲が重複しない。
+
+Composerへのフィールドマッピング（`translation_result.history_theme → generated.historyContext`等）とFallback経路は本書にしか存在しない独自の技術仕様であり、分割統合はしない。
+
+**Active正本として維持する**（E1時点の暫定Reference分類を修正）。
 
 ### `docs/knowledge/meaning-layer-spec.md`
 
@@ -70,7 +75,7 @@ Recommendation Reasonには、生成・保存・表示・互換境界を一つ�
 - 現時点では見出し・論点一覧のみ
 - 詳細な仕様本文は存在しない
 
-判定: 独自の確定仕様がほぼなく、他の正本に責務が存在する。現時点ではArchive候補とする。削除可否は参照元と独自情報を再確認した上でFフェーズに判断する。
+判定（E3で本文確認済み・確定）: 全節が見出しと箇条書きの論点一覧のみで、本文（プローズ）が一切存在しない。「Stored/Derived/Runtime」は`meaning-translation-mapping.md`「history_themeの生成源」節へ、「Fact/Meaning」の区分は`recommendation-reason-contract.md`・`docs/audit/recommendation-terminology-contract.md`へ、「consultation_axis/need_tag/matched_need_tags」は`meaning-translation-mapping.md`・`recommendation-terminology-contract.md`へ、それぞれ独自情報を失うことなく吸収済み。**参照元3件（`docs/knowledge/README.md`、`docs/knowledge/shrine-data-guide.md`、`docs/knowledge/shrine-profile-spec.md`）の参照を除去した上で、Fフェーズで削除する**。
 
 ### `docs/knowledge/recommendation-copy-guide.md`
 
@@ -97,6 +102,7 @@ Stored / Translated / Snapshotの概念区分は、`docs/product/meaning-transla
 ### Active正本
 
 - `docs/core/meaning-layer.md`
+- `docs/core/meaning-layer-connection.md`
 - `docs/core/recommendation-readiness.md`
 - `docs/core/recommendation-reason-contract.md`
 - `docs/product/history-theme-taxonomy.md`
@@ -106,30 +112,23 @@ Stored / Translated / Snapshotの概念区分は、`docs/product/meaning-transla
 
 ### Reference
 
-- `docs/core/meaning-layer-connection.md`
 - `docs/knowledge/recommendation-copy-guide.md`
 - `docs/product/reflection-funnel-dashboard.md`
 - `docs/audit/recommendation-terminology-contract.md`
 - `docs/audit/recommendation-reason-responsibility-audit.md`
-- `docs/audit/history-theme-contract-audit.md`
-Referenceに分類した以下の文書は、現時点で独自情報を持つため維持する。
+- `docs/audit/history-theme-contract-audit.md`（E2でStatus: Referenceへ変更済み）
 
-- `docs/core/meaning-layer-connection.md`
-- `docs/knowledge/recommendation-copy-guide.md`
+Referenceに分類した文書は、現時点で独自情報を持つため維持する。`docs/core/meaning-layer-connection.md`はE3での本文確認によりActive正本へ確定したため、この一覧からは除外した。
 
-E3の統合完了後に独自情報と参照元を再確認し、
-Archive可否を改めて判定する。
+### 削除確定
 
-### Archive候補
-
-- `docs/knowledge/meaning-layer-spec.md`
-
+- `docs/knowledge/meaning-layer-spec.md`（Fフェーズで削除）
 
 ## PR分割
 
-### E1
+### E1（完了）
 
-## 本PR（E1）の完了条件
+#### 完了条件
 
 - `docs/core/recommendation-reason-contract.md`が作成されている
 - Recommendation ReasonのInput / Output / 保存 / 表示 / 互換責務が定義されている
@@ -137,13 +136,19 @@ Archive可否を改めて判定する。
 - READMEまたは該当する入口文書から新しい正本へ参照できる
 - 既存文書の移動・Archive・削除は行わない
 
-### E2
+### E2（完了）
 
 Stored / Translated / Snapshot定義をMeaning Translation正本へ統合。
 
-### E3
+`docs/product/meaning-translation-mapping.md`の「history_themeの生成源」節へ吸収し、`docs/audit/history-theme-contract-audit.md`をStatus: Referenceへ変更した。
 
-Meaning Layer関連文書を統合。
+### E3（完了）
+
+Meaning Layer関連文書を整理した。
+
+本文確認の結果、`meaning-layer.md`と`meaning-layer-connection.md`は責務が分離されており、統合不要と判定したため、Active正本として両方維持する。
+
+`meaning-layer-spec.md`は独自本文が存在しないため削除した。
 
 ### E4
 

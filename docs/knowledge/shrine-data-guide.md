@@ -643,7 +643,6 @@ Recommendation Readinessの定義自体は、以下を正本とする。
 ### Knowledge
 
 - `docs/knowledge/shrine-profile-spec.md`
-- `docs/knowledge/meaning-layer-spec.md`
 - `docs/knowledge/recommendation-copy-guide.md`
 - `docs/knowledge/action-guide.md`
 - `docs/knowledge/reflection-guide.md`

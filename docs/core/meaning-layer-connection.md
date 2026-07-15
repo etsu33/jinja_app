@@ -177,10 +177,14 @@ Meaning Layer 自体は Snapshot の保存責務を持たない。
 
 - `docs/core/architecture.md`
 - `docs/core/meaning-layer.md`
+- `docs/core/recommendation-reason-contract.md`
+- `docs/product/meaning-translation-mapping.md`
 - `docs/product/concierge-first-final-spec.md`
 - `docs/product/concierge-modes.md`
 - `docs/shrine-detail-layer.md`
 - `docs/premium-experience.md`
+
+Recommendation Reasonの生成・保存・表示契約は`docs/core/recommendation-reason-contract.md`を正本とする。本書はMeaning Layerと各コンポーネントの接続経路のみを扱う。
 
 本ドキュメントは接続仕様のみを定義する。
 

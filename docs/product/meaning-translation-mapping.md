@@ -268,6 +268,39 @@ Frontend・Backend・Analyticsで独自のカテゴリ名を追加しない。
 
 ---
 
+## history_themeの生成源（Stored / Runtime-Translated / Snapshot）
+
+`history_theme`という一つの物理名は、性質の異なる3つの値を指しうる。混同を避けるため、以下の3語を正式な概念名として固定する。
+
+| 概念名 | 生成元 | 更新タイミング | 主な利用箇所 |
+|---|---|---|---|
+| Stored | `Shrine.history_theme`。「神社へのhistory_theme付与」節に基づくAdmin Reviewでの編集値 | 管理者が神社データを編集した時 | 神社詳細画面、Recommendation ReasonのFact層（優先） |
+| Runtime-Translated | `backend/temples/services/meaning_translation.py`の`translate_meaning()`が、ユーザーの相談解釈プロファイル（state_profile / need_profile / direction_profile / decision_context）から推論する値 | 相談チャットのたびに再計算 | Score v3の`calculate_history_score`、Fact層のfallback（Stored未設定時のみ） |
+| Snapshot | Stored値を推薦生成時に凍結コピーしたもの | 推薦生成時に1回のみ、以後不変 | `ConciergeThread.recommendations_v2`、`ShrineReflection.history_theme`、`ActionEvent.history_theme`、Journey Timeline |
+
+### 責務対応表
+
+| 責務 | Backend | Frontend |
+|---|---|---|
+| Stored値の編集 | Admin Review経由でDB更新 | 関与しない |
+| Runtime変換 | `meaning_translation.py`が相談プロファイルから推論 | 関与しない |
+| Score計算 | `recommendation_score_components.py`がStored/Runtime双方を突合 | 関与しない |
+| Fact生成 | `recommendation_reason_v4.py`がStored優先・Runtime fallback | 関与しない |
+| Snapshot生成 | 推薦生成時にStored値を凍結 | 受け取った値を保持・表示のみ |
+| カテゴリ表示 | 値をそのまま返す | Backendが返した`historyTheme`文字列をそのまま表示 |
+
+### 物理名の互換方針
+
+物理名（`history_theme` / `historyTheme`）はBackend・Frontend・DB・APIの全層で既に統一されている。本節の区分は概念上の整理であり、フィールド名・APIキー・DBカラム名を変更するものではない。
+
+### Concierge結果と神社詳細画面の由来差
+
+Concierge結果（`recommendations_v2`経由）は相談実行時点のSnapshotであり、以後Shrineの値が変わっても更新されない。神社詳細画面は閲覧時点の最新Stored値を都度取得する。同一神社でも両画面で表示内容が食い違いうることは仕様上許容する。
+
+本節は`docs/audit/history-theme-contract-audit.md`（E2で実施した監査）の結論を正式仕様として統合したものである。同監査文書はReferenceとして経緯を保持する。
+
+---
+
 ## 神社へのhistory_theme付与
 
 神社の`history_theme`は、以下を総合して決定する。
@@ -526,6 +559,7 @@ Analyticsでは、`docs/product/history-theme-taxonomy.md`で定義されたカ�
 - `docs/core/architecture.md`
 - `docs/core/meaning-layer.md`
 - `docs/core/meaning-layer-connection.md`
+- `docs/core/recommendation-reason-contract.md`
 - `docs/core/narrative-guideline.md`
 - `docs/product/README.md`
 - `docs/product/concierge-first-final-spec.md`
