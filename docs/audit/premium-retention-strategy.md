@@ -1,8 +1,10 @@
-> **Status: Reference**
+> **Status: Archive**
 >
-> 本ドキュメントは、対象機能の設計背景・補足方針を記録した参照資料である。
+> 本ドキュメントは、Premium継続価値、保存・履歴・比較およびRetention KPIを整理した戦略記録である。
 >
-> 現行仕様は関連するActive文書、実装コードおよびテストを最終的な正本とする。
+> 現行のPremium体験境界は`docs/premium-experience.md`、提供価値境界は`docs/pricing.md`、収益導線と継続計測は`docs/monetization-flow-design.md`を参照する。
+>
+> 本書の有効な原則とKPIは上記文書へ移管済みであり、現行仕様の判断には使用しない。
 
 # Premium Retention Strategy
 

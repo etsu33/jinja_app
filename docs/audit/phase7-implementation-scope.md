@@ -1,5 +1,3 @@
-
-
 # Phase7 Implementation Scope Audit
 
 ## 1. Purpose
@@ -12,18 +10,23 @@ Phase7では、KAMI MUSUBIの体験を「相談して終わり」から「相談
 
 ---
 
-## 2. Current Phase7 Design Sources
+## 2. Phase7実装計画時点の設計資料
 
-Phase7実装の前提となる設計ドキュメントは以下とする。
+Phase7実装計画を作成した時点では、以下の設計ドキュメントを前提としていた。
 
-| Document | Role |
-|---|---|
-| `docs/phase7-ux-monetization-roadmap.md` | Phase7全体ロードマップ |
-| `docs/shrine-detail-v3-design.md` | 神社詳細画面v3のUX設計 |
-| `docs/visit-flow-design.md` | 参拝前、参拝中、参拝後の行動導線設計 |
-| `docs/reflection-timeline-design.md` | 参拝後の振り返りとタイムライン設計 |
-| `docs/premium-plan-design.md` | Premium体験の提供価値設計 |
-| `docs/monetization-flow-design.md` | 課金導線とPremium遷移設計 |
+現在のPremium関連仕様については、`docs/pricing.md`、`docs/premium-experience.md`、`docs/billing-paywall.md`および`docs/monetization-flow-design.md`を参照する。
+
+| Document                                 | Role                                 |
+| ---------------------------------------- | ------------------------------------ |
+| `docs/phase7-ux-monetization-roadmap.md` | 旧Phase7全体ロードマップの履歴       |
+| `docs/shrine-detail-v3-design.md`        | 神社詳細画面v3のUX設計               |
+| `docs/visit-flow-design.md`              | 参拝前、参拝中、参拝後の行動導線設計 |
+| `docs/reflection-timeline-design.md`     | 参拝後の振り返りとタイムライン設計   |
+| `docs/pricing.md`                        | Premium提供価値と価格説明の現行正本  |
+| `docs/premium-experience.md`             | Premium体験境界の現行正本            |
+| `docs/billing-paywall.md`                | 課金状態とPaywall判定の現行正本      |
+| `docs/monetization-flow-design.md`       | 課金導線とPremium遷移・計測の設計    |
+| `docs/audit/premium-plan-design.md`      | Premium長期構想の履歴                |
 
 ---
 
@@ -37,8 +40,7 @@ Phase7の実装では、以下の順序を守る。
 4. Premiumは体験拡張として差し込み、先に売り込みすぎない
 5. Analytics / ActionEventは行動変化と収益導線の計測基盤として扱う
 
-Phase7では、推薦ロジックそのものを大きく変更しない。
-優先するのは、推薦結果を見た後の行動導線、記録導線、継続導線の改善である。
+Phase7では、推薦ロジックそのものを大きく変更しない。優先するのは、推薦結果を見た後の行動導線、記録導線、継続導線の改善である。
 
 ---
 
@@ -58,27 +60,27 @@ Phase7では、推薦ロジックそのものを大きく変更しない。
 
 ### Primary Files
 
-| File | Role |
-|---|---|
-| `apps/web/src/app/shrines/[id]/page.tsx` | Shrine Detail本体 |
-| `apps/web/src/app/api/shrines/[id]/route.ts` | 詳細取得API proxy |
-| `apps/web/src/lib/api/shrines.ts` | Shrine API client |
-| `apps/web/src/lib/api/shrines.client.ts` | Client側 Shrine API helper |
-| `apps/web/src/lib/api/shrines.server.ts` | Server側 Shrine API helper |
-| `apps/web/src/lib/api/shrineInteractions.ts` | 保存・閲覧などの行動API helper |
-| `apps/web/src/app/api/shrine-interactions/route.ts` | shrine interaction API proxy |
-| `apps/web/src/lib/auth/actionGuards.ts` | ログイン必須行動の制御 |
+| File                                                | Role                           |
+| --------------------------------------------------- | ------------------------------ |
+| `apps/web/src/app/shrines/[id]/page.tsx`            | Shrine Detail本体              |
+| `apps/web/src/app/api/shrines/[id]/route.ts`        | 詳細取得API proxy              |
+| `apps/web/src/lib/api/shrines.ts`                   | Shrine API client              |
+| `apps/web/src/lib/api/shrines.client.ts`            | Client側 Shrine API helper     |
+| `apps/web/src/lib/api/shrines.server.ts`            | Server側 Shrine API helper     |
+| `apps/web/src/lib/api/shrineInteractions.ts`        | 保存・閲覧などの行動API helper |
+| `apps/web/src/app/api/shrine-interactions/route.ts` | shrine interaction API proxy   |
+| `apps/web/src/lib/auth/actionGuards.ts`             | ログイン必須行動の制御         |
 
 ### Related UI Files
 
-| File | Role |
-|---|---|
-| `apps/web/src/components/shrines/ShrineCard.tsx` | 一覧・推薦カードの基準UI |
-| `apps/web/src/components/shrines/ShrineCardCompact.tsx` | 小型カード |
-| `apps/web/src/components/shrines/ShrineCardLite.tsx` | 軽量カード |
-| `apps/web/src/components/shrines/ShrineConciergeCard.tsx` | Concierge結果内の神社カード |
-| `apps/web/src/features/concierge/detailHref.ts` | Conciergeから詳細ページへのURL生成 |
-| `apps/web/src/features/concierge/__tests__/detailHref.test.ts` | 詳細URL生成テスト |
+| File                                                           | Role                               |
+| -------------------------------------------------------------- | ---------------------------------- |
+| `apps/web/src/components/shrines/ShrineCard.tsx`               | 一覧・推薦カードの基準UI           |
+| `apps/web/src/components/shrines/ShrineCardCompact.tsx`        | 小型カード                         |
+| `apps/web/src/components/shrines/ShrineCardLite.tsx`           | 軽量カード                         |
+| `apps/web/src/components/shrines/ShrineConciergeCard.tsx`      | Concierge結果内の神社カード        |
+| `apps/web/src/features/concierge/detailHref.ts`                | Conciergeから詳細ページへのURL生成 |
+| `apps/web/src/features/concierge/__tests__/detailHref.test.ts` | 詳細URL生成テスト                  |
 
 ### Implementation Notes
 
@@ -91,8 +93,7 @@ Shrine Detail v3では、以下の順序で情報を出す。
 5. 保存、ルート、参拝しましたのCTA
 6. 参拝後の振り返り導線
 
-詳細画面では、Premiumの訴求を主役にしない。
-まずは「行く理由」と「次の一手」を明確にする。
+詳細画面では、Premiumの訴求を主役にしない。まずは「行く理由」と「次の一手」を明確にする。
 
 ---
 
@@ -106,28 +107,27 @@ Shrine Detail v3では、以下の順序で情報を出す。
 
 ### Primary Files
 
-| File | Role |
-|---|---|
-| `apps/web/src/app/api/shrines/[id]/visit/route.ts` | 神社単位のvisit API proxy |
-| `apps/web/src/app/api/visits/route.ts` | visit一覧・作成API proxy |
-| `apps/web/src/lib/api/visits.ts` | Visit API client |
-| `backend/temples/api/serializers/visit.py` | Visit serializer |
-| `backend/temples/api/views/visit.py` | Visit API view |
-| `backend/temples/tests/api/test_journey_timeline_api.py` | Timeline連携APIテスト |
+| File                                                     | Role                      |
+| -------------------------------------------------------- | ------------------------- |
+| `apps/web/src/app/api/shrines/[id]/visit/route.ts`       | 神社単位のvisit API proxy |
+| `apps/web/src/app/api/visits/route.ts`                   | visit一覧・作成API proxy  |
+| `apps/web/src/lib/api/visits.ts`                         | Visit API client          |
+| `backend/temples/api/serializers/visit.py`               | Visit serializer          |
+| `backend/temples/api/views/visit.py`                     | Visit API view            |
+| `backend/temples/tests/api/test_journey_timeline_api.py` | Timeline連携APIテスト     |
 
 ### Related Backend Files
 
-| File | Role |
-|---|---|
-| `backend/temples/services/journey_timeline.py` | 行動履歴タイムライン生成 |
-| `backend/temples/tests/services/test_journey_timeline.py` | Timeline service test |
-| `backend/temples/services/action_completion_observation.py` | 行動完了の観測 |
-| `backend/temples/tests/services/test_action_completion_observation.py` | 行動完了観測テスト |
+| File                                                                   | Role                     |
+| ---------------------------------------------------------------------- | ------------------------ |
+| `backend/temples/services/journey_timeline.py`                         | 行動履歴タイムライン生成 |
+| `backend/temples/tests/services/test_journey_timeline.py`              | Timeline service test    |
+| `backend/temples/services/action_completion_observation.py`            | 行動完了の観測           |
+| `backend/temples/tests/services/test_action_completion_observation.py` | 行動完了観測テスト       |
 
 ### Implementation Notes
 
-Visit Flowでは、GPSや日時を必須にしない。
-MVPでは、ユーザーが自分で押す「軽い記録」を正本とする。
+Visit Flowでは、GPSや日時を必須にしない。MVPでは、ユーザーが自分で押す「軽い記録」を正本とする。
 
 将来的には、GPSや日時を補助情報として扱えるが、参拝体験を監視されている感覚にしないことを優先する。
 
@@ -141,24 +141,24 @@ MVPでは、ユーザーが自分で押す「軽い記録」を正本とする�
 
 ### Primary Files
 
-| File | Role |
-|---|---|
-| `apps/web/src/app/api/shrines/[id]/reflection/route.ts` | 神社単位のreflection API proxy |
-| `apps/web/src/lib/api/reflections.ts` | Reflection API client |
-| `apps/web/src/lib/api/__tests__/reflections.test.ts` | Reflection API client test |
-| `backend/temples/api/serializers/reflection.py` | Reflection serializer |
-| `backend/temples/api/views/reflection.py` | Reflection API view |
-| `backend/temples/tests/api/test_shrine_reflection_api.py` | Reflection API test |
+| File                                                      | Role                           |
+| --------------------------------------------------------- | ------------------------------ |
+| `apps/web/src/app/api/shrines/[id]/reflection/route.ts`   | 神社単位のreflection API proxy |
+| `apps/web/src/lib/api/reflections.ts`                     | Reflection API client          |
+| `apps/web/src/lib/api/__tests__/reflections.test.ts`      | Reflection API client test     |
+| `backend/temples/api/serializers/reflection.py`           | Reflection serializer          |
+| `backend/temples/api/views/reflection.py`                 | Reflection API view            |
+| `backend/temples/tests/api/test_shrine_reflection_api.py` | Reflection API test            |
 
 ### Related Files
 
-| File | Role |
-|---|---|
-| `backend/temples/services/reflection_state_change.py` | 振り返りから状態変化を抽出 |
-| `backend/temples/tests/services/test_reflection_state_change.py` | 状態変化抽出テスト |
-| `backend/temples/tests/services/test_reflection_hint_observation_contract.py` | 振り返りヒント観測契約 |
-| `docs/reflection-timeline-design.md` | UI / 体験設計 |
-| `docs/analytics/reflection-next-recommendation-design.md` | 次回推薦との接続設計 |
+| File                                                                          | Role                       |
+| ----------------------------------------------------------------------------- | -------------------------- |
+| `backend/temples/services/reflection_state_change.py`                         | 振り返りから状態変化を抽出 |
+| `backend/temples/tests/services/test_reflection_state_change.py`              | 状態変化抽出テスト         |
+| `backend/temples/tests/services/test_reflection_hint_observation_contract.py` | 振り返りヒント観測契約     |
+| `docs/reflection-timeline-design.md`                                          | UI / 体験設計              |
+| `docs/analytics/reflection-next-recommendation-design.md`                     | 次回推薦との接続設計       |
 
 ### Implementation Notes
 
@@ -188,36 +188,38 @@ Phase7のPremium訴求は、以下の3価値に寄せる。
 
 ### Primary Web Files
 
-| File | Role |
-|---|---|
-| `apps/web/src/app/billing/page.tsx` | Billing top |
-| `apps/web/src/app/billing/upgrade/page.tsx` | Upgrade page |
-| `apps/web/src/app/billing/success/page.tsx` | Checkout success |
-| `apps/web/src/app/billing/cancel/page.tsx` | Checkout cancel |
-| `apps/web/src/app/billing/manage/page.tsx` | Billing management |
-| `apps/web/src/features/billing/hooks/useBilling.ts` | Billing state hook |
-| `apps/web/src/lib/api/billing.ts` | Client billing API |
-| `apps/web/src/lib/api/billing.server.ts` | Server billing API |
-| `apps/web/src/api/conciergePlan.ts` | Concierge plan state |
+| File                                                | Role                 |
+| --------------------------------------------------- | -------------------- |
+| `apps/web/src/app/billing/page.tsx`                 | Billing top          |
+| `apps/web/src/app/billing/upgrade/page.tsx`         | Upgrade page         |
+| `apps/web/src/app/billing/success/page.tsx`         | Checkout success     |
+| `apps/web/src/app/billing/cancel/page.tsx`          | Checkout cancel      |
+| `apps/web/src/app/billing/manage/page.tsx`          | Billing management   |
+| `apps/web/src/features/billing/hooks/useBilling.ts` | Billing state hook   |
+| `apps/web/src/lib/api/billing.ts`                   | Client billing API   |
+| `apps/web/src/lib/api/billing.server.ts`            | Server billing API   |
+| `apps/web/src/api/conciergePlan.ts`                 | Concierge plan state |
 
 ### Primary Backend Files
 
-| File | Role |
-|---|---|
-| `backend/temples/api/views/billing.py` | Billing API view |
+| File                                           | Role                 |
+| ---------------------------------------------- | -------------------- |
+| `backend/temples/api/views/billing.py`         | Billing API view     |
 | `backend/temples/services/billing_checkout.py` | Checkout session生成 |
-| `backend/temples/services/billing_state.py` | Billing state判定 |
-| `backend/users/services/billing.py` | User billing service |
+| `backend/temples/services/billing_state.py`    | Billing state判定    |
+| `backend/users/services/billing.py`            | User billing service |
 
 ### Premium UI Files
 
-| File | Role |
-|---|---|
+| File                                                                   | Role                      |
+| ---------------------------------------------------------------------- | ------------------------- |
 | `apps/web/src/features/concierge/components/PremiumStateDeltaCard.tsx` | Premium向け状態差分カード |
-| `apps/web/src/lib/premium/accessLevel.ts` | Premium access判定 |
-| `apps/web/src/lib/premium/cardVisibility.ts` | Premium card visibility |
-| `docs/premium-plan-design.md` | Premium体験設計 |
-| `docs/monetization-flow-design.md` | 収益導線設計 |
+| `apps/web/src/lib/premium/accessLevel.ts`                              | Premium access判定        |
+| `apps/web/src/lib/premium/cardVisibility.ts`                           | Premium card visibility   |
+| `docs/pricing.md`                                                      | Premium提供価値境界       |
+| `docs/premium-experience.md`                                           | Premium体験境界           |
+| `docs/billing-paywall.md`                                              | 課金状態・Paywall判定     |
+| `docs/monetization-flow-design.md`                                     | 収益導線・継続計測設計    |
 
 ### Implementation Notes
 
@@ -240,37 +242,36 @@ Phase7の改善判断を、感覚ではなく行動データで行えるよう�
 
 優先するKPIは以下である。
 
-| KPI | Meaning |
-|---|---|
-| detail_view_rate | 推薦から詳細へ進んだ割合 |
-| save_rate | 詳細から保存した割合 |
-| route_open_rate | ルートを開いた割合 |
-| visit_done_rate | 参拝しましたを押した割合 |
-| reflection_saved_rate | 振り返りを保存した割合 |
-| premium_click_rate | Premium導線をクリックした割合 |
-| checkout_start_rate | 決済開始率 |
-| premium_conversion_rate | 課金転換率 |
+| KPI                     | Meaning                       |
+| ----------------------- | ----------------------------- |
+| detail_view_rate        | 推薦から詳細へ進んだ割合      |
+| save_rate               | 詳細から保存した割合          |
+| route_open_rate         | ルートを開いた割合            |
+| visit_done_rate         | 参拝しましたを押した割合      |
+| reflection_saved_rate   | 振り返りを保存した割合        |
+| premium_click_rate      | Premium導線をクリックした割合 |
+| checkout_start_rate     | 決済開始率                    |
+| premium_conversion_rate | 課金転換率                    |
 
 ### Primary Files
 
-| File | Role |
-|---|---|
-| `apps/web/src/lib/analytics/actionEvents.ts` | ActionEvent logging helper |
-| `apps/web/src/lib/analytics/billing.ts` | Billing analytics helper |
-| `apps/web/src/lib/analytics/conciergeDecisionSummary.ts` | Concierge意思決定分析 |
-| `apps/web/src/app/api/shrine-interactions/route.ts` | Shrine interaction logging route |
-| `backend/temples/api/serializers/action_event.py` | ActionEvent serializer |
-| `backend/temples/api/views/action_event.py` | ActionEvent API view |
-| `backend/temples/services/action_suggestion_builder.py` | 行動提案生成 |
-| `backend/temples/services/action_suggestions.py` | 行動提案service |
-| `backend/temples/tests/api/test_action_event_api.py` | ActionEvent API test |
-| `backend/temples/tests/services/test_action_suggestion_builder.py` | Action suggestion builder test |
-| `backend/temples/tests/services/test_action_suggestions.py` | Action suggestions service test |
+| File                                                               | Role                             |
+| ------------------------------------------------------------------ | -------------------------------- |
+| `apps/web/src/lib/analytics/actionEvents.ts`                       | ActionEvent logging helper       |
+| `apps/web/src/lib/analytics/billing.ts`                            | Billing analytics helper         |
+| `apps/web/src/lib/analytics/conciergeDecisionSummary.ts`           | Concierge意思決定分析            |
+| `apps/web/src/app/api/shrine-interactions/route.ts`                | Shrine interaction logging route |
+| `backend/temples/api/serializers/action_event.py`                  | ActionEvent serializer           |
+| `backend/temples/api/views/action_event.py`                        | ActionEvent API view             |
+| `backend/temples/services/action_suggestion_builder.py`            | 行動提案生成                     |
+| `backend/temples/services/action_suggestions.py`                   | 行動提案service                  |
+| `backend/temples/tests/api/test_action_event_api.py`               | ActionEvent API test             |
+| `backend/temples/tests/services/test_action_suggestion_builder.py` | Action suggestion builder test   |
+| `backend/temples/tests/services/test_action_suggestions.py`        | Action suggestions service test  |
 
 ### Implementation Notes
 
-Analyticsは、UI実装と同時に最低限入れる。
-ただし、最初から複雑なダッシュボードを作らない。
+Analyticsは、UI実装と同時に最低限入れる。ただし、最初から複雑なダッシュボードを作らない。
 
 Phase7前半では、イベントが安全に記録できる状態を優先する。
 
@@ -284,38 +285,37 @@ Conciergeの推薦結果から、Shrine Detail v3、Visit Flow、Reflection Time
 
 ### Primary Files
 
-| File | Role |
-|---|---|
-| `apps/web/src/app/concierge/page.tsx` | Concierge入口 |
-| `apps/web/src/app/concierge/ConciergeClientFull.tsx` | Concierge main client |
-| `apps/web/src/features/concierge/components/PrimaryRecommendationCard.tsx` | 主要推薦カード |
-| `apps/web/src/features/concierge/components/ConciergeTopRecommendationHero.tsx` | Top recommendation hero |
-| `apps/web/src/features/concierge/components/ConciergeSectionsRenderer.tsx` | 推薦セクション表示 |
-| `apps/web/src/features/concierge/sectionsBuilder.ts` | セクション構築 |
-| `apps/web/src/features/concierge/types/unified.ts` | 統合推薦型 |
-| `apps/web/src/viewmodels/conciergeResultItem.ts` | Concierge result view model |
-| `apps/web/src/viewmodels/conciergeToShrineList.ts` | Concierge結果から神社一覧への変換 |
+| File                                                                            | Role                              |
+| ------------------------------------------------------------------------------- | --------------------------------- |
+| `apps/web/src/app/concierge/page.tsx`                                           | Concierge入口                     |
+| `apps/web/src/app/concierge/ConciergeClientFull.tsx`                            | Concierge main client             |
+| `apps/web/src/features/concierge/components/PrimaryRecommendationCard.tsx`      | 主要推薦カード                    |
+| `apps/web/src/features/concierge/components/ConciergeTopRecommendationHero.tsx` | Top recommendation hero           |
+| `apps/web/src/features/concierge/components/ConciergeSectionsRenderer.tsx`      | 推薦セクション表示                |
+| `apps/web/src/features/concierge/sectionsBuilder.ts`                            | セクション構築                    |
+| `apps/web/src/features/concierge/types/unified.ts`                              | 統合推薦型                        |
+| `apps/web/src/viewmodels/conciergeResultItem.ts`                                | Concierge result view model       |
+| `apps/web/src/viewmodels/conciergeToShrineList.ts`                              | Concierge結果から神社一覧への変換 |
 
 ### Implementation Notes
 
 Concierge側では、詳細ページに渡す情報を増やしすぎない。
 
-詳細ページは、`shrine_id` と必要最小限のcontextをもとに、詳細情報と行動導線を構成する。
-URLに推薦理由全文やAction Suggestion全文を持たせない方針は維持する。
+詳細ページは、`shrine_id` と必要最小限のcontextをもとに、詳細情報と行動導線を構成する。URLに推薦理由全文やAction
+Suggestion全文を持たせない方針は維持する。
 
 ---
 
 ## 10. Deprecated / Legacy Scope
 
-以下のファイルはPhase7実装の直接対象にしない。
-削除判断は別PRで扱う。
+以下のファイルはPhase7実装の直接対象にしない。削除判断は別PRで扱う。
 
-| File | Status |
-|---|---|
-| `backend/temples/_deprecated/concierge_api_views.py` | 保留 |
-| `backend/temples/_deprecated/concierge_django_views.py` | 保留 |
-| `apps/web/src/features/concierge/components/legacy/RecommendationSwitchList.tsx` | 保留 |
-| `apps/web/src/features/concierge/components/legacy/RecommendationUnit.tsx` | 保留 |
+| File                                                                             | Status |
+| -------------------------------------------------------------------------------- | ------ |
+| `backend/temples/_deprecated/concierge_api_views.py`                             | 保留   |
+| `backend/temples/_deprecated/concierge_django_views.py`                          | 保留   |
+| `apps/web/src/features/concierge/components/legacy/RecommendationSwitchList.tsx` | 保留   |
+| `apps/web/src/features/concierge/components/legacy/RecommendationUnit.tsx`       | 保留   |
 
 これらはPhase7実装中に参照されていないことを確認できた場合、別途 cleanup PR で削除検討する。
 
@@ -445,11 +445,11 @@ Phase7前半では以下を行わない。
 
 ---
 
-## 14. Current Recommendation
+## 14. Phase7実装計画時点のRecommendation
 
-次の実装PRは `Shrine Detail v3 UI Structure` とする。
+本監査時点では、次の実装PRを `Shrine Detail v3 UI Structure` としていた。
 
-理由は、Phase7全体の体験が詳細画面を起点に接続されるためである。
+理由は、Phase7全体の体験が詳細画面を起点に接続される構成だったためである。
 
 ```text
 Concierge
@@ -463,4 +463,4 @@ Reflection
 Timeline / Premium
 ```
 
-この順序で進めることで、行動導線と収益導線を壊さず段階的に実装できる。
+この実装順序は監査時点の記録であり、現在の次タスクや開発優先順位を決定するものではない。現在の開発順序は`docs/core/roadmap.md`、GitHub Issueおよびマージ済みPRを参照する。

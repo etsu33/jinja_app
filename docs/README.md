@@ -1,12 +1,13 @@
-
 # docs/（設計・運用ドキュメント）
 
 このディレクトリは **AI参拝ナビの設計・運用・実装判断の根拠**を集約します。  
 「どこに何が書いてあるか」を最短で辿れることを目的にしています。
 
+---
+
 ## 🧭 Core Documents（正本）
 
-まず読むべき正本ドキュメントです。
+まず読むべき正本文書です。
 
 - `core/architecture.md`
   - システム構成・責務分離・BFF/API方針
@@ -33,80 +34,80 @@
 
 ## 🧭 全体設計（まずここ）
 
-- **Architecture・システム境界**
+### Architecture・システム境界
 
-  - `core/architecture.md`
+- `core/architecture.md`
 
-- **Recommendation品質**
+### Recommendation品質
 
-  - `core/recommendation-readiness.md`
+- `core/recommendation-readiness.md`
 
-- **認証・通信**
+### 認証・通信
 
-  - `auth-flow.md`
+- `auth-flow.md`
+- `authentication-flow.md`
 
-  - `authentication-flow.md`
+### API契約
 
-- **API契約**
+- `openapi.yaml`
 
-  - `openapi.yaml`
-
-  - Backendの実装・起動・運用は `../backend/README.md`
+Backendの実装・起動・運用は `../backend/README.md` を参照する。
 
 ---
 
 ## 🔐 認証・通信
 
-Webは、FrontendからBackend APIを直接呼び出さず、Next.jsの`/api` Route Handlerを経由する。
+WebはFrontendからBackend APIを直接呼び出さず、Next.js の `/api` Route Handler を経由する。
 
 認証の現行責務は以下を参照する。
 
 - `auth-flow.md`
-
 - `authentication-flow.md`
 
 ---
 
 ## 🤖 AI / LLM
 
-- 実装は `backend/temples/llm/` 配下  
-- 方針：自由会話はしない。1回解析して構造化し、推薦・距離計算・フォールバックはサーバ側で決める。
+- 実装は `backend/temples/llm/` 配下
+- 方針：自由会話は行わず、一度構造化した上で推薦・距離計算・フォールバックをサーバ側で決定する。
 
-- Concierge chat 仕様（LLM ON/OFF定義、contract fields、ログの見方）
-  - `concierge_spec.md`
+### Concierge
 
-（必要になったら追加予定）
-- `llm/overview.md`（予定）
+- `concierge_spec.md`
+  - LLM ON/OFF、Contract Fields、ログ仕様
+
+（将来追加予定）
+
+- `llm/overview.md`
 
 ---
 
 ## 🧪 開発・検証
 
-- **Test方針**
+### Test方針
 
-  - `ci/testing_policy.md`
+- `ci/testing_policy.md`
 
-- **本番Smoke Check**
+### 本番確認
 
-  - `ops/production-smoke-checklist.md`
+- `ops/production-smoke-checklist.md`
 
-検証結果の時点記録は`ops/production-smoke-log.md`で管理する。
+検証結果は `ops/production-smoke-log.md` で管理する。
 
 ---
 
 ## 🚀 インフラ / デプロイ
 
-- **環境変数・Infra方針**
+### 環境変数
 
-  - `infra/env_policy.md`
+- `infra/env_policy.md`
 
-- **Render起動契約**
+### Render
 
-  - `infra/render-startup.md`
+- `infra/render-startup.md`
 
 ---
 
-## 🎨 UI / UX メモ
 ## 🧭 プロダクト・体験設計
 
 現行のユーザー体験、画面責務および機能契約は以下を参照する。
@@ -127,7 +128,7 @@ Webは、FrontendからBackend APIを直接呼び出さず、Next.jsの`/api` Ro
 
 ## 💳 Premium・課金
 
-Premiumの価値、体験差および課金判定は以下を参照する。
+Premiumの価値、体験差、課金判定および収益導線は以下を参照する。
 
 - `billing-paywall.md`
   - 課金状態、利用可否、Paywall判定およびServer責務
@@ -136,7 +137,10 @@ Premiumの価値、体験差および課金判定は以下を参照する。
   - Free / Premiumの価値境界と価格表現
 
 - `premium-experience.md`
-  - Free / Premiumの画面別体験差
+  - Free / Premiumの体験境界、保存・履歴・比較の原則
+
+- `monetization-flow-design.md`
+  - Premium提示タイミング、CTA、購入後復帰、解約方針および継続計測
 
 ---
 
@@ -145,10 +149,10 @@ Premiumの価値、体験差および課金判定は以下を参照する。
 神社詳細、参拝後導線および記録体験は以下を参照する。
 
 - `shrine-detail-layer.md`
-  - 神社詳細のPublic / Context / Personal Layer
+  - 神社詳細の Public / Context / Personal Layer
 
 - `shrine-detail-v3-design.md`
-  - 神社詳細v3のUX、AnalyticsおよびPremium接続
+  - 神社詳細 v3 のUX、AnalyticsおよびPremium接続
 
 - `shrine-submission-flow.md`
   - 神社追加、重複候補および投稿後導線
@@ -174,8 +178,6 @@ Premiumの価値、体験差および課金判定は以下を参照する。
 ### Premium・Journey
 
 - `monetization-flow-design.md`
-- `premium-plan-design.md`
-- `premium-retention-strategy.md`
 - `journey-timeline-design.md`
 
 ### Concierge UI
@@ -191,14 +193,22 @@ Premiumの価値、体験差および課金判定は以下を参照する。
 
 ---
 
-## 🗺 ロードマップ / TODO
+## 🗂 Audit / Archive
 
-- 開発TODO・優先度
-  - `core/roadmap.md`
+過去の設計判断、監査結果および長期構想は `docs/audit/` および `docs/archive/` に保存する。
+
+例：
+
+- `audit/premium-reference-consolidation-audit.md`
+- `audit/premium-plan-design.md`
+- `audit/premium-retention-strategy.md`
+
+これらは設計履歴・判断経緯を保持するための文書であり、現行仕様の判断には使用しない。
 
 ---
 
 ## 🗺 ロードマップ / TODO
 
-- 開発 TODO / 優先度
-  - `core/roadmap.md`
+開発TODOおよび優先順位は以下を参照する。
+
+- `core/roadmap.md`

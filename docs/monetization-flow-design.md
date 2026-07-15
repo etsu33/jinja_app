@@ -423,6 +423,32 @@ Monetization Flow では、以下を主要KPIとする。
 売上だけを見ない。
 
 Premium化したユーザーが、実際にReflection、Timeline、月次レビューを使っているかを確認する。
+### 14.1 Retention KPI
+
+| KPI | Meaning |
+| --- | --- |
+| 7d_return_rate | Premium利用開始後7日以内の再訪率 |
+| 30d_return_rate | Premium利用開始後30日以内の再訪率 |
+| thread_resume_rate | 過去の相談Threadを再開した割合 |
+| comparison_view_rate | 過去記録との比較を閲覧した割合 |
+| premium_retention_rate | Premium契約を継続している割合 |
+| repeat_consultation_rate | Premium利用者が再相談した割合 |
+
+### 14.2 Engagement KPI
+
+| KPI | Meaning |
+| --- | --- |
+| average_thread_count | Premium利用者あたりの平均相談Thread数 |
+| saved_shrine_revisit_rate | 保存済み神社を再閲覧した割合 |
+| history_interaction_rate | 履歴の閲覧・検索・比較を利用した割合 |
+| comparison_usage_rate | 過去の自分との比較機能を利用した割合 |
+| premium_feature_activation_rate | Premium化後に対象機能を実際に利用した割合 |
+
+### 14.3 計測原則
+
+PVやCheckout成功だけでなく、Premium化後に記録、比較、再相談および履歴再訪が発生しているかを確認する。
+
+Premiumの成果は購入時点だけで判断せず、その後の継続行動まで含めて評価する。
 
 ---
 
