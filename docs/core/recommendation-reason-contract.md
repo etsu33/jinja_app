@@ -45,7 +45,7 @@ Action
 
 ### Fact
 
-神社側の事実・意味文脈を説明する。
+神社側の事実と、神社側に付与された意味文脈を説明する。
 
 利用可能な主な入力:
 
@@ -56,6 +56,12 @@ Action
 - goriyaku
 - history_theme
 - evidence
+
+`history_theme`は神社の一次事実そのものではなく、
+Stored情報を根拠として付与されたMeaning情報である。
+
+現行の物理Schemaでは`fact`内で利用するが、
+事実と意味文脈を同一視しない。
 
 Factはユーザー状態の診断や行動提案を行わない。
 
@@ -93,15 +99,17 @@ Actionは推薦順位を説明せず、
 
 ## Input Contract
 
-Recommendation Reasonの主入力は以下とする。
+Recommendation Reasonの正規化済み主入力は、`recommendation_input_profile`とする。
+
+`recommendation_input_profile`は、主に以下の入力を統合する。
 
 - interpretation_profile
 - translation_result
 - candidate_profile
 - score_v2_fields
-- recommendation_input_profile
 
-実装上の統合入力は`recommendation_input_profile`を正規化境界とする。
+個別入力は生成元ごとの責務を持つが、
+Recommendation Reason生成時には`recommendation_input_profile`を正規化境界として扱う。
 
 ## Output Contract
 
@@ -189,17 +197,20 @@ Frontendは以下を担当しない。
 - Recommendation Reasonの意味正本化
 - 推薦順位の再計算
 
-### 表示優先順位
+### 目標とする表示優先順位
 
 Frontendは、利用可能なBackend生成値を優先する。
-
-推奨優先順位:
 
 1. Backend Recommendation Reason構造化出力
 2. Backend reason_text
 3. Recommendation Snapshot内の既存説明
 4. legacy Frontend生成値
 5. 安全なfallback
+
+現行Frontendにはlegacy生成経路が残っている。
+
+本優先順位は移行後の責務順序を示すものであり、
+現行実装がすべてこの順序へ統一済みであることを意味しない。
 
 legacy fallbackは互換維持のため残すが、
 新しい意味生成の正本として扱わない。
@@ -227,18 +238,38 @@ Fact / Interpretation / Actionを組み合わせて
 
 ## 保存方針
 
-Recommendation生成時に利用した情報は、
-Runtime Snapshotとして保存する。
+Recommendation生成時に利用した値は、
+必要に応じてRuntime Snapshotへ保存する。
 
-Snapshot候補:
+### 現行保存
 
-- recommendation reason
-- reason quality
+現行実装では、Recommendation itemまたはRuntime Snapshotに、
+以下の全部または一部を保持する。
+
+- recommendation_reason_v4
+- recommendation_reason_quality
 - history_theme
 - matched_need_tags
 - score components
 - action suggestion
 - evidence
+
+### 構造化出力の保存
+
+以下の構造化出力をRuntime Snapshotへ恒久保存するかは、
+現時点では未確定とする。
+
+- fact
+- interpretation
+- action
+- used_fact
+- used_interpretation
+- used_action
+- source
+
+保存対象を追加する場合は、
+Payload容量、過去互換、Analytics用途を確認した上で
+別Contract変更として扱う。
 
 過去Snapshotは、神社情報や生成ロジックが更新されても再計算しない。
 

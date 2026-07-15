@@ -968,5 +968,7 @@ Recommendation Reasonの意味生成正本は、現行実装では`recommendatio
 ```text
 docs/core/recommendation-reason-contract.md
 ```
-
 を作成し、Recommendation ReasonのSchema・保存・互換・表示境界を正本として固定する。
+
+Recommendation Reasonの正式なInput / Output / 保存 / 表示 / 互換責務は、
+`docs/core/recommendation-reason-contract.md`を正本とする。
