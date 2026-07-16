@@ -1174,3 +1174,20 @@ A10で確定した配置計画のうち、Product Reference文書7件の移動�
 現行文書を対象とした旧パスgrepは0件であり、7文書はすべてGit上で100% renameとして認識された。
 
 これにより、A10のPR3「Product Reference配置」は完了した。残るroot直下文書は、Knowledge / Analytics配置PRで整理する。
+
+### PR5 Analytics Directory Move 実行結果
+
+A10で確定した配置計画のうち、Analytics Reference文書2件の移動を実行した。
+
+#### Analyticsへ移動
+
+- `docs/analytics-payload-audit.md` → `docs/analytics/analytics-payload-audit.md`
+- `docs/recommendation-score-v3-design.md` → `docs/analytics/recommendation-score-v3-design.md`
+
+現行文書から参照される旧パスは新しい配置先へ更新した。
+
+A1〜A10のInventory、配置判定表および移動前の参照元調査に残る旧パスは、監査時点の証跡として保持する。
+
+これにより、A10で計画したCore / Audit、Product Active、Product Reference、KnowledgeおよびAnalyticsの全ディレクトリ移動が完了した。
+
+移動後の`docs/`直下には、入口文書である`docs/README.md`のみが残る。

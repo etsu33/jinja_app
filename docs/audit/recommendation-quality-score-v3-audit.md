@@ -27,7 +27,7 @@ Recommendation Quality Phase1 として、Score v3 の現在地を監査する�
 backend/temples/services/concierge_chat_ranking.py
 backend/temples/services/score_v3_observer.py
 backend/temples/services/score_v3_observation_summary.py
-docs/recommendation-score-v3-design.md
+docs/analytics/recommendation-score-v3-design.md
 docs/audit/recommendation-score-v3-roadmap.md
 ```
 
@@ -89,7 +89,7 @@ active mode: breakdown.score_v3 を sort key に利用
 
 ### docs設計値
 
-`docs/recommendation-score-v3-design.md` では以下の設計になっている。
+`docs/analytics/recommendation-score-v3-design.md` では以下の設計になっている。
 
 ```text
 0.45 × User State Profile

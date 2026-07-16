@@ -274,7 +274,7 @@ Current Stateの事実から導かれる問題点を優先度別に整理する�
 
 ## P1（設計の不整合・機微データの懸念）
 
-3. **Webの`sessionId`自動付与** — `track.ts:78-83`が全イベントに`sessionId`を自動付与しPostHogへ送信している。既存の`docs/analytics-payload-audit.md`に設計意図の記載があり意図的な可能性があるため、削除の是非はプロダクト/プライバシー判断が必要
+3. **Webの`sessionId`自動付与** — `track.ts:78-83`が全イベントに`sessionId`を自動付与しPostHogへ送信している。既存の`docs/analytics/analytics-payload-audit.md`に設計意図の記載があり意図的な可能性があるため、削除の是非はプロダクト/プライバシー判断が必要
 4. **`moodBefore`/`moodAfter`の自由記述漏洩** — `reflection_saved`(`ShrineReflectionPrompt.tsx:57`)が未加工の自由入力文字列をPostHogへ送信。列挙値化または除外を検討
 5. **`platform`フィールドがWebに存在しない** — Mobileの`platform:"mobile"`に対応するフィールドがWeb側の全イベントに存在せず、PostHog上でプラットフォーム別Funnelを作れない
 6. **Mobile Provider接続済み** — `posthog-react-native`により`PostHogAnalyticsProvider`(`apps/mobile/lib/posthogAnalyticsProvider.ts`)が実装され、Preview/Production相当では実際にPostHogへ到達するようになった。残課題はApple Developer Program加入後のiOS実機での受信確認のみ

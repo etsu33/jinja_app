@@ -170,9 +170,9 @@ Premiumの価値、体験差、課金判定および収益導線は以下を参�
 
 ### Recommendation・Analytics
 
-- `analytics-payload-audit.md`
-- `recommendation-score-v3-design.md`
-- `recommendation-v4-copy-guideline.md`
+- `analytics/analytics-payload-audit.md`
+- `analytics/recommendation-score-v3-design.md`
+- `knowledge/recommendation-v4-copy-guideline.md`
 - `product/direction-ranking-design.md`
 
 ### Premium・Journey
