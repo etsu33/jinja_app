@@ -3333,8 +3333,9 @@ docs/core/README.md
 = Core文書の入口
 
 docs/README.mdには主要なCore正本のみを掲載し、全Core文書の読む順番、分類および詳細責務はdocs/core/README.mdへ委譲する。
+```
 
-11.4 参照確認
+### 11.4 参照確認
 
 Core文書およびCore READMEに記載されたMarkdown参照先が存在することを確認する。
 
@@ -3370,3 +3371,80 @@ PR1の完了条件は以下とする。
 * docs/README.mdからCore READMEへ到達できる
 * Markdown参照切れがない
 * git diff --checkが成功する
+
+## 12. PR2 Architecture・Roadmap詳細整理 実行結果
+
+Core文書責務監査で確定した後続修正方針に基づき、Architectureの詳細責務整理とRoadmapの現在地更新を実行した。
+
+### Architecture
+
+`docs/core/architecture.md`について、最上位技術正本として必要な概念と責務境界を残し、物理詳細を各専用正本へ委譲した。
+
+主な変更は以下である。
+
+- Recommendation Score v3のComponent名、物理Fieldおよび観測詳細をAnalytics文書と実装へ委譲
+- Runtime Snapshotの具体的なField、保存先およびPayloadをRecommendation契約と実装へ委譲
+- 認証入口、Cookie、JWT、BFF Helper、Token RefreshおよびSessionAuthenticationの詳細を`docs/core/authentication-flow.md`へ委譲
+- 認証画面遷移と`returnTo`を`docs/core/auth-flow.md`へ委譲
+- Core / Product / Knowledge / Analytics / Auditごとに正本文書一覧を細分化
+
+Architectureには以下を残した。
+
+- システム全体のフロー
+- レイヤー責務
+- RecommendationとRuntime Snapshotの概念
+- Recommendation Scoreの責務
+- Frontend / BFF / Backendの認証境界
+- 各正本への委譲関係
+
+### Roadmap
+
+`docs/core/roadmap.md`の現在地を、主要体験の新規基盤実装段階から、基盤実装済み・検証継続段階へ更新した。
+
+以下を基盤実装済みとして整理した。
+
+- Visit Flow
+- Reflection保存
+- Journey Timeline
+- Web / MobileのPremium導線
+- Billing状態取得基盤
+- Web / MobileのAnalytics送信基盤
+
+現在の主フェーズは以下とした。
+
+```text
+Recommendation品質改善
+↓
+Shrine Data Quality
+↓
+Release Readiness
+↓
+Mobile本番配布準備
+```
+
+Visit Flow、Reflection Timeline、Premium導線およびAnalyticsは、新規実装フェーズとしては完了している。
+
+ただし、利用率、CVR、継続価値、Premium転換率およびWeb / Mobile間の体験差は、横断的な検証対象として継続する。
+
+### 文書委譲
+
+Roadmapの文書管理ルールを以下へ整理した。
+
+- システム構造・横断契約：`docs/core/`
+- 体験・機能設計：`docs/product/`
+- 神社データ・意味・コピー原則：`docs/knowledge/`
+- Analytics：`docs/analytics/`
+- 監査：`docs/audit/`
+- インフラ：`docs/infra/`
+
+### 結論
+
+PR2で予定した以下を完了した。
+
+- Architectureから物理詳細を専用正本へ委譲
+- Runtime Snapshot責務の抽象化
+- 認証詳細の委譲
+- 正本文書一覧の細分化
+- Roadmap現在地の実装・PRとの整合
+- Phase 1〜4を基盤実装済み・検証継続として整理
+- 現在の主フェーズをRecommendation品質改善とShrine Data Qualityへ更新
