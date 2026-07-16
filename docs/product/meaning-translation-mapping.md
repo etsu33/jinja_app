@@ -17,7 +17,7 @@
 - ご利益から`history_theme`への補助変換
 - 神社への`history_theme`付与方針
 - `history_theme`からAction・Reflectionへの接続
-- Recommendation・Runtime Snapshot・Analyticsとの接続
+- Recommendation、推薦時点の文脈保持およびAnalyticsとの接続
 
 本書は、一つの入力から一つの答えを機械的に決定する表ではない。
 
@@ -178,16 +178,6 @@ history_theme
 | 商売を伸ばしたい | 勝負 | 再出発 | 成長と変化 |
 | 自分を見つめ直したい | 静寂 | 学び | 内省と理解 |
 
-### 実装状況（Runtime変換）
-
-`backend/temples/services/meaning_translation.py`の`translate_meaning()`が、上記のprimary/secondaryを`history_theme` / `history_theme_secondary`として出力する。ただし現時点でsecondaryを生成できるのは、`state_profile.primary_state`が`tired` / `anxious` / `uncertain` / `stuck` / `ready_to_change`のいずれかに一致し、`direction_profile.themes`（`consultation_interpreter.DIRECTION_BY_STATE`）を経由した場合のみである。
-
-`need_profile` / `decision_context`経由の解決（`HISTORY_THEME_BY_NEED` / `HISTORY_THEME_BY_DECISION`）はprimaryの単一値のみを返し、secondaryは生成しない。上記表の全16行を機械的に再現するものではなく、対応関係は今後拡張しうる。
-
-`history_theme_secondary`はScore v3の`calculate_history_score`（副次一致=0.6）でのみ使用し、Recommendation ReasonのFact/Interpretation層には使用しない。
-
----
-
 ## ご利益からhistory_themeへの変換
 
 ご利益は、ユーザーが願いを入力しやすくするための入口として扱う。
@@ -261,85 +251,42 @@ MVPでは以下の7カテゴリを使用する。
 - Action Suggestion
 - Visit
 - Reflection
-- Runtime Snapshot
-- Analytics
+- 推薦時点の文脈保持
+- Analytics上の体験分析軸
 
 Frontend・Backend・Analyticsで独自のカテゴリ名を追加しない。
 
 ---
 
-## history_themeの生成源（Stored / Runtime-Translated / Snapshot）
+## history_themeの生成文脈
 
-`history_theme`という一つの物理名は、性質の異なる3つの値を指しうる。混同を避けるため、以下の3語を正式な概念名として固定する。
+`history_theme`は、利用場面により以下の異なる文脈を持つ。
 
-| 概念名 | 生成元 | 更新タイミング | 主な利用箇所 |
-|---|---|---|---|
-| Stored | `Shrine.history_theme`。「神社へのhistory_theme付与」節に基づくAdmin Reviewでの編集値 | 管理者が神社データを編集した時 | 神社詳細画面、Recommendation ReasonのFact層（優先） |
-| Runtime-Translated | `backend/temples/services/meaning_translation.py`の`translate_meaning()`が、ユーザーの相談解釈プロファイル（state_profile / need_profile / direction_profile / decision_context）から推論する値 | 相談チャットのたびに再計算 | Score v3の`calculate_history_score`、Fact層のfallback（Stored未設定時のみ） |
-| Snapshot | Stored値を推薦生成時に凍結コピーしたもの | 推薦生成時に1回のみ、以後不変 | `ConciergeThread.recommendations_v2`、`ShrineReflection.history_theme`、`ActionEvent.history_theme`、Journey Timeline |
+- 神社が持つ意味文脈
+- 相談内容から生成される意味変換結果
+- 推薦生成時点で保持される文脈
 
-### 責務対応表
+Productでは、この区分が画面体験とRecommendation・Action・Visit・Reflectionの接続に与える意味のみを扱う。
 
-| 責務 | Backend | Frontend |
-|---|---|---|
-| Stored値の編集 | Admin Review経由でDB更新 | 関与しない |
-| Runtime変換 | `meaning_translation.py`が相談プロファイルから推論 | 関与しない |
-| Score計算 | `recommendation_score_components.py`がStored/Runtime双方を突合 | 関与しない |
-| Fact生成 | `recommendation_reason_v4.py`がStored優先・Runtime fallback | 関与しない |
-| Snapshot生成 | 推薦生成時にStored値を凍結 | 受け取った値を保持・表示のみ |
-| カテゴリ表示 | 値をそのまま返す | Backendが返した`historyTheme`文字列をそのまま表示 |
-
-### 物理名の互換方針
-
-物理名（`history_theme` / `historyTheme`）はBackend・Frontend・DB・APIの全層で既に統一されている。本節の区分は概念上の整理であり、フィールド名・APIキー・DBカラム名を変更するものではない。
-
-### Concierge結果と神社詳細画面の由来差
-
-Concierge結果（`recommendations_v2`経由）は相談実行時点のSnapshotであり、以後Shrineの値が変わっても更新されない。神社詳細画面は閲覧時点の最新Stored値を都度取得する。同一神社でも両画面で表示内容が食い違いうることは仕様上許容する。
-
-本節は`docs/audit/history-theme-contract-audit.md`（E2で実施した監査）の結論を正式仕様として統合したものである。同監査文書はReferenceとして経緯を保持する。
+正確な生成処理、保存構造、Field、優先順位および再計算条件は、`docs/core/meaning-layer-connection.md`、`docs/core/architecture.md`および関連するBackend実装・テストを正本とする。
 
 ---
 
-## 神社へのhistory_theme付与
+## 神社文脈との接続
 
-神社の`history_theme`は、以下を総合して決定する。
+Meaning Translationは、神社が持つ事実・意味文脈と、相談内容から整理された意味文脈を接続する。
 
-- 御祭神
-- 神社の由緒
-- 歴史的背景
-- ご利益
-- 土地性
-- コンシェルジュで伝える意味
+Productでは、神社文脈を以下の体験へ接続する役割のみを扱う。
 
-ご利益だけで分類しない。
+- Recommendation Reason
+- Shrine Detail
+- Action Suggestion
+- Visit
+- Reflection
 
-| 神社の特徴 | 主なhistory_theme |
-|---|---|
-| 商売繁盛・勝運 | 勝負 |
-| 縁結び・良縁 | 縁 |
-| 厄除け・家内安全 | 守り |
-| 学業・知恵 | 学び |
-| 病気平癒・回復 | 復興 |
-| 静かな山・自然・内省 | 静寂 |
-| 再建・再生・転機 | 再出発 |
+神社側の`history_theme`、神社プロフィール、Fact / Meaningの分類、付与基準、出典およびデータ品質は、`docs/knowledge/shrine-profile-spec.md`と`docs/knowledge/shrine-data-guide.md`を正本とする。
 
-### 管理方針
-
-- 本番推薦対象の神社は原則として`history_theme`を持つ
-- 情報不足の場合のみ一時的な未設定を許容する
-- テスト用神社は本番分析対象から除外する
-- 新規神社はAdmin Reviewで`history_theme`を確定する
-
-```text
-Shrine Submission
-↓
-Admin Review
-↓
-history_theme決定
-↓
-公開
-```
+正確な保存値、取得処理および推薦への反映方法は、関連するBackend実装とテストを正本とする。
 
 ---
 
@@ -463,56 +410,41 @@ Meaning Translationは推薦理由を補助するが、推薦順位やScoreを�
 
 ---
 
-## Runtime Snapshot
+## 推薦時点の文脈保持
 
-Recommendation生成時には、意味変換結果をRuntime Snapshotへ保存する。
+Meaning Translationで整理された文脈は、推薦生成時点の体験として保持され、後続の画面や行動へ接続される。
 
-保持対象：
+これにより、以下の体験で推薦時点の意味を一貫して参照できる。
 
-- `history_theme`
-- `matched_need_tags`
-- `recommendation_reason`
-- `action_context`
-- `reflection_question_seed`
-- `action_suggestion`
-- Score Components
+- Recommendation Reason
+- Shrine Detail
+- Action Suggestion
+- Visit
+- Reflection
+- Journey Timeline
 
-Runtime Snapshotは推薦生成時点の状態を保持し、保存後に再計算しない。
+Productでは、推薦時点の文脈を後続体験へ引き継ぐ目的のみを管理する。
 
-Favorite・Visit・ユーザー属性が後から変化しても、生成時点の推薦内容を維持する。
+正確なSnapshot構造、保存先、Field、生成処理、更新条件および再計算方針は、`docs/core/meaning-layer-connection.md`、`docs/core/architecture.md`および関連するBackend実装・テストを正本とする。
 
 ---
 
 ## Analyticsとの接続
 
-Meaning Translationは、Behavior Funnelの分析軸として利用する。
+Meaning Translationは、相談、推薦、詳細閲覧、行動および振り返りの体験改善に必要な分析軸を提供する。
 
-```text
-Consultation
-↓
-Recommendation
-↓
-Detail
-↓
-Route
-↓
-Visit
-↓
-Reflection
-```
+Productでは、以下の体験を観測対象とする必要性のみを管理する。
 
-主な分析対象：
+- 相談から推薦への接続
+- 推薦から神社詳細への接続
+- 神社詳細から行動への接続
+- VisitからReflectionへの接続
+- Reflectionから次回相談への接続
+- `history_theme`ごとの体験差
 
-- Recommendation CTR
-- Detail View Rate
-- Route Open Rate
-- Visit Rate
-- Reflection Rate
-- 継続利用率
-- `history_theme`別CVR
-- `history_theme`別継続率
+正確なEvent名、Payload、Property、Funnel、KPI、集計方法およびWeb / Mobileの送信状況は、`docs/analytics/`配下の正本文書を参照する。
 
-Analyticsでは、`docs/product/history-theme-taxonomy.md`で定義されたカテゴリ名を使用する。
+Analyticsは体験改善の観測に利用し、個別ユーザーの心理状態、宗教的効果または人生上の結果を判定するためには利用しない。
 
 ---
 
@@ -526,8 +458,8 @@ Analyticsでは、`docs/product/history-theme-taxonomy.md`で定義されたカ�
 - `action_context`の生成
 - `reflection_question_seed`の生成
 - Recommendation Reasonへの情報提供
-- Runtime Snapshotへの情報提供
-- Analytics軸の提供
+- 推薦時点の文脈を後続体験へ接続する
+- Analyticsで必要となる体験分析軸を提供する
 
 ### Recommendation
 
