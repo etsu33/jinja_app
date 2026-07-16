@@ -161,41 +161,32 @@ Recommendation は以下を分離して扱う。
 - 表示用コピー
 - 行動提案
 
-推薦生成時点の評価値、理由、Actionは、`ConciergeThread.recommendations_v2` へ Runtime Snapshot として保存する。
+推薦生成時点の評価、理由および行動提案は、生成時点の文脈を保持するRuntime Snapshotとして扱う。
 
-### Snapshot Policy
+保存済みの推薦結果は、神社情報、評価ロジックまたはユーザーの行動状態が後から変化しても、暗黙に再計算または再ランキングしない。
 
-- score_v2：推薦生成時点の評価スナップショット
-- action_state：現在DBに基づく状態
-- ranking_applied：推薦順位へ反映済みかを示すフラグ
+現在のFavorite、VisitおよびReflectionは現在状態として管理し、過去の推薦結果と同一視しない。
 
-保存済み推薦は再計算・再ランキングしない。
+Runtime Snapshotの具体的なField、Payload、保存形式および互換方針は、以下へ委譲する。
 
-現在の Favorite、Visit、Reflection 状態が変化しても、過去の推薦結果は生成時点の値を維持する。
+- `docs/core/recommendation-reason-contract.md`
+- 関連するRecommendation契約
+- Backend実装およびテスト
 
 ---
 
-## Score v3
+### Recommendation Score
 
-Score v3 は shadow mode とし、既存順位を変更しない。
+Recommendation Scoreは、神社候補の評価と順位決定に利用する。
 
-### 観測する component
+新しいScoreは既存順位へ直ちに反映せず、既存結果との差分、各Signalの寄与および行動データとの関係を観測した上で、適用可否を判断する。
 
-- state_match_score
-- meaning_match_score
-- shrine_profile_score
-- behavior_score
-- history_score
-- final_score
+FrontendおよびMobileは、Backendが返す観測用Scoreを独自に順位へ反映しない。
 
-### 用途
+ScoreのSignal、Component、Weight、計算式、評価方法および適用状況は、以下を正本とする。
 
-- 既存ランキングとの差分確認
-- componentごとの寄与分析
-- Behavior Funnelとの相関確認
-- active化判断のための実測
-
-frontend / mobile は `debug.score_v3` を順位決定に利用しない。
+- `docs/analytics/recommendation-score-v3-design.md`
+- 関連するBackend実装およびテスト
 
 ---
 
@@ -267,17 +258,11 @@ Shrine
 
 ### Runtime Snapshot
 
-以下は Shrine 固定プロフィールへ保存せず、推薦生成時点のスナップショットとして保持する。
+Runtime Snapshotは、推薦生成時点の相談文脈、評価結果、推薦理由および行動提案を保持する。
 
-- matched_need_tags
-- consultation_axis
-- text_score
-- text_hint
-- score_element
-- evidence
-- recommendation_reason
-- action_suggestion
-- score_components
+Shrineに固定して保存する神社プロフィールと、相談ごとに変化するRuntime情報を混在させない。
+
+Runtime Snapshotの具体的なField、保存先、Payloadおよび互換方針は、Recommendation関連契約、Backend実装およびテストを正本とする。
 
 ### Behavior Data
 
@@ -293,43 +278,77 @@ Shrine
 
 ## 認証アーキテクチャ
 
+Web版の認証付き通信は、以下の経路へ統一する。
+
 ```text
 Frontend
 ↓
 Next.js BFF
 ↓
-Django API
+Django Backend
 ↓
-JWTAuthentication
+Authentication
+↓
+request.user
 ```
 
 ### 基本方針
 
-- frontend のログイン入口は `/api/auth/login`
-- access token / refresh token は HttpOnly Cookie に保存する
-- 認証付きAPIは `bffFetchWithAuthFromReq` を経由する
-- frontend から backend origin を直接組み立てない
-- JWT を localStorage へ保存しない
-- 課金、保存、ユーザー状態の判定は backend の `request.user` を正本とする
+- FrontendからBackendへ認証付き通信を直接行わない
+- Tokenの保持、更新およびBackendへの付与はBFFの責務とする
+- 認証、権限、所有者および課金状態の最終判定はBackendが担当する
+- Frontendは認証状態と認証要求時のUIを担当する
+- WebとMobileのToken保存方式を同一視しない
 
-SessionAuthentication は依存監査が完了するまで即削除しない。
+認証入口、Cookie、JWT、BFF Helper、Token Refresh、SessionAuthenticationおよび正本実装の詳細は、`docs/core/authentication-flow.md`を正本とする。
+
+認証要求時の画面遷移、`returnTo`および認証後の復帰導線は、`docs/core/auth-flow.md`を参照する。
 
 ---
 
 ## 正本ドキュメント
 
-詳細仕様は以下へ分離する。
+詳細仕様は責務ごとに以下へ分離する。
 
+### Core
+
+- Core文書の入口：`docs/core/README.md`
+- Meaning Layer：`docs/core/meaning-layer.md`
+- Meaning接続：`docs/core/meaning-layer-connection.md`
+- Narrative原則：`docs/core/narrative-guideline.md`
+- Recommendation品質：`docs/core/recommendation-readiness.md`
+- Recommendation Reason：`docs/core/recommendation-reason-contract.md`
+- 認証：`docs/core/authentication-flow.md`
+- 認証画面遷移：`docs/core/auth-flow.md`
+
+### Product
+
+- Product文書の入口：`docs/product/README.md`
 - Concierge First：`docs/product/concierge-first-final-spec.md`
 - Concierge Modes：`docs/product/concierge-modes.md`
+- Meaning Translation：`docs/product/meaning-translation-mapping.md`
 - Explore：`docs/product/explore-integration-design.md`
-- Meaning Layer：`docs/core/meaning-layer.md`
 - 神社詳細：`docs/product/shrine-detail-layer.md`
+- Action：`docs/product/action_suggestion_v4.md`
+- Visit / Reflection：`docs/product/visit-reflection-flow.md`
 - Premium：`docs/product/premium-experience.md`
 - 投稿フロー：`docs/product/shrine-submission-flow.md`
-- 認証：`docs/core/authentication-flow.md`
-- Recommendation / Knowledge：`docs/knowledge/`
-- 監査：`docs/audit/`
+
+### Knowledge
+
+- Knowledge文書の入口：`docs/knowledge/README.md`
+- 神社プロフィール：`docs/knowledge/shrine-profile-spec.md`
+- 神社データ品質：`docs/knowledge/shrine-data-guide.md`
+- 推薦コピー：`docs/knowledge/recommendation-copy-guide.md`
+
+### Analytics
+
+- Analytics文書の入口：`docs/analytics/README.md`
+- Recommendation Score v3：`docs/analytics/recommendation-score-v3-design.md`
+
+### Audit
+
+- 監査、過去判断および時点記録：`docs/audit/`
 
 ---
 

@@ -17,9 +17,9 @@
 
 ## 現在地
 
-KAMI MUSUBIは、Concierge Firstを中心とした基本体験と、推薦から神社詳細へ接続する基盤を実装済みである。
+KAMI MUSUBIは、Concierge Firstを起点として、推薦、神社詳細、経路確認、参拝、振り返りまでを接続する主要基盤を実装済みである。
 
-現在は、以下の体験を一本の流れとして完成させる段階にある。
+現在は、完成した基盤を利用しながら、Recommendation品質、神社データ品質、Premium価値および継続利用を検証・改善する段階にある。
 
 ```text
 相談
@@ -37,7 +37,9 @@ KAMI MUSUBIは、Concierge Firstを中心とした基本体験と、推薦から
 継続利用
 ```
 
-### 実装済みの主要基盤
+### 基盤実装済み
+
+以下の主要基盤は実装済みである。
 
 - Concierge First
 - 相談テーマを主入力とする導線
@@ -47,10 +49,48 @@ KAMI MUSUBIは、Concierge Firstを中心とした基本体験と、推薦から
 - Action Suggestion
 - Recommendation Snapshot
 - Favorite / Visit / Reflectionモデル
+- Visitと推薦Threadの接続
+- Reflection保存
+- Journey Timeline
 - Behavior Funnelの基礎
 - Score v3 shadow observation
 - Shrine Submissionの受付・審査基盤
 - Next.js BFF / JWT認証基盤
+- Web / MobileのPremium導線
+- Billing状態取得基盤
+- Web / MobileのAnalytics送信基盤
+
+### 基盤実装済み・検証継続
+
+以下は基盤実装済みであるが、本番データおよび継続利用による検証を続ける。
+
+- Premium価値の理解度
+- Premium導線表示率
+- Premium導線クリック率
+- 課金転換率
+- 継続率
+- Visit登録率
+- Reflection保存率
+- Journey Timeline再閲覧率
+- Recommendationから詳細・経路・参拝への遷移率
+- Recommendation Scoreと行動結果の関係
+- Web / Mobile間の主要体験差
+
+### 現在の主フェーズ
+
+現在の主フェーズは、Recommendation品質改善とShrine Data Qualityである。
+
+特に以下を優先する。
+
+- Recommendation Readinessの定義統一
+- Coverageの定義統一
+- Fact / Meaning / Runtime / Governanceの責務分離
+- 神社固有情報を利用したRecommendation Reason
+- Action / Reflectionとの一貫性
+- 神社データの出典・検証・利用可能性
+- Readiness条件とBackend実装の接続
+
+PremiumおよびAnalyticsは独立した一時的フェーズとして終了させず、Recommendation品質、継続利用および収益性を確認する横断的な検証基盤として運用する。
 
 ---
 
@@ -334,23 +374,33 @@ Mobile独自の推薦・意味判定ロジックは持たない。
 
 ## 現在の実装順序
 
+### 主フェーズ
+
 ```text
-Visit Flow統合
-↓
-Reflection Timeline
-↓
-Premium導線
-↓
-Analytics整備
-↓
 Recommendation品質改善
 ↓
 Shrine Data Quality
 ↓
 Release Readiness
 ↓
-Mobile展開
+Mobile本番配布準備
 ```
+
+### 横断的な検証
+
+以下は基盤実装済みとし、主フェーズと並行して継続的に検証・改善する。
+
+- Visit Flow
+- Reflection Timeline
+- Premium導線
+- Analytics
+- Recommendationから参拝までの行動ファネル
+- Premium転換率および継続率
+- Web / Mobile間の主要体験差
+
+Phase 1〜4は独立した新規実装フェーズとしては完了している。
+
+ただし、各基盤の品質、利用率、CVRおよび継続価値の検証は完了扱いにせず、後続フェーズでも継続する。
 
 ---
 
@@ -370,7 +420,9 @@ Mobile展開
 個別情報は以下へ分離する。
 
 - タスク: GitHub Issue / Pull Request
-- 設計: `docs/product/` / `docs/knowledge/`
+- システム構造・横断契約: `docs/core/`
+- 体験・機能設計: `docs/product/`
+- 神社データ・意味・コピー原則: `docs/knowledge/`
 - Analytics: `docs/analytics/`
 - 監査: `docs/audit/`
 - インフラ: `docs/infra/`
