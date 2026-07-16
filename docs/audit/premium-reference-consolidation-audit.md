@@ -22,9 +22,9 @@ Premium関連のReference文書について、現行Active文書との責務重�
 
 ### 比較対象となるActive文書
 
-- `docs/billing-paywall.md`
-- `docs/pricing.md`
-- `docs/premium-experience.md`
+- `docs/product/billing-paywall.md`
+- `docs/product/pricing.md`
+- `docs/product/premium-experience.md`
 
 ---
 
@@ -34,9 +34,9 @@ Premium関連のReference文書について、現行Active文書との責務重�
 
 | 文書 | Status | 主な責務 |
 | --- | --- | --- |
-| `docs/billing-paywall.md` | Active | 課金状態、Free利用制限、Paywall表示条件、Frontend・Backendの判定責務 |
-| `docs/pricing.md` | Active | Free / Premiumの提供価値境界、支払対象、価格表現の原則 |
-| `docs/premium-experience.md` | Active | Premium体験原則、画面別の体験差、Premiumとして扱ってよい表現と扱わない表現 |
+| `docs/product/billing-paywall.md` | Active | 課金状態、Free利用制限、Paywall表示条件、Frontend・Backendの判定責務 |
+| `docs/product/pricing.md` | Active | Free / Premiumの提供価値境界、支払対象、価格表現の原則 |
+| `docs/product/premium-experience.md` | Active | Premium体験原則、画面別の体験差、Premiumとして扱ってよい表現と扱わない表現 |
 
 ### Reference文書との関係
 
@@ -176,7 +176,7 @@ Premium activated
 
 ただし、これらは現在の実装契約ではなく、将来構想として記述されている。
 
-以下の価値原則は、すでに`docs/pricing.md`および`docs/premium-experience.md`へ吸収済みである。
+以下の価値原則は、すでに`docs/product/pricing.md`および`docs/product/premium-experience.md`へ吸収済みである。
 
 - Premiumは単なる機能追加ではない
 - Free体験を不当に不便にしない
@@ -239,7 +239,7 @@ PVだけではなく、再相談、履歴再訪、比較、保存記録の再利
 
 ## 吸収先
 
-## `docs/premium-experience.md`への吸収
+## `docs/product/premium-experience.md`への吸収
 
 以下の原則を追加する。
 
@@ -286,7 +286,7 @@ PVやCheckout成功だけでなく、Premium化後に記録、比較、再相談
 
 ---
 
-## `docs/pricing.md`への吸収
+## `docs/product/pricing.md`への吸収
 
 価格表現の原則として、以下を明示する。
 
@@ -320,7 +320,7 @@ Referenceを維持する。
 
 `docs/audit/premium-plan-design.md`へ移動する。
 
-現行Premium価値原則は`docs/pricing.md`および`docs/premium-experience.md`へ吸収済みである。
+現行Premium価値原則は`docs/product/pricing.md`および`docs/product/premium-experience.md`へ吸収済みである。
 
 残る独自内容は、AI Memory、Annual Journey、Statistics、履歴検索、家族共有等の将来構想であり、現行仕様ではない。
 
@@ -333,7 +333,7 @@ Referenceを維持する。
 >
 > 本ドキュメントは、Premiumの長期構想、AI Memory、Journey View、比較、統計、月次・年次レビュー等を整理した設計記録である。
 >
-> 現行のPremium価値境界は`docs/pricing.md`および`docs/premium-experience.md`、課金状態とPaywall判定は`docs/billing-paywall.md`を正本とする。
+> 現行のPremium価値境界は`docs/product/pricing.md`および`docs/product/premium-experience.md`、課金状態とPaywall判定は`docs/product/billing-paywall.md`を正本とする。
 >
 > 本書に記載された将来機能は、実装済みまたは提供確定を意味しない。
 ```
@@ -342,11 +342,11 @@ Referenceを維持する。
 
 有効な原則とKPIをActive・Reference文書へ吸収した後、`docs/audit/premium-retention-strategy.md`へ移動する。
 
-Premiumの継続価値に関する基本思想は、`docs/pricing.md`および`docs/premium-experience.md`と重複している。
+Premiumの継続価値に関する基本思想は、`docs/product/pricing.md`および`docs/product/premium-experience.md`と重複している。
 
 Retention KPIと保存・履歴・比較の意味は独自性を持つため、移動前に以下へ吸収する。
 
-- 体験原則：`docs/premium-experience.md`
+- 体験原則：`docs/product/premium-experience.md`
 - Retention / Engagement KPI：`docs/monetization-flow-design.md`
 
 移動後は以下のStatusを付与する。
@@ -356,7 +356,7 @@ Retention KPIと保存・履歴・比較の意味は独自性を持つため、�
 >
 > 本ドキュメントは、Premium継続価値、保存・履歴・比較およびRetention KPIを整理した戦略記録である。
 >
-> 現行のPremium体験境界は`docs/premium-experience.md`、提供価値境界は`docs/pricing.md`、収益導線と継続計測は`docs/monetization-flow-design.md`を参照する。
+> 現行のPremium体験境界は`docs/product/premium-experience.md`、提供価値境界は`docs/product/pricing.md`、収益導線と継続計測は`docs/monetization-flow-design.md`を参照する。
 >
 > 本書の有効な原則とKPIは上記文書へ移管済みであり、現行仕様の判断には使用しない。
 ```
@@ -377,9 +377,9 @@ Delete候補は0件とする。
 
 ## 実行順序
 
-1. `docs/premium-experience.md`へ保存・履歴・比較の原則を追加する
+1. `docs/product/premium-experience.md`へ保存・履歴・比較の原則を追加する
 2. `docs/monetization-flow-design.md`へRetention / Engagement KPIを追加する
-3. 必要に応じて`docs/pricing.md`へ価格説明原則を追加する
+3. 必要に応じて`docs/product/pricing.md`へ価格説明原則を追加する
 4. `docs/premium-plan-design.md`を`docs/audit/premium-plan-design.md`へ移動する
 5. `docs/premium-retention-strategy.md`を`docs/audit/premium-retention-strategy.md`へ移動する
 6. 移動した2文書へ`Status: Archive`ヘッダーを追加する
@@ -398,7 +398,7 @@ Delete候補は0件とする。
 - `docs/monetization-flow-design.md`がReferenceとして残っている
 - `docs/premium-plan-design.md`が`docs/audit/`へ移動している
 - `docs/premium-retention-strategy.md`が`docs/audit/`へ移動している
-- 保存・履歴・比較の有効な体験原則が`docs/premium-experience.md`へ反映されている
+- 保存・履歴・比較の有効な体験原則が`docs/product/premium-experience.md`へ反映されている
 - Retention / Engagement KPIが`docs/monetization-flow-design.md`へ反映されている
 - 移動した文書の旧パスを現行仕様として参照する文書が残っていない
 - `docs/README.md`のPremium Reference入口が現行分類と一致している
@@ -420,9 +420,9 @@ Delete対象はない。
 
 この整理により、Premium関連の現行判断は以下へ集約される。
 
-- 課金状態・Paywall：`docs/billing-paywall.md`
-- 提供価値・支払対象：`docs/pricing.md`
-- 画面別Premium体験：`docs/premium-experience.md`
+- 課金状態・Paywall：`docs/product/billing-paywall.md`
+- 提供価値・支払対象：`docs/product/pricing.md`
+- 画面別Premium体験：`docs/product/premium-experience.md`
 - 課金提示・CTA・Subscription・計測：`docs/monetization-flow-design.md`
 
 将来構想と過去のRetention戦略は`docs/audit/`へ分離し、現行仕様との混同を防ぐ。

@@ -2,7 +2,7 @@
 >
 > 本ドキュメントは、Premiumの長期構想、AI Memory、Journey View、比較、統計、月次・年次レビュー等を整理した設計記録である。
 >
-> 現行のPremium価値境界は`docs/pricing.md`および`docs/premium-experience.md`、課金状態とPaywall判定は`docs/billing-paywall.md`を正本とする。
+> 現行のPremium価値境界は`docs/product/pricing.md`および`docs/product/premium-experience.md`、課金状態とPaywall判定は`docs/product/billing-paywall.md`を正本とする。
 >
 > 本書に記載された将来機能は、実装済みまたは提供確定を意味しない。
 # Premium Plan Design

@@ -112,7 +112,7 @@ WebはFrontendからBackend APIを直接呼び出さず、Next.js の `/api` Rou
 
 現行のユーザー体験、画面責務および機能契約は以下を参照する。
 
-- `kami-musubi-experience-design.md`
+- `product/kami-musubi-experience-design.md`
   - 相談・推薦・参拝・振り返りを一本の体験として接続する最上位体験設計
 
 - `product/README.md`
@@ -121,7 +121,7 @@ WebはFrontendからBackend APIを直接呼び出さず、Next.js の `/api` Rou
 - `core/concierge-spec.md`
   - Conciergeの入力、LLMモード、API契約および運用ログ
 
-- `recommendation-v4-interpreter-contract.md`
+- `product/recommendation-v4-interpreter-contract.md`
   - Consultation InterpreterのInput / Output契約
 
 ---
@@ -130,13 +130,13 @@ WebはFrontendからBackend APIを直接呼び出さず、Next.js の `/api` Rou
 
 Premiumの価値、体験差、課金判定および収益導線は以下を参照する。
 
-- `billing-paywall.md`
+- `product/billing-paywall.md`
   - 課金状態、利用可否、Paywall判定およびServer責務
 
-- `pricing.md`
+- `product/pricing.md`
   - Free / Premiumの価値境界と価格表現
 
-- `premium-experience.md`
+- `product/premium-experience.md`
   - Free / Premiumの体験境界、保存・履歴・比較の原則
 
 - `monetization-flow-design.md`
@@ -148,16 +148,16 @@ Premiumの価値、体験差、課金判定および収益導線は以下を参�
 
 神社詳細、参拝後導線および記録体験は以下を参照する。
 
-- `shrine-detail-layer.md`
+- `product/shrine-detail-layer.md`
   - 神社詳細の Public / Context / Personal Layer
 
-- `shrine-detail-v3-design.md`
+- `product/shrine-detail-v3-design.md`
   - 神社詳細 v3 のUX、AnalyticsおよびPremium接続
 
-- `shrine-submission-flow.md`
+- `product/shrine-submission-flow.md`
   - 神社追加、重複候補および投稿後導線
 
-- `reflection-timeline-design.md`
+- `product/reflection-timeline-design.md`
   - 相談・参拝・振り返りを時系列で蓄積する体験設計
 
 ---

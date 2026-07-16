@@ -14,17 +14,17 @@ Phase7では、KAMI MUSUBIの体験を「相談して終わり」から「相談
 
 Phase7実装計画を作成した時点では、以下の設計ドキュメントを前提としていた。
 
-現在のPremium関連仕様については、`docs/pricing.md`、`docs/premium-experience.md`、`docs/billing-paywall.md`および`docs/monetization-flow-design.md`を参照する。
+現在のPremium関連仕様については、`docs/product/pricing.md`、`docs/product/premium-experience.md`、`docs/product/billing-paywall.md`および`docs/monetization-flow-design.md`を参照する。
 
 | Document                                 | Role                                 |
 | ---------------------------------------- | ------------------------------------ |
 | `docs/audit/phase7-ux-monetization-roadmap.md` | 旧Phase7全体ロードマップの履歴       |
-| `docs/shrine-detail-v3-design.md`        | 神社詳細画面v3のUX設計               |
+| `docs/product/shrine-detail-v3-design.md`        | 神社詳細画面v3のUX設計               |
 | `docs/visit-flow-design.md`              | 参拝前、参拝中、参拝後の行動導線設計 |
-| `docs/reflection-timeline-design.md`     | 参拝後の振り返りとタイムライン設計   |
-| `docs/pricing.md`                        | Premium提供価値と価格説明の現行正本  |
-| `docs/premium-experience.md`             | Premium体験境界の現行正本            |
-| `docs/billing-paywall.md`                | 課金状態とPaywall判定の現行正本      |
+| `docs/product/reflection-timeline-design.md`     | 参拝後の振り返りとタイムライン設計   |
+| `docs/product/pricing.md`                        | Premium提供価値と価格説明の現行正本  |
+| `docs/product/premium-experience.md`             | Premium体験境界の現行正本            |
+| `docs/product/billing-paywall.md`                | 課金状態とPaywall判定の現行正本      |
 | `docs/monetization-flow-design.md`       | 課金導線とPremium遷移・計測の設計    |
 | `docs/audit/premium-plan-design.md`      | Premium長期構想の履歴                |
 
@@ -157,7 +157,7 @@ Visit Flowでは、GPSや日時を必須にしない。MVPでは、ユーザー�
 | `backend/temples/services/reflection_state_change.py`                         | 振り返りから状態変化を抽出 |
 | `backend/temples/tests/services/test_reflection_state_change.py`              | 状態変化抽出テスト         |
 | `backend/temples/tests/services/test_reflection_hint_observation_contract.py` | 振り返りヒント観測契約     |
-| `docs/reflection-timeline-design.md`                                          | UI / 体験設計              |
+| `docs/product/reflection-timeline-design.md`                                          | UI / 体験設計              |
 | `docs/analytics/reflection-next-recommendation-design.md`                     | 次回推薦との接続設計       |
 
 ### Implementation Notes
@@ -216,9 +216,9 @@ Phase7のPremium訴求は、以下の3価値に寄せる。
 | `apps/web/src/features/concierge/components/PremiumStateDeltaCard.tsx` | Premium向け状態差分カード |
 | `apps/web/src/lib/premium/accessLevel.ts`                              | Premium access判定        |
 | `apps/web/src/lib/premium/cardVisibility.ts`                           | Premium card visibility   |
-| `docs/pricing.md`                                                      | Premium提供価値境界       |
-| `docs/premium-experience.md`                                           | Premium体験境界           |
-| `docs/billing-paywall.md`                                              | 課金状態・Paywall判定     |
+| `docs/product/pricing.md`                                                      | Premium提供価値境界       |
+| `docs/product/premium-experience.md`                                           | Premium体験境界           |
+| `docs/product/billing-paywall.md`                                              | 課金状態・Paywall判定     |
 | `docs/monetization-flow-design.md`                                     | 収益導線・継続計測設計    |
 
 ### Implementation Notes

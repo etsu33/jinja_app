@@ -29,7 +29,7 @@ v4 の推薦理由を、ユーザーが理解しやすく、行動につなが�
 - `interpretation`
 - `action`
 - `docs/core/recommendation-reason-contract.md`
-- `docs/recommendation-v4-interpreter-contract.md`
+- `docs/product/recommendation-v4-interpreter-contract.md`
 
 ## Non Goals
 

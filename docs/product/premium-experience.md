@@ -108,7 +108,7 @@ Premium の中心画面。
 - Free: 由緒、所在地、ご利益、公開御朱印、基本導線
 - Premium: コンシェルジュ起点の個人向け補足理由、保存済み記録との接続
 
-詳細は `docs/shrine-detail-layer.md` を参照する。
+詳細は `docs/product/shrine-detail-layer.md` を参照する。
 
 ### マイページ
 
@@ -128,6 +128,6 @@ Premium の継続価値を見せる画面。
 
 ## 実装判断メモ
 
-- Premium 判定そのものは `docs/billing-paywall.md` を参照する
+- Premium 判定そのものは `docs/product/billing-paywall.md` を参照する
 - Premium UI を追加する場合は、まず本ドキュメントの中心価値に該当するか確認する
 - 投稿機能は現時点では Premium 条件と結びつけない

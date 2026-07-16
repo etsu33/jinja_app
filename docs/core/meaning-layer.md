@@ -227,8 +227,8 @@ AIによって意味を整理し、
 - `docs/product/meaning-translation-mapping.md`
 - `docs/product/concierge-first-final-spec.md`
 - `docs/product/concierge-modes.md`
-- `docs/shrine-detail-layer.md`
-- `docs/premium-experience.md`
+- `docs/product/shrine-detail-layer.md`
+- `docs/product/premium-experience.md`
 
 本ドキュメントは Meaning Layer の思想・責務を定義する。
 

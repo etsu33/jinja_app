@@ -1132,3 +1132,25 @@ A10で確定した配置計画のうち、Core文書3件およびAudit文書5件
 A1〜A9およびA10のInventory・参照元調査に残る旧パスは、移動前の状態を示す監査証跡として保持する。
 
 これにより、A10のPR1「Core / Audit配置」は完了した。Product Active、Product Reference、Knowledge / Analyticsの移動は後続PRで実行する。
+
+### PR2 Product Active Directory Move 実行結果
+
+A10で確定した配置計画のうち、Product Active文書9件を`docs/product/`へ移動した。
+
+#### Productへ移動
+
+- `docs/billing-paywall.md` → `docs/product/billing-paywall.md`
+- `docs/kami-musubi-experience-design.md` → `docs/product/kami-musubi-experience-design.md`
+- `docs/premium-experience.md` → `docs/product/premium-experience.md`
+- `docs/pricing.md` → `docs/product/pricing.md`
+- `docs/recommendation-v4-interpreter-contract.md` → `docs/product/recommendation-v4-interpreter-contract.md`
+- `docs/reflection-timeline-design.md` → `docs/product/reflection-timeline-design.md`
+- `docs/shrine-detail-layer.md` → `docs/product/shrine-detail-layer.md`
+- `docs/shrine-detail-v3-design.md` → `docs/product/shrine-detail-v3-design.md`
+- `docs/shrine-submission-flow.md` → `docs/product/shrine-submission-flow.md`
+
+root README、docs README、Core文書、Product文書および現行正本を案内するAudit文書の参照を新パスへ更新した。
+
+A1〜A10のInventory、移動前パス、当時の参照調査結果は監査証跡として保持する。
+
+これにより、A10のPR2「Product Active配置」は完了した。Product ReferenceおよびKnowledge / Analytics文書の移動は後続PRで実行する。
