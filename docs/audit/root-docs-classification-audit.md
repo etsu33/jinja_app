@@ -7,8 +7,8 @@
 > - `docs/product/meaning-translation-mapping.md`
 > - `docs/core/recommendation-reason-contract.md`
 >
-> このため、`docs/knowledge/meaning-layer-spec.md`は後続監査の判断を優先し削除した。本文中のActive・必須判定は、当時の監査結果として保持する。
-> さらに、Recommendation Reason専用正本として`docs/core/recommendation-reason-contract.md`を作成したため、旧`docs/recommendation-reason-v4-contract.md`は現行正本から外し、導入時点の設計記録として`docs/audit/recommendation-reason-v4-contract.md`へArchive移動した。
+> このため、`docs/knowledge/meaning-layer-spec.md`は後続監査の判断を優先し削除した。本文中のActive・必須判定は、当時の監査結果として保持する。さらに、Recommendation
+> Reason専用正本として`docs/core/recommendation-reason-contract.md`を作成したため、旧`docs/recommendation-reason-v4-contract.md`は現行正本から外し、導入時点の設計記録として`docs/audit/recommendation-reason-v4-contract.md`へArchive移動した。
 
 # Root Documents Classification Audit
 
@@ -67,7 +67,6 @@
 
 ## 判断保留
 
-
 - analytics-payload-audit.mdと現行実装の一致確認
 - premium-card-matrix.mdの現行実装反映確認
 - analytics-card-events.mdの現行Analytics契約との最終照合
@@ -105,16 +104,16 @@ access-tier-copy-audit.md analytics-event-storage-audit.md concierge-ranking-obs
 
 ### 判定
 
-| 文書                               | Status候補    | 移動先候補        | 参照状況                                                      | 判断根拠                                                                                                                                                            |
-| ---------------------------------- | ------------- | ----------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `access-tier-copy-audit.md`        | Archive       | `docs/audit/`     | 参照なし                                                      | Access Tier Copy接続時点の判断とTODOを含む                                                                                                                          |
-| `analytics-card-events.md`         | Archive       | `docs/analytics/` | `docs/analytics/save-premium-correlation.md`から参照          | Event契約、監査、移行計画、PR履歴が混在する。現行実装済みの`retentionEvents.ts`と`searchEvents.ts`をplannedと記載し、PayloadおよびEvent名にも現行実装との差異がある |
-| `analytics-event-storage-audit.md` | Archive       | `docs/audit/`     | 参照なし                                                      | Analytics保存先とProvider接続状況の時点監査                                                                                                                         |
-| `analytics-payload-audit.md`       | Reference | `docs/analytics/` | `docs/audit/cross-platform-event-contract.md`から参照         | Payloadおよび`sessionId`設計背景の補足資料。現行実装との一致確認後に確定する                                                                                        |
-| `card-ctr-aggregation.md`          | Archive       | `docs/analytics/` | 参照なし                                                      | 集計設計と未実装Phase、次PR計画を含む                                                                                                                               |
-| `concierge-ranking-observation.md` | Archive       | `docs/audit/`     | `docs/audit/recommendation-quality-score-v3-audit.md`から参照 | Ranking WeightとCandidate Poolの観測履歴                                                                                                                            |
-| `premium-analytics-dashboard.md`   | Archive       | `docs/analytics/` | 参照なし                                                      | Dashboard・AB Test・後続実装計画の記録                                                                                                                              |
-| `shrine-detail-analytics-route.md` | Archive       | `docs/analytics/` | 参照なし                                                      | Shrine Detail Analytics導入時のEvent棚卸しと次PR計画                                                                                                                |
+| 文書                               | Status候補 | 移動先候補        | 参照状況                                                      | 判断根拠                                                                                                                                                            |
+| ---------------------------------- | ---------- | ----------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `access-tier-copy-audit.md`        | Archive    | `docs/audit/`     | 参照なし                                                      | Access Tier Copy接続時点の判断とTODOを含む                                                                                                                          |
+| `analytics-card-events.md`         | Archive    | `docs/analytics/` | `docs/analytics/save-premium-correlation.md`から参照          | Event契約、監査、移行計画、PR履歴が混在する。現行実装済みの`retentionEvents.ts`と`searchEvents.ts`をplannedと記載し、PayloadおよびEvent名にも現行実装との差異がある |
+| `analytics-event-storage-audit.md` | Archive    | `docs/audit/`     | 参照なし                                                      | Analytics保存先とProvider接続状況の時点監査                                                                                                                         |
+| `analytics-payload-audit.md`       | Reference  | `docs/analytics/` | `docs/audit/cross-platform-event-contract.md`から参照         | Payloadおよび`sessionId`設計背景の補足資料。現行実装との一致確認後に確定する                                                                                        |
+| `card-ctr-aggregation.md`          | Archive    | `docs/analytics/` | 参照なし                                                      | 集計設計と未実装Phase、次PR計画を含む                                                                                                                               |
+| `concierge-ranking-observation.md` | Archive    | `docs/audit/`     | `docs/audit/recommendation-quality-score-v3-audit.md`から参照 | Ranking WeightとCandidate Poolの観測履歴                                                                                                                            |
+| `premium-analytics-dashboard.md`   | Archive    | `docs/analytics/` | 参照なし                                                      | Dashboard・AB Test・後続実装計画の記録                                                                                                                              |
+| `shrine-detail-analytics-route.md` | Archive    | `docs/analytics/` | 参照なし                                                      | Shrine Detail Analytics導入時のEvent棚卸しと次PR計画                                                                                                                |
 
 ### 現行契約の分離
 
@@ -174,16 +173,16 @@ Archive化前に、現在も有効な責務定義が現行正本文書へ反映�
 
 ### 判定
 
-| 文書                                         | Status候補    | 移動先候補        | 参照状況                      | 判断根拠                                                                                  |
-| -------------------------------------------- | ------------- | ----------------- | ----------------------------- | ----------------------------------------------------------------------------------------- |
-| `direction-ranking-design.md` | Reference | `docs/product/` | 参照なし | 方角・吉方位を補助軸として扱う将来設計。現行実装では`direction_profile.luckyDirection`一致による最大`0.02`の補助シグナルのみ実装され、Direction Mode・方角入力・吉方位計算・九星別スコアは未実装 |
-| `recommendation-score-v3-design.md`          | Reference | `docs/analytics/` | Score v3監査から参照          | Score v3のSignalと計算式の設計背景。実装Phaseとドラフトを含むため現行値は実装を正本とする |
-| `recommendation-score-v3-roadmap.md`         | Archive       | `docs/audit/`     | Score v3監査から参照          | Roadmap、Active化、Dashboard、観測Snapshot、TODOが混在する時点記録                        |
-| `recommendation-v4-consultation-brush-up.md` | Archive       | `docs/audit/`     | 参照なし                      | Consultation改善作業のScope・KPIを整理した短期計画                                        |
-| `recommendation-v4-copy-guideline.md`        | Reference | `docs/knowledge/` | Action Suggestion監査から参照 | v4固有のCopy Ruleを持つが、Knowledge BaseのRecommendation Copy Guideと責務が重複する      |
-| `recommendation-v4-interpreter-contract.md`  | Active        | `docs/product/`   | Copy Guidelineから参照        | Consultation InterpreterのField ContractとSource of Truthを定義                           |
-| `recommendation-v5-design.md`                | Archive       | `docs/audit/`     | 参照なし                      | 未実装のv5設計と次PR候補を含む将来計画                                                     |
-| `recommendation-reason-v4-contract.md`       | Archive       | `docs/audit/`     | 現行参照なし                  | Recommendation Reason v4導入時点の責務・入力・出力・実装計画・Active化条件を記録した過去設計。現行正本は`docs/core/recommendation-reason-contract.md` |
+| 文書                                         | Status候補 | 移動先候補        | 参照状況                      | 判断根拠                                                                                                                                                                                         |
+| -------------------------------------------- | ---------- | ----------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `direction-ranking-design.md`                | Reference  | `docs/product/`   | 参照なし                      | 方角・吉方位を補助軸として扱う将来設計。現行実装では`direction_profile.luckyDirection`一致による最大`0.02`の補助シグナルのみ実装され、Direction Mode・方角入力・吉方位計算・九星別スコアは未実装 |
+| `recommendation-score-v3-design.md`          | Reference  | `docs/analytics/` | Score v3監査から参照          | Score v3のSignalと計算式の設計背景。実装Phaseとドラフトを含むため現行値は実装を正本とする                                                                                                        |
+| `recommendation-score-v3-roadmap.md`         | Archive    | `docs/audit/`     | Score v3監査から参照          | Roadmap、Active化、Dashboard、観測Snapshot、TODOが混在する時点記録                                                                                                                               |
+| `recommendation-v4-consultation-brush-up.md` | Archive    | `docs/audit/`     | 参照なし                      | Consultation改善作業のScope・KPIを整理した短期計画                                                                                                                                               |
+| `recommendation-v4-copy-guideline.md`        | Reference  | `docs/knowledge/` | Action Suggestion監査から参照 | v4固有のCopy Ruleを持つが、Knowledge BaseのRecommendation Copy Guideと責務が重複する                                                                                                             |
+| `recommendation-v4-interpreter-contract.md`  | Active     | `docs/product/`   | Copy Guidelineから参照        | Consultation InterpreterのField ContractとSource of Truthを定義                                                                                                                                  |
+| `recommendation-v5-design.md`                | Archive    | `docs/audit/`     | 参照なし                      | 未実装のv5設計と次PR候補を含む将来計画                                                                                                                                                           |
+| `recommendation-reason-v4-contract.md`       | Archive    | `docs/audit/`     | 現行参照なし                  | Recommendation Reason v4導入時点の責務・入力・出力・実装計画・Active化条件を記録した過去設計。現行正本は`docs/core/recommendation-reason-contract.md`                                            |
 
 ### 現行契約
 
@@ -192,8 +191,7 @@ Recommendation Reasonの現行正本は以下とする。
 - `docs/core/recommendation-reason-contract.md`
 - `docs/recommendation-v4-interpreter-contract.md`
 
-旧`docs/recommendation-reason-v4-contract.md`は、
-導入時点の設計記録として`docs/audit/recommendation-reason-v4-contract.md`へArchive移動した。
+旧`docs/recommendation-reason-v4-contract.md`は、導入時点の設計記録として`docs/audit/recommendation-reason-v4-contract.md`へArchive移動した。
 
 ### Copy Guide統合候補
 
@@ -211,16 +209,16 @@ v4固有規則のうち現在も有効な内容をKnowledge Baseへ統合し、r
 
 ### 判定
 
-| 文書                            | Status候補    | 移動先候補      | 参照状況                                            | 判断根拠                                                                             |
-| ------------------------------- | ------------- | --------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| `billing-attribution-design.md` | Archive       | `docs/audit/`   | 参照なし                                            | Card AnalyticsからCheckoutまでのAttribution課題、候補案、次PR、TODOを含む時点設計    |
-| `billing-paywall.md`            | Active        | `docs/product/` | `pricing.md`、`premium-experience.md`から参照       | Billing Status、Paywall情報、Premium優先、Free制限、Server最終判定を定義する契約文書 |
-| `monetization-flow-design.md`   | Reference | `docs/product/` | Phase7関連監査・Archive文書から参照                 | Premium提示タイミング、入口、CTA、Subscription Flowを補足する収益導線設計            |
-| `premium-card-matrix.md`        | Archive       | `docs/audit/`   | 参照なし                                            | Access Level別Card表示設計を持つが、現在地、次の一手、Payload案、実装TODOを含む      |
-| `premium-experience.md`         | Active        | `docs/product/` | Core、Meaning Layer、Pricing、Shrine Detailから参照 | Free / Premiumの体験差、表現、画面別境界を定義する現行正本候補                       |
-| `premium-plan-design.md`        | Reference | `docs/product/` | Phase7関連文書から参照                              | Reflection、Timeline、History、Memory等を含むPremium価値の包括的な構想               |
-| `premium-retention-strategy.md` | Reference | `docs/product/` | 参照なし                                            | 保存、履歴、比較を中心としたPremium継続価値とKPIの戦略補足                           |
-| `pricing.md`                    | Active        | `docs/product/` | `shrine-detail-layer.md`から参照                    | 「何に対して支払うか」、Free / Premiumの価値境界、価格表現原則を管理する             |
+| 文書                            | Status候補 | 移動先候補      | 参照状況                                            | 判断根拠                                                                             |
+| ------------------------------- | ---------- | --------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `billing-attribution-design.md` | Archive    | `docs/audit/`   | 参照なし                                            | Card AnalyticsからCheckoutまでのAttribution課題、候補案、次PR、TODOを含む時点設計    |
+| `billing-paywall.md`            | Active     | `docs/product/` | `pricing.md`、`premium-experience.md`から参照       | Billing Status、Paywall情報、Premium優先、Free制限、Server最終判定を定義する契約文書 |
+| `monetization-flow-design.md`   | Reference  | `docs/product/` | Phase7関連監査・Archive文書から参照                 | Premium提示タイミング、入口、CTA、Subscription Flowを補足する収益導線設計            |
+| `premium-card-matrix.md`        | Archive    | `docs/audit/`   | 参照なし                                            | Access Level別Card表示設計を持つが、現在地、次の一手、Payload案、実装TODOを含む      |
+| `premium-experience.md`         | Active     | `docs/product/` | Core、Meaning Layer、Pricing、Shrine Detailから参照 | Free / Premiumの体験差、表現、画面別境界を定義する現行正本候補                       |
+| `premium-plan-design.md`        | Reference  | `docs/product/` | Phase7関連文書から参照                              | Reflection、Timeline、History、Memory等を含むPremium価値の包括的な構想               |
+| `premium-retention-strategy.md` | Reference  | `docs/product/` | 参照なし                                            | 保存、履歴、比較を中心としたPremium継続価値とKPIの戦略補足                           |
+| `pricing.md`                    | Active     | `docs/product/` | `shrine-detail-layer.md`から参照                    | 「何に対して支払うか」、Free / Premiumの価値境界、価格表現原則を管理する             |
 
 ### 正本の責務分離
 
@@ -252,16 +250,16 @@ A4にはDelete候補はない。
 
 ### 判定
 
-| 文書                                 | Status候補    | 移動先候補      | 参照状況                                            | 判断根拠                                                               |
-| ------------------------------------ | ------------- | --------------- | --------------------------------------------------- | ---------------------------------------------------------------------- |
-| `action_state_behavior_checklist.md` | Archive       | `docs/audit/`   | 参照なし                                            | 動作確認チェックリストであり、仕様契約ではない                         |
-| `journey-timeline-api-plan.md`       | Archive       | `docs/audit/`   | 参照なし                                            | Journey Timeline API のPhase計画・Backend/Mobile変更候補を含む時点設計 |
-| `journey-timeline-design.md`         | Reference | `docs/product/` | 参照なし                                            | Journey Timeline の設計思想・情報設計・Migration方針を整理した設計資料 |
-| `reflection-timeline-design.md`      | Active        | `docs/product/` | Phase7関連文書から参照                              | Reflection Timeline の役割、UX、KPI、Premium接続を定義する現行設計     |
-| `shrine-detail-layer.md`             | Active        | `docs/product/` | Pricing、Premium Experience、Architecture等から参照 | 神社詳細のPublic / Context / Personal Layerと責務境界を定義            |
-| `shrine-detail-meaning-layer.md`     | Reference | `docs/product/` | 参照なし                                            | Shrine Detail のMeaning Layer設計補足ガイド                            |
-| `shrine-detail-v3-design.md`         | Active        | `docs/product/` | Phase7 Roadmapから参照                              | Shrine Detail v3 のUX・Analytics・Premium接続を定義する正本候補        |
-| `shrine-submission-flow.md`          | Active        | `docs/product/` | Architectureから参照                                | 神社投稿、duplicate_candidate契約、推薦利用方針を定義する現行仕様      |
+| 文書                                 | Status候補 | 移動先候補      | 参照状況                                            | 判断根拠                                                               |
+| ------------------------------------ | ---------- | --------------- | --------------------------------------------------- | ---------------------------------------------------------------------- |
+| `action_state_behavior_checklist.md` | Archive    | `docs/audit/`   | 参照なし                                            | 動作確認チェックリストであり、仕様契約ではない                         |
+| `journey-timeline-api-plan.md`       | Archive    | `docs/audit/`   | 参照なし                                            | Journey Timeline API のPhase計画・Backend/Mobile変更候補を含む時点設計 |
+| `journey-timeline-design.md`         | Reference  | `docs/product/` | 参照なし                                            | Journey Timeline の設計思想・情報設計・Migration方針を整理した設計資料 |
+| `reflection-timeline-design.md`      | Active     | `docs/product/` | Phase7関連文書から参照                              | Reflection Timeline の役割、UX、KPI、Premium接続を定義する現行設計     |
+| `shrine-detail-layer.md`             | Active     | `docs/product/` | Pricing、Premium Experience、Architecture等から参照 | 神社詳細のPublic / Context / Personal Layerと責務境界を定義            |
+| `shrine-detail-meaning-layer.md`     | Reference  | `docs/product/` | 参照なし                                            | Shrine Detail のMeaning Layer設計補足ガイド                            |
+| `shrine-detail-v3-design.md`         | Active     | `docs/product/` | Phase7 Roadmapから参照                              | Shrine Detail v3 のUX・Analytics・Premium接続を定義する正本候補        |
+| `shrine-submission-flow.md`          | Active     | `docs/product/` | Architectureから参照                                | 神社投稿、duplicate_candidate契約、推薦利用方針を定義する現行仕様      |
 
 ### Delete候補
 
@@ -339,16 +337,16 @@ Journey、Shrine Detail、投稿フローそれぞれに固有の責務を持ち
 
 #### README・architecture・product・audit文書からの参照
 
-| 対象                                                                                                                                  | 参照元（抜粋）                                                                                                                                                                                                               | 状況                                                                |
-| ------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| `docs/core/architecture.md`                                                                                                           | `docs/README.md`、`docs/project-context.md`、`docs/AGENTS.md`、`docs/authentication-flow.md`、`docs/product/*`（7文書）、`docs/meaning-layer/*`（5文書）、`docs/mobile/*`（2文書）、`docs/phase7-ux-monetization-roadmap.md` | 最多参照。Core文書の中心                                            |
-| `docs/core/meaning-layer.md`                                                                                                          | 同上系統16文書                                                                                                                                                                                                               | Meaning Layer思想の参照元として広く利用                             |
-| `docs/core/meaning-layer-connection.md`                                                                                               | `project-context.md`、`meaning-layer/*`、`mobile/*`、`ui/concierge-result-wireframe.md`等9文書                                                                                                                               | 接続仕様として実装系文書から参照                                    |
-| `docs/core/narrative-guideline.md`                                                                                                    | `project-context.md`、`README.md`、`product/action-suggestion-layer.md`（Archive）、`product/meaning-translation-mapping.md`、`product/visit-reflection-flow.md`                                                             | 表示文言原則として参照                                              |
-| `docs/core/roadmap.md`                                                                                                                | `project-context.md`、`README.md`、`phase7-ux-monetization-roadmap.md`（Archive）、`phase5-behavior-measurement-plan.md`（Archive）                                                                                          | 現行文書からの参照はREADME・project-contextの2件のみ                |
-| `docs/knowledge/README.md`                                                                                                            | `project-context.md`、`docs/README.md`                                                                                                                                                                                       | Knowledge Base入口として参照                                        |
-| `docs/knowledge/recommendation-copy-guide.md`                                                                                         | `docs/audit/knowledge-base-consistency-audit.md`、本監査文書                                                                                                                                                                 | 監査文書からのみ参照                                                |
-| `docs/knowledge/shrine-profile-spec.md`他6文書（shrine-data-guide / meaning-layer-spec / action-guide / reflection-guide / glossary） | `docs/audit/knowledge-base-consistency-audit.md`、およびKnowledge Base内の相互参照（README、各Guideの関連仕様節）                                                                                                            | root/product/mobile等の実装系文書からのファイルパス参照は確認できず |
+| 対象                                                                                                                                  | 参照元（抜粋）                                                                                                                                                                                                                                                | 状況                                                                |
+| ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `docs/core/architecture.md`                                                                                                           | `docs/README.md`、`docs/project-context.md`、`docs/audit/auth-favorite-ai-operation-record.md`、`docs/authentication-flow.md`、`docs/product/*`（7文書）、`docs/meaning-layer/*`（5文書）、`docs/mobile/*`（2文書）、`docs/phase7-ux-monetization-roadmap.md` | 最多参照。Core文書の中心                                            |
+| `docs/core/meaning-layer.md`                                                                                                          | 同上系統16文書                                                                                                                                                                                                                                                | Meaning Layer思想の参照元として広く利用                             |
+| `docs/core/meaning-layer-connection.md`                                                                                               | `project-context.md`、`meaning-layer/*`、`mobile/*`、`ui/concierge-result-wireframe.md`等9文書                                                                                                                                                                | 接続仕様として実装系文書から参照                                    |
+| `docs/core/narrative-guideline.md`                                                                                                    | `project-context.md`、`README.md`、`product/action-suggestion-layer.md`（Archive）、`product/meaning-translation-mapping.md`、`product/visit-reflection-flow.md`                                                                                              | 表示文言原則として参照                                              |
+| `docs/core/roadmap.md`                                                                                                                | `project-context.md`、`README.md`、`phase7-ux-monetization-roadmap.md`（Archive）、`phase5-behavior-measurement-plan.md`（Archive）                                                                                                                           | 現行文書からの参照はREADME・project-contextの2件のみ                |
+| `docs/knowledge/README.md`                                                                                                            | `project-context.md`、`docs/README.md`                                                                                                                                                                                                                        | Knowledge Base入口として参照                                        |
+| `docs/knowledge/recommendation-copy-guide.md`                                                                                         | `docs/audit/knowledge-base-consistency-audit.md`、本監査文書                                                                                                                                                                                                  | 監査文書からのみ参照                                                |
+| `docs/knowledge/shrine-profile-spec.md`他6文書（shrine-data-guide / meaning-layer-spec / action-guide / reflection-guide / glossary） | `docs/audit/knowledge-base-consistency-audit.md`、およびKnowledge Base内の相互参照（README、各Guideの関連仕様節）                                                                                                                                             | root/product/mobile等の実装系文書からのファイルパス参照は確認できず |
 
 **観察**:
 `docs/knowledge`配下の個別ファイル（README以外）は、`docs/product/`や`docs/mobile/`等の実装系文書から直接ファイルパスで参照されることがほぼない。参照されているのは`docs/audit/knowledge-base-consistency-audit.md`（責務・用語監査）のみであり、Knowledge
@@ -401,10 +399,10 @@ Layerの入出力フローを図示するが、`architecture.md`は全体レイ�
 
 #### product文書との責務重複確認
 
-| knowledge文書                  | 対応product文書                                                               | 関係                                                                                                                                                                                                                                            |
-| ------------------------------ | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 旧`meaning-layer-spec.md`      | `product/meaning-translation-mapping.md` / `core/meaning-layer-connection.md` | 監査時点では抽象仕様と実装詳細の分離と評価したが、後続の本文再監査で旧文書に独自の確定仕様が存在しないことを確認した。Meaning Layerの接続責務は`core/meaning-layer-connection.md`、変換仕様は`product/meaning-translation-mapping.md`へ集約済み |
-| `recommendation-copy-guide.md` | 監査時点のroot `recommendation-reason-v4-contract.md`（現在は`docs/audit/recommendation-reason-v4-contract.md`へArchive移動済み。現行正本は`docs/core/recommendation-reason-contract.md`）           | knowledge側は「推薦文の文章構造原則」、root側は「fact/interpretation/actionの実装関数対応（concierge_chat_ranking.py等）」という実装トレース。抽象度は異なるが、扱う分割（3層構造）が類似しており統合または相互参照の余地がある                 |
+| knowledge文書                  | 対応product文書                                                                                                                                                                            | 関係                                                                                                                                                                                                                                            |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 旧`meaning-layer-spec.md`      | `product/meaning-translation-mapping.md` / `core/meaning-layer-connection.md`                                                                                                              | 監査時点では抽象仕様と実装詳細の分離と評価したが、後続の本文再監査で旧文書に独自の確定仕様が存在しないことを確認した。Meaning Layerの接続責務は`core/meaning-layer-connection.md`、変換仕様は`product/meaning-translation-mapping.md`へ集約済み |
+| `recommendation-copy-guide.md` | 監査時点のroot `recommendation-reason-v4-contract.md`（現在は`docs/audit/recommendation-reason-v4-contract.md`へArchive移動済み。現行正本は`docs/core/recommendation-reason-contract.md`） | knowledge側は「推薦文の文章構造原則」、root側は「fact/interpretation/actionの実装関数対応（concierge_chat_ranking.py等）」という実装トレース。抽象度は異なるが、扱う分割（3層構造）が類似しており統合または相互参照の余地がある                 |
 
 #### Recommendation文書との重複確認
 
@@ -458,16 +456,16 @@ Contract）は責務が分離されている。
 
 ### Implementation Alignment
 
-| 確認項目                         | 実装箇所                                                                                                                                                                                                                 | 整合状況                                                                                                                                                                                                                                                                                                                          |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| history_theme                    | `Shrine.history_theme`（`backend/temples/models.py`、CharField max_length=32、db_index）。Derivedとして事前生成値をDB保存                                                                                                | `knowledge/glossary.md`の定義（「神社の歴史や由緒から抽出した意味テーマ」）と一致。Derivedが「非保存」を意味しない点は本文からは読み取りにくく、`knowledge-base-consistency-audit.md`が既に指摘済み                                                                                                                               |
-| reason_facts                     | `backend/temples/services/concierge_chat_ranking.py`の`_build_reason_facts`、`backend/temples/services/journey_timeline.py`                                                                                              | `shrine-profile-spec.md`が「reason_factsはhistory_theme, culture_translation, user_selected_tag, need_tag, goriyaku_tag, text_hint, elementのいずれか1つでも存在すれば非空になる」と実装事実として明記。実装ファイルの存在と一致確認済み                                                                                          |
+| 確認項目                         | 実装箇所                                                                                                                                                                                                                 | 整合状況                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| history_theme                    | `Shrine.history_theme`（`backend/temples/models.py`、CharField max_length=32、db_index）。Derivedとして事前生成値をDB保存                                                                                                | `knowledge/glossary.md`の定義（「神社の歴史や由緒から抽出した意味テーマ」）と一致。Derivedが「非保存」を意味しない点は本文からは読み取りにくく、`knowledge-base-consistency-audit.md`が既に指摘済み                                                                                                                                                                                                                                                                                          |
+| reason_facts                     | `backend/temples/services/concierge_chat_ranking.py`の`_build_reason_facts`、`backend/temples/services/journey_timeline.py`                                                                                              | `shrine-profile-spec.md`が「reason_factsはhistory_theme, culture_translation, user_selected_tag, need_tag, goriyaku_tag, text_hint, elementのいずれか1つでも存在すれば非空になる」と実装事実として明記。実装ファイルの存在と一致確認済み                                                                                                                                                                                                                                                     |
 | recommendation_reason_v4         | `backend/temples/services/recommendation_reason_v4.py`の`build_recommendation_reason_v4()`。fact/interpretation/action/used_fact/used_interpretation/used_action/qualityを生成                                           | 監査時点のroot `recommendation-reason-v4-contract.md`の記述（fact/interpretation/actionへの分離）と実装が一致していた（同文書は現在`docs/audit/recommendation-reason-v4-contract.md`へArchive移動し、現行正本は`docs/core/recommendation-reason-contract.md`）。`knowledge/recommendation-copy-guide.md`のFact→Meaning→User Connection→Recommendationという4分割とは命名が異なる（Meaningがinterpretationの一部に相当、User Connectionに明示的に対応する層がない）。**用語の不一致は要整理** |
-| action_suggestion_v4             | `backend/temples/services/action_suggestion_builder.py`                                                                                                                                                                  | `product/action_suggestion_v4.md`のContract定義と実装ファイルが対応                                                                                                                                                                                                                                                               |
-| consultation_axis                | `backend/temples/domain/consultation_axis.py`。`ConciergeThread.recommendations_v2`内へRuntime Snapshotとして保存（`concierge_chat.py`）                                                                                 | `knowledge-base-consistency-audit.md` 7.4節で「完全対応」と確認済み。本監査でも実装ファイルの存在を確認                                                                                                                                                                                                                           |
-| matched_need_tags                | `backend/temples/services/concierge_chat_ranking.py`。`ConciergeThread.recommendations_v2`内へ保存                                                                                                                       | 同上。Runtime Snapshotとして実装済み                                                                                                                                                                                                                                                                                              |
-| Stored/Derived/Runtime境界       | `Shrine`モデル（Stored: sajin, description, goriyaku, goriyaku_tags / Derived: history_theme）、`ConciergeThread.recommendations_v2`JSONField（Runtime: matched_need_tags, consultation_axis, reason_facts, evidence等） | `knowledge/shrine-profile-spec.md`の区分定義と概ね一致。ただし`deity`→`Shrine.sajin`、`shrine_history`→`Shrine.description`はいずれも自由記述TextFieldへの部分対応であり、概念項目と物理フィールドが完全一致していない（`knowledge-base-consistency-audit.md` 7.5節と同じ結論を本監査でも再確認）                                 |
-| Recommendation Readiness実装状況 | 実装コード内に`recommendation_readiness` / `RecommendationReadiness` / `readiness_level`等の実装は確認できず（grep結果0件）。Coverage算出処理も未実装                                                                    | `knowledge/shrine-data-guide.md`および`shrine-profile-spec.md`は「Level0〜3」の段階定義を持つが、判定関数・DB保持は未実装。`knowledge-base-consistency-audit.md`が「文書定義のみ、P0」と分類した結論を本監査でも再確認。**文書は仕様として先行しているが実装が追いついていない**                                                  |
+| action_suggestion_v4             | `backend/temples/services/action_suggestion_builder.py`                                                                                                                                                                  | `product/action_suggestion_v4.md`のContract定義と実装ファイルが対応                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| consultation_axis                | `backend/temples/domain/consultation_axis.py`。`ConciergeThread.recommendations_v2`内へRuntime Snapshotとして保存（`concierge_chat.py`）                                                                                 | `knowledge-base-consistency-audit.md` 7.4節で「完全対応」と確認済み。本監査でも実装ファイルの存在を確認                                                                                                                                                                                                                                                                                                                                                                                      |
+| matched_need_tags                | `backend/temples/services/concierge_chat_ranking.py`。`ConciergeThread.recommendations_v2`内へ保存                                                                                                                       | 同上。Runtime Snapshotとして実装済み                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| Stored/Derived/Runtime境界       | `Shrine`モデル（Stored: sajin, description, goriyaku, goriyaku_tags / Derived: history_theme）、`ConciergeThread.recommendations_v2`JSONField（Runtime: matched_need_tags, consultation_axis, reason_facts, evidence等） | `knowledge/shrine-profile-spec.md`の区分定義と概ね一致。ただし`deity`→`Shrine.sajin`、`shrine_history`→`Shrine.description`はいずれも自由記述TextFieldへの部分対応であり、概念項目と物理フィールドが完全一致していない（`knowledge-base-consistency-audit.md` 7.5節と同じ結論を本監査でも再確認）                                                                                                                                                                                            |
+| Recommendation Readiness実装状況 | 実装コード内に`recommendation_readiness` / `RecommendationReadiness` / `readiness_level`等の実装は確認できず（grep結果0件）。Coverage算出処理も未実装                                                                    | `knowledge/shrine-data-guide.md`および`shrine-profile-spec.md`は「Level0〜3」の段階定義を持つが、判定関数・DB保持は未実装。`knowledge-base-consistency-audit.md`が「文書定義のみ、P0」と分類した結論を本監査でも再確認。**文書は仕様として先行しているが実装が追いついていない**                                                                                                                                                                                                             |
 
 ### Classification
 
@@ -487,15 +485,14 @@ Contract）は責務が分離されている。
 | `docs/knowledge/action-guide.md`              | 行動提案生成原則の正本                                                                                    |
 | `docs/knowledge/reflection-guide.md`          | 振り返り生成原則の正本                                                                                    |
 | `docs/knowledge/glossary.md`                  | 用語定義の正本。他文書からの参照は少ないが、README更新順序・shrine-data-guideの関連仕様節で位置付けが明確 |
-| `docs/core/recommendation-reason-contract.md` | Recommendation ReasonのInput / Output / 保存 / 表示 / 互換責務を管理する正本 |
+| `docs/core/recommendation-reason-contract.md` | Recommendation ReasonのInput / Output / 保存 / 表示 / 互換責務を管理する正本                              |
 
 本監査時点では、`docs/core`5文書と`docs/knowledge`8文書の合計13文書をActiveと判定した。
 
 その後、`docs/knowledge/meaning-layer-spec.md`は、
 `docs/audit/recommendation-doc-consolidation-audit.md`の再監査により削除された。
 
-一方で、Recommendation Reasonの現行正本として
-`docs/core/recommendation-reason-contract.md`が新規追加された。
+一方で、Recommendation Reasonの現行正本として `docs/core/recommendation-reason-contract.md`が新規追加された。
 
 したがって、現在のActive対象は以下の合計13文書である。
 
@@ -544,17 +541,17 @@ Coreは「思想・責務・依存関係」の正本、Knowledgeは「知識・�
 重大な責務重複は確認されなかったが、以下の軽微な課題を確認した。
 
 1. `docs/shrine-detail-layer.md`に移動前の旧パス`docs/architecture.md`への参照切れが残っている
-2. `docs/knowledge/recommendation-copy-guide.md`と
-   `docs/core/recommendation-reason-contract.md`の間で、
-   Meaning / User ConnectionとInterpretation / Actionの用語対応を継続して管理する必要がある
+2. `docs/knowledge/recommendation-copy-guide.md`と `docs/core/recommendation-reason-contract.md`の間で、Meaning / User
+   ConnectionとInterpretation / Actionの用語対応を継続して管理する必要がある
 3. `docs/knowledge`配下の個別文書（README以外）は、`docs/product/`等の実装系文書からファイルパスで直接参照されることがほぼなく、参照されているのは`docs/audit/knowledge-base-consistency-audit.md`のみ
 4. Recommendation Readiness/Coverageは文書定義のみで実装が未着手（既存監査で確認済みの結論を本監査でも再確認）
 
-これらは文書分類（Active/Reference/Archive）には影響しないため、A6の分類結果は「全13文書をActiveとする」（`docs/core`6文書 + `docs/knowledge`7文書）で確定する。個別の整理は上記4点をA7以降または実装監査へ引き継ぐ。
+これらは文書分類（Active/Reference/Archive）には影響しないため、A6の分類結果は「全13文書をActiveとする」（`docs/core`6文書 +
+`docs/knowledge`7文書）で確定する。個別の整理は上記4点をA7以降または実装監査へ引き継ぐ。
 
 ## A7 Product
-> 後続の`docs/audit/archive-final-classification.md`において、
-> 以下2文書は独自の現行仕様を持たないDelete対象として承認され、削除済みである。
+
+> 後続の`docs/audit/archive-final-classification.md`において、以下2文書は独自の現行仕様を持たないDelete対象として承認され、削除済みである。
 >
 > - `docs/product/action-suggestion-layer.md`
 > - `docs/product/product-doc-consolidation.md`
@@ -774,14 +771,14 @@ Search相当の探索機能に触れているが、Mode名としての実装対�
 
 ### 判定一覧
 
-| 文書 | 判定 | 判断根拠 | 最終的な正本 |
-| --- | --- | --- | --- |
-| `docs/concierge_spec.md` | Active | Conciergeの入力、LLMモード、API契約および運用ログの基本契約を管理する現行仕様書である | 詳細な物理挙動は関連するBackend・Frontend実装およびテスト |
-| `docs/kami-musubi-experience-design.md` | Active | 相談・推薦・参拝・振り返りを一本の体験として接続する最上位の体験設計である | 各機能の詳細は対応するCore・Product文書、実装およびテスト |
-| `docs/card-visibility-renderer-split.md` | Reference | Card VisibilityとRenderer責務を整理した設計補足であり、TODO・次PR候補を含む | 現行の表示可否、Access LevelおよびCard構成はProduct文書、Frontend実装およびテスト |
-| `docs/concierge-card-architecture.md` | Reference | Card Tree、Props、RendererおよびSection Routingを整理した設計補足であり、物理実装の正本ではない | 現行の表示構造はFrontend実装およびテスト |
-| `docs/concierge_risk_register.md` | Reference | Concierge周辺の変更リスクと保護手段を管理する運用資料であり、仕様契約そのものではない | 現行仕様はCore・Product契約文書、正確な挙動は実装およびテスト |
-| `docs/mobile-bottom-navigation.md` | Reference | 本文の5タブ構成案と現行の4タブ実装が一致していない | `apps/mobile/app/_layout.tsx`および関連テスト |
+| 文書                                     | 判定      | 判断根拠                                                                                        | 最終的な正本                                                                      |
+| ---------------------------------------- | --------- | ----------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `docs/core/concierge-spec.md`            | Active    | Conciergeの入力、LLMモード、API契約および運用ログの基本契約を管理する現行仕様書である           | 詳細な物理挙動は関連するBackend・Frontend実装およびテスト                         |
+| `docs/kami-musubi-experience-design.md`  | Active    | 相談・推薦・参拝・振り返りを一本の体験として接続する最上位の体験設計である                      | 各機能の詳細は対応するCore・Product文書、実装およびテスト                         |
+| `docs/card-visibility-renderer-split.md` | Reference | Card VisibilityとRenderer責務を整理した設計補足であり、TODO・次PR候補を含む                     | 現行の表示可否、Access LevelおよびCard構成はProduct文書、Frontend実装およびテスト |
+| `docs/concierge-card-architecture.md`    | Reference | Card Tree、Props、RendererおよびSection Routingを整理した設計補足であり、物理実装の正本ではない | 現行の表示構造はFrontend実装およびテスト                                          |
+| `docs/concierge_risk_register.md`        | Reference | Concierge周辺の変更リスクと保護手段を管理する運用資料であり、仕様契約そのものではない           | 現行仕様はCore・Product契約文書、正確な挙動は実装およびテスト                     |
+| `docs/mobile-bottom-navigation.md`       | Reference | 本文の5タブ構成案と現行の4タブ実装が一致していない                                              | `apps/mobile/app/_layout.tsx`および関連テスト                                     |
 
 ### Active文書の責務境界
 
@@ -791,25 +788,26 @@ Search相当の探索機能に触れているが、Mode名としての実装対�
 
 両文書は以下の責務に分離する。
 
-| 文書 | 責務 |
-| --- | --- |
+| 文書                                    | 責務                                                                   |
+| --------------------------------------- | ---------------------------------------------------------------------- |
 | `docs/kami-musubi-experience-design.md` | ユーザー体験の全体構造、画面ごとの体験責務、相談から振り返りまでの接続 |
-| `docs/core/architecture.md` | Backend・Frontend・BFF・DB・各レイヤーの技術責務と依存関係 |
+| `docs/core/architecture.md`             | Backend・Frontend・BFF・DB・各レイヤーの技術責務と依存関係             |
 
-`docs/concierge_spec.md`はConciergeの入力・LLM・API・運用契約を管理する。
+`docs/core/concierge-spec.md`はConciergeの入力・LLM・API・運用契約を管理する。
 
-Concierge Firstの体験仕様は`docs/product/concierge-first-final-spec.md`、Mode責務は`docs/product/concierge-modes.md`を正本とする。
+Concierge
+Firstの体験仕様は`docs/product/concierge-first-final-spec.md`、Mode責務は`docs/product/concierge-modes.md`を正本とする。
 
 ### Mobile Bottom Navigationの実装差分
 
 現行実装`apps/mobile/app/_layout.tsx`は以下の4タブを表示する。
 
-| 順序 | Route | 表示名 |
-| ---: | --- | --- |
-| 1 | `index` | ホーム |
-| 2 | `concierge/index` | 相談 |
-| 3 | `records/index` | 記録 |
-| 4 | `mypage/index` | マイページ |
+| 順序 | Route             | 表示名     |
+| ---: | ----------------- | ---------- |
+|    1 | `index`           | ホーム     |
+|    2 | `concierge/index` | 相談       |
+|    3 | `records/index`   | 記録       |
+|    4 | `mypage/index`    | マイページ |
 
 `docs/mobile-bottom-navigation.md`が記載する5タブ構成、表示順、Routeおよびランキングタブとは一致しない。
 
@@ -839,4 +837,274 @@ Referenceとする。
 
 `docs/direction-ranking-design.md`は、現行実装へ一部接続された将来設計を保持するReference文書とする。
 
-正確なDirection Signalの計算、Weight、適用条件および出力は、`backend/temples/services/concierge_chat_ranking.py`と関連テストを最終的な正本とする。
+正確なDirection
+Signalの計算、Weight、適用条件および出力は、`backend/temples/services/concierge_chat_ranking.py`と関連テストを最終的な正本とする。
+
+## A10 Root Documents Directory Finalization
+
+### 目的
+
+既に確定したActive / Reference / Archive分類を変更せず、`docs/`直下に残るMarkdown文書の最終配置先を確定する。
+
+本節では、文書のStatusと配置先を別軸として扱い、現行正本、設計補足、監査記録および運用文書を責務別ディレクトリへ整理する。
+
+### 前提
+
+- A1〜A9の分類判断を正として引き継ぐ
+- 文書内容の再監査は行わない
+- Statusと配置先を別軸として扱う
+- 実装との差分は分類変更の根拠にせず、後続課題として分離する
+- `docs/README.md`のみを`docs/`直下の入口文書として残す
+- 本監査PRでは移動を実行せず、配置先、参照修正対象および実行順序を確定する
+
+### 配置判定
+
+#### Core
+
+| 文書                     | Status    | 現在地                        | 最終配置                           | 判断根拠                                                                |
+| ------------------------ | --------- | ----------------------------- | ---------------------------------- | ----------------------------------------------------------------------- |
+| `auth-flow.md`           | Reference | `docs/auth-flow.md`           | `docs/core/auth-flow.md`           | 認証フローの設計補足であり、システム境界と認証責務に属する              |
+| `authentication-flow.md` | Active    | `docs/authentication-flow.md` | `docs/core/authentication-flow.md` | Web・Backend・BFF間の認証責務を定義する現行契約                         |
+| `concierge_spec.md`      | Active    | `docs/core/concierge-spec.md` | `docs/core/concierge-spec.md`      | Conciergeの入力、LLMモード、API契約および運用責務を管理するシステム契約 |
+
+#### Product
+
+| 文書                                        | Status    | 現在地                                           | 最終配置                                                 | 判断根拠                                                 |
+| ------------------------------------------- | --------- | ------------------------------------------------ | -------------------------------------------------------- | -------------------------------------------------------- |
+| `billing-paywall.md`                        | Active    | `docs/billing-paywall.md`                        | `docs/product/billing-paywall.md`                        | Free制限、Premium判定、Paywall体験の機能契約             |
+| `card-visibility-renderer-split.md`         | Reference | `docs/card-visibility-renderer-split.md`         | `docs/product/card-visibility-renderer-split.md`         | Card表示可否とRenderer責務の設計補足                     |
+| `concierge-card-architecture.md`            | Reference | `docs/concierge-card-architecture.md`            | `docs/product/concierge-card-architecture.md`            | Concierge UIのCard Treeと表示構造の設計補足              |
+| `direction-ranking-design.md`               | Reference | `docs/direction-ranking-design.md`               | `docs/product/direction-ranking-design.md`               | 方角を推薦補助軸として扱うProduct設計                    |
+| `journey-timeline-design.md`                | Reference | `docs/journey-timeline-design.md`                | `docs/product/journey-timeline-design.md`                | Journey Timelineの体験・情報設計                         |
+| `kami-musubi-experience-design.md`          | Active    | `docs/kami-musubi-experience-design.md`          | `docs/product/kami-musubi-experience-design.md`          | 相談から参拝・振り返りまでを接続する最上位体験設計       |
+| `mobile-bottom-navigation.md`               | Reference | `docs/mobile-bottom-navigation.md`               | `docs/product/mobile-bottom-navigation.md`               | Mobile画面導線とTab構成の設計補足                        |
+| `monetization-flow-design.md`               | Reference | `docs/monetization-flow-design.md`               | `docs/product/monetization-flow-design.md`               | Premium提示、CTA、購入復帰および継続計測のProduct設計    |
+| `premium-experience.md`                     | Active    | `docs/premium-experience.md`                     | `docs/product/premium-experience.md`                     | Free / Premiumの画面別体験差を定義する現行正本           |
+| `pricing.md`                                | Active    | `docs/pricing.md`                                | `docs/product/pricing.md`                                | Free / Premiumの提供価値境界と価格表現を定義する現行正本 |
+| `recommendation-v4-interpreter-contract.md` | Active    | `docs/recommendation-v4-interpreter-contract.md` | `docs/product/recommendation-v4-interpreter-contract.md` | Consultation InterpreterのInput / Output契約             |
+| `reflection-timeline-design.md`             | Active    | `docs/reflection-timeline-design.md`             | `docs/product/reflection-timeline-design.md`             | ReflectionとTimelineの現行体験設計                       |
+| `shrine-detail-layer.md`                    | Active    | `docs/shrine-detail-layer.md`                    | `docs/product/shrine-detail-layer.md`                    | Shrine DetailのPublic / Context / Personal Layer契約     |
+| `shrine-detail-meaning-layer.md`            | Reference | `docs/shrine-detail-meaning-layer.md`            | `docs/product/shrine-detail-meaning-layer.md`            | Shrine DetailにおけるMeaning Layerの設計補足             |
+| `shrine-detail-v3-design.md`                | Active    | `docs/shrine-detail-v3-design.md`                | `docs/product/shrine-detail-v3-design.md`                | Shrine Detail v3のUX・Analytics・Premium接続設計         |
+| `shrine-submission-flow.md`                 | Active    | `docs/shrine-submission-flow.md`                 | `docs/product/shrine-submission-flow.md`                 | 神社追加、重複判定および投稿後導線の機能契約             |
+
+#### Knowledge
+
+| 文書                                  | Status    | 現在地                                     | 最終配置                                             | 判断根拠                                                |
+| ------------------------------------- | --------- | ------------------------------------------ | ---------------------------------------------------- | ------------------------------------------------------- |
+| `recommendation-v4-copy-guideline.md` | Reference | `docs/recommendation-v4-copy-guideline.md` | `docs/knowledge/recommendation-v4-copy-guideline.md` | Recommendation v4固有のコピー規則を保持する文章設計補足 |
+
+#### Analytics
+
+| 文書                                | Status    | 現在地                                   | 最終配置                                           | 判断根拠                                         |
+| ----------------------------------- | --------- | ---------------------------------------- | -------------------------------------------------- | ------------------------------------------------ |
+| `analytics-payload-audit.md`        | Reference | `docs/analytics-payload-audit.md`        | `docs/analytics/analytics-payload-audit.md`        | Analytics PayloadとSession設計の補足資料         |
+| `recommendation-score-v3-design.md` | Reference | `docs/recommendation-score-v3-design.md` | `docs/analytics/recommendation-score-v3-design.md` | Score v3のSignal、Weightおよび評価設計の補足資料 |
+
+#### Audit
+
+| 文書                                  | Status    | 現在地                                            | 最終配置                                          | 判断根拠                                                                                         |
+| ------------------------------------- | --------- | ------------------------------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `AGENTS.md`                           | Archive   | `docs/audit/auth-favorite-ai-operation-record.md` | `docs/audit/auth-favorite-ai-operation-record.md` | Auth・Favorite責務分離とAI運用の時点記録であり、現行のAI指示ファイルと誤認されない名称へ変更する |
+| `concierge_risk_register.md`          | Reference | `docs/concierge_risk_register.md`                 | `docs/audit/concierge-risk-register.md`           | Concierge周辺の変更リスク、既存防御、未防御および次のテスト候補を管理するリスク台帳              |
+| `phase5-behavior-measurement-plan.md` | Archive   | `docs/phase5-behavior-measurement-plan.md`        | `docs/audit/phase5-behavior-measurement-plan.md`  | Phase5時点の行動計測計画                                                                         |
+| `phase7-ux-monetization-roadmap.md`   | Archive   | `docs/phase7-ux-monetization-roadmap.md`          | `docs/audit/phase7-ux-monetization-roadmap.md`    | 旧Phase7のUX・Premium・収益化設計記録                                                            |
+| `project-context.md`                  | Archive   | `docs/project-context.md`                         | `docs/audit/project-context.md`                   | 過去時点のプロジェクト文脈を保持する記録                                                         |
+
+### 配置件数
+
+| 配置先            | 文書数 |
+| ----------------- | -----: |
+| `docs/core/`      |      3 |
+| `docs/product/`   |     16 |
+| `docs/knowledge/` |      1 |
+| `docs/analytics/` |      2 |
+| `docs/audit/`     |      5 |
+| `docs/`直下       |      1 |
+| 合計              |     28 |
+
+### 移動対象
+
+`docs/README.md`を除く、docs直下のMarkdown文書27件を移動対象とする。
+
+移動後、`docs/`直下には入口文書である`docs/README.md`のみを残す。
+
+### rootに残す文書
+
+| 文書             | 理由                                                                          |
+| ---------------- | ----------------------------------------------------------------------------- |
+| `docs/README.md` | Core / Product / Knowledge / Analytics / Audit / Ops / Infra / CIへの全体入口 |
+
+### 参照修正対象
+
+#### Core移動に伴う参照修正
+
+| 移動文書                      | 参照元                                                                                                                                              |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `docs/auth-flow.md`           | `docs/authentication-flow.md`、`docs/audit/auth-favorite-ai-operation-record.md`                                                                    |
+| `docs/authentication-flow.md` | `docs/core/architecture.md`、`docs/audit/root-docs-classification-audit.md`、`docs/auth-flow.md`、`docs/audit/auth-favorite-ai-operation-record.md` |
+| `docs/core/concierge-spec.md` | `docs/audit/root-docs-classification-audit.md`                                                                                                      |
+
+#### Product移動に伴う参照修正
+
+| 移動文書                                         | 参照元                                                                                                                                                                                                                                                                                                                                                                                                |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `docs/billing-paywall.md`                        | `docs/pricing.md`、`docs/premium-experience.md`、`docs/audit/premium-plan-design.md`、`docs/audit/phase7-implementation-scope.md`、`docs/audit/premium-reference-consolidation-audit.md`、`docs/phase7-ux-monetization-roadmap.md`                                                                                                                                                                    |
+| `docs/card-visibility-renderer-split.md`         | `docs/audit/root-docs-classification-audit.md`                                                                                                                                                                                                                                                                                                                                                        |
+| `docs/concierge-card-architecture.md`            | `docs/audit/root-docs-classification-audit.md`                                                                                                                                                                                                                                                                                                                                                        |
+| `docs/direction-ranking-design.md`               | `docs/audit/root-docs-classification-audit.md`、`docs/audit/archive-final-classification.md`                                                                                                                                                                                                                                                                                                          |
+| `docs/journey-timeline-design.md`                | 参照元なし                                                                                                                                                                                                                                                                                                                                                                                            |
+| `docs/kami-musubi-experience-design.md`          | `docs/audit/root-docs-classification-audit.md`                                                                                                                                                                                                                                                                                                                                                        |
+| `docs/mobile-bottom-navigation.md`               | `docs/audit/root-docs-classification-audit.md`                                                                                                                                                                                                                                                                                                                                                        |
+| `docs/monetization-flow-design.md`               | `docs/audit/phase7-implementation-scope.md`、`docs/audit/premium-retention-strategy.md`、`docs/audit/premium-reference-consolidation-audit.md`、`docs/phase7-ux-monetization-roadmap.md`                                                                                                                                                                                                              |
+| `docs/premium-experience.md`                     | root `README.md`、`docs/pricing.md`、`docs/core/architecture.md`、`docs/core/meaning-layer.md`、`docs/core/meaning-layer-connection.md`、`docs/shrine-detail-layer.md`、`docs/audit/premium-plan-design.md`、`docs/audit/phase7-implementation-scope.md`、`docs/audit/premium-retention-strategy.md`、`docs/audit/premium-reference-consolidation-audit.md`、`docs/phase7-ux-monetization-roadmap.md` |
+| `docs/pricing.md`                                | root `README.md`、`docs/shrine-detail-layer.md`、`docs/audit/premium-plan-design.md`、`docs/audit/phase7-implementation-scope.md`、`docs/audit/premium-retention-strategy.md`、`docs/audit/premium-reference-consolidation-audit.md`、`docs/phase7-ux-monetization-roadmap.md`                                                                                                                        |
+| `docs/recommendation-v4-interpreter-contract.md` | `docs/recommendation-v4-copy-guideline.md`、`docs/audit/root-docs-classification-audit.md`                                                                                                                                                                                                                                                                                                            |
+| `docs/reflection-timeline-design.md`             | `docs/audit/phase7-implementation-scope.md`、`docs/phase7-ux-monetization-roadmap.md`                                                                                                                                                                                                                                                                                                                 |
+| `docs/shrine-detail-layer.md`                    | root `README.md`、`docs/pricing.md`、`docs/core/architecture.md`、`docs/core/meaning-layer.md`、`docs/core/meaning-layer-connection.md`、`docs/premium-experience.md`、`docs/audit/root-docs-classification-audit.md`                                                                                                                                                                                 |
+| `docs/shrine-detail-meaning-layer.md`            | 参照元なし                                                                                                                                                                                                                                                                                                                                                                                            |
+| `docs/shrine-detail-v3-design.md`                | `docs/audit/phase7-implementation-scope.md`、`docs/phase7-ux-monetization-roadmap.md`                                                                                                                                                                                                                                                                                                                 |
+| `docs/shrine-submission-flow.md`                 | `docs/core/architecture.md`                                                                                                                                                                                                                                                                                                                                                                           |
+
+#### Knowledge移動に伴う参照修正
+
+| 移動文書                                   | 参照元                                                    |
+| ------------------------------------------ | --------------------------------------------------------- |
+| `docs/recommendation-v4-copy-guideline.md` | `docs/audit/recommendation-v4-action-suggestion-audit.md` |
+
+同文書内から参照される`docs/recommendation-v4-interpreter-contract.md`も、Product移動後の新パスへ修正する。
+
+#### Analytics移動に伴う参照修正
+
+| 移動文書                                 | 参照元                                                |
+| ---------------------------------------- | ----------------------------------------------------- |
+| `docs/analytics-payload-audit.md`        | `docs/audit/cross-platform-event-contract.md`         |
+| `docs/recommendation-score-v3-design.md` | `docs/audit/recommendation-quality-score-v3-audit.md` |
+
+#### Audit移動に伴う参照修正
+
+| 移動文書                                          | 参照元                                                                                      |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `docs/audit/auth-favorite-ai-operation-record.md` | `docs/audit/root-docs-classification-audit.md`                                              |
+| `docs/concierge_risk_register.md`                 | `docs/audit/root-docs-classification-audit.md`                                              |
+| `docs/phase5-behavior-measurement-plan.md`        | 参照元なし                                                                                  |
+| `docs/phase7-ux-monetization-roadmap.md`          | `docs/audit/phase7-implementation-scope.md`、`docs/audit/root-docs-classification-audit.md` |
+| `docs/project-context.md`                         | `docs/audit/root-docs-classification-audit.md`                                              |
+
+### 参照修正時の区分
+
+参照修正は以下の2種類へ分ける。
+
+1. 現行文書からの参照
+   - 必ず新パスへ修正する
+2. 監査履歴内の旧パス記録
+   - 移動前の状態を説明する証跡は維持する
+   - 現行参照先として記載された箇所のみ新パスへ修正する
+
+単純な全置換は行わず、各記述が現行参照か履歴記録かを確認して更新する。
+
+### 実行PRの分割方針
+
+移動は以下の4PRへ分割する。
+
+#### PR1 Core / Audit配置
+
+対象:
+
+- Core 3文書
+- Audit 5文書
+- 関連参照修正
+- `docs/README.md`
+
+理由:
+
+システム正本と監査記録を先に分離し、後続のProduct移動時に参照先の基準を固定する。
+
+#### PR2 Product現行正本配置
+
+対象:
+
+- Product Active文書9件
+- 関連参照修正
+- `docs/product/README.md`
+- `docs/README.md`
+
+対象文書:
+
+- `billing-paywall.md`
+- `kami-musubi-experience-design.md`
+- `premium-experience.md`
+- `pricing.md`
+- `recommendation-v4-interpreter-contract.md`
+- `reflection-timeline-design.md`
+- `shrine-detail-layer.md`
+- `shrine-detail-v3-design.md`
+- `shrine-submission-flow.md`
+
+#### PR3 Product Reference配置
+
+対象:
+
+- Product Reference文書7件
+- 関連参照修正
+- `docs/product/README.md`
+- `docs/README.md`
+
+対象文書:
+
+- `card-visibility-renderer-split.md`
+- `concierge-card-architecture.md`
+- `direction-ranking-design.md`
+- `journey-timeline-design.md`
+- `mobile-bottom-navigation.md`
+- `monetization-flow-design.md`
+- `shrine-detail-meaning-layer.md`
+
+実行時には件数を再確認し、Active / Referenceの重複や漏れがないことを確認する。
+
+#### PR4 Knowledge / Analytics配置
+
+対象:
+
+- Knowledge 1文書
+- Analytics 2文書
+- 関連参照修正
+- `docs/knowledge/README.md`
+- `docs/analytics/README.md`
+- `docs/README.md`
+
+### 実行順序
+
+1. 本A10で配置判定、参照修正対象およびPR分割を確定する
+2. Core / Audit文書を移動する
+3. Product Active文書を移動する
+4. Product Reference文書を移動する
+5. Knowledge / Analytics文書を移動する
+6. 各PRで旧パス参照をgrepする
+7. 最終PRで`docs/`直下が`README.md`のみであることを確認する
+
+### 完了条件
+
+- docs直下の全Markdown文書について最終配置が確定している
+- `docs/README.md`以外の27文書に移動先が割り当てられている
+- 各文書の具体的な参照元が一覧化されている
+- 現行参照と監査履歴の旧パス記録が区別されている
+- 移動実行PRの分割方針が確定している
+- 本監査PRではファイル移動を行っていない
+- `git diff --check`が成功している
+
+### A10結論
+
+docs直下のMarkdown文書28件について、入口文書`docs/README.md`を除く27件の最終配置を確定した。
+
+最終構成は以下とする。
+
+- Core: 3文書
+- Product: 16文書
+- Knowledge: 1文書
+- Analytics: 2文書
+- Audit: 5文書
+- docs直下: `README.md`のみ
+
+移動はCore / Audit、Product Active、Product Reference、Knowledge /
+Analyticsの順に分割し、各PRで参照修正と旧パスgrepを実施する。
