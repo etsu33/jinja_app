@@ -6,8 +6,8 @@
 >
 > 現在の参照先は以下とする。
 >
-> - 認証アーキテクチャ：`docs/authentication-flow.md`
-> - 認証画面遷移・`returnTo`：`docs/auth-flow.md`
+> - 認証アーキテクチャ：`docs/core/authentication-flow.md`
+> - 認証画面遷移・`returnTo`：`docs/core/auth-flow.md`
 > - 全体設計：`docs/core/architecture.md`
 > - Favoriteの正確なAPI・状態管理：関連するFrontend・Backend実装およびテスト
 > - AI支援時の作業ルール：Projectの現在の運用指示
@@ -52,7 +52,7 @@
 - Providerを重複配置しない
 - Route遷移ごとに不要な再Fetchを行わない
 
-現在の認証経路・Cookie・BFF・JWTの責務は、`docs/authentication-flow.md`を正本とする。
+現在の認証経路・Cookie・BFF・JWTの責務は、`docs/core/authentication-flow.md`を正本とする。
 
 ---
 
@@ -108,7 +108,7 @@ Favorite APIを呼び出す
 UIへ反映
 ```
 
-認証後の復帰導線と`returnTo`の仕様は、`docs/auth-flow.md`を参照する。
+認証後の復帰導線と`returnTo`の仕様は、`docs/core/auth-flow.md`を参照する。
 
 ---
 
@@ -169,8 +169,8 @@ UIへ反映
 
 ## 関連ドキュメント
 
-- `docs/authentication-flow.md`
-- `docs/auth-flow.md`
+- `docs/core/authentication-flow.md`
+- `docs/core/auth-flow.md`
 - `docs/core/architecture.md`
 - `docs/README.md`
 

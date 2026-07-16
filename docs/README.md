@@ -44,8 +44,8 @@
 
 ### 認証・通信
 
-- `auth-flow.md`
-- `authentication-flow.md`
+- `core/auth-flow.md`
+- `core/authentication-flow.md`
 
 ### API契約
 
@@ -61,8 +61,8 @@ WebはFrontendからBackend APIを直接呼び出さず、Next.js の `/api` Rou
 
 認証の現行責務は以下を参照する。
 
-- `auth-flow.md`
-- `authentication-flow.md`
+- `core/auth-flow.md`
+- `core/authentication-flow.md`
 
 ---
 
@@ -73,7 +73,7 @@ WebはFrontendからBackend APIを直接呼び出さず、Next.js の `/api` Rou
 
 ### Concierge
 
-- `concierge_spec.md`
+- `core/concierge-spec.md`
   - LLM ON/OFF、Contract Fields、ログ仕様
 
 （将来追加予定）
@@ -118,7 +118,7 @@ WebはFrontendからBackend APIを直接呼び出さず、Next.js の `/api` Rou
 - `product/README.md`
   - Concierge First、Mode、相談テーマ、Meaning Translation、Visit / Reflection、Action Suggestionの入口
 
-- `concierge_spec.md`
+- `core/concierge-spec.md`
   - Conciergeの入力、LLMモード、API契約および運用ログ
 
 - `recommendation-v4-interpreter-contract.md`
@@ -184,7 +184,7 @@ Premiumの価値、体験差、課金判定および収益導線は以下を参�
 
 - `card-visibility-renderer-split.md`
 - `concierge-card-architecture.md`
-- `concierge_risk_register.md`
+- `audit/concierge-risk-register.md`
 
 ### Shrine Detail・Mobile
 

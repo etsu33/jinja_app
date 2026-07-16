@@ -2,7 +2,7 @@
 >
 > 本ドキュメントは、KAMI MUSUBI Web版における認証アーキテクチャ、Frontend・BFF・Backendの責務、およびJWT・Cookieの利用方針を管理する正本である。
 >
-> 認証が必要になった際の画面遷移、`returnTo`、Concierge保存・My Page・神社投稿からの復帰導線は、`docs/auth-flow.md`を参照する。
+> 認証が必要になった際の画面遷移、`returnTo`、Concierge保存・My Page・神社投稿からの復帰導線は、`docs/core/auth-flow.md`を参照する。
 >
 > 正確なEndpoint・Cookie処理・認証方式は、関連する実装コードとテストを最終的な正本とする。
 
@@ -128,7 +128,7 @@ Frontendは、認証画面・認証状態・認証要求時のUIを担当する�
 - Refresh Tokenによる再発行処理
 - Backendの課金状態・権限判定
 
-画面遷移と`returnTo`の詳細は`docs/auth-flow.md`で管理する。
+画面遷移と`returnTo`の詳細は`docs/core/auth-flow.md`で管理する。
 
 ---
 
@@ -243,7 +243,7 @@ Frontend Componentから直接利用しない。
 
 相談・閲覧など、認証不要と定義された機能は未ログインでも利用できる。
 
-認証が必要になるタイミングと画面復帰は`docs/auth-flow.md`で管理する。
+認証が必要になるタイミングと画面復帰は`docs/core/auth-flow.md`で管理する。
 
 ---
 
@@ -320,7 +320,7 @@ Endpoint、Cookie名、Response、Authentication Classの正確な契約は実�
 
 ## 関連ドキュメント
 
-- `docs/auth-flow.md`
+- `docs/core/auth-flow.md`
 - `docs/README.md`
 - `docs/core/architecture.md`
 - `backend/README.md`
@@ -331,6 +331,6 @@ Endpoint、Cookie名、Response、Authentication Classの正確な契約は実�
 
 - 本書はWeb版の認証アーキテクチャと責務境界を管理する
 - 認証経路、Cookie、BFF、JWT方針が変更された場合のみ更新する
-- 画面遷移・`returnTo`・認証後の復帰導線は`docs/auth-flow.md`で管理する
+- 画面遷移・`returnTo`・認証後の復帰導線は`docs/core/auth-flow.md`で管理する
 - Mobile固有のToken保存・認証経路はMobile側文書と実装で管理する
 - 検証チェックリスト、TODO、監査計画、PR候補、実装進捗は記載しない

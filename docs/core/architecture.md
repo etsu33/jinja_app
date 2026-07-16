@@ -320,7 +320,7 @@ SessionAuthentication は依存監査が完了するまで即削除しない。
 - 神社詳細：`docs/shrine-detail-layer.md`
 - Premium：`docs/premium-experience.md`
 - 投稿フロー：`docs/shrine-submission-flow.md`
-- 認証：`docs/authentication-flow.md`
+- 認証：`docs/core/authentication-flow.md`
 - Recommendation / Knowledge：`docs/knowledge/`
 - 監査：`docs/audit/`
 

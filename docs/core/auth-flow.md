@@ -2,7 +2,7 @@
 >
 > 本ドキュメントは、KAMI MUSUBI Web版における認証画面遷移、`returnTo`、および認証後の復帰導線を管理する Reference 文書である。
 >
-> 認証アーキテクチャ、JWT、Cookie、Frontend・BFF・Backend の責務は `docs/authentication-flow.md` を正本とする。
+> 認証アーキテクチャ、JWT、Cookie、Frontend・BFF・Backend の責務は `docs/core/authentication-flow.md` を正本とする。
 >
 > 正確な画面遷移、Route、Query Parameter、`returnTo` の実装は関連する Frontend 実装およびテストを最終的な正本とする。
 
@@ -114,7 +114,7 @@ returnTo に従って遷移
 
 ## 関連ドキュメント
 
-- `docs/authentication-flow.md`
+- `docs/core/authentication-flow.md`
 - `docs/README.md`
 
 ---
@@ -122,5 +122,5 @@ returnTo に従って遷移
 ## 更新ルール
 
 - 本書は認証画面遷移と `returnTo` の仕様のみ管理する
-- JWT・Cookie・BFF・認証方式は `authentication-flow.md` を更新する
+- JWT・Cookie・BFF・認証方式は `docs/core/authentication-flow.md` を更新する
 - Endpoint・Route・画面遷移の最終仕様は実装コードとテストを正本とする
