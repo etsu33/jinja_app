@@ -1,10 +1,13 @@
+> **Status: Active**
+>
+> 本ドキュメントは、`docs/product`配下の文書構成、分類および読む順番を管理する正本文書である。
 # Product Documents
 
 ## 目的
 
 `docs/product`配下のプロダクト仕様書の入口。
 
-プロダクトの体験設計、画面責務、分類体系、意味変換、参拝後体験およびPremium体験に関する正本を一覧化し、読む順番を定義する。
+プロダクトの体験設計、画面責務、分類体系、意味変換、参拝後体験およびPremium体験に関する正本を一覧化し、読む順番および文書分類を管理する。
 
 ---
 
@@ -139,7 +142,8 @@ billing-paywall.md
 - システム構造、技術レイヤーおよび依存関係は`docs/core/`を参照する。
 - 神社知識、用語、コピーおよび生成原則は`docs/knowledge/`を参照する。
 - Analyticsのイベント、PayloadおよびKPI契約は`docs/analytics/`を参照する。
-- 文書の分類・監査結果は`product-document-audit.md`を参照する。
+- Product文書の分類履歴は`product-document-audit.md`を参照する。
+- 最新の責務監査は`docs/audit/product-document-responsibility-audit.md`を参照する。
 
 ---
 
@@ -150,3 +154,4 @@ billing-paywall.md
 - 詳細仕様、TODO、実装履歴、監査結果およびPR情報は本書へ記載しない。
 - 同一文書を複数カテゴリへ重複掲載しない。
 - 本書はProduct文書の入口としての役割のみを維持する。
+- 責務変更を伴う場合は、`docs/audit/product-document-responsibility-audit.md`との整合を確認する。
