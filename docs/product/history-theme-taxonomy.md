@@ -315,36 +315,48 @@ history_theme
 
 ### History Theme Taxonomy
 
+本書は、`history_theme`のカテゴリ体系そのものを管理する。
+
+管理対象は以下とする。
+
 - 7カテゴリの名称
 - 各カテゴリの定義
 - 行動テーマ
 - 相談例
 - ご利益との概念的な関係
 
+本書では、変換ロジック、物理実装および分析契約は管理しない。
+
 ### Meaning Translation Mapping
+
+以下は`docs/product/meaning-translation-mapping.md`を正本とする。
 
 - 相談テーマから`history_theme`への変換
 - 相談状態から`history_theme`への変換
 - ご利益から`history_theme`への変換
-- 神社情報と`history_theme`の接続
+- 神社文脈との接続
 - Action・Reflectionへの接続
 
-### Backend
+### システム責務
 
-- 入力内容の解釈
-- 主テーマ・補助テーマの決定
-- 推薦順位への反映
-- 保存値の生成
+`history_theme`の生成、保存、推薦への反映および画面への受け渡しは、`docs/core/`配下の正本文書と関連するBackend・Frontend実装およびテストを正本とする。
 
-### Frontend
+### Analytics
 
-- `history_theme`の表示
-- 推薦理由・行動・振り返りへの接続
-- Backendが返した値の保持
+`history_theme`を利用したEvent、Payload、Property、Funnel、KPIおよび分析方法は、`docs/analytics/`配下の正本文書を参照する。
 
-Frontendは`history_theme`の判定ロジックを重複実装しない。
+### Product上の利用範囲
 
----
+Productでは、`history_theme`を以下の体験で一貫したカテゴリとして利用する。
+
+- Recommendation Reason
+- Meaning Card
+- Action Suggestion
+- Visit
+- Reflection
+- 履歴表示
+
+カテゴリの判定、変換ロジックおよび物理的な保存処理は、本書では管理しない。
 
 ## 関連ドキュメント
 
