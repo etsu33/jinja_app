@@ -111,6 +111,13 @@ billing-paywall.md
 | `reflection-funnel-dashboard.md` | Reflection KPI・分析設計 |
 | `explore-integration-design.md` | Explore体験設計 |
 | `product-document-audit.md` | Product文書の監査・分類管理 |
+| `card-visibility-renderer-split.md` | Card表示可否とRenderer責務の設計補足 |
+| `concierge-card-architecture.md` | Concierge Card Treeと表示構造の設計補足 |
+| `direction-ranking-design.md` | 方角を推薦補助軸として扱う設計補足 |
+| `journey-timeline-design.md` | Journey Timelineの体験・情報設計 |
+| `mobile-bottom-navigation.md` | Mobile下部ナビゲーションの設計補足 |
+| `monetization-flow-design.md` | Premium提示、購入復帰および継続計測の設計 |
+| `shrine-detail-meaning-layer.md` | Shrine DetailにおけるMeaning Layerの設計補足 |
 
 ---
 

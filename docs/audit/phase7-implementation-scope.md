@@ -14,7 +14,7 @@ Phase7では、KAMI MUSUBIの体験を「相談して終わり」から「相談
 
 Phase7実装計画を作成した時点では、以下の設計ドキュメントを前提としていた。
 
-現在のPremium関連仕様については、`docs/product/pricing.md`、`docs/product/premium-experience.md`、`docs/product/billing-paywall.md`および`docs/monetization-flow-design.md`を参照する。
+現在のPremium関連仕様については、`docs/product/pricing.md`、`docs/product/premium-experience.md`、`docs/product/billing-paywall.md`および`docs/product/monetization-flow-design.md`を参照する。
 
 | Document                                 | Role                                 |
 | ---------------------------------------- | ------------------------------------ |
@@ -25,7 +25,7 @@ Phase7実装計画を作成した時点では、以下の設計ドキュメン�
 | `docs/product/pricing.md`                        | Premium提供価値と価格説明の現行正本  |
 | `docs/product/premium-experience.md`             | Premium体験境界の現行正本            |
 | `docs/product/billing-paywall.md`                | 課金状態とPaywall判定の現行正本      |
-| `docs/monetization-flow-design.md`       | 課金導線とPremium遷移・計測の設計    |
+| `docs/product/monetization-flow-design.md`       | 課金導線とPremium遷移・計測の設計    |
 | `docs/audit/premium-plan-design.md`      | Premium長期構想の履歴                |
 
 ---
@@ -219,7 +219,7 @@ Phase7のPremium訴求は、以下の3価値に寄せる。
 | `docs/product/pricing.md`                                                      | Premium提供価値境界       |
 | `docs/product/premium-experience.md`                                           | Premium体験境界           |
 | `docs/product/billing-paywall.md`                                              | 課金状態・Paywall判定     |
-| `docs/monetization-flow-design.md`                                     | 収益導線・継続計測設計    |
+| `docs/product/monetization-flow-design.md`                                     | 収益導線・継続計測設計    |
 
 ### Implementation Notes
 

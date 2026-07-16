@@ -17,7 +17,7 @@
 > - Reflection Timeline設計：`docs/product/reflection-timeline-design.md`
 > - Premium価値境界：`docs/product/pricing.md`
 > - Premium体験境界：`docs/product/premium-experience.md`
-> - 収益導線・継続計測：`docs/monetization-flow-design.md`
+> - 収益導線・継続計測：`docs/product/monetization-flow-design.md`
 > - Premium長期構想の履歴：`docs/audit/premium-plan-design.md`
 
 
@@ -382,7 +382,7 @@ Upgrade Copyは不安や損失を過度に刺激せず、追加される価値�
 
 「続きを見るために支払う」ではなく、「これまでの相談や参拝を、より深く見返す」という価値で表現することを重視した。
 
-現在のMonetization Flowは、`docs/monetization-flow-design.md`およびBilling関連の現行契約を正本とする。
+現在のMonetization Flowは、`docs/product/monetization-flow-design.md`およびBilling関連の現行契約を正本とする。
 
 ## 当時のKPI設計
 
@@ -591,7 +591,7 @@ Paymentを先に接続すると、価値検証前に課金状態だけが複雑�
 - `docs/product/pricing.md`
 - `docs/product/premium-experience.md`
 - `docs/product/billing-paywall.md`
-- `docs/monetization-flow-design.md`
+- `docs/product/monetization-flow-design.md`
 - `docs/audit/premium-plan-design.md`
 
 ---

@@ -2,7 +2,7 @@
 >
 > 本ドキュメントは、Premium継続価値、保存・履歴・比較およびRetention KPIを整理した戦略記録である。
 >
-> 現行のPremium体験境界は`docs/product/premium-experience.md`、提供価値境界は`docs/product/pricing.md`、収益導線と継続計測は`docs/monetization-flow-design.md`を参照する。
+> 現行のPremium体験境界は`docs/product/premium-experience.md`、提供価値境界は`docs/product/pricing.md`、収益導線と継続計測は`docs/product/monetization-flow-design.md`を参照する。
 >
 > 本書の有効な原則とKPIは上記文書へ移管済みであり、現行仕様の判断には使用しない。
 

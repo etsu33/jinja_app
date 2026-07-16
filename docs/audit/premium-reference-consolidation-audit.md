@@ -16,7 +16,7 @@ Premium関連のReference文書について、現行Active文書との責務重�
 
 ### Reference文書
 
-- `docs/monetization-flow-design.md`
+- `docs/product/monetization-flow-design.md`
 - `docs/premium-plan-design.md`
 - `docs/premium-retention-strategy.md`
 
@@ -50,7 +50,7 @@ Premium関連のReference文書について、現行Active文書との責務重�
 
 ## 独自情報
 
-## `docs/monetization-flow-design.md`
+## `docs/product/monetization-flow-design.md`
 
 以下の内容は、現在のActive文書には十分に定義されていない独自情報である。
 
@@ -259,7 +259,7 @@ Premiumにおける比較対象は他のユーザーではなく、過去の自�
 
 ---
 
-## `docs/monetization-flow-design.md`への吸収
+## `docs/product/monetization-flow-design.md`への吸収
 
 `premium-retention-strategy.md`のKPIを、MonetizationとRetentionを統合した指標として追加する。
 
@@ -300,7 +300,7 @@ Premiumの価格は単純な機能数ではなく、相談履歴、記録、比�
 
 ## Reference維持
 
-### `docs/monetization-flow-design.md`
+### `docs/product/monetization-flow-design.md`
 
 Referenceを維持する。
 
@@ -347,7 +347,7 @@ Premiumの継続価値に関する基本思想は、`docs/product/pricing.md`お
 Retention KPIと保存・履歴・比較の意味は独自性を持つため、移動前に以下へ吸収する。
 
 - 体験原則：`docs/product/premium-experience.md`
-- Retention / Engagement KPI：`docs/monetization-flow-design.md`
+- Retention / Engagement KPI：`docs/product/monetization-flow-design.md`
 
 移動後は以下のStatusを付与する。
 
@@ -356,7 +356,7 @@ Retention KPIと保存・履歴・比較の意味は独自性を持つため、�
 >
 > 本ドキュメントは、Premium継続価値、保存・履歴・比較およびRetention KPIを整理した戦略記録である。
 >
-> 現行のPremium体験境界は`docs/product/premium-experience.md`、提供価値境界は`docs/product/pricing.md`、収益導線と継続計測は`docs/monetization-flow-design.md`を参照する。
+> 現行のPremium体験境界は`docs/product/premium-experience.md`、提供価値境界は`docs/product/pricing.md`、収益導線と継続計測は`docs/product/monetization-flow-design.md`を参照する。
 >
 > 本書の有効な原則とKPIは上記文書へ移管済みであり、現行仕様の判断には使用しない。
 ```
@@ -378,7 +378,7 @@ Delete候補は0件とする。
 ## 実行順序
 
 1. `docs/product/premium-experience.md`へ保存・履歴・比較の原則を追加する
-2. `docs/monetization-flow-design.md`へRetention / Engagement KPIを追加する
+2. `docs/product/monetization-flow-design.md`へRetention / Engagement KPIを追加する
 3. 必要に応じて`docs/product/pricing.md`へ価格説明原則を追加する
 4. `docs/premium-plan-design.md`を`docs/audit/premium-plan-design.md`へ移動する
 5. `docs/premium-retention-strategy.md`を`docs/audit/premium-retention-strategy.md`へ移動する
@@ -395,11 +395,11 @@ Delete候補は0件とする。
 
 以下をすべて満たした時点で、本監査を完了とする。
 
-- `docs/monetization-flow-design.md`がReferenceとして残っている
+- `docs/product/monetization-flow-design.md`がReferenceとして残っている
 - `docs/premium-plan-design.md`が`docs/audit/`へ移動している
 - `docs/premium-retention-strategy.md`が`docs/audit/`へ移動している
 - 保存・履歴・比較の有効な体験原則が`docs/product/premium-experience.md`へ反映されている
-- Retention / Engagement KPIが`docs/monetization-flow-design.md`へ反映されている
+- Retention / Engagement KPIが`docs/product/monetization-flow-design.md`へ反映されている
 - 移動した文書の旧パスを現行仕様として参照する文書が残っていない
 - `docs/README.md`のPremium Reference入口が現行分類と一致している
 - `docs/audit/root-docs-classification-audit.md`と`docs/audit/archive-final-classification.md`の件数・内訳が一致している
@@ -410,7 +410,7 @@ Delete候補は0件とする。
 
 ## 結論
 
-Premium関連Reference 3文書のうち、`docs/monetization-flow-design.md`は、課金提示、CTA、Subscription Flow、購入後復帰、解約、AnalyticsおよびRevenue KPIという独自責務を持つためReferenceを維持する。
+Premium関連Reference 3文書のうち、`docs/product/monetization-flow-design.md`は、課金提示、CTA、Subscription Flow、購入後復帰、解約、AnalyticsおよびRevenue KPIという独自責務を持つためReferenceを維持する。
 
 `docs/premium-plan-design.md`は、現行価値原則がActive文書へ吸収済みであり、残る内容が将来構想を中心とするためAuditへ移動する。
 
@@ -423,6 +423,6 @@ Delete対象はない。
 - 課金状態・Paywall：`docs/product/billing-paywall.md`
 - 提供価値・支払対象：`docs/product/pricing.md`
 - 画面別Premium体験：`docs/product/premium-experience.md`
-- 課金提示・CTA・Subscription・計測：`docs/monetization-flow-design.md`
+- 課金提示・CTA・Subscription・計測：`docs/product/monetization-flow-design.md`
 
 将来構想と過去のRetention戦略は`docs/audit/`へ分離し、現行仕様との混同を防ぐ。

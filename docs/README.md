@@ -139,7 +139,7 @@ Premiumの価値、体験差、課金判定および収益導線は以下を参�
 - `product/premium-experience.md`
   - Free / Premiumの体験境界、保存・履歴・比較の原則
 
-- `monetization-flow-design.md`
+- `product/monetization-flow-design.md`
   - Premium提示タイミング、CTA、購入後復帰、解約方針および継続計測
 
 ---
@@ -173,23 +173,23 @@ Premiumの価値、体験差、課金判定および収益導線は以下を参�
 - `analytics-payload-audit.md`
 - `recommendation-score-v3-design.md`
 - `recommendation-v4-copy-guideline.md`
-- `direction-ranking-design.md`
+- `product/direction-ranking-design.md`
 
 ### Premium・Journey
 
-- `monetization-flow-design.md`
-- `journey-timeline-design.md`
+- `product/monetization-flow-design.md`
+- `product/journey-timeline-design.md`
 
 ### Concierge UI
 
-- `card-visibility-renderer-split.md`
-- `concierge-card-architecture.md`
+- `product/card-visibility-renderer-split.md`
+- `product/concierge-card-architecture.md`
 - `audit/concierge-risk-register.md`
 
 ### Shrine Detail・Mobile
 
-- `shrine-detail-meaning-layer.md`
-- `mobile-bottom-navigation.md`
+- `product/shrine-detail-meaning-layer.md`
+- `product/mobile-bottom-navigation.md`
 
 ---
 
