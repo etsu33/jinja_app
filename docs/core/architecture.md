@@ -317,9 +317,9 @@ SessionAuthentication は依存監査が完了するまで即削除しない。
 - Concierge Modes：`docs/product/concierge-modes.md`
 - Explore：`docs/product/explore-integration-design.md`
 - Meaning Layer：`docs/core/meaning-layer.md`
-- 神社詳細：`docs/shrine-detail-layer.md`
-- Premium：`docs/premium-experience.md`
-- 投稿フロー：`docs/shrine-submission-flow.md`
+- 神社詳細：`docs/product/shrine-detail-layer.md`
+- Premium：`docs/product/premium-experience.md`
+- 投稿フロー：`docs/product/shrine-submission-flow.md`
 - 認証：`docs/core/authentication-flow.md`
 - Recommendation / Knowledge：`docs/knowledge/`
 - 監査：`docs/audit/`

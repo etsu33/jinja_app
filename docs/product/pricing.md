@@ -9,7 +9,7 @@
 
 本ドキュメントは、free / premium の提供価値境界を明文化する。
 
-課金状態・paywall 判定の実装仕様は `docs/billing-paywall.md` を正本とし、本ドキュメントでは「何に対して支払うのか」を定義する。
+課金状態・paywall 判定の実装仕様は `docs/product/billing-paywall.md` を正本とし、本ドキュメントでは「何に対して支払うのか」を定義する。
 
 ---
 
@@ -89,6 +89,6 @@ Premiumの価格は、単純な機能数ではなく、相談履歴、記録、�
 
 ## 関連ドキュメント
 
-- `docs/billing-paywall.md`: 課金状態と paywall 判定の実装仕様
-- `docs/premium-experience.md`: Premium 体験の詳細境界
-- `docs/shrine-detail-layer.md`: 神社詳細に置く情報レイヤ
+- `docs/product/billing-paywall.md`: 課金状態と paywall 判定の実装仕様
+- `docs/product/premium-experience.md`: Premium 体験の詳細境界
+- `docs/product/shrine-detail-layer.md`: 神社詳細に置く情報レイヤ

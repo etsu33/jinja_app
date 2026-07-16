@@ -181,8 +181,8 @@ Meaning Layer 自体は Snapshot の保存責務を持たない。
 - `docs/product/meaning-translation-mapping.md`
 - `docs/product/concierge-first-final-spec.md`
 - `docs/product/concierge-modes.md`
-- `docs/shrine-detail-layer.md`
-- `docs/premium-experience.md`
+- `docs/product/shrine-detail-layer.md`
+- `docs/product/premium-experience.md`
 
 Recommendation Reasonの生成・保存・表示契約は`docs/core/recommendation-reason-contract.md`を正本とする。本書はMeaning Layerと各コンポーネントの接続経路のみを扱う。
 

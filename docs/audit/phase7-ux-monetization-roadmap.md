@@ -13,10 +13,10 @@
 > - Recommendation Mode：`docs/product/concierge-modes.md`
 > - Visit / Reflection契約：`docs/product/visit-reflection-flow.md`
 > - Reflection Funnel：`docs/product/reflection-funnel-dashboard.md`
-> - Shrine Detail設計：`docs/shrine-detail-v3-design.md`
-> - Reflection Timeline設計：`docs/reflection-timeline-design.md`
-> - Premium価値境界：`docs/pricing.md`
-> - Premium体験境界：`docs/premium-experience.md`
+> - Shrine Detail設計：`docs/product/shrine-detail-v3-design.md`
+> - Reflection Timeline設計：`docs/product/reflection-timeline-design.md`
+> - Premium価値境界：`docs/product/pricing.md`
+> - Premium体験境界：`docs/product/premium-experience.md`
 > - 収益導線・継続計測：`docs/monetization-flow-design.md`
 > - Premium長期構想の履歴：`docs/audit/premium-plan-design.md`
 
@@ -265,7 +265,7 @@ Shrine Detailで重視した行動は以下である。
 - Reflection
 - Timelineへの接続
 
-現在のShrine Detail仕様は、`docs/shrine-detail-v3-design.md`および関連実装を正本とする。
+現在のShrine Detail仕様は、`docs/product/shrine-detail-v3-design.md`および関連実装を正本とする。
 
 ---
 
@@ -329,7 +329,7 @@ Reflection Promptは回答を誘導しすぎず、短く答えられる形を想
 
 - `docs/product/visit-reflection-flow.md`
 - `docs/product/reflection-funnel-dashboard.md`
-- `docs/reflection-timeline-design.md`
+- `docs/product/reflection-timeline-design.md`
 
 ---
 
@@ -362,7 +362,7 @@ Premiumの中心にしないものは以下である。
 
 無料ユーザーも相談・推薦・詳細・基本行動を完了でき、Premiumは履歴と継続価値を拡張する位置付けとした。
 
-現在のPremium価値境界は`docs/pricing.md`、体験境界は`docs/premium-experience.md`、課金状態とPaywall判定は`docs/billing-paywall.md`を正本とする。長期構想の履歴は`docs/audit/premium-plan-design.md`を参照する。
+現在のPremium価値境界は`docs/product/pricing.md`、体験境界は`docs/product/premium-experience.md`、課金状態とPaywall判定は`docs/product/billing-paywall.md`を正本とする。長期構想の履歴は`docs/audit/premium-plan-design.md`を参照する。
 
 ---
 
@@ -586,11 +586,11 @@ Paymentを先に接続すると、価値検証前に課金状態だけが複雑�
 - `docs/product/concierge-modes.md`
 - `docs/product/visit-reflection-flow.md`
 - `docs/product/reflection-funnel-dashboard.md`
-- `docs/shrine-detail-v3-design.md`
-- `docs/reflection-timeline-design.md`
-- `docs/pricing.md`
-- `docs/premium-experience.md`
-- `docs/billing-paywall.md`
+- `docs/product/shrine-detail-v3-design.md`
+- `docs/product/reflection-timeline-design.md`
+- `docs/product/pricing.md`
+- `docs/product/premium-experience.md`
+- `docs/product/billing-paywall.md`
 - `docs/monetization-flow-design.md`
 - `docs/audit/premium-plan-design.md`
 

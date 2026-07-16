@@ -368,8 +368,8 @@ export async function GET(req: NextRequest) {
 - **API概要**: `docs/30_api_overview.md`
 - **インフラ・デプロイ**: `docs/40_infra_deploy.md`
 - **TODO・ロードマップ**: `docs/core/roadmap.md`
-- **Premium 価値境界**: `docs/pricing.md`, `docs/premium-experience.md`
-- **神社詳細レイヤ**: `docs/shrine-detail-layer.md`
+- **Premium 価値境界**: `docs/product/pricing.md`, `docs/product/premium-experience.md`
+- **神社詳細レイヤ**: `docs/product/shrine-detail-layer.md`
 
 ---
 
@@ -423,7 +423,7 @@ export async function GET(req: NextRequest) {
 	•	premium 判定の正本は backend billing state
 	•	フロントは billing 状態を表示・再取得するだけ
 	•	checkout 後は success / cancel / refetch を必須にする
-	•	premium UI の対象は `docs/premium-experience.md` に従う
+	•	premium UI の対象は `docs/product/premium-experience.md` に従う
 	•	投稿機能は現時点では premium 条件と結びつけない
 
 ---
