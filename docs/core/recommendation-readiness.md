@@ -1,3 +1,9 @@
+> **Status: Active**
+>
+> 本ドキュメントは、神社データがRecommendation、ActionおよびReflectionへ利用可能かを判定するReadiness Level、Coverageおよび品質責務を管理する正本である。
+>
+> Recommendation Score、RankingおよびReason生成は本書の責務外とし、関連する契約文書、実装コードおよびテストを参照する。
+
 # Recommendation Readiness
 
 ## 目的

@@ -1,3 +1,9 @@
+> **Status: Active**
+>
+> 本ドキュメントは、KAMI MUSUBIが生成する全Narrativeへ適用する非断定、可能性表現、ユーザー自律性および行動接続の共通原則を管理する正本である。
+>
+> Recommendation、ActionおよびReflection固有の文章構造は、関連するKnowledge・Product文書を参照する。
+
 # Narrative Guideline
 
 ## Purpose

@@ -1,3 +1,9 @@
+> **Status: Active**
+>
+> 本ドキュメントは、Recommendation ReasonのInput、Output、Fact / Interpretation / Action、保存、表示および互換責務を管理する正本である。
+>
+> 意味生成の正確な物理挙動は、関連するBackend実装およびテストを最終的な正本とする。
+
 # Recommendation Reason Contract
 
 ## 目的
