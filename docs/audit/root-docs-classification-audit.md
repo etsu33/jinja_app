@@ -1108,3 +1108,27 @@ docs直下のMarkdown文書28件について、入口文書`docs/README.md`を�
 
 移動はCore / Audit、Product Active、Product Reference、Knowledge /
 Analyticsの順に分割し、各PRで参照修正と旧パスgrepを実施する。
+
+### PR1 Core / Audit Directory Move 実行結果
+
+A10で確定した配置計画のうち、Core文書3件およびAudit文書5件の移動を実行した。
+
+#### Coreへ移動
+
+- `docs/auth-flow.md` → `docs/core/auth-flow.md`
+- `docs/authentication-flow.md` → `docs/core/authentication-flow.md`
+- `docs/concierge_spec.md` → `docs/core/concierge-spec.md`
+
+#### Auditへ移動
+
+- `docs/AGENTS.md` → `docs/audit/auth-favorite-ai-operation-record.md`
+- `docs/concierge_risk_register.md` → `docs/audit/concierge-risk-register.md`
+- `docs/phase5-behavior-measurement-plan.md` → `docs/audit/phase5-behavior-measurement-plan.md`
+- `docs/phase7-ux-monetization-roadmap.md` → `docs/audit/phase7-ux-monetization-roadmap.md`
+- `docs/project-context.md` → `docs/audit/project-context.md`
+
+現行文書からの認証関連参照および旧Phase7 Roadmapへの参照は、新しい配置先へ更新した。
+
+A1〜A9およびA10のInventory・参照元調査に残る旧パスは、移動前の状態を示す監査証跡として保持する。
+
+これにより、A10のPR1「Core / Audit配置」は完了した。Product Active、Product Reference、Knowledge / Analyticsの移動は後続PRで実行する。

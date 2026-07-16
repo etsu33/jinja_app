@@ -18,7 +18,7 @@ Phase7実装計画を作成した時点では、以下の設計ドキュメン�
 
 | Document                                 | Role                                 |
 | ---------------------------------------- | ------------------------------------ |
-| `docs/phase7-ux-monetization-roadmap.md` | 旧Phase7全体ロードマップの履歴       |
+| `docs/audit/phase7-ux-monetization-roadmap.md` | 旧Phase7全体ロードマップの履歴       |
 | `docs/shrine-detail-v3-design.md`        | 神社詳細画面v3のUX設計               |
 | `docs/visit-flow-design.md`              | 参拝前、参拝中、参拝後の行動導線設計 |
 | `docs/reflection-timeline-design.md`     | 参拝後の振り返りとタイムライン設計   |
