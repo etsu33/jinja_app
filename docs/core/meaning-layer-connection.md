@@ -1,3 +1,9 @@
+> **Status: Active**
+>
+> 本ドキュメントは、Meaning LayerとConsultation Interpretation、Meaning Translation、ComposerおよびRecommendationの接続責務を管理する正本である。
+>
+> 詳細な変換規則、API契約および物理実装は、関連するProduct文書、実装コードおよびテストを最終的な正本とする。
+
 # Meaning Layer Connection
 
 ## 目的

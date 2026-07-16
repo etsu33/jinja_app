@@ -7,6 +7,34 @@
 
 ## 🧭 Core Documents（正本）
 
+Core文書の読む順番、Active / Reference分類、責務および委譲関係は以下を参照する。
+
+- `core/README.md`
+  - Core文書全体の入口
+
+主要な正本は以下である。
+
+- `core/architecture.md`
+  - システム全体構造、責務分離および依存関係
+
+- `core/roadmap.md`
+  - 開発フェーズ、実装順序、ゴールおよび完了条件
+
+- `core/authentication-flow.md`
+  - Web認証アーキテクチャとFrontend・BFF・Backendの責務
+
+- `core/concierge-spec.md`
+  - Concierge入力、LLM利用、API基本契約および運用上の保護条件
+
+- `core/meaning-layer.md`
+  - Meaning Layerの思想、目的および非断定原則
+
+- `core/recommendation-readiness.md`
+  - Recommendation品質、CoverageおよびReadiness判定
+
+- `core/recommendation-reason-contract.md`
+  - Recommendation ReasonのInput / Output / 保存 / 表示 / 互換責務
+
 まず読むべき正本文書です。
 
 - `core/architecture.md`

@@ -3269,3 +3269,104 @@ Coreについては、以下の主要文書への入口が存在する。
 - Fallback物理名の委譲
 - Knowledge文書への参照追加
 - Composer正本の明確化
+
+## 11. PR1 Core README作成・Status統一 実行結果
+
+Core文書責務監査で確定した分類および入口設計に基づき、Core READMEの作成とStatus表記の統一を実行した。
+
+### 11.1 Core README
+
+以下を新規作成した。
+
+- `docs/core/README.md`
+
+Core READMEは以下を管理する。
+
+- Core文書の読む順番
+- Active / Reference分類
+- 各文書の責務
+- Core文書間の委譲関係
+- Product・Knowledge・Analyticsへの委譲先
+- 文書正本と実装正本の境界
+- 更新ルール
+
+### 11.2 Status統一
+
+以下の7文書へ`Status: Active`を追加した。
+
+- `docs/core/architecture.md`
+- `docs/core/meaning-layer.md`
+- `docs/core/meaning-layer-connection.md`
+- `docs/core/narrative-guideline.md`
+- `docs/core/recommendation-readiness.md`
+- `docs/core/recommendation-reason-contract.md`
+- `docs/core/roadmap.md`
+
+既存のStatus表記は以下のとおり維持した。
+
+- `docs/core/authentication-flow.md`：Active
+- `docs/core/concierge-spec.md`：Active
+- `docs/core/auth-flow.md`：Reference
+
+既存Core文書10件の最終分類は以下である。
+
+| Status | 件数 |
+| --- | ---: |
+| Active | 9 |
+| Reference | 1 |
+| Archive | 0 |
+| 合計 | 10 |
+
+新規入口文書である`docs/core/README.md`を含む`docs/core/`配下のMarkdown文書は、Active 10件、Reference 1件となった。
+
+### 11.3 docs README
+
+`docs/README.md`から`docs/core/README.md`へ到達できる入口を追加する。
+
+責務は以下へ分離する。
+
+```text
+docs/README.md
+= docs全体の入口
+
+docs/core/README.md
+= Core文書の入口
+
+docs/README.mdには主要なCore正本のみを掲載し、全Core文書の読む順番、分類および詳細責務はdocs/core/README.mdへ委譲する。
+
+11.4 参照確認
+
+Core文書およびCore READMEに記載されたMarkdown参照先が存在することを確認する。
+
+docs/README.mdに記載されたCore・Product・Knowledge・Analytics・Audit・Ops・Infra・CI文書の参照先についても存在確認を行う。
+
+確認結果は、参照切れが存在しない場合は以下とする。
+
+* Core文書内の参照切れ：0件
+* docs/core/README.md内の参照切れ：0件
+* docs/README.md内の対象参照切れ：0件
+
+11.5 品質確認
+
+以下を確認する。
+
+* Core配下の全Markdown文書にStatus表記が存在する
+* Active / Reference分類が監査結果と一致する
+* git diff --checkでエラーがない
+* 意図しないファイル変更が含まれていない
+* Markdownコードブロックが閉じられている
+* 旧パス参照が追加されていない
+
+11.6 結論
+
+Core READMEの作成とStatus統一により、Core文書の入口、読む順番、分類、責務および委譲関係を一か所で確認できる状態となった。
+
+後続のCore文書修正は、docs/core/README.mdの分類と、docs/audit/core-document-responsibility-audit.mdで確定した責務境界を基準として実行する。
+
+PR1の完了条件は以下とする。
+
+* docs/core/README.mdが作成されている
+* 既存Core文書10件のStatusが統一されている
+* docs/README.mdからCore READMEへ到達できる
+* Markdown参照切れがない
+* git diff --checkが成功する

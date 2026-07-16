@@ -1,3 +1,10 @@
+> **Status: Active**
+>
+> 本ドキュメントは、KAMI MUSUBI全体のシステム構造、レイヤー責務、依存関係および詳細正本への委譲関係を管理する最上位技術正本である。
+>
+> 個別Endpoint、Payload、Fieldおよび正確な物理挙動は、関連する正本文書、実装コードおよびテストを最終的な正本とする。
+
+
 # KAMI MUSUBI Architecture
 
 ## 目的

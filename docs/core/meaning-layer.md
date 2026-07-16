@@ -1,6 +1,11 @@
-
+> **Status: Active**
+>
+> 本ドキュメントは、KAMI MUSUBIにおけるMeaning Layerの思想、目的、上位責務、非断定原則および意味ある移動体験を管理する正本である。
+>
+> Consultation Interpretation、ComposerおよびRecommendationとの接続仕様は`docs/core/meaning-layer-connection.md`を参照する。
 
 # Meaning Layer
+
 
 ## 概要
 
