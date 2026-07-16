@@ -26,6 +26,10 @@ function Metric({ label, value, note }: { label: string; value: string; note?: s
   );
 }
 
+function count(v: number) {
+  return v.toLocaleString("ja-JP");
+}
+
 function DecisionBadge({ ok, label }: { ok: boolean; label: string }) {
   return (
     <div className="flex items-center justify-between text-sm py-1">
@@ -123,10 +127,30 @@ export default function ScoreV3DashboardClient() {
           {/* funnel */}
           <div className="rounded-2xl border bg-white p-4 space-y-0">
             <div className="text-sm font-semibold mb-2">Behavior Funnel</div>
+            <Metric label="detail_view_count" value={count(state.data.funnel.detail_view_count)} />
+            <Metric label="route_open_count" value={count(state.data.funnel.route_open_count)} />
+            <Metric label="save_count" value={count(state.data.funnel.save_count)} />
+            <Metric label="visit_count" value={count(state.data.funnel.visit_count)} />
+            <Metric label="reflection_count" value={count(state.data.funnel.reflection_count)} />
             <Metric label="route_open_rate" value={pct(state.data.funnel.route_open_rate)} />
             <Metric label="save_rate" value={pct(state.data.funnel.save_rate)} />
             <Metric label="visit_done_rate" value={pct(state.data.funnel.visit_done_rate)} />
             <Metric label="reflection_saved_rate" value={pct(state.data.funnel.reflection_saved_rate)} />
+            <Metric label="save_to_visit_cvr" value={pct(state.data.funnel.save_to_visit_cvr)} />
+            <Metric label="visit_to_reflection_cvr" value={pct(state.data.funnel.visit_to_reflection_cvr)} />
+          </div>
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 space-y-2">
+            <div className="text-sm font-semibold text-amber-800">Dashboard利用時の注意</div>
+
+            <ul className="list-disc pl-5 text-xs text-amber-700 space-y-1">
+              <li>
+                Mobile版では Favorite / Visit / Reflection の一部イベントが未同期のため、件数・CVRは過小評価される可能性があります。
+              </li>
+              <li>reflection_saved_rate は detail_view_count を分母としているため、100%を超える場合があります。</li>
+              <li>
+                Score v3 の active 判断は、このDashboardだけでなく件数・CVR・Mobile同期状況も合わせて確認してください。
+              </li>
+            </ul>
           </div>
         </>
       )}

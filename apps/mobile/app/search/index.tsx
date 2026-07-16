@@ -37,7 +37,7 @@ export default function SearchPage() {
       <View style={styles.hero}>
         <Text style={styles.heroLead}>神社を探す</Text>
         <Text style={styles.heroTitle}>今の気持ちに合う神社を、{`\n`}静かに見つける</Text>
-        <Text style={styles.heroSub}>地域やご利益、気になる言葉から、参拝先の候補を確認できます。</Text>
+        <Text style={styles.heroSub}>地域やご利益、気になる言葉から、参拝先との接点を確認できます。</Text>
       </View>
 
       <View style={styles.summaryCard}>

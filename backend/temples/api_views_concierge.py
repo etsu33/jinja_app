@@ -34,6 +34,7 @@ from temples.services import places as Places
 from temples.services.plan_service import resolve_plan_context
 from temples.services.quota_service import check_quota, consume_quota
 from temples.services.anonymous_id import attach_anonymous_cookie, build_anonymous_cookie_value
+
 from temples.services.concierge_candidate_utils import (
     _dedupe_candidates,
     _to_float,
@@ -45,6 +46,7 @@ from temples.services.concierge_chat_ranking import (
 from temples.services.concierge_chat_candidates import build_chat_candidates
 from temples.services.concierge_history import append_chat
 from temples.services.concierge_plan import build_plan_response
+from temples.services.consultation_interpreter import interpret_consultation
 from temples.services.billing_state import is_premium_for_user  # test monkeypatch compatibility
 
 
@@ -496,6 +498,7 @@ def _build_chat_candidates_pipeline(
     lng: Optional[float],
     area: Any,
     language: str,
+    interpretation_profile: dict[str, Any] | None = None,
 ) -> Tuple[List[Dict[str, Any]], int, int, int]:
     data = request.data or {}
     _ = language  # interface stability for future use
@@ -510,6 +513,7 @@ def _build_chat_candidates_pipeline(
         lat=lat,
         lng=lng,
         trace_id=getattr(request, "_concierge_trace_id", ""),
+        interpretation_profile=interpretation_profile,
     )
 
     merged_candidates = user_candidates + raw_built_candidates
@@ -653,6 +657,12 @@ class ConciergeChatView(APIView):
                 flow = "A"
             intent = extract_intent(query or "")
 
+            interpretation_profile = interpret_consultation(
+                query=query or "",
+                need_tags=[],
+                selected_goriyaku_tag_ids=goriyaku_tag_ids if isinstance(goriyaku_tag_ids, list) else [],
+            )
+
             request._concierge_trace_id = rid
 
             # compat は query 空を許可
@@ -745,12 +755,13 @@ class ConciergeChatView(APIView):
             phase = "candidates"
             t0 = time.perf_counter()
 
-            candidates, user_n, built_n, merged_n = _build_chat_candidates_pipeline(
+            candidates, user_n, built_n, merged_n =             candidates, user_n, built_n, merged_n = _build_chat_candidates_pipeline(
                 request=request,
                 lat=lat,
                 lng=lng,
                 area=area,
                 language=language,
+                interpretation_profile=interpretation_profile,
             )
             candidate_count = len(candidates)
 
@@ -818,7 +829,7 @@ class ConciergeChatView(APIView):
                     public_mode=public_mode,
                     flow=flow,
                     user=user if getattr(user, "is_authenticated", False) else None,
-                    profile_context=raw_profile_context if isinstance(raw_profile_context, dict) else None,
+                    profile_context=raw_profile_context if isinstance(raw_profile_context, dict) else None,                    interpretation_profile=interpretation_profile,
                 )
             except Exception:
                 log.exception(

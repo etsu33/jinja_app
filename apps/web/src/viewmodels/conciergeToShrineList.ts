@@ -1,4 +1,10 @@
-import type { ConciergeResultItem } from "@/viewmodels/conciergeResultItem";
+import type {
+  ActionSuggestionV4ActionViewModel,
+  ActionSuggestionV4PreviewViewModel,
+  ActionSuggestionV4ReflectionPromptViewModel,
+  ActionSuggestionV4SourceViewModel,
+  ConciergeResultItem,
+} from "@/viewmodels/conciergeResultItem";
 import { buildRecommendationReasonViewModel } from "@/lib/concierge/buildRecommendationReasonViewModel";
 import { buildShrineHref } from "@/lib/nav/buildShrineHref";
 import {
@@ -106,6 +112,116 @@ function toDisplayTag(tag: string): string {
   return labelNeedDisplayTag(tag);
 }
 
+const ACTION_SUGGESTION_V4_ACTION_TYPES = ["detail_open", "route_open", "save", "visit", "reflect", "pause"] as const;
+const ACTION_SUGGESTION_V4_PROMPT_TYPES = ["before_visit", "after_visit", "decision", "emotion", "constraint"] as const;
+const ACTION_SUGGESTION_V4_SOURCES = [
+  "decision_context",
+  "constraint_profile",
+  "outcome_hint",
+  "action_context",
+  "reflection_question_seed",
+  "fallback",
+] as const;
+
+function isActionSuggestionV4ActionType(value: unknown): value is ActionSuggestionV4ActionViewModel["actionType"] {
+  return typeof value === "string" && ACTION_SUGGESTION_V4_ACTION_TYPES.includes(value as any);
+}
+
+function isActionSuggestionV4PromptType(value: unknown): value is ActionSuggestionV4ReflectionPromptViewModel["promptType"] {
+  return typeof value === "string" && ACTION_SUGGESTION_V4_PROMPT_TYPES.includes(value as any);
+}
+
+function isActionSuggestionV4Source(value: unknown): value is ActionSuggestionV4SourceViewModel["source"] {
+  return typeof value === "string" && ACTION_SUGGESTION_V4_SOURCES.includes(value as any);
+}
+
+function asTrimmedString(val: any): string | null {
+  return typeof val === "string" && val.trim() ? val.trim() : null;
+}
+
+function normalizeActionSuggestionV4Action(raw: any): ActionSuggestionV4ActionViewModel | null {
+  if (!raw || typeof raw !== "object") return null;
+
+  const label = asTrimmedString(raw.label);
+  const description = asTrimmedString(raw.description);
+  const actionTypeRaw = raw.action_type ?? raw.actionType;
+  const confidenceRaw = typeof raw.confidence === "number" ? raw.confidence : Number(raw.confidence);
+
+  if (!label || !description || !isActionSuggestionV4ActionType(actionTypeRaw) || !Number.isFinite(confidenceRaw)) {
+    return null;
+  }
+
+  return {
+    label,
+    description,
+    actionType: actionTypeRaw,
+    confidence: Math.max(0, Math.min(1, confidenceRaw)),
+  };
+}
+
+function normalizeActionSuggestionV4ReflectionPrompt(raw: any): ActionSuggestionV4ReflectionPromptViewModel | null {
+  if (!raw || typeof raw !== "object") return null;
+
+  const question = asTrimmedString(raw.question);
+  const promptTypeRaw = raw.prompt_type ?? raw.promptType;
+  const sourceSeed = asTrimmedString(raw.source_seed ?? raw.sourceSeed);
+
+  if (!question || !isActionSuggestionV4PromptType(promptTypeRaw) || !sourceSeed) {
+    return null;
+  }
+
+  return {
+    question,
+    promptType: promptTypeRaw,
+    sourceSeed,
+  };
+}
+
+function normalizeActionSuggestionV4Source(raw: any): ActionSuggestionV4SourceViewModel | null {
+  if (!raw || typeof raw !== "object") return null;
+
+  const sourceRaw = raw.source;
+  const reason = asTrimmedString(raw.reason);
+
+  if (!isActionSuggestionV4Source(sourceRaw) || !reason) {
+    return null;
+  }
+
+  return {
+    source: sourceRaw,
+    reason,
+  };
+}
+
+function normalizeActionSuggestionV4Preview(raw: any): ActionSuggestionV4PreviewViewModel | null {
+  if (!raw || typeof raw !== "object") return null;
+
+  const primaryAction = normalizeActionSuggestionV4Action(raw.primary_action ?? raw.primaryAction);
+  const secondaryAction = normalizeActionSuggestionV4Action(raw.secondary_action ?? raw.secondaryAction);
+  const reflectionPrompt = normalizeActionSuggestionV4ReflectionPrompt(raw.reflection_prompt ?? raw.reflectionPrompt);
+  const actionSource = normalizeActionSuggestionV4Source(raw.action_source ?? raw.actionSource);
+  const sourceKeysRaw = raw.source_keys ?? raw.sourceKeys;
+  const sourceKeys = Array.isArray(sourceKeysRaw)
+    ? sourceKeysRaw
+        .map((item) => asTrimmedString(item))
+        .filter((item): item is string => Boolean(item))
+    : [];
+
+  if (!primaryAction || !secondaryAction || !reflectionPrompt || !actionSource) {
+    return null;
+  }
+
+  return {
+    primaryAction,
+    secondaryAction,
+    reflectionPrompt,
+    actionSource,
+    preview: raw.preview === true,
+    version: "v4",
+    sourceKeys,
+  };
+}
+
 export function conciergeToShrineListItems(resp: ConciergeResponse): ConciergeResultItem[] {
   if (!resp?.ok) {
     return [];
@@ -141,13 +257,16 @@ export function conciergeToShrineListItems(resp: ConciergeResponse): ConciergeRe
             .filter((item: any) => item.id && item.title)
         : [];
 
-      const matchedTags = normalizeTagList(r.breakdown?.matched_need_tags);
-      const rawTags = matchedTags.length ? matchedTags : normalizeTagList(resp.data?._need?.tags);
-      const tags = rawTags.map(toDisplayTag).slice(0, 3);
+      const actionSuggestionV4Preview = normalizeActionSuggestionV4Preview(r.action_suggestion_v4_preview ?? r.actionSuggestionV4Preview);
+
+      const inputNeedTags = normalizeTagList(resp.data?._need?.tags);
+      const matchedNeedTags = normalizeTagList(r.breakdown?.matched_need_tags);
+      const effectiveNeedTags = inputNeedTags.length > 0 ? inputNeedTags : matchedNeedTags;
+      const tags = matchedNeedTags.map(toDisplayTag).slice(0, 3);
 
       const reasonVm = buildRecommendationReasonViewModel({
         index,
-        needTags: rawTags,
+        needTags: effectiveNeedTags,
         rec: {
           display_name: name,
           name,
@@ -159,18 +278,22 @@ export function conciergeToShrineListItems(resp: ConciergeResponse): ConciergeRe
           astro_priority: r.astro_priority ?? null,
           fallback_mode: r.fallback_mode ?? null,
           explanation: r.explanation ?? null,
-          reason_facts: r.reason_facts ?? r._reason_facts ?? null,
+          reason_facts: r.reason_facts ?? null,
         },
       });
 
       const explanationSummary = r.explanation?.summary?.trim() || reasonVm.list.summary;
       const rawReason =
-        r._explanation_payload?.original_reason?.trim() || r.reason?.trim() || explanationSummary || null;
+        r.recommendation_reason_v4?.trim() ||
+        r._explanation_payload?.original_reason?.trim() ||
+        r.reason?.trim() ||
+        explanationSummary ||
+        null;
 
       const primaryReasonLabel = r._explanation_payload?.primary_reason?.label?.trim() || null;
       const primaryTag = resolveListPrimaryTag({
         primaryReasonLabel,
-        fallbackTags: rawTags,
+        fallbackTags: matchedNeedTags,
       });
       const primaryMeaning =
         buildNeedPrimaryShortCopy({
@@ -204,6 +327,7 @@ export function conciergeToShrineListItems(resp: ConciergeResponse): ConciergeRe
         detailHref,
         trustMetadata,
         actionSuggestions,
+        actionSuggestionV4Preview,
         cardProps: {
           shrineId: r.shrine_id,
           title: name,

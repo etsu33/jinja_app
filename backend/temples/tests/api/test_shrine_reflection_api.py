@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+from datetime import timedelta
+
 import pytest
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from rest_framework.test import APIClient
 
-from temples.models import Shrine, ShrineReflection
+from temples.models import ConciergeThread, Shrine, ShrineReflection
 
 
 pytestmark = pytest.mark.django_db
@@ -84,6 +87,59 @@ def test_create_shrine_reflection_authenticated():
     assert reflection.shrine_id == shrine.id
 
 
+def test_list_shrine_reflections_requires_auth():
+    client = APIClient()
+
+    resp = client.get("/api/reflections/")
+
+    assert resp.status_code in (401, 403)
+
+
+def test_list_shrine_reflections_returns_only_own_reflections_ordered_by_created_at_desc():
+    user = _create_user(username="reflection_list_owner")
+    other_user = _create_user(username="reflection_list_other")
+    shrine = _create_shrine(name="一覧テスト神社")
+
+    older = ShrineReflection.objects.create(
+        user=user,
+        shrine=shrine,
+        history_theme="静寂",
+        prompt="最初の問い",
+        answer="最初の回答",
+    )
+    ShrineReflection.objects.filter(pk=older.pk).update(
+        created_at=timezone.now() - timedelta(days=1)
+    )
+
+    newer = ShrineReflection.objects.create(
+        user=user,
+        shrine=shrine,
+        history_theme="再出発",
+        prompt="次の問い",
+        answer="次の回答",
+    )
+
+    ShrineReflection.objects.create(
+        user=other_user,
+        shrine=shrine,
+        history_theme="静寂",
+        prompt="他人の問い",
+        answer="他人の回答",
+    )
+
+    client = APIClient()
+    client.force_authenticate(user=user)
+
+    resp = client.get("/api/reflections/")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    results = body["results"] if isinstance(body, dict) and "results" in body else body
+
+    assert [item["id"] for item in results] == [newer.id, older.id]
+    assert all(item["user"] == user.id for item in results)
+
+
 def test_create_shrine_reflection_returns_404_for_unknown_shrine():
     user = _create_user(username="reflection_missing_shrine_user")
 
@@ -101,3 +157,65 @@ def test_create_shrine_reflection_returns_404_for_unknown_shrine():
     assert resp.status_code == 404
     assert resp.json()["detail"] == "Shrine not found"
     assert ShrineReflection.objects.count() == 0
+
+
+def test_create_shrine_reflection_with_own_thread_id_saves_thread():
+    user = _create_user(username="reflection_thread_owner")
+    shrine = _create_shrine(name="スレッド紐付けテスト神社")
+    thread = ConciergeThread.objects.create(user=user, title="相談スレッド")
+
+    client = APIClient()
+    client.force_authenticate(user=user)
+
+    payload = {
+        "history_theme": "静寂",
+        "answer": "落ち着きました。",
+        "thread_id": thread.id,
+    }
+
+    resp = client.post(f"/api/shrines/{shrine.id}/reflection/", payload, format="json")
+
+    assert resp.status_code == 201
+    body = resp.json()
+    assert body["thread_id"] == thread.id
+
+    reflection = ShrineReflection.objects.get(id=body["id"])
+    assert reflection.thread_id == thread.id
+
+
+def test_create_shrine_reflection_with_other_users_thread_id_returns_400():
+    user = _create_user(username="reflection_thread_requester")
+    other_user = _create_user(username="reflection_thread_stranger")
+    shrine = _create_shrine(name="他人スレッドテスト神社")
+    other_thread = ConciergeThread.objects.create(user=other_user, title="他人の相談スレッド")
+
+    client = APIClient()
+    client.force_authenticate(user=user)
+
+    payload = {
+        "answer": "保存されないはずの回答。",
+        "thread_id": other_thread.id,
+    }
+
+    resp = client.post(f"/api/shrines/{shrine.id}/reflection/", payload, format="json")
+
+    assert resp.status_code == 400
+    assert ShrineReflection.objects.count() == 0
+
+
+def test_create_shrine_reflection_without_thread_id_saves_null():
+    user = _create_user(username="reflection_no_thread_user")
+    shrine = _create_shrine(name="スレッドなしテスト神社")
+
+    client = APIClient()
+    client.force_authenticate(user=user)
+
+    payload = {"answer": "スレッドを指定しない回答。"}
+
+    resp = client.post(f"/api/shrines/{shrine.id}/reflection/", payload, format="json")
+
+    assert resp.status_code == 201
+    assert resp.json()["thread_id"] is None
+
+    reflection = ShrineReflection.objects.get(id=resp.json()["id"])
+    assert reflection.thread_id is None

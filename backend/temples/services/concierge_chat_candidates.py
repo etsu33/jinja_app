@@ -15,6 +15,7 @@ from temples.services.concierge_candidate_utils import (
 from temples.services.shrine_trust_metadata import get_shrine_trust_metadata
 
 from temples.services.shrine_meaning_composer import compose_shrine_meaning_payload
+from temples.services.meaning_translation import translate_meaning
 
 log = logging.getLogger(__name__)
 
@@ -53,6 +54,7 @@ def build_chat_candidates(
     lng: Optional[float] = None,
     limit: int = DEFAULT_LIMIT,
     trace_id: str | None = None,
+    interpretation_profile: dict[str, Any] | None = None,
 ) -> List[Dict[str, Any]]:
     qs = Shrine.objects.all()
 
@@ -104,7 +106,13 @@ def build_chat_candidates(
         place_id = getattr(pref, "place_id", None) if pref else None
         trust_metadata = get_shrine_trust_metadata(s.id)
 
-        meaning_payload = compose_shrine_meaning_payload(s)
+        meaning_source = s
+        if interpretation_profile is not None:
+            translation_result = translate_meaning(interpretation_profile)
+            setattr(meaning_source, "interpretation_profile", interpretation_profile)
+            setattr(meaning_source, "translation_result", translation_result)
+
+        meaning_payload = compose_shrine_meaning_payload(meaning_source)
         generated_meaning = meaning_payload.get("generated") or {}
 
         candidates.append(
@@ -150,7 +158,7 @@ def build_chat_candidates(
             )
         )
 
-    candidates = candidates[:limit]
+    candidates = candidates[:pool_limit]
     candidates = _dedupe_candidates(candidates)
 
     with_pid = sum(1 for c in candidates if c.get("place_id"))

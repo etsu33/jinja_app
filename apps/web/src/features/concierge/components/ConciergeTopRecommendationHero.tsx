@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import type { ReactNode } from "react";
 import { trackSearchEvent } from "@/lib/analytics/searchEvents";
-import { trackActionEvent } from "@/lib/api/actionEvents";
-import { trackActionAnalytics } from "@/lib/analytics/actionEvents";
-import type { ActionSuggestionViewModel } from "@/viewmodels/conciergeResultItem";
+import type {
+  ActionSuggestionV4PreviewViewModel,
+  ActionSuggestionViewModel,
+} from "@/viewmodels/conciergeResultItem";
 
 type Props = {
   name: string;
@@ -26,6 +27,7 @@ type Props = {
   nextActionHint?: string | null;
   tags?: string[];
   actionSuggestions?: ActionSuggestionViewModel[];
+  actionSuggestionV4Preview?: ActionSuggestionV4PreviewViewModel | null;
   analyticsSource?: "concierge_result" | "shrine_detail" | "map" | "shrines" | null;
   threadId?: string | null;
   resultSetId?: string | null;
@@ -37,6 +39,13 @@ type Props = {
   onRouteClick?: () => void;
   onDetailClick?: () => void;
 };
+
+function pickActionSuggestionV4Summary(preview: ActionSuggestionV4PreviewViewModel): string {
+  const primaryLabel = preview.primaryAction.label.trim();
+  if (primaryLabel) return primaryLabel;
+
+  return preview.reflectionPrompt.question.trim();
+}
 
 export default function ConciergeTopRecommendationHero({
   name,
@@ -55,7 +64,8 @@ export default function ConciergeTopRecommendationHero({
   differenceFromOthers: _differenceFromOthers = null,
   nextActionHint: _nextActionHint = null,
   tags: _tags = [],
-  actionSuggestions = [],
+  actionSuggestions: _actionSuggestions = [],
+  actionSuggestionV4Preview = null,
   analyticsSource = "concierge_result",
   threadId = null,
   resultSetId = null,
@@ -68,104 +78,63 @@ export default function ConciergeTopRecommendationHero({
   onDetailClick,
 }: Props) {
   const visibleTrustLabels = trustLabels.filter(Boolean).slice(0, 4);
-  const visibleActionSuggestions = useMemo(
-    () => actionSuggestions.filter((item) => item.id && item.title).slice(0, 2),
-    [actionSuggestions],
-  );
-  const visibleActionSuggestionIds = visibleActionSuggestions.map((item) => item.id).join(",");
+  const visibleActionSuggestionV4Preview = actionSuggestionV4Preview?.preview === true ? actionSuggestionV4Preview : null;
+  const actionSuggestionV4Summary = visibleActionSuggestionV4Preview
+    ? pickActionSuggestionV4Summary(visibleActionSuggestionV4Preview)
+    : "";
+  const visibleActionSuggestionV4PreviewKey = visibleActionSuggestionV4Preview
+    ? [
+        visibleActionSuggestionV4Preview.primaryAction.actionType,
+        visibleActionSuggestionV4Preview.primaryAction.label,
+        visibleActionSuggestionV4Preview.reflectionPrompt.promptType,
+        visibleActionSuggestionV4Preview.reflectionPrompt.question,
+        visibleActionSuggestionV4Preview.actionSource.source,
+      ].join("|")
+    : "";
   const entranceCopySource = subtitle ?? catchCopy;
+
   const entranceCopy = entranceCopySource.split("。")[0]
     ? `${entranceCopySource.split("。")[0]}。`
     : entranceCopySource;
 
   useEffect(() => {
-    if (visibleActionSuggestions.length === 0) return;
+    if (!visibleActionSuggestionV4Preview || !actionSuggestionV4Summary) return;
 
-    visibleActionSuggestions.forEach((item, index) => {
-      trackSearchEvent("action_suggestion_view", {
-        source: analyticsSource,
-        threadId,
-        resultSetId,
-        shrineId,
-        recommendationRank,
-        position: "hero_primary",
-        historyTheme: historyTheme ?? item.historyTheme,
-        actionSuggestionId: item.id,
-        actionCategory: item.category,
-        actionTheme: item.historyTheme,
-        actionPosition: index + 1,
-      });
+    const basePayload = {
+      source: analyticsSource,
+      threadId,
+      resultSetId,
+      shrineId,
+      recommendationRank,
+      position: "hero_primary" as const,
+      historyTheme,
+      actionSuggestionVersion: visibleActionSuggestionV4Preview.version,
+      primaryActionType: visibleActionSuggestionV4Preview.primaryAction.actionType,
+      secondaryActionType: visibleActionSuggestionV4Preview.secondaryAction.actionType,
+      actionPromptType: visibleActionSuggestionV4Preview.reflectionPrompt.promptType,
+      actionSource: visibleActionSuggestionV4Preview.actionSource.source,
+      sourceKeys: visibleActionSuggestionV4Preview.sourceKeys.join(","),
+      summaryLine: actionSuggestionV4Summary,
+    };
+
+    trackSearchEvent("action_suggestion_preview_view", basePayload);
+    // Action Suggestionのreflection promptは「実際にReflection入力UIが表示された」ことを意味しないため、
+    // reflection_prompt_view ではなく専用イベントで計測する。
+    trackSearchEvent("action_suggestion_reflection_preview_view", {
+      ...basePayload,
+      reflectionPromptSourceSeed: visibleActionSuggestionV4Preview.reflectionPrompt.sourceSeed,
     });
   }, [
+    actionSuggestionV4Summary,
     analyticsSource,
     historyTheme,
     recommendationRank,
     resultSetId,
     shrineId,
     threadId,
-    visibleActionSuggestionIds,
-    visibleActionSuggestions,
+    visibleActionSuggestionV4Preview,
+    visibleActionSuggestionV4PreviewKey,
   ]);
-
-  const buildActionEventPayload = (item: ActionSuggestionViewModel, index: number) => ({
-    source: analyticsSource,
-    threadId,
-    resultSetId,
-    shrineId,
-    recommendationRank,
-    position: "hero_primary" as const,
-    historyTheme: historyTheme ?? item.historyTheme,
-    actionSuggestionId: item.id,
-    actionCategory: item.category,
-    actionTheme: item.historyTheme,
-    actionPosition: index + 1,
-  });
-
-
-  const handleActionEvent = (
-    actionType: "action_started" | "action_completed",
-    legacyEventName: "action_suggestion_click" | "action_done",
-    item: ActionSuggestionViewModel,
-    index: number,
-  ) => {
-    const payload = buildActionEventPayload(item, index);
-
-    trackSearchEvent(legacyEventName, payload);
-    trackActionAnalytics({
-      actionType,
-      actionSuggestionId: item.id,
-      source: analyticsSource,
-      shrineId,
-      threadId,
-      historyTheme: historyTheme ?? item.historyTheme,
-      actionCategory: item.category,
-      resultSetId,
-      recommendationRank,
-      position: "hero_primary",
-      actionPosition: index + 1,
-      metadata: {
-        legacyEventName,
-        actionTheme: item.historyTheme,
-      },
-    });
-
-    void trackActionEvent({
-      actionType,
-      actionSuggestionId: item.id,
-      source: analyticsSource,
-      shrineId,
-      threadId,
-      historyTheme: historyTheme ?? item.historyTheme,
-      actionCategory: item.category,
-      metadata: {
-        legacyEventName,
-        actionTheme: item.historyTheme,
-        resultSetId,
-        recommendationRank,
-        actionPosition: index + 1,
-      },
-    });
-  };
 
   return (
     <section className="rounded-[30px] border border-emerald-200 bg-gradient-to-b from-emerald-50/80 to-white p-6 shadow-lg shadow-emerald-900/10 ring-1 ring-emerald-100">
@@ -173,7 +142,7 @@ export default function ConciergeTopRecommendationHero({
         <div className="space-y-3">
           <div className="space-y-2">
             <div className="text-xs font-semibold tracking-[0.18em] text-emerald-700">
-              {eyebrowLabel ?? "信頼できる神社候補"}
+              {eyebrowLabel ?? "今の相談に近い神社"}
             </div>
             <h2 className="text-xl font-semibold leading-8 text-slate-950">{name}</h2>
 
@@ -203,43 +172,13 @@ export default function ConciergeTopRecommendationHero({
           </div>
         </div>
 
-        {visibleActionSuggestions.length > 0 ? (
+        {actionSuggestionV4Summary ? (
           <div
-            className="rounded-2xl border border-amber-100 bg-amber-50/70 px-4 py-3 shadow-sm shadow-amber-900/5"
-            data-testid="hero-action-suggestions"
+            className="rounded-2xl border border-teal-100 bg-teal-50/70 px-4 py-3 shadow-sm shadow-teal-900/5"
+            data-testid="hero-action-suggestion-v4-preview"
           >
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <p className="text-[11px] font-semibold tracking-[0.14em] text-amber-700">次の小さな一歩</p>
-                <p className="text-xs leading-5 text-slate-600">今の状態に合わせて、無理なく試せる行動です。</p>
-              </div>
-              <div className="space-y-2">
-                {visibleActionSuggestions.map((item, index) => (
-                  <div key={item.id} className="rounded-xl bg-white/80 px-3 py-2 ring-1 ring-amber-100">
-                    <p className="text-sm font-semibold leading-6 text-slate-800">{item.title}</p>
-                    {item.description ? (
-                      <p className="mt-0.5 text-xs leading-5 text-slate-600">{item.description}</p>
-                    ) : null}
-                    <div className="mt-2 grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        className="rounded-lg border border-amber-200 bg-white px-2 py-1.5 text-xs font-semibold text-amber-800 transition hover:bg-amber-50"
-                        onClick={() => handleActionEvent("action_started", "action_suggestion_click", item, index)}
-                      >
-                        試してみる
-                      </button>
-                      <button
-                        type="button"
-                        className="rounded-lg bg-amber-600 px-2 py-1.5 text-xs font-semibold text-white transition hover:bg-amber-700"
-                        onClick={() => handleActionEvent("action_completed", "action_done", item, index)}
-                      >
-                        完了
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <p className="text-[11px] font-semibold tracking-[0.14em] text-teal-700">次の一歩</p>
+            <p className="mt-1 truncate text-sm leading-6 text-slate-700">{actionSuggestionV4Summary}</p>
           </div>
         ) : null}
 

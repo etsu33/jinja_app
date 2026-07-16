@@ -1,4 +1,8 @@
-
+> **Status: Reference**
+>
+> 本ドキュメントは、Concierge結果画面のCard Tree、Props、RendererおよびSection Routingの責務を整理した設計補足資料である。
+>
+> 現行の表示構造と物理実装は、関連するFrontend実装およびテストを最終的な正本とする。
 
 # Concierge Card Architecture
 

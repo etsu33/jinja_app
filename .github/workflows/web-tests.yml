@@ -29,14 +29,14 @@ jobs:
     name: web-contract
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: pnpm/action-setup@v4
         with:
           standalone: true
           run_install: false
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 20
           cache: pnpm
@@ -58,14 +58,14 @@ jobs:
     if: ${{ github.event_name != 'workflow_dispatch' || true }}
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: pnpm/action-setup@v4
         with:
           standalone: true
           run_install: false
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 20
           cache: pnpm
@@ -76,7 +76,7 @@ jobs:
         run: pnpm -r install --frozen-lockfile
 
       - name: Restore ESLint cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: apps/web/.eslintcache
           key: eslint-${{ runner.os }}-${{ hashFiles('apps/web/**/*.{ts,tsx,js,jsx,mjs,cjs}') }}

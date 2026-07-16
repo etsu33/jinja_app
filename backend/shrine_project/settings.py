@@ -23,27 +23,6 @@ def env_bool(name: str, default: bool = False) -> bool:
     return v.strip().lower() in {"1", "true", "yes", "on"}
 
 
-# ===== 環境フラグ（ここだけで定義・決定）=====
-IS_PYTEST = (
-    env_bool("IS_PYTEST")
-    or ("PYTEST_CURRENT_TEST" in os.environ)
-    or ("pytest" in " ".join(sys.argv).lower())
-)
-USE_SQLITE = env_bool("USE_SQLITE", default=False)  # ← 明示したときだけ SQLite
-USE_GIS = env_bool("USE_GIS", default=True)
-DISABLE_GIS_FOR_TESTS = env_bool("DISABLE_GIS_FOR_TESTS", default=False)
-
-# pytest で GIS を無効化したい時だけ off（フラグ解釈はここで一度だけ）
-if IS_PYTEST and DISABLE_GIS_FOR_TESTS:
-    USE_GIS = False
-
-# SQLite + GIS を使う場合のためのヒント（現状 USE_GIS が false なら無効） ---
-if USE_SQLITE and USE_GIS:
-    # ランナー環境によっては不要だが、用意だけしておくと移行が楽
-    # Ubuntu の spatialite がこのパスに無い場合は CI 側で libspatialite を入れる
-    os.environ.setdefault("SPATIALITE_LIBRARY_PATH", "mod_spatialite")
-
-
 # --- environ init & load .env (最初に読む) ---
 env = environ.Env(
     DEBUG=(bool, True),
@@ -64,26 +43,42 @@ env = environ.Env(
     LLM_PROMPT_VERSION=(str, "v1"),
 )
 
-candidates = [
-    BASE_DIR / ".env.local",
-    BASE_DIR / ".env.dev",
-    BASE_DIR / ".env",
-    # ✅ それでも無ければ repo root（ダミーでもOK、ただしbackendが無いときの保険）
-    REPO_ROOT / ".env.local",
-    REPO_ROOT / ".env.dev",
-    REPO_ROOT / ".env",
-]
+# --- env load before flag computation ---
+env_file = BASE_DIR / ".env.local"
+if env_file.exists():
+    environ.Env.read_env(str(env_file))
+    os.environ["ENV_FILE"] = str(env_file)
+
+# pytest かどうかは .env.test を読む前に一度だけ仮判定する
+IS_PYTEST = (
+    env_bool("IS_PYTEST")
+    or ("PYTEST_CURRENT_TEST" in os.environ)
+    or ("pytest" in " ".join(sys.argv).lower())
+)
 
 if IS_PYTEST:
-    candidates.insert(0, BASE_DIR / ".env.test")
+    test_env_file = BASE_DIR / ".env.test"
+    if test_env_file.exists():
+        environ.Env.read_env(str(test_env_file), overwrite=True)
+        os.environ["ENV_FILE"] = str(test_env_file)
 
+# ===== 環境フラグ（ここだけで定義・決定）=====
+IS_PYTEST = (
+    env_bool("IS_PYTEST")
+    or ("PYTEST_CURRENT_TEST" in os.environ)
+    or ("pytest" in " ".join(sys.argv).lower())
+)
+USE_SQLITE = env_bool("USE_SQLITE", default=False)  # ← 明示したときだけ SQLite
+USE_GIS = env_bool("USE_GIS", default=True)
+DISABLE_GIS_FOR_TESTS = env_bool("DISABLE_GIS_FOR_TESTS", default=False)
 
-for p in candidates:
-    if p.exists():
-        environ.Env.read_env(str(p))
-        os.environ["ENV_FILE"] = str(p)  # ← setdefault から変更
-        break
+# pytest で GIS を無効化したい時だけ off（フラグ解釈はここで一度だけ）
+if IS_PYTEST and DISABLE_GIS_FOR_TESTS:
+    USE_GIS = False
 
+# SQLite + GIS を使う場合のためのヒント
+if USE_SQLITE and USE_GIS:
+    os.environ.setdefault("SPATIALITE_LIBRARY_PATH", "mod_spatialite")
 
 # --- security / DEBUG ---
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")

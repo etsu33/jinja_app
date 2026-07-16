@@ -1,0 +1,108 @@
+import { postAuth } from "./http";
+
+export type ActionEventActionType = "action_started" | "action_completed";
+
+export type ActionEventSource =
+  | "mobile_concierge_result"
+  | "mobile_shrine_detail"
+  | "mobile_map"
+  | "mobile_shrines"
+  | string;
+
+export type TrackActionEventParams = {
+  actionType: ActionEventActionType;
+  actionSuggestionId: string;
+  source?: ActionEventSource | null;
+  shrineId?: number | string | null;
+  threadId?: number | string | null;
+  historyTheme?: string | null;
+  actionCategory?: string | null;
+  metadata?: Record<string, unknown>;
+};
+
+export type ActionEventResponse = {
+  id: number;
+  action_type: ActionEventActionType;
+  action_suggestion_id: string;
+  history_theme: string;
+  action_category: string;
+  source: string;
+  shrine_id: number | null;
+  thread_id: number | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+};
+
+function normalizePositiveInt(value: number | string | null | undefined): number | null {
+  if (value === null || value === undefined || value === "") return null;
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+export async function trackActionEvent({
+  actionType,
+  actionSuggestionId,
+  source = "mobile_concierge_result",
+  shrineId = null,
+  threadId = null,
+  historyTheme = null,
+  actionCategory = null,
+  metadata = {},
+}: TrackActionEventParams): Promise<ActionEventResponse | null> {
+  const normalizedActionSuggestionId = actionSuggestionId.trim();
+  if (!normalizedActionSuggestionId) {
+    if (__DEV__) {
+      console.warn("[trackActionEvent] skipped: actionSuggestionId is empty", {
+        actionType,
+        source,
+        shrineId,
+        threadId,
+        historyTheme,
+        actionCategory,
+        metadata,
+      });
+    }
+    return null;
+  }
+
+  const payload = {
+    action_type: actionType,
+    action_suggestion_id: normalizedActionSuggestionId,
+    source: source ?? "",
+    shrine_id: normalizePositiveInt(shrineId),
+    thread_id: normalizePositiveInt(threadId),
+    history_theme: historyTheme ?? "",
+    action_category: actionCategory ?? "",
+    metadata,
+  };
+
+  if (__DEV__) {
+    console.info("[trackActionEvent] sending", payload);
+  }
+
+  try {
+    const response = await postAuth<ActionEventResponse>("/action-events/", payload);
+    if (__DEV__) {
+      console.info("[trackActionEvent] created", response);
+    }
+    return response;
+  } catch (error) {
+    if (__DEV__) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn("[trackActionEvent] failed", {
+        message,
+        payload,
+        hint:
+          message.includes("HTTP 401")
+            ? "auth_failed"
+            : message.includes("HTTP 400")
+              ? "bad_request"
+              : message.includes("Network") || message.includes("Failed to fetch")
+                ? "network_error"
+                : "unknown_error",
+      });
+    }
+    return null;
+  }
+}

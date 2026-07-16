@@ -1,4 +1,6 @@
-
+> **Status: Active**
+>
+> 本ドキュメントは、Concierge First MVPにおけるHomeHero・ConciergeEntry・Filter・Need Mode・Compat Mode・Recommendation Score v2・User State Profileの責務を統合する正本である。
 
 # Concierge First Final Spec
 
@@ -315,46 +317,6 @@ MVPではURLに渡さない。
 
 実装順は以下を推奨する。
 
-### PR1: HomeHero / ConciergeEntry UI整合
-
-```markdown
-- [ ] HomeHeroのチップ文言をTaxonomyに寄せる
-- [ ] ConciergeEntryのチップ文言をTaxonomyに寄せる
-- [ ] textareaを補助入力として表示調整
-- [ ] 条件追加導線を補助扱いに調整
-- [ ] typecheck
-```
-
-### PR2: Filter UI整理
-
-```markdown
-- [ ] ConciergeFilterPanelを3レイヤー表示へ整理
-- [ ] 誕生日説明を補助表現へ調整
-- [ ] 相性候補の説明を弱める
-- [ ] 参拝スタイルを体験 / 実用 / 神社好き向けに整理
-- [ ] typecheck
-```
-
-### PR3: Home→Concierge遷移テスト固定
-
-```markdown
-- [ ] buildConciergeHrefの仕様をテストで固定
-- [ ] themeあり通常遷移を確認
-- [ ] themeありopenFilter遷移を確認
-- [ ] themeなしopenFilter遷移を確認
-- [ ] typecheck
-```
-
-### PR4: Meaning Card設計接続
-
-```markdown
-- [ ] Need Mode由来の推薦理由を主表示にする
-- [ ] Compat Mode由来の情報を補足欄へ移動する
-- [ ] history_themeを神社側文脈として表示する
-- [ ] action_suggestionとの重複を避ける
-- [ ] typecheck
-```
-
 ---
 
 ## MVP実装対象
@@ -383,25 +345,6 @@ MVPではURLに渡さない。
 - visitStyle専用stateの新設
 - photo / goshuin / mythology / special などのvisit_style_tags追加
 ```
-
----
-
-## 次PR候補
-
-### 最優先
-
-```markdown
-- [ ] HomeHero / ConciergeEntry UI整合
-```
-
-### 次点
-
-```markdown
-- [ ] Filter UI整理
-- [ ] Home→Concierge遷移テスト固定
-- [ ] Meaning Card設計接続
-```
-
 ---
 
 ## 参照ドキュメント
@@ -410,26 +353,13 @@ MVPではURLに渡さない。
 - docs/product/home-hero-final-wireframe.md
 - docs/product/concierge-entry-final-wireframe.md
 - docs/product/consultation-theme-taxonomy.md
-- docs/product/theme-to-recommendation-input-mapping.md
+- docs/product/meaning-translation-mapping.md
 - docs/product/visit-style-taxonomy.md
 - docs/product/need-mode-ui-flow.md
 - docs/product/compat-mode-ui-flow.md
-- docs/product/home-to-concierge-flow.md
 ```
+
 
 ---
 
-## TODO
-
-```markdown
-- [x] develop最新化
-- [x] audit/concierge-first-final-spec作成
-- [x] HomeHero責務を最終固定
-- [x] ConciergeEntry責務を最終固定
-- [x] Filter責務を最終固定
-- [x] Need Mode / Compat Mode接続整理
-- [x] Recommendation Score v2入力一覧確定
-- [x] User State Profile入力一覧確定
-- [x] Concierge First実装順を確定
-- [x] MVP実装対象を確定
 ```

@@ -9,6 +9,10 @@ export class UnauthenticatedError extends Error {
   }
 }
 
+export function isUnauthenticatedError(error: unknown): error is UnauthenticatedError {
+  return error instanceof UnauthenticatedError;
+}
+
 type TokenRefreshResponse = {
   access: string;
 };

@@ -9,8 +9,12 @@ from rest_framework.test import APIClient
 
 from users.models import UserProfile
 
-
 WEBHOOK_URL = "/api/billings/webhook/"
+
+
+def _enable_stripe_billing(settings, monkeypatch):
+    monkeypatch.setenv("BILLING_PROVIDER", "stripe")
+    settings.BILLING_PROVIDER = "stripe"
 
 
 def _payload(event_type: str, obj: dict) -> bytes:
@@ -70,7 +74,7 @@ def test_billing_webhook_rejects_invalid_signature(settings):
 
 @pytest.mark.django_db
 def test_checkout_completed_updates_profile_and_billing_status(settings, monkeypatch):
-    monkeypatch.setenv("BILLING_PROVIDER", "stripe")
+    _enable_stripe_billing(settings, monkeypatch)
     settings.STRIPE_WEBHOOK_SECRET = "whsec_test"
     user = get_user_model().objects.create_user(username="billing-webhook-user")
     client = APIClient()
@@ -103,7 +107,7 @@ def test_checkout_completed_updates_profile_and_billing_status(settings, monkeyp
 
 @pytest.mark.django_db
 def test_subscription_updated_and_deleted_drive_billing_state(settings, monkeypatch):
-    monkeypatch.setenv("BILLING_PROVIDER", "stripe")
+    _enable_stripe_billing(settings, monkeypatch)
     settings.STRIPE_WEBHOOK_SECRET = "whsec_test"
     period_end = int(time.time()) + 3600
     user = get_user_model().objects.create_user(username="billing-subscription-user")

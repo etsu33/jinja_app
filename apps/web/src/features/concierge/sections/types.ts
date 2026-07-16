@@ -119,6 +119,8 @@ export type ConciergeSectionsPayload = {
     limitReached?: boolean;
     tid?: string | null;
     consultationAxis?: string | null;
+    /** ユーザー相談由来の入力側need_tags。`breakdown.matched_need_tags`（一致結果）とは責務が異なる */
+    needTags?: string[];
     resultState?: {
       matched_count?: number;
       fallback_mode?: "none" | "nearby_unfiltered" | string;

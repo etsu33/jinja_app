@@ -22,6 +22,35 @@ AIによる断定・診断・宗教的保証を目的としない。
 
 ---
 
+# 責務
+
+Meaning Layer は、相談解釈（Consultation Interpretation）と神社固有情報（Shrine Fact / Meaning）を接続し、
+Recommendation が利用する意味情報を生成する。
+
+## 入力
+
+- interpretation_profile
+- Shrine Fact
+- Shrine Meaning
+
+## 出力
+
+- history_theme
+- historicalContext
+- actionMeaning
+- reflection_question_seed
+
+## 責務外
+
+Meaning Layer は以下を担当しない。
+
+- 推薦順位の決定
+- 表示文言の最終決定
+- 心理診断
+- 宗教的保証
+
+---
+
 # 神社とは何か
 
 KAMI MUSUBI において神社は、
@@ -184,3 +213,25 @@ AIによって意味を整理し、
 これは、
 デジタルで完結させるためのサービスではなく、
 現実世界へ戻るための導線として設計される。
+
+
+---
+
+# 関連ドキュメント
+
+本レイヤーの詳細仕様は以下を正本とする。
+
+- `docs/core/architecture.md`
+- `docs/core/meaning-layer-connection.md`
+- `docs/core/recommendation-reason-contract.md`
+- `docs/product/meaning-translation-mapping.md`
+- `docs/product/concierge-first-final-spec.md`
+- `docs/product/concierge-modes.md`
+- `docs/shrine-detail-layer.md`
+- `docs/premium-experience.md`
+
+本ドキュメントは Meaning Layer の思想・責務を定義する。
+
+Consultation Interpretation・Composer・Recommendationとの接続仕様は`docs/core/meaning-layer-connection.md`、Recommendation Reasonの生成・保存・表示契約は`docs/core/recommendation-reason-contract.md`を正本とする。
+
+API契約、実装詳細、表示コピー、Recommendation の実装仕様は各正本ドキュメントで管理する。

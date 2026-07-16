@@ -111,6 +111,11 @@ export type BuildParams = {
   rec: RecommendationLike;
   index: number;
   mode?: "need" | "compat" | string | null;
+  /**
+   * 相談要約・Heroテーマの生成に使う有効な入力タグ（呼び出し側で解決したeffectiveNeedTags）。
+   * 入力側need_tagsを優先し、入力が無い旧Payloadに限りmatched_need_tagsをfallbackとして渡す。
+   * Backend APIのフィールド名ではない。
+   */
   needTags: string[];
   birthdate?: string | null;
   shrineBenefitLabels?: string[];

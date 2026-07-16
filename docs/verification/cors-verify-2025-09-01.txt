@@ -1,2 +1,0 @@
-OPTIONS /api/token/ -> 200, access-control-allow-origin: http://localhost:3000
-POST /api/token/ -> 200, access-control-allow-origin: http://localhost:3000

@@ -10,10 +10,17 @@ const mockResponse: ScoreV3DashboardResponse = {
     max_abs_delta_max: 0.31,
   },
   funnel: {
+    detail_view_count: 10,
+    route_open_count: 4,
+    save_count: 3,
+    visit_count: 2,
+    reflection_count: 1,
     route_open_rate: 0.34,
     save_rate: 0.22,
     visit_done_rate: 0.11,
     reflection_saved_rate: 0.06,
+    save_to_visit_cvr: 0.67,
+    visit_to_reflection_cvr: 0.5,
   },
   decision: {
     active_candidate: true,

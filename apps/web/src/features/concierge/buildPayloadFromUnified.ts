@@ -85,6 +85,15 @@ function pickConsultationAxis(...vals: unknown[]): string | null {
   return pickFirstString(...vals);
 }
 
+// ユーザー相談から抽出された入力側need_tags。breakdown.matched_need_tags（一致結果）とは責務が異なる
+function normalizeInputNeedTags(tags: unknown): string[] {
+  if (!Array.isArray(tags)) return [];
+  return tags
+    .filter((t): t is string => typeof t === "string")
+    .map((t) => t.trim())
+    .filter(Boolean);
+}
+
 function normalizeActionSuggestions(r: any): NonNullable<NormalizedItemBase["actionSuggestions"]> {
   const raw = r?._explanation_payload?.action_suggestions;
   if (!Array.isArray(raw)) return [];
@@ -321,6 +330,8 @@ export function buildPayloadFromUnified(
     consultationAxis,
   };
 
+  const needTags = normalizeInputNeedTags((u as any)?.data?._need?.tags);
+
   const rsRaw = (u as any)?.data?._signals?.result_state ?? (u as any)?.data?._signals?.resultState ?? null;
 
   const resultState =
@@ -355,7 +366,7 @@ export function buildPayloadFromUnified(
     return {
       version: 1,
       sections,
-      meta: { mode, reply, remaining, limitReached, tid, resultState, consultationAxis },
+      meta: { mode, reply, remaining, limitReached, tid, resultState, consultationAxis, needTags },
     };
   }
 
@@ -405,7 +416,7 @@ export function buildPayloadFromUnified(
   return {
     version: 1,
     sections,
-    meta: { mode, reply, remaining, limitReached, tid, resultState, consultationAxis },
+    meta: { mode, reply, remaining, limitReached, tid, resultState, consultationAxis, needTags },
   };
 }
 

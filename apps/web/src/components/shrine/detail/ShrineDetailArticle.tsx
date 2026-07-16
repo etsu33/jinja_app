@@ -16,20 +16,24 @@
  * - 判断が散りやすい理由 / 今の優先順位を扱う
  * - 神社説明や推薦判断はここに混ぜない
  *
- * ③ 行動意味
+ * ③ この神社で受け取る意味
  * - detail.shrineMeaning
- * - 今この神社をどう置くかを表示する
- * - 行動意味の接続を扱う
- * - 推薦判断や神社情報はここに混ぜない
+ * - 今この神社と今の状態がどう重なるかを表示する
+ * - 参拝するときの視点（行動意味）はここに混ぜない
  *
- * ④ 神社情報
+ * ④ 参拝するときの視点
+ * - detail.actionMeaning
+ * - 参拝時にどう向き合うかを独立したsectionとして表示する
+ * - 推薦判断や状態整理、神社情報はここに混ぜない
+ *
+ * 神社情報（補足）
  * - Shrine API / shrine detail model 側
  * - ご利益 / 象徴 / 相性タグ / 基本情報を補助表示する
  * - 説得の主戦場にしない
  *
  * note:
- * - 詳細画面は「①推薦判断 → ②状態整理 → ③行動意味 → ④神社情報」の順で理解を進める
- * - heroMeaningCopy は ③ 行動意味の入口コピーとして扱う
+ * - 詳細画面は「①推薦判断 → ②状態整理 → ③この神社で受け取る意味 → ④参拝するときの視点」の順で理解を進める
+ * - heroMeaningCopy は ③ の入口コピーとして扱う
  * - 比較情報は本文ではなく補助導線として扱う
  * - 比較はデフォルト非表示にし、必要な時だけ開く
  * - 比較カードは主導線（①〜④）の下に置く
@@ -38,6 +42,7 @@ import Link from "next/link";
 import React, { useEffect, useMemo, useState } from "react";
 
 import PublicGoshuinSection, { type PublicGoshuinItem } from "@/components/shrine/detail/PublicGoshuinSection";
+import ShrineActionSection from "@/components/shrine/detail/ShrineActionSection";
 import ShrineJudgeSection from "@/components/shrine/detail/ShrineJudgeSection";
 import ShrineProposalSection from "@/components/shrine/detail/ShrineProposalSection";
 import ShrineReasonSection from "@/components/shrine/detail/ShrineReasonSection";
@@ -78,6 +83,8 @@ function ShrineDetailSections({ sections }: { sections: ShrineDetailSectionModel
             return <ShrineProposalSection key={key} section={section} />;
           case "meaning":
             return <ShrineJudgeSection key={key} section={section} />;
+          case "action":
+            return <ShrineActionSection key={key} section={section} />;
           case "supplement":
             return <ShrineSupplementSection key={key} section={section} />;
           default:
@@ -203,7 +210,7 @@ function PremiumUpgradePrompt({
 }
 
 function ShrineDetailHeroHeader(props: { title: string; heroMeaningCopy?: string | null; address?: string | null }) {
-  const resolvedHeroMeaningCopy = props.heroMeaningCopy?.trim() || "今の状態と相性が良い候補です。";
+  const resolvedHeroMeaningCopy = props.heroMeaningCopy?.trim() || "今のあなたと静かに重なる神社です。";
 
   return (
     <section className="rounded-2xl border bg-white p-5 shadow-sm">
@@ -248,19 +255,6 @@ function getVisitTime(value: string | null) {
   if (!value) return 0;
   const time = new Date(value).getTime();
   return Number.isNaN(time) ? 0 : time;
-}
-
-function formatVisitDateTime(value: string | null) {
-  if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("ja-JP", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
 }
 
 function buildVisitSummary(visits: Visit[], shrineId: number | string): VisitSummary {
@@ -444,7 +438,7 @@ export default function ShrineDetailArticle({
 
   const contextReasonVisibility = getVisibilityForCard("context_reason", accessLevel);
   const personalMeaningVisibility = getVisibilityForCard("personal_meaning", accessLevel);
-  const savedRecordVisibility = getVisibilityForCard("saved_record", accessLevel);
+  const savedRecordVisibility: CardVisibilityState = "visible";
   const recommendationMetaVisibility = getVisibilityForCard("recommendation_meta", accessLevel);
   const previousComparisonVisibility: CardVisibilityState = isPremiumActive
     ? getVisibilityForCard("previous_comparison", accessLevel)
@@ -477,11 +471,10 @@ export default function ShrineDetailArticle({
 
   const [favoriteNoticeState, setFavoriteNoticeState] = useState<"saved" | "removed" | null>(null);
   const [visitSubmitting, setVisitSubmitting] = useState(false);
-  const [visitNotice, setVisitNotice] = useState<"saved" | "error" | null>(null);
-  const [showReflectionPrompt, setShowReflectionPrompt] = useState(false);
+  const [visitError, setVisitError] = useState(false);
+  const visitSubmittingRef = React.useRef(false);
   const [visitSummary, setVisitSummary] = useState<VisitSummary>({ visitCount: 0, latestVisitedAt: null });
   const hasVisitHistory = visitSummary.visitCount > 0;
-  const latestVisitedAtLabel = formatVisitDateTime(visitSummary.latestVisitedAt);
 
   const resolvedSaveActionNode = useMemo(() => {
     if (!saveActionNode || !React.isValidElement(saveActionNode)) return saveActionNode;
@@ -634,7 +627,7 @@ export default function ShrineDetailArticle({
       <section className="space-y-5">
         <ShrineDetailHeroHeader
           title={cardProps.title}
-          heroMeaningCopy={isPremiumActive ? heroMeaningCopy : "今の状態と相性が良い候補です。"}
+          heroMeaningCopy={isPremiumActive ? heroMeaningCopy : "今のあなたと静かに重なる神社です。"}
           address={cardProps.address ?? null}
         />
         <ShrineDetailHeroCard title={cardProps.title} imageUrl={heroImageUrl} />
@@ -668,6 +661,97 @@ export default function ShrineDetailArticle({
       ) : null}
 
       {/* Premium比較カードは後続PRで再設計する。 */}
+
+      {resolvedSaveActionNode ? (
+        <section className="pt-4">
+          <div className="overflow-hidden rounded-2xl border border-emerald-200 bg-white">
+            <div className="space-y-2 p-4">
+              {resolvedSaveActionNode}
+              <p className="text-xs leading-5 text-slate-600">あとで記録から見返せます</p>
+              <Link
+                href="/favorites"
+                className="inline-flex items-center text-sm font-semibold text-emerald-700 hover:underline"
+              >
+                保存した神社を見る
+              </Link>
+
+              {favoriteNoticeState === "saved" ? (
+                <p className="text-xs font-semibold text-emerald-700">{FAVORITE_LABELS.saved}</p>
+              ) : null}
+
+              {favoriteNoticeState === "removed" ? (
+                <p className="text-xs font-semibold text-slate-600">{FAVORITE_LABELS.removed}</p>
+              ) : null}
+            </div>
+
+            <div className="border-t border-slate-200 p-4">
+              <div className="space-y-2">
+                {hasVisitHistory ? (
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3">
+                    <p className="text-sm font-semibold text-emerald-700">参拝を記録しました</p>
+                    <p className="mt-1 text-xs text-slate-600">次回の相談で、前回の行動として振り返れます。</p>
+                  </div>
+                ) : (
+                  <p className="text-xs leading-5 text-slate-500">参拝後に記録できます</p>
+                )}
+
+                {hasVisitHistory ? (
+                  <ShrineReflectionPrompt
+                    shrineId={cardProps.shrineId}
+                    historyTheme={historyTheme}
+                    threadId={tid != null ? String(tid) : null}
+                    ctx={ctx}
+                    accessLevel={accessLevel}
+                  />
+                ) : null}
+
+                {visitError ? (
+                  <div className="rounded-xl border border-rose-200 bg-white p-3">
+                    <p className="text-sm font-semibold text-rose-700">参拝記録に失敗しました</p>
+                  </div>
+                ) : null}
+
+                {!hasVisitHistory ? (
+                  <button
+                    type="button"
+                    disabled={visitSubmitting}
+                    onClick={async () => {
+                      if (visitSubmittingRef.current) return;
+                      visitSubmittingRef.current = true;
+                      setVisitSubmitting(true);
+                      setVisitError(false);
+                      try {
+                        await addVisit(cardProps.shrineId, tid);
+                        trackSearchEvent("visit_done", {
+                          source: "shrine_detail",
+                          shrineId: cardProps.shrineId,
+                          threadId: tid != null ? String(tid) : undefined,
+                          historyTheme: historyTheme ?? undefined,
+                          accessLevel,
+                          mode: ctx === "concierge" ? "need" : undefined,
+                        });
+                        const now = new Date().toISOString();
+                        setVisitSummary((current) => ({
+                          visitCount: current.visitCount + 1,
+                          latestVisitedAt: now,
+                        }));
+                      } catch {
+                        setVisitError(true);
+                      } finally {
+                        visitSubmittingRef.current = false;
+                        setVisitSubmitting(false);
+                      }
+                    }}
+                    className="w-full rounded-2xl border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-50 disabled:opacity-60"
+                  >
+                    {visitSubmitting ? "記録中..." : "参拝しました"}
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       {showGoshuinSection ? (
         <section id="goshuins">
@@ -712,108 +796,6 @@ export default function ShrineDetailArticle({
             )}
           </DetailDisclosureBlock>
         </div>
-      ) : null}
-
-      {savedRecordVisibility === "visible" && resolvedSaveActionNode ? (
-        <section className="pt-4">
-          <div className="rounded-2xl border bg-emerald-50 p-4">
-            <div className="mb-3 space-y-1">
-              <p className="text-sm font-semibold text-emerald-900">この神社から始める</p>
-              <p className="text-xs leading-5 text-slate-600">{FAVORITE_LABELS.lead}</p>
-            </div>
-
-            {favoriteNoticeState === "saved" ? (
-              <div className="mb-3 rounded-xl border border-emerald-200 bg-white p-3">
-                <p className="text-sm font-semibold text-emerald-700">{FAVORITE_LABELS.saved}</p>
-                <p className="mt-1 text-xs text-slate-600">{FAVORITE_LABELS.guide}</p>
-                <div className="mt-2">
-                  <Link
-                    href="/mypage?tab=favorites"
-                    className="inline-flex items-center text-sm font-semibold text-emerald-700 hover:underline"
-                  >
-                    {FAVORITE_LABELS.cta}
-                  </Link>
-                </div>
-              </div>
-            ) : null}
-
-            {favoriteNoticeState === "removed" ? (
-              <div className="mb-3 rounded-xl border border-slate-200 bg-white p-3">
-                <p className="text-sm font-semibold text-emerald-700">{FAVORITE_LABELS.removed}</p>
-              </div>
-            ) : null}
-
-            {resolvedSaveActionNode}
-
-            <div className="mt-3 space-y-2">
-              {showAfterVisitCopy && hasVisitHistory ? (
-                <div className="rounded-xl border border-emerald-200 bg-white p-3">
-                  <p className="text-sm font-semibold text-emerald-700">参拝したことがあります</p>
-                  <p className="mt-1 text-xs text-slate-600">参拝回数：{visitSummary.visitCount}回</p>
-                  {latestVisitedAtLabel ? (
-                    <p className="mt-1 text-xs text-slate-600">最終参拝：{latestVisitedAtLabel}</p>
-                  ) : null}
-                </div>
-              ) : null}
-
-              {visitNotice === "saved" ? (
-                <div className="rounded-xl border border-emerald-200 bg-white p-3">
-                  <p className="text-sm font-semibold text-emerald-700">参拝記録しました</p>
-                  <p className="mt-1 text-xs text-slate-600">次回の相談で、前回の行動として振り返れます。</p>
-                </div>
-              ) : null}
-
-              {showReflectionPrompt ? (
-                <ShrineReflectionPrompt
-                  shrineId={cardProps.shrineId}
-                  historyTheme={historyTheme}
-                  threadId={tid != null ? String(tid) : null}
-                  ctx={ctx}
-                  onSaved={() => setShowReflectionPrompt(false)}
-                />
-              ) : null}
-
-              {visitNotice === "error" ? (
-                <div className="rounded-xl border border-rose-200 bg-white p-3">
-                  <p className="text-sm font-semibold text-rose-700">参拝記録に失敗しました</p>
-                </div>
-              ) : null}
-
-              <button
-                type="button"
-                disabled={visitSubmitting}
-                onClick={async () => {
-                  try {
-                    setVisitSubmitting(true);
-                    setVisitNotice(null);
-                    await addVisit(cardProps.shrineId);
-                    trackSearchEvent("visit_done", {
-                      source: "shrine_detail",
-                      shrineId: cardProps.shrineId,
-                      threadId: tid != null ? String(tid) : undefined,
-                      historyTheme: historyTheme ?? undefined,
-                      ctx,
-                    });
-                    const now = new Date().toISOString();
-                    setVisitSummary((current) => ({
-                      visitCount: current.visitCount + 1,
-                      latestVisitedAt: now,
-                    }));
-                    setVisitNotice("saved");
-                    setShowReflectionPrompt(true);
-                  } catch {
-                    setVisitNotice("error");
-                  } finally {
-                    setVisitSubmitting(false);
-                  }
-                }}
-                className="w-full rounded-2xl border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-50 disabled:opacity-60"
-              >
-                {visitSubmitting ? "記録中..." : hasVisitHistory ? "もう一度参拝記録する" : "参拝済みにする"}
-              </button>
-            </div>
-          </div>
-        </section>
       ) : null}
     </article>
   );

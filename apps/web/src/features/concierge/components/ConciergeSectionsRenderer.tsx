@@ -701,7 +701,7 @@ export default function ConciergeSectionsRenderer({
             const bannerText =
               (typeof rs?.fallback_reason_ja === "string" && rs.fallback_reason_ja) ||
               (typeof rs?.ui_disclaimer_ja === "string" && rs.ui_disclaimer_ja) ||
-              (hasDummy ? "条件に合う候補が少ないため、まずは選びやすい候補から表示しています。" : null);
+              (hasDummy ? "条件に合う神社が少ないため、まずは向かいやすい神社から表示しています。" : null);
 
             const normalizedMode = normalizeConciergeMode(payload?.meta?.mode);
 
@@ -741,7 +741,7 @@ export default function ConciergeSectionsRenderer({
                       className="rounded-xl border px-4 py-3 text-sm font-semibold"
                       onClick={() => onAction?.({ type: "open_map" })}
                     >
-                      近くの候補を静かに見る
+                      近くの神社を静かに見る
                     </button>
                     <button
                       type="button"
@@ -771,6 +771,10 @@ export default function ConciergeSectionsRenderer({
                 <div className="space-y-3">
                   {heroItem
                     ? (() => {
+                        const inputNeedTags = payload?.meta?.needTags ?? [];
+                        const matchedNeedTags = heroItem.breakdown?.matched_need_tags ?? [];
+                        const effectiveNeedTags = inputNeedTags.length > 0 ? inputNeedTags : matchedNeedTags;
+
                         const reasonVm = buildRecommendationReasonViewModel({
                           rec: {
                             id: heroItem.shrineId,
@@ -790,7 +794,7 @@ export default function ConciergeSectionsRenderer({
                           index: 0,
                           mode: normalizedMode,
                           birthdate: filterState?.birthdate ?? null,
-                          needTags: heroItem.breakdown?.matched_need_tags ?? [],
+                          needTags: effectiveNeedTags,
                         });
                         const trustMetadata = (heroItem as any).trustMetadata ?? null;
                         const trustLabels = [
@@ -833,8 +837,9 @@ export default function ConciergeSectionsRenderer({
                               primaryReason={null}
                               secondaryReason={null}
                               differenceFromOthers={null}
-                              tags={(heroItem.breakdown?.matched_need_tags ?? []).map(labelNeedDisplayTag).slice(0, 3)}
+                              tags={matchedNeedTags.map(labelNeedDisplayTag).slice(0, 3)}
                               actionSuggestions={(heroItem as any).actionSuggestions ?? []}
+                              actionSuggestionV4Preview={(heroItem as any).actionSuggestionV4Preview ?? null}
                               analyticsSource="concierge_result"
                               threadId={tid ?? null}
                               resultSetId={resultSetId}
@@ -958,11 +963,11 @@ export default function ConciergeSectionsRenderer({
                           className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs font-semibold text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
                           onClick={() => setShowOtherRecommendations(true)}
                         >
-                          迷った時だけ、ほかの候補を見る
+                          迷った時だけ、ほかの神社を見る
                         </button>
                       ) : (
                         <div>
-                          <div className="mb-2 text-xs font-semibold tracking-[0.16em] text-slate-500">ほかの候補</div>
+                          <div className="mb-2 text-xs font-semibold tracking-[0.16em] text-slate-500">ほかの神社</div>
                           <p className="mb-3 text-xs leading-5 text-slate-500">迷った時の参考です。</p>
 
                           <div className="space-y-3">

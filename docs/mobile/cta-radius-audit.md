@@ -1,63 +1,187 @@
+> **Status: Archive**
+>
+> 本ドキュメントは、CTA Radius設計を見直した際の監査・判断記録である。
+>
+> 記載内容は設計判断の履歴として保持し、現行仕様判断には使用しない。
+>
+> 現在のCTAサイズ・Radius定義は以下を正本とする。
+>
+> - `apps/mobile/app/design/ctaSizes.ts`
+> - `apps/mobile/app/design/radius.ts`
+> - 関連するUI ComponentおよびTest
+
 # CTA Radius Audit
 
-## 対象
+## 目的
 
-- apps/mobile/app/design/ctaSizes.ts
-- apps/mobile/app/design/radius.ts
+CTA専用Radiusと共通Radiusの責務を整理し、デザインシステム上の境界を確認した監査記録である。
 
-## 利用箇所
+本書は、CTA専用Radiusを維持する判断に至った経緯を保存するArchive文書として扱う。
 
-### ctaSizes.primaryRadius
+---
 
-- apps/mobile/app/shrines/[id].tsx
+## 監査対象
 
-用途:
-- 詳細画面の主要CTA
+- `apps/mobile/app/design/ctaSizes.ts`
+- `apps/mobile/app/design/radius.ts`
 
-判断:
-- CTA専用の角丸として維持
+---
 
-### ctaSizes.mediumRadius
+## 当時の責務整理
 
-- apps/mobile/components/ui/Button.tsx
+### `ctaSizes.ts`
 
-用途:
-- 共通Buttonコンポーネント
+CTAコンポーネント専用のデザイン定義を保持する。
 
-判断:
-- Button専用の角丸として維持
+主な責務は以下とした。
 
-### ctaSizes.smallRadius
+- CTA高さ
+- CTA Radius
+- Padding
+- HitSlop
 
-- apps/mobile/components/home/MyPageCard.tsx
+CTAの見た目を一つのまとまりとして管理することを目的とした。
 
-用途:
+---
+
+### `radius.ts`
+
+画面全体で共有する汎用Radiusを保持する。
+
+対象例
+
+- Card
+- Pill
+- Circle
+- 共通Container
+
+CTA固有の見た目は含めない。
+
+---
+
+## 当時確認した利用状況
+
+### Primary CTA
+
+利用箇所
+
+- `apps/mobile/app/shrines/[id].tsx`
+
+責務
+
+- 神社詳細画面の主要CTA
+
+---
+
+### Medium CTA
+
+利用箇所
+
+- `apps/mobile/components/ui/Button.tsx`
+
+責務
+
+- 共通Button
+
+---
+
+### Small CTA
+
+利用箇所
+
+- `apps/mobile/components/home/MyPageCard.tsx`
+
+責務
+
 - 小型CTA
 
-判断:
-- 小型CTA専用の角丸として維持
+---
 
-## radius.ts との関係
+## 判断
 
-radius.ts:
-- 汎用的な角丸の正本
-- card / pill / circle など画面共通の形状に使う
+CTA専用Radiusは、汎用Radiusへ統合しない方針とした。
 
-ctaSizes.ts:
-- CTAの高さ
-- CTAの角丸
-- CTAのpadding
-- hitSlop
+判断理由
 
-## 結論
+- 高さ・Padding・Radiusを一体として設計できる
+- CTAデザインを独立して調整しやすい
+- 共通Radiusへ寄せると責務が曖昧になる
+- 利用箇所が限定されており保守負荷が低い
 
-現時点では ctaSizes の radius 系は削除しない。
+---
 
-理由:
-- CTAの角丸は高さ・paddingとセットで調整される
-- radius.ts に寄せると、CTA専用設計の意味が薄れる
-- 利用箇所が少なく、責務が明確
+## デザインシステム上の責務
 
-## 今後
+### `ctaSizes.ts`
 
-CTAの見た目を全体統一するフェーズで、必要なら再検討する。
+担当するもの
+
+- CTA高さ
+- CTA Padding
+- CTA Radius
+- HitSlop
+
+担当しないもの
+
+- Card Radius
+- Modal Radius
+- Chip Radius
+- 画面全体の共通Radius
+
+---
+
+### `radius.ts`
+
+担当するもの
+
+- 共通Radius
+- Layout
+- Card
+- Pill
+- Circle
+
+担当しないもの
+
+- CTA固有デザイン
+
+---
+
+## 現行仕様との責務境界
+
+### 本書が保持するもの
+
+- CTA Radiusを独立させた判断理由
+- `ctaSizes.ts`と`radius.ts`の責務分離
+- 当時の利用箇所調査結果
+
+### 本書が扱わないもの
+
+- 現在のRadius値
+- 現在のCTAサイズ
+- Design Token
+- UI実装
+- Component仕様
+- デザインシステムの最新構成
+
+---
+
+## 関連実装
+
+### 現行実装
+
+- `apps/mobile/app/design/ctaSizes.ts`
+- `apps/mobile/app/design/radius.ts`
+
+### 利用コンポーネント
+
+- `apps/mobile/components/ui/Button.tsx`
+- `apps/mobile/app/shrines/[id].tsx`
+- `apps/mobile/components/home/MyPageCard.tsx`
+
+---
+
+## 更新ルール
+
+- 本書はCTA Radius設計の監査記録として保持する
+- 現行仕様や実装変更に合わせて更新しない
+- 当時の設計判断に重大な事実誤認が確認された場合のみ修正する

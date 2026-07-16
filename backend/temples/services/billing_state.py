@@ -132,6 +132,14 @@ def is_premium_for_user(user) -> bool:
     課金状態の利用側向けヘルパー。
     chat API の無料回数分岐はこの関数を正本として判定する。
     """
+
+    if (
+        user is not None
+        and getattr(user, "is_authenticated", False)
+        and getattr(user, "is_staff", False)
+    ):
+        return True
+
     st = get_billing_status(user=user)
     return st.plan == "premium" and st.is_active
 

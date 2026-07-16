@@ -17,6 +17,7 @@ import {
 
 import type { ConciergeChatRequestV1, ConciergeChatFilters } from "@/features/concierge/types/chatRequest";
 import { normalizeBirthdateInput } from "@/lib/date/normalizeBirthdateInput";
+import { trackRecommendationQuality } from "@/lib/analytics/searchEvents";
 
 /* ====== スレッド一覧 ====== */
 
@@ -120,6 +121,38 @@ export type UseConciergeChatOptions = {
 };
 
 type SendInput = string | Omit<ConciergeChatRequestV1, "thread_id">;
+
+type ConciergeAccessLevel = "anonymous" | "free" | "premium" | null;
+
+function normalizeAccessLevel(value: unknown): ConciergeAccessLevel {
+  return value === "anonymous" || value === "free" || value === "premium" ? value : null;
+}
+
+function trackRecommendationQualityFromRecommendations(args: {
+  recommendations: ConciergeRecommendation[];
+  threadId: string | null;
+  accessLevel: ConciergeAccessLevel;
+}) {
+  args.recommendations.forEach((rec, index) => {
+    const quality = rec.recommendation_reason_quality;
+    if (!quality || typeof quality !== "object") return;
+
+    trackRecommendationQuality({
+      source: "concierge_result",
+      threadId: args.threadId,
+      shrineId: rec.shrine_id ?? rec.id ?? null,
+      recommendationRank: index + 1,
+      accessLevel: args.accessLevel,
+      shrine_data_rate: quality.shrine_data_rate ?? null,
+      consultation_reflection_rate: quality.consultation_reflection_rate ?? null,
+      fallback_reason_rate: quality.fallback_reason_rate ?? null,
+      evidence_rate: quality.evidence_rate ?? null,
+      action_grounding_rate: quality.action_grounding_rate ?? null,
+      is_ai_inference_only: quality.is_ai_inference_only ?? null,
+      fallback_source: quality.fallback_source ?? null,
+    });
+  });
+}
 
 function normalizeConciergeResponse(raw: any, recs: ConciergeRecommendation[]): UnifiedConciergeResponse {
   const limitReached = raw?.limitReached === true;
@@ -295,6 +328,15 @@ export function useConciergeChat(threadId: string | null, options?: UseConcierge
         if (signals && typeof signals === "object" && !Array.isArray(signals)) {
           (unified as any).data._signals = signals;
         }
+
+        const threadIdForAnalytics =
+          payload?.thread?.id != null ? String(payload.thread.id) : threadId != null ? String(threadId) : null;
+
+        trackRecommendationQualityFromRecommendations({
+          recommendations: recs,
+          threadId: threadIdForAnalytics,
+          accessLevel: normalizeAccessLevel(payload?.plan),
+        });
 
         options?.onUnified?.(unified);
         options?.onRecommendations?.(recs);

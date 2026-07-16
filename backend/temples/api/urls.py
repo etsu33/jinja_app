@@ -20,6 +20,7 @@ from temples.api.views.concierge import (
 from temples.api.views.geocode import geocode_reverse_legacy, geocode_search_legacy
 from temples.api.views.goshuin import MyGoshuinViewSet, PublicGoshuinViewSet
 from temples.api.views.goshuin_feed import PublicGoshuinFeedView
+from temples.api.views.journey import JourneyTimelineView
 from temples.api.views.place_cache import place_cache_list
 from temples.api.views.places_resolve import PlacesResolveView
 from temples.api.views.public_profile import public_profile
@@ -43,7 +44,7 @@ from temples.api.views.shrine_public import PublicShrineDetailView
 from temples.api.views.tags import goriyaku_tags_list
 from temples.api.views.shrine_meaning import ShrineMeaningView
 from temples.api.views.visit import VisitCreateView, UserVisitListView
-from temples.api.views.reflection import ShrineReflectionCreateView
+from temples.api.views.reflection import ShrineReflectionCreateView, ShrineReflectionListView
 from temples.api.views.shrine_interaction import ShrineInteractionLogCreateView
 from temples.api.views.action_event import ActionEventCreateView
 from temples.api.views.debug_behavior_funnel import DebugBehaviorFunnelView
@@ -120,11 +121,13 @@ urlpatterns = [
     path("shrines/nearby/", NearestShrinesAPIView.as_view(), name="nearby"),
     path("shrines/<int:id>/visit/", VisitCreateView.as_view(), name="shrine-visit"),
     path("shrines/<int:pk>/reflection/", ShrineReflectionCreateView.as_view(), name="shrine-reflection-create"),
+    path("reflections/", ShrineReflectionListView.as_view(), name="reflection-list"),
     path("shrine-interactions/", ShrineInteractionLogCreateView.as_view(), name="shrine-interaction-create"),
     path("action-events/", ActionEventCreateView.as_view(), name="action-event-create"),
     path("debug/behavior-funnel/", DebugBehaviorFunnelView.as_view(), name="debug-behavior-funnel"),
     path("concierge/score-v3/dashboard/", ScoreV3DashboardView.as_view(), name="score-v3-dashboard"),
     path("visits/", UserVisitListView.as_view(), name="visit-list"),
+    path("journeys/timeline/", JourneyTimelineView.as_view(), name="journey-timeline"),
     path("public/shrines/<int:pk>/", PublicShrineDetailView.as_view(), name="public-shrine-detail"),
     path("populars/", PopularShrineListView.as_view(), name="popular-shrines"),
     path("concierge/chat/", concierge_chat_compat, name="concierge-chat"),

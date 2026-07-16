@@ -238,7 +238,85 @@ it("explanation.summary があれば explanationSummary と rawReason に使う"
   expect(items[0].cardProps.explanationPrimaryReason).toBe("不安や気持ちを整える");
 });
 
-it("matched_need_tags が空なら _need.tags を badgesOverride に使う", () => {
+it("action_suggestion_v4_preview を actionSuggestionV4Preview より優先する", () => {
+  const resp = {
+    ok: true,
+    data: {
+      recommendations: [
+        {
+          name: "神社F",
+          shrine_id: 208,
+          reason: "行動を決めたい",
+          breakdown: { matched_need_tags: ["courage"] },
+          action_suggestion_v4_preview: {
+            primary_action: {
+              label: "snake_case側の行動",
+              description: "snake_case側の説明",
+              action_type: "detail_open",
+              confidence: 0.82,
+            },
+            secondary_action: {
+              label: "保存する",
+              description: "あとで見返します。",
+              action_type: "save",
+              confidence: 0.74,
+            },
+            reflection_prompt: {
+              question: "何を整理したいですか？",
+              prompt_type: "before_visit",
+              source_seed: "fallback",
+            },
+            action_source: {
+              source: "fallback",
+              reason: "安全な初期提案",
+            },
+            preview: true,
+            version: "v4",
+            source_keys: ["recommendation_reason_v4"],
+          },
+          actionSuggestionV4Preview: {
+            primaryAction: {
+              label: "camelCase側の行動",
+              description: "camelCase側の説明",
+              actionType: "save",
+              confidence: 0.5,
+            },
+            secondaryAction: {
+              label: "別の行動",
+              description: "別の説明",
+              actionType: "route_open",
+              confidence: 0.4,
+            },
+            reflectionPrompt: {
+              question: "別の問い",
+              promptType: "after_visit",
+              sourceSeed: "legacy",
+            },
+            actionSource: {
+              source: "legacy",
+              reason: "旧形式",
+            },
+            preview: true,
+            version: "legacy",
+            sourceKeys: ["legacy"],
+          },
+        },
+      ],
+    },
+  };
+
+  const items = conciergeToShrineListItems(resp as any);
+  const preview = items[0].actionSuggestionV4Preview;
+
+  expect(preview?.preview).toBe(true);
+  expect(preview?.version).toBe("v4");
+  expect(preview?.primaryAction.label).toBe("snake_case側の行動");
+  expect(preview?.primaryAction.description).toBe("snake_case側の説明");
+  expect(preview?.primaryAction.actionType).toBe("detail_open");
+  expect(preview?.sourceKeys).toEqual(["recommendation_reason_v4"]);
+});
+
+it("matched_need_tags が空でも badgesOverride は matched_need_tags のみを使い、_need.tags へフォールバックしない", () => {
   const resp = {
     ok: true,
     data: {
@@ -255,7 +333,77 @@ it("matched_need_tags が空なら _need.tags を badgesOverride に使う", () 
   };
 
   const items = conciergeToShrineListItems(resp as any);
-  expect(items[0].cardProps.badgesOverride).toEqual(["金運", "休息"]);
+  // 一致チップ(badgesOverride)は一致結果(matched_need_tags)のみを使う。空なら空のまま。
+  expect(items[0].cardProps.badgesOverride).toEqual([]);
+  // Hero・相談要約は入力側need_tagsを優先するため、matched_need_tagsが空でも生成できる。
+  expect(items[0].deepReason?.shrineMeaning).toContain("金運や巡りを整えたい");
+});
+
+it("入力タグ優先: 入力側need_tagsとmatched_need_tagsが異なる場合、Hero・相談要約は入力側、一致チップ・一致理由はmatched側を使う", () => {
+  const resp = {
+    ok: true,
+    data: {
+      _need: { tags: ["career", "mental"] },
+      recommendations: [
+        {
+          name: "神社X",
+          shrine_id: 301,
+          reason: "元の理由",
+          breakdown: { matched_need_tags: ["money"] },
+        },
+      ],
+    },
+  };
+
+  const items = conciergeToShrineListItems(resp as any);
+
+  // Hero・相談要約(deepReason.shrineMeaning)は入力側タグ(career)の文脈を使う
+  expect(items[0].deepReason?.shrineMeaning).toContain("仕事や転機を見直したい");
+  // 一致チップ(badgesOverride)はmatched_need_tags(money)のみを使う
+  expect(items[0].cardProps.badgesOverride).toEqual(["金運"]);
+  // 一致理由(explanationPrimaryReason)もmatched_need_tags(money)を使う
+  expect(items[0].cardProps.explanationPrimaryReason).toBe("金運や流れを立て直す");
+});
+
+it("fallback: 入力側need_tagsが無い旧Payloadでは、matched_need_tagsでHero・相談要約を生成できる", () => {
+  const resp = {
+    ok: true,
+    data: {
+      _need: { tags: [] },
+      recommendations: [
+        {
+          name: "神社Y",
+          shrine_id: 302,
+          reason: "元の理由",
+          breakdown: { matched_need_tags: ["rest"] },
+        },
+      ],
+    },
+  };
+
+  const items = conciergeToShrineListItems(resp as any);
+
+  expect(items[0].deepReason?.shrineMeaning).toContain("静かに休みたい");
+  expect(items[0].cardProps.badgesOverride).toEqual(["休息"]);
+});
+
+it("非変更確認: breakdown.matched_need_tagsのキー・値はcardProps.breakdownにそのまま保持される", () => {
+  const resp = {
+    ok: true,
+    data: {
+      recommendations: [
+        {
+          name: "神社Z",
+          shrine_id: 303,
+          reason: "元の理由",
+          breakdown: { matched_need_tags: ["career"], score_total: 0.8 },
+        },
+      ],
+    },
+  };
+
+  const items = conciergeToShrineListItems(resp as any);
+  expect(items[0].cardProps.breakdown).toEqual({ matched_need_tags: ["career"], score_total: 0.8 });
 });
 
 it("shrine_id がない recommendation は除外される", () => {

@@ -508,6 +508,14 @@ class Visit(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="visits"
     )
     shrine = models.ForeignKey(Shrine, on_delete=models.CASCADE, related_name="visits")
+    thread = models.ForeignKey(
+        ConciergeThread,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="visits",
+        help_text="参拝のきっかけとなった相談スレッド（Recommendation Snapshotへの接続キー）",
+    )
     visited_at = models.DateTimeField(default=timezone.now)
     note = models.TextField(blank=True)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="added")
@@ -529,6 +537,14 @@ class ShrineReflection(models.Model):
         Shrine,
         on_delete=models.CASCADE,
         related_name="reflections",
+    )
+    thread = models.ForeignKey(
+        ConciergeThread,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reflections",
+        help_text="振り返り対象の参拝のきっかけとなった相談スレッド（Recommendation Snapshotへの接続キー）",
     )
     history_theme = models.CharField(
         max_length=32,

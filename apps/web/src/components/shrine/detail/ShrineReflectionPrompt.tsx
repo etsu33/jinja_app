@@ -12,12 +12,21 @@ type Props = {
   historyTheme?: string | null;
   threadId?: string | null;
   ctx?: string | null;
+  accessLevel?: "anonymous" | "free" | "premium" | null;
   onSaved?: () => void;
 };
 
 const PROMPT_TEXT = "参拝して、今どんな変化がありましたか？";
 
-export function ShrineReflectionPrompt({ shrineId, historyTheme = null, threadId = null, ctx = null, onSaved }: Props) {
+export function ShrineReflectionPrompt({
+  shrineId,
+  historyTheme = null,
+  threadId = null,
+  ctx = null,
+  accessLevel = null,
+  onSaved,
+}: Props) {
+  const mode = ctx === "concierge" ? "need" : undefined;
   const [answer, setAnswer] = useState("");
   const [moodBefore, setMoodBefore] = useState("");
   const [moodAfter, setMoodAfter] = useState("");
@@ -34,10 +43,12 @@ export function ShrineReflectionPrompt({ shrineId, historyTheme = null, threadId
       shrineId,
       threadId: threadId ?? undefined,
       historyTheme: historyTheme ?? undefined,
-      promptType: "visit_done_reflection",
-      ctx,
+      reflectionFormType: "mood_delta",
+      reflectionContext: "visit_done",
+      mode,
+      accessLevel,
     });
-  }, [ctx, historyTheme, shrineId, threadId]);
+  }, [accessLevel, historyTheme, mode, shrineId, threadId]);
 
   async function handleSubmit() {
     if (!canSubmit) return;
@@ -46,7 +57,10 @@ export function ShrineReflectionPrompt({ shrineId, historyTheme = null, threadId
       setSubmitting(true);
       setStatus("idle");
 
+      const numericThreadId = threadId != null ? Number(threadId) : undefined;
+
       await createShrineReflection(shrineId, {
+        thread_id: numericThreadId != null && Number.isFinite(numericThreadId) ? numericThreadId : undefined,
         history_theme: historyTheme ?? "",
         prompt: PROMPT_TEXT,
         answer: trimmedAnswer,
@@ -59,11 +73,13 @@ export function ShrineReflectionPrompt({ shrineId, historyTheme = null, threadId
         shrineId,
         threadId: threadId ?? undefined,
         historyTheme: historyTheme ?? undefined,
-        promptType: "visit_done_reflection",
+        reflectionFormType: "mood_delta",
+        reflectionContext: "visit_done",
         answerLength,
         moodBefore: moodBefore || undefined,
         moodAfter: moodAfter || undefined,
-        ctx,
+        mode,
+        accessLevel,
       });
 
       setStatus("saved");

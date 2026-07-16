@@ -1,3 +1,8 @@
+> **Status: Active**
+>
+> 本ドキュメントは、対象機能の現行仕様を管理する正本文書である。
+>
+> 正確な物理実装と挙動は、関連する実装コードおよびテストを最終的な正本とする。
 # Shrine Detail Layer 境界
 
 ## 目的
@@ -107,4 +112,4 @@ Map / Search の便利さを Premium の主価値にしない。Premium 訴求�
 
 - `docs/premium-experience.md`: Premium 体験境界
 - `docs/pricing.md`: free / premium の価値境界
-- `docs/architecture.md`: 検索・詳細・コンシェルジュの責務分離
+- `docs/core/architecture.md`: 検索・詳細・コンシェルジュの責務分離

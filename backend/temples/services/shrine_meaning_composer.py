@@ -43,6 +43,8 @@ class ShrineMeaningSourceV2(TypedDict, total=False):
     placeTags: list[str]
     directionBonus: float | None
     directionReason: str | None
+    interpretationProfile: dict[str, Any] | None
+    translationResult: dict[str, Any] | None
 
 
 class ShrineMeaningGeneratedV2(TypedDict):
@@ -339,6 +341,8 @@ class ShrineMeaningInput:
     place_tags: tuple[str, ...] = ()
     direction_bonus: float | None = None
     direction_reason: str | None = None
+    interpretation_profile: dict[str, Any] | None = None
+    translation_result: dict[str, Any] | None = None
 
 
 def _clean_str(value: Any) -> str | None:
@@ -444,6 +448,8 @@ def normalize_shrine_meaning_source(source: Any) -> ShrineMeaningInput:
         place_tags=_clean_str_list(_read_value(source, "place_tags", "placeTags")),
         direction_bonus=_clean_float(_read_value(source, "direction_bonus", "directionBonus")),
         direction_reason=_clean_str(_read_value(source, "direction_reason", "directionReason")),
+        interpretation_profile=_read_value(source, "interpretation_profile", "interpretationProfile"),
+        translation_result=_read_value(source, "translation_result", "translationResult"),
     )
 
 
@@ -607,6 +613,10 @@ def _build_shrine_meaning(input_: ShrineMeaningInput) -> str:
 # 参拝後・帰り道・保存後の振り返りは禁止
 # 結果保証は禁止
 # 「次の一歩」を具体化する
+def _translated_action_context(input_: ShrineMeaningInput) -> str | None:
+    translation_result = input_.translation_result or {}
+    action_context = translation_result.get("action_context") if isinstance(translation_result, dict) else None
+    return _clean_str(action_context)
 
 def _build_action_meaning(input_: ShrineMeaningInput) -> str:
     override = SHRINE_HISTORY_STORY_OVERRIDES.get(input_.shrine_id)
@@ -615,8 +625,9 @@ def _build_action_meaning(input_: ShrineMeaningInput) -> str:
     if override:
         return override["actionMeaning"]
     benefit = _primary_benefit(input_)
+    translated_action = _translated_action_context(input_)
     definition = HISTORY_THEME_DEFINITION.get(input_.history_theme or "")
-    theme_action = definition["action_translation"] if definition else HISTORY_THEME_ACTION_CONTEXT.get(input_.history_theme or "")
+    theme_action = translated_action or (definition["action_translation"] if definition else HISTORY_THEME_ACTION_CONTEXT.get(input_.history_theme or ""))
     if benefit and theme_action:
         return f"参拝を、{_clip(benefit, 32)}という願いを急いで叶えるためではなく、{theme_action}ことに使います。"
     if theme_action:
@@ -631,13 +642,22 @@ def _build_action_meaning(input_: ShrineMeaningInput) -> str:
 # 固有名詞紹介で終わらせない
 # 「だから今の状態と接続する」を返す
 
+def _effective_history_theme(input_: ShrineMeaningInput) -> str | None:
+    translation_result = input_.translation_result or {}
+    translated_theme = translation_result.get("history_theme") if isinstance(translation_result, dict) else None
+    return _clean_str(translated_theme) or input_.history_theme
+
+
 def _build_history_context(input_: ShrineMeaningInput) -> str | None:
     override = SHRINE_HISTORY_STORY_OVERRIDES.get(input_.shrine_id)
     if override:
         return override["shrineMeaning"]
-    if not input_.history_theme:
+
+    history_theme = _effective_history_theme(input_)
+    if not history_theme:
         return None
-    definition = HISTORY_THEME_DEFINITION.get(input_.history_theme)
+
+    definition = HISTORY_THEME_DEFINITION.get(history_theme)
     if definition:
         return " ".join(
             [
@@ -646,7 +666,7 @@ def _build_history_context(input_: ShrineMeaningInput) -> str | None:
                 definition["modern_interpretation"],
             ]
         )
-    history_context = HISTORY_THEME_CONTEXT.get(input_.history_theme)
+    history_context = HISTORY_THEME_CONTEXT.get(history_theme)
     if history_context:
         return f"{history_context} 歴史や土地の背景を断定的な答えにせず、今の状態を見直す補助材料として扱います。"
     return "神社の歴史や土地の文脈を、今の状態を見直す補助材料として扱います。"
@@ -715,7 +735,17 @@ def _build_today_flow_context(input_: ShrineMeaningInput) -> str | None:
 # 実際に参拝しなければ価値がない表現にしない
 # 参拝後に何を持ち帰るかを扱う
 
+
+def _translated_reflection_question_seed(input_: ShrineMeaningInput) -> str | None:
+    translation_result = input_.translation_result or {}
+    reflection_question_seed = translation_result.get("reflection_question_seed") if isinstance(translation_result, dict) else None
+    return _clean_str(reflection_question_seed)
+
+
 def _build_after_visit_reflection(input_: ShrineMeaningInput) -> str | None:
+    reflection_question_seed = _translated_reflection_question_seed(input_)
+    if reflection_question_seed:
+        return f"参拝後は、答えが出たかどうかより、「{reflection_question_seed}」を手がかりに見直します。迷いが残っていても、保存した内容やもう一度の相談から整理し直せます。"
     if not input_.history_theme:
         return None
     return "参拝後は、答えが出たかどうかより、次の一歩が少し見えたかを見直します。迷いが残っていても、保存した内容やもう一度の相談から整理し直せます。"
@@ -768,6 +798,8 @@ def build_source_fields(input_: ShrineMeaningInput) -> ShrineMeaningSourceV2:
         "placeTags": list(input_.place_tags),
         "directionBonus": input_.direction_bonus,
         "directionReason": input_.direction_reason,
+        "interpretationProfile": input_.interpretation_profile,
+        "translationResult": input_.translation_result,
     }
 
 

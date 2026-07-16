@@ -70,6 +70,16 @@ export type ConciergeBreakdown = {
   matched_need_tags: string[];
 };
 
+export type RecommendationReasonQuality = {
+  shrine_data_rate?: number | null;
+  consultation_reflection_rate?: number | null;
+  fallback_reason_rate?: number | null;
+  evidence_rate?: number | null;
+  action_grounding_rate?: number | null;
+  is_ai_inference_only?: boolean | null;
+  fallback_source?: string | null;
+};
+
 export type ConciergeReasonFactAxis =
   | "need"
   | "benefit"
@@ -138,6 +148,8 @@ export type ConciergeRecommendation = {
 
   reason?: string | null;
   reason_source?: string | null;
+  recommendation_reason_v4?: string | null;
+  recommendation_reason_quality?: RecommendationReasonQuality | null;
 
   bullets?: string[] | null;
   explanation?: {

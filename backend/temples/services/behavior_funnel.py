@@ -143,10 +143,17 @@ def build_score_v3_funnel_correlation_summary(
         return round(int(count or 0) / dv, 6)
 
     funnel_summary = {
+        "detail_view_count": int(funnel.get("detail_view_count") or 0),
+        "route_open_count": int(funnel.get("route_open_count") or 0),
+        "save_count": int(funnel.get("save_count") or 0),
+        "visit_count": int(funnel.get("visit_count") or 0),
+        "reflection_count": int(funnel.get("reflection_count") or 0),
         "route_open_rate": _rate(funnel.get("route_open_count")),
         "save_rate": _rate(funnel.get("save_count")),
         "visit_done_rate": _rate(funnel.get("visit_count")),
         "reflection_saved_rate": _rate(funnel.get("reflection_count")),
+        "save_to_visit_cvr": float(funnel.get("save_to_visit_cvr") or 0.0),
+        "visit_to_reflection_cvr": float(funnel.get("visit_to_reflection_cvr") or 0.0),
     }
 
     score_v3_slice = {

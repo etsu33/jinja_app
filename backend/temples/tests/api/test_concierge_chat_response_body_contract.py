@@ -79,6 +79,108 @@ def test_chat_response_query_mode_reply_is_none(client, monkeypatch):
 
 
 @pytest.mark.django_db
+def test_chat_response_preserves_action_suggestion_v4_preview_contract(client, monkeypatch):
+    _stub_candidates(monkeypatch)
+    _stub_recommendations(
+        monkeypatch,
+        [
+            {
+                "name": "神社A",
+                "reason": "ok-a",
+                "reason_source": "reason:test",
+                "_score_total": 10.0,
+                "action_suggestion_v4_preview": {
+                    "primary_action": {
+                        "label": "まず詳細を見て、行く理由を確認する",
+                        "description": "候補神社の詳細を見て判断材料を増やします。",
+                        "action_type": "detail_open",
+                        "confidence": 0.82,
+                    },
+                    "secondary_action": {
+                        "label": "候補として保存して、あとで見返す",
+                        "description": "後から相談内容と一緒に見返せます。",
+                        "action_type": "save",
+                        "confidence": 0.74,
+                    },
+                    "reflection_prompt": {
+                        "question": "この神社に行くとしたら、何を整理する時間にしたいですか？",
+                        "prompt_type": "before_visit",
+                        "source_seed": "fallback",
+                    },
+                    "action_source": {
+                        "source": "fallback",
+                        "reason": "入力が不足しているため、詳細確認と保存を安全な初期提案にした",
+                    },
+                    "preview": True,
+                    "version": "v4",
+                    "source_keys": ["meaning_translation"],
+                },
+            },
+            {
+                "name": "神社B",
+                "reason": "ok-b",
+                "reason_source": "reason:test",
+                "_score_total": 9.0,
+                "action_suggestion_v4_preview": {
+                    "primary_action": {
+                        "label": "行く前に、今日の問いを一つだけ決める",
+                        "description": "問いを一つに絞ります。",
+                        "action_type": "reflect",
+                        "confidence": 0.78,
+                    },
+                    "secondary_action": {
+                        "label": "候補として保存して、あとで見返す",
+                        "description": "後から相談内容と一緒に見返せます。",
+                        "action_type": "save",
+                        "confidence": 0.74,
+                    },
+                    "reflection_prompt": {
+                        "question": "今日持っていく問いは何ですか？",
+                        "prompt_type": "before_visit",
+                        "source_seed": "今日持っていく問いは何ですか？",
+                    },
+                    "action_source": {
+                        "source": "action_context",
+                        "reason": "意味変換層の行動文脈をもとに提案した",
+                    },
+                    "preview": True,
+                    "version": "v4",
+                    "source_keys": ["meaning_translation"],
+                },
+            },
+        ],
+    )
+
+    r = client.post(
+        URL,
+        data=json.dumps({"query": "近場で参拝したい", "lat": 35.0, "lng": 139.0}),
+        content_type="application/json",
+    )
+    assert r.status_code == 200
+
+    recommendations = r.json()["data"]["recommendations"]
+    assert [rec["name"] for rec in recommendations] == ["神社A", "神社B"]
+    assert [rec["_score_total"] for rec in recommendations] == [10.0, 9.0]
+
+    preview = recommendations[0]["action_suggestion_v4_preview"]
+    assert set(preview.keys()) == {
+        "primary_action",
+        "secondary_action",
+        "reflection_prompt",
+        "action_source",
+        "preview",
+        "version",
+        "source_keys",
+    }
+    assert preview["preview"] is True
+    assert preview["version"] == "v4"
+    assert preview["primary_action"]["action_type"] == "detail_open"
+    assert preview["secondary_action"]["action_type"] == "save"
+    assert preview["reflection_prompt"]["prompt_type"] == "before_visit"
+    assert preview["action_source"]["source"] == "fallback"
+
+
+@pytest.mark.django_db
 def test_chat_response_authenticated_non_premium_includes_remaining_and_limit(user, monkeypatch):
     _stub_candidates(monkeypatch)
     _stub_recommendations(monkeypatch, [{"name": "神社A", "reason": "ok", "reason_source": "reason:test"}])
@@ -187,6 +289,80 @@ def test_chat_response_anonymous_includes_thread_when_append_chat_succeeds(clien
     assert body["data"]["thread_id"] == "1"
 
 
+# New test: test_chat_response_passes_recommendation_reason_quality_to_thread_storage
+@pytest.mark.django_db
+def test_chat_response_passes_recommendation_reason_quality_to_thread_storage(client, monkeypatch):
+    _stub_candidates(monkeypatch)
+    _stub_recommendations(
+        monkeypatch,
+        [
+            {
+                "id": 10,
+                "shrine_id": 10,
+                "name": "神社A",
+                "reason": "ok",
+                "reason_source": "reason:test",
+                "history_theme": "再出発",
+                "goriyaku": "仕事運",
+                "meaning_payload": {
+                    "source": {
+                        "translationResult": {
+                            "history_theme": "再出発",
+                            "action_context": "問いを一つに絞る",
+                        }
+                    }
+                },
+                "recommendation_reason_quality": {
+                    "shrine_data_rate": 0.4,
+                    "consultation_reflection_rate": 0.5,
+                    "fallback_reason_rate": 0.0,
+                    "evidence_rate": 0.4,
+                    "action_grounding_rate": 0.3333,
+                    "is_ai_inference_only": False,
+                    "fallback_source": None,
+                },
+            }
+        ],
+    )
+
+    captured = {}
+
+    def _append_chat_stub(**kwargs):
+        captured["recommendations"] = kwargs.get("recommendations")
+        captured["recommendations_v2"] = kwargs.get("recommendations_v2")
+        return SimpleNamespace(thread=SimpleNamespace(id=321))
+
+    monkeypatch.setattr("temples.api_views_concierge.append_chat", _append_chat_stub)
+    monkeypatch.setattr(
+        "temples.services.concierge_observability.save_concierge_recommendation_log",
+        lambda **kwargs: None,
+    )
+
+    r = client.post(
+        URL,
+        data=json.dumps({"query": "仕事で迷っている", "lat": 35.0, "lng": 139.0}),
+        content_type="application/json",
+    )
+    assert r.status_code == 200
+
+    recommendations = r.json()["data"]["recommendations"]
+    assert "recommendation_reason_quality" in recommendations[0]
+
+    quality = recommendations[0]["recommendation_reason_quality"]
+    assert set(quality.keys()) == {
+        "shrine_data_rate",
+        "consultation_reflection_rate",
+        "fallback_reason_rate",
+        "evidence_rate",
+        "action_grounding_rate",
+        "is_ai_inference_only",
+        "fallback_source",
+    }
+
+    assert captured["recommendations"][0]["recommendation_reason_quality"] == quality
+    assert captured["recommendations_v2"][0]["recommendation_reason_quality"] == quality
+
+
 @pytest.mark.django_db
 def test_chat_response_includes_debug_observation_contract_fields(client, monkeypatch):
     _stub_candidates(monkeypatch)
@@ -205,6 +381,17 @@ def test_chat_response_includes_debug_observation_contract_fields(client, monkey
                     "score_top10": [],
                     "filter_context": {},
                 },
+                "interpretation_profile": {
+                    "raw_query": "近場で参拝したい",
+                    "state_profile": {},
+                    "need_profile": {},
+                    "direction_profile": {},
+                    "emotion_profile": {},
+                    "action_intent": {},
+                    "decision_context": {},
+                    "constraint_profile": {},
+                    "outcome_hint": {},
+                },
                 "visit_style_observation": {
                     "pool_size": 1,
                     "hit_count": 0,
@@ -215,6 +402,55 @@ def test_chat_response_includes_debug_observation_contract_fields(client, monkey
                     "ranked_count": 1,
                     "top10": [],
                 },
+                "score_v3": {
+                    "mode": "shadow",
+                    "shadow_mode": True,
+                    "ranking_applied": False,
+                    "score_v3": {
+                        "mode": "shadow",
+                        "ranking_applied": False,
+                        "components": {
+                            "state_match_score": 0.0,
+                            "meaning_match_score": 0.0,
+                            "shrine_profile_score": 0.0,
+                            "behavior_score": 0.0,
+                            "history_score": 0.0,
+                            "final_score": 0.0,
+                        },
+                        "observation": {
+                            "top1_changed": False,
+                            "delta": 0.0,
+                            "reason": [],
+                        },
+                    },
+                },
+                "reason_v4_preview": [
+                    {
+                        "rank": 1,
+                        "shrine_id": 1,
+                        "name": "神社A",
+                        "preview": {
+                            "reason_text": "神社Aは、相談内容と神社側の文脈を照合する候補です。 次に確認したいことを一つだけ決めます。",
+                            "fact": {
+                                "label": "神社A",
+                                "evidence": ["name:神社A"],
+                            },
+                            "interpretation": {
+                                "theme": "相談文脈",
+                                "text": "相談内容と神社側の文脈を照合する候補です。",
+                            },
+                            "action": {
+                                "text": "次に確認したいことを一つだけ決めます。",
+                                "source": "fallback",
+                            },
+                            "source": {
+                                "fact": "candidate_profile|meaning_translation",
+                                "interpretation": "interpretation_profile|meaning_translation",
+                                "action": "fallback",
+                            },
+                        },
+                    }
+                ],
                 "trim_observation": {
                     "before_count": 1,
                     "after_count": 1,
@@ -238,10 +474,35 @@ def test_chat_response_includes_debug_observation_contract_fields(client, monkey
 
     assert set(debug.keys()) == {
         "candidate_pool_observation",
+        "interpretation_profile",
         "visit_style_observation",
         "ranking_breakdown_observation",
+        "score_v3",
+        "reason_v4_preview",
         "trim_observation",
     }
+
+    interpretation_profile = debug["interpretation_profile"]
+    assert set(interpretation_profile.keys()) == {
+        "raw_query",
+        "state_profile",
+        "need_profile",
+        "direction_profile",
+        "emotion_profile",
+        "action_intent",
+        "decision_context",
+        "constraint_profile",
+        "outcome_hint",
+    }
+    assert interpretation_profile["raw_query"] == "近場で参拝したい"
+    assert isinstance(interpretation_profile["state_profile"], dict)
+    assert isinstance(interpretation_profile["need_profile"], dict)
+    assert isinstance(interpretation_profile["direction_profile"], dict)
+    assert isinstance(interpretation_profile["emotion_profile"], dict)
+    assert isinstance(interpretation_profile["action_intent"], dict)
+    assert isinstance(interpretation_profile["decision_context"], dict)
+    assert isinstance(interpretation_profile["constraint_profile"], dict)
+    assert isinstance(interpretation_profile["outcome_hint"], dict)
 
     candidate_pool = debug["candidate_pool_observation"]
     assert set(candidate_pool.keys()) == {
@@ -267,12 +528,64 @@ def test_chat_response_includes_debug_observation_contract_fields(client, monkey
         "top10",
     }
 
-    trim = debug["trim_observation"]
-    assert set(trim.keys()) == {
-        "before_count",
-        "after_count",
-        "dropped_count",
-        "before",
-        "after",
-        "dropped",
+    score_v3 = debug["score_v3"]
+    assert set(score_v3.keys()) == {
+        "mode",
+        "shadow_mode",
+        "ranking_applied",
+        "score_v3",
     }
+    assert score_v3["mode"] == "shadow"
+    assert score_v3["shadow_mode"] is True
+    assert score_v3["ranking_applied"] is False
+
+    score_v3_payload = score_v3["score_v3"]
+    assert set(score_v3_payload.keys()) == {
+        "mode",
+        "ranking_applied",
+        "components",
+        "observation",
+    }
+    assert score_v3_payload["mode"] == "shadow"
+    assert score_v3_payload["ranking_applied"] is False
+    assert set(score_v3_payload["components"].keys()) == {
+        "state_match_score",
+        "meaning_match_score",
+        "shrine_profile_score",
+        "behavior_score",
+        "history_score",
+        "final_score",
+    }
+    assert score_v3_payload["observation"] == {
+        "top1_changed": False,
+        "delta": 0.0,
+        "reason": [],
+    }
+
+    reason_v4_preview = debug["reason_v4_preview"]
+    assert isinstance(reason_v4_preview, list)
+    assert len(reason_v4_preview) == 1
+
+    reason_v4_item = reason_v4_preview[0]
+    assert set(reason_v4_item.keys()) == {
+        "rank",
+        "shrine_id",
+        "name",
+        "preview",
+    }
+    assert reason_v4_item["rank"] == 1
+    assert reason_v4_item["name"] == "神社A"
+
+    preview = reason_v4_item["preview"]
+    assert set(preview.keys()) == {
+        "reason_text",
+        "fact",
+        "interpretation",
+        "action",
+        "source",
+    }
+    assert isinstance(preview["reason_text"], str)
+    assert set(preview["fact"].keys()) == {"label", "evidence"}
+    assert set(preview["interpretation"].keys()) == {"theme", "text"}
+    assert set(preview["action"].keys()) == {"text", "source"}
+    assert set(preview["source"].keys()) == {"fact", "interpretation", "action"}

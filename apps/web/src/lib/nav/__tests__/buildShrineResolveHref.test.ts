@@ -14,29 +14,35 @@ describe("buildShrineResolveHref", () => {
     expect(href).toContain("tid=t1");
   });
 
-  it("query の null/undefined/空白は無視される。boolean/numberは文字列化される", () => {
+  it("query は toast のみ許可し、分析用 query は無視される", () => {
     const href = buildShrineResolveHref("pid", {
-      query: { a: "", b: "   ", c: null, d: undefined, n: 0, t: true, f: false },
+      query: {
+        toast: "ok",
+        mode: "need",
+        flow: "A",
+        hasBirthdate: "true",
+        recommendationCount: "3",
+        a: "",
+        b: "   ",
+        c: null,
+        d: undefined,
+      },
     });
 
     const url = new URL(href, "http://localhost");
     const p = url.searchParams;
 
     expect(url.pathname).toBe("/shrines/resolve");
-
-    // 必須
     expect(p.get("place_id")).toBe("pid");
-
-    // 無視される
+    expect(p.get("toast")).toBe("ok");
+    expect(p.has("mode")).toBe(false);
+    expect(p.has("flow")).toBe(false);
+    expect(p.has("hasBirthdate")).toBe(false);
+    expect(p.has("recommendationCount")).toBe(false);
     expect(p.has("a")).toBe(false);
     expect(p.has("b")).toBe(false);
     expect(p.has("c")).toBe(false);
     expect(p.has("d")).toBe(false);
-
-    // 文字列化
-    expect(p.get("n")).toBe("0");
-    expect(p.get("t")).toBe("true");
-    expect(p.get("f")).toBe("false");
   });
 
   it("query に place_id/ctx/tid が入っていても、必須パラメータが上書きする", () => {
@@ -47,17 +53,19 @@ describe("buildShrineResolveHref", () => {
         place_id: "pid-fake",
         ctx: "map",
         tid: "tid-fake",
+        toast: "saved",
         extra: "x",
       },
     });
 
-    expect(href).toContain("extra=x");
+    expect(href).toContain("toast=saved");
     expect(href).toContain("place_id=pid-real");
     expect(href).toContain("ctx=concierge");
     expect(href).toContain("tid=tid-real");
     expect(href).not.toContain("place_id=pid-fake");
     expect(href).not.toContain("ctx=map");
     expect(href).not.toContain("tid=tid-fake");
+    expect(href).not.toContain("extra=");
   });
 
   it("ctx=null は付与されない。tid は空白なら付与されない", () => {

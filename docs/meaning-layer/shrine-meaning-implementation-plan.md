@@ -1,343 +1,351 @@
+> **Status: Archive**
+>
+> 本ドキュメントは、ShrineMeaningPayload v2実装前に作成された実装準備・責務整理の記録である。
+>
+> 記載内容は設計・実装前時点のスナップショットであり、現行仕様判断には使用しない。
+>
+> 現在のMeaning Layerおよびfield-level契約は以下を参照する。
+>
+> - `docs/core/meaning-layer.md`
+> - `docs/core/meaning-layer-connection.md`
+> - `docs/core/architecture.md`
+> - `docs/meaning-layer/shrine-meaning-payload-v2.md`
+> - `docs/meaning-layer/backend-meaning-composer.md`
+> - `backend/temples/services/shrine_meaning_composer.py`
+> - `backend/temples/api/views/shrine_meaning.py`
+> - `apps/web/src/lib/shrineMeaning/payloadV2.ts`
+
 # ShrineMeaningPayload v2 実装準備
 
 ## 目的
 
-ShrineMeaningPayload v2 を実装する前に、frontend / backend の責務、endpoint 方針、Free / Premium 境界、既存 frontend fallback の縮小方針を固定する。
+ShrineMeaningPayload v2の実装前に、FrontendとBackendの責務、Meaning専用Endpoint、Access境界、および既存Frontend Fallbackの整理方針を記録した文書である。
 
-このドキュメントでは、実装方針を整理する。
-backend serializer / endpoint / UI の実装変更はまだ行わない。
+本書は、後続のPayload・Composer・Endpoint実装へ至った判断過程を保存するためのArchive文書として扱う。
 
 ---
 
-## 1. TypeScript 型定義方針
+## 当時の基本方針
 
-### 方針
+Shrine Meaningの実装では、神社の事実情報、生成されたMeaning、Frontend表示情報を分離する方針が採用された。
 
-- frontend には `ShrineMeaningPayloadV2` の契約型を定義する
-- backend meaning composer の返却 payload を source of truth とする
-- frontend は generated fields を再生成しない
-- fallback は payload 欠損時のみ許可する
-- display fields は UI 表示専用とする
+```text
+source
+↓
+generated
+↓
+display
+```
 
-### 型ファイル
+### Source
 
-候補:
+神社情報、相談文脈、推薦文脈など、Meaning生成に必要な材料を保持する。
 
-```txt
+### Generated
+
+Backend Meaning Composerが生成した意味づけを保持する。
+
+### Display
+
+Frontendが描画に利用するSection・Block・Access情報を保持する。
+
+FrontendはGenerated Fieldを再生成せず、Payload欠損時のみFallbackを利用する方針とした。
+
+---
+
+## Frontend型の方針
+
+FrontendはBackendと同一の`ShrineMeaningPayloadV2`契約を利用する方針とした。
+
+実装先として、以下のファイルが採用された。
+
+```text
 apps/web/src/lib/shrineMeaning/payloadV2.ts
 ```
 
-### 注意
+### 当時確定した原則
 
-- 既存 `buildShrineExplanation.ts` は縮小対象
-- frontend 側で意味本文を組み立て続けない
-- serializer 差分を frontend が吸収しない
-- v2 payload は source / generated / display の3層で扱う
+- Backend Meaning Composerの返却Payloadを契約の基準とする
+- FrontendはGenerated Fieldを再生成しない
+- FallbackはPayload欠損時に限定する
+- Display FieldはUI表示専用として扱う
+- Serializerごとの差分をFrontendで個別吸収しない
+
+現在の正確な型定義は実装コードを正本とする。
 
 ---
 
-## 2. backend meaning composer 責務図
+## Backend Meaning Composerの責務
 
-```txt
-[source fields]
+Backend Meaning Composerは、Source Fieldを正規化し、Generated FieldとDisplay情報を構築する責務として整理された。
+
+```text
+Source Field
 ↓
-normalize
+Normalize
 ↓
-meaning composer
+Meaning Composer
 ↓
-generated fields
+Generated Field
 ↓
-display payload
+Display Payload
 ↓
-frontend renderer
+Frontend Renderer
 ```
 
-### backend の責務
+### Backendが担当すること
 
-- source field 正規化
-- meaning 生成
-- Free / Premium 境界制御
-- explanation payload 生成
-- `history_theme` 接続
-- `sajin` 象徴接続
-- `goriyaku` 行動接続
-- `description` の意味変換
+- Source Fieldの収集
+- Source Fieldの正規化
+- Meaning本文の生成
+- Display Blockの生成
+- Access情報の付与
+- `history_theme`による文脈接続
+- `sajin`による象徴的な補足
+- `goriyaku`による行動意味の補足
+- `description`をMeaning生成材料へ変換すること
 
-### frontend の責務
+### Frontendが担当すること
 
-- 表示
-- section 切り替え
-- analytics
-- access control
-- fallback 表示
-- loading / error 状態表示
+- Payload取得
+- Display Blockの描画
+- Loading・Error表示
+- Access Levelに応じた表示制御
+- Analytics Event送信
+- Payload欠損時の最低限のFallback表示
 
 ### 責務境界
 
-| 項目 | backend | frontend | 判断 |
-|---|---:|---:|---|
-| source field 正規化 | ○ | × | backend に寄せる |
-| 意味本文生成 | ○ | × | frontend で再生成しない |
-| Free / Premium 境界 | ○ | ○ | backend は payload 制御、frontend は表示制御 |
-| UI 表示順 | × | ○ | frontend の責務 |
-| fallback 文 | △ | ○ | 欠損時のみ frontend |
-| analytics | × | ○ | frontend の責務 |
+| 項目 | Backend | Frontend |
+|---|---:|---:|
+| Source Field正規化 | 担当 | 担当しない |
+| Meaning本文生成 | 担当 | 担当しない |
+| Display情報生成 | 担当 | 利用する |
+| UI表示順 | 元情報を提供 | 最終描画を担当 |
+| Fallback表示 | 基本Payloadを提供 | 欠損時のみ担当 |
+| Analytics | 担当しない | 担当 |
+| Routing | 担当しない | 担当 |
 
 ---
 
-## 3. detail meaning endpoint 草案
+## Meaning専用Endpointの判断
 
-### 候補
+Meaning PayloadはShrine Detail Serializerへ直接混在させず、専用Endpointで提供する方針が採用された。
 
-```txt
+```text
 GET /api/shrines/:id/meaning/
 ```
 
-### 理由
+### 専用Endpointを採用した理由
 
-- `ShrineDetailSerializer` を肥大化させない
-- Premium 境界を分離しやすい
-- meaning payload を独立改善しやすい
-- serializer 責務を壊しにくい
-- 既存詳細画面への影響を段階的に抑えやすい
+- Shrine Detail Serializerの肥大化を避ける
+- Meaning Layerの責務を分離できる
+- Access境界を独立して扱いやすい
+- 既存詳細APIへの影響を抑えられる
+- Meaning Payloadを段階的に改善できる
 
-### response 草案
+### 当時比較した方式
+
+| 方式 | 利点 | 課題 | 当時の判断 |
+|---|---|---|---|
+| Shrine Detail Serializerへ直載せ | 詳細取得が1回で済む | Serializer肥大化、既存APIへの影響、責務混在 | 初期実装では採用しない |
+| 専用Endpoint | 責務分離、段階導入、Access境界を扱いやすい | API Requestが増える | 採用候補 |
+
+現在の正確なEndpoint Contractは以下を正本とする。
+
+- `backend/temples/api/views/shrine_meaning.py`
+- 関連するURL定義
+- Backend Test
+
+---
+
+## Response構造
+
+Meaning Endpointは、以下の3層を持つPayloadを返す方針とした。
 
 ```json
 {
   "version": "v2",
-  "source": {
-    "shrineId": 1,
-    "nameJp": "例の神社",
-    "address": "東京都...",
-    "latitude": 35.0,
-    "longitude": 139.0,
-    "goriyaku": "厄除け / 縁結び",
-    "goriyakuTags": ["厄除け", "縁結び"],
-    "sajin": "祭神名",
-    "description": "神社説明",
-    "historyTheme": "再出発",
-    "element": "木",
-    "placeTags": ["静かな場所", "節目"]
-  },
-  "generated": {
-    "heroMeaningCopy": "今の状態を整え直す節目として向き合いやすい神社です。",
-    "consultationSummary": "今回の相談は、優先順位を整えながら次の一歩を考える文脈です。",
-    "shrineMeaning": "この神社は、今の状態を立て直す意味を置きやすい候補です。",
-    "actionMeaning": "参拝を、気持ちを切り替えて小さく動き出す行動として置けます。",
-    "historyContext": "再出発に関わる文脈を、今の切り替えと重ねて受け取りやすい場所です。",
-    "deitySymbolContext": "祭神は象徴接続の補助材料として扱います。",
-    "benefitActionContext": "ご利益は願望成就の断定ではなく、行動テーマの補助として扱います。"
-  },
+  "source": {},
+  "generated": {},
   "display": {
-    "blocks": [
-      {
-        "id": "hero",
-        "title": "今のあなたとの接点",
-        "body": "今の状態を整え直す節目として向き合いやすい神社です。",
-        "access": "anonymous"
-      },
-      {
-        "id": "consultation_summary",
-        "title": "相談との接続",
-        "body": "今回の相談は、優先順位を整えながら次の一歩を考える文脈です。",
-        "access": "free"
-      },
-      {
-        "id": "action_meaning",
-        "title": "参拝を置く意味",
-        "body": "参拝を、気持ちを切り替えて小さく動き出す行動として置けます。",
-        "access": "premium"
-      }
-    ],
+    "blocks": [],
     "fallbackMessage": null
   }
 }
 ```
 
-### endpoint 判断
+### Source
 
-初期実装では、detail serializer 直載せよりも専用 endpoint を有力候補とする。
+神社の事実情報、相談情報、推薦情報などの生成材料を保持する。
 
-| 方式 | メリット | デメリット | 判断 |
+### Generated
+
+Backend Meaning Composerが生成した以下のようなMeaning本文を保持する。
+
+- `heroMeaningCopy`
+- `consultationSummary`
+- `shrineMeaning`
+- `actionMeaning`
+- `historyContext`
+- `deitySymbolContext`
+- `benefitActionContext`
+
+### Display
+
+Frontendが描画しやすいBlock構造とAccess情報を保持する。
+
+現在のField名・Block ID・Response Shapeはコードとテストを正本とする。
+
+---
+
+## Access境界の考え方
+
+当時は、Meaning FieldごとにAnonymous・Free・Premiumの表示範囲を分離する方針が整理された。
+
+| Meaning Field | Anonymous | Free | Premium |
 |---|---|---|---|
-| ShrineDetailSerializer に直載せ | 詳細取得1回で済む | serializer 肥大化、既存API影響、課金境界が混ざる | 初期は避ける |
-| 専用 endpoint | 責務分離しやすい、Premium 境界を扱いやすい、段階導入しやすい | API 呼び出しが増える | v2 初期候補 |
+| Hero Meaning | 一部表示 | 表示 | 表示 |
+| Consultation Summary | 非表示 | 一部表示 | 表示 |
+| Shrine Meaning | 非表示 | 一部表示 | 表示 |
+| Action Meaning | 非表示 | Teaser | 表示 |
+| History Context | 非表示 | 非表示またはTeaser | 表示 |
+| Deity Symbol Context | 非表示 | 非表示またはTeaser | 表示 |
+| Benefit Action Context | 非表示 | Teaser | 表示 |
+
+### 当時の責務分離
+
+- BackendはPayloadへAccess情報を付与する
+- FrontendはAccess Levelと表示契約に従って描画する
+- 課金状態そのものの判定責務はMeaning Composerへ持たせない
+- Meaning本文の生成と課金判定を混在させない
+
+現在の表示境界は、実装コードおよびCard Visibility関連契約を正本とする。
 
 ---
 
-## 4. generated fields の Free / Premium 境界
+## `buildShrineExplanation.ts`の整理方針
 
-### anonymous
+実装前には、`buildShrineExplanation.ts`が以下の複数責務を持っていた。
 
-表示:
-
-- `heroMeaningCopy` 一部
-- `public_info`
-- teaser
-
-非表示:
-
-- `consultationSummary`
-- `shrineMeaning`
-- `actionMeaning`
-- `historyContext`
-- `deitySymbolContext`
-- `benefitActionContext`
-
-### free
-
-表示:
-
-- `consultationSummary` 一部
-- `shrineMeaning` 一部
-- `public_info`
-- `premium_preview`
-
-制限:
-
-- 深い比較
-- 継続変化
-- `historyContext` 深部
-- `actionMeaning` 全文
-- `deitySymbolContext` 詳細
-- `benefitActionContext` 詳細
-
-### premium
-
-表示:
-
-- `consultationSummary`
-- `shrineMeaning`
-- `actionMeaning`
-- `historyContext`
-- `deitySymbolContext`
-- `benefitActionContext`
-- comparison 系
-- history shift 系
-- deep reflection 系
-
-### 境界方針
-
-| field | anonymous | free | premium | 備考 |
-|---|---:|---:|---:|---|
-| heroMeaningCopy | partial | visible | visible | 入口コピー |
-| consultationSummary | hidden | partial | visible | 状態接続 |
-| shrineMeaning | hidden | partial | visible | 神社意味 |
-| actionMeaning | hidden | teaser | visible | 行動意味 |
-| historyContext | hidden | hidden / teaser | visible | 歴史本文ではない |
-| deitySymbolContext | hidden | hidden / teaser | visible | 祭神の象徴接続 |
-| benefitActionContext | hidden | teaser | visible | ご利益の行動接続 |
-
----
-
-## 5. buildShrineExplanation.ts fallback 削減方針
-
-### backendへ移す対象
-
-- `consultationSummary`
-- `shrineMeaning`
-- `actionMeaning`
-- `historyContext`
-- `goriyaku` 由来意味
-- `sajin` 由来象徴接続
-- `description` 由来意味文
-- `history_theme` 由来接続文
-
-### frontendへ残す対象
-
-- payload 欠損 fallback
-- UI 補助文
-- 最低限の説明文
-- loading / error 状態
-- 古い payload 互換
-
-### 現在の問題
-
-現在の `buildShrineExplanation.ts` は以下を同時に担っている。
-
-- serializer 差分吸収
-- payload 不足補完
-- meaning 本文生成
+- Serializer差分の吸収
+- Payload不足の補完
+- Meaning本文の生成
 - 実データの表示変換
-- fallback 文生成
+- Fallback文の生成
 
-v2 では以下へ責務縮小する。
+ShrineMeaningPayload v2導入後は、以下の責務へ縮小する方針とした。
 
-```txt
-meaning generator
+```text
+Meaning Generator
 ↓
-fallback renderer
+Fallback Renderer
 ```
 
-### マーキング対象
+### Backendへ移すとした責務
 
-今後の実装前に、`buildShrineExplanation.ts` 内で以下の分類をコメントとしてマーキングする。
+- `consultationSummary`生成
+- `shrineMeaning`生成
+- `actionMeaning`生成
+- `historyContext`生成
+- `goriyaku`由来の行動意味
+- `sajin`由来の象徴接続
+- `description`由来の意味変換
+- `history_theme`由来の接続文
 
-```txt
-MOVE_TO_BACKEND_COMPOSER
-KEEP_AS_FRONTEND_FALLBACK
-REMOVE_AFTER_V2_PAYLOAD
-```
+### Frontendへ残すとした責務
 
-### 削減判断
+- Payload欠損時の最低限のFallback
+- Loading・Error表示
+- 旧Payloadとの互換表示
+- UI補助文
+- 最低限の事実情報表示
 
-| 現在の処理 | v2での扱い | 判断 |
-|---|---|---|
-| description から shrineMeaning 生成 | backend composer へ移動 | frontend から削減 |
-| goriyaku から shrineMeaning 生成 | backend composer へ移動 | frontend から削減 |
-| sajin から shrineMeaning 生成 | backend composer へ移動 | 表現修正込みで移動 |
-| element から補足生成 | backend composer へ移動 | 神秘化しすぎない |
-| views_30d / favorites_30d から補足生成 | backend または analytics source へ移動 | v2では慎重に扱う |
-| fallback message | frontend に残す | 欠損時のみ |
+監査時点では、Fallback Markerの追加のみ確認され、Meaning生成ロジックの完全な縮小は未完了だった。
+
+現在の責務と実装状況は、`buildShrineExplanation.ts`および関連テストを正本とする。
 
 ---
 
-## 6. 実装しないこと
+## 実装へ引き継いだ判断
 
-このフェーズでは以下を行わない。
+本書で整理された内容は、以下の実装へ引き継がれた。
 
-- backend endpoint 実装
-- backend serializer 変更
-- DB migration
-- frontend UI 差し替え
-- `buildShrineExplanation.ts` のロジック削除
-- Premium 課金境界の実装変更
-- analytics event 変更
+```text
+実装準備
+↓
+ShrineMeaningPayloadV2型
+↓
+Backend Meaning Composer
+↓
+Shrine Meaning専用Endpoint
+↓
+Frontend Payload Reader
+```
+
+### 実装された主要要素
+
+- Source / Generated / Displayの3層Payload
+- Backend Meaning Composer
+- Meaning専用Endpoint
+- Frontend Payload型
+- Error Contract
+- ComposerおよびEndpoint Test
+
+詳細な現行契約は、Reference文書と実装コードを参照する。
 
 ---
 
-## 7. backend meaning composer docs 分離方針
+## 現行仕様との責務境界
 
-backend meaning composer の詳細設計は、次フェーズで backend 寄りの設計ドキュメントへ分離する。
+### 本書が保持するもの
 
-候補:
+- ShrineMeaningPayload v2実装前の責務整理
+- 専用Endpointを採用した判断根拠
+- Frontend / Backend責務分離の背景
+- Access境界を検討した過程
+- `buildShrineExplanation.ts`縮小方針の履歴
+- 後続実装へ至った判断経路
 
-```txt
-docs/meaning-layer/backend-meaning-composer.md
-```
+### 本書が扱わないもの
 
-分離先で扱う内容:
-
-- composer の入力 source fields
-- source field の正規化ルール
-- generated fields の生成責務
-- Free / Premium 境界制御
-- `history_theme` / `sajin` / `goriyaku` / `description` の扱い
-- frontend fallback との責務境界
-- detail meaning endpoint との接続
-
-この implementation plan では、composer の詳細実装までは扱わない。
+- 現在のPayload Field
+- 現在のEndpoint Response
+- 現在のDisplay Block ID
+- 現在のAccess Policy
+- 現在のFrontend型
+- 現在のFallback実装
+- UI仕様
+- Analytics契約
+- 実装計画
+- 開発タスク
 
 ---
 
-## 8. 次フェーズ候補
+## 関連ドキュメント
 
-```markdown
-- [ ] backend meaning composer の設計を backend docs に分離する
-- [ ] detail meaning endpoint の URL / response contract を固定する
-- [ ] ShrineMeaningPayloadV2 を backend response に合わせて調整する
-- [x] buildShrineExplanation.ts に fallback marker コメントを追加する
-- [ ] frontend detail page で v2 payload を読む導線を検討する
-- [ ] Free / Premium 表示境界を cardVisibility と対応させる
-```
+### 現行の責務・思想
+
+- `docs/core/architecture.md`
+- `docs/core/meaning-layer.md`
+- `docs/core/meaning-layer-connection.md`
+
+### 現行実装を補足するReference
+
+- `docs/meaning-layer/shrine-meaning-payload-v2.md`
+- `docs/meaning-layer/backend-meaning-composer.md`
+
+### 現行のfield-level契約
+
+- `backend/temples/services/shrine_meaning_composer.py`
+- `backend/temples/api/views/shrine_meaning.py`
+- `apps/web/src/lib/shrineMeaning/payloadV2.ts`
+
+---
+
+## 更新ルール
+
+- 本書はShrineMeaningPayload v2実装前の準備記録として保持する
+- 現行仕様や実装変更に合わせて更新しない
+- 当時の判断内容に重大な事実誤認が確認された場合のみ修正する
+- TODO、PR候補、実装Phase、進捗情報、作業履歴は記載しない

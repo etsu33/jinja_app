@@ -6,10 +6,17 @@ export type ScoreV3Metrics = {
 };
 
 export type ScoreV3FunnelMetrics = {
+  detail_view_count: number;
+  route_open_count: number;
+  save_count: number;
+  visit_count: number;
+  reflection_count: number;
   route_open_rate: number;
   save_rate: number;
   visit_done_rate: number;
   reflection_saved_rate: number;
+  save_to_visit_cvr: number;
+  visit_to_reflection_cvr: number;
 };
 
 export type ScoreV3Decision = {

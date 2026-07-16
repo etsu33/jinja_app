@@ -151,6 +151,135 @@ def build_recommendation_score_v3_breakdown(
     }
 
 
+SCORE_V3_HISTORY_THEME_BY_AXIS: dict[str, dict[str, float]] = {
+    "career_change": {
+        "勝負": 1.0,
+        "再出発": 0.8,
+        "学び": 0.6,
+        "守り": 0.3,
+        "静寂": 0.2,
+        "縁": 0.2,
+        "復興": 0.2,
+    },
+    "relationship_repair": {
+        "縁": 1.0,
+        "静寂": 0.7,
+        "守り": 0.5,
+        "再出発": 0.4,
+        "復興": 0.4,
+        "学び": 0.2,
+        "勝負": 0.1,
+    },
+    "money_growth": {
+        "守り": 1.0,
+        "勝負": 0.8,
+        "再出発": 0.6,
+        "学び": 0.4,
+        "縁": 0.3,
+        "静寂": 0.2,
+        "復興": 0.2,
+    },
+    "restart_mindset": {
+        "再出発": 1.0,
+        "勝負": 0.8,
+        "静寂": 0.6,
+        "学び": 0.5,
+        "復興": 0.5,
+        "守り": 0.3,
+        "縁": 0.2,
+    },
+    "nature_reset": {
+        "静寂": 1.0,
+        "復興": 0.8,
+        "守り": 0.6,
+        "縁": 0.2,
+        "学び": 0.2,
+        "再出発": 0.2,
+        "勝負": 0.0,
+    },
+    "rest_healing": {
+        "静寂": 1.0,
+        "復興": 0.8,
+        "守り": 0.6,
+        "縁": 0.2,
+        "学び": 0.2,
+        "再出発": 0.2,
+        "勝負": 0.0,
+    },
+    "health": {
+        "守り": 1.0,
+        "復興": 0.9,
+        "静寂": 0.6,
+        "再出発": 0.3,
+        "学び": 0.2,
+        "縁": 0.1,
+        "勝負": 0.0,
+    },
+    "study_success": {
+        "学び": 1.0,
+        "勝負": 0.7,
+        "静寂": 0.5,
+        "再出発": 0.4,
+        "守り": 0.3,
+        "復興": 0.2,
+        "縁": 0.1,
+    },
+    "protection": {
+        "守り": 1.0,
+        "静寂": 0.7,
+        "復興": 0.5,
+        "再出発": 0.3,
+        "縁": 0.2,
+        "学び": 0.1,
+        "勝負": 0.0,
+    },
+    "travel_safe": {
+        "守り": 1.0,
+        "縁": 0.5,
+        "静寂": 0.3,
+        "再出発": 0.3,
+        "勝負": 0.2,
+        "学び": 0.2,
+        "復興": 0.1,
+    },
+}
+
+SCORE_V3_HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS: dict[str, dict[str, float]] = {
+    axis: dict(theme_scores)
+    for axis, theme_scores in SCORE_V3_HISTORY_THEME_BY_AXIS.items()
+}
+
+
+def resolve_score_v3_history_signal(
+    *,
+    consultation_axis: str | None,
+    history_theme: str | None,
+) -> float:
+    axis = str(consultation_axis or "").strip()
+    theme = str(history_theme or "").strip()
+
+    if not axis or not theme:
+        return 0.0
+
+    return float(SCORE_V3_HISTORY_THEME_BY_AXIS.get(axis, {}).get(theme, 0.0))
+
+
+def resolve_history_theme_candidate_boost(
+    *,
+    consultation_axis: str | None,
+    history_theme: str | None,
+) -> float:
+    axis = str(consultation_axis or "").strip()
+    theme = str(history_theme or "").strip()
+
+    if not axis or not theme:
+        return 0.0
+
+    return float(
+        SCORE_V3_HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS.get(axis, {}).get(theme, 0.0)
+    )
+
+
 # 方角ラベル（日本語）→ shrine 側の direction/direction_tags で使われうる値
 _DIRECTION_LABELS_JA: set[str] = {"東", "西", "南", "北", "北東", "南東", "南西", "北西"}
 
@@ -860,6 +989,7 @@ def _attach_breakdown(
     user_origin: Optional[Dict[str, Any]] = None,
     user=None,
     profile_context: Optional[Dict[str, Any]] = None,
+    consultation_axis: Optional[str] = None,
 ) -> None:
     """
     rec（1件の神社辞書）にスコアの内訳を追加する。
@@ -983,6 +1113,12 @@ def _attach_breakdown(
         + sum(text_score_by_tag.values()) * 1.2
         + study_bonus
     )
+
+    history_theme_candidate_boost = resolve_history_theme_candidate_boost(
+        consultation_axis=consultation_axis,
+        history_theme=rec.get("history_theme"),
+    )
+    score_need_rank_weighted += history_theme_candidate_boost
 
     w1 = float(weights.get("element", 0.0))
     w2 = float(weights.get("need", 0.0))
@@ -1171,7 +1307,10 @@ def _attach_breakdown(
     # Score v3 統合（shadow モード: 既存 score_total / sort 順に影響しない）
     score_v3_breakdown = build_recommendation_score_v3_breakdown(
         state_signal=float(score_need),
-        history_signal=0.0,
+        history_signal=resolve_score_v3_history_signal(
+            consultation_axis=consultation_axis,
+            history_theme=rec.get("history_theme"),
+        ),
         distance_signal=float(score_distance),
         behavior_profile={"total": light_behavior["total"]},
         profile_signal={"score": profile_signal_score},
@@ -1194,6 +1333,7 @@ def _attach_breakdown(
                 "raw": int(score_need),
                 "rank_raw": int(score_need_rank),
                 "rank_weighted": float(score_need_rank_weighted),
+                "history_theme_candidate_boost": float(history_theme_candidate_boost),
                 "weight": float(w2),
                 "matched_tags": matched_all,
                 "matched_by_tag_count": len(matched_by_tag),
@@ -1202,6 +1342,13 @@ def _attach_breakdown(
                 "contribution": float(score_need * w2),
                 "rank_contribution": float(score_need_rank * w2),
                 "rank_weighted_contribution": float(score_need_rank_weighted * w2),
+            },
+            "history_theme_candidate_boost": {
+                "raw": float(history_theme_candidate_boost),
+                "weight": float(w2),
+                "contribution": float(history_theme_candidate_boost * w2),
+                "consultation_axis": str(consultation_axis or "") or None,
+                "history_theme": str(rec.get("history_theme") or "") or None,
             },
             "popular": {
                 "raw": float(score_popular),
@@ -1328,6 +1475,7 @@ def _attach_breakdown(
         reason_facts = [primary_reason]
 
     rec["_reason_facts"] = reason_facts
+    rec["reason_facts"] = reason_facts
     rec["_primary_reason_source"] = str(primary_reason.get("type") or "")
     rec["_primary_reason_label"] = str(primary_reason.get("label") or "")
     entry_context = _build_entry_context(query=query, birthdate=birthdate)
@@ -1369,8 +1517,9 @@ def _prefilter_candidates_for_need(
     candidates: List[Dict[str, Any]],
     *,
     need_tags: List[str],
+    consultation_axis: str | None = None,
 ) -> List[Dict[str, Any]]:
-    scored: List[tuple[int, float, str, Dict[str, Any]]] = []
+    scored: List[tuple[float, float, str, Dict[str, Any]]] = []
 
     need_tags_clean = _normalize_need_tags(need_tags, max_tags=10)
     is_study_need = "study" in need_tags_clean
@@ -1424,6 +1573,14 @@ def _prefilter_candidates_for_need(
             score += 2
             matched.append("study:text_bonus")
 
+        history_theme_candidate_boost = resolve_history_theme_candidate_boost(
+            consultation_axis=consultation_axis,
+            history_theme=c.get("history_theme"),
+        )
+        if history_theme_candidate_boost > 0:
+            score += history_theme_candidate_boost
+            matched.append(f"history_theme:{c.get('history_theme')}")
+
         row = dict(c)
         row["_prefilter_debug"] = {
             "score": score,
@@ -1431,6 +1588,9 @@ def _prefilter_candidates_for_need(
             "text_score_by_tag": text_score_by_tag,
             "matched_text_hints_by_tag": matched_text_hints_by_tag,
             "matched_gid_tags": matched_gid_tags,
+            "history_theme_candidate_boost": float(history_theme_candidate_boost),
+            "consultation_axis": str(consultation_axis or "") or None,
+            "history_theme": str(c.get("history_theme") or "") or None,
         }
 
         scored.append(
@@ -1902,4 +2062,6 @@ __all__ = [
     "resolve_score_v3_mode",
     "resolve_score_v3_mode_detail",
     "resolve_score_sort_key",
+    "resolve_score_v3_history_signal",
+    "resolve_history_theme_candidate_boost",
 ]
