@@ -1154,3 +1154,23 @@ root README、docs README、Core文書、Product文書および現行正本を�
 A1〜A10のInventory、移動前パス、当時の参照調査結果は監査証跡として保持する。
 
 これにより、A10のPR2「Product Active配置」は完了した。Product ReferenceおよびKnowledge / Analytics文書の移動は後続PRで実行する。
+
+### PR3 Product Reference Directory Move 実行結果
+
+A10で確定した配置計画のうち、Product Reference文書7件の移動を実行した。
+
+#### Productへ移動
+
+- `docs/card-visibility-renderer-split.md` → `docs/product/card-visibility-renderer-split.md`
+- `docs/concierge-card-architecture.md` → `docs/product/concierge-card-architecture.md`
+- `docs/direction-ranking-design.md` → `docs/product/direction-ranking-design.md`
+- `docs/journey-timeline-design.md` → `docs/product/journey-timeline-design.md`
+- `docs/mobile-bottom-navigation.md` → `docs/product/mobile-bottom-navigation.md`
+- `docs/monetization-flow-design.md` → `docs/product/monetization-flow-design.md`
+- `docs/shrine-detail-meaning-layer.md` → `docs/product/shrine-detail-meaning-layer.md`
+
+`docs/README.md`、`docs/product/README.md`および現行仕様を案内するAudit文書の参照を新パスへ更新した。
+
+現行文書を対象とした旧パスgrepは0件であり、7文書はすべてGit上で100% renameとして認識された。
+
+これにより、A10のPR3「Product Reference配置」は完了した。残るroot直下文書は、Knowledge / Analytics配置PRで整理する。
