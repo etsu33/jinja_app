@@ -216,7 +216,7 @@ Product文書は、体験、機能目的、入力・出力の意味および責�
 | `concierge-first-final-spec.md` | Active | Active維持・整理対象 | Concierge Firstの主導線、Home Hero、Entry、Filter、Need / Compat境界 | 実装前表現、MVP実装順、Score v2入力、URL query詳細が混在 | 現行体験導線と画面責務を残し、Score詳細はAnalytics / Backend、実装順はRoadmapへ委譲 |
 | `concierge-modes.md` | Active | Active維持 | Need / Compat / Route / Theme / Search Modeの役割と入力文脈 | 大きな責務混在は確認されない | Mode種類または責務変更時のみ更新する現行方針を維持 |
 | `consultation-theme-taxonomy.md` | Active | Active維持・境界整理対象 | Home Hero / Concierge Entryで使う相談テーマ、表示文言、`theme_key` | `consultation_axis`、`need_tags`、`history_theme`対応表がBackend・Knowledge責務と重複する可能性 | UI分類と表示文言をProductに残し、解釈・推薦ロジックはBackend、意味分類はKnowledge監査後に委譲範囲を確定 |
-| `recommendation-v4-interpreter-contract.md` | Active | Active維持・整理対象 | Consultation Interpreterの出力項目と意味責務 | 実装ファイル名、Expected Keys、KPI、現行関数名が混在 | Fieldの意味契約を残し、物理構造・関数名・KPIは実装またはAnalyticsへ委譲 |
+| `recommendation-v4-interpreter-contract.md` | Active | Active維持・意味契約への整理完了 | Consultation Interpreterの出力項目と意味責務 | 実装ファイル名、Expected Keys、KPI、現行関数名が混在 | Fieldの意味契約を残し、物理構造・関数名・KPIは実装またはAnalyticsへ委譲 |
 | `home-hero-final-wireframe.md` | Reference | Reference維持 | Home Heroの画面構成とUI補足 | Active文書と画面責務が一部重複 | UI補足に限定し、体験判断は`concierge-first-final-spec.md`へ委譲 |
 | `concierge-entry-final-wireframe.md` | Reference | Reference維持 | Concierge Entryの画面構成とUI補足 | Active文書と画面責務が一部重複 | UI構成、表示要素、CTA補足に限定 |
 | `concierge-filter-area.md` | Reference | Reference維持・整理対象 | Filterの画面構成と補助条件UI | Frontend / Backend責務とデータ接続詳細が一部混在 | UI責務を残し、解釈・判定はBackend正本へ委譲 |
@@ -231,8 +231,8 @@ Product文書は、体験、機能目的、入力・出力の意味および責�
 
 | 文書 | 現在分類 | 監査判定 | 主責務 | 確認した問題 | 後続対応 |
 |---|---|---|---|---|---|
-| `history-theme-taxonomy.md` | Active | Knowledge移管候補・Active維持 | `history_theme`7カテゴリの名称、定義、行動テーマおよび概念境界 | カテゴリ定義、相談例、ご利益との関係はProduct体験仕様よりKnowledgeの用語・意味分類責務に近い。Product / Backend / Analyticsの責務説明も混在する | Knowledge責務監査で移動先を確定し、Productには体験上の利用箇所のみ残す。移管完了まではActiveとして扱う |
-| `meaning-translation-mapping.md` | Active | Active維持・大幅整理対象 | 相談、意味変換、神社文脈、Action、Visit、Reflectionを接続するProduct上の変換関係 | Runtime実装状況、Backendファイル名、Score計算、Snapshot物理構造、Analytics指標、神社データ管理方針が混在する | 体験上の変換関係と各機能への接続を残す。システム構造はCore、カテゴリ定義と神社付与基準はKnowledge、Scoreと実装詳細はBackend、Event・KPIはAnalyticsへ委譲 |
+| `history-theme-taxonomy.md` | Active | Active維持・Product上のカテゴリ正本として責務境界整理完了、移管判断は保留継続 | `history_theme`7カテゴリの名称、定義、行動テーマおよび概念境界 | カテゴリ定義、相談例、ご利益との関係はProduct体験仕様よりKnowledgeの用語・意味分類責務に近い。Product / Backend / Analyticsの責務説明も混在する | Knowledge責務監査で移動先を確定し、Productには体験上の利用箇所のみ残す。移管完了まではActiveとして扱う |
+| `meaning-translation-mapping.md` | Active | Active維持・責務整理完了 | 相談、意味変換、神社文脈、Action、Visit、Reflectionを接続するProduct上の変換関係 | Runtime実装状況、Backendファイル名、Score計算、Snapshot物理構造、Analytics指標、神社データ管理方針が混在する | 体験上の変換関係と各機能への接続を残す。システム構造はCore、カテゴリ定義と神社付与基準はKnowledge、Scoreと実装詳細はBackend、Event・KPIはAnalyticsへ委譲 |
 | `shrine-detail-layer.md` | Active | Active維持 | 神社詳細画面のPublic / Context / Personal Layerと画面責務 | 大きな責務混在は確認されないが、Meaning Layer補足文書およびv3設計と情報レイヤの説明が重複する | 神社詳細の情報レイヤ境界を管理する正本として維持し、詳細な画面構成や実装順序は補足文書・実装へ委譲 |
 | `shrine-detail-meaning-layer.md` | Reference | 統合候補 | 神社詳細におけるMeaning情報の表示順、主役情報、補強情報および表現原則 | `shrine-detail-layer.md`の情報レイヤ、`shrine-detail-v3-design.md`の画面構造、Knowledgeのコピー原則と重複する。既存コード対応、今後の実装方針、TODOも混在する | 独自のMeaning表示原則を`shrine-detail-layer.md`またはKnowledge文書へ統合し、統合後はArchiveまたはDelete候補として再判定 |
 | `shrine-detail-v3-design.md` | Active | Reference化候補・整理対象 | Shrine Detail v3のUX再設計、画面構成および実装時の設計背景 | Current State、Proposed構造、将来のCardVisibilityPolicy、Analytics Event・KPI、Premium導線、実装境界が混在する。現行仕様の正本というより実装フェーズの設計記録に近い | 現行の画面責務は`shrine-detail-layer.md`へ統合し、v3移行時の設計背景としてReferenceへ変更する。AnalyticsはAnalytics文書へ委譲 |
@@ -243,20 +243,20 @@ Product文書は、体験、機能目的、入力・出力の意味および責�
 
 | 文書 | 現在分類 | 監査判定 | 主責務 | 確認した問題 | 後続対応 |
 |---|---|---|---|---|---|
-| `action_suggestion_v4.md` | Active | Active維持・Analytics委譲対象 | Recommendation Reasonから次に取りやすい行動を生成するInput / Outputと生成ルール | `action_suggestion_reflection_preview_view`、`actionPromptType`などAnalytics Event・Payload契約が混在する | Actionの意味、出力項目、生成原則をProductに残し、正確なEvent名・Payload・計測語彙はAnalyticsへ委譲 |
-| `visit-reflection-flow.md` | Active | Active維持・大幅整理対象 | 参拝完了からReflection保存、次回相談までを接続する体験とVisit / Reflectionの意味責務 | Event名、TypeScript Payload型、Django Model全文、Index、採用Field、Mobile送信状況、PostHog集計、実装ファイル名が混在する | 体験フロー、Visit / Reflectionの意味責務、Free / Premium境界を残す。Event・Payload・FunnelはAnalytics、Model・Field・Index・APIは実装とテストへ委譲 |
-| `reflection-timeline-design.md` | Active | Reference化候補・統合対象 | 相談、参拝、振り返り、再相談を時間軸で接続する長期体験思想 | 写真、御朱印、検索、感情推移、行動記録、Premium分析、KPIなど未実装または将来構想が現行仕様として混在する。Journey Timeline実装との名称・責務差もある | 現行のTimeline体験責務をJourney Timeline正本へ統合し、本書は長期構想・設計思想を残すReferenceへ変更する |
-| `journey-timeline-design.md` | Reference | Reference維持・統合候補 | EventとStateを分離したJourney Timelineの情報設計と移行方針 | 現行実装に近いが内容が簡略で、正確なEvent構造・表示・Visit / Reflection接続はBackend・Mobile実装とテストに委譲されている。Reflection Timelineと責務が重複する | Reflection Timelineの現行利用可能な情報を統合し、Journey Timelineの補足設計として維持する。物理仕様は実装とテストを正本とする |
+| `action_suggestion_v4.md` | Active | Active維持・Product責務整理完了、Analytics物理契約は委譲済み | Recommendation Reasonから次に取りやすい行動を生成するInput / Outputと生成ルール | `action_suggestion_reflection_preview_view`、`actionPromptType`などAnalytics Event・Payload契約が混在する | Actionの意味、出力項目、生成原則をProductに残し、正確なEvent名・Payload・計測語彙はAnalyticsへ委譲 |
+| `visit-reflection-flow.md` | Active | Active維持・体験責務への整理完了 | 参拝完了からReflection保存、次回相談までを接続する体験とVisit / Reflectionの意味責務 | Event名、TypeScript Payload型、Django Model全文、Index、採用Field、Mobile送信状況、PostHog集計、実装ファイル名が混在する | 体験フロー、Visit / Reflectionの意味責務、Free / Premium境界を残す。Event・Payload・FunnelはAnalytics、Model・Field・Index・APIは実装とテストへ委譲 |
+| `reflection-timeline-design.md` | Reference | Reference | 写真、御朱印、検索、比較、感情推移など、長期的な振り返り体験の構想 | 写真、御朱印、検索、感情推移、行動記録、Premium分析、KPIなど未実装または将来構想が現行仕様として混在していた。現行のTimeline体験責務はJourney Timelineへ統合済み | 現行のTimeline体験責務はJourney Timeline正本へ統合完了。本書は長期構想・設計思想を扱うReferenceとして維持する |
+| `journey-timeline-design.md` | Active | Active正本 | 相談・提案・参拝・振り返りを「ご縁の歩み」として時系列で接続する現行体験設計 | 従来は内容が簡略でReflection Timelineと責務が重複していたが、Event・State分離とVisit / Reflection接続方針を整理し、正本として統合完了 | Journey Timelineの現行体験仕様を管理する正本として維持する。正確なEvent構造・API・Serializer・表示処理はBackend・Mobile実装とテストを正本とする |
 | `reflection-funnel-dashboard.md` | Reference | Analytics移管候補・Reference維持 | VisitからReflection保存までのFunnel、KPIおよびPostHog Dashboard設計 | 内容の中心がEvent、KPI、Breakdown、Dashboard、観測期間およびSuccess Criteriaであり、ProductよりAnalytics責務に属する | `docs/analytics/`へ移管または同等文書へ統合する。移管完了まではReferenceとして維持し、Product README上の分類を後続PRで更新する |
 
 ### Premium・Billing
 
 | 文書 | 現在分類 | 監査判定 | 主責務 | 確認した問題 | 後続対応 |
 |---|---|---|---|---|---|
-| `premium-experience.md` | Active | Active維持・責務明確化対象 | Free / Premiumの体験価値、画面別の体験差、保存・履歴・比較の原則 | `pricing.md`および`monetization-flow-design.md`とPremium価値の説明が一部重複する。現行仕様と将来の比較・分析機能も一部混在する | Premium体験価値の正本として維持し、料金・Billing判定・収益導線・Analyticsを各専用文書へ委譲する |
-| `pricing.md` | Active | Reference化候補・統合候補 | Premiumの支払対象、Free / Premium境界および価格表現の原則 | 具体的な料金・請求周期・プランを管理しておらず、内容の多くが`premium-experience.md`と重複する。参照元もAudit文書に限られる | 独自の価格表現原則を`premium-experience.md`へ統合し、具体的な料金体系が確定するまではReferenceへ変更することを後続PRで判断する |
-| `billing-paywall.md` | Active | Active維持・大幅整理対象 | Billing状態、Premium優先、Free回数制限およびPaywall表示の判定契約 | API Endpoint、Response Field、JavaScript判定コード、未実装の共通Hook、テスト要件が混在する。Markdownコードブロック構造も再確認が必要 | 利用可否と判定原則をProductに残し、正確なField・Endpoint・実装コード・テスト要件はBackend / Frontend実装とテストへ委譲する |
-| `monetization-flow-design.md` | Reference | Reference維持・Analytics委譲対象 | Premium提示タイミング、CTA方針、収益導線思想およびRetention設計背景 | Event名、Funnel、Revenue KPI、Context Property、未実装機能、将来拡張が混在する。現行仕様と将来構想の境界が曖昧 | 収益導線の設計思想をReferenceとして維持する。Event・Payload・KPI・FunnelはAnalyticsへ委譲し、未実装案は将来構想として明示する |
+| `premium-experience.md` | Active | Active維持・責務明確化完了 | Free / Premiumの体験価値、画面別の体験差、保存・履歴・比較の原則 | `pricing.md`および`monetization-flow-design.md`とPremium価値の説明が一部重複していた。料金・Billing判定・収益導線・Analyticsへの委譲先が明記されていなかった | Premium体験価値の正本として維持。責務境界節で料金・Billing判定・収益導線・Analyticsの委譲先を明記済み |
+| `pricing.md` | Active | Active維持・責務整理完了 | Premiumの支払対象、Free / Premium境界および価格表現の原則 | 具体的な料金・請求周期・プランを管理しておらず、内容の多くが`premium-experience.md`と重複する。参照元もAudit文書に限られる | 価格表現の原則をProductに残し、Billing判定・決済実装への委譲先を明記済み。`premium-experience.md`への統合およびReference化は、体験境界の最終判断を伴うため後続PRで判断する |
+| `billing-paywall.md` | Active | Active維持・大幅整理完了 | Billing状態、Premium優先、Free回数制限およびPaywall表示の判定原則 | API Endpoint、Response Field、未閉鎖のJavaScript判定コード、テスト要件が混在し、Markdownコードブロックも未閉鎖だった | 利用可否と判定原則をProductに残し、API Endpoint・Field・実装コード・テストケースはBackend / Frontend実装とテストへ委譲済み。コードブロック不整合も解消 |
+| `monetization-flow-design.md` | Reference | Reference維持・Analytics委譲完了 | Premium提示タイミング、CTA方針、収益導線思想およびRetention設計背景 | Event名、Funnel、Revenue KPI、Context Propertyが現行仕様として本文に列挙され、未実装の将来拡張案との境界が曖昧だった | 収益導線の設計思想をReferenceとして維持。Event・Payload・KPI・Funnelは`docs/analytics/`配下へ委譲し、将来拡張は現行仕様に含まない旨を明記済み |
 
 ### Explore・投稿
 
@@ -269,7 +269,7 @@ Product文書は、体験、機能目的、入力・出力の意味および責�
 
 | 文書 | 現在分類 | 監査判定 | 主責務 | 確認した問題 | 後続対応 |
 |---|---|---|---|---|---|
-| `README.md` | Statusなし | Active付与 | Product文書群の入口、読む順番、分類および各文書の役割案内 | 文書自体にStatus表記がなく、監査結果確定後の分類変更が未反映である | Product文書の入口としてActiveを付与し、監査確定後に読む順番、正本、Reference、Archiveおよび役割説明を更新する |
+| `README.md` | Active | Active付与済み | Product文書群の入口、読む順番、分類および各文書の役割案内 | 文書自体にStatus表記がなく、監査結果確定後の分類変更が未反映であった | Product文書の入口としてActiveを付与済み。読む順番、正本、Reference、Archiveおよび役割説明はJourney Timeline正本化を反映して更新済み |
 | `product-document-audit.md` | Statusなし | Reference付与・整理対象 | 過去のProduct文書分類、統合履歴および整理時の判断記録 | 現行READMEの分類根拠として参照されている一方、今回の責務監査と監査範囲が重複する。Statusがなく、どちらが最新監査か判断しにくい | 過去の分類監査としてReferenceを付与する。今回の`docs/audit/product-document-responsibility-audit.md`を責務監査の最新記録とし、役割境界を明記する |
 | `mobile-bottom-navigation.md` | Reference | Reference維持 | Mobile下部ナビゲーションのタブ構成、配置理由およびUI設計補足 | UI構成の補足に限定されており大きな責務混在はないが、現行画面構造との差分が生じる可能性がある | Mobile UIの設計背景としてReferenceを維持し、現行のRoute、画面構成および挙動はMobile実装とテストを正本とする |
 
@@ -348,12 +348,12 @@ Product文書は、体験、機能目的、入力・出力の意味および責�
 - `concierge-modes.md`
 - `consultation-theme-taxonomy.md`
 - `history-theme-taxonomy.md`
+- `journey-timeline-design.md`
 - `kami-musubi-experience-design.md`
 - `meaning-translation-mapping.md`
 - `premium-experience.md`
 - `pricing.md`
 - `recommendation-v4-interpreter-contract.md`
-- `reflection-timeline-design.md`
 - `shrine-detail-layer.md`
 - `shrine-detail-v3-design.md`
 - `shrine-submission-flow.md`
@@ -369,12 +369,12 @@ Product文書は、体験、機能目的、入力・出力の意味および責�
 - `direction-ranking-design.md`
 - `explore-integration-design.md`
 - `home-hero-final-wireframe.md`
-- `journey-timeline-design.md`
 - `mobile-bottom-navigation.md`
 - `monetization-flow-design.md`
 - `need-mode-ui-flow.md`
 - `product-document-audit.md`
 - `reflection-funnel-dashboard.md`
+- `reflection-timeline-design.md`
 - `shrine-detail-meaning-layer.md`
 - `visit-style-taxonomy.md`
 
@@ -389,16 +389,14 @@ Product文書は、体験、機能目的、入力・出力の意味および責�
   - `concierge-card-architecture.md`への統合候補
 - `shrine-detail-meaning-layer.md`
   - `shrine-detail-layer.md`またはKnowledge文書への統合候補
-- `reflection-timeline-design.md`
-  - Journey Timeline側への現行責務統合後、Reference化候補
-- `journey-timeline-design.md`
-  - Reflection Timelineとの整理・統合候補
 - `pricing.md`
   - `premium-experience.md`への独自原則統合後、Reference化候補
 - `history-theme-taxonomy.md`
-  - Knowledge移管候補
+  - Knowledge移管候補（責務境界整理は完了、移管判断は保留継続）
 - `reflection-funnel-dashboard.md`
   - Analytics移管候補
+
+Timeline正本名称は「Journey Timeline」で確定した。`journey-timeline-design.md`をJourney Timelineの現行体験仕様の正本（Active）とし、`reflection-timeline-design.md`は長期構想・設計思想を扱うReferenceへ変更した。統合候補としての判断保留は解除済みである。
 
 ### Delete候補
 
@@ -409,7 +407,6 @@ Product文書は、体験、機能目的、入力・出力の意味および責�
 ### 判断保留
 
 - `history-theme-taxonomy.md`のKnowledge移管先
-- `reflection-timeline-design.md`と`journey-timeline-design.md`の正本名称
 - `pricing.md`を独立文書として残すか
 - `card-visibility-renderer-split.md`統合後のArchive / Delete
 - `shrine-detail-meaning-layer.md`統合後のArchive / Delete

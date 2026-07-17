@@ -1,8 +1,9 @@
 > **Status: Active**
 >
-> 本ドキュメントは、対象機能の現行仕様を管理する正本文書である。
+> 本ドキュメントは、Free / Premiumの体験価値と画面別の境界を管理する正本文書である。
 >
-> 正確な物理実装と挙動は、関連する実装コードおよびテストを最終的な正本とする。
+> 具体的な料金・プラン構成は`docs/product/pricing.md`、Billing / Paywallの判定原則は`docs/product/billing-paywall.md`、収益導線の設計は`docs/product/monetization-flow-design.md`を参照する。正確な物理実装と挙動は、関連する実装コードおよびテストを最終的な正本とする。
+
 # Premium Experience 境界
 
 ## 目的
@@ -92,6 +93,8 @@ Premiumにおける比較対象は、他のユーザーではなく過去の自�
 
 比較は優劣を評価するためではなく、相談テーマ、行動、参拝傾向および振り返りの差分を理解し、自身の変化を振り返るために使用する。
 
+---
+
 ## 画面別の境界
 
 ### コンシェルジュ
@@ -131,3 +134,66 @@ Premium の継続価値を見せる画面。
 - Premium 判定そのものは `docs/product/billing-paywall.md` を参照する
 - Premium UI を追加する場合は、まず本ドキュメントの中心価値に該当するか確認する
 - 投稿機能は現時点では Premium 条件と結びつけない
+
+---
+
+## 責務境界
+
+### Product
+
+Productでは以下を管理する。
+
+- Free / Premiumの体験価値と価値観
+- 画面別のFree / Premium境界
+- 置いてよい表現、置かない表現の原則
+- 保存・履歴・比較の意味責務
+
+### Pricing
+
+具体的な料金、請求周期、プラン構成および価格表現の原則は、`docs/product/pricing.md`を正本とする。
+
+### Billing・Paywall
+
+Billing状態の判定原則、Paywall表示の判定原則および利用制限の扱いは、`docs/product/billing-paywall.md`を正本とする。
+
+正確なAPI Endpoint、Field、判定ロジックの実装およびテストケースは、関連するBackend・Frontend実装とテストを正本とする。
+
+### Monetization
+
+Premium提示タイミング、CTA方針および収益導線の設計背景は、`docs/product/monetization-flow-design.md`を参照する。
+
+正確なEvent、Payload、FunnelおよびKPIは、`docs/analytics/`配下の正本文書を参照する。
+
+---
+
+## 責務外
+
+本書では以下を管理しない。
+
+- 具体的な料金、請求周期およびプラン構成
+- Billing状態、Paywall表示の判定ロジック
+- API Endpoint、レスポンスField
+- Event、Payload、Funnel、KPI
+- 実装コンポーネント、テストケース
+
+---
+
+## 関連ドキュメント
+
+- `docs/product/README.md`
+- `docs/product/pricing.md`
+- `docs/product/billing-paywall.md`
+- `docs/product/monetization-flow-design.md`
+- `docs/product/shrine-detail-layer.md`
+- `docs/product/visit-reflection-flow.md`
+- `docs/product/journey-timeline-design.md`
+
+---
+
+## 更新ルール
+
+- 本書はFree / Premiumの体験価値と画面別の境界を管理する。
+- Premiumの中心価値または画面別境界が変更された場合は、本書を更新する。
+- 具体的な料金、プラン構成、Billing判定ロジック、Event、Payload、FunnelおよびKPIは本書で重複管理しない。
+- 物理実装のみを変更した場合は、本書の体験価値への影響を確認する。
+- TODO、PR計画、実装進捗および作業履歴は本書へ記載しない。

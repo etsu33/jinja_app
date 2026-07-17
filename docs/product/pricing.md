@@ -1,15 +1,16 @@
 > **Status: Active**
 >
-> 本ドキュメントは、対象機能の現行仕様を管理する正本文書である。
+> 本ドキュメントは、Free / Premiumの提供価値境界と価格表現の原則を管理する正本文書である。
 >
-> 正確な物理実装と挙動は、関連する実装コードおよびテストを最終的な正本とする。
+> 具体的な料金、請求周期およびプラン構成は未確定であり、Billing / Paywallの判定原則は`docs/product/billing-paywall.md`を正本とする。正確な物理実装と挙動は、関連する実装コードおよびテストを最終的な正本とする。
+
 # Pricing / Premium 境界
 
 ## 目的
 
 本ドキュメントは、free / premium の提供価値境界を明文化する。
 
-課金状態・paywall 判定の実装仕様は `docs/product/billing-paywall.md` を正本とし、本ドキュメントでは「何に対して支払うのか」を定義する。
+課金状態・paywall 判定の判定原則は `docs/product/billing-paywall.md` を正本とし、本ドキュメントでは「何に対して支払うのか」を定義する。
 
 ---
 
@@ -87,8 +88,49 @@ Premiumの価格は、単純な機能数ではなく、相談履歴、記録、�
 
 ---
 
+## 責務境界
+
+### Product
+
+Productでは以下を管理する。
+
+- Free / Premiumの提供価値境界
+- 価格表現の原則（機能数ではなく体験差で説明する方針）
+- Premium対象にできるもの・しないものの分類
+
+### Billing・Pricing実装
+
+具体的な料金、請求周期、プラン構成およびBilling / Paywallの判定原則は、`docs/product/billing-paywall.md`を正本とする。
+
+正確な決済実装、価格設定値および運用判断は、関連する実装および運用判断を正本とする。
+
+---
+
+## 責務外
+
+本書では以下を管理しない。
+
+- 具体的な料金、請求周期およびプラン構成
+- Billing状態、Paywall表示の判定ロジック
+- 決済実装、API Endpoint
+- Event、Payload、Funnel、KPI
+
+---
+
 ## 関連ドキュメント
 
-- `docs/product/billing-paywall.md`: 課金状態と paywall 判定の実装仕様
+- `docs/product/README.md`
+- `docs/product/billing-paywall.md`: Billing状態とPaywall表示の判定原則
 - `docs/product/premium-experience.md`: Premium 体験の詳細境界
+- `docs/product/monetization-flow-design.md`: 収益導線の設計背景
 - `docs/product/shrine-detail-layer.md`: 神社詳細に置く情報レイヤ
+
+---
+
+## 更新ルール
+
+- 本書はFree / Premiumの提供価値境界と価格表現の原則を管理する。
+- 提供価値境界または価格表現の原則が変更された場合は、本書を更新する。
+- 具体的な料金、請求周期、プラン構成、Billing判定ロジックおよびEvent・Payload・KPIは本書で重複管理しない。
+- 具体的な料金体系が確定した場合は、本書の記載範囲を見直す。
+- TODO、PR計画、実装進捗および作業履歴は本書へ記載しない。
