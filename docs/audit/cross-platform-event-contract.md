@@ -45,8 +45,8 @@ Current State以外(Issues以降)はすべて「事実」ではなく「提案�
 | `consultation_completed` | `ConciergeClientFull.tsx:1198` | threadId, mode, flow, hasBirthdate, recommendationCount, historyTheme, consultationAxis?, source |
 | `filter_result` | `ConciergeClientFull.tsx:1211` | source, threadId, mode, recommendation_count(snake_case混在), is_zero_result, hasFilter |
 | `consultation_theme_click` | `ConciergeClientFull.tsx:1486` | label, text(相談テーマの定型文コピー), source |
-| `action_suggestion_preview_view` | `ConciergeTopRecommendationHero.tsx:120` | source, threadId, resultSetId, shrineId, recommendationRank, position, historyTheme, actionSuggestionVersion, primaryActionType, secondaryActionType, promptType, actionSource, sourceKeys, summaryLine |
-| `reflection_prompt_view`(concierge文脈) | `ConciergeTopRecommendationHero.tsx:121` | 上記 + reflectionPromptSourceSeed |
+| `action_suggestion_preview_view` | `ConciergeTopRecommendationHero.tsx:120` | source, threadId, resultSetId, shrineId, recommendationRank, position, historyTheme, actionSuggestionVersion, primaryActionType, secondaryActionType, actionPromptType, actionSource, sourceKeys, summaryLine |
+| `action_suggestion_reflection_preview_view` | `ConciergeTopRecommendationHero.tsx:123`（訂正: 初回監査時は`reflection_prompt_view`(concierge文脈)として誤記録していたが、実際のイベント名は別物） | 上記 + reflectionPromptSourceSeed |
 | `concierge_result_impression` | `ConciergeSectionsRenderer.tsx:358` | source, threadId, resultSetId, shrineId, position, recommendationRank, mode, historyTheme, consultationAxis? |
 | `shrine_detail_transition` | `ConciergeSectionsRenderer.tsx:847,983` | source, threadId, resultSetId, position, recommendationRank, shrineId, mode, flow, hasBirthdate, recommendationCount, historyTheme, consultationAxis?, firstClick |
 | `recommendation_quality` | `features/concierge/hooks.ts:140` | source, threadId, shrineId, recommendationRank, accessLevel, shrine_data_rate等snake_caseメトリクス群 |
