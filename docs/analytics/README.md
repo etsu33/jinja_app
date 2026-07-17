@@ -13,6 +13,7 @@ KAMI MUSUBIのイベント、Payload、KPI、Funnelおよび計測責務に関�
 | ドキュメント | 責務 |
 | --- | --- |
 | `monetization-funnel.md` | Premium / Monetization FunnelのEvent名を管理する |
+| `save-premium-correlation.md` | 保存行動とPremium転換に関するEvent間の相関分析の読み方を管理する |
 
 ---
 
