@@ -338,6 +338,8 @@ Productでは、VisitおよびReflection体験について、以下を観測す�
 - 集計方法
 - Dashboard構成
 
+参拝から振り返りまでのFunnel、KPIおよびPostHog Dashboard構成は、`docs/analytics/reflection-funnel-dashboard.md`を参照する。
+
 Analyticsは体験改善の観測に使用する。
 
 個別ユーザーの心理状態、宗教的効果、信仰の程度または人生上の成果を判定するためには使用しない。
@@ -550,7 +552,7 @@ Reflectionでは以下を扱わない。
 - `docs/product/journey-timeline-design.md`
 - `docs/analytics/reflection-next-recommendation-design.md`
 - `docs/analytics/history-theme-dashboard.md`
-- `docs/product/reflection-funnel-dashboard.md`
+- `docs/analytics/reflection-funnel-dashboard.md`
 - `docs/core/architecture.md`
 - `docs/core/meaning-layer-connection.md`
 - `docs/core/recommendation-readiness.md`

@@ -1,8 +1,8 @@
 > **Status: Reference**
 >
-> 本ドキュメントは、対象機能の設計背景・補足方針を記録した参照資料である。
+> 本ドキュメントは、Premium提示タイミング、CTA方針および収益導線の設計背景を記録した参照資料である。
 >
-> 現行仕様は関連するActive文書、実装コードおよびテストを最終的な正本とする。
+> Free / Premiumの提供価値境界は`docs/product/premium-experience.md`、価格表現は`docs/product/pricing.md`、Billing / Paywallの判定原則は`docs/product/billing-paywall.md`を正本とする。正確なEvent名は`docs/analytics/monetization-funnel.md`、Payload・FunnelおよびKPIは`docs/analytics/`配下の正本文書、現行仕様は実装コードおよびテストを最終的な正本とする。
 
 # Monetization Flow Design
 
@@ -352,107 +352,23 @@ Premium機能が停止する範囲
 
 ---
 
-## 13. Analytics Design
+## 13. Analyticsとの境界
 
-Monetization Flow では、以下のイベントを計測する。
+Monetization Flowでは、収益導線のどの段階でユーザーが離脱または転換しているかを観測する必要性のみを管理する。
 
-| Event | Meaning |
-| --- | --- |
-| premium_teaser_view | Premium導線を見た |
-| premium_cta_click | Premium CTAを押した |
-| premium_plan_view | Premiumプランページを見た |
-| checkout_start | 決済を開始した |
-| checkout_success | 決済が成功した |
-| checkout_cancel | 決済を中断した |
-| premium_activated | Premiumが有効化された |
-| premium_feature_used | Premium機能を利用した |
-| subscription_cancel_click | 解約導線を押した |
-| subscription_cancel_complete | 解約完了 |
+- Premium導線が表示されたか
+- CTAが押されたか
+- 決済が開始・成功・中断されたか
+- Premium化後に機能が利用されているか
+- 解約導線が使われたか
 
-### 13.1 Funnel
+正確なEvent名は`docs/analytics/monetization-funnel.md`を参照する。Payload、Property、Funnel、Context情報およびKPI（Revenue・Retention・Engagementを含む）は、`docs/analytics/`配下の正本文書を参照する。
 
-基本ファネルは以下とする。
-
-```text
-premium_teaser_view
-↓
-premium_cta_click
-↓
-premium_plan_view
-↓
-checkout_start
-↓
-checkout_success
-↓
-premium_feature_used
-```
-
-### 13.2 Context Tracking
-
-Premium導線では、どの画面から発生したかを必ず記録する。
-
-```text
-source_screen
-source_action
-source_feature
-thread_id
-shrine_id
-visit_id
-reflection_id
-```
-
-これにより、どの体験が課金意欲につながっているかを確認できる。
+計測は、決済の成否だけでなく、Premium化後にReflection・Timeline・月次レビューなどの体験が実際に使われているかを確認する目的で設計する。Premiumの成果は購入時点だけで判断せず、その後の継続行動まで含めて評価する方針とする。
 
 ---
 
-## 14. Revenue KPI
-
-Monetization Flow では、以下を主要KPIとする。
-
-| KPI | Meaning |
-| --- | --- |
-| premium_teaser_view_rate | Premium導線が表示された割合 |
-| premium_cta_click_rate | CTAを押した割合 |
-| checkout_start_rate | 決済開始率 |
-| checkout_success_rate | 決済成功率 |
-| purchase_conversion_rate | 購入転換率 |
-| premium_feature_activation_rate | Premium化後に機能を使った割合 |
-| month_1_retention | 1か月継続率 |
-| cancel_rate | 解約率 |
-
-売上だけを見ない。
-
-Premium化したユーザーが、実際にReflection、Timeline、月次レビューを使っているかを確認する。
-### 14.1 Retention KPI
-
-| KPI | Meaning |
-| --- | --- |
-| 7d_return_rate | Premium利用開始後7日以内の再訪率 |
-| 30d_return_rate | Premium利用開始後30日以内の再訪率 |
-| thread_resume_rate | 過去の相談Threadを再開した割合 |
-| comparison_view_rate | 過去記録との比較を閲覧した割合 |
-| premium_retention_rate | Premium契約を継続している割合 |
-| repeat_consultation_rate | Premium利用者が再相談した割合 |
-
-### 14.2 Engagement KPI
-
-| KPI | Meaning |
-| --- | --- |
-| average_thread_count | Premium利用者あたりの平均相談Thread数 |
-| saved_shrine_revisit_rate | 保存済み神社を再閲覧した割合 |
-| history_interaction_rate | 履歴の閲覧・検索・比較を利用した割合 |
-| comparison_usage_rate | 過去の自分との比較機能を利用した割合 |
-| premium_feature_activation_rate | Premium化後に対象機能を実際に利用した割合 |
-
-### 14.3 計測原則
-
-PVやCheckout成功だけでなく、Premium化後に記録、比較、再相談および履歴再訪が発生しているかを確認する。
-
-Premiumの成果は購入時点だけで判断せず、その後の継続行動まで含めて評価する。
-
----
-
-## 15. Future Monetization Expansion
+## 14. Future Monetization Expansion
 
 MVP後は、以下の収益拡張を検討できる。
 
@@ -466,13 +382,13 @@ MVP後は、以下の収益拡張を検討できる。
 記録のPDFエクスポート
 ```
 
-ただし、MVP時点では拡張しすぎない。
+これらは将来の検討候補であり、現行仕様には含めない。
 
 まずは、相談・参拝・振り返り・Timeline・Premium の基本導線で検証する。
 
 ---
 
-## 16. Decision
+## 15. Decision
 
 KAMI MUSUBI の Monetization Flow は、体験の途中に置く壁ではなく、体験の蓄積を深める導線として設計する。
 
@@ -487,3 +403,13 @@ Premium は、神社情報を閉じるためのものではない。
 ユーザーが積み上げた相談、参拝、振り返りを未来へつなぐための器である。
 
 この方針により、KAMI MUSUBI は短期的な課金圧ではなく、長期的な信頼と継続利用を前提とした収益化を目指す。
+
+---
+
+## 関連ドキュメント
+
+- `docs/product/README.md`
+- `docs/product/premium-experience.md`
+- `docs/product/pricing.md`
+- `docs/product/billing-paywall.md`
+- `docs/analytics/monetization-funnel.md`

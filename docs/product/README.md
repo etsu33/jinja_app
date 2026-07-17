@@ -94,11 +94,11 @@ billing-paywall.md
 
 ### Premium・Billing
 
-| ファイル                | 役割                                                 |
-| ----------------------- | ---------------------------------------------------- |
-| `pricing.md`            | Free / Premiumの提供価値境界と価格表現               |
-| `premium-experience.md` | Free / Premiumの画面別体験差と保存・履歴・比較の原則 |
-| `billing-paywall.md`    | 課金状態、Free制限、利用可否およびPaywall判定の契約  |
+| ファイル                | 役割                                                       |
+| ----------------------- | ---------------------------------------------------------- |
+| `pricing.md`            | Free / Premiumの提供価値境界と価格表現                     |
+| `premium-experience.md` | Free / Premiumの画面別体験差と保存・履歴・比較の原則       |
+| `billing-paywall.md`    | Billing状態、Free制限、利用可否およびPaywall表示の判定原則 |
 
 ---
 
@@ -112,7 +112,6 @@ billing-paywall.md
 | `need-mode-ui-flow.md`               | Need Mode UI導線                                                   |
 | `compat-mode-ui-flow.md`             | Compat Mode UI導線                                                 |
 | `visit-style-taxonomy.md`            | 参拝スタイル分類                                                   |
-| `reflection-funnel-dashboard.md`     | Reflection KPI・分析設計                                           |
 | `explore-integration-design.md`      | Explore体験設計                                                    |
 | `product-document-audit.md`          | Product文書の監査・分類管理                                        |
 | `card-visibility-renderer-split.md`  | Card表示可否とRenderer責務の設計補足                               |
