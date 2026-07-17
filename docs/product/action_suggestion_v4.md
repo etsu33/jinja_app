@@ -1,224 +1,364 @@
 > **Status: Active**
 >
-> 本ドキュメントは、Action Suggestion v4のInput/Output Contract・生成ルールを定義する正本である。
+> 本ドキュメントは、KAMI MUSUBIにおけるAction Suggestion v4の入力・出力項目の意味、生成原則および後続体験との接続を管理する正本文書である。
+>
+> 正確なSchema、キー、型、Enum、fallback、生成処理および利用条件は、関連するCore文書、Backend実装およびテストを最終的な正本とする。
 
 # Action Suggestion v4 Contract
 
 ## 目的
 
-Action Suggestion v4 は、Recommendation v4 の相談解釈・意味変換・推薦理由を受け取り、ユーザーが次に取りやすい行動提案を安定した Contract として返す仕様を定義する。
+Action Suggestion v4は、Consultation Interpreter、Meaning TranslationおよびRecommendation Reasonで整理された文脈を受け取り、ユーザーが次に取りやすい小さな行動へ接続する。
 
-本ドキュメントは Action Suggestion の責務、入力、出力、生成ルールを定義する。推薦順位やスコア計算は扱わない。
+Action Suggestionは、ユーザーへ行動を命令するものではない。
+
+相談内容、制約および望む着地点を踏まえ、詳細確認、保存、経路確認、参拝、振り返りまたは一度立ち止まる選択肢を提示する。
 
 ---
 
 ## 全体構造
 
 ```text
-consultation_interpreter
+Consultation Interpreter
 ↓
-recommendation_input_profile
+Meaning Translation
 ↓
-meaning_translation
+Recommendation Reason
 ↓
-recommendation_reason_v4
+Action Suggestion
 ↓
-action_suggestion_v4
+Detail / Save / Route / Visit / Reflection / Pause
 ```
 
----
-
-## 責務
-
-Action Suggestion v4 は、推薦理由を受けて次に取りやすい小さな行動を返す。
-
-### 扱うもの
-
-- primary_action
-- secondary_action
-- reflection_prompt
-- action_source
-
-### 扱わないもの
-
-- Recommendation Ranking
-- Recommendation Score
-- 神社選定ロジック
-- 長文の意味付け
-- 結果保証
-- 医療・心理・宗教的断定
+Action Suggestionは推薦理由を補完する行動レイヤーであり、神社の選定、推薦順位または推薦理由そのものを決定しない。
 
 ---
 
-## Input Contract
+## 基本原則
 
-Action Suggestion v4 は以下の入力を参照できる。
-
-| Input | 役割 |
-|-------|------|
-| decision_context | 判断対象の整理 |
-| constraint_profile | 制約条件の把握 |
-| outcome_hint | 望む着地点 |
-| action_context | 次に取りやすい行動文脈 |
-| reflection_question_seed | 振り返り質問の生成 |
+- 実行可能な小さな行動を提示する
+- ユーザーの判断を急がせない
+- 行動しない選択を異常として扱わない
+- 時間、費用、移動および体力などの制約を尊重する
+- 結果、効果または運勢を保証しない
+- 心理、医療、宗教または人生上の状態を断定しない
+- 一度に提示する行動の負荷を上げすぎない
+- FrontendでAction生成ロジックを重複実装しない
 
 ---
 
-## Output Contract
+## 入力項目
 
-Action Suggestion v4 は以下の Schema を返す。
+Action Suggestionは、以下の意味文脈を参照できる。
 
-```json
-{
-  "primary_action": {
-    "label": "string",
-    "description": "string",
-    "action_type": "detail_open | route_open | save | visit | reflect | pause",
-    "confidence": 0.0
-  },
-  "secondary_action": {
-    "label": "string",
-    "description": "string",
-    "action_type": "detail_open | route_open | save | visit | reflect | pause",
-    "confidence": 0.0
-  },
-  "reflection_prompt": {
-    "question": "string",
-    "prompt_type": "before_visit | after_visit | decision | emotion | constraint",
-    "source_seed": "string"
-  },
-  "action_source": {
-    "source": "decision_context | constraint_profile | outcome_hint | action_context | reflection_question_seed | fallback",
-    "reason": "string"
-  }
-}
-```
+| 入力項目 | 意味責務 |
+|---|---|
+| `decision_context` | ユーザーが整理または判断したい対象 |
+| `constraint_profile` | 行動に影響する時間、費用、移動、体力などの制約 |
+| `outcome_hint` | ユーザーが望んでいる着地点の候補 |
+| `action_context` | Meaning Translationで整理された次に取りやすい行動文脈 |
+| `reflection_question_seed` | 振り返り質問を生成するための意味上の手掛かり |
+
+各入力項目の正確なキー、型、必須条件、生成処理およびfallbackは、Consultation Interpreter、Meaning Translationおよび関連するBackend実装・テストを正本とする。
+
+---
+
+## 出力項目
+
+Action Suggestionは、以下の意味要素を返す。
+
+| 出力項目 | 意味責務 |
+|---|---|
+| `primary_action` | 最初に提示する、最も取りやすい行動 |
+| `secondary_action` | primary_actionを補完する別の選択肢 |
+| `reflection_prompt` | 行動前後の整理を支援する短い問い |
+| `action_source` | 行動提案がどの入力文脈に基づくかを示す根拠 |
+
+正確なSchema、ネスト構造、キー、型、Enumおよびfallback値は、関連するBackend実装とテストを正本とする。
 
 ---
 
 ## primary_action
 
-最初に提示する行動。
+### 意味責務
 
-### ルール
+`primary_action`は、ユーザーへ最初に提示する、最も負荷の小さい行動候補である。
 
-- 1件のみ返す
-- 実行可能な行動にする
+### 原則
+
+- 一つの主行動として理解できる内容にする
+- 具体的な動詞を使用する
 - 命令口調にしない
-- 結果保証をしない
-- 必要に応じて pause・reflect を選択できる
+- 結果を保証しない
+- 制約を無視した提案をしない
+- 必要に応じて、行動ではなく整理や休止へ接続できる
 
 ---
 
 ## secondary_action
 
-primary_action を補完する行動。
+### 意味責務
 
-### ルール
+`secondary_action`は、主行動とは異なる方向からユーザーの次の一歩を補完する。
 
-- primary_action と異なる action_type を返す
-- 行動負荷を上げすぎない
-- 保存・経路確認・振り返りへ接続する
+### 原則
+
+- primary_actionと同一内容を言い換えない
+- primary_actionより著しく負荷を上げない
+- 詳細確認、保存、経路確認、参拝、振り返りまたは休止へ接続できる
+- secondary_actionを実行しなくても体験が成立する
 
 ---
 
 ## reflection_prompt
 
-振り返りや意思整理のための問いを返す。
+### 意味責務
 
-### ルール
+`reflection_prompt`は、ユーザーが行動前後の考え、感覚または判断材料を整理するための短い問いである。
 
-- 1問のみ返す
+### 原則
+
+- 一つの問いとして提示する
+- 正解を求めない
+- 回答を強制しない
 - 心理状態を断定しない
-- 宗教的な正解を示さない
-- 行動前後の整理を支援する
+- 宗教的な効果または意味を決めつけない
+- 行動前または行動後の整理へ接続する
 
-### Analytics Event
+### Reflection入力UIとの境界
 
-`reflection_prompt` はConcierge結果画面で回答不可のプレビューとして表示されることがある。この表示は、ユーザーが実際に回答できるReflection入力UIの表示ではないため、`docs/product/visit-reflection-flow.md` が定義する `reflection_prompt_view` には含めない。
+Action Suggestionの`reflection_prompt`は、Concierge結果画面などで回答できないプレビューとして表示される場合がある。
 
-プレビュー表示の計測には以下の専用イベントを使用する。
+このプレビューは、ユーザーが実際に回答を保存できるReflection入力UIとは異なる。
 
-```text
-action_suggestion_reflection_preview_view
-```
+Productでは、以下の体験を分離する。
 
-Payloadには `prompt_type`（`before_visit | after_visit | decision | emotion | constraint`）を `actionPromptType` として渡す。`visit-reflection-flow.md` が定義する `reflectionFormType` / `reflectionContext` とは別の語彙であり、混在させない。
+| 体験 | 責務 |
+|---|---|
+| Action SuggestionのReflectionプレビュー | 次の振り返り観点を提示する |
+| Reflection入力UI | ユーザーが回答し、記録として保存する |
+
+Reflection入力UI、保存およびVisitとの接続は、`docs/product/visit-reflection-flow.md`を参照する。
+
+正確なEvent名、Payload、Propertyおよび計測語彙は、`docs/analytics/`配下の正本文書を参照する。
 
 ---
 
 ## action_source
 
-生成根拠を保持する。
+### 意味責務
 
-### ルール
+`action_source`は、行動提案がどの相談文脈を主な根拠として生成されたかを示す。
 
-- source は Enum
-- reason は短文
-- Debug・Test で確認可能とする
+主な根拠には以下が含まれうる。
 
----
+- 判断対象
+- 制約
+- 望む着地点
+- 行動文脈
+- 振り返り質問の手掛かり
+- 入力不足時の補完
 
-## action_type
+### 原則
 
-| action_type | 接続先 |
-|--------------|--------|
-| detail_open | 詳細画面 |
-| route_open | 経路表示 |
-| save | 保存 |
-| visit | 参拝 |
-| reflect | 振り返り |
-| pause | 整理時間 |
-
----
-
-## fallback
-
-入力不足でも Schema は維持する。
-
-| 項目 | fallback |
-|------|----------|
-| primary_action | detail_open |
-| secondary_action | save |
-| reflection_prompt | before_visit |
-| action_source | fallback |
+- ユーザーへ心理的な断定理由として表示しない
+- 推薦順位の根拠として扱わない
+- Debugやテストの物理仕様は本書では管理しない
+- 正確なEnum、生成優先順位およびfallbackはBackend実装とテストを正本とする
 
 ---
 
-## 文言ルール
+## 行動の接続先
 
-### 行うこと
+Action Suggestionは、以下の体験へ接続できる。
 
-- 小さな行動を提案する
-- 具体的な動詞を使う
-- 判断を急がせない
-- 制約を尊重する
-- 行動と振り返りを接続する
+| 接続先 | 体験上の意味 |
+|---|---|
+| 詳細確認 | 神社情報と推薦理由を確認する |
+| 経路確認 | 現地へ向かう可能性を検討する |
+| 保存 | 後から見返せる状態にする |
+| 参拝 | 訪問または参拝行動へ進む |
+| 振り返り | 考えや行動後の変化を整理する |
+| 休止 | 判断を急がず、一度立ち止まる |
 
-### 行わないこと
+正確な`action_type`のEnum、画面遷移、CTA判定および送信処理は、関連するFrontend・Backend実装とテストを正本とする。
 
-- 必ず行きましょう
+---
+
+## 入力不足時の原則
+
+入力が不足している場合でも、ユーザー体験を破綻させない。
+
+### 原則
+
+- 強い行動を推測で提示しない
+- 詳細確認や保存など、負荷の低い選択肢を優先する
+- ユーザー状態を推測して補完しない
+- Schemaを維持する物理処理はBackend実装とテストを正本とする
+
+---
+
+## 文言原則
+
+### 使用する方向
+
+- 詳細を確認してみる
+- 後から見返せるように保存する
+- 無理のない範囲で経路を確認する
+- 今考えていることを一つ整理する
+- 今日は一度立ち止まる
+
+### 使用しない方向
+
+- 必ず参拝しましょう
 - この神社が正解です
-- 運気が上がります
+- ここへ行けば運気が上がります
 - 今すぐ決断してください
-- あなたはこういう状態です
+- あなたはこのような心理状態です
+
+具体的なコピー原則は、`docs/knowledge/action-guide.md`および`docs/knowledge/recommendation-copy-guide.md`を参照する。
+
+---
+
+## 後続体験との接続
+
+### Recommendation Reason
+
+Recommendation Reasonは「なぜこの神社を提案するのか」を説明する。
+
+Action Suggestionは、その説明を受けて「次に何を選べるか」へ接続する。
+
+Action Suggestion自体は推薦理由を再生成しない。
+
+### Shrine Detail
+
+詳細確認を選択した場合は、神社の公開情報、相談文脈および個人向け補足を確認できる画面へ接続する。
+
+神社詳細の責務は、`docs/product/shrine-detail-layer.md`を参照する。
+
+### Visit・Reflection
+
+参拝および振り返りへ進む場合は、VisitとReflectionの意味責務に従う。
+
+詳細は`docs/product/visit-reflection-flow.md`を参照する。
+
+---
+
+## 責務境界
+
+### Product
+
+Productでは以下を管理する。
+
+- 入力項目と出力項目の意味
+- primary_actionとsecondary_actionの役割
+- Reflectionプレビューと入力UIの体験境界
+- 行動の接続先
+- 行動負荷を上げない原則
+- 断定、強制および結果保証を避ける原則
+
+### Core
+
+以下は`docs/core/`配下の正本文書を参照する。
+
+- Consultation InterpreterからAction Suggestionまでの構造的な接続
+- Recommendation全体のデータフロー
+- Frontend、BFFおよびBackendの技術責務
+- 推薦時点の文脈保持
+
+### Backend・実装
+
+以下は関連するBackend実装とテストを正本とする。
+
+- 正確なInput / Output Schema
+- キーと型
+- Enum
+- 必須・任意条件
+- 生成順序
+- action_typeの選択処理
+- confidenceの算出
+- fallback
+- Debug情報
+- 保存処理
+
+### Frontend・実装
+
+以下は関連するFrontend実装とテストを正本とする。
+
+- CTAの表示
+- Actionごとの画面遷移
+- Reflectionプレビューの表示
+- Access Levelによる表示差
+- イベント送信処理
+
+### Analytics
+
+以下は`docs/analytics/`配下の正本文書を参照する。
+
+- Event名
+- Payload
+- Property
+- Funnel
+- KPI
+- Reflectionプレビューの計測
+- Action別の利用状況
+- Web / Mobileの送信差
+
+### Knowledge
+
+以下は`docs/knowledge/`配下の正本文書を参照する。
+
+- Action文言の表現原則
+- 命令、断定および結果保証を避けるコピー
+- Reflection質問の表現ガイド
+- 神社FactとMeaningの扱い
+
+---
+
+## 責務外
+
+本書では以下を管理しない。
+
+- 神社候補の選定
+- Recommendation Ranking
+- Recommendation Score
+- Score Weight
+- 推薦理由の生成処理
+- API Endpoint
+- UIレイアウト
+- Component構造
+- Event名とPayload
+- KPIの具体値
+- 実装手順
+- テストケース一覧
+- PR計画
+- 作業履歴
 
 ---
 
 ## 関連ドキュメント
 
+- `docs/product/README.md`
+- `docs/product/recommendation-v4-interpreter-contract.md`
 - `docs/product/meaning-translation-mapping.md`
+- `docs/product/shrine-detail-layer.md`
 - `docs/product/visit-reflection-flow.md`
+- `docs/core/architecture.md`
+- `docs/core/meaning-layer-connection.md`
+- `docs/core/recommendation-reason-contract.md`
+- `docs/knowledge/action-guide.md`
+- `docs/knowledge/recommendation-copy-guide.md`
+- `docs/knowledge/reflection-guide.md`
+- `docs/analytics/action-suggestion-funnel.md`
 
 ---
 
 ## 更新ルール
 
-本ドキュメントは以下の場合のみ更新する。
-
-- Input Contract が変更された場合
-- Output Schema が変更された場合
-- Action Contract の責務が変更された場合
-- action_type が追加・削除された場合
-
-実装状況、テスト、進捗、作業履歴、チェックリストは本書へ記載しない。
+- 本書はAction Suggestionの入力・出力項目の意味と生成原則を管理する。
+- 正確なSchema、キー、型、Enum、fallbackおよび生成処理は本書で重複管理しない。
+- Event、Payload、Property、FunnelおよびKPIはAnalytics文書で管理する。
+- action_typeの追加、削除または意味変更がある場合は、本書への影響を確認する。
+- 入力項目または出力項目の意味責務が変更された場合のみ本書を更新する。
+- 物理実装のみを変更した場合は、本書の意味契約への影響を確認する。
+- TODO、PR計画、実装進捗、テスト手順および作業履歴は本書へ記載しない。
