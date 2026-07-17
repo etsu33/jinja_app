@@ -1,8 +1,9 @@
-> **Status: Active**
+> **Status: Reference**
 >
-> 本ドキュメントは、対象機能の現行仕様を管理する正本文書である。
+> 本ドキュメントは、Journey Timelineへ統合された長期的な振り返り体験の構想・設計背景を保持する参照資料である。
 >
-> 正確な物理実装と挙動は、関連する実装コードおよびテストを最終的な正本とする。
+> 現行のTimeline体験仕様は、`docs/product/journey-timeline-design.md`を正本とする。
+
 # Reflection Timeline Design
 
 ## 概要
