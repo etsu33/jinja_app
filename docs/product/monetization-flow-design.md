@@ -2,7 +2,7 @@
 >
 > 本ドキュメントは、Premium提示タイミング、CTA方針および収益導線の設計背景を記録した参照資料である。
 >
-> Free / Premiumの提供価値境界は`docs/product/premium-experience.md`、価格表現は`docs/product/pricing.md`、Billing / Paywallの判定原則は`docs/product/billing-paywall.md`を正本とする。正確なEvent、Payload、FunnelおよびKPIは`docs/analytics/`配下の正本文書、現行仕様は実装コードおよびテストを最終的な正本とする。
+> Free / Premiumの提供価値境界は`docs/product/premium-experience.md`、価格表現は`docs/product/pricing.md`、Billing / Paywallの判定原則は`docs/product/billing-paywall.md`を正本とする。正確なEvent名は`docs/analytics/monetization-funnel.md`、Payload・FunnelおよびKPIは`docs/analytics/`配下の正本文書、現行仕様は実装コードおよびテストを最終的な正本とする。
 
 # Monetization Flow Design
 
@@ -362,7 +362,7 @@ Monetization Flowでは、収益導線のどの段階でユーザーが離脱ま
 - Premium化後に機能が利用されているか
 - 解約導線が使われたか
 
-正確なEvent名、Payload、Property、Funnel、Context情報およびKPI（Revenue・Retention・Engagementを含む）は、`docs/analytics/`配下の正本文書を参照する。
+正確なEvent名は`docs/analytics/monetization-funnel.md`を参照する。Payload、Property、Funnel、Context情報およびKPI（Revenue・Retention・Engagementを含む）は、`docs/analytics/`配下の正本文書を参照する。
 
 計測は、決済の成否だけでなく、Premium化後にReflection・Timeline・月次レビューなどの体験が実際に使われているかを確認する目的で設計する。Premiumの成果は購入時点だけで判断せず、その後の継続行動まで含めて評価する方針とする。
 
@@ -412,3 +412,4 @@ Premium は、神社情報を閉じるためのものではない。
 - `docs/product/premium-experience.md`
 - `docs/product/pricing.md`
 - `docs/product/billing-paywall.md`
+- `docs/analytics/monetization-funnel.md`
