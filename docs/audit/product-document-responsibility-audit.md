@@ -247,7 +247,8 @@ Product文書は、体験、機能目的、入力・出力の意味および責�
 | `visit-reflection-flow.md` | Active | Active維持・体験責務への整理完了 | 参拝完了からReflection保存、次回相談までを接続する体験とVisit / Reflectionの意味責務 | Event名、TypeScript Payload型、Django Model全文、Index、採用Field、Mobile送信状況、PostHog集計、実装ファイル名が混在していた | 体験フロー、Visit / Reflectionの意味責務、Free / Premium境界を残す。Event・Payload・FunnelはAnalytics、Model・Field・Index・APIは実装とテストへ委譲 |
 | `reflection-timeline-design.md` | Reference | Reference | 写真、御朱印、検索、比較、感情推移など、長期的な振り返り体験の構想 | 写真、御朱印、検索、感情推移、行動記録、Premium分析、KPIなど未実装または将来構想が現行仕様として混在していた。現行のTimeline体験責務はJourney Timelineへ統合済み | 現行のTimeline体験責務はJourney Timeline正本へ統合完了。本書は長期構想・設計思想を扱うReferenceとして維持する |
 | `journey-timeline-design.md` | Active | Active正本 | 相談・提案・参拝・振り返りを「ご縁の歩み」として時系列で接続する現行体験設計 | 従来は内容が簡略でReflection Timelineと責務が重複していたが、Event・State分離とVisit / Reflection接続方針を整理し、正本として統合完了 | Journey Timelineの現行体験仕様を管理する正本として維持する。正確なEvent構造・API・Serializer・表示処理はBackend・Mobile実装とテストを正本とする |
-| `reflection-funnel-dashboard.md` | Reference | Analytics移管候補・Reference維持 | VisitからReflection保存までのFunnel、KPIおよびPostHog Dashboard設計 | 内容の中心がEvent、KPI、Breakdown、Dashboard、観測期間およびSuccess Criteriaであり、ProductよりAnalytics責務に属する | `docs/analytics/`へ移管または同等文書へ統合する。移管完了まではReferenceとして維持し、Product README上の分類を後続PRで更新する |
+
+`reflection-funnel-dashboard.md`は`docs/analytics/reflection-funnel-dashboard.md`へ移管が完了したため、本表から除外した（対象範囲はdocs/product/直下の文書のため）。移管の詳細は9節を参照する。
 
 ### Premium・Billing
 
@@ -373,7 +374,6 @@ Product文書は、体験、機能目的、入力・出力の意味および責�
 - `monetization-flow-design.md`
 - `need-mode-ui-flow.md`
 - `product-document-audit.md`
-- `reflection-funnel-dashboard.md`
 - `reflection-timeline-design.md`
 - `shrine-detail-meaning-layer.md`
 - `visit-style-taxonomy.md`
@@ -393,10 +393,10 @@ Product文書は、体験、機能目的、入力・出力の意味および責�
   - `premium-experience.md`への独自原則統合後、Reference化候補
 - `history-theme-taxonomy.md`
   - Knowledge移管候補（責務境界整理は完了、移管判断は保留継続）
-- `reflection-funnel-dashboard.md`
-  - Analytics移管候補
 
 Timeline正本名称は「Journey Timeline」で確定した。`journey-timeline-design.md`をJourney Timelineの現行体験仕様の正本（Active）とし、`reflection-timeline-design.md`は長期構想・設計思想を扱うReferenceへ変更した。統合候補としての判断保留は解除済みである。
+
+`reflection-funnel-dashboard.md`のAnalytics移管は完了した。`docs/analytics/reflection-funnel-dashboard.md`へ移動し、Product文書（35件）の対象から除外した。以後のProduct文書総数は34件として扱う。
 
 ### Delete候補
 
@@ -475,14 +475,14 @@ Event、Payload、KPI、Funnelおよび実装状況をAnalytics文書へ委譲�
 
 Product直下のMarkdown文書35件について、現行分類、主責務、重複、委譲先および後続対応を確認した。
 
-監査時点の最終分類は以下である。
+監査時点の最終分類は以下である（`reflection-funnel-dashboard.md`の`docs/analytics/`への移管完了後の件数）。
 
 | 分類 | 件数 |
 |---|---:|
 | Active | 17 |
-| Reference | 16 |
+| Reference | 15 |
 | Archive | 2 |
-| 合計 | 35 |
+| 合計 | 34 |
 
 監査により、Product文書には以下の責務混在が存在することを確認した。
 

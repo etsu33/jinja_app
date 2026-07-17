@@ -162,7 +162,7 @@ Billing状態の判定原則、Paywall表示の判定原則および利用制限
 
 Premium提示タイミング、CTA方針および収益導線の設計背景は、`docs/product/monetization-flow-design.md`を参照する。
 
-正確なEvent、Payload、FunnelおよびKPIは、`docs/analytics/`配下の正本文書を参照する。
+正確なEvent名は`docs/analytics/monetization-funnel.md`、PayloadおよびKPIは`docs/analytics/`配下の正本文書を参照する。
 
 ---
 

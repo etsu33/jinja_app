@@ -1,8 +1,8 @@
 > **Status: Reference**
 >
-> 本ドキュメントは、参拝後振り返り導線のFunnel KPI・PostHogダッシュボード設計を補足するReference文書である。
+> 本ドキュメントは、`visit_done` / `reflection_prompt_view` / `reflection_saved`によるFunnel、KPIおよびPostHogダッシュボード設計を管理するReference文書である。
 >
-> Visit / Reflectionのイベント・保存責務は `docs/product/visit-reflection-flow.md` を正本とする。
+> Visit / Reflectionの体験・保存責務は`docs/product/visit-reflection-flow.md`を正本とする。正確なEvent送信条件、Payloadおよび実装状況は、関連するBackend・Frontend実装コードおよびテストを最終的な正本とする。
 
 # Reflection Funnel Dashboard
 
@@ -152,16 +152,18 @@ Breakdown: shrineId
 
 ## 関連ドキュメント
 
-- `docs/product/README.md`
+- `docs/analytics/README.md`
 - `docs/product/visit-reflection-flow.md`
 - `docs/product/history-theme-taxonomy.md`
+- `docs/audit/cross-platform-event-contract.md`
 
 ---
 
 ## 更新ルール
 
 - 本書はReflection Funnelのダッシュボード設計・KPI定義のみを管理する。
-- Visit / ReflectionのEvent名・Payload契約は本書で重複管理しない。
+- Visit / Reflectionの体験責務は本書で重複管理せず、`docs/product/visit-reflection-flow.md`を参照する。
+- 正確なEvent送信条件、Payloadおよび実装状況は本書で重複管理せず、関連するBackend・Frontend実装コードおよびテストを参照する。
 - historyThemeのカテゴリ名称は `docs/product/history-theme-taxonomy.md` の定義に従う。
 - ダッシュボード構成またはKPI定義が変更された場合のみ更新する。
 - 実装進捗、作業履歴は本書へ記載しない。

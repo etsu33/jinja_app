@@ -8,12 +8,21 @@ KAMI MUSUBIのイベント、Payload、KPI、Funnelおよび計測責務に関�
 
 ---
 
+## Active
+
+| ドキュメント | 責務 |
+| --- | --- |
+| `monetization-funnel.md` | Premium / Monetization FunnelのEvent名を管理する |
+
+---
+
 ## Reference
 
 | ドキュメント | 責務 |
 | --- | --- |
 | `analytics-payload-audit.md` | Analytics Payload、Session IDおよび計測設計の背景を補足する |
 | `recommendation-score-v3-design.md` | Recommendation Score v3のSignal、Weightおよび評価設計を補足する |
+| `reflection-funnel-dashboard.md` | Reflection FunnelのKPI・PostHogダッシュボード設計を補足する |
 
 ---
 
