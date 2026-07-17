@@ -1,6 +1,7 @@
 > **Status: Active**
 >
 > 本ドキュメントは、`docs/product`配下の文書構成、分類および読む順番を管理する正本文書である。
+
 # Product Documents
 
 ## 目的
@@ -46,7 +47,7 @@ shrine-submission-flow.md
 ↓
 visit-reflection-flow.md
 ↓
-reflection-timeline-design.md
+journey-timeline-design.md
 ```
 
 ### 3. Premium・課金
@@ -65,71 +66,71 @@ billing-paywall.md
 
 ### 全体体験
 
-| ファイル | 役割 |
-|---|---|
+| ファイル                           | 役割                                                               |
+| ---------------------------------- | ------------------------------------------------------------------ |
 | `kami-musubi-experience-design.md` | 相談・推薦・参拝・振り返りを一本の体験として接続する最上位体験設計 |
 
 ### Concierge・Recommendation
 
-| ファイル | 役割 |
-|---|---|
-| `concierge-first-final-spec.md` | Concierge First全体仕様 |
-| `concierge-modes.md` | Need Mode / Compat Mode等のMode責務 |
-| `consultation-theme-taxonomy.md` | 相談テーマの分類体系 |
-| `history-theme-taxonomy.md` | `history_theme`の分類定義 |
-| `meaning-translation-mapping.md` | 相談・ご利益・神社・行動を`history_theme`へ接続する変換仕様 |
-| `recommendation-v4-interpreter-contract.md` | Consultation InterpreterのInput / Output契約 |
-| `action_suggestion_v4.md` | Action Suggestion v4の契約・Schema |
+| ファイル                                    | 役割                                                        |
+| ------------------------------------------- | ----------------------------------------------------------- |
+| `concierge-first-final-spec.md`             | Concierge First全体仕様                                     |
+| `concierge-modes.md`                        | Need Mode / Compat Mode等のMode責務                         |
+| `consultation-theme-taxonomy.md`            | 相談テーマの分類体系                                        |
+| `history-theme-taxonomy.md`                 | `history_theme`の分類定義                                   |
+| `meaning-translation-mapping.md`            | 相談・ご利益・神社・行動を`history_theme`へ接続する変換仕様 |
+| `recommendation-v4-interpreter-contract.md` | Consultation InterpreterのInput / Output契約                |
+| `action_suggestion_v4.md`                   | Action Suggestion v4の契約・Schema                          |
 
 ### 神社詳細・参拝・記録
 
-| ファイル | 役割 |
-|---|---|
-| `shrine-detail-layer.md` | Shrine DetailのPublic / Context / Personal Layer契約 |
-| `shrine-detail-v3-design.md` | Shrine Detail v3のUX・Analytics・Premium接続設計 |
-| `shrine-submission-flow.md` | 神社追加、重複候補および投稿後導線の現行仕様 |
-| `visit-reflection-flow.md` | 参拝から振り返りまでの体験・保存・イベント契約 |
-| `reflection-timeline-design.md` | 相談・参拝・Reflectionを時系列で接続する体験設計 |
+| ファイル                     | 役割                                                                         |
+| ---------------------------- | ---------------------------------------------------------------------------- |
+| `shrine-detail-layer.md`     | Shrine DetailのPublic / Context / Personal Layer契約                         |
+| `shrine-detail-v3-design.md` | Shrine Detail v3のUX・Analytics・Premium接続設計                             |
+| `shrine-submission-flow.md`  | 神社追加、重複候補および投稿後導線の現行仕様                                 |
+| `visit-reflection-flow.md`   | 参拝から振り返りまでの体験・保存・イベント契約                               |
+| `journey-timeline-design.md` | 相談・提案・参拝・振り返りを「ご縁の歩み」として時系列で接続する現行体験設計 |
 
 ### Premium・Billing
 
-| ファイル | 役割 |
-|---|---|
-| `pricing.md` | Free / Premiumの提供価値境界と価格表現 |
+| ファイル                | 役割                                                 |
+| ----------------------- | ---------------------------------------------------- |
+| `pricing.md`            | Free / Premiumの提供価値境界と価格表現               |
 | `premium-experience.md` | Free / Premiumの画面別体験差と保存・履歴・比較の原則 |
-| `billing-paywall.md` | 課金状態、Free制限、利用可否およびPaywall判定の契約 |
+| `billing-paywall.md`    | 課金状態、Free制限、利用可否およびPaywall判定の契約  |
 
 ---
 
 ## Reference
 
-| ファイル | 役割 |
-|---|---|
-| `home-hero-final-wireframe.md` | Home Hero UI設計 |
-| `concierge-entry-final-wireframe.md` | Concierge Entry UI設計 |
-| `concierge-filter-area.md` | Filter UI設計 |
-| `need-mode-ui-flow.md` | Need Mode UI導線 |
-| `compat-mode-ui-flow.md` | Compat Mode UI導線 |
-| `visit-style-taxonomy.md` | 参拝スタイル分類 |
-| `reflection-funnel-dashboard.md` | Reflection KPI・分析設計 |
-| `explore-integration-design.md` | Explore体験設計 |
-| `product-document-audit.md` | Product文書の監査・分類管理 |
-| `card-visibility-renderer-split.md` | Card表示可否とRenderer責務の設計補足 |
-| `concierge-card-architecture.md` | Concierge Card Treeと表示構造の設計補足 |
-| `direction-ranking-design.md` | 方角を推薦補助軸として扱う設計補足 |
-| `journey-timeline-design.md` | Journey Timelineの体験・情報設計 |
-| `mobile-bottom-navigation.md` | Mobile下部ナビゲーションの設計補足 |
-| `monetization-flow-design.md` | Premium提示、購入復帰および継続計測の設計 |
-| `shrine-detail-meaning-layer.md` | Shrine DetailにおけるMeaning Layerの設計補足 |
+| ファイル                             | 役割                                                               |
+| ------------------------------------ | ------------------------------------------------------------------ |
+| `home-hero-final-wireframe.md`       | Home Hero UI設計                                                   |
+| `concierge-entry-final-wireframe.md` | Concierge Entry UI設計                                             |
+| `concierge-filter-area.md`           | Filter UI設計                                                      |
+| `need-mode-ui-flow.md`               | Need Mode UI導線                                                   |
+| `compat-mode-ui-flow.md`             | Compat Mode UI導線                                                 |
+| `visit-style-taxonomy.md`            | 参拝スタイル分類                                                   |
+| `reflection-funnel-dashboard.md`     | Reflection KPI・分析設計                                           |
+| `explore-integration-design.md`      | Explore体験設計                                                    |
+| `product-document-audit.md`          | Product文書の監査・分類管理                                        |
+| `card-visibility-renderer-split.md`  | Card表示可否とRenderer責務の設計補足                               |
+| `concierge-card-architecture.md`     | Concierge Card Treeと表示構造の設計補足                            |
+| `direction-ranking-design.md`        | 方角を推薦補助軸として扱う設計補足                                 |
+| `reflection-timeline-design.md`      | 写真・御朱印・検索・比較・感情推移など、長期的な振り返り体験の構想 |
+| `mobile-bottom-navigation.md`        | Mobile下部ナビゲーションの設計補足                                 |
+| `monetization-flow-design.md`        | Premium提示、購入復帰および継続計測の設計                          |
+| `shrine-detail-meaning-layer.md`     | Shrine DetailにおけるMeaning Layerの設計補足                       |
 
 ---
 
 ## Archive
 
-| ファイル | 役割 |
-|---|---|
-| `concierge-first.md` | Concierge First初期設計 |
-| `concierge-first-wireframe.md` | 初期ワイヤーフレーム |
+| ファイル                       | 役割                    |
+| ------------------------------ | ----------------------- |
+| `concierge-first.md`           | Concierge First初期設計 |
+| `concierge-first-wireframe.md` | 初期ワイヤーフレーム    |
 
 ---
 
