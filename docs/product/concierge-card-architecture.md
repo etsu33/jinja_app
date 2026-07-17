@@ -1,6 +1,6 @@
 > **Status: Reference**
 >
-> 本ドキュメントは、Concierge結果画面のCard Tree、Props、RendererおよびSection Routingの責務を整理した設計補足資料である。
+> 本ドキュメントは、Concierge結果画面のCard Tree、Props、Renderer、Visibility State別の表示原則およびSection Routingの責務を整理した設計補足資料である。`docs/product/card-visibility-renderer-split.md`（Archive）の内容を統合済み。
 >
 > 現行の表示構造と物理実装は、関連するFrontend実装およびテストを最終的な正本とする。
 
@@ -431,6 +431,55 @@ type PremiumPreviewCardProps = ConciergeCardBaseProps & {
 - 保存 API を直接呼ばない
 - analytics のイベント名を inline に散らさない
 - 複雑な JSX 条件分岐を増やさない
+
+---
+
+## Visibility State別の表示原則
+
+visibilityごとに、rendererが何を見せるか・見せないかを固定する。
+
+| visibility | ゴール | 表示するもの | 表示しないもの |
+|---|---|---|---|
+| visible | カード本来の価値をそのまま表示する | 主内容、必要な補足説明、通常CTA | Premium誘導の過剰な説明、Free向け制限文言、teaser専用コピー |
+| teaser | Premiumで増える整理ブロックの存在を伝える | 何が整理できるようになるか、短い価値予告、Premium導線 | 本文の途中まで、長文の続き、詳細比較、履歴変化の具体内容 |
+| partial | Freeユーザーに整理体験の入口だけを見せる | 冒頭の1ブロック、hint、短い要約、次に整理できる内容の予告 | 詳細比較、深い意味整理、履歴変化、複数ブロックの連続表示 |
+| hidden | 対象カードを完全に描画対象から外す | （何も表示しない） | DOMに出さない、Event送信をしない、CTAも出さない、hidden理由をUIに出さない |
+
+partialは「読ませかけ」ではなく、Freeでも成立する最小の整理ブロックとして扱う。
+
+hiddenは「存在を隠している」状態であり、teaserとは異なる。Premium訴求したい場合はhiddenではなくteaserを使う。
+
+### CTA文言の方針
+
+teaserでは、以下のCTAを使用しない。
+
+- 続きを読む
+- もっと読む
+- 詳細を読む
+
+代わりに、以下のような「整理する」方向のCTAを使用する。
+
+- 整理する
+- 今の状態を整理する
+- Premiumで整理を続ける
+
+Premium差分は「文章量」ではなく「整理ブロック数」で表現する。Free / Premiumの差を長文 / 短文で表現する設計は採用しない。
+
+---
+
+## Card別 Visibility Policy
+
+accessLevelごとの各Cardのvisibilityは以下のとおりとする。
+
+| Card | anonymous | free | premium | 方針 |
+|---|---|---|---|---|
+| ConsultationSummaryCard | hidden | partial | visible | Freeは冒頭整理のみ |
+| ShrineMeaningCard | hidden | partial | visible | Freeは短い理由のみ |
+| ActionMeaningCard | hidden | teaser | visible | Freeは行動意味の入口 |
+| PreviousComparisonCard | hidden | hidden | visible | Premiumのみ |
+| HistoryShiftCard | hidden | hidden | visible | Premiumのみ |
+| PremiumPreviewCard | visible | visible | hidden | Premiumでは非表示 |
+| SavePromptCard | teaser | visible | visible | anonymousはログイン誘導 |
 
 ---
 
