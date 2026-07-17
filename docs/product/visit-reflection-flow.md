@@ -1,468 +1,346 @@
 > **Status: Active**
 >
-> 本ドキュメントは、KAMI MUSUBIにおける参拝完了から振り返り保存までの体験・イベント・保存責務を定義する正本である。
+> 本ドキュメントは、KAMI MUSUBIにおける参拝・訪問の記録から振り返り、履歴および次回相談までを接続する体験責務を管理する正本文書である。
+>
+> 正確なEvent、Payload、KPI、保存構造、Field、API、画面遷移および送信処理は、関連するAnalytics文書、Core文書、実装コードおよびテストを最終的な正本とする。
 
 # Visit Reflection Flow
 
 ## 目的
 
-本ドキュメントは、KAMI MUSUBIにおける参拝完了から振り返り保存までの体験、イベント、保存責務を定義する。
+KAMI MUSUBIにおける参拝・訪問の記録から振り返り、履歴および次回相談までを一つの体験として接続する。
 
-参拝完了を体験の終点ではなく、ユーザーが行動後の気づきを整理し、次回相談へ接続する入口として扱う。
+参拝完了を体験の終点にはしない。
+
+ユーザーが行動後に考えたことや感じた変化を無理のない範囲で整理し、後から見返したり、次回相談へつなげたりできる状態を作る。
 
 ```text
-route_open
+相談・推薦
 ↓
-visit_done
+神社詳細・経路確認
 ↓
-reflection_prompt_view
+参拝または訪問
 ↓
-reflection_saved
+短い振り返り
 ↓
-history_theme履歴
+履歴
 ↓
-next_consultation
+次回相談
 ```
 
 ---
 
 ## 基本原則
 
-- 参拝完了は振り返りの入口として扱う
+- 参拝・訪問の完了は振り返りの入口として扱う
 - 振り返りは短い変化記録として扱う
 - 長文日記を前提にしない
-- 心理状態を診断しない
+- 回答や保存を強制しない
+- 行動しなかった場合も振り返りを許容する
+- ユーザーの心理状態を診断しない
 - 宗教的な効果や達成を判定しない
-- 参拝しなかった場合も、日常行動の振り返りを許容する
-- 保存行為と履歴分析の価値を分離する
-- `history_theme` を変化記録の共通軸として扱う
+- 成功・失敗を自動判定しない
+- 保存機能と履歴を比較・分析する価値を分離する
+- 推薦時点の文脈と行動後の記録を混同しない
+- FrontendでVisitやReflectionの業務判定を重複実装しない
 
 ---
 
 ## 体験フロー
 
 ```text
-concierge_result_impression
+神社を提案される
 ↓
-shrine_detail_transition
+神社詳細を確認する
 ↓
-route_open
+保存または経路を確認する
 ↓
-visit_done
+参拝・訪問を記録する
 ↓
-reflection_prompt_view
+振り返りの入口を提示する
 ↓
-reflection_saved
+短いReflectionを保存する
 ↓
-next_consultation_started
+履歴として見返す
+↓
+次回相談へ接続する
 ```
 
-各段階の責務は以下とする。
+各段階の体験責務は以下とする。
 
-| 段階 | 責務 |
+| 段階 | 体験責務 |
 |---|---|
-| `route_open` | 現地への移動検討を記録する |
-| `visit_done` | 参拝・訪問完了を記録する |
-| `reflection_prompt_view` | 実際のReflection入力UIが表示されたことだけを記録する |
-| `reflection_saved` | 振り返り保存を記録する |
-| `next_consultation_started` | 次回相談への再接続を記録する |
+| 神社詳細 | 神社情報と提案理由を確認する |
+| 保存 | 後から見返せる状態にする |
+| 経路確認 | 現地へ向かう可能性を検討する |
+| Visit | 参拝・訪問または関連する行動の完了を記録する |
+| Reflection入口 | 行動後の整理を始める選択肢を提示する |
+| Reflection保存 | 考えや変化を短い記録として残す |
+| 履歴 | 過去の相談、行動および振り返りを見返す |
+| 次回相談 | 過去の体験を新しい相談の文脈へ接続する |
 
-`reflection_prompt_view` は、ユーザーが回答できるReflection入力UIの表示のみを対象とする。Concierge結果画面でAction Suggestionの振り返り質問プレビューを表示した場合は、`reflection_prompt_view` ではなく `docs/product/action_suggestion_v4.md` が定義する別イベントを使用する（詳細は本書「reflection_prompt_view」節を参照）。
+各段階を必ず順番どおりに通過する必要はない。
 
----
-
-## visit_done
-
-### 責務
-
-ユーザーが参拝・訪問を完了した事実を記録し、振り返り導線を開始する。
-
-`visit_done` は神社へ行った事実を表し、心理的変化や効果を判定しない。
-
-### 発火条件
-
-- 神社詳細で参拝完了を明示したとき
-- 経路確認後に訪問完了を明示したとき
-- 保存済み神社を参拝済みに変更したとき
-
-### Event名
-
-```text
-visit_done
-```
-
-### Payload
-
-```ts
-type VisitDonePayload = {
-  source: "concierge_result" | "shrine_detail" | "mypage";
-  shrineId: number | string;
-  threadId?: string | null;
-  /** Concierge結果画面など、resultSetIdを取得できる経路からのみ送信する */
-  resultSetId?: string | null;
-  historyTheme?: string | null;
-  /** Concierge結果画面など、recommendationRankを取得できる経路からのみ送信する */
-  recommendationRank?: number | null;
-  /** 遷移元の`ctx`クエリパラメータから導出する。`ctx`自体はpayloadへ含めない */
-  mode?: "need" | "compat";
-  accessLevel?: "anonymous" | "free" | "premium";
-  routeOpenedBefore?: boolean;
-  visitedAt?: string | null;
-};
-```
-
-### 必須項目
-
-- `source`
-- `shrineId`
-
-`historyTheme` は参拝後の分析と振り返り接続に使用するが、値が取得できない場合はキー自体を省略してよい（空文字を送らない）。イベント自体は`historyTheme`の有無にかかわらず必ず送信する。詳細は「Analytics Contract」節の「historyTheme欠損時の扱い」を参照する。
+神社へ参拝しなかった場合でも、相談後に行った日常行動や考えたことを振り返る体験を許容する。
 
 ---
 
-## reflection_prompt_view
+## Visit
 
-### 責務
+### 意味責務
 
-ユーザーが回答できるReflection入力UIが実際に表示された事実を記録する。
+Visitは、ユーザーが神社へ参拝・訪問したこと、または参拝に関連する行動を完了したことを記録する体験である。
 
-表示されたことだけを扱い、回答や保存完了は扱わない。
+Visitは、行動の事実を扱う。
 
-`reflection_prompt_view` は、ユーザーが実際に回答可能なReflection入力フォームの表示にのみ使用する。Action Suggestionの振り返り質問プレビュー（Concierge結果画面で表示される、回答不可のプレビューテキスト）はこのイベントに含めない。プレビュー表示の計測は `docs/product/action_suggestion_v4.md` が定義する `action_suggestion_reflection_preview_view` を使用する。
+心理的な改善、願いの達成または宗教的な効果は扱わない。
 
-### 発火条件
+### Visitの入口
 
-- `visit_done` 後に振り返りUIを表示したとき
-- マイページから振り返り導線を表示したとき
-- 振り返り通知から入力画面を表示したとき
+Visitは、以下の体験から接続できる。
 
-### Event名
+- 神社詳細
+- 経路確認
+- 保存した神社
+- マイページまたは履歴
+- 推薦後の行動導線
 
-```text
-reflection_prompt_view
-```
+正確な画面、CTA、Routeおよび保存処理は、関連するFrontend・Backend実装とテストを正本とする。
 
-### Payload
+### Visit後の体験
 
-```ts
-type ReflectionPromptViewPayload = {
-  /** 画面ソース。visit_done等の「表示文脈」は`reflectionContext`が担うため、sourceはここでは混在させない */
-  source: "concierge_result" | "shrine_detail" | "map" | "shrines";
-  shrineId: number | string;
-  threadId?: string | null;
-  resultSetId?: string | null;
-  historyTheme?: string | null;
-  actionTheme?: string | null;
-  /** どのフォーム構造でReflectionを入力させたか */
-  reflectionFormType: "one_line" | "mood_delta" | "theme_reflection";
-  /** Reflectionがどの文脈で表示されたか */
-  reflectionContext: "visit_done" | "mypage" | "night_reflection";
-  accessLevel?: "anonymous" | "free" | "premium";
-};
-```
+Visitの記録後は、ユーザーへReflectionの入口を提示できる。
 
-`reflectionFormType` と `reflectionContext` は、Action Suggestion v4の `reflection_prompt.prompt_type`（`before_visit` / `after_visit` / `decision` / `emotion` / `constraint`）とは異なる語彙である。両者を混在させない。
+ただし、Reflectionの回答や保存は必須としない。
 
-`source` は「どの画面から送信されたか」を表す全Event共通の語彙とし、`visit_done`/`mypage`/`night_reflection`のような「表示文脈」は`reflectionContext`が単独で担う。両者を混在させない。
+ユーザーは以下を選択できる。
 
-### 質問生成
+- その場で短く振り返る
+- 後から振り返る
+- 記録だけ残して終了する
+- 次回相談へ進む
 
-振り返り質問は`history_theme`を参照できる。
+### Visitが担当しないもの
 
-| history_theme | 質問例 |
+- 心理状態の判定
+- 行動の良否判定
+- Reflection回答の生成
+- 推薦理由の再生成
+- 神社の効果判定
+- 次回行動の強制
+
+---
+
+## Reflection
+
+### 意味責務
+
+Reflectionは、相談や行動の後に考えたこと、感じたことまたは次に持ち帰りたいことを整理する体験である。
+
+Reflectionは、ユーザーの変化を診断するものではない。
+
+ユーザー自身が言葉にした内容を、後から見返せる記録として扱う。
+
+### 記録できる内容
+
+Reflectionでは、以下の内容を任意で扱える。
+
+- 行動後に考えたこと
+- 印象に残ったこと
+- 行動前後で変わった感覚
+- 次に試したいこと
+- まだ決めずに置いておきたいこと
+- 相談時点から継続しているテーマ
+
+正確な入力項目、型、必須条件および保存Fieldは、関連するBackend・Frontend実装とテストを正本とする。
+
+### 入力原則
+
+- 一度に多くの入力を求めない
+- 短い回答でも保存できる体験を優先する
+- 長文入力を前提にしない
+- 正解のある質問にしない
+- 心理状態を断定する質問にしない
+- 宗教的な効果を確認する質問にしない
+- 回答しない選択を妨げない
+- 過去との比較をユーザーへ強制しない
+
+### 質問例
+
+Reflectionの質問は、相談や推薦時点の文脈を参照できる。
+
+| 文脈 | 質問例 |
 |---|---|
-| 守り | 今日、自分の土台を少し守れたことは何か |
-| 静寂 | 今日、静かになれた瞬間はあったか |
-| 再出発 | 今日、区切りをつけられたことは何か |
-| 復興 | 今日、自分を立て直すためにできたことは何か |
-| 勝負 | 今日、前に進むために決めたことは何か |
-| 学び | 今日、積み上げたことは何か |
-| 縁 | 今日、大切にしたい縁に対して何ができたか |
+| 守り | 今日、自分の土台を少し守れたことは何ですか |
+| 静寂 | 少し静かになれた瞬間はありましたか |
+| 再出発 | 区切りをつけられたことはありましたか |
+| 復興 | 自分を立て直すためにできたことはありますか |
+| 勝負 | 次に進むために考えたことは何ですか |
+| 学び | 今日、積み上げられたことは何ですか |
+| 縁 | 大切にしたい関係について考えたことはありますか |
 
-質問は答えを誘導せず、状態整理を補助する表現にする。
-
----
-
-## reflection_saved
-
-### 責務
-
-ユーザーが振り返りを保存した事実を記録する。
-
-`reflection_saved` は保存完了を表し、内容の正しさや心理的改善を判定しない。
-
-### Event名
-
-```text
-reflection_saved
-```
-
-### Payload
-
-```ts
-type ReflectionSavedPayload = {
-  source: "concierge_result" | "shrine_detail" | "map" | "shrines";
-  shrineId: number | string;
-  threadId?: string | null;
-  resultSetId?: string | null;
-  historyTheme?: string | null;
-  actionTheme?: string | null;
-  reflectionFormType: "one_line" | "mood_delta" | "theme_reflection";
-  reflectionContext: "visit_done" | "mypage" | "night_reflection";
-  answerLength: number;
-  moodBefore?: string | null;
-  moodAfter?: string | null;
-  accessLevel?: "anonymous" | "free" | "premium";
-};
-```
-
-`moodBefore`/`moodAfter` はUI入力値をそのまま送信する文字列とする（`ShrineReflection.mood_before`/`mood_after`と同じ`CharField`型に合わせる）。
-
-### 必須項目
-
-- `source`
-- `shrineId`
-- `reflectionFormType`
-- `reflectionContext`
-- `answerLength`
-
-`historyTheme`は`visit_done`と同様、値が取得できない場合はキーを省略してよい。
+質問表現の正本は、`docs/knowledge/reflection-guide.md`を参照する。
 
 ---
 
-## Reflection保存責務
+## Reflectionプレビューとの境界
 
-振り返りデータは`ShrineReflection`を正本として保存する。
+Action Suggestionには、次の振り返り観点を示す短い質問が含まれる場合がある。
 
-```python
-class ShrineReflection(models.Model):
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="shrine_reflections",
-    )
-    shrine = models.ForeignKey(
-        "temples.Shrine",
-        on_delete=models.CASCADE,
-        related_name="reflections",
-    )
-    thread = models.ForeignKey(
-        "temples.ConciergeThread",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="reflections",
-    )
-    history_theme = models.CharField(
-        max_length=32,
-        blank=True,
-        default="",
-    )
-    prompt = models.TextField(
-        blank=True,
-        default="",
-    )
-    answer = models.TextField()
-    mood_before = models.CharField(
-        max_length=50,
-        blank=True,
-        default="",
-    )
-    mood_after = models.CharField(
-        max_length=50,
-        blank=True,
-        default="",
-    )
-    created_at = models.DateTimeField(
-        default=timezone.now,
-    )
-```
+この質問表示と、実際のReflection入力体験は分離する。
 
-### Index
-
-```python
-models.Index(fields=["user", "-created_at"])
-models.Index(fields=["shrine", "-created_at"])
-models.Index(fields=["history_theme"])
-```
-
-### 必須保存項目
-
-- `user`
-- `shrine`
-- `answer`
-- `created_at`
-
-`answer`は空文字を許容しない。UI側も回答が空の間は保存操作をできなくする（「あとで書く」の保存は提供しない）。
-
-### 任意保存項目
-
-- `thread`（`thread_id`としてAPIで送受信する。振り返り対象の参拝のきっかけとなった相談スレッドへの接続キー）
-- `history_theme`
-- `prompt`
-- `mood_before`
-- `mood_after`
-
-`history_theme`は値が取得できない場合、空文字ではなくフィールド省略（デフォルト空文字）で扱う。
-
-### 採用しないフィールド
-
-以下は過去検討したが採用しない。理由を明記する。
-
-| フィールド | 採用しない理由 |
+| 体験 | 責務 |
 |---|---|
-| `result_set_id` | Backend側に「推薦結果セット」を一意識別する概念・モデルが存在しない。`thread`（Recommendation Snapshotへの接続キー）を正本とし、`result_set_id`は追加しない |
-| `action_theme` | Action Suggestionの実行・完了は`ActionEvent`モデルが別途管理しており、`ShrineReflection`への重複保存にあたる |
-| `visited_at` | 「いつ参拝したか」は`Visit.visited_at`の責務であり、Reflection側に重複保存しない |
-| `updated_at` | Reflection編集（Update API）が存在しないため、更新日時を持つ意味がない。編集機能を追加する際に再検討する |
+| Action SuggestionのReflectionプレビュー | 次に振り返る観点を提示する |
+| Reflection入力UI | ユーザーが回答を入力し、記録として保存する |
 
-### mood_before / mood_after の型
+Reflectionプレビューは、回答や保存を前提としない。
 
-`CharField`（自由記述の文字列）とする。UIは数値スケールではなく自由記述テキストとして`moodBefore`/`moodAfter`を入力させており、Model・Serializer・API・Frontend UI・Analytics Payloadのすべてでこの型に統一済みである。
+Reflection入力UIは、ユーザーが実際に回答し、履歴へ記録できる体験である。
 
-### 保存しないもの
+Action Suggestionの責務は、`docs/product/action_suggestion_v4.md`を参照する。
 
-- 医療的な状態評価
-- 宗教的な達成判定
-- AIによる断定的な心理分析
-- 成功・失敗の自動判定
+正確な表示イベント、保存イベント、Payloadおよび計測語彙は、`docs/analytics/`配下の正本文書を参照する。
 
 ---
 
-## Visit保存責務
+## 推薦時点の文脈との接続
 
-`Visit`は参拝・訪問の完了事実を保存する。
-
-```python
-class Visit(models.Model):
-    STATUS_CHOICES = [("added", "Added"), ("removed", "Removed")]
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="visits",
-    )
-    shrine = models.ForeignKey(
-        "temples.Shrine",
-        on_delete=models.CASCADE,
-        related_name="visits",
-    )
-    thread = models.ForeignKey(
-        "temples.ConciergeThread",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="visits",
-    )
-    visited_at = models.DateTimeField(default=timezone.now)
-    note = models.TextField(blank=True)
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="added")
-```
-
-`thread`は`ShrineReflection`と同様、参拝のきっかけとなった相談スレッドへの接続キーとして任意で保存する。`history_theme`はVisitへ重複保存しない（Analytics Eventのpayloadで扱えば十分であり、DB保存の必要性がない）。
-
----
-
-## history_theme履歴
-
-`history_theme` は、推薦理由だけでなく、行動後の変化を整理する軸として保存する。
+VisitおよびReflectionは、相談・推薦時点の文脈と接続できる。
 
 ```text
-consultation
+相談
+↓
+Consultation Interpretation
+↓
+Meaning Translation
+↓
+Recommendation
+↓
+Visit
+↓
+Reflection
+```
+
+これにより、ユーザーは以下を一つの体験として見返せる。
+
+- 何について相談したか
+- どの神社が提案されたか
+- なぜその神社が提案されたか
+- どのような行動を選んだか
+- 行動後に何を考えたか
+
+Productでは、推薦時点の意味文脈を後続体験へ接続する目的のみを管理する。
+
+正確なSnapshot構造、接続キー、保存先、Field、生成処理および再計算方針は、`docs/core/meaning-layer-connection.md`、`docs/core/architecture.md`および関連するBackend実装・テストを正本とする。
+
+---
+
+## history_themeとの接続
+
+`history_theme`は、推薦時点の神社文脈と行動後の振り返りを接続する補助軸として利用できる。
+
+```text
+相談文脈
 ↓
 history_theme
 ↓
-visit / action
+推薦
 ↓
-reflection
+行動
 ↓
-history_theme履歴
+振り返り
 ```
 
-### 保存責務
+Productでは、`history_theme`を以下の目的で使用する。
 
-- 推薦時点の`history_theme`はRecommendation Snapshot（`ConciergeThread.recommendations_v2`）に保持する
-- 振り返り時点の`history_theme`は`ShrineReflection`に保持する
-- 過去のRecommendation Snapshotは再計算しない
-- 現在のReflection状態はDBから取得する
+- 推薦理由とReflectionの文脈を接続する
+- 振り返り質問の方向を補助する
+- 履歴上で体験を整理する
+- 次回相談で過去の文脈を参照する
 
-この分離により、推薦時点の文脈と行動後の記録を混在させない。
+`history_theme`だけでユーザーの状態を判定しない。
 
-推薦時点のSnapshotと、Visit/Reflectionを接続する正本キーは`thread`（`ConciergeThread`への外部キー、API上は`thread_id`）である。`result_set_id`という概念はBackendに存在しないため、接続キーとして採用しない。
+`history_theme`が取得できない場合でも、VisitおよびReflectionの体験は成立させる。
+
+カテゴリ名称と定義は、`docs/product/history-theme-taxonomy.md`を参照する。
+
+変換関係は、`docs/product/meaning-translation-mapping.md`を参照する。
+
+神社への付与基準、Fact / Meaningの分類、出典およびデータ品質は、`docs/knowledge/shrine-profile-spec.md`と`docs/knowledge/shrine-data-guide.md`を正本とする。
 
 ---
 
-## Analytics Contract
+## 履歴との接続
 
-### 共通Payload
+保存されたVisitおよびReflectionは、相談から行動後の記録までを時系列で見返すために利用できる。
 
-```ts
-type ReflectionAnalyticsBasePayload = {
-  source: string;
-  shrineId?: number | string;
-  threadId?: string | null;
-  resultSetId?: string | null;
-  historyTheme?: string | null;
-  mode?: "need" | "compat";
-  accessLevel?: "anonymous" | "free" | "premium";
-};
-```
+履歴では、以下の情報を体験単位で接続できる。
 
-### Events
+- 相談
+- 推薦された神社
+- 推薦理由
+- Visit
+- Reflection
+- 次回相談
 
-- `visit_done`
-- `reflection_prompt_view`
-- `reflection_saved`
+履歴は、ユーザーを評価するための記録ではない。
 
-### 必須Payload
+過去の選択を成功・失敗に分類せず、当時の文脈とその後の考えを見返すために利用する。
 
-| Event | 必須項目 |
-|---|---|
-| `visit_done` | `source`, `shrineId` |
-| `reflection_prompt_view` | `source`, `shrineId`, `reflectionFormType`, `reflectionContext` |
-| `reflection_saved` | `source`, `shrineId`, `reflectionFormType`, `reflectionContext`, `answerLength` |
+Timelineの情報設計は、関連するProduct文書と実装を参照する。
 
-`historyTheme`はいずれのEventでも必須項目に含めない。値が取得できる場合のみpayloadへ含める任意項目として扱う（詳細は次項）。
+---
 
-### historyTheme欠損時の扱い
+## 次回相談との接続
 
-`Shrine.history_theme`は`blank=True, default=""`であり、本番推薦対象の神社でも値が未設定（空文字）のケースが存在しうる。また神社詳細画面へConcierge経由でなく直接アクセスした場合は、Meaning Layerの意味変換結果（`shrineMeaningPayloadV2`）自体が存在せず、`historyTheme`を取得できない。
+Reflectionは、保存して終了するだけの体験にしない。
 
-以下の方針とする。
+必要に応じて、過去の相談や行動を次回相談の文脈として参照できる。
 
-- `historyTheme`が取得できない場合でも、`visit_done` / `reflection_prompt_view` / `reflection_saved` のEvent送信自体は行う（Eventを破棄しない）。Funnelの母数（`shrine_detail_view → visit_done → ...`）を`historyTheme`の有無で歪めないことを優先する。
-- `historyTheme`の値が取得できない場合は、空文字（`""`）を送らず、payloadから`historyTheme`キー自体を省略する。
-- `historyTheme: null`を明示的に送る運用は採用しない（Analytics送信の共通シリアライズ処理が`null`/`undefined`のキーを一律で除外する実装のため、値なし状態はキー省略で統一する）。
-- `historyTheme`別の集計では、キーが存在しないレコードを「欠損」として扱う。
+次回相談では、過去の記録を結論として使用しない。
 
-### ctxパラメータの扱い
+以下のような補助文脈として扱う。
 
-`ctx`（`"map" | "concierge" | null`、遷移元を示すURLクエリパラメータ）は、`visit_done` / `reflection_prompt_view` / `reflection_saved` のpayloadへ直接含めない。`ctx === "concierge"`の場合のみ`mode: "need"`へ変換して送信する（他の`trackCardEvent`系イベントと同じ変換規則）。`ctx`という生のパラメータ名はAnalytics Payload契約に含めない。
+- 前回考えていたこと
+- 前回選択した行動
+- 行動後に記録した内容
+- 継続しているテーマ
+- 新しく変化した相談内容
 
-### Mobile送信状況
+AIは、過去のReflectionだけを根拠にユーザーの状態、性格または将来を断定しない。
 
-Mobile（`apps/mobile`）は神社詳細画面（`app/shrines/[id].tsx`）に参拝記録・振り返り保存の実UIを持ち、`visit_done` / `reflection_prompt_view` / `reflection_saved` を同一イベント名・同一フィールド意味でPostHogへ送信する（`apps/mobile/lib/visitReflectionAnalytics.ts`）。Web/MobileのイベントはPostHog上の同一プロジェクトに集約される。
+---
 
-Mobileでは以下の項目を送信しない。理由は「取得できない値を無理に埋めない」という方針（前項「historyTheme欠損時の扱い」と同じ考え方）に基づく。
+## Analyticsとの境界
 
-| 項目 | 扱い |
-|---|---|
-| `threadId` | Mobileの神社詳細画面はConcierge相談スレッドからの遷移パラメータを受け取っていないため、常に未送信。導線を追加する場合は本項を更新する |
-| `mode` / `ctx` / `accessLevel` | Mobileの神社詳細画面にConcierge文脈・Free/Premium文脈を渡す導線が現時点で存在しないため未送信 |
-| `resultSetId` | Backendに対応する概念がなく、Web側でもDB保存とは接続しない値のため、Mobileでも送信しない |
-| `moodBefore` / `moodAfter` | Mobileの振り返り入力UIは自由記述の一言のみで、気分の前後入力欄を持たない（`reflectionFormType: "one_line"`固定）。常に空のため送信しない |
+Productでは、VisitおよびReflection体験について、以下を観測する必要性のみを管理する。
 
-Web/Mobile間で型定義そのものを共有する基盤（`packages/shared`）は未整備であり（`pnpm-workspace.yaml`で`apps/mobile`がworkspace対象から除外されている）、契約（イベント名・フィールドの意味）のみを揃え、型定義は各アプリ側で個別に持つ。
+- 神社詳細から行動へ進んだか
+- Visitが記録されたか
+- Reflectionの入口が表示されたか
+- Reflectionが保存されたか
+- 履歴が見返されたか
+- 次回相談へ接続したか
+- 各段階で体験が中断していないか
 
-### 集計指標
+正確な以下の内容は、`docs/analytics/`配下の正本文書を参照する。
 
-- `route_open → visit_done` CVR
-- `visit_done → reflection_prompt_view` CVR
-- `reflection_prompt_view → reflection_saved` CVR
-- `historyTheme`別`visit_done`率
-- `historyTheme`別`reflection_saved`率
-- `reflection_saved → next_consultation_started`率
+- Event名
+- Payload
+- Property
+- 必須・任意項目
+- Funnel
+- KPI
+- 欠損値の扱い
+- PostHogの設定
+- Web / Mobileの送信差
+- 集計方法
+- Dashboard構成
 
-Analyticsは体験改善の観測に利用し、個別ユーザーの心理状態判定には利用しない。
+Analyticsは体験改善の観測に使用する。
+
+個別ユーザーの心理状態、宗教的効果、信仰の程度または人生上の成果を判定するためには使用しない。
 
 ---
 
@@ -470,93 +348,227 @@ Analyticsは体験改善の観測に利用し、個別ユーザーの心理状�
 
 ### Free
 
-Freeでは、参拝記録と短い振り返り保存を提供する。
+Freeでは、相談後の行動と短い振り返りを記録できる基本体験を提供する。
 
-- 参拝完了の記録
-- ひとこと振り返り
-- 直近履歴の表示
+- Visitの記録
+- 短いReflectionの保存
+- 直近の記録の表示
+- 自分の記録を見返すための基本導線
+
+保存そのものをPremium限定にはしない。
 
 ### Premium
 
-Premiumでは、保存された記録の比較・整理・継続分析を提供する。
+Premiumでは、蓄積した記録を比較・整理し、継続的に振り返る価値を提供できる。
 
-- 前回Reflectionとの比較
-- `history_theme`の月次推移
+- 過去のReflectionとの比較
+- 一定期間の記録の整理
 - 繰り返し現れるテーマの表示
-- 過去記録をもとにした振り返り支援
+- 過去記録を参照した振り返り支援
+- 相談・行動・Reflectionの長期的な接続
 
-Premium価値は保存機能そのものではなく、蓄積した変化を比較・整理できることに置く。
+Premium価値は、Reflectionを保存できることではなく、蓄積した体験を比較・整理しやすくすることに置く。
+
+具体的なPremium提供範囲は、`docs/product/premium-experience.md`を参照する。
+
+BillingおよびAccess Levelの物理判定は、`docs/product/billing-paywall.md`と関連する実装・テストを正本とする。
 
 ---
 
 ## 責務境界
 
+### Product
+
+Productでは以下を管理する。
+
+- VisitからReflectionへの体験接続
+- VisitとReflectionの意味責務
+- Reflectionプレビューと入力UIの境界
+- 推薦時点の文脈との接続
+- 履歴および次回相談への接続
+- Free / Premiumの体験境界
+- 断定、強制および結果保証を避ける原則
+
 ### Visit
 
-担当するもの:
+Visitでは以下を扱う。
 
-- 参拝・訪問完了の事実
-- `visited_at`
-- 訪問対象の神社
-- 振り返り導線の開始
+- 参拝・訪問または関連行動の完了事実
+- 対象となる神社
+- 行動した時点
+- Reflectionへの入口
 
-担当しないもの:
+Visitでは以下を扱わない。
 
+- Reflection回答
 - 心理状態の判定
-- Reflection回答の保存
 - 推薦理由の再生成
+- 宗教的効果の判定
+- 行動の成功・失敗判定
 
 ### Reflection
 
-担当するもの:
+Reflectionでは以下を扱う。
 
-- 振り返り質問
-- 回答保存
-- moodの任意記録
-- `history_theme`との接続
+- 振り返りの問い
+- ユーザーが入力した回答
+- 行動前後の任意の記録
+- 推薦時点の文脈との接続
+- 履歴および次回相談への接続
 
-担当しないもの:
+Reflectionでは以下を扱わない。
 
-- Visit完了判定
+- Visit完了の物理判定
 - 神社推薦順位
-- 医療・心理診断
-- 宗教的効果判定
+- 心理・医療診断
+- 宗教的効果の判定
+- AIによる成功・失敗評価
+
+### Core
+
+以下は`docs/core/`配下の正本文書を参照する。
+
+- ConsultationからReflectionまでの全体構造
+- Recommendation、VisitおよびReflectionのデータフロー
+- Frontend、BFFおよびBackendの技術責務
+- Source of Truth
+- 推薦時点の文脈保持
+- 各記録の構造的な接続
+
+### Backend・実装
+
+以下は関連するBackend実装とテストを正本とする。
+
+- Model
+- Field
+- 型
+- Index
+- Foreign Key
+- 接続キー
+- Serializer
+- API Endpoint
+- 必須・任意条件
+- 保存処理
+- 更新処理
+- 削除処理
+- Snapshotの保存先
+- fallback
+- Validation
+
+### Frontend・実装
+
+以下は関連するFrontend実装とテストを正本とする。
+
+- Visit CTA
+- Reflection入力UI
+- 保存可否
+- 画面遷移
+- Timeline表示
+- Access Levelによる表示差
+- Event送信処理
+- Web / Mobileの画面差
 
 ### Analytics
 
-担当するもの:
+以下は`docs/analytics/`配下の正本文書を参照する。
 
-- 表示・遷移・保存イベントの計測
-- Funnel集計
-- `historyTheme`別の傾向確認
+- Event名
+- Payload
+- Property
+- Funnel
+- KPI
+- 欠損値の扱い
+- Dashboard
+- PostHog送信
+- Web / Mobileの計測差
+- 集計方法
 
-担当しないもの:
+### Knowledge
 
-- ユーザー状態の断定
-- 推薦理由の生成
-- UIの表示判断
+以下は`docs/knowledge/`配下の正本文書を参照する。
+
+- Reflection質問の表現原則
+- Action文言の表現原則
+- ユーザー状態を断定しないコピー
+- 神社FactとMeaningの扱い
+- `history_theme`と神社情報の接続基準
+
+### Audit
+
+以下は`docs/audit/`配下の監査文書で管理する。
+
+- 現行実装状況
+- Web / Mobileの未接続事項
+- 過去に検討して採用しなかったField
+- Migration判断
+- 検証結果
+- 未確認事項
+- 実装差分
+- 移行手順
+
+---
+
+## 責務外
+
+本書では以下を管理しない。
+
+- Event名
+- Payload
+- Property
+- Funnel
+- KPI
+- Model全文
+- Field一覧
+- Index
+- Serializer
+- API Endpoint
+- URL Query
+- Component構造
+- Web / Mobileの送信状況
+- Analytics欠損値の物理処理
+- Recommendation Ranking
+- Recommendation Score
+- 神社DB構造
+- Migration手順
+- テストケース一覧
+- 実装進捗
+- PR計画
+- 作業履歴
 
 ---
 
 ## 関連ドキュメント
 
+- `docs/product/README.md`
 - `docs/product/action_suggestion_v4.md`
 - `docs/product/meaning-translation-mapping.md`
 - `docs/product/history-theme-taxonomy.md`
+- `docs/product/shrine-detail-layer.md`
+- `docs/product/premium-experience.md`
+- `docs/product/billing-paywall.md`
+- `docs/product/reflection-timeline-design.md`
+- `docs/product/journey-timeline-design.md`
+- `docs/analytics/reflection-next-recommendation-design.md`
+- `docs/analytics/history-theme-dashboard.md`
 - `docs/product/reflection-funnel-dashboard.md`
 - `docs/core/architecture.md`
-- `docs/core/narrative-guideline.md`
+- `docs/core/meaning-layer-connection.md`
+- `docs/core/recommendation-readiness.md`
+- `docs/knowledge/reflection-guide.md`
+- `docs/knowledge/action-guide.md`
+- `docs/knowledge/shrine-profile-spec.md`
+- `docs/knowledge/shrine-data-guide.md`
 
 ---
 
 ## 更新ルール
 
-本ドキュメントは以下の場合のみ更新する。
-
-- Visit / Reflectionの責務が変更された場合
-- Event名またはPayload契約が変更された場合
-- `ShrineReflection`の保存責務が変更された場合
-- Free / Premium境界が変更された場合
-- `history_theme`の保存方針が変更された場合
-
-実装進捗、作業手順、PR計画、TODO、テスト実行履歴は本書へ記載しない。
+- 本書はVisitからReflection、履歴および次回相談までの体験責務を管理する。
+- VisitまたはReflectionの意味責務が変更された場合は、本書を更新する。
+- Reflectionプレビューと入力UIの体験境界が変更された場合は、本書を更新する。
+- Free / Premiumの体験境界が変更された場合は、本書を更新する。
+- 推薦時点の文脈とVisit / Reflectionの接続目的が変更された場合は、本書を更新する。
+- Event、Payload、Property、FunnelおよびKPIは本書で重複管理しない。
+- Model、Field、Index、API、型および保存処理は本書で重複管理しない。
+- 物理実装のみを変更した場合は、本書の体験責務への影響を確認する。
+- TODO、PR計画、実装進捗、テスト手順、検証結果および作業履歴は本書へ記載しない。
