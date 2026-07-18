@@ -412,14 +412,15 @@ Archive済み文書（`card-visibility-renderer-split.md`、`pricing.md`）は�
 
 ## 10. docs/product/README.mdとの差分
 
-監査完了後に以下を記録する。
+Product Integration Candidate Cleanup（`pricing.md`・`card-visibility-renderer-split.md`・`shrine-detail-meaning-layer.md`・`reflection-timeline-design.md`の再確認）完了時点で、以下をREADME.mdへ反映済みである。
 
-- 現在分類と監査判定が一致する文書
-- Status変更が必要な文書
-- README上の役割説明を修正する文書
-- 読む順番を変更する文書
-- ArchiveまたはDelete候補
-- 統合後にREADMEから除外する文書
+- **現在分類と監査判定が一致する文書**: 本監査で確定したActive16 / Reference14 / Archive4の分類は、すべてREADME.mdの「正本」「Reference」「Archive」各表と一致している
+- **Status変更が必要な文書**: `pricing.md`と`card-visibility-renderer-split.md`をReferenceからArchiveへ変更し、README.mdのArchive表へ移動済み。両文書の役割欄には統合先（`premium-experience.md`／`concierge-card-architecture.md`）を明記した
+- **README上の役割説明を修正する文書**: `premium-experience.md`の役割欄に「Premium対象および価格表現の原則」を追加、`concierge-card-architecture.md`の役割欄に「Visibility PolicyおよびRenderer責務の設計補足」を反映済み
+- **読む順番を変更する文書**: なし（`pricing.md`・`card-visibility-renderer-split.md`はいずれも「読む順番」に含まれていなかったため影響なし）
+- **Archive候補**: `pricing.md`・`card-visibility-renderer-split.md`の2件をArchiveへ変更済み。Delete判定は参照元更新状況を確認する後続PRへ持ち越す（8節参照）
+- **統合後にREADMEから除外する文書**: なし。Archive化した2件もREADME上ではArchive表に残し、統合済みである旨を役割欄に明記する方針とした（Archive文書自体をREADMEから削除すると参照経路が失われるため）
+- **統合を見送った文書**: `shrine-detail-meaning-layer.md`はReferenceのまま維持（統合には新規Product仕様の追加が伴うため見送り）。`reflection-timeline-design.md`は既存のJourney Timeline正本化（PR #2056）で対応済みのためReferenceのまま追加変更なし。いずれもREADME.mdの記載を変更する必要はなかった
 
 ---
 
@@ -457,15 +458,15 @@ Event、Payload、KPI、Funnelおよび実装状況をAnalytics文書へ委譲�
 
 ## 12. 品質確認
 
-- [ ] 35文書すべてに監査判定がある
+- [x] 35文書すべてに監査判定がある（7節の各表に記録済み。`reflection-funnel-dashboard.md`のAnalytics移管後は34件を対象として扱う）
 - [x] Active / Reference / Archive / Delete / 統合 / 保留の基準が明文化されている
 - [x] Productと他領域の境界が整理されている
 - [x] 後続PRの変更範囲が分離されている
-- [ ] READMEとの差分が明示されている
-- [ ] Markdownコードブロックが閉じている
-- [ ] Markdown参照切れがない
-- [ ] `git diff --check`が成功する
-- [ ] 意図しないファイル変更が含まれていない
+- [x] READMEとの差分が明示されている（10節）
+- [x] Markdownコードブロックが閉じている
+- [x] Markdown参照切れがない
+- [x] `git diff --check`が成功する
+- [x] 意図しないファイル変更が含まれていない
 
 ---
 

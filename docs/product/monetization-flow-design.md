@@ -2,7 +2,7 @@
 >
 > 本ドキュメントは、Premium提示タイミング、CTA方針および収益導線の設計背景を記録した参照資料である。
 >
-> Free / Premiumの提供価値境界は`docs/product/premium-experience.md`、価格表現は`docs/product/pricing.md`、Billing / Paywallの判定原則は`docs/product/billing-paywall.md`を正本とする。正確なEvent名は`docs/analytics/monetization-funnel.md`、Payload・FunnelおよびKPIは`docs/analytics/`配下の正本文書、現行仕様は実装コードおよびテストを最終的な正本とする。
+> Free / Premiumの提供価値境界および価格表現の原則は`docs/product/premium-experience.md`、Billing / Paywallの判定原則は`docs/product/billing-paywall.md`を正本とする。正確なEvent名は`docs/analytics/monetization-funnel.md`、Payload・FunnelおよびKPIは`docs/analytics/`配下の正本文書、現行仕様は実装コードおよびテストを最終的な正本とする。
 
 # Monetization Flow Design
 
