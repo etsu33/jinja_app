@@ -37,19 +37,19 @@
 | # | 項目 | 分類 | 優先度 | 外部環境確認 |
 |---:|---|---|---|---|
 | 1 | ~~`backend/temples/_deprecated/`（4ファイル、1313行）の削除~~ **対応済み** | 削除 | P1 | 不要 |
-| 2 | `apps/web/src/features/concierge/components/legacy/`＋`ConciergeSections.tsx`（311行）の削除 | 削除 | P1 | 不要 |
-| 3 | `recommend_shrines()`と関連LUCK_BONUS系設定の削除 | 削除 | P1 | 不要 |
+| 2 | ~~`apps/web/src/features/concierge/components/legacy/`＋`ConciergeSections.tsx`（311行）の削除~~ **対応済み**（PR #2077） | 削除 | P1 | 不要 |
+| 3 | ~~`recommend_shrines()`と関連LUCK_BONUS系設定の削除~~ **対応済み**（PR #2075） | 削除 | P1 | 不要 |
 | 4 | `ConciergeRecommendationClickLog`モデルの削除 | 削除 | P2 | 必要（本番DBのデータ有無） |
-| 5 | `PlacesSearchResponse.items`フィールドの削除 | 削除 | P1 | 不要 |
-| 6 | `apps/mobile/components/home/`配下未使用コンポーネント群の削除 | 削除 | P1 | 不要 |
-| 7 | `apps/mobile`の`nativewind`/`tailwindcss`関連一式の削除 | 削除 | P1 | 不要 |
+| 5 | ~~`PlacesSearchResponse.items`フィールドの削除~~ **対応済み**（PR #2076） | 削除 | P1 | 不要 |
+| 6 | `apps/mobile/components/home/`配下未使用コンポーネント群の削除 | 削除 | P1 | 不要（**未対応**。PR #2078のスコープから意図的に除外） |
+| 7 | ~~`apps/mobile`の`nativewind`/`tailwindcss`関連一式の削除~~ **対応済み**（PR #2078） | 削除 | P1 | 不要 |
 | 8 | Score v3の到達不能axisキー4件（28エントリ）の削除、またはエイリアス追加による復活 | 保留 | P2 | 必要（Product判断：4 axis正式導入の計画有無） |
 | 9 | ~~`BillingState`/`plan_from_profile()`の削除~~ **対応済み** | 削除 | P1 | 不要 |
-| 10 | `apps/web/src/lib/auth/token.ts`の削除 | 削除 | P1 | 不要 |
-| 11 | Web Analytics dead event（`premium_preview_view`/`next_session`/`next_thread`）の型定義削除 | 削除 | P1 | 不要 |
-| 12 | `RecommendationReasonViewModel.why`/`.interpretation`の削除 | 削除 | P1 | 不要 |
-| 13 | `useMyGoshuin.ts`・`MapCardListClient.tsx`の削除 | 削除 | P1 | 不要 |
-| 14 | `apps/web`の`@heroicons/react`の削除 | 削除 | P1 | 不要 |
+| 10 | `apps/web/src/lib/auth/token.ts`の削除 | 削除 | P1 | 不要（**未対応**。PR-Bグルーピングでは#2/#11/#12/#13/#14と同一PR対象として計画されていたが、実施されたPR #2077の範囲には含まれておらず、`develop`上に現存することを2026-07-18時点で確認済み） |
+| 11 | ~~Web Analytics dead event（`premium_preview_view`/`next_session`/`next_thread`）の型定義削除~~ **対応済み**（PR #2077） | 削除 | P1 | 不要 |
+| 12 | ~~`RecommendationReasonViewModel.why`/`.interpretation`の削除~~ **対応済み**（PR #2077） | 削除 | P1 | 不要 |
+| 13 | ~~`useMyGoshuin.ts`・`MapCardListClient.tsx`の削除~~ **対応済み**（PR #2077） | 削除 | P1 | 不要 |
+| 14 | ~~`apps/web`の`@heroicons/react`の削除~~ **対応済み**（PR #2077） | 削除 | P1 | 不要 |
 | 15 | ~~`SCORE_V3_HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS`のリネーム~~ **対応済み** | 命名修正 | **P0** | 不要（ただし実装担当者への意図確認は推奨） |
 | 16 | `.github/workflows/backend-tests.yml`のコメントアウト済み残骸の削除 | 削除 | P3 | 不要 |
 | 17 | `.github/workflows/web-tests.yml`の条件式とコメントの乖離解消 | 命名修正 | P3 | 不要 |
@@ -109,7 +109,7 @@
 
 ### PR-A: Backend Dead Code削除
 
-**対象**: #1（`_deprecated/`4ファイル1313行、**対応済み**）、#3（`recommend_shrines()`+LUCK_BONUS系）、#9（`BillingState`/`plan_from_profile()`、**対応済み**）
+**対象**: #1（`_deprecated/`4ファイル1313行、**対応済み**）、#3（`recommend_shrines()`+LUCK_BONUS系、**対応済み**）、#9（`BillingState`/`plan_from_profile()`、**対応済み**）
 
 **変更範囲**:
 
@@ -118,6 +118,7 @@
 - `backend/users/services/billing.py`から`BillingState`（dataclass）と`plan_from_profile()`の削除（別PRで対応済み）
 
 **#1の実施状況**: `backend/temples/_deprecated/`配下の4ファイルを、参照0件の再確認後に削除した。削除前後でPackage Import Sweepを実行し、API URL、REST Framework設定およびSerializerのImportテストを含む関連テストが通過することを確認した。
+**#3の実施状況**: PR #2075で対応済み。`backend/temples/services/recommendation.py`（`recommend_shrines()`と`ENABLE_LUCK_BONUS`/`LUCK_BASE_FIELD`/`LUCK_BONUS_ELEMENT`/`LUCK_BONUS_POINT`）をファイル全体として削除し、専用テスト`test_recommendation_adapter.py`も削除した。Recommendation関連テスト64件・Concierge Rankingテスト86件・Backend Import Sweep・API thin module importテストが通過することを確認済み。
 **#9の実施状況**: `backend/users/services/billing.py`の`BillingState`と`plan_from_profile()`は、Backend・Web・Mobile・テストからの参照0件を再確認した上で削除した。現行処理が利用する`is_subscription_active()`は維持した。Billing Checkout、StatusおよびWebhookの契約テスト12件と、Backend Import関連テスト6件が通過することを確認した。
 
 **テスト**:
@@ -133,7 +134,7 @@
 
 ### PR-B: Web Dead Code削除
 
-**対象**: #2（`legacy/`+`ConciergeSections.tsx`）、#10（`src/lib/auth/token.ts`）、#11（Analytics dead event型定義）、#12（`RecommendationReasonViewModel.why`/`.interpretation`）、#13（`useMyGoshuin.ts`・`MapCardListClient.tsx`）、#14（`@heroicons/react`）
+**対象**: #2（`legacy/`+`ConciergeSections.tsx`、**対応済み**）、#10（`src/lib/auth/token.ts`、**未対応**）、#11（Analytics dead event型定義、**対応済み**）、#12（`RecommendationReasonViewModel.why`/`.interpretation`、**対応済み**）、#13（`useMyGoshuin.ts`・`MapCardListClient.tsx`、**対応済み**）、#14（`@heroicons/react`、**対応済み**）
 
 **変更範囲**:
 
@@ -156,9 +157,13 @@
 - CI（`web-tests.yml`）の型検査・contract testが失敗した場合は即座にrevert
 - 本番デプロイ後、該当コンポーネント・フィールドの参照エラーがブラウザコンソール/Sentry等で検出された場合はrevert
 
+**実施状況（PR #2077）**: 上記対象のうち#2・#11・#12・#13・#14の5件を実施した。`concierge/components/legacy/`＋`ConciergeSections.tsx`を削除、`cardEvents.ts`の`premium_preview_view`と`retentionEvents.ts`の`next_session`/`next_thread`を型定義から削除、`buildRecommendationReasonViewModel.ts`から`.why`/`.interpretation`を削除（テストの`.why.*`アサーションは値が同一の`.list.*`/`.debug.reasonKeys.*`へ整合、snapshotも再生成）、`useMyGoshuin.ts`と専用テストを削除、`MapCardListClient.tsx`を削除、`package.json`から`@heroicons/react`を`pnpm remove`で削除した。Web Typecheck・Lintともにエラーなし、Web契約テスト446件pass、関連Unit Test 88件pass、`next build`成功を確認済み。
+
+**#10が未実施であることについて**: `src/lib/auth/token.ts`はPR #2077の変更ファイル一覧に含まれておらず、`develop`上に現存することを確認した（2026-07-18時点）。本PRグルーピングの計画時点では#2/#11/#12/#13/#14と同一PR対象として整理していたが、実際の実装PRのスコープには含まれなかった。改めて#10単独、または他のP1項目とまとめた削除PRを起票する必要がある。
+
 ### PR-C: Backend API Serializer軽微削除
 
-**対象**: #5（`PlacesSearchResponse.items`フィールド）
+**対象**: #5（`PlacesSearchResponse.items`フィールド、**対応済み**）
 
 **変更範囲**:
 
@@ -173,13 +178,15 @@
 
 - OpenAPI契約テスト（`dependency-review.yml`ではなくAPI契約系テスト）が失敗した場合はrevert
 
+**実施状況（PR #2076）**: `backend/temples/api/serializers/places.py`から`items`フィールドを削除した。Places関連テスト28件・OpenAPI Schema契約テスト（`test_api_style.py::test_openapi_conventions`、ライブスキーマに対する検証）・API URL smoke test・Backend Importテストが通過することを確認済み。自動生成スキーマファイル（`openapi.json`・`docs/openapi_generated.yaml`）は本PR以前から数千行規模の既存ドリフトがあり、CIでも検証対象外のため意図的に対象外とした。
+
 ---
 
 ## 5. Mobile未使用依存削除PRの対象確定
 
 ### PR-D: Mobile未使用コンポーネント・依存削除
 
-**対象**: #6（`components/home/`配下未使用コンポーネント群）、#7（`nativewind`/`tailwindcss`関連一式）
+**対象**: #6（`components/home/`配下未使用コンポーネント群、**未対応**）、#7（`nativewind`/`tailwindcss`関連一式、**対応済み**）
 
 **変更範囲**:
 
@@ -201,6 +208,8 @@
 - EASビルドが失敗した場合はrevert
 
 **優先度に関する注記**: #6・#7は参照0件を確認済みのP1だが、#8（未到達ルート6画面、P2）とは独立した別問題である。#6・#7はどの画面からも到達しない「孤立コンポーネント」、#27（旧番号）は「Tab登録されているが導線がないルート」であり、混同しないよう本PRの対象からは除外している。
+
+**実施状況（PR #2078）**: #7（`nativewind`/`tailwindcss`/`@tailwindcss/postcss`/`autoprefixer`と`tailwind.config.js`・`postcss.config.js`・`lib/cn.ts`）のみを実施した。`className`利用0件、Babel/Metro/Expo設定への接続0件を確認した上で削除し、Mobile Typecheck（削除対象由来の新規エラー0件）・Unit Test 57件pass（`npx vitest`による一時実行）・`expo-doctor`19/20 pass・Expo起動確認（Metro Bundler起動・config解決成功）を確認済み。#6（`components/home/`配下未使用コンポーネント群）はPR #2078の実施範囲に含まれておらず、**未対応のまま**である。PR #2078自体の指示が「スタイル依存の削除だけを扱い、未使用Home Component群の削除は行わない」と明記してPR-Dの対象を意図的に縮小したものであり、実装漏れではない。#6は改めて別PRで対応する必要がある。
 
 ---
 
@@ -299,7 +308,7 @@ Compatibility（互換目的で現役）に分類された項目について、�
 本監査・本計画では実施そのものを行わないが、着手する場合の目安順序を示す。
 
 1. **P0（#15, #24, #25）**: 誤解・期限超過リスクがあるため最優先。#24は事前にアクセスログ確認が必要。#15・#25は対応済み
-2. **P1のうち外部確認不要な削除（PR-A, PR-B, PR-C, PR-D）**: #1・#9は対応済み。残る対象は参照0件を再確認した上で並行して進められる
+2. **P1のうち外部確認不要な削除（PR-A, PR-B, PR-C, PR-D）**: PR-A（#1・#3・#9）・PR-C（#5）は全項目対応済み。PR-B（#2・#10・#11・#12・#13・#14）は#10を除く5項目、PR-D（#6・#7）は#7のみ対応済み。#10（`token.ts`）・#6（`components/home/`配下未使用コンポーネント群）は未対応のまま残っており、改めて実装PRを起票する必要がある
 3. **PR-E（Feature Flag整理）**: P0の#15, #25を含むため、実質的に(1)と同時期。両項目とも対応済み
 4. **外部環境確認（3節の8件）**: 上記と並行して進められる調査。確認が完了次第、該当するP2項目（#4, #18, #20, #22等）の実装PRへ進む
 5. **PR-F（環境変数統一の事前確認）**: 影響範囲が広いため、他の項目が落ち着いてから着手する
@@ -312,3 +321,43 @@ Compatibility（互換目的で現役）に分類された項目について、�
 - [x] Markdownコードブロックの閉じ確認（コードフェンス数は偶数）
 - [x] Markdown参照切れ確認（`docs/audit/legacy-settings-final-audit.md`への参照の実在を確認済み）
 - [x] `git diff --check`
+
+---
+
+## 12. P1レガシー削除PR（PR #2075〜#2078）の実施結果とP1残存項目の再集計（2026-07-18時点）
+
+「1. 29件の一覧と優先度・分類」のP1（13件: #1, #2, #3, #5, #6, #7, #9, #10, #11, #12, #13, #14, #23）について、PR #2075〜#2078のマージ後に一覧表と照合して再集計した。
+
+### PR #2075〜#2078のマージ確認
+
+4件全てがGitHub上でMERGED状態であり、各merge commitが`develop`のHEADの祖先に含まれていることを`git merge-base --is-ancestor`で確認した。`develop`上で削除対象の関数名・型フィールド名・依存パッケージ名・ファイルパスを全域再検索し、実装コード・テスト・設定ファイルに参照が残っていないこと（監査文書自身の履歴記述を除く）を確認済み。詳細は各PR本文および`docs/audit/legacy-settings-final-audit.md`「11. 後続対応状況」を参照。
+
+### P1一覧との照合
+
+| # | 項目 | 状態 | 根拠 |
+|---:|---|---|---|
+| 1 | `_deprecated/`4ファイル削除 | 対応済み | 本文書マージ前に別PRで実施済み |
+| 2 | `legacy/`+`ConciergeSections.tsx`削除 | 対応済み | PR #2077。`develop`上で参照0件を再確認 |
+| 3 | `recommend_shrines()`+LUCK_BONUS系削除 | 対応済み | PR #2075。`develop`上で参照0件を再確認 |
+| 5 | `PlacesSearchResponse.items`削除 | 対応済み | PR #2076。`develop`上で参照0件を再確認 |
+| 6 | `apps/mobile/components/home/`未使用コンポーネント群削除 | **未対応** | PR #2078のスコープから意図的に除外。改めて起票が必要 |
+| 7 | `nativewind`/`tailwindcss`関連一式削除 | 対応済み | PR #2078。`develop`上で参照0件を再確認 |
+| 9 | `BillingState`/`plan_from_profile()`削除 | 対応済み | 本文書マージ前に別PRで実施済み |
+| 10 | `apps/web/src/lib/auth/token.ts`削除 | **未対応** | PR-Bグルーピングの計画対象だったが、実施されたPR #2077の範囲に含まれず。`develop`上に現存することを確認 |
+| 11 | Analytics dead event型定義削除 | 対応済み | PR #2077。`develop`上で参照0件を再確認 |
+| 12 | `RecommendationReasonViewModel.why`/`.interpretation`削除 | 対応済み | PR #2077。`develop`上で参照0件を再確認 |
+| 13 | `useMyGoshuin.ts`・`MapCardListClient.tsx`削除 | 対応済み | PR #2077。`develop`上で参照0件を再確認 |
+| 14 | `@heroicons/react`削除 | 対応済み | PR #2077。`develop`上で参照0件を再確認 |
+| 23 | Backendオリジン環境変数命名統一 | **未対応**（設計フェーズ未着手） | PR-F（7節）の事前確認項目が未着手。外部環境確認は「不要（ただし設計レビューは必須）」に分類されており、「外部環境確認が必要」カテゴリには該当しない |
+
+### 集計
+
+- P1合計: 13件
+- 対応済み: **10件**（#1, #2, #3, #5, #7, #9, #11, #12, #13, #14）
+- 未対応: **3件**（#6, #10, #23）
+- 外部環境確認が必要: 0件（P1の定義上、外部確認を要する項目はP2以上に分類されているため）
+- 保留: 0件（P1の中に「保留」分類の項目は無い。保留分類の#8, #26, #27, #28, #29はいずれもP2/P3）
+
+集計値は上表（一覧表との照合）を手動で数え上げて算出し、「1. 29件の一覧と優先度・分類」のP1行数（13行）と一致することを確認した。
+
+未対応3件（#6, #10, #23）は、いずれも実装漏れではなく「計画時点でグルーピングされていたが実施PRのスコープが縮小された」（#6, #10）、または「実装PRの前に必要な事前確認・設計フェーズが未着手」（#23）という理由による。改めて個別PRの起票が必要である。

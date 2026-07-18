@@ -106,7 +106,7 @@ KAMI MUSUBIの現行リポジトリ（Backend / `apps/web` / `apps/mobile` / `.g
 | `SCORE_V3_MODE`（env） | `backend/temples/services/concierge_chat_ranking.py:61-88`（`resolve_score_v3_mode`/`resolve_score_v3_mode_detail`） | Backend: `concierge_chat.py:51-52,647-654`で実際にソートキー切替に使用。テスト複数（`test_score_v3_feature_flag.py`等）で`active`/`shadow`両方を検証済み。Web/Mobile: 参照なし。全`.env`系ファイルに設定なし | Backend | `active`にするとScore v3が本番ランキングのソートキーになる。実装は完了しているが、どの環境変数ファイルにも設定されておらず、現状は常に`shadow`（デフォルト）で動作 | Active（未デプロイ・dormant） | 中（Flagを立てるだけでランキングアルゴリズムが切り替わるため、有効化には別途検証が必要） | `docs/audit/score-v3-shadow-audit.md`の「shadow observation only」という説明が、"切替不能"という意味なのか"デフォルトがshadow"という意味なのかを明確化する | Score v3を本番反映する計画がある場合、有効化の判断基準（品質評価）を先に整備するPR |
 | ~~`SCORE_V3_HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS`~~ → `HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS`（**対応済み**） | `backend/temples/services/concierge_chat_ranking.py:247-250` | Backend: `resolve_history_theme_candidate_boost()`経由で`score_need_rank_weighted`（1117-1121行）と候補prefilterスコア（1576-1582行）に直接加算。**Shadowではなく現行の実ランキングに影響している** | Backend | `SCORE_V3_HISTORY_THEME_BY_AXIS`の単純コピーだが、命名に反して常時有効な本番ロジックとして機能している | ~~Uncertain（命名がミスリーディング）~~ 対応済み | 中（既に本番影響がある機能のため、リネームや無効化はランキング結果に直接影響する） | 「SCORE_V3」という命名が意図的か、単なる命名ミスかを実装担当者に確認する | 命名を`HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS`へリネーム済み。計算式・加算先は無変更（別PRで対応。詳細はリネームPRの説明を参照） |
 | `relationship_repair` / `health` / `protection` / `travel_safe`（axisキー、上記2テーブル内、計28エントリ） | `concierge_chat_ranking.py:164-172,209-217,227-235,236-244` | `consultation_axis`の唯一の生成元`domain/consultation_axis.py`の`normalize_consultation_axis()`が許可する値（`money_growth,career_change,independence,rest_healing,restart_mindset,nature_reset,study_success,other`）にこれら4値が含まれておらず、到達不能。ユニットテストが関数を直接呼ぶケース以外に参照なし | Backend / テスト | 到達不能なテーブルエントリ | Dead | 低（到達経路が無いため削除しても挙動に影響しない） | これら4 axisを将来正式導入する計画があるか確認する | 計画が無ければ、4キー28エントリを削除するPR。計画があれば`CONSULTATION_AXIS_ALIASES`側にエイリアスを追加して到達可能にするPR |
-| `recommend_shrines()`および`ENABLE_LUCK_BONUS`/`LUCK_BASE_FIELD`/`LUCK_BONUS_ELEMENT`/`LUCK_BONUS_POINT` | `backend/temples/services/recommendation.py:9-80` | 自身のテスト（`test_recommendation_adapter.py`）以外の呼び出し元0件。`settings.py`にも該当設定値の定義なし | Backend / テスト | なし | Dead | 低 | なし | 関数・設定・専用テストを削除するPR |
+| ~~`recommend_shrines()`および`ENABLE_LUCK_BONUS`/`LUCK_BASE_FIELD`/`LUCK_BONUS_ELEMENT`/`LUCK_BONUS_POINT`~~ | ~~`backend/temples/services/recommendation.py:9-80`~~ | ~~自身のテスト（`test_recommendation_adapter.py`）以外の呼び出し元0件。`settings.py`にも該当設定値の定義なし~~ | Backend / テスト | なし | Dead → **対応済み（削除）** | 低 | なし | PR #2075で`recommendation.py`ファイル全体（`recommend_shrines()`とLUCK_BONUS系4定数）および専用テスト`test_recommendation_adapter.py`を削除済み |
 | `ConciergeRecommendationClickLog` | `backend/temples/models_concierge_analytics.py:42-71`、migration `0076` | モデル定義とmigrationのみ。`.objects.create(`呼び出し0件、admin登録なし、シリアライザ/APIエンドポイント参照なし、テスト参照なし | Backend | なし（テーブルは存在するがwrite/read経路が皆無） | Dead | 低〜中（DBテーブルを伴うため、削除にはmigrationが必要） | 本番DBに実データが入っていないか確認してから削除する | モデル削除＋DROP TABLE migrationのPR（本番データ有無の確認後） |
 | `ConciergeThread.recommendations`（v1フィールド） | `backend/temples/models.py:449` | `api_views_concierge.py:889-910,926-927`で`recommendations_v2`と併せて書き込み継続。`journey_timeline.py:103`で`thread.recommendations_v2 or thread.recommendations or []`という読み取りfallbackに使用 | Backend | v2導入前の旧スレッドデータを読むためのfallback | Compatibility | 中（削除すると古いスレッドのJourney Timeline表示が欠落する可能性） | 旧スレッド（v2フィールドが空のもの）が本番DBにどれだけ残っているか確認する | 旧データの移行（v1→v2へのバックフィル）が完了した後に、v1フィールドの読み取りfallbackを削除するPR |
 | `PublicMode = Literal["need","compat"]` | `concierge_chat_ranking.py:23,725-752,1681-1723` | Backend: `concierge_chat.py:554`ほか多数。Web: `ConciergeClientFull.tsx`等で「相性ベース」モードとして能動的に使用 | Backend / Web | 生年月日ベースの「相性」推薦モード（query未入力時の代替フロー）。名前に"compat"を含むが、レガシー互換シムではなく現役のプロダクト機能 | Active | なし | なし（誤解を避けるため名称の由来をコード内コメントで明記すると良い） | なし（機能名の紛らわしさに関する軽微なドキュメント改善のみ、任意） |
@@ -119,9 +119,9 @@ KAMI MUSUBIの現行リポジトリ（Backend / `apps/web` / `apps/mobile` / `.g
 | 設定名 | 定義場所 | 参照場所 | 対象レイヤ | 現行用途 | 分類 | 削除リスク | 必要な後続確認 | 推奨する後続PR |
 |---|---|---|---|---|---|---|---|---|
 | `backend/temples/_deprecated/`（4ファイル、計1313行） | `backend/temples/_deprecated/api_views_legacy.py`（956行）、`api_views_places_legacy.py`（282行）、`concierge_django_views.py`（71行）、`concierge_api_views.py`（4行、`raise RuntimeError`でimport自体を禁止する明示的tripwireのみ） | `backend/temples/api/`・`shrine_project/urls.py`・テスト・Web/Mobileいずれからも参照0件（grep確認済み） | Backend | なし。`concierge_api_views.py`は「DEPRECATED: do not import」というdocstringと共に、import時に例外を発生させる安全装置のみを持つ | Dead | 低（参照が一切ないため削除しても現行動作に影響しない） | `docs/audit/deprecated-files-cleanup.md`が既に「別PRで判断する」と保留していた対象。本監査で参照0件を再確認できたため、判断材料は揃っている | ディレクトリ全体（4ファイル）を削除するPR |
-| `apps/web/src/features/concierge/components/legacy/`（`RecommendationUnit.tsx`, `RecommendationSwitchList.tsx`、計197行） | 同ディレクトリ | 参照元`ConciergeSections.tsx`（114行）自体が、JSXとしても`import`としても他のどこからも参照されていない（`<ConciergeSections`/`from ".../ConciergeSections"`のgrep結果0件） | Web | なし。`ConciergeSections.tsx`ごと参照が途切れているDeadクラスタ | Dead | 低 | 同上（`deprecated-files-cleanup.md`の保留対象） | `ConciergeSections.tsx`と`legacy/`ディレクトリ（計311行）をまとめて削除するPR |
+| ~~`apps/web/src/features/concierge/components/legacy/`（`RecommendationUnit.tsx`, `RecommendationSwitchList.tsx`、計197行）~~ | ~~同ディレクトリ~~ | ~~参照元`ConciergeSections.tsx`（114行）自体が、JSXとしても`import`としても他のどこからも参照されていない（`<ConciergeSections`/`from ".../ConciergeSections"`のgrep結果0件）~~ | Web | なし。`ConciergeSections.tsx`ごと参照が途切れているDeadクラスタ | Dead → **対応済み（削除）** | 低 | 同上（`deprecated-files-cleanup.md`の保留対象） | PR #2077で`ConciergeSections.tsx`と`legacy/`ディレクトリ（`RecommendationUnit.tsx`・`RecommendationSwitchList.tsx`）を削除済み |
 | `ShrineSerializer = ShrineDetailSerializer`（互換名） | `backend/temples/api/serializers/shrine.py:110`。コメント「互換名」 | `backend/temples/views.py:30,60,191`、`backend/temples/tests/test_favorite.py:7,21`、`backend/temples/serializers/__init__.py:15,18,36`で`ShrineSerializer`（旧名）として能動的に使用。`_deprecated/api_views_legacy.py`も同名を参照（Dead側からの参照のため考慮不要） | Backend | 新名`ShrineDetailSerializer`へのリネームが行われたが、`views.py`等の既存呼び出し元は旧名のまま残っている | Compatibility（現役） | 中（`views.py`側の呼び出し元コードを変更しないと解消できない） | `views.py`側を新名`ShrineDetailSerializer`へ更新できるか確認する | `views.py`の`ShrineSerializer`参照を`ShrineDetailSerializer`へ置き換え、互換エイリアスを削除するPR |
-| `PlacesSearchResponse.items`フィールド | `backend/temples/api/serializers/places.py:18-19`。コメント「互換が必要なら残す（不要なら消す）」 | 実装側（`backend/temples/api/views/search.py`）は`results`キーのみを組み立てており、`items`キーを設定する箇所は0件。Web側（`apps/web/src/lib/api/places.ts`）でも`.items`/`.results`いずれの直接参照も確認できず | Backend | なし。コメントの時点で開発者自身が削除候補として認識していた | Dead | 低 | Web/Mobileの型定義・過去バージョンで`items`キーを消費するコードが本当に無いか、念のため型定義ファイルも確認する | `PlacesSearchResponse`から`items`フィールドを削除するPR |
+| ~~`PlacesSearchResponse.items`フィールド~~ | ~~`backend/temples/api/serializers/places.py:18-19`。コメント「互換が必要なら残す（不要なら消す）」~~ | ~~実装側（`backend/temples/api/views/search.py`）は`results`キーのみを組み立てており、`items`キーを設定する箇所は0件。Web側（`apps/web/src/lib/api/places.ts`）でも`.items`/`.results`いずれの直接参照も確認できず~~ | Backend | なし。コメントの時点で開発者自身が削除候補として認識していた | Dead → **対応済み（削除）** | 低 | Web/Mobileの型定義・過去バージョンで`items`キーを消費するコードが本当に無いか、念のため型定義ファイルも確認する | PR #2076で`PlacesSearchResponse`から`items`フィールドを削除済み |
 | `temples/api/serializers/concierge.py`（COMPAT LAYER） | ファイル冒頭のコメントで「COMPAT LAYER」と明記。`temples/serializers/concierge.py`（新モジュール）から可能な限り再エクスポートし、無ければフォールバック実装を使う構造 | 新モジュール`temples/serializers/concierge.py`は`ShrineRecommendationSerializer`/`LocationSerializer`/`PlaceLiteSerializer`/`ConciergePlanRequestSerializer`/`ConciergePlanResponseSerializer`の5つのみを定義しており、`ConciergeHistorySerializer`等の残りのシンボルは新モジュールに存在しないためフォールバック実装が実際に使われている | Backend | 新旧モジュール移行の途中段階。一部シンボルは移行済み、残りは移行未着手 | Compatibility（現役） | 中（新モジュールへの統合が未完了のため、フォールバック実装を削除すると壊れる） | 新モジュールへの統合作業がロードマップ上どこまで進んでいるか確認する | 残りのシンボル（`ConciergeHistorySerializer`等）を新モジュールへ移行し、`try/except`フォールバック構造を解消するPR |
 
 ---
@@ -168,14 +168,14 @@ KAMI MUSUBIの現行リポジトリ（Backend / `apps/web` / `apps/mobile` / `.g
 
 | 設定名 | 定義場所 | 参照場所 | 現行用途 | 分類 | 削除リスク | 必要な後続確認 | 推奨する後続PR |
 |---|---|---|---|---|---|---|---|
-| `src/lib/auth/token.ts`（localStorageベースのトークン管理一式、`ACCESS_KEY`/`REFRESH_KEY`） | `src/lib/auth/token.ts` | importer 0件。実際の認証はhttpOnly Cookie（`access_token`/`refresh_token`、`middleware.ts`と`login/route.ts`が使用）＋`AuthProvider.tsx`の`auth:logged_in`フラグで完結している | なし | Dead | 低 | なし | ファイル削除PR |
+| `src/lib/auth/token.ts`（localStorageベースのトークン管理一式、`ACCESS_KEY`/`REFRESH_KEY`） | `src/lib/auth/token.ts` | importer 0件。実際の認証はhttpOnly Cookie（`access_token`/`refresh_token`、`middleware.ts`と`login/route.ts`が使用）＋`AuthProvider.tsx`の`auth:logged_in`フラグで完結している | なし | Dead（**未対応**。`legacy-settings-remediation-plan.md`のPR-Bグルーピングでは#2/#11/#12/#13/#14と同一PRの対象として計画されていたが、実際のPR #2077の実施範囲には含まれておらず、`develop`上に現存することを2026-07-18時点で再確認した） | 低 | なし | ファイル削除PR（未実施。改めて起票が必要） |
 | `IS_DEMO`（`src/lib/config.ts:2`、`NEXT_PUBLIC_DEMO_MODE`由来） | `src/lib/config.ts:2` | 参照0件 | なし | Dead | 低 | なし | 削除PR |
-| `cardEvents.ts`の`premium_preview_view` | `apps/web/src/lib/analytics/cardEvents.ts:25` | 参照0件（テスト含む） | なし | Dead | 低 | なし | 型定義から削除するPR（他のAnalytics dead eventと合わせて） |
-| `retentionEvents.ts`の`next_session` / `next_thread` | `apps/web/src/lib/analytics/retentionEvents.ts:4-5` | 参照0件 | なし | Dead | 低 | なし | 同上 |
-| `RecommendationReasonViewModel.why` / `.interpretation` | `apps/web/src/lib/concierge/buildRecommendationReasonViewModel.ts:83-107`。コード中コメントで「legacy compatibility field」「依存箇所がなくなったら削除可」と明記 | 本番コンシューマー（`viewmodels/conciergeToShrineList.ts`、`shrines/[id]/page.tsx`、`ConciergeSectionsRenderer.tsx`）は全て`.detail.*`のみを参照。`.why`/`.interpretation`はテストファイル内でのみ読まれている | なし（自己文書化された削除可能フィールド） | Dead | 低 | なし | コメントの指示通り削除するPR |
-| `useMyGoshuin.ts`（コメント「旧importの互換用」） | `apps/web/src/hooks/`配下 | 本番コード参照0件。テストファイルのみ参照 | なし | Dead | 低 | なし | 削除PR（テストの扱いも合わせて確認） |
-| `MapCardListClient.tsx`（コメント「互換のために残す：旧 import を壊さない」） | 該当ファイル | 自ファイル以外からのimport0件 | なし | Dead | 低 | なし | 削除PR |
-| `@heroicons/react`（package.json dependencies） | `apps/web/package.json` | `grep -rn "heroicons" src`が0件（`lucide-react`へ統一済みと推測） | なし | Dead | 低 | なし | package.jsonから削除するPR |
+| ~~`cardEvents.ts`の`premium_preview_view`~~ | ~~`apps/web/src/lib/analytics/cardEvents.ts:25`~~ | ~~参照0件（テスト含む）~~ | なし | Dead → **対応済み（削除）** | 低 | なし | PR #2077で型定義から削除済み |
+| ~~`retentionEvents.ts`の`next_session` / `next_thread`~~ | ~~`apps/web/src/lib/analytics/retentionEvents.ts:4-5`~~ | ~~参照0件~~ | なし | Dead → **対応済み（削除）** | 低 | なし | PR #2077で型定義から削除済み |
+| ~~`RecommendationReasonViewModel.why` / `.interpretation`~~ | ~~`apps/web/src/lib/concierge/buildRecommendationReasonViewModel.ts:83-107`。コード中コメントで「legacy compatibility field」「依存箇所がなくなったら削除可」と明記~~ | ~~本番コンシューマー（`viewmodels/conciergeToShrineList.ts`、`shrines/[id]/page.tsx`、`ConciergeSectionsRenderer.tsx`）は全て`.detail.*`のみを参照。`.why`/`.interpretation`はテストファイル内でのみ読まれている~~ | なし（自己文書化された削除可能フィールド） | Dead → **対応済み（削除）** | 低 | なし | PR #2077で型・生成処理から削除済み。テストの`.why.*`アサーションは値が同一の`.list.*`/`.debug.reasonKeys.*`へ整合済み |
+| ~~`useMyGoshuin.ts`（コメント「旧importの互換用」）~~ | ~~`apps/web/src/hooks/`配下~~ | ~~本番コード参照0件。テストファイルのみ参照~~ | なし | Dead → **対応済み（削除）** | 低 | なし | PR #2077でHook本体（`components/hooks/useMyGoshuin.ts`）と専用テストを削除済み |
+| ~~`MapCardListClient.tsx`（コメント「互換のために残す：旧 import を壊さない」）~~ | ~~該当ファイル~~ | ~~自ファイル以外からのimport0件~~ | なし | Dead → **対応済み（削除）** | 低 | なし | PR #2077で削除済み |
+| ~~`@heroicons/react`（package.json dependencies）~~ | ~~`apps/web/package.json`~~ | ~~`grep -rn "heroicons" src`が0件（`lucide-react`へ統一済みと推測）~~ | なし | Dead → **対応済み（削除）** | 低 | なし | PR #2077で`pnpm remove`により削除済み |
 
 ### 6.5 互換目的で現役のもの
 
@@ -218,7 +218,7 @@ KAMI MUSUBIの現行リポジトリ（Backend / `apps/web` / `apps/mobile` / `.g
 | `components/home/NearbyShrines.tsx` / `RankingCarousel.tsx` / `SearchChips.tsx` / `MyPageCard.tsx`（コンポーネント版） | 各ファイル冒頭 | 参照元0件（`MyPageCard`は`app/mypage/index.tsx`のローカル関数と命名衝突があるが別実体） | Home画面刷新前の旧コンポーネント群と推測される | Dead | 低 | なし | Home画面の`components/home/`配下未使用ファイルを一括削除するPR |
 | `components/ui/Layout.tsx`（`Spacer`/`Section`） | `apps/mobile/components/ui/Layout.tsx:5,7` | 参照元0件 | 未使用のレイアウトヘルパー | Dead | 低 | なし | 同上と合わせて削除 |
 | `app/birthday` / `app/search` / `app/visit-history` / `app/reflection-history` / `app/consultation-history` / `app/recently-viewed` | `apps/mobile/app/`配下、`app/_layout.tsx`にTab登録済み | 他画面からの`router.push`/`Link`が0件。特に`app/mypage/index.tsx`の「誕生日」カードは`onPress`自体が未設定 | ルートとしては実装済みだが、アプリ内導線が存在せずユーザーが到達できない | Uncertain（Dead候補。Tab登録経由でのみ到達可能かは未検証） | 中（Tab登録経由の到達性は本監査のgrep手法では確認しきれない） | 実機/シミュレータでTab経由の到達性を確認する。到達できないなら導線追加かルート削除のいずれかを判断する | 到達性確認後、導線追加または未使用ルート削除のPR |
-| `nativewind` / `tailwindcss` / `@tailwindcss/postcss` / `autoprefixer` / `lib/cn.ts` | `apps/mobile/package.json`、`tailwind.config.js`、`postcss.config.js`、`lib/cn.ts:2` | `className=`使用0件、`babel.config.js`にnativewindプリセット記載なし、metro.config.jsも存在せずビルドパイプラインに未接続 | 設定一式が存在するが実質未接続 | Dead | 低（ビルドに影響しないパッケージのため） | なし | package.json・設定ファイル一式を削除するPR |
+| ~~`nativewind` / `tailwindcss` / `@tailwindcss/postcss` / `autoprefixer` / `lib/cn.ts`~~ | ~~`apps/mobile/package.json`、`tailwind.config.js`、`postcss.config.js`、`lib/cn.ts:2`~~ | ~~`className=`使用0件、`babel.config.js`にnativewindプリセット記載なし、metro.config.jsも存在せずビルドパイプラインに未接続~~ | 設定一式が存在するが実質未接続 | Dead → **対応済み（削除）** | 低（ビルドに影響しないパッケージのため） | なし | PR #2078で依存4件・`tailwind.config.js`・`postcss.config.js`・`lib/cn.ts`を削除済み。なお、本行と同じ表9. の候補#6（`apps/mobile/components/home/`配下未使用コンポーネント群、下表7.2参照）はPR #2078のスコープに含まれておらず、**未対応のまま**残っている |
 | `expo-constants` / `expo-font` / `expo-splash-screen` / `expo-status-bar` | `apps/mobile/package.json` | コード内import 0件 | Expo SDK標準構成の一部として残存している可能性 | Uncertain | 低〜中（Expoの内部依存として間接的に必要な可能性があるため、単純な未import判定だけでは断定できない） | `expo install`が自動追加する標準パッケージかどうかExpo SDKのドキュメントで確認する | 確認後、真に不要なもののみ削除するPR |
 
 ---
@@ -243,19 +243,19 @@ KAMI MUSUBIの現行リポジトリ（Backend / `apps/web` / `apps/mobile` / `.g
 ### 低リスク・削除可能性が高いもの（Dead判定・参照0件を確認済み）
 
 1. `backend/temples/_deprecated/`（4ファイル、1313行）の削除
-2. `apps/web/src/features/concierge/components/legacy/`と参照元`ConciergeSections.tsx`（計311行）の削除
-3. `backend/temples/services/recommendation.py`の`recommend_shrines()`と関連LUCK_BONUS系設定の削除
+2. ~~`apps/web/src/features/concierge/components/legacy/`と参照元`ConciergeSections.tsx`（計311行）の削除~~ → **対応済み**（PR #2077）
+3. ~~`backend/temples/services/recommendation.py`の`recommend_shrines()`と関連LUCK_BONUS系設定の削除~~ → **対応済み**（PR #2075）
 4. `ConciergeRecommendationClickLog`モデルの削除（本番DBのデータ有無確認後）
-5. `PlacesSearchResponse.items`フィールドの削除
-6. `apps/mobile/components/home/`配下未使用コンポーネント群（`PopularSection.tsx`とその依存、`NearbyShrines.tsx`、`RankingCarousel.tsx`、`SearchChips.tsx`、`MyPageCard.tsx`、`RecentViewed.tsx`）と`components/ui/Layout.tsx`の削除
-7. `apps/mobile`の`nativewind`/`tailwindcss`関連パッケージ・設定ファイルの削除
+5. ~~`PlacesSearchResponse.items`フィールドの削除~~ → **対応済み**（PR #2076）
+6. `apps/mobile/components/home/`配下未使用コンポーネント群（`PopularSection.tsx`とその依存、`NearbyShrines.tsx`、`RankingCarousel.tsx`、`SearchChips.tsx`、`MyPageCard.tsx`、`RecentViewed.tsx`）と`components/ui/Layout.tsx`の削除（**未対応**。PR #2078はスタイル依存の削除のみを扱い、本項目は意図的にスコープ外とされた）
+7. ~~`apps/mobile`の`nativewind`/`tailwindcss`関連パッケージ・設定ファイルの削除~~ → **対応済み**（PR #2078）
 8. Score v3の到達不能axisキー4件（28エントリ）の削除、または`CONSULTATION_AXIS_ALIASES`へのエイリアス追加による復活
 9. `backend/users/services/billing.py`の`BillingState`/`plan_from_profile()`の削除
-10. `apps/web/src/lib/auth/token.ts`（localStorageベースのトークン管理、参照0件）の削除
-11. `apps/web`のAnalytics dead event（`premium_preview_view`/`next_session`/`next_thread`）の型定義削除
-12. `RecommendationReasonViewModel.why`/`.interpretation`の削除（コード内コメントで削除可能と自己文書化済み）
-13. `apps/web`の`useMyGoshuin.ts`（旧import互換用）・`MapCardListClient.tsx`（互換維持コメント付き未参照ファイル）の削除
-14. `apps/web/package.json`の`@heroicons/react`（未import）の削除
+10. `apps/web/src/lib/auth/token.ts`（localStorageベースのトークン管理、参照0件）の削除（**未対応**。`legacy-settings-remediation-plan.md`のPR-Bグルーピングでは#2/#11/#12/#13/#14と同一PR対象として計画されていたが、実際のPR #2077の実施範囲には含まれておらず、`develop`上に現存することを2026-07-18時点で再確認した）
+11. ~~`apps/web`のAnalytics dead event（`premium_preview_view`/`next_session`/`next_thread`）の型定義削除~~ → **対応済み**（PR #2077）
+12. ~~`RecommendationReasonViewModel.why`/`.interpretation`の削除（コード内コメントで削除可能と自己文書化済み）~~ → **対応済み**（PR #2077）
+13. ~~`apps/web`の`useMyGoshuin.ts`（旧import互換用）・`MapCardListClient.tsx`（互換維持コメント付き未参照ファイル）の削除~~ → **対応済み**（PR #2077）
+14. ~~`apps/web/package.json`の`@heroicons/react`（未import）の削除~~ → **対応済み**（PR #2077）
 
 ### 命名・ドキュメント整合（動作は変えない）
 
@@ -325,3 +325,32 @@ KAMI MUSUBIの現行リポジトリ（Backend / `apps/web` / `apps/mobile` / `.g
 本対応はDead判定の結論を変更するものではなく、監査で提示した後続対応を実行したものである。
 
 正確な削除差分とテスト結果は、関連する実装PRおよびGit履歴を正本とする。
+
+### P1レガシー削除PR（PR #2075〜#2078）の実施結果
+
+「9. 推奨する後続PR一覧」の候補#2・#3・#5・#7・#11・#12・#13・#14について、以下4件の実装PRで削除を実施し、いずれも`develop`へマージ済みであることを2026-07-18時点で確認した。
+
+| PR | タイトル | 削除対象 |
+|---|---|---|
+| [#2075](https://github.com/etsu33/jinja_app/pull/2075) | 参照されていないRecommendation補助ロジックを削除する | 候補#3: `recommend_shrines()`、`ENABLE_LUCK_BONUS`/`LUCK_BASE_FIELD`/`LUCK_BONUS_ELEMENT`/`LUCK_BONUS_POINT`、専用テスト`test_recommendation_adapter.py` |
+| [#2076](https://github.com/etsu33/jinja_app/pull/2076) | PlacesSearchResponseの未使用itemsフィールドを削除する | 候補#5: `PlacesSearchResponse.items` |
+| [#2077](https://github.com/etsu33/jinja_app/pull/2077) | 参照されていないWeb互換コードと依存を削除する | 候補#2: `concierge/components/legacy/`＋`ConciergeSections.tsx`／候補#11: `premium_preview_view`・`next_session`・`next_thread`／候補#12: `RecommendationReasonViewModel.why`/`.interpretation`／候補#13: `useMyGoshuin.ts`・`MapCardListClient.tsx`／候補#14: `@heroicons/react` |
+| [#2078](https://github.com/etsu33/jinja_app/pull/2078) | Mobileの未使用NativeWind・Tailwind設定を削除する | 候補#7: `nativewind`/`tailwindcss`/`@tailwindcss/postcss`/`autoprefixer`、`tailwind.config.js`、`postcss.config.js`、`lib/cn.ts` |
+
+各PRについて、以下を再確認した。
+
+- 4件すべてがGitHub上でMERGED状態であり、各merge commitが`develop`のHEADの祖先に含まれている（`git merge-base --is-ancestor`で確認）
+- `develop`上で、削除対象の関数名・型フィールド名・依存パッケージ名・ファイルパスを全域再検索し、実装コード・テスト・設定ファイルに参照が残っていないことを確認した（監査文書自身の履歴記述を除く）
+- 各PRの実行済みテスト結果は以下の通り（詳細は各PR本文を正本とする）
+  - PR #2075: Recommendation関連テスト64件・Concierge Rankingテスト86件・Backend Import Sweep 1件・API thin module importテスト3件、全てpass
+  - PR #2076: Places関連テスト28件・OpenAPI Schema契約テスト1件・API URL smoke test 1件・Backend Importテスト4件、全てpass
+  - PR #2077: Web Typecheck・Lintともにエラーなし、Web契約テスト446件pass、関連Unit Test 88件pass、`next build`成功
+  - PR #2078: Mobile Typecheckは削除対象由来の新規エラー0件、Unit Test 57件pass（`npx vitest`による一時実行で確認）、`expo-doctor`19/20 pass、Expo起動確認成功
+
+**候補#10（`apps/web/src/lib/auth/token.ts`）について**: `legacy-settings-remediation-plan.md`のPR-Bグルーピング（候補#2・#10・#11・#12・#13・#14を1PRとして計画）には含まれていたが、実際に実施されたPR #2077の対象範囲には候補#10が含まれておらず、`apps/web/src/lib/auth/token.ts`は削除されないまま`develop`に現存することを確認した。本監査文書・実施計画のいずれについても、候補#10を「対応済み」とせず「未対応」のまま維持する。改めて削除PRを起票する必要がある。
+
+**候補#6（`apps/mobile/components/home/`配下未使用コンポーネント群）について**: `legacy-settings-remediation-plan.md`のPR-Dグルーピング（候補#6・#7を1PRとして計画）には含まれていたが、PR #2078の実施範囲は「Mobile未使用スタイル依存削除」に限定されており、候補#6（Home Component群）は意図的にスコープ外とされた。候補#6は引き続き「未対応」である。
+
+本対応はDead判定の結論を変更するものではなく、監査で提示した後続対応のうち実行できた範囲を反映したものである。
+
+正確な削除差分とテスト結果は、関連する各実装PR（#2075〜#2078）およびGit履歴を正本とする。
