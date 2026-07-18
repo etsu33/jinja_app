@@ -46,7 +46,7 @@ SCORE_V3_HISTORY_THEME_BY_AXIS = {
 }
 ```
 
-同じ構造が `SCORE_V3_HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS` にも存在する。
+同じ構造が `HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS` にも存在する。
 
 現状の特徴:
 
@@ -367,7 +367,7 @@ SCORE_V3_HISTORY_THEME_BY_AXIS = {
 }
 ```
 
-`SCORE_V3_HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS` も同一mappingから派生させる方針が望ましい。
+`HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS` も同一mappingから派生させる方針が望ましい。
 
 ---
 
@@ -426,7 +426,7 @@ Score v3 で history_signal を強める場合、説明側で過剰に同じ根�
 - Score v3 weight変更
 - Score v3 active化
 - `SCORE_V3_HISTORY_THEME_BY_AXIS` の実装追加
-- `SCORE_V3_HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS` の実装追加
+- `HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS` の実装追加
 
 まず mapping 設計を docs に固定する。
 

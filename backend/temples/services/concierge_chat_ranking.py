@@ -244,7 +244,10 @@ SCORE_V3_HISTORY_THEME_BY_AXIS: dict[str, dict[str, float]] = {
     },
 }
 
-SCORE_V3_HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS: dict[str, dict[str, float]] = {
+# 注意: 名称に "SCORE_V3" を含まない。SCORE_V3_HISTORY_THEME_BY_AXIS（shadow観測専用）の
+# 複製だが、resolve_history_theme_candidate_boost() 経由で score_need_rank_weighted と
+# 候補prefilterスコアへ直接加算されており、shadowではなく現行の本番ランキングに実影響する。
+HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS: dict[str, dict[str, float]] = {
     axis: dict(theme_scores)
     for axis, theme_scores in SCORE_V3_HISTORY_THEME_BY_AXIS.items()
 }
@@ -276,7 +279,7 @@ def resolve_history_theme_candidate_boost(
         return 0.0
 
     return float(
-        SCORE_V3_HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS.get(axis, {}).get(theme, 0.0)
+        HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS.get(axis, {}).get(theme, 0.0)
     )
 
 

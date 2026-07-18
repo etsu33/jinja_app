@@ -3,8 +3,8 @@ from __future__ import annotations
 import pytest
 
 from temples.services.concierge_chat_ranking import (
+    HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS,
     SCORE_V3_HISTORY_THEME_BY_AXIS,
-    SCORE_V3_HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS,
     resolve_history_theme_candidate_boost,
     resolve_score_v3_history_signal,
 )
@@ -95,6 +95,4 @@ def test_resolve_history_theme_candidate_boost_matches_main_mapping(
 
 
 def test_candidate_boost_mapping_derived_from_main_mapping() -> None:
-    assert (
-        SCORE_V3_HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS == SCORE_V3_HISTORY_THEME_BY_AXIS
-    )
+    assert HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS == SCORE_V3_HISTORY_THEME_BY_AXIS

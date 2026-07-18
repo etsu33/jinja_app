@@ -21,7 +21,6 @@ import { buildDummySections } from "@/features/concierge/sections/dummy";
 import ConciergeSectionsRenderer from "@/features/concierge/components/ConciergeSectionsRenderer";
 import ConciergeEntryCard from "@/features/concierge/components/ConciergeEntryCard";
 import { buildPayloadFromUnified } from "@/features/concierge/buildPayloadFromUnified";
-import { SHOW_NEW_RENDERER } from "@/features/concierge/rendererMode";
 
 import type { RendererAction, ConciergeSectionsPayload } from "@/features/concierge/sections/types";
 import { getGoriyakuTags } from "@/lib/api/tags";
@@ -1804,7 +1803,7 @@ export default function ConciergeClientFull() {
                 </div>
               ) : null}
 
-              {SHOW_NEW_RENDERER && isFilterOpen ? (
+              {isFilterOpen ? (
                 <div className="mt-3">
                   <ConciergeSectionsRenderer
                     payload={payload}
@@ -1882,67 +1881,59 @@ export default function ConciergeClientFull() {
 
       {/* ===== 通常（tidあり） ===== */}
       {hydrated && shouldShowThreadRenderer ? (
-        SHOW_NEW_RENDERER ? (
-          <div className="p-4 space-y-5">
-            {isFiltering ? (
-              <div className="rounded-3xl border border-emerald-100 bg-emerald-50/70 px-5 py-4 text-sm text-emerald-900">
-                <p className="font-semibold">条件に合わせて再提案しています</p>
-                <p className="mt-1 text-xs leading-6 text-slate-600">
-                  候補を絞り直しているため、少しだけお待ちください。
-                </p>
-              </div>
-            ) : null}
-            <ConciergeSectionsRenderer
-              payload={payload}
-              analyticsContext={modeAnalyticsPayload}
-              onAction={onRendererAction}
-              sending={sending || isFiltering}
-              threadId={thread?.id ?? activeThreadId}
-              isEntryRoute={isEntryRoute}
-              isPremiumActive={isPremiumActive}
-            />
-
-            {isLoggedIn && stateDelta && previousComparisonVisibility !== "hidden" ? (
-              <PremiumStateDeltaCard stateDelta={stateDelta} isPremium={isPremiumActive} />
-            ) : null}
-
-            <ConciergeDebugPanel unified={displayUnified} />
-
-            {!isBusy && isUiPaywall ? (
-              <div className="rounded-3xl border border-stone-200/50 bg-stone-50/70 px-5 py-4 text-sm text-stone-700">
-                <p className="font-medium text-stone-800">無料回数を使い切りました。</p>
-                <p className="mt-1 text-xs leading-6 text-stone-500">
-                  {isLoggedIn
-                    ? "続けるには有料プランへの切り替えが必要です。"
-                    : "続けるにはログイン、または有料プランへの切り替えが必要です。"}
-                </p>
-                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                  {!isLoggedIn ? (
-                    <button
-                      type="button"
-                      className="w-full rounded-full border border-stone-200/70 bg-white/85 px-4 py-2 text-sm font-medium text-stone-700 sm:w-auto"
-                      onClick={() => redirectToAuth("login")}
-                    >
-                      ログイン
-                    </button>
-                  ) : null}
-                  <Link
-                    href="/billing/upgrade"
-                    className="w-full rounded-full border border-emerald-200/70 bg-emerald-50/90 px-4 py-2 text-center text-sm font-medium text-emerald-900 sm:w-auto"
-                  >
-                    有料プランを見る
-                  </Link>
-                </div>
-              </div>
-            ) : null}
-          </div>
-        ) : (
-          <div className="p-4">
-            <div className={`${conciergeCardClass} text-sm text-slate-600`}>
-              SHOW_NEW_RENDERER が false です（この画面は新レンダラー前提）
+        <div className="p-4 space-y-5">
+          {isFiltering ? (
+            <div className="rounded-3xl border border-emerald-100 bg-emerald-50/70 px-5 py-4 text-sm text-emerald-900">
+              <p className="font-semibold">条件に合わせて再提案しています</p>
+              <p className="mt-1 text-xs leading-6 text-slate-600">
+                候補を絞り直しているため、少しだけお待ちください。
+              </p>
             </div>
-          </div>
-        )
+          ) : null}
+          <ConciergeSectionsRenderer
+            payload={payload}
+            analyticsContext={modeAnalyticsPayload}
+            onAction={onRendererAction}
+            sending={sending || isFiltering}
+            threadId={thread?.id ?? activeThreadId}
+            isEntryRoute={isEntryRoute}
+            isPremiumActive={isPremiumActive}
+          />
+
+          {isLoggedIn && stateDelta && previousComparisonVisibility !== "hidden" ? (
+            <PremiumStateDeltaCard stateDelta={stateDelta} isPremium={isPremiumActive} />
+          ) : null}
+
+          <ConciergeDebugPanel unified={displayUnified} />
+
+          {!isBusy && isUiPaywall ? (
+            <div className="rounded-3xl border border-stone-200/50 bg-stone-50/70 px-5 py-4 text-sm text-stone-700">
+              <p className="font-medium text-stone-800">無料回数を使い切りました。</p>
+              <p className="mt-1 text-xs leading-6 text-stone-500">
+                {isLoggedIn
+                  ? "続けるには有料プランへの切り替えが必要です。"
+                  : "続けるにはログイン、または有料プランへの切り替えが必要です。"}
+              </p>
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                {!isLoggedIn ? (
+                  <button
+                    type="button"
+                    className="w-full rounded-full border border-stone-200/70 bg-white/85 px-4 py-2 text-sm font-medium text-stone-700 sm:w-auto"
+                    onClick={() => redirectToAuth("login")}
+                  >
+                    ログイン
+                  </button>
+                ) : null}
+                <Link
+                  href="/billing/upgrade"
+                  className="w-full rounded-full border border-emerald-200/70 bg-emerald-50/90 px-4 py-2 text-center text-sm font-medium text-emerald-900 sm:w-auto"
+                >
+                  有料プランを見る
+                </Link>
+              </div>
+            </div>
+          ) : null}
+        </div>
       ) : null}
     </ConciergeLayout>
   );

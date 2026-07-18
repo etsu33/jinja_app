@@ -104,7 +104,7 @@ KAMI MUSUBIの現行リポジトリ（Backend / `apps/web` / `apps/mobile` / `.g
 | 設定名 | 定義場所 | 参照場所 | 対象レイヤ | 現行用途 | 分類 | 削除リスク | 必要な後続確認 | 推奨する後続PR |
 |---|---|---|---|---|---|---|---|---|
 | `SCORE_V3_MODE`（env） | `backend/temples/services/concierge_chat_ranking.py:61-88`（`resolve_score_v3_mode`/`resolve_score_v3_mode_detail`） | Backend: `concierge_chat.py:51-52,647-654`で実際にソートキー切替に使用。テスト複数（`test_score_v3_feature_flag.py`等）で`active`/`shadow`両方を検証済み。Web/Mobile: 参照なし。全`.env`系ファイルに設定なし | Backend | `active`にするとScore v3が本番ランキングのソートキーになる。実装は完了しているが、どの環境変数ファイルにも設定されておらず、現状は常に`shadow`（デフォルト）で動作 | Active（未デプロイ・dormant） | 中（Flagを立てるだけでランキングアルゴリズムが切り替わるため、有効化には別途検証が必要） | `docs/audit/score-v3-shadow-audit.md`の「shadow observation only」という説明が、"切替不能"という意味なのか"デフォルトがshadow"という意味なのかを明確化する | Score v3を本番反映する計画がある場合、有効化の判断基準（品質評価）を先に整備するPR |
-| `SCORE_V3_HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS` | `backend/temples/services/concierge_chat_ranking.py:247-250` | Backend: `resolve_history_theme_candidate_boost()`経由で`score_need_rank_weighted`（1117-1121行）と候補prefilterスコア（1576-1582行）に直接加算。**Shadowではなく現行の実ランキングに影響している** | Backend | `SCORE_V3_HISTORY_THEME_BY_AXIS`の単純コピーだが、命名に反して常時有効な本番ロジックとして機能している | Uncertain（命名がミスリーディング） | 中（既に本番影響がある機能のため、リネームや無効化はランキング結果に直接影響する） | 「SCORE_V3」という命名が意図的か、単なる命名ミスかを実装担当者に確認する | 命名を`HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS`（SCORE_V3を含まない名前）へリネームするPR。動作は変えず名前のみ変更 |
+| ~~`SCORE_V3_HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS`~~ → `HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS`（**対応済み**） | `backend/temples/services/concierge_chat_ranking.py:247-250` | Backend: `resolve_history_theme_candidate_boost()`経由で`score_need_rank_weighted`（1117-1121行）と候補prefilterスコア（1576-1582行）に直接加算。**Shadowではなく現行の実ランキングに影響している** | Backend | `SCORE_V3_HISTORY_THEME_BY_AXIS`の単純コピーだが、命名に反して常時有効な本番ロジックとして機能している | ~~Uncertain（命名がミスリーディング）~~ 対応済み | 中（既に本番影響がある機能のため、リネームや無効化はランキング結果に直接影響する） | 「SCORE_V3」という命名が意図的か、単なる命名ミスかを実装担当者に確認する | 命名を`HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS`へリネーム済み。計算式・加算先は無変更（別PRで対応。詳細はリネームPRの説明を参照） |
 | `relationship_repair` / `health` / `protection` / `travel_safe`（axisキー、上記2テーブル内、計28エントリ） | `concierge_chat_ranking.py:164-172,209-217,227-235,236-244` | `consultation_axis`の唯一の生成元`domain/consultation_axis.py`の`normalize_consultation_axis()`が許可する値（`money_growth,career_change,independence,rest_healing,restart_mindset,nature_reset,study_success,other`）にこれら4値が含まれておらず、到達不能。ユニットテストが関数を直接呼ぶケース以外に参照なし | Backend / テスト | 到達不能なテーブルエントリ | Dead | 低（到達経路が無いため削除しても挙動に影響しない） | これら4 axisを将来正式導入する計画があるか確認する | 計画が無ければ、4キー28エントリを削除するPR。計画があれば`CONSULTATION_AXIS_ALIASES`側にエイリアスを追加して到達可能にするPR |
 | `recommend_shrines()`および`ENABLE_LUCK_BONUS`/`LUCK_BASE_FIELD`/`LUCK_BONUS_ELEMENT`/`LUCK_BONUS_POINT` | `backend/temples/services/recommendation.py:9-80` | 自身のテスト（`test_recommendation_adapter.py`）以外の呼び出し元0件。`settings.py`にも該当設定値の定義なし | Backend / テスト | なし | Dead | 低 | なし | 関数・設定・専用テストを削除するPR |
 | `ConciergeRecommendationClickLog` | `backend/temples/models_concierge_analytics.py:42-71`、migration `0076` | モデル定義とmigrationのみ。`.objects.create(`呼び出し0件、admin登録なし、シリアライザ/APIエンドポイント参照なし、テスト参照なし | Backend | なし（テーブルは存在するがwrite/read経路が皆無） | Dead | 低〜中（DBテーブルを伴うため、削除にはmigrationが必要） | 本番DBに実データが入っていないか確認してから削除する | モデル削除＋DROP TABLE migrationのPR（本番データ有無の確認後） |
@@ -161,8 +161,8 @@ KAMI MUSUBIの現行リポジトリ（Backend / `apps/web` / `apps/mobile` / `.g
 
 | 設定名 | 定義場所 | 参照場所 | 現行用途 | 分類 | 削除リスク | 必要な後続確認 | 推奨する後続PR |
 |---|---|---|---|---|---|---|---|
-| `NEXT_PUBLIC_CONCIERGE_RENDERER` / `SHOW_NEW_RENDERER` | `apps/web/src/features/concierge/rendererMode.ts` | `ConciergeClientFull.tsx`3箇所が`SHOW_NEW_RENDERER`（ハードコードされた`true`）を参照。環境変数`NEXT_PUBLIC_CONCIERGE_RENDERER`自体はコード内コメントに残るのみで、実際の分岐には使われていない | コメントに「プレゼン用の一時対応」「デモ完了後、環境変数制御へ戻す」と明記されているが、戻されていない | Deprecated | 中（環境変数制御に戻す場合、両方のレンダラーが現在も動作することを確認する必要がある） | デモが完了しているか、旧レンダラー（環境変数がfalse相当の場合の分岐）が今も必要か確認する | 環境変数制御へ戻すか、新レンダラーへの完全移行を確定して旧分岐を削除するか、いずれかを判断するPR |
-| ~~互換ルート`src/app/api/shrines/[id]/route.ts`（単体GET）~~（**対応済み・削除**） | `src/app/api/shrines/[id]/route.ts:1`。コメント「TODO: 互換ルート。2026-04-01 までにアクセス0なら削除」 | `apps/web`内のクライアントコードからの参照0件。期限（2026-04-01）を本監査時点（2026-07-18）で3.5ヶ月超過 | 期限切れの削除保留TODO | ~~Deprecated~~ 削除済み | 低〜中（本番アクセスログでの実測は本監査の範囲外） | 本番アクセスログで実際のアクセス数を確認する | 削除済み。Vercel Runtime Logsで実測を試みたがHobbyプランのため保持期間が1時間しかなく、長期的な実測は不可能と判明した。代わりに、同一データを返す正本ルート`apps/web/src/app/api/public/shrines/[id]/route.ts`（`lat`/`lng`正規化・非JSON応答の安全処理を追加で持つ、より新しい実装）へ完全に代替されていること、Web/Mobile双方から本ルートへの参照が0件であることをコードレベルで確認した上で削除した。詳細はリネーム/削除PRの説明を参照 |
+| ~~`NEXT_PUBLIC_CONCIERGE_RENDERER` / `SHOW_NEW_RENDERER`~~ | ~~`apps/web/src/features/concierge/rendererMode.ts`~~ | ~~`ConciergeClientFull.tsx`3箇所が`SHOW_NEW_RENDERER`（ハードコードされた`true`）を参照。環境変数`NEXT_PUBLIC_CONCIERGE_RENDERER`自体はコード内コメントに残るのみで、実際の分岐には使われていない~~ | ~~コメントに「プレゼン用の一時対応」「デモ完了後、環境変数制御へ戻す」と明記されているが、戻されていない~~ | Deprecated → **対応済み（削除）** | — | 調査の結果、旧レンダラー（環境変数がfalse相当の場合の分岐）の実体`ConciergeSections`は、本ハードコード導入より前のコミット`7b185e9e`（PR #847）で既に削除され、false分岐は「新レンダラー前提」というstubメッセージ、または何も表示しない空白に置き換わっていた。環境変数制御に戻しても機能する旧実装は存在しないため、母艦の判断を仰いだ上で新レンダラーへ一本化し、Flag自体（`rendererMode.ts`・`SHOW_NEW_RENDERER`・`CONCIERGE_RENDERER`）を削除した | 対応済み |
+| 互換ルート`src/app/api/shrines/[id]/route.ts`（単体GET） | `src/app/api/shrines/[id]/route.ts:1`。コメント「TODO: 互換ルート。2026-04-01 までにアクセス0なら削除」 | `apps/web`内のクライアントコードからの参照0件。期限（2026-04-01）を本監査時点（2026-07-18）で3.5ヶ月超過 | 期限切れの削除保留TODO | Deprecated | 低〜中（本番アクセスログでの実測は本監査の範囲外） | 本番アクセスログで実際のアクセス数を確認する | アクセス0を確認できたら削除するPR |
 
 ### 6.4 未使用コード（Dead）
 
@@ -259,7 +259,7 @@ KAMI MUSUBIの現行リポジトリ（Backend / `apps/web` / `apps/mobile` / `.g
 
 ### 命名・ドキュメント整合（動作は変えない）
 
-1. `SCORE_V3_HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS`のリネーム（実際にはshadowではなく本番ランキングへ影響するため）
+1. ~~`SCORE_V3_HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS`のリネーム（実際にはshadowではなく本番ランキングへ影響するため）~~ **対応済み**（`HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS`へリネーム。別PRで対応）
 2. `.github/workflows/backend-tests.yml`のコメントアウト済み残骸の削除
 3. `.github/workflows/web-tests.yml`の条件式とコメントの乖離解消
 
@@ -271,8 +271,8 @@ KAMI MUSUBIの現行リポジトリ（Backend / `apps/web` / `apps/mobile` / `.g
 4. `temples/api/serializers/concierge.py`のCOMPAT LAYER解消（新モジュールへの統合完了が前提）
 5. `ConciergeThread.recommendations`（v1）読み取りfallbackの削除（旧データ移行完了が前提）
 6. `apps/web`のBackendオリジンURL環境変数命名（`DJANGO_ORIGIN`/`BACKEND_ORIGIN`/`DJANGO_API_BASE_URL`/`BACKEND_URL`/`BACKEND_BASE_URL`の5系統併存）の1本化。影響範囲が広いため設計を先に固める
-7. ~~`apps/web`の`src/app/api/shrines/[id]/route.ts`互換ルート削除（削除期限2026-04-01を既に超過。本番アクセスログでアクセス0を確認後）~~ **対応済み**（別PRで削除。詳細は本項目のセルを参照）
-8. `apps/web`の`SHOW_NEW_RENDERER`ハードコード解消（デモ用の一時対応が環境変数制御へ戻されていない。`rendererMode.ts`）
+7. `apps/web`の`src/app/api/shrines/[id]/route.ts`互換ルート削除（削除期限2026-04-01を既に超過。本番アクセスログでアクセス0を確認後）
+8. ~~`apps/web`の`SHOW_NEW_RENDERER`ハードコード解消（デモ用の一時対応が環境変数制御へ戻されていない。`rendererMode.ts`）~~ → 対応済み（新レンダラーへ一本化しFlagごと削除。詳細は6.3節参照）
 
 ### 追加調査が必要なもの
 
@@ -289,3 +289,23 @@ KAMI MUSUBIの現行リポジトリ（Backend / `apps/web` / `apps/mobile` / `.g
 - [x] Markdown参照切れ確認（本文中で言及した既存文書・ファイルパスの実在を確認済み）
 - [x] `git diff --check`
 - [x] `git status --short`（本監査で新規追加したのは本ファイルのみ）
+
+
+---
+
+## 11. 後続対応状況
+
+### Backend廃止モジュール
+
+`backend/temples/_deprecated/`について、後続PRで以下を再確認した。
+
+- Git管理対象は4ファイルである
+- Backend・Web・Mobile・テストからの実行時参照は0件である
+- 削除前後でPackage Import Sweepが成功する
+- 削除後もAPI URL、REST Framework設定およびSerializerのImportテストが成功する
+
+以上を根拠として、`backend/temples/_deprecated/`ディレクトリ全体を削除した。
+
+本対応はDead判定の結論を変更するものではなく、監査で提示した後続対応を実行したものである。
+
+正確な削除差分とテスト結果は、関連する実装PRおよびGit履歴を正本とする。
