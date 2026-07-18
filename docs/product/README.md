@@ -53,8 +53,6 @@ journey-timeline-design.md
 ### 3. Premium・課金
 
 ```text
-pricing.md
-↓
 premium-experience.md
 ↓
 billing-paywall.md
@@ -94,11 +92,10 @@ billing-paywall.md
 
 ### Premium・Billing
 
-| ファイル                | 役割                                                       |
-| ----------------------- | ---------------------------------------------------------- |
-| `pricing.md`            | Free / Premiumの提供価値境界と価格表現                     |
-| `premium-experience.md` | Free / Premiumの画面別体験差と保存・履歴・比較の原則       |
-| `billing-paywall.md`    | Billing状態、Free制限、利用可否およびPaywall表示の判定原則 |
+| ファイル                | 役割                                                                    |
+| ----------------------- | ----------------------------------------------------------------------- |
+| `premium-experience.md` | Free / Premiumの体験価値、画面別体験差、Premium対象および価格表現の原則 |
+| `billing-paywall.md`    | Billing状態、Free制限、利用可否およびPaywall表示の判定原則              |
 
 ---
 
@@ -114,8 +111,7 @@ billing-paywall.md
 | `visit-style-taxonomy.md`            | 参拝スタイル分類                                                   |
 | `explore-integration-design.md`      | Explore体験設計                                                    |
 | `product-document-audit.md`          | Product文書の監査・分類管理                                        |
-| `card-visibility-renderer-split.md`  | Card表示可否とRenderer責務の設計補足                               |
-| `concierge-card-architecture.md`     | Concierge Card Treeと表示構造の設計補足                            |
+| `concierge-card-architecture.md`     | Concierge Card Tree、Visibility PolicyおよびRenderer責務の設計補足 |
 | `direction-ranking-design.md`        | 方角を推薦補助軸として扱う設計補足                                 |
 | `reflection-timeline-design.md`      | 写真・御朱印・検索・比較・感情推移など、長期的な振り返り体験の構想 |
 | `mobile-bottom-navigation.md`        | Mobile下部ナビゲーションの設計補足                                 |
@@ -126,10 +122,12 @@ billing-paywall.md
 
 ## Archive
 
-| ファイル                       | 役割                    |
-| ------------------------------ | ----------------------- |
-| `concierge-first.md`           | Concierge First初期設計 |
-| `concierge-first-wireframe.md` | 初期ワイヤーフレーム    |
+| ファイル                            | 役割                                                                          |
+| ----------------------------------- | ----------------------------------------------------------------------------- |
+| `concierge-first.md`                | Concierge First初期設計                                                       |
+| `concierge-first-wireframe.md`      | 初期ワイヤーフレーム                                                          |
+| `pricing.md`                        | Free / Premiumの提供価値境界と価格表現（premium-experience.mdへ統合済み）     |
+| `card-visibility-renderer-split.md` | Card VisibilityとRenderer責務分離（concierge-card-architecture.mdへ統合済み） |
 
 ---
 

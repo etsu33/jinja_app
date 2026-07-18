@@ -222,8 +222,8 @@ Product文書は、体験、機能目的、入力・出力の意味および責�
 | `concierge-filter-area.md` | Reference | Reference維持・整理対象 | Filterの画面構成と補助条件UI | Frontend / Backend責務とデータ接続詳細が一部混在 | UI責務を残し、解釈・判定はBackend正本へ委譲 |
 | `need-mode-ui-flow.md` | Reference | Reference維持 | Need ModeのUI導線と表示責務 | `need_tags`、`matched_need_tags`、Backend責務がActive文書と重複 | UI表示・導線補足に限定し、Mode責務は`concierge-modes.md`へ委譲 |
 | `compat-mode-ui-flow.md` | Reference | Reference維持 | Compat ModeのUI導線と補助情報表示 | 占術、方位、推薦接続の記述がMeaning / Direction文書と重複 | UI補足に限定し、Mode責務とMeaning変換へ委譲 |
-| `concierge-card-architecture.md` | Reference | Reference維持 | Concierge結果画面のCard Tree、Props、Renderer、Section Routing | PropsやRendererなど物理Frontend構造が中心で、実装との差分が生じやすい | 設計背景として維持し、現行構造はFrontend実装・テストを正本とする |
-| `card-visibility-renderer-split.md` | Reference | 統合候補 | Card VisibilityとRenderer責務分離 | `concierge-card-architecture.md`とCard表示・Renderer責務が重複 | 独自情報を比較し、統合後にArchiveまたはDelete候補とする |
+| `concierge-card-architecture.md` | Reference | Reference維持・統合完了 | Concierge結果画面のCard Tree、Props、Renderer、Visibility State別の表示原則、Card別Visibility PolicyおよびSection Routing | PropsやRendererなど物理Frontend構造が中心で、実装との差分が生じやすかった。`card-visibility-renderer-split.md`とVisibility表示原則が重複していた | 設計背景として維持し、現行構造はFrontend実装・テストを正本とする。`card-visibility-renderer-split.md`のVisibility State別表示原則とCard別Visibility Policyを統合済み |
+| `card-visibility-renderer-split.md` | Archive | 統合完了・Archive | Card VisibilityとRenderer責務分離 | `concierge-card-architecture.md`とCard表示・Renderer責務が重複していた。実装進捗チェックリストや次PR候補などPR計画の記載も混在していた | 独自のVisibility State別表示原則とCard別Visibility Policyを`concierge-card-architecture.md`へ統合し、本書はArchiveへ変更した |
 | `concierge-first.md` | Archive | Archive維持 | Concierge First初期思想 | 現行仕様ではなく、正本への委譲も明確 | 現状維持 |
 | `concierge-first-wireframe.md` | Archive | Archive維持 | Concierge First初期ワイヤーフレーム | 現行UI正本への委譲が明確 | 現状維持 |
 
@@ -234,7 +234,7 @@ Product文書は、体験、機能目的、入力・出力の意味および責�
 | `history-theme-taxonomy.md` | Active | Active維持・Product上のカテゴリ正本として責務境界整理完了、移管判断は保留継続 | `history_theme`7カテゴリの名称、定義、行動テーマおよび概念境界 | カテゴリ定義、相談例、ご利益との関係はProduct体験仕様よりKnowledgeの用語・意味分類責務に近い。Product / Backend / Analyticsの責務説明も混在していた | Knowledge責務監査で移動先を確定し、Productには体験上の利用箇所のみ残す。移管完了まではActiveとして扱う |
 | `meaning-translation-mapping.md` | Active | Active維持・責務整理完了 | 相談、意味変換、神社文脈、Action、Visit、Reflectionを接続するProduct上の変換関係 | Runtime実装状況、Backendファイル名、Score計算、Snapshot物理構造、Analytics指標、神社データ管理方針が混在していた | 体験上の変換関係と各機能への接続を残す。システム構造はCore、カテゴリ定義と神社付与基準はKnowledge、Scoreと実装詳細はBackend、Event・KPIはAnalyticsへ委譲 |
 | `shrine-detail-layer.md` | Active | Active維持 | 神社詳細画面のPublic / Context / Personal Layerと画面責務 | 大きな責務混在は確認されないが、Meaning Layer補足文書およびv3設計と情報レイヤの説明が重複する | 神社詳細の情報レイヤ境界を管理する正本として維持し、詳細な画面構成や実装順序は補足文書・実装へ委譲 |
-| `shrine-detail-meaning-layer.md` | Reference | 統合候補 | 神社詳細におけるMeaning情報の表示順、主役情報、補強情報および表現原則 | `shrine-detail-layer.md`の情報レイヤ、`shrine-detail-v3-design.md`の画面構造、Knowledgeのコピー原則と重複する。既存コード対応、今後の実装方針、TODOも混在する | 独自のMeaning表示原則を`shrine-detail-layer.md`またはKnowledge文書へ統合し、統合後はArchiveまたはDelete候補として再判定 |
+| `shrine-detail-meaning-layer.md` | Reference | 統合候補（統合保留） | 神社詳細におけるMeaning情報の表示順、主役情報、補強情報および表現原則 | `shrine-detail-layer.md`の情報レイヤ（Public / Context / Personal）とは異なる軸（情報レイヤー順、主役/補強情報、コピー例文）を持ち、単純な重複ではない。コピー例文とWikipedia化回避ガイドラインはKnowledge責務に近い。既存コード対応、今後の実装方針、TODOも混在する | `shrine-detail-layer.md`への統合は新規Product仕様の追加に相当するため本タスクでは実施しない。コピー生成原則に該当する部分はKnowledge責務監査での移管先確定を待つ。統合方針が確定するまでReferenceを維持する |
 | `shrine-detail-v3-design.md` | Active | Reference化候補・整理対象 | Shrine Detail v3のUX再設計、画面構成および実装時の設計背景 | Current State、Proposed構造、将来のCardVisibilityPolicy、Analytics Event・KPI、Premium導線、実装境界が混在する。現行仕様の正本というより実装フェーズの設計記録に近い | 現行の画面責務は`shrine-detail-layer.md`へ統合し、v3移行時の設計背景としてReferenceへ変更する。AnalyticsはAnalytics文書へ委譲 |
 | `direction-ranking-design.md` | Reference | Reference維持 | 方角・吉方位を推薦補助軸として扱う将来設計 | 本文のDirection Mode、Score構造および九星補助は現行実装と一致せず、参照元も監査文書のみ | 将来設計であることを明示したReferenceとして維持する。現行Ranking判断には使用せず、Backend実装・テストを正本とする |
 | `visit-style-taxonomy.md` | Reference | Reference維持・境界整理対象 | Concierge Filterで使用する参拝スタイルの表示分類、内部タグおよびUI上の扱い | `extraCondition`変換、Backendへの接続、推薦加点ルールなど物理処理が混在する。一方でUI分類として独立した価値はある | UI表示分類と内部値対応を残し、自然文変換、スコア、重み、API契約はBackend実装へ委譲 |
@@ -245,7 +245,7 @@ Product文書は、体験、機能目的、入力・出力の意味および責�
 |---|---|---|---|---|---|
 | `action_suggestion_v4.md` | Active | Active維持・Product責務整理完了、Analytics物理契約は委譲済み | Recommendation Reasonから次に取りやすい行動を生成するInput / Outputと生成ルール | `action_suggestion_reflection_preview_view`、`actionPromptType`などAnalytics Event・Payload契約が混在していた | Actionの意味、出力項目、生成原則をProductに残し、正確なEvent名・Payload・計測語彙はAnalyticsへ委譲 |
 | `visit-reflection-flow.md` | Active | Active維持・体験責務への整理完了 | 参拝完了からReflection保存、次回相談までを接続する体験とVisit / Reflectionの意味責務 | Event名、TypeScript Payload型、Django Model全文、Index、採用Field、Mobile送信状況、PostHog集計、実装ファイル名が混在していた | 体験フロー、Visit / Reflectionの意味責務、Free / Premium境界を残す。Event・Payload・FunnelはAnalytics、Model・Field・Index・APIは実装とテストへ委譲 |
-| `reflection-timeline-design.md` | Reference | Reference | 写真、御朱印、検索、比較、感情推移など、長期的な振り返り体験の構想 | 写真、御朱印、検索、感情推移、行動記録、Premium分析、KPIなど未実装または将来構想が現行仕様として混在していた。現行のTimeline体験責務はJourney Timelineへ統合済み | 現行のTimeline体験責務はJourney Timeline正本へ統合完了。本書は長期構想・設計思想を扱うReferenceとして維持する |
+| `reflection-timeline-design.md` | Reference | Reference維持・対応不要 | 写真、御朱印、検索、比較、感情推移など、長期的な振り返り体験の構想 | 写真、御朱印、検索、感情推移、行動記録、Premium分析、KPIなど未実装または将来構想が現行仕様として混在していた。現行のTimeline体験責務はJourney Timelineへ統合済み | 現行のTimeline体験責務はJourney Timeline正本へ統合完了。本書は長期構想・設計思想を扱うReferenceとして維持する。統合候補文書の再確認でも追加の重複・独自情報は確認されず、対応不要と判断した |
 | `journey-timeline-design.md` | Active | Active正本 | 相談・提案・参拝・振り返りを「ご縁の歩み」として時系列で接続する現行体験設計 | 従来は内容が簡略でReflection Timelineと責務が重複していたが、Event・State分離とVisit / Reflection接続方針を整理し、正本として統合完了 | Journey Timelineの現行体験仕様を管理する正本として維持する。正確なEvent構造・API・Serializer・表示処理はBackend・Mobile実装とテストを正本とする |
 
 `reflection-funnel-dashboard.md`は`docs/analytics/reflection-funnel-dashboard.md`へ移管が完了したため、本表から除外した（対象範囲はdocs/product/直下の文書のため）。移管の詳細は9節を参照する。
@@ -254,8 +254,8 @@ Product文書は、体験、機能目的、入力・出力の意味および責�
 
 | 文書 | 現在分類 | 監査判定 | 主責務 | 確認した問題 | 後続対応 |
 |---|---|---|---|---|---|
-| `premium-experience.md` | Active | Active維持・責務明確化完了 | Free / Premiumの体験価値、画面別の体験差、保存・履歴・比較の原則 | `pricing.md`および`monetization-flow-design.md`とPremium価値の説明が一部重複していた。料金・Billing判定・収益導線・Analyticsへの委譲先が明記されていなかった | Premium体験価値の正本として維持。責務境界節で料金・Billing判定・収益導線・Analyticsの委譲先を明記済み |
-| `pricing.md` | Active | Active維持・責務整理完了 | Premiumの支払対象、Free / Premium境界および価格表現の原則 | 具体的な料金・請求周期・プランを管理しておらず、内容の多くが`premium-experience.md`と重複する。参照元もAudit文書に限られる | 価格表現の原則をProductに残し、Billing判定・決済実装への委譲先を明記済み。`premium-experience.md`への統合およびReference化は、体験境界の最終判断を伴うため後続PRで判断する |
+| `premium-experience.md` | Active | Active維持・統合完了 | Free / Premiumの体験価値、画面別の体験差、Premium対象、価格表現の原則、保存・履歴・比較の原則 | `pricing.md`および`monetization-flow-design.md`とPremium価値の説明が一部重複していた。料金・Billing判定・収益導線・Analyticsへの委譲先が明記されていなかった | Premium体験価値の正本として維持。責務境界節で料金・Billing判定・収益導線・Analyticsの委譲先を明記済み。`pricing.md`のPremium対象一覧および価格表現の原則を統合済み |
+| `pricing.md` | Archive | 統合完了・Archive | Premiumの支払対象、Free / Premium境界および価格表現の原則 | 具体的な料金・請求周期・プランを管理しておらず、内容の大半が`premium-experience.md`と重複していた（Free/Premiumの役割、価格表現の原則テーブルなど）。参照元もAudit文書に限られていた | 独自内容（Premium対象にできる/しないものの一覧、価格表現の原則）を`premium-experience.md`へ統合し、本書はArchiveへ変更した |
 | `billing-paywall.md` | Active | Active維持・大幅整理完了 | Billing状態、Premium優先、Free回数制限およびPaywall表示の判定原則 | API Endpoint、Response Field、未閉鎖のJavaScript判定コード、テスト要件が混在し、Markdownコードブロックも未閉鎖だった | 利用可否と判定原則をProductに残し、API Endpoint・Field・実装コード・テストケースはBackend / Frontend実装とテストへ委譲済み。コードブロック不整合も解消 |
 | `monetization-flow-design.md` | Reference | Reference維持・Analytics委譲完了 | Premium提示タイミング、CTA方針、収益導線思想およびRetention設計背景 | Event名、Funnel、Revenue KPI、Context Propertyが現行仕様として本文に列挙され、未実装の将来拡張案との境界が曖昧だった | 収益導線の設計思想をReferenceとして維持。Event・Payload・KPI・Funnelは`docs/analytics/`配下へ委譲し、将来拡張は現行仕様に含まない旨を明記済み |
 
@@ -353,7 +353,6 @@ Product文書は、体験、機能目的、入力・出力の意味および責�
 - `kami-musubi-experience-design.md`
 - `meaning-translation-mapping.md`
 - `premium-experience.md`
-- `pricing.md`
 - `recommendation-v4-interpreter-contract.md`
 - `shrine-detail-layer.md`
 - `shrine-detail-v3-design.md`
@@ -362,7 +361,6 @@ Product文書は、体験、機能目的、入力・出力の意味および責�
 
 ### Reference
 
-- `card-visibility-renderer-split.md`
 - `compat-mode-ui-flow.md`
 - `concierge-card-architecture.md`
 - `concierge-entry-final-wireframe.md`
@@ -380,17 +378,15 @@ Product文書は、体験、機能目的、入力・出力の意味および責�
 
 ### Archive
 
+- `card-visibility-renderer-split.md`
 - `concierge-first.md`
 - `concierge-first-wireframe.md`
+- `pricing.md`
 
 ### 統合候補
 
-- `card-visibility-renderer-split.md`
-  - `concierge-card-architecture.md`への統合候補
 - `shrine-detail-meaning-layer.md`
-  - `shrine-detail-layer.md`またはKnowledge文書への統合候補
-- `pricing.md`
-  - `premium-experience.md`への独自原則統合後、Reference化候補
+  - `shrine-detail-layer.md`への統合は新規Product仕様の追加に相当するため保留。コピー生成原則に該当する部分はKnowledge文書への移管候補（Knowledge責務監査待ち）
 - `history-theme-taxonomy.md`
   - Knowledge移管候補（責務境界整理は完了、移管判断は保留継続）
 
@@ -398,18 +394,20 @@ Timeline正本名称は「Journey Timeline」で確定した。`journey-timeline
 
 `reflection-funnel-dashboard.md`のAnalytics移管は完了した。`docs/analytics/reflection-funnel-dashboard.md`へ移動し、Product文書（35件）の対象から除外した。以後のProduct文書総数は34件として扱う。
 
+`card-visibility-renderer-split.md`の統合は完了した。独自のVisibility State別表示原則とCard別Visibility Policyを`concierge-card-architecture.md`へ統合し、本書はArchiveへ変更した。
+
+`pricing.md`の統合は完了した。独自のPremium対象一覧と価格表現の原則を`premium-experience.md`へ統合し、本書はArchiveへ変更した。
+
 ### Delete候補
 
 現時点ではなし。
 
-統合候補文書は、独自情報の移管と参照元更新を確認した後に、ArchiveまたはDeleteを再判定する。
+Archive済み文書（`card-visibility-renderer-split.md`、`pricing.md`）は、参照元の更新状況を確認したうえで、後続PRでDeleteを再判定する。
 
 ### 判断保留
 
 - `history-theme-taxonomy.md`のKnowledge移管先
-- `pricing.md`を独立文書として残すか
-- `card-visibility-renderer-split.md`統合後のArchive / Delete
-- `shrine-detail-meaning-layer.md`統合後のArchive / Delete
+- `shrine-detail-meaning-layer.md`の統合方針（Product仕様追加を伴わない統合方法、またはKnowledge移管の要否）
 ---
 
 ## 10. docs/product/README.mdとの差分
@@ -475,13 +473,13 @@ Event、Payload、KPI、Funnelおよび実装状況をAnalytics文書へ委譲�
 
 Product直下のMarkdown文書35件について、現行分類、主責務、重複、委譲先および後続対応を確認した。
 
-監査時点の最終分類は以下である（`reflection-funnel-dashboard.md`の`docs/analytics/`への移管完了後の件数）。
+監査時点の最終分類は以下である（`reflection-funnel-dashboard.md`の`docs/analytics/`への移管、`pricing.md`の`premium-experience.md`への統合、`card-visibility-renderer-split.md`の`concierge-card-architecture.md`への統合を反映した件数）。
 
 | 分類 | 件数 |
 |---|---:|
-| Active | 17 |
-| Reference | 15 |
-| Archive | 2 |
+| Active | 16 |
+| Reference | 14 |
+| Archive | 4 |
 | 合計 | 34 |
 
 監査により、Product文書には以下の責務混在が存在することを確認した。

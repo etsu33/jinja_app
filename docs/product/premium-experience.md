@@ -1,8 +1,8 @@
 > **Status: Active**
 >
-> 本ドキュメントは、Free / Premiumの体験価値と画面別の境界を管理する正本文書である。
+> 本ドキュメントは、Free / Premiumの体験価値、画面別の境界、Premium対象および価格表現の原則を管理する正本文書である。
 >
-> 具体的な料金・プラン構成は`docs/product/pricing.md`、Billing / Paywallの判定原則は`docs/product/billing-paywall.md`、収益導線の設計は`docs/product/monetization-flow-design.md`を参照する。正確な物理実装と挙動は、関連する実装コードおよびテストを最終的な正本とする。
+> Billing / Paywallの判定原則は`docs/product/billing-paywall.md`、収益導線の設計は`docs/product/monetization-flow-design.md`を参照する。具体的な料金、請求周期およびプラン構成は現時点では未確定であり、確定後は本書または専用の料金正本文書で管理する。正確な物理実装と挙動は、関連する実装コードおよびテストを最終的な正本とする。
 
 # Premium Experience 境界
 
@@ -73,6 +73,26 @@ Map / Search は到達手段であり、Premium 訴求の主語にしない。�
 
 ---
 
+## Premium 対象
+
+Premium 対象にできるもの:
+
+- コンシェルジュの深い推薦理由
+- 願い・悩み・過去相談を踏まえた相性説明
+- 推薦結果の保存、比較、再訪
+- 御朱印・訪問記録・メモの保存上限拡張
+- 継続利用に基づく振り返り、傾向分析、次の参拝提案
+
+Premium 対象にしないもの:
+
+- 神社詳細の基本情報閲覧
+- 最低限の参拝導線
+- Map / Search の基本利用
+- 投稿機能そのもの
+- 公開情報へのアクセス
+
+---
+
 ## 保存・履歴・比較の原則
 
 ### 保存
@@ -129,6 +149,14 @@ Premium の継続価値を見せる画面。
 
 ---
 
+## 価格表現の原則
+
+Premiumの価格は、単純な機能数ではなく、相談履歴、記録、比較、Reflectionおよび継続文脈を長期的に利用できる価値に対して説明する。
+
+具体的な料金、請求周期およびプラン構成は、決済実装と運用判断が確定するまで本書では固定しない。確定後は、本書または専用の料金正本文書で管理する。
+
+---
+
 ## 実装判断メモ
 
 - Premium 判定そのものは `docs/product/billing-paywall.md` を参照する
@@ -147,10 +175,12 @@ Productでは以下を管理する。
 - 画面別のFree / Premium境界
 - 置いてよい表現、置かない表現の原則
 - 保存・履歴・比較の意味責務
+- Premium対象にできるもの・しないものの分類
+- 価格表現の原則（機能数ではなく体験差で説明する方針）
 
 ### Pricing
 
-具体的な料金、請求周期、プラン構成および価格表現の原則は、`docs/product/pricing.md`を正本とする。
+価格表現の原則は本書で管理する。具体的な料金、請求周期およびプラン構成は現時点では未確定であり、確定後は本書または専用の料金正本文書で管理する。
 
 ### Billing・Paywall
 
@@ -181,7 +211,6 @@ Premium提示タイミング、CTA方針および収益導線の設計背景は�
 ## 関連ドキュメント
 
 - `docs/product/README.md`
-- `docs/product/pricing.md`
 - `docs/product/billing-paywall.md`
 - `docs/product/monetization-flow-design.md`
 - `docs/product/shrine-detail-layer.md`
@@ -192,8 +221,9 @@ Premium提示タイミング、CTA方針および収益導線の設計背景は�
 
 ## 更新ルール
 
-- 本書はFree / Premiumの体験価値と画面別の境界を管理する。
-- Premiumの中心価値または画面別境界が変更された場合は、本書を更新する。
+- 本書はFree / Premiumの体験価値、画面別の境界、Premium対象および価格表現の原則を管理する。
+- Premiumの中心価値、画面別境界、Premium対象または価格表現の原則が変更された場合は、本書を更新する。
 - 具体的な料金、プラン構成、Billing判定ロジック、Event、Payload、FunnelおよびKPIは本書で重複管理しない。
+- 具体的な料金体系が確定した場合は、本書の記載範囲を見直す。
 - 物理実装のみを変更した場合は、本書の体験価値への影響を確認する。
 - TODO、PR計画、実装進捗および作業履歴は本書へ記載しない。
