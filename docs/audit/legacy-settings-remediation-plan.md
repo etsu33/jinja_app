@@ -44,7 +44,7 @@
 | 6 | `apps/mobile/components/home/`配下未使用コンポーネント群の削除 | 削除 | P1 | 不要 |
 | 7 | `apps/mobile`の`nativewind`/`tailwindcss`関連一式の削除 | 削除 | P1 | 不要 |
 | 8 | Score v3の到達不能axisキー4件（28エントリ）の削除、またはエイリアス追加による復活 | 保留 | P2 | 必要（Product判断：4 axis正式導入の計画有無） |
-| 9 | `BillingState`/`plan_from_profile()`の削除 | 削除 | P1 | 不要 |
+| 9 | ~~`BillingState`/`plan_from_profile()`の削除~~ **対応済み** | 削除 | P1 | 不要 |
 | 10 | `apps/web/src/lib/auth/token.ts`の削除 | 削除 | P1 | 不要 |
 | 11 | Web Analytics dead event（`premium_preview_view`/`next_session`/`next_thread`）の型定義削除 | 削除 | P1 | 不要 |
 | 12 | `RecommendationReasonViewModel.why`/`.interpretation`の削除 | 削除 | P1 | 不要 |
@@ -109,16 +109,16 @@
 
 ### PR-A: Backend Dead Code削除
 
-**対象**: #1（`_deprecated/`4ファイル1313行、**対応済み**）、#3（`recommend_shrines()`+LUCK_BONUS系）、#9（`BillingState`/`plan_from_profile()`）
+**対象**: #1（`_deprecated/`4ファイル1313行、**対応済み**）、#3（`recommend_shrines()`+LUCK_BONUS系）、#9（`BillingState`/`plan_from_profile()`、**対応済み**）
 
 **変更範囲**:
 
 - `backend/temples/_deprecated/`ディレクトリ全体の削除（別PRで対応済み）
 - `backend/temples/services/recommendation.py`から`recommend_shrines()`と`ENABLE_LUCK_BONUS`/`LUCK_BASE_FIELD`/`LUCK_BONUS_ELEMENT`/`LUCK_BONUS_POINT`の削除、および専用テスト（`test_recommendation_adapter.py`）の削除
-- `backend/users/services/billing.py`から`BillingState`（dataclass）と`plan_from_profile()`の削除
+- `backend/users/services/billing.py`から`BillingState`（dataclass）と`plan_from_profile()`の削除（別PRで対応済み）
 
 **#1の実施状況**: `backend/temples/_deprecated/`配下の4ファイルを、参照0件の再確認後に削除した。削除前後でPackage Import Sweepを実行し、API URL、REST Framework設定およびSerializerのImportテストを含む関連テストが通過することを確認した。
-
+**#9の実施状況**: `backend/users/services/billing.py`の`BillingState`と`plan_from_profile()`は、Backend・Web・Mobile・テストからの参照0件を再確認した上で削除した。現行処理が利用する`is_subscription_active()`は維持した。Billing Checkout、StatusおよびWebhookの契約テスト12件と、Backend Import関連テスト6件が通過することを確認した。
 
 **テスト**:
 
@@ -299,7 +299,7 @@ Compatibility（互換目的で現役）に分類された項目について、�
 本監査・本計画では実施そのものを行わないが、着手する場合の目安順序を示す。
 
 1. **P0（#15, #24, #25）**: 誤解・期限超過リスクがあるため最優先。#24は事前にアクセスログ確認が必要。#15・#25は対応済み
-2. **P1のうち外部確認不要な削除（PR-A, PR-B, PR-C, PR-D）**: #1は対応済み。残る対象は参照0件を再確認した上で並行して進められる
+2. **P1のうち外部確認不要な削除（PR-A, PR-B, PR-C, PR-D）**: #1・#9は対応済み。残る対象は参照0件を再確認した上で並行して進められる
 3. **PR-E（Feature Flag整理）**: P0の#15, #25を含むため、実質的に(1)と同時期。両項目とも対応済み
 4. **外部環境確認（3節の8件）**: 上記と並行して進められる調査。確認が完了次第、該当するP2項目（#4, #18, #20, #22等）の実装PRへ進む
 5. **PR-F（環境変数統一の事前確認）**: 影響範囲が広いため、他の項目が落ち着いてから着手する
