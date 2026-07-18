@@ -40,7 +40,6 @@ export default defineConfig({
         "src/lib/api/http.ts",
         "src/lib/api/mypage.ts",
         "src/lib/auth/AuthProvider.tsx",
-        "src/features/mypage/components/hooks/useMyGoshuin.ts",
         "src/components/views/MyPageView.tsx",
 
         // 🔽 お気に入り関連を追加で除外
