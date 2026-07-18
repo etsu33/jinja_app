@@ -60,7 +60,7 @@
 | 22 | `ConciergeThread.recommendations`（v1）読み取りfallbackの削除 | 互換移行 | P2 | 必要（本番DBの旧スレッド残存数） |
 | 23 | `apps/web`のBackendオリジンURL環境変数命名の1本化 | 設定統一 | P1 | 不要（ただし設計レビューは必須） |
 | 24 | `apps/web`の期限超過互換ルート（`/api/shrines/[id]`）の削除 | 削除 | **P0** | 必要（本番アクセスログ、削除実行の判断材料として） |
-| 25 | `apps/web`の`SHOW_NEW_RENDERER`ハードコード解消 | 命名修正 | **P0** | 不要 |
+| 25 | ~~`apps/web`の`SHOW_NEW_RENDERER`ハードコード解消~~ **対応済み** | 命名修正 | **P0** | 不要 |
 | 26 | ルート`.env.example`と`backend/.env.example`の統合要否判断 | 保留 | P3 | 不要（文書検索のみ） |
 | 27 | `apps/mobile`の未到達ルート6画面の実機導線確認 | 保留 | P2 | 必要（実機/シミュレータ操作） |
 | 28 | `NOMINATIM_BASE`/`NOMINATIM_EMAIL`未接続の設計意図確認 | 保留 | P3 | 必要（実装担当者への確認） |
@@ -205,22 +205,16 @@
 
 ### PR-E: 命名修正・Flag実態の是正
 
-**対象**: #15（`SCORE_V3_HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS`リネーム、**対応済み**）、#25（`SHOW_NEW_RENDERER`ハードコード解消、未着手）
+**対象**: #15（`SCORE_V3_HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS`リネーム、**対応済み**）、#25（`SHOW_NEW_RENDERER`ハードコード解消、**対応済み**）
 
 **#15の実施状況**: `backend/temples/services/concierge_chat_ranking.py`の`SCORE_V3_HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS`を`HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS`へリネームする別PRで対応済み。計算式・加算先は無変更。関連テスト（`test_score_v3_history_signal.py`）およびBackend全体テスト（745件）が通過することを確認済み。互換エイリアスは追加していない（非公開のPython定数で、参照元は定義ファイルとテストファイルの2箇所のみ、環境変数としての読み込みも無いため、旧名を残す実益がないと判断）。
 
-**変更範囲（#25、未実施）**:
-
-- `apps/web/src/features/concierge/rendererMode.ts`の`SHOW_NEW_RENDERER`ハードコードを解消し、`NEXT_PUBLIC_CONCIERGE_RENDERER`環境変数による制御へ戻す。ただし、旧レンダラー分岐（環境変数がfalse相当の場合）が現在も正しく動作するか事前に確認する。動作しない場合は、新レンダラーへの完全移行を確定した上でFlag自体を削除する（いずれの方針を採るかは母艦の判断を仰ぐ）
-
-**テスト（#25、未実施分）**:
-
-- `SHOW_NEW_RENDERER`解消PRでは、`NEXT_PUBLIC_CONCIERGE_RENDERER`を明示的に`true`/`false`双方に設定した状態で`ConciergeClientFull.tsx`のレンダリング結果を目視確認する（Web契約テストに両パターンのケースが無ければ追加する）
+**#25の実施状況**: 事前確認の結果、旧レンダラー分岐（環境変数がfalse相当の場合）は本ハードコード導入（`960dcb31`）より前のコミット`7b185e9e`（PR #847）で実体`ConciergeSections`が既に削除されており、false分岐は「新レンダラー前提」というstubメッセージ、または（`isFilterOpen`側の分岐では）何も表示しない空白になっていた。つまり環境変数制御へ単純に戻しても、ユーザーには壊れた表示しか出せない状態だった。この事実を踏まえ、別PRで新レンダラーへの完全移行を確定した上でFlag自体（`rendererMode.ts`・`SHOW_NEW_RENDERER`・`CONCIERGE_RENDERER`、および`ConciergeClientFull.tsx`側の3箇所の分岐）を削除して対応済み。Score/Recommendation/Analyticsのロジックには一切触れていない。`apps/web/.env.local`の`NEXT_PUBLIC_CONCIERGE_RENDERER`はgitignore対象のローカルファイルのため対象外。
 
 **Rollback条件**:
 
 - リネームPR（#15、対応済み）: マージ後にScore v3関連テストが失敗した場合はrevert（実施時点で745件全てパスを確認済み）
-- `SHOW_NEW_RENDERER`解消PRで、環境変数未設定時のデフォルト挙動が本番想定と異なる場合は即座にrevert（Concierge結果画面はコア体験のため、表示崩れは早急な巻き戻しが必要）
+- Flag削除PR（#25、対応済み）: マージ後にConcierge結果画面の表示崩れが確認された場合は`git revert`で即座に巻き戻す（Concierge結果画面はコア体験のため早急な対応が必要）
 
 **優先度に関する注記**: 両者ともP0だが、内容としては別領域（Backend計算ロジックの命名 / Web UIレンダリング制御）であり、依存関係が無いため同一PRにまとめる必要はない。実施順序は任意（レビューの都合で分割してもよい）。
 
@@ -301,9 +295,9 @@ Compatibility（互換目的で現役）に分類された項目について、�
 
 本監査・本計画では実施そのものを行わないが、着手する場合の目安順序を示す。
 
-1. **P0（#15, #24, #25）**: 誤解・期限超過リスクがあるため最優先。#24は事前にアクセスログ確認が必要。#15は対応済み
+1. **P0（#15, #24, #25）**: 誤解・期限超過リスクがあるため最優先。#24は事前にアクセスログ確認が必要。#15・#25は対応済み
 2. **P1のうち外部確認不要な削除（PR-A, PR-B, PR-C, PR-D）**: 参照0件を再確認した上で並行して進められる
-3. **PR-E（Feature Flag整理）**: P0の#15, #25を含むため、実質的に(1)と同時期
+3. **PR-E（Feature Flag整理）**: P0の#15, #25を含むため、実質的に(1)と同時期。両項目とも対応済み
 4. **外部環境確認（3節の8件）**: 上記と並行して進められる調査。確認が完了次第、該当するP2項目（#4, #18, #20, #22等）の実装PRへ進む
 5. **PR-F（環境変数統一の事前確認）**: 影響範囲が広いため、他の項目が落ち着いてから着手する
 6. **保留項目（9節）**: 随時、担当者の確認が取れ次第
