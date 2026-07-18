@@ -32,3 +32,13 @@ Phase7実装前に、Git管理されている一時ファイル・旧ファイ�
 
 - backend/temples/_deprecated/
 - apps/web/src/features/concierge/components/legacy/
+
+---
+
+## 後続対応
+
+`backend/temples/_deprecated/`は、後続のDeadコード削除PRで参照0件を再確認した上で削除した。
+
+削除前後でPackage Import Sweepを実行し、削除後もAPI URL、REST Framework設定およびSerializerのImportテストが成功することを確認した。
+
+`apps/web/src/features/concierge/components/legacy/`については、本対応の対象外であり、引き続き別PRで扱う。
