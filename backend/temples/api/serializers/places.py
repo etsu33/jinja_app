@@ -15,9 +15,6 @@ class PlacesSearchResponse(serializers.Serializer):
     cached = serializers.BooleanField(required=False)
     provider = serializers.CharField(required=False)
 
-    # 互換が必要なら残す（不要なら消す）
-    items = PlaceItemSerializer(many=True, required=False)
-
 
 class TextSearchResponse(PlacesSearchResponse):
     pass
