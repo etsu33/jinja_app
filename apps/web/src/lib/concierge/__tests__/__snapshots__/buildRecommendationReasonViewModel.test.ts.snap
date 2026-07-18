@@ -23,11 +23,6 @@ exports[`buildRecommendationReasonViewModel > reason文の代表パターンを 
       "topReasonLabel": "生年月日との重なりが強い",
     },
     "inputType": "birthdate",
-    "interpretation": {
-      "actionMeaning": "この神社を前にしたとき、今の自分は何を無理なく受け取り、何を急いで決めようとしているのでしょうか。",
-      "consultationSummary": "今は勢いで答えを出すほど感覚がぶれやすく、合う・合わないを静かに見極めたい状態です。 今は結論を急ぐより、相性として無理がないか、落ち着いて受け取れる場所かを先に整理するのが合っています。",
-      "shrineMeaning": "この神社は、生年月日から見た相性を補助線にしながら、今回の候補の中で相談内容との接点が見られる場所で相性を決めつけず、自分にとって無理なく受け取れる距離感を確かめる候補として置きやすい場所です。",
-    },
     "list": {
       "primaryPhrase": "生年月日から見た「water」の要素との相性が強く重なるため、この神社が候補に入っています。",
       "secondaryPhrase": "気質とのなじみも補助的に見られます。",
@@ -36,16 +31,6 @@ exports[`buildRecommendationReasonViewModel > reason文の代表パターンを 
     "rank": {
       "differenceFromOthers": "他候補と比べると、気質に無理なく馴染みやすい位置づけです。",
       "whyTop": "今回の候補の中でも、生年月日との相性の重なりが見えやすい候補です。",
-    },
-    "why": {
-      "primaryReason": "生年月日から見た「water」の要素との相性が強く重なるため、この神社が候補に入っています。",
-      "reasonKeys": {
-        "primary": "element_match",
-        "secondary": "sign_match",
-        "summary": "element_match",
-      },
-      "secondaryReason": "気質とのなじみも補助的に見られます。",
-      "summary": "生年月日との相性の重なりを主軸に、この神社が選ばれています。",
     },
   },
   "fallback": {
@@ -69,11 +54,6 @@ exports[`buildRecommendationReasonViewModel > reason文の代表パターンを 
       "topReasonLabel": "見やすい候補",
     },
     "inputType": "fallback",
-    "interpretation": {
-      "actionMeaning": "今の自分は何を続け、何を終わらせ、どこから流れを切り替えたいのでしょうか。",
-      "consultationSummary": "切り替えたい気持ちが強い時ほど、急いで結論を出そうとして判断が粗くなり、流れの見極めが雑になりやすくなります。 今は答えを急いで決めるより先に、どこを切り替えて何を残すかを整理できる場を優先するのが合っています。",
-      "shrineMeaning": "この神社は、「転機」という相談テーマに対して、今回の候補の中で相談内容との接点が見られる場所で何を残し、何を切り替えるかを確認する候補として置きやすい場所です。",
-    },
     "list": {
       "primaryPhrase": "今回の相談の中心にある「切り替え」のテーマと重なるため、この神社が候補に入っています。",
       "secondaryPhrase": "参拝先として選びやすい安定感もあります。",
@@ -82,16 +62,6 @@ exports[`buildRecommendationReasonViewModel > reason文の代表パターンを 
     "rank": {
       "differenceFromOthers": "他候補と比べると、今回優先したいテーマにまっすぐ重なりやすい位置づけです。",
       "whyTop": "今回の候補の中でも、相談内容との重なりが見えやすい候補です。",
-    },
-    "why": {
-      "primaryReason": "今回の相談の中心にある「切り替え」のテーマと重なるため、この神社が候補に入っています。",
-      "reasonKeys": {
-        "primary": "need_match",
-        "secondary": "popular",
-        "summary": "distance",
-      },
-      "secondaryReason": "参拝先として選びやすい安定感もあります。",
-      "summary": "今回はまず動きやすさを優先して、この神社が選ばれています。",
     },
   },
   "query": {
@@ -115,11 +85,6 @@ exports[`buildRecommendationReasonViewModel > reason文の代表パターンを 
       "topReasonLabel": "相談との一致が強い",
     },
     "inputType": "query",
-    "interpretation": {
-      "actionMeaning": "今の自分は何を続け、何を終わらせ、どこから流れを切り替えたいのでしょうか。",
-      "consultationSummary": "切り替えたい気持ちが強い時ほど、急いで結論を出そうとして判断が粗くなり、流れの見極めが雑になりやすくなります。 今は答えを急いで決めるより先に、どこを切り替えて何を残すかを整理できる場を優先するのが合っています。",
-      "shrineMeaning": "この神社は、「転機」という相談テーマに対して、今回の候補の中で相談内容との接点が見られる場所で何を残し、何を切り替えるかを確認する候補として置きやすい場所です。",
-    },
     "list": {
       "primaryPhrase": "今回の相談の中心にある「切り替え」のテーマと重なるため、この神社が候補に入っています。",
       "secondaryPhrase": undefined,
@@ -128,16 +93,6 @@ exports[`buildRecommendationReasonViewModel > reason文の代表パターンを 
     "rank": {
       "differenceFromOthers": "他候補と比べると、今回優先したいテーマにまっすぐ重なりやすい位置づけです。",
       "whyTop": "今回の候補の中でも、相談内容との重なりが見えやすい候補です。",
-    },
-    "why": {
-      "primaryReason": "今回の相談の中心にある「切り替え」のテーマと重なるため、この神社が候補に入っています。",
-      "reasonKeys": {
-        "primary": "need_match",
-        "secondary": undefined,
-        "summary": "need_match",
-      },
-      "secondaryReason": undefined,
-      "summary": "相談内容と神社の性質が重なるため、この神社が選ばれています。",
     },
   },
 }

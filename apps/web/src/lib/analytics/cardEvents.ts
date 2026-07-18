@@ -22,7 +22,6 @@ export type CardAnalyticsEvent =
   | "card_teaser_view"
   | "card_partial_view"
   | "card_cta_click"
-  | "premium_preview_view"
   | "premium_preview_click"
   | "save_prompt_view"
   | "save_prompt_click";

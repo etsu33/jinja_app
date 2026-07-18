@@ -14,8 +14,8 @@ describe("buildRecommendationReasonViewModel", () => {
     });
 
     expect(vm.inputType).toBe("query");
-    expect(vm.why.reasonKeys.primary).toBe("need_match");
-    expect(vm.why.primaryReason.length).toBeGreaterThan(0);
+    expect(vm.debug!.reasonKeys.primary).toBe("need_match");
+    expect(vm.list.primaryPhrase.length).toBeGreaterThan(0);
     expect(vm.hero.topReasonLabel).toBe("相談との一致が強い");
   });
 
@@ -33,8 +33,8 @@ describe("buildRecommendationReasonViewModel", () => {
     });
 
     expect(vm.inputType).toBe("birthdate");
-    expect(vm.why.reasonKeys.primary).toBe("element_match");
-    expect(vm.why.primaryReason.length).toBeGreaterThan(0);
+    expect(vm.debug!.reasonKeys.primary).toBe("element_match");
+    expect(vm.list.primaryPhrase.length).toBeGreaterThan(0);
     expect(vm.hero.topReasonLabel).toBe("生年月日との重なりが強い");
   });
 
@@ -51,8 +51,8 @@ describe("buildRecommendationReasonViewModel", () => {
     });
 
     expect(vm.inputType).toBe("fallback");
-    expect(vm.why.primaryReason).not.toContain("転機");
-    expect(vm.why.summary).not.toContain("願い");
+    expect(vm.list.primaryPhrase).not.toContain("転機");
+    expect(vm.list.summary).not.toContain("願い");
   });
 
   it("secondary_reason が2件以上出ない", () => {
@@ -68,7 +68,7 @@ describe("buildRecommendationReasonViewModel", () => {
       needTags: ["仕事"],
     });
 
-    expect(typeof vm.why.secondaryReason === "string" || typeof vm.why.secondaryReason === "undefined").toBe(true);
+    expect(typeof vm.list.secondaryPhrase === "string" || typeof vm.list.secondaryPhrase === "undefined").toBe(true);
   });
 
   it("summary が1行で重複しない", () => {
@@ -82,9 +82,9 @@ describe("buildRecommendationReasonViewModel", () => {
       needTags: ["厄除け"],
     });
 
-    expect(vm.why.summary.includes("\n")).toBe(false);
-    expect(vm.why.summary).not.toBe(vm.why.primaryReason);
-    expect(vm.why.summary).not.toBe(vm.why.secondaryReason);
+    expect(vm.list.summary.includes("\n")).toBe(false);
+    expect(vm.list.summary).not.toBe(vm.list.primaryPhrase);
+    expect(vm.list.summary).not.toBe(vm.list.secondaryPhrase);
   });
 
   it("top1 のみ reason_label が表示される", () => {
@@ -236,8 +236,8 @@ describe("buildRecommendationReasonViewModel", () => {
       needTags: [],
     });
 
-    expect(vm.why.reasonKeys.primary).toBe("distance");
-    expect(vm.why.primaryReason).toContain("800m");
+    expect(vm.debug!.reasonKeys.primary).toBe("distance");
+    expect(vm.list.primaryPhrase).toContain("800m");
   });
 
   it("reason_facts.primary_axis=popularity を優先できる", () => {
@@ -254,8 +254,8 @@ describe("buildRecommendationReasonViewModel", () => {
       needTags: [],
     });
 
-    expect(vm.why.reasonKeys.primary).toBe("popular");
-    expect(vm.why.primaryReason).toContain("安定感");
+    expect(vm.debug!.reasonKeys.primary).toBe("popular");
+    expect(vm.list.primaryPhrase).toContain("安定感");
   });
 
   it("reason_facts.primary_axis=element を優先できる", () => {
@@ -273,8 +273,8 @@ describe("buildRecommendationReasonViewModel", () => {
       needTags: [],
     });
 
-    expect(vm.why.reasonKeys.primary).toBe("element_match");
-    expect(vm.why.primaryReason).toContain("水");
+    expect(vm.debug!.reasonKeys.primary).toBe("element_match");
+    expect(vm.list.primaryPhrase).toContain("水");
   });
 
   it("reason_facts.primary_axis=fallback を優先できる", () => {
@@ -291,7 +291,7 @@ describe("buildRecommendationReasonViewModel", () => {
       needTags: [],
     });
 
-    expect(vm.why.reasonKeys.primary).toBe("distance");
-    expect(vm.why.primaryReason).toContain("動きやすさ");
+    expect(vm.debug!.reasonKeys.primary).toBe("distance");
+    expect(vm.list.primaryPhrase).toContain("動きやすさ");
   });
 });

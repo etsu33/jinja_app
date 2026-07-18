@@ -1,8 +1,6 @@
 import { getAnalyticsProvider } from "@/lib/analytics/providers";
 
 export type RetentionAnalyticsEventName =
-  | "next_session"
-  | "next_thread"
   | "thread_resume"
   | "premium_history_click"
   | "premium_history_comparison_view"

@@ -80,31 +80,6 @@ export type RecommendationReasonViewModel = {
       summary: ReasonKey;
     };
   };
-  /**
-   * legacy compatibility field
-   * - 既存一覧 / 旧 UI 契約が参照するため保持
-   * - 依存箇所がなくなったら削除可
-   */
-  why: {
-    primaryReason: string;
-    secondaryReason?: string;
-    summary: string;
-    reasonKeys: {
-      primary: ReasonKey;
-      secondary?: ReasonKey;
-      summary: ReasonKey;
-    };
-  };
-  /**
-   * legacy compatibility field
-   * - 旧 detail interpretation 契約のため保持
-   * - detail.* へ完全移行できたら削除可
-   */
-  interpretation: {
-    consultationSummary: string;
-    shrineMeaning: string;
-    actionMeaning?: string;
-  };
 };
 
 export type BuildParams = {
@@ -207,12 +182,6 @@ function compactReasonViewModel(reason: ReturnType<typeof buildReasonNarrative>)
       ...reason.rank,
       whyTop: compactOptionalText(reason.rank.whyTop, 48),
       differenceFromOthers: compactOptionalText(reason.rank.differenceFromOthers, 42),
-    },
-    why: {
-      ...reason.why,
-      primaryReason: compactText(reason.why.primaryReason, 44),
-      summary: compactText(reason.why.summary, 38),
-      secondaryReason: compactOptionalText(reason.why.secondaryReason, 42),
     },
   };
 }
@@ -548,11 +517,5 @@ export function buildRecommendationReasonViewModel(params: BuildParams): Recomme
     },
     rank: compactReason.rank,
     debug: reason.debug,
-    why: compactReason.why,
-    interpretation: {
-      consultationSummary: state.consultationSummary,
-      shrineMeaning: meaning.shrineMeaning,
-      actionMeaning: meaning.actionMeaning,
-    },
   };
 }
