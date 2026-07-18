@@ -498,3 +498,39 @@ Product文書には、ユーザー体験、画面目的、機能上の意味、�
 統合・移管候補は、独自情報の移管、委譲先の確認、参照元更新および参照切れ確認を完了した後に、Reference、ArchiveまたはDeleteへ再分類する。
 
 後続PRでは、委譲先を先に整備し、Product文書から情報を削除することで、正本が一時的に失われないようにする。
+
+---
+
+## 14. 再監査ログ（2026-07-18 再確認）
+
+Product Integration Candidate Cleanup（9節「統合候補」「Delete候補」「判断保留」）で扱った4文書について、develop最新化後に内容を再確認した。本節は既存の分類判断を変更するものではなく、再確認結果と新規に発見した事項を記録する。
+
+### 再確認結果
+
+| 文書 | 現在分類 | 再確認結果 | 備考 |
+|---|---|---|---|
+| `card-visibility-renderer-split.md` | Archive | 判断維持 | 12行のポインタスタブへ整理済みで、独自情報は残っていない。`concierge-card-architecture.md`が全内容を保持していることを再確認した |
+| `pricing.md` | Archive | 判断維持 | 12行のポインタスタブへ整理済み。`premium-experience.md`の「Premium対象」「価格表現の原則」節が独自情報を保持していることを再確認した |
+| `shrine-detail-meaning-layer.md` | Reference | 判断維持・参照元確認 | `docs/README.md` / `docs/product/README.md` / `docs/audit/product-document-responsibility-audit.md` / `docs/audit/root-docs-classification-audit.md` / `docs/audit/archive-final-classification.md`の5箇所から参照されていることを確認した。統合には新規Product仕様の追加が伴うため、引き続き統合を見送る |
+| `history-theme-taxonomy.md` | Active | 判断維持・新規課題発見 | Product / Backend / Analyticsの責務境界整理は完了済み（PR #2052）であることを確認した。Knowledge移管先は依然未確定。加えて、`docs/knowledge/glossary.md`の`history_theme`定義（「神社の歴史や由緒から抽出した意味テーマ」）が、本書の定義（相談内容から意味変換される、神社側の意味文脈として扱うが由緒から機械的に抽出されるものではない）と一致していないことを新たに確認した |
+
+### Delete候補（`card-visibility-renderer-split.md` / `pricing.md`）の参照元全文検索
+
+Delete判定に向けて、両文書への参照元を`docs/`配下で全文検索した。
+
+- `card-visibility-renderer-split.md`: `docs/product/README.md`（Archive表としての意図的な掲載）以外に参照元なし
+- `pricing.md`: `docs/product/README.md`（Archive表としての意図的な掲載）、`docs/product/shrine-detail-layer.md`・`docs/product/monetization-flow-design.md`（#2062で参照を`premium-experience.md`へ修正済み）以外に参照元なし
+
+両文書とも、Archive表への意図的な掲載以外に現行の参照元は確認されなかった。ただし、統合先（`concierge-card-architecture.md` / `premium-experience.md`）が実装との整合を保っているかは本監査の範囲外であり、Delete実行の判断は本PRでは行わない。統合先が今後変更される可能性を考慮し、履歴保存の価値がある間はArchiveのまま維持する。
+
+### `history-theme-taxonomy.md`のKnowledge移管先が未確定な理由
+
+`history-theme-taxonomy.md`は`docs/`配下15箇所から参照されている（`docs/product/README.md`、`meaning-translation-mapping.md`、`visit-reflection-flow.md`、`consultation-theme-taxonomy.md`、複数のAudit文書等）。Knowledgeへ移管する場合、これら参照元の文脈（Product体験文書からの参照か、Knowledgeの用語定義としての参照か）を個別に判定した上で更新する必要があり、本PRの範囲である「監査結果の記録」を超える。移管の実行は、Knowledge Base側の受け入れ文書（`glossary.md`の定義修正を含む）が整備された後続PRで行う。
+
+### 新規発見事項（後続PR候補として記録）
+
+`docs/knowledge/glossary.md`の`history_theme`定義と`docs/product/history-theme-taxonomy.md`の定義に齟齬がある。glossary.mdは「神社の歴史や由緒から抽出した意味テーマ」としているが、history-theme-taxonomy.mdでは相談内容から意味変換されて生成される文脈（7カテゴリ）として定義しており、神社の由緒から機械的に抽出される値ではない。この齟齬はKnowledge Base監査（`docs/audit/knowledge-base-refactoring.md`等）または`history-theme-taxonomy.md`のKnowledge移管検討時に解消する。本PRでは記録のみ行い、いずれの文書も変更しない。
+
+### 結論（再確認）
+
+4文書とも分類変更なし。`docs/product/README.md`への追加変更は不要（9節時点の記載が引き続き正確）。Delete判定は継続保留、Knowledge移管は`glossary.md`定義齟齬の解消を前提条件として追加した上で継続保留とする。
