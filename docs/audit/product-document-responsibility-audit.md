@@ -623,3 +623,100 @@ Delete判定に向けて、両文書への参照元を`docs/`配下で全文検�
 ### 結論
 
 `history_theme`は、Product・Analytics・Reflection・Journey Timelineが実際に利用する値（`translation_result.history_theme`、`history-theme-taxonomy.md`の定義）と、Knowledge（`shrine-profile-spec.md`）が神社プロフィール属性として扱う値（`Shrine.history_theme`）の、責務が異なる2つの実体を同一語彙で共有している。この構造そのものは実装上の既存事実であり、変更しない。齟齬は`docs/knowledge/glossary.md`の一般定義エントリのみに存在し、「神社の歴史から抽出」という不正確な表現を「相談内容を神社側の意味文脈へ接続した意味テーマ」へ修正した。カテゴリ名（7種）、カテゴリ数、表示名と内部値の対応関係はすべて一致しており、変更していない。
+
+---
+
+## 16. 「復興」到達可能性の監査（2026-07-18）
+
+15節で発見した`history_theme_secondary`の実装（`_resolve_history_theme_secondary`）について、「復興」カテゴリの到達経路・設計根拠・Product taxonomyとの整合を監査した。実装変更は行っていない。
+
+### 確認した実装・テスト
+
+- `backend/temples/services/consultation_interpreter.py`（`STATE_KEYWORDS` / `DIRECTION_BY_STATE` / `build_direction_profile`）
+- `backend/temples/services/meaning_translation.py`（`HISTORY_THEME_BY_DIRECTION` / `HISTORY_THEME_BY_NEED` / `HISTORY_THEME_BY_DECISION` / `_resolve_history_theme` / `_resolve_history_theme_secondary` / `REFLECTION_QUESTION_BY_HISTORY_THEME`）
+- `backend/temples/services/recommendation_score_components.py`（`calculate_history_score`）
+- `backend/temples/services/concierge_chat_ranking.py`（`SCORE_V3_HISTORY_THEME_BY_AXIS` / `resolve_score_v3_history_signal`）
+- `backend/temples/services/journey_timeline.py` / `reflection_state_change.py`（`history_theme_secondary`の非利用を確認）
+- `docs/product/history-theme-taxonomy.md` / `docs/product/meaning-translation-mapping.md`
+- `docs/audit/history-theme-contract-audit.md`（既存監査。Status: Reference、`meaning-translation-mapping.md`へ統合済みと明記）
+- `backend/temples/tests/services/test_meaning_translation.py`（9件）/ `test_recommendation_score_components.py`（8件のうちhistory_score関連4件）/ `test_consultation_interpreter.py`（6件）
+- `apps/web/src/features/concierge/components/ConciergeSectionsRenderer.tsx`（`復興`の表示コピー定義箇所）
+
+### HISTORY_THEME_BY_STATE（実装上の名称：`DIRECTION_BY_STATE`）
+
+チェックリスト上の呼称`HISTORY_THEME_BY_STATE`に対応する実装は存在しない。実際の名称は`consultation_interpreter.py`の`DIRECTION_BY_STATE`であり、`state → (direction, (theme_primary, theme_secondary))`を返す。
+
+```text
+tired            → (rest,       (静寂, 復興))
+anxious          → (stabilize,  (守り, 静寂))
+uncertain        → (review,     (静寂, 再出発))
+stuck            → (reset,      (再出発, 静寂))
+ready_to_change  → (challenge,  (再出発, 勝負))
+```
+
+`state`自体は`STATE_KEYWORDS`（5状態: tired / anxious / uncertain / stuck / ready_to_change）のキーワード一致でのみ決定される。相談文中に該当キーワードがなければ`primary_state`は`None`となり、`DIRECTION_BY_STATE`から何も解決されない。
+
+### HISTORY_THEME_BY_NEED / HISTORY_THEME_BY_DECISION
+
+いずれも`meaning_translation.py`で確認済み（値: mental/rest→静寂、career→再出発、money→守り、love→縁、study→学び、courage→勝負／career_decision・rest_or_action→再出発、relationship_decision→縁、money_decision→守り）。**両辞書とも値に「復興」を一切含まない。**
+
+### history_theme_secondaryの生成条件
+
+`_resolve_history_theme_secondary(direction_profile)`は、`direction_profile.themes`が2要素以上のリストである場合のみ、`themes[1]`を返す。`themes`は`DIRECTION_BY_STATE`の該当stateにおけるタプル2番目の値であり、`direction`（primary解決に使う値）とは独立したデータソースである。
+
+### 「復興」がprimaryへ到達する経路
+
+**存在しない。** `HISTORY_THEME_BY_DIRECTION` / `HISTORY_THEME_BY_NEED` / `HISTORY_THEME_BY_DECISION`の3辞書の値を全て突き合わせても、値として「復興」を持つエントリは0件。`_resolve_history_theme`はこの3辞書のみを参照するため、`translation_result.history_theme`（primary）が「復興」になることはない。
+
+「復興」が到達可能なのは以下の2経路のみ。
+
+1. `Shrine.history_theme`（Stored、編集者による神社プロフィールへの手動タグ付け。`seed_history_theme.py`で確認）
+2. `translation_result.history_theme_secondary`（Runtime、`state=tired`の場合のみ。5状態中「復興」を`themes`に含むのは`tired`のみ）
+
+### 「復興」がsecondaryのみとなる設計根拠
+
+`meaning_translation.py:143-158`の`_resolve_history_theme_secondary`docstringに明文化されている。要約すると、`consultation_interpreter.build_direction_profile()`は`DIRECTION_BY_STATE`経由で`themes`（primary/secondaryの2値）を既に計算していたが、`_resolve_history_theme()`のprimary解決は`HISTORY_THEME_BY_DIRECTION`（`direction`から引く単一値）のみを参照するため、`themes[1]`相当の値（「復興」等）は計算されているにもかかわらず捨てられていた。この設計根拠は`docs/audit/history-theme-contract-audit.md`（P0、対応済み）に詳細な経緯がある。同監査により`_resolve_history_theme_secondary()`が追加され、`calculate_history_score()`が主値一致(1.0)／副次一致(0.6)／不一致(0.35)／欠損(0.0)の4段階評価へ拡張された。Score v3は全関数が「shadow observation only」であり、本番のRecommendation Rankingには影響しない。
+
+**この設計自体（secondaryを追加してScore v3で弱いシグナルとして利用する）は意図的かつ妥当である。** 「復興」をprimaryとして生成する経路を追加しなかったこと自体は、当時の監査（`history-theme-contract-audit.md`）のスコープが「計算済みだが捨てられていた値の救済」に限定されていたためであり、明確な悪意や見落としではない。
+
+### Backendテストで「復興」の期待値を確認
+
+- `test_meaning_translation.py::test_translate_meaning_resolves_secondary_history_theme_from_direction_profile_themes`: `themes=["静寂","復興"]`から`history_theme_secondary == "復興"`を検証（実行確認済み・PASSED）
+- `test_recommendation_score_components.py::test_calculate_history_score_returns_mid_score_when_secondary_theme_matches`: `translation_result.history_theme_secondary="復興"`、`candidate_profile.history_theme="復興"`で`0.6`を検証（実行確認済み・PASSED）
+- 「復興」がprimaryとなるケースを検証するテストは存在しない（到達経路が存在しないため、そもそも書けない）
+
+### Product taxonomyとの整合
+
+`history-theme-taxonomy.md`は7カテゴリ（守り/静寂/再出発/復興/勝負/学び/縁）を対等な正本カテゴリとして定義しており、この点はBackendの`Shrine.history_theme`（7カテゴリ全てが有効なタグ値）および`SCORE_V3_HISTORY_THEME_BY_AXIS`（全10 axisで7カテゴリ全てに重みを持つ）と整合している。
+
+**新規発見（本監査で新たに確認）**: `docs/product/meaning-translation-mapping.md`「相談状態からhistory_themeへの変換」節（148-179行目）は、16通りの相談状態例（「不安が強い」「疲れている」「落ち込んでいる」「自信がない」等）とprimary/secondary history_themeの対応表を提示しており、うち2行（「落ち込んでいる」→復興/静寂、「自信がない」→復興/学び）は「復興」をprimaryとする例として記載されている。しかし実装（`STATE_KEYWORDS` / `DIRECTION_BY_STATE`）が認識する状態は5種類のみ（tired/anxious/uncertain/stuck/ready_to_change）であり、「落ち込んでいる」「自信がない」に対応する状態キーワードは存在しない。したがって、この文書が例示する16パターンのうち実装で到達可能なのは最大5パターンのみであり、「復興」をprimaryとする2パターンはいずれも現行実装では生成不可能である。
+
+`docs/audit/history-theme-contract-audit.md`のP2指摘（「主テーマ・補助テーマの併存を許容すると書いているが単一値のみ返す」）は既に解消済みだが、本監査で発見した「16例中5例のみ実装済み、復興のprimary例2件は未実装」というギャップは、同監査でもmeaning-translation-mapping.mdの改訂作業でも指摘されていない新規事項である。
+
+### Analytics・Reflection・Journeyでsecondaryが利用されるか
+
+**利用されていない。** `history_theme_secondary`の参照箇所は`meaning_translation.py`（生成元）と`recommendation_score_components.py`（Score v3 shadow observationでの消費）のみ。`docs/analytics/`配下、`journey_timeline.py`、`reflection_state_change.py`、Frontend（`apps/web` / `apps/mobile`）のいずれにも`history_theme_secondary`への参照はない。Analytics payload・Reflection・Journey Timelineが扱う`historyTheme`は常にprimary値のみである。
+
+### 現行挙動が仕様か欠損かを判定する
+
+2層に分けて判定する。
+
+1. **「復興」がsecondaryのみで到達し、primaryへは到達しないこと自体**: **仕様（意図的）と判定する。** `history-theme-contract-audit.md`のP0対応として明文化・テスト済みであり、Score v3のみが消費する設計として妥当である。追加対応は不要。
+2. **`meaning-translation-mapping.md`が16例を提示しながら実装は5状態のみ対応していること（「復興」をprimaryとする2例が未実装であること）**: **記述が実装より先行した状態（ドキュメント上の欠損）と判定する。** `docs/audit/history-theme-contract-audit.md`のP2「実装より記述が先行」パターンと同種の問題であり、悪意や設計ミスではなく、ドキュメントが将来拡張の例示を含んでいたためと考えられる。ただし現状は「実装済み」と誤読される書き方になっており、読者（開発者・後続監査）が誤って「16状態すべて実装済み」と判断するリスクがある。
+
+### 後続実装PR案
+
+本PRでは実装・ドキュメント本文のいずれも変更しない。以下は将来のPR候補として記録する。
+
+**候補A: `STATE_KEYWORDS` / `DIRECTION_BY_STATE`の拡張**
+
+- `meaning-translation-mapping.md`が例示する「落ち込んでいる」「自信がない」等の状態キーワードを`STATE_KEYWORDS`へ追加し、対応する`DIRECTION_BY_STATE`エントリ（例: `depressed`等の新state → 復興をprimaryとするdirection）を設計する
+- 「復興」をprimaryとして生成する初めての経路となるため、`REFLECTION_QUESTION_BY_HISTORY_THEME`に「復興」の質問文を追加する必要がある（現状欠落）
+- 影響範囲: `consultation_interpreter.py`、`meaning_translation.py`、関連テスト。Recommendation RankingへのScore v3反映状況次第では、shadow observationの数値傾向にも影響しうる
+
+**候補B: `meaning-translation-mapping.md`の記述精度向上**
+
+- 「相談状態からhistory_themeへの変換」表に、実装済み5状態と例示のみ（未実装）の11状態を区別する注記を追加する
+- 実装コード変更は不要なため、候補Aより低リスクかつ即着手可能
+
+優先順位の判断・実施は本PRの範囲外とし、母艦へ差し戻す。
