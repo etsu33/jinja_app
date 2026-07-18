@@ -164,7 +164,7 @@ KAMI MUSUBIの現行リポジトリ（Backend / `apps/web` / `apps/mobile` / `.g
 | 設定名 | 定義場所 | 参照場所 | 現行用途 | 分類 | 削除リスク | 必要な後続確認 | 推奨する後続PR |
 |---|---|---|---|---|---|---|---|
 | ~~`NEXT_PUBLIC_CONCIERGE_RENDERER` / `SHOW_NEW_RENDERER`~~ | ~~`apps/web/src/features/concierge/rendererMode.ts`~~ | ~~`ConciergeClientFull.tsx`3箇所が`SHOW_NEW_RENDERER`（ハードコードされた`true`）を参照。環境変数`NEXT_PUBLIC_CONCIERGE_RENDERER`自体はコード内コメントに残るのみで、実際の分岐には使われていない~~ | ~~コメントに「プレゼン用の一時対応」「デモ完了後、環境変数制御へ戻す」と明記されているが、戻されていない~~ | Deprecated → **対応済み（削除）** | — | 調査の結果、旧レンダラー（環境変数がfalse相当の場合の分岐）の実体`ConciergeSections`は、本ハードコード導入より前のコミット`7b185e9e`（PR #847）で既に削除され、false分岐は「新レンダラー前提」というstubメッセージ、または何も表示しない空白に置き換わっていた。環境変数制御に戻しても機能する旧実装は存在しないため、母艦の判断を仰いだ上で新レンダラーへ一本化し、Flag自体（`rendererMode.ts`・`SHOW_NEW_RENDERER`・`CONCIERGE_RENDERER`）を削除した | 対応済み |
-| 互換ルート`src/app/api/shrines/[id]/route.ts`（単体GET） | `src/app/api/shrines/[id]/route.ts:1`。コメント「TODO: 互換ルート。2026-04-01 までにアクセス0なら削除」 | `apps/web`内のクライアントコードからの参照0件。期限（2026-04-01）を本監査時点（2026-07-18）で3.5ヶ月超過 | 期限切れの削除保留TODO | Deprecated | 低〜中（本番アクセスログでの実測は本監査の範囲外） | 本番アクセスログで実際のアクセス数を確認する | アクセス0を確認できたら削除するPR |
+| ~~互換ルート`src/app/api/shrines/[id]/route.ts`（単体GET）~~ | ~~`src/app/api/shrines/[id]/route.ts:1`。コメント「TODO: 互換ルート。2026-04-01 までにアクセス0なら削除」~~ | ~~`apps/web`内のクライアントコードからの参照0件。期限（2026-04-01）を本監査時点（2026-07-18）で3.5ヶ月超過~~ | 期限切れの削除保留TODO | Deprecated → **対応済み（削除）** | 低〜中（本番アクセスログでの実測は本監査の範囲外） | 本番アクセスログでの実測は、Vercel Hobbyプランのログ保持期間が1時間のため技術的に不可能と判明。構造的代替（`api/public/shrines/[id]/route.ts`が同じBackendエンドポイントを正本として既に存在）とコード参照0件を根拠に削除を判断した | PR #2071でファイルを削除済み |
 
 ### 6.4 未使用コード（Dead）
 
@@ -273,7 +273,7 @@ KAMI MUSUBIの現行リポジトリ（Backend / `apps/web` / `apps/mobile` / `.g
 4. `temples/api/serializers/concierge.py`のCOMPAT LAYER解消（新モジュールへの統合完了が前提）
 5. `ConciergeThread.recommendations`（v1）読み取りfallbackの削除（旧データ移行完了が前提）
 6. `apps/web`のBackendオリジンURL環境変数命名（`DJANGO_ORIGIN`/`BACKEND_ORIGIN`/`DJANGO_API_BASE_URL`/`BACKEND_URL`/`BACKEND_BASE_URL`/`NEXT_PUBLIC_API_BASE_URL`の7系統併存。監査により`NEXT_PUBLIC_API_BASE_URL`を追加確認）の1本化。**監査・移行設計は`docs/audit/backend-origin-env-migration-design.md`で完了**。実際の移行（Vercel環境変数変更・コード変更）はVercel確認完了後の別PRで実施
-7. `apps/web`の`src/app/api/shrines/[id]/route.ts`互換ルート削除（削除期限2026-04-01を既に超過。本番アクセスログでアクセス0を確認後）
+7. ~~`apps/web`の`src/app/api/shrines/[id]/route.ts`互換ルート削除（削除期限2026-04-01を既に超過。本番アクセスログでアクセス0を確認後）~~ → 対応済み（PR #2071で削除。本番アクセスログでの実測は不可能と判明したため、構造的代替とコード参照0件を根拠に削除した。詳細は6.3節参照）
 8. ~~`apps/web`の`SHOW_NEW_RENDERER`ハードコード解消（デモ用の一時対応が環境変数制御へ戻されていない。`rendererMode.ts`）~~ → 対応済み（新レンダラーへ一本化しFlagごと削除。詳細は6.3節参照）
 
 ### 追加調査が必要なもの
@@ -390,3 +390,7 @@ KAMI MUSUBIの現行リポジトリ（Backend / `apps/web` / `apps/mobile` / `.g
 統一後の名称候補として`BACKEND_ORIGIN`を選定し、既存の`backend.ts`の`getDjangoOrigin()`を拡張する共通ヘルパー設計、Phase 1〜4の移行順序、各Phaseに対応するRollback条件を設計した。詳細は`docs/audit/backend-origin-env-migration-design.md`を正本とする。
 
 実装コード・Vercel環境変数・既存アーキテクチャ文書はいずれも変更していない。候補#23は「対応済み」ではなく「監査・移行設計完了、実施は別トラック（Vercel確認完了後の別PR）」として記録する。
+
+### 期限超過互換ルートの削除（PR #2071）
+
+P0項目#24（6.3節）の互換ルート`src/app/api/shrines/[id]/route.ts`は、PR #2071で削除済みであることを確認した（`develop`上にファイルが存在しないこと、PR #2071がMERGED状態で`develop`の祖先に含まれることを確認済み）。削除の判断根拠は、本番アクセスログでの実測（Vercel Hobbyプランのログ保持期間1時間のため技術的に不可能と判明）ではなく、構造的代替（`api/public/shrines/[id]/route.ts`が同一Backendエンドポイントの正本として既存）とコード参照0件に基づく。PR #2071の説明文には本監査文書の更新も含まれる旨の記載があったが、実際のコミット差分には反映されていなかったため、本追記で同期した。
