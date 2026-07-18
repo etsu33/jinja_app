@@ -45,8 +45,8 @@ Current State以外(Issues以降)はすべて「事実」ではなく「提案�
 | `consultation_completed` | `ConciergeClientFull.tsx:1198` | threadId, mode, flow, hasBirthdate, recommendationCount, historyTheme, consultationAxis?, source |
 | `filter_result` | `ConciergeClientFull.tsx:1211` | source, threadId, mode, recommendation_count(snake_case混在), is_zero_result, hasFilter |
 | `consultation_theme_click` | `ConciergeClientFull.tsx:1486` | label, text(相談テーマの定型文コピー), source |
-| `action_suggestion_preview_view` | `ConciergeTopRecommendationHero.tsx:120` | source, threadId, resultSetId, shrineId, recommendationRank, position, historyTheme, actionSuggestionVersion, primaryActionType, secondaryActionType, promptType, actionSource, sourceKeys, summaryLine |
-| `reflection_prompt_view`(concierge文脈) | `ConciergeTopRecommendationHero.tsx:121` | 上記 + reflectionPromptSourceSeed |
+| `action_suggestion_preview_view` | `ConciergeTopRecommendationHero.tsx:120` | source, threadId, resultSetId, shrineId, recommendationRank, position, historyTheme, actionSuggestionVersion, primaryActionType, secondaryActionType, actionPromptType, actionSource, sourceKeys, summaryLine |
+| `action_suggestion_reflection_preview_view` | `ConciergeTopRecommendationHero.tsx:123`（訂正: 初回監査時は`reflection_prompt_view`(concierge文脈)として誤記録していたが、実際のイベント名は別物） | 上記 + reflectionPromptSourceSeed |
 | `concierge_result_impression` | `ConciergeSectionsRenderer.tsx:358` | source, threadId, resultSetId, shrineId, position, recommendationRank, mode, historyTheme, consultationAxis? |
 | `shrine_detail_transition` | `ConciergeSectionsRenderer.tsx:847,983` | source, threadId, resultSetId, position, recommendationRank, shrineId, mode, flow, hasBirthdate, recommendationCount, historyTheme, consultationAxis?, firstClick |
 | `recommendation_quality` | `features/concierge/hooks.ts:140` | source, threadId, shrineId, recommendationRank, accessLevel, shrine_data_rate等snake_caseメトリクス群 |
@@ -54,7 +54,7 @@ Current State以外(Issues以降)はすべて「事実」ではなく「提案�
 
 うち `card_view`/`card_cta_click`/`card_partial_view`/`card_teaser_view`/`save_prompt_view`/`save_prompt_click` は`cardEvents.ts`の`trackCardEvent()`経由(consultation/recommendation両ドメインに跨って`ConciergeSectionsRenderer.tsx`・`ConciergeClientFull.tsx`から多数呼び出し、約19箇所)。
 
-**未使用(dead)として確認された宣言済みイベント名**: `shrine_search` / `map_search` / `action_suggestion_view` / `action_suggestion_click` / `primary_action_click` / `secondary_action_click`(`searchEvents.ts`の型union上に存在するが呼び出し元0件)。
+**未使用(dead)として確認された宣言済みイベント名**: `shrine_search` / `map_search` / `action_suggestion_view` / `action_suggestion_click` / `action_started` / `action_completed` / `action_done` / `primary_action_click` / `secondary_action_click`(`searchEvents.ts`の型union上に存在するが呼び出し元0件)。うち`action_started`/`action_completed`はPostHog経路(`trackSearchEvent`)としては未使用だが、同名の`action_type`値がBackend `ActionEvent`モデル経由でMobile Conciergeから`POST /api/action-events/`へ送信・DB永続化されている、PostHogとは無関係の別系統として存在する(詳細: `docs/analytics/action-suggestion-funnel.md`)。
 
 ### recommendation
 
@@ -237,7 +237,7 @@ premiumドメインを軸にした、フィールド単位の対応表(事実)�
 | `shrine_detail_view`の二重記録 | Web: PostHogへの`track()`呼び出しと、Backend `shrine-interactions/`への`trackShrineInteraction()`POSTが同一クリックに対して両方発生(`ShrineDetailViewTracker.tsx:22,28`) |
 | `route_open`の二重記録 | 同様にPostHog `track()` + Backend `shrine-interactions/`への二重POST(`GoogleMapRouteLink.tsx:32,43`) |
 | `checkout_success`と`premium_active`の重複 | Webの`app/billing/success/page.tsx`内で、73行目と83行目が実質同一payload(checkoutSessionId/source/funnelStep/cardId/historyTheme)を持つ2つの別イベント名として発火している |
-| Web宣言済みだが未使用のイベント名(10件) | `shrine_search`, `map_search`, `action_suggestion_view`, `action_suggestion_click`, `primary_action_click`, `secondary_action_click`, `premium_preview_view`, `next_session`, `next_thread`, `comparison_preview` — 型定義上は存在するが呼び出し元0件 |
+| Web宣言済みだが未使用のイベント名(13件) | `shrine_search`, `map_search`, `action_suggestion_view`, `action_suggestion_click`, `action_started`, `action_completed`, `action_done`, `primary_action_click`, `secondary_action_click`, `premium_preview_view`, `next_session`, `next_thread`, `comparison_preview` — 型定義上は存在するが呼び出し元0件。うち`action_started`/`action_completed`はPostHog経路としては未使用(Backend `ActionEvent`モデルの`action_type`値としては使用中、Web側からの送信元は0件) |
 | 発火元不明の参照イベント名(3件) | `conciergeDecisionSummary.ts`が`concierge_return_after_detail`/`concierge_result_click`/`concierge_premium_click`を参照しているが、これらを発火するコードが見当たらない(集計ロジックが常にゼロを返している可能性) |
 
 ---

@@ -1,209 +1,104 @@
-
+> **Status: Active**
+>
+> 本ドキュメントは、Action SuggestionのEvent名を管理する正本文書である。
+>
+> 正確なPayload、Propertyおよび実装状況は、関連するFrontend・Backend実装コードおよびテストを最終的な正本とする。
 
 # Action Suggestion Funnel
 
-## イベント一覧
+## 目的
 
-### action_suggestion_view
-
-行動提案カードが表示された時に送信。
-
-発火箇所:
-- ConciergeTopRecommendationHero.tsx
-- useEffect 内
-
-目的:
-- 行動提案が何回ユーザーに露出したか確認する
-- action_suggestion_click / action_done の母数を作る
+Action Suggestionカードの表示から行動着手・完了までを観測するため、送信されているEvent名を一意に整理する。
 
 ---
 
-### action_suggestion_click
+## Web
 
-「試してみる」ボタン押下時に送信。
+Action Suggestionカードが表示されたとき、以下の2つのEventが同時に送信される。
 
-発火箇所:
-- ConciergeTopRecommendationHero.tsx
+| Event | 意味 |
+|---|---|
+| `action_suggestion_preview_view` | Action Suggestionカード（primary / secondary行動、振り返り観点のプレビューを含む）が表示された |
+| `action_suggestion_reflection_preview_view` | Action Suggestion内の振り返り観点のプレビューが表示された |
 
-目的:
-- 行動提案に興味を持った割合を確認する
+`action_suggestion_reflection_preview_view`は、実際のReflection入力UIが表示されたことを意味しない。実際のReflection入力UI表示は別のEventで計測しており、混同しない。正確な区別は`docs/product/visit-reflection-flow.md`および`docs/analytics/reflection-funnel-dashboard.md`を参照する。
 
----
+Webでは、Primary / Secondary行動へのクリック、または行動の着手・完了を計測するEventは現時点で存在しない。
 
-### action_done
-
-「完了」ボタン押下時に送信。
-
-発火箇所:
-- ConciergeTopRecommendationHero.tsx
-
-目的:
-- ユーザー自己申告ベースの行動完了率を確認する
-
-注意:
-- 現在はDB保存されない
-- PostHogイベントのみ
-- 再訪時に状態は保持されない
-
----
-
-## Payload一覧
-
-全イベント共通で以下を送信。
+### action_suggestion_preview_view Payload
 
 | 項目 | 内容 |
-|--------|--------|
-| source | イベント発生元 |
+|---|---|
+| source | Eventが発生した画面・導線 |
 | threadId | 相談セッションID |
-| resultSetId | レコメンド結果ID |
+| resultSetId | 推薦結果セットID |
 | shrineId | 神社ID |
 | recommendationRank | 推薦順位 |
 | position | 表示位置 |
 | historyTheme | 履歴テーマ |
-| actionSuggestionId | 行動提案ID |
-| actionCategory | 行動カテゴリ |
-| actionTheme | 行動テーマ |
-| actionPosition | 表示順 |
+| actionSuggestionVersion | Action Suggestionのバージョン |
+| primaryActionType | primary行動の種別 |
+| secondaryActionType | secondary行動の種別 |
+| actionPromptType | 振り返り観点の種別 |
+| actionSource | 行動提案の根拠 |
+| sourceKeys | 行動提案の根拠キー |
+| summaryLine | 要約文 |
+
+### action_suggestion_reflection_preview_view Payload
+
+上記のPayloadに加えて、以下を送信する。
+
+| 項目 | 内容 |
+|---|---|
+| reflectionPromptSourceSeed | 振り返り観点生成の元になった手掛かり |
 
 ---
 
-## PostHogで見るファネル
+## Mobile
 
-### 基本ファネル
+Mobileでは、Action Suggestionカードの表示を計測するEventは存在しない。
 
-action_suggestion_view
-↓
-action_suggestion_click
-↓
-action_done
+Primary / Secondary行動をタップした場合、着手・完了に相当する記録がBackendへ送信される。これはPostHog Eventではなく、Backend側に永続化される記録である。
 
-確認したい指標:
-
-- View → Click CVR
-- Click → Done CVR
-- View → Done CVR
+正確な送信内容、永続化条件および実装状況は、関連するMobile・Backend実装とテストを参照する。
 
 ---
 
-### テーマ別分析
+## Web / Mobileの計測範囲の違い
 
-比較対象:
+| 観点 | Web | Mobile |
+|---|---|---|
+| カード表示の計測 | あり（PostHog Event） | なし |
+| 行動の着手・完了の計測 | なし | あり（Backend永続化、PostHog Eventではない） |
 
-- historyTheme別
-- actionCategory別
-- actionSuggestionId別
-
-確認したいこと:
-
-- どのテーマが行動されやすいか
-- どのカテゴリが完了率高いか
+WebとMobileでは、計測の対象および方式（PostHog Event / Backend永続化）がともに異なる。同一の指標として比較しない。
 
 ---
 
-### 推薦順位分析
+## 責務外
 
-比較対象:
+本書では以下を管理しない。
 
-- recommendationRank
-
-確認したいこと:
-
-- 上位推薦ほど行動率が高いか
+- KPIの具体値、成功基準
+- Backend永続化の実装詳細
+- 実装コード、テストケース
 
 ---
 
-## 現状の制約
+## 関連ドキュメント
 
-### 1. action_done が永続化されない
-
-現在は PostHog のみ。
-
-そのため:
-
-- 行動履歴に残らない
-- パーソナライズに利用できない
-- 再訪時に状態が消える
+- `docs/analytics/README.md`
+- `docs/product/action_suggestion_v4.md`
+- `docs/product/visit-reflection-flow.md`
+- `docs/analytics/reflection-funnel-dashboard.md`
+- `docs/audit/cross-platform-event-contract.md`
 
 ---
 
-### 2. 実行日時が存在しない
+## 更新ルール
 
-現在取得しているのは:
-
-- ボタンを押した
-
-のみ。
-
-実際に行動したかは保証できない。
-
----
-
-### 3. 行動後体験が存在しない
-
-action_done 後に:
-
-- 振り返り
-- メモ
-- 継続記録
-
-などの導線がない。
-
----
-
-## 次の設計TODO
-
-- [ ] action_done 後のUI状態設計
-- [ ] action_done 永続化要否判断
-- [ ] reflection連携設計
-
----
-
-## 次PR候補
-
-### PR1
-
-action_done UI状態追加
-
-候補:
-
-- 完了済み表示
-- チェックマーク表示
-- ボタン無効化
-
----
-
-### PR2
-
-action_done 永続化
-
-候補:
-
-- ActionCompletion モデル
-- ユーザー紐付け
-- 実行日時保存
-
----
-
-### PR3
-
-行動履歴分析
-
-追加イベント候補:
-
-- action_reflection_view
-- action_reflection_saved
-- action_repeat
-
----
-
-### PR4
-
-Recommendation Score v2連携
-
-行動シグナルとして活用候補:
-
-- action_suggestion_click
-- action_done
-- reflection_saved
-
-行動実績を推薦ロジックへ反映する。
+- 本書はAction SuggestionのEvent名およびWeb側Payloadのみを管理する。
+- Event名が追加・変更・削除された場合は、実装確認のうえ本書を更新する。
+- KPIの具体値、成功基準およびBackend永続化の実装詳細は本書で重複管理しない。
+- Web / Mobileの計測範囲が変化した場合は、本書の記載を実態に合わせて更新する。
+- TODO、PR計画、実装進捗および作業履歴は本書へ記載しない。
