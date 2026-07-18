@@ -50,7 +50,7 @@
 | 12 | `RecommendationReasonViewModel.why`/`.interpretation`の削除 | 削除 | P1 | 不要 |
 | 13 | `useMyGoshuin.ts`・`MapCardListClient.tsx`の削除 | 削除 | P1 | 不要 |
 | 14 | `apps/web`の`@heroicons/react`の削除 | 削除 | P1 | 不要 |
-| 15 | `SCORE_V3_HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS`のリネーム | 命名修正 | **P0** | 不要（ただし実装担当者への意図確認は推奨） |
+| 15 | ~~`SCORE_V3_HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS`のリネーム~~ **対応済み** | 命名修正 | **P0** | 不要（ただし実装担当者への意図確認は推奨） |
 | 16 | `.github/workflows/backend-tests.yml`のコメントアウト済み残骸の削除 | 削除 | P3 | 不要 |
 | 17 | `.github/workflows/web-tests.yml`の条件式とコメントの乖離解消 | 命名修正 | P3 | 不要 |
 | 18 | `ShrineSerializer`互換名の解消 | 互換移行 | P2 | 不要（社内コード変更のみ） |
@@ -205,21 +205,21 @@
 
 ### PR-E: 命名修正・Flag実態の是正
 
-**対象**: #15（`SCORE_V3_HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS`リネーム）、#25（`SHOW_NEW_RENDERER`ハードコード解消）
+**対象**: #15（`SCORE_V3_HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS`リネーム、**対応済み**）、#25（`SHOW_NEW_RENDERER`ハードコード解消、未着手）
 
-**変更範囲**:
+**#15の実施状況**: `backend/temples/services/concierge_chat_ranking.py`の`SCORE_V3_HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS`を`HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS`へリネームする別PRで対応済み。計算式・加算先は無変更。関連テスト（`test_score_v3_history_signal.py`）およびBackend全体テスト（745件）が通過することを確認済み。互換エイリアスは追加していない（非公開のPython定数で、参照元は定義ファイルとテストファイルの2箇所のみ、環境変数としての読み込みも無いため、旧名を残す実益がないと判断）。
 
-- `backend/temples/services/concierge_chat_ranking.py`の`SCORE_V3_HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS`を、shadowではなく本番ランキングへ実際に影響することが分かる名前（例: `HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS`、"SCORE_V3"を含まない名前）へリネームする。**動作（計算式・加算先）は変更しない**
+**変更範囲（#25、未実施）**:
+
 - `apps/web/src/features/concierge/rendererMode.ts`の`SHOW_NEW_RENDERER`ハードコードを解消し、`NEXT_PUBLIC_CONCIERGE_RENDERER`環境変数による制御へ戻す。ただし、旧レンダラー分岐（環境変数がfalse相当の場合）が現在も正しく動作するか事前に確認する。動作しない場合は、新レンダラーへの完全移行を確定した上でFlag自体を削除する（いずれの方針を採るかは母艦の判断を仰ぐ）
 
-**テスト**:
+**テスト（#25、未実施分）**:
 
-- リネーム後、`backend/temples/tests/services/test_score_v3_history_signal.py`が全件通過することを確認する（リネームのみで計算結果が変わらないことをテストで担保する）
 - `SHOW_NEW_RENDERER`解消PRでは、`NEXT_PUBLIC_CONCIERGE_RENDERER`を明示的に`true`/`false`双方に設定した状態で`ConciergeClientFull.tsx`のレンダリング結果を目視確認する（Web契約テストに両パターンのケースが無ければ追加する）
 
 **Rollback条件**:
 
-- リネームPRで既存のScore v3関連テストが1件でも失敗した場合はrevert
+- リネームPR（#15、対応済み）: マージ後にScore v3関連テストが失敗した場合はrevert（実施時点で745件全てパスを確認済み）
 - `SHOW_NEW_RENDERER`解消PRで、環境変数未設定時のデフォルト挙動が本番想定と異なる場合は即座にrevert（Concierge結果画面はコア体験のため、表示崩れは早急な巻き戻しが必要）
 
 **優先度に関する注記**: 両者ともP0だが、内容としては別領域（Backend計算ロジックの命名 / Web UIレンダリング制御）であり、依存関係が無いため同一PRにまとめる必要はない。実施順序は任意（レビューの都合で分割してもよい）。
@@ -301,7 +301,7 @@ Compatibility（互換目的で現役）に分類された項目について、�
 
 本監査・本計画では実施そのものを行わないが、着手する場合の目安順序を示す。
 
-1. **P0（#15, #24, #25）**: 誤解・期限超過リスクがあるため最優先。#24は事前にアクセスログ確認が必要
+1. **P0（#15, #24, #25）**: 誤解・期限超過リスクがあるため最優先。#24は事前にアクセスログ確認が必要。#15は対応済み
 2. **P1のうち外部確認不要な削除（PR-A, PR-B, PR-C, PR-D）**: 参照0件を再確認した上で並行して進められる
 3. **PR-E（Feature Flag整理）**: P0の#15, #25を含むため、実質的に(1)と同時期
 4. **外部環境確認（3節の8件）**: 上記と並行して進められる調査。確認が完了次第、該当するP2項目（#4, #18, #20, #22等）の実装PRへ進む
