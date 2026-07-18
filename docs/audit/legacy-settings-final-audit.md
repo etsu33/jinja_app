@@ -144,8 +144,8 @@ KAMI MUSUBIの現行リポジトリ（Backend / `apps/web` / `apps/mobile` / `.g
 
 | 設定名 | 定義場所 | 参照場所 | 現行用途 | 分類 | 削除リスク | 必要な後続確認 | 推奨する後続PR |
 |---|---|---|---|---|---|---|---|
-| `DJANGO_ORIGIN` / `BACKEND_ORIGIN` | `apps/web/.env:21-22` | `src/lib/server/backend.ts:6`、`src/app/api/auth/login/route.ts:66`が論理OR演算子によるフォールバックで解決 | Backendオリジンの解決 | Compatibility（新旧2キー併存） | 中 | どちらが正式名か、コミット履歴で経緯を確認する | 1つの名前へ統一するPR |
-| `DJANGO_API_BASE_URL` / `BACKEND_URL` / `BACKEND_BASE_URL` | 定義箇所なし（`.env`/`.env.local`/`.env.example`いずれにも無し） | `src/lib/api/shrines.server.ts:13-15`、`shrineMeaning.server.ts:13-15`、`api/auth/register/route.ts:5-7`が独自の論理OR演算子によるフォールバック連鎖を持つ | 上記と別系統の、ファイルごとに異なるBackendオリジン解決ロジック | Uncertain（命名がさらに分岐しており実態把握が必要） | 中〜高（5系統の命名が並立しており、どれか1つを削除すると他のフォールバックに依存しているファイルが影響を受ける可能性） | `DJANGO_ORIGIN`/`BACKEND_ORIGIN`/`DJANGO_API_BASE_URL`/`BACKEND_URL`/`BACKEND_BASE_URL`/`NEXT_PUBLIC_API_BASE`の6命名を1箇所（例: `src/lib/server/backend.ts`）に集約できるか設計を検討する | Backendオリジン解決ロジックを共通ヘルパーへ集約し、環境変数名を1つに統一するPR（影響範囲が広いため慎重な設計が必要） |
+| `DJANGO_ORIGIN` / `BACKEND_ORIGIN` | `apps/web/.env:21-22` | `src/lib/server/backend.ts:6`、`src/app/api/auth/login/route.ts:66`が論理OR演算子によるフォールバックで解決 | Backendオリジンの解決 | Compatibility（新旧2キー併存） → **監査・移行設計完了（未実施）** | 中 | どちらが正式名か、コミット履歴で経緯を確認する | 監査・移行設計を`docs/audit/backend-origin-env-migration-design.md`へ記録済み。統一後は`BACKEND_ORIGIN`を採用する設計とした。実際の移行（Vercel環境変数変更・コード変更）は別PR |
+| `DJANGO_API_BASE_URL` / `BACKEND_URL` / `BACKEND_BASE_URL` / `NEXT_PUBLIC_API_BASE_URL`（**監査により新たに`NEXT_PUBLIC_API_BASE_URL`を追加確認**） | 定義箇所なし（`.env`/`.env.local`/`.env.example`いずれにも無し。`NEXT_PUBLIC_API_BASE_URL`のみ`playwright.config.ts`がE2E実行時に動的設定） | `src/lib/api/shrines.server.ts:13-15`、`shrineMeaning.server.ts:13-15`、`api/auth/register/route.ts:5-7`が独自の論理OR演算子によるフォールバック連鎖を持つ。加えて`shrines.server.ts`/`shrineMeaning.server.ts`は全て未設定の場合`resolveServerBaseUrl()`（Web自身のorigin解決関数、Backendオリジンとは別concern）へフォールバックする隠れた依存を持つことを新たに確認した | 上記と別系統の、ファイルごとに異なるBackendオリジン解決ロジック | Uncertain（命名がさらに分岐しており実態把握が必要） → **監査・移行設計完了（未実施）** | 中〜高（5〜7系統の命名が並立しており、どれか1つを削除すると他のフォールバックに依存しているファイルが影響を受ける可能性） | `docs/audit/backend-origin-env-migration-design.md`で全7系統のフォールバック優先順位を一覧化済み。統一後は`BACKEND_ORIGIN`へ集約し、既存`backend.ts`の`getDjangoOrigin()`を拡張する設計とした | Backendオリジン解決ロジックを共通ヘルパーへ集約し、環境変数名を1つに統一するPR（影響範囲が広いためPhase 1〜4に分割する設計とした。詳細は移行設計文書を参照） |
 | `NEXT_PUBLIC_API_BASE` | `apps/web/.env:2` | `src/lib/api.ts:2`、`src/lib/api/http.ts:60` | クライアント側APIベースURL | Active | なし | なし | なし |
 
 ### 6.2 `apps/web/.env`内のDjangoバックエンド設定の混入
@@ -270,7 +270,7 @@ KAMI MUSUBIの現行リポジトリ（Backend / `apps/web` / `apps/mobile` / `.g
 3. `BillingStatusLegacyView`（単数形`billing/status/`）の削除（本番アクセスログ確認が前提）
 4. `temples/api/serializers/concierge.py`のCOMPAT LAYER解消（新モジュールへの統合完了が前提）
 5. `ConciergeThread.recommendations`（v1）読み取りfallbackの削除（旧データ移行完了が前提）
-6. `apps/web`のBackendオリジンURL環境変数命名（`DJANGO_ORIGIN`/`BACKEND_ORIGIN`/`DJANGO_API_BASE_URL`/`BACKEND_URL`/`BACKEND_BASE_URL`の5系統併存）の1本化。影響範囲が広いため設計を先に固める
+6. `apps/web`のBackendオリジンURL環境変数命名（`DJANGO_ORIGIN`/`BACKEND_ORIGIN`/`DJANGO_API_BASE_URL`/`BACKEND_URL`/`BACKEND_BASE_URL`/`NEXT_PUBLIC_API_BASE_URL`の7系統併存。監査により`NEXT_PUBLIC_API_BASE_URL`を追加確認）の1本化。**監査・移行設計は`docs/audit/backend-origin-env-migration-design.md`で完了**。実際の移行（Vercel環境変数変更・コード変更）はVercel確認完了後の別PRで実施
 7. `apps/web`の`src/app/api/shrines/[id]/route.ts`互換ルート削除（削除期限2026-04-01を既に超過。本番アクセスログでアクセス0を確認後）
 8. ~~`apps/web`の`SHOW_NEW_RENDERER`ハードコード解消（デモ用の一時対応が環境変数制御へ戻されていない。`rendererMode.ts`）~~ → 対応済み（新レンダラーへ一本化しFlagごと削除。詳細は6.3節参照）
 
@@ -378,3 +378,13 @@ KAMI MUSUBIの現行リポジトリ（Backend / `apps/web` / `apps/mobile` / `.g
 - `package.json`・lockfile・設定ファイルは変更していない
 
 以上により、候補#6は「対応済み」へ更新した。これにより、2026-07-18時点で残っていたP1未対応3件（#6, #10, #23）のうち#6が解消された。
+
+### 候補#23の監査・移行設計完了
+
+候補#6（PR #2081）までの完了により、P1のうち「削除フェーズ」の対象は全て解消された。残る候補#23（Backendオリジン環境変数命名統一）は、単純な未参照コード削除ではなく設計判断・外部環境確認を要するため、「削除フェーズ」とは別の「環境変数移行フェーズ」として扱う。
+
+`apps/web`のBackendオリジン関連環境変数を全域検索した結果、6.1節が記録していた5系統に加えて`NEXT_PUBLIC_API_BASE_URL`（`shrines.server.ts`/`shrineMeaning.server.ts`が参照。既知の`NEXT_PUBLIC_API_BASE`とは別名）が新たに見つかり、**合計7系統**であることを確認した。5ファイルのフォールバック優先順位を一覧化し、`shrines.server.ts`/`shrineMeaning.server.ts`が最終的にWeb自身のorigin解決関数（`resolveServerBaseUrl()`）へフォールバックする隠れた依存を新たに発見した。`apps/web/.env.example`が存在しないこと、`docs/core/authentication-flow.md`の既存禁止事項との不整合も確認した。
+
+統一後の名称候補として`BACKEND_ORIGIN`を選定し、既存の`backend.ts`の`getDjangoOrigin()`を拡張する共通ヘルパー設計、Phase 1〜4の移行順序、各Phaseに対応するRollback条件を設計した。詳細は`docs/audit/backend-origin-env-migration-design.md`を正本とする。
+
+実装コード・Vercel環境変数・既存アーキテクチャ文書はいずれも変更していない。候補#23は「対応済み」ではなく「監査・移行設計完了、実施は別トラック（Vercel確認完了後の別PR）」として記録する。

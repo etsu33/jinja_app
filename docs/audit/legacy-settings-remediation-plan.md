@@ -45,7 +45,7 @@
 | 7 | ~~`apps/mobile`の`nativewind`/`tailwindcss`関連一式の削除~~ **対応済み**（PR #2078） | 削除 | P1 | 不要 |
 | 8 | Score v3の到達不能axisキー4件（28エントリ）の削除、またはエイリアス追加による復活 | 保留 | P2 | 必要（Product判断：4 axis正式導入の計画有無） |
 | 9 | ~~`BillingState`/`plan_from_profile()`の削除~~ **対応済み** | 削除 | P1 | 不要 |
-| 10 | `apps/web/src/lib/auth/token.ts`の削除 | 削除 | P1 | 不要（**未対応**。PR-Bグルーピングでは#2/#11/#12/#13/#14と同一PR対象として計画されていたが、実施されたPR #2077の範囲には含まれておらず、`develop`上に現存することを2026-07-18時点で確認済み） |
+| 10 | ~~`apps/web/src/lib/auth/token.ts`の削除~~ **対応済み**（PR #2080） | 削除 | P1 | 不要 |
 | 11 | ~~Web Analytics dead event（`premium_preview_view`/`next_session`/`next_thread`）の型定義削除~~ **対応済み**（PR #2077） | 削除 | P1 | 不要 |
 | 12 | ~~`RecommendationReasonViewModel.why`/`.interpretation`の削除~~ **対応済み**（PR #2077） | 削除 | P1 | 不要 |
 | 13 | ~~`useMyGoshuin.ts`・`MapCardListClient.tsx`の削除~~ **対応済み**（PR #2077） | 削除 | P1 | 不要 |
@@ -58,7 +58,7 @@
 | 20 | `BillingStatusLegacyView`（単数形`billing/status/`）の削除 | 削除 | P2 | 必要（本番アクセスログ） |
 | 21 | `temples/api/serializers/concierge.py`のCOMPAT LAYER解消 | 互換移行 | P3 | 不要（ロードマップ確認のみ） |
 | 22 | `ConciergeThread.recommendations`（v1）読み取りfallbackの削除 | 互換移行 | P2 | 必要（本番DBの旧スレッド残存数） |
-| 23 | `apps/web`のBackendオリジンURL環境変数命名の1本化 | 設定統一 | P1 | 不要（ただし設計レビューは必須） |
+| 23 | `apps/web`のBackendオリジンURL環境変数命名の1本化（**監査・移行設計は完了**。`docs/audit/backend-origin-env-migration-design.md`参照。実際の移行実施はVercel確認後の別PR） | 設定統一 | P1 | 不要（ただし設計レビューは必須） |
 | 24 | `apps/web`の期限超過互換ルート（`/api/shrines/[id]`）の削除 | 削除 | **P0** | 必要（本番アクセスログ、削除実行の判断材料として） |
 | 25 | ~~`apps/web`の`SHOW_NEW_RENDERER`ハードコード解消~~ **対応済み** | 命名修正 | **P0** | 不要 |
 | 26 | ルート`.env.example`と`backend/.env.example`の統合要否判断 | 保留 | P3 | 不要（文書検索のみ） |
@@ -134,7 +134,7 @@
 
 ### PR-B: Web Dead Code削除
 
-**対象**: #2（`legacy/`+`ConciergeSections.tsx`、**対応済み**）、#10（`src/lib/auth/token.ts`、**未対応**）、#11（Analytics dead event型定義、**対応済み**）、#12（`RecommendationReasonViewModel.why`/`.interpretation`、**対応済み**）、#13（`useMyGoshuin.ts`・`MapCardListClient.tsx`、**対応済み**）、#14（`@heroicons/react`、**対応済み**）
+**対象**: #2（`legacy/`+`ConciergeSections.tsx`、**対応済み**）、#10（`src/lib/auth/token.ts`、**対応済み**。ただしPR-Bグルーピング内ではなく単独PR #2080で実施）、#11（Analytics dead event型定義、**対応済み**）、#12（`RecommendationReasonViewModel.why`/`.interpretation`、**対応済み**）、#13（`useMyGoshuin.ts`・`MapCardListClient.tsx`、**対応済み**）、#14（`@heroicons/react`、**対応済み**）
 
 **変更範囲**:
 
@@ -159,7 +159,7 @@
 
 **実施状況（PR #2077）**: 上記対象のうち#2・#11・#12・#13・#14の5件を実施した。`concierge/components/legacy/`＋`ConciergeSections.tsx`を削除、`cardEvents.ts`の`premium_preview_view`と`retentionEvents.ts`の`next_session`/`next_thread`を型定義から削除、`buildRecommendationReasonViewModel.ts`から`.why`/`.interpretation`を削除（テストの`.why.*`アサーションは値が同一の`.list.*`/`.debug.reasonKeys.*`へ整合、snapshotも再生成）、`useMyGoshuin.ts`と専用テストを削除、`MapCardListClient.tsx`を削除、`package.json`から`@heroicons/react`を`pnpm remove`で削除した。Web Typecheck・Lintともにエラーなし、Web契約テスト446件pass、関連Unit Test 88件pass、`next build`成功を確認済み。
 
-**#10が未実施であることについて**: `src/lib/auth/token.ts`はPR #2077の変更ファイル一覧に含まれておらず、`develop`上に現存することを確認した（2026-07-18時点）。本PRグルーピングの計画時点では#2/#11/#12/#13/#14と同一PR対象として整理していたが、実際の実装PRのスコープには含まれなかった。改めて#10単独、または他のP1項目とまとめた削除PRを起票する必要がある。
+**#10の実施状況（PR #2080）**: `src/lib/auth/token.ts`はPR #2077の変更ファイル一覧に含まれておらず、`develop`上に現存することを2026-07-18時点で確認していた（計画時点では#2/#11/#12/#13/#14と同一PR対象として整理していたが、実際の実装PRのスコープには含まれなかった）。この漏れに対応するため、`token.ts`単独の削除PR（PR #2080）を起票した。import元・`ACCESS_KEY`/`REFRESH_KEY`/`tokens`各exportの参照元をリポジトリ全域で再検索し0件であることを確認、現行の認証はhttpOnly Cookie（`access_token`/`refresh_token`、`middleware.ts`と`login/route.ts`が使用）に一本化されていることを確認した上で`token.ts`を削除した。Web Typecheck・Lint・契約テスト446件が通過することを確認済み。
 
 ### PR-C: Backend API Serializer軽微削除
 
@@ -238,16 +238,16 @@
 
 ### PR-F: `apps/web` Backendオリジン環境変数の統一（設計フェーズ先行）
 
-**対象**: #23（`DJANGO_ORIGIN`/`BACKEND_ORIGIN`/`DJANGO_API_BASE_URL`/`BACKEND_URL`/`BACKEND_BASE_URL`の5系統併存）
+**対象**: #23（`DJANGO_ORIGIN`/`BACKEND_ORIGIN`/`DJANGO_API_BASE_URL`/`BACKEND_URL`/`BACKEND_BASE_URL`の5系統併存。**監査の結果、`NEXT_PUBLIC_API_BASE_URL`を加えた7系統であることが判明**）
 
 このPRは影響範囲が広いため、実装PRの前に以下の**事前確認**を完了する。
 
-**事前確認項目**:
+**事前確認項目の実施状況**: 4項目中2・3を完了し、詳細な監査・移行設計を`docs/audit/backend-origin-env-migration-design.md`へ記録した（削除フェーズではなく、監査・設計のみを行うPRとして実施。実装コード・環境変数は変更していない）。1・4は引き続きVercelダッシュボードへのアクセスが必要なため未着手。
 
-1. 5つの環境変数名それぞれについて、`apps/web/.env`・`apps/web/.env.local`・Vercelの環境変数設定（本番/Preview）に実際にどの名前が設定されているかを確認する（Vercel側の確認はダッシュボードで行い、本監査の範囲外）
-2. `src/lib/server/backend.ts`、`src/app/api/auth/login/route.ts`、`src/app/api/auth/register/route.ts`、`src/lib/api/shrines.server.ts`、`src/lib/api/shrineMeaning.server.ts`の5ファイルそれぞれで、現在どの優先順位でフォールバックしているかを一覧化する（本監査で確認済みの情報を土台に、さらに他の参照箇所が無いか`grep -rn "DJANGO_ORIGIN\|BACKEND_ORIGIN\|DJANGO_API_BASE_URL\|BACKEND_URL\|BACKEND_BASE_URL"`で再確認する）
-3. 統一後の単一名称candidate（例: `BACKEND_ORIGIN`への一本化）を決め、共通ヘルパー関数（例: `src/lib/server/resolveBackendOrigin.ts`）への集約設計を先にレビューする
-4. Vercel環境変数の切り替えタイミングとコードデプロイのタイミングをどう同期するか（新旧両対応の移行期間を設けるか）を決める
+1. ~~5つの環境変数名それぞれについて...~~ **未着手（Vercel確認が必要）**。同文書「4. Vercel確認が必要な項目」に4項目の確認リストを整理済み
+2. ~~5ファイルそれぞれで、現在どの優先順位でフォールバックしているかを一覧化する~~ **完了**。同文書「2. 各参照ファイルのフォールバック優先順位一覧」で5ファイル（うち1ファイルはログ出力専用の重複コードと判明）を一覧化し、加えて`resolveServerBaseUrl()`への隠れたフォールバック依存という新たなリスクを発見した
+3. ~~統一後の単一名称candidateを決め、共通ヘルパー関数への集約設計をレビューする~~ **完了**。同文書「5. 統一後の正式な環境変数名候補」で`BACKEND_ORIGIN`を採用候補として整理し、「6. 共通Backendオリジン解決ヘルパーの責務設計」で既存`backend.ts`の`getDjangoOrigin()`を拡張する設計を整理した（新規ファイル`resolveBackendOrigin.ts`は既存実装との責務重複のため採用しない方針とした）
+4. Vercel環境変数の切り替えタイミングとコードデプロイのタイミングをどう同期するか **設計は完了**（同文書「7. 新旧環境変数の移行順序」Phase 1〜4）が、実際の切り替え実施はVercel確認（項目1）の完了後
 
 **変更範囲（事前確認完了後）**:
 
@@ -366,18 +366,54 @@ Compatibility（互換目的で現役）に分類された項目について、�
 
 ---
 
-## 13. #6の追加対応（PR #2081）
+## 13. #10の追加対応（PR #2080）
 
-上記12節は2026-07-18時点のスナップショットとして保持する。その後、#6（`apps/mobile/components/home/`配下未使用コンポーネント群と関連ファイル）を対象とした単独の削除PR（PR #2081）を実施したため、本節で追加対応の内容と更新後の集計を記録する。
+> **注記（2026-07-18・本節の復元について）**: 本節はPR #2080で一度追加されたが、PR #2081が並行して同一ファイルの末尾へ別セクションを追加した際、squash mergeの結果としてPR #2080側の追記（本節と、1節の#10行・4節PR-B「対象」行・「#10の実施状況」段落・10節item 2の該当箇所）が`develop`上で失われていたことを、本PR（#23監査着手時のdevelop最新化確認）で発見した。該当箇所は全て本PRで復元済みである。PR #2080のコード変更自体（`token.ts`削除）はGit履歴・現行`develop`上に正しく反映されており、影響を受けたのはこの監査文書の記述のみである。
 
-**#6の実施内容**: 対象10ファイル（`components/PopularSection.tsx`、`components/PopularShrineCard.tsx`、`components/Skeletons.tsx`、`hooks/usePopularShrines.ts`、`components/home/NearbyShrines.tsx`、`components/home/RankingCarousel.tsx`、`components/home/SearchChips.tsx`、`components/home/MyPageCard.tsx`、`components/home/RecentViewed.tsx`、`components/ui/Layout.tsx`）のimport・JSX・router参照をリポジトリ全域で再検索し、定義箇所自身を除き参照0件であることを確認した上で削除した。Git履歴を確認し、対象ファイルはいずれも初期MVP実装（2025年9〜10月）に由来する旧Home画面のコンポーネント群であり、現行のHome画面（`app/index.tsx`、2026-06-18の全面刷新以降）は`ConditionFieldsCard`のみに依存する別実装であることを確認した。Mobile Typecheck（削除対象由来の新規エラー0件）・Unit Test 57件pass・Expo起動確認（Metro Bundler起動・config解決成功）を確認済み。`package.json`・lockfile・設定ファイルは変更していない。
+上記12節は2026-07-18時点のスナップショットとして保持する。その後、#10（`apps/web/src/lib/auth/token.ts`）を対象とした単独の削除PR（PR #2080）を実施したため、本節で追加対応の内容と更新後の集計を記録する。
 
-**更新後のP1集計**（本節時点。PR #2080による#10の対応は別途反映される）:
+**#10の実施内容**: `apps/web/src/lib/auth/token.ts`のimport元・`ACCESS_KEY`/`REFRESH_KEY`/`tokens`各exportの参照元をリポジトリ全域（`.ts`/`.tsx`）で再検索し、定義箇所自身を除き0件であることを確認した。localStorageベースの認証（`tokens.access`/`tokens.refresh`）が現行コードで使われていないこと、現行の認証はhttpOnly Cookie（`access_token`/`refresh_token`、`middleware.ts`と`login/route.ts`が使用）に一本化されていることを確認した上で削除した。Git履歴から、`token.ts`は2025-10-05に`authToken`として導入され、2025-10-30に`tokens`（`access`/`refresh`両対応）へ拡張されたのを最後に一度も参照されないまま放置されていたことを確認した。Web Typecheck・Lintともにエラーなし、Web契約テスト446件が通過することを確認済み。
+
+**更新後のP1集計（PR #2080時点）**:
 
 - P1合計: 13件
-- 対応済み: **11件**（#1, #2, #3, #5, #6, #7, #9, #11, #12, #13, #14）
-- 未対応: **2件**（#10, #23）
+- 対応済み: **11件**（#1, #2, #3, #5, #7, #9, #10, #11, #12, #13, #14）
+- 未対応: **2件**（#6, #23）
 - 外部環境確認が必要: 0件
 - 保留: 0件
 
-残る未対応のうち#10（`apps/web/src/lib/auth/token.ts`）はPR #2080で別途対応済み（マージ状況は当該PRを参照）。#23（Backendオリジン環境変数命名統一）は「削除フェーズ」ではなく「環境変数移行フェーズ」として、削除系のP1項目とは別枠で扱う。5系統の環境変数名（`DJANGO_ORIGIN`/`BACKEND_ORIGIN`/`DJANGO_API_BASE_URL`/`BACKEND_URL`/`BACKEND_BASE_URL`）の統一は、単純な未参照コード削除とは異なり、Vercel本番/Preview環境変数の実際の設定値確認、共通ヘルパーへの設計集約、新旧切替タイミングの調整（7節のPR-F事前確認項目）を要するため、削除系のP1消化とは別のトラックとして計画する。
+残る未対応2件（#6: `apps/mobile/components/home/`配下未使用コンポーネント群、#23: Backendオリジン環境変数命名統一）は、引き続き個別PRの起票が必要である。
+
+---
+
+## 14. #6の追加対応（PR #2081）
+
+その後、#6（`apps/mobile/components/home/`配下未使用コンポーネント群と関連ファイル）を対象とした単独の削除PR（PR #2081）を実施したため、本節で追加対応の内容と更新後の集計を記録する。
+
+**#6の実施内容**: 対象10ファイル（`components/PopularSection.tsx`、`components/PopularShrineCard.tsx`、`components/Skeletons.tsx`、`hooks/usePopularShrines.ts`、`components/home/NearbyShrines.tsx`、`components/home/RankingCarousel.tsx`、`components/home/SearchChips.tsx`、`components/home/MyPageCard.tsx`、`components/home/RecentViewed.tsx`、`components/ui/Layout.tsx`）のimport・JSX・router参照をリポジトリ全域で再検索し、定義箇所自身を除き参照0件であることを確認した上で削除した。Git履歴を確認し、対象ファイルはいずれも初期MVP実装（2025年9〜10月）に由来する旧Home画面のコンポーネント群であり、現行のHome画面（`app/index.tsx`、2026-06-18の全面刷新以降）は`ConditionFieldsCard`のみに依存する別実装であることを確認した。Mobile Typecheck（削除対象由来の新規エラー0件）・Unit Test 57件pass・Expo起動確認（Metro Bundler起動・config解決成功）を確認済み。`package.json`・lockfile・設定ファイルは変更していない。
+
+**更新後のP1集計（PR #2081時点）**:
+
+- P1合計: 13件
+- 対応済み: **12件**（#1, #2, #3, #5, #6, #7, #9, #10, #11, #12, #13, #14）
+- 未対応: **1件**（#23）
+- 外部環境確認が必要: 0件
+- 保留: 0件
+
+残る未対応1件（#23: Backendオリジン環境変数命名統一）は、「削除フェーズ」ではなく「環境変数移行フェーズ」として、削除系のP1項目とは別枠で扱う。5系統の環境変数名（`DJANGO_ORIGIN`/`BACKEND_ORIGIN`/`DJANGO_API_BASE_URL`/`BACKEND_URL`/`BACKEND_BASE_URL`）の統一は、単純な未参照コード削除とは異なり、Vercel本番/Preview環境変数の実際の設定値確認、共通ヘルパーへの設計集約、新旧切替タイミングの調整（7節のPR-F事前確認項目）を要するため、削除系のP1消化とは別のトラックとして計画する。
+
+---
+
+## 15. #23: 環境変数移行フェーズの監査・設計完了（現ドキュメント作成PR）
+
+候補#6（PR #2081）までの完了により、削除系のP1未対応項目は0件となった。残る候補#23は「削除フェーズ」の対象ではなく、独立した「環境変数移行フェーズ」として扱う。
+
+**#23の監査・設計内容**: `apps/web`のBackendオリジン関連環境変数を全域検索した結果、監査時点の5系統（`DJANGO_ORIGIN`/`BACKEND_ORIGIN`/`DJANGO_API_BASE_URL`/`BACKEND_URL`/`BACKEND_BASE_URL`）に加えて、`NEXT_PUBLIC_API_BASE_URL`（`shrines.server.ts`/`shrineMeaning.server.ts`が参照。既知の`NEXT_PUBLIC_API_BASE`とは別名）が新たに見つかり、**合計7系統**であることを確認した。5ファイルのフォールバック優先順位を一覧化し、うち1ファイル（`login/route.ts`）はログ出力専用の重複コードであること、`shrines.server.ts`/`shrineMeaning.server.ts`が最終的にWeb自身のorigin解決関数（`resolveServerBaseUrl()`）へフォールバックする隠れた依存を持つことを新たに発見した。`apps/web/.env.example`が存在せずREADMEにも記載が無いこと、`docs/core/authentication-flow.md`の既存禁止事項と現状の乖離も確認した。
+
+統一後の名称候補として`BACKEND_ORIGIN`を選定し、既存の`backend.ts`の`getDjangoOrigin()`を拡張する形での共通ヘルパー設計、Phase 1〜4の移行順序（Vercel環境変数追加→共通ヘルパーへの集約→非推奨警告によるモニタリング→旧名削除・文書整備）、各Phaseに対応するRollback条件を設計した。
+
+詳細は`docs/audit/backend-origin-env-migration-design.md`を正本とする。
+
+**実施していないこと**: 実装コード（`backend.ts`・`register/route.ts`・`shrines.server.ts`・`shrineMeaning.server.ts`・`resolveServerBaseUrl.ts`・`api.ts`・`http.ts`・`playwright.config.ts`）、Vercel環境変数、`docs/core/authentication-flow.md`等の既存アーキテクチャ文書は一切変更していない。Phase 1〜4は本設計の承認後、別PRで着手する。
+
+**#23の位置づけ**: 「削除フェーズ」のP1項目（#1〜#14のうち削除系11件）とは異なり、#23は「環境変数移行フェーズ」の1件目として扱う。監査・設計は完了したが、Phase 1（Vercel環境変数追加）以降は4節に整理したVercel確認項目の完了を前提とするため、本節時点では「対応済み」ではなく「監査・設計完了、実施は別トラック」として記録する。
