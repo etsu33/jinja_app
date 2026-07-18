@@ -289,3 +289,23 @@ KAMI MUSUBIの現行リポジトリ（Backend / `apps/web` / `apps/mobile` / `.g
 - [x] Markdown参照切れ確認（本文中で言及した既存文書・ファイルパスの実在を確認済み）
 - [x] `git diff --check`
 - [x] `git status --short`（本監査で新規追加したのは本ファイルのみ）
+
+
+---
+
+## 11. 後続対応状況
+
+### Backend廃止モジュール
+
+`backend/temples/_deprecated/`について、後続PRで以下を再確認した。
+
+- Git管理対象は4ファイルである
+- Backend・Web・Mobile・テストからの実行時参照は0件である
+- 削除前後でPackage Import Sweepが成功する
+- 削除後もAPI URL、REST Framework設定およびSerializerのImportテストが成功する
+
+以上を根拠として、`backend/temples/_deprecated/`ディレクトリ全体を削除した。
+
+本対応はDead判定の結論を変更するものではなく、監査で提示した後続対応を実行したものである。
+
+正確な削除差分とテスト結果は、関連する実装PRおよびGit履歴を正本とする。
