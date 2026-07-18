@@ -41,7 +41,7 @@
 | 3 | ~~`recommend_shrines()`と関連LUCK_BONUS系設定の削除~~ **対応済み**（PR #2075） | 削除 | P1 | 不要 |
 | 4 | `ConciergeRecommendationClickLog`モデルの削除 | 削除 | P2 | 必要（本番DBのデータ有無） |
 | 5 | ~~`PlacesSearchResponse.items`フィールドの削除~~ **対応済み**（PR #2076） | 削除 | P1 | 不要 |
-| 6 | `apps/mobile/components/home/`配下未使用コンポーネント群の削除 | 削除 | P1 | 不要（**未対応**。PR #2078のスコープから意図的に除外） |
+| 6 | ~~`apps/mobile/components/home/`配下未使用コンポーネント群の削除~~ **対応済み**（PR #2081） | 削除 | P1 | 不要 |
 | 7 | ~~`apps/mobile`の`nativewind`/`tailwindcss`関連一式の削除~~ **対応済み**（PR #2078） | 削除 | P1 | 不要 |
 | 8 | Score v3の到達不能axisキー4件（28エントリ）の削除、またはエイリアス追加による復活 | 保留 | P2 | 必要（Product判断：4 axis正式導入の計画有無） |
 | 9 | ~~`BillingState`/`plan_from_profile()`の削除~~ **対応済み** | 削除 | P1 | 不要 |
@@ -186,7 +186,7 @@
 
 ### PR-D: Mobile未使用コンポーネント・依存削除
 
-**対象**: #6（`components/home/`配下未使用コンポーネント群、**未対応**）、#7（`nativewind`/`tailwindcss`関連一式、**対応済み**）
+**対象**: #6（`components/home/`配下未使用コンポーネント群、**対応済み**。ただしPR-Dグルーピング内ではなく単独PR #2081で実施）、#7（`nativewind`/`tailwindcss`関連一式、**対応済み**）
 
 **変更範囲**:
 
@@ -209,7 +209,9 @@
 
 **優先度に関する注記**: #6・#7は参照0件を確認済みのP1だが、#8（未到達ルート6画面、P2）とは独立した別問題である。#6・#7はどの画面からも到達しない「孤立コンポーネント」、#27（旧番号）は「Tab登録されているが導線がないルート」であり、混同しないよう本PRの対象からは除外している。
 
-**実施状況（PR #2078）**: #7（`nativewind`/`tailwindcss`/`@tailwindcss/postcss`/`autoprefixer`と`tailwind.config.js`・`postcss.config.js`・`lib/cn.ts`）のみを実施した。`className`利用0件、Babel/Metro/Expo設定への接続0件を確認した上で削除し、Mobile Typecheck（削除対象由来の新規エラー0件）・Unit Test 57件pass（`npx vitest`による一時実行）・`expo-doctor`19/20 pass・Expo起動確認（Metro Bundler起動・config解決成功）を確認済み。#6（`components/home/`配下未使用コンポーネント群）はPR #2078の実施範囲に含まれておらず、**未対応のまま**である。PR #2078自体の指示が「スタイル依存の削除だけを扱い、未使用Home Component群の削除は行わない」と明記してPR-Dの対象を意図的に縮小したものであり、実装漏れではない。#6は改めて別PRで対応する必要がある。
+**実施状況（PR #2078）**: #7（`nativewind`/`tailwindcss`/`@tailwindcss/postcss`/`autoprefixer`と`tailwind.config.js`・`postcss.config.js`・`lib/cn.ts`）のみを実施した。`className`利用0件、Babel/Metro/Expo設定への接続0件を確認した上で削除し、Mobile Typecheck（削除対象由来の新規エラー0件）・Unit Test 57件pass（`npx vitest`による一時実行）・`expo-doctor`19/20 pass・Expo起動確認（Metro Bundler起動・config解決成功）を確認済み。#6（`components/home/`配下未使用コンポーネント群）はPR #2078の実施範囲に含まれておらず、当時「未対応のまま」だった。PR #2078自体の指示が「スタイル依存の削除だけを扱い、未使用Home Component群の削除は行わない」と明記してPR-Dの対象を意図的に縮小したものであり、実装漏れではない。
+
+**#6の実施状況（PR #2081）**: `apps/mobile/components/PopularSection.tsx`・`PopularShrineCard.tsx`・`Skeletons.tsx`・`hooks/usePopularShrines.ts`・`components/home/NearbyShrines.tsx`・`RankingCarousel.tsx`・`SearchChips.tsx`・`MyPageCard.tsx`・`RecentViewed.tsx`・`components/ui/Layout.tsx`（計10ファイル）を対象に、import・JSX・router参照をリポジトリ全域で再検索し、いずれも参照0件であることを確認した上で削除した。Git履歴で旧Home画面（初期MVP実装、2025年9〜10月）由来であることを確認し、現行のHome画面（`app/index.tsx`、2026-06-18の全面刷新以降）は`ConditionFieldsCard`のみに依存する別実装であることを確認した。Mobile Typecheck（削除対象由来の新規エラー0件）・Unit Test 57件pass・Expo起動確認（Metro Bundler起動・config解決成功）を確認済み。`package.json`・lockfile・設定ファイルは変更していない。
 
 ---
 
@@ -308,7 +310,7 @@ Compatibility（互換目的で現役）に分類された項目について、�
 本監査・本計画では実施そのものを行わないが、着手する場合の目安順序を示す。
 
 1. **P0（#15, #24, #25）**: 誤解・期限超過リスクがあるため最優先。#24は事前にアクセスログ確認が必要。#15・#25は対応済み
-2. **P1のうち外部確認不要な削除（PR-A, PR-B, PR-C, PR-D）**: PR-A（#1・#3・#9）・PR-C（#5）は全項目対応済み。PR-B（#2・#10・#11・#12・#13・#14）は#10を除く5項目、PR-D（#6・#7）は#7のみ対応済み。#10（`token.ts`）・#6（`components/home/`配下未使用コンポーネント群）は未対応のまま残っており、改めて実装PRを起票する必要がある
+2. **P1のうち外部確認不要な削除（PR-A, PR-B, PR-C, PR-D）**: PR-A（#1・#3・#9）・PR-C（#5）は全項目対応済み。PR-B（#2・#10・#11・#12・#13・#14）・PR-D（#6・#7）はグルーピング内で当初のPR実施範囲から漏れた項目（#10, #6）があったが、それぞれ単独PR（#2080, #2081）で追加対応し、いずれも全項目対応済みとなった
 3. **PR-E（Feature Flag整理）**: P0の#15, #25を含むため、実質的に(1)と同時期。両項目とも対応済み
 4. **外部環境確認（3節の8件）**: 上記と並行して進められる調査。確認が完了次第、該当するP2項目（#4, #18, #20, #22等）の実装PRへ進む
 5. **PR-F（環境変数統一の事前確認）**: 影響範囲が広いため、他の項目が落ち着いてから着手する
@@ -361,3 +363,21 @@ Compatibility（互換目的で現役）に分類された項目について、�
 集計値は上表（一覧表との照合）を手動で数え上げて算出し、「1. 29件の一覧と優先度・分類」のP1行数（13行）と一致することを確認した。
 
 未対応3件（#6, #10, #23）は、いずれも実装漏れではなく「計画時点でグルーピングされていたが実施PRのスコープが縮小された」（#6, #10）、または「実装PRの前に必要な事前確認・設計フェーズが未着手」（#23）という理由による。改めて個別PRの起票が必要である。
+
+---
+
+## 13. #6の追加対応（PR #2081）
+
+上記12節は2026-07-18時点のスナップショットとして保持する。その後、#6（`apps/mobile/components/home/`配下未使用コンポーネント群と関連ファイル）を対象とした単独の削除PR（PR #2081）を実施したため、本節で追加対応の内容と更新後の集計を記録する。
+
+**#6の実施内容**: 対象10ファイル（`components/PopularSection.tsx`、`components/PopularShrineCard.tsx`、`components/Skeletons.tsx`、`hooks/usePopularShrines.ts`、`components/home/NearbyShrines.tsx`、`components/home/RankingCarousel.tsx`、`components/home/SearchChips.tsx`、`components/home/MyPageCard.tsx`、`components/home/RecentViewed.tsx`、`components/ui/Layout.tsx`）のimport・JSX・router参照をリポジトリ全域で再検索し、定義箇所自身を除き参照0件であることを確認した上で削除した。Git履歴を確認し、対象ファイルはいずれも初期MVP実装（2025年9〜10月）に由来する旧Home画面のコンポーネント群であり、現行のHome画面（`app/index.tsx`、2026-06-18の全面刷新以降）は`ConditionFieldsCard`のみに依存する別実装であることを確認した。Mobile Typecheck（削除対象由来の新規エラー0件）・Unit Test 57件pass・Expo起動確認（Metro Bundler起動・config解決成功）を確認済み。`package.json`・lockfile・設定ファイルは変更していない。
+
+**更新後のP1集計**（本節時点。PR #2080による#10の対応は別途反映される）:
+
+- P1合計: 13件
+- 対応済み: **11件**（#1, #2, #3, #5, #6, #7, #9, #11, #12, #13, #14）
+- 未対応: **2件**（#10, #23）
+- 外部環境確認が必要: 0件
+- 保留: 0件
+
+残る未対応のうち#10（`apps/web/src/lib/auth/token.ts`）はPR #2080で別途対応済み（マージ状況は当該PRを参照）。#23（Backendオリジン環境変数命名統一）は「削除フェーズ」ではなく「環境変数移行フェーズ」として、削除系のP1項目とは別枠で扱う。5系統の環境変数名（`DJANGO_ORIGIN`/`BACKEND_ORIGIN`/`DJANGO_API_BASE_URL`/`BACKEND_URL`/`BACKEND_BASE_URL`）の統一は、単純な未参照コード削除とは異なり、Vercel本番/Preview環境変数の実際の設定値確認、共通ヘルパーへの設計集約、新旧切替タイミングの調整（7節のPR-F事前確認項目）を要するため、削除系のP1消化とは別のトラックとして計画する。

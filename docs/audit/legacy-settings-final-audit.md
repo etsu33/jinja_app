@@ -213,12 +213,12 @@ KAMI MUSUBIの現行リポジトリ（Backend / `apps/web` / `apps/mobile` / `.g
 
 | 設定名 | 定義場所 | 参照場所 | 現行用途 | 分類 | 削除リスク | 必要な後続確認 | 推奨する後続PR |
 |---|---|---|---|---|---|---|---|
-| AsyncStorageキー`"recent_shrines"` | `apps/mobile/components/home/RecentViewed.tsx:11` | 同ファイル内のみ（コンポーネント自体が0参照） | 「最近見た神社」の旧実装。現行実装は`lib/storage.ts`の`sanpai:recents`キー | Dead | 低 | なし | `RecentViewed.tsx`ごと削除するPR（下記コンポーネント群と合わせて） |
-| `components/PopularSection.tsx`（および依存する`PopularShrineCard.tsx`/`Skeletons.tsx`/`hooks/usePopularShrines.ts`） | 各ファイル冒頭 | 参照元0件。コード内コメントで「map 画面がある前提のまま残しています。未実装ならここは後続PRで対応。」と自己申告し、存在しない`/map`ルートへ`router.push`する実装 | 「地図で見る」導線として構想されたが未接続 | Dead | 低 | なし | 削除PR、または`/map`ルート実装を伴う復活PR（いずれか判断） |
-| `components/home/NearbyShrines.tsx` / `RankingCarousel.tsx` / `SearchChips.tsx` / `MyPageCard.tsx`（コンポーネント版） | 各ファイル冒頭 | 参照元0件（`MyPageCard`は`app/mypage/index.tsx`のローカル関数と命名衝突があるが別実体） | Home画面刷新前の旧コンポーネント群と推測される | Dead | 低 | なし | Home画面の`components/home/`配下未使用ファイルを一括削除するPR |
-| `components/ui/Layout.tsx`（`Spacer`/`Section`） | `apps/mobile/components/ui/Layout.tsx:5,7` | 参照元0件 | 未使用のレイアウトヘルパー | Dead | 低 | なし | 同上と合わせて削除 |
+| ~~AsyncStorageキー`"recent_shrines"`~~ | ~~`apps/mobile/components/home/RecentViewed.tsx:11`~~ | ~~同ファイル内のみ（コンポーネント自体が0参照）~~ | 「最近見た神社」の旧実装。現行実装は`lib/storage.ts`の`sanpai:recents`キー | Dead → **対応済み（削除）** | 低 | なし | PR #2081で`RecentViewed.tsx`ごと削除済み |
+| ~~`components/PopularSection.tsx`（および依存する`PopularShrineCard.tsx`/`Skeletons.tsx`/`hooks/usePopularShrines.ts`）~~ | ~~各ファイル冒頭~~ | ~~参照元0件。コード内コメントで「map 画面がある前提のまま残しています。未実装ならここは後続PRで対応。」と自己申告し、存在しない`/map`ルートへ`router.push`する実装~~ | 「地図で見る」導線として構想されたが未接続 | Dead → **対応済み（削除）** | 低 | なし | PR #2081で4ファイルとも削除済み（`/map`ルート実装は行わず削除を選択） |
+| ~~`components/home/NearbyShrines.tsx` / `RankingCarousel.tsx` / `SearchChips.tsx` / `MyPageCard.tsx`（コンポーネント版）~~ | ~~各ファイル冒頭~~ | ~~参照元0件（`MyPageCard`は`app/mypage/index.tsx`のローカル関数と命名衝突があるが別実体）~~ | Home画面刷新前の旧コンポーネント群と推測される | Dead → **対応済み（削除）** | 低 | なし | PR #2081で削除済み |
+| ~~`components/ui/Layout.tsx`（`Spacer`/`Section`）~~ | ~~`apps/mobile/components/ui/Layout.tsx:5,7`~~ | ~~参照元0件~~ | 未使用のレイアウトヘルパー | Dead → **対応済み（削除）** | 低 | なし | PR #2081でファイル全体を削除済み |
 | `app/birthday` / `app/search` / `app/visit-history` / `app/reflection-history` / `app/consultation-history` / `app/recently-viewed` | `apps/mobile/app/`配下、`app/_layout.tsx`にTab登録済み | 他画面からの`router.push`/`Link`が0件。特に`app/mypage/index.tsx`の「誕生日」カードは`onPress`自体が未設定 | ルートとしては実装済みだが、アプリ内導線が存在せずユーザーが到達できない | Uncertain（Dead候補。Tab登録経由でのみ到達可能かは未検証） | 中（Tab登録経由の到達性は本監査のgrep手法では確認しきれない） | 実機/シミュレータでTab経由の到達性を確認する。到達できないなら導線追加かルート削除のいずれかを判断する | 到達性確認後、導線追加または未使用ルート削除のPR |
-| ~~`nativewind` / `tailwindcss` / `@tailwindcss/postcss` / `autoprefixer` / `lib/cn.ts`~~ | ~~`apps/mobile/package.json`、`tailwind.config.js`、`postcss.config.js`、`lib/cn.ts:2`~~ | ~~`className=`使用0件、`babel.config.js`にnativewindプリセット記載なし、metro.config.jsも存在せずビルドパイプラインに未接続~~ | 設定一式が存在するが実質未接続 | Dead → **対応済み（削除）** | 低（ビルドに影響しないパッケージのため） | なし | PR #2078で依存4件・`tailwind.config.js`・`postcss.config.js`・`lib/cn.ts`を削除済み。なお、本行と同じ表9. の候補#6（`apps/mobile/components/home/`配下未使用コンポーネント群、下表7.2参照）はPR #2078のスコープに含まれておらず、**未対応のまま**残っている |
+| ~~`nativewind` / `tailwindcss` / `@tailwindcss/postcss` / `autoprefixer` / `lib/cn.ts`~~ | ~~`apps/mobile/package.json`、`tailwind.config.js`、`postcss.config.js`、`lib/cn.ts:2`~~ | ~~`className=`使用0件、`babel.config.js`にnativewindプリセット記載なし、metro.config.jsも存在せずビルドパイプラインに未接続~~ | 設定一式が存在するが実質未接続 | Dead → **対応済み（削除）** | 低（ビルドに影響しないパッケージのため） | なし | PR #2078で依存4件・`tailwind.config.js`・`postcss.config.js`・`lib/cn.ts`を削除済み。なお、本行と同じ表9. の候補#6（`apps/mobile/components/home/`配下未使用コンポーネント群、下表7.2参照）はPR #2078のスコープに含まれていなかったが、PR #2081で対応済みとなった |
 | `expo-constants` / `expo-font` / `expo-splash-screen` / `expo-status-bar` | `apps/mobile/package.json` | コード内import 0件 | Expo SDK標準構成の一部として残存している可能性 | Uncertain | 低〜中（Expoの内部依存として間接的に必要な可能性があるため、単純な未import判定だけでは断定できない） | `expo install`が自動追加する標準パッケージかどうかExpo SDKのドキュメントで確認する | 確認後、真に不要なもののみ削除するPR |
 
 ---
@@ -247,7 +247,7 @@ KAMI MUSUBIの現行リポジトリ（Backend / `apps/web` / `apps/mobile` / `.g
 3. ~~`backend/temples/services/recommendation.py`の`recommend_shrines()`と関連LUCK_BONUS系設定の削除~~ → **対応済み**（PR #2075）
 4. `ConciergeRecommendationClickLog`モデルの削除（本番DBのデータ有無確認後）
 5. ~~`PlacesSearchResponse.items`フィールドの削除~~ → **対応済み**（PR #2076）
-6. `apps/mobile/components/home/`配下未使用コンポーネント群（`PopularSection.tsx`とその依存、`NearbyShrines.tsx`、`RankingCarousel.tsx`、`SearchChips.tsx`、`MyPageCard.tsx`、`RecentViewed.tsx`）と`components/ui/Layout.tsx`の削除（**未対応**。PR #2078はスタイル依存の削除のみを扱い、本項目は意図的にスコープ外とされた）
+6. ~~`apps/mobile/components/home/`配下未使用コンポーネント群（`PopularSection.tsx`とその依存、`NearbyShrines.tsx`、`RankingCarousel.tsx`、`SearchChips.tsx`、`MyPageCard.tsx`、`RecentViewed.tsx`）と`components/ui/Layout.tsx`の削除~~ → **対応済み**（PR #2081）
 7. ~~`apps/mobile`の`nativewind`/`tailwindcss`関連パッケージ・設定ファイルの削除~~ → **対応済み**（PR #2078）
 8. Score v3の到達不能axisキー4件（28エントリ）の削除、または`CONSULTATION_AXIS_ALIASES`へのエイリアス追加による復活
 9. `backend/users/services/billing.py`の`BillingState`/`plan_from_profile()`の削除
@@ -349,8 +349,22 @@ KAMI MUSUBIの現行リポジトリ（Backend / `apps/web` / `apps/mobile` / `.g
 
 **候補#10（`apps/web/src/lib/auth/token.ts`）について**: `legacy-settings-remediation-plan.md`のPR-Bグルーピング（候補#2・#10・#11・#12・#13・#14を1PRとして計画）には含まれていたが、実際に実施されたPR #2077の対象範囲には候補#10が含まれておらず、`apps/web/src/lib/auth/token.ts`は削除されないまま`develop`に現存することを確認した。本監査文書・実施計画のいずれについても、候補#10を「対応済み」とせず「未対応」のまま維持する。改めて削除PRを起票する必要がある。
 
-**候補#6（`apps/mobile/components/home/`配下未使用コンポーネント群）について**: `legacy-settings-remediation-plan.md`のPR-Dグルーピング（候補#6・#7を1PRとして計画）には含まれていたが、PR #2078の実施範囲は「Mobile未使用スタイル依存削除」に限定されており、候補#6（Home Component群）は意図的にスコープ外とされた。候補#6は引き続き「未対応」である。
+**候補#6（`apps/mobile/components/home/`配下未使用コンポーネント群）について**: `legacy-settings-remediation-plan.md`のPR-Dグルーピング（候補#6・#7を1PRとして計画）には含まれていたが、PR #2078の実施範囲は「Mobile未使用スタイル依存削除」に限定されており、候補#6（Home Component群）は意図的にスコープ外とされた。候補#6は当時「未対応」だった（2026-07-18時点の記録）。
 
 本対応はDead判定の結論を変更するものではなく、監査で提示した後続対応のうち実行できた範囲を反映したものである。
 
 正確な削除差分とテスト結果は、関連する各実装PR（#2075〜#2078）およびGit履歴を正本とする。
+
+### 候補#6の追加対応（PR #2081）
+
+候補#6（`apps/mobile/components/home/`配下未使用コンポーネント群と関連ファイル）について、単独の削除PR（PR #2081）で以下を再確認した上で削除した。
+
+- 対象10ファイル（`components/PopularSection.tsx`、`components/PopularShrineCard.tsx`、`components/Skeletons.tsx`、`hooks/usePopularShrines.ts`、`components/home/NearbyShrines.tsx`、`components/home/RankingCarousel.tsx`、`components/home/SearchChips.tsx`、`components/home/MyPageCard.tsx`、`components/home/RecentViewed.tsx`、`components/ui/Layout.tsx`）のimport・JSX・router参照をリポジトリ全域（`apps/mobile`の`.ts`/`.tsx`）で検索し、いずれも定義箇所自身を除き参照0件であることを確認した
+- `PopularSection.tsx`は`PopularShrineCard.tsx`・`Skeletons.tsx`の`CardSkeleton`・`usePopularShrines.ts`を内部的に読み込む自己完結クラスタで、外部からの参照は無かった。`router.push({ pathname: "/map", ... })`という実装を持つが、`apps/mobile/app/`配下に`/map`ルート自体が存在しないことを確認した
+- `components/home/MyPageCard.tsx`は`app/mypage/index.tsx`内のローカル関数`MyPageCard`と命名が衝突するが、別実体であり、後者はimport元が別ファイル（`components/home/MyPageCard.tsx`）を参照していないことを確認した
+- Git履歴を確認し、対象ファイルはいずれも初期MVP実装（`687269ca`「feat(mobile): MVP batch 1」等、2025年9月〜10月）に由来する旧Home画面のコンポーネント群であることを確認した。一部ファイルは直近（2026年6月の`650dc8f3`「Feature/mobile design token adoption phase3」等）まで編集されていたが、いずれも複数ファイルを横断する一括デザイントークン置換であり、再接続を意図した変更ではなかった
+- 現行のHome画面（`apps/mobile/app/index.tsx`、2026-06-18の`d57742c1`「ホーム画面を神結びブランドデザインへ全面刷新」以降の実装）は、`ConditionFieldsCard`のみをimportし、`StyleSheet`ベースで構成された別実装であり、対象10ファイルのいずれにも依存していないことを確認した
+- Mobile Typecheckは削除対象由来の新規エラー0件（既存の`vitest`型不足エラー5件はPR #2078時点から続く既存問題）、Unit Test 57件pass（`npx vitest`による一時実行）、Expo起動確認（Metro Bundler起動・config解決成功）を確認済み
+- `package.json`・lockfile・設定ファイルは変更していない
+
+以上により、候補#6は「対応済み」へ更新した。これにより、2026-07-18時点で残っていたP1未対応3件（#6, #10, #23）のうち#6が解消された。
