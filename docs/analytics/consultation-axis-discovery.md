@@ -1,3 +1,9 @@
+> **Status: Archive**
+>
+> 本ドキュメントは、consultation_axis候補発見のための相談ログ監査データセット作成に関する時点監査である。
+>
+> 本書はtaxonomyを確定するものではなく、現行のconsultation_axis定義は`docs/product/`配下の関連文書および実装コードを正本とする。
+
 # Consultation Axis Discovery
 
 ## 目的

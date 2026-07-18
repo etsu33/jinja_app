@@ -1,3 +1,9 @@
+> **Status: Archive**
+>
+> 本ドキュメントは、`meaningContext`の利用実態を確認した時点監査である。
+>
+> 現行のmeaningContext関連実装は関連するFrontend実装コードおよびテストを最終的な正本とする。
+
 # Meaning Context 未使用監査
 
 ## 目的

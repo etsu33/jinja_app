@@ -1,4 +1,8 @@
-
+> **Status: Reference**
+>
+> 本ドキュメントは、Recommendation Reason v4の`quality` payloadに関するBackend / Web / PostHog / Mobile間の責務境界の設計背景を記録した参照資料である。
+>
+> 本書のTODOチェックリストは策定時点のものであり、現行の実装状況は関連する実装コードおよびテストを最終的な正本とする。`recommendation_quality` Eventの正確な送信状況は`docs/audit/cross-platform-event-contract.md`を参照する。
 
 # Recommendation Quality Analytics Boundary
 

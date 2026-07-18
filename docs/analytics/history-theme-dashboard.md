@@ -1,3 +1,9 @@
+> **Status: Reference**
+>
+> 本ドキュメントは、historyTheme別Dashboardの見方に関する設計背景を記録した参照資料である。
+>
+> 正確なEvent名・PayloadおよびKPI計算式は、関連するAnalytics契約文書および実装コードを最終的な正本とする。
+
 # history_theme 別 Dashboard 設計
 
 ## 目的

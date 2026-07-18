@@ -1,3 +1,9 @@
+> **Status: Archive**
+>
+> 本ドキュメントは、Recommendation Score v2の実出力を保存した時点スナップショットである。
+>
+> 現行の出力は実際のAPIレスポンスおよび関連する実装コードを最終的な正本とする。
+
 # Recommendation Output Snapshot
 
 ## 目的

@@ -1,3 +1,8 @@
+> **Status: Reference**
+>
+> 本ドキュメントは、Recommendation Score v2の4 Profile統合設計の背景を記録した参照資料である。
+>
+> 現行のスコア式・重みは`docs/analytics/recommendation-score-v2-current-design.md`、各Profileの定義は`docs/analytics/user-state-profile.md`等を正本とする。
 
 # Recommendation Score v2
 
