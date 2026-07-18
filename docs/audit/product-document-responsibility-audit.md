@@ -534,3 +534,92 @@ Delete判定に向けて、両文書への参照元を`docs/`配下で全文検�
 ### 結論（再確認）
 
 4文書とも分類変更なし。`docs/product/README.md`への追加変更は不要（9節時点の記載が引き続き正確）。Delete判定は継続保留、Knowledge移管は`glossary.md`定義齟齬の解消を前提条件として追加した上で継続保留とする。
+
+---
+
+## 15. history_theme定義の整合性監査（2026-07-18）
+
+14節で発見した`docs/knowledge/glossary.md`と`docs/product/history-theme-taxonomy.md`の定義齟齬について、Product・Knowledge・Core・Analytics・Backend実装・テストを横断して監査し、最小範囲で修正した。
+
+### 確認した文書・実装
+
+- `docs/product/history-theme-taxonomy.md`
+- `docs/knowledge/glossary.md`
+- `docs/knowledge/shrine-profile-spec.md` / `shrine-data-guide.md` / `action-guide.md` / `reflection-guide.md` / `recommendation-copy-guide.md` / `recommendation-v4-copy-guideline.md`
+- `docs/core/recommendation-reason-contract.md` / `meaning-layer-connection.md` / `architecture.md` / `meaning-layer.md` / `roadmap.md` / `recommendation-readiness.md`
+- `docs/analytics/`配下18文書（`historyTheme`/`history_theme`言及箇所）
+- `backend/temples/models.py`（`Shrine.history_theme` / `ShrineReflection.history_theme` / `ActionEvent.history_theme`）
+- `backend/temples/services/meaning_translation.py`（`_resolve_history_theme` / `HISTORY_THEME_BY_DIRECTION` / `HISTORY_THEME_BY_NEED` / `HISTORY_THEME_BY_DECISION` / `REFLECTION_QUESTION_BY_HISTORY_THEME`）
+- `backend/temples/services/journey_timeline.py` / `reflection_state_change.py`
+- `backend/temples/management/commands/seed_history_theme.py`
+- `backend/temples/tests/services/test_meaning_translation.py`
+
+### 判明した事実：`history_theme`は2つの物理的な値を指す同一語彙である
+
+同一の7カテゴリ語彙（守り/静寂/再出発/復興/勝負/学び/縁）を、実装上は責務が異なる2つの値で共有している。
+
+| 値 | 生成タイミング | 生成元 | 実装箇所 |
+|---|---|---|---|
+| `Shrine.history_theme` | 神社プロフィール作成時（事前・静的） | 神社の由緒・歴史情報をもとに、編集者が手動でタグ付けする | `backend/temples/models.py:253`（help_text: 「神社の歴史文脈タグ」）、`backend/temples/management/commands/seed_history_theme.py`（神社IDごとの手動マッピング） |
+| `translation_result.history_theme`（Product上の`history_theme` / `historyTheme`） | 相談ごと（実行時） | `direction_profile.direction` / `need_profile.primary_need_tag` / `need_profile.need_tags` / `decision_context.primary_decision` / `decision_context.decision_candidates`のいずれかから解決される。**`Shrine.history_theme`を直接参照しない** | `backend/temples/services/meaning_translation.py:112-140`（`_resolve_history_theme`）、テストで動作確認済み（`test_meaning_translation.py:32,64,97,117,185`） |
+
+両者は同じ語彙・同じカテゴリ数（7）を共有するが、後者が前者を機械的に「抽出」するわけではない。`meaning-layer-connection.md:128-130`が示すとおり、`Shrine.history_theme`は`translation_result.history_theme`が解決できない場合のFallback先としてのみ接続される。
+
+### 定義差の一覧
+
+| 文書 | 定義文言 | 対応する物理的実体 | 評価 |
+|---|---|---|---|
+| `docs/product/history-theme-taxonomy.md` | 「相談内容→意味変換→history_theme→神社推薦」。神社側の意味文脈として扱う | `translation_result.history_theme`（Product上で実際に利用される値） | 実装と一致 |
+| `docs/knowledge/glossary.md`（修正前） | 「神社の歴史や由緒から抽出した意味テーマ。」 | 曖昧。`Shrine.history_theme`のみを指しているように読めるが、Product/Analytics/Reflection/Journey Timelineが実際に利用する`history_theme`（`translation_result.history_theme`）はこの定義に該当しない | 実装と不一致 |
+| `docs/knowledge/shrine-profile-spec.md:250` | 「由緒から抽出した意味テーマ」（Meaning Layer節、「①からの解釈」と明記） | `Shrine.history_theme`（神社プロフィール作成時の値）に限定して記述されている | 文脈上、実装と一致（`Shrine.history_theme`固有の説明として妥当） |
+| `docs/analytics/`配下（`shrine-meaning-profile.md`、`consultation-axis-discovery.md`、`recommendation-output-quality-review.md`等） | 「神社側の意味テーマ」「User Stateではない」 | `translation_result.history_theme` | 実装と一致（history-theme-taxonomy.mdと同じ理解） |
+| `docs/analytics/reflection-funnel-dashboard.md:167` | 「historyThemeのカテゴリ名称は`docs/product/history-theme-taxonomy.md`の定義に従う」 | - | history-theme-taxonomy.mdを正本として明示的に指定済み。不一致なし |
+
+### 採用した現行定義
+
+`docs/product/history-theme-taxonomy.md`の定義（相談内容から意味変換されて生成される、神社側の意味文脈を表す7カテゴリの語彙。ユーザーの性格・心理状態・将来を断定するために使用しない）を現行定義として採用した。理由は以下のとおり。
+
+- Product / Analytics / Reflection / Journey Timelineが実際に参照する`history_theme`（`historyTheme`）は、実装上`translation_result.history_theme`であり、`_resolve_history_theme`が相談由来のprofileから解決している（`Shrine.history_theme`は未参照）
+- `docs/analytics/reflection-funnel-dashboard.md`が既に`history-theme-taxonomy.md`をカテゴリ名称の正本として指定している
+- `docs/analytics/shrine-meaning-profile.md`等、複数のAnalytics文書がhistory-theme-taxonomy.mdと同一の理解（神社側の意味文脈、User Stateではない）を採用している
+
+カテゴリ名・カテゴリ数（7）は変更していない。全ドキュメント・Backend実装・テストで一致していることを確認済み。
+
+### 表示名と内部値
+
+`守り` / `静寂` / `再出発` / `復興` / `勝負` / `学び` / `縁`は、表示名と内部値（保存値）が同一である。別名の内部キー（英語スラグ等）は存在しない。`backend/temples/services/meaning_translation.py`のマッピング辞書、`test_meaning_translation.py`のアサーション、`backend/temples/models.py`のフィールド値は全て日本語カテゴリ名をそのまま使用している。
+
+### 修正した文書
+
+- `docs/knowledge/glossary.md`: `history_theme`の定義を「神社の歴史や由緒から抽出した意味テーマ。」から「相談内容を神社側の意味文脈（7カテゴリ）へ接続した意味テーマ。神社の歴史文章から自動抽出される値ではない。」へ修正した。`Shrine.history_theme`（静的・手動タグ付け）と`translation_result.history_theme`（実行時・相談由来）のいずれも「自動抽出」ではないため、この文言は両者と矛盾しない
+
+### 修正しなかった文書と理由
+
+| 文書 | 理由 |
+|---|---|
+| `docs/product/history-theme-taxonomy.md` | 実装と一致しており、変更不要（制約により変更対象外） |
+| `docs/knowledge/shrine-profile-spec.md` | 「② Meaning Layer」節における`history_theme`の記述は`Shrine.history_theme`（神社プロフィール作成時の値）に文脈上限定されており、実装と矛盾しない |
+| `docs/knowledge/shrine-data-guide.md` / `action-guide.md` / `reflection-guide.md` / `recommendation-copy-guide.md` / `recommendation-v4-copy-guideline.md` | いずれも`history_theme`をフィールド名・入力項目として列挙するのみで、定義文を持たない。齟齬なし |
+| `docs/core/`配下 | `history_theme`を`translation_result`の出力項目、または`Shrine.history_theme`の入力項目として言及するのみで、独自の定義文を持たない。齟齬なし |
+| `docs/analytics/`配下 | history-theme-taxonomy.mdと同一の理解（神社側の意味文脈）を採用しており、齟齬なし |
+| `backend/temples/models.py`（`Shrine.history_theme`のhelp_text） | 実装コードのコメントであり、本PRの変更対象外（制約により実装コード不変更） |
+
+### Backend実装で実際に生成・保存される値（新規発見・参考情報）
+
+`_resolve_history_theme`が参照する3つの辞書（`HISTORY_THEME_BY_DIRECTION` / `HISTORY_THEME_BY_NEED` / `HISTORY_THEME_BY_DECISION`）には、`復興`のマッピングが存在しない。`復興`は`_resolve_history_theme_secondary`（`direction_profile.themes[1]`相当、Score v3の`history_score`専用）経由でのみ到達可能であり、`REFLECTION_QUESTION_BY_HISTORY_THEME`にも`復興`のキーは存在しない（`test_meaning_translation.py:65`で`history_theme_secondary == "復興"`として確認済み）。これはカテゴリ定義の不一致ではなく、実装の到達可能性に関する観察事項であり、本監査の「history_theme定義の整合性」という主題そのものには影響しない。実装変更は本PRの範囲外のため、後続の実装監査への申し送り事項として記録するに留める。
+
+### Knowledge移管を行うために残る条件
+
+（`history-theme-taxonomy.md`のKnowledge移管そのものは本PRで実行しない。以下は将来の移管判断のために整理した前提条件である。）
+
+- `Shrine.history_theme`（静的・神社プロフィール属性）と`translation_result.history_theme`（実行時・相談由来）が同一語彙を共有し、責務が異なる2つの物理的実体であることを、移管先のKnowledge文書内で明示的に区別できる構成にする
+- 移管する場合、`docs/knowledge/shrine-profile-spec.md`（`Shrine.history_theme`の責務）と重複しない形で、Product側の利用文脈（相談接続・7カテゴリの行動テーマ・ご利益との関係）を配置する
+- `docs/product/history-theme-taxonomy.md`を参照する15箇所（14節参照）の参照文脈がProduct体験文書からの参照かKnowledge用語定義としての参照かを個別判定し、移管後の参照先を決定する
+
+### 参照元更新が必要な範囲
+
+本PRでは`docs/knowledge/glossary.md`の定義文言のみを修正し、参照元（`history-theme-taxonomy.md`を参照する15箇所、`glossary.md`を参照する箇所）の更新は行っていない。`glossary.md`の該当エントリを直接引用・転記している文書は確認されなかったため、今回の文言修正による参照先の更新は不要である。
+
+### 結論
+
+`history_theme`は、Product・Analytics・Reflection・Journey Timelineが実際に利用する値（`translation_result.history_theme`、`history-theme-taxonomy.md`の定義）と、Knowledge（`shrine-profile-spec.md`）が神社プロフィール属性として扱う値（`Shrine.history_theme`）の、責務が異なる2つの実体を同一語彙で共有している。この構造そのものは実装上の既存事実であり、変更しない。齟齬は`docs/knowledge/glossary.md`の一般定義エントリのみに存在し、「神社の歴史から抽出」という不正確な表現を「相談内容を神社側の意味文脈へ接続した意味テーマ」へ修正した。カテゴリ名（7種）、カテゴリ数、表示名と内部値の対応関係はすべて一致しており、変更していない。
