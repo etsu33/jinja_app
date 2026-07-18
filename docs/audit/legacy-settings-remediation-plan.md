@@ -45,7 +45,7 @@
 | 7 | ~~`apps/mobile`の`nativewind`/`tailwindcss`関連一式の削除~~ **対応済み**（PR #2078） | 削除 | P1 | 不要 |
 | 8 | Score v3の到達不能axisキー4件（28エントリ）の削除、またはエイリアス追加による復活 | 保留 | P2 | 必要（Product判断：4 axis正式導入の計画有無） |
 | 9 | ~~`BillingState`/`plan_from_profile()`の削除~~ **対応済み** | 削除 | P1 | 不要 |
-| 10 | `apps/web/src/lib/auth/token.ts`の削除 | 削除 | P1 | 不要（**未対応**。PR-Bグルーピングでは#2/#11/#12/#13/#14と同一PR対象として計画されていたが、実施されたPR #2077の範囲には含まれておらず、`develop`上に現存することを2026-07-18時点で確認済み） |
+| 10 | ~~`apps/web/src/lib/auth/token.ts`の削除~~ **対応済み**（PR #2080） | 削除 | P1 | 不要 |
 | 11 | ~~Web Analytics dead event（`premium_preview_view`/`next_session`/`next_thread`）の型定義削除~~ **対応済み**（PR #2077） | 削除 | P1 | 不要 |
 | 12 | ~~`RecommendationReasonViewModel.why`/`.interpretation`の削除~~ **対応済み**（PR #2077） | 削除 | P1 | 不要 |
 | 13 | ~~`useMyGoshuin.ts`・`MapCardListClient.tsx`の削除~~ **対応済み**（PR #2077） | 削除 | P1 | 不要 |
@@ -134,7 +134,7 @@
 
 ### PR-B: Web Dead Code削除
 
-**対象**: #2（`legacy/`+`ConciergeSections.tsx`、**対応済み**）、#10（`src/lib/auth/token.ts`、**未対応**）、#11（Analytics dead event型定義、**対応済み**）、#12（`RecommendationReasonViewModel.why`/`.interpretation`、**対応済み**）、#13（`useMyGoshuin.ts`・`MapCardListClient.tsx`、**対応済み**）、#14（`@heroicons/react`、**対応済み**）
+**対象**: #2（`legacy/`+`ConciergeSections.tsx`、**対応済み**）、#10（`src/lib/auth/token.ts`、**対応済み**。ただしPR-Bグルーピング内ではなく単独PR #2080で実施）、#11（Analytics dead event型定義、**対応済み**）、#12（`RecommendationReasonViewModel.why`/`.interpretation`、**対応済み**）、#13（`useMyGoshuin.ts`・`MapCardListClient.tsx`、**対応済み**）、#14（`@heroicons/react`、**対応済み**）
 
 **変更範囲**:
 
@@ -159,7 +159,7 @@
 
 **実施状況（PR #2077）**: 上記対象のうち#2・#11・#12・#13・#14の5件を実施した。`concierge/components/legacy/`＋`ConciergeSections.tsx`を削除、`cardEvents.ts`の`premium_preview_view`と`retentionEvents.ts`の`next_session`/`next_thread`を型定義から削除、`buildRecommendationReasonViewModel.ts`から`.why`/`.interpretation`を削除（テストの`.why.*`アサーションは値が同一の`.list.*`/`.debug.reasonKeys.*`へ整合、snapshotも再生成）、`useMyGoshuin.ts`と専用テストを削除、`MapCardListClient.tsx`を削除、`package.json`から`@heroicons/react`を`pnpm remove`で削除した。Web Typecheck・Lintともにエラーなし、Web契約テスト446件pass、関連Unit Test 88件pass、`next build`成功を確認済み。
 
-**#10が未実施であることについて**: `src/lib/auth/token.ts`はPR #2077の変更ファイル一覧に含まれておらず、`develop`上に現存することを確認した（2026-07-18時点）。本PRグルーピングの計画時点では#2/#11/#12/#13/#14と同一PR対象として整理していたが、実際の実装PRのスコープには含まれなかった。改めて#10単独、または他のP1項目とまとめた削除PRを起票する必要がある。
+**#10の実施状況（PR #2080）**: `src/lib/auth/token.ts`はPR #2077の変更ファイル一覧に含まれておらず、`develop`上に現存することを2026-07-18時点で確認していた（計画時点では#2/#11/#12/#13/#14と同一PR対象として整理していたが、実際の実装PRのスコープには含まれなかった）。この漏れに対応するため、`token.ts`単独の削除PR（PR #2080）を起票した。import元・`ACCESS_KEY`/`REFRESH_KEY`/`tokens`各exportの参照元をリポジトリ全域で再検索し0件であることを確認、現行の認証はhttpOnly Cookie（`access_token`/`refresh_token`、`middleware.ts`と`login/route.ts`が使用）に一本化されていることを確認した上で`token.ts`を削除した。Web Typecheck・Lint・契約テスト446件が通過することを確認済み。
 
 ### PR-C: Backend API Serializer軽微削除
 
@@ -308,7 +308,7 @@ Compatibility（互換目的で現役）に分類された項目について、�
 本監査・本計画では実施そのものを行わないが、着手する場合の目安順序を示す。
 
 1. **P0（#15, #24, #25）**: 誤解・期限超過リスクがあるため最優先。#24は事前にアクセスログ確認が必要。#15・#25は対応済み
-2. **P1のうち外部確認不要な削除（PR-A, PR-B, PR-C, PR-D）**: PR-A（#1・#3・#9）・PR-C（#5）は全項目対応済み。PR-B（#2・#10・#11・#12・#13・#14）は#10を除く5項目、PR-D（#6・#7）は#7のみ対応済み。#10（`token.ts`）・#6（`components/home/`配下未使用コンポーネント群）は未対応のまま残っており、改めて実装PRを起票する必要がある
+2. **P1のうち外部確認不要な削除（PR-A, PR-B, PR-C, PR-D）**: PR-A（#1・#3・#9）・PR-C（#5）は全項目対応済み。PR-B（#2・#10・#11・#12・#13・#14）は当初計画から漏れていた#10をPR #2080で追加対応し、全項目対応済み。PR-D（#6・#7）は#7のみ対応済み。#6（`components/home/`配下未使用コンポーネント群）は未対応のまま残っており、改めて実装PRを起票する必要がある
 3. **PR-E（Feature Flag整理）**: P0の#15, #25を含むため、実質的に(1)と同時期。両項目とも対応済み
 4. **外部環境確認（3節の8件）**: 上記と並行して進められる調査。確認が完了次第、該当するP2項目（#4, #18, #20, #22等）の実装PRへ進む
 5. **PR-F（環境変数統一の事前確認）**: 影響範囲が広いため、他の項目が落ち着いてから着手する
@@ -361,3 +361,21 @@ Compatibility（互換目的で現役）に分類された項目について、�
 集計値は上表（一覧表との照合）を手動で数え上げて算出し、「1. 29件の一覧と優先度・分類」のP1行数（13行）と一致することを確認した。
 
 未対応3件（#6, #10, #23）は、いずれも実装漏れではなく「計画時点でグルーピングされていたが実施PRのスコープが縮小された」（#6, #10）、または「実装PRの前に必要な事前確認・設計フェーズが未着手」（#23）という理由による。改めて個別PRの起票が必要である。
+
+---
+
+## 13. #10の追加対応（PR #2080）
+
+上記12節は2026-07-18時点のスナップショットとして保持する。その後、#10（`apps/web/src/lib/auth/token.ts`）を対象とした単独の削除PR（PR #2080）を実施したため、本節で追加対応の内容と更新後の集計を記録する。
+
+**#10の実施内容**: `apps/web/src/lib/auth/token.ts`のimport元・`ACCESS_KEY`/`REFRESH_KEY`/`tokens`各exportの参照元をリポジトリ全域（`.ts`/`.tsx`）で再検索し、定義箇所自身を除き0件であることを確認した。localStorageベースの認証（`tokens.access`/`tokens.refresh`）が現行コードで使われていないこと、現行の認証はhttpOnly Cookie（`access_token`/`refresh_token`、`middleware.ts`と`login/route.ts`が使用）に一本化されていることを確認した上で削除した。Git履歴から、`token.ts`は2025-10-05に`authToken`として導入され、2025-10-30に`tokens`（`access`/`refresh`両対応）へ拡張されたのを最後に一度も参照されないまま放置されていたことを確認した。Web Typecheck・Lintともにエラーなし、Web契約テスト446件が通過することを確認済み。
+
+**更新後のP1集計**:
+
+- P1合計: 13件
+- 対応済み: **11件**（#1, #2, #3, #5, #7, #9, #10, #11, #12, #13, #14）
+- 未対応: **2件**（#6, #23）
+- 外部環境確認が必要: 0件
+- 保留: 0件
+
+残る未対応2件（#6: `apps/mobile/components/home/`配下未使用コンポーネント群、#23: Backendオリジン環境変数命名統一）は、引き続き個別PRの起票が必要である。
