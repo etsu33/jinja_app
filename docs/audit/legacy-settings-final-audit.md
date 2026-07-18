@@ -309,3 +309,19 @@ KAMI MUSUBIの現行リポジトリ（Backend / `apps/web` / `apps/mobile` / `.g
 本対応はDead判定の結論を変更するものではなく、監査で提示した後続対応を実行したものである。
 
 正確な削除差分とテスト結果は、関連する実装PRおよびGit履歴を正本とする。
+
+### 未使用Billing補助コード
+
+`backend/users/services/billing.py`の`BillingState`および`plan_from_profile()`について、後続PRで以下を再確認した。
+
+- Backend・Web・Mobile・テストからの参照は0件である
+- Git履歴で初回追加時の用途を確認し、現行コードでは参照されていない
+- 現行のBilling有効判定が利用する`is_subscription_active()`は維持されている
+- Billing Checkout、StatusおよびWebhookの契約テスト12件が成功する
+- BackendのPackage Import SweepおよびREST Framework設定テスト6件が成功する
+
+以上を根拠として、`BillingState`、`plan_from_profile()`および不要になった`dataclass` importを削除した。
+
+本対応はDead判定の結論を変更するものではなく、監査で提示した後続対応を実行したものである。
+
+正確な削除差分とテスト結果は、関連する実装PRおよびGit履歴を正本とする。
