@@ -168,7 +168,7 @@ KAMI MUSUBIの現行リポジトリ（Backend / `apps/web` / `apps/mobile` / `.g
 
 | 設定名 | 定義場所 | 参照場所 | 現行用途 | 分類 | 削除リスク | 必要な後続確認 | 推奨する後続PR |
 |---|---|---|---|---|---|---|---|
-| `src/lib/auth/token.ts`（localStorageベースのトークン管理一式、`ACCESS_KEY`/`REFRESH_KEY`） | `src/lib/auth/token.ts` | importer 0件。実際の認証はhttpOnly Cookie（`access_token`/`refresh_token`、`middleware.ts`と`login/route.ts`が使用）＋`AuthProvider.tsx`の`auth:logged_in`フラグで完結している | なし | Dead（**未対応**。`legacy-settings-remediation-plan.md`のPR-Bグルーピングでは#2/#11/#12/#13/#14と同一PRの対象として計画されていたが、実際のPR #2077の実施範囲には含まれておらず、`develop`上に現存することを2026-07-18時点で再確認した） | 低 | なし | ファイル削除PR（未実施。改めて起票が必要） |
+| ~~`src/lib/auth/token.ts`（localStorageベースのトークン管理一式、`ACCESS_KEY`/`REFRESH_KEY`）~~ | ~~`src/lib/auth/token.ts`~~ | ~~importer 0件。実際の認証はhttpOnly Cookie（`access_token`/`refresh_token`、`middleware.ts`と`login/route.ts`が使用）＋`AuthProvider.tsx`の`auth:logged_in`フラグで完結している~~ | なし | Dead → **対応済み（削除）** | 低 | なし | PR #2080でファイル削除済み。PR-Bグルーピング（#2077）から漏れていた候補#10を単独PRで対応した |
 | `IS_DEMO`（`src/lib/config.ts:2`、`NEXT_PUBLIC_DEMO_MODE`由来） | `src/lib/config.ts:2` | 参照0件 | なし | Dead | 低 | なし | 削除PR |
 | ~~`cardEvents.ts`の`premium_preview_view`~~ | ~~`apps/web/src/lib/analytics/cardEvents.ts:25`~~ | ~~参照0件（テスト含む）~~ | なし | Dead → **対応済み（削除）** | 低 | なし | PR #2077で型定義から削除済み |
 | ~~`retentionEvents.ts`の`next_session` / `next_thread`~~ | ~~`apps/web/src/lib/analytics/retentionEvents.ts:4-5`~~ | ~~参照0件~~ | なし | Dead → **対応済み（削除）** | 低 | なし | PR #2077で型定義から削除済み |
@@ -251,7 +251,7 @@ KAMI MUSUBIの現行リポジトリ（Backend / `apps/web` / `apps/mobile` / `.g
 7. ~~`apps/mobile`の`nativewind`/`tailwindcss`関連パッケージ・設定ファイルの削除~~ → **対応済み**（PR #2078）
 8. Score v3の到達不能axisキー4件（28エントリ）の削除、または`CONSULTATION_AXIS_ALIASES`へのエイリアス追加による復活
 9. `backend/users/services/billing.py`の`BillingState`/`plan_from_profile()`の削除
-10. `apps/web/src/lib/auth/token.ts`（localStorageベースのトークン管理、参照0件）の削除（**未対応**。`legacy-settings-remediation-plan.md`のPR-Bグルーピングでは#2/#11/#12/#13/#14と同一PR対象として計画されていたが、実際のPR #2077の実施範囲には含まれておらず、`develop`上に現存することを2026-07-18時点で再確認した）
+10. ~~`apps/web/src/lib/auth/token.ts`（localStorageベースのトークン管理、参照0件）の削除~~ → **対応済み**（PR #2080）
 11. ~~`apps/web`のAnalytics dead event（`premium_preview_view`/`next_session`/`next_thread`）の型定義削除~~ → **対応済み**（PR #2077）
 12. ~~`RecommendationReasonViewModel.why`/`.interpretation`の削除（コード内コメントで削除可能と自己文書化済み）~~ → **対応済み**（PR #2077）
 13. ~~`apps/web`の`useMyGoshuin.ts`（旧import互換用）・`MapCardListClient.tsx`（互換維持コメント付き未参照ファイル）の削除~~ → **対応済み**（PR #2077）
@@ -347,7 +347,17 @@ KAMI MUSUBIの現行リポジトリ（Backend / `apps/web` / `apps/mobile` / `.g
   - PR #2077: Web Typecheck・Lintともにエラーなし、Web契約テスト446件pass、関連Unit Test 88件pass、`next build`成功
   - PR #2078: Mobile Typecheckは削除対象由来の新規エラー0件、Unit Test 57件pass（`npx vitest`による一時実行で確認）、`expo-doctor`19/20 pass、Expo起動確認成功
 
-**候補#10（`apps/web/src/lib/auth/token.ts`）について**: `legacy-settings-remediation-plan.md`のPR-Bグルーピング（候補#2・#10・#11・#12・#13・#14を1PRとして計画）には含まれていたが、実際に実施されたPR #2077の対象範囲には候補#10が含まれておらず、`apps/web/src/lib/auth/token.ts`は削除されないまま`develop`に現存することを確認した。本監査文書・実施計画のいずれについても、候補#10を「対応済み」とせず「未対応」のまま維持する。改めて削除PRを起票する必要がある。
+**候補#10（`apps/web/src/lib/auth/token.ts`）について**: `legacy-settings-remediation-plan.md`のPR-Bグルーピング（候補#2・#10・#11・#12・#13・#14を1PRとして計画）には含まれていたが、実際に実施されたPR #2077の対象範囲には候補#10が含まれておらず、`apps/web/src/lib/auth/token.ts`は削除されないまま`develop`に現存することを確認していた（2026-07-18時点の記録）。その後、候補#10単独の削除PR（PR #2080）で以下を再確認した上で削除した。
+
+- `apps/web/src/lib/auth/token.ts`のimport元・`ACCESS_KEY`/`REFRESH_KEY`/`tokens`各exportの参照元をリポジトリ全域（`.ts`/`.tsx`）で検索し、定義箇所自身を除き0件であることを確認した
+- localStorageベースの認証（`token.ts`の`tokens.access`/`tokens.refresh`）が現行コードで使われていないことを確認した。`apps/web/src`内で`localStorage`を使用する他のファイル（`AuthProvider.tsx`等）は、`token.ts`とは無関係な`"auth:logged_in"`という別キーのログイン状態フラグを扱っており、アクセストークン・リフレッシュトークンの保存には使われていない
+- 現行の認証はhttpOnly Cookie（`access_token`/`refresh_token`）に一本化されており、`middleware.ts`が`req.cookies.get("access_token")`で、`login/route.ts`が`res.cookies.set("access_token", ...)`/`res.cookies.set("refresh_token", ...)`でそれぞれ読み書きしていることを確認した
+- Git履歴を確認し、`token.ts`は2025-10-05のコミット（`c5d416a1`）で`authToken`として導入され、2025-10-30のコミット（`c9790e34`）で`tokens`（`access`/`refresh`両対応）へ拡張されたのを最後に、一度も参照されないまま現在（2026-07-18）まで放置されていたことを確認した
+- Web Typecheck・Lintともにエラーなし、Web契約テスト446件が通過することを確認した
+
+以上により、候補#10は「対応済み」へ更新した。
+
+**残存するP1未対応項目**: 上記のPR #2080により、2026-07-18時点でP1として残っていた3件（#6, #10, #23）のうち#10が解消され、残るP1未対応項目は#6（`apps/mobile/components/home/`配下未使用コンポーネント群）と#23（Backendオリジン環境変数命名統一、設計フェーズ未着手）の2件となった。
 
 **候補#6（`apps/mobile/components/home/`配下未使用コンポーネント群）について**: `legacy-settings-remediation-plan.md`のPR-Dグルーピング（候補#6・#7を1PRとして計画）には含まれていたが、PR #2078の実施範囲は「Mobile未使用スタイル依存削除」に限定されており、候補#6（Home Component群）は意図的にスコープ外とされた。候補#6は引き続き「未対応」である。
 
