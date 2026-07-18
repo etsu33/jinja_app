@@ -44,7 +44,7 @@
 | Derived | Storedから生成される情報。 |
 | Runtime | 相談ごとに生成される情報。 |
 | Governance | 品質・出典・運用を管理する情報。 |
-| history_theme | 神社の歴史や由緒から抽出した意味テーマ。 |
+| history_theme | 相談内容を神社側の意味文脈（7カテゴリ）へ接続した意味テーマ。神社の歴史文章から自動抽出される値ではない。 |
 | culture_translation | 神社の文化的背景を現代の言葉へ翻訳した解釈。 |
 | shrine_meaning_profile | 神社全体の意味を要約したプロフィール。 |
 | place_context | 神社の所在地・地域性・立地情報。 |
