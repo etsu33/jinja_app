@@ -3,6 +3,8 @@
 > 本ドキュメントは、`docs/audit/legacy-settings-final-audit.md`が整理した29件の後続PR候補に、優先度・分類・実行条件を付与した実施計画である。
 >
 > 本文書は計画のみを目的とし、実装・削除・設定変更は行っていない。優先順位の最終判断・実施承認は母艦へ差し戻す。
+>
+> 本文書は複数の実装PRから継続的に更新される共有トラッキング文書である。更新時は`docs/audit/legacy-settings-audit-update-policy.md`の運用方針（並行更新の禁止、専用PRでの一括反映等）に従うこと。
 
 # Legacy Settings Remediation Plan
 
