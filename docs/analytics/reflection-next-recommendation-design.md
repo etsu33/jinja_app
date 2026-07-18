@@ -1,4 +1,8 @@
-
+> **Status: Reference**
+>
+> 本ドキュメントは、Reflectionから次回推薦への接続に関する設計背景を記録した参照資料である。
+>
+> 現行の体験フローは`docs/product/visit-reflection-flow.md`、正確な実装は関連するBackend実装コードおよびテストを最終的な正本とする。
 
 # Reflection → Next Recommendation Design
 

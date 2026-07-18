@@ -1,3 +1,9 @@
+> **Status: Reference**
+>
+> 本ドキュメントは、consultationAxis別の保存・参拝・課金導線の行動差分を確認するための集計方針を記録した参照資料である。
+>
+> 本書のPostHog集計は策定時点で未実施(次フェーズTODOとして未着手)であり、実施状況はPostHog側の実際の設定を最終的な正本とする。
+
 # Consultation Axis Analytics Summary
 
 ## 目的

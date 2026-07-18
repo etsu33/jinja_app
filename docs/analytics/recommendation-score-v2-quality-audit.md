@@ -1,3 +1,9 @@
+> **Status: Archive**
+>
+> 本ドキュメントは、Recommendation Score v2の返答品質を確認した時点監査である。
+>
+> 現行の実装・品質指標は関連する実装コードおよびテストを最終的な正本とする。
+
 # Recommendation Score v2 Quality Audit
 
 ## 目的

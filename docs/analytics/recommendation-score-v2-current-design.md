@@ -1,3 +1,9 @@
+> **Status: Active**
+>
+> 本ドキュメントは、Recommendation Score v2の現行スコア式・重みおよびPostHog計測項目の対応関係を管理する正本文書である。
+>
+> 正確な実装は`backend/temples/services/concierge_chat_ranking.py`等の実装コードおよびテストを最終的な正本とする。
+
 # Recommendation Score v2 現行設計
 
 ## 目的

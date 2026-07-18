@@ -1,3 +1,9 @@
+> **Status: Active**
+>
+> 本ドキュメントは、Recommendation Score v2が用いるBehavior Profile（行動シグナル）の定義を管理する正本文書である。
+>
+> 正確な実装・重みおよび計測項目は`docs/analytics/recommendation-score-v2-current-design.md`、関連するBackend実装コードおよびテストを最終的な正本とする。
+
 # Behavior Profile
 
 ## 目的

@@ -1,4 +1,8 @@
-
+> **Status: Reference**
+>
+> 本ドキュメントは、Recommendation Score v2の設計思想・4レイヤー構成の背景を記録した参照資料である。
+>
+> 現行のスコア式・重みは`docs/analytics/recommendation-score-v2-current-design.md`を正本とする。
 
 # Recommendation Score v2 Foundation
 

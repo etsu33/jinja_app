@@ -1,4 +1,8 @@
-
+> **Status: Archive**
+>
+> 本ドキュメントは、score_v2と行動相関の実測データ取得元を確認した時点監査である。
+>
+> 現行の実装・集計は関連する実装コードおよびテストを最終的な正本とする。
 
 # Score V2 Measurement Source Audit
 

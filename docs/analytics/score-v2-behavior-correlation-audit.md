@@ -1,4 +1,8 @@
-
+> **Status: Archive**
+>
+> 本ドキュメントは、score_v2と保存・詳細閲覧・経路確認等の行動相関を確認した時点監査である。
+>
+> 現行の実装・集計は関連する実装コードおよびテストを最終的な正本とする。
 
 # Score V2 Behavior Correlation Audit
 

@@ -1,4 +1,8 @@
-
+> **Status: Archive**
+>
+> 本ドキュメントは、`recommendation-output-snapshot.md`に保存したケースに基づくRecommendation Score v2出力品質の時点レビューである。
+>
+> 現行の出力品質は関連する実装コードおよびテストを最終的な正本とする。
 
 # Recommendation Output Quality Review
 

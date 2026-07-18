@@ -1,4 +1,8 @@
-
+> **Status: Archive**
+>
+> 本ドキュメントは、Recommendation Score v2の実出力と行動ファネルを接続して確認した時点監査である。
+>
+> 現行の実装・集計は関連する実装コードおよびテストを最終的な正本とする。
 
 # Recommendation Score v2 Output Funnel Audit
 

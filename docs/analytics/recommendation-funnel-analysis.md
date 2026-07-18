@@ -1,3 +1,9 @@
+> **Status: Archive**
+>
+> 本ドキュメントは、Recommendation Score v2の重み調整前における行動ファネルの実装状況を確認した時点監査である。
+>
+> 現行の集計実装は`backend/temples/services/behavior_funnel.py`等の実装コードを最終的な正本とする。
+
 # Recommendation Funnel Analysis
 
 ## 目的
