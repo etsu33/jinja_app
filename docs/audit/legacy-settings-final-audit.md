@@ -162,7 +162,7 @@ KAMI MUSUBIの現行リポジトリ（Backend / `apps/web` / `apps/mobile` / `.g
 | 設定名 | 定義場所 | 参照場所 | 現行用途 | 分類 | 削除リスク | 必要な後続確認 | 推奨する後続PR |
 |---|---|---|---|---|---|---|---|
 | `NEXT_PUBLIC_CONCIERGE_RENDERER` / `SHOW_NEW_RENDERER` | `apps/web/src/features/concierge/rendererMode.ts` | `ConciergeClientFull.tsx`3箇所が`SHOW_NEW_RENDERER`（ハードコードされた`true`）を参照。環境変数`NEXT_PUBLIC_CONCIERGE_RENDERER`自体はコード内コメントに残るのみで、実際の分岐には使われていない | コメントに「プレゼン用の一時対応」「デモ完了後、環境変数制御へ戻す」と明記されているが、戻されていない | Deprecated | 中（環境変数制御に戻す場合、両方のレンダラーが現在も動作することを確認する必要がある） | デモが完了しているか、旧レンダラー（環境変数がfalse相当の場合の分岐）が今も必要か確認する | 環境変数制御へ戻すか、新レンダラーへの完全移行を確定して旧分岐を削除するか、いずれかを判断するPR |
-| 互換ルート`src/app/api/shrines/[id]/route.ts`（単体GET） | `src/app/api/shrines/[id]/route.ts:1`。コメント「TODO: 互換ルート。2026-04-01 までにアクセス0なら削除」 | `apps/web`内のクライアントコードからの参照0件。期限（2026-04-01）を本監査時点（2026-07-18）で3.5ヶ月超過 | 期限切れの削除保留TODO | Deprecated | 低〜中（本番アクセスログでの実測は本監査の範囲外） | 本番アクセスログで実際のアクセス数を確認する | アクセス0を確認できたら削除するPR |
+| ~~互換ルート`src/app/api/shrines/[id]/route.ts`（単体GET）~~（**対応済み・削除**） | `src/app/api/shrines/[id]/route.ts:1`。コメント「TODO: 互換ルート。2026-04-01 までにアクセス0なら削除」 | `apps/web`内のクライアントコードからの参照0件。期限（2026-04-01）を本監査時点（2026-07-18）で3.5ヶ月超過 | 期限切れの削除保留TODO | ~~Deprecated~~ 削除済み | 低〜中（本番アクセスログでの実測は本監査の範囲外） | 本番アクセスログで実際のアクセス数を確認する | 削除済み。Vercel Runtime Logsで実測を試みたがHobbyプランのため保持期間が1時間しかなく、長期的な実測は不可能と判明した。代わりに、同一データを返す正本ルート`apps/web/src/app/api/public/shrines/[id]/route.ts`（`lat`/`lng`正規化・非JSON応答の安全処理を追加で持つ、より新しい実装）へ完全に代替されていること、Web/Mobile双方から本ルートへの参照が0件であることをコードレベルで確認した上で削除した。詳細はリネーム/削除PRの説明を参照 |
 
 ### 6.4 未使用コード（Dead）
 
@@ -271,7 +271,7 @@ KAMI MUSUBIの現行リポジトリ（Backend / `apps/web` / `apps/mobile` / `.g
 4. `temples/api/serializers/concierge.py`のCOMPAT LAYER解消（新モジュールへの統合完了が前提）
 5. `ConciergeThread.recommendations`（v1）読み取りfallbackの削除（旧データ移行完了が前提）
 6. `apps/web`のBackendオリジンURL環境変数命名（`DJANGO_ORIGIN`/`BACKEND_ORIGIN`/`DJANGO_API_BASE_URL`/`BACKEND_URL`/`BACKEND_BASE_URL`の5系統併存）の1本化。影響範囲が広いため設計を先に固める
-7. `apps/web`の`src/app/api/shrines/[id]/route.ts`互換ルート削除（削除期限2026-04-01を既に超過。本番アクセスログでアクセス0を確認後）
+7. ~~`apps/web`の`src/app/api/shrines/[id]/route.ts`互換ルート削除（削除期限2026-04-01を既に超過。本番アクセスログでアクセス0を確認後）~~ **対応済み**（別PRで削除。詳細は本項目のセルを参照）
 8. `apps/web`の`SHOW_NEW_RENDERER`ハードコード解消（デモ用の一時対応が環境変数制御へ戻されていない。`rendererMode.ts`）
 
 ### 追加調査が必要なもの
