@@ -596,4 +596,70 @@ describe("ShrineDetailArticle", () => {
       expect(retryButton).not.toBeDisabled();
     });
   });
+
+  describe("Design Token参照 (Semantic Token契約、CSS文字列全体の比較はしない)", () => {
+    it("Hero Headerがradius-card / surface-default / shadow-medium / text-primary / text-mutedを参照する", () => {
+      render(
+        <ShrineDetailArticle
+          cardProps={{
+            title: "乃木神社",
+            href: "/shrines/17",
+            imageUrl: null,
+            badges: [],
+            metaChips: [],
+            address: "東京都港区赤坂",
+          } as any}
+          heroImageUrl={null}
+          heroMeaningCopy={null}
+          benefitLabels={[]}
+          tags={[]}
+          publicGoshuinsPreview={[]}
+          publicGoshuinsViewAllHref=""
+          sections={[]}
+          recommendationMeta={null}
+          saveActionNode={null}
+        />,
+      );
+
+      const heading = screen.getByRole("heading", { name: "乃木神社" });
+      const heroSection = heading.closest("section");
+      expect(heroSection?.className).toContain("rounded-[var(--kt-radius-card)]");
+      expect(heroSection?.className).toContain("bg-[var(--kt-color-surface-default)]");
+      expect(heroSection?.className).toContain("shadow-[var(--kt-shadow-medium)]");
+      expect(heading.className).toContain("text-[var(--kt-color-text-primary)]");
+      expect(screen.getByText("この神社の意味").className).toContain("text-[var(--kt-color-text-muted)]");
+    });
+
+    it("directionSupportCopyがradius-card / border-default / background-subtle / text-mutedを参照する", () => {
+      render(
+        <ShrineDetailArticle
+          cardProps={{
+            title: "乃木神社",
+            href: "/shrines/17",
+            imageUrl: null,
+            badges: [],
+            metaChips: [],
+            address: "東京都港区赤坂",
+          } as any}
+          heroImageUrl={null}
+          heroMeaningCopy={null}
+          benefitLabels={[]}
+          tags={[]}
+          publicGoshuinsPreview={[]}
+          publicGoshuinsViewAllHref=""
+          sections={[]}
+          recommendationMeta={null}
+          saveActionNode={null}
+          directionSupportCopy="方位は主理由ではなく、補助要素として参考にしています。"
+        />,
+      );
+
+      const copy = screen.getByText("方位は主理由ではなく、補助要素として参考にしています。");
+      expect(copy.className).toContain("text-[var(--kt-color-text-muted)]");
+      const wrapper = copy.parentElement;
+      expect(wrapper?.className).toContain("rounded-[var(--kt-radius-card)]");
+      expect(wrapper?.className).toContain("border-[var(--kt-color-border-default)]");
+      expect(wrapper?.className).toContain("bg-[var(--kt-color-background-subtle)]");
+    });
+  });
 });

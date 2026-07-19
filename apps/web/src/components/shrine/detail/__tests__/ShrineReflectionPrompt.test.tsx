@@ -176,4 +176,20 @@ describe("ShrineReflectionPrompt", () => {
 
     expect(await screen.findByText("振り返りの保存に失敗しました。")).toBeInTheDocument();
   });
+
+  describe("Design Token参照 (Semantic Token契約、CSS文字列全体の比較はしない)", () => {
+    it("textareaとinputがradius-panel / surface-default / border-focusを参照する", () => {
+      render(<ShrineReflectionPrompt shrineId={17} />);
+
+      const textarea = screen.getByPlaceholderText(/少し落ち着いた/);
+      expect(textarea.className).toContain("rounded-[var(--kt-radius-panel)]");
+      expect(textarea.className).toContain("bg-[var(--kt-color-surface-default)]");
+      expect(textarea.className).toContain("focus:border-[var(--kt-color-border-focus)]");
+
+      const moodBefore = screen.getByPlaceholderText("参拝前の気分 任意");
+      expect(moodBefore.className).toContain("rounded-[var(--kt-radius-panel)]");
+      expect(moodBefore.className).toContain("bg-[var(--kt-color-surface-default)]");
+      expect(moodBefore.className).toContain("focus:border-[var(--kt-color-border-focus)]");
+    });
+  });
 });

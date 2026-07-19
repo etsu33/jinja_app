@@ -40,7 +40,7 @@ export default function DetailDisclosureBlock({
   const lv = levelLabel(level);
 
   return (
-    <div className="overflow-hidden rounded-2xl border bg-white">
+    <div className="overflow-hidden rounded-[var(--kt-radius-card)] border bg-[var(--kt-color-surface-default)]">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -48,9 +48,9 @@ export default function DetailDisclosureBlock({
         aria-expanded={open}
       >
         {materials.length ? (
-          <div className="shrink-0 rounded-xl border bg-white p-3">
-            <div className="text-xs font-semibold text-slate-700">材料</div>
-            <ul className="mt-2 space-y-1 text-xs text-slate-700">
+          <div className="shrink-0 rounded-[var(--kt-radius-panel)] border bg-[var(--kt-color-surface-default)] p-3">
+            <div className="text-xs font-semibold text-[var(--kt-color-text-secondary)]">材料</div>
+            <ul className="mt-2 space-y-1 text-xs text-[var(--kt-color-text-secondary)]">
               {materials.map((m) => (
                 <li key={m.label}>
                   {m.label}：{m.value}
@@ -62,9 +62,9 @@ export default function DetailDisclosureBlock({
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <div className="truncate text-sm font-semibold text-slate-900">{title}</div>
+            <div className="truncate text-sm font-semibold text-[var(--kt-color-text-primary)]">{title}</div>
             {lv ? (
-              <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
+              <span className="shrink-0 rounded-[var(--kt-radius-pill)] bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-[var(--kt-color-text-secondary)]">
                 {lv}
               </span>
             ) : null}
@@ -81,8 +81,8 @@ export default function DetailDisclosureBlock({
       </button>
 
       {open ? (
-        <div className="border-t bg-white px-4 pb-4 pt-3">
-          {hint ? <div className="mb-3 text-xs text-slate-500">{hint}</div> : null}
+        <div className="border-t bg-[var(--kt-color-surface-default)] px-4 pb-4 pt-3">
+          {hint ? <div className="mb-3 text-xs text-[var(--kt-color-text-muted)]">{hint}</div> : null}
           {children}
         </div>
       ) : null}

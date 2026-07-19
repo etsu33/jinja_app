@@ -125,4 +125,44 @@ describe("ShrineSaveButton", () => {
     expect(pushMock).not.toHaveBeenCalled();
     expect(trackMock).not.toHaveBeenCalled();
   });
+
+  describe("Design Token参照 (Semantic Token契約、CSS文字列全体の比較はしない)", () => {
+    it("未保存時、defaultバリアントがradius-panel / border-strong / surface-default / text-primaryを参照する", () => {
+      useFavoriteMock.mockImplementation(() => ({
+        fav: false,
+        busy: false,
+        toggle: vi.fn(),
+      }));
+
+      render(<ShrineSaveButton shrineId={17} nextPath="/shrines/17" guestMode={false} />);
+
+      const button = screen.getByRole("button", { name: "あとで見返すために保存" });
+      expect(button.className).toContain("rounded-[var(--kt-radius-panel)]");
+      expect(button.className).toContain("border-[var(--kt-color-border-strong)]");
+      expect(button.className).toContain("bg-[var(--kt-color-surface-default)]");
+      expect(button.className).toContain("text-[var(--kt-color-text-primary)]");
+    });
+
+    it("エラー表示がstatus-errorを参照する", async () => {
+      useFavoriteMock.mockImplementation(() => ({
+        fav: true,
+        busy: false,
+        toggle: vi.fn().mockRejectedValue(new Error("failed")),
+      }));
+
+      render(
+        <ShrineSaveButton
+          shrineId={17}
+          nextPath="/shrines/17"
+          guestMode={false}
+          initial={{ fav: true, favorite_id: 1 }}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: "保存しました" }));
+
+      const errorText = await screen.findByText("保存の更新に失敗しました");
+      expect(errorText.className).toContain("text-[var(--kt-color-status-error)]");
+    });
+  });
 });
