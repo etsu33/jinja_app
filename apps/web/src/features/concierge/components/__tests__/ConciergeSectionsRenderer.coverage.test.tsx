@@ -1,0 +1,219 @@
+import { fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const analyticsMocks = vi.hoisted(() => ({
+  trackSearchEvent: vi.fn(),
+  trackCardEvent: vi.fn(),
+}));
+
+vi.mock("@/lib/analytics/searchEvents", () => ({
+  trackSearchEvent: analyticsMocks.trackSearchEvent,
+}));
+
+vi.mock("@/lib/analytics/cardEvents", () => ({
+  trackCardEvent: analyticsMocks.trackCardEvent,
+}));
+
+const authMock = vi.hoisted(() => ({
+  useAuth: vi.fn(() => ({ isLoggedIn: false, loading: false })),
+}));
+
+vi.mock("@/lib/auth/AuthProvider", () => ({
+  useAuth: authMock.useAuth,
+}));
+
+import ConciergeSectionsRenderer from "../ConciergeSectionsRenderer";
+import { buildPayloadFromUnified } from "@/features/concierge/buildPayloadFromUnified";
+
+const baseFilterState: any = {
+  isOpen: false,
+  birthdate: "",
+  element4: null,
+  goriyakuTags: [{ id: 1, name: "健康" }],
+  suggestedTags: [],
+  selectedTagIds: [],
+  tagsLoading: false,
+  tagsError: null,
+  extraCondition: "",
+};
+
+function buildTestPayload(u: any, filterState = baseFilterState) {
+  const payload = buildPayloadFromUnified(u, filterState);
+  if (!payload) throw new Error("payload should not be null in this fixture");
+  return payload;
+}
+
+const heroRec = {
+  shrine_id: 1,
+  display_name: "第一候補神社",
+  reason: "第一候補の理由文です。",
+  address: "東京都千代田区1-1-1",
+  trust_metadata: {
+    rank_class: "由緒あり",
+    cultural_status: ["重要文化財"],
+    lineage: "式内社",
+    origin_summary: "古くから信仰を集める神社です。",
+  },
+};
+
+describe("ConciergeSectionsRenderer - 既存経路のCoverage補完", () => {
+  beforeEach(() => {
+    analyticsMocks.trackSearchEvent.mockClear();
+    analyticsMocks.trackCardEvent.mockClear();
+    authMock.useAuth.mockReturnValue({ isLoggedIn: false, loading: false });
+    window.localStorage.clear();
+  });
+
+  it("hasDummyの場合、近くの神社を見る/条件を広げて見直すボタンが表示・クリックできる", () => {
+    const u: any = {
+      data: {
+        recommendations: [{ ...heroRec, is_dummy: true }],
+      },
+      thread: { id: 1 },
+    };
+    const payload = buildTestPayload(u);
+    render(<ConciergeSectionsRenderer payload={payload} threadId={1} onAction={vi.fn()} />);
+
+    const openMap = screen.getByRole("button", { name: "近くの神社を静かに見る" });
+    const widen = screen.getByRole("button", { name: "条件を広げて見直す" });
+    fireEvent.click(openMap);
+    fireEvent.click(widen);
+
+    expect(screen.getByText("条件に合う神社が少ないため、まずは向かいやすい神社から表示しています。")).toBeInTheDocument();
+  });
+
+  it("appliedLabelが表示され、クリアボタンがfilter_clearを発火する", () => {
+    const onAction = vi.fn();
+    const u: any = { data: { recommendations: [heroRec] }, thread: { id: 1 } };
+    const payload = buildTestPayload(u, { ...baseFilterState, extraCondition: "静か" });
+    render(<ConciergeSectionsRenderer payload={payload} threadId={1} onAction={onAction} />);
+
+    expect(screen.getByText("条件: 静か")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "クリア" }));
+    expect(onAction).toHaveBeenCalledWith({ type: "filter_clear" });
+  });
+
+  it("補助条件(閉じた状態)のプリセット切替・入口に戻る・反映する・詳しく添えるが動作する", () => {
+    const onAction = vi.fn();
+    const u: any = { data: { recommendations: [heroRec] }, thread: { id: 1 } };
+    const payload = buildTestPayload(u, { ...baseFilterState, extraCondition: "駅近" });
+    render(<ConciergeSectionsRenderer payload={payload} threadId={1} onAction={onAction} isEntryRoute={false} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "静か" }));
+    expect(onAction).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "filter_set_extra" }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "入口に戻る" }));
+    expect(onAction).toHaveBeenCalledWith({ type: "back_to_entry" });
+
+    fireEvent.click(screen.getByRole("button", { name: "この内容で反映する" }));
+    expect(onAction).toHaveBeenCalledWith({ type: "filter_apply" });
+
+    fireEvent.click(screen.getByRole("button", { name: "もう少し詳しく添える" }));
+    expect(onAction).toHaveBeenCalledWith({ type: "add_condition" });
+  });
+
+  it("補助条件(開いた状態)のConciergeFilterPanel操作がonActionを発火する", () => {
+    const onAction = vi.fn();
+    const u: any = { data: { recommendations: [heroRec] }, thread: { id: 1 } };
+    const payload = buildTestPayload(u, { ...baseFilterState, isOpen: true, extraCondition: "静か" });
+    render(<ConciergeSectionsRenderer payload={payload} threadId={1} onAction={onAction} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "健康" }));
+    expect(onAction).toHaveBeenCalledWith({ type: "filter_toggle_tag", tagId: 1 });
+
+    const birthdateInput = document.querySelector('input[type="date"]');
+    expect(birthdateInput).not.toBeNull();
+    fireEvent.change(birthdateInput as HTMLInputElement, { target: { value: "1990-01-01" } });
+    expect(onAction).toHaveBeenCalledWith({ type: "filter_set_birthdate", birthdate: "1990-01-01" });
+
+    fireEvent.click(screen.getByRole("button", { name: "キャンセル" }));
+    expect(onAction).toHaveBeenCalledWith({ type: "filter_close" });
+
+    fireEvent.click(screen.getByRole("button", { name: "静かな時間を過ごしたい" }));
+    expect(onAction).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "filter_set_extra" }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "この内容に反映する" }));
+    expect(onAction).toHaveBeenCalledWith({ type: "filter_apply" });
+  });
+
+  it("window custom event concierge:open-filterでadd_conditionが発火する", () => {
+    const onAction = vi.fn();
+    const u: any = { data: { recommendations: [heroRec] }, thread: { id: 1 } };
+    const payload = buildTestPayload(u);
+    render(<ConciergeSectionsRenderer payload={payload} threadId={1} onAction={onAction} />);
+
+    window.dispatchEvent(new Event("concierge:open-filter"));
+    expect(onAction).toHaveBeenCalledWith({ type: "add_condition" });
+  });
+
+  it("free会員ではpremium_previewが表示され、クリックでpremium_preview_clickが送信される", () => {
+    authMock.useAuth.mockReturnValue({ isLoggedIn: true, loading: false });
+    const u: any = { data: { recommendations: [heroRec] }, thread: { id: 1 } };
+    const payload = buildTestPayload(u);
+    render(<ConciergeSectionsRenderer payload={payload} threadId={1} isPremiumActive={false} />);
+
+    const cta = screen.getByRole("link", { name: "変化を見返せるようにする" });
+    fireEvent.click(cta);
+
+    expect(analyticsMocks.trackCardEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ event: "premium_preview_click", cardId: "premium_preview" }),
+    );
+    expect(screen.getByText("この結果を保存すると、今の状態や選んだ理由をあとから見返せます。")).toBeInTheDocument();
+  });
+
+  it("Heroのtrust_metadataと詳細リンクのクリックが機能する", () => {
+    const u: any = { data: { recommendations: [heroRec] }, thread: { id: 1 } };
+    const payload = buildTestPayload(u);
+    render(<ConciergeSectionsRenderer payload={payload} threadId={1} isPremiumActive={true} />);
+
+    expect(screen.getByText("由緒あり")).toBeInTheDocument();
+    expect(screen.getByText("古くから信仰を集める神社です。")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("link", { name: "神社の詳細を見る" }));
+    expect(analyticsMocks.trackSearchEvent).toHaveBeenCalledWith(
+      "shrine_detail_transition",
+      expect.objectContaining({ position: "hero_primary", shrineId: 1 }),
+    );
+  });
+
+  it("未登録候補(place)はPlaceShrineCardとして表示される", () => {
+    const u: any = {
+      data: {
+        recommendations: [
+          heroRec,
+          {
+            place_id: "place-1",
+            display_name: "未登録神社",
+            reason: "未登録の理由",
+            address: "東京都港区1-1-1",
+          },
+        ],
+      },
+      thread: { id: 1 },
+    };
+    const payload = buildTestPayload(u);
+    render(<ConciergeSectionsRenderer payload={payload} threadId={1} />);
+
+    expect(screen.getByText("未登録神社")).toBeInTheDocument();
+    expect(screen.getByText("未登録")).toBeInTheDocument();
+  });
+
+  it("save_promptボタンがクリックでsave_concierge_threadを発火する", () => {
+    const onAction = vi.fn();
+    const u: any = { data: { recommendations: [heroRec] }, thread: { id: 1 } };
+    const payload = buildTestPayload(u);
+    render(<ConciergeSectionsRenderer payload={payload} threadId={1} onAction={onAction} />);
+
+    const saveButtons = screen.getAllByRole("button", { name: "ログインしてあとで見返す" });
+    fireEvent.click(saveButtons[saveButtons.length - 1]);
+
+    expect(analyticsMocks.trackCardEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ event: "save_prompt_click", cardId: "save_prompt" }),
+    );
+    expect(onAction).toHaveBeenCalledWith({ type: "save_concierge_thread" });
+  });
+});
