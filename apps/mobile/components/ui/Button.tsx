@@ -1,7 +1,9 @@
 // apps/mobile/components/ui/Button.tsx
 import { Pressable, Text, StyleSheet, ViewStyle } from "react-native";
-import { colors } from "../../app/theme";
+import { kamimusubiDarkSemanticTheme } from "../../app/theme";
 import { ctaSizes } from "../../app/design/ctaSizes";
+import { semanticRadius } from "../../app/design/radius";
+import { semanticShadow } from "../../app/design/shadow";
 
 type Props = {
   title: string;
@@ -14,9 +16,10 @@ export default function Button({ title, variant="neutral", style, onPress }: Pro
     variant === "primary" ? styles.btnPrimary :
     variant === "accent"  ? styles.btnAccent  : styles.btnNeutral;
   const textStyle =
-    variant === "accent" ? styles.btnAccentText : styles.btnText;
+    variant === "primary" ? styles.btnPrimaryText :
+    variant === "accent"  ? styles.btnAccentText  : styles.btnText;
   return (
-    <Pressable onPress={onPress} style={[styles.btn, theme, style]}>
+    <Pressable accessibilityRole="button" onPress={onPress} style={[styles.btn, theme, style]}>
       <Text style={[styles.btnTextBase, textStyle]}>{title}</Text>
     </Pressable>
   );
@@ -25,14 +28,24 @@ export default function Button({ title, variant="neutral", style, onPress }: Pro
 const styles = StyleSheet.create({
   btn: {
     height: ctaSizes.mediumHeight,
-    borderRadius: ctaSizes.mediumRadius,
+    borderRadius: semanticRadius.control,
     alignItems: "center",
     justifyContent: "center",
   },
-  btnPrimary: { backgroundColor: colors.primary },
-  btnAccent:  { backgroundColor: colors.accent },
-  btnNeutral: { backgroundColor: "#111" },
+  btnPrimary: {
+    backgroundColor: kamimusubiDarkSemanticTheme["action.primary"],
+    ...semanticShadow.brand,
+  },
+  btnAccent: {
+    backgroundColor: kamimusubiDarkSemanticTheme["premium.accent"],
+    ...semanticShadow.brand,
+  },
+  btnNeutral: {
+    backgroundColor: kamimusubiDarkSemanticTheme["surface.default"],
+    ...semanticShadow.low,
+  },
   btnTextBase:{ fontWeight: "600", fontSize: 16 },
-  btnText:    { color: "white" },
-  btnAccentText:{ color: colors.text },
+  btnText:    { color: kamimusubiDarkSemanticTheme["text.primary"] },
+  btnPrimaryText: { color: kamimusubiDarkSemanticTheme["action.primaryText"] },
+  btnAccentText:{ color: kamimusubiDarkSemanticTheme["text.inverse"] },
 });
