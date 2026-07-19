@@ -1,3 +1,9 @@
+// Mobile Radius Primitiveの正本 (docs/design/design-token.md Migration方針 5)。
+// 現行13画面以上・共通Component複数から実際に参照される。
+// 注意: lib/tokens/radius.ts にも同名 `radius` exportが存在するが、
+// 同じキー名 (sm/md/lg/xl) でも実値が異なり (例: md=16 vs 12, lg=18 vs 16, xl=20 vs 24)、
+// 2026-07時点でアプリ内のどこからもimportされていない未使用の重複定義。
+// 削除候補として記録するのみで、本PRでは削除・統合しない (design-token.mdの非対象)。
 export const radius = {
   xs: 12,
   sm: 14,

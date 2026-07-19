@@ -12,6 +12,8 @@
 // Web側のCSS変数命名 (例: --kt-color-background-base) とは
 // 「ハイフンで結合すれば同じ意味になる」という規則で対応させる。
 
+// Mobile Semantic Color Token契約の正本 (キー一覧・型)。実値は app/theme.ts の
+// kamimusubiDarkSemanticTheme。2026-07時点でどの画面・Componentからも未消費。
 export const SEMANTIC_COLOR_KEYS = [
   "background.base",
   "background.subtle",
