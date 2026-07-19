@@ -310,6 +310,9 @@ def _build_score_v3_candidate_profile(rec: dict[str, Any]) -> dict[str, Any]:
         "goriyaku": rec.get("goriyaku") or source.get("goriyaku"),
         "goriyaku_tags": rec.get("goriyaku_tags") or source.get("goriyakuTags") or breakdown.get("matched_need_tags") or [],
         "visit_style_tags": rec.get("visit_style_tags") or features.get("visit_style") or [],
+        "deity": rec.get("sajin") or source.get("sajin"),
+        "shrine_history": rec.get("description") or source.get("description"),
+        "place_context": rec.get("address") or source.get("address"),
         "place_id": rec.get("place_id"),
         "behavior_signals": rec.get("behavior_signals") if isinstance(rec.get("behavior_signals"), dict) else {},
     }

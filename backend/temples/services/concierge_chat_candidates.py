@@ -126,6 +126,7 @@ def build_chat_candidates(
                 "lng": s.longitude,
                 "distance_m": dist,
                 "goriyaku": getattr(s, "goriyaku", None),
+                "sajin": getattr(s, "sajin", None),
                 "description": getattr(s, "description", None),
                 "astro_tags": getattr(s, "astro_tags", None),
                 "astro_elements": getattr(s, "astro_elements", None),
