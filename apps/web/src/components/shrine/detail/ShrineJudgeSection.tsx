@@ -11,22 +11,22 @@ function isSupplementSection(section: DetailMeaningSection): boolean {
 
 function getItemClassName(item: DetailMeaningItem): string {
   if (item.key === "action_meaning") {
-    return "rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm";
+    return "rounded-[var(--kt-radius-card)] border border-[var(--kt-color-premium-border)] bg-[var(--kt-color-premium-surface)] p-4 shadow-[var(--kt-shadow-medium)]";
   }
 
   if (item.key === "today_flow") {
-    return "rounded-xl border border-slate-100 bg-white p-3";
+    return "rounded-[var(--kt-radius-panel)] border border-slate-100 bg-[var(--kt-color-surface-default)] p-3";
   }
 
   if (item.key === "after_visit_reflection") {
-    return "rounded-xl border border-emerald-100 bg-emerald-50/70 p-3";
+    return "rounded-[var(--kt-radius-panel)] border border-emerald-100 bg-emerald-50/70 p-3";
   }
 
   if (item.key === "history_context" || item.key === "deity_symbol" || item.key === "benefit_action") {
-    return "rounded-xl border border-slate-100 bg-slate-50/70 p-3";
+    return "rounded-[var(--kt-radius-panel)] border border-slate-100 bg-slate-50/70 p-3";
   }
 
-  return "rounded-xl bg-slate-50 p-3";
+  return "rounded-[var(--kt-radius-panel)] bg-[var(--kt-color-background-subtle)] p-3";
 }
 
 function getTitleClassName(item: DetailMeaningItem): string {
@@ -39,10 +39,10 @@ function getTitleClassName(item: DetailMeaningItem): string {
   }
 
   if (item.key === "history_context" || item.key === "deity_symbol" || item.key === "benefit_action") {
-    return "text-xs font-semibold tracking-[0.04em] text-slate-500";
+    return "text-xs font-semibold tracking-[0.04em] text-[var(--kt-color-text-muted)]";
   }
 
-  return "text-sm font-medium text-slate-700";
+  return "text-sm font-medium text-[var(--kt-color-text-secondary)]";
 }
 
 function getBodyClassName(item: DetailMeaningItem): string {
@@ -51,7 +51,7 @@ function getBodyClassName(item: DetailMeaningItem): string {
   }
 
   if (item.key === "history_context" || item.key === "deity_symbol" || item.key === "benefit_action") {
-    return "mt-1 text-xs leading-6 text-slate-500";
+    return "mt-1 text-xs leading-6 text-[var(--kt-color-text-muted)]";
   }
 
   return "mt-1 text-sm leading-7 text-slate-600";
@@ -73,9 +73,9 @@ function MeaningItems({ items }: { items: DetailMeaningItem[] }) {
 export default function ShrineJudgeSection({ section }: Props) {
   if (isSupplementSection(section)) {
     return (
-      <details className="rounded-2xl border border-slate-200 bg-white p-4">
-        <summary className="cursor-pointer list-none text-sm font-medium text-slate-700">
-          <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-700">
+      <details className="rounded-[var(--kt-radius-card)] border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-4">
+        <summary className="cursor-pointer list-none text-sm font-medium text-[var(--kt-color-text-secondary)]">
+          <span className="inline-flex items-center rounded-[var(--kt-radius-pill)] border border-[var(--kt-color-border-default)] bg-[var(--kt-color-background-subtle)] px-3 py-1.5 text-sm text-[var(--kt-color-text-secondary)]">
             {section.heading}
           </span>
         </summary>
@@ -88,8 +88,8 @@ export default function ShrineJudgeSection({ section }: Props) {
   }
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-4">
-      <h2 className="text-base font-semibold text-slate-900">{section.heading}</h2>
+    <section className="rounded-[var(--kt-radius-card)] border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-4">
+      <h2 className="text-base font-semibold text-[var(--kt-color-text-primary)]">{section.heading}</h2>
 
       <div className="mt-4">
         <MeaningItems items={section.items} />

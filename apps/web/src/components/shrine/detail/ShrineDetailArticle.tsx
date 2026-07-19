@@ -176,7 +176,7 @@ function PremiumUpgradePrompt({
   const ctaLabel = isGuestUser ? "ログインして意味を深掘りする" : "この神社を選ぶ意味を深掘りする";
 
   return (
-    <section className="rounded-2xl border border-amber-100 bg-amber-50/70 p-4">
+    <section className="rounded-[var(--kt-radius-card)] border border-amber-100 bg-amber-50/70 p-4">
       <div className="space-y-2">
         <p className="text-sm font-semibold leading-6 text-amber-950">
           {isGuestUser
@@ -186,7 +186,7 @@ function PremiumUpgradePrompt({
         <p className="text-xs leading-6 text-slate-600">相談内容に基づく状態整理、相性、行動の意味づけを表示します。</p>
         <Link
           href={href}
-          className="inline-flex items-center rounded-xl bg-amber-700 px-3 py-2 text-xs font-semibold text-white hover:bg-amber-800"
+          className="inline-flex items-center rounded-[var(--kt-radius-panel)] bg-[var(--kt-color-premium-accent)] px-3 py-2 text-xs font-semibold text-[var(--kt-color-text-inverse)] hover:bg-amber-800"
           onClick={() =>
             trackCardEvent({
               event: "premium_preview_click",
@@ -213,11 +213,11 @@ function ShrineDetailHeroHeader(props: { title: string; heroMeaningCopy?: string
   const resolvedHeroMeaningCopy = props.heroMeaningCopy?.trim() || "今のあなたと静かに重なる神社です。";
 
   return (
-    <section className="rounded-2xl border bg-white p-5 shadow-sm">
+    <section className="rounded-[var(--kt-radius-card)] border bg-[var(--kt-color-surface-default)] p-5 shadow-[var(--kt-shadow-medium)]">
       <div className="space-y-2">
-        <h1 className="text-xl font-semibold tracking-tight text-slate-900">{props.title}</h1>
+        <h1 className="text-xl font-semibold tracking-tight text-[var(--kt-color-text-primary)]">{props.title}</h1>
 
-        <p className="text-[11px] font-semibold tracking-[0.08em] text-slate-500">この神社の意味</p>
+        <p className="text-[11px] font-semibold tracking-[0.08em] text-[var(--kt-color-text-muted)]">この神社の意味</p>
 
         <p className="text-[15px] leading-7 text-slate-800">{resolvedHeroMeaningCopy}</p>
 
@@ -289,12 +289,12 @@ function ShrineDetailStateDeltaSection({
 
   if (!isPremiumActive) {
     return (
-      <section className="rounded-2xl border border-amber-200 bg-amber-50/80 p-4">
+      <section className="rounded-[var(--kt-radius-card)] border border-[var(--kt-color-premium-border)] bg-amber-50/80 p-4">
         <div className="space-y-2">
-          <p className="text-xs font-semibold tracking-[0.08em] text-amber-700">前回との違い</p>
+          <p className="text-xs font-semibold tracking-[0.08em] text-[var(--kt-color-premium-accent)]">前回との違い</p>
           <p className="text-sm font-semibold leading-6 text-amber-950">Premiumでは、前回からの変化をこの神社選びとあわせて確認できます。</p>
           <p className="text-xs leading-6 text-slate-600">今回強く出たテーマや、変わらず残っているテーマを見返せます。</p>
-          <Link href="/billing/upgrade?source=shrine_detail_state_delta&funnelStep=comparison_preview" className="inline-flex rounded-2xl bg-amber-700 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-800">
+          <Link href="/billing/upgrade?source=shrine_detail_state_delta&funnelStep=comparison_preview" className="inline-flex rounded-[var(--kt-radius-card)] bg-[var(--kt-color-premium-accent)] px-4 py-2 text-sm font-semibold text-[var(--kt-color-text-inverse)] hover:bg-amber-800">
             前回との違いを見る
           </Link>
         </div>
@@ -303,32 +303,32 @@ function ShrineDetailStateDeltaSection({
   }
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <section className="rounded-[var(--kt-radius-card)] border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-4 shadow-[var(--kt-shadow-medium)]">
       <div className="space-y-4">
         <div>
           <p className="text-xs font-semibold tracking-[0.08em] text-slate-400">前回との違い</p>
-          <p className="mt-2 text-sm leading-6 text-slate-700">
+          <p className="mt-2 text-sm leading-6 text-[var(--kt-color-text-secondary)]">
             {stateDelta.summary ??
               "今回の相談内容から、前回との違いを整理しています。相談を重ねるほど、変化の見え方が安定します。"}
           </p>
         </div>
 
         {stateDelta.transitionNarrative?.summary ? (
-          <div className="rounded-2xl bg-emerald-50/60 p-3">
+          <div className="rounded-[var(--kt-radius-card)] bg-emerald-50/60 p-3">
             <p className="text-xs font-semibold text-emerald-700">前回から変わったこと</p>
             <p className="mt-1 text-sm font-semibold leading-6 text-slate-800">
               {stateDelta.transitionNarrative.title}
             </p>
-            <p className="mt-2 text-sm leading-6 text-slate-700">{stateDelta.transitionNarrative.summary}</p>
+            <p className="mt-2 text-sm leading-6 text-[var(--kt-color-text-secondary)]">{stateDelta.transitionNarrative.summary}</p>
           </div>
         ) : null}
 
         {stateDelta.actionReflection ? (
-          <div className="rounded-2xl bg-amber-50/70 p-3">
-            <p className="text-xs font-semibold text-amber-700">前回の行動</p>
+          <div className="rounded-[var(--kt-radius-card)] bg-amber-50/70 p-3">
+            <p className="text-xs font-semibold text-[var(--kt-color-premium-accent)]">前回の行動</p>
             <p className="mt-1 text-sm font-semibold leading-6 text-slate-800">{stateDelta.actionReflection.title}</p>
-            <p className="mt-2 text-sm leading-6 text-slate-700">{stateDelta.actionReflection.summary}</p>
-            <p className="mt-2 text-xs font-semibold text-amber-700">{stateDelta.actionReflection.nextActionLabel}</p>
+            <p className="mt-2 text-sm leading-6 text-[var(--kt-color-text-secondary)]">{stateDelta.actionReflection.summary}</p>
+            <p className="mt-2 text-xs font-semibold text-[var(--kt-color-premium-accent)]">{stateDelta.actionReflection.nextActionLabel}</p>
           </div>
         ) : null}
 
@@ -338,9 +338,9 @@ function ShrineDetailStateDeltaSection({
           defaultOpen={false}
         >
           <div className="space-y-3">
-            <div className="rounded-2xl bg-slate-50 p-3">
-              <p className="text-xs font-semibold text-slate-500">今優先したいこと</p>
-              <p className="mt-2 text-sm leading-6 text-slate-700">
+            <div className="rounded-[var(--kt-radius-card)] bg-[var(--kt-color-background-subtle)] p-3">
+              <p className="text-xs font-semibold text-[var(--kt-color-text-muted)]">今優先したいこと</p>
+              <p className="mt-2 text-sm leading-6 text-[var(--kt-color-text-secondary)]">
                 {renderStateDeltaTagSentence(
                   changedNeedTags,
                   "今回は新しく強まったテーマを断定するより、今見えている流れを優先して整理しています。",
@@ -348,9 +348,9 @@ function ShrineDetailStateDeltaSection({
               </p>
             </div>
 
-            <div className="rounded-2xl bg-slate-50 p-3">
-              <p className="text-xs font-semibold text-slate-500">変わらず残っていること</p>
-              <p className="mt-2 text-sm leading-6 text-slate-700">
+            <div className="rounded-[var(--kt-radius-card)] bg-[var(--kt-color-background-subtle)] p-3">
+              <p className="text-xs font-semibold text-[var(--kt-color-text-muted)]">変わらず残っていること</p>
+              <p className="mt-2 text-sm leading-6 text-[var(--kt-color-text-secondary)]">
                 {renderStateDeltaTagSentence(
                   continuedNeedTags,
                   "今回は前回と同じテーマが中心に続くというより、別の方向に意識が向き始めています。",
@@ -632,8 +632,8 @@ export default function ShrineDetailArticle({
         />
         <ShrineDetailHeroCard title={cardProps.title} imageUrl={heroImageUrl} />
         {directionSupportCopy ? (
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-            <p className="text-xs leading-5 text-slate-500">{directionSupportCopy}</p>
+          <div className="rounded-[var(--kt-radius-card)] border border-[var(--kt-color-border-default)] bg-[var(--kt-color-background-subtle)] px-4 py-3">
+            <p className="text-xs leading-5 text-[var(--kt-color-text-muted)]">{directionSupportCopy}</p>
           </div>
         ) : null}
         {showStateDeltaSection ? (
@@ -641,7 +641,7 @@ export default function ShrineDetailArticle({
         ) : null}
         {/* 参拝後文言 (after-visit copy) */}
         {showAfterVisitCopy ? (
-          <div className="rounded-2xl border border-emerald-200 bg-white p-3 mt-2">
+          <div className="rounded-[var(--kt-radius-card)] border border-emerald-200 bg-[var(--kt-color-surface-default)] p-3 mt-2">
             <p className="text-sm font-semibold text-emerald-700">参拝お疲れさまでした</p>
             <p className="mt-1 text-xs text-slate-600">
               あなたの参拝が記録されました。次回の相談で前回の行動として振り返ることができます。
@@ -664,7 +664,7 @@ export default function ShrineDetailArticle({
 
       {resolvedSaveActionNode ? (
         <section className="pt-4">
-          <div className="overflow-hidden rounded-2xl border border-emerald-200 bg-white">
+          <div className="overflow-hidden rounded-[var(--kt-radius-card)] border border-emerald-200 bg-[var(--kt-color-surface-default)]">
             <div className="space-y-2 p-4">
               {resolvedSaveActionNode}
               <p className="text-xs leading-5 text-slate-600">あとで記録から見返せます</p>
@@ -684,15 +684,15 @@ export default function ShrineDetailArticle({
               ) : null}
             </div>
 
-            <div className="border-t border-slate-200 p-4">
+            <div className="border-t border-[var(--kt-color-border-default)] p-4">
               <div className="space-y-2">
                 {hasVisitHistory ? (
-                  <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3">
+                  <div className="rounded-[var(--kt-radius-panel)] border border-emerald-200 bg-emerald-50/70 p-3">
                     <p className="text-sm font-semibold text-emerald-700">参拝を記録しました</p>
                     <p className="mt-1 text-xs text-slate-600">次回の相談で、前回の行動として振り返れます。</p>
                   </div>
                 ) : (
-                  <p className="text-xs leading-5 text-slate-500">参拝後に記録できます</p>
+                  <p className="text-xs leading-5 text-[var(--kt-color-text-muted)]">参拝後に記録できます</p>
                 )}
 
                 {hasVisitHistory ? (
@@ -706,7 +706,7 @@ export default function ShrineDetailArticle({
                 ) : null}
 
                 {visitError ? (
-                  <div className="rounded-xl border border-rose-200 bg-white p-3">
+                  <div className="rounded-[var(--kt-radius-panel)] border border-rose-200 bg-[var(--kt-color-surface-default)] p-3">
                     <p className="text-sm font-semibold text-rose-700">参拝記録に失敗しました</p>
                   </div>
                 ) : null}
@@ -742,7 +742,7 @@ export default function ShrineDetailArticle({
                         setVisitSubmitting(false);
                       }
                     }}
-                    className="w-full rounded-2xl border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-50 disabled:opacity-60"
+                    className="w-full rounded-[var(--kt-radius-card)] border border-emerald-200 bg-[var(--kt-color-surface-default)] px-4 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-50 disabled:opacity-60"
                   >
                     {visitSubmitting ? "記録中..." : "参拝しました"}
                   </button>
@@ -774,7 +774,7 @@ export default function ShrineDetailArticle({
                 {benefitTagObjs.map((t) => (
                   <span
                     key={t.id}
-                    className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700"
+                    className="inline-flex items-center rounded-[var(--kt-radius-pill)] bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700"
                   >
                     {t.label}
                   </span>
@@ -785,7 +785,7 @@ export default function ShrineDetailArticle({
                 {benefitLabels.map((label) => (
                   <span
                     key={label}
-                    className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700"
+                    className="inline-flex items-center rounded-[var(--kt-radius-pill)] bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700"
                   >
                     {label}
                   </span>

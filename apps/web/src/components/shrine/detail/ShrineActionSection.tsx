@@ -9,7 +9,7 @@ function ActionItems({ items }: { items: DetailMeaningItem[] }) {
   return (
     <div className="space-y-3">
       {items.map((item) => (
-        <div key={item.key} className="rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
+        <div key={item.key} className="rounded-[var(--kt-radius-card)] border border-[var(--kt-color-premium-border)] bg-[var(--kt-color-premium-surface)] p-4 shadow-[var(--kt-shadow-medium)]">
           <h3 className="text-sm font-semibold text-amber-950">{item.title}</h3>
           <p className="mt-2 text-[15px] leading-7 text-amber-950">{item.body}</p>
         </div>
@@ -20,8 +20,8 @@ function ActionItems({ items }: { items: DetailMeaningItem[] }) {
 
 export default function ShrineActionSection({ section }: Props) {
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-4">
-      <h2 className="text-base font-semibold text-slate-900">{section.heading}</h2>
+    <section className="rounded-[var(--kt-radius-card)] border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-4">
+      <h2 className="text-base font-semibold text-[var(--kt-color-text-primary)]">{section.heading}</h2>
 
       <div className="mt-4">
         <ActionItems items={section.items} />

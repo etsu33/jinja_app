@@ -13,7 +13,7 @@ type Props = {
 export default function ShrineDetailHeroCard({ title, imageUrl = null }: Props) {
   return (
     <section className="pt-1">
-      <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <article className="overflow-hidden rounded-[var(--kt-radius-card)] border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] shadow-[var(--kt-shadow-medium)]">
         <div className="relative h-32 w-full bg-slate-100">
           {imageUrl ? (
             <Image src={imageUrl} alt={title} fill className="object-cover" sizes="(max-width: 768px) 100vw, 448px" />
@@ -21,7 +21,7 @@ export default function ShrineDetailHeroCard({ title, imageUrl = null }: Props) 
         </div>
 
         <div className="p-4">
-          <p className="text-sm font-semibold text-slate-900">{title}</p>
+          <p className="text-sm font-semibold text-[var(--kt-color-text-primary)]">{title}</p>
         </div>
       </article>
     </section>

@@ -65,8 +65,8 @@ export default function ShrineDetailShell({
         </div>
 
         <div className="min-w-0 flex-1 px-2 text-center">
-          <div className="truncate text-sm font-semibold text-slate-900">{title}</div>
-          {subtitle ? <div className="truncate text-[11px] text-slate-500">{subtitle}</div> : null}
+          <div className="truncate text-sm font-semibold text-[var(--kt-color-text-primary)]">{title}</div>
+          {subtitle ? <div className="truncate text-[11px] text-[var(--kt-color-text-muted)]">{subtitle}</div> : null}
         </div>
 
         {/* 右側はレイアウト固定のため空 */}
@@ -86,7 +86,7 @@ export default function ShrineDetailShell({
                 ctx={ctx}
                 tid={tid}
                 historyTheme={historyTheme}
-                className="inline-flex min-h-[44px] w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800"
+                className="inline-flex min-h-[44px] w-full items-center justify-center rounded-[var(--kt-radius-panel)] bg-slate-900 px-4 py-3 text-sm font-semibold text-[var(--kt-color-text-inverse)] hover:bg-slate-800"
               />
             ) : null}
 
@@ -97,7 +97,7 @@ export default function ShrineDetailShell({
             {addGoshuinHref ? (
               <Link
                 href={addGoshuinHref}
-                className="inline-flex min-h-[44px] w-full items-center justify-center rounded-xl border bg-white px-4 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-50"
+                className="inline-flex min-h-[44px] w-full items-center justify-center rounded-[var(--kt-radius-panel)] border bg-[var(--kt-color-surface-default)] px-4 py-3 text-sm font-semibold text-[var(--kt-color-text-primary)] hover:bg-slate-50"
               >
                 {LABELS.addGoshuin}
               </Link>

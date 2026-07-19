@@ -84,18 +84,18 @@ export default function ShrineSaveButton({
 
   const buttonClass =
     variant === "subtle"
-      ? `inline-flex w-full items-center justify-center rounded-xl border px-4 py-2.5 text-xs font-semibold transition
+      ? `inline-flex w-full items-center justify-center rounded-[var(--kt-radius-panel)] border px-4 py-2.5 text-xs font-semibold transition
           ${
             fav
               ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-              : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+              : "border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] text-[var(--kt-color-text-muted)] hover:bg-slate-50 hover:text-slate-700"
           }
           disabled:opacity-60`
-      : `inline-flex w-full items-center justify-center rounded-xl border px-4 py-3 text-sm font-semibold transition
+      : `inline-flex w-full items-center justify-center rounded-[var(--kt-radius-panel)] border px-4 py-3 text-sm font-semibold transition
           ${
             fav
               ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-              : "border-slate-300 bg-white text-slate-900 hover:bg-slate-50"
+              : "border-[var(--kt-color-border-strong)] bg-[var(--kt-color-surface-default)] text-[var(--kt-color-text-primary)] hover:bg-slate-50"
           }
           disabled:opacity-60`;
 
@@ -111,7 +111,7 @@ export default function ShrineSaveButton({
               : "あとで見返すために保存"}
       </button>
 
-      {err ? <p className="text-xs text-red-600">{err}</p> : null}
+      {err ? <p className="text-xs text-[var(--kt-color-status-error)]">{err}</p> : null}
     </div>
   );
 }
