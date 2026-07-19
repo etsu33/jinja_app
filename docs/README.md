@@ -1,6 +1,6 @@
 # docs/（設計・運用ドキュメント）
 
-このディレクトリは **AI参拝ナビの設計・運用・実装判断の根拠**を集約します。  
+このディレクトリは **AI参拝ナビの設計・運用・実装判断の根拠**を集約します。
 「どこに何が書いてあるか」を最短で辿れることを目的にしています。
 
 ---
@@ -151,6 +151,22 @@ WebはFrontendからBackend APIを直接呼び出さず、Next.js の `/api` Rou
 
 - `product/recommendation-v4-interpreter-contract.md`
   - Consultation InterpreterのInput / Output契約
+
+## 🎨 Design・UI基盤
+
+Web / Mobile共通のDesign Token、UI基盤および視覚言語に関する正本文書は以下を参照する。
+
+- `design/design-token.md`
+  - Primitive / Semantic / Platform Themeの3層構造
+  - Semantic Tokenの責務と参照原則
+  - Web / MobileのPlatform Theme差分方針
+  - Component Tokenの優先順位
+  - 段階的な移行順序とGovernance
+
+監査時点の現行値、重複実装およびWeb / Mobile比較の根拠は以下を参照する。
+
+- `audit/design-token-phase6-audit.md`
+  - Design Token Phase 6の棚卸し・比較・不整合記録
 
 ---
 
