@@ -1,7 +1,8 @@
 import * as React from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 import { post } from "../lib/http";
+import Button from "../components/ui/Button";
 import { setTokens } from "../lib/authTokens";
 import { kamimusubiDark as theme } from "./theme";
 import { spacing } from "./design/spacing";
@@ -81,22 +82,14 @@ export default function LoginScreen() {
 
           {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
 
-          <Pressable
+          <Button
+            title="ログインする"
+            variant="primary"
             onPress={onSubmit}
             disabled={!canSubmit}
-            style={({ pressed }) => [
-              styles.submitButton,
-              !canSubmit && styles.submitButtonDisabled,
-              pressed && styles.submitButtonPressed,
-            ]}
-            accessibilityRole="button"
-          >
-            {submitting ? (
-              <ActivityIndicator color={theme.background} />
-            ) : (
-              <Text style={styles.submitButtonText}>ログインする</Text>
-            )}
-          </Pressable>
+            loading={submitting}
+            accessibilityLabel="ログインする"
+          />
 
           <Pressable
             onPress={() => (router.canGoBack() ? router.back() : router.replace("/mypage"))}
@@ -167,24 +160,6 @@ const styles = StyleSheet.create({
     color: "#FCA5A5",
     fontSize: 13,
     lineHeight: 19,
-  },
-  submitButton: {
-    minHeight: 48,
-    borderRadius: radius.md,
-    backgroundColor: theme.gold,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  submitButtonDisabled: {
-    opacity: 0.5,
-  },
-  submitButtonPressed: {
-    opacity: 0.85,
-  },
-  submitButtonText: {
-    color: theme.background,
-    fontSize: 15,
-    fontWeight: "800",
   },
   backButton: {
     minHeight: 44,
