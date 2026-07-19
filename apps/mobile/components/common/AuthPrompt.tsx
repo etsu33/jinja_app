@@ -5,6 +5,7 @@ import { useRouter } from "expo-router";
 import { kamimusubiDark as theme } from "../../app/theme";
 import { spacing } from "../../app/design/spacing";
 import { radius } from "../../app/design/radius";
+import Button from "../ui/Button";
 
 type AuthPromptProps = {
   visible: boolean;
@@ -35,9 +36,13 @@ export function AuthPrompt({
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.description}>{description}</Text>
 
-          <Pressable onPress={handleLogin} style={styles.loginButton} accessibilityRole="button">
-            <Text style={styles.loginButtonText}>ログインする</Text>
-          </Pressable>
+          <Button
+            title="ログインする"
+            variant="primary"
+            onPress={handleLogin}
+            accessibilityLabel="ログインする"
+            style={styles.loginButtonSpacing}
+          />
 
           <Pressable onPress={onClose} style={styles.closeButton} accessibilityRole="button">
             <Text style={styles.closeButtonText}>{closeLabel}</Text>
@@ -76,19 +81,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
   },
-  loginButton: {
-    minHeight: 48,
-    borderRadius: radius.md,
-    backgroundColor: theme.gold,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: spacing.smGap,
-  },
-  loginButtonText: {
-    color: theme.background,
-    fontSize: 15,
-    fontWeight: "800",
-  },
   closeButton: {
     minHeight: 44,
     alignItems: "center",
@@ -98,5 +90,8 @@ const styles = StyleSheet.create({
     color: theme.muted,
     fontSize: 14,
     fontWeight: "700",
+  },
+  loginButtonSpacing: {
+    marginTop: spacing.smGap,
   },
 });
