@@ -159,26 +159,26 @@ export default function ConciergeTopRecommendationHero({
               </div>
             ) : null}
 
-            {originSummary ? <p className="text-sm leading-7 text-slate-700">{originSummary}</p> : null}
-            {address ? <div className="text-xs leading-5 text-slate-500">{address}</div> : null}
+            {originSummary ? <p className="text-sm leading-7 text-[var(--kt-color-text-secondary)]">{originSummary}</p> : null}
+            {address ? <div className="text-xs leading-5 text-[var(--kt-color-text-muted)]">{address}</div> : null}
           </div>
         </div>
 
-        <div className="rounded-2xl border border-emerald-100 bg-white/70 px-4 py-3 shadow-sm shadow-emerald-900/5">
+        <div className="rounded-[var(--kt-radius-card)] border border-emerald-100 bg-white/70 px-4 py-3 shadow-sm shadow-emerald-900/5">
           <div className="space-y-1.5">
             <p className="text-[11px] font-semibold tracking-[0.14em] text-emerald-700">今回の入口</p>
             <p className="text-sm font-semibold leading-6 text-slate-800">{entranceCopy}</p>
-            {topReasonLabel ? <p className="text-xs leading-5 text-slate-500">{topReasonLabel}</p> : null}
+            {topReasonLabel ? <p className="text-xs leading-5 text-[var(--kt-color-text-muted)]">{topReasonLabel}</p> : null}
           </div>
         </div>
 
         {actionSuggestionV4Summary ? (
           <div
-            className="rounded-2xl border border-teal-100 bg-teal-50/70 px-4 py-3 shadow-sm shadow-teal-900/5"
+            className="rounded-[var(--kt-radius-card)] border border-teal-100 bg-teal-50/70 px-4 py-3 shadow-sm shadow-teal-900/5"
             data-testid="hero-action-suggestion-v4-preview"
           >
             <p className="text-[11px] font-semibold tracking-[0.14em] text-teal-700">次の一歩</p>
-            <p className="mt-1 truncate text-sm leading-6 text-slate-700">{actionSuggestionV4Summary}</p>
+            <p className="mt-1 truncate text-sm leading-6 text-[var(--kt-color-text-secondary)]">{actionSuggestionV4Summary}</p>
           </div>
         ) : null}
 
@@ -187,7 +187,7 @@ export default function ConciergeTopRecommendationHero({
             <Link
               href={href}
               onClick={onDetailClick}
-              className="inline-flex w-full items-center justify-center rounded-2xl bg-emerald-600 px-5 py-3.5 text-sm font-bold text-white shadow-md shadow-emerald-900/20 transition hover:bg-emerald-700"
+              className="inline-flex w-full items-center justify-center rounded-[var(--kt-radius-card)] bg-[var(--kt-color-action-primary)] px-5 py-3.5 text-sm font-bold text-[var(--kt-color-action-primary-text)] shadow-md shadow-emerald-900/20 transition hover:bg-[var(--kt-color-action-primary-hover)]"
             >
               {routeLabel}
             </Link>

@@ -49,9 +49,9 @@ export default function ShrineCardCompact({
   const originSummary = trustMetadata?.originSummary?.trim() || null;
 
   return (
-    <article className="rounded-2xl border border-slate-100 bg-white/90 p-3">
+    <article className="rounded-[var(--kt-radius-card)] border border-slate-100 bg-white/90 p-3">
       <div className="flex gap-3">
-        <div className="h-14 w-16 shrink-0 overflow-hidden rounded-xl bg-slate-100">
+        <div className="h-14 w-16 shrink-0 overflow-hidden rounded-[var(--kt-radius-image)] bg-slate-100">
           {imageUrl ? (
             <Image src={imageUrl} alt={name} width={64} height={56} className="h-full w-full object-cover" />
           ) : null}
@@ -59,7 +59,7 @@ export default function ShrineCardCompact({
 
         <div className="min-w-0 flex-1">
           <div className="space-y-1.5">
-            <h3 className="truncate text-sm font-semibold text-slate-900">{name}</h3>
+            <h3 className="truncate text-sm font-semibold text-[var(--kt-color-text-primary)]">{name}</h3>
             {visibleTrustLabels.length > 0 ? (
               <div className="flex flex-wrap gap-1">
                 {visibleTrustLabels.map((label) => (
@@ -72,17 +72,17 @@ export default function ShrineCardCompact({
                 ))}
               </div>
             ) : null}
-            {originSummary ? <p className="line-clamp-1 text-xs leading-5 text-slate-500">{originSummary}</p> : null}
+            {originSummary ? <p className="line-clamp-1 text-xs leading-5 text-[var(--kt-color-text-muted)]">{originSummary}</p> : null}
             {!originSummary && primaryReason ? (
-              <p className="line-clamp-1 text-xs leading-5 text-slate-500">{primaryReason}</p>
+              <p className="line-clamp-1 text-xs leading-5 text-[var(--kt-color-text-muted)]">{primaryReason}</p>
             ) : null}
           </div>
 
           {address || distText || href ? (
             <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
-              {address ? <span className="truncate text-xs text-slate-500">{address}</span> : null}
+              {address ? <span className="truncate text-xs text-[var(--kt-color-text-muted)]">{address}</span> : null}
 
-              {!address && distText ? <span className="text-xs text-slate-500">{distText}</span> : null}
+              {!address && distText ? <span className="text-xs text-[var(--kt-color-text-muted)]">{distText}</span> : null}
 
               {href ? (
                 <Link
