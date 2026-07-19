@@ -1,3 +1,9 @@
+// Mobile Color正本 (docs/design/design-token.md Migration方針 5)
+// - colors: Light基調の初期パレット。2026-07時点でアプリ内から到達するimportは
+//   components/ui/Button.tsx のみで、その Button.tsx 自体もアプリ内のどこからも
+//   importされていない (実質未使用の到達不能パス)。削除は本PRの対象外。
+// - kamimusubiDark: 現行Mobile全画面が実際に参照するDark基調の正本Primitive。
+//   Color Primitiveの実質的な正本はこちら。
 export const colors = {
   paper: "#F6F3EE",
   primary: "#E24E33",
@@ -48,6 +54,10 @@ export type KamimusubiDarkColorKey = keyof typeof kamimusubiDark;
 // tscレベルで強制する (1つでも欠けるとコンパイルエラーになる)。
 import type { PlatformColorTheme } from "./design/semanticColorTokens";
 
+// Mobile Semantic Color Token契約の正本実値 (キー一覧・型は design/semanticColorTokens.ts)。
+// 2026-07時点でこのオブジェクトを参照するのは本ファイル (型契約の充足) のみで、
+// 画面・Componentからの消費はまだ無い (design-token.md Migration方針 PR6
+// 「Mobile共通Component適用」で初めて消費される想定)。
 export const kamimusubiDarkSemanticTheme: PlatformColorTheme = {
   "background.base": kamimusubiDark.background,
   "background.subtle": kamimusubiDark.surfaceSoft,

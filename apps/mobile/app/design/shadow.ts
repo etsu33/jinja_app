@@ -1,3 +1,7 @@
+// Mobile Shadow/Elevation Primitiveの正本 (docs/design/design-token.md Migration方針 5)。
+// lib/tokens/*には対応する重複定義は存在しない。
+// 2026-07時点で card / softCard / goldCta が app/index.tsx・app/concierge/index.tsx から
+// 実際に参照されている。lightCard / skeleton は現時点でどこからも未参照。
 export const shadows = {
   card: {
     shadowColor: "#000",
