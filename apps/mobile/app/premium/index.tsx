@@ -1,6 +1,5 @@
 import * as React from "react";
 import {
-  ActivityIndicator,
   AppState,
   Linking,
   Pressable,
@@ -36,7 +35,6 @@ import { kamimusubiDark as theme } from "../theme";
 import { spacing } from "../design/spacing";
 import { cardSizes } from "../design/cardSizes";
 import { radius } from "../design/radius";
-import { ctaSizes } from "../design/ctaSizes";
 import Button from "../../components/ui/Button";
 
 // Stripe Checkout はhttp(s)のリダイレクト先を要求するため、Web版の /billing/success, /billing/cancel を再利用する。
@@ -261,22 +259,14 @@ export default function PremiumScreen() {
 
             {isPremiumStatus(state.status) ? null : (
               <View style={styles.checkoutSection}>
-                <Pressable
+                <Button
+                  title="Premiumに登録する"
+                  variant="primary"
                   onPress={() => void onStartCheckout()}
                   disabled={checkoutLoading}
-                  style={({ pressed }) => [
-                    styles.checkoutButton,
-                    checkoutLoading && styles.checkoutButtonDisabled,
-                    pressed && !checkoutLoading && styles.checkoutButtonPressed,
-                  ]}
-                  accessibilityRole="button"
-                >
-                  {checkoutLoading ? (
-                    <ActivityIndicator color={theme.background} />
-                  ) : (
-                    <Text style={styles.checkoutButtonText}>Premiumに登録する</Text>
-                  )}
-                </Pressable>
+                  loading={checkoutLoading}
+                  accessibilityLabel="Premiumに登録する"
+                />
 
                 {checkoutError ? <Text style={styles.checkoutErrorText}>{checkoutError}</Text> : null}
               </View>
@@ -352,24 +342,6 @@ const styles = StyleSheet.create({
   checkoutSection: {
     marginTop: spacing.smGap,
     gap: spacing.smGap,
-  },
-  checkoutButton: {
-    minHeight: ctaSizes.mediumHeight,
-    borderRadius: radius.md,
-    backgroundColor: theme.gold,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  checkoutButtonDisabled: {
-    opacity: 0.6,
-  },
-  checkoutButtonPressed: {
-    opacity: 0.85,
-  },
-  checkoutButtonText: {
-    color: theme.background,
-    fontSize: 15,
-    fontWeight: "800",
   },
   checkoutErrorText: {
     color: theme.gold,
