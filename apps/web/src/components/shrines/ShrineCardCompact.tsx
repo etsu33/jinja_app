@@ -33,7 +33,7 @@ export default function ShrineCardCompact({
   imageUrl = null,
   address = null,
   summary: _summary = null,
-  primaryReason: _primaryReason = null,
+  primaryReason = null,
   trustMetadata = null,
   tags: _tags = [],
   distanceM = null,
@@ -73,6 +73,9 @@ export default function ShrineCardCompact({
               </div>
             ) : null}
             {originSummary ? <p className="line-clamp-1 text-xs leading-5 text-slate-500">{originSummary}</p> : null}
+            {!originSummary && primaryReason ? (
+              <p className="line-clamp-1 text-xs leading-5 text-slate-500">{primaryReason}</p>
+            ) : null}
           </div>
 
           {address || distText || href ? (
@@ -85,7 +88,7 @@ export default function ShrineCardCompact({
                 <Link
                   href={href}
                   onClick={onDetailClick}
-                  className="ml-auto inline-flex items-center text-[11px] font-normal text-slate-400 transition hover:text-slate-600"
+                  className="-m-3 ml-auto inline-flex items-center p-3 text-[11px] font-normal text-slate-400 transition hover:text-slate-600"
                 >
                   詳細だけ見る
                 </Link>
