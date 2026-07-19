@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import DetailSection from "@/components/shrine/DetailSection";
 import PlaceShrineCard from "@/components/shrine/PlaceShrineCard";
@@ -236,6 +236,7 @@ export default function ConciergeSectionsRenderer({
   const trackedImpressionKeysRef = useRef<Set<string>>(new Set());
   const trackedCardEventKeysRef = useRef<Set<string>>(new Set());
   const [showOtherRecommendations, setShowOtherRecommendations] = useState(false);
+  const otherRecommendationsId = useId();
 
   const { isLoggedIn, loading: authLoading } = useAuth();
   const isGuestUser = !authLoading && !isLoggedIn;
@@ -957,30 +958,56 @@ export default function ConciergeSectionsRenderer({
 
                   {otherRegisteredItems.length > 0 ? (
                     <div className="pt-8">
-                      {!showOtherRecommendations ? (
-                        <button
-                          type="button"
-                          className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs font-semibold text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
-                          onClick={() => setShowOtherRecommendations(true)}
-                        >
-                          迷った時だけ、ほかの神社を見る
-                        </button>
-                      ) : (
-                        <div>
-                          <div className="mb-2 text-xs font-semibold tracking-[0.16em] text-slate-500">ほかの神社</div>
+                      <button
+                        type="button"
+                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs font-semibold text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
+                        aria-expanded={showOtherRecommendations}
+                        aria-controls={otherRecommendationsId}
+                        onClick={() => setShowOtherRecommendations((prev) => !prev)}
+                      >
+                        {showOtherRecommendations ? "ほかの神社を閉じる" : "迷った時だけ、ほかの神社を見る"}
+                      </button>
+
+                      {showOtherRecommendations ? (
+                        <div id={otherRecommendationsId}>
+                          <div className="mb-2 mt-3 text-xs font-semibold tracking-[0.16em] text-slate-500">
+                            ほかの神社
+                          </div>
                           <p className="mb-3 text-xs leading-5 text-slate-500">迷った時の参考です。</p>
 
                           <div className="space-y-3">
                             {otherRegisteredItems.map((item: RegisteredShrineItem, compactIdx: number) => {
+                              const compactReasonVm = buildRecommendationReasonViewModel({
+                                rec: {
+                                  id: item.shrineId,
+                                  display_name: item.title,
+                                  name: item.title,
+                                  breakdown: item.breakdown ?? null,
+                                  breakdown_detail: (item as any).breakdown_detail ?? null,
+                                  reason: item.description ?? null,
+                                  fallback_mode: payload?.meta?.resultState?.fallback_mode ?? null,
+                                  distance_m: (item as any).distance_m ?? null,
+                                  popular_score: (item as any).popular_score ?? null,
+                                  astro_elements: (item as any).astro_elements ?? null,
+                                  astro_priority: (item as any).astro_priority ?? null,
+                                  explanation: (item as any).explanation ?? null,
+                                  reason_facts: (item as any).reasonFacts ?? null,
+                                },
+                                index: compactIdx + 1,
+                                mode: normalizedMode,
+                                birthdate: filterState?.birthdate ?? null,
+                                needTags: item.breakdown?.matched_need_tags ?? [],
+                              });
+
                               return (
                                 <div key={`rec-${i}-compact-${item.shrineId}`} className="space-y-2">
                                   <ShrineCardCompact
                                     name={item.title}
                                     href={item.detailHref}
                                     imageUrl={item.imageUrl}
-                                    address={null}
+                                    address={item.address ?? null}
                                     summary={null}
-                                    primaryReason={null}
+                                    primaryReason={compactReasonVm.list.primaryPhrase}
                                     tags={[]}
                                     distanceM={(item as any).distance_m ?? null}
                                     onDetailClick={() =>
@@ -1013,7 +1040,7 @@ export default function ConciergeSectionsRenderer({
                             })}
                           </div>
                         </div>
-                      )}
+                      ) : null}
                     </div>
                   ) : null}
 
