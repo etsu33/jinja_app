@@ -1,0 +1,111 @@
+/*
+ * Design Token v1 定義基盤 (Web)
+ *
+ * 正本: docs/design/design-token.md
+ * 監査根拠: docs/audit/design-token-phase6-audit.md
+ *
+ * 3層構造:
+ *   1. Primitive Token  — 意味を持たない生の値。Tailwind v4が自動生成する
+ *      --color-{palette}-{shade} 変数 (node_modules/tailwindcss/theme.css) を
+ *      そのまま参照する。ここで新しい色の値を作らない。
+ *   2. Semantic Token    — 役割ベースの命名。Primitive Tokenを参照する。
+ *      Componentは原則この層のみを参照する。
+ *   3. Platform Theme    — このファイルはWebのTheme実装であり、
+ *      現行のLight基調・Emeraldブランドをそのまま採用する
+ *      (Web Emerald / Mobile Goldの統一可否は保留事項。
+ *       docs/design/design-token.md の「保留事項」を参照)。
+ *
+ * 既存のshadcn Token (--background, --primary 等、apps/web/src/app/globals.css)
+ * とは名前空間を分離するため、すべて `--kt-` プレフィックスを付与する。
+ * 既存のTailwind/shadcn Token解決には一切影響しない。
+ *
+ * このファイルは型・参照契約の定義のみを目的とし、既存Componentへの適用は
+ * 別PR (docs/design/design-token.md の Migration方針 2〜6) で行う。
+ */
+
+:root {
+  /* ---- Semantic Token: background ---- */
+  /* Web現行: bg-white中心 (docs/audit/design-token-phase6-audit.md 調査1) */
+  --kt-color-background-base: var(--color-white);
+  --kt-color-background-subtle: var(--color-slate-50);
+
+  /* ---- Semantic Token: surface ---- */
+  /* Web現行: Card背景はほぼ全てbg-white (rounded-2xl/xl + border + bg-white系) */
+  --kt-color-surface-default: var(--color-white);
+  --kt-color-surface-elevated: var(--color-white);
+
+  /* ---- Semantic Token: text ---- */
+  --kt-color-text-primary: var(--color-slate-900);
+  --kt-color-text-secondary: var(--color-slate-700);
+  --kt-color-text-muted: var(--color-slate-500);
+  --kt-color-text-inverse: var(--color-white);
+
+  /* ---- Semantic Token: border ---- */
+  --kt-color-border-default: var(--color-slate-200);
+  --kt-color-border-strong: var(--color-slate-300);
+  --kt-color-border-focus: var(--color-emerald-300);
+
+  /* ---- Semantic Token: action ---- */
+  /* Web現行: emerald-600系がブランド/primary action (47ファイルで使用) */
+  --kt-color-action-primary: var(--color-emerald-600);
+  --kt-color-action-primary-hover: var(--color-emerald-700);
+  --kt-color-action-primary-text: var(--color-white);
+  --kt-color-action-disabled: var(--color-slate-300);
+
+  /* ---- Semantic Token: status ---- */
+  /* Web現行: errorはred-*系で体系化済み。success/warning/infoは
+     Phase 6監査で体系的な既存定義が確認できなかったため、
+     現行のブランド/ニュートラルパレットからの暫定候補値とする。
+     最終値は保留事項ではなく本PRで確定するが、警告色の選定根拠は
+     既存慣用パターンが薄いため、後続PRでの見直しを妨げない。 */
+  --kt-color-status-success: var(--color-emerald-600);
+  --kt-color-status-warning: var(--color-amber-600);
+  --kt-color-status-error: var(--color-red-600);
+  --kt-color-status-info: var(--color-slate-600);
+
+  /* ---- Semantic Token: premium ---- */
+  /* Web現行: amber-*系 (17ファイルで使用) */
+  --kt-color-premium-accent: var(--color-amber-700);
+  --kt-color-premium-surface: var(--color-amber-50);
+  --kt-color-premium-border: var(--color-amber-200);
+
+  /* ---- Semantic Token: overlay ---- */
+  /* Web現行: bg-black/50が最も一般的 (GoshuinDetailModal等はbg-stone-950/35で
+     不統一だったため、より広く使われているbg-black/50相当を採用) */
+  --kt-color-overlay-default: rgb(0 0 0 / 0.5);
+
+  /* ================================================================
+   * Spacing (Primitiveは Tailwind の --spacing 基準値を係数計算で使用)
+   * Web現行頻出値: p-4(107回)/px-4(91回)≒16px, px-3(121回)/p-3(53回)≒12px,
+   *   gap-2(80回)≒8px, space-y-4(42回)≒16px
+   * ================================================================ */
+  --kt-space-page-x: calc(var(--spacing) * 4); /* 16px */
+  --kt-space-section-y: calc(var(--spacing) * 6); /* 24px */
+  --kt-space-card: calc(var(--spacing) * 4); /* 16px */
+  --kt-space-control-x: calc(var(--spacing) * 4); /* 16px */
+  --kt-space-control-y: calc(var(--spacing) * 2); /* 8px */
+  --kt-space-inline-gap: calc(var(--spacing) * 2); /* 8px */
+  --kt-space-stack-gap: calc(var(--spacing) * 3); /* 12px */
+
+  /* ================================================================
+   * Radius (Primitiveは Tailwind の --radius-* をそのまま参照)
+   * Web現行: rounded-2xl(123回,最多)がCard、rounded-full(108回)がPill、
+   *   rounded-md(shadcn既定)がButton/Input
+   * ================================================================ */
+  --kt-radius-control: var(--radius-md);
+  --kt-radius-card: var(--radius-2xl);
+  --kt-radius-panel: var(--radius-xl);
+  --kt-radius-modal: var(--radius-2xl);
+  --kt-radius-image: var(--radius-xl);
+  --kt-radius-pill: 9999px;
+
+  /* ================================================================
+   * Shadow / Elevation (Primitiveは Tailwind の --shadow-* をそのまま参照)
+   * Web現行: shadow-sm(41回,最多)がCard標準
+   * ================================================================ */
+  --kt-shadow-none: none;
+  --kt-shadow-low: var(--shadow-xs);
+  --kt-shadow-medium: var(--shadow-sm);
+  --kt-shadow-high: var(--shadow-lg);
+  --kt-shadow-brand: 0 10px 15px -3px color-mix(in oklab, var(--color-emerald-900) 20%, transparent), var(--shadow-md);
+}
