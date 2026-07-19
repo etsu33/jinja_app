@@ -65,4 +65,59 @@ describe("Button", () => {
     expect(link).toBeInTheDocument();
     expect(link).toHaveAttribute("href", "/mypage");
   });
+
+  it("追加のclassNameがButtonへ維持される", () => {
+    render(<Button className="custom-extra-class">追加class</Button>);
+    expect(screen.getByRole("button", { name: "追加class" })).toHaveClass("custom-extra-class");
+  });
+
+  it("disabledのとき操作不能になる", () => {
+    const onClick = vi.fn();
+    render(
+      <Button disabled onClick={onClick}>
+        無効
+      </Button>,
+    );
+    const btn = screen.getByRole("button", { name: "無効" });
+    expect(btn).toBeDisabled();
+    fireEvent.click(btn);
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  describe("Design Token参照 (Semantic Token契約、CSS文字列全体の比較はしない)", () => {
+    it("baseクラスがradius Semantic Tokenを参照する", () => {
+      render(<Button>Base</Button>);
+      expect(screen.getByRole("button", { name: "Base" }).className).toContain(
+        "rounded-[var(--kt-radius-control)]",
+      );
+    });
+
+    it("default variantがshadow Semantic Tokenを参照する", () => {
+      render(<Button variant="default">Default</Button>);
+      expect(screen.getByRole("button", { name: "Default" }).className).toContain(
+        "shadow-[var(--kt-shadow-low)]",
+      );
+    });
+
+    it("destructive variantがstatus-error Semantic Tokenを参照する", () => {
+      render(<Button variant="destructive">Destructive</Button>);
+      const className = screen.getByRole("button", { name: "Destructive" }).className;
+      expect(className).toContain("bg-[var(--kt-color-status-error)]");
+      expect(className).toContain("shadow-[var(--kt-shadow-low)]");
+    });
+
+    it("outline variantがsurface-default Semantic Tokenを参照する", () => {
+      render(<Button variant="outline">Outline</Button>);
+      const className = screen.getByRole("button", { name: "Outline" }).className;
+      expect(className).toContain("bg-[var(--kt-color-surface-default)]");
+      expect(className).toContain("shadow-[var(--kt-shadow-low)]");
+    });
+
+    it("secondary variantがshadow Semantic Tokenを参照する", () => {
+      render(<Button variant="secondary">Secondary</Button>);
+      expect(screen.getByRole("button", { name: "Secondary" }).className).toContain(
+        "shadow-[var(--kt-shadow-low)]",
+      );
+    });
+  });
 });
