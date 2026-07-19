@@ -1,0 +1,48 @@
+name: mobile-ci
+
+on:
+  pull_request:
+    branches:
+      - develop
+    paths:
+      - "apps/mobile/**"
+      - ".github/workflows/mobile-ci.yml"
+  push:
+    branches:
+      - develop
+    paths:
+      - "apps/mobile/**"
+      - ".github/workflows/mobile-ci.yml"
+
+jobs:
+  mobile-test:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: apps/mobile
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.3
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: apps/mobile/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-workspace
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: Run typecheck
+        run: pnpm typecheck
