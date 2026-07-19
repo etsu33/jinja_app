@@ -1,6 +1,6 @@
 > **Status: Active**
 >
-> 本ドキュメントは、KAMI MUSUBI（Web / Mobile）のDesign Token v1の正本候補である。
+> 本ドキュメントは、KAMI MUSUBI（Web / Mobile）のDesign Token構造・責務・移行原則に関する現行正本である。
 >
 > 本文書はPhase 6監査（`docs/audit/design-token-phase6-audit.md`）の事実に基づくが、Token値・ブランド方針の一部は未確定である。「保留事項」節に列挙した項目は、この文書だけでは結論が出せない製品判断であり、決定後に本文書を更新する。
 >
