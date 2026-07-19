@@ -37,6 +37,7 @@ import { spacing } from "../design/spacing";
 import { cardSizes } from "../design/cardSizes";
 import { radius } from "../design/radius";
 import { ctaSizes } from "../design/ctaSizes";
+import Button from "../../components/ui/Button";
 
 // Stripe Checkout はhttp(s)のリダイレクト先を要求するため、Web版の /billing/success, /billing/cancel を再利用する。
 // API サーバーのオリジンを流用した暫定値。Webアプリの配信ドメインが確定したら差し替える。
@@ -220,19 +221,13 @@ export default function PremiumScreen() {
 
   return (
     <>
-      <ScrollView
-        style={styles.screen}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Pressable onPress={() => router.replace("/mypage")} style={styles.backButton}>
             <Text style={styles.backText}>← マイページへ戻る</Text>
           </Pressable>
           <Text style={styles.title}>Premium</Text>
-          <Text style={styles.subtitle}>
-            前回比較、深い振り返り、保存した相談の整理などをPremiumで利用できます。
-          </Text>
+          <Text style={styles.subtitle}>前回比較、深い振り返り、保存した相談の整理などをPremiumで利用できます。</Text>
         </View>
 
         {state.kind === "loading" ? (
@@ -245,17 +240,18 @@ export default function PremiumScreen() {
               title="登録状況を確認できませんでした"
               description="通信状況を確認して、もう一度お試しください。"
             />
-            <Pressable onPress={() => void loadStatus()} style={styles.retryButton} accessibilityRole="button">
-              <Text style={styles.retryButtonText}>再試行</Text>
-            </Pressable>
+            <Button
+              title="再試行"
+              variant="outline"
+              size="compact"
+              onPress={() => void loadStatus()}
+              accessibilityLabel="Premiumの登録状況を再確認する"
+            />
           </View>
         ) : null}
 
         {state.kind === "unauthenticated" ? (
-          <StateCard
-            title="ログインが必要です"
-            description="Premiumの登録状況を見るには、ログインしてください。"
-          />
+          <StateCard title="ログインが必要です" description="Premiumの登録状況を見るには、ログインしてください。" />
         ) : null}
 
         {state.kind === "ready" ? (
@@ -333,19 +329,6 @@ const styles = StyleSheet.create({
   },
   errorBlock: {
     gap: spacing.smGap,
-  },
-  retryButton: {
-    alignSelf: "flex-start",
-    borderWidth: cardSizes.borderWidth,
-    borderColor: theme.borderGold,
-    borderRadius: radius.pill,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  retryButtonText: {
-    color: theme.gold,
-    fontSize: 13,
-    fontWeight: "800",
   },
   statusCard: {
     backgroundColor: theme.surface,
