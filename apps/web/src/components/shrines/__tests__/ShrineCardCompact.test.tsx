@@ -54,4 +54,27 @@ describe("ShrineCardCompact", () => {
 
     expect(container.querySelectorAll("p")).toHaveLength(0);
   });
+
+  describe("Design Token参照 (Semantic Token契約、CSS文字列全体の比較はしない)", () => {
+    it("radius-card / radius-image / text-primary / text-mutedを参照する", () => {
+      const { container } = render(
+        <ShrineCardCompact
+          name="検証神社"
+          href="/shrines/1?ctx=concierge"
+          address="東京都千代田区1-1-1"
+          primaryReason="短い理由"
+        />,
+      );
+
+      const article = container.querySelector("article");
+      expect(article?.className).toContain("rounded-[var(--kt-radius-card)]");
+
+      const imageWrap = container.querySelector("article > div > div");
+      expect(imageWrap?.className).toContain("rounded-[var(--kt-radius-image)]");
+
+      expect(screen.getByText("検証神社").className).toContain("text-[var(--kt-color-text-primary)]");
+      expect(screen.getByText("東京都千代田区1-1-1").className).toContain("text-[var(--kt-color-text-muted)]");
+      expect(screen.getByText("短い理由").className).toContain("text-[var(--kt-color-text-muted)]");
+    });
+  });
 });

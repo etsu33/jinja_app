@@ -196,4 +196,19 @@ describe("ConciergeSectionsRenderer - 他候補の開閉UI", () => {
       }),
     );
   });
+
+  describe("Design Token参照 (Semantic Token契約、CSS文字列全体の比較はしない)", () => {
+    it("開閉トリガーボタンがradius-card / border-default / surface-default / text-mutedを参照する", () => {
+      const payload = buildTestPayload([heroRec, otherRecWithAddress]);
+      render(<ConciergeSectionsRenderer payload={payload} threadId={768} isPremiumActive={true} />);
+
+      const toggle = screen.getByRole("button", { name: "迷った時だけ、ほかの神社を見る" });
+      expect(toggle.className).toContain("rounded-[var(--kt-radius-card)]");
+      expect(toggle.className).toContain("border-[var(--kt-color-border-default)]");
+      expect(toggle.className).toContain("bg-[var(--kt-color-surface-default)]");
+      expect(toggle.className).toContain("text-[var(--kt-color-text-muted)]");
+      expect(toggle.className).toContain("hover:bg-[var(--kt-color-background-subtle)]");
+      expect(toggle.className).toContain("hover:text-[var(--kt-color-text-secondary)]");
+    });
+  });
 });

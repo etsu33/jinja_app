@@ -185,4 +185,41 @@ describe("ConciergeTopRecommendationHero", () => {
     fireEvent.click(screen.getByRole("link", { name: "神社の詳細を見る" }));
     expect(onDetailClick).toHaveBeenCalledTimes(1);
   });
+
+  describe("Design Token参照 (Semantic Token契約、CSS文字列全体の比較はしない)", () => {
+    it("CTAリンクがaction-primary系Tokenを参照する", () => {
+      render(
+        <ConciergeTopRecommendationHero
+          name="検証神社"
+          href="/shrines/17?ctx=concierge"
+          catchCopy="今の相談に合う候補です。"
+          routeLabel="詳しく見る"
+        />,
+      );
+
+      const cta = screen.getByRole("link", { name: "詳しく見る" });
+      expect(cta.className).toContain("rounded-[var(--kt-radius-card)]");
+      expect(cta.className).toContain("bg-[var(--kt-color-action-primary)]");
+      expect(cta.className).toContain("text-[var(--kt-color-action-primary-text)]");
+      expect(cta.className).toContain("hover:bg-[var(--kt-color-action-primary-hover)]");
+    });
+
+    it("originSummary / address / topReasonLabelがtext-secondary / text-mutedを参照する", () => {
+      render(
+        <ConciergeTopRecommendationHero
+          name="検証神社"
+          href="/shrines/17?ctx=concierge"
+          catchCopy="今の相談に合う候補です。"
+          originSummary="由緒の要約"
+          address="東京都千代田区1-1-1"
+          topReasonLabel="選ばれた理由"
+          routeLabel="詳しく見る"
+        />,
+      );
+
+      expect(screen.getByText("由緒の要約").className).toContain("text-[var(--kt-color-text-secondary)]");
+      expect(screen.getByText("東京都千代田区1-1-1").className).toContain("text-[var(--kt-color-text-muted)]");
+      expect(screen.getByText("選ばれた理由").className).toContain("text-[var(--kt-color-text-muted)]");
+    });
+  });
 });

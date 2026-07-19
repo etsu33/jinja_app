@@ -37,9 +37,15 @@ type AnalyticsContext = Pick<
   "mode" | "flow" | "hasBirthdate" | "recommendationCount" | "historyTheme" | "consultationAxis"
 >;
 
-const conciergeSoftCardClass = "rounded-2xl border border-slate-200 bg-slate-50 shadow-sm p-4";
-const conciergeNoticeCardClass = "rounded-2xl border border-amber-200 bg-amber-50 shadow-sm p-4";
-const conciergePremiumCardClass = "rounded-2xl border border-amber-200 bg-amber-50/80 shadow-sm p-4";
+// Design Token v1: 実値が完全一致する箇所のみ --kt-* 参照へ置換 (docs/design/design-token.md)
+const conciergeSoftCardClass =
+  "rounded-[var(--kt-radius-card)] border border-[var(--kt-color-border-default)] bg-[var(--kt-color-background-subtle)] shadow-[var(--kt-shadow-medium)] p-4";
+// border-amber-200 / bg-amber-50 は値としてはPremium Tokenと一致するが、
+// 本カードの意味は「Notice(警告・注意喚起)」でありPremiumではないため、
+// 意味の異なるTokenを流用しないよう非適用とする(radius/shadowのみ置換)。
+const conciergeNoticeCardClass = "rounded-[var(--kt-radius-card)] border border-amber-200 bg-amber-50 shadow-[var(--kt-shadow-medium)] p-4";
+const conciergePremiumCardClass =
+  "rounded-[var(--kt-radius-card)] border border-[var(--kt-color-premium-border)] bg-amber-50/80 shadow-[var(--kt-shadow-medium)] p-4";
 
 /**
  * Conciergeではfavorite操作を提供しない。
@@ -113,7 +119,7 @@ function ConciergePremiumEntryCard(props: {
         <p className="text-xs leading-6 text-slate-600">相談内容に基づく状態整理、選んだ理由、行動の意味を記録として残せます。</p>
         <a
           href={href}
-          className="inline-flex items-center rounded-xl bg-amber-700 px-3 py-2 text-xs font-semibold text-white hover:bg-amber-800"
+          className="inline-flex items-center rounded-[var(--kt-radius-panel)] bg-[var(--kt-color-premium-accent)] px-3 py-2 text-xs font-semibold text-[var(--kt-color-text-inverse)] hover:bg-amber-800"
           onClick={() => {
             trackCardEvent({
               event: "premium_preview_click",
@@ -892,10 +898,10 @@ export default function ConciergeSectionsRenderer({
                             {shrineMeaningVisibility !== "hidden" ? (
                               <section className={conciergeSoftCardClass}>
                                 <div className="space-y-2">
-                                  <p className="text-xs font-semibold tracking-[0.12em] text-slate-500">
+                                  <p className="text-xs font-semibold tracking-[0.12em] text-[var(--kt-color-text-muted)]">
                                     相談から見た意味
                                   </p>
-                                  <p className="text-sm leading-7 text-slate-700">{reasonVm.detail.shrineMeaning}</p>
+                                  <p className="text-sm leading-7 text-[var(--kt-color-text-secondary)]">{reasonVm.detail.shrineMeaning}</p>
                                 </div>
                               </section>
                             ) : null}
@@ -903,11 +909,11 @@ export default function ConciergeSectionsRenderer({
                             {historyThemeDisplay ? (
                               <section className={conciergeSoftCardClass}>
                                 <div className="space-y-2">
-                                  <p className="text-xs font-semibold tracking-[0.12em] text-slate-500">
+                                  <p className="text-xs font-semibold tracking-[0.12em] text-[var(--kt-color-text-muted)]">
                                     この神社が持つ文脈
                                   </p>
-                                  
-                                  <p className="text-sm leading-7 text-slate-700">{historyThemeDisplay.body}</p>
+
+                                  <p className="text-sm leading-7 text-[var(--kt-color-text-secondary)]">{historyThemeDisplay.body}</p>
                                 </div>
                               </section>
                             ) : null}
@@ -915,10 +921,10 @@ export default function ConciergeSectionsRenderer({
                             {actionMeaningVisibility !== "hidden" ? (
                               <section className={conciergeSoftCardClass}>
                                 <div className="space-y-2">
-                                  <p className="text-xs font-semibold tracking-[0.12em] text-slate-500">
+                                  <p className="text-xs font-semibold tracking-[0.12em] text-[var(--kt-color-text-muted)]">
                                     今の自分への問い
                                   </p>
-                                  <p className="text-sm leading-7 text-slate-700">
+                                  <p className="text-sm leading-7 text-[var(--kt-color-text-secondary)]">
                                     {actionMeaningVisibility === "teaser"
                                       ? "この結果を保存すると、今の状態や選んだ理由をあとから見返せます。"
                                       : (reasonVm.detail.actionMeaning ?? reasonVm.detail.shrineMeaning)}
@@ -960,7 +966,7 @@ export default function ConciergeSectionsRenderer({
                     <div className="pt-8">
                       <button
                         type="button"
-                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs font-semibold text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
+                        className="w-full rounded-[var(--kt-radius-card)] border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] px-4 py-3 text-xs font-semibold text-[var(--kt-color-text-muted)] transition hover:bg-[var(--kt-color-background-subtle)] hover:text-[var(--kt-color-text-secondary)]"
                         aria-expanded={showOtherRecommendations}
                         aria-controls={otherRecommendationsId}
                         onClick={() => setShowOtherRecommendations((prev) => !prev)}
@@ -970,10 +976,10 @@ export default function ConciergeSectionsRenderer({
 
                       {showOtherRecommendations ? (
                         <div id={otherRecommendationsId}>
-                          <div className="mb-2 mt-3 text-xs font-semibold tracking-[0.16em] text-slate-500">
+                          <div className="mb-2 mt-3 text-xs font-semibold tracking-[0.16em] text-[var(--kt-color-text-muted)]">
                             ほかの神社
                           </div>
-                          <p className="mb-3 text-xs leading-5 text-slate-500">迷った時の参考です。</p>
+                          <p className="mb-3 text-xs leading-5 text-[var(--kt-color-text-muted)]">迷った時の参考です。</p>
 
                           <div className="space-y-3">
                             {otherRegisteredItems.map((item: RegisteredShrineItem, compactIdx: number) => {
