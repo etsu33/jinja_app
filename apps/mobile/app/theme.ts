@@ -39,3 +39,42 @@ export const kamimusubiDark = {
 
 export type AppColorKey = keyof typeof colors;
 export type KamimusubiDarkColorKey = keyof typeof kamimusubiDark;
+
+// Design Token v1 定義基盤: Mobile Platform Theme (Semantic Color実値)
+// 正本: docs/design/design-token.md
+// 既存の colors / kamimusubiDark (上記) は変更せず、kamimusubiDark の値を
+// 再利用してSemantic Color Token (semanticColorTokens.ts) の実値を割り当てる。
+// PlatformColorTheme型により、SEMANTIC_COLOR_KEYSの全キーを満たすことを
+// tscレベルで強制する (1つでも欠けるとコンパイルエラーになる)。
+import type { PlatformColorTheme } from "./design/semanticColorTokens";
+
+export const kamimusubiDarkSemanticTheme: PlatformColorTheme = {
+  "background.base": kamimusubiDark.background,
+  "background.subtle": kamimusubiDark.surfaceSoft,
+  "surface.default": kamimusubiDark.surface,
+  "surface.elevated": kamimusubiDark.surfaceSoft,
+  "text.primary": kamimusubiDark.text,
+  "text.secondary": kamimusubiDark.muted,
+  "text.muted": kamimusubiDark.mutedSoft,
+  "text.inverse": kamimusubiDark.background,
+  "border.default": kamimusubiDark.border,
+  "border.strong": kamimusubiDark.borderHeader,
+  "border.focus": kamimusubiDark.gold,
+  "action.primary": kamimusubiDark.gold,
+  "action.primaryHover": kamimusubiDark.goldSoft,
+  "action.primaryText": kamimusubiDark.background,
+  "action.disabled": kamimusubiDark.mutedDark,
+  // status.* はPhase 6監査で体系的な既存定義が確認できなかった領域。
+  // status.error のみ app/login.tsx:167 の既存直書き値 (#FCA5A5) を再利用し、
+  // 孤立していたエラー色をSemantic Tokenへ接続する。他は暫定候補値。
+  "status.success": kamimusubiDark.gold,
+  "status.warning": kamimusubiDark.goldSoft,
+  "status.error": "#FCA5A5",
+  "status.info": kamimusubiDark.muted,
+  "premium.accent": kamimusubiDark.gold,
+  "premium.surface": kamimusubiDark.surface,
+  "premium.border": kamimusubiDark.borderGold,
+  // overlay.default は reflection-history/index.tsx:431 の既存値を採用
+  // (2箇所で不統一だった透過率のうち、より広い透過率のものを採用)
+  "overlay.default": "rgba(7, 16, 31, 0.82)",
+};
