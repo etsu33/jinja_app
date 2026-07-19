@@ -8,7 +8,8 @@ import { kamimusubiDarkSemanticTheme } from "../../app/theme";
 
 type Props = {
   title: string;
-  variant?: "primary" | "accent" | "neutral";
+  variant?: "primary" | "accent" | "neutral" | "outline";
+  size?: "default" | "compact";
   style?: ViewStyle;
   onPress?: () => void;
   disabled?: boolean;
@@ -19,6 +20,7 @@ type Props = {
 export default function Button({
   title,
   variant = "neutral",
+  size = "default",
   style,
   onPress,
   disabled = false,
@@ -27,17 +29,32 @@ export default function Button({
 }: Props) {
   const isDisabled = disabled || loading;
 
-  const theme = variant === "primary" ? styles.btnPrimary : variant === "accent" ? styles.btnAccent : styles.btnNeutral;
+  const theme =
+    variant === "primary"
+      ? styles.btnPrimary
+      : variant === "accent"
+        ? styles.btnAccent
+        : variant === "outline"
+          ? styles.btnOutline
+          : styles.btnNeutral;
 
   const textStyle =
-    variant === "primary" ? styles.btnPrimaryText : variant === "accent" ? styles.btnAccentText : styles.btnText;
+    variant === "primary"
+      ? styles.btnPrimaryText
+      : variant === "accent"
+        ? styles.btnAccentText
+        : variant === "outline"
+          ? styles.btnOutlineText
+          : styles.btnText;
 
   const indicatorColor =
     variant === "primary"
       ? kamimusubiDarkSemanticTheme["action.primaryText"]
       : variant === "accent"
         ? kamimusubiDarkSemanticTheme["text.inverse"]
-        : kamimusubiDarkSemanticTheme["text.primary"];
+        : variant === "outline"
+          ? kamimusubiDarkSemanticTheme["premium.accent"]
+          : kamimusubiDarkSemanticTheme["text.primary"];
 
   return (
     <Pressable
@@ -51,6 +68,7 @@ export default function Button({
       onPress={onPress}
       style={({ pressed }) => [
         styles.btn,
+        size === "compact" ? styles.btnCompact : styles.btnDefault,
         theme,
         pressed && !isDisabled ? styles.btnPressed : null,
         isDisabled ? styles.btnDisabled : null,
@@ -60,7 +78,7 @@ export default function Button({
       {loading ? (
         <ActivityIndicator color={indicatorColor} />
       ) : (
-        <Text style={[styles.btnTextBase, textStyle]}>{title}</Text>
+        <Text style={[styles.btnTextBase, size === "compact" ? styles.btnTextCompact : null, textStyle]}>{title}</Text>
       )}
     </Pressable>
   );
@@ -68,10 +86,19 @@ export default function Button({
 
 const styles = StyleSheet.create({
   btn: {
-    height: ctaSizes.mediumHeight,
-    borderRadius: semanticRadius.control,
     alignItems: "center",
     justifyContent: "center",
+  },
+  btnDefault: {
+    height: ctaSizes.mediumHeight,
+    borderRadius: semanticRadius.control,
+  },
+  btnCompact: {
+    alignSelf: "flex-start",
+    minHeight: ctaSizes.smallHeight,
+    borderRadius: semanticRadius.pill,
+    paddingHorizontal: ctaSizes.pillPaddingX,
+    paddingVertical: ctaSizes.pillPaddingY,
   },
   btnPrimary: {
     backgroundColor: kamimusubiDarkSemanticTheme["action.primary"],
@@ -85,6 +112,11 @@ const styles = StyleSheet.create({
     backgroundColor: kamimusubiDarkSemanticTheme["surface.default"],
     ...semanticShadow.low,
   },
+  btnOutline: {
+    backgroundColor: "transparent",
+    borderWidth: 1,
+    borderColor: kamimusubiDarkSemanticTheme["premium.border"],
+  },
   btnPressed: {
     opacity: 0.85,
   },
@@ -95,6 +127,10 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: 16,
   },
+  btnTextCompact: {
+    fontWeight: "800",
+    fontSize: 13,
+  },
   btnText: {
     color: kamimusubiDarkSemanticTheme["text.primary"],
   },
@@ -103,5 +139,8 @@ const styles = StyleSheet.create({
   },
   btnAccentText: {
     color: kamimusubiDarkSemanticTheme["text.inverse"],
+  },
+  btnOutlineText: {
+    color: kamimusubiDarkSemanticTheme["premium.accent"],
   },
 });
