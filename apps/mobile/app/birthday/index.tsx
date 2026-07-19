@@ -1,13 +1,13 @@
-
-
 import * as React from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { kamimusubiDark as theme } from "../theme";
-import { spacing } from "../design/spacing";
+
+import Button from "../../components/ui/Button";
 import { cardSizes } from "../design/cardSizes";
 import { radius } from "../design/radius";
+import { spacing } from "../design/spacing";
+import { kamimusubiDark as theme } from "../theme";
 
 const BIRTHDAY_STORAGE_KEY = "sanpai:profile:birthday";
 
@@ -39,6 +39,7 @@ export default function BirthdayScreen() {
 
   const handleSave = async () => {
     const next = normalizeBirthday(birthday);
+
     if (!next) {
       await AsyncStorage.removeItem(BIRTHDAY_STORAGE_KEY);
       setSavedBirthday("");
@@ -53,20 +54,18 @@ export default function BirthdayScreen() {
   };
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}
-    >
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
         <Pressable
-          onPress={() => router.canGoBack() ? router.back() : router.replace("/mypage")}
+          onPress={() => (router.canGoBack() ? router.back() : router.replace("/mypage"))}
           style={styles.backButton}
         >
           <Text style={styles.backText}>← マイページへ戻る</Text>
         </Pressable>
+
         <Text style={styles.eyebrow}>BIRTHDAY</Text>
         <Text style={styles.title}>誕生日</Text>
+
         <Text style={styles.subtitle}>
           コンシェルジュの条件提案を補助するための情報です。占術結果を断定せず、相談内容を補う材料として扱います。
         </Text>
@@ -74,6 +73,7 @@ export default function BirthdayScreen() {
 
       <View style={styles.card}>
         <Text style={styles.label}>誕生日</Text>
+
         <TextInput
           value={birthday}
           onChangeText={setBirthday}
@@ -83,13 +83,10 @@ export default function BirthdayScreen() {
           keyboardType="numbers-and-punctuation"
           autoCapitalize="none"
         />
-        <Text style={styles.helpText}>
-          形式は YYYY-MM-DD 推奨です。未入力で保存すると未設定に戻ります。
-        </Text>
 
-        <Pressable onPress={handleSave} style={styles.primaryButton}>
-          <Text style={styles.primaryButtonText}>保存する</Text>
-        </Pressable>
+        <Text style={styles.helpText}>形式は YYYY-MM-DD 推奨です。未入力で保存すると未設定に戻ります。</Text>
+
+        <Button title="保存する" variant="primary" onPress={handleSave} accessibilityLabel="誕生日を保存する" />
       </View>
 
       <View style={styles.statusCard}>
@@ -169,17 +166,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 19,
     fontWeight: "600",
-  },
-  primaryButton: {
-    alignItems: "center",
-    backgroundColor: theme.gold,
-    borderRadius: radius.md,
-    paddingVertical: 14,
-  },
-  primaryButtonText: {
-    color: theme.background,
-    fontSize: 14,
-    fontWeight: "900",
   },
   statusCard: {
     backgroundColor: theme.surfaceSoft,
