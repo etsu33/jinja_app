@@ -19,11 +19,13 @@ export const SEMANTIC_RADIUS_KEYS = ["control", "card", "panel", "modal", "image
 export type SemanticRadiusKey = (typeof SEMANTIC_RADIUS_KEYS)[number];
 export type PlatformRadiusTheme = Record<SemanticRadiusKey, number>;
 
-export const semanticRadius: PlatformRadiusTheme = {
+// satisfies PlatformRadiusTheme により、SEMANTIC_RADIUS_KEYSの全キーを
+// 過不足なく満たすことをtscレベルで強制する。
+export const semanticRadius = {
   control: radius.md,
   card: radius.xl,
   panel: radius.lg,
   modal: radius.cardLg,
   image: radius.xs,
   pill: radius.pill,
-};
+} satisfies PlatformRadiusTheme;

@@ -44,11 +44,15 @@ export type KamimusubiDarkColorKey = keyof typeof kamimusubiDark;
 // 正本: docs/design/design-token.md
 // 既存の colors / kamimusubiDark (上記) は変更せず、kamimusubiDark の値を
 // 再利用してSemantic Color Token (semanticColorTokens.ts) の実値を割り当てる。
-// PlatformColorTheme型により、SEMANTIC_COLOR_KEYSの全キーを満たすことを
-// tscレベルで強制する (1つでも欠けるとコンパイルエラーになる)。
+//
+// `satisfies PlatformColorTheme` により、SEMANTIC_COLOR_KEYSの全キーを
+// 過不足なく満たすことをtscレベルで強制する
+// (キーが1つでも欠けている、または余分なキーがあるとコンパイルエラーになる)。
+// apps/mobileにはvitest実行環境が存在しない既存の問題があり、ランタイム
+// テストでの契約検証はできないため、この型チェックが唯一の契約保証手段となる。
 import type { PlatformColorTheme } from "./design/semanticColorTokens";
 
-export const kamimusubiDarkSemanticTheme: PlatformColorTheme = {
+export const kamimusubiDarkSemanticTheme = {
   "background.base": kamimusubiDark.background,
   "background.subtle": kamimusubiDark.surfaceSoft,
   "surface.default": kamimusubiDark.surface,
@@ -77,4 +81,4 @@ export const kamimusubiDarkSemanticTheme: PlatformColorTheme = {
   // overlay.default は reflection-history/index.tsx:431 の既存値を採用
   // (2箇所で不統一だった透過率のうち、より広い透過率のものを採用)
   "overlay.default": "rgba(7, 16, 31, 0.82)",
-};
+} satisfies PlatformColorTheme;

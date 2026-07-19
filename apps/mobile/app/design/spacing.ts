@@ -31,7 +31,9 @@ export const SEMANTIC_SPACING_KEYS = [
 export type SemanticSpacingKey = (typeof SEMANTIC_SPACING_KEYS)[number];
 export type PlatformSpacingTheme = Record<SemanticSpacingKey, number>;
 
-export const semanticSpacing: PlatformSpacingTheme = {
+// satisfies PlatformSpacingTheme により、SEMANTIC_SPACING_KEYSの全キーを
+// 過不足なく満たすことをtscレベルで強制する。
+export const semanticSpacing = {
   pageX: spacing.screenX,
   sectionY: spacing.sectionTop,
   card: spacing.lgGap,
@@ -39,4 +41,4 @@ export const semanticSpacing: PlatformSpacingTheme = {
   controlY: spacing.smGap,
   inlineGap: spacing.inlineGap,
   stackGap: spacing.tightGap,
-};
+} satisfies PlatformSpacingTheme;

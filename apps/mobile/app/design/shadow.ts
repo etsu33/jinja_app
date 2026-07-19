@@ -48,10 +48,12 @@ export type ShadowStyle = {
 
 export type PlatformShadowTheme = Record<SemanticShadowKey, ShadowStyle>;
 
-export const semanticShadow: PlatformShadowTheme = {
+// satisfies PlatformShadowTheme により、SEMANTIC_SHADOW_KEYSの全キーを
+// 過不足なく満たすことをtscレベルで強制する。
+export const semanticShadow = {
   none: { elevation: 0 },
   low: shadows.lightCard,
   medium: shadows.softCard,
   high: shadows.card,
   brand: shadows.goldCta,
-};
+} satisfies PlatformShadowTheme;

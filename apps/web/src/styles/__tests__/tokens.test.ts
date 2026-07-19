@@ -2,113 +2,82 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-// このテストは、Design Token v1定義基盤(docs/design/design-token.md)の
-// 契約を検証する。CSS文字列の丸ごと比較(スナップショット)は行わず、
-// 「必須のSemantic Tokenキーがtokens.css内に宣言として存在するか」
-// 「Mobile側(apps/mobile)のSemantic Tokenキー一覧と意味上対応しているか」
-// という契約レベルの検証に限定する。
+// このテストは、Design Token v1定義基盤(docs/design/design-token.md)における
+// WebのCSS Token契約のみを検証する。
+//
+// 意図的にapps/mobileのソースは読まない。Web/Mobile間のSemantic Token
+// キーの意味対応は、実行時のクロスファイル突合ではなく
+// docs/design/design-token.md (正本) で管理する。Web側はWeb自身の
+// 契約(tokens.cssが正本ドキュメントの記載キーを過不足なく持つか)のみを
+// 検証し、Mobile側はapps/mobile側の型契約(satisfies PlatformColorTheme等)
+// で独立して保証する。
+//
+// 以下のキー一覧は docs/design/design-token.md の
+// Color / Spacing / Radius / Shadow / Elevation 節に列挙された
+// Semantic Tokenキーをこのテストファイル内にのみ複製したものであり、
+// 新たな共有Token定義ファイルではない。
+
+const REQUIRED_COLOR_KEYS = [
+  "background-base",
+  "background-subtle",
+  "surface-default",
+  "surface-elevated",
+  "text-primary",
+  "text-secondary",
+  "text-muted",
+  "text-inverse",
+  "border-default",
+  "border-strong",
+  "border-focus",
+  "action-primary",
+  "action-primary-hover",
+  "action-primary-text",
+  "action-disabled",
+  "status-success",
+  "status-warning",
+  "status-error",
+  "status-info",
+  "premium-accent",
+  "premium-surface",
+  "premium-border",
+  "overlay-default",
+];
+
+const REQUIRED_SPACE_KEYS = ["page-x", "section-y", "card", "control-x", "control-y", "inline-gap", "stack-gap"];
+
+const REQUIRED_RADIUS_KEYS = ["control", "card", "panel", "modal", "image", "pill"];
+
+const REQUIRED_SHADOW_KEYS = ["none", "low", "medium", "high", "brand"];
 
 const tokensCssPath = path.resolve(__dirname, "../tokens.css");
 const globalsCssPath = path.resolve(__dirname, "../../app/globals.css");
 
-const mobileSemanticColorPath = path.resolve(
-  __dirname,
-  "../../../../mobile/app/design/semanticColorTokens.ts",
-);
-const mobileSpacingPath = path.resolve(__dirname, "../../../../mobile/app/design/spacing.ts");
-const mobileRadiusPath = path.resolve(__dirname, "../../../../mobile/app/design/radius.ts");
-const mobileShadowPath = path.resolve(__dirname, "../../../../mobile/app/design/shadow.ts");
-
 const tokensCss = readFileSync(tokensCssPath, "utf-8");
 const globalsCss = readFileSync(globalsCssPath, "utf-8");
 
-// dot区切り・camelCaseのMobileキー(例: "action.primaryHover")を、
-// Web側のkebab-case CSS変数名の末尾部分(例: "action-primary-hover")へ変換する。
-function toKebabSegments(key: string): string {
-  return key
-    .split(".")
-    .map((segment) => segment.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase())
-    .join("-");
-}
-
-// TypeScriptソースの `export const XXX_KEYS = [...] as const;` から
-// 文字列リテラルのキー一覧を抽出する(importせず、テキストとして読むことで
-// apps/web から apps/mobile への実行時モジュール依存を作らない)。
-function extractKeysFromArrayLiteral(source: string, constName: string): string[] {
-  const pattern = new RegExp(`export const ${constName} = \\[([\\s\\S]*?)\\] as const;`);
-  const match = source.match(pattern);
-  if (!match) {
-    throw new Error(`${constName} not found in source`);
+function expectDeclared(prefix: string, keys: string[]) {
+  for (const key of keys) {
+    const cssVarName = `${prefix}-${key}`;
+    const declarationPattern = new RegExp(`${cssVarName}\\s*:`);
+    expect(tokensCss, `${cssVarName} がtokens.cssに存在しない`).toMatch(declarationPattern);
   }
-  const body = match[1];
-  const keyPattern = /"([^"]+)"/g;
-  const keys: string[] = [];
-  let m: RegExpExecArray | null;
-  while ((m = keyPattern.exec(body)) !== null) {
-    keys.push(m[1]);
-  }
-  return keys;
 }
 
 describe("Web Design Token: tokens.css の必須キー網羅性", () => {
-  const mobileColorSource = readFileSync(mobileSemanticColorPath, "utf-8");
-  const semanticColorKeys = extractKeysFromArrayLiteral(mobileColorSource, "SEMANTIC_COLOR_KEYS");
-
-  it("Mobile SEMANTIC_COLOR_KEYSの各キーに対応する --kt-color-* 宣言がtokens.cssに存在する", () => {
-    expect(semanticColorKeys.length).toBeGreaterThan(0);
-
-    for (const key of semanticColorKeys) {
-      const cssVarName = `--kt-color-${toKebabSegments(key)}`;
-      const declarationPattern = new RegExp(`${cssVarName}\\s*:`);
-      expect(tokensCss, `${cssVarName} (Mobile key: "${key}") がtokens.cssに存在しない`).toMatch(
-        declarationPattern,
-      );
-    }
+  it("Color: design-token.md記載のSemantic Color Keyに対応する --kt-color-* 宣言が存在する", () => {
+    expectDeclared("--kt-color", REQUIRED_COLOR_KEYS);
   });
 
-  const mobileSpacingSource = readFileSync(mobileSpacingPath, "utf-8");
-  const semanticSpacingKeys = extractKeysFromArrayLiteral(mobileSpacingSource, "SEMANTIC_SPACING_KEYS");
-
-  it("Mobile SEMANTIC_SPACING_KEYSの各キーに対応する --kt-space-* 宣言がtokens.cssに存在する", () => {
-    expect(semanticSpacingKeys.length).toBeGreaterThan(0);
-
-    for (const key of semanticSpacingKeys) {
-      const cssVarName = `--kt-space-${toKebabSegments(key)}`;
-      const declarationPattern = new RegExp(`${cssVarName}\\s*:`);
-      expect(tokensCss, `${cssVarName} (Mobile key: "${key}") がtokens.cssに存在しない`).toMatch(
-        declarationPattern,
-      );
-    }
+  it("Spacing: design-token.md記載のSemantic Spacing Keyに対応する --kt-space-* 宣言が存在する", () => {
+    expectDeclared("--kt-space", REQUIRED_SPACE_KEYS);
   });
 
-  const mobileRadiusSource = readFileSync(mobileRadiusPath, "utf-8");
-  const semanticRadiusKeys = extractKeysFromArrayLiteral(mobileRadiusSource, "SEMANTIC_RADIUS_KEYS");
-
-  it("Mobile SEMANTIC_RADIUS_KEYSの各キーに対応する --kt-radius-* 宣言がtokens.cssに存在する", () => {
-    expect(semanticRadiusKeys.length).toBeGreaterThan(0);
-
-    for (const key of semanticRadiusKeys) {
-      const cssVarName = `--kt-radius-${toKebabSegments(key)}`;
-      const declarationPattern = new RegExp(`${cssVarName}\\s*:`);
-      expect(tokensCss, `${cssVarName} (Mobile key: "${key}") がtokens.cssに存在しない`).toMatch(
-        declarationPattern,
-      );
-    }
+  it("Radius: design-token.md記載のSemantic Radius Keyに対応する --kt-radius-* 宣言が存在する", () => {
+    expectDeclared("--kt-radius", REQUIRED_RADIUS_KEYS);
   });
 
-  const mobileShadowSource = readFileSync(mobileShadowPath, "utf-8");
-  const semanticShadowKeys = extractKeysFromArrayLiteral(mobileShadowSource, "SEMANTIC_SHADOW_KEYS");
-
-  it("Mobile SEMANTIC_SHADOW_KEYSの各キーに対応する --kt-shadow-* 宣言がtokens.cssに存在する", () => {
-    expect(semanticShadowKeys.length).toBeGreaterThan(0);
-
-    for (const key of semanticShadowKeys) {
-      const cssVarName = `--kt-shadow-${toKebabSegments(key)}`;
-      const declarationPattern = new RegExp(`${cssVarName}\\s*:`);
-      expect(tokensCss, `${cssVarName} (Mobile key: "${key}") がtokens.cssに存在しない`).toMatch(
-        declarationPattern,
-      );
-    }
+  it("Shadow: design-token.md記載のSemantic Shadow Keyに対応する --kt-shadow-* 宣言が存在する", () => {
+    expectDeclared("--kt-shadow", REQUIRED_SHADOW_KEYS);
   });
 });
 
