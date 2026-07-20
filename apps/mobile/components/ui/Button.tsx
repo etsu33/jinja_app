@@ -8,7 +8,7 @@ import { kamimusubiDarkSemanticTheme } from "../../app/theme";
 
 type Props = {
   title: string;
-  variant?: "primary" | "accent" | "neutral" | "outline";
+  variant?: "primary" | "accent" | "neutral" | "outline" | "success";
   size?: "default" | "compact";
   style?: ViewStyle;
   onPress?: () => void;
@@ -36,7 +36,9 @@ export default function Button({
         ? styles.btnAccent
         : variant === "outline"
           ? styles.btnOutline
-          : styles.btnNeutral;
+          : variant === "success"
+            ? styles.btnSuccess
+            : styles.btnNeutral;
 
   const textStyle =
     variant === "primary"
@@ -45,7 +47,9 @@ export default function Button({
         ? styles.btnAccentText
         : variant === "outline"
           ? styles.btnOutlineText
-          : styles.btnText;
+          : variant === "success"
+            ? styles.btnSuccessText
+            : styles.btnText;
 
   const indicatorColor =
     variant === "primary"
@@ -54,7 +58,9 @@ export default function Button({
         ? kamimusubiDarkSemanticTheme["text.inverse"]
         : variant === "outline"
           ? kamimusubiDarkSemanticTheme["premium.accent"]
-          : kamimusubiDarkSemanticTheme["text.primary"];
+          : variant === "success"
+            ? kamimusubiDarkSemanticTheme["status.successText"]
+            : kamimusubiDarkSemanticTheme["text.primary"];
 
   return (
     <Pressable
@@ -117,6 +123,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: kamimusubiDarkSemanticTheme["premium.border"],
   },
+  btnSuccess: {
+    backgroundColor: kamimusubiDarkSemanticTheme["status.successSurface"],
+    borderWidth: 1,
+    borderColor: kamimusubiDarkSemanticTheme["status.successBorder"],
+  },
   btnPressed: {
     opacity: 0.85,
   },
@@ -142,5 +153,8 @@ const styles = StyleSheet.create({
   },
   btnOutlineText: {
     color: kamimusubiDarkSemanticTheme["premium.accent"],
+  },
+  btnSuccessText: {
+    color: kamimusubiDarkSemanticTheme["status.successText"],
   },
 });
