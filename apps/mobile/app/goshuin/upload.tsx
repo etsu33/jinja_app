@@ -9,6 +9,8 @@ import { kamimusubiDark as theme } from "../theme";
 export default function GoshuinUpload() {
   const router = useRouter();
   const [uri, setUri] = React.useState<string | null>(null);
+  const [saving, setSaving] = React.useState(false);
+  const savingRef = React.useRef(false);
 
   const ask = React.useCallback(async () => {
     await ImagePicker.requestCameraPermissionsAsync();
@@ -41,10 +43,24 @@ export default function GoshuinUpload() {
   };
 
   const save = async () => {
-    if (!uri) return;
-    await pushStamp(uri);
-    Alert.alert("保存しました");
-    goBack();
+    if (!uri || savingRef.current) return;
+
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      const savedItem = await pushStamp(uri);
+      if (!savedItem) return;
+
+      Alert.alert("保存しました");
+      goBack();
+    } catch (error) {
+      if (__DEV__) {
+        console.warn("[GoshuinUpload] failed to save stamp", error);
+      }
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
   };
 
   return (
@@ -75,7 +91,12 @@ export default function GoshuinUpload() {
       {uri ? (
         <View style={styles.previewBlock}>
           <Image source={{ uri }} style={styles.previewImage} />
-          <Pressable onPress={save} style={({ pressed }) => [styles.saveBtn, pressed && styles.pressed]}>
+          <Pressable
+            onPress={save}
+            disabled={saving}
+            accessibilityState={{ disabled: saving, busy: saving }}
+            style={({ pressed }) => [styles.saveBtn, pressed && styles.pressed]}
+          >
             <Text style={styles.saveBtnText}>この御朱印を保存する</Text>
           </Pressable>
         </View>
