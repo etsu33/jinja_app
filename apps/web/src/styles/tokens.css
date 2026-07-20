@@ -59,6 +59,9 @@
      最終値は保留事項ではなく本PRで確定するが、警告色の選定根拠は
      既存慣用パターンが薄いため、後続PRでの見直しを妨げない。 */
   --kt-color-status-success: var(--color-emerald-600);
+  --kt-color-status-success-text: var(--color-emerald-800);
+  --kt-color-status-success-surface: var(--color-emerald-50);
+  --kt-color-status-success-border: var(--color-emerald-200);
   --kt-color-status-warning: var(--color-amber-600);
   --kt-color-status-error: var(--color-red-600);
   --kt-color-status-info: var(--color-slate-600);
