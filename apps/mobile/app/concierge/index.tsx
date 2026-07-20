@@ -774,13 +774,14 @@ export default function ConciergeScreen() {
               disabled={loading}
             />
 
-            <Pressable
+            <Button
+              title="この条件で再提案する"
+              variant="primary"
               onPress={handleResuggest}
-              style={[styles.resuggestButton, (loading || (!consultationText && !hasAnyCondition)) && styles.resuggestButtonDisabled]}
-              disabled={loading || (!consultationText && !hasAnyCondition)}
-            >
-              <Text style={styles.resuggestButtonText}>この条件で再提案する</Text>
-            </Pressable>
+              loading={loading}
+              disabled={!consultationText && !hasAnyCondition}
+              accessibilityLabel="この条件で再提案する"
+            />
           </View>
 
           {loading ? (
@@ -974,23 +975,6 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     fontWeight: "700",
   },
-  resuggestButton: {
-    height: 46,
-    borderRadius: 15,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: theme.gold,
-  },
-  resuggestButtonDisabled: {
-    opacity: 0.45,
-  },
-  resuggestButtonText: {
-    color: theme.background,
-    fontSize: 14,
-    fontWeight: "900",
-    letterSpacing: 0.3,
-  },
-
   loadingRow: {
     paddingVertical: 8,
   },
