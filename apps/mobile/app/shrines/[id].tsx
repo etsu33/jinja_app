@@ -725,9 +725,12 @@ export default function ShrineDetail() {
         {/* CTA */}
         <View style={styles.ctaBlock}>
           <Text style={styles.ctaCaption}>参拝に行くと決めたら、地図で経路を確認できます。</Text>
-          <Pressable onPress={openDirections} style={styles.ctaSecondary}>
-            <Text style={styles.ctaSecondaryText}>地図で経路を確認する</Text>
-          </Pressable>
+          <Button
+            title="地図で経路を確認する"
+            variant="outline"
+            onPress={openDirections}
+            accessibilityLabel="地図で経路を確認する"
+          />
           <Pressable onPress={onVisitDone} style={[styles.ctaPrimary, visited && styles.ctaPrimaryDone]}>
             <Text style={styles.ctaPrimaryText}>
               {visited ? "参拝済みとして記録しました" : "参拝したことを記録する"}
@@ -1073,21 +1076,6 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     fontWeight: "600",
     textAlign: "center",
-  },
-  ctaSecondary: {
-    height: ctaSizes.mediumHeight,
-    borderRadius: ctaSizes.mediumRadius,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "transparent",
-    borderWidth: cardSizes.borderWidth,
-    borderColor: theme.borderGold,
-  },
-  ctaSecondaryText: {
-    color: theme.gold,
-    fontSize: 14,
-    fontWeight: "800",
-    letterSpacing: 0.3,
   },
   ctaPrimary: {
     height: ctaSizes.mediumHeight,
