@@ -13,7 +13,7 @@
 // 「ハイフンで結合すれば同じ意味になる」という規則で対応させる。
 
 // Mobile Semantic Color Token契約の正本 (キー一覧・型)。実値は app/theme.ts の
-// kamimusubiDarkSemanticTheme。2026-07時点でどの画面・Componentからも未消費。
+// kamimusubiDarkSemanticTheme。共通ButtonなどのUI Componentを通じて各画面から消費される。
 export const SEMANTIC_COLOR_KEYS = [
   "background.base",
   "background.subtle",
@@ -31,6 +31,9 @@ export const SEMANTIC_COLOR_KEYS = [
   "action.primaryText",
   "action.disabled",
   "status.success",
+  "status.successText",
+  "status.successSurface",
+  "status.successBorder",
   "status.warning",
   "status.error",
   "status.info",

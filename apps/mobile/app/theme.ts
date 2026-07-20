@@ -1,7 +1,7 @@
 // Mobile Color正本 (docs/design/design-token.md Migration方針 5)
-// - colors: Light基調の初期パレット。2026-07時点でアプリ内から到達するimportは
-//   components/ui/Button.tsx のみで、その Button.tsx 自体もアプリ内のどこからも
-//   importされていない (実質未使用の到達不能パス)。削除は本PRの対象外。
+// - colors: Light基調の初期パレット。2026-07時点では利用範囲が限定的。
+// - kamimusubiDarkSemanticTheme: 共通Buttonを通じて主要画面から参照される。
+// - kamimusubiDark: 現行Mobile全画面が実際に参照するDark基調の正本Primitive。
 // - kamimusubiDark: 現行Mobile全画面が実際に参照するDark基調の正本Primitive。
 //   Color Primitiveの実質的な正本はこちら。
 export const colors = {
@@ -56,8 +56,8 @@ import type { PlatformColorTheme } from "./design/semanticColorTokens";
 
 // Mobile Semantic Color Token契約の正本実値 (キー一覧・型は design/semanticColorTokens.ts)。
 // 2026-07時点でこのオブジェクトを参照するのは本ファイル (型契約の充足) のみで、
-// 画面・Componentからの消費はまだ無い (design-token.md Migration方針 PR6
-// 「Mobile共通Component適用」で初めて消費される想定)。
+// 共通Buttonを通じてLogin、Birthday、Premium、AuthPromptなどから消費される。 (design-token.md Migration方針 PR6
+// 共通Buttonを通じてLogin、Birthday、Premium、AuthPromptなどから消費される。
 export const kamimusubiDarkSemanticTheme: PlatformColorTheme = {
   "background.base": kamimusubiDark.background,
   "background.subtle": kamimusubiDark.surfaceSoft,
@@ -78,6 +78,9 @@ export const kamimusubiDarkSemanticTheme: PlatformColorTheme = {
   // status.error のみ app/login.tsx:167 の既存直書き値 (#FCA5A5) を再利用し、
   // 孤立していたエラー色をSemantic Tokenへ接続する。他は暫定候補値。
   "status.success": kamimusubiDark.gold,
+  "status.successText": kamimusubiDark.text,
+  "status.successSurface": kamimusubiDark.borderGoldDark,
+  "status.successBorder": kamimusubiDark.borderGold,
   "status.warning": kamimusubiDark.goldSoft,
   "status.error": "#FCA5A5",
   "status.info": kamimusubiDark.muted,
