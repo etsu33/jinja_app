@@ -13,6 +13,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { kamimusubiDark as theme } from "../theme";
 import { shadows } from "../design/shadow";
 import { ConditionFieldsCard } from "../../components/ConditionFieldsCard";
+import Button from "../../components/ui/Button";
 import {
   buildConditionFilters,
   buildConditionProfileContext,
@@ -554,11 +555,12 @@ function ResultCard({
       ) : null}
 
       {/* CTA */}
-      <View style={styles.ctaRow}>
-        <Pressable onPress={onDetail} style={styles.ctaPrimary}>
-          <Text style={styles.ctaPrimaryText}>この神社を詳しく見る</Text>
-        </Pressable>
-      </View>
+      <Button
+        title="この神社を詳しく見る"
+        variant="primary"
+        onPress={onDetail}
+        accessibilityLabel="この神社を詳しく見る"
+      />
     </View>
   );
 }
@@ -1239,29 +1241,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "800",
     letterSpacing: 0.2,
-  },
-
-  // CTA
-  ctaRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginTop: 4,
-  },
-  ctaPrimary: {
-    flex: 1,
-    height: 50,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: theme.gold,
-    shadowColor: theme.gold,
-    ...shadows.goldCta,
-  },
-  ctaPrimaryText: {
-    color: theme.background,
-    fontSize: 15,
-    fontWeight: "800",
-    letterSpacing: 0.3,
   },
 
   // 入力バー
