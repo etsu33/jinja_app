@@ -326,6 +326,7 @@ export default function ShrineDetail() {
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
   const [fav, setFav] = React.useState(false);
   const [visited, setVisited] = React.useState(false);
+  const [visitSaving, setVisitSaving] = React.useState(false);
   const [reflectionAnswer, setReflectionAnswer] = React.useState("");
   const [reflectionSaved, setReflectionSaved] = React.useState(false);
   const [reflectionSaving, setReflectionSaving] = React.useState(false);
@@ -375,6 +376,7 @@ export default function ShrineDetail() {
 
   const countedRef = React.useRef(false);
   const detailTrackedRef = React.useRef<string | null>(null);
+  const visitInFlightRef = React.useRef(false);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -460,15 +462,19 @@ export default function ShrineDetail() {
 
   const onVisitDone = React.useCallback(async () => {
     const targetShrineId = apiShrineId ?? shrineId;
-    if (!targetShrineId) return;
+    if (!targetShrineId || visited || visitInFlightRef.current) return;
 
-    if (!(await isLoggedIn())) {
-      setAuthPromptVisible(true);
-      return;
-    }
-
+    visitInFlightRef.current = true;
+    setVisitSaving(true);
     try {
-      await createVisitByShrineId(targetShrineId);
+      if (!(await isLoggedIn())) {
+        setAuthPromptVisible(true);
+        return;
+      }
+
+      const result = await createVisitByShrineId(targetShrineId);
+      if (!result) return;
+
       setVisited(true);
       trackVisitDone({
         shrineId: targetShrineId,
@@ -478,8 +484,11 @@ export default function ShrineDetail() {
       if (isUnauthenticatedError(error)) {
         setAuthPromptVisible(true);
       }
+    } finally {
+      visitInFlightRef.current = false;
+      setVisitSaving(false);
     }
-  }, [apiShrineId, contextReasonFacts, shrine, shrineId]);
+  }, [apiShrineId, contextReasonFacts, shrine, shrineId, visited]);
 
   React.useEffect(() => {
     const targetShrineId = apiShrineId ?? shrineId;
@@ -731,7 +740,14 @@ export default function ShrineDetail() {
             onPress={openDirections}
             accessibilityLabel="地図で経路を確認する"
           />
-          <Pressable onPress={onVisitDone} style={[styles.ctaPrimary, visited && styles.ctaPrimaryDone]}>
+          <Pressable
+            onPress={onVisitDone}
+            style={[styles.ctaPrimary, visited && styles.ctaPrimaryDone]}
+            disabled={visitSaving || visited}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: visitSaving || visited, busy: visitSaving }}
+            accessibilityLabel={visited ? "参拝済みとして記録しました" : "参拝したことを記録する"}
+          >
             <Text style={styles.ctaPrimaryText}>
               {visited ? "参拝済みとして記録しました" : "参拝したことを記録する"}
             </Text>
