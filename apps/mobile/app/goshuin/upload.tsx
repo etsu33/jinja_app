@@ -4,6 +4,7 @@ import * as ImagePicker from "expo-image-picker";
 import { View, Text, Pressable, Image, StyleSheet, Alert, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
 import { pushStamp } from "../../lib/storage";
+import Button from "../../components/ui/Button";
 import { kamimusubiDark as theme } from "../theme";
 
 export default function GoshuinUpload() {
@@ -91,14 +92,13 @@ export default function GoshuinUpload() {
       {uri ? (
         <View style={styles.previewBlock}>
           <Image source={{ uri }} style={styles.previewImage} />
-          <Pressable
+          <Button
+            title="この御朱印を保存する"
+            variant="primary"
             onPress={save}
-            disabled={saving}
-            accessibilityState={{ disabled: saving, busy: saving }}
-            style={({ pressed }) => [styles.saveBtn, pressed && styles.pressed]}
-          >
-            <Text style={styles.saveBtnText}>この御朱印を保存する</Text>
-          </Pressable>
+            loading={saving}
+            accessibilityLabel="この御朱印を保存する"
+          />
         </View>
       ) : (
         <View style={styles.placeholder}>
@@ -206,24 +206,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.border,
     backgroundColor: theme.surface,
-  },
-  saveBtn: {
-    height: 52,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 16,
-    backgroundColor: theme.gold,
-    shadowColor: theme.gold,
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-  },
-  saveBtnText: {
-    color: theme.background,
-    fontSize: 15,
-    fontWeight: "900",
-    letterSpacing: 0.3,
   },
   placeholder: {
     alignItems: "center",
