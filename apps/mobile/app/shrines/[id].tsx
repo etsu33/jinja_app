@@ -740,18 +740,14 @@ export default function ShrineDetail() {
             onPress={openDirections}
             accessibilityLabel="地図で経路を確認する"
           />
-          <Pressable
+          <Button
+            title={visited ? "参拝済みとして記録しました" : "参拝したことを記録する"}
+            variant={visited ? "success" : "primary"}
             onPress={onVisitDone}
-            style={[styles.ctaPrimary, visited && styles.ctaPrimaryDone]}
             disabled={visitSaving || visited}
-            accessibilityRole="button"
-            accessibilityState={{ disabled: visitSaving || visited, busy: visitSaving }}
+            loading={visitSaving}
             accessibilityLabel={visited ? "参拝済みとして記録しました" : "参拝したことを記録する"}
-          >
-            <Text style={styles.ctaPrimaryText}>
-              {visited ? "参拝済みとして記録しました" : "参拝したことを記録する"}
-            </Text>
-          </Pressable>
+          />
         </View>
 
         {visited ? (
@@ -1092,24 +1088,6 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     fontWeight: "600",
     textAlign: "center",
-  },
-  ctaPrimary: {
-    height: ctaSizes.mediumHeight,
-    borderRadius: ctaSizes.mediumRadius,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: theme.gold,
-  },
-  ctaPrimaryDone: {
-    backgroundColor: theme.borderGoldDark,
-    borderWidth: cardSizes.borderWidth,
-    borderColor: theme.borderGold,
-  },
-  ctaPrimaryText: {
-    color: theme.background,
-    fontSize: 14,
-    fontWeight: "900",
-    letterSpacing: 0.3,
   },
   reflectionCard: {
     marginHorizontal: spacing.screenX,
