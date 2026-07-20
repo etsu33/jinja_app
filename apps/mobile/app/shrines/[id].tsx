@@ -17,6 +17,7 @@ import { createVisitByShrineId } from "../../lib/visits";
 import { createShrineReflection } from "../../lib/reflections";
 import { trackVisitDone, trackReflectionPromptView, trackReflectionSaved } from "../../lib/visitReflectionAnalytics";
 import { AuthPrompt } from "../../components/common/AuthPrompt";
+import Button from "../../components/ui/Button";
 
 type RecommendationReasonFactAxis =
   | "need"
@@ -581,190 +582,189 @@ export default function ShrineDetail() {
 
   return (
     <>
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      {/* ヒーロー画像 */}
-      {shrine.imageUrl ? (
-        <Image source={{ uri: shrine.imageUrl }} style={styles.heroImage} />
-      ) : (
-        <View style={styles.heroPlaceholder}>
-          <Text style={styles.heroPlaceholderText}>⛩</Text>
-        </View>
-      )}
+      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+        {/* ヒーロー画像 */}
+        {shrine.imageUrl ? (
+          <Image source={{ uri: shrine.imageUrl }} style={styles.heroImage} />
+        ) : (
+          <View style={styles.heroPlaceholder}>
+            <Text style={styles.heroPlaceholderText}>⛩</Text>
+          </View>
+        )}
 
-      {/* ヘッダー（戻る + お気に入り） */}
-      <View style={styles.headerBar}>
-        <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>← 戻る</Text>
-        </Pressable>
-        <Pressable
-          onPress={onToggleFav}
-          style={[styles.favBtn, fav && styles.favBtnActive]}
-          accessibilityRole="button"
-          accessibilityLabel="お気に入りの切り替え"
-        >
-          <Text style={[styles.favBtnText, fav && styles.favBtnTextActive]}>{fav ? "♡ 登録済み" : "♡ お気に入り"}</Text>
-        </Pressable>
-      </View>
-
-      {/* 神社名・所在地 */}
-      <View style={styles.titleBlock}>
-        <Text style={styles.shrineName}>{shrine.name}</Text>
-        {!!shrine.prefecture && <Text style={styles.shrineArea}>{shrine.prefecture}</Text>}
-      </View>
-
-      {/* ご利益タグ */}
-      {tags.length > 0 ? (
-        <View style={styles.tagRow}>
-          {tags.map((t) => (
-            <View key={t} style={styles.tagPill}>
-              <Text style={styles.tagText}>{t}</Text>
-            </View>
-          ))}
-        </View>
-      ) : null}
-
-      {hasConsultationSummary ? (
-        <View style={styles.contextCard}>
-          <Text style={styles.cardTitle}>① 今回の相談の整理</Text>
-          {contextRecommendationReasonDetail?.consultationSummary ? (
-            <Text style={styles.cardBody}>{contextRecommendationReasonDetail.consultationSummary}</Text>
-          ) : null}
-        </View>
-      ) : null}
-
-      {/* 推薦理由 */}
-      <View style={styles.recommendationCard}>
-        <Text style={styles.cardTitle}>② 選ばれた理由</Text>
-        <Text style={styles.cardBody}>{recommendationReason}</Text>
-      </View>
-
-      {reasonFactItems.length > 0 ? (
-        <View style={styles.reasonFactsCard}>
-          <Text style={styles.reasonFactsLabel}>選定のポイント</Text>
-          {reasonFactItems.map((item) => (
-            <View key={`${item.label}-${item.value}`} style={styles.reasonFactItem}>
-              <Text style={styles.reasonFactLabel}>{item.label}</Text>
-              <Text style={styles.reasonFactText}>{item.value}</Text>
-            </View>
-          ))}
-        </View>
-      ) : null}
-
-      {hasShrineMeaning ? (
-        <View style={styles.meaningCard}>
-          <Text style={styles.cardTitle}>③ この神社で受け取る意味</Text>
-          <Text style={styles.cardBody}>{contextRecommendationReasonDetail?.shrineMeaning}</Text>
-        </View>
-      ) : null}
-
-      {hasActionMeaning ? (
-        <View style={styles.actionCard}>
-          <Text style={styles.cardTitle}>④ 参拝するときの視点</Text>
-          <Text style={styles.cardBody}>{contextRecommendationReasonDetail?.actionMeaning}</Text>
-        </View>
-      ) : null}
-
-      {/* explanation */}
-      <View style={styles.explanationCard}>
-        <Text style={styles.cardTitle}>神社の意味を知る</Text>
-        <Text style={styles.cardBody}>{explanation}</Text>
-      </View>
-
-      {/* action suggestion */}
-      {shouldShowActionSuggestionV4 ? (
-        <View style={styles.actionCard}>
-          <Text style={styles.cardEyebrow}>NEXT ACTION</Text>
-          <Text style={styles.cardTitle}>参拝前にできること</Text>
-          {asTrimmedString(primaryAction?.label) ? (
-            <Text style={styles.actionV4Title}>{primaryAction?.label}</Text>
-          ) : null}
-          {asTrimmedString(primaryAction?.description) ? (
-            <Text style={styles.cardBody}>{primaryAction?.description}</Text>
-          ) : null}
-          {asTrimmedString(secondaryAction?.label) || asTrimmedString(secondaryAction?.description) ? (
-            <View style={styles.actionV4SecondaryBlock}>
-              {asTrimmedString(secondaryAction?.label) ? (
-                <Text style={styles.actionV4SubTitle}>{secondaryAction?.label}</Text>
-              ) : null}
-              {asTrimmedString(secondaryAction?.description) ? (
-                <Text style={styles.cardBody}>{secondaryAction?.description}</Text>
-              ) : null}
-            </View>
-          ) : null}
-          {asTrimmedString(reflectionPrompt?.question) ? (
-            <View style={styles.actionV4SecondaryBlock}>
-              <Text style={styles.meaningActionLabel}>参拝前の問い</Text>
-              <Text style={styles.cardBody}>{reflectionPrompt?.question}</Text>
-            </View>
-          ) : null}
-        </View>
-      ) : (
-        <View style={styles.actionCard}>
-          <Text style={styles.cardTitle}>参拝前にできること</Text>
-          <Text style={styles.cardBody}>{actionSuggestion}</Text>
-        </View>
-      )}
-
-      {/* 説明文 */}
-      <View style={styles.descCard}>
-        <Text style={styles.descLabel}>神社について</Text>
-        <Text style={styles.descText}>
-          {shrine.description ?? "ご利益や混雑、アクセス、御朱印情報などをここに表示します。"}
-        </Text>
-      </View>
-
-      {errorMessage ? (
-        <View style={styles.noticeCard}>
-          <Text style={styles.noticeText}>{errorMessage}</Text>
-        </View>
-      ) : null}
-
-      {/* CTA */}
-      <View style={styles.ctaBlock}>
-        <Text style={styles.ctaCaption}>参拝に行くと決めたら、地図で経路を確認できます。</Text>
-        <Pressable onPress={openDirections} style={styles.ctaSecondary}>
-          <Text style={styles.ctaSecondaryText}>地図で経路を確認する</Text>
-        </Pressable>
-        <Pressable onPress={onVisitDone} style={[styles.ctaPrimary, visited && styles.ctaPrimaryDone]}>
-          <Text style={styles.ctaPrimaryText}>{visited ? "参拝済みとして記録しました" : "参拝したことを記録する"}</Text>
-        </Pressable>
-      </View>
-
-      {visited ? (
-        <View style={styles.reflectionCard}>
-          <Text style={styles.cardTitle}>参拝後の振り返り</Text>
-          <Text style={styles.cardBody}>
-            参拝して感じたことを残しておくと、次の相談や再訪時に自分の変化を見返しやすくなります。
-          </Text>
-          <TextInput
-            value={reflectionAnswer}
-            onChangeText={(text) => {
-              setReflectionAnswer(text);
-              if (reflectionSaved) setReflectionSaved(false);
-            }}
-            placeholder="参拝して感じたことを一言で残す"
-            placeholderTextColor={theme.muted}
-            multiline
-            style={styles.reflectionInput}
-            textAlignVertical="top"
-          />
+        {/* ヘッダー（戻る + お気に入り） */}
+        <View style={styles.headerBar}>
+          <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))} style={styles.backBtn}>
+            <Text style={styles.backBtnText}>← 戻る</Text>
+          </Pressable>
           <Pressable
-            style={[
-              styles.reflectionButton,
-              (!reflectionAnswer.trim() || reflectionSaving) && styles.reflectionButtonDisabled,
-              reflectionSaved && styles.reflectionButtonSaved,
-            ]}
-            onPress={onSaveReflection}
-            disabled={!reflectionAnswer.trim() || reflectionSaving}
+            onPress={onToggleFav}
+            style={[styles.favBtn, fav && styles.favBtnActive]}
+            accessibilityRole="button"
+            accessibilityLabel="お気に入りの切り替え"
           >
-            <Text style={styles.reflectionButtonText}>
-              {reflectionSaving ? "保存中…" : reflectionSaved ? "振り返りを保存しました" : "振り返りを保存する"}
+            <Text style={[styles.favBtnText, fav && styles.favBtnTextActive]}>
+              {fav ? "♡ 登録済み" : "♡ お気に入り"}
             </Text>
           </Pressable>
         </View>
-      ) : null}
-    </ScrollView>
-    <AuthPrompt visible={authPromptVisible} onClose={() => setAuthPromptVisible(false)} />
+
+        {/* 神社名・所在地 */}
+        <View style={styles.titleBlock}>
+          <Text style={styles.shrineName}>{shrine.name}</Text>
+          {!!shrine.prefecture && <Text style={styles.shrineArea}>{shrine.prefecture}</Text>}
+        </View>
+
+        {/* ご利益タグ */}
+        {tags.length > 0 ? (
+          <View style={styles.tagRow}>
+            {tags.map((t) => (
+              <View key={t} style={styles.tagPill}>
+                <Text style={styles.tagText}>{t}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
+        {hasConsultationSummary ? (
+          <View style={styles.contextCard}>
+            <Text style={styles.cardTitle}>① 今回の相談の整理</Text>
+            {contextRecommendationReasonDetail?.consultationSummary ? (
+              <Text style={styles.cardBody}>{contextRecommendationReasonDetail.consultationSummary}</Text>
+            ) : null}
+          </View>
+        ) : null}
+
+        {/* 推薦理由 */}
+        <View style={styles.recommendationCard}>
+          <Text style={styles.cardTitle}>② 選ばれた理由</Text>
+          <Text style={styles.cardBody}>{recommendationReason}</Text>
+        </View>
+
+        {reasonFactItems.length > 0 ? (
+          <View style={styles.reasonFactsCard}>
+            <Text style={styles.reasonFactsLabel}>選定のポイント</Text>
+            {reasonFactItems.map((item) => (
+              <View key={`${item.label}-${item.value}`} style={styles.reasonFactItem}>
+                <Text style={styles.reasonFactLabel}>{item.label}</Text>
+                <Text style={styles.reasonFactText}>{item.value}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
+        {hasShrineMeaning ? (
+          <View style={styles.meaningCard}>
+            <Text style={styles.cardTitle}>③ この神社で受け取る意味</Text>
+            <Text style={styles.cardBody}>{contextRecommendationReasonDetail?.shrineMeaning}</Text>
+          </View>
+        ) : null}
+
+        {hasActionMeaning ? (
+          <View style={styles.actionCard}>
+            <Text style={styles.cardTitle}>④ 参拝するときの視点</Text>
+            <Text style={styles.cardBody}>{contextRecommendationReasonDetail?.actionMeaning}</Text>
+          </View>
+        ) : null}
+
+        {/* explanation */}
+        <View style={styles.explanationCard}>
+          <Text style={styles.cardTitle}>神社の意味を知る</Text>
+          <Text style={styles.cardBody}>{explanation}</Text>
+        </View>
+
+        {/* action suggestion */}
+        {shouldShowActionSuggestionV4 ? (
+          <View style={styles.actionCard}>
+            <Text style={styles.cardEyebrow}>NEXT ACTION</Text>
+            <Text style={styles.cardTitle}>参拝前にできること</Text>
+            {asTrimmedString(primaryAction?.label) ? (
+              <Text style={styles.actionV4Title}>{primaryAction?.label}</Text>
+            ) : null}
+            {asTrimmedString(primaryAction?.description) ? (
+              <Text style={styles.cardBody}>{primaryAction?.description}</Text>
+            ) : null}
+            {asTrimmedString(secondaryAction?.label) || asTrimmedString(secondaryAction?.description) ? (
+              <View style={styles.actionV4SecondaryBlock}>
+                {asTrimmedString(secondaryAction?.label) ? (
+                  <Text style={styles.actionV4SubTitle}>{secondaryAction?.label}</Text>
+                ) : null}
+                {asTrimmedString(secondaryAction?.description) ? (
+                  <Text style={styles.cardBody}>{secondaryAction?.description}</Text>
+                ) : null}
+              </View>
+            ) : null}
+            {asTrimmedString(reflectionPrompt?.question) ? (
+              <View style={styles.actionV4SecondaryBlock}>
+                <Text style={styles.meaningActionLabel}>参拝前の問い</Text>
+                <Text style={styles.cardBody}>{reflectionPrompt?.question}</Text>
+              </View>
+            ) : null}
+          </View>
+        ) : (
+          <View style={styles.actionCard}>
+            <Text style={styles.cardTitle}>参拝前にできること</Text>
+            <Text style={styles.cardBody}>{actionSuggestion}</Text>
+          </View>
+        )}
+
+        {/* 説明文 */}
+        <View style={styles.descCard}>
+          <Text style={styles.descLabel}>神社について</Text>
+          <Text style={styles.descText}>
+            {shrine.description ?? "ご利益や混雑、アクセス、御朱印情報などをここに表示します。"}
+          </Text>
+        </View>
+
+        {errorMessage ? (
+          <View style={styles.noticeCard}>
+            <Text style={styles.noticeText}>{errorMessage}</Text>
+          </View>
+        ) : null}
+
+        {/* CTA */}
+        <View style={styles.ctaBlock}>
+          <Text style={styles.ctaCaption}>参拝に行くと決めたら、地図で経路を確認できます。</Text>
+          <Pressable onPress={openDirections} style={styles.ctaSecondary}>
+            <Text style={styles.ctaSecondaryText}>地図で経路を確認する</Text>
+          </Pressable>
+          <Pressable onPress={onVisitDone} style={[styles.ctaPrimary, visited && styles.ctaPrimaryDone]}>
+            <Text style={styles.ctaPrimaryText}>
+              {visited ? "参拝済みとして記録しました" : "参拝したことを記録する"}
+            </Text>
+          </Pressable>
+        </View>
+
+        {visited ? (
+          <View style={styles.reflectionCard}>
+            <Text style={styles.cardTitle}>参拝後の振り返り</Text>
+            <Text style={styles.cardBody}>
+              参拝して感じたことを残しておくと、次の相談や再訪時に自分の変化を見返しやすくなります。
+            </Text>
+            <TextInput
+              value={reflectionAnswer}
+              onChangeText={(text) => {
+                setReflectionAnswer(text);
+                if (reflectionSaved) setReflectionSaved(false);
+              }}
+              placeholder="参拝して感じたことを一言で残す"
+              placeholderTextColor={theme.muted}
+              multiline
+              style={styles.reflectionInput}
+              textAlignVertical="top"
+            />
+            <Button
+              title={reflectionSaved ? "振り返りを保存しました" : "振り返りを保存する"}
+              variant={reflectionSaved ? "success" : "outline"}
+              onPress={onSaveReflection}
+              disabled={!reflectionAnswer.trim()}
+              loading={reflectionSaving}
+              accessibilityLabel={reflectionSaved ? "振り返りを保存しました" : "振り返りを保存する"}
+            />
+          </View>
+        ) : null}
+      </ScrollView>
+      <AuthPrompt visible={authPromptVisible} onClose={() => setAuthPromptVisible(false)} />
     </>
   );
 }
@@ -1129,26 +1129,5 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     paddingHorizontal: cardSizes.cardPaddingMd,
     paddingVertical: spacing.mdGap,
-  },
-  reflectionButton: {
-    height: ctaSizes.mediumHeight,
-    borderRadius: ctaSizes.mediumRadius,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "transparent",
-    borderWidth: cardSizes.borderWidth,
-    borderColor: theme.borderGold,
-  },
-  reflectionButtonDisabled: {
-    opacity: 0.5,
-  },
-  reflectionButtonSaved: {
-    backgroundColor: theme.borderGoldDark,
-  },
-  reflectionButtonText: {
-    color: theme.gold,
-    fontSize: 14,
-    fontWeight: "800",
-    letterSpacing: 0.3,
   },
 });
