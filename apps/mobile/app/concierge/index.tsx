@@ -740,7 +740,12 @@ export default function ConciergeScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* ヘッダー */}
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={styles.backBtn}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="前の画面に戻る"
+            onPress={() => router.back()}
+            style={styles.backBtn}
+          >
             <Text style={styles.backText}>← 戻る</Text>
           </Pressable>
           <Text style={styles.headerTitle}>ご縁の神社</Text>
