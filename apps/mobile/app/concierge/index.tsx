@@ -605,6 +605,7 @@ export default function ConciergeScreen() {
   const [selectedGoriyaku, setSelectedGoriyaku] = React.useState<string | undefined>(params.goriyaku || undefined);
   const [supportText, setSupportText] = React.useState(params.support ?? "");
   const hasAnyCondition = Boolean(selectedVisitStyle || birthdate.trim() || selectedGoriyaku || supportText.trim());
+  const isSendDisabled = loading || (!input.trim() && !hasAnyCondition);
   const lastInitialQueryRef = React.useRef<string | null>(null);
 
   // Homeからの相談内容・条件が変わったら自動送信する
@@ -851,9 +852,15 @@ export default function ConciergeScreen() {
           editable={!loading}
         />
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="相談内容を送信する"
+          accessibilityState={{
+            disabled: isSendDisabled,
+            busy: loading,
+          }}
           onPress={handleSend}
-          style={[styles.sendBtn, (loading || (!input.trim() && !hasAnyCondition)) && styles.sendBtnDisabled]}
-          disabled={loading || (!input.trim() && !hasAnyCondition)}
+          style={[styles.sendBtn, isSendDisabled && styles.sendBtnDisabled]}
+          disabled={isSendDisabled}
         >
           <Text style={styles.sendText}>↑</Text>
         </Pressable>
