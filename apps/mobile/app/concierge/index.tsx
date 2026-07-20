@@ -750,9 +750,13 @@ export default function ConciergeScreen() {
                 <Text style={styles.conditionLabel}>条件レイヤー</Text>
                 <Text style={styles.conditionTitle}>今回の相談に反映する条件</Text>
               </View>
-              <Pressable onPress={handleChangeConditions} style={styles.conditionEditButton}>
-                <Text style={styles.conditionEditText}>条件を変える</Text>
-              </Pressable>
+              <Button
+                title="条件を変える"
+                variant="outline"
+                size="compact"
+                onPress={handleChangeConditions}
+                accessibilityLabel="相談条件を変更する"
+              />
             </View>
 
             <View style={styles.conditionSummaryRow}>
@@ -944,18 +948,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 21,
     fontWeight: "900",
-  },
-  conditionEditButton: {
-    borderWidth: 1,
-    borderColor: theme.borderGold,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  conditionEditText: {
-    color: theme.gold,
-    fontSize: 11,
-    fontWeight: "800",
   },
   conditionSummaryRow: {
     borderLeftWidth: 2,
