@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 
 import { listShrineReflections, type ShrineReflectionResponse } from "../../lib/reflections";
 import { StateCard } from "../../components/common/StateCard";
+import Button from "../../components/ui/Button";
 import { kamimusubiDark as theme } from "../theme";
 import { spacing } from "../design/spacing";
 import { cardSizes } from "../design/cardSizes";
@@ -166,9 +167,14 @@ function ReflectionDetailModal({
             ) : null}
           </ScrollView>
 
-          <Pressable style={styles.modalCloseButton} onPress={onClose}>
-            <Text style={styles.modalCloseText}>閉じる</Text>
-          </Pressable>
+          <Button
+            title="閉じる"
+            variant="outline"
+            size="compact"
+            onPress={onClose}
+            accessibilityLabel="振り返り詳細を閉じる"
+            style={styles.modalCloseButtonPlacement}
+          />
         </View>
       </View>
     </Modal>
@@ -458,18 +464,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginTop: spacing.tightGap,
   },
-  modalCloseButton: {
+  modalCloseButtonPlacement: {
     alignSelf: "center",
-    backgroundColor: theme.surfaceSoft,
-    borderColor: theme.borderGold,
-    borderRadius: 999,
-    borderWidth: cardSizes.borderWidth,
-    paddingHorizontal: spacing.lgGap,
-    paddingVertical: spacing.smGap,
-  },
-  modalCloseText: {
-    color: theme.gold,
-    fontSize: 14,
-    fontWeight: "800",
   },
 });
