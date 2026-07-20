@@ -4,6 +4,7 @@ import { View, Text, Image, Pressable, StyleSheet, ScrollView, Dimensions } from
 import { useRouter, useFocusEffect } from "expo-router";
 import { getStamps } from "../../lib/storage";
 import { kamimusubiDark as theme } from "../theme";
+import Button from "../../components/ui/Button";
 
 const GAP = 10;
 const COLS = 3;
@@ -41,9 +42,13 @@ export default function GoshuinList() {
         <Pressable onPress={() => router.replace("/records")} style={styles.back}>
           <Text style={styles.backText}>← 記録へ戻る</Text>
         </Pressable>
-        <Pressable onPress={() => router.push("/goshuin/upload")} style={styles.addButton}>
-          <Text style={styles.addButtonText}>＋ 記録する</Text>
-        </Pressable>
+        <Button
+          title="＋ 記録する"
+          variant="outline"
+          size="compact"
+          onPress={() => router.push("/goshuin/upload")}
+          accessibilityLabel="御朱印の記録を追加する"
+        />
       </View>
 
       <View style={styles.heroBlock}>
@@ -80,9 +85,13 @@ export default function GoshuinList() {
           <Text style={styles.emptyIcon}>□</Text>
           <Text style={styles.emptyTitle}>まだ記録はありません</Text>
           <Text style={styles.emptyText}>参拝した神社や御朱印を残すと、あとから自分の流れを振り返れます。</Text>
-          <Pressable onPress={() => router.push("/goshuin/upload")} style={styles.emptyCta}>
-            <Text style={styles.emptyCtaText}>最初の記録を追加する</Text>
-          </Pressable>
+          <Button
+            title="最初の記録を追加する"
+            variant="primary"
+            onPress={() => router.push("/goshuin/upload")}
+            accessibilityLabel="最初の御朱印記録を追加する"
+            style={styles.emptyCtaPlacement}
+          />
         </View>
       )}
     </ScrollView>
@@ -120,19 +129,6 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
   },
   backText: {
-    color: theme.gold,
-    fontSize: 13,
-    fontWeight: "800",
-  },
-  addButton: {
-    borderWidth: 1,
-    borderColor: theme.borderGold,
-    paddingVertical: 8,
-    paddingHorizontal: 13,
-    borderRadius: 999,
-    backgroundColor: theme.borderGoldDark,
-  },
-  addButtonText: {
     color: theme.gold,
     fontSize: 13,
     fontWeight: "800",
@@ -223,18 +219,8 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     textAlign: "center",
   },
-  emptyCta: {
+  emptyCtaPlacement: {
     width: "100%",
-    height: 50,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: theme.gold,
     marginTop: 8,
-  },
-  emptyCtaText: {
-    color: theme.background,
-    fontSize: 15,
-    fontWeight: "900",
   },
 });
