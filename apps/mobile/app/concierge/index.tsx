@@ -504,6 +504,8 @@ function ResultCard({
 
           {actionSuggestionV4Preview?.primaryAction ? (
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`まずやること。${actionSuggestionV4Preview.primaryAction.label}。${actionSuggestionV4Preview.primaryAction.description}`}
               onPress={() =>
                 onActionEvent({
                   actionType: "action_started",
@@ -511,7 +513,10 @@ function ResultCard({
                   slot: "primary",
                 })
               }
-              style={styles.actionV4Item}
+              style={({ pressed }) => [
+                styles.actionV4Item,
+                pressed ? styles.actionV4ItemPressed : null,
+              ]}
             >
               <Text style={styles.actionV4ItemLabel}>まずやること</Text>
               <Text style={styles.actionV4Title}>{actionSuggestionV4Preview.primaryAction.label}</Text>
@@ -521,6 +526,8 @@ function ResultCard({
 
           {actionSuggestionV4Preview?.secondaryAction ? (
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`次にできること。${actionSuggestionV4Preview.secondaryAction.label}。${actionSuggestionV4Preview.secondaryAction.description}`}
               onPress={() =>
                 onActionEvent({
                   actionType: "action_completed",
@@ -528,7 +535,10 @@ function ResultCard({
                   slot: "secondary",
                 })
               }
-              style={styles.actionV4Item}
+              style={({ pressed }) => [
+                styles.actionV4Item,
+                pressed ? styles.actionV4ItemPressed : null,
+              ]}
             >
               <Text style={styles.actionV4ItemLabel}>次にできること</Text>
               <Text style={styles.actionV4Title}>{actionSuggestionV4Preview.secondaryAction.label}</Text>
@@ -1178,6 +1188,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     gap: 4,
+  },
+  actionV4ItemPressed: {
+    opacity: 0.78,
   },
   actionV4ItemLabel: {
     color: theme.goldSoft,
