@@ -22,6 +22,7 @@ import { buildDerivedProfile, buildDirectionProfile } from "../profile";
 import { useProfileStore } from "../../store/profileStore";
 
 const STORAGE_NAME = "kamimusubi:mobile:profile:v1";
+const LEGACY_BIRTHDAY_STORAGE_NAME = "sanpai:profile:birthday";
 
 function resetInMemoryState() {
   useProfileStore.setState({
@@ -108,5 +109,41 @@ describe("profileStore persistence", () => {
 
     expect(useProfileStore.getState().userProfile.birthday).toBe("2000-01-01");
     expect(useProfileStore.getState().derivedProfile).toEqual(buildDerivedProfile({ birthday: "2000-01-01" }));
+  });
+
+  it("migrates the legacy birthday after hydration and preserves the other profile fields", async () => {
+    const persistedUserProfile = {
+      birthTime: "08:30",
+      birthPlace: "東京都",
+      worshipStyle: "朝参り",
+    };
+    resetInMemoryState();
+    asyncStorage.values.set(
+      STORAGE_NAME,
+      JSON.stringify({ state: { userProfile: persistedUserProfile }, version: 1 }),
+    );
+    asyncStorage.values.set(LEGACY_BIRTHDAY_STORAGE_NAME, "1990-04-01");
+
+    await useProfileStore.persist.rehydrate();
+    await vi.waitFor(() => expect(useProfileStore.getState().userProfile.birthday).toBe("1990-04-01"));
+
+    const state = useProfileStore.getState();
+    const expectedUserProfile = { ...persistedUserProfile, birthday: "1990-04-01" };
+    expect(state.userProfile).toEqual(expectedUserProfile);
+    expect(state.derivedProfile).toEqual(buildDerivedProfile(expectedUserProfile));
+    expect(state.directionProfile).toEqual(buildDirectionProfile(expectedUserProfile));
+    expect(asyncStorage.values.has(LEGACY_BIRTHDAY_STORAGE_NAME)).toBe(false);
+  });
+
+  it("does not migrate when the persisted profile cannot be read", async () => {
+    resetInMemoryState();
+    asyncStorage.values.set(LEGACY_BIRTHDAY_STORAGE_NAME, "1984-05-15");
+    asyncStorage.getItem.mockRejectedValueOnce(new Error("profile read failed"));
+
+    await useProfileStore.persist.rehydrate();
+    await Promise.resolve();
+
+    expect(useProfileStore.getState().userProfile.birthday).toBeUndefined();
+    expect(asyncStorage.values.get(LEGACY_BIRTHDAY_STORAGE_NAME)).toBe("1984-05-15");
   });
 });
