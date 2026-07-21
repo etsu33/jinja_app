@@ -87,6 +87,10 @@ export type ProfileContextPayload = {
   };
   direction_profile: {
     luckyDirection?: string;
+    luckyDirections?: string[];
+    targetYear?: number;
+    calculationMethod?: string;
+    excludedDirections?: string[];
     source?: string;
   };
 };
@@ -162,6 +166,10 @@ export function buildConditionProfileContext({
     },
     direction_profile: {
       luckyDirection: direction.luckyDirection,
+      luckyDirections: direction.luckyDirections,
+      targetYear: direction.targetYear,
+      calculationMethod: direction.calculationMethod,
+      excludedDirections: direction.excludedDirections,
       source: direction.source,
     },
   };

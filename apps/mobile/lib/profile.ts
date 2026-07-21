@@ -58,19 +58,64 @@ const KYUSEI_TO_GOGYO: Record<string, string> = {
   "九紫火星": "火",
 };
 
+type Direction = "北" | "北東" | "東" | "南東" | "南" | "南西" | "西" | "北西";
+const PALACE_BY_DIRECTION: Record<Direction, number> = { 北: 1, 北東: 8, 東: 3, 南東: 4, 南: 9, 南西: 2, 西: 7, 北西: 6 };
+const OPPOSITE: Record<Direction, Direction> = { 北: "南", 北東: "南西", 東: "西", 南東: "北西", 南: "北", 南西: "北東", 西: "東", 北西: "南東" };
+const STAR_ELEMENT: Record<number, string> = { 1: "水", 2: "土", 3: "木", 4: "木", 5: "土", 6: "金", 7: "金", 8: "土", 9: "火" };
+const GENERATES: Record<string, string> = { 木: "火", 火: "土", 土: "金", 金: "水", 水: "木" };
+const DIRECTIONS = Object.keys(PALACE_BY_DIRECTION) as Direction[];
+
+function kyuseiYear(date: Date): number {
+  const year = date.getFullYear();
+  return date.getMonth() < 1 || (date.getMonth() === 1 && date.getDate() < 4) ? year - 1 : year;
+}
+
+function starNumberForYear(year: number): number {
+  return ((11 - (year % 9) - 1) % 9) + 1;
+}
+
+function annualStarAt(direction: Direction, centerStar: number): number {
+  return ((centerStar + PALACE_BY_DIRECTION[direction] - 5 - 1 + 18) % 9) + 1;
+}
+
+function taisaiDirection(year: number): Direction {
+  return (["北", "北東", "北東", "東", "南東", "南東", "南", "南西", "南西", "西", "北西", "北西"] as Direction[])[((year - 4) % 12 + 12) % 12];
+}
+
+export function calculateAnnualLuckyDirections(birthday: string, referenceDate = new Date()): DirectionProfile {
+  const normalized = normalizeBirthday(birthday);
+  if (!normalized) return {};
+  const [birthYear, birthMonth, birthDay] = normalized.split("-").map(Number);
+  const honmeiYear = birthMonth < 2 || (birthMonth === 2 && birthDay < 4) ? birthYear - 1 : birthYear;
+  const honmeiStar = starNumberForYear(honmeiYear);
+  const targetYear = kyuseiYear(referenceDate);
+  const centerStar = starNumberForYear(targetYear);
+  const starByDirection = Object.fromEntries(DIRECTIONS.map((direction) => [direction, annualStarAt(direction, centerStar)])) as Record<Direction, number>;
+  const fiveYellow = DIRECTIONS.find((direction) => starByDirection[direction] === 5);
+  const honmeiDirection = DIRECTIONS.find((direction) => starByDirection[direction] === honmeiStar);
+  const exclusions = new Set<Direction>();
+  if (fiveYellow) { exclusions.add(fiveYellow); exclusions.add(OPPOSITE[fiveYellow]); }
+  if (honmeiDirection) { exclusions.add(honmeiDirection); exclusions.add(OPPOSITE[honmeiDirection]); }
+  exclusions.add(OPPOSITE[taisaiDirection(targetYear)]);
+  const honmeiElement = STAR_ELEMENT[honmeiStar];
+  const luckyDirections = DIRECTIONS.filter((direction) => {
+    if (exclusions.has(direction)) return false;
+    const element = STAR_ELEMENT[starByDirection[direction]];
+    return element === honmeiElement || GENERATES[element] === honmeiElement || GENERATES[honmeiElement] === element;
+  });
+  return {
+    luckyDirection: luckyDirections[0], luckyDirections, targetYear,
+    calculationMethod: "annual_kyusei_v1", excludedDirections: DIRECTIONS.filter((direction) => exclusions.has(direction)), source: "calculated",
+  };
+}
+
 export function calculateGogyo(birthday: string): string {
   const kyusei = calculateKyusei(birthday);
   return KYUSEI_TO_GOGYO[kyusei] ?? "不明";
 }
 
-export function buildDirectionProfile(userProfile: UserProfile): DirectionProfile {
-  if (!normalizeBirthday(userProfile.birthday)) {
-    return {};
-  }
-  return {
-    luckyDirection: "東",
-    source: "placeholder",
-  };
+export function buildDirectionProfile(userProfile: UserProfile, referenceDate = new Date()): DirectionProfile {
+  return calculateAnnualLuckyDirections(userProfile.birthday ?? "", referenceDate);
 }
 
 export function buildDerivedProfile(userProfile: UserProfile): DerivedProfile {

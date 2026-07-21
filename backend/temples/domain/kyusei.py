@@ -178,3 +178,48 @@ def kyusei_signals(birthdate: Optional[str], *, today: Optional[date] = None) ->
         },
         "note": "年切替は簡易的に2/4境界（立春近似）で計算しています",
     }
+
+
+DIRECTION_PALACES = {"北": 1, "北東": 8, "東": 3, "南東": 4, "南": 9, "南西": 2, "西": 7, "北西": 6}
+OPPOSITE_DIRECTION = {"北": "南", "北東": "南西", "東": "西", "南東": "北西", "南": "北", "南西": "北東", "西": "東", "北西": "南東"}
+STAR_ELEMENTS = {1: "水", 2: "土", 3: "木", 4: "木", 5: "土", 6: "金", 7: "金", 8: "土", 9: "火"}
+GENERATES = {"木": "火", "火": "土", "土": "金", "金": "水", "水": "木"}
+TAISAI_DIRECTIONS = ("北", "北東", "北東", "東", "南東", "南東", "南", "南西", "南西", "西", "北西", "北西")
+
+
+def annual_lucky_directions(birthdate: Optional[str], *, today: Optional[date] = None) -> Optional[Dict[str, Any]]:
+    """年盤の凶方位を除外し、本命星と比和・相生になる方位を返す。月盤・日盤は扱わない。"""
+    honmei = honmei_star(birthdate)
+    if not honmei:
+        return None
+    target = today or timezone.localdate()
+    annual = year_star(today=target)
+    stars = {
+        direction: ((annual.num + palace - 5 - 1 + 18) % 9) + 1
+        for direction, palace in DIRECTION_PALACES.items()
+    }
+    excluded: set[str] = set()
+    five_yellow = next((direction for direction, star in stars.items() if star == 5), None)
+    honmei_direction = next((direction for direction, star in stars.items() if star == honmei.num), None)
+    for direction in (five_yellow, honmei_direction):
+        if direction:
+            excluded.add(direction)
+            excluded.add(OPPOSITE_DIRECTION[direction])
+    taisai = TAISAI_DIRECTIONS[(annual.ki_year - 4) % 12]
+    excluded.add(OPPOSITE_DIRECTION[taisai])
+    honmei_element = STAR_ELEMENTS[honmei.num]
+    lucky = []
+    for direction, star in stars.items():
+        if direction in excluded:
+            continue
+        element = STAR_ELEMENTS[star]
+        if element == honmei_element or GENERATES[element] == honmei_element or GENERATES[honmei_element] == element:
+            lucky.append(direction)
+    return {
+        "luckyDirection": lucky[0] if lucky else None,
+        "luckyDirections": lucky,
+        "targetYear": annual.ki_year,
+        "calculationMethod": "annual_kyusei_v1",
+        "excludedDirections": [direction for direction in DIRECTION_PALACES if direction in excluded],
+        "source": "calculated",
+    }

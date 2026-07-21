@@ -10,7 +10,7 @@ import MyPageScreen from "@/features/mypage/components/MyPageScreen";
 import FavoritesSection from "@/features/mypage/components/FavoritesSection";
 import Link from "next/link";
 import { buildLoginHref } from "@/lib/nav/login";
-import { buildDerivedProfile } from "@/lib/profile/derivedProfile";
+import { buildDerivedProfile, buildDirectionProfile } from "@/lib/profile/derivedProfile";
 
 type Props = { initialFavorites: Favorite[] };
 type MyPageTab = "profile" | "goshuin" | "favorites" | "submissions" | "visits";
@@ -189,6 +189,7 @@ export default function MyPageView({ initialFavorites }: Props) {
   }, [user, form]);
 
   const derivedProfile = useMemo(() => buildDerivedProfile(form), [form.birthday]);
+  const directionProfile = useMemo(() => buildDirectionProfile(form), [form.birthday]);
 
   const aggregatedVisits = useMemo(() => aggregateVisitsByShrine(visits), [visits]);
 
@@ -383,6 +384,11 @@ export default function MyPageView({ initialFavorites }: Props) {
               <div><dt className="text-xs text-stone-400">五行</dt><dd className="mt-1 font-medium">{derivedProfile.gogyo ?? "未計算"}</dd></div>
               <div><dt className="text-xs text-stone-400">ライフパス</dt><dd className="mt-1 font-medium">{derivedProfile.lifePath ?? "未計算"}</dd></div>
             </dl>
+            <div className="mt-4 border-t border-stone-200/40 pt-3">
+              <p className="text-xs text-stone-400">{directionProfile.targetYear ? `${directionProfile.targetYear}年の吉方位` : "吉方位"}</p>
+              <p className="mt-1 font-medium">{directionProfile.luckyDirections?.length ? directionProfile.luckyDirections.join("・") : "未計算"}</p>
+              <p className="mt-1 text-xs text-stone-500">年盤をもとに凶方位を除外した補助情報です。月盤・日盤は含みません。</p>
+            </div>
           </div>
 
           <label className="inline-flex items-center gap-2 text-sm text-stone-700">

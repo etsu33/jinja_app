@@ -13,5 +13,9 @@ export type DerivedProfile = {
 
 export type DirectionProfile = {
   luckyDirection?: string;
+  luckyDirections?: string[];
+  targetYear?: number;
+  calculationMethod?: "annual_kyusei_v1";
+  excludedDirections?: string[];
   source?: "placeholder" | "calculated";
 };

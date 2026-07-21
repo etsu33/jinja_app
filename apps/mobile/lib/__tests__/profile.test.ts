@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildDerivedProfile, normalizeBirthday } from "../profile";
+import { buildDerivedProfile, buildDirectionProfile, normalizeBirthday } from "../profile";
 
 describe("profile calculation input", () => {
   it("normalizes slash-separated dates before calculating", () => {
@@ -15,5 +15,16 @@ describe("profile calculation input", () => {
     });
     expect(normalizeBirthday("2025-02-30")).toBeUndefined();
     expect(normalizeBirthday("2999-01-01")).toBeUndefined();
+  });
+
+  it("calculates annual lucky directions instead of returning a fixed direction", () => {
+    expect(buildDirectionProfile({ birthday: "1984-05-15" }, new Date(2026, 6, 21))).toEqual({
+      luckyDirection: "東",
+      luckyDirections: ["東", "北西"],
+      targetYear: 2026,
+      calculationMethod: "annual_kyusei_v1",
+      excludedDirections: ["北", "北東", "南", "南西"],
+      source: "calculated",
+    });
   });
 });

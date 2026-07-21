@@ -125,11 +125,12 @@ export default function ProfileScreen() {
 
       {/* DirectionProfile */}
       <View style={styles.sectionCard}>
-        <Text style={styles.sectionTitle}>方位プロフィール</Text>
+        <Text style={styles.sectionTitle}>{directionProfile.targetYear ? `${directionProfile.targetYear}年の方位プロフィール` : "方位プロフィール"}</Text>
         <View style={styles.row}>
           <Text style={styles.label}>吉方位</Text>
-          <Text style={styles.value}>{fmtDerived(directionProfile.luckyDirection)}</Text>
+          <Text style={styles.value}>{directionProfile.luckyDirections?.length ? directionProfile.luckyDirections.join("・") : "該当なし"}</Text>
         </View>
+        <Text style={styles.noticeText}>年盤をもとに凶方位を除外した補助情報です。参拝日単位の月盤・日盤は含みません。</Text>
       </View>
 
       {/* Concierge */}

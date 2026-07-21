@@ -29,6 +29,7 @@ from temples.api.serializers.concierge import (
 from temples.geocoding.client import geocode_google_point
 from temples.models import ConciergeThread
 from temples.domain.consultation_axis import resolve_consultation_axis
+from temples.domain.kyusei import annual_lucky_directions
 from temples.services import places as Places
 
 from temples.services.plan_service import resolve_plan_context
@@ -618,6 +619,15 @@ class ConciergeChatView(APIView):
             # profile_context ログ（まだ推薦には使わない）
             raw_profile_context = data.get("profile_context")
             if isinstance(raw_profile_context, dict):
+                profile_user = raw_profile_context.get("user_profile")
+                profile_birthdate = (
+                    profile_user.get("birthdate") or profile_user.get("birthday")
+                    if isinstance(profile_user, dict)
+                    else None
+                )
+                calculated_direction = annual_lucky_directions(profile_birthdate or birthdate)
+                if calculated_direction:
+                    raw_profile_context = {**raw_profile_context, "direction_profile": calculated_direction}
                 has_user = isinstance(raw_profile_context.get("user_profile"), dict)
                 has_derived = isinstance(raw_profile_context.get("derived_profile"), dict)
                 log.info(
@@ -829,7 +839,8 @@ class ConciergeChatView(APIView):
                     public_mode=public_mode,
                     flow=flow,
                     user=user if getattr(user, "is_authenticated", False) else None,
-                    profile_context=raw_profile_context if isinstance(raw_profile_context, dict) else None,                    interpretation_profile=interpretation_profile,
+                    profile_context=raw_profile_context if isinstance(raw_profile_context, dict) else None,
+                    interpretation_profile=interpretation_profile,
                 )
             except Exception:
                 log.exception(
