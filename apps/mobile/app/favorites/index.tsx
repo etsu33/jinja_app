@@ -12,13 +12,34 @@ export default function FavoritesScreen() {
   const router = useRouter();
   const [items, setItems] = useState<RecentShrineItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   const load = useCallback(() => {
+    let alive = true;
+
     setLoading(true);
-    getFavoriteShrines()
-      .then(setItems)
-      .catch(() => setItems([]))
-      .finally(() => setLoading(false));
+    setError(false);
+
+    void getFavoriteShrines()
+      .then((nextItems) => {
+        if (!alive) return;
+
+        setItems(nextItems);
+        setError(false);
+      })
+      .catch(() => {
+        if (!alive) return;
+
+        setItems([]);
+        setError(true);
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
+
+    return () => {
+      alive = false;
+    };
   }, []);
 
   useFocusEffect(load);
@@ -54,6 +75,15 @@ export default function FavoritesScreen() {
         <Text style={{ color: theme.muted, textAlign: "center", marginTop: spacing.bottomSpace }}>
           読み込み中…
         </Text>
+      ) : error ? (
+        <View style={{ alignItems: "center", marginTop: spacing.bottomSpace + spacing.sectionTop, gap: spacing.lgGap }}>
+          <Text style={{ color: theme.muted, fontSize: 15 }}>
+            お気に入りを読み込めませんでした
+          </Text>
+          <Text style={{ color: theme.mutedDark, fontSize: 13, textAlign: "center" }}>
+            通信状況を確認して、もう一度画面を開き直してください。
+          </Text>
+        </View>
       ) : items.length === 0 ? (
         <View style={{ alignItems: "center", marginTop: spacing.bottomSpace + spacing.sectionTop, gap: spacing.lgGap }}>
           <Text style={{ fontSize: 40 }}>♡</Text>
