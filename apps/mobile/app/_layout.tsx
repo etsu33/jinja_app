@@ -97,7 +97,6 @@ export default function Root() {
       <Tabs.Screen name="consultation-history/index" options={{ href: null }} />
       <Tabs.Screen name="recently-viewed/index" options={{ href: null }} />
       <Tabs.Screen name="profile/index" options={{ href: null }} />
-      <Tabs.Screen name="birthday/index" options={{ href: null }} />
       <Tabs.Screen name="search/index" options={{ href: null }} />
       <Tabs.Screen name="shrines/[id]" options={{ href: null }} />
       <Tabs.Screen name="ranking/index" options={{ href: null }} />
