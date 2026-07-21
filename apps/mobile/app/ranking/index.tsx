@@ -4,6 +4,7 @@ import { Animated, ScrollView, View, Text, Image, Pressable, StyleSheet } from "
 import { useRouter, useFocusEffect } from "expo-router";
 import { SHRINES } from "../../data/shrines";
 import { getFavorites, toggleFavorite } from "../../lib/storage";
+import Button from "../../components/ui/Button";
 import { kamimusubiDark } from "../theme";
 import { spacing } from "../design/spacing";
 import { cardSizes } from "../design/cardSizes";
@@ -108,26 +109,13 @@ export default function RankingPage() {
       </Text>
 
       <View style={{ flexDirection: "row", alignItems: "center", marginBottom: spacing.lgGap }}>
-        <Pressable
+        <Button
+          title={favOnly ? "保存済みだけ表示中" : "お気に入りだけ"}
+          accessibilityLabel={favOnly ? "保存済みだけ表示中" : "お気に入りだけ"}
+          variant={favOnly ? "primary" : "outline"}
+          size="compact"
           onPress={() => setFavOnly((v) => !v)}
-          style={{
-            paddingHorizontal: spacing.mdGap,
-            paddingVertical: spacing.inlineGap - 1,
-            borderRadius: radius.pill,
-            borderWidth: cardSizes.borderWidth,
-            borderColor: favOnly ? kamimusubiDark.gold : kamimusubiDark.borderHeader,
-            backgroundColor: favOnly ? kamimusubiDark.gold : kamimusubiDark.surface,
-          }}
-        >
-          <Text
-            style={{
-              color: favOnly ? kamimusubiDark.background : kamimusubiDark.text,
-              fontSize: 12,
-            }}
-          >
-            {favOnly ? "保存済みだけ表示中" : "お気に入りだけ"}
-          </Text>
-        </Pressable>
+        />
         <Text
           style={{
             marginLeft: spacing.smGap,
