@@ -290,6 +290,7 @@ _DIRECTION_LABELS_JA: set[str] = {"東", "西", "南", "北", "北東", "南東"
 def _score_direction_signal(
     rec: Dict[str, Any],
     profile_context: Optional[Dict[str, Any]],
+    user_origin: Optional[Dict[str, Any]] = None,
 ) -> tuple[float, List[str]]:
     """
     profile_context.direction_profile.luckyDirection を補助シグナルとして評価する。
@@ -303,9 +304,23 @@ def _score_direction_signal(
     if not isinstance(direction_profile, dict):
         return 0.0, []
 
-    lucky = str(direction_profile.get("luckyDirection") or "").strip()
-    if not lucky:
+    lucky_directions = [str(value).strip() for value in direction_profile.get("luckyDirections") or [] if str(value).strip()]
+    if not lucky_directions:
+        fallback = str(direction_profile.get("luckyDirection") or "").strip()
+        lucky_directions = [fallback] if fallback else []
+    if not lucky_directions:
         return 0.0, []
+
+    origin_lat = _to_float_or_none(user_origin.get("lat") if user_origin else None)
+    origin_lng = _to_float_or_none(user_origin.get("lng") if user_origin else None)
+    shrine_lat = _to_float_or_none(rec.get("latitude") or rec.get("lat"))
+    shrine_lng = _to_float_or_none(rec.get("longitude") or rec.get("lng"))
+    if None not in (origin_lat, origin_lng, shrine_lat, shrine_lng):
+        bearing = _bearing_degrees(from_lat=origin_lat, from_lng=origin_lng, to_lat=shrine_lat, to_lng=shrine_lng)
+        actual_direction = _direction_label_ja(bearing)
+        rec["direction_from_origin"] = actual_direction
+        if actual_direction in lucky_directions:
+            return DIRECTION_SIGNAL_MAX, [f"plannedLuckyDirection:{actual_direction}"]
 
     # 候補神社の方位情報を確認（direction / direction_tags フィールド）
     shrine_direction = str(rec.get("direction") or "").strip()
@@ -319,8 +334,9 @@ def _score_direction_signal(
         return 0.0, []
 
     all_shrine_directions = set(filter(None, [shrine_direction] + shrine_direction_tags))
-    if lucky in all_shrine_directions:
-        return DIRECTION_SIGNAL_MAX, [f"luckyDirection:{lucky}"]
+    matched = next((direction for direction in lucky_directions if direction in all_shrine_directions), None)
+    if matched:
+        return DIRECTION_SIGNAL_MAX, [f"luckyDirection:{matched}"]
 
     return 0.0, []
 
@@ -1251,7 +1267,7 @@ def _attach_breakdown(
     profile_signal_score, profile_signal_matched = _score_profile_signal(rec, profile_context)
 
     # direction_profile 補助シグナル（最大 +0.02、候補に方位情報がある場合のみ加算）
-    direction_signal_score, direction_signal_matched = _score_direction_signal(rec, profile_context)
+    direction_signal_score, direction_signal_matched = _score_direction_signal(rec, profile_context, user_origin)
 
     # For now, direction_bonus is 0.0 and does not reverse ranking
     score_total_ranked = (

@@ -29,7 +29,7 @@ from temples.api.serializers.concierge import (
 from temples.geocoding.client import geocode_google_point
 from temples.models import ConciergeThread
 from temples.domain.consultation_axis import resolve_consultation_axis
-from temples.domain.kyusei import annual_lucky_directions
+from temples.domain.kyusei import annual_lucky_directions, planned_visit_lucky_directions
 from temples.services import places as Places
 
 from temples.services.plan_service import resolve_plan_context
@@ -625,7 +625,12 @@ class ConciergeChatView(APIView):
                     if isinstance(profile_user, dict)
                     else None
                 )
-                calculated_direction = annual_lucky_directions(profile_birthdate or birthdate)
+                visit_date = data.get("visit_date") or data.get("planned_visit_date")
+                calculated_direction = (
+                    planned_visit_lucky_directions(profile_birthdate or birthdate, visit_date)
+                    if visit_date
+                    else annual_lucky_directions(profile_birthdate or birthdate)
+                )
                 if calculated_direction:
                     raw_profile_context = {**raw_profile_context, "direction_profile": calculated_direction}
                 has_user = isinstance(raw_profile_context.get("user_profile"), dict)

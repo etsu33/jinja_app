@@ -2,11 +2,17 @@ import * as React from "react";
 import { View, Text, TextInput, Pressable, StyleSheet } from "react-native";
 import { kamimusubiDark as theme } from "../app/theme";
 import { VISIT_STYLE_OPTIONS, GORIYAKU_OPTIONS } from "../lib/conditionPayload";
+import { ProfilePickerModal } from "./profile/ProfilePickerModal";
 
 // Home画面・Concierge結果画面で共通の条件レイヤー入力（誕生日・参拝スタイル・ご利益・補助条件）
 export type ConditionFieldsCardProps = {
   birthdate: string;
   onChangeBirthdate: (value: string) => void;
+  plannedVisitDate: string;
+  onChangePlannedVisitDate: (value: string) => void;
+  hasOrigin?: boolean;
+  locationStatus?: "idle" | "loading" | "ready" | "error";
+  onUseCurrentLocation?: () => void;
   selectedVisitStyle?: string;
   onSelectVisitStyle: (value: string | undefined) => void;
   selectedGoriyaku?: string;
@@ -19,6 +25,11 @@ export type ConditionFieldsCardProps = {
 export function ConditionFieldsCard({
   birthdate,
   onChangeBirthdate,
+  plannedVisitDate,
+  onChangePlannedVisitDate,
+  hasOrigin = false,
+  locationStatus = "idle",
+  onUseCurrentLocation,
   selectedVisitStyle,
   onSelectVisitStyle,
   selectedGoriyaku,
@@ -27,6 +38,23 @@ export function ConditionFieldsCard({
   onChangeSupportText,
   disabled,
 }: ConditionFieldsCardProps) {
+  const today = new Date();
+  const currentParts = plannedVisitDate.split("-");
+  const [datePicker, setDatePicker] = React.useState<"year" | "month" | "day" | null>(null);
+  const [draftYear, setDraftYear] = React.useState(currentParts[0] || String(today.getFullYear()));
+  const [draftMonth, setDraftMonth] = React.useState(currentParts[1] || String(today.getMonth() + 1).padStart(2, "0"));
+  const years = [String(today.getFullYear()), String(today.getFullYear() + 1)];
+  const firstMonth = Number(draftYear) === today.getFullYear() ? today.getMonth() + 1 : 1;
+  const months = Array.from({ length: 13 - firstMonth }, (_, index) => String(firstMonth + index).padStart(2, "0"));
+  const calendarDays = new Date(Number(draftYear), Number(draftMonth), 0).getDate();
+  const firstDay = Number(draftYear) === today.getFullYear() && Number(draftMonth) === today.getMonth() + 1 ? today.getDate() : 1;
+  const days = Array.from({ length: calendarDays - firstDay + 1 }, (_, index) => String(firstDay + index).padStart(2, "0"));
+  const openDatePicker = () => {
+    setDraftYear(currentParts[0] || String(today.getFullYear()));
+    setDraftMonth(currentParts[1] || String(today.getMonth() + 1).padStart(2, "0"));
+    setDatePicker("year");
+  };
+
   return (
     <View style={styles.wrap}>
       <View style={styles.intro}>
@@ -54,6 +82,35 @@ export function ConditionFieldsCard({
       </View>
 
       <View style={styles.divider} />
+
+      <View style={styles.inputBlock}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.label}>参拝予定日</Text>
+          <Text style={styles.caption}>予定日の年盤・月盤から吉方位を計算します</Text>
+        </View>
+        <Pressable onPress={openDatePicker} disabled={disabled} style={styles.selectInput} accessibilityRole="button">
+          <Text style={plannedVisitDate ? styles.selectInputText : styles.selectPlaceholder}>{plannedVisitDate || "日付を選択"}</Text>
+          <Text style={styles.selectChevron}>›</Text>
+        </Pressable>
+        {plannedVisitDate ? <Pressable onPress={() => onChangePlannedVisitDate("")}><Text style={styles.clearText}>予定日を解除</Text></Pressable> : null}
+      </View>
+
+      <View style={styles.divider} />
+
+      <View style={styles.inputBlock}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.label}>出発地点</Text>
+          <Text style={styles.caption}>現在地から神社への方角を計算します</Text>
+        </View>
+        <Pressable onPress={onUseCurrentLocation} disabled={disabled || locationStatus === "loading" || !onUseCurrentLocation} style={[styles.locationButton, hasOrigin && styles.locationButtonReady]}>
+          <Text style={[styles.locationButtonText, hasOrigin && styles.locationButtonTextReady]}>{locationStatus === "loading" ? "現在地を取得中…" : hasOrigin ? "✓ 現在地を使用中" : "現在地を出発地点にする"}</Text>
+        </Pressable>
+        {locationStatus === "error" ? <Text style={styles.locationError}>現在地を取得できませんでした。位置情報の許可を確認してください。</Text> : null}
+      </View>
+
+      <ProfilePickerModal visible={datePicker === "year"} title="参拝する年" options={years.map((value) => ({ value, label: `${value}年` }))} selectedValue={draftYear} onClose={() => setDatePicker(null)} onSelect={(value) => { setDraftYear(value); if (Number(value) === today.getFullYear() && Number(draftMonth) < today.getMonth() + 1) setDraftMonth(String(today.getMonth() + 1).padStart(2, "0")); setDatePicker("month"); }} />
+      <ProfilePickerModal visible={datePicker === "month"} title="参拝する月" options={months.map((value) => ({ value, label: `${Number(value)}月` }))} selectedValue={draftMonth} onClose={() => setDatePicker(null)} onSelect={(value) => { setDraftMonth(value); setDatePicker("day"); }} />
+      <ProfilePickerModal visible={datePicker === "day"} title="参拝する日" options={days.map((value) => ({ value, label: `${Number(value)}日` }))} selectedValue={currentParts[2]} onClose={() => setDatePicker(null)} onSelect={(value) => onChangePlannedVisitDate(`${draftYear}-${draftMonth}-${value}`)} />
 
       <View style={styles.block}>
         <View style={styles.sectionHeader}>
@@ -168,6 +225,16 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontWeight: "700",
   },
+  selectInput: { minHeight: 44, backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.borderSoft, borderRadius: 14, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  selectInputText: { color: theme.text, fontSize: 14, fontWeight: "700" },
+  selectPlaceholder: { color: theme.mutedDark, fontSize: 14 },
+  selectChevron: { color: theme.gold, fontSize: 22 },
+  clearText: { color: theme.muted, fontSize: 12, fontWeight: "700", alignSelf: "flex-end" },
+  locationButton: { minHeight: 44, borderWidth: 1, borderColor: theme.borderSoft, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: theme.surface },
+  locationButtonReady: { borderColor: theme.borderGold, backgroundColor: theme.gold },
+  locationButtonText: { color: theme.text, fontSize: 13, fontWeight: "800" },
+  locationButtonTextReady: { color: theme.background },
+  locationError: { color: "#ef8f8f", fontSize: 11, lineHeight: 16 },
   textarea: {
     minHeight: 76,
     textAlignVertical: "top",

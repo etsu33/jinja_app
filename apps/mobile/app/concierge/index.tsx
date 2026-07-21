@@ -10,6 +10,7 @@ import {
   StyleSheet,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import * as Location from "expo-location";
 import { kamimusubiDark as theme } from "../theme";
 import { shadows } from "../design/shadow";
 import { ConditionFieldsCard } from "../../components/ConditionFieldsCard";
@@ -183,6 +184,8 @@ type ConciergeChatRequestPayload = {
   };
   goriyaku_tag_ids?: number[];
   extra_condition?: string;
+  visit_date?: string;
+  location?: { lat: number; lng: number };
   profile_context?: ProfileContextPayload;
 };
 
@@ -405,10 +408,14 @@ async function fetchConciergeRecommendations({
   consultation,
   conditionFilters,
   profileContext,
+  plannedVisitDate,
+  location,
 }: {
   consultation: string;
   conditionFilters: ConditionFilters;
   profileContext?: ProfileContextPayload;
+  plannedVisitDate?: string;
+  location?: { lat: number; lng: number };
 }): Promise<RecommendationCard[]> {
   const payload: ConciergeChatRequestPayload = {
     version: 1,
@@ -426,6 +433,8 @@ async function fetchConciergeRecommendations({
     },
     goriyaku_tag_ids: conditionFilters.goriyaku_tag_ids,
     extra_condition: conditionFilters.extra_condition,
+    visit_date: plannedVisitDate || undefined,
+    location,
     ...(profileContext ? { profile_context: profileContext } : {}),
   };
 
@@ -586,13 +595,16 @@ export default function ConciergeScreen() {
     visitStyle?: string;
     goriyaku?: string;
     support?: string;
+    plannedVisitDate?: string;
+    originLat?: string;
+    originLng?: string;
   }>();
   const router = useRouter();
   const { userProfile: globalUserProfile } = useProfileStore();
 
   const initialQuery = [params.q, params.theme].filter(Boolean).join(" ").trim();
   // Homeの条件レイヤーで入力済みの場合、相談文が空でも初回送信できるようにする
-  const initialHasCondition = Boolean(params.birthdate || params.visitStyle || params.goriyaku || params.support);
+  const initialHasCondition = Boolean(params.birthdate || params.plannedVisitDate || params.visitStyle || params.goriyaku || params.support);
 
   const [input, setInput] = React.useState(initialQuery);
   const [consultationText, setConsultationText] = React.useState(initialQuery);
@@ -602,10 +614,14 @@ export default function ConciergeScreen() {
   const [results, setResults] = React.useState<RecommendationCard[]>([]);
   const [selectedVisitStyle, setSelectedVisitStyle] = React.useState<string | undefined>(params.visitStyle || undefined);
   const [birthdate, setBirthdate] = React.useState(params.birthdate ?? "");
+  const [plannedVisitDate, setPlannedVisitDate] = React.useState(params.plannedVisitDate ?? "");
+  const initialOrigin = params.originLat && params.originLng ? { lat: Number(params.originLat), lng: Number(params.originLng) } : null;
+  const [origin, setOrigin] = React.useState<{ lat: number; lng: number } | null>(initialOrigin);
+  const [locationStatus, setLocationStatus] = React.useState<"idle" | "loading" | "ready" | "error">(initialOrigin ? "ready" : "idle");
   const [selectedGoriyaku, setSelectedGoriyaku] = React.useState<string | undefined>(params.goriyaku || undefined);
   const [supportText, setSupportText] = React.useState(params.support ?? "");
-  const hasAnyCondition = Boolean(selectedVisitStyle || birthdate.trim() || selectedGoriyaku || supportText.trim());
-  const isSendDisabled = loading || (!input.trim() && !hasAnyCondition);
+  const hasAnyCondition = Boolean(selectedVisitStyle || birthdate.trim() || plannedVisitDate.trim() || selectedGoriyaku || supportText.trim());
+  const isSendDisabled = loading || (!input.trim() && !hasAnyCondition) || (!!plannedVisitDate && !origin);
   const lastInitialQueryRef = React.useRef<string | null>(null);
 
   // Homeからの相談内容・条件が変わったら自動送信する
@@ -621,6 +637,7 @@ export default function ConciergeScreen() {
   }, [initialQuery, initialHasCondition]);
 
   const submit = async (text: string) => {
+    if (plannedVisitDate.trim() && !origin) { setErrorMessage("参拝予定日を使う場合は、現在地を出発地点に設定してください。"); return; }
     const trimmed = text.trim();
     if (!trimmed && !hasAnyCondition) return;
     const queryText = trimmed || "条件から合う神社を知りたい";
@@ -635,6 +652,7 @@ export default function ConciergeScreen() {
       const goriyakuTagIds = await resolveGoriyakuTagIds(selectedGoriyaku);
       const condition: ConditionState = {
         birthdate,
+        plannedVisitDate,
         visitStyleLabel: selectedVisitStyle,
         goriyakuLabel: selectedGoriyaku,
         goriyakuTagIds,
@@ -646,6 +664,8 @@ export default function ConciergeScreen() {
         consultation: queryText,
         conditionFilters,
         profileContext,
+        plannedVisitDate: plannedVisitDate.trim() || undefined,
+        location: origin ?? undefined,
       });
       setResults(recommendations);
     } catch {
@@ -657,6 +677,17 @@ export default function ConciergeScreen() {
   };
 
   const handleSend = () => void submit(input);
+
+  const useCurrentLocation = async () => {
+    setLocationStatus("loading");
+    const permission = await Location.requestForegroundPermissionsAsync();
+    if (permission.status !== "granted") { setLocationStatus("error"); return; }
+    try {
+      const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      setOrigin({ lat: current.coords.latitude, lng: current.coords.longitude });
+      setLocationStatus("ready");
+    } catch { setLocationStatus("error"); }
+  };
 
   const handleChangeConditions = () => {
     setInput(consultationText);
@@ -785,6 +816,11 @@ export default function ConciergeScreen() {
             <ConditionFieldsCard
               birthdate={birthdate}
               onChangeBirthdate={setBirthdate}
+              plannedVisitDate={plannedVisitDate}
+              onChangePlannedVisitDate={setPlannedVisitDate}
+              hasOrigin={!!origin}
+              locationStatus={locationStatus}
+              onUseCurrentLocation={() => void useCurrentLocation()}
               selectedVisitStyle={selectedVisitStyle}
               onSelectVisitStyle={setSelectedVisitStyle}
               selectedGoriyaku={selectedGoriyaku}
@@ -799,7 +835,7 @@ export default function ConciergeScreen() {
               variant="primary"
               onPress={handleResuggest}
               loading={loading}
-              disabled={!consultationText && !hasAnyCondition}
+              disabled={(!consultationText && !hasAnyCondition) || (!!plannedVisitDate && !origin)}
               accessibilityLabel="この条件で再提案する"
             />
           </View>

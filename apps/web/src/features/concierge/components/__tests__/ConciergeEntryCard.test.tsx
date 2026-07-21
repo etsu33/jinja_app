@@ -84,4 +84,18 @@ describe("ConciergeEntryCard", () => {
     expect(redirectToAuth).toHaveBeenCalledWith("login");
     expect(redirectToAuth).toHaveBeenCalledWith("register");
   });
+
+  it("requires an origin when a planned visit date is selected", () => {
+    const setPlannedVisitDate = vi.fn();
+    const onUseCurrentLocation = vi.fn();
+    const { rerender } = render(
+      <ConciergeEntryCard {...baseProps} needText="参拝したい" plannedVisitDate="2026-09-15" setPlannedVisitDate={setPlannedVisitDate} hasOrigin={false} onUseCurrentLocation={onUseCurrentLocation} />,
+    );
+    expect(screen.getByRole("button", { name: "この相談で神社を提案してもらう" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "現在地を使用する" }));
+    expect(onUseCurrentLocation).toHaveBeenCalledTimes(1);
+
+    rerender(<ConciergeEntryCard {...baseProps} needText="参拝したい" plannedVisitDate="2026-09-15" hasOrigin />);
+    expect(screen.getByRole("button", { name: "この相談で神社を提案してもらう" })).toBeEnabled();
+  });
 });

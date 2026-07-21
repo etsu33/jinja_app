@@ -482,6 +482,9 @@ export default function ConciergeClientFull() {
   const [hydrated, setHydrated] = useState(false);
 
   const [activeThreadId, setActiveThreadId] = useState(0);
+  const [plannedVisitDate, setPlannedVisitDate] = useState("");
+  const [userOrigin, setUserOrigin] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
   const activeThreadIdRef = useRef(0);
 
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -1025,6 +1028,8 @@ export default function ConciergeClientFull() {
         },
         goriyaku_tag_ids: payloadGoriyakuTagIds,
         extra_condition: payloadExtraCondition,
+        visit_date: plannedVisitDate || undefined,
+        location: userOrigin ?? undefined,
         profile_context: buildProfileContext({
           birthday: payloadBirthdate,
           birth_time: savedProfile?.birth_time,
@@ -1033,8 +1038,21 @@ export default function ConciergeClientFull() {
         }),
       };
     },
-    [sessionState.temporaryBirthdate, needText, baseFilters, user?.profile],
+    [sessionState.temporaryBirthdate, needText, baseFilters, user?.profile, plannedVisitDate, userOrigin],
   );
+
+  const useCurrentLocation = useCallback(() => {
+    if (!("geolocation" in navigator)) {
+      setLocationError("このブラウザでは現在地を取得できません。");
+      return;
+    }
+    setLocationError(null);
+    navigator.geolocation.getCurrentPosition(
+      (position) => setUserOrigin({ lat: position.coords.latitude, lng: position.coords.longitude }),
+      () => setLocationError("現在地を取得できませんでした。位置情報の許可を確認してください。"),
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 },
+    );
+  }, []);
 
   const hasFilter =
     (baseFilters.goriyaku_tag_ids?.length ?? 0) > 0 || !!baseFilters.birthdate || !!baseFilters.extra_condition;
@@ -1755,6 +1773,11 @@ export default function ConciergeClientFull() {
                 setNeedText("");
                 setEntryValidationError(null);
               }}
+              plannedVisitDate={plannedVisitDate}
+              setPlannedVisitDate={setPlannedVisitDate}
+              hasOrigin={!!userOrigin}
+              locationError={locationError}
+              onUseCurrentLocation={useCurrentLocation}
             />
 
             <div className="mt-7 rounded-3xl border border-stone-200/45 bg-stone-50/60 p-4">

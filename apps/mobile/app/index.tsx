@@ -5,6 +5,7 @@ import { kamimusubiDark as theme } from "./theme";
 import { shadows } from "./design/shadow";
 import { ConditionFieldsCard } from "../components/ConditionFieldsCard";
 import { resolveGoriyakuTagIds } from "../lib/conditionPayload";
+import * as Location from "expo-location";
 
 const THEMES = [
   "疲れを整えたい",
@@ -22,10 +23,13 @@ export default function Home() {
   const [showConditions, setShowConditions] = React.useState(false);
   const [selectedVisitStyle, setSelectedVisitStyle] = React.useState<string | undefined>();
   const [birthdate, setBirthdate] = React.useState("");
+  const [plannedVisitDate, setPlannedVisitDate] = React.useState("");
+  const [origin, setOrigin] = React.useState<{ lat: number; lng: number } | null>(null);
+  const [locationStatus, setLocationStatus] = React.useState<"idle" | "loading" | "ready" | "error">("idle");
   const [selectedGoriyaku, setSelectedGoriyaku] = React.useState<string | undefined>();
   const [supportText, setSupportText] = React.useState("");
 
-  const conditionCount = [birthdate.trim(), selectedVisitStyle, selectedGoriyaku, supportText.trim()].filter(
+  const conditionCount = [birthdate.trim(), plannedVisitDate.trim(), selectedVisitStyle, selectedGoriyaku, supportText.trim()].filter(
     Boolean,
   ).length;
   const conditionToggleLabel = `${showConditions ? "条件を閉じる" : "条件を追加"}${
@@ -35,6 +39,7 @@ export default function Home() {
     selectedVisitStyle,
     selectedGoriyaku,
     birthdate.trim() ? "誕生日あり" : undefined,
+    plannedVisitDate.trim() ? `参拝予定日 ${plannedVisitDate.trim()}` : undefined,
     supportText.trim() ? "補助条件あり" : undefined,
   ]
     .filter(Boolean)
@@ -49,11 +54,24 @@ export default function Home() {
     if (consultation.trim()) params.set("q", consultation.trim());
     if (selectedTheme) params.set("theme", selectedTheme);
     if (birthdate.trim()) params.set("birthdate", birthdate.trim());
+    if (plannedVisitDate.trim()) params.set("plannedVisitDate", plannedVisitDate.trim());
+    if (origin) { params.set("originLat", String(origin.lat)); params.set("originLng", String(origin.lng)); }
     if (selectedVisitStyle) params.set("visitStyle", selectedVisitStyle);
     if (selectedGoriyaku) params.set("goriyaku", selectedGoriyaku);
     if (supportText.trim()) params.set("support", supportText.trim());
     const query = params.toString();
     router.push(query ? `/concierge?${query}` : "/concierge");
+  };
+
+  const useCurrentLocation = async () => {
+    setLocationStatus("loading");
+    const permission = await Location.requestForegroundPermissionsAsync();
+    if (permission.status !== "granted") { setLocationStatus("error"); return; }
+    try {
+      const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      setOrigin({ lat: current.coords.latitude, lng: current.coords.longitude });
+      setLocationStatus("ready");
+    } catch { setLocationStatus("error"); }
   };
 
   return (
@@ -132,6 +150,11 @@ export default function Home() {
           <ConditionFieldsCard
             birthdate={birthdate}
             onChangeBirthdate={setBirthdate}
+            plannedVisitDate={plannedVisitDate}
+            onChangePlannedVisitDate={setPlannedVisitDate}
+            hasOrigin={!!origin}
+            locationStatus={locationStatus}
+            onUseCurrentLocation={() => void useCurrentLocation()}
             selectedVisitStyle={selectedVisitStyle}
             onSelectVisitStyle={setSelectedVisitStyle}
             selectedGoriyaku={selectedGoriyaku}
@@ -143,7 +166,7 @@ export default function Home() {
       ) : null}
 
       {/* 主CTA */}
-      <Pressable onPress={openConcierge} style={styles.primaryCta}>
+      <Pressable onPress={openConcierge} disabled={!!plannedVisitDate && !origin} style={[styles.primaryCta, !!plannedVisitDate && !origin && { opacity: 0.45 }]}>
         <Text style={styles.primaryCtaText}>この相談からご縁を見る</Text>
       </Pressable>
 

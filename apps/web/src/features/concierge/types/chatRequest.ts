@@ -24,6 +24,8 @@ export type ConciergeChatRequestV1 = {
   birthdate?: string;
   goriyaku_tag_ids?: number[];
   extra_condition?: string;
+  visit_date?: string;
+  location?: { lat: number; lng: number };
   profile_context?: {
     user_profile: Record<string, unknown>;
     derived_profile: Record<string, unknown>;

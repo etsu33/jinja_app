@@ -56,6 +56,7 @@ export async function resolveGoriyakuTagIds(label: string | undefined): Promise<
 
 export type ConditionState = {
   birthdate?: string;
+  plannedVisitDate?: string;
   visitStyleLabel?: string;
   goriyakuLabel?: string;
   goriyakuTagIds?: number[];
@@ -104,12 +105,14 @@ export function resolveVisitStyleTags(visitStyleLabel?: string): string[] | unde
 export function buildExtraConditionText({
   visitStyleLabel,
   birthdate,
+  plannedVisitDate,
   goriyakuLabel,
   supportText,
 }: ConditionState): string {
   return [
     visitStyleLabel ? `参拝スタイル: ${visitStyleLabel}` : undefined,
     birthdate ? `誕生日: ${birthdate}` : undefined,
+    plannedVisitDate ? `参拝予定日: ${plannedVisitDate}` : undefined,
     goriyakuLabel ? `ご利益: ${goriyakuLabel}` : undefined,
     supportText?.trim() ? `補助条件: ${supportText.trim()}` : undefined,
   ]
