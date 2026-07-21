@@ -1,8 +1,32 @@
 import type { DerivedProfile, DirectionProfile, UserProfile } from "../types/profile";
 
+export function normalizeBirthday(value?: string): string | undefined {
+  const match = value?.trim().match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+  if (!match) return undefined;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  const today = new Date();
+  const todayUtc = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+  if (
+    year < 1900 ||
+    date.getTime() > todayUtc ||
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    return undefined;
+  }
+  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
 // ライフパス：生年月日の全桁を1桁になるまで繰り返し足す（11, 22はマスターナンバーとして保持）
 export function calculateLifePath(birthday: string): string {
-  const digits = birthday.replace(/-/g, "");
+  const normalized = normalizeBirthday(birthday);
+  if (!normalized) return "";
+  const digits = normalized.replace(/-/g, "");
   let sum = digits.split("").reduce((acc, d) => acc + parseInt(d, 10), 0);
   while (sum > 9 && sum !== 11 && sum !== 22) {
     sum = sum.toString().split("").reduce((acc, d) => acc + parseInt(d, 10), 0);
@@ -13,7 +37,9 @@ export function calculateLifePath(birthday: string): string {
 // 九星気学：生まれ年の九星（節分基準を簡略化し1月1日基準で計算）
 // 九星は (11 - (year % 9)) % 9 で求め、0を9に補正
 export function calculateKyusei(birthday: string): string {
-  const year = parseInt(birthday.slice(0, 4), 10);
+  const normalized = normalizeBirthday(birthday);
+  if (!normalized) return "";
+  const year = parseInt(normalized.slice(0, 4), 10);
   const star = ((11 - (year % 9)) % 9) || 9;
   const names = ["", "一白水星", "二黒土星", "三碧木星", "四緑木星", "五黄土星", "六白金星", "七赤金星", "八白土星", "九紫火星"];
   return names[star];
@@ -38,7 +64,7 @@ export function calculateGogyo(birthday: string): string {
 }
 
 export function buildDirectionProfile(userProfile: UserProfile): DirectionProfile {
-  if (!userProfile.birthday) {
+  if (!normalizeBirthday(userProfile.birthday)) {
     return {};
   }
   return {
@@ -48,7 +74,7 @@ export function buildDirectionProfile(userProfile: UserProfile): DirectionProfil
 }
 
 export function buildDerivedProfile(userProfile: UserProfile): DerivedProfile {
-  const { birthday } = userProfile;
+  const birthday = normalizeBirthday(userProfile.birthday);
   if (!birthday) {
     return { kyusei: undefined, gogyo: undefined, lifePath: undefined };
   }

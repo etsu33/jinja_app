@@ -1,18 +1,49 @@
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import React from "react";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { kamimusubiDark as theme } from "../theme";
 import { spacing } from "../design/spacing";
 import { cardSizes } from "../design/cardSizes";
 import { radius } from "../design/radius";
 import { useProfileStore } from "../../store/profileStore";
+import { normalizeBirthday } from "../../lib/profile";
+import { ProfilePickerModal } from "../../components/profile/ProfilePickerModal";
+
+const PREFECTURES = ["北海道", "青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県", "茨城県", "栃木県", "群馬県", "埼玉県", "千葉県", "東京都", "神奈川県", "新潟県", "富山県", "石川県", "福井県", "山梨県", "長野県", "岐阜県", "静岡県", "愛知県", "三重県", "滋賀県", "京都府", "大阪府", "兵庫県", "奈良県", "和歌山県", "鳥取県", "島根県", "岡山県", "広島県", "山口県", "徳島県", "香川県", "愛媛県", "高知県", "福岡県", "佐賀県", "長崎県", "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県"];
+const WORSHIP_STYLES = ["朝参り", "日中の参拝", "夕参り", "静かに参拝", "御朱印巡り"];
+type PickerKind = "year" | "month" | "day" | "time" | "place" | null;
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { userProfile, derivedProfile, directionProfile, setBirthday, setBirthTime, setBirthPlace, setWorshipStyle } =
     useProfileStore();
+  const normalizedBirthday = normalizeBirthday(userProfile.birthday);
+  const birthdayParts = normalizedBirthday?.split("-") ?? [];
+  const [picker, setPicker] = React.useState<PickerKind>(null);
+  const [draftYear, setDraftYear] = React.useState(birthdayParts[0] ?? "1990");
+  const [draftMonth, setDraftMonth] = React.useState(birthdayParts[1] ?? "01");
 
-  const fmt = (v?: string) => v ?? "未設定";
+  const years = Array.from({ length: new Date().getFullYear() - 1899 }, (_, index) => String(new Date().getFullYear() - index));
+  const today = new Date();
+  const monthCount = Number(draftYear) === today.getFullYear() ? today.getMonth() + 1 : 12;
+  const months = Array.from({ length: monthCount }, (_, index) => String(index + 1).padStart(2, "0"));
+  const calendarDays = new Date(Number(draftYear), Number(draftMonth), 0).getDate();
+  const daysInMonth = Number(draftYear) === today.getFullYear() && Number(draftMonth) === today.getMonth() + 1
+    ? today.getDate()
+    : calendarDays;
+  const days = Array.from({ length: daysInMonth }, (_, index) => String(index + 1).padStart(2, "0"));
+  const times = Array.from({ length: 24 * 12 }, (_, index) => {
+    const hour = Math.floor(index / 12);
+    const minute = (index % 12) * 5;
+    return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+  });
+
   const fmtDerived = (v?: string) => v ?? "未計算";
+  const openBirthdayPicker = () => {
+    setDraftYear(birthdayParts[0] ?? "1990");
+    setDraftMonth(birthdayParts[1] ?? "01");
+    setPicker("year");
+  };
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -25,6 +56,9 @@ export default function ProfileScreen() {
         <Text style={styles.subtitle}>
           あなたの基本情報を入力すると、神社提案に活用されます。
         </Text>
+        <View style={styles.saveNotice}>
+          <Text style={styles.saveNoticeText}>✓ 入力内容はこの端末に自動保存されます</Text>
+        </View>
       </View>
 
       {/* UserProfile */}
@@ -33,48 +67,39 @@ export default function ProfileScreen() {
 
         <View style={styles.row}>
           <Text style={styles.label}>生年月日</Text>
-          <TextInput
-            style={styles.input}
-            value={userProfile.birthday ?? ""}
-            onChangeText={setBirthday}
-            placeholder="例: 1990-04-01"
-            placeholderTextColor={theme.muted}
-            keyboardType="numbers-and-punctuation"
-          />
+          <Pressable style={styles.selectButton} onPress={openBirthdayPicker} accessibilityRole="button">
+            <Text style={[styles.selectText, !normalizedBirthday && styles.placeholder]}>
+              {normalizedBirthday ? `${birthdayParts[0]}年${Number(birthdayParts[1])}月${Number(birthdayParts[2])}日` : "選択してください"}
+            </Text>
+            <Text style={styles.chevron}>›</Text>
+          </Pressable>
         </View>
 
         <View style={styles.row}>
           <Text style={styles.label}>出生時間</Text>
-          <TextInput
-            style={styles.input}
-            value={userProfile.birthTime ?? ""}
-            onChangeText={setBirthTime}
-            placeholder="例: 08:30"
-            placeholderTextColor={theme.muted}
-            keyboardType="numbers-and-punctuation"
-          />
+          <Pressable style={styles.selectButton} onPress={() => setPicker("time")} accessibilityRole="button">
+            <Text style={[styles.selectText, !userProfile.birthTime && styles.placeholder]}>{userProfile.birthTime || "不明・未設定"}</Text>
+            <Text style={styles.chevron}>›</Text>
+          </Pressable>
         </View>
 
         <View style={styles.row}>
           <Text style={styles.label}>出生地</Text>
-          <TextInput
-            style={styles.input}
-            value={userProfile.birthPlace ?? ""}
-            onChangeText={setBirthPlace}
-            placeholder="例: 東京都"
-            placeholderTextColor={theme.muted}
-          />
+          <Pressable style={styles.selectButton} onPress={() => setPicker("place")} accessibilityRole="button">
+            <Text style={[styles.selectText, !userProfile.birthPlace && styles.placeholder]}>{userProfile.birthPlace || "都道府県を選択"}</Text>
+            <Text style={styles.chevron}>›</Text>
+          </Pressable>
         </View>
 
         <View style={styles.row}>
           <Text style={styles.label}>参拝スタイル</Text>
-          <TextInput
-            style={styles.input}
-            value={userProfile.worshipStyle ?? ""}
-            onChangeText={setWorshipStyle}
-            placeholder="例: 朝参り"
-            placeholderTextColor={theme.muted}
-          />
+          <View style={styles.chips}>
+            {WORSHIP_STYLES.map((style) => (
+              <Pressable key={style} style={[styles.chip, userProfile.worshipStyle === style && styles.chipSelected]} onPress={() => setWorshipStyle(userProfile.worshipStyle === style ? "" : style)}>
+                <Text style={[styles.chipText, userProfile.worshipStyle === style && styles.chipTextSelected]}>{style}</Text>
+              </Pressable>
+            ))}
+          </View>
         </View>
       </View>
 
@@ -114,6 +139,12 @@ export default function ProfileScreen() {
           プロフィール情報は、神社提案の補助情報として利用されます。
         </Text>
       </View>
+
+      <ProfilePickerModal visible={picker === "year"} title="生まれた年" options={years.map((value) => ({ value, label: `${value}年` }))} selectedValue={draftYear} onClose={() => setPicker(null)} onSelect={(value) => { setDraftYear(value); if (Number(value) === today.getFullYear() && Number(draftMonth) > today.getMonth() + 1) setDraftMonth(String(today.getMonth() + 1).padStart(2, "0")); setPicker("month"); }} />
+      <ProfilePickerModal visible={picker === "month"} title="生まれた月" options={months.map((value) => ({ value, label: `${Number(value)}月` }))} selectedValue={draftMonth} onClose={() => setPicker(null)} onSelect={(value) => { setDraftMonth(value); setPicker("day"); }} />
+      <ProfilePickerModal visible={picker === "day"} title="生まれた日" options={days.map((value) => ({ value, label: `${Number(value)}日` }))} selectedValue={birthdayParts[2]} onClose={() => setPicker(null)} onSelect={(value) => setBirthday(`${draftYear}-${draftMonth}-${value}`)} />
+      <ProfilePickerModal visible={picker === "time"} title="出生時間（5分単位）" options={[{ value: "", label: "不明・未設定" }, ...times.map((value) => ({ value, label: value }))]} selectedValue={userProfile.birthTime ?? ""} onClose={() => setPicker(null)} onSelect={setBirthTime} />
+      <ProfilePickerModal visible={picker === "place"} title="出生地" options={[{ value: "", label: "不明・未設定" }, ...PREFECTURES.map((value) => ({ value, label: value }))]} selectedValue={userProfile.birthPlace ?? ""} onClose={() => setPicker(null)} onSelect={setBirthPlace} />
     </ScrollView>
   );
 }
@@ -157,6 +188,8 @@ const styles = StyleSheet.create({
     lineHeight: 23,
     fontWeight: "600",
   },
+  saveNotice: { alignSelf: "flex-start", backgroundColor: "rgba(221, 178, 82, 0.1)", borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 8 },
+  saveNoticeText: { color: theme.goldSoft, fontSize: 12, fontWeight: "700" },
   sectionCard: {
     backgroundColor: theme.surface,
     borderWidth: cardSizes.borderWidth,
@@ -179,6 +212,15 @@ const styles = StyleSheet.create({
     borderBottomWidth: cardSizes.borderWidth,
     borderBottomColor: theme.borderHeader,
   },
+  selectButton: { minWidth: 180, flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 8, paddingVertical: 8 },
+  selectText: { color: theme.text, fontSize: 14, fontWeight: "700" },
+  placeholder: { color: theme.muted },
+  chevron: { color: theme.gold, fontSize: 22, lineHeight: 22 },
+  chips: { flex: 1, flexDirection: "row", flexWrap: "wrap", justifyContent: "flex-end", gap: 7 },
+  chip: { borderWidth: 1, borderColor: theme.borderHeader, borderRadius: radius.lg, paddingHorizontal: 10, paddingVertical: 7 },
+  chipSelected: { borderColor: theme.gold, backgroundColor: "rgba(221, 178, 82, 0.14)" },
+  chipText: { color: theme.muted, fontSize: 12, fontWeight: "700" },
+  chipTextSelected: { color: theme.gold },
   label: {
     color: theme.text,
     fontSize: 14,
@@ -189,13 +231,6 @@ const styles = StyleSheet.create({
     color: theme.muted,
     fontSize: 14,
     fontWeight: "600",
-  },
-  input: {
-    flex: 1,
-    color: theme.text,
-    fontSize: 14,
-    fontWeight: "600",
-    textAlign: "right",
   },
   noticeText: {
     color: theme.muted,
