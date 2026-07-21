@@ -30,6 +30,7 @@ import { useBilling } from "@/features/billing/hooks/useBilling";
 import { isAuthRequiredForAction } from "@/lib/auth/actionGuards";
 import { initialConciergeSessionState, type ConciergeSessionState } from "@/features/concierge/types";
 import { resolveDisplayLabel, resolveDisplayName } from "@/lib/profile/resolveDisplayName";
+import { buildProfileContext, normalizeBirthday as normalizeProfileBirthday } from "@/lib/profile/derivedProfile";
 
 import { conciergeLog } from "@/lib/log/concierge";
 import { EVT_CLOSE_CONCIERGE } from "@/lib/events";
@@ -962,7 +963,8 @@ export default function ConciergeClientFull() {
         displayUnified.remaining <= 0));
 
   const baseFilters: ConciergeChatFilters = useMemo(() => {
-    const bd = normalizeBirthdateInput(sessionState.temporaryBirthdate ?? "") ?? undefined;
+    const savedBirthday = normalizeProfileBirthday(user?.profile?.birthday);
+    const bd = normalizeBirthdateInput(sessionState.temporaryBirthdate ?? "") ?? savedBirthday;
     const extra = extraCondition.trim() || undefined;
 
     const crowd: ConciergeChatFilters["crowd"] = [];
@@ -979,7 +981,7 @@ export default function ConciergeClientFull() {
       duration_max_min,
       free_text: extra,
     };
-  }, [sessionState.temporaryBirthdate, selectedTagIds, extraCondition]);
+  }, [sessionState.temporaryBirthdate, selectedTagIds, extraCondition, user?.profile?.birthday]);
 
   const buildConciergePayload = useCallback(
     (
@@ -990,7 +992,8 @@ export default function ConciergeClientFull() {
         free_text?: string;
       },
     ): Omit<ConciergeChatRequestV1, "thread_id"> => {
-      const birthdate = normalizeBirthdateInput(sessionState.temporaryBirthdate ?? "") ?? undefined;
+      const savedProfile = user?.profile;
+      const birthdate = normalizeBirthdateInput(sessionState.temporaryBirthdate ?? "") ?? normalizeProfileBirthday(savedProfile?.birthday);
       const payloadBirthdate = input?.birthdate ?? birthdate;
       const payloadGoriyakuTagIds = input?.goriyaku_tag_ids ?? baseFilters.goriyaku_tag_ids;
       const payloadExtraCondition = input?.extra_condition ?? baseFilters.extra_condition;
@@ -1022,9 +1025,15 @@ export default function ConciergeClientFull() {
         },
         goriyaku_tag_ids: payloadGoriyakuTagIds,
         extra_condition: payloadExtraCondition,
+        profile_context: buildProfileContext({
+          birthday: payloadBirthdate,
+          birth_time: savedProfile?.birth_time,
+          birth_place: savedProfile?.birth_place,
+          worship_style: savedProfile?.worship_style,
+        }),
       };
     },
-    [sessionState.temporaryBirthdate, needText, baseFilters],
+    [sessionState.temporaryBirthdate, needText, baseFilters, user?.profile],
   );
 
   const hasFilter =

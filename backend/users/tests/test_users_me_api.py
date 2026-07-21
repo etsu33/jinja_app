@@ -59,3 +59,40 @@ def test_me_patch_updates_nickname():
     # フラット/ネスト両対応
     new = body["profile"]["nickname"] if "profile" in body else body["nickname"]
     assert new == "NewName"
+
+
+@pytest.mark.django_db
+def test_me_patch_persists_birth_profile_fields_and_get_restores_them():
+    user = UserFactory()
+    UserProfile.objects.get_or_create(user=user)
+    c = api_client_as(user)
+
+    payload = {
+        "birthday": "1984-05-15",
+        "birth_time": "05:25",
+        "birth_place": "東京都",
+        "worship_style": "朝参り",
+    }
+    patched = c.patch(reverse(ME_URL_NAME), payload, format="json")
+    assert patched.status_code == 200
+    assert patched.json()["profile"]["birthday"] == "1984-05-15"
+
+    restored = c.get(reverse(ME_URL_NAME))
+    assert restored.status_code == 200
+    profile = restored.json()["profile"]
+    assert profile["birthday"] == "1984-05-15"
+    assert profile["birth_time"] == "05:25:00"
+    assert profile["birth_place"] == "東京都"
+    assert profile["worship_style"] == "朝参り"
+
+
+@pytest.mark.django_db
+def test_me_patch_rejects_invalid_or_future_birthday():
+    user = UserFactory()
+    UserProfile.objects.get_or_create(user=user)
+    c = api_client_as(user)
+
+    invalid = c.patch(reverse(ME_URL_NAME), {"birthday": "2025-02-30"}, format="json")
+    assert invalid.status_code == 400
+    future = c.patch(reverse(ME_URL_NAME), {"birthday": "2999-01-01"}, format="json")
+    assert future.status_code == 400

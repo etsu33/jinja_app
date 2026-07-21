@@ -50,6 +50,9 @@ export type UserMe = {
     is_public: boolean;
     bio: string | null;
     birthday?: string | null;
+    birth_time?: string | null;
+    birth_place?: string | null;
+    worship_style?: string | null;
     location?: string | null;
     // ★ プロフィール側に website が入る可能性も見ておく
     website?: string | null;

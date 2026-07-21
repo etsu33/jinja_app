@@ -6,6 +6,14 @@ export type AuthUser = {
   username?: string | null;
   nickname?: string | null;
   birthday?: string | null;
+  profile?: {
+    nickname?: string | null;
+    is_public?: boolean | null;
+    birthday?: string | null;
+    birth_time?: string | null;
+    birth_place?: string | null;
+    worship_style?: string | null;
+  } | null;
 };
 
 export type AuthState = {

@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Optional
 
 from django.contrib.auth import get_user_model
@@ -31,7 +32,10 @@ class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
         # 必要なフィールドを一つに統合（必要に応じて created_at を残す/外す）
-        fields = ("nickname", "is_public", "bio", "icon", "icon_url", "created_at")
+        fields = (
+            "nickname", "is_public", "bio", "icon", "icon_url",
+            "birthday", "birth_time", "birth_place", "worship_style", "created_at",
+        )
         read_only_fields = ("icon", "icon_url", "created_at")
 
     @extend_schema_field(OpenApiTypes.URI)
@@ -57,4 +61,12 @@ class UserMeSerializer(serializers.ModelSerializer):
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
-        fields = ("nickname", "is_public", "bio", "icon")
+        fields = (
+            "nickname", "is_public", "bio", "icon",
+            "birthday", "birth_time", "birth_place", "worship_style",
+        )
+
+    def validate_birthday(self, value):
+        if value is not None and value > date.today():
+            raise serializers.ValidationError("生年月日に未来の日付は指定できません。")
+        return value

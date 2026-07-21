@@ -10,10 +10,25 @@ import MyPageScreen from "@/features/mypage/components/MyPageScreen";
 import FavoritesSection from "@/features/mypage/components/FavoritesSection";
 import Link from "next/link";
 import { buildLoginHref } from "@/lib/nav/login";
+import { buildDerivedProfile } from "@/lib/profile/derivedProfile";
 
 type Props = { initialFavorites: Favorite[] };
 type MyPageTab = "profile" | "goshuin" | "favorites" | "submissions" | "visits";
 const GOSHUIN_TAB_ENABLED = false;
+const PREFECTURES = ["北海道", "青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県", "茨城県", "栃木県", "群馬県", "埼玉県", "千葉県", "東京都", "神奈川県", "新潟県", "富山県", "石川県", "福井県", "山梨県", "長野県", "岐阜県", "静岡県", "愛知県", "三重県", "滋賀県", "京都府", "大阪府", "兵庫県", "奈良県", "和歌山県", "鳥取県", "島根県", "岡山県", "広島県", "山口県", "徳島県", "香川県", "愛媛県", "高知県", "福岡県", "佐賀県", "長崎県", "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県"];
+const WORSHIP_STYLES = ["朝参り", "日中の参拝", "夕参り", "静かに参拝", "御朱印巡り"];
+type ProfileForm = { nickname: string; is_public: boolean; birthday: string; birth_time: string; birth_place: string; worship_style: string };
+
+function profileToForm(profile: UserMe["profile"]): ProfileForm {
+  return {
+    nickname: (profile?.nickname ?? "").trim(),
+    is_public: !!profile?.is_public,
+    birthday: profile?.birthday ?? "",
+    birth_time: profile?.birth_time?.slice(0, 5) ?? "",
+    birth_place: profile?.birth_place ?? "",
+    worship_style: profile?.worship_style ?? "",
+  };
+}
 
 function normalizeTab(value: string | null): MyPageTab {
   if (GOSHUIN_TAB_ENABLED && value === "goshuin") return value;
@@ -110,11 +125,13 @@ function aggregateVisitsByShrine(visits: Visit[]): AggregatedVisit[] {
 export default function MyPageView({ initialFavorites }: Props) {
   const sp = useSearchParams();
   const tab = normalizeTab(sp.get("tab"));
-  const { user: authUser, loading } = useAuthContext();
+  const { user: authUser, loading, refreshMe } = useAuthContext();
 
   const [user, setUser] = useState<UserMe | null>(null);
-  const [form, setForm] = useState({ nickname: "", is_public: true });
+  const [form, setForm] = useState<ProfileForm>(() => profileToForm(null));
   const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [visits, setVisits] = useState<Visit[]>([]);
   const [visitsLoading, setVisitsLoading] = useState(false);
   const [visitsError, setVisitsError] = useState<string | null>(null);
@@ -127,10 +144,7 @@ export default function MyPageView({ initialFavorites }: Props) {
 
     const me = authUser as UserMe;
     setUser(me);
-    setForm({
-      nickname: (me.profile?.nickname ?? "").trim(),
-      is_public: !!me.profile?.is_public,
-    });
+    setForm(profileToForm(me.profile));
   }, [authUser]);
 
   useEffect(() => {
@@ -170,29 +184,38 @@ export default function MyPageView({ initialFavorites }: Props) {
 
   const dirty = useMemo(() => {
     if (!user) return false;
-    const nick0 = (user.profile?.nickname ?? "").trim();
-    const nick1 = (form.nickname ?? "").trim();
-    return nick1 !== nick0 || Boolean(form.is_public) !== Boolean(user.profile?.is_public);
-  }, [user, form.nickname, form.is_public]);
+    const initial = profileToForm(user.profile);
+    return (Object.keys(initial) as (keyof ProfileForm)[]).some((key) => form[key] !== initial[key]);
+  }, [user, form]);
+
+  const derivedProfile = useMemo(() => buildDerivedProfile(form), [form.birthday]);
 
   const aggregatedVisits = useMemo(() => aggregateVisitsByShrine(visits), [visits]);
 
   const handleSave = async () => {
     if (!user || !dirty || saving) return;
     setSaving(true);
+    setSaveMessage(null);
+    setSaveError(null);
     try {
       const payload: Record<string, unknown> = {};
       const nick0 = (user.profile?.nickname ?? "").trim();
       const nick1 = (form.nickname ?? "").trim();
       if (nick1 !== nick0) payload.nickname = nick1;
       if (Boolean(form.is_public) !== Boolean(user.profile?.is_public)) payload.is_public = form.is_public;
+      const initial = profileToForm(user.profile);
+      if (form.birthday !== initial.birthday) payload.birthday = form.birthday || null;
+      if (form.birth_time !== initial.birth_time) payload.birth_time = form.birth_time || null;
+      if (form.birth_place !== initial.birth_place) payload.birth_place = form.birth_place;
+      if (form.worship_style !== initial.worship_style) payload.worship_style = form.worship_style;
 
       const updated = await updateUser(payload);
       setUser(updated);
-      setForm({
-        nickname: (updated.profile?.nickname ?? "").trim(),
-        is_public: !!updated.profile?.is_public,
-      });
+      setForm(profileToForm(updated.profile));
+      setSaveMessage("プロフィールを保存しました。");
+      await refreshMe();
+    } catch {
+      setSaveError("プロフィールを保存できませんでした。入力内容を確認して、もう一度お試しください。");
     } finally {
       setSaving(false);
     }
@@ -200,7 +223,9 @@ export default function MyPageView({ initialFavorites }: Props) {
 
   const handleReset = () => {
     if (!user) return;
-    setForm({ nickname: user.profile?.nickname ?? "", is_public: !!user.profile?.is_public });
+    setForm(profileToForm(user.profile));
+    setSaveMessage(null);
+    setSaveError(null);
   };
 
   if (loading) {
@@ -322,6 +347,44 @@ export default function MyPageView({ initialFavorites }: Props) {
             />
           </div>
 
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block text-sm font-medium text-stone-700">
+              生年月日
+              <input type="date" min="1900-01-01" max={`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-${String(new Date().getDate()).padStart(2, "0")}`} value={form.birthday} onChange={(e) => setForm((f) => ({ ...f, birthday: e.target.value }))} disabled={saving} className="mt-1 w-full rounded-xl border border-stone-200/30 bg-stone-50/30 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-stone-200/30" />
+            </label>
+            <label className="block text-sm font-medium text-stone-700">
+              出生時間 <span className="font-normal text-stone-400">（不明でも可）</span>
+              <input type="time" step="300" value={form.birth_time} onChange={(e) => setForm((f) => ({ ...f, birth_time: e.target.value }))} disabled={saving} className="mt-1 w-full rounded-xl border border-stone-200/30 bg-stone-50/30 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-stone-200/30" />
+            </label>
+            <label className="block text-sm font-medium text-stone-700">
+              出生地
+              <select value={form.birth_place} onChange={(e) => setForm((f) => ({ ...f, birth_place: e.target.value }))} disabled={saving} className="mt-1 w-full rounded-xl border border-stone-200/30 bg-stone-50/30 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-stone-200/30">
+                <option value="">不明・未設定</option>
+                {PREFECTURES.map((prefecture) => <option key={prefecture} value={prefecture}>{prefecture}</option>)}
+              </select>
+            </label>
+          </div>
+
+          <fieldset disabled={saving}>
+            <legend className="mb-2 text-sm font-medium text-stone-700">参拝スタイル</legend>
+            <div className="flex flex-wrap gap-2">
+              {WORSHIP_STYLES.map((style) => {
+                const selected = form.worship_style === style;
+                return <button key={style} type="button" aria-pressed={selected} onClick={() => setForm((f) => ({ ...f, worship_style: selected ? "" : style }))} className={`rounded-full border px-3 py-1.5 text-sm transition ${selected ? "border-emerald-700/30 bg-emerald-800 text-white" : "border-stone-200/40 bg-white text-stone-600 hover:bg-stone-100"}`}>{style}</button>;
+              })}
+            </div>
+          </fieldset>
+
+          <div className="rounded-2xl border border-stone-200/30 bg-white/70 p-4">
+            <h3 className="text-sm font-semibold text-stone-800">派生プロフィール</h3>
+            <p className="mt-1 text-xs text-stone-500">生年月日の入力に応じて自動更新されます。</p>
+            <dl className="mt-3 grid grid-cols-3 gap-3 text-sm">
+              <div><dt className="text-xs text-stone-400">九星</dt><dd className="mt-1 font-medium">{derivedProfile.kyusei ?? "未計算"}</dd></div>
+              <div><dt className="text-xs text-stone-400">五行</dt><dd className="mt-1 font-medium">{derivedProfile.gogyo ?? "未計算"}</dd></div>
+              <div><dt className="text-xs text-stone-400">ライフパス</dt><dd className="mt-1 font-medium">{derivedProfile.lifePath ?? "未計算"}</dd></div>
+            </dl>
+          </div>
+
           <label className="inline-flex items-center gap-2 text-sm text-stone-700">
             <input
               type="checkbox"
@@ -350,6 +413,8 @@ export default function MyPageView({ initialFavorites }: Props) {
               変更を破棄
             </button>
           </div>
+          {saveMessage ? <p role="status" className="text-sm font-medium text-emerald-700">{saveMessage}</p> : null}
+          {saveError ? <p role="alert" className="text-sm font-medium text-rose-700">{saveError}</p> : null}
         </section>
       )}
     </main>
