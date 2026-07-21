@@ -138,7 +138,7 @@ export default function MyPageScreen() {
         <Text style={styles.eyebrow}>MY PAGE</Text>
         <Text style={styles.title}>マイページ</Text>
         <Text style={styles.subtitle}>
-          プロフィール、誕生日、Premium、設定をここから確認できます。
+          プロフィール、Premium、設定をここから確認できます。
         </Text>
       </View>
 
@@ -146,18 +146,11 @@ export default function MyPageScreen() {
         <Text style={styles.sectionTitle}>プロフィール</Text>
         <MyPageCard
           title="プロフィールカード"
-          description="名前や表示情報を確認する場所です。"
-          meta="表示名は今後プロフィール設定と連携します。"
+          description="生年月日や出生情報、参拝スタイルを設定できます。"
+          meta="入力内容は神社提案の補助情報として使われます。"
           iconText="人"
           actionLabel="確認"
           onPress={() => router.push("/profile")}
-        />
-        <MyPageCard
-          title="誕生日"
-          description="相性や条件提案の補助情報として使います。"
-          meta="未設定"
-          iconText="誕"
-          actionLabel="設定"
         />
       </View>
 
