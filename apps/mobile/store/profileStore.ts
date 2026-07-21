@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { buildDerivedProfile, buildDirectionProfile } from "../lib/profile";
+import { migrateLegacyBirthdayIfNeeded } from "../lib/profileMigration";
 import type { DerivedProfile, DirectionProfile, UserProfile } from "../types/profile";
 
 type ProfileState = {
@@ -27,13 +28,7 @@ function recompute(userProfile: UserProfile): { derivedProfile: DerivedProfile; 
 }
 
 const profileStorage = createJSONStorage(() => ({
-  getItem: async (name: string) => {
-    try {
-      return await AsyncStorage.getItem(name);
-    } catch {
-      return null;
-    }
-  },
+  getItem: (name: string) => AsyncStorage.getItem(name),
   setItem: async (name: string, value: string) => {
     try {
       await AsyncStorage.setItem(name, value);
@@ -96,3 +91,17 @@ export const useProfileStore = create<ProfileState>()(
     },
   ),
 );
+
+function migrateLegacyBirthdayAfterHydration(state: ProfileState) {
+  void migrateLegacyBirthdayIfNeeded({
+    userProfile: state.userProfile,
+    setBirthday: state.setBirthday,
+    profileStorageName: PROFILE_STORAGE_NAME,
+    profileStorageVersion: PROFILE_STORAGE_VERSION,
+  });
+}
+
+useProfileStore.persist.onFinishHydration(migrateLegacyBirthdayAfterHydration);
+if (useProfileStore.persist.hasHydrated()) {
+  migrateLegacyBirthdayAfterHydration(useProfileStore.getState());
+}
