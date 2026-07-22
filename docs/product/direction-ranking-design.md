@@ -1,75 +1,82 @@
-> **Status: Reference**
+> **Status: Active**
 >
-> 本ドキュメントは、方角・吉方位を推薦ロジックの補助軸として扱うための将来設計を記録した補足資料である。
->
-> 現行実装では、`backend/temples/services/concierge_chat_ranking.py`において、`direction_profile.luckyDirection`と候補神社の`direction` / `direction_tags`の一致を最大`0.02`の補助シグナルとして評価している。
->
-> 一方、本書が定義する方角入力UI、吉方位計算、Direction Mode、`score_direction_angle`、`score_direction_protection`、`score_direction_kyusei`は現行実装と一致していない。
->
-> 正確なRanking計算、Weight、入力、出力および適用条件は、関連するBackend実装とテストを最終的な正本とする。
+> 本ドキュメントは、方位情報をRecommendationの補助シグナルとして扱う現行仕様を定義する。
+> 正確な計算と加点の正本は`backend/temples/domain/kyusei.py`、`backend/temples/services/concierge_chat_ranking.py`および関連テストとする。
+
 # Direction Ranking Design
 
-## Goal
+## 目的
 
+参拝予定日と出発地点が明示された相談に限り、方位情報をRecommendationの補助材料として利用する。
+相談テーマ、need、神社固有情報を主軸とし、方位だけで候補を決定しない。
 
-方角・吉方位を推薦ロジックの補助軸として扱う
+## 入力条件
 
-この設計は将来の吉方位・方角推薦に備えるためのものであり、現時点ではMVP外とする。
-通常相談モードでは、directionは推薦順位を直接決定する主軸ではなく、補助軸として扱う。
+方位シグナルの適用には、以下のすべてが必要である。
 
----
+- 有効な生年月日
+- 有効な参拝予定日
+- ユーザーが明示的に許可した出発地点の緯度・経度
+- 候補神社の緯度・経度
+- Backendが生成した`direction_profile`
+- `source = calculated`
+- `calculationMethod = annual_monthly_kyusei_v1`
+- `visitDate`と`luckyDirections`が存在する
 
-## direction_input
+いずれかが欠ける場合、方位加点と方位一致表示は行わない。
 
-- user_location
-- target_direction
-- birthdate
-- kyusei
-- mode
+## 計算範囲
 
----
+現行実装は次を扱う。
 
-## shrine_direction_profile
+- 本命星：立春を2月4日で近似
+- 年盤
+- 月盤：節入り日を固定日で近似
+- 五黄殺、暗剣殺、歳破または月破、本命殺、本命的殺の除外
+- 年盤と月盤の両方で残る参考方位
+- 出発地点から神社座標への実方位（8方位）
 
-- latitude
-- longitude
-- direction_from_user
-- yakuyoke_tags
-- houyoke_tags
-- visit_style_tags
+### 未実装
 
----
+- 日盤
+- 時刻盤
+- 毎年変動する正確な立春・節入り時刻
+- 住所または駅名を出発地点へ変換する代替入力
 
-## score_direction
+参拝予定日の「日」は対象年月を特定するために使う。日盤による日単位の吉凶判定は行わない。
 
-### 方角一致
+## Ranking契約
 
-score_direction_angle
+有効な加点経路は`direction_signal`のみとする。
 
-### 方除け文脈
+```text
+実方位 ∈ direction_profile.luckyDirections
+  direction_signal = +0.02
+それ以外
+  direction_signal = 0.0
+```
 
-score_direction_protection
+- 最大加点：`DIRECTION_SIGNAL_MAX = 0.02`
+- `direction_bonus`：旧Score v2互換フィールドとして保持するが常に`0.0`
+- `direction` / `direction_tags`の固定文字列だけでは加点しない
+- 実座標から計算した`direction_from_origin`との一致だけを評価する
+- Need Mode、Compat Modeのどちらでも主理由にはしない
 
-### 九星補助
+## 表示原則
 
-score_direction_kyusei
+使用できる表現：
 
----
+- 現在地と神社位置にもとづく参考情報です
+- 参拝予定日の年盤・月盤による参考方位と一致しています
+- 相談内容との一致を優先して提案しています
 
-## Ranking Priority
+使用しない表現：
 
-### Need Mode
+- 吉方位なので行くべきです
+- この神社へ行けば運気が上がります
+- 必ず良い結果になります
 
-need
-> element
-> direction
-> distance
-> popular
+## Client責務
 
-### Direction Mode
-
-direction
-> element
-> distance
-> need
-> popular
+WebとMobileは、予定日入力、位置情報の明示許可、Backendへの送信および結果表示を担当する。
+最終的な方位計算と加点判定はBackendを正本とし、Clientが送信した計算結果はBackendで再計算する。

@@ -435,14 +435,16 @@ direction_bonus
 
 意味:
 
-- 方位補助
-- 将来拡張用の契約
+- 旧Score v2との互換フィールド
+- 現行実装では常に`0.0`
+- 有効な方位補助は`direction_signal`へ統一
 
 現状:
 
-- user_origin がない場合は 0.0
-- direction_reason は None
-- 現時点ではランキングを逆転させない補助枠
+- user_originの有無にかかわらず`0.0`
+- direction_reasonは`None`
+- `direction_signal`は年盤＋月盤、出発地点、神社座標の根拠が揃い実方位が一致した場合のみ最大`+0.02`
+- 日盤は未実装
 
 注意:
 
