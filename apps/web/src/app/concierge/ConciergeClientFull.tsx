@@ -31,6 +31,7 @@ import { isAuthRequiredForAction } from "@/lib/auth/actionGuards";
 import { initialConciergeSessionState, type ConciergeSessionState } from "@/features/concierge/types";
 import { resolveDisplayLabel, resolveDisplayName } from "@/lib/profile/resolveDisplayName";
 import { buildProfileContext, normalizeBirthday as normalizeProfileBirthday } from "@/lib/profile/derivedProfile";
+import { toOriginPayload, type UserOrigin } from "../../../../../packages/shared/userOrigin";
 
 import { conciergeLog } from "@/lib/log/concierge";
 import { EVT_CLOSE_CONCIERGE } from "@/lib/events";
@@ -483,7 +484,7 @@ export default function ConciergeClientFull() {
 
   const [activeThreadId, setActiveThreadId] = useState(0);
   const [plannedVisitDate, setPlannedVisitDate] = useState("");
-  const [userOrigin, setUserOrigin] = useState<{ lat: number; lng: number } | null>(null);
+  const [userOrigin, setUserOrigin] = useState<UserOrigin | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const activeThreadIdRef = useRef(0);
 
@@ -1029,7 +1030,7 @@ export default function ConciergeClientFull() {
         goriyaku_tag_ids: payloadGoriyakuTagIds,
         extra_condition: payloadExtraCondition,
         visit_date: plannedVisitDate || undefined,
-        location: userOrigin ?? undefined,
+        location: toOriginPayload(userOrigin),
         profile_context: buildProfileContext({
           birthday: payloadBirthdate,
           birth_time: savedProfile?.birth_time,
@@ -1048,7 +1049,7 @@ export default function ConciergeClientFull() {
     }
     setLocationError(null);
     navigator.geolocation.getCurrentPosition(
-      (position) => setUserOrigin({ lat: position.coords.latitude, lng: position.coords.longitude }),
+      (position) => setUserOrigin({ latitude: position.coords.latitude, longitude: position.coords.longitude, source: "device", displayName: "現在地", accuracy: "precise" }),
       () => setLocationError("現在地を取得できませんでした。位置情報の許可を確認してください。"),
       { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 },
     );
@@ -1775,7 +1776,8 @@ export default function ConciergeClientFull() {
               }}
               plannedVisitDate={plannedVisitDate}
               setPlannedVisitDate={setPlannedVisitDate}
-              hasOrigin={!!userOrigin}
+              origin={userOrigin}
+              onOriginChange={setUserOrigin}
               locationError={locationError}
               onUseCurrentLocation={useCurrentLocation}
             />

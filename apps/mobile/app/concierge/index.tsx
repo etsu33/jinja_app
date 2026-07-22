@@ -30,6 +30,8 @@ import {
   directionReferenceMatchCopy,
   type DirectionReference,
 } from "../../../../packages/shared/directionReference";
+import { toOriginPayload, type UserOrigin } from "../../../../packages/shared/userOrigin";
+import { getOriginSession } from "../../lib/originSession";
 
 // ────────────────────────────────────────────
 // 型
@@ -632,13 +634,13 @@ export default function ConciergeScreen() {
   const [selectedVisitStyle, setSelectedVisitStyle] = React.useState<string | undefined>(params.visitStyle || undefined);
   const [birthdate, setBirthdate] = React.useState(params.birthdate ?? "");
   const [plannedVisitDate, setPlannedVisitDate] = React.useState(params.plannedVisitDate ?? "");
-  const initialOrigin = params.originLat && params.originLng ? { lat: Number(params.originLat), lng: Number(params.originLng) } : null;
-  const [origin, setOrigin] = React.useState<{ lat: number; lng: number } | null>(initialOrigin);
+  const initialOrigin: UserOrigin | null = getOriginSession() ?? (params.originLat && params.originLng ? { latitude: Number(params.originLat), longitude: Number(params.originLng), source: "device", displayName: "現在地", accuracy: "precise" } : null);
+  const [origin, setOrigin] = React.useState<UserOrigin | null>(initialOrigin);
   const [locationStatus, setLocationStatus] = React.useState<"idle" | "loading" | "ready" | "error">(initialOrigin ? "ready" : "idle");
   const [selectedGoriyaku, setSelectedGoriyaku] = React.useState<string | undefined>(params.goriyaku || undefined);
   const [supportText, setSupportText] = React.useState(params.support ?? "");
   const hasAnyCondition = Boolean(selectedVisitStyle || birthdate.trim() || plannedVisitDate.trim() || selectedGoriyaku || supportText.trim());
-  const isSendDisabled = loading || (!input.trim() && !hasAnyCondition) || (!!plannedVisitDate && !origin);
+  const isSendDisabled = loading || (!input.trim() && !hasAnyCondition);
   const lastInitialQueryRef = React.useRef<string | null>(null);
 
   // Homeからの相談内容・条件が変わったら自動送信する
@@ -654,7 +656,6 @@ export default function ConciergeScreen() {
   }, [initialQuery, initialHasCondition]);
 
   const submit = async (text: string) => {
-    if (plannedVisitDate.trim() && !origin) { setErrorMessage("参拝予定日を使う場合は、現在地を出発地点に設定してください。"); return; }
     const trimmed = text.trim();
     if (!trimmed && !hasAnyCondition) return;
     const queryText = trimmed || "条件から合う神社を知りたい";
@@ -682,7 +683,7 @@ export default function ConciergeScreen() {
         conditionFilters,
         profileContext,
         plannedVisitDate: plannedVisitDate.trim() || undefined,
-        location: origin ?? undefined,
+        location: toOriginPayload(origin),
       });
       setResults(recommendations);
     } catch {
@@ -701,7 +702,7 @@ export default function ConciergeScreen() {
     if (permission.status !== "granted") { setLocationStatus("error"); return; }
     try {
       const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      setOrigin({ lat: current.coords.latitude, lng: current.coords.longitude });
+      setOrigin({ latitude: current.coords.latitude, longitude: current.coords.longitude, source: "device", displayName: "現在地", accuracy: "precise" });
       setLocationStatus("ready");
     } catch { setLocationStatus("error"); }
   };
@@ -835,9 +836,10 @@ export default function ConciergeScreen() {
               onChangeBirthdate={setBirthdate}
               plannedVisitDate={plannedVisitDate}
               onChangePlannedVisitDate={setPlannedVisitDate}
-              hasOrigin={!!origin}
               locationStatus={locationStatus}
               onUseCurrentLocation={() => void useCurrentLocation()}
+              origin={origin}
+              onChangeOrigin={setOrigin}
               selectedVisitStyle={selectedVisitStyle}
               onSelectVisitStyle={setSelectedVisitStyle}
               selectedGoriyaku={selectedGoriyaku}
@@ -852,7 +854,7 @@ export default function ConciergeScreen() {
               variant="primary"
               onPress={handleResuggest}
               loading={loading}
-              disabled={(!consultationText && !hasAnyCondition) || (!!plannedVisitDate && !origin)}
+              disabled={!consultationText && !hasAnyCondition}
               accessibilityLabel="この条件で再提案する"
             />
           </View>

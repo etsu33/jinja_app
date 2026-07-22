@@ -93,6 +93,7 @@ need_profile を推薦の主要入力とし、誕生日、占術、方位、相�
 
 方位計算と表示契約の正本はBackendとし、Web / mobileは`direction_reference`を再計算しない。
 具体的な省略条件とレスポンス形式は`docs/core/direction-response-contract.md`へ委譲する。
+出発地点の手動指定はクライアントの一時状態として扱い、明示選択後の座標だけを既存の`location`境界へ渡す。
 
 ### 禁止事項
 
