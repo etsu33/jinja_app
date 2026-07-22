@@ -60,4 +60,13 @@ describe("direction analytics", () => {
       candidate_position: "other",
     });
   });
+
+  it("分析送信例外を利用操作へ伝播させず、payloadをログに出さない", () => {
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    track.mockImplementationOnce(() => { throw new Error("sensitive payload"); });
+    expect(() => trackWebDirection("direction_visit_date_set")).not.toThrow();
+    expect(warning).toHaveBeenCalledWith("direction_analytics_delivery_failed");
+    expect(JSON.stringify(warning.mock.calls)).not.toContain("sensitive payload");
+    warning.mockRestore();
+  });
 });

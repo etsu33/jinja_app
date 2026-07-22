@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { directionReferenceMatchCopy, type DirectionReference } from "../../../../packages/shared/directionReference";
+import { directionReferenceMatchCopy, validDirectionReferenceOrNull, type DirectionReference } from "../../../../packages/shared/directionReference";
 
 const reference: DirectionReference = {
   visit_date: "2026-09-15",
@@ -19,5 +19,10 @@ describe("directionReferenceMatchCopy", () => {
     expect(directionReferenceMatchCopy({ ...reference, matched: false })).toBe(
       "現在地から見た方角は、予定日の参考方位とは異なります。",
     );
+  });
+
+  it("未知の計算方式と不正な方角を表示契約から除外する", () => {
+    expect(validDirectionReferenceOrNull({ ...reference, calculation_method: "unknown" })).toBeNull();
+    expect(validDirectionReferenceOrNull({ ...reference, actual_direction: "上" })).toBeNull();
   });
 });

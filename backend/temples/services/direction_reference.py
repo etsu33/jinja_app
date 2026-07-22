@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import math
+import logging
 from typing import Any, Mapping, Optional, TypedDict
 
 
 CALCULATION_METHOD = "annual_monthly_kyusei_v1"
 DIRECTION_REFERENCE_NOTE = "年盤と月盤による参考情報です。日盤は使用していません。"
 _DIRECTION_LABELS = ("北", "北東", "東", "南東", "南", "南西", "西", "北西")
+logger = logging.getLogger(__name__)
 
 
 class DirectionReference(TypedDict):
@@ -100,11 +102,16 @@ def attach_direction_references(
     for recommendation in recommendations:
         if not isinstance(recommendation, dict):
             continue
-        reference = build_direction_reference(
-            direction_profile=direction_profile,
-            user_origin=user_origin,
-            shrine=recommendation,
-        )
+        try:
+            reference = build_direction_reference(
+                direction_profile=direction_profile,
+                user_origin=user_origin,
+                shrine=recommendation,
+            )
+        except Exception:
+            # Candidate data and user inputs are intentionally excluded from this log.
+            logger.error("direction_reference_candidate_failed")
+            reference = None
         if reference is not None:
             recommendation["direction_reference"] = reference
         else:

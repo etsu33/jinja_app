@@ -26,6 +26,16 @@ export default function GoogleMapRouteLink({
   className,
   directionRouteContext = null,
 }: Props) {
+  let routeUrl: URL | null = null;
+  try {
+    routeUrl = new URL(href);
+  } catch {
+    // Invalid or missing external route URLs degrade to an unavailable notice.
+  }
+  if (!routeUrl || routeUrl.protocol !== "https:") {
+    return <span role="status" className={className}>経路リンクを利用できません</span>;
+  }
+
   return (
     <a
       href={href}
@@ -43,29 +53,37 @@ export default function GoogleMapRouteLink({
             // Analytics must never delay or block the external route navigation.
           }
         }
-        trackSearchEvent("route_open", {
-          source: "shrine_detail",
-          routeTarget: "google_maps",
-          shrineId: shrineId ?? undefined,
-          threadId: tid != null ? String(tid) : undefined,
-          historyTheme: historyTheme ?? undefined,
-          ctx,
-        });
+        try {
+          trackSearchEvent("route_open", {
+            source: "shrine_detail",
+            routeTarget: "google_maps",
+            shrineId: shrineId ?? undefined,
+            threadId: tid != null ? String(tid) : undefined,
+            historyTheme: historyTheme ?? undefined,
+            ctx,
+          });
+        } catch {
+          console.warn("route_analytics_delivery_failed");
+        }
         const shrineIdNumber = shrineId != null ? Number(shrineId) : null;
 
         if (shrineIdNumber != null && Number.isFinite(shrineIdNumber) && shrineIdNumber > 0) {
-          void trackShrineInteraction({
-            shrineId: shrineIdNumber,
-            actionType: "route_open",
-            source: "shrine_detail",
-            threadId: tid,
-            metadata: {
-              event: "route_open",
-              routeTarget: "google_maps",
-              historyTheme,
-              ctx,
-            },
-          });
+          try {
+            void trackShrineInteraction({
+              shrineId: shrineIdNumber,
+              actionType: "route_open",
+              source: "shrine_detail",
+              threadId: tid,
+              metadata: {
+                event: "route_open",
+                routeTarget: "google_maps",
+                historyTheme,
+                ctx,
+              },
+            }).catch(() => console.warn("route_interaction_delivery_failed"));
+          } catch {
+            console.warn("route_interaction_delivery_failed");
+          }
         }
       }}
     >

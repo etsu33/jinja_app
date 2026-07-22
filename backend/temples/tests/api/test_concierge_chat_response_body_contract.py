@@ -109,6 +109,27 @@ def test_chat_response_omits_direction_reference_without_exact_origin(client, mo
 
 
 @pytest.mark.django_db
+def test_chat_response_succeeds_when_direction_profile_calculation_fails(client, monkeypatch):
+    _stub_candidates(monkeypatch)
+    _stub_recommendations(monkeypatch, [{"name": "神社A", "reason": "通常の推薦理由"}])
+    monkeypatch.setattr(
+        "temples.api_views_concierge.planned_visit_lucky_directions",
+        lambda *_args: (_ for _ in ()).throw(RuntimeError("private birthdate and consultation")),
+    )
+
+    r = client.post(
+        URL,
+        data=json.dumps({"query": "秘密の相談文", "birthdate": "1984-05-15", "visit_date": "2026-09-15"}),
+        content_type="application/json",
+    )
+
+    assert r.status_code == 200
+    recommendation = r.json()["data"]["recommendations"][0]
+    assert recommendation["reason"] == "通常の推薦理由"
+    assert "direction_reference" not in recommendation
+
+
+@pytest.mark.django_db
 def test_chat_response_message_mode_reply_prefix_and_names(client, monkeypatch):
     _stub_candidates(monkeypatch)
     _stub_recommendations(

@@ -52,4 +52,19 @@ describe("OriginSelector", () => {
       expect(radio.className).toContain("focus-visible:ring-2");
     }
   });
+
+  it.each([
+    ["500", vi.fn().mockResolvedValue({ ok: false })],
+    ["タイムアウト相当", vi.fn().mockRejectedValue(new Error("timeout"))],
+  ])("ジオコード%sでもエラーを案内し、相談に必要な他の操作を妨げない", async (_label, fetchMock) => {
+    vi.stubGlobal("fetch", fetchMock);
+    const onChange = vi.fn();
+    render(<OriginSelector origin={null} onChange={onChange} onUseDevice={() => undefined} />);
+    fireEvent.click(screen.getByRole("radio", { name: "駅名・住所から指定" }));
+    fireEvent.change(screen.getByLabelText("駅名または住所"), { target: { value: "失敗地点" } });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 450)); });
+    expect(screen.getByText("候補を検索できませんでした。相談はそのまま続けられます。")).toBeInTheDocument();
+    expect(onChange).not.toHaveBeenCalledWith(expect.objectContaining({ latitude: expect.any(Number) }));
+    expect(screen.getByRole("radio", { name: "方位情報を使用しない" })).toBeEnabled();
+  });
 });

@@ -626,11 +626,16 @@ class ConciergeChatView(APIView):
                 else None
             )
             visit_date = data.get("visit_date") or data.get("planned_visit_date")
-            calculated_direction = (
-                planned_visit_lucky_directions(profile_birthdate or birthdate, visit_date)
-                if visit_date
-                else annual_lucky_directions(profile_birthdate or birthdate)
-            )
+            try:
+                calculated_direction = (
+                    planned_visit_lucky_directions(profile_birthdate or birthdate, visit_date)
+                    if visit_date
+                    else annual_lucky_directions(profile_birthdate or birthdate)
+                )
+            except Exception:
+                # Do not log birthdate, visit date, origin, or consultation text.
+                log.error("[concierge/direction] profile_calculation_failed rid=%s", rid)
+                calculated_direction = None
             if calculated_direction:
                 raw_profile_context = {**(raw_profile_context or {}), "direction_profile": calculated_direction}
 
@@ -873,11 +878,18 @@ class ConciergeChatView(APIView):
                 if not isinstance(recommendation_list, list) or id(recommendation_list) in seen_recommendation_lists:
                     continue
                 seen_recommendation_lists.add(id(recommendation_list))
-                attach_direction_references(
-                    recommendation_list,
-                    direction_profile=direction_profile,
-                    user_origin={"lat": lat, "lng": lng} if lat is not None and lng is not None else None,
-                )
+                try:
+                    attach_direction_references(
+                        recommendation_list,
+                        direction_profile=direction_profile,
+                        user_origin={"lat": lat, "lng": lng} if lat is not None and lng is not None else None,
+                    )
+                except Exception:
+                    # Final boundary: direction enrichment must never fail the response.
+                    log.error("[concierge/direction] enrichment_failed rid=%s", rid)
+                    for recommendation in recommendation_list:
+                        if isinstance(recommendation, dict):
+                            recommendation.pop("direction_reference", None)
 
             after_n = len(recs.get("recommendations") or [])
             rec_count = after_n

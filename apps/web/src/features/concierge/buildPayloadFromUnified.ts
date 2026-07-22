@@ -6,7 +6,7 @@ import type {
   ConciergeFilterState,
 } from "@/features/concierge/sections/types";
 import type { ConciergeReasonFacts } from "@/lib/api/concierge";
-import type { DirectionReference } from "../../../../../packages/shared/directionReference";
+import { validDirectionReferenceOrNull, type DirectionReference } from "../../../../../packages/shared/directionReference";
 
 
 import { detailHrefFromRecommendation } from "@/features/concierge/detailHref";
@@ -150,7 +150,7 @@ function normalizeRecommendation(r: any, tid: string | null, analyticsContext: D
     analyticsContext.consultationAxis,
   );
   const actionSuggestions = normalizeActionSuggestions(r);
-  const directionReference = r?.direction_reference ?? null;
+  const directionReference = validDirectionReferenceOrNull(r?.direction_reference);
 
   if (shrineId) {
     return {
