@@ -78,6 +78,7 @@ describe("/api/concierge/chat BFF contract", () => {
   });
 
   it("normal: _anon_cookie_value があれば concierge_anon_id を set-cookie する", async () => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
     djFetchMock.mockResolvedValue(
       new Response(JSON.stringify({ ok: true, _anon_cookie_value: "anon-cookie-value" }), {
         status: 200,
@@ -94,6 +95,9 @@ describe("/api/concierge/chat BFF contract", () => {
     expect(cookies).toContain("Path=/");
     expect(cookies).toMatch(/SameSite=None/i);
     expect(cookies).toMatch(/Secure/i);
+    expect(JSON.stringify(log.mock.calls)).not.toContain("anon-cookie-value");
+    expect(log).toHaveBeenCalledWith("[BFF_ANON_COOKIE_SET_RESULT]", { phase: "normal", attached: true });
+    log.mockRestore();
   });
 
   it("refresh success: 初回401後にrefreshし、再chat結果とauth cookieを返す", async () => {
@@ -171,6 +175,7 @@ describe("/api/concierge/chat BFF contract", () => {
   });
 
   it("multiple set-cookie: upstream の複数 set-cookie を relay する", async () => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
     djFetchMock.mockResolvedValue(
       responseWithSetCookies(
         { ok: true },
@@ -185,6 +190,8 @@ describe("/api/concierge/chat BFF contract", () => {
     expect(res.status).toBe(200);
     expect(cookies).toContain("upstream_a=1");
     expect(cookies).toContain("upstream_b=2");
+    expect(JSON.stringify(log.mock.calls)).not.toMatch(/upstream_[ab]=[12]/);
+    log.mockRestore();
   });
 
   it("upstream 500 passthrough: backend 500を同じstatus/bodyで返す", async () => {

@@ -32,9 +32,9 @@ import {
 import { StateCard } from "../../components/common/StateCard";
 import { AuthPrompt } from "../../components/common/AuthPrompt";
 import { kamimusubiDark as theme } from "../theme";
-import { spacing } from "../design/spacing";
-import { cardSizes } from "../design/cardSizes";
-import { radius } from "../design/radius";
+import { spacing } from "../../design/spacing";
+import { cardSizes } from "../../design/cardSizes";
+import { radius } from "../../design/radius";
 import Button from "../../components/ui/Button";
 
 // Stripe Checkout はhttp(s)のリダイレクト先を要求するため、Web版の /billing/success, /billing/cancel を再利用する。

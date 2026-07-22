@@ -6,11 +6,11 @@
 >
 > 現在のDesign Token・Theme・Component仕様は、以下のコードと関連テストを正本とする。
 >
-> - `apps/mobile/app/design/spacing.ts`
-> - `apps/mobile/app/design/cardSizes.ts`
-> - `apps/mobile/app/design/ctaSizes.ts`
-> - `apps/mobile/app/design/shadow.ts`
-> - `apps/mobile/app/design/radius.ts`
+> - `apps/mobile/design/spacing.ts`
+> - `apps/mobile/design/cardSizes.ts`
+> - `apps/mobile/design/ctaSizes.ts`
+> - `apps/mobile/design/shadow.ts`
+> - `apps/mobile/design/radius.ts`
 > - `apps/mobile/app/theme.ts`
 > - `apps/mobile/components/ui/`
 >
@@ -32,11 +32,11 @@ Mobile Design SystemのToken構成を確認し、Spacing・Card Size・CTA Size�
 
 監査時点では、以下のToken・Themeファイルを対象とした。
 
-- `apps/mobile/app/design/spacing.ts`
-- `apps/mobile/app/design/cardSizes.ts`
-- `apps/mobile/app/design/ctaSizes.ts`
-- `apps/mobile/app/design/shadow.ts`
-- `apps/mobile/app/design/radius.ts`
+- `apps/mobile/design/spacing.ts`
+- `apps/mobile/design/cardSizes.ts`
+- `apps/mobile/design/ctaSizes.ts`
+- `apps/mobile/design/shadow.ts`
+- `apps/mobile/design/radius.ts`
 - `apps/mobile/app/theme.ts`
 
 現在のファイル構成、Token名、値、利用状況はコードを正本とする。
@@ -312,11 +312,11 @@ Tokenは現在値だけでなく、利用意図を表す名称として扱う。
 
 ## 関連実装
 
-- `apps/mobile/app/design/spacing.ts`
-- `apps/mobile/app/design/cardSizes.ts`
-- `apps/mobile/app/design/ctaSizes.ts`
-- `apps/mobile/app/design/shadow.ts`
-- `apps/mobile/app/design/radius.ts`
+- `apps/mobile/design/spacing.ts`
+- `apps/mobile/design/cardSizes.ts`
+- `apps/mobile/design/ctaSizes.ts`
+- `apps/mobile/design/shadow.ts`
+- `apps/mobile/design/radius.ts`
 - `apps/mobile/app/theme.ts`
 - `apps/mobile/components/ui/`
 

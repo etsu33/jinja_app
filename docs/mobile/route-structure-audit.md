@@ -269,7 +269,7 @@ apps/mobile/src/app削除
 - `apps/mobile/app/_layout.tsx`
 - `apps/mobile/components/`
 - `apps/mobile/lib/`
-- `apps/mobile/app/design/`
+- `apps/mobile/design/`
 - `apps/mobile/app/theme.ts`
 
 ---

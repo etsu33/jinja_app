@@ -121,14 +121,11 @@ def get_used_count(plan_context: PlanContext, feature: str) -> int:
         current_count = obj.count
 
         log.warning(
-            "[quota/read][feature] created=%s scope=%s anon_id=%r user_id=%r feature=%s count=%r id=%r",
+            "[quota/read][feature] created=%s scope=%s feature=%s count=%r",
             created,
             obj.scope,
-            getattr(obj, "anon_id", None),
-            getattr(obj, "user_id", None),
             obj.feature,
             obj.count,
-            getattr(obj, "id", None),
         )
     else:
         obj, created = FeatureUsage.objects.get_or_create(
@@ -141,14 +138,11 @@ def get_used_count(plan_context: PlanContext, feature: str) -> int:
         current_count = obj.count
 
         log.warning(
-            "[quota/read][feature] created=%s scope=%s anon_id=%r user_id=%r feature=%s count=%r id=%r",
+            "[quota/read][feature] created=%s scope=%s feature=%s count=%r",
             created,
             obj.scope,
-            getattr(obj, "anon_id", None),
-            getattr(obj, "user_id", None),
             obj.feature,
             obj.count,
-            getattr(obj, "id", None),
         )
 
     legacy = None
@@ -167,11 +161,9 @@ def get_used_count(plan_context: PlanContext, feature: str) -> int:
             current_count = max(current_count, legacy)
 
     log.warning(
-        "[quota/read][final] plan=%s feature=%s user_id=%r anon_id=%r feature_count=%r legacy_count=%r used=%r",
+        "[quota/read][final] plan=%s feature=%s feature_count=%r legacy_count=%r used=%r",
         plan_context.plan,
         feature,
-        plan_context.user_id,
-        plan_context.anon_id,
         getattr(feature_obj, "count", None),
         legacy,
         current_count,
@@ -185,11 +177,9 @@ def check_quota(plan_context: PlanContext, feature: str) -> QuotaStatus:
 
     if policy.get("unlimited"):
         log.warning(
-            "[quota/check] plan=%s feature=%s unlimited=1 user_id=%r anon_id=%r",
+            "[quota/check] plan=%s feature=%s unlimited=1",
             plan_context.plan,
             feature,
-            plan_context.user_id,
-            plan_context.anon_id,
         )
         return QuotaStatus(
             allowed=True,
@@ -210,11 +200,9 @@ def check_quota(plan_context: PlanContext, feature: str) -> QuotaStatus:
     remaining = max(limit - used, 0)
 
     log.warning(
-        "[quota/check] plan=%s feature=%s user_id=%r anon_id=%r used=%r limit=%r remaining=%r allowed=%s",
+        "[quota/check] plan=%s feature=%s used=%r limit=%r remaining=%r allowed=%s",
         plan_context.plan,
         feature,
-        plan_context.user_id,
-        plan_context.anon_id,
         used,
         limit,
         remaining,
@@ -240,11 +228,9 @@ def consume_quota(plan_context: PlanContext, feature: str, amount: int = 1) -> N
 
     if policy.get("unlimited"):
         log.warning(
-            "[quota/consume] skipped_unlimited=1 plan=%s feature=%s user_id=%r anon_id=%r",
+            "[quota/consume] skipped_unlimited=1 plan=%s feature=%s",
             plan_context.plan,
             feature,
-            plan_context.user_id,
-            plan_context.anon_id,
         )
         return
 
@@ -269,15 +255,12 @@ def consume_quota(plan_context: PlanContext, feature: str, amount: int = 1) -> N
     obj.refresh_from_db()
 
     log.warning(
-        "[quota/consume][feature] created=%s scope=%s anon_id=%r user_id=%r feature=%s before=%r after=%r id=%r",
+        "[quota/consume][feature] created=%s scope=%s feature=%s before=%r after=%r",
         created,
         obj.scope,
-        getattr(obj, "anon_id", None),
-        getattr(obj, "user_id", None),
         obj.feature,
         before_count,
         obj.count,
-        getattr(obj, "id", None),
     )
 
     # 旧 concierge 日次usageとの互換書き込み
@@ -295,9 +278,8 @@ def consume_quota(plan_context: PlanContext, feature: str, amount: int = 1) -> N
         legacy_usage.refresh_from_db()
 
         log.warning(
-            "[quota/consume][legacy] created=%s user_id=%r date=%s before=%r after=%r",
+            "[quota/consume][legacy] created=%s date=%s before=%r after=%r",
             legacy_created,
-            plan_context.user_id,
             timezone.localdate(),
             legacy_before,
             legacy_usage.count,

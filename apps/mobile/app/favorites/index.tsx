@@ -4,9 +4,9 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { getFavoriteShrines, RecentShrineItem } from "../../lib/shrineStorage";
 import { toggleFavorite } from "../../lib/storage";
 import { kamimusubiDark as theme } from "../theme";
-import { spacing } from "../design/spacing";
-import { cardSizes } from "../design/cardSizes";
-import { radius } from "../design/radius";
+import { spacing } from "../../design/spacing";
+import { cardSizes } from "../../design/cardSizes";
+import { radius } from "../../design/radius";
 
 export default function FavoritesScreen() {
   const router = useRouter();

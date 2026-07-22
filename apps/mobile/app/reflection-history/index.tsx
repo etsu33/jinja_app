@@ -6,9 +6,9 @@ import { listShrineReflections, type ShrineReflectionResponse } from "../../lib/
 import { StateCard } from "../../components/common/StateCard";
 import Button from "../../components/ui/Button";
 import { kamimusubiDark as theme } from "../theme";
-import { spacing } from "../design/spacing";
-import { cardSizes } from "../design/cardSizes";
-import { radius } from "../design/radius";
+import { spacing } from "../../design/spacing";
+import { cardSizes } from "../../design/cardSizes";
+import { radius } from "../../design/radius";
 
 function formatDate(value: string | null | undefined): string {
   if (!value) return "日付未記録";

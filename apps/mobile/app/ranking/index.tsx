@@ -6,9 +6,9 @@ import { SHRINES } from "../../data/shrines";
 import { getFavorites, toggleFavorite } from "../../lib/storage";
 import Button from "../../components/ui/Button";
 import { kamimusubiDark } from "../theme";
-import { spacing } from "../design/spacing";
-import { cardSizes } from "../design/cardSizes";
-import { radius } from "../design/radius";
+import { spacing } from "../../design/spacing";
+import { cardSizes } from "../../design/cardSizes";
+import { radius } from "../../design/radius";
 
 type FavoriteHeartButtonProps = {
   favored: boolean;

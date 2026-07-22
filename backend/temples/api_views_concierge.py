@@ -758,11 +758,7 @@ class ConciergeChatView(APIView):
 
                 if plan_context.plan == "anonymous" and plan_context.anon_id:
                     attach_anonymous_cookie(response, plan_context.anon_id)
-                    log.info(
-                        "[concierge/chat] after_attach_limit rid=%s cookies=%r",
-                        rid,
-                        response.cookies.output(),
-                    )
+                    log.info("[concierge/chat] anonymous_cookie_attached rid=%s", rid)
 
                 log.info("[concierge/chat] before_return rid=%s", rid)
                 return response
@@ -940,11 +936,10 @@ class ConciergeChatView(APIView):
             append_user = user if getattr(user, "is_authenticated", False) else None
             append_anonymous_id = None if append_user is not None else getattr(plan_context, "anon_id", None)
 
-            log.warning(
-                "[AUTH DEBUG] user=%r authenticated=%s anonymous_id=%r",
-                getattr(user, "id", None),
-                getattr(user, "is_authenticated", False),
-                getattr(plan_context, "anon_id", None),
+            log.info(
+                "[concierge/chat] identity_state authenticated=%s anonymous=%s",
+                bool(getattr(user, "is_authenticated", False)),
+                append_anonymous_id is not None,
             )
 
             try:
@@ -958,12 +953,6 @@ class ConciergeChatView(APIView):
                     recommendations_v2=thread_recommendations_v2,
                 )
                 thread_obj = saved.thread
-                log.warning(
-                    "[THREAD DEBUG] thread=%r user_id=%r anonymous_id=%r",
-                    getattr(thread_obj, "id", None),
-                    getattr(thread_obj, "user_id", None),
-                    getattr(thread_obj, "anonymous_id", None),
-                )
             except ConciergeThread.DoesNotExist:
                 saved = append_chat(
                     user=append_user,
@@ -975,25 +964,17 @@ class ConciergeChatView(APIView):
                     recommendations_v2=thread_recommendations_v2,
                 )
                 thread_obj = saved.thread
-                log.warning(
-                    "[THREAD DEBUG] thread=%r user_id=%r anonymous_id=%r",
-                    getattr(thread_obj, "id", None),
-                    getattr(thread_obj, "user_id", None),
-                    getattr(thread_obj, "anonymous_id", None),
-                )
 
             log.warning(
-                "[concierge/chat] THREAD_SAVED rid=%s thread_pk=%r recommendations_saved=%s recommendations_v2_saved=%s",
+                "[concierge/chat] THREAD_SAVED rid=%s recommendations_saved=%s recommendations_v2_saved=%s",
                 rid,
-                getattr(thread_obj, "id", None),
                 len(getattr(thread_obj, "recommendations", None) or []),
                 len(getattr(thread_obj, "recommendations_v2", None) or []),
             )
             log.info(
-                "[concierge/perf] step=append_chat rid=%s elapsed=%.3f thread=%r",
+                "[concierge/perf] step=append_chat rid=%s elapsed=%.3f",
                 rid,
                 time.perf_counter() - t0,
-                getattr(thread_obj, "id", None),
             )
 
             # -------------------------
@@ -1093,17 +1074,7 @@ class ConciergeChatView(APIView):
 
             if plan_context.plan == "anonymous" and plan_context.anon_id:
                 attach_anonymous_cookie(response, plan_context.anon_id)
-                log.info(
-                    "[concierge/chat] after_attach_success rid=%s cookies=%r",
-                    rid,
-                    response.cookies.output(),
-                )
-
-            log.info(
-                "[concierge/chat] cookie_state rid=%s cookies=%r",
-                rid,
-                response.cookies.output(),
-            )
+                log.info("[concierge/chat] anonymous_cookie_attached rid=%s", rid)
             log.info("[concierge/chat] before_return rid=%s", rid)
             return response
         finally:

@@ -235,7 +235,7 @@ Padding上位: `px-3`(121回), `p-4`(107回), `px-4`(91回), `py-2`(90回), `p-3
 - `apps/mobile/lib/tokens/*.ts`（index.ts, radius.ts, spacing.ts, buttons.ts, cards.ts）: アプリ内のどこからもimportされていない
 - `apps/mobile/components/ui/Button.tsx`: アプリ内のどこからもimportされていない
 - `apps/mobile/app/theme.ts`の`colors`（ライトテーマ18キー）: 未使用Button経由の参照のみで実質不使用
-- `apps/mobile/app/design/shadow.ts`の`card`/`softCard`/`lightCard`/`skeleton`: 直接の参照箇所が未検出（間接参照の可能性は排除できず、断定はしない）
+- `apps/mobile/design/shadow.ts`の`card`/`softCard`/`lightCard`/`skeleton`: 直接の参照箇所が未検出（間接参照の可能性は排除できず、断定はしない）
 - `apps/web/src/components/SampleButton.stories.tsx`: `ui/button.tsx`と無関係な独自ボタンclassNameを持つstoriesファイル（Storybook上のサンプルであり実装への組込みは未確認）
 
 ---

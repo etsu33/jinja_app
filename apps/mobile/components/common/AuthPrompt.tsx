@@ -3,8 +3,8 @@ import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 
 import { kamimusubiDark as theme } from "../../app/theme";
-import { spacing } from "../../app/design/spacing";
-import { radius } from "../../app/design/radius";
+import { spacing } from "../../design/spacing";
+import { radius } from "../../design/radius";
 import Button from "../ui/Button";
 
 type AuthPromptProps = {
