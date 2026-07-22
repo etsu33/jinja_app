@@ -1,4 +1,9 @@
 import { render, screen } from "@testing-library/react";
+import { beforeEach, vi } from "vitest";
+
+const { trackWebDirection } = vi.hoisted(() => ({ trackWebDirection: vi.fn() }));
+vi.mock("@/lib/analytics/directionEvents", () => ({ trackWebDirection }));
+
 import DirectionReferenceCard from "../DirectionReferenceCard";
 
 const reference = {
@@ -11,6 +16,8 @@ const reference = {
 };
 
 describe("DirectionReferenceCard", () => {
+  beforeEach(() => trackWebDirection.mockClear());
+
   it("Backend契約がある場合だけ非断定的な方位情報を表示する", () => {
     const { rerender } = render(<DirectionReferenceCard reference={reference} />);
     expect(screen.getByRole("heading", { level: 3, name: "方位の参考情報" })).toBeInTheDocument();
@@ -22,7 +29,12 @@ describe("DirectionReferenceCard", () => {
   });
 
   it("不一致を優劣ではなく差異として表示する", () => {
-    render(<DirectionReferenceCard reference={{ ...reference, matched: false }} />);
+    const mismatched = { ...reference, matched: false };
+    const { rerender } = render(<DirectionReferenceCard reference={mismatched} recommendationKey="result-1" rank={2} />);
     expect(screen.getByText("現在地から見た方角は、予定日の参考方位とは異なります。")).toBeInTheDocument();
+    expect(trackWebDirection).toHaveBeenCalledWith("direction_match_impression", { matched: false, recommendation_rank: 2 });
+
+    rerender(<DirectionReferenceCard reference={mismatched} recommendationKey="result-1" rank={2} />);
+    expect(trackWebDirection).toHaveBeenCalledTimes(1);
   });
 });

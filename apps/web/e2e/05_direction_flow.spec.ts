@@ -77,7 +77,9 @@ test.describe("方位条件のWeb E2E", () => {
     await expect(page.getByText("現在地から見た方角は、予定日の参考方位とは異なります。")).toBeVisible();
     expect(captured.geocodeRequests).toHaveLength(1);
     expect(captured.chatPayloads[0]).toMatchObject({ location: { lat: 35.681236, lng: 139.767125 } });
-    expect(captured.analyticsEvents.filter((event) => event.eventName === "direction_match_impression")).toHaveLength(0);
+    expect(captured.analyticsEvents.filter((event) => event.eventName === "direction_match_impression")).toEqual([
+      expect.objectContaining({ payload: expect.objectContaining({ matched: false }) }),
+    ]);
     expectPrivateDataAbsent(captured.analyticsEvents);
   });
 
