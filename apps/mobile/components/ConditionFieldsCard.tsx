@@ -1,6 +1,6 @@
 import * as React from "react";
 import { View, Text, TextInput, Pressable, StyleSheet } from "react-native";
-import { kamimusubiDark as theme } from "../app/theme";
+import { kamimusubiDark as theme } from "../design/theme";
 import { VISIT_STYLE_OPTIONS, GORIYAKU_OPTIONS } from "../lib/conditionPayload";
 import { ProfilePickerModal } from "./profile/ProfilePickerModal";
 import { MobileOriginSelector } from "./MobileOriginSelector";

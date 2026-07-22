@@ -17,7 +17,9 @@ describe("Expo Router structure", () => {
 
   it("designをrouteとして登録せず、app配下にもdesignファイルを置かない", () => {
     expect(layoutSource).not.toContain('name="design/');
+    expect(layoutSource).not.toContain('name="theme"');
     expect(() => readdirSync(resolve(mobileRoot, "app/design"))).toThrow();
+    expect(() => readFileSync(resolve(mobileRoot, "app/theme.ts"), "utf8")).toThrow();
     expect(readdirSync(resolve(mobileRoot, "design")).sort()).toEqual([
       "cardSizes.ts",
       "ctaSizes.ts",
@@ -25,6 +27,7 @@ describe("Expo Router structure", () => {
       "semanticColorTokens.ts",
       "shadow.ts",
       "spacing.ts",
+      "theme.ts",
     ]);
   });
 });

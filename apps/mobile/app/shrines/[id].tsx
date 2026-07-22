@@ -4,7 +4,7 @@ import { View, Text, Image, Pressable, StyleSheet, ScrollView, Linking, Platform
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import { SHRINES } from "../../data/shrines";
 import { incVisits, isFavorite, toggleFavorite, pushRecent } from "../../lib/storage";
-import { kamimusubiDark as theme } from "../theme";
+import { kamimusubiDark as theme } from "../../design/theme";
 import { get, isUnauthenticatedError } from "../../lib/http";
 import { isLoggedIn } from "../../lib/authTokens";
 import { trackShrineDetailView, trackShrineRouteOpen } from "../../lib/shrineInteractions";

@@ -4,7 +4,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, type ViewStyle } from "
 import { ctaSizes } from "../../design/ctaSizes";
 import { semanticRadius } from "../../design/radius";
 import { semanticShadow } from "../../design/shadow";
-import { kamimusubiDarkSemanticTheme } from "../../app/theme";
+import { kamimusubiDarkSemanticTheme } from "../../design/theme";
 
 type Props = {
   title: string;

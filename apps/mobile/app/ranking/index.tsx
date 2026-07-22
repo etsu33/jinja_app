@@ -5,7 +5,7 @@ import { useRouter, useFocusEffect } from "expo-router";
 import { SHRINES } from "../../data/shrines";
 import { getFavorites, toggleFavorite } from "../../lib/storage";
 import Button from "../../components/ui/Button";
-import { kamimusubiDark } from "../theme";
+import { kamimusubiDark } from "../../design/theme";
 import { spacing } from "../../design/spacing";
 import { cardSizes } from "../../design/cardSizes";
 import { radius } from "../../design/radius";

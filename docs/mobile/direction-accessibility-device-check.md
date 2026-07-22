@@ -173,6 +173,7 @@
 | --- | --- | --- | --- | --- |
 | Web Chromium | Playwright Chromium | 自動テスト済み | 2026-07-22 | 320px、文字拡大、キーボード、ジオコード500、未知方式、経路 |
 | iOS Simulator | iPhone 16e / iOS 26.1 / `1ffb264a` | 部分確認済み | 2026-07-22 | 画面証跡で正式な4タブ（ホーム・相談・記録・マイページ）のみ表示、designタブなし。マージ前のExpo iOS exportでRoute警告なし。実端末確認の代替にはしない |
+| Android Emulator | Pixel 7a / Android 16（API 36.1）/ Expo Go | 部分確認済み | 2026-07-22 | Expo SDK 57互換依存への同期後に起動と正式な4タブを確認。`theme.ts`を`app`外へ移動しRoute警告が消えたことを確認。4択操作、文字拡大、TalkBack、OS権限、外部地図は未確認 |
 | Safari + VoiceOver | 未確認 | 未実施 | - | Web実端末確認 |
 | iOS + VoiceOver | 未確認 | 未実施 | - | OS権限・外部地図を含む |
 | Android + TalkBack | 未確認 | 未実施 | - | OS権限・外部地図を含む |
@@ -185,12 +186,14 @@
 | --- | --- | --- |
 | Mobile typecheck | 成功 | `tsc -p tsconfig.json --noEmit` |
 | Mobile全テスト | 14ファイル／90テスト成功 | 4タブ構造、方位表示契約、分析失敗時の操作継続を含む |
+| Expo Router構造テスト | 2テスト成功 | `app/theme.ts`の不在、`design/theme.ts`への配置、不要なtheme routeの非登録 |
 | Backend重点回帰 | 33テスト成功 | Cookie・匿名ID・user_id・thread_idのログ非混入、方位計算例外、候補単位の失敗分離、不正方位情報の省略 |
 
 ## 暫定リリース判定（2026-07-22）
 
 - 自動回帰およびSimulator確認でP0／P1は検出されていない。
 - iOS／Android実端末、VoiceOver／TalkBack、OS権限、最大付近の文字サイズ、外部地図遷移は未確認。
+- Android Emulatorでは起動と4タブのみ確認済み。4択切替、方位無効、都道府県概算、戻る操作、文字拡大、TalkBackは未確認であり、実端末確認の代替にはしない。
 - 完了条件を満たしていないため、実端末リリース判定は **保留** とする。
 - 実端末でP0／P1を検出した場合のみ `fix/direction-device-qa-round2` を作成し、修正後に両OSの共通フローを再確認する。
 

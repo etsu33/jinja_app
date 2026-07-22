@@ -3,7 +3,7 @@ import * as React from "react";
 import { View, Text, Image, Pressable, StyleSheet, ScrollView, Dimensions } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { getStamps } from "../../lib/storage";
-import { kamimusubiDark as theme } from "../theme";
+import { kamimusubiDark as theme } from "../../design/theme";
 import Button from "../../components/ui/Button";
 
 const GAP = 10;

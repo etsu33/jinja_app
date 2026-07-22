@@ -4,7 +4,7 @@ import * as React from "react";
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { getRecentViewed, RecentShrineItem } from "../../lib/shrineStorage";
-import { kamimusubiDark as theme } from "../theme";
+import { kamimusubiDark as theme } from "../../design/theme";
 import { spacing } from "../../design/spacing";
 import { cardSizes } from "../../design/cardSizes";
 import { radius } from "../../design/radius";

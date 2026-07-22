@@ -15,7 +15,7 @@ import {
 import { isUnauthenticatedError } from "../../lib/http";
 import { StateCard } from "../../components/common/StateCard";
 import { AuthPrompt } from "../../components/common/AuthPrompt";
-import { kamimusubiDark as theme } from "../theme";
+import { kamimusubiDark as theme } from "../../design/theme";
 import { spacing } from "../../design/spacing";
 import { cardSizes } from "../../design/cardSizes";
 import { radius } from "../../design/radius";

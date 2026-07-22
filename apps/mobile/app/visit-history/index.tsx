@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 
 import { listVisits, type VisitHistoryItem } from "../../lib/visits";
 import { StateCard } from "../../components/common/StateCard";
-import { kamimusubiDark as theme } from "../theme";
+import { kamimusubiDark as theme } from "../../design/theme";
 import { spacing } from "../../design/spacing";
 import { cardSizes } from "../../design/cardSizes";
 import { radius } from "../../design/radius";

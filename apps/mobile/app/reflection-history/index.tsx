@@ -5,7 +5,7 @@ import { useRouter } from "expo-router";
 import { listShrineReflections, type ShrineReflectionResponse } from "../../lib/reflections";
 import { StateCard } from "../../components/common/StateCard";
 import Button from "../../components/ui/Button";
-import { kamimusubiDark as theme } from "../theme";
+import { kamimusubiDark as theme } from "../../design/theme";
 import { spacing } from "../../design/spacing";
 import { cardSizes } from "../../design/cardSizes";
 import { radius } from "../../design/radius";

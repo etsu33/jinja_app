@@ -1,5 +1,5 @@
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { kamimusubiDark as theme } from "../../app/theme";
+import { kamimusubiDark as theme } from "../../design/theme";
 import { radius } from "../../design/radius";
 
 type Option = { label: string; value: string };

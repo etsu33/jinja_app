@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { View, Text, ScrollView, Pressable, Image, StyleSheet } from "react-native";
 import { SHRINES } from "../../data/shrines";
-import { kamimusubiDark as theme } from "../theme";
+import { kamimusubiDark as theme } from "../../design/theme";
 
 export default function SearchPage() {
   const router = useRouter();
