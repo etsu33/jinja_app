@@ -49,6 +49,41 @@ jobs:
       - name: Contract tests
         run: pnpm --filter ./apps/web test:contract
 
+  direction-e2e:
+    name: web-direction-e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v4
+        with:
+          standalone: true
+          run_install: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install web dependencies
+        run: pnpm --filter ./apps/web install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm --filter ./apps/web exec playwright install --with-deps chromium
+
+      - name: Run fixed-response direction E2E
+        run: pnpm --filter ./apps/web test:e2e:ci
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: web-direction-playwright-report
+          path: apps/web/playwright-report/
+          if-no-files-found: ignore
+
   full:
     name: web-full
     runs-on: ubuntu-latest

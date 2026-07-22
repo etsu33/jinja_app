@@ -19,6 +19,7 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "test:e2e": "playwright test",
+    "test:e2e:ci": "playwright test e2e/05_direction_flow.spec.ts --project=chromium",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
     "test:contract": "vitest run --reporter=dot --pool=threads",
