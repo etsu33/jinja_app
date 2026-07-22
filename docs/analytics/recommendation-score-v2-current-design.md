@@ -38,7 +38,7 @@ Recommendation Score v2 の骨格はすでに実装済み。
 ### ranked score
 
 ```text
-score_total_ranked = score_total_ranked_base + capped_behavior_contribution
+score_total_ranked = score_total_ranked_base + capped_behavior_contribution + profile_signal + direction_signal
 ```
 
 ### base score
@@ -51,7 +51,6 @@ score_total_ranked_base =
 + score_distance * w4
 + score_visit_style * w5
 + astro_bonus
-+ direction_bonus
 ```
 
 ### behavior contribution
@@ -65,7 +64,7 @@ capped_behavior_contribution = min(behavior_contribution, behavior_cap)
 ### final ranked score
 
 ```text
-score_total_ranked = score_total_ranked_base + capped_behavior_contribution
+score_total_ranked = score_total_ranked_base + capped_behavior_contribution + profile_signal + direction_signal
 ```
 
 ---

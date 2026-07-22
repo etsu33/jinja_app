@@ -33,9 +33,44 @@ def test_direction_signal_uses_actual_bearing_from_origin_to_shrine():
     rec = {"latitude": 35.0, "longitude": 140.0}
     score, matched = _score_direction_signal(
         rec,
-        {"direction_profile": {"luckyDirections": ["東", "北西"]}},
+        {"direction_profile": {
+            "luckyDirections": ["東", "北西"],
+            "source": "calculated",
+            "calculationMethod": "annual_monthly_kyusei_v1",
+            "visitDate": "2026-09-15",
+        }},
         {"lat": 35.0, "lng": 139.0},
     )
     assert score == 0.02
     assert matched == ["plannedLuckyDirection:東"]
     assert rec["direction_from_origin"] == "東"
+
+
+def test_direction_signal_requires_every_calculation_input():
+    valid_profile = {
+        "luckyDirections": ["東"],
+        "source": "calculated",
+        "calculationMethod": "annual_monthly_kyusei_v1",
+        "visitDate": "2026-09-15",
+    }
+    rec = {"latitude": 35.0, "longitude": 140.0}
+    origin = {"lat": 35.0, "lng": 139.0}
+
+    for missing in ("source", "calculationMethod", "visitDate"):
+        profile = {key: value for key, value in valid_profile.items() if key != missing}
+        assert _score_direction_signal(rec.copy(), {"direction_profile": profile}, origin) == (0.0, [])
+    assert _score_direction_signal({}, {"direction_profile": valid_profile}, origin) == (0.0, [])
+    assert _score_direction_signal(rec.copy(), {"direction_profile": valid_profile}, None) == (0.0, [])
+
+
+def test_direction_signal_does_not_score_a_non_matching_bearing():
+    score, matched = _score_direction_signal(
+        {"latitude": 36.0, "longitude": 139.0},
+        {"direction_profile": {
+            "luckyDirections": ["東"], "source": "calculated",
+            "calculationMethod": "annual_monthly_kyusei_v1", "visitDate": "2026-09-15",
+        }},
+        {"lat": 35.0, "lng": 139.0},
+    )
+    assert score == 0.0
+    assert matched == []

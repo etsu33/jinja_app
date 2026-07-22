@@ -28,7 +28,8 @@ class DirectionBonusResult(TypedDict):
     reason: str | None
 
 
-DIRECTION_BONUS_MAX = 0.3
+# Legacy score_v2 contract. Active direction scoring is direction_signal only.
+DIRECTION_BONUS_MAX = 0.0
 PROFILE_SIGNAL_MAX = 0.03
 
 
@@ -293,15 +294,20 @@ def _score_direction_signal(
     user_origin: Optional[Dict[str, Any]] = None,
 ) -> tuple[float, List[str]]:
     """
-    profile_context.direction_profile.luckyDirection を補助シグナルとして評価する。
-    候補神社に direction / direction_tags が存在する場合のみ最大 +0.02 を加算する。
-    存在しない場合はスコア 0 で reason="direction_profile未適用" を返す。
+    参拝予定日の年盤・月盤と実座標の根拠が揃う場合だけ、最大 +0.02 を加算する。
     """
     if not isinstance(profile_context, dict):
         return 0.0, []
 
     direction_profile = profile_context.get("direction_profile") or {}
     if not isinstance(direction_profile, dict):
+        return 0.0, []
+
+    if (
+        direction_profile.get("source") != "calculated"
+        or direction_profile.get("calculationMethod") != "annual_monthly_kyusei_v1"
+        or not str(direction_profile.get("visitDate") or "").strip()
+    ):
         return 0.0, []
 
     lucky_directions = [str(value).strip() for value in direction_profile.get("luckyDirections") or [] if str(value).strip()]
@@ -315,28 +321,14 @@ def _score_direction_signal(
     origin_lng = _to_float_or_none(user_origin.get("lng") if user_origin else None)
     shrine_lat = _to_float_or_none(rec.get("latitude") or rec.get("lat"))
     shrine_lng = _to_float_or_none(rec.get("longitude") or rec.get("lng"))
-    if None not in (origin_lat, origin_lng, shrine_lat, shrine_lng):
-        bearing = _bearing_degrees(from_lat=origin_lat, from_lng=origin_lng, to_lat=shrine_lat, to_lng=shrine_lng)
-        actual_direction = _direction_label_ja(bearing)
-        rec["direction_from_origin"] = actual_direction
-        if actual_direction in lucky_directions:
-            return DIRECTION_SIGNAL_MAX, [f"plannedLuckyDirection:{actual_direction}"]
-
-    # 候補神社の方位情報を確認（direction / direction_tags フィールド）
-    shrine_direction = str(rec.get("direction") or "").strip()
-    shrine_direction_tags: List[str] = [
-        str(t).strip()
-        for t in (rec.get("direction_tags") or [])
-        if isinstance(t, str) and str(t).strip()
-    ]
-
-    if not shrine_direction and not shrine_direction_tags:
+    if None in (origin_lat, origin_lng, shrine_lat, shrine_lng):
         return 0.0, []
 
-    all_shrine_directions = set(filter(None, [shrine_direction] + shrine_direction_tags))
-    matched = next((direction for direction in lucky_directions if direction in all_shrine_directions), None)
-    if matched:
-        return DIRECTION_SIGNAL_MAX, [f"luckyDirection:{matched}"]
+    bearing = _bearing_degrees(from_lat=origin_lat, from_lng=origin_lng, to_lat=shrine_lat, to_lng=shrine_lng)
+    actual_direction = _direction_label_ja(bearing)
+    rec["direction_from_origin"] = actual_direction
+    if actual_direction in lucky_directions:
+        return DIRECTION_SIGNAL_MAX, [f"plannedLuckyDirection:{actual_direction}"]
 
     return 0.0, []
 
@@ -839,46 +831,8 @@ def _resolve_direction_bonus(
     birthdate: Optional[str],
     user_origin: Optional[Dict[str, Any]] = None,
 ) -> DirectionBonusResult:
-    """Resolve the future direction bonus for score_v2.
-
-    Current phase:
-      - direction input UI is not implemented
-      - direction calculation is not implemented
-      - DB persistence is not used
-
-    Therefore this helper always returns zero, while keeping the score_v2
-    contract ready for future direction-based scoring.
-    """
-
-    has_birthdate = bool(str(birthdate or "").strip())
-    latitude = rec.get("latitude") or rec.get("lat")
-    longitude = rec.get("longitude") or rec.get("lng")
-    has_location = latitude not in (None, "") and longitude not in (None, "")
-    has_user_origin = bool(user_origin)
-
-    if not has_birthdate or not has_location or not has_user_origin:
-        return {"bonus": 0.0, "reason": None}
-
-    origin_lat = _to_float_or_none(user_origin.get("lat") if user_origin else None)
-    origin_lng = _to_float_or_none(user_origin.get("lng") if user_origin else None)
-    shrine_lat = _to_float_or_none(latitude)
-    shrine_lng = _to_float_or_none(longitude)
-
-    if origin_lat is None or origin_lng is None or shrine_lat is None or shrine_lng is None:
-        return {"bonus": 0.0, "reason": None}
-
-    bearing = _bearing_degrees(
-        from_lat=origin_lat,
-        from_lng=origin_lng,
-        to_lat=shrine_lat,
-        to_lng=shrine_lng,
-    )
-    direction_label = _direction_label_ja(bearing)
-
-    return {
-        "bonus": 0.1,
-        "reason": f"現在地から見て{direction_label}方面の候補です",
-    }
+    """Deprecated direction_bonus contract; active scoring is direction_signal."""
+    return {"bonus": 0.0, "reason": None}
 
 
 def _normalize_int_signal_list(values: Any) -> List[int]:
@@ -1202,7 +1156,7 @@ def _attach_breakdown(
     # _score_total:
     #   実際の並び順に使う内部ランキング用スコア。
     #   need の強一致・距離減衰まで含めた ranked score を入れる。
-    score_total = score_element * w1 + score_need * w2 + score_popular * w3 + astro_bonus + direction_bonus
+    score_total = score_element * w1 + score_need * w2 + score_popular * w3 + astro_bonus
 
     # shrine_id_int is already computed above for use in behavior_breakdown etc.
 
@@ -1233,7 +1187,6 @@ def _attach_breakdown(
         + score_distance * w4
         + score_visit_style * w5
         + astro_bonus
-        + direction_bonus
     )
     # 行動の影響を相談内容に対して最大30％または0.5に制限
     behavior_cap = min(score_total_ranked_base * 0.3, 0.5)
@@ -1300,7 +1253,7 @@ def _attach_breakdown(
         "direction_signal": {
             "score": float(direction_signal_score),
             "matched": direction_signal_matched,
-            "reason": "luckyDirection一致" if direction_signal_matched else "direction_profile未適用",
+            "reason": "予定日の参考方位一致" if direction_signal_matched else "方位条件未適用",
         },
         "behavior_profile": {
             "score": float(light_behavior["total"]),
@@ -1420,7 +1373,7 @@ def _attach_breakdown(
                 "contribution": float(direction_signal_score),
                 "matched": direction_signal_matched,
                 "max": float(DIRECTION_SIGNAL_MAX),
-                "reason": "luckyDirection一致" if direction_signal_matched else "direction_profile未適用",
+                "reason": "予定日の参考方位一致" if direction_signal_matched else "方位条件未適用",
             },
             "score_total_ranked_base": float(score_total_ranked_base),
             "capped_behavior_contribution": float(capped_behavior_contribution),

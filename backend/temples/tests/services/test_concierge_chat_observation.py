@@ -988,18 +988,17 @@ def test_resolve_direction_bonus_returns_zero_without_birthdate_or_location():
     ) == {"bonus": 0.0, "reason": None}
 
 
-def test_resolve_direction_bonus_returns_bonus_with_user_origin_birthdate_and_location():
+def test_legacy_direction_bonus_stays_zero_with_complete_location_inputs():
     result = _resolve_direction_bonus(
         rec={"shrine_id": 101, "name": "東方面神社", "latitude": 35.0, "longitude": 140.0},
         birthdate="1990-01-01",
         user_origin={"lat": 35.0, "lng": 139.0},
     )
 
-    assert result["bonus"] == 0.1
-    assert result["reason"] == "現在地から見て東方面の候補です"
+    assert result == {"bonus": 0.0, "reason": None}
 
 
-def test_attach_breakdown_reflects_direction_bonus_in_score_v2_and_breakdown_detail():
+def test_attach_breakdown_keeps_legacy_direction_bonus_zero():
     rec = {
         "shrine_id": 101,
         "name": "東方面神社",
@@ -1026,13 +1025,13 @@ def test_attach_breakdown_reflects_direction_bonus_in_score_v2_and_breakdown_det
         user_origin={"lat": 35.0, "lng": 139.0},
     )
 
-    assert rec["score_v2"]["components"]["direction_bonus"] == 0.1
-    assert rec["score_v2"]["components"]["direction_reason"] == "現在地から見て東方面の候補です"
+    assert rec["score_v2"]["components"]["direction_bonus"] == 0.0
+    assert rec["score_v2"]["components"]["direction_reason"] is None
 
     direction_feature = rec["breakdown_detail"]["features"]["direction_bonus"]
-    assert direction_feature["raw"] == 0.1
-    assert direction_feature["contribution"] == 0.1
-    assert direction_feature["reason"] == "現在地から見て東方面の候補です"
+    assert direction_feature["raw"] == 0.0
+    assert direction_feature["contribution"] == 0.0
+    assert direction_feature["reason"] is None
 
 def test_resolve_direction_bonus_stays_zero_without_user_origin_even_with_birthdate_and_location():
     # direction calculation stays zero when user origin lat/lng is absent.
