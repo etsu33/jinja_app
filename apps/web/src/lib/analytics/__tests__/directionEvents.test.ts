@@ -42,4 +42,22 @@ describe("direction analytics", () => {
     } as never);
     expect(track).toHaveBeenCalledWith("direction_visit_date_set", { platform: "web" });
   });
+
+  it("経路クリックは候補位置と一致状態だけを許可し、候補情報とURLを除外する", () => {
+    trackWebDirection("direction_match_route_clicked", {
+      matched: false,
+      candidate_position: "other",
+      shrine_name: "テスト神社",
+      shrine_address: "東京都千代田区",
+      route_url: "https://www.google.com/maps/dir/?destination=35,139",
+      place_id: "secret-place-id",
+      latitude: 35,
+      longitude: 139,
+    } as never);
+    expect(track).toHaveBeenCalledWith("direction_match_route_clicked", {
+      platform: "web",
+      matched: false,
+      candidate_position: "other",
+    });
+  });
 });

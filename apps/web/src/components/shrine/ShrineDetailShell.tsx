@@ -6,6 +6,7 @@ import ShrineCloseLink from "@/components/shrine/ShrineCloseLink";
 import { LABELS } from "@/lib/ui/labels";
 import DetailSection from "@/components/shrine/DetailSection";
 import GoogleMapRouteLink from "@/components/shrine/GoogleMapRouteLink";
+import type { DirectionRouteContext } from "@/lib/analytics/directionRouteContext";
 
 type SaveAction = {
   shrineId: number;
@@ -35,6 +36,7 @@ type Props = {
   ctx?: string | null;
   tid?: string | number | null;
   historyTheme?: string | null;
+  directionRouteContext?: DirectionRouteContext | null;
 };
 
 export default function ShrineDetailShell({
@@ -53,6 +55,7 @@ export default function ShrineDetailShell({
   ctx = null,
   tid = null,
   historyTheme = null,
+  directionRouteContext = null,
 }: Props) {
   const shouldShowActions = !hideActions && Boolean(googleDirHref || saveAction?.node || addGoshuinHref);
 
@@ -86,6 +89,7 @@ export default function ShrineDetailShell({
                 ctx={ctx}
                 tid={tid}
                 historyTheme={historyTheme}
+                directionRouteContext={directionRouteContext}
                 className="inline-flex min-h-[44px] w-full items-center justify-center rounded-[var(--kt-radius-panel)] bg-slate-900 px-4 py-3 text-sm font-semibold text-[var(--kt-color-text-inverse)] hover:bg-slate-800"
               />
             ) : null}

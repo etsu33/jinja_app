@@ -11,9 +11,9 @@ Webとモバイルは`packages/shared/directionAnalytics.ts`を正本とし、�
 | `direction_condition_submitted` | 方位条件を含み得る相談送信 | `platform`, `has_visit_date`, `has_origin` | 送信試行ごと |
 | `direction_match_impression` | Backendの`direction_reference`付き候補を初めて表示 | `platform`, `matched`, `recommendation_rank` | 表示カードのマウントごとに1回 |
 | `direction_match_detail_opened` | 方位一致候補から詳細を開く | `platform`, `matched`, `recommendation_rank` | クリックごと |
-| `direction_match_route_clicked` | 方位一致候補に紐づく経路行動 | `platform`, `matched`, `recommendation_rank` | クリックごと |
+| `direction_match_route_clicked` | 方位一致候補に紐づく既存経路導線の明示操作 | `platform`, `matched`, `recommendation_rank`, `candidate_position` | クリックごと |
 
-`origin_type`は`device | station | address | prefecture | disabled`、`result`は`success | denied | failed | selected`だけを許可する。共有serializerはイベント別allowlist以外を破棄するため、型を迂回した呼び出しでも余分な値をProviderへ渡さない。
+`origin_type`は`device | station | address | prefecture | disabled`、`result`は`success | denied | failed | selected`、`candidate_position`は`hero | other`だけを許可する。共有serializerはイベント別allowlist以外を破棄するため、型を迂回した呼び出しでも余分な値をProviderへ渡さない。
 
 ## 禁止属性
 
@@ -31,7 +31,10 @@ Webとモバイルは`packages/shared/directionAnalytics.ts`を正本とし、�
 - 6イベントは共有型から送信され、名前と属性の意味は一致している。
 - 方位参考情報の表示は一致・不一致とも送り、Web／モバイルとも表示カードのマウント中に1回だけ送る。再相談で同じ候補が再表示された場合は新しい表示として送る。
 - 詳細クリックは両方で取得でき、順位も共通属性として送る。
-- 経路クリックは現行モバイル結果の`route_open`でのみ方位一致との関連を保持できる。Web詳細画面へ遷移した後は方位一致コンテキストを保持していないため、Web値は欠測として扱う。
+- Webの推薦結果には直接の経路ボタンはなく、Hero／その他候補の詳細導線と詳細画面の既存「Googleマップで経路案内」が実在する。契約上有効な`direction_reference`を持つ候補だけ、`matched`と`candidate_position`の分類値を詳細URLへ引き継ぐ。
+- Webは詳細画面の既存経路リンクを利用者が明示操作した時だけ送る。描画、再描画、フォーカス、詳細遷移では送らない。URL、候補、神社、方位カードの内容は渡さない。
+- `direction_match_route_clicked`は既存契約どおり一致候補（`matched=true`）を対象とする。不一致候補の通常の`route_open`は維持するが、方位経路イベントには含めない。
+- `candidate_position`はWebでは`hero | other`を送る。既存モバイル実装は`recommendation_rank`を継続し、属性欠落を0やunknownへ置換しない。
 - 相談送信後に一致候補が出ない場合は「不一致」「根拠不足」「通信エラー」「離脱」をこのイベント群だけでは分離できない。既存の一般エラー監視と併記し、0件をエラーと断定しない。
 
 ## 変更ルール

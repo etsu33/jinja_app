@@ -20,6 +20,10 @@ export async function installDirectionScenario(
   options: {
     recommendationId: number;
     directionReference?: DirectionReference;
+    additionalRecommendation?: {
+      id: number;
+      directionReference?: DirectionReference;
+    };
   },
 ): Promise<CapturedDirectionScenario> {
   const captured: CapturedDirectionScenario = {
@@ -83,12 +87,26 @@ export async function installDirectionScenario(
       reason_facts: { primary_axis: "benefit", shrine_benefit: "仕事運を整えるご利益" },
       ...(options.directionReference ? { direction_reference: options.directionReference } : {}),
     };
+    const recommendations = [recommendation];
+    if (options.additionalRecommendation) {
+      recommendations.push({
+        shrine_id: options.additionalRecommendation.id,
+        display_name: `固定レスポンス神社${options.additionalRecommendation.id}`,
+        display_address: "テスト用所在地",
+        reason: "固定レスポンスによる推薦です。",
+        breakdown: { matched_need_tags: ["career"] },
+        reason_facts: { primary_axis: "benefit", shrine_benefit: "仕事運を整えるご利益" },
+        ...(options.additionalRecommendation.directionReference
+          ? { direction_reference: options.additionalRecommendation.directionReference }
+          : {}),
+      });
+    }
     await route.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({
         ok: true,
-        data: { recommendations: [recommendation], recommendations_v2: [recommendation] },
+        data: { recommendations, recommendations_v2: recommendations },
         thread: { id: options.recommendationId },
         remaining: 9,
       }),

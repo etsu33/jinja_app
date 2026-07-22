@@ -45,6 +45,7 @@ import { fetchShrineMeaningPayloadV2Server } from "@/lib/api/shrineMeaning.serve
 import { buildPreviousConsultationSummary } from "@/lib/concierge/buildPreviousConsultationSummary";
 import { compareState } from "@/lib/concierge/compareState";
 import type { StateDelta } from "@/lib/concierge/stateComparison";
+import { parseDirectionRouteContext } from "@/lib/analytics/directionRouteContext";
 
 function normalizeCtx(v?: string | null): "map" | "concierge" | null {
   return v === "map" || v === "concierge" ? v : null;
@@ -52,7 +53,7 @@ function normalizeCtx(v?: string | null): "map" | "concierge" | null {
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ ctx?: string; tid?: string }>;
+  searchParams?: Promise<{ ctx?: string; tid?: string; direction_matched?: string; direction_position?: string }>;
 };
 
 type RecommendationReasonDetailInput = NonNullable<
@@ -171,6 +172,7 @@ export default async function Page({ params, searchParams }: Props) {
   const sp = (await searchParams) ?? {};
   const ctx = normalizeCtx(sp?.ctx ?? null);
   const tid = sp?.tid ?? null;
+  const directionRouteContext = parseDirectionRouteContext(sp);
 
   const hideActions = false;
   const close = buildShrineClose({ ctx, tid });
@@ -436,6 +438,7 @@ export default async function Page({ params, searchParams }: Props) {
         ctx={ctx}
         tid={tid}
         historyTheme={historyThemeForAnalytics}
+        directionRouteContext={directionRouteContext}
         addGoshuinHref={null}
         googleDirHref={googleDirHref}
         googleDirLabel="Googleマップで経路案内"

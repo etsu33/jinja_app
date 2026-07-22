@@ -10,6 +10,7 @@ export const DIRECTION_EVENT_NAMES = [
 export type DirectionPlatform = "web" | "mobile";
 export type DirectionOriginType = "device" | "station" | "address" | "prefecture" | "disabled";
 export type DirectionOriginResult = "success" | "denied" | "failed" | "selected";
+export type DirectionCandidatePosition = "hero" | "other";
 export type DirectionEventName = (typeof DIRECTION_EVENT_NAMES)[number];
 export type DirectionEventPayload = {
   platform: DirectionPlatform;
@@ -19,6 +20,7 @@ export type DirectionEventPayload = {
   has_origin?: boolean;
   matched?: boolean;
   recommendation_rank?: number;
+  candidate_position?: DirectionCandidatePosition;
 };
 
 const ORIGIN_TYPES = new Set<DirectionOriginType>(["device", "station", "address", "prefecture", "disabled"]);
@@ -52,6 +54,10 @@ export function sanitizeDirectionEventPayload(
     if (typeof payload.recommendation_rank === "number" && Number.isInteger(payload.recommendation_rank) && payload.recommendation_rank > 0) {
       safe.recommendation_rank = payload.recommendation_rank;
     }
+  }
+
+  if (name === "direction_match_route_clicked" && (payload.candidate_position === "hero" || payload.candidate_position === "other")) {
+    safe.candidate_position = payload.candidate_position;
   }
 
   return safe;

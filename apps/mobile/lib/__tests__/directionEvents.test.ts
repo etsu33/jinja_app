@@ -46,4 +46,18 @@ describe("direction analytics", () => {
       matched: true,
     });
   });
+
+  it("Webと共通の経路候補位置を同じ分類値で扱う", () => {
+    trackMobileDirection("direction_match_route_clicked", {
+      matched: true,
+      candidate_position: "hero",
+      route_url: "https://www.google.com/maps/dir/?destination=35,139",
+      shrine_name: "テスト神社",
+    } as never);
+    expect(track).toHaveBeenCalledWith("direction_match_route_clicked", {
+      platform: "mobile",
+      matched: true,
+      candidate_position: "hero",
+    });
+  });
 });
