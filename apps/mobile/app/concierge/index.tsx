@@ -31,6 +31,7 @@ import {
   type DirectionReference,
 } from "../../../../packages/shared/directionReference";
 import { toOriginPayload, type UserOrigin } from "../../../../packages/shared/userOrigin";
+import { buildRecommendationReasonDisplay } from "../../../../packages/shared/recommendationReasonDisplay";
 import { getOriginSession } from "../../lib/originSession";
 import { trackMobileDirection } from "../../lib/directionEvents";
 
@@ -474,6 +475,11 @@ function ResultCard({
 }) {
   const reasonFactItems = buildReasonFactItems(card.reasonFacts);
   const actionSuggestionV4Preview = card.actionSuggestionV4Preview;
+  const reasonDisplay = buildRecommendationReasonDisplay({
+    matchReason: card.connection,
+    reason: card.reason,
+    directionReference: card.directionReference,
+  });
   React.useEffect(() => { if (!card.directionReference?.matched || directionImpressions.has(card.id)) return; directionImpressions.add(card.id); trackMobileDirection("direction_match_impression", { matched: true, recommendation_rank: rank }); }, [card.directionReference?.matched, card.id, rank]);
   return (
     <View style={styles.card}>
@@ -492,17 +498,21 @@ function ResultCard({
         <Text style={styles.cardArea}>{card.area}</Text>
       </View>
 
-      {/* 今の相談とのつながり */}
-      <View style={styles.connectionBlock}>
-        <Text style={styles.connectionLabel}>今の相談とのつながり</Text>
-        <Text style={styles.connectionText}>{card.connection}</Text>
-      </View>
+      {/* 相談内容・ご利益との一致 */}
+      {reasonDisplay.matchReason ? (
+        <View style={styles.connectionBlock}>
+          <Text style={styles.connectionLabel}>相談内容・ご利益との一致</Text>
+          <Text style={styles.connectionText}>{reasonDisplay.matchReason}</Text>
+        </View>
+      ) : null}
 
       {/* 推薦理由 */}
-      <View style={styles.reasonBlock}>
-        <Text style={styles.reasonLabel}>この神社を選んだ理由</Text>
-        <Text style={styles.cardReason} numberOfLines={3}>{card.reason}</Text>
-      </View>
+      {reasonDisplay.reason ? (
+        <View style={styles.reasonBlock}>
+          <Text style={styles.reasonLabel}>この神社を選んだ理由</Text>
+          <Text style={styles.cardReason} numberOfLines={3}>{reasonDisplay.reason}</Text>
+        </View>
+      ) : null}
 
       {reasonFactItems.length > 0 ? (
         <View style={styles.reasonFactsCard}>
@@ -516,13 +526,13 @@ function ResultCard({
         </View>
       ) : null}
 
-      {card.directionReference ? (
+      {reasonDisplay.directionReference ? (
         <View style={styles.directionReferenceCard}>
           <Text style={styles.directionReferenceLabel}>方位の参考情報</Text>
-          <Text style={styles.directionReferenceText}>現在地から見た方角：{card.directionReference.actual_direction}</Text>
-          <Text style={styles.directionReferenceText}>予定日の参考方位：{card.directionReference.reference_directions.join("・")}</Text>
-          <Text style={styles.directionReferenceText}>{directionReferenceMatchCopy(card.directionReference)}</Text>
-          <Text style={styles.directionReferenceNote}>{card.directionReference.note}</Text>
+          <Text style={styles.directionReferenceText}>現在地から見た方角：{reasonDisplay.directionReference.actual_direction}</Text>
+          <Text style={styles.directionReferenceText}>予定日の参考方位：{reasonDisplay.directionReference.reference_directions.join("・")}</Text>
+          <Text style={styles.directionReferenceText}>{directionReferenceMatchCopy(reasonDisplay.directionReference)}</Text>
+          <Text style={styles.directionReferenceNote}>{reasonDisplay.directionReference.note}</Text>
         </View>
       ) : null}
 

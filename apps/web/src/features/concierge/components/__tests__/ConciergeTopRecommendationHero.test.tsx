@@ -30,15 +30,28 @@ describe("ConciergeTopRecommendationHero", () => {
     expect(screen.queryByRole("button", { name: "経路案内" })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "詳しく見る" })).toHaveAttribute("href", "/shrines/17?ctx=concierge");
 
-    expect(screen.getByText("今回の入口")).toBeInTheDocument();
-    expect(screen.getByText("今の相談に合う候補です。")).toBeInTheDocument();
-    expect(
-      screen.queryByText("今回の相談の中心にある「金運」のテーマと重なるため、この神社が候補に入っています"),
-    ).not.toBeInTheDocument();
+    expect(screen.getByText("相談内容・ご利益との一致")).toBeInTheDocument();
+    expect(screen.getByText("今回の相談の中心にある「金運」のテーマと重なるため、この神社が候補に入っています。")).toBeInTheDocument();
+    expect(screen.queryByText("今の相談に合う候補です。")).not.toBeInTheDocument();
     expect(screen.queryByText("今の状況から動き出すなら、この候補が自然に見えます。")).not.toBeInTheDocument();
     expect(screen.queryByText("この候補を基準にすると判断しやすくなります。")).not.toBeInTheDocument();
 
     expect(screen.queryByTestId("hero-secondary-actions")).not.toBeInTheDocument();
+  });
+
+  it("主理由の後に通常の推薦理由を表示する", () => {
+    render(
+      <ConciergeTopRecommendationHero
+        name="検証神社"
+        catchCopy="入口コピー"
+        primaryReason="相談とご利益の一致です。"
+        secondaryReason="静かに過ごせることが通常の推薦理由です。"
+      />,
+    );
+
+    const match = screen.getByTestId("recommendation-match-reason");
+    const reason = screen.getByTestId("recommendation-standard-reason");
+    expect(match.compareDocumentPosition(reason) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
 
@@ -213,6 +226,7 @@ describe("ConciergeTopRecommendationHero", () => {
           originSummary="由緒の要約"
           address="東京都千代田区1-1-1"
           topReasonLabel="選ばれた理由"
+          primaryReason="相談とご利益の一致"
           routeLabel="詳しく見る"
         />,
       );

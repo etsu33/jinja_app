@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { directionEvent } from "../../../../packages/shared/directionAnalytics";
 import { directionReferenceMatchCopy } from "../../../../packages/shared/directionReference";
 import { prefectureOrigin, toOriginPayload, type UserOrigin } from "../../../../packages/shared/userOrigin";
+import { buildRecommendationReasonDisplay } from "../../../../packages/shared/recommendationReasonDisplay";
 
 const privateKeys = new Set(["lat", "lng", "latitude", "longitude", "address", "birthdate", "query", "consultation"]);
 
@@ -22,6 +23,16 @@ describe("mobile direction flow integration", () => {
     })).toBe("現在地から見た方角が、予定日の参考方位と一致しています。");
     expectPrivacySafe(originEvent.payload);
     expectPrivacySafe(submitEvent.payload);
+
+    const display = buildRecommendationReasonDisplay({
+      matchReason: "仕事の相談とご利益の一致です。",
+      reason: "静かに向き合いやすい神社です。",
+      directionReference: {
+        visit_date: "2026-09-15", actual_direction: "東", reference_directions: ["東"], matched: true,
+        calculation_method: "annual_monthly_kyusei_v1", note: "年盤と月盤による参考情報です。日盤は使用していません。",
+      },
+    });
+    expect(Object.keys(display)).toEqual(["matchReason", "reason", "directionReference"]);
   });
 
   it("拒否後の手動選択、都道府県の概算、方位無効化を区別する", () => {
@@ -34,5 +45,6 @@ describe("mobile direction flow integration", () => {
     expect(approximate).toMatchObject({ source: "prefecture", accuracy: "approximate", displayName: "東京都" });
     expect(toOriginPayload(null)).toBeUndefined();
     expectPrivacySafe(denied.payload);
+    expect(buildRecommendationReasonDisplay({ matchReason: "相談との一致", reason: "通常理由" }).directionReference).toBeNull();
   });
 });

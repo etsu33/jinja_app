@@ -32,7 +32,7 @@ export default function ShrineCardCompact({
   href = null,
   imageUrl = null,
   address = null,
-  summary: _summary = null,
+  summary = null,
   primaryReason = null,
   trustMetadata = null,
   tags: _tags = [],
@@ -73,8 +73,17 @@ export default function ShrineCardCompact({
               </div>
             ) : null}
             {originSummary ? <p className="line-clamp-1 text-xs leading-5 text-[var(--kt-color-text-muted)]">{originSummary}</p> : null}
-            {!originSummary && primaryReason ? (
-              <p className="line-clamp-1 text-xs leading-5 text-[var(--kt-color-text-muted)]">{primaryReason}</p>
+            {primaryReason ? (
+              <div data-testid="recommendation-match-reason">
+                <p className="text-[10px] font-semibold text-emerald-700">相談内容・ご利益との一致</p>
+                <p className="line-clamp-1 text-xs leading-5 text-[var(--kt-color-text-muted)]">{primaryReason}</p>
+              </div>
+            ) : null}
+            {summary ? (
+              <div data-testid="recommendation-standard-reason">
+                <p className="text-[10px] font-semibold text-slate-600">この神社を選んだ理由</p>
+                <p className="line-clamp-1 text-xs leading-5 text-[var(--kt-color-text-muted)]">{summary}</p>
+              </div>
             ) : null}
           </div>
 
