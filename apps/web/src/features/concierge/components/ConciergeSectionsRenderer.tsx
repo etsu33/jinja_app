@@ -16,6 +16,7 @@ import { buildLoginHref } from "@/lib/nav/login";
 import { resolveAccessLevel } from "@/lib/premium/accessLevel";
 import { getVisibilityForCard } from "@/lib/premium/cardVisibility";
 import ConciergeConsultationSummary from "@/features/concierge/components/ConciergeConsultationSummary";
+import DirectionReferenceCard from "@/features/concierge/components/DirectionReferenceCard";
 
 import { trackCardEvent, type CardAnalyticsPayload } from "@/lib/analytics/cardEvents";
 import { trackSearchEvent } from "@/lib/analytics/searchEvents";
@@ -872,6 +873,7 @@ export default function ConciergeSectionsRenderer({
                                 })
                               }
                             />
+                            <DirectionReferenceCard reference={heroItem.directionReference} />
 
                             {trustMetadata ? (
                               <section className={conciergeSoftCardClass}>
@@ -1041,6 +1043,7 @@ export default function ConciergeSectionsRenderer({
                                       })
                                     }
                                   />
+                                  <DirectionReferenceCard reference={item.directionReference} />
                                 </div>
                               );
                             })}

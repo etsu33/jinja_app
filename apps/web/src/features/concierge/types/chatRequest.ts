@@ -29,6 +29,6 @@ export type ConciergeChatRequestV1 = {
   profile_context?: {
     user_profile: Record<string, unknown>;
     derived_profile: Record<string, unknown>;
-    direction_profile: Record<string, unknown>;
+    direction_profile?: never;
   };
 };

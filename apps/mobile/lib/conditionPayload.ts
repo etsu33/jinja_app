@@ -1,4 +1,4 @@
-import { buildDerivedProfile, buildDirectionProfile } from "./profile";
+import { buildDerivedProfile } from "./profile";
 import { get } from "./http";
 import type { UserProfile } from "../types/profile";
 
@@ -86,14 +86,6 @@ export type ProfileContextPayload = {
     lifePath?: string;
     raw_extra?: string;
   };
-  direction_profile: {
-    luckyDirection?: string;
-    luckyDirections?: string[];
-    targetYear?: number;
-    calculationMethod?: string;
-    excludedDirections?: string[];
-    source?: string;
-  };
 };
 
 export function resolveVisitStyleTags(visitStyleLabel?: string): string[] | undefined {
@@ -148,7 +140,6 @@ export function buildConditionProfileContext({
   };
 
   const derived = buildDerivedProfile(effectiveUserProfile);
-  const direction = buildDirectionProfile(effectiveUserProfile);
   const extraConditionText = buildExtraConditionText(condition) || undefined;
 
   return {
@@ -166,14 +157,6 @@ export function buildConditionProfileContext({
       gogyo: derived.gogyo,
       lifePath: derived.lifePath,
       raw_extra: extraConditionText,
-    },
-    direction_profile: {
-      luckyDirection: direction.luckyDirection,
-      luckyDirections: direction.luckyDirections,
-      targetYear: direction.targetYear,
-      calculationMethod: direction.calculationMethod,
-      excludedDirections: direction.excludedDirections,
-      source: direction.source,
     },
   };
 }

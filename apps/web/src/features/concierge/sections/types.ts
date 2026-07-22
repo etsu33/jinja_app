@@ -1,5 +1,6 @@
 import type { ConciergeBreakdown, ConciergeReasonFacts } from "@/lib/api/concierge";
 import type { ConciergeModeSignal } from "@/features/concierge/types/unified";
+import type { DirectionReference } from "../../../../../../packages/shared/directionReference";
 
 /* =========================
  * filter state
@@ -46,6 +47,7 @@ export type RegisteredShrineItem = {
     }> | null;
     disclaimer?: string | null;
   } | null;
+  directionReference?: DirectionReference | null;
 };
 
 export type PlaceShrineItem = {
@@ -62,6 +64,7 @@ export type PlaceShrineItem = {
   reasonFacts?: ConciergeReasonFacts | null;
   consultationAxis?: string | null;
   isDummy?: boolean;
+  directionReference?: DirectionReference | null;
 };
 
 /* =========================
