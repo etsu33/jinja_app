@@ -31,7 +31,7 @@ describe("ShrineCardCompact", () => {
     expect(screen.queryByText(/km$/)).not.toBeInTheDocument();
   });
 
-  it("renders primaryReason as the single reason block, but not summary or tags", () => {
+  it("renders match reason before the standard reason, but not tags", () => {
     render(
       <ShrineCardCompact
         name="検証神社"
@@ -43,8 +43,11 @@ describe("ShrineCardCompact", () => {
     );
 
     expect(screen.getByText("短い理由")).toBeInTheDocument();
-    expect(screen.queryByText("長いMeaning文のサマリー")).not.toBeInTheDocument();
+    expect(screen.getByText("長いMeaning文のサマリー")).toBeInTheDocument();
     expect(screen.queryByText("mental")).not.toBeInTheDocument();
+    const match = screen.getByTestId("recommendation-match-reason");
+    const reason = screen.getByTestId("recommendation-standard-reason");
+    expect(match.compareDocumentPosition(reason) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("does not render primaryReason when it is null", () => {

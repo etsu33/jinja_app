@@ -79,6 +79,8 @@ export async function installDirectionScenario(
       display_name: `固定レスポンス神社${options.recommendationId}`,
       display_address: "テスト用所在地",
       reason: "固定レスポンスによる推薦です。",
+      breakdown: { matched_need_tags: ["career"] },
+      reason_facts: { primary_axis: "benefit", shrine_benefit: "仕事運を整えるご利益" },
       ...(options.directionReference ? { direction_reference: options.directionReference } : {}),
     };
     await route.fulfill({

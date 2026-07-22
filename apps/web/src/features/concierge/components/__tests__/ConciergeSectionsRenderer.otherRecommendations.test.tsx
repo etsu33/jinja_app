@@ -145,22 +145,19 @@ describe("ConciergeSectionsRenderer - 他候補の開閉UI", () => {
     expect(screen.getByText("東京都中央区2-2-2")).toBeInTheDocument();
   });
 
-  it("他候補カードの理由は44字以内に圧縮された1ブロックのみ表示され、summary・tagsは表示されない", () => {
+  it("他候補カードも一致理由の後に通常理由を表示する", () => {
     const payload = buildTestPayload([heroRec, otherRecWithAddress]);
     render(<ConciergeSectionsRenderer payload={payload} threadId={768} isPremiumActive={true} />);
 
     fireEvent.click(screen.getByRole("button", { name: "迷った時だけ、ほかの神社を見る" }));
 
-    // primaryPhraseはreason_facts/breakdown由来のテンプレート文であり、
-    // 元のreasonテキストをそのまま切り詰めたものではないため、
-    // 「1ブロックのみ・44字以内」という配線・表示制約のみを検証する。
     const compactCard = screen.getByText("他候補神社A").closest("article");
     expect(compactCard).not.toBeNull();
-
-    const reasonParagraphs = Array.from(compactCard?.querySelectorAll("p") ?? []);
-    expect(reasonParagraphs).toHaveLength(1);
-    expect((reasonParagraphs[0].textContent ?? "").length).toBeGreaterThan(0);
-    expect((reasonParagraphs[0].textContent ?? "").length).toBeLessThanOrEqual(44);
+    const match = compactCard?.querySelector('[data-testid="recommendation-match-reason"]');
+    const reason = compactCard?.querySelector('[data-testid="recommendation-standard-reason"]');
+    expect(match).not.toBeNull();
+    expect(reason).not.toBeNull();
+    expect(match!.compareDocumentPosition(reason!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("addressがない他候補カードでもエラーにならず表示される", () => {

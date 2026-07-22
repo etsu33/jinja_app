@@ -208,3 +208,35 @@ def test_build_explanation_for_chat_rec_prioritizes_user_selected_beauty_over_go
 
     assert "美容" in exp["summary"]
     assert exp["reasons"][0]["code"] == "USER_SELECTED_TAG"
+
+
+def test_recommendation_reason_never_promotes_direction_or_assertive_copy():
+    exp = build_explanation_for_chat_rec(
+        {
+            "reason": "仕事の迷いを整理する候補です。",
+            "direction_reference": {
+                "actual_direction": "東",
+                "reference_directions": ["東"],
+                "matched": True,
+            },
+            "_explanation_payload": {
+                "primary_reason": {
+                    "type": "need_tag",
+                    "label": "career",
+                    "label_ja": "仕事",
+                    "evidence": ["matched_need_tags"],
+                    "score": 3.0,
+                    "is_primary": True,
+                },
+                "matched_need_tags": ["career"],
+            },
+        },
+        query="仕事の迷いを整理したい",
+        bias=None,
+    )
+
+    visible_reason = " ".join(
+        [exp["summary"], *[reason["text"] for reason in exp["reasons"]]]
+    )
+    for prohibited in ("方位", "方角", "吉方位", "行くべき", "必ず", "運気が上がる", "願いが叶う"):
+        assert prohibited not in visible_reason

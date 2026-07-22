@@ -40,6 +40,13 @@ test.describe("方位条件のWeb E2E", () => {
 
     await expect(page.getByText("方位の参考情報")).toBeVisible();
     await expect(page.getByText("現在地から見た方角が、予定日の参考方位と一致しています。")).toBeVisible();
+    const displayOrder = await page.locator('[data-testid="recommendation-match-reason"], [data-testid="recommendation-standard-reason"], aside:has-text("方位の参考情報")').evaluateAll(
+      (nodes) => nodes.map((node) => node.textContent),
+    );
+    expect(displayOrder[0]).toContain("相談内容・ご利益との一致");
+    expect(displayOrder[1]).toContain("この神社を選んだ理由");
+    expect(displayOrder[2]).toContain("方位の参考情報");
+    expect(`${displayOrder[0]}${displayOrder[1]}`).not.toMatch(/方位|方角|吉方位/);
     await expect.poll(() => captured.analyticsEvents.filter((event) => event.eventName === "direction_match_impression").length).toBe(1);
     await page.waitForTimeout(250);
     expect(captured.analyticsEvents.filter((event) => event.eventName === "direction_match_impression")).toHaveLength(1);

@@ -54,13 +54,13 @@ export default function ConciergeTopRecommendationHero({
   address = null,
   topReasonLabel = null,
   eyebrowLabel = null,
-  subtitle = null,
+  subtitle: _subtitle = null,
   trustLabels = [],
   originSummary = null,
-  catchCopy,
+  catchCopy: _catchCopy,
   whyTop: _whyTop = null,
-  primaryReason: _primaryReason = null,
-  secondaryReason: _secondaryReason = null,
+  primaryReason = null,
+  secondaryReason = null,
   differenceFromOthers: _differenceFromOthers = null,
   nextActionHint: _nextActionHint = null,
   tags: _tags = [],
@@ -91,12 +91,6 @@ export default function ConciergeTopRecommendationHero({
         visibleActionSuggestionV4Preview.actionSource.source,
       ].join("|")
     : "";
-  const entranceCopySource = subtitle ?? catchCopy;
-
-  const entranceCopy = entranceCopySource.split("。")[0]
-    ? `${entranceCopySource.split("。")[0]}。`
-    : entranceCopySource;
-
   useEffect(() => {
     if (!visibleActionSuggestionV4Preview || !actionSuggestionV4Summary) return;
 
@@ -164,13 +158,28 @@ export default function ConciergeTopRecommendationHero({
           </div>
         </div>
 
-        <div className="rounded-[var(--kt-radius-card)] border border-emerald-100 bg-white/70 px-4 py-3 shadow-sm shadow-emerald-900/5">
-          <div className="space-y-1.5">
-            <p className="text-[11px] font-semibold tracking-[0.14em] text-emerald-700">今回の入口</p>
-            <p className="text-sm font-semibold leading-6 text-slate-800">{entranceCopy}</p>
-            {topReasonLabel ? <p className="text-xs leading-5 text-[var(--kt-color-text-muted)]">{topReasonLabel}</p> : null}
+        {primaryReason ? (
+          <div
+            className="rounded-[var(--kt-radius-card)] border border-emerald-100 bg-white/70 px-4 py-3 shadow-sm shadow-emerald-900/5"
+            data-testid="recommendation-match-reason"
+          >
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-semibold tracking-[0.14em] text-emerald-700">相談内容・ご利益との一致</p>
+              <p className="text-sm font-semibold leading-6 text-slate-800">{primaryReason}</p>
+              {topReasonLabel ? <p className="text-xs leading-5 text-[var(--kt-color-text-muted)]">{topReasonLabel}</p> : null}
+            </div>
           </div>
-        </div>
+        ) : null}
+
+        {secondaryReason ? (
+          <div
+            className="rounded-[var(--kt-radius-card)] border border-slate-100 bg-slate-50/70 px-4 py-3"
+            data-testid="recommendation-standard-reason"
+          >
+            <p className="text-[11px] font-semibold tracking-[0.14em] text-slate-600">この神社を選んだ理由</p>
+            <p className="mt-1 text-sm leading-6 text-slate-700">{secondaryReason}</p>
+          </div>
+        ) : null}
 
         {actionSuggestionV4Summary ? (
           <div

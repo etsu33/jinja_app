@@ -21,6 +21,7 @@ import DirectionReferenceCard from "@/features/concierge/components/DirectionRef
 import { trackCardEvent, type CardAnalyticsPayload } from "@/lib/analytics/cardEvents";
 import { trackSearchEvent } from "@/lib/analytics/searchEvents";
 import { trackWebDirection } from "@/lib/analytics/directionEvents";
+import { buildRecommendationReasonDisplay } from "../../../../../../packages/shared/recommendationReasonDisplay";
 
 import type {
   ConciergeSectionsPayload,
@@ -805,6 +806,11 @@ export default function ConciergeSectionsRenderer({
                           birthdate: filterState?.birthdate ?? null,
                           needTags: effectiveNeedTags,
                         });
+                        const reasonDisplay = buildRecommendationReasonDisplay({
+                          matchReason: reasonVm.list.primaryPhrase,
+                          reason: heroItem.description,
+                          directionReference: heroItem.directionReference,
+                        });
                         const trustMetadata = (heroItem as any).trustMetadata ?? null;
                         const trustLabels = [
                           trustMetadata?.rank_class ?? trustMetadata?.rankClass,
@@ -843,8 +849,8 @@ export default function ConciergeSectionsRenderer({
                               subtitle={reasonVm.hero.subtitle ?? null}
                               catchCopy={reasonVm.hero.catchCopy}
                               whyTop={null}
-                              primaryReason={null}
-                              secondaryReason={null}
+                              primaryReason={reasonDisplay.matchReason}
+                              secondaryReason={reasonDisplay.reason}
                               differenceFromOthers={null}
                               tags={matchedNeedTags.map(labelNeedDisplayTag).slice(0, 3)}
                               actionSuggestions={(heroItem as any).actionSuggestions ?? []}
@@ -874,7 +880,7 @@ export default function ConciergeSectionsRenderer({
                                 }); }
                               }
                             />
-                            <DirectionReferenceCard reference={heroItem.directionReference} recommendationKey={heroItem.shrineId} rank={1} />
+                            <DirectionReferenceCard reference={reasonDisplay.directionReference} recommendationKey={heroItem.shrineId} rank={1} />
 
                             {trustMetadata ? (
                               <section className={conciergeSoftCardClass}>
@@ -1007,6 +1013,11 @@ export default function ConciergeSectionsRenderer({
                                 birthdate: filterState?.birthdate ?? null,
                                 needTags: item.breakdown?.matched_need_tags ?? [],
                               });
+                              const compactReasonDisplay = buildRecommendationReasonDisplay({
+                                matchReason: compactReasonVm.list.primaryPhrase,
+                                reason: item.description,
+                                directionReference: item.directionReference,
+                              });
 
                               return (
                                 <div key={`rec-${i}-compact-${item.shrineId}`} className="space-y-2">
@@ -1015,8 +1026,8 @@ export default function ConciergeSectionsRenderer({
                                     href={item.detailHref}
                                     imageUrl={item.imageUrl}
                                     address={item.address ?? null}
-                                    summary={null}
-                                    primaryReason={compactReasonVm.list.primaryPhrase}
+                                    summary={compactReasonDisplay.reason}
+                                    primaryReason={compactReasonDisplay.matchReason}
                                     tags={[]}
                                     distanceM={(item as any).distance_m ?? null}
                                     onDetailClick={() =>
@@ -1044,7 +1055,7 @@ export default function ConciergeSectionsRenderer({
                                       }); }
                                     }
                                   />
-                                  <DirectionReferenceCard reference={item.directionReference} recommendationKey={item.shrineId} rank={compactIdx + 2} />
+                                  <DirectionReferenceCard reference={compactReasonDisplay.directionReference} recommendationKey={item.shrineId} rank={compactIdx + 2} />
                                 </div>
                               );
                             })}
