@@ -149,6 +149,30 @@ test.describe("方位条件のWeb E2E", () => {
     await expect(page.getByText("方位の参考情報")).toHaveCount(0);
   });
 
+  test("ジオコード500でも方位を無効化して通常相談を継続できる", async ({ page }) => {
+    const captured = await installDirectionScenario(page, { recommendationId: 510, geocodeFailure: "500" });
+    await page.goto("/concierge");
+    await page.getByRole("radio", { name: "駅名・住所から指定" }).click();
+    await page.getByLabel("駅名または住所").fill("失敗地点");
+    await expect(page.getByText("候補を検索できませんでした。相談はそのまま続けられます。")).toBeVisible();
+    await page.getByRole("radio", { name: "方位情報を使用しない" }).click();
+    await fillAndSubmit(page);
+    await expect(page.getByText("固定レスポンス神社510")).toBeVisible();
+    expect(captured.chatPayloads[0]).not.toHaveProperty("location");
+  });
+
+  test("未知のcalculation_methodは通常候補を維持して方位だけ省略する", async ({ page }) => {
+    await installDirectionScenario(page, {
+      recommendationId: 511,
+      directionReference: { ...matchedDirectionReference, calculation_method: "future_unknown_v2" },
+    });
+    await page.goto("/concierge");
+    await fillAndSubmit(page);
+    await expect(page.getByText("固定レスポンス神社511")).toBeVisible();
+    await expect(page.getByText("固定レスポンスによる推薦です。")).toBeVisible();
+    await expect(page.getByText("方位の参考情報")).toHaveCount(0);
+  });
+
   test("キーボードだけで手動候補を選択して相談を送信できる", async ({ page }) => {
     const captured = await installDirectionScenario(page, { recommendationId: 506, directionReference: mismatchedDirectionReference });
     await page.goto("/concierge");

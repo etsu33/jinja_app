@@ -19,7 +19,8 @@ export async function installDirectionScenario(
   page: Page,
   options: {
     recommendationId: number;
-    directionReference?: DirectionReference;
+    directionReference?: DirectionReference | Record<string, unknown>;
+    geocodeFailure?: "500";
     additionalRecommendation?: {
       id: number;
       directionReference?: DirectionReference;
@@ -63,6 +64,10 @@ export async function installDirectionScenario(
 
   await page.route("**/api/geocodes/search/**", async (route) => {
     captured.geocodeRequests.push(route.request().url());
+    if (options.geocodeFailure === "500") {
+      await route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ detail: "fixed failure" }) });
+      return;
+    }
     await route.fulfill({
       status: 200,
       contentType: "application/json",

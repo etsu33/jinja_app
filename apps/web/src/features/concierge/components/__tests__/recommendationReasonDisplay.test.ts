@@ -33,4 +33,24 @@ describe("recommendation reason display contract", () => {
   it("direction_reference欠落時は方位表示データを作らない", () => {
     expect(buildRecommendationReasonDisplay({ matchReason: "相談との一致", reason: "通常の推薦理由" }).directionReference).toBeNull();
   });
+
+  it.each([
+    { calculation_method: "unknown_v2" },
+    { actual_direction: "上" },
+    { reference_directions: ["東", "invalid"] },
+  ])("malformedなdirection_referenceを安全に省略する: %o", (override) => {
+    expect(buildRecommendationReasonDisplay({
+      matchReason: "相談との一致",
+      reason: "通常の推薦理由",
+      directionReference: {
+        visit_date: "2026-09-15",
+        actual_direction: "東",
+        reference_directions: ["東"],
+        matched: true,
+        calculation_method: "annual_monthly_kyusei_v1",
+        note: "年盤と月盤による参考情報です。",
+        ...override,
+      },
+    })).toEqual({ matchReason: "相談との一致", reason: "通常の推薦理由", directionReference: null });
+  });
 });

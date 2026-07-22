@@ -28,6 +28,7 @@ import { trackActionEvent, type ActionEventActionType } from "../../lib/actionEv
 import { useProfileStore } from "../../store/profileStore";
 import {
   directionReferenceMatchCopy,
+  validDirectionReferenceOrNull,
   type DirectionReference,
 } from "../../../../packages/shared/directionReference";
 import { toOriginPayload, type UserOrigin } from "../../../../packages/shared/userOrigin";
@@ -393,7 +394,7 @@ function toRecommendationCard(item: RecommendationApiCard, index: number): Recom
     tags: item.tags ?? [],
     shrineId: shrineId !== undefined && shrineId !== null ? String(shrineId) : undefined,
     actionSuggestionV4Preview,
-    directionReference: item.direction_reference ?? null,
+    directionReference: validDirectionReferenceOrNull(item.direction_reference),
   };
 }
 

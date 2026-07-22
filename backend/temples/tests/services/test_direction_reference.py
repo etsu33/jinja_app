@@ -1,6 +1,6 @@
 import pytest
 
-from temples.services.direction_reference import build_direction_reference
+from temples.services.direction_reference import attach_direction_references, build_direction_reference
 
 
 PROFILE = {
@@ -57,3 +57,24 @@ def test_build_direction_reference_omits_ungrounded_results(profile, origin, shr
         user_origin=origin,
         shrine=shrine,
     ) is None
+
+
+def test_attach_direction_references_isolates_a_candidate_failure(monkeypatch, caplog):
+    recommendations = [
+        {"name": "broken", "latitude": 35.0, "longitude": 140.0},
+        {"name": "healthy", "latitude": 35.0, "longitude": 140.0},
+    ]
+    original = build_direction_reference
+
+    def injected_failure(**kwargs):
+        if kwargs["shrine"]["name"] == "broken":
+            raise RuntimeError("secret-coordinate-35.0")
+        return original(**kwargs)
+
+    monkeypatch.setattr("temples.services.direction_reference.build_direction_reference", injected_failure)
+    attach_direction_references(recommendations, direction_profile=PROFILE, user_origin=ORIGIN)
+
+    assert "direction_reference" not in recommendations[0]
+    assert recommendations[1]["direction_reference"]["matched"] is True
+    assert "direction_reference_candidate_failed" in caplog.text
+    assert "secret-coordinate" not in caplog.text

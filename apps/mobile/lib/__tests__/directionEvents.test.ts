@@ -60,4 +60,9 @@ describe("direction analytics", () => {
       candidate_position: "hero",
     });
   });
+
+  it("分析送信例外を利用操作へ伝播させない", () => {
+    track.mockImplementationOnce(() => { throw new Error("analytics unavailable"); });
+    expect(() => trackMobileDirection("direction_visit_date_set")).not.toThrow();
+  });
 });

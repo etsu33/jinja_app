@@ -1,4 +1,4 @@
-import type { DirectionReference } from "./directionReference";
+import { validDirectionReferenceOrNull, type DirectionReference } from "./directionReference";
 
 const DIRECTION_LANGUAGE = /(?:方位|方角|吉方位|現在地から見た|予定日の参考)/;
 const ASSERTIVE_LANGUAGE = /(?:必ず(?:良い結果|叶|成功)|絶対|行くべき|運気が(?:上がる|良くなる)|願いが叶う)/;
@@ -22,7 +22,7 @@ export function hasAssertiveRecommendationLanguage(value?: string | null): boole
 export function buildRecommendationReasonDisplay(input: {
   matchReason?: string | null;
   reason?: string | null;
-  directionReference?: DirectionReference | null;
+  directionReference?: unknown;
 }): RecommendationReasonDisplay {
   const matchReason = normalizeReason(input.matchReason);
   const normalizedReason = normalizeReason(input.reason);
@@ -30,6 +30,6 @@ export function buildRecommendationReasonDisplay(input: {
   return {
     matchReason,
     reason: normalizedReason && normalizedReason !== matchReason ? normalizedReason : null,
-    directionReference: input.directionReference ?? null,
+    directionReference: validDirectionReferenceOrNull(input.directionReference),
   };
 }

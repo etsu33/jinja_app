@@ -85,4 +85,21 @@ describe("GoogleMapRouteLink direction analytics", () => {
     expect(link).toHaveAttribute("href", href);
   });
 
+  it("不正な外部地図URLはリンクにせず代替表示へ縮退する", () => {
+    render(<GoogleMapRouteLink href="javascript:alert(1)" label="Googleマップで経路案内" />);
+    expect(screen.queryByRole("link", { name: "Googleマップで経路案内" })).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("経路リンクを利用できません");
+  });
+
+  it("通常経路分析と操作記録が例外でもリンク操作を維持する", () => {
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    trackSearchEvent.mockImplementationOnce(() => { throw new Error("search analytics unavailable"); });
+    trackShrineInteraction.mockImplementationOnce(() => { throw new Error("interaction unavailable"); });
+    render(<GoogleMapRouteLink href={href} label="Googleマップで経路案内" shrineId={123} />);
+    const link = screen.getByRole("link", { name: "Googleマップで経路案内" });
+    expect(() => fireEvent.click(link)).not.toThrow();
+    expect(link).toHaveAttribute("href", href);
+    vi.restoreAllMocks();
+  });
+
 });

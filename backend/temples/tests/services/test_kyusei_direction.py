@@ -77,3 +77,17 @@ def test_direction_signal_does_not_score_a_non_matching_bearing():
     )
     assert score == 0.0
     assert matched == []
+
+
+def test_direction_signal_failure_keeps_normal_candidate_without_direction_score(monkeypatch, caplog):
+    rec = {"name": "private shrine", "reason": "normal reason", "latitude": 35.0, "longitude": 140.0}
+    monkeypatch.setattr(
+        "temples.services.direction_reference.build_direction_reference",
+        lambda **kwargs: (_ for _ in ()).throw(RuntimeError("private consultation")),
+    )
+
+    assert _score_direction_signal(rec, {"direction_profile": {}}, {"lat": 35.0, "lng": 139.0}) == (0.0, [])
+    assert rec["reason"] == "normal reason"
+    assert "direction_reference" not in rec
+    assert "direction_score_candidate_failed" in caplog.text
+    assert "private consultation" not in caplog.text

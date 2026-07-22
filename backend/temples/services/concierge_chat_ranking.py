@@ -299,11 +299,18 @@ def _score_direction_signal(
     from temples.services.direction_reference import build_direction_reference
 
     direction_profile = profile_context.get("direction_profile") if isinstance(profile_context, dict) else None
-    reference = build_direction_reference(
-        direction_profile=direction_profile if isinstance(direction_profile, dict) else None,
-        user_origin=user_origin,
-        shrine=rec,
-    )
+    try:
+        reference = build_direction_reference(
+            direction_profile=direction_profile if isinstance(direction_profile, dict) else None,
+            user_origin=user_origin,
+            shrine=rec,
+        )
+    except Exception:
+        # 方位は補助シグナル。候補固有の失敗を推薦全体へ波及させない。
+        logging.getLogger(__name__).error("direction_score_candidate_failed")
+        rec.pop("direction_reference", None)
+        rec.pop("direction_from_origin", None)
+        return 0.0, []
     if reference is None:
         return 0.0, []
 
