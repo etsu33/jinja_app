@@ -9,6 +9,7 @@
   "scripts": {
     "lint:openapi:ci": "npx spectral lint docs/openapi.yaml",
     "test:contract": "pnpm --filter ./apps/web test:contract",
+    "test:direction-analytics-quality": "pnpm -C apps/web test:direction-analytics-quality && pnpm -C apps/mobile test -- lib/__tests__/directionEvents.test.ts lib/__tests__/directionFlow.integration.test.ts",
     "lint:openapi": "npx -y @stoplight/spectral-cli lint docs/openapi.yaml",
     "prepare": "husky",
     "lint": "pnpm -r run lint",

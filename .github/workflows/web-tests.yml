@@ -10,6 +10,8 @@ on:
     branches: [develop, main]
     paths:
       - "apps/web/**"
+      - "packages/shared/**"
+      - "package.json"
       - "pnpm-lock.yaml"
       - ".github/workflows/web-tests.yml"
 
@@ -17,6 +19,8 @@ on:
     branches: ["*"]
     paths:
       - "apps/web/**"
+      - "packages/shared/**"
+      - "package.json"
       - "pnpm-lock.yaml"
       - ".github/workflows/web-tests.yml"
 
@@ -48,6 +52,9 @@ jobs:
 
       - name: Contract tests
         run: pnpm --filter ./apps/web test:contract
+
+      - name: Direction analytics data quality
+        run: pnpm --filter ./apps/web test:direction-analytics-quality
 
   direction-e2e:
     name: web-direction-e2e
