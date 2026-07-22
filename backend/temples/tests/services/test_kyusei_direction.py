@@ -33,17 +33,20 @@ def test_direction_signal_uses_actual_bearing_from_origin_to_shrine():
     rec = {"latitude": 35.0, "longitude": 140.0}
     score, matched = _score_direction_signal(
         rec,
-        {"direction_profile": {
-            "luckyDirections": ["東", "北西"],
-            "source": "calculated",
-            "calculationMethod": "annual_monthly_kyusei_v1",
-            "visitDate": "2026-09-15",
-        }},
+        {
+            "direction_profile": {
+                "luckyDirections": ["東", "北西"],
+                "source": "calculated",
+                "calculationMethod": "annual_monthly_kyusei_v1",
+                "visitDate": "2026-09-15",
+            }
+        },
         {"lat": 35.0, "lng": 139.0},
     )
     assert score == 0.02
     assert matched == ["plannedLuckyDirection:東"]
     assert rec["direction_from_origin"] == "東"
+    assert rec["direction_reference"]["matched"] is True
 
 
 def test_direction_signal_requires_every_calculation_input():

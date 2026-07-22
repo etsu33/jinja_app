@@ -40,6 +40,75 @@ def test_chat_response_includes_base_contract_fields(client, monkeypatch):
 
 
 @pytest.mark.django_db
+def test_chat_response_includes_optional_direction_reference_when_grounded(client, monkeypatch):
+    _stub_candidates(monkeypatch)
+    _stub_recommendations(
+        monkeypatch,
+        {
+            "recommendations": [
+                {"name": "神社A", "latitude": 35.0, "longitude": 140.0, "reason": "ok"}
+            ],
+            "recommendations_v2": [
+                {"name": "神社A", "latitude": 35.0, "longitude": 140.0, "reason": "ok"}
+            ],
+        },
+    )
+
+    r = client.post(
+        URL,
+        data=json.dumps(
+            {
+                "query": "仕事で迷っている",
+                "birthdate": "1984-05-15",
+                "visit_date": "2026-09-15",
+                "lat": 35.0,
+                "lng": 139.0,
+            }
+        ),
+        content_type="application/json",
+    )
+
+    assert r.status_code == 200
+    reference = r.json()["data"]["recommendations"][0]["direction_reference"]
+    assert set(reference) == {
+        "visit_date",
+        "actual_direction",
+        "reference_directions",
+        "matched",
+        "calculation_method",
+        "note",
+    }
+    assert reference["visit_date"] == "2026-09-15"
+    assert reference["calculation_method"] == "annual_monthly_kyusei_v1"
+    assert reference["note"] == "年盤と月盤による参考情報です。日盤は使用していません。"
+    assert r.json()["data"]["recommendations_v2"][0]["direction_reference"] == reference
+
+
+@pytest.mark.django_db
+def test_chat_response_omits_direction_reference_without_exact_origin(client, monkeypatch):
+    _stub_candidates(monkeypatch)
+    _stub_recommendations(
+        monkeypatch,
+        [{"name": "神社A", "latitude": 35.0, "longitude": 140.0, "reason": "ok"}],
+    )
+
+    r = client.post(
+        URL,
+        data=json.dumps(
+            {
+                "query": "仕事で迷っている",
+                "birthdate": "1984-05-15",
+                "visit_date": "2026-09-15",
+            }
+        ),
+        content_type="application/json",
+    )
+
+    assert r.status_code == 200
+    assert "direction_reference" not in r.json()["data"]["recommendations"][0]
+
+
+@pytest.mark.django_db
 def test_chat_response_message_mode_reply_prefix_and_names(client, monkeypatch):
     _stub_candidates(monkeypatch)
     _stub_recommendations(

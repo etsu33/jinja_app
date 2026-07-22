@@ -296,38 +296,21 @@ def _score_direction_signal(
     """
     参拝予定日の年盤・月盤と実座標の根拠が揃う場合だけ、最大 +0.02 を加算する。
     """
-    if not isinstance(profile_context, dict):
+    from temples.services.direction_reference import build_direction_reference
+
+    direction_profile = profile_context.get("direction_profile") if isinstance(profile_context, dict) else None
+    reference = build_direction_reference(
+        direction_profile=direction_profile if isinstance(direction_profile, dict) else None,
+        user_origin=user_origin,
+        shrine=rec,
+    )
+    if reference is None:
         return 0.0, []
 
-    direction_profile = profile_context.get("direction_profile") or {}
-    if not isinstance(direction_profile, dict):
-        return 0.0, []
-
-    if (
-        direction_profile.get("source") != "calculated"
-        or direction_profile.get("calculationMethod") != "annual_monthly_kyusei_v1"
-        or not str(direction_profile.get("visitDate") or "").strip()
-    ):
-        return 0.0, []
-
-    lucky_directions = [str(value).strip() for value in direction_profile.get("luckyDirections") or [] if str(value).strip()]
-    if not lucky_directions:
-        fallback = str(direction_profile.get("luckyDirection") or "").strip()
-        lucky_directions = [fallback] if fallback else []
-    if not lucky_directions:
-        return 0.0, []
-
-    origin_lat = _to_float_or_none(user_origin.get("lat") if user_origin else None)
-    origin_lng = _to_float_or_none(user_origin.get("lng") if user_origin else None)
-    shrine_lat = _to_float_or_none(rec.get("latitude") or rec.get("lat"))
-    shrine_lng = _to_float_or_none(rec.get("longitude") or rec.get("lng"))
-    if None in (origin_lat, origin_lng, shrine_lat, shrine_lng):
-        return 0.0, []
-
-    bearing = _bearing_degrees(from_lat=origin_lat, from_lng=origin_lng, to_lat=shrine_lat, to_lng=shrine_lng)
-    actual_direction = _direction_label_ja(bearing)
+    actual_direction = str(reference["actual_direction"])
     rec["direction_from_origin"] = actual_direction
-    if actual_direction in lucky_directions:
+    rec["direction_reference"] = reference
+    if reference["matched"]:
         return DIRECTION_SIGNAL_MAX, [f"plannedLuckyDirection:{actual_direction}"]
 
     return 0.0, []

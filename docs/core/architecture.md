@@ -91,6 +91,9 @@ action_intent
 
 need_profile を推薦の主要入力とし、誕生日、占術、方位、相性は補助シグナルに限定する。
 
+方位計算と表示契約の正本はBackendとし、Web / mobileは`direction_reference`を再計算しない。
+具体的な省略条件とレスポンス形式は`docs/core/direction-response-contract.md`へ委譲する。
+
 ### 禁止事項
 
 - 心理状態、性格、運命を断定しない
