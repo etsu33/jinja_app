@@ -20,6 +20,7 @@ import DirectionReferenceCard from "@/features/concierge/components/DirectionRef
 
 import { trackCardEvent, type CardAnalyticsPayload } from "@/lib/analytics/cardEvents";
 import { trackSearchEvent } from "@/lib/analytics/searchEvents";
+import { trackWebDirection } from "@/lib/analytics/directionEvents";
 
 import type {
   ConciergeSectionsPayload,
@@ -856,7 +857,7 @@ export default function ConciergeSectionsRenderer({
                               historyTheme={historyTheme ?? analyticsContext?.historyTheme ?? null}
                               routeLabel="神社の詳細を見る"
                               onDetailClick={() =>
-                                trackSearchEvent("shrine_detail_transition", {
+                                { if (heroItem.directionReference?.matched) trackWebDirection("direction_match_detail_opened", { matched: true, recommendation_rank: 1 }); trackSearchEvent("shrine_detail_transition", {
                                   source: "concierge_result",
                                   threadId: tid ?? undefined,
                                   resultSetId,
@@ -870,10 +871,10 @@ export default function ConciergeSectionsRenderer({
                                   historyTheme: historyTheme ?? analyticsContext?.historyTheme,
                                   ...consultationAxisAnalytics(heroItem.consultationAxis ?? analyticsContext?.consultationAxis),
                                   firstClick: resolveFirstResultClick(resultSetId),
-                                })
+                                }); }
                               }
                             />
-                            <DirectionReferenceCard reference={heroItem.directionReference} />
+                            <DirectionReferenceCard reference={heroItem.directionReference} recommendationKey={heroItem.shrineId} rank={1} />
 
                             {trustMetadata ? (
                               <section className={conciergeSoftCardClass}>
@@ -1019,7 +1020,7 @@ export default function ConciergeSectionsRenderer({
                                     tags={[]}
                                     distanceM={(item as any).distance_m ?? null}
                                     onDetailClick={() =>
-                                      trackSearchEvent("shrine_detail_transition", {
+                                      { if (item.directionReference?.matched) trackWebDirection("direction_match_detail_opened", { matched: true, recommendation_rank: compactIdx + 2 }); trackSearchEvent("shrine_detail_transition", {
                                         source: "concierge_result",
                                         threadId: tid ?? undefined,
                                         resultSetId,
@@ -1040,10 +1041,10 @@ export default function ConciergeSectionsRenderer({
                                           (item as any).consultationAxis ?? analyticsContext?.consultationAxis,
                                         ),
                                         firstClick: resolveFirstResultClick(resultSetId),
-                                      })
+                                      }); }
                                     }
                                   />
-                                  <DirectionReferenceCard reference={item.directionReference} />
+                                  <DirectionReferenceCard reference={item.directionReference} recommendationKey={item.shrineId} rank={compactIdx + 2} />
                                 </div>
                               );
                             })}
