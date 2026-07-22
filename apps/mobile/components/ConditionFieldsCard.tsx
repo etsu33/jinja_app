@@ -3,6 +3,8 @@ import { View, Text, TextInput, Pressable, StyleSheet } from "react-native";
 import { kamimusubiDark as theme } from "../app/theme";
 import { VISIT_STYLE_OPTIONS, GORIYAKU_OPTIONS } from "../lib/conditionPayload";
 import { ProfilePickerModal } from "./profile/ProfilePickerModal";
+import { MobileOriginSelector } from "./MobileOriginSelector";
+import type { UserOrigin } from "../../../packages/shared/userOrigin";
 
 // Home画面・Concierge結果画面で共通の条件レイヤー入力（誕生日・参拝スタイル・ご利益・補助条件）
 export type ConditionFieldsCardProps = {
@@ -10,9 +12,10 @@ export type ConditionFieldsCardProps = {
   onChangeBirthdate: (value: string) => void;
   plannedVisitDate: string;
   onChangePlannedVisitDate: (value: string) => void;
-  hasOrigin?: boolean;
   locationStatus?: "idle" | "loading" | "ready" | "error";
   onUseCurrentLocation?: () => void;
+  origin?: UserOrigin | null;
+  onChangeOrigin?: (value: UserOrigin | null) => void;
   selectedVisitStyle?: string;
   onSelectVisitStyle: (value: string | undefined) => void;
   selectedGoriyaku?: string;
@@ -27,9 +30,10 @@ export function ConditionFieldsCard({
   onChangeBirthdate,
   plannedVisitDate,
   onChangePlannedVisitDate,
-  hasOrigin = false,
   locationStatus = "idle",
   onUseCurrentLocation,
+  origin = null,
+  onChangeOrigin = () => undefined,
   selectedVisitStyle,
   onSelectVisitStyle,
   selectedGoriyaku,
@@ -102,10 +106,7 @@ export function ConditionFieldsCard({
           <Text style={styles.label}>出発地点</Text>
           <Text style={styles.caption}>現在地から神社への方角を計算します</Text>
         </View>
-        <Pressable onPress={onUseCurrentLocation} disabled={disabled || locationStatus === "loading" || !onUseCurrentLocation} style={[styles.locationButton, hasOrigin && styles.locationButtonReady]}>
-          <Text style={[styles.locationButtonText, hasOrigin && styles.locationButtonTextReady]}>{locationStatus === "loading" ? "現在地を取得中…" : hasOrigin ? "✓ 現在地を使用中" : "現在地を出発地点にする"}</Text>
-        </Pressable>
-        {locationStatus === "error" ? <Text style={styles.locationError}>現在地を取得できませんでした。位置情報の許可を確認してください。</Text> : null}
+        <MobileOriginSelector origin={origin} onChange={onChangeOrigin} onUseDevice={onUseCurrentLocation ?? (()=>undefined)} locationStatus={locationStatus} disabled={disabled} />
       </View>
 
       <ProfilePickerModal visible={datePicker === "year"} title="参拝する年" options={years.map((value) => ({ value, label: `${value}年` }))} selectedValue={draftYear} onClose={() => setDatePicker(null)} onSelect={(value) => { setDraftYear(value); if (Number(value) === today.getFullYear() && Number(draftMonth) < today.getMonth() + 1) setDraftMonth(String(today.getMonth() + 1).padStart(2, "0")); setDatePicker("month"); }} />

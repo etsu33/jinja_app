@@ -31,6 +31,7 @@ import { isAuthRequiredForAction } from "@/lib/auth/actionGuards";
 import { initialConciergeSessionState, type ConciergeSessionState } from "@/features/concierge/types";
 import { resolveDisplayLabel, resolveDisplayName } from "@/lib/profile/resolveDisplayName";
 import { buildProfileContext, normalizeBirthday as normalizeProfileBirthday } from "@/lib/profile/derivedProfile";
+import { toOriginPayload, type UserOrigin } from "../../../../../packages/shared/userOrigin";
 
 import { conciergeLog } from "@/lib/log/concierge";
 import { EVT_CLOSE_CONCIERGE } from "@/lib/events";
@@ -38,6 +39,7 @@ const conciergeCardClass = "rounded-3xl border border-stone-200/45 bg-white/75 p
 
 import { isValidISODate, normalizeBirthdateInput } from "@/lib/date/normalizeBirthdateInput";
 import { track } from "@/lib/analytics/track";
+import { trackWebDirection } from "@/lib/analytics/directionEvents";
 import { buildPreviousConsultationSummary } from "@/lib/concierge/buildPreviousConsultationSummary";
 import { compareState } from "@/lib/concierge/compareState";
 import PremiumStateDeltaCard from "@/features/concierge/components/PremiumStateDeltaCard";
@@ -483,7 +485,7 @@ export default function ConciergeClientFull() {
 
   const [activeThreadId, setActiveThreadId] = useState(0);
   const [plannedVisitDate, setPlannedVisitDate] = useState("");
-  const [userOrigin, setUserOrigin] = useState<{ lat: number; lng: number } | null>(null);
+  const [userOrigin, setUserOrigin] = useState<UserOrigin | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const activeThreadIdRef = useRef(0);
 
@@ -1029,7 +1031,7 @@ export default function ConciergeClientFull() {
         goriyaku_tag_ids: payloadGoriyakuTagIds,
         extra_condition: payloadExtraCondition,
         visit_date: plannedVisitDate || undefined,
-        location: userOrigin ?? undefined,
+        location: toOriginPayload(userOrigin),
         profile_context: buildProfileContext({
           birthday: payloadBirthdate,
           birth_time: savedProfile?.birth_time,
@@ -1048,8 +1050,8 @@ export default function ConciergeClientFull() {
     }
     setLocationError(null);
     navigator.geolocation.getCurrentPosition(
-      (position) => setUserOrigin({ lat: position.coords.latitude, lng: position.coords.longitude }),
-      () => setLocationError("現在地を取得できませんでした。位置情報の許可を確認してください。"),
+      (position) => { setUserOrigin({ latitude: position.coords.latitude, longitude: position.coords.longitude, source: "device", displayName: "現在地", accuracy: "precise" }); trackWebDirection("direction_origin_result", { origin_type: "device", result: "success" }); },
+      (error) => { setLocationError("現在地を取得できませんでした。位置情報の許可を確認してください。"); trackWebDirection("direction_origin_result", { origin_type: "device", result: error.code === 1 ? "denied" : "failed" }); },
       { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 },
     );
   }, []);
@@ -1768,14 +1770,15 @@ export default function ConciergeClientFull() {
               onPickExample={onPickExample}
               isBusy={isBusy}
               canSend={canSend}
-              onSubmit={() => void safeSend(needText.trim(), { kind: "need_submit", textLen: needText.trim().length })}
+              onSubmit={() => { trackWebDirection("direction_condition_submitted", { has_visit_date: !!plannedVisitDate, has_origin: !!userOrigin }); void safeSend(needText.trim(), { kind: "need_submit", textLen: needText.trim().length }); }}
               onClear={() => {
                 setNeedText("");
                 setEntryValidationError(null);
               }}
               plannedVisitDate={plannedVisitDate}
-              setPlannedVisitDate={setPlannedVisitDate}
-              hasOrigin={!!userOrigin}
+              setPlannedVisitDate={(value) => { setPlannedVisitDate(value); if (value) trackWebDirection("direction_visit_date_set"); }}
+              origin={userOrigin}
+              onOriginChange={(value) => { setUserOrigin(value); if (value) trackWebDirection("direction_origin_result", { origin_type: value.source, result: "selected" }); }}
               locationError={locationError}
               onUseCurrentLocation={useCurrentLocation}
             />

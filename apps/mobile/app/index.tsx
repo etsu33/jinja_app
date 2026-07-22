@@ -6,6 +6,8 @@ import { shadows } from "./design/shadow";
 import { ConditionFieldsCard } from "../components/ConditionFieldsCard";
 import { resolveGoriyakuTagIds } from "../lib/conditionPayload";
 import * as Location from "expo-location";
+import type { UserOrigin } from "../../../packages/shared/userOrigin";
+import { setOriginSession } from "../lib/originSession";
 
 const THEMES = [
   "疲れを整えたい",
@@ -24,7 +26,7 @@ export default function Home() {
   const [selectedVisitStyle, setSelectedVisitStyle] = React.useState<string | undefined>();
   const [birthdate, setBirthdate] = React.useState("");
   const [plannedVisitDate, setPlannedVisitDate] = React.useState("");
-  const [origin, setOrigin] = React.useState<{ lat: number; lng: number } | null>(null);
+  const [origin, setOrigin] = React.useState<UserOrigin | null>(null);
   const [locationStatus, setLocationStatus] = React.useState<"idle" | "loading" | "ready" | "error">("idle");
   const [selectedGoriyaku, setSelectedGoriyaku] = React.useState<string | undefined>();
   const [supportText, setSupportText] = React.useState("");
@@ -55,7 +57,7 @@ export default function Home() {
     if (selectedTheme) params.set("theme", selectedTheme);
     if (birthdate.trim()) params.set("birthdate", birthdate.trim());
     if (plannedVisitDate.trim()) params.set("plannedVisitDate", plannedVisitDate.trim());
-    if (origin) { params.set("originLat", String(origin.lat)); params.set("originLng", String(origin.lng)); }
+    setOriginSession(origin);
     if (selectedVisitStyle) params.set("visitStyle", selectedVisitStyle);
     if (selectedGoriyaku) params.set("goriyaku", selectedGoriyaku);
     if (supportText.trim()) params.set("support", supportText.trim());
@@ -69,7 +71,7 @@ export default function Home() {
     if (permission.status !== "granted") { setLocationStatus("error"); return; }
     try {
       const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      setOrigin({ lat: current.coords.latitude, lng: current.coords.longitude });
+      setOrigin({ latitude: current.coords.latitude, longitude: current.coords.longitude, source: "device", displayName: "現在地", accuracy: "precise" });
       setLocationStatus("ready");
     } catch { setLocationStatus("error"); }
   };
@@ -152,9 +154,10 @@ export default function Home() {
             onChangeBirthdate={setBirthdate}
             plannedVisitDate={plannedVisitDate}
             onChangePlannedVisitDate={setPlannedVisitDate}
-            hasOrigin={!!origin}
             locationStatus={locationStatus}
             onUseCurrentLocation={() => void useCurrentLocation()}
+            origin={origin}
+            onChangeOrigin={setOrigin}
             selectedVisitStyle={selectedVisitStyle}
             onSelectVisitStyle={setSelectedVisitStyle}
             selectedGoriyaku={selectedGoriyaku}
@@ -166,7 +169,7 @@ export default function Home() {
       ) : null}
 
       {/* 主CTA */}
-      <Pressable onPress={openConcierge} disabled={!!plannedVisitDate && !origin} style={[styles.primaryCta, !!plannedVisitDate && !origin && { opacity: 0.45 }]}>
+      <Pressable onPress={openConcierge} style={styles.primaryCta}>
         <Text style={styles.primaryCtaText}>この相談からご縁を見る</Text>
       </Pressable>
 
