@@ -52,7 +52,7 @@ export type KamimusubiDarkColorKey = keyof typeof kamimusubiDark;
 // 再利用してSemantic Color Token (semanticColorTokens.ts) の実値を割り当てる。
 // PlatformColorTheme型により、SEMANTIC_COLOR_KEYSの全キーを満たすことを
 // tscレベルで強制する (1つでも欠けるとコンパイルエラーになる)。
-import type { PlatformColorTheme } from "../design/semanticColorTokens";
+import type { PlatformColorTheme } from "./semanticColorTokens";
 
 // Mobile Semantic Color Token契約の正本実値 (キー一覧・型は design/semanticColorTokens.ts)。
 // 2026-07時点でこのオブジェクトを参照するのは本ファイル (型契約の充足) のみで、

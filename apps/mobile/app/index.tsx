@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useRouter } from "expo-router";
 import { ScrollView, View, Text, TextInput, StyleSheet, Pressable } from "react-native";
-import { kamimusubiDark as theme } from "./theme";
+import { kamimusubiDark as theme } from "../design/theme";
 import { shadows } from "../design/shadow";
 import { ConditionFieldsCard } from "../components/ConditionFieldsCard";
 import { resolveGoriyakuTagIds } from "../lib/conditionPayload";

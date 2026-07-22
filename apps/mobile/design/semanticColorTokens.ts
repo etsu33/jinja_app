@@ -4,7 +4,7 @@
 // 監査根拠: docs/audit/design-token-phase6-audit.md
 //
 // このファイルはSemantic Color Tokenのキー一覧・型のみを定義する。
-// 実値(Platform Theme)は app/theme.ts の kamimusubiDarkSemanticTheme で定義する。
+// 実値(Platform Theme)は design/theme.ts の kamimusubiDarkSemanticTheme で定義する。
 //
 // キー名はWeb側 (apps/web/src/styles/tokens.css の --kt-color-* と
 // apps/web/src/styles/__tests__/tokens.test.ts) と意味上対応させる。
@@ -12,7 +12,7 @@
 // Web側のCSS変数命名 (例: --kt-color-background-base) とは
 // 「ハイフンで結合すれば同じ意味になる」という規則で対応させる。
 
-// Mobile Semantic Color Token契約の正本 (キー一覧・型)。実値は app/theme.ts の
+// Mobile Semantic Color Token契約の正本 (キー一覧・型)。実値は design/theme.ts の
 // kamimusubiDarkSemanticTheme。共通ButtonなどのUI Componentを通じて各画面から消費される。
 export const SEMANTIC_COLOR_KEYS = [
   "background.base",

@@ -2,7 +2,7 @@ import * as React from "react";
 import { View } from "react-native";
 import { Tabs } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { kamimusubiDark as theme } from "./theme";
+import { kamimusubiDark as theme } from "../design/theme";
 import { spacing } from "../design/spacing";
 import { cardSizes } from "../design/cardSizes";
 import { initAnalyticsProvider } from "../lib/posthogAnalyticsProvider";
@@ -101,7 +101,6 @@ export default function Root() {
       <Tabs.Screen name="shrines/[id]" options={{ href: null }} />
       <Tabs.Screen name="ranking/index" options={{ href: null }} />
       <Tabs.Screen name="login" options={{ href: null }} />
-      <Tabs.Screen name="theme" options={{ href: null }} />
     </Tabs>
   );
 }

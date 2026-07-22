@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { get } from "../lib/http";
-import { kamimusubiDark as theme } from "../app/theme";
+import { kamimusubiDark as theme } from "../design/theme";
 import { ProfilePickerModal } from "./profile/ProfilePickerModal";
 import {
   originSearchAnnouncement,
