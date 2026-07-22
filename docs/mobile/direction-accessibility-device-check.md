@@ -9,7 +9,7 @@
 | 端末 | 未記録 | 未記録 |
 | OS | 未記録 | 未記録 |
 | アプリ版／ビルド | 未記録 | 未記録 |
-| 確認コミット | `c1b8c746` | `c1b8c746` |
+| 確認コミット | `1ffb264a` | `1ffb264a` |
 | 読み上げ機能 | VoiceOver | TalkBack |
 | 確認者／確認日 | 未記録 | 未記録 |
 
@@ -131,7 +131,7 @@
 - [ ] P0／P1はリリース阻害として修正またはリリース判断者へエスカレーション
 - [ ] P2／P3は今回のリリース阻害修正へ混在させず、別タスク化
 - [ ] 修正後、該当端末と反対OSの共通フローを再確認
-- [ ] 修正がある場合のみ `fix/direction-device-qa-findings` からPRを作成
+- [ ] 修正がある場合のみ `fix/direction-device-qa-round2` からPRを作成
 - [ ] P0／P1が残っていないことをリリース判断者が確認
 
 ### 重大度
@@ -172,10 +172,27 @@
 | 環境 | バージョン／端末 | 結果 | 確認日 | 備考 |
 | --- | --- | --- | --- | --- |
 | Web Chromium | Playwright Chromium | 自動テスト済み | 2026-07-22 | 320px、文字拡大、キーボード、ジオコード500、未知方式、経路 |
-| iOS Simulator | iPhone 16e / iOS 26.1 / `fix/direction-device-qa-findings` | 部分確認済み | 2026-07-22 | 正式な4タブのみ表示、designタブなし。Expo iOS exportでRoute警告なし。実端末確認の代替にはしない |
+| iOS Simulator | iPhone 16e / iOS 26.1 / `1ffb264a` | 部分確認済み | 2026-07-22 | 画面証跡で正式な4タブ（ホーム・相談・記録・マイページ）のみ表示、designタブなし。マージ前のExpo iOS exportでRoute警告なし。実端末確認の代替にはしない |
 | Safari + VoiceOver | 未確認 | 未実施 | - | Web実端末確認 |
 | iOS + VoiceOver | 未確認 | 未実施 | - | OS権限・外部地図を含む |
 | Android + TalkBack | 未確認 | 未実施 | - | OS権限・外部地図を含む |
+
+## 自動回帰確認（2026-07-22）
+
+`develop` の `1ffb264a` で次を再実行した。これらは縮退契約とプライバシー契約の回帰根拠であり、VoiceOver／TalkBack、OS権限画面、文字サイズ、外部地図遷移の実端末確認を代替しない。
+
+| 検査 | 結果 | 確認内容 |
+| --- | --- | --- |
+| Mobile typecheck | 成功 | `tsc -p tsconfig.json --noEmit` |
+| Mobile全テスト | 14ファイル／90テスト成功 | 4タブ構造、方位表示契約、分析失敗時の操作継続を含む |
+| Backend重点回帰 | 33テスト成功 | Cookie・匿名ID・user_id・thread_idのログ非混入、方位計算例外、候補単位の失敗分離、不正方位情報の省略 |
+
+## 暫定リリース判定（2026-07-22）
+
+- 自動回帰およびSimulator確認でP0／P1は検出されていない。
+- iOS／Android実端末、VoiceOver／TalkBack、OS権限、最大付近の文字サイズ、外部地図遷移は未確認。
+- 完了条件を満たしていないため、実端末リリース判定は **保留** とする。
+- 実端末でP0／P1を検出した場合のみ `fix/direction-device-qa-round2` を作成し、修正後に両OSの共通フローを再確認する。
 
 ## 参照契約
 
