@@ -2,7 +2,7 @@
 
 # 方位分析イベント契約
 
-Webとモバイルは`packages/shared/directionAnalytics.ts`を正本とし、既存のPostHog Providerだけを使用する。イベント名・属性・意味は両者で共通であり、`platform`だけが異なる。
+Webとモバイルは`packages/shared/directionAnalytics.ts`を正本とし、既存のPostHog Providerだけを使用する。必須・任意属性は`DIRECTION_EVENT_QUALITY_RULES`、禁止属性と時系列検証は`directionAnalyticsQuality.ts`を共有する。
 
 | Event | 発火条件 | 許可する属性 | 重複の単位 |
 |---|---|---|---|
@@ -14,6 +14,8 @@ Webとモバイルは`packages/shared/directionAnalytics.ts`を正本とし、�
 | `direction_match_route_clicked` | 方位一致候補に紐づく既存経路導線の明示操作 | `platform`, `matched`, `recommendation_rank`, `candidate_position` | クリックごと |
 
 `origin_type`は`device | station | address | prefecture | disabled`、`result`は`success | denied | failed | selected`、`candidate_position`は`hero | other`だけを許可する。共有serializerはイベント別allowlist以外を破棄するため、型を迂回した呼び出しでも余分な値をProviderへ渡さない。
+
+`origin_type × result`は`device + success|denied|failed`と`station|address|prefecture|disabled + selected`だけを有効とする。detail／routeは`matched=true`だけを有効とし、impressionは表示率のためtrue／falseを許可する。Web routeは`candidate_position`必須、Mobileは欠落可とする。
 
 ## 禁止属性
 
@@ -40,3 +42,5 @@ Webとモバイルは`packages/shared/directionAnalytics.ts`を正本とし、�
 ## 変更ルール
 
 イベント追加より既存属性による集計を優先する。追加が必要な場合は、目的、発火箇所、重複単位、保持期間、禁止属性検査、Web／モバイル差を先に本書へ追記する。日盤・時盤の値はこの契約に追加しない。
+
+データ品質のissue code、重複・欠損基準、運用調査は`docs/analytics/direction-analytics-data-quality.md`を参照する。

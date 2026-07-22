@@ -102,9 +102,13 @@
 - [ ] 前期間差の母数とリリース履歴を確認
 - [ ] 数値だけで機能の良否や日盤実装を断定していない
 - [ ] 確認日、担当、判断、追加調査をDashboard descriptionへ記録
+- [ ] `pnpm test:direction-analytics-quality`の契約と同じ必須属性・禁止属性で標本を確認
+- [ ] 詳細・経路件数がimpressionを超える場合、先行表示欠損を調査
 
 ## 関連資料
 
 - `docs/analytics/direction-events.md`
 - `packages/shared/directionAnalytics.ts`
+- `packages/shared/directionAnalyticsQuality.ts`
+- `docs/analytics/direction-analytics-data-quality.md`
 - `docs/analytics/recommendation-funnel-analysis.md`

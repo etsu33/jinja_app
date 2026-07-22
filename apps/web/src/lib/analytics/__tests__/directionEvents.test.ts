@@ -45,7 +45,7 @@ describe("direction analytics", () => {
 
   it("経路クリックは候補位置と一致状態だけを許可し、候補情報とURLを除外する", () => {
     trackWebDirection("direction_match_route_clicked", {
-      matched: false,
+      matched: true,
       candidate_position: "other",
       shrine_name: "テスト神社",
       shrine_address: "東京都千代田区",
@@ -56,7 +56,7 @@ describe("direction analytics", () => {
     } as never);
     expect(track).toHaveBeenCalledWith("direction_match_route_clicked", {
       platform: "web",
-      matched: false,
+      matched: true,
       candidate_position: "other",
     });
   });

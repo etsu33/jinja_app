@@ -6,12 +6,14 @@ on:
       - develop
     paths:
       - "apps/mobile/**"
+      - "packages/shared/**"
       - ".github/workflows/mobile-ci.yml"
   push:
     branches:
       - develop
     paths:
       - "apps/mobile/**"
+      - "packages/shared/**"
       - ".github/workflows/mobile-ci.yml"
 
 jobs:

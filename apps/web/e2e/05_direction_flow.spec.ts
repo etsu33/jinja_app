@@ -5,6 +5,7 @@ import {
   matchedDirectionReference,
   mismatchedDirectionReference,
 } from "./fixtures/directionScenario";
+import directionAnalyticsForbiddenKeys from "../../../packages/shared/directionAnalyticsForbiddenKeys.json" with { type: "json" };
 
 const consultation = "テスト用の相談です";
 let fixedBackend: Server;
@@ -33,9 +34,7 @@ test.beforeAll(async () => {
 test.afterAll(async () => {
   await new Promise<void>((resolve, reject) => fixedBackend.close((error) => error ? reject(error) : resolve()));
 });
-const forbiddenAnalyticsKeys = new Set([
-  "lat", "lng", "latitude", "longitude", "address", "birthdate", "birthday", "query", "free_text",
-]);
+const forbiddenAnalyticsKeys = new Set<string>(directionAnalyticsForbiddenKeys);
 
 async function fillAndSubmit(page: import("@playwright/test").Page) {
   await page.getByLabel("必要なら、今の状況を少しだけ書く").fill(consultation);
