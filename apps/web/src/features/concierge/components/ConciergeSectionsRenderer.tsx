@@ -21,6 +21,7 @@ import DirectionReferenceCard from "@/features/concierge/components/DirectionRef
 import { trackCardEvent, type CardAnalyticsPayload } from "@/lib/analytics/cardEvents";
 import { trackSearchEvent } from "@/lib/analytics/searchEvents";
 import { trackWebDirection } from "@/lib/analytics/directionEvents";
+import { withDirectionRouteContext } from "@/lib/analytics/directionRouteContext";
 import { buildRecommendationReasonDisplay } from "../../../../../../packages/shared/recommendationReasonDisplay";
 
 import type {
@@ -841,7 +842,7 @@ export default function ConciergeSectionsRenderer({
                           <div key={`rec-${i}-hero-${heroItem.shrineId}`} className="space-y-2">
                             <ConciergeTopRecommendationHero
                               name={heroItem.title}
-                              href={heroItem.detailHref}
+                              href={withDirectionRouteContext(heroItem.detailHref, heroItem.directionReference, "hero")}
                               imageUrl={heroItem.imageUrl}
                               address={null}
                               topReasonLabel={reasonVm.hero.topReasonLabel ?? null}
@@ -1023,7 +1024,7 @@ export default function ConciergeSectionsRenderer({
                                 <div key={`rec-${i}-compact-${item.shrineId}`} className="space-y-2">
                                   <ShrineCardCompact
                                     name={item.title}
-                                    href={item.detailHref}
+                                    href={withDirectionRouteContext(item.detailHref, item.directionReference, "other")}
                                     imageUrl={item.imageUrl}
                                     address={item.address ?? null}
                                     summary={compactReasonDisplay.reason}

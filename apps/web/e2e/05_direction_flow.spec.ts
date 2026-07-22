@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { createServer, type Server } from "node:http";
 import {
   installDirectionScenario,
   matchedDirectionReference,
@@ -6,6 +7,32 @@ import {
 } from "./fixtures/directionScenario";
 
 const consultation = "テスト用の相談です";
+let fixedBackend: Server;
+
+test.beforeAll(async () => {
+  fixedBackend = createServer((request, response) => {
+    response.setHeader("Content-Type", "application/json");
+    if (/^\/api\/public\/shrines\/\d+\/$/.test(request.url ?? "")) {
+      const id = Number(request.url?.match(/\d+/)?.[0] ?? 508);
+      response.end(JSON.stringify({ id, name_jp: `固定詳細神社${id}`, latitude: 35.68, longitude: 139.76, address: "固定テスト所在地" }));
+      return;
+    }
+    if ((request.url ?? "").includes("goshuin")) {
+      response.end(JSON.stringify([]));
+      return;
+    }
+    response.statusCode = 404;
+    response.end(JSON.stringify({ detail: "fixed e2e response" }));
+  });
+  await new Promise<void>((resolve, reject) => {
+    fixedBackend.once("error", reject);
+    fixedBackend.listen(8000, "127.0.0.1", resolve);
+  });
+});
+
+test.afterAll(async () => {
+  await new Promise<void>((resolve, reject) => fixedBackend.close((error) => error ? reject(error) : resolve()));
+});
 const forbiddenAnalyticsKeys = new Set([
   "lat", "lng", "latitude", "longitude", "address", "birthdate", "birthday", "query", "free_text",
 ]);
@@ -26,6 +53,7 @@ function expectPrivateDataAbsent(events: Array<{ payload: Record<string, unknown
   }
 }
 
+test.describe.configure({ mode: "serial" });
 test.describe("方位条件のWeb E2E", () => {
   test("位置情報を許可し、予定日から方位参考情報を表示し、表示イベントを1回だけ送る", async ({ page, context }) => {
     const captured = await installDirectionScenario(page, { recommendationId: 501, directionReference: matchedDirectionReference });
@@ -161,5 +189,80 @@ test.describe("方位条件のWeb E2E", () => {
     for (const radio of await page.getByRole("radio").all()) {
       expect((await radio.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
     }
+  });
+
+  test("方位参考情報付きHero候補からキーボードで経路を開き、1回だけ送信する", async ({ page, context }) => {
+    const captured = await installDirectionScenario(page, {
+      recommendationId: 508,
+      directionReference: matchedDirectionReference,
+    });
+    await context.route("https://www.google.com/maps/**", (route) => route.fulfill({ status: 200, body: "fixed map" }));
+    await page.goto("/concierge");
+    await fillAndSubmit(page);
+
+    const heroLink = page.getByRole("link", { name: "神社の詳細を見る" });
+    await expect(heroLink).toHaveAttribute("href", /direction_matched=1/);
+    await expect(heroLink).toHaveAttribute("href", /direction_position=hero/);
+    await heroLink.focus();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/shrines\/508.*direction_position=hero/);
+
+    const routeLink = page.getByRole("link", { name: "Googleマップで経路案内" });
+    await expect(routeLink).toHaveAttribute("href", /^https:\/\/www\.google\.com\/maps\/dir\//);
+    await routeLink.focus();
+    const popupPromise = page.waitForEvent("popup");
+    await page.keyboard.press("Enter");
+    const popup = await popupPromise;
+    await popup.close();
+
+    const events = captured.analyticsEvents.filter((event) => event.eventName === "direction_match_route_clicked");
+    expect(events).toEqual([expect.objectContaining({ payload: expect.objectContaining({ matched: true, candidate_position: "hero" }) })]);
+    expectPrivateDataAbsent(events);
+    expect(JSON.stringify(events)).not.toMatch(/固定詳細神社|固定テスト所在地|google\.com\/maps/);
+  });
+
+  test("方位参考情報付きその他候補の経路操作をotherとして1回送信する", async ({ page, context }) => {
+    const captured = await installDirectionScenario(page, {
+      recommendationId: 508,
+      directionReference: matchedDirectionReference,
+      additionalRecommendation: { id: 509, directionReference: matchedDirectionReference },
+    });
+    await context.route("https://www.google.com/maps/**", (route) => route.fulfill({ status: 200, body: "fixed map" }));
+    await page.goto("/concierge");
+    await fillAndSubmit(page);
+
+    await page.getByRole("button", { name: "迷った時だけ、ほかの神社を見る" }).click();
+    const otherLink = page.getByRole("link", { name: "詳細だけ見る" });
+    await expect(otherLink).toHaveAttribute("href", /direction_matched=1/);
+    await expect(otherLink).toHaveAttribute("href", /direction_position=other/);
+    expect(await otherLink.getAttribute("href")).not.toMatch(/固定レスポンス神社|テスト用所在地|google\.com|35\.681|139\.767/);
+    await otherLink.click();
+    await expect(page).toHaveURL(/\/shrines\/509.*direction_position=other/);
+
+    const popupPromise = page.waitForEvent("popup");
+    await page.getByRole("link", { name: "Googleマップで経路案内" }).click();
+    const popup = await popupPromise;
+    await popup.close();
+    expect(captured.analyticsEvents.filter((event) => event.eventName === "direction_match_route_clicked")).toEqual([
+      expect.objectContaining({ payload: expect.objectContaining({ matched: true, candidate_position: "other" }) }),
+    ]);
+  });
+
+  test("方位参考情報のない候補の経路操作では方位イベントを送らない", async ({ page, context }) => {
+    const captured = await installDirectionScenario(page, { recommendationId: 510 });
+    await context.route("https://www.google.com/maps/**", (route) => route.fulfill({ status: 200, body: "fixed map" }));
+    await page.goto("/concierge");
+    await fillAndSubmit(page);
+
+    const detailLink = page.getByRole("link", { name: "神社の詳細を見る" });
+    const href = await detailLink.getAttribute("href");
+    expect(href).not.toContain("direction_matched");
+    expect(href).not.toContain("direction_position");
+    await detailLink.click();
+    const popupPromise = page.waitForEvent("popup");
+    await page.getByRole("link", { name: "Googleマップで経路案内" }).click();
+    const popup = await popupPromise;
+    await popup.close();
+    expect(captured.analyticsEvents.filter((event) => event.eventName === "direction_match_route_clicked")).toHaveLength(0);
   });
 });

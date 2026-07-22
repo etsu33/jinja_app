@@ -8,7 +8,7 @@
 
 - 期間: まず直近28日、比較期間はその直前28日
 - 集計: ユニークセッションを基本、操作品質はイベント回数も併記
-- 比較軸: `platform = web | mobile`、`origin_type`、`recommendation_rank`
+- 比較軸: `platform = web | mobile`、`origin_type`、`recommendation_rank`。Web経路は`candidate_position = hero | other`も利用できる
 - Web／モバイルの母数は混ぜず、全体値は各platform値を併記してから表示する
 - 少数データから個人を推測しない。少数セルは非表示または期間を延長する
 - `matched`を利用者属性として保存・cohort化しない
@@ -22,7 +22,7 @@
 | 3. 方位条件付き相談を送信 | `direction_condition_submitted`, `has_visit_date=true`, `has_origin=true` | ファネルの基準母数 |
 | 4. 方位参考情報を表示 | `direction_match_impression` | 一致候補の後続率は`matched=true`で絞る |
 | 5. 候補詳細を開く | `direction_match_detail_opened`, `matched=true` | 順位別も確認 |
-| 6. 経路を確認 | `direction_match_route_clicked`, `matched=true` | 現状はモバイルのみ比較可能 |
+| 6. 経路を確認 | `direction_match_route_clicked`, `matched=true` | Web／モバイル共通。Webは詳細画面の既存Google Mapsリンク |
 
 厳密順序、同一セッション、推奨コンバージョン窓24時間で作成する。結果の再送信を別試行として分析したい場合はイベント回数ビューを補助的に使う。
 
@@ -41,7 +41,7 @@
 | 方位参考情報の表示率 | match impressionのあるセッション | 方位条件付き相談セッション | matched true/falseを含む |
 | 方位一致候補表示率 | matched=trueのmatch impressionがあるセッション | 方位条件付き相談セッション | 不一致を分子に含めない |
 | 詳細表示率 | matched=trueのmatch detail openedがあるセッション | matched=trueのmatch impressionがあるセッション | Web／mobile、rank別 |
-| 経路クリック率 | matched=trueのmatch route clickedがあるセッション | matched=trueのmatch impressionがあるセッション | 現状mobileのみ有効 |
+| 経路クリック率 | matched=trueのmatch route clickedがあるセッション | matched=trueのmatch impressionがあるセッション | Web／mobileを比較。Webはhero/other別も確認 |
 
 `direction_match_impression`は名前を維持しつつ、`direction_reference`表示時に`matched=true/false`を送る。`direction_reference`欠落時は送らないため、情報なしを不一致へ含めない。
 
@@ -54,7 +54,7 @@
 5. Trendsで現在地取得結果を`direction_origin_result`の`result`別に積み上げ表示する。filterは`origin_type=device`。
 6. 手動移行は`direction_origin_result(result=denied, origin_type=device)`から`direction_origin_result(result=selected, origin_type in station,address)`の2段階ファネルにする。
 7. 出発地点構成比はsuccess/selectedのみを対象に`origin_type`でbreakdownする。
-8. 一致表示→詳細、一致表示→経路を別Funnelにし、後者は`platform=mobile`を固定する。
+8. 一致表示→詳細、一致表示→経路を別Funnelにし、両方を`platform`でbreakdownする。Web経路だけを確認する補助Insightでは`candidate_position`もbreakdownする。
 9. Dashboard descriptionへ本書、イベント契約、欠測条件、最終レビュー日を記載する。
 10. 作成後に本番ではない固定テストイベントが混ざっていないことを確認してから共有する。
 
@@ -82,7 +82,7 @@
 - 方位条件付き相談が各期間500セッション以上
 - 方位条件付き相談率が20%以上
 - 一致表示→詳細率が全相談の詳細率と比べて継続的に低くない
-- モバイル一致表示→経路率が10%以上
+- Web／モバイルの一致表示→経路率が各10%以上
 - 拒否後の手動移行率が30%以上で、代替導線が機能している
 - 技術失敗率が5%未満で、現行年盤・月盤の品質問題が先に残っていない
 - 定性調査で「日単位の判断」が実際の課題として確認される
@@ -92,7 +92,7 @@
 ## 運用チェックリスト
 
 - [ ] Dashboard期間・timezone・conversion windowを確認
-- [ ] Web／mobileを分け、経路率はmobile限定であることを表示
+- [ ] Web／mobileを分け、Webのhero／otherは候補詳細へ入った表示位置であることを表示
 - [ ] イベント名と属性が契約通りかLive Eventsで標本確認
 - [ ] 緯度経度、住所、駅名、都道府県名、生年月日、相談文、検索語がない
 - [ ] impression重複とsubmit欠損を確認

@@ -12,7 +12,7 @@ import { buildShrineResolveHref } from "@/lib/nav/buildShrineResolveHref";
  * 注意:
  * recommendation の `id` は shrine_id ではない可能性があるため使わない。
  * 実在 shrine への導線は shrine_id / shrineId / shrine.id のみを採用する。
- * 詳細URLに載せる query は ctx / tid / place_id / toast のみ。
+ * 詳細URLに載せる query はallowlist対象のみ。方位候補の表示位置は描画側で安全な分類値として追加する。
  */
 
 type AnyObj = Record<string, any>;

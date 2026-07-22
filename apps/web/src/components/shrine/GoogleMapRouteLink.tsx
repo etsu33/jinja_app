@@ -2,6 +2,8 @@
 
 import { trackSearchEvent } from "@/lib/analytics/searchEvents";
 import { trackShrineInteraction } from "@/lib/api/shrineInteractions";
+import { trackWebDirection } from "@/lib/analytics/directionEvents";
+import type { DirectionRouteContext } from "@/lib/analytics/directionRouteContext";
 
 type Props = {
   href: string;
@@ -11,6 +13,7 @@ type Props = {
   tid?: string | number | null;
   historyTheme?: string | null;
   className?: string;
+  directionRouteContext?: DirectionRouteContext | null;
 };
 
 export default function GoogleMapRouteLink({
@@ -21,6 +24,7 @@ export default function GoogleMapRouteLink({
   tid = null,
   historyTheme = null,
   className,
+  directionRouteContext = null,
 }: Props) {
   return (
     <a
@@ -29,6 +33,16 @@ export default function GoogleMapRouteLink({
       rel="noopener noreferrer"
       className={className}
       onClick={() => {
+        if (directionRouteContext?.matched) {
+          try {
+            trackWebDirection("direction_match_route_clicked", {
+              matched: true,
+              candidate_position: directionRouteContext.candidatePosition,
+            });
+          } catch {
+            // Analytics must never delay or block the external route navigation.
+          }
+        }
         trackSearchEvent("route_open", {
           source: "shrine_detail",
           routeTarget: "google_maps",
