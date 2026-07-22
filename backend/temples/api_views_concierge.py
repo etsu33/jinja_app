@@ -46,6 +46,7 @@ from temples.services.concierge_chat_ranking import (
 )
 from temples.services.concierge_chat_candidates import build_chat_candidates
 from temples.services.concierge_history import append_chat
+from temples.services.direction_reference import attach_direction_references
 from temples.services.concierge_plan import build_plan_response
 from temples.services.consultation_interpreter import interpret_consultation
 from temples.services.billing_state import is_premium_for_user  # test monkeypatch compatibility
@@ -616,23 +617,24 @@ class ConciergeChatView(APIView):
                 time.perf_counter() - t0,
             )
 
-            # profile_context ログ（まだ推薦には使わない）
-            raw_profile_context = data.get("profile_context")
-            if isinstance(raw_profile_context, dict):
-                profile_user = raw_profile_context.get("user_profile")
-                profile_birthdate = (
-                    profile_user.get("birthdate") or profile_user.get("birthday")
-                    if isinstance(profile_user, dict)
-                    else None
-                )
-                visit_date = data.get("visit_date") or data.get("planned_visit_date")
-                calculated_direction = (
-                    planned_visit_lucky_directions(profile_birthdate or birthdate, visit_date)
-                    if visit_date
-                    else annual_lucky_directions(profile_birthdate or birthdate)
-                )
-                if calculated_direction:
-                    raw_profile_context = {**raw_profile_context, "direction_profile": calculated_direction}
+            raw_profile_context_value = data.get("profile_context")
+            raw_profile_context = dict(raw_profile_context_value) if isinstance(raw_profile_context_value, dict) else None
+            profile_user = raw_profile_context.get("user_profile") if raw_profile_context else None
+            profile_birthdate = (
+                profile_user.get("birthdate") or profile_user.get("birthday")
+                if isinstance(profile_user, dict)
+                else None
+            )
+            visit_date = data.get("visit_date") or data.get("planned_visit_date")
+            calculated_direction = (
+                planned_visit_lucky_directions(profile_birthdate or birthdate, visit_date)
+                if visit_date
+                else annual_lucky_directions(profile_birthdate or birthdate)
+            )
+            if calculated_direction:
+                raw_profile_context = {**(raw_profile_context or {}), "direction_profile": calculated_direction}
+
+            if isinstance(raw_profile_context_value, dict):
                 has_user = isinstance(raw_profile_context.get("user_profile"), dict)
                 has_derived = isinstance(raw_profile_context.get("derived_profile"), dict)
                 log.info(
@@ -858,6 +860,24 @@ class ConciergeChatView(APIView):
                     birthdate is not None,
                 )
                 raise
+
+            direction_profile = (
+                raw_profile_context.get("direction_profile")
+                if isinstance(raw_profile_context, dict)
+                and isinstance(raw_profile_context.get("direction_profile"), dict)
+                else None
+            )
+            seen_recommendation_lists: set[int] = set()
+            for recommendation_key in ("recommendations", "recommendations_v2"):
+                recommendation_list = recs.get(recommendation_key)
+                if not isinstance(recommendation_list, list) or id(recommendation_list) in seen_recommendation_lists:
+                    continue
+                seen_recommendation_lists.add(id(recommendation_list))
+                attach_direction_references(
+                    recommendation_list,
+                    direction_profile=direction_profile,
+                    user_origin={"lat": lat, "lng": lng} if lat is not None and lng is not None else None,
+                )
 
             after_n = len(recs.get("recommendations") or [])
             rec_count = after_n
