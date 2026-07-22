@@ -97,7 +97,6 @@ export function buildDerivedProfile(profile: ProfileInput): DerivedProfile {
 
 export function buildProfileContext(profile: ProfileInput) {
   const derived = buildDerivedProfile(profile);
-  const direction = buildDirectionProfile(profile);
   return {
     user_profile: {
       birthday: normalizeBirthday(profile.birthday),
@@ -107,6 +106,5 @@ export function buildProfileContext(profile: ProfileInput) {
       worshipStyle: profile.worship_style || undefined,
     },
     derived_profile: derived,
-    direction_profile: direction,
   };
 }

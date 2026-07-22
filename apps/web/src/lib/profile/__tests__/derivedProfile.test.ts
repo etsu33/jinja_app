@@ -19,8 +19,8 @@ describe("web profile derivation", () => {
     expect(buildProfileContext({ birthday: "1984-05-15", birth_place: "東京都", worship_style: "朝参り" })).toMatchObject({
       user_profile: { birthdate: "1984-05-15", birthPlace: "東京都", worshipStyle: "朝参り" },
       derived_profile: { lifePath: "6" },
-      direction_profile: { source: "calculated", calculationMethod: "annual_kyusei_v1" },
     });
+    expect(buildProfileContext({ birthday: "1984-05-15" })).not.toHaveProperty("direction_profile");
   });
 
   it("matches the mobile annual direction result for the same date", () => {

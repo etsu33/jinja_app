@@ -173,6 +173,7 @@ export type ConciergeRecommendation = {
   photo_url?: string | null;
   is_dummy?: boolean;
   __dummy?: boolean;
+  direction_reference?: import("../../../../../../packages/shared/directionReference").DirectionReference | null;
 };
 
 export type ConciergeRankExplanation = {

@@ -6,6 +6,7 @@ import type {
   ConciergeFilterState,
 } from "@/features/concierge/sections/types";
 import type { ConciergeReasonFacts } from "@/lib/api/concierge";
+import type { DirectionReference } from "../../../../../packages/shared/directionReference";
 
 
 import { detailHrefFromRecommendation } from "@/features/concierge/detailHref";
@@ -36,6 +37,7 @@ type NormalizedItemBase = {
   }>;
   detailHref?: string;
   isDummy?: boolean;
+  directionReference?: DirectionReference | null;
 };
 
 type NormalizedRegistered = NormalizedItemBase & {
@@ -148,6 +150,7 @@ function normalizeRecommendation(r: any, tid: string | null, analyticsContext: D
     analyticsContext.consultationAxis,
   );
   const actionSuggestions = normalizeActionSuggestions(r);
+  const directionReference = r?.direction_reference ?? null;
 
   if (shrineId) {
     return {
@@ -166,6 +169,7 @@ function normalizeRecommendation(r: any, tid: string | null, analyticsContext: D
       historyContext,
       consultationAxis,
       actionSuggestions,
+      directionReference,
       detailHref,
       isDummy,
       goriyakuTags: [],
@@ -189,6 +193,7 @@ function normalizeRecommendation(r: any, tid: string | null, analyticsContext: D
       historyContext,
       consultationAxis,
       actionSuggestions,
+      directionReference,
       detailHref,
       isDummy,
       detailLabel: "神社の詳細を見る",

@@ -26,6 +26,10 @@ import {
 import { post } from "../../lib/http";
 import { trackActionEvent, type ActionEventActionType } from "../../lib/actionEvents";
 import { useProfileStore } from "../../store/profileStore";
+import {
+  directionReferenceMatchCopy,
+  type DirectionReference,
+} from "../../../../packages/shared/directionReference";
 
 // ────────────────────────────────────────────
 // 型
@@ -85,6 +89,7 @@ type RecommendationCard = {
   tags: string[];
   shrineId?: string;
   actionSuggestionV4Preview?: ActionSuggestionV4Preview | null;
+  directionReference?: DirectionReference | null;
 };
 
 type ActionSuggestionV4Action = {
@@ -147,6 +152,7 @@ type RecommendationApiCard = {
   place_id?: string | number;
   action_suggestion_v4_preview?: unknown;
   actionSuggestionV4Preview?: unknown;
+  direction_reference?: DirectionReference | null;
 };
 function normalizeRecommendationReasonDetail(raw: unknown): RecommendationReasonDetail | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
@@ -383,6 +389,7 @@ function toRecommendationCard(item: RecommendationApiCard, index: number): Recom
     tags: item.tags ?? [],
     shrineId: shrineId !== undefined && shrineId !== null ? String(shrineId) : undefined,
     actionSuggestionV4Preview,
+    directionReference: item.direction_reference ?? null,
   };
 }
 
@@ -501,6 +508,16 @@ function ResultCard({
               <Text style={styles.reasonFactText}>{item.value}</Text>
             </View>
           ))}
+        </View>
+      ) : null}
+
+      {card.directionReference ? (
+        <View style={styles.directionReferenceCard}>
+          <Text style={styles.directionReferenceLabel}>方位の参考情報</Text>
+          <Text style={styles.directionReferenceText}>現在地から見た方角：{card.directionReference.actual_direction}</Text>
+          <Text style={styles.directionReferenceText}>予定日の参考方位：{card.directionReference.reference_directions.join("・")}</Text>
+          <Text style={styles.directionReferenceText}>{directionReferenceMatchCopy(card.directionReference)}</Text>
+          <Text style={styles.directionReferenceNote}>{card.directionReference.note}</Text>
         </View>
       ) : null}
 
@@ -1201,6 +1218,33 @@ const styles = StyleSheet.create({
     color: theme.mutedSoft,
     fontSize: 12,
     lineHeight: 18,
+    fontWeight: "600",
+  },
+  directionReferenceCard: {
+    backgroundColor: theme.surface,
+    borderWidth: 1,
+    borderColor: theme.borderSoft,
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 4,
+  },
+  directionReferenceLabel: {
+    color: theme.goldSoft,
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 0.7,
+  },
+  directionReferenceText: {
+    color: theme.mutedSoft,
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: "600",
+  },
+  directionReferenceNote: {
+    color: theme.muted,
+    fontSize: 11,
+    lineHeight: 17,
     fontWeight: "600",
   },
 
