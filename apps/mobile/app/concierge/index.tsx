@@ -95,7 +95,6 @@ type RecommendationCard = {
   actionSuggestionV4Preview?: ActionSuggestionV4Preview | null;
   directionReference?: DirectionReference | null;
 };
-const directionImpressions = new Set<string>();
 
 type ActionSuggestionV4Action = {
   label: string;
@@ -473,6 +472,7 @@ function ResultCard({
     slot: "primary" | "secondary";
   }) => void;
 }) {
+  const directionImpressed = React.useRef(false);
   const reasonFactItems = buildReasonFactItems(card.reasonFacts);
   const actionSuggestionV4Preview = card.actionSuggestionV4Preview;
   const reasonDisplay = buildRecommendationReasonDisplay({
@@ -480,7 +480,7 @@ function ResultCard({
     reason: card.reason,
     directionReference: card.directionReference,
   });
-  React.useEffect(() => { if (!card.directionReference?.matched || directionImpressions.has(card.id)) return; directionImpressions.add(card.id); trackMobileDirection("direction_match_impression", { matched: true, recommendation_rank: rank }); }, [card.directionReference?.matched, card.id, rank]);
+  React.useEffect(() => { if (!card.directionReference || directionImpressed.current) return; directionImpressed.current = true; trackMobileDirection("direction_match_impression", { matched: card.directionReference.matched, recommendation_rank: rank }); }, [card.directionReference, rank]);
   return (
     <View style={styles.card}>
       {/* ランクバッジ */}
@@ -782,8 +782,8 @@ export default function ConciergeScreen() {
     });
   };
 
-  const handleDetail = (card: RecommendationCard) => {
-    if (card.directionReference?.matched) trackMobileDirection("direction_match_detail_opened", { matched: true });
+  const handleDetail = (card: RecommendationCard, rank: number) => {
+    if (card.directionReference?.matched) trackMobileDirection("direction_match_detail_opened", { matched: true, recommendation_rank: rank });
     if (!card.shrineId) return;
     router.push({
       pathname: "/shrines/[id]",
@@ -902,7 +902,7 @@ export default function ConciergeScreen() {
                 key={card.id}
                 card={card}
                 rank={i + 1}
-                onDetail={() => handleDetail(card)}
+                onDetail={() => handleDetail(card, i + 1)}
                 onActionEvent={({ actionType, action, slot }) =>
                   handleActionEvent({
                     card,

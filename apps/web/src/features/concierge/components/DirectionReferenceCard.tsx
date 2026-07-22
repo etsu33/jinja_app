@@ -2,13 +2,13 @@ import {
   directionReferenceMatchCopy,
   type DirectionReference,
 } from "../../../../../../packages/shared/directionReference";
-import { useEffect, useId } from "react";
+import { useEffect, useId, useRef } from "react";
 import { trackWebDirection } from "@/lib/analytics/directionEvents";
-const impressed = new Set<string>();
 
 export default function DirectionReferenceCard({ reference, recommendationKey = "unknown", rank }: { reference?: DirectionReference | null; recommendationKey?: string | number; rank?: number }) {
   const headingId = useId();
-  useEffect(() => { if (!reference?.matched) return; const key = String(recommendationKey); if (impressed.has(key)) return; impressed.add(key); trackWebDirection("direction_match_impression", { matched: true, recommendation_rank: rank }); }, [reference, recommendationKey, rank]);
+  const impressed = useRef(false);
+  useEffect(() => { if (!reference || impressed.current) return; impressed.current = true; trackWebDirection("direction_match_impression", { matched: reference.matched, recommendation_rank: rank }); }, [reference, recommendationKey, rank]);
   if (!reference) return null;
 
   return (

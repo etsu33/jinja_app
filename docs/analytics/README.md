@@ -16,6 +16,8 @@ KAMI MUSUBIのイベント、Payload、KPI、Funnelおよび計測責務に関�
 
 | ドキュメント | 責務 |
 | --- | --- |
+| `direction-events.md` | Web／Mobile共通の方位分析Event名・Payload・禁止属性契約を管理する |
+| `direction-analytics-dashboard.md` | 方位利用ファネル、KPI、PostHog設定案、異常値・日盤検討基準を管理する |
 | `action-suggestion-funnel.md` | Action Suggestion関連Event（PostHog view計測 / Backend `ActionEvent`）の現状を管理する |
 | `monetization-funnel.md` | Premium / Monetization FunnelのEvent名を管理する |
 | `save-premium-correlation.md` | 保存行動とPremium転換に関するEvent間の相関分析の読み方を管理する |
