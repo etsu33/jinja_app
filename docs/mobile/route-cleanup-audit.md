@@ -198,7 +198,7 @@ StorageやAPI処理は担当しない。
 - `apps/mobile/app/_layout.tsx`
 - `apps/mobile/components/`
 - `apps/mobile/lib/`
-- `apps/mobile/app/design/`
+- `apps/mobile/design/`
 
 ### 関連ドキュメント
 

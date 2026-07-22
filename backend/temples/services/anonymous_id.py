@@ -24,37 +24,29 @@ def _sign_anon_id(raw_id: str) -> str:
 def _unsign_anon_id(signed_value: str) -> Optional[str]:
     try:
         value = signing.loads(signed_value, salt=ANONYMOUS_ID_SALT, max_age=None)
-        log.info("[anon_id] signing.loads ok value=%r", value)
+        log.info("[anon_id] cookie_signature_valid")
     except signing.BadSignature:
-        log.warning("[anon_id] BadSignature signed_value=%r", signed_value)
+        log.warning("[anon_id] cookie_signature_invalid")
         return None
     except signing.SignatureExpired:
-        log.warning("[anon_id] SignatureExpired signed_value=%r", signed_value)
+        log.warning("[anon_id] cookie_signature_expired")
         return None
 
     if not isinstance(value, str) or not value:
-        log.warning("[anon_id] invalid unsigned value=%r", value)
+        log.warning("[anon_id] cookie_payload_invalid")
         return None
     return value
 
 
 def get_anonymous_id(request: HttpRequest) -> Optional[str]:
     signed_value = request.COOKIES.get(ANONYMOUS_ID_COOKIE_NAME)
-    log.info("[anon_id] get cookie raw=%r len=%s", signed_value, len(signed_value) if signed_value else None)
+    log.info("[anon_id] cookie_present=%s", bool(signed_value))
     if not signed_value:
         return None
 
     normalized_value = unquote(signed_value)
-    log.info(
-        "[anon_id] normalized cookie=%r len=%s has_pct3A=%s colon_count=%s",
-        normalized_value,
-        len(normalized_value),
-        "%3A" in signed_value,
-        normalized_value.count(":"),
-    )
-
     value = _unsign_anon_id(normalized_value)
-    log.info("[anon_id] unsign result=%r", value)
+    log.info("[anon_id] resolved=%s", bool(value))
     return value
 
 
@@ -71,7 +63,7 @@ def get_or_create_anonymous_id(request: HttpRequest) -> str:
 
 def build_anonymous_cookie_value(anon_id: str) -> str:
     value = _sign_anon_id(anon_id)
-    log.info("[anon_id] build cookie value=%r len=%s", value, len(value))
+    log.info("[anon_id] anonymous_cookie_built")
     return value
 
 

@@ -5,8 +5,8 @@ import { post } from "../lib/http";
 import Button from "../components/ui/Button";
 import { setTokens } from "../lib/authTokens";
 import { kamimusubiDark as theme } from "./theme";
-import { spacing } from "./design/spacing";
-import { radius } from "./design/radius";
+import { spacing } from "../design/spacing";
+import { radius } from "../design/radius";
 
 type JwtCreateResponse = {
   access: string;

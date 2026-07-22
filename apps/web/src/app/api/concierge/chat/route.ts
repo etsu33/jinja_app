@@ -45,8 +45,7 @@ function attachAnonCookieFromBody(res: NextResponse, body: string, phase: string
       maxAge: ANON_COOKIE_MAX_AGE_SECONDS,
     });
 
-    const serialized = res.cookies.get("concierge_anon_id");
-    console.log("[BFF_ANON_COOKIE_SET_RESULT]", { phase, serialized });
+    console.log("[BFF_ANON_COOKIE_SET_RESULT]", { phase, attached: true });
   } catch (error) {
     console.warn("[BFF_CHAT_PROXY] failed to parse anon cookie payload", { phase, error });
   }
@@ -82,7 +81,6 @@ function buildProxyResponse(upstream: Response, body: string) {
     contentType: ct,
     hasSetCookie: setCookies.length > 0,
     setCookieCount: setCookies.length,
-    setCookies,
   });
 
   const res = new NextResponse(body, {

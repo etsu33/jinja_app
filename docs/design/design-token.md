@@ -215,7 +215,7 @@ Token名は以下の階層で構成する（区切り文字・大文字小文字
 
 ## Mobile実装形式
 
-- Primitive / Semantic Tokenは、現行の`apps/mobile/app/design/*.ts`の構造（TypeScriptオブジェクトのexport）に準ずる形式を候補とする。
+- Primitive / Semantic Tokenは、現行の`apps/mobile/design/*.ts`の構造（TypeScriptオブジェクトのexport）に準ずる形式を候補とする。
 - `app/theme.ts`（`colors`/`kamimusubiDark`）、`app/design/*.ts`、`lib/tokens/*.ts`という3系統の並存状態は、v1導入時に整理する（Migration方針「5. Mobile Token正本整理」を参照）。
 - `lib/tokens/*.ts`は本文書の時点ではデッドコードと確認済みだが、削除は別PR（Migration方針「7. デッドコード整理」）で判断する。
 
@@ -265,7 +265,7 @@ Design Token v1の導入は、以下7段階のPRに分割する。各PRの目的
 ### 5. Mobile Token正本整理
 
 - **目的**: `app/theme.ts`/`app/design/*.ts`/`lib/tokens/*.ts`の3系統並存を解消し、v1のSemantic Token構造へ統合する
-- **変更範囲**: `apps/mobile/app/theme.ts`, `apps/mobile/app/design/*.ts`
+- **変更範囲**: `apps/mobile/app/theme.ts`, `apps/mobile/design/*.ts`
 - **非対象**: `lib/tokens/*.ts`の削除（PR 7で判断）、個別画面のStyleSheet切り替え（PR 6）
 - **依存関係**: PR 1
 - **Rollback方針**: Mobile側のtheme定義ファイルのみの変更のため、画面実装への影響を確認の上revert可能

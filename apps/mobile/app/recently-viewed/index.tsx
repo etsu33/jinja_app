@@ -5,9 +5,9 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-nati
 import { useFocusEffect, useRouter } from "expo-router";
 import { getRecentViewed, RecentShrineItem } from "../../lib/shrineStorage";
 import { kamimusubiDark as theme } from "../theme";
-import { spacing } from "../design/spacing";
-import { cardSizes } from "../design/cardSizes";
-import { radius } from "../design/radius";
+import { spacing } from "../../design/spacing";
+import { cardSizes } from "../../design/cardSizes";
+import { radius } from "../../design/radius";
 
 export default function RecentlyViewedScreen() {
   const router = useRouter();

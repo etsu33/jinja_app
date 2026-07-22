@@ -13,11 +13,11 @@ const globalsCssPath = path.resolve(__dirname, "../../app/globals.css");
 
 const mobileSemanticColorPath = path.resolve(
   __dirname,
-  "../../../../mobile/app/design/semanticColorTokens.ts",
+  "../../../../mobile/design/semanticColorTokens.ts",
 );
-const mobileSpacingPath = path.resolve(__dirname, "../../../../mobile/app/design/spacing.ts");
-const mobileRadiusPath = path.resolve(__dirname, "../../../../mobile/app/design/radius.ts");
-const mobileShadowPath = path.resolve(__dirname, "../../../../mobile/app/design/shadow.ts");
+const mobileSpacingPath = path.resolve(__dirname, "../../../../mobile/design/spacing.ts");
+const mobileRadiusPath = path.resolve(__dirname, "../../../../mobile/design/radius.ts");
+const mobileShadowPath = path.resolve(__dirname, "../../../../mobile/design/shadow.ts");
 
 const tokensCss = readFileSync(tokensCssPath, "utf-8");
 const globalsCss = readFileSync(globalsCssPath, "utf-8");

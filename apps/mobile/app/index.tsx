@@ -2,7 +2,7 @@ import * as React from "react";
 import { useRouter } from "expo-router";
 import { ScrollView, View, Text, TextInput, StyleSheet, Pressable } from "react-native";
 import { kamimusubiDark as theme } from "./theme";
-import { shadows } from "./design/shadow";
+import { shadows } from "../design/shadow";
 import { ConditionFieldsCard } from "../components/ConditionFieldsCard";
 import { resolveGoriyakuTagIds } from "../lib/conditionPayload";
 import * as Location from "expo-location";

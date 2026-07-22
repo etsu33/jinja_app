@@ -6,8 +6,8 @@
 >
 > 現在のCTAサイズ・Radius定義は以下を正本とする。
 >
-> - `apps/mobile/app/design/ctaSizes.ts`
-> - `apps/mobile/app/design/radius.ts`
+> - `apps/mobile/design/ctaSizes.ts`
+> - `apps/mobile/design/radius.ts`
 > - 関連するUI ComponentおよびTest
 
 # CTA Radius Audit
@@ -22,8 +22,8 @@ CTA専用Radiusと共通Radiusの責務を整理し、デザインシステム�
 
 ## 監査対象
 
-- `apps/mobile/app/design/ctaSizes.ts`
-- `apps/mobile/app/design/radius.ts`
+- `apps/mobile/design/ctaSizes.ts`
+- `apps/mobile/design/radius.ts`
 
 ---
 
@@ -169,8 +169,8 @@ CTA専用Radiusは、汎用Radiusへ統合しない方針とした。
 
 ### 現行実装
 
-- `apps/mobile/app/design/ctaSizes.ts`
-- `apps/mobile/app/design/radius.ts`
+- `apps/mobile/design/ctaSizes.ts`
+- `apps/mobile/design/radius.ts`
 
 ### 利用コンポーネント
 

@@ -16,9 +16,9 @@ import { isUnauthenticatedError } from "../../lib/http";
 import { StateCard } from "../../components/common/StateCard";
 import { AuthPrompt } from "../../components/common/AuthPrompt";
 import { kamimusubiDark as theme } from "../theme";
-import { spacing } from "../design/spacing";
-import { cardSizes } from "../design/cardSizes";
-import { radius } from "../design/radius";
+import { spacing } from "../../design/spacing";
+import { cardSizes } from "../../design/cardSizes";
+import { radius } from "../../design/radius";
 
 function formatTime(value: string | null | undefined): string {
   if (!value) return "";

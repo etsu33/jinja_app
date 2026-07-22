@@ -301,6 +301,11 @@ def test_chat_response_anonymous_includes_remaining_and_limit(client, monkeypatc
         monkeypatch,
         [{"name": "神社A", "reason": "ok", "reason_source": "reason:test"}],
     )
+    emitted_logs = []
+    monkeypatch.setattr(
+        "temples.api_views_concierge.log.info",
+        lambda message, *args: emitted_logs.append(message % args if args else message),
+    )
 
     r = client.post(
         URL,
@@ -315,6 +320,8 @@ def test_chat_response_anonymous_includes_remaining_and_limit(client, monkeypatc
     assert 0 <= body["remaining"] <= body["limit"]
     assert body["plan"] == "anonymous"
     assert body["limitReached"] is False
+    assert any("anonymous_cookie_attached" in message for message in emitted_logs)
+    assert not any("after_attach_success" in message or "cookie_state" in message or "cookies=" in message for message in emitted_logs)
 
 
 @pytest.mark.django_db

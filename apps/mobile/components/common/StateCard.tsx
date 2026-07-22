@@ -4,9 +4,9 @@ import * as React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { kamimusubiDark as theme } from "../../app/theme";
-import { spacing } from "../../app/design/spacing";
-import { cardSizes } from "../../app/design/cardSizes";
-import { radius } from "../../app/design/radius";
+import { spacing } from "../../design/spacing";
+import { cardSizes } from "../../design/cardSizes";
+import { radius } from "../../design/radius";
 
 type StateCardProps = {
   title: string;

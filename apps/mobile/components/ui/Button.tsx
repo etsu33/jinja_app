@@ -1,9 +1,9 @@
 // apps/mobile/components/ui/Button.tsx
 import { ActivityIndicator, Pressable, StyleSheet, Text, type ViewStyle } from "react-native";
 
-import { ctaSizes } from "../../app/design/ctaSizes";
-import { semanticRadius } from "../../app/design/radius";
-import { semanticShadow } from "../../app/design/shadow";
+import { ctaSizes } from "../../design/ctaSizes";
+import { semanticRadius } from "../../design/radius";
+import { semanticShadow } from "../../design/shadow";
 import { kamimusubiDarkSemanticTheme } from "../../app/theme";
 
 type Props = {

@@ -96,16 +96,15 @@ class ConciergeThreadDetailView(APIView):
         try:
             base_qs = ConciergeThread.objects.filter(pk=pk)
 
-            logger.warning(
+            logger.info(
                 "THREAD_DETAIL_LOOKUP %s",
                 {
-                    "thread_id": pk,
-                    "user_id": getattr(getattr(request, "user", None), "id", None),
                     "is_authenticated": bool(
                         getattr(getattr(request, "user", None), "is_authenticated", False)
                     ),
-                    "anon_id_cookie": request.COOKIES.get("concierge_anon_id"),
-                    "cookies": dict(getattr(request, "COOKIES", {}) or {}),
+                    "anon_cookie_present": bool(
+                        request.COOKIES.get("concierge_anon_id")
+                    ),
                 },
             )
 
@@ -117,63 +116,12 @@ class ConciergeThreadDetailView(APIView):
             anon_from_raw_request = get_anonymous_id(raw_req) if raw_req else None
             anonymous_id = anon_from_request or anon_from_raw_request
 
-            logger.warning(
-                "THREAD_DETAIL_ANON_RESOLVE %s",
-                {
-                    "pk": pk,
-                    "anon_from_request": anon_from_request,
-                    "anon_from_raw_request": anon_from_raw_request,
-                    "anonymous_id_final": anonymous_id,
-                },
-            )
-
-            thread_row = ConciergeThread.objects.filter(pk=pk).values(
-                "id", "user_id", "anonymous_id"
-            ).first()
-
-            logger.warning(
-                "THREAD_DETAIL_DB_ROW %s",
-                {
-                    "pk": pk,
-                    "thread_row": thread_row,
-                },
-            )
-
-            logger.warning(
-                "THREAD_DETAIL_DEBUG %s",
-                {
-                    "pk": pk,
-                    "is_authenticated": authenticated,
-                    "cookies": dict(getattr(request, "COOKIES", {}) or {}),
-                    "_request_cookies": (
-                        dict(getattr(raw_req, "COOKIES", {}) or {}) if raw_req else None
-                    ),
-                    "anonymous_id": anonymous_id,
-                },
-            )
-
             thread = None
 
             if authenticated:
-                logger.warning(
-                    "THREAD_DETAIL_QUERYSET %s",
-                    {
-                        "pk": pk,
-                        "is_authenticated": authenticated,
-                        "queryset_filter": {"user_id": getattr(user, "id", None)},
-                    },
-                )
                 thread = base_qs.filter(user=user).first()
 
             if thread is None and anonymous_id:
-                logger.warning(
-                    "THREAD_DETAIL_QUERYSET %s",
-                    {
-                        "pk": pk,
-                        "is_authenticated": authenticated,
-                        "queryset_filter": {"user__isnull": True, "anonymous_id": anonymous_id},
-                    },
-                )
                 thread = base_qs.filter(user__isnull=True, anonymous_id=anonymous_id).first()
 
             if thread is None:
@@ -221,35 +169,6 @@ class ConciergeThreadDetailView(APIView):
             recommendations = _with_action_state(recommendations)
             recommendations_v2 = _with_action_state(recommendations_v2)
 
-            logger.warning(
-                "THREAD_DETAIL_RECOMMENDATION_KEYS %s",
-                {
-                    "pk": pk,
-                    "recommendations": [
-                        {
-                            "shrine_id": r.get("shrine_id"),
-                            "id": r.get("id"),
-                            "keys": sorted(list(r.keys())),
-                            "has_rank_explanation": "rank_explanation" in r,
-                            "has_rank_comparison": "rank_comparison" in r,
-                        }
-                        for r in (recommendations or [])[:3]
-                        if isinstance(r, dict)
-                    ],
-                    "recommendations_v2": [
-                        {
-                            "shrine_id": r.get("shrine_id"),
-                            "id": r.get("id"),
-                            "keys": sorted(list(r.keys())),
-                            "has_rank_explanation": "rank_explanation" in r,
-                            "has_rank_comparison": "rank_comparison" in r,
-                        }
-                        for r in (recommendations_v2 or [])[:3]
-                        if isinstance(r, dict)
-                    ],
-                },
-            )
-
             payload = {
                 "id": thread.id,
                 "title": thread.title,
@@ -275,11 +194,10 @@ class ConciergeThreadDetailView(APIView):
             sql_total_ms = round(sum(float(q["time"]) * 1000 for q in connection.queries), 1)
 
             logger.info(
-                "[perf] thread_detail total_ms=%s sql_count=%s sql_total_ms=%s pk=%s",
+                "[perf] thread_detail total_ms=%s sql_count=%s sql_total_ms=%s",
                 total_ms,
                 len(connection.queries),
                 sql_total_ms,
-                pk,
             )
 
             slow_queries = sorted(
@@ -290,10 +208,9 @@ class ConciergeThreadDetailView(APIView):
 
             for i, q in enumerate(slow_queries, start=1):
                 logger.info(
-                    "[perf] slow_sql rank=%s time_ms=%s sql=%s",
+                    "[perf] slow_sql rank=%s time_ms=%s",
                     i,
                     round(float(q["time"]) * 1000, 1),
-                    q["sql"][:1000],
                 )
 
 
