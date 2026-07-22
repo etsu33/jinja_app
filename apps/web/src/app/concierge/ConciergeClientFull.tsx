@@ -39,6 +39,7 @@ const conciergeCardClass = "rounded-3xl border border-stone-200/45 bg-white/75 p
 
 import { isValidISODate, normalizeBirthdateInput } from "@/lib/date/normalizeBirthdateInput";
 import { track } from "@/lib/analytics/track";
+import { trackWebDirection } from "@/lib/analytics/directionEvents";
 import { buildPreviousConsultationSummary } from "@/lib/concierge/buildPreviousConsultationSummary";
 import { compareState } from "@/lib/concierge/compareState";
 import PremiumStateDeltaCard from "@/features/concierge/components/PremiumStateDeltaCard";
@@ -1049,8 +1050,8 @@ export default function ConciergeClientFull() {
     }
     setLocationError(null);
     navigator.geolocation.getCurrentPosition(
-      (position) => setUserOrigin({ latitude: position.coords.latitude, longitude: position.coords.longitude, source: "device", displayName: "現在地", accuracy: "precise" }),
-      () => setLocationError("現在地を取得できませんでした。位置情報の許可を確認してください。"),
+      (position) => { setUserOrigin({ latitude: position.coords.latitude, longitude: position.coords.longitude, source: "device", displayName: "現在地", accuracy: "precise" }); trackWebDirection("direction_origin_result", { origin_type: "device", result: "success" }); },
+      (error) => { setLocationError("現在地を取得できませんでした。位置情報の許可を確認してください。"); trackWebDirection("direction_origin_result", { origin_type: "device", result: error.code === 1 ? "denied" : "failed" }); },
       { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 },
     );
   }, []);
@@ -1769,15 +1770,15 @@ export default function ConciergeClientFull() {
               onPickExample={onPickExample}
               isBusy={isBusy}
               canSend={canSend}
-              onSubmit={() => void safeSend(needText.trim(), { kind: "need_submit", textLen: needText.trim().length })}
+              onSubmit={() => { trackWebDirection("direction_condition_submitted", { has_visit_date: !!plannedVisitDate, has_origin: !!userOrigin }); void safeSend(needText.trim(), { kind: "need_submit", textLen: needText.trim().length }); }}
               onClear={() => {
                 setNeedText("");
                 setEntryValidationError(null);
               }}
               plannedVisitDate={plannedVisitDate}
-              setPlannedVisitDate={setPlannedVisitDate}
+              setPlannedVisitDate={(value) => { setPlannedVisitDate(value); if (value) trackWebDirection("direction_visit_date_set"); }}
               origin={userOrigin}
-              onOriginChange={setUserOrigin}
+              onOriginChange={(value) => { setUserOrigin(value); if (value) trackWebDirection("direction_origin_result", { origin_type: value.source, result: "selected" }); }}
               locationError={locationError}
               onUseCurrentLocation={useCurrentLocation}
             />

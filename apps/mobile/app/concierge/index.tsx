@@ -32,6 +32,7 @@ import {
 } from "../../../../packages/shared/directionReference";
 import { toOriginPayload, type UserOrigin } from "../../../../packages/shared/userOrigin";
 import { getOriginSession } from "../../lib/originSession";
+import { trackMobileDirection } from "../../lib/directionEvents";
 
 // ────────────────────────────────────────────
 // 型
@@ -93,6 +94,7 @@ type RecommendationCard = {
   actionSuggestionV4Preview?: ActionSuggestionV4Preview | null;
   directionReference?: DirectionReference | null;
 };
+const directionImpressions = new Set<string>();
 
 type ActionSuggestionV4Action = {
   label: string;
@@ -472,6 +474,7 @@ function ResultCard({
 }) {
   const reasonFactItems = buildReasonFactItems(card.reasonFacts);
   const actionSuggestionV4Preview = card.actionSuggestionV4Preview;
+  React.useEffect(() => { if (!card.directionReference?.matched || directionImpressions.has(card.id)) return; directionImpressions.add(card.id); trackMobileDirection("direction_match_impression", { matched: true, recommendation_rank: rank }); }, [card.directionReference?.matched, card.id, rank]);
   return (
     <View style={styles.card}>
       {/* ランクバッジ */}
@@ -659,6 +662,7 @@ export default function ConciergeScreen() {
     const trimmed = text.trim();
     if (!trimmed && !hasAnyCondition) return;
     const queryText = trimmed || "条件から合う神社を知りたい";
+    trackMobileDirection("direction_condition_submitted", { has_visit_date: !!plannedVisitDate, has_origin: !!origin });
 
     setConsultationText(queryText);
     setInput("");
@@ -699,12 +703,12 @@ export default function ConciergeScreen() {
   const useCurrentLocation = async () => {
     setLocationStatus("loading");
     const permission = await Location.requestForegroundPermissionsAsync();
-    if (permission.status !== "granted") { setLocationStatus("error"); return; }
+    if (permission.status !== "granted") { setLocationStatus("error"); trackMobileDirection("direction_origin_result", { origin_type: "device", result: "denied" }); return; }
     try {
       const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      setOrigin({ latitude: current.coords.latitude, longitude: current.coords.longitude, source: "device", displayName: "現在地", accuracy: "precise" });
+      setOrigin({ latitude: current.coords.latitude, longitude: current.coords.longitude, source: "device", displayName: "現在地", accuracy: "precise" }); trackMobileDirection("direction_origin_result", { origin_type: "device", result: "success" });
       setLocationStatus("ready");
-    } catch { setLocationStatus("error"); }
+    } catch { setLocationStatus("error"); trackMobileDirection("direction_origin_result", { origin_type: "device", result: "failed" }); }
   };
 
   const handleChangeConditions = () => {
@@ -728,6 +732,9 @@ export default function ConciergeScreen() {
     action: ActionSuggestionV4Action;
     slot: "primary" | "secondary";
   }) => {
+    if (action.actionType === "route_open" && card.directionReference?.matched) {
+      trackMobileDirection("direction_match_route_clicked", { matched: true, recommendation_rank: rank });
+    }
     const actionSuggestionId = buildActionSuggestionId({ card, action, slot, rank });
     const hasPreview = Boolean(card.actionSuggestionV4Preview?.preview);
 
@@ -766,6 +773,7 @@ export default function ConciergeScreen() {
   };
 
   const handleDetail = (card: RecommendationCard) => {
+    if (card.directionReference?.matched) trackMobileDirection("direction_match_detail_opened", { matched: true });
     if (!card.shrineId) return;
     router.push({
       pathname: "/shrines/[id]",
@@ -835,11 +843,11 @@ export default function ConciergeScreen() {
               birthdate={birthdate}
               onChangeBirthdate={setBirthdate}
               plannedVisitDate={plannedVisitDate}
-              onChangePlannedVisitDate={setPlannedVisitDate}
+              onChangePlannedVisitDate={(value)=>{setPlannedVisitDate(value);if(value)trackMobileDirection("direction_visit_date_set");}}
               locationStatus={locationStatus}
               onUseCurrentLocation={() => void useCurrentLocation()}
               origin={origin}
-              onChangeOrigin={setOrigin}
+              onChangeOrigin={(value)=>{setOrigin(value);if(value)trackMobileDirection("direction_origin_result",{origin_type:value.source,result:"selected"});}}
               selectedVisitStyle={selectedVisitStyle}
               onSelectVisitStyle={setSelectedVisitStyle}
               selectedGoriyaku={selectedGoriyaku}
