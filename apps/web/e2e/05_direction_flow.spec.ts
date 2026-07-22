@@ -33,8 +33,10 @@ test.describe("方位条件のWeb E2E", () => {
     await context.setGeolocation({ latitude: 35.681236, longitude: 139.767125 });
     await page.goto("/concierge");
 
-    await page.getByRole("button", { name: "現在地を使用" }).click();
-    await expect(page.getByText("設定中：現在地")).toBeVisible();
+    await page.getByRole("radio", { name: "現在地を使用" }).click();
+    await expect(
+      page.getByText("現在の出発地点は現在地、確定した位置です。"),
+    ).toBeVisible();
     await page.getByLabel("参拝予定日（任意）").fill("2026-09-15");
     await fillAndSubmit(page);
 
@@ -59,12 +61,16 @@ test.describe("方位条件のWeb E2E", () => {
     await context.clearPermissions();
     await page.goto("/concierge");
 
-    await page.getByRole("button", { name: "現在地を使用" }).click();
-    await expect(page.getByText(/手動入力を選択できます/)).toBeVisible();
-    await page.getByRole("button", { name: "駅名・住所から指定" }).click();
+    await page.getByRole("radio", { name: "現在地を使用" }).click();
+    await expect(
+      page.getByRole("button", { name: "駅名・住所から指定する" }),
+    ).toBeVisible();
+    await page.getByRole("radio", { name: "駅名・住所から指定" }).click();
     await page.getByLabel("駅名または住所").fill("東京駅");
-    await page.getByRole("button", { name: "東京駅", exact: true }).click();
-    await expect(page.getByText("設定中：東京駅")).toBeVisible();
+    await page.getByRole("option", { name: "東京駅", exact: true }).click();
+    await expect(
+      page.getByText("現在の出発地点は東京駅、確定した位置です。"),
+    ).toBeVisible();
     await page.getByLabel("参拝予定日（任意）").fill("2026-09-15");
     await fillAndSubmit(page);
 
@@ -80,7 +86,7 @@ test.describe("方位条件のWeb E2E", () => {
     const captured = await installDirectionScenario(page, { recommendationId: 503, directionReference: reference });
     await page.goto("/concierge");
 
-    await page.getByRole("button", { name: "都道府県から指定" }).click();
+    await page.getByRole("radio", { name: "都道府県から指定" }).click();
     await page.getByLabel("都道府県").selectOption({ label: "東京都" });
     await expect(page.getByText(/東京都のおおよその位置を出発地点として使用します/)).toBeVisible();
     await page.getByLabel("参拝予定日（任意）").fill("2026-09-15");
@@ -95,7 +101,7 @@ test.describe("方位条件のWeb E2E", () => {
     const captured = await installDirectionScenario(page, { recommendationId: 504 });
     await page.goto("/concierge");
 
-    await page.getByRole("button", { name: "方位情報を使用しない" }).click();
+    await page.getByRole("radio", { name: "方位情報を使用しない" }).click();
     await page.getByLabel("参拝予定日（任意）").fill("2026-09-15");
     await fillAndSubmit(page);
 
@@ -112,5 +118,46 @@ test.describe("方位条件のWeb E2E", () => {
     await fillAndSubmit(page);
     await expect(page.getByText("固定レスポンス神社505")).toBeVisible();
     await expect(page.getByText("方位の参考情報")).toHaveCount(0);
+  });
+
+  test("キーボードだけで手動候補を選択して相談を送信できる", async ({ page }) => {
+    const captured = await installDirectionScenario(page, { recommendationId: 506, directionReference: mismatchedDirectionReference });
+    await page.goto("/concierge");
+
+    const manualMode = page.getByRole("radio", { name: "駅名・住所から指定" });
+    await manualMode.focus();
+    await expect(manualMode).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(manualMode).toHaveAttribute("aria-checked", "true");
+
+    const input = page.getByRole("combobox", { name: "駅名または住所" });
+    await input.focus();
+    await page.keyboard.type("東京駅");
+    const option = page.getByRole("option", { name: "東京駅" });
+    await option.focus();
+    await expect(option).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page.getByText("現在の出発地点は東京駅、確定した位置です。")).toBeVisible();
+
+    await page.getByLabel("必要なら、今の状況を少しだけ書く").fill(consultation);
+    const submit = page.getByRole("button", { name: "この相談で神社を提案してもらう" });
+    await submit.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByText("固定レスポンス神社506")).toBeVisible();
+    expect(captured.chatPayloads).toHaveLength(1);
+  });
+
+  test("320px相当かつ文字拡大時も横方向へ崩れない", async ({ page }) => {
+    await installDirectionScenario(page, { recommendationId: 507 });
+    await page.setViewportSize({ width: 320, height: 700 });
+    await page.goto("/concierge");
+    await page.addStyleTag({ content: "html { font-size: 20px !important; }" });
+    await page.getByRole("radio", { name: "駅名・住所から指定" }).click();
+
+    const sizes = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, clientWidth: document.documentElement.clientWidth }));
+    expect(sizes.scrollWidth).toBeLessThanOrEqual(sizes.clientWidth);
+    for (const radio of await page.getByRole("radio").all()) {
+      expect((await radio.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
+    }
   });
 });

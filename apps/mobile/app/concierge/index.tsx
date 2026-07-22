@@ -528,7 +528,7 @@ function ResultCard({
 
       {reasonDisplay.directionReference ? (
         <View style={styles.directionReferenceCard}>
-          <Text style={styles.directionReferenceLabel}>方位の参考情報</Text>
+          <Text accessibilityRole="header" style={styles.directionReferenceLabel}>方位の参考情報</Text>
           <Text style={styles.directionReferenceText}>現在地から見た方角：{reasonDisplay.directionReference.actual_direction}</Text>
           <Text style={styles.directionReferenceText}>予定日の参考方位：{reasonDisplay.directionReference.reference_directions.join("・")}</Text>
           <Text style={styles.directionReferenceText}>{directionReferenceMatchCopy(reasonDisplay.directionReference)}</Text>
@@ -1251,20 +1251,21 @@ const styles = StyleSheet.create({
   },
   directionReferenceLabel: {
     color: theme.goldSoft,
-    fontSize: 10,
+    fontSize: 14,
+    lineHeight: 21,
     fontWeight: "900",
     letterSpacing: 0.7,
   },
   directionReferenceText: {
     color: theme.mutedSoft,
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: 14,
+    lineHeight: 21,
     fontWeight: "600",
   },
   directionReferenceNote: {
     color: theme.muted,
-    fontSize: 11,
-    lineHeight: 17,
+    fontSize: 14,
+    lineHeight: 21,
     fontWeight: "600",
   },
 

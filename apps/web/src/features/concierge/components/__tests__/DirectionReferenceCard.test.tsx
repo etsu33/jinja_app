@@ -13,7 +13,7 @@ const reference = {
 describe("DirectionReferenceCard", () => {
   it("Backend契約がある場合だけ非断定的な方位情報を表示する", () => {
     const { rerender } = render(<DirectionReferenceCard reference={reference} />);
-    expect(screen.getByText("方位の参考情報")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 3, name: "方位の参考情報" })).toBeInTheDocument();
     expect(screen.getByText("現在地から見た方角が、予定日の参考方位と一致しています。")).toBeInTheDocument();
     expect(screen.queryByText(/運気が上がる|行くべき|吉方位/)).not.toBeInTheDocument();
 
