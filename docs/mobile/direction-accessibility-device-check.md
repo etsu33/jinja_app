@@ -9,7 +9,7 @@
 | 端末 | 未記録 | 未記録 |
 | OS | 未記録 | 未記録 |
 | アプリ版／ビルド | 未記録 | 未記録 |
-| 確認コミット | `1ffb264a` | `1ffb264a` |
+| 確認コミット | `1ffb264a` | `a2f6e25a`（静的レビュー・自動テストのみ） |
 | 読み上げ機能 | VoiceOver | TalkBack |
 | 確認者／確認日 | 未記録 | 未記録 |
 
@@ -174,28 +174,54 @@
 | Web Chromium | Playwright Chromium | 自動テスト済み | 2026-07-22 | 320px、文字拡大、キーボード、ジオコード500、未知方式、経路 |
 | iOS Simulator | iPhone 16e / iOS 26.1 / `1ffb264a` | 部分確認済み | 2026-07-22 | 画面証跡で正式な4タブ（ホーム・相談・記録・マイページ）のみ表示、designタブなし。マージ前のExpo iOS exportでRoute警告なし。実端末確認の代替にはしない |
 | Android Emulator | Pixel 7a / Android 16（API 36.1）/ Expo Go | 部分確認済み | 2026-07-22 | Expo SDK 57互換依存への同期後に起動と正式な4タブを確認。`theme.ts`を`app`外へ移動しRoute警告が消えたことを確認。4択操作、文字拡大、TalkBack、OS権限、外部地図は未確認 |
+| Android Emulator（4択・戻る操作・文字拡大・TalkBack） | 実施不可 | 未実施 | 2026-07-22 | 作業環境にAndroid SDK／Emulatorが存在せず（`adb`・`emulator`コマンド不在、`ANDROID_HOME`未設定）、起動・タップ操作・TalkBack読み上げ・文字拡大の目視確認を実施できなかった。下記「静的コードレビュー」で代替できる範囲のみ確認し、対話的な検証は実端末確認待ちとして残す |
 | Safari + VoiceOver | 未確認 | 未実施 | - | Web実端末確認 |
 | iOS + VoiceOver | 未確認 | 未実施 | - | OS権限・外部地図を含む |
 | Android + TalkBack | 未確認 | 未実施 | - | OS権限・外部地図を含む |
 
+## 静的コードレビュー（2026-07-22・Android Emulator代替）
+
+Android Emulatorでの対話操作ができない環境制約のため、`develop` の `a2f6e25a` で方位関連コンポーネントのソースを直接確認した。**これはTalkBackや実タップ操作の代替ではなく、コード上の明白な不備がないかの一次スクリーニングに限る。**
+
+| 確認対象 | ファイル | 結果 |
+| --- | --- | --- |
+| 出発地点4択のヒットサイズ | [`components/MobileOriginSelector.tsx`](../../apps/mobile/components/MobileOriginSelector.tsx) | 4択ボタン・検索結果・都道府県ボタンはすべて`minHeight: 44`を指定（コード上は44dp/pt要件を満たす想定。実機での実測ではない） |
+| 4択のradio実装 | 同上 | `accessibilityRole="radio"`と`accessibilityState={{ checked, disabled }}`を各ボタンに付与。選択変更時は`onChange(null)`で前の地点情報を無効化 |
+| 都道府県の概算表示 | 同上 | 選択後に「〜のおおよその位置を出発地点として使用します」を`Text`で表示（TalkBack読み上げ対象になるコード構造） |
+| 検索状態の読み上げ | 同上／[`packages/shared/directionAccessibility.ts`](../../packages/shared/directionAccessibility.ts) | 検索中・0件・失敗の文言を`accessibilityLiveRegion="polite"`のTextで表示するコードを確認 |
+| 方位カード見出し | [`app/concierge/index.tsx:532`](../../apps/mobile/app/concierge/index.tsx) | 「方位の参考情報」に`accessibilityRole="header"`を付与 |
+| 一致／不一致の文言差別化 | [`packages/shared/directionReference.ts:31`](../../packages/shared/directionReference.ts) | `directionReferenceMatchCopy`が一致／不一致で異なる文章を返す（色だけに依存しない） |
+| Androidの戻る操作 | アプリ全体 | `BackHandler`／`hardwareBackPress`のカスタム実装は見つからず、Expo Router既定のスタック遷移に委ねる構成。キーボード表示中の戻る挙動やタブへの意図しない遷移は、Emulatorでの対話操作でのみ確認可能なためコードレビューでは判定不可 |
+| 分析ログのPII不混入 | [`packages/shared/directionAnalyticsForbiddenKeys.json`](../../packages/shared/directionAnalyticsForbiddenKeys.json)／[`directionAnalyticsQuality.ts`](../../packages/shared/directionAnalyticsQuality.ts) | 緯度経度・住所・駅名・都道府県・生年月日・相談文などを禁止キーとして列挙し、検証ロジックで違反を検出する契約を確認 |
+
+静的レビューの範囲でP0／P1に該当するコード上の明白な不備は見つからなかった。ただし以下は**コードレビューでは判定不可**であり、実端末またはAndroid Emulatorでの対話確認が必須のまま：
+
+- TalkBackの実際の読み上げ順序・フォーカス移動
+- 文字サイズ最大付近での実際の折り返し・重なり・欠落
+- Androidの戻る操作（1操作での復帰、キーボードを閉じる優先順位、タブへの意図しない遷移）
+- 44dpヒットサイズの実タップでの操作性（コード上のminHeightは実機の統合密度・タッチ精度と一致するとは限らない）
+- OS位置情報権限ダイアログとの実相互作用
+
 ## 自動回帰確認（2026-07-22）
 
-`develop` の `1ffb264a` で次を再実行した。これらは縮退契約とプライバシー契約の回帰根拠であり、VoiceOver／TalkBack、OS権限画面、文字サイズ、外部地図遷移の実端末確認を代替しない。
+`develop` の `a2f6e25a`（`fix/mobile-expo-sdk57-compatibility` マージ後）で次を再実行した。これらは縮退契約とプライバシー契約の回帰根拠であり、VoiceOver／TalkBack、OS権限画面、文字サイズ、外部地図遷移の実端末確認を代替しない。
 
 | 検査 | 結果 | 確認内容 |
 | --- | --- | --- |
+| `expo install --check` | 成功 | 依存関係がSDK 57と整合 |
 | Mobile typecheck | 成功 | `tsc -p tsconfig.json --noEmit` |
 | Mobile全テスト | 14ファイル／90テスト成功 | 4タブ構造、方位表示契約、分析失敗時の操作継続を含む |
 | Expo Router構造テスト | 2テスト成功 | `app/theme.ts`の不在、`design/theme.ts`への配置、不要なtheme routeの非登録 |
-| Backend重点回帰 | 33テスト成功 | Cookie・匿名ID・user_id・thread_idのログ非混入、方位計算例外、候補単位の失敗分離、不正方位情報の省略 |
+| `git diff --check` | 成功 | 空白混入なし |
 
 ## 暫定リリース判定（2026-07-22）
 
-- 自動回帰およびSimulator確認でP0／P1は検出されていない。
-- iOS／Android実端末、VoiceOver／TalkBack、OS権限、最大付近の文字サイズ、外部地図遷移は未確認。
-- Android Emulatorでは起動と4タブのみ確認済み。4択切替、方位無効、都道府県概算、戻る操作、文字拡大、TalkBackは未確認であり、実端末確認の代替にはしない。
+- `fix/mobile-expo-sdk57-compatibility`は[#2146](https://github.com/etsu33/jinja_app/pull/2146)としてdevelopへマージ済み（`a2f6e25a`）。
+- 本ラウンドでは作業環境にAndroid SDK／Emulatorが存在せず、Android Emulatorでの4択操作・方位無効・都道府県概算・戻る操作・文字拡大・TalkBackの対話確認を実施できなかった。静的コードレビューと自動テストでP0／P1に該当するコード上の不備は検出されていないが、これは対話確認の代替にはならない。
+- iOS／Android実端末、VoiceOver／TalkBack、OS権限、最大付近の文字サイズ、外部地図遷移は引き続き未確認。
+- Android Emulatorでは起動と4タブのみ確認済み（別ラウンド）。4択切替、方位無効、都道府県概算、戻る操作、文字拡大、TalkBackは未確認であり、実端末確認の代替にはしない。
 - 完了条件を満たしていないため、実端末リリース判定は **保留** とする。
-- 実端末でP0／P1を検出した場合のみ `fix/direction-device-qa-round2` を作成し、修正後に両OSの共通フローを再確認する。
+- 実端末またはAndroid SDKが利用可能な環境でP0／P1を検出した場合のみ `fix/direction-device-qa-round2` を作成し、修正後に両OSの共通フローを再確認する。
 
 ## 参照契約
 
