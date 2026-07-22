@@ -76,6 +76,7 @@ export function ConditionFieldsCard({
           <Text style={styles.caption}>命式や吉方位の参考にします</Text>
         </View>
         <TextInput
+          accessibilityLabel="誕生日"
           value={birthdate}
           onChangeText={onChangeBirthdate}
           placeholder="例: 1984-05-15"
@@ -92,11 +93,11 @@ export function ConditionFieldsCard({
           <Text style={styles.label}>参拝予定日</Text>
           <Text style={styles.caption}>予定日の年盤・月盤から吉方位を計算します</Text>
         </View>
-        <Pressable onPress={openDatePicker} disabled={disabled} style={styles.selectInput} accessibilityRole="button">
+        <Pressable onPress={openDatePicker} disabled={disabled} style={styles.selectInput} accessibilityRole="button" accessibilityLabel="参拝予定日を選択" accessibilityValue={{ text: plannedVisitDate || "未選択" }} accessibilityState={{ disabled: !!disabled }}>
           <Text style={plannedVisitDate ? styles.selectInputText : styles.selectPlaceholder}>{plannedVisitDate || "日付を選択"}</Text>
           <Text style={styles.selectChevron}>›</Text>
         </Pressable>
-        {plannedVisitDate ? <Pressable onPress={() => onChangePlannedVisitDate("")}><Text style={styles.clearText}>予定日を解除</Text></Pressable> : null}
+        {plannedVisitDate ? <Pressable onPress={() => onChangePlannedVisitDate("")} style={styles.clearButton} accessibilityRole="button" accessibilityLabel="予定日を解除"><Text style={styles.clearText}>予定日を解除</Text></Pressable> : null}
       </View>
 
       <View style={styles.divider} />
@@ -124,10 +125,14 @@ export function ConditionFieldsCard({
             return (
               <Pressable
                 key={option}
+                disabled={disabled}
                 onPress={() => onSelectVisitStyle(active ? undefined : option)}
                 style={[styles.pill, active && styles.pillActive]}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: active, disabled: !!disabled }}
+                accessibilityLabel={option}
               >
-                <Text style={[styles.pillText, active && styles.pillTextActive]}>{option}</Text>
+                <Text style={[styles.pillText, active && styles.pillTextActive]}>{active ? `✓ ${option}` : option}</Text>
               </Pressable>
             );
           })}
@@ -147,10 +152,14 @@ export function ConditionFieldsCard({
             return (
               <Pressable
                 key={option}
+                disabled={disabled}
                 onPress={() => onSelectGoriyaku(active ? undefined : option)}
                 style={[styles.pill, active && styles.pillActive]}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: active, disabled: !!disabled }}
+                accessibilityLabel={option}
               >
-                <Text style={[styles.pillText, active && styles.pillTextActive]}>{option}</Text>
+                <Text style={[styles.pillText, active && styles.pillTextActive]}>{active ? `✓ ${option}` : option}</Text>
               </Pressable>
             );
           })}
@@ -165,6 +174,7 @@ export function ConditionFieldsCard({
           <Text style={styles.caption}>場所や時間の希望があれば自由にどうぞ</Text>
         </View>
         <TextInput
+          accessibilityLabel="相談補助条件"
           value={supportText}
           onChangeText={onChangeSupportText}
           placeholder="例: 駅から近い場所、静かな場所、短時間で行ける場所"
@@ -231,6 +241,7 @@ const styles = StyleSheet.create({
   selectPlaceholder: { color: theme.mutedDark, fontSize: 14 },
   selectChevron: { color: theme.gold, fontSize: 22 },
   clearText: { color: theme.muted, fontSize: 12, fontWeight: "700", alignSelf: "flex-end" },
+  clearButton: { minHeight: 44, alignSelf: "flex-end", justifyContent: "center", paddingHorizontal: 8 },
   locationButton: { minHeight: 44, borderWidth: 1, borderColor: theme.borderSoft, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: theme.surface },
   locationButtonReady: { borderColor: theme.borderGold, backgroundColor: theme.gold },
   locationButtonText: { color: theme.text, fontSize: 13, fontWeight: "800" },
@@ -264,11 +275,13 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   pill: {
+    minHeight: 44,
     borderWidth: 1,
     borderColor: theme.borderSoft,
     borderRadius: 999,
     paddingHorizontal: 11,
-    paddingVertical: 6,
+    paddingVertical: 10,
+    justifyContent: "center",
     backgroundColor: "transparent",
   },
   pillActive: {

@@ -92,7 +92,7 @@ describe("ConciergeEntryCard", () => {
       <ConciergeEntryCard {...baseProps} needText="参拝したい" plannedVisitDate="2026-09-15" setPlannedVisitDate={setPlannedVisitDate} hasOrigin={false} onUseCurrentLocation={onUseCurrentLocation} />,
     );
     expect(screen.getByRole("button", { name: "この相談で神社を提案してもらう" })).toBeEnabled();
-    fireEvent.click(screen.getByRole("button", { name: "現在地を使用" }));
+    fireEvent.click(screen.getByRole("radio", { name: "現在地を使用" }));
     expect(onUseCurrentLocation).toHaveBeenCalledTimes(1);
 
     rerender(<ConciergeEntryCard {...baseProps} needText="参拝したい" plannedVisitDate="2026-09-15" hasOrigin />);
