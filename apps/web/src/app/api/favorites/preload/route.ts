@@ -3,7 +3,7 @@ import { bffFetchWithAuthFromReq } from "@/lib/server/bffFetch";
 import { favoriteMatchKey } from "@/lib/favorites/normalize";
 
 export async function POST(req: NextRequest) {
-  let shrineIds: number[] = [];
+  let shrineIds: number[];
 
   try {
     const body = await req.json();

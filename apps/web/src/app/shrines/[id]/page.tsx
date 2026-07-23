@@ -261,7 +261,7 @@ export default async function Page({ params, searchParams }: Props) {
 
   const { guestMode, ...initialFavorite } = await getShrineFavoriteInitialState(numericId);
 
-  let publicGoshuins: Awaited<ReturnType<typeof fetchPublicGoshuinsForShrineServer>> = [];
+  let publicGoshuins: Awaited<ReturnType<typeof fetchPublicGoshuinsForShrineServer>>;
   try {
     publicGoshuins = await fetchPublicGoshuinsForShrineServer(numericId);
   } catch (e) {
