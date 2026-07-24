@@ -1,13 +1,48 @@
+import * as React from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { View, Text, ScrollView, Pressable, Image, StyleSheet } from "react-native";
 import { SHRINES } from "../../data/shrines";
 import { kamimusubiDark as theme } from "../../design/theme";
+import { spacing } from "../../design/spacing";
+import { StateCard } from "../../components/common/StateCard";
+import Button from "../../components/ui/Button";
+import { ShrineSearchMap } from "../../components/search/ShrineSearchMap";
+import { SelectedShrineMapCard } from "../../components/search/SelectedShrineMapCard";
+import { fetchShrineMapPoints, type ShrineMapPoint } from "../../lib/shrineMap";
 
 export default function SearchPage() {
   const router = useRouter();
   const { q, filters } = useLocalSearchParams<{ q?: string; filters?: string }>();
   const query = (q ?? "").toLowerCase();
   const selected = (filters ?? "").split(",").filter(Boolean);
+
+  const [mapPoints, setMapPoints] = React.useState<ShrineMapPoint[]>([]);
+  const [mapStatus, setMapStatus] = React.useState<"loading" | "ready" | "error">("loading");
+  const [selectedShrineId, setSelectedShrineId] = React.useState<string | null>(null);
+
+  const loadMapPoints = React.useCallback(async () => {
+    setMapStatus("loading");
+    try {
+      const points = await fetchShrineMapPoints({ query: q, limit: 50 });
+      setMapPoints(points);
+      setMapStatus("ready");
+    } catch {
+      setMapPoints([]);
+      setMapStatus("error");
+    }
+  }, [q]);
+
+  React.useEffect(() => {
+    void loadMapPoints();
+  }, [loadMapPoints]);
+
+  React.useEffect(() => {
+    if (selectedShrineId && !mapPoints.some((point) => point.id === selectedShrineId)) {
+      setSelectedShrineId(null);
+    }
+  }, [mapPoints, selectedShrineId]);
+
+  const selectedMapShrine = mapPoints.find((point) => point.id === selectedShrineId) ?? null;
 
   const filtered = SHRINES.filter((s) => {
     const textHit =
@@ -54,6 +89,39 @@ export default function SearchPage() {
         ) : (
           <Text style={styles.summaryHint}>条件なしで、登録神社を一覧表示しています。</Text>
         )}
+      </View>
+
+      <View style={styles.mapSection}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>地図で探す</Text>
+        </View>
+
+        {mapStatus === "loading" ? (
+          <StateCard title="地図を読み込み中" description="神社の位置情報を確認しています。" />
+        ) : null}
+
+        {mapStatus === "error" ? (
+          <View style={styles.mapErrorWrap}>
+            <StateCard title="地図を読み込めませんでした" description="通信状況を確認して、もう一度お試しください。" />
+            <Button title="もう一度試す" variant="outline" size="compact" onPress={() => void loadMapPoints()} accessibilityLabel="地図をもう一度読み込む" />
+          </View>
+        ) : null}
+
+        {mapStatus === "ready" && mapPoints.length === 0 ? (
+          <StateCard
+            title="地図に表示できる神社がありません"
+            description="この検索結果には地図へ表示できる位置情報がありません。神社一覧はそのままご覧いただけます。"
+          />
+        ) : null}
+
+        {mapStatus === "ready" && mapPoints.length > 0 ? (
+          <View style={styles.mapReadyWrap}>
+            <ShrineSearchMap points={mapPoints} selectedId={selectedShrineId} onSelect={setSelectedShrineId} />
+            {selectedMapShrine ? (
+              <SelectedShrineMapCard shrine={selectedMapShrine} onDetail={() => router.push(`/shrines/${selectedMapShrine.id}`)} />
+            ) : null}
+          </View>
+        ) : null}
       </View>
 
       <View style={styles.popularSection}>
@@ -209,6 +277,16 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: 8,
     marginTop: 12,
+  },
+  mapSection: {
+    marginBottom: 26,
+  },
+  mapReadyWrap: {
+    gap: spacing.mdGap,
+  },
+  mapErrorWrap: {
+    gap: spacing.mdGap,
+    alignItems: "flex-start",
   },
   tag: {
     borderRadius: 999,
