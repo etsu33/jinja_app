@@ -383,3 +383,108 @@ PMTiles方式では「1 session」に対して発生するR2への実際のリ�
 - ブランチ: `audit/web-map-tile-provider-selection`
 - 現行実装の確認基準コミット: `a5e9579e`(develop、前回監査PR #2171マージ直後)
 - 外部情報の取得日: 2026-07-25(WebSearch/WebFetch実施日。料金・仕様は変更され得るため、契約前に再確認すること)
+
+---
+
+## 24. 追記: MapTiler Cloud本番provider設定の運用手順(chore/web-map-provider-production-config)
+
+MapLibre Web地図の実装(`feature/web-maplibre-foundation`、develop取り込み済み、確認コミット`c4e7c68d`)を前提に、MapTiler Cloudを暫定採用する場合の運用構造を整理する。**契約・APIキー発行・実際のEAS環境変数設定は本追記の対象外であり、実行していない。**
+
+### 24.1 コード参照箇所
+
+`EXPO_PUBLIC_WEB_MAP_STYLE_URL`は[apps/mobile/components/search/ShrineSearchMap.web.tsx:20](../../apps/mobile/components/search/ShrineSearchMap.web.tsx)の1箇所のみで参照される。
+
+```ts
+const STYLE_URL = process.env.EXPO_PUBLIC_WEB_MAP_STYLE_URL;
+```
+
+未設定の場合はMapを生成せず既存の一覧fallbackを表示する(コード変更なしで確認済み、`feature/web-maplibre-foundation`のPhase 7実装)。値そのものをコードへ直書きする箇所は存在しない。
+
+### 24.2 development / preview / productionの環境分離方法
+
+[Environment variables in EAS(公式ドキュメント)](https://docs.expo.dev/eas/environment-variables/)によれば、EASは`development`/`preview`/`production`の3環境を標準でサポートし、環境ごとに独立した変数セットを持てる。設定は`eas env:set`コマンドで行う(値は本追記に記載しない):
+
+```sh
+eas env:set --name EXPO_PUBLIC_WEB_MAP_STYLE_URL --value <style-json-url> --environment development --visibility plaintext
+eas env:set --name EXPO_PUBLIC_WEB_MAP_STYLE_URL --value <style-json-url> --environment preview --visibility plaintext
+eas env:set --name EXPO_PUBLIC_WEB_MAP_STYLE_URL --value <style-json-url> --environment production --visibility plaintext
+```
+
+`apps/mobile/eas.json`(既存、無変更)は`build.development`/`build.preview`/`build.production`の各プロファイルに`"environment"`フィールドを既に持っており、ビルド時の環境紐付けは整っている。ただし**この`eas.json`の`environment`フィールドはネイティブビルド(`eas build`)向けの設定であり、`eas deploy`(EAS Hosting)は`--environment`フラグで直接環境を指定する別経路である**([EAS hosting workflow](https://docs.expo.dev/eas/hosting/workflows/)、[Publish your web app](https://docs.expo.dev/deploy/web/)より)。Web版のデプロイコマンド自体(`apps/mobile/package.json`の`"deploy": "npx expo export -p web && npx eas-cli@latest deploy"`)は無変更。
+
+### 24.3 visibility(secret扱いにしない理由)
+
+[Environment variables in EAS](https://docs.expo.dev/eas/environment-variables/)によれば、visibilityには`plaintext`/`sensitive`/`secret`の3段階があり、`secret`は「EAS Buildまたはワークフロージョブ内でのみ利用可能で、Webサイト・EAS CLI上でも読み取れない」値向けであり、**アプリへ埋め込む値の用途ではない**。さらに[EAS hosting workflow](https://docs.expo.dev/eas/hosting/workflows/)の関連情報によれば、EAS Hostingのデプロイでは`plaintext`または`sensitive`のみ利用可能で`secret`は使えない。
+
+`EXPO_PUBLIC_*`接頭辞の値は`expo export`実行時にクライアントバンドルへインライン化される(既存の`EXPO_PUBLIC_API_BASE_URL`等と同じ仕組み、前回監査4.3節)ため、**値は元々公開情報として扱う設計であり、`secret`指定は技術的に不適合**。`plaintext`または`sensitive`(ログ上は難読化されるがCLI/Web上では読める)のいずれかを使う。
+
+### 24.4 MapTiler側のdomain制限
+
+前回監査(6節)で確認済みの通り、MapTiler Cloudは"Allowed HTTP origins"(ホワイトリスト方式)でキーの利用ドメインを制限できる。本番ドメインを許可対象へ追加する具体的な作業はMapTilerダッシュボード側の操作であり、本監査の対象外(母艦判断事項、24.6節)。
+
+### 24.5 Preview環境のdomain構成に関する重要な技術的制約
+
+[Deployments and aliases | EAS Hosting](https://docs.expo.dev/eas/hosting/deployments-and-aliases/)によれば、EAS Hostingの各デプロイは
+
+```text
+https://{preview-subdomain}--{deployment-id}.expo.app/
+```
+
+という形式のURLを持ち、**`deployment-id`はデプロイのたびに生成されるランダムな文字列**である(スタブなブランチ単位の固定パターンではない)。本番へpromoteされた場合のみ
+
+```text
+https://{preview-subdomain}.expo.app/
+```
+
+という固定URLになる。
+
+この構造により、**Preview環境のURLはMapTilerの"Allowed HTTP origins"へ事前に個別登録できない**(デプロイのたびにホスト名が変わるため)。ワイルドカードで対応できるかは、MapTiler側が`https://{preview-subdomain}--*.expo.app`のような中間ワイルドカードをサポートするか次第だが、本監査ではこの可否を公式資料で確認できていない(**未確認**)。したがって、Preview環境で実際にMapTilerのstyle URLを設定するかどうかは、次のいずれかを母艦が選択する必要がある:
+
+1. Preview環境では`EXPO_PUBLIC_WEB_MAP_STYLE_URL`を意図的に未設定のままにし、既存の一覧fallbackで動作確認する(domain制限の運用負荷を避ける)
+2. MapTiler側の中間ワイルドカード対応を個別に問い合わせて確認し、対応していれば設定する
+3. Preview環境専用にdomain制限のゆるいAPIキー(使用量上限で保護)を別途発行する
+
+### 24.6 母艦判断事項(前回監査12節の更新)
+
+前回監査(12節)の内容に加え、本追記で新たに判明した事項を含めて整理する:
+
+1. **MapTiler Cloud採用・契約・課金開始の最終承認**(本追記では未実施)
+2. **本番用MapTilerアカウントの管理主体**(誰が所有・請求管理するか)
+3. **本番domainの確定**(本監査ではEAS Hostingの実際のデプロイURL・カスタムドメイン有無を確認できておらず、推測で記載していない。`eas project:info`または実際のEASダッシュボードでの確認が必要)
+4. **development環境のstyle URL方針**(ローカル開発でMapTilerの実キーを使うか、開発用の別キー/未設定運用にするか)
+5. **Preview環境のdomain制限方針**(24.5節の1〜3のいずれを採るか)
+6. **使用量上限・通知の設定方法**(前回監査10節で「未確認」とした、MapTilerダッシュボード側でのアラート設定手順)
+7. **課金超過時の運用ルール**(誰が対応し、どの時点でFlexプランの上限を引き上げるか。現時点で確定した運用ルールはなく、母艦が新たに定義する必要がある)
+8. **実際の`eas env:set`実行者**(EASアカウントへのアクセス権を持つ担当者が、development/preview/productionそれぞれへ値を設定する)
+
+### 24.7 本追記で確認できたこと・できなかったこと
+
+確認できたこと:
+
+- `EXPO_PUBLIC_WEB_MAP_STYLE_URL`はコード上1箇所のみで参照され、未設定時のfallback動作は既存実装で担保されている
+- EAS Environmentsによるdevelopment/preview/production分離の一般的な仕組みとCLIコマンド構文(公式ドキュメントで確認)
+- `secret` visibilityが本用途に不適合である技術的根拠(公式ドキュメントで確認)
+- EAS Hostingのpreviewデプロイがランダムなdeployment-idを持ち、事前のdomain allowlist登録に適さないという技術的制約(公式ドキュメントで確認)
+
+確認できなかったこと(未確認):
+
+- MapTilerの"Allowed HTTP origins"が中間ワイルドカード(`--*.expo.app`のようなパターン)に対応するか
+- 本アプリの実際のEAS Hostingデプロイの`preview-subdomain`名・カスタムドメイン設定有無
+- MapTilerダッシュボードでの使用量アラート設定の具体的な手順画面
+
+これらは契約前・設定作業前に、実際のEAS/MapTilerダッシュボードへアクセスできる担当者が個別に確認する必要がある。
+
+### 24.8 追記の参照資料
+
+- [Environment variables in EAS](https://docs.expo.dev/eas/environment-variables/)
+- [Using Environment variables in EAS](https://docs.expo.dev/eas/environment-variables/usage/)
+- [Web deployments with EAS Workflows](https://docs.expo.dev/eas/hosting/workflows/)
+- [Introduction to EAS Hosting](https://docs.expo.dev/eas/hosting/introduction/)
+- [Deployments and aliases | EAS Hosting](https://docs.expo.dev/eas/hosting/deployments-and-aliases/)
+- [Publish your web app](https://docs.expo.dev/deploy/web/)
+
+### 24.9 追記日と確認コミット
+
+- 追記日: 2026-07-25
+- ブランチ: `chore/web-map-provider-production-config`
+- 確認基準コミット: `c4e7c68d`(develop、`feature/web-maplibre-foundation`のPR #2173マージ直後)
