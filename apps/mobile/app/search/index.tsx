@@ -14,6 +14,7 @@ import {
   isSearchMapSectionAvailable,
   type ShrineMapPoint,
 } from "../../lib/shrineMap";
+import { fetchPopularShrines, type PopularShrine } from "../../lib/popularShrines";
 import { trackSearchScreenView, trackShrineCardClick } from "../../lib/searchAnalytics";
 
 const isMapSectionAvailable = isSearchMapSectionAvailable(Platform.OS, process.env.EXPO_PUBLIC_WEB_MAP_STYLE_URL);
@@ -27,6 +28,8 @@ export default function SearchPage() {
   const [mapPoints, setMapPoints] = React.useState<ShrineMapPoint[]>([]);
   const [mapStatus, setMapStatus] = React.useState<"loading" | "ready" | "error">("loading");
   const [selectedShrineId, setSelectedShrineId] = React.useState<string | null>(null);
+  const [popularShrines, setPopularShrines] = React.useState<PopularShrine[]>([]);
+  const [popularStatus, setPopularStatus] = React.useState<"loading" | "ready" | "error">("loading");
 
   // 画面マウント中は1回だけ送る(依存配列を空にして再レンダーでの重複発火を避ける)。
   React.useEffect(() => {
@@ -49,6 +52,24 @@ export default function SearchPage() {
     void loadMapPoints();
   }, [loadMapPoints]);
 
+  // 「人気の神社」だけをloading/error対象にし、通常一覧・地図には影響させない。
+  // loadMapPointsと同じ「マウント時に1回取得、再レンダーでは取得し直さない」契約に揃える。
+  const loadPopularShrines = React.useCallback(async () => {
+    setPopularStatus("loading");
+    try {
+      const shrines = await fetchPopularShrines();
+      setPopularShrines(shrines.slice(0, 3));
+      setPopularStatus("ready");
+    } catch {
+      setPopularShrines([]);
+      setPopularStatus("error");
+    }
+  }, []);
+
+  React.useEffect(() => {
+    void loadPopularShrines();
+  }, [loadPopularShrines]);
+
   React.useEffect(() => {
     if (selectedShrineId && !mapPoints.some((point) => point.id === selectedShrineId)) {
       setSelectedShrineId(null);
@@ -69,12 +90,9 @@ export default function SearchPage() {
     return textHit && tagsHit;
   });
 
-  const popularShrines = [...SHRINES]
-    .sort((a, b) => (b.favorites ?? 0) - (a.favorites ?? 0) || (b.rating ?? 0) - (a.rating ?? 0))
-    .slice(0, 3);
-
-  const popularShrineIds = new Set(popularShrines.map((s) => String(s.id)));
-  const visibleShrines = filtered.filter((s) => !popularShrineIds.has(String(s.id)));
+  // 人気の神社は実API(/populars/)由来のため、静的SHRINESとのID空間が重ならず
+  // 重複除外の必要がない。神社一覧のフィルタ・ソート結果(filtered)はそのまま表示する。
+  const visibleShrines = filtered;
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -180,34 +198,57 @@ export default function SearchPage() {
       <View style={styles.popularSection}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>人気の神社</Text>
-          <Text style={styles.sectionCount}>3件</Text>
+          <Text style={styles.sectionCount}>{popularStatus === "ready" ? `${popularShrines.length}件` : ""}</Text>
         </View>
 
-        <View style={styles.popularList}>
-          {popularShrines.map((s, index) => (
-            <Pressable
-              key={s.id}
-              onPress={() => {
-                trackShrineCardClick({ shrineId: s.id, position: "popular" });
-                router.push(`/shrines/${s.id}`);
-              }}
-              style={({ pressed }) => [styles.popularCard, pressed && styles.cardPressed]}
-            >
-              <Text style={styles.popularRank}>{index + 1}</Text>
-              <Image source={{ uri: s.imageUrl }} style={styles.popularImage} />
-              <View style={styles.cardBody}>
-                <Text style={styles.cardName}>{s.name}</Text>
-                <Text style={styles.cardArea}>{s.prefecture}</Text>
-                <Text style={styles.popularMeta}>
-                  ★ {(s.rating ?? 4.6).toFixed(1)}　♡ {s.favorites ?? 0}
+        {popularStatus === "loading" ? (
+          <StateCard title="人気の神社を読み込み中" description="しばらくお待ちください。" />
+        ) : null}
+
+        {popularStatus === "error" ? (
+          <View style={styles.mapErrorWrap}>
+            <StateCard title="人気の神社を読み込めませんでした" description="通信状況を確認して、もう一度お試しください。" />
+            <Button
+              title="もう一度試す"
+              variant="outline"
+              size="compact"
+              onPress={() => void loadPopularShrines()}
+              accessibilityLabel="人気の神社をもう一度読み込む"
+            />
+          </View>
+        ) : null}
+
+        {popularStatus === "ready" && popularShrines.length === 0 ? (
+          <StateCard title="人気の神社がまだありません" description="通常の一覧からも神社を探せます。" />
+        ) : null}
+
+        {popularStatus === "ready" && popularShrines.length > 0 ? (
+          <View style={styles.popularList}>
+            {popularShrines.map((s, index) => (
+              <Pressable
+                key={s.id}
+                onPress={() => {
+                  trackShrineCardClick({ shrineId: s.id, position: "popular" });
+                  router.push(`/shrines/${s.id}`);
+                }}
+                style={({ pressed }) => [styles.popularCard, pressed && styles.cardPressed]}
+              >
+                <Text style={styles.popularRank}>{index + 1}</Text>
+                <View style={styles.cardBody}>
+                  <Text style={styles.cardName}>{s.name}</Text>
+                  {s.address ? (
+                    <Text style={styles.cardArea} numberOfLines={1}>
+                      {s.address}
+                    </Text>
+                  ) : null}
+                </View>
+                <Text accessibilityElementsHidden style={styles.chevron}>
+                  ›
                 </Text>
-              </View>
-              <Text accessibilityElementsHidden style={styles.chevron}>
-                ›
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
       </View>
 
       {/* 地図で探す: 補助表示。Webでstyle URL未設定の間はセクション自体を表示しない */}
@@ -395,18 +436,6 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     lineHeight: 28,
     textAlign: "center",
-  },
-  popularImage: {
-    width: 62,
-    height: 54,
-    borderRadius: 13,
-    backgroundColor: theme.surfaceSoft,
-  },
-  popularMeta: {
-    color: theme.goldSoft,
-    fontSize: 12,
-    fontWeight: "700",
-    marginTop: 2,
   },
   list: {
     gap: 12,
