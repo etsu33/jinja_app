@@ -27,6 +27,16 @@ export function hasValidCoordinates(
   return point.latitude !== null && point.longitude !== null;
 }
 
+/**
+ * Search画面で「地図で探す」セクションを表示してよいか判定する。
+ * Web版はEXPO_PUBLIC_WEB_MAP_STYLE_URL未設定を初期公開の通常状態として扱い、
+ * セクション自体を表示しない(docs/product/mobile-user-flow.md 11節)。
+ * Nativeはreact-native-mapsを常時表示するため、platformOSが"web"でなければ常にtrueとする。
+ */
+export function isSearchMapSectionAvailable(platformOS: string, styleUrl: string | undefined): boolean {
+  return platformOS !== "web" || Boolean(styleUrl);
+}
+
 // selectedShrineIdから選択中の神社を導出する。Search画面・Web地図の両方から
 // 同じロジックを参照させ、selectedShrineIdの導出方法を1箇所に保つ。
 export function findShrineMapPointById(points: ShrineMapPoint[], id: string | null): ShrineMapPoint | null {

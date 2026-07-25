@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { computeWebMapViewport, findShrineMapPointById, hasValidCoordinates, toShrineMapPoints } from "../shrineMap";
+import {
+  computeWebMapViewport,
+  findShrineMapPointById,
+  hasValidCoordinates,
+  isSearchMapSectionAvailable,
+  toShrineMapPoints,
+} from "../shrineMap";
 
 describe("toShrineMapPoints", () => {
   it("正常な数値座標を通す", () => {
@@ -136,6 +142,29 @@ describe("findShrineMapPointById", () => {
 
   it("idがnullならnullを返す", () => {
     expect(findShrineMapPointById(points, null)).toBeNull();
+  });
+});
+
+describe("isSearchMapSectionAvailable", () => {
+  it("Webでstyle URLが未設定の場合はfalse(地図で探すセクションを表示しない)", () => {
+    expect(isSearchMapSectionAvailable("web", undefined)).toBe(false);
+  });
+
+  it("Webでstyle URLが空文字の場合もfalse", () => {
+    expect(isSearchMapSectionAvailable("web", "")).toBe(false);
+  });
+
+  it("Webでstyle URLが設定済みの場合はtrue", () => {
+    expect(isSearchMapSectionAvailable("web", "https://example.com/style.json")).toBe(true);
+  });
+
+  it("iOSはstyle URLの有無に関わらずtrue(Nativeは常時react-native-mapsを表示する)", () => {
+    expect(isSearchMapSectionAvailable("ios", undefined)).toBe(true);
+    expect(isSearchMapSectionAvailable("ios", "https://example.com/style.json")).toBe(true);
+  });
+
+  it("Androidもstyle URLの有無に関わらずtrue", () => {
+    expect(isSearchMapSectionAvailable("android", undefined)).toBe(true);
   });
 });
 

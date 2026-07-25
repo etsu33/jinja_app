@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { View, Text, ScrollView, Pressable, Image, StyleSheet } from "react-native";
+import { View, Text, ScrollView, Pressable, Image, StyleSheet, Platform } from "react-native";
 import { SHRINES } from "../../data/shrines";
 import { kamimusubiDark as theme } from "../../design/theme";
 import { spacing } from "../../design/spacing";
@@ -8,7 +8,14 @@ import { StateCard } from "../../components/common/StateCard";
 import Button from "../../components/ui/Button";
 import { ShrineSearchMap } from "../../components/search/ShrineSearchMap";
 import { SelectedShrineMapCard } from "../../components/search/SelectedShrineMapCard";
-import { fetchShrineMapPoints, findShrineMapPointById, type ShrineMapPoint } from "../../lib/shrineMap";
+import {
+  fetchShrineMapPoints,
+  findShrineMapPointById,
+  isSearchMapSectionAvailable,
+  type ShrineMapPoint,
+} from "../../lib/shrineMap";
+
+const isMapSectionAvailable = isSearchMapSectionAvailable(Platform.OS, process.env.EXPO_PUBLIC_WEB_MAP_STYLE_URL);
 
 export default function SearchPage() {
   const router = useRouter();
@@ -91,69 +98,7 @@ export default function SearchPage() {
         )}
       </View>
 
-      <View style={styles.mapSection}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>地図で探す</Text>
-        </View>
-
-        {mapStatus === "loading" ? (
-          <StateCard title="地図を読み込み中" description="神社の位置情報を確認しています。" />
-        ) : null}
-
-        {mapStatus === "error" ? (
-          <View style={styles.mapErrorWrap}>
-            <StateCard title="地図を読み込めませんでした" description="通信状況を確認して、もう一度お試しください。" />
-            <Button title="もう一度試す" variant="outline" size="compact" onPress={() => void loadMapPoints()} accessibilityLabel="地図をもう一度読み込む" />
-          </View>
-        ) : null}
-
-        {mapStatus === "ready" && mapPoints.length === 0 ? (
-          <StateCard
-            title="神社が見つかりませんでした"
-            description="この検索条件に一致する神社がありません。条件を変えてもう一度お試しください。"
-          />
-        ) : null}
-
-        {mapStatus === "ready" && mapPoints.length > 0 ? (
-          <View style={styles.mapReadyWrap}>
-            <ShrineSearchMap points={mapPoints} selectedId={selectedShrineId} onSelect={setSelectedShrineId} />
-            {selectedMapShrine ? (
-              <SelectedShrineMapCard shrine={selectedMapShrine} onDetail={() => router.push(`/shrines/${selectedMapShrine.id}`)} />
-            ) : null}
-          </View>
-        ) : null}
-      </View>
-
-      <View style={styles.popularSection}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>人気の神社</Text>
-          <Text style={styles.sectionCount}>3件</Text>
-        </View>
-
-        <View style={styles.popularList}>
-          {popularShrines.map((s, index) => (
-            <Pressable
-              key={s.id}
-              onPress={() => router.push(`/shrines/${s.id}`)}
-              style={({ pressed }) => [styles.popularCard, pressed && styles.cardPressed]}
-            >
-              <Text style={styles.popularRank}>{index + 1}</Text>
-              <Image source={{ uri: s.imageUrl }} style={styles.popularImage} />
-              <View style={styles.cardBody}>
-                <Text style={styles.cardName}>{s.name}</Text>
-                <Text style={styles.cardArea}>{s.prefecture}</Text>
-                <Text style={styles.popularMeta}>
-                  ★ {(s.rating ?? 4.6).toFixed(1)}　♡ {s.favorites ?? 0}
-                </Text>
-              </View>
-              <Text accessibilityElementsHidden style={styles.chevron}>
-                ›
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-      </View>
-
+      {/* 神社一覧: 主要探索UI(docs/product/mobile-user-flow.md 10節) */}
       {visibleShrines.length > 0 ? (
         <>
           <View style={styles.sectionHeader}>
@@ -209,6 +154,76 @@ export default function SearchPage() {
             })}
           </View>
         </>
+      ) : null}
+
+      {selectedMapShrine ? (
+        <View style={styles.selectedShrineWrap}>
+          <SelectedShrineMapCard
+            shrine={selectedMapShrine}
+            onDetail={() => router.push(`/shrines/${selectedMapShrine.id}`)}
+          />
+        </View>
+      ) : null}
+
+      <View style={styles.popularSection}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>人気の神社</Text>
+          <Text style={styles.sectionCount}>3件</Text>
+        </View>
+
+        <View style={styles.popularList}>
+          {popularShrines.map((s, index) => (
+            <Pressable
+              key={s.id}
+              onPress={() => router.push(`/shrines/${s.id}`)}
+              style={({ pressed }) => [styles.popularCard, pressed && styles.cardPressed]}
+            >
+              <Text style={styles.popularRank}>{index + 1}</Text>
+              <Image source={{ uri: s.imageUrl }} style={styles.popularImage} />
+              <View style={styles.cardBody}>
+                <Text style={styles.cardName}>{s.name}</Text>
+                <Text style={styles.cardArea}>{s.prefecture}</Text>
+                <Text style={styles.popularMeta}>
+                  ★ {(s.rating ?? 4.6).toFixed(1)}　♡ {s.favorites ?? 0}
+                </Text>
+              </View>
+              <Text accessibilityElementsHidden style={styles.chevron}>
+                ›
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+
+      {/* 地図で探す: 補助表示。Webでstyle URL未設定の間はセクション自体を表示しない */}
+      {isMapSectionAvailable ? (
+        <View style={styles.mapSection}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>地図で探す</Text>
+          </View>
+
+          {mapStatus === "loading" ? (
+            <StateCard title="地図を読み込み中" description="神社の位置情報を確認しています。" />
+          ) : null}
+
+          {mapStatus === "error" ? (
+            <View style={styles.mapErrorWrap}>
+              <StateCard title="地図を読み込めませんでした" description="通信状況を確認して、もう一度お試しください。" />
+              <Button title="もう一度試す" variant="outline" size="compact" onPress={() => void loadMapPoints()} accessibilityLabel="地図をもう一度読み込む" />
+            </View>
+          ) : null}
+
+          {mapStatus === "ready" && mapPoints.length === 0 ? (
+            <StateCard
+              title="神社が見つかりませんでした"
+              description="この検索条件に一致する神社がありません。条件を変えてもう一度お試しください。"
+            />
+          ) : null}
+
+          {mapStatus === "ready" && mapPoints.length > 0 ? (
+            <ShrineSearchMap points={mapPoints} selectedId={selectedShrineId} onSelect={setSelectedShrineId} />
+          ) : null}
+        </View>
       ) : null}
     </ScrollView>
   );
@@ -303,12 +318,12 @@ const styles = StyleSheet.create({
   mapSection: {
     marginBottom: 26,
   },
-  mapReadyWrap: {
-    gap: spacing.mdGap,
-  },
   mapErrorWrap: {
     gap: spacing.mdGap,
     alignItems: "flex-start",
+  },
+  selectedShrineWrap: {
+    marginBottom: 24,
   },
   tag: {
     borderRadius: 999,
@@ -380,6 +395,7 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: 12,
+    marginBottom: 26,
   },
   card: {
     backgroundColor: theme.surface,
