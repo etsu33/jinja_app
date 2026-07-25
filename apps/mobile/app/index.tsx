@@ -9,6 +9,7 @@ import { resolveGoriyakuTagIds } from "../lib/conditionPayload";
 import * as Location from "expo-location";
 import type { UserOrigin } from "../../../packages/shared/userOrigin";
 import { setOriginSession } from "../lib/originSession";
+import { trackSearchEntryClick } from "../lib/searchAnalytics";
 
 const THEMES = [
   "疲れを整えたい",
@@ -49,6 +50,7 @@ export default function Home() {
     .join(" / ");
 
   const openSearch = () => {
+    trackSearchEntryClick();
     router.push("/search");
   };
 

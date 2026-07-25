@@ -13,6 +13,7 @@ import {
   type ShrineMapPoint,
   type ShrineSearchMapProps,
 } from "../../lib/shrineMap";
+import { trackMapMarkerSelect } from "../../lib/searchAnalytics";
 
 // 公開クライアント用のstyle URL。secretはコードへ直書きせず、未設定時は
 // Mapを生成せず既存の一覧fallbackを表示する。domain制限・使用量制限は
@@ -45,7 +46,10 @@ function createMarkerElement(
   element.style.cursor = "pointer";
   element.style.transition = "transform 0.1s ease-out";
 
-  const select = () => onSelectRef.current(point.id);
+  const select = () => {
+    trackMapMarkerSelect({ shrineId: point.id });
+    onSelectRef.current(point.id);
+  };
   element.addEventListener("click", select);
   element.addEventListener("keydown", (event) => {
     if (event.key === "Enter" || event.key === " " || event.key === "Spacebar") {
@@ -189,7 +193,10 @@ export function ShrineSearchMap({ points, selectedId, onSelect }: ShrineSearchMa
             return (
               <Pressable
                 key={point.id}
-                onPress={() => onSelect(point.id)}
+                onPress={() => {
+                  trackMapMarkerSelect({ shrineId: point.id });
+                  onSelect(point.id);
+                }}
                 accessibilityRole="button"
                 accessibilityLabel={selected ? `${point.name}を選択、選択中` : `${point.name}を選択`}
                 accessibilityState={{ selected }}
