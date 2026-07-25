@@ -109,8 +109,8 @@ export default function SearchPage() {
 
         {mapStatus === "ready" && mapPoints.length === 0 ? (
           <StateCard
-            title="地図に表示できる神社がありません"
-            description="この検索結果には地図へ表示できる位置情報がありません。神社一覧はそのままご覧いただけます。"
+            title="神社が見つかりませんでした"
+            description="この検索条件に一致する神社がありません。条件を変えてもう一度お試しください。"
           />
         ) : null}
 

@@ -5,19 +5,13 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { kamimusubiDark as theme } from "../../design/theme";
 import { radius } from "../../design/radius";
 import { spacing } from "../../design/spacing";
-import type { ShrineMapPoint } from "../../lib/shrineMap";
+import type { ShrineSearchMapProps } from "../../lib/shrineMap";
 
-type Props = {
-  points: ShrineMapPoint[];
-  selectedId: string | null;
-  onSelect: (id: string) => void;
-};
-
-export function ShrineSearchMap({ points, selectedId, onSelect }: Props) {
+export function ShrineSearchMap({ points, selectedId, onSelect }: ShrineSearchMapProps) {
   return (
     <View style={styles.wrap} accessibilityRole="summary" accessibilityLabel="検索結果の神社を地図で見る">
       <Text style={styles.title}>地図表示はモバイルアプリで利用できます</Text>
-      <Text style={styles.description}>この画面では、位置情報のある神社を一覧から選択できます。</Text>
+      <Text style={styles.description}>この画面では、神社を一覧から選択できます。</Text>
 
       {points.length > 0 ? (
         <View style={styles.list}>
@@ -28,13 +22,16 @@ export function ShrineSearchMap({ points, selectedId, onSelect }: Props) {
                 key={point.id}
                 onPress={() => onSelect(point.id)}
                 accessibilityRole="button"
-                accessibilityLabel={`${point.name}を選択`}
+                accessibilityLabel={selected ? `${point.name}を選択、選択中` : `${point.name}を選択`}
                 accessibilityState={{ selected }}
                 style={({ pressed }) => [styles.item, selected && styles.itemSelected, pressed && styles.itemPressed]}
               >
-                <Text style={styles.itemName} numberOfLines={1}>
-                  {point.name}
-                </Text>
+                <View style={styles.itemHeader}>
+                  <Text style={styles.itemName} numberOfLines={1}>
+                    {point.name}
+                  </Text>
+                  {selected ? <Text style={styles.itemSelectedBadge}>選択中</Text> : null}
+                </View>
                 {point.address ? (
                   <Text style={styles.itemAddress} numberOfLines={1}>
                     {point.address}
@@ -85,9 +82,20 @@ const styles = StyleSheet.create({
   itemPressed: {
     opacity: 0.74,
   },
+  itemHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.tightGap,
+  },
   itemName: {
     color: theme.text,
     fontSize: 14,
+    fontWeight: "800",
+  },
+  itemSelectedBadge: {
+    color: theme.gold,
+    fontSize: 11,
     fontWeight: "800",
   },
   itemAddress: {
