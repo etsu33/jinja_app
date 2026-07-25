@@ -140,11 +140,14 @@ Home
 
 **事実(監査根拠)**: `apps/mobile/components/search/ShrineSearchMap.web.tsx`は、`EXPO_PUBLIC_WEB_MAP_STYLE_URL`が未設定の場合Mapを初期化せず、「地図を読み込めないため一覧を表示しています。」を表示して一覧導線を維持する実装が既に完了している(`docs/audit/web-map-tile-provider-selection.md`、`docs/audit/mobile-user-flow-inventory.md` 12.4節・13節)。本書はこの既存実装の挙動を前提として、未設定運用を初期公開時点の方針として明記するものであり、新たな実装は行わない。
 
+**未確定事項**: 現行の「地図を読み込めないため一覧を表示しています。」という文言は、provider通信失敗時のfallback文言をそのまま流用したものである。初期公開において意図的にWeb地図を無効化する運用(11節の方針)を採る場合、この文言を「provider障害」を示唆しない通常の一覧UI向け文言へ変更するかどうかは、本書では判断しない。判断・実装は別PRで行う。
+
 ## 12. Native地図の扱い
 
 **未確定事項として分離する。本書ではNative地図の削除・非表示を決定しない。**
 
-- Native地図は`react-native-maps`を使用しており、Web地図とは費用・provider構造が異なる。Native地図はApple／Google純正の地図SDKを利用し、Web地図のような外部タイルprovider契約を必要としない(`docs/audit/mobile-user-flow-inventory.md` 13節)。
+- Native地図は`react-native-maps`を使用しており、WebのMapLibre GL JS＋MapTiler構成とは設定・費用構造が異なる(`docs/audit/mobile-user-flow-inventory.md` 13節)。
+- react-native-mapsはiOS/Androidそれぞれの地図SDKに委譲する構成であり、実機配布時に必要となる地図SDK・APIキー・利用条件・費用がWeb地図と同一かどうかは、本書では断定しない。これらは別途確認する。
 - Web地図を初期公開から外す判断と、Native地図を非表示にする判断を同一に扱わない。
 - Native地図の表示継続、優先度、画面配置は、別PRで判断する。
 
@@ -247,14 +250,15 @@ Home
 
 以下は本書では判断せず、別PRまたは母艦判断へ差し戻す。
 
-- Native地図の表示継続・優先度・画面配置(12節)
+- Native地図の表示継続・優先度・画面配置、および実機配布時に必要な地図SDK・APIキー・利用条件・費用の確認(12節)
+- Web地図未設定時の一覧UI文言(「地図を読み込めないため一覧を表示しています。」)を、意図的な無効化向けの文言へ変更するか(11節)
 - 人気神社の算出ロジックと`/ranking`実装との統合方針(13節)
 - 5つの孤立画面(参拝履歴・振り返り履歴・相談履歴・最近見た神社・ランキング)を、導線接続の対象とするか削除対象とするか(18節)
 - Search画面のAnalytics計装(Search/地図/Home CTAのイベントが現状0件であり、案の効果検証ができない状態にある。`docs/audit/mobile-user-flow-inventory.md` 18.2節・25節)
 - 記録から再相談への具体的なCTA・Route・保存仕様(14節)
 - 神社詳細への入口別Analytics識別の要否(9節)
 - ログイン後のreturnTo機構の要否(16節)
-- root`README.md`の「Mobile休眠運用」記述と、Mobileの実際の開発状況・`docs/core/roadmap.md`の記述との関係(19節、`docs/audit/mobile-user-flow-inventory.md` 6.6節・25節のP0事項)
+- root`README.md`の「Mobile休眠運用」記述と、Mobileの実際の開発状況・`docs/core/roadmap.md`の記述との間にある文書間の不一致をどう扱うか(19節、`docs/audit/mobile-user-flow-inventory.md` 6.6節・25節)
 - `docs/product/concierge-first-final-spec.md`に記載されたHome→Concierge遷移パラメータ設計(`theme`/`openFilter`)と、実装済みの遷移パラメータのどちらを正とするか(19節、監査11.5節)
 
 ## 21. 関連ドキュメント
