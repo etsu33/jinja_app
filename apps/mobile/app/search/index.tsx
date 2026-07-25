@@ -8,7 +8,7 @@ import { StateCard } from "../../components/common/StateCard";
 import Button from "../../components/ui/Button";
 import { ShrineSearchMap } from "../../components/search/ShrineSearchMap";
 import { SelectedShrineMapCard } from "../../components/search/SelectedShrineMapCard";
-import { fetchShrineMapPoints, type ShrineMapPoint } from "../../lib/shrineMap";
+import { fetchShrineMapPoints, findShrineMapPointById, type ShrineMapPoint } from "../../lib/shrineMap";
 
 export default function SearchPage() {
   const router = useRouter();
@@ -42,7 +42,7 @@ export default function SearchPage() {
     }
   }, [mapPoints, selectedShrineId]);
 
-  const selectedMapShrine = mapPoints.find((point) => point.id === selectedShrineId) ?? null;
+  const selectedMapShrine = findShrineMapPointById(mapPoints, selectedShrineId);
 
   const filtered = SHRINES.filter((s) => {
     const textHit =

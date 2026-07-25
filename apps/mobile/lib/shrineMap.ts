@@ -27,6 +27,59 @@ export function hasValidCoordinates(
   return point.latitude !== null && point.longitude !== null;
 }
 
+// selectedShrineIdから選択中の神社を導出する。Search画面・Web地図の両方から
+// 同じロジックを参照させ、selectedShrineIdの導出方法を1箇所に保つ。
+export function findShrineMapPointById(points: ShrineMapPoint[], id: string | null): ShrineMapPoint | null {
+  if (id === null) return null;
+  return points.find((point) => point.id === id) ?? null;
+}
+
+type Coordinate = { latitude: number; longitude: number };
+
+const WEB_MAP_SINGLE_POINT_ZOOM = 14;
+const WEB_MAP_BOUNDS_PADDING = 48;
+const WEB_MAP_BOUNDS_MAX_ZOOM = 15;
+
+export type WebMapViewport =
+  | { kind: "point"; center: [number, number]; zoom: number }
+  | { kind: "bounds"; bounds: [[number, number], [number, number]]; padding: number; maxZoom: number };
+
+/**
+ * Web地図(MapLibre GL JS)の初期viewportを、有効座標のみを持つ点から計算する。
+ * MapLibreの座標順序([経度, 緯度])に合わせて返す。
+ * 0件はnull(地図を出さない)、1件はcenter+zoom、2件以上はboundsを返す。
+ */
+export function computeWebMapViewport(points: Coordinate[]): WebMapViewport | null {
+  if (points.length === 0) return null;
+
+  if (points.length === 1) {
+    const [point] = points;
+    return { kind: "point", center: [point.longitude, point.latitude], zoom: WEB_MAP_SINGLE_POINT_ZOOM };
+  }
+
+  let minLat = points[0].latitude;
+  let maxLat = points[0].latitude;
+  let minLng = points[0].longitude;
+  let maxLng = points[0].longitude;
+
+  for (const point of points) {
+    minLat = Math.min(minLat, point.latitude);
+    maxLat = Math.max(maxLat, point.latitude);
+    minLng = Math.min(minLng, point.longitude);
+    maxLng = Math.max(maxLng, point.longitude);
+  }
+
+  return {
+    kind: "bounds",
+    bounds: [
+      [minLng, minLat],
+      [maxLng, maxLat],
+    ],
+    padding: WEB_MAP_BOUNDS_PADDING,
+    maxZoom: WEB_MAP_BOUNDS_MAX_ZOOM,
+  };
+}
+
 function toFiniteNumber(value: unknown): number | null {
   if (typeof value === "number") return Number.isFinite(value) ? value : null;
   if (typeof value === "string" && value.trim().length > 0) {

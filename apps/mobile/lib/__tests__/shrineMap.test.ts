@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hasValidCoordinates, toShrineMapPoints } from "../shrineMap";
+import { computeWebMapViewport, findShrineMapPointById, hasValidCoordinates, toShrineMapPoints } from "../shrineMap";
 
 describe("toShrineMapPoints", () => {
   it("正常な数値座標を通す", () => {
@@ -113,5 +113,76 @@ describe("hasValidCoordinates", () => {
 
   it("片方だけnullの場合もfalse", () => {
     expect(hasValidCoordinates({ id: "3", name: "片方欠損", latitude: 35.0, longitude: null })).toBe(false);
+  });
+});
+
+describe("findShrineMapPointById", () => {
+  const points = [
+    { id: "1", name: "明治神宮", latitude: 35.676, longitude: 139.699 },
+    { id: "2", name: "座標なし", latitude: null, longitude: null },
+  ];
+
+  it("selectedIdに対応するpointを導出できる", () => {
+    expect(findShrineMapPointById(points, "1")).toEqual(points[0]);
+  });
+
+  it("座標欠損神社もidが一致すれば導出できる", () => {
+    expect(findShrineMapPointById(points, "2")).toEqual(points[1]);
+  });
+
+  it("該当idがなければnullを返す", () => {
+    expect(findShrineMapPointById(points, "999")).toBeNull();
+  });
+
+  it("idがnullならnullを返す", () => {
+    expect(findShrineMapPointById(points, null)).toBeNull();
+  });
+});
+
+describe("computeWebMapViewport", () => {
+  it("有効座標が0件ならnullを返す(Web地図を生成しない判定に使う)", () => {
+    expect(computeWebMapViewport([])).toBeNull();
+  });
+
+  it("1件のときはcenter+zoomを返す(bounds計算はしない)", () => {
+    const viewport = computeWebMapViewport([{ latitude: 35.676, longitude: 139.699 }]);
+    expect(viewport).toEqual({ kind: "point", center: [139.699, 35.676], zoom: 14 });
+  });
+
+  it("center配列は[経度, 緯度]の順序である(緯度経度を逆にしない)", () => {
+    const viewport = computeWebMapViewport([{ latitude: 10, longitude: 20 }]);
+    expect(viewport?.kind).toBe("point");
+    if (viewport?.kind === "point") {
+      expect(viewport.center[0]).toBe(20); // longitude
+      expect(viewport.center[1]).toBe(10); // latitude
+    }
+  });
+
+  it("2件以上のときはboundsを返す", () => {
+    const viewport = computeWebMapViewport([
+      { latitude: 35.0, longitude: 139.0 },
+      { latitude: 36.0, longitude: 140.0 },
+    ]);
+    expect(viewport).toEqual({
+      kind: "bounds",
+      bounds: [
+        [139.0, 35.0],
+        [140.0, 36.0],
+      ],
+      padding: 48,
+      maxZoom: 15,
+    });
+  });
+
+  it("bounds配列も[経度, 緯度]の順序である", () => {
+    const viewport = computeWebMapViewport([
+      { latitude: 10, longitude: 100 },
+      { latitude: 20, longitude: 200 },
+    ]);
+    expect(viewport?.kind).toBe("bounds");
+    if (viewport?.kind === "bounds") {
+      expect(viewport.bounds[0]).toEqual([100, 10]); // [minLng, minLat]
+      expect(viewport.bounds[1]).toEqual([200, 20]); // [maxLng, maxLat]
+    }
   });
 });
