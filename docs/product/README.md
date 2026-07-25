@@ -21,6 +21,8 @@ README.md
 ↓
 kami-musubi-experience-design.md
 ↓
+mobile-user-flow.md
+↓
 concierge-first-final-spec.md
 ↓
 concierge-modes.md
@@ -64,9 +66,10 @@ billing-paywall.md
 
 ### 全体体験
 
-| ファイル                           | 役割                                                               |
-| ---------------------------------- | ------------------------------------------------------------------ |
-| `kami-musubi-experience-design.md` | 相談・推薦・参拝・振り返りを一本の体験として接続する最上位体験設計 |
+| ファイル                           | 役割                                                                 |
+| ---------------------------------- | -------------------------------------------------------------------- |
+| `kami-musubi-experience-design.md` | 相談・推薦・参拝・振り返りを一本の体験として接続する最上位体験設計   |
+| `mobile-user-flow.md`              | Mobile／Expo Webの主導線・サブ導線・共通合流地点・地図の段階公開方針 |
 
 ### Concierge・Recommendation
 
