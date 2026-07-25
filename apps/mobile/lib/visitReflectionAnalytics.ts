@@ -61,3 +61,13 @@ export function trackReflectionSaved(params: ReflectionSavedParams): void {
     moodAfter: params.moodAfter || undefined,
   });
 }
+
+// Reflection保存成功後に表示される再相談CTAのクリックのみを計測する(表示は
+// reflection_savedと1:1で連動するため、別途の表示Eventは追加しない)。
+// reflectionSavedは常にtrueのため呼び出し元から受け取らず固定値として送る。
+export function trackReflectionToConsultationClick(params: BasePayloadParams): void {
+  track("reflection_to_consultation_click", {
+    ...buildBasePayload(params),
+    reflectionSaved: true,
+  });
+}

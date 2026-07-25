@@ -16,7 +16,12 @@ import { ctaSizes } from "../../design/ctaSizes";
 import { createFavoriteByShrineId } from "../../lib/favorites";
 import { createVisitByShrineId } from "../../lib/visits";
 import { createShrineReflection } from "../../lib/reflections";
-import { trackVisitDone, trackReflectionPromptView, trackReflectionSaved } from "../../lib/visitReflectionAnalytics";
+import {
+  trackVisitDone,
+  trackReflectionPromptView,
+  trackReflectionSaved,
+  trackReflectionToConsultationClick,
+} from "../../lib/visitReflectionAnalytics";
 import { AuthPrompt } from "../../components/common/AuthPrompt";
 import Button from "../../components/ui/Button";
 
@@ -539,6 +544,29 @@ export default function ShrineDetail() {
     }
   }, [apiShrineId, contextReasonFacts, reflectionAnswer, reflectionPrompt, reflectionSaving, shrine, shrineId]);
 
+  // 保存成功直後のCTAからのみ呼ばれる(reflectionSaved===trueの間だけボタンが描画される)。
+  // 自動遷移は行わず、ユーザーがCTAを押した場合のみConciergeへ進む。
+  const consultationNavigatingRef = React.useRef(false);
+  const onGoToConsultation = React.useCallback(() => {
+    if (consultationNavigatingRef.current) return;
+    consultationNavigatingRef.current = true;
+    // 連打時の重複遷移・重複Analyticsのみを防ぐための短時間ガード。
+    // 画面へ戻ってきた後は再びCTAを押せるよう、一定時間で解除する。
+    setTimeout(() => {
+      consultationNavigatingRef.current = false;
+    }, 1000);
+
+    const targetShrineId = apiShrineId ?? shrineId;
+    trackReflectionToConsultationClick({
+      shrineId: targetShrineId ?? "",
+      historyTheme: contextReasonFacts?.primary_axis ?? shrine?.reasonFacts?.primary_axis,
+    });
+
+    // Reflection本文・相談文等の自由入力は一切引き継がず、Conciergeを通常状態で開く
+    // (安全に本文を引き継げる既存契約が無いため。docs/product/visit-reflection-flow.md「次回相談との接続」参照)。
+    router.push("/concierge");
+  }, [apiShrineId, contextReasonFacts, router, shrine, shrineId]);
+
   const openDirections = React.useCallback(() => {
     if (!shrine) return;
     const shrineIdNumber = apiShrineId != null ? Number(apiShrineId) : null;
@@ -780,6 +808,17 @@ export default function ShrineDetail() {
               loading={reflectionSaving}
               accessibilityLabel={reflectionSaved ? "振り返りを保存しました" : "振り返りを保存する"}
             />
+
+            {reflectionSaved ? (
+              <View style={styles.nextConsultationWrap}>
+                <Button
+                  title="この体験をもとに、もう一度相談する"
+                  variant="outline"
+                  onPress={onGoToConsultation}
+                  accessibilityLabel="この体験をもとに、もう一度相談する"
+                />
+              </View>
+            ) : null}
           </View>
         ) : null}
       </ScrollView>
@@ -1102,6 +1141,9 @@ const styles = StyleSheet.create({
     borderColor: theme.borderGold,
     padding: cardSizes.cardPaddingLg,
     gap: spacing.mdGap,
+  },
+  nextConsultationWrap: {
+    marginTop: spacing.smGap,
   },
   reflectionInput: {
     minHeight: 96,
