@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { toShrineMapPoints } from "../shrineMap";
+import { hasValidCoordinates, toShrineMapPoints } from "../shrineMap";
 
 describe("toShrineMapPoints", () => {
   it("正常な数値座標を通す", () => {
@@ -33,26 +33,42 @@ describe("toShrineMapPoints", () => {
     expect(points).toEqual([{ id: "5", name: "location経由", latitude: 35.1, longitude: 139.1, address: undefined, imageUrl: undefined }]);
   });
 
-  it("null座標を除外する", () => {
+  it("null座標は除外せず、座標欠損として一覧に残す", () => {
     const points = toShrineMapPoints({ results: [{ id: 6, name_jp: "座標なし", latitude: null, longitude: null }] });
-    expect(points).toEqual([]);
+    expect(points).toEqual([{ id: "6", name: "座標なし", latitude: null, longitude: null, address: undefined, imageUrl: undefined }]);
   });
 
-  it("NaNを除外する", () => {
+  it("NaNになる座標は座標欠損として一覧に残す", () => {
     const points = toShrineMapPoints({ results: [{ id: 7, name_jp: "不正値", latitude: "abc", longitude: 139.0 }] });
-    expect(points).toEqual([]);
+    expect(points).toEqual([{ id: "7", name: "不正値", latitude: null, longitude: null, address: undefined, imageUrl: undefined }]);
   });
 
-  it("Infinityを除外する", () => {
+  it("Infinityは座標欠損として一覧に残す", () => {
     const points = toShrineMapPoints({ results: [{ id: 8, name_jp: "無限大", latitude: Infinity, longitude: 139.0 }] });
-    expect(points).toEqual([]);
+    expect(points).toEqual([{ id: "8", name: "無限大", latitude: null, longitude: null, address: undefined, imageUrl: undefined }]);
   });
 
-  it("範囲外座標を除外する", () => {
+  it("範囲外座標は座標欠損として一覧に残す", () => {
     const overLat = toShrineMapPoints({ results: [{ id: 9, name_jp: "緯度範囲外", latitude: 95, longitude: 139.0 }] });
     const overLng = toShrineMapPoints({ results: [{ id: 10, name_jp: "経度範囲外", latitude: 35.0, longitude: 200 }] });
-    expect(overLat).toEqual([]);
-    expect(overLng).toEqual([]);
+    expect(overLat).toEqual([{ id: "9", name: "緯度範囲外", latitude: null, longitude: null, address: undefined, imageUrl: undefined }]);
+    expect(overLng).toEqual([{ id: "10", name: "経度範囲外", latitude: null, longitude: null, address: undefined, imageUrl: undefined }]);
+  });
+
+  it("片方だけ有効な座標も欠損として扱う(Markerを安全に省略するため)", () => {
+    const points = toShrineMapPoints({ results: [{ id: "14", name_jp: "片方欠損", latitude: 35.0, longitude: null }] });
+    expect(points).toEqual([{ id: "14", name: "片方欠損", latitude: null, longitude: null, address: undefined, imageUrl: undefined }]);
+  });
+
+  it("有効座標が0件でも、id・nameがある項目は一覧として返す", () => {
+    const points = toShrineMapPoints({
+      results: [
+        { id: 15, name_jp: "座標なしA", latitude: null, longitude: null },
+        { id: 16, name_jp: "座標なしB", latitude: "abc", longitude: "def" },
+      ],
+    });
+    expect(points).toHaveLength(2);
+    expect(points.every((p) => !hasValidCoordinates(p))).toBe(true);
   });
 
   it("id欠損を安全に扱う", () => {
@@ -83,5 +99,19 @@ describe("toShrineMapPoints", () => {
     const viaPhotoUrl = toShrineMapPoints({ results: [{ id: 13, name_jp: "画像B", latitude: 1, longitude: 1, photo_url: "https://x/b.jpg" }] });
     expect(viaImageUrl[0]?.imageUrl).toBe("https://x/a.jpg");
     expect(viaPhotoUrl[0]?.imageUrl).toBe("https://x/b.jpg");
+  });
+});
+
+describe("hasValidCoordinates", () => {
+  it("有効な緯度経度がそろっている場合はtrue", () => {
+    expect(hasValidCoordinates({ id: "1", name: "有効", latitude: 35.0, longitude: 139.0 })).toBe(true);
+  });
+
+  it("緯度経度がnullの場合はfalse(Marker同期を安全に省略する対象)", () => {
+    expect(hasValidCoordinates({ id: "2", name: "座標なし", latitude: null, longitude: null })).toBe(false);
+  });
+
+  it("片方だけnullの場合もfalse", () => {
+    expect(hasValidCoordinates({ id: "3", name: "片方欠損", latitude: 35.0, longitude: null })).toBe(false);
   });
 });

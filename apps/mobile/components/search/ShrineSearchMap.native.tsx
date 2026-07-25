@@ -1,12 +1,13 @@
 // apps/mobile/components/search/ShrineSearchMap.native.tsx
 import * as React from "react";
-import { StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import MapView, { Marker, type Region } from "react-native-maps";
 
 import { kamimusubiDark as theme } from "../../design/theme";
 import { radius } from "../../design/radius";
+import { spacing } from "../../design/spacing";
 import { prefectureOrigin } from "../../../../packages/shared/userOrigin";
-import type { ShrineMapPoint } from "../../lib/shrineMap";
+import { hasValidCoordinates, type ShrineSearchMapProps } from "../../lib/shrineMap";
 
 const FALLBACK_ORIGIN = prefectureOrigin("東京都");
 const FALLBACK_REGION: Region = {
@@ -19,7 +20,9 @@ const FALLBACK_REGION: Region = {
 const MIN_DELTA = 0.05;
 const REGION_PADDING = 1.4;
 
-function buildInitialRegion(points: ShrineMapPoint[]): Region {
+type MappablePoint = { id: string; latitude: number; longitude: number };
+
+function buildInitialRegion(points: MappablePoint[]): Region {
   if (points.length === 0) return FALLBACK_REGION;
 
   let minLat = points[0].latitude;
@@ -42,35 +45,65 @@ function buildInitialRegion(points: ShrineMapPoint[]): Region {
   return { latitude, longitude, latitudeDelta, longitudeDelta };
 }
 
-type Props = {
-  points: ShrineMapPoint[];
-  selectedId: string | null;
-  onSelect: (id: string) => void;
-};
-
-export function ShrineSearchMap({ points, selectedId, onSelect }: Props) {
-  const initialRegion = React.useMemo(() => buildInitialRegion(points), [points]);
+export function ShrineSearchMap({ points, selectedId, onSelect }: ShrineSearchMapProps) {
+  // pointsの配列参照はSearch画面側でselectedShrineId変更時に変わらないため、
+  // useMemoの依存をpointsのみにしてMapViewのinitialRegionが選択のたびに動かないようにする。
+  const mappablePoints = React.useMemo(() => points.filter(hasValidCoordinates), [points]);
+  const unmappablePoints = React.useMemo(() => points.filter((point) => !hasValidCoordinates(point)), [points]);
+  const initialRegion = React.useMemo(() => buildInitialRegion(mappablePoints), [mappablePoints]);
 
   return (
-    <View style={styles.wrap} accessibilityLabel="検索結果の神社を地図で見る">
-      <MapView style={styles.map} initialRegion={initialRegion}>
-        {points.map((point) => {
-          const selected = point.id === selectedId;
-          return (
-            <Marker
-              key={point.id}
-              coordinate={{ latitude: point.latitude, longitude: point.longitude }}
-              title={point.name}
-              onPress={() => onSelect(point.id)}
-              accessibilityRole="button"
-              accessibilityLabel={`${point.name}を選択`}
-              accessibilityState={{ selected }}
-              opacity={selected ? 1 : 0.85}
-              zIndex={selected ? 1 : 0}
-            />
-          );
-        })}
-      </MapView>
+    <View>
+      <View style={styles.wrap} accessibilityLabel="検索結果の神社を地図で見る">
+        <MapView style={styles.map} initialRegion={initialRegion}>
+          {mappablePoints.map((point) => {
+            const selected = point.id === selectedId;
+            return (
+              <Marker
+                key={point.id}
+                coordinate={{ latitude: point.latitude, longitude: point.longitude }}
+                title={point.name}
+                onPress={() => onSelect(point.id)}
+                accessibilityRole="button"
+                accessibilityLabel={selected ? `${point.name}を選択、選択中` : `${point.name}を選択`}
+                accessibilityState={{ selected }}
+                opacity={selected ? 1 : 0.85}
+                zIndex={selected ? 1 : 0}
+              />
+            );
+          })}
+        </MapView>
+      </View>
+
+      {unmappablePoints.length > 0 ? (
+        <View style={styles.noCoordSection}>
+          <Text style={styles.noCoordLabel}>位置情報のない神社</Text>
+          <View style={styles.noCoordList}>
+            {unmappablePoints.map((point) => {
+              const selected = point.id === selectedId;
+              return (
+                <Pressable
+                  key={point.id}
+                  onPress={() => onSelect(point.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={selected ? `${point.name}を選択、選択中` : `${point.name}を選択`}
+                  accessibilityState={{ selected }}
+                  style={({ pressed }) => [
+                    styles.noCoordItem,
+                    selected && styles.noCoordItemSelected,
+                    pressed && styles.noCoordItemPressed,
+                  ]}
+                >
+                  <Text style={styles.noCoordItemText} numberOfLines={1}>
+                    {point.name}
+                    {selected ? "・選択中" : ""}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -84,5 +117,36 @@ const styles = StyleSheet.create({
   },
   map: {
     flex: 1,
+  },
+  noCoordSection: {
+    marginTop: spacing.mdGap,
+    gap: spacing.tightGap,
+  },
+  noCoordLabel: {
+    color: theme.muted,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  noCoordList: {
+    gap: spacing.tightGap,
+  },
+  noCoordItem: {
+    borderRadius: radius.xs,
+    borderWidth: 1,
+    borderColor: theme.border,
+    backgroundColor: theme.surface,
+    paddingHorizontal: spacing.mdGap,
+    paddingVertical: spacing.tightGap,
+  },
+  noCoordItemSelected: {
+    borderColor: theme.borderGold,
+  },
+  noCoordItemPressed: {
+    opacity: 0.74,
+  },
+  noCoordItemText: {
+    color: theme.text,
+    fontSize: 14,
+    fontWeight: "800",
   },
 });

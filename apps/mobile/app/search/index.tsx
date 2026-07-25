@@ -109,8 +109,8 @@ export default function SearchPage() {
 
         {mapStatus === "ready" && mapPoints.length === 0 ? (
           <StateCard
-            title="地図に表示できる神社がありません"
-            description="この検索結果には地図へ表示できる位置情報がありません。神社一覧はそのままご覧いただけます。"
+            title="神社が見つかりませんでした"
+            description="この検索条件に一致する神社がありません。条件を変えてもう一度お試しください。"
           />
         ) : null}
 
@@ -162,29 +162,51 @@ export default function SearchPage() {
           </View>
 
           <View style={styles.list}>
-            {visibleShrines.map((s) => (
-              <Pressable
-                key={s.id}
-                onPress={() => router.push(`/shrines/${s.id}`)}
-                style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-              >
-                <Image source={{ uri: s.imageUrl }} style={styles.cardImage} />
-                <View style={styles.cardBody}>
-                  <Text style={styles.cardName}>{s.name}</Text>
-                  <Text style={styles.cardArea}>{s.prefecture}</Text>
-                  <View style={styles.miniTagRow}>
-                    {s.tags.slice(0, 3).map((t) => (
-                      <View key={t} style={styles.miniTag}>
-                        <Text style={styles.miniTagText}>{t}</Text>
+            {visibleShrines.map((s) => {
+              const existsOnMap = mapPoints.some((point) => point.id === s.id);
+              const isSelectedOnMap = existsOnMap && selectedShrineId === s.id;
+              return (
+                <View key={s.id} style={styles.card}>
+                  <Pressable
+                    onPress={() => router.push(`/shrines/${s.id}`)}
+                    style={({ pressed }) => [styles.cardMain, pressed && styles.cardPressed]}
+                  >
+                    <Image source={{ uri: s.imageUrl }} style={styles.cardImage} />
+                    <View style={styles.cardBody}>
+                      <Text style={styles.cardName}>{s.name}</Text>
+                      <Text style={styles.cardArea}>{s.prefecture}</Text>
+                      <View style={styles.miniTagRow}>
+                        {s.tags.slice(0, 3).map((t) => (
+                          <View key={t} style={styles.miniTag}>
+                            <Text style={styles.miniTagText}>{t}</Text>
+                          </View>
+                        ))}
                       </View>
-                    ))}
+                    </View>
+                    <Text accessibilityElementsHidden style={styles.chevron}>
+                      ›
+                    </Text>
+                  </Pressable>
+
+                  <View style={styles.cardMapActionRow}>
+                    <Button
+                      title={isSelectedOnMap ? "地図で選択中" : "地図で選択"}
+                      variant="outline"
+                      size="compact"
+                      disabled={!existsOnMap}
+                      onPress={() => setSelectedShrineId(s.id)}
+                      accessibilityLabel={
+                        !existsOnMap
+                          ? `${s.name}は地図に表示されていません`
+                          : isSelectedOnMap
+                            ? `${s.name}を地図で選択中`
+                            : `${s.name}を地図で選択`
+                      }
+                    />
                   </View>
                 </View>
-                <Text accessibilityElementsHidden style={styles.chevron}>
-                  ›
-                </Text>
-              </Pressable>
-            ))}
+              );
+            })}
           </View>
         </>
       ) : null}
@@ -360,14 +382,20 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   card: {
-    flexDirection: "row",
-    alignItems: "center",
     backgroundColor: theme.surface,
     borderWidth: 1,
     borderColor: theme.borderHeader,
     borderRadius: 18,
     padding: 12,
+    gap: 10,
+  },
+  cardMain: {
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
+  },
+  cardMapActionRow: {
+    flexDirection: "row",
   },
   cardPressed: {
     opacity: 0.74,
