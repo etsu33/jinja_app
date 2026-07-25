@@ -1,9 +1,10 @@
 // apps/mobile/app/ranking/index.tsx
 import * as React from "react";
-import { Animated, ScrollView, View, Text, Image, Pressable, StyleSheet } from "react-native";
+import { Animated, ScrollView, View, Text, Pressable, StyleSheet } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
-import { SHRINES } from "../../data/shrines";
+import { fetchPopularShrines, type PopularShrine } from "../../lib/popularShrines";
 import { getFavorites, toggleFavorite } from "../../lib/storage";
+import { StateCard } from "../../components/common/StateCard";
 import Button from "../../components/ui/Button";
 import { kamimusubiDark } from "../../design/theme";
 import { spacing } from "../../design/spacing";
@@ -54,8 +55,26 @@ function FavoriteHeartButton({ favored, onPress }: FavoriteHeartButtonProps) {
 export default function RankingPage() {
   const router = useRouter();
 
-  // お気に入り数の多い順で表示
-  const items = React.useMemo(() => [...SHRINES].sort((a, b) => (b.favorites ?? 0) - (a.favorites ?? 0)), []);
+  const [items, setItems] = React.useState<PopularShrine[]>([]);
+  const [status, setStatus] = React.useState<"loading" | "ready" | "error">("loading");
+
+  // Backend(/populars/)が返す順序(popular_score降順)をそのまま維持し、Mobile側で再ソートしない。
+  // 画面マウント時に1回だけ取得する(Search画面のloadPopularShrinesと同じ契約)。
+  const loadItems = React.useCallback(async () => {
+    setStatus("loading");
+    try {
+      const shrines = await fetchPopularShrines();
+      setItems(shrines);
+      setStatus("ready");
+    } catch {
+      setItems([]);
+      setStatus("error");
+    }
+  }, []);
+
+  React.useEffect(() => {
+    void loadItems();
+  }, [loadItems]);
 
   // お気に入り集合（ハイライト判定用）
   const [favSet, setFavSet] = React.useState<Set<string>>(new Set());
@@ -105,7 +124,7 @@ export default function RankingPage() {
           marginBottom: spacing.xlGap,
         }}
       >
-        保存数の多い神社を、参拝先選びの補助として見られます。
+        人気の神社を、参拝先選びの補助として見られます。
       </Text>
 
       <View style={{ flexDirection: "row", alignItems: "center", marginBottom: spacing.lgGap }}>
@@ -127,29 +146,50 @@ export default function RankingPage() {
         </Text>
       </View>
 
-      {list.map((s, idx) => {
-        const favored = favSet.has(s.id);
-        return (
-          <Pressable
-            key={s.id}
-            onPress={() => router.push(`/shrines/${s.id}`)}
-            style={[styles.card, favored && styles.cardFav]}
-          >
-            <Text style={styles.rank}>{idx + 1}</Text>
-            <Image source={{ uri: s.imageUrl }} style={styles.thumb} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.name}>{s.name}</Text>
-              <Text style={styles.sub}>{s.prefecture}</Text>
-              <Text style={styles.meta}>
-                ★ {(s.rating ?? 4.6).toFixed(1)}　♡ {s.favorites ?? 0}
-              </Text>
-              {favored && <Text style={styles.savedHint}>記録タブで確認できます</Text>}
-            </View>
+      {status === "loading" ? <StateCard title="読み込み中" description="人気の神社を確認しています。" /> : null}
 
-            <FavoriteHeartButton favored={favored} onPress={() => onToggleFav(s.id)} />
-          </Pressable>
-        );
-      })}
+      {status === "error" ? (
+        <View style={{ gap: spacing.mdGap, alignItems: "flex-start" }}>
+          <StateCard title="読み込めませんでした" description="通信状況を確認して、もう一度お試しください。" />
+          <Button
+            title="もう一度試す"
+            variant="outline"
+            size="compact"
+            onPress={() => void loadItems()}
+            accessibilityLabel="人気の神社をもう一度読み込む"
+          />
+        </View>
+      ) : null}
+
+      {status === "ready" && list.length === 0 ? (
+        <StateCard title="現在表示できる人気の神社がありません" description="条件を変えて、もう一度お試しください。" />
+      ) : null}
+
+      {status === "ready"
+        ? list.map((s, idx) => {
+            const favored = favSet.has(s.id);
+            return (
+              <Pressable
+                key={s.id}
+                onPress={() => router.push(`/shrines/${s.id}`)}
+                style={[styles.card, favored && styles.cardFav]}
+              >
+                <Text style={styles.rank}>{idx + 1}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.name}>{s.name}</Text>
+                  {s.address ? (
+                    <Text style={styles.sub} numberOfLines={1}>
+                      {s.address}
+                    </Text>
+                  ) : null}
+                  {favored && <Text style={styles.savedHint}>記録タブで確認できます</Text>}
+                </View>
+
+                <FavoriteHeartButton favored={favored} onPress={() => onToggleFav(s.id)} />
+              </Pressable>
+            );
+          })
+        : null}
     </ScrollView>
   );
 }
@@ -180,13 +220,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginRight: spacing.mdGap,
   },
-  thumb: {
-    width: 68,
-    height: 52,
-    borderRadius: radius.xs,
-    marginRight: spacing.lgGap,
-    backgroundColor: kamimusubiDark.surfaceSoft,
-  },
   name: {
     color: kamimusubiDark.text,
     fontWeight: "700",
@@ -196,11 +229,6 @@ const styles = StyleSheet.create({
     color: kamimusubiDark.muted,
     fontSize: 12,
     marginTop: 3,
-  },
-  meta: {
-    color: kamimusubiDark.goldSoft,
-    fontSize: 12,
-    marginTop: 5,
   },
   savedHint: {
     color: kamimusubiDark.mutedSoft,
