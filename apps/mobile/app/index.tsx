@@ -4,6 +4,7 @@ import { ScrollView, View, Text, TextInput, StyleSheet, Pressable } from "react-
 import { kamimusubiDark as theme } from "../design/theme";
 import { shadows } from "../design/shadow";
 import { ConditionFieldsCard } from "../components/ConditionFieldsCard";
+import Button from "../components/ui/Button";
 import { resolveGoriyakuTagIds } from "../lib/conditionPayload";
 import * as Location from "expo-location";
 import type { UserOrigin } from "../../../packages/shared/userOrigin";
@@ -46,6 +47,10 @@ export default function Home() {
   ]
     .filter(Boolean)
     .join(" / ");
+
+  const openSearch = () => {
+    router.push("/search");
+  };
 
   const openConcierge = () => {
     // Concierge画面側のgoriyaku_tag_ids解決(resolveGoriyakuTagIds)が使うキャッシュを先読みしておく。
@@ -172,6 +177,15 @@ export default function Home() {
       <Pressable onPress={openConcierge} style={styles.primaryCta}>
         <Text style={styles.primaryCtaText}>この相談からご縁を見る</Text>
       </Pressable>
+
+      {/* Search入口(補助CTA) */}
+      <Button
+        title="神社を地図・一覧から探す"
+        variant="outline"
+        onPress={openSearch}
+        accessibilityLabel="神社を地図・一覧から探す"
+        style={styles.searchEntryCta}
+      />
 
     </ScrollView>
   );
@@ -369,6 +383,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "900",
     letterSpacing: 0.3,
+  },
+  searchEntryCta: {
+    marginTop: 12,
   },
 
 });
