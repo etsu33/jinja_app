@@ -8,6 +8,7 @@ import { kamimusubiDark as theme } from "../../design/theme";
 import { get, isUnauthenticatedError } from "../../lib/http";
 import { isLoggedIn } from "../../lib/authTokens";
 import { trackShrineDetailView, trackShrineRouteOpen } from "../../lib/shrineInteractions";
+import { trackRouteOpen } from "../../lib/searchAnalytics";
 import { spacing } from "../../design/spacing";
 import { cardSizes } from "../../design/cardSizes";
 import { radius } from "../../design/radius";
@@ -549,6 +550,9 @@ export default function ShrineDetail() {
           ctx: "mobile_shrine_detail",
         },
       });
+      // Backend保存用(trackShrineRouteOpen)とは別に、PostHog等で可視化するための
+      // track()イベントをWeb版のroute_openと同じ名前・意味で送る。
+      trackRouteOpen({ shrineId: shrineIdNumber });
     }
     const hasLatLng = typeof shrine.latitude === "number" && typeof shrine.longitude === "number";
     const destination = hasLatLng ? `${shrine.latitude},${shrine.longitude}` : encodeURIComponent(shrine.name);

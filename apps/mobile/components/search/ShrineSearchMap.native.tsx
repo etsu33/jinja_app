@@ -8,6 +8,7 @@ import { radius } from "../../design/radius";
 import { spacing } from "../../design/spacing";
 import { prefectureOrigin } from "../../../../packages/shared/userOrigin";
 import { hasValidCoordinates, type ShrineSearchMapProps } from "../../lib/shrineMap";
+import { trackMapMarkerSelect } from "../../lib/searchAnalytics";
 
 const FALLBACK_ORIGIN = prefectureOrigin("東京都");
 const FALLBACK_REGION: Region = {
@@ -52,6 +53,16 @@ export function ShrineSearchMap({ points, selectedId, onSelect }: ShrineSearchMa
   const unmappablePoints = React.useMemo(() => points.filter((point) => !hasValidCoordinates(point)), [points]);
   const initialRegion = React.useMemo(() => buildInitialRegion(mappablePoints), [mappablePoints]);
 
+  // Marker押下・座標欠損リスト押下は「地図で選んだ」という同一の探索行動のため、
+  // 呼び出し元(神社一覧の「地図で選択」ボタン等)とは別に、ここで1箇所だけ計測する。
+  const handleSelect = React.useCallback(
+    (id: string) => {
+      trackMapMarkerSelect({ shrineId: id });
+      onSelect(id);
+    },
+    [onSelect],
+  );
+
   return (
     <View>
       <View style={styles.wrap} accessibilityLabel="検索結果の神社を地図で見る">
@@ -63,7 +74,7 @@ export function ShrineSearchMap({ points, selectedId, onSelect }: ShrineSearchMa
                 key={point.id}
                 coordinate={{ latitude: point.latitude, longitude: point.longitude }}
                 title={point.name}
-                onPress={() => onSelect(point.id)}
+                onPress={() => handleSelect(point.id)}
                 accessibilityRole="button"
                 accessibilityLabel={selected ? `${point.name}を選択、選択中` : `${point.name}を選択`}
                 accessibilityState={{ selected }}
@@ -84,7 +95,7 @@ export function ShrineSearchMap({ points, selectedId, onSelect }: ShrineSearchMa
               return (
                 <Pressable
                   key={point.id}
-                  onPress={() => onSelect(point.id)}
+                  onPress={() => handleSelect(point.id)}
                   accessibilityRole="button"
                   accessibilityLabel={selected ? `${point.name}を選択、選択中` : `${point.name}を選択`}
                   accessibilityState={{ selected }}

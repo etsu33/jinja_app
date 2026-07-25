@@ -14,6 +14,7 @@ import {
   isSearchMapSectionAvailable,
   type ShrineMapPoint,
 } from "../../lib/shrineMap";
+import { trackSearchScreenView, trackShrineCardClick } from "../../lib/searchAnalytics";
 
 const isMapSectionAvailable = isSearchMapSectionAvailable(Platform.OS, process.env.EXPO_PUBLIC_WEB_MAP_STYLE_URL);
 
@@ -26,6 +27,11 @@ export default function SearchPage() {
   const [mapPoints, setMapPoints] = React.useState<ShrineMapPoint[]>([]);
   const [mapStatus, setMapStatus] = React.useState<"loading" | "ready" | "error">("loading");
   const [selectedShrineId, setSelectedShrineId] = React.useState<string | null>(null);
+
+  // 画面マウント中は1回だけ送る(依存配列を空にして再レンダーでの重複発火を避ける)。
+  React.useEffect(() => {
+    trackSearchScreenView();
+  }, []);
 
   const loadMapPoints = React.useCallback(async () => {
     setMapStatus("loading");
@@ -113,7 +119,10 @@ export default function SearchPage() {
               return (
                 <View key={s.id} style={styles.card}>
                   <Pressable
-                    onPress={() => router.push(`/shrines/${s.id}`)}
+                    onPress={() => {
+                      trackShrineCardClick({ shrineId: s.id, position: "list" });
+                      router.push(`/shrines/${s.id}`);
+                    }}
                     style={({ pressed }) => [styles.cardMain, pressed && styles.cardPressed]}
                   >
                     <Image source={{ uri: s.imageUrl }} style={styles.cardImage} />
@@ -160,7 +169,10 @@ export default function SearchPage() {
         <View style={styles.selectedShrineWrap}>
           <SelectedShrineMapCard
             shrine={selectedMapShrine}
-            onDetail={() => router.push(`/shrines/${selectedMapShrine.id}`)}
+            onDetail={() => {
+              trackShrineCardClick({ shrineId: selectedMapShrine.id, position: "map" });
+              router.push(`/shrines/${selectedMapShrine.id}`);
+            }}
           />
         </View>
       ) : null}
@@ -175,7 +187,10 @@ export default function SearchPage() {
           {popularShrines.map((s, index) => (
             <Pressable
               key={s.id}
-              onPress={() => router.push(`/shrines/${s.id}`)}
+              onPress={() => {
+                trackShrineCardClick({ shrineId: s.id, position: "popular" });
+                router.push(`/shrines/${s.id}`);
+              }}
               style={({ pressed }) => [styles.popularCard, pressed && styles.cardPressed]}
             >
               <Text style={styles.popularRank}>{index + 1}</Text>
