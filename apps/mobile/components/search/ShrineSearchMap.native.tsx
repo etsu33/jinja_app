@@ -1,4 +1,4 @@
-// apps/mobile/components/search/ShrineSearchMap.tsx
+// apps/mobile/components/search/ShrineSearchMap.native.tsx
 import * as React from "react";
 import { StyleSheet, View } from "react-native";
 import MapView, { Marker, type Region } from "react-native-maps";
