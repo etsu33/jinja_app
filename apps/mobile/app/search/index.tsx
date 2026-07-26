@@ -18,7 +18,11 @@ import { fetchPopularShrines, type PopularShrine } from "../../lib/popularShrine
 import { trackSearchScreenView, trackShrineCardClick } from "../../lib/searchAnalytics";
 import { filterShrines, parseSearchFilters } from "../../lib/searchFilters";
 
-const isMapSectionAvailable = isSearchMapSectionAvailable(Platform.OS, process.env.EXPO_PUBLIC_WEB_MAP_STYLE_URL);
+const isMapSectionAvailable = isSearchMapSectionAvailable(
+  Platform.OS,
+  process.env.EXPO_PUBLIC_WEB_MAP_STYLE_URL,
+  process.env.EXPO_PUBLIC_ANDROID_GOOGLE_MAPS_API_KEY,
+);
 
 export default function SearchPage() {
   const router = useRouter();

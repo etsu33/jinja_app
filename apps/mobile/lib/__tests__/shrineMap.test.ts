@@ -163,9 +163,17 @@ describe("isSearchMapSectionAvailable", () => {
     expect(isSearchMapSectionAvailable("ios", "https://example.com/style.json")).toBe(true);
   });
 
-  it("Androidはstyle URLの有無に関わらずfalse(Google Maps APIキー未設定のためMapView初期化が安全でない)", () => {
-    expect(isSearchMapSectionAvailable("android", undefined)).toBe(false);
-    expect(isSearchMapSectionAvailable("android", "https://example.com/style.json")).toBe(false);
+  it("AndroidはGoogle Maps APIキー未設定の場合false(MapView初期化が安全でない、style URLの有無は無関係)", () => {
+    expect(isSearchMapSectionAvailable("android", undefined, undefined)).toBe(false);
+    expect(isSearchMapSectionAvailable("android", undefined, "")).toBe(false);
+    expect(isSearchMapSectionAvailable("android", "https://example.com/style.json", undefined)).toBe(false);
+  });
+
+  it("AndroidはGoogle Maps APIキー設定済みの場合true(style URLの有無は無関係)", () => {
+    expect(isSearchMapSectionAvailable("android", undefined, "test-android-maps-key")).toBe(true);
+    expect(isSearchMapSectionAvailable("android", "https://example.com/style.json", "test-android-maps-key")).toBe(
+      true,
+    );
   });
 });
 
