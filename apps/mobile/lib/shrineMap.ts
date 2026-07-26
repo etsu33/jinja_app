@@ -35,17 +35,20 @@ export function hasValidCoordinates(
  * Androidはreact-native-mapsが常にGoogle Mapsを使用しAPIキーが必須であり、
  * APIキー未設定のままMapViewを初期化すると例外で落ちる既知の不具合がある
  * (react-native-maps公式リポジトリのIssueで複数報告されているクラッシュパターン)。
- * androidGoogleMapsApiKeyは`EXPO_PUBLIC_ANDROID_GOOGLE_MAPS_API_KEY`(app.config.tsの
- * react-native-mapsプラグインへ渡す値と同じ変数)の有無を表す。EAS Environmentへ未登録の
- * ビルド(development/preview等)ではこの値が渡らず、Android地図は安全に非表示のままになる。
+ * androidMapsEnabledはapp.config.tsが生成したbooleanで、呼び出し側
+ * (Search画面)はConstants.expoConfig?.extra?.androidMapsEnabled経由で取得する。
+ * APIキー実値はJavaScript側の表示判定に一切渡さない(EAS BuildのGradle経由JS
+ * バンドル生成ではprocess.env.EXPO_PUBLIC_*が確実に伝播しない場合があり、実値を
+ * 直接参照するとビルドによって判定が不安定になるため)。値が未設定・undefinedの
+ * 場合はfail-safeとしてfalse(地図非表示)を返す。
  */
 export function isSearchMapSectionAvailable(
   platformOS: string,
   styleUrl: string | undefined,
-  androidGoogleMapsApiKey?: string,
+  androidMapsEnabled?: boolean,
 ): boolean {
   if (platformOS === "web") return Boolean(styleUrl);
-  if (platformOS === "android") return Boolean(androidGoogleMapsApiKey);
+  if (platformOS === "android") return androidMapsEnabled === true;
   return true;
 }
 
