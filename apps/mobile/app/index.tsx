@@ -10,6 +10,7 @@ import * as Location from "expo-location";
 import type { UserOrigin } from "../../../packages/shared/userOrigin";
 import { setOriginSession } from "../lib/originSession";
 import { trackSearchEntryClick } from "../lib/searchAnalytics";
+import { buildSearchFilters } from "../lib/searchFilters";
 
 const THEMES = [
   "疲れを整えたい",
@@ -51,7 +52,17 @@ export default function Home() {
 
   const openSearch = () => {
     trackSearchEntryClick();
-    router.push("/search");
+    // Searchへ渡してよいのは、Search側の既存フィルター処理(SHRINES.tags)と
+    // 意味が一致する固定ラベル(ご利益)のみ。相談文・誕生日・参拝予定日・出発地点・
+    // 参拝スタイル・補助条件は渡さない(docs/product/mobile-user-flow.md 8節・10節)。
+    const filters = buildSearchFilters([selectedGoriyaku]);
+    if (!filters) {
+      router.push("/search");
+      return;
+    }
+    const params = new URLSearchParams();
+    params.set("filters", filters);
+    router.push(`/search?${params.toString()}`);
   };
 
   const openConcierge = () => {

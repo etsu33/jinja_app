@@ -16,14 +16,14 @@ import {
 } from "../../lib/shrineMap";
 import { fetchPopularShrines, type PopularShrine } from "../../lib/popularShrines";
 import { trackSearchScreenView, trackShrineCardClick } from "../../lib/searchAnalytics";
+import { filterShrines, parseSearchFilters } from "../../lib/searchFilters";
 
 const isMapSectionAvailable = isSearchMapSectionAvailable(Platform.OS, process.env.EXPO_PUBLIC_WEB_MAP_STYLE_URL);
 
 export default function SearchPage() {
   const router = useRouter();
   const { q, filters } = useLocalSearchParams<{ q?: string; filters?: string }>();
-  const query = (q ?? "").toLowerCase();
-  const selected = (filters ?? "").split(",").filter(Boolean);
+  const selected = parseSearchFilters(filters);
 
   const [mapPoints, setMapPoints] = React.useState<ShrineMapPoint[]>([]);
   const [mapStatus, setMapStatus] = React.useState<"loading" | "ready" | "error">("loading");
@@ -78,17 +78,7 @@ export default function SearchPage() {
 
   const selectedMapShrine = findShrineMapPointById(mapPoints, selectedShrineId);
 
-  const filtered = SHRINES.filter((s) => {
-    const textHit =
-      !query ||
-      s.name.toLowerCase().includes(query) ||
-      s.tags.some((t) => t.toLowerCase().includes(query)) ||
-      (s.prefecture ?? "").toLowerCase().includes(query);
-
-    const tagsHit = selected.length === 0 || selected.every((sel) => s.tags.includes(sel) || s.prefecture === sel);
-
-    return textHit && tagsHit;
-  });
+  const filtered = filterShrines(SHRINES, { query: q, filters });
 
   // 人気の神社は実API(/populars/)由来のため、静的SHRINESとのID空間が重ならず
   // 重複除外の必要がない。神社一覧のフィルタ・ソート結果(filtered)はそのまま表示する。
@@ -181,7 +171,14 @@ export default function SearchPage() {
             })}
           </View>
         </>
-      ) : null}
+      ) : (
+        <View style={styles.list}>
+          <StateCard
+            title="条件に一致する神社が見つかりませんでした"
+            description="条件を変えると、他の神社が見つかる場合があります。"
+          />
+        </View>
+      )}
 
       {selectedMapShrine ? (
         <View style={styles.selectedShrineWrap}>
