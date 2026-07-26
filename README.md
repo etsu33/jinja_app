@@ -319,20 +319,9 @@ export async function GET(req: NextRequest) {
 
 ---
 
-## Mobile（WIP / 休眠運用）
+## Mobile
 
-`apps/mobile/` は未着手〜プロトタイプ段階のため、通常は workspace から除外して運用します。
-
-### 休眠中の目印
-
-- `apps/mobile/.hibernated`
-
-### 復帰手順（最小）
-
-1. `pnpm-workspace.yaml` から `!apps/mobile` を外す
-2. `apps/mobile` で `pnpm install`（必要なら `expo install`）
-3. `expo start` / `expo run:*` を実行
-4. Dependabot/CI対象の見直し
+`apps/mobile/` は継続開発中で、pnpm workspace の正式メンバーです。CI（`.github/workflows/mobile-ci.yml`）・EAS Build ともに対象で、依存関係はルートの `pnpm-lock.yaml` で一元管理しています。
 
 ---
 

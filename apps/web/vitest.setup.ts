@@ -1,6 +1,12 @@
 // apps/web/vitest.setup.ts
-import "@testing-library/jest-dom/vitest";
-import { vi } from "vitest";
+import * as matchers from "@testing-library/jest-dom/matchers";
+import { expect, vi } from "vitest";
+
+// `@testing-library/jest-dom/vitest` は内部で未宣言の `vitest` importを持ち、
+// pnpm workspace統合後はphantom dependency解決でMobile側のvitest実体を拾ってしまう
+// (SnapshotClientがモジュールスコープのシングルトンのため不整合が起きる)。
+// このファイルが直接importしたexpect（Web側のvitest実体）へ明示登録することで回避する。
+expect.extend(matchers);
 
 // next/navigation の最低限モック
 const _replace = vi.fn();
