@@ -158,13 +158,14 @@ describe("isSearchMapSectionAvailable", () => {
     expect(isSearchMapSectionAvailable("web", "https://example.com/style.json")).toBe(true);
   });
 
-  it("iOSはstyle URLの有無に関わらずtrue(Nativeは常時react-native-mapsを表示する)", () => {
+  it("iOSはstyle URLの有無に関わらずtrue(既定providerのApple MapsはAPIキー不要)", () => {
     expect(isSearchMapSectionAvailable("ios", undefined)).toBe(true);
     expect(isSearchMapSectionAvailable("ios", "https://example.com/style.json")).toBe(true);
   });
 
-  it("Androidもstyle URLの有無に関わらずtrue", () => {
-    expect(isSearchMapSectionAvailable("android", undefined)).toBe(true);
+  it("Androidはstyle URLの有無に関わらずfalse(Google Maps APIキー未設定のためMapView初期化が安全でない)", () => {
+    expect(isSearchMapSectionAvailable("android", undefined)).toBe(false);
+    expect(isSearchMapSectionAvailable("android", "https://example.com/style.json")).toBe(false);
   });
 });
 
