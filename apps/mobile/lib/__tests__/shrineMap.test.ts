@@ -163,17 +163,19 @@ describe("isSearchMapSectionAvailable", () => {
     expect(isSearchMapSectionAvailable("ios", "https://example.com/style.json")).toBe(true);
   });
 
-  it("AndroidはGoogle Maps APIキー未設定の場合false(MapView初期化が安全でない、style URLの有無は無関係)", () => {
+  it("AndroidはandroidMapsEnabledがundefinedの場合false(MapView初期化が安全でない、style URLの有無は無関係)", () => {
     expect(isSearchMapSectionAvailable("android", undefined, undefined)).toBe(false);
-    expect(isSearchMapSectionAvailable("android", undefined, "")).toBe(false);
     expect(isSearchMapSectionAvailable("android", "https://example.com/style.json", undefined)).toBe(false);
   });
 
-  it("AndroidはGoogle Maps APIキー設定済みの場合true(style URLの有無は無関係)", () => {
-    expect(isSearchMapSectionAvailable("android", undefined, "test-android-maps-key")).toBe(true);
-    expect(isSearchMapSectionAvailable("android", "https://example.com/style.json", "test-android-maps-key")).toBe(
-      true,
-    );
+  it("AndroidはandroidMapsEnabled=falseの場合false(style URLの有無は無関係)", () => {
+    expect(isSearchMapSectionAvailable("android", undefined, false)).toBe(false);
+    expect(isSearchMapSectionAvailable("android", "https://example.com/style.json", false)).toBe(false);
+  });
+
+  it("AndroidはandroidMapsEnabled=trueの場合true(style URLの有無は無関係)", () => {
+    expect(isSearchMapSectionAvailable("android", undefined, true)).toBe(true);
+    expect(isSearchMapSectionAvailable("android", "https://example.com/style.json", true)).toBe(true);
   });
 });
 

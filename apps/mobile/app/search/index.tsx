@@ -1,4 +1,5 @@
 import * as React from "react";
+import Constants from "expo-constants";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { View, Text, ScrollView, Pressable, Image, StyleSheet, Platform } from "react-native";
 import { SHRINES } from "../../data/shrines";
@@ -18,10 +19,16 @@ import { fetchPopularShrines, type PopularShrine } from "../../lib/popularShrine
 import { trackSearchScreenView, trackShrineCardClick } from "../../lib/searchAnalytics";
 import { filterShrines, parseSearchFilters } from "../../lib/searchFilters";
 
+// Androidの地図可否はAPIキー実値ではなく、app.config.tsが生成したbooleanを
+// Constants.expoConfig経由で参照する(process.env.EXPO_PUBLIC_*はEAS BuildのGradle
+// 経由JSバンドル生成では確実に伝播しないことが確認されたため、実行時に安定して
+// 取得できるexpo configのextraを使う。詳細はlib/shrineMap.tsのコメント参照)。
+const androidMapsEnabled = Constants.expoConfig?.extra?.androidMapsEnabled === true;
+
 const isMapSectionAvailable = isSearchMapSectionAvailable(
   Platform.OS,
   process.env.EXPO_PUBLIC_WEB_MAP_STYLE_URL,
-  process.env.EXPO_PUBLIC_ANDROID_GOOGLE_MAPS_API_KEY,
+  androidMapsEnabled,
 );
 
 export default function SearchPage() {
@@ -154,22 +161,24 @@ export default function SearchPage() {
                     </Text>
                   </Pressable>
 
-                  <View style={styles.cardMapActionRow}>
-                    <Button
-                      title={isSelectedOnMap ? "地図で選択中" : "地図で選択"}
-                      variant="outline"
-                      size="compact"
-                      disabled={!existsOnMap}
-                      onPress={() => setSelectedShrineId(s.id)}
-                      accessibilityLabel={
-                        !existsOnMap
-                          ? `${s.name}は地図に表示されていません`
-                          : isSelectedOnMap
-                            ? `${s.name}を地図で選択中`
-                            : `${s.name}を地図で選択`
-                      }
-                    />
-                  </View>
+                  {isMapSectionAvailable ? (
+                    <View style={styles.cardMapActionRow}>
+                      <Button
+                        title={isSelectedOnMap ? "地図で選択中" : "地図で選択"}
+                        variant="outline"
+                        size="compact"
+                        disabled={!existsOnMap}
+                        onPress={() => setSelectedShrineId(s.id)}
+                        accessibilityLabel={
+                          !existsOnMap
+                            ? `${s.name}は地図に表示されていません`
+                            : isSelectedOnMap
+                              ? `${s.name}を地図で選択中`
+                              : `${s.name}を地図で選択`
+                        }
+                      />
+                    </View>
+                  ) : null}
                 </View>
               );
             })}
