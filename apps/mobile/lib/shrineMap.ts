@@ -32,15 +32,20 @@ export function hasValidCoordinates(
  * Web版はEXPO_PUBLIC_WEB_MAP_STYLE_URL未設定を初期公開の通常状態として扱い、
  * セクション自体を表示しない(docs/product/mobile-user-flow.md 11節)。
  * iOSはreact-native-mapsの既定provider(Apple Maps)がAPIキー不要のため常時表示する。
- * Androidはreact-native-mapsが常にGoogle Mapsを使用しAPIキーが必須だが、
- * 現状app.jsonにreact-native-maps config plugin・Google Maps APIキーが未設定であり、
- * MapView初期化時に例外で落ちる既知の不具合がある(react-native-maps公式リポジトリのIssueで
- * 複数報告されているクラッシュパターン)。APIキー・config plugin設定(契約・費用判断が必要)が
- * 整うまでは、Android側の地図セクションを表示しない。
+ * Androidはreact-native-mapsが常にGoogle Mapsを使用しAPIキーが必須であり、
+ * APIキー未設定のままMapViewを初期化すると例外で落ちる既知の不具合がある
+ * (react-native-maps公式リポジトリのIssueで複数報告されているクラッシュパターン)。
+ * androidGoogleMapsApiKeyは`EXPO_PUBLIC_ANDROID_GOOGLE_MAPS_API_KEY`(app.config.tsの
+ * react-native-mapsプラグインへ渡す値と同じ変数)の有無を表す。EAS Environmentへ未登録の
+ * ビルド(development/preview等)ではこの値が渡らず、Android地図は安全に非表示のままになる。
  */
-export function isSearchMapSectionAvailable(platformOS: string, styleUrl: string | undefined): boolean {
+export function isSearchMapSectionAvailable(
+  platformOS: string,
+  styleUrl: string | undefined,
+  androidGoogleMapsApiKey?: string,
+): boolean {
   if (platformOS === "web") return Boolean(styleUrl);
-  if (platformOS === "android") return false;
+  if (platformOS === "android") return Boolean(androidGoogleMapsApiKey);
   return true;
 }
 
