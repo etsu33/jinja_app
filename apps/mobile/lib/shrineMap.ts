@@ -31,10 +31,17 @@ export function hasValidCoordinates(
  * Search画面で「地図で探す」セクションを表示してよいか判定する。
  * Web版はEXPO_PUBLIC_WEB_MAP_STYLE_URL未設定を初期公開の通常状態として扱い、
  * セクション自体を表示しない(docs/product/mobile-user-flow.md 11節)。
- * Nativeはreact-native-mapsを常時表示するため、platformOSが"web"でなければ常にtrueとする。
+ * iOSはreact-native-mapsの既定provider(Apple Maps)がAPIキー不要のため常時表示する。
+ * Androidはreact-native-mapsが常にGoogle Mapsを使用しAPIキーが必須だが、
+ * 現状app.jsonにreact-native-maps config plugin・Google Maps APIキーが未設定であり、
+ * MapView初期化時に例外で落ちる既知の不具合がある(react-native-maps公式リポジトリのIssueで
+ * 複数報告されているクラッシュパターン)。APIキー・config plugin設定(契約・費用判断が必要)が
+ * 整うまでは、Android側の地図セクションを表示しない。
  */
 export function isSearchMapSectionAvailable(platformOS: string, styleUrl: string | undefined): boolean {
-  return platformOS !== "web" || Boolean(styleUrl);
+  if (platformOS === "web") return Boolean(styleUrl);
+  if (platformOS === "android") return false;
+  return true;
 }
 
 // selectedShrineIdから選択中の神社を導出する。Search画面・Web地図の両方から

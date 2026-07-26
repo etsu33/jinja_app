@@ -248,7 +248,8 @@ export default function SearchPage() {
         ) : null}
       </View>
 
-      {/* 地図で探す: 補助表示。Webでstyle URL未設定の間はセクション自体を表示しない */}
+      {/* 地図で探す: 補助表示。Webはstyle URL未設定の間、AndroidはGoogle Maps APIキー未設定の間、
+          セクション自体を表示しない(isSearchMapSectionAvailable、lib/shrineMap.ts参照) */}
       {isMapSectionAvailable ? (
         <View style={styles.mapSection}>
           <View style={styles.sectionHeader}>
