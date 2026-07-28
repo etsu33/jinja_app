@@ -140,6 +140,10 @@ def _build_fact(candidate_profile: dict[str, Any], meaning_translation: dict[str
     visit_style_tags = _as_list(candidate_profile.get("visit_style_tags"))
     name = _first_string(candidate_profile.get("name"))
 
+    # label は互換目的の補助フィールド（既存テスト・evidence表示のみで参照）。
+    # _build_reason_text の主判定には使用しない。place_context(住所)を含む算出方法は
+    # 従来のまま維持し、reason_text生成側でplace_contextを除外することで
+    # 「住所が神社の特徴として表示される」不具合のみを止める。
     label = _first_string(deity, shrine_history, place_context, history_theme, goriyaku, name, "候補神社") or "候補神社"
     evidence: list[str] = []
 
@@ -164,6 +168,7 @@ def _build_fact(candidate_profile: dict[str, Any], meaning_translation: dict[str
         "deity": deity,
         "shrine_history": shrine_history,
         "place_context": place_context,
+        "history_theme": history_theme,
         "goriyaku": goriyaku,
         "visit_style_tags": visit_style_tags,
         "evidence": evidence,
@@ -177,7 +182,7 @@ def _build_used_fact(fact: dict[str, Any]) -> dict[str, Any]:
         "shrine_history": fact.get("shrine_history"),
         "place_context": fact.get("place_context"),
         "goriyaku": fact.get("goriyaku"),
-        "history_theme": fact.get("label") if fact.get("label") not in {fact.get("deity"), fact.get("shrine_history"), fact.get("place_context"), fact.get("goriyaku"), "候補神社"} else None,
+        "history_theme": fact.get("history_theme"),
         "evidence": fact.get("evidence") or [],
     }
 
@@ -386,44 +391,61 @@ def build_recommendation_reason_quality_audit(reason: dict[str, Any]) -> dict[st
     }
 
 
+def _build_fact_text(fact: dict[str, Any]) -> str:
+    """Compose the Fact sentence by branching on Fact type.
+
+    Each Fact type (deity / shrine_history / goriyaku / history_theme) has its own
+    sentence form instead of being flattened into a single "label" template.
+    place_context (raw address) is never used as the sentence subject: an address is
+    not a shrine-specific feature, and stating "shrine X has the feature of <address>"
+    reads as broken Japanese and misrepresents empty Fact data as grounded content.
+    """
+    fact_name = _first_string(fact.get("name"))
+    fact_deity = _first_string(fact.get("deity"))
+    fact_shrine_history = _first_string(fact.get("shrine_history"))
+    fact_goriyaku = _first_string(fact.get("goriyaku"))
+    fact_history_theme = _first_string(fact.get("history_theme"))
+    visit_style_copies = _copy_visit_style_tags(_as_list(fact.get("visit_style_tags")))
+
+    subject = fact_name or "この神社"
+    fact_details: list[str] = []
+
+    if fact_deity:
+        fact_text = f"{subject}では、{fact_deity}が祀られています。"
+        if fact_goriyaku:
+            fact_details.append(f"{fact_goriyaku}の要素")
+    elif fact_shrine_history:
+        history_text = fact_shrine_history.rstrip("。")
+        fact_text = f"{subject}には、{history_text}という背景があります。"
+        if fact_goriyaku:
+            fact_details.append(f"{fact_goriyaku}の要素")
+    elif fact_goriyaku:
+        fact_text = f"{subject}には、{fact_goriyaku}に関する情報があります。"
+    elif fact_history_theme:
+        fact_text = f"{subject}は、{fact_history_theme}という文脈で整理されています。"
+    else:
+        # deity / shrine_history / goriyaku / history_theme が一つもない場合。
+        # place_context(住所)や神社名だけでは神社固有Factがあるとは表現しない。
+        fact_text = "神社固有情報が十分でないため、相談条件との一致を中心に整理しています。"
+
+    if visit_style_copies:
+        fact_details.extend(visit_style_copies[:2])
+
+    if fact_details:
+        detail_text = "、".join(fact_details)
+        fact_text = f"{fact_text.rstrip('。')}。{detail_text}も確認材料になります。"
+
+    return fact_text
+
+
 def _build_reason_text(fact: dict[str, Any], interpretation: dict[str, Any], action: dict[str, Any]) -> str:
     """Compose reason_text as Fact -> Interpretation -> Action.
 
     Keep each sentence responsible for one layer only.
     """
-    fact_label = _first_string(fact.get("label")) or "候補神社"
-    fact_name = _first_string(fact.get("name"))
-    fact_goriyaku = _first_string(fact.get("goriyaku"))
-    visit_style_copies = _copy_visit_style_tags(_as_list(fact.get("visit_style_tags")))
+    fact_text = _build_fact_text(fact)
     interpretation_text = _first_string(interpretation.get("text")) or "相談内容から、今扱いたいテーマを読み取っています。"
     action_text = _first_string(action.get("text")) or "次に確認したいことを一つだけ決めます。"
-
-    if fact_name and fact_label != "候補神社":
-        fact_text = f"{fact_name}には、{fact_label}の特徴があります。"
-    elif fact_name:
-        fact_text = f"{fact_name}は、相談内容と神社側の情報を重ねて見ています。"
-    elif fact_label == "候補神社":
-        fact_text = "この神社は、相談内容と神社側の情報を重ねて見ています。"
-    else:
-        fact_text = f"この神社には、{fact_label}の特徴があります。"
-
-    fact_details: list[str] = []
-    if fact_goriyaku and fact_goriyaku != fact_label:
-        fact_details.append(f"{fact_goriyaku}の要素")
-    if visit_style_copies:
-        fact_details.extend(visit_style_copies[:2])
-    if fact_details:
-        detail_text = "、".join(fact_details)
-        if fact_text.endswith("の特徴があります。"):
-            fact_text = fact_text.replace(
-                "の特徴があります。",
-                f"の特徴があり、{detail_text}も材料になります。",
-            )
-        else:
-            fact_text = f"{fact_text.rstrip('。')}。{detail_text}も確認材料になります。"
-
-    if fact_label == "候補神社" and interpretation_text == "相談内容から、今扱いたいテーマを読み取っています。":
-        interpretation_text = "相談内容から、今扱いたいテーマを読み取っています。"
 
     reason_parts = [fact_text, interpretation_text, action_text]
     return "".join(reason_parts[:3])
