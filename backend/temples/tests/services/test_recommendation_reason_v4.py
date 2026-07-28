@@ -72,7 +72,7 @@ def test_build_recommendation_reason_v4_returns_stable_schema():
     assert isinstance(result["used_interpretation"], dict)
     assert isinstance(result["used_action"], dict)
     assert isinstance(result["quality"], dict)
-    assert set(result["fact"].keys()) == {"label", "name", "deity", "shrine_history", "place_context", "goriyaku", "visit_style_tags", "evidence"}
+    assert set(result["fact"].keys()) == {"label", "name", "deity", "shrine_history", "place_context", "history_theme", "goriyaku", "visit_style_tags", "evidence"}
     assert set(result["interpretation"].keys()) == {"theme", "text"}
     assert set(result["action"].keys()) == {"text", "source"}
     assert set(result["used_fact"].keys()) == {"deity", "shrine_history", "place_context", "goriyaku", "history_theme", "evidence"}
@@ -102,6 +102,7 @@ def test_build_recommendation_reason_v4_builds_fact_layer_from_candidate_and_mea
         "deity": "武神",
         "shrine_history": "古くから勝負の祈願で知られる",
         "place_context": "静かな丘の上",
+        "history_theme": "再出発",
         "goriyaku": "仕事運",
         "visit_style_tags": ["quiet", "nature"],
         "evidence": [
@@ -120,7 +121,7 @@ def test_build_recommendation_reason_v4_builds_fact_layer_from_candidate_and_mea
         "shrine_history": "古くから勝負の祈願で知られる",
         "place_context": "静かな丘の上",
         "goriyaku": "仕事運",
-        "history_theme": None,
+        "history_theme": "再出発",
         "evidence": [
             "deity:武神",
             "shrine_history:古くから勝負の祈願で知られる",
@@ -149,7 +150,7 @@ def test_build_recommendation_reason_v4_includes_shrine_name_in_reason_text():
         },
     )
 
-    assert "神社Aには、再出発の特徴があり、仕事運の要素も材料になります。" in result["reason_text"]
+    assert "神社Aには、仕事運に関する情報があります。" in result["reason_text"]
 
 
 def test_build_recommendation_reason_v4_keeps_goriyaku_and_visit_style_in_fact():
@@ -177,7 +178,7 @@ def test_build_recommendation_reason_v4_reflects_goriyaku_and_visit_style_in_fac
         },
     )
 
-    assert "神社Eには、再出発の特徴があり、仕事運の要素、静かに参拝しやすい、自然を感じながら過ごしやすいも材料になります。" in result["reason_text"]
+    assert "神社Eには、仕事運に関する情報があります。静かに参拝しやすい、自然を感じながら過ごしやすいも確認材料になります。" in result["reason_text"]
 
 
 def test_build_recommendation_reason_v4_prioritizes_shrine_specific_fact_fields():
@@ -422,13 +423,14 @@ def test_build_recommendation_reason_v4_handles_missing_inputs_safely():
     result = build_recommendation_reason_v4()
 
     assert result == {
-        "reason_text": "この神社は、相談内容と神社側の情報を重ねて見ています。相談内容から、今扱いたいテーマを読み取っています。参拝前に、次に確認したいことを一つだけ決めておきます。",
+        "reason_text": "神社固有情報が十分でないため、相談条件との一致を中心に整理しています。相談内容から、今扱いたいテーマを読み取っています。参拝前に、次に確認したいことを一つだけ決めておきます。",
         "fact": {
             "label": "候補神社",
             "name": None,
             "deity": None,
             "shrine_history": None,
             "place_context": None,
+            "history_theme": None,
             "goriyaku": None,
             "visit_style_tags": [],
             "evidence": [],
@@ -562,3 +564,133 @@ def test_build_recommendation_reason_v4_uses_state_direction_and_emotion_profile
         "text": "気持ちを落ち着け、今の状態を整理したい相談として受け取れます。不安や心配を中心に、要素が強めに出ています。",
     }
     assert "あなたは" not in result["reason_text"]
+
+
+# --- Fact種別別コピー修正: place_context誤用防止・種別別文型のテスト ---
+
+
+def test_build_recommendation_reason_v4_place_context_only_does_not_state_address_as_feature():
+    result = build_recommendation_reason_v4(
+        candidate_profile={
+            "name": "テスト神社",
+            "place_context": "東京都渋谷区代々木神園町1-1",
+        },
+    )
+
+    assert "東京都渋谷区代々木神園町1-1" not in result["reason_text"]
+    assert "の特徴があります" not in result["reason_text"]
+    assert (
+        "神社固有情報が十分でないため、相談条件との一致を中心に整理しています。"
+        in result["reason_text"]
+    )
+
+
+def test_build_recommendation_reason_v4_name_and_address_only_does_not_assert_unique_feature():
+    result = build_recommendation_reason_v4(
+        candidate_profile={
+            "name": "テスト神社",
+            "place_context": "東京都渋谷区代々木神園町1-1",
+        },
+    )
+
+    assert "東京都渋谷区代々木神園町1-1" not in result["reason_text"]
+    assert "テスト神社には、東京都渋谷区代々木神園町1-1" not in result["reason_text"]
+
+
+def test_build_recommendation_reason_v4_history_theme_only_is_prioritized_over_address():
+    result = build_recommendation_reason_v4(
+        candidate_profile={
+            "name": "テスト神社",
+            "history_theme": "縁",
+        },
+    )
+
+    assert "テスト神社は、縁という文脈で整理されています。" in result["reason_text"]
+
+    result_with_address = build_recommendation_reason_v4(
+        candidate_profile={
+            "name": "テスト神社",
+            "history_theme": "縁",
+            "place_context": "東京都渋谷区代々木神園町1-1",
+        },
+    )
+    assert "テスト神社は、縁という文脈で整理されています。" in result_with_address["reason_text"]
+    assert "東京都渋谷区代々木神園町1-1" not in result_with_address["reason_text"]
+
+
+def test_build_recommendation_reason_v4_goriyaku_only_is_not_labeled_as_history_or_deity():
+    result = build_recommendation_reason_v4(
+        candidate_profile={
+            "name": "テスト神社",
+            "goriyaku": "縁結び・厄除け",
+        },
+    )
+
+    assert "テスト神社には、縁結び・厄除けに関する情報があります。" in result["reason_text"]
+    assert "の特徴があります" not in result["reason_text"]
+    assert "祀られています" not in result["reason_text"]
+    assert "由緒" not in result["reason_text"]
+
+
+def test_build_recommendation_reason_v4_deity_uses_enshrined_copy_not_feature_copy():
+    result = build_recommendation_reason_v4(
+        candidate_profile={
+            "name": "テスト神社",
+            "deity": "テスト祭神",
+        },
+    )
+
+    assert "テスト神社では、テスト祭神が祀られています。" in result["reason_text"]
+    assert "テスト祭神の特徴があります" not in result["reason_text"]
+
+
+def test_build_recommendation_reason_v4_shrine_history_uses_background_copy_without_broken_grammar():
+    result = build_recommendation_reason_v4(
+        candidate_profile={
+            "name": "テスト神社",
+            "shrine_history": "戦災で焼失した後、氏子により再建された",
+        },
+    )
+
+    assert (
+        "テスト神社には、戦災で焼失した後、氏子により再建されたという背景があります。"
+        in result["reason_text"]
+    )
+    assert "の特徴があります" not in result["reason_text"]
+    # 日本語として破綻する二重句点・不自然な接続がないことを確認する
+    assert "。。" not in result["reason_text"]
+    assert "たの特徴" not in result["reason_text"]
+
+
+def test_build_recommendation_reason_v4_all_facts_present_prioritizes_deity_and_excludes_place_context():
+    result = build_recommendation_reason_v4(
+        candidate_profile={
+            "name": "テスト神社",
+            "deity": "テスト祭神",
+            "shrine_history": "戦災で焼失した後、氏子により再建された",
+            "place_context": "東京都渋谷区代々木神園町1-1",
+            "history_theme": "縁",
+            "goriyaku": "縁結び・厄除け",
+            "visit_style_tags": ["quiet", "nature"],
+        },
+    )
+
+    assert result["reason_text"].startswith("テスト神社では、テスト祭神が祀られています。")
+    assert "縁結び・厄除けの要素" in result["reason_text"]
+    assert "静かに参拝しやすい" in result["reason_text"]
+    assert "自然を感じながら過ごしやすい" in result["reason_text"]
+    assert "東京都渋谷区代々木神園町1-1" not in result["reason_text"]
+
+
+def test_build_recommendation_reason_v4_no_facts_falls_back_without_fabricating_specificity():
+    result = build_recommendation_reason_v4(
+        candidate_profile={
+            "name": "テスト神社",
+        },
+    )
+
+    assert (
+        "神社固有情報が十分でないため、相談条件との一致を中心に整理しています。"
+        in result["reason_text"]
+    )
+    assert result["quality"]["fallback_source"] == "fallback"
