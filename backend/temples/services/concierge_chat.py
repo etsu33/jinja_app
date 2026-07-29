@@ -385,12 +385,14 @@ def _attach_recommendation_reason_quality(
     recs: dict[str, Any],
     interpretation_profile: dict[str, Any],
 ) -> None:
-    """Attach Recommendation Reason quality metrics to recommendation items.
+    """Attach Recommendation Reason quality metrics and display detail to recommendation items.
 
-    This keeps the lightweight quality payload on normal recommendations so API
-    response and thread storage do not depend on debug preview visibility.
+    This keeps the lightweight quality payload and the display-only
+    recommendation_reason_v4_detail on normal recommendations so API response and
+    thread storage do not depend on debug preview visibility.
     """
     quality_by_key: dict[Any, dict[str, Any]] = {}
+    detail_by_key: dict[Any, dict[str, Any]] = {}
 
     for rec in (r for r in (recs.get("recommendations") or []) if isinstance(r, dict)):
         meaning_payload = rec.get("meaning_payload") if isinstance(rec.get("meaning_payload"), dict) else {}
@@ -409,9 +411,21 @@ def _attach_recommendation_reason_quality(
         quality = preview.get("quality") or {}
         rec["recommendation_reason_quality"] = quality
 
+        # Display-only subset of the same preview: reason_text/fact/interpretation/action.
+        # used_fact/used_interpretation/used_action/source stay backend-internal (debug/audit only).
+        detail = {
+            "version": "v4",
+            "reason_text": str(preview.get("reason_text") or ""),
+            "fact": preview.get("fact") or {},
+            "interpretation": preview.get("interpretation") or {},
+            "action": preview.get("action") or {},
+        }
+        rec["recommendation_reason_v4_detail"] = detail
+
         key = rec.get("shrine_id") or rec.get("id") or rec.get("name")
         if key is not None:
             quality_by_key[key] = quality
+            detail_by_key[key] = detail
 
     recommendations_v2 = recs.get("recommendations_v2")
     if not isinstance(recommendations_v2, list):
@@ -421,6 +435,8 @@ def _attach_recommendation_reason_quality(
         key = rec.get("shrine_id") or rec.get("id") or rec.get("name")
         if key in quality_by_key:
             rec["recommendation_reason_quality"] = quality_by_key[key]
+        if key in detail_by_key:
+            rec["recommendation_reason_v4_detail"] = detail_by_key[key]
 
 
 def _build_score_v3_observer_items(score_v3_debug: dict[str, Any]) -> list[dict[str, Any]]:
