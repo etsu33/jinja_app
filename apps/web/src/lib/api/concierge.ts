@@ -15,6 +15,10 @@ export type {
   ConciergeBreakdown,
   ConciergeReasonFactAxis,
   ConciergeReasonFacts,
+  RecommendationReasonV4Detail,
+  RecommendationReasonV4Fact,
+  RecommendationReasonV4Interpretation,
+  RecommendationReasonV4Action,
 } from "./concierge/types";
 
 import type {

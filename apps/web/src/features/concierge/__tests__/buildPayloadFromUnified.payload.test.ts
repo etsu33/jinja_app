@@ -140,6 +140,64 @@ it("reason_facts を recommendation item に通す", () => {
   );
 });
 
+it("recommendation_reason_v4_detail と recommendation_reason_v4 を recommendation item に通す", () => {
+  const u: any = {
+    data: {
+      recommendations: [
+        {
+          shrine_id: 20,
+          display_name: "S2",
+          reason: "R2",
+          recommendation_reason_v4: "根津神社は仕事運に関わる神社です。",
+          recommendation_reason_v4_detail: {
+            version: "v4",
+            reason_text: "根津神社は仕事運に関わる神社です。",
+            fact: {
+              label: "根津神社",
+              name: "根津神社",
+              deity: null,
+              shrine_history: null,
+              place_context: null,
+              history_theme: "再出発",
+              goriyaku: "仕事運",
+              visit_style_tags: [],
+              evidence: ["history_theme:再出発"],
+            },
+            interpretation: { theme: "再出発", text: "相談内容から今のテーマを読み取っています。" },
+            action: { text: "参拝前に問いを一つに絞ります。", source: "meaning_translation.action_context" },
+          },
+        },
+      ],
+    },
+    thread: { id: 1 },
+  };
+
+  const p = buildPayloadFromUnified(u, baseFilterState);
+  const recSec = p?.sections.find((s: any) => s.type === "recommendations") as any;
+  expect(recSec.items[0].recommendationReasonV4).toBe("根津神社は仕事運に関わる神社です。");
+  expect(recSec.items[0].reasonV4Detail).toEqual(
+    expect.objectContaining({
+      version: "v4",
+      reason_text: "根津神社は仕事運に関わる神社です。",
+    }),
+  );
+  expect(recSec.items[0].reasonV4Detail.fact.goriyaku).toBe("仕事運");
+});
+
+it("recommendation_reason_v4_detail が無くてもクラッシュせずnullのまま通す", () => {
+  const u: any = {
+    data: {
+      recommendations: [{ shrine_id: 21, display_name: "S3", reason: "R3" }],
+    },
+    thread: { id: 1 },
+  };
+
+  const p = buildPayloadFromUnified(u, baseFilterState);
+  const recSec = p?.sections.find((s: any) => s.type === "recommendations") as any;
+  expect(recSec.items[0].reasonV4Detail ?? null).toBeNull();
+  expect(recSec.items[0].recommendationReasonV4 ?? null).toBeNull();
+});
+
 it("consultation_axis を meta と recommendation item に通す", () => {
   const u: any = {
     data: {

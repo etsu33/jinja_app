@@ -23,6 +23,9 @@ type Props = {
   whyTop?: string | null;
   primaryReason?: string | null;
   secondaryReason?: string | null;
+  factReason?: string | null;
+  interpretationReason?: string | null;
+  actionReason?: string | null;
   differenceFromOthers?: string | null;
   nextActionHint?: string | null;
   tags?: string[];
@@ -61,6 +64,9 @@ export default function ConciergeTopRecommendationHero({
   whyTop: _whyTop = null,
   primaryReason = null,
   secondaryReason = null,
+  factReason = null,
+  interpretationReason = null,
+  actionReason = null,
   differenceFromOthers: _differenceFromOthers = null,
   nextActionHint: _nextActionHint = null,
   tags: _tags = [],
@@ -178,6 +184,36 @@ export default function ConciergeTopRecommendationHero({
           >
             <p className="text-[11px] font-semibold tracking-[0.14em] text-slate-600">この神社を選んだ理由</p>
             <p className="mt-1 text-sm leading-6 text-slate-700">{secondaryReason}</p>
+          </div>
+        ) : null}
+
+        {factReason ? (
+          <div
+            className="rounded-[var(--kt-radius-card)] border border-emerald-100 bg-white/70 px-4 py-3 shadow-sm shadow-emerald-900/5"
+            data-testid="recommendation-reason-v4-fact"
+          >
+            <p className="text-[11px] font-semibold tracking-[0.14em] text-emerald-700">この神社について</p>
+            <p className="mt-1 text-sm leading-6 text-slate-800">{factReason}</p>
+          </div>
+        ) : null}
+
+        {interpretationReason ? (
+          <div
+            className="rounded-[var(--kt-radius-card)] border border-slate-100 bg-slate-50/70 px-4 py-3"
+            data-testid="recommendation-reason-v4-interpretation"
+          >
+            <p className="text-[11px] font-semibold tracking-[0.14em] text-slate-600">今の相談とのつながり</p>
+            <p className="mt-1 text-sm leading-6 text-slate-700">{interpretationReason}</p>
+          </div>
+        ) : null}
+
+        {actionReason ? (
+          <div
+            className="rounded-[var(--kt-radius-card)] border border-teal-100 bg-teal-50/70 px-4 py-3 shadow-sm shadow-teal-900/5"
+            data-testid="recommendation-reason-v4-action"
+          >
+            <p className="text-[11px] font-semibold tracking-[0.14em] text-teal-700">参拝前にできること</p>
+            <p className="mt-1 text-sm leading-6 text-[var(--kt-color-text-secondary)]">{actionReason}</p>
           </div>
         ) : null}
 

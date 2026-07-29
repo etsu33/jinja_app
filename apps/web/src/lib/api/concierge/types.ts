@@ -89,6 +89,36 @@ export type ConciergeReasonFactAxis =
   | "popularity"
   | "fallback";
 
+export type RecommendationReasonV4Fact = {
+  label: string;
+  name: string | null;
+  deity: string | null;
+  shrine_history: string | null;
+  place_context: string | null;
+  history_theme: string | null;
+  goriyaku: string | null;
+  visit_style_tags: string[];
+  evidence: string[];
+};
+
+export type RecommendationReasonV4Interpretation = {
+  theme: string;
+  text: string;
+};
+
+export type RecommendationReasonV4Action = {
+  text: string;
+  source: string;
+};
+
+export type RecommendationReasonV4Detail = {
+  version: "v4";
+  reason_text: string;
+  fact: RecommendationReasonV4Fact;
+  interpretation: RecommendationReasonV4Interpretation;
+  action: RecommendationReasonV4Action;
+};
+
 export type ConciergeReasonFacts = {
   version?: 1;
   primary_axis?: ConciergeReasonFactAxis | null;
@@ -150,6 +180,7 @@ export type ConciergeRecommendation = {
   reason_source?: string | null;
   recommendation_reason_v4?: string | null;
   recommendation_reason_quality?: RecommendationReasonQuality | null;
+  recommendation_reason_v4_detail?: RecommendationReasonV4Detail | null;
 
   bullets?: string[] | null;
   explanation?: {

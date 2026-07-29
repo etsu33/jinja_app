@@ -54,6 +54,39 @@ describe("ConciergeTopRecommendationHero", () => {
     expect(match.compareDocumentPosition(reason) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
+  it("fact/interpretation/actionをこの順序で表示し、action.sourceは表示しない", () => {
+    render(
+      <ConciergeTopRecommendationHero
+        name="検証神社"
+        catchCopy="入口コピー"
+        factReason="仕事運に関わる神社です。"
+        interpretationReason="相談内容から、今扱いたいテーマを読み取っています。"
+        actionReason="参拝前に、問いを一つに絞ることを決めておきます。"
+      />,
+    );
+
+    const fact = screen.getByTestId("recommendation-reason-v4-fact");
+    const interpretation = screen.getByTestId("recommendation-reason-v4-interpretation");
+    const action = screen.getByTestId("recommendation-reason-v4-action");
+
+    expect(fact).toHaveTextContent("仕事運に関わる神社です。");
+    expect(interpretation).toHaveTextContent("相談内容から、今扱いたいテーマを読み取っています。");
+    expect(action).toHaveTextContent("参拝前に、問いを一つに絞ることを決めておきます。");
+
+    expect(fact.compareDocumentPosition(interpretation) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(interpretation.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    expect(screen.queryByText("meaning_translation.action_context")).not.toBeInTheDocument();
+  });
+
+  it("factReason等が無い場合は各セクションを表示しない", () => {
+    render(<ConciergeTopRecommendationHero name="検証神社" catchCopy="入口コピー" />);
+
+    expect(screen.queryByTestId("recommendation-reason-v4-fact")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("recommendation-reason-v4-interpretation")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("recommendation-reason-v4-action")).not.toBeInTheDocument();
+  });
+
 
   it("does not render legacy action suggestions on the hero card", () => {
     render(

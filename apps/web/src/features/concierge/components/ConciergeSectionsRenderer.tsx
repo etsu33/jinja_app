@@ -8,6 +8,7 @@ import ShrineSaveButton from "@/components/shrine/ShrineSaveButton";
 import ConciergeFilterPanel from "@/features/concierge/components/ConciergeFilterPanel";
 import ModeBadge from "@/features/concierge/components/ModeBadge";
 import { buildRecommendationReasonViewModel } from "@/lib/concierge/buildRecommendationReasonViewModel";
+import { buildHeroReasonV4Sections } from "@/features/concierge/buildHeroReasonV4Sections";
 import ConciergeTopRecommendationHero from "@/features/concierge/components/ConciergeTopRecommendationHero";
 import ShrineCardCompact from "@/components/shrines/ShrineCardCompact";
 
@@ -812,6 +813,16 @@ export default function ConciergeSectionsRenderer({
                           reason: heroItem.description,
                           directionReference: heroItem.directionReference,
                         });
+                        // Reason V4構造化契約(fact/interpretation/action)を優先し、
+                        // needTagsベースの独自テンプレート(reasonDisplay)は新fieldが無い場合のfallbackとしてのみ使う
+                        const heroReasonV4 = buildHeroReasonV4Sections({
+                          detail: (heroItem as any).reasonV4Detail ?? null,
+                          recommendationReasonV4: (heroItem as any).recommendationReasonV4 ?? null,
+                          reason: heroItem.description ?? null,
+                        });
+                        // primaryReason(相談内容・ご利益との一致)は新設のinterpretation/fact表示と役割が重なるため
+                        // Hero通常経路では使用しない(reasonVm.hero.*等の見出し系は変更しない)
+                        const heroSecondaryReason = heroReasonV4.hasStructured ? null : heroReasonV4.fallbackText;
                         const trustMetadata = (heroItem as any).trustMetadata ?? null;
                         const trustLabels = [
                           trustMetadata?.rank_class ?? trustMetadata?.rankClass,
@@ -850,8 +861,11 @@ export default function ConciergeSectionsRenderer({
                               subtitle={reasonVm.hero.subtitle ?? null}
                               catchCopy={reasonVm.hero.catchCopy}
                               whyTop={null}
-                              primaryReason={reasonDisplay.matchReason}
-                              secondaryReason={reasonDisplay.reason}
+                              primaryReason={null}
+                              secondaryReason={heroSecondaryReason}
+                              factReason={heroReasonV4.factText}
+                              interpretationReason={heroReasonV4.interpretationText}
+                              actionReason={heroReasonV4.actionText}
                               differenceFromOthers={null}
                               tags={matchedNeedTags.map(labelNeedDisplayTag).slice(0, 3)}
                               actionSuggestions={(heroItem as any).actionSuggestions ?? []}
