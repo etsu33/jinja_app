@@ -1,5 +1,31 @@
 import type { Page, Request } from "@playwright/test";
 
+function buildReasonV4Detail(id: number) {
+  return {
+    version: "v4",
+    reason_text: "仕事運を整えるご利益を持つ神社です。相談内容から、今扱いたいテーマを読み取っています。参拝前に、次に確認したいことを一つだけ決めておきます。",
+    fact: {
+      label: "仕事運を整えるご利益",
+      name: `固定レスポンス神社${id}`,
+      deity: null,
+      shrine_history: null,
+      place_context: null,
+      history_theme: null,
+      goriyaku: "仕事運を整えるご利益",
+      visit_style_tags: [],
+      evidence: ["goriyaku:仕事運を整えるご利益"],
+    },
+    interpretation: {
+      theme: "仕事",
+      text: "相談内容から、今扱いたいテーマを読み取っています。",
+    },
+    action: {
+      text: "参拝前に、次に確認したいことを一つだけ決めておきます。",
+      source: "fallback",
+    },
+  };
+}
+
 export type CapturedDirectionScenario = {
   chatPayloads: Array<Record<string, unknown>>;
   analyticsEvents: Array<{ eventName: string; payload: Record<string, unknown> }>;
@@ -88,6 +114,8 @@ export async function installDirectionScenario(
       display_name: `固定レスポンス神社${options.recommendationId}`,
       display_address: "テスト用所在地",
       reason: "固定レスポンスによる推薦です。",
+      recommendation_reason_v4: "固定レスポンスによる推薦です。",
+      recommendation_reason_v4_detail: buildReasonV4Detail(options.recommendationId),
       breakdown: { matched_need_tags: ["career"] },
       reason_facts: { primary_axis: "benefit", shrine_benefit: "仕事運を整えるご利益" },
       ...(options.directionReference ? { direction_reference: options.directionReference } : {}),
@@ -99,6 +127,8 @@ export async function installDirectionScenario(
         display_name: `固定レスポンス神社${options.additionalRecommendation.id}`,
         display_address: "テスト用所在地",
         reason: "固定レスポンスによる推薦です。",
+        recommendation_reason_v4: "固定レスポンスによる推薦です。",
+        recommendation_reason_v4_detail: buildReasonV4Detail(options.additionalRecommendation.id),
         breakdown: { matched_need_tags: ["career"] },
         reason_facts: { primary_axis: "benefit", shrine_benefit: "仕事運を整えるご利益" },
         ...(options.additionalRecommendation.directionReference

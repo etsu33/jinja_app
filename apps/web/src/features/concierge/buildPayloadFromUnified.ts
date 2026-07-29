@@ -5,7 +5,7 @@ import type {
   ConciergeSection,
   ConciergeFilterState,
 } from "@/features/concierge/sections/types";
-import type { ConciergeReasonFacts } from "@/lib/api/concierge";
+import type { ConciergeReasonFacts, RecommendationReasonV4Detail } from "@/lib/api/concierge";
 import { validDirectionReferenceOrNull, type DirectionReference } from "../../../../../packages/shared/directionReference";
 
 
@@ -20,6 +20,8 @@ type NormalizedItemBase = {
   breakdown: any | null;
   breakdown_detail?: any | null;
   reasonFacts?: ConciergeReasonFacts | null;
+  reasonV4Detail?: RecommendationReasonV4Detail | null;
+  recommendationReasonV4?: string | null;
   trustMetadata?: any | null;
   historyTheme?: string | null;
   historyContext?: string | null;
@@ -141,6 +143,8 @@ function normalizeRecommendation(r: any, tid: string | null, analyticsContext: D
   const breakdown = r?.breakdown ?? null;
   const breakdownDetail = r?.breakdown_detail ?? r?.breakdownDetail ?? null;
   const reasonFacts = r?.reason_facts ?? r?.reasonFacts ?? null;
+  const reasonV4Detail = r?.recommendation_reason_v4_detail ?? r?.recommendationReasonV4Detail ?? null;
+  const recommendationReasonV4 = asTrimmedString(r?.recommendation_reason_v4 ?? r?.recommendationReasonV4);
   const trustMetadata = r?.trust_metadata ?? r?.trustMetadata ?? null;
   const historyTheme = pickFirstString(r?.history_theme, r?.historyTheme);
   const historyContext = pickFirstString(r?.history_context, r?.historyContext);
@@ -164,6 +168,8 @@ function normalizeRecommendation(r: any, tid: string | null, analyticsContext: D
       breakdown,
       breakdown_detail: breakdownDetail,
       reasonFacts,
+      reasonV4Detail,
+      recommendationReasonV4,
       trustMetadata,
       historyTheme,
       historyContext,
@@ -188,6 +194,8 @@ function normalizeRecommendation(r: any, tid: string | null, analyticsContext: D
       breakdown,
       breakdown_detail: breakdownDetail,
       reasonFacts,
+      reasonV4Detail,
+      recommendationReasonV4,
       trustMetadata,
       historyTheme,
       historyContext,
@@ -276,6 +284,12 @@ function dedupeItems(items: NormalizedItem[]): NormalizedItem[] {
         }
         if (reg?.kind === "registered" && !reg.consultationAxis && item.consultationAxis) {
           out[idx] = { ...out[idx], consultationAxis: item.consultationAxis };
+        }
+        if (reg?.kind === "registered" && !reg.reasonV4Detail && item.reasonV4Detail) {
+          out[idx] = { ...out[idx], reasonV4Detail: item.reasonV4Detail };
+        }
+        if (reg?.kind === "registered" && !reg.recommendationReasonV4 && item.recommendationReasonV4) {
+          out[idx] = { ...out[idx], recommendationReasonV4: item.recommendationReasonV4 };
         }
       }
       continue;
