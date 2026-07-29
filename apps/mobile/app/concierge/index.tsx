@@ -38,6 +38,7 @@ import { trackMobileDirection } from "../../lib/directionEvents";
 import {
   buildReasonV4Sections,
   normalizeRecommendationReasonV4Detail,
+  serializeReasonV4Detail,
   type RecommendationReasonV4Detail,
 } from "../../lib/recommendationReasonV4";
 
@@ -842,6 +843,7 @@ export default function ConciergeScreen() {
           ? JSON.stringify(card.recommendationReasonDetail)
           : "",
         actionSuggestionV4Preview: card.actionSuggestionV4Preview ? JSON.stringify(card.actionSuggestionV4Preview) : "",
+        recommendationReasonV4Detail: serializeReasonV4Detail(card.reasonV4Detail),
       },
     });
   };
