@@ -1130,3 +1130,76 @@ def test_observe_ranking_breakdown_empty_contract_has_stable_schema():
             "reflection_hint_source_history_theme": [],
         },
     }
+
+
+def test_build_chat_recommendations_attaches_recommendation_reason_v4_detail(monkeypatch):
+    def fake_resolve_llm_route(*, query, valid_candidates, need_tags, llm_enabled, consultation_axis=None):
+        return {
+            "recs": {
+                "recommendations": [
+                    {
+                        "name": "根津神社",
+                        "shrine_id": 101,
+                        "history_theme": "再出発",
+                        "goriyaku": "縁結び・厄除け",
+                        "distance_m": 1200,
+                    },
+                ],
+                "_seed": True,
+            },
+            "requested_llm_enabled": False,
+            "effective_llm_enabled": False,
+            "llm_used": False,
+            "llm_error": None,
+        }
+
+    monkeypatch.setattr(
+        "temples.services.concierge_chat.resolve_llm_route",
+        fake_resolve_llm_route,
+    )
+    monkeypatch.setattr(
+        "temples.services.concierge_chat._backfill_location_from_name",
+        lambda recs, *, bias, language: None,
+    )
+
+    result = build_chat_recommendations(
+        query="仕事の再出発について相談したい",
+        language="ja",
+        candidates=[
+            {
+                "name": "根津神社",
+                "shrine_id": 101,
+                "history_theme": "再出発",
+                "goriyaku": "縁結び・厄除け",
+                "distance_m": 1200,
+            },
+        ],
+        bias=None,
+        birthdate=None,
+        goriyaku_tag_ids=None,
+        extra_condition=None,
+        public_mode="need",
+        flow="B",
+    )
+
+    rec = result["recommendations"][0]
+
+    # 既存fieldは壊れない
+    assert isinstance(rec["recommendation_reason_v4"], str)
+    assert "recommendation_reason_quality" in rec
+
+    # recommendation_reason_v4_detailが実際の計算結果として付与される
+    assert "recommendation_reason_v4_detail" in rec
+    detail = rec["recommendation_reason_v4_detail"]
+    assert isinstance(detail, dict)
+    assert set(detail.keys()) == {"version", "reason_text", "fact", "interpretation", "action"}
+    assert detail["version"] == "v4"
+    assert detail["reason_text"] == rec["recommendation_reason_v4"]
+    assert isinstance(detail["fact"], dict)
+    assert isinstance(detail["interpretation"], dict)
+    assert isinstance(detail["action"], dict)
+    assert "used_fact" not in detail
+    assert "used_interpretation" not in detail
+    assert "used_action" not in detail
+    assert "source" not in detail
+    assert "quality" not in detail

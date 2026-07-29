@@ -460,6 +460,142 @@ def test_chat_response_passes_recommendation_reason_quality_to_thread_storage(cl
     assert captured["recommendations_v2"][0]["recommendation_reason_quality"] == quality
 
 
+def _sample_recommendation_reason_v4_detail():
+    return {
+        "version": "v4",
+        "reason_text": "この神社は再出発の文脈を持ちます。",
+        "fact": {
+            "label": "根津神社",
+            "name": "根津神社",
+            "deity": None,
+            "shrine_history": None,
+            "place_context": None,
+            "history_theme": "再出発",
+            "goriyaku": "仕事運",
+            "visit_style_tags": [],
+            "evidence": ["history_theme:再出発", "goriyaku:仕事運"],
+        },
+        "interpretation": {
+            "theme": "再出発",
+            "text": "相談内容から、今扱いたいテーマを読み取っています。",
+        },
+        "action": {
+            "text": "参拝前に、問いを一つに絞ることを決めておきます。",
+            "source": "meaning_translation.action_context",
+        },
+    }
+
+
+@pytest.mark.django_db
+def test_chat_response_preserves_recommendation_reason_v4_detail_contract(client, monkeypatch):
+    _stub_candidates(monkeypatch)
+    _stub_recommendations(
+        monkeypatch,
+        [
+            {
+                "name": "神社A",
+                "reason": "ok-a",
+                "reason_source": "reason:test",
+                "recommendation_reason_v4": "この神社は再出発の文脈を持ちます。",
+                "recommendation_reason_quality": {
+                    "shrine_data_rate": 0.5,
+                    "consultation_reflection_rate": 0.0,
+                    "fallback_reason_rate": 0.0,
+                    "evidence_rate": 0.5,
+                    "action_grounding_rate": 0.3333,
+                    "is_ai_inference_only": False,
+                    "fallback_source": None,
+                },
+                "recommendation_reason_v4_detail": _sample_recommendation_reason_v4_detail(),
+            }
+        ],
+    )
+
+    r = client.post(
+        URL,
+        data=json.dumps({"query": "近場で参拝したい", "lat": 35.0, "lng": 139.0}),
+        content_type="application/json",
+    )
+    assert r.status_code == 200
+
+    rec = r.json()["data"]["recommendations"][0]
+
+    assert "recommendation_reason_v4_detail" in rec
+    detail = rec["recommendation_reason_v4_detail"]
+    assert isinstance(detail, dict)
+    assert set(detail.keys()) == {"version", "reason_text", "fact", "interpretation", "action"}
+    assert detail["version"] == "v4"
+    assert isinstance(detail["reason_text"], str)
+    assert isinstance(detail["fact"], dict)
+    assert isinstance(detail["interpretation"], dict)
+    assert isinstance(detail["action"], dict)
+    assert "used_fact" not in detail
+    assert "used_interpretation" not in detail
+    assert "used_action" not in detail
+    assert "source" not in detail
+    assert "quality" not in detail
+
+    # 既存fieldは変更・破壊されない
+    assert isinstance(rec["recommendation_reason_v4"], str)
+    assert "recommendation_reason_quality" in rec
+    assert rec["reason"] == "ok-a"
+
+
+@pytest.mark.django_db
+def test_chat_response_passes_recommendation_reason_v4_detail_to_thread_storage(client, monkeypatch):
+    _stub_candidates(monkeypatch)
+    _stub_recommendations(
+        monkeypatch,
+        [
+            {
+                "id": 11,
+                "shrine_id": 11,
+                "name": "神社A",
+                "reason": "ok",
+                "reason_source": "reason:test",
+                "recommendation_reason_v4": "この神社は再出発の文脈を持ちます。",
+                "recommendation_reason_quality": {
+                    "shrine_data_rate": 0.5,
+                    "consultation_reflection_rate": 0.0,
+                    "fallback_reason_rate": 0.0,
+                    "evidence_rate": 0.5,
+                    "action_grounding_rate": 0.3333,
+                    "is_ai_inference_only": False,
+                    "fallback_source": None,
+                },
+                "recommendation_reason_v4_detail": _sample_recommendation_reason_v4_detail(),
+            }
+        ],
+    )
+
+    captured = {}
+
+    def _append_chat_stub(**kwargs):
+        captured["recommendations"] = kwargs.get("recommendations")
+        captured["recommendations_v2"] = kwargs.get("recommendations_v2")
+        return SimpleNamespace(thread=SimpleNamespace(id=322))
+
+    monkeypatch.setattr("temples.api_views_concierge.append_chat", _append_chat_stub)
+    monkeypatch.setattr(
+        "temples.services.concierge_observability.save_concierge_recommendation_log",
+        lambda **kwargs: None,
+    )
+
+    r = client.post(
+        URL,
+        data=json.dumps({"query": "仕事で迷っている", "lat": 35.0, "lng": 139.0}),
+        content_type="application/json",
+    )
+    assert r.status_code == 200
+
+    recommendations = r.json()["data"]["recommendations"]
+    assert "recommendation_reason_v4_detail" in recommendations[0]
+
+    detail = recommendations[0]["recommendation_reason_v4_detail"]
+    assert captured["recommendations"][0]["recommendation_reason_v4_detail"] == detail
+    assert captured["recommendations_v2"][0]["recommendation_reason_v4_detail"] == detail
+
+
 @pytest.mark.django_db
 def test_chat_response_includes_debug_observation_contract_fields(client, monkeypatch):
     _stub_candidates(monkeypatch)
