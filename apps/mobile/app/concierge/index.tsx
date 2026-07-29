@@ -35,6 +35,11 @@ import { toOriginPayload, type UserOrigin } from "../../../../packages/shared/us
 import { buildRecommendationReasonDisplay } from "../../../../packages/shared/recommendationReasonDisplay";
 import { getOriginSession } from "../../lib/originSession";
 import { trackMobileDirection } from "../../lib/directionEvents";
+import {
+  buildReasonV4Sections,
+  normalizeRecommendationReasonV4Detail,
+  type RecommendationReasonV4Detail,
+} from "../../lib/recommendationReasonV4";
 
 // ────────────────────────────────────────────
 // 型
@@ -91,6 +96,7 @@ type RecommendationCard = {
   reasonFacts?: RecommendationReasonFacts | null;
   recommendationReasonQuality?: RecommendationReasonQuality | null;
   recommendationReasonDetail?: RecommendationReasonDetail | null;
+  reasonV4Detail?: RecommendationReasonV4Detail | null;
   tags: string[];
   shrineId?: string;
   actionSuggestionV4Preview?: ActionSuggestionV4Preview | null;
@@ -151,6 +157,8 @@ type RecommendationApiCard = {
   recommendationReasonDetail?: RecommendationReasonDetail | null;
   reason_detail?: RecommendationReasonDetail | null;
   reasonDetail?: RecommendationReasonDetail | null;
+  recommendation_reason_v4_detail?: unknown;
+  recommendationReasonV4Detail?: unknown;
   tags?: string[];
   shrineId?: string | number;
   shrine_id?: string | number;
@@ -373,6 +381,9 @@ function toRecommendationCard(item: RecommendationApiCard, index: number): Recom
   const recommendationReasonDetail = normalizeRecommendationReasonDetail(
     item.recommendation_reason_detail ?? item.recommendationReasonDetail ?? item.reason_detail ?? item.reasonDetail,
   );
+  const reasonV4Detail = normalizeRecommendationReasonV4Detail(
+    item.recommendation_reason_v4_detail ?? item.recommendationReasonV4Detail,
+  );
   const reasonFactsRaw = item.reason_facts ?? item.reasonFacts ?? null;
   const reasonFacts = Array.isArray(reasonFactsRaw) ? (reasonFactsRaw[0] ?? null) : reasonFactsRaw;
   const reason = resolveRecommendationReason({
@@ -391,6 +402,7 @@ function toRecommendationCard(item: RecommendationApiCard, index: number): Recom
     reasonFacts,
     recommendationReasonQuality,
     recommendationReasonDetail,
+    reasonV4Detail,
     tags: item.tags ?? [],
     shrineId: shrineId !== undefined && shrineId !== null ? String(shrineId) : undefined,
     actionSuggestionV4Preview,
@@ -481,6 +493,10 @@ function ResultCard({
     reason: card.reason,
     directionReference: card.directionReference,
   });
+  const reasonV4Sections = buildReasonV4Sections({
+    detail: card.reasonV4Detail,
+    fallbackReason: card.reason,
+  });
   React.useEffect(() => { if (!card.directionReference || directionImpressed.current) return; directionImpressed.current = true; trackMobileDirection("direction_match_impression", { matched: card.directionReference.matched, recommendation_rank: rank }); }, [card.directionReference, rank]);
   return (
     <View style={styles.card}>
@@ -499,21 +515,51 @@ function ResultCard({
         <Text style={styles.cardArea}>{card.area}</Text>
       </View>
 
-      {/* 相談内容・ご利益との一致 */}
-      {reasonDisplay.matchReason ? (
-        <View style={styles.connectionBlock}>
-          <Text style={styles.connectionLabel}>相談内容・ご利益との一致</Text>
-          <Text style={styles.connectionText}>{reasonDisplay.matchReason}</Text>
-        </View>
-      ) : null}
+      {reasonV4Sections.hasStructured ? (
+        <>
+          {/* この神社について */}
+          {reasonV4Sections.factText ? (
+            <View style={styles.reasonBlock}>
+              <Text style={styles.reasonLabel}>この神社について</Text>
+              <Text style={styles.cardReason} numberOfLines={3}>{reasonV4Sections.factText}</Text>
+            </View>
+          ) : null}
 
-      {/* 推薦理由 */}
-      {reasonDisplay.reason ? (
-        <View style={styles.reasonBlock}>
-          <Text style={styles.reasonLabel}>この神社を選んだ理由</Text>
-          <Text style={styles.cardReason} numberOfLines={3}>{reasonDisplay.reason}</Text>
-        </View>
-      ) : null}
+          {/* 今の相談とのつながり */}
+          {reasonV4Sections.interpretationText ? (
+            <View style={styles.reasonBlock}>
+              <Text style={styles.reasonLabel}>今の相談とのつながり</Text>
+              <Text style={styles.cardReason} numberOfLines={3}>{reasonV4Sections.interpretationText}</Text>
+            </View>
+          ) : null}
+
+          {/* 参拝前にできること */}
+          {reasonV4Sections.actionText ? (
+            <View style={styles.reasonBlock}>
+              <Text style={styles.reasonLabel}>参拝前にできること</Text>
+              <Text style={styles.cardReason} numberOfLines={3}>{reasonV4Sections.actionText}</Text>
+            </View>
+          ) : null}
+        </>
+      ) : (
+        <>
+          {/* 相談内容・ご利益との一致 */}
+          {reasonDisplay.matchReason ? (
+            <View style={styles.connectionBlock}>
+              <Text style={styles.connectionLabel}>相談内容・ご利益との一致</Text>
+              <Text style={styles.connectionText}>{reasonDisplay.matchReason}</Text>
+            </View>
+          ) : null}
+
+          {/* 推薦理由 */}
+          {reasonV4Sections.fallbackText ? (
+            <View style={styles.reasonBlock}>
+              <Text style={styles.reasonLabel}>この神社を選んだ理由</Text>
+              <Text style={styles.cardReason} numberOfLines={3}>{reasonV4Sections.fallbackText}</Text>
+            </View>
+          ) : null}
+        </>
+      )}
 
       {reasonFactItems.length > 0 ? (
         <View style={styles.reasonFactsCard}>
