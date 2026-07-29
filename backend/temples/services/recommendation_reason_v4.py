@@ -350,22 +350,56 @@ def _rate(count: int, total: int) -> float:
     return round(count / total, 4)
 
 
+# 品質指標(shrine_data_rate / evidence_rate / is_ai_inference_only)がFact根拠として
+# 数えるキー集合。神社固有の由緒・祭神・意味的根拠のみを対象とする。
+#
+# place_context(住所)とname(神社名)は意図的に含めない。
+# - place_contextの実体は生の郵便住所であり、神社固有の由緒・祭神・意味的根拠ではない
+#   (PR1で推薦理由本文のFact候補からも除外済み)。
+# - nameは常に存在しうる識別子であり、Fact根拠の有無を判定する材料にならない。
+# visit_style_tagsも今回は品質指標へ含めない。参拝体験の補助属性であり、
+# 神社固有の由緒・祭神・意味的根拠とは性質が異なるため。
+QUALITY_FACT_KEYS: tuple[str, ...] = ("deity", "shrine_history", "goriyaku", "history_theme")
+
+
+def _is_present_fact_value(value: Any) -> bool:
+    """Return True only for a non-empty string. Guards against None/int/list/dict noise."""
+    return isinstance(value, str) and bool(value.strip())
+
+
+def _evidence_key(entry: Any) -> str | None:
+    if not isinstance(entry, str) or ":" not in entry:
+        return None
+    key, _, _ = entry.partition(":")
+    return key
+
+
 def build_recommendation_reason_quality_audit(reason: dict[str, Any]) -> dict[str, Any]:
     """Calculate lightweight quality metrics for Recommendation Reason v4.
 
     This audit is deterministic and only evaluates the generated payload.
     It does not change recommendation ranking or copy generation.
+
+    shrine_data_rate / evidence_rate / is_ai_inference_only are all derived from the
+    same QUALITY_FACT_KEYS set so a shrine name or a raw address is never counted as
+    shrine-specific Fact grounding.
     """
     used_fact = _as_dict(reason.get("used_fact"))
     used_interpretation = _as_dict(reason.get("used_interpretation"))
     used_action = _as_dict(reason.get("used_action"))
 
-    shrine_fact_keys = ["deity", "shrine_history", "place_context", "goriyaku", "history_theme"]
     consultation_keys = ["consultation_axis", "need_profile", "state_profile", "historical_interpretation"]
     action_keys = ["action_context", "reflection_question_seed", "action_intent"]
 
-    shrine_data_count = sum(1 for key in shrine_fact_keys if used_fact.get(key))
-    evidence_count = len(_as_list(used_fact.get("evidence")))
+    shrine_data_count = sum(
+        1 for key in QUALITY_FACT_KEYS if _is_present_fact_value(used_fact.get(key))
+    )
+
+    evidence_keys_present = {
+        _evidence_key(entry) for entry in _as_list(used_fact.get("evidence"))
+    }
+    evidence_count = sum(1 for key in QUALITY_FACT_KEYS if key in evidence_keys_present)
+
     consultation_count = 0
     for key in consultation_keys:
         value = used_interpretation.get(key)
@@ -378,13 +412,13 @@ def build_recommendation_reason_quality_audit(reason: dict[str, Any]) -> dict[st
 
     source = _first_string(used_action.get("source")) or "fallback"
     is_fallback = source == "fallback"
-    is_ai_inference_only = shrine_data_count == 0 and evidence_count == 0
+    is_ai_inference_only = shrine_data_count == 0
 
     return {
-        "shrine_data_rate": _rate(shrine_data_count, len(shrine_fact_keys)),
+        "shrine_data_rate": _rate(shrine_data_count, len(QUALITY_FACT_KEYS)),
         "consultation_reflection_rate": _rate(consultation_count, len(consultation_keys)),
         "fallback_reason_rate": 1.0 if is_fallback else 0.0,
-        "evidence_rate": _rate(evidence_count, len(shrine_fact_keys)),
+        "evidence_rate": _rate(evidence_count, len(QUALITY_FACT_KEYS)),
         "action_grounding_rate": _rate(action_count, len(action_keys)),
         "is_ai_inference_only": is_ai_inference_only,
         "fallback_source": source if is_fallback else None,

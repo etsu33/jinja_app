@@ -373,11 +373,15 @@ def test_build_recommendation_reason_quality_audit_calculates_rates_from_used_pa
         },
     }
 
+    # QUALITY_FACT_KEYS = (deity, shrine_history, goriyaku, history_theme) の4キーのみが
+    # Fact根拠として数えられる。history_theme は None のため 3/4 = 0.75。
+    # evidence も同じ4キーでフィルタするため、place_context の evidence エントリは
+    # 分子から除外され、deity + shrine_history の 2/4 = 0.5 になる。
     assert build_recommendation_reason_quality_audit(reason) == {
-        "shrine_data_rate": 0.8,
+        "shrine_data_rate": 0.75,
         "consultation_reflection_rate": 1.0,
         "fallback_reason_rate": 0.0,
-        "evidence_rate": 0.6,
+        "evidence_rate": 0.5,
         "action_grounding_rate": 0.6667,
         "is_ai_inference_only": False,
         "fallback_source": None,
@@ -694,3 +698,130 @@ def test_build_recommendation_reason_v4_no_facts_falls_back_without_fabricating_
         in result["reason_text"]
     )
     assert result["quality"]["fallback_source"] == "fallback"
+
+
+# --- 品質指標修正: QUALITY_FACT_KEYS(deity/shrine_history/goriyaku/history_theme)基準のテスト ---
+
+
+def test_quality_name_only_has_no_shrine_grounding():
+    result = build_recommendation_reason_v4(candidate_profile={"name": "候補神社"})
+    quality = result["quality"]
+
+    assert quality["shrine_data_rate"] == 0.0
+    assert quality["evidence_rate"] == 0.0
+    assert quality["is_ai_inference_only"] is True
+
+
+def test_quality_address_only_has_no_shrine_grounding():
+    result = build_recommendation_reason_v4(
+        candidate_profile={"place_context": "東京都渋谷区代々木神園町1-1"}
+    )
+    quality = result["quality"]
+
+    assert quality["shrine_data_rate"] == 0.0
+    assert quality["evidence_rate"] == 0.0
+    assert quality["is_ai_inference_only"] is True
+
+
+def test_quality_name_and_address_only_has_no_shrine_grounding():
+    result = build_recommendation_reason_v4(
+        candidate_profile={
+            "name": "候補神社",
+            "place_context": "東京都渋谷区代々木神園町1-1",
+        }
+    )
+    quality = result["quality"]
+
+    assert quality["shrine_data_rate"] == 0.0
+    assert quality["evidence_rate"] == 0.0
+    assert quality["is_ai_inference_only"] is True
+
+
+def test_quality_history_theme_only_is_grounded():
+    result = build_recommendation_reason_v4(candidate_profile={"history_theme": "縁"})
+    quality = result["quality"]
+
+    assert quality["shrine_data_rate"] == 0.25
+    assert quality["evidence_rate"] == 0.25
+    assert quality["is_ai_inference_only"] is False
+
+
+def test_quality_goriyaku_only_is_grounded():
+    result = build_recommendation_reason_v4(candidate_profile={"goriyaku": "縁結び"})
+    quality = result["quality"]
+
+    assert quality["shrine_data_rate"] == 0.25
+    assert quality["evidence_rate"] == 0.25
+    assert quality["is_ai_inference_only"] is False
+
+
+def test_quality_deity_only_is_grounded():
+    result = build_recommendation_reason_v4(candidate_profile={"deity": "テスト祭神"})
+    quality = result["quality"]
+
+    assert quality["shrine_data_rate"] == 0.25
+    assert quality["is_ai_inference_only"] is False
+
+
+def test_quality_shrine_history_only_is_grounded():
+    result = build_recommendation_reason_v4(
+        candidate_profile={"shrine_history": "戦災で焼失した後、氏子により再建された"}
+    )
+    quality = result["quality"]
+
+    assert quality["shrine_data_rate"] == 0.25
+    assert quality["is_ai_inference_only"] is False
+
+
+def test_quality_all_facts_present_reaches_full_rate_without_exceeding_one():
+    result = build_recommendation_reason_v4(
+        candidate_profile={
+            "name": "テスト神社",
+            "deity": "テスト祭神",
+            "shrine_history": "戦災で焼失した後、氏子により再建された",
+            "place_context": "東京都渋谷区代々木神園町1-1",
+            "history_theme": "縁",
+            "goriyaku": "縁結び・厄除け",
+            "visit_style_tags": ["quiet", "nature"],
+        }
+    )
+    quality = result["quality"]
+
+    assert quality["shrine_data_rate"] == 1.0
+    assert quality["evidence_rate"] == 1.0
+    assert quality["evidence_rate"] <= 1.0
+    assert quality["is_ai_inference_only"] is False
+
+
+def test_quality_visit_style_tags_alone_do_not_count_as_shrine_grounding():
+    # visit_style_tagsは参拝体験の補助属性として扱い、
+    # 神社固有Factの品質指標(QUALITY_FACT_KEYS)には含めない契約を固定する。
+    result = build_recommendation_reason_v4(
+        candidate_profile={
+            "name": "候補神社",
+            "visit_style_tags": ["quiet", "nature"],
+        }
+    )
+    quality = result["quality"]
+
+    assert quality["shrine_data_rate"] == 0.0
+    assert quality["evidence_rate"] == 0.0
+    assert quality["is_ai_inference_only"] is True
+
+
+def test_quality_does_not_miscount_invalid_or_empty_fact_values():
+    result = build_recommendation_reason_v4(
+        candidate_profile={
+            "name": "候補神社",
+            "deity": "",
+            "shrine_history": None,
+            "goriyaku": [],
+            "history_theme": {"unexpected": "shape"},
+            "place_context": 12345,
+        }
+    )
+    quality = result["quality"]
+
+    assert quality["shrine_data_rate"] == 0.0
+    assert quality["evidence_rate"] == 0.0
+    assert quality["is_ai_inference_only"] is True
