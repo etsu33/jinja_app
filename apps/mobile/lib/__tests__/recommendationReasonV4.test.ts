@@ -153,14 +153,42 @@ describe("buildReasonV4Sections", () => {
     expect(result.actionText).toBe("参拝前に、問いを一つに絞ることを決めておきます。");
   });
 
-  it("fact優先順位はshrine_history > place_context > goriyaku > history_theme > label", () => {
+  it("fact優先順位はdeity > shrine_history > goriyaku > history_theme(place_context/labelは候補にしない)", () => {
     const result = buildReasonV4Sections({
       detail: makeDetail({
-        fact: { shrine_history: "由緒あり", place_context: "住所情報", goriyaku: "縁結び", history_theme: "再出発", label: "候補神社" },
+        fact: { deity: "武神", shrine_history: "由緒あり", place_context: "住所情報", goriyaku: "縁結び", history_theme: "再出発", label: "候補神社" },
       }),
       fallbackReason: null,
     });
-    expect(result.factText).toBe("由緒あり");
+    expect(result.factText).toBe("武神");
+  });
+
+  it("deity/shrine_historyが無い場合はgoriyakuを優先し、place_contextは使わない", () => {
+    const result = buildReasonV4Sections({
+      detail: makeDetail({
+        fact: { deity: null, shrine_history: null, place_context: "住所情報", goriyaku: "縁結び", history_theme: "再出発", label: "住所情報" },
+      }),
+      fallbackReason: null,
+    });
+    expect(result.factText).toBe("縁結び");
+    expect(result.factText).not.toBe("住所情報");
+  });
+
+  it("place_contextのみの場合はfactTextをnullにする(住所を神社の特徴として表示しない)", () => {
+    const result = buildReasonV4Sections({
+      detail: makeDetail({
+        fact: {
+          deity: null,
+          shrine_history: null,
+          place_context: "東京都渋谷区代々木神園町1-1",
+          goriyaku: null,
+          history_theme: null,
+          label: "東京都渋谷区代々木神園町1-1",
+        },
+      }),
+      fallbackReason: null,
+    });
+    expect(result.factText).toBeNull();
   });
 
   it("空objectのdetail(全field空)はhasStructured=falseになりreason_textへfallbackする", () => {
