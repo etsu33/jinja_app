@@ -63,7 +63,7 @@ structured表示が成立しない場合のfallback順序は以下とする。
 | --- | --- | --- | --- |
 | Mobile | `apps/mobile/lib/recommendationReasonV4.ts`（`buildReasonV4Sections`） | `deity > shrine_history > goriyaku > history_theme` | 契約準拠（#2207で修正済み） |
 | Web (Hero card) | `apps/web/src/features/concierge/buildHeroReasonV4Sections.ts`（`buildHeroReasonV4Sections`） | `deity > shrine_history > goriyaku > history_theme` | 契約準拠（#2208で修正済み） |
-| Web (Shrine Detail page) | `apps/web/src/app/shrines/[id]/page.tsx` | 該当実装なし | **`recommendation_reason_v4_detail`を未使用。structured表示なし** |
+| Web (Shrine Detail page) | `apps/web/src/lib/shrine/buildShrineDetailReasonV4Sections.ts`（`buildShrineDetailReasonV4Sections`） | `deity > shrine_history > goriyaku > history_theme` | 契約準拠（#2210で対応済み） |
 | Web (Candidate/Compact card) | `ConciergeSectionsRenderer.tsx`（`ShrineCardCompact`経路） | 該当実装なし | 設計上structured表示の対象外（Heroのみ） |
 
-Web (Hero card)はPR #2208で契約準拠済みである。Web (Shrine Detail page)は`recommendation_reason_v4_detail`未対応のため、契約と実装が一致していない既知の差異として残る。対応範囲と実装時期は母艦判断待ちとする。
+Web (Hero card)はPR #2208、Web (Shrine Detail page)はPR #2210でそれぞれ契約準拠済みである。Fact優先順位ロジックの実体は`apps/web/src/features/concierge/reasonV4FactPriority.ts`（`pickReasonV4FactText`）に集約されており、Hero AdapterとShrine Detail Adapterの両方から利用する。既知の差異は解消済み。
