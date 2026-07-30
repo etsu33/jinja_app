@@ -3,6 +3,8 @@
 > 本ドキュメントは、Concierge履歴（相談履歴）から過去の推薦神社・Recommendation Reason V4 Detailへ再アクセスするためのNavigation設計を管理する正本文書である。
 >
 > 本書は設計文書であり、実装契約そのものではない。Fact/Interpretation/Action表示の契約は`docs/product/recommendation-v4-frontend-adapter-contract.md`、Recommendation Reasonの生成契約は`docs/core/recommendation-reason-contract.md`を正本とする。
+>
+> History APIの契約判断は、Django URL routing・View・Serializer・Permission・Backendテストを根拠とする。`make spectacular`による生成schemaは機械的検証用成果物候補として扱い、`docs/openapi_generated.yaml`は仕様根拠に使用しない（詳細は`docs/core/openapi-contract-governance.md`を参照）。
 
 # History Recommendation Navigation Design
 
