@@ -13,6 +13,22 @@ export function isUnauthenticatedError(error: unknown): error is Unauthenticated
   return error instanceof UnauthenticatedError;
 }
 
+// HTTPステータスを保持するエラー。401(UnauthenticatedError)以外の異常応答(403/404/500等)を
+// 呼び出し側がstatusで区別できるようにする(メッセージ文字列のparseに頼らない)。
+export class HttpError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "HttpError";
+    this.status = status;
+  }
+}
+
+export function isHttpError(error: unknown): error is HttpError {
+  return error instanceof HttpError;
+}
+
 type TokenRefreshResponse = {
   access: string;
 };
@@ -63,7 +79,7 @@ async function request<T>(path: string, init: RequestInit): Promise<T> {
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(`HTTP ${res.status}: ${text || res.statusText}`);
+    throw new HttpError(res.status, `HTTP ${res.status}: ${text || res.statusText}`);
   }
 
   return (await res.json()) as T;
@@ -87,7 +103,7 @@ async function requestAuth<T>(path: string, init: RequestInit): Promise<T> {
   if (first.status !== 401) {
     if (!first.ok) {
       const text = await first.text().catch(() => "");
-      throw new Error(`HTTP ${first.status}: ${text || first.statusText}`);
+      throw new HttpError(first.status, `HTTP ${first.status}: ${text || first.statusText}`);
     }
     return (await first.json()) as T;
   }
@@ -112,7 +128,7 @@ async function requestAuth<T>(path: string, init: RequestInit): Promise<T> {
 
   if (!retry.ok) {
     const text = await retry.text().catch(() => "");
-    throw new Error(`HTTP ${retry.status}: ${text || retry.statusText}`);
+    throw new HttpError(retry.status, `HTTP ${retry.status}: ${text || retry.statusText}`);
   }
 
   return (await retry.json()) as T;

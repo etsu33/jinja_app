@@ -181,6 +181,17 @@ export default function MyPageScreen() {
       </View>
 
       <View style={styles.section}>
+        <Text style={styles.sectionTitle}>相談</Text>
+        <MyPageCard
+          title="相談履歴"
+          description="これまでの相談と、当時推薦された神社を見返せます。"
+          iconText="談"
+          actionLabel="開く"
+          onPress={() => router.push("/consultation-history")}
+        />
+      </View>
+
+      <View style={styles.section}>
         <Text style={styles.sectionTitle}>Premium</Text>
         <MyPageCard
           title="Premium"
