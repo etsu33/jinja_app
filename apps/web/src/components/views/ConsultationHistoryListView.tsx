@@ -1,9 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { buildLoginHref } from "@/lib/nav/login";
+import {
+  trackConsultationHistoryDetailOpened,
+  trackConsultationHistoryListViewed,
+} from "@/lib/analytics/consultationHistoryEvents";
 import type { ConciergeThread } from "@/lib/api/concierge/types";
 
 type Props = {
@@ -26,6 +31,16 @@ function normalizePreview(value: string | null | undefined): string {
 export default function ConsultationHistoryListView({ initialThreads, fetchFailed }: Props) {
   const { loading, isLoggedIn } = useAuth();
   const router = useRouter();
+
+  // 認証済みかつ取得成功で一覧が表示可能になった時点で1回だけ発火する(0件でも発火する)。
+  // 再レンダーでの重複防止はhasTrackedListViewRefで行う。
+  const hasTrackedListViewRef = useRef(false);
+  useEffect(() => {
+    if (loading || !isLoggedIn || fetchFailed) return;
+    if (hasTrackedListViewRef.current) return;
+    hasTrackedListViewRef.current = true;
+    trackConsultationHistoryListViewed({ historyCount: initialThreads.length });
+  }, [loading, isLoggedIn, fetchFailed, initialThreads.length]);
 
   if (loading) {
     return (
@@ -92,10 +107,13 @@ export default function ConsultationHistoryListView({ initialThreads, fetchFaile
     <main className="mx-auto max-w-3xl p-6 text-stone-800">
       <h1 className="mb-4 text-xl font-semibold">相談履歴</h1>
       <ul className="space-y-3">
-        {initialThreads.map((thread) => (
+        {initialThreads.map((thread, idx) => (
           <li key={thread.id}>
             <Link
               href={`/mypage/history/${thread.id}`}
+              onClick={() =>
+                trackConsultationHistoryDetailOpened({ threadId: thread.id, position: idx + 1 })
+              }
               className="block rounded-2xl border border-stone-200/20 bg-stone-50/30 p-4 transition hover:bg-stone-50/60"
             >
               <div className="flex items-center justify-between gap-3">

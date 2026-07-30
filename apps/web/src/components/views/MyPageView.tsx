@@ -11,6 +11,7 @@ import FavoritesSection from "@/features/mypage/components/FavoritesSection";
 import Link from "next/link";
 import { buildLoginHref } from "@/lib/nav/login";
 import { buildDerivedProfile, buildDirectionProfile } from "@/lib/profile/derivedProfile";
+import { trackConsultationHistoryEntryClicked } from "@/lib/analytics/consultationHistoryEvents";
 
 type Props = { initialFavorites: Favorite[] };
 type MyPageTab = "profile" | "goshuin" | "favorites" | "submissions" | "visits";
@@ -279,6 +280,14 @@ export default function MyPageView({ initialFavorites }: Props) {
         <TabLink href="/mypage?tab=visits" active={tab === "visits"}>
           参拝履歴
         </TabLink>
+
+        <Link
+          href="/mypage/history"
+          onClick={() => trackConsultationHistoryEntryClicked()}
+          className="rounded-full border border-stone-200/20 bg-stone-50/20 px-3 py-1.5 text-sm text-stone-500 transition hover:bg-stone-100/40 hover:text-stone-800"
+        >
+          相談履歴
+        </Link>
       </div>
 
       {tab === "goshuin" ? (

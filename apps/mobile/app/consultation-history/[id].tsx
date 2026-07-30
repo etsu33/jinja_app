@@ -18,6 +18,11 @@ import {
   normalizeRecommendationReasonV4Detail,
   serializeReasonV4Detail,
 } from "../../lib/recommendationReasonV4";
+import {
+  shouldTrackConsultationHistoryViewEvent,
+  trackConsultationHistoryDetailViewed,
+  trackConsultationHistoryShrineOpened,
+} from "../../lib/consultationHistoryAnalytics";
 import { StateCard } from "../../components/common/StateCard";
 import { AuthPrompt } from "../../components/common/AuthPrompt";
 import Button from "../../components/ui/Button";
@@ -28,10 +33,12 @@ import { radius } from "../../design/radius";
 
 function RecommendationCard({
   rec,
+  rank,
   onOpenShrineDetail,
 }: {
   rec: ConciergeRecommendation;
-  onOpenShrineDetail: (shrineId: string) => void;
+  rank: number;
+  onOpenShrineDetail: (shrineId: string, rank: number) => void;
 }) {
   const shrineId = extractRecommendationShrineId(rec);
   const name = rec.display_name?.trim() || rec.name?.trim() || "名称未設定の神社";
@@ -55,7 +62,7 @@ function RecommendationCard({
       {factText ? <Text style={styles.recommendationFact}>{factText}</Text> : null}
       {shrineId ? (
         <Pressable
-          onPress={() => onOpenShrineDetail(shrineId)}
+          onPress={() => onOpenShrineDetail(shrineId, rank)}
           accessibilityRole="button"
           accessibilityLabel={`${name}の詳細を見る`}
           style={styles.detailLink}
@@ -114,7 +121,11 @@ export default function ConsultationHistoryDetailScreen() {
   }, [state.kind]);
 
   const handleOpenShrineDetail = React.useCallback(
-    (shrineId: string, rec: ConciergeRecommendation) => {
+    (shrineId: string, rec: ConciergeRecommendation, recommendationRank: number) => {
+      if (tid) {
+        trackConsultationHistoryShrineOpened({ threadId: tid, shrineId, recommendationRank });
+      }
+
       const reasonV4Detail = normalizeRecommendationReasonV4Detail(rec.recommendation_reason_v4_detail);
       router.push({
         pathname: "/shrines/[id]",
@@ -132,8 +143,27 @@ export default function ConsultationHistoryDetailScreen() {
         },
       });
     },
-    [router],
+    [router, tid],
   );
+
+  // 認証済みかつ取得成功でthreadが正常表示された時点で、同一tidの同一マウント中に1回だけ発火する。
+  const trackedDetailViewTidRef = React.useRef<string | null>(null);
+  React.useEffect(() => {
+    const isReady = state.kind === "ready" && tid != null;
+    const alreadyTracked = trackedDetailViewTidRef.current === tid;
+
+    if (!shouldTrackConsultationHistoryViewEvent({ isReady, alreadyTracked })) return;
+    if (state.kind !== "ready") return;
+
+    trackedDetailViewTidRef.current = tid ?? null;
+
+    const recommendations = state.thread.recommendations_v2 ?? state.thread.recommendations ?? [];
+    trackConsultationHistoryDetailViewed({
+      threadId: state.thread.id,
+      recommendationCount: recommendations.length,
+      messageCount: state.thread.messages.length,
+    });
+  }, [state, tid]);
 
   const recommendations =
     state.kind === "ready" ? (state.thread.recommendations_v2 ?? state.thread.recommendations ?? []) : [];
@@ -203,7 +233,8 @@ export default function ConsultationHistoryDetailScreen() {
                     <RecommendationCard
                       key={`${extractRecommendationShrineId(rec) ?? rec.name ?? "rec"}-${idx}`}
                       rec={rec}
-                      onOpenShrineDetail={(shrineId) => handleOpenShrineDetail(shrineId, rec)}
+                      rank={idx + 1}
+                      onOpenShrineDetail={(shrineId, rank) => handleOpenShrineDetail(shrineId, rec, rank)}
                     />
                   ))}
                 </View>

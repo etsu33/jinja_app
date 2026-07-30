@@ -5,6 +5,8 @@ import type { ConciergeThreadDetail } from "@/lib/api/concierge/types";
 
 const refreshMock = vi.fn();
 const useAuthMock = vi.fn();
+const trackDetailViewedMock = vi.fn();
+const trackShrineOpenedMock = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: refreshMock, push: vi.fn() }),
@@ -12,6 +14,11 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/lib/auth/AuthProvider", () => ({
   useAuth: () => useAuthMock(),
+}));
+
+vi.mock("@/lib/analytics/consultationHistoryEvents", () => ({
+  trackConsultationHistoryDetailViewed: (...args: unknown[]) => trackDetailViewedMock(...args),
+  trackConsultationHistoryShrineOpened: (...args: unknown[]) => trackShrineOpenedMock(...args),
 }));
 
 const THREAD: ConciergeThreadDetail = {
@@ -82,6 +89,13 @@ describe("ConsultationHistoryDetailView", () => {
     expect(refreshMock).toHaveBeenCalledTimes(1);
   });
 
+  it("fetchFailed時はdetail_viewedを送らない", () => {
+    useAuthMock.mockReturnValue({ loading: false, isLoggedIn: true });
+    render(<ConsultationHistoryDetailView tid="42" thread={null} fetchFailed={true} />);
+
+    expect(trackDetailViewedMock).not.toHaveBeenCalled();
+  });
+
   it("Direct Navigation: 不正または存在しないtid(thread=null)のとき見つからない旨を表示する", () => {
     useAuthMock.mockReturnValue({ loading: false, isLoggedIn: true });
     render(<ConsultationHistoryDetailView tid="999" thread={null} fetchFailed={false} />);
@@ -90,7 +104,14 @@ describe("ConsultationHistoryDetailView", () => {
     expect(screen.getByRole("link", { name: "相談履歴の一覧へ戻る" })).toHaveAttribute("href", "/mypage/history");
   });
 
-  it("正常系: 会話履歴と推薦神社カード、Fact要約、action_stateバッジを表示する", () => {
+  it("not_found(thread=null)時はdetail_viewedを送らない", () => {
+    useAuthMock.mockReturnValue({ loading: false, isLoggedIn: true });
+    render(<ConsultationHistoryDetailView tid="999" thread={null} fetchFailed={false} />);
+
+    expect(trackDetailViewedMock).not.toHaveBeenCalled();
+  });
+
+  it("正常系: 会話履歴と推薦神社カード、Fact要約、action_stateバッジを表示し、detail_viewedを送る", () => {
     useAuthMock.mockReturnValue({ loading: false, isLoggedIn: true });
     render(<ConsultationHistoryDetailView tid="42" thread={THREAD} fetchFailed={false} />);
 
@@ -102,6 +123,25 @@ describe("ConsultationHistoryDetailView", () => {
     expect(screen.getByText("気になる登録済み")).toBeInTheDocument();
     // Fact優先順位: deityが最優先。place_context(住所)はFact本文として使われない。
     expect(screen.getByText("須佐之男命")).toBeInTheDocument();
+
+    expect(trackDetailViewedMock).toHaveBeenCalledWith({
+      threadId: 42,
+      recommendationCount: 1,
+      messageCount: 2,
+    });
+    expect(trackDetailViewedMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("同一tidの再レンダーではdetail_viewedが重複発火しない", () => {
+    useAuthMock.mockReturnValue({ loading: false, isLoggedIn: true });
+    const { rerender } = render(<ConsultationHistoryDetailView tid="42" thread={THREAD} fetchFailed={false} />);
+
+    expect(trackDetailViewedMock).toHaveBeenCalledTimes(1);
+
+    rerender(<ConsultationHistoryDetailView tid="42" thread={THREAD} fetchFailed={false} />);
+    rerender(<ConsultationHistoryDetailView tid="42" thread={THREAD} fetchFailed={false} />);
+
+    expect(trackDetailViewedMock).toHaveBeenCalledTimes(1);
   });
 
   it("Shrine Detail遷移: 推薦神社カードのリンクがctx=concierge&tidを維持する", () => {
@@ -112,5 +152,14 @@ describe("ConsultationHistoryDetailView", () => {
       "href",
       "/shrines/5?ctx=concierge&tid=42",
     );
+  });
+
+  it("神社詳細操作時にshrine_openedをthreadId・shrineId・recommendationRank(1始まり)で送る", () => {
+    useAuthMock.mockReturnValue({ loading: false, isLoggedIn: true });
+    render(<ConsultationHistoryDetailView tid="42" thread={THREAD} fetchFailed={false} />);
+
+    fireEvent.click(screen.getByRole("link", { name: "神社の詳細を見る" }));
+
+    expect(trackShrineOpenedMock).toHaveBeenCalledWith({ threadId: "42", shrineId: 5, recommendationRank: 1 });
   });
 });
