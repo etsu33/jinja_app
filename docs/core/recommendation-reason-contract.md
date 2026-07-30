@@ -280,22 +280,50 @@ Recommendation生成時に利用した値は、
 
 ### 構造化出力の保存
 
-以下の構造化出力をRuntime Snapshotへ恒久保存するかは、
-現時点では未確定とする。
+構造化出力のうち、表示に必要な最小集合（`recommendation_reason_v4_detail`、後述）はRuntime Snapshot（`ConciergeThread.recommendations` / `recommendations_v2`）へ恒久保存する。これは実装済みであり未確定ではない。
 
-- fact
-- interpretation
-- action
-- used_fact
-- used_interpretation
-- used_action
-- source
+`used_fact` / `used_interpretation` / `used_action` / `source` / `quality`は、Backend内部の監査・品質計測専用として扱い、Runtime Snapshotへは保存しない。理由・詳細はAnalytics用途の確認が済んでいないため。
 
 保存対象を追加する場合は、
 Payload容量、過去互換、Analytics用途を確認した上で
 別Contract変更として扱う。
 
 過去Snapshotは、神社情報や生成ロジックが更新されても再計算しない。
+
+## recommendation_reason_v4_detail（Frontend表示Adapter契約）
+
+`recommendation_reason_v4_detail`は、`build_recommendation_reason_v4()`の出力から表示に必要な項目のみを抜き出した、Web/Mobile共通のFrontend向け表示契約である。
+
+生成元: `backend/temples/services/concierge_chat.py`の`_attach_recommendation_reason_quality()`。
+
+### Output
+
+```json
+{
+  "version": "v4",
+  "reason_text": "string",
+  "fact": { "...": "build_recommendation_reason_v4()のfactと同一" },
+  "interpretation": { "...": "同上のinterpretationと同一" },
+  "action": { "...": "同上のactionと同一" }
+}
+```
+
+- `reason_text`は、常に同一itemの`recommendation_reason_v4`（フラットな文字列field）と一致する。
+- `used_fact` / `used_interpretation` / `used_action` / `source` / `quality`は含まない（Backend内部専用）。
+
+### 付与対象
+
+`recommendations`および`recommendations_v2`の両方の各itemへ、shrine_id/id/nameで対応付けて付与する。
+
+### 保存
+
+`recommendation_reason_v4_detail`は、Chat API応答生成時に他のitem fieldと同様に`ConciergeThread.recommendations` / `recommendations_v2`（JSONField）へ保存される。History取得時（`ConciergeThreadDetailSerializer`）は、保存済みのJSONをそのまま返す（再計算しない）。
+
+このPR以前に作成されたThreadには`recommendation_reason_v4_detail`が含まれない。Frontend側はfield欠落時に旧表示へfallbackする前提で実装する（`docs/product/recommendation-v4-frontend-adapter-contract.md`参照）。
+
+### Frontend表示Adapterとの境界
+
+`recommendation_reason_v4_detail`の各fieldをどの文型・見出しで表示するか（例: deity/shrine_history/goriyaku/history_themeの優先順位、place_contextを表示に使わない等）はFrontend側Adapterの責務であり、本ドキュメントでは定義しない。Web/Mobileそれぞれの実装契約は`docs/product/recommendation-v4-frontend-adapter-contract.md`を参照する。
 
 ## Action Suggestionとの接続
 
