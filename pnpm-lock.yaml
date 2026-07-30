@@ -23,8 +23,8 @@ importers:
   .:
     devDependencies:
       '@next/eslint-plugin-next':
-        specifier: ^16.2.4
-        version: 16.2.4
+        specifier: ^16.2.12
+        version: 16.2.12
       '@stoplight/spectral-cli':
         specifier: ^6.15.1
         version: 6.15.1
@@ -289,7 +289,7 @@ importers:
         specifier: ^2.12.14
         version: 2.12.14(@types/node@26.1.1)(typescript@5.9.3)
       serialize-javascript:
-        specifier: ^7.0.7
+        specifier: ^7.0.5
         version: 7.0.7
       storybook:
         specifier: 10.5.4
@@ -1983,8 +1983,8 @@ packages:
   '@next/eslint-plugin-next@16.2.11':
     resolution: {integrity: sha512-vMEf/aXOpzFFdtIvFYOnIDPKb0xBbrXONsz83CcKdRrekfxNdL8PNkq5qHqAHSXVlIifnX68LOMaxr3z5PkeLQ==}
 
-  '@next/eslint-plugin-next@16.2.4':
-    resolution: {integrity: sha512-tOX826JJ96gYK/go18sPUgMq9FK1tqxBFfUCEufJb5XIkWFFmpgU7mahJANKGkHs7F41ir3tReJ3Lv5La0RvhA==}
+  '@next/eslint-plugin-next@16.2.12':
+    resolution: {integrity: sha512-uF2z/qAK2q7B5/6CpnFcBRX6jOq5iCO+Uqh1UkJhXljX1JwLarLYhhoJadO6dPb6moTprOKewMXheBcbIoSbug==}
 
   '@next/swc-darwin-arm64@16.2.12':
     resolution: {integrity: sha512-0W1R0teHWJrqKX0FH20IzzIWAOuGtBxPGuObrxy1lE8hQvCFj49KE8a3WUg0D7sq6rn6zkM4c7YGUnhudBS6oA==}
@@ -10369,7 +10369,7 @@ snapshots:
     dependencies:
       fast-glob: 3.3.1
 
-  '@next/eslint-plugin-next@16.2.4':
+  '@next/eslint-plugin-next@16.2.12':
     dependencies:
       fast-glob: 3.3.1
 
