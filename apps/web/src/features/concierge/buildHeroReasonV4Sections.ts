@@ -49,14 +49,16 @@ export function buildHeroReasonV4Sections(params: {
 }): HeroReasonV4Sections {
   const detail = params.detail ?? null;
 
+  // 優先順位はBackend契約(deity > shrine_history > goriyaku > history_theme)およびMobile実装に合わせる。
+  // place_context(住所)とlabel(place_contextへ落ちうる互換field)はFact本文の候補にしない。
+  // 住所を「選ばれた背景」として表示すると、神社固有の意味がないまま具体性があるように見えてしまう。
   const factText = safeText(
     detail
       ? pickFirst(
+          detail.fact?.deity,
           detail.fact?.shrine_history,
-          detail.fact?.place_context,
           detail.fact?.goriyaku,
           detail.fact?.history_theme,
-          detail.fact?.label,
         )
       : null,
   );
