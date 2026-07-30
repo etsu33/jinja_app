@@ -46,6 +46,7 @@ import { buildPreviousConsultationSummary } from "@/lib/concierge/buildPreviousC
 import { compareState } from "@/lib/concierge/compareState";
 import type { StateDelta } from "@/lib/concierge/stateComparison";
 import { parseDirectionRouteContext } from "@/lib/analytics/directionRouteContext";
+import { normalizeRecommendationReasonV4Detail } from "@/lib/shrine/buildShrineDetailReasonV4Sections";
 
 function normalizeCtx(v?: string | null): "map" | "concierge" | null {
   return v === "map" || v === "concierge" ? v : null;
@@ -408,6 +409,13 @@ export default async function Page({ params, searchParams }: Props) {
     conciergeDeepReason = builtReasonDetail.conciergeDeepReason;
   }
 
+  // recommendation_reason_v4_detailはURL queryへ載せず、tidから再取得したselectedRecommendation
+  // (Backend Runtime Snapshotに永続化済み)からそのまま読む。旧Threadにはfieldが存在しないため、
+  // normalizeRecommendationReasonV4Detailが欠損・不正型を吸収してnullへfallbackする。
+  const recommendationReasonV4Detail = normalizeRecommendationReasonV4Detail(
+    selectedRecommendation?.recommendation_reason_v4_detail ?? null,
+  );
+
   const model = buildShrineDetailModel({
     shrine: s,
     shrineMeaningPayloadV2,
@@ -418,6 +426,7 @@ export default async function Page({ params, searchParams }: Props) {
     conciergeExplanationPayload,
     conciergeMode,
     recommendationReasonDetail,
+    recommendationReasonV4Detail,
     recommendationRankExplanation,
     recommendationRankComparison,
     actionState,

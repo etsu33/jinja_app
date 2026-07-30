@@ -32,6 +32,10 @@ import { buildComparisonText } from "@/lib/concierge/narrative/buildComparisonTe
 import { buildPsychologicalTags } from "@/lib/concierge/narrative/buildPsychologicalTags";
 import { buildSymbolTags } from "@/lib/concierge/narrative/buildSymbolTags";
 import { resolveNeedCombinationNarrative } from "@/lib/concierge/narrative/needCombinationMap";
+import {
+  buildShrineDetailReasonV4Sections,
+  type RecommendationReasonV4DetailShape,
+} from "@/lib/shrine/buildShrineDetailReasonV4Sections";
 
 type ShrineActionState = "none" | "detail_viewed" | "saved" | "route_opened" | "visited" | "reflected";
 
@@ -54,6 +58,9 @@ type Args = {
     shrineMeaning?: string | null;
     actionMeaning?: string | null;
   } | null;
+  // Concierge経由(ctx === "concierge")の場合のみBackendから渡される。
+  // Direct Navigationでは常にnullのため、相談文脈からFact/Interpretation/Actionを推測しない。
+  recommendationReasonV4Detail?: RecommendationReasonV4DetailShape | null;
   signals?: {
     publicGoshuinsCount?: number;
     views30d?: number;
@@ -1337,6 +1344,7 @@ export function buildShrineDetailModel({
   recommendationRankExplanation = null,
   recommendationRankComparison = null,
   recommendationReasonDetail = null,
+  recommendationReasonV4Detail = null,
   ctx = null,
   tid = null,
   signals,
@@ -1598,7 +1606,7 @@ export function buildShrineDetailModel({
       supplementSection,
     });
 
-  const premiumDisplaySections =
+  const premiumDisplaySectionsBeforeReasonV4 =
     payloadV2DisplaySections?.premiumDisplaySections ??
     buildPremiumDisplaySections({
       isConciergeContext,
@@ -1607,6 +1615,61 @@ export function buildShrineDetailModel({
       meaningSection,
       actionSection,
     });
+
+  // Recommendation Reason V4(fact/interpretation/action)は、V1(reasonSection等)・V2(shrineMeaningPayloadV2)
+  // いずれが元になったsectionsであっても、構造化データが存在する場合は最終的にこちらを優先する。
+  // Direct Navigation(isConciergeContext=false)ではrecommendationReasonV4Detailは常にnullのため、
+  // 相談文脈をShrine APIの値から推測することはない。
+  const reasonV4 = isConciergeContext
+    ? buildShrineDetailReasonV4Sections(recommendationReasonV4Detail)
+    : { factText: null, interpretationText: null, actionText: null, hasStructured: false };
+
+  const premiumDisplaySections = reasonV4.hasStructured
+    ? [
+        ...premiumDisplaySectionsBeforeReasonV4.filter(
+          (item) => item.section.kind !== "reason" && item.section.kind !== "meaning" && item.section.kind !== "action",
+        ),
+        ...(reasonV4.factText
+          ? [
+              {
+                tier: "premium" as const,
+                layer: "context" as const,
+                section: {
+                  kind: "reason" as const,
+                  heading: "② 選ばれた背景",
+                  groups: [{ title: "神社の背景", items: [reasonV4.factText] }],
+                },
+              },
+            ]
+          : []),
+        ...(reasonV4.interpretationText
+          ? [
+              {
+                tier: "premium" as const,
+                layer: "context" as const,
+                section: {
+                  kind: "meaning" as const,
+                  heading: "③ 今回の相談との意味",
+                  items: [{ key: "reason_v4_interpretation", title: "今回の相談との意味", body: reasonV4.interpretationText }],
+                },
+              },
+            ]
+          : []),
+        ...(reasonV4.actionText
+          ? [
+              {
+                tier: "premium" as const,
+                layer: "context" as const,
+                section: {
+                  kind: "action" as const,
+                  heading: "④ 参拝するときの視点",
+                  items: [{ key: "reason_v4_action", title: "参拝するときの視点", body: reasonV4.actionText }],
+                },
+              },
+            ]
+          : []),
+      ]
+    : premiumDisplaySectionsBeforeReasonV4;
 
   const sections: ShrineDetailSectionModel[] = [
     ...freeDisplaySections.map((item) => item.section),

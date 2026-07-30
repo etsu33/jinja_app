@@ -494,6 +494,164 @@ describe("buildShrineDetailModel", () => {
     expect(result.heroImageUrl).toBe("https://example.com/card.jpg");
   });
 
+  describe("recommendationReasonV4Detail(Fact/Interpretation/Action)", () => {
+    it("structured Factありの場合、旧reasonSection/meaningSection/actionSectionを重複させずV4のsectionに置き換える", () => {
+      const result = buildShrineDetailModel({
+        shrine: shrineStub,
+        publicGoshuins: publicGoshuinsStub,
+        conciergeBreakdown: conciergeBreakdownStub,
+        conciergeDeepReason: {
+          interpretation: "旧型の相談との一致文",
+          shrineMeaning: "旧型のこの神社で受け取る意味",
+          action: "旧型の参拝するときの視点",
+          short: "短句",
+        },
+        conciergeMode: "need",
+        ctx: "concierge",
+        tid: "thread-1",
+        recommendationReasonV4Detail: {
+          reason_text: "reason_text",
+          fact: { deity: "武神", shrine_history: null, place_context: "住所情報", goriyaku: null, history_theme: null },
+          interpretation: { text: "今回の相談との意味(V4)" },
+          action: { text: "参拝するときの視点(V4)" },
+        },
+      });
+
+      const premiumSections = result.premiumDisplaySections.map((item: { section: any }) => item.section);
+      const kinds = premiumSections.map((section: any) => section.kind);
+      expect(kinds).toEqual(["proposal", "reason", "meaning", "action"]);
+
+      const reasonSection = premiumSections.find((section: any) => section.kind === "reason");
+      expect(reasonSection.heading).toBe("② 選ばれた背景");
+      expect(reasonSection.groups[0].items).toEqual(["武神"]);
+      expect(JSON.stringify(reasonSection)).not.toContain("住所情報");
+      expect(JSON.stringify(reasonSection)).not.toContain("旧型");
+
+      const meaningSection = premiumSections.find((section: any) => section.kind === "meaning");
+      expect(meaningSection.heading).toBe("③ 今回の相談との意味");
+      expect(meaningSection.items[0].body).toBe("今回の相談との意味(V4)");
+      expect(JSON.stringify(meaningSection)).not.toContain("旧型");
+
+      const actionSection = premiumSections.find((section: any) => section.kind === "action");
+      expect(actionSection.heading).toBe("④ 参拝するときの視点");
+      expect(actionSection.items[0].body).toBe("参拝するときの視点(V4)");
+      expect(JSON.stringify(actionSection)).not.toContain("旧型");
+    });
+
+    it("Interpretationのみ存在する場合、meaning sectionのみV4に置き換わりreason/actionは欠落する", () => {
+      const result = buildShrineDetailModel({
+        shrine: shrineStub,
+        publicGoshuins: publicGoshuinsStub,
+        conciergeBreakdown: conciergeBreakdownStub,
+        conciergeMode: "need",
+        ctx: "concierge",
+        tid: "thread-1",
+        recommendationReasonV4Detail: {
+          reason_text: "reason_text",
+          fact: { deity: null, shrine_history: null, place_context: null, goriyaku: null, history_theme: null },
+          interpretation: { text: "今回の相談との意味(V4)" },
+          action: { text: "" },
+        },
+      });
+
+      const premiumSections = result.premiumDisplaySections.map((item: { section: any }) => item.section);
+      const kinds = premiumSections.map((section: any) => section.kind);
+      expect(kinds).toContain("meaning");
+      expect(kinds).not.toContain("reason");
+      expect(kinds).not.toContain("action");
+
+      const meaningSection = premiumSections.find((section: any) => section.kind === "meaning");
+      expect(meaningSection.items[0].body).toBe("今回の相談との意味(V4)");
+    });
+
+    it("Actionのみ存在する場合、action sectionのみV4に置き換わる", () => {
+      const result = buildShrineDetailModel({
+        shrine: shrineStub,
+        publicGoshuins: publicGoshuinsStub,
+        conciergeBreakdown: conciergeBreakdownStub,
+        conciergeMode: "need",
+        ctx: "concierge",
+        tid: "thread-1",
+        recommendationReasonV4Detail: {
+          reason_text: "reason_text",
+          fact: { deity: null, shrine_history: null, place_context: null, goriyaku: null, history_theme: null },
+          interpretation: { text: "" },
+          action: { text: "参拝するときの視点(V4)" },
+        },
+      });
+
+      const premiumSections = result.premiumDisplaySections.map((item: { section: any }) => item.section);
+      const kinds = premiumSections.map((section: any) => section.kind);
+      expect(kinds).toContain("action");
+      expect(kinds).not.toContain("reason");
+      expect(kinds).not.toContain("meaning");
+    });
+
+    it("structured Factが全欠落している場合は旧表示(reasonSection/meaningSection/actionSection)へfallbackする", () => {
+      const result = buildShrineDetailModel({
+        shrine: shrineStub,
+        publicGoshuins: publicGoshuinsStub,
+        conciergeBreakdown: conciergeBreakdownStub,
+        conciergeDeepReason: {
+          interpretation: "旧型の相談との一致文",
+          shrineMeaning: "旧型のこの神社で受け取る意味",
+          action: "旧型の参拝するときの視点",
+          short: "短句",
+        },
+        conciergeMode: "need",
+        ctx: "concierge",
+        tid: "thread-1",
+        recommendationReasonV4Detail: {
+          reason_text: "",
+          fact: { deity: null, shrine_history: null, place_context: null, goriyaku: null, history_theme: null },
+          interpretation: { text: "" },
+          action: { text: "" },
+        },
+      });
+
+      expect(result.meaningSection.items[0].body).toBe("旧型のこの神社で受け取る意味");
+      expect(result.actionSection.items[0].body).toBe("旧型の参拝するときの視点");
+    });
+
+    it("旧Thread互換: recommendationReasonV4Detailが未指定でも従来どおり動作する", () => {
+      const result = buildShrineDetailModel({
+        shrine: shrineStub,
+        publicGoshuins: publicGoshuinsStub,
+        conciergeBreakdown: conciergeBreakdownStub,
+        conciergeDeepReason: {
+          interpretation: "旧型の相談との一致文",
+          shrineMeaning: "旧型のこの神社で受け取る意味",
+          action: "旧型の参拝するときの視点",
+          short: "短句",
+        },
+        conciergeMode: "need",
+        ctx: "concierge",
+        tid: "thread-1",
+      });
+
+      expect(result.meaningSection.items[0].body).toBe("旧型のこの神社で受け取る意味");
+      expect(result.actionSection.items[0].body).toBe("旧型の参拝するときの視点");
+    });
+
+    it("Direct Navigation(ctx!=='concierge')ではrecommendationReasonV4Detailが渡っても表示しない", () => {
+      const result = buildShrineDetailModel({
+        shrine: shrineStub,
+        publicGoshuins: publicGoshuinsStub,
+        conciergeBreakdown: conciergeBreakdownStub,
+        ctx: "map",
+        recommendationReasonV4Detail: {
+          reason_text: "reason_text",
+          fact: { deity: "武神", shrine_history: null, place_context: null, goriyaku: null, history_theme: null },
+          interpretation: { text: "今回の相談との意味(V4)" },
+          action: { text: "参拝するときの視点(V4)" },
+        },
+      });
+
+      expect(JSON.stringify(result.sections)).not.toContain("武神");
+      expect(JSON.stringify(result.sections)).not.toContain("(V4)");
+    });
+  });
+
   it("public goshuin も cardProps.imageUrl も無いときは heroImageUrl が null", async () => {
     const { buildShrineCardProps } = await import("@/components/shrine/buildShrineCardProps");
     vi.mocked(buildShrineCardProps).mockReturnValueOnce({

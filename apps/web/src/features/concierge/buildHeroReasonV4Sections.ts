@@ -1,6 +1,7 @@
 // apps/web/src/features/concierge/buildHeroReasonV4Sections.ts
 import type { RecommendationReasonV4Detail } from "@/lib/api/concierge";
 import { buildRecommendationReasonDisplay } from "../../../../../packages/shared/recommendationReasonDisplay";
+import { pickReasonV4FactText } from "./reasonV4FactPriority";
 
 export type HeroReasonV4Sections = {
   factText: string | null;
@@ -49,19 +50,8 @@ export function buildHeroReasonV4Sections(params: {
 }): HeroReasonV4Sections {
   const detail = params.detail ?? null;
 
-  // 優先順位はBackend契約(deity > shrine_history > goriyaku > history_theme)およびMobile実装に合わせる。
-  // place_context(住所)とlabel(place_contextへ落ちうる互換field)はFact本文の候補にしない。
-  // 住所を「選ばれた背景」として表示すると、神社固有の意味がないまま具体性があるように見えてしまう。
-  const factText = safeText(
-    detail
-      ? pickFirst(
-          detail.fact?.deity,
-          detail.fact?.shrine_history,
-          detail.fact?.goriyaku,
-          detail.fact?.history_theme,
-        )
-      : null,
-  );
+  // 優先順位の実体はreasonV4FactPriority.tsに集約する(Hero/Shrine Detailで共通)。
+  const factText = safeText(detail ? pickReasonV4FactText(detail.fact) : null);
   const interpretationText = safeText(detail ? clean(detail.interpretation?.text) : null);
   const actionText = safeText(detail ? clean(detail.action?.text) : null);
 
