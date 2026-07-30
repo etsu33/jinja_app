@@ -45,8 +45,15 @@ export type ConciergeChatResponse = {
   limitReached?: boolean;
 };
 
+// Backend契約(GET /api/concierge-threads/{pk}/, ConciergeThreadDetailView)は
+// id/title/last_message/last_message_at/message_countをトップレベルに返す
+// フラットな構造であり、`thread`というネストしたキーは存在しない。
 export type ConciergeThreadDetail = {
-  thread: ConciergeThread;
+  id: number;
+  title: string;
+  last_message: string;
+  last_message_at: string | null;
+  message_count: number;
   messages: ConciergeMessage[];
   recommendations?: ConciergeRecommendation[];
   recommendations_v2?: ConciergeRecommendation[];

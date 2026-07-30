@@ -11,12 +11,6 @@ export function buildPreviousConsultationSummary(
     return null;
   }
 
-  const root = thread as ConciergeThreadDetail & {
-    id?: number | null;
-    last_message_at?: string | null;
-  };
-  const threadLike = thread.thread ?? root;
-
   const recs = thread.recommendations_v2 ?? thread.recommendations ?? [];
   const first = recs[0];
   const shrineId = Number(first?.shrine_id ?? first?.id);
@@ -36,8 +30,8 @@ export function buildPreviousConsultationSummary(
   const combination = resolveNeedCombinationNarrative(matchedNeedTags as NeedTag[]);
 
   return {
-    threadId: typeof threadLike.id === "number" ? threadLike.id : null,
-    createdAt: threadLike.last_message_at ?? null,
+    threadId: typeof thread.id === "number" ? thread.id : null,
+    createdAt: thread.last_message_at ?? null,
     consultationSummary: payload?.original_reason ?? null,
     matchedNeedTags,
     combination: combination
