@@ -41,16 +41,121 @@ describe("buildHeroReasonV4Sections", () => {
     expect(result.fallbackText).toBeNull();
   });
 
-  it("factは優先順位(shrine_history > place_context > goriyaku > history_theme > label)で選ばれる", () => {
+  it("factは優先順位(deity > shrine_history > goriyaku > history_theme)で選ばれる(place_context/labelは候補にしない)", () => {
     const result = buildHeroReasonV4Sections({
       detail: makeDetail({
-        fact: { shrine_history: "由緒あり", place_context: "住所情報", goriyaku: "縁結び", history_theme: "再出発", label: "候補神社" },
+        fact: { deity: "武神", shrine_history: "由緒あり", place_context: "住所情報", goriyaku: "縁結び", history_theme: "再出発", label: "候補神社" },
+      }),
+      recommendationReasonV4: null,
+      reason: null,
+    });
+
+    expect(result.factText).toBe("武神");
+  });
+
+  it("deityが選ばれるケース", () => {
+    const result = buildHeroReasonV4Sections({
+      detail: makeDetail({
+        fact: { deity: "武神", shrine_history: null, place_context: null, goriyaku: null, history_theme: null, label: "武神" },
+      }),
+      recommendationReasonV4: null,
+      reason: null,
+    });
+
+    expect(result.factText).toBe("武神");
+  });
+
+  it("shrine_historyが選ばれるケース(deityが無い場合)", () => {
+    const result = buildHeroReasonV4Sections({
+      detail: makeDetail({
+        fact: { deity: null, shrine_history: "由緒あり", place_context: null, goriyaku: null, history_theme: null, label: "由緒あり" },
       }),
       recommendationReasonV4: null,
       reason: null,
     });
 
     expect(result.factText).toBe("由緒あり");
+  });
+
+  it("goriyakuが選ばれるケース(deity/shrine_historyが無い場合)", () => {
+    const result = buildHeroReasonV4Sections({
+      detail: makeDetail({
+        fact: { deity: null, shrine_history: null, place_context: "住所情報", goriyaku: "縁結び", history_theme: "再出発", label: "住所情報" },
+      }),
+      recommendationReasonV4: null,
+      reason: null,
+    });
+
+    expect(result.factText).toBe("縁結び");
+    expect(result.factText).not.toBe("住所情報");
+  });
+
+  it("history_themeが選ばれるケース(deity/shrine_history/goriyakuが無い場合)", () => {
+    const result = buildHeroReasonV4Sections({
+      detail: makeDetail({
+        fact: { deity: null, shrine_history: null, place_context: "住所情報", goriyaku: null, history_theme: "再出発", label: "住所情報" },
+      }),
+      recommendationReasonV4: null,
+      reason: null,
+    });
+
+    expect(result.factText).toBe("再出発");
+  });
+
+  it("place_contextだけではFactを生成しない(住所を神社の特徴として表示しない)", () => {
+    const result = buildHeroReasonV4Sections({
+      detail: makeDetail({
+        fact: {
+          deity: null,
+          shrine_history: null,
+          place_context: "東京都渋谷区代々木神園町1-1",
+          goriyaku: null,
+          history_theme: null,
+          label: "東京都渋谷区代々木神園町1-1",
+        },
+        interpretation: { text: "" },
+        action: { text: "" },
+      }),
+      recommendationReasonV4: null,
+      reason: null,
+    });
+
+    expect(result.factText).toBeNull();
+  });
+
+  it("labelだけではFactを生成しない", () => {
+    const result = buildHeroReasonV4Sections({
+      detail: makeDetail({
+        fact: {
+          deity: null,
+          shrine_history: null,
+          place_context: null,
+          goriyaku: null,
+          history_theme: null,
+          label: "候補神社",
+        },
+        interpretation: { text: "" },
+        action: { text: "" },
+      }),
+      recommendationReasonV4: null,
+      reason: null,
+    });
+
+    expect(result.factText).toBeNull();
+  });
+
+  it("BackendのFact本文(deity)が独自fallbackより優先される", () => {
+    const result = buildHeroReasonV4Sections({
+      detail: makeDetail({
+        fact: { deity: "武神", shrine_history: null, place_context: "住所情報", goriyaku: null, history_theme: null, label: "住所情報" },
+      }),
+      recommendationReasonV4: "recommendation_reason_v4の内容",
+      reason: "旧型の理由文",
+    });
+
+    expect(result.hasStructured).toBe(true);
+    expect(result.factText).toBe("武神");
+    expect(result.fallbackText).toBeNull();
   });
 
   it("detailがまったく無い場合はrecommendation_reason_v4へfallbackする", () => {
