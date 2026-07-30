@@ -1,11 +1,12 @@
 import { getAuth } from "./http";
 
+// Backend契約(GET /concierge-threads/, ConciergeThreadListView)は
+// id/title/last_message/last_message_at/message_countのみを返す。
+// created_at/updated_atは存在しないため型に含めない。
 export type ConciergeThreadListItem = {
   id: number;
   title: string;
   last_message: string;
-  created_at: string;
-  updated_at: string;
   last_message_at: string | null;
   message_count: number;
 };
