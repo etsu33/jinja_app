@@ -14,8 +14,8 @@ vi.mock("../http", async (importOriginal) => {
   };
 });
 
-import { listConciergeThreads } from "../consultationHistory";
-import { UnauthenticatedError } from "../http";
+import { fetchConciergeThreadsRaw, getConciergeThread, listConciergeThreads } from "../consultationHistory";
+import { HttpError, UnauthenticatedError } from "../http";
 
 describe("listConciergeThreads", () => {
   beforeEach(() => {
@@ -73,5 +73,108 @@ describe("listConciergeThreads", () => {
     const result = await listConciergeThreads();
 
     expect(result).toEqual([]);
+  });
+});
+
+describe("fetchConciergeThreadsRaw", () => {
+  beforeEach(() => {
+    getAuthMock.mockReset();
+  });
+
+  it("正常系: results配列をそのまま返す", async () => {
+    getAuthMock.mockResolvedValueOnce({
+      results: [{ id: 1, title: "相談A", last_message: "本文", last_message_at: null, message_count: 1 }],
+    });
+
+    const result = await fetchConciergeThreadsRaw();
+
+    expect(result).toHaveLength(1);
+  });
+
+  it("フラットレスポンス型との整合: 配列がそのまま返るレスポンス形状にも対応する", async () => {
+    getAuthMock.mockResolvedValueOnce([
+      { id: 2, title: "相談B", last_message: "本文2", last_message_at: null, message_count: 0 },
+    ]);
+
+    const result = await fetchConciergeThreadsRaw();
+
+    expect(result).toEqual([{ id: 2, title: "相談B", last_message: "本文2", last_message_at: null, message_count: 0 }]);
+  });
+
+  it("listConciergeThreadsとは異なり、401(UnauthenticatedError)を握りつぶさずそのまま投げる", async () => {
+    getAuthMock.mockRejectedValueOnce(new UnauthenticatedError());
+
+    await expect(fetchConciergeThreadsRaw()).rejects.toBeInstanceOf(UnauthenticatedError);
+  });
+
+  it("403(HttpError)も握りつぶさずそのまま投げる", async () => {
+    getAuthMock.mockRejectedValueOnce(new HttpError(403, "HTTP 403: Forbidden"));
+
+    await expect(fetchConciergeThreadsRaw()).rejects.toMatchObject({ status: 403 });
+  });
+
+  it("network errorも握りつぶさずそのまま投げる", async () => {
+    getAuthMock.mockRejectedValueOnce(new TypeError("Network request failed"));
+
+    await expect(fetchConciergeThreadsRaw()).rejects.toBeInstanceOf(TypeError);
+  });
+});
+
+describe("getConciergeThread", () => {
+  beforeEach(() => {
+    getAuthMock.mockReset();
+  });
+
+  it("正常系: フラット構造のThreadDetailをそのまま返す", async () => {
+    const detail = {
+      id: 42,
+      title: "縁結びの相談",
+      last_message: "ありがとうございました。",
+      last_message_at: "2026-01-01T00:00:00Z",
+      message_count: 2,
+      messages: [{ id: 1, role: "user", content: "こんにちは", created_at: "2026-01-01T00:00:00Z" }],
+      recommendations: [],
+    };
+    getAuthMock.mockResolvedValueOnce(detail);
+
+    const result = await getConciergeThread("42");
+
+    expect(result).toEqual(detail);
+    // thread という入れ子構造ではなく、id/title等がトップレベルにあることを確認する
+    expect((result as unknown as { thread?: unknown }).thread).toBeUndefined();
+    expect(getAuthMock).toHaveBeenCalledWith("/concierge-threads/42/");
+  });
+
+  it("401(UnauthenticatedError)を握りつぶさず投げる", async () => {
+    getAuthMock.mockRejectedValueOnce(new UnauthenticatedError());
+
+    await expect(getConciergeThread("42")).rejects.toBeInstanceOf(UnauthenticatedError);
+  });
+
+  it("404(HttpError)を握りつぶさず投げる(不正または存在しないtid)", async () => {
+    getAuthMock.mockRejectedValueOnce(new HttpError(404, "HTTP 404: Not Found"));
+
+    await expect(getConciergeThread("999")).rejects.toMatchObject({ status: 404 });
+  });
+
+  it("network errorを握りつぶさず投げる", async () => {
+    getAuthMock.mockRejectedValueOnce(new TypeError("Network request failed"));
+
+    await expect(getConciergeThread("42")).rejects.toBeInstanceOf(TypeError);
+  });
+
+  it("tidはencodeURIComponentされてpathへ渡される", async () => {
+    getAuthMock.mockResolvedValueOnce({
+      id: 1,
+      title: "t",
+      last_message: "",
+      last_message_at: null,
+      message_count: 0,
+      messages: [],
+    });
+
+    await getConciergeThread("abc/def");
+
+    expect(getAuthMock).toHaveBeenCalledWith("/concierge-threads/abc%2Fdef/");
   });
 });

@@ -2,71 +2,34 @@ import * as React from "react";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 
-import { listConciergeThreads, type ConciergeThreadListItem } from "../../lib/consultationHistory";
+import { fetchConciergeThreadsRaw, type ConciergeThreadListItem } from "../../lib/consultationHistory";
+import {
+  classifyThreadsLoadError,
+  formatThreadDate,
+  groupThreadsByDate,
+  normalizeThreadPreview,
+} from "../../lib/consultationHistoryUi";
 import { StateCard } from "../../components/common/StateCard";
+import { AuthPrompt } from "../../components/common/AuthPrompt";
+import Button from "../../components/ui/Button";
 import { kamimusubiDark as theme } from "../../design/theme";
 import { spacing } from "../../design/spacing";
 import { cardSizes } from "../../design/cardSizes";
 import { radius } from "../../design/radius";
 
-function formatDate(value: string | null | undefined): string {
-  if (!value) return "日付未記録";
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "日付未記録";
-
-  return date.toLocaleDateString("ja-JP", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-}
-
-function formatDateGroupLabel(value: string | null | undefined): string {
-  if (!value) return "日付未記録";
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "日付未記録";
-
-  return date.toLocaleDateString("ja-JP", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    weekday: "short",
-  });
-}
-
-function normalizePreview(value: string | null | undefined): string {
-  const text = String(value ?? "").replace(/\s+/g, " ").trim();
-  return text || "相談内容はまだ記録されていません。";
-}
-
-type ConsultationGroup = {
-  label: string;
-  items: ConciergeThreadListItem[];
-};
-
-function groupThreadsByDate(threads: ConciergeThreadListItem[]): ConsultationGroup[] {
-  const groups = new Map<string, ConciergeThreadListItem[]>();
-
-  threads.forEach((thread) => {
-    const label = formatDateGroupLabel(thread.last_message_at);
-    const current = groups.get(label) ?? [];
-    current.push(thread);
-    groups.set(label, current);
-  });
-
-  return Array.from(groups.entries()).map(([label, items]) => ({ label, items }));
-}
-
-function ConsultationCard({ thread }: { thread: ConciergeThreadListItem }) {
+function ConsultationCard({ thread, onPress }: { thread: ConciergeThreadListItem; onPress: () => void }) {
   const title = thread.title?.trim() || "相談タイトル未設定";
-  const preview = normalizePreview(thread.last_message);
-  const date = formatDate(thread.last_message_at);
+  const preview = normalizeThreadPreview(thread.last_message);
+  const date = formatThreadDate(thread.last_message_at);
   const messageCount = Number.isFinite(thread.message_count) ? thread.message_count : 0;
 
   return (
-    <View style={styles.consultationCard}>
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${title}の相談履歴を開く`}
+      style={({ pressed }) => [styles.consultationCard, pressed && styles.consultationCardPressed]}
+    >
       <View style={styles.cardHeader}>
         <Text style={styles.threadTitle}>{title}</Text>
         <Text style={styles.createdAt}>{date}</Text>
@@ -81,98 +44,142 @@ function ConsultationCard({ thread }: { thread: ConciergeThreadListItem }) {
           <Text style={styles.messageCountText}>{messageCount}件のやりとり</Text>
         </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
+type ListState =
+  | { kind: "loading" }
+  | { kind: "unauthenticated" }
+  | { kind: "error" }
+  | { kind: "ready"; threads: ConciergeThreadListItem[] };
+
 export default function ConsultationHistoryScreen() {
   const router = useRouter();
-  const [threads, setThreads] = React.useState<ConciergeThreadListItem[]>([]);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState(false);
+  const [state, setState] = React.useState<ListState>({ kind: "loading" });
   const [refreshing, setRefreshing] = React.useState(false);
+  const [authPromptVisible, setAuthPromptVisible] = React.useState(false);
 
-  const loadThreads = React.useCallback(async (options?: { showInitialLoading?: boolean; showRefreshing?: boolean }) => {
-    if (options?.showInitialLoading) setLoading(true);
-    if (options?.showRefreshing) setRefreshing(true);
+  const loadThreads = React.useCallback(async (options?: { showRefreshing?: boolean }) => {
+    if (options?.showRefreshing) {
+      setRefreshing(true);
+    } else {
+      setState({ kind: "loading" });
+    }
 
     try {
-      const items = await listConciergeThreads();
-      setThreads(items);
-      setError(false);
-    } catch {
-      setThreads([]);
-      setError(true);
+      const threads = await fetchConciergeThreadsRaw();
+      setState({ kind: "ready", threads });
+    } catch (error) {
+      const kind = classifyThreadsLoadError(error);
+      if (kind === "error" && __DEV__) {
+        console.warn("[ConsultationHistoryScreen] failed to load threads", error);
+      }
+      setState({ kind });
     } finally {
-      if (options?.showInitialLoading) setLoading(false);
       if (options?.showRefreshing) setRefreshing(false);
     }
   }, []);
 
   React.useEffect(() => {
-    void loadThreads({ showInitialLoading: true });
+    void loadThreads();
   }, [loadThreads]);
-
-  const groupedThreads = React.useMemo(() => groupThreadsByDate(threads), [threads]);
 
   const onRefresh = React.useCallback(() => {
     void loadThreads({ showRefreshing: true });
   }, [loadThreads]);
 
+  const threads = state.kind === "ready" ? state.threads : [];
+  const groupedThreads = React.useMemo(() => groupThreadsByDate(threads), [threads]);
+
+  React.useEffect(() => {
+    if (state.kind === "unauthenticated") setAuthPromptVisible(true);
+  }, [state.kind]);
+
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.gold} />}
-    >
-      <View style={styles.header}>
-        <Pressable onPress={() => router.replace("/records")} style={styles.backButton}>
-          <Text style={styles.backText}>← 記録へ戻る</Text>
-        </Pressable>
+    <>
+      <ScrollView
+        style={styles.screen}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.gold} />}
+      >
+        <View style={styles.header}>
+          <Pressable onPress={() => router.replace("/records")} style={styles.backButton}>
+            <Text style={styles.backText}>← 記録へ戻る</Text>
+          </Pressable>
 
-        <Text style={styles.title}>相談履歴</Text>
-        <Text style={styles.subtitle}>
-          これまでの相談を新しい順に見返せます。迷いや願いの変化を、次の相談につなげるための記録です。
-        </Text>
-      </View>
-
-      {loading ? (
-        <StateCard
-          title="相談履歴を読み込み中"
-          description="保存された相談を確認しています。"
-        />
-      ) : null}
-
-      {!loading && error ? (
-        <StateCard
-          title="相談履歴を読み込めませんでした"
-          description="通信状況を確認して、もう一度開き直してください。"
-        />
-      ) : null}
-
-      {!loading && !error && threads.length === 0 ? (
-        <StateCard
-          title="相談履歴はまだありません"
-          description="コンシェルジュで相談すると、ここに履歴として表示されます。"
-        />
-      ) : null}
-
-      {!loading && !error && groupedThreads.length > 0 ? (
-        <View style={styles.timeline}>
-          {groupedThreads.map((group) => (
-            <View key={group.label} style={styles.timelineGroup}>
-              <Text style={styles.groupLabel}>{group.label}</Text>
-              <View style={styles.list}>
-                {group.items.map((thread) => (
-                  <ConsultationCard key={thread.id} thread={thread} />
-                ))}
-              </View>
-            </View>
-          ))}
+          <Text style={styles.title}>相談履歴</Text>
+          <Text style={styles.subtitle}>
+            これまでの相談を新しい順に見返せます。迷いや願いの変化を、次の相談につなげるための記録です。
+          </Text>
         </View>
-      ) : null}
-    </ScrollView>
+
+        {state.kind === "loading" ? (
+          <StateCard title="相談履歴を読み込み中" description="保存された相談を確認しています。" />
+        ) : null}
+
+        {state.kind === "unauthenticated" ? (
+          <StateCard
+            title="ログインが必要です"
+            description="相談履歴を見返すには、ログインしてください。"
+          />
+        ) : null}
+
+        {state.kind === "error" ? (
+          <View style={styles.errorBlock}>
+            <StateCard
+              title="相談履歴を読み込めませんでした"
+              description="通信状況を確認して、もう一度お試しください。"
+            />
+            <Button
+              title="もう一度読み込む"
+              variant="outline"
+              size="compact"
+              onPress={() => void loadThreads()}
+              accessibilityLabel="相談履歴をもう一度読み込む"
+            />
+          </View>
+        ) : null}
+
+        {state.kind === "ready" && threads.length === 0 ? (
+          <StateCard
+            title="相談履歴はまだありません"
+            description="コンシェルジュで相談すると、ここに履歴として表示されます。"
+          />
+        ) : null}
+
+        {state.kind === "ready" && groupedThreads.length > 0 ? (
+          <View style={styles.timeline}>
+            {groupedThreads.map((group) => (
+              <View key={group.label} style={styles.timelineGroup}>
+                <Text style={styles.groupLabel}>{group.label}</Text>
+                <View style={styles.list}>
+                  {group.items.map((thread) => (
+                    <ConsultationCard
+                      key={thread.id}
+                      thread={thread}
+                      onPress={() =>
+                        router.push({
+                          pathname: "/consultation-history/[id]",
+                          params: { id: String(thread.id) },
+                        })
+                      }
+                    />
+                  ))}
+                </View>
+              </View>
+            ))}
+          </View>
+        ) : null}
+      </ScrollView>
+
+      <AuthPrompt
+        visible={authPromptVisible}
+        onClose={() => setAuthPromptVisible(false)}
+        description="相談履歴を見返すには、ログインが必要です。"
+      />
+    </>
   );
 }
 
@@ -209,6 +216,9 @@ const styles = StyleSheet.create({
     lineHeight: 23,
     fontWeight: "600",
   },
+  errorBlock: {
+    gap: spacing.smGap,
+  },
   timeline: {
     gap: spacing.lgGap,
   },
@@ -231,6 +241,9 @@ const styles = StyleSheet.create({
     borderWidth: cardSizes.borderWidth,
     padding: cardSizes.cardPaddingLg,
     gap: spacing.smGap,
+  },
+  consultationCardPressed: {
+    opacity: 0.72,
   },
   cardHeader: {
     gap: spacing.tightGap,
