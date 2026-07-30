@@ -24,6 +24,11 @@ import {
 } from "../../lib/visitReflectionAnalytics";
 import { AuthPrompt } from "../../components/common/AuthPrompt";
 import Button from "../../components/ui/Button";
+import {
+  buildReasonV4Sections,
+  normalizeRecommendationReasonV4Detail,
+  type RecommendationReasonV4Detail,
+} from "../../lib/recommendationReasonV4";
 
 type RecommendationReasonFactAxis =
   | "need"
@@ -251,6 +256,7 @@ export default function ShrineDetail() {
     reasonFacts?: string | string[];
     recommendationReasonDetail?: string | string[];
     actionSuggestionV4Preview?: string | string[];
+    recommendationReasonV4Detail?: string | string[];
   }>();
   const shrineId = React.useMemo(() => {
     const raw = params.id;
@@ -316,6 +322,19 @@ export default function ShrineDetail() {
     }
   }, [params.actionSuggestionV4Preview]);
 
+  const contextReasonV4Detail = React.useMemo<RecommendationReasonV4Detail | null>(() => {
+    const raw = params.recommendationReasonV4Detail;
+    const value = Array.isArray(raw) ? raw[0] : raw;
+    if (!value) return null;
+
+    try {
+      const parsed = JSON.parse(value);
+      return normalizeRecommendationReasonV4Detail(parsed);
+    } catch {
+      return null;
+    }
+  }, [params.recommendationReasonV4Detail]);
+
   const apiShrineId = React.useMemo(() => {
     if (!shrineId) return undefined;
     return SHRINE_API_ID_BY_LOCAL_ID[shrineId] ?? shrineId;
@@ -354,6 +373,15 @@ export default function ShrineDetail() {
       reasonFacts: contextReasonFacts ?? shrine.reasonFacts,
     });
   }, [contextReasonFacts, contextRecommendationReasonV4, shrine]);
+
+  // Concierge以外の遷移ではcontextReasonV4Detailがnullのため常にhasStructured=falseとなり、
+  // 神社APIの値から相談文脈を推測することはない(v4 detailはroute params専用でShrine型に持たせていない)
+  const reasonV4Sections = buildReasonV4Sections({
+    detail: contextReasonV4Detail,
+    fallbackReason: recommendationReason ?? null,
+  });
+  const hasStructuredReasonV4 = reasonV4Sections.hasStructured;
+  const hideReasonFactsCard = Boolean(reasonV4Sections.factText);
 
   const explanation = React.useMemo(() => {
     if (!shrine) return undefined;
@@ -676,13 +704,22 @@ export default function ShrineDetail() {
           </View>
         ) : null}
 
-        {/* 推薦理由 */}
-        <View style={styles.recommendationCard}>
-          <Text style={styles.cardTitle}>② 選ばれた理由</Text>
-          <Text style={styles.cardBody}>{recommendationReason}</Text>
-        </View>
+        {/* 推薦理由(構造化Reason V4がある場合はfactを、無ければ旧recommendationReasonを表示) */}
+        {hasStructuredReasonV4 ? (
+          reasonV4Sections.factText ? (
+            <View style={styles.recommendationCard}>
+              <Text style={styles.cardTitle}>② 選ばれた背景</Text>
+              <Text style={styles.cardBody}>{reasonV4Sections.factText}</Text>
+            </View>
+          ) : null
+        ) : (
+          <View style={styles.recommendationCard}>
+            <Text style={styles.cardTitle}>② 選ばれた理由</Text>
+            <Text style={styles.cardBody}>{recommendationReason}</Text>
+          </View>
+        )}
 
-        {reasonFactItems.length > 0 ? (
+        {!hideReasonFactsCard && reasonFactItems.length > 0 ? (
           <View style={styles.reasonFactsCard}>
             <Text style={styles.reasonFactsLabel}>選定のポイント</Text>
             {reasonFactItems.map((item) => (
@@ -694,14 +731,28 @@ export default function ShrineDetail() {
           </View>
         ) : null}
 
-        {hasShrineMeaning ? (
+        {hasStructuredReasonV4 ? (
+          reasonV4Sections.interpretationText ? (
+            <View style={styles.meaningCard}>
+              <Text style={styles.cardTitle}>③ 今回の相談との意味</Text>
+              <Text style={styles.cardBody}>{reasonV4Sections.interpretationText}</Text>
+            </View>
+          ) : null
+        ) : hasShrineMeaning ? (
           <View style={styles.meaningCard}>
             <Text style={styles.cardTitle}>③ この神社で受け取る意味</Text>
             <Text style={styles.cardBody}>{contextRecommendationReasonDetail?.shrineMeaning}</Text>
           </View>
         ) : null}
 
-        {hasActionMeaning ? (
+        {hasStructuredReasonV4 ? (
+          reasonV4Sections.actionText ? (
+            <View style={styles.actionCard}>
+              <Text style={styles.cardTitle}>④ 参拝するときの視点</Text>
+              <Text style={styles.cardBody}>{reasonV4Sections.actionText}</Text>
+            </View>
+          ) : null
+        ) : hasActionMeaning ? (
           <View style={styles.actionCard}>
             <Text style={styles.cardTitle}>④ 参拝するときの視点</Text>
             <Text style={styles.cardBody}>{contextRecommendationReasonDetail?.actionMeaning}</Text>

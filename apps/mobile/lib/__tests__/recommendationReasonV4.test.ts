@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildReasonV4Sections,
   normalizeRecommendationReasonV4Detail,
+  serializeReasonV4Detail,
   type RecommendationReasonV4Detail,
 } from "../recommendationReasonV4";
 
@@ -235,5 +236,20 @@ describe("buildReasonV4Sections", () => {
       fallbackReason: "この方位は吉方位なので必ず良い結果になります。",
     });
     expect(result.fallbackText).toBeNull();
+  });
+});
+
+describe("serializeReasonV4Detail", () => {
+  it("detailが存在する場合はJSON文字列化する", () => {
+    const detail = makeDetail();
+    expect(serializeReasonV4Detail(detail)).toBe(JSON.stringify(detail));
+  });
+
+  it("detailがnullの場合は空文字を返す(不要なJSON文字列を生成しない)", () => {
+    expect(serializeReasonV4Detail(null)).toBe("");
+  });
+
+  it("detailがundefinedの場合は空文字を返す", () => {
+    expect(serializeReasonV4Detail(undefined)).toBe("");
   });
 });
