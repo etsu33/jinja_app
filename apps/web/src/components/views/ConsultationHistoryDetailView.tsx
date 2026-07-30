@@ -1,10 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { buildLoginHref } from "@/lib/nav/login";
 import { pickReasonV4FactText } from "@/features/concierge/reasonV4FactPriority";
+import {
+  trackConsultationHistoryDetailViewed,
+  trackConsultationHistoryShrineOpened,
+} from "@/lib/analytics/consultationHistoryEvents";
 import type { ConciergeThreadDetail, ConciergeRecommendation } from "@/lib/api/concierge/types";
 
 type Props = {
@@ -38,7 +43,15 @@ function extractShrineId(rec: ConciergeRecommendation): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-function RecommendationCard({ rec, tid }: { rec: ConciergeRecommendation; tid: string }) {
+function RecommendationCard({
+  rec,
+  tid,
+  rank,
+}: {
+  rec: ConciergeRecommendation;
+  tid: string;
+  rank: number;
+}) {
   const shrineId = extractShrineId(rec);
   const factText = pickReasonV4FactText(rec.recommendation_reason_v4_detail?.fact);
   const actionLabel = rec.action_state ? ACTION_STATE_LABEL[rec.action_state] : null;
@@ -58,6 +71,9 @@ function RecommendationCard({ rec, tid }: { rec: ConciergeRecommendation; tid: s
       {shrineId != null ? (
         <Link
           href={`/shrines/${shrineId}?ctx=concierge&tid=${encodeURIComponent(tid)}`}
+          onClick={() =>
+            trackConsultationHistoryShrineOpened({ threadId: tid, shrineId, recommendationRank: rank })
+          }
           className="mt-3 inline-block text-xs font-semibold text-emerald-800 underline"
         >
           神社の詳細を見る
@@ -70,6 +86,21 @@ function RecommendationCard({ rec, tid }: { rec: ConciergeRecommendation; tid: s
 export default function ConsultationHistoryDetailView({ tid, thread, fetchFailed }: Props) {
   const { loading, isLoggedIn } = useAuth();
   const router = useRouter();
+
+  // 認証済みかつ取得成功でthreadが正常表示された時点で、同一tidの同一マウント中に1回だけ発火する。
+  const trackedDetailViewTidRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (loading || !isLoggedIn || fetchFailed || !thread) return;
+    if (trackedDetailViewTidRef.current === tid) return;
+    trackedDetailViewTidRef.current = tid;
+
+    const recommendations = thread.recommendations_v2 ?? thread.recommendations ?? [];
+    trackConsultationHistoryDetailViewed({
+      threadId: thread.id,
+      recommendationCount: recommendations.length,
+      messageCount: thread.messages.length,
+    });
+  }, [loading, isLoggedIn, fetchFailed, thread, tid]);
 
   if (loading) {
     return (
@@ -143,7 +174,12 @@ export default function ConsultationHistoryDetailView({ tid, thread, fetchFailed
           <h2 className="mb-2 text-sm font-semibold text-stone-700">当時推薦された神社</h2>
           <ul className="space-y-3">
             {recommendations.map((rec, idx) => (
-              <RecommendationCard key={`${extractShrineId(rec) ?? rec.name}-${idx}`} rec={rec} tid={tid} />
+              <RecommendationCard
+                key={`${extractShrineId(rec) ?? rec.name}-${idx}`}
+                rec={rec}
+                tid={tid}
+                rank={idx + 1}
+              />
             ))}
           </ul>
         </section>

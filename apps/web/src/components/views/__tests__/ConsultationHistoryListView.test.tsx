@@ -5,6 +5,8 @@ import type { ConciergeThread } from "@/lib/api/concierge/types";
 
 const refreshMock = vi.fn();
 const useAuthMock = vi.fn();
+const trackListViewedMock = vi.fn();
+const trackDetailOpenedMock = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: refreshMock, push: vi.fn() }),
@@ -12,6 +14,11 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/lib/auth/AuthProvider", () => ({
   useAuth: () => useAuthMock(),
+}));
+
+vi.mock("@/lib/analytics/consultationHistoryEvents", () => ({
+  trackConsultationHistoryListViewed: (...args: unknown[]) => trackListViewedMock(...args),
+  trackConsultationHistoryDetailOpened: (...args: unknown[]) => trackDetailOpenedMock(...args),
 }));
 
 const THREADS: ConciergeThread[] = [
@@ -43,6 +50,13 @@ describe("ConsultationHistoryListView", () => {
     );
   });
 
+  it("未ログイン時はlist_viewedを送らない", () => {
+    useAuthMock.mockReturnValue({ loading: false, isLoggedIn: false });
+    render(<ConsultationHistoryListView initialThreads={[]} fetchFailed={false} />);
+
+    expect(trackListViewedMock).not.toHaveBeenCalled();
+  });
+
   it("取得失敗時はError状態とRetry導線を表示し、クリックでrouter.refreshが呼ばれる", () => {
     useAuthMock.mockReturnValue({ loading: false, isLoggedIn: true });
     render(<ConsultationHistoryListView initialThreads={[]} fetchFailed={true} />);
@@ -52,15 +66,24 @@ describe("ConsultationHistoryListView", () => {
     expect(refreshMock).toHaveBeenCalledTimes(1);
   });
 
-  it("ログイン済みで0件のときEmpty状態を表示する", () => {
+  it("fetchFailed時はlist_viewedを送らない", () => {
+    useAuthMock.mockReturnValue({ loading: false, isLoggedIn: true });
+    render(<ConsultationHistoryListView initialThreads={[]} fetchFailed={true} />);
+
+    expect(trackListViewedMock).not.toHaveBeenCalled();
+  });
+
+  it("ログイン済みで0件のときEmpty状態を表示し、list_viewedをhistoryCount:0で送る", () => {
     useAuthMock.mockReturnValue({ loading: false, isLoggedIn: true });
     render(<ConsultationHistoryListView initialThreads={[]} fetchFailed={false} />);
 
     expect(screen.getByText("まだ相談履歴がありません。")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "コンシェルジュに相談する" })).toHaveAttribute("href", "/concierge");
+    expect(trackListViewedMock).toHaveBeenCalledWith({ historyCount: 0 });
+    expect(trackListViewedMock).toHaveBeenCalledTimes(1);
   });
 
-  it("正常系: 相談履歴一覧を表示し、詳細画面へのリンクを持つ", () => {
+  it("正常系: 相談履歴一覧を表示し、詳細画面へのリンクを持ち、list_viewedを送る", () => {
     useAuthMock.mockReturnValue({ loading: false, isLoggedIn: true });
     render(<ConsultationHistoryListView initialThreads={THREADS} fetchFailed={false} />);
 
@@ -68,5 +91,28 @@ describe("ConsultationHistoryListView", () => {
     expect(screen.getByText("仕事運の相談")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /縁結びの相談/ })).toHaveAttribute("href", "/mypage/history/1");
     expect(screen.getByRole("link", { name: /仕事運の相談/ })).toHaveAttribute("href", "/mypage/history/2");
+    expect(trackListViewedMock).toHaveBeenCalledWith({ historyCount: 2 });
+    expect(trackListViewedMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("再レンダーではlist_viewedが重複発火しない", () => {
+    useAuthMock.mockReturnValue({ loading: false, isLoggedIn: true });
+    const { rerender } = render(<ConsultationHistoryListView initialThreads={THREADS} fetchFailed={false} />);
+
+    expect(trackListViewedMock).toHaveBeenCalledTimes(1);
+
+    rerender(<ConsultationHistoryListView initialThreads={THREADS} fetchFailed={false} />);
+    rerender(<ConsultationHistoryListView initialThreads={THREADS} fetchFailed={false} />);
+
+    expect(trackListViewedMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("履歴カード操作時にdetail_openedをthreadId・position(1始まり)で送る", () => {
+    useAuthMock.mockReturnValue({ loading: false, isLoggedIn: true });
+    render(<ConsultationHistoryListView initialThreads={THREADS} fetchFailed={false} />);
+
+    fireEvent.click(screen.getByRole("link", { name: /仕事運の相談/ }));
+
+    expect(trackDetailOpenedMock).toHaveBeenCalledWith({ threadId: 2, position: 2 });
   });
 });

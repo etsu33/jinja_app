@@ -6,6 +6,7 @@ import { getFavoriteShrines, getRecentViewed } from "../../lib/shrineStorage";
 import { getCounts } from "../../lib/storage";
 import { getAuthenticatedBillingStatus, isPremiumStatus, type BillingStatus } from "../../lib/billing";
 import { isUnauthenticatedError } from "../../lib/http";
+import { trackConsultationHistoryEntryClicked } from "../../lib/consultationHistoryAnalytics";
 
 type PremiumMetaState =
   | { kind: "loading" }
@@ -187,7 +188,10 @@ export default function MyPageScreen() {
           description="これまでの相談と、当時推薦された神社を見返せます。"
           iconText="談"
           actionLabel="開く"
-          onPress={() => router.push("/consultation-history")}
+          onPress={() => {
+            trackConsultationHistoryEntryClicked();
+            router.push("/consultation-history");
+          }}
         />
       </View>
 

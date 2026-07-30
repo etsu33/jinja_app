@@ -9,6 +9,11 @@ import {
   groupThreadsByDate,
   normalizeThreadPreview,
 } from "../../lib/consultationHistoryUi";
+import {
+  shouldTrackConsultationHistoryViewEvent,
+  trackConsultationHistoryDetailOpened,
+  trackConsultationHistoryListViewed,
+} from "../../lib/consultationHistoryAnalytics";
 import { StateCard } from "../../components/common/StateCard";
 import { AuthPrompt } from "../../components/common/AuthPrompt";
 import Button from "../../components/ui/Button";
@@ -96,6 +101,23 @@ export default function ConsultationHistoryScreen() {
     if (state.kind === "unauthenticated") setAuthPromptVisible(true);
   }, [state.kind]);
 
+  // 認証済みかつ取得成功で一覧が表示可能になった時点で1回だけ発火する(0件でも発火する)。
+  // Pull to Refresh・Retryによる再取得やその他の再レンダーでは再発火しない。
+  const hasTrackedListViewRef = React.useRef(false);
+  React.useEffect(() => {
+    if (
+      !shouldTrackConsultationHistoryViewEvent({
+        isReady: state.kind === "ready",
+        alreadyTracked: hasTrackedListViewRef.current,
+      })
+    ) {
+      return;
+    }
+
+    hasTrackedListViewRef.current = true;
+    trackConsultationHistoryListViewed({ historyCount: threads.length });
+  }, [state.kind, threads.length]);
+
   return (
     <>
       <ScrollView
@@ -159,12 +181,15 @@ export default function ConsultationHistoryScreen() {
                     <ConsultationCard
                       key={thread.id}
                       thread={thread}
-                      onPress={() =>
+                      onPress={() => {
+                        // 日付グループごとの添字ではなく、一覧全体(threads)内での1始まりpositionを送る。
+                        const position = threads.findIndex((t) => t.id === thread.id) + 1;
+                        trackConsultationHistoryDetailOpened({ threadId: thread.id, position });
                         router.push({
                           pathname: "/consultation-history/[id]",
                           params: { id: String(thread.id) },
-                        })
-                      }
+                        });
+                      }}
                     />
                   ))}
                 </View>

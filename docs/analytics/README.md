@@ -19,6 +19,7 @@ KAMI MUSUBIのイベント、Payload、KPI、Funnelおよび計測責務に関�
 | `direction-events.md` | Web／Mobile共通の方位分析Event名・Payload・禁止属性契約を管理する |
 | `mobile-search-events.md` | Mobile Search導線(Home入口・画面表示・一覧/人気神社/地図からの詳細遷移・外部経路CTA)のEvent名・Payload・禁止属性契約を管理する |
 | `mobile-reflection-to-consultation.md` | Mobile Reflection保存後に表示される再相談CTAのEvent名・Payload・禁止属性契約を管理する |
+| `consultation-history-events.md` | Web／Mobile共通の相談履歴導線(MyPage入口・一覧・詳細・神社詳細遷移)のEvent名・Payload・重複防止・禁止属性契約を管理する |
 | `direction-analytics-dashboard.md` | 方位利用ファネル、KPI、PostHog設定案、異常値・日盤検討基準を管理する |
 | `direction-analytics-data-quality.md` | 方位Eventの機械可読品質契約、重複・欠損・禁止属性、障害調査手順を管理する |
 | `action-suggestion-funnel.md` | Action Suggestion関連Event（PostHog view計測 / Backend `ActionEvent`）の現状を管理する |
