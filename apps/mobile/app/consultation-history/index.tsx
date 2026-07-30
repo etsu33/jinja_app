@@ -50,7 +50,7 @@ function groupThreadsByDate(threads: ConciergeThreadListItem[]): ConsultationGro
   const groups = new Map<string, ConciergeThreadListItem[]>();
 
   threads.forEach((thread) => {
-    const label = formatDateGroupLabel(thread.last_message_at ?? thread.updated_at ?? thread.created_at);
+    const label = formatDateGroupLabel(thread.last_message_at);
     const current = groups.get(label) ?? [];
     current.push(thread);
     groups.set(label, current);
@@ -62,7 +62,7 @@ function groupThreadsByDate(threads: ConciergeThreadListItem[]): ConsultationGro
 function ConsultationCard({ thread }: { thread: ConciergeThreadListItem }) {
   const title = thread.title?.trim() || "相談タイトル未設定";
   const preview = normalizePreview(thread.last_message);
-  const date = formatDate(thread.last_message_at ?? thread.updated_at ?? thread.created_at);
+  const date = formatDate(thread.last_message_at);
   const messageCount = Number.isFinite(thread.message_count) ? thread.message_count : 0;
 
   return (
