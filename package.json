@@ -23,7 +23,7 @@
     "pnpm": ">=9"
   },
   "devDependencies": {
-    "@next/eslint-plugin-next": "^16.2.4",
+    "@next/eslint-plugin-next": "^16.2.12",
     "@stoplight/spectral-cli": "^6.15.1",
     "baseline-browser-mapping": "^2.10.24",
     "eslint": "^9.39.4",
