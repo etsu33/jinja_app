@@ -30,6 +30,8 @@ narrative-guideline.md
 recommendation-readiness.md
 ↓
 recommendation-reason-contract.md
+↓
+openapi-contract-governance.md
 ```
 
 認証後の画面復帰や`returnTo`を確認する場合は、Reference文書の`auth-flow.md`を参照する。
@@ -69,6 +71,12 @@ recommendation-reason-contract.md
 | --- | --- |
 | `recommendation-readiness.md` | 推薦可能品質、Readiness Level、Coverageおよび品質責務 |
 | `recommendation-reason-contract.md` | Recommendation ReasonのInput / Output / 保存 / 表示 / 互換責務 |
+
+### API契約
+
+| 文書 | 責務 |
+| --- | --- |
+| `openapi-contract-governance.md` | API実装上の正本、OpenAPI関連ファイルの分類、機械的schema生成経路およびCI検証責務 |
 
 ## Reference
 
