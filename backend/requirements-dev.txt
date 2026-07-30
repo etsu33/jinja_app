@@ -9,14 +9,14 @@ pytest-env==1.6.0
 
 
 factory-boy==3.3.3
-Faker==40.28.1
+Faker==40.36.0
 freezegun>=1.5.1
-responses>=0.26.1,<1.0
+responses>=0.26.2,<1.0
 requests-mock>=1.12.1
 
 # lint/format
 black>=26.5.1,<27
-ruff==0.15.22
+ruff==0.16.0
 
 # type-check（任意）
 mypy>=2.2.0

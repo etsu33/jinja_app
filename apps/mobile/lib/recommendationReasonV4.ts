@@ -144,3 +144,11 @@ export function buildReasonV4Sections(params: {
 
   return { factText, interpretationText, actionText, hasStructured, fallbackText };
 }
+
+/**
+ * Concierge→Shrine Detailのroute paramsへ渡すJSON文字列を組み立てる。
+ * 既存のreasonFacts/recommendationReasonDetail等と同じ「値が無ければ空文字」規約に合わせる。
+ */
+export function serializeReasonV4Detail(detail: RecommendationReasonV4Detail | null | undefined): string {
+  return detail ? JSON.stringify(detail) : "";
+}
