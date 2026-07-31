@@ -353,7 +353,9 @@ Reflectionの体験導線は、以下を正本とする。
 
 Trust LayerはRecommendation Readinessの判定材料となる。
 
-Trust Layerの物理的な保存方法は本書では決定しない。
+Trust Layerの物理的な保存方法は本書では決定しない。値の意味、出典（Source）、確認状態、信頼度（confidence）、Fact利用条件、AI生成値の制約は、以下を正本とする。
+
+- `docs/knowledge/shrine-knowledge-contract.md`
 
 ---
 
@@ -626,7 +628,7 @@ Recommendation ReadinessのLevel条件に従って段階的に扱う。
 
 出典要否の基準は本書で定義する。
 
-ただし、以下の物理実装は未決定である。
+値の意味、Source構造、確認状態、信頼度、Fact利用条件、AI生成値の制約は`docs/knowledge/shrine-knowledge-contract.md`を正本とする。同書のModel選択肢比較（現行Field継続/新Field追加/JSONField/別Model/Relation Model）を参照。ただし、以下の物理実装（最終Model選択）は未決定である。
 
 - Shrine本体へ保持する
 - Source専用モデルへ分離する
@@ -669,6 +671,7 @@ Recommendation ReadinessのLevel条件に従って段階的に扱う。
 ### Knowledge
 
 - `docs/knowledge/README.md`
+- `docs/knowledge/shrine-knowledge-contract.md`
 - `docs/knowledge/shrine-data-guide.md`
 - `docs/knowledge/recommendation-copy-guide.md`
 - `docs/knowledge/action-guide.md`
