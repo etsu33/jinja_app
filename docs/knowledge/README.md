@@ -17,6 +17,7 @@ KAMI MUSUBIが、神社の事実をどのように意味へ変換し、推薦・
 | ドキュメント | 責務 |
 | --- | --- |
 | `shrine-profile-spec.md` | 神社知識モデルと推薦可能品質を定義 |
+| `shrine-knowledge-contract.md` | 神社Knowledge（deity/shrine_history等）の値の意味、出典、確認状態、信頼度、Fact利用条件およびAI生成値の制約を定義 |
 | `shrine-data-guide.md` | 神社データの入力・出典・品質基準を定義 |
 | `recommendation-copy-guide.md` | 推薦理由の共通文章構造を定義 |
 | `action-guide.md` | 行動提案の生成原則を定義 |
@@ -106,11 +107,12 @@ Knowledge Baseは、上記の物理契約を重複して定義せず、データ
 Knowledge Baseの正本文書は、原則として以下の順序で更新する。
 
 1. `shrine-profile-spec.md`
-2. `shrine-data-guide.md`
-3. `recommendation-copy-guide.md`
-4. `action-guide.md`
-5. `reflection-guide.md`
-6. `glossary.md`
+2. `shrine-knowledge-contract.md`
+3. `shrine-data-guide.md`
+4. `recommendation-copy-guide.md`
+5. `action-guide.md`
+6. `reflection-guide.md`
+7. `glossary.md`
 
 上流の仕様変更は、必要に応じて下流文書へ反映する。
 

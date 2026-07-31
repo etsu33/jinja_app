@@ -65,6 +65,7 @@ Recommendation関連の設計判断は複数の文書に分散している。本
 | `docs/core/concierge-spec.md` | Concierge入力仕様・LLMモード・API契約・運用ログの正本 |
 | `docs/analytics/recommendation-score-v2-current-design.md` | 現行Score計算式・Weight・PostHog測定マッピングの正本 |
 | `docs/knowledge/shrine-profile-spec.md` | 神社Profile・Knowledge項目（7層モデル）の専門正本。本書はこれを吸収せず、役割分担する（詳細は「本書とshrine-profile-spec.mdの関係」を参照） |
+| `docs/knowledge/shrine-knowledge-contract.md` | 神社Knowledge（deity/shrine_history等）の値の意味・出典・確認状態・信頼度・Fact利用条件・AI生成値の制約の専門正本（Section 11で詳細を委譲） |
 | `docs/knowledge/shrine-data-guide.md` | 神社データ入力・出典確認ルールの正本 |
 
 `docs/knowledge/shrine-profile-spec.md`・`docs/knowledge/shrine-data-guide.md`・`docs/knowledge/recommendation-copy-guide.md`にはStatusヘッダが付与されていない。内容の成熟度と他正本（`recommendation-readiness.md`等）からの参照実績からActive相当として扱うが、Statusヘッダの追加自体は本書の変更範囲外（別PR判断）とする。
@@ -437,6 +438,10 @@ Action
 
 ## 11. Shrine Knowledge Contract概要
 
+本Sectionの詳細版（deity契約、shrine_history契約、Source契約、Knowledge分類、Evidence Gate要件、Model選択肢比較、Pilot設計、後続PR設計）は、以下を正本とする。
+
+- `docs/knowledge/shrine-knowledge-contract.md`
+
 ### 対象Field
 
 | Field | 責務 |
@@ -648,6 +653,7 @@ Shrine Knowledge Contract（Section 11）の設計を実データで検証する
 - `docs/product/visit-reflection-flow.md`
 - `docs/core/concierge-spec.md`
 - `docs/knowledge/shrine-profile-spec.md`
+- `docs/knowledge/shrine-knowledge-contract.md`
 - `docs/knowledge/shrine-data-guide.md`
 - `docs/analytics/recommendation-score-v2-current-design.md`
 - `docs/analytics/recommendation-score-v3-design.md`
