@@ -4,7 +4,15 @@ from rest_framework import serializers
 from drf_spectacular.utils import OpenApiTypes, extend_schema_field
 
 from temples.geo_utils import to_lat_lng_dict
-from temples.models import GoriyakuTag, Shrine, Visit
+from temples.models import (
+    KNOWLEDGE_FACT_READY_VERIFICATION_STATUSES,
+    GoriyakuTag,
+    Shrine,
+    ShrineDeity,
+    ShrineHistory,
+    ShrineKnowledgeSource,
+    Visit,
+)
 
 from rest_framework import serializers
 from temples.models import GoriyakuTag, Shrine
@@ -15,6 +23,65 @@ class GoriyakuTagSerializer(serializers.ModelSerializer):
     class Meta:
         model = GoriyakuTag
         fields = ["id", "name", "category"]
+
+
+class ShrineKnowledgeSourceSerializer(serializers.ModelSerializer):
+    """docs/knowledge/shrine-knowledge-contract.md「Source契約」のRead専用表示。"""
+
+    class Meta:
+        model = ShrineKnowledgeSource
+        fields = [
+            "id",
+            "source_type",
+            "title",
+            "publisher",
+            "url",
+            "verification_status",
+            "confidence",
+        ]
+        read_only_fields = fields
+
+
+class ShrineDeitySerializer(serializers.ModelSerializer):
+    """docs/knowledge/shrine-knowledge-contract.md「deity契約」のRead専用表示。"""
+
+    sources = ShrineKnowledgeSourceSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = ShrineDeity
+        fields = [
+            "id",
+            "display_name",
+            "canonical_name",
+            "role",
+            "sort_order",
+            "verification_status",
+            "confidence",
+            "sources",
+        ]
+        read_only_fields = fields
+
+
+class ShrineHistorySerializer(serializers.ModelSerializer):
+    """docs/knowledge/shrine-knowledge-contract.md「shrine_history契約」のRead専用表示。"""
+
+    sources = ShrineKnowledgeSourceSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = ShrineHistory
+        fields = [
+            "id",
+            "history_type",
+            "title",
+            "content",
+            "period_text",
+            "event_date",
+            "sort_order",
+            "verification_status",
+            "confidence",
+            "sources",
+        ]
+        read_only_fields = fields
 
 
 class _DistanceFieldsMixin:
@@ -86,6 +153,15 @@ class ShrineListSerializer(ShrineBaseSerializer):
 
 
 class ShrineDetailSerializer(ShrineBaseSerializer):
+    """Shrine Detail API専用。deities/historiesはdocs/knowledge/shrine-knowledge-contract.md
+    「Evidence Gate要件」に従い、verification_statusがFact利用可能な状態
+    （source_confirmed/reviewed）のもののみ返却する。Knowledge未登録時は[]を返し、
+    Legacy Field（sajin/description）へのfallbackは行わない。
+    """
+
+    deities = serializers.SerializerMethodField(read_only=True)
+    histories = serializers.SerializerMethodField(read_only=True)
+
     class Meta:
         model = Shrine
         fields = [
@@ -103,7 +179,27 @@ class ShrineDetailSerializer(ShrineBaseSerializer):
             "distance_text",
             "location",
             "kyusei",
+            "deities",
+            "histories",
         ]
+
+    @extend_schema_field(ShrineDeitySerializer(many=True))
+    def get_deities(self, obj):
+        items = [
+            d
+            for d in obj.deities.all()
+            if d.verification_status in KNOWLEDGE_FACT_READY_VERIFICATION_STATUSES
+        ]
+        return ShrineDeitySerializer(items, many=True, context=self.context).data
+
+    @extend_schema_field(ShrineHistorySerializer(many=True))
+    def get_histories(self, obj):
+        items = [
+            h
+            for h in obj.histories.all()
+            if h.verification_status in KNOWLEDGE_FACT_READY_VERIFICATION_STATUSES
+        ]
+        return ShrineHistorySerializer(items, many=True, context=self.context).data
 
 
 # 互換名
@@ -153,4 +249,7 @@ __all__ = [
     "ShrineDetailSerializer",
     "GoriyakuTagSerializer",
     "VisitSerializer",
+    "ShrineDeitySerializer",
+    "ShrineHistorySerializer",
+    "ShrineKnowledgeSourceSerializer",
 ]

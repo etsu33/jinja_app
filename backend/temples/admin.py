@@ -8,7 +8,15 @@ from django.db import models
 from django.utils.html import format_html
 from django.urls import reverse
 
-from .models import Goshuin, GoshuinImage, Shrine, ShrineSubmission
+from .models import (
+    Goshuin,
+    GoshuinImage,
+    Shrine,
+    ShrineDeity,
+    ShrineHistory,
+    ShrineKnowledgeSource,
+    ShrineSubmission,
+)
 from temples.services.shrine_submission import (
     ShrineSubmissionDuplicateError,
     ShrineSubmissionInvalidStateError,
@@ -266,6 +274,74 @@ class GoriyakuTagAdmin(admin.ModelAdmin):
     search_fields = ("name", "category")
 
 
+@admin.register(ShrineKnowledgeSource)
+class ShrineKnowledgeSourceAdmin(admin.ModelAdmin):
+    """神社Knowledgeの出典。docs/knowledge/shrine-knowledge-contract.md「Source契約」の管理画面。"""
+
+    list_display = (
+        "id",
+        "source_type",
+        "title",
+        "verification_status",
+        "confidence",
+        "verified_at",
+    )
+    list_filter = ("source_type", "verification_status", "confidence")
+    search_fields = ("title", "publisher", "url")
+
+
+@admin.register(ShrineDeity)
+class ShrineDeityAdmin(admin.ModelAdmin):
+    """神社の祭神Knowledge。docs/knowledge/shrine-knowledge-contract.md「deity契約」の管理画面。"""
+
+    list_display = (
+        "id",
+        "shrine",
+        "display_name",
+        "role",
+        "sort_order",
+        "verification_status",
+        "confidence",
+    )
+    list_filter = ("role", "verification_status", "confidence")
+    search_fields = ("display_name", "canonical_name", "shrine__name_jp")
+    filter_horizontal = ("sources",)
+    ordering = ("shrine", "sort_order")
+
+
+@admin.register(ShrineHistory)
+class ShrineHistoryAdmin(admin.ModelAdmin):
+    """神社の由緒・歴史Knowledge。docs/knowledge/shrine-knowledge-contract.md「shrine_history契約」の管理画面。"""
+
+    list_display = (
+        "id",
+        "shrine",
+        "history_type",
+        "title",
+        "sort_order",
+        "verification_status",
+        "confidence",
+    )
+    list_filter = ("history_type", "verification_status", "confidence")
+    search_fields = ("title", "content", "shrine__name_jp")
+    filter_horizontal = ("sources",)
+    ordering = ("shrine", "sort_order")
+
+
+class ShrineDeityInline(admin.TabularInline):
+    model = ShrineDeity
+    extra = 1
+    fields = ("display_name", "canonical_name", "role", "sort_order", "verification_status", "confidence", "verified_at")
+    filter_horizontal = ("sources",)
+
+
+class ShrineHistoryInline(admin.TabularInline):
+    model = ShrineHistory
+    extra = 1
+    fields = ("history_type", "title", "content", "period_text", "event_date", "sort_order", "verification_status", "confidence", "verified_at")
+    filter_horizontal = ("sources",)
+
+
 class ShrineAdmin(admin.ModelAdmin):
     """神社モデルの管理画面（GISウィジェットなしの暫定版）"""
 
@@ -284,6 +360,7 @@ class ShrineAdmin(admin.ModelAdmin):
     readonly_fields = ("last_popular_calc_at",)
     filter_horizontal = ("goriyaku_tags",)
     actions = ["seed_history_theme"]
+    inlines = [ShrineDeityInline, ShrineHistoryInline]
 
     @admin.action(description="history_theme 初期値を投入する")
     def seed_history_theme(self, request, queryset):

@@ -25,7 +25,7 @@ from temples.services.places import get_or_create_shrine_by_place_id, PlacesErro
 from rest_framework import serializers
 from drf_spectacular.utils import extend_schema
 from django.http import Http404
-from django.db.models import Q
+from django.db.models import Prefetch, Q
 from temples.services import places
 
 from temples.api.serializers.shrine import (
@@ -33,7 +33,13 @@ from temples.api.serializers.shrine import (
     ShrineListSerializer,
     ShrineWriteSerializer,
 )
-from temples.models import Shrine
+from temples.models import (
+    KNOWLEDGE_FACT_READY_VERIFICATION_STATUSES,
+    Shrine,
+    ShrineDeity,
+    ShrineHistory,
+    ShrineKnowledgeSource,
+)
 from temples.queries import (
     nearest_queryset as q_nearest_queryset,
     nearest_shrines as q_nearest_shrines,
@@ -287,7 +293,43 @@ class ShrineViewSet(viewsets.ModelViewSet):
             qs = qs.filter(Q(name_jp__icontains=name) | Q(name_romaji__icontains=name))
 
         qs = annotate_is_favorite(qs, self.request)
-        return qs.distinct()
+        qs = qs.distinct()
+
+        # Shrine Detail APIのみdeities/historiesをprefetchする（N+1回避）。
+        # docs/knowledge/shrine-knowledge-contract.md「Evidence Gate要件」に従い、
+        # Fact利用可能なverification_statusのみを事前フィルタする。
+        # ネストされるsourcesも同様にFact利用可能なverification_statusのみへ絞る
+        # （Knowledge本体だけでなくSource自体も未公開statusを返さないため）。
+        if self.action in ("retrieve",):
+
+            def _fact_ready_sources_prefetch() -> Prefetch:
+                return Prefetch(
+                    "sources",
+                    queryset=ShrineKnowledgeSource.objects.filter(
+                        verification_status__in=KNOWLEDGE_FACT_READY_VERIFICATION_STATUSES
+                    ),
+                )
+
+            qs = qs.prefetch_related(
+                Prefetch(
+                    "deities",
+                    queryset=ShrineDeity.objects.filter(
+                        verification_status__in=KNOWLEDGE_FACT_READY_VERIFICATION_STATUSES
+                    )
+                    .prefetch_related(_fact_ready_sources_prefetch())
+                    .order_by("sort_order", "id"),
+                ),
+                Prefetch(
+                    "histories",
+                    queryset=ShrineHistory.objects.filter(
+                        verification_status__in=KNOWLEDGE_FACT_READY_VERIFICATION_STATUSES
+                    )
+                    .prefetch_related(_fact_ready_sources_prefetch())
+                    .order_by("sort_order", "id"),
+                ),
+            )
+
+        return qs
     
     
 

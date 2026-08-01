@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.contrib.postgres.indexes import GinIndex
 from django.db import models as dj_models
@@ -385,6 +386,191 @@ class Shrine(dj_models.Model):
             self.longitude = lng
 
         return super().save(*args, **kwargs)
+
+
+def _validate_not_blank(value: str) -> None:
+    """空白のみの文字列を禁止する（docs/knowledge/shrine-knowledge-contract.md準拠）。"""
+    if not (value or "").strip():
+        raise ValidationError("空白のみの値は許可されません。", code="blank_not_allowed")
+
+
+# docs/knowledge/shrine-knowledge-contract.md「Source契約」の verification_status / confidence 共通enum。
+KNOWLEDGE_VERIFICATION_STATUS_CHOICES = [
+    ("draft", "draft"),
+    ("unverified", "unverified"),
+    ("source_confirmed", "source_confirmed"),
+    ("reviewed", "reviewed"),
+    ("disputed", "disputed"),
+    ("outdated", "outdated"),
+    ("rejected", "rejected"),
+]
+
+# Fact表示可能とみなすverification_status（Evidence Gate要件の実装はPR2で行うため、
+# 本PRではAPI返却フィルタとしてのみ利用する）。
+KNOWLEDGE_FACT_READY_VERIFICATION_STATUSES = ("source_confirmed", "reviewed")
+
+KNOWLEDGE_CONFIDENCE_CHOICES = [
+    ("low", "low"),
+    ("medium", "medium"),
+    ("high", "high"),
+]
+
+
+def _validate_verified_at_consistency(verification_status: str, verified_at) -> None:
+    """source_confirmed / reviewed は確認日時を伴う（docs/knowledge/shrine-knowledge-contract.md準拠）。"""
+    if verification_status in KNOWLEDGE_FACT_READY_VERIFICATION_STATUSES and verified_at is None:
+        raise ValidationError(
+            {
+                "verified_at": (
+                    f"verification_status='{verification_status}' の場合、"
+                    "verified_at の設定が必要です。"
+                )
+            }
+        )
+
+
+class ShrineKnowledgeSource(models.Model):
+    """神社Knowledge（ShrineDeity / ShrineHistory）の出典。docs/knowledge/shrine-knowledge-contract.md「Source契約」の実装。"""
+
+    SOURCE_TYPE_CHOICES = [
+        ("shrine_official", "shrine_official"),
+        ("government", "government"),
+        ("cultural_property", "cultural_property"),
+        ("academic", "academic"),
+        ("museum_or_archive", "museum_or_archive"),
+        ("local_history", "local_history"),
+        ("tourism_official", "tourism_official"),
+        ("secondary_editorial", "secondary_editorial"),
+        ("user_observation", "user_observation"),
+        ("internal_research", "internal_research"),
+        # AI GeneratedはSourceとして扱わない（shrine-knowledge-contract.md「AI Generated Draft」分類を参照）。
+    ]
+
+    source_type = models.CharField(max_length=32, choices=SOURCE_TYPE_CHOICES)
+    title = models.CharField(max_length=255, validators=[_validate_not_blank])
+    publisher = models.CharField(max_length=255, blank=True, default="")
+    url = models.URLField(blank=True, default="")
+    bibliography = models.TextField(blank=True, default="")
+    accessed_at = models.DateField(null=True, blank=True)
+    verified_at = models.DateTimeField(null=True, blank=True)
+    verification_status = models.CharField(
+        max_length=32,
+        choices=KNOWLEDGE_VERIFICATION_STATUS_CHOICES,
+        default="draft",
+    )
+    confidence = models.CharField(
+        max_length=8, choices=KNOWLEDGE_CONFIDENCE_CHOICES, blank=True, default=""
+    )
+    language = models.CharField(max_length=16, blank=True, default="")
+    note = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"{self.get_source_type_display()}: {self.title}"
+
+    def clean(self) -> None:
+        super().clean()
+        _validate_verified_at_consistency(self.verification_status, self.verified_at)
+
+
+class ShrineDeity(models.Model):
+    """神社の祭神Knowledge。docs/knowledge/shrine-knowledge-contract.md「deity契約」の実装。"""
+
+    ROLE_CHOICES = [
+        ("primary", "primary"),
+        ("enshrined", "enshrined"),
+        ("secondary", "secondary"),
+        ("unknown", "unknown"),
+    ]
+
+    shrine = models.ForeignKey(Shrine, on_delete=models.CASCADE, related_name="deities")
+    display_name = models.CharField(max_length=255, validators=[_validate_not_blank])
+    canonical_name = models.CharField(max_length=255, blank=True, default="")
+    role = models.CharField(max_length=16, choices=ROLE_CHOICES, default="unknown")
+    sort_order = models.IntegerField(default=0, validators=[MinValueValidator(0)])
+    sources = models.ManyToManyField(ShrineKnowledgeSource, related_name="deities", blank=True)
+    verification_status = models.CharField(
+        max_length=32,
+        choices=KNOWLEDGE_VERIFICATION_STATUS_CHOICES,
+        default="draft",
+    )
+    confidence = models.CharField(
+        max_length=8, choices=KNOWLEDGE_CONFIDENCE_CHOICES, blank=True, default=""
+    )
+    verified_at = models.DateTimeField(null=True, blank=True)
+    note = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["sort_order", "id"]
+        indexes = [
+            models.Index(fields=["shrine", "sort_order"], name="idx_shrine_deity_sort"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.shrine_id}:{self.display_name}"
+
+    def clean(self) -> None:
+        super().clean()
+        _validate_verified_at_consistency(self.verification_status, self.verified_at)
+
+
+class ShrineHistory(models.Model):
+    """神社の由緒・歴史Knowledge。docs/knowledge/shrine-knowledge-contract.md「shrine_history契約」の実装。"""
+
+    HISTORY_TYPE_CHOICES = [
+        ("official_origin", "official_origin"),
+        ("founding", "founding"),
+        ("historical_event", "historical_event"),
+        ("tradition", "tradition"),
+        ("regional_context", "regional_context"),
+        ("editorial_summary", "editorial_summary"),
+    ]
+
+    shrine = models.ForeignKey(Shrine, on_delete=models.CASCADE, related_name="histories")
+    history_type = models.CharField(max_length=32, choices=HISTORY_TYPE_CHOICES)
+    title = models.CharField(max_length=255, validators=[_validate_not_blank])
+    content = models.TextField(validators=[_validate_not_blank])
+    period_text = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="推定年代等、幅を持つ期間表現（例: 8世紀頃）。確定日はevent_dateを使う。",
+    )
+    event_date = models.DateField(null=True, blank=True, help_text="確定している場合のみ設定する。")
+    sort_order = models.IntegerField(default=0, validators=[MinValueValidator(0)])
+    sources = models.ManyToManyField(ShrineKnowledgeSource, related_name="histories", blank=True)
+    verification_status = models.CharField(
+        max_length=32,
+        choices=KNOWLEDGE_VERIFICATION_STATUS_CHOICES,
+        default="draft",
+    )
+    confidence = models.CharField(
+        max_length=8, choices=KNOWLEDGE_CONFIDENCE_CHOICES, blank=True, default=""
+    )
+    verified_at = models.DateTimeField(null=True, blank=True)
+    note = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["sort_order", "id"]
+        verbose_name_plural = "Shrine histories"
+        indexes = [
+            models.Index(fields=["shrine", "sort_order"], name="idx_shrine_history_sort"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.shrine_id}:{self.title}"
+
+    def clean(self) -> None:
+        super().clean()
+        _validate_verified_at_consistency(self.verification_status, self.verified_at)
 
 
 class Favorite(models.Model):
