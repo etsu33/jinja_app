@@ -18,16 +18,19 @@ function resolveBackendPublicBaseUrl(): string | null {
   return raw ? normalizeBaseUrl(raw) : null;
 }
 
-export async function getShrinePublicServer(id: number): Promise<Shrine> {
+// 通常Detail API（/api/shrines/{id}/data/、ShrineViewSet.retrieve）を使用する。
+// AllowAnyのためanonymous SSR fetchのまま（認証headerは付けない）。
+// Public API（/api/public/shrines/{id}/）は/navi/[id]専用として維持し、ここでは呼ばない。
+export async function getShrineDetailServer(id: number): Promise<Shrine> {
   const base = resolveBackendPublicBaseUrl() ?? (await resolveServerBaseUrl());
-  const url = `${base}/api/public/shrines/${id}/`;
+  const url = `${base}/api/shrines/${id}/data/`;
 
-  console.log("[getShrinePublicServer]", { id, base, url });
+  console.log("[getShrineDetailServer]", { id, base, url });
 
   const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) {
     const body = await res.text().catch(() => "<failed to read body>");
-    throw new Error(`getShrinePublicServer failed: ${res.status} body=${body.slice(0, 300)}`);
+    throw new Error(`getShrineDetailServer failed: ${res.status} body=${body.slice(0, 300)}`);
   }
 
   return (await res.json()) as Shrine;

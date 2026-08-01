@@ -670,3 +670,180 @@ describe("buildShrineDetailModel", () => {
     expect(result.heroImageUrl).toBeNull();
   });
 });
+
+describe("buildShrineDetailModel - factSection", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("Knowledge未登録（deities/historiesとも無し）の場合はfactSectionがnull", () => {
+    const result = buildShrineDetailModel({
+      shrine: { ...shrineStub },
+      publicGoshuins: [],
+    });
+
+    expect(result.factSection).toBeNull();
+  });
+
+  it("Knowledge未登録（deities/historiesとも空配列）の場合はfactSectionがnull", () => {
+    const result = buildShrineDetailModel({
+      shrine: { ...shrineStub, deities: [], histories: [] },
+      publicGoshuins: [],
+    });
+
+    expect(result.factSection).toBeNull();
+  });
+
+  it("明治神宮相当: 2 Deity + 1 History", () => {
+    const result = buildShrineDetailModel({
+      shrine: {
+        ...shrineStub,
+        deities: [
+          { id: 1, display_name: "明治天皇", canonical_name: "", role: "enshrined", sort_order: 0, verification_status: "source_confirmed", confidence: "high", sources: [] },
+          { id: 2, display_name: "昭憲皇太后", canonical_name: "", role: "enshrined", sort_order: 1, verification_status: "source_confirmed", confidence: "high", sources: [] },
+        ],
+        histories: [
+          {
+            id: 1,
+            history_type: "official_origin",
+            title: "明治神宮の創建",
+            content: "明治神宮は、東京都渋谷区代々木に大正9年（1920）に創建された。",
+            period_text: "大正9年（1920）",
+            event_date: null,
+            sort_order: 0,
+            verification_status: "source_confirmed",
+            confidence: "high",
+            sources: [],
+          },
+        ],
+      },
+      publicGoshuins: [],
+    });
+
+    expect(result.factSection).not.toBeNull();
+    expect(result.factSection?.deities.map((d) => d.display_name)).toEqual(["明治天皇", "昭憲皇太后"]);
+    expect(result.factSection?.histories).toHaveLength(1);
+    expect(result.factSection?.histories[0].content).toBe(
+      "明治神宮は、東京都渋谷区代々木に大正9年（1920）に創建された。",
+    );
+    expect(result.factSection?.histories[0].history_type_label).toBe("由緒");
+  });
+
+  it("品川神社相当: 3 Deity + 3 History（全件表示。sort_order順を維持）", () => {
+    const result = buildShrineDetailModel({
+      shrine: {
+        ...shrineStub,
+        deities: [
+          { id: 3, display_name: "素盞嗚尊", canonical_name: "", role: "enshrined", sort_order: 2, verification_status: "source_confirmed", confidence: "high", sources: [] },
+          { id: 1, display_name: "天比理乃咩命", canonical_name: "", role: "enshrined", sort_order: 0, verification_status: "source_confirmed", confidence: "high", sources: [] },
+          { id: 2, display_name: "宇賀之売命", canonical_name: "", role: "enshrined", sort_order: 1, verification_status: "source_confirmed", confidence: "high", sources: [] },
+        ],
+        histories: [
+          {
+            id: 2,
+            history_type: "historical_event",
+            title: "元応元年（1319年）の宇賀之売命奉祀",
+            content: "二階堂道蘊公が宇賀之売命を祀った。",
+            period_text: "元応元年（1319年）",
+            event_date: null,
+            sort_order: 1,
+            verification_status: "source_confirmed",
+            confidence: "high",
+            sources: [],
+          },
+          {
+            id: 1,
+            history_type: "founding",
+            title: "文治3年（1187年）の創始",
+            content: "源頼朝公が安房国の洲崎明神から天比理乃咩命を当地に迎え、海上交通安全と祈願成就を祈ったことを創始とする。",
+            period_text: "文治3年（1187年）",
+            event_date: null,
+            sort_order: 0,
+            verification_status: "source_confirmed",
+            confidence: "high",
+            sources: [],
+          },
+          {
+            id: 3,
+            history_type: "historical_event",
+            title: "文明10年（1478年）の素盞嗚尊奉祀",
+            content: "太田道灌公が素盞嗚尊を祀った。",
+            period_text: "文明10年（1478年）",
+            event_date: null,
+            sort_order: 2,
+            verification_status: "source_confirmed",
+            confidence: "high",
+            sources: [],
+          },
+        ],
+      },
+      publicGoshuins: [],
+    });
+
+    expect(result.factSection?.deities.map((d) => d.display_name)).toEqual([
+      "天比理乃咩命",
+      "宇賀之売命",
+      "素盞嗚尊",
+    ]);
+    // Recommendationのshrine_history projection(先頭1件のみ)とは異なり、Detailは保存済み全Factを表示する
+    expect(result.factSection?.histories).toHaveLength(3);
+    expect(result.factSection?.histories.map((h) => h.title)).toEqual([
+      "文治3年（1187年）の創始",
+      "元応元年（1319年）の宇賀之売命奉祀",
+      "文明10年（1478年）の素盞嗚尊奉祀",
+    ]);
+  });
+
+  it("Deityのみ存在する場合はdeitiesのみ非空", () => {
+    const result = buildShrineDetailModel({
+      shrine: {
+        ...shrineStub,
+        deities: [
+          { id: 1, display_name: "祭神A", canonical_name: "", role: "unknown", sort_order: 0, verification_status: "reviewed", confidence: "", sources: [] },
+        ],
+        histories: [],
+      },
+      publicGoshuins: [],
+    });
+
+    expect(result.factSection?.deities).toHaveLength(1);
+    expect(result.factSection?.histories).toHaveLength(0);
+  });
+
+  it("Historyのみ存在する場合はhistoriesのみ非空", () => {
+    const result = buildShrineDetailModel({
+      shrine: {
+        ...shrineStub,
+        deities: [],
+        histories: [
+          {
+            id: 1,
+            history_type: "tradition",
+            title: "伝承A",
+            content: "内容A",
+            period_text: "",
+            event_date: null,
+            sort_order: 0,
+            verification_status: "source_confirmed",
+            confidence: "high",
+            sources: [],
+          },
+        ],
+      },
+      publicGoshuins: [],
+    });
+
+    expect(result.factSection?.deities).toHaveLength(0);
+    expect(result.factSection?.histories).toHaveLength(1);
+    expect(result.factSection?.histories[0].history_type_label).toBe("伝承");
+  });
+
+  it("Legacy descriptionが存在してもHistory fallbackとして使わない", () => {
+    const result = buildShrineDetailModel({
+      shrine: { ...shrineStub, description: "レガシーな説明文", deities: [], histories: [] },
+      publicGoshuins: [],
+    });
+
+    expect(result.factSection).toBeNull();
+  });
+});

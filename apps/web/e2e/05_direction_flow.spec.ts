@@ -13,9 +13,36 @@ let fixedBackend: Server;
 test.beforeAll(async () => {
   fixedBackend = createServer((request, response) => {
     response.setHeader("Content-Type", "application/json");
+    // /navi/[id]等、既存Public経路(Public Serializer契約)が引き続き使用するため維持する。
     if (/^\/api\/public\/shrines\/\d+\/$/.test(request.url ?? "")) {
       const id = Number(request.url?.match(/\d+/)?.[0] ?? 508);
       response.end(JSON.stringify({ id, name_jp: `固定詳細神社${id}`, latitude: 35.68, longitude: 139.76, address: "固定テスト所在地" }));
+      return;
+    }
+    // Web Shrine Detail(getShrineDetailServer)が使用する通常Detail API
+    // (ShrineViewSet.retrieve → ShrineDetailSerializer契約)。
+    if (/^\/api\/shrines\/\d+\/data\/$/.test(request.url ?? "")) {
+      const id = Number(request.url?.match(/\d+/)?.[0] ?? 508);
+      response.end(
+        JSON.stringify({
+          id,
+          kind: "shrine",
+          name_jp: `固定詳細神社${id}`,
+          name_romaji: null,
+          address: "固定テスト所在地",
+          latitude: 35.68,
+          longitude: 139.76,
+          location: { lat: 35.68, lng: 139.76 },
+          goriyaku: null,
+          goriyaku_tags: [],
+          is_favorite: false,
+          distance: null,
+          distance_text: null,
+          kyusei: null,
+          deities: [],
+          histories: [],
+        }),
+      );
       return;
     }
     if ((request.url ?? "").includes("goshuin")) {
