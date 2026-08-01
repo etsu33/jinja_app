@@ -38,6 +38,7 @@ from temples.models import (
     Shrine,
     ShrineDeity,
     ShrineHistory,
+    ShrineKnowledgeSource,
 )
 from temples.queries import (
     nearest_queryset as q_nearest_queryset,
@@ -297,14 +298,25 @@ class ShrineViewSet(viewsets.ModelViewSet):
         # Shrine Detail APIのみdeities/historiesをprefetchする（N+1回避）。
         # docs/knowledge/shrine-knowledge-contract.md「Evidence Gate要件」に従い、
         # Fact利用可能なverification_statusのみを事前フィルタする。
+        # ネストされるsourcesも同様にFact利用可能なverification_statusのみへ絞る
+        # （Knowledge本体だけでなくSource自体も未公開statusを返さないため）。
         if self.action in ("retrieve",):
+
+            def _fact_ready_sources_prefetch() -> Prefetch:
+                return Prefetch(
+                    "sources",
+                    queryset=ShrineKnowledgeSource.objects.filter(
+                        verification_status__in=KNOWLEDGE_FACT_READY_VERIFICATION_STATUSES
+                    ),
+                )
+
             qs = qs.prefetch_related(
                 Prefetch(
                     "deities",
                     queryset=ShrineDeity.objects.filter(
                         verification_status__in=KNOWLEDGE_FACT_READY_VERIFICATION_STATUSES
                     )
-                    .prefetch_related("sources")
+                    .prefetch_related(_fact_ready_sources_prefetch())
                     .order_by("sort_order", "id"),
                 ),
                 Prefetch(
@@ -312,7 +324,7 @@ class ShrineViewSet(viewsets.ModelViewSet):
                     queryset=ShrineHistory.objects.filter(
                         verification_status__in=KNOWLEDGE_FACT_READY_VERIFICATION_STATUSES
                     )
-                    .prefetch_related("sources")
+                    .prefetch_related(_fact_ready_sources_prefetch())
                     .order_by("sort_order", "id"),
                 ),
             )

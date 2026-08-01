@@ -47,6 +47,18 @@ def _create_history(shrine: Shrine, verification_status: str, sort_order: int = 
     return ShrineHistory.objects.create(shrine=shrine, **defaults)
 
 
+def _create_source(verification_status: str, title: str = "出典", **kwargs) -> ShrineKnowledgeSource:
+    defaults = dict(
+        source_type="shrine_official",
+        title=f"{title}-{verification_status}",
+        verification_status=verification_status,
+    )
+    if verification_status in ("source_confirmed", "reviewed"):
+        defaults["verified_at"] = timezone.now()
+    defaults.update(kwargs)
+    return ShrineKnowledgeSource.objects.create(**defaults)
+
+
 def test_shrine_detail_api_returns_only_fact_ready_knowledge():
     shrine = _create_shrine()
     _create_deity(shrine, "source_confirmed", sort_order=0)
@@ -117,4 +129,87 @@ def test_shrine_detail_api_prefetches_knowledge_without_n_plus_1():
     # (神社取得+prefetch数本+関連クエリ) 目安として20クエリ未満であることを確認する。
     assert len(ctx.captured_queries) < 20, (
         f"expected prefetch to avoid N+1, got {len(ctx.captured_queries)} queries"
+    )
+
+
+@pytest.mark.parametrize("verification_status", ["source_confirmed", "reviewed"])
+def test_shrine_detail_api_returns_fact_ready_source(verification_status):
+    shrine = _create_shrine()
+    deity = _create_deity(shrine, "source_confirmed")
+    source = _create_source(verification_status)
+    deity.sources.add(source)
+
+    client = APIClient()
+    resp = client.get(f"/api/shrines/{shrine.id}/")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert [s["verification_status"] for s in body["deities"][0]["sources"]] == [verification_status]
+
+
+@pytest.mark.parametrize(
+    "verification_status",
+    ["draft", "unverified", "disputed", "outdated", "rejected"],
+)
+def test_shrine_detail_api_excludes_non_fact_ready_source(verification_status):
+    shrine = _create_shrine()
+    deity = _create_deity(shrine, "source_confirmed")
+    source = _create_source(verification_status)
+    deity.sources.add(source)
+
+    client = APIClient()
+    resp = client.get(f"/api/shrines/{shrine.id}/")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["deities"][0]["sources"] == []
+
+
+def test_shrine_detail_api_returns_empty_sources_when_no_fact_ready_source_for_history():
+    shrine = _create_shrine()
+    history = _create_history(shrine, "reviewed")
+    source = _create_source("unverified")
+    history.sources.add(source)
+
+    client = APIClient()
+    resp = client.get(f"/api/shrines/{shrine.id}/")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["histories"][0]["sources"] == []
+
+
+def test_shrine_detail_api_keeps_knowledge_when_all_its_sources_are_excluded():
+    shrine = _create_shrine()
+    deity = _create_deity(shrine, "source_confirmed")
+    deity.sources.add(_create_source("draft"), _create_source("disputed"))
+
+    client = APIClient()
+    resp = client.get(f"/api/shrines/{shrine.id}/")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert len(body["deities"]) == 1
+    assert body["deities"][0]["verification_status"] == "source_confirmed"
+    assert body["deities"][0]["sources"] == []
+
+
+def test_shrine_detail_api_source_filtering_does_not_increase_query_count():
+    shrine = _create_shrine()
+    deity = _create_deity(shrine, "source_confirmed")
+    history = _create_history(shrine, "reviewed")
+    for status_ in ["source_confirmed", "reviewed", "draft", "unverified", "disputed"]:
+        source = _create_source(status_, title=f"deity-{status_}")
+        deity.sources.add(source)
+        source2 = _create_source(status_, title=f"history-{status_}")
+        history.sources.add(source2)
+
+    client = APIClient()
+    with CaptureQueriesContext(connection) as ctx:
+        resp = client.get(f"/api/shrines/{shrine.id}/")
+    assert resp.status_code == 200
+
+    assert len(ctx.captured_queries) < 20, (
+        f"expected source-level filtering via Prefetch to avoid N+1, "
+        f"got {len(ctx.captured_queries)} queries"
     )
