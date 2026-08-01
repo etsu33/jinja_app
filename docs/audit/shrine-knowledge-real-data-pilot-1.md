@@ -105,11 +105,11 @@ Pilot #2は以下を満たす神社・データで実施する。
 
 - 明治神宮とは性質の異なる実在神社を対象とする（例: 祭神が多数、由緒に複数の伝承がある、創建年代が確定していない等）
 - 内容が一致しない複数のSourceを1件以上登録する（Evidence Gate自体は未実装のため、今回はKnowledge Model側でのデータ保持のみを検証対象とする）
-- official_origin（確定した由緒）とtradition（伝承）を別ShrineHistoryレコードとして分離登録できることを確認する
+- official_origin（神社公式Sourceに記載された由緒）とtradition（伝承）を別ShrineHistoryレコードとして分離登録できることを確認する
 - Pilot #1と同様にAdmin QA（保存・検索・フィルタ・再編集・変更履歴）を実施し、Blockingの有無を確認する
 
 ## 結論
 
-Shrine Knowledge Model Foundationは、明治神宮という実在の1神社・実データを用いたPilot #1において、Model作成・Source共有・保存後のRelation維持・Admin標準機能のいずれについてもBlockingなく動作することを確認した。一方、性質の異なる神社でのPilotや、Source間の不一致、official_origin/traditionの分離保持といった、より複雑なケースの検証は行っていない。
+Shrine Knowledge Model Foundationは、明治神宮という実在の1神社・実データを用いたPilot #1において、実データ登録・Source共有・保存後のRelation維持・Admin標準機能のいずれについてもBlockingなく動作することを確認した。一方、性質の異なる神社でのPilotや、Source間の不一致、official_origin/traditionの分離保持といった、より複雑なケースの検証は行っていない。
 
 したがって本Pilot #1の結果のみをもってFoundationの100%完了とはせず、Pilot #2の実施と本文書に定義した完了条件の充足を前提とし、最終的な100%判定は母艦判断に委ねる。
