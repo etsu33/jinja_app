@@ -476,6 +476,13 @@ class ShrineKnowledgeSource(models.Model):
         super().clean()
         _validate_verified_at_consistency(self.verification_status, self.verified_at)
 
+    def save(self, *args, **kwargs) -> None:
+        # Model.save()はDjangoの仕様上full_clean()を自動実行しないため、
+        # Admin(ModelForm経由)以外の保存経路（shell/ORM直接呼び出し等）でも
+        # clean()の契約（verified_at整合等）が確実に効くようここで明示的に呼ぶ。
+        self.full_clean()
+        super().save(*args, **kwargs)
+
 
 class ShrineDeity(models.Model):
     """神社の祭神Knowledge。docs/knowledge/shrine-knowledge-contract.md「deity契約」の実装。"""
@@ -518,6 +525,10 @@ class ShrineDeity(models.Model):
     def clean(self) -> None:
         super().clean()
         _validate_verified_at_consistency(self.verification_status, self.verified_at)
+
+    def save(self, *args, **kwargs) -> None:
+        self.full_clean()
+        super().save(*args, **kwargs)
 
 
 class ShrineHistory(models.Model):
@@ -571,6 +582,10 @@ class ShrineHistory(models.Model):
     def clean(self) -> None:
         super().clean()
         _validate_verified_at_consistency(self.verification_status, self.verified_at)
+
+    def save(self, *args, **kwargs) -> None:
+        self.full_clean()
+        super().save(*args, **kwargs)
 
 
 class Favorite(models.Model):

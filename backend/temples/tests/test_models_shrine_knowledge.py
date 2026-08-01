@@ -252,3 +252,87 @@ def test_shrine_knowledge_source_shared_across_deity_and_history():
 
     assert source.deities.count() == 1
     assert source.histories.count() == 1
+
+
+# --- save()経由（.full_clean()を明示的に呼ばないORM直接呼び出し）でも
+# verified_at整合が保証されることの回帰テスト。
+# Django Model.save()はデフォルトではfull_clean()を実行しないため、
+# Admin(ModelForm経由)以外の経路（shell/ORM直接create等）でこのvalidationが
+# 抜け落ちていたことが判明した。save()にfull_clean()を追加する前は、
+# 以下のtestはValidationErrorが送出されずに失敗する。
+
+
+@pytest.mark.parametrize("verification_status", ["source_confirmed", "reviewed"])
+def test_shrine_knowledge_source_save_without_verified_at_is_rejected(verification_status):
+    with pytest.raises(ValidationError):
+        ShrineKnowledgeSource.objects.create(
+            source_type="shrine_official",
+            title="出典",
+            verification_status=verification_status,
+        )
+
+
+@pytest.mark.parametrize("verification_status", ["source_confirmed", "reviewed"])
+def test_shrine_deity_save_without_verified_at_is_rejected(verification_status):
+    shrine = _create_shrine()
+    with pytest.raises(ValidationError):
+        ShrineDeity.objects.create(
+            shrine=shrine, display_name="祭神", verification_status=verification_status
+        )
+
+
+@pytest.mark.parametrize("verification_status", ["source_confirmed", "reviewed"])
+def test_shrine_history_save_without_verified_at_is_rejected(verification_status):
+    shrine = _create_shrine()
+    with pytest.raises(ValidationError):
+        ShrineHistory.objects.create(
+            shrine=shrine,
+            history_type="official_origin",
+            title="由緒",
+            content="内容",
+            verification_status=verification_status,
+        )
+
+
+@pytest.mark.parametrize("verification_status", ["draft", "unverified"])
+def test_shrine_knowledge_source_save_without_verified_at_is_allowed_for_draft_like_status(
+    verification_status,
+):
+    source = ShrineKnowledgeSource.objects.create(
+        source_type="shrine_official", title="出典", verification_status=verification_status
+    )
+    assert source.verified_at is None
+
+
+@pytest.mark.parametrize("verification_status", ["disputed", "outdated", "rejected"])
+def test_shrine_knowledge_source_verified_at_is_preserved_when_status_changes_away_from_fact_ready(
+    verification_status,
+):
+    verified_time = timezone.now()
+    source = ShrineKnowledgeSource.objects.create(
+        source_type="shrine_official",
+        title="出典",
+        verification_status="source_confirmed",
+        verified_at=verified_time,
+    )
+
+    source.verification_status = verification_status
+    source.save()
+    source.refresh_from_db()
+
+    assert source.verification_status == verification_status
+    assert source.verified_at == verified_time
+
+
+def test_shrine_knowledge_source_save_does_not_auto_change_status_or_verified_at():
+    source = ShrineKnowledgeSource.objects.create(
+        source_type="shrine_official",
+        title="出典",
+        verification_status="draft",
+    )
+    source.note = "編集メモ"
+    source.save()
+    source.refresh_from_db()
+
+    assert source.verification_status == "draft"
+    assert source.verified_at is None
