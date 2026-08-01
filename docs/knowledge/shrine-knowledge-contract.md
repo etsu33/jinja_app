@@ -4,7 +4,9 @@
 >
 > 神社プロフィールの項目一覧・必須任意・Coverage・品質条件は`docs/knowledge/shrine-profile-spec.md`を正本とする。Recommendationパイプライン全体の段階構成は`docs/core/recommendation-architecture.md`を正本とする。本書はこれらと重複する内容を再定義しない。
 >
-> 本書はDocsのみのPRとして作成された。コード・Model・Migration・Serializer・Admin・DBデータの変更は一切含まない。記載内容のうちTo-Beと明記した項目は設計方針であり、実装済みであることを意味しない。Model選択・Pilot対象神社・enum最終確定は母艦判断へ差し戻す。
+> 本書はDocsのみのPRとして作成された。コード・Model・Migration・Serializer・Admin・DBデータの変更は一切含まない。記載内容のうちTo-Beと明記した項目は設計方針であり、実装済みであることを意味しない。Model選択・Pilot対象神社・enum最終確定は母艦判断へ差し戻す（本書作成時点＝As-Is）。
+>
+> **現在（2026-08-01時点）の状況**: 本書「Model選択肢比較」の案4（別Model）が母艦判断で採用され、`ShrineDeity` / `ShrineHistory` / `ShrineKnowledgeSource`として`feature/shrine-knowledge-model-foundation`（PR #2221）で実装され、`develop`へマージ済みである。また明治神宮1社を対象にReal Data Pilot #1をAdmin経由で実施済み（詳細は`docs/audit/shrine-knowledge-real-data-pilot-1.md`）。ただしEvidence Gate・Recommendation・Score・Web/Mobileへの接続は本書作成時点から変わらず未実装であり、3〜5社規模のPilot本体（PR3相当）・105件Rollout（PR4相当）・Foundationの100%完了判定も未確定のまま母艦判断待ちである。以下の本文はPR2219系列作成時点のAs-Isを保持し、書き換えていない。
 
 # Shrine Knowledge Contract
 
@@ -41,8 +43,8 @@
 - Recommendationパイプライン全体の段階構成（`docs/core/recommendation-architecture.md`が正本）
 - Recommendation ScoreのWeight・計算式（`docs/analytics/recommendation-score-v3-design.md`が正本）
 - Recommendation Reasonの出力Schema（`docs/core/recommendation-reason-contract.md`が正本）
-- Model・Migration・Serializer・Admin・APIの実装そのもの（後続PRで扱う）
-- 105件の実データ投入・Pilotデータ投入（後続PRで扱う）
+- Model・Migration・Serializer・Admin・APIの実装そのもの（後続PRで扱う。2026-08-01時点でPR1相当は`feature/shrine-knowledge-model-foundation`（PR #2221）として実装・マージ済み）
+- 105件の実データ投入・Pilotデータ投入（後続PRで扱う。2026-08-01時点で明治神宮1社によるReal Data Pilot #1を実施済み。詳細は`docs/audit/shrine-knowledge-real-data-pilot-1.md`。3〜5社規模のPilot本体・105件Rolloutは未実施）
 
 ## 文書構成の判断
 
@@ -100,6 +102,8 @@
 
 以下は本書作成にあたり、現行コード（読み取りのみ、変更なし）を確認した結果である。推測は含まない。
 
+> **注記（2026-08-01時点）**: 以下は`Shrine.sajin` / `Shrine.description`という既存のLegacy Fieldに関するAs-Isであり、本書作成後にPR #2221で実装された`ShrineDeity` / `ShrineHistory` / `ShrineKnowledgeSource`（新Model）とは別物である。`sajin` / `description`はPR #2221でも変更・削除されておらず、以下の記述は現在も有効である。新Modelの実装・Admin・Serializer・APIの状況は本書「Model選択肢比較」「後続PR設計」の追記、および`docs/audit/shrine-knowledge-real-data-pilot-1.md`を参照。
+
 ### Model定義
 
 `backend/temples/models.py`の`Shrine`Model:
@@ -142,6 +146,8 @@ label = _first_string(deity, shrine_history, place_context, history_theme, goriy
 ```
 
 さらに`QUALITY_FACT_KEYS = ("deity", "shrine_history", "goriyaku", "history_theme")`（同ファイル）が示すとおり、Recommendation Reasonの品質判定（`reason_facts`が空か否か）は`deity`/`shrine_history`と`goriyaku`/`history_theme`を同列に扱っている。`docs/audit/reason-facts-coverage.md`が既に記録しているとおり、`deity`/`shrine_history`が105件中105件で空である現状では、`reason_facts`の非空判定は実質的に`goriyaku`/`history_theme`（Meaning Layerの解釈情報）にのみ依存している。これがBlocker #1の「欠損時にfallbackし、根拠のあるFactのように見える可能性がある」の具体的な発生箇所である。
+
+> **注記（2026-08-01時点）**: ここで言う`deity`/`shrine_history`は、上記コード引用のとおり`Shrine.sajin`/`Shrine.description`（Legacy Field）に由来するRecommendation内部Fact keyであり、PR #2221で実装された`ShrineDeity`/`ShrineHistory`Modelとは接続されていない（本PR・Pilot #1のいずれも「Recommendation・Score・Evidence Gate・Frontendには接続しない」を明示的な対象外としている）。したがって明治神宮1社に対する新Modelへのデータ登録（Pilot #1）後も、この「105件中105件で空」という状態および数値は変化していない。
 
 ### Admin編集経路
 
@@ -649,7 +655,7 @@ fallbackを利用した場合、それがFactではなくInterpretationである
 
 ## Model選択肢比較
 
-最終Modelは今回決定しない。以下5案を比較する。
+最終Modelは今回決定しない。以下5案を比較する（本書作成時点＝As-Is。**2026-08-01時点の解決状況は本節末尾の注記を参照**）。
 
 ### 案1：現行Field継続（`Shrine.sajin` / `Shrine.description`）
 
@@ -740,11 +746,15 @@ fallbackを利用した場合、それがFactではなくInterpretationである
 
 **設計上の推奨方向性（決定ではない）**: 短期的には案4（別Model）でPilot検証を行い、105件展開時に案5（Relation Model）への移行要否を判断する2段階アプローチが、Migration影響とRecommendation安全性のバランスとして検討に値する。ただし最終選択は母艦判断とする。
 
+> **注記（2026-08-01時点）**: 母艦判断により案4（別Model）が採用され、`ShrineDeity` / `ShrineHistory` / `ShrineKnowledgeSource`として`feature/shrine-knowledge-model-foundation`（PR #2221）で実装・`develop`へマージ済み。案5（Relation Model）への移行要否は、上記のとおり105件展開時またはExperience Knowledge本格運用時に改めて判断する未確定事項のままである。
+
 ---
 
 ## Pilot設計
 
 Pilotデータ投入は今回行わない。次のData PR（PR3）で利用する条件を定義する。
+
+> **注記（2026-08-01時点）**: 明治神宮1社を対象に、Django Admin経由でのReal Data Pilot #1を実施済み（詳細・結果は`docs/audit/shrine-knowledge-real-data-pilot-1.md`）。ただしこれは本節が想定する3〜5社規模のPilot本体（PR3）そのものではなく、Model Foundationが実データで成立するかを検証する先行確認と位置づける。件数・選定条件を満たす3〜5社規模のPilot本体、およびEvidence Gate（PR2）との接続検証は未実施のままである。
 
 ### 件数
 
@@ -800,6 +810,8 @@ DB確認（読み取りのみ）の結果、以下を候補として提示する
 15. fallbackがInterpretationとして扱われる
 16. 回帰テストの対象を定義できる
 
+> **注記（2026-08-01時点）**: Real Data Pilot #1（明治神宮）では上記のうち1〜3・5・7・8・9（`deity`登録・複数祭神・`shrine_history`登録・Source保持・`verified_at`保持・`verification_status`保持・`confidence`保持）を確認した。4（伝承と史実の区別）・6（`accessed_at`）・10（AI Draftとの区別）・11〜16（Evidence Gate／Detail表示／Recommendation Reason利用／欠損時抑制／fallback／回帰テスト対象）は本Pilot #1の対象外、または未検証のまま残っている。詳細は`docs/audit/shrine-knowledge-real-data-pilot-1.md`の「未検証事項」を参照。
+
 ---
 
 ## 後続PR設計
@@ -814,6 +826,7 @@ DB確認（読み取りのみ）の結果、以下を候補として提示する
 - **テスト**: Model単体テスト、Serializer契約テスト、Admin編集テスト、既存Shrine関連APIの回帰テスト
 - **完了条件**: 採用Model構造が実装される。Source・verification・confidenceを保持できる。既存データとの互換方針がある。API contract testsがある。Adminまたは安全な投入経路がある
 - **母艦判断項目**: Model選択の最終確定（本書「Model選択肢比較」の結論を受けて）
+- **状況（2026-08-01時点）**: 実装済み。`feature/shrine-knowledge-model-foundation`（PR #2221）として`develop`へマージ済み。母艦判断でModel選択は案4（別Model）に確定した
 
 ### PR2：Recommendation Evidence Gate
 
@@ -836,6 +849,7 @@ DB確認（読み取りのみ）の結果、以下を候補として提示する
 - **テスト**: Pilot対象神社ごとのDetail表示確認、Recommendation Reason確認、欠損ケース確認
 - **完了条件**: Pilot対象全社が本書の完了条件（16項目）を満たす。Sourceが追跡可能。Detail表示確認済み。Recommendation Reason確認済み。欠損ケース確認済み
 - **母艦判断項目**: Pilot対象神社の最終選定（本書「候補」からの絞り込みまたは追加検討）
+- **状況（2026-08-01時点）**: 本PR3（3〜5社規模）そのものは未実施。先行検証として明治神宮1社によるReal Data Pilot #1をAdmin経由で実施済み（`docs/audit/shrine-knowledge-real-data-pilot-1.md`）。明治神宮は本書「候補」5件（伊勢神宮・出雲大社・三峯神社・神田神社・長太稲荷神社／給田六所神社）には含まれておらず、母艦判断により候補外から選定された。3〜5社規模の本体実施およびPilot #2条件は同audit文書の「Foundation残り5%完了条件」「Pilot #2条件」を参照
 
 ### PR4：105件Rollout Plan
 
@@ -873,6 +887,8 @@ DB確認（読み取りのみ）の結果、以下を候補として提示する
 17. User Reflectionを将来Experience Knowledgeへ還元するか
 
 Codex側では最終決定を行わない。
+
+> **注記（2026-08-01時点）**: 母艦判断により、4〜9はPR #2221（`feature/shrine-knowledge-model-foundation`）で以下のとおり確定・実装済みである。`deity`＝別Model（`ShrineDeity`）、`shrine_history`＝別Model（`ShrineHistory`）、Source＝別Model（`ShrineKnowledgeSource`）として別Model化し、SourceとKnowledge（Deity/History）はManyToManyで関連付けられている。`verification_status`のenum（draft/unverified/source_confirmed/reviewed/disputed/outdated/rejected）、`confidence`の保存方式（low/medium/highのCharField choices）も同PRで確定した（8・9）。一方、2（`Shrine.sajin`継続利用）・3（`Shrine.description`継続利用）はいずれも変更されておらず未確定のまま維持されている。15（Pilot対象神社）は、明治神宮1社に限りReal Data Pilot #1として母艦判断で選定・実施済み（本書「候補」5件には含まれない神社が選ばれた）だが、3〜5社規模のPilot対象確定はなお母艦判断待ちである。1・10〜14・16・17は本書作成時点から変わらず未確定のままである。
 
 ---
 

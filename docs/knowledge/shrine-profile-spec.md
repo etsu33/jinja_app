@@ -9,7 +9,7 @@
 最重要の構造的事実（事実）:
 
 - `place_context` はcoverage 100%で唯一「常に信頼できる」項目
-- `deity`・`shrine_history` はcoverage 0%（未登録）であり、Fact Layerの根幹が未整備
+- `deity`・`shrine_history` はcoverage 0%（未登録、監査時点の実測値。注記参照）であり、Fact Layerの根幹が未整備
 - `history_theme` / `goriyaku_tags` がcoverage 93%であり、現状の推薦品質は実質この2項目に依存している
 - reason_factsは「history_theme, culture_translation, user_selected_tag, need_tag, goriyaku_tag, text_hint, element」のいずれか1つでも存在すれば非空になる
 
@@ -229,6 +229,8 @@ Coverageの区分と定義は、以下を正本とする。
 | deity | 祭神 | 推奨 | 0%（未登録） | 事実 |
 | shrine_history | 由緒・沿革の一次情報 | 推奨 | 0%（未登録） | 事実 |
 | classification | 分類（例: 地域氏神型） | 任意 | 未計測 | 事実または運用分類 |
+
+> **注記（2026-08-01時点）**: 上記`deity`/`shrine_history`のcoverage値は本書作成時点（監査ログ確認時点）の実測値であり、現在の105件全体のcoverageを表すものではない。2026-08-01時点で、明治神宮1社に限り`ShrineDeity`/`ShrineHistory`（`docs/knowledge/shrine-knowledge-contract.md`の別Model、`feature/shrine-knowledge-model-foundation`実装）へのデータ登録をReal Data Pilot #1として実施した（`docs/audit/shrine-knowledge-real-data-pilot-1.md`）。105件全体のcoverageを再集計した実測値ではないため、本表の数値は更新していない。
 
 **盲点候補:**
 
@@ -644,6 +646,8 @@ Recommendation ReadinessのLevel条件に従って段階的に扱う。
 ### 6. 現状coverage値の更新方法（未決定）
 
 本書に記載されているcoverage値は、監査時点の実測値である。
+
+> **注記（2026-08-01時点）**: 本書の`deity`/`shrine_history` coverage 0%は監査時点（Model Foundation実装前）の実測値のまま据え置いている。2026-08-01時点で明治神宮1社のみReal Data Pilot #1によりデータが登録されているが（`docs/audit/shrine-knowledge-real-data-pilot-1.md`）、105件全体を対象としたcoverage再集計は実施していないため、本書のcoverage数値は更新していない。105件全体のcoverageは、DB全体集計を実測した上で別途更新する。
 
 以下は未確定である。
 
