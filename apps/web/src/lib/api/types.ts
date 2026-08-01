@@ -17,6 +17,46 @@ export type GoriyakuTag = {
   category?: string | null;
 };
 
+// backend/temples/api/serializers/shrine.py の ShrineKnowledgeSourceSerializer に一致する
+// (note/verified_at/accessed_at/bibliography/languageは非公開。実際に返す field のみ定義する)
+export type ShrineKnowledgeSource = {
+  id: number;
+  source_type: string;
+  title: string;
+  publisher: string;
+  url: string;
+  verification_status: string;
+  confidence: string;
+};
+
+// backend/temples/api/serializers/shrine.py の ShrineDeitySerializer に一致する
+// (canonical_name/note/verified_at/aliasesは非公開。実際に返す field のみ定義する)
+export type ShrineDeity = {
+  id: number;
+  display_name: string;
+  canonical_name: string;
+  role: string;
+  sort_order: number;
+  verification_status: string;
+  confidence: string;
+  sources: ShrineKnowledgeSource[];
+};
+
+// backend/temples/api/serializers/shrine.py の ShrineHistorySerializer に一致する
+// (note/verified_atは非公開。実際に返す field のみ定義する)
+export type ShrineHistory = {
+  id: number;
+  history_type: string;
+  title: string;
+  content: string;
+  period_text: string;
+  event_date: string | null;
+  sort_order: number;
+  verification_status: string;
+  confidence: string;
+  sources: ShrineKnowledgeSource[];
+};
+
 export type ShrineBase = {
   id: number;
   name_jp: string;
@@ -37,6 +77,11 @@ export type ShrineBase = {
   sajin?: string;
   description?: string | null;
   goriyaku_tags: GoriyakuTag[];
+
+  // ShrineDetailSerializerのみ返す（ShrinePublicSerializer/ShrineListSerializerには存在しない）。
+  // 通常Detail API(/api/shrines/{id}/data/)経由でのみ値が入る。
+  deities?: ShrineDeity[];
+  histories?: ShrineHistory[];
 };
 
 export type Shrine = ShrineBase;

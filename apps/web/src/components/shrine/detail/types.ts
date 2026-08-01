@@ -46,9 +46,33 @@ export type DetailSupplementSection = {
   groups: DetailSupplementGroup[];
 };
 
+// 神社Fact（祭神・由緒・歴史）。Interpretation(meaning)・Recommendation(reason)・Action とは
+// 独立した表示責務として扱う。Premium gatingの対象にしない。
+export type DetailFactDeity = {
+  display_name: string;
+  sort_order: number;
+};
+
+export type DetailFactHistoryItem = {
+  history_type: string;
+  history_type_label: string;
+  title: string;
+  content: string;
+  period_text: string;
+  sort_order: number;
+};
+
+export type DetailFactSection = {
+  kind: "fact";
+  heading: string;
+  deities: DetailFactDeity[];
+  histories: DetailFactHistoryItem[];
+};
+
 export type ShrineDetailSectionModel =
   | DetailReasonSection
   | DetailProposalSection
   | DetailMeaningSection
   | DetailActionSection
-  | DetailSupplementSection;
+  | DetailSupplementSection
+  | DetailFactSection;

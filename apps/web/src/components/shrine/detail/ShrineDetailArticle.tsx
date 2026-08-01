@@ -47,6 +47,7 @@ import ShrineJudgeSection from "@/components/shrine/detail/ShrineJudgeSection";
 import ShrineProposalSection from "@/components/shrine/detail/ShrineProposalSection";
 import ShrineReasonSection from "@/components/shrine/detail/ShrineReasonSection";
 import ShrineSupplementSection from "@/components/shrine/detail/ShrineSupplementSection";
+import ShrineFactSection from "@/components/shrine/detail/ShrineFactSection";
 import ShrineDetailHeroCard from "@/components/shrine/detail/ShrineDetailHeroCard";
 import DetailDisclosureBlock from "@/components/shrine/DetailDisclosureBlock";
 import { FAVORITE_LABELS } from "@/lib/ui/labels";
@@ -56,7 +57,7 @@ import { buildLoginHref } from "@/lib/nav/login";
 
 import type { ShrineTag } from "@/lib/shrine/tags/types";
 import type { ShrineCardAdapterProps } from "@/components/shrine/buildShrineCardProps";
-import type { ShrineDetailSectionModel } from "@/components/shrine/detail/types";
+import type { DetailFactSection, ShrineDetailSectionModel } from "@/components/shrine/detail/types";
 
 import { resolveAccessLevel } from "@/lib/premium/accessLevel";
 import { getVisibilityForCard, type CardVisibilityState } from "@/lib/premium/cardVisibility";
@@ -389,6 +390,7 @@ export default function ShrineDetailArticle({
   saveActionNode,
   actionState,
   directionSupportCopy = null,
+  factSection = null,
 }: {
   cardProps: ShrineCardAdapterProps;
   heroImageUrl?: string | null;
@@ -419,6 +421,7 @@ export default function ShrineDetailArticle({
   saveActionNode?: React.ReactNode;
   actionState?: "none" | "detail_viewed" | "saved" | "route_opened" | "visited" | "reflected" | null;
   directionSupportCopy?: string | null;
+  factSection?: DetailFactSection | null;
 }) {
 
   const hasLayeredSections = freeDisplaySections.length > 0 || premiumDisplaySections.length > 0;
@@ -661,6 +664,10 @@ export default function ShrineDetailArticle({
       ) : null}
 
       {/* Premium比較カードは後続PRで再設計する。 */}
+
+      {/* 神社Fact（祭神・由緒・歴史）。Interpretation/Recommendation/Actionとは独立した表示責務。
+          Premium gatingの対象にせず、Knowledge未登録（deities/historiesとも空）ならnullで非表示。 */}
+      {factSection ? <ShrineFactSection section={factSection} /> : null}
 
       {resolvedSaveActionNode ? (
         <section className="pt-4">

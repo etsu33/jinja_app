@@ -662,4 +662,113 @@ describe("ShrineDetailArticle", () => {
       expect(wrapper?.className).toContain("bg-[var(--kt-color-background-subtle)]");
     });
   });
+
+  describe("神社について(Fact) Section", () => {
+    const baseProps = {
+      cardProps: {
+        title: "乃木神社",
+        href: "/shrines/17",
+        imageUrl: null,
+        badges: [],
+        metaChips: [],
+        address: "東京都港区赤坂",
+      } as any,
+      heroImageUrl: null,
+      heroMeaningCopy: null,
+      benefitLabels: [],
+      tags: [],
+      publicGoshuinsPreview: [],
+      publicGoshuinsViewAllHref: "",
+      sections: [],
+      recommendationMeta: null,
+      saveActionNode: null,
+    };
+
+    it("factSectionがnullの場合「神社について」を表示しない", () => {
+      render(<ShrineDetailArticle {...baseProps} factSection={null} />);
+
+      expect(screen.queryByText("神社について")).not.toBeInTheDocument();
+    });
+
+    it("御祭神とHistoryを表示する", () => {
+      render(
+        <ShrineDetailArticle
+          {...baseProps}
+          factSection={{
+            kind: "fact",
+            heading: "神社について",
+            deities: [
+              { display_name: "明治天皇", sort_order: 0 },
+              { display_name: "昭憲皇太后", sort_order: 1 },
+            ],
+            histories: [
+              {
+                history_type: "official_origin",
+                history_type_label: "由緒",
+                title: "明治神宮の創建",
+                content: "明治神宮は、東京都渋谷区代々木に大正9年（1920）に創建された。",
+                period_text: "大正9年（1920）",
+                sort_order: 0,
+              },
+            ],
+          }}
+        />,
+      );
+
+      expect(screen.getByText("神社について")).toBeInTheDocument();
+      expect(screen.getByText("御祭神")).toBeInTheDocument();
+      expect(screen.getByText("明治天皇")).toBeInTheDocument();
+      expect(screen.getByText("昭憲皇太后")).toBeInTheDocument();
+      expect(screen.getByText("由緒・歴史")).toBeInTheDocument();
+      expect(screen.getByText("明治神宮の創建")).toBeInTheDocument();
+      expect(
+        screen.getByText("明治神宮は、東京都渋谷区代々木に大正9年（1920）に創建された。"),
+      ).toBeInTheDocument();
+    });
+
+    it("複数Historyをすべて表示する（品川神社相当）", () => {
+      render(
+        <ShrineDetailArticle
+          {...baseProps}
+          factSection={{
+            kind: "fact",
+            heading: "神社について",
+            deities: [],
+            histories: [
+              {
+                history_type: "founding",
+                history_type_label: "創始",
+                title: "文治3年（1187年）の創始",
+                content: "創始の内容",
+                period_text: "文治3年（1187年）",
+                sort_order: 0,
+              },
+              {
+                history_type: "historical_event",
+                history_type_label: "歴史",
+                title: "元応元年（1319年）の宇賀之売命奉祀",
+                content: "1319年の内容",
+                period_text: "元応元年（1319年）",
+                sort_order: 1,
+              },
+              {
+                history_type: "historical_event",
+                history_type_label: "歴史",
+                title: "文明10年（1478年）の素盞嗚尊奉祀",
+                content: "1478年の内容",
+                period_text: "文明10年（1478年）",
+                sort_order: 2,
+              },
+            ],
+          }}
+        />,
+      );
+
+      expect(screen.getByText("文治3年（1187年）の創始")).toBeInTheDocument();
+      expect(screen.getByText("元応元年（1319年）の宇賀之売命奉祀")).toBeInTheDocument();
+      expect(screen.getByText("文明10年（1478年）の素盞嗚尊奉祀")).toBeInTheDocument();
+      // 御祭神が無い場合は見出しを出さない
+      expect(screen.queryByText("御祭神")).not.toBeInTheDocument();
+    });
+  });
 });

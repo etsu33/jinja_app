@@ -5,6 +5,7 @@ import type { ShrineTag } from "@/lib/shrine/tags/types";
 import type { PublicGoshuinItem } from "@/components/shrine/detail/PublicGoshuinSection";
 import type {
   DetailActionSection,
+  DetailFactSection,
   DetailMeaningItem,
   DetailMeaningSection,
   DetailProposalSection,
@@ -18,6 +19,7 @@ import type { ConciergeBreakdown } from "@/lib/api/concierge";
 import { buildShrineCardProps } from "@/components/shrine/buildShrineCardProps";
 import { getBenefitLabels } from "@/lib/shrine/getBenefitLabels";
 import { buildShrineExplanation } from "@/lib/shrine/buildShrineExplanation";
+import { buildShrineFactSection } from "@/lib/shrine/buildShrineFactSection";
 import { buildShrineJudge } from "@/lib/shrine/buildShrineJudge";
 import { buildShrineHref } from "@/lib/nav/buildShrineHref";
 import {
@@ -1678,6 +1680,8 @@ export function buildShrineDetailModel({
 
   const directionSupportCopy = shrineMeaningPayloadV2?.generated?.directionSupportCopy?.trim() || null;
 
+  const factSection: DetailFactSection | null = buildShrineFactSection(shrine);
+
   return {
     shrineId: shrine.id,
     cardProps,
@@ -1710,5 +1714,6 @@ export function buildShrineDetailModel({
     symbolTags,
     actionState,
     directionSupportCopy,
+    factSection,
   };
 }
