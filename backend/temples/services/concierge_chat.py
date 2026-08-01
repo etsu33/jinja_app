@@ -296,12 +296,46 @@ def _first_recommendation(recs: dict[str, Any]) -> dict[str, Any]:
     return recommendations[0] if recommendations else {}
 
 
+def _join_knowledge_deity_names(knowledge_deities: Any) -> str | None:
+    """Fact-ready ShrineDeityの名称を sort_order 昇順・読点結合でReason入力用文字列にする。
+
+    canonical_name/roleはReason文字列へ含めない（docs/knowledge/shrine-knowledge-contract.md
+    のFact利用条件に従い、Sourceにない称号を推測しないため）。結合件数の上限は設けない。
+    """
+    if not isinstance(knowledge_deities, list):
+        return None
+    items = [d for d in knowledge_deities if isinstance(d, dict) and str(d.get("display_name") or "").strip()]
+    if not items:
+        return None
+    ordered = sorted(items, key=lambda d: d.get("sort_order") if isinstance(d.get("sort_order"), int) else 0)
+    names = [str(d["display_name"]).strip() for d in ordered]
+    return "、".join(names) if names else None
+
+
+def _pick_primary_knowledge_history_content(knowledge_histories: Any) -> str | None:
+    """Fact-ready ShrineHistoryのうち、sort_order最小の1件のcontentのみを採用する。
+
+    history_typeによる独自の優先順位（founding優先等）は今回導入しない。
+    複数Historyの結合も今回は行わない。
+    """
+    if not isinstance(knowledge_histories, list):
+        return None
+    items = [h for h in knowledge_histories if isinstance(h, dict) and str(h.get("content") or "").strip()]
+    if not items:
+        return None
+    ordered = sorted(items, key=lambda h: h.get("sort_order") if isinstance(h.get("sort_order"), int) else 0)
+    return str(ordered[0]["content"]).strip()
+
+
 def _build_score_v3_candidate_profile(rec: dict[str, Any]) -> dict[str, Any]:
     meaning_payload = rec.get("meaning_payload") if isinstance(rec.get("meaning_payload"), dict) else {}
     source = meaning_payload.get("source") if isinstance(meaning_payload.get("source"), dict) else {}
     breakdown = rec.get("breakdown") if isinstance(rec.get("breakdown"), dict) else {}
     breakdown_detail = rec.get("breakdown_detail") if isinstance(rec.get("breakdown_detail"), dict) else {}
     features = breakdown_detail.get("features") if isinstance(breakdown_detail.get("features"), dict) else {}
+
+    knowledge_deity_names = _join_knowledge_deity_names(rec.get("knowledge_deities"))
+    knowledge_history_content = _pick_primary_knowledge_history_content(rec.get("knowledge_histories"))
 
     return {
         "shrine_id": rec.get("shrine_id") or rec.get("id") or source.get("shrineId"),
@@ -310,8 +344,11 @@ def _build_score_v3_candidate_profile(rec: dict[str, Any]) -> dict[str, Any]:
         "goriyaku": rec.get("goriyaku") or source.get("goriyaku"),
         "goriyaku_tags": rec.get("goriyaku_tags") or source.get("goriyakuTags") or breakdown.get("matched_need_tags") or [],
         "visit_style_tags": rec.get("visit_style_tags") or features.get("visit_style") or [],
-        "deity": rec.get("sajin") or source.get("sajin"),
-        "shrine_history": rec.get("description") or source.get("description"),
+        # Fact-ready ShrineDeity/ShrineHistory（新Knowledge）をfield単位で優先し、
+        # 存在しない場合のみLegacy（sajin/description）へfallbackする。
+        # 新KnowledgeとLegacyを同一field内で混在させない（片方の値のみを採用する）。
+        "deity": knowledge_deity_names if knowledge_deity_names is not None else (rec.get("sajin") or source.get("sajin")),
+        "shrine_history": knowledge_history_content if knowledge_history_content is not None else (rec.get("description") or source.get("description")),
         "place_context": rec.get("address") or source.get("address"),
         "place_id": rec.get("place_id"),
         "behavior_signals": rec.get("behavior_signals") if isinstance(rec.get("behavior_signals"), dict) else {},

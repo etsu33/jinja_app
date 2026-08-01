@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 import pytest
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
+from django.utils import timezone
 
-from temples.models import PlaceRef, Shrine
+from temples.models import PlaceRef, Shrine, ShrineDeity, ShrineHistory, ShrineKnowledgeSource
 from temples.services.concierge_chat_candidates import build_chat_candidates
 
 
@@ -188,3 +191,72 @@ def test_candidates_are_sorted_by_popular_score_desc(shrine_factory):
     names = [c["name"] for c in cands]
 
     assert names.index("人気高") < names.index("人気低")
+
+
+def _create_source(verification_status: str = "source_confirmed") -> ShrineKnowledgeSource:
+    kwargs = dict(source_type="shrine_official", title="出典", verification_status=verification_status)
+    if verification_status in ("source_confirmed", "reviewed"):
+        kwargs["verified_at"] = timezone.now()
+    return ShrineKnowledgeSource.objects.create(**kwargs)
+
+
+@pytest.mark.django_db
+def test_candidates_include_fact_ready_knowledge_deities_and_histories(shrine_factory):
+    shrine = shrine_factory(name="Knowledge神社", latitude=35.0, longitude=139.0)
+    source = _create_source("source_confirmed")
+
+    deity = ShrineDeity.objects.create(
+        shrine=shrine, display_name="祭神A", sort_order=0, verification_status="source_confirmed",
+        verified_at=timezone.now(),
+    )
+    deity.sources.add(source)
+
+    history = ShrineHistory.objects.create(
+        shrine=shrine, history_type="official_origin", title="由緒A", content="内容A", sort_order=0,
+        verification_status="source_confirmed", verified_at=timezone.now(),
+    )
+    history.sources.add(source)
+
+    cands = build_chat_candidates(lat=35.0, lng=139.0, area=None, goriyaku_tag_ids=None, trace_id="test")
+    cand = next(c for c in cands if c["name"] == "Knowledge神社")
+
+    assert cand["knowledge_deities"] == [{"display_name": "祭神A", "sort_order": 0, "confidence": ""}]
+    assert cand["knowledge_histories"][0]["content"] == "内容A"
+
+
+@pytest.mark.django_db
+def test_candidates_exclude_non_fact_ready_knowledge(shrine_factory):
+    shrine = shrine_factory(name="Draft神社", latitude=35.0, longitude=139.0)
+    source = _create_source("source_confirmed")
+
+    deity = ShrineDeity.objects.create(
+        shrine=shrine, display_name="下書き祭神", sort_order=0, verification_status="draft",
+    )
+    deity.sources.add(source)
+
+    cands = build_chat_candidates(lat=35.0, lng=139.0, area=None, goriyaku_tag_ids=None, trace_id="test")
+    cand = next(c for c in cands if c["name"] == "Draft神社")
+
+    assert cand["knowledge_deities"] == []
+
+
+@pytest.mark.django_db
+def test_candidates_knowledge_lookup_does_not_scale_query_count_with_shrine_count(shrine_factory):
+    source = _create_source("source_confirmed")
+    for i in range(10):
+        shrine = shrine_factory(name=f"多数神社{i}", latitude=35.0, longitude=139.0)
+        deity = ShrineDeity.objects.create(
+            shrine=shrine, display_name=f"祭神{i}", sort_order=0, verification_status="source_confirmed",
+            verified_at=timezone.now(),
+        )
+        deity.sources.add(source)
+
+    with CaptureQueriesContext(connection) as ctx:
+        cands = build_chat_candidates(lat=35.0, lng=139.0, area=None, goriyaku_tag_ids=None, trace_id="test")
+
+    assert len(cands) >= 10
+    # Knowledge selectorはshrine数によらず一定数のクエリ(deity/history各1本)のみ発行する。
+    # 全体のクエリ数がshrine数に比例して増えていないことを確認する（目安として30件未満）。
+    assert len(ctx.captured_queries) < 30, (
+        f"expected knowledge lookup to avoid N+1, got {len(ctx.captured_queries)} queries"
+    )

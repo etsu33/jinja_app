@@ -16,6 +16,10 @@ from temples.services.shrine_trust_metadata import get_shrine_trust_metadata
 
 from temples.services.shrine_meaning_composer import compose_shrine_meaning_payload
 from temples.services.meaning_translation import translate_meaning
+from temples.services.shrine_knowledge_selector import (
+    fetch_fact_ready_knowledge_deities,
+    fetch_fact_ready_knowledge_histories,
+)
 
 log = logging.getLogger(__name__)
 
@@ -96,10 +100,13 @@ def build_chat_candidates(
         qs = qs.order_by("id")
 
     pool_limit = max(limit * 5, 50)
-    qs = qs[:pool_limit]
+    shrines = list(qs[:pool_limit])
+    shrine_ids = [s.id for s in shrines]
+    knowledge_deities_by_shrine = fetch_fact_ready_knowledge_deities(shrine_ids)
+    knowledge_histories_by_shrine = fetch_fact_ready_knowledge_histories(shrine_ids)
 
     candidates: List[Dict[str, Any]] = []
-    for s in qs:
+    for s in shrines:
         dist = _distance_m(lat, lng, s.latitude, s.longitude)
 
         pref = getattr(s, "place_ref", None)
@@ -128,6 +135,8 @@ def build_chat_candidates(
                 "goriyaku": getattr(s, "goriyaku", None),
                 "sajin": getattr(s, "sajin", None),
                 "description": getattr(s, "description", None),
+                "knowledge_deities": knowledge_deities_by_shrine.get(s.id, []),
+                "knowledge_histories": knowledge_histories_by_shrine.get(s.id, []),
                 "astro_tags": getattr(s, "astro_tags", None),
                 "astro_elements": getattr(s, "astro_elements", None),
                 "visit_style_tags": getattr(s, "visit_style_tags", None),
