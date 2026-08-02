@@ -5,7 +5,6 @@ from drf_spectacular.utils import OpenApiTypes, extend_schema_field
 
 from temples.geo_utils import to_lat_lng_dict
 from temples.models import (
-    KNOWLEDGE_FACT_READY_VERIFICATION_STATUSES,
     GoriyakuTag,
     Shrine,
     ShrineDeity,
@@ -13,6 +12,7 @@ from temples.models import (
     ShrineKnowledgeSource,
     Visit,
 )
+from temples.services import evidence_gate
 
 from rest_framework import serializers
 from temples.models import GoriyakuTag, Shrine
@@ -42,10 +42,24 @@ class ShrineKnowledgeSourceSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+def _fact_ready_sources(obj) -> list[ShrineKnowledgeSource]:
+    """関連Sourceのうちfact-readyなものだけを返す。
+
+    View側のPrefetchで既に絞り込まれている場合はそのまま、Serializerが
+    Prefetchを経由せず単独で呼ばれた場合（例: 単体テスト）でも同じ結果になるよう、
+    ここでも明示的にevidence_gateの基準でフィルタする。
+    """
+    return [
+        s
+        for s in obj.sources.all()
+        if s.verification_status in evidence_gate.FACT_READY_VERIFICATION_STATUSES
+    ]
+
+
 class ShrineDeitySerializer(serializers.ModelSerializer):
     """docs/knowledge/shrine-knowledge-contract.md「deity契約」のRead専用表示。"""
 
-    sources = ShrineKnowledgeSourceSerializer(many=True, read_only=True)
+    sources = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = ShrineDeity
@@ -61,11 +75,17 @@ class ShrineDeitySerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
+    @extend_schema_field(ShrineKnowledgeSourceSerializer(many=True))
+    def get_sources(self, obj):
+        return ShrineKnowledgeSourceSerializer(
+            _fact_ready_sources(obj), many=True, context=self.context
+        ).data
+
 
 class ShrineHistorySerializer(serializers.ModelSerializer):
     """docs/knowledge/shrine-knowledge-contract.md「shrine_history契約」のRead専用表示。"""
 
-    sources = ShrineKnowledgeSourceSerializer(many=True, read_only=True)
+    sources = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = ShrineHistory
@@ -82,6 +102,12 @@ class ShrineHistorySerializer(serializers.ModelSerializer):
             "sources",
         ]
         read_only_fields = fields
+
+    @extend_schema_field(ShrineKnowledgeSourceSerializer(many=True))
+    def get_sources(self, obj):
+        return ShrineKnowledgeSourceSerializer(
+            _fact_ready_sources(obj), many=True, context=self.context
+        ).data
 
 
 class _DistanceFieldsMixin:
@@ -153,9 +179,11 @@ class ShrineListSerializer(ShrineBaseSerializer):
 
 
 class ShrineDetailSerializer(ShrineBaseSerializer):
-    """Shrine Detail API専用。deities/historiesはdocs/knowledge/shrine-knowledge-contract.md
-    「Evidence Gate要件」に従い、verification_statusがFact利用可能な状態
-    （source_confirmed/reviewed）のもののみ返却する。Knowledge未登録時は[]を返し、
+    """Shrine Detail API専用。deities/historiesはtemples.services.evidence_gateの
+    Evidence Gate判定（Fact自身のverification_statusがfact-ready、かつ
+    fact-readyなSourceを1件以上Relation）を満たすもの（usable=True）のみ返却する。
+    Recommendation側（shrine_knowledge_selector.py）と同一のEvidence Gateを使うため、
+    両経路のFact利用可否は常に一致する。Knowledge未登録時は[]を返し、
     Legacy Field（sajin/description）へのfallbackは行わない。
     """
 
@@ -188,7 +216,11 @@ class ShrineDetailSerializer(ShrineBaseSerializer):
         items = [
             d
             for d in obj.deities.all()
-            if d.verification_status in KNOWLEDGE_FACT_READY_VERIFICATION_STATUSES
+            if evidence_gate.decide_fact_usability(
+                verification_status=d.verification_status,
+                confidence=d.confidence,
+                source_verification_statuses=(s.verification_status for s in d.sources.all()),
+            ).usable
         ]
         return ShrineDeitySerializer(items, many=True, context=self.context).data
 
@@ -197,7 +229,11 @@ class ShrineDetailSerializer(ShrineBaseSerializer):
         items = [
             h
             for h in obj.histories.all()
-            if h.verification_status in KNOWLEDGE_FACT_READY_VERIFICATION_STATUSES
+            if evidence_gate.decide_fact_usability(
+                verification_status=h.verification_status,
+                confidence=h.confidence,
+                source_verification_statuses=(s.verification_status for s in h.sources.all()),
+            ).usable
         ]
         return ShrineHistorySerializer(items, many=True, context=self.context).data
 

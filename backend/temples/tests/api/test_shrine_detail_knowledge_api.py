@@ -61,10 +61,15 @@ def _create_source(verification_status: str, title: str = "出典", **kwargs) ->
 
 def test_shrine_detail_api_returns_only_fact_ready_knowledge():
     shrine = _create_shrine()
-    _create_deity(shrine, "source_confirmed", sort_order=0)
-    _create_deity(shrine, "draft", sort_order=1)
-    _create_history(shrine, "reviewed", sort_order=0)
-    _create_history(shrine, "unverified", sort_order=1)
+    source = _create_source("source_confirmed")
+    ready_deity = _create_deity(shrine, "source_confirmed", sort_order=0)
+    ready_deity.sources.add(source)
+    draft_deity = _create_deity(shrine, "draft", sort_order=1)
+    draft_deity.sources.add(source)
+    ready_history = _create_history(shrine, "reviewed", sort_order=0)
+    ready_history.sources.add(source)
+    unverified_history = _create_history(shrine, "unverified", sort_order=1)
+    unverified_history.sources.add(source)
 
     client = APIClient()
     resp = client.get(f"/api/shrines/{shrine.id}/")
@@ -151,21 +156,27 @@ def test_shrine_detail_api_returns_fact_ready_source(verification_status):
     "verification_status",
     ["draft", "unverified", "disputed", "outdated", "rejected"],
 )
-def test_shrine_detail_api_excludes_non_fact_ready_source(verification_status):
+def test_shrine_detail_api_excludes_non_fact_ready_source_from_nested_sources(verification_status):
+    # deityはfact-ready Sourceを別途1件持つためusable=True。nested sourcesからは
+    # 非fact-ready Sourceのみが除外されることを確認する（Evidence Gate: Case D相当）。
     shrine = _create_shrine()
     deity = _create_deity(shrine, "source_confirmed")
-    source = _create_source(verification_status)
-    deity.sources.add(source)
+    ready_source = _create_source("source_confirmed", title="ready")
+    non_ready_source = _create_source(verification_status, title="non-ready")
+    deity.sources.add(ready_source, non_ready_source)
 
     client = APIClient()
     resp = client.get(f"/api/shrines/{shrine.id}/")
 
     assert resp.status_code == 200
     body = resp.json()
-    assert body["deities"][0]["sources"] == []
+    assert len(body["deities"]) == 1
+    assert [s["verification_status"] for s in body["deities"][0]["sources"]] == ["source_confirmed"]
 
 
-def test_shrine_detail_api_returns_empty_sources_when_no_fact_ready_source_for_history():
+def test_shrine_detail_api_hides_history_when_no_fact_ready_source():
+    # Evidence Gate: Case B相当（Fact ready + Source draft/unverified等のみ）。
+    # fact-ready Sourceが1件も無いため、history自体がusable=Falseとなり非表示になる。
     shrine = _create_shrine()
     history = _create_history(shrine, "reviewed")
     source = _create_source("unverified")
@@ -176,10 +187,14 @@ def test_shrine_detail_api_returns_empty_sources_when_no_fact_ready_source_for_h
 
     assert resp.status_code == 200
     body = resp.json()
-    assert body["histories"][0]["sources"] == []
+    assert body["histories"] == []
 
 
-def test_shrine_detail_api_keeps_knowledge_when_all_its_sources_are_excluded():
+def test_shrine_detail_api_hides_knowledge_when_all_its_sources_are_excluded():
+    # Evidence Gate: Case A/B相当（Fact ready + fact-ready Sourceなし）。
+    # 旧実装では「deity自体はverification_statusのみで表示され、sourcesが空配列になる」
+    # という非対称な挙動だったが、Evidence Gate導入後はRecommendationと同様に
+    # deity自体が非表示になる。
     shrine = _create_shrine()
     deity = _create_deity(shrine, "source_confirmed")
     deity.sources.add(_create_source("draft"), _create_source("disputed"))
@@ -189,9 +204,7 @@ def test_shrine_detail_api_keeps_knowledge_when_all_its_sources_are_excluded():
 
     assert resp.status_code == 200
     body = resp.json()
-    assert len(body["deities"]) == 1
-    assert body["deities"][0]["verification_status"] == "source_confirmed"
-    assert body["deities"][0]["sources"] == []
+    assert body["deities"] == []
 
 
 def test_shrine_detail_api_source_filtering_does_not_increase_query_count():
