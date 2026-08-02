@@ -9,6 +9,8 @@
 > **現在（2026-08-01時点）の状況**: 本書「Model選択肢比較」の案4（別Model）が母艦判断で採用され、`ShrineDeity` / `ShrineHistory` / `ShrineKnowledgeSource`として`feature/shrine-knowledge-model-foundation`（PR #2221）で実装され、`develop`へマージ済みである。また明治神宮1社を対象にReal Data Pilot #1をAdmin経由で実施済み（詳細は`docs/audit/shrine-knowledge-real-data-pilot-1.md`）。ただしEvidence Gate・Recommendation・Score・Web/Mobileへの接続は本書作成時点から変わらず未実装であり、3〜5社規模のPilot本体（PR3相当）・105件Rollout（PR4相当）・Foundationの100%完了判定も未確定のまま母艦判断待ちである。以下の本文はPR2219系列作成時点のAs-Isを保持し、書き換えていない。
 >
 > **追記（2026-08-02時点）**: 上記注記の後、Evidence Gate（PR2相当）はPR-A（`verification_status`によるFact利用可否判定の一本化、PR #2227）とPR-B（Fact confidenceによるRecommendation Reason表現強度制御、PR #2228・follow-up #2229）として`develop`へ実装・マージ済みである。ShrineDeity/ShrineHistoryの`confidence`（high/medium/low/未設定）はRecommendation Reasonの表現強度（assertive/weakened/suppressed/legacy-compatible）へ接続済み。一方、`ShrineKnowledgeSource.confidence`（Source自体の信頼度）・複数Source間のconfidence集約・Conflicting Evidence（Source間の明示的な矛盾表現）は本追記時点でも未接続のままであり、PR-C1（Source Confidence Contract、本書「Source Confidence Contract」節を参照）で契約のみ整理し、実装はさらに後続PRへ委ねている。Shrine Detail APIへの表示・Score/Rankingへの接続は引き続き未実装。
+>
+> **追記（2026-08-02時点、PR-C4A）**: `verification_status: disputed`のFact扱いを「Disputed Evidence Contract」節（本書）で契約確定した。Recommendation側は現行のusable=False（非表示）を正式契約として固定（コード変更なし）。Detail側は「将来的に個別Fact列挙可能」という方向性のみ契約化し、実装（自動グルーピング・自動要約・AIによる正誤判定を明示的に禁止した上での個別Fact列挙）は別PR（PR-C4B候補）へ委ねている。PR-C4A自体もPR-C1と同様Docsのみで、コード・Model・DB・UIの変更は伴わない。
 
 # Shrine Knowledge Contract
 
@@ -562,9 +564,104 @@ PR-C1では、これらのうちいずれか一つを新たに確定・実装す
 
 `verification_status: disputed`のFactを非表示にするか多説併記にするかという表示方針は、本節（Source Confidence Contract）の対象外とする。これは「Source Confidence」ではなく「単一Fact内でverification_statusがdisputedになった場合の表示制御」であり、別PR（後述PR-C4候補）で設計する。PR-C1はこの方針を確定しない。
 
+> **追記（PR-C4A、2026-08-02時点）**: 本節が予告した「別PR（PR-C4候補）」として、`disputed`の表示方針を「Disputed Evidence Contract」節（本書）で確定した。詳細は同節を参照。
+
 ### `data_confidence_score`との関係
 
 `data_confidence_score`（`docs/core/recommendation-architecture.md` Section 7のScore軸候補）は、PR-C1でも引き続き対象外とする。算出式を作らない。Score/Rankingへの接続も行わない。
+
+---
+
+## Disputed Evidence Contract（PR-C4A、2026-08-02追加）
+
+> **Status**: 契約確定のみ。コード・Model・DB・UI実装は伴わない（PR-C4AはDocsのみのPR）。
+
+Evidence Gate PR-A/PR-B・Source Confidence Contract（PR-C1）に続き、`verification_status: disputed`のKnowledge Factを、Recommendation / Shrine Detailでどう扱うかを契約として確定する（`docs/audit/`配下のdisputed / 多説併記設計監査を反映）。
+
+### Recommendation Contract
+
+`verification_status: disputed`のKnowledge Factは、Recommendation Reasonへ使用しない。
+
+現行のEvidence Gate（`temples.services.evidence_gate.decide_fact_usability()`）は、`disputed`が`KNOWLEDGE_FACT_READY_VERIFICATION_STATUSES`（`source_confirmed`/`reviewed`）に含まれないことにより`usable=False`となる。これを**正式な契約として固定する**。
+
+- `confidence`が`high`であっても、`disputed`のFactはRecommendation Reasonへ使用しない（`verification_status`と`confidence`は別軸であり、confidenceの高さが`verification_status`の判定を上書きすることはない。Source Confidence Contract「confidence不足」節の追記を参照）
+- 本契約はEvidence Gate PR-Aで実装済みの挙動をそのまま追認するものであり、コード変更を伴わない
+
+### Shrine Detail Multi-View Contract（将来方向性。今回は未実装）
+
+`disputed`のFactを、将来的にShrine Detailで個別Factとして列挙表示（多説併記）できる方向性を、実装を伴わない契約として記載する。**PR-C4Aでは実装しない。**
+
+将来実装する場合も、以下を禁止する。
+
+- 「複数説があります」等のメタ情報をシステムが自動生成すること
+- どちらの説が正しいかをAIが判定すること
+- 複数のFactを1つへ自動統合すること
+- 複数のFactを自動要約すること
+- 複数のFactを自動グルーピングすること（同一テーマの複数説であるという判定をシステムが自動で行うこと）
+
+Detailで`disputed`のFactを扱う場合は、各Factを**独立したFactとして個別に表示する**（既存の`ShrineDeity`/`ShrineHistory`ごとのnested sources表示構造をそのまま流用し、複数Factを束ねる新たな集約層を設けない）。
+
+### history_type / verification_status / confidenceの3軸分離
+
+以下の3軸は、Model上完全に独立したfieldであり、相互に値を制約するvalidationは存在しない。
+
+| 軸 | 表すもの |
+|---|---|
+| `history_type` | 情報の分類（`official_origin`/`founding`/`historical_event`/`tradition`/`regional_context`/`editorial_summary`） |
+| `verification_status` | 確認状態（`draft`/`unverified`/`source_confirmed`/`reviewed`/`disputed`/`outdated`/`rejected`） |
+| `confidence` | Fact自身への信頼度（`high`/`medium`/`low`/未設定） |
+
+以下を明記する。
+
+- `tradition` ≠ `disputed`（伝承であることと、複数Sourceが矛盾し未解決であることは別概念）
+- `official_origin` ≠ `source_confirmed`（公式由緒に分類されていることと、確認済み状態であることは別概念。公式由緒であっても`draft`のまま未確認の場合がある）
+- `founding` ≠ historical certainty（創建情報に分類されていることは、その内容が史実として確定していることを意味しない。確定性は`verification_status`/`confidence`側で表現する）
+
+### Multiple Fact保持方針
+
+現行Modelでは、複数の`ShrineHistory`/`ShrineDeity`を別レコードとして保持できる（`unique_together`等の一意制約は存在しない）。各Factは以下を独立して保持できる。
+
+- `title`
+- `content`
+- `history_type`
+- `sort_order`
+- `verification_status`
+- `confidence`
+- `sources`（Source Relation）
+
+複数説の保持は、この「別レコード + 独立Source Relation」構造を基本とする。1つの`content`へ複数説を合成しない。
+
+### Conflict境界（現行Model）
+
+`ShrineDeity.sources`/`ShrineHistory.sources`は`ShrineKnowledgeSource`への`ManyToManyField`（`through`未指定）であり、Relationの有無以上の意味を保持できない。以下は区別できない。
+
+- SourceがFactを支持している
+- SourceがFactに言及しているだけ
+- SourceがFactを明示的に否定している
+
+したがって、「あるSourceがそのFactへRelationされていない」ことを「そのSourceがFactを否定している」と解釈しない。Evidence Gate・Recommendation・Detailのいずれにも、Relationの不在から否定を推測するロジックを追加しない。
+
+### Case G（明示的否定）は未対応
+
+一方のSourceが他方の主張を明示的に否定するケース（Source Confidence Contract「Conflicting Evidenceの表現限界」節のCase 9、本監査のCase Gに相当）は、現行Modelでは対応しない。
+
+将来対応が必要になった場合のみ、`FactSourceEvidence`（仮称）等の明示的中間Modelを検討する。候補`relation_type`: `supports` / `contradicts` / `mentions`。ただし本節の時点でもModel設計は確定せず、Migrationも作らない（Source Confidence Contract「Future Model候補」節を参照）。
+
+### EvidenceDecisionの技術的負債（記録のみ、今回は修正しない）
+
+監査により、現行`EvidenceDecision`（`temples.services.evidence_gate.py`）について以下を確認した。
+
+- `usable`が実質的に唯一の判定値である
+- `display_mode`（`"full"`/`"hidden"`）は`usable`から機械的に導出されるのみで、独立した情報を持たない
+- `reason_strength`（`"assertive"`/`"suppressed"`）も同様に`usable`から機械的に導出されるのみ
+- `EvidenceDecision.reason_strength`は、現行コードのどこからも読み取られていない（selector.py/serializer.pyはいずれも`.usable`のみを参照する）
+- PR-Bで実際に実装されたRecommendation Reasonの表現強度制御（assertive/weakened/suppressed）は、`EvidenceDecision`とは別経路（`recommendation_reason_v4.py`内の`_reason_strength_from_confidence()`、Fact confidenceの文字列を直接参照）で行われており、`EvidenceDecision`とは接続されていない
+
+これは設計上の技術的負債として記録するに留め、PR-C4Aでは修正しない。将来、`EvidenceDecision`と実際のReason表現強度制御を統合するかどうかは別途判断する。
+
+### Score / Rankingとの関係
+
+`disputed`状態は、Score/Rankingへ接続しない。`data_confidence_score`も本契約では引き続き対象外とする（Source Confidence Contract「`data_confidence_score`との関係」節を参照）。
 
 ---
 
@@ -929,7 +1026,7 @@ DB確認（読み取りのみ）の結果、以下を候補として提示する
 - **テスト**: `deity`/`shrine_history`欠損時のFact抑制テスト、`disputed`時の非表示/多説併記テスト、confidence閾値ごとの表現切り替えテスト、fallbackのInterpretation識別テスト
 - **完了条件**: 根拠なしFactが生成されない。`deity`欠損時に祭神Factが抑制される。`shrine_history`欠損時に歴史Factが抑制される。fallbackがFactとして出力されない。回帰テストがある
 - **母艦判断項目**: confidence数値閾値の確定、`disputed`時の表示方針（非表示か多説併記か）
-- **状況（2026-08-02時点）**: 本PR2で計画していた範囲のうち、Fact利用可否判定はPR-A（`feature/evidence-gate-pr-a-foundation`、PR #2227）として、Fact confidenceによるRecommendation Reason表現強度制御はPR-B（PR #2228・follow-up #2229）として、それぞれ実装・`develop`へマージ済みである。ただし数値閾値は導入していない（categorical値high/medium/lowをそのまま表現強度へ対応させている）。`disputed`時の表示方針（非表示か多説併記か）は依然未確定のまま、別PR（PR-C4候補、「Source Confidence Contract」節の「disputedの表示方針との分離」を参照）へ切り出されている。Source自身のconfidence（`ShrineKnowledgeSource.confidence`）・複数Source集約・Conflicting Evidenceの契約整理はPR-C1（本節「Source Confidence Contract」）で行い、実装は含まない
+- **状況（2026-08-02時点）**: 本PR2で計画していた範囲のうち、Fact利用可否判定はPR-A（`feature/evidence-gate-pr-a-foundation`、PR #2227）として、Fact confidenceによるRecommendation Reason表現強度制御はPR-B（PR #2228・follow-up #2229）として、それぞれ実装・`develop`へマージ済みである。ただし数値閾値は導入していない（categorical値high/medium/lowをそのまま表現強度へ対応させている）。Source自身のconfidence（`ShrineKnowledgeSource.confidence`）・複数Source集約・Conflicting Evidenceの契約整理はPR-C1（本節「Source Confidence Contract」）で行い、実装は含まない。`disputed`時の表示方針は、PR-C4A（「Disputed Evidence Contract」節）でRecommendation側を「現行どおり非表示（usable=False）を正式契約として固定」と確定した。Detail側は「将来的に個別Fact列挙可能」という方向性のみ契約化し、実装（自動グルーピング等は禁止した上での個別列挙）は別PR（PR-C4B候補）へ委ねている。いずれもPR-C4A自体はコード変更を伴わない
 
 ### PR3：Pilot Data
 
@@ -989,6 +1086,12 @@ Codex側では最終決定を行わない。
 > **19.** 複数Source confidenceの集約方式（min/max/average/majority/highest-priority-source/official-source-override等）をどれか一つに確定するか
 >
 > **20.** Conflicting Evidence（Source間の明示的な否定、Case 9相当）へ対応する必要があるか。対応する場合、`FactSourceEvidence`（仮称）等の中間Model拡張（Migration）を実施するか
+>
+> **追記（2026-08-02時点、PR-C4A）**: 12（`disputed`情報の表示方針）のうち、**Recommendation側**は「Disputed Evidence Contract」節のとおり、現行のusable=False（非表示）を正式契約として確定した（コード変更を伴わない、既存挙動の追認）。**Detail側**は「将来的に個別Fact列挙可能」という方向性のみ契約化し、実装方針（自動グルーピング等の禁止事項を含む）は確定したが、実装そのものは別PR（PR-C4B候補）へ委ねたため、12は「Recommendation側は確定・Detail側は方向性のみ確定、実装は未確定」という状態になった。20（Conflicting Evidence対応要否）は本追記でも変わらず未確定。加えて、本追記で新たに以下を母艦判断項目へ追加する。
+>
+> **21.** Shrine Detailで`disputed`のFactを個別列挙表示する実装（PR-C4B候補）に着手するか、着手する場合の時期
+>
+> **22.** `EvidenceDecision.reason_strength`（現行コードで未消費）と、PR-Bで別経路実装された`recommendation_reason_v4.py`のReason表現強度制御を将来統合するか（「Disputed Evidence Contract」節「EvidenceDecisionの技術的負債」を参照）
 
 ---
 
