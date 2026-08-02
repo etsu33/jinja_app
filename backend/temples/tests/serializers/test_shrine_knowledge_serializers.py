@@ -46,7 +46,10 @@ def test_shrine_detail_serializer_returns_empty_list_when_no_knowledge():
     assert data["histories"] == []
 
 
-def test_shrine_detail_serializer_returns_only_fact_ready_deities():
+def test_shrine_detail_serializer_returns_full_and_disputed_deities_only():
+    """PR-C4B1: full(source_confirmed/reviewed)とdisputedはDetailへ返る。
+    draft/unverified/outdated/rejectedはhiddenのまま返らない。
+    """
     shrine = _create_shrine()
     # Evidence Gateはstatus判定に加えてfact-ready Source Relationも要求するため、
     # 全候補へ共通のfact-ready Sourceを付与し、status差だけを検証対象にする。
@@ -70,10 +73,13 @@ def test_shrine_detail_serializer_returns_only_fact_ready_deities():
 
     data = ShrineDetailSerializer(shrine).data
     names = {d["display_name"] for d in data["deities"]}
-    assert names == {"確認済み祭神", "レビュー済み祭神"}
+    assert names == {"確認済み祭神", "レビュー済み祭神", "矛盾祭神"}
+    disputed = next(d for d in data["deities"] if d["display_name"] == "矛盾祭神")
+    assert disputed["verification_status"] == "disputed"
 
 
-def test_shrine_detail_serializer_returns_only_fact_ready_histories():
+def test_shrine_detail_serializer_returns_full_and_disputed_histories_only():
+    """PR-C4B1: full(source_confirmed/reviewed)とdisputedはDetailへ返る。draftは返らない。"""
     shrine = _create_shrine()
     source = ShrineKnowledgeSource.objects.create(
         source_type="shrine_official",
@@ -91,7 +97,25 @@ def test_shrine_detail_serializer_returns_only_fact_ready_histories():
 
     data = ShrineDetailSerializer(shrine).data
     titles = {h["title"] for h in data["histories"]}
-    assert titles == {"確認済み由緒"}
+    assert titles == {"確認済み由緒", "矛盾由緒"}
+    disputed = next(h for h in data["histories"] if h["title"] == "矛盾由緒")
+    assert disputed["verification_status"] == "disputed"
+
+
+def test_shrine_detail_serializer_hides_disputed_deity_without_ready_source():
+    """PR-C4B1: disputedでもfact-ready Sourceが無ければhidden(非表示)のまま。"""
+    shrine = _create_shrine()
+    deity = _create_deity(shrine, "disputed", display_name="Sourceなし矛盾祭神")
+    deity.sources.add(
+        ShrineKnowledgeSource.objects.create(
+            source_type="shrine_official",
+            title="draft出典",
+            verification_status="draft",
+        )
+    )
+
+    data = ShrineDetailSerializer(shrine).data
+    assert data["deities"] == []
 
 
 def test_shrine_detail_serializer_does_not_fallback_to_legacy_fields():

@@ -226,3 +226,153 @@ def test_shrine_detail_api_source_filtering_does_not_increase_query_count():
         f"expected source-level filtering via Prefetch to avoid N+1, "
         f"got {len(ctx.captured_queries)} queries"
     )
+
+
+# --- PR-C4B1: Shrine Detail Disputed Display Policy ---
+
+
+def test_shrine_detail_api_returns_disputed_deity_with_ready_source():
+    shrine = _create_shrine()
+    deity = _create_deity(shrine, "disputed", display_name="矛盾祭神", confidence="high")
+    deity.sources.add(_create_source("source_confirmed"))
+
+    client = APIClient()
+    resp = client.get(f"/api/shrines/{shrine.id}/")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert len(body["deities"]) == 1
+    disputed = body["deities"][0]
+    assert disputed["display_name"] == "矛盾祭神"
+    assert disputed["verification_status"] == "disputed"
+    assert disputed["confidence"] == "high"
+    assert len(disputed["sources"]) == 1
+    assert disputed["sources"][0]["verification_status"] == "source_confirmed"
+
+
+def test_shrine_detail_api_returns_disputed_history_with_ready_source():
+    shrine = _create_shrine()
+    history = _create_history(
+        shrine, "disputed", title="矛盾由緒", content="内容", confidence="medium"
+    )
+    history.sources.add(_create_source("reviewed"))
+
+    client = APIClient()
+    resp = client.get(f"/api/shrines/{shrine.id}/")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert len(body["histories"]) == 1
+    disputed = body["histories"][0]
+    assert disputed["title"] == "矛盾由緒"
+    assert disputed["verification_status"] == "disputed"
+    assert disputed["confidence"] == "medium"
+    assert len(disputed["sources"]) == 1
+    assert disputed["sources"][0]["verification_status"] == "reviewed"
+
+
+def test_shrine_detail_api_hides_disputed_deity_without_ready_source():
+    shrine = _create_shrine()
+    deity = _create_deity(shrine, "disputed")
+    deity.sources.add(_create_source("draft"))
+
+    client = APIClient()
+    resp = client.get(f"/api/shrines/{shrine.id}/")
+
+    assert resp.status_code == 200
+    assert resp.json()["deities"] == []
+
+
+def test_shrine_detail_api_hides_disputed_history_without_any_source():
+    shrine = _create_shrine()
+    _create_history(shrine, "disputed")
+    # Sourceを一切Relationしない
+
+    client = APIClient()
+    resp = client.get(f"/api/shrines/{shrine.id}/")
+
+    assert resp.status_code == 200
+    assert resp.json()["histories"] == []
+
+
+def test_shrine_detail_api_excludes_non_ready_source_from_disputed_deity_nested_sources():
+    """disputed Factでも、nested sourcesにはfact-readyなSourceのみが露出する
+    （draft/unverified/disputed/outdated/rejectedのSourceは出ない）契約を維持する。
+    """
+    shrine = _create_shrine()
+    deity = _create_deity(shrine, "disputed")
+    ready_source = _create_source("source_confirmed", title="ready")
+    non_ready_source = _create_source("draft", title="non-ready")
+    deity.sources.add(ready_source, non_ready_source)
+
+    client = APIClient()
+    resp = client.get(f"/api/shrines/{shrine.id}/")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert len(body["deities"]) == 1
+    assert [s["verification_status"] for s in body["deities"][0]["sources"]] == ["source_confirmed"]
+
+
+def test_shrine_detail_api_lists_multiple_disputed_history_facts_independently():
+    """複数disputed Factが自動統合・自動グルーピングされず、個別に列挙される。"""
+    shrine = _create_shrine()
+    source = _create_source("source_confirmed")
+    history_a = _create_history(shrine, "disputed", sort_order=0, title="説A", content="説Aの内容")
+    history_b = _create_history(shrine, "disputed", sort_order=1, title="説B", content="説Bの内容")
+    history_a.sources.add(source)
+    history_b.sources.add(source)
+
+    client = APIClient()
+    resp = client.get(f"/api/shrines/{shrine.id}/")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert len(body["histories"]) == 2
+    titles = [h["title"] for h in body["histories"]]
+    assert titles == ["説A", "説B"]
+    contents = [h["content"] for h in body["histories"]]
+    assert contents == ["説Aの内容", "説Bの内容"]
+    for h in body["histories"]:
+        assert h["verification_status"] == "disputed"
+
+
+def test_shrine_detail_api_disputed_and_full_facts_coexist():
+    shrine = _create_shrine()
+    source = _create_source("source_confirmed")
+    full_deity = _create_deity(shrine, "source_confirmed", sort_order=0, display_name="確定祭神")
+    disputed_deity = _create_deity(shrine, "disputed", sort_order=1, display_name="矛盾祭神")
+    full_deity.sources.add(source)
+    disputed_deity.sources.add(source)
+
+    client = APIClient()
+    resp = client.get(f"/api/shrines/{shrine.id}/")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert len(body["deities"]) == 2
+    statuses = {d["display_name"]: d["verification_status"] for d in body["deities"]}
+    assert statuses == {"確定祭神": "source_confirmed", "矛盾祭神": "disputed"}
+
+
+def test_shrine_detail_api_disputed_does_not_increase_query_count():
+    shrine = _create_shrine()
+    source = _create_source("source_confirmed")
+    for i in range(5):
+        deity = _create_deity(shrine, "disputed", sort_order=i)
+        deity.sources.add(source)
+    for i in range(5):
+        history = _create_history(shrine, "disputed", sort_order=i)
+        history.sources.add(source)
+
+    client = APIClient()
+    with CaptureQueriesContext(connection) as ctx:
+        resp = client.get(f"/api/shrines/{shrine.id}/")
+    assert resp.status_code == 200
+    assert len(resp.json()["deities"]) == 5
+    assert len(resp.json()["histories"]) == 5
+
+    assert len(ctx.captured_queries) < 20, (
+        f"expected disputed candidates to reuse existing Prefetch structure, "
+        f"got {len(ctx.captured_queries)} queries"
+    )
