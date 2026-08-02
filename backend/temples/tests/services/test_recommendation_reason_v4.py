@@ -666,6 +666,172 @@ def test_build_recommendation_reason_v4_shrine_history_uses_background_copy_with
     assert "たの特徴" not in result["reason_text"]
 
 
+# --- PR-B: Knowledge Fact confidenceによるReason表現強度制御 ---
+
+
+def test_reason_v4_deity_confidence_high_uses_current_compatible_wording():
+    result = build_recommendation_reason_v4(
+        candidate_profile={"name": "テスト神社", "deity": "テスト祭神", "deity_confidence": "high"},
+    )
+
+    assert "テスト神社では、テスト祭神が祀られています。" in result["reason_text"]
+    assert result["fact"]["deity"] == "テスト祭神"
+
+
+def test_reason_v4_deity_confidence_medium_uses_weakened_wording():
+    result = build_recommendation_reason_v4(
+        candidate_profile={"name": "テスト神社", "deity": "テスト祭神", "deity_confidence": "medium"},
+    )
+
+    assert "テスト神社では、テスト祭神が祀られているとされています。" in result["reason_text"]
+    # Fact値自体は加工されない(文体を混ぜ込まない)
+    assert result["fact"]["deity"] == "テスト祭神"
+    assert "可能性があります" not in result["reason_text"]
+    assert "かもしれません" not in result["reason_text"]
+    assert "おそらく" not in result["reason_text"]
+    assert "。。" not in result["reason_text"]
+
+
+def test_reason_v4_deity_confidence_low_suppresses_knowledge_fact_from_reason():
+    result = build_recommendation_reason_v4(
+        candidate_profile={"name": "テスト神社", "deity": "テスト祭神", "deity_confidence": "low"},
+    )
+
+    assert "テスト祭神" not in result["reason_text"]
+    # Fact自体(fact.deity/used_fact.deity)もReason生成の出力からは無くなる
+    # (Detail API・DB・Knowledge selectorには影響しない。これはReason生成内部の話)。
+    assert result["fact"]["deity"] is None
+    assert result["used_fact"]["deity"] is None
+
+
+def test_reason_v4_deity_confidence_empty_string_uses_current_compatible_wording():
+    result = build_recommendation_reason_v4(
+        candidate_profile={"name": "テスト神社", "deity": "テスト祭神", "deity_confidence": ""},
+    )
+
+    assert "テスト神社では、テスト祭神が祀られています。" in result["reason_text"]
+    assert result["fact"]["deity"] == "テスト祭神"
+
+
+def test_reason_v4_deity_confidence_missing_key_uses_current_compatible_wording():
+    """deity_confidence未指定(既存呼び出し互換)は現行のassertive表現のまま。"""
+    result = build_recommendation_reason_v4(
+        candidate_profile={"name": "テスト神社", "deity": "テスト祭神"},
+    )
+
+    assert "テスト神社では、テスト祭神が祀られています。" in result["reason_text"]
+
+
+def test_reason_v4_shrine_history_confidence_high_uses_current_compatible_wording():
+    result = build_recommendation_reason_v4(
+        candidate_profile={
+            "name": "テスト神社",
+            "shrine_history": "戦災で焼失した後、氏子により再建された",
+            "shrine_history_confidence": "high",
+        },
+    )
+
+    assert (
+        "テスト神社には、戦災で焼失した後、氏子により再建されたという背景があります。"
+        in result["reason_text"]
+    )
+
+
+def test_reason_v4_shrine_history_confidence_medium_uses_weakened_wording():
+    result = build_recommendation_reason_v4(
+        candidate_profile={
+            "name": "テスト神社",
+            "shrine_history": "戦災で焼失した後、氏子により再建された",
+            "shrine_history_confidence": "medium",
+        },
+    )
+
+    assert (
+        "テスト神社には、戦災で焼失した後、氏子により再建されたと伝えられています。"
+        in result["reason_text"]
+    )
+    assert result["fact"]["shrine_history"] == "戦災で焼失した後、氏子により再建された"
+    assert "。。" not in result["reason_text"]
+
+
+def test_reason_v4_shrine_history_confidence_low_suppresses_knowledge_fact_from_reason():
+    result = build_recommendation_reason_v4(
+        candidate_profile={
+            "name": "テスト神社",
+            "shrine_history": "戦災で焼失した後、氏子により再建された",
+            "shrine_history_confidence": "low",
+        },
+    )
+
+    assert "戦災で焼失した後" not in result["reason_text"]
+    assert result["fact"]["shrine_history"] is None
+    assert result["used_fact"]["shrine_history"] is None
+    # deity/shrine_history両方無い場合の既存fallback文言へ落ちる
+    assert "神社固有情報が十分でないため" in result["reason_text"]
+
+
+def test_reason_v4_shrine_history_confidence_empty_string_uses_current_compatible_wording():
+    result = build_recommendation_reason_v4(
+        candidate_profile={
+            "name": "テスト神社",
+            "shrine_history": "戦災で焼失した後、氏子により再建された",
+            "shrine_history_confidence": "",
+        },
+    )
+
+    assert (
+        "テスト神社には、戦災で焼失した後、氏子により再建されたという背景があります。"
+        in result["reason_text"]
+    )
+
+
+def test_reason_v4_low_deity_falls_through_to_high_shrine_history():
+    """deityがlowでsuppressされても、shrine_historyが別confidenceなら独立してFactとして使われる。"""
+    result = build_recommendation_reason_v4(
+        candidate_profile={
+            "name": "テスト神社",
+            "deity": "テスト祭神",
+            "deity_confidence": "low",
+            "shrine_history": "戦災で焼失した後、氏子により再建された",
+            "shrine_history_confidence": "high",
+        },
+    )
+
+    assert "テスト祭神" not in result["reason_text"]
+    assert (
+        "テスト神社には、戦災で焼失した後、氏子により再建されたという背景があります。"
+        in result["reason_text"]
+    )
+
+
+def test_reason_v4_fact_schema_unchanged_when_confidence_fields_present():
+    """confidence関連fieldはfact dictへ混入しない(公開Schema不変)。"""
+    result = build_recommendation_reason_v4(
+        candidate_profile={
+            "name": "テスト神社",
+            "deity": "テスト祭神",
+            "deity_confidence": "medium",
+            "shrine_history": "背景",
+            "shrine_history_confidence": "low",
+        },
+    )
+
+    assert set(result["fact"].keys()) == {
+        "label",
+        "name",
+        "deity",
+        "shrine_history",
+        "place_context",
+        "history_theme",
+        "goriyaku",
+        "visit_style_tags",
+        "evidence",
+    }
+    assert "reason_strength" not in result["fact"]
+    assert "confidence" not in result["fact"]
+    assert "deity_confidence" not in result["fact"]
+
+
 def test_build_recommendation_reason_v4_all_facts_present_prioritizes_deity_and_excludes_place_context():
     result = build_recommendation_reason_v4(
         candidate_profile={

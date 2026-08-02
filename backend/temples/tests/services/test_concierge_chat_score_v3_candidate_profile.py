@@ -362,3 +362,161 @@ def test_candidate_profile_zero_knowledge_shrine_matches_legacy_output():
     assert profile_a["shrine_history"] is None
     assert profile_a["deity"] == profile_b["deity"]
     assert profile_a["shrine_history"] == profile_b["shrine_history"]
+
+
+# --- PR-B: confidence伝播 ---
+
+
+def test_candidate_profile_deity_confidence_is_propagated_from_single_knowledge_deity():
+    rec = {
+        "shrine_id": 1,
+        "knowledge_deities": [{"display_name": "明治天皇", "sort_order": 0, "confidence": "high"}],
+    }
+
+    profile = _build_score_v3_candidate_profile(rec)
+
+    assert profile["deity_confidence"] == "high"
+
+
+def test_candidate_profile_deity_confidence_is_propagated_when_all_deities_share_same_value():
+    rec = {
+        "shrine_id": 50,
+        "knowledge_deities": [
+            {"display_name": "天比理乃咩命", "sort_order": 0, "confidence": "medium"},
+            {"display_name": "宇賀之売命", "sort_order": 1, "confidence": "medium"},
+            {"display_name": "素盞嗚尊", "sort_order": 2, "confidence": "medium"},
+        ],
+    }
+
+    profile = _build_score_v3_candidate_profile(rec)
+
+    assert profile["deity_confidence"] == "medium"
+
+
+def test_candidate_profile_deity_confidence_is_none_when_mixed_across_deities():
+    """複数Deityでconfidenceが混在する場合の集約ルールは契約上未確定のため、
+    勝手にmin/max/average等を採用せず、Noneへ倒す(=Reason側はassertive/現行互換扱い)。
+    """
+    rec = {
+        "shrine_id": 1,
+        "knowledge_deities": [
+            {"display_name": "A神", "sort_order": 0, "confidence": "high"},
+            {"display_name": "B神", "sort_order": 1, "confidence": "low"},
+        ],
+    }
+
+    profile = _build_score_v3_candidate_profile(rec)
+
+    assert profile["deity_confidence"] is None
+    # 集約せず(=特定の値を選ばず)Noneへ倒しているだけで、両Deityの名前は
+    # 引き続き結合される(usable Factが消えるわけではない)。
+    assert profile["deity"] == "A神、B神"
+
+
+def test_candidate_profile_deity_confidence_is_none_when_unset():
+    rec = {
+        "shrine_id": 1,
+        "knowledge_deities": [{"display_name": "明治天皇", "sort_order": 0}],
+    }
+
+    profile = _build_score_v3_candidate_profile(rec)
+
+    assert profile["deity_confidence"] is None
+
+
+def test_candidate_profile_deity_confidence_is_none_when_legacy_fallback():
+    """Legacy(sajin)Fieldにはconfidence概念が存在しないため常にNone。"""
+    rec = {"shrine_id": 1, "sajin": "レガシー祭神", "knowledge_deities": []}
+
+    profile = _build_score_v3_candidate_profile(rec)
+
+    assert profile["deity"] == "レガシー祭神"
+    assert profile["deity_confidence"] is None
+
+
+def test_candidate_profile_shrine_history_confidence_is_propagated_from_selected_history():
+    rec = {
+        "shrine_id": 1,
+        "knowledge_histories": [
+            {
+                "history_type": "official_origin",
+                "content": "明治神宮は、東京都渋谷区代々木に大正9年（1920）に創建された。",
+                "sort_order": 0,
+                "confidence": "high",
+            }
+        ],
+    }
+
+    profile = _build_score_v3_candidate_profile(rec)
+
+    assert profile["shrine_history_confidence"] == "high"
+
+
+def test_candidate_profile_shrine_history_confidence_matches_the_selected_history_only():
+    """sort_order最小の1件のconfidenceのみを採用し、他Historyのconfidenceを混ぜない。"""
+    rec = {
+        "shrine_id": 50,
+        "knowledge_histories": [
+            {
+                "history_type": "historical_event",
+                "content": "二階堂道蘊公が宇賀之売命を祀った。",
+                "sort_order": 1,
+                "confidence": "low",
+            },
+            {
+                "history_type": "founding",
+                "content": "源頼朝公が安房国の洲崎明神から天比理乃咩命を当地に迎えた。",
+                "sort_order": 0,
+                "confidence": "medium",
+            },
+        ],
+    }
+
+    profile = _build_score_v3_candidate_profile(rec)
+
+    assert profile["shrine_history"] == "源頼朝公が安房国の洲崎明神から天比理乃咩命を当地に迎えた。"
+    assert profile["shrine_history_confidence"] == "medium"
+
+
+def test_candidate_profile_shrine_history_confidence_is_none_when_unset():
+    rec = {
+        "shrine_id": 1,
+        "knowledge_histories": [{"history_type": "official_origin", "content": "由緒", "sort_order": 0}],
+    }
+
+    profile = _build_score_v3_candidate_profile(rec)
+
+    assert profile["shrine_history_confidence"] is None
+
+
+def test_candidate_profile_shrine_history_confidence_is_none_when_legacy_fallback():
+    """Legacy(description)Fieldにはconfidence概念が存在しないため常にNone。"""
+    rec = {"shrine_id": 1, "description": "レガシー由緒", "knowledge_histories": []}
+
+    profile = _build_score_v3_candidate_profile(rec)
+
+    assert profile["shrine_history"] == "レガシー由緒"
+    assert profile["shrine_history_confidence"] is None
+
+
+def test_candidate_profile_pilot_1_meiji_jingu_confidence_is_high():
+    rec = {
+        "shrine_id": 1,
+        "knowledge_deities": [
+            {"display_name": "明治天皇", "sort_order": 0, "confidence": "high"},
+            {"display_name": "昭憲皇太后", "sort_order": 1, "confidence": "high"},
+        ],
+        "knowledge_histories": [
+            {
+                "history_type": "official_origin",
+                "content": "明治神宮は、東京都渋谷区代々木に大正9年（1920）に創建された。",
+                "sort_order": 0,
+                "confidence": "high",
+            }
+        ],
+    }
+
+    profile = _build_score_v3_candidate_profile(rec)
+
+    assert profile["deity_confidence"] == "high"
+    assert profile["shrine_history_confidence"] == "high"

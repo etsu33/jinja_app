@@ -312,11 +312,31 @@ def _join_knowledge_deity_names(knowledge_deities: Any) -> str | None:
     return "、".join(names) if names else None
 
 
-def _pick_primary_knowledge_history_content(knowledge_histories: Any) -> str | None:
-    """Fact-ready ShrineHistoryのうち、sort_order最小の1件のcontentのみを採用する。
+def _resolve_knowledge_deity_confidence(knowledge_deities: Any) -> str | None:
+    """`_join_knowledge_deity_names()`が連結するのと同じDeity集合のconfidenceを返す。
 
-    history_typeによる独自の優先順位（founding優先等）は今回導入しない。
-    複数Historyの結合も今回は行わない。
+    全Deityのconfidenceが一致する場合のみその値を返す。以下はいずれもNoneを返す
+    （PR-B契約: 集約ルールが未確定なため、min/max/average/majority等を独自に
+    作らず、Noneを「現行互換の通常表現(assertive)」として扱う）。
+    - 対象Deityが1件もconfidenceを設定していない（空文字のみ）場合
+    - 複数DeityでconfidenceがHigh/Medium/Low等に混在している場合
+    """
+    if not isinstance(knowledge_deities, list):
+        return None
+    items = [d for d in knowledge_deities if isinstance(d, dict) and str(d.get("display_name") or "").strip()]
+    if not items:
+        return None
+    confidences = {str(d.get("confidence") or "").strip() for d in items}
+    if len(confidences) == 1:
+        value = confidences.pop()
+        return value or None
+    return None
+
+
+def _pick_primary_knowledge_history_item(knowledge_histories: Any) -> dict[str, Any] | None:
+    """`_pick_primary_knowledge_history_content()`と同じ基準でFact-ready ShrineHistory
+    1件（dict全体）を選定する。content用confidence用で選定ロジックを重複させず、
+    常に同一のHistoryを参照させるための共通ヘルパー。
     """
     if not isinstance(knowledge_histories, list):
         return None
@@ -324,7 +344,29 @@ def _pick_primary_knowledge_history_content(knowledge_histories: Any) -> str | N
     if not items:
         return None
     ordered = sorted(items, key=lambda h: h.get("sort_order") if isinstance(h.get("sort_order"), int) else 0)
-    return str(ordered[0]["content"]).strip()
+    return ordered[0]
+
+
+def _pick_primary_knowledge_history_content(knowledge_histories: Any) -> str | None:
+    """Fact-ready ShrineHistoryのうち、sort_order最小の1件のcontentのみを採用する。
+
+    history_typeによる独自の優先順位（founding優先等）は今回導入しない。
+    複数Historyの結合も今回は行わない。
+    """
+    item = _pick_primary_knowledge_history_item(knowledge_histories)
+    if item is None:
+        return None
+    return str(item["content"]).strip()
+
+
+def _pick_primary_knowledge_history_confidence(knowledge_histories: Any) -> str | None:
+    """`_pick_primary_knowledge_history_content()`が採用するのと同じHistory 1件の
+    confidenceを返す。別Historyのconfidenceを混ぜない（PR-B契約）。
+    """
+    item = _pick_primary_knowledge_history_item(knowledge_histories)
+    if item is None:
+        return None
+    return str(item.get("confidence") or "").strip() or None
 
 
 def _build_score_v3_candidate_profile(rec: dict[str, Any]) -> dict[str, Any]:
@@ -337,6 +379,21 @@ def _build_score_v3_candidate_profile(rec: dict[str, Any]) -> dict[str, Any]:
     knowledge_deity_names = _join_knowledge_deity_names(rec.get("knowledge_deities"))
     knowledge_history_content = _pick_primary_knowledge_history_content(rec.get("knowledge_histories"))
 
+    # confidenceはKnowledge Fact（新）を実際に採用した場合のみ意味を持つ。
+    # Legacy（sajin/description）へfallbackした場合、Legacy FieldにはKnowledge
+    # confidence概念が存在しないため常にNone（= PR-B契約: Legacy fallbackには
+    # confidenceによる表現制御を適用しない）。
+    deity_confidence = (
+        _resolve_knowledge_deity_confidence(rec.get("knowledge_deities"))
+        if knowledge_deity_names is not None
+        else None
+    )
+    shrine_history_confidence = (
+        _pick_primary_knowledge_history_confidence(rec.get("knowledge_histories"))
+        if knowledge_history_content is not None
+        else None
+    )
+
     return {
         "shrine_id": rec.get("shrine_id") or rec.get("id") or source.get("shrineId"),
         "name": rec.get("name") or source.get("nameJp"),
@@ -348,7 +405,11 @@ def _build_score_v3_candidate_profile(rec: dict[str, Any]) -> dict[str, Any]:
         # 存在しない場合のみLegacy（sajin/description）へfallbackする。
         # 新KnowledgeとLegacyを同一field内で混在させない（片方の値のみを採用する）。
         "deity": knowledge_deity_names if knowledge_deity_names is not None else (rec.get("sajin") or source.get("sajin")),
+        # PR-B: Knowledge Fact confidence（high/medium/low/空）をそのままcandidate_profileへ
+        # 保持する。文字列（"deity"）自体へ文体を混ぜ込まず、強度情報は別fieldに分離する。
+        "deity_confidence": deity_confidence,
         "shrine_history": knowledge_history_content if knowledge_history_content is not None else (rec.get("description") or source.get("description")),
+        "shrine_history_confidence": shrine_history_confidence,
         "place_context": rec.get("address") or source.get("address"),
         "place_id": rec.get("place_id"),
         "behavior_signals": rec.get("behavior_signals") if isinstance(rec.get("behavior_signals"), dict) else {},
