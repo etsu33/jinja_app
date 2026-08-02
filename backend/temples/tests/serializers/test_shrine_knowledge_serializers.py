@@ -48,13 +48,25 @@ def test_shrine_detail_serializer_returns_empty_list_when_no_knowledge():
 
 def test_shrine_detail_serializer_returns_only_fact_ready_deities():
     shrine = _create_shrine()
-    _create_deity(shrine, "source_confirmed", display_name="確認済み祭神")
-    _create_deity(shrine, "reviewed", display_name="レビュー済み祭神")
-    _create_deity(shrine, "draft", display_name="下書き祭神")
-    _create_deity(shrine, "unverified", display_name="未確認祭神")
-    _create_deity(shrine, "disputed", display_name="矛盾祭神")
-    _create_deity(shrine, "outdated", display_name="陳腐化祭神")
-    _create_deity(shrine, "rejected", display_name="却下祭神")
+    # Evidence Gateはstatus判定に加えてfact-ready Source Relationも要求するため、
+    # 全候補へ共通のfact-ready Sourceを付与し、status差だけを検証対象にする。
+    source = ShrineKnowledgeSource.objects.create(
+        source_type="shrine_official",
+        title="共通出典",
+        verification_status="source_confirmed",
+        verified_at=timezone.now(),
+    )
+    for verification_status, name in [
+        ("source_confirmed", "確認済み祭神"),
+        ("reviewed", "レビュー済み祭神"),
+        ("draft", "下書き祭神"),
+        ("unverified", "未確認祭神"),
+        ("disputed", "矛盾祭神"),
+        ("outdated", "陳腐化祭神"),
+        ("rejected", "却下祭神"),
+    ]:
+        deity = _create_deity(shrine, verification_status, display_name=name)
+        deity.sources.add(source)
 
     data = ShrineDetailSerializer(shrine).data
     names = {d["display_name"] for d in data["deities"]}
@@ -63,9 +75,19 @@ def test_shrine_detail_serializer_returns_only_fact_ready_deities():
 
 def test_shrine_detail_serializer_returns_only_fact_ready_histories():
     shrine = _create_shrine()
-    _create_history(shrine, "source_confirmed", title="確認済み由緒")
-    _create_history(shrine, "draft", title="下書き由緒")
-    _create_history(shrine, "disputed", title="矛盾由緒")
+    source = ShrineKnowledgeSource.objects.create(
+        source_type="shrine_official",
+        title="共通出典",
+        verification_status="source_confirmed",
+        verified_at=timezone.now(),
+    )
+    for verification_status, title in [
+        ("source_confirmed", "確認済み由緒"),
+        ("draft", "下書き由緒"),
+        ("disputed", "矛盾由緒"),
+    ]:
+        history = _create_history(shrine, verification_status, title=title)
+        history.sources.add(source)
 
     data = ShrineDetailSerializer(shrine).data
     titles = {h["title"] for h in data["histories"]}

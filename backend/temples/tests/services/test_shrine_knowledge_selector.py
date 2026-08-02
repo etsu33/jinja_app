@@ -135,7 +135,10 @@ def test_fetch_fact_ready_knowledge_deities_batches_across_multiple_shrines_with
         result = fetch_fact_ready_knowledge_deities([s.id for s in shrines])
 
     assert all(len(result.get(s.id, [])) == 1 for s in shrines)
-    assert len(ctx.captured_queries) == 1
+    # Evidence Gate導入後は「候補Deity取得」+「fact-ready Source prefetch」の
+    # 合計2クエリで、対象Shrine数に関わらず一定であることを確認する
+    # （N+1になっていないことが本質であり、クエリ数そのものは1固定ではない）。
+    assert len(ctx.captured_queries) == 2
 
 
 def test_fetch_fact_ready_knowledge_deities_empty_shrine_ids_returns_empty_dict():
@@ -205,7 +208,10 @@ def test_fetch_fact_ready_knowledge_histories_batches_across_multiple_shrines_wi
         result = fetch_fact_ready_knowledge_histories([s.id for s in shrines])
 
     assert all(len(result.get(s.id, [])) == 1 for s in shrines)
-    assert len(ctx.captured_queries) == 1
+    # Evidence Gate導入後は「候補History取得」+「fact-ready Source prefetch」の
+    # 合計2クエリで、対象Shrine数に関わらず一定であることを確認する
+    # （N+1になっていないことが本質であり、クエリ数そのものは1固定ではない）。
+    assert len(ctx.captured_queries) == 2
 
 
 def test_fetch_fact_ready_knowledge_histories_empty_shrine_ids_returns_empty_dict():
