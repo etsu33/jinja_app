@@ -127,10 +127,39 @@ def _copy_for_key(mapping: dict[str, str], key: str | None) -> str | None:
     return mapping.get(key, key)
 
 
-def _build_fact(candidate_profile: dict[str, Any], meaning_translation: dict[str, Any]) -> dict[str, Any]:
+# PR-B: Knowledge Fact confidence(high/medium/low)からRecommendation Reasonの
+# 表現強度への変換。Evidence Gate(temples.services.evidence_gate)のusable判定には
+# 一切影響しない、Reason生成内部だけで完結する変換であることに注意。
+_CONFIDENCE_TO_REASON_STRENGTH: dict[str, str] = {
+    "high": "assertive",
+    "medium": "weakened",
+    "low": "suppressed",
+}
+
+
+def _reason_strength_from_confidence(confidence: Any) -> str:
+    """confidence(""/None/未知の値を含む)をreason_strengthへ変換する。
+
+    空文字・None・未知の値は全て"assertive"(現行互換の通常表現)とする。
+    これはconfidence未設定を"high"の意味へ格上げするものではなく、単に
+    PR-A以前からの既存Reason文体を変更しないための後方互換上の選択。
+    """
+    if isinstance(confidence, str) and confidence in _CONFIDENCE_TO_REASON_STRENGTH:
+        return _CONFIDENCE_TO_REASON_STRENGTH[confidence]
+    return "assertive"
+
+
+def _build_fact(
+    candidate_profile: dict[str, Any], meaning_translation: dict[str, Any]
+) -> tuple[dict[str, Any], dict[str, str]]:
     """Build the Fact layer from shrine-side information only.
 
     Fact must not interpret the user's state or suggest the next action.
+
+    Returns a tuple of (fact, reason_strength). `fact`のkey構成はPR-B以前と
+    完全に同一（reason_strengthをfact dictへは混ぜない）。reason_strengthは
+    `_build_fact_text()`がテンプレート選択にのみ使う内部専用の値であり、
+    RecommendationReasonV4の公開dictへは含めない。
     """
     history_theme = _first_string(candidate_profile.get("history_theme"), meaning_translation.get("history_theme"))
     deity = _first_string(candidate_profile.get("deity"), candidate_profile.get("main_deity"), candidate_profile.get("enshrined_deity"))
@@ -139,6 +168,18 @@ def _build_fact(candidate_profile: dict[str, Any], meaning_translation: dict[str
     goriyaku = _first_string(candidate_profile.get("goriyaku"), candidate_profile.get("goriyaku_tags"))
     visit_style_tags = _as_list(candidate_profile.get("visit_style_tags"))
     name = _first_string(candidate_profile.get("name"))
+
+    deity_reason_strength = _reason_strength_from_confidence(candidate_profile.get("deity_confidence"))
+    shrine_history_reason_strength = _reason_strength_from_confidence(candidate_profile.get("shrine_history_confidence"))
+
+    # confidence=low(suppressed)のKnowledge Factは、Recommendation Reason
+    # （fact/evidence/used_fact/quality監査を含む）へ一切使用しない。
+    # EvidenceDecision.usable自体は変えない。DB・Knowledge selector・Detail APIには
+    # 影響しない（Reason生成内部だけのsuppression）。
+    if deity_reason_strength == "suppressed":
+        deity = None
+    if shrine_history_reason_strength == "suppressed":
+        shrine_history = None
 
     # label は互換目的の補助フィールド（既存テスト・evidence表示のみで参照）。
     # _build_reason_text の主判定には使用しない。place_context(住所)を含む算出方法は
@@ -162,7 +203,7 @@ def _build_fact(candidate_profile: dict[str, Any], meaning_translation: dict[str
     if name:
         evidence.append(f"name:{name}")
 
-    return {
+    fact = {
         "label": label,
         "name": name,
         "deity": deity,
@@ -173,6 +214,11 @@ def _build_fact(candidate_profile: dict[str, Any], meaning_translation: dict[str
         "visit_style_tags": visit_style_tags,
         "evidence": evidence,
     }
+    reason_strength = {
+        "deity": deity_reason_strength,
+        "shrine_history": shrine_history_reason_strength,
+    }
+    return fact, reason_strength
 
 
 def _build_used_fact(fact: dict[str, Any]) -> dict[str, Any]:
@@ -425,7 +471,7 @@ def build_recommendation_reason_quality_audit(reason: dict[str, Any]) -> dict[st
     }
 
 
-def _build_fact_text(fact: dict[str, Any]) -> str:
+def _build_fact_text(fact: dict[str, Any], reason_strength: dict[str, str] | None = None) -> str:
     """Compose the Fact sentence by branching on Fact type.
 
     Each Fact type (deity / shrine_history / goriyaku / history_theme) has its own
@@ -433,7 +479,13 @@ def _build_fact_text(fact: dict[str, Any]) -> str:
     place_context (raw address) is never used as the sentence subject: an address is
     not a shrine-specific feature, and stating "shrine X has the feature of <address>"
     reads as broken Japanese and misrepresents empty Fact data as grounded content.
+
+    `reason_strength`（PR-B）はKnowledge Fact confidenceから変換された表現強度
+    （"assertive"/"weakened"/"suppressed"）。fact["deity"]/fact["shrine_history"]は
+    suppressed時点で既にNoneになっている（`_build_fact()`側で処理済み）ため、ここでは
+    "weakened"時のみ文体を変える。値そのものは一切加工しない。
     """
+    strength = reason_strength or {}
     fact_name = _first_string(fact.get("name"))
     fact_deity = _first_string(fact.get("deity"))
     fact_shrine_history = _first_string(fact.get("shrine_history"))
@@ -445,12 +497,18 @@ def _build_fact_text(fact: dict[str, Any]) -> str:
     fact_details: list[str] = []
 
     if fact_deity:
-        fact_text = f"{subject}では、{fact_deity}が祀られています。"
+        if strength.get("deity") == "weakened":
+            fact_text = f"{subject}では、{fact_deity}が祀られているとされています。"
+        else:
+            fact_text = f"{subject}では、{fact_deity}が祀られています。"
         if fact_goriyaku:
             fact_details.append(f"{fact_goriyaku}の要素")
     elif fact_shrine_history:
         history_text = fact_shrine_history.rstrip("。")
-        fact_text = f"{subject}には、{history_text}という背景があります。"
+        if strength.get("shrine_history") == "weakened":
+            fact_text = f"{subject}には、{history_text}と伝えられています。"
+        else:
+            fact_text = f"{subject}には、{history_text}という背景があります。"
         if fact_goriyaku:
             fact_details.append(f"{fact_goriyaku}の要素")
     elif fact_goriyaku:
@@ -459,6 +517,7 @@ def _build_fact_text(fact: dict[str, Any]) -> str:
         fact_text = f"{subject}は、{fact_history_theme}という文脈で整理されています。"
     else:
         # deity / shrine_history / goriyaku / history_theme が一つもない場合。
+        # （confidence=lowによりsuppressされた場合を含む。）
         # place_context(住所)や神社名だけでは神社固有Factがあるとは表現しない。
         fact_text = "神社固有情報が十分でないため、相談条件との一致を中心に整理しています。"
 
@@ -472,12 +531,17 @@ def _build_fact_text(fact: dict[str, Any]) -> str:
     return fact_text
 
 
-def _build_reason_text(fact: dict[str, Any], interpretation: dict[str, Any], action: dict[str, Any]) -> str:
+def _build_reason_text(
+    fact: dict[str, Any],
+    interpretation: dict[str, Any],
+    action: dict[str, Any],
+    reason_strength: dict[str, str] | None = None,
+) -> str:
     """Compose reason_text as Fact -> Interpretation -> Action.
 
     Keep each sentence responsible for one layer only.
     """
-    fact_text = _build_fact_text(fact)
+    fact_text = _build_fact_text(fact, reason_strength)
     interpretation_text = _first_string(interpretation.get("text")) or "相談内容から、今扱いたいテーマを読み取っています。"
     action_text = _first_string(action.get("text")) or "次に確認したいことを一つだけ決めます。"
 
@@ -503,7 +567,7 @@ def build_recommendation_reason_v4(
     meaning = _as_dict(meaning_translation) or _as_dict(recommendation_input.get("translation_result"))
     candidate = _as_dict(candidate_profile) or _as_dict(recommendation_input.get("candidate_profile"))
 
-    fact = _build_fact(candidate, meaning)
+    fact, reason_strength = _build_fact(candidate, meaning)
     interpretation_layer = _build_interpretation(interpretation, meaning)
     action = _build_action(interpretation, meaning)
     used_fact = _build_used_fact(fact)
@@ -511,7 +575,7 @@ def build_recommendation_reason_v4(
     used_action = _build_used_action(interpretation, meaning, action)
 
     reason = RecommendationReasonV4(
-        reason_text=_build_reason_text(fact, interpretation_layer, action),
+        reason_text=_build_reason_text(fact, interpretation_layer, action, reason_strength),
         fact=fact,
         interpretation=interpretation_layer,
         action=action,
