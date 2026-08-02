@@ -7,6 +7,8 @@
 > 本書はDocsのみのPRとして作成された。コード・Model・Migration・Serializer・Admin・DBデータの変更は一切含まない。記載内容のうちTo-Beと明記した項目は設計方針であり、実装済みであることを意味しない。Model選択・Pilot対象神社・enum最終確定は母艦判断へ差し戻す（本書作成時点＝As-Is）。
 >
 > **現在（2026-08-01時点）の状況**: 本書「Model選択肢比較」の案4（別Model）が母艦判断で採用され、`ShrineDeity` / `ShrineHistory` / `ShrineKnowledgeSource`として`feature/shrine-knowledge-model-foundation`（PR #2221）で実装され、`develop`へマージ済みである。また明治神宮1社を対象にReal Data Pilot #1をAdmin経由で実施済み（詳細は`docs/audit/shrine-knowledge-real-data-pilot-1.md`）。ただしEvidence Gate・Recommendation・Score・Web/Mobileへの接続は本書作成時点から変わらず未実装であり、3〜5社規模のPilot本体（PR3相当）・105件Rollout（PR4相当）・Foundationの100%完了判定も未確定のまま母艦判断待ちである。以下の本文はPR2219系列作成時点のAs-Isを保持し、書き換えていない。
+>
+> **追記（2026-08-02時点）**: 上記注記の後、Evidence Gate（PR2相当）はPR-A（`verification_status`によるFact利用可否判定の一本化、PR #2227）とPR-B（Fact confidenceによるRecommendation Reason表現強度制御、PR #2228・follow-up #2229）として`develop`へ実装・マージ済みである。ShrineDeity/ShrineHistoryの`confidence`（high/medium/low/未設定）はRecommendation Reasonの表現強度（assertive/weakened/suppressed/legacy-compatible）へ接続済み。一方、`ShrineKnowledgeSource.confidence`（Source自体の信頼度）・複数Source間のconfidence集約・Conflicting Evidence（Source間の明示的な矛盾表現）は本追記時点でも未接続のままであり、PR-C1（Source Confidence Contract、本書「Source Confidence Contract」節を参照）で契約のみ整理し、実装はさらに後続PRへ委ねている。Shrine Detail APIへの表示・Score/Rankingへの接続は引き続き未実装。
 
 # Shrine Knowledge Contract
 
@@ -465,6 +467,12 @@ Web出典のみを前提にしない。以下を扱えるようにする。
 | 複数Source一致度から算出 | 同一項目に複数Sourceが存在する場合、内容の一致度から算出する |
 | 複合方式 | 上記を組み合わせる（例: Source typeを基準値とし、verification_statusで補正する） |
 
+> **追記（PR-C1、2026-08-02時点）**: 上記`confidence`は`ShrineDeity`/`ShrineHistory`（Fact自身）と`ShrineKnowledgeSource`（Source自身）の双方が個別に持つ同名フィールドであり、意味が異なる。
+>
+> - **Fact confidence**（`ShrineDeity.confidence`/`ShrineHistory.confidence`）: Evidence Gate PR-Bで実装済み。Recommendation Reasonの表現強度（high→assertive/現行文言、medium→weakened/限定表現、low→suppressed/Knowledge Factとして使用しない、未設定→legacy-compatible/現行互換の通常表現）へ接続されている。Fact利用可否（usable判定）そのものには使わない。
+> - **Source confidence**（`ShrineKnowledgeSource.confidence`）: PR-C1時点で以下のいずれにも使わないと確定する。Evidence usable判定、Recommendation Reason表現強度、Score/Ranking。Source confidenceからFact confidenceへの自動変換も行わない（上表の「Source typeによる基準値」「複数Source一致度から算出」「複合方式」はいずれも未採用のままの候補であり、Source confidence自体をどう算出・利用するかは引き続き未確定）。
+> - 上表の「利用先」のうち、`data_confidence_score`（Score軸）は今回も対象外のまま。数値閾値も導入していない（PR-Bはcategorical値(high/medium/low)をそのままReason表現強度へ対応させており、数値閾値を持たない）。
+
 ### 情報矛盾時
 
 - 矛盾するSourceを削除せず保持する（片方を消して整合性があるように見せない）
@@ -489,6 +497,74 @@ Web出典のみを前提にしない。以下を扱えるようにする。
 9. AI Generated Draft（`ai_generated_draft`。Sourceとしての独立した信頼性は最も低い）
 
 **重要な例外**: 神社公式の記述であっても、その中に伝承（`tradition`）が含まれる場合は、公式Sourceであることが伝承を史実へ格上げする根拠にはならない。史実と伝承の分類は、Source種別の優先順位とは独立して行う。
+
+> **追記（PR-C1、2026-08-02時点）**: 上記の優先順位は「情報確認時にどのSourceを先に当たるか・優先して参照するか」という運用上の原則であり、`confidence`の自動算出式ではない。したがって以下を明確にする。
+>
+> - `source_type: shrine_official`だからといって、そのSourceの`confidence`が自動的に`high`になるわけではない
+> - `source_type: government`だからといって、そのSourceの`confidence`が自動的に`high`になるわけではない
+> - `source_type`の値だけから`confidence`を自動設定する処理は行わない（Evidence Gate・Recommendation双方に、`source_type`から`confidence`を導出するロジックは実装されていない。`source_type`単体で`confidence`を推測することを禁止する）
+> - 上記「重要な例外」（公式Source内の伝承は公式であることだけで史実にならない）は、confidenceについても同様に適用される。公式Sourceであることは高confidenceの根拠にならない
+
+## Source Confidence Contract（PR-C1、2026-08-02追加）
+
+> **Status**: 契約確定のみ。コード実装は伴わない（PR-C1はDocsのみのPR）。
+
+PR-A（`verification_status`によるFact利用可否の一本化）・PR-B（Fact confidenceによるRecommendation Reason表現強度制御）により、Knowledge Factの利用可否・表現強度は確定した。本節は、まだ未接続の`ShrineKnowledgeSource.confidence`（Source自身のconfidence）・複数Source間の集約・Conflicting Evidenceについて、実装せずに契約のみを整理する。
+
+### Source confidenceの現在の扱い
+
+`ShrineKnowledgeSource.confidence`は、個々の出典（Source）自体への信頼度metadataである。PR-C1時点で、以下のいずれにも使わないと確定する。
+
+- Evidence usable判定（`temples.services.evidence_gate.decide_fact_usability()`は`Source.verification_status`のみを参照し、`Source.confidence`は参照しない）
+- Recommendation Reason表現強度（表現強度はFact confidenceのみから決定する）
+- Score / Ranking
+- Fact confidenceへの自動変換（Source confidenceが高いからFact confidenceを引き上げる、といった自動反映は行わない）
+
+Source confidenceは、上記いずれとも独立したmetadataとして保存され続ける。将来これを利用する場合は、別途PR（後述PR-C5候補）で契約を確定してから実装する。
+
+### 複数Source confidenceの集約（未確定）
+
+1つのFactに複数Sourceが紐づき、それぞれのconfidenceが異なる場合（例: Source A=high, Source B=medium）の集約方式は、本書・実装のいずれにも存在しない。以下はいずれも**採用していない**候補である。
+
+- min（最も低い値を採用）
+- max（最も高い値を採用）
+- average（平均）
+- majority（多数決）
+- highest priority source（出典優先順位が最も高いSourceのconfidenceを採用）
+- official source override（`shrine_official`のconfidenceを優先）
+
+PR-C1では、これらのうちいずれか一つを新たに確定・実装することはしない。集約方式そのものが**未確定**であることを契約として明記するに留める。
+
+### Conflicting Evidenceの表現限界（現行Model）
+
+`ShrineDeity.sources` / `ShrineHistory.sources`は`ShrineKnowledgeSource`への`ManyToManyField`（`through`未指定の暗黙中間テーブル）であり、Relationの「意味」を保持するfieldを持たない。したがって現行Modelでは、以下の2つを区別できない。
+
+- 「SourceがそのFactへRelationされていない」（＝単に言及・確認していない）
+- 「SourceがそのFactを明示的に否定している」（＝内容を読んで矛盾すると判断した結果としての否定）
+
+`docs/audit/knowledge-model-pilot-2-shinagawa.md`（Pilot #2、品川神社）でも同様の指摘が既に記録されている（「『Source Bに書かれていない』ことと『Source BがSource Aを否定している』ことは分離する必要がある」）。この区別が必要なケースは、PR-C1時点では**未対応**として扱う。Evidence Gateへ「Relationが無い＝暗黙的に否定している」等の推測ロジックを追加しない。
+
+### Future Model候補（確定しない）
+
+将来、Source間の明示的な支持・否定・言及を区別する必要が生じた場合の候補として、`FactSourceEvidence`（仮称）のような明示的中間Modelを提示する。ただし今回はModel設計を確定せず、Migrationも作らない。
+
+候補field（あくまで案）:
+
+- `source`（FK: `ShrineKnowledgeSource`）
+- `deity` / `history`（FK: `ShrineDeity` / `ShrineHistory`、いずれか一方）
+- `relation_type`（choices候補: `supports`（支持） / `contradicts`（明示的否定） / `mentions`（言及のみ、支持とも否定とも言えない中立情報））
+- `note`
+- 確認metadata（`verified_at`等、既存Source契約に準ずる）
+
+採否・詳細設計は将来のPR（後述PR-C3候補）で改めて検討する。
+
+### disputedの表示方針との分離
+
+`verification_status: disputed`のFactを非表示にするか多説併記にするかという表示方針は、本節（Source Confidence Contract）の対象外とする。これは「Source Confidence」ではなく「単一Fact内でverification_statusがdisputedになった場合の表示制御」であり、別PR（後述PR-C4候補）で設計する。PR-C1はこの方針を確定しない。
+
+### `data_confidence_score`との関係
+
+`data_confidence_score`（`docs/core/recommendation-architecture.md` Section 7のScore軸候補）は、PR-C1でも引き続き対象外とする。算出式を作らない。Score/Rankingへの接続も行わない。
 
 ---
 
@@ -634,6 +710,21 @@ fallbackを利用した場合、それがFactではなくInterpretationである
 | `unknown` | 利用禁止 |
 
 数値閾値は今回確定しない。後続PR（Evidence Gate実装PR）で定める。
+
+> **追記（PR-C1、2026-08-02時点）**: 上表は`confidence`（高/中/低）と`verification_status`の値（`disputed`）・Modelに存在しない値（`unknown`）を同一の「confidence水準」列に混在させており、2軸を分離できていなかった。実装済みのEvidence Gate PR-A/PR-Bを踏まえ、以下のとおり明確に分離する。
+>
+> **verification_status軸**（Fact利用可否の土台。`draft`/`unverified`/`source_confirmed`/`reviewed`/`disputed`/`outdated`/`rejected`）: `disputed`はここに属する値であり、confidenceの値ではない。`disputed`の場合の非表示/多説併記の方針はPR-A実装後も未確定のまま（「disputedの表示方針との分離」節、母艦判断項目を参照）。
+>
+> **confidence軸**（表現強度。PR-Bで実装済み）: `high`/`medium`/`low`/未設定（空文字）の4状態のみ。`unknown`という値はModel（`KNOWLEDGE_CONFIDENCE_CHOICES`）に存在しない。実装済みの対応関係は以下のとおり。
+>
+> | confidence（Fact自身） | Recommendation Reason表現強度 |
+> |---|---|
+> | high | assertive（現行文言のまま） |
+> | medium | weakened（限定表現） |
+> | low | suppressed（Knowledge FactをReasonへ使用しない。Fact自体はDB・Detail API・Knowledge selectorからは消えない） |
+> | 未設定（空文字） | legacy-compatible（現行互換の通常表現。highへの読み替えではない） |
+>
+> 複数DeityのconfidenceがReason文へ連結される際に一致しない場合は、上記いずれの値も安全に採用できないため、内部専用sentinelとして`suppressed`相当に倒す（コード実装の詳細はPR-B follow-up、PR #2229を参照）。
 
 ### Fact・Interpretation・Actionとの整合
 
@@ -838,6 +929,7 @@ DB確認（読み取りのみ）の結果、以下を候補として提示する
 - **テスト**: `deity`/`shrine_history`欠損時のFact抑制テスト、`disputed`時の非表示/多説併記テスト、confidence閾値ごとの表現切り替えテスト、fallbackのInterpretation識別テスト
 - **完了条件**: 根拠なしFactが生成されない。`deity`欠損時に祭神Factが抑制される。`shrine_history`欠損時に歴史Factが抑制される。fallbackがFactとして出力されない。回帰テストがある
 - **母艦判断項目**: confidence数値閾値の確定、`disputed`時の表示方針（非表示か多説併記か）
+- **状況（2026-08-02時点）**: 本PR2で計画していた範囲のうち、Fact利用可否判定はPR-A（`feature/evidence-gate-pr-a-foundation`、PR #2227）として、Fact confidenceによるRecommendation Reason表現強度制御はPR-B（PR #2228・follow-up #2229）として、それぞれ実装・`develop`へマージ済みである。ただし数値閾値は導入していない（categorical値high/medium/lowをそのまま表現強度へ対応させている）。`disputed`時の表示方針（非表示か多説併記か）は依然未確定のまま、別PR（PR-C4候補、「Source Confidence Contract」節の「disputedの表示方針との分離」を参照）へ切り出されている。Source自身のconfidence（`ShrineKnowledgeSource.confidence`）・複数Source集約・Conflicting Evidenceの契約整理はPR-C1（本節「Source Confidence Contract」）で行い、実装は含まない
 
 ### PR3：Pilot Data
 
@@ -889,6 +981,14 @@ DB確認（読み取りのみ）の結果、以下を候補として提示する
 Codex側では最終決定を行わない。
 
 > **注記（2026-08-01時点）**: 母艦判断により、4〜9はPR #2221（`feature/shrine-knowledge-model-foundation`）で以下のとおり確定・実装済みである。`deity`＝別Model（`ShrineDeity`）、`shrine_history`＝別Model（`ShrineHistory`）、Source＝別Model（`ShrineKnowledgeSource`）として別Model化し、SourceとKnowledge（Deity/History）はManyToManyで関連付けられている。`verification_status`のenum（draft/unverified/source_confirmed/reviewed/disputed/outdated/rejected）、`confidence`の保存方式（low/medium/highのCharField choices）も同PRで確定した（8・9）。一方、2（`Shrine.sajin`継続利用）・3（`Shrine.description`継続利用）はいずれも変更されておらず未確定のまま維持されている。15（Pilot対象神社）は、明治神宮1社に限りReal Data Pilot #1として母艦判断で選定・実施済み（本書「候補」5件には含まれない神社が選ばれた）だが、3〜5社規模のPilot対象確定はなお母艦判断待ちである。1・10〜14・16・17は本書作成時点から変わらず未確定のままである。
+>
+> **追記（2026-08-02時点、PR-C1）**: 10（`confidence`の算出方式）のうち、**Fact confidence**の算出方式は「人手入力（Admin編集）」で運用されており、Recommendation Reasonへの接続（high/medium/low/未設定→assertive/weakened/suppressed/legacy-compatible）はPR-Bで確定・実装済みである。一方、**Source confidence**の算出方式・複数Source間の集約方式（min/max/average/majority/highest-priority-source/official-source-override等）は今回も未確定のまま据え置く（PR-C1はいずれも新規採用しない）。12（`disputed`情報の表示方針）は本書作成時点から変わらず未確定であり、別PR（PR-C4候補）へ切り出す。加えて、本追記で新たに以下を母艦判断項目へ追加する。
+>
+> **18.** Source confidenceを将来利用するか、利用する場合はEvidence usable判定・Reason strength・Score/Rankingのいずれへ接続するか
+>
+> **19.** 複数Source confidenceの集約方式（min/max/average/majority/highest-priority-source/official-source-override等）をどれか一つに確定するか
+>
+> **20.** Conflicting Evidence（Source間の明示的な否定、Case 9相当）へ対応する必要があるか。対応する場合、`FactSourceEvidence`（仮称）等の中間Model拡張（Migration）を実施するか
 
 ---
 
