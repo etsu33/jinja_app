@@ -180,11 +180,15 @@ class ShrineListSerializer(ShrineBaseSerializer):
 
 class ShrineDetailSerializer(ShrineBaseSerializer):
     """Shrine Detail API専用。deities/historiesはtemples.services.evidence_gateの
-    Evidence Gate判定（Fact自身のverification_statusがfact-ready、かつ
-    fact-readyなSourceを1件以上Relation）を満たすもの（usable=True）のみ返却する。
-    Recommendation側（shrine_knowledge_selector.py）と同一のEvidence Gateを使うため、
-    両経路のFact利用可否は常に一致する。Knowledge未登録時は[]を返し、
-    Legacy Field（sajin/description）へのfallbackは行わない。
+    decide_detail_display_state()判定（"full"または"disputed"）を満たすものだけを
+    返却する（PR-C4B1。"hidden"は返さない）。full/disputedいずれも既存の
+    verification_status/confidence/sources fieldのみで表現し、新規fieldは
+    追加しない。verification_status="disputed"のFactは、fact-readyなSourceを
+    1件以上Relationしていれば返る（本文・Source Relationは加工しない）。
+    Recommendation側（shrine_knowledge_selector.pyのdecide_fact_usability()）とは
+    別のPolicyであり、disputedの扱いは経路ごとに異なる（PR-C4A Disputed Evidence
+    Contractの契約通り、Recommendationはdisputedを常に除外する）。Knowledge未登録時は
+    []を返し、Legacy Field（sajin/description）へのfallbackは行わない。
     """
 
     deities = serializers.SerializerMethodField(read_only=True)
@@ -216,11 +220,11 @@ class ShrineDetailSerializer(ShrineBaseSerializer):
         items = [
             d
             for d in obj.deities.all()
-            if evidence_gate.decide_fact_usability(
+            if evidence_gate.decide_detail_display_state(
                 verification_status=d.verification_status,
-                confidence=d.confidence,
                 source_verification_statuses=(s.verification_status for s in d.sources.all()),
-            ).usable
+            )
+            in ("full", "disputed")
         ]
         return ShrineDeitySerializer(items, many=True, context=self.context).data
 
@@ -229,11 +233,11 @@ class ShrineDetailSerializer(ShrineBaseSerializer):
         items = [
             h
             for h in obj.histories.all()
-            if evidence_gate.decide_fact_usability(
+            if evidence_gate.decide_detail_display_state(
                 verification_status=h.verification_status,
-                confidence=h.confidence,
                 source_verification_statuses=(s.verification_status for s in h.sources.all()),
-            ).usable
+            )
+            in ("full", "disputed")
         ]
         return ShrineHistorySerializer(items, many=True, context=self.context).data
 

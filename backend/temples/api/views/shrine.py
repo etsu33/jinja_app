@@ -298,10 +298,12 @@ class ShrineViewSet(viewsets.ModelViewSet):
         # Shrine Detail APIのみdeities/historiesをprefetchする（N+1回避）。
         # ここではFact自身のverification_statusによる候補絞り込みと、ネストする
         # sourcesのfact-ready絞り込みのみを行う（クエリ件数を減らすための事前フィルタ）。
-        # 「fact-readyなSourceを1件以上持つか」を含む最終的なusable判定は
-        # temples.services.evidence_gateへ一本化しており、
+        # 候補集合はDETAIL_CANDIDATE_VERIFICATION_STATUSES（full相当 + disputed）で
+        # あり、これはあくまで「候補に含めてよい範囲」に過ぎない。
+        # 実際にfull/disputed/hiddenのどれになるか（Source条件を含む最終判定）は
+        # temples.services.evidence_gate.decide_detail_display_state()へ一本化しており、
         # ShrineDetailSerializer.get_deities()/get_histories()で行う
-        # （Recommendation側のshrine_knowledge_selector.pyと同じEvidence Gateを使う）。
+        # （PR-C4B1。Recommendation側のshrine_knowledge_selector.pyとは別のPolicy）。
         if self.action in ("retrieve",):
 
             def _fact_ready_sources_prefetch() -> Prefetch:
@@ -316,7 +318,7 @@ class ShrineViewSet(viewsets.ModelViewSet):
                 Prefetch(
                     "deities",
                     queryset=ShrineDeity.objects.filter(
-                        verification_status__in=evidence_gate.FACT_READY_VERIFICATION_STATUSES
+                        verification_status__in=evidence_gate.DETAIL_CANDIDATE_VERIFICATION_STATUSES
                     )
                     .prefetch_related(_fact_ready_sources_prefetch())
                     .order_by("sort_order", "id"),
@@ -324,7 +326,7 @@ class ShrineViewSet(viewsets.ModelViewSet):
                 Prefetch(
                     "histories",
                     queryset=ShrineHistory.objects.filter(
-                        verification_status__in=evidence_gate.FACT_READY_VERIFICATION_STATUSES
+                        verification_status__in=evidence_gate.DETAIL_CANDIDATE_VERIFICATION_STATUSES
                     )
                     .prefetch_related(_fact_ready_sources_prefetch())
                     .order_by("sort_order", "id"),

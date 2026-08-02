@@ -11,6 +11,13 @@ Recommendation側（shrine_knowledge_selector.pyのQuerySet条件）とShrine De
 
 PR-Aでは以下のみを扱う。confidenceによる表現制御・disputed専用表示・数値スコアは
 PR-B以降へ延期する（本ファイルのdocstring/コメントを参照）。
+
+PR-B（confidenceによるRecommendation Reason表現強度制御）を経て、PR-C4B1で
+Shrine Detail専用のdisputed表示判定（decide_detail_display_state）を追加した。
+これはRecommendation側のusable判定（decide_fact_usability/EvidenceDecision）
+とは独立した別関数であり、Recommendation側の挙動には一切影響しない
+（docs/knowledge/shrine-knowledge-contract.md「Disputed Evidence Contract」
+PR-C4Aを参照）。
 """
 
 from __future__ import annotations
@@ -82,8 +89,67 @@ def decide_fact_usability(
     )
 
 
+# Shrine Detail専用。disputedを含む3状態を表す。
+# Recommendation側のusable判定（decide_fact_usability）とは独立した値であり、
+# FACT_READY_VERIFICATION_STATUSES / decide_fact_usability() / EvidenceDecisionの
+# いずれも変更しない（PR-C4B1）。
+DETAIL_DISPUTED_VERIFICATION_STATUS = "disputed"
+
+# Shrine Detail用の候補verification_status（クエリ件数を減らすための事前フィルタに
+# のみ使う集合）。最終的なfull/disputed/hiddenの判定はdecide_detail_display_state()
+# が唯一の真実源であり、この集合自体は「候補に含めてよい範囲」を示すだけで、
+# 表示可否そのものを決定しない（Source側の条件を満たさなければ候補内でもhiddenになる）。
+DETAIL_CANDIDATE_VERIFICATION_STATUSES = FACT_READY_VERIFICATION_STATUSES + (
+    DETAIL_DISPUTED_VERIFICATION_STATUS,
+)
+
+
+def decide_detail_display_state(
+    *,
+    verification_status: str,
+    source_verification_statuses: Iterable[str],
+) -> str:
+    """Shrine Detail専用のFact表示状態判定（PR-C4B1、Disputed Evidence Contract PR-C4Aの実装）。
+
+    Recommendation側のdecide_fact_usability()/EvidenceDecisionとは別関数であり、
+    互いに影響しない。Recommendationのusable判定・Knowledge selectorの候補条件は
+    本関数の追加によって一切変わらない。
+
+    返り値: "full" | "disputed" | "hidden"
+      - "full": verification_statusがFACT_READY_VERIFICATION_STATUSES
+        （source_confirmed/reviewed）で、かつfact-ready Sourceを1件以上Relation
+      - "disputed": verification_statusがdisputedで、かつfact-ready Sourceを
+        1件以上Relation
+      - "hidden": 上記いずれにも該当しない場合
+        （draft/unverified/outdated/rejected、または
+         full/disputed相当のverification_statusでもfact-ready Sourceが
+         1件も無い場合）
+
+    Source側のverification_statusはFACT_READY_VERIFICATION_STATUSESと同一基準
+    （source_confirmed/reviewedのみ）で判定する。confidence・history_type・
+    Source confidence・Source priorityはいずれも判定に使わない。
+    """
+
+    has_ready_source = any(
+        status in FACT_READY_VERIFICATION_STATUSES for status in source_verification_statuses
+    )
+    if not has_ready_source:
+        return "hidden"
+
+    if verification_status in FACT_READY_VERIFICATION_STATUSES:
+        return "full"
+
+    if verification_status == DETAIL_DISPUTED_VERIFICATION_STATUS:
+        return "disputed"
+
+    return "hidden"
+
+
 __all__ = [
     "FACT_READY_VERIFICATION_STATUSES",
+    "DETAIL_DISPUTED_VERIFICATION_STATUS",
+    "DETAIL_CANDIDATE_VERIFICATION_STATUSES",
     "EvidenceDecision",
     "decide_fact_usability",
+    "decide_detail_display_state",
 ]
