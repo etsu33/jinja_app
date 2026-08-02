@@ -16,6 +16,7 @@ from temples.services.recommendation_input_profile import (
     build_recommendation_input_profile,
 )
 from temples.services.recommendation_reason_v4 import (
+    CONFIDENCE_MIXED,
     build_recommendation_reason_v4,
 )
 from temples.services.score_v3_observer import (
@@ -315,11 +316,16 @@ def _join_knowledge_deity_names(knowledge_deities: Any) -> str | None:
 def _resolve_knowledge_deity_confidence(knowledge_deities: Any) -> str | None:
     """`_join_knowledge_deity_names()`が連結するのと同じDeity集合のconfidenceを返す。
 
-    全Deityのconfidenceが一致する場合のみその値を返す。以下はいずれもNoneを返す
-    （PR-B契約: 集約ルールが未確定なため、min/max/average/majority等を独自に
-    作らず、Noneを「現行互換の通常表現(assertive)」として扱う）。
-    - 対象Deityが1件もconfidenceを設定していない（空文字のみ）場合
-    - 複数DeityでconfidenceがHigh/Medium/Low等に混在している場合
+    3つの状態を明確に区別する（PR-B follow-up）。
+    - 全Deityのconfidenceが同一の場合: その値を返す（空文字のみで一致する場合は
+      「confidence未設定」を意味するNoneを返す。＝現行互換のassertive扱い）
+    - 対象Deityが1件も無い場合: None（呼び出し側でLegacy fallback等が発生する経路）
+    - 複数DeityでconfidenceがHigh/Medium/Low/空等に混在している場合:
+      `CONFIDENCE_MIXED`を返す。これはNoneとは異なる状態であり、
+      Noneのように「現行互換の通常表現(assertive)」へは倒さない
+      （集約ルールが未確定なため、min/max/average/majority等を独自に作らず、
+      Reason生成側でsuppressed相当として扱う。Knowledge Fact自体は
+      Detail API・DB・Knowledge selectorからは一切消えない）。
     """
     if not isinstance(knowledge_deities, list):
         return None
@@ -330,7 +336,7 @@ def _resolve_knowledge_deity_confidence(knowledge_deities: Any) -> str | None:
     if len(confidences) == 1:
         value = confidences.pop()
         return value or None
-    return None
+    return CONFIDENCE_MIXED
 
 
 def _pick_primary_knowledge_history_item(knowledge_histories: Any) -> dict[str, Any] | None:

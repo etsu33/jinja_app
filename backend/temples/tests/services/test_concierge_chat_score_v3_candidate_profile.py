@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from temples.services.concierge_chat import _build_score_v3_candidate_profile
+from temples.services.recommendation_reason_v4 import CONFIDENCE_MIXED
 
 
 def test_build_score_v3_candidate_profile_maps_deity_history_and_place_context():
@@ -393,9 +394,11 @@ def test_candidate_profile_deity_confidence_is_propagated_when_all_deities_share
     assert profile["deity_confidence"] == "medium"
 
 
-def test_candidate_profile_deity_confidence_is_none_when_mixed_across_deities():
+def test_candidate_profile_deity_confidence_is_mixed_sentinel_when_confidences_differ():
     """複数Deityでconfidenceが混在する場合の集約ルールは契約上未確定のため、
-    勝手にmin/max/average等を採用せず、Noneへ倒す(=Reason側はassertive/現行互換扱い)。
+    勝手にmin/max/average等を採用しない。ただしNone(confidence未設定/
+    Legacy fallback相当)と混同してはならないため、専用sentinel(CONFIDENCE_MIXED)
+    へ倒す(PR-B follow-up)。
     """
     rec = {
         "shrine_id": 1,
@@ -407,9 +410,11 @@ def test_candidate_profile_deity_confidence_is_none_when_mixed_across_deities():
 
     profile = _build_score_v3_candidate_profile(rec)
 
-    assert profile["deity_confidence"] is None
-    # 集約せず(=特定の値を選ばず)Noneへ倒しているだけで、両Deityの名前は
-    # 引き続き結合される(usable Factが消えるわけではない)。
+    assert profile["deity_confidence"] == CONFIDENCE_MIXED
+    assert profile["deity_confidence"] is not None
+    # 集約せず(=特定の値を選ばず)mixed扱いにしているだけで、両Deityの名前は
+    # 引き続き結合される(usable Factが消えるわけではない。Knowledge selector・
+    # Detail APIから消えるわけでもない)。
     assert profile["deity"] == "A神、B神"
 
 

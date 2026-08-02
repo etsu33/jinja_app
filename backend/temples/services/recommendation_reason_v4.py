@@ -127,22 +127,39 @@ def _copy_for_key(mapping: dict[str, str], key: str | None) -> str | None:
     return mapping.get(key, key)
 
 
-# PR-B: Knowledge Fact confidence(high/medium/low)からRecommendation Reasonの
-# 表現強度への変換。Evidence Gate(temples.services.evidence_gate)のusable判定には
-# 一切影響しない、Reason生成内部だけで完結する変換であることに注意。
+# PR-B follow-up: 複数Deity（または複数Fact）のconfidenceが一致しない場合に使う
+# Recommendation Reason内部専用のsentinel値。
+# temples.models.KNOWLEDGE_CONFIDENCE_CHOICES（low/medium/high）には存在しない
+# 値であり、Model/Migration/Public APIへは一切露出しない
+# （candidate_profile["deity_confidence"]等、内部dictの中だけを流れる）。
+#
+# "confidenceが1つも設定されていない(空文字のみ)"状態と、
+# "confidenceが複数Deity間で一致しない(空文字を含む混在も含む)"状態を、
+# 同じNoneへ丸めてしまうと、後者が誤って"legacy-compatible assertive"
+# （現行互換の通常表現）として扱われてしまう。両者は明確に別状態として扱う。
+CONFIDENCE_MIXED = "__mixed__"
+
+# PR-B: Knowledge Fact confidence(high/medium/low/CONFIDENCE_MIXED)から
+# Recommendation Reasonの表現強度への変換。
+# Evidence Gate(temples.services.evidence_gate)のusable判定には一切影響しない、
+# Reason生成内部だけで完結する変換であることに注意。
 _CONFIDENCE_TO_REASON_STRENGTH: dict[str, str] = {
     "high": "assertive",
     "medium": "weakened",
     "low": "suppressed",
+    # mixedはどの単一confidenceにも安全に倒せないため、lowと同様suppressed
+    # （Knowledge Deity/HistoryをReasonの生成材料として使わない）として扱う。
+    CONFIDENCE_MIXED: "suppressed",
 }
 
 
 def _reason_strength_from_confidence(confidence: Any) -> str:
-    """confidence(""/None/未知の値を含む)をreason_strengthへ変換する。
+    """confidence(""/None/CONFIDENCE_MIXED/未知の値を含む)をreason_strengthへ変換する。
 
     空文字・None・未知の値は全て"assertive"(現行互換の通常表現)とする。
     これはconfidence未設定を"high"の意味へ格上げするものではなく、単に
     PR-A以前からの既存Reason文体を変更しないための後方互換上の選択。
+    CONFIDENCE_MIXEDは明示的に"suppressed"へ変換される。
     """
     if isinstance(confidence, str) and confidence in _CONFIDENCE_TO_REASON_STRENGTH:
         return _CONFIDENCE_TO_REASON_STRENGTH[confidence]
@@ -594,6 +611,7 @@ def build_recommendation_reason_v4(
 
 
 __all__ = [
+    "CONFIDENCE_MIXED",
     "RecommendationReasonV4",
     "build_recommendation_reason_quality_audit",
     "build_recommendation_reason_v4",
