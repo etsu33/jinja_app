@@ -698,8 +698,8 @@ describe("ShrineDetailArticle", () => {
             kind: "fact",
             heading: "神社について",
             deities: [
-              { display_name: "明治天皇", sort_order: 0 },
-              { display_name: "昭憲皇太后", sort_order: 1 },
+              { display_name: "明治天皇", sort_order: 0, displayState: "full" },
+              { display_name: "昭憲皇太后", sort_order: 1, displayState: "full" },
             ],
             histories: [
               {
@@ -709,6 +709,7 @@ describe("ShrineDetailArticle", () => {
                 content: "明治神宮は、東京都渋谷区代々木に大正9年（1920）に創建された。",
                 period_text: "大正9年（1920）",
                 sort_order: 0,
+                displayState: "full",
               },
             ],
           }}
@@ -742,6 +743,7 @@ describe("ShrineDetailArticle", () => {
                 content: "創始の内容",
                 period_text: "文治3年（1187年）",
                 sort_order: 0,
+                displayState: "full",
               },
               {
                 history_type: "historical_event",
@@ -750,6 +752,7 @@ describe("ShrineDetailArticle", () => {
                 content: "1319年の内容",
                 period_text: "元応元年（1319年）",
                 sort_order: 1,
+                displayState: "full",
               },
               {
                 history_type: "historical_event",
@@ -758,6 +761,7 @@ describe("ShrineDetailArticle", () => {
                 content: "1478年の内容",
                 period_text: "文明10年（1478年）",
                 sort_order: 2,
+                displayState: "full",
               },
             ],
           }}

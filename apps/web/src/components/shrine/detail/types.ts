@@ -48,9 +48,16 @@ export type DetailSupplementSection = {
 
 // 神社Fact（祭神・由緒・歴史）。Interpretation(meaning)・Recommendation(reason)・Action とは
 // 独立した表示責務として扱う。Premium gatingの対象にしない。
+//
+// Backend verification_statusをUI componentへ直接渡さず、buildShrineFactSection.ts内で
+// この型へ変換してから渡す（PR-C4B2）。hiddenはBackend側で既に除外されているため、
+// Web ViewModelはfull/disputedの2状態のみを持つ。
+export type FactDisplayState = "full" | "disputed";
+
 export type DetailFactDeity = {
   display_name: string;
   sort_order: number;
+  displayState: FactDisplayState;
 };
 
 export type DetailFactHistoryItem = {
@@ -60,6 +67,7 @@ export type DetailFactHistoryItem = {
   content: string;
   period_text: string;
   sort_order: number;
+  displayState: FactDisplayState;
 };
 
 export type DetailFactSection = {

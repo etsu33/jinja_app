@@ -1,5 +1,9 @@
 import type { ShrineDeity, ShrineHistory } from "@/lib/api/types";
-import type { DetailFactHistoryItem, DetailFactSection } from "@/components/shrine/detail/types";
+import type {
+  DetailFactHistoryItem,
+  DetailFactSection,
+  FactDisplayState,
+} from "@/components/shrine/detail/types";
 
 // docs/knowledge/shrine-knowledge-contract.md「分類案（To-Be）」の定義に基づく固定ラベル。
 // 宗教的・歴史的な意味を新たに解釈しない。
@@ -14,6 +18,15 @@ const HISTORY_TYPE_LABELS: Record<string, string> = {
 
 function resolveHistoryTypeLabel(historyType: string): string {
   return HISTORY_TYPE_LABELS[historyType] ?? historyType;
+}
+
+// Backend verification_status（PR-C4B1でDetail APIはfull相当/disputedのみ返す）を
+// Web ViewModel専用のFactDisplayStateへ変換する唯一の地点。UI component（例:
+// ShrineFactSection.tsx）はこの変換結果だけを見て、Backendのverification_status文字列を
+// 直接判定しない。想定外の値が来た場合はdisputedへ昇格させず、現行互換のfullとして扱う
+// （fail-safe。confidence/history_typeはこの判定に使わない）。
+function resolveFactDisplayState(verificationStatus: string): FactDisplayState {
+  return verificationStatus === "disputed" ? "disputed" : "full";
 }
 
 function sortBySortOrder<T extends { sort_order: number }>(items: T[]): T[] {
@@ -39,6 +52,7 @@ export function buildShrineFactSection(shrine: {
   const sortedDeities = sortBySortOrder(deities).map((deity) => ({
     display_name: deity.display_name,
     sort_order: deity.sort_order,
+    displayState: resolveFactDisplayState(deity.verification_status),
   }));
 
   const sortedHistories: DetailFactHistoryItem[] = sortBySortOrder(histories).map((history) => ({
@@ -48,6 +62,7 @@ export function buildShrineFactSection(shrine: {
     content: history.content,
     period_text: history.period_text,
     sort_order: history.sort_order,
+    displayState: resolveFactDisplayState(history.verification_status),
   }));
 
   return {

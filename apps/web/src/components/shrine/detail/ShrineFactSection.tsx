@@ -5,6 +5,20 @@ type Props = {
   section: DetailFactSection;
 };
 
+// disputed Factに付与する状態ラベル。文言はここ1箇所でのみ定義する（PR-C4B2）。
+// verification_statusの内部名（"disputed"等）はユーザーへ露出しない。
+// Source同士が明示的に矛盾していることは現行Modelから判定できないため、
+// 「矛盾しています」「誤り」等の断定語は使わず、中立的な表現に留める。
+const DISPUTED_FACT_LABEL = "異なる見解を含む情報";
+
+function DisputedBadge() {
+  return (
+    <span className="inline-flex items-center rounded-[var(--kt-radius-pill)] border border-[var(--kt-color-border-default)] px-1.5 py-0.5 text-[10px] font-medium leading-none text-[var(--kt-color-text-muted)]">
+      {DISPUTED_FACT_LABEL}
+    </span>
+  );
+}
+
 function DeityList({ deities }: { deities: DetailFactDeity[] }) {
   return (
     <div>
@@ -13,9 +27,10 @@ function DeityList({ deities }: { deities: DetailFactDeity[] }) {
         {deities.map((deity, index) => (
           <li
             key={`${deity.display_name}:${index}`}
-            className="inline-flex items-center rounded-[var(--kt-radius-pill)] bg-[var(--kt-color-background-subtle)] px-3 py-1 text-sm text-[var(--kt-color-text-secondary)]"
+            className="inline-flex items-center gap-1.5 rounded-[var(--kt-radius-pill)] bg-[var(--kt-color-background-subtle)] px-3 py-1 text-sm text-[var(--kt-color-text-secondary)]"
           >
             {deity.display_name}
+            {deity.displayState === "disputed" ? <DisputedBadge /> : null}
           </li>
         ))}
       </ul>
@@ -43,6 +58,7 @@ function HistoryList({ histories }: { histories: DetailFactHistoryItem[] }) {
               {history.period_text ? (
                 <span className="text-xs text-[var(--kt-color-text-muted)]">{history.period_text}</span>
               ) : null}
+              {history.displayState === "disputed" ? <DisputedBadge /> : null}
             </div>
             {history.content ? (
               <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-[var(--kt-color-text-secondary)]">
