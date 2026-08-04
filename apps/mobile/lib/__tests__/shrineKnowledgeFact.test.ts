@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildShrineFactViewModel,
+  hasVisibleKnowledgeFact,
+  isDisputedDisplayState,
   resolveFactDisplayState,
   type ShrineDeity,
   type ShrineHistory,
@@ -178,5 +180,32 @@ describe("buildShrineFactViewModel", () => {
     // 1要素へ統合されていないこと（titleが連結・要約されていない）
     expect(vm.histories[0].title).not.toContain("説B");
     expect(vm.histories[1].title).not.toContain("説A");
+  });
+});
+
+describe("isDisputedDisplayState", () => {
+  it("full -> disputed labelを表示しない(false)", () => {
+    expect(isDisputedDisplayState("full")).toBe(false);
+  });
+
+  it("disputed -> disputed labelを表示する(true)", () => {
+    expect(isDisputedDisplayState("disputed")).toBe(true);
+  });
+});
+
+describe("hasVisibleKnowledgeFact", () => {
+  it("Knowledge Factあり(deitiesのみ) -> section visible(true)", () => {
+    const vm = buildShrineFactViewModel({ deities: [makeDeity()], histories: [] });
+    expect(hasVisibleKnowledgeFact(vm)).toBe(true);
+  });
+
+  it("Knowledge Factあり(historiesのみ) -> section visible(true)", () => {
+    const vm = buildShrineFactViewModel({ deities: [], histories: [makeHistory()] });
+    expect(hasVisibleKnowledgeFact(vm)).toBe(true);
+  });
+
+  it("Knowledge Factなし(両方空) -> section visible(false)", () => {
+    const vm = buildShrineFactViewModel({ deities: [], histories: [] });
+    expect(hasVisibleKnowledgeFact(vm)).toBe(false);
   });
 });

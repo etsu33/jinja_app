@@ -124,3 +124,16 @@ export function buildShrineFactViewModel(shrine: {
     })),
   };
 }
+
+// UI（PR-M2）向けの表示条件判定。UI側でverification_status/displayStateの
+// 比較をJSX内へ散らさないための唯一の判定地点とする。
+export function isDisputedDisplayState(displayState: FactDisplayState): boolean {
+  return displayState === "disputed";
+}
+
+// Knowledge Fact Section自体を表示するかどうかの判定。deities/historiesが
+// 両方空の場合はfalseを返し、UI側はセクション全体を非表示にする
+// （Legacy「神社について」は本判定と無関係に従来通り表示され続ける）。
+export function hasVisibleKnowledgeFact(viewModel: ShrineFactViewModel): boolean {
+  return viewModel.deities.length > 0 || viewModel.histories.length > 0;
+}
