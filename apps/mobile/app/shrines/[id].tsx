@@ -29,6 +29,7 @@ import {
   normalizeRecommendationReasonV4Detail,
   type RecommendationReasonV4Detail,
 } from "../../lib/recommendationReasonV4";
+import type { ShrineDeity, ShrineHistory } from "../../lib/shrineKnowledgeFact";
 
 type RecommendationReasonFactAxis =
   | "need"
@@ -114,6 +115,10 @@ type Shrine = {
   tags?: string[];
   latitude?: number;
   longitude?: number;
+  // Knowledge Fact（PR-M1）。UIはまだこれらを描画しない。
+  // Backendが既にhidden相当を除外して返したfull/disputed相当のFactのみが入る。
+  deities?: ShrineDeity[];
+  histories?: ShrineHistory[];
 };
 
 type ShrineApiResponse = {
@@ -140,6 +145,10 @@ type ShrineApiResponse = {
   longitude?: number | null;
   goriyaku?: string | null;
   goriyaku_tags?: Array<{ id: number; name: string; category?: string }>;
+  // backend/temples/api/serializers/shrine.py ShrineDetailSerializer.get_deities/get_histories
+  // に一致する（PR-M1。Evidence Gate判定はBackendが既に済ませたfull/disputed相当のみ返る）。
+  deities?: ShrineDeity[];
+  histories?: ShrineHistory[];
 };
 
 const SHRINE_API_ID_BY_LOCAL_ID: Record<string, string> = {
@@ -246,6 +255,9 @@ function toShrine(api: ShrineApiResponse): Shrine {
     tags: api.goriyaku_tags?.map((tag) => tag.name) ?? [],
     latitude: typeof api.latitude === "number" ? api.latitude : undefined,
     longitude: typeof api.longitude === "number" ? api.longitude : undefined,
+    // Fact本文・confidence・sourcesは加工せずそのまま保持する（PR-M1）。
+    deities: Array.isArray(api.deities) ? api.deities : [],
+    histories: Array.isArray(api.histories) ? api.histories : [],
   };
 }
 
