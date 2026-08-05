@@ -175,10 +175,10 @@ jobs:
       run:
         working-directory: ./backend
     steps:
+      - uses: actions/checkout@v7
+
       - name: Register DB password mask
         run: echo "::add-mask::${{ needs.setup-db-credentials.outputs.pg_password }}"
-
-      - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v7
         with:
@@ -282,10 +282,10 @@ jobs:
       run:
         working-directory: ./backend
     steps:
+      - uses: actions/checkout@v7
+
       - name: Register DB password mask
         run: echo "::add-mask::${{ needs.setup-db-credentials.outputs.pg_password }}"
-
-      - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v7
         with:
