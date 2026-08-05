@@ -11,6 +11,37 @@ from temples.services.concierge_chat_ranking import _prefilter_candidates_for_ne
 log = logging.getLogger(__name__)
 
 
+def _safe_llm_error_code(exc: Exception) -> str:
+    """
+    LLM呼び出し例外をclient/log双方に安全な固定カテゴリ文字列へ縮退する。
+
+    openai SDKの例外はサブクラスによってstr()の中身が大きく異なり、
+    AuthenticationError/BadRequestError/RateLimitError等(APIStatusErrorの
+    サブクラス)はOpenAI側のresponse bodyをそのまま埋め込むため、
+    request内容やAPI keyの断片を含みうる(実測確認済み)。
+    ここではexception messageそのものは一切参照せず、型のisinstance判定
+    だけでカテゴリを決定する。
+    """
+    try:
+        import openai
+    except Exception:
+        return "unknown_error"
+
+    if isinstance(exc, getattr(openai, "APITimeoutError", ())):
+        return "connection_error"
+    if isinstance(exc, getattr(openai, "APIConnectionError", ())):
+        return "connection_error"
+    if isinstance(exc, getattr(openai, "AuthenticationError", ())):
+        return "authentication_error"
+    if isinstance(exc, getattr(openai, "RateLimitError", ())):
+        return "rate_limit"
+    if isinstance(exc, getattr(openai, "BadRequestError", ())):
+        return "bad_request"
+    if isinstance(exc, getattr(openai, "APIStatusError", ())):
+        return "provider_error"
+    return "unknown_error"
+
+
 def resolve_llm_route(
     *,
     query: str,
@@ -49,8 +80,16 @@ def resolve_llm_route(
                 candidates=valid_candidates,
             )
         except Exception as e:
-            llm_error = f"{type(e).__name__}: {e}"
-            log.exception("[resolve_llm_route] LLM exception traceback")
+            llm_error = _safe_llm_error_code(e)
+            # str(e)/exc_infoは含めない: openai SDKのAPIStatusError系は
+            # provider response bodyをそのまま埋め込むため、request内容や
+            # API keyの断片が混入しうる(実測確認済み)。type(e).__name__と
+            # 上で分類したsafe categoryのみ記録する。
+            log.warning(
+                "[resolve_llm_route] LLM call failed error_class=%s safe_code=%s",
+                type(e).__name__,
+                llm_error,
+            )
 
             prefiltered = _prefilter_candidates_for_need(
                 valid_candidates,
