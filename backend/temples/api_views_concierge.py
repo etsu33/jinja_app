@@ -405,6 +405,12 @@ def _build_chat_response(
     thread_id = str(thread.id) if thread is not None else None
 
     data = dict(recs or {})
+    # recs["_debug"](user_state_profile.raw_query / interpretation_profile.raw_query等)は
+    # サービス層内部のdebug-only観測用payloadであり、生の相談文本文を含む。この関数の
+    # data はそのまま public な /api/concierge/chat/ response body へ返るため、
+    # public response境界でここだけ除外する(recs自体・呼び出し元のbuild_chat_recommendations
+    # 内部でのdebug情報構築・利用は変更しない)。
+    data.pop("_debug", None)
     data["thread_id"] = thread_id
 
     body: Dict[str, Any] = {
