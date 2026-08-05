@@ -27,7 +27,6 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   console.log("[BFF_THREAD_DETAIL_REQUEST]", {
     path: upstreamPath,
     hasCookieHeader: Boolean(req.headers.get("cookie")),
-    cookieHeader: req.headers.get("cookie"),
   });
 
   console.log("[BFF_THREAD_DETAIL_UPSTREAM]", {

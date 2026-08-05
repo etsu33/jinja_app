@@ -176,7 +176,7 @@ export async function bffFetchWithAuthFromReq(
     contentType,
     hasSetCookie: Boolean(upstream.headers.get("set-cookie")),
     isJson: contentType?.includes("application/json") ?? false,
-    bodyPreview: text.slice(0, 1000),
+    responseLength: text.length,
   });
 
 
