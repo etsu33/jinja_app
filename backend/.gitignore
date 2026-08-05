@@ -3,3 +3,9 @@ pytest-*.txt
 *pytest*.txt
 snippet.txt.env.local
 temples/signals.py.bak
+
+# PR-S3E: ad-hoc CLI/tool output captures
+*-out.txt
+git-*.txt
+gh-*.txt
+test-snippet.txt
