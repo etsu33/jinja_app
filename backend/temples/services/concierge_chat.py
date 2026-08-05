@@ -637,12 +637,12 @@ def build_chat_recommendations(
     visit_style_tags = extra_tags["visit_style_tags"]
 
     log.info(
-        "[dbg] extra_tags resolved sort=%r soft=%r visit_style=%r raw_query=%r raw_extra=%r",
+        "[dbg] extra_tags resolved sort=%r soft=%r visit_style=%r has_query=%s has_extra=%s",
         sorted(sort_tags),
         sorted(soft_signal_tags),
         sorted(visit_style_tags),
-        query,
-        extra_condition,
+        bool(query),
+        bool(str(extra_condition or "").strip()),
     )
 
     observe_candidate_pool(
@@ -894,7 +894,7 @@ def build_chat_recommendations(
         pass
 
     if llm_error:
-        log.warning("[build_chat_recommendations] LLM error: %s", llm_error)
+        log.warning("[build_chat_recommendations] LLM error occurred has_error=%s", bool(llm_error))
 
     recs = _attach_astro_meta(
         recs,

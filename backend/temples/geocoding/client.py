@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import logging
 import os
 import typing as t
 from dataclasses import dataclass
 
 import requests
+
+logger = logging.getLogger(__name__)
 
 ParamValue = t.Union[str, int, float]
 
@@ -53,9 +56,11 @@ def geocode_google_point(
     area = (area or "").strip()
     key = _google_maps_api_key()
     if not key or not area:
-        print(
-            "[geocode_google_point] skip",
-            {"has_key": bool(key), "area": area},
+        logger.info(
+            "[geocode_google_point] skip has_key=%s has_area=%s area_length=%d",
+            bool(key),
+            bool(area),
+            len(area),
         )
         return None
 
@@ -76,14 +81,12 @@ def geocode_google_point(
         status = payload.get("status")
         results = payload.get("results") or []
 
-        print(
-            "[geocode_google_point] response",
-            {
-                "area": area,
-                "status": status,
-                "result_count": len(results),
-                "error_message": payload.get("error_message"),
-            },
+        logger.info(
+            "[geocode_google_point] response area_length=%d status=%s result_count=%d error_message=%s",
+            len(area),
+            status,
+            len(results),
+            payload.get("error_message"),
         )
 
         if status in {
@@ -101,19 +104,18 @@ def geocode_google_point(
         loc = (results[0].get("geometry") or {}).get("location") or {}
         lat, lng = loc.get("lat"), loc.get("lng")
         if lat is None or lng is None:
-            print("[geocode_google_point] missing location", {"area": area})
+            logger.warning("[geocode_google_point] missing location area_length=%d", len(area))
             return None
 
         return float(lat), float(lng)
 
     except Exception as e:
-        print(
-            "[geocode_google_point] exception",
-            {
-                "area": area,
-                "type": type(e).__name__,
-                "message": str(e),
-            },
+        # str(e)は含めない: requestsの接続/タイムアウト系例外はURL全体
+        # （API key・address含む）をメッセージへ埋め込むため（実測確認済み）。
+        logger.warning(
+            "[geocode_google_point] exception area_length=%d type=%s",
+            len(area),
+            type(e).__name__,
         )
         return None
 

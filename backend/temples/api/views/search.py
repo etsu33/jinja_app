@@ -266,7 +266,10 @@ def nearby_search(request):
         try:
             data = GP.nearby_search_new(lat=lat, lng=lng, radius=radius, limit=limit, keyword=keyword)
         except Exception as e:
-            logger.warning("nearby_search_new failed; fallback to legacy attempts: %s", repr(e))
+            logger.warning(
+                "nearby_search_new failed; fallback to legacy attempts: error_type=%s",
+                type(e).__name__,
+            )
             data = None
 
     # ② data が無ければ legacy attempts
@@ -298,18 +301,20 @@ def nearby_search(request):
             except TypeError as e:
                 first_err = first_err or e
                 logger.info(
-                    "places.nearby_search TypeError (attempt skipped): %s kwargs=%s",
-                    repr(e),
-                    kwargs,
+                    "places.nearby_search TypeError (attempt skipped): error_type=%s kwarg_keys=%s",
+                    type(e).__name__,
+                    sorted(kwargs.keys()),
                 )
                 continue
 
             except RuntimeError as e:
+                # msgはGoogle Places APIのstatus/error_messageに由来し、
+                # lat/lng/keyword等のrequest paramsを含まないことを確認済み。
                 msg = str(e)
                 logger.exception(
-                    "places.nearby_search RuntimeError: msg=%s kwargs=%s",
+                    "places.nearby_search RuntimeError: msg=%s kwarg_keys=%s",
                     msg,
-                    kwargs,
+                    sorted(kwargs.keys()),
                 )
 
                 if "INVALID_REQUEST" in msg:
@@ -323,18 +328,20 @@ def nearby_search(request):
                 )
 
             except Exception as e:
+                # requestsの接続/タイムアウト系例外はURL全体（API key含む）を
+                # メッセージへ埋め込むため、repr(e)/str(e)はログへ含めない（実測確認済み）。
                 first_err = first_err or e
                 logger.warning(
-                    "places.nearby_search Exception (attempt continue): %s kwargs=%s",
-                    repr(e),
-                    kwargs,
+                    "places.nearby_search Exception (attempt continue): error_type=%s kwarg_keys=%s",
+                    type(e).__name__,
+                    sorted(kwargs.keys()),
                 )
                 continue
 
         if data is None:
             logger.exception(
-                "places.nearby_search のフォールバックを全て失敗しました: first_err=%s",
-                repr(first_err),
+                "places.nearby_search のフォールバックを全て失敗しました: first_err_type=%s",
+                type(first_err).__name__ if first_err else None,
             )
             return Response(
                 {"detail": "places.nearby_search は内部エラーのため失敗しました"},
@@ -426,7 +433,13 @@ def photo(request):
         blob, content_type, _ttl = places_photo(ref, maxwidth=mw)
     except PlacesError as e:
         # status が 500 でも、ここは upstream 依存なので 502 に寄せる
-        logger.info("places.photo failed: %s", str(e))
+        # PlacesErrorは内部でstr(requests例外)を包む場合があり、requestsの
+        # 接続/タイムアウト系例外はURL全体（API key含む）を埋め込みうるため
+        # str(e)はログへ含めない（実測確認済み）。
+        logger.info(
+            "places.photo failed: error_status=%s",
+            getattr(e, "status", None),
+        )
         return Response(
             {"detail": "places.photo failed"},
             status=getattr(e, "status", 502) or 502,
