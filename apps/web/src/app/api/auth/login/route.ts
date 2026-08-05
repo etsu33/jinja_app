@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
         status: r.status,
         upstreamPath,
         contentType,
-        bodyPreview: bodyText.slice(0, 300),
+        bodyLength: bodyText.length,
       });
 
       return NextResponse.json(
@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
         requestId,
         upstreamPath,
         contentType,
-        bodyPreview: bodyText.slice(0, 300),
+        bodyLength: bodyText.length,
       });
       return NextResponse.json({ detail: "upstream returned bad json" }, { status: 502 });
     }
