@@ -4,7 +4,6 @@ import os
 import sys
 import time
 from typing import Any, Dict, List, Optional, Tuple, cast
-import traceback
 import requests
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
@@ -93,9 +92,10 @@ class GooglePlacesClient:
 
         resp = requests.get(url, params=q, timeout=self.timeout)
 
-        # ログ（キーは伏字）
+        # ログ: query string全体（location/keyword等を含みうる）を落とし、
+        # base URLだけ残す（key伏字だけでは不十分なため）。
         try:
-            safe_url = resp.url.replace(self.api_key or "", "****")
+            safe_url = resp.url.split("?", 1)[0]
         except Exception:
             safe_url = "<masked>"
         logger.info("Places upstream[%s] %s", path, safe_url)
@@ -326,9 +326,9 @@ class GooglePlacesClient:
         params = self.build_photo_params(photo_reference, maxwidth=maxwidth, maxheight=maxheight)
         resp = requests.get(url, params=params, timeout=self.timeout, stream=True)
 
-        # マスクしてログ
+        # ログ: query string全体を落とし、base URLだけ残す（key伏字だけでは不十分なため）。
         try:
-            safe_url = resp.url.replace(self.api_key or "", "****")
+            safe_url = resp.url.split("?", 1)[0]
         except Exception:
             safe_url = "<masked>"
         logger.info("Places upstream[photo]: %s", safe_url)
@@ -355,11 +355,10 @@ _TIMEOUT = 10
 
 
 def _log_upstream(kind: str, url: str, params: dict) -> None:
-    masked = dict(params or {})
-    if "key" in masked:
-        masked["key"] = "****"
-    qs = "&".join(f"{k}={v}" for k, v in masked.items() if v is not None)
-    logger.info("Places upstream[%s] %s?%s", kind, url, qs)
+    # paramsにはquery/input/location等の生テキストが入りうるため、値ではなく
+    # keyの一覧のみ出す（keyだけmaskしてもquery/location等が残ってしまうため）。
+    param_keys = sorted((params or {}).keys())
+    logger.info("Places upstream[%s] %s param_keys=%s", kind, url, param_keys)
 
 
 def textsearch(
@@ -441,8 +440,6 @@ def findplacefromtext(
         "locationbias": locationbias,
         "fields": fields,
     }
-    logger.warning("findplacefromtext called\n%s", "".join(traceback.format_stack(limit=12)))
-
     _log_upstream("findplacefromtext", url, params)
     clean = {k: v for k, v in params.items() if v is not None}
     _push_req_history(url, clean)
