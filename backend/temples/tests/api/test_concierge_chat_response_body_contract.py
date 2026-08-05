@@ -597,7 +597,25 @@ def test_chat_response_passes_recommendation_reason_v4_detail_to_thread_storage(
 
 
 @pytest.mark.django_db
-def test_chat_response_includes_debug_observation_contract_fields(client, monkeypatch):
+def test_chat_response_excludes_debug_observation_from_public_response(client, monkeypatch):
+    """
+    Security contract: recs["_debug"] (candidate_pool_observation /
+    interpretation_profile / user_state_profile / score_v3 / ...) is a
+    debug-only observation payload built by the service layer, and
+    interpretation_profile.raw_query / user_state_profile.raw_query /
+    user_state_profile.extra_condition previously carried the raw
+    consultation text verbatim. That payload used to be copied wholesale
+    into the public /api/concierge/chat/ response body via
+    `data = dict(recs)`. This test proves that regardless of what the
+    (stubbed) service layer returns in recs["_debug"], none of it -
+    including raw consultation text via synthetic sentinels - reaches the
+    HTTP response `data`, while the rest of the response contract
+    (recommendations, top-level `_debug` request-tracing metadata) is
+    unaffected.
+    """
+    query_sentinel = "PRIVATE_CONSULTATION_SENTINEL"
+    extra_condition_sentinel = "PRIVATE_EXTRA_CONDITION_SENTINEL"
+
     _stub_candidates(monkeypatch)
     _stub_recommendations(
         monkeypatch,
@@ -606,91 +624,17 @@ def test_chat_response_includes_debug_observation_contract_fields(client, monkey
                 {"name": "神社A", "reason": "ok", "reason_source": "reason:test"}
             ],
             "_debug": {
-                "candidate_pool_observation": {
-                    "valid_candidate_count": 1,
-                    "with_place_id": 1,
-                    "missing_latlng": 0,
-                    "distance_none": 0,
-                    "score_top10": [],
-                    "filter_context": {},
+                "user_state_profile": {
+                    "raw_query": query_sentinel,
+                    "extra_condition": extra_condition_sentinel,
                 },
                 "interpretation_profile": {
-                    "raw_query": "近場で参拝したい",
+                    "raw_query": query_sentinel,
                     "state_profile": {},
-                    "need_profile": {},
-                    "direction_profile": {},
-                    "emotion_profile": {},
-                    "action_intent": {},
-                    "decision_context": {},
-                    "constraint_profile": {},
-                    "outcome_hint": {},
                 },
-                "visit_style_observation": {
-                    "pool_size": 1,
-                    "hit_count": 0,
-                    "matched_tag_counts": {},
-                    "rows": [],
-                },
-                "ranking_breakdown_observation": {
-                    "ranked_count": 1,
-                    "top10": [],
-                },
-                "score_v3": {
-                    "mode": "shadow",
-                    "shadow_mode": True,
-                    "ranking_applied": False,
-                    "score_v3": {
-                        "mode": "shadow",
-                        "ranking_applied": False,
-                        "components": {
-                            "state_match_score": 0.0,
-                            "meaning_match_score": 0.0,
-                            "shrine_profile_score": 0.0,
-                            "behavior_score": 0.0,
-                            "history_score": 0.0,
-                            "final_score": 0.0,
-                        },
-                        "observation": {
-                            "top1_changed": False,
-                            "delta": 0.0,
-                            "reason": [],
-                        },
-                    },
-                },
-                "reason_v4_preview": [
-                    {
-                        "rank": 1,
-                        "shrine_id": 1,
-                        "name": "神社A",
-                        "preview": {
-                            "reason_text": "神社Aは、相談内容と神社側の文脈を照合する候補です。 次に確認したいことを一つだけ決めます。",
-                            "fact": {
-                                "label": "神社A",
-                                "evidence": ["name:神社A"],
-                            },
-                            "interpretation": {
-                                "theme": "相談文脈",
-                                "text": "相談内容と神社側の文脈を照合する候補です。",
-                            },
-                            "action": {
-                                "text": "次に確認したいことを一つだけ決めます。",
-                                "source": "fallback",
-                            },
-                            "source": {
-                                "fact": "candidate_profile|meaning_translation",
-                                "interpretation": "interpretation_profile|meaning_translation",
-                                "action": "fallback",
-                            },
-                        },
-                    }
-                ],
-                "trim_observation": {
-                    "before_count": 1,
-                    "after_count": 1,
-                    "dropped_count": 0,
-                    "before": [],
-                    "after": [],
-                    "dropped": [],
+                "candidate_pool_observation": {
+                    "valid_candidate_count": 1,
+                    "filter_context": {},
                 },
             },
         },
@@ -698,127 +642,32 @@ def test_chat_response_includes_debug_observation_contract_fields(client, monkey
 
     r = client.post(
         URL,
-        data=json.dumps({"query": "近場で参拝したい", "lat": 35.0, "lng": 139.0}),
+        data=json.dumps({"query": query_sentinel, "lat": 35.0, "lng": 139.0}),
         content_type="application/json",
     )
     assert r.status_code == 200
 
-    debug = r.json()["data"]["_debug"]
+    body = r.json()
 
-    assert set(debug.keys()) == {
-        "candidate_pool_observation",
-        "interpretation_profile",
-        "visit_style_observation",
-        "ranking_breakdown_observation",
-        "score_v3",
-        "reason_v4_preview",
-        "trim_observation",
-    }
+    assert "_debug" not in body["data"]
 
-    interpretation_profile = debug["interpretation_profile"]
-    assert set(interpretation_profile.keys()) == {
-        "raw_query",
-        "state_profile",
-        "need_profile",
-        "direction_profile",
-        "emotion_profile",
-        "action_intent",
-        "decision_context",
-        "constraint_profile",
-        "outcome_hint",
-    }
-    assert interpretation_profile["raw_query"] == "近場で参拝したい"
-    assert isinstance(interpretation_profile["state_profile"], dict)
-    assert isinstance(interpretation_profile["need_profile"], dict)
-    assert isinstance(interpretation_profile["direction_profile"], dict)
-    assert isinstance(interpretation_profile["emotion_profile"], dict)
-    assert isinstance(interpretation_profile["action_intent"], dict)
-    assert isinstance(interpretation_profile["decision_context"], dict)
-    assert isinstance(interpretation_profile["constraint_profile"], dict)
-    assert isinstance(interpretation_profile["outcome_hint"], dict)
+    # response全体(top-levelの安全なrequest-tracing _debug含む)にsentinelが
+    # 一切出現しないことをdefense-in-depthとして確認する。
+    raw_text = r.content.decode("utf-8")
+    assert query_sentinel not in raw_text
+    assert extra_condition_sentinel not in raw_text
 
-    candidate_pool = debug["candidate_pool_observation"]
-    assert set(candidate_pool.keys()) == {
-        "valid_candidate_count",
-        "with_place_id",
-        "missing_latlng",
-        "distance_none",
-        "score_top10",
-        "filter_context",
-    }
+    # 本来の response contract (recommendations等) は維持されている。
+    assert body["data"]["recommendations"][0]["name"] == "神社A"
 
-    visit_style = debug["visit_style_observation"]
-    assert set(visit_style.keys()) == {
-        "pool_size",
-        "hit_count",
-        "matched_tag_counts",
-        "rows",
-    }
-
-    ranking_breakdown = debug["ranking_breakdown_observation"]
-    assert set(ranking_breakdown.keys()) == {
-        "ranked_count",
-        "top10",
-    }
-
-    score_v3 = debug["score_v3"]
-    assert set(score_v3.keys()) == {
+    # top-level _debug (rid/before/after/applied/flow/mode) はrequest-tracing用の
+    # 別payloadであり、本fixで除外対象にしていないため引き続き存在する。
+    assert "_debug" in body
+    assert set(body["_debug"].keys()) == {
+        "rid",
+        "before",
+        "after",
+        "applied",
+        "flow",
         "mode",
-        "shadow_mode",
-        "ranking_applied",
-        "score_v3",
     }
-    assert score_v3["mode"] == "shadow"
-    assert score_v3["shadow_mode"] is True
-    assert score_v3["ranking_applied"] is False
-
-    score_v3_payload = score_v3["score_v3"]
-    assert set(score_v3_payload.keys()) == {
-        "mode",
-        "ranking_applied",
-        "components",
-        "observation",
-    }
-    assert score_v3_payload["mode"] == "shadow"
-    assert score_v3_payload["ranking_applied"] is False
-    assert set(score_v3_payload["components"].keys()) == {
-        "state_match_score",
-        "meaning_match_score",
-        "shrine_profile_score",
-        "behavior_score",
-        "history_score",
-        "final_score",
-    }
-    assert score_v3_payload["observation"] == {
-        "top1_changed": False,
-        "delta": 0.0,
-        "reason": [],
-    }
-
-    reason_v4_preview = debug["reason_v4_preview"]
-    assert isinstance(reason_v4_preview, list)
-    assert len(reason_v4_preview) == 1
-
-    reason_v4_item = reason_v4_preview[0]
-    assert set(reason_v4_item.keys()) == {
-        "rank",
-        "shrine_id",
-        "name",
-        "preview",
-    }
-    assert reason_v4_item["rank"] == 1
-    assert reason_v4_item["name"] == "神社A"
-
-    preview = reason_v4_item["preview"]
-    assert set(preview.keys()) == {
-        "reason_text",
-        "fact",
-        "interpretation",
-        "action",
-        "source",
-    }
-    assert isinstance(preview["reason_text"], str)
-    assert set(preview["fact"].keys()) == {"label", "evidence"}
-    assert set(preview["interpretation"].keys()) == {"theme", "text"}
-    assert set(preview["action"].keys()) == {"text", "source"}
-    assert set(preview["source"].keys()) == {"fact", "interpretation", "action"}
