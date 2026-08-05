@@ -132,9 +132,6 @@ export async function djFetch(
 
   const response = await fetch(url, finalInit);
 
-  const responseHeadersAny = response.headers as Headers & {
-    raw?: () => Record<string, string[]>;
-  };
   const responseSetCookies = readResponseSetCookies(response);
 
   console.log("[DJ_FETCH_RESPONSE]", {
@@ -143,14 +140,7 @@ export async function djFetch(
     status: response.status,
     contentType: response.headers.get("content-type"),
     setCookieCount: responseSetCookies.length,
-    setCookies: responseSetCookies,
     hasLocation: Boolean(response.headers.get("location")),
-  });
-
-  console.log("[DJ_FETCH_RESPONSE_HEADERS]", {
-    keys: Array.from(response.headers.keys()),
-    setCookie: response.headers.get("set-cookie"),
-    rawSetCookie: typeof responseHeadersAny.raw === "function" ? responseHeadersAny.raw()?.["set-cookie"] ?? null : null,
   });
 
   return response;

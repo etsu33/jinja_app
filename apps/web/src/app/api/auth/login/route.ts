@@ -59,11 +59,9 @@ export async function POST(req: NextRequest) {
   try {
     const upstreamPath = "/api/auth/jwt/create/";
 
-    console.log("[AUTH_LOGIN_UPSTREAM_REQUEST]", {
+    serverLog("debug", "AUTH_LOGIN_UPSTREAM_REQUEST", {
       requestId,
       upstreamPath,
-      username,
-      djangoOrigin: process.env.DJANGO_ORIGIN || process.env.BACKEND_ORIGIN || "http://127.0.0.1:8000",
     });
 
     const r = await djFetch(upstreamPath, {
@@ -79,11 +77,10 @@ export async function POST(req: NextRequest) {
     const contentType = r.headers.get("content-type") || "";
     const bodyText = await r.text();
 
-    console.log("[AUTH_LOGIN_UPSTREAM_RESPONSE]", {
+    serverLog("debug", "AUTH_LOGIN_UPSTREAM_RESPONSE", {
       requestId,
       status: r.status,
       contentType,
-      bodyText,
     });
 
     if (!r.ok) {
@@ -134,8 +131,6 @@ export async function POST(req: NextRequest) {
     });
     return res;
   } catch (e) {
-    console.log("[AUTH_LOGIN_ROUTE_FAILED]", e);
-
     serverLog("error", "AUTH_LOGIN_ROUTE_FAILED", {
       requestId,
       message: e instanceof Error ? e.message : String(e),
