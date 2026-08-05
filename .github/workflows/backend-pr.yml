@@ -1,0 +1,24 @@
+name: backend-pr
+
+permissions:
+  contents: read
+on:
+  pull_request:
+    branches: [ develop ]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-pr.yml'
+      - '.github/workflows/backend-tests.yml'
+
+concurrency:
+  group: backend-pr-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  call:
+    uses: ./.github/workflows/backend-tests.yml
+    with:
+      mode: unit
+    secrets:
+      GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+      GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_PLACES_API_KEY }}
