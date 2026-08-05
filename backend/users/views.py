@@ -33,10 +33,9 @@ class MeView(GenericAPIView):
 
     def patch(self, request, *args, **kwargs):
         log.info(
-            "[MeView.patch] is_authenticated=%s, user=%s, auth=%s",
+            "[MeView.patch] authenticated=%s user_id=%s",
             getattr(request.user, "is_authenticated", False),
-            getattr(request.user, "username", None),
-            request.auth,
+            getattr(request.user, "id", None),
         )
 
         # ★ ここも get_serializer を使う（context 付き）
@@ -46,9 +45,11 @@ class MeView(GenericAPIView):
 
         # ★ ログ・レスポンスも get_serializer を通す（context 付き）
         ser_after = self.get_serializer(user)
+        profile_data = ser_after.data.get("profile")
         log.info(
-            "[MeView.patch] updated profile: %s",
-            ser_after.data.get("profile"),
+            "[MeView.patch] profile updated user_id=%s field_count=%s",
+            getattr(user, "id", None),
+            len(profile_data) if isinstance(profile_data, dict) else None,
         )
         return Response(ser_after.data)
 
@@ -72,8 +73,11 @@ class MeIconUploadView(GenericAPIView):
     def post(self, request, *args, **kwargs):
         from django.utils.datastructures import MultiValueDict
 
-        # ★ 追加：FILES と POST をログ
-        log.info("[MeIconUploadView] FILES=%s, POST=%s", request.FILES, request.POST)
+        log.info(
+            "[MeIconUploadView] user_id=%s has_icon=%s",
+            getattr(request.user, "id", None),
+            "icon" in request.FILES,
+        )
 
         file = request.FILES.get("icon")
         if not file:
@@ -87,8 +91,8 @@ class MeIconUploadView(GenericAPIView):
         prof.save()
 
         log.info(
-            "[MeIconUploadView] uploaded icon for user=%s",
-            request.user.username,
+            "[MeIconUploadView] icon uploaded user_id=%s",
+            getattr(request.user, "id", None),
         )
 
         return Response(
