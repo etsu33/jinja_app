@@ -24,15 +24,6 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     hasRefreshCookie,
   });
 
-  console.log("[BFF_THREAD_DETAIL_REQUEST]", {
-    path: upstreamPath,
-    hasCookieHeader: Boolean(req.headers.get("cookie")),
-  });
-
-  console.log("[BFF_THREAD_DETAIL_UPSTREAM]", {
-    upstreamPath,
-  });
-
   return bffFetchWithAuthFromReq(req, upstreamPath, {
     method: "GET",
     headers: { Accept: "application/json" },

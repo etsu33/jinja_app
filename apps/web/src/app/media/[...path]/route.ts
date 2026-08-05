@@ -13,7 +13,6 @@ export async function HEAD(req: NextRequest, ctx: { params: Promise<{ path: stri
 
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
-  console.log("[media route] HIT", req.nextUrl.pathname);
   const { path } = await ctx.params;
 
   // パスは一応エスケープ（変な文字や ../ 対策）
