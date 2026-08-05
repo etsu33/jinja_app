@@ -122,8 +122,13 @@ jobs:
       - name: Generate per-run test DB password
         id: gen
         run: |
+          # ::add-mask::はここでは登録しない: GitHub Actionsはmask登録済みの
+          # 値をjob outputへ設定しようとすると "Skip output ... since it may
+          # contain secret" として出力自体を落とすため(実測で確認)。
+          # この値はここでは一切echo/printされずGITHUB_OUTPUTへ書き込まれる
+          # だけなので、mask未登録でもこのjobのログには出力されない。
+          # 参照する側の各jobで individually ::add-mask:: を登録する。
           PG_PASSWORD="$(openssl rand -hex 24)"
-          echo "::add-mask::$PG_PASSWORD"
           echo "pg_password=$PG_PASSWORD" >> "$GITHUB_OUTPUT"
 
   unit:
