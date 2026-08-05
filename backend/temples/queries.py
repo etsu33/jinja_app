@@ -4,8 +4,6 @@ from typing import List, Tuple
 
 from django.conf import settings
 from django.db import connection
-from django.contrib.gis.db.models.functions import Distance, Transform
-from django.contrib.gis.geos import Point
 from django.db.models import Case, FloatField, IntegerField, Value, When, F
 from django.db.models.expressions import RawSQL
 
@@ -47,6 +45,9 @@ def nearest_queryset(lon: float, lat: float):
         )
     # Spatialite (SQLite, GISあり) – <-> は使えない。Transform(4326→3857)して距離[m]で注釈
     if _use_real_gis() and connection.vendor == "sqlite":
+        from django.contrib.gis.db.models.functions import Distance, Transform
+        from django.contrib.gis.geos import Point
+
         p = Point(lon, lat, srid=4326)
         qs = Shrine.objects.filter(location__isnull=False).annotate(
             distance_m=Distance(Transform("location", 3857), Transform(p, 3857))
@@ -123,6 +124,9 @@ def nearest_shrines(lon: float, lat: float, limit: int = 20, radius_m: int | Non
 
     # Spatialite (SQLite, GISあり) – GeoDjangoの距離で[m]算出
     if _use_real_gis() and connection.vendor == "sqlite":
+        from django.contrib.gis.db.models.functions import Distance, Transform
+        from django.contrib.gis.geos import Point
+
         p = Point(lon, lat, srid=4326)
         qs = Shrine.objects.filter(location__isnull=False).annotate(
             d_m=Distance(Transform("location", 3857), Transform(p, 3857))
