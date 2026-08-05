@@ -105,9 +105,6 @@ export async function POST(req: NextRequest) {
   const doChat = (accessToken: string | null) => {
     const upstreamUrl = "/api/concierge/chat/";
 
-    console.log("🔥 BFF → backend 投げる直前 🔥");
-    console.log("🔥 BFF → backend URL", upstreamUrl);
-
     return djFetch(req, upstreamUrl, {
       method: "POST",
       headers: {

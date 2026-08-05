@@ -33,8 +33,6 @@ function logDedupe(label: string, arr: any[]) {
   const keys = arr.map((p) => dedupeKey(p));
   const unique = new Set(keys);
   clientLog(label, { total: keys.length, unique: unique.size, dup: keys.length - unique.size });
-  // 必要ならこれも（重いので普段はオフ）
-  // console.log(keys);
 }
 
 function clientLog(event: string, payload?: Record<string, unknown>) {

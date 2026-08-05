@@ -37,14 +37,6 @@ export async function djFetch(
   const origin = getDjangoOrigin();
   const url = new URL(path, origin).toString();
 
-  console.log("[DJ_FETCH]", {
-    origin,
-    path,
-    url,
-    method: init.method || (req ? req.method : "GET"),
-    forwardAuth: init.forwardAuth ?? true,
-  });
-
   const headers = new Headers(init.headers ?? {});
   const forwardAuth = init.forwardAuth ?? true;
 

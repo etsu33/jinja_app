@@ -7,12 +7,6 @@ import { getAnalyticsProvider } from "@/lib/analytics/providers";
 export default function ClientBootstrap() {
   useEffect(() => {
     // api interceptors are defined in "@/lib/api/client"
-    console.info("POSTHOG_ENV_CHECK", {
-      nodeEnv: process.env.NODE_ENV,
-      hasKey: Boolean(process.env.NEXT_PUBLIC_POSTHOG_KEY),
-      host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
-    });
-
     if (process.env.NODE_ENV !== "production") return;
 
     try {

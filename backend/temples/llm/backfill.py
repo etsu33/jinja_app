@@ -80,8 +80,6 @@ def _log_details_req(place_id: str) -> None:
         "language": "ja",
         "fields": "formatted_address,address_components",
     }
-    # （必要ならこちらでだけデバッグ出力する）
-    # print(f"[DETAILS DEBUG] place_id={place_id}")
     GP.req_history.append((_DETAIL_URL, dict(params)))
 
 

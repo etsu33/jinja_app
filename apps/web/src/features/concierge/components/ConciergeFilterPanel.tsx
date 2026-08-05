@@ -242,7 +242,6 @@ export default function ConciergeFilterPanel({
         <button
           type="button"
           onClick={() => {
-            console.log("FILTER_PANEL_APPLY_CLICK", { canApply });
             onApply();
           }}
           disabled={false}

@@ -25,8 +25,6 @@ export async function getShrineDetailServer(id: number): Promise<Shrine> {
   const base = resolveBackendPublicBaseUrl() ?? (await resolveServerBaseUrl());
   const url = `${base}/api/shrines/${id}/data/`;
 
-  console.log("[getShrineDetailServer]", { id, base, url });
-
   const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) {
     const body = await res.text().catch(() => "<failed to read body>");

@@ -41,7 +41,6 @@ export async function POST(req: NextRequest) {
   }
 
   out.append("image", new Blob([new Uint8Array(jpegBuf)], { type: "image/jpeg" }), "upload.jpg");
-  console.log("[BFF] outbound image:", "image/jpeg", "upload.jpg", jpegBuf.length);
 
   return bffFetchWithAuthFromReq(req, "/api/my/goshuins/", {
     method: "POST",

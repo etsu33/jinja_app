@@ -146,8 +146,6 @@ export async function bffFetchWithAuthFromReq(
       hasRefreshCookie,
     });
 
-    console.log("[BFF_FETCH_URL]", `${apiBase()}${upstreamPath}`);
-
     return fetch(`${apiBase()}${upstreamPath}`, {
       ...init,
       cache: "no-store",
