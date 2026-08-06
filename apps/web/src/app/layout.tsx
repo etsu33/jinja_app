@@ -38,8 +38,9 @@ const geistMono = localFont({
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
-  title: "Shrine Map",
-  description: "Map preview",
+  title: "KAMI MUSUBI",
+  description:
+    "ユーザーの悩みや願いごとに応じて神社を提案し、神社詳細の確認から経路案内までつなぐ神社コンシェルジュアプリです。",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
