@@ -29,6 +29,8 @@ meaning-layer-connection.md
 ↓
 narrative-guideline.md
 ↓
+recommendation-architecture.md
+↓
 recommendation-readiness.md
 ↓
 recommendation-reason-contract.md
@@ -77,6 +79,7 @@ openapi-contract-governance.md
 
 | 文書 | 責務 |
 | --- | --- |
+| `recommendation-architecture.md` | Recommendation全体（相談入力から知識還元まで）のEnd-to-Endフロー、各段階の責務・正本データおよび引き渡し契約 |
 | `recommendation-readiness.md` | 神社Knowledge CoverageのGovernance観測（Runtime candidate除外には接続しない） |
 | `recommendation-reason-contract.md` | Recommendation ReasonのInput / Output / 保存 / 表示 / 互換責務 |
 
