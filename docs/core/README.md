@@ -77,7 +77,7 @@ openapi-contract-governance.md
 
 | 文書 | 責務 |
 | --- | --- |
-| `recommendation-readiness.md` | 推薦可能品質、Readiness Level、Coverageおよび品質責務 |
+| `recommendation-readiness.md` | 神社Knowledge CoverageのGovernance観測（Runtime candidate除外には接続しない） |
 | `recommendation-reason-contract.md` | Recommendation ReasonのInput / Output / 保存 / 表示 / 互換責務 |
 
 ### API契約

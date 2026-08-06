@@ -58,7 +58,7 @@ Recommendation関連の設計判断は複数の文書に分散している。本
 | `docs/product/meaning-translation-mapping.md` | 相談状態・神社文脈を`history_theme`へ接続する変換仕様 |
 | `docs/product/recommendation-v4-interpreter-contract.md` | Consultation Interpreterの9Field（raw_query/state_profile/need_profile/direction_profile/emotion_profile/action_intent/decision_context/constraint_profile/outcome_hint）の意味正本 |
 | `docs/core/recommendation-reason-contract.md` | Recommendation ReasonのInput/Output/Fact-Interpretation-Action/保存/表示/互換責務の正本 |
-| `docs/core/recommendation-readiness.md` | Recommendation/Action/Reflection利用可能性を判定するReadiness Level・Coverage定義の正本 |
+| `docs/core/recommendation-readiness.md` | 神社データのKnowledge Coverage・Verification・Usabilityを観測するGovernance Contractの正本（Runtime candidate除外には接続しない） |
 | `docs/product/recommendation-v4-frontend-adapter-contract.md` | `recommendation_reason_v4_detail`のWeb/Mobile表示Adapter契約 |
 | `docs/product/action_suggestion_v4.md` | Action Suggestion v4の入出力・生成原則の正本 |
 | `docs/product/visit-reflection-flow.md` | 参拝記録から振り返り・履歴・次回相談までの体験責務の正本 |
@@ -186,16 +186,16 @@ Recommendationパイプラインを以下の12段階として定義する。`doc
 - **次工程への引き渡し**: Eligibility Filterへ候補集合を渡す
 - **禁止事項**: LLMへ全候補を無条件に渡す設計を正本にしない。候補数の絞り込みは本段階とEligibility Filterで行う
 
-### 5. Eligibility Filter
+### 5. Eligibility Filter（再評価済み。§As-Is参照）
 
 - **入力**: 候補神社集合
-- **出力**: Recommendation対象として適格な候補集合
-- **責務**: `docs/core/recommendation-readiness.md`が定義するReadiness Level（Level1: `place_context AND (history_theme OR goriyaku_tags)`）を満たさない候補を除外する
-- **正本データ**: `docs/core/recommendation-readiness.md`
-- **次工程への引き渡し**: Scoringへ適格候補集合を渡す
-- **禁止事項**: Readiness Level未達の神社をScoringへそのまま渡さない
+- **出力**: Recommendation対象として適格な候補集合（現状は候補集合をそのまま通過させる）
+- **責務**: 現状は明示的な除外を行わない。Knowledge完全性を理由とした候補除外の要否は`docs/core/recommendation-readiness.md`のMother Ship Decisionsへ委ねる
+- **正本データ**: `docs/core/recommendation-readiness.md`（Runtime / Governance Boundary）
+- **次工程への引き渡し**: Scoringへ候補集合を渡す
+- **禁止事項**: （現状規定なし。Product判断で除外を採用する場合は本Sectionを更新する）
 
-**As-Is**: `docs/core/recommendation-readiness.md`自身が「Recommendation Readinessは未実装（文書定義のみ）」と明記しており、本Eligibility Filter段階は設計上の到達点であり、現状コードで明示的に分離実装されているとは確認できていない。
+**As-Is（監査により確定）**: 本段階が前提としていた「Readiness Level1未達候補の除外」は、Knowledge Model・Evidence Gate実装後の監査（`docs/core/recommendation-readiness.md`§Runtime / Governance Boundary）により、Candidate Generation・Evidence Gate・Reason V4 fallback chainの組み合わせで既に安全に動作することが確認されたため、`REMOVE_FROM_CONTRACT`（削除）を技術的な第一候補として扱う。ただし候補除外自体を将来行うかどうかはProduct判断であり、本書は独断で確定しない。
 
 ### 6. Scoring
 
@@ -554,7 +554,7 @@ Recommendationパイプラインの品質を評価する軸を以下に定義す
 | Explanation Consistency | 同一神社・同一相談パターンに対して、説明文が不必要に矛盾しないか |
 | Input Contract Consistency | Web/Mobileが送信する入力が、Backendが実際に処理する契約と一致しているか（`visit_style_tags`不整合のような phantom fieldがないか） |
 | Experience Alignment | 推薦時に提示した内容と、実際の参拝体験（Reflection）との一致度 |
-| Data Coverage | `deity` / `shrine_history`等、Recommendation Readiness Level1〜3に必要なFieldの充足率 |
+| Data Coverage | `deity` / `shrine_history`等、`docs/core/recommendation-readiness.md`のCoverage Taxonomy/Capability Setで定義される充足率 |
 | Evidence Coverage | Fact項目のうち、出典参照を伴うものの割合 |
 | Fallback Rate | `fallback_mode = nearby_unfiltered`等、条件一致0件による代替表示が発生する頻度 |
 
