@@ -19,6 +19,8 @@ roadmap.md
 ↓
 authentication-flow.md
 ↓
+runtime-security-baseline.md
+↓
 concierge-spec.md
 ↓
 meaning-layer.md
@@ -50,6 +52,12 @@ openapi-contract-governance.md
 | 文書 | 責務 |
 | --- | --- |
 | `authentication-flow.md` | Web認証アーキテクチャ、Frontend・BFF・Backend責務、JWT・Cookie方針 |
+
+### Security
+
+| 文書 | 責務 |
+| --- | --- |
+| `runtime-security-baseline.md` | 現在有効なruntime/security contract、trust boundary、logging/public response/CI security方針 |
 
 ### Concierge
 
