@@ -260,3 +260,55 @@ def test_candidates_knowledge_lookup_does_not_scale_query_count_with_shrine_coun
     assert len(ctx.captured_queries) < 30, (
         f"expected knowledge lookup to avoid N+1, got {len(ctx.captured_queries)} queries"
     )
+
+
+@pytest.mark.django_db
+def test_candidates_exclude_known_qa_fixture_naming_patterns(shrine_factory):
+    """
+    Knowledge Coverage Shadow Audit (audit/knowledge-coverage-shadow-105) で、
+    実DB上のid=101-105（「承認テスト神社」「admin承認テスト神社」「重複検証神社」
+    「重複検証神社（別宮）」）が既存のnoisy_shrine_names / テストprefix除外の
+    いずれにも一致せず、live candidate poolへ混入することを確認した。
+
+    これらは「テスト」で始まらず、「test」でも始まらないため、既存の
+    startswith系除外では捕捉できない。本testはこの実在するfixture命名を
+    再現し、候補から除外されることを保証する。
+    """
+
+    shrine_factory(name="承認テスト神社", latitude=35.0, longitude=139.0)
+    shrine_factory(name="admin承認テスト神社", latitude=35.0, longitude=139.0)
+    shrine_factory(name="重複検証神社", latitude=35.0, longitude=139.0)
+    shrine_factory(name="重複検証神社（別宮）", latitude=35.0, longitude=139.0)
+    shrine_factory(name="実在神社", latitude=35.0, longitude=139.0)
+
+    cands = build_chat_candidates(
+        lat=35.0, lng=139.0, area=None, goriyaku_tag_ids=None, trace_id="test",
+    )
+    names = [c["name"] for c in cands]
+
+    assert "承認テスト神社" not in names
+    assert "admin承認テスト神社" not in names
+    assert "重複検証神社" not in names
+    assert "重複検証神社（別宮）" not in names
+    assert "実在神社" in names
+
+
+@pytest.mark.django_db
+def test_candidates_do_not_over_exclude_shrines_with_mid_name_test_substring(shrine_factory):
+    """
+    修正がid依存や「テスト」の広範な部分一致に頼っていないことを保証する
+    negative guard。「テスト」を名前の途中に含むが実際には除外対象ではない
+    shrine（既存の他test（例: test_candidates_include_distance_m）が使う
+    命名規約と同様）が、誤って除外されないことを確認する。
+    """
+
+    shrine_factory(name="距離テスト神社", latitude=35.0, longitude=139.0)
+    shrine_factory(name="place_idテスト神社", latitude=35.0, longitude=139.0)
+
+    cands = build_chat_candidates(
+        lat=35.0, lng=139.0, area=None, goriyaku_tag_ids=None, trace_id="test",
+    )
+    names = [c["name"] for c in cands]
+
+    assert "距離テスト神社" in names
+    assert "place_idテスト神社" in names
