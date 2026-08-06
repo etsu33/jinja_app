@@ -43,9 +43,12 @@ KAMI MUSUBIは、Concierge Firstを起点として、推薦、神社詳細、経
 
 - Concierge First
 - 相談テーマを主入力とする導線
-- Explore List / Map基盤
+- Explore List / Map基盤（Web: MapLibre GL JS、Mobile: Native地図）
 - 神社詳細画面
-- Recommendation Reason
+- Recommendation Reason（V4構造化表示、Backend契約・Web・Mobile実装済み）
+- Shrine Knowledge Model Foundation（ShrineDeity / ShrineHistory / ShrineKnowledgeSource）
+- Evidence Gate Foundation（Fact単位の利用可否判定・confidence表現制御・disputed表示、Web/Mobile UI接続済み）
+- Concierge相談履歴（Web / Mobile一覧・詳細画面、Analytics計測）
 - Action Suggestion
 - Recommendation Snapshot
 - Favorite / Visit / Reflectionモデル
@@ -59,6 +62,7 @@ KAMI MUSUBIは、Concierge Firstを起点として、推薦、神社詳細、経
 - Web / MobileのPremium導線
 - Billing状態取得基盤
 - Web / MobileのAnalytics送信基盤
+- Runtime Security Baseline（Critical/High remediation完了、正本は`docs/core/runtime-security-baseline.md`）
 
 ### 基盤実装済み・検証継続
 
@@ -76,18 +80,26 @@ KAMI MUSUBIは、Concierge Firstを起点として、推薦、神社詳細、経
 - Recommendation Scoreと行動結果の関係
 - Web / Mobile間の主要体験差
 
+### 実装進行中・完了判定待ち
+
+以下は実装が進行しているが、完了範囲または完了判定に母艦判断を要する。
+
+- Shrine Knowledge Model Foundationの100%完了判定（Real Data Pilotは明治神宮・品川神社の2社で実施済みだが、3〜5社規模のPilot本体、105件Rolloutは未着手）
+- Recommendation Readiness（神社単位のReadiness Level分類）は未着手。Fact単位の利用可否判定（Evidence Gate）は先行して実装済みだが、両者は別責務であり混同しない
+- Mobile Search / MapおよびWeb Map（MapLibre GL JS）は実装が進行しているが、roadmap上のPhase 8（Mobile展開）はPhase 7（Release Readiness）完了後に位置づけられており、実装順序と本書記載の順序が一致していない
+
 ### 現在の主フェーズ
 
 現在の主フェーズは、Recommendation品質改善とShrine Data Qualityである。
 
 特に以下を優先する。
 
-- Recommendation Readinessの定義統一
+- Recommendation Readinessの定義統一（神社単位のReadiness Level分類は未着手。Fact単位のEvidence Gateは実装済み）
 - Coverageの定義統一
-- Fact / Meaning / Runtime / Governanceの責務分離
-- 神社固有情報を利用したRecommendation Reason
+- Fact / Meaning / Runtime / Governanceの責務分離（Evidence Gateの実装によりFact usability判定は分離済み）
+- 神社固有情報を利用したRecommendation Reason（Reason V4として実装済み、継続改善）
 - Action / Reflectionとの一貫性
-- 神社データの出典・検証・利用可能性
+- 神社データの出典・検証・利用可能性（Shrine Knowledge Model FoundationとEvidence Gateとして実装済み、Pilot拡大は未着手）
 - Readiness条件とBackend実装の接続
 
 PremiumおよびAnalyticsは独立した一時的フェーズとして終了させず、Recommendation品質、継続利用および収益性を確認する横断的な検証基盤として運用する。
@@ -282,6 +294,10 @@ active化は、推薦ログと行動ファネルの実測を確認した後に�
 - Reflectionが相談・推薦・参拝に接続する
 - Readiness不足の神社を識別できる
 
+### 現在の状況
+
+Recommendation Reasonの固有性（V4構造化表示）、FactとMeaningの分離（Evidence Gate）は実装済み。神社単位のReadiness不足識別（Readiness Level分類）は未着手。
+
 ---
 
 ## Phase 6: Shrine Data Quality
@@ -311,6 +327,10 @@ active化は、推薦ログと行動ファネルの実測を確認した後に�
 - 値が入力済みか
 - 出典確認済みか
 - 推薦に利用可能か
+
+### 現在の状況
+
+祭神・由緒のModel Foundation（`ShrineDeity` / `ShrineHistory` / `ShrineKnowledgeSource`）と、出典確認済みかを判別するEvidence Gate（Fact単位の利用可否・confidence表現・disputed表示）は実装済み。Real Data Pilotは明治神宮・品川神社の2社で実施済みだが、3〜5社規模のPilot本体および105件Rolloutは未着手。Foundationとして100%完了とみなせるかは`docs/knowledge/shrine-knowledge-contract.md`の完了条件（Pilot対象確定含む）に基づき母艦判断待ちとする。
 
 ---
 
@@ -401,6 +421,14 @@ Mobile本番配布準備
 Phase 1〜4は独立した新規実装フェーズとしては完了している。
 
 ただし、各基盤の品質、利用率、CVRおよび継続価値の検証は完了扱いにせず、後続フェーズでも継続する。
+
+### Cross-cutting: Security Foundation
+
+Runtime/CI/Supply Chain Security ReviewによるCritical/High findingのremediationと、現行Security ContractのRuntime Security Baselineへの正本化は完了している（`docs/core/runtime-security-baseline.md`）。残存するMedium/Low/External riskはSecurity Backlog（`docs/audit/security-follow-up-backlog.md`）で追跡し、本書へは詳細を複製しない。
+
+### Phase順序に関する観察事項
+
+Mobile Search / MapおよびWeb Mapの実装は、上記「主フェーズ」の順序（Release Readinessの後にMobile本番配布準備）に先行して既に進行している。この事実のみを記録し、正式なPhase順序の変更は行わない。順序を変更するかどうかは母艦判断（`MOTHER_SHIP_DECISION_REQUIRED`）とする。
 
 ---
 
