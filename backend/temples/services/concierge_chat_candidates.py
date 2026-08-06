@@ -88,6 +88,13 @@ def build_chat_candidates(
     qs = qs.exclude(name_jp__in=noisy_shrine_names)
     qs = qs.exclude(name_jp__startswith="テスト")
     qs = qs.exclude(name_jp__istartswith="test")
+    # 「承認テスト神社」「admin承認テスト神社」「重複検証神社」等、"テスト"接頭辞に
+    # 一致しないQA用fixture命名を除外する。実在神社名にこれらの語が含まれることは
+    # ないことを確認済み（"テスト"は接頭辞以外での混入除去も検討したが、既存test
+    # fixture（例: "距離テスト神社"）との衝突があるため、"承認テスト"と"検証"という
+    # より限定的な部分一致のみを追加する）。
+    qs = qs.exclude(name_jp__icontains="承認テスト")
+    qs = qs.exclude(name_jp__icontains="検証")
 
     qs = qs.select_related("place_ref")
     qs = qs.filter(latitude__isnull=False, longitude__isnull=False)
