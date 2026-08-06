@@ -20,6 +20,7 @@ from temples.services.shrine_knowledge_selector import (
     fetch_fact_ready_knowledge_deities,
     fetch_fact_ready_knowledge_histories,
 )
+from temples.services.shrine_qa_fixture_exclusion import exclude_qa_fixture_shrines
 
 log = logging.getLogger(__name__)
 
@@ -73,28 +74,9 @@ def build_chat_candidates(
             | Q(name_romaji__icontains=area)
         )
 
-    noisy_shrine_names = [
-        "x",
-        "x2",
-        "noaddr",
-        "住所なし神社",
-        "test神社",
-        "テスト候補神社",
-        "テスト神社",
-        "テスト神社2",
-        "テスト神社-1770895174",
-    ]
-
-    qs = qs.exclude(name_jp__in=noisy_shrine_names)
-    qs = qs.exclude(name_jp__startswith="テスト")
-    qs = qs.exclude(name_jp__istartswith="test")
-    # 「承認テスト神社」「admin承認テスト神社」「重複検証神社」等、"テスト"接頭辞に
-    # 一致しないQA用fixture命名を除外する。実在神社名にこれらの語が含まれることは
-    # ないことを確認済み（"テスト"は接頭辞以外での混入除去も検討したが、既存test
-    # fixture（例: "距離テスト神社"）との衝突があるため、"承認テスト"と"検証"という
-    # より限定的な部分一致のみを追加する）。
-    qs = qs.exclude(name_jp__icontains="承認テスト")
-    qs = qs.exclude(name_jp__icontains="検証")
+    # QA用fixture Shrineの除外条件は shrine_qa_fixture_exclusion.py を正本とし、
+    # Knowledge Coverage集計（knowledge_coverage_report command）と共有する。
+    qs = exclude_qa_fixture_shrines(qs)
 
     qs = qs.select_related("place_ref")
     qs = qs.filter(latitude__isnull=False, longitude__isnull=False)
