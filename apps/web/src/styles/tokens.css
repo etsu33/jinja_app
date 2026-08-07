@@ -77,6 +77,21 @@
      不統一だったため、より広く使われているbg-black/50相当を採用) */
   --kt-color-overlay-default: rgb(0 0 0 / 0.5);
 
+  /* ---- Semantic Token: message-own ---- */
+  /* Web現行: bg-gray-900 text-white (MessageList.tsx、自分側メッセージ)。
+     docs/audit/design-token-stage3-neutral-semantic-decision.md で新設決定済み。
+     Dark Surface / Premiumとは別責務のため統合しない。 */
+  --kt-color-message-own-background: var(--color-gray-900);
+  --kt-color-message-own-text: var(--color-white);
+
+  /* ---- Semantic Token: selection ---- */
+  /* Web現行: border-blue-500 bg-blue-50 (ThreadListItem.tsx、選択中のリスト項目)。
+     docs/audit/design-token-stage3-neutral-semantic-decision.md で新設決定済み。
+     Action Token (emerald) とは別責務のため、blueをemeraldへ置換しない。
+     selection-textは現状専用textが無いため未追加 (必要性が確認され次第追加判断)。 */
+  --kt-color-selection-background: var(--color-blue-50);
+  --kt-color-selection-border: var(--color-blue-500);
+
   /* ================================================================
    * Spacing (Primitiveは Tailwind の --spacing 基準値を係数計算で使用)
    * Web現行頻出値: p-4(107回)/px-4(91回)≒16px, px-3(121回)/p-3(53回)≒12px,

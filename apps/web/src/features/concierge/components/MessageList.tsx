@@ -25,7 +25,9 @@ export default function MessageList({ messages }: Props) {
             <div
               className={[
                 "inline-block max-w-[80%] rounded-2xl px-3 py-2 text-[13px] leading-relaxed",
-                isUser ? "bg-gray-900 text-white" : "bg-white text-gray-900 border border-gray-200",
+                isUser
+                  ? "bg-[var(--kt-color-message-own-background)] text-[var(--kt-color-message-own-text)]"
+                  : "bg-white text-gray-900 border border-gray-200",
               ].join(" ")}
             >
               {m.content}
