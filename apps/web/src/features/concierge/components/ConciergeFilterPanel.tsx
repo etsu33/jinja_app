@@ -115,9 +115,9 @@ export default function ConciergeFilterPanel({
         </button>
       </div>
 
-      <div className="grid gap-0.5 rounded-xl border border-slate-200 bg-white p-2">
+      <div className="grid gap-0.5 rounded-xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-2">
         <div className="space-y-0.5">
-          <div className="text-[10px] font-semibold text-slate-500">誕生日（任意）</div>
+          <div className="text-[10px] font-semibold text-[var(--kt-color-text-muted)]">誕生日（任意）</div>
           <div className="text-[10px] text-slate-400">相性候補を見るための任意の補助情報です</div>
           <input
             type="date"
@@ -128,8 +128,8 @@ export default function ConciergeFilterPanel({
         </div>
 
         {element4 ? (
-          <div className="text-[11px] text-slate-500">
-            誕生日から見た補助傾向: <span className="font-semibold text-slate-700">{element4}</span>
+          <div className="text-[11px] text-[var(--kt-color-text-muted)]">
+            誕生日から見た補助傾向: <span className="font-semibold text-[var(--kt-color-text-secondary)]">{element4}</span>
           </div>
         ) : null}
 
@@ -152,7 +152,7 @@ export default function ConciergeFilterPanel({
                   <button
                     key={p.label}
                     type="button"
-                    className="rounded-full border bg-white px-3 py-1 text-xs font-semibold hover:bg-slate-50"
+                    className="rounded-full border bg-[var(--kt-color-surface-default)] px-3 py-1 text-xs font-semibold hover:bg-slate-50"
                     onClick={() => onExtraConditionChange(mergeExtra(extraCondition, p.value))}
                     title={p.value}
                   >
@@ -166,7 +166,7 @@ export default function ConciergeFilterPanel({
 
         {element4 && suggestedTags.length > 0 ? (
           <div className="space-y-0.5">
-            <div className="text-[10px] font-semibold text-slate-500">相性から見た候補</div>
+            <div className="text-[10px] font-semibold text-[var(--kt-color-text-muted)]">相性から見た候補</div>
             <p className="text-[10px] leading-4 text-slate-400">
               誕生日情報をもとにした補助候補です。相談テーマとの一致を優先します。
             </p>
@@ -199,8 +199,8 @@ export default function ConciergeFilterPanel({
               相談テーマを主軸にしつつ、願いたいことに近いものを補助条件として使います。
             </p>
           </div>
-          {tagsError ? <div className="text-xs text-red-600">{tagsError}</div> : null}
-          {tagsLoading ? <div className="text-xs text-slate-500">読み込み中…</div> : null}
+          {tagsError ? <div className="text-xs text-[var(--kt-color-status-error)]">{tagsError}</div> : null}
+          {tagsLoading ? <div className="text-xs text-[var(--kt-color-text-muted)]">読み込み中…</div> : null}
 
           {visibleGoriyakuTags.length > 0 ? (
             <div className="flex flex-wrap gap-1.5">
@@ -225,7 +225,7 @@ export default function ConciergeFilterPanel({
           {hiddenGoriyakuCount > 0 ? (
             <button
               type="button"
-              className="text-left text-[11px] font-semibold text-slate-500 hover:text-slate-700 hover:underline"
+              className="text-left text-[11px] font-semibold text-[var(--kt-color-text-muted)] hover:text-slate-700 hover:underline"
               onClick={() => setShowAllGoriyakuTags((prev) => !prev)}
             >
               {showAllGoriyakuTags ? "折りたたむ" : `他${hiddenGoriyakuCount}件を表示`}
@@ -234,7 +234,7 @@ export default function ConciergeFilterPanel({
         </div>
       ) : null}
 
-      <div className="flex justify-end gap-2 border-t border-slate-200 bg-slate-50/95 pt-1.5 pb-0.5">
+      <div className="flex justify-end gap-2 border-t border-[var(--kt-color-border-default)] bg-slate-50/95 pt-1.5 pb-0.5">
         <button type="button" className="rounded-xl border px-3 py-1.5 text-sm font-semibold" onClick={onClose}>
           キャンセル
         </button>
@@ -249,7 +249,7 @@ export default function ConciergeFilterPanel({
           className={[
             "relative z-20 rounded-xl px-3 py-1.5 text-sm font-semibold transition",
             canApply
-              ? "bg-emerald-600 text-white hover:bg-emerald-700"
+              ? "bg-[var(--kt-color-action-primary)] text-[var(--kt-color-action-primary-text)] hover:bg-[var(--kt-color-action-primary-hover)]"
               : "bg-slate-200 text-slate-400 cursor-not-allowed",
           ].join(" ")}
         >
