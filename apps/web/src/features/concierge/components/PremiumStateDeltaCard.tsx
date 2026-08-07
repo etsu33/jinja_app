@@ -57,7 +57,7 @@ export default function PremiumStateDeltaCard({ stateDelta, isPremium }: Props) 
 
   if (!isPremium) {
     return (
-      <section className="mx-4 mt-4 rounded-3xl border border-amber-200 bg-amber-50/80 p-4">
+      <section className="mx-4 mt-4 rounded-3xl border border-[var(--kt-color-premium-border)] bg-amber-50/80 p-4">
         <div className="space-y-2">
           <p className="text-sm font-semibold text-amber-950">前回との違いをPremiumで確認できます。</p>
 
@@ -65,7 +65,7 @@ export default function PremiumStateDeltaCard({ stateDelta, isPremium }: Props) 
 
           <Link
             href="/billing/upgrade?source=state_delta_card&funnelStep=comparison_preview"
-            className="inline-flex rounded-2xl bg-amber-700 px-4 py-2 text-sm font-semibold text-white"
+            className="inline-flex rounded-2xl bg-[var(--kt-color-premium-accent)] px-4 py-2 text-sm font-semibold text-white"
             onClick={() =>
               trackRetentionEvent("premium_history_comparison_click", {
                 source: "state_delta_card",
@@ -81,22 +81,22 @@ export default function PremiumStateDeltaCard({ stateDelta, isPremium }: Props) 
   }
 
   return (
-    <section className="mx-4 mt-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+    <section className="mx-4 mt-4 rounded-3xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-4 shadow-sm">
       <div className="space-y-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">前回との違い</p>
 
-          <p className="mt-2 text-sm leading-6 text-slate-700">
+          <p className="mt-2 text-sm leading-6 text-[var(--kt-color-text-secondary)]">
             {stateDelta.summary ??
               "今回の相談内容から、前回との違いを整理しています。相談を重ねるほど、変化の見え方が安定します。"}
           </p>
         </div>
 
         {stateDelta.combinationChange?.summary ? (
-          <div className="rounded-2xl bg-slate-50 p-3">
-            <p className="text-xs font-semibold text-slate-500">状態の重なり</p>
+          <div className="rounded-2xl bg-[var(--kt-color-background-subtle)] p-3">
+            <p className="text-xs font-semibold text-[var(--kt-color-text-muted)]">状態の重なり</p>
 
-            <p className="mt-2 text-sm leading-6 text-slate-700">{stateDelta.combinationChange.summary}</p>
+            <p className="mt-2 text-sm leading-6 text-[var(--kt-color-text-secondary)]">{stateDelta.combinationChange.summary}</p>
           </div>
         ) : null}
 
@@ -108,23 +108,23 @@ export default function PremiumStateDeltaCard({ stateDelta, isPremium }: Props) 
               {stateDelta.transitionNarrative.title}
             </p>
 
-            <p className="mt-2 text-sm leading-6 text-slate-700">{stateDelta.transitionNarrative.summary}</p>
+            <p className="mt-2 text-sm leading-6 text-[var(--kt-color-text-secondary)]">{stateDelta.transitionNarrative.summary}</p>
           </div>
         ) : null}
 
         {stateDelta.actionReflection ? (
           <div className="rounded-2xl bg-amber-50/70 p-3">
-            <p className="text-xs font-semibold text-amber-700">前回の行動</p>
+            <p className="text-xs font-semibold text-[var(--kt-color-premium-accent)]">前回の行動</p>
             <p className="mt-1 text-sm font-semibold leading-6 text-slate-800">{stateDelta.actionReflection.title}</p>
-            <p className="mt-2 text-sm leading-6 text-slate-700">{stateDelta.actionReflection.summary}</p>
-            <p className="mt-2 text-xs font-semibold text-amber-700">{stateDelta.actionReflection.nextActionLabel}</p>
+            <p className="mt-2 text-sm leading-6 text-[var(--kt-color-text-secondary)]">{stateDelta.actionReflection.summary}</p>
+            <p className="mt-2 text-xs font-semibold text-[var(--kt-color-premium-accent)]">{stateDelta.actionReflection.nextActionLabel}</p>
           </div>
         ) : null}
 
-        <div className="rounded-2xl bg-slate-50 p-3">
-          <p className="text-xs font-semibold text-slate-500">今回強く出ているテーマ</p>
+        <div className="rounded-2xl bg-[var(--kt-color-background-subtle)] p-3">
+          <p className="text-xs font-semibold text-[var(--kt-color-text-muted)]">今回強く出ているテーマ</p>
 
-          <p className="mt-2 text-sm leading-6 text-slate-700">
+          <p className="mt-2 text-sm leading-6 text-[var(--kt-color-text-secondary)]">
             {renderTagSentence(
               changedNeedTags,
               "今回は新しく強まったテーマを断定するより、今見えている流れを優先して整理しています。",
@@ -132,10 +132,10 @@ export default function PremiumStateDeltaCard({ stateDelta, isPremium }: Props) 
           </p>
         </div>
 
-        <div className="rounded-2xl bg-slate-50 p-3">
-          <p className="text-xs font-semibold text-slate-500">継続しているテーマ</p>
+        <div className="rounded-2xl bg-[var(--kt-color-background-subtle)] p-3">
+          <p className="text-xs font-semibold text-[var(--kt-color-text-muted)]">継続しているテーマ</p>
 
-          <p className="mt-2 text-sm leading-6 text-slate-700">
+          <p className="mt-2 text-sm leading-6 text-[var(--kt-color-text-secondary)]">
             {renderTagSentence(
               continuedNeedTags,
               "今回は前回と同じテーマが中心に続くというより、別の方向に意識が向き始めています。",

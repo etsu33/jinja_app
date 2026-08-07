@@ -20,11 +20,11 @@ export default function ModeBadge({ mode }: Props) {
     if (!label) return null;
     return (
       <div className="flex items-center gap-1">
-        <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700 ring-1 ring-inset ring-amber-100">
+        <span className="inline-flex items-center rounded-full bg-[var(--kt-color-premium-surface)] px-2 py-0.5 text-[11px] font-semibold text-[var(--kt-color-premium-accent)] ring-1 ring-inset ring-amber-100">
           {label}
         </span>
         {note ? (
-          <span className="text-[11px] text-slate-500 line-clamp-1 max-w-[160px]" title={note}>
+          <span className="text-[11px] text-[var(--kt-color-text-muted)] line-clamp-1 max-w-[160px]" title={note}>
             {note}
           </span>
         ) : null}
@@ -39,7 +39,7 @@ export default function ModeBadge({ mode }: Props) {
     <div className="relative">
       <button
         type="button"
-        className="text-[11px] font-semibold text-slate-500 hover:text-slate-700"
+        className="text-[11px] font-semibold text-[var(--kt-color-text-muted)] hover:text-slate-700"
         aria-label="並び順について"
         onClick={() => setOpen((v) => !v)}
       >
@@ -50,17 +50,17 @@ export default function ModeBadge({ mode }: Props) {
         <div
           className="
             absolute right-0 z-20 mt-2 w-72
-            rounded-xl border bg-white p-3
-            text-sm text-slate-700 shadow-lg
+            rounded-xl border bg-[var(--kt-color-surface-default)] p-3
+            text-sm text-[var(--kt-color-text-secondary)] shadow-lg
           "
         >
-          <div className="text-xs font-semibold text-slate-900">並び順について</div>
+          <div className="text-xs font-semibold text-[var(--kt-color-text-primary)]">並び順について</div>
           <div className="mt-1 whitespace-pre-line">{note}</div>
 
           <div className="mt-2 text-right">
             <button
               type="button"
-              className="text-[11px] font-semibold text-slate-500 hover:underline"
+              className="text-[11px] font-semibold text-[var(--kt-color-text-muted)] hover:underline"
               onClick={() => setOpen(false)}
             >
               閉じる
