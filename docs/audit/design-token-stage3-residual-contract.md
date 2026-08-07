@@ -141,6 +141,25 @@ Premiumではないことは、`ConciergeSectionsRenderer.tsx`の既存コード
 
 どちらを採用するかはGovernance変更を伴う判断であり、母艦の決定を要する。本文書はA/B双方の判断材料を提示するに留め、確定しない。
 
+### 候補Aの前提条件チェック結果（事実確認、2026-08-07時点）
+
+候補Aは自ら4条件を掲げている。このうち3条件は事実として確認できるが、1条件は未達である。
+
+| 条件 | 判定 | 根拠 |
+|---|---|---|
+| 意図的literalが全て分類済み | 達成 | 本文書Phase 2〜8で全カテゴリを分類済み |
+| **accidental remainder 0** | **未達** | `ConciergeFilterPanel.tsx`の`border-emerald-600`/`bg-emerald-50`（Phase 7）が未解消のまま残存している |
+| Contract未定義箇所が明示済み | 達成 | 本文書全体で明示済み |
+| 新規実装で同じ判断を再発明しない | 部分達成 | 分類済みカテゴリについては再発明不要だが、Phase 2〜6自体は依然未決定のため、Stage 4が同一スコープに触れた場合は同じ論点に再度直面する |
+
+**したがって、候補Aは自らの前提条件を満たしておらず、現時点では選択できない。** これは母艦の好みの判断ではなく、候補Aが明記した基準に対する事実確認の結果である。`ConciergeFilterPanel.tsx`の解消（Phase 6のAction Border判断が確定した上でのコード修正）が候補Aの前提として必要になる。
+
+この事実確認の結果として、既存の`docs/design/design-token.md`のDONE定義・`PARTIAL_MIGRATION_ALLOWED`運用は変更せず、Stage 3は`STAGE3_PARTIALLY_DONE`のまま据え置く。これは新たな母艦決定ではなく、既存記述をそのまま維持することを意味する。
+
+### Dark Surface候補Bの前提
+
+Phase 2の候補B（Platform Theme内での吸収）は、`docs/design/design-token.md`の「3層構造」節が定義する「Platform Theme」が現状Web/Mobile差のみを指す概念であることを確認した（同文書37行目「実値の割り当ては各PlatformのTheme層が担う」、62行目以降「3. Platform Theme」）。候補Bを採用するには、この定義をWeb内のコンポーネント間差にも拡張するか否かをまず決める必要があり、これは候補A/Cとは異なり、Token値の決定に先立つ別のGovernance判断を要する。
+
 ## Phase 10 — Stage 4 Handoff
 
 Stage 4（Shrine Detail、`docs/design/design-token.md`のMigration方針 4.）着手時に、以下は既存決定として再利用可能（同じProduct判断を再実施しない）:
