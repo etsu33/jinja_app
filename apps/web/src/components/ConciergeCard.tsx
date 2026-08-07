@@ -19,7 +19,7 @@ function Chevron({ open }: { open: boolean }) {
     <svg
       viewBox="0 0 20 20"
       aria-hidden="true"
-      className={cn("size-4 text-neutral-500 transition-transform duration-200", open ? "rotate-180" : "rotate-0")}
+      className={cn("size-4 text-[var(--kt-color-text-muted)] transition-transform duration-200", open ? "rotate-180" : "rotate-0")}
     >
       <path
         d="M5.5 7.5 10 12l4.5-4.5"
@@ -62,11 +62,11 @@ export default function ConciergeCard(props: BaseCardProps) {
   const CardInner = (
     <div
       className={cn(
-        "overflow-hidden rounded-2xl bg-white ring-1 ring-neutral-200/70",
-        "shadow-sm transition",
-        isPrimary && "shadow-md ring-neutral-200",
+        "overflow-hidden rounded-[var(--kt-radius-card)] bg-[var(--kt-color-surface-default)] ring-1 ring-neutral-200/70",
+        "shadow-[var(--kt-shadow-medium)] transition",
+        isPrimary && "shadow-md ring-[var(--kt-color-border-default)]",
         detailHref && "cursor-pointer hover:shadow-md",
-        isHero && "ring-2 ring-emerald-200 shadow-lg",
+        isHero && "ring-2 ring-emerald-200 shadow-[var(--kt-shadow-high)]",
       )}
     >
       <div className={cn("relative w-full", isHero ? "h-40" : "h-36")}>
@@ -95,11 +95,11 @@ export default function ConciergeCard(props: BaseCardProps) {
                 <span
                   key={badge}
                   className={cn(
-                    "inline-flex shrink-0 items-center rounded-full px-2.5 py-1",
+                    "inline-flex shrink-0 items-center rounded-[var(--kt-radius-pill)] px-2.5 py-1",
                     "text-[11px] font-medium",
                     isHero
                       ? "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200"
-                      : "bg-neutral-100/80 text-neutral-500 ring-1 ring-inset ring-neutral-200/60",
+                      : "bg-neutral-100/80 text-[var(--kt-color-text-muted)] ring-1 ring-inset ring-neutral-200/60",
                   )}
                 >
                   {badge}
@@ -119,7 +119,7 @@ export default function ConciergeCard(props: BaseCardProps) {
           {!hideLeftMark ? (
             <div
               className={cn(
-                "mt-0.5 flex size-9 items-center justify-center rounded-full",
+                "mt-0.5 flex size-9 items-center justify-center rounded-[var(--kt-radius-pill)]",
                 "bg-neutral-100 ring-1 ring-inset ring-neutral-200/60",
               )}
               aria-hidden="true"
@@ -131,28 +131,28 @@ export default function ConciergeCard(props: BaseCardProps) {
           ) : null}
 
           <div className="min-w-0 flex-1">
-            {isHero && sub ? <p className="mb-1 text-[18px] font-bold leading-8 text-neutral-950">{sub}</p> : null}
+            {isHero && sub ? <p className="mb-1 text-[18px] font-bold leading-8 text-[var(--kt-color-text-primary)]">{sub}</p> : null}
 
             {!isHero && sub ? (
-              <p className="text-[15px] font-semibold leading-6 text-neutral-900 line-clamp-2">{sub}</p>
+              <p className="text-[15px] font-semibold leading-6 text-[var(--kt-color-text-primary)] line-clamp-2">{sub}</p>
             ) : null}
 
             <h3
               className={cn(
                 "mt-1 font-semibold leading-snug",
-                isHero ? "text-[14px] text-neutral-700" : "text-[15px] text-neutral-700",
+                isHero ? "text-[14px] text-[var(--kt-color-text-secondary)]" : "text-[15px] text-[var(--kt-color-text-secondary)]",
               )}
             >
               {title}
             </h3>
 
-            {address ? <p className="mt-1 truncate text-xs text-neutral-500">{address}</p> : null}
+            {address ? <p className="mt-1 truncate text-xs text-[var(--kt-color-text-muted)]">{address}</p> : null}
 
             {desc ? (
               <p
                 className={cn(
                   "mt-2 leading-6",
-                  isHero ? "text-[13px] text-neutral-700" : "text-[13px] text-neutral-600 line-clamp-2",
+                  isHero ? "text-[13px] text-[var(--kt-color-text-secondary)]" : "text-[13px] text-neutral-600 line-clamp-2",
                 )}
               >
                 {desc}
@@ -164,7 +164,11 @@ export default function ConciergeCard(props: BaseCardProps) {
                 href={detailHref}
                 prefetch={false}
                 className={cn(
-                  "mt-4 inline-flex min-h-[44px] w-full items-center justify-center rounded-xl px-3 py-2",
+                  "mt-4 inline-flex min-h-[44px] w-full items-center justify-center rounded-[var(--kt-radius-panel)] px-3 py-2",
+                  /* bg-neutral-900/hover:bg-neutral-800: Dark Surface Contract Group A候補だが、
+                     --kt-color-surface-emphasis(slate-800/900)とcomputed colorが一致しないため
+                     今回は適用しない(Blocked by Contract)。
+                     詳細は docs/audit/design-token-stage3-dark-surface-decision.md */
                   "text-sm font-semibold bg-neutral-900 text-white",
                   "ring-1 ring-inset ring-black/10 transition active:scale-[0.99] hover:bg-neutral-800",
                   "focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400",
@@ -195,7 +199,7 @@ export default function ConciergeCard(props: BaseCardProps) {
             }}
             className={cn(
               "flex w-full items-center justify-between px-4 py-3 text-left",
-              "transition hover:bg-neutral-50",
+              "transition hover:bg-[var(--kt-color-background-subtle)]",
               "focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400",
             )}
             aria-expanded={open}
