@@ -44,7 +44,7 @@ export default function DetailDisclosureBlock({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={cn("w-full px-4 py-3 text-left", "flex items-start justify-between gap-3", "hover:bg-slate-50")}
+        className={cn("w-full px-4 py-3 text-left", "flex items-start justify-between gap-3", "hover:bg-[var(--kt-color-background-subtle)]")}
         aria-expanded={open}
       >
         {materials.length ? (
