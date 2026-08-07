@@ -105,6 +105,23 @@
   --kt-color-surface-emphasis: var(--color-slate-800);
   --kt-color-surface-emphasis-hover: var(--color-slate-900);
 
+  /* ---- Semantic Token: saved (Saved / Favorite) ---- */
+  /* Web現行: ShrineSaveButton.tsx の fav=true 状態
+     (bg-emerald-50 text-emerald-700、border は variant により emerald-200/300)。
+     docs/audit/design-token-stage4-mother-ship-decisions.md で新設決定済み。
+     Selection・Status successとは別責務のため、それらのTokenを流用しない。
+     background/textは両variantで完全一致するためToken化した。
+     borderはsubtle variant(emerald-200)とdefault variant(emerald-300)で
+     実値が分裂している(MULTI_VARIANT_VALUE_SPLIT)。--kt-color-saved-border は
+     default variantの値(emerald-300)のみを表し、subtle variantの
+     border-emerald-200 は今回Token化せずliteralのまま維持する
+     (Blocked by current variant value split)。
+     fav=true状態には現行hoverが存在しないため、--kt-color-saved-hover は
+     実値を捏造しないよう今回追加しない。 */
+  --kt-color-saved-background: var(--color-emerald-50);
+  --kt-color-saved-text: var(--color-emerald-700);
+  --kt-color-saved-border: var(--color-emerald-300);
+
   /* ================================================================
    * Spacing (Primitiveは Tailwind の --spacing 基準値を係数計算で使用)
    * Web現行頻出値: p-4(107回)/px-4(91回)≒16px, px-3(121回)/p-3(53回)≒12px,

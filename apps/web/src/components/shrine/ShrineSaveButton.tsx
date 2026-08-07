@@ -87,14 +87,18 @@ export default function ShrineSaveButton({
       ? `inline-flex w-full items-center justify-center rounded-[var(--kt-radius-panel)] border px-4 py-2.5 text-xs font-semibold transition
           ${
             fav
-              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+              ? /* border-emerald-200: subtle variant固有の値。default variantの
+                   border-emerald-300とTokenが分裂しているため(MULTI_VARIANT_VALUE_SPLIT)、
+                   --kt-color-saved-border(=emerald-300)を流用せずliteralのまま維持する。
+                   docs/audit/design-token-stage4-mother-ship-decisions.md 参照 */
+                "border-emerald-200 bg-[var(--kt-color-saved-background)] text-[var(--kt-color-saved-text)]"
               : "border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] text-[var(--kt-color-text-muted)] hover:bg-[var(--kt-color-background-subtle)] hover:text-[var(--kt-color-text-secondary)]"
           }
           disabled:opacity-60`
       : `inline-flex w-full items-center justify-center rounded-[var(--kt-radius-panel)] border px-4 py-3 text-sm font-semibold transition
           ${
             fav
-              ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+              ? "border-[var(--kt-color-saved-border)] bg-[var(--kt-color-saved-background)] text-[var(--kt-color-saved-text)]"
               : "border-[var(--kt-color-border-strong)] bg-[var(--kt-color-surface-default)] text-[var(--kt-color-text-primary)] hover:bg-[var(--kt-color-background-subtle)]"
           }
           disabled:opacity-60`;
