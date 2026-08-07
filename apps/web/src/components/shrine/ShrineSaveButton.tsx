@@ -88,14 +88,14 @@ export default function ShrineSaveButton({
           ${
             fav
               ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-              : "border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] text-[var(--kt-color-text-muted)] hover:bg-slate-50 hover:text-slate-700"
+              : "border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] text-[var(--kt-color-text-muted)] hover:bg-[var(--kt-color-background-subtle)] hover:text-[var(--kt-color-text-secondary)]"
           }
           disabled:opacity-60`
       : `inline-flex w-full items-center justify-center rounded-[var(--kt-radius-panel)] border px-4 py-3 text-sm font-semibold transition
           ${
             fav
               ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-              : "border-[var(--kt-color-border-strong)] bg-[var(--kt-color-surface-default)] text-[var(--kt-color-text-primary)] hover:bg-slate-50"
+              : "border-[var(--kt-color-border-strong)] bg-[var(--kt-color-surface-default)] text-[var(--kt-color-text-primary)] hover:bg-[var(--kt-color-background-subtle)]"
           }
           disabled:opacity-60`;
 
