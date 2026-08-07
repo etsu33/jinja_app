@@ -110,6 +110,8 @@ Phase 6監査で確認した実際の用途分布に基づき、以下のカテ�
 
 **Action Border / Selection Divergence再分類（一部確定、詳細は`docs/audit/design-token-selection-divergence-decision.md`）**: 当初「Action Border」と一括りにしていたemerald border系literalを再監査し、`ConciergeEntryCard.tsx`送信ボタン（真のAction Border、1箇所）と、`OriginSelector.tsx`・`ConciergeFilterPanel.tsx`・`ConciergeEntryCard.tsx`相談テーマchip（実体はSelection divergence、`docs/audit/design-token-stage3-neutral-semantic-decision.md`が既に指摘したblue/emerald 2系統分裂の追加インスタンス）に分離した。前者は`KEEP_LITERAL_FOR_NOW`とする（確定）。後者のSelection divergence自体の解決方針（値統一・variant化・現状維持のいずれか）は未確定。`ConciergeFilterPanel.tsx`の残存literalは`ACCIDENTAL_REMAINDER`から`KNOWN_SELECTION_DIVERGENCE`へ再分類した（確定）。`ShrineSaveButton.tsx`のfavorite状態を同クラスタに含めるかは未検証のまま。
 
+**Stage 4 Mother Ship Decisions（決定済み、詳細は`docs/audit/design-token-stage4-mother-ship-decisions.md`）**: Stage 4（Shrine Detail）着手前調査で発見した4カテゴリを決定した。(1) Saved/Favorite: `ShrineSaveButton.tsx`のfav状態はSelection・Statusのいずれとも別責務であることを確認し、独立Semantic category（候補: `color.saved.background`/`border`/`text`/`hover`）として新設することを決定（`SAVED_FAVORITE_SEMANTIC_REQUIRED`、実値は実装PRで確定）。(2) Dark Surface hover方向差: `ShrineDetailShell.tsx`は`surface-emphasis`と同一paletteだがhover方向が逆であることを確認し、既存Tokenへの統合はせずliteral維持（`DARK_SURFACE_VARIANT_DEFERRED`）。(3) Light Surface 100系: Stage 3の`KEEP_LITERAL_FOR_NOW`をStage 4スコープでも維持（`LIGHT_SURFACE_100_KEEP_LITERAL`）。(4) Rose palette: `ShrineDetailArticle.tsx`・`ShrineReflectionPrompt.tsx`のrose使用箇所はエラー状態表示であることを確認し、text部分のみ既存`status-error`と意味が一致すると判断（`EXISTING_STATUS_MATCH`）。border部分は対応するstatus-errorトークンが存在しないため対象外。palette名の近さのみを理由にした機械統合は行っていない。
+
 ---
 
 ## Typography
