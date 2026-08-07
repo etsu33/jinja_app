@@ -95,10 +95,10 @@ function AstroCard(props: { sunSign?: string; element?: string; reason?: string 
   return (
     <DetailSection title="占星術による選定">
       <div className={conciergeNoticeCardClass}>
-        <div className="text-sm font-semibold text-slate-900">
+        <div className="text-sm font-semibold text-[var(--kt-color-text-primary)]">
           {sunSign || "不明"} / {element || "不明"}
         </div>
-        <div className="mt-2 text-sm leading-7 text-slate-700">{reason || "（理由なし）"}</div>
+        <div className="mt-2 text-sm leading-7 text-[var(--kt-color-text-secondary)]">{reason || "（理由なし）"}</div>
       </div>
     </DetailSection>
   );
@@ -598,7 +598,7 @@ export default function ConciergeSectionsRenderer({
               return (
                 <div key={`filter-${i}-closed`}>
                   <DetailSection title="補助条件を添える">
-                    <p className="mb-2 text-xs text-slate-500">必要なものだけ選んでください</p>
+                    <p className="mb-2 text-xs text-[var(--kt-color-text-muted)]">必要なものだけ選んでください</p>
 
                     <div className="mb-3 flex flex-wrap gap-2">
                       {presets.map((p) => {
@@ -610,8 +610,8 @@ export default function ConciergeSectionsRenderer({
                             className={[
                               "rounded-full border px-3 py-1 text-xs font-semibold transition",
                               active
-                                ? "bg-emerald-600 text-white border-emerald-600"
-                                : "bg-white text-slate-700 hover:bg-slate-50",
+                                ? "bg-[var(--kt-color-action-primary)] text-[var(--kt-color-action-primary-text)] border-[var(--kt-color-action-primary)]"
+                                : "bg-[var(--kt-color-surface-default)] text-[var(--kt-color-text-secondary)] hover:bg-[var(--kt-color-background-subtle)]",
                             ].join(" ")}
                             onClick={() => togglePreset(p)}
                           >
@@ -630,7 +630,7 @@ export default function ConciergeSectionsRenderer({
                     {!isEntryRoute ? (
                       <button
                         type="button"
-                        className="mt-2 w-full rounded-xl border px-4 py-3 text-sm font-semibold"
+                        className="mt-2 w-full rounded-[var(--kt-radius-panel)] border px-4 py-3 text-sm font-semibold"
                         onClick={() => {
                           onAction?.({ type: "back_to_entry" });
                           scrollToConciergeInput();
@@ -643,7 +643,7 @@ export default function ConciergeSectionsRenderer({
 
                     <button
                       type="button"
-                      className="w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
+                      className="w-full rounded-[var(--kt-radius-panel)] bg-[var(--kt-color-action-primary)] px-4 py-3 text-sm font-semibold text-[var(--kt-color-action-primary-text)] disabled:opacity-60"
                       disabled={!canApplyCompatFilter || sending}
                       onClick={() => {
                         onAction?.({ type: "filter_apply" });
@@ -654,7 +654,7 @@ export default function ConciergeSectionsRenderer({
 
                     <button
                       type="button"
-                      className="mt-2 w-full rounded-xl border px-4 py-3 text-sm font-semibold"
+                      className="mt-2 w-full rounded-[var(--kt-radius-panel)] border px-4 py-3 text-sm font-semibold"
                       onClick={() => onAction?.({ type: "add_condition" })}
                     >
                       もう少し詳しく添える
@@ -728,7 +728,7 @@ export default function ConciergeSectionsRenderer({
                 </div>
 
                 {typeof payload?.meta?.remaining === "number" && payload.meta.remaining > 0 && (
-                  <div className="mb-2 text-xs leading-6 text-slate-500">
+                  <div className="mb-2 text-xs leading-6 text-[var(--kt-color-text-muted)]">
                     あと {payload.meta.remaining}回までは無料で試せます
                   </div>
                 )}
@@ -743,14 +743,18 @@ export default function ConciergeSectionsRenderer({
                   <div className="mt-3 grid grid-cols-2 gap-2">
                     <button
                       type="button"
-                      className="rounded-xl border px-4 py-3 text-sm font-semibold"
+                      className="rounded-[var(--kt-radius-panel)] border px-4 py-3 text-sm font-semibold"
                       onClick={() => onAction?.({ type: "open_map" })}
                     >
                       近くの神社を静かに見る
                     </button>
                     <button
                       type="button"
-                      className="rounded-xl bg-neutral-900 px-4 py-3 text-sm font-semibold text-white"
+                      /* bg-neutral-900: Dark Surface Contract Group A候補だが、
+                         --kt-color-surface-emphasis(slate-800/900)とcomputed colorが
+                         一致しないため今回は適用しない(Blocked by Contract)。
+                         詳細は docs/audit/design-token-stage3-dark-surface-decision.md */
+                      className="rounded-[var(--kt-radius-panel)] bg-neutral-900 px-4 py-3 text-sm font-semibold text-white"
                       onClick={() => onAction?.({ type: "filter_clear" })}
                     >
                       条件を広げて見直す
@@ -765,7 +769,7 @@ export default function ConciergeSectionsRenderer({
                     <span>{appliedLabel}</span>
                     <button
                       type="button"
-                      className="rounded-md px-2 py-1 font-semibold text-slate-700 hover:bg-slate-100"
+                      className="rounded-[var(--kt-radius-control)] px-2 py-1 font-semibold text-[var(--kt-color-text-secondary)] hover:bg-slate-100"
                       onClick={() => onAction?.({ type: "filter_clear" })}
                     >
                       クリア
@@ -897,7 +901,7 @@ export default function ConciergeSectionsRenderer({
                                     {trustLabels.slice(0, 4).map((label: string) => (
                                       <span
                                         key={label}
-                                        className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600"
+                                        className="rounded-[var(--kt-radius-pill)] bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600"
                                       >
                                         {label}
                                       </span>
@@ -1095,7 +1099,7 @@ export default function ConciergeSectionsRenderer({
                     <div className="pt-4">
                       <button
                         type="button"
-                        className="w-full rounded-xl border px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                        className="w-full rounded-[var(--kt-radius-panel)] border px-4 py-3 text-sm font-semibold text-[var(--kt-color-text-secondary)] hover:bg-[var(--kt-color-background-subtle)]"
                         onClick={() => {
                           trackCardEvent({
                             event: "save_prompt_click",
