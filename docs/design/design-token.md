@@ -94,8 +94,14 @@ Phase 6監査で確認した実際の用途分布に基づき、以下のカテ�
 | Premium | Premium機能の強調表現 | `amber-*`系 | `gold`/`borderGold`（`#8A6C32`） |
 | Overlay | モーダル背景等の半透明オーバーレイ | `bg-black/50`と`bg-stone-950/35`が混在（不統一） | `rgba(7, 16, 31, 0.82)`と`rgba(7, 16, 31, 0.72)`が混在（不統一） |
 | Focus | フォーカスリング | `focus:border-emerald-300`, `focus:ring-stone-200`, `focus-visible:ring-neutral-400`が混在 | 明示的なfocus tokenは未確認 |
+| Message-own | チャット等における自分側発言の背景・文字色 | `bg-gray-900`（Concierge）。ただしrepo横断で見ると、billing各画面・error画面・`ConciergeCard.tsx`等が独立にslate-900/neutral-900/stone-950で似た「強調ダークサーフェス」を実装しており、単一のチャット固有概念ではない | 専用色を持たず、既存のSurface系（`surface`/`surfaceSoft`）の使い分けで表現 |
+| Selection | リスト項目等の選択中状態の背景・境界・文字色 | `border-blue-500`/`bg-blue-50`（`ThreadListItem.tsx`）。同一機能内の`OriginSelector.tsx`は同じ「選択中」をemerald（Action Tokenと一致）で実装しており、Web内で表現が2系統に分裂している | `chipSelected`が`theme.gold`（Action/Premiumブランド色）を再利用。独立した選択専用色は持たない |
 
-**統合候補（Phase 6監査で確認した重複、方針は保留事項）**: Webのニュートラル系（slate/stone/gray/neutralの4系統）は、実装上明確な使い分け意図が確認できなかったため、Semantic Token設計時に統合可否を検討する対象とする。
+**中立色統合方針（決定済み、詳細は`docs/audit/design-token-stage3-neutral-semantic-decision.md`）**: Webのニュートラル系（slate/stone/gray/neutralの4系統）は、**Option B**（palette名をSemantic Token名にせず、意味が同じなら同じSemantic Tokenへ吸収し、実色差はPlatform Theme層で吸収する）を正式方針として採用する。Option A（1色への機械統合）は不採用。移行中はOption C（既存Tokenで意味が一致する箇所のみ移行必須とし、Semantic Token未定義の箇所はliteralを残す＝`PARTIAL_MIGRATION_ALLOWED`）を暫定Fallbackとして許容する。残存箇所は「TODO」ではなく「Blocked by Contract」として明記し、対象Migration PRは「DONE」と扱わない。
+
+**Message-own / Selection Semantic Tokenの新設（決定済み）**: 上記2カテゴリはいずれも既存のSemantic Token体系に該当が無いことを確認し、新設することを決定した。候補名（実値・最終命名は実装PRで確定）: `color.message.own.background` / `color.message.own.text`、`color.selection.background` / `color.selection.border` / `color.selection.text`。`ThreadListItem.tsx`のblueをemeraldへ機械的に置換することはしない。
+
+**Premium subtle ring（決定済み）**: `ring-amber-100`（`ModeBadge.tsx`）は repo全体で1箇所のみの使用であることを確認した。新規Token化は急がず、`KEEP_LITERAL_FOR_NOW`（リテラルのまま残す）とする。複数箇所で同じ意味の使用が確認された時点で`color.premium.ring.subtle`相当のTokenを候補化する。
 
 ---
 
@@ -249,10 +255,12 @@ Design Token v1の導入は、以下7段階のPRに分割する。各PRの目的
 ### 3. Recommendation画面適用
 
 - **目的**: Concierge結果画面（Hero/他候補カード等）のColor/Radius/Spacing/Shadowを新Semantic Tokenへ切り替える
-- **変更範囲**: `apps/web/src/features/concierge/**`
+- **変更範囲**: ディレクトリ基準ではなく**Recommendation UI責務基準**で定義する。判定基準: (A) Recommendation画面の主要表示責務を持つ (B) Stage 3画面から直接使用される (C) Token未移行が画面全体の整合性に影響する。`apps/web/src/features/concierge/**`に加え、上記基準に該当する共有UI（例: `apps/web/src/components/ConciergeCard.tsx`）を含める。shared componentであることを理由に一律除外しない
 - **非対象**: Backend・Analytics Event・Score/Ranking（別トラック）
-- **依存関係**: PR 1、可能であればPR 2（共通Button/Card活用のため）
-- **Rollback方針**: featureディレクトリ単位でrevert可能
+- **移行方針**: `PARTIAL_MIGRATION_ALLOWED`。既存Semantic Tokenで意味が一致する箇所は移行必須、未定義の箇所（Message-own/Selection等、新設Token実装待ち）はliteral残置を許容し「Blocked by Contract」と明記する。全箇所のToken化をもって初めて本PRを「DONE」とする
+- **実装順序**: 依存関係に基づき PR-A（既存Tokenでexact match可能な箇所）→ PR-B（Message-own/Selection Token実装後に移行する箇所）→ PR-C（`ConciergeEntryCard`/`ConciergeCard`等、主要Recommendation UI）の順に分割する。詳細は`docs/audit/design-token-stage3-neutral-semantic-decision.md`を参照
+- **依存関係**: PR 1、可能であればPR 2（共通Button/Card活用のため）。PR-B/PR-Cの一部はMessage-own/Selection Semantic Tokenの実装に依存する
+- **Rollback方針**: featureディレクトリ単位、およびPR-A/B/C単位でrevert可能
 
 ### 4. Shrine Detail適用
 
@@ -315,4 +323,5 @@ Design Token v1の導入は、以下7段階のPRに分割する。各PRの目的
 - [x] Token値・ブランド方針は確定させず、保留事項として明記した
 - [x] Web/Mobile差を統一しない前提を設計原則・各カテゴリ表で明記した
 - [x] 実装PR分割を7段階、各々目的/変更範囲/非対象/依存関係/Rollback方針付きで記録した
+- [x] 中立色統合方針（Option B）、Message-own/Selection Semantic Token新設、Premium subtle ring方針、Stage 3スコープ再定義を、母艦決定に基づき反映した（`docs/audit/design-token-stage3-neutral-semantic-decision.md`参照）。Token実値・最終命名は未確定のまま据え置いた
 - [x] `git diff --check`
