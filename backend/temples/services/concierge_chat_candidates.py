@@ -79,6 +79,7 @@ def build_chat_candidates(
     qs = exclude_qa_fixture_shrines(qs)
 
     qs = qs.select_related("place_ref")
+    qs = qs.prefetch_related("goriyaku_tags")
     qs = qs.filter(latitude__isnull=False, longitude__isnull=False)
     qs = qs.exclude(address="")
 
@@ -131,7 +132,10 @@ def build_chat_candidates(
                 "visit_style_tags": getattr(s, "visit_style_tags", None),
                 "history_theme": getattr(s, "history_theme", ""),
                 "astro_priority": getattr(s, "astro_priority", None),
-                "goriyaku_tag_ids": list(s.goriyaku_tags.values_list("id", flat=True))
+                # .values_list()はprefetch_relatedのcacheを使わず新規queryを発行するため、
+                # .all()経由でPython側抽出する（N+1回避、shrine_meaning_composer.py
+                # の_read_goriyaku_tags()と同じ理由）。
+                "goriyaku_tag_ids": [tag.id for tag in s.goriyaku_tags.all()]
                 if hasattr(s, "goriyaku_tags")
                 else [],
                 "popular_score": getattr(s, "popular_score", None),
