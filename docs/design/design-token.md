@@ -96,12 +96,15 @@ Phase 6監査で確認した実際の用途分布に基づき、以下のカテ�
 | Focus | フォーカスリング | `focus:border-emerald-300`, `focus:ring-stone-200`, `focus-visible:ring-neutral-400`が混在 | 明示的なfocus tokenは未確認 |
 | Message-own | チャット等における自分側発言の背景・文字色 | `bg-gray-900`（Concierge）。ただしrepo横断で見ると、billing各画面・error画面・`ConciergeCard.tsx`等が独立にslate-900/neutral-900/stone-950で似た「強調ダークサーフェス」を実装しており、単一のチャット固有概念ではない | 専用色を持たず、既存のSurface系（`surface`/`surfaceSoft`）の使い分けで表現 |
 | Selection | リスト項目等の選択中状態の背景・境界・文字色 | `border-blue-500`/`bg-blue-50`（`ThreadListItem.tsx`）。同一機能内の`OriginSelector.tsx`は同じ「選択中」をemerald（Action Tokenと一致）で実装しており、Web内で表現が2系統に分裂している | `chipSelected`が`theme.gold`（Action/Premiumブランド色）を再利用。独立した選択専用色は持たない |
+| Dark Surface（強調操作面） | ボタン・リンク等、操作要素の強調背景・反転文字色（チャット固有のMessage-ownとは別責務） | `bg-slate-900`（billing各画面・`error.tsx`・`PlanView.tsx`・`ConciergeClientFull.tsx`のLink等13箇所超）、`bg-neutral-900`/`hover:bg-neutral-800`（`ConciergeSectionsRenderer.tsx`・`components/ConciergeCard.tsx`）。文字色は`text-white`直書きが大半だが、`ShrineDetailShell.tsx`のみ既存の`text-inverse`を先行採用済み。同一パレットでも責務が異なるdebug出力パネル（`ConciergeClientFull.tsx`の`<pre>`）とmodal overlay（`GoshuinDetailModal.tsx`の`bg-stone-950/35`）は対象外 | 独立したDark Surface概念を持たない。Mobile基調自体がdark（`kamimusubiDark`）のため、Web同様の「light UI内での強調dark面」という概念自体が存在しない |
 
 **中立色統合方針（決定済み、詳細は`docs/audit/design-token-stage3-neutral-semantic-decision.md`）**: Webのニュートラル系（slate/stone/gray/neutralの4系統）は、**Option B**（palette名をSemantic Token名にせず、意味が同じなら同じSemantic Tokenへ吸収し、実色差はPlatform Theme層で吸収する）を正式方針として採用する。Option A（1色への機械統合）は不採用。移行中はOption C（既存Tokenで意味が一致する箇所のみ移行必須とし、Semantic Token未定義の箇所はliteralを残す＝`PARTIAL_MIGRATION_ALLOWED`）を暫定Fallbackとして許容する。残存箇所は「TODO」ではなく「Blocked by Contract」として明記し、対象Migration PRは「DONE」と扱わない。
 
 **Message-own / Selection Semantic Tokenの新設（決定済み）**: 上記2カテゴリはいずれも既存のSemantic Token体系に該当が無いことを確認し、新設することを決定した。候補名（実値・最終命名は実装PRで確定）: `color.message.own.background` / `color.message.own.text`、`color.selection.background` / `color.selection.border` / `color.selection.text`。`ThreadListItem.tsx`のblueをemeraldへ機械的に置換することはしない。
 
 **Premium subtle ring（決定済み）**: `ring-amber-100`（`ModeBadge.tsx`）は repo全体で1箇所のみの使用であることを確認した。新規Token化は急がず、`KEEP_LITERAL_FOR_NOW`（リテラルのまま残す）とする。複数箇所で同じ意味の使用が確認された時点で`color.premium.ring.subtle`相当のTokenを候補化する。
+
+**Dark Surface Semantic Tokenの新設（決定済み、詳細は`docs/audit/design-token-stage3-dark-surface-decision.md`）**: 操作要素（ボタン・リンク）の強調背景として repo横断で使われる「強調ダークサーフェス」のうち、debug出力パネル・modal overlayとは別責務の用途（Group A）のみを対象に新設することを決定した。候補名: `color.surface.emphasis` / `color.surface.emphasis.hover`（実値・最終命名は実装PRで確定）。文字色は既存の`color.text.inverse`を再利用し、専用text tokenは新設しない。Group A内の実値不一致（slate-900 vs neutral-900）を本決定では機械的に統一しない。Light Surface 100系（`bg-slate-100`等）・Guest Notice amber・Action Border・Disabled surface・Badge/decorative neutral surfaceは今回Contract化せず、`KEEP_LITERAL_FOR_NOW`とする。
 
 ---
 
