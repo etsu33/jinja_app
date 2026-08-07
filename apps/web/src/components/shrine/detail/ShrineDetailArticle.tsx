@@ -683,7 +683,7 @@ export default function ShrineDetailArticle({
               </Link>
 
               {favoriteNoticeState === "saved" ? (
-                <p className="text-xs font-semibold text-emerald-700">{FAVORITE_LABELS.saved}</p>
+                <p className="text-xs font-semibold text-[var(--kt-color-saved-text)]">{FAVORITE_LABELS.saved}</p>
               ) : null}
 
               {favoriteNoticeState === "removed" ? (

@@ -101,7 +101,7 @@ export default function ShrineDetailShell({
             {addGoshuinHref ? (
               <Link
                 href={addGoshuinHref}
-                className="inline-flex min-h-[44px] w-full items-center justify-center rounded-[var(--kt-radius-panel)] border bg-[var(--kt-color-surface-default)] px-4 py-3 text-sm font-semibold text-[var(--kt-color-text-primary)] hover:bg-slate-50"
+                className="inline-flex min-h-[44px] w-full items-center justify-center rounded-[var(--kt-radius-panel)] border bg-[var(--kt-color-surface-default)] px-4 py-3 text-sm font-semibold text-[var(--kt-color-text-primary)] hover:bg-[var(--kt-color-background-subtle)]"
               >
                 {LABELS.addGoshuin}
               </Link>

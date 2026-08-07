@@ -19,7 +19,7 @@ export default function ShrineCloseLink({ close }: Props) {
     <button
       type="button"
       onClick={() => window.history.back()}
-      className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+      className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-sm font-semibold text-[var(--kt-color-text-secondary)] hover:bg-slate-100"
     >
       ← {close.label}
     </button>
