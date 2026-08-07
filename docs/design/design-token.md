@@ -106,7 +106,9 @@ Phase 6監査で確認した実際の用途分布に基づき、以下のカテ�
 
 **Dark Surface Semantic Tokenの新設（決定済み、詳細は`docs/audit/design-token-stage3-dark-surface-decision.md`）**: 操作要素（ボタン・リンク）の強調背景として repo横断で使われる「強調ダークサーフェス」のうち、debug出力パネル・modal overlayとは別責務の用途（Group A）のみを対象に新設することを決定した。候補名: `color.surface.emphasis` / `color.surface.emphasis.hover`（実値・最終命名は実装PRで確定）。文字色は既存の`color.text.inverse`を再利用し、専用text tokenは新設しない。Group A内の実値不一致（slate-900 vs neutral-900）を本決定では機械的に統一しない。Light Surface 100系（`bg-slate-100`等）・Guest Notice amber・Action Border・Disabled surface・Badge/decorative neutral surfaceは今回Contract化せず、`KEEP_LITERAL_FOR_NOW`とする。
 
-**Stage 3残存カテゴリ（未決定、詳細は`docs/audit/design-token-stage3-residual-contract.md`）**: PR-A〜PR-C3完了時点で、Dark Surface Group A内の2クラスタ問題（slate系/neutral系）、Light Surface 100系、Guest Notice、Disabled、Action Borderは依然未決定である。上記文書は各カテゴリの調査事実と判断材料のみを記録し、値・命名・Contract化の可否は確定していない。Stage 3の完了基準（`STAGE3_PARTIALLY_DONE`とするか、代替DONE条件を新設して`STAGE3_DONE_WITH_DOCUMENTED_LITERAL_EXCEPTIONS`とするか）も未確定であり、本文書のPARTIAL_MIGRATION_ALLOWED運用を変更するものではない。
+**Stage 3残存カテゴリ（未決定、詳細は`docs/audit/design-token-stage3-residual-contract.md`）**: PR-A〜PR-C3完了時点で、Dark Surface Group A内の2クラスタ問題（slate系/neutral系）、Light Surface 100系、Guest Notice、Disabledは依然未決定である。上記文書は各カテゴリの調査事実と判断材料のみを記録し、値・命名・Contract化の可否は確定していない。Stage 3の完了基準（`STAGE3_PARTIALLY_DONE`とするか、代替DONE条件を新設して`STAGE3_DONE_WITH_DOCUMENTED_LITERAL_EXCEPTIONS`とするか）も未確定であり、本文書のPARTIAL_MIGRATION_ALLOWED運用を変更するものではない。
+
+**Action Border / Selection Divergence再分類（一部確定、詳細は`docs/audit/design-token-selection-divergence-decision.md`）**: 当初「Action Border」と一括りにしていたemerald border系literalを再監査し、`ConciergeEntryCard.tsx`送信ボタン（真のAction Border、1箇所）と、`OriginSelector.tsx`・`ConciergeFilterPanel.tsx`・`ConciergeEntryCard.tsx`相談テーマchip（実体はSelection divergence、`docs/audit/design-token-stage3-neutral-semantic-decision.md`が既に指摘したblue/emerald 2系統分裂の追加インスタンス）に分離した。前者は`KEEP_LITERAL_FOR_NOW`とする（確定）。後者のSelection divergence自体の解決方針（値統一・variant化・現状維持のいずれか）は未確定。`ConciergeFilterPanel.tsx`の残存literalは`ACCIDENTAL_REMAINDER`から`KNOWN_SELECTION_DIVERGENCE`へ再分類した（確定）。`ShrineSaveButton.tsx`のfavorite状態を同クラスタに含めるかは未検証のまま。
 
 ---
 
