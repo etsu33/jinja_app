@@ -404,9 +404,12 @@ def _read_value(source: Any, *keys: str) -> Any:
 def _read_goriyaku_tags(source: Any) -> tuple[str, ...]:
     raw = _read_value(source, "goriyakuTags", "goriyaku_tags")
 
-    if hasattr(raw, "values_list"):
+    if hasattr(raw, "all"):
+        # .values_list()はprefetch_relatedのcacheを使わず新規queryを発行するため、
+        # .all()経由でPython側抽出する（prefetch済みなら追加queryなし、
+        # 未prefetchなら従来同様1回のqueryで済む）。
         try:
-            return _clean_str_list(list(raw.values_list("name", flat=True)))
+            return _clean_str_list([tag.name for tag in raw.all()])
         except Exception:
             return ()
 
