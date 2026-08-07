@@ -92,6 +92,19 @@
   --kt-color-selection-background: var(--color-blue-50);
   --kt-color-selection-border: var(--color-blue-500);
 
+  /* ---- Semantic Token: surface-emphasis (Dark Surface) ---- */
+  /* Web現行: 強調CTA/リンクの濃色背景+反転文字色 (Group A)。
+     docs/audit/design-token-stage3-dark-surface-decision.md で新設決定済み。
+     文字色は専用tokenを作らず --kt-color-text-inverse を再利用する。
+     値はPR-C1で移行する ConciergeEntryCard.tsx のログインボタン
+     (bg-slate-800 hover:bg-slate-900) に合わせた。他のGroup A箇所
+     (billing各画面のbg-slate-900固定、ConciergeCard.tsxのbg-neutral-900
+     hover:bg-neutral-800など、hover方向や値が異なる箇所を含む)は
+     本Contractで機械的に統一しておらず、それらを本tokenへ移行する際は
+     視覚差が出ないか実装PR側で個別に確認すること。 */
+  --kt-color-surface-emphasis: var(--color-slate-800);
+  --kt-color-surface-emphasis-hover: var(--color-slate-900);
+
   /* ================================================================
    * Spacing (Primitiveは Tailwind の --spacing 基準値を係数計算で使用)
    * Web現行頻出値: p-4(107回)/px-4(91回)≒16px, px-3(121回)/p-3(53回)≒12px,
