@@ -144,7 +144,7 @@ export default function ConciergeTopRecommendationHero({
             <div className="text-xs font-semibold tracking-[0.18em] text-emerald-700">
               {eyebrowLabel ?? "今の相談に近い神社"}
             </div>
-            <h2 className="text-xl font-semibold leading-8 text-slate-950">{name}</h2>
+            <h2 className="text-xl font-semibold leading-8 text-[var(--kt-color-text-primary)]">{name}</h2>
 
             {visibleTrustLabels.length > 0 ? (
               <div className="flex flex-wrap gap-1.5">
@@ -183,7 +183,7 @@ export default function ConciergeTopRecommendationHero({
             data-testid="recommendation-standard-reason"
           >
             <p className="text-[11px] font-semibold tracking-[0.14em] text-slate-600">この神社を選んだ理由</p>
-            <p className="mt-1 text-sm leading-6 text-slate-700">{secondaryReason}</p>
+            <p className="mt-1 text-sm leading-6 text-[var(--kt-color-text-secondary)]">{secondaryReason}</p>
           </div>
         ) : null}
 
@@ -203,7 +203,7 @@ export default function ConciergeTopRecommendationHero({
             data-testid="recommendation-reason-v4-interpretation"
           >
             <p className="text-[11px] font-semibold tracking-[0.14em] text-slate-600">今の相談とのつながり</p>
-            <p className="mt-1 text-sm leading-6 text-slate-700">{interpretationReason}</p>
+            <p className="mt-1 text-sm leading-6 text-[var(--kt-color-text-secondary)]">{interpretationReason}</p>
           </div>
         ) : null}
 
