@@ -5,20 +5,20 @@ import * as React from "react";
 export type DetailSectionVariant = "primary" | "secondary" | "tertiary";
 
 const SECTION_CLASS: Record<DetailSectionVariant, string> = {
-  primary: "rounded-2xl border border-slate-300 bg-white p-6 shadow-lg",
-  secondary: "rounded-2xl border border-slate-200 bg-white p-5 shadow-sm",
-  tertiary: "rounded-2xl border border-slate-200 bg-slate-50 p-4",
+  primary: "rounded-[var(--kt-radius-card)] border border-[var(--kt-color-border-strong)] bg-[var(--kt-color-surface-default)] p-6 shadow-[var(--kt-shadow-high)]",
+  secondary: "rounded-[var(--kt-radius-card)] border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-5 shadow-[var(--kt-shadow-medium)]",
+  tertiary: "rounded-[var(--kt-radius-card)] border border-[var(--kt-color-border-default)] bg-[var(--kt-color-background-subtle)] p-4",
 };
 
 const TITLE_CLASS: Record<DetailSectionVariant, string> = {
-  primary: "text-base font-semibold text-slate-900",
-  secondary: "text-sm font-semibold text-slate-900",
-  tertiary: "text-xs font-semibold text-slate-500",
+  primary: "text-base font-semibold text-[var(--kt-color-text-primary)]",
+  secondary: "text-sm font-semibold text-[var(--kt-color-text-primary)]",
+  tertiary: "text-xs font-semibold text-[var(--kt-color-text-muted)]",
 };
 
 const RIGHT_CLASS: Record<DetailSectionVariant, string> = {
-  primary: "text-xs text-slate-500",
-  secondary: "text-xs text-slate-500",
+  primary: "text-xs text-[var(--kt-color-text-muted)]",
+  secondary: "text-xs text-[var(--kt-color-text-muted)]",
   tertiary: "text-[11px] text-slate-400",
 };
 
