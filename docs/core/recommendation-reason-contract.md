@@ -71,6 +71,40 @@ Stored情報を根拠として付与されたMeaning情報である。
 
 Factはユーザー状態の診断や行動提案を行わない。
 
+### Fact表現強度（confidence / history_type）
+
+Recommendation Reasonが`shrine_history`（および`deity`）をどの強度の文体で
+表示するかは、Knowledge Fact側の2つの独立した軸から決まる。
+
+- `confidence`（`temples.models.KNOWLEDGE_CONFIDENCE_CHOICES`）: そのFactを
+  裏付けるSourceへの信頼度。「情報がどれだけ確からしいSourceに基づくか」を表す。
+- `history_type`（`temples.models.ShrineHistory.history_type`）: そのFactが
+  何を記述しているかの種別（`official_origin` / `founding` / `historical_event` /
+  `tradition` / `regional_context` / `editorial_summary`）。「記述内容が確定した
+  史実として書かれているか、伝承として書かれているか」を表す。
+
+**両者は責務が別であり、どちらか一方だけでは他方を代替しない。**
+`confidence=high`は「Sourceは信頼できる」ことしか意味せず、
+「記述内容が史実として確定している」ことは意味しない。
+
+**Tradition Output Contract（TRADITION_ALWAYS_HEDGED）**:
+`history_type="tradition"`のFactは、`confidence`の値に関わらず断定表現
+（assertive）を出してはならない。confidenceがどれだけ高くても、伝承として
+書かれた内容は伝承としての文体（例:「〜と伝えられています」）で表示する。
+
+この制御はKnowledge Fact`content`本文が手動でhedge表現を含んでいるかには
+依存しない。`history_type="tradition"`である事実だけで、Reason生成側
+（`backend/temples/services/recommendation_reason_v4.py`の
+`_apply_tradition_hedge_floor()`）が表現強度の下限を強制する。
+これにより、執筆者が`content`のhedge表現を書き忘れた場合でも
+伝承が史実であるかのように出力される事故を構造的に防ぐ。
+
+`history_type="founding"`は既存Pilot（Score v3以前）から現行文体
+（confidenceに応じたassertive/weakened/suppressed）のまま維持し、
+本契約の対象に含めない。`founding`は「創建の一次的な由緒」という
+既存の意味合いで使われており、`tradition`（Source自身が伝承と明記した記述）
+とは別カテゴリとして扱う。両者を混同して`history_type`を選択しない。
+
 ### Interpretation
 
 相談内容をどのような文脈として受け取ったかを説明する。
@@ -352,6 +386,7 @@ Action Suggestion全体と同一ではない。
 - Snapshotを後から暗黙に再計算する
 - 方位一致をRecommendation Reasonの主理由として表示する
 - 「吉方位なので行くべき」「必ず良い結果になる」「運気が上がる」「願いが叶う」と断定する
+- `history_type="tradition"`のFactを、confidenceに関わらず断定表現(assertive)で出す
 
 ## 互換維持方針
 

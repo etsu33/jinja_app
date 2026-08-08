@@ -166,6 +166,28 @@ def _reason_strength_from_confidence(confidence: Any) -> str:
     return "assertive"
 
 
+# TRADITION_ALWAYS_HEDGED契約（docs/core/recommendation-reason-contract.md）:
+# confidenceはSourceへの信頼度であり、history_type（記述がその出来事を確定した
+# 史実として書いているか、伝承として書いているか）とは責務が別の軸である。
+# confidence=highは「Sourceは信頼できる」ことしか意味せず、「記述内容が史実として
+# 確定している」ことは意味しない。history_type="tradition"のFactは、Source信頼度に
+# 関わらず断定表現(assertive)を出してはならない。
+_TRADITION_HISTORY_TYPE = "tradition"
+
+
+def _apply_tradition_hedge_floor(reason_strength: str, history_type: Any) -> str:
+    """history_type="tradition"のFactについて、reason_strengthの下限をweakenedに引き上げる。
+
+    confidence由来で既にsuppressedと判定されているFactはそのまま
+    suppressed（最も安全側）を維持し、ここでは書き戻さない。assertiveのみを
+    weakenedへ引き下げる。content本文が手動でhedge表現を含んでいるかには依存しない
+    （_build_fact_text()のテンプレート選択自体を強制する設計）。
+    """
+    if history_type == _TRADITION_HISTORY_TYPE and reason_strength == "assertive":
+        return "weakened"
+    return reason_strength
+
+
 def _build_fact(
     candidate_profile: dict[str, Any], meaning_translation: dict[str, Any]
 ) -> tuple[dict[str, Any], dict[str, str]]:
@@ -188,6 +210,9 @@ def _build_fact(
 
     deity_reason_strength = _reason_strength_from_confidence(candidate_profile.get("deity_confidence"))
     shrine_history_reason_strength = _reason_strength_from_confidence(candidate_profile.get("shrine_history_confidence"))
+    shrine_history_reason_strength = _apply_tradition_hedge_floor(
+        shrine_history_reason_strength, candidate_profile.get("shrine_history_type")
+    )
 
     # confidence=low(suppressed)のKnowledge Factは、Recommendation Reason
     # （fact/evidence/used_fact/quality監査を含む）へ一切使用しない。

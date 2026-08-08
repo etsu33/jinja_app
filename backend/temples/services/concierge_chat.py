@@ -375,6 +375,21 @@ def _pick_primary_knowledge_history_confidence(knowledge_histories: Any) -> str 
     return str(item.get("confidence") or "").strip() or None
 
 
+def _pick_primary_knowledge_history_type(knowledge_histories: Any) -> str | None:
+    """`_pick_primary_knowledge_history_content()`が採用するのと同じHistory 1件の
+    history_typeを返す。別Historyのhistory_typeを混ぜない（PR-B契約と同じ選定基準）。
+
+    history_typeはconfidenceとは別軸の情報（Source信頼度ではなく、その記述が
+    伝承かどうかという記述種別）であり、TRADITION_ALWAYS_HEDGED契約
+    （docs/core/recommendation-reason-contract.md）でRecommendation Reason V4側の
+    表現強度判定に使われる。ここでは値の受け渡しのみを行い、判定はしない。
+    """
+    item = _pick_primary_knowledge_history_item(knowledge_histories)
+    if item is None:
+        return None
+    return str(item.get("history_type") or "").strip() or None
+
+
 def _build_score_v3_candidate_profile(rec: dict[str, Any]) -> dict[str, Any]:
     meaning_payload = rec.get("meaning_payload") if isinstance(rec.get("meaning_payload"), dict) else {}
     source = meaning_payload.get("source") if isinstance(meaning_payload.get("source"), dict) else {}
@@ -399,6 +414,14 @@ def _build_score_v3_candidate_profile(rec: dict[str, Any]) -> dict[str, Any]:
         if knowledge_history_content is not None
         else None
     )
+    # TRADITION_ALWAYS_HEDGED契約: history_typeはconfidenceと同じ選定基準（同一History）
+    # から取る。Legacy fallback時はKnowledge history_type概念が存在しないためNone
+    # （confidence同様、PR-B契約に合わせる）。
+    shrine_history_type = (
+        _pick_primary_knowledge_history_type(rec.get("knowledge_histories"))
+        if knowledge_history_content is not None
+        else None
+    )
 
     return {
         "shrine_id": rec.get("shrine_id") or rec.get("id") or source.get("shrineId"),
@@ -416,6 +439,7 @@ def _build_score_v3_candidate_profile(rec: dict[str, Any]) -> dict[str, Any]:
         "deity_confidence": deity_confidence,
         "shrine_history": knowledge_history_content if knowledge_history_content is not None else (rec.get("description") or source.get("description")),
         "shrine_history_confidence": shrine_history_confidence,
+        "shrine_history_type": shrine_history_type,
         "place_context": rec.get("address") or source.get("address"),
         "place_id": rec.get("place_id"),
         "behavior_signals": rec.get("behavior_signals") if isinstance(rec.get("behavior_signals"), dict) else {},

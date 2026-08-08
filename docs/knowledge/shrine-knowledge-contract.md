@@ -636,6 +636,8 @@ Detailで`disputed`のFactを扱う場合は、各Factを**独立したFactと�
 - `official_origin` ≠ `source_confirmed`（公式由緒に分類されていることと、確認済み状態であることは別概念。公式由緒であっても`draft`のまま未確認の場合がある）
 - `founding` ≠ historical certainty（創建情報に分類されていることは、その内容が史実として確定していることを意味しない。確定性は`verification_status`/`confidence`側で表現する）
 
+> **Recommendation Reason側での強制（TRADITION_ALWAYS_HEDGED）**: 上記の3軸分離はModel/Data Entry契約であり、Recommendation Reason生成側が`confidence=high`の`tradition`分類Factを断定表現で出力しないことまでは、本節単独では保証しない。Reason生成側での強制（`history_type="tradition"`ならconfidenceに関わらずhedge表現を使う）は`docs/core/recommendation-reason-contract.md`「Fact表現強度（confidence / history_type）」を正本とする。
+
 ### Multiple Fact保持方針
 
 現行Modelでは、複数の`ShrineHistory`/`ShrineDeity`を別レコードとして保持できる（`unique_together`等の一意制約は存在しない）。各Factは以下を独立して保持できる。
