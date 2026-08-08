@@ -477,6 +477,47 @@ Web出典のみを前提にしない。以下を扱えるようにする。
 > - **Source confidence**（`ShrineKnowledgeSource.confidence`）: PR-C1時点で以下のいずれにも使わないと確定する。Evidence usable判定、Recommendation Reason表現強度、Score/Ranking。Source confidenceからFact confidenceへの自動変換も行わない（上表の「Source typeによる基準値」「複数Source一致度から算出」「複合方式」はいずれも未採用のままの候補であり、Source confidence自体をどう算出・利用するかは引き続き未確定）。
 > - 上表の「利用先」のうち、`data_confidence_score`（Score軸）は今回も対象外のまま。数値閾値も導入していない（PR-Bはcategorical値(high/medium/low)をそのままReason表現強度へ対応させており、数値閾値を持たない）。
 
+### Traceability Contract（Batch 7 Closure、2026-08-08追加）
+
+> **Status**: 契約確定のみ。コード実装（`knowledge_coverage_report`等への組み込み）は伴わない。
+
+これまでのAudit（Batch 4-7）では、「Internal Traceability」を単一の指標
+（`Fact → Source → URL`まで逆引きできるか）として扱ってきたが、`user_observation`
+（現地観察）のようにURLを持たないことが仕様上正当なSource種別が存在するため、
+「URLの有無」と「Source Traceabilityそのもの」を同一視すると誤った異常判定を招く
+（Batch 7 Closureで実際にこの誤判定が発生した）。本節でこれを分離する。
+
+**Fact → Source relation到達を必須条件とする。** URLの有無に関わらず、すべての
+Fact（`ShrineDeity`/`ShrineHistory`）は最低1件の`ShrineKnowledgeSource`への
+Relationを持たなければならない。これはEvidence Gate（`decide_fact_usability()`）が
+既に強制している要件であり、Traceability Contractもこれを土台とする。
+
+#### Source typeごとのtraceability要件
+
+| source_type | URL | 必須項目 |
+|---|---|---|
+| `shrine_official` / `government` / `cultural_property` / `academic` / `museum_or_archive` / `tourism_official` / `secondary_editorial` | **必須を基本とする** | `url` |
+| `user_observation` | **なしを許容** | `title`・`source_type`・`verification_status`・Note等で観察内容を識別可能であること（`bibliography`等の代替識別情報でも可）・Fact relation |
+| `local_history`（書籍・郷土資料等）／URLを持たない`academic`等 | **なしを許容** | `bibliography`・`publisher`等の書誌情報・Fact relation |
+
+`internal_research`・`ai_generated_draft`は上記のいずれにも該当しない特殊区分として、
+本節では扱わない（`ai_generated_draft`はSourceとして独立した信頼性を持たない、
+既存記載の通り）。
+
+#### KPI再定義（3指標を混ぜない）
+
+| KPI | 定義 | 用途 |
+|---|---|---|
+| **Internal Source Traceability Rate** | Source relationへ逆引き可能なFact数 ÷ 対象Fact数 | Fact Integrityの根幹指標。Evidence Gateの必須要件（Source relation存在）と対応する。URLの有無を問わない |
+| **URL-backed Source Rate** | URLを持つSourceに紐づくFact数 ÷ 対象Fact数 | Web上で直接検証可能なFactの割合。ユーザー向けSource表示（将来のTrust UX検討）の実現可能範囲を示す |
+| **Offline Source-backed Fact Rate** | `user_observation`・書籍等のoffline Sourceに紐づくFact数 ÷ 対象Fact数 | URLを持たないことが仕様上正当なFactの割合。「URL-backed Rateが100%でない」ことが直ちに異常を意味しないことを示すための補助指標 |
+
+**Internal Source Traceability Rateは、Fact Integrityが健全かどうかの判定に使う。
+URL-backed Source Rateは、それより狭い「Web直接検証可能性」の指標であり、
+100%未満であることは`user_observation`等のoffline Sourceが正当に存在する限り
+異常ではない。** 今後のAuditでは、この3指標を区別して報告し、単一の
+「Traceability」という語で両者を混同しない。
+
 ### 情報矛盾時
 
 - 矛盾するSourceを削除せず保持する（片方を消して整合性があるように見せない）
