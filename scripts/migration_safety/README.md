@@ -21,14 +21,17 @@ Background reading (read in this order):
 
 | File | Purpose |
 |---|---|
-| `guard.py` | Pure-Python safety guard. Allow-list (not deny-list) check for restore targets; repo-boundary check for dump output paths; credential redaction for logging. No DB/network code. |
+| `guard.py` | Pure-Python safety guard. Allow-list (not deny-list) check for restore targets; repo-boundary check for dump/credential-file paths; credential redaction and structural-shape-only description for logging; read-only SQL statement allow-list; URI → `PG*` env-var export so a credential never needs to appear on a command line. No DB/network code. |
+| `check_credential_presence.sh` | Reports whether a credential file/variable is set and well-formed — booleans only, never the value, host, or length. |
+| `readonly_query.sh` | Runs a SQL file against a database using a credential file outside the repo, after checking every statement is read-only. Connects via `PG*` env vars so the credential never appears in `ps`. See "Credential Bridge" below. |
 | `dump_readonly.sh` | Read-only logical dump (`pg_dumpall --roles-only` + `pg_dump --schema-only` + `pg_dump --data-only`, `public` schema only) of a URL you pass explicitly. |
 | `restore_isolated.sh` | Restores a dump into a target URL, but only after `guard.py` confirms the target is a disposable local database. Refuses otherwise. |
 | `sql/migration_state.sql` | SELECT-only. Per-app latest applied migration. |
 | `sql/pre_migration_snapshot.sql` | SELECT-only. Run immediately before a backup/migration attempt; records the baseline to compare against later. |
 | `sql/post_migration_verification.sql` | SELECT-only. Run after migration; every value must match the pre-migration snapshot except the two migrations you intentionally applied. |
-| `tests/test_guard.py` | Unit tests for `guard.py`. No DB required. |
+| `tests/test_guard.py` | Unit tests for `guard.py`, including the credential-bridge functions (`describe_url_shape`, `is_readonly_sql`, `pg_env_exports`). No DB required. |
 | `tests/test_backup_restore_e2e.sh` | End-to-end local test: builds a `users=0005`/`temples=0089` local database, dumps it, restores it into a second isolated database through the actual guarded scripts, verifies they match, applies `users 0006` + `temples 0090-0093` to the restored copy, verifies again, rolls back. Never touches Production. |
+| `tests/test_credential_bridge_e2e.sh` | End-to-end local test of the credential bridge using a fake local credential (never Production): presence check leaks nothing, a read-only query actually connects, writes/`EXPLAIN ANALYZE`/wrong-permissions/in-repo-path are all refused pre-connection. |
 
 ## The core safety property
 
@@ -52,6 +55,56 @@ The dump-path check works the other way: a dump's *output path* must
 resolve outside the git repository, so a Production dump can never end up
 staged for commit.
 
+## Credential Bridge
+
+**Problem:** an AI assistant (Claude Code / Codex) driving this tooling
+runs each shell command as a *separate* process — `export FOO=bar` in one
+command does not carry over to the next one (verified empirically: it
+doesn't). So "export the credential in your shell" doesn't actually work
+for AI-assisted runs the way it would in a human's interactive terminal.
+The fix used here is a credential **file** that gets sourced fresh inside
+a single script invocation, never split across multiple commands.
+
+**Setup (you do this yourself, once, locally):**
+
+```bash
+mkdir -p ~/.config/kami-musubi
+cp ~/.config/kami-musubi/production-db.env.example ~/.config/kami-musubi/production-db.env
+# edit production-db.env yourself — fill in the real value.
+# Never paste it into a chat with an AI assistant. Never commit it.
+chmod 600 ~/.config/kami-musubi/production-db.env
+```
+
+The file just needs one line: `export DATABASE_URL="postgres://..."` (or
+whatever variable name you choose — you pass the name explicitly to every
+script that uses it, nothing is assumed).
+
+**How an AI session uses it without ever seeing the value:**
+
+```bash
+# Presence check — prints only booleans (VAR_SET, scheme_is_postgres,
+# has_host, has_port, has_dbname, has_userinfo). No host, no length, no value.
+scripts/migration_safety/check_credential_presence.sh ~/.config/kami-musubi/production-db.env DATABASE_URL
+
+# Read-only query — refuses to run anything but SELECT/SHOW/EXPLAIN(no
+# ANALYZE)/WITH, checked BEFORE the credential is ever touched. Connects
+# via PGHOST/PGPORT/PGUSER/PGPASSWORD/PGDATABASE/PGSSLMODE (parsed from
+# the URI internally) so the credential never appears in `ps` output —
+# psql is invoked with no connection string on its command line at all.
+scripts/migration_safety/readonly_query.sh ~/.config/kami-musubi/production-db.env DATABASE_URL scripts/migration_safety/sql/migration_state.sql
+```
+
+Both scripts refuse to run if the credential file is inside this
+repository, or if its permissions aren't exactly `600`.
+
+**What this bridge does NOT do:** it doesn't stop a human from misusing
+`psql` directly with the same file, and it doesn't encrypt the file at
+rest (ordinary filesystem permissions only — adequate for a single-user
+laptop, not a shared machine). It also can't verify the connection string
+you put in the file is actually read-only at the database-role level;
+read-only-ness is enforced at the SQL-statement layer by
+`readonly_query.sh`'s allow-list, not by trusting the role's grants.
+
 ## Running the tests
 
 ```bash
@@ -61,13 +114,17 @@ backend/.venv/bin/python3 -m pytest scripts/migration_safety/tests/test_guard.py
 # End-to-end local drill (needs local PostgreSQL with postgis available,
 # ~1-2 minutes — it replays temples migrations 0001-0093):
 scripts/migration_safety/tests/test_backup_restore_e2e.sh
+
+# Credential bridge end-to-end drill (seconds, uses a fake local
+# credential — never Production):
+scripts/migration_safety/tests/test_credential_bridge_e2e.sh
 ```
 
-Both are safe to run repeatedly and clean up everything they create
-(`test_backup_restore_e2e.sh` uses a `trap ... EXIT` that drops its temp
-databases and dump directory even on failure).
+All three are safe to run repeatedly and clean up everything they create
+(both `_e2e.sh` tests use a `trap ... EXIT` that removes temp databases/
+files even on failure).
 
-Neither test is wired into any CI workflow's `testpaths`
+None of these are wired into any CI workflow's `testpaths`
 (`backend/pytest.ini` only scopes `temples/tests`, `users/tests`,
 `tests`) — they are standalone tooling, run manually. Wiring the unit
 tests into CI would be a reasonable follow-up but is out of scope here
@@ -75,9 +132,10 @@ and wasn't requested.
 
 ## Runbook: Manual Backup Route (Phase 1)
 
-1. Obtain a read-only-capable Production connection string. **Never paste
-   it into chat with an AI assistant; never commit it.** Export it into
-   your own shell as `SOURCE_DATABASE_URL`.
+1. Obtain a read-only-capable Production connection string and set up the
+   Credential Bridge above (`~/.config/kami-musubi/production-db.env`,
+   `chmod 600`). **Never paste it into chat with an AI assistant; never
+   commit it.**
 2. Confirm your local `pg_dump`/`pg_dumpall` major version matches
    Production's Postgres version (check via Supabase Dashboard → Database
    settings, or `SELECT version();`). If they don't match, set
@@ -87,10 +145,22 @@ and wasn't requested.
    during development of this tooling, see `dump_readonly.sh` comments.
 3. Pick an output directory **outside this repository**, e.g.
    `~/kami-musubi-backups/$(date +%Y%m%d%H%M%S)/`.
-4. Run:
+4. Run, sourcing the credential file and invoking `dump_readonly.sh` in
+   the *same* command (an AI-driven session can't rely on a separate
+   `export` step persisting — see "Credential Bridge" above; a human
+   typing this directly in their own terminal could instead just
+   `export`/run interactively, but the one-liner below works either way):
    ```bash
-   scripts/migration_safety/dump_readonly.sh "$SOURCE_DATABASE_URL" ~/kami-musubi-backups/<timestamp>/
+   ( set -a; source ~/.config/kami-musubi/production-db.env; set +a; \
+     scripts/migration_safety/dump_readonly.sh "$DATABASE_URL" ~/kami-musubi-backups/<timestamp>/ )
    ```
+   Note `dump_readonly.sh` itself still receives the resolved connection
+   string as an argument (unlike `readonly_query.sh`, it wraps `pg_dump`/
+   `pg_dumpall` directly rather than going through the `PG*` env-var
+   indirection) — this is pre-existing behavior from when the tool was
+   first built and wasn't changed here. It's a strictly read-only dump
+   either way; the credential just briefly appears in that one command's
+   argv on your own machine while it runs.
 5. Confirm all three files (`roles.sql`, `schema.sql`, `data.sql`) exist
    and have non-zero size (the script prints sizes; it also warns on any
    zero-byte file).

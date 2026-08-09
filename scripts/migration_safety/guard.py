@@ -24,8 +24,9 @@ from __future__ import annotations
 import argparse
 import os
 import re
+import shlex
 import sys
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 # Only these hosts are ever treated as "local" for restore purposes.
 ALLOWED_RESTORE_HOSTS = {"localhost", "127.0.0.1", "::1"}
@@ -88,7 +89,12 @@ def is_safe_restore_target(database_url: str) -> tuple[bool, str]:
 
 
 def is_safe_dump_path(path: str, repo_root: str) -> tuple[bool, str]:
-    """Return (ok, reason). ok is True only if `path` is outside `repo_root`."""
+    """Return (ok, reason). ok is True only if `path` is outside `repo_root`.
+
+    Also used to gate credential *files* (not just dump output) — the same
+    "must not be inside this repository" property is what matters in both
+    cases, so the check is reused rather than duplicated.
+    """
     abs_path = os.path.realpath(path)
     abs_repo_root = os.path.realpath(repo_root)
 
@@ -96,6 +102,100 @@ def is_safe_dump_path(path: str, repo_root: str) -> tuple[bool, str]:
         return False, f"{abs_path} is inside the repository ({abs_repo_root}); refusing to write a dump there"
 
     return True, "ok"
+
+
+def describe_url_shape(database_url: str) -> dict:
+    """Return only structural booleans about a URL — never the value, its
+    length, or any substring (including hostname). Safe to print/log.
+    """
+    try:
+        parsed = urlparse(database_url)
+    except ValueError:
+        return {"parses": False}
+
+    return {
+        "parses": True,
+        "scheme_is_postgres": parsed.scheme in ("postgres", "postgresql"),
+        "has_host": bool(parsed.hostname),
+        "has_port": parsed.port is not None,
+        "has_dbname": bool((parsed.path or "").lstrip("/")),
+        "has_userinfo": bool(parsed.username),
+    }
+
+
+# Statement-start keywords this bridge will ever execute. Anything else is
+# refused. This is a simple lexical check (split on ';', look at the first
+# word), not a real SQL parser — it is deliberately conservative: anything
+# it can't confidently classify as read-only is rejected, not allowed.
+_ALLOWED_SQL_VERBS = {"select", "show", "explain", "with"}
+
+# Explicit deny-list kept too, purely so a caller gets a clear reason
+# ("this is a write verb") instead of a generic "not in the allow-list"
+# message when someone tries something obviously unsafe.
+_FORBIDDEN_SQL_VERBS = {
+    "insert", "update", "delete", "merge", "alter", "create", "drop",
+    "truncate", "grant", "revoke", "vacuum", "analyze", "call", "do",
+    "copy", "refresh", "reindex", "cluster", "lock", "comment", "import",
+    "export", "listen", "notify", "unlisten", "prepare", "execute",
+    "deallocate", "checkpoint", "discard", "load", "security",
+}
+
+
+def _strip_sql_comments(sql_text: str) -> str:
+    no_line_comments = re.sub(r"--[^\n]*", "", sql_text)
+    return re.sub(r"/\*.*?\*/", "", no_line_comments, flags=re.DOTALL)
+
+
+def is_readonly_sql(sql_text: str) -> tuple[bool, str]:
+    """Return (ok, reason). ok is True only if every statement in
+    `sql_text` starts with an allowed read-only verb, and no EXPLAIN
+    statement contains ANALYZE (which actually executes the query and can
+    have side effects for non-SELECT statements).
+    """
+    cleaned = _strip_sql_comments(sql_text)
+    statements = [s.strip() for s in cleaned.split(";")]
+    statements = [s for s in statements if s]
+
+    if not statements:
+        return False, "no SQL statements found"
+
+    for stmt in statements:
+        first_word = stmt.split(None, 1)[0].lower() if stmt.split() else ""
+        if first_word in _FORBIDDEN_SQL_VERBS:
+            return False, f"statement starts with a forbidden write/DDL verb: {first_word!r}"
+        if first_word not in _ALLOWED_SQL_VERBS:
+            return False, f"statement does not start with an allowed read-only verb {sorted(_ALLOWED_SQL_VERBS)}: {first_word!r}"
+        if first_word == "explain" and re.search(r"\banalyze\b", stmt, re.IGNORECASE):
+            return False, "EXPLAIN ANALYZE actually executes the query and is not allowed; use EXPLAIN without ANALYZE"
+
+    return True, "ok"
+
+
+def pg_env_exports(database_url: str) -> str:
+    """Return shell `export` statements (PGHOST/PGPORT/PGUSER/PGPASSWORD/
+    PGDATABASE/PGSSLMODE) for `database_url`, so a caller can `eval` them
+    and then run `psql`/`pg_dump` with NO connection info on the command
+    line at all (libpq reads these automatically). Output is meant to be
+    consumed by `eval "$(...)"` only — never printed to a terminal or log,
+    since it necessarily contains the credential.
+    """
+    parsed = urlparse(database_url)
+    lines = []
+    if parsed.hostname:
+        lines.append(f"export PGHOST={shlex.quote(parsed.hostname)}")
+    if parsed.port:
+        lines.append(f"export PGPORT={shlex.quote(str(parsed.port))}")
+    if parsed.username:
+        lines.append(f"export PGUSER={shlex.quote(parsed.username)}")
+    if parsed.password:
+        lines.append(f"export PGPASSWORD={shlex.quote(parsed.password)}")
+    dbname = (parsed.path or "").lstrip("/")
+    if dbname:
+        lines.append(f"export PGDATABASE={shlex.quote(dbname)}")
+    sslmode = parse_qs(parsed.query).get("sslmode", [None])[0]
+    if sslmode:
+        lines.append(f"export PGSSLMODE={shlex.quote(sslmode)}")
+    return "\n".join(lines)
 
 
 def _cli() -> int:
@@ -112,6 +212,19 @@ def _cli() -> int:
     p_redact = sub.add_parser("redact", help="Print URL with credentials masked")
     p_redact.add_argument("database_url")
 
+    sub.add_parser(
+        "describe-url-shape",
+        help="Read a URL from stdin (never argv), print structural booleans only (no value, length, or host)",
+    )
+
+    p_sql = sub.add_parser("check-readonly-sql", help="Exit 0 if every statement in a SQL file is read-only, else 1")
+    p_sql.add_argument("sql_file")
+
+    sub.add_parser(
+        "pg-env-exports",
+        help="Read a URL from stdin (never argv), print PG* export statements (for eval only — contains the credential)",
+    )
+
     args = parser.parse_args()
 
     if args.command == "check-restore-target":
@@ -126,6 +239,23 @@ def _cli() -> int:
 
     if args.command == "redact":
         print(redact_url(args.database_url))
+        return 0
+
+    if args.command == "describe-url-shape":
+        url = sys.stdin.read().strip()
+        print(describe_url_shape(url))
+        return 0
+
+    if args.command == "check-readonly-sql":
+        with open(args.sql_file, encoding="utf-8") as f:
+            sql_text = f.read()
+        ok, reason = is_readonly_sql(sql_text)
+        print(f"{'SAFE' if ok else 'BLOCKED'}: {reason}", file=sys.stderr)
+        return 0 if ok else 1
+
+    if args.command == "pg-env-exports":
+        url = sys.stdin.read().strip()
+        print(pg_env_exports(url))
         return 0
 
     return 2
