@@ -1,6 +1,7 @@
-> **Status: Stage 1（`users 0006`）・Stage 2（`temples 0090`）実行完了・
-> いずれもPASS。`temples 0091`以降は未実行のまま意図的に停止中。
-> 次のStageはMother Ship判断待ち。**
+> **Status: Stage 1（`users 0006`）・Stage 2（`temples 0090`）はPASS。
+> **Stage 3（`temples 0091`）は失敗（`GEOSException`、atomic rollback、
+> production変化なし）。`temples 0091`は未適用のまま。`temples 0092`
+> 以降は未実行のまま停止中。次のアクションはMother Ship判断待ち。**
 >
 > 本ドキュメントは**正本**である。`docs/audit/
 > production-migration-execution-gate.md`・`production-migration-go-no-go-final.md`・
@@ -10,7 +11,9 @@
 >
 > **Execution Recordは本ドキュメント末尾の
 > 「Execution Record — Stage 1: `users 0006`」・
-> 「Execution Record — Stage 2: `temples 0090`」の各節を参照。**
+> 「Execution Record — Stage 2: `temples 0090`」・
+> 「Execution Record — Stage 3: `temples 0091`（失敗・STOP）」の
+> 各節を参照。**
 >
 > **Production migrationはこのPRでは実行していない。Production DBへの
 > writeは0件。** 許可されたのはread-only verification
@@ -510,5 +513,187 @@ Runbook記載内容と完全一致。
 
 - **Production write: `temples 0090` = EXECUTED**
 - **temples 0091 = NOT_EXECUTED**
+- **temples 0092 = NOT_EXECUTED**
+- **temples 0093 = NOT_EXECUTED**
+
+---
+
+## Execution Record — Stage 3: `temples 0091`（失敗・STOP）
+
+**本Stageは失敗した。`temples 0091`は適用されていない。
+`temples 0092`は実行していない。**
+
+### 実行環境
+
+| 項目 | 値 |
+|---|---|
+| develop HEAD SHA（実行時点） | `7eebd3c8...`（PR #2335反映済み） |
+| Python | `3.11.13` |
+| Django | `5.2.16` |
+| psycopg | `3.3.4` |
+| `DEBUG` | `0`（明示指定） |
+| `USE_GIS` | `1`（明示指定） |
+
+### Stage 2 State Recheck / Fresh Pre-0091 Snapshot / Fresh Backup
+
+- [x] `users`最新 = `0006`（不変）、`temples`最新 = `0090`（不変）
+- [x] aggregate: `auth_user=1`/`userprofile=1`/`shrine=105`/`favorite=0`/`visit=2`/`goriyaku_relation=280`（baselineと完全一致）。snapshot時刻`2026-08-09 12:23:04.717102+00`
+- [x] fresh backup取得成功: `roles.sql=5426`/`schema.sql=81650`/`data.sql=3843102`bytes、repo外保存、hostname出力は抑制済み
+
+### `temples 0091` Migration File Recheck
+
+- [x] ファイル名: `0091_fill_missing_local_shrine_reason_facts.py`（一致）
+- [x] dependency: `temples.0090_add_rest_healing_tag_to_silent_shrines`のみ
+- [x] operation: `RunPython`のみ
+- [x] 最終commit: `c5f2b3d5`（2026-07-04）——変更なし
+
+### 実行前の実データ確認（推測ではなく実測） — 重要な発見
+
+- [x] 対象2神社（`長太稲荷神社`・`給田六所神社`）の名前が**それぞれ重複して
+  2件ずつ存在**することを発見（`長太稲荷神社`: id=21, id=103。
+  `給田六所神社`: id=22, id=101）
+- [x] `Shrine.Meta.ordering = ["-updated_at"]`のため、migrationの
+  `.filter(name_jp=...).first()`は`updated_at`が新しい方
+  （`長太稲荷神社`→id=103、`給田六所神社`→id=101）を確定的に対象とする
+  ことを特定
+- [x] tag `地域安泰`は`temples_goriyakutag`に**存在しない**ことを確認
+  （`商売繁盛`/`五穀豊穣`/`家内安全`のみ存在）
+- [x] id=101・id=103に既存のtag関連付けは0件であることを確認
+- [x] 事前予測: id=103は`history_theme`="守り"+tag2件追加、id=101は
+  `history_theme`="守り"+tag1件追加、`goriyaku_relation_count`は
+  `280`→`283`になるはず、と推測ではなく実データに基づき確定していた
+
+### `migrate --plan`（実行直前・最終確認）
+
+```
+Planned operations:
+temples.0091_fill_missing_local_shrine_reason_facts
+    Raw Python operation
+```
+
+### 実行
+
+| 項目 | 値 |
+|---|---|
+| コマンド | `python manage.py migrate temples 0091 --noinput`（app-scoped、bare `migrate`は不使用） |
+| 実行開始 | `2026-08-09T12:25:42Z` |
+| 実行終了 | `2026-08-09T12:25:43Z` |
+| exit status | **`1`（失敗）** |
+
+### エラー内容
+
+```
+Applying temples.0091_fill_missing_local_shrine_reason_facts...ERROR django.contrib.gis: GEOS_ERROR:
+...
+File ".../temples/migrations/0091_fill_missing_local_shrine_reason_facts.py", line 24, in fill_missing_local_shrine_reason_facts
+    shrine = Shrine.objects.filter(name_jp=item["name"]).first()
+...
+File ".../django/contrib/gis/db/backends/postgis/operations.py", line 424, in converter
+    return None if value is None else GEOSGeometryBase(read(value), geom_class)
+...
+django.contrib.gis.geos.error.GEOSException: Error encountered checking Geometry returned from GEOS C function "GEOSWKBReader_readHEX_r".
+```
+
+credential・hostname・個人情報は含まれない（tracebackはファイルパス・
+Djangoの内部コードパスのみ）。
+
+### 根本原因分析
+
+`docs/audit/production-migration-execution-gate.md`Phase 3で発見した
+**temples migration lineageの歴史的分岐**が、今回初めて実際の失敗として
+顕在化した。
+
+- Django migrationの`RunPython`は`apps.get_model("temples", "Shrine")`
+  経由で、**「公式`migrations/`チェーンの操作を`0091`まで積み上げた
+  歴史的model state」**を使う。この歴史的state上のShrineは、
+  `migrations/0025`〜`0033`（`enable_postgis_and_add_location`等）
+  により`location`フィールドが**PostGIS GeometryField**として
+  定義されている
+- しかしProduction実DBの`temples_shrine.location`列は、実際には
+  （`migrations_nogis`由来のため）**`text`型**である（本監査シリーズの
+  過去Gateで既に実測確認済み）
+- `Shrine.objects.filter(name_jp=...).first()`はShrineの全カラムを
+  SELECTするため、ORMが`location`列の値をGEOS geometry objectへ
+  変換しようとし、実際の値（text型の生データ）がWKB
+  （Well-Known Binary）として解釈できず`GEOSException`が発生した
+- **`temples 0090`が成功していた理由**: `0090`のRunPythonは
+  `GoriyakuTag.objects.get(id=43)`が`DoesNotExist`で即座に`return`
+  していたため、`Shrine.objects.filter(...)`が一度も実行されず、
+  この問題を踏んでいなかった（偶然の回避であり、`0090`自体が
+  この問題を解消していたわけではない）
+- **`0091`はShrineクエリを2件、無条件に実行する**ため、最初の
+  `.first()`呼び出しで即座に失敗した
+
+**この問題は実行方式（local Mac / Render Shell / RUN_MIGRATIONS_ON_START
+等）に依存しない。** `temples 0091`が現在のコードのまま`Shrine.objects`
+経由でクエリを実行する限り、どの実行方式でも同じ`GEOSException`が
+発生すると考えられる。
+
+### Failure Handling — 分類
+
+**`A: 0091 recordなし / changeなし`**
+
+read-only再確認により以下を確認した:
+
+- [x] `django_migrations`に`temples 0091`の記録は**存在しない**
+  （Djangoの1 migration = 1 transactionによりatomicにrollbackされた）
+- [x] `temples`最新は`0090`のまま不変
+- [x] aggregate counts: `auth_user=1`/`userprofile=1`/`shrine=105`/
+  `favorite=0`/`visit=2`/`goriyaku_relation=280`——**実行前と完全一致、
+  変化なし**
+- [x] id=21/22/101/103の`history_theme`/`goriyaku`/`updated_at`は
+  いずれも実行前の値のまま**一切変化していない**
+- [x] `users 0006`・`temples 0090`のstateはいずれも無傷（regression確認済み）
+- [x] `temples 0092`/`0093`は未実行のまま
+
+**Production側は実行前と完全に同一の状態を維持している。データ破損・
+部分適用はゼロ件。**
+
+### Runtime QA
+
+`/healthz/`が`{"ok": true, "release": "b286a557680c12343282c6e1e57a78f1be4bda43"}`
+を返し、backendは正常稼働中であることを確認した（今回の失敗した
+ローカル実行はRender側のプロセスに一切影響していない）。認証済みQAは
+引き続き`NOT_EXECUTED_RUNTIME_ACCESS_REQUIRED`。
+
+### 実行していないこと（明示）
+
+- `temples 0091`のreverse migration相当の手動修正: **実行していない**
+- 手動SQLによるschema/data修復: **実行していない**
+- Production restore: **実行していない**
+- `migrate`の再実行: **実行していない**
+
+### Classification
+
+**`TEMPLES_0091_EXECUTION_STOP`**
+
+### Mother Shipへ返す修正候補（決定はしない、選択肢の提示のみ）
+
+`temples 0091`を将来適用可能にするための技術的候補（実装はしていない）:
+
+1. migration側で`Shrine.objects.filter(...).only("id", "name_jp",
+   "history_theme", "goriyaku", "updated_at")`のように**`location`列を
+   明示的にSELECT対象から除外する**よう書き換える
+2. ORMではなく`schema_editor.connection.cursor()`等の生SQLで
+   対象shrineを特定・更新する（geometry変換を経由しない）
+3. `temples_shrine.location`列の型不整合そのもの（`text` vs
+   PostGIS `geometry`）を別Gateとして根本的に解消する
+   （影響範囲が大きく、本Gateのscopeを大きく超える）
+4. 上記いずれも実施せず、`0091`の目的（2神社への`history_theme`/
+   `goriyaku`/tag付与）を**migrationではなく別の一時的な
+   read-onlyでない手段**（例: 別途承認を得た上でのdata-only script）
+   で実現し、`0091`自体はスキップ扱いにする
+
+**候補1が最も影響範囲が小さく、`0091`のみの修正で完結する可能性が
+高いが、修正・再監査・再実行にはMother Shipの承認が必要。**
+
+同様のパターン（`Shrine.objects`への無条件クエリ）が`temples`の
+他のmigrationやアプリケーションコードにも存在しないか、**別途
+点検を推奨する**（本Gateのscope外）。
+
+### Production Write Summary（Stage 3時点の累積）
+
+- **Production write: `temples 0090` = EXECUTED（Stage 2、変化なし）**
+- **temples 0091 = NOT_EXECUTED（試行1回、失敗、atomic rollback、production変化なし）**
 - **temples 0092 = NOT_EXECUTED**
 - **temples 0093 = NOT_EXECUTED**
