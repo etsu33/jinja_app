@@ -1,12 +1,14 @@
-> **Status: Final preflight complete. This is the authoritative Runbook
-> for Local Direct Execution. Classification:
-> `LOCAL_DIRECT_EXECUTION_GO_READY_WITH_LIMITATIONS`**
+> **Status: Stage 1（`users 0006`）実行完了・PASS。`temples 0090`以降は
+> 未実行のまま意図的に停止中。次のStageはMother Ship判断待ち。**
 >
 > 本ドキュメントは**正本**である。`docs/audit/
 > production-migration-execution-gate.md`・`production-migration-go-no-go-final.md`・
 > `local-mac-direct-migration-execution-safety.md`はいずれも背景調査・
 > 実測記録として引き続き有効だが、**実際に人間が上から順に実行する
 > 手順としては本ドキュメントを使うこと。**
+>
+> **Execution Record（Stage 1）は本ドキュメント末尾の
+> 「Execution Record — Stage 1: `users 0006`」節を参照。**
 >
 > **Production migrationはこのPRでは実行していない。Production DBへの
 > writeは0件。** 許可されたのはread-only verification
@@ -307,10 +309,87 @@ migrationごとに、失敗時は以下の順で状態を観測してから分�
 - `docs/audit/production-migration-local-execution-runbook.md`: 本ドキュメント（新規、正本）
 - 上記以外の変更なし。Production DBへのwriteは0件
 
-## 次にMother Shipが判断すること
+## 次にMother Shipが判断すること（Stage 0時点の記録、以下に更新）
 
-1. `LOCAL_DIRECT_EXECUTION_GO_READY_WITH_LIMITATIONS`を受けて、実際に
-   STEP 0から実行を開始するか
-2. 実行する場合、実行者（Mother Ship自身か、別セッションのCodex/Claudeか）
-3. Phase 9のRuntime QAを誰が・いつ実施するか
-4. 残存limitations（4点、Phase 13参照）のうち、先に解消してから実行するものがあるか
+1. ~~`LOCAL_DIRECT_EXECUTION_GO_READY_WITH_LIMITATIONS`を受けて、実際に
+   STEP 0から実行を開始するか~~ → **Stage 1（`users 0006`）実行に
+   ついてはMother Shipが実行を指示し、完了した**
+2. 実行者: このセッション（Codex/Claude、local Mac direct execution）
+3. Phase 9のRuntime QAを誰が・いつ実施するか → **Stage 1では未実施
+   （`NOT_EXECUTED_RUNTIME_ACCESS_REQUIRED`、後述）。引き続き未確定**
+4. 残存limitations: Stage 1実行により「実際の書き込み実行を一度も
+   試みていない」という limitation は解消された。残りは
+   Runtime QA未実施・`dump_readonly.sh`のhostname非マスク・
+   `pytest`/`pytest-dotenv`衝突・ネットワーク切断時挙動未検証の4点
+
+---
+
+## Execution Record — Stage 1: `users 0006`
+
+本Stageは`docs/audit/production-migration-local-execution-runbook.md`
+（本ドキュメント）のRunbookに従い、STEP 0〜2相当を実施した記録である。
+**`temples 0090`以降は意図的に未実行のまま停止している。**
+
+### 実行環境
+
+| 項目 | 値 |
+|---|---|
+| develop HEAD SHA（実行時点） | `afed3ac3...`（PR #2333反映済み） |
+| Python | `3.11.13` |
+| Django | `5.2.16` |
+| psycopg | `3.3.4` |
+| `DEBUG` | `0`（明示指定） |
+| `USE_GIS` | `1`（明示指定） |
+| 実行方式 | Local Mac direct execution（`docs/audit/
+  local-mac-direct-migration-execution-safety.md`で安全性監査済み） |
+| credential | `~/.config/kami-musubi/production-db.env`経由（値は一切表示せず） |
+
+### Credential Gate / Preflight結果
+
+- [x] `check_credential_presence.sh` → `VAR_SET=1`、shape正常
+- [x] 実行直前snapshot（`pre_migration_snapshot.sql`）: `users_0006_applied=false`・
+  `temples_0093_applied=false`・aggregate（`auth_user=1`/`userprofile=1`/
+  `shrine=105`/`favorite=0`/`visit=2`/`goriyaku_relation=280`）が
+  既知baselineと完全一致。snapshot時刻`2026-08-09 12:01:35.845917+00`
+- [x] 全8 app migration state再確認: baselineと完全一致、drift 0件
+- [x] `migrate users 0006 --plan`（実行直前・最終確認）: `AddField`×4
+  （`birthday`/`birth_time`/`birth_place`/`worship_style`）、Runbook
+  記載内容と完全一致
+
+### 実行
+
+| 項目 | 値 |
+|---|---|
+| コマンド | `python manage.py migrate users 0006 --noinput`（app-scoped、bare `migrate`は不使用） |
+| 実行開始 | `2026-08-09T12:02:09Z` |
+| 実行終了 | `2026-08-09T12:02:10Z` |
+| 出力 | `Applying users.0006_userprofile_birth_profile_fields... OK` |
+| exit status | `0` |
+
+`temples`側のmigrationは一切実行していない。
+
+### 実行後verification
+
+- [x] `django_migrations`: `users`最新 = `0006_userprofile_birth_profile_fields`（applied `2026-08-09 12:02:10.455239+00`）
+- [x] `users_userprofile`カラム: `birthday`/`birth_time`/`birth_place`/`worship_style`の4件すべて存在
+- [x] Knowledge table: 0件存在（`temples 0090-0093`未実行のため期待通り）
+- [x] aggregate counts: `auth_user=1`/`userprofile=1`/`shrine=105`/`favorite=0`/`visit=2`/`goriyaku_relation=280`——**実行前と完全一致、変化なし**
+- [x] 全8 app migration state再確認: `users`のみ`0006`へ進み、**`temples`は`0089`のまま不変**であることを確認（`temples 0090`以降が意図せず適用されていないことを明示的に確認済み）
+- [ ] Runtime QA（`/healthz/`・`/api/auth/me`・MyPage等）: **`NOT_EXECUTED_RUNTIME_ACCESS_REQUIRED`**。`/healthz/`への読み取り専用GETを試行したが`503 Service Unavailable`（Render Free tierのsleep、または一時的な問題と推測されるが原因特定はしていない）。認証済みRuntime確認（`/api/auth/me`・MyPage）はDB専用credential bridgeの範囲外であり、本セッションからは実施不可
+
+### Failure Handling
+
+該当なし（migrationはexit 0で正常終了したため、Phase 12のfailure分類は発動していない）。
+
+### Classification
+
+**`USERS_0006_EXECUTION_PASS`**
+
+根拠: migration exit 0、`users 0006` applied確認、期待schema存在確認、
+aggregate不変確認、想定外schemaなし確認、`temples 0090-0093`が
+引き続き未適用のままであることを確認——Phase 13の全条件を満たす。
+
+### Production Write Summary
+
+- **Production write: `users 0006` = EXECUTED**
+- **temples Production writes: `0`**
