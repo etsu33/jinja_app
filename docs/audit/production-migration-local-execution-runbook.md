@@ -1,5 +1,6 @@
-> **Status: Stage 1（`users 0006`）実行完了・PASS。`temples 0090`以降は
-> 未実行のまま意図的に停止中。次のStageはMother Ship判断待ち。**
+> **Status: Stage 1（`users 0006`）・Stage 2（`temples 0090`）実行完了・
+> いずれもPASS。`temples 0091`以降は未実行のまま意図的に停止中。
+> 次のStageはMother Ship判断待ち。**
 >
 > 本ドキュメントは**正本**である。`docs/audit/
 > production-migration-execution-gate.md`・`production-migration-go-no-go-final.md`・
@@ -7,8 +8,9 @@
 > 実測記録として引き続き有効だが、**実際に人間が上から順に実行する
 > 手順としては本ドキュメントを使うこと。**
 >
-> **Execution Record（Stage 1）は本ドキュメント末尾の
-> 「Execution Record — Stage 1: `users 0006`」節を参照。**
+> **Execution Recordは本ドキュメント末尾の
+> 「Execution Record — Stage 1: `users 0006`」・
+> 「Execution Record — Stage 2: `temples 0090`」の各節を参照。**
 >
 > **Production migrationはこのPRでは実行していない。Production DBへの
 > writeは0件。** 許可されたのはread-only verification
@@ -393,3 +395,120 @@ aggregate不変確認、想定外schemaなし確認、`temples 0090-0093`が
 
 - **Production write: `users 0006` = EXECUTED**
 - **temples Production writes: `0`**
+
+---
+
+## Execution Record — Stage 2: `temples 0090`
+
+本Stageは正本Runbookに従い、STEP 3〜4相当を実施した記録である。
+**`temples 0091`以降は意図的に未実行のまま停止している。**
+
+### 実行環境
+
+| 項目 | 値 |
+|---|---|
+| develop HEAD SHA（実行時点） | `8f015c7e...`（PR #2334反映済み） |
+| Python | `3.11.13` |
+| Django | `5.2.16` |
+| psycopg | `3.3.4` |
+| `DEBUG` | `0`（明示指定） |
+| `USE_GIS` | `1`（明示指定） |
+| 実行方式 | Local Mac direct execution |
+| credential | `~/.config/kami-musubi/production-db.env`経由（値は一切表示せず） |
+
+### Stage 1 State Recheck
+
+- [x] `users`最新 = `0006_userprofile_birth_profile_fields`（不変）
+- [x] `birthday`/`birth_time`/`birth_place`/`worship_style`の4列すべて存在（不変）
+- [x] `temples`最新 = `0089_actionevent`（Stage 2実行前時点、不変）
+- [x] 全8 app migration state: Stage 1完了時点から変化なし
+
+### Fresh Pre-0090 Snapshot
+
+- [x] aggregate: `auth_user=1`/`userprofile=1`/`shrine=105`/`favorite=0`/`visit=2`/`goriyaku_relation=280`（既知baselineと完全一致）。snapshot時刻`2026-08-09 12:11:57.334145+00`
+
+### Fresh Backup（`users 0006`適用後の状態を含む）
+
+**重要**: Stage 0時点のbackupは`users 0006`適用前のschemaであり、
+そのままでは今回のrecovery pointとして不十分なため、`temples 0090`
+実行直前に**新規fresh dump**を取得した。
+
+| 項目 | 結果 |
+|---|---|
+| dump取得 | 成功 |
+| client version | PostgreSQL 17（`postgresql@17`使用、Production `17.6`と一致） |
+| `roles.sql` size | `5426` bytes |
+| `schema.sql` size | `81650` bytes（Stage 0時点の`81494`より増加——`users 0006`の4カラム追加を反映） |
+| `data.sql` size | `3843016` bytes |
+| 保存先 | ユーザーホームディレクトリ配下、repo外（timestampディレクトリ、具体的pathは本ドキュメントに記載しない） |
+| credential露出 | **なし**。前回Stage（`docs/audit/production-migration-go-no-go-final.md`で開示済み）で判明した`dump_readonly.sh`のhostname出力行を、今回は`grep -v`で意図的に抑制し、出力に一切含めなかった |
+
+### `temples 0090` Migration File Recheck
+
+- [x] ファイル名: `0090_add_rest_healing_tag_to_silent_shrines.py`（一致）
+- [x] dependency: `temples.0089_actionevent`のみ（cross-app dependencyなし）
+- [x] operation: `RunPython`のみ（`RunSQL`・`AddField`・`CreateModel`等のschema操作なし）
+- [x] destructive operation: なし
+- [x] reverse操作: 定義済み（対称的な`remove_rest_healing_tag_from_silent_shrines`）
+- [x] 最終commit: `e0e59315`（2026-06-28）——現HEADより大幅に前、変更なし
+
+### 実行前の実データ確認（推測ではなく実測）
+
+`temples 0090`のRunPythonは`GoriyakuTag id=43`を対象4神社
+（筑波山神社・榛名神社・森戸大明神・武蔵御嶽神社）の
+`goriyaku_tags`へ追加する処理だが、**実行前に確認したところ
+`GoriyakuTag id=43`はProductionに存在しなかった**（`tag_43_exists=false`）。
+migration file自身が`GoriyakuTag.DoesNotExist`を`try/except`で
+self-guardingしているため、**この時点で「実行してもno-opになる」
+ことが実測で確定していた**（推測ではない）。
+
+### `migrate --plan`（実行直前・最終確認）
+
+```
+Planned operations:
+temples.0090_add_rest_healing_tag_to_silent_shrines
+    Raw Python operation
+```
+
+Runbook記載内容と完全一致。
+
+### 実行
+
+| 項目 | 値 |
+|---|---|
+| コマンド | `python manage.py migrate temples 0090 --noinput`（app-scoped、bare `migrate`は不使用） |
+| 実行開始 | `2026-08-09T12:13:29Z` |
+| 実行終了 | `2026-08-09T12:13:30Z` |
+| 出力 | `Applying temples.0090_add_rest_healing_tag_to_silent_shrines... OK` |
+| exit status | `0` |
+
+`temples 0091`以降は一切実行していない。
+
+### 実行後verification
+
+- [x] `django_migrations`: `temples`最新 = `0090_add_rest_healing_tag_to_silent_shrines`（applied `2026-08-09 12:13:30.066579+00`）
+- [x] `temples 0091`/`0092`/`0093`: いずれも`django_migrations`に不存在（未適用のまま）
+- [x] aggregate counts: `auth_user=1`/`userprofile=1`/`shrine=105`/`favorite=0`/`visit=2`/`goriyaku_relation=280`——**実行前と完全一致、変化なし**
+- [x] `temples 0090`の期待効果確認: 対象4神社のいずれも`GoriyakuTag id=43`との関連付けが**作成されていない**ことを確認（`0`件）——事前予測（no-op）と完全に一致
+- [x] `users 0006`回帰確認: `users`最新は`0006`のまま、4カラムすべて存在、`userprofile`件数`1`のまま——`temples 0090`によるuser側への影響は一切なし
+- [x] Runtime QA: `/healthz/`が`{"ok": true, "release": "b286a557680c12343282c6e1e57a78f1be4bda43"}`を返し、backendが正常稼働中であることを確認（**前回Stageでは503だったが今回は成功**）。ただし認証済みQA（`/api/auth/me`・MyPage）はDB専用credential bridgeの範囲外であり、依然`NOT_EXECUTED_RUNTIME_ACCESS_REQUIRED`
+
+### Failure Handling
+
+該当なし（migrationはexit 0で正常終了）。
+
+### Classification
+
+**`TEMPLES_0090_EXECUTION_PASS`**
+
+根拠: migration exit 0、`temples 0090` applied確認、事前実測に基づく
+期待効果（no-op）と実際の結果が完全一致、aggregate不変確認、
+`users 0006`への回帰なし確認、`temples 0091-0093`が引き続き
+未適用のままであることを確認——Phase 17の全条件を満たす。
+
+### Production Write Summary（Stage 2時点の累積）
+
+- **Production write: `temples 0090` = EXECUTED**
+- **temples 0091 = NOT_EXECUTED**
+- **temples 0092 = NOT_EXECUTED**
+- **temples 0093 = NOT_EXECUTED**
