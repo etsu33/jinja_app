@@ -135,7 +135,7 @@ extension配置がローカル環境と異なる可能性がある点を「既�
 ### Phase 1 — Backup Route
 - [x] manual dump手順をRunbook化（`README.md`「Runbook: Manual Backup Route」）
 - [x] dump保存先をrepo外に固定（`guard.py`の`is_safe_dump_path`で強制）
-- [x] credential非露出チェックを入れる（`redact_url`、scriptはURLを平文でechoしない）
+- [x] credential・接続先非露出チェックを入れる（URL、username、password、hostname、port、DB名、queryを成功・失敗ログの双方で非表示）
 - [x] dump file存在/size確認手順を作る（`dump_readonly.sh`が自動で各ファイルのサイズを表示・0バイト時警告）
 
 ### Phase 2 — Restore Verification Route
@@ -171,7 +171,7 @@ extension配置がローカル環境と異なる可能性がある点を「既�
 - [x] Production hostname検出時の確認処理 → allow-list方式で実装（デザイン上の理由は上述）
 - [x] destructive commandを自動実行しない（scriptはいずれも明示的な引数なしでは何もしない。デフォルト接続先なし）
 - [x] dry-run/read-onlyをデフォルトにする（`dump_readonly.sh`はread-onlyのみ、書き込み系操作は`restore_isolated.sh`のみで、かつguard必須）
-- [x] credentialをログ出力しない（`redact_url`使用、E2Eテストでも実際にログへ`***`が出ることを確認済み）
+- [x] credential・hostnameをログ出力しない（接続先文字列を表示せず、client stderrもgeneric failureへ置換）
 - [x] dumpをGit対象外にする（`is_safe_dump_path`で強制。加えて一時dumpは`/tmp`配下、テスト終了時に削除）
 
 ### Phase 7 — Test
@@ -217,6 +217,39 @@ extension配置がローカル環境と異なる可能性がある点を「既�
 - `docs/audit/migration-safety-tooling.md`: 本ドキュメント（新規）
 - 既存コード（`backend/`アプリケーションコード）への変更: **なし**
 - Production DB・Environment・deploy設定への変更: **なし**
+
+---
+
+## 追補: Backup connection-target logging remediation
+
+Batch 9 Production Import Gateのfresh backupで、旧
+`dump_readonly.sh`がuser/passwordのみをmaskしたURLを表示し、hostname、
+port、database name、query parameterをログへ残すことが確認された。
+Production固有値を使わず、`.invalid`のdummy URLとfake clientで同じ挙動を
+再現し、`BACKUP_LOG_HOSTNAME_EXPOSURE_CONFIRMED`と分類した。
+
+修正後の契約は「接続先を表す文字列そのものを出力しない」である。
+`dump_readonly.sh`と`restore_isolated.sh`はgeneric messageのみを表示し、URLを
+libpq `PG*`環境変数へ変換してからchild processのargvから除外する。libpqの
+失敗診断は接続先要素を含み得るため、tooling境界でgeneric failureへ置換する。
+file名、file size、phase、success/failureは安全な運用metadataとして維持する。
+
+`tests/test_backup_logging.sh`はfake clientだけを使用し、成功時・失敗時ともに
+dummy username/password/hostname/port/database/queryが出力されないこと、かつ
+非0 file sizeと完了状態が残ることを固定する。Production backup、Production
+DB接続、Batch 9 importは本remediationでは実行しない。
+
+検証結果:
+
+- logging regression: PASS
+- guard unit tests: 47 PASS
+- credential bridge E2E: PASS
+- local backup/restore/migrate/rollback E2E: PASS
+- shellcheck / bash syntax / diff check: PASS
+- credential・connection string・private hostname scan: PASS（追加URLはdummy
+  `.invalid`、既存local E2E URL、generic provider exampleのみ）
+
+最終分類: `BACKUP_LOGGING_REMEDIATION_READY`
 
 ## 次にMother Shipが用意すべきもの
 
