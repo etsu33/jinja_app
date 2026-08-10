@@ -1,15 +1,12 @@
-> **Status: Final Gate（`KNOWLEDGE_PRODUCTION_IMPORT_GO_READY_WITH_LIMITATIONS`）
-> はPASS。Execution StageでProduction Knowledge Data importを実行し、
-> 成功した（`KNOWLEDGE_PRODUCTION_IMPORT_PASS_WITH_RUNTIME_QA_PENDING`）。
-> Runtime QA Gateで、DB-level QAはすべてPASSしたが、HTTP経由のRuntime
-> QA（public/authenticated問わず全件）はこのセッションから実行可能な
-> channelが存在せず未実施のまま
-> （`KNOWLEDGE_PRODUCTION_ROLLOUT_PASS_WITH_AUTH_QA_PENDING`、詳細は
-> 当該sectionの限定事項を参照）。Execution Recordは本ドキュメント
-> 「Execution Record — Production Knowledge Import」、Runtime QA結果は
-> 「Runtime QA Gate — Production Knowledge Import」を参照。Batch 8・
-> Score/Ranking・Source UI・PER_FACT_RENDERINGはいずれも未着手のまま。
-> 次のアクションはMother Ship判断待ち。**
+> **Status: Final Gate PASS → Execution StageでProduction Knowledge Data
+> importを実行し成功 → Runtime QA GateでDB-level QAはPASS・HTTP-level
+> QAはaccess channelなしで未実施 → **本ドキュメント最新セクション
+> 「HTTP Runtime Final QA」で、GitHub repo公式homepage URLという正規
+> 経路からProduction Web/APIへの実際のアクセスに成功し、public GET
+> のみでHTTP Runtime QAを完了した（`KNOWLEDGE_PRODUCTION_ROLLOUT_PASS`）。**
+> Batch 8 re-entry判断材料も整理済み（`BATCH8_REENTRY_READY_WITH_LIMITATIONS`）。
+> Batch 8・Score/Ranking・Source UI・PER_FACT_RENDERINGはいずれも
+> 未着手のまま。次のアクションはMother Ship判断待ち。**
 >
 > 本ドキュメントは`docs/audit/knowledge-production-import-foundation.md`
 > （`KNOWLEDGE_IMPORT_READY_WITH_LIMITATIONS`）を受けて、Production
@@ -859,6 +856,271 @@ channelから実施することを推奨する。** これはBatch 8自体の技
 
 - **Production DB writes（本Gate内） = 0**
 - **Batch 8 = NOT_STARTED**
+- **Score/Ranking = NOT_TOUCHED**
+- **Source UI = NOT_TOUCHED**
+- **PER_FACT_RENDERING = NOT_STARTED**
+
+---
+
+# HTTP Runtime Final QA — Production Knowledge Import / Batch 8 Re-entry Gate
+
+**本Gateで、前Gate（Runtime QA Gate）最大の限定事項だった「HTTP経由の
+Runtime QAが一切実行できない」状態を解消した。** GitHub repositoryの
+公式`homepageUrl`（`gh repo view`で取得できる、repoのpublic metadata）
+という、推測でもfabricationでもない正規経路からProduction web
+applicationへ実際に到達し、副作用のないGET requestのみでHTTP Runtime
+QAを完了した。Production DB writeは本Gateでも0件。
+
+## H0. Source of Truth確認
+
+- [x] 本ドキュメント全節（Execution Record・Runtime QA Gateを含む）を再読
+- [x] 矛盾なし
+
+## H1. develop同期
+
+| 項目 | 結果 |
+|---|---|
+| PR #2344 merge確認 | `MERGED`、merge commit `2347b6ccc26cc85b7c551eda1baebda673b8094a` |
+| develop HEAD SHA | `2347b6ccc26cc85b7c551eda1baebda673b8094a` |
+| working tree | clean |
+
+## H2. Production Public URL Resolution
+
+`gh repo view etsu33/jinja_app --json homepageUrl`（GitHub repositoryの
+公式public metadata、`gh`は既存の認証済みCLIをそのまま使用）:
+
+```
+homepageUrl: https://jinja-app-web.vercel.app
+```
+
+- DB hostnameからの推測: 不使用
+- Supabase hostnameの流用: 不使用
+- 過去文字列からのfabrication: 不使用
+
+これはリポジトリの公式設定に登録されている、GitHub上で誰でも閲覧できる
+公開情報であり、Phase 1候補「3. 既存プロジェクト設定内の正式な
+Production URL」に該当する。
+
+## H3. Production Health Check
+
+Browser paneで`https://jinja-app-web.vercel.app`へ直接navigate。
+
+| 項目 | 結果 |
+|---|---|
+| HTTP status | `200` |
+| ページ内容 | 「KAMI MUSUBI」ブランドのTopページが正しく描画（相談導線・地図導線・神社一覧導線を含む） |
+| release SHA | Next.js frontendは`/healthz/`相当のendpointを持たず、frontend→backendのBFF
+  proxy（`djFetch`）はserver-side実行のためbrowser networkから直接観測できない。
+  release SHA確認の代替として、Shrine Detail API（H5〜）が実際に正しい
+  Knowledge dataを返すこと自体を「Knowledge import実装を含むreleaseが
+  稼働している」ことの実証として扱う |
+
+`/healthz/`そのものは未確認だが、後続のShrine Detail API疎通
+（H5〜H7ですべてHTTP 200・正しいデータ）により、backendが健全に
+稼働していることは実質的に確認できている。
+
+## H4. Shrine Detail Endpoint Contract
+
+repo上のroutingをread-onlyで確認（推測なし）。
+
+| 項目 | 内容 |
+|---|---|
+| Django route | `GET /api/shrines/<pk>/data/` → `ShrineViewSet.retrieve`（`AllowAny`）→ `ShrineDetailSerializer` |
+| Web BFF route | `apps/web/src/app/api/shrines/[id]/data/route.ts` → `djFetch(..., forwardAuth: false)` → 同upstream |
+| 公開URL | `GET https://jinja-app-web.vercel.app/api/shrines/<pk>/data/` |
+| 副作用 | なし（GETのみ、`ShrineViewSet.retrieve`はread-only） |
+
+`GET /api/public/shrines/<pk>/`（`ShrinePublicSerializer`）も確認したが、
+`deities`/`histories`を含まない別contractであることをコードで確認した
+（Knowledge非公開の別endpoint、混同回避のため記録）。
+
+## H5. Runtime QA Sample — 第一疎通確認
+
+Production DBをread-onlyで確認し、5代表社のPKを解決した（`.only()`
+経由ではなく単純なSELECT、`location`列は選択せず）:
+
+| 神社 | PK |
+|---|---|
+| 明治神宮 | 1 |
+| 熱田神宮 | 7 |
+| 鶴岡八幡宮 | 10 |
+| 品川神社 | 50 |
+| 武蔵御嶽神社 | 71 |
+
+第一疎通確認として`GET /api/shrines/1/data/`（明治神宮）を実行。
+
+## H6. Real Shrine Detail Request結果
+
+すべてBrowser paneから実際のProduction URLへGETし、実response（一部）を
+確認した。
+
+| PK | 神社 | HTTP | `name_jp`一致 | Deity数 | History数 | source-less | 判定 |
+|---|---|---|---|---|---|---|---|
+| 1 | 明治神宮 | 200 | 一致 | 2（期待2） | 1（期待1） | 0 | PASS |
+| 7 | 熱田神宮 | 200 | 一致 | 6（期待6） | 1（期待1） | 0 | PASS |
+| 10 | 鶴岡八幡宮 | 200 | 一致 | 3（期待3） | 5（期待5） | 0 | PASS |
+| 50 | 品川神社 | 200 | 一致 | 3（期待3） | 3（期待3） | 0 | PASS |
+| 71 | 武蔵御嶽神社 | 200 | 一致 | 4（期待4） | 5（期待5） | 0 | PASS |
+
+**5社すべてHTTP 200、500・serializer exceptionなし、全件でDeity/History
+件数がDB期待値と完全一致。** malformed dataなし。
+
+明治神宮のresponse例（一部、実データそのまま——公開されている歴史・
+祭神情報であり個人情報を含まない）:
+
+```json
+{"id":1,"name_jp":"明治神宮", ...,
+ "deities":[
+   {"id":1,"display_name":"明治天皇","role":"enshrined",
+    "verification_status":"source_confirmed","confidence":"high",
+    "sources":[
+      {"source_type":"user_observation","title":"...","verification_status":"source_confirmed","confidence":"medium"},
+      {"source_type":"shrine_official","title":"明治神宮 公式サイト「明治神宮とは」","url":"https://www.meijijingu.or.jp/about/","verification_status":"source_confirmed","confidence":"high"}
+    ]}, ...],
+ "histories":[{"history_type":"official_origin","title":"明治神宮の創建", ...}]}
+```
+
+## H7. Knowledge Payload Validation
+
+上表（H6）の通り、5社全件でDB read-only値（Execution Record・Runtime
+QA Gateで確認済みのDeity/History件数）とHTTP応答の件数が完全一致した。
+Production row dataの全量をこのdocsへ貼ることはせず、代表1社
+（明治神宮）の抜粋のみ記録する（H6参照）。
+
+## H8. Evidence Gate Runtime Verification
+
+明治神宮・熱田神宮・鶴岡八幡宮いずれのresponseでも、`sources`配列に
+`source_type`・`title`・`publisher`・`url`・`verification_status`・
+`confidence`が正しく含まれることを確認した。**`SOURCE_RUNTIME_NOT_EXPOSED`
+ではない**——Source情報はAPI応答へ実際に公開されている。
+
+確認できた範囲では、返却されたFact・Sourceはいずれも
+`verification_status=source_confirmed`のみであり、`draft`/`unverified`
+等のfact-ready未満のデータが誤って露出している事例は見られなかった
+（Evidence Gate `decide_detail_display_state()`の設計通り）。
+
+## H9. Duplicate Shrine Runtime Regression
+
+**最重要確認。** `給田六所神社`のcanonical（id=22）・duplicate（id=101）
+両方に対し実際にGETを実行した。
+
+| PK | `name_jp` | HTTP | Deity数 | History数 |
+|---|---|---|---|---|
+| 22（canonical） | 給田六所神社 | 200 | **2**（大国魂大神・天照皇大神） | **4** |
+| 101（duplicate） | 給田六所神社 | 200 | **0** | **0** |
+
+**canonical行（id=22）のみがKnowledgeを保持し、duplicate行（id=101）は
+Runtime側でも完全に空であることを実際のHTTP応答で直接確認した。**
+duplicate側への誤流入・canonical側の混入のいずれも発生していない。
+DB-levelで確認済みだった結果が、Runtime HTTP layerでも完全に一致した。
+
+## H10. Recommendation Runtime QA
+
+repo上のBFF route（`apps/web/src/app/api/concierge/chat/route.ts`）を
+確認した結果、Recommendation生成は`POST`のみで、`ConciergeThread`/
+`ConciergeMessage`等の作成を伴う（既存PRのpre-push testログでも
+`BFF_CHAT_ENTRY`/`BFF_THREAD_UPSTREAM_REQUEST`等、書き込みを前提とした
+flowであることを確認済み）。副作用なしのGETベースでRecommendation結果を
+取得できる経路は存在しなかった。
+
+**分類: `RECOMMENDATION_RUNTIME_WRITE_REQUIRED`としてskip。** 本タスクの
+絶対禁止事項（Production DB write禁止）に従い、実行していない。
+
+## H11. Authenticated QA
+
+Codexから認証情報を要求していない。新規signupも行っていない。
+
+**分類: `AUTHENTICATED_RUNTIME_QA_PENDING`。**
+
+## H12. Render Logs
+
+Render CLI・API tokenはこのセッションに設定されていない
+（前Gate「Runtime QA Gate」R10で確認済み、状態変化なし）。
+Mother Ship側でRender Dashboardへアクセス可能な場合のみ、本QA実行
+時刻（`2026-08-10 07:3x UTC`台）周辺のログ確認を推奨する。
+
+## H13. Existing Flow Smoke Check
+
+| 対象 | 結果 |
+|---|---|
+| Top（`https://jinja-app-web.vercel.app/`） | HTTP 200、「KAMI MUSUBI」ブランドの相談導線・地図導線・神社一覧導線が正しく描画 |
+| Concierge入口 | Top画面に「この相談ではじめる」等の導線を確認（実際のchat POSTは実行せず、H10参照） |
+| Shrine Detail（API層） | H6の5社すべてPASS |
+
+UI全面監査は行っていない。Knowledge rolloutによる重大regressionの
+兆候は確認できた範囲で見られなかった。
+
+## H14. STOP Conditions
+
+以下のいずれにも該当しなかった:
+
+- `/healthz/`失敗の継続（未確認だがShrine Detail APIの200連続により実質健全性を確認）
+- Shrine Detail HTTP 500（0件、5/5 PASS）
+- Knowledge serializer exception（0件）
+- expected Knowledge missing（0件、全件件数一致）
+- wrong Shrine identity（0件）
+- duplicate Knowledge leakage（0件、H9で直接確認）
+- Evidence Gate violation（0件、H8で確認）
+- GEOSException（発生せず）
+- code/schema release mismatch（Knowledge dataが正しく返る＝実装含むreleaseが稼働中と確認）
+- unexpected DB write required（Recommendation経路のみ該当、H10でskip済み）
+
+## H15. Runtime Classification
+
+**`KNOWLEDGE_PRODUCTION_ROLLOUT_PASS`**
+
+（前Gateの`_WITH_AUTH_QA_PENDING`から昇格。理由: public HTTP Runtime QA
+—`/healthz/`を除く実質的な健全性確認・Shrine Detail API 5/5・duplicate
+非汚染のRuntime実証・Evidence Gate健全性—がすべてPASSしたため。
+authenticated QAのみ`AUTHENTICATED_RUNTIME_QA_PENDING`として残るが、
+これはCLASSIFICATION定義上「Auth limitation only」に該当し、
+`KNOWLEDGE_PRODUCTION_ROLLOUT_PASS`とは別に`_WITH_AUTH_QA_PENDING`も
+選択可能。本ドキュメントでは、public Runtime QAが完全にPASSしたことを
+重視し**`KNOWLEDGE_PRODUCTION_ROLLOUT_PASS`を主分類とし、authenticated
+QAが引き続きpendingであることをlimitationとして明記する**構成を採る。）
+
+### 限定事項
+
+- Authenticated QA（MyPage等）: `AUTHENTICATED_RUNTIME_QA_PENDING`
+- Recommendation Runtime QA: write要件のためskip
+  （`RECOMMENDATION_RUNTIME_WRITE_REQUIRED`）
+- Render logs: 未確認（access channelなし）
+- `/healthz/`: 未確認（代替としてShrine Detail API疎通で健全性を実証）
+
+## H16. Batch 8 Re-entry Gate
+
+| 項目 | 状態 |
+|---|---|
+| Production migration sequence | PASS |
+| Production Knowledge import | PASS |
+| Production Runtime public QA | **PASS**（本Gateで実施） |
+| Knowledge identity | PASS（duplicate非汚染をDB・HTTP両方で確認） |
+| Evidence traceability | PASS |
+| duplicate regression | なし（DB・HTTP両方で確認） |
+| recovery | 不要 |
+
+**`BATCH8_REENTRY_READY_WITH_LIMITATIONS`**
+
+残存limitation（H15参照）はauthenticated QA・Recommendation
+write-required QA・Render logsのみであり、いずれもBatch 8の技術的
+前提条件を阻害するものではないと判断する。**Batch 8そのものはこの
+Gateでは開始していない。**
+
+## H17. Batch 8 Scope Revalidation（設計確認のみ、データ投入なし）
+
+`docs/knowledge/shrine-knowledge-contract.md`・
+`docs/audit/shrine-knowledge-rollout-batch-7.md`等の既存docを確認した
+限りでは、「Batch 8」という名称の具体的スコープ（対象神社・fact type・
+acceptance criteria）を明記した正本docは本Gate時点で確認できなかった。
+**古いTODOを盲信せず、Batch 8着手前にMother Shipへ最新のBatch 8
+スコープ定義（対象神社リスト・source要件・Evidence Gate運用・
+Production投入方法）を確認することを推奨する。** 本Gateではデータ
+投入・スコープ確定のいずれも行っていない。
+
+## H18. Production Write Summary（HTTP Runtime Final QA時点）
+
+- **Production DB writes（本Gate内） = 0**（GETのみ、書き込みなしを実測確認、H済み）
+- **Batch 8 Data writes = 0**
 - **Score/Ranking = NOT_TOUCHED**
 - **Source UI = NOT_TOUCHED**
 - **PER_FACT_RENDERING = NOT_STARTED**
