@@ -1,10 +1,15 @@
 > **Status: Final Gate（`KNOWLEDGE_PRODUCTION_IMPORT_GO_READY_WITH_LIMITATIONS`）
-> はPASS。Execution Stageで実際にProduction Knowledge Data importを
-> 実行し、成功した（`KNOWLEDGE_PRODUCTION_IMPORT_PASS_WITH_RUNTIME_QA_PENDING`）。
-> Execution Recordは本ドキュメント末尾「Execution Record — Production
-> Knowledge Import」を参照。Batch 8・Score/Ranking・Source UI・
-> PER_FACT_RENDERINGはいずれも未着手のまま。次のアクションはMother Ship
-> 判断待ち。**
+> はPASS。Execution StageでProduction Knowledge Data importを実行し、
+> 成功した（`KNOWLEDGE_PRODUCTION_IMPORT_PASS_WITH_RUNTIME_QA_PENDING`）。
+> Runtime QA Gateで、DB-level QAはすべてPASSしたが、HTTP経由のRuntime
+> QA（public/authenticated問わず全件）はこのセッションから実行可能な
+> channelが存在せず未実施のまま
+> （`KNOWLEDGE_PRODUCTION_ROLLOUT_PASS_WITH_AUTH_QA_PENDING`、詳細は
+> 当該sectionの限定事項を参照）。Execution Recordは本ドキュメント
+> 「Execution Record — Production Knowledge Import」、Runtime QA結果は
+> 「Runtime QA Gate — Production Knowledge Import」を参照。Batch 8・
+> Score/Ranking・Source UI・PER_FACT_RENDERINGはいずれも未着手のまま。
+> 次のアクションはMother Ship判断待ち。**
 >
 > 本ドキュメントは`docs/audit/knowledge-production-import-foundation.md`
 > （`KNOWLEDGE_IMPORT_READY_WITH_LIMITATIONS`）を受けて、Production
@@ -627,6 +632,232 @@ evidence分布がseedと完全一致、既存application dataに一切のregress
 ## Production Write Summary
 
 - **Production write: Knowledge Data import = EXECUTED（exit 0、`KNOWLEDGE_PRODUCTION_IMPORT_PASS_WITH_RUNTIME_QA_PENDING`）**
+- **Batch 8 = NOT_STARTED**
+- **Score/Ranking = NOT_TOUCHED**
+- **Source UI = NOT_TOUCHED**
+- **PER_FACT_RENDERING = NOT_STARTED**
+
+---
+
+# Runtime QA Gate — Production Knowledge Import
+
+**本Gateは、DB-levelの範囲ではPASSした。HTTP経由のRuntime QA
+（public/authenticated問わず）は、このセッションから実行可能な
+production web/API accessが一切存在しなかったため未実施のまま。**
+Production DBへのwriteは本Gateでも0件。
+
+## R0. Source of Truth確認
+
+- [x] 本ドキュメント（Execution Recordまでの全節）を再読
+- [x] `docs/audit/production-migration-local-execution-runbook.md`を再読
+- [x] `docs/knowledge/shrine-knowledge-contract.md`を参照
+- [x] `docs/core/recommendation-architecture.md`の存在を確認
+- [x] 矛盾なし
+
+## R1. develop同期
+
+| 項目 | 結果 |
+|---|---|
+| PR #2343 merge確認 | `MERGED`、merge commit `60cd66d35b38811403a4729220b829d71bf7a55b` |
+| develop HEAD SHA | `60cd66d35b38811403a4729220b829d71bf7a55b` |
+| working tree | clean |
+
+## R2. Production Knowledge State Recheck（Phase 1）
+
+read-only接続、snapshot時刻`2026-08-10 07:26:57.195796+00`:
+
+| 項目 | 期待 | 実測 | 判定 |
+|---|---|---|---|
+| Source/Deity/History | 59/103/85 | 59/103/85 | 一致 |
+| deity-source/history-source relation | 116/90 | 116/90 | 一致 |
+| Knowledge shrine count | 41 | 41 | 一致 |
+| source-less Deity/History | 0/0 | 0/0 | 一致 |
+| 給田六所神社 canonical（id=22）/duplicate（id=101） | canonical のみ紐付き | id=22: Deity2/History4、id=101: 結果セットに出現せず（0件） | 一致 |
+
+Execution Record時点（`2026-08-10 07:17:18`）から**完全に無変化**。
+Import後driftは検出されなかった。
+
+## R3. Production Release確認（Phase 2）
+
+**`NOT_EXECUTED_RUNTIME_ACCESS_REQUIRED`。** 以下を確認したが、
+production web applicationのpublic URLを取得できる認可済みchannelが
+このセッションに存在しなかった:
+
+- リポジトリ内（README・docs・`.env.example`系）に本番URLの記載なし
+- `render.yaml`/`vercel.json`等のservice定義ファイルはrepoに未コミット
+- このセッションのcredential bridge（`~/.config/kami-musubi/
+  production-db.env`）は`DATABASE_URL`のみを提供し、web/API access用の
+  URLやtokenは含まない
+- Browser pane・既存previewセッションのいずれにも本番URLへの接続実績なし
+
+hostname記録禁止の原則に従い、推測・検索によるURL特定は行っていない。
+`/healthz/`・release SHA確認はこの制約により未実施。
+
+## R4. Runtime QA対象Shrine確定（Phase 3）
+
+Final Gate Section 13で選定済みの5社をそのまま正本とする:
+
+| 神社 | 代表するRuntime観点 |
+|---|---|
+| 武蔵御嶽神社 | 複数Source／複数Deity（4件）／複数History（5件）／複数history_type |
+| 鶴岡八幡宮 | 大規模著名神社、複数Deity（3件）／複数History（5件） |
+| 品川神社 | 既存Pilot対象5社の1つ、Recommendation既存利用実績のある神社 |
+| 熱田神宮 | 最多Deity数（6件）、traceability確認（source-less 0件をR2で確認済み） |
+| 明治神宮 | Recommendation Reason関連docsで頻繁に言及される代表例、duplicate
+  shrine対象（給田六所神社等）とは無関係のcanonical shrine |
+
+DB-levelでの件数・traceability確認はR2および過去のExecution Recordで
+実施済み。HTTP経由の確認はR6以降参照。
+
+## R5. Public API Inventory（Phase 4、コードベース確認・read-only）
+
+repo上のrouting/serializer/serviceをread-onlyで確認した（Production
+API呼び出しは行っていない）。
+
+| Endpoint | View/Serializer | 権限 | Knowledge exposure |
+|---|---|---|---|
+| `GET /api/shrines/<pk>/` | `ShrineViewSet.retrieve` → `ShrineDetailSerializer` | `AllowAny`（公開） | **あり**——`deities`/`histories` fieldが`decide_detail_display_state()`（`temples.services.evidence_gate`）経由でfact-ready/disputedのみ返る |
+| `GET /api/shrines/` | `ShrineViewSet.list` → `ShrineListSerializer` | `AllowAny` | **なし**（意図的、`test_shrine_list_api_does_not_expose_knowledge_fields`で固定） |
+| `GET /api/public/shrines/<pk>/` | `PublicShrineDetailView` | 公開 | 未確認（本Gate外） |
+| `GET /healthz/` | `shrine_project.urls.healthz` | 公開 | N/A（health checkのみ） |
+| Recommendation候補生成 | `temples.services.concierge_chat_candidates.build_chat_candidates()` | — | **あり**——`fetch_fact_ready_knowledge_deities`/`fetch_fact_ready_knowledge_histories`（`shrine_knowledge_selector.py`）を呼び出し、candidate構築時にKnowledge Factを組み込む |
+
+**Knowledgeは`KNOWLEDGE_RUNTIME_NOT_YET_EXPOSED`ではない。** Shrine
+Detail APIとRecommendation候補生成の両方に既に接続済みであることを
+コードレベルで確認した（`docs/knowledge/shrine-knowledge-contract.md`
+「Disputed Evidence Contract」のCurrent State追記、PR-C4B1/B2/D1が
+実装済みであることと整合）。
+
+## R6. Shrine Detail Runtime QA（Phase 5）
+
+**`NOT_EXECUTED_RUNTIME_ACCESS_REQUIRED`**（R3参照、production URLへの
+接続channelなし）。
+
+代替として、上記R5で確認したコードパスをlocal環境で実行するテスト
+（`temples/tests/api/test_shrine_detail_knowledge_api.py`、17件）を
+実行し、全件PASSを確認した——これは「実際のproduction responseの
+確認」の代替にはならないが、「投入済みKnowledge DataをこのAPIパスが
+正しく処理できる設計であること」の間接的な裏付けとして記録する。
+
+## R7. Knowledge-backed API QA（Phase 6）
+
+R5の通り、`KNOWLEDGE_RUNTIME_NOT_YET_EXPOSED`ではなく実装は存在する。
+実際のproduction応答確認は`NOT_EXECUTED_RUNTIME_ACCESS_REQUIRED`
+（R3と同一理由）。
+
+## R8. Recommendation Runtime QA（Phase 7）
+
+R5の通り`concierge_chat_candidates.build_chat_candidates()`がKnowledge
+Factを組み込む実装は存在する。実際のproduction応答確認は
+`NOT_EXECUTED_RUNTIME_ACCESS_REQUIRED`（R3と同一理由）。
+
+## R9. Authenticated Runtime Access（Phase 8）
+
+`AUTHENTICATED_RUNTIME_QA_BLOCKED`。認証済みセッション・テストユーザー
+credentialのいずれもこのセッションから利用不能。新規signup・Production
+DBへの新規user作成は行っていない（絶対禁止事項として遵守）。
+
+## R10. Render Logs QA（Phase 9）
+
+`NOT_EXECUTED_RUNTIME_ACCESS_REQUIRED`。Render CLI・API tokenはこの
+セッションに設定されていないことを確認した（`render`コマンド不存在、
+`~/.render`設定ディレクトリ不存在）。
+
+## R11. Duplicate Shrine Regression（Phase 10）
+
+DB-levelでは、R2で給田六所神社のcanonical行（id=22）のみが
+Knowledge紐付きを持ち、duplicate行（id=101）が完全に無関係のままで
+あることを確認済み（Execution Recordと同一）。**Runtime側（実際の
+Shrine Detail画面・API応答でduplicateが誤表示されないか）の確認は
+`NOT_EXECUTED_RUNTIME_ACCESS_REQUIRED`**（R3と同一理由）。
+
+## R12. Evidence / Traceability Runtime QA（Phase 11）
+
+DB-levelのtraceability（source-less fact 0件、evidence分布のseed一致）
+はExecution Recordで確認済み。Runtime側（実際のAPI応答でSource情報が
+正しく返るか）の確認は`NOT_EXECUTED_RUNTIME_ACCESS_REQUIRED`（R3と
+同一理由）。
+
+## R13. Existing Flow Regression（Phase 12）
+
+`NOT_EXECUTED_RUNTIME_ACCESS_REQUIRED`（R3と同一理由）。DB-levelでは
+Execution Recordにて`users 0006`・`temples 0090`〜`0093`関連の既存
+application dataに一切のregressionがないことを確認済み。
+
+## R14. STOP Conditions（Phase 13）
+
+以下のいずれにも該当しなかった（DB-levelで確認可能な範囲）:
+
+- Production 500（確認不能、R3参照）
+- Knowledge table missing（該当なし、R2で確認）
+- serializer/recommendation crash（Runtime確認不能、local testでは
+  crashなし）
+- duplicate shrine誤解決（DB-levelでは該当なし、R11参照）
+- canonical Knowledgeが取得不能（該当なし）
+- unexpected empty Knowledge（該当なし）
+- Source relation欠落（該当なし、R2で確認）
+- GEOSException再発（本Gateでは該当するコード実行なし）
+- authenticated flow重大障害（確認不能、R9参照）
+
+**Runtime HTTP layerでの確認が一切できなかったこと自体は、STOP条件
+（＝重大障害の兆候）としては扱わない**——これは「このセッションに
+webアクセス手段がない」という環境制約であり、「Knowledge importが
+Runtimeを破壊した」という兆候ではない（DB-levelの全確認がPASSして
+いることと矛盾しない）。ただしMother Shipへは、この制約により
+実際のRuntime動作が未確認であることを明確に区別して報告する。
+
+## R15. Classification（Phase 14）
+
+**`KNOWLEDGE_PRODUCTION_ROLLOUT_PASS_WITH_AUTH_QA_PENDING`**
+
+（拡張適用の注記: 本タスクが定義した4分類のうち最も近いものを採用した。
+ただし本来この分類は「public QAはPASS、authenticated QAのみ未実施」を
+意味するのに対し、**本Gateでは実際にはpublic/authenticated問わず
+HTTP経由のRuntime QAが一切実行できなかった**（R3参照）。この差異を
+Mother Shipへ明示する。DB-level QA（Section R2、R11、R12相当の内容）は
+すべてPASSしている。）
+
+### 判断根拠
+
+- DB state: 完全一致・drift 0件（R2）
+- Public API Inventory: Knowledgeが既にShrine Detail API・
+  Recommendation候補生成の両方へ接続済みであることをコードレベルで
+  確認（R5）
+- Duplicate shrine regression: DB-levelでは該当なし（R11）
+- 500・crash等の重大Runtime問題: 確認不能ではあるが、確認できた
+  DB-level範囲では兆候なし
+- Local test（該当APIパスの既存test suite）: 全件PASS（間接的裏付け）
+
+### 限定事項
+
+- HTTP経由のRuntime QA（public・authenticated問わず全件）が
+  `NOT_EXECUTED_RUNTIME_ACCESS_REQUIRED`
+- Render logs未確認
+- 実際のproduction応答（Shrine Detail画面・API JSON・Recommendation
+  結果）は一度も目視・機械確認されていない
+
+## R16. Batch 8 Re-entry判断材料（Phase 15）
+
+Batch 8そのものは開始していない。整理のみ:
+
+| 項目 | 状態 |
+|---|---|
+| Production schema | PASS（`users 0006`＋`temples 0090`〜`0093`、全Execution Record参照） |
+| Production Knowledge import | PASS（本ドキュメントExecution Record） |
+| Runtime regression（DB-level範囲） | なし |
+| Runtime regression（HTTP-level範囲） | **未確認**（本Gateの限定事項） |
+| Knowledge contract維持 | 維持（Evidence Gate・Disputed Evidence Contract等、コード変更なし） |
+| source traceability維持 | 維持（source-less fact 0件） |
+
+**Batch 8着手前に、HTTP経由のRuntime QA（最低でもShrine Detail API
+のpublic GETによる実際のresponse確認）を、web accessが可能な
+channelから実施することを推奨する。** これはBatch 8自体の技術的
+前提条件というより、今回のimportが「production userに実際に見える
+形で正しく機能しているか」を確認する未完了ステップである。
+
+## R17. Production Write Summary（Runtime QA Gate時点）
+
+- **Production DB writes（本Gate内） = 0**
 - **Batch 8 = NOT_STARTED**
 - **Score/Ranking = NOT_TOUCHED**
 - **Source UI = NOT_TOUCHED**
