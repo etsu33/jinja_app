@@ -20,6 +20,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Any, Literal
+from urllib.parse import urlsplit, urlunsplit
 
 from django.db.models import F
 from temples.models import (
@@ -40,12 +41,20 @@ _VALID_ROLES = {v for v, _ in ShrineDeity.ROLE_CHOICES}
 _VALID_HISTORY_TYPES = {v for v, _ in ShrineHistory.HISTORY_TYPE_CHOICES}
 
 ShrineIdentityStatus = Literal["OK", "OK_CANONICAL_PREFERRED", "NOT_FOUND", "AMBIGUOUS"]
+SourceIdentityStatus = Literal["CREATE", "REUSE_EXISTING", "CONFLICT", "AMBIGUOUS"]
 
 
 @dataclass(frozen=True)
 class ShrineIdentityResult:
     shrine: Shrine | None
     status: ShrineIdentityStatus
+    detail: str = ""
+
+
+@dataclass(frozen=True)
+class SourceIdentityResult:
+    source: ShrineKnowledgeSource | None
+    status: SourceIdentityStatus
     detail: str = ""
 
 
@@ -116,26 +125,107 @@ def resolve_shrine(name_jp: str, address: str = "") -> ShrineIdentityResult:
     )
 
 
+def normalize_source_url(url: str) -> str:
+    """Normalize only URL syntax that cannot change the cited document.
+
+    Scheme and host case and default ports are normalized, fragments are
+    removed, and a non-root trailing slash is ignored. Query strings remain
+    byte-for-byte significant, and http/https remain distinct.
+    """
+    value = (url or "").strip()
+    if not value:
+        return ""
+    parts = urlsplit(value)
+    scheme = parts.scheme.lower()
+    hostname = (parts.hostname or "").lower()
+    port = parts.port
+    if port is not None and not (
+        (scheme == "http" and port == 80) or (scheme == "https" and port == 443)
+    ):
+        hostname = f"{hostname}:{port}"
+    path = parts.path or "/"
+    if path != "/":
+        path = path.rstrip("/")
+    return urlunsplit((scheme, hostname, path, parts.query, ""))
+
+
+_SOURCE_REUSE_FIELDS = (
+    "publisher",
+    "verification_status",
+    "confidence",
+    "bibliography",
+    "language",
+)
+
+
+def resolve_source_identity(entry: "SourceEntry") -> SourceIdentityResult:
+    """Resolve a portable Source identity without silently duplicating URLs.
+
+    URL-backed Sources use ``source_type + normalized URL`` as semantic
+    identity. Exactly one matching row is reusable only when important
+    metadata agrees. Multiple matches or metadata drift block the whole
+    import. URL-less Sources retain the original title/bibliography lookup.
+    """
+    normalized_url = normalize_source_url(entry.url)
+    if normalized_url:
+        candidates = [
+            source
+            for source in ShrineKnowledgeSource.objects.filter(source_type=entry.source_type)
+            .exclude(url="")
+            .order_by("id")
+            if normalize_source_url(source.url) == normalized_url
+        ]
+        if len(candidates) > 1:
+            return SourceIdentityResult(
+                None,
+                "AMBIGUOUS",
+                f"{len(candidates)} existing Sources match source_type + normalized URL",
+            )
+        if len(candidates) == 1:
+            source = candidates[0]
+            conflicts = [
+                field
+                for field in _SOURCE_REUSE_FIELDS
+                if str(getattr(source, field) or "").strip()
+                != str(getattr(entry, field) or "").strip()
+            ]
+            if conflicts:
+                return SourceIdentityResult(
+                    None,
+                    "CONFLICT",
+                    "meaningful metadata differs: " + ", ".join(conflicts),
+                )
+            return SourceIdentityResult(source, "REUSE_EXISTING")
+        return SourceIdentityResult(None, "CREATE")
+
+    qs = ShrineKnowledgeSource.objects.filter(
+        source_type=entry.source_type,
+        title=entry.title,
+        url="",
+    )
+    if entry.bibliography:
+        qs = qs.filter(bibliography=entry.bibliography)
+    source = qs.order_by("id").first()
+    return SourceIdentityResult(
+        source,
+        "REUSE_EXISTING" if source is not None else "CREATE",
+    )
+
+
 def find_existing_source(
     *, source_type: str, title: str, url: str = "", bibliography: str = ""
 ) -> ShrineKnowledgeSource | None:
-    """Content-based natural-key lookup for idempotency.
-
-    `ShrineKnowledgeSource` has no dedicated natural-key field (adding one
-    is a schema change and out of scope for this foundation — see the
-    Reproducibility Gap section of the runbook). A Source is treated as
-    "the same" if `source_type` + `title` match, and, when present, `url` or
-    `bibliography` also match (a Source with a URL and one without normally
-    describe different things even under the same title).
-    """
-    qs = ShrineKnowledgeSource.objects.filter(source_type=source_type, title=title)
-    if url:
-        qs = qs.filter(url=url)
-    else:
-        qs = qs.filter(url="")
-    if bibliography:
-        qs = qs.filter(bibliography=bibliography)
-    return qs.order_by("id").first()
+    """Compatibility wrapper for callers that only need a reusable row."""
+    result = resolve_source_identity(
+        SourceEntry(
+            key="",
+            source_type=source_type,
+            title=title,
+            url=url,
+            bibliography=bibliography,
+        )
+    )
+    return result.source if result.status == "REUSE_EXISTING" else None
 
 
 def find_existing_deity(shrine: Shrine, display_name: str) -> ShrineDeity | None:
@@ -418,7 +508,10 @@ def parse_seed(raw: dict) -> ParsedSeed:
 __all__ = [
     "SCHEMA_VERSION",
     "ShrineIdentityResult",
+    "SourceIdentityResult",
     "resolve_shrine",
+    "normalize_source_url",
+    "resolve_source_identity",
     "find_existing_source",
     "find_existing_deity",
     "find_existing_history",

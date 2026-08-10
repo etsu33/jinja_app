@@ -8,10 +8,7 @@ from django.core.management import call_command
 from temples.models import Shrine, ShrineDeity, ShrineHistory, ShrineKnowledgeSource
 from temples.services.knowledge_seed import parse_seed
 
-
-SEED_PATH = (
-    Path(__file__).resolve().parents[1] / "data" / "knowledge_seeds" / "batch_9_seed.json"
-)
+SEED_PATH = Path(__file__).resolve().parents[1] / "data" / "knowledge_seeds" / "batch_9_seed.json"
 
 TARGETS = [
     ("宇佐神宮", "大分県宇佐市南宇佐2859"),
@@ -93,7 +90,7 @@ def test_batch9_seed_import_is_idempotent_and_preserves_unrelated_knowledge():
     dry_run = io.StringIO()
     call_command("import_shrine_knowledge", str(SEED_PATH), "--dry-run", stdout=dry_run)
     output = dry_run.getvalue()
-    assert "'source_SKIP_EXISTS': 6" in output
+    assert "'source_REUSE_EXISTING': 6" in output
     assert "'deity_SKIP_EXISTS': 13" in output
     assert "'history_SKIP_EXISTS': 5" in output
     assert "CREATE" not in output
