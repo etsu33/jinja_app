@@ -429,6 +429,20 @@ Web出典のみを前提にしない。以下を扱えるようにする。
 - 文化財データ
 - 現地観察記録
 
+### Import時のSource semantic identity
+
+URLを持つSourceは、portableなimportにおいて`source_type + normalized URL`を
+semantic identityとして扱う。titleの表記差だけを理由に同じWeb文書を重複作成
+しない。normalizationはscheme/hostのcase、default port、fragment、非rootの
+末尾slashに限定し、http/httpsおよびquery stringは区別する。
+
+同一identityの既存Sourceが1件だけで、publisher、verification_status、
+confidence、bibliography、languageがseedと一致するときだけ再利用できる。
+複数一致は`SOURCE_REUSE_AMBIGUOUS`、重要metadata差は
+`SOURCE_REUSE_CONFLICT`としてimport全体を停止する。既存Sourceを上書きせず、
+Production numeric PKをseedへ記録しない。URLを持たないSourceは既存の
+`source_type + title + bibliography`契約を維持する。
+
 ### accessed_atとverified_at
 
 - `accessed_at`: 情報源（URL・資料）へアクセスした日

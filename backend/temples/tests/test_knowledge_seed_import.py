@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import json
+from pathlib import Path
 
 import pytest
 from django.core.management import call_command
@@ -233,6 +234,98 @@ def test_import_is_idempotent_on_second_run(tmp_path):
     assert ShrineKnowledgeSource.objects.count() == 1
     assert ShrineDeity.objects.count() == 1
     assert ShrineHistory.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_same_type_and_normalized_url_reuses_source_with_different_title_and_links_facts(tmp_path):
+    Shrine.objects.create(name_jp="テスト対象神社", kind="shrine", address="東京都テスト区1-1-1")
+    existing = ShrineKnowledgeSource.objects.create(
+        source_type="shrine_official",
+        title="既存の正式タイトル",
+        publisher="公式神社",
+        url="https://example.jp/source/",
+        verification_status="source_confirmed",
+        verified_at="2025-01-01T00:00:00Z",
+        confidence="high",
+        language="ja",
+    )
+    seed = _minimal_seed()
+    seed["sources"][0].update(
+        {
+            "title": "seed側の異なるタイトル",
+            "publisher": "公式神社",
+            "url": "https://EXAMPLE.jp/source",
+            "language": "ja",
+        }
+    )
+    seed_path = tmp_path / "seed.json"
+    seed_path.write_text(json.dumps(seed), encoding="utf-8")
+
+    out = io.StringIO()
+    call_command("import_shrine_knowledge", str(seed_path), stdout=out)
+
+    assert "source_REUSE_EXISTING" in out.getvalue()
+    assert ShrineKnowledgeSource.objects.count() == 1
+    assert list(ShrineDeity.objects.get().sources.all()) == [existing]
+    assert list(ShrineHistory.objects.get().sources.all()) == [existing]
+
+
+@pytest.mark.django_db
+def test_same_type_and_normalized_url_is_ambiguous_when_multiple_sources_exist(tmp_path):
+    Shrine.objects.create(name_jp="テスト対象神社", kind="shrine", address="東京都テスト区1-1-1")
+    for title, url in (
+        ("既存A", "https://example.jp/source"),
+        ("既存B", "https://example.jp/source/"),
+    ):
+        ShrineKnowledgeSource.objects.create(
+            source_type="shrine_official",
+            title=title,
+            url=url,
+            verification_status="source_confirmed",
+            verified_at="2025-01-01T00:00:00Z",
+            confidence="high",
+        )
+    seed_path = tmp_path / "seed.json"
+    seed = _minimal_seed()
+    seed["sources"][0]["url"] = "https://example.jp/source/"
+    seed_path.write_text(json.dumps(seed), encoding="utf-8")
+
+    with pytest.raises(CommandError, match="import blocked"):
+        call_command("import_shrine_knowledge", str(seed_path), "--dry-run", stdout=io.StringIO())
+
+    assert ShrineKnowledgeSource.objects.count() == 2
+    assert ShrineDeity.objects.count() == 0
+    assert ShrineHistory.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_same_type_and_normalized_url_blocks_meaningful_metadata_conflict(tmp_path):
+    Shrine.objects.create(name_jp="テスト対象神社", kind="shrine", address="東京都テスト区1-1-1")
+    ShrineKnowledgeSource.objects.create(
+        source_type="shrine_official",
+        title="既存タイトル",
+        publisher="別の発行主体",
+        url="https://example.jp/",
+        verification_status="source_confirmed",
+        verified_at="2025-01-01T00:00:00Z",
+        confidence="high",
+    )
+    seed_path = tmp_path / "seed.json"
+    seed_path.write_text(json.dumps(_minimal_seed()), encoding="utf-8")
+
+    with pytest.raises(CommandError, match="import blocked"):
+        call_command("import_shrine_knowledge", str(seed_path), "--dry-run", stdout=io.StringIO())
+
+    assert ShrineKnowledgeSource.objects.count() == 1
+    assert ShrineDeity.objects.count() == 0
+    assert ShrineHistory.objects.count() == 0
+
+
+def test_batch1_to_8_seeds_still_parse_under_source_reuse_contract():
+    seed_dir = Path(__file__).resolve().parents[1] / "data" / "knowledge_seeds"
+    for filename in ("batch_1_7_seed.json", "batch_8_seed.json"):
+        parsed = parse_seed(json.loads((seed_dir / filename).read_text(encoding="utf-8")))
+        assert parsed.errors == [], filename
 
 
 @pytest.mark.django_db

@@ -182,12 +182,18 @@ schema変更を伴い、Batch 8相当の判断が必要なため）。既存fiel
 
 | Model | 既存行とみなす条件 |
 |---|---|
-| `ShrineKnowledgeSource` | `source_type` + `title` + (`url`があれば`url`一致／なければ`bibliography`一致) |
+| `ShrineKnowledgeSource`（URLあり） | `source_type` + normalized URL。重要metadata一致時だけ一意な既存Sourceを`REUSE_EXISTING` |
+| `ShrineKnowledgeSource`（URLなし） | `source_type` + `title` + (`bibliography`があれば`bibliography`一致) |
 | `ShrineDeity` | `shrine` + `display_name` |
 | `ShrineHistory` | `shrine` + `history_type` + `title` |
 
-**CREATE/UPDATE policy**: 一致する既存行があれば`SKIP_EXISTS`（**silent
-overwriteしない**——内容が古くても上書きしない）。新規のみ`CREATE`。
+URL normalizationはscheme/hostのcase、default port、fragment、非root末尾slash
+のみを正規化する。http/httpsとquery stringは区別する。normalized URL一致が
+複数なら`SOURCE_REUSE_AMBIGUOUS`、publisher/verification_status/confidence/
+bibliography/languageが異なれば`SOURCE_REUSE_CONFLICT`として全importを停止する。
+
+**CREATE/UPDATE policy**: 一致する既存Sourceは`REUSE_EXISTING`、既存Factは
+`SKIP_EXISTS`（**silent overwriteしない**——内容が古くても上書きしない）。新規のみ`CREATE`。
 既存Factの内容修正は本Foundationのimporterでは扱わない
 （Section 12「Limitations」参照、既存のAdmin編集フローを使う）。
 
@@ -354,10 +360,10 @@ error）を確認してから、である。
 1. **既存Fact更新（`--allow-update`）は未実装**: 現状は新規作成のみ。
    既存Factの内容修正はSection 12の手動フロー（Admin編集）に依存する。
    将来のPRで、明示的なdiff表示を伴う更新modeを追加検討できる
-2. **Source natural keyはcontent-based**: 専用field追加はschema変更を
-   伴うため本Foundationのscope外とした。同一Sourceでも`title`の
-   言い回しが変わると別Source扱いになる。seed編集時は既存Sourceの
-   `title`表記を維持することが望ましい
+2. **Source semantic identityはURL依存**: 専用field追加はschema変更を
+   伴うため未実装。URL-backed Sourceは`source_type + normalized URL`で
+   再利用するが、URL自体の恒久的変更・redirect先同一性は自動判定しない。
+   重要metadata差または同一identity複数行はsilent reuseせず停止する
 3. **address一致は完全一致**: 表記ゆれ（全角/半角等）が将来生じた場合、
    `resolve_shrine`は`name_jp`のみでの絞り込みへfallbackし、複数一致
    時は`place_ref_id IS NULL`優先ロジックへ進む。今回の41神社では

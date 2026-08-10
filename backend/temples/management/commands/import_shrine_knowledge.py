@@ -35,9 +35,9 @@ from temples.services.knowledge_seed import (
     ParsedSeed,
     find_existing_deity,
     find_existing_history,
-    find_existing_source,
     parse_seed,
     resolve_shrine,
+    resolve_source_identity,
 )
 
 
@@ -46,7 +46,7 @@ class PlanItem:
     kind: str  # "source" | "deity" | "history"
     shrine_name: str
     label: str
-    action: str  # "CREATE" | "SKIP_EXISTS"
+    action: str  # "CREATE" | "REUSE_EXISTING" | "SKIP_EXISTS" | blocking status
     detail: str = ""
 
 
@@ -74,19 +74,17 @@ def _build_plan(parsed: ParsedSeed) -> tuple[Plan, dict[str, ShrineKnowledgeSour
 
     source_existing: dict[str, ShrineKnowledgeSource | None] = {}
     for key, entry in parsed.sources.items():
-        existing = find_existing_source(
-            source_type=entry.source_type,
-            title=entry.title,
-            url=entry.url,
-            bibliography=entry.bibliography,
-        )
+        identity = resolve_source_identity(entry)
+        existing = identity.source
         source_existing[key] = existing
+        if identity.status in ("CONFLICT", "AMBIGUOUS"):
+            errors.append(f"source {key!r}: SOURCE_REUSE_{identity.status} ({identity.detail})")
         items.append(
             PlanItem(
                 kind="source",
                 shrine_name="",
                 label=f"[{key}] {entry.source_type}: {entry.title}",
-                action="SKIP_EXISTS" if existing else "CREATE",
+                action=identity.status,
                 detail=f"matched existing id={existing.pk}" if existing else "",
             )
         )

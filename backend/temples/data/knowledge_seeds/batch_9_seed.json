@@ -74,16 +74,16 @@
     {
       "key": "batch9-hakone-official",
       "source_type": "shrine_official",
-      "title": "箱根神社の由緒｜箱根神社",
-      "publisher": "箱根神社",
+      "title": "箱根神社・九頭龍神社・箱根元宮の由緒並に宝物と文化財",
+      "publisher": "箱根神社（九頭龍神社）",
       "url": "https://hakonejinja.or.jp/hakone/",
       "bibliography": "",
       "accessed_at": "2026-08-10",
       "verified_at": "2026-08-10T10:25:00+00:00",
       "verification_status": "source_confirmed",
       "confidence": "high",
-      "language": "ja",
-      "note": "箱根大神を構成する御三神と、天平宝字元年の社殿建立記事を直接確認。"
+      "language": "",
+      "note": "Production既存の同一公式URL Sourceと重要metadataを合わせてportableに再利用する。箱根大神を構成する御三神と、天平宝字元年の社殿建立記事を直接確認。"
     }
   ],
   "shrines": [
