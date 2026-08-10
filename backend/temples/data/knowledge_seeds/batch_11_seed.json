@@ -1,0 +1,405 @@
+{
+  "schema_version": "1.0",
+  "sources": [
+    {
+      "key": "batch11-koami-official",
+      "source_type": "shrine_official",
+      "title": "小網神社オフィシャルサイト | ご由緒",
+      "publisher": "小網神社",
+      "url": "https://www.koamijinja.or.jp/history/",
+      "bibliography": "",
+      "accessed_at": "2026-08-10",
+      "verified_at": "2026-08-10T12:30:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "御祭神三柱（倉稲魂神・市杵島比賣神・福禄寿）、文正元年（1466）の創建伝承を直接確認。"
+    },
+    {
+      "key": "batch11-nedu-official",
+      "source_type": "shrine_official",
+      "title": "根津神社について",
+      "publisher": "根津神社",
+      "url": "https://nedujinja.or.jp/about/",
+      "bibliography": "",
+      "accessed_at": "2026-08-10",
+      "verified_at": "2026-08-10T12:35:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "主祭神三柱・相殿二柱、日本武尊創祀伝承、宝永三年（1706）の遷宮を直接確認。"
+    },
+    {
+      "key": "batch11-akasakahikawa-official",
+      "source_type": "shrine_official",
+      "title": "赤坂氷川神社について | 赤坂氷川神社",
+      "publisher": "赤坂氷川神社",
+      "url": "http://www.akasakahikawa.or.jp/about/",
+      "bibliography": "",
+      "accessed_at": "2026-08-10",
+      "verified_at": "2026-08-10T12:40:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "御祭神三柱、天暦五年（951）の創建伝承、享保十四〜十五年（1729〜1730）の社殿造営・遷座を直接確認。"
+    },
+    {
+      "key": "batch11-ohmiya-official",
+      "source_type": "shrine_official",
+      "title": "大宮八幡宮の歴史・由緒 - 大宮八幡宮",
+      "publisher": "大宮八幡宮",
+      "url": "https://www.ohmiya-hachimangu.or.jp/hachimangu/history",
+      "bibliography": "",
+      "accessed_at": "2026-08-10",
+      "verified_at": "2026-08-10T12:45:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "御祭神三柱、康平六年（1063）の創建由緒を直接確認。"
+    },
+    {
+      "key": "batch11-hodosan-official",
+      "source_type": "shrine_official",
+      "title": "神社紹介 | 寳登山神社",
+      "publisher": "寳登山神社",
+      "url": "https://www.hodosan-jinja.or.jp/gaiyou/",
+      "bibliography": "",
+      "accessed_at": "2026-08-10",
+      "verified_at": "2026-08-10T12:50:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "御祭神三柱、日本武尊の東征伝承に基づく創建（西暦110年頃）を直接確認。"
+    }
+  ],
+  "shrines": [
+    {
+      "shrine_ref": {
+        "name_jp": "小網神社",
+        "address": "東京都中央区日本橋小網町16-23"
+      },
+      "deities": [
+        {
+          "display_name": "倉稲魂神",
+          "canonical_name": "倉稲魂神",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T12:30:00+00:00",
+          "note": "お稲荷大神として悪疫退散の神とされる、公式サイトの表記に基づく。",
+          "source_keys": ["batch11-koami-official"]
+        },
+        {
+          "display_name": "市杵島比賣神",
+          "canonical_name": "市杵島比賣神",
+          "role": "enshrined",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T12:30:00+00:00",
+          "note": "弁財天として財運を授ける神とされる、公式サイトの表記に基づく。",
+          "source_keys": ["batch11-koami-official"]
+        },
+        {
+          "display_name": "福禄寿",
+          "canonical_name": "福禄寿",
+          "role": "enshrined",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T12:30:00+00:00",
+          "note": "七福神信仰に由来する神格。公式サイトが倉稲魂神・市杵島比賣神と並ぶ御祭神として明記しているためFact化するが、古典的な神話系譜を持つ祭神とは性質が異なる点を記録する。",
+          "source_keys": ["batch11-koami-official"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "文正元年の創建伝承",
+          "content": "小網神社の公式由緒は、文正元年（1466）、疫病が流行する中で稲穂を持った老人が現れて忽然と姿を消し、庵主の夢に恵心僧都が現れてこの老人を稲荷大神として祀るよう託宣したことから、小網稲荷大明神として創建されたと伝えている。",
+          "period_text": "文正元年（1466）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T12:30:00+00:00",
+          "note": "夢告げを伴う創建伝承のため、history_type=traditionとし確定史実化しない。",
+          "source_keys": ["batch11-koami-official"]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "根津神社",
+        "address": "東京都文京区根津1-28-9"
+      },
+      "deities": [
+        {
+          "display_name": "須佐之男命",
+          "canonical_name": "須佐之男命",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T12:35:00+00:00",
+          "note": "公式サイトが「主祭神」と明記する三柱の一柱。",
+          "source_keys": ["batch11-nedu-official"]
+        },
+        {
+          "display_name": "大山咋命",
+          "canonical_name": "大山咋命",
+          "role": "primary",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T12:35:00+00:00",
+          "note": "公式サイトが「主祭神」と明記する三柱の一柱。",
+          "source_keys": ["batch11-nedu-official"]
+        },
+        {
+          "display_name": "誉田別命",
+          "canonical_name": "誉田別命",
+          "role": "primary",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T12:35:00+00:00",
+          "note": "公式サイトが「主祭神」と明記する三柱の一柱。",
+          "source_keys": ["batch11-nedu-official"]
+        },
+        {
+          "display_name": "大国主命",
+          "canonical_name": "大国主命",
+          "role": "secondary",
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T12:35:00+00:00",
+          "note": "公式サイトが「相殿」と明記する二柱の一柱。",
+          "source_keys": ["batch11-nedu-official"]
+        },
+        {
+          "display_name": "菅原道真公",
+          "canonical_name": "菅原道真",
+          "role": "secondary",
+          "sort_order": 4,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T12:35:00+00:00",
+          "note": "公式サイトが「相殿」と明記する二柱の一柱。",
+          "source_keys": ["batch11-nedu-official"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "日本武尊による創祀伝承",
+          "content": "根津神社の公式由緒は、今から約千九百年前、日本武尊が東夷征定の途次、須佐之男命の御神徳を仰いで千駄木の地に創祀したと伝えている。",
+          "period_text": "約千九百年前（伝承）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T12:35:00+00:00",
+          "note": "日本武尊による創祀という古代の伝承であり、確定年代を伴わないためhistory_type=traditionとする。",
+          "source_keys": ["batch11-nedu-official"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "宝永三年の遷宮と社殿造営",
+          "content": "根津神社の公式由緒は、宝永三年（1706）、五代将軍徳川綱吉の献納により千駄木の旧社地から現在地へ遷宮し、権現造りの社殿が造営されたとしている。文明年間（1469〜87）には太田道灌が社殿を奉建したとも記している。",
+          "period_text": "宝永三年（1706）",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T12:35:00+00:00",
+          "note": "特定の年代・寄進者を伴う記録のため、創祀伝承とは別のFactとして分離する。",
+          "source_keys": ["batch11-nedu-official"]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "赤坂氷川神社",
+        "address": "東京都港区赤坂6-10-12"
+      },
+      "deities": [
+        {
+          "display_name": "素盞嗚尊",
+          "canonical_name": "素盞嗚尊",
+          "role": "unknown",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T12:40:00+00:00",
+          "note": "公式表記に主祭神・配祀の序列記載はなく、対等な三柱として列挙する。",
+          "source_keys": ["batch11-akasakahikawa-official"]
+        },
+        {
+          "display_name": "奇稲田姫命",
+          "canonical_name": "奇稲田姫命",
+          "role": "unknown",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T12:40:00+00:00",
+          "note": "公式表記に主祭神・配祀の序列記載はなく、対等な三柱として列挙する。",
+          "source_keys": ["batch11-akasakahikawa-official"]
+        },
+        {
+          "display_name": "大己貴命",
+          "canonical_name": "大己貴命",
+          "role": "unknown",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T12:40:00+00:00",
+          "note": "公式表記に主祭神・配祀の序列記載はなく、対等な三柱として列挙する。別名は大国主命。",
+          "source_keys": ["batch11-akasakahikawa-official"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "天暦五年の創建伝承",
+          "content": "赤坂氷川神社の公式由緒は、天暦五年（951）、東国を遊行していた蓮林僧正が一ツ木村で御祭神のお告げを受け、氷川明神の社殿を建てて祀ったことを創建としている。",
+          "period_text": "天暦五年（951）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T12:40:00+00:00",
+          "note": "夢告げを伴う創建伝承のため、history_type=traditionとし確定史実化しない。",
+          "source_keys": ["batch11-akasakahikawa-official"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "享保十四〜十五年の社殿造営と遷座",
+          "content": "赤坂氷川神社の公式由緒は、享保十四年（1729）に徳川吉宗の命により現在地に社殿が造営され、翌享保十五年（1730）4月26日に遷座が行われたとしている。",
+          "period_text": "享保十四〜十五年（1729〜1730）",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T12:40:00+00:00",
+          "note": "特定の年月日・将軍名を伴う記録のため、創建伝承とは別のFactとして分離する。",
+          "source_keys": ["batch11-akasakahikawa-official"]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "大宮八幡宮",
+        "address": "東京都杉並区大宮2-3-1"
+      },
+      "deities": [
+        {
+          "display_name": "応神天皇",
+          "canonical_name": "応神天皇",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T12:45:00+00:00",
+          "note": "公式サイトの表記順で第一に掲げられる、八幡宮の中心的祭神。",
+          "source_keys": ["batch11-ohmiya-official"]
+        },
+        {
+          "display_name": "仲哀天皇",
+          "canonical_name": "仲哀天皇",
+          "role": "enshrined",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T12:45:00+00:00",
+          "note": "応神天皇の父君として公式サイトに記載。",
+          "source_keys": ["batch11-ohmiya-official"]
+        },
+        {
+          "display_name": "神功皇后",
+          "canonical_name": "神功皇后",
+          "role": "enshrined",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T12:45:00+00:00",
+          "note": "応神天皇の母君として公式サイトに記載。",
+          "source_keys": ["batch11-ohmiya-official"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "founding",
+          "title": "康平六年の創建",
+          "content": "大宮八幡宮の公式由緒は、鎮守府将軍源頼義公が奥州の乱平定の出陣時に白雲が八条にたなびく瑞祥を見て八幡大神の守護のしるしと捉え、乱平定後の康平六年（1063）に京都・石清水八幡宮より御分霊を勧請して創建したとしている。",
+          "period_text": "康平六年（1063）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T12:45:00+00:00",
+          "note": "公式が具体的な創建年と勧請元を明示しており、神霊出現を伴う伝承ではないため、history_type=foundingとする。",
+          "source_keys": ["batch11-ohmiya-official"]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "寳登山神社",
+        "address": "埼玉県秩父郡長瀞町長瀞1828"
+      },
+      "deities": [
+        {
+          "display_name": "神日本磐余彦尊",
+          "canonical_name": "神日本磐余彦尊",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T12:50:00+00:00",
+          "note": "神武天皇のこと。社名の由来となる創建伝承の中心神として公式サイトに記載。",
+          "source_keys": ["batch11-hodosan-official"]
+        },
+        {
+          "display_name": "大山祇神",
+          "canonical_name": "大山祇神",
+          "role": "enshrined",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T12:50:00+00:00",
+          "note": "山を司る神として公式サイトに記載。",
+          "source_keys": ["batch11-hodosan-official"]
+        },
+        {
+          "display_name": "火産霊神",
+          "canonical_name": "火産霊神",
+          "role": "enshrined",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T12:50:00+00:00",
+          "note": "火を司る神として公式サイトに記載。",
+          "source_keys": ["batch11-hodosan-official"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "日本武尊の東征伝承に基づく創建",
+          "content": "寳登山神社の公式由緒は、第12代景行天皇の皇子日本武尊が東征の帰路に秩父入りし、山頂を目指す途中で山火事に遭遇したが山犬の神助を得て宝登山山頂で神霊を祀ったことを創建の始めとしている。",
+          "period_text": "西暦110年頃（伝承）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T12:50:00+00:00",
+          "note": "山火事からの神助という伝承的要素を伴う創建由緒のため、history_type=traditionとする。",
+          "source_keys": ["batch11-hodosan-official"]
+        }
+      ]
+    }
+  ]
+}
