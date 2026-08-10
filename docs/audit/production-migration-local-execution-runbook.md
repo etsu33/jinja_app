@@ -1,6 +1,9 @@
 > **Status: Stage 1（`users 0006`）・Stage 2（`temples 0090`）はPASS。
-> **Stage 3（`temples 0091`）は失敗（`GEOSException`、atomic rollback、
-> production変化なし）。`temples 0091`は未適用のまま。`temples 0092`
+> Stage 3初回試行（`temples 0091`）は失敗（`GEOSException`、atomic
+> rollback、production変化なし）。remediation（PR #2337、
+> `docs/audit/temples-0091-production-remediation.md`、
+> `TEMPLES_0091_REMEDIATION_READY`）を経て、**Stage 3 Retryで
+> `temples 0091`は成功（`TEMPLES_0091_RETRY_PASS`）。`temples 0092`
 > 以降は未実行のまま停止中。次のアクションはMother Ship判断待ち。**
 >
 > 本ドキュメントは**正本**である。`docs/audit/
@@ -12,13 +15,14 @@
 > **Execution Recordは本ドキュメント末尾の
 > 「Execution Record — Stage 1: `users 0006`」・
 > 「Execution Record — Stage 2: `temples 0090`」・
-> 「Execution Record — Stage 3: `temples 0091`（失敗・STOP）」の
-> 各節を参照。**
+> 「Execution Record — Stage 3: `temples 0091`（失敗・STOP）」・
+> 「Execution Record — Stage 3 Retry: `temples 0091`（成功・PASS）」の
+> 各節を参照。失敗記録は履歴として削除・改変していない。**
 >
-> **Production migrationはこのPRでは実行していない。Production DBへの
-> writeは0件。** 許可されたのはread-only verification
-> （`showmigrations`・`migrate --plan`・`readonly_query.sh`経由のSELECT）
-> のみ。
+> **Production migrationはStage 3 Retryで`temples 0091`のみを実行した
+> （write 1件）。`temples 0092`/`0093`は未実行のまま。** それ以外は
+> read-only verification（`showmigrations`・`migrate --plan`・
+> `readonly_query.sh`経由のSELECT）のみ。
 
 # Production Migration — Local Direct Execution Final Gate & Runbook
 
@@ -326,6 +330,13 @@ migrationごとに、失敗時は以下の順で状態を観測してから分�
    試みていない」という limitation は解消された。残りは
    Runtime QA未実施・`dump_readonly.sh`のhostname非マスク・
    `pytest`/`pytest-dotenv`衝突・ネットワーク切断時挙動未検証の4点
+5. **Stage 3初回試行は`GEOSException`で失敗**（`TEMPLES_0091_EXECUTION_STOP`）
+   → remediation（PR #2337、`TEMPLES_0091_REMEDIATION_READY`）を経て、
+   **Stage 3 Retryで`temples 0091`はexit 0で成功（`TEMPLES_0091_RETRY_PASS`）**。
+   `temples 0092`/`0093`は引き続き未実行のまま、Mother Ship判断待ち
+6. 認証済みRuntime QA（`/api/auth/me`・MyPage等）は依然
+   `NOT_EXECUTED_RUNTIME_ACCESS_REQUIRED`のまま。DB-level verificationは
+   Stage 3 Retryで全項目PASS済み
 
 ---
 
@@ -695,5 +706,242 @@ read-only再確認により以下を確認した:
 
 - **Production write: `temples 0090` = EXECUTED（Stage 2、変化なし）**
 - **temples 0091 = NOT_EXECUTED（試行1回、失敗、atomic rollback、production変化なし）**
+- **temples 0092 = NOT_EXECUTED**
+- **temples 0093 = NOT_EXECUTED**
+
+---
+
+## Execution Record — Stage 3 Retry: `temples 0091`（成功・PASS）
+
+**本Stageは成功した。** `temples 0091`はremediation
+（PR #2337、`docs/audit/temples-0091-production-remediation.md`、
+`TEMPLES_0091_REMEDIATION_READY`）を経てProduction適用に成功した。
+`temples 0092`は実行していない。
+
+### Phase 0 — Source of Truth確認
+
+- [x] `docs/audit/production-migration-local-execution-runbook.md`
+  （本ドキュメント、Stage 3失敗記録を含む）を再読
+- [x] `docs/audit/temples-0091-production-remediation.md`
+  （root cause・canonical identity・selected patch・
+  Production-equivalent restore result・STOP conditions・recovery
+  classification）を再読
+- [x] 矛盾なし
+
+### Phase 1 — develop同期
+
+| 項目 | 結果 |
+|---|---|
+| PR #2337 merge確認 | `MERGED`、merge commit `856b859b75d65a69598a1525c4a6b835313ac0a9` |
+| develop checkout / 同期 | 完了、`origin/develop`とfast-forward同期済み |
+| develop HEAD SHA | `856b859b75d65a69598a1525c4a6b835313ac0a9` |
+| working tree | clean |
+
+### Phase 2 — Local Environment
+
+| 項目 | 結果 |
+|---|---|
+| `python --version` | `Python 3.11.13` |
+| Django version | `5.2.16` |
+| psycopg version | `3.3.4` |
+| `backend/manage.py`存在 | 確認済み |
+| `DEBUG` | `0`（明示指定） |
+| `USE_GIS` | `1`（明示指定） |
+| Production credential file | 存在確認済み（`~/.config/kami-musubi/production-db.env`、permission `600`） |
+
+### Phase 3 — Credential Gate
+
+- [x] `check_credential_presence.sh` → `VAR_SET=1`、
+  `{'parses': True, 'scheme_is_postgres': True, 'has_host': True,
+  'has_port': True, 'has_dbname': True, 'has_userinfo': True}`
+  （credential値・hostnameは非表示のまま）
+
+### Phase 4 — Production State Recheck（read-only）
+
+`migration_state.sql`を`readonly_query.sh`経由で実行し、全134行の
+migration適用状態を確認。関連部分:
+
+| app | 最新migration |
+|---|---|
+| `temples` | `0090_add_rest_healing_tag_to_silent_shrines` |
+| `users` | `0006_userprofile_birth_profile_fields` |
+
+`temples 0091`/`0092`/`0093`はいずれも未適用のまま。previous Stage 3
+failure由来の部分適用・schema/state不整合は検出されなかった。他appの
+未適用migrationも0件（既知baselineと完全一致）。
+
+### Phase 5 — Fresh Snapshot / Phase 8 — Canonical Identity Recheck / Phase 9 — Expected Effect Recheck
+
+独立したSELECT-only SQL（`pre_0091_retry_snapshot.sql`、repo外の
+scratchpadに作成し`readonly_query.sh`経由で実行、credential/hostname
+非露出）で以下を一括確認した（snapshot時刻`2026-08-10 01:15:51.064504+00`）:
+
+| 確認項目 | 結果 |
+|---|---|
+| `temples_0091_applied`/`0092`/`0093` | すべて`false` |
+| aggregate | `auth_user=1`/`userprofile=1`/`shrine=105`/`favorite=0`/`visit=2`/`goriyaku_relation=280`（既知baselineと完全一致） |
+| canonical identity | id=21（長太稲荷神社、`place_ref_id IS NULL`）・id=22（給田六所神社、同）が引き続きcanonical。id=101・id=103（`place_ref_id`あり）が引き続きduplicateのまま、remediation audit時から変化なし |
+| target tag存在確認 | `商売繁盛`・`五穀豊穣`・`家内安全`は存在、`地域安泰`は引き続き不存在（remediation audit時と完全一致） |
+| 対象4行の既存goriyaku_tags関連 | 0件（クリーンな状態） |
+
+事前予測（推測ではなく実測に基づくdelta）: id=21へ`history_theme="守り"`
++ `goriyaku`本文 + tag2件（`商売繁盛`・`五穀豊穣`。`地域安泰`は
+不存在のため付与されない）、id=22へ`history_theme="守り"` + `goriyaku`
+本文 + tag1件（`家内安全`）。`goriyaku_relation`は`280`→`283`
+（+3）が期待値。id=101・id=103は無変更のまま。
+
+### Phase 6 — Fresh Backup
+
+| 項目 | 結果 |
+|---|---|
+| dump取得 | 成功（`dump_readonly.sh`、`PG_DUMP_BIN`/`PG_DUMPALL_BIN`に
+  PostgreSQL 17クライアントを明示指定） |
+| `roles.sql` size | `5426` bytes |
+| `schema.sql` size | `81650` bytes（Stage 3直前backupと同一——schema変更なしのため妥当） |
+| `data.sql` size | `3843102` bytes（Stage 3直前backupと同一） |
+| 保存先 | ユーザーホームディレクトリ配下、repo外（新規timestampディレクトリ、
+  具体的pathは本ドキュメントに記載しない） |
+| credential/hostname露出 | **なし**。`dump_readonly.sh`の既知issue
+  （`source:`行がhostnameを含む redacted 表示のみでuserinfoしかmaskしない）
+  を踏まえ、当該行を`grep -v`で出力から意図的に除外した |
+
+### Phase 7 — Remediation File Recheck
+
+- [x] `git diff c3e09c06 -- backend/temples/migrations/0091_...py` が空
+  ——develop HEADのmigrationファイルはPR #2337でverify済みの内容と
+  **完全に同一**（バイト単位で差分なし）
+- [x] `.only(*SHRINE_LOOKUP_FIELDS)`存在確認（`location`列非選択）
+- [x] `order_by(F("place_ref_id").asc(nulls_first=True), "id")`存在確認
+  （deterministic canonical selection、`.first()`の暗黙orderingに非依存）
+- [x] `RunSQL`/`DROP`/`DELETE`/`TRUNCATE`等のdestructive operationなし
+- [x] Production固有ID hardcodeなし
+
+### Phase 10 — Final `--plan`
+
+```
+Planned operations:
+temples.0091_fill_missing_local_shrine_reason_facts
+    Raw Python operation
+```
+
+remediation audit時・Stage 3失敗時と完全一致。credential/hostname
+非露出。
+
+### Phase 11 — Human Execution Boundary
+
+以下すべてPASS:
+
+- [x] develop SHA correct（`856b859b`）
+- [x] working tree clean
+- [x] package parity PASS（Python/Django/psycopg一致）
+- [x] credential gate PASS
+- [x] Production state expected（`temples`最新=`0090`、`users`最新=`0006`）
+- [x] `0091`still pending
+- [x] `0092`/`0093` pending
+- [x] fresh snapshot valid（aggregate baseline一致）
+- [x] fresh backup PASS（3ファイルとも0バイトでない）
+- [x] remediation file unchanged（PR #2337と完全一致）
+- [x] canonical identity unchanged
+- [x] expected effect understood（`goriyaku_relation` +3）
+- [x] `--plan` match
+- [x] `DEBUG=0`
+- [x] `USE_GIS=1`
+
+全項目PASS——retry実行可。
+
+### Phase 12 — Execute `temples 0091`
+
+| 項目 | 値 |
+|---|---|
+| コマンド | `python manage.py migrate temples 0091 --noinput`（app-scoped、
+  target-scoped、bare `migrate`は不使用） |
+| 実行開始 | `2026-08-10T01:18:33Z` |
+| 実行終了 | `2026-08-10T01:18:54Z` |
+| 出力 | `Applying temples.0091_fill_missing_local_shrine_reason_facts... OK` |
+| exit status | **`0`（成功）** |
+
+credential・hostnameは出力に一切含まれなかった。
+
+### Phase 13 — Immediate Hard STOP
+
+`temples 0091`実行直後、`temples 0092`は**実行していない**。以降は
+read-only verificationのみを実施した。
+
+### Phase 14〜17 — Verification（read-only、`post_0091_retry_verification.sql`）
+
+verification時刻: `2026-08-10 01:19:31.066285+00`
+
+**Phase 14: Migration State**
+
+| 確認項目 | 結果 |
+|---|---|
+| `temples 0091` applied | `2026-08-10 01:18:53.573612+00`（新規レコード、previous failure recordではない） |
+| `temples 0092` applied | `false` |
+| `temples 0093` applied | `false` |
+
+**Phase 15: Canonical Effect Verification**
+
+| id | name_jp | history_theme | goriyaku | place_ref_id NULL | updated_at |
+|---|---|---|---|---|---|
+| 21 | 長太稲荷神社 | `守り` | 想定文言と完全一致 | true (canonical) | `2026-08-10 01:18:53.489121+00`（更新済み） |
+| 22 | 給田六所神社 | `守り` | 想定文言と完全一致 | true (canonical) | `2026-08-10 01:18:53.545498+00`（更新済み） |
+| 103 | 長太稲荷神社 | 空 | 空 | false (duplicate) | `2026-06-11 08:00:18.639346+00`（**無変更**） |
+| 101 | 給田六所神社 | 空 | 空 | false (duplicate) | `2026-06-11 07:18:01.730693+00`（**無変更**） |
+
+goriyaku_tags: id=21→`五穀豊穣`・`商売繁盛`（2件、`地域安泰`除外）、
+id=22→`家内安全`（1件、`地域安泰`除外）。id=101・id=103への関連は
+0件。**事前予測と完全一致。unexpected row updateなし。**
+
+**Phase 16: Aggregate Verification**
+
+| 項目 | retry前 | retry後 | 判定 |
+|---|---|---|---|
+| `auth_user` | 1 | 1 | 不変 |
+| `userprofile` | 1 | 1 | 不変 |
+| `shrine` | 105 | 105 | 不変 |
+| `favorite` | 0 | 0 | 不変 |
+| `visit` | 2 | 2 | 不変 |
+| `goriyaku_relation` | 280 | 283 | **+3、expected deltaと完全一致** |
+
+expected delta以外の変化なし。
+
+**Phase 17: Previous Stage Regression**
+
+- [x] `users_userprofile`の4カラム（`birthday`/`birth_time`/
+  `birth_place`/`worship_style`）すべて存在
+- [x] `users 0006` applied timestamp不変（`2026-08-09 12:02:10.455239+00`）
+  ——再適用や書き換えは発生していない
+- [x] `temples 0090` applied timestamp不変（`2026-08-09 12:13:30.066579+00`）
+- [x] 全105 shrine中、`history_theme`が非空なのはid=21・id=22の2件のみ
+  ——`temples`アプリ内で他に意図しない行が変更されていないことを確認
+
+### Phase 18 — Runtime Smoke QA
+
+`NOT_EXECUTED_RUNTIME_ACCESS_REQUIRED`。本セッションで使用したcredential
+bridgeはDB接続専用（`DATABASE_URL`のみ）であり、Production backendの
+public URLはこのセッションのどの認可済みチャネルにも存在しない。
+hostname記録禁止の原則に従い、推測・検索によるURL特定は行わなかった。
+DB-level verification（Phase 14〜17）が本Stageの正式なverificationであり、
+すべてPASSしている。
+
+### Phase 19 — Failure Handling
+
+該当なし（migrationはexit 0で正常終了）。
+
+### Phase 20 — Success Classification
+
+**`TEMPLES_0091_RETRY_PASS`**
+
+根拠: exit 0、`temples 0091` applied確認、canonical行（id=21/22）のみ
+更新、duplicate行（id=101/103）完全無変更、期待fieldと完全一致、
+期待tag deltaと完全一致（`地域安泰`欠落時のguard動作も含め）、
+aggregate delta期待通り（`goriyaku_relation` +3、他は不変）、
+`users 0006`/`temples 0090`にregressionなし、`temples 0092`/`0093`は
+引き続き未適用、想定外の変更ゼロ——Phase 20の全条件を満たす。
+
+### Production Write Summary（Stage 3 Retry時点の累積）
+
+- **Production write: `temples 0090` = EXECUTED（Stage 2、変化なし）**
+- **temples 0091 = EXECUTED（Stage 3 Retry、exit 0、`TEMPLES_0091_RETRY_PASS`）**
 - **temples 0092 = NOT_EXECUTED**
 - **temples 0093 = NOT_EXECUTED**
