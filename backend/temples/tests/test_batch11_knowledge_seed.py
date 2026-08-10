@@ -25,9 +25,9 @@ def test_batch11_seed_schema_counts_and_relations():
     assert seed.errors == []
     assert len(seed.sources) == 5
     assert len(seed.shrines) == 5
-    assert sum(len(shrine.deities) for shrine in seed.shrines) == 17
+    assert sum(len(shrine.deities) for shrine in seed.shrines) == 16
     assert sum(len(shrine.histories) for shrine in seed.shrines) == 7
-    assert sum(len(deity.source_keys) for shrine in seed.shrines for deity in shrine.deities) == 17
+    assert sum(len(deity.source_keys) for shrine in seed.shrines for deity in shrine.deities) == 16
     assert (
         sum(len(history.source_keys) for shrine in seed.shrines for history in shrine.histories)
         == 7
@@ -38,6 +38,20 @@ def test_batch11_seed_schema_counts_and_relations():
     assert len(identities) == len(set(identities))
     assert all(deity.source_keys for shrine in seed.shrines for deity in shrine.deities)
     assert all(history.source_keys for shrine in seed.shrines for history in shrine.histories)
+
+
+def test_batch11_seed_excludes_fukurokuju_from_koami_deities():
+    seed = parse_seed(json.loads(SEED_PATH.read_text(encoding="utf-8")))
+
+    koami = next(shrine for shrine in seed.shrines if shrine.name_jp == "小網神社")
+    deity_names = [d.display_name for d in koami.deities]
+    assert deity_names == ["倉稲魂神", "市杵島比賣神"]
+    assert "福禄寿" not in deity_names
+
+    # The shared Source is still used by the remaining deities/history for 小網神社
+    # (not orphaned by removing the 福禄寿 fact).
+    assert all(d.source_keys == ["batch11-koami-official"] for d in koami.deities)
+    assert koami.histories[0].source_keys == ["batch11-koami-official"]
 
 
 def test_batch11_seed_no_within_shrine_duplicates():
@@ -105,8 +119,9 @@ def test_batch11_seed_import_is_idempotent_and_preserves_unrelated_knowledge():
 
     targets = Shrine.objects.filter(name_jp__in=[name for name, _ in TARGETS])
     assert ShrineKnowledgeSource.objects.count() == 6
-    assert ShrineDeity.objects.filter(shrine__in=targets).count() == 17
+    assert ShrineDeity.objects.filter(shrine__in=targets).count() == 16
     assert ShrineHistory.objects.filter(shrine__in=targets).count() == 7
+    assert not ShrineDeity.objects.filter(shrine__in=targets, display_name="福禄寿").exists()
     assert all(deity.sources.exists() for deity in ShrineDeity.objects.filter(shrine__in=targets))
     assert all(
         history.sources.exists() for history in ShrineHistory.objects.filter(shrine__in=targets)
@@ -116,7 +131,7 @@ def test_batch11_seed_import_is_idempotent_and_preserves_unrelated_knowledge():
     call_command("import_shrine_knowledge", str(SEED_PATH), "--dry-run", stdout=dry_run)
     output = dry_run.getvalue()
     assert "'source_REUSE_EXISTING': 5" in output
-    assert "'deity_SKIP_EXISTS': 17" in output
+    assert "'deity_SKIP_EXISTS': 16" in output
     assert "'history_SKIP_EXISTS': 7" in output
     assert "CREATE" not in output
 
