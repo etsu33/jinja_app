@@ -3,9 +3,14 @@
 > rollback、production変化なし）。remediation（PR #2337、
 > `docs/audit/temples-0091-production-remediation.md`、
 > `TEMPLES_0091_REMEDIATION_READY`）を経て、Stage 3 Retryで
-> `temples 0091`は成功（`TEMPLES_0091_RETRY_PASS`）。**Stage 4で
-> `temples 0092`も成功（`TEMPLES_0092_EXECUTION_PASS`）。`temples 0093`
-> は未実行のまま停止中。次のアクションはMother Ship判断待ち。**
+> `temples 0091`は成功（`TEMPLES_0091_RETRY_PASS`）。Stage 4で
+> `temples 0092`も成功（`TEMPLES_0092_EXECUTION_PASS`）。**Final Stageで
+> `temples 0093`も成功（`TEMPLES_0093_EXECUTION_PASS`）。`users
+> 0006`＋`temples 0090`〜`0093`のProduction migration sequence全体が
+> 完了した（`PRODUCTION_MIGRATION_SEQUENCE_PASS`候補）。Knowledge Data
+>投入・Batch 8・Score/Ranking変更・Source UI・PER_FACT_RENDERINGは
+> いずれも別Gateとして未着手のまま。次のアクションはMother Ship
+> 判断待ち。**
 >
 > 本ドキュメントは**正本**である。`docs/audit/
 > production-migration-execution-gate.md`・`production-migration-go-no-go-final.md`・
@@ -18,13 +23,15 @@
 > 「Execution Record — Stage 2: `temples 0090`」・
 > 「Execution Record — Stage 3: `temples 0091`（失敗・STOP）」・
 > 「Execution Record — Stage 3 Retry: `temples 0091`（成功・PASS）」・
-> 「Execution Record — Stage 4: `temples 0092`（成功・PASS）」の
+> 「Execution Record — Stage 4: `temples 0092`（成功・PASS）」・
+> 「Execution Record — Final Stage: `temples 0093`（成功・PASS）」の
 > 各節を参照。失敗記録は履歴として削除・改変していない。**
 >
 > **Production migrationはStage 3 Retryで`temples 0091`、Stage 4で
-> `temples 0092`を実行した（write計2件）。`temples 0093`は未実行のまま。**
-> それ以外はread-only verification（`showmigrations`・`migrate --plan`・
-> `readonly_query.sh`経由のSELECT）のみ。
+> `temples 0092`、Final Stageで`temples 0093`を実行した（write計3件）。**
+> Knowledge Data投入は0件。それ以外はread-only verification
+> （`showmigrations`・`migrate --plan`・`readonly_query.sh`経由のSELECT）
+> のみ。
 
 # Production Migration — Local Direct Execution Final Gate & Runbook
 
@@ -1200,3 +1207,303 @@ column×2、FK制約、index）が想定と完全一致、aggregate不変確認
 - **temples 0091 = EXECUTED（Stage 3 Retry、`TEMPLES_0091_RETRY_PASS`）**
 - **temples 0092 = EXECUTED（Stage 4、exit 0、`TEMPLES_0092_EXECUTION_PASS`）**
 - **temples 0093 = NOT_EXECUTED**
+
+---
+
+## Execution Record — Final Stage: `temples 0093`（成功・PASS）
+
+**本Stageは成功した。** `temples 0093`はProduction適用に成功し、
+`users 0006`＋`temples 0090`〜`0093`のProduction migration sequence
+全体が完了した。Knowledge Data投入・Batch 8・Score/Ranking変更・
+Source UI・PER_FACT_RENDERINGはいずれも実行していない。
+
+### Phase 0 — Source of Truth確認
+
+- [x] 本ドキュメント（Stage 1〜Stage 4までの全Execution Record）を再読
+- [x] 矛盾なし
+
+### Phase 1 — develop同期
+
+| 項目 | 結果 |
+|---|---|
+| PR #2339 merge確認 | `MERGED`、merge commit `922343dc1cc6cc9a5299d6ed1c418757f5fed689` |
+| develop checkout / 同期 | 完了、`origin/develop`とfast-forward同期済み |
+| develop HEAD SHA | `922343dc1cc6cc9a5299d6ed1c418757f5fed689` |
+| working tree | clean |
+
+### Phase 2 — Local Environment
+
+| 項目 | 結果 |
+|---|---|
+| `python --version` | `Python 3.11.13` |
+| Django version | `5.2.16` |
+| psycopg version | `3.3.4` |
+| `DEBUG` | `0`（明示指定） |
+| `USE_GIS` | `1`（明示指定） |
+
+### Phase 3 — Credential Gate
+
+- [x] `check_credential_presence.sh` → `VAR_SET=1`、
+  `{'parses': True, 'scheme_is_postgres': True, 'has_host': True,
+  'has_port': True, 'has_dbname': True, 'has_userinfo': True}`
+
+### Phase 4 — Stage 4 State Recheck / Phase 5 — Fresh Pre-0093 Snapshot
+
+`pre_0093_snapshot.sql`を`readonly_query.sh`経由で実行（snapshot時刻
+`2026-08-10 01:49:26.679969+00`）:
+
+| 確認項目 | 結果 |
+|---|---|
+| `users 0006`/`temples 0090`/`0091`/`0092` applied、`0093` unapplied | 全項目一致 |
+| `0091` canonical効果 | id=21・id=22の`history_theme`/`goriyaku`/`updated_at`が無変化、duplicate（id=101/103）も無変化 |
+| `0092` `thread_id`列 | `temples_shrinereflection`・`temples_visit`とも存在確認 |
+| aggregate（現行baseline） | `auth_user=1`/`userprofile=1`/`shrine=105`/`favorite=0`/`visit=2`/`goriyaku_relation=283`——**旧baseline（280）は使用せず現行値を正本とした** |
+| 全8 app migration state | drift 0件（`temples`最新=`0092`、applied_count=98） |
+| Knowledge 5 table | 0件存在（未作成のまま、想定通り） |
+
+Stage 4状態の崩れなし。`STOP_STAGE4_STATE_DRIFT`には該当しない。
+
+### Phase 6 — Fresh Backup After 0092
+
+| 項目 | 結果 |
+|---|---|
+| dump取得 | 成功（PostgreSQL 17クライアント明示指定） |
+| `roles.sql` size | `5426` bytes |
+| `schema.sql` size | `82825` bytes（Stage 4直前backupの`81650`より増加——
+  `0092`が追加した`thread_id`列・FK・index定義を反映、妥当） |
+| `data.sql` size | `3843547` bytes |
+| 保存先 | repo外（新規timestampディレクトリ） |
+| credential/hostname露出 | なし |
+
+### Phase 7 — Target Migration 0093 Fresh Audit
+
+過去監査を参照せず、`backend/temples/migrations/0093_shrine_knowledge_model_foundation.py`
+をfreshに読んだ。
+
+| 確認項目 | 結果 |
+|---|---|
+| ファイル名 | `0093_shrine_knowledge_model_foundation.py`（一致） |
+| dependency | `temples.0092_add_thread_to_visit_and_reflection`のみ |
+| operation | `CreateModel`×3のみ（`RunPython`/`RunSQL`なし） |
+| model 1 | `ShrineKnowledgeSource`（standalone、`Shrine`へのFKなし、`ordering=["-created_at"]`） |
+| model 2 | `ShrineHistory`（`shrine`→`temples.shrine`のFK、CASCADE。`sources`→`temples.shrineknowledgesource`のM2M。index`idx_shrine_history_sort`） |
+| model 3 | `ShrineDeity`（同型、index`idx_shrine_deity_sort`） |
+| operation順序 | `ShrineKnowledgeSource`が先に作成され、それを参照する`ShrineHistory`/`ShrineDeity`のM2Mが後——依存順序として正しい |
+| destructive operation | なし |
+| reverse | Django標準の`CreateModel`逆操作（`DeleteModel`相当）、カスタムreverse不要 |
+| 最終commit | `cf82e0ab`（PR #2221）——現HEADより大幅に前、変更なし |
+
+`Shrine`テーブル自体へのAlter/RunPythonは一切なく、`location`列を
+含む既存column drift（`0091`で実害化した問題）とは無関係な
+純粋なCreateModelであることを確認した。
+
+### Phase 8 — Production Actual Schema Compatibility
+
+`schema_compat_0093.sql`を`readonly_query.sh`経由で実行:
+
+| 確認項目 | 結果 |
+|---|---|
+| Knowledge 5 tableの事前不存在 | 0件（すべて未存在、conflictなし） |
+| FK先`temples_shrine`のPK | `id bigint`——標準的なDjango FK互換 |
+| index名衝突（`idx_shrine_history_sort`・`idx_shrine_deity_sort`） | 0件 |
+| constraint名衝突（Knowledge関連名） | 0件 |
+
+`STOP_SCHEMA_COMPATIBILITY_MISMATCH`には該当しない。
+
+### Phase 9 — Production-Equivalent Local Test
+
+Phase 6で取得したfresh backup（`users 0006`/`temples 0090`〜`0092`
+適用済み状態を実際に反映）を、ローカルの隔離PostgreSQL 18 +
+PostGISインスタンスへ復元し、`temples 0093`のみを適用した。
+
+| 項目 | 結果 |
+|---|---|
+| 復元前state確認 | `temples`最新=`0092`、`goriyaku_relation=283`、`thread_id`列存在、Knowledge table不存在——想定通り |
+| `migrate temples 0093 --noinput` | exit `0` |
+| Knowledge 5 table | すべて作成確認 |
+| Knowledge Fact count | `ShrineKnowledgeSource=0`/`ShrineDeity=0`/`ShrineHistory=0`/`deity_sources=0`/`history_sources=0`——**すべて0件** |
+| aggregate | `auth_user=1`/`userprofile=1`/`shrine=105`/`favorite=0`/`visit=2`/`goriyaku_relation=283`——**完全不変** |
+
+Production実行前に、Production相当のschema/dataでPASSすることを確認
+済み。テスト後、この隔離DBは削除した。
+
+### Phase 10 — Final Django Plan
+
+```
+Planned operations:
+temples.0093_shrine_knowledge_model_foundation
+    Create model ShrineKnowledgeSource
+    Create model ShrineHistory
+    Create model ShrineDeity
+```
+
+Phase 7/9の内容と完全一致。credential/hostname非露出。
+`STOP_PLAN_MISMATCH`には該当しない。
+
+### Phase 11 — Human Execution Boundary
+
+以下すべてPASS:
+
+- [x] develop SHA correct（`922343dc`）
+- [x] working tree clean
+- [x] package parity PASS
+- [x] credential gate PASS
+- [x] `users 0006` applied
+- [x] `temples 0090` applied
+- [x] `temples 0091` applied
+- [x] `temples 0092` applied
+- [x] `temples 0093` pending
+- [x] Stage 3効果intact
+- [x] Stage 4 schema intact
+- [x] fresh snapshot valid
+- [x] fresh backup PASS
+- [x] migration file unchanged（PR #2221以来無変更）
+- [x] Production schema compatible
+- [x] Production-equivalent local test PASS
+- [x] `--plan` exact match
+- [x] `DEBUG=0`
+- [x] `USE_GIS=1`
+
+全項目PASS——実行可。
+
+### Phase 12 — Execute `temples 0093`
+
+| 項目 | 値 |
+|---|---|
+| コマンド | `python manage.py migrate temples 0093 --noinput`（app-scoped、
+  target-scoped、bare `migrate`は不使用） |
+| 実行開始 | `2026-08-10T01:51:21Z` |
+| 実行終了 | `2026-08-10T01:51:28Z` |
+| 出力 | `Applying temples.0093_shrine_knowledge_model_foundation... OK` |
+| exit status | **`0`（成功）** |
+
+credential・hostnameは出力に一切含まれなかった。
+
+### Phase 13 — Immediate Verification Boundary
+
+`temples 0093`実行直後、Knowledge Data投入へは**進んでいない**。
+以降はread-only verificationのみを実施した。
+
+### Phase 14〜18 — Verification（read-only、`post_0093_verification.sql`）
+
+verification時刻: `2026-08-10 01:51:52.766887+00`
+
+**Phase 14: Migration State**
+
+| migration | applied timestamp |
+|---|---|
+| `users 0006` | `2026-08-09 12:02:10.455239+00`（**不変**） |
+| `temples 0090` | `2026-08-09 12:13:30.066579+00`（**不変**） |
+| `temples 0091` | `2026-08-10 01:18:53.573612+00`（**不変**） |
+| `temples 0092` | `2026-08-10 01:38:24.112859+00`（**不変**） |
+| `temples 0093` | `2026-08-10 01:51:28.293573+00`（新規） |
+
+Production migration sequenceが目標state（`users 0006`＋
+`temples 0090`〜`0093`すべてapplied）へ到達したことを確認した。
+
+**Phase 15: Knowledge Schema Verification**
+
+5 table（`temples_shrineknowledgesource`・`temples_shrinedeity`・
+`temples_shrinehistory`・`temples_shrinedeity_sources`・
+`temples_shrinehistory_sources`）すべて存在。PK/FK制約を確認:
+
+- `ShrineHistory.shrine_id`→`temples_shrine`、`ShrineDeity.shrine_id`→`temples_shrine`（CASCADE）
+- M2M through table（`temples_shrinehistory_sources`・
+  `temples_shrinedeity_sources`）が正しいFK（`shrinehistory`/`shrinedeity`
+  ↔`shrineknowledgesource`）と一意制約（`..._uniq`）を持つ
+- `idx_shrine_history_sort`・`idx_shrine_deity_sort`インデックスとも
+  正しいtableに作成済み
+
+想定外のtable/column/constraintは1件もなし。
+
+**Phase 16: Knowledge Empty-State Verification**
+
+| table | 件数 |
+|---|---|
+| `ShrineKnowledgeSource` | `0` |
+| `ShrineDeity` | `0` |
+| `ShrineHistory` | `0` |
+| deity-source relation | `0` |
+| history-source relation | `0` |
+
+**Knowledge Dataは1件も投入されていない**——schema foundationのみ
+という`0093`の意図と完全に一致。
+
+**Phase 17: Aggregate Verification**
+
+| 項目 | 0093前 | 0093後 | 判定 |
+|---|---|---|---|
+| `auth_user` | 1 | 1 | 不変 |
+| `userprofile` | 1 | 1 | 不変 |
+| `shrine` | 105 | 105 | 不変 |
+| `favorite` | 0 | 0 | 不変 |
+| `visit` | 2 | 2 | 不変 |
+| `goriyaku_relation` | 283 | 283 | 不変 |
+
+`CreateModel`中心のmigrationとして期待通り、既存application data
+aggregatesは一切変化しなかった。
+
+**Phase 18: Previous Stage Regression**
+
+- [x] `users_userprofile`の4カラムすべて存在
+- [x] `0091`のcanonical効果（id=21/22の`history_theme`/`goriyaku`/
+  `updated_at`）が完全に不変
+- [x] duplicate行（id=101/103）も引き続き無変化
+- [x] `0092`の`thread_id`列（`temples_shrinereflection`・`temples_visit`
+  とも`bigint`・nullable）が維持されている
+
+`0093`による既存Stageへのregressionは検出されなかった。
+
+### Phase 19 — Runtime Smoke QA
+
+`NOT_EXECUTED_RUNTIME_ACCESS_REQUIRED`。これまでのStageと同様、本
+セッションのcredential bridgeはDB接続専用であり、Production backend
+のpublic URLはこのセッションのどの認可済みチャネルにも存在しない。
+hostname記録禁止の原則に従い、推測・検索によるURL特定は行わなかった。
+DB-level verification（Phase 14〜18）が本Stageの正式なverification
+であり、すべてPASSしている。
+
+### Phase 20 — Failure Handling
+
+該当なし（migrationはexit 0で正常終了）。
+
+### Phase 21 — Success Classification
+
+**`TEMPLES_0093_EXECUTION_PASS`**
+
+根拠: exit 0、`temples 0093` applied確認、Knowledge schema
+（5 table・PK/FK・M2M through table・unique制約・index）が想定と
+完全一致、Knowledge tableすべて0件（意図しないdata writeなし）、
+既存aggregateすべて不変、`users 0006`/`temples 0090`/`0091`/`0092`に
+regressionなし、想定外の変更ゼロ——Phase 21の全条件を満たす。
+
+### Phase 22 — Migration Sequence Final Classification
+
+**`PRODUCTION_MIGRATION_SEQUENCE_PASS`（候補）**
+
+`users 0006`＋`temples 0090`〜`0093`のすべてのmigrationがProduction
+へexit 0で適用され、各Stageのverificationがすべて PASS したことを
+以って、Production migration sequence自体は完了したと判断する。
+
+**ただし以下は明示的に別Gateとして残る（本Stageでは一切着手して
+いない）:**
+
+- Knowledge Data import（Knowledge tableは依然0件）
+- Knowledge Coverage
+- Runtime authenticated QA（`/api/auth/me`・MyPage等、
+  `NOT_EXECUTED_RUNTIME_ACCESS_REQUIRED`のまま）
+- Batch 8
+- Score/Ranking変更
+- Source UI
+- PER_FACT_RENDERING
+
+migration完了とKnowledge rollout完了を混同しない。
+
+### Production Write Summary（Final Stage時点の累積）
+
+- **Production write: `temples 0090` = EXECUTED（Stage 2、変化なし）**
+- **temples 0091 = EXECUTED（Stage 3 Retry、`TEMPLES_0091_RETRY_PASS`）**
+- **temples 0092 = EXECUTED（Stage 4、`TEMPLES_0092_EXECUTION_PASS`）**
+- **temples 0093 = EXECUTED（Final Stage、exit 0、`TEMPLES_0093_EXECUTION_PASS`）**
+- **Knowledge Data writes = 0**
+- **Batch 8 = NOT_STARTED**
