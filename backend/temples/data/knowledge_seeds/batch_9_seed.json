@@ -1,0 +1,349 @@
+{
+  "schema_version": "1.0",
+  "sources": [
+    {
+      "key": "batch9-usa-official",
+      "source_type": "shrine_official",
+      "title": "由緒｜八幡総本宮 宇佐神宮",
+      "publisher": "宇佐神宮",
+      "url": "https://www.usajinguu.com/lineage/",
+      "bibliography": "",
+      "accessed_at": "2026-08-10",
+      "verified_at": "2026-08-10T10:00:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "三御殿の御祭神、八幡大神の顕現伝承、725年の一之御殿造立、733年の二之御殿造立、823年の三之御殿建立を直接確認。"
+    },
+    {
+      "key": "batch9-omiya-hikawa-official",
+      "source_type": "shrine_official",
+      "title": "由緒・歴史｜武蔵一宮 氷川神社",
+      "publisher": "武蔵一宮 氷川神社",
+      "url": "https://musashiichinomiya-hikawa.or.jp/about/index.html",
+      "bibliography": "",
+      "accessed_at": "2026-08-10",
+      "verified_at": "2026-08-10T10:05:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "御祭神三柱、創立伝承、天平神護2年の封戸寄進記録を直接確認。"
+    },
+    {
+      "key": "batch9-kifune-deity-official",
+      "source_type": "shrine_official",
+      "title": "貴船神社について｜貴布禰総本宮 貴船神社",
+      "publisher": "貴船神社",
+      "url": "https://kifunejinja.jp/shrine/",
+      "bibliography": "",
+      "accessed_at": "2026-08-10",
+      "verified_at": "2026-08-10T10:10:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "本宮の高龗神と結社の磐長姫命を直接確認。奥宮の異説祭神はFact化しない。"
+    },
+    {
+      "key": "batch9-kifune-history-official",
+      "source_type": "shrine_official",
+      "title": "由緒｜貴布禰総本宮 貴船神社",
+      "publisher": "貴船神社",
+      "url": "https://kifunejinja.jp/sp/history.html",
+      "bibliography": "",
+      "accessed_at": "2026-08-10",
+      "verified_at": "2026-08-10T10:15:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "社記に基づく玉依姫命と黄船の創建伝説を直接確認。"
+    },
+    {
+      "key": "batch9-oarai-official",
+      "source_type": "shrine_official",
+      "title": "御祭神・由緒｜大洗磯前神社",
+      "publisher": "大洗磯前神社",
+      "url": "https://www.oarai-isosakijinja.net/yuisyo/",
+      "bibliography": "",
+      "accessed_at": "2026-08-10",
+      "verified_at": "2026-08-10T10:20:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "御祭神二柱と『日本文徳天皇実録』に基づく斉衡3年の降臨・創建記事を直接確認。"
+    },
+    {
+      "key": "batch9-hakone-official",
+      "source_type": "shrine_official",
+      "title": "箱根神社の由緒｜箱根神社",
+      "publisher": "箱根神社",
+      "url": "https://hakonejinja.or.jp/hakone/",
+      "bibliography": "",
+      "accessed_at": "2026-08-10",
+      "verified_at": "2026-08-10T10:25:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "箱根大神を構成する御三神と、天平宝字元年の社殿建立記事を直接確認。"
+    }
+  ],
+  "shrines": [
+    {
+      "shrine_ref": {
+        "name_jp": "宇佐神宮",
+        "address": "大分県宇佐市南宇佐2859"
+      },
+      "deities": [
+        {
+          "display_name": "八幡大神",
+          "canonical_name": "誉田別尊",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T10:00:00+00:00",
+          "note": "一之御殿の御祭神。公式は応神天皇の御神霊と説明する。",
+          "source_keys": ["batch9-usa-official"]
+        },
+        {
+          "display_name": "比売大神",
+          "canonical_name": "比売大神",
+          "role": "enshrined",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T10:00:00+00:00",
+          "note": "二之御殿の御祭神。公式の祭祀単位を保持し、構成する三女神を別Factへ重複展開しない。",
+          "source_keys": ["batch9-usa-official"]
+        },
+        {
+          "display_name": "神功皇后",
+          "canonical_name": "息長帯姫命",
+          "role": "enshrined",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T10:00:00+00:00",
+          "note": "三之御殿の御祭神。",
+          "source_keys": ["batch9-usa-official"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "historical_event",
+          "title": "現在地での一之御殿造立",
+          "content": "宇佐神宮の公式由緒は、神亀2年（725）に現在地へ一之御殿を造立し、八幡神を祀ったことを宇佐神宮の創建としている。",
+          "period_text": "神亀2年（725）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T10:00:00+00:00",
+          "note": "571年の顕現は伝承であるため、本Factは公式が創建と位置づける725年の造立に限定。",
+          "source_keys": ["batch9-usa-official"]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "氷川神社（大宮）",
+        "address": "埼玉県さいたま市大宮区高鼻町1-407"
+      },
+      "deities": [
+        {
+          "display_name": "須佐之男命",
+          "canonical_name": "須佐之男命",
+          "role": "enshrined",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T10:05:00+00:00",
+          "note": "公式御祭神表記に基づく。",
+          "source_keys": ["batch9-omiya-hikawa-official"]
+        },
+        {
+          "display_name": "稲田姫命",
+          "canonical_name": "稲田姫命",
+          "role": "enshrined",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T10:05:00+00:00",
+          "note": "公式御祭神表記に基づく。",
+          "source_keys": ["batch9-omiya-hikawa-official"]
+        },
+        {
+          "display_name": "大己貴命",
+          "canonical_name": "大己貴命",
+          "role": "enshrined",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T10:05:00+00:00",
+          "note": "公式御祭神表記に基づく。",
+          "source_keys": ["batch9-omiya-hikawa-official"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "historical_event",
+          "title": "天平神護2年の封戸寄進記録",
+          "content": "氷川神社の公式由緒は、『新抄格勅符抄』に奈良時代の天平神護2年（766）、朝廷が当社へ封戸三戸を寄進した記述があるとしている。",
+          "period_text": "天平神護2年（766）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T10:05:00+00:00",
+          "note": "創立年代伝承ではなく、公式が記録上の初見として挙げる記事を採用。",
+          "source_keys": ["batch9-omiya-hikawa-official"]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "貴船神社",
+        "address": "京都府京都市左京区鞍馬貴船町180"
+      },
+      "deities": [
+        {
+          "display_name": "高龗神",
+          "canonical_name": "高龗神",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T10:10:00+00:00",
+          "note": "本宮の御祭神。奥宮の異説表記はこのFactへ統合しない。",
+          "source_keys": ["batch9-kifune-deity-official"]
+        },
+        {
+          "display_name": "磐長姫命",
+          "canonical_name": "磐長姫命",
+          "role": "enshrined",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T10:10:00+00:00",
+          "note": "結社の御祭神。",
+          "source_keys": ["batch9-kifune-deity-official"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "玉依姫命と黄船の創建伝説",
+          "content": "貴船神社の公式由緒は、社記の創建伝説として、反正天皇の御代に玉依姫命が黄船で水源を求めて貴船川をさかのぼり、現在の奥宮の地に祠を営んで水神を祀ったと伝えている。",
+          "period_text": "反正天皇の御代（社記の伝説による）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T10:15:00+00:00",
+          "note": "公式が創建伝説と明記するため、history_type=traditionとして確定史実化しない。",
+          "source_keys": ["batch9-kifune-history-official"]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "大洗磯前神社",
+        "address": "茨城県東茨城郡大洗町磯浜町6890"
+      },
+      "deities": [
+        {
+          "display_name": "大己貴命",
+          "canonical_name": "大己貴命",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T10:20:00+00:00",
+          "note": "公式御祭神表記に基づく。",
+          "source_keys": ["batch9-oarai-official"]
+        },
+        {
+          "display_name": "少彦名命",
+          "canonical_name": "少彦名命",
+          "role": "enshrined",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T10:20:00+00:00",
+          "note": "公式御祭神表記に基づく。",
+          "source_keys": ["batch9-oarai-official"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "斉衡3年の神磯降臨と創建",
+          "content": "大洗磯前神社の公式由緒は、『日本文徳天皇実録』の記事に基づき、斉衡3年（856）12月29日に大己貴命と少彦名命が現在の神磯へ降臨したことから当社が創建されたと伝えている。",
+          "period_text": "斉衡3年（856）12月29日",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T10:20:00+00:00",
+          "note": "降臨を伴う創建由緒のためhistory_type=traditionとし、Sourceが示す史料名と年代を保持。",
+          "source_keys": ["batch9-oarai-official"]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "箱根神社",
+        "address": "神奈川県足柄下郡箱根町元箱根80-1"
+      },
+      "deities": [
+        {
+          "display_name": "瓊瓊杵尊",
+          "canonical_name": "瓊瓊杵尊",
+          "role": "enshrined",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T10:25:00+00:00",
+          "note": "御三神を併祀して箱根大神と奉称するとの公式表記に基づく。",
+          "source_keys": ["batch9-hakone-official"]
+        },
+        {
+          "display_name": "木花咲耶姫命",
+          "canonical_name": "木花咲耶姫命",
+          "role": "enshrined",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T10:25:00+00:00",
+          "note": "御三神を併祀して箱根大神と奉称するとの公式表記に基づく。",
+          "source_keys": ["batch9-hakone-official"]
+        },
+        {
+          "display_name": "彦火火出見尊",
+          "canonical_name": "彦火火出見尊",
+          "role": "enshrined",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T10:25:00+00:00",
+          "note": "御三神を併祀して箱根大神と奉称するとの公式表記に基づく。",
+          "source_keys": ["batch9-hakone-official"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "historical_event",
+          "title": "天平宝字元年の社殿建立",
+          "content": "箱根神社の公式由緒は、天平宝字元年（757）、箱根山へ入峰した万巻上人が箱根大神の神託を受け、勅願によって現在地に社殿を建立したと記している。",
+          "period_text": "天平宝字元年（757）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T10:25:00+00:00",
+          "note": "孝昭天皇代の創祀伝承ではなく、公式由緒が記す奈良時代の社殿建立に限定。",
+          "source_keys": ["batch9-hakone-official"]
+        }
+      ]
+    }
+  ]
+}
