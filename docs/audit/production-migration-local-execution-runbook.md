@@ -2,9 +2,10 @@
 > Stage 3初回試行（`temples 0091`）は失敗（`GEOSException`、atomic
 > rollback、production変化なし）。remediation（PR #2337、
 > `docs/audit/temples-0091-production-remediation.md`、
-> `TEMPLES_0091_REMEDIATION_READY`）を経て、**Stage 3 Retryで
-> `temples 0091`は成功（`TEMPLES_0091_RETRY_PASS`）。`temples 0092`
-> 以降は未実行のまま停止中。次のアクションはMother Ship判断待ち。**
+> `TEMPLES_0091_REMEDIATION_READY`）を経て、Stage 3 Retryで
+> `temples 0091`は成功（`TEMPLES_0091_RETRY_PASS`）。**Stage 4で
+> `temples 0092`も成功（`TEMPLES_0092_EXECUTION_PASS`）。`temples 0093`
+> は未実行のまま停止中。次のアクションはMother Ship判断待ち。**
 >
 > 本ドキュメントは**正本**である。`docs/audit/
 > production-migration-execution-gate.md`・`production-migration-go-no-go-final.md`・
@@ -16,12 +17,13 @@
 > 「Execution Record — Stage 1: `users 0006`」・
 > 「Execution Record — Stage 2: `temples 0090`」・
 > 「Execution Record — Stage 3: `temples 0091`（失敗・STOP）」・
-> 「Execution Record — Stage 3 Retry: `temples 0091`（成功・PASS）」の
+> 「Execution Record — Stage 3 Retry: `temples 0091`（成功・PASS）」・
+> 「Execution Record — Stage 4: `temples 0092`（成功・PASS）」の
 > 各節を参照。失敗記録は履歴として削除・改変していない。**
 >
-> **Production migrationはStage 3 Retryで`temples 0091`のみを実行した
-> （write 1件）。`temples 0092`/`0093`は未実行のまま。** それ以外は
-> read-only verification（`showmigrations`・`migrate --plan`・
+> **Production migrationはStage 3 Retryで`temples 0091`、Stage 4で
+> `temples 0092`を実行した（write計2件）。`temples 0093`は未実行のまま。**
+> それ以外はread-only verification（`showmigrations`・`migrate --plan`・
 > `readonly_query.sh`経由のSELECT）のみ。
 
 # Production Migration — Local Direct Execution Final Gate & Runbook
@@ -944,4 +946,257 @@ aggregate delta期待通り（`goriyaku_relation` +3、他は不変）、
 - **Production write: `temples 0090` = EXECUTED（Stage 2、変化なし）**
 - **temples 0091 = EXECUTED（Stage 3 Retry、exit 0、`TEMPLES_0091_RETRY_PASS`）**
 - **temples 0092 = NOT_EXECUTED**
+- **temples 0093 = NOT_EXECUTED**
+
+---
+
+## Execution Record — Stage 4: `temples 0092`（成功・PASS）
+
+**本Stageは成功した。** `temples 0092`はProduction適用に成功した。
+`temples 0093`は実行していない。
+
+### Phase 0 — Source of Truth確認
+
+- [x] 本ドキュメント（Stage 1〜Stage 3 Retryまでの全Execution Record）を再読
+- [x] 矛盾なし
+
+### Phase 1 — develop同期
+
+| 項目 | 結果 |
+|---|---|
+| PR #2338 merge確認 | `MERGED`、merge commit `a878ade891bb702f0f2512d7af0a7353e55f5009` |
+| develop checkout / 同期 | 完了、`origin/develop`とfast-forward同期済み |
+| develop HEAD SHA | `a878ade891bb702f0f2512d7af0a7353e55f5009` |
+| working tree | clean |
+
+### Phase 2 — Local Environment
+
+| 項目 | 結果 |
+|---|---|
+| `python --version` | `Python 3.11.13` |
+| Django version | `5.2.16` |
+| psycopg version | `3.3.4` |
+| `DEBUG` | `0`（明示指定） |
+| `USE_GIS` | `1`（明示指定） |
+
+### Phase 3 — Credential Gate
+
+- [x] `check_credential_presence.sh` → `VAR_SET=1`、
+  `{'parses': True, 'scheme_is_postgres': True, 'has_host': True,
+  'has_port': True, 'has_dbname': True, 'has_userinfo': True}`
+
+### Phase 4 — Stage 3 State Recheck / Phase 5 — Fresh Pre-0092 Snapshot
+
+`pre_0092_snapshot.sql`を`readonly_query.sh`経由で実行（snapshot時刻
+`2026-08-10 01:36:19.124637+00`）:
+
+| 確認項目 | 結果 |
+|---|---|
+| `users 0006`/`temples 0090`/`0091` applied、`0092`/`0093` unapplied | 全項目一致 |
+| `0091` canonical効果 | id=21・id=22の`history_theme`/`goriyaku`/`updated_at`がStage 3 Retry完了時点から**無変化**、duplicate（id=101/103）も引き続き無変化 |
+| goriyaku_tags関連 | 3件（`地域安泰`欠落を反映した内容）、Stage 3 Retry完了時から無変化 |
+| aggregate（新baseline） | `auth_user=1`/`userprofile=1`/`shrine=105`/`favorite=0`/`visit=2`/`goriyaku_relation=283`——**旧baseline（280）ではなく`0091`適用後の283を正本として使用** |
+| 全8 app migration state | drift 0件、既知構成と完全一致 |
+
+Stage 3 Retry状態の崩れなし。`STOP_STAGE3_STATE_DRIFT`には該当しない。
+
+### Phase 6 — Fresh Backup After 0091
+
+| 項目 | 結果 |
+|---|---|
+| dump取得 | 成功（PostgreSQL 17クライアント明示指定） |
+| `roles.sql` size | `5426` bytes |
+| `schema.sql` size | `81650` bytes（`0091`はdata-onlyのため不変、妥当） |
+| `data.sql` size | `3843434` bytes（Stage 3 Retry直前backupの`3843102`より+332 bytes——
+  `0091`が書き込んだ`history_theme`/`goriyaku`本文・tag関連の増分と整合） |
+| 保存先 | repo外（新規timestampディレクトリ） |
+| credential/hostname露出 | なし（`source:`行を`grep -v`で除外） |
+
+### Phase 7 — Target Migration 0092 Fresh Audit
+
+過去監査を参照せず、`backend/temples/migrations/0092_add_thread_to_visit_and_reflection.py`
+をfreshに読んだ。
+
+| 確認項目 | 結果 |
+|---|---|
+| ファイル名 | `0092_add_thread_to_visit_and_reflection.py`（一致） |
+| dependency | `temples.0091_fill_missing_local_shrine_reason_facts`のみ |
+| operation | `AddField`×2のみ（`RunPython`/`RunSQL`なし） |
+| 対象1 | `shrinereflection.thread`: `ForeignKey(null=True, blank=True, on_delete=SET_NULL, to="temples.conciergethread", related_name="reflections")` |
+| 対象2 | `visit.thread`: 同型（`related_name="visits"`） |
+| destructive operation | なし |
+| reverse | Django標準の`AddField`逆操作（`RemoveField`相当）、カスタムreverse不要 |
+| 最終commit | `5a67f4a0`（PR #1992）——現HEADより大幅に前、変更なし |
+
+`0091`のような`RunPython`+ORM無条件クエリという構造ではなく、単純な
+schema-only `AddField`だが、Phase 8で実schemaとの互換性を実測確認した
+（推測で「単純だから安全」とは判断しない）。
+
+### Phase 8 — Production Actual Schema Compatibility
+
+`schema_compat_0092.sql`を`readonly_query.sh`経由で実行:
+
+| 確認項目 | 結果 |
+|---|---|
+| 対象table存在 | `temples_shrinereflection`・`temples_visit`・`temples_conciergethread`すべて存在 |
+| `thread_id`列の事前不存在 | 0件（両tableとも未存在、conflictなし） |
+| FK先`temples_conciergethread`のPK | `id bigint`——標準的なDjango FK互換 |
+| 両tableの現行column一覧 | 想定外のcolumn・GIS系型は1件もなし（`0091`のような`location`型drift相当の問題は本tableには存在しない） |
+| 既存constraint一覧 | 標準的なPK/FKのみ、命名衝突なし |
+
+`STOP_SCHEMA_COMPATIBILITY_MISMATCH`には該当しない。
+
+### Phase 9 — Production-Equivalent Local Test
+
+Phase 6で取得したfresh backup（`users 0006`/`temples 0090`/`0091`適用
+済み状態を実際に反映）を、ローカルの隔離PostgreSQL 18 + PostGIS
+インスタンスへ復元し、`temples 0092`のみを適用した。
+
+| 項目 | 結果 |
+|---|---|
+| 復元前state確認 | `temples`最新=`0091`、`goriyaku_relation=283`、`thread`列不存在——想定通り |
+| `migrate temples 0092 --noinput` | exit `0` |
+| `thread_id`列 | 両tableに`bigint`・nullable・`temples_conciergethread`参照FK・indexとも正しく作成 |
+| aggregate | `auth_user=1`/`userprofile=1`/`shrine=105`/`favorite=0`/`visit=2`/`goriyaku_relation=283`——**完全不変**（schema-only migrationとして期待通り） |
+| `temples 0093` | **実行していない** |
+
+Production実行前に、Production相当のschema/dataでPASSすることを確認
+済み。テスト後、この隔離DBは削除した。
+
+### Phase 10 — Final Django Plan
+
+```
+Planned operations:
+temples.0092_add_thread_to_visit_and_reflection
+    Add field thread to shrinereflection
+    Add field thread to visit
+```
+
+Phase 7/9の内容と完全一致。credential/hostname非露出。
+`STOP_PLAN_MISMATCH`には該当しない。
+
+### Phase 11 — Human Execution Boundary
+
+以下すべてPASS:
+
+- [x] develop SHA correct（`a878ade8`）
+- [x] working tree clean
+- [x] package parity PASS
+- [x] credential gate PASS
+- [x] `users 0006` applied
+- [x] `temples 0090` applied
+- [x] `temples 0091` applied
+- [x] `temples 0092` pending
+- [x] `temples 0093` pending
+- [x] Stage 3効果intact
+- [x] fresh snapshot valid
+- [x] fresh backup PASS
+- [x] migration file unchanged（PR #1992以来無変更）
+- [x] Production schema compatible
+- [x] Production-equivalent local test PASS
+- [x] `--plan` exact match
+- [x] `DEBUG=0`
+- [x] `USE_GIS=1`
+
+全項目PASS——実行可。
+
+### Phase 12 — Execute `temples 0092`
+
+| 項目 | 値 |
+|---|---|
+| コマンド | `python manage.py migrate temples 0092 --noinput`（app-scoped、
+  target-scoped、bare `migrate`は不使用） |
+| 実行開始 | `2026-08-10T01:38:13Z` |
+| 実行終了 | `2026-08-10T01:38:24Z` |
+| 出力 | `Applying temples.0092_add_thread_to_visit_and_reflection... OK` |
+| exit status | **`0`（成功）** |
+
+credential・hostnameは出力に一切含まれなかった。
+
+### Phase 13 — Immediate Hard STOP
+
+`temples 0092`実行直後、`temples 0093`は**実行していない**。以降は
+read-only verificationのみを実施した。
+
+### Phase 14〜17 — Verification（read-only、`post_0092_verification.sql`）
+
+verification時刻: `2026-08-10 01:39:13.072309+00`
+
+**Phase 14: Migration State**
+
+| 確認項目 | 結果 |
+|---|---|
+| `temples 0092` applied | `2026-08-10 01:38:24.112859+00`（新規レコード） |
+| `temples 0093` applied | `false` |
+| `temples 0090` applied timestamp | `2026-08-09 12:13:30.066579+00`（**不変**） |
+| `temples 0091` applied timestamp | `2026-08-10 01:18:53.573612+00`（**不変**） |
+| `users 0006` applied timestamp | `2026-08-09 12:02:10.455239+00`（**不変**） |
+
+**Phase 15: Target Schema Verification**
+
+| table | column | type | nullable |
+|---|---|---|---|
+| `temples_shrinereflection` | `thread_id` | `bigint` | `YES` |
+| `temples_visit` | `thread_id` | `bigint` | `YES` |
+
+FK制約: `temples_visit_thread_id_..._fk_temples_conciergethread_id`・
+`temples_shrinereflec_thread_id_..._fk_temples_c`ともに
+`temples_conciergethread`を正しく参照。両tableの全column一覧を確認し、
+想定外のcolumnは0件。
+
+**Phase 16: Aggregate Verification**
+
+| 項目 | 0092前 | 0092後 | 判定 |
+|---|---|---|---|
+| `auth_user` | 1 | 1 | 不変 |
+| `userprofile` | 1 | 1 | 不変 |
+| `shrine` | 105 | 105 | 不変 |
+| `favorite` | 0 | 0 | 不変 |
+| `visit` | 2 | 2 | 不変 |
+| `goriyaku_relation` | 283 | 283 | 不変 |
+
+schema-only migrationとして期待通り、application data aggregatesは
+一切変化しなかった。追加で、既存`visit`/`shrinereflection`全行の
+`thread_id`が0件を除きすべて`NULL`であることを確認——`AddField`が
+意図しないbackfillを行っていないことも実測済み。
+
+**Phase 17: Previous Stage Regression**
+
+- [x] `users_userprofile`の4カラムすべて存在
+- [x] `temples 0090`/`0091`のapplied timestamp不変（再適用なし）
+- [x] `0091`のcanonical効果（id=21/22の`history_theme`/`goriyaku`/
+  `updated_at`）が`0092`実行前後で完全に不変
+- [x] duplicate行（id=101/103）も引き続き無変化
+
+`0092`による既存Stageへのregressionは検出されなかった。
+
+### Phase 18 — Runtime Smoke QA
+
+`NOT_EXECUTED_RUNTIME_ACCESS_REQUIRED`。Stage 3 Retryと同様、本セッション
+のcredential bridgeはDB接続専用であり、Production backendのpublic URL
+はこのセッションのどの認可済みチャネルにも存在しない。hostname記録
+禁止の原則に従い、推測・検索によるURL特定は行わなかった。DB-level
+verification（Phase 14〜17）が本Stageの正式なverificationであり、
+すべてPASSしている。
+
+### Phase 19 — Failure Handling
+
+該当なし（migrationはexit 0で正常終了）。
+
+### Phase 20 — Success Classification
+
+**`TEMPLES_0092_EXECUTION_PASS`**
+
+根拠: exit 0、`temples 0092` applied確認、target schema（`thread_id`
+column×2、FK制約、index）が想定と完全一致、aggregate不変確認
+（schema-only migrationとして妥当）、既存行への意図しないbackfillなし、
+`users 0006`/`temples 0090`/`temples 0091`にregressionなし、
+`temples 0093`は引き続き未適用、想定外の変更ゼロ——Phase 20の全条件を
+満たす。
+
+### Production Write Summary（Stage 4時点の累積）
+
+- **Production write: `temples 0090` = EXECUTED（Stage 2、変化なし）**
+- **temples 0091 = EXECUTED（Stage 3 Retry、`TEMPLES_0091_RETRY_PASS`）**
+- **temples 0092 = EXECUTED（Stage 4、exit 0、`TEMPLES_0092_EXECUTION_PASS`）**
 - **temples 0093 = NOT_EXECUTED**
