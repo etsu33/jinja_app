@@ -13,6 +13,12 @@
 > dumpから復元したisolated DBへの実際のseed投入・検証、そして
 > Production DBに対する`--validate-only`・`--dry-run`（いずれも
 > DB書き込みを一切行わないモード）のみである。Production DB writeは0件。
+>
+> **追記（後続セッション）**: Mother Ship承認後、
+> `docs/audit/knowledge-batch10-production-import-execution.md`
+> （`BATCH10_PRODUCTION_IMPORT_EXECUTED`）でProduction Knowledge Data
+> importを実際に実行済み。本ドキュメントの内容自体は実行前時点の
+> As-Isとして書き換えていない。
 
 # Knowledge Batch 10 Seed Preflight — Mother Ship Report
 
