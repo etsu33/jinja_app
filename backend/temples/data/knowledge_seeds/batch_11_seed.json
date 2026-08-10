@@ -13,7 +13,7 @@
       "verification_status": "source_confirmed",
       "confidence": "high",
       "language": "ja",
-      "note": "御祭神三柱（倉稲魂神・市杵島比賣神・福禄寿）、文正元年（1466）の創建伝承を直接確認。"
+      "note": "公式ページ上は倉稲魂神・市杵島比賣神・福禄寿の三柱を御祭神として掲載しているが、福禄寿は七福神信仰由来の神格でありMother Ship方針によりFact化対象外とした（本seedでは倉稲魂神・市杵島比賣神の二柱のみFact化）。文正元年（1466）の創建伝承を直接確認。"
     },
     {
       "key": "batch11-nedu-official",
@@ -98,18 +98,7 @@
           "verification_status": "source_confirmed",
           "confidence": "high",
           "verified_at": "2026-08-10T12:30:00+00:00",
-          "note": "弁財天として財運を授ける神とされる、公式サイトの表記に基づく。",
-          "source_keys": ["batch11-koami-official"]
-        },
-        {
-          "display_name": "福禄寿",
-          "canonical_name": "福禄寿",
-          "role": "enshrined",
-          "sort_order": 2,
-          "verification_status": "source_confirmed",
-          "confidence": "high",
-          "verified_at": "2026-08-10T12:30:00+00:00",
-          "note": "七福神信仰に由来する神格。公式サイトが倉稲魂神・市杵島比賣神と並ぶ御祭神として明記しているためFact化するが、古典的な神話系譜を持つ祭神とは性質が異なる点を記録する。",
+          "note": "弁財天として財運を授ける神とされる、公式サイトの表記に基づく。公式ページは福禄寿も御祭神として掲載しているが、七福神信仰由来の神格でありMother Ship方針によりFact化対象外とした（将来のKnowledge Model設計課題として分離、ASSOCIATED_WORSHIP_TARGET_MODEL_REVIEW）。",
           "source_keys": ["batch11-koami-official"]
         }
       ],

@@ -1,4 +1,4 @@
-> **Status: `BATCH11_PRODUCTION_IMPORT_READY_WITH_LIMITATIONS`。**
+> **Status: `BATCH11_PRODUCTION_IMPORT_READY`。**
 >
 > 本ドキュメントは`docs/audit/knowledge-batch11-target-selection.md`
 > （`BATCH11_TARGET_SELECTION_READY_WITH_LIMITATIONS`）で選定された推奨5社
@@ -12,6 +12,16 @@
 > DBへの実際のseed投入・検証、そしてProduction DBに対する
 > `--validate-only`・`--dry-run`（いずれもDB書き込みを一切行わない
 > モード）のみである。Production DB writeは0件。
+>
+> **追記（Batch 11 Deity Scope Finalization、後続セッション）**: 唯一の
+> Mother Ship判断項目であった小網神社「福禄寿」の扱いについて、Mother
+> Shipが「ShrineDeityへ含めない」と決定した。`batch_11_seed.json`から
+> 福禄寿のFactを除外し（Deity 17→16）、ローカル・Production-equivalent・
+> Production read-only（`--validate-only`/`--dry-run`）のフルサイクルを
+> 再実施して結果が期待どおりであることを確認済み。詳細はSection
+> 「Batch 11 Deity Scope Finalization」を参照。この追記により、本
+> ドキュメントのStatusは`BATCH11_PRODUCTION_IMPORT_READY_WITH_LIMITATIONS`
+> から`BATCH11_PRODUCTION_IMPORT_READY`へ更新した。
 
 # Knowledge Batch 11 Seed Preflight — Mother Ship Report
 
@@ -286,27 +296,140 @@ Fact–Source relation count: 24（Deity 17 + History 7）。
 - partial 2社（阿佐ヶ谷神明宮・香取神宮）のHistory repairは別タスクの
   まま。
 
+## 12. Batch 11 Deity Scope Finalization（追記）
+
+Mother Ship方針: 小網神社の「福禄寿」をShrineDeityへ含めない
+（七福神信仰由来の神格であり、通常の「神社の御祭神」と同一contractへ
+無条件に入れると意味モデルが揺れるため。将来のKnowledge Model設計課題
+として分離する。分類: `ASSOCIATED_WORSHIP_TARGET_MODEL_REVIEW`）。
+
+### 変更内容
+
+- `batch_11_seed.json`から小網神社の福禄寿`ShrineDeity` Factのみを除外
+- 福禄寿が参照していたSource（`batch11-koami-official`）は倉稲魂神・
+  市杵島比賣神・史実Factから引き続き参照されており、orphan化していない
+- Sourceの`note`を、公式ページには福禄寿の記載があるがFact化対象外と
+  した旨がわかるよう更新
+
+### Seed hash
+
+| | 値 |
+|---|---|
+| 旧SHA-256（福禄寿含む、履歴として記録） | `236d272aa526d6763ba097d81610530f434feb7b33788c3529b832fc64089371` |
+| 新SHA-256（福禄寿除外後） | `4cf202506823da322fad710843c2a7aa600e35d7606890ce8f3d9a1c76446b2c` |
+
+### Count recalculation（fresh実測）
+
+| 指標 | 旧値 | 新値 |
+|---|---:|---:|
+| Shrine | 5 | 5（不変） |
+| Source | 5 | 5（不変） |
+| Deity | 17 | 16 |
+| History | 7 | 7（不変） |
+| Deity–Source relation | 17 | 16 |
+| History–Source relation | 7 | 7（不変） |
+| source-less | 0 | 0 |
+| orphan Source | — | 0 |
+
+小網神社の内訳: 修正前は3 Deity（倉稲魂神・市杵島比賣神・福禄寿）、
+修正後は2 Deity（倉稲魂神・市杵島比賣神）のみ。他4社のDeity/Historyは
+無変更。
+
+### Regression tests
+
+`test_batch11_knowledge_seed.py`を更新（Deity件数17→16、
+`--dry-run`期待出力の`deity_SKIP_EXISTS`件数を修正）。新規テスト
+`test_batch11_seed_excludes_fukurokuju_from_koami_deities`を追加し、
+小網神社のDeityが`["倉稲魂神", "市杵島比賣神"]`のみであること、
+Sourceがorphan化していないことを固定化。既存の汎用テスト（24件）・
+Batch9/10テスト（7件）を含め、合計38件すべてPASS（回帰なし）。
+
+### Local validation（修正版seed、クリーンな状態からの再実施）
+
+ローカル`jinja_db`の対象5社Knowledge（前セッションで投入済みだった
+福禄寿含む旧データ）を削除し、クリーンな状態（対象5社deity=0/
+history=0、Source79・Deity149・History106）から再実施した。
+
+| step | 結果 |
+|---|---|
+| `--validate-only` | OK, no errors |
+| `--dry-run`（1回目） | `{'source_CREATE': 5, 'deity_CREATE': 16, 'history_CREATE': 7}` |
+| 適用 | `sources created=5, deities created=16, histories created=7` |
+| 件数検証 | Source 79→84・Deity 149→165・History 106→113、小網神社=2 Deity（福禄寿なし）、`display_name='福禄寿'`のDeityはDB全体で0件 |
+| `--dry-run`（2回目、冪等性） | `{'source_REUSE_EXISTING': 5, 'deity_SKIP_EXISTS': 16, 'history_SKIP_EXISTS': 7}`、CREATE 0件 |
+
+### Production-equivalent recheck
+
+fresh Production dump（`postgresql@17`バージョン一致クライアント）を
+新規取得し、isolated DBへ復元。復元直後の値はProduction同時刻の値
+（Source76・Deity149・History106・relation162/111）と完全一致。
+
+| step | 結果 |
+|---|---|
+| `--validate-only` | OK, no errors |
+| `--dry-run`（1回目） | `{'source_CREATE': 5, 'deity_CREATE': 16, 'history_CREATE': 7}` |
+| 適用 | `sources created=5, deities created=16, histories created=7` |
+| 件数検証 | Source 76→81・Deity 149→165・History 106→113・Deity–Source rel 162→178・History–Source rel 111→118（seedと完全一致） |
+| Coverage | complete 54→59・partial 2（不変）・none 49→44 |
+| source-less（対象5社） | Deity 0・History 0 |
+| 福禄寿混入チェック | DB全体で`display_name='福禄寿'`のDeity 0件 |
+| 無関係データ回帰チェック | 大國魂神社7/2・宇佐神宮3/1・芝大神宮2/2（いずれも既存値のまま不変） |
+| `--dry-run`（2回目、冪等性） | `{'source_REUSE_EXISTING': 5, 'deity_SKIP_EXISTS': 16, 'history_SKIP_EXISTS': 7}`、CREATE 0件 |
+
+isolated DBは検証完了後に`dropdb`で削除済み。
+
+### Production read-only recheck
+
+Production DBに対して`--validate-only`・`--dry-run`を再実行した
+（DB書き込みを一切行わないモード）。
+
+```
+validate-only: OK, no errors
+```
+
+```
+plan summary: {'source_CREATE': 5, 'deity_CREATE': 16, 'history_CREATE': 7}
+dry-run: OK, no DB writes performed
+```
+
+Production-equivalentの結果と完全一致。小網神社は`[deity] CREATE
+小網神社: 倉稲魂神`・`[deity] CREATE 小網神社: 市杵島比賣神`の2件のみで、
+福禄寿のCREATE行は出力されていない。unexpected SKIP/UPDATE/conflictは
+0件。
+
+実行後、`readonly_query.sh`でProduction状態（Source 76・Deity 149・
+History 106・relation 162/111・Knowledge Shrine 56）が実行前と完全に
+不変であることを確認した。
+
+### Remaining design issue（将来課題）
+
+`ASSOCIATED_WORSHIP_TARGET_MODEL_REVIEW`: 七福神・神仏習合等、古典的な
+神話系譜を持たない「祀られている対象」をKnowledge Modelでどう扱うかは
+未確定のまま。今回は保守的に除外したが、将来的に別のFact分類・別Model
+（`ShrineDeity`とは別の「合祀・併祀対象」概念）を設計する余地がある。
+本Batchでは新設せず、既存`ShrineDeity`契約を変更しない方針を維持した。
+
 ### Final Classification
 
-**`BATCH11_PRODUCTION_IMPORT_READY_WITH_LIMITATIONS`**
+**`BATCH11_PRODUCTION_IMPORT_READY`**
 
 READYと判断する根拠:
 
 - 5社全件が`IDENTITY_SAFE`・`NO_CONFLICT`・Evidence Gate要件を満たす
 - ローカル・Production-equivalent（fresh dump復元）の両方で
   `--validate-only`→`--dry-run`→適用→件数検証→再`--dry-run`の
-  フルサイクルが期待どおりの結果
+  フルサイクルが（修正版seedで再実施の上）期待どおりの結果
 - Production DBに対する`--validate-only`・`--dry-run`が
   Production-equivalentの結果と完全一致し、unexpected SKIP/UPDATE/
   conflictが0件
 - Production状態がこれらの読み取り専用操作の前後で完全に不変であることを
   実測で確認
 - 候補の差替えは発生していない
+- 唯一のMother Ship判断項目（福禄寿の扱い）が解決済み
 
-`WITH_LIMITATIONS`とする理由:
+残存する非blocking事項（Productionへの実書き込み判断とは独立）:
 
-- 小網神社の「福禄寿」のFact化判断についてMother Shipの明示的確認が
-  望ましい
+- `ASSOCIATED_WORSHIP_TARGET_MODEL_REVIEW`（上記、将来のModel設計課題）
 - Production importそのもの（Fact実書き込み・Runtime QA）は本
   ドキュメントでは未実施。Mother Shipの明示的な承認後、別セッション
   （Human Execution Boundary Gate相当）で実施する必要がある
