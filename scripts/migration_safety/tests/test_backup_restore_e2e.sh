@@ -26,15 +26,18 @@ STAMP="$(date +%Y%m%d%H%M%S)"
 SOURCE_DB="jinja_migration_safety_source_${STAMP}"
 RESTORE_DB="jinja_migration_safety_restore_test_${STAMP}"
 DUMP_DIR="$(mktemp -d /tmp/migration_safety_dump.XXXXXX)"
+DUMP_LOG="$(mktemp /tmp/migration_safety_dump_log.XXXXXX)"
+RESTORE_LOG="$(mktemp /tmp/migration_safety_restore_log.XXXXXX)"
 
 SOURCE_URL="postgres://$(whoami)@localhost:5432/${SOURCE_DB}"
 RESTORE_URL="postgres://$(whoami)@localhost:5432/${RESTORE_DB}"
 
 cleanup() {
-  echo "[e2e] cleanup: dropping ${SOURCE_DB}, ${RESTORE_DB}, removing ${DUMP_DIR}"
+  echo "[e2e] cleanup: dropping ${SOURCE_DB}, ${RESTORE_DB}, removing temporary files"
   dropdb --if-exists "${SOURCE_DB}" || true
   dropdb --if-exists "${RESTORE_DB}" || true
   rm -rf "${DUMP_DIR}"
+  rm -f "${DUMP_LOG}" "${RESTORE_LOG}"
 }
 trap cleanup EXIT
 
@@ -109,13 +112,27 @@ SELECT (SELECT COUNT(*) FROM auth_user) || ',' || (SELECT COUNT(*) FROM users_us
 echo "[e2e] source aggregate snapshot (auth_user,userprofile,shrine): ${SOURCE_SNAPSHOT}"
 
 echo "[e2e] === dumping source via dump_readonly.sh ==="
-"${MIGSAFE_DIR}/dump_readonly.sh" "${SOURCE_URL}" "${DUMP_DIR}"
+"${MIGSAFE_DIR}/dump_readonly.sh" "${SOURCE_URL}" "${DUMP_DIR}" 2>&1 | tee "${DUMP_LOG}"
+for token in localhost 5432 "${SOURCE_DB}"; do
+  if grep -Fq "${token}" "${DUMP_LOG}"; then
+    echo "[e2e] FAIL: dump tooling leaked a connection-target component" >&2
+    exit 1
+  fi
+done
+echo "[e2e] PASS: successful local dump logged no connection-target component"
 
 echo "[e2e] === creating isolated restore target (${RESTORE_DB}) ==="
 createdb "${RESTORE_DB}"
 
 echo "[e2e] === restoring via restore_isolated.sh (guarded) ==="
-"${MIGSAFE_DIR}/restore_isolated.sh" "${DUMP_DIR}" "${RESTORE_URL}"
+"${MIGSAFE_DIR}/restore_isolated.sh" "${DUMP_DIR}" "${RESTORE_URL}" 2>&1 | tee "${RESTORE_LOG}"
+for token in localhost 5432 "${RESTORE_DB}"; do
+  if grep -Fq "${token}" "${RESTORE_LOG}"; then
+    echo "[e2e] FAIL: restore tooling leaked a connection-target component" >&2
+    exit 1
+  fi
+done
+echo "[e2e] PASS: successful local restore logged no connection-target component"
 
 echo "[e2e] === comparing restored DB against source snapshot ==="
 RESTORE_SNAPSHOT="$(psql -d "${RESTORE_DB}" -tAc "

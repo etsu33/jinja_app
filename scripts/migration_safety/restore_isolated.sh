@@ -33,11 +33,10 @@ TARGET_DATABASE_URL="$2"
 
 PSQL_BIN="${PSQL_BIN:-psql}"
 
-REDACTED_URL="$(python3 "${SCRIPT_DIR}/guard.py" redact "${TARGET_DATABASE_URL}")"
-echo "[restore_isolated] target: ${REDACTED_URL}"
+echo "[restore_isolated] target connection configured"
 
-if ! python3 "${SCRIPT_DIR}/guard.py" check-restore-target "${TARGET_DATABASE_URL}"; then
-  echo "[restore_isolated] BLOCKED: target failed the isolation-target guard. Aborting. See stderr above for reason." >&2
+if ! python3 "${SCRIPT_DIR}/guard.py" check-restore-target "${TARGET_DATABASE_URL}" 2>/dev/null; then
+  echo "[restore_isolated] BLOCKED: target failed the isolation-target guard; connection details suppressed" >&2
   exit 1
 fi
 
@@ -48,21 +47,36 @@ for f in roles.sql schema.sql data.sql; do
   fi
 done
 
+# Keep the target URL out of psql argv and suppress libpq diagnostics, which
+# may contain hostname, port, username, or database name. The guard above has
+# already proved that this is an allow-listed disposable local target.
+eval "$(printf '%s' "${TARGET_DATABASE_URL}" | python3 "${SCRIPT_DIR}/guard.py" pg-env-exports)"
+unset TARGET_DATABASE_URL
+
 echo "[restore_isolated] applying roles.sql (best-effort; roles may already exist)..."
-"${PSQL_BIN}" --dbname="${TARGET_DATABASE_URL}" --file="${DUMP_DIR}/roles.sql" --quiet || \
-  echo "[restore_isolated] roles.sql had non-fatal errors (likely pre-existing roles); continuing"
+"${PSQL_BIN}" --file="${DUMP_DIR}/roles.sql" --quiet 2>/dev/null || \
+  echo "[restore_isolated] roles.sql had non-fatal errors; connection details suppressed; continuing"
 
 echo "[restore_isolated] ensuring required extensions exist (postgis, pg_trgm — a --schema=public dump omits extension objects, since Supabase installs extensions outside public; this app's migrations only ever require these two, see backend/temples/migrations/0001_initial.py, 0027, 0036)..."
-"${PSQL_BIN}" --dbname="${TARGET_DATABASE_URL}" --variable ON_ERROR_STOP=1 --quiet \
-  --command "CREATE EXTENSION IF NOT EXISTS postgis; CREATE EXTENSION IF NOT EXISTS pg_trgm;"
+if ! "${PSQL_BIN}" --variable ON_ERROR_STOP=1 --quiet \
+  --command "CREATE EXTENSION IF NOT EXISTS postgis; CREATE EXTENSION IF NOT EXISTS pg_trgm;" 2>/dev/null; then
+  echo "[restore_isolated] FAILED: extension setup failed; connection details suppressed" >&2
+  exit 1
+fi
 
 echo "[restore_isolated] applying schema.sql (dropping the redundant 'CREATE SCHEMA public;' line — a fresh target DB already has an empty public schema from createdb, so re-issuing it would error)..."
-grep -v '^CREATE SCHEMA public;$' "${DUMP_DIR}/schema.sql" | "${PSQL_BIN}" --dbname="${TARGET_DATABASE_URL}" \
-  --single-transaction --variable ON_ERROR_STOP=1 --quiet
+if ! grep -v '^CREATE SCHEMA public;$' "${DUMP_DIR}/schema.sql" | "${PSQL_BIN}" \
+  --single-transaction --variable ON_ERROR_STOP=1 --quiet 2>/dev/null; then
+  echo "[restore_isolated] FAILED: schema restore failed; connection details suppressed" >&2
+  exit 1
+fi
 
 echo "[restore_isolated] applying data.sql..."
-"${PSQL_BIN}" --dbname="${TARGET_DATABASE_URL}" --single-transaction --variable ON_ERROR_STOP=1 \
+if ! "${PSQL_BIN}" --single-transaction --variable ON_ERROR_STOP=1 \
   --command "SET session_replication_role = replica;" \
-  --file="${DUMP_DIR}/data.sql" --quiet
+  --file="${DUMP_DIR}/data.sql" --quiet 2>/dev/null; then
+  echo "[restore_isolated] FAILED: data restore failed; connection details suppressed" >&2
+  exit 1
+fi
 
 echo "[restore_isolated] done."

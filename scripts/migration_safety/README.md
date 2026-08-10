@@ -24,14 +24,15 @@ Background reading (read in this order):
 | `guard.py` | Pure-Python safety guard. Allow-list (not deny-list) check for restore targets; repo-boundary check for dump/credential-file paths; credential redaction and structural-shape-only description for logging; read-only SQL statement allow-list; URI → `PG*` env-var export so a credential never needs to appear on a command line. No DB/network code. |
 | `check_credential_presence.sh` | Reports whether a credential file/variable is set and well-formed — booleans only, never the value, host, or length. |
 | `readonly_query.sh` | Runs a SQL file against a database using a credential file outside the repo, after checking every statement is read-only. Connects via `PG*` env vars so the credential never appears in `ps`. See "Credential Bridge" below. |
-| `dump_readonly.sh` | Read-only logical dump (`pg_dumpall --roles-only` + `pg_dump --schema-only` + `pg_dump --data-only`, `public` schema only) of a URL you pass explicitly. |
-| `restore_isolated.sh` | Restores a dump into a target URL, but only after `guard.py` confirms the target is a disposable local database. Refuses otherwise. |
+| `dump_readonly.sh` | Read-only logical dump (`pg_dumpall --roles-only` + `pg_dump --schema-only` + `pg_dump --data-only`, `public` schema only) of a URL you pass explicitly. Logs no connection-target component and keeps the URL out of child-process argv. |
+| `restore_isolated.sh` | Restores a dump into a target URL only after `guard.py` confirms the target is a disposable local database. Logs no connection-target component and keeps the URL out of `psql` argv. |
 | `sql/migration_state.sql` | SELECT-only. Per-app latest applied migration. |
 | `sql/pre_migration_snapshot.sql` | SELECT-only. Run immediately before a backup/migration attempt; records the baseline to compare against later. |
 | `sql/post_migration_verification.sql` | SELECT-only. Run after migration; every value must match the pre-migration snapshot except the two migrations you intentionally applied. |
 | `tests/test_guard.py` | Unit tests for `guard.py`, including the credential-bridge functions (`describe_url_shape`, `is_readonly_sql`, `pg_env_exports`). No DB required. |
 | `tests/test_backup_restore_e2e.sh` | End-to-end local test: builds a `users=0005`/`temples=0089` local database, dumps it, restores it into a second isolated database through the actual guarded scripts, verifies they match, applies `users 0006` + `temples 0090-0093` to the restored copy, verifies again, rolls back. Never touches Production. |
 | `tests/test_credential_bridge_e2e.sh` | End-to-end local test of the credential bridge using a fake local credential (never Production): presence check leaks nothing, a read-only query actually connects, writes/`EXPLAIN ANALYZE`/wrong-permissions/in-repo-path are all refused pre-connection. |
+| `tests/test_backup_logging.sh` | No-network regression test using fake clients. Proves successful and failed dumps never log URL, username, password, hostname, port, database name, or query parameters while retaining safe file-size/status metadata. |
 
 ## The core safety property
 
@@ -54,6 +55,19 @@ fails.
 The dump-path check works the other way: a dump's *output path* must
 resolve outside the git repository, so a Production dump can never end up
 staged for commit.
+
+## Connection-target logging contract
+
+Backup and restore tooling must never print a string that describes its
+connection target. This includes the full URL and every component: username,
+password, hostname, port, database name, and query/SSL parameters. Masking only
+userinfo is insufficient because a redacted URL still reveals the target.
+
+The scripts print generic connection-configured messages, convert URLs to
+libpq `PG*` environment variables before invoking clients, and replace client
+connection diagnostics with generic failures. Safe metadata remains visible:
+operation start, roles/schema/data phase, output file names and sizes, generic
+safety status, and success/failure. Dump files must remain outside the repo.
 
 ## Credential Bridge
 
@@ -118,6 +132,9 @@ scripts/migration_safety/tests/test_backup_restore_e2e.sh
 # Credential bridge end-to-end drill (seconds, uses a fake local
 # credential — never Production):
 scripts/migration_safety/tests/test_credential_bridge_e2e.sh
+
+# Backup logging contract (seconds, fake clients only; no DB/network):
+scripts/migration_safety/tests/test_backup_logging.sh
 ```
 
 All three are safe to run repeatedly and clean up everything they create
@@ -154,13 +171,10 @@ and wasn't requested.
    ( set -a; source ~/.config/kami-musubi/production-db.env; set +a; \
      scripts/migration_safety/dump_readonly.sh "$DATABASE_URL" ~/kami-musubi-backups/<timestamp>/ )
    ```
-   Note `dump_readonly.sh` itself still receives the resolved connection
-   string as an argument (unlike `readonly_query.sh`, it wraps `pg_dump`/
-   `pg_dumpall` directly rather than going through the `PG*` env-var
-   indirection) — this is pre-existing behavior from when the tool was
-   first built and wasn't changed here. It's a strictly read-only dump
-   either way; the credential just briefly appears in that one command's
-   argv on your own machine while it runs.
+   `dump_readonly.sh` receives the connection string as its own argument, then
+   consumes it through `guard.py pg-env-exports` and unsets it before invoking
+   `pg_dump`/`pg_dumpall`. Database-client argv and success/failure logs contain
+   no connection URL or target component.
 5. Confirm all three files (`roles.sql`, `schema.sql`, `data.sql`) exist
    and have non-zero size (the script prints sizes; it also warns on any
    zero-byte file).

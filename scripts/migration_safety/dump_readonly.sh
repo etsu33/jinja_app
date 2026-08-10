@@ -24,7 +24,12 @@
 # Safety:
 #   - OUTPUT_DIR is checked with guard.py and rejected if it resolves
 #     inside this git repository (prevents an accidental `git add`).
-#   - The URL is never echoed or logged; only its redacted form is.
+#   - No connection-target component is logged: not URL, user, password,
+#     hostname, port, database name, or query parameters.
+#   - The URL is converted to libpq PG* environment variables before the
+#     dump clients run, so child-process arguments contain no connection URL.
+#   - Client stderr is replaced with a generic failure message because libpq
+#     connection errors can include hostname, port, user, and database name.
 #   - Dump is scoped to `--schema=public` only (see docs/audit/
 #     production-manual-backup-restore-gate.md Phase 2 for why).
 set -euo pipefail
@@ -43,8 +48,7 @@ OUTPUT_DIR="$2"
 PG_DUMP_BIN="${PG_DUMP_BIN:-pg_dump}"
 PG_DUMPALL_BIN="${PG_DUMPALL_BIN:-pg_dumpall}"
 
-REDACTED_URL="$(python3 "${SCRIPT_DIR}/guard.py" redact "${SOURCE_DATABASE_URL}")"
-echo "[dump_readonly] source: ${REDACTED_URL}"
+echo "[dump_readonly] source connection configured"
 
 if ! python3 "${SCRIPT_DIR}/guard.py" check-dump-path "${OUTPUT_DIR}" "${REPO_ROOT}"; then
   echo "[dump_readonly] BLOCKED: output dir must be outside the repository. Aborting." >&2
@@ -53,17 +57,31 @@ fi
 
 mkdir -p "${OUTPUT_DIR}"
 
+# Consume the URL without printing it and keep it out of pg_dump/pg_dumpall
+# argv. Never print the generated exports: they contain the credential.
+eval "$(printf '%s' "${SOURCE_DATABASE_URL}" | python3 "${SCRIPT_DIR}/guard.py" pg-env-exports)"
+unset SOURCE_DATABASE_URL
+
 echo "[dump_readonly] dumping roles (read-only)..."
-"${PG_DUMPALL_BIN}" --dbname="${SOURCE_DATABASE_URL}" --roles-only --no-role-passwords \
-  > "${OUTPUT_DIR}/roles.sql"
+if ! "${PG_DUMPALL_BIN}" --roles-only --no-role-passwords \
+  > "${OUTPUT_DIR}/roles.sql" 2>/dev/null; then
+  echo "[dump_readonly] FAILED: roles dump command failed; connection details suppressed" >&2
+  exit 1
+fi
 
 echo "[dump_readonly] dumping schema (read-only, public schema only)..."
-"${PG_DUMP_BIN}" --dbname="${SOURCE_DATABASE_URL}" --schema-only --schema=public --no-owner --no-privileges \
-  > "${OUTPUT_DIR}/schema.sql"
+if ! "${PG_DUMP_BIN}" --schema-only --schema=public --no-owner --no-privileges \
+  > "${OUTPUT_DIR}/schema.sql" 2>/dev/null; then
+  echo "[dump_readonly] FAILED: schema dump command failed; connection details suppressed" >&2
+  exit 1
+fi
 
 echo "[dump_readonly] dumping data (read-only, public schema only)..."
-"${PG_DUMP_BIN}" --dbname="${SOURCE_DATABASE_URL}" --data-only --schema=public --no-owner --no-privileges \
-  > "${OUTPUT_DIR}/data.sql"
+if ! "${PG_DUMP_BIN}" --data-only --schema=public --no-owner --no-privileges \
+  > "${OUTPUT_DIR}/data.sql" 2>/dev/null; then
+  echo "[dump_readonly] FAILED: data dump command failed; connection details suppressed" >&2
+  exit 1
+fi
 
 for f in roles.sql schema.sql data.sql; do
   size=$(wc -c < "${OUTPUT_DIR}/${f}" | tr -d ' ')
