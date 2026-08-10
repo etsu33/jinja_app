@@ -19,6 +19,11 @@
 #      so the secret never appears in argv / `ps`.
 #   5. No `set -x`, no echo/printenv of the credential, anywhere in this
 #      script or the subshell it spawns.
+#   6. psql's own stderr is discarded and replaced with a generic failure
+#      message (same convention as dump_readonly.sh), because libpq
+#      connection errors (e.g. DNS resolution failure) can include the
+#      hostname, port, user, and database name. On success, query results
+#      on stdout are unaffected — only stderr is suppressed.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -77,7 +82,10 @@ echo "[readonly_query] SQL passed the read-only check. Connecting..." >&2
   unset URL
   # shellcheck disable=SC2086
   unset ${VAR_NAME}
-  "${PSQL_BIN}" --set ON_ERROR_STOP=1 --no-psqlrc -f "${SQL_FILE}"
+  if ! "${PSQL_BIN}" --set ON_ERROR_STOP=1 --no-psqlrc -f "${SQL_FILE}" 2>/dev/null; then
+    echo "[readonly_query] ERROR: read-only database query failed" >&2
+    exit 1
+  fi
 )
 
 echo "[readonly_query] done." >&2
