@@ -1,0 +1,3873 @@
+{
+  "schema_version": "1.0",
+  "sources": [
+    {
+      "key": "src-999005",
+      "source_type": "shrine_official",
+      "title": "明治神宮 公式サイト「明治神宮とは」",
+      "publisher": "明治神宮",
+      "url": "https://www.meijijingu.or.jp/about/",
+      "bibliography": "",
+      "accessed_at": "2026-08-01",
+      "verified_at": "2026-08-01T07:50:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": ""
+    },
+    {
+      "key": "src-999004",
+      "source_type": "user_observation",
+      "title": "テスト神社 境内案内板",
+      "publisher": "テスト神社",
+      "url": "",
+      "bibliography": "テスト神社境内案内板（2026-08-01現地確認）",
+      "accessed_at": null,
+      "verified_at": "2026-08-01T07:30:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "medium",
+      "language": "ja",
+      "note": ""
+    },
+    {
+      "key": "src-999025",
+      "source_type": "shrine_official",
+      "title": "ご祭神｜伏見稲荷大社",
+      "publisher": "伏見稲荷大社",
+      "url": "https://inari.jp/about/saijin/",
+      "bibliography": "",
+      "accessed_at": null,
+      "verified_at": "2026-08-06T09:40:37.463591+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "",
+      "note": ""
+    },
+    {
+      "key": "src-999026",
+      "source_type": "shrine_official",
+      "title": "伊奈利社ご鎮座説話｜伏見稲荷大社",
+      "publisher": "伏見稲荷大社",
+      "url": "https://inari.jp/about/history/num10/",
+      "bibliography": "",
+      "accessed_at": null,
+      "verified_at": "2026-08-06T09:40:37.477340+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "",
+      "note": ""
+    },
+    {
+      "key": "src-999024",
+      "source_type": "shrine_official",
+      "title": "皇大神宮（内宮）｜伊勢神宮",
+      "publisher": "神宮司庁",
+      "url": "https://www.isejingu.or.jp/about/naiku/",
+      "bibliography": "",
+      "accessed_at": null,
+      "verified_at": "2026-08-06T09:39:44.122500+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "",
+      "note": ""
+    },
+    {
+      "key": "src-999020",
+      "source_type": "shrine_official",
+      "title": "出雲大社と大国主大神",
+      "publisher": "出雲大社",
+      "url": "https://izumooyashiro.or.jp/about/ookami",
+      "bibliography": "",
+      "accessed_at": "2026-08-06",
+      "verified_at": "2026-08-06T08:44:08.636630+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "祭神(大国主大神)、別名(所造天下大神)、通称(だいこくさま)、国づくり神話(神代)を確認。"
+    },
+    {
+      "key": "src-999021",
+      "source_type": "cultural_property",
+      "title": "出雲大社本殿（文化遺産オンライン）",
+      "publisher": "文化庁",
+      "url": "https://online.bunka.go.jp/heritages/detail/146668",
+      "bibliography": "",
+      "accessed_at": "2026-08-06",
+      "verified_at": "2026-08-06T08:44:08.636630+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "本殿の国宝指定(1952年3月29日)、建造年代(延享元年/1744年、大社造)を確認。"
+    },
+    {
+      "key": "src-999031",
+      "source_type": "shrine_official",
+      "title": "御本殿｜春日大社",
+      "publisher": "春日大社",
+      "url": "https://www.kasugataisha.or.jp/guidance/keidai-map3/modal-01/",
+      "bibliography": "",
+      "accessed_at": null,
+      "verified_at": "2026-08-06T10:38:00.939639+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "",
+      "note": ""
+    },
+    {
+      "key": "src-999040",
+      "source_type": "shrine_official",
+      "title": "御由緒｜太宰府天満宮",
+      "publisher": "太宰府天満宮",
+      "url": "https://www.dazaifutenmangu.or.jp/about/goyuisho",
+      "bibliography": "",
+      "accessed_at": "2026-08-08",
+      "verified_at": "2026-08-08T02:31:22.380554+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "",
+      "note": "公式サイトを直接fetchして本文を確認済み（Batch 4）。"
+    },
+    {
+      "key": "src-999032",
+      "source_type": "shrine_official",
+      "title": "御祭神｜熱田神宮",
+      "publisher": "熱田神宮",
+      "url": "https://www.atsutajingu.or.jp/jingu/about/enshrined.html",
+      "bibliography": "",
+      "accessed_at": null,
+      "verified_at": "2026-08-06T10:38:31.143528+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "",
+      "note": ""
+    },
+    {
+      "key": "src-999027",
+      "source_type": "shrine_official",
+      "title": "由緒｜日光東照宮",
+      "publisher": "日光東照宮",
+      "url": "https://toshogu.jp/pages/27/",
+      "bibliography": "",
+      "accessed_at": null,
+      "verified_at": "2026-08-06T09:41:10.654799+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "",
+      "note": ""
+    },
+    {
+      "key": "src-999028",
+      "source_type": "cultural_property",
+      "title": "東照宮 陽明門",
+      "publisher": "文化庁（文化遺産オンライン）",
+      "url": "https://online.bunka.go.jp/heritages/detail/179105",
+      "bibliography": "",
+      "accessed_at": null,
+      "verified_at": "2026-08-06T09:41:10.668653+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "",
+      "note": ""
+    },
+    {
+      "key": "src-999017",
+      "source_type": "tourism_official",
+      "title": "鶴岡八幡宮｜鎌倉市観光協会",
+      "publisher": "公益社団法人鎌倉市観光協会",
+      "url": "https://www.trip-kamakura.com/place/japanheritage/209.html",
+      "bibliography": "",
+      "accessed_at": "2026-08-06",
+      "verified_at": "2026-08-06T08:41:00.235853+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "祭神(応神天皇/比売神/神功皇后)、康平6年(1063)創建、治承4年(1180)遷座の記述を確認。Wikipediaと一致。"
+    },
+    {
+      "key": "src-999016",
+      "source_type": "secondary_editorial",
+      "title": "鶴岡八幡宮 - Wikipedia",
+      "publisher": "Wikipedia",
+      "url": "https://ja.wikipedia.org/wiki/%E9%B6%B4%E5%B2%A1%E5%85%AB%E5%B9%A1%E5%AE%AE",
+      "bibliography": "",
+      "accessed_at": "2026-08-06",
+      "verified_at": "2026-08-06T08:41:00.235853+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "祭神(応神天皇/比売神/神功皇后)、康平6年(1063)由比若宮勧請、治承4年(1180)10月12日遷座、永保元年(1081)源義家修復、養和2年(1182)4月24日源平池造営、承元2年(1208)神宮寺創建を確認。鎌倉市観光協会の記述と一致。"
+    },
+    {
+      "key": "src-999043",
+      "source_type": "shrine_official",
+      "title": "住吉大社の由緒｜住吉大社について｜住吉大社",
+      "publisher": "住吉大社",
+      "url": "https://www.sumiyoshitaisha.net/about/origin.html",
+      "bibliography": "",
+      "accessed_at": "2026-08-08",
+      "verified_at": "2026-08-08T02:32:47.147577+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "",
+      "note": "公式サイトを直接fetchして本文を確認済み（Batch 4）。博多の住吉神社(id=57)とは別Shrineであることを住所で確認済み。"
+    },
+    {
+      "key": "src-999042",
+      "source_type": "shrine_official",
+      "title": "石清水八幡宮について｜石清水八幡宮",
+      "publisher": "石清水八幡宮",
+      "url": "https://iwashimizu.or.jp/about/",
+      "bibliography": "",
+      "accessed_at": "2026-08-08",
+      "verified_at": "2026-08-08T02:32:26.272820+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "",
+      "note": "公式サイトを直接fetchして本文を確認済み（Batch 4）。"
+    },
+    {
+      "key": "src-999052",
+      "source_type": "shrine_official",
+      "title": "金刀比羅宮",
+      "publisher": "金刀比羅宮",
+      "url": "https://www.konpira.or.jp/",
+      "bibliography": "",
+      "accessed_at": "2026-08-08",
+      "verified_at": "2026-08-08T08:43:34.392301+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "",
+      "note": "公式サイトを直接fetchして本文を確認済み（Batch 6）。"
+    },
+    {
+      "key": "src-999053",
+      "source_type": "shrine_official",
+      "title": "金刀比羅宮の歴史",
+      "publisher": "金刀比羅宮",
+      "url": "https://www.konpira.or.jp/articles/20200814_history/article.htm",
+      "bibliography": "",
+      "accessed_at": "2026-08-08",
+      "verified_at": "2026-08-08T08:43:34.407641+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "",
+      "note": "公式サイトを直接fetchして本文を確認済み（Batch 6）。近代の改称は断定的記述、古代の由来（行宮跡奉斎）は「伝えられています」と明記された伝承として区別されていることを確認した。"
+    },
+    {
+      "key": "src-999037",
+      "source_type": "shrine_official",
+      "title": "御由緒・御祭神｜鹿島神宮",
+      "publisher": "鹿島神宮",
+      "url": "https://kashimajingu.jp/about/%E5%BE%A1%E7%94%B1%E7%B7%92%E3%83%BB%E5%BE%A1%E7%A5%AD%E7%A5%9E/",
+      "bibliography": "",
+      "accessed_at": "2026-08-07",
+      "verified_at": "2026-08-07T15:00:26.308657+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "Fact Integrity Negative Pilot（Real Negative Evidence候補）。公式サイトの由緒・祭神ページ。"
+    },
+    {
+      "key": "src-999041",
+      "source_type": "shrine_official",
+      "title": "御由緒｜香取神宮",
+      "publisher": "香取神宮",
+      "url": "https://katori-jingu.or.jp/about/history/",
+      "bibliography": "",
+      "accessed_at": "2026-08-08",
+      "verified_at": "2026-08-08T02:32:05.472820+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "",
+      "note": "公式サイトを直接fetchして本文を確認済み（Batch 4）。創建年（西暦・和暦）の記載は本ページ内に無いことを確認済み。「神武天皇18年」等の言及も本サイト内には存在しない。二次情報（Wikipedia等）で広く紹介される創建伝承年は、この公式Sourceでは裏付けられないため、Historyは本Batchでは登録しない（deityのみ登録）。"
+    },
+    {
+      "key": "src-999008",
+      "source_type": "shrine_official",
+      "title": "御祭神・由緒｜三峯神社",
+      "publisher": "三峯神社",
+      "url": "https://www.mitsuminejinja.or.jp/saijin/",
+      "bibliography": "",
+      "accessed_at": "2026-08-06",
+      "verified_at": "2026-08-06T07:05:37.394718+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "祭神(伊弉諾尊・伊弉册尊)、大口真神(御眷属)の位置づけ、享保5年(1720)の御眷属信仰拡大を確認。"
+    },
+    {
+      "key": "src-999033",
+      "source_type": "shrine_official",
+      "title": "諏訪大社上社本宮",
+      "publisher": "信濃國一之宮 諏訪大社",
+      "url": "https://suwataisha.or.jp/about/miyamori/kamishahonmiya/",
+      "bibliography": "",
+      "accessed_at": null,
+      "verified_at": "2026-08-06T10:38:57.456871+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "",
+      "note": ""
+    },
+    {
+      "key": "src-999034",
+      "source_type": "shrine_official",
+      "title": "諏訪大社の歴史と神話",
+      "publisher": "信濃國一之宮 諏訪大社",
+      "url": "https://suwataisha.or.jp/about/history/",
+      "bibliography": "",
+      "accessed_at": null,
+      "verified_at": "2026-08-06T10:38:57.470785+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "",
+      "note": ""
+    },
+    {
+      "key": "src-999012",
+      "source_type": "secondary_editorial",
+      "title": "六所神社 (世田谷区給田) - Wikipedia",
+      "publisher": "Wikipedia",
+      "url": "https://ja.wikipedia.org/wiki/%E5%85%AD%E6%89%80%E7%A5%9E%E7%A4%BE_(%E4%B8%96%E7%94%B0%E8%B0%B7%E5%8C%BA%E7%B5%A6%E7%94%B0)",
+      "bibliography": "",
+      "accessed_at": "2026-08-06",
+      "verified_at": "2026-08-06T07:08:28.637617+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "medium",
+      "language": "ja",
+      "note": "祭神・天文年間創建・明治42年合祀の記述を確認。tesshow.jpとの内容一致を確認（相殿祭神の記載の詳しさに軽微な差はあるが、祭神・創建・合祀年に矛盾なし）。出典として『せたがや社寺と史跡（その二）』世田谷区教育委員会1969年を明記するが原典未確認。"
+    },
+    {
+      "key": "src-999011",
+      "source_type": "local_history",
+      "title": "給田六所神社。世田谷区給田の神社、村社",
+      "publisher": "tesshow.jp",
+      "url": "https://tesshow.jp/setagaya/shrine_kyuden_roksho.html",
+      "bibliography": "",
+      "accessed_at": "2026-08-06",
+      "verified_at": "2026-08-06T07:08:28.637617+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "medium",
+      "language": "ja",
+      "note": "祭神(大国魂大神/相殿:天照皇大神)、天文年間創建、明治6年村社列格、明治24年社殿改築、明治42年(1909)2月1日神明社合祀を確認。ページ内で世田谷区教育委員会掲示・境内掲示・『せたがや社寺と史跡』・『新編武蔵風土記稿』を引用元として明記しているが、これらの原典は本Pilotでは未直接確認のため、tesshow.jp自身をSourceとして登録し、confidenceはmediumとする（shrine_official不在のため機械的にmediumにしたのではなく、原典未確認の二次資料経由という実際のSource strengthを反映）。"
+    },
+    {
+      "key": "src-999009",
+      "source_type": "shrine_official",
+      "title": "神田明神とは｜江戸総鎮守 神田明神",
+      "publisher": "神田神社",
+      "url": "https://www.kandamyoujin.or.jp/profile/",
+      "bibliography": "",
+      "accessed_at": "2026-08-06",
+      "verified_at": "2026-08-06T07:06:53.322377+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "三柱祭神(大己貴命/少彦名命/平将門命)の名称・奉斎年・由緒、承平天慶年間の史実と将門塚伝承の分離記述を確認。"
+    },
+    {
+      "key": "src-999010",
+      "source_type": "secondary_editorial",
+      "title": "神田明神 - Wikipedia",
+      "publisher": "Wikipedia",
+      "url": "https://ja.wikipedia.org/wiki/%E7%A5%9E%E7%94%B0%E6%98%8E%E7%A5%9E",
+      "bibliography": "",
+      "accessed_at": "2026-08-06",
+      "verified_at": "2026-08-06T07:06:53.322377+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "medium",
+      "language": "ja",
+      "note": "1874年(明治7年)少彦名命奉斎・平将門命遷座、1984年(昭和59年)平将門命本殿復帰の記述を確認。公式サイトprofileページ本文には直接記載がなかったため別Source登録。ページ内注記によれば公式サイトと『世界大百科事典』(平凡社)を出典として引用。"
+    },
+    {
+      "key": "src-999038",
+      "source_type": "shrine_official",
+      "title": "ご由緒｜阿佐ヶ谷神明宮",
+      "publisher": "阿佐ヶ谷神明宮",
+      "url": "https://shinmeiguu.com/yuisho-2/",
+      "bibliography": "",
+      "accessed_at": "2026-08-07",
+      "verified_at": "2026-08-07T15:01:13.412514+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "Fact Integrity Negative Pilot（Real Negative Evidence候補）。公式サイトのご由緒ページ。主祭神（天照大御神）のみ明記、配祀神の記載なし。"
+    },
+    {
+      "key": "src-999039",
+      "source_type": "secondary_editorial",
+      "title": "阿佐ヶ谷神明宮 - Wikipedia",
+      "publisher": "Wikipedia",
+      "url": "https://ja.wikipedia.org/wiki/%E9%98%BF%E4%BD%90%E3%83%B6%E8%B0%B7%E7%A5%9E%E6%98%8E%E5%AE%AE",
+      "bibliography": "",
+      "accessed_at": "2026-08-07",
+      "verified_at": "2026-08-07T15:01:13.412514+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "medium",
+      "language": "ja",
+      "note": "Fact Integrity Negative Pilot。配祀神（月読命・須佐之男命）の記載元。二次資料のため confidence=medium。創建年について公式Source(shrine_official)と一致しない複数の伝承を記載しているが、本Pilotでは配祀神情報のみ利用し、創建年（history）は一切登録しない。"
+    },
+    {
+      "key": "src-999058",
+      "source_type": "shrine_official",
+      "title": "御祭神｜歴史・由緒｜越後一宮 彌彦神社",
+      "publisher": "彌彦神社",
+      "url": "https://www.yahiko-jinjya.or.jp/history/gosaijin/index.html",
+      "bibliography": "",
+      "accessed_at": "2026-08-08",
+      "verified_at": "2026-08-08T09:29:01.019600+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "",
+      "note": "公式サイトを直接fetchして本文を確認済み（Batch 7）。神武天皇即位年という古代天皇紀年に基づく創祀伝承のため、伝承語の有無に関わらずhistory_type=traditionとして扱う。和銅4年(711年)の社殿造営は複数回のfetchでも公式ページで確認できず、登録を見送る。"
+    },
+    {
+      "key": "src-999048",
+      "source_type": "shrine_official",
+      "title": "御祭神・歴史・神話｜下鴨神社｜賀茂御祖神社",
+      "publisher": "下鴨神社（賀茂御祖神社）",
+      "url": "https://www.shimogamo-jinja.or.jp/about",
+      "bibliography": "",
+      "accessed_at": "2026-08-08",
+      "verified_at": "2026-08-08T07:50:11.769003+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "",
+      "note": "公式サイトを直接fetchして本文を確認済み（Batch 5）。「正確な創祀は不明」「考えられます」等の推定表現を含む箇所を伝承として区別した。"
+    },
+    {
+      "key": "src-999046",
+      "source_type": "shrine_official",
+      "title": "御由緒と御神紋｜賀茂別雷神社",
+      "publisher": "賀茂別雷神社",
+      "url": "https://www.kamigamojinja.jp/about/yuisho/",
+      "bibliography": "",
+      "accessed_at": "2026-08-08",
+      "verified_at": "2026-08-08T07:49:34.923845+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "",
+      "note": "公式サイトを直接fetchして本文を確認済み（Batch 5）。"
+    },
+    {
+      "key": "src-999047",
+      "source_type": "shrine_official",
+      "title": "御神話｜賀茂別雷神社",
+      "publisher": "賀茂別雷神社",
+      "url": "https://www.kamigamojinja.jp/about/shinwa/",
+      "bibliography": "",
+      "accessed_at": "2026-08-08",
+      "verified_at": "2026-08-08T07:49:34.939586+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "",
+      "note": "公式サイト自身が「〜と伝わっております」と明記する神話ページ（Batch 5）。"
+    },
+    {
+      "key": "src-999060",
+      "source_type": "shrine_official",
+      "title": "生田神社についてご紹介",
+      "publisher": "生田神社",
+      "url": "https://ikutajinja.or.jp/introduction",
+      "bibliography": "",
+      "accessed_at": "2026-08-08",
+      "verified_at": "2026-08-08T09:29:50.547886+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "",
+      "note": "公式サイトを直接fetchして本文を確認済み（Batch 7）。由緒セクション自体が「伝えられ」と明記する明確な伝承。"
+    },
+    {
+      "key": "src-999054",
+      "source_type": "shrine_official",
+      "title": "吉備津神社とは／縁起｜吉備津神社",
+      "publisher": "吉備津神社",
+      "url": "https://www.kibitujinja.com/about/engi.php",
+      "bibliography": "",
+      "accessed_at": "2026-08-08",
+      "verified_at": "2026-08-08T08:44:02.159363+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "",
+      "note": "公式サイトを直接fetchして本文を確認済み（Batch 6）。応永32年（1425年）の本殿再建に関する記述は本ページに存在せず、DEFER_PENDING_VERIFICATIONとして本Batchでは登録しない。"
+    },
+    {
+      "key": "src-999029",
+      "source_type": "shrine_official",
+      "title": "御由緒 拝観｜嚴島神社",
+      "publisher": "嚴島神社",
+      "url": "https://www.itsukushimajinja.jp/jp-sp/admission.html",
+      "bibliography": "",
+      "accessed_at": null,
+      "verified_at": "2026-08-06T09:42:08.039412+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "",
+      "note": ""
+    },
+    {
+      "key": "src-999030",
+      "source_type": "cultural_property",
+      "title": "厳島神社 本社祓殿",
+      "publisher": "文化庁（文化遺産オンライン）",
+      "url": "https://online.bunka.go.jp/heritages/detail/176402",
+      "bibliography": "",
+      "accessed_at": null,
+      "verified_at": "2026-08-06T09:42:08.053665+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "",
+      "note": ""
+    },
+    {
+      "key": "src-999059",
+      "source_type": "shrine_official",
+      "title": "御祭神・御由緒｜宮地嶽神社",
+      "publisher": "宮地嶽神社",
+      "url": "https://www.miyajidake.or.jp/history/gosaijin",
+      "bibliography": "",
+      "accessed_at": "2026-08-08",
+      "verified_at": "2026-08-08T09:29:25.738764+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "",
+      "note": "公式サイトを直接fetchして本文を確認済み（Batch 7）。「約1600年前」等の具体的年代表現は確認できず登録しない。神功皇后自身の年代（三韓外征）は伝承の域を出ないためhistory_type=traditionとして扱う。"
+    },
+    {
+      "key": "src-999051",
+      "source_type": "shrine_official",
+      "title": "白山比咩神社について",
+      "publisher": "白山比咩神社",
+      "url": "https://www.shirayama.or.jp/about/",
+      "bibliography": "",
+      "accessed_at": "2026-08-08",
+      "verified_at": "2026-08-08T07:51:45.128128+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "",
+      "note": "公式サイトを直接fetchして本文を確認済み（Batch 5）。崇神天皇7年の創祀は「〜と伝えられる」と明記された伝承であり、716年・1480年の遷座は伝承語のない断定記述であることを原文で確認した。応神天皇28年（297年）の遷座は伝承語の有無を個別確認できておらず、本Batchでは登録を見送る（DEFER_PENDING_VERIFICATION）。"
+    },
+    {
+      "key": "src-999049",
+      "source_type": "shrine_official",
+      "title": "日枝神社について｜日枝神社",
+      "publisher": "日枝神社",
+      "url": "https://www.hiejinja.net/about/",
+      "bibliography": "",
+      "accessed_at": "2026-08-08",
+      "verified_at": "2026-08-08T07:50:40.754640+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "",
+      "note": "公式サイトを直接fetchして本文を確認済み（Batch 5）。大山咋神の記紀由来神話（山王信仰一般）はShrine固有Factとして登録せず、1478年以降の当社固有の沿革のみ登録する。"
+    },
+    {
+      "key": "src-999050",
+      "source_type": "shrine_official",
+      "title": "東京大神宮の紹介 - 東京大神宮",
+      "publisher": "東京大神宮",
+      "url": "https://www.tokyodaijingu.or.jp/syoukai/",
+      "bibliography": "",
+      "accessed_at": "2026-08-08",
+      "verified_at": "2026-08-08T07:51:12.268040+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "",
+      "note": "公式サイトを直接fetchして本文を確認済み（Batch 5）。「神前結婚式は当社の創始によるもの」という記述は具体的な証拠資料が示されない社伝的性格のため、Factとして登録しない（一般的な縁結びイメージの混入回避）。"
+    },
+    {
+      "key": "src-999057",
+      "source_type": "shrine_official",
+      "title": "御祭神・由緒｜亀戸天神社",
+      "publisher": "亀戸天神社",
+      "url": "https://kameidotenjin-sha.jp/about/",
+      "bibliography": "",
+      "accessed_at": "2026-08-08",
+      "verified_at": "2026-08-08T08:45:31.697098+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "",
+      "note": "公式サイトを直接fetchして本文を確認済み（Batch 6）。本社（太宰府天満宮）自体の由緒（Batch 4で既に投入済み）とは独立して、当社固有の創始・沿革のみを登録する。"
+    },
+    {
+      "key": "src-999007",
+      "source_type": "government",
+      "title": "東京都神社庁「品川神社」",
+      "publisher": "東京都神社庁",
+      "url": "http://www.tokyo-jinjacho.or.jp/shinagawa/5264",
+      "bibliography": "",
+      "accessed_at": null,
+      "verified_at": "2026-08-02T03:00:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": ""
+    },
+    {
+      "key": "src-999006",
+      "source_type": "shrine_official",
+      "title": "品川神社 公式サイト「御祭神・御由緒」",
+      "publisher": "品川神社",
+      "url": "https://shinagawajinja.tokyo/deity/?utm_source=chatgpt.com",
+      "bibliography": "品川神社公式の御祭神・御由緒",
+      "accessed_at": null,
+      "verified_at": "2026-08-01T09:20:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": ""
+    },
+    {
+      "key": "src-999044",
+      "source_type": "shrine_official",
+      "title": "御祭神｜八坂神社",
+      "publisher": "八坂神社",
+      "url": "https://www.yasaka-jinja.or.jp/about/saijin.html",
+      "bibliography": "",
+      "accessed_at": "2026-08-08",
+      "verified_at": "2026-08-08T02:33:15.829661+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "",
+      "note": "公式サイトを直接fetchして本文を確認済み（Batch 4）。"
+    },
+    {
+      "key": "src-999045",
+      "source_type": "shrine_official",
+      "title": "八坂神社の歴史｜八坂神社について｜八坂神社",
+      "publisher": "八坂神社",
+      "url": "https://www.yasaka-jinja.or.jp/about/history/",
+      "bibliography": "",
+      "accessed_at": "2026-08-08",
+      "verified_at": "2026-08-08T02:33:15.843378+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "",
+      "note": "公式サイト自身が創祀について複数の社伝(656年説/876年説)を並記していることを確認済み（Batch 4）。"
+    },
+    {
+      "key": "src-999015",
+      "source_type": "secondary_editorial",
+      "title": "乃木神社 (東京都港区) - Wikipedia",
+      "publisher": "Wikipedia",
+      "url": "https://ja.wikipedia.org/wiki/%E4%B9%83%E6%9C%A8%E7%A5%9E%E7%A4%BE_(%E6%9D%B1%E4%BA%AC%E9%83%BD%E6%B8%AF%E5%8C%BA)",
+      "bibliography": "",
+      "accessed_at": "2026-08-06",
+      "verified_at": "2026-08-06T08:37:41.629951+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "medium",
+      "language": "ja",
+      "note": "祭神の敬称付き正式表記(乃木希典命/乃木静子命)、相殿の位置づけ、鎮座年月日(公式サイトと一致)、社格(旧府社・別表神社)、例祭日(9月13日)を確認。"
+    },
+    {
+      "key": "src-999014",
+      "source_type": "shrine_official",
+      "title": "ご祭神事績｜乃木神社",
+      "publisher": "乃木神社",
+      "url": "https://nogijinja.or.jp/achievements.html",
+      "bibliography": "",
+      "accessed_at": "2026-08-06",
+      "verified_at": "2026-08-06T08:37:41.629951+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "祭神の基本名称(乃木希典/乃木静子)、殉死日(明治45年/1912年9月13日、例祭日の由来)を確認。本ページは人物伝記が中心のため、由緒Factとしては使用せず祭神名・命日の確認のみに利用する。"
+    },
+    {
+      "key": "src-999013",
+      "source_type": "shrine_official",
+      "title": "乃木神社 由緒",
+      "publisher": "乃木神社",
+      "url": "https://nogijinja.or.jp/history.html",
+      "bibliography": "",
+      "accessed_at": "2026-08-06",
+      "verified_at": "2026-08-06T08:37:41.629951+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "中央乃木会発足(大正2年)、設立許可(大正8年)、鎮座祭(大正12年11月1日)、戦災焼失(昭和20年5月)、本殿等復興(昭和37年9月13日)を確認。"
+    },
+    {
+      "key": "src-999022",
+      "source_type": "shrine_official",
+      "title": "神社由緒｜武蔵御嶽神社",
+      "publisher": "武蔵御嶽神社",
+      "url": "https://musashimitakejinja.jp/history/yuisho/",
+      "bibliography": "",
+      "accessed_at": "2026-08-06",
+      "verified_at": "2026-08-06T08:47:47.389646+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "創建伝承(崇神天皇7年、建沼河別命による大己貴命・少彦名命勧請)、天平8年(736)行基による金剛蔵王権現像安置、延喜式神名帳記載、1234年中興、1359年社殿修築、1590年代朱印地寄進、1606年社殿改築、1700年幣殿・拝殿造営を確認。"
+    },
+    {
+      "key": "src-999023",
+      "source_type": "shrine_official",
+      "title": "令和五年「大口真神式年祭」について｜武蔵御嶽神社",
+      "publisher": "武蔵御嶽神社",
+      "url": "https://musashimitakejinja.jp/sairei/r5_magamiyear/",
+      "bibliography": "",
+      "accessed_at": "2026-08-06",
+      "verified_at": "2026-08-06T08:47:47.389646+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "大口真神が境内の独立した「大口真神社」の祭神であること(眷属ではなく神)、日本武尊を道案内した伝説の詳細を確認。三峯神社の大口真神(御眷属)とは扱いが異なることを確認済み。"
+    },
+    {
+      "key": "src-999061",
+      "source_type": "shrine_official",
+      "title": "ご祭神・由緒｜秩父神社",
+      "publisher": "秩父神社",
+      "url": "https://www.chichibu-jinja.or.jp/saijin/",
+      "bibliography": "",
+      "accessed_at": "2026-08-08",
+      "verified_at": "2026-08-08T09:30:19.674468+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "",
+      "note": "公式サイトを直接fetchして本文を確認済み（Batch 7）。八意思兼命・知知夫彦命の創祀は崇神天皇の御代という古代天皇紀年のためhistory_type=traditionとして扱う。天之御中主神・秩父宮雍仁親王の合祀は、公式ページが「に合祀」という事実的・文書的表現のみで記述し、物語的な伝承表現を伴わないためhistory_type=historical_eventとする。"
+    },
+    {
+      "key": "src-999055",
+      "source_type": "shrine_official",
+      "title": "ご由緒｜酒列磯前神社",
+      "publisher": "酒列磯前神社",
+      "url": "https://sakatura.org/goyuisyo/",
+      "bibliography": "",
+      "accessed_at": "2026-08-08",
+      "verified_at": "2026-08-08T08:44:30.763344+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "",
+      "note": "公式サイトを直接fetchして本文を確認済み（Batch 6）。斉衡3年(856年)の創建記述は断定的な日付だが、内容自体（御祭神の磯への降臨）が神話的性質を持つため、history_type=traditionとして扱う（TRADITION_ALWAYS_HEDGED契約の趣旨に沿い、confidenceとhistory_typeを混同しない）。"
+    },
+    {
+      "key": "src-999018",
+      "source_type": "shrine_official",
+      "title": "妙義神社の由緒・歴史",
+      "publisher": "妙義神社",
+      "url": "https://myougi.or.jp/history/sample-history1/",
+      "bibliography": "",
+      "accessed_at": "2026-08-06",
+      "verified_at": "2026-08-06T08:42:45.159844+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "祭神4柱、創建(社記による宣化天皇2年/537年)、社号変更の伝承(波己曽の大神→妙義)、江戸期の信仰(歴代将軍・前田侯)を確認。"
+    },
+    {
+      "key": "src-999019",
+      "source_type": "cultural_property",
+      "title": "妙義神社 唐門（文化遺産オンライン）",
+      "publisher": "文化庁",
+      "url": "https://online.bunka.go.jp/heritages/detail/199349",
+      "bibliography": "",
+      "accessed_at": "2026-08-06",
+      "verified_at": "2026-08-06T08:42:45.159844+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "唐門の重要文化財指定(1981年6月5日)、建造年代(江戸後期/1756年)を確認。"
+    },
+    {
+      "key": "src-999062",
+      "source_type": "shrine_official",
+      "title": "森戸大明神の紹介／由緒・ご祭神｜森戸神社（森戸大明神）",
+      "publisher": "森戸神社（森戸大明神）",
+      "url": "https://www.moritojinja.jp/about/gosaishin.html",
+      "bibliography": "",
+      "accessed_at": "2026-08-08",
+      "verified_at": "2026-08-08T09:30:46.387592+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "",
+      "note": "公式サイトを直接fetchして本文を確認済み（Batch 7）。「〜と伝えられています」と明記された伝承。"
+    },
+    {
+      "key": "src-999036",
+      "source_type": "shrine_official",
+      "title": "箱根神社・九頭龍神社・箱根元宮の由緒並に宝物と文化財",
+      "publisher": "箱根神社（九頭龍神社）",
+      "url": "https://hakonejinja.or.jp/hakone/",
+      "bibliography": "",
+      "accessed_at": null,
+      "verified_at": "2026-08-06T10:39:53.071808+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "",
+      "note": ""
+    },
+    {
+      "key": "src-999056",
+      "source_type": "shrine_official",
+      "title": "御由緒と御祭神｜護王神社",
+      "publisher": "護王神社（京都御所西）",
+      "url": "http://www.gooujinja.or.jp/yuisho/",
+      "bibliography": "",
+      "accessed_at": "2026-08-08",
+      "verified_at": "2026-08-08T08:45:01.910923+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "",
+      "note": "公式サイトを直接fetchして本文を確認済み（Batch 6）。「確かな創建年は伝えられていません」という公式の明記をそのまま保持し、推測年を登録しない。"
+    },
+    {
+      "key": "src-999035",
+      "source_type": "shrine_official",
+      "title": "阿蘇神社について",
+      "publisher": "阿蘇神社",
+      "url": "https://asojinja.or.jp/about/",
+      "bibliography": "",
+      "accessed_at": null,
+      "verified_at": "2026-08-06T10:39:23.446386+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "",
+      "note": ""
+    }
+  ],
+  "shrines": [
+    {
+      "shrine_ref": {
+        "name_jp": "明治神宮",
+        "address": "東京都渋谷区代々木神園町1-1"
+      },
+      "deities": [
+        {
+          "display_name": "明治天皇",
+          "canonical_name": "明治天皇",
+          "role": "enshrined",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-01T08:00:00+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999005",
+            "src-999004"
+          ]
+        },
+        {
+          "display_name": "昭憲皇太后",
+          "canonical_name": "昭憲皇太后",
+          "role": "enshrined",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-01T08:10:00+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999005",
+            "src-999004"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "official_origin",
+          "title": "明治神宮の創建",
+          "content": "明治神宮は、東京都渋谷区代々木に大正9年（1920）に創建された。",
+          "period_text": "大正9年（1920）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-01T08:30:00+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999005"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "伏見稲荷大社",
+        "address": "京都府京都市伏見区深草薮之内町68"
+      },
+      "deities": [
+        {
+          "display_name": "宇迦之御魂大神",
+          "canonical_name": "宇迦之御魂大神",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T09:40:37.477691+00:00",
+          "note": "下社・中央座（公式サイトの座位表現を保持）",
+          "source_keys": [
+            "src-999025"
+          ]
+        },
+        {
+          "display_name": "佐田彦大神",
+          "canonical_name": "佐田彦大神",
+          "role": "enshrined",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T09:40:37.481276+00:00",
+          "note": "中社・北座（公式サイトの座位表現を保持）",
+          "source_keys": [
+            "src-999025"
+          ]
+        },
+        {
+          "display_name": "大宮能売大神",
+          "canonical_name": "大宮能売大神",
+          "role": "enshrined",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T09:40:37.482399+00:00",
+          "note": "上社・南座（公式サイトの座位表現を保持）",
+          "source_keys": [
+            "src-999025"
+          ]
+        },
+        {
+          "display_name": "田中大神",
+          "canonical_name": "田中大神",
+          "role": "enshrined",
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T09:40:37.484257+00:00",
+          "note": "摂社田中社（下社摂社）・最北座（公式サイトの座位表現を保持）",
+          "source_keys": [
+            "src-999025"
+          ]
+        },
+        {
+          "display_name": "四大神",
+          "canonical_name": "四大神",
+          "role": "enshrined",
+          "sort_order": 4,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T09:40:37.485169+00:00",
+          "note": "摂社四大神（中社摂社）・最南座（公式サイトの座位表現を保持）",
+          "source_keys": [
+            "src-999025"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "伊奈利社ご鎮座説話（和銅4年）",
+          "content": "「稲荷社神主家大西（秦）氏系図」に基づく伝承では、和銅4年(711)2月壬午の日、秦氏の祖である伊呂巨秦公の時代に稲荷山へ大神が鎮座したとされる。当時の季候不順・五穀不作に際し勅使が名山大川で祈請したところ神の教示があり、稲荷山に祀ったところ「五穀大いに稔り国は富み栄えた」と伝わる。",
+          "period_text": "和銅4年（711年）2月壬午の日（伝承）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "medium",
+          "verified_at": "2026-08-06T09:40:37.486272+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999026"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "伊勢神宮（内宮）",
+        "address": "三重県伊勢市宇治館町1"
+      },
+      "deities": [
+        {
+          "display_name": "天照大御神",
+          "canonical_name": "天照大御神",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T09:39:44.137067+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999024"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "創建の伝承（垂仁天皇の御代）",
+          "content": "およそ2000年前、垂仁天皇の御代から五十鈴川のほとりに鎮まる皇大神宮（内宮）。天照大御神は皇室の御祖先として祀られている。",
+          "period_text": "垂仁天皇の御代（伝承、およそ2000年前）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "medium",
+          "verified_at": "2026-08-06T09:39:44.140798+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999024"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "出雲大社",
+        "address": "島根県出雲市大社町杵築東195"
+      },
+      "deities": [
+        {
+          "display_name": "大国主大神",
+          "canonical_name": "大国主大神",
+          "role": "primary",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T08:44:19.556192+00:00",
+          "note": "唯一の祭神（単一祭神）。公式サイトに別名「所造天下大神」、通称「だいこくさま」の記載あり。current ShrineDeity modelにaliases専用fieldが存在しないためnoteで保持（CONTRACT_GAP_ALIASES_FIELD、Pilotに続き本Batchでも再現）。canonical_nameは公式表記「大国主大神」を採用し、別名で上書きしない。",
+          "source_keys": [
+            "src-999020"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "国づくりの神話",
+          "content": "大国主大神は神代の昔、国土を開拓し、農耕・漁業・殖産から医薬の道まで様々な知恵を授けたと伝わる。",
+          "period_text": "神代（伝承）",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T08:44:31.831781+00:00",
+          "note": "公式サイト自身が「神代の昔」という神話的時代設定で記述しており、史実の確定年代としては扱わない。",
+          "source_keys": [
+            "src-999020"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "現本殿の建造",
+          "content": "現在の本殿は延享元年(1744)に建てられた、大社造・檜皮葺の建築である。",
+          "period_text": "延享元年(1744)",
+          "event_date": null,
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T08:44:31.831781+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999021"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "本殿の国宝指定",
+          "content": "出雲大社本殿が国宝に指定された。",
+          "period_text": "1952年3月29日",
+          "event_date": "1952-03-29",
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T08:44:31.831781+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999021"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "春日大社",
+        "address": "奈良県奈良市春日野町160"
+      },
+      "deities": [
+        {
+          "display_name": "武甕槌命",
+          "canonical_name": "武甕槌命",
+          "role": "enshrined",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T10:38:00.954039+00:00",
+          "note": "第一殿。鹿島（茨城県）から奉遷。",
+          "source_keys": [
+            "src-999031"
+          ]
+        },
+        {
+          "display_name": "経津主命",
+          "canonical_name": "経津主命",
+          "role": "enshrined",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T10:38:00.958542+00:00",
+          "note": "第二殿。香取（千葉県）から奉遷。",
+          "source_keys": [
+            "src-999031"
+          ]
+        },
+        {
+          "display_name": "天児屋根命",
+          "canonical_name": "天児屋根命",
+          "role": "enshrined",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T10:38:00.959722+00:00",
+          "note": "第三殿。枚岡神社（大阪府）から奉遷、藤原氏の遠祖。",
+          "source_keys": [
+            "src-999031"
+          ]
+        },
+        {
+          "display_name": "比売神",
+          "canonical_name": "比売神",
+          "role": "enshrined",
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T10:38:00.961034+00:00",
+          "note": "第四殿。枚岡神社（大阪府）から天児屋根命と併せて奉遷。",
+          "source_keys": [
+            "src-999031"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "founding",
+          "title": "神護景雲2年 創建",
+          "content": "神護景雲2年（768年）11月9日、左大臣藤原永手らにより、御蓋山の麓に社殿が造営され創建された。武甕槌命を鹿島から御蓋山山頂浮雲峰に迎えたのち、経津主命を香取から、天児屋根命・比売神を枚岡神社から奉遷し四柱を併祀した。",
+          "period_text": "神護景雲2年（768年）11月9日",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T10:38:00.962111+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999031"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "太宰府天満宮",
+        "address": "福岡県太宰府市宰府4-7-1"
+      },
+      "deities": [
+        {
+          "display_name": "菅原道真公",
+          "canonical_name": "",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T02:31:46.801424+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999040"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "official_origin",
+          "title": "太宰府天満宮の創建",
+          "content": "昌泰4年（901年）に菅原道真公は大宰権帥として左遷され、延喜3年（903年）2月25日に大宰府で逝去した。門弟の味酒安行が埋葬し祀庿を造営、延喜19年（919年）には勅命により御社殿が造営された。なお、埋葬地の選定については「牛車で葬列を進めていたところ牛が伏して動かなくなり、その地に埋葬した」という逸話が公式サイト自身により伝承として紹介されている。",
+          "period_text": "延喜19年（919年）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T02:31:46.808574+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999040"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "熱田神宮",
+        "address": "愛知県名古屋市熱田区神宮1-1-1"
+      },
+      "deities": [
+        {
+          "display_name": "熱田大神",
+          "canonical_name": "熱田大神",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T10:38:31.157446+00:00",
+          "note": "天照大神のこと。三種の神器の一つ草薙神剣を御霊代・御神体としてよらせられる。草薙神剣そのものはdeityとして登録せずHistoryでのみ言及する。",
+          "source_keys": [
+            "src-999032"
+          ]
+        },
+        {
+          "display_name": "天照大神",
+          "canonical_name": "天照大神",
+          "role": "enshrined",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T10:38:31.160837+00:00",
+          "note": "相殿神「五神さま」。草薙神剣とゆかりの深い神々として公式に位置づけられる。",
+          "source_keys": [
+            "src-999032"
+          ]
+        },
+        {
+          "display_name": "素盞嗚尊",
+          "canonical_name": "素盞嗚尊",
+          "role": "enshrined",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T10:38:31.161932+00:00",
+          "note": "相殿神「五神さま」。草薙神剣とゆかりの深い神々として公式に位置づけられる。",
+          "source_keys": [
+            "src-999032"
+          ]
+        },
+        {
+          "display_name": "日本武尊",
+          "canonical_name": "日本武尊",
+          "role": "enshrined",
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T10:38:31.162930+00:00",
+          "note": "相殿神「五神さま」。草薙神剣とゆかりの深い神々として公式に位置づけられる。",
+          "source_keys": [
+            "src-999032"
+          ]
+        },
+        {
+          "display_name": "宮簀媛命",
+          "canonical_name": "宮簀媛命",
+          "role": "enshrined",
+          "sort_order": 4,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T10:38:31.164095+00:00",
+          "note": "相殿神「五神さま」。草薙神剣とゆかりの深い神々として公式に位置づけられる。",
+          "source_keys": [
+            "src-999032"
+          ]
+        },
+        {
+          "display_name": "建稲種命",
+          "canonical_name": "建稲種命",
+          "role": "enshrined",
+          "sort_order": 5,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T10:38:31.165304+00:00",
+          "note": "相殿神「五神さま」。草薙神剣とゆかりの深い神々として公式に位置づけられる。",
+          "source_keys": [
+            "src-999032"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "founding",
+          "title": "草薙神剣の鎮座と創祀",
+          "content": "日本武尊が東征の帰途、伊勢の国・能褒野で薨去した際、妃の宮簀媛命が神慮に思い至り、草薙神剣を熱田の地に祀ったことが熱田神宮の創祀へつながったと伝わる。",
+          "period_text": "創建年代不詳（日本武尊薨去後の伝承）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "medium",
+          "verified_at": "2026-08-06T10:38:31.166659+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999032"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "日光東照宮",
+        "address": "栃木県日光市山内2301"
+      },
+      "deities": [
+        {
+          "display_name": "徳川家康公（東照大権現）",
+          "canonical_name": "徳川家康",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T09:41:10.669011+00:00",
+          "note": "公式Sourceの表記に基づき「東照大権現」という神格としての位置付けを保持。関ヶ原の戦い等の人物伝記的事実は神社Factとして登録しない。",
+          "source_keys": [
+            "src-999027"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "founding",
+          "title": "元和3年 久能山より遷座・正遷宮",
+          "content": "徳川家康は元和2年4月17日に駿府城で75歳の生涯を終え久能山に神葬された。遺言により一年後の元和3年4月15日、久能山より現在地へ移され、同年4月17日、二代将軍秀忠公をはじめ公武参列のもと正遷宮が行われ、東照社として鎮座した。",
+          "period_text": "元和3年（1617年）4月15日〜17日",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T09:41:10.672183+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999027"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "正保2年 宮号下賜",
+          "content": "正保2年(1645)、朝廷より宮号を賜り、「東照宮」と呼ばれるようになった。",
+          "period_text": "正保2年（1645年）",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T09:41:10.674946+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999027"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "陽明門 国宝指定",
+          "content": "寛永13年(1636)完成の陽明門は、1908年に重要文化財指定を受けた後、1951年6月9日に国宝に指定された。三間一戸楼門、入母屋造、四方軒唐破風付、銅瓦葺。",
+          "period_text": "",
+          "event_date": "1951-06-09",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T09:41:21.015913+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999028"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "鶴岡八幡宮",
+        "address": "神奈川県鎌倉市雪ノ下2-1-31"
+      },
+      "deities": [
+        {
+          "display_name": "応神天皇",
+          "canonical_name": "応神天皇",
+          "role": "unknown",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T08:41:10.579256+00:00",
+          "note": "八幡神として比売神・神功皇后とともに三柱で祀られる。両Source(Wikipedia/鎌倉市観光協会)とも明示的な序列を示していないためrole=unknownとする。",
+          "source_keys": [
+            "src-999017",
+            "src-999016"
+          ]
+        },
+        {
+          "display_name": "比売神",
+          "canonical_name": "比売神",
+          "role": "unknown",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T08:41:10.579256+00:00",
+          "note": "八幡神三柱の一柱。",
+          "source_keys": [
+            "src-999017",
+            "src-999016"
+          ]
+        },
+        {
+          "display_name": "神功皇后",
+          "canonical_name": "神功皇后",
+          "role": "unknown",
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T08:41:10.579256+00:00",
+          "note": "応神天皇の母。八幡神三柱の一柱。",
+          "source_keys": [
+            "src-999017",
+            "src-999016"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "founding",
+          "title": "由比若宮の勧請",
+          "content": "康平6年(1063)8月、源頼義が石清水八幡宮(または壺井八幡宮)を由比郷鶴岡へ勧請し、由比若宮とした。",
+          "period_text": "康平6年(1063)8月",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T08:41:27.139599+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999017",
+            "src-999016"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "現在地への遷座",
+          "content": "治承4年(1180)10月12日、源頼朝が現在の小林郷北山へ遷座した。",
+          "period_text": "治承4年(1180)",
+          "event_date": "1180-10-12",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T08:41:27.139599+00:00",
+          "note": "Wikipedia・鎌倉市観光協会双方で日付一致。",
+          "source_keys": [
+            "src-999017",
+            "src-999016"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "源義家による修復",
+          "content": "永保元年(1081)2月、源義家が修復を加えた。",
+          "period_text": "永保元年(1081)2月",
+          "event_date": null,
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T08:41:27.139599+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999016"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "源平池の造営",
+          "content": "養和2年(1182)4月24日、社前に源平池が造営された。",
+          "period_text": "養和2年(1182)",
+          "event_date": "1182-04-24",
+          "sort_order": 4,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T08:41:27.139599+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999016"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "神宮寺の創建",
+          "content": "承元2年(1208)、神宮寺が創建された。",
+          "period_text": "承元2年(1208)",
+          "event_date": null,
+          "sort_order": 5,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T08:41:27.139599+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999016"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "住吉大社",
+        "address": "大阪府大阪市住吉区住吉2-9-89"
+      },
+      "deities": [
+        {
+          "display_name": "底筒男命",
+          "canonical_name": "",
+          "role": "enshrined",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T02:32:47.161384+00:00",
+          "note": "公式サイトは第一〜第四本宮を並列に表記し単独のprimaryを明示しないため、role=enshrinedで統一（Sourceにない序列を推測しない）。",
+          "source_keys": [
+            "src-999043"
+          ]
+        },
+        {
+          "display_name": "中筒男命",
+          "canonical_name": "",
+          "role": "enshrined",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T02:32:47.166233+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999043"
+          ]
+        },
+        {
+          "display_name": "表筒男命",
+          "canonical_name": "",
+          "role": "enshrined",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T02:32:47.167225+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999043"
+          ]
+        },
+        {
+          "display_name": "神功皇后",
+          "canonical_name": "",
+          "role": "enshrined",
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T02:32:47.168089+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999043"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "住吉大社の鎮座伝承",
+          "content": "『日本書紀』『古事記』の伝えとして、伊弉諾尊が禊祓を行った際に海中より出現した底筒男命・中筒男命・表筒男命の三神を祀るのが起源とされる。神功皇后摂政11年（西暦211年）、新羅遠征からの帰途、住吉大神の神託によりこの地に鎮斎されたと公式サイトが伝承として紹介している。",
+          "period_text": "神功皇后摂政11年（西暦211年）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T02:32:47.168896+00:00",
+          "note": "TRADITION_ALWAYS_HEDGED契約対象。",
+          "source_keys": [
+            "src-999043"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "石清水八幡宮",
+        "address": "京都府八幡市八幡高坊30"
+      },
+      "deities": [
+        {
+          "display_name": "応神天皇",
+          "canonical_name": "誉田別尊",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T02:32:26.286105+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999042"
+          ]
+        },
+        {
+          "display_name": "比咩大神",
+          "canonical_name": "多紀理毘賣命・市寸島姫命・多岐津毘賣命",
+          "role": "enshrined",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T02:32:26.291422+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999042"
+          ]
+        },
+        {
+          "display_name": "神功皇后",
+          "canonical_name": "息長帯比賣命",
+          "role": "enshrined",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T02:32:26.292516+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999042"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "石清水八幡宮の創建（行教和尚の託宣）",
+          "content": "貞観元年（859年）、南都大安寺の僧・行教和尚が豊前国宇佐八幡宮で祈祷を捧げたところ、八幡大神から「都近き男山の峯に移座して国家を鎮護せん」との御託宣を受け、同年、男山の峯に御神霊を奉安したのが当宮の起源であると公式サイトが伝承として紹介している。",
+          "period_text": "貞観元年（859年）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T02:32:26.293463+00:00",
+          "note": "TRADITION_ALWAYS_HEDGED契約対象。WebSearch要約の「860年」は不採用、公式ページ原文の「貞観元(859)年」を採用。",
+          "source_keys": [
+            "src-999042"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "金刀比羅宮",
+        "address": "香川県仲多度郡琴平町892-1"
+      },
+      "deities": [
+        {
+          "display_name": "大物主神",
+          "canonical_name": "",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T08:43:34.408107+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999052"
+          ]
+        },
+        {
+          "display_name": "崇徳天皇",
+          "canonical_name": "",
+          "role": "enshrined",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T08:43:34.414315+00:00",
+          "note": "永万元年（1165年）合祀。",
+          "source_keys": [
+            "src-999052"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "historical_event",
+          "title": "崇徳天皇合祀と金刀比羅宮への改称",
+          "content": "永万元年（1165年）に相殿へ崇徳天皇を合祀し、明治元年（1868年）には神仏混淆が廃止され「琴平神社」に復した上で、同年7月に宮号を賜り「金刀比羅宮」と改称したと公式サイトに記載されている。",
+          "period_text": "永万元年（1165年）〜明治元年（1868年）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T08:43:34.415374+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999053"
+          ]
+        },
+        {
+          "history_type": "tradition",
+          "title": "大物主神の行宮跡奉斎伝承",
+          "content": "大物主神が行宮跡（御所之尾）に奉斎されたと公式サイトが伝承として紹介している。",
+          "period_text": "",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T08:43:34.417753+00:00",
+          "note": "TRADITION_ALWAYS_HEDGED契約対象。",
+          "source_keys": [
+            "src-999053"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "鹿島神宮",
+        "address": "茨城県鹿嶋市宮中2306-1"
+      },
+      "deities": [
+        {
+          "display_name": "武甕槌大神",
+          "canonical_name": "武甕槌大神",
+          "role": "primary",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-07T15:00:50.158821+00:00",
+          "note": "鹿島神宮公式サイト「御由緒・御祭神」ページに単独の祭神として明記。",
+          "source_keys": [
+            "src-999037"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "神武天皇による勅祭の伝承",
+          "content": "神武天皇が東征の際、武甕槌大神の神威により窮地を救われたとし、御即位の年（皇紀元年）に大神をこの地に勅祭したと公式サイトで伝えられている。史実として確定された創建年ではなく、公式サイト自身が伝承として記述している内容である。",
+          "period_text": "皇紀元年（伝承）",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-07T15:00:50.158821+00:00",
+          "note": "公式サイト原文は「勅祭されたと伝えられています」という伝承表現を用いている。history_type=foundingではなくtraditionとして登録する（Fact Integrity Negative Pilot Gate、docs/audit/design-token系ではなくrecommendation fact integrity監査による）。",
+          "source_keys": [
+            "src-999037"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "香取神宮",
+        "address": "千葉県香取市香取1697-1"
+      },
+      "deities": [
+        {
+          "display_name": "経津主大神",
+          "canonical_name": "伊波比主命",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T02:32:05.486122+00:00",
+          "note": "又の御名: 伊波比主命（公式サイト表記）。",
+          "source_keys": [
+            "src-999041"
+          ]
+        }
+      ],
+      "histories": []
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "三峯神社",
+        "address": "埼玉県秩父市三峰298-1"
+      },
+      "deities": [
+        {
+          "display_name": "伊弉諾尊",
+          "canonical_name": "伊弉諾尊",
+          "role": "unknown",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T07:05:48.771182+00:00",
+          "note": "伊弉册尊と対の夫婦神。公式サイトに序列の記載なし、対等な祭神として祀られる。",
+          "source_keys": [
+            "src-999008"
+          ]
+        },
+        {
+          "display_name": "伊弉册尊",
+          "canonical_name": "伊弉册尊",
+          "role": "unknown",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T07:05:48.771182+00:00",
+          "note": "伊弉諾尊と対の夫婦神。公式表記は「伊弉册尊」（いざなみのみこと）。他情報源で「伊弉冉尊」表記も見られるが、本Factは公式サイト(mitsuminejinja.or.jp)の表記を正式表記として採用した。",
+          "source_keys": [
+            "src-999008"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "日本武尊による創祀伝承",
+          "content": "日本武尊が伊弉諾尊・伊弉册尊をお祀りしたのが三峯神社の始まりと伝わる。景行天皇から「三峯の宮」の称号を得たとされる。",
+          "period_text": "伝承（年代不詳、日本武尊は記紀の伝説的人物）",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T07:06:02.354955+00:00",
+          "note": "日本武尊は記紀に登場する伝説的人物であり、史実の確定年代としては扱わない。公式サイト自身も「伝わる」という伝承的表現を用いている。",
+          "source_keys": [
+            "src-999008"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "大口真神（お犬様）信仰の拡大",
+          "content": "享保5年(1720)、日光法印という僧によって「お犬様」と呼ばれる御眷属（大口真神＝狼）信仰が遠方まで広まった。",
+          "period_text": "享保5年(1720)",
+          "event_date": null,
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T07:06:02.354955+00:00",
+          "note": "大口真神は祭神ではなく御眷属（神の使い）。本Factは祭神データではなく信仰史のhistorical_eventとして登録する。日付は年のみ確認でき、月日は不明のためevent_dateではなくperiod_textを使用。",
+          "source_keys": [
+            "src-999008"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "諏訪大社（上社本宮）",
+        "address": "長野県諏訪市中洲宮山1"
+      },
+      "deities": [
+        {
+          "display_name": "建御名方神",
+          "canonical_name": "建御名方神",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T10:38:57.471168+00:00",
+          "note": "本Factは諏訪大社の中の上社本宮単体を対象とする（諏訪大社全体・4宮共通の記述ではない）。前宮固有の八坂刀売神、下社固有の八重事代主神は本Shrineのdeityとして登録しない。",
+          "source_keys": [
+            "src-999033"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "鎮座の伝承（国譲り神話）",
+          "content": "古事記の国譲り神話で出雲での国譲りに反対した建御名方神が諏訪へ移り、信濃国を築き治めたと伝わる。御鎮座の年代について詳しく知ることはできないが、少なくとも1500年から2000年前と言われ、日本最古の神社の一つに数えられる。",
+          "period_text": "少なくとも1500〜2000年前（伝承）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "medium",
+          "verified_at": "2026-08-06T10:38:57.473636+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999034"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "持統天皇による勅使派遣",
+          "content": "持統天皇5年（691年）、国家の安泰と五穀豊穣を祈願するため勅使が派遣された。以後歴代朝廷の崇敬を拝戴した。",
+          "period_text": "持統天皇5年（691年）",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T10:38:57.475846+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999034"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "給田六所神社",
+        "address": "日本、〒157-0064 東京都世田谷区給田１丁目３−７"
+      },
+      "deities": [
+        {
+          "display_name": "大国魂大神",
+          "canonical_name": "大国魂大神",
+          "role": "primary",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "medium",
+          "verified_at": "2026-08-06T07:08:45.627642+00:00",
+          "note": "tesshow.jpが「主祭神」と明記。Wikipediaは祭神を「天照皇大神など」とやや曖昧に記載しており、詳細度に軽微な差がある（出典明記のtesshow.jpをより具体的な記述として優先）。社号「六所」は本宮(武蔵国府中・大國魂神社)が六柱を祀ることに由来する伝統的命名だが、当社について確認できたSourceでは大国魂大神・天照皇大神の2柱のみが具体的に名指しされている。残り4柱の具体名はいずれのSourceにも見当たらないため登録しない。",
+          "source_keys": [
+            "src-999012",
+            "src-999011"
+          ]
+        },
+        {
+          "display_name": "天照皇大神",
+          "canonical_name": "天照皇大神",
+          "role": "secondary",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "medium",
+          "verified_at": "2026-08-06T07:08:45.627642+00:00",
+          "note": "tesshow.jpは「相殿」と明記。Wikipediaでの記載はやや簡略。",
+          "source_keys": [
+            "src-999012",
+            "src-999011"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "founding",
+          "title": "武蔵総社六所宮よりの分霊勧請",
+          "content": "武蔵国府中の武蔵総社六所宮（現大國魂神社）の分霊を勧請して創建したのが起源と伝わる。",
+          "period_text": "天文年間(1532-1554)、伝",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "medium",
+          "verified_at": "2026-08-06T07:09:01.565970+00:00",
+          "note": "tesshow.jp/Wikipedia双方で一致。ただし原典(せたがや社寺と史跡)は未直接確認のためconfidence: medium。",
+          "source_keys": [
+            "src-999012",
+            "src-999011"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "村社列格",
+          "content": "村社に列格した。",
+          "period_text": "明治6年",
+          "event_date": null,
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "medium",
+          "verified_at": "2026-08-06T07:09:01.565970+00:00",
+          "note": "tesshow.jpのみで確認（世田谷区教育委員会掲示由来との記載）。Wikipediaには記載なし。",
+          "source_keys": [
+            "src-999011"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "社殿改築",
+          "content": "社殿を改築した。",
+          "period_text": "明治24年",
+          "event_date": null,
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "medium",
+          "verified_at": "2026-08-06T07:09:01.565970+00:00",
+          "note": "tesshow.jpのみで確認。",
+          "source_keys": [
+            "src-999011"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "神明社の合祀",
+          "content": "千歳村給田八五〇番地の無格社・神明社（祭神：天照皇大神）を合祀した。",
+          "period_text": "明治42年(1909)",
+          "event_date": "1909-02-01",
+          "sort_order": 4,
+          "verification_status": "source_confirmed",
+          "confidence": "medium",
+          "verified_at": "2026-08-06T07:09:01.565970+00:00",
+          "note": "tesshow.jp「明治四十二年二月一日」、Wikipedia「1909年（明治42年）」で日付・年ともに一致。日単位まで確認できたためevent_dateを設定。",
+          "source_keys": [
+            "src-999012",
+            "src-999011"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "神田神社（神田明神）",
+        "address": "東京都千代田区外神田2-16-2"
+      },
+      "deities": [
+        {
+          "display_name": "大己貴命",
+          "canonical_name": "大己貴命",
+          "role": "primary",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T07:07:07.858492+00:00",
+          "note": "公式呼称は「一之宮」。別名「大国主命」（出雲大社の主祭神と同一神格）。current ShrineDeity modelにaliases専用fieldが存在しないためnoteで保持（CONTRACT_GAP_ALIASES_FIELD）。天平2年(730)ご鎮座。",
+          "source_keys": [
+            "src-999009"
+          ]
+        },
+        {
+          "display_name": "少彦名命",
+          "canonical_name": "少彦名命",
+          "role": "secondary",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T07:07:07.858492+00:00",
+          "note": "公式呼称は「二之宮」。奉斎年(1874年/明治7年)は公式profileページ本文に直接記載がなく、別Source(Wikipedia)で確認。",
+          "source_keys": [
+            "src-999009"
+          ]
+        },
+        {
+          "display_name": "平将門命",
+          "canonical_name": "平将門命",
+          "role": "secondary",
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T07:07:07.858492+00:00",
+          "note": "公式呼称は「三之宮」。延慶2年(1309)ご奉祀。祭神としての史実部分(承平天慶年間の政治改革・民衆保護)を記録。将門塚の祟り伝承・遷座/復帰の経緯はShrineHistory側でtradition/historical_eventとして分離登録する。",
+          "source_keys": [
+            "src-999009"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "founding",
+          "title": "大己貴命ご鎮座",
+          "content": "天平2年(730)、大己貴命が鎮座した。",
+          "period_text": "天平2年(730)",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T07:07:27.455917+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999009"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "平将門命ご奉祀",
+          "content": "延慶2年(1309)、平将門命がご奉祀された。",
+          "period_text": "延慶2年(1309)",
+          "event_date": null,
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T07:07:27.455917+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999009"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "少彦名命の奉斎と平将門命の摂社遷座",
+          "content": "明治7年(1874)、少彦名命が大洗磯前神社より奉斎され、同時に平将門命は本殿から境内摂社(将門神社)へ遷座した。",
+          "period_text": "明治7年(1874)",
+          "event_date": null,
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "medium",
+          "verified_at": "2026-08-06T07:07:27.455917+00:00",
+          "note": "公式サイトprofileページ本文に直接記載がなく、Wikipediaで確認(出典として公式サイト・世界大百科事典を引用)。exact Sourceを別途確定できたためFactとして登録。",
+          "source_keys": [
+            "src-999010"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "平将門命の本殿奉祀復帰",
+          "content": "昭和59年(1984)、平将門命が摂社から本殿へ奉祀復帰した。",
+          "period_text": "昭和59年(1984)",
+          "event_date": null,
+          "sort_order": 4,
+          "verification_status": "source_confirmed",
+          "confidence": "medium",
+          "verified_at": "2026-08-06T07:07:27.455917+00:00",
+          "note": "公式サイトprofileページ本文に直接記載がなく、Wikipediaで確認(出典として公式サイト・世界大百科事典を引用)。",
+          "source_keys": [
+            "src-999010"
+          ]
+        },
+        {
+          "history_type": "tradition",
+          "title": "将門塚の神威伝承",
+          "content": "将門塚周辺で天変地異が頻発し、将門公の御神威として人々を恐れさせたため、時宗の遊行僧が御霊を慰め祀った。",
+          "period_text": "伝承（年代不詳）",
+          "event_date": null,
+          "sort_order": 5,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T07:07:27.455917+00:00",
+          "note": "公式サイト自身が史実(承平天慶年間の政治改革・民衆保護)と明確に区別して「伝承」として記述している部分。史実であるかのように断定しない。",
+          "source_keys": [
+            "src-999009"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "阿佐ヶ谷神明宮",
+        "address": "東京都杉並区阿佐谷北1-25-5"
+      },
+      "deities": [
+        {
+          "display_name": "天照大神",
+          "canonical_name": "天照大神",
+          "role": "primary",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-07T15:01:13.412514+00:00",
+          "note": "公式サイト「ご由緒」ページに主祭神として明記。",
+          "source_keys": [
+            "src-999038"
+          ]
+        },
+        {
+          "display_name": "月読命",
+          "canonical_name": "月読命",
+          "role": "secondary",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "medium",
+          "verified_at": "2026-08-07T15:01:13.412514+00:00",
+          "note": "公式サイトには記載なし。Wikipediaのみが配祀神として言及（secondary_editorial、confidence=medium）。",
+          "source_keys": [
+            "src-999039"
+          ]
+        },
+        {
+          "display_name": "須佐之男命",
+          "canonical_name": "須佐之男命",
+          "role": "secondary",
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "medium",
+          "verified_at": "2026-08-07T15:01:13.412514+00:00",
+          "note": "公式サイトには記載なし。Wikipediaのみが配祀神として言及（secondary_editorial、confidence=medium）。",
+          "source_keys": [
+            "src-999039"
+          ]
+        }
+      ],
+      "histories": []
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "彌彦神社",
+        "address": "新潟県西蒲原郡弥彦村弥彦2887-2"
+      },
+      "deities": [
+        {
+          "display_name": "天香山命",
+          "canonical_name": "伊夜日子大神",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T09:29:01.034037+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999058"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "天香山命による越後平定伝承",
+          "content": "神武天皇即位4年（西暦紀元前657年）、天香山命が越の国平定の勅を奉じて日本海を渡り、越後の野積浜に上陸し、漁労・製塩の技術を伝え、弥彦に宮居を定めて住民を導いたと公式サイトに記載されている。",
+          "period_text": "神武天皇即位4年（伝承）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T09:29:01.037970+00:00",
+          "note": "TRADITION_ALWAYS_HEDGED契約対象。古代天皇紀年のため慎重に扱う。",
+          "source_keys": [
+            "src-999058"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "賀茂御祖神社（下鴨神社）",
+        "address": "京都府京都市左京区下鴨泉川町59"
+      },
+      "deities": [
+        {
+          "display_name": "賀茂建角身命",
+          "canonical_name": "",
+          "role": "enshrined",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T07:50:11.782868+00:00",
+          "note": "西殿祭神。公式サイトは西殿/東殿を並列表記し序列を明示しないため、role=enshrinedで統一。",
+          "source_keys": [
+            "src-999048"
+          ]
+        },
+        {
+          "display_name": "玉依媛命",
+          "canonical_name": "",
+          "role": "enshrined",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T07:50:11.786167+00:00",
+          "note": "東殿祭神。公式サイトは西殿/東殿を並列表記し序列を明示しないため、role=enshrinedで統一。",
+          "source_keys": [
+            "src-999048"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "創祀年代に関する記録（崇神天皇7年）",
+          "content": "公式サイトは「当神社の正確な創祀は不明ですが、崇神天皇の7年（BC90）に神社の瑞垣の修造がおこなわれたという記録があるため、それ以前の古い時代からお祀りされていたと考えられます」と記載しており、創祀年代そのものを断定していない。",
+          "period_text": "崇神天皇7年（紀元前90年頃）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T07:50:11.786960+00:00",
+          "note": "TRADITION_ALWAYS_HEDGED契約対象。Source自身が「正確な創祀は不明」「考えられます」と明記。",
+          "source_keys": [
+            "src-999048"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "葵祭警備の命令記録（文武天皇2年）",
+          "content": "文武天皇2年（698年）、葵祭に見物人が多く集まるため警備するようにとの命令が出された記録が公式サイトに記載されている。",
+          "period_text": "文武天皇2年（698年）",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T07:50:11.788141+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999048"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "式年遷宮制度の確立（長元9年）",
+          "content": "長元9年（1036年）を第1回として式年遷宮の制度が確立したと公式サイトに記載されている。",
+          "period_text": "長元9年（1036年）",
+          "event_date": null,
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T07:50:11.789019+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999048"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "世界文化遺産登録（平成6年）",
+          "content": "平成6年（1994年）、世界の文化財として世界文化遺産に登録されたと公式サイトに記載されている。",
+          "period_text": "平成6年（1994年）",
+          "event_date": null,
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T07:50:11.789813+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999048"
+          ]
+        },
+        {
+          "history_type": "tradition",
+          "title": "玉依媛命の丹塗矢懐妊伝説・賀茂建角身命の八咫烏化身神話",
+          "content": "玉依媛命が鴨川で禊をしている際、上流より流れ来た丹塗矢により懐妊し賀茂別雷大神を出産したとする伝承、および賀茂建角身命が八咫烏に化身し神武天皇を勝利に導いたとする伝承が、いずれも当社祭神自身の神話として公式サイトに紹介されている。",
+          "period_text": "",
+          "event_date": null,
+          "sort_order": 4,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T07:50:11.790590+00:00",
+          "note": "TRADITION_ALWAYS_HEDGED契約対象。賀茂別雷神社（上賀茂神社）の御神話と一部関連するが、下鴨神社祭神自身の神話として別視点で記述。",
+          "source_keys": [
+            "src-999048"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "賀茂別雷神社（上賀茂神社）",
+        "address": "京都府京都市北区上賀茂本山339"
+      },
+      "deities": [
+        {
+          "display_name": "賀茂別雷大神",
+          "canonical_name": "",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T07:49:34.940650+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999046"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "official_origin",
+          "title": "賀茂神宮の造営（天武天皇6年）",
+          "content": "天武天皇6年（677年）、山背国により賀茂神宮が造営され、現在まで殆ど変容することのない御社殿の基が築かれたと公式サイトが記載している。",
+          "period_text": "天武天皇6年（677年）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T07:49:34.945227+00:00",
+          "note": "公式サイトはこの記述に伝承語を付けておらず、断定的な史実記述として提示している。",
+          "source_keys": [
+            "src-999046"
+          ]
+        },
+        {
+          "history_type": "tradition",
+          "title": "賀茂別雷大神の御神話（丹塗矢伝説）",
+          "content": "神代の昔、神山に御降臨になったとされ、天より神として神山に御降臨されたと公式サイトが伝承として紹介している。賀茂玉依比売命が丹塗矢を拾い持ち帰った後に懐妊し、生まれた御子が成人の後に自ら「我が父は天津神なり」と告げて天へ昇ったという神話が、当社の起源として公式サイトの御神話ページで紹介されている。",
+          "period_text": "",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T07:49:34.947686+00:00",
+          "note": "TRADITION_ALWAYS_HEDGED契約対象。公式サイトが「〜と伝わっております」と明記する神話。",
+          "source_keys": [
+            "src-999047"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "生田神社",
+        "address": "兵庫県神戸市中央区下山手通1-2-1"
+      },
+      "deities": [
+        {
+          "display_name": "稚日女尊",
+          "canonical_name": "",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T09:29:50.562371+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999060"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "稚日女尊の神占い伝承（神功皇后元年）",
+          "content": "神功皇后元年（西暦201年）、三韓外征の帰途、現在の神戸港にて船が進まなくなったため神占いを行ったところ稚日女尊が現れ、「私は活田長峡国に居りたい」と申されたため、海上五十狭茅を神主として祀られたと公式サイトが伝承として紹介している。",
+          "period_text": "神功皇后元年（西暦201年、伝承）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T09:29:50.568121+00:00",
+          "note": "TRADITION_ALWAYS_HEDGED契約対象。公式サイトが由緒セクション自体を「伝えられ」と明記。",
+          "source_keys": [
+            "src-999060"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "吉備津神社",
+        "address": "岡山県岡山市北区吉備津931"
+      },
+      "deities": [
+        {
+          "display_name": "大吉備津彦命",
+          "canonical_name": "",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T08:44:02.174051+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999054"
+          ]
+        },
+        {
+          "display_name": "若日子建吉備津日子命",
+          "canonical_name": "",
+          "role": "enshrined",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T08:44:02.179062+00:00",
+          "note": "大吉備津彦命の異母弟。",
+          "source_keys": [
+            "src-999054"
+          ]
+        },
+        {
+          "display_name": "吉備津彦命",
+          "canonical_name": "",
+          "role": "enshrined",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T08:44:02.179805+00:00",
+          "note": "大吉備津彦命の子。公式サイトは「等、一族の神々」と付記しており、これ以外にも合祀された神がいる可能性があるが、個別に名指しされていない神は登録しない。",
+          "source_keys": [
+            "src-999054"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "温羅退治伝説",
+          "content": "大吉備津彦命が、人々を苦しめ鬼と恐れられていた温羅一族を退治し、この地方に平和と秩序をもたらしたと公式サイトが伝説として紹介している。",
+          "period_text": "",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T08:44:02.180540+00:00",
+          "note": "TRADITION_ALWAYS_HEDGED契約対象。桃太郎伝説の原型とされる。",
+          "source_keys": [
+            "src-999054"
+          ]
+        },
+        {
+          "history_type": "tradition",
+          "title": "仁徳天皇による創建説",
+          "content": "仁徳天皇が吉備海部直の娘・黒媛を慕ってこの地に行幸した際、吉備津彦の功績を聞き称えるために社殿を創建して祀ったのが起源とも、公式サイトが「一説に」「伝わっております」として紹介している。",
+          "period_text": "",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T08:44:02.182401+00:00",
+          "note": "TRADITION_ALWAYS_HEDGED契約対象。公式サイト自身が「一説に」と明記する複数説の一つ。",
+          "source_keys": [
+            "src-999054"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "厳島神社",
+        "address": "広島県廿日市市宮島町1-1"
+      },
+      "deities": [
+        {
+          "display_name": "市杵島姫命",
+          "canonical_name": "市杵島姫命",
+          "role": "enshrined",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T09:42:08.054121+00:00",
+          "note": "宗像三女神。公式Sourceに序列の記載がないため主従関係を推測せずenshrinedとする。",
+          "source_keys": [
+            "src-999029"
+          ]
+        },
+        {
+          "display_name": "田心姫命",
+          "canonical_name": "田心姫命",
+          "role": "enshrined",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T09:42:08.056922+00:00",
+          "note": "宗像三女神。公式Sourceに序列の記載がないため主従関係を推測せずenshrinedとする。",
+          "source_keys": [
+            "src-999029"
+          ]
+        },
+        {
+          "display_name": "湍津姫命",
+          "canonical_name": "湍津姫命",
+          "role": "enshrined",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T09:42:08.058264+00:00",
+          "note": "宗像三女神。公式Sourceに序列の記載がないため主従関係を推測せずenshrinedとする。",
+          "source_keys": [
+            "src-999029"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "推古天皇即位の年の鎮座伝承",
+          "content": "嚴島神社の御鎮座は推古天皇御即位の年（西暦593年）と伝わる。",
+          "period_text": "推古天皇御即位の年（伝承、西暦593年）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "medium",
+          "verified_at": "2026-08-06T09:42:08.059259+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999029"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "平清盛による社殿修造",
+          "content": "今の社殿は平清盛により修造されたと伝わる。公式Sourceに修造の正確な年は記載されていないため、年代は確定しない。",
+          "period_text": "平安時代末期（12世紀、正確年不明）",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "medium",
+          "verified_at": "2026-08-06T09:42:08.061050+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999029"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "本社祓殿 国宝指定・仁治2年再建",
+          "content": "本社祓殿は仁治2年(1241)再建の社殿を基本とし、1899年に重要文化財指定、1952年3月29日に国宝に指定された。桁行六間、梁間三間、一重、入母屋造、妻入、檜皮葺。",
+          "period_text": "",
+          "event_date": "1952-03-29",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T09:42:08.062050+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999030"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "宮地嶽神社",
+        "address": "福岡県福津市宮司元町7-1"
+      },
+      "deities": [
+        {
+          "display_name": "息長足比売命",
+          "canonical_name": "",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T09:29:25.753077+00:00",
+          "note": "神功皇后。",
+          "source_keys": [
+            "src-999059"
+          ]
+        },
+        {
+          "display_name": "勝村大神",
+          "canonical_name": "",
+          "role": "enshrined",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T09:29:25.757158+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999059"
+          ]
+        },
+        {
+          "display_name": "勝頼大神",
+          "canonical_name": "",
+          "role": "enshrined",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T09:29:25.758073+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999059"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "神功皇后の三韓外征祈願伝承",
+          "content": "神功皇后が三韓外征に赴く際、宮地嶽の山頂で天神地祇を祀り道中の平安を祈願したのが当社の起源であると公式サイトに記載されている。この祈願の功績により、後に神功皇后が勝村大神・勝頼大神とともに「宮地嶽三柱大神」として祀られた。",
+          "period_text": "",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T09:29:25.758850+00:00",
+          "note": "TRADITION_ALWAYS_HEDGED契約対象。神功皇后自身の年代は伝承の域を出ないため具体的な年数は記載しない。",
+          "source_keys": [
+            "src-999059"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "白山比咩神社",
+        "address": "石川県白山市三宮町ニ105-1"
+      },
+      "deities": [
+        {
+          "display_name": "白山比咩大神",
+          "canonical_name": "",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T07:51:45.142365+00:00",
+          "note": "菊理媛尊。",
+          "source_keys": [
+            "src-999051"
+          ]
+        },
+        {
+          "display_name": "伊弉諾尊",
+          "canonical_name": "",
+          "role": "enshrined",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T07:51:45.145464+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999051"
+          ]
+        },
+        {
+          "display_name": "伊弉冉尊",
+          "canonical_name": "",
+          "role": "enshrined",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T07:51:45.146391+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999051"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "舟岡山への創祀伝承（崇神天皇7年）",
+          "content": "崇神天皇7年（紀元前91年）、舟岡山（現・白山市八幡町）に創建されたと公式サイトが伝承として紹介している。",
+          "period_text": "崇神天皇7年（紀元前91年）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T07:51:45.147169+00:00",
+          "note": "TRADITION_ALWAYS_HEDGED契約対象。公式サイトが「〜と伝えられる」と明記。",
+          "source_keys": [
+            "src-999051"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "安久濤の森への遷座（霊亀2年）",
+          "content": "霊亀2年（716年）、手取川畔（安久濤の森）へ遷座したと公式サイトに記載されている。",
+          "period_text": "霊亀2年（716年）",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T07:51:45.148840+00:00",
+          "note": "公式サイトはこの記述に伝承語を付けておらず断定的な史実記述として提示している。",
+          "source_keys": [
+            "src-999051"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "現在地への遷座（文明12年）",
+          "content": "文明12年（1480年）の大火により本殿が炎上し御神体を三宮へ奉遷、その後、末社三宮が鎮座していた現在地へ遷されたと公式サイトに記載されている。",
+          "period_text": "文明12年（1480年）",
+          "event_date": null,
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T07:51:45.149746+00:00",
+          "note": "公式サイトはこの記述に伝承語を付けておらず断定的な史実記述として提示している。",
+          "source_keys": [
+            "src-999051"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "日枝神社",
+        "address": "東京都千代田区永田町2-10-5"
+      },
+      "deities": [
+        {
+          "display_name": "大山咋神",
+          "canonical_name": "",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T07:50:40.768600+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999049"
+          ]
+        },
+        {
+          "display_name": "国常立神",
+          "canonical_name": "",
+          "role": "enshrined",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T07:50:40.773923+00:00",
+          "note": "相殿。",
+          "source_keys": [
+            "src-999049"
+          ]
+        },
+        {
+          "display_name": "伊弉冉神",
+          "canonical_name": "",
+          "role": "enshrined",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T07:50:40.775039+00:00",
+          "note": "相殿。",
+          "source_keys": [
+            "src-999049"
+          ]
+        },
+        {
+          "display_name": "足仲彦尊",
+          "canonical_name": "",
+          "role": "enshrined",
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T07:50:40.776045+00:00",
+          "note": "相殿。",
+          "source_keys": [
+            "src-999049"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "official_origin",
+          "title": "川越山王社の勧請から江戸城内鎮護の神へ",
+          "content": "文明10年（1478年）、太田道灌公が江戸城内に鎮護の神として川越山王社を勧請したのが当社の起源であると公式サイトに記載されている。天正18年（1590年）、徳川家康公が江戸に移封され江戸城を居城とするに至って以降、江戸城内鎮護の神として位置づけられた。",
+          "period_text": "文明10年（1478年）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T07:50:40.776881+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999049"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "明暦の大火による赤坂への遷祀",
+          "content": "明暦3年（1657年）の大火により社殿が炎上し、その後、赤坂の溜池を望む地を社地とし、権現造の社殿を造営して遷祀したと公式サイトに記載されている。",
+          "period_text": "明暦3年（1657年）",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T07:50:40.778518+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999049"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "東京大神宮",
+        "address": "東京都千代田区富士見2-4-1"
+      },
+      "deities": [
+        {
+          "display_name": "天照皇大神",
+          "canonical_name": "",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T07:51:12.282164+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999050"
+          ]
+        },
+        {
+          "display_name": "豊受大神",
+          "canonical_name": "",
+          "role": "enshrined",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T07:51:12.287147+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999050"
+          ]
+        },
+        {
+          "display_name": "造化の三神",
+          "canonical_name": "",
+          "role": "enshrined",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T07:51:12.288189+00:00",
+          "note": "天之御中主神・高御産巣日神・神産巣日神の総称。公式サイトが一括して呼称する集合的名称のため、個別3柱としては登録しない。",
+          "source_keys": [
+            "src-999050"
+          ]
+        },
+        {
+          "display_name": "倭比賣命",
+          "canonical_name": "",
+          "role": "enshrined",
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T07:51:12.289029+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999050"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "official_origin",
+          "title": "東京大神宮の創建（明治13年）",
+          "content": "明治天皇のご裁断を仰ぎ、東京における伊勢神宮の遥拝殿として明治13年（1880年）に創建されたと公式サイトに記載されている。",
+          "period_text": "明治13年（1880年）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T07:51:12.289856+00:00",
+          "note": "年のみで月日の記載がないためevent_dateは使用せずperiod_textとして扱う。",
+          "source_keys": [
+            "src-999050"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "亀戸天神社",
+        "address": "東京都江東区亀戸3-6-1"
+      },
+      "deities": [
+        {
+          "display_name": "天満大神",
+          "canonical_name": "",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T08:45:31.710993+00:00",
+          "note": "菅原道真公。",
+          "source_keys": [
+            "src-999057"
+          ]
+        },
+        {
+          "display_name": "天菩日命",
+          "canonical_name": "",
+          "role": "enshrined",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T08:45:31.715798+00:00",
+          "note": "相殿。菅原家の祖神。",
+          "source_keys": [
+            "src-999057"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "神のお告げによる創始（正保3年）",
+          "content": "正保3年（1646年）、菅原大鳥居信祐公が神のお告げにより、道真公ゆかりの飛び梅の枝で天神像を刻み、江戸本所亀戸村の天神の小さなほこらに祀ったのが当社の創始であると公式サイトに記載されている。",
+          "period_text": "正保3年（1646年）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T08:45:31.716835+00:00",
+          "note": "TRADITION_ALWAYS_HEDGED契約対象。当社固有の創始伝承（太宰府天満宮一般の由緒ではない）。",
+          "source_keys": [
+            "src-999057"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "社殿造営から現名称への改称まで",
+          "content": "寛文2年（1662年）10月25日、太宰府の社にならい社殿・回廊・心字池・太鼓橋などを造営した。明治6年に東京府社となり「亀戸神社」と号し、昭和11年に現在の「亀戸天神社」へ正称したと公式サイトに記載されている。",
+          "period_text": "寛文2年（1662年）〜昭和11年",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T08:45:31.718718+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999057"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "品川神社",
+        "address": "東京都品川区北品川3-7-15"
+      },
+      "deities": [
+        {
+          "display_name": "天比理乃咩命",
+          "canonical_name": "天比理乃咩命",
+          "role": "enshrined",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-01T09:51:50+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999007",
+            "src-999006"
+          ]
+        },
+        {
+          "display_name": "宇賀之売命",
+          "canonical_name": "宇賀之売命",
+          "role": "enshrined",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-01T10:07:24+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999007",
+            "src-999006"
+          ]
+        },
+        {
+          "display_name": "素盞嗚尊",
+          "canonical_name": "素盞嗚尊",
+          "role": "enshrined",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-01T10:08:39+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999007",
+            "src-999006"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "founding",
+          "title": "文治3年（1187年）の創始",
+          "content": "源頼朝公が安房国の洲崎明神から天比理乃咩命を当地に迎え、海上交通安全と祈願成就を祈ったことを創始とする。",
+          "period_text": "",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-01T10:20:20+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999007",
+            "src-999006"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "元応元年（1319年）の宇賀之売命奉祀",
+          "content": "二階堂道蘊公が宇賀之売命を祀った。",
+          "period_text": "",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-01T10:30:37+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999006"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "文明10年（1478年）の素盞嗚尊奉祀",
+          "content": "太田道灌公が素盞嗚尊を祀った。",
+          "period_text": "",
+          "event_date": null,
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-01T10:31:59+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999006"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "八坂神社",
+        "address": "京都府京都市東山区祇園町北側625"
+      },
+      "deities": [
+        {
+          "display_name": "素戔嗚尊",
+          "canonical_name": "",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T02:33:15.843838+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999044"
+          ]
+        },
+        {
+          "display_name": "櫛稲田姫命",
+          "canonical_name": "",
+          "role": "enshrined",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T02:33:15.848233+00:00",
+          "note": "お妃（公式サイト表記）。",
+          "source_keys": [
+            "src-999044"
+          ]
+        },
+        {
+          "display_name": "八柱御子神",
+          "canonical_name": "",
+          "role": "enshrined",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T02:33:15.849167+00:00",
+          "note": "素戔嗚尊・櫛稲田姫命の御子とされる8柱の総称。公式サイトが個別列挙せず一括して呼称する集合的名称のため、個別8柱としては登録しない。",
+          "source_keys": [
+            "src-999044"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "八坂神社創祀の社伝（其の一・渡来人による奉斎説）",
+          "content": "斉明天皇2年（656年）、高麗より来朝した伊利之が、新羅国牛頭山に座した素戔嗚尊を山城国愛宕郡八坂郷（当地）に奉斎したのが始まりであると公式サイトが社伝の一つとして紹介している。",
+          "period_text": "斉明天皇2年（656年）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T02:33:15.851112+00:00",
+          "note": "TRADITION_ALWAYS_HEDGED契約対象。公式サイトが「社伝としては以下の2つの説が伝わります」と明記する説の一つ。",
+          "source_keys": [
+            "src-999045"
+          ]
+        },
+        {
+          "history_type": "tradition",
+          "title": "八坂神社創祀の社伝（其の二・堂建立説）",
+          "content": "貞観18年（876年）、南都の僧・円如が当地にお堂を建立し、同じ年に天神（祇園神）が東山の麓、祇園林に降り立ったのが始まりであると公式サイトが社伝の一つとして紹介している。",
+          "period_text": "貞観18年（876年）",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T02:33:15.853157+00:00",
+          "note": "TRADITION_ALWAYS_HEDGED契約対象。公式サイトが「社伝としては以下の2つの説が伝わります」と明記する説の一つ。1つのcontentへ複数説を合成せず、其の一と別レコードとして登録。",
+          "source_keys": [
+            "src-999045"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "祇園祭の初見（貞観11年）",
+          "content": "貞観11年（869年）、国内に疫病が流行した際、洛中の禁苑であった神泉苑に神輿を送って祈ったことに由来するとされ、これが祇園祭の確定的な初見として公式サイトに記載されている。",
+          "period_text": "貞観11年（869年）",
+          "event_date": null,
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T02:33:15.854093+00:00",
+          "note": "創祀伝承（tradition）とは別に、公式サイトが確定的な初見として記載する史実的記述。",
+          "source_keys": [
+            "src-999045"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "乃木神社",
+        "address": "東京都港区赤坂8-11-27"
+      },
+      "deities": [
+        {
+          "display_name": "乃木希典命",
+          "canonical_name": "乃木希典命",
+          "role": "primary",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T08:37:52.570241+00:00",
+          "note": "実在の人物(陸軍大将・乃木希典)を祭神とするケース。基本名称は公式サイト(achievements.html)、敬称付き正式表記はWikipediaで確認。",
+          "source_keys": [
+            "src-999015",
+            "src-999014"
+          ]
+        },
+        {
+          "display_name": "乃木静子命",
+          "canonical_name": "乃木静子命",
+          "role": "secondary",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T08:37:52.570241+00:00",
+          "note": "乃木希典命の相殿として祀られる（Wikipediaで「相殿」と明記）。乃木希典の妻。",
+          "source_keys": [
+            "src-999015",
+            "src-999014"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "founding",
+          "title": "中央乃木会の発足と神社設立許可",
+          "content": "大正2年(1913)、東京市長・阪谷芳郎男爵を会長として「中央乃木会」が設立され、大正8年(1919)に乃木神社設立の許可を受け、乃木邸隣地を用地として定めた。",
+          "period_text": "大正2年(1913)〜大正8年(1919)",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T08:38:08.457766+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999013"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "鎮座祭",
+          "content": "大正12年(1923)11月1日、鎮座祭が斎行された。同年11月3日には皇族参拝もあった。",
+          "period_text": "大正12年(1923)",
+          "event_date": "1923-11-01",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T08:38:08.457766+00:00",
+          "note": "公式サイト・Wikipedia双方で日付が一致。",
+          "source_keys": [
+            "src-999013"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "戦災焼失と復興",
+          "content": "昭和20年(1945)5月の空襲で社殿を焼失したが、昭和37年(1962)9月13日に本殿・幣殿・拝殿が復興された。",
+          "period_text": "昭和20年(1945)〜昭和37年(1962)",
+          "event_date": "1962-09-13",
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T08:38:08.457766+00:00",
+          "note": "焼失(昭和20年5月)は月のみ判明のためperiod_textに含め、event_dateは日付確定済みの復興日(昭和37年9月13日)を採用。",
+          "source_keys": [
+            "src-999013"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "武蔵御嶽神社",
+        "address": "東京都青梅市御岳山176"
+      },
+      "deities": [
+        {
+          "display_name": "大己貴命",
+          "canonical_name": "大己貴命",
+          "role": "unknown",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T08:48:04.155136+00:00",
+          "note": "由緒page直接確認。序列の明記なしのためrole=unknown。",
+          "source_keys": [
+            "src-999022"
+          ]
+        },
+        {
+          "display_name": "少彦名命",
+          "canonical_name": "少彦名命",
+          "role": "unknown",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T08:48:04.155136+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999022"
+          ]
+        },
+        {
+          "display_name": "日本武尊",
+          "canonical_name": "日本武尊",
+          "role": "unknown",
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T08:48:04.155136+00:00",
+          "note": "大口真神伝説において道案内された対象として由緒page・式年祭page双方で確認。",
+          "source_keys": [
+            "src-999023",
+            "src-999022"
+          ]
+        },
+        {
+          "display_name": "大口真神",
+          "canonical_name": "大口真神",
+          "role": "secondary",
+          "sort_order": 4,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T08:48:04.155136+00:00",
+          "note": "式年祭pageで「大口真神社」という境内独立社の祭神として明記されており、三峯神社(御眷属・お使いとして明示的に非祭神)とは異なり、本shrineでは祭神として扱われている。両shrineで同一伝承モチーフ(白狼が日本武尊を道案内)を持ちながら公式な位置づけが異なる実例。5柱目候補として挙がった「櫛麻智命」「廣國押武金日命(蔵王権現)」は二次情報のみで直接Source確認できなかったため今回は登録しない。",
+          "source_keys": [
+            "src-999023"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "創建の伝承",
+          "content": "第10代崇神天皇7年、武渟川別命(建沼河別命)が東方十二道平定の折、大己貴命・少彦名命をお祀りしたことが起源と伝わる。",
+          "period_text": "崇神天皇7年（伝承）",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T08:48:24.144106+00:00",
+          "note": "由緒page自身が「伝わります」と明記する伝承。",
+          "source_keys": [
+            "src-999022"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "行基による金剛蔵王権現像の安置",
+          "content": "天平8年(736)、僧・行基が東国鎮護を祈願し金剛蔵王権現像を安置した。",
+          "period_text": "天平8年(736)",
+          "event_date": null,
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T08:48:24.144106+00:00",
+          "note": "由緒page自身が史実として記載。",
+          "source_keys": [
+            "src-999022"
+          ]
+        },
+        {
+          "history_type": "tradition",
+          "title": "大口真神の伝説",
+          "content": "日本武尊が東征の折、山路で邪神の妖霧に道を失った際、白狼が現れ道を拓き難を救った。日本武尊はこの白狼に地を守護するよう仰せ、白狼は「大口真神」という神となって御岳山に鎮まったと伝わる。",
+          "period_text": "伝説（年代不詳）",
+          "event_date": null,
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T08:48:24.144106+00:00",
+          "note": "式年祭pageに記載された伝説。",
+          "source_keys": [
+            "src-999023"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "大久保長安による社殿改築",
+          "content": "慶長11年(1606)、大久保石見守長安により社殿が改築された。",
+          "period_text": "慶長11年(1606)",
+          "event_date": null,
+          "sort_order": 4,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T08:48:24.144106+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999022"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "将軍綱吉による幣殿・拝殿造営",
+          "content": "元禄13年(1700)、5代将軍徳川綱吉により幣殿・拝殿が造営された。",
+          "period_text": "元禄13年(1700)",
+          "event_date": null,
+          "sort_order": 5,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T08:48:24.144106+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999022"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "秩父神社",
+        "address": "埼玉県秩父市番場町1-3"
+      },
+      "deities": [
+        {
+          "display_name": "八意思兼命",
+          "canonical_name": "",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T09:30:19.688610+00:00",
+          "note": "政治・学問・工業・開運の祖神。",
+          "source_keys": [
+            "src-999061"
+          ]
+        },
+        {
+          "display_name": "知知夫彦命",
+          "canonical_name": "",
+          "role": "enshrined",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T09:30:19.693034+00:00",
+          "note": "秩父地方開拓の祖神。八意思兼命の十世の子孫。",
+          "source_keys": [
+            "src-999061"
+          ]
+        },
+        {
+          "display_name": "天之御中主神",
+          "canonical_name": "",
+          "role": "enshrined",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T09:30:19.694053+00:00",
+          "note": "鎌倉時代に北辰妙見として合祀。",
+          "source_keys": [
+            "src-999061"
+          ]
+        },
+        {
+          "display_name": "秩父宮雍仁親王",
+          "canonical_name": "",
+          "role": "enshrined",
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T09:30:19.694878+00:00",
+          "note": "昭和28年（1953年）に合祀。",
+          "source_keys": [
+            "src-999061"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "知知夫彦命による創祀（崇神天皇の御代）",
+          "content": "『先代旧事紀』国造本紀によれば、第10代崇神天皇の御代、知知夫国の初代国造に任命された八意思兼命の十世の子孫・知知夫彦命が祖神を祀ったのが当社の始まりであると公式サイトに記載されている。",
+          "period_text": "崇神天皇の御代（伝承）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T09:30:19.695741+00:00",
+          "note": "TRADITION_ALWAYS_HEDGED契約対象。古代天皇紀年のため慎重に扱う。",
+          "source_keys": [
+            "src-999061"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "天之御中主神・秩父宮雍仁親王の合祀",
+          "content": "天之御中主神は鎌倉時代に「北辰妙見」として合祀され、秩父宮雍仁親王（昭和天皇の弟宮）は昭和28年（1953年）に合祀されたと公式サイトに記載されている。",
+          "period_text": "鎌倉時代〜昭和28年（1953年）",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T09:30:19.697508+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999061"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "酒列磯前神社",
+        "address": "茨城県ひたちなか市磯崎町4607-2"
+      },
+      "deities": [
+        {
+          "display_name": "少彦名命",
+          "canonical_name": "",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T08:44:30.781285+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999055"
+          ]
+        },
+        {
+          "display_name": "大名持命",
+          "canonical_name": "",
+          "role": "enshrined",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T08:44:30.788747+00:00",
+          "note": "配祀神。",
+          "source_keys": [
+            "src-999055"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "御祭神の磯への降臨（斉衡3年）",
+          "content": "斉衡3年（856年）12月29日、常陸国鹿島郡大洗の海岸に御祭神・大名持命と少彦名命が御降臨になり、当地（現・ひたちなか市磯崎町）に創建されたと公式サイトに記載されている。",
+          "period_text": "斉衡3年（856年）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T08:44:30.790249+00:00",
+          "note": "TRADITION_ALWAYS_HEDGED契約対象。日付は断定的だが、神の降臨という内容自体が神話的性質を持つためtradition分類とする。",
+          "source_keys": [
+            "src-999055"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "官社列格（天安元年）",
+          "content": "創建の翌年である天安元年（857年）8月に官社に列せられ、同年10月には「酒列磯前薬師菩薩明神」の神号を賜ったと公式サイトに記載されている。",
+          "period_text": "天安元年（857年）",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T08:44:30.793006+00:00",
+          "note": "政治的・行政的な記録であり、tradition対象外。",
+          "source_keys": [
+            "src-999055"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "妙義神社",
+        "address": "群馬県富岡市妙義町妙義6"
+      },
+      "deities": [
+        {
+          "display_name": "日本武尊",
+          "canonical_name": "日本武尊",
+          "role": "unknown",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T08:42:55.070730+00:00",
+          "note": "公式由緒に序列の明記なし、4柱を対等にrole=unknownとして登録。",
+          "source_keys": [
+            "src-999018"
+          ]
+        },
+        {
+          "display_name": "豊受大神",
+          "canonical_name": "豊受大神",
+          "role": "unknown",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T08:42:55.070730+00:00",
+          "note": "公式由緒に序列の明記なし、4柱を対等にrole=unknownとして登録。",
+          "source_keys": [
+            "src-999018"
+          ]
+        },
+        {
+          "display_name": "菅原道真公",
+          "canonical_name": "菅原道真公",
+          "role": "unknown",
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T08:42:55.070730+00:00",
+          "note": "公式由緒に序列の明記なし、4柱を対等にrole=unknownとして登録。",
+          "source_keys": [
+            "src-999018"
+          ]
+        },
+        {
+          "display_name": "権大納言長親卿",
+          "canonical_name": "権大納言長親卿",
+          "role": "unknown",
+          "sort_order": 4,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T08:42:55.070730+00:00",
+          "note": "公式由緒に序列の明記なし、4柱を対等にrole=unknownとして登録。",
+          "source_keys": [
+            "src-999018"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "創建の伝承",
+          "content": "社記に「宣化天皇の二年(537)に鎮祭せり」と記されている。",
+          "period_text": "宣化天皇2年(537)、社記による伝承的記録",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T08:43:11.184696+00:00",
+          "note": "宣化天皇は6世紀の天皇で年代・記録の性質上、確定史実というより社記に基づく伝承として扱う。",
+          "source_keys": [
+            "src-999018"
+          ]
+        },
+        {
+          "history_type": "tradition",
+          "title": "社号「妙義」への改称",
+          "content": "元来「波己曽の大神」と称していたが、権大納言長親卿が名づけた「明魂」を後世「妙義」と改めたと伝えられている。",
+          "period_text": "伝承(年代不詳)",
+          "event_date": null,
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T08:43:11.184696+00:00",
+          "note": "公式サイト自身が「伝えられている」と明示的に伝承として記述。",
+          "source_keys": [
+            "src-999018"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "江戸期の信仰と兼帯神社化",
+          "content": "歴代将軍や加賀の前田侯ら諸大名から厚い信仰を受け、上野東叡山の宮の兼帯神社となった。",
+          "period_text": "江戸時代",
+          "event_date": null,
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T08:43:11.184696+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999018"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "唐門の重要文化財指定",
+          "content": "江戸後期(1756年)建造の唐門(桁行一間、梁間一間、平唐門、銅瓦葺)が、1981年6月5日に国指定重要文化財となった。",
+          "period_text": "1981年6月5日",
+          "event_date": "1981-06-05",
+          "sort_order": 4,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T08:43:11.184696+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999019"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "森戸大明神",
+        "address": "神奈川県三浦郡葉山町堀内1025"
+      },
+      "deities": [
+        {
+          "display_name": "大山祗命",
+          "canonical_name": "",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T09:30:46.401563+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999062"
+          ]
+        },
+        {
+          "display_name": "事代主命",
+          "canonical_name": "",
+          "role": "enshrined",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T09:30:46.405192+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999062"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "源頼朝による三嶋明神勧請（永暦元年）",
+          "content": "永暦元年（1160年）、平治の乱に敗れ伊豆に流された源頼朝公が三嶋明神（現・三嶋大社）を深く信仰し源氏の再興を祈願、治承4年（1180年）の旗挙げ成功後、鎌倉に近いこの葉山の地へ三嶋明神の御分霊を勧請し、長く謝恩を捧げたと公式サイトに記載されている。",
+          "period_text": "永暦元年（1160年）〜治承4年（1180年）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T09:30:46.406026+00:00",
+          "note": "TRADITION_ALWAYS_HEDGED契約対象。公式サイトが「〜と伝えられています」と明記。",
+          "source_keys": [
+            "src-999062"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "九頭龍神社 新宮",
+        "address": "神奈川県足柄下郡箱根町元箱根80-1"
+      },
+      "deities": [
+        {
+          "display_name": "九頭龍大神",
+          "canonical_name": "九頭龍大神",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T10:39:53.085485+00:00",
+          "note": "本宮（芦ノ湖畔九頭龍大神誕生の聖地）とは別の社。新宮は箱根神社御社殿横に建立された社であり、本宮由来のFactと混同しない。",
+          "source_keys": [
+            "src-999036"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "historical_event",
+          "title": "新宮の建立",
+          "content": "本宮は芦ノ湖畔の九頭龍大神誕生の聖地に鎮座するのに対し、新宮は後年、湖水祭斎場の聖地たる箱根神社御社殿横に建立鎮祭された。月次祭は本宮が13日、新宮が15日と日程が異なる。正確な建立年は公式Sourceで確認できなかったため確定日として扱わない。",
+          "period_text": "後年（本宮鎮座後、正確な年代は公式Sourceで未確認）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "medium",
+          "verified_at": "2026-08-06T10:39:53.088346+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999036"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "護王神社",
+        "address": "京都府京都市上京区烏丸通下長者町下ル桜鶴円町385"
+      },
+      "deities": [
+        {
+          "display_name": "和気清麻呂公命",
+          "canonical_name": "",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T08:45:01.924460+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999056"
+          ]
+        },
+        {
+          "display_name": "和気広虫姫命",
+          "canonical_name": "",
+          "role": "enshrined",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T08:45:01.929660+00:00",
+          "note": "清麻呂公の姉。",
+          "source_keys": [
+            "src-999056"
+          ]
+        },
+        {
+          "display_name": "藤原百川公命",
+          "canonical_name": "",
+          "role": "enshrined",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T08:45:01.930745+00:00",
+          "note": "配祀。",
+          "source_keys": [
+            "src-999056"
+          ]
+        },
+        {
+          "display_name": "路豊永卿命",
+          "canonical_name": "",
+          "role": "enshrined",
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T08:45:01.931481+00:00",
+          "note": "配祀。",
+          "source_keys": [
+            "src-999056"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "official_origin",
+          "title": "神護寺境内の霊社としての祀られた経緯",
+          "content": "公式サイトは「確かな創建年は伝えられていません」と明記した上で、もとは洛西の高雄山神護寺の境内に和気清麻呂公の霊社として祀られ、古くから「護法善神」と称されていたと記載している。創建年不明という限界を含めてそのまま記述し、特定の年を推測して補完していない。",
+          "period_text": "",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T08:45:01.932183+00:00",
+          "note": "創建年不明という公式の明記を保持。",
+          "source_keys": [
+            "src-999056"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "神階授与から現在地遷座まで",
+          "content": "嘉永4年（1851年）、孝明天皇が清麻呂公の歴史的功績を讃えて正一位護王大明神の神階神号を授け、明治7年（1874年）に「護王神社」と改称して別格官幣社に列せられた。明治19年（1886年）には明治天皇の勅命により、京都御所蛤御門前の現在地に社殿を造営し、神護寺境内から遷座したと公式サイトに記載されている。",
+          "period_text": "嘉永4年（1851年）〜明治19年（1886年）",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-08T08:45:01.933530+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999056"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "阿蘇神社",
+        "address": "熊本県阿蘇市一の宮町宮地3083-1"
+      },
+      "deities": [
+        {
+          "display_name": "健磐龍命",
+          "canonical_name": "健磐龍命",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-06T10:39:23.460475+00:00",
+          "note": "神武天皇の孫神で阿蘇を開拓したと伝わる。公式サイトは「健磐龍命をはじめ家族神12神を祀る」と集合的に述べるのみで、他11柱の個別名・祭神としての位置づけは公式Sourceで確認できなかったため、本Batchでは健磐龍命のみを登録する。",
+          "source_keys": [
+            "src-999035"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "阿蘇開拓の伝承",
+          "content": "神武天皇の孫神である健磐龍命が阿蘇を開拓したと伝わる。2000年以上の歴史を有する古社とされる。",
+          "period_text": "2000年以上前（伝承）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "medium",
+          "verified_at": "2026-08-06T10:39:23.463496+00:00",
+          "note": "",
+          "source_keys": [
+            "src-999035"
+          ]
+        }
+      ]
+    }
+  ]
+}
