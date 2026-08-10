@@ -1,0 +1,373 @@
+{
+  "schema_version": "1.0",
+  "sources": [
+    {
+      "key": "batch8-fuji-official",
+      "source_type": "shrine_official",
+      "title": "御由緒｜富士山本宮浅間大社",
+      "publisher": "富士山本宮浅間大社",
+      "url": "https://fuji-hongu.or.jp/sengen/history/index.html",
+      "bibliography": "",
+      "accessed_at": "2026-08-10",
+      "verified_at": "2026-08-10T08:30:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "御祭神、起源、山宮鎮座、大宮遷座の各節を直接確認。"
+    },
+    {
+      "key": "batch8-tsukuba-official",
+      "source_type": "shrine_official",
+      "title": "由緒｜筑波山神社",
+      "publisher": "筑波山神社",
+      "url": "https://tsukubasanjinja.jp/history/",
+      "bibliography": "",
+      "accessed_at": "2026-08-10",
+      "verified_at": "2026-08-10T08:35:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "由緒、御祭神、鎮座地を直接確認。"
+    },
+    {
+      "key": "batch8-keta-official",
+      "source_type": "shrine_official",
+      "title": "由緒・気多の神々｜氣多大社",
+      "publisher": "氣多大社",
+      "url": "https://keta.jp/history/",
+      "bibliography": "",
+      "accessed_at": "2026-08-10",
+      "verified_at": "2026-08-10T08:40:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "本殿祭神と8世紀以降の文献記録を直接確認。"
+    },
+    {
+      "key": "batch8-tsubaki-official",
+      "source_type": "shrine_official",
+      "title": "椿大神社について｜椿大神社",
+      "publisher": "椿大神社",
+      "url": "https://tsubaki.or.jp/about/",
+      "bibliography": "",
+      "accessed_at": "2026-08-10",
+      "verified_at": "2026-08-10T08:45:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "主神、相殿、配祀および御創立の由来を直接確認。"
+    },
+    {
+      "key": "batch8-enoshima-deity-official",
+      "source_type": "shrine_official",
+      "title": "ご祭神｜江島神社",
+      "publisher": "江島神社",
+      "url": "https://enoshimajinja.or.jp/gosaijin/",
+      "bibliography": "",
+      "accessed_at": "2026-08-10",
+      "verified_at": "2026-08-10T08:50:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "奥津宮・中津宮・辺津宮の三女神を直接確認。"
+    },
+    {
+      "key": "batch8-enoshima-history-official",
+      "source_type": "shrine_official",
+      "title": "辺津宮｜江島神社",
+      "publisher": "江島神社",
+      "url": "https://enoshimajinja.or.jp/hetsumiya/",
+      "bibliography": "",
+      "accessed_at": "2026-08-10",
+      "verified_at": "2026-08-10T08:55:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "辺津宮の創建・再建・改修記録を直接確認。"
+    }
+  ],
+  "shrines": [
+    {
+      "shrine_ref": {
+        "name_jp": "富士山本宮浅間大社",
+        "address": "静岡県富士宮市宮町1-1"
+      },
+      "deities": [
+        {
+          "display_name": "木花之佐久夜毘売命",
+          "canonical_name": "木花之佐久夜毘売命",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T08:30:00+00:00",
+          "note": "公式別称は浅間大神。",
+          "source_keys": ["batch8-fuji-official"]
+        },
+        {
+          "display_name": "瓊々杵尊",
+          "canonical_name": "瓊々杵尊",
+          "role": "enshrined",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T08:30:00+00:00",
+          "note": "公式表記は相殿神。",
+          "source_keys": ["batch8-fuji-official"]
+        },
+        {
+          "display_name": "大山祇神",
+          "canonical_name": "大山祇神",
+          "role": "enshrined",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T08:30:00+00:00",
+          "note": "公式表記は相殿神。",
+          "source_keys": ["batch8-fuji-official"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "浅間大神奉斎の起源伝承",
+          "content": "『富士本宮浅間社記』によれば、富士山噴火後の荒廃を憂えた垂仁天皇が、その御代3年に浅間大神を山足の地に祀って山霊を鎮めたことが当大社の起源と伝えられている。",
+          "period_text": "垂仁天皇3年（社記による）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T08:30:00+00:00",
+          "note": "公式Sourceが社記に基づく伝承として記すため、history_type=traditionとし確定年代として扱わない。",
+          "source_keys": ["batch8-fuji-official"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "大宮への遷座",
+          "content": "富士山本宮浅間大社の公式由緒は、大同元年（806）、坂上田村麿が平城天皇の勅命を受け、現在の大宮の地に社殿を造営して山宮から遷座したと記している。",
+          "period_text": "大同元年（806）",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T08:30:00+00:00",
+          "note": "公式由緒の大宮遷座節に基づく。",
+          "source_keys": ["batch8-fuji-official"]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "筑波山神社",
+        "address": "茨城県つくば市筑波1"
+      },
+      "deities": [
+        {
+          "display_name": "伊弉諾尊",
+          "canonical_name": "伊弉諾尊",
+          "role": "enshrined",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T08:35:00+00:00",
+          "note": "筑波男大神として男体山に祀るとの公式記載。",
+          "source_keys": ["batch8-tsukuba-official"]
+        },
+        {
+          "display_name": "伊弉冊尊",
+          "canonical_name": "伊弉冊尊",
+          "role": "enshrined",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T08:35:00+00:00",
+          "note": "筑波女大神として女体山に祀るとの公式記載。",
+          "source_keys": ["batch8-tsukuba-official"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "筑波一族による奉仕の伝承",
+          "content": "公式由緒は、崇神天皇の御代に筑波命が筑波国造に命じられ、以来、筑波一族が祭政一致で筑波山神社に奉仕したと伝えている。",
+          "period_text": "崇神天皇の御代（公式由緒による）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T08:35:00+00:00",
+          "note": "古代の年代を確定日へ変換せず、公式由緒の伝承表現を保持。",
+          "source_keys": ["batch8-tsukuba-official"]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "氣多大社",
+        "address": "石川県羽咋市寺家町ク1-1"
+      },
+      "deities": [
+        {
+          "display_name": "大己貴神",
+          "canonical_name": "大己貴神",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T08:40:00+00:00",
+          "note": "公式由緒の本殿祭神表記に基づく。",
+          "source_keys": ["batch8-keta-official"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "historical_event",
+          "title": "8世紀の文献記録",
+          "content": "氣多大社の公式由緒は、神護景雲2年（768）に封戸二十戸と田二町が寄進されたことを『続日本紀』に基づいて記している。",
+          "period_text": "神護景雲2年（768）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T08:40:00+00:00",
+          "note": "公式Sourceが文献名を明記する歴史記録。",
+          "source_keys": ["batch8-keta-official"]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "椿大神社",
+        "address": "三重県鈴鹿市山本町1871"
+      },
+      "deities": [
+        {
+          "display_name": "猿田彦大神",
+          "canonical_name": "猿田彦大神",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T08:45:00+00:00",
+          "note": "公式表記は主神。",
+          "source_keys": ["batch8-tsubaki-official"]
+        },
+        {
+          "display_name": "瓊々杵尊",
+          "canonical_name": "瓊々杵尊",
+          "role": "enshrined",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T08:45:00+00:00",
+          "note": "公式表記は相殿。",
+          "source_keys": ["batch8-tsubaki-official"]
+        },
+        {
+          "display_name": "栲幡千々姫命",
+          "canonical_name": "栲幡千々姫命",
+          "role": "enshrined",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T08:45:00+00:00",
+          "note": "公式表記は相殿。",
+          "source_keys": ["batch8-tsubaki-official"]
+        },
+        {
+          "display_name": "天之鈿女命",
+          "canonical_name": "天之鈿女命",
+          "role": "enshrined",
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T08:45:00+00:00",
+          "note": "公式表記は配祀。",
+          "source_keys": ["batch8-tsubaki-official"]
+        },
+        {
+          "display_name": "木花咲耶姫命",
+          "canonical_name": "木花咲耶姫命",
+          "role": "enshrined",
+          "sort_order": 4,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T08:45:00+00:00",
+          "note": "公式表記は配祀。",
+          "source_keys": ["batch8-tsubaki-official"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "道別大神の社奉斎伝承",
+          "content": "椿大神社の公式由緒は、垂仁天皇27年秋、倭姫命の御神託により、この地に『道別大神の社』として社殿が奉斎されたと伝えている。",
+          "period_text": "垂仁天皇27年秋（公式由緒による）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T08:45:00+00:00",
+          "note": "公式の創立伝承として保持し、西暦の確定日へ変換しない。",
+          "source_keys": ["batch8-tsubaki-official"]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "江島神社",
+        "address": "神奈川県藤沢市江の島2-3-8"
+      },
+      "deities": [
+        {
+          "display_name": "多紀理比賣命",
+          "canonical_name": "多紀理比賣命",
+          "role": "enshrined",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T08:50:00+00:00",
+          "note": "奥津宮に祀るとの公式記載。",
+          "source_keys": ["batch8-enoshima-deity-official"]
+        },
+        {
+          "display_name": "市寸島比賣命",
+          "canonical_name": "市寸島比賣命",
+          "role": "enshrined",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T08:50:00+00:00",
+          "note": "中津宮に祀るとの公式記載。",
+          "source_keys": ["batch8-enoshima-deity-official"]
+        },
+        {
+          "display_name": "田寸津比賣命",
+          "canonical_name": "田寸津比賣命",
+          "role": "enshrined",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T08:50:00+00:00",
+          "note": "辺津宮に祀るとの公式記載。",
+          "source_keys": ["batch8-enoshima-deity-official"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "historical_event",
+          "title": "辺津宮の創建",
+          "content": "江島神社の公式サイトは、辺津宮が建永元年（1206）に当時の将軍・源実朝によって創建されたと記している。",
+          "period_text": "建永元年（1206）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-10T08:55:00+00:00",
+          "note": "江島神社全体の創建ではなく、辺津宮に限定した歴史Fact。",
+          "source_keys": ["batch8-enoshima-history-official"]
+        }
+      ]
+    }
+  ]
+}
