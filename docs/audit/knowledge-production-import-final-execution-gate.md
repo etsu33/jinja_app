@@ -1,4 +1,10 @@
-> **Status: `KNOWLEDGE_PRODUCTION_IMPORT_GO_READY_WITH_LIMITATIONS`。**
+> **Status: Final Gate（`KNOWLEDGE_PRODUCTION_IMPORT_GO_READY_WITH_LIMITATIONS`）
+> はPASS。Execution Stageで実際にProduction Knowledge Data importを
+> 実行し、成功した（`KNOWLEDGE_PRODUCTION_IMPORT_PASS_WITH_RUNTIME_QA_PENDING`）。
+> Execution Recordは本ドキュメント末尾「Execution Record — Production
+> Knowledge Import」を参照。Batch 8・Score/Ranking・Source UI・
+> PER_FACT_RENDERINGはいずれも未着手のまま。次のアクションはMother Ship
+> 判断待ち。**
 >
 > 本ドキュメントは`docs/audit/knowledge-production-import-foundation.md`
 > （`KNOWLEDGE_IMPORT_READY_WITH_LIMITATIONS`）を受けて、Production
@@ -6,14 +12,12 @@
 > seedの再検証・Production dry-run再実行・fresh backup・
 > production-equivalent最終テスト・実行コマンド固定・post-import
 > verification契約・Runtime QA sample設計・STOP条件・recovery
-> classificationを確定する。
+> classificationを確定した（Final Gate部分、Section 1〜17）。
 >
-> **本ドキュメント作成のセッションではProduction Knowledge Data write・
-> Batch 8のいずれも実行していない。** Productionに対して実行したのは
-> `readonly_query.sh`経由のSELECTと、`import_shrine_knowledge
-> --validate-only`/`--dry-run`（いずれもDB書き込みなし）のみ。
-> **Codexは本ドキュメント作成セッションでProduction importを実行しない。**
-> Go/No-Go判断はMother Shipへ返す。
+> **Final Gate作成時点ではProduction Knowledge Data write・Batch 8の
+> いずれも実行していなかった。** その後Execution Stage（本ドキュメント
+> 末尾のExecution Record）で、人間による明示的確認を得た上で実際に
+> importを実行した。
 
 # Production Knowledge Import — Final Execution Gate
 
@@ -392,9 +396,10 @@ Codexは本ドキュメント作成セッションでProduction importを実行�
 
 ---
 
-## 17. Mandatory STOP
+## 17. Mandatory STOP（Final Gate作成時点）
 
-本Gate完了をもって以下は一切開始していない:
+Final Gate完了時点（本ドキュメントSection 1〜17作成時）では以下は
+一切開始していなかった:
 
 - Production Knowledge Data write
 - manual INSERT / UPDATE / DELETE
@@ -403,3 +408,226 @@ Codexは本ドキュメント作成セッションでProduction importを実行�
 - Source UI
 - PER_FACT_RENDERING
 - Production restore
+
+---
+
+# Execution Record — Production Knowledge Import
+
+**本Recordは成功した。** Final Gate（Section 1〜17）のPASS後、人間による
+明示的確認を得た上でProduction Knowledge Data importを実行した。
+
+## E0. Source of Truth確認
+
+- [x] 本ドキュメント（Final Gate全節）を再読
+- [x] `docs/audit/knowledge-production-import-foundation.md`を再読
+- [x] `docs/knowledge/shrine-knowledge-contract.md`を参照
+- [x] 矛盾なし
+
+## E1. develop同期
+
+| 項目 | 結果 |
+|---|---|
+| PR #2342 merge確認 | `MERGED`、merge commit `9acfcef48443153d932042dee0033c2739fd103e` |
+| develop HEAD SHA | `9acfcef48443153d932042dee0033c2739fd103e` |
+| working tree | clean |
+
+## E2/E3. Local Environment / Credential Gate
+
+| 項目 | 結果 |
+|---|---|
+| Python | `3.11.13` |
+| Django | `5.2.16` |
+| psycopg | `3.3.4` |
+| `DEBUG`/`USE_GIS` | `0`/`1`（明示指定） |
+| Credential Gate | PASS（`VAR_SET=1`、valid postgres URL shape、非表示） |
+
+## E4. Seed Integrity Recheck
+
+| 項目 | Final Gate記録 | Execution時実測 | 判定 |
+|---|---|---|---|
+| SHA-256 | `b3748ecc...` | `b3748ecc...`（完全一致） | 一致 |
+| Source/Deity/History | 59/103/85 | 59/103/85 | 一致 |
+| deity-source/history-source relation（seedから算出） | 116/90 | 116/90 | 一致 |
+| Shrine identity数 | 41 | 41 | 一致 |
+
+`STOP_SEED_DRIFT`には該当せず。
+
+## E5/E6. Production Current State / Fresh Baseline
+
+snapshot時刻`2026-08-10 07:14:13.898635+00`:
+
+| 項目 | 結果 |
+|---|---|
+| `users 0006`/`temples 0090`〜`0093` | すべて`applied` |
+| Knowledge 5 table | すべて`0`件 |
+| `auth_user`/`userprofile`/`shrine`/`favorite`/`visit`/`goriyaku_relation` | `1`/`1`/`105`/`0`/`2`/`283`——Final Gate記録と完全一致、drift 0件 |
+
+`STOP_PRODUCTION_KNOWLEDGE_NOT_EMPTY`には該当せず。
+
+## E7. Fresh Backup
+
+| 項目 | 結果 |
+|---|---|
+| `roles.sql`/`schema.sql`/`data.sql` | `5426`/`93021`/`3846558` bytes——Final Gate取得分と同一サイズ、drift 0件 |
+| 保存先 | repo外 |
+| credential/hostname露出 | なし |
+
+## E8/E9. Final validate-only / dry-run
+
+```
+validate-only: OK, no errors
+```
+```
+plan summary: {'source_CREATE': 59, 'deity_CREATE': 103, 'history_CREATE': 85}
+dry-run: OK, no DB writes performed
+```
+
+期待値と完全一致（`SKIP_EXISTS`/`UPDATE`/`AMBIGUOUS`/`NOT_FOUND`はいずれも0件）。
+
+## E10. Stable Identity Final Check
+
+`resolve_shrine()`をProductionへ直接実行:
+
+```
+給田六所神社 -> status=OK_CANONICAL_PREFERRED shrine_id=22
+CONFIRMED: resolves to canonical id=22, not duplicate id=101
+```
+
+## E11. Human Execution Boundary
+
+develop SHA・working tree・package parity・credential gate・seed hash・
+Production Knowledge empty・fresh baseline・fresh backup・validate-only・
+dry-run exact match・identity ambiguity=0・not-found=0・expected creates
+exact・`DEBUG=0`・`USE_GIS=1`——**全項目PASS**。
+
+## E12. Explicit Human Confirmation
+
+Production Knowledge Data write実行前に、チャットにて明示的確認を
+ユーザーへ要求し、明示的な実行指示（"Proceed with the Production
+Knowledge Data import exactly as specified..."）を受けた。
+
+## E13. Execute Production Knowledge Import
+
+| 項目 | 値 |
+|---|---|
+| コマンド | `python manage.py import_shrine_knowledge temples/data/knowledge_seeds/batch_1_7_seed.json`（`--dry-run`/`--validate-only`いずれも付与せず） |
+| 実行開始 | `2026-08-10T07:16:27Z` |
+| 実行終了 | `2026-08-10T07:16:49Z` |
+| 出力 | `import complete: sources created=59, deities created=103, histories created=85` |
+| exit status | **`0`（成功）** |
+
+credential・hostnameは出力に一切含まれなかった。単一`transaction.atomic()`
+内で全件が適用された（部分書き込みなし）。
+
+## E14. Immediate Hard STOP Boundary
+
+import完了直後、Batch 8・Score/Ranking・Source UI・PER_FACT_RENDERINGの
+いずれへも進んでいない。以降はread-only verificationのみを実施した。
+
+## E15〜E19. Post-Import Verification
+
+verification時刻: `2026-08-10 07:17:18.396629+00`
+
+**Counts**
+
+| 項目 | 期待 | 実測 | 判定 |
+|---|---|---|---|
+| `ShrineKnowledgeSource` | 59 | 59 | 一致 |
+| `ShrineDeity` | 103 | 103 | 一致 |
+| `ShrineHistory` | 85 | 85 | 一致 |
+| deity-source relation | 116 | 116 | 一致 |
+| history-source relation | 90 | 90 | 一致 |
+
+**Identity**
+
+| 項目 | 期待 | 実測 | 判定 |
+|---|---|---|---|
+| Knowledge shrine数 | 41 | 41 | 一致 |
+| 給田六所神社 canonical（id=22） | Knowledge紐付きあり | Deity=2/History=4 | 一致 |
+| 給田六所神社 duplicate（id=101） | Knowledge紐付き**なし** | 0件（結果セットに出現せず） | 一致 |
+
+**Traceability**
+
+| 項目 | 期待 | 実測 |
+|---|---|---|
+| source-less Deity | 0 | 0 |
+| source-less History | 0 | 0 |
+
+**Evidence分布**（seed算出値との一致確認、Section 12参照）
+
+| 軸 | 期待 | 実測 | 判定 |
+|---|---|---|---|
+| Source `source_type` | shrine_official=46, secondary_editorial=5, cultural_property=4, local_history=1, tourism_official=1, government=1, user_observation=1 | 同一 | 完全一致 |
+| Source `verification_status` | source_confirmed=59 | 同一 | 完全一致 |
+| Source `confidence` | high=53, medium=6 | 同一 | 完全一致 |
+| Deity `role` | enshrined=53, primary=31, secondary=7, unknown=12 | 同一 | 完全一致 |
+| History `history_type` | historical_event=40, tradition=31, founding=8, official_origin=6 | 同一 | 完全一致 |
+
+**Existing Data Regression**
+
+| 項目 | Import前 | Import後 | 判定 |
+|---|---|---|---|
+| `auth_user`/`userprofile`/`shrine`/`favorite`/`visit`/`goriyaku_relation` | `1`/`1`/`105`/`0`/`2`/`283` | 同一 | 不変 |
+| `temples 0091`canonical効果（id=21/22 `history_theme`） | `守り` | `守り` | 不変 |
+| `temples 0092` `thread_id`列 | 存在 | 存在 | 不変 |
+| `users`/`temples`最新migration | `0006`/`0093` | `0006`/`0093` | 不変（新規migrationなし） |
+
+## E20. Idempotency Verification
+
+Import後に`--dry-run`を再実行:
+
+```
+plan summary: {'source_SKIP_EXISTS': 59, 'deity_SKIP_EXISTS': 103, 'history_SKIP_EXISTS': 85}
+dry-run: OK, no DB writes performed
+```
+
+全件`SKIP_EXISTS`、`CREATE`/`UPDATE`は0件。実データへの2回目writeは
+行っていない（dry-runのみ）。
+
+## E21. Representative Runtime QA
+
+Final Gate Section 13で選定済みの5社について、DB-levelで実施可能な
+範囲（source traceability）を確認した:
+
+| 神社 | Deity数 | History数 | source-less Deity | source-less History |
+|---|---|---|---|---|
+| 武蔵御嶽神社 | 4 | 5 | 0 | 0 |
+| 鶴岡八幡宮 | 3 | 5 | 0 | 0 |
+| 品川神社 | 3 | 3 | 0 | 0 |
+| 熱田神宮 | 6 | 1 | 0 | 0 |
+| 明治神宮 | 2 | 1 | 0 | 0 |
+
+全社、期待件数と完全一致、source-less fact 0件。
+
+**認証済みアクセスが必要な項目（Shrine Detail画面表示・Knowledge-backed
+API field・Recommendation response・500エラー不在）は`NOT_EXECUTED_
+RUNTIME_ACCESS_REQUIRED`のまま**——本セッションのcredential bridgeは
+DB接続専用であり、Production backendのpublic URL・認証済みセッションは
+どの認可済みチャネルにも存在しない。DB-level verification PASSを
+Runtime QA PASSへ読み替えていない。
+
+## E22. Failure Handling
+
+該当なし（importはexit 0で正常終了、post-import verificationもすべて
+PASS）。
+
+## E23. Success Classification
+
+**`KNOWLEDGE_PRODUCTION_IMPORT_PASS_WITH_RUNTIME_QA_PENDING`**
+
+根拠: exit 0、正確な件数（Source/Deity/History/両relation type）、
+41 shrine identityすべて正しく解決（既知duplicate shrineがcanonical
+行のみへ紐付くことを実測確認）、ambiguity 0件、source-less fact 0件、
+evidence分布がseedと完全一致、既存application dataに一切のregression
+なし、import後dry-runでidempotency確認済み——DB-levelのPASS条件は
+すべて満たす。認証済みRuntime QA（Detail/Recommendation/API/500確認）が
+未実施のため、無条件`PASS`ではなく`_WITH_RUNTIME_QA_PENDING`として
+分類する。
+
+## Production Write Summary
+
+- **Production write: Knowledge Data import = EXECUTED（exit 0、`KNOWLEDGE_PRODUCTION_IMPORT_PASS_WITH_RUNTIME_QA_PENDING`）**
+- **Batch 8 = NOT_STARTED**
+- **Score/Ranking = NOT_TOUCHED**
+- **Source UI = NOT_TOUCHED**
+- **PER_FACT_RENDERING = NOT_STARTED**
