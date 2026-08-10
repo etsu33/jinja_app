@@ -130,3 +130,73 @@ aggregate regression, and Production read-only planning gates pass with the
 expected 6/14/6 create delta. The execution boundary remains closed: no
 Production Knowledge write, Batch 8 import, Score/Ranking change, Source UI, or
 `PER_FACT_RENDERING` work was performed.
+
+## 8. Production Import Execution Record
+
+Mother Shipの明示承認後、2026-08-10に正本
+`backend/temples/data/knowledge_seeds/batch_8_seed.json`だけをProductionへ
+1回実行した。Batch 9、Score/Ranking、Source UI、`PER_FACT_RENDERING`、
+manual SQL write、corrective write、second importは実行していない。
+
+| 項目 | 実行結果 |
+| --- | --- |
+| develop SHA | `0635168d8830c7f4cfa85300f375b50b5238e874` |
+| Seed SHA-256 | `c7fec7152c0ee95488c31b0e29d809d760949383d7a820f056405338e138aa75` |
+| 実行開始 | `2026-08-10T08:54:34Z` |
+| 実行終了 | `2026-08-10T08:54:36Z` |
+| transaction | importerの単一`transaction.atomic()` |
+| exit status | `0` |
+| 実測CREATE | Source 6 / Deity 14 / History 6 |
+| Fresh backup | PASS。repo外、PostgreSQL 17 client使用 |
+| backup file size | roles 5,426 / schema 93,021 / data 3,935,792 bytes |
+| credential/private hostname露出 | なし |
+
+### 8.1 Post-import read-only verification
+
+| Metric | Pre | Expected | Actual | Result |
+| --- | ---: | ---: | ---: | --- |
+| Source | 59 | 65 | 65 | PASS |
+| Deity | 103 | 117 | 117 | PASS |
+| History | 85 | 91 | 91 | PASS |
+| Deity–Source relation | 116 | 130 | 130 | PASS |
+| History–Source relation | 90 | 96 | 96 | PASS |
+| Knowledge shrine | 41 | 46 | 46 | PASS |
+| complete | 39 | 44 | 44 | PASS |
+| partial | 2 | 2 | 2 | PASS |
+| none | 64 | 59 | 59 | PASS |
+| source-less Deity | 0 | 0 | 0 | PASS |
+| source-less History | 0 | 0 | 0 | PASS |
+
+対象5社のcanonical identity、住所、Deity/History/Source件数はSeedと一致し、
+duplicate contaminationは0。対象外partial 2社（香取神宮、阿佐ヶ谷神明宮）
+はDeityのみの状態から変化していない。Source 6件はすべて
+`shrine_official` / `source_confirmed` / `high`で、Fact 20件もすべて
+`source_confirmed` / `high`だった。
+
+既存application aggregateはimport前後で
+`auth_user=1` / `userprofile=1` / `shrine=105` / `favorite=0` /
+`visit=2` / `shrine_goriyaku relation=283`のまま不変。
+
+### 8.2 Idempotency and Runtime QA
+
+Productionに対するpost-import `--dry-run`はSource 6、Deity 14、History 6の
+全件が`SKIP_EXISTS`で、CREATE/UPDATE/errorは0。2回目のwriteは実行して
+いない。
+
+公開Shrine Detail API（`GET /api/shrines/<pk>/`）をread-onlyで確認した。
+
+| Shrine | HTTP | Deity | History | Fact–Source relation | Result |
+| --- | ---: | ---: | ---: | ---: | --- |
+| 富士山本宮浅間大社 | 200 | 3 | 2 | 5 | PASS |
+| 筑波山神社 | 200 | 2 | 1 | 3 | PASS |
+| 氣多大社 | 200 | 1 | 1 | 2 | PASS |
+| 椿大神社 | 200 | 5 | 1 | 6 | PASS |
+| 江島神社 | 200 | 3 | 1 | 4 | PASS |
+
+全5社でcanonical name/address、Source populated、Evidence Gate適用、Fact重複
+なし、HTTP 500なしを確認した。recovery操作は不要で、実行後はhard-stopした。
+
+**Final classification: `BATCH8_PRODUCTION_IMPORT_PASS`**
+
+- Production Batch 8 write: **EXECUTED ONCE**
+- Batch 9: **NOT_STARTED**
