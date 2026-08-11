@@ -1,0 +1,492 @@
+{
+  "schema_version": "1.0",
+  "sources": [
+    {
+      "key": "batch14-oji-official",
+      "source_type": "shrine_official",
+      "title": "御由緒",
+      "publisher": "王子神社",
+      "url": "http://ojijinja.tokyo.jp/goyuisho/index.html",
+      "bibliography": "",
+      "accessed_at": "2026-08-12",
+      "verified_at": "2026-08-12T05:00:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "公式サイトは伊邪那岐命・伊邪那美命・天照大御神・速玉之男命・事解之男命の五柱を『総称して「王子大神」とお呼び申し上げます』と記載する。本seedでは「王子大神」という総称自体を別Factとして作成せず、5柱それぞれを個別Fact化した。序列を示す記載はないため各柱role=unknownとした。境内末社「関神社」（御祭神：蝉丸公）は別の社であり本社Factに含めていない。"
+    },
+    {
+      "key": "batch14-orihime-official",
+      "source_type": "shrine_official",
+      "title": "御由緒",
+      "publisher": "足利織姫神社",
+      "url": "https://orihimejinjya.com/entry15.html",
+      "bibliography": "",
+      "accessed_at": "2026-08-12",
+      "verified_at": "2026-08-12T05:05:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "天御鉾命（織師）・天八千々姫命（織女）の二柱を直接確認。宝永2年(1705)の合祀、明治12年(1879)の機神山遷宮、明治13年の火災、昭和12年(1937)の現社殿完成、平成16年(2004)の国登録有形文化財指定を直接確認。"
+    },
+    {
+      "key": "batch14-tsurumine-official",
+      "source_type": "shrine_official",
+      "title": "歴史",
+      "publisher": "鶴嶺八幡宮",
+      "url": "https://www.tsuruminehachimangu.com/history/",
+      "bibliography": "",
+      "accessed_at": "2026-08-12",
+      "verified_at": "2026-08-12T05:10:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "本社御祭神として應神天皇・仁徳天皇・佐塚大神の三柱、および同一の御由緒表内に「鶴嶺天満宮 合祀 菅原道真」を直接確認。同ページ下部に別途列挙されている「兼務社」（神明神社・八幡宮・厳島神社等、いずれも別住所の別法人神社）は本社Factに含めていない。"
+    },
+    {
+      "key": "batch14-anamori-official",
+      "source_type": "shrine_official",
+      "title": "御由緒",
+      "publisher": "穴守稲荷神社",
+      "url": "https://anamori.jp/yuisho.html",
+      "bibliography": "",
+      "accessed_at": "2026-08-12",
+      "verified_at": "2026-08-12T05:15:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "主祭神は豊受姫命の一柱のみを直接確認。境内社「羽田航空神社」「空港分社」は別途祀られる社でありFact化していない。創祀は「社伝に云う」文化文政期の伝承として記載されており、史実として断定していない。"
+    },
+    {
+      "key": "batch14-tamasaki-yuisho",
+      "source_type": "shrine_official",
+      "title": "由緒",
+      "publisher": "玉前神社",
+      "url": "https://tamasaki.org/yuisho/index.htm",
+      "bibliography": "",
+      "accessed_at": "2026-08-12",
+      "verified_at": "2026-08-12T05:20:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "延喜式内名神大社・上総国一之宮の社格、永禄年間の戦火による焼失を直接確認。創建の由来・年数は永禄年間の戦火により明らかでないと公式サイト自身が明記している。"
+    },
+    {
+      "key": "batch14-tamasaki-saijin",
+      "source_type": "shrine_official",
+      "title": "祭神",
+      "publisher": "玉前神社",
+      "url": "https://tamasaki.org/yuisho/saisin.htm",
+      "bibliography": "",
+      "accessed_at": "2026-08-12",
+      "verified_at": "2026-08-12T05:22:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "『延喜式』以来のご祭神は玉依姫命のみとされてきたと直接確認。公式サイト自身が『古社記には鵜茅葺不合命のご神名が併記されています』『ご祭神に関しての考証がなされているところです』と、鵜茅葺不合命の扱いを未確定・検討中と明記しているため、本seedでは玉依姫命のみをFact化し、鵜茅葺不合命を第二の祭神として確定Fact化していない。上総十二社まつりの説明に登場する『その一族の神々』も個別名が示されていないためFact化していない。"
+    }
+  ],
+  "shrines": [
+    {
+      "shrine_ref": {
+        "name_jp": "王子神社",
+        "address": "東京都北区王子本町1-1-12"
+      },
+      "deities": [
+        {
+          "display_name": "伊邪那岐命",
+          "canonical_name": "伊邪那岐命",
+          "role": "unknown",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T05:00:00+00:00",
+          "note": "公式サイトは五柱を序列なく列挙し、総称して「王子大神」と呼ぶと記載。序列の記載がないためrole=unknownとした。",
+          "source_keys": ["batch14-oji-official"]
+        },
+        {
+          "display_name": "伊邪那美命",
+          "canonical_name": "伊邪那美命",
+          "role": "unknown",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T05:00:00+00:00",
+          "note": "公式サイトは五柱を序列なく列挙し、総称して「王子大神」と呼ぶと記載。序列の記載がないためrole=unknownとした。",
+          "source_keys": ["batch14-oji-official"]
+        },
+        {
+          "display_name": "天照大御神",
+          "canonical_name": "天照大御神",
+          "role": "unknown",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T05:00:00+00:00",
+          "note": "公式サイトは五柱を序列なく列挙し、総称して「王子大神」と呼ぶと記載。序列の記載がないためrole=unknownとした。",
+          "source_keys": ["batch14-oji-official"]
+        },
+        {
+          "display_name": "速玉之男命",
+          "canonical_name": "速玉之男命",
+          "role": "unknown",
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T05:00:00+00:00",
+          "note": "公式サイトは五柱を序列なく列挙し、総称して「王子大神」と呼ぶと記載。序列の記載がないためrole=unknownとした。",
+          "source_keys": ["batch14-oji-official"]
+        },
+        {
+          "display_name": "事解之男命",
+          "canonical_name": "事解之男命",
+          "role": "unknown",
+          "sort_order": 4,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T05:00:00+00:00",
+          "note": "公式サイトは五柱を序列なく列挙し、総称して「王子大神」と呼ぶと記載。序列の記載がないためrole=unknownとした。",
+          "source_keys": ["batch14-oji-official"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "源義家にまつわる社頭祈願の伝承",
+          "content": "創建の年代は明らかでないが、源義家が奥州征伐に赴いた際に当社の社頭で慰霊祈願を行い、甲冑を奉納したという故事が伝えられており、古くから聖地として崇められていたと考えられている。",
+          "period_text": "源義家の奥州征伐の頃（伝承）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T05:00:00+00:00",
+          "note": "公式サイト自身が伝承として記述。史実として断定していない。",
+          "source_keys": ["batch14-oji-official"]
+        },
+        {
+          "history_type": "founding",
+          "title": "元亨2年(1322)の熊野三社勧請と「若一王子宮」への改称",
+          "content": "元亨2年（1322年）、当地の領主であった豊島氏が紀州熊野三社権現の御子神を改めてお迎えし、「若一王子宮」として奉斉したと伝えられる。これ以降、この地は「王子」という地名となったとされる。",
+          "period_text": "元亨2年（1322）",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T05:00:00+00:00",
+          "note": "",
+          "source_keys": ["batch14-oji-official"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "徳川将軍家の庇護と東京十社への選定",
+          "content": "徳川家康は天正19年（1591年）に朱印地二百石を寄進して将軍家祈願所と定め、以後歴代将軍の崇敬を受け「王子権現」の名で江戸名所の一つとなった。明治元年には明治天皇が東京を守護する准勅祭社を定めた際、当社もその一社（東京十社）に選ばれたと公式サイトは記している。",
+          "period_text": "天正19年（1591）〜明治元年",
+          "event_date": null,
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T05:00:00+00:00",
+          "note": "",
+          "source_keys": ["batch14-oji-official"]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "足利織姫神社",
+        "address": "栃木県足利市西宮町3889"
+      },
+      "deities": [
+        {
+          "display_name": "天御鉾命",
+          "canonical_name": "天御鉾命",
+          "role": "unknown",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T05:05:00+00:00",
+          "note": "機織をつかさどる織師の神。公式サイトは天八千々姫命と対となる二柱として記載し、序列は示していない。",
+          "source_keys": ["batch14-orihime-official"]
+        },
+        {
+          "display_name": "天八千々姫命",
+          "canonical_name": "天八千々姫命",
+          "role": "unknown",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T05:05:00+00:00",
+          "note": "織女の神。公式サイトは天御鉾命と対となる二柱として記載し、序列は示していない。",
+          "source_keys": ["batch14-orihime-official"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "founding",
+          "title": "宝永2年(1705)の合祀と当地における祭祀の起源",
+          "content": "足利には機織の神社がなかったことから、宝永2年（1705年）、足利藩主戸田忠利が伊勢神宮直轄の神服織機神社の織師・天御鉾命と織女・天八千々姫命の二柱を、当時の足利市通四丁目にある八雲神社へ合祀したことが起源とされる。",
+          "period_text": "宝永2年（1705）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T05:05:00+00:00",
+          "note": "",
+          "source_keys": ["batch14-orihime-official"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "機神山への遷宮と現社殿の造営",
+          "content": "明治12年（1879年）、機神山（現在の織姫山）の中腹に織姫神社が遷宮された。翌明治13年に火災に遭い仮宮のままとなっていたが、昭和8年、皇太子殿下（現上皇陛下）御降誕を機に市民ぐるみで新社殿の建造が進められ、昭和12年（1937年）5月に現在の織姫山に社殿が完成し遷宮した。",
+          "period_text": "明治12年（1879）〜昭和12年（1937）",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T05:05:00+00:00",
+          "note": "",
+          "source_keys": ["batch14-orihime-official"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "国登録有形文化財への指定",
+          "content": "平成16年（2004年）6月、社殿・神楽殿・社務所・手水舎が国の登録有形文化財となった。",
+          "period_text": "平成16年（2004）6月",
+          "event_date": null,
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T05:05:00+00:00",
+          "note": "",
+          "source_keys": ["batch14-orihime-official"]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "鶴嶺八幡宮",
+        "address": "神奈川県茅ヶ崎市浜之郷462"
+      },
+      "deities": [
+        {
+          "display_name": "應神天皇",
+          "canonical_name": "応神天皇",
+          "role": "unknown",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T05:10:00+00:00",
+          "note": "公式サイトは應神天皇・仁徳天皇・佐塚大神を序列を示さず列挙している。",
+          "source_keys": ["batch14-tsurumine-official"]
+        },
+        {
+          "display_name": "仁徳天皇",
+          "canonical_name": "仁徳天皇",
+          "role": "unknown",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T05:10:00+00:00",
+          "note": "公式サイトは應神天皇・仁徳天皇・佐塚大神を序列を示さず列挙している。",
+          "source_keys": ["batch14-tsurumine-official"]
+        },
+        {
+          "display_name": "佐塚大神",
+          "canonical_name": "佐塚大神",
+          "role": "unknown",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T05:10:00+00:00",
+          "note": "公式サイトは應神天皇・仁徳天皇・佐塚大神を序列を示さず列挙している。弘安四年(1281)の蒙古退散祈祷の勝利日にちなむ「晦日祭」は八幡宮と佐塚明神社の両社の例祭とされる。",
+          "source_keys": ["batch14-tsurumine-official"]
+        },
+        {
+          "display_name": "菅原道真",
+          "canonical_name": "菅原道真",
+          "role": "secondary",
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T05:10:00+00:00",
+          "note": "公式サイトの御由緒表に「鶴嶺天満宮 合祀」として記載されている。本社の應神天皇・仁徳天皇・佐塚大神とは別枠で表示されているため role=secondary とした。ページ下部の「兼務社」（別住所の別法人神社群）とは異なる、本社ページ自体が明記する合祀情報である。",
+          "source_keys": ["batch14-tsurumine-official"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "長元三年(1030)の石清水八幡宮勧請伝承",
+          "content": "長元三年九月（1030年）、源頼義が下総の乱鎮定のため懐島郷（現在地）に至り、源家の守護神である石清水八幡宮を勧請して戦勝祈願を行ったと伝えられる。公式サイトは別に宇佐八幡宮勧請説もあると付記している。",
+          "period_text": "長元三年（1030）（伝承）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T05:10:00+00:00",
+          "note": "公式サイト自身が複数の勧請説を併記しており、単一の確定史実として断定していない。",
+          "source_keys": ["batch14-tsurumine-official"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "康平六年(1063)の「元八幡」建立と「本社八幡宮」の呼称",
+          "content": "前九年の役が終わった康平六年（1063年）、源頼義は鎌倉由比郷に鶴岡八幡宮の前身である「元八幡」を建立した。当八幡宮はその旧社にあたることから「本社八幡宮」と呼ばれたと公式サイトは記している。",
+          "period_text": "康平六年（1063）",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T05:10:00+00:00",
+          "note": "",
+          "source_keys": ["batch14-tsurumine-official"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "弘安四年(1281)の蒙古退散祈祷と「晦日祭」の成立",
+          "content": "弘安四年（1281年）、蒙古退散の祈祷が行われ、この戦に大勝した日が六月閏三十日の晦日であったことから「晦日祭」と呼ばれるようになった。この晦日祭は八幡宮と佐塚明神社両社の例祭となったと公式サイトは記している。",
+          "period_text": "弘安四年（1281）",
+          "event_date": null,
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T05:10:00+00:00",
+          "note": "",
+          "source_keys": ["batch14-tsurumine-official"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "江戸幕府の朱印地寄進と昭和9年(1934)の郷社列格",
+          "content": "江戸時代、徳川幕府は先規により高七石の朱印地を寄進した。昭和九年九月十五日（1934年）には郷社に列格したと公式サイトは記している。",
+          "period_text": "江戸時代〜昭和9年（1934）",
+          "event_date": null,
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T05:10:00+00:00",
+          "note": "",
+          "source_keys": ["batch14-tsurumine-official"]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "穴守稲荷神社",
+        "address": "東京都大田区羽田5-2-7"
+      },
+      "deities": [
+        {
+          "display_name": "豊受姫命",
+          "canonical_name": "豊受姫命",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T05:15:00+00:00",
+          "note": "公式サイトが「御祭神」として明記する唯一の祭神。",
+          "source_keys": ["batch14-anamori-official"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "文化文政期の創祀伝承",
+          "content": "社伝によれば、文化文政の頃（1804〜1830年頃）、扇浦（現在の羽田空港内）の開墾の際に堤防が高波で度々損壊し、ある時堤に大穴が生じて海水が侵入しようとしたため、村人たちが堤上に稲荷大神を祀る祠を勧請したことが当社の草創であるとされる。",
+          "period_text": "文化文政期（1804〜1830年頃、伝承）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T05:15:00+00:00",
+          "note": "公式サイト自身が「社伝に云う」として伝承の形式で記述しており、史実として断定していない。",
+          "source_keys": ["batch14-anamori-official"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "公衆参拝の許可と社号の官許",
+          "content": "明治18年（1885年）に公衆参拝の許しを得て、翌明治19年（1886年）11月に「穴守稲荷神社」の社号が政府に正式に官許されたと公式サイトは記している。",
+          "period_text": "明治18年（1885）〜明治19年（1886）",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T05:15:00+00:00",
+          "note": "",
+          "source_keys": ["batch14-anamori-official"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "戦後の強制退去と現在地への遷座",
+          "content": "昭和20年（1945年）の終戦にあたり、連合国軍による羽田空港拡張のため48時間以内の強制退去を命ぜられた。昭和22年（1947年）、地元崇敬者有志の奉仕により旧鎮座地に近い境内地が寄進され仮社殿が復興し、翌昭和23年（1948年）2月に現在地（大田区羽田五丁目）へ遷座したと公式サイトは記している。",
+          "period_text": "昭和20年（1945）〜昭和23年（1948）",
+          "event_date": null,
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T05:15:00+00:00",
+          "note": "",
+          "source_keys": ["batch14-anamori-official"]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "玉前神社",
+        "address": "千葉県長生郡一宮町一宮3048"
+      },
+      "deities": [
+        {
+          "display_name": "玉依姫命",
+          "canonical_name": "玉依姫命",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "medium",
+          "verified_at": "2026-08-12T05:22:00+00:00",
+          "note": "公式サイトは『延喜式』をはじめ当社のご祭神は玉依姫命のみとされてきたと記載。ただし同ページで『古社記には鵜茅葺不合命のご神名が併記されています』『ご祭神に関しての考証がなされているところです』とも記しており、玉依姫命単独説が確定済みとは言い切れないため confidence を medium とした。鵜茅葺不合命は未確定のためFact化していない。",
+          "source_keys": ["batch14-tamasaki-saijin"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "historical_event",
+          "title": "延喜式内名神大社・上総国一之宮としての社格",
+          "content": "玉前神社は上総国にまつられる古社であり、平安時代にまとめられた『延喜式神名帳』では名神大社としてその名を列せられ、古くから朝廷・豪族・幕府の信仰を集め、上総国一之宮の格式を保ってきたと公式サイトは記している。",
+          "period_text": "平安時代〜中世",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T05:20:00+00:00",
+          "note": "",
+          "source_keys": ["batch14-tamasaki-yuisho"]
+        },
+        {
+          "history_type": "tradition",
+          "title": "例祭に伝わる千二百年余の歴史",
+          "content": "創建の由来や年数、名称については永禄年間の戦火により社殿・宝物・文書の多くを焼失したため明らかでないが、毎年九月十日から十三日に行われる例祭には少なくとも千二百年の歴史があるとされる。",
+          "period_text": "伝承（少なくとも1200年余）",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T05:20:00+00:00",
+          "note": "公式サイト自身が創建年数を明らかでないとしており、例祭の年数は伝承的な数値として扱い、確定した創建史実として断定していない。",
+          "source_keys": ["batch14-tamasaki-yuisho"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "永禄年間の戦火による焼失",
+          "content": "永禄年間（1558〜1570年）の大きな戦火にかかり、社殿・宝物・文書の多くを焼失したと公式サイトは記している。",
+          "period_text": "永禄年間（1558〜1570）",
+          "event_date": null,
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T05:20:00+00:00",
+          "note": "",
+          "source_keys": ["batch14-tamasaki-yuisho"]
+        }
+      ]
+    }
+  ]
+}
