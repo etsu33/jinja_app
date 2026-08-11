@@ -1,0 +1,367 @@
+{
+  "schema_version": "1.0",
+  "sources": [
+    {
+      "key": "batch13-tomioka-official",
+      "source_type": "shrine_official",
+      "title": "御由緒",
+      "publisher": "富岡八幡宮",
+      "url": "http://www.tomiokahachimangu.or.jp/annai/goyuisho/goyuisho.html",
+      "bibliography": "",
+      "accessed_at": "2026-08-11",
+      "verified_at": "2026-08-11T05:20:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "公式サイトは「御祭神 応神天皇（誉田別命）外８柱」とのみ記載し、他8柱の個別名は明かしていない。本seedでは、個別名が確認できる応神天皇（誉田別命）のみをFact化し、未確認の他8柱を推測で補完していない（collective Factとしても作成していない）。寛永4年（1627）の創建と准勅祭社宣下を直接確認。"
+    },
+    {
+      "key": "batch13-iminomiya-official",
+      "source_type": "shrine_official",
+      "title": "忌宮神社",
+      "publisher": "忌宮神社",
+      "url": "https://iminomiya-jinjya.com/about/",
+      "bibliography": "",
+      "accessed_at": "2026-08-11",
+      "verified_at": "2026-08-11T05:21:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "仲哀天皇・神功皇后・応神天皇の三柱、延喜式内社・長門二宮・旧国幣社を直接確認。仲哀天皇の御神霊を豊浦宮に鎮祭したことが当社の起源と公式サイトが明記している。"
+    },
+    {
+      "key": "batch13-koura-official",
+      "source_type": "shrine_official",
+      "title": "ご祭神",
+      "publisher": "高良大社",
+      "url": "http://www.kourataisya.or.jp/kourataisya/saiji",
+      "bibliography": "",
+      "accessed_at": "2026-08-11",
+      "verified_at": "2026-08-11T05:22:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "八幡大神・高良玉垂命・住吉大神の三柱、筑後国一の宮・旧国幣大社・延喜式内明神大社を直接確認。仁徳天皇55年(367)または78年(390)の御鎮座伝承、履中天皇元年(400)の社殿建立を直接確認。"
+    },
+    {
+      "key": "batch13-kasama-official",
+      "source_type": "shrine_official",
+      "title": "笠間稲荷神社について",
+      "publisher": "笠間稲荷神社",
+      "url": "http://www.kasama.or.jp/about/index.html",
+      "bibliography": "",
+      "accessed_at": "2026-08-11",
+      "verified_at": "2026-08-11T05:23:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "宇迦之御魂神、白雉2年(651)の創建伝承、日本三大稲荷の一、御本殿が国指定重要文化財(昭和63年指定)であることを直接確認。"
+    },
+    {
+      "key": "batch13-washinomiya-official",
+      "source_type": "shrine_official",
+      "title": "鷲宮神社　神社由緒（祭神・主な御神徳）",
+      "publisher": "鷲宮神社",
+      "url": "http://www.washinomiyajinja.or.jp/history/history.html",
+      "bibliography": "",
+      "accessed_at": "2026-08-11",
+      "verified_at": "2026-08-11T05:24:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "現在の本殿祭神は天穂日命（天穂日宮の御霊徳を崇めて建てた別宮が現本殿）、相殿に武夷鳥命（景行天皇の御世に奉祀）を直接確認。由緒冒頭に登場する神崎神社・大己貴命は、天穂日命父子が別途創建した他の神社の祭神であり、鷲宮神社自体の祭神ではないためFact化していない。関東最古の大社・准勅祭社を直接確認。"
+    }
+  ],
+  "shrines": [
+    {
+      "shrine_ref": {
+        "name_jp": "富岡八幡宮",
+        "address": "東京都江東区富岡1-20-3"
+      },
+      "deities": [
+        {
+          "display_name": "応神天皇",
+          "canonical_name": "応神天皇（誉田別命）",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T05:20:00+00:00",
+          "note": "公式サイトは「御祭神 応神天皇（誉田別命）外８柱」と記載。他8柱は個別名が公式サイトに記載されておらず、本seedではFact化していない（推測補完・collective Fact化のいずれも行っていない）。",
+          "source_keys": ["batch13-tomioka-official"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "founding",
+          "title": "寛永4年(1627)の創建",
+          "content": "富岡八幡宮は寛永4年（1627年）、当時永代島と呼ばれていた現在地に御神託により創建された。周辺の砂州一帯を埋め立て、社地と氏子の居住地を開き、総じて六万五百八坪の社有地を得たとされる。世に「深川の八幡様」と親しまれ、「江戸最大の八幡様」と称される。",
+          "period_text": "寛永4年（1627）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T05:20:00+00:00",
+          "note": "",
+          "source_keys": ["batch13-tomioka-official"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "明治維新の准勅祭社宣下と徳川将軍家の崇敬",
+          "content": "江戸時代には、源氏の氏神である八幡大神を殊の外尊崇した徳川将軍家の手厚い保護を受けた。明治維新に際しては朝廷が富岡八幡宮を准勅祭社に治定し、勅使を遣わし幣帛を賜り、新しい御代の弥栄を祈念されたと公式サイトは記している。",
+          "period_text": "江戸時代〜明治維新期",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T05:20:00+00:00",
+          "note": "",
+          "source_keys": ["batch13-tomioka-official"]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "忌宮神社",
+        "address": "山口県下関市長府宮の内町1-18"
+      },
+      "deities": [
+        {
+          "display_name": "仲哀天皇",
+          "canonical_name": "仲哀天皇",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T05:21:00+00:00",
+          "note": "仲哀天皇の御神霊を豊浦宮に鎮祭したことが当社の起源と公式サイトが明記。",
+          "source_keys": ["batch13-iminomiya-official"]
+        },
+        {
+          "display_name": "神功皇后",
+          "canonical_name": "神功皇后",
+          "role": "secondary",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T05:21:00+00:00",
+          "note": "仲哀天皇の御后。仲哀天皇の御神霊を豊浦宮へ鎮祭した当事者として由緒に登場する。",
+          "source_keys": ["batch13-iminomiya-official"]
+        },
+        {
+          "display_name": "応神天皇",
+          "canonical_name": "応神天皇",
+          "role": "secondary",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T05:21:00+00:00",
+          "note": "仲哀天皇・神功皇后とともに公式サイトが祭神として明記。",
+          "source_keys": ["batch13-iminomiya-official"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "仲哀天皇御神霊の鎮祭伝承",
+          "content": "第14代仲哀天皇は九州の熊襲平定のため西下し、穴門（長門）豊浦宮を興して7年間政務をとられた。天皇はさらに筑紫の香椎に進出したが1年で崩御し、神功皇后は喪を秘して重臣武内宿禰に御遺骸を奉じて豊浦宮に帰らせ、現在の長府侍町土肥山に殯斂（仮埋葬）した。皇后は懐妊中ながら新羅征討を決行し、凱旋の後、天皇の御神霊を豊浦宮に鎮祭した。これが当社の起源とされる。",
+          "period_text": "伝承（仲哀天皇御代）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T05:21:00+00:00",
+          "note": "公式サイト自身が由緒として記述。史実として断定していない。",
+          "source_keys": ["batch13-iminomiya-official"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "延喜式内社・長門二宮としての社格",
+          "content": "忌宮神社は『古事記』『日本書紀』にも記されている県内でも有数の歴史と伝統を誇る神社であり、延喜式内社に列せられている。社格は長門二宮・旧国幣社と公式サイトは記している。",
+          "period_text": "",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T05:21:00+00:00",
+          "note": "",
+          "source_keys": ["batch13-iminomiya-official"]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "高良大社",
+        "address": "福岡県久留米市御井町1"
+      },
+      "deities": [
+        {
+          "display_name": "高良玉垂命",
+          "canonical_name": "高良玉垂命",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T05:22:00+00:00",
+          "note": "本殿中央に祀られる（公式サイトの図に基づく）。",
+          "source_keys": ["batch13-koura-official"]
+        },
+        {
+          "display_name": "八幡大神",
+          "canonical_name": "八幡大神",
+          "role": "secondary",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T05:22:00+00:00",
+          "note": "本殿向かって右に祀られる。",
+          "source_keys": ["batch13-koura-official"]
+        },
+        {
+          "display_name": "住吉大神",
+          "canonical_name": "住吉大神",
+          "role": "secondary",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T05:22:00+00:00",
+          "note": "本殿向かって左に祀られる。",
+          "source_keys": ["batch13-koura-official"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "仁徳天皇御代の御鎮座伝承",
+          "content": "高良大社の御鎮座は仁徳天皇55年（367）または78年（390）と伝えられ、履中天皇元年（400）に御社殿を建ててお祀りしたとされる。",
+          "period_text": "仁徳天皇55年(367)または78年(390)、履中天皇元年(400)（伝承）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T05:22:00+00:00",
+          "note": "公式サイト自身が伝承として記述。史実として断定していない。",
+          "source_keys": ["batch13-koura-official"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "蒙古襲来時の勅使参向と綸旨",
+          "content": "文永・弘安の蒙古襲来（1274年・1281年）には勅使が参向し、蒙古調伏がなったことにより「天下の天下たるは、高良の高良たるが故なり」との綸旨を賜わったと伝えられ、「武運長久の神」として崇敬されてきたと公式サイトは記している。",
+          "period_text": "文永11年（1274）・弘安4年（1281）",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T05:22:00+00:00",
+          "note": "",
+          "source_keys": ["batch13-koura-official"]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "笠間稲荷神社",
+        "address": "茨城県笠間市笠間1"
+      },
+      "deities": [
+        {
+          "display_name": "宇迦之御魂神",
+          "canonical_name": "宇迦之御魂神",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T05:23:00+00:00",
+          "note": "公式サイトが「御祭神」として明記する唯一の祭神。",
+          "source_keys": ["batch13-kasama-official"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "白雉2年(651)の創建伝承",
+          "content": "笠間稲荷神社の御創建は、社伝によれば第36代孝徳天皇の御代、白雉2年（651）と伝えられている。笠間稲荷神社は日本三大稲荷のひとつとして広く親しまれている。",
+          "period_text": "白雉2年（651）（伝承）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T05:23:00+00:00",
+          "note": "公式サイト自身が伝承として記述。史実として断定していない。",
+          "source_keys": ["batch13-kasama-official"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "御本殿の国重要文化財指定",
+          "content": "御本殿は江戸時代末期の安政・万延年間（1854～1860）の再建で、銅瓦葺総欅の権現造。昭和63年に国の重要文化財に指定された。",
+          "period_text": "安政・万延年間（1854〜1860）再建、昭和63年指定",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T05:23:00+00:00",
+          "note": "",
+          "source_keys": ["batch13-kasama-official"]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "鷲宮神社",
+        "address": "埼玉県久喜市鷲宮1-6-1"
+      },
+      "deities": [
+        {
+          "display_name": "天穂日命",
+          "canonical_name": "天穂日命",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T05:24:00+00:00",
+          "note": "天穂日命の御霊徳を崇めて建てられた別宮が現在の本殿であると公式サイトが明記。",
+          "source_keys": ["batch13-washinomiya-official"]
+        },
+        {
+          "display_name": "武夷鳥命",
+          "canonical_name": "武夷鳥命",
+          "role": "secondary",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T05:24:00+00:00",
+          "note": "景行天皇の御世に相殿へ奉祀されたと公式サイトが明記。",
+          "source_keys": ["batch13-washinomiya-official"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "出雲族草創の伝承と関東最古の大社",
+          "content": "鷲宮神社は出雲族の草創に係る関東最古といわれる大社である。神代の昔、天穂日宮とその御子武夷鳥宮とが部族を率いて神崎神社（大己貴命）を建てて奉祀したのに始まり、次いで天穂日宮の御霊徳を崇め別宮を建てて奉祀した。この別宮が現在の本殿であると伝えられている。",
+          "period_text": "神代の昔（伝承）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T05:24:00+00:00",
+          "note": "神崎神社・大己貴命は鷲宮神社創建以前の別の神社に関する記述であり、鷲宮神社自体の祭神ではない。公式サイト自身が伝承として記述し、史実として断定していない。",
+          "source_keys": ["batch13-washinomiya-official"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "明治天皇御世の准勅祭社宣下",
+          "content": "明治天皇の御世には、神祗官達により准勅祭社に定められ、勅使参向のもと幣帛の奉納がなされた。明治天皇行幸の際には当神社に御少憩され、祭祀料を賜ったと公式サイトは記している。中世以降も藤原秀郷・源頼朝・徳川家康等、歴史上有名な武将の崇敬を受け、江戸時代には四百石の神領を与えられた。",
+          "period_text": "中世〜明治天皇御代",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-11T05:24:00+00:00",
+          "note": "",
+          "source_keys": ["batch13-washinomiya-official"]
+        }
+      ]
+    }
+  ]
+}
