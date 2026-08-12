@@ -24,6 +24,13 @@ non-zero. It never prints the exception text, the request URL, the
 Authorization header, or the raw response body — see
 guard.redact_error_text() for the defense-in-depth backstop if an
 unexpected exception text ever needs to surface.
+
+Success output contract: `run_readonly_hogql_query()` never returns
+PostHog's raw response. Every response — real or `--fixture` — passes
+through `guard.sanitize_query_result()`, an allow-list that keeps only
+`results`/`columns`/`error`. PostHog's own response metadata (e.g.
+`cache_key`/`clickhouse`/`hogql`, which can embed the project's
+internal team id) never reaches stdout.
 """
 
 from __future__ import annotations
@@ -37,10 +44,12 @@ from typing import Any
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from guard import (  # noqa: E402
+    UnsafeQueryResultError,
     build_allowed_path,
     is_endpoint_allowed,
     is_readonly_hogql,
     redact_error_text,
+    sanitize_query_result,
 )
 
 DEFAULT_HOST = "https://us.posthog.com"
@@ -117,8 +126,13 @@ def run_readonly_hogql_query(
         raise PostHogReadOnlyQueryError(ERROR_UPSTREAM)
 
     try:
-        return response.json()
+        raw_result = response.json()
     except (ValueError, json.JSONDecodeError):
+        raise PostHogReadOnlyQueryError(ERROR_MALFORMED_RESPONSE) from None
+
+    try:
+        return sanitize_query_result(raw_result)
+    except UnsafeQueryResultError:
         raise PostHogReadOnlyQueryError(ERROR_MALFORMED_RESPONSE) from None
 
 
@@ -161,9 +175,14 @@ def _main() -> int:
 
     if args.fixture:
         try:
-            result = _load_fixture(args.fixture)
+            raw_result = _load_fixture(args.fixture)
         except (OSError, json.JSONDecodeError) as exc:
             print(redact_error_text(f"failed to load fixture: {type(exc).__name__}"), file=sys.stderr)
+            return 1
+        try:
+            result = sanitize_query_result(raw_result)
+        except UnsafeQueryResultError:
+            print(ERROR_MALFORMED_RESPONSE, file=sys.stderr)
             return 1
         print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
         return 0

@@ -16,6 +16,12 @@ only answers safety questions using an allow-list (not a deny-list):
 - what is the structural shape of a credential value, without ever
   returning the value itself? (VAR_SET, non-empty, length bucket only)
 - how should an error be redacted before it reaches stdout/stderr?
+- what is safe to keep from a successful query response before it
+  reaches stdout? (allow-list of `results`/`columns`/`error` only —
+  see sanitize_query_result(). PostHog's raw response includes fields
+  like `clickhouse`/`cache_key`/`hogql` that embed project-identifying
+  detail; this tooling's output contract is aggregate data only, never
+  PostHog's own response metadata)
 
 No function here executes an HTTP request, reads a credential from disk,
 or prints a secret. Callers (posthog_readonly_query.py) are responsible
@@ -142,6 +148,68 @@ def redact_error_text(text: str) -> str:
     for pattern, replacement in _REDACT_PATTERNS:
         redacted = pattern.sub(replacement, redacted)
     return redacted
+
+
+# The only top-level keys a sanitized query result may ever contain.
+# Everything else PostHog's API returns (cache_key, clickhouse, hogql,
+# modifiers, query_metadata, timezone, resolved_date_range, ...) is
+# dropped — this is an allow-list of what's safe to keep, not a
+# deny-list of what to remove, so a new PostHog response field never
+# needs a code change here to stay safe by default.
+_ALLOWED_QUERY_RESULT_KEYS = ("results", "columns", "error")
+
+
+class UnsafeQueryResultError(ValueError):
+    """Raised when a query response doesn't match the safe output shape.
+
+    Fail closed: this is raised rather than best-effort stripping
+    whatever looks risky, so an unexpected PostHog response shape (or a
+    tampered/malicious fixture file) never accidentally passes
+    something unsafe through.
+    """
+
+
+def sanitize_query_result(raw: Any) -> dict:
+    """Reduce a PostHog query response to the safe output contract.
+
+    Only `results` (list of rows, each row a list of scalar column
+    values), `columns` (list of column name strings), and `error` (a
+    string or None) ever pass through. No other top-level key is kept,
+    and any row containing a nested list/dict is treated as an unsafe/
+    unexpected shape (the aggregate COUNT/GROUP BY queries this tooling
+    issues never produce nested objects in a row) and raises rather
+    than being passed through.
+    """
+    if not isinstance(raw, dict):
+        raise UnsafeQueryResultError("response is not an object")
+
+    results = raw.get("results")
+    columns = raw.get("columns")
+    error = raw.get("error")
+
+    if results is not None:
+        if not isinstance(results, list):
+            raise UnsafeQueryResultError("results is not a list")
+        for row in results:
+            if not isinstance(row, list):
+                raise UnsafeQueryResultError("result row is not a list")
+            for value in row:
+                if isinstance(value, (dict, list)):
+                    raise UnsafeQueryResultError("result row contains a nested structure")
+
+    if columns is not None:
+        if not isinstance(columns, list) or not all(isinstance(c, str) for c in columns):
+            raise UnsafeQueryResultError("columns is not a list of strings")
+
+    if error is not None and not isinstance(error, str):
+        raise UnsafeQueryResultError("error is not a string")
+
+    sanitized: dict[str, Any] = {"error": error}
+    if results is not None:
+        sanitized["results"] = results
+    if columns is not None:
+        sanitized["columns"] = columns
+    return sanitized
 
 
 def _main() -> int:
