@@ -286,3 +286,36 @@ def build_concierge_recommendation_context(
         radius_m=radius_m,
         visit_date=visit_date,
     )
+
+
+# ---------------------------------------------------------------------------
+# Level 3-A Personal Profile: profile_context birthdate precedence
+# ---------------------------------------------------------------------------
+
+
+def resolve_profile_context_birthdate(
+    profile_context: Optional[Dict[str, Any]],
+) -> Optional[str]:
+    """Level 3-A Personal Profile: `profile_context.user_profile.{birthdate,birthday}`.
+
+    Moved verbatim from api_views_concierge.py -- no logic change.
+
+    IMPORTANT: this is a SEPARATE precedence chain from
+    `ConciergeCanonicalInput.birthdate` (the one used for astrology/element
+    scoring in `_attach_breakdown`). This one is consulted ONLY for
+    direction-calc (`planned_visit_lucky_directions`/`annual_lucky_directions`),
+    where the call site uses `resolve_profile_context_birthdate(...) or
+    canonical_input.birthdate` -- i.e. profile_context wins over the
+    canonical scoring birthdate for direction-calc specifically.
+
+    This two-precedence-chain split is a documented Current Gap (see
+    docs/product/concierge-input-architecture.md Addendum: Level 3 Profile
+    / Explicit Constraint / Recommendation Context Contract), not unified
+    in this PR -- unifying them would change existing direction-calc
+    results for requests where profile_context and canonical birthdate
+    disagree, which is out of scope here.
+    """
+    profile_user = profile_context.get("user_profile") if isinstance(profile_context, dict) else None
+    if not isinstance(profile_user, dict):
+        return None
+    return profile_user.get("birthdate") or profile_user.get("birthday")
