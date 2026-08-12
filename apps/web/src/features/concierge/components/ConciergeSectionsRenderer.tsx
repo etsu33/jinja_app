@@ -165,6 +165,23 @@ function parseExtraTokens(extra: string | undefined | null): string[] {
     .filter(Boolean);
 }
 
+// Closed-card preset token -> Level 2 canonical Visit Preference tag
+// (Structured Signal Mapping, see ConciergeFilterPanel.tsx for the main
+// mapping table). "ひとり"/"階段少なめ" have no Shrine-side capability
+// (Task 13 Shrine Data Capability Check: Hold) and stay natural-language-only.
+const CLOSED_PRESET_VISIT_PREFERENCE_TAGS: Readonly<Record<string, readonly string[]>> = {
+  静か: ["quiet"],
+  駅近: ["nearby"],
+};
+
+function visitPreferencesForClosedPresets(presets: readonly string[]): string[] {
+  const next = new Set<string>();
+  for (const p of presets) {
+    for (const tag of CLOSED_PRESET_VISIT_PREFERENCE_TAGS[p] ?? []) next.add(tag);
+  }
+  return Array.from(next);
+}
+
 function buildHistoryThemeDisplay(theme: string | null | undefined): { title: string; body: string } | null {
   const normalized = typeof theme === "string" ? theme.trim() : "";
   if (!normalized) return null;
@@ -588,9 +605,25 @@ export default function ConciergeSectionsRenderer({
 
               const togglePreset = (p: string) => {
                 const next = new Set(parts);
+                const turningOn = !next.has(p);
                 if (next.has(p)) next.delete(p);
                 else next.add(p);
                 onAction?.({ type: "filter_set_extra", extraCondition: Array.from(next).join(" ") });
+
+                // Structured Visit Preference is union/append-only here (like
+                // mergeExtra() in ConciergeFilterPanel.tsx) -- toggling a
+                // preset off never removes a tag, since it may also have
+                // been set via the open ConciergeFilterPanel.
+                if (turningOn) {
+                  const addedTags = visitPreferencesForClosedPresets([p]);
+                  if (addedTags.length) {
+                    const merged = new Set([...(state.visitPreferences ?? []), ...addedTags]);
+                    onAction?.({
+                      type: "filter_set_visit_preferences",
+                      visitPreferences: Array.from(merged),
+                    });
+                  }
+                }
               };
 
               const selectedPresets = presets.filter((p) => set.has(p));
@@ -688,6 +721,10 @@ export default function ConciergeSectionsRenderer({
                       extraCondition={state.extraCondition}
                       onExtraConditionChange={(v: string) =>
                         onAction?.({ type: "filter_set_extra", extraCondition: v })
+                      }
+                      visitPreferences={state.visitPreferences}
+                      onVisitPreferencesChange={(tags: string[]) =>
+                        onAction?.({ type: "filter_set_visit_preferences", visitPreferences: tags })
                       }
                     />
                   </div>

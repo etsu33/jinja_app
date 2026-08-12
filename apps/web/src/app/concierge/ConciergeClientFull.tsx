@@ -492,6 +492,11 @@ export default function ConciergeClientFull() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isFiltering, setIsFiltering] = useState(false);
   const [extraCondition, setExtraCondition] = useState("");
+  // Level 2 Visit Preference (Structured, canonical tags). Session-scoped
+  // like extraCondition -- not persisted as Personal Profile data. See
+  // docs/product/concierge-input-architecture.md Addendum: Level 2 Visit
+  // Preference Signal Redesign.
+  const [visitPreferences, setVisitPreferences] = useState<string[]>([]);
 
   const [goriyakuTags, setGoriyakuTags] = useState<Tag[]>([]);
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
@@ -1002,6 +1007,8 @@ export default function ConciergeClientFull() {
       const payloadBirthdate = input?.birthdate ?? birthdate;
       const payloadGoriyakuTagIds = input?.goriyaku_tag_ids ?? baseFilters.goriyaku_tag_ids;
       const payloadExtraCondition = input?.extra_condition ?? baseFilters.extra_condition;
+      const payloadVisitPreferences =
+        input?.visit_preferences ?? (visitPreferences.length ? visitPreferences : undefined);
       const payloadCrowd = input?.crowd ?? baseFilters.crowd;
       const payloadDurationMaxMin = input?.duration_max_min ?? baseFilters.duration_max_min;
       const payloadFreeText = input?.free_text ?? input?.extra_condition ?? baseFilters.free_text;
@@ -1030,6 +1037,7 @@ export default function ConciergeClientFull() {
         },
         goriyaku_tag_ids: payloadGoriyakuTagIds,
         extra_condition: payloadExtraCondition,
+        visit_preferences: payloadVisitPreferences,
         visit_date: plannedVisitDate || undefined,
         location: toOriginPayload(userOrigin),
         profile_context: buildProfileContext({
@@ -1040,7 +1048,7 @@ export default function ConciergeClientFull() {
         }),
       };
     },
-    [sessionState.temporaryBirthdate, needText, baseFilters, user?.profile, plannedVisitDate, userOrigin],
+    [sessionState.temporaryBirthdate, needText, baseFilters, user?.profile, plannedVisitDate, userOrigin, visitPreferences],
   );
 
   const useCurrentLocation = useCallback(() => {
@@ -1078,6 +1086,7 @@ export default function ConciergeClientFull() {
       tagsLoading,
       tagsError,
       extraCondition,
+      visitPreferences,
     }),
     [
       isFilterOpen,
@@ -1089,6 +1098,7 @@ export default function ConciergeClientFull() {
       tagsLoading,
       tagsError,
       extraCondition,
+      visitPreferences,
     ],
   );
 
@@ -1688,10 +1698,15 @@ export default function ConciergeClientFull() {
         setExtraCondition((a.extraCondition ?? "").toString());
         return;
 
+      case "filter_set_visit_preferences":
+        setVisitPreferences(Array.isArray(a.visitPreferences) ? a.visitPreferences : []);
+        return;
+
       case "filter_clear":
         snap("action:filter_clear", {});
         conciergeLog("filter_clear", { tid: activeThreadIdRef.current });
         setExtraCondition("");
+        setVisitPreferences([]);
         setSelectedTagIds([]);
         setEntryValidationError(null);
         setSessionState((prev) => ({

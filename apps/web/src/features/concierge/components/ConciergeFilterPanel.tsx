@@ -27,6 +27,13 @@ type Props = {
   extraCondition: string;
   onExtraConditionChange: (v: string) => void;
 
+  // Level 2 Visit Preference (Structured, canonical tags). Sent alongside
+  // extraCondition (Legacy/Transitional, free-text) -- see
+  // docs/product/concierge-input-architecture.md Addendum: Level 2 Visit
+  // Preference Signal Redesign.
+  visitPreferences?: readonly string[];
+  onVisitPreferencesChange?: (tags: string[]) => void;
+
   canApply?: boolean;
 };
 
@@ -69,6 +76,31 @@ const QUICK_PRESET_GROUPS: readonly {
 
 const INITIAL_VISIBLE_GORIYAKU_COUNT = 4;
 
+// UI label -> Level 2 canonical Visit Preference tag(s) (Structured Signal
+// Mapping). Sent directly, no keyword parsing -- see
+// docs/product/concierge-input-architecture.md Addendum: Level 2 Visit
+// Preference Signal Redesign and docs/product/visit-style-taxonomy.md.
+//
+// Canonical vocabulary: quiet / nature / reset / less_crowded / nearby / classic
+// (backend/temples/domain/visit_preference.py).
+//
+// "御朱印を楽しみたい" has no entry -- per visit-style-taxonomy.md it stays
+// natural-language-only (no Shrine-side capability to evaluate it, Task 13
+// Shrine Data Capability Check: Hold).
+const PRESET_VISIT_PREFERENCE_TAGS: Readonly<Record<string, readonly string[]>> = {
+  "静かな時間を過ごしたい": ["quiet"],
+  "気分を切り替えたい": ["reset"],
+  "自然を感じたい": ["nature"],
+  "歴史や文化に触れたい": ["classic"],
+  "近場がいい": ["nearby"],
+  "アクセスしやすい場所がいい": ["nearby"],
+  "有名な神社が安心": ["classic"],
+  "人混みを避けたい": ["less_crowded"],
+  "由緒を知りたい": ["classic"],
+  "神話に触れたい": ["classic"],
+  "境内をゆっくり歩きたい": ["quiet", "nature"],
+};
+
 function mergeExtra(prev: string, add: string) {
   const p = (prev || "").trim();
   const a = (add || "").trim();
@@ -76,6 +108,12 @@ function mergeExtra(prev: string, add: string) {
   if (!p) return a;
   if (p.includes(a)) return p;
   return `${p}\n${a}`;
+}
+
+function mergeVisitPreferences(prev: readonly string[], add: readonly string[]): string[] {
+  const next = new Set(prev);
+  for (const tag of add) next.add(tag);
+  return Array.from(next);
 }
 
 export default function ConciergeFilterPanel({
@@ -94,6 +132,8 @@ export default function ConciergeFilterPanel({
   tagsError,
   extraCondition,
   onExtraConditionChange,
+  visitPreferences = [],
+  onVisitPreferencesChange,
   canApply = false,
 }: Props) {
   const [showAllGoriyakuTags, setShowAllGoriyakuTags] = useState(false);
@@ -153,7 +193,13 @@ export default function ConciergeFilterPanel({
                     key={p.label}
                     type="button"
                     className="rounded-full border bg-[var(--kt-color-surface-default)] px-3 py-1 text-xs font-semibold hover:bg-slate-50"
-                    onClick={() => onExtraConditionChange(mergeExtra(extraCondition, p.value))}
+                    onClick={() => {
+                      onExtraConditionChange(mergeExtra(extraCondition, p.value));
+                      const tags = PRESET_VISIT_PREFERENCE_TAGS[p.label];
+                      if (tags?.length) {
+                        onVisitPreferencesChange?.(mergeVisitPreferences(visitPreferences, tags));
+                      }
+                    }}
                     title={p.value}
                   >
                     {p.label}

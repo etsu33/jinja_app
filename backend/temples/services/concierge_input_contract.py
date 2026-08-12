@@ -23,10 +23,13 @@ Level tagging (Architecture Decision Signal Attribute Model, §6/§8):
                          data -- PR #2397 confirmed this is a DB-level hard
                          candidate filter, not user identity data.
     extra_condition  -> Level 2 Visit Preference (Legacy/Transitional
-                         compatibility field; the Level 2 Signal Contract
-                         redesign itself is out of scope for this
-                         Foundation PR, see Follow-up PR2 in the
-                         Architecture Decision).
+                         compatibility field, free-text keyword parsing).
+    visit_preferences -> Level 2 Visit Preference (Structured, canonical
+                         tags -- see temples/domain/visit_preference.py and
+                         docs/product/concierge-input-architecture.md
+                         Addendum: Level 2 Visit Preference Signal Redesign).
+                         Session/Request-scoped, never persisted as Personal
+                         Profile data.
     lat/lng/radius_m/visit_date -> Level 3-C Context (see
                          ConciergeRecommendationContext below for why this
                          is a separate type, resolved separately).
@@ -43,7 +46,9 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from datetime import date
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
+
+from temples.domain.visit_preference import normalize_visit_preferences
 
 # ---------------------------------------------------------------------------
 # Compatibility normalization (moved from api_views_concierge.py, unchanged)
@@ -164,6 +169,8 @@ class ConciergeCanonicalInput:
         birthdate        -> Level 3-A Personal Profile
         goriyaku_tag_ids -> Level 3-B Explicit Constraint (NOT Profile data)
         extra_condition  -> Level 2 Visit Preference (Legacy/Transitional)
+        visit_preferences -> Level 2 Visit Preference (Structured, canonical
+                            tags -- see temples/domain/visit_preference.py)
         language, area   -> neutral request metadata (`area` also feeds
                             Level 3-C Context resolution downstream, see
                             ConciergeRecommendationContext)
@@ -180,6 +187,7 @@ class ConciergeCanonicalInput:
     birthdate: Optional[str]
     goriyaku_tag_ids: Any
     extra_condition: Any
+    visit_preferences: List[str]
 
 
 def normalize_concierge_request(data: Dict[str, Any]) -> ConciergeCanonicalInput:
@@ -192,6 +200,14 @@ def normalize_concierge_request(data: Dict[str, Any]) -> ConciergeCanonicalInput
     query->birthdate rescue) are unchanged in this PR -- see
     docs/audit/concierge-input-level-signal-inventory.md Gap C and
     Follow-up PR1 in the Architecture Decision.
+
+    `visit_preferences` is a new field (Level 2 Visit Preference Signal
+    Redesign) with no legacy top-level/filters duplication to carry
+    forward -- it is read from top-level `visit_preferences` only, and
+    validated against the canonical tag vocabulary
+    (temples/domain/visit_preference.normalize_visit_preferences()).
+    Unlike `birthdate`/`goriyaku_tag_ids`/`extra_condition`, it does not
+    inherit Gap C (Duplicate Signals).
     """
     (
         query,
@@ -203,6 +219,8 @@ def normalize_concierge_request(data: Dict[str, Any]) -> ConciergeCanonicalInput
         extra_condition,
     ) = _resolve_request_inputs_basic(data)
 
+    visit_preferences = normalize_visit_preferences(data.get("visit_preferences"))
+
     return ConciergeCanonicalInput(
         query=query,
         message=message,
@@ -211,6 +229,7 @@ def normalize_concierge_request(data: Dict[str, Any]) -> ConciergeCanonicalInput
         birthdate=birthdate,
         goriyaku_tag_ids=goriyaku_tag_ids,
         extra_condition=extra_condition,
+        visit_preferences=visit_preferences,
     )
 
 
