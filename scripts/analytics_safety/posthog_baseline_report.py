@@ -4,15 +4,18 @@
 Combines a fixed set of named, read-only HogQL queries (see
 QUERY_CONTRACT below) into one aggregate-only report. Every query goes
 through posthog_readonly_query.run_readonly_hogql_query(), which enforces
-the endpoint allow-list and the mutation-keyword rejection in
-guard.py — this module adds no new HTTP path.
+the endpoint allow-list, the mutation-keyword rejection, and the
+success-response allow-list (guard.sanitize_query_result()) — this
+module adds no new HTTP path and no new output path.
 
 Output contract: the report contains only counts, rates, enum labels,
 and the query period. It never contains a per-user/per-thread/per-event
 row dump, and no query template in QUERY_CONTRACT selects a raw
 property that could carry consultation text, email, name, or other PII
 (see PII Guard in README.md and
-docs/audit/posthog-readonly-analytics-access.md).
+docs/audit/posthog-readonly-analytics-access.md). Fixture files go
+through the same sanitizer as a real response (_run_fixture()) — a
+fixture is untrusted input too.
 
 Two modes:
 
@@ -39,7 +42,9 @@ from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+from guard import UnsafeQueryResultError, sanitize_query_result  # noqa: E402
 from posthog_readonly_query import (  # noqa: E402
+    ERROR_MALFORMED_RESPONSE,
     PostHogReadOnlyQueryError,
     run_readonly_hogql_query,
 )
@@ -153,6 +158,10 @@ def _run_real(since: str, until: str) -> dict:
 
 
 def _run_fixture(fixture_dir: str) -> dict:
+    """Load canned per-query fixture files, sanitized the same way a real
+    response would be (see run_readonly_hogql_query) — a fixture is
+    untrusted input too (it lives on disk, could be hand-edited), so it
+    gets the same allow-list treatment rather than a free pass."""
     results: dict = {}
     for name in QUERY_CONTRACT:
         path = os.path.join(fixture_dir, f"{name}.json")
@@ -160,7 +169,11 @@ def _run_fixture(fixture_dir: str) -> dict:
             results[name] = None
             continue
         with open(path, encoding="utf-8") as f:
-            results[name] = json.load(f)
+            raw_result = json.load(f)
+        try:
+            results[name] = sanitize_query_result(raw_result)
+        except UnsafeQueryResultError:
+            raise PostHogReadOnlyQueryError(ERROR_MALFORMED_RESPONSE) from None
     return results
 
 

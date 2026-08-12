@@ -55,7 +55,7 @@ def test_success_returns_json_result():
     with requests_mock.Mocker() as m:
         m.post(_expected_url(), json={"results": [[42]]}, status_code=200)
         result = run_readonly_hogql_query(FAKE_QUERY)
-    assert result == {"results": [[42]]}
+    assert result == {"results": [[42]], "error": None}
 
 
 def test_success_sends_bearer_auth_header():
@@ -250,7 +250,7 @@ def test_fixture_mode_prints_fixture_without_network_call(tmp_path, monkeypatch)
         assert m.call_count == 0
     assert exit_code == 0
     printed = json.loads(stdout.getvalue())
-    assert printed == {"results": [["FULLY_KNOWLEDGE_BACKED", 5]]}
+    assert printed == {"results": [["FULLY_KNOWLEDGE_BACKED", 5]], "error": None}
 
 
 def test_fixture_mode_missing_file_fails_generically(tmp_path):
@@ -269,3 +269,103 @@ def test_fixture_mode_missing_file_fails_generically(tmp_path):
         _sys.argv = orig_argv
     assert exit_code == 1
     assert missing_path not in stderr.getvalue()
+
+
+# --- output minimization: real response metadata never reaches the caller ---
+
+
+def test_real_response_metadata_is_stripped_before_returning():
+    """PostHog's actual response shape embeds project-identifying detail
+    (cache_key/clickhouse) alongside results/columns; only the latter may
+    ever come back from run_readonly_hogql_query()."""
+    posthog_style_response = {
+        "results": [[0]],
+        "columns": ["count"],
+        "error": None,
+        "cache_key": "cache_999999999_deadbeefdeadbeefdeadbeefdeadbeef",
+        "clickhouse": "SELECT count() FROM events WHERE team_id = 999999999",
+        "hogql": "SELECT count() FROM events",
+        "query_metadata": {"events": []},
+        "timezone": "UTC",
+        "is_cached": False,
+    }
+    with requests_mock.Mocker() as m:
+        m.post(_expected_url(), json=posthog_style_response, status_code=200)
+        result = run_readonly_hogql_query(FAKE_QUERY)
+
+    assert result == {"results": [[0]], "columns": ["count"], "error": None}
+    assert "cache_key" not in result
+    assert "clickhouse" not in result
+    assert "999999999" not in str(result)
+
+
+def test_cli_stdout_does_not_contain_response_metadata(monkeypatch):
+    import posthog_readonly_query as module
+
+    monkeypatch.setattr(sys, "argv", ["posthog_readonly_query.py", "--query", FAKE_QUERY])
+    posthog_style_response = {
+        "results": [[0]],
+        "columns": ["count"],
+        "cache_key": "cache_999999999_deadbeefdeadbeefdeadbeefdeadbeef",
+        "clickhouse": "SELECT count() FROM events WHERE team_id = 999999999",
+    }
+    with requests_mock.Mocker() as m:
+        m.post(_expected_url(), json=posthog_style_response, status_code=200)
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            exit_code = module._main()
+
+    assert exit_code == 0
+    printed = stdout.getvalue()
+    assert "cache_key" not in printed
+    assert "clickhouse" not in printed
+    assert "999999999" not in printed
+    assert json.loads(printed) == {"results": [[0]], "columns": ["count"], "error": None}
+
+
+def test_fixture_with_project_metadata_is_stripped(tmp_path, monkeypatch):
+    """A fixture file is untrusted input too — the same allow-list applies."""
+    import posthog_readonly_query as module
+
+    fixture = tmp_path / "tampered.json"
+    fixture.write_text(
+        json.dumps(
+            {
+                "results": [[1]],
+                "columns": ["count"],
+                "team_id": 999999999,
+                "authorization": "Bearer phx_fake_should_never_appear",
+            }
+        )
+    )
+    monkeypatch.setattr(sys, "argv", ["posthog_readonly_query.py", "--fixture", str(fixture)])
+
+    stdout = io.StringIO()
+    with redirect_stdout(stdout):
+        exit_code = module._main()
+
+    assert exit_code == 0
+    printed = stdout.getvalue()
+    assert "team_id" not in printed
+    assert "phx_fake_should_never_appear" not in printed
+    assert json.loads(printed) == {"results": [[1]], "columns": ["count"], "error": None}
+
+
+def test_fixture_with_nested_unsafe_structure_fails_closed(tmp_path, monkeypatch):
+    import posthog_readonly_query as module
+
+    fixture = tmp_path / "malformed.json"
+    fixture.write_text(
+        json.dumps({"results": [[1, {"email": "fake@example.com"}]], "columns": ["count", "person"]})
+    )
+    monkeypatch.setattr(sys, "argv", ["posthog_readonly_query.py", "--fixture", str(fixture)])
+
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+    with redirect_stdout(stdout), redirect_stderr(stderr):
+        exit_code = module._main()
+
+    assert exit_code == 1
+    assert "fake@example.com" not in stdout.getvalue()
+    assert "fake@example.com" not in stderr.getvalue()
+    assert stderr.getvalue().strip() == ERROR_MALFORMED_RESPONSE

@@ -41,7 +41,11 @@ def test_fixture_mode_builds_report_without_credential():
     report = module.build_report(since="2026-08-12T00:00:00Z", until="2026-08-12T12:00:00Z", fixture_dir=FIXTURE_DIR)
     assert report["period"] == {"since": "2026-08-12T00:00:00Z", "until": "2026-08-12T12:00:00Z"}
     assert set(module.QUERY_CONTRACT) <= set(report["queries"])
-    assert report["queries"]["recommendation_quality_count"] == {"results": [[0]], "columns": ["count"]}
+    assert report["queries"]["recommendation_quality_count"] == {
+        "results": [[0]],
+        "columns": ["count"],
+        "error": None,
+    }
 
 
 def test_fixture_mode_cli_makes_no_network_call(monkeypatch):
@@ -99,7 +103,7 @@ def test_real_mode_calls_every_contract_query_once(monkeypatch):
 
     assert m.call_count == len(module.QUERY_CONTRACT)
     for name in module.QUERY_CONTRACT:
-        assert report["queries"][name] == {"results": [[1]]}
+        assert report["queries"][name] == {"results": [[1]], "error": None}
 
 
 def test_real_mode_default_since_is_rollout_timestamp(monkeypatch):
@@ -165,3 +169,50 @@ def test_all_query_contract_templates_are_readonly_hogql():
     for name, template in {**module.QUERY_CONTRACT, **module.UNVERIFIED_SEGMENTED_QUERY_CONTRACT}.items():
         rendered = module._render_query(template, since="'2026-01-01T00:00:00Z'", until="'2026-01-02T00:00:00Z'")
         assert is_readonly_hogql(rendered), f"{name} failed the read-only HogQL check"
+
+
+# --- output minimization: fixture-mode results are sanitized too -------------
+
+
+def test_fixture_mode_strips_project_metadata_from_fixture_file(tmp_path):
+    fixture_dir = tmp_path
+    (fixture_dir / "recommendation_quality_count.json").write_text(
+        json.dumps({"results": [[0]], "columns": ["count"], "team_id": 999999999})
+    )
+    report = module.build_report(since="2026-08-12T00:00:00Z", until="2026-08-12T12:00:00Z", fixture_dir=str(fixture_dir))
+    entry = report["queries"]["recommendation_quality_count"]
+    assert "team_id" not in entry
+    assert entry == {"results": [[0]], "columns": ["count"], "error": None}
+
+
+def test_fixture_mode_with_unsafe_nested_structure_raises():
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as fixture_dir:
+        with open(os.path.join(fixture_dir, "recommendation_quality_count.json"), "w") as f:
+            json.dump({"results": [[1, {"email": "fake@example.com"}]], "columns": ["count", "person"]}, f)
+        with pytest.raises(module.PostHogReadOnlyQueryError):
+            module.build_report(since="2026-08-12T00:00:00Z", until="2026-08-12T12:00:00Z", fixture_dir=fixture_dir)
+
+
+def test_real_mode_strips_response_metadata_from_every_query(monkeypatch):
+    monkeypatch.setenv("POSTHOG_PERSONAL_API_KEY", FAKE_KEY)
+    monkeypatch.setenv("POSTHOG_PROJECT_ID", FAKE_PROJECT_ID)
+    expected_url = f"{DEFAULT_HOST}/api/projects/{FAKE_PROJECT_ID}/query/"
+
+    posthog_style_response = {
+        "results": [[0]],
+        "columns": ["count"],
+        "cache_key": "cache_999999999_deadbeefdeadbeefdeadbeefdeadbeef",
+        "clickhouse": "SELECT count() FROM events WHERE team_id = 999999999",
+    }
+    with requests_mock.Mocker() as m:
+        m.post(expected_url, json=posthog_style_response, status_code=200)
+        report = module.build_report(since="2026-08-12T00:00:00Z", until="2026-08-12T12:00:00Z", fixture_dir=None)
+
+    report_text = json.dumps(report)
+    assert "cache_key" not in report_text
+    assert "clickhouse" not in report_text
+    assert "999999999" not in report_text
+    for name in module.QUERY_CONTRACT:
+        assert report["queries"][name] == {"results": [[0]], "columns": ["count"], "error": None}

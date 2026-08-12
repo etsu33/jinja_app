@@ -16,6 +16,8 @@ Background reading:
 1. [`docs/audit/knowledge-recommendation-analytics-baseline-readiness.md`](../../docs/audit/knowledge-recommendation-analytics-baseline-readiness.md) — why this tooling exists (no PostHog read access existed before it)
 2. [`docs/audit/posthog-readonly-analytics-access.md`](../../docs/audit/posthog-readonly-analytics-access.md) — this Foundation's design record
 3. [`docs/audit/knowledge-recommendation-analytics-contract.md`](../../docs/audit/knowledge-recommendation-analytics-contract.md) — the event/property contract these queries read
+4. [`docs/audit/posthog-production-read-access-gate.md`](../../docs/audit/posthog-production-read-access-gate.md) — the first real Production smoke test, which found the raw-response leak fixed by `guard.sanitize_query_result()`
+5. [`docs/audit/posthog-readonly-output-minimization.md`](../../docs/audit/posthog-readonly-output-minimization.md) — that fix's design record
 
 ## What's here
 
@@ -108,16 +110,26 @@ python3 scripts/analytics_safety/posthog_baseline_report.py \
   PII Guard tests in `tests/test_posthog_baseline_report.py`).
 - **Output minimization.** The report contains only counts, rates
   (where computed), enum labels, and the query period — never a
-  per-user/per-thread/per-event raw row dump.
+  per-user/per-thread/per-event raw row dump. Enforced by
+  `guard.sanitize_query_result()`: every successful response — real or
+  `--fixture` — is reduced to an allow-list of `results`/`columns`/
+  `error` before it reaches any caller. PostHog's own response
+  metadata (`cache_key`/`clickhouse`/`hogql`/`query_metadata`/etc.,
+  which can embed the project's internal team id) never reaches
+  stdout. This was added after the first real Production smoke test
+  found the gap — see
+  [`docs/audit/posthog-readonly-output-minimization.md`](../../docs/audit/posthog-readonly-output-minimization.md).
 
 ## What this Foundation does not do
 
 - It does not create, register, or rotate a PostHog Personal API Key.
-- It has never connected to real Production PostHog (no credential
-  exists in the environment this was built in — see
-  [`knowledge-recommendation-analytics-baseline-readiness.md`](../../docs/audit/knowledge-recommendation-analytics-baseline-readiness.md)).
-  `posthog_readonly_query.py` and `posthog_baseline_report.py` are
-  fully tested against mocked HTTP, not real PostHog.
+- `posthog_readonly_query.py` and `posthog_baseline_report.py` are
+  fully tested against mocked HTTP; the sanitizer has also been
+  verified once against a real Production response (see
+  [`posthog-production-read-access-gate.md`](../../docs/audit/posthog-production-read-access-gate.md)
+  and
+  [`posthog-readonly-output-minimization.md`](../../docs/audit/posthog-readonly-output-minimization.md)),
+  but this remains a thin slice of real-world coverage.
 - The `ctr_by_classification` / save-rate / visit-intent "segmented by
   Knowledge classification" queries
   (`UNVERIFIED_SEGMENTED_QUERY_CONTRACT` in
