@@ -1210,3 +1210,270 @@ Migration = 0
 - `direction_profile` naming collision解消（rename案は本Addendumに記録済み）
 - Frontend IA: L1/L2/L3の画面上段階表示
 - Learning Contract: 行動学習の正式契約
+
+---
+
+## Addendum: Integrated Recommendation Intent Execution Contract
+
+> 本Addendumは「Integrated Recommendation Intent Execution Contract」PR
+> の実装状況を記録する。Architecture Decision本文（§1〜§15）および
+> 前3つのAddendum（Implemented Contract Foundation / Level 2 Visit
+> Preference Signal Redesign / Level 3 Profile / Explicit Constraint /
+> Recommendation Context Contract）は書き換えていない。本PRは
+> **既存Signal（L1〜L3）を統合Contractとしてテスト・監査するのみ**
+> であり、ranking weight・candidate filtering semantics・
+> Recommendation Reasonのテキスト生成ロジック・Score v3 mode・DB
+> schema・Migration・Frontend IA・375px UIは、いずれも変更していない
+> （プロダクションコードの変更は0行）。
+
+### Core Principle（採用）
+
+**Consultation Meaning is the primary recommendation axis.**
+
+```text
+L1 Consultation        -> 主軸（why this shrine）
+L2 Visit Preference    -> 体験調整（what kind of visit experience fits）
+L3-A Personal Profile  -> Personalization（how to personalize for this person）
+L3-B Explicit Constraint -> Candidate制約（what must be satisfied）
+L3-C Recommendation Context -> 現実適合（what is practical for this visit）
+Learning                -> 将来の補正（今回は対象外、変更なし）
+```
+
+下位Signalが相談意味を勝手に置き換えない、という原則は、Integrated
+Contract Test（後述）で実際のコード動作として確認済み（推測ではなく
+実装から検証した）。
+
+### Integrated Recommendation Flow（実装確認済み）
+
+```text
+Raw Consultation（query）
+  ↓ resolve_need_payload / resolve_consultation_axis
+Interpretation（need_tags, consultation_axis）
+  ↓ build_chat_candidates（goriyaku_tag_idsのみhard filter適用）
+Candidate Constraint（L3-B Explicit Constraint）
+  ↓ _attach_breakdown（need/element/visit_style/distance/direction合算）
+Ranking（L1 meaning + L2 experience + L3-A personalization + L3-C context）
+  ↓ _build_reason_facts + _resolve_primary_reason + build_recommendation_reason
+Recommendation Reason（reason_facts, _primary_reason_source, reason text）
+```
+
+### Signal Responsibility（実装確認済み、既存の割当てを再確認したのみ）
+
+| Signal | Purpose | 実装箇所 |
+|---|---|---|
+| Consultation（`need_tags`/`consultation_axis`） | Why this shrine? | `resolve_need_payload`/`resolve_consultation_axis`、`_attach_breakdown`の`matched_by_tag`/`matched_by_text`/`matched_by_gid`→`score_need` |
+| Visit Preference（`visit_style_tags`） | What kind of visit experience fits? | `resolve_visit_preference_tags`（PR #2405）→`_attach_breakdown`の`score_visit_style`（w5=0.35固定） |
+| Personal Profile（`birthdate`） | How should this be personalized? | `_attach_breakdown`の`score_element`/`astro_bonus`、`_score_profile_signal` |
+| Explicit Constraint（`goriyaku_tag_ids`） | What must be satisfied? | `build_chat_candidates`のDB-level hard filter（Candidate段階、Rankingではない） |
+| Recommendation Context（`lat`/`lng`/`radius`/`visit_date`） | What is practical? | `_distance_decay`（`score_distance`）、`_resolve_direction_bonus`（`direction_bonus`） |
+
+### Candidate Selection Contract（Task 4）
+
+```text
+Candidate Selectionを変更できるのは goriyaku_tag_ids のみ
+（DB-level hard filter、build_chat_candidates内）
+  ↓
+Candidate Selection後、以下でRankingを決定:
+  Consultation Meaning（need/consultation_axis）
+  Visit Preference（visit_style）
+  Personal Profile（element/astro）
+  Recommendation Context（distance/direction）
+```
+
+`goriyaku_tag_ids`はCandidate集合を変えるが、Ranking Bonusとしての
+score加算は行わない（`_attach_breakdown`内でgoriyaku一致は
+`matched_by_gid`経由でneed scoreへ寄与することはあるが、hard filter
+そのものは加点しない）。この区別は既存実装のまま、変更していない。
+
+### Ranking Contract（Task 5、既存weight、変更なし）
+
+| 概念 | 対応する既存weight | 現在値（needモード） | 現在値（compatモード） |
+|---|---|---|---|
+| Meaning Match | `need` | 0.3 | 0.2 |
+| Personalization | `element` | 0.6 | 0.8 |
+| Practical Fit | `distance` | 0.35 | 0.15 |
+| Experience Fit | `visit_style`（固定w5） | 0.35（モード共通） | 0.35（モード共通） |
+
+いずれも`_resolve_mode_weights()`/`_attach_breakdown()`の既存値であり、
+本PRでのweight tuningは行っていない
+（`test_weights_unchanged_from_documented_contract`で固定化）。
+
+### Priority / Override Rules（Task 6、実装確認済み）
+
+- **Rule 1** — ConsultationはRecommendation Meaningの主軸。採用。
+- **Rule 2** — Visit PreferenceはConsultation Meaningを上書きしない。採用
+  （`test_conflict_consultation_vs_visit_preference_does_not_flip_ranking`
+  で確認: `visit_style`一致のみの候補は、`need_tag`一致する候補の後ろに
+  並ぶ）。
+- **Rule 3** — Personal ProfileはConsultation Meaningを上書きしない。採用
+  （`test_conflict_consultation_vs_personal_profile_does_not_flip_ranking`
+  で確認）。
+- **Rule 4** — Explicit ConstraintはCandidate集合を変更できるが、
+  Consultation Meaning自体は変更しない。採用
+  （`test_conflict_consultation_vs_explicit_constraint_evaluates_meaning_within_filtered_set`
+  で確認: 両候補がgoriyaku制約を満たしても、need一致する候補が上位）。
+- **Rule 5** — Recommendation Contextは意味ではなく現実適合へ利用する。
+  採用（`test_conflict_consultation_vs_context_does_not_relabel_reason_as_distance_only`
+  で確認: 近いだけで一致していない候補は`need_tag`をprimary reasonに
+  しない）。
+- **Rule 6** — 複数Signalが存在する場合でも、Recommendation Reasonが
+  単一補助Signalだけを主理由として誤表示しない。**部分的に採用、既知
+  Mismatchあり（次項参照）**。
+
+### Task 9/10/11: Primary Reason Audit（Current behavior / Mismatch / Proposed rule）
+
+現行実装には**2つの独立したprimary reasonシステム**が並行して存在する
+ことを確認した:
+
+1. **`reason_facts`システム**（`concierge_chat_ranking._build_reason_facts`
+   + `_resolve_primary_reason`）: `history_theme` > `culture_translation`
+   > `need_tag` > `text_hint` > `user_selected_tag` > `goriyaku_tag` >
+   `element` > `fallback` の優先順位。**`visit_style`はfact typeとして
+   一切生成されない。**
+2. **`_explanation_payload`システム**（`concierge_explanation_payload
+   .build_explanation_payload`）: 上記`reason_facts`の結果を再利用しつつ、
+   `_build_visit_style_primary_reason()`が独自に`primary_reason`を
+   **上書き**する。条件は「`reason_facts`のprimary_reasonが存在しない、
+   または`type == "fallback"`、かつvisit_style一致がある」場合のみ。
+
+**Current behavior**: 相談に一致するfactが1つもない（fallbackのみ）
+候補で、visit_style一致がある場合、`_explanation_payload.primary_reason.type`
+は`"visit_style"`になるが、同じ候補の`rec["_primary_reason_source"]`
+（`rank_explanation.primary_reason_source`と同じ値）は`"fallback"`の
+ままである。
+
+**Mismatch**: 同一レスポンス内の同一候補について、`rank_explanation
+.primary_reason_source`（`"fallback"`）と`_explanation_payload
+.primary_reason.type`（`"visit_style"`）が食い違う。両方ともpublicな
+response fieldとして返っており、どちらを「正」として参照するかが
+呼び出し側（frontend）に委ねられている。
+
+**実害の範囲（確認済み）**: 実際にユーザーへ表示される`rec["reason"]`
+文字列（`build_recommendation_reason`）は`_primary_reason_label`
+（reason_factsシステム側）のみを参照し、visit_styleを一切考慮しない。
+`_primary_reason_label`が`"element"`/`"fallback"`/`"user_selected_tag"`
+等、`_build_need_reason_text`のintent_mapに存在しないlabelの場合は
+汎用文言へ安全にfallbackする設計になっており、「静かな神社だから
+仕事に良い」のような意味の逆転をvisible textが起こすことは確認できな
+かった（`test_full_integration_visible_reason_text_reflects_consultation_not_lower_level_signal`
+で固定化）。**Mismatchは構造化fieldレベル（`_explanation_payload`
+vs `rank_explanation`）に留まり、主要な visible reason文言レベルには
+及んでいない**、というのが今回の監査結果である。
+
+**Proposed rule（案、未実装）**: `_build_visit_style_primary_reason()`の
+override先を`_explanation_payload`だけでなく`reason_facts`/
+`_resolve_primary_reason`側にも一貫させる（`PRIMARY_REASON_PRIORITY`へ
+`visit_style`を`fallback`の直前に追加する等）。ただしこれは
+`concierge_chat_ranking.py`と`concierge_explanation_payload.py`両方に
+またがる変更であり、公開response fieldの値を変えるため、**Reason
+Brush-up Follow-upへ送る**（今回のスコープでは「小さく安全な修正」
+とは判断しなかった）。
+
+### Task 10: Candidate Reason vs Rank Reason（既知の重なり、記録のみ）
+
+`user_selected_tag`（goriyaku明示指定）のreason factは、その神社が
+「候補に残った理由」（Candidate Eligibility、goriyaku hard filterを
+通過した）と「相談との一致以外に説明できる理由」（Rank Reason寄り）を
+兼ねている。`goriyaku_tag_ids`でフィルタされた候補群では、生き残った
+候補**全員**が同じ`user_selected_tag` factを持ちうるため、これだけで
+「なぜこの候補が1位か」を差別化する説明力は弱い。ただし
+`PRIMARY_REASON_PRIORITY`上`user_selected_tag`（4）は`need_tag`（2）/
+`text_hint`（3）より低優先度のため、Consultation一致がある限り
+primary reasonにはならない（Rule 4の担保、確認済み）。この重なりは
+**Current Gapとして記録するのみ**とし、Reason Brush-up Follow-upへ送る。
+
+### Task 8/14: Explainability Boundary（既存breakdown構造の再利用）
+
+新しいschemaは作らず、既存の`breakdown_detail.features`を以下へ対応
+させて確認した:
+
+| Explainability概念 | 既存field |
+|---|---|
+| candidate_eligibility | `build_chat_candidates`のgoriyaku hard filter（breakdown外、候補生成段階） |
+| meaning_fit | `breakdown_detail.features.need`（`matched_tags`/`raw`/`rank_weighted`） |
+| visit_preference_fit | `breakdown_detail.features.visit_style`（`matched_tags`/`raw`/`contribution`） |
+| profile_fit | `breakdown_detail.features.element`（`raw`/`contribution`）、`astro_bonus` |
+| context_fit | `breakdown_detail.features.distance`（`raw`/`contribution`）、`direction_bonus` |
+
+`test_breakdown_detail_separates_meaning_visit_profile_context_features`
+で、これら5つが同一Recommendationに対して独立して読み取れることを
+確認した（Why eligible? / Why ranked? / Why recommended now? への分解、
+Task 14参照。UIへの新規表示は行っていない）。
+
+### Task 12/13: Integrated Contract Tests
+
+`backend/temples/tests/test_concierge_integrated_recommendation_contract.py`
+（新規、16件）:
+
+- 組み合わせ行列: L1 only / L1+L2 / L1+L3-A / L1+L3-B / L1+L3-C /
+  L1+L2+L3-A / L1+L2+L3-B / L1+L3-B+L3-C / Full Integration（全Signal
+  同時）
+- 競合シナリオ4件（§7）: Consultation vs Visit Preference / Personal
+  Profile / Explicit Constraint / Recommendation Context
+- Explainability境界の確認1件
+- Weight不変の確認1件
+
+Full Integrationでは、Candidate filter適用・need score維持・
+consultation_axis維持・visit preference score反映・birthdate score
+反映・context distance反映・primary reasonが補助Signalのみに乗っ取ら
+れないこと・reason_factsが実際のSignalと一致することを、すべて
+1つのテストで確認している。
+
+### Task 16: Browser QA
+
+- **Case A（相談のみ）**: dev server上で「仕事の転機で迷っています」を
+  送信し、200 OK・console error無し・reasonが仕事/転機のconsultation
+  文脈を正しく反映していることを確認した。
+- **Case B（相談 + Visit Preference）**: 開いた`ConciergeFilterPanel`
+  経由の構造化Visit Preference送信は、PR #2405のBrowser QAで
+  `requested_visit_style_tags`が正しくbackendへ到達することを実機確認
+  済み（本PRでの再検証は省略）。**閉じた4-preset card**
+  （`ConciergeSectionsRenderer.tsx`の`togglePreset`、PR #2405で追加）
+  経由の同等の検証は、本PRのBrowser QA中にライブE2Eでは再現性のある
+  確認が取れなかった（自動化ブラウザ操作のタイミング起因の疑いが強い
+  ── 同一操作で意図せず2回requestが発火する事象を観測）。ライブE2Eの
+  代わりに、`ConciergeSectionsRenderer.closedCardVisitPreference.test.tsx`
+  （新規、単体テスト）で`togglePreset`のonAction呼び出しを直接検証し、
+  「静か」→`filter_set_visit_preferences({visitPreferences:["quiet"]})`、
+  「駅近」→`["nearby"]`、「ひとり」→dispatchされない、をすべて確認した。
+  コードパス自体は正しいと判断する。
+- **Case C（Full Integration）**: 相談 + birthdate + goriyaku +
+  Visit Preferenceの同時送信は、PR #2406のBrowser QAで実機確認済み
+  （`score_element`/`matched_user_selected_goriyaku_tag_ids`/
+  `score_visit_style`が同一レスポンス内ですべて正しく反映されることを
+  確認）。本PRはranking/reasonロジックを変更していないため、再検証は
+  省略した。
+
+### No Behavior Change Verification（実行結果）
+
+```
+Backend: python -m pytest -p no:dotenv temples/ -q
+  -> 1264 passed, 9 skipped（既存1248 + 新規Integrated Contract test 16件）
+
+Web: vitest run
+  -> Test Files 119 passed, Tests 769 passed（既存766 + 新規3件、
+     closed-card visit preference dispatch回帰テスト）
+```
+
+Candidate filtering behavior change = 0
+Ranking behavior change = 0
+Recommendation Reasonのtext生成ロジック変更 = 0
+API compatibility change = 0
+Weight変更 = 0
+Migration = 0
+本PRのプロダクションコード変更 = 0行（backend/frontendとも、テスト
+ファイル2件・本ドキュメントの追加のみ）
+
+### Follow-up（本PRでは実装しない）
+
+- **Reason Brush-up**: `_explanation_payload.primary_reason`（visit_style
+  override）と`rank_explanation.primary_reason_source`（reason_facts）の
+  Mismatch解消。`PRIMARY_REASON_PRIORITY`へ`visit_style`を統合するか、
+  もしくは`_build_visit_style_primary_reason()`のoverride条件を
+  `reason_facts`側にも一貫させるかをProduct/Engineering判断とする。
+- **Weight Optimization**: 実ユーザーデータを使った重み調整（今回は
+  意図的に対象外）。
+- **Learning Feedback**: 過去行動によるPersonalization（Rule 5、既存の
+  `calculate_shrine_behavior_signal_breakdown`ループを超えた拡張）。
+- **Frontend IA**: L1→L2→L3段階UI表示。
+- **Responsive Polish**: 375/390/430px全体調整。
