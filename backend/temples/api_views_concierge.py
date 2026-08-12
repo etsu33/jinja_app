@@ -33,7 +33,11 @@ from temples.services import places as Places
 from temples.services.plan_service import resolve_plan_context
 from temples.services.quota_service import check_quota, consume_quota
 from temples.services.anonymous_id import attach_anonymous_cookie, build_anonymous_cookie_value
-from temples.services.concierge_input_contract import normalize_concierge_request
+from temples.services.concierge_input_contract import (
+    normalize_concierge_request,
+    resolve_profile_context_birthdate,
+    build_concierge_recommendation_context,
+)
 
 from temples.services.concierge_candidate_utils import (
     _dedupe_candidates,
@@ -547,12 +551,12 @@ class ConciergeChatView(APIView):
 
             raw_profile_context_value = data.get("profile_context")
             raw_profile_context = dict(raw_profile_context_value) if isinstance(raw_profile_context_value, dict) else None
-            profile_user = raw_profile_context.get("user_profile") if raw_profile_context else None
-            profile_birthdate = (
-                profile_user.get("birthdate") or profile_user.get("birthday")
-                if isinstance(profile_user, dict)
-                else None
-            )
+            # Level 3-A Personal Profile (direction-calc precedence chain --
+            # separate from canonical_input.birthdate, see
+            # resolve_profile_context_birthdate() docstring).
+            profile_birthdate = resolve_profile_context_birthdate(raw_profile_context)
+            # Level 3-C Recommendation Context: visit_date/planned_visit_date
+            # alias resolution. `visit_date` is canonical (wins when both sent).
             visit_date = data.get("visit_date") or data.get("planned_visit_date")
             try:
                 calculated_direction = (
@@ -694,6 +698,22 @@ class ConciergeChatView(APIView):
             remaining, limit_value = _chat_quota_fields(plan=plan_context.plan, quota=quota)
 
             lat, lng = _resolve_request_location_inputs(data, area=area)
+            # radius_m: parsed once here and reused below (bias + observability
+            # log) -- previously parsed twice from the same `data`, same value
+            # either way since _parse_radius() is a pure function of `data`.
+            radius_m = _parse_radius(data)
+            # Level 3-C Recommendation Context, canonical packaging (Task 7).
+            # Built here -- after the quota gate, same as lat/lng resolution
+            # above -- so this does not change when the geocode inside
+            # _resolve_request_location_inputs() fires (see
+            # ConciergeRecommendationContext docstring: moving this earlier
+            # would add wasted geocode calls for blocked/invalid requests).
+            l3_context = build_concierge_recommendation_context(
+                lat=lat,
+                lng=lng,
+                radius_m=radius_m,
+                visit_date=visit_date,
+            )
 
             # -------------------------
             # ② candidate build
@@ -733,12 +753,11 @@ class ConciergeChatView(APIView):
 
             bias = None
             if lat is not None and lng is not None:
-                r_m = _parse_radius(data)
-                bias = {"lat": lat, "lng": lng, "radius": r_m, "radius_m": r_m}
+                bias = {"lat": lat, "lng": lng, "radius": radius_m, "radius_m": radius_m}
                 log.info(
                     "[api/chat] computed_bias has_bias=%s radius_m=%d",
                     bias is not None,
-                    r_m,
+                    radius_m,
                 )
 
             log.info(
@@ -792,6 +811,18 @@ class ConciergeChatView(APIView):
                     birthdate is not None,
                 )
                 raise
+
+            # Level 3-C Recommendation Context: attached to the internal-only
+            # debug payload (stripped from the public response body by
+            # _build_chat_response(), same boundary as candidate_pool_observation
+            # / score_v3_mode below). Observational only -- does not change
+            # candidate filtering, ranking, or the public API contract.
+            recs.setdefault("_debug", {})["l3_context"] = {
+                "lat": l3_context.lat,
+                "lng": l3_context.lng,
+                "radius_m": l3_context.radius_m,
+                "visit_date": l3_context.visit_date,
+            }
 
             direction_profile = (
                 raw_profile_context.get("direction_profile")
@@ -921,7 +952,8 @@ class ConciergeChatView(APIView):
             result_state = signals.get("result_state") or {}
             need_meta = recs.get("_need") or {}
             need_tags_for_log = need_meta.get("tags") or []
-            radius_m = _parse_radius(data)
+            # radius_m: reuses the single value parsed above (Level 3-C
+            # Recommendation Context), not re-parsed here.
 
             try:
                 _recs_debug = recs.get("_debug") or {}

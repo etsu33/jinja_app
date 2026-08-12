@@ -961,3 +961,252 @@ Web typecheck: tsc -p tsconfig.json --noEmit -> no errors
 - 御朱印関連fieldをShrineモデルへ追加するかのProduct判断
 - `duration_max_min`の配線または削除判断（PR1 Input Contract Foundation
   時点から持ち越し）
+
+---
+
+## Addendum: Level 3 Profile / Explicit Constraint / Recommendation Context Contract
+
+> 本Addendumは「Level 3 Profile / Explicit Constraint / Recommendation
+> Context Contract」PR（Follow-up PR4、§14）の実装状況を記録する。
+> Architecture Decision本文（§1〜§15）および前2つのAddendum
+> （Implemented Contract Foundation / Level 2 Visit Preference Signal
+> Redesign）は書き換えていない。Level 1 consultation semantics・Level 2
+> visit preference semantics・`goriyaku_tag_ids` hard candidate filter
+> semantics・birthdate astrology scoring semantics・direction bonus
+> semantics・Recommendation ranking weights・Score v3 mode・Recommendation
+> Reason全面変更・Learning Signal・Frontend Information
+> Architecture・375px UI・DB schema・Migrationは、いずれも変更していない。
+> `radius`を「名前から見てhard filterだろう」と解釈した変更も行っていない
+> （現行のsoft bias/観測用途のsemanticsを維持）。
+
+### Task 1: Level 3 Current Inventory
+
+| Signal | Input source | Current scope | Current effect | Persistence | Proposed L3 type |
+|---|---|---|---|---|---|
+| `birthdate`（canonical, top-level/filters/query-rescue） | `ConciergeCanonicalInput.birthdate`（`_resolve_request_inputs_basic`経由） | Request | Astrology/element scoring（`score_element`）、`astro_bonus`。profile_context不在時のdirection-calc fallback | なし（Concierge Chat経由でDB保存されない） | **3-A Personal Profile** |
+| `profile_context.user_profile.{birthdate,birthday}` | request top-level `profile_context` | Request | **direction-calc専用**の別優先順位chain（`planned_visit_lucky_directions`/`annual_lucky_directions`呼び出し時、canonical birthdateより優先） | なし（Concierge Chat内では未保存。`UserProfile`モデルへの永続化は別経路） | **3-A Personal Profile**（canonical birthdateとは独立した別chain、Current Gapとして記録） |
+| `profile_context.derived_profile`（kyusei/gogyo/lifePath） | request top-level `profile_context` | Request | `gogyo`のみ`_score_profile_signal`で実効。`kyusei`/`lifePath`は未消費（PR #2397既知） | なし | **3-A Personal Profile（Derived）**、変更なし |
+| `goriyaku_tag_ids` | top-level/filters | Request/Session | DB-level candidate hard filter（`build_chat_candidates`） | なし（`user.profile`へ保存されない） | **3-B Explicit Constraint** |
+| `location`/`lat`/`lng` | top-level lat/lng ＞ `location{lat,lng}` ＞ area geocode fallback | Request | Context + soft Ranking Bonus（distance decay + direction bearing）、候補pool構築時のbias中心点 | なし | **3-C Recommendation Context** |
+| `radius`/`radius_m`（frontendは現状未送信） | top-level `radius_m`/`radius_km`（既定8000、1〜50000へclip） | Request | soft bias parameterのみ（`bias`辞書）。Concierge Chatパイプライン内では**candidate hard filterには一度もならない**（`/nearest` endpointのみhard filter） | なし | **3-C Recommendation Context** |
+| `area`/`where`/`location_text` | top-level（どれか1つ） | Request | `lat`/`lng`未解決時のみ、quota gate通過後にgeocodeへ利用 | なし | **3-C Recommendation Context**（解決材料。canonical valueそのものではない） |
+| `visit_date`/`planned_visit_date` | top-level、`visit_date`優先 | Request | どちらの分岐（`planned_visit_lucky_directions` vs `annual_lucky_directions`）を使うかを決定し、direction bonus/表示へ影響 | なし | **3-C Recommendation Context** |
+
+### Task 2/3: Level 3-A Personal Profile Contract
+
+`birthdate`をPersonal Profile入力として明示する（Type=Personal Profile,
+Scope=Request, Effect=Personalization, Strength=Soft）。現行実装を確認した
+結果、Concierge Chat経由でbirthdateがDBへ永続保存される経路は**存在しない**
+ため、今回migrationやprofile保存機能は追加していない。
+
+**birthdateの2つの独立した優先順位chain（Current Gap）**:
+
+```text
+Chain A（Canonical scoring birthdate、_attach_breakdownで使用）:
+  top-level birthdate
+  ↓（無ければ）
+  filters.birthdate
+  ↓（無ければ）
+  query date rescue（"1990-01-01"等の文字列をqueryから救済）
+
+Chain B（direction-calc専用、resolve_profile_context_birthdate()）:
+  profile_context.user_profile.birthdate
+  ↓（無ければ）
+  profile_context.user_profile.birthday
+  ↓（無ければ）
+  Chain Aの結果（canonical birthdate）にfallback
+```
+
+`api_views_concierge.py`の呼び出し:
+`planned_visit_lucky_directions(profile_birthdate or birthdate, visit_date)`
+— **Chain BがChain Aより優先される**のはdirection-calcの時だけであり、
+astrology/element scoring（`score_element`）は常にChain Aのみを使う。
+この2 chain構造は今回**統一しない**（統一すると既存のdirection-calc結果が
+変わるリクエストが存在しうるため、スコープ外）。`resolve_profile_context_birthdate()`
+（`backend/temples/services/concierge_input_contract.py`、新規）へ既存ロジックを
+verbatim抽出し、Contractとして明示・テスト固定した。
+
+### Task 3: birthdate Derived Signal Boundary
+
+`astro_profile`/`score_element`/`direction_bonus`等はbirthdateから都度計算
+される Derived Runtime Signal であり、`ConciergeCanonicalInput`には含まれない
+（`test_canonical_input_does_not_include_astro_or_direction_derived_signals`
+で固定化）。
+
+### Task 4/5: Level 3-B Explicit Constraint Contract
+
+`goriyaku_tag_ids`を`Personal Profile`から明確に分離済み（PR #2399時点で
+既に`ConciergeCanonicalInput`docstring上でL3-Bタグ付け済み、本PRで変更なし）。
+
+```text
+Level = L3, Type = Explicit Constraint, Scope = Request/Session,
+Effect = Candidate Filter, Strength = Strong
+```
+
+DB-level hard filter semanticsは維持（変更なし）。API field名`goriyaku_tag_ids`
+は後方互換のため維持する。内部コードでは`concierge_chat_ranking._attach_breakdown`
+の`requested_goriyaku_tag_ids`引数名が既に責務の分かる名称になっており
+（PR #2399以前から存在）、本PRで新たなrenameは行っていない — 大規模rename
+は今回のGoalではない。
+
+### Task 6/7: Level 3-C Recommendation Context Contract
+
+PR #2399で定義済みの`ConciergeRecommendationContext`
+（`backend/temples/services/concierge_input_contract.py`）を再発明せず、
+`api_views_concierge.py`のview内で実配線した:
+
+```python
+lat, lng = _resolve_request_location_inputs(data, area=area)
+radius_m = _parse_radius(data)  # 1回だけparse（後述）
+l3_context = build_concierge_recommendation_context(
+    lat=lat, lng=lng, radius_m=radius_m, visit_date=visit_date,
+)
+```
+
+**geocode timingは変更していない**: `_resolve_request_location_inputs()`
+の呼び出し位置は、既存通りquota gate通過後（`quota.allowed`チェックの後）の
+ままである。`l3_context`の構築もこの直後に行っており、request開始直後への
+前倒しは行っていない
+（`test_blocked_request_does_not_trigger_geocode`で固定化 — quota
+blocked時に`geocode_google_point`が一度も呼ばれないことを確認）。
+
+`l3_context`は`recs["_debug"]["l3_context"]`へ内部観測用として付与した
+（`candidate_pool_observation`/`score_v3_mode`と同じ既存パターン）。
+`_build_chat_response()`が`_debug`を公開レスポンスから常に除外する既存
+境界はそのまま利用しており、public API contractへの影響はない
+（`test_l3_context_debug_payload_is_stripped_from_public_response`で
+固定化）。
+
+**副次的な簡略化（1件のみ）**: `radius_m`は従来`_parse_radius(data)`が
+biasの計算用途と観測ログ用途で2回呼ばれていた（同一`data`からの純粋関数
+なので値は常に同一）。本PRで1回にまとめ、両方の用途へ同じ変数を再利用する
+よう変更した。挙動は完全に同一（`_parse_radius`はpure function）。
+
+### Task 8: Location Source Priority
+
+現行実装（`_resolve_request_location_inputs`）のpriorityを確認した:
+
+```text
+Priority 1: top-level lat/lng
+Priority 2: location{lat,lng}
+Priority 3: area text geocode fallback
+```
+
+このpriorityは既に`temples/tests/api/test_concierge_chat_view_characterization.py`
+（`test_chat_view_uses_nested_location_latlng_as_bias`、
+`test_chat_view_uses_area_geocode_when_latlng_absent`、
+`test_chat_view_prefers_direct_latlng_even_with_area`）でcontract test化
+済みであり、本PRでは重複させていない。
+
+### Task 9: radius Contract
+
+Concierge Chat内の`radius`/`radius_m`は`bias`辞書へのsoft parameterとして
+のみ使われ、**candidate hard filterへは変更していない**
+（`test_radius_is_never_passed_to_candidate_building_hard_filter_parity`で
+固定化 — `build_chat_candidates`呼び出しに`radius`/`radius_m`が一切渡され
+ないことを確認）。`/nearest` endpoint（別実装、`d_m <= radius_m`のhard
+filter）とは責務が異なったままである。`radius` semantics統一は
+Follow-upへ送る。
+
+### Task 10: visit_date Contract
+
+```text
+Raw aliases: visit_date / planned_visit_date
+  ↓（visit_date優先、data.get("visit_date") or data.get("planned_visit_date")）
+Canonical Context: visit_date
+```
+
+API field自体の削除・rename は行っていない。`birthdate + visit_date →
+planned_visit_lucky_directions`の挙動は維持
+（`test_l3_context_visit_date_wins_over_planned_visit_date_alias`、
+`test_l3_context_uses_planned_visit_date_when_visit_date_absent`で
+固定化）。
+
+### Task 11: profile_context Boundary（direction_profile naming collision）
+
+既知の概念衝突を再確認した（PR #2397 Gap D、PR #2398 §10 #9で既に記録
+済み、本PRで新規発見ではない）:
+
+| Container | 実体 | 概念 |
+|---|---|---|
+| `profile_context.direction_profile`（`api_views_concierge.py`が`planned_visit_lucky_directions`/`annual_lucky_directions`の結果を格納） | kyusei方位計算結果 | L3-C Context、実効ranking（`_score_direction_signal`） |
+| `interpretation_profile.direction_profile`（`consultation_interpreter.build_direction_profile()`の出力） | 相談状態のnarrative方位（`{"direction","themes","source_state"}`） | Internal/L1寄り、shadow |
+
+同名だが完全に無関係な2概念であることを確認した。**Current collision**として
+記録するのみとし、rename等の実施は本PRでは行わない（rename範囲が
+`consultation_interpreter.py`/`concierge_chat_ranking.py`双方に及び、
+広範囲変更になるため）。**Proposed rename（案）**: kyusei側を
+`direction_bonus_profile`、narrative側を`consultation_direction_hint`等へ
+分離することを候補として残す。**Follow-up**へ送る。
+
+### Task 12: Canonical L3 Contract（実装形式）
+
+`PersonalProfileInput`/`ExplicitConstraintInput`/`RecommendationContext`
+という3つの独立classを新設する設計は採用しなかった（過剰なclass
+hierarchyを避けるため）。代わりに:
+
+- `ConciergeCanonicalInput`（既存、PR #2399）が`birthdate`（3-A）・
+  `goriyaku_tag_ids`（3-B）を既にdocstring上でLevel-taggedな1つのfield
+  として保持している。本PRではこのdocstringをさらに強化した
+  （2つのbirthdate優先順位chainの明示、`resolve_profile_context_birthdate()`
+  への参照追加）。
+- `ConciergeRecommendationContext`（既存、PR #2399）が3-Cを表す。本PRで
+  実際にview側から構築・使用するよう配線した（Task 6/7参照）。
+
+これにより「概念として3分離されているが、過剰なclass階層はない」という
+Task 12の要求を満たす。
+
+### Task 13: Frontend Contract
+
+`apps/web/src/features/concierge/types/chatRequest.ts`のコメントを拡充し、
+Personal Profile（3-A）/ Explicit Constraint（3-B）/ Recommendation
+Context（3-C）/ Compatibilityを型コメントレベルで識別できるようにした。
+型のshape・optionality・フィールド追加削除は行っていない（コメントのみ）。
+画面構造・UI layoutは変更していない。
+
+### Task 14: Compatibility（維持）
+
+以下の互換経路は本PRでも維持している（変更なし）:
+
+- `birthdate`: top-level / `filters.birthdate` / query rescue
+- `goriyaku_tag_ids`: top-level / `filters.goriyaku_tag_ids`
+- `location`: top-level `lat`/`lng` / `location{lat,lng}` / `area` geocode
+- `visit_date`/`planned_visit_date`のalias解決
+
+### Task 18: Persistence Decision（現状確認）
+
+| Signal | Request | Session | Persistent（Concierge Chat経由） |
+|---|---|---|---|
+| `birthdate`（canonical） | ✅ | ❌（frontend stateはsession中のみ保持、`sessionState.temporaryBirthdate`） | ❌ |
+| `profile_context.user_profile.birthdate` | ✅ | — | ❌（`UserProfile`モデルへの永続化は別経路、Concierge Chat自体は保存しない） |
+| `goriyaku_tag_ids` | ✅ | ✅（frontend `selectedTagIds` state） | ❌（`user.profile`へ保存されない、PR #2397確認済み） |
+| `location`/`lat`/`lng` | ✅ | ✅（frontend `userOrigin` state） | ❌ |
+| `visit_date` | ✅ | ✅（frontend `plannedVisitDate` state） | ❌ |
+
+「ProfileだからbirthdateをDB保存する」という新規仕様は**今回追加していない**。
+永続化が必要な場合は別Contractとして今後のFollow-upで判断する。
+
+### No Behavior Change Verification（実行結果）
+
+```
+Backend: python -m pytest -p no:dotenv temples/ -q
+  -> 1248 passed, 9 skipped（既存1225 + 新規Level 3 contract test 23件）
+
+Web typecheck: tsc -p tsconfig.json --noEmit -> no errors
+```
+
+Candidate filtering behavior change = 0
+Ranking behavior change = 0
+API compatibility change = 0（`visit_preferences`と同様、新規fieldの追加は
+  なし。`_debug.l3_context`は既存の`_debug`除外境界内の内部観測追加のみ）
+Persistence change = 0
+Migration = 0
+
+### Follow-up（本PRでは実装しない）
+
+- Profile Persistence: birthdate等をUser Profileとしてどこへ・いつ保存
+  するか（Product判断）
+- Radius Semantics: Concierge Chatと`/nearest`の責務統一可否
+- `direction_profile` naming collision解消（rename案は本Addendumに記録済み）
+- Frontend IA: L1/L2/L3の画面上段階表示
+- Learning Contract: 行動学習の正式契約
