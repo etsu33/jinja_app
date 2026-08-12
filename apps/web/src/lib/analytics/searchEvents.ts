@@ -127,6 +127,17 @@ export type RecommendationQualityAnalyticsPayload = {
   action_grounding_rate?: number | null;
   is_ai_inference_only?: boolean | null;
   fallback_source?: string | null;
+  // docs/audit/knowledge-recommendation-analytics-contract.md 提案の最小Contract。
+  // Backend recommendation_reason_quality（PR2382のbuild_shrine_reason_provenance()を
+  // 再利用して算出）から受け取るのみで、Web側では再計算しない。
+  knowledge_backing_class?:
+    | "FULLY_KNOWLEDGE_BACKED"
+    | "PARTIALLY_KNOWLEDGE_BACKED"
+    | "LEGACY_BACKED"
+    | "UNKNOWN"
+    | null;
+  deity_knowledge_used?: boolean | null;
+  history_knowledge_used?: boolean | null;
 };
 
 export function trackRecommendationQuality(payload: RecommendationQualityAnalyticsPayload) {

@@ -518,7 +518,19 @@ def _attach_recommendation_reason_quality(
     This keeps the lightweight quality payload and the display-only
     recommendation_reason_v4_detail on normal recommendations so API response and
     thread storage do not depend on debug preview visibility.
+
+    PR2382/PR2383契約: quality dictへKnowledge由来分類（knowledge_backing_class/
+    deity_knowledge_used/history_knowledge_used）をoptional propertyとして追加する。
+    分類ロジック自体はrecommendation_quality_measurement.build_shrine_reason_provenance()
+    （既存、PR2382）をそのまま再利用し、ここでは重複実装しない。
+    temples.services.recommendation_quality_measurementはこのモジュールの
+    _build_score_v3_candidate_profileをimportするため、モジュールトップレベルで
+    importすると循環importになる。関数内importで遅延解決する。
     """
+    from temples.services.recommendation_quality_measurement import (
+        build_shrine_reason_provenance,
+    )
+
     quality_by_key: dict[Any, dict[str, Any]] = {}
     detail_by_key: dict[Any, dict[str, Any]] = {}
 
@@ -536,7 +548,11 @@ def _attach_recommendation_reason_quality(
             recommendation_input_profile=recommendation_input_profile,
         )
         rec["recommendation_reason_v4"] = str(preview.get("reason_text") or "")
-        quality = preview.get("quality") or {}
+        quality = dict(preview.get("quality") or {})
+        provenance = build_shrine_reason_provenance(rec)
+        quality["knowledge_backing_class"] = provenance.classification
+        quality["deity_knowledge_used"] = provenance.deity_status == "KNOWLEDGE_USED"
+        quality["history_knowledge_used"] = provenance.history_status == "KNOWLEDGE_USED"
         rec["recommendation_reason_quality"] = quality
 
         # Display-only subset of the same preview: reason_text/fact/interpretation/action.
