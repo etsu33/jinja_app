@@ -1,0 +1,488 @@
+{
+  "schema_version": "1.0",
+  "sources": [
+    {
+      "key": "batch15-yushima-official",
+      "source_type": "shrine_official",
+      "title": "湯島天満宮縁起",
+      "publisher": "湯島天満宮",
+      "url": "https://www.yushimatenjin.or.jp/pc/engi/engi.htm",
+      "bibliography": "",
+      "accessed_at": "2026-08-12",
+      "verified_at": "2026-08-12T06:00:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "御祭神は天之手力雄命・菅原道真公の二柱を直接確認。序列を示す記載はなく、雄略天皇2年(458)に天之手力雄命を奉斎したのが始まりで、正平10年(1355)に菅原道真公を勧請合祀したという成立過程が記述されている。"
+    },
+    {
+      "key": "batch15-ninomiya-saijin",
+      "source_type": "shrine_official",
+      "title": "御祭神二宮尊徳翁",
+      "publisher": "報徳二宮神社",
+      "url": "https://www.ninomiya.or.jp/sontoku/",
+      "bibliography": "",
+      "accessed_at": "2026-08-12",
+      "verified_at": "2026-08-12T06:07:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "御祭神二宮尊徳翁（1787-1856）の個別名を直接確認。本ページの大半は尊徳翁個人の伝記的記述（財政再建の功績、五常講、内村鑑三による紹介等）であり、神社自体の由緒（創建・社殿整備等）とは区別し、Deity Factの根拠としてのみ使用した。"
+    },
+    {
+      "key": "batch15-ninomiya-yuisho",
+      "source_type": "shrine_official",
+      "title": "神社について",
+      "publisher": "報徳二宮神社",
+      "url": "https://www.ninomiya.or.jp/info/",
+      "bibliography": "",
+      "accessed_at": "2026-08-12",
+      "verified_at": "2026-08-12T06:05:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "明治27年(1894)の創建、明治42年の本殿・幣殿新築、平成6年(1994)の創建百年記念奉告祭を直接確認。History Factはこのページの神社institutional historyのみを根拠とし、二宮尊徳翁個人の伝記（batch15-ninomiya-saijin参照）とは混同していない。"
+    },
+    {
+      "key": "batch15-yakyu-inari-official",
+      "source_type": "shrine_official",
+      "title": "御由緒",
+      "publisher": "箭弓稲荷神社",
+      "url": "https://www.yakyu-inari.jp/yuisho/",
+      "bibliography": "",
+      "accessed_at": "2026-08-12",
+      "verified_at": "2026-08-12T06:10:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "本社御祭神は保食神の一柱のみを直接確認。和銅5年(712)の創建伝承、源頼信の戦勝祈願と社名改称の伝承、江戸期の隆盛を直接確認。末社「團十郎稲荷」（御祭神：宇迦之御魂神）は本社とは別に紹介されており、本seedでは本社祭神のみをFact化している。"
+    },
+    {
+      "key": "batch15-mito-toshogu-official",
+      "source_type": "shrine_official",
+      "title": "御神祭｜御由緒",
+      "publisher": "水戸東照宮",
+      "url": "https://gongensan-mito-toshogu.jp/gosaisin.html",
+      "bibliography": "",
+      "accessed_at": "2026-08-12",
+      "verified_at": "2026-08-12T06:15:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "徳川家康公（東照公）・徳川頼房公（威公、昭和11年配祀）の二柱を直接確認。元和7年(1621)の創建、天保14年(1843)に神仏習合の仏祭から神道による祭祀へ改められたこと、昭和20年(1945)の空襲焼失と昭和37年(1962)の再建を直接確認。"
+    },
+    {
+      "key": "batch15-kasai-saijin",
+      "source_type": "shrine_official",
+      "title": "ご祭神",
+      "publisher": "葛西神社",
+      "url": "https://www.kasaijinja.jp/about/saijin.html",
+      "bibliography": "",
+      "accessed_at": "2026-08-12",
+      "verified_at": "2026-08-12T06:20:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "経津主神・日本武尊・徳川家康命（東照権現さま）の三柱を、各柱の由来説明とともに直接確認。序列を示す記載はない。境内の招魂社・弁天・富士（年中行事名「招魂社祭」「弁天祭」「富士祭」として言及）は本ページの祭神一覧には含まれず、別の境内社であるためFact化対象外とした。"
+    },
+    {
+      "key": "batch15-kasai-yuisho",
+      "source_type": "shrine_official",
+      "title": "由緒",
+      "publisher": "葛西神社",
+      "url": "https://www.kasaijinja.jp/about/",
+      "bibliography": "",
+      "accessed_at": "2026-08-12",
+      "verified_at": "2026-08-12T06:22:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "元暦2年(1185)の創建、香取神宮よりの分霊、領主葛西三郎清重による勧請を直接確認。天正18-19年(1590-91)の豊臣秀吉・徳川家康による御朱印拝進、明治14年(1881)の「葛西神社」への改称を直接確認。"
+    }
+  ],
+  "shrines": [
+    {
+      "shrine_ref": {
+        "name_jp": "湯島天満宮",
+        "address": "東京都文京区湯島3-30-1"
+      },
+      "deities": [
+        {
+          "display_name": "天之手力雄命",
+          "canonical_name": "天之手力雄命",
+          "role": "unknown",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T06:00:00+00:00",
+          "note": "雄略天皇2年(458)の創建時に奉斎されたと公式サイトが明記。菅原道真公との序列は公式サイトに明示されていないためrole=unknownとした。",
+          "source_keys": ["batch15-yushima-official"]
+        },
+        {
+          "display_name": "菅原道真公",
+          "canonical_name": "菅原道真",
+          "role": "unknown",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T06:00:00+00:00",
+          "note": "正平10年(1355)に郷民の崇敬により本社へ勧請合祀されたと公式サイトが明記。天之手力雄命との序列は公式サイトに明示されていないためrole=unknownとした。",
+          "source_keys": ["batch15-yushima-official"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "雄略天皇2年(458)の創建伝承と天之手力雄命の奉斎",
+          "content": "湯島天神は雄略天皇2年（458年）1月、勅命により創建と伝えられ、天之手力雄命を奉斎したのがはじまりとされる。",
+          "period_text": "雄略天皇2年（458）（伝承）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T06:00:00+00:00",
+          "note": "公式サイト自身が「創建と伝えられ」と記述。史実として断定していない。",
+          "source_keys": ["batch15-yushima-official"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "正平10年(1355)の菅原道真公勧請合祀",
+          "content": "正平10年（1355年）2月、郷民が菅原道真公の御偉徳を慕い、文道の大祖と崇めて本社に勧請し、あわせて奉祀したと公式サイトは記している。",
+          "period_text": "正平10年（1355）",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T06:00:00+00:00",
+          "note": "",
+          "source_keys": ["batch15-yushima-official"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "戦国期の再興と徳川家康公の崇敬",
+          "content": "文明10年（1478年）10月、太田道灌がこれを再建した。天正18年（1590年）に徳川家康公が江戸城に入るに及び当社を篤く崇敬し、翌天正19年11月には豊島郡湯島郷に朱印地を寄進したと公式サイトは記している。",
+          "period_text": "文明10年（1478）〜天正19年（1591）",
+          "event_date": null,
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T06:00:00+00:00",
+          "note": "",
+          "source_keys": ["batch15-yushima-official"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "社格の変遷と平成の社殿造営",
+          "content": "明治5年（1872年）10月に郷社に列し、同18年（1885年）8月に府社に昇格した。元禄16年（1703年）の火災で全焼した後、明治18年に改築された社殿も老朽化が進んだため、平成7年（1995年）12月、総檜造りの現社殿が造営されたと公式サイトは記している。",
+          "period_text": "明治5年（1872）〜平成7年（1995）",
+          "event_date": null,
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T06:00:00+00:00",
+          "note": "",
+          "source_keys": ["batch15-yushima-official"]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "報徳二宮神社",
+        "address": "神奈川県小田原市城内8-10"
+      },
+      "deities": [
+        {
+          "display_name": "二宮尊徳翁",
+          "canonical_name": "二宮尊徳",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T06:07:00+00:00",
+          "note": "公式サイトが「御祭神」として明記する唯一の祭神。天明7年(1787)生、安政3年(1856)没の人物神格化（乃木神社等に前例のある型）。",
+          "source_keys": ["batch15-ninomiya-saijin"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "founding",
+          "title": "明治27年(1894)の創建",
+          "content": "明治27年（1894年）4月、二宮尊徳翁の教えを慕う6カ国（伊豆・三河・遠江・駿河・甲斐・相模）の報徳社の総意により、翁を御祭神として、生誕地である小田原の小田原城二の丸小峰曲輪の一角に神社が創建されたと公式サイトは記している。",
+          "period_text": "明治27年（1894）4月",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T06:05:00+00:00",
+          "note": "",
+          "source_keys": ["batch15-ninomiya-yuisho"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "明治42年の社殿整備",
+          "content": "明治42年、本殿・幣殿を新築し、拝殿を改築、社地を拡張して現在の社地の景観を整えたと公式サイトは記している。",
+          "period_text": "明治42年",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T06:05:00+00:00",
+          "note": "",
+          "source_keys": ["batch15-ninomiya-yuisho"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "拝殿礎石にまつわる由来",
+          "content": "拝殿礎石には、天保の大飢饉の際、藩主大久保公の命により尊徳翁が小田原城内の米蔵を開き、米が人々の手に渡ったことで小田原11万石の領内から一人も餓死者を出さずに済んだという、その米蔵の礎石が用いられていると公式サイトは記している。",
+          "period_text": "天保年間（由来）",
+          "event_date": null,
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T06:05:00+00:00",
+          "note": "",
+          "source_keys": ["batch15-ninomiya-yuisho"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "平成6年(1994)の創建百年記念",
+          "content": "平成6年（1994年）には創建百年記念奉告祭を斎行し、今日に至っていると公式サイトは記している。神社本庁別表神社で、社殿は神明造りである。",
+          "period_text": "平成6年（1994）",
+          "event_date": null,
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T06:05:00+00:00",
+          "note": "",
+          "source_keys": ["batch15-ninomiya-yuisho"]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "箭弓稲荷神社",
+        "address": "埼玉県東松山市箭弓町2-5-14"
+      },
+      "deities": [
+        {
+          "display_name": "保食神",
+          "canonical_name": "保食神",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T06:10:00+00:00",
+          "note": "公式サイトが本社「御祭神」として明記する唯一の祭神。末社「團十郎稲荷」（御祭神：宇迦之御魂神）は別の社でありFact化対象外。",
+          "source_keys": ["batch15-yakyu-inari-official"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "和銅5年(712)の創建伝承",
+          "content": "当神社のご創建は、和銅5年（712年）と伝えられていると公式サイトは記している。",
+          "period_text": "和銅5年（712）（伝承）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T06:10:00+00:00",
+          "note": "公式サイト自身が「伝えられ」と記述。史実として断定していない。",
+          "source_keys": ["batch15-yakyu-inari-official"]
+        },
+        {
+          "history_type": "tradition",
+          "title": "源頼信の戦勝祈願と社名改称の伝承",
+          "content": "平安時代中頃、下総の国の城主平忠常の謀反討伐にあたった源頼信が、当地の野久稲荷神社で戦勝祈願をしたところ箭（矢）の形をした白雲が現れ、その加護により勝利した。頼信はこの勝利を神威によるものとして社殿を寄進し、野久稲荷を箭弓稲荷と改めて呼ぶよう里人に命じたと社記に伝わると公式サイトは記している。",
+          "period_text": "平安時代中頃（社記による伝承）",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T06:10:00+00:00",
+          "note": "公式サイト自身が「社記によると」と記述。史実として断定していない。",
+          "source_keys": ["batch15-yakyu-inari-official"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "江戸期以降の隆盛と文化財指定",
+          "content": "松山城主・川越城主をはじめ多くの人々の信仰を集め、江戸時代には江戸をはじめ四方遠近からの参拝者で社前市をなしたと伝えられる。現在も大小百あまりの講社があり、五穀豊穣・商売繁昌・家内安全等の祈願社として信仰を集めていると公式サイトは記している。",
+          "period_text": "江戸時代〜現在",
+          "event_date": null,
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T06:10:00+00:00",
+          "note": "",
+          "source_keys": ["batch15-yakyu-inari-official"]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "水戸東照宮",
+        "address": "茨城県水戸市宮町2-5-13"
+      },
+      "deities": [
+        {
+          "display_name": "徳川家康公",
+          "canonical_name": "徳川家康",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T06:15:00+00:00",
+          "note": "「東照公」として公式サイトが明記する主祭神。人物神格化（東照宮型、全国に多数の前例がある確立した神道慣習）。",
+          "source_keys": ["batch15-mito-toshogu-official"]
+        },
+        {
+          "display_name": "徳川頼房公",
+          "canonical_name": "徳川頼房",
+          "role": "secondary",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T06:15:00+00:00",
+          "note": "「威公」として公式サイトが明記。水戸初代藩主で、昭和11年(1936)に配祀されたと公式サイトが明記しているためrole=secondaryとした。",
+          "source_keys": ["batch15-mito-toshogu-official"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "founding",
+          "title": "元和7年(1621)の創建",
+          "content": "水戸東照宮は元和7年（1621年）4月21日に、水戸初代藩主徳川頼房公が父徳川家康公の御霊をこの地に祀ったのがはじまりであると公式サイトは記している。",
+          "period_text": "元和7年（1621）4月21日",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T06:15:00+00:00",
+          "note": "",
+          "source_keys": ["batch15-mito-toshogu-official"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "神仏習合の仏祭から神道祭祀への改革",
+          "content": "創建当初は神仏習合で仏祭が行われていたが、天保14年（1843年）に第九代藩主徳川斉昭公が従来の仏祭を廃止し、神道による祭祀にあらためたと公式サイトは記している。",
+          "period_text": "天保14年（1843）",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T06:15:00+00:00",
+          "note": "公式サイト自身が、現在は神仏習合ではなく神道による祭祀に改められたと明記している。",
+          "source_keys": ["batch15-mito-toshogu-official"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "配祀・戦災焼失と戦後の再建",
+          "content": "昭和11年（1936年）には初代藩主徳川頼房公が配祀された。国宝重要文化財に指定されていた社殿は昭和20年（1945年）8月2日の空襲により焼失したが、昭和37年（1962年）7月2日に社殿・境内整備が完了したと公式サイトは記している。",
+          "period_text": "昭和11年（1936）〜昭和37年（1962）",
+          "event_date": null,
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T06:15:00+00:00",
+          "note": "",
+          "source_keys": ["batch15-mito-toshogu-official"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "東日本大震災の被災と大鳥居再建",
+          "content": "戦災復興五十年の節目にあたる平成23年（2011年）に社務所を造営したが、同年3月11日の東日本大震災により社殿・社務所・境内が被災した。平成30年（2018年）4月に大鳥居を再建したと公式サイトは記している。",
+          "period_text": "平成23年（2011）〜平成30年（2018）",
+          "event_date": null,
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T06:15:00+00:00",
+          "note": "",
+          "source_keys": ["batch15-mito-toshogu-official"]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "葛西神社",
+        "address": "東京都葛飾区東金町6-10-5"
+      },
+      "deities": [
+        {
+          "display_name": "経津主神",
+          "canonical_name": "経津主神",
+          "role": "unknown",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T06:20:00+00:00",
+          "note": "刀剣・武の神。公式サイトは三柱を序列を示さず個別の説明とともに列挙している。",
+          "source_keys": ["batch15-kasai-saijin"]
+        },
+        {
+          "display_name": "日本武尊",
+          "canonical_name": "日本武尊",
+          "role": "unknown",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T06:20:00+00:00",
+          "note": "「おとりさま」として公式サイトが紹介。三柱の序列は公式サイトに明示されていない。",
+          "source_keys": ["batch15-kasai-saijin"]
+        },
+        {
+          "display_name": "徳川家康命",
+          "canonical_name": "徳川家康",
+          "role": "unknown",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T06:20:00+00:00",
+          "note": "「東照権現さま」として公式サイトが紹介する人物神格化（東照宮型）。三柱の序列は公式サイトに明示されていない。",
+          "source_keys": ["batch15-kasai-saijin"]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "founding",
+          "title": "元暦2年(1185)の創建と香取神宮分霊",
+          "content": "創建の年代は古く、平安時代末期の元暦2年（1185年）、領主葛西三郎清重の篤信により、上葛西・下葛西あわせて三十三郷の総鎮守として下総国香取神宮の分霊を祀ったものであると公式サイトは記している。",
+          "period_text": "元暦2年（1185）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T06:22:00+00:00",
+          "note": "",
+          "source_keys": ["batch15-kasai-yuisho"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "豊臣秀吉・徳川家康による御朱印拝進",
+          "content": "江戸時代の始め、徳川家康公が葛西御成の際に当社に古くから伝わる操り人形芝居の神事を御覧になり、これを奇特のこととして天正19年（1591年）11月に祭祀を専らにするようにと御朱印十石を賜った。天正18年（1590年）4月には豊臣秀吉公からも御朱印を賜っていると公式サイトは記している。",
+          "period_text": "天正18年（1590）〜天正19年（1591）",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T06:22:00+00:00",
+          "note": "",
+          "source_keys": ["batch15-kasai-yuisho"]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "社名の変遷と社格",
+          "content": "当社は始め香取宮と称したが、明治維新の際に香取神社となり、明治14年（1881年）葛西神社と改められた。明治5年に社格を村社に定められ、同8年に郷社に昇格したと公式サイトは記している。",
+          "period_text": "明治5年（1872）〜明治14年（1881）",
+          "event_date": null,
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-12T06:22:00+00:00",
+          "note": "",
+          "source_keys": ["batch15-kasai-yuisho"]
+        }
+      ]
+    }
+  ]
+}
