@@ -26,12 +26,30 @@ merge確認済み。develop同期・working tree clean。
 | `backend/temples/services/concierge_chat.py` | `_attach_recommendation_reason_quality()`で`build_shrine_reason_provenance()`（PR #2382既存関数）を呼び出し、`recommendation_reason_quality` dictへ3 propertyを追加 |
 | `apps/web/src/lib/api/concierge/types.ts` | `RecommendationReasonQuality`型へ3 optional propertyを追加、`KnowledgeBackingClass`型を新規定義 |
 | `apps/web/src/lib/analytics/searchEvents.ts` | `RecommendationQualityAnalyticsPayload`型へ同3 propertyを追加 |
-| `apps/web/src/features/concierge/hooks.ts` | `trackRecommendationQualityFromRecommendations()`で3 propertyを`?? null`フォールバック付きで転送。同関数をexport化（テスト目的のみ、ロジック変更なし） |
+| `apps/web/src/features/concierge/hooks.ts` | `trackRecommendationQualityFromRecommendations()`で3 propertyを`?? null`フォールバック付きで転送。同関数と`normalizeAccessLevel()`/`normalizeConciergeResponse()`をexport化（いずれもテスト目的のみ、ロジック変更なし） |
 | `backend/temples/tests/services/test_recommendation_reason_quality_knowledge_properties.py`（新規） | 10テスト |
 | `apps/web/src/features/concierge/__tests__/trackRecommendationQualityFromRecommendations.test.ts`（新規） | 9テスト |
+| `apps/web/src/features/concierge/__tests__/hooksNormalization.test.ts`（新規） | 19テスト（3章参照） |
 
 新規イベントの追加・既存イベント名の変更・UI変更・DB migrationはいずれも
 含まれない。
+
+### Coverage閾値対応（追加作業）
+
+`trackRecommendationQualityFromRecommendations()`をテストするために
+`hooks.ts`をimportしたところ、この副作用として`hooks.ts`全体
+（従来どの既存テストからもimportされておらず、v8 coverage計測の対象に
+一度も入っていなかった138 statement）が初めてcoverage計測対象へ入り、
+Web全体のstatements coverageがdevelop時点の80.53%から77.87%へ低下し、
+CI（`web-full` job、`--coverage`）のglobal threshold（78%）を割った。
+
+対応として、`hooks.ts`内の既存の純粋関数`normalizeAccessLevel()`と
+`normalizeConciergeResponse()`（いずれもReact hookの外側にある、副作用の
+ないデータ整形関数）をexportし、`hooksNormalization.test.ts`
+（19テスト）で直接カバーした。閾値を緩めたり除外リストへ追加したりする
+形での回避は行っていない。対応後の実測: **Statements 78.18%
+（4024/5147）、Branches 69.48%、Functions 82.52%、Lines 81.06%**、
+いずれも閾値（78%/68%/80%/80%）を満たす。
 
 ---
 
@@ -160,9 +178,11 @@ qualityメタデータを候補dictへ付与するだけの処理であり、候
 |---|---:|---|
 | `test_recommendation_reason_quality_knowledge_properties.py`（新規） | 10 | 全pass |
 | `apps/web/.../trackRecommendationQualityFromRecommendations.test.ts`（新規） | 9 | 全pass |
+| `apps/web/.../hooksNormalization.test.ts`（新規、Coverage対応） | 19 | 全pass |
 | Backend全体（`temples/`） | 1147（新規10含む） | 全pass（9 skip、既存から不変） |
-| Frontend全体（`apps/web`） | 740（新規9含む） | 全pass（116 test files） |
+| Frontend全体（`apps/web`） | 759（新規28含む） | 全pass（117 test files） |
 | TypeScript型検査（`tsc --noEmit`） | — | エラー0件 |
+| Web coverage閾値 | Statements/Branches/Functions/Lines | 全て閾値クリア（78.18%/69.48%/82.52%/81.06%） |
 
 ---
 
@@ -185,10 +205,11 @@ qualityメタデータを候補dictへ付与するだけの処理であり、候
 
 **`KNOWLEDGE_RECOMMENDATION_ANALYTICS_PROPERTIES_READY_WITH_LIMITATIONS`**
 
-Backend/Frontendとも実装完了、新規19テスト全pass、既存1147+740テストの
-回帰なし、TypeScript型検査エラー0件、Ranking/Score/Recommendation本文/
-UIいずれも無変更を確認した。16章の残存Gapは本PRのスコープ外として
-明示的に残す。
+Backend/Frontendとも実装完了、新規38テスト（Backend10 + Frontend28）全
+pass、既存テスト（Backend1147 + Frontend既存731）の回帰なし、Web
+coverage閾値も全て満たす、TypeScript型検査エラー0件、Ranking/Score/
+Recommendation本文/UIいずれも無変更を確認した。16章の残存Gapは本PRの
+スコープ外として明示的に残す。
 
 Production writes = 0
 Recommendation behavior changes = 0

@@ -124,7 +124,7 @@ type SendInput = string | Omit<ConciergeChatRequestV1, "thread_id">;
 
 type ConciergeAccessLevel = "anonymous" | "free" | "premium" | null;
 
-function normalizeAccessLevel(value: unknown): ConciergeAccessLevel {
+export function normalizeAccessLevel(value: unknown): ConciergeAccessLevel {
   return value === "anonymous" || value === "free" || value === "premium" ? value : null;
 }
 
@@ -157,7 +157,7 @@ export function trackRecommendationQualityFromRecommendations(args: {
   });
 }
 
-function normalizeConciergeResponse(raw: any, recs: ConciergeRecommendation[]): UnifiedConciergeResponse {
+export function normalizeConciergeResponse(raw: any, recs: ConciergeRecommendation[]): UnifiedConciergeResponse {
   const limitReached = raw?.limitReached === true;
 
   const stop: StopReason =
