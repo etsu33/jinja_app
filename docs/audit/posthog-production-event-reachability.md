@@ -1,16 +1,20 @@
-> **Status: `PRODUCTION_TRAFFIC_COLLECTION_PENDING`。**
+> **Status: `PRODUCTION_ANALYTICS_REACHABILITY_CONFIRMED`
+> （17章の追加検証により更新。1〜16章は初回監査時点の記録として保持）。**
 >
 > [PostHog Read-only Wrapper Output Minimization](posthog-readonly-output-minimization.md)
 > （`POSTHOG_READ_OUTPUT_MINIMIZED`）で確立したsanitized wrapperを使い、
 > Production PostHogに「Knowledge推薦品質イベントだけが欠落しているのか」
 > 「Production Analytics自体にイベントが到達していないのか」を切り分ける
-> ためのaggregate count queryを実行した。**結果: `recommendation_quality`
-> を含む主要7イベントすべて、および期間内の全イベント種別の合計が0件**
-> であり、`recommendation_quality`固有の欠落ではなくProduction Analytics
-> 全体でイベントが観測されていないことを確認した。デプロイ・Provider
-> コードにはドリフト/明白な不備は見つからなかった。コード変更・
-> Analytics変更・Recommendation変更・Production DB変更はいずれも行って
-> いない。
+> ためのaggregate count queryを実行した。**初回監査時点（1〜16章）**では
+> `recommendation_quality`を含む主要7イベントすべて、および期間内の全
+> イベント種別の合計が0件であり、`PRODUCTION_TRAFFIC_COLLECTION_PENDING`
+> と分類した。**その後、Mother Shipによる既知の実Production操作
+> （2026-08-12 17:39 JST前後）を観測点として同じqueryを再実行したところ
+> （17章）、`recommendation_quality`を含む複数イベントの到達を確認**し、
+> 根本原因は主分類していた`NO_PRODUCTION_TRAFFIC`で確定、次点仮説
+> `ANALYTICS_PROVIDER_NOT_REACHING_POSTHOG`は否定された。コード変更・
+> Analytics変更・Recommendation変更・Production DB変更はいずれの検証
+> でも行っていない。
 
 ---
 
@@ -302,17 +306,68 @@ private init() {
 
 ---
 
+## 17. Follow-up Verification — Known Real Usage（追加検証）
+
+初回監査（1〜16章）ではProduction Analyticsトラフィックが観測されず、
+根本原因を`NO_PRODUCTION_TRAFFIC`（主分類）と`ANALYTICS_PROVIDER_NOT_
+REACHING_POSTHOG`（次点・未排除）のどちらとも断定できなかった。その後、
+**Mother Shipが2026-08-12 17:39 JST前後にProduction Webを実際に操作**
+した（確認済み操作: (1) Concierge結果表示、(2) 宇佐神宮の推薦表示、
+(3)「神社の詳細を見る」、(4) 神社詳細ページへの遷移）。この既知の実
+利用を観測点として、同じsanitized wrapper経由でaggregate count query
+のみを再実行した。
+
+**Query window**: `2026-08-12T08:30:00Z` 〜 `2026-08-12T08:41:13Z`
+（17:39 JST前後を含む前後バッファ付き）
+
+**結果（event_name / countのみ、raw rows/PII取得なし）**:
+
+| event_name | count |
+|---|---|
+| `concierge_result_impression` | **3** |
+| `shrine_detail_transition` | **2** |
+| `recommendation_quality` | **3** |
+| `shrine_decision` | 0 |
+| `route_open` | 0 |
+| `visit_done` | 0 |
+| `consultation_completed` | **1** |
+| 全event合計（event名不問） | **61** |
+
+`shrine_decision`/`route_open`/`visit_done`が0件なのは、確認済み操作
+(1)〜(4)に save/route open/visit操作が含まれていないことと整合する。
+
+**distinct event名一覧**（診断用、GROUP BY、event名+countのみ）で、
+上記7イベント以外にも以下の到達を確認した（いずれも既存のUI操作由来
+と判断でき、新規調査は行っていない）: `card_partial_view`(20)・
+`$autocapture`(11)・`card_view`(11)・`posthog_health_check`(3)・
+`$web_vitals`(2)・`shrine_detail_view`(2)・`premium_preview_click`(1)・
+`save_prompt_view`(1)・`card_teaser_view`(1)。
+
+**判定**: `concierge_result_impression`/`shrine_detail_transition`/
+`recommendation_quality`/`consultation_completed`の到達が既知の実利用
+と時刻的に整合する形で確認できたため、指示に従い**追加のprovider/
+environment調査は行わない**。
+
+**根本原因の確定**: 12章で未排除としていた次点仮説
+`ANALYTICS_PROVIDER_NOT_REACHING_POSTHOG`は、今回`recommendation_
+quality`を含む複数イベントの到達が確認できたことにより**否定**された。
+主分類`NO_PRODUCTION_TRAFFIC`（=初回監査時点は単に実利用が発生して
+いなかっただけ）が確定した。
+
+---
+
 ## Final Classification
 
-**`PRODUCTION_TRAFFIC_COLLECTION_PENDING`**
+**`PRODUCTION_ANALYTICS_REACHABILITY_CONFIRMED`**
 
-`recommendation_quality`を含む主要7イベントすべて、および期間内の
-全イベント種別合計が0件であることをsanitized read-only aggregate
-queryで確認した。デプロイ状態（Frontend完全一致・Backend必要commit
-祖先確認済み）およびProviderコードにドリフト/明白な不備は見つから
-なかった。根本原因はA（実トラフィック皆無）を主分類としたが、
-B（Provider未到達）を完全には排除できておらず、判別には本監査の
-権限外であるVercel Production環境変数の人手確認が必要である。
+初回監査（1〜16章）ではProduction Analyticsトラフィックが一切観測
+されず`PRODUCTION_TRAFFIC_COLLECTION_PENDING`と分類したが、Mother
+Shipによる既知の実Production操作（17章）を観測点とした再検証により、
+`recommendation_quality`を含む複数の主要イベントの到達を確認した。
+根本原因は`NO_PRODUCTION_TRAFFIC`（初回監査時点は実利用が皆無だった
+だけ）で確定し、`ANALYTICS_PROVIDER_NOT_REACHING_POSTHOG`は否定された。
+デプロイ状態・Providerコードにも変更・修正は行っていない
+（No Fix Boundary維持）。
 
 Production DB writes = 0
 PostHog mutations = 0
