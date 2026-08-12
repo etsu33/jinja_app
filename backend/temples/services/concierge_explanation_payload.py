@@ -143,38 +143,6 @@ def _normalize_reason_facts(value: Any, *, limit: int | None = None) -> List[Dic
     return out
 
 
-def _build_visit_style_primary_reason(rec: Dict[str, Any]) -> Dict[str, Any] | None:
-    breakdown_detail = (
-        rec.get("breakdown_detail")
-        if isinstance(rec.get("breakdown_detail"), dict)
-        else {}
-    )
-    features = breakdown_detail.get("features") if isinstance(breakdown_detail, dict) else {}
-    if not isinstance(features, dict):
-        return None
-
-    visit_style = features.get("visit_style")
-    if not isinstance(visit_style, dict):
-        return None
-
-    matched_tags = _safe_str_list(visit_style.get("matched_tags"), limit=5)
-    if not matched_tags:
-        return None
-
-    contribution = float(visit_style.get("contribution") or 0.0)
-    if contribution <= 0:
-        return None
-
-    return {
-        "type": "visit_style",
-        "label": matched_tags[0],
-        "label_ja": NEED_LABELS_JA["visit_style"],
-        "evidence": matched_tags,
-        "score": contribution,
-        "is_primary": True,
-    }
-
-
 def build_explanation_payload(rec: Dict[str, Any], *, birthdate: Optional[str] = None) -> Dict[str, Any]:
     """
     explanation 用の正規化 payload を作る。
@@ -231,20 +199,15 @@ def build_explanation_payload(rec: Dict[str, Any], *, birthdate: Optional[str] =
         limit=5,
     )
 
+    # Single Source of Truth (Recommendation Primary Reason Contract
+    # Unification): primary_reason comes exclusively from
+    # rec["_reason_facts"] (concierge_chat_ranking._build_reason_facts /
+    # _resolve_primary_reason), which now includes a "visit_style" fact
+    # type (PRIMARY_REASON_PRIORITY) -- no independent second resolver.
     primary_reason = next(
         (x for x in reason_facts if x.get("is_primary")),
         None,
     )
-
-    visit_style_primary_reason = _build_visit_style_primary_reason(rec)
-    if (
-        visit_style_primary_reason is not None
-        and (
-            primary_reason is None
-            or str(primary_reason.get("type") or "").strip() == "fallback"
-        )
-    ):
-        primary_reason = visit_style_primary_reason
 
     if primary_reason is None:
         source = str(rec.get("_primary_reason_source") or "").strip()
