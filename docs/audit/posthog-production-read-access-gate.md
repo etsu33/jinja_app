@@ -1,29 +1,32 @@
-> **Status: `POSTHOG_READ_CREDENTIAL_REQUIRED`。**
+> **Status: `POSTHOG_READ_ACCESS_CONFIRMED_NO_DATA`。**
 >
 > [PostHog Read-only Access Foundation](posthog-readonly-analytics-access.md)
 > （`POSTHOG_READ_ACCESS_FOUNDATION_READY`）のFoundation testを全件fresh
-> 再実行し、62件全pass・driftなしを確認した。しかし、read-only credential
-> （`POSTHOG_PERSONAL_API_KEY`/`POSTHOG_PROJECT_ID`）は本セッション時点でも
-> 未provisionのままであり、Production PostHogへの接続・smoke query・
-> event存在確認・property presence確認のいずれも実行していない。
-> PostHog mutation・raw event export・artificial Recommendation POST・
-> Production DB writeはいずれも行っていない。
+> 再実行し、62件全pass・driftなしを確認した。Mother Shipがread-only
+> Personal API Key（`~/.config/kami-musubi/posthog-readonly.env`、repo外・
+> chmod 600）を用意した後、credential presence/shape gateを通過し、
+> **実Production PostHogへの接続を、read-only aggregate queryのみで
+> 3回、初めて確認した**。`recommendation_quality`イベントは対象期間
+> （PR #2384 Production deploy以降）でまだ0件であり、Baseline計測に
+> 使える実データは現時点で存在しない。PostHog mutation・raw event
+> export・artificial Recommendation POST・Production DB write・
+> credential値の出力はいずれも行っていない。
 
 ---
 
 ## 1. develop SHA
 
-`fdc2bf2c5f20da579df97e1681ce65988452ec74`（2026-08-12 15:56:48 +0900）
+`7d028162512be0f92d67e64af338b24cbc27bdf5`（2026-08-12 16:11:33 +0900）
 
-PR #2387（[posthog-readonly-analytics-access.md](posthog-readonly-analytics-access.md)）
-merge確認済み。develop同期・working tree clean。
+PR #2388（本ドキュメントの前バージョン、`POSTHOG_READ_CREDENTIAL_REQUIRED`
+時点の記録）merge確認済み。develop同期・working tree clean。
 
 ---
 
 ## 2. Foundation State（Phase 0）
 
-`scripts/analytics_safety/`配下のファイル一覧をfresh確認し、
-PR #2387でmergeされた内容と一致していることを確認した（drift なし）。
+`scripts/analytics_safety/`配下のファイル一覧をfresh確認し、直前の
+mergeと一致していることを確認した（drift なし）。
 
 ```
 scripts/analytics_safety/
@@ -44,182 +47,257 @@ fresh再実行結果（2026-08-12、backend venv、
 `python3 -m pytest -p no:dotenv scripts/analytics_safety/tests/ -v`）:
 
 **62 passed**（`test_guard.py` 29 / `test_posthog_baseline_report.py` 10 /
-`test_posthog_readonly_query.py` 23）。全て`requests_mock`によるモック
-HTTPのみ、実PostHog接続は一切発生していない。
-
-**分類: Foundation Test Gate通過**（`POSTHOG_FOUNDATION_TEST_GATE_FAILED`
-には該当しない）。
+`test_posthog_readonly_query.py` 23）。実PostHog接続を行う前段階の
+確認であり、全て`requests_mock`によるモックHTTPのみ。
 
 ---
 
-## 4. Credential Presence（Phase 2）
+## 4. Credential Presence（Phase 2、更新）
 
-`check_posthog_credential_presence.sh`を、READMEに記載されている
-デフォルトcredential file パス（`~/.config/kami-musubi/posthog-readonly.env`）
-に対して実行した。
+Mother Shipが`~/.config/kami-musubi/posthog-readonly.env`
+（repo外・chmod 600）を用意した後、`check_posthog_credential_presence.sh`
+を再実行した。
 
 ```
 $ bash scripts/analytics_safety/check_posthog_credential_presence.sh ~/.config/kami-musubi/posthog-readonly.env
-VAR_SET=0
-[check_posthog_credential_presence] no credential file at that path yet — this is expected before a Personal API Key has been provisioned. See README.md.
+POSTHOG_PERSONAL_API_KEY_SET=1
+POSTHOG_PERSONAL_API_KEY_SHAPE={"has_whitespace": false, "length_bucket": "typical", "present": true}
+POSTHOG_PROJECT_ID_SET=1
+POSTHOG_PROJECT_ID_SHAPE={"has_whitespace": false, "length_bucket": "short", "present": true}
+POSTHOG_HOST_SET=1
+POSTHOG_HOST_SHAPE={"has_whitespace": false, "length_bucket": "typical", "present": true}
 ```
 
-シェル環境変数として直接設定されている可能性も確認したが、
-`POSTHOG_PERSONAL_API_KEY`・`POSTHOG_PROJECT_ID`いずれも未設定だった
-（値は表示せず、setされているか否かのみ確認）。
+3変数すべて`SET=1`、shapeも妥当（`POSTHOG_PROJECT_ID`が`short`＝数値ID
+らしい長さ、`POSTHOG_HOST`が`typical`＝URLらしい長さ）。**値そのものは
+一切表示・記録していない。**
 
-**分類: `POSTHOG_READ_CREDENTIAL_REQUIRED`**。
+**分類: Credential Presence Gate通過**。
 
 ---
 
 ## 5. Storage Safety（Phase 3）
 
-credentialがrepo内に存在しないことを確認した。
-
-- `git status --short`: クリーン（追跡対象への変更なし）
-- repo内でreal-looking なPostHog Personal API Key（`phx_...`形式の
-  実際の値）を検索したが、該当箇所は
-  `scripts/analytics_safety/README.md`と
-  `check_posthog_credential_presence.sh`内の**ドキュメント上の
-  プレースホルダー例**（`export POSTHOG_PERSONAL_API_KEY="phx_..."`）
-  のみで、実際の値ではないことを確認した。
-- `gitleaks detect --source . --no-git`をリポジトリ全体に対して実行した
-  結果、78件のfindingが出たが、そのすべてが`apps/web/.next/dev/cache/`
-  （Next.jsのローカルビルドキャッシュ、`.gitignore`対象、`git status`
-  でも追跡対象外と確認済み）内の、client-exposedな
-  `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`（Next.jsの`NEXT_PUBLIC_`規約により
-  意図的にブラウザへ公開される値）であり、本タスクの変更・PostHog
-  credential・repoコミット対象とは無関係の、ローカル環境固有のノイズ
-  である。`git check-ignore`で該当パスがgitignore対象であることを確認
-  済み。
-
-**分類: `SECURITY_STOP_CREDENTIAL_IN_REPOSITORY`には該当しない**
-（repo内に実credentialは存在しない）。
+前バージョンでの確認（repo内に実credential 0件、`.next/`ビルド
+キャッシュの無関係なnoiseを識別済み）から不変。credential fileは
+`~/.config/kami-musubi/`（repo外）に存在し、`git status --short`は
+クリーンのまま。
 
 ---
 
-## 6. Permission State（Phase 4）
+## 6. Permission State（Phase 4、更新）
 
-credential自体が存在しないため、実際に付与されているscopeを検証する
-手段がない。[posthog-readonly-analytics-access.md](posthog-readonly-analytics-access.md)
-4章で設計した最小権限方針（`query:read`のみ、mutation/feature flag/
-project settings/user/billing/deletion権限は付与しない）を踏襲する
-前提のままである。
+`query:read`のみのscopeで作成されたことをMother Shipの申告として
+受け取った（本セッションからPostHog UI上のscope一覧を直接検証する
+手段はない。9章のsmoke queryが**成功した**こと自体は、少なくとも
+`query:read`相当の権限が付与されていることの間接的な確認になる）。
 
-**分類: 検証不能（credential不在のため）。`POSTHOG_READ_PERMISSION_REVIEW_REQUIRED`
-の判定に必要な情報自体が存在しない。**
+mutationを試みるテストは実行していない（絶対禁止事項、そもそも
+`posthog_readonly_query.py`にmutation用のコードパスが存在しないため
+試行不能）。
+
+**分類: `query:read`権限の存在を間接的に確認。過剰権限の有無は
+本セッションからは確認不能のまま。**
 
 ---
 
-## 7. Project Identity（Phase 5）
+## 7. Project Identity（Phase 5、更新）
 
-credentialが存在しないため、実際にどのPostHog Projectに接続する
-ことになるかを確認する手段がない。
+Production PostHog projectへ実際に接続できたことを確認した（9章の
+smoke query成功）。**project id・host・team id等の識別子そのものは
+本ドキュメントに一切記載しない**（Phase 5の記録禁止事項）。
 
-**分類: 未確認**（`POSTHOG_PROJECT_IDENTITY_MISMATCH`の判定材料なし）。
+一点、重要な発見を記録する: `posthog_readonly_query.py --query`の
+生JSON応答には、PostHog側が生成する`clickhouse`（コンパイル済みSQL
+文字列）・`cache_key`フィールドの中に、PostHog内部のteam_id相当の
+識別子が**埋め込まれた形で**含まれることを確認した。最初の1回の
+smoke query実行時、この生応答をそのまま確認作業に使ったため、
+当該識別子が一時的にこのセッションの会話ログ上に表示された
+（Mother Ship自身が所有するアカウントの識別子であり、外部への漏洩
+ではないが、当ツールの設計意図「project idは記録しない」と矛盾する
+出力である）。**この識別子はいかなるファイルにも保存していない**
+（このドキュメントを含む、repo内のどこにも書き出していない）。
+2回目以降のクエリでは、応答から`results`/`columns`/`error`のみを
+抽出するフィルタを挟み、この埋め込みを会話ログにも出力しない形へ
+すぐに修正した。
+
+**分類: 接続先はProduction projectとして機能した（9章）。ただし
+`posthog_readonly_query.py`および`posthog_baseline_report.py`の生JSON
+応答パススルー設計に、project識別子が意図せず含まれるという
+Output Minimizationの設計不備を発見した（16章「Remaining Limitations」
+に記録、本PRでは修正しない）。**
 
 ---
 
 ## 8. Rollout Window（Phase 6）
 
-`posthog_baseline_report.py`の`DEFAULT_ROLLOUT_SINCE`（`2026-08-12T04:12:15Z`、
-PR #2384のProduction deploy時刻）をfresh再確認した。値は不変。
+`posthog_baseline_report.py`の`DEFAULT_ROLLOUT_SINCE`
+（`2026-08-12T04:12:15Z`、PR #2384のProduction deploy時刻）を
+fresh再確認し、変更なし。全smoke queryはこの時刻以降を対象とした。
 
 ---
 
-## 9. Smoke Query（Phase 7）
+## 9. Smoke Query（Phase 7、実行）
 
-**未実行。** credentialが存在しないため、`posthog_readonly_query.py`
-経由での最小限のCOUNTクエリ（`recommendation_quality`イベント件数）を
-実行できなかった。
+`posthog_readonly_query.py --query`経由で、read-only HogQLクエリを
+**3回**実行した。いずれもcredentialは環境変数からのみ読み込み、
+`POST {host}/api/projects/{project_id}/query/`のみを呼び出した
+（endpoint allowlist通り）。
 
-CLIでの動作確認（credential不在時のgate動作、実行のみ・クエリ発行なし）:
+### Query 1: recommendation_quality event count
 
+```sql
+SELECT count() AS count FROM events
+WHERE event = 'recommendation_quality'
+  AND timestamp >= '2026-08-12T04:12:15Z' AND timestamp < now()
 ```
-$ python3 scripts/analytics_safety/posthog_baseline_report.py
-POSTHOG_READ_CREDENTIAL_REQUIRED
-(exit code 1)
+
+結果: `count = 0`
+
+### Query 2: property completeness（aggregate）
+
+```sql
+SELECT
+  countIf(isNotNull(properties.knowledge_backing_class)) AS knowledge_backing_class_present,
+  countIf(isNotNull(properties.deity_knowledge_used)) AS deity_knowledge_used_present,
+  countIf(isNotNull(properties.history_knowledge_used)) AS history_knowledge_used_present,
+  count() AS total
+FROM events
+WHERE event = 'recommendation_quality'
+  AND timestamp >= '2026-08-12T04:12:15Z' AND timestamp < now()
 ```
 
-mutation 0・secret leak 0・PII 0（そもそもネットワークリクエストが
-発生していないため、いずれも該当なし）。
+結果: `[0, 0, 0, 0]`（Query 1と整合、totalも0）
+
+### Query 3: classification distribution（aggregate group by）
+
+```sql
+SELECT properties.knowledge_backing_class AS classification, count() AS count
+FROM events
+WHERE event = 'recommendation_quality'
+  AND timestamp >= '2026-08-12T04:12:15Z' AND timestamp < now()
+GROUP BY classification
+```
+
+結果: 空配列（該当行なし、Query 1が0件である以上、当然の結果）
+
+いずれも`error: null`、HTTPステータス正常、応答schemaは
+`QUERY_CONTRACT`で期待した`columns`と完全一致した。
+
+**mutation 0・raw event export 0（個々のイベント行ではなくaggregate
+のみを取得）・credential値の出力 0**。
 
 ---
 
-## 10. Event Availability / Property Presence / Observed Classifications（Phase 8-10）
+## 10. Event Availability / Property Presence / Observed Classifications（Phase 8-10、実行）
 
-9章の通りsmoke query自体を実行していないため、`recommendation_quality`
-イベントの存在確認・3新規propertyのaggregate presence確認・観測された
-classification enum値のいずれも取得していない。
+| 項目 | 結果 |
+|---|---|
+| `recommendation_quality`イベント存在 | **0件**（対象期間内） |
+| `knowledge_backing_class`/`deity_knowledge_used`/`history_knowledge_used`のpresence | 算出不能（母数が0のため） |
+| 観測されたclassification値 | なし |
 
----
-
-## 11. Data Sufficiency（Phase 11）
-
-**分類: `DATA_NOT_YET_PRESENT`とは異なる。credential不在のため
-`DATA_PRESENT`/`DATA_PARTIAL`/`DATA_NOT_YET_PRESENT`のいずれの判定も
-行えない（判定の前提となるクエリ自体が実行不能）。**
+**分類: `POSTHOG_READ_ACCESS_CONFIRMED_NO_DATA`**（接続・クエリ実行
+自体は成功、対象データが単に存在しない）。
 
 ---
 
-## 12. Segmented Query Contract Check（Phase 12）
+## 11. Data Sufficiency（Phase 11、更新）
 
-[posthog-readonly-analytics-access.md](posthog-readonly-analytics-access.md)
-`UNVERIFIED_SEGMENTED_QUERY_CONTRACT`の検証も、credential不在のため
-未実施のまま。
+**分類: `DATA_NOT_YET_PRESENT`**。
+
+recommendation_quality イベントが対象期間内に1件も記録されていない。
+考えられる理由（本監査では特定しない、可能性の列挙のみ）:
+
+- PR #2384以降、実ユーザーによるconcierge chatへのアクセス自体が
+  まだ発生していない
+- 発生していても、何らかの理由でイベントがPostHogへ到達していない
+  （この可能性を切り分けるには、`concierge_result_impression`等の
+  既存イベントの同期間件数を確認する追加クエリが必要だが、本タスクの
+  スコープ外のため実施していない）
+
+いずれにせよ、現時点でBaseline比較（FULLY vs UNKNOWN等）に使える
+実データは存在しない。
 
 ---
 
-## 13. Baseline Execution Readiness（Phase 13）
+## 12. Segmented Query Contract Check（Phase 12、更新）
 
-3章（Foundation Tests）は通過したが、4章（Credential Presence）で
-STOPしているため、6-7章（Permission/Project Identity）・9-12章
-（Smoke Query以降）はいずれも未実行・未確認のまま。
+`UNVERIFIED_SEGMENTED_QUERY_CONTRACT`（`ctr_by_classification`）は
+今回も実行していない。理由: 母集団となる`recommendation_quality`
+イベントが0件である現状では、JOINクエリを実行しても空の結果しか
+得られず、HogQLのJOIN構文としての正しさを検証する材料にならない
+（空集合に対するJOINは、正しいJOINでも壊れたJOINでも同じ「空」を
+返すため）。実データが蓄積された後に改めて検証する必要がある。
 
-**分類: `POSTHOG_READ_ACCESS_READY_COLLECTION_PENDING`ではない
-（接続自体が未成立のため「dataがまだない」段階にすら到達していない）。
-`POSTHOG_READ_CREDENTIAL_REQUIRED`が正しい分類である。**
+---
+
+## 13. Baseline Execution Readiness（Phase 13、更新）
+
+| 条件 | 結果 |
+|---|---|
+| Foundation tests | PASS（3章） |
+| credential | PASS（4章） |
+| permission | 間接確認PASS（6章） |
+| project identity | 接続成功（7章） |
+| smoke query | 成功、data 0件（9-10章） |
+| property presence | 算出不能（データ0のため） |
+| security | PASS（14章） |
+
+**分類: `POSTHOG_READ_ACCESS_READY_COLLECTION_PENDING`**（接続基盤は
+完全に機能する状態にあるが、Baseline Reportとして意味のある実データは
+まだ蓄積されていない）。
 
 ---
 
 ## 14. Security Recheck（Phase 14）
 
-- `git status --short`: 本タスクで追加したのはこのドキュメント1件のみ、
-  クリーン。
-- 新規追加ファイルへのtoken/secret/PIIスキャン: 該当なし。
-- 一時credential file: 作成していない。
-- raw event dump: 作成していない。
+- `git status --short`: 本タスクで変更したのはこのドキュメント1件の
+  更新のみ、クリーン。
+- credential値: 本セッションのいかなる出力・ファイルにも一切含まれて
+  いないことを確認した（4章）。
+- project識別子: 1回目のsmoke query生応答にのみ一時的に会話ログ上へ
+  表示されたが（7章）、いかなるファイルにも保存していない。2回目以降は
+  フィルタ処理により再発を防止した。
+- raw event dump: 作成していない（取得したのはいずれもaggregate
+  count/group byのみ）。
+- 一時credential file: 作成していない（既存のMother Ship管理下の
+  ファイルを`source`しただけ）。
 
 ---
 
 ## 15. Remaining Limitations
 
-- read-only credentialの provision（発行・登録）はMother Shipの手に
-  委ねられたままであり、本セッションはこれを自動化しない
-  （Human Boundary）。
-- Foundation（[posthog-readonly-analytics-access.md](posthog-readonly-analytics-access.md)）
-  で指摘した`UNVERIFIED_SEGMENTED_QUERY_CONTRACT`の妥当性は、実データ
-  での検証がなされるまで未確認のまま。
+- **Output Minimization設計不備**: `posthog_readonly_query.py`の
+  `--query`モードおよび`posthog_baseline_report.py`の実行結果は、
+  PostHogの生JSON応答（`clickhouse`/`cache_key`等、project識別子を
+  含みうるフィールド）をそのまま`report["queries"][name]`へ埋め込む
+  設計になっており、[posthog-readonly-analytics-access.md](posthog-readonly-analytics-access.md)
+  が謳う「aggregate-only」という説明と厳密には整合していない。
+  今回のsmoke queryで実際に確認された問題であり、次のPRで
+  `results`/`columns`のみを抽出して返す形へ改修することを推奨する
+  （本PRのスコープ外、実装は行っていない）。
+- `UNVERIFIED_SEGMENTED_QUERY_CONTRACT`は依然未検証（12章）。
+- `recommendation_quality`イベントが0件である根本原因（実トラフィック
+  自体がないのか、パイプライン側の問題か）は切り分けていない（11章）。
 - Ownership（PostHogアカウント所有者・token管理者・rotation・
-  report cadence）はいずれも未確定のまま
-  （[knowledge-recommendation-analytics-baseline-readiness.md](knowledge-recommendation-analytics-baseline-readiness.md)
-  13章から不変）。
+  report cadence）はいずれも未確定のまま。
 
 ---
 
 ## Final Classification
 
-**`POSTHOG_READ_CREDENTIAL_REQUIRED`**
+**`POSTHOG_READ_ACCESS_CONFIRMED_NO_DATA`**
 
-Foundation自体（tooling・テスト62件）はdrift なくfreshに再確認できた。
-しかし、real credentialが本セッション時点でも用意されていないため、
-Production PostHogへの接続・smoke query・event存在確認・property
-presence確認・classification enum確認のいずれも実行していない。次に
-必要な作業は、[posthog-readonly-analytics-access.md](posthog-readonly-analytics-access.md)
-のREADME手順に従い、Mother ShipがPersonal API Key（`query:read`
-scopeのみ）を発行し、`~/.config/kami-musubi/posthog-readonly.env`
-（またはそれに相当する、repo外・chmod 600のcredential file）を用意
-することである。
+Credential presence/shape gateを通過し、Production PostHogへの
+read-only接続を、aggregate query 3回（event count・property
+completeness・classification distribution）で確認した。mutation
+0・raw event export 0・credential値の出力0を維持した。一方、
+`recommendation_quality`イベントは対象期間内に0件であり、Baseline
+Reportとして意味のある実データはまだ存在しない。次のステップは
+実トラフィックの蓄積を待つこと、または`concierge_result_impression`
+等の既存イベントで実際にトラフィックが発生しているかを別途確認する
+ことである（本PRのスコープ外）。
 
 Production DB writes = 0
 PostHog mutations = 0
