@@ -1477,3 +1477,243 @@ Migration = 0
   `calculate_shrine_behavior_signal_breakdown`ループを超えた拡張）。
 - **Frontend IA**: L1→L2→L3段階UI表示。
 - **Responsive Polish**: 375/390/430px全体調整。
+
+---
+
+## Addendum: Recommendation Primary Reason Contract Unification
+
+> 本Addendumは「Recommendation Primary Reason Contract Unification」PR
+> の実装状況を記録する。Architecture Decision本文（§1〜§15）および
+> 前3つのAddendumは書き換えていない。Ranking weight・Candidate
+> filtering semantics・goriyaku hard filter・Level 1/2/3 scoring
+> semantics・distance/context scoring・Score v3 mode・DB schema・
+> Migration・Frontend UI・375px Information Architecture・Learning
+> Signalは、いずれも変更していない。
+
+### 背景：PR #2407で発見されたMismatch
+
+PR #2407（Integrated Recommendation Intent Execution Contract）は、
+Primary Reasonの生成経路が2系統に分裂していることを発見した:
+
+1. **`reason_facts`システム**
+   （`concierge_chat_ranking._build_reason_facts` +
+   `_resolve_primary_reason`、`PRIMARY_REASON_PRIORITY`で優先順位付け）
+2. **`_explanation_payload`システム**
+   （`concierge_explanation_payload._build_visit_style_primary_reason`が
+   独自にvisit_style判定を上書きする、2つ目の独立resolver）
+
+両者は同一Recommendationについて異なるprimary reasonを返しうる
+（例: `rank_explanation.primary_reason_source == "fallback"`かつ
+`_explanation_payload.primary_reason.type == "visit_style"`）。本PRは
+これを解消する。
+
+### Task 1: Primary Reason生成・加工・表示経路のInventory
+
+repo全体を検索して確認した実際の経路:
+
+| System | Producer | Input | Output field | Consumer | User visible | Ranking効果 |
+|---|---|---|---|---|---|---|
+| `reason_facts`（配列） | `concierge_chat_ranking._build_reason_facts` | matched_by_tag/gid/text, score_element, shrine_meaning_profile, **matched_visit_style_tags（本PRで追加）** | `rec["_reason_facts"]` / `rec["reason_facts"]` | `_resolve_primary_reason`、`_explanation_payload`、`concierge_explanations.py` | 間接（explanation経由） | なし（純粋に記述的、`_score_total`計算後に付与） |
+| `_resolve_primary_reason` | 同上 | `reason_facts` + `PRIMARY_REASON_PRIORITY` | `rec["_primary_reason_source"]` / `rec["_primary_reason_label"]` | `build_recommendation_reason`、`rank_explanation` | 間接 | なし |
+| `rank_explanation` | `_to_rank_explanation` | `rec`全体（breakdown, primary_reason等） | `rec["rank_explanation"]` | Frontend（debug/detail表示） | ✅（`ConciergeSectionsRenderer`等） | なし |
+| `_explanation_payload` | `concierge_explanation_payload.build_explanation_payload` | `rec["_reason_facts"]`（**visit_style override廃止、本PR**） | `rec["_explanation_payload"]` | `concierge_explanations.build_explanation_for_chat_rec` | 間接（explanation経由） | なし |
+| `explanation`（summary/reasons） | `concierge_explanations.build_explanation_for_chat_rec` | `_explanation_payload`, `breakdown_detail.features.visit_style` | `rec["explanation"]` | **Frontend表示カード**（"この神社について"等のsection） | **✅ 直接表示** | なし |
+| `build_recommendation_reason` | `concierge_chat_ranking.build_recommendation_reason` | `_primary_reason_label`, `matched_need_tags`, public_mode | `rec["reason"]` | **Frontend表示（見出し文）** | **✅ 直接表示** | なし |
+| `_attach_reason_source` | `concierge_chat_presentation.py` | `matched`, `public_mode`, `raw_reason` | `rec["reason_source"]` | Frontend（表示経路メタ情報） | 間接 | なし |
+| `api_views_concierge.build_reason_facts`（単数形、`ConciergeReasonFacts`型） | `api_views_concierge.py` | — | — | Frontend型のみ（`ConciergeReasonFacts`） | ❌ **未使用（dead code、一度も呼ばれていない）** | なし |
+
+**重要な発見**: `api_views_concierge.build_reason_facts()`（単数、
+`concierge_chat_ranking._build_reason_facts`とは別の関数）は定義されて
+いるが、repo全体で一度も呼び出されていない。対応するFrontend型
+`ConciergeReasonFacts`（`matched_element`/`shrine_benefit`/
+`visit_fit`/`distance_label`等）も常にnullである。これは既存のdead
+codeであり、本PRの対象外として記録するのみ（削除は行わない）。
+
+### Task 2: `reason_facts` / `_resolve_primary_reason`責務（Current）
+
+`_build_reason_facts()`が生成するfact typeとその条件:
+
+| Fact type | 生成条件 | Priority（`PRIMARY_REASON_PRIORITY`） |
+|---|---|---|
+| `history_theme` | `shrine_meaning_profile.matched_need_tags`かつ`history_theme`が存在 | 0 |
+| `culture_translation` | 同上かつ`culture_translation_present` | 1 |
+| `need_tag` | `matched_by_tag`（need_tagsとshrine astro_tagsの直接一致） | 2 |
+| `text_hint` | `matched_by_text`（goriyaku/description文中のキーワード一致） | 3 |
+| `user_selected_tag` | `matched_by_user_selected_gid`（ユーザーが明示選択したgoriyaku_tag_idsとcandidateの一致） | 4 |
+| `goriyaku_tag` | `matched_by_gid`（need_tag→goriyaku_id推定マッピングとcandidateの一致） | 5 |
+| `element` | `astro_bonus_enabled`（= `public_mode == "compat"`）かつ`score_element > 0` | 6 |
+| **`visit_style`（本PRで追加）** | **`matched_visit_style_tags`が非空** | **7** |
+| `fallback` | 他に何もない場合の`_resolve_primary_reason`のデフォルト | 9 |
+
+### Task 3: `_explanation_payload.primary_reason`責務（Fix後）
+
+`build_explanation_payload()`は、`rec["_reason_facts"]`から
+`is_primary: true`のfactを取得するだけになった
+（`_build_visit_style_primary_reason()`は削除）。独自のfallback判定
+（`_primary_reason_source`/`_primary_reason_label`からの再構成）は
+`reason_facts`が完全に空の防御的ケースのみに残す。
+
+### Task 5: Single Source of Truthの選定
+
+`reason_facts` + `_resolve_primary_reason`（`concierge_chat_ranking.py`）
+を正本とした。理由:
+
+- 唯一、実際のRanking根拠（`matched_by_tag`/`matched_by_gid`/
+  `score_element`等、`_attach_breakdown`が計算した値そのもの）から
+  直接構築されている。
+- `rank_explanation`は既にこれを参照している。
+- `_explanation_payload`は元々これを参照しつつ、visit_styleだけ独自
+  resolverを持っていた（Mismatchの原因）。
+
+新しい3つ目の独立ロジックは作っていない。`_explanation_payload`は
+`reason_facts`からの**派生**（is_primaryのpassthrough）に統一した。
+
+### Task 6: Reason責務の3分離（Contract）
+
+| 責務 | 説明 | 対応する既存構造 |
+|---|---|---|
+| **Candidate Eligibility** | なぜ候補として残ったか | `goriyaku_tag_ids`のDB-level hard filter（`build_chat_candidates`、Rankingより前の段階） |
+| **Rank Reason** | なぜこの候補が他より上位か | `breakdown_detail.features`（need/element/visit_style/distance等の重み付け合算、`_score_total`） |
+| **Primary Recommendation Reason** | なぜ今この人にこの神社を勧めるのか | `reason_facts` + `_resolve_primary_reason`（本Addendumの対象） |
+
+3つは既存実装上すでに別々の関数・別々のタイミングで計算されており、
+今回新たに分離したわけではない。今回はPrimary Recommendation Reason
+の**内部一貫性**（Single Source of Truth化）のみを扱った。
+
+### Task 7〜12: Priority Rules（既存優先順位を確認、最小限の追加のみ）
+
+- **Rule（Task 7）**: L1 Consultation由来（`history_theme`/
+  `culture_translation`/`need_tag`/`text_hint`）が最優先。Fact-backed
+  条件（`shrine_meaning_profile`/`matched_by_tag`等、実データに基づく
+  一致）を満たさない限りfact化されない — 根拠なしのReason生成は
+  現行実装でも発生しない。
+- **Rule（Task 8）**: Visit Preferenceは`visit_style`
+  priority=7として、element(6)より低くfallback(9)より高い位置に追加した。
+  これは、旧`_build_visit_style_primary_reason`のoverride条件
+  （`primary_reason is None or type == "fallback"`のときのみ発動 =
+  実質的にelementより弱い最終手段だった）と**同じ相対的な強さ**を
+  正式なpriority tierとして表現したものであり、既存の実効的な優先度を
+  変更していない。
+- **Rule（Task 9）**: `element`は`public_mode == "compat"`の場合のみ
+  fact化される（`astro_bonus_enabled`条件）。need modeでは`element`
+  factは一度も生成されない — 既存実装のまま、確認のみ
+  （`test_conflict_consultation_plus_profile_meaning_wins_primary`）。
+- **Rule（Task 10）**: `user_selected_tag`（Explicit Constraintかつ
+  Meaning Match、priority=4）と`goriyaku_tag`（間接推定一致、
+  priority=5）は区別されたまま。両方ともneed_tag/text_hint（Consultation
+  直接一致）より優先度が低い。
+- **Rule（Task 11）**: Context（distance/location/visit_date/direction）
+  に対応するfact typeは存在しない（`distance`/`context`/`location`は
+  `PRIMARY_REASON_PRIORITY`に含まれない）。ContextがPrimary
+  Recommendation Meaningになることは構造的にあり得ない
+  （`test_context_only_never_becomes_primary_meaning_reason`で固定化）。
+- **Rule（Task 12）**: Fallback順は既存の`PRIMARY_REASON_PRIORITY`を
+  そのまま正本とした（history_theme→culture_translation→need_tag→
+  text_hint→user_selected_tag→goriyaku_tag→element→**visit_style（新規）**
+  →fallback）。既存の6つのtierは並び替えていない。
+
+### Task 13: 二系統の不一致を解消
+
+```text
+Single Primary Reason Resolver
+  (concierge_chat_ranking._build_reason_facts + _resolve_primary_reason)
+  ↓
+rank_explanation.primary_reason_source
+  ↓ （同じ rec["_reason_facts"] を参照）
+_explanation_payload.primary_reason
+  ↓
+Frontend display metadata（explanation.summary / explanation.reasons）
+```
+
+`_build_visit_style_primary_reason()`（独立した2つ目のresolver）は
+削除した。表示用途ごとのlabel変換（`NEED_LABELS_JA`等、日本語ラベル
+辞書は複数ファイルに存在し続ける）は許容している — 意味の再判定は
+行わず、`type`/`label`の変換のみ。
+
+### Task 14: Recommendation Reason本文との整合
+
+`build_recommendation_reason()`（`rec["reason"]`、見出し文）は変更して
+いない — `_primary_reason_label`が需要タグ（study/mental/rest/love/
+career/money/courage）以外の場合、既存通り安全な汎用文言へfallbackし、
+矛盾する文言を生成しない（visit_style/elementが正本primary reasonで
+あっても、生年月日文言や矛盾する主張はしない）。
+
+`concierge_explanations._build_summary_from_primary_reason()`
+（`rec["explanation"]["summary"]`、実際にFrontendへ表示されるカード
+見出し）へは、`reason_type == "visit_style"`のケースを追加した
+（Task 14の「小さなsource selection修正」に該当）。これにより、
+visit_styleがprimary reasonの場合に`original_reason`（無関係な
+fallback文言）へ落ちることなく、参拝スタイルに言及する適切な文言が
+選ばれるようになった。本文の全面書き換えは行っていない。
+
+### Task 15〜18: Contract Tests
+
+`backend/temples/tests/test_concierge_primary_reason_unification_contract.py`
+（新規14件）:
+
+- Priority tier確認（visit_styleがelement/fallbackの間にあること）
+- PR #2407のMismatch再現 → 解消確認（`rank_explanation.primary_reason_source`
+  == `_explanation_payload.primary_reason.type`）
+- 5パターンのgrounding確認（primary reasonが必ず`reason_facts`内に存在
+  するか、fallbackであること）
+- Full Integration test（相談+Preference+Profile+Constraint+Context
+  同時投入で、Primary Reasonが統一され、reason_factsに根拠があり、
+  visible reasonが矛盾しないことを確認）
+- 4件のConflict Reason Test（Consultation+Visit Preference /
+  +Profile / +Constraint / Context only）
+- No Ranking Change確認（score_need/score_element/visit_style raw/
+  `_score_total`/順序が本PRで変化しないことを確認）
+
+既存の`test_concierge_explanations.py`中、旧`_build_visit_style_primary_reason`
+の挙動を直接pinしていたテスト1件を、新しいSingle Source of Truth契約
+（`_reason_facts`が空欄でbreakdown_detailにvisit_style一致がある、と
+いう新設計では発生しえない入力に対して安全にfallbackすること）を
+確認するテストへ更新し、正しい入力形状（`_reason_facts`に
+`is_primary`付きvisit_style factが存在する状態）を確認する新規テストを
+追加した。
+
+### Task 19: Frontend Contract
+
+Frontend側で複数のprimary reason fieldを独自に選択・判断しているコード
+は見つからなかった（`pickExplanationPayloadFromThread.ts`は単に
+`_explanation_payload`をそのまま正規化して受け渡すのみ）。したがって
+Frontendコード変更は不要と判断し、行っていない。
+
+`ConciergeReasonFacts`型（`apps/web/src/lib/api/concierge/types.ts`）は
+前述の通りbackendで未使用のdead fieldであり、これに依存する
+`buildRecommendationReasonViewModel.ts`等の分岐は常にfallback側へ
+流れる（既知の限界として記録、本PRでは変更しない）。
+
+### No Behavior Change Verification（実行結果）
+
+```
+Backend: python -m pytest -p no:dotenv temples/ -q
+  -> 1279 passed, 9 skipped（既存1265 + 新規14件）
+```
+
+Ranking weight変更 = 0
+Candidate filtering変更 = 0
+goriyaku hard filter変更 = 0
+Level 1/2/3 scoring semantics変更 = 0
+Score v3 mode変更 = 0
+DB schema変更 = 0
+Migration = 0
+Frontend UI変更 = 0（コード変更なし）
+375px Information Architecture変更 = 0
+
+Recommendation順位（`_score_total`/`score_total_ranked`/並び順）への
+影響 = 0（`reason_facts`/`primary_reason`は`_score_total`計算後に
+付与される、純粋に記述的なfieldであるため構造的に不可能）。
+
+### Known Limitations（Follow-upへ送るもの）
+
+- **Recommendation Reason Copy Brush-up**: `build_recommendation_reason()`
+  本文（見出し文）にvisit_style専用の文言を追加するかは、本PRでは
+  行わなかった（既存の安全な汎用fallbackのまま）。
+- **`api_views_concierge.build_reason_facts()` / `ConciergeReasonFacts`**:
+  未使用のdead code。削除判断はFollow-up。
+- **Fact-backed Reason Quality**: Knowledge Model（history_theme/
+  culture_translation）のcoverage改善は対象外。
+- **Weight Optimization**: 実利用データ後の判断。
+- **Frontend IA**: L1/L2/L3段階表示。
+- **Learning**: 行動feedbackの正式契約。

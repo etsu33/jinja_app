@@ -486,6 +486,7 @@ NEED_LABELS_JA: Dict[str, str] = {
     "fallback": "近い候補",
     "history_theme": "歴史文脈",
     "culture_translation": "神社固有文脈",
+    "visit_style": "参拝スタイル",
 }
 
 # Recommendation Reason Responsibility:
@@ -502,6 +503,16 @@ PRIMARY_REASON_PRIORITY: Dict[str, int] = {
     "user_selected_tag": 4,
     "goriyaku_tag": 5,
     "element": 6,
+    # visit_style: Level 2 Visit Preference. Lowest priority short of
+    # fallback -- it is a "fallback primary reason candidate" (Task 8,
+    # Recommendation Primary Reason Contract Unification): it only becomes
+    # the primary reason when nothing else (not even element) matched.
+    # This mirrors the precedence the previous, now-removed
+    # concierge_explanation_payload._build_visit_style_primary_reason()
+    # override enforced (it only fired when the reason_facts primary was
+    # None/"fallback"), now expressed as a single ordinary priority tier
+    # instead of a second, independent resolver.
+    "visit_style": 7,
     "fallback": 9,
 }
 
@@ -552,6 +563,7 @@ def _build_reason_facts(
     score_element: int,
     astro_bonus_enabled: bool,
     shrine_meaning_profile: Optional[Dict[str, Any]] = None,
+    matched_visit_style_tags: Optional[List[str]] = None,
 ) -> List[Dict[str, Any]]:
     facts: List[Dict[str, Any]] = []
     profile = shrine_meaning_profile or {}
@@ -622,6 +634,21 @@ def _build_reason_facts(
                 label=tag,
                 evidence=[f"text_score:{text_score_by_tag.get(tag, 0)}"],
                 score=float(text_score_by_tag.get(tag, 0)),
+            )
+        )
+
+    visit_style_tags = [
+        str(tag).strip()
+        for tag in (matched_visit_style_tags or [])
+        if str(tag).strip()
+    ]
+    if visit_style_tags:
+        facts.append(
+            _make_reason_fact(
+                type_="visit_style",
+                label="visit_style",
+                evidence=list(visit_style_tags),
+                score=float(len(visit_style_tags)),
             )
         )
 
@@ -1421,6 +1448,7 @@ def _attach_breakdown(
         score_element=score_element,
         astro_bonus_enabled=astro_bonus_enabled,
         shrine_meaning_profile=shrine_meaning_profile,
+        matched_visit_style_tags=matched_visit_style_tags,
     )
     primary_reason = _resolve_primary_reason(reason_facts)
 

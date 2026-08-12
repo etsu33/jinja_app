@@ -4,7 +4,20 @@ from temples.services.concierge_explanation_payload import build_explanation_pay
 from temples.services.concierge_explanations import build_explanation_for_chat_rec
 
 
-def test_build_explanation_payload_prefers_visit_style_over_fallback_primary_reason():
+def test_build_explanation_payload_is_single_source_of_truth_from_reason_facts_not_breakdown_detail():
+    """Recommendation Primary Reason Contract Unification (PR #2408):
+    build_explanation_payload() no longer independently derives a
+    visit_style primary_reason from breakdown_detail.features.visit_style
+    -- that was a second, independent resolver
+    (_build_visit_style_primary_reason, removed) that could disagree with
+    rec["_reason_facts"] (see PR #2407's Mismatch finding). primary_reason
+    is now read exclusively from rec["_reason_facts"]/is_primary, which
+    concierge_chat_ranking._build_reason_facts() populates with a
+    "visit_style" fact type (PRIMARY_REASON_PRIORITY) whenever a real
+    pipeline run has a visit_style match -- so this desync (fallback in
+    reason_facts, visit_style in breakdown_detail) can no longer arise from
+    the real pipeline; this test pins that the payload builder trusts
+    reason_facts even when handed such an (now-impossible) input."""
     payload = build_explanation_payload(
         {
             "reason": "候補としておすすめしています。",
@@ -37,14 +50,60 @@ def test_build_explanation_payload_prefers_visit_style_over_fallback_primary_rea
     )
 
     assert payload["primary_reason"] == {
-        "type": "visit_style",
-        "label": "quiet",
-        "label_ja": "参拝スタイル",
-        "evidence": ["quiet"],
-        "score": 0.35,
+        "type": "fallback",
+        "label": "fallback",
+        "label_ja": "近い候補",
+        "evidence": [],
+        "score": 0.0,
         "is_primary": True,
     }
     assert payload["matched_need_tags"] == []
+
+
+def test_build_explanation_payload_reads_visit_style_primary_reason_from_reason_facts():
+    """The correct (real pipeline) shape: _build_reason_facts() already
+    marks the visit_style fact is_primary=True when it wins
+    PRIMARY_REASON_PRIORITY -- build_explanation_payload() just passes it
+    through."""
+    payload = build_explanation_payload(
+        {
+            "reason": "候補としておすすめしています。",
+            "_reason_facts": [
+                {
+                    "type": "visit_style",
+                    "label": "visit_style",
+                    "label_ja": "参拝スタイル",
+                    "evidence": ["quiet"],
+                    "score": 1.0,
+                    "is_primary": True,
+                }
+            ],
+            "breakdown": {
+                "score_need": 0,
+                "score_total": 0.0,
+                "matched_need_tags": [],
+            },
+            "breakdown_detail": {
+                "features": {
+                    "visit_style": {
+                        "raw": 1,
+                        "matched_tags": ["quiet"],
+                        "contribution": 0.35,
+                    },
+                    "score_total_ranked": 0.35,
+                }
+            },
+        }
+    )
+
+    assert payload["primary_reason"] == {
+        "type": "visit_style",
+        "label": "visit_style",
+        "label_ja": "参拝スタイル",
+        "evidence": ["quiet"],
+        "score": 1.0,
+        "is_primary": True,
+    }
 
 
 # New test for user_selected_tag primary reason
