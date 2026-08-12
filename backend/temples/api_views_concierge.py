@@ -2,12 +2,10 @@
 from __future__ import annotations
 import requests  # test monkeypatch compatibility
 import logging
-import re
 import uuid
 import time
 from django.db import connection, reset_queries
 
-from datetime import date
 from typing import Any, Dict, List, Optional, Tuple
 
 
@@ -35,6 +33,7 @@ from temples.services import places as Places
 from temples.services.plan_service import resolve_plan_context
 from temples.services.quota_service import check_quota, consume_quota
 from temples.services.anonymous_id import attach_anonymous_cookie, build_anonymous_cookie_value
+from temples.services.concierge_input_contract import normalize_concierge_request
 
 from temples.services.concierge_candidate_utils import (
     _dedupe_candidates,
@@ -53,32 +52,10 @@ from temples.services.billing_state import is_premium_for_user  # test monkeypat
 
 
 
-BIRTHDATE_PATTERNS = (
-    re.compile(r"^(\d{4})-(\d{2})-(\d{2})$"),
-    re.compile(r"^(\d{4})/(\d{2})/(\d{2})$"),
-    re.compile(r"^(\d{4})(\d{2})(\d{2})$"),
-)
-
-def normalize_birthdate(value: Any) -> str | None:
-    s = str(value or "").strip()
-    if not s:
-        return None
-
-    for pattern in BIRTHDATE_PATTERNS:
-        m = pattern.match(s)
-        if not m:
-            continue
-
-        yyyy, mm, dd = m.groups()
-
-        try:
-            normalized = date(int(yyyy), int(mm), int(dd))
-        except ValueError:
-            return None
-
-        return normalized.isoformat()
-
-    return None
+# normalize_birthdate / _resolve_request_inputs_basic: moved to
+# temples.services.concierge_input_contract as part of the Concierge
+# Input Contract Foundation. The view below resolves phase-1 input via
+# normalize_concierge_request(), which wraps them.
 
 
 log = logging.getLogger(__name__)
@@ -309,60 +286,6 @@ def _probe_area_locationbias_for_chat(*, area: str | None) -> None:
             len(area),
         )
 
-
-
-def _resolve_request_inputs_basic(data: Dict[str, Any]):
-    filters = data.get("filters") if isinstance(data.get("filters"), dict) else {}
-    for k in ("birthdate", "goriyaku_tag_ids", "extra_condition"):
-        if data.get(k) in (None, "", []) and filters.get(k) not in (None, "", []):
-            data[k] = filters.get(k)
-
-
-    filters = data.get("filters") or {}
-    if isinstance(filters, dict):
-        if not data.get("birthdate") and filters.get("birthdate"):
-            data["birthdate"] = filters.get("birthdate")
-
-    if not data.get("goriyaku_tag_ids") and filters.get("goriyaku_tag_ids"):
-        data["goriyaku_tag_ids"] = filters.get("goriyaku_tag_ids")
-    if not data.get("extra_condition") and filters.get("extra_condition"):
-        data["extra_condition"] = filters.get("extra_condition")
-
-    message = (data.get("message") or "").strip()
-    query = (data.get("query") or "").strip()
-    query = message or query
-
-    # backend救済: query が日付文字列なら birthdate に寄せる
-    birthdate_raw = normalize_birthdate(data.get("birthdate"))
-
-    if not birthdate_raw and isinstance(filters, dict):
-        birthdate_raw = normalize_birthdate(filters.get("birthdate"))
-        if birthdate_raw:
-            data["birthdate"] = birthdate_raw
-
-    if not birthdate_raw:
-        rescued_birthdate = normalize_birthdate(query)
-        if rescued_birthdate:
-            data["birthdate"] = rescued_birthdate
-            birthdate_raw = rescued_birthdate
-            query = ""
-
-    language = (data.get("language") or "ja").strip()
-    area = data.get("area") or data.get("where") or data.get("location_text")
-
-    birthdate = data.get("birthdate")
-    goriyaku_tag_ids = data.get("goriyaku_tag_ids")
-    extra_condition = data.get("extra_condition")
-
-    return (
-        query,
-        message,
-        language,
-        area,
-        birthdate,
-        goriyaku_tag_ids,
-        extra_condition,
-    )
 
 
 def _resolve_request_location_inputs(
@@ -599,22 +522,21 @@ class ConciergeChatView(APIView):
             )
 
             # -------------------------
-            # ① 入力解決
+            # ① 入力解決（Canonical Concierge Input、
+            #    see docs/product/concierge-input-architecture.md）
             # -------------------------
             phase = "resolve_inputs"
             t0 = time.perf_counter()
 
-            (
-                query,
-                message,
-                language,
-                area,
-                birthdate_value,
-                goriyaku_tag_ids,
-                extra_condition,
-            ) = _resolve_request_inputs_basic(data)
+            canonical_input = normalize_concierge_request(data)
+            query = canonical_input.query
+            message = canonical_input.message
+            language = canonical_input.language
+            area = canonical_input.area
+            goriyaku_tag_ids = canonical_input.goriyaku_tag_ids
+            extra_condition = canonical_input.extra_condition
 
-            birthdate = (birthdate_value or "").strip() or None
+            birthdate = (canonical_input.birthdate or "").strip() or None
 
             log.info(
                 "[concierge/perf] step=resolve_inputs rid=%s elapsed=%.3f",

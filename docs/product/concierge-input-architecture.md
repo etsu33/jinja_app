@@ -625,3 +625,102 @@ Dead field削除 = 0
 preset chip削除 = 0
 Signal parser変更 = 0
 Score v3切替 = 0
+
+---
+
+## Addendum: Implemented Contract Foundation
+
+> 本Addendumは「Concierge Input Contract Foundation」PRの実装状況を
+> 記録する。Architecture Decision本文（§1〜§15）は書き換えていない。
+
+Backend側に、Raw Request → Canonical Concierge Input →
+Compatibility Normalization → Derived Signal → Recommendation の
+境界を実装した（`backend/temples/services/concierge_input_contract.py`）。
+Recommendation挙動・Candidate filtering・Ranking weight・API contractは
+一切変更していない（既存の compatibility 処理をそのまま関数単位で
+移設し、呼び出し順序も変更していない）。
+
+### Current Request Contract Inventory（実装確認済み）
+
+| Field | Frontend source | Request位置 | Backend read | Canonical化 | Status |
+|---|---|---|---|---|---|
+| `query`/`message` | `ConciergeClientFull.tsx`（textarea等） | top-level | `normalize_concierge_request()` | ✅ `ConciergeCanonicalInput.query` | Active |
+| `birthdate` | `ConciergeFilterPanel.tsx` | top-level + `filters` | 同上 | ✅ `ConciergeCanonicalInput.birthdate` | Active（Compatibility重複は維持） |
+| `goriyaku_tag_ids` | `ConciergeFilterPanel.tsx` | top-level + `filters` | 同上 | ✅ `ConciergeCanonicalInput.goriyaku_tag_ids` | Active（Compatibility重複は維持） |
+| `extra_condition` | `ConciergeFilterPanel.tsx`（preset/自由記述） | top-level + `filters` | 同上 | ✅ `ConciergeCanonicalInput.extra_condition`（Legacy/Transitional） | Active |
+| `free_text` | hooks.ts（クライアント側でextra_conditionへ畳み込み） | `filters`のみ | 未読（backend契約に存在しない） | 対象外 | Compatibility（frontend限定） |
+| `crowd` | hooks.ts（同上） | `filters`のみ | 未読 | 対象外 | Compatibility（frontend限定） |
+| `duration_max_min` | `ConciergeClientFull.tsx` | `filters`のみ | 未読（既存コードに読み出し経路なし、PR #2397で既知） | 対象外 | Legacy Candidate |
+| `location`/`lat`/`lng` | `OriginSelector` | top-level | `_resolve_request_location_inputs`（未移設、理由は下記） | ✅（未使用wrapper）`build_concierge_recommendation_context()` | Active |
+| `radius`/`radius_m` | 未送信（frontendに存在せず） | — | `_parse_radius`（未移設） | ✅（未使用wrapper） | Active（backend既定値のみ） |
+| `area`/`where`/`location_text` | 未送信（frontendに存在せず、backend内部fallback用） | top-level | `normalize_concierge_request()` | ✅ `ConciergeCanonicalInput.area` | Active |
+| `visit_date`/`planned_visit_date` | `ConciergeEntryCard.tsx` | top-level | view内で直接読み出し（未移設） | ✅（未使用wrapper） | Active |
+| `mode` | 送信ボタン種別で決定 | top-level | view内で直接読み出し（未移設、`_resolve_public_mode`はbirthdate依存のため対象外） | 未実施 | Active（Follow-up PR4対象） |
+| `flow` | 未送信（backend推定のみ） | — | view内で直接読み出し（未移設） | 未実施 | Deprecated Candidate（PR #2397で既知） |
+| `thread_id` | `ConciergeClientFull.tsx` | top-level | view内で直接読み出し（未移設） | 未実施 | Active（Follow-up PR4対象） |
+| `profile_context` | `derivedProfile.ts` | top-level | view内で直接読み出し（未移設、`direction_profile`計算と密結合） | 未実施 | Active（Follow-up PR4対象） |
+
+`need_tags`/`consultation_axis`/`interpretation_profile`/`intent`は、
+実装確認の結果、`ConciergeCanonicalInput`のいずれのfieldにも含まれて
+いないことをテストで固定化した
+（`test_canonical_input_does_not_include_derived_signals`）。
+
+### 実装したもの
+
+- `backend/temples/services/concierge_input_contract.py`（新規）:
+  `normalize_birthdate()`・`_resolve_request_inputs_basic()`を
+  `api_views_concierge.py`から**移設**（ロジック変更なし）。
+  `ConciergeCanonicalInput`（Level 1 / 3-A / 3-B / 2 の canonical dataclass）
+  と`normalize_concierge_request()`を新設。
+- `ConciergeRecommendationContext`（Level 3-C）: `lat`/`lng`/`radius_m`/
+  `visit_date`のcanonical shapeを定義したが、**view側では未配線**。
+  理由: `_resolve_request_location_inputs`は外部geocode呼び出しを
+  伴い、既存実装はquota判定通過後にのみ解決することでblocked/invalid
+  requestへの無駄なgeocode呼び出しを避けている。これをphase-1解決へ
+  前倒しすることは挙動変更（無駄な外部通信の発生）にあたるため、
+  本Foundation PRでは意図的に行わなかった（Follow-up PR4）。
+- `api_views_concierge.py`: phase-1入力解決を`normalize_concierge_request()`
+  呼び出しへ置き換え（内部的には移設前と同一関数を呼ぶだけのため、
+  挙動は完全に同一）。
+- `apps/web/src/features/concierge/types/chatRequest.ts`: 型定義に
+  Level/Canonical/Compatibility/Legacy Candidateの注釈を追加
+  （コメントのみ、型shape・optionality変更なし）。
+- Contract tests: `backend/temples/tests/test_concierge_input_contract.py`
+  （35件、query/message/birthdate/goriyaku_tag_ids/extra_condition/
+  free_text・crowd非対応/area/language/Raw-Derived分離/mutation側効果/
+  Level 3-C packaging を網羅）。
+
+### 実装しなかったもの（意図的、Follow-up対象）
+
+- Level 3-C Context（`lat`/`lng`/`radius_m`/`visit_date`）のview実配線
+  （上記理由により見送り、Follow-up PR4）。
+- `mode`/`flow`/`thread_id`/`profile_context`のcanonical化
+  （`public_mode`解決が`birthdate`に依存する等、密結合を安全に分離
+  するにはより広いFollow-up PRが必要と判断、Follow-up PR4）。
+- Level 2 Signal Contract自体の再設計（dead preset・soft_signal等）:
+  今回のPRの対象外（Follow-up PR3）。
+- `filters`/top-level二重送信の解消（Compatibility処理はそのまま維持、
+  Follow-up PR1）。
+
+### No Behavior Change Verification（実行結果）
+
+```
+Backend: python3 -m pytest -p no:dotenv temples/ -q
+  -> 1182 passed, 9 skipped（環境要因、既存と同数）
+  （うち371件がconcierge関連、うち新規contract test 35件）
+
+Web: pnpm --filter ./apps/web test:contract
+  -> Test Files 117 passed, Tests 759 passed
+
+Web build: pnpm --filter ./apps/web build -> success
+Web lint: pnpm --filter ./apps/web lint -> 0 errors（既存2 warning、無関係ファイル）
+Web typecheck: tsc --noEmit -> no errors
+Backend lint (ruff): 既存6件のみ（本PR起因の新規lint findingsは0、
+  移設前後で完全一致を確認済み）
+Migration: 0件
+```
+
+Recommendation behavior changes = 0
+Ranking changes = 0
+Candidate filtering changes = 0
+API contract changes = 0
