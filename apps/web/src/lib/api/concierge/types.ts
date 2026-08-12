@@ -77,6 +77,12 @@ export type ConciergeBreakdown = {
   matched_need_tags: string[];
 };
 
+export type KnowledgeBackingClass =
+  | "FULLY_KNOWLEDGE_BACKED"
+  | "PARTIALLY_KNOWLEDGE_BACKED"
+  | "LEGACY_BACKED"
+  | "UNKNOWN";
+
 export type RecommendationReasonQuality = {
   shrine_data_rate?: number | null;
   consultation_reflection_rate?: number | null;
@@ -85,6 +91,9 @@ export type RecommendationReasonQuality = {
   action_grounding_rate?: number | null;
   is_ai_inference_only?: boolean | null;
   fallback_source?: string | null;
+  knowledge_backing_class?: KnowledgeBackingClass | null;
+  deity_knowledge_used?: boolean | null;
+  history_knowledge_used?: boolean | null;
 };
 
 export type ConciergeReasonFactAxis =
