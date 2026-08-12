@@ -535,6 +535,7 @@ class ConciergeChatView(APIView):
             area = canonical_input.area
             goriyaku_tag_ids = canonical_input.goriyaku_tag_ids
             extra_condition = canonical_input.extra_condition
+            visit_preferences = canonical_input.visit_preferences
 
             birthdate = (canonical_input.birthdate or "").strip() or None
 
@@ -757,6 +758,8 @@ class ConciergeChatView(APIView):
                 applied.append("goriyaku_tag_ids")
             if (extra_condition or "").strip():
                 applied.append("extra_condition")
+            if visit_preferences:
+                applied.append("visit_preferences")
             if public_mode == "compat":
                 applied.append("mode:compat")
 
@@ -771,6 +774,7 @@ class ConciergeChatView(APIView):
                     birthdate=birthdate,
                     goriyaku_tag_ids=goriyaku_tag_ids,
                     extra_condition=extra_condition,
+                    visit_preferences=visit_preferences,
                     public_mode=public_mode,
                     flow=flow,
                     user=user if getattr(user, "is_authenticated", False) else None,

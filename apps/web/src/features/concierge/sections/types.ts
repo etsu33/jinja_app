@@ -17,7 +17,8 @@ export type ConciergeFilterState = {
   selectedTagIds: readonly number[];
   tagsLoading: boolean;
   tagsError: string | null;
-  extraCondition: string;
+  extraCondition: string; // Level 2 Visit Preference (Legacy/Transitional, free-text)
+  visitPreferences: readonly string[]; // Level 2 Visit Preference (Structured, canonical tags)
 };
 
 /* =========================
@@ -146,5 +147,6 @@ export type RendererAction =
   | { type: "filter_set_birthdate"; birthdate: string }
   | { type: "filter_toggle_tag"; tagId: number }
   | { type: "filter_set_extra"; extraCondition: string }
+  | { type: "filter_set_visit_preferences"; visitPreferences: string[] }
   | { type: "filter_clear" }
   | { type: "save_concierge_thread" };

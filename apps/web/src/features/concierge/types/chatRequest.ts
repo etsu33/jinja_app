@@ -35,7 +35,12 @@ export type ConciergeChatRequestV1 = {
   filters?: ConciergeChatFilters; // Compatibility（下記top-level fieldと重複送信、Gap C）
   birthdate?: string; // Level 3-A Personal Profile（Compatibility copy）
   goriyaku_tag_ids?: number[]; // Level 3-B Explicit Constraint（Compatibility copy）
-  extra_condition?: string; // Level 2 Visit Preference（Compatibility copy）
+  extra_condition?: string; // Level 2 Visit Preference（Legacy/Transitional, free-text）
+  visit_preferences?: string[]; // Level 2 Visit Preference（Structured, canonical tags
+  // -- see docs/product/concierge-input-architecture.md Addendum: Level 2 Visit
+  // Preference Signal Redesign. Canonical vocabulary: quiet/nature/reset/
+  // less_crowded/nearby/classic. No top-level/filters duplication (new field,
+  // does not inherit Gap C).
   visit_date?: string; // Level 3-C Context
   location?: { lat: number; lng: number }; // Level 3-C Context
   profile_context?: {

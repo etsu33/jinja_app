@@ -24,6 +24,7 @@ from temples.services.score_v3_observer import (
 )
 from temples.services.concierge_chat_extra_condition import (
     resolve_extra_condition_tags,
+    resolve_visit_preference_tags,
 )
 from temples.services.concierge_chat_llm_route import (
     resolve_llm_route,
@@ -608,6 +609,7 @@ def build_chat_recommendations(
     birthdate=None,
     goriyaku_tag_ids=None,
     extra_condition=None,
+    visit_preferences: list[str] | None = None,
     public_mode="need",
     flow="A",
     need_tags: list[str] | None = None,
@@ -626,7 +628,12 @@ def build_chat_recommendations(
     Responsibility:
       - need_tags は相談テーマ由来の主推薦軸として扱う。
       - goriyaku_tag_ids はユーザー追加の補助条件として扱う。
-      - extra_condition は参拝スタイルなどの補助条件として扱う。
+      - extra_condition は参拝スタイルなどの補助条件として扱う（Legacy free-text）。
+      - visit_preferences は参拝スタイルの Structured 版として扱う
+        （Level 2 Visit Preference Signal Redesign。canonical tag のみ、
+        parser を経由しない）。extra_condition 由来の visit_style tag と
+        Compatibility Layer（resolve_visit_preference_tags）で合流し、
+        同一 tag の二重加点は発生しない。
       - birthdate / astro / direction は主軸を上書きしない補助シグナルとして扱う。
     """
     valid_candidates = [
@@ -674,15 +681,19 @@ def build_chat_recommendations(
     sort_tags = extra_tags["sort_tags"]
     hard_filter_tags = extra_tags["hard_filter_tags"]
     soft_signal_tags = extra_tags["soft_signal_tags"]
-    visit_style_tags = extra_tags["visit_style_tags"]
+    visit_style_tags = resolve_visit_preference_tags(
+        structured=visit_preferences,
+        legacy_visit_style_tags=extra_tags["visit_style_tags"],
+    )
 
     log.info(
-        "[dbg] extra_tags resolved sort=%r soft=%r visit_style=%r has_query=%s has_extra=%s",
+        "[dbg] extra_tags resolved sort=%r soft=%r visit_style=%r has_query=%s has_extra=%s has_visit_preferences=%s",
         sorted(sort_tags),
         sorted(soft_signal_tags),
         sorted(visit_style_tags),
         bool(query),
         bool(str(extra_condition or "").strip()),
+        bool(visit_preferences),
     )
 
     observe_candidate_pool(

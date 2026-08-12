@@ -724,3 +724,240 @@ Recommendation behavior changes = 0
 Ranking changes = 0
 Candidate filtering changes = 0
 API contract changes = 0
+
+---
+
+## Addendum: Level 2 Visit Preference Signal Redesign
+
+> 本Addendumは「Level 2 Visit Preference Signal Redesign」PR（Follow-up
+> PR3、§14）の実装状況を記録する。Architecture Decision本文（§1〜§15）
+> および前Addendum（Implemented Contract Foundation）は書き換えていない。
+> Concierge画面の大規模UI変更・375px Information Architecture変更・
+> Level 1 query契約変更・Level 3 birthdate契約変更・`goriyaku_tag_ids`
+> hard filter semantics変更・Learning Signal変更・Score v3 mode変更・
+> Recommendation Reason全面変更・DB Model変更・Migrationは、いずれも
+> 行っていない。
+
+### 責務の再整理
+
+§5 Current（`extra_condition`責務）で記録した経路を、以下へ整理した。
+
+```text
+Current（維持、Compatibility Layerとして残す）:
+  UI preset chip / 自由記述
+    -> extraCondition（自然文）
+    -> extract_extra_tags（keyword parser）
+    -> 最大3タグ
+
+Proposed（新規、並走）:
+  UI preset chip
+    -> canonical tag（Structured, パーサを経由しない）
+    -> visit_preferences（Level 2 Visit Preference, Structured）
+```
+
+Structured と Legacy は `resolve_visit_preference_tags()`
+（`backend/temples/services/concierge_chat_extra_condition.py`）で合流する。
+両者は同一の canonical tag 語彙を使うため、単純な set union で
+dedupeされ、二重加点は発生しない（`score_visit_style` は distinct な
+tag 数のみを数える、`concierge_chat_ranking._attach_breakdown`）。
+
+### Canonical Visit Preference Model
+
+`backend/temples/domain/visit_preference.py`（新規）:
+
+```python
+VISIT_PREFERENCE_TAGS = frozenset(
+    {"quiet", "nature", "reset", "less_crowded", "nearby", "classic"}
+)
+MAX_VISIT_PREFERENCES = 6
+```
+
+- `EXTRA_TAG_META`の`visit_style`kind（8タグ）のうち、
+  `docs/product/visit-style-taxonomy.md`がUI-facing MVP選択肢として
+  定義する6タグの部分集合。`business`/`study`は既存の`visit_style`
+  タグとして残るが、canonical structured語彙には含めない（Taxonomy文書
+  がUI主要選択肢として扱っていないため）。
+- Shrine側の`Shrine.visit_style_tags`（DB field名）とは意図的に
+  field名を分離した: request側は`visit_preferences`
+  （`ConciergeCanonicalInput.visit_preferences`）、Shrine側は従来通り
+  `visit_style_tags`のまま。ユーザーの希望と神社の属性を同一名で
+  混同しない。
+- 上限（`MAX_VISIT_PREFERENCES = 6`）は、legacy `extract_extra_tags`の
+  `max_tags=3`とは無関係に定義した — legacyの3件制限はkeyword
+  parserのスコアリング実装上の副産物であり、Product上意図された
+  Level 2 Preference数の上限ではなかった。Structuredはparserを経由
+  しないため、その制限を継承しない。上限はcanonical語彙のサイズ
+  そのもの（6）とした。UI側の選択可能数そのものを変更する場合は
+  Follow-up UI PR（§14 PR6）へ送る。
+
+### Level間の責務境界（Rule 2の適用）
+
+- Structured/Legacy いずれも `need_tags`/`consultation_axis`/`query`の
+  値を上書きしない（Rule 2、§9）。`build_chat_recommendations()`の
+  `visit_preferences`引数は`visit_style_tags`のみに合流し、
+  Candidate filter（`goriyaku_tag_ids`）・need scoring
+  （`score_need`）・birthdate由来スコア（`score_element`）とは独立
+  に計算される（`test_need_score_unaffected_by_visit_preferences`、
+  `test_goriyaku_match_unaffected_by_visit_preferences`、
+  `test_birthdate_score_unaffected_by_visit_preferences`で固定化）。
+- Personal Profileとして永続化しない。`visit_preferences`は
+  top-levelのrequest fieldのみで解決し、`birthdate`/
+  `goriyaku_tag_ids`/`extra_condition`が持つtop-level⇄filters二重
+  送信（Gap C）を新規に継承しない — single source of truthとして
+  新設した。
+
+### Preference（Ranking Bonus）と Sort Directive の分離
+
+`nearby`はPreference（`score_visit_style`経由のRanking Bonus）、
+`sort_distance`は独立したSort Override（`_sort_chat_recommendations`
+の`distance_mode`分岐）として扱う。両者は概念上別のEffectであり、
+`visit_preferences`に`nearby`を含めても`sort_distance`と同じ
+distance-first sortを引き起こさない
+（`test_sort_distance_unaffected_by_visit_preferences`で固定化）。
+将来同じUI chipから両方を送出する設計はあり得るが、内部責務は
+本PRでも分離したままとする。
+
+### Level 2 Keep / Redesign / Hold / Remove（更新）
+
+§11 Keep/Redesign/Hold/Remove Matrixの Level 2 該当部分を、以下へ
+更新する（§11本文は書き換えず、本Addendumで差分として記録する）。
+
+| UI Preset | §11時点の分類 | 本PRでの扱い | Canonical tag |
+|---|---|---|---|
+| 静かな時間を過ごしたい | Keep | Structured化 | `quiet` |
+| 気分を切り替えたい | Keep（reset部分） | Structured化 | `reset` |
+| 自然を感じたい | Keep | Structured化 | `nature` |
+| 近場がいい | Keep（sort部分）/ Redesign（nearby部分） | Structured化（Preference側のみ） | `nearby` |
+| 有名な神社が安心 | Keep | Structured化 | `classic` |
+| 人混みを避けたい | Keep | Structured化 | `less_crowded` |
+| 境内をゆっくり歩きたい | Redesign | Structured化（`visit-style-taxonomy.md`が定義する`quiet`/`nature`の組み合わせを採用。Legacy parserは実際には`quiet`+`calm`しか生成しておらず、これはCurrent/Proposedの既知Gapとして記録する） | `quiet`, `nature` |
+| 歴史や文化に触れたい | Redesign | **Structured化して解消**（`visit-style-taxonomy.md`の既定マッピングをそのまま採用） | `classic` |
+| 由緒を知りたい | Redesign | **Structured化して解消** | `classic` |
+| 神話に触れたい | Redesign | **Structured化して解消** | `classic` |
+| アクセスしやすい場所がいい | Redesign | **Structured化して解消**（`visit-style-taxonomy.md`は`nearby`「アクセス情報と併用」と既定） | `nearby` |
+| 御朱印を楽しみたい | Redesign | **Hold**（Shrine Data Capability Check: `Shrine`モデルに御朱印関連fieldが存在しない。自然文のみで保持、`visit-style-taxonomy.md`の既定通り） | なし |
+| `energize`（気分を切り替えたいの一部） | Redesign | Hold（`soft_signal` kind、highlight未定義。Level 2 canonical語彙は`visit_style` kindのみを対象とし、`soft_signal`の再設計は本PR対象外） | なし |
+| `soft_signal`タグ8/9件 | Redesign Candidate | Hold（変更なし。§8 Signal Kind整理を参照） | なし |
+| `hard_filter`カテゴリ | Remove Candidate | Hold（変更なし。定義上到達不能のまま維持、削除は本PRで行わない） | なし |
+| `duration_max_min` | Hold | 変更なし | — |
+
+備考: 「近場がいい」「アクセスしやすい場所がいい」はいずれも`nearby`
+へ収束する（`visit-style-taxonomy.md`が両者を同一内部タグとして
+定義しているため）。`nearby`自体は`infer_visit_style_tags()`が
+一度も生成しないため（PR #2397 Gap A、seedデータ0件）、
+Shrine側のマッチ候補が実際には存在せず、現状の実効性はLegacy経路
+と同じくゼロに近い。これはSignalの構造的な位置づけの問題ではなく
+Shrine側データカバレッジの問題であり、Structured化によって
+悪化も改善もしない（Current通りの実効性を維持するのみ）。data
+backfillはDB Model変更を伴わない範囲であっても本PRのスコープ外
+とし、Follow-upへ送る。
+
+### Shrine Data Capability Check（Redesign対象の再評価）
+
+| 項目 | Shrine側capability | 判定 |
+|---|---|---|
+| 歴史や文化に触れたい／由緒を知りたい／神話に触れたい | `Shrine.history_theme`（CharField）は存在するが、`consultation_axis`（Level 1）の`HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS`経由でのみ接続されており、Level 2 `visit_style`スコアリングへの接続はない | Level 2としては`classic`（既存capability）へ収束。`history_theme`自体をLevel 2へ新規接続することはRecommendation Reason/consultation_axisロジックへ波及するため本PR対象外（Hold、Follow-up） |
+| 御朱印を楽しみたい | `Shrine`モデルに対応fieldなし | Hold（データなし） |
+| アクセスしやすい場所がいい | 専用の交通機関/駅fieldはなく、`lat`/`lng`のみ | `nearby`（既存capability）へ収束 |
+| 境内をゆっくり歩きたい | 専用fieldなし | `quiet`+`nature`の組み合わせ（既存capability）で表現 |
+
+DB capabilityのない項目（御朱印）へcanonical tagを新規発行することは
+行っていない。
+
+### Signal Kind整理（現状維持）
+
+- `visit_style`: Level 2 canonical structured語彙の対象。維持。
+- `sort_override`（`sort_distance`）: Sort Directiveとして維持、
+  Preferenceとは別Effect。
+- `soft_signal`（9タグ、`calm`以外は実質無効）: 本PRでは再設計しない。
+  Level 2 canonical語彙は`visit_style` kindのみを対象とし、
+  `soft_signal`の扱い（Presentation-only化 / Ranking Signal昇格 /
+  Hold / 削除）はFollow-upの判断とする。
+- `hard_filter`: 変更なし、常に空集合。削除はFollow-up。
+
+### Frontend Request Contract（追加）
+
+`apps/web/src/features/concierge/types/chatRequest.ts`へ
+`visit_preferences?: string[]`を追加した（top-levelのみ、`filters`への
+重複は行っていない）。
+
+UI側の配線（Concierge画面の大規模変更は行わず、既存chipのonClick
+挙動にcanonical tag送出を追加するのみ）:
+
+- `apps/web/src/features/concierge/components/ConciergeFilterPanel.tsx`:
+  `QUICK_PRESET_GROUPS`の各chipに`PRESET_VISIT_PREFERENCE_TAGS`
+  マッピングを追加。クリック時、既存の`onExtraConditionChange`
+  （Legacy、変更なし）に加えて`onVisitPreferencesChange`
+  （Structured、新規）を呼ぶ。
+- `apps/web/src/features/concierge/components/ConciergeSectionsRenderer.tsx`:
+  閉じた4-preset card（「静か」「駅近」「ひとり」「階段少なめ」、
+  Task 1で追加確認したLevel 2 UI。本Addendumの正本監査範囲外だったが
+  実装として発見したため記録する）にも同様のmappingを追加
+  （「静か」→`quiet`、「駅近」→`nearby`）。「ひとり」「階段少なめ」は
+  Shrine側capabilityがないためHold（マッピングなし、Legacy free-text
+  のまま）。
+- `apps/web/src/app/concierge/ConciergeClientFull.tsx`: `extraCondition`
+  と並走する`visitPreferences`state・`filter_set_visit_preferences`
+  reducer caseを追加。匿名セッションスナップショット
+  （`AnonymousConciergeSnapshot`）へは含めない（Level 2は
+  Session/Request scopeであり、ページ再読み込み跨ぎの永続化は
+  設計上不要という判断、§5「Session-only」原則に従う）。
+
+### Backend Canonical Contract（追加）
+
+`ConciergeCanonicalInput`（`backend/temples/services/concierge_input_contract.py`）
+へ`visit_preferences: List[str]`を追加。`normalize_concierge_request()`が
+`temples.domain.visit_preference.normalize_visit_preferences()`で
+validate/dedupe/capする。`extra_condition`（Legacy Compatibility field）
+は変更していない — 別属性として共存する。
+
+`build_chat_recommendations()`（`backend/temples/services/concierge_chat.py`）
+に`visit_preferences`引数を追加（default `None`、既存呼び出し元は
+無変更で動作）。`resolve_visit_preference_tags()`
+（`backend/temples/services/concierge_chat_extra_condition.py`、新規）が
+Structured/Legacyの合流点。
+
+### No Behavior Regression Verification（実行結果）
+
+```
+Backend: python3 -m pytest -p no:dotenv temples/ -q
+  -> 1225 passed, 9 skipped（既存1182 + 新規Level 2 contract test 43件）
+
+Web: pnpm test:run（vitest run）
+  -> Test Files 118 passed, Tests 766 passed（既存759 + 新規7件）
+
+Web typecheck: tsc -p tsconfig.json --noEmit -> no errors
+```
+
+`visit_preferences`未送信の既存clientは、`build_chat_recommendations()`
+の`visit_preferences=None`デフォルトにより挙動不変
+（`test_omitting_visit_preferences_kwarg_matches_explicit_empty_list`
+で固定化）。
+
+### 完了条件チェック
+
+- Level 2 Canonical Visit Preference: 定義済み（`VISIT_PREFERENCE_TAGS`、6タグ）
+- UI labelとCanonical valueの分離: 済み（`PRESET_VISIT_PREFERENCE_TAGS`マッピング）
+- Structured PreferenceのFrontend→Backend到達: 済み（`visit_preferences`top-level field）
+- Legacy `extra_condition`互換維持: 済み（別属性として共存、削除なし）
+- Structured/Legacy二重加点なし: 済み（set union、`score_visit_style`はdistinct tag数のみ計上）
+- Level 1非上書き: 済み（need_tags/consultation_axis/query不変を確認済み）
+- Level 3非混在: 済み（goriyaku_tag_ids/birthdateスコア不変を確認済み）
+- visit_style scoring parity: 済み（Structured/Legacy同一貢献度を確認済み）
+- sort override責務分離: 済み（nearby選択がsort_distanceを誘発しないことを確認済み）
+- dead presetのKeep/Redesign/Hold/Remove整理: 済み（本Addendum表を参照。5件中4件をStructured化して解消、1件（御朱印）はHold）
+- DB capabilityのないSignal追加なし: 済み（御朱印にtagを発行していない）
+- Backend/Web tests pass、typecheck pass、migration 0: 済み
+
+### Follow-up（本PRでは実装しない）
+
+- Frontend IA（Level 1/2/3段階表示、375px layout、accordion、chip数のUI変更）
+- `soft_signal`（8/9タグ）の再設計方針決定
+- `hard_filter`カテゴリの削除判断
+- `nearby`のShrine側データ生成ギャップ解消（`infer_visit_style_tags()`
+  backfill、DB Model変更を伴わない場合でも本PR対象外）
+- `history_theme`をLevel 2 `visit_style`スコアリングへ接続するかの判断
+  （現状はLevel 1 consultation_axis経由のみ）
+- 御朱印関連fieldをShrineモデルへ追加するかのProduct判断
+- `duration_max_min`の配線または削除判断（PR1 Input Contract Foundation
+  時点から持ち越し）

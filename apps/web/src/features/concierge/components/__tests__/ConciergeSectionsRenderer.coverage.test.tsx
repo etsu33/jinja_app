@@ -35,6 +35,7 @@ const baseFilterState: any = {
   tagsLoading: false,
   tagsError: null,
   extraCondition: "",
+  visitPreferences: [],
 };
 
 function buildTestPayload(u: any, filterState = baseFilterState) {
