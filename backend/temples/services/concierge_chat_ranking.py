@@ -708,7 +708,16 @@ def _build_reason_facts(
 def _resolve_primary_reason(
     facts: List[Dict[str, Any]],
 ) -> Dict[str, Any]:
-    if not facts:
+    # culture_translation is curated Explanation material, not a Ranking
+    # Authority. Keep its fact in the payload, but never let its presence
+    # select or replace the Primary Ranking Reason (PR #2421).
+    primary_candidates = [
+        fact
+        for fact in facts
+        if str(fact.get("type") or "").strip() != "culture_translation"
+    ]
+
+    if not primary_candidates:
         return {
             "type": "fallback",
             "label": "fallback",
@@ -719,7 +728,7 @@ def _resolve_primary_reason(
         }
 
     ordered = sorted(
-        facts,
+        primary_candidates,
         key=lambda x: (
             PRIMARY_REASON_PRIORITY.get(str(x.get("type") or "").strip(), 99),
             -float(x.get("score") or 0.0),
