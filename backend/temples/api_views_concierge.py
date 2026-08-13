@@ -849,6 +849,19 @@ class ConciergeChatView(APIView):
                         if isinstance(recommendation, dict):
                             recommendation.pop("direction_reference", None)
 
+            # Recommendation Instance Identity Contract
+            # (docs/audit/recommendation-instance-identity-propagation.md, Option C):
+            # reuse the existing per-request rid as the immutable recommendation_instance_id.
+            # No new ID generator -- same embed-into-item pattern already used for
+            # primary_reason_source (concierge_chat_ranking.py).
+            for recommendation_key in ("recommendations", "recommendations_v2"):
+                recommendation_list = recs.get(recommendation_key)
+                if not isinstance(recommendation_list, list):
+                    continue
+                for recommendation in recommendation_list:
+                    if isinstance(recommendation, dict):
+                        recommendation["recommendation_instance_id"] = rid
+
             after_n = len(recs.get("recommendations") or [])
             rec_count = after_n
 

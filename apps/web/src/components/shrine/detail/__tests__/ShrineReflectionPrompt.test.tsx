@@ -43,6 +43,7 @@ describe("ShrineReflectionPrompt", () => {
       reflectionContext: "visit_done",
       mode: "need",
       accessLevel: "free",
+      recommendationInstanceId: null,
     });
   });
 
@@ -105,6 +106,7 @@ describe("ShrineReflectionPrompt", () => {
       moodAfter: "calm",
       mode: "need",
       accessLevel: "free",
+      recommendationInstanceId: null,
     });
     expect(onSaved).toHaveBeenCalled();
   });

@@ -8,6 +8,7 @@ import type {
 import type { ConciergeReasonFacts, RecommendationReasonV4Detail } from "@/lib/api/concierge";
 import { validDirectionReferenceOrNull, type DirectionReference } from "../../../../../packages/shared/directionReference";
 import {
+  normalizeRecommendationInstanceId,
   recommendationAnalyticsProvenance,
   type RecommendationAnalyticsProvenance,
 } from "../../../../../packages/shared/recommendationAnalyticsProvenance";
@@ -25,6 +26,7 @@ type NormalizedItemBase = {
   breakdown_detail?: any | null;
   reasonFacts?: ConciergeReasonFacts | null;
   analyticsProvenance: RecommendationAnalyticsProvenance;
+  recommendationInstanceId: string | null;
   reasonV4Detail?: RecommendationReasonV4Detail | null;
   recommendationReasonV4?: string | null;
   trustMetadata?: any | null;
@@ -167,6 +169,9 @@ function normalizeRecommendation(r: any, tid: string | null, analyticsContext: D
     reasonFacts,
     actionSuggestionPreview: actionSuggestionV4Preview,
   });
+  const recommendationInstanceId = normalizeRecommendationInstanceId(
+    r?.recommendation_instance_id ?? r?.recommendationInstanceId,
+  );
   const directionReference = validDirectionReferenceOrNull(r?.direction_reference);
 
   if (shrineId) {
@@ -182,6 +187,7 @@ function normalizeRecommendation(r: any, tid: string | null, analyticsContext: D
       breakdown_detail: breakdownDetail,
       reasonFacts,
       analyticsProvenance,
+      recommendationInstanceId,
       actionSuggestionV4Preview,
       reasonV4Detail,
       recommendationReasonV4,
@@ -210,6 +216,7 @@ function normalizeRecommendation(r: any, tid: string | null, analyticsContext: D
       breakdown_detail: breakdownDetail,
       reasonFacts,
       analyticsProvenance,
+      recommendationInstanceId,
       actionSuggestionV4Preview,
       reasonV4Detail,
       recommendationReasonV4,
@@ -301,6 +308,9 @@ function dedupeItems(items: NormalizedItem[]): NormalizedItem[] {
         }
         if (reg?.kind === "registered" && !reg.consultationAxis && item.consultationAxis) {
           out[idx] = { ...out[idx], consultationAxis: item.consultationAxis };
+        }
+        if (reg?.kind === "registered" && !reg.recommendationInstanceId && item.recommendationInstanceId) {
+          out[idx] = { ...out[idx], recommendationInstanceId: item.recommendationInstanceId };
         }
         if (reg?.kind === "registered" && !reg.reasonV4Detail && item.reasonV4Detail) {
           out[idx] = { ...out[idx], reasonV4Detail: item.reasonV4Detail };

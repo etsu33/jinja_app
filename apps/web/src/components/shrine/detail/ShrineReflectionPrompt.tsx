@@ -19,6 +19,7 @@ type Props = {
   accessLevel?: "anonymous" | "free" | "premium" | null;
   onSaved?: () => void;
   analyticsProvenance?: RecommendationAnalyticsProvenance;
+  recommendationInstanceId?: string | null;
 };
 
 const PROMPT_TEXT = "参拝して、今どんな変化がありましたか？";
@@ -31,6 +32,7 @@ export function ShrineReflectionPrompt({
   accessLevel = null,
   onSaved,
   analyticsProvenance,
+  recommendationInstanceId = null,
 }: Props) {
   const mode = ctx === "concierge" ? "need" : undefined;
   const [answer, setAnswer] = useState("");
@@ -53,9 +55,10 @@ export function ShrineReflectionPrompt({
       reflectionContext: "visit_done",
       mode,
       accessLevel,
+      recommendationInstanceId,
       ...(analyticsProvenance ? recommendationAnalyticsProperties(analyticsProvenance) : {}),
     });
-  }, [accessLevel, analyticsProvenance, historyTheme, mode, shrineId, threadId]);
+  }, [accessLevel, analyticsProvenance, historyTheme, mode, recommendationInstanceId, shrineId, threadId]);
 
   async function handleSubmit() {
     if (!canSubmit) return;
@@ -87,6 +90,7 @@ export function ShrineReflectionPrompt({
         moodAfter: moodAfter || undefined,
         mode,
         accessLevel,
+        recommendationInstanceId,
         ...(analyticsProvenance ? recommendationAnalyticsProperties(analyticsProvenance) : {}),
       });
 

@@ -368,6 +368,7 @@ export default function ConciergeSectionsRenderer({
           payload.meta?.consultationAxis,
         ),
         analyticsProvenance: item.analyticsProvenance,
+        recommendationInstanceId: item.recommendationInstanceId ?? null,
       }));
     });
   }, [payload, normalizedModeForTracking]);
@@ -391,6 +392,7 @@ export default function ConciergeSectionsRenderer({
         recommendationRank: item.rank,
         mode: item.mode,
         historyTheme: item.historyTheme ?? analyticsContext?.historyTheme,
+        recommendationInstanceId: item.recommendationInstanceId,
         ...consultationAxisAnalytics(item.consultationAxis ?? analyticsContext?.consultationAxis),
         ...(item.analyticsProvenance
           ? recommendationAnalyticsProperties(item.analyticsProvenance)
@@ -936,6 +938,7 @@ export default function ConciergeSectionsRenderer({
                                   historyTheme: historyTheme ?? analyticsContext?.historyTheme,
                                   ...consultationAxisAnalytics(heroItem.consultationAxis ?? analyticsContext?.consultationAxis),
                                   firstClick: resolveFirstResultClick(resultSetId),
+                                  recommendationInstanceId: heroItem.recommendationInstanceId ?? null,
                                   ...(heroItem.analyticsProvenance
                                     ? recommendationAnalyticsProperties(heroItem.analyticsProvenance)
                                     : {}),
@@ -1114,6 +1117,7 @@ export default function ConciergeSectionsRenderer({
                                           (item as any).consultationAxis ?? analyticsContext?.consultationAxis,
                                         ),
                                         firstClick: resolveFirstResultClick(resultSetId),
+                                        recommendationInstanceId: item.recommendationInstanceId ?? null,
                                         ...(item.analyticsProvenance
                                           ? recommendationAnalyticsProperties(item.analyticsProvenance)
                                           : {}),

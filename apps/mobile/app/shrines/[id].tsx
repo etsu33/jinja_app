@@ -39,6 +39,7 @@ import {
   type ConciergeReasonFacts,
 } from "../../lib/recommendationReasonFacts";
 import {
+  normalizeRecommendationInstanceId,
   recommendationAnalyticsProperties,
   recommendationAnalyticsProvenance,
 } from "../../../../packages/shared/recommendationAnalyticsProvenance";
@@ -216,12 +217,22 @@ export default function ShrineDetail() {
     recommendationReasonV4Detail?: string | string[];
     recommendationRank?: string | string[];
     resultSetId?: string | string[];
+    recommendationInstanceId?: string | string[];
   }>();
   const shrineId = React.useMemo(() => {
     const raw = params.id;
     if (!raw) return undefined;
     return Array.isArray(raw) ? raw[0] : raw;
   }, [params.id]);
+
+  // docs/audit/recommendation-instance-identity-propagation.md: carried only from a
+  // Concierge-origin navigation's route params (Backend rid). Direct detail access
+  // has no such params, so this stays null -- never generated on Mobile.
+  const contextRecommendationInstanceId = React.useMemo(() => {
+    const raw = params.recommendationInstanceId;
+    const value = Array.isArray(raw) ? raw[0] : raw;
+    return normalizeRecommendationInstanceId(value);
+  }, [params.recommendationInstanceId]);
 
   const contextRecommendationReasonV4 = React.useMemo(() => {
     const raw = params.recommendationReasonV4;
@@ -408,6 +419,7 @@ export default function ShrineDetail() {
             ctx: "mobile_shrine_detail",
             recommendation_rank: Number(Array.isArray(params.recommendationRank) ? params.recommendationRank[0] : params.recommendationRank) || null,
             result_set_id: Array.isArray(params.resultSetId) ? params.resultSetId[0] : params.resultSetId,
+            recommendation_instance_id: contextRecommendationInstanceId,
             ...analyticsProperties,
           },
         });
@@ -465,6 +477,7 @@ export default function ShrineDetail() {
       platform: "mobile",
       shrineId: apiShrineId ?? shrineId,
       nextFav: now,
+      recommendationInstanceId: contextRecommendationInstanceId,
       ...analyticsProperties,
     });
 
@@ -499,6 +512,7 @@ export default function ShrineDetail() {
         shrineId: targetShrineId,
         historyTheme: primaryHistoryTheme,
         provenance: analyticsProvenance,
+        recommendationInstanceId: contextRecommendationInstanceId,
       });
     } catch (error) {
       if (isUnauthenticatedError(error)) {
@@ -520,6 +534,7 @@ export default function ShrineDetail() {
       reflectionFormType: "one_line",
       reflectionContext: "visit_done",
       provenance: analyticsProvenance,
+      recommendationInstanceId: contextRecommendationInstanceId,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visited]);
@@ -549,6 +564,7 @@ export default function ShrineDetail() {
           reflectionContext: "visit_done",
           answerLength: answer.length,
           provenance: analyticsProvenance,
+          recommendationInstanceId: contextRecommendationInstanceId,
         });
       }
     } catch (error) {
@@ -577,6 +593,7 @@ export default function ShrineDetail() {
       shrineId: targetShrineId ?? "",
       historyTheme: primaryHistoryTheme,
       provenance: analyticsProvenance,
+      recommendationInstanceId: contextRecommendationInstanceId,
     });
 
     // Reflection本文・相談文等の自由入力は一切引き継がず、Conciergeを通常状態で開く
@@ -595,12 +612,17 @@ export default function ShrineDetail() {
           ctx: "mobile_shrine_detail",
           recommendation_rank: Number(Array.isArray(params.recommendationRank) ? params.recommendationRank[0] : params.recommendationRank) || null,
           result_set_id: Array.isArray(params.resultSetId) ? params.resultSetId[0] : params.resultSetId,
+          recommendation_instance_id: contextRecommendationInstanceId,
           ...analyticsProperties,
         },
       });
       // Backend保存用(trackShrineRouteOpen)とは別に、PostHog等で可視化するための
       // track()イベントをWeb版のroute_openと同じ名前・意味で送る。
-      trackRouteOpen({ shrineId: shrineIdNumber, provenance: analyticsProvenance });
+      trackRouteOpen({
+        shrineId: shrineIdNumber,
+        provenance: analyticsProvenance,
+        recommendationInstanceId: contextRecommendationInstanceId,
+      });
     }
     const hasLatLng = typeof shrine.latitude === "number" && typeof shrine.longitude === "number";
     const destination = hasLatLng ? `${shrine.latitude},${shrine.longitude}` : encodeURIComponent(shrine.name);

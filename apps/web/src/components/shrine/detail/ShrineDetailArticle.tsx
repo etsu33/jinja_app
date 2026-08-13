@@ -391,6 +391,7 @@ export default function ShrineDetailArticle({
   tid = null,
   historyTheme = null,
   analyticsProvenance,
+  recommendationInstanceId = null,
   meaningPayloadSource = "fallback",
   saveActionNode,
   actionState,
@@ -423,6 +424,7 @@ export default function ShrineDetailArticle({
   tid?: string | number | null;
   historyTheme?: string | null;
   analyticsProvenance?: RecommendationAnalyticsProvenance;
+  recommendationInstanceId?: string | null;
   meaningPayloadSource?: "v2" | "fallback";
   saveActionNode?: React.ReactNode;
   actionState?: "none" | "detail_viewed" | "saved" | "route_opened" | "visited" | "reflected" | null;
@@ -716,6 +718,7 @@ export default function ShrineDetailArticle({
                     ctx={ctx}
                     accessLevel={accessLevel}
                     analyticsProvenance={analyticsProvenance}
+                    recommendationInstanceId={recommendationInstanceId}
                   />
                 ) : null}
 
@@ -743,6 +746,7 @@ export default function ShrineDetailArticle({
                           historyTheme: historyTheme ?? undefined,
                           accessLevel,
                           mode: ctx === "concierge" ? "need" : undefined,
+                          recommendationInstanceId,
                           ...(analyticsProvenance ? recommendationAnalyticsProperties(analyticsProvenance) : {}),
                         });
                         const now = new Date().toISOString();
