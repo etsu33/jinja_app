@@ -10,12 +10,23 @@ CONSULTATION_AXES: List[ConsultationAxis] = [
     "money_growth",
     "career_change",
     "independence",
+    "relationship_repair",
     "rest_healing",
     "restart_mindset",
     "nature_reset",
     "study_success",
     "other",
 ]
+# "relationship_repair" (恋愛・家族・職場・友人など、人との関係を整える
+# 相談) was already documented as the primary consultation_axis for the
+# `relationship` theme_key in docs/product/consultation-theme-taxonomy.md
+# and docs/audit/score-v3-consultation-axis-history-theme-mapping.md
+# §6.2, and already has real (non-shadow) ranking weights in
+# concierge_chat_ranking.HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS -- but was
+# never actually connected here, so every relationship/love consultation
+# fell through to "other" (docs/audit/concierge-l1-freetext-readiness.md
+# Finding A, PR #2409). Adding it to the official axis list only wires up
+# an axis the design docs and ranking layer already treat as real.
 
 CONSULTATION_AXIS_SET = set(CONSULTATION_AXES)
 
@@ -28,6 +39,16 @@ CONSULTATION_AXIS_ALIASES: Dict[str, ConsultationAxis] = {
     "independent": "independence",
     "startup": "independence",
     "freelance": "independence",
+    "relationship": "relationship_repair",
+    "human_relationship": "relationship_repair",
+    # score-v3-consultation-axis-history-theme-mapping.md §6.2 scopes
+    # relationship_repair to include 恋愛 (romantic love) alongside
+    # family/workplace/friend relationships -- love shares this axis at
+    # the consultation_axis layer while remaining a distinct need_tag
+    # (temples/domain/need_tags.py) and reason label (PR #2410). No
+    # independent "love_connection" axis exists in the taxonomy docs, so
+    # one is not invented here.
+    "love": "relationship_repair",
     "rest": "rest_healing",
     "healing": "rest_healing",
     "mental": "restart_mindset",
@@ -76,6 +97,22 @@ CONSULTATION_AXIS_KEYWORDS: Dict[ConsultationAxis, List[str]] = {
         "場所に縛られず",
         "自分のサービス",
         "経営者",
+    ],
+    # Query-level relationship phrasing only (Task 4). Love-specific
+    # keywords (恋愛/出会い/良縁) are intentionally NOT duplicated here --
+    # need_tags.py already extracts them as the "love" need tag, and
+    # NEED_TAG_TO_CONSULTATION_AXIS below routes "love" to this same axis
+    # via the need_tags fallback branch of resolve_consultation_axis().
+    "relationship_repair": [
+        "人間関係",
+        "職場の人間関係",
+        "家族との関係",
+        "友人との関係",
+        "対人関係",
+        "関係を整理",
+        "関係を修復",
+        "関係がうまくいかない",
+        "仲直り",
     ],
     "rest_healing": [
         "疲れ",
@@ -142,7 +179,12 @@ NEED_TAG_TO_CONSULTATION_AXIS: Dict[str, ConsultationAxis] = {
     "rest": "rest_healing",
     "study": "study_success",
     "focus": "study_success",
+    "relationship": "relationship_repair",
+    "love": "relationship_repair",
 }
+# "relationship" and "love" stay distinct need_tags (PR #2410) but share
+# the relationship_repair consultation_axis -- see the CONSULTATION_AXIS_ALIASES
+# comment above for the design rationale (score-v3-consultation-axis-history-theme-mapping.md §6.2).
 
 CONSULTATION_AXIS_PRIORITY: Dict[ConsultationAxis, int] = {
     axis: index for index, axis in enumerate(CONSULTATION_AXES)
