@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect } from "react";
 import type { ReactNode } from "react";
 import { trackSearchEvent } from "@/lib/analytics/searchEvents";
+import { buildHeroNextActionLines } from "@/features/concierge/buildHeroConclusion";
 import type {
   ActionSuggestionV4PreviewViewModel,
   ActionSuggestionViewModel,
@@ -21,10 +22,13 @@ type Props = {
   originSummary?: string | null;
   catchCopy: string;
   whyTop?: string | null;
-  primaryReason?: string | null;
-  secondaryReason?: string | null;
-  factReason?: string | null;
-  interpretationReason?: string | null;
+  // Recommendation Result Hero Card consolidation
+  // (docs/product/recommendation-result-information-architecture.md §6, §13, §15
+  // PR2): pre-composed by buildHeroConclusionLines() upstream (ConciergeSectionsRenderer)
+  // from the existing, already-Authority-decided reason text (primaryReason / factReason
+  // / interpretationReason / legacy fallback). This component never re-decides which
+  // line wins -- it only lays the given lines out in the given order.
+  conclusionLines?: string[];
   actionReason?: string | null;
   differenceFromOthers?: string | null;
   nextActionHint?: string | null;
@@ -62,10 +66,7 @@ export default function ConciergeTopRecommendationHero({
   originSummary = null,
   catchCopy: _catchCopy,
   whyTop: _whyTop = null,
-  primaryReason = null,
-  secondaryReason = null,
-  factReason = null,
-  interpretationReason = null,
+  conclusionLines = [],
   actionReason = null,
   differenceFromOthers: _differenceFromOthers = null,
   nextActionHint: _nextActionHint = null,
@@ -97,6 +98,13 @@ export default function ConciergeTopRecommendationHero({
         visibleActionSuggestionV4Preview.actionSource.source,
       ].join("|")
     : "";
+  // Merges Reason V4's action advice with the (already gated/resolved) Action
+  // Suggestion preview summary into one Next Action block -- neither is dropped or
+  // re-attributed, see buildHeroConclusion.ts.
+  const nextActionLines = buildHeroNextActionLines({
+    actionText: actionReason,
+    actionSuggestionSummary: actionSuggestionV4Summary || null,
+  });
   useEffect(() => {
     if (!visibleActionSuggestionV4Preview || !actionSuggestionV4Summary) return;
 
@@ -164,66 +172,36 @@ export default function ConciergeTopRecommendationHero({
           </div>
         </div>
 
-        {primaryReason ? (
+        {conclusionLines.length > 0 ? (
           <div
             className="rounded-[var(--kt-radius-card)] border border-emerald-100 bg-white/70 px-4 py-3 shadow-sm shadow-emerald-900/5"
-            data-testid="recommendation-match-reason"
+            data-testid="recommendation-conclusion"
           >
             <div className="space-y-1.5">
               <p className="text-[11px] font-semibold tracking-[0.14em] text-emerald-700">相談内容・ご利益との一致</p>
-              <p className="text-sm font-semibold leading-6 text-slate-800">{primaryReason}</p>
+              {conclusionLines.map((line, index) => (
+                <p key={index} className="text-sm font-semibold leading-6 text-slate-800">
+                  {line}
+                </p>
+              ))}
               {topReasonLabel ? <p className="text-xs leading-5 text-[var(--kt-color-text-muted)]">{topReasonLabel}</p> : null}
             </div>
           </div>
         ) : null}
 
-        {secondaryReason ? (
-          <div
-            className="rounded-[var(--kt-radius-card)] border border-slate-100 bg-slate-50/70 px-4 py-3"
-            data-testid="recommendation-standard-reason"
-          >
-            <p className="text-[11px] font-semibold tracking-[0.14em] text-slate-600">この神社を選んだ理由</p>
-            <p className="mt-1 text-sm leading-6 text-[var(--kt-color-text-secondary)]">{secondaryReason}</p>
-          </div>
-        ) : null}
-
-        {factReason ? (
-          <div
-            className="rounded-[var(--kt-radius-card)] border border-emerald-100 bg-white/70 px-4 py-3 shadow-sm shadow-emerald-900/5"
-            data-testid="recommendation-reason-v4-fact"
-          >
-            <p className="text-[11px] font-semibold tracking-[0.14em] text-emerald-700">この神社について</p>
-            <p className="mt-1 text-sm leading-6 text-slate-800">{factReason}</p>
-          </div>
-        ) : null}
-
-        {interpretationReason ? (
-          <div
-            className="rounded-[var(--kt-radius-card)] border border-slate-100 bg-slate-50/70 px-4 py-3"
-            data-testid="recommendation-reason-v4-interpretation"
-          >
-            <p className="text-[11px] font-semibold tracking-[0.14em] text-slate-600">今の相談とのつながり</p>
-            <p className="mt-1 text-sm leading-6 text-[var(--kt-color-text-secondary)]">{interpretationReason}</p>
-          </div>
-        ) : null}
-
-        {actionReason ? (
+        {nextActionLines.length > 0 ? (
           <div
             className="rounded-[var(--kt-radius-card)] border border-teal-100 bg-teal-50/70 px-4 py-3 shadow-sm shadow-teal-900/5"
-            data-testid="recommendation-reason-v4-action"
+            data-testid="recommendation-next-action"
           >
-            <p className="text-[11px] font-semibold tracking-[0.14em] text-teal-700">参拝前にできること</p>
-            <p className="mt-1 text-sm leading-6 text-[var(--kt-color-text-secondary)]">{actionReason}</p>
-          </div>
-        ) : null}
-
-        {actionSuggestionV4Summary ? (
-          <div
-            className="rounded-[var(--kt-radius-card)] border border-teal-100 bg-teal-50/70 px-4 py-3 shadow-sm shadow-teal-900/5"
-            data-testid="hero-action-suggestion-v4-preview"
-          >
-            <p className="text-[11px] font-semibold tracking-[0.14em] text-teal-700">次の一歩</p>
-            <p className="mt-1 truncate text-sm leading-6 text-[var(--kt-color-text-secondary)]">{actionSuggestionV4Summary}</p>
+            <div className="space-y-1">
+              <p className="text-[11px] font-semibold tracking-[0.14em] text-teal-700">参拝前にできること</p>
+              {nextActionLines.map((line, index) => (
+                <p key={index} className="text-sm leading-6 text-[var(--kt-color-text-secondary)]">
+                  {line}
+                </p>
+              ))}
+            </div>
           </div>
         ) : null}
 

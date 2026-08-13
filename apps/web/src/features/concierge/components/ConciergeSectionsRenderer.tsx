@@ -9,6 +9,7 @@ import ConciergeFilterPanel from "@/features/concierge/components/ConciergeFilte
 import ModeBadge from "@/features/concierge/components/ModeBadge";
 import { buildRecommendationReasonViewModel } from "@/lib/concierge/buildRecommendationReasonViewModel";
 import { buildHeroReasonV4Sections } from "@/features/concierge/buildHeroReasonV4Sections";
+import { buildHeroConclusionLines } from "@/features/concierge/buildHeroConclusion";
 import ConciergeTopRecommendationHero from "@/features/concierge/components/ConciergeTopRecommendationHero";
 import ShrineCardCompact from "@/components/shrines/ShrineCardCompact";
 
@@ -879,9 +880,19 @@ export default function ConciergeSectionsRenderer({
                           recommendationReasonV4: (heroItem as any).recommendationReasonV4 ?? null,
                           reason: heroItem.description ?? null,
                         });
-                        // 構造化Reason V4がある場合は重複を避ける。無い場合はBackendが指定した
-                        // reason_facts Primaryをadapter経由でVisible UIへ渡す。
-                        const heroSecondaryReason = heroReasonV4.hasStructured ? null : heroReasonV4.fallbackText;
+                        // Hero Reason Consolidation (docs/product/
+                        // recommendation-result-information-architecture.md §6, §13,
+                        // §15 PR2): compose the single Conclusion block from the same
+                        // already-Authority-decided strings the old 4 separate cards
+                        // used (primaryReason / factReason / interpretationReason /
+                        // legacy fallback) -- no new resolver, no re-prioritization.
+                        const conclusionLines = buildHeroConclusionLines({
+                          hasStructured: heroReasonV4.hasStructured,
+                          interpretationText: heroReasonV4.interpretationText,
+                          factText: heroReasonV4.factText,
+                          primaryReason: reasonVm.list.primaryPhrase,
+                          fallbackText: heroReasonV4.fallbackText,
+                        });
                         const trustMetadata = (heroItem as any).trustMetadata ?? null;
                         const trustLabels = [
                           trustMetadata?.rank_class ?? trustMetadata?.rankClass,
@@ -920,10 +931,7 @@ export default function ConciergeSectionsRenderer({
                               subtitle={reasonVm.hero.subtitle ?? null}
                               catchCopy={reasonVm.hero.catchCopy}
                               whyTop={null}
-                              primaryReason={heroReasonV4.hasStructured ? null : reasonVm.list.primaryPhrase}
-                              secondaryReason={heroSecondaryReason}
-                              factReason={heroReasonV4.factText}
-                              interpretationReason={heroReasonV4.interpretationText}
+                              conclusionLines={conclusionLines}
                               actionReason={heroReasonV4.actionText}
                               differenceFromOthers={null}
                               tags={matchedNeedTags.map(labelNeedDisplayTag).slice(0, 3)}
