@@ -41,36 +41,17 @@ import {
   serializeReasonV4Detail,
   type RecommendationReasonV4Detail,
 } from "../../lib/recommendationReasonV4";
+import {
+  buildReasonFactItems,
+  findPrimaryReasonFact,
+  normalizeRecommendationReasonFacts,
+  resolveActionEventHistoryTheme,
+  type ConciergeReasonFacts,
+} from "../../lib/recommendationReasonFacts";
 
 // ────────────────────────────────────────────
 // 型
 // ────────────────────────────────────────────
-type RecommendationReasonFactAxis =
-  | "need"
-  | "benefit"
-  | "feature"
-  | "element"
-  | "distance"
-  | "popularity"
-  | "fallback";
-
-type RecommendationReasonFacts = {
-  version?: 1;
-  primary_axis?: RecommendationReasonFactAxis | null;
-  secondary_axis?: RecommendationReasonFactAxis | null;
-  matched_need_tags?: string[];
-  matched_benefits?: string[];
-  shrine_feature?: string | null;
-  shrine_benefit?: string | null;
-  visit_fit?: string | null;
-  matched_element?: string | null;
-  matched_sign?: string | null;
-  distance_label?: string | null;
-  popularity_label?: string | null;
-  fallback_reason?: string | null;
-  confidence?: "high" | "mid" | "low" | null;
-};
-
 type RecommendationReasonQuality = {
   shrine_data_rate?: number | null;
   consultation_reflection_rate?: number | null;
@@ -94,7 +75,7 @@ type RecommendationCard = {
   connection: string;
   reason: string;
   recommendationReasonV4?: string | null;
-  reasonFacts?: RecommendationReasonFacts | null;
+  reasonFacts: ConciergeReasonFacts;
   recommendationReasonQuality?: RecommendationReasonQuality | null;
   recommendationReasonDetail?: RecommendationReasonDetail | null;
   reasonV4Detail?: RecommendationReasonV4Detail | null;
@@ -150,8 +131,8 @@ type RecommendationApiCard = {
   reason?: string;
   recommendation_reason_v4?: string | null;
   recommendationReasonV4?: string | null;
-  reason_facts?: RecommendationReasonFacts | null;
-  reasonFacts?: RecommendationReasonFacts | null;
+  reason_facts?: unknown;
+  reasonFacts?: unknown;
   recommendation_reason_quality?: RecommendationReasonQuality | null;
   recommendationReasonQuality?: RecommendationReasonQuality | null;
   recommendation_reason_detail?: RecommendationReasonDetail | null;
@@ -329,17 +310,13 @@ function resolveRecommendationReason({
   fallbackReason,
 }: {
   recommendationReasonV4?: string | null;
-  reasonFacts?: RecommendationReasonFacts | null;
+  reasonFacts?: ConciergeReasonFacts | null;
   fallbackReason?: string | null;
 }) {
   const v4Reason = asTrimmedString(recommendationReasonV4);
   if (v4Reason) return v4Reason;
 
-  const factBasedReason =
-    asTrimmedString(reasonFacts?.shrine_feature) ??
-    asTrimmedString(reasonFacts?.shrine_benefit) ??
-    asTrimmedString(reasonFacts?.visit_fit) ??
-    asTrimmedString(reasonFacts?.fallback_reason);
+  const factBasedReason = asTrimmedString(findPrimaryReasonFact(reasonFacts)?.label);
 
   if (factBasedReason) return factBasedReason;
 
@@ -347,28 +324,6 @@ function resolveRecommendationReason({
   if (legacyReason) return legacyReason;
 
   return "相談内容と神社情報をもとに選ばれた神社です。";
-}
-
-function buildReasonFactItems(reasonFacts?: RecommendationReasonFacts | null) {
-  if (!reasonFacts) return [];
-
-  return [
-    reasonFacts.shrine_feature
-      ? { label: "神社固有の文脈", value: reasonFacts.shrine_feature }
-      : null,
-    reasonFacts.shrine_benefit
-      ? { label: "ご利益・意味", value: reasonFacts.shrine_benefit }
-      : null,
-    reasonFacts.visit_fit
-      ? { label: "参拝との相性", value: reasonFacts.visit_fit }
-      : null,
-    reasonFacts.distance_label
-      ? { label: "行きやすさ", value: reasonFacts.distance_label }
-      : null,
-    reasonFacts.popularity_label
-      ? { label: "参考情報", value: reasonFacts.popularity_label }
-      : null,
-  ].filter((item): item is { label: string; value: string } => Boolean(item?.value?.trim()));
 }
 
 function toRecommendationCard(item: RecommendationApiCard, index: number): RecommendationCard {
@@ -385,8 +340,7 @@ function toRecommendationCard(item: RecommendationApiCard, index: number): Recom
   const reasonV4Detail = normalizeRecommendationReasonV4Detail(
     item.recommendation_reason_v4_detail ?? item.recommendationReasonV4Detail,
   );
-  const reasonFactsRaw = item.reason_facts ?? item.reasonFacts ?? null;
-  const reasonFacts = Array.isArray(reasonFactsRaw) ? (reasonFactsRaw[0] ?? null) : reasonFactsRaw;
+  const reasonFacts = normalizeRecommendationReasonFacts(item.reason_facts ?? item.reasonFacts);
   const reason = resolveRecommendationReason({
     recommendationReasonV4,
     reasonFacts,
@@ -815,7 +769,10 @@ export default function ConciergeScreen() {
       source: "mobile_concierge_result",
       shrineId: card.shrineId ?? null,
       threadId: null,
-      historyTheme: card.reasonFacts?.primary_axis ?? "",
+      historyTheme: resolveActionEventHistoryTheme({
+        facts: card.reasonFacts,
+        actionSourceKeys: card.actionSuggestionV4Preview?.sourceKeys,
+      }),
       actionCategory: action.actionType,
       metadata: {
         platform: "mobile",
