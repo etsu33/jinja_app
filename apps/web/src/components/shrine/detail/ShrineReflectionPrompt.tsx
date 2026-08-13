@@ -6,6 +6,10 @@ import { useEffect, useMemo, useState } from "react";
 
 import { createShrineReflection } from "@/lib/api/reflections";
 import { trackSearchEvent } from "@/lib/analytics/searchEvents";
+import {
+  recommendationAnalyticsProperties,
+  type RecommendationAnalyticsProvenance,
+} from "../../../../../../packages/shared/recommendationAnalyticsProvenance";
 
 type Props = {
   shrineId: number | string;
@@ -14,6 +18,7 @@ type Props = {
   ctx?: string | null;
   accessLevel?: "anonymous" | "free" | "premium" | null;
   onSaved?: () => void;
+  analyticsProvenance?: RecommendationAnalyticsProvenance;
 };
 
 const PROMPT_TEXT = "参拝して、今どんな変化がありましたか？";
@@ -25,6 +30,7 @@ export function ShrineReflectionPrompt({
   ctx = null,
   accessLevel = null,
   onSaved,
+  analyticsProvenance,
 }: Props) {
   const mode = ctx === "concierge" ? "need" : undefined;
   const [answer, setAnswer] = useState("");
@@ -47,8 +53,9 @@ export function ShrineReflectionPrompt({
       reflectionContext: "visit_done",
       mode,
       accessLevel,
+      ...(analyticsProvenance ? recommendationAnalyticsProperties(analyticsProvenance) : {}),
     });
-  }, [accessLevel, historyTheme, mode, shrineId, threadId]);
+  }, [accessLevel, analyticsProvenance, historyTheme, mode, shrineId, threadId]);
 
   async function handleSubmit() {
     if (!canSubmit) return;
@@ -80,6 +87,7 @@ export function ShrineReflectionPrompt({
         moodAfter: moodAfter || undefined,
         mode,
         accessLevel,
+        ...(analyticsProvenance ? recommendationAnalyticsProperties(analyticsProvenance) : {}),
       });
 
       setStatus("saved");

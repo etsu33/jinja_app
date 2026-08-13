@@ -24,6 +24,10 @@ import { trackSearchEvent } from "@/lib/analytics/searchEvents";
 import { trackWebDirection } from "@/lib/analytics/directionEvents";
 import { withDirectionRouteContext } from "@/lib/analytics/directionRouteContext";
 import { buildRecommendationReasonDisplay } from "../../../../../../packages/shared/recommendationReasonDisplay";
+import {
+  buildRecommendationResultSetId,
+  recommendationAnalyticsProperties,
+} from "../../../../../../packages/shared/recommendationAnalyticsProvenance";
 
 import type {
   ConciergeSectionsPayload,
@@ -363,13 +367,13 @@ export default function ConciergeSectionsRenderer({
           (item as any).consultationAxis,
           payload.meta?.consultationAxis,
         ),
+        analyticsProvenance: item.analyticsProvenance,
       }));
     });
   }, [payload, normalizedModeForTracking]);
 
   const resultSetId = useMemo(() => {
-    const signature = resultImpressions.map((item) => `${item.rank}:${item.position}:${item.shrineId}`).join("|");
-    return `${tid ?? "unknown"}:${signature || "empty"}`;
+    return buildRecommendationResultSetId(tid, resultImpressions);
   }, [resultImpressions, tid]);
 
   useEffect(() => {
@@ -388,6 +392,9 @@ export default function ConciergeSectionsRenderer({
         mode: item.mode,
         historyTheme: item.historyTheme ?? analyticsContext?.historyTheme,
         ...consultationAxisAnalytics(item.consultationAxis ?? analyticsContext?.consultationAxis),
+        ...(item.analyticsProvenance
+          ? recommendationAnalyticsProperties(item.analyticsProvenance)
+          : {}),
       });
     });
   }, [analyticsContext?.consultationAxis, analyticsContext?.historyTheme, resultImpressions, resultSetId, tid]);
@@ -929,6 +936,9 @@ export default function ConciergeSectionsRenderer({
                                   historyTheme: historyTheme ?? analyticsContext?.historyTheme,
                                   ...consultationAxisAnalytics(heroItem.consultationAxis ?? analyticsContext?.consultationAxis),
                                   firstClick: resolveFirstResultClick(resultSetId),
+                                  ...(heroItem.analyticsProvenance
+                                    ? recommendationAnalyticsProperties(heroItem.analyticsProvenance)
+                                    : {}),
                                 }); }
                               }
                             />
@@ -1104,6 +1114,9 @@ export default function ConciergeSectionsRenderer({
                                           (item as any).consultationAxis ?? analyticsContext?.consultationAxis,
                                         ),
                                         firstClick: resolveFirstResultClick(resultSetId),
+                                        ...(item.analyticsProvenance
+                                          ? recommendationAnalyticsProperties(item.analyticsProvenance)
+                                          : {}),
                                       }); }
                                     }
                                   />

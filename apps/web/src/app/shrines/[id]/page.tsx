@@ -47,6 +47,7 @@ import { compareState } from "@/lib/concierge/compareState";
 import type { StateDelta } from "@/lib/concierge/stateComparison";
 import { parseDirectionRouteContext } from "@/lib/analytics/directionRouteContext";
 import { normalizeRecommendationReasonV4Detail } from "@/lib/shrine/buildShrineDetailReasonV4Sections";
+import { recommendationAnalyticsProvenance } from "../../../../../../packages/shared/recommendationAnalyticsProvenance";
 
 function normalizeCtx(v?: string | null): "map" | "concierge" | null {
   return v === "map" || v === "concierge" ? v : null;
@@ -415,6 +416,12 @@ export default async function Page({ params, searchParams }: Props) {
   const recommendationReasonV4Detail = normalizeRecommendationReasonV4Detail(
     selectedRecommendation?.recommendation_reason_v4_detail ?? null,
   );
+  const analyticsProvenance = recommendationAnalyticsProvenance({
+    primaryReasonSource:
+      selectedRecommendation?.primary_reason_source ?? selectedRecommendation?._primary_reason_source,
+    reasonFacts: selectedRecommendation?.reason_facts,
+    actionSuggestionPreview: selectedRecommendation?.action_suggestion_v4_preview,
+  });
 
   const model = buildShrineDetailModel({
     shrine: s,
@@ -437,7 +444,7 @@ export default async function Page({ params, searchParams }: Props) {
   return (
     <>
       <ScrollToTopOnMount />
-      <ShrineDetailViewTracker shrineId={numericId} ctx={ctx} tid={tid} />
+      <ShrineDetailViewTracker shrineId={numericId} ctx={ctx} tid={tid} analyticsProvenance={analyticsProvenance} />
       <ShrineDetailToast shrineId={numericId} />
       <ShrineDetailShell
         title={pageTitle}
@@ -447,6 +454,7 @@ export default async function Page({ params, searchParams }: Props) {
         ctx={ctx}
         tid={tid}
         historyTheme={historyThemeForAnalytics}
+        analyticsProvenance={analyticsProvenance}
         directionRouteContext={directionRouteContext}
         addGoshuinHref={null}
         googleDirHref={googleDirHref}
@@ -459,6 +467,7 @@ export default async function Page({ params, searchParams }: Props) {
           stateDelta={stateDelta}
           isPremiumActive={isPremiumActive}
           historyTheme={historyThemeForAnalytics}
+          analyticsProvenance={analyticsProvenance}
           addGoshuinHref={addGoshuinHref}
           saveActionNode={
             <ShrineSaveButton
@@ -468,6 +477,7 @@ export default async function Page({ params, searchParams }: Props) {
               tid={tid}
               nextPath={nextPath}
               guestMode={guestMode}
+              analyticsProvenance={analyticsProvenance}
               initial={initialFavorite}
             />
           }

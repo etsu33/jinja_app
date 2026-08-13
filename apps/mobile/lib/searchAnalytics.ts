@@ -5,6 +5,10 @@
 // track()自体がnull/undefined除去・primitive型への制限・送信失敗の握り潰しを担うため、
 // ここではEvent名とPayloadの型・組み立てのみに責務を絞る(UIからPostHog providerを直接呼ばない)。
 import { track } from "./analytics";
+import {
+  recommendationAnalyticsProperties,
+  type RecommendationAnalyticsProvenance,
+} from "../../../packages/shared/recommendationAnalyticsProvenance";
 
 const SOURCE_HOME = "home";
 const SOURCE_SEARCH = "mobile_search";
@@ -45,11 +49,15 @@ export function trackMapMarkerSelect(params: { shrineId: string }): void {
 
 // 神社詳細画面の外部経路CTA(Googleマップ起動)。Web版のroute_openと同一Event名・
 // 同一の意味で送る(source/routeTargetの値も揃える)。
-export function trackRouteOpen(params: { shrineId: string | number }): void {
+export function trackRouteOpen(params: {
+  shrineId: string | number;
+  provenance?: RecommendationAnalyticsProvenance;
+}): void {
   track("route_open", {
     source: SOURCE_SHRINE_DETAIL,
     shrineId: params.shrineId,
     routeTarget: "google_maps",
     platform: "mobile",
+    ...(params.provenance ? recommendationAnalyticsProperties(params.provenance) : {}),
   });
 }

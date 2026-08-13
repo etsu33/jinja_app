@@ -4,6 +4,10 @@ import { trackSearchEvent } from "@/lib/analytics/searchEvents";
 import { trackShrineInteraction } from "@/lib/api/shrineInteractions";
 import { trackWebDirection } from "@/lib/analytics/directionEvents";
 import type { DirectionRouteContext } from "@/lib/analytics/directionRouteContext";
+import {
+  recommendationAnalyticsProperties,
+  type RecommendationAnalyticsProvenance,
+} from "../../../../../packages/shared/recommendationAnalyticsProvenance";
 
 type Props = {
   href: string;
@@ -14,6 +18,7 @@ type Props = {
   historyTheme?: string | null;
   className?: string;
   directionRouteContext?: DirectionRouteContext | null;
+  analyticsProvenance?: RecommendationAnalyticsProvenance;
 };
 
 export default function GoogleMapRouteLink({
@@ -25,6 +30,7 @@ export default function GoogleMapRouteLink({
   historyTheme = null,
   className,
   directionRouteContext = null,
+  analyticsProvenance,
 }: Props) {
   let routeUrl: URL | null = null;
   try {
@@ -61,6 +67,7 @@ export default function GoogleMapRouteLink({
             threadId: tid != null ? String(tid) : undefined,
             historyTheme: historyTheme ?? undefined,
             ctx,
+            ...(analyticsProvenance ? recommendationAnalyticsProperties(analyticsProvenance) : {}),
           });
         } catch {
           console.warn("route_analytics_delivery_failed");
@@ -79,6 +86,7 @@ export default function GoogleMapRouteLink({
                 routeTarget: "google_maps",
                 historyTheme,
                 ctx,
+                ...(analyticsProvenance ? recommendationAnalyticsProperties(analyticsProvenance) : {}),
               },
             }).catch(() => console.warn("route_interaction_delivery_failed"));
           } catch {

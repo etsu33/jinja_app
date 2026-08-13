@@ -69,6 +69,10 @@ import { addVisit, getVisits, type Visit } from "@/lib/api/visits";
 
 import { trackSearchEvent } from "@/lib/analytics/searchEvents";
 import { ShrineReflectionPrompt } from "@/components/shrine/detail/ShrineReflectionPrompt";
+import {
+  recommendationAnalyticsProperties,
+  type RecommendationAnalyticsProvenance,
+} from "../../../../../../packages/shared/recommendationAnalyticsProvenance";
 
 
 function ShrineDetailSections({ sections }: { sections: ShrineDetailSectionModel[] }) {
@@ -386,6 +390,7 @@ export default function ShrineDetailArticle({
   ctx = null,
   tid = null,
   historyTheme = null,
+  analyticsProvenance,
   meaningPayloadSource = "fallback",
   saveActionNode,
   actionState,
@@ -417,6 +422,7 @@ export default function ShrineDetailArticle({
   ctx?: string | null;
   tid?: string | number | null;
   historyTheme?: string | null;
+  analyticsProvenance?: RecommendationAnalyticsProvenance;
   meaningPayloadSource?: "v2" | "fallback";
   saveActionNode?: React.ReactNode;
   actionState?: "none" | "detail_viewed" | "saved" | "route_opened" | "visited" | "reflected" | null;
@@ -709,6 +715,7 @@ export default function ShrineDetailArticle({
                     threadId={tid != null ? String(tid) : null}
                     ctx={ctx}
                     accessLevel={accessLevel}
+                    analyticsProvenance={analyticsProvenance}
                   />
                 ) : null}
 
@@ -736,6 +743,7 @@ export default function ShrineDetailArticle({
                           historyTheme: historyTheme ?? undefined,
                           accessLevel,
                           mode: ctx === "concierge" ? "need" : undefined,
+                          ...(analyticsProvenance ? recommendationAnalyticsProperties(analyticsProvenance) : {}),
                         });
                         const now = new Date().toISOString();
                         setVisitSummary((current) => ({
