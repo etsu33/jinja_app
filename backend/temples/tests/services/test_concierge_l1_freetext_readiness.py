@@ -50,7 +50,7 @@ EXPECTED_AXIS_FAMILY = {
     "courage": {"restart_mindset", "other"},  # keyword-coverage-dependent, see audit §8
     "study": {"study_success"},
     "love": {"other"},  # Finding A: no love/relationship axis exists
-    "relationship": {"other", "rest_healing"},  # Finding A/C: alias + no axis
+    "relationship": {"other", "rest_healing"},  # Finding A: no love/relationship axis exists (unaffected by the Finding C alias fix -- consultation_axis never routed through NEED_TAG_ALIASES)
 }
 
 # Cases the audit confirmed reach a real (non-fallback) primary reason.
@@ -58,10 +58,21 @@ EXPECTED_AXIS_FAMILY = {
 # (l1_relationship_002, l1_courage_002) are intentionally excluded --
 # their empty need_tags is itself the audited finding, not a regression
 # to guard against here.
+#
+# l1_relationship_003 was moved out of this set by the
+# relationship/love separation fix (see fix/concierge-relationship-love
+# -separation): before the fix, "relationship" was force-aliased to
+# "love", and this candidate pool happens to have a real love-themed
+# shrine (恋木神社) that matched -- a *wrong* match, not a real one.
+# After the fix, "relationship" is preserved and correctly finds no
+# match in this 82-shrine pool (no astro_tags/text_weights/goriyaku
+# coverage for "relationship" yet -- a genuine, now-honest Candidate
+# Coverage Gap, see EXPECTED_FALLBACK_CLASSIFICATION below). Losing a
+# wrong match is the intended outcome, not a regression.
 EXPECTED_NON_FALLBACK_IDS = {
     "l1_career_001", "l1_career_002", "l1_career_003",
     "l1_rest_001", "l1_rest_002", "l1_rest_003",
-    "l1_relationship_001", "l1_relationship_003",
+    "l1_relationship_001",
     "l1_love_001", "l1_love_002",
     "l1_money_001", "l1_money_002",
     "l1_courage_001",
@@ -71,13 +82,22 @@ EXPECTED_NON_FALLBACK_IDS = {
 # Failure Handling Rule (audit doc §8.1-8.3): a fallback primary_reason
 # must be attributed to one of Interpretation Gap / Matching Gap /
 # Candidate Coverage Gap / Expected Fallback, never treated as a single
-# undifferentiated "L1 failed" bucket. At audit time, all 6 observed
-# fallback cases were Layer-1 (Interpretation) -- either Expected
-# (ambiguous queries with no thematic hook) or a genuine keyword-coverage
-# gap for a clear-intent query. Zero cases reached Layer 2 (Matching) or
-# Layer 3 (Candidate/Knowledge Coverage).
+# undifferentiated "L1 failed" bucket.
+#
+# l1_relationship_003 is now (post-fix) a genuine Candidate Coverage
+# Gap: need_tags correctly resolves to ["relationship"] (Interpretation
+# succeeded), consultation_axis is "other" only because no
+# love/relationship consultation_axis exists at all (Finding A,
+# pre-existing, unrelated to this fix), but matched_need_tags is empty
+# because this 82-shrine pool has zero shrines with "relationship" in
+# astro_tags, no NEED_TEXT_WEIGHTS["relationship"] entry, and these
+# test candidates carry no goriyaku_tag_ids (even though
+# NEED_TO_GORIYAKU_IDS["relationship"] = {1, 27, 34, 43} already exists
+# -- temples/domain/need_to_goriyaku_tag_ids.py). This is a real,
+# reported gap (Task 8), not fixed in this PR.
 EXPECTED_FALLBACK_CLASSIFICATION = {
     "l1_relationship_002": "interpretation_gap",
+    "l1_relationship_003": "candidate_coverage_gap",
     "l1_courage_002": "interpretation_gap",
     "l1_ambiguous_001": "expected_fallback",
     "l1_ambiguous_002": "expected_fallback",
@@ -85,13 +105,11 @@ EXPECTED_FALLBACK_CLASSIFICATION = {
     "l1_ambiguous_004": "expected_fallback",
 }
 
-# Expected semantic need_tag family per case (audit doc §5/§10). For the
-# two relationship cases that Finding C documents as mis-aliased to
-# "love", the expected family includes both the intended tag
-# ("relationship") and the currently-observed one ("love") -- this pins
-# the *current* (buggy) behavior as a known state without asserting it
-# is correct, so a future fix (removing the alias) does not spuriously
-# fail this test.
+# Expected semantic need_tag family per case (audit doc §5/§10). Prior
+# to the relationship/love separation fix, the two relationship cases
+# were pinned to accept both "relationship" (intended) and "love"
+# (then-observed, buggy) -- now that the alias is removed, this is
+# tightened to assert only the correct value.
 EXPECTED_NEED_TAG_FAMILY = {
     "l1_career_001": {"career"},
     "l1_career_002": {"career"},
@@ -99,8 +117,8 @@ EXPECTED_NEED_TAG_FAMILY = {
     "l1_rest_001": {"mental", "rest"},
     "l1_rest_002": {"rest"},
     "l1_rest_003": {"rest"},
-    "l1_relationship_001": {"relationship", "love"},
-    "l1_relationship_003": {"relationship", "love"},
+    "l1_relationship_001": {"relationship"},
+    "l1_relationship_003": {"relationship"},
     "l1_love_001": {"love"},
     "l1_love_002": {"love"},
     "l1_money_001": {"money", "career"},
@@ -320,15 +338,26 @@ def test_l1_freetext_fallback_cases_match_documented_set(readiness_results):
 
 
 @pytest.mark.django_db
-def test_l1_freetext_no_fallback_reaches_matching_or_coverage_layer(readiness_results):
-    """At audit time, all fallback cases were Layer-1 (Interpretation):
-    need_tags was empty, so matched_need_tags and
-    history_theme_candidate_boost are structurally zero too -- Layer 2
-    (Matching Gap) and Layer 3 (Candidate/Knowledge Coverage Gap) were
-    never reached. This does not prove Matching/Coverage gaps can't
-    occur (audit doc §12 Risks) -- it pins what was actually observed
-    with this 82-shrine candidate pool."""
-    for case_id in EXPECTED_FALLBACK_CLASSIFICATION:
+def test_l1_freetext_fallback_layer_matches_classification(readiness_results):
+    """Each fallback case's actual need_tags/matched_need_tags shape must
+    match its EXPECTED_FALLBACK_CLASSIFICATION category:
+
+    - interpretation_gap / expected_fallback (Layer 1): need_tags is
+      empty -- Interpretation itself produced nothing, so
+      matched_need_tags/score_need/history_theme_candidate_boost are
+      structurally zero too.
+    - candidate_coverage_gap (Layer 3): need_tags is *non-empty*
+      (Interpretation succeeded) but matched_need_tags is still empty
+      because this 82-shrine pool has no astro_tags/text_weights/
+      goriyaku coverage for that tag yet.
+
+    This does not prove Matching Gaps (Layer 2: consultation_axis
+    correct + need_tags present, but still no match) can't occur (audit
+    doc §12 Risks) -- it pins what was actually observed with this
+    82-shrine candidate pool, now including the one Layer 3 case
+    introduced by the relationship/love separation fix
+    (l1_relationship_003)."""
+    for case_id, category in EXPECTED_FALLBACK_CLASSIFICATION.items():
         _, recs = readiness_results[case_id]
         top1 = recs["recommendations"][0]
         need = recs.get("_need") or {}
@@ -336,7 +365,11 @@ def test_l1_freetext_no_fallback_reaches_matching_or_coverage_layer(readiness_re
         features = ((top1.get("breakdown_detail") or {}).get("features")) or {}
         history_boost = (features.get("history_theme_candidate_boost") or {}).get("raw")
 
-        assert need.get("tags") == [], f"{case_id}: expected empty need_tags (Layer 1), got {need.get('tags')}"
+        if category == "candidate_coverage_gap":
+            assert need.get("tags"), f"{case_id}: expected non-empty need_tags (Layer 3), got {need.get('tags')}"
+        else:
+            assert need.get("tags") == [], f"{case_id}: expected empty need_tags (Layer 1), got {need.get('tags')}"
+
         assert breakdown.get("matched_need_tags") == [], f"{case_id}: unexpected matched_need_tags"
         assert breakdown.get("score_need") == 0, f"{case_id}: unexpected non-zero score_need"
         assert not history_boost, f"{case_id}: unexpected history_theme_candidate_boost={history_boost}"

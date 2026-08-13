@@ -51,7 +51,6 @@ NEED_PRIORITY = {
 NEED_TAG_ALIASES: Dict[str, str] = {
     "marriage": "love",
     "romance": "love",
-    "relationship": "love",
     "anxiety": "mental",
     "healing": "rest",
     "career_change": "career",
@@ -61,6 +60,19 @@ NEED_TAG_ALIASES: Dict[str, str] = {
     "ambition": "courage",
     "success": "courage",
 }
+# "relationship" (人間関係全般: 職場/家族/友人/対人) is a distinct,
+# first-class need tag in temples/domain/need_tags.py -- with its own
+# keyword list, its own NEED_TO_GORIYAKU_IDS mapping ({1, 27, 34, 43},
+# temples/domain/need_to_goriyaku_tag_ids.py), and its own priority
+# slot -- deliberately separate from "love" (恋愛/出会い/良縁,
+# {1, 29}). It must NOT be aliased to "love" here: doing so collapsed
+# workplace/family/friend relationship consultations into romantic-love
+# recommendation reasons (docs/audit/concierge-l1-freetext-readiness.md
+# Finding C, PR #2409). "romance"/"marriage" (English synonyms an LLM
+# might emit for the same *romantic* concept as "love") remain aliased
+# above; "relationship" is not a synonym of "love", so it is not in
+# this table at all -- normalize_need_tag("relationship") now returns
+# "relationship" unchanged.
 
 
 def normalize_need_tag(tag: Any) -> str:

@@ -373,7 +373,6 @@ def _score_profile_signal(
 NEED_TAG_ALIASES: Dict[str, str] = {
     "marriage": "love",
     "romance": "love",
-    "relationship": "love",
     "anxiety": "mental",
     "healing": "rest",
     "career_change": "career",
@@ -383,6 +382,13 @@ NEED_TAG_ALIASES: Dict[str, str] = {
     "ambition": "courage",
     "success": "courage",
 }
+# "relationship" (人間関係全般) is a distinct need tag from "love"
+# (恋愛) -- see the identical fix + rationale in
+# temples/services/concierge_chat_need.NEED_TAG_ALIASES (this module
+# has its own independent copy of the same table, used by
+# _attach_breakdown's matching path; both had to be fixed for the
+# alias removal to actually take effect end-to-end, see
+# docs/audit/concierge-l1-freetext-readiness.md Finding C / PR #2409).
 
 
 NEED_TEXT_WEIGHTS: Dict[str, Dict[str, int]] = {

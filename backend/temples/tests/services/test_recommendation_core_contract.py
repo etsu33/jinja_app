@@ -52,14 +52,21 @@ def test_consultation_theme_study_resolves_to_study():
     assert "study" in payload["tags"]
 
 
-def test_consultation_theme_relationship_is_currently_mapped_to_love_not_relationship():
+def test_consultation_theme_relationship_resolves_to_relationship_not_love():
+    """"relationship" (人間関係全般: 職場/家族/友人/対人) is a domain-
+    distinct need tag from "love" (恋愛/出会い/良縁) -- it must not be
+    force-converted to "love" by NEED_TAG_ALIASES. Previously this test
+    asserted the opposite as documented-buggy behavior; see
+    docs/audit/concierge-l1-freetext-readiness.md Finding C (PR #2409)
+    and the fix in concierge_chat_need.NEED_TAG_ALIASES /
+    concierge_chat_ranking.NEED_TAG_ALIASES."""
     payload = resolve_need_payload(
         query="人間関係や職場の関係を整えたい",
         max_tags=3,
     )
 
-    assert "relationship" not in payload["tags"]
-    assert "love" in payload["tags"] or "mental" in payload["tags"] or "career" in payload["tags"]
+    assert "relationship" in payload["tags"]
+    assert "love" not in payload["tags"]
 
 
 def test_consultation_theme_challenge_resolves_to_courage():
