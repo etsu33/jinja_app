@@ -697,38 +697,41 @@ export default function ConciergeSectionsRenderer({
               );
             }
 
+            // ConciergeFilterPanel already renders its own title + close
+            // control as a self-contained bordered section (see
+            // ConciergeFilterPanel.tsx). Wrapping it in DetailSection here
+            // duplicated the same title text twice and added a second
+            // nested border/padding layer -- Concierge Entry Responsive /
+            // Density Polish Task 6 removed that redundancy; no signal or
+            // behavior change.
             return (
               <div key={`filter-${i}-open`}>
-                <DetailSection title={title}>
-                  <div>
-                    <ConciergeFilterPanel
-                      isOpen
-                      title={title}
-                      onClose={() => onAction?.({ type: "filter_close" })}
-                      onApply={() => {
-                        onAction?.({ type: "filter_apply" });
-                      }}
-                      canApply={canApplyCompatFilter}
-                      birthdate={state.birthdate}
-                      onBirthdateChange={(v: string) => onAction?.({ type: "filter_set_birthdate", birthdate: v })}
-                      element4={state.element4}
-                      goriyakuTags={state.goriyakuTags}
-                      suggestedTags={state.suggestedTags}
-                      selectedTagIds={state.selectedTagIds}
-                      onToggleTag={(tagId: number) => onAction?.({ type: "filter_toggle_tag", tagId })}
-                      tagsLoading={state.tagsLoading}
-                      tagsError={state.tagsError}
-                      extraCondition={state.extraCondition}
-                      onExtraConditionChange={(v: string) =>
-                        onAction?.({ type: "filter_set_extra", extraCondition: v })
-                      }
-                      visitPreferences={state.visitPreferences}
-                      onVisitPreferencesChange={(tags: string[]) =>
-                        onAction?.({ type: "filter_set_visit_preferences", visitPreferences: tags })
-                      }
-                    />
-                  </div>
-                </DetailSection>
+                <ConciergeFilterPanel
+                  isOpen
+                  title={title}
+                  onClose={() => onAction?.({ type: "filter_close" })}
+                  onApply={() => {
+                    onAction?.({ type: "filter_apply" });
+                  }}
+                  canApply={canApplyCompatFilter}
+                  birthdate={state.birthdate}
+                  onBirthdateChange={(v: string) => onAction?.({ type: "filter_set_birthdate", birthdate: v })}
+                  element4={state.element4}
+                  goriyakuTags={state.goriyakuTags}
+                  suggestedTags={state.suggestedTags}
+                  selectedTagIds={state.selectedTagIds}
+                  onToggleTag={(tagId: number) => onAction?.({ type: "filter_toggle_tag", tagId })}
+                  tagsLoading={state.tagsLoading}
+                  tagsError={state.tagsError}
+                  extraCondition={state.extraCondition}
+                  onExtraConditionChange={(v: string) =>
+                    onAction?.({ type: "filter_set_extra", extraCondition: v })
+                  }
+                  visitPreferences={state.visitPreferences}
+                  onVisitPreferencesChange={(tags: string[]) =>
+                    onAction?.({ type: "filter_set_visit_preferences", visitPreferences: tags })
+                  }
+                />
               </div>
             );
           }

@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 type ConciergeEntryExample = {
   label: string;
   text: string;
@@ -26,6 +28,13 @@ type Props = {
   onSubmit: () => void;
   onClear: () => void;
 };
+
+// Assist chips shown before "ほかのテーマも見る" (Concierge Entry
+// Responsive / Density Polish Task 4): a display-only cap over the same
+// feelExamples array. onPickExample/signal semantics are unchanged --
+// every example remains reachable, just not all visible by default, so
+// Assist stays medium visibility instead of dominating the page height.
+const INITIAL_VISIBLE_EXAMPLES = 4;
 
 // Concierge Entry Frontend IA v2 (docs/product/concierge-input-architecture.md,
 // Frontend IA Implementation Addendum; docs/audit/concierge-l1-freetext-final-readiness.md
@@ -56,12 +65,16 @@ export default function ConciergeEntryCard({
   onSubmit,
   onClear,
 }: Props) {
+  const [showAllExamples, setShowAllExamples] = useState(false);
+  const hasMoreExamples = feelExamples.length > INITIAL_VISIBLE_EXAMPLES;
+  const visibleExamples = showAllExamples ? feelExamples : feelExamples.slice(0, INITIAL_VISIBLE_EXAMPLES);
+
   return (
     <>
-      <div className="space-y-1.5 rounded-3xl border border-stone-200/10 bg-stone-50/30 px-4 py-4">
+      <div className="space-y-1 rounded-3xl border border-stone-200/10 bg-stone-50/30 px-4 py-3.5">
         <div>
           <p className="text-[9px] font-normal tracking-[0.24em] text-[var(--kt-color-text-muted)] opacity-70">KAMI MUSUBI GUIDE</p>
-          <h1 className="mt-1.5 text-lg font-medium leading-7 text-[var(--kt-color-text-primary)]">相談から、向かう神社を見つける</h1>
+          <h1 className="mt-1 text-lg font-medium leading-6 text-[var(--kt-color-text-primary)]">相談から、向かう神社を見つける</h1>
         </div>
         <p className="text-sm leading-6 text-[var(--kt-color-text-muted)] opacity-85">
           {displayName
@@ -71,7 +84,7 @@ export default function ConciergeEntryCard({
       </div>
 
       {/* Level 1 Consultation -- Primary Input */}
-      <div className="mt-5 space-y-4">
+      <div className="mt-4 space-y-3.5">
         <div>
           <label htmlFor="concierge-input" className="mb-1.5 block text-sm font-medium text-[var(--kt-color-text-primary)]">
             今、どんなことが気になっていますか？
@@ -81,7 +94,7 @@ export default function ConciergeEntryCard({
             value={needText}
             onChange={(e) => setNeedText(e.target.value)}
             placeholder="例: 仕事の迷いを整理したい、少し休みたい"
-            rows={4}
+            rows={3}
             autoFocus
             className="w-full rounded-3xl border border-stone-200/30 bg-white px-3 py-2.5 text-sm leading-7 text-[var(--kt-color-text-primary)] outline-none transition placeholder:text-stone-400 placeholder:opacity-60 focus:border-emerald-300/60 focus:ring-1 focus:ring-emerald-100/60"
           />
@@ -90,7 +103,7 @@ export default function ConciergeEntryCard({
         <div className="flex flex-col gap-1.5 sm:flex-row">
           <button
             type="button"
-            className="min-h-11 w-full rounded-[var(--kt-radius-pill)] border border-emerald-300 bg-emerald-50/50 px-3 py-2 text-sm font-medium text-emerald-800 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 hover:bg-emerald-100/40 disabled:cursor-not-allowed disabled:opacity-40"
+            className="min-h-11 w-full rounded-[var(--kt-radius-pill)] bg-[var(--kt-color-action-primary)] px-3 py-2 text-sm font-semibold text-[var(--kt-color-action-primary-text)] shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 hover:bg-[var(--kt-color-action-primary-hover)] disabled:cursor-not-allowed disabled:bg-stone-200 disabled:text-stone-400 disabled:shadow-none"
             disabled={isBusy || !needText.trim() || !canSend}
             onClick={onSubmit}
           >
@@ -99,7 +112,7 @@ export default function ConciergeEntryCard({
 
           <button
             type="button"
-            className="min-h-11 w-full rounded-[var(--kt-radius-pill)] border border-[var(--kt-color-border-strong)] bg-stone-50/25 px-3 py-2 text-sm font-medium text-[var(--kt-color-text-secondary)] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 hover:bg-stone-100/30 disabled:cursor-not-allowed disabled:border-stone-200 disabled:bg-stone-100 disabled:text-stone-400 disabled:opacity-40"
+            className="min-h-11 w-full rounded-[var(--kt-radius-pill)] border border-transparent bg-transparent px-3 py-2 text-sm font-medium text-[var(--kt-color-text-muted)] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 hover:bg-stone-100/50 hover:text-[var(--kt-color-text-secondary)] disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto sm:shrink-0 sm:px-4"
             disabled={isBusy}
             onClick={onClear}
           >
@@ -110,12 +123,13 @@ export default function ConciergeEntryCard({
         {/* Assist: Consultation Writing Assist chips (medium visibility) --
             not an alternative search route. Picking one replaces the
             textarea with an editable starting sentence (onPickExample),
-            the same signal path as typing it manually. */}
-        <section aria-label="相談テーマから選ぶ" className="pt-1">
+            the same signal path as typing it manually. A border-t marks a
+            clear visual break from the Primary CTA above (Task 3/4). */}
+        <section aria-label="相談テーマから選ぶ" className="border-t border-stone-200/25 pt-3.5">
           <p className="text-[11px] font-medium text-[var(--kt-color-text-muted)] opacity-75">うまく言葉にならないとき</p>
           <p className="text-[11px] text-[var(--kt-color-text-muted)] opacity-60">近いテーマから選べます</p>
-          <div className="mt-2.5 flex flex-wrap gap-2">
-            {feelExamples.map((example) => {
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {visibleExamples.map((example) => {
               const isSelected = needText.trim() === example.text;
               return (
                 <button
@@ -138,6 +152,16 @@ export default function ConciergeEntryCard({
               );
             })}
           </div>
+          {hasMoreExamples ? (
+            <button
+              type="button"
+              className="mt-2 text-xs font-medium text-[var(--kt-color-text-muted)] underline-offset-2 hover:text-[var(--kt-color-text-secondary)] hover:underline"
+              onClick={() => setShowAllExamples((prev) => !prev)}
+              aria-expanded={showAllExamples}
+            >
+              {showAllExamples ? "テーマを閉じる" : `ほかのテーマも見る（他${feelExamples.length - INITIAL_VISIBLE_EXAMPLES}件）`}
+            </button>
+          ) : null}
         </section>
       </div>
 
@@ -145,7 +169,7 @@ export default function ConciergeEntryCard({
           visual prominence (Task 9). Kept (not removed): sessionNickname has
           a runtime dependency (anonymous snapshot restore, greeting copy in
           ConciergeClientFull). */}
-      <div className="mt-6 space-y-3 border-t border-stone-200/20 pt-4">
+      <div className="mt-5 space-y-2.5 border-t border-stone-200/20 pt-3.5">
         <div>
           <label
             htmlFor="concierge-entry-nickname"

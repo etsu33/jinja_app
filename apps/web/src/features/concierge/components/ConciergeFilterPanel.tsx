@@ -149,7 +149,7 @@ export default function ConciergeFilterPanel({
   return (
     <section className="mx-auto w-full max-w-md min-w-0 space-y-2 rounded-xl border border-slate-200 bg-slate-50/60 p-2 sm:max-h-none">
       <div className="flex items-center justify-between">
-        <div className="text-[10px] font-semibold text-slate-600">{title}</div>
+        <div className="text-xs font-semibold text-slate-700">{title}</div>
         <button type="button" className="text-[11px] font-semibold text-slate-600 hover:underline" onClick={onClose}>
           閉じる
         </button>
@@ -175,7 +175,7 @@ export default function ConciergeFilterPanel({
         ) : null}
 
         {/* Level 2 Visit Preference */}
-        <section aria-label="今回の参拝の希望（任意）" className="space-y-2">
+        <section aria-label="今回の参拝の希望（任意）" className="space-y-1.5">
           <div>
             <div className="text-[10px] font-semibold text-slate-600">参拝スタイル</div>
             <p className="mt-0.5 text-[10px] leading-4 text-slate-400">
@@ -184,17 +184,17 @@ export default function ConciergeFilterPanel({
           </div>
 
           {QUICK_PRESET_GROUPS.map((group) => (
-            <div key={group.title} className="space-y-1 rounded-lg border border-slate-100 bg-slate-50/60 p-2">
+            <div key={group.title} className="space-y-1 rounded-lg border border-slate-100 bg-slate-50/60 p-1.5">
               <div>
                 <div className="text-[10px] font-semibold text-slate-600">{group.title}</div>
                 <p className="mt-0.5 text-[10px] leading-4 text-slate-400">{group.description}</p>
               </div>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap gap-1">
                 {group.items.map((p) => (
                   <button
                     key={p.label}
                     type="button"
-                    className="rounded-full border bg-[var(--kt-color-surface-default)] px-3 py-1 text-xs font-semibold hover:bg-slate-50"
+                    className="rounded-full border bg-[var(--kt-color-surface-default)] px-2.5 py-1 text-xs font-semibold hover:bg-slate-50"
                     onClick={() => {
                       onExtraConditionChange(mergeExtra(extraCondition, p.value));
                       const tags = PRESET_VISIT_PREFERENCE_TAGS[p.label];
@@ -225,7 +225,7 @@ export default function ConciergeFilterPanel({
                   <button
                     key={t.id}
                     type="button"
-                    className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                    className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${
                       on ? "border-emerald-600 bg-emerald-50" : "bg-white"
                     }`}
                     onClick={() => onToggleTag(t.id)}
@@ -261,7 +261,7 @@ export default function ConciergeFilterPanel({
                   <button
                     key={t.id}
                     type="button"
-                    className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                    className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${
                       on ? "border-emerald-600 bg-emerald-50" : "bg-white"
                     }`}
                     onClick={() => onToggleTag(t.id)}

@@ -1759,7 +1759,7 @@ export default function ConciergeClientFull() {
                 one disclosure (Task 10's 3-state model), but each
                 responsibility keeps its own labeled subsection so they are
                 not shown as one undifferentiated "条件" pile (Task 11). */}
-            <div className="mt-7 rounded-3xl border border-stone-200/45 bg-stone-50/60 p-4">
+            <div className="mt-5 rounded-3xl border border-stone-200/45 bg-stone-50/60 p-3.5">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[11px] font-medium tracking-[0.2em] text-stone-500">もう少し自分に合わせる（任意）</p>
@@ -1834,10 +1834,10 @@ export default function ConciergeClientFull() {
                       Explicit Constraint above. Same plannedVisitDate/
                       userOrigin state and handlers as before this move --
                       request payload semantics are unchanged. */}
-                  <section aria-label="参拝の詳細（任意）" className="mt-3 rounded-2xl border border-stone-200/50 bg-white/80 p-3">
-                    <p className="text-[10px] font-semibold text-slate-600">参拝の詳細（任意）</p>
+                  <section aria-label="参拝の詳細（任意）" className="mt-2.5 rounded-2xl border border-stone-200/50 bg-white/80 p-2.5">
+                    <p className="text-xs font-semibold text-slate-700">参拝の詳細（任意）</p>
                     <p className="mt-0.5 text-[10px] leading-4 text-slate-400">予定日と出発地点から、神社への方角を補助条件として使います。</p>
-                    <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                    <div className="mt-2 grid gap-2.5 sm:grid-cols-2">
                       <label className="block text-sm font-medium text-stone-600">
                         参拝予定日（任意）
                         <input

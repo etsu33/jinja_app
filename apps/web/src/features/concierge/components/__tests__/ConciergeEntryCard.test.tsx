@@ -126,6 +126,52 @@ describe("ConciergeEntryCard", () => {
     expect(redirectToAuth).toHaveBeenCalledWith("register");
   });
 
+  it("Assist density: caps visible chips and reveals the rest via ほかのテーマも見る (Concierge Entry Responsive/Density Polish Task 4)", () => {
+    const eightExamples = [
+      { label: "仕事について考えたい", text: "仕事の相談です" },
+      { label: "人との関係を整えたい", text: "人間関係の相談です" },
+      { label: "お金の流れを整えたい", text: "お金の相談です" },
+      { label: "一歩踏み出したい", text: "一歩踏み出したいです" },
+      { label: "少し休みたい", text: "休みたいです" },
+      { label: "体調を整えたい", text: "体調の相談です" },
+      { label: "学びを深めたい", text: "学びの相談です" },
+      { label: "これからを考えたい", text: "これからの相談です" },
+    ];
+
+    render(<ConciergeEntryCard {...baseProps} feelExamples={eightExamples} />);
+
+    // Signal semantics are unchanged -- every example is still reachable
+    // via the same onPickExample handler, only display visibility is
+    // capped so Assist stays medium visibility instead of dominating the
+    // page (Core Principle: chips must not visually outweigh Consultation).
+    for (const example of eightExamples.slice(0, 4)) {
+      expect(screen.getByRole("button", { name: example.label })).toBeInTheDocument();
+    }
+    for (const example of eightExamples.slice(4)) {
+      expect(screen.queryByRole("button", { name: example.label })).not.toBeInTheDocument();
+    }
+
+    const expandButton = screen.getByRole("button", { name: /ほかのテーマも見る/ });
+    expect(expandButton).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(expandButton);
+
+    for (const example of eightExamples) {
+      expect(screen.getByRole("button", { name: example.label })).toBeInTheDocument();
+    }
+    const collapseButton = screen.getByRole("button", { name: "テーマを閉じる" });
+    expect(collapseButton).toHaveAttribute("aria-expanded", "true");
+
+    fireEvent.click(collapseButton);
+    for (const example of eightExamples.slice(4)) {
+      expect(screen.queryByRole("button", { name: example.label })).not.toBeInTheDocument();
+    }
+  });
+
+  it("does not show ほかのテーマも見る when there are 4 or fewer examples", () => {
+    render(<ConciergeEntryCard {...baseProps} />);
+    expect(screen.queryByRole("button", { name: /ほかのテーマも見る/ })).not.toBeInTheDocument();
+  });
+
   it("disables the primary CTA while empty, busy, or blocked, but not the chips before text is entered", () => {
     const { rerender } = render(<ConciergeEntryCard {...baseProps} needText="" />);
     expect(screen.getByRole("button", { name: "この相談で神社を提案してもらう" })).toBeDisabled();

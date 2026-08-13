@@ -141,6 +141,20 @@ describe("ConciergeSectionsRenderer - 既存経路のCoverage補完", () => {
     expect(onAction).toHaveBeenCalledWith({ type: "filter_apply" });
   });
 
+  it("補助条件(開いた状態)ではConciergeFilterPanelのタイトルが重複表示されない(Concierge Entry Responsive/Density Polish)", () => {
+    const onAction = vi.fn();
+    const u: any = { data: { recommendations: [heroRec] }, thread: { id: 1 } };
+    const payload = buildTestPayload(u, { ...baseFilterState, isOpen: true });
+    render(<ConciergeSectionsRenderer payload={payload} threadId={1} onAction={onAction} />);
+
+    // ConciergeFilterPanel renders its own title + close header as a
+    // self-contained section; the outer DetailSection wrapper that used
+    // to duplicate the same title text was removed. Guards against that
+    // regression coming back. (buildPayloadFromUnified sets this filter
+    // section's title to "条件を追加".)
+    expect(screen.getAllByText("条件を追加")).toHaveLength(1);
+  });
+
   it("window custom event concierge:open-filterでadd_conditionが発火する", () => {
     const onAction = vi.fn();
     const u: any = { data: { recommendations: [heroRec] }, thread: { id: 1 } };
