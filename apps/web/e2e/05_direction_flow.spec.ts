@@ -64,8 +64,26 @@ test.afterAll(async () => {
 const forbiddenAnalyticsKeys = new Set<string>(directionAnalyticsForbiddenKeys);
 
 async function fillAndSubmit(page: import("@playwright/test").Page) {
-  await page.getByLabel("必要なら、今の状況を少しだけ書く").fill(consultation);
+  await page.getByLabel("今、どんなことが気になっていますか？").fill(consultation);
   await page.getByRole("button", { name: "この相談で神社を提案してもらう" }).click();
+}
+
+// PR #2413 (Concierge Entry Frontend IA v2): Level 3-C (visit date /
+// origin) moved out of the always-visible Initial screen into the
+// Personalize section (collapsed by default, docs/product/
+// concierge-input-architecture.md Frontend IA Implementation Addendum).
+// Initial no longer showing L3-C is the new, correct contract -- tests
+// that need the visit-date field or the origin radio group must open
+// Personalize first, via the same accessible toggle a real user would use.
+async function openPersonalize(page: import("@playwright/test").Page, options?: { viaKeyboard?: boolean }) {
+  const toggle = page.getByRole("button", { name: "条件を開く" });
+  if (options?.viaKeyboard) {
+    await toggle.focus();
+    await expect(toggle).toBeFocused();
+    await page.keyboard.press("Enter");
+    return;
+  }
+  await toggle.click();
 }
 
 function expectPrivateDataAbsent(events: Array<{ payload: Record<string, unknown> }>) {
@@ -86,6 +104,7 @@ test.describe("方位条件のWeb E2E", () => {
     await context.grantPermissions(["geolocation"]);
     await context.setGeolocation({ latitude: 35.681236, longitude: 139.767125 });
     await page.goto("/concierge");
+    await openPersonalize(page);
 
     await page.getByRole("radio", { name: "現在地を使用" }).click();
     await expect(
@@ -115,6 +134,7 @@ test.describe("方位条件のWeb E2E", () => {
     const captured = await installDirectionScenario(page, { recommendationId: 502, directionReference: mismatchedDirectionReference });
     await context.clearPermissions();
     await page.goto("/concierge");
+    await openPersonalize(page);
 
     await page.getByRole("radio", { name: "現在地を使用" }).click();
     await expect(
@@ -142,6 +162,7 @@ test.describe("方位条件のWeb E2E", () => {
     const reference = { ...matchedDirectionReference, note: "東京都のおおよその位置を基準にした参考情報です。日盤は使用していません。" };
     const captured = await installDirectionScenario(page, { recommendationId: 503, directionReference: reference });
     await page.goto("/concierge");
+    await openPersonalize(page);
 
     await page.getByRole("radio", { name: "都道府県から指定" }).click();
     await page.getByLabel("都道府県").selectOption({ label: "東京都" });
@@ -157,6 +178,7 @@ test.describe("方位条件のWeb E2E", () => {
   test("方位情報を使用しなくても相談でき、location・方位カード・方位加点がない", async ({ page }) => {
     const captured = await installDirectionScenario(page, { recommendationId: 504 });
     await page.goto("/concierge");
+    await openPersonalize(page);
 
     await page.getByRole("radio", { name: "方位情報を使用しない" }).click();
     await page.getByLabel("参拝予定日（任意）").fill("2026-09-15");
@@ -180,6 +202,7 @@ test.describe("方位条件のWeb E2E", () => {
   test("ジオコード500でも方位を無効化して通常相談を継続できる", async ({ page }) => {
     const captured = await installDirectionScenario(page, { recommendationId: 510, geocodeFailure: "500" });
     await page.goto("/concierge");
+    await openPersonalize(page);
     await page.getByRole("radio", { name: "駅名・住所から指定" }).click();
     await page.getByLabel("駅名または住所").fill("失敗地点");
     await expect(page.getByText("候補を検索できませんでした。相談はそのまま続けられます。")).toBeVisible();
@@ -204,6 +227,7 @@ test.describe("方位条件のWeb E2E", () => {
   test("キーボードだけで手動候補を選択して相談を送信できる", async ({ page }) => {
     const captured = await installDirectionScenario(page, { recommendationId: 506, directionReference: mismatchedDirectionReference });
     await page.goto("/concierge");
+    await openPersonalize(page, { viaKeyboard: true });
 
     const manualMode = page.getByRole("radio", { name: "駅名・住所から指定" });
     await manualMode.focus();
@@ -220,7 +244,7 @@ test.describe("方位条件のWeb E2E", () => {
     await page.keyboard.press("Enter");
     await expect(page.getByText("現在の出発地点は東京駅、確定した位置です。")).toBeVisible();
 
-    await page.getByLabel("必要なら、今の状況を少しだけ書く").fill(consultation);
+    await page.getByLabel("今、どんなことが気になっていますか？").fill(consultation);
     const submit = page.getByRole("button", { name: "この相談で神社を提案してもらう" });
     await submit.focus();
     await page.keyboard.press("Enter");
@@ -233,6 +257,7 @@ test.describe("方位条件のWeb E2E", () => {
     await page.setViewportSize({ width: 320, height: 700 });
     await page.goto("/concierge");
     await page.addStyleTag({ content: "html { font-size: 20px !important; }" });
+    await openPersonalize(page);
     await page.getByRole("radio", { name: "駅名・住所から指定" }).click();
 
     const sizes = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, clientWidth: document.documentElement.clientWidth }));
