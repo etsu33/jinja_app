@@ -49,6 +49,7 @@ from temples.services.concierge_chat_ranking import (
     _diversify_by_need,
     _resolve_mode_weights,
     build_recommendation_reason,
+    has_primary_tier_reason,
     resolve_score_sort_key,
     resolve_score_v3_mode,
     resolve_score_v3_mode_detail,
@@ -238,9 +239,18 @@ def _sort_chat_recommendations(
     distance_mode = "sort_distance" in sort_tags
 
     if distance_mode:
+        # Context (distance) may re-rank within Recommendation Meaning, but
+        # must not decide Recommendation Meaning itself (docs/product/
+        # recommendation-signal-authority.md §5/§7/§9 Semantic Fit vs
+        # Distance). A candidate with a Primary-tier reason (need_tags /
+        # consultation_axis / goriyaku / history_theme match) is tiered
+        # ahead of one without, and only sorted by distance within each
+        # tier -- distance still fully controls order when no candidate
+        # has established Recommendation Meaning at all.
         recommendations = sorted(
             recommendations,
             key=lambda r: (
+                0 if has_primary_tier_reason(r.get("_reason_facts")) else 1,
                 float(r.get("distance_m") or 1e12),
                 -resolve_score_sort_key(r, score_v3_mode=score_v3_mode),
                 str(r.get("name") or ""),
