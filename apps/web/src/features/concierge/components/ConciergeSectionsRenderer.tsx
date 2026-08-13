@@ -25,6 +25,7 @@ import { trackWebDirection } from "@/lib/analytics/directionEvents";
 import { withDirectionRouteContext } from "@/lib/analytics/directionRouteContext";
 import { buildRecommendationReasonDisplay } from "../../../../../../packages/shared/recommendationReasonDisplay";
 import {
+  buildRecommendationImpressionDedupKey,
   buildRecommendationResultSetId,
   recommendationAnalyticsProperties,
 } from "../../../../../../packages/shared/recommendationAnalyticsProvenance";
@@ -379,7 +380,13 @@ export default function ConciergeSectionsRenderer({
 
   useEffect(() => {
     resultImpressions.forEach((item) => {
-      const impressionKey = `${resultSetId}:concierge_result_impression:${item.shrineId}:${item.position}:${item.rank}`;
+      const impressionKey = buildRecommendationImpressionDedupKey({
+        recommendationInstanceId: item.recommendationInstanceId,
+        resultSetId,
+        shrineId: item.shrineId,
+        position: item.position,
+        rank: item.rank,
+      });
       if (trackedImpressionKeysRef.current.has(impressionKey)) return;
 
       trackedImpressionKeysRef.current.add(impressionKey);

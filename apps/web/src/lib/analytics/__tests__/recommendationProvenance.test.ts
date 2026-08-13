@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildRecommendationImpressionDedupKey,
   normalizeRecommendationInstanceId,
   recommendationAnalyticsProperties,
   recommendationAnalyticsProvenance,
@@ -63,5 +64,68 @@ describe("normalizeRecommendationInstanceId", () => {
     const first = normalizeRecommendationInstanceId("a1b2c3d4");
     const second = normalizeRecommendationInstanceId("a1b2c3d4");
     expect(first).toBe(second);
+  });
+});
+
+// docs/audit/recommendation-strict-funnel-readiness.md §6, §14-1/2: Impression dedup must
+// key off recommendationInstanceId (the true instance boundary), not resultSetId alone.
+describe("buildRecommendationImpressionDedupKey", () => {
+  it("同一instanceの同一shrine/rankは同じkeyになる(dedupが機能する)", () => {
+    const first = buildRecommendationImpressionDedupKey({
+      recommendationInstanceId: "gen-a",
+      resultSetId: "thread-1:1:1",
+      shrineId: 1,
+      position: "hero",
+      rank: 1,
+    });
+    const second = buildRecommendationImpressionDedupKey({
+      recommendationInstanceId: "gen-a",
+      resultSetId: "thread-1:1:1",
+      shrineId: 1,
+      position: "hero",
+      rank: 1,
+    });
+    expect(first).toBe(second);
+  });
+
+  it("同じshrine/rankでもrecommendationInstanceIdが違えば別keyになる(新generationは抑制されない)", () => {
+    const genA = buildRecommendationImpressionDedupKey({
+      recommendationInstanceId: "gen-a",
+      resultSetId: "thread-1:1:1",
+      shrineId: 1,
+      position: "hero",
+      rank: 1,
+    });
+    const genB = buildRecommendationImpressionDedupKey({
+      recommendationInstanceId: "gen-b",
+      resultSetId: "thread-1:1:1",
+      shrineId: 1,
+      position: "hero",
+      rank: 1,
+    });
+    expect(genA).not.toBe(genB);
+  });
+
+  it("recommendationInstanceIdがnull/undefinedならresultSetIdへfallbackする(合成しない)", () => {
+    const key = buildRecommendationImpressionDedupKey({
+      recommendationInstanceId: null,
+      resultSetId: "thread-1:1:1",
+      shrineId: 1,
+      position: "hero",
+      rank: 1,
+    });
+    expect(key).toContain("thread-1:1:1");
+  });
+
+  it("shrineId/positionが欠損してもクラッシュしない", () => {
+    expect(() =>
+      buildRecommendationImpressionDedupKey({
+        recommendationInstanceId: undefined,
+        resultSetId: "unknown:empty",
+        shrineId: null,
+        position: undefined,
+        rank: 1,
+      }),
+    ).not.toThrow();
   });
 });
