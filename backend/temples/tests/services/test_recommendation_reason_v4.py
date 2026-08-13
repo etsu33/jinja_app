@@ -340,7 +340,9 @@ def test_build_recommendation_reason_v4_uses_recommendation_input_profile_when_d
         }
     )
 
-    assert result["fact"]["label"] == "縁"
+    # translation_result.history_theme is Derived Meaning, not a raw Shrine Fact.
+    assert result["fact"]["label"] == "縁結び"
+    assert result["fact"]["history_theme"] is None
     assert result["interpretation"]["theme"] == "縁"
     assert result["action"]["text"] == "参拝前に、気持ちを落ち着け、今の状態を静かに見直すことを一つだけ決めておくと、行動につなげやすくなります。"
 
@@ -427,7 +429,7 @@ def test_build_recommendation_reason_v4_handles_missing_inputs_safely():
     result = build_recommendation_reason_v4()
 
     assert result == {
-        "reason_text": "神社固有情報が十分でないため、相談条件との一致を中心に整理しています。相談内容から、今扱いたいテーマを読み取っています。参拝前に、次に確認したいことを一つだけ決めておきます。",
+        "reason_text": "神社固有情報が十分でないため、確認できる情報をもとに候補として整理しています。相談内容から、今扱いたいテーマを読み取っています。参拝前に、次に確認したいことを一つだけ決めておきます。",
         "fact": {
             "label": "候補神社",
             "name": None,
@@ -584,7 +586,7 @@ def test_build_recommendation_reason_v4_place_context_only_does_not_state_addres
     assert "東京都渋谷区代々木神園町1-1" not in result["reason_text"]
     assert "の特徴があります" not in result["reason_text"]
     assert (
-        "神社固有情報が十分でないため、相談条件との一致を中心に整理しています。"
+        "神社固有情報が十分でないため、確認できる情報をもとに候補として整理しています。"
         in result["reason_text"]
     )
 
@@ -860,7 +862,7 @@ def test_build_recommendation_reason_v4_no_facts_falls_back_without_fabricating_
     )
 
     assert (
-        "神社固有情報が十分でないため、相談条件との一致を中心に整理しています。"
+        "神社固有情報が十分でないため、確認できる情報をもとに候補として整理しています。"
         in result["reason_text"]
     )
     assert result["quality"]["fallback_source"] == "fallback"

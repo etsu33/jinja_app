@@ -439,7 +439,9 @@ def _build_score_v3_candidate_profile(rec: dict[str, Any]) -> dict[str, Any]:
         "name": rec.get("name") or source.get("nameJp"),
         "history_theme": rec.get("history_theme") or source.get("historyTheme"),
         "goriyaku": rec.get("goriyaku") or source.get("goriyaku"),
-        "goriyaku_tags": rec.get("goriyaku_tags") or source.get("goriyakuTags") or breakdown.get("matched_need_tags") or [],
+        # Consultation-side matched_need_tags are ranking evidence, not raw
+        # shrine facts.  Do not re-label them as the shrine's goriyaku here.
+        "goriyaku_tags": rec.get("goriyaku_tags") or source.get("goriyakuTags") or [],
         "visit_style_tags": rec.get("visit_style_tags") or features.get("visit_style") or [],
         # Fact-ready ShrineDeity/ShrineHistory（新Knowledge）をfield単位で優先し、
         # 存在しない場合のみLegacy（sajin/description）へfallbackする。
@@ -508,6 +510,7 @@ def _build_reason_v4_preview_payload(
         )
         preview = build_recommendation_reason_v4(
             recommendation_input_profile=recommendation_input_profile,
+            authority_context=_build_reason_v4_authority_context(rec),
         )
 
         previews.append({
@@ -517,6 +520,25 @@ def _build_reason_v4_preview_payload(
             "preview": preview,
         })
     return previews
+
+
+def _build_reason_v4_authority_context(rec: dict[str, Any]) -> dict[str, Any]:
+    """Pass through the already-resolved Primary Reason; never resolve it again."""
+    reason_facts = rec.get("_reason_facts") if isinstance(rec.get("_reason_facts"), list) else []
+    primary_fact = next(
+        (
+            fact
+            for fact in reason_facts
+            if isinstance(fact, dict) and fact.get("is_primary") is True
+        ),
+        {},
+    )
+    primary_source = str(rec.get("_primary_reason_source") or "fallback").strip() or "fallback"
+    return {
+        "primary_reason_source": primary_source,
+        "primary_reason_fact": primary_fact,
+        "is_fallback": primary_source == "fallback",
+    }
 
 
 def _attach_recommendation_reason_quality(
@@ -557,6 +579,7 @@ def _attach_recommendation_reason_quality(
         )
         preview = build_recommendation_reason_v4(
             recommendation_input_profile=recommendation_input_profile,
+            authority_context=_build_reason_v4_authority_context(rec),
         )
         rec["recommendation_reason_v4"] = str(preview.get("reason_text") or "")
         quality = dict(preview.get("quality") or {})
