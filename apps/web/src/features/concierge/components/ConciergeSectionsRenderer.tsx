@@ -1027,6 +1027,8 @@ export default function ConciergeSectionsRenderer({
                               tid={tid}
                               nextPath={heroItem.detailHref}
                               variant="subtle"
+                              recommendationInstanceId={heroItem.recommendationInstanceId ?? null}
+                              analyticsProvenance={heroItem.analyticsProvenance}
                             />
 
                             {premiumPreviewVisibility !== "hidden" ? (
