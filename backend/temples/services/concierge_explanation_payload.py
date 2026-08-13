@@ -59,6 +59,20 @@ def _build_history_context(rec: Dict[str, Any]) -> Dict[str, Any] | None:
     if not raw_theme:
         return None
 
+    # docs/product/recommendation-signal-authority.md §6: history_theme
+    # only has Rank Authority when consultation_axis corresponds to it
+    # (history_theme_candidate_boost > 0, already computed in
+    # _attach_breakdown's breakdown_detail). Reusing that same signal here
+    # keeps history_context (and the action_suggestions derived from it)
+    # from presenting a candidate's history_theme as relevant context when
+    # it had zero actual ranking authority (Explanation Alignment
+    # Hardening audit finding, mirrors the _build_reason_facts() gate).
+    boost_detail = (
+        ((rec.get("breakdown_detail") or {}).get("features") or {}).get("history_theme_candidate_boost") or {}
+    )
+    if not (float(boost_detail.get("raw") or 0.0) > 0):
+        return None
+
     return {
         "theme": raw_theme,
         "label": HISTORY_THEME_LABELS_JA.get(raw_theme, raw_theme),

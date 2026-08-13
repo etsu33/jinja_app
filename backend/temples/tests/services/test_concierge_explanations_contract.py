@@ -287,6 +287,16 @@ def test_attach_explanation_payload_adds_action_suggestions_from_history_theme()
                     "score_total": 1.0,
                     "matched_need_tags": ["career"],
                 },
+                # history_context/action_suggestions only surface when
+                # history_theme actually had ranking authority (Explanation
+                # Alignment Hardening: docs/product/recommendation-signal-
+                # authority.md §6, history_theme_candidate_boost > 0 means
+                # consultation_axis corresponded to this theme).
+                "breakdown_detail": {
+                    "features": {
+                        "history_theme_candidate_boost": {"raw": 0.8},
+                    },
+                },
             }
         ]
     }
