@@ -2,6 +2,36 @@ import { describe, expect, it } from "vitest";
 import { normalizeRecommendations } from "../normalize";
 
 describe("normalizeRecommendations", () => {
+  it("Backend reason_facts wire shapeを順序と値を変えずに保持し、malformed factを除外する", () => {
+    const valid = {
+      type: "element",
+      label: "火",
+      evidence: ["astro_bonus"],
+      score: 1.25,
+      is_primary: true,
+    };
+    const secondary = {
+      type: "need_tag",
+      label: "仕事",
+      evidence: ["career"],
+      score: 9,
+    };
+
+    const [rec] = normalizeRecommendations([{
+      name: "A",
+      reason_facts: [valid, null, { type: "", label: "欠損", evidence: [], score: 1 }, secondary, { ...valid, evidence: "invalid" }],
+    }]);
+
+    expect(rec.reason_facts).toEqual([valid, secondary]);
+    expect(rec.reason_facts?.[0]).toBe(valid);
+    expect(rec.reason_facts?.[1]).toBe(secondary);
+  });
+
+  it.each([null, {}, "invalid", 1])("array以外のreason_factsを空配列として安全に扱う: %p", (reasonFacts) => {
+    const [rec] = normalizeRecommendations([{ name: "A", reason_facts: reasonFacts }]);
+    expect(rec.reason_facts).toEqual([]);
+  });
+
   it("reason_source など未知フィールドを保持する", () => {
     const input = [
       {

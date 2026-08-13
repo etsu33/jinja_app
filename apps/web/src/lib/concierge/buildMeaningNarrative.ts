@@ -293,6 +293,9 @@ function buildMeaningCore(args: {
   })();
 
   const shrineFact = (() => {
+    const feature = clean(args.shrine.feature);
+    if (feature) return `「${feature}」という意味・特徴を持つ場所で`;
+
     const place = (() => {
       if (args.context.place === "mountain") return "山や高低差の文脈";
       if (args.context.place === "forest") return "森や木々に囲まれた文脈";

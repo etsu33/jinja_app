@@ -838,8 +838,8 @@ export default function ConciergeSectionsRenderer({
                             astro_elements: (heroItem as any).astro_elements ?? null,
                             astro_priority: (heroItem as any).astro_priority ?? null,
                             explanation: (heroItem as any).explanation ?? null,
-                            reason_facts: (heroItem as any).reasonFacts ?? null,
                           },
+                          reasonFacts: heroItem.reasonFacts ?? null,
                           index: 0,
                           mode: normalizedMode,
                           birthdate: filterState?.birthdate ?? null,
@@ -857,8 +857,8 @@ export default function ConciergeSectionsRenderer({
                           recommendationReasonV4: (heroItem as any).recommendationReasonV4 ?? null,
                           reason: heroItem.description ?? null,
                         });
-                        // primaryReason(相談内容・ご利益との一致)は新設のinterpretation/fact表示と役割が重なるため
-                        // Hero通常経路では使用しない(reasonVm.hero.*等の見出し系は変更しない)
+                        // 構造化Reason V4がある場合は重複を避ける。無い場合はBackendが指定した
+                        // reason_facts Primaryをadapter経由でVisible UIへ渡す。
                         const heroSecondaryReason = heroReasonV4.hasStructured ? null : heroReasonV4.fallbackText;
                         const trustMetadata = (heroItem as any).trustMetadata ?? null;
                         const trustLabels = [
@@ -898,7 +898,7 @@ export default function ConciergeSectionsRenderer({
                               subtitle={reasonVm.hero.subtitle ?? null}
                               catchCopy={reasonVm.hero.catchCopy}
                               whyTop={null}
-                              primaryReason={null}
+                              primaryReason={heroReasonV4.hasStructured ? null : reasonVm.list.primaryPhrase}
                               secondaryReason={heroSecondaryReason}
                               factReason={heroReasonV4.factText}
                               interpretationReason={heroReasonV4.interpretationText}
@@ -1058,8 +1058,8 @@ export default function ConciergeSectionsRenderer({
                                   astro_elements: (item as any).astro_elements ?? null,
                                   astro_priority: (item as any).astro_priority ?? null,
                                   explanation: (item as any).explanation ?? null,
-                                  reason_facts: (item as any).reasonFacts ?? null,
                                 },
+                                reasonFacts: item.reasonFacts ?? null,
                                 index: compactIdx + 1,
                                 mode: normalizedMode,
                                 birthdate: filterState?.birthdate ?? null,

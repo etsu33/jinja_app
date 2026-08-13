@@ -117,7 +117,7 @@ export async function installDirectionScenario(
       recommendation_reason_v4: "固定レスポンスによる推薦です。",
       recommendation_reason_v4_detail: buildReasonV4Detail(options.recommendationId),
       breakdown: { matched_need_tags: ["career"] },
-      reason_facts: { primary_axis: "benefit", shrine_benefit: "仕事運を整えるご利益" },
+      reason_facts: [{ type: "goriyaku_tag", label: "仕事運を整えるご利益", evidence: ["goriyaku_tag_ids"], score: 2, is_primary: true }],
       ...(options.directionReference ? { direction_reference: options.directionReference } : {}),
     };
     const recommendations = [recommendation];
@@ -130,7 +130,7 @@ export async function installDirectionScenario(
         recommendation_reason_v4: "固定レスポンスによる推薦です。",
         recommendation_reason_v4_detail: buildReasonV4Detail(options.additionalRecommendation.id),
         breakdown: { matched_need_tags: ["career"] },
-        reason_facts: { primary_axis: "benefit", shrine_benefit: "仕事運を整えるご利益" },
+        reason_facts: [{ type: "goriyaku_tag", label: "仕事運を整えるご利益", evidence: ["goriyaku_tag_ids"], score: 2, is_primary: true }],
         ...(options.additionalRecommendation.directionReference
           ? { direction_reference: options.additionalRecommendation.directionReference }
           : {}),

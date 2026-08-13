@@ -1,6 +1,8 @@
 import { buildReasonNarrative } from "./buildReasonNarrative";
 import { buildStateNarrative } from "./buildStateNarrative";
 import { buildMeaningNarrative } from "./buildMeaningNarrative";
+import { adaptReasonFactsForViewModel, type RecommendationReasonViewFacts } from "./adaptReasonFactsForViewModel";
+import type { ConciergeReasonFacts } from "@/lib/api/concierge";
 import {
   HERO_COMPAT_SUBTITLE,
   HERO_EYEBROW_LABELS,
@@ -36,7 +38,8 @@ export type RecommendationLike = {
     matched_need_tags?: string[] | null;
   } | null;
   breakdown_detail?: any | null;
-  reason_facts?: {
+  /** Display-only aggregate shape. Not a Backend/API contract. */
+  reason_facts?: RecommendationReasonViewFacts & {
     primary_axis?: "need" | "benefit" | "feature" | "element" | "distance" | "popularity" | "fallback" | null;
     confidence?: "high" | "mid" | "low" | null;
     matched_element?: string | null;
@@ -84,6 +87,7 @@ export type RecommendationReasonViewModel = {
 
 export type BuildParams = {
   rec: RecommendationLike;
+  reasonFacts?: ConciergeReasonFacts | null;
   index: number;
   mode?: "need" | "compat" | string | null;
   /**
@@ -482,25 +486,31 @@ export function buildRecommendationMatchModel(args: {
  * - UI shape に詰める
  */
 export function buildRecommendationReasonViewModel(params: BuildParams): RecommendationReasonViewModel {
-  const reason = buildReasonNarrative(params);
+  const adaptedReasonFacts = adaptReasonFactsForViewModel(params.reasonFacts);
+  const adaptedParams: BuildParams = adaptedReasonFacts
+    ? { ...params, rec: { ...params.rec, reason_facts: adaptedReasonFacts } }
+    : params.reasonFacts !== undefined
+      ? { ...params, rec: { ...params.rec, reason_facts: null } }
+      : params;
+  const reason = buildReasonNarrative(adaptedParams);
   const compactReason = compactReasonViewModel(reason);
 
-  const inputType = resolveInputType(params);
+  const inputType = resolveInputType(adaptedParams);
   const hero = buildHeroCopy({
-    mode: params.mode,
+    mode: adaptedParams.mode,
     inputType,
-    needTags: params.needTags,
+    needTags: adaptedParams.needTags,
     hero: compactReason.hero,
   });
 
   const state = buildStateNarrative({
-    params,
+    params: adaptedParams,
     primary: reason._meta.primary,
     secondary: reason._meta.secondary,
   });
 
   const meaning = buildMeaningNarrative({
-    params,
+    params: adaptedParams,
     primary: reason._meta.primary,
     secondary: reason._meta.secondary,
   });
