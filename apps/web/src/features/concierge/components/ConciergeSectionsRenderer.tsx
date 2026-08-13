@@ -612,98 +612,53 @@ export default function ConciergeSectionsRenderer({
             const canApplyCompatFilter =
               !!state.birthdate?.trim() || (state.selectedTagIds?.length ?? 0) > 0 || !!state.extraCondition?.trim();
 
-            // 閉じ状態（プリセット選択 + 即絞り）
-            if (!state.isOpen) {
-              const presets = ["静か", "駅近", "ひとり", "階段少なめ"] as const;
+            // Quick preset state is shared between the collapsed summary (selectedPresets
+            // count/label only) and the open panel (interactive chips, moved there --
+            // see the isOpen branch below and docs/product/
+            // recommendation-result-information-architecture.md §15 PR1 follow-up).
+            const presets = ["静か", "駅近", "ひとり", "階段少なめ"] as const;
+            const parts = parseExtraTokens(state.extraCondition);
+            const set = new Set(parts);
 
-              const parts = parseExtraTokens(state.extraCondition);
-              const set = new Set(parts);
+            const togglePreset = (p: string) => {
+              const next = new Set(parts);
+              const turningOn = !next.has(p);
+              if (next.has(p)) next.delete(p);
+              else next.add(p);
+              onAction?.({ type: "filter_set_extra", extraCondition: Array.from(next).join(" ") });
 
-              const togglePreset = (p: string) => {
-                const next = new Set(parts);
-                const turningOn = !next.has(p);
-                if (next.has(p)) next.delete(p);
-                else next.add(p);
-                onAction?.({ type: "filter_set_extra", extraCondition: Array.from(next).join(" ") });
-
-                // Structured Visit Preference is union/append-only here (like
-                // mergeExtra() in ConciergeFilterPanel.tsx) -- toggling a
-                // preset off never removes a tag, since it may also have
-                // been set via the open ConciergeFilterPanel.
-                if (turningOn) {
-                  const addedTags = visitPreferencesForClosedPresets([p]);
-                  if (addedTags.length) {
-                    const merged = new Set([...(state.visitPreferences ?? []), ...addedTags]);
-                    onAction?.({
-                      type: "filter_set_visit_preferences",
-                      visitPreferences: Array.from(merged),
-                    });
-                  }
+              // Structured Visit Preference is union/append-only here (like
+              // mergeExtra() in ConciergeFilterPanel.tsx) -- toggling a
+              // preset off never removes a tag, since it may also have
+              // been set via the open ConciergeFilterPanel.
+              if (turningOn) {
+                const addedTags = visitPreferencesForClosedPresets([p]);
+                if (addedTags.length) {
+                  const merged = new Set([...(state.visitPreferences ?? []), ...addedTags]);
+                  onAction?.({
+                    type: "filter_set_visit_preferences",
+                    visitPreferences: Array.from(merged),
+                  });
                 }
-              };
+              }
+            };
 
-              const selectedPresets = presets.filter((p) => set.has(p));
+            const selectedPresets = presets.filter((p) => set.has(p));
 
+            // Collapsed state is an entry point only (docs/product/
+            // recommendation-result-information-architecture.md §3 Finding 1 follow-up,
+            // §15 PR1): a single way to open the full editor. The current condition (if
+            // any) is already surfaced by the existing appliedLabel chip near the results
+            // below (with its own "クリア" control) -- not repeated here. Actual input
+            // controls (preset chips, apply, back-to-entry) live in the open
+            // ConciergeFilterPanel branch below -- moved there, not removed.
+            if (!state.isOpen) {
               return (
                 <div key={`filter-${i}-closed`}>
                   <DetailSection title="補助条件を添える">
-                    <p className="mb-2 text-xs text-[var(--kt-color-text-muted)]">必要なものだけ選んでください</p>
-
-                    <div className="mb-3 flex flex-wrap gap-2">
-                      {presets.map((p) => {
-                        const active = set.has(p);
-                        return (
-                          <button
-                            key={p}
-                            type="button"
-                            className={[
-                              "rounded-full border px-3 py-1 text-xs font-semibold transition",
-                              active
-                                ? "bg-[var(--kt-color-action-primary)] text-[var(--kt-color-action-primary-text)] border-[var(--kt-color-action-primary)]"
-                                : "bg-[var(--kt-color-surface-default)] text-[var(--kt-color-text-secondary)] hover:bg-[var(--kt-color-background-subtle)]",
-                            ].join(" ")}
-                            onClick={() => togglePreset(p)}
-                          >
-                            {p}
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {selectedPresets.length > 0 && (
-                      <div className={`mb-3 ${conciergeSoftCardClass} text-xs leading-6 text-slate-600`}>
-                        追加済み: {selectedPresets.join(" / ")}
-                      </div>
-                    )}
-
-                    {!isEntryRoute ? (
-                      <button
-                        type="button"
-                        className="mt-2 w-full rounded-[var(--kt-radius-panel)] border px-4 py-3 text-sm font-semibold"
-                        onClick={() => {
-                          onAction?.({ type: "back_to_entry" });
-                          scrollToConciergeInput();
-                        }}
-                        disabled={sending}
-                      >
-                        入口に戻る
-                      </button>
-                    ) : null}
-
                     <button
                       type="button"
-                      className="w-full rounded-[var(--kt-radius-panel)] bg-[var(--kt-color-action-primary)] px-4 py-3 text-sm font-semibold text-[var(--kt-color-action-primary-text)] disabled:opacity-60"
-                      disabled={!canApplyCompatFilter || sending}
-                      onClick={() => {
-                        onAction?.({ type: "filter_apply" });
-                      }}
-                    >
-                      {sending ? "絞り込み中…" : "この内容で反映する"}
-                    </button>
-
-                    <button
-                      type="button"
-                      className="mt-2 w-full rounded-[var(--kt-radius-panel)] border px-4 py-3 text-sm font-semibold"
+                      className="w-full rounded-[var(--kt-radius-panel)] border px-4 py-3 text-sm font-semibold"
                       onClick={() => onAction?.({ type: "add_condition" })}
                     >
                       もう少し詳しく添える
@@ -748,6 +703,57 @@ export default function ConciergeSectionsRenderer({
                     onAction?.({ type: "filter_set_visit_preferences", visitPreferences: tags })
                   }
                 />
+
+                {/* Quick presets, moved here from the collapsed state (docs/product/
+                    recommendation-result-information-architecture.md §15 PR1
+                    follow-up) -- same tokens/tag mapping as before, just no longer
+                    interactive while collapsed. Distinct from ConciergeFilterPanel's
+                    own longer-label presets above: "ひとり"/"階段少なめ" have no
+                    equivalent there and would otherwise become unreachable. */}
+                <div className="mt-2 rounded-[var(--kt-radius-panel)] border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-3">
+                  <p className="mb-2 text-xs text-[var(--kt-color-text-muted)]">必要なものだけ選んでください</p>
+
+                  <div className="flex flex-wrap gap-2">
+                    {presets.map((p) => {
+                      const active = set.has(p);
+                      return (
+                        <button
+                          key={p}
+                          type="button"
+                          className={[
+                            "rounded-full border px-3 py-1 text-xs font-semibold transition",
+                            active
+                              ? "bg-[var(--kt-color-action-primary)] text-[var(--kt-color-action-primary-text)] border-[var(--kt-color-action-primary)]"
+                              : "bg-[var(--kt-color-surface-default)] text-[var(--kt-color-text-secondary)] hover:bg-[var(--kt-color-background-subtle)]",
+                          ].join(" ")}
+                          onClick={() => togglePreset(p)}
+                        >
+                          {p}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {selectedPresets.length > 0 && (
+                    <div className={`mt-2 ${conciergeSoftCardClass} text-xs leading-6 text-slate-600`}>
+                      追加済み: {selectedPresets.join(" / ")}
+                    </div>
+                  )}
+                </div>
+
+                {!isEntryRoute ? (
+                  <button
+                    type="button"
+                    className="mt-2 w-full rounded-[var(--kt-radius-panel)] border px-4 py-3 text-sm font-semibold"
+                    onClick={() => {
+                      onAction?.({ type: "back_to_entry" });
+                      scrollToConciergeInput();
+                    }}
+                    disabled={sending}
+                  >
+                    入口に戻る
+                  </button>
+                ) : null}
               </div>
             );
           }

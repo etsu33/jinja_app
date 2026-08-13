@@ -94,32 +94,27 @@ describe("ConciergeSectionsRenderer - 既存経路のCoverage補完", () => {
     expect(onAction).toHaveBeenCalledWith({ type: "filter_clear" });
   });
 
-  it("補助条件(閉じた状態)のプリセット切替・入口に戻る・反映する・詳しく添えるが動作する", () => {
+  it("補助条件(閉じた状態)は入口のみで、詳しく添えるボタンでadd_conditionが発火する（docs/product/recommendation-result-information-architecture.md §15 PR1）", () => {
     const onAction = vi.fn();
     const u: any = { data: { recommendations: [heroRec] }, thread: { id: 1 } };
     const payload = buildTestPayload(u, { ...baseFilterState, extraCondition: "駅近" });
     render(<ConciergeSectionsRenderer payload={payload} threadId={1} onAction={onAction} isEntryRoute={false} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "静か" }));
-    expect(onAction).toHaveBeenCalledWith(
-      expect.objectContaining({ type: "filter_set_extra" }),
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "入口に戻る" }));
-    expect(onAction).toHaveBeenCalledWith({ type: "back_to_entry" });
-
-    fireEvent.click(screen.getByRole("button", { name: "この内容で反映する" }));
-    expect(onAction).toHaveBeenCalledWith({ type: "filter_apply" });
+    // Quick preset chips / apply / back-to-entry now live only in the open state --
+    // moved there, not removed (see the next test).
+    expect(screen.queryByRole("button", { name: "静か" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "入口に戻る" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "この内容で反映する" })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "もう少し詳しく添える" }));
     expect(onAction).toHaveBeenCalledWith({ type: "add_condition" });
   });
 
-  it("補助条件(開いた状態)のConciergeFilterPanel操作がonActionを発火する", () => {
+  it("補助条件(開いた状態)のConciergeFilterPanel操作・クイックプリセット・入口に戻るがonActionを発火する", () => {
     const onAction = vi.fn();
     const u: any = { data: { recommendations: [heroRec] }, thread: { id: 1 } };
     const payload = buildTestPayload(u, { ...baseFilterState, isOpen: true, extraCondition: "静か" });
-    render(<ConciergeSectionsRenderer payload={payload} threadId={1} onAction={onAction} />);
+    render(<ConciergeSectionsRenderer payload={payload} threadId={1} onAction={onAction} isEntryRoute={false} />);
 
     fireEvent.click(screen.getByRole("button", { name: "健康" }));
     expect(onAction).toHaveBeenCalledWith({ type: "filter_toggle_tag", tagId: 1 });
@@ -139,6 +134,16 @@ describe("ConciergeSectionsRenderer - 既存経路のCoverage補完", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "この内容に反映する" }));
     expect(onAction).toHaveBeenCalledWith({ type: "filter_apply" });
+
+    // Quick presets moved here from the collapsed state (docs/product/
+    // recommendation-result-information-architecture.md §15 PR1).
+    fireEvent.click(screen.getByRole("button", { name: "駅近" }));
+    expect(onAction).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "filter_set_visit_preferences", visitPreferences: ["nearby"] }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "入口に戻る" }));
+    expect(onAction).toHaveBeenCalledWith({ type: "back_to_entry" });
   });
 
   it("補助条件(開いた状態)ではConciergeFilterPanelのタイトルが重複表示されない(Concierge Entry Responsive/Density Polish)", () => {
