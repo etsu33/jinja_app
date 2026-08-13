@@ -25,6 +25,7 @@ type Props = {
   };
   onToggleSuccess?: (nextFav: boolean) => void;
   analyticsProvenance?: RecommendationAnalyticsProvenance;
+  recommendationInstanceId?: string | null;
 };
 
 export default function ShrineSaveButton({
@@ -37,6 +38,7 @@ export default function ShrineSaveButton({
   initial,
   onToggleSuccess,
   analyticsProvenance,
+  recommendationInstanceId = null,
 }: Props) {
   const router = useRouter();
   const { isLoggedIn, loading } = useAuth();
@@ -65,6 +67,7 @@ export default function ShrineSaveButton({
         source: "shrine_detail",
         cardId: "saved_record",
         accessLevel,
+        recommendationInstanceId,
         ...(analyticsProvenance ? recommendationAnalyticsProperties(analyticsProvenance) : {}),
       });
 
@@ -74,6 +77,7 @@ export default function ShrineSaveButton({
           action: "save",
           ctx,
           tid,
+          recommendationInstanceId,
           ...(analyticsProvenance ? recommendationAnalyticsProperties(analyticsProvenance) : {}),
         });
       }

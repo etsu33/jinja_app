@@ -19,6 +19,7 @@ type Props = {
   className?: string;
   directionRouteContext?: DirectionRouteContext | null;
   analyticsProvenance?: RecommendationAnalyticsProvenance;
+  recommendationInstanceId?: string | null;
 };
 
 export default function GoogleMapRouteLink({
@@ -31,6 +32,7 @@ export default function GoogleMapRouteLink({
   className,
   directionRouteContext = null,
   analyticsProvenance,
+  recommendationInstanceId = null,
 }: Props) {
   let routeUrl: URL | null = null;
   try {
@@ -67,6 +69,7 @@ export default function GoogleMapRouteLink({
             threadId: tid != null ? String(tid) : undefined,
             historyTheme: historyTheme ?? undefined,
             ctx,
+            recommendationInstanceId,
             ...(analyticsProvenance ? recommendationAnalyticsProperties(analyticsProvenance) : {}),
           });
         } catch {
@@ -86,6 +89,7 @@ export default function GoogleMapRouteLink({
                 routeTarget: "google_maps",
                 historyTheme,
                 ctx,
+                recommendation_instance_id: recommendationInstanceId,
                 ...(analyticsProvenance ? recommendationAnalyticsProperties(analyticsProvenance) : {}),
               },
             }).catch(() => console.warn("route_interaction_delivery_failed"));

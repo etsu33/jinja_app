@@ -37,6 +37,8 @@ export type RegisteredShrineItem = {
   breakdown_detail?: any | null;
   reasonFacts?: ConciergeReasonFacts | null;
   analyticsProvenance?: RecommendationAnalyticsProvenance;
+  /** Backend rid, reused as-is (docs/audit/recommendation-instance-identity-propagation.md). Never generated on Frontend. */
+  recommendationInstanceId?: string | null;
   consultationAxis?: string | null;
   explanation?: {
     version?: number | null;
@@ -66,6 +68,8 @@ export type PlaceShrineItem = {
   breakdown_detail?: any | null;
   reasonFacts?: ConciergeReasonFacts | null;
   analyticsProvenance?: RecommendationAnalyticsProvenance;
+  /** Backend rid, reused as-is (docs/audit/recommendation-instance-identity-propagation.md). Never generated on Frontend. */
+  recommendationInstanceId?: string | null;
   consultationAxis?: string | null;
   isDummy?: boolean;
   directionReference?: DirectionReference | null;

@@ -50,6 +50,7 @@ export type SearchAnalyticsPayload = {
   isFallbackRecommendation?: boolean | null;
   actionSource?: string | null;
   actionSourceKeys?: string | null;
+  recommendationInstanceId?: string | null;
   position?: "hero_primary" | "compact" | "map" | "list" | null;
   firstClick?: boolean | null;
   query?: string | null;
@@ -135,6 +136,7 @@ export type RecommendationQualityAnalyticsPayload = {
   isFallbackRecommendation?: boolean | null;
   actionSource?: string | null;
   actionSourceKeys?: string | null;
+  recommendationInstanceId?: string | null;
   // docs/audit/knowledge-recommendation-analytics-contract.md 提案の最小Contract。
   // Backend recommendation_reason_quality（PR2382のbuild_shrine_reason_provenance()を
   // 再利用して算出）から受け取るのみで、Web側では再計算しない。

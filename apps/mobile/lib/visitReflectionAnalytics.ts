@@ -19,15 +19,25 @@ type BasePayloadParams = {
   threadId?: number | string | null;
   historyTheme?: string | null;
   provenance?: RecommendationAnalyticsProvenance;
+  // docs/audit/recommendation-instance-identity-propagation.md: Backend-issued rid,
+  // reused as-is. Never generated/derived on Mobile.
+  recommendationInstanceId?: string | null;
 };
 
-function buildBasePayload({ shrineId, threadId, historyTheme, provenance }: BasePayloadParams): Record<string, unknown> {
+function buildBasePayload({
+  shrineId,
+  threadId,
+  historyTheme,
+  provenance,
+  recommendationInstanceId,
+}: BasePayloadParams): Record<string, unknown> {
   return {
     source: SOURCE,
     platform: "mobile",
     shrineId,
     threadId: threadId || undefined,
     historyTheme: historyTheme || undefined,
+    recommendationInstanceId: recommendationInstanceId || undefined,
     ...(provenance ? recommendationAnalyticsProperties(provenance) : {}),
   };
 }

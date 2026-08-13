@@ -38,6 +38,7 @@ import { trackMobileDirection } from "../../lib/directionEvents";
 import { track } from "../../lib/analytics";
 import {
   buildRecommendationResultSetId,
+  normalizeRecommendationInstanceId,
   recommendationAnalyticsProperties,
   recommendationAnalyticsProvenance,
   type RecommendationAnalyticsProvenance,
@@ -91,6 +92,9 @@ type RecommendationCard = {
   actionSuggestionV4Preview?: ActionSuggestionV4Preview | null;
   directionReference?: DirectionReference | null;
   analyticsProvenance: RecommendationAnalyticsProvenance;
+  // docs/audit/recommendation-instance-identity-propagation.md: Backend-issued rid,
+  // reused as-is. Never generated/derived on Mobile.
+  recommendationInstanceId: string | null;
 };
 
 type ActionSuggestionV4Action = {
@@ -158,6 +162,8 @@ type RecommendationApiCard = {
   direction_reference?: DirectionReference | null;
   primary_reason_source?: string | null;
   _primary_reason_source?: string | null;
+  recommendation_instance_id?: string | null;
+  recommendationInstanceId?: string | null;
 };
 function normalizeRecommendationReasonDetail(raw: unknown): RecommendationReasonDetail | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
@@ -356,6 +362,9 @@ function toRecommendationCard(item: RecommendationApiCard, index: number): Recom
     reasonFacts,
     actionSuggestionPreview: item.action_suggestion_v4_preview ?? item.actionSuggestionV4Preview,
   });
+  const recommendationInstanceId = normalizeRecommendationInstanceId(
+    item.recommendation_instance_id ?? item.recommendationInstanceId,
+  );
   const reason = resolveRecommendationReason({
     recommendationReasonV4,
     reasonFacts,
@@ -378,6 +387,7 @@ function toRecommendationCard(item: RecommendationApiCard, index: number): Recom
     actionSuggestionV4Preview,
     directionReference: validDirectionReferenceOrNull(item.direction_reference),
     analyticsProvenance,
+    recommendationInstanceId,
   };
 }
 
@@ -690,6 +700,7 @@ export default function ConciergeScreen() {
         resultSetId,
         shrineId: card.shrineId ?? card.id,
         recommendationRank: index + 1,
+        recommendationInstanceId: card.recommendationInstanceId,
         ...recommendationAnalyticsProperties(card.analyticsProvenance),
       });
     });
@@ -823,6 +834,7 @@ export default function ConciergeScreen() {
         source_keys: card.actionSuggestionV4Preview?.sourceKeys ?? [],
         primary_reason_source: card.analyticsProvenance.primaryReasonSource,
         is_fallback_recommendation: card.analyticsProvenance.isFallbackRecommendation,
+        recommendation_instance_id: card.recommendationInstanceId,
       },
     });
   };
@@ -840,6 +852,7 @@ export default function ConciergeScreen() {
       resultSetId,
       shrineId: card.shrineId,
       recommendationRank: rank,
+      recommendationInstanceId: card.recommendationInstanceId,
       ...recommendationAnalyticsProperties(card.analyticsProvenance),
     });
     router.push({
@@ -855,6 +868,7 @@ export default function ConciergeScreen() {
         recommendationReasonV4Detail: serializeReasonV4Detail(card.reasonV4Detail),
         recommendationRank: String(rank),
         resultSetId,
+        recommendationInstanceId: card.recommendationInstanceId ?? "",
       },
     });
   };

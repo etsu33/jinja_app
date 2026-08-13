@@ -150,6 +150,8 @@ export type ConciergeRecommendation = {
   id?: number | null;
   shrine_id?: number | null;
   place_id?: string | null;
+  /** Backend-issued per-request rid, reused as-is. Never generated/derived on Frontend. */
+  recommendation_instance_id?: string | null;
 
   name: string;
   display_name?: string;

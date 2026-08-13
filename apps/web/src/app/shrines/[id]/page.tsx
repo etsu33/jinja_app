@@ -47,7 +47,10 @@ import { compareState } from "@/lib/concierge/compareState";
 import type { StateDelta } from "@/lib/concierge/stateComparison";
 import { parseDirectionRouteContext } from "@/lib/analytics/directionRouteContext";
 import { normalizeRecommendationReasonV4Detail } from "@/lib/shrine/buildShrineDetailReasonV4Sections";
-import { recommendationAnalyticsProvenance } from "../../../../../../packages/shared/recommendationAnalyticsProvenance";
+import {
+  normalizeRecommendationInstanceId,
+  recommendationAnalyticsProvenance,
+} from "../../../../../../packages/shared/recommendationAnalyticsProvenance";
 
 function normalizeCtx(v?: string | null): "map" | "concierge" | null {
   return v === "map" || v === "concierge" ? v : null;
@@ -422,6 +425,13 @@ export default async function Page({ params, searchParams }: Props) {
     reasonFacts: selectedRecommendation?.reason_facts,
     actionSuggestionPreview: selectedRecommendation?.action_suggestion_v4_preview,
   });
+  // Recommendation Instance Identity Contract
+  // (docs/audit/recommendation-instance-identity-propagation.md): read-only, Backend
+  // rid persisted on the thread snapshot. Direct detail access (no ctx=concierge && tid,
+  // i.e. selectedRecommendation stays null) yields null here -- never synthesized.
+  const recommendationInstanceId = normalizeRecommendationInstanceId(
+    selectedRecommendation?.recommendation_instance_id,
+  );
 
   const model = buildShrineDetailModel({
     shrine: s,
@@ -444,7 +454,13 @@ export default async function Page({ params, searchParams }: Props) {
   return (
     <>
       <ScrollToTopOnMount />
-      <ShrineDetailViewTracker shrineId={numericId} ctx={ctx} tid={tid} analyticsProvenance={analyticsProvenance} />
+      <ShrineDetailViewTracker
+        shrineId={numericId}
+        ctx={ctx}
+        tid={tid}
+        analyticsProvenance={analyticsProvenance}
+        recommendationInstanceId={recommendationInstanceId}
+      />
       <ShrineDetailToast shrineId={numericId} />
       <ShrineDetailShell
         title={pageTitle}
@@ -455,6 +471,7 @@ export default async function Page({ params, searchParams }: Props) {
         tid={tid}
         historyTheme={historyThemeForAnalytics}
         analyticsProvenance={analyticsProvenance}
+        recommendationInstanceId={recommendationInstanceId}
         directionRouteContext={directionRouteContext}
         addGoshuinHref={null}
         googleDirHref={googleDirHref}
@@ -468,6 +485,7 @@ export default async function Page({ params, searchParams }: Props) {
           isPremiumActive={isPremiumActive}
           historyTheme={historyThemeForAnalytics}
           analyticsProvenance={analyticsProvenance}
+          recommendationInstanceId={recommendationInstanceId}
           addGoshuinHref={addGoshuinHref}
           saveActionNode={
             <ShrineSaveButton
@@ -478,6 +496,7 @@ export default async function Page({ params, searchParams }: Props) {
               nextPath={nextPath}
               guestMode={guestMode}
               analyticsProvenance={analyticsProvenance}
+              recommendationInstanceId={recommendationInstanceId}
               initial={initialFavorite}
             />
           }

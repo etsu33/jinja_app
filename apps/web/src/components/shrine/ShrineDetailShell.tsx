@@ -39,6 +39,7 @@ type Props = {
   historyTheme?: string | null;
   directionRouteContext?: DirectionRouteContext | null;
   analyticsProvenance?: RecommendationAnalyticsProvenance;
+  recommendationInstanceId?: string | null;
 };
 
 export default function ShrineDetailShell({
@@ -59,6 +60,7 @@ export default function ShrineDetailShell({
   historyTheme = null,
   directionRouteContext = null,
   analyticsProvenance,
+  recommendationInstanceId = null,
 }: Props) {
   const shouldShowActions = !hideActions && Boolean(googleDirHref || saveAction?.node || addGoshuinHref);
 
@@ -94,6 +96,7 @@ export default function ShrineDetailShell({
                 historyTheme={historyTheme}
                 directionRouteContext={directionRouteContext}
                 analyticsProvenance={analyticsProvenance}
+                recommendationInstanceId={recommendationInstanceId}
                 className="inline-flex min-h-[44px] w-full items-center justify-center rounded-[var(--kt-radius-panel)] bg-slate-900 px-4 py-3 text-sm font-semibold text-[var(--kt-color-text-inverse)] hover:bg-slate-800"
               />
             ) : null}

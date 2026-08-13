@@ -73,6 +73,7 @@ describe("ShrineSaveButton", () => {
         source: "shrine_detail",
         cardId: "saved_record",
         accessLevel: "free",
+        recommendationInstanceId: null,
       });
     });
 

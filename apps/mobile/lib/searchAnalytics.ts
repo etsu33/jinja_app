@@ -52,12 +52,14 @@ export function trackMapMarkerSelect(params: { shrineId: string }): void {
 export function trackRouteOpen(params: {
   shrineId: string | number;
   provenance?: RecommendationAnalyticsProvenance;
+  recommendationInstanceId?: string | null;
 }): void {
   track("route_open", {
     source: SOURCE_SHRINE_DETAIL,
     shrineId: params.shrineId,
     routeTarget: "google_maps",
     platform: "mobile",
+    recommendationInstanceId: params.recommendationInstanceId || undefined,
     ...(params.provenance ? recommendationAnalyticsProperties(params.provenance) : {}),
   });
 }

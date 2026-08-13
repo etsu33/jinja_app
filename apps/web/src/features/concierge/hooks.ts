@@ -20,6 +20,7 @@ import { normalizeBirthdateInput } from "@/lib/date/normalizeBirthdateInput";
 import { trackRecommendationQuality } from "@/lib/analytics/searchEvents";
 import {
   buildRecommendationResultSetId,
+  normalizeRecommendationInstanceId,
   recommendationAnalyticsProperties,
   recommendationAnalyticsProvenance,
 } from "../../../../../packages/shared/recommendationAnalyticsProvenance";
@@ -163,6 +164,9 @@ export function trackRecommendationQualityFromRecommendations(args: {
       knowledge_backing_class: quality.knowledge_backing_class ?? null,
       deity_knowledge_used: quality.deity_knowledge_used ?? null,
       history_knowledge_used: quality.history_knowledge_used ?? null,
+      recommendationInstanceId: normalizeRecommendationInstanceId(
+        (rec as any).recommendation_instance_id ?? (rec as any).recommendationInstanceId,
+      ),
       ...recommendationAnalyticsProperties(recommendationAnalyticsProvenance({
         primaryReasonSource: (rec as any).primary_reason_source ?? (rec as any)._primary_reason_source,
         reasonFacts: rec.reason_facts,

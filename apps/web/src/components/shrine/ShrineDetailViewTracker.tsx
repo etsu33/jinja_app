@@ -13,9 +13,16 @@ type Props = {
   ctx?: "map" | "concierge" | null;
   tid?: string | null;
   analyticsProvenance?: RecommendationAnalyticsProvenance;
+  recommendationInstanceId?: string | null;
 };
 
-export function ShrineDetailViewTracker({ shrineId, ctx = null, tid = null, analyticsProvenance }: Props) {
+export function ShrineDetailViewTracker({
+  shrineId,
+  ctx = null,
+  tid = null,
+  analyticsProvenance,
+  recommendationInstanceId = null,
+}: Props) {
   const trackedRef = useRef(false);
 
   useEffect(() => {
@@ -28,6 +35,7 @@ export function ShrineDetailViewTracker({ shrineId, ctx = null, tid = null, anal
       source,
       shrineId,
       threadId: tid ?? undefined,
+      recommendationInstanceId,
       ...(analyticsProvenance ? recommendationAnalyticsProperties(analyticsProvenance) : {}),
     });
 
@@ -39,10 +47,11 @@ export function ShrineDetailViewTracker({ shrineId, ctx = null, tid = null, anal
       metadata: {
         event: "shrine_detail_view",
         ctx,
+        recommendation_instance_id: recommendationInstanceId,
         ...(analyticsProvenance ? recommendationAnalyticsProperties(analyticsProvenance) : {}),
       },
     });
-  }, [shrineId, ctx, tid, analyticsProvenance]);
+  }, [shrineId, ctx, tid, analyticsProvenance, recommendationInstanceId]);
 
   return null;
 }

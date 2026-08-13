@@ -86,3 +86,14 @@ export function buildRecommendationResultSetId(
     .join("|");
   return `${threadId ?? "unknown"}:${signature || "empty"}`;
 }
+
+// Recommendation Instance Identity Contract
+// (docs/audit/recommendation-instance-identity-propagation.md, Option C):
+// this only normalizes a value the Backend already produced (`rid`, embedded
+// as `recommendation_instance_id` on each recommendation item). Frontend/
+// Mobile must never generate, guess, or reconstruct this id -- an absent
+// value (e.g. direct detail access with no recommendation origin) stays
+// `null`, it is never synthesized.
+export function normalizeRecommendationInstanceId(raw: unknown): string | null {
+  return trimmedString(raw);
+}
