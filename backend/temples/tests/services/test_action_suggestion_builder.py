@@ -200,3 +200,111 @@ def test_attach_action_suggestion_v4_preview_handles_missing_recommendations_saf
     recs = {"recommendations": None}
 
     assert attach_action_suggestion_v4_preview(recs) == {"recommendations": None}
+
+
+def test_attach_preview_preserves_ranked_history_theme_grounding():
+    recs = {
+        "recommendations": [
+            {
+                "_explanation_payload": {
+                    "history_context": {"theme": "勝負", "label": "勝負"},
+                    "action_suggestions": [
+                        {
+                            "title": "今週勝負したいことを1つ決める",
+                            "description": "今週動かす対象を1つに絞ります。",
+                            "grounding_class": "consultation_grounded",
+                            "grounding_source": "ranked_history_theme",
+                        }
+                    ],
+                },
+            }
+        ],
+    }
+
+    preview = attach_action_suggestion_v4_preview(recs)["recommendations"][0][
+        "action_suggestion_v4_preview"
+    ]
+
+    assert preview["primary_action"]["description"] == "今週動かす対象を1つに絞ります。"
+    assert preview["action_source"] == {
+        "source": "action_context",
+        "reason": "ランキングに寄与したhistory_theme「勝負」の行動カタログから提案した",
+    }
+    assert preview["source_keys"] == ["ranked_history_theme", "action_catalog"]
+
+
+def test_attach_preview_preserves_culture_translation_as_consultation_grounding():
+    recs = {
+        "recommendations": [
+            {
+                "_explanation_payload": {"history_context": None, "action_suggestions": []},
+                "recommendation_reason_v4_detail": {
+                    "action": {
+                        "text": "今の仕事を一つ整理する",
+                        "source": "meaning_translation.action_context",
+                    },
+                },
+            }
+        ],
+    }
+
+    preview = attach_action_suggestion_v4_preview(recs)["recommendations"][0][
+        "action_suggestion_v4_preview"
+    ]
+
+    assert preview["primary_action"]["description"] == "今の仕事を一つ整理する"
+    assert preview["action_source"] == {
+        "source": "action_context",
+        "reason": "culture_translationの行動文脈を相談に基づく説明素材として提案した",
+    }
+    assert preview["source_keys"] == ["recommendation_reason_v4", "culture_translation"]
+
+
+def test_attach_preview_uses_generic_safe_fallback_without_grounding_claim():
+    scenarios = {
+        "themeなし": {},
+        "fallback Recommendation": {"action": {"text": "詳細を確認する", "source": "fallback"}},
+        "Knowledge Explanation-only": {
+            "fact": {"deity": "天照大神"},
+            "action": {"source": "fallback"},
+        },
+        "Context-only": {"interpretation": {"text": "近い候補"}, "action": {"source": "fallback"}},
+        "Personalization-only": {"fact": {"element": "火"}, "action": {"source": "fallback"}},
+    }
+
+    recs = {
+        "recommendations": [
+            {
+                "name": case,
+                "_explanation_payload": {
+                    "history_context": None,
+                    "action_suggestions": [
+                        {
+                            "title": "3分だけ通知を切る",
+                            "description": "通知を切り、今考えすぎていることを1行だけメモします。",
+                            "history_theme": "静寂",
+                            "grounding_class": "generic_safe",
+                            "grounding_source": "fallback",
+                        }
+                    ],
+                },
+                "recommendation_reason_v4_detail": detail,
+            }
+            for case, detail in scenarios.items()
+        ],
+    }
+
+    previews = attach_action_suggestion_v4_preview(recs)["recommendations"]
+    for rec in previews:
+        preview = rec["action_suggestion_v4_preview"]
+        assert preview["primary_action"] == {
+            "label": "まず詳細を見て、行く理由を確認する",
+            "description": "入力が少ないため、この神社の詳細を見て判断材料を増やします。",
+            "action_type": "detail_open",
+            "confidence": 0.66,
+        }, rec["name"]
+        assert preview["action_source"] == {
+            "source": "fallback",
+            "reason": "入力が不足しているため、詳細確認と保存を安全な初期提案にした",
+        }, rec["name"]
+        assert preview["source_keys"] == [], rec["name"]
