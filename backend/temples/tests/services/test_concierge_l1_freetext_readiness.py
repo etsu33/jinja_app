@@ -29,6 +29,7 @@ from pathlib import Path
 
 import pytest
 import yaml
+from django.test import override_settings
 
 from temples.services.concierge_chat import build_chat_recommendations
 from temples.tests.fixtures.concierge_l1_freetext_readiness_queries import (
@@ -171,9 +172,31 @@ def _run_all(candidates):
 
 @pytest.fixture(scope="module")
 def readiness_results(django_db_blocker):
-    with django_db_blocker.unblock():
-        candidates = _load_seed_candidates()
-        return _run_all(candidates)
+    # Root cause (investigated per user request): CI's backend-tests.yml
+    # sets CONCIERGE_USE_LLM=1 at the job/env level (unlike local dev,
+    # where it defaults to False -- shrine_project/settings.py). Every
+    # sibling deterministic-path fixture in this test suite
+    # (test_concierge_eval_queries_seed80.py,
+    # test_concierge_visit_preference_contract.py,
+    # test_concierge_integrated_recommendation_contract.py, etc.)
+    # explicitly forces settings.CONCIERGE_USE_LLM = False; this fixture
+    # had not, so in CI it silently took the LLM route
+    # (resolve_llm_route -> ConciergeOrchestrator().suggest()) instead of
+    # the deterministic _attach_breakdown path this whole audit measures.
+    # That orchestrator path does not preserve astro_tags on the
+    # candidate dicts it returns, so matched_by_tag is empty for every
+    # candidate regardless of need_tags, and every recommendation falls
+    # back -- reproduced locally by exporting CONCIERGE_USE_LLM=1 for a
+    # single isolated case (l1_rest_002), confirming this is an
+    # environment-default mismatch, not test-order/state leakage within
+    # a single pytest run. override_settings is used (module-scoped
+    # fixture) instead of the function-scoped `settings` fixture used
+    # elsewhere -- a module-scoped fixture cannot depend on a
+    # function-scoped one.
+    with override_settings(CONCIERGE_USE_LLM=False):
+        with django_db_blocker.unblock():
+            candidates = _load_seed_candidates()
+            return _run_all(candidates)
 
 
 # ---------------------------------------------------------------------------
