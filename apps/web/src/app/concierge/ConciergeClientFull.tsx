@@ -20,7 +20,9 @@ import { buildDummySections } from "@/features/concierge/sections/dummy";
 
 import ConciergeSectionsRenderer from "@/features/concierge/components/ConciergeSectionsRenderer";
 import ConciergeEntryCard from "@/features/concierge/components/ConciergeEntryCard";
+import OriginSelector from "@/features/concierge/components/OriginSelector";
 import { buildPayloadFromUnified } from "@/features/concierge/buildPayloadFromUnified";
+import { buildConciergeRequestPayload } from "@/features/concierge/buildConciergeRequestPayload";
 
 import type { RendererAction, ConciergeSectionsPayload } from "@/features/concierge/sections/types";
 import { getGoriyakuTags } from "@/lib/api/tags";
@@ -30,8 +32,8 @@ import { useBilling } from "@/features/billing/hooks/useBilling";
 import { isAuthRequiredForAction } from "@/lib/auth/actionGuards";
 import { initialConciergeSessionState, type ConciergeSessionState } from "@/features/concierge/types";
 import { resolveDisplayLabel, resolveDisplayName } from "@/lib/profile/resolveDisplayName";
-import { buildProfileContext, normalizeBirthday as normalizeProfileBirthday } from "@/lib/profile/derivedProfile";
-import { toOriginPayload, type UserOrigin } from "../../../../../packages/shared/userOrigin";
+import { normalizeBirthday as normalizeProfileBirthday } from "@/lib/profile/derivedProfile";
+import type { UserOrigin } from "../../../../../packages/shared/userOrigin";
 
 import { conciergeLog } from "@/lib/log/concierge";
 import { EVT_CLOSE_CONCIERGE } from "@/lib/events";
@@ -116,13 +118,6 @@ function isBirthdateOnlyText(value: string): boolean {
   const trimmed = value.trim();
   if (!trimmed) return false;
   return normalizeBirthdateInput(trimmed) !== null;
-}
-
-function normalizeQueryText(value: string): string {
-  const trimmed = value.trim();
-  if (!trimmed) return "";
-  if (isBirthdateOnlyText(trimmed)) return "";
-  return trimmed;
 }
 
 function deriveMessages(events: LocalEvent[], threadId: number): ConciergeMessage[] {
@@ -1001,53 +996,17 @@ export default function ConciergeClientFull() {
         duration_max_min?: number;
         free_text?: string;
       },
-    ): Omit<ConciergeChatRequestV1, "thread_id"> => {
-      const savedProfile = user?.profile;
-      const birthdate = normalizeBirthdateInput(sessionState.temporaryBirthdate ?? "") ?? normalizeProfileBirthday(savedProfile?.birthday);
-      const payloadBirthdate = input?.birthdate ?? birthdate;
-      const payloadGoriyakuTagIds = input?.goriyaku_tag_ids ?? baseFilters.goriyaku_tag_ids;
-      const payloadExtraCondition = input?.extra_condition ?? baseFilters.extra_condition;
-      const payloadVisitPreferences =
-        input?.visit_preferences ?? (visitPreferences.length ? visitPreferences : undefined);
-      const payloadCrowd = input?.crowd ?? baseFilters.crowd;
-      const payloadDurationMaxMin = input?.duration_max_min ?? baseFilters.duration_max_min;
-      const payloadFreeText = input?.free_text ?? input?.extra_condition ?? baseFilters.free_text;
-      const rawQuery = normalizeQueryText(input?.query ?? needText);
-      const hasPayloadFilter =
-        !!payloadBirthdate ||
-        (payloadGoriyakuTagIds?.length ?? 0) > 0 ||
-        !!payloadExtraCondition ||
-        !!payloadCrowd?.length ||
-        typeof payloadDurationMaxMin === "number" ||
-        !!payloadFreeText;
-      const query = rawQuery || (hasPayloadFilter ? "追加した条件に合う神社を提案してください。" : "");
-
-      return {
-        version: input?.version ?? 1,
-        mode: input?.mode ?? "need",
-        query,
-        birthdate: payloadBirthdate,
-        filters: {
-          birthdate: payloadBirthdate,
-          goriyaku_tag_ids: payloadGoriyakuTagIds,
-          extra_condition: payloadExtraCondition,
-          crowd: payloadCrowd,
-          duration_max_min: payloadDurationMaxMin,
-          free_text: payloadFreeText,
-        },
-        goriyaku_tag_ids: payloadGoriyakuTagIds,
-        extra_condition: payloadExtraCondition,
-        visit_preferences: payloadVisitPreferences,
-        visit_date: plannedVisitDate || undefined,
-        location: toOriginPayload(userOrigin),
-        profile_context: buildProfileContext({
-          birthday: payloadBirthdate,
-          birth_time: savedProfile?.birth_time,
-          birth_place: savedProfile?.birth_place,
-          worship_style: savedProfile?.worship_style,
-        }),
-      };
-    },
+    ): Omit<ConciergeChatRequestV1, "thread_id"> =>
+      buildConciergeRequestPayload({
+        needText,
+        temporaryBirthdate: sessionState.temporaryBirthdate,
+        savedProfile: user?.profile,
+        baseFilters,
+        visitPreferences,
+        plannedVisitDate,
+        userOrigin,
+        input,
+      }),
     [sessionState.temporaryBirthdate, needText, baseFilters, user?.profile, plannedVisitDate, userOrigin, visitPreferences],
   );
 
@@ -1790,19 +1749,21 @@ export default function ConciergeClientFull() {
                 setNeedText("");
                 setEntryValidationError(null);
               }}
-              plannedVisitDate={plannedVisitDate}
-              setPlannedVisitDate={(value) => { setPlannedVisitDate(value); if (value) trackWebDirection("direction_visit_date_set"); }}
-              origin={userOrigin}
-              onOriginChange={(value) => { setUserOrigin(value); if (value) trackWebDirection("direction_origin_result", { origin_type: value.source, result: "selected" }); }}
-              locationError={locationError}
-              onUseCurrentLocation={useCurrentLocation}
             />
 
+            {/* Personalize: Level 2 Visit Preference + Level 3-A Personal
+                Profile + Level 3-B Explicit Constraint + Level 3-C
+                Recommendation Context, collapsed by default (Task 5-8,
+                docs/audit/concierge-l1-freetext-final-readiness.md
+                Decision: L2/L3 collapsed by default = Yes). Grouped under
+                one disclosure (Task 10's 3-state model), but each
+                responsibility keeps its own labeled subsection so they are
+                not shown as one undifferentiated "条件" pile (Task 11). */}
             <div className="mt-7 rounded-3xl border border-stone-200/45 bg-stone-50/60 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-[11px] font-medium tracking-[0.2em] text-stone-500">条件を追加（任意）</p>
-                  <p className="mt-0.5 text-[11px] text-stone-500">誕生日・ご利益・参拝スタイルは、相談テーマを補う条件として扱います。</p>
+                  <p className="text-[11px] font-medium tracking-[0.2em] text-stone-500">もう少し自分に合わせる（任意）</p>
+                  <p className="mt-0.5 text-[11px] text-stone-500">参拝の希望・誕生日・ご利益・参拝の詳細は、相談テーマを補う条件として扱います。</p>
                 </div>
                 <button
                   type="button"
@@ -1864,6 +1825,46 @@ export default function ConciergeClientFull() {
                     isEntryRoute={isEntryRoute}
                     isPremiumActive={isPremiumActive}
                   />
+
+                  {/* Level 3-C Recommendation Context. Ambient situational
+                      data (not user identity, not a candidate hard filter) --
+                      kept out of the Initial screen (Task 8) and rendered
+                      here with its own labeled subsection so it is not
+                      confused with Level 3-A Personal Profile or Level 3-B
+                      Explicit Constraint above. Same plannedVisitDate/
+                      userOrigin state and handlers as before this move --
+                      request payload semantics are unchanged. */}
+                  <section aria-label="参拝の詳細（任意）" className="mt-3 rounded-2xl border border-stone-200/50 bg-white/80 p-3">
+                    <p className="text-[10px] font-semibold text-slate-600">参拝の詳細（任意）</p>
+                    <p className="mt-0.5 text-[10px] leading-4 text-slate-400">予定日と出発地点から、神社への方角を補助条件として使います。</p>
+                    <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                      <label className="block text-sm font-medium text-stone-600">
+                        参拝予定日（任意）
+                        <input
+                          type="date"
+                          value={plannedVisitDate}
+                          min={new Date().toISOString().slice(0, 10)}
+                          onChange={(event) => {
+                            setPlannedVisitDate(event.target.value);
+                            if (event.target.value) trackWebDirection("direction_visit_date_set");
+                          }}
+                          className="mt-1 min-h-11 w-full rounded-2xl border border-[var(--kt-color-border-strong)] bg-stone-50/25 px-3 py-2 text-base text-[var(--kt-color-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
+                        />
+                      </label>
+                      <OriginSelector
+                        origin={userOrigin}
+                        onChange={(value) => {
+                          setUserOrigin(value);
+                          if (value) trackWebDirection("direction_origin_result", { origin_type: value.source, result: "selected" });
+                        }}
+                        onUseDevice={useCurrentLocation}
+                        deviceError={locationError}
+                      />
+                    </div>
+                    {plannedVisitDate ? (
+                      <p className="mt-2 text-xs text-[var(--kt-color-text-muted)]">予定日の年盤・月盤と、設定した出発地点から神社への方角を補助条件に使います。</p>
+                    ) : null}
+                  </section>
                 </div>
               ) : null}
             </div>

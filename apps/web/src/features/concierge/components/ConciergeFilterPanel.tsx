@@ -156,7 +156,8 @@ export default function ConciergeFilterPanel({
       </div>
 
       <div className="grid gap-0.5 rounded-xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-2">
-        <div className="space-y-0.5">
+        {/* Level 3-A Personal Profile */}
+        <section aria-label="誕生日（任意）" className="space-y-0.5">
           <div className="text-[10px] font-semibold text-[var(--kt-color-text-muted)]">誕生日（任意）</div>
           <div className="text-[10px] text-slate-400">相性候補を見るための任意の補助情報です</div>
           <input
@@ -165,7 +166,7 @@ export default function ConciergeFilterPanel({
             onChange={(e) => onBirthdateChange(e.target.value)}
             className="w-full rounded-xl border px-3 py-1.5 text-sm"
           />
-        </div>
+        </section>
 
         {element4 ? (
           <div className="text-[11px] text-[var(--kt-color-text-muted)]">
@@ -173,7 +174,8 @@ export default function ConciergeFilterPanel({
           </div>
         ) : null}
 
-        <div className="space-y-2">
+        {/* Level 2 Visit Preference */}
+        <section aria-label="今回の参拝の希望（任意）" className="space-y-2">
           <div>
             <div className="text-[10px] font-semibold text-slate-600">参拝スタイル</div>
             <p className="mt-0.5 text-[10px] leading-4 text-slate-400">
@@ -208,7 +210,7 @@ export default function ConciergeFilterPanel({
               </div>
             </div>
           ))}
-        </div>
+        </section>
 
         {element4 && suggestedTags.length > 0 ? (
           <div className="space-y-0.5">
@@ -237,12 +239,15 @@ export default function ConciergeFilterPanel({
         ) : null}
       </div>
 
+      {/* Level 3-B Explicit Constraint -- a DB-level candidate hard filter,
+          not a "おすすめテーマ"/Personal Profile. Kept distinct from L2
+          (参拝スタイル) and L3-A (誕生日) above (Task 7). */}
       {tagsLoading || tagsError || visibleGoriyakuTags.length > 0 || hiddenGoriyakuCount > 0 ? (
-        <div className="space-y-1 rounded-xl border border-slate-200 bg-white p-2">
+        <section aria-label="ご利益を指定する" className="space-y-1 rounded-xl border border-slate-200 bg-white p-2">
           <div>
-            <div className="text-[10px] font-semibold text-slate-600">ご利益・願いに近いもの</div>
+            <div className="text-[10px] font-semibold text-slate-600">ご利益を指定する</div>
             <p className="mt-0.5 text-[10px] leading-4 text-slate-400">
-              相談テーマを主軸にしつつ、願いたいことに近いものを補助条件として使います。
+              相談テーマを主軸にしつつ、願いたいことに近いものを候補の絞り込みとして使います。
             </p>
           </div>
           {tagsError ? <div className="text-xs text-[var(--kt-color-status-error)]">{tagsError}</div> : null}
@@ -277,7 +282,7 @@ export default function ConciergeFilterPanel({
               {showAllGoriyakuTags ? "折りたたむ" : `他${hiddenGoriyakuCount}件を表示`}
             </button>
           ) : null}
-        </div>
+        </section>
       ) : null}
 
       <div className="flex justify-end gap-2 border-t border-[var(--kt-color-border-default)] bg-slate-50/95 pt-1.5 pb-0.5">
