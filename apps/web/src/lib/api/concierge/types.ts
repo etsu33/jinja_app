@@ -135,27 +135,16 @@ export type RecommendationReasonV4Detail = {
   action: RecommendationReasonV4Action;
 };
 
-export type ConciergeReasonFacts = {
-  version?: 1;
-  primary_axis?: ConciergeReasonFactAxis | null;
-  secondary_axis?: ConciergeReasonFactAxis | null;
-
-  matched_need_tags?: string[];
-  matched_benefits?: string[];
-
-  shrine_feature?: string | null;
-  shrine_benefit?: string | null;
-  visit_fit?: string | null;
-
-  matched_element?: string | null;
-  matched_sign?: string | null;
-
-  distance_label?: string | null;
-  popularity_label?: string | null;
-
-  fallback_reason?: string | null;
-  confidence?: "high" | "mid" | "low" | null;
+export type ConciergeReasonFact = {
+  type: string;
+  label: string;
+  evidence: string[];
+  score: number;
+  is_primary?: boolean;
 };
+
+/** Backend wire contract. This is intentionally not the legacy aggregate object shape. */
+export type ConciergeReasonFacts = ConciergeReasonFact[];
 
 export type ConciergeRecommendation = {
   id?: number | null;

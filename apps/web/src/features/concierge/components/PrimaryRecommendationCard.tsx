@@ -21,8 +21,10 @@ export default function PrimaryRecommendationCard({
   mode,
   birthdate,
 }: Props) {
+  const { reason_facts: reasonFacts, ...viewRec } = rec;
   const vm = buildRecommendationReasonViewModel({
-    rec,
+    rec: viewRec,
+    reasonFacts,
     index: primaryIndex,
     mode,
     birthdate,

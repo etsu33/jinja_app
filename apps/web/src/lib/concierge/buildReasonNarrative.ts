@@ -369,8 +369,37 @@ function buildFactsCandidates(params: BuildParams, inputType: ReturnType<typeof 
   const element = clean(rec.reason_facts?.matched_element) || getPrimaryElement(rec);
   const distance = formatDistance(rec.distance_m);
   const distanceLabel = clean(rec.reason_facts?.distance_label) || distance;
+  const primaryFactType = clean(rec.reason_facts?.primary_fact_type);
+  const primaryFactLabel = clean(rec.reason_facts?.primary_fact_label);
 
-  switch (match.primaryReasonType) {
+  if (primaryFactLabel) {
+    switch (primaryFactType) {
+      case "element":
+        out.push({ key: "element_match", text: `生年月日から見た「${primaryFactLabel}」の要素との相性が強く重なるため、この神社が候補に入っています。` });
+        break;
+      case "need_tag":
+        out.push({ key: "need_match", text: `相談内容の「${primaryFactLabel}」と一致するため、この神社が候補に入っています。` });
+        break;
+      case "user_selected_tag":
+        out.push({ key: "need_match", text: `明示的に指定した「${primaryFactLabel}」と一致するため、この神社が候補に入っています。` });
+        break;
+      case "goriyaku_tag":
+        out.push({ key: "need_match", text: `「${primaryFactLabel}」のご利益が相談に重なるため、この神社が候補に入っています。` });
+        break;
+      case "history_theme":
+      case "text_hint":
+        out.push({ key: "text_match", text: `「${primaryFactLabel}」という意味・特徴が相談に重なるため、この神社が候補に入っています。` });
+        break;
+      case "visit_style":
+        out.push({ key: "text_match", text: `参拝Preferenceの「${primaryFactLabel}」に合うため、この神社が候補に入っています。` });
+        break;
+      case "fallback":
+        out.push({ key: "distance", text: primaryFactLabel });
+        break;
+    }
+  }
+
+  if (out.length === 0) switch (match.primaryReasonType) {
     case "need_benefit_match": {
       const text = buildIntersectionPrimaryText({
         need: consultation.needPrimary,

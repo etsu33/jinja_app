@@ -142,7 +142,8 @@ function normalizeRecommendation(r: any, tid: string | null, analyticsContext: D
   const imageUrl = asTrimmedString(r?.photo_url);
   const breakdown = r?.breakdown ?? null;
   const breakdownDetail = r?.breakdown_detail ?? r?.breakdownDetail ?? null;
-  const reasonFacts = r?.reason_facts ?? r?.reasonFacts ?? null;
+  const reasonFactsCandidate = r?.reason_facts ?? r?.reasonFacts ?? null;
+  const reasonFacts = Array.isArray(reasonFactsCandidate) ? reasonFactsCandidate : null;
   const reasonV4Detail = r?.recommendation_reason_v4_detail ?? r?.recommendationReasonV4Detail ?? null;
   const recommendationReasonV4 = asTrimmedString(r?.recommendation_reason_v4 ?? r?.recommendationReasonV4);
   const trustMetadata = r?.trust_metadata ?? r?.trustMetadata ?? null;

@@ -14,6 +14,7 @@ export type {
   ConciergeNeed,
   ConciergeBreakdown,
   ConciergeReasonFactAxis,
+  ConciergeReasonFact,
   ConciergeReasonFacts,
   RecommendationReasonV4Detail,
   RecommendationReasonV4Fact,
