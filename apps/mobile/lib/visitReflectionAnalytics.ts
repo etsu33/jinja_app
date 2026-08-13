@@ -4,6 +4,10 @@
 // 型そのものをWeb/Mobileで共有する基盤がまだ無いため、契約(イベント名・フィールドの意味)のみを揃え、
 // 型定義はこのファイルに個別で持つ。
 import { track } from "./analytics";
+import {
+  recommendationAnalyticsProperties,
+  type RecommendationAnalyticsProvenance,
+} from "../../../packages/shared/recommendationAnalyticsProvenance";
 
 const SOURCE = "shrine_detail";
 
@@ -14,15 +18,17 @@ type BasePayloadParams = {
   shrineId: number | string;
   threadId?: number | string | null;
   historyTheme?: string | null;
+  provenance?: RecommendationAnalyticsProvenance;
 };
 
-function buildBasePayload({ shrineId, threadId, historyTheme }: BasePayloadParams): Record<string, unknown> {
+function buildBasePayload({ shrineId, threadId, historyTheme, provenance }: BasePayloadParams): Record<string, unknown> {
   return {
     source: SOURCE,
     platform: "mobile",
     shrineId,
     threadId: threadId || undefined,
     historyTheme: historyTheme || undefined,
+    ...(provenance ? recommendationAnalyticsProperties(provenance) : {}),
   };
 }
 

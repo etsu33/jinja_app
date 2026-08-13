@@ -31,36 +31,17 @@ import {
   type RecommendationReasonV4Detail,
 } from "../../lib/recommendationReasonV4";
 import { buildShrineFactViewModel, type ShrineDeity, type ShrineHistory } from "../../lib/shrineKnowledgeFact";
-
-type RecommendationReasonFactAxis =
-  | "need"
-  | "benefit"
-  | "feature"
-  | "element"
-  | "distance"
-  | "popularity"
-  | "fallback";
-
-type RecommendationReasonFacts = {
-  version?: 1;
-  primary_axis?: RecommendationReasonFactAxis | null;
-  secondary_axis?: RecommendationReasonFactAxis | null;
-  matched_need_tags?: string[];
-  matched_benefits?: string[];
-  shrine_feature?: string | null;
-  shrine_benefit?: string | null;
-  visit_fit?: string | null;
-  matched_element?: string | null;
-  matched_sign?: string | null;
-  distance_label?: string | null;
-  popularity_label?: string | null;
-  fallback_reason?: string | null;
-  confidence?: "high" | "mid" | "low" | null;
-  type?: string | null;
-  label?: string | null;
-  label_ja?: string | null;
-  evidence?: Array<string | { label?: string | null; value?: string | null; text?: string | null }>;
-};
+import { track } from "../../lib/analytics";
+import {
+  buildReasonFactItems,
+  findPrimaryReasonFact,
+  normalizeRecommendationReasonFacts,
+  type ConciergeReasonFacts,
+} from "../../lib/recommendationReasonFacts";
+import {
+  recommendationAnalyticsProperties,
+  recommendationAnalyticsProvenance,
+} from "../../../../packages/shared/recommendationAnalyticsProvenance";
 
 
 
@@ -88,6 +69,10 @@ type ActionSuggestionV4Preview = {
   secondary_action?: ActionSuggestionV4Action | null;
   reflectionPrompt?: ActionSuggestionV4ReflectionPrompt | null;
   reflection_prompt?: ActionSuggestionV4ReflectionPrompt | null;
+  actionSource?: { source?: string | null } | null;
+  action_source?: { source?: string | null } | null;
+  sourceKeys?: string[];
+  source_keys?: string[];
 };
 
 type RecommendationExplanation =
@@ -108,7 +93,7 @@ type Shrine = {
   description?: string;
   recommendationReason?: string;
   recommendationReasonV4?: string;
-  reasonFacts?: RecommendationReasonFacts | null;
+  reasonFacts?: ConciergeReasonFacts | null;
   explanation?: RecommendationExplanation;
   actionSuggestion?: string;
   actionSuggestionV4Preview?: ActionSuggestionV4Preview | null;
@@ -133,8 +118,8 @@ type ShrineApiResponse = {
   recommendationReason?: string | null;
   recommendation_reason_v4?: string | null;
   recommendationReasonV4?: string | null;
-  reason_facts?: RecommendationReasonFacts | null;
-  reasonFacts?: RecommendationReasonFacts | null;
+  reason_facts?: unknown;
+  reasonFacts?: unknown;
   explanation?: RecommendationExplanation;
   action_suggestion?: string | null;
   actionSuggestion?: string | null;
@@ -189,11 +174,7 @@ function resolveRecommendationReason(shrine: Shrine) {
   const v4Reason = asTrimmedString(shrine.recommendationReasonV4);
   if (v4Reason) return v4Reason;
 
-  const factBasedReason =
-    asTrimmedString(shrine.reasonFacts?.shrine_feature) ??
-    asTrimmedString(shrine.reasonFacts?.shrine_benefit) ??
-    asTrimmedString(shrine.reasonFacts?.visit_fit) ??
-    asTrimmedString(shrine.reasonFacts?.fallback_reason);
+  const factBasedReason = asTrimmedString(findPrimaryReasonFact(shrine.reasonFacts)?.label);
 
   if (factBasedReason) return factBasedReason;
 
@@ -201,43 +182,6 @@ function resolveRecommendationReason(shrine: Shrine) {
   if (legacyReason) return legacyReason;
 
   return "相談内容と神社情報をもとに選ばれた神社です。";
-}
-
-function buildReasonFactItems(reasonFacts?: RecommendationReasonFacts | RecommendationReasonFacts[] | null) {
-  if (!reasonFacts) return [];
-
-  const facts = Array.isArray(reasonFacts) ? reasonFacts : [reasonFacts];
-  const technicalValues = new Set(["history_theme", "matched_need_tags", "fallback"]);
-
-  return facts
-    .flatMap((fact) => {
-      const structuredItems = [
-        fact.shrine_feature ? { label: "神社固有の文脈", value: fact.shrine_feature } : null,
-        fact.shrine_benefit ? { label: "ご利益・意味", value: fact.shrine_benefit } : null,
-        fact.visit_fit ? { label: "参拝との相性", value: fact.visit_fit } : null,
-        fact.distance_label ? { label: "行きやすさ", value: fact.distance_label } : null,
-        fact.popularity_label ? { label: "参考情報", value: fact.popularity_label } : null,
-      ];
-
-      const labelValue = asTrimmedString(fact.label_ja ?? fact.label);
-      const labelItem = labelValue ? { label: "推薦の文脈", value: labelValue } : null;
-
-      const evidenceItems = Array.isArray(fact.evidence)
-        ? fact.evidence.map((evidence) => {
-            const rawValue =
-              typeof evidence === "string"
-                ? evidence
-                : evidence.value ?? evidence.text ?? null;
-            const value = asTrimmedString(rawValue);
-            if (!value || technicalValues.has(value) || value === labelValue) return null;
-
-            return { label: "判断材料", value };
-          })
-        : [];
-
-      return [labelItem, ...structuredItems, ...evidenceItems];
-    })
-    .filter((item): item is { label: string; value: string } => Boolean(item?.value?.trim()));
 }
 
 function toShrine(api: ShrineApiResponse): Shrine {
@@ -248,7 +192,7 @@ function toShrine(api: ShrineApiResponse): Shrine {
     description: api.description ?? api.goriyaku ?? undefined,
     recommendationReason: api.recommendationReason ?? api.recommendation_reason ?? undefined,
     recommendationReasonV4: api.recommendationReasonV4 ?? api.recommendation_reason_v4 ?? undefined,
-    reasonFacts: api.reasonFacts ?? api.reason_facts ?? null,
+    reasonFacts: normalizeRecommendationReasonFacts(api.reasonFacts ?? api.reason_facts),
     explanation: api.explanation ?? undefined,
     actionSuggestion: api.actionSuggestion ?? api.action_suggestion ?? undefined,
     actionSuggestionV4Preview: api.actionSuggestionV4Preview ?? api.action_suggestion_v4_preview ?? null,
@@ -270,6 +214,8 @@ export default function ShrineDetail() {
     recommendationReasonDetail?: string | string[];
     actionSuggestionV4Preview?: string | string[];
     recommendationReasonV4Detail?: string | string[];
+    recommendationRank?: string | string[];
+    resultSetId?: string | string[];
   }>();
   const shrineId = React.useMemo(() => {
     const raw = params.id;
@@ -283,18 +229,16 @@ export default function ShrineDetail() {
     return asTrimmedString(value) ?? undefined;
   }, [params.recommendationReasonV4]);
 
-  const contextReasonFacts = React.useMemo<RecommendationReasonFacts | null>(() => {
+  const contextReasonFacts = React.useMemo<ConciergeReasonFacts>(() => {
     const raw = params.reasonFacts;
     const value = Array.isArray(raw) ? raw[0] : raw;
-    if (!value) return null;
+    if (!value) return [];
 
     try {
       const parsed = JSON.parse(value);
-      return parsed && typeof parsed === "object" && !Array.isArray(parsed)
-        ? (parsed as RecommendationReasonFacts)
-        : null;
+      return normalizeRecommendationReasonFacts(parsed);
     } catch {
-      return null;
+      return [];
     }
   }, [params.reasonFacts]);
 
@@ -380,7 +324,8 @@ export default function ShrineDetail() {
     [shrine],
   );
 
-  const reasonFactItems = buildReasonFactItems(contextReasonFacts ?? shrine?.reasonFacts).slice(0, 3);
+  const effectiveReasonFacts = contextReasonFacts.length > 0 ? contextReasonFacts : shrine?.reasonFacts;
+  const reasonFactItems = buildReasonFactItems(effectiveReasonFacts).slice(0, 3);
 
   const hasConsultationSummary = Boolean(contextRecommendationReasonDetail?.consultationSummary);
   const hasShrineMeaning = Boolean(contextRecommendationReasonDetail?.shrineMeaning);
@@ -391,9 +336,9 @@ export default function ShrineDetail() {
     return resolveRecommendationReason({
       ...shrine,
       recommendationReasonV4: contextRecommendationReasonV4 ?? shrine.recommendationReasonV4,
-      reasonFacts: contextReasonFacts ?? shrine.reasonFacts,
+      reasonFacts: effectiveReasonFacts,
     });
-  }, [contextReasonFacts, contextRecommendationReasonV4, shrine]);
+  }, [contextRecommendationReasonV4, effectiveReasonFacts, shrine]);
 
   // Concierge以外の遷移ではcontextReasonV4Detailがnullのため常にhasStructured=falseとなり、
   // 神社APIの値から相談文脈を推測することはない(v4 detailはroute params専用でShrine型に持たせていない)
@@ -418,6 +363,15 @@ export default function ShrineDetail() {
   }, [shrine]);
 
   const actionSuggestionV4Preview = contextActionSuggestionV4Preview ?? shrine?.actionSuggestionV4Preview ?? null;
+  const analyticsProvenance = recommendationAnalyticsProvenance({
+    reasonFacts: contextReasonFacts.length > 0 ? contextReasonFacts : shrine?.reasonFacts,
+    actionSuggestionPreview: actionSuggestionV4Preview,
+  });
+  const analyticsProperties = recommendationAnalyticsProperties(analyticsProvenance);
+  const primaryHistoryTheme = (() => {
+    const primary = findPrimaryReasonFact(contextReasonFacts.length > 0 ? contextReasonFacts : shrine?.reasonFacts);
+    return primary?.type === "history_theme" ? primary.label : "";
+  })();
   const primaryAction = actionSuggestionV4Preview?.primaryAction ?? actionSuggestionV4Preview?.primary_action ?? null;
   const secondaryAction = actionSuggestionV4Preview?.secondaryAction ?? actionSuggestionV4Preview?.secondary_action ?? null;
   const reflectionPrompt = actionSuggestionV4Preview?.reflectionPrompt ?? actionSuggestionV4Preview?.reflection_prompt ?? null;
@@ -452,6 +406,9 @@ export default function ShrineDetail() {
           source: "mobile_shrine_detail",
           metadata: {
             ctx: "mobile_shrine_detail",
+            recommendation_rank: Number(Array.isArray(params.recommendationRank) ? params.recommendationRank[0] : params.recommendationRank) || null,
+            result_set_id: Array.isArray(params.resultSetId) ? params.resultSetId[0] : params.resultSetId,
+            ...analyticsProperties,
           },
         });
       }
@@ -503,6 +460,13 @@ export default function ShrineDetail() {
 
     const now = await toggleFavorite(String(shrineId));
     setFav(now);
+    track("favorite_click", {
+      source: "shrine_detail",
+      platform: "mobile",
+      shrineId: apiShrineId ?? shrineId,
+      nextFav: now,
+      ...analyticsProperties,
+    });
 
     if (now) {
       try {
@@ -533,7 +497,8 @@ export default function ShrineDetail() {
       setVisited(true);
       trackVisitDone({
         shrineId: targetShrineId,
-        historyTheme: contextReasonFacts?.primary_axis ?? shrine?.reasonFacts?.primary_axis,
+        historyTheme: primaryHistoryTheme,
+        provenance: analyticsProvenance,
       });
     } catch (error) {
       if (isUnauthenticatedError(error)) {
@@ -551,9 +516,10 @@ export default function ShrineDetail() {
 
     trackReflectionPromptView({
       shrineId: targetShrineId,
-      historyTheme: contextReasonFacts?.primary_axis ?? shrine?.reasonFacts?.primary_axis,
+      historyTheme: primaryHistoryTheme,
       reflectionFormType: "one_line",
       reflectionContext: "visit_done",
+      provenance: analyticsProvenance,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visited]);
@@ -569,7 +535,7 @@ export default function ShrineDetail() {
         shrineId: targetShrineId,
         answer,
         prompt: asTrimmedString(reflectionPrompt?.question) ?? "参拝後に何を感じましたか？",
-        historyTheme: contextReasonFacts?.primary_axis ?? shrine?.reasonFacts?.primary_axis ?? "",
+        historyTheme: primaryHistoryTheme,
         moodBefore: "",
         moodAfter: "",
       });
@@ -578,10 +544,11 @@ export default function ShrineDetail() {
         setReflectionSaved(true);
         trackReflectionSaved({
           shrineId: targetShrineId,
-          historyTheme: contextReasonFacts?.primary_axis ?? shrine?.reasonFacts?.primary_axis,
+          historyTheme: primaryHistoryTheme,
           reflectionFormType: "one_line",
           reflectionContext: "visit_done",
           answerLength: answer.length,
+          provenance: analyticsProvenance,
         });
       }
     } catch (error) {
@@ -608,7 +575,8 @@ export default function ShrineDetail() {
     const targetShrineId = apiShrineId ?? shrineId;
     trackReflectionToConsultationClick({
       shrineId: targetShrineId ?? "",
-      historyTheme: contextReasonFacts?.primary_axis ?? shrine?.reasonFacts?.primary_axis,
+      historyTheme: primaryHistoryTheme,
+      provenance: analyticsProvenance,
     });
 
     // Reflection本文・相談文等の自由入力は一切引き継がず、Conciergeを通常状態で開く
@@ -625,11 +593,14 @@ export default function ShrineDetail() {
         source: "mobile_shrine_detail",
         metadata: {
           ctx: "mobile_shrine_detail",
+          recommendation_rank: Number(Array.isArray(params.recommendationRank) ? params.recommendationRank[0] : params.recommendationRank) || null,
+          result_set_id: Array.isArray(params.resultSetId) ? params.resultSetId[0] : params.resultSetId,
+          ...analyticsProperties,
         },
       });
       // Backend保存用(trackShrineRouteOpen)とは別に、PostHog等で可視化するための
       // track()イベントをWeb版のroute_openと同じ名前・意味で送る。
-      trackRouteOpen({ shrineId: shrineIdNumber });
+      trackRouteOpen({ shrineId: shrineIdNumber, provenance: analyticsProvenance });
     }
     const hasLatLng = typeof shrine.latitude === "number" && typeof shrine.longitude === "number";
     const destination = hasLatLng ? `${shrine.latitude},${shrine.longitude}` : encodeURIComponent(shrine.name);

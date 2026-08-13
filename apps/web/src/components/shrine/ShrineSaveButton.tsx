@@ -7,6 +7,10 @@ import { buildShrineHref } from "@/lib/nav/buildShrineHref";
 import { buildLoginHref } from "@/lib/nav/login";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { track } from "@/lib/analytics/track";
+import {
+  recommendationAnalyticsProperties,
+  type RecommendationAnalyticsProvenance,
+} from "../../../../../packages/shared/recommendationAnalyticsProvenance";
 
 type Props = {
   shrineId: number;
@@ -20,6 +24,7 @@ type Props = {
     favorite_id: number | null;
   };
   onToggleSuccess?: (nextFav: boolean) => void;
+  analyticsProvenance?: RecommendationAnalyticsProvenance;
 };
 
 export default function ShrineSaveButton({
@@ -31,6 +36,7 @@ export default function ShrineSaveButton({
   variant = "default",
   initial,
   onToggleSuccess,
+  analyticsProvenance,
 }: Props) {
   const router = useRouter();
   const { isLoggedIn, loading } = useAuth();
@@ -59,6 +65,7 @@ export default function ShrineSaveButton({
         source: "shrine_detail",
         cardId: "saved_record",
         accessLevel,
+        ...(analyticsProvenance ? recommendationAnalyticsProperties(analyticsProvenance) : {}),
       });
 
       if (nextFav) {
@@ -67,6 +74,7 @@ export default function ShrineSaveButton({
           action: "save",
           ctx,
           tid,
+          ...(analyticsProvenance ? recommendationAnalyticsProperties(analyticsProvenance) : {}),
         });
       }
 

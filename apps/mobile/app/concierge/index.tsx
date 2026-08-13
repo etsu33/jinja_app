@@ -35,6 +35,13 @@ import { toOriginPayload, type UserOrigin } from "../../../../packages/shared/us
 import { buildRecommendationReasonDisplay } from "../../../../packages/shared/recommendationReasonDisplay";
 import { getOriginSession } from "../../lib/originSession";
 import { trackMobileDirection } from "../../lib/directionEvents";
+import { track } from "../../lib/analytics";
+import {
+  buildRecommendationResultSetId,
+  recommendationAnalyticsProperties,
+  recommendationAnalyticsProvenance,
+  type RecommendationAnalyticsProvenance,
+} from "../../../../packages/shared/recommendationAnalyticsProvenance";
 import {
   buildReasonV4Sections,
   normalizeRecommendationReasonV4Detail,
@@ -83,6 +90,7 @@ type RecommendationCard = {
   shrineId?: string;
   actionSuggestionV4Preview?: ActionSuggestionV4Preview | null;
   directionReference?: DirectionReference | null;
+  analyticsProvenance: RecommendationAnalyticsProvenance;
 };
 
 type ActionSuggestionV4Action = {
@@ -148,6 +156,8 @@ type RecommendationApiCard = {
   action_suggestion_v4_preview?: unknown;
   actionSuggestionV4Preview?: unknown;
   direction_reference?: DirectionReference | null;
+  primary_reason_source?: string | null;
+  _primary_reason_source?: string | null;
 };
 function normalizeRecommendationReasonDetail(raw: unknown): RecommendationReasonDetail | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
@@ -341,6 +351,11 @@ function toRecommendationCard(item: RecommendationApiCard, index: number): Recom
     item.recommendation_reason_v4_detail ?? item.recommendationReasonV4Detail,
   );
   const reasonFacts = normalizeRecommendationReasonFacts(item.reason_facts ?? item.reasonFacts);
+  const analyticsProvenance = recommendationAnalyticsProvenance({
+    primaryReasonSource: item.primary_reason_source ?? item._primary_reason_source,
+    reasonFacts,
+    actionSuggestionPreview: item.action_suggestion_v4_preview ?? item.actionSuggestionV4Preview,
+  });
   const reason = resolveRecommendationReason({
     recommendationReasonV4,
     reasonFacts,
@@ -362,6 +377,7 @@ function toRecommendationCard(item: RecommendationApiCard, index: number): Recom
     shrineId: shrineId !== undefined && shrineId !== null ? String(shrineId) : undefined,
     actionSuggestionV4Preview,
     directionReference: validDirectionReferenceOrNull(item.direction_reference),
+    analyticsProvenance,
   };
 }
 
@@ -646,6 +662,7 @@ export default function ConciergeScreen() {
   const [loading, setLoading] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
   const [results, setResults] = React.useState<RecommendationCard[]>([]);
+  const trackedResultSetRef = React.useRef<string | null>(null);
   const [selectedVisitStyle, setSelectedVisitStyle] = React.useState<string | undefined>(params.visitStyle || undefined);
   const [birthdate, setBirthdate] = React.useState(params.birthdate ?? "");
   const [plannedVisitDate, setPlannedVisitDate] = React.useState(params.plannedVisitDate ?? "");
@@ -656,6 +673,27 @@ export default function ConciergeScreen() {
   const [supportText, setSupportText] = React.useState(params.support ?? "");
   const hasAnyCondition = Boolean(selectedVisitStyle || birthdate.trim() || plannedVisitDate.trim() || selectedGoriyaku || supportText.trim());
   const isSendDisabled = loading || (!input.trim() && !hasAnyCondition);
+
+  React.useEffect(() => {
+    if (results.length === 0) return;
+    const resultSetId = buildRecommendationResultSetId(
+      null,
+      results.map((card) => ({ shrineId: card.shrineId ?? card.id })),
+    );
+    if (trackedResultSetRef.current === resultSetId) return;
+    trackedResultSetRef.current = resultSetId;
+
+    results.forEach((card, index) => {
+      track("concierge_result_impression", {
+        source: "concierge_result",
+        platform: "mobile",
+        resultSetId,
+        shrineId: card.shrineId ?? card.id,
+        recommendationRank: index + 1,
+        ...recommendationAnalyticsProperties(card.analyticsProvenance),
+      });
+    });
+  }, [results]);
   const lastInitialQueryRef = React.useRef<string | null>(null);
 
   // Homeからの相談内容・条件が変わったら自動送信する
@@ -783,6 +821,8 @@ export default function ConciergeScreen() {
         action_description: action.description,
         action_source: card.actionSuggestionV4Preview?.actionSource.source ?? null,
         source_keys: card.actionSuggestionV4Preview?.sourceKeys ?? [],
+        primary_reason_source: card.analyticsProvenance.primaryReasonSource,
+        is_fallback_recommendation: card.analyticsProvenance.isFallbackRecommendation,
       },
     });
   };
@@ -790,6 +830,18 @@ export default function ConciergeScreen() {
   const handleDetail = (card: RecommendationCard, rank: number) => {
     if (card.directionReference?.matched) trackMobileDirection("direction_match_detail_opened", { matched: true, recommendation_rank: rank });
     if (!card.shrineId) return;
+    const resultSetId = buildRecommendationResultSetId(
+      null,
+      results.map((result) => ({ shrineId: result.shrineId ?? result.id })),
+    );
+    track("shrine_detail_transition", {
+      source: "concierge_result",
+      platform: "mobile",
+      resultSetId,
+      shrineId: card.shrineId,
+      recommendationRank: rank,
+      ...recommendationAnalyticsProperties(card.analyticsProvenance),
+    });
     router.push({
       pathname: "/shrines/[id]",
       params: {
@@ -801,6 +853,8 @@ export default function ConciergeScreen() {
           : "",
         actionSuggestionV4Preview: card.actionSuggestionV4Preview ? JSON.stringify(card.actionSuggestionV4Preview) : "",
         recommendationReasonV4Detail: serializeReasonV4Detail(card.reasonV4Detail),
+        recommendationRank: String(rank),
+        resultSetId,
       },
     });
   };

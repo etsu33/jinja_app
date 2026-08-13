@@ -18,6 +18,11 @@ import {
 import type { ConciergeChatRequestV1, ConciergeChatFilters } from "@/features/concierge/types/chatRequest";
 import { normalizeBirthdateInput } from "@/lib/date/normalizeBirthdateInput";
 import { trackRecommendationQuality } from "@/lib/analytics/searchEvents";
+import {
+  buildRecommendationResultSetId,
+  recommendationAnalyticsProperties,
+  recommendationAnalyticsProvenance,
+} from "../../../../../packages/shared/recommendationAnalyticsProvenance";
 
 /* ====== スレッド一覧 ====== */
 
@@ -133,6 +138,10 @@ export function trackRecommendationQualityFromRecommendations(args: {
   threadId: string | null;
   accessLevel: ConciergeAccessLevel;
 }) {
+  const resultSetId = buildRecommendationResultSetId(
+    args.threadId,
+    args.recommendations.map((rec) => ({ shrineId: rec.shrine_id ?? rec.id })),
+  );
   args.recommendations.forEach((rec, index) => {
     const quality = rec.recommendation_reason_quality;
     if (!quality || typeof quality !== "object") return;
@@ -142,6 +151,7 @@ export function trackRecommendationQualityFromRecommendations(args: {
       threadId: args.threadId,
       shrineId: rec.shrine_id ?? rec.id ?? null,
       recommendationRank: index + 1,
+      resultSetId,
       accessLevel: args.accessLevel,
       shrine_data_rate: quality.shrine_data_rate ?? null,
       consultation_reflection_rate: quality.consultation_reflection_rate ?? null,
@@ -153,6 +163,11 @@ export function trackRecommendationQualityFromRecommendations(args: {
       knowledge_backing_class: quality.knowledge_backing_class ?? null,
       deity_knowledge_used: quality.deity_knowledge_used ?? null,
       history_knowledge_used: quality.history_knowledge_used ?? null,
+      ...recommendationAnalyticsProperties(recommendationAnalyticsProvenance({
+        primaryReasonSource: (rec as any).primary_reason_source ?? (rec as any)._primary_reason_source,
+        reasonFacts: rec.reason_facts,
+        actionSuggestionPreview: (rec as any).action_suggestion_v4_preview,
+      })),
     });
   });
 }

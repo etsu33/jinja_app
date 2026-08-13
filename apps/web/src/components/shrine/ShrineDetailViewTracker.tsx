@@ -3,14 +3,19 @@
 import { useEffect, useRef } from "react";
 import { trackSearchEvent } from "@/lib/analytics/searchEvents";
 import { trackShrineInteraction } from "@/lib/api/shrineInteractions";
+import {
+  recommendationAnalyticsProperties,
+  type RecommendationAnalyticsProvenance,
+} from "../../../../../packages/shared/recommendationAnalyticsProvenance";
 
 type Props = {
   shrineId: number;
   ctx?: "map" | "concierge" | null;
   tid?: string | null;
+  analyticsProvenance?: RecommendationAnalyticsProvenance;
 };
 
-export function ShrineDetailViewTracker({ shrineId, ctx = null, tid = null }: Props) {
+export function ShrineDetailViewTracker({ shrineId, ctx = null, tid = null, analyticsProvenance }: Props) {
   const trackedRef = useRef(false);
 
   useEffect(() => {
@@ -23,6 +28,7 @@ export function ShrineDetailViewTracker({ shrineId, ctx = null, tid = null }: Pr
       source,
       shrineId,
       threadId: tid ?? undefined,
+      ...(analyticsProvenance ? recommendationAnalyticsProperties(analyticsProvenance) : {}),
     });
 
     void trackShrineInteraction({
@@ -33,9 +39,10 @@ export function ShrineDetailViewTracker({ shrineId, ctx = null, tid = null }: Pr
       metadata: {
         event: "shrine_detail_view",
         ctx,
+        ...(analyticsProvenance ? recommendationAnalyticsProperties(analyticsProvenance) : {}),
       },
     });
-  }, [shrineId, ctx, tid]);
+  }, [shrineId, ctx, tid, analyticsProvenance]);
 
   return null;
 }

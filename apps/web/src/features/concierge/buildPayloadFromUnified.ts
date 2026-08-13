@@ -7,6 +7,10 @@ import type {
 } from "@/features/concierge/sections/types";
 import type { ConciergeReasonFacts, RecommendationReasonV4Detail } from "@/lib/api/concierge";
 import { validDirectionReferenceOrNull, type DirectionReference } from "../../../../../packages/shared/directionReference";
+import {
+  recommendationAnalyticsProvenance,
+  type RecommendationAnalyticsProvenance,
+} from "../../../../../packages/shared/recommendationAnalyticsProvenance";
 
 
 import { detailHrefFromRecommendation } from "@/features/concierge/detailHref";
@@ -20,6 +24,7 @@ type NormalizedItemBase = {
   breakdown: any | null;
   breakdown_detail?: any | null;
   reasonFacts?: ConciergeReasonFacts | null;
+  analyticsProvenance: RecommendationAnalyticsProvenance;
   reasonV4Detail?: RecommendationReasonV4Detail | null;
   recommendationReasonV4?: string | null;
   trustMetadata?: any | null;
@@ -37,6 +42,7 @@ type NormalizedItemBase = {
     timeEstimate: string;
     measurementKey: string;
   }>;
+  actionSuggestionV4Preview?: unknown;
   detailHref?: string;
   isDummy?: boolean;
   directionReference?: DirectionReference | null;
@@ -155,6 +161,12 @@ function normalizeRecommendation(r: any, tid: string | null, analyticsContext: D
     analyticsContext.consultationAxis,
   );
   const actionSuggestions = normalizeActionSuggestions(r);
+  const actionSuggestionV4Preview = r?.action_suggestion_v4_preview ?? r?.actionSuggestionV4Preview ?? null;
+  const analyticsProvenance = recommendationAnalyticsProvenance({
+    primaryReasonSource: r?.primary_reason_source ?? r?._primary_reason_source,
+    reasonFacts,
+    actionSuggestionPreview: actionSuggestionV4Preview,
+  });
   const directionReference = validDirectionReferenceOrNull(r?.direction_reference);
 
   if (shrineId) {
@@ -169,6 +181,8 @@ function normalizeRecommendation(r: any, tid: string | null, analyticsContext: D
       breakdown,
       breakdown_detail: breakdownDetail,
       reasonFacts,
+      analyticsProvenance,
+      actionSuggestionV4Preview,
       reasonV4Detail,
       recommendationReasonV4,
       trustMetadata,
@@ -195,6 +209,8 @@ function normalizeRecommendation(r: any, tid: string | null, analyticsContext: D
       breakdown,
       breakdown_detail: breakdownDetail,
       reasonFacts,
+      analyticsProvenance,
+      actionSuggestionV4Preview,
       reasonV4Detail,
       recommendationReasonV4,
       trustMetadata,
