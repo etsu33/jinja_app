@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-
 from typing import Any, Dict, List, Optional
 
-from temples.services.action_suggestions import get_action_suggestions_for_theme
-
+from temples.services.action_suggestions import (
+    HISTORY_THEME_ACTION_SUGGESTIONS,
+    get_action_suggestions_for_theme,
+)
 
 NEED_LABELS_JA: Dict[str, str] = {
     "study": "学業・合格",
@@ -240,9 +241,20 @@ def build_explanation_payload(rec: Dict[str, Any], *, birthdate: Optional[str] =
 
     gogyou_context = _build_gogyou_context(birthdate)
     history_context = _build_history_context(rec)
-    action_suggestions = get_action_suggestions_for_theme(
-        history_context.get("theme") if isinstance(history_context, dict) else None,
+    # Preserve the legacy Generic Safe copy for UX compatibility, while
+    # making its actual grounding explicit.  A catalog action is grounded in
+    # history_theme only when that theme had Rank Authority.
+    ranked_history_theme = (
+        history_context.get("theme") if isinstance(history_context, dict) else None
     )
+    action_suggestions = get_action_suggestions_for_theme(ranked_history_theme)
+    has_grounded_history_theme = ranked_history_theme in HISTORY_THEME_ACTION_SUGGESTIONS
+    grounding = (
+        {"grounding_class": "consultation_grounded", "grounding_source": "ranked_history_theme"}
+        if has_grounded_history_theme
+        else {"grounding_class": "generic_safe", "grounding_source": "fallback"}
+    )
+    action_suggestions = [{**suggestion, **grounding} for suggestion in action_suggestions]
 
     return {
         "version": 2,
