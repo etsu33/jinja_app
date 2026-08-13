@@ -1717,3 +1717,186 @@ Recommendation順位（`_score_total`/`score_total_ranked`/並び順）への
 - **Weight Optimization**: 実利用データ後の判断。
 - **Frontend IA**: L1/L2/L3段階表示。
 - **Learning**: 行動feedbackの正式契約。
+
+---
+
+## Addendum: Frontend IA Implementation — Concierge Entry Progressive Disclosure
+
+`docs/audit/concierge-l1-freetext-final-readiness.md`のDecision
+（**CONDITIONAL GO**、Free-text Primary = Yes / Assist chips visibility
+= medium / L2/L3 collapsed by default = Yes）をFrontendへ実装した。
+上記「Follow-up」に記録されていた「Frontend IA: L1/L2/L3段階表示」に
+対応する。
+
+Recommendation Logic自体は変更していない。これまで一画面に平坦に並んで
+いた入力項目を、Signal Responsibility（本書§4-§6）に沿って
+Progressive Disclosureへ再構成しただけである。
+
+### Core UX Principle（実装確認済み）
+
+Frontendでは内部の5層（L1 Consultation / L2 Visit Preference / L3-A
+Personal Profile / L3-B Explicit Constraint / L3-C Recommendation
+Context）を全て同時に見せない。3状態へ集約する。
+
+| Frontend表示 | 内部Level | 初期状態 |
+|---|---|---|
+| Initial（まず相談する） | L1 Consultation | 表示（Primary Input） |
+| Assist（必要なら相談を助ける） | Consultation Theme Chips | 表示（medium visibility、textarea直下） |
+| Personalize（必要なら自分に合わせる） | L2 + L3-A + L3-B + L3-C | 折りたたみ（`isFilterOpen`初期値`false`、変更なし） |
+
+### Initial State
+
+`ConciergeEntryCard`（`apps/web/src/features/concierge/components/ConciergeEntryCard.tsx`）
+をL1 Primary Inputとして再構成した。
+
+- 表示順を Headline → Consultation textarea → Primary CTA → Assist
+  chips へ変更（従来はCTAがchipsの後ろにあった）。
+- textareaのlabelを「必要なら、今の状況を少しだけ書く」（任意感の強い
+  文言）から「今、どんなことが気になっていますか？」（Primary Inputと
+  して認識される文言）へ変更。
+- Level 3-C（参拝予定日・出発地点）をこのcardから完全に除去し、
+  Personalizeセクションへ移設（後述）。Initial画面には一切表示しない。
+- 呼び名（Non-Recommendation）・ログイン案内は、consultation flow
+  （textarea/CTA/chips）より後ろへ移動し、視覚的な強さも縮小した
+  （見出しなしの`border-t`区切り、小さいfont）。**削除はしていない**
+  -- `sessionNickname`はanonymous snapshot復元・greeting表示に実際に
+  使われているため（`ConciergeClientFull.tsx`のruntime dependency
+  確認済み）。
+
+### Assist State
+
+相談テーマchips（`feelExamples`）は削除せず、役割を
+「Alternative Search Method」ではなく「Consultation Writing Assist」
+として明示した。
+
+- 見出しを「相談テーマ」から「うまく言葉にならないとき／近いテーマ
+  から選べます」へ変更（入力補助であることを明示）。
+- chip clickの挙動（`onPickExample` → `setNeedText(example.text)`、
+  textareaを置き換えて編集可能にする）は**変更していない** --
+  これは既存のsignal経路であり、chip専用payload fieldを新設していない
+  （Do Not Change Recommendation Contract §Task 12）。
+- 表示位置をtextarea/CTA直下（アコーディオン内に隠さない、textareaより
+  強調しない）とし、medium visibilityとした。
+
+### Personalize State
+
+L2 Visit Preference + L3-A Personal Profile + L3-B Explicit Constraint
++ L3-C Recommendation Contextを、既存の`isFilterOpen`トグル1つの下へ
+まとめて配置した（Task 10の3-state modelに従い、新規top-level state
+は増やしていない）。ただし内部では、同一カテゴリに見せないよう
+（Task 11）各責務ごとにaccessible sectionを分離した。
+
+`apps/web/src/features/concierge/components/ConciergeFilterPanel.tsx`
+（既存、L2+L3-A+L3-Bを保持）:
+
+- 誕生日ブロック（L3-A）を`<section aria-label="誕生日（任意）">`へ。
+- 参拝スタイルpresetブロック（L2）を
+  `<section aria-label="今回の参拝の希望（任意）">`へ。
+- ご利益ブロック（L3-B）を`<section aria-label="ご利益を指定する">`へ
+  （見出し文言も「ご利益・願いに近いもの」から変更 -- 「おすすめ
+  テーマ」等と混同しないため、§6 3-B Explicit Constraintの定義に
+  合わせた）。
+- Preset値・`onToggleTag`/`onBirthdateChange`/`onVisitPreferencesChange`
+  等のhandler・Structured Visit Preference mapping（`PRESET_VISIT_
+  PREFERENCE_TAGS`）は**一切変更していない**。
+
+`apps/web/src/app/concierge/ConciergeClientFull.tsx`（L3-C新設配置）:
+
+- Level 3-C（参拝予定日・出発地点、`plannedVisitDate`/`userOrigin`
+  state）を`ConciergeEntryCard`から除去し、Personalizeセクション内へ
+  `<section aria-label="参拝の詳細（任意）">`として新設した。
+- state・handler（`setPlannedVisitDate`/`onOriginChange`/
+  `useCurrentLocation`/`trackWebDirection`呼び出し含む）は完全に
+  同一のものを再利用しており、request payload（`visit_date`/
+  `location`）の生成ロジックには一切触れていない。
+
+### State Preservation
+
+`filter_close`アクション（`ConciergeClientFull.tsx`）は
+`setIsFilterOpen(false)`のみを行い、`birthdate`/`selectedTagIds`/
+`extraCondition`/`visitPreferences`/`plannedVisitDate`/`userOrigin`の
+いずれもクリアしない。これらは全てPersonalizeセクションの外
+（`ConciergeClientFull`のcomponent state）に持ち上げられているため、
+開閉に伴うunmount/remountでも値は構造的に保持される（Browser QAで
+誕生日・ご利益選択が閉じて再度開いた後も保持されることを確認済み）。
+
+### Request Payload Extraction（Task 17対応）
+
+Request payload構築ロジック（従来`ConciergeClientFull.tsx`内に
+inline実装されていたuseCallback）を
+`apps/web/src/features/concierge/buildConciergeRequestPayload.ts`へ
+純粋関数として抽出した。closure変数を明示的なparamsへ置き換えた
+機械的な移動であり、**同一入力に対する出力は1バイトも変えていない**
+-- `ConciergeClientFull.tsx`側は同じ関数を呼び出すだけの薄い
+wrapperになった。
+
+この抽出により、巨大な`ConciergeClientFull`をmountせずに、L1 only /
+L1+Assist / L1+L2 / L1+L3-A / L1+L3-B / L1+L3-C / Full Integrationの
+7パターンをunit testで直接検証できるようになった
+（`apps/web/src/features/concierge/__tests__/buildConciergeRequestPayload.test.ts`）。
+
+### Known Limitation（テストカバレッジ）
+
+`ConciergeClientFull.tsx`（1990行超）は本PR以前からrender testが
+一切存在しない（useAuth/useBilling/useConciergeChat等、依存が多く
+mount costが高いため）。本PRもこの既存方針を踏襲し、新規にrender
+harnessは追加していない。Personalizeの外側トグル（`isFilterOpen`）・
+L3-C配置自体の自動テストは、`ConciergeFilterPanel`単体テスト
+（section分離・値保持）とBrowser QA（後述）でカバーしている。将来
+`ConciergeClientFull`のrender harnessを整備する場合はFollow-upとする。
+
+### No Behavior Change Verification（実行結果）
+
+```
+Web unit tests: npx vitest run -> 784 passed（既存769 + 新規15件）
+Web typecheck:  npx tsc -p tsconfig.json --noEmit -> no errors
+Web lint:       npx eslint . -> no errors
+Web build:      npm run build -> success
+```
+
+Recommendation Logic変更 = 0（query interpretation / need_tags /
+consultation_axis / visit_preferences payload / birthdate semantics /
+goriyaku hard filtering / location semantics / visit_date semantics /
+Ranking weights / Primary Reason -- いずれも無変更）
+Request payload shape変更 = 0（`buildConciergeRequestPayload`の
+抽出は既存出力と1バイトも変わらないことをunit testで確認）
+Backend変更 = 0
+Migration = 0
+Candidate filtering変更 = 0
+
+Frontend UI変更 = Yes（本Addendumの対象そのもの、Progressive
+Disclosureへの再構成）
+375px Information Architecture = 崩れていないことをBrowser QAで確認
+（textarea/CTA/chipsが縦積みで正しく表示され、横スクロール発生なし）
+
+Browser QA（実機ではなくdev server + Browser preview、実backend接続）:
+
+- Case A (Initial): textarea/CTA/chipsが最初に表示され、参拝予定日・
+  出発地点・誕生日・ご利益はいずれも初期画面に表示されないことを
+  確認。
+- Case B (Assist): chip clickでtextareaが置き換わり編集可能になる
+  ことを確認（既存挙動、変更なし）。
+- Case C (Personalize): 開いてL3-A（誕生日）・L2（参拝スタイル）・
+  L3-B（ご利益）・L3-C（参拝予定日・出発地点）が全て個別の
+  accessible sectionとして表示されること、誕生日入力・ご利益選択
+  後に閉じて再度開いても値が保持されることを確認。実際に
+  `POST /api/concierge/chat/`を送信し、`birthdate`（1990-05-20由来の
+  `gogyo:水`マッチ）と`goriyaku_tag_ids`（縁結び選択、
+  `matched_user_selected_goriyaku_tag_ids:[1]`）の両方が実際の
+  recommendation scoringへ反映されたレスポンスを確認 -- Personalize
+  再配置後もrequest payloadがbackendへ正しく伝わることを、実際の
+  end-to-endリクエストで検証した。
+
+### Follow-up（本PRでは実装しない）
+
+- `ConciergeClientFull.tsx`のrender test harness整備。
+- Personalizeセクション内、L2/L3-A/L3-B/L3-Cそれぞれの個別開閉
+  （本PRは全体を1つの`isFilterOpen`でまとめたまま、視覚的な
+  section分離のみ実施）。
+- 375/390/430pxのspacing/font size/chip density等のpixel polish
+  （本PRはIA再構成のみ、visual designの磨き込みは対象外）。
+- Color / Design Token全面変更。
+- Recommendation結果画面（`ConciergeSectionsRenderer`の"recommendations"
+  section等）の再設計。
+- 呼び名フィールドのInitial Recommendation Flowからの完全除去
+  （runtime dependencyがあるため今回は視覚的な優先度低下のみ）。
