@@ -180,17 +180,71 @@ fallback_rate (clear-intent) = 2 / 16 = 12.5%
 fallback_rate (ambiguous)    = 4 / 4  = 100.0%
 ```
 
-fallback発生件数6件は、全件`no_need_match`（`need_tags`が完全に
-空）に分類される。`no_fact_match`（need_tagsは存在するが
-reason_factsが生成されない状態）は0件だった。
+### 8.1 Failure Handling Rule
 
-内訳:
-- ambiguous-intent 4件全て（`なんとなく`/`モヤモヤ`/`気分転換`/
-  `特に悩みはない`）— **期待通り**。テーマ的な手がかりが無い自由文
+`primary_reason == fallback`を即座に「L1自由文失敗」と判定しない。
+以下の3層を混同せず、各fallback発生件について
+`consultation_axis`/`need_tags`/`matched_need_tags`/`score_need`/
+`history_theme_candidate_boost`/top contributor/`primary_reason_source`
+を記録した上で、原因を4分類のいずれかへ分類する。
+
+| 層 | 症状 |
+|---|---|
+| 1. Interpretation Failure | need_tagsが取れない／consultation_axisが不適切 |
+| 2. Recommendation Matching Failure | consultation_axisは正しい／need_tagsはあるがTop1にmatched_need_tagsがない |
+| 3. Candidate / Knowledge Coverage Gap | 相談テーマに対応する神社側データが弱く、rankingがdistance等に寄る |
+
+分類: **Interpretation Gap / Matching Gap / Candidate Coverage Gap /
+Expected Fallback**
+
+### 8.2 fallback発生6件の詳細
+
+| id | consultation_axis (source) | need_tags | matched_need_tags | score_need | history_theme_boost | top contributor | primary_reason_source |
+|---|---|---|---|---|---|---|---|
+| l1_relationship_002 | other (fallback) | [] | [] | 0 | 0.0 | distance (raw=0.670, contribution=0.235) | fallback |
+| l1_courage_002 | other (fallback) | [] | [] | 0 | 0.0 | distance (raw=0.670, contribution=0.235) | fallback |
+| l1_ambiguous_001 | other (fallback) | [] | [] | 0 | 0.0 | distance (raw=0.670, contribution=0.235) | fallback |
+| l1_ambiguous_002 | other (fallback) | [] | [] | 0 | 0.0 | distance (raw=0.670, contribution=0.235) | fallback |
+| l1_ambiguous_003 | other (fallback) | [] | [] | 0 | 0.0 | distance (raw=0.670, contribution=0.235) | fallback |
+| l1_ambiguous_004 | other (fallback) | [] | [] | 0 | 0.0 | distance (raw=0.670, contribution=0.235) | fallback |
+
+全6件で`need_tags`が完全に空であり、`matched_need_tags`も
+`history_theme_candidate_boost`も構造的にゼロになる
+（Layer 1で止まっている。Layer 2 / Layer 3まで到達した形跡は
+確認できない）。Top1は6件とも`三光稲荷神社`で、寄与軸は
+`distance`（0.35）と`popular`（0.1）のみ — 相談内容とは無関係な
+「近さ・定番性」だけで選ばれている。
+
+### 8.3 4分類への割当て
+
+| 分類 | 該当件数 | 該当id | 判定根拠 |
+|---|---|---|---|
+| **Expected Fallback** | 4 | l1_ambiguous_001〜004 | テーマ的な手がかりが無い自由文（`なんとなく`/`モヤモヤ`/`気分転換`/`特に悩みはない`）。need_tagsが空になること自体が正しい挙動であり、Interpretationの失敗ではない。 |
+| **Interpretation Gap** | 2 | l1_relationship_002, l1_courage_002 | 人間が読めば明確な相談テーマ（人間関係の整理、環境を変えたい）だが、`KEYWORDS`辞書（`temples/domain/need_tags.py`）に直接一致する語を含まない言い回しのため、need_tags抽出そのものが失敗している。Layer 1（Interpretation）の問題であり、Layer 2（Matching）・Layer 3（Candidate Coverage）には到達していない。 |
+| **Matching Gap** | 0 | — | 本fixture setでは**未観測**。need_tagsが非空だった14件は、全件が何らかの`matched_need_tags`を得てfallback以外のprimary reasonへ到達した（§7の`consultation_axis=other`は発生しても、matched_need_tags自体は成立している）。 |
+| **Candidate Coverage Gap** | 0 | — | 本fixture setでは**未観測**。`history_theme_candidate_boost`がconsultation_axis解決不能により構造的にゼロになるケース（§7 Finding A）はあるが、「need_tagsは解決したがcandidate側データが弱くdistance等に流れる」という形のCoverage Gapは、今回の82件プールでは確認できなかった。 |
+
+**重要な結論**: 今回観測されたfallback 6件は、**すべてLayer 1
+（Interpretation）止まり**であり、Layer 2（Matching）・Layer 3
+（Candidate Coverage）由来のfallbackは1件も確認されなかった。
+これは、`clear_intent_fallback_rate`（12.5%）が「Recommendation
+Matchingやcandidate側データの弱さ」ではなく、**もっぱらneed_tags
+keyword辞書のcoverage不足**に起因することを意味する
+（§7 Finding A・§10 Finding Cとあわせて、いずれもInterpretation層
+またはTaxonomy層の問題に収束しており、Matching層・Candidate
+Coverage層は今回の監査範囲では健全であったと判断できる）。
+
+ただし82件という限定的な候補プールでの結果であり、Matching Gap /
+Candidate Coverage Gapが「構造的に存在しない」ことの証明ではない
+（§12 Risks参照。より狭いテーマ・より小さいknowledge coverageの
+候補プールでは発生しうる）。
+
+内訳（再掲、intent_clarityとの対応）:
+- ambiguous-intent 4件全て — **Expected Fallback**。テーマ的な手がかりが無い自由文
   であり、fallbackになること自体は妥当な挙動。
 - clear-intent 2件（`l1_relationship_002`「大切な人との関係を整理
   したい」、`l1_courage_002`「環境を変えたいと思っている」）—
-  いずれも`KEYWORDS`辞書（`temples/domain/need_tags.py`）の
+  **Interpretation Gap**。いずれも`KEYWORDS`辞書（`temples/domain/need_tags.py`）の
   keyword一覧に直接一致する語を含まない、抽象度の高い言い回し。
   Bugではなく、既存keyword辞書のcoverage gap（Taxonomy Gap寄り）。
 
@@ -365,6 +419,18 @@ money/career/rest/study/courageの5テーマでは、意味的な破綻は
 （Finding A: love/relationship consultation_axis欠落、Finding C:
 relationship→loveの誤alias）が、判定を押し下げている**、という
 狭い評価である。
+
+§8.1〜8.3のFailure Handling Ruleに基づく分類がこの評価をさらに
+裏付ける: fallback 6件は全件Layer 1（Interpretation）止まりで、
+Layer 2（Recommendation Matching Failure）・Layer 3（Candidate /
+Knowledge Coverage Gap）由来のfallbackは1件も確認されなかった。
+つまり「候補側データが弱い」「Matchingロジックが機能していない」
+という兆候は今回の監査では見られず、問題は**Interpretation層
+（need_tags抽出のkeyword coverage）とTaxonomy層（consultation_axis
+の値域・alias定義）の2箇所に限定されている**。これはNO-GO判定を
+覆すものではないが、Follow-upのスコープを「Recommendation
+Matching/Ranking全体の見直し」ではなく「Finding A/Cという2つの
+具体的なdictionary/taxonomy修正」に絞ってよいという根拠を補強する。
 
 ## 12. Risks
 

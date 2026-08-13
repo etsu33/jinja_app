@@ -67,6 +67,23 @@ EXPECTED_NON_FALLBACK_IDS = {
     "l1_study_001",
 }
 
+# Failure Handling Rule (audit doc §8.1-8.3): a fallback primary_reason
+# must be attributed to one of Interpretation Gap / Matching Gap /
+# Candidate Coverage Gap / Expected Fallback, never treated as a single
+# undifferentiated "L1 failed" bucket. At audit time, all 6 observed
+# fallback cases were Layer-1 (Interpretation) -- either Expected
+# (ambiguous queries with no thematic hook) or a genuine keyword-coverage
+# gap for a clear-intent query. Zero cases reached Layer 2 (Matching) or
+# Layer 3 (Candidate/Knowledge Coverage).
+EXPECTED_FALLBACK_CLASSIFICATION = {
+    "l1_relationship_002": "interpretation_gap",
+    "l1_courage_002": "interpretation_gap",
+    "l1_ambiguous_001": "expected_fallback",
+    "l1_ambiguous_002": "expected_fallback",
+    "l1_ambiguous_003": "expected_fallback",
+    "l1_ambiguous_004": "expected_fallback",
+}
+
 # Expected semantic need_tag family per case (audit doc §5/§10). For the
 # two relationship cases that Finding C documents as mis-aliased to
 # "love", the expected family includes both the intended tag
@@ -255,3 +272,48 @@ def test_l1_freetext_clear_intent_fallback_rate_within_conditional_go_threshold(
     )
     rate = fallback / len(clear_ids)
     assert rate <= 0.30, f"clear-intent fallback_rate={rate:.1%} exceeds CONDITIONAL GO threshold (30%)"
+
+
+# ---------------------------------------------------------------------------
+# Failure Handling Rule (audit doc §8.1-8.3): every fallback case must be
+# attributable to Interpretation Gap / Matching Gap / Candidate Coverage
+# Gap / Expected Fallback -- not treated as one undifferentiated bucket.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_l1_freetext_fallback_cases_match_documented_set(readiness_results):
+    """Every case classified in EXPECTED_FALLBACK_CLASSIFICATION did fall
+    back at audit time, and no *other* case fell back unexpectedly. A
+    change here means the Interpretation-layer keyword dictionaries moved
+    -- re-run the audit's failure classification (doc §8) rather than
+    just updating this set."""
+    actual_fallback_ids = {
+        case_id
+        for case_id, (_, recs) in readiness_results.items()
+        if recs["recommendations"][0].get("_primary_reason_source") == "fallback"
+    }
+    assert actual_fallback_ids == set(EXPECTED_FALLBACK_CLASSIFICATION)
+
+
+@pytest.mark.django_db
+def test_l1_freetext_no_fallback_reaches_matching_or_coverage_layer(readiness_results):
+    """At audit time, all fallback cases were Layer-1 (Interpretation):
+    need_tags was empty, so matched_need_tags and
+    history_theme_candidate_boost are structurally zero too -- Layer 2
+    (Matching Gap) and Layer 3 (Candidate/Knowledge Coverage Gap) were
+    never reached. This does not prove Matching/Coverage gaps can't
+    occur (audit doc §12 Risks) -- it pins what was actually observed
+    with this 82-shrine candidate pool."""
+    for case_id in EXPECTED_FALLBACK_CLASSIFICATION:
+        _, recs = readiness_results[case_id]
+        top1 = recs["recommendations"][0]
+        need = recs.get("_need") or {}
+        breakdown = top1.get("breakdown") or {}
+        features = ((top1.get("breakdown_detail") or {}).get("features")) or {}
+        history_boost = (features.get("history_theme_candidate_boost") or {}).get("raw")
+
+        assert need.get("tags") == [], f"{case_id}: expected empty need_tags (Layer 1), got {need.get('tags')}"
+        assert breakdown.get("matched_need_tags") == [], f"{case_id}: unexpected matched_need_tags"
+        assert breakdown.get("score_need") == 0, f"{case_id}: unexpected non-zero score_need"
+        assert not history_boost, f"{case_id}: unexpected history_theme_candidate_boost={history_boost}"
