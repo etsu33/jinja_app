@@ -39,18 +39,28 @@ from temples.tests.fixtures.concierge_l1_freetext_readiness_queries import (
 SEED_PATH = Path(__file__).resolve().parents[2] / "seed" / "representative_shrines.yaml"
 
 # Axes that currently exist in temples.domain.consultation_axis.CONSULTATION_AXES
-# for each theme. "love" and "relationship" are deliberately absent --
-# Finding A (audit doc §7) documents that no love/relationship axis
-# exists, so those themes structurally resolve to "other". This mapping
-# pins that *documented, known* state, not an assumption.
+# for each theme.
+#
+# Finding A (audit doc §7) originally documented that no love/relationship
+# axis existed, so those themes structurally resolved to "other". This was
+# fixed by wiring "relationship_repair" into resolve_consultation_axis()
+# (feature/concierge-relationship-consultation-axis, see
+# docs/audit/concierge-relationship-axis-followup.md) -- love and
+# relationship share this one axis (need_tags stay distinct, PR #2410).
+# "rest_healing" stays an accepted alternative for l1_relationship_001:
+# "人間関係で少し疲れている" has 2 rest_healing keyword hits (疲れ/疲れて)
+# vs. 1 relationship_repair hit (人間関係), and CONSULTATION_AXIS_KEYWORDS
+# resolution is hit-count-ranked -- a pre-existing, unrelated tie-break
+# rule this PR does not change (Task 9: no scope expansion into keyword
+# priority tuning).
 EXPECTED_AXIS_FAMILY = {
     "career": {"career_change"},
     "rest": {"rest_healing"},
     "money": {"money_growth"},
     "courage": {"restart_mindset", "other"},  # keyword-coverage-dependent, see audit §8
     "study": {"study_success"},
-    "love": {"other"},  # Finding A: no love/relationship axis exists
-    "relationship": {"other", "rest_healing"},  # Finding A: no love/relationship axis exists (unaffected by the Finding C alias fix -- consultation_axis never routed through NEED_TAG_ALIASES)
+    "love": {"relationship_repair"},
+    "relationship": {"relationship_repair", "rest_healing"},
 }
 
 # Cases the audit confirmed reach a real (non-fallback) primary reason.
@@ -84,17 +94,19 @@ EXPECTED_NON_FALLBACK_IDS = {
 # Candidate Coverage Gap / Expected Fallback, never treated as a single
 # undifferentiated "L1 failed" bucket.
 #
-# l1_relationship_003 is now (post-fix) a genuine Candidate Coverage
-# Gap: need_tags correctly resolves to ["relationship"] (Interpretation
-# succeeded), consultation_axis is "other" only because no
-# love/relationship consultation_axis exists at all (Finding A,
-# pre-existing, unrelated to this fix), but matched_need_tags is empty
-# because this 82-shrine pool has zero shrines with "relationship" in
-# astro_tags, no NEED_TEXT_WEIGHTS["relationship"] entry, and these
-# test candidates carry no goriyaku_tag_ids (even though
-# NEED_TO_GORIYAKU_IDS["relationship"] = {1, 27, 34, 43} already exists
-# -- temples/domain/need_to_goriyaku_tag_ids.py). This is a real,
-# reported gap (Task 8), not fixed in this PR.
+# l1_relationship_003 is a genuine Candidate Coverage Gap: need_tags
+# correctly resolves to ["relationship"], and (since
+# feature/concierge-relationship-consultation-axis) consultation_axis
+# correctly resolves to "relationship_repair" too -- Finding A is fixed.
+# It still falls back because matched_need_tags is empty: this 82-shrine
+# pool has zero shrines with "relationship" in astro_tags, no
+# NEED_TEXT_WEIGHTS["relationship"] entry, no shrine here carries
+# history_theme="縁" either (representative_shrines.yaml has no
+# history_theme field at all yet), and these test candidates carry no
+# goriyaku_tag_ids (even though NEED_TO_GORIYAKU_IDS["relationship"] =
+# {1, 27, 34, 43} already exists -- temples/domain/need_to_goriyaku_tag_ids.py).
+# This is a real, reported gap (Task 8 of the axis-followup PR), not fixed
+# here -- see docs/audit/concierge-relationship-axis-followup.md.
 EXPECTED_FALLBACK_CLASSIFICATION = {
     "l1_relationship_002": "interpretation_gap",
     "l1_relationship_003": "candidate_coverage_gap",
