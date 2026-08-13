@@ -522,6 +522,30 @@ PRIMARY_REASON_PRIORITY: Dict[str, int] = {
     "fallback": 9,
 }
 
+# Signal Authority boundary (docs/product/recommendation-signal-authority.md
+# §5/§7 Primary Recommendation Contract): only these reason_facts types are
+# grounded in Consultation Meaning x Shrine-side Evidence. "element"
+# (birthdate/Personalization) and "visit_style" (Secondary/Context
+# boundary) may still surface as a reason, but per §7 must never alone
+# constitute Recommendation Meaning -- used to keep Context-driven
+# re-ranking (e.g. distance_mode) from promoting a candidate with no
+# Primary Recommendation Meaning ahead of one that has it.
+PRIMARY_TIER_REASON_TYPES: frozenset[str] = frozenset(
+    reason_type
+    for reason_type, priority in PRIMARY_REASON_PRIORITY.items()
+    if priority < PRIMARY_REASON_PRIORITY["element"]
+)
+
+
+def has_primary_tier_reason(reason_facts: List[Dict[str, Any]] | None) -> bool:
+    """True if any reason_fact is grounded in Recommendation Meaning
+    (Primary tier), as opposed to Context/Secondary/Personalization only."""
+    return any(
+        str(fact.get("type") or "") in PRIMARY_TIER_REASON_TYPES
+        for fact in (reason_facts or [])
+        if isinstance(fact, dict)
+    )
+
 
 def _make_reason_fact(
     *,
@@ -2060,4 +2084,6 @@ __all__ = [
     "resolve_score_sort_key",
     "resolve_score_v3_history_signal",
     "resolve_history_theme_candidate_boost",
+    "PRIMARY_TIER_REASON_TYPES",
+    "has_primary_tier_reason",
 ]
