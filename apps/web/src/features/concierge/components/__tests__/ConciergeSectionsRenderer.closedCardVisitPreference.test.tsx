@@ -1,6 +1,9 @@
-// Regression test: does the closed-card preset toggle ("静か"/"駅近")
+// Regression test: does the quick preset toggle ("静か"/"駅近")
 // actually dispatch filter_set_visit_preferences alongside filter_set_extra?
 // (ConciergeSectionsRenderer.tsx togglePreset(), added in PR #2405.)
+// These chips moved from the collapsed state into the open ConciergeFilterPanel
+// state (docs/product/recommendation-result-information-architecture.md §15 PR1);
+// the toggle logic itself, and its assertions here, are unchanged.
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -19,7 +22,7 @@ import ConciergeSectionsRenderer from "../ConciergeSectionsRenderer";
 import { buildPayloadFromUnified } from "@/features/concierge/buildPayloadFromUnified";
 
 const baseFilterState: any = {
-  isOpen: false,
+  isOpen: true,
   birthdate: "",
   element4: null,
   goriyakuTags: [],
@@ -44,7 +47,7 @@ const heroRec = {
   },
 };
 
-describe("closed-card preset toggle -> filter_set_visit_preferences", () => {
+describe("quick preset toggle (open state) -> filter_set_visit_preferences", () => {
   it("clicking 静か dispatches filter_set_visit_preferences with ['quiet']", () => {
     const onAction = vi.fn();
     const u: any = { data: { recommendations: [heroRec] }, thread: { id: 1 } };
