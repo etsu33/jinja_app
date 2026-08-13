@@ -594,6 +594,7 @@ def _build_reason_facts(
     astro_bonus_enabled: bool,
     shrine_meaning_profile: Optional[Dict[str, Any]] = None,
     matched_visit_style_tags: Optional[List[str]] = None,
+    history_theme_candidate_boost: float = 0.0,
 ) -> List[Dict[str, Any]]:
     facts: List[Dict[str, Any]] = []
     profile = shrine_meaning_profile or {}
@@ -605,7 +606,16 @@ def _build_reason_facts(
     history_theme = str(profile.get("history_theme") or "").strip()
     culture_translation_present = bool(profile.get("culture_translation_present"))
 
-    if profile_matched_need_tags and history_theme:
+    # docs/product/recommendation-signal-authority.md §6: history_theme is
+    # "Primary（条件付き）" -- Rank寄与はconsultation_axis一致時のみ
+    # (history_theme_candidate_boost). A candidate whose theme does not
+    # correspond to the resolved axis (boost == 0.0) had zero ranking
+    # authority from history_theme, so it must not be presented as the
+    # (or a) reason this candidate ranked -- gating this fact on the same
+    # boost signal that actually reached the score keeps the Explanation
+    # SSOT aligned with the real Ranking Authority (Explanation Alignment
+    # Hardening audit finding).
+    if profile_matched_need_tags and history_theme and history_theme_candidate_boost > 0:
         facts.append(
             _make_reason_fact(
                 type_="history_theme",
@@ -1479,6 +1489,7 @@ def _attach_breakdown(
         astro_bonus_enabled=astro_bonus_enabled,
         shrine_meaning_profile=shrine_meaning_profile,
         matched_visit_style_tags=matched_visit_style_tags,
+        history_theme_candidate_boost=history_theme_candidate_boost,
     )
     primary_reason = _resolve_primary_reason(reason_facts)
 
