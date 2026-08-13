@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildRecommendationImpressionDedupKey,
   normalizeRecommendationInstanceId,
   recommendationAnalyticsProperties,
   recommendationAnalyticsProvenance,
@@ -38,5 +39,70 @@ describe("normalizeRecommendationInstanceId parity", () => {
 
   it.each([undefined, null, "", "   "])("欠損値(%p)はnullのまま、合成しない", (raw) => {
     expect(normalizeRecommendationInstanceId(raw)).toBeNull();
+  });
+});
+
+// docs/audit/recommendation-strict-funnel-readiness.md §6, §14-2: Mobileも同じ
+// buildRecommendationImpressionDedupKey()をWebと共有し、同一semantic contractでdedupする。
+describe("buildRecommendationImpressionDedupKey parity", () => {
+  it("同一instance + 同一shrine/rankは同じkeyになる(rerenderでdedupされる)", () => {
+    const first = buildRecommendationImpressionDedupKey({
+      recommendationInstanceId: "gen-a",
+      resultSetId: "unknown:1:1",
+      shrineId: "1",
+      rank: 1,
+    });
+    const second = buildRecommendationImpressionDedupKey({
+      recommendationInstanceId: "gen-a",
+      resultSetId: "unknown:1:1",
+      shrineId: "1",
+      rank: 1,
+    });
+    expect(first).toBe(second);
+  });
+
+  it("同じshrine/rankでも新instanceなら別keyになる(新generationは抑制されない)", () => {
+    const genA = buildRecommendationImpressionDedupKey({
+      recommendationInstanceId: "gen-a",
+      resultSetId: "unknown:1:1",
+      shrineId: "1",
+      rank: 1,
+    });
+    const genB = buildRecommendationImpressionDedupKey({
+      recommendationInstanceId: "gen-b",
+      resultSetId: "unknown:1:1",
+      shrineId: "1",
+      rank: 1,
+    });
+    expect(genA).not.toBe(genB);
+  });
+
+  it("Mobileの常にunknown prefixなresultSetIdでも、recommendationInstanceIdがあれば別threadを衝突させない", () => {
+    // Mobileの resultSetId は threadId を含まないため常に "unknown:..." になり得るが、
+    // recommendationInstanceId (Backend rid) が異なれば依然として別keyになる。
+    const threadOne = buildRecommendationImpressionDedupKey({
+      recommendationInstanceId: "rid-thread-1",
+      resultSetId: "unknown:1:1",
+      shrineId: "1",
+      rank: 1,
+    });
+    const threadTwo = buildRecommendationImpressionDedupKey({
+      recommendationInstanceId: "rid-thread-2",
+      resultSetId: "unknown:1:1",
+      shrineId: "1",
+      rank: 1,
+    });
+    expect(threadOne).not.toBe(threadTwo);
+  });
+
+  it("malformed/null recommendationInstanceIdでもクラッシュしない", () => {
+    expect(() =>
+      buildRecommendationImpressionDedupKey({
+        recommendationInstanceId: null,
+        resultSetId: "unknown:empty",
+        shrineId: undefined,
+        rank: 1,
+      }),
+    ).not.toThrow();
   });
 });

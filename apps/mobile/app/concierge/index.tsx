@@ -37,6 +37,7 @@ import { getOriginSession } from "../../lib/originSession";
 import { trackMobileDirection } from "../../lib/directionEvents";
 import { track } from "../../lib/analytics";
 import {
+  buildRecommendationImpressionDedupKey,
   buildRecommendationResultSetId,
   normalizeRecommendationInstanceId,
   recommendationAnalyticsProperties,
@@ -672,7 +673,7 @@ export default function ConciergeScreen() {
   const [loading, setLoading] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
   const [results, setResults] = React.useState<RecommendationCard[]>([]);
-  const trackedResultSetRef = React.useRef<string | null>(null);
+  const trackedImpressionKeysRef = React.useRef<Set<string>>(new Set());
   const [selectedVisitStyle, setSelectedVisitStyle] = React.useState<string | undefined>(params.visitStyle || undefined);
   const [birthdate, setBirthdate] = React.useState(params.birthdate ?? "");
   const [plannedVisitDate, setPlannedVisitDate] = React.useState(params.plannedVisitDate ?? "");
@@ -690,10 +691,24 @@ export default function ConciergeScreen() {
       null,
       results.map((card) => ({ shrineId: card.shrineId ?? card.id })),
     );
-    if (trackedResultSetRef.current === resultSetId) return;
-    trackedResultSetRef.current = resultSetId;
 
     results.forEach((card, index) => {
+      // Recommendation Impression Instance Dedup Contract (docs/audit/
+      // recommendation-strict-funnel-readiness.md §6, §14-2): dedup boundary must be the
+      // Backend-issued recommendationInstanceId, not a single batch-level resultSetId ref
+      // -- the previous single-ref guard suppressed the entire Impression batch for any
+      // new generation sharing the same (always-"unknown"-prefixed on Mobile) shrine
+      // signature, orphaning that generation's Click. Uses the same shared helper as Web
+      // so both platforms dedup with the identical algorithm.
+      const impressionKey = buildRecommendationImpressionDedupKey({
+        recommendationInstanceId: card.recommendationInstanceId,
+        resultSetId,
+        shrineId: card.shrineId ?? card.id,
+        rank: index + 1,
+      });
+      if (trackedImpressionKeysRef.current.has(impressionKey)) return;
+      trackedImpressionKeysRef.current.add(impressionKey);
+
       track("concierge_result_impression", {
         source: "concierge_result",
         platform: "mobile",

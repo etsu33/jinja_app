@@ -97,3 +97,32 @@ export function buildRecommendationResultSetId(
 export function normalizeRecommendationInstanceId(raw: unknown): string | null {
   return trimmedString(raw);
 }
+
+// Recommendation Impression Instance Dedup Contract
+// (docs/audit/recommendation-strict-funnel-readiness.md §6, §14-1/2):
+// the dedup boundary for a rendered Impression must be the Backend-issued
+// recommendationInstanceId -- never resultSetId alone. resultSetId is a Frontend-composed
+// shrine-order signature that collides across separate generations that happen to return
+// the same shrines in the same order/rank; keying dedup on it suppressed the Impression
+// for a new generation while its Click still fired (orphan click, no matching Impression).
+// recommendationInstanceId is never generated here, only read; resultSetId is used only as
+// a per-item fallback for the instance boundary when recommendationInstanceId is absent
+// (e.g. malformed Backend payload), preserving prior collision-prone behavior instead of
+// dropping the Impression outright. Shared by Web and Mobile so both dedup with the exact
+// same algorithm, not just a similar one.
+export function buildRecommendationImpressionDedupKey(params: {
+  recommendationInstanceId: string | null | undefined;
+  resultSetId: string;
+  shrineId: string | number | null | undefined;
+  rank: number;
+  position?: string | null;
+}): string {
+  const instanceKey = params.recommendationInstanceId ?? params.resultSetId;
+  return [
+    instanceKey,
+    "concierge_result_impression",
+    params.shrineId ?? "unknown",
+    params.position ?? "",
+    params.rank,
+  ].join(":");
+}
