@@ -13,7 +13,6 @@ import { buildHeroConclusionLines } from "@/features/concierge/buildHeroConclusi
 import ConciergeTopRecommendationHero from "@/features/concierge/components/ConciergeTopRecommendationHero";
 import ShrineCardCompact from "@/components/shrines/ShrineCardCompact";
 
-import { labelNeedDisplayTag } from "@/features/concierge/copy/needDisplayCopy";
 import { buildLoginHref } from "@/lib/nav/login";
 import { resolveAccessLevel } from "@/lib/premium/accessLevel";
 import { getVisibilityForCard } from "@/lib/premium/cardVisibility";
@@ -927,18 +926,11 @@ export default function ConciergeSectionsRenderer({
                             <ConciergeTopRecommendationHero
                               name={heroItem.title}
                               href={withDirectionRouteContext(heroItem.detailHref, heroItem.directionReference, "hero")}
-                              imageUrl={heroItem.imageUrl}
                               address={null}
                               topReasonLabel={reasonVm.hero.topReasonLabel ?? null}
                               eyebrowLabel={reasonVm.hero.eyebrowLabel ?? null}
-                              subtitle={reasonVm.hero.subtitle ?? null}
-                              catchCopy={reasonVm.hero.catchCopy}
-                              whyTop={null}
                               conclusionLines={conclusionLines}
                               actionReason={heroReasonV4.actionText}
-                              differenceFromOthers={null}
-                              tags={matchedNeedTags.map(labelNeedDisplayTag).slice(0, 3)}
-                              actionSuggestions={(heroItem as any).actionSuggestions ?? []}
                               actionSuggestionV4Preview={(heroItem as any).actionSuggestionV4Preview ?? null}
                               analyticsSource="concierge_result"
                               threadId={tid ?? null}

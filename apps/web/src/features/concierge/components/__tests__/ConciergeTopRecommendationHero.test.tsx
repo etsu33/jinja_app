@@ -20,7 +20,6 @@ describe("ConciergeTopRecommendationHero", () => {
       <ConciergeTopRecommendationHero
         name="検証神社"
         href="/shrines/17?ctx=concierge"
-        catchCopy="今の相談に合う候補です。"
         conclusionLines={["今回の相談の中心にある「金運」のテーマと重なるため、この神社が候補に入っています。"]}
         routeLabel="詳しく見る"
       />,
@@ -32,7 +31,6 @@ describe("ConciergeTopRecommendationHero", () => {
 
     expect(screen.getByText("相談内容・ご利益との一致")).toBeInTheDocument();
     expect(screen.getByText("今回の相談の中心にある「金運」のテーマと重なるため、この神社が候補に入っています。")).toBeInTheDocument();
-    expect(screen.queryByText("今の相談に合う候補です。")).not.toBeInTheDocument();
     expect(screen.queryByText("今の状況から動き出すなら、この候補が自然に見えます。")).not.toBeInTheDocument();
     expect(screen.queryByText("この候補を基準にすると判断しやすくなります。")).not.toBeInTheDocument();
 
@@ -43,7 +41,6 @@ describe("ConciergeTopRecommendationHero", () => {
     render(
       <ConciergeTopRecommendationHero
         name="検証神社"
-        catchCopy="入口コピー"
         conclusionLines={["相談の理解を示す文。", "神社の事実・選定理由を示す文。"]}
       />,
     );
@@ -63,7 +60,6 @@ describe("ConciergeTopRecommendationHero", () => {
     render(
       <ConciergeTopRecommendationHero
         name="検証神社"
-        catchCopy="入口コピー"
         actionReason="参拝前に、問いを一つに絞ることを決めておきます。"
         actionSuggestionV4Preview={{
           primaryAction: {
@@ -104,57 +100,18 @@ describe("ConciergeTopRecommendationHero", () => {
   });
 
   it("conclusionLines/actionReason/actionSuggestionが無い場合はConclusion/Next Actionどちらも表示しない", () => {
-    render(<ConciergeTopRecommendationHero name="検証神社" catchCopy="入口コピー" />);
+    render(<ConciergeTopRecommendationHero name="検証神社" />);
 
     expect(screen.queryByTestId("recommendation-conclusion")).not.toBeInTheDocument();
     expect(screen.queryByTestId("recommendation-next-action")).not.toBeInTheDocument();
   });
 
 
-  it("does not render legacy action suggestions on the hero card", () => {
-    render(
-      <ConciergeTopRecommendationHero
-        name="検証神社"
-        href="/shrines/17?ctx=concierge"
-        catchCopy="今の相談に合う候補です。"
-        actionSuggestions={[
-          {
-            id: "challenge_choose_this_week",
-            historyTheme: "勝負",
-            title: "今週やることを1つ選ぶ",
-            description: "迷っていることから、まず1つだけ選んで動きます。",
-            category: "prepare",
-            timing: "before_visit",
-            difficulty: "easy",
-            timeEstimate: "5分",
-            measurementKey: "weekly_choice",
-          },
-        ]}
-        analyticsSource="concierge_result"
-        threadId="thread-1"
-        resultSetId="result-set-1"
-        shrineId={17}
-        recommendationRank={1}
-        historyTheme="勝負"
-        routeLabel="詳しく見る"
-      />,
-    );
-
-    expect(screen.queryByTestId("hero-action-suggestions")).not.toBeInTheDocument();
-    expect(screen.queryByText("次の小さな一歩")).not.toBeInTheDocument();
-    expect(screen.queryByText("今週やることを1つ選ぶ")).not.toBeInTheDocument();
-    expect(screen.queryByText("迷っていることから、まず1つだけ選んで動きます。")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "試してみる" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "完了" })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "詳しく見る" })).toHaveAttribute("href", "/shrines/17?ctx=concierge");
-    expect(analyticsMocks.trackSearchEvent).not.toHaveBeenCalled();
-  });
   it("renders v4 preview as a one-line summary and tracks preview views", async () => {
     render(
       <ConciergeTopRecommendationHero
         name="検証神社"
         href="/shrines/17?ctx=concierge"
-        catchCopy="今の相談に合う候補です。"
         actionSuggestionV4Preview={{
           primaryAction: {
             label: "まず詳細を見て、行く理由を確認する",
@@ -241,7 +198,6 @@ describe("ConciergeTopRecommendationHero", () => {
       <ConciergeTopRecommendationHero
         name="検証神社"
         href="/shrines/17?ctx=concierge"
-        catchCopy="今の相談に合う候補です。"
         routeLabel="神社の詳細を見る"
         onDetailClick={onDetailClick}
         secondaryActionSlot={<button type="button">あとで見る</button>}
@@ -261,7 +217,6 @@ describe("ConciergeTopRecommendationHero", () => {
         <ConciergeTopRecommendationHero
           name="検証神社"
           href="/shrines/17?ctx=concierge"
-          catchCopy="今の相談に合う候補です。"
           routeLabel="詳しく見る"
         />,
       );
@@ -278,7 +233,6 @@ describe("ConciergeTopRecommendationHero", () => {
         <ConciergeTopRecommendationHero
           name="検証神社"
           href="/shrines/17?ctx=concierge"
-          catchCopy="今の相談に合う候補です。"
           originSummary="由緒の要約"
           address="東京都千代田区1-1-1"
           topReasonLabel="選ばれた理由"
