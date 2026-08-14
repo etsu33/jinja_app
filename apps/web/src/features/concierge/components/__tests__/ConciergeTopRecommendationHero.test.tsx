@@ -21,7 +21,7 @@ describe("ConciergeTopRecommendationHero", () => {
         name="検証神社"
         href="/shrines/17?ctx=concierge"
         catchCopy="今の相談に合う候補です。"
-        primaryReason="今回の相談の中心にある「金運」のテーマと重なるため、この神社が候補に入っています。"
+        conclusionLines={["今回の相談の中心にある「金運」のテーマと重なるため、この神社が候補に入っています。"]}
         routeLabel="詳しく見る"
       />,
     );
@@ -39,52 +39,75 @@ describe("ConciergeTopRecommendationHero", () => {
     expect(screen.queryByTestId("hero-secondary-actions")).not.toBeInTheDocument();
   });
 
-  it("主理由の後に通常の推薦理由を表示する", () => {
+  it("Conclusion内の複数lineは渡された順序のまま1つのblockに表示される（Hero Reason Consolidation）", () => {
     render(
       <ConciergeTopRecommendationHero
         name="検証神社"
         catchCopy="入口コピー"
-        primaryReason="相談とご利益の一致です。"
-        secondaryReason="静かに過ごせることが通常の推薦理由です。"
+        conclusionLines={["相談の理解を示す文。", "神社の事実・選定理由を示す文。"]}
       />,
     );
 
-    const match = screen.getByTestId("recommendation-match-reason");
-    const reason = screen.getByTestId("recommendation-standard-reason");
-    expect(match.compareDocumentPosition(reason) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // 1つのConclusion blockのみが存在する（旧primaryReason/secondaryReasonの2枚には分かれない）。
+    expect(screen.getAllByTestId("recommendation-conclusion")).toHaveLength(1);
+
+    const conclusion = screen.getByTestId("recommendation-conclusion");
+    const first = screen.getByText("相談の理解を示す文。");
+    const second = screen.getByText("神社の事実・選定理由を示す文。");
+    expect(conclusion).toContainElement(first);
+    expect(conclusion).toContainElement(second);
+    expect(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it("fact/interpretation/actionをこの順序で表示し、action.sourceは表示しない", () => {
+  it("actionReasonとactionSuggestionV4Previewが両方あっても1つのNext Action blockに統合される（重複カードなし）", () => {
     render(
       <ConciergeTopRecommendationHero
         name="検証神社"
         catchCopy="入口コピー"
-        factReason="仕事運に関わる神社です。"
-        interpretationReason="相談内容から、今扱いたいテーマを読み取っています。"
         actionReason="参拝前に、問いを一つに絞ることを決めておきます。"
+        actionSuggestionV4Preview={{
+          primaryAction: {
+            label: "参拝ルートを確認する",
+            description: "",
+            actionType: "route_open",
+            confidence: 0.7,
+          },
+          secondaryAction: {
+            label: "保存する",
+            description: "",
+            actionType: "save",
+            confidence: 0.5,
+          },
+          reflectionPrompt: {
+            question: "参拝後、何が変わったか一言で残しますか？",
+            promptType: "after_visit",
+            sourceSeed: "seed",
+          },
+          actionSource: { source: "action_context", reason: "ranked_history_theme" },
+          preview: true,
+          version: "v4",
+          sourceKeys: ["ranked_history_theme"],
+        }}
       />,
     );
 
-    const fact = screen.getByTestId("recommendation-reason-v4-fact");
-    const interpretation = screen.getByTestId("recommendation-reason-v4-interpretation");
-    const action = screen.getByTestId("recommendation-reason-v4-action");
+    // 1つのNext Action blockのみが存在する（旧actionReason/次の一歩カードの2枚には分かれない）。
+    expect(screen.getAllByTestId("recommendation-next-action")).toHaveLength(1);
 
-    expect(fact).toHaveTextContent("仕事運に関わる神社です。");
-    expect(interpretation).toHaveTextContent("相談内容から、今扱いたいテーマを読み取っています。");
-    expect(action).toHaveTextContent("参拝前に、問いを一つに絞ることを決めておきます。");
+    const nextAction = screen.getByTestId("recommendation-next-action");
+    expect(nextAction).toHaveTextContent("参拝前に、問いを一つに絞ることを決めておきます。");
+    expect(nextAction).toHaveTextContent("参拝ルートを確認する");
 
-    expect(fact.compareDocumentPosition(interpretation) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(interpretation.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-
-    expect(screen.queryByText("meaning_translation.action_context")).not.toBeInTheDocument();
+    // action.sourceそのものはUIに表示しない(既存契約を維持)。
+    expect(screen.queryByText("ranked_history_theme")).not.toBeInTheDocument();
+    expect(screen.queryByText("action_context")).not.toBeInTheDocument();
   });
 
-  it("factReason等が無い場合は各セクションを表示しない", () => {
+  it("conclusionLines/actionReason/actionSuggestionが無い場合はConclusion/Next Actionどちらも表示しない", () => {
     render(<ConciergeTopRecommendationHero name="検証神社" catchCopy="入口コピー" />);
 
-    expect(screen.queryByTestId("recommendation-reason-v4-fact")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("recommendation-reason-v4-interpretation")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("recommendation-reason-v4-action")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("recommendation-conclusion")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("recommendation-next-action")).not.toBeInTheDocument();
   });
 
 
@@ -168,8 +191,8 @@ describe("ConciergeTopRecommendationHero", () => {
       />,
     );
 
-    expect(screen.getByTestId("hero-action-suggestion-v4-preview")).toBeInTheDocument();
-    expect(screen.getByText("次の一歩")).toBeInTheDocument();
+    expect(screen.getByTestId("recommendation-next-action")).toBeInTheDocument();
+    expect(screen.getByText("参拝前にできること")).toBeInTheDocument();
     expect(screen.getByText("まず詳細を見て、行く理由を確認する")).toBeInTheDocument();
     expect(screen.queryByText("候補として保存して、あとで見返す")).not.toBeInTheDocument();
     expect(screen.queryByText("後から相談内容と一緒に見返せます。")).not.toBeInTheDocument();
@@ -259,7 +282,7 @@ describe("ConciergeTopRecommendationHero", () => {
           originSummary="由緒の要約"
           address="東京都千代田区1-1-1"
           topReasonLabel="選ばれた理由"
-          primaryReason="相談とご利益の一致"
+          conclusionLines={["相談とご利益の一致"]}
           routeLabel="詳しく見る"
         />,
       );

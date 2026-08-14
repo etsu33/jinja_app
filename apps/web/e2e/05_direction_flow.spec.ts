@@ -115,14 +115,22 @@ test.describe("方位条件のWeb E2E", () => {
 
     await expect(page.getByText("方位の参考情報")).toBeVisible();
     await expect(page.getByText("現在地から見た方角が、予定日の参考方位と一致しています。")).toBeVisible();
+    // Hero Reason Consolidation (docs/product/recommendation-result-information-
+    // architecture.md §15 PR2): the old fact/interpretation/action 3-card contract
+    // was retired in favor of a single Conclusion block (interpretation before fact)
+    // + a single Next Action block. Direction reference keeps its pre-existing
+    // position, unmoved by that PR: after the whole Hero card (Conclusion, Next
+    // Action, and the primary CTA in between).
     const displayOrder = await page.locator(
-      '[data-testid="recommendation-reason-v4-fact"], [data-testid="recommendation-reason-v4-interpretation"], [data-testid="recommendation-reason-v4-action"], aside:has-text("方位の参考情報")',
+      '[data-testid="recommendation-conclusion"], [data-testid="recommendation-next-action"], aside:has-text("方位の参考情報")',
     ).evaluateAll((nodes) => nodes.map((node) => node.textContent));
-    expect(displayOrder[0]).toContain("この神社について");
-    expect(displayOrder[1]).toContain("今の相談とのつながり");
-    expect(displayOrder[2]).toContain("参拝前にできること");
-    expect(displayOrder[3]).toContain("方位の参考情報");
-    expect(`${displayOrder[0]}${displayOrder[1]}${displayOrder[2]}`).not.toMatch(/方位|方角|吉方位/);
+    expect(displayOrder[0]).toContain("相談内容から、今扱いたいテーマを読み取っています。");
+    expect(displayOrder[0]).toContain("仕事運を整えるご利益");
+    // interpretation(相談理解)がfact(神社の事実)より先(Finding 3の解消を維持する回帰guard)。
+    expect(displayOrder[0]!.indexOf("相談内容から")).toBeLessThan(displayOrder[0]!.indexOf("仕事運を整えるご利益"));
+    expect(displayOrder[1]).toContain("参拝前に、次に確認したいことを一つだけ決めておきます。");
+    expect(displayOrder[2]).toContain("方位の参考情報");
+    expect(`${displayOrder[0]}${displayOrder[1]}`).not.toMatch(/方位|方角|吉方位/);
     await expect.poll(() => captured.analyticsEvents.filter((event) => event.eventName === "direction_match_impression").length).toBe(1);
     await page.waitForTimeout(250);
     expect(captured.analyticsEvents.filter((event) => event.eventName === "direction_match_impression")).toHaveLength(1);
@@ -220,7 +228,7 @@ test.describe("方位条件のWeb E2E", () => {
     await page.goto("/concierge");
     await fillAndSubmit(page);
     await expect(page.getByText("固定レスポンス神社511")).toBeVisible();
-    await expect(page.getByTestId("recommendation-reason-v4-fact")).toBeVisible();
+    await expect(page.getByTestId("recommendation-conclusion")).toBeVisible();
     await expect(page.getByText("方位の参考情報")).toHaveCount(0);
   });
 

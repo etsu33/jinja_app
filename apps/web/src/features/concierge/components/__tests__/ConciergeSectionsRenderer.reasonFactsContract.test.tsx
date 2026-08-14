@@ -48,12 +48,12 @@ describe("Backend reason_facts[] end-to-end consumption", () => {
     expect(Array.isArray(result.unified.data.recommendations[0].reason_facts)).toBe(true);
     const recommendationSection = result.payload.sections.find((section) => section.type === "recommendations");
     expect(recommendationSection && Array.isArray(recommendationSection.items[0].reasonFacts)).toBe(true);
-    expect(screen.getByTestId("recommendation-match-reason")).toHaveTextContent("火");
+    expect(screen.getByTestId("recommendation-conclusion")).toHaveTextContent("火");
   });
 
   it("history_theme PrimaryをHeroと詳細meaning文言へ通す", () => {
     renderBackendResponse([{ shrine_id: 1, name: "再出発神社", reason_facts: [fact("history_theme", "再出発")] }]);
-    expect(screen.getByTestId("recommendation-match-reason")).toHaveTextContent("再出発");
+    expect(screen.getByTestId("recommendation-conclusion")).toHaveTextContent("再出発");
     expect(screen.getAllByText(/再出発/).length).toBeGreaterThan(0);
   });
 

@@ -93,17 +93,28 @@ describe("ConciergeSectionsRenderer - Reason V4構造化表示", () => {
     window.localStorage.clear();
   });
 
-  it("Heroでfact/interpretation/actionの3セクションが表示される", () => {
+  it("Hero Reason ConsolidationによりConclusion(fact+interpretation)とNext Action(action)の2blockへ集約される", () => {
     const payload = buildTestPayload([heroRecWithDetail]);
     render(<ConciergeSectionsRenderer payload={payload} threadId={900} isPremiumActive={true} />);
 
-    expect(screen.getByTestId("recommendation-reason-v4-fact")).toHaveTextContent("仕事運");
-    expect(screen.getByTestId("recommendation-reason-v4-interpretation")).toHaveTextContent(
-      "相談内容から、今扱いたいテーマを読み取っています。",
+    const conclusion = screen.getByTestId("recommendation-conclusion");
+    expect(conclusion).toHaveTextContent("相談内容から、今扱いたいテーマを読み取っています。");
+    expect(conclusion).toHaveTextContent("仕事運");
+
+    // interpretation(相談理解)がfact(神社の事実)より先に表示される
+    // (docs/product/recommendation-result-information-architecture.md §3 Finding 3)。
+    expect(conclusion.textContent!.indexOf("相談内容から、今扱いたいテーマを読み取っています。")).toBeLessThan(
+      conclusion.textContent!.indexOf("仕事運"),
     );
-    expect(screen.getByTestId("recommendation-reason-v4-action")).toHaveTextContent(
+
+    expect(screen.getByTestId("recommendation-next-action")).toHaveTextContent(
       "参拝前に、問いを一つに絞ることを決めておきます。",
     );
+
+    // 旧5枚独立カードのtestidはもう存在しない(1つのConclusion + 1つのNext Actionへ統合)。
+    expect(screen.queryByTestId("recommendation-reason-v4-fact")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("recommendation-reason-v4-interpretation")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("recommendation-reason-v4-action")).not.toBeInTheDocument();
   });
 
   it("action.sourceは表示されない", () => {
@@ -117,7 +128,6 @@ describe("ConciergeSectionsRenderer - Reason V4構造化表示", () => {
     const payload = buildTestPayload([heroRecWithDetail]);
     render(<ConciergeSectionsRenderer payload={payload} threadId={900} isPremiumActive={true} />);
 
-    expect(screen.queryByTestId("recommendation-standard-reason")).not.toBeInTheDocument();
     expect(screen.queryByText("根津神社は仕事運に関わる神社です。")).not.toBeInTheDocument();
   });
 
@@ -134,10 +144,8 @@ describe("ConciergeSectionsRenderer - Reason V4構造化表示", () => {
     const payload = buildTestPayload([rec]);
     render(<ConciergeSectionsRenderer payload={payload} threadId={900} isPremiumActive={true} />);
 
-    expect(screen.queryByTestId("recommendation-reason-v4-fact")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("recommendation-reason-v4-interpretation")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("recommendation-reason-v4-action")).not.toBeInTheDocument();
-    expect(screen.getByTestId("recommendation-standard-reason")).toHaveTextContent("reason_textのfallback文言");
+    expect(screen.queryByTestId("recommendation-next-action")).not.toBeInTheDocument();
+    expect(screen.getByTestId("recommendation-conclusion")).toHaveTextContent("reason_textのfallback文言");
   });
 
   it("recommendation_reason_v4_detailが無くてもクラッシュせず表示される", () => {
@@ -150,8 +158,8 @@ describe("ConciergeSectionsRenderer - Reason V4構造化表示", () => {
     render(<ConciergeSectionsRenderer payload={payload} threadId={900} isPremiumActive={true} />);
 
     expect(screen.getByText("小網神社")).toBeInTheDocument();
-    expect(screen.getByTestId("recommendation-standard-reason")).toHaveTextContent("旧型の理由文のみの候補");
-    expect(screen.queryByTestId("recommendation-reason-v4-fact")).not.toBeInTheDocument();
+    expect(screen.getByTestId("recommendation-conclusion")).toHaveTextContent("旧型の理由文のみの候補");
+    expect(screen.queryByTestId("recommendation-next-action")).not.toBeInTheDocument();
   });
 
   it("Heroのcard_view analyticsイベントの内容は変化しない", () => {
