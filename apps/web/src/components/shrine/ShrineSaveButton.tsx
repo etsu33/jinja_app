@@ -94,17 +94,19 @@ export default function ShrineSaveButton({
     }
   };
 
+  // "subtle" variant: Recommendation Result Hero-only (docs/product/
+  // recommendation-result-information-architecture.md §6/§11/§15 PR3). This must read
+  // as clearly subordinate to the Hero's Primary CTA ("神社の詳細を見る", solid
+  // bg-action-primary) -- a text-link, not a bordered/filled button, so it never
+  // competes with it. Shrine Detail's own Save button uses the "default" variant below,
+  // unaffected by this styling.
   const buttonClass =
     variant === "subtle"
-      ? `inline-flex w-full items-center justify-center rounded-[var(--kt-radius-panel)] border px-4 py-2.5 text-xs font-semibold transition
+      ? `inline-flex w-full items-center justify-center px-1 py-1.5 text-xs font-semibold underline underline-offset-2 transition
           ${
             fav
-              ? /* border-emerald-200: subtle variant固有の値。default variantの
-                   border-emerald-300とTokenが分裂しているため(MULTI_VARIANT_VALUE_SPLIT)、
-                   --kt-color-saved-border(=emerald-300)を流用せずliteralのまま維持する。
-                   docs/audit/design-token-stage4-mother-ship-decisions.md 参照 */
-                "border-emerald-200 bg-[var(--kt-color-saved-background)] text-[var(--kt-color-saved-text)]"
-              : "border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] text-[var(--kt-color-text-muted)] hover:bg-[var(--kt-color-background-subtle)] hover:text-[var(--kt-color-text-secondary)]"
+              ? "text-[var(--kt-color-saved-text)]"
+              : "text-[var(--kt-color-text-muted)] hover:text-[var(--kt-color-text-secondary)]"
           }
           disabled:opacity-60`
       : `inline-flex w-full items-center justify-center rounded-[var(--kt-radius-panel)] border px-4 py-3 text-sm font-semibold transition
