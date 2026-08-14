@@ -41,7 +41,7 @@ describe("Hero Reason Consolidation - end-to-end", () => {
     window.localStorage.clear();
   });
 
-  it("Knowledge Explanation-only(deity由来fact)はPrimaryへ昇格せず、interpretationの後にそのままConclusionへ含まれる", () => {
+  it("Knowledge Explanation-only(deity由来fact)はPrimaryへ昇格せず、Conclusionには混ざらない(Explanation-only Fact Visual Distinction, PR5, Finding 9)", () => {
     const rec = {
       shrine_id: 1,
       display_name: "武神社",
@@ -68,13 +68,16 @@ describe("Hero Reason Consolidation - end-to-end", () => {
     render(<ConciergeSectionsRenderer payload={payload} threadId={1} isPremiumActive={true} />);
 
     const conclusion = screen.getByTestId("recommendation-conclusion");
-    expect(conclusion).toHaveTextContent("武神");
-    // interpretationが先、Knowledge由来のfactは後(Ranking根拠のように先頭へ出さない)。
-    expect(conclusion.textContent!.indexOf("相談内容から、今のテーマを読み取っています。")).toBeLessThan(
-      conclusion.textContent!.indexOf("武神"),
-    );
-    // 新しい「参考情報」ラベル等は今回のPRでは作らない(PR5の責務)。
-    expect(screen.queryByText("参考情報")).not.toBeInTheDocument();
+    expect(conclusion).toHaveTextContent("相談内容から、今のテーマを読み取っています。");
+    // deity(Explanation-only)はConclusionには一切現れない -- Ranking根拠のように見える形で
+    // 提示しない(Signal Authority正本§10 Explanation Contract)。
+    expect(conclusion).not.toHaveTextContent("武神");
+
+    // 代わりに「参考情報」ラベル付きの別枠(recommendation-explanation-only-fact)で、
+    // Conclusionより弱いトーンで表示される。
+    const explanationOnly = screen.getByTestId("recommendation-explanation-only-fact");
+    expect(explanationOnly).toHaveTextContent("参考情報");
+    expect(explanationOnly).toHaveTextContent("武神");
   });
 
   it("generic_safe Action(actionSource=fallback)のAction SuggestionもNext Actionへ統合表示される", () => {

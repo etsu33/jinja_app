@@ -930,6 +930,7 @@ export default function ConciergeSectionsRenderer({
                               topReasonLabel={reasonVm.hero.topReasonLabel ?? null}
                               eyebrowLabel={reasonVm.hero.eyebrowLabel ?? null}
                               conclusionLines={conclusionLines}
+                              explanationOnlyFactText={heroReasonV4.explanationOnlyFactText}
                               actionReason={heroReasonV4.actionText}
                               actionSuggestionV4Preview={(heroItem as any).actionSuggestionV4Preview ?? null}
                               analyticsSource="concierge_result"
