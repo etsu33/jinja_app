@@ -815,11 +815,16 @@ export default function ConciergeSectionsRenderer({
                     </button>
                     <button
                       type="button"
-                      /* bg-neutral-900: Dark Surface Contract Group A候補だが、
-                         --kt-color-surface-emphasis(slate-800/900)とcomputed colorが
-                         一致しないため今回は適用しない(Blocked by Contract)。
-                         詳細は docs/audit/design-token-stage3-dark-surface-decision.md */
-                      className="rounded-[var(--kt-radius-panel)] bg-neutral-900 px-4 py-3 text-sm font-semibold text-white"
+                      /* Fallback escape-hatch CTA Visual Weight Polish (docs/audit/
+                         recommendation-result-ia-v2-final.md Should item, docs/product/
+                         recommendation-result-information-architecture.md §11): this used to be
+                         a solid bg-neutral-900 fill, which read as visually on par with Hero's
+                         Primary CTA (docs/product/recommendation-result-information-architecture.md
+                         §6/§11/§15 PR3 contract: "神社の詳細を見る" must stay the only strong CTA).
+                         Downgraded from filled to the same plain-border/no-fill style already used
+                         by its sibling button above and by "もう少し詳しく添える"/"入口に戻る"
+                         elsewhere in this file -- an existing pattern, not a new one. */
+                      className="rounded-[var(--kt-radius-panel)] border px-4 py-3 text-sm font-semibold"
                       onClick={() => onAction?.({ type: "filter_clear" })}
                     >
                       条件を広げて見直す
