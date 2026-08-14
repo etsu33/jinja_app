@@ -1113,6 +1113,25 @@ export default function ConciergeSectionsRenderer({
                                 reason: item.description,
                                 directionReference: item.directionReference,
                               });
+                              // Compact Recommendation Reason / Explanation Consistency
+                              // (docs/product/recommendation-result-information-architecture.md
+                              // §15): reuse the exact same Hero adapter to classify the same
+                              // Reason V4 fact -- no new Explanation-only decision, no Compact-local
+                              // priority logic. Only explanationOnlyFactText is consumed here;
+                              // Compact's "why" text stays driven by the existing reason_facts-based
+                              // primaryPhrase (below), never by this adapter's factText/interpretationText
+                              // (that composition is Hero's Conclusion, not ported to Compact).
+                              const compactReasonV4 = buildHeroReasonV4Sections({
+                                detail: (item as any).reasonV4Detail ?? null,
+                                recommendationReasonV4: (item as any).recommendationReasonV4 ?? null,
+                                reason: item.description ?? null,
+                              });
+                              // Single reason source, not two: matchReason (reason_facts-derived,
+                              // already Authority-decided) wins when present; the legacy free-text
+                              // reason field is only shown as a fallback when matchReason is
+                              // unavailable (Finding: Compact previously showed both under separate
+                              // headings, reading as a repeated explanation of the same "why").
+                              const compactReason = compactReasonDisplay.matchReason ?? compactReasonDisplay.reason;
 
                               return (
                                 <div key={`rec-${i}-compact-${item.shrineId}`} className="space-y-2">
@@ -1121,8 +1140,8 @@ export default function ConciergeSectionsRenderer({
                                     href={withDirectionRouteContext(item.detailHref, item.directionReference, "other")}
                                     imageUrl={item.imageUrl}
                                     address={item.address ?? null}
-                                    summary={compactReasonDisplay.reason}
-                                    primaryReason={compactReasonDisplay.matchReason}
+                                    reason={compactReason}
+                                    explanationOnlyFactText={compactReasonV4.explanationOnlyFactText}
                                     tags={[]}
                                     distanceM={(item as any).distance_m ?? null}
                                     onDetailClick={() =>

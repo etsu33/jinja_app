@@ -31,31 +31,55 @@ describe("ShrineCardCompact", () => {
     expect(screen.queryByText(/km$/)).not.toBeInTheDocument();
   });
 
-  it("renders match reason before the standard reason, but not tags", () => {
+  it("renders a single reason block, not tags", () => {
     render(
       <ShrineCardCompact
         name="検証神社"
         href="/shrines/1?ctx=concierge"
-        summary="長いMeaning文のサマリー"
-        primaryReason="短い理由"
+        reason="短い理由"
         tags={["mental", "rest"]}
       />,
     );
 
     expect(screen.getByText("短い理由")).toBeInTheDocument();
-    expect(screen.getByText("長いMeaning文のサマリー")).toBeInTheDocument();
     expect(screen.queryByText("mental")).not.toBeInTheDocument();
-    const match = screen.getByTestId("recommendation-match-reason");
-    const reason = screen.getByTestId("recommendation-standard-reason");
-    expect(match.compareDocumentPosition(reason) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByTestId("recommendation-match-reason")).toBeInTheDocument();
+    expect(screen.queryByTestId("recommendation-standard-reason")).not.toBeInTheDocument();
   });
 
-  it("does not render primaryReason when it is null", () => {
+  it("does not render reason when it is null", () => {
     const { container } = render(
-      <ShrineCardCompact name="検証神社" href="/shrines/1?ctx=concierge" primaryReason={null} />,
+      <ShrineCardCompact name="検証神社" href="/shrines/1?ctx=concierge" reason={null} />,
     );
 
     expect(container.querySelectorAll("p")).toHaveLength(0);
+  });
+
+  it("renders explanationOnlyFactText as a small separate line, distinct from the reason block", () => {
+    render(
+      <ShrineCardCompact
+        name="検証神社"
+        href="/shrines/1?ctx=concierge"
+        reason="仕事運のご利益と一致するため、この神社が候補に入っています。"
+        explanationOnlyFactText="須佐之男命"
+      />,
+    );
+
+    const reasonBlock = screen.getByTestId("recommendation-match-reason");
+    expect(reasonBlock).not.toHaveTextContent("須佐之男命");
+
+    const explanationOnly = screen.getByTestId("recommendation-compact-explanation-only-fact");
+    expect(explanationOnly).toHaveTextContent("参考情報");
+    expect(explanationOnly).toHaveTextContent("須佐之男命");
+  });
+
+  it("does not render explanationOnlyFactText when absent", () => {
+    render(
+      <ShrineCardCompact name="検証神社" href="/shrines/1?ctx=concierge" reason="短い理由" explanationOnlyFactText={null} />,
+    );
+
+    expect(screen.queryByTestId("recommendation-compact-explanation-only-fact")).not.toBeInTheDocument();
+    expect(screen.queryByText("参考情報")).not.toBeInTheDocument();
   });
 
   describe("Design Token参照 (Semantic Token契約、CSS文字列全体の比較はしない)", () => {
@@ -65,7 +89,7 @@ describe("ShrineCardCompact", () => {
           name="検証神社"
           href="/shrines/1?ctx=concierge"
           address="東京都千代田区1-1-1"
-          primaryReason="短い理由"
+          reason="短い理由"
         />,
       );
 
