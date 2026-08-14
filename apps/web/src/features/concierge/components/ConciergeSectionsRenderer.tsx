@@ -120,9 +120,12 @@ function ConciergePremiumEntryCard(props: {
   const href = props.isGuestUser ? buildLoginHref("/billing/upgrade") : "/billing/upgrade";
   const ctaLabel = props.isGuestUser ? "ログインして変化を見返す" : "変化を見返せるようにする";
   return (
-    <section className={conciergePremiumCardClass}>
+    <section className={conciergePremiumCardClass} data-testid="recommendation-premium-preview">
       <div className="space-y-2">
-        <p className="text-sm font-semibold leading-6 text-amber-950">
+        {/* font-medium (not font-semibold): Hero's Primary CTA ("神社の詳細を見る") must stay
+            the only strong visual claim on the screen (docs/product/
+            recommendation-result-information-architecture.md §6/§11/§15 PR3, Finding 7). */}
+        <p className="text-sm font-medium leading-6 text-amber-950">
           {props.isGuestUser
             ? "相談を保存すると、今の状態や選んだ理由をあとから見返せます。"
             : "Premiumでは、前回との違いや状態の変化をあとから見返せます。"}
@@ -968,8 +971,19 @@ export default function ConciergeSectionsRenderer({
                             />
                             <DirectionReferenceCard reference={reasonDisplay.directionReference} recommendationKey={heroItem.shrineId} rank={1} />
 
+                            {/* trustMetadata + historyTheme render adjacently, right after the
+                                Hero (docs/product/recommendation-result-information-architecture.md
+                                §13 v2 "trustMetadata・historyTheme" grouping, Finding 5 follow-up):
+                                both are Shrine-side facts, not a Recommendation reason -- they
+                                never feed into Conclusion/conclusionLines and never re-decide
+                                Primary Reason. Positioned right after the Hero's Primary CTA
+                                because that CTA is Hero's own last element (§6 Desired Contract);
+                                grouping these two together keeps the "神社の事実" thread from
+                                fragmenting further once past that boundary (historyTheme
+                                previously rendered after shrineMeaning, separated from
+                                trustMetadata by a gated section). */}
                             {trustMetadata ? (
-                              <section className={conciergeSoftCardClass}>
+                              <section className={conciergeSoftCardClass} data-testid="recommendation-trust">
                                 <div className="space-y-2">
                                   <div className="flex flex-wrap gap-1">
                                     {trustLabels.slice(0, 4).map((label: string) => (
@@ -990,6 +1004,18 @@ export default function ConciergeSectionsRenderer({
                               </section>
                             ) : null}
 
+                            {historyThemeDisplay ? (
+                              <section className={conciergeSoftCardClass} data-testid="recommendation-history-theme">
+                                <div className="space-y-2">
+                                  <p className="text-xs font-semibold tracking-[0.12em] text-[var(--kt-color-text-muted)]">
+                                    この神社が持つ文脈
+                                  </p>
+
+                                  <p className="text-sm leading-7 text-[var(--kt-color-text-secondary)]">{historyThemeDisplay.body}</p>
+                                </div>
+                              </section>
+                            ) : null}
+
                             {shrineMeaningVisibility !== "hidden" ? (
                               <section className={conciergeSoftCardClass}>
                                 <div className="space-y-2">
@@ -997,18 +1023,6 @@ export default function ConciergeSectionsRenderer({
                                     相談から見た意味
                                   </p>
                                   <p className="text-sm leading-7 text-[var(--kt-color-text-secondary)]">{reasonVm.detail.shrineMeaning}</p>
-                                </div>
-                              </section>
-                            ) : null}
-
-                            {historyThemeDisplay ? (
-                              <section className={conciergeSoftCardClass}>
-                                <div className="space-y-2">
-                                  <p className="text-xs font-semibold tracking-[0.12em] text-[var(--kt-color-text-muted)]">
-                                    この神社が持つ文脈
-                                  </p>
-
-                                  <p className="text-sm leading-7 text-[var(--kt-color-text-secondary)]">{historyThemeDisplay.body}</p>
                                 </div>
                               </section>
                             ) : null}
