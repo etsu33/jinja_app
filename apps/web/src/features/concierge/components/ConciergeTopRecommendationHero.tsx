@@ -22,6 +22,15 @@ type Props = {
   // / interpretationReason / legacy fallback). This component never re-decides which
   // line wins -- it only lays the given lines out in the given order.
   conclusionLines?: string[];
+  // Explanation-only Knowledge fact (deity/shrine_history winning the Reason V4 fact
+  // pick) -- docs/product/recommendation-signal-authority.md §8, docs/product/
+  // recommendation-result-information-architecture.md §13/§15 PR5, Finding 9. Never
+  // part of conclusionLines/Conclusion; rendered separately, below it, in a visibly
+  // weaker tone with an explicit "参考情報" label so it can never read as a Ranking
+  // reason. This component does not decide which fact wins or whether it counts as
+  // Explanation-only -- that classification is already made upstream
+  // (reasonV4FactPriority.ts / buildHeroReasonV4Sections.ts).
+  explanationOnlyFactText?: string | null;
   actionReason?: string | null;
   actionSuggestionV4Preview?: ActionSuggestionV4PreviewViewModel | null;
   analyticsSource?: "concierge_result" | "shrine_detail" | "map" | "shrines" | null;
@@ -51,6 +60,7 @@ export default function ConciergeTopRecommendationHero({
   trustLabels = [],
   originSummary = null,
   conclusionLines = [],
+  explanationOnlyFactText = null,
   actionReason = null,
   actionSuggestionV4Preview = null,
   analyticsSource = "concierge_result",
@@ -165,6 +175,19 @@ export default function ConciergeTopRecommendationHero({
               ))}
               {topReasonLabel ? <p className="text-xs leading-5 text-[var(--kt-color-text-muted)]">{topReasonLabel}</p> : null}
             </div>
+          </div>
+        ) : null}
+
+        {explanationOnlyFactText ? (
+          // Deliberately not a bordered/shadowed card like Conclusion/Next Action above --
+          // this must read as a quieter aside, weaker than both Conclusion and the Primary
+          // CTA below (Required UI, §15 PR5). "参考情報" makes explicit that this is
+          // knowledge about the candidate, not a reason it was recommended.
+          <div className="px-1" data-testid="recommendation-explanation-only-fact">
+            <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold tracking-[0.08em] text-slate-500">
+              参考情報
+            </span>
+            <p className="mt-1 text-xs leading-5 text-[var(--kt-color-text-muted)]">{explanationOnlyFactText}</p>
           </div>
         ) : null}
 
