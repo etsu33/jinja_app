@@ -19,8 +19,18 @@ export type ShrineCardCompactProps = {
   href?: string | null;
   imageUrl?: string | null;
   address?: string | null;
-  summary?: string | null;
-  primaryReason?: string | null;
+  // Single, already-resolved "why this candidate" text (docs/product/
+  // recommendation-result-information-architecture.md §15 Compact Recommendation Reason /
+  // Explanation Consistency): the caller picks one already-Authority-decided source
+  // (primary reason phrase, or legacy reason text as fallback) -- this component never
+  // chooses between multiple reason sources itself, and never re-decides which one wins.
+  reason?: string | null;
+  // Explanation-only Knowledge fact (deity/shrine_history) -- docs/product/
+  // recommendation-signal-authority.md §8. Same Explanation-only classification Hero uses
+  // (reasonV4FactPriority.ts / buildHeroReasonV4Sections.ts via the caller), rendered here
+  // as a single small muted line -- deliberately lighter than Hero's own "参考情報" block,
+  // since Compact's responsibility is a short candidate summary, not a Hero-sized Conclusion.
+  explanationOnlyFactText?: string | null;
   trustMetadata?: ShrineCardCompactTrustMetadata | null;
   tags?: string[];
   distanceM?: number | null;
@@ -32,8 +42,8 @@ export default function ShrineCardCompact({
   href = null,
   imageUrl = null,
   address = null,
-  summary = null,
-  primaryReason = null,
+  reason = null,
+  explanationOnlyFactText = null,
   trustMetadata = null,
   tags: _tags = [],
   distanceM = null,
@@ -73,17 +83,20 @@ export default function ShrineCardCompact({
               </div>
             ) : null}
             {originSummary ? <p className="line-clamp-1 text-xs leading-5 text-[var(--kt-color-text-muted)]">{originSummary}</p> : null}
-            {primaryReason ? (
+            {reason ? (
               <div data-testid="recommendation-match-reason">
                 <p className="text-[10px] font-semibold text-emerald-700">相談内容・ご利益との一致</p>
-                <p className="line-clamp-1 text-xs leading-5 text-[var(--kt-color-text-muted)]">{primaryReason}</p>
+                <p className="line-clamp-1 text-xs leading-5 text-[var(--kt-color-text-muted)]">{reason}</p>
               </div>
             ) : null}
-            {summary ? (
-              <div data-testid="recommendation-standard-reason">
-                <p className="text-[10px] font-semibold text-slate-600">この神社を選んだ理由</p>
-                <p className="line-clamp-1 text-xs leading-5 text-[var(--kt-color-text-muted)]">{summary}</p>
-              </div>
+            {explanationOnlyFactText ? (
+              <p
+                className="line-clamp-1 text-[10px] leading-4 text-[var(--kt-color-text-muted)]"
+                data-testid="recommendation-compact-explanation-only-fact"
+              >
+                <span className="font-semibold text-slate-500">参考情報: </span>
+                {explanationOnlyFactText}
+              </p>
             ) : null}
           </div>
 
