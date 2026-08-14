@@ -5,23 +5,16 @@ import { useEffect } from "react";
 import type { ReactNode } from "react";
 import { trackSearchEvent } from "@/lib/analytics/searchEvents";
 import { buildHeroNextActionLines } from "@/features/concierge/buildHeroConclusion";
-import type {
-  ActionSuggestionV4PreviewViewModel,
-  ActionSuggestionViewModel,
-} from "@/viewmodels/conciergeResultItem";
+import type { ActionSuggestionV4PreviewViewModel } from "@/viewmodels/conciergeResultItem";
 
 type Props = {
   name: string;
   href?: string | null;
-  imageUrl?: string | null;
   address?: string | null;
   topReasonLabel?: string | null;
   eyebrowLabel?: string | null;
-  subtitle?: string | null;
   trustLabels?: string[];
   originSummary?: string | null;
-  catchCopy: string;
-  whyTop?: string | null;
   // Recommendation Result Hero Card consolidation
   // (docs/product/recommendation-result-information-architecture.md §6, §13, §15
   // PR2): pre-composed by buildHeroConclusionLines() upstream (ConciergeSectionsRenderer)
@@ -30,10 +23,6 @@ type Props = {
   // line wins -- it only lays the given lines out in the given order.
   conclusionLines?: string[];
   actionReason?: string | null;
-  differenceFromOthers?: string | null;
-  nextActionHint?: string | null;
-  tags?: string[];
-  actionSuggestions?: ActionSuggestionViewModel[];
   actionSuggestionV4Preview?: ActionSuggestionV4PreviewViewModel | null;
   analyticsSource?: "concierge_result" | "shrine_detail" | "map" | "shrines" | null;
   threadId?: string | null;
@@ -43,7 +32,6 @@ type Props = {
   historyTheme?: string | null;
   routeLabel?: string;
   secondaryActionSlot?: ReactNode;
-  onRouteClick?: () => void;
   onDetailClick?: () => void;
 };
 
@@ -57,21 +45,13 @@ function pickActionSuggestionV4Summary(preview: ActionSuggestionV4PreviewViewMod
 export default function ConciergeTopRecommendationHero({
   name,
   href = null,
-  imageUrl: _imageUrl = null,
   address = null,
   topReasonLabel = null,
   eyebrowLabel = null,
-  subtitle: _subtitle = null,
   trustLabels = [],
   originSummary = null,
-  catchCopy: _catchCopy,
-  whyTop: _whyTop = null,
   conclusionLines = [],
   actionReason = null,
-  differenceFromOthers: _differenceFromOthers = null,
-  nextActionHint: _nextActionHint = null,
-  tags: _tags = [],
-  actionSuggestions: _actionSuggestions = [],
   actionSuggestionV4Preview = null,
   analyticsSource = "concierge_result",
   threadId = null,
@@ -81,7 +61,6 @@ export default function ConciergeTopRecommendationHero({
   historyTheme = null,
   routeLabel = "詳しく見る",
   secondaryActionSlot = null,
-  onRouteClick: _onRouteClick,
   onDetailClick,
 }: Props) {
   const visibleTrustLabels = trustLabels.filter(Boolean).slice(0, 4);
