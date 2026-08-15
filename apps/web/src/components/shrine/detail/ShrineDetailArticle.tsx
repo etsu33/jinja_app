@@ -69,6 +69,7 @@ import { addVisit, getVisits, type Visit } from "@/lib/api/visits";
 
 import { trackSearchEvent } from "@/lib/analytics/searchEvents";
 import { ShrineReflectionPrompt } from "@/components/shrine/detail/ShrineReflectionPrompt";
+import { ShrineDeepDivePrompt } from "@/components/shrine/detail/ShrineDeepDivePrompt";
 import {
   recommendationAnalyticsProperties,
   type RecommendationAnalyticsProvenance,
@@ -676,6 +677,12 @@ export default function ShrineDetailArticle({
       {/* 神社Fact（祭神・由緒・歴史）。Interpretation/Recommendation/Actionとは独立した表示責務。
           Premium gatingの対象にせず、Knowledge未登録（deities/historiesとも空）ならnullで非表示。 */}
       {factSection ? <ShrineFactSection section={factSection} /> : null}
+
+      {/* Deep Dive Q&A。readiness/Fact選択/Source選択はすべてBackend Authority
+          (POST /api/deep-dive/ask/)。Frontend側でreadinessを先読みして表示可否を
+          判断しない(質問してみるまでnot_readyかどうかは分からない扱いにする)ため、
+          factSectionの有無に関わらず常に表示する。 */}
+      <ShrineDeepDivePrompt shrineId={cardProps.shrineId} />
 
       {resolvedSaveActionNode ? (
         <section className="pt-4">
