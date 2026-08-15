@@ -293,6 +293,7 @@ REST_FRAMEWORK = {
 
         # feature scopes
         "concierge": "8/min",          # ← 仕様として固定
+        "deep_dive": "8/min",          # concierge同様、LLM呼び出しを伴うため保守的に固定
         "places": "30/min",
         "places-nearby": "30/min",
         "shrines": "60/min",

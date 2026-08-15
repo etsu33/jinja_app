@@ -54,6 +54,7 @@ def test_openapi_conventions(client: APIClient):
             "/api/public/shrines/{id}/",
             "/api/debug/behavior-funnel/",
             "/api/concierge/score-v3/dashboard/",
+            "/api/deep-dive/ask/",
         }
         if p not in exceptions and not pluralish.search(p):
             violations.append(f"[plural] {p}")
