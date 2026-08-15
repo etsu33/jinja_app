@@ -264,16 +264,61 @@ def test_full_ready_shrine_with_partial_facts_reports_unanswered_aspects(monkeyp
     assert result.unanswered_aspects == ["tradition"]
 
 
-# --- LLM Failure: Factを捏造せず、retrieval済み情報とfailure stateを安全に返す ---
+# --- LLM Failure/Disabled(PR-ND2): Factを捏造せず、deterministic builder
+# (PR-ND1)からretrieval済みFactに基づく実際の回答を構成する。既存の
+# _LLM_FAILURE_MESSAGEは、deterministic builderも構成できない場合のみに
+# 使われる最終fallbackへ後退する(意図的なcontract変更、
+# docs/audit/deep-dive-non-llm-runtime-alignment.md §8.3)。 ---
 
 
-def test_llm_call_raises_returns_fixed_failure_message_with_retrieved_facts_preserved(
+def test_1_llm_disabled_full_ready_returns_deterministic_answer_not_fixed_message(settings):
+    """1. LLM disabled Full"""
+    settings.CONCIERGE_USE_LLM = False
+    shrine = _create_shrine("LLM無効Full神社")
+    source = _create_source("公式")
+    deity1 = _create_deity(shrine, "明治天皇", sort_order=0)
+    deity2 = _create_deity(shrine, "昭憲皇太后", sort_order=1)
+    history = _create_history(shrine, "由緒")
+    for fact in (deity1, deity2, history):
+        fact.sources.add(source)
+
+    result = generate_deep_dive_answer(shrine_id=shrine.id, question_text="誰を祀っていますか？")
+
+    assert result.readiness == "full"
+    assert result.llm_used is False
+    assert result.answer == "明治天皇・昭憲皇太后をお祀りしています。"
+    assert result.answer != deep_dive_answer._LLM_FAILURE_MESSAGE
+    assert {f.id for f in result.facts_used} == {deity1.id, deity2.id}
+
+
+def test_2_llm_disabled_limited_ready_returns_deterministic_answer_with_weakened_wording(settings):
+    """2. LLM disabled Limited"""
+    settings.CONCIERGE_USE_LLM = False
+    shrine = _create_shrine("LLM無効Limited神社")
+    source = _create_source("公式")
+    deity = _create_deity(shrine, "大国魂大神", confidence="medium")
+    history = _create_history(shrine, "由緒", confidence="medium")
+    for fact in (deity, history):
+        fact.sources.add(source)
+
+    result = generate_deep_dive_answer(shrine_id=shrine.id, question_text="誰を祀っていますか？")
+
+    assert result.readiness == "limited"
+    assert result.llm_used is False
+    assert result.answer == "大国魂大神をお祀りしていると伝わっています。"
+    assert result.answer != deep_dive_answer._LLM_FAILURE_MESSAGE
+    assert result.limitations is not None
+    assert "限られており" in result.limitations
+
+
+def test_3_llm_failure_full_ready_returns_deterministic_answer_with_retrieved_facts_preserved(
     monkeypatch,
 ):
+    """3. LLM failure Full"""
     fake_client = _FakeLLMClient(raise_exc=RuntimeError("network down"))
     monkeypatch.setattr(deep_dive_answer, "LLMClient", lambda: fake_client)
 
-    shrine = _create_shrine("LLM失敗神社")
+    shrine = _create_shrine("LLM失敗Full神社")
     source = _create_source("公式")
     deity = _create_deity(shrine, "神")
     history = _create_history(shrine, "由緒")
@@ -282,16 +327,112 @@ def test_llm_call_raises_returns_fixed_failure_message_with_retrieved_facts_pres
 
     result = generate_deep_dive_answer(shrine_id=shrine.id, question_text="誰を祀っていますか？")
 
+    assert result.readiness == "full"
     assert result.llm_used is False
-    assert result.answer == "現在、回答の生成に失敗しました。時間をおいて再度お試しください。"
+    assert result.answer == "神をお祀りしています。"
+    assert result.answer != deep_dive_answer._LLM_FAILURE_MESSAGE
     # facts_used/sources_usedはretrieval済みの安全な情報としてそのまま返す(捏造しない)。
     assert {f.id for f in result.facts_used} == {deity.id}
     assert {s.id for s in result.sources_used} == {source.id}
 
 
-def test_llm_disabled_by_feature_flag_returns_safe_fixed_message(settings):
-    settings.CONCIERGE_USE_LLM = False
-    shrine = _create_shrine("LLM無効神社")
+def test_4_llm_failure_limited_ready_returns_deterministic_answer_with_limitations(monkeypatch):
+    """4. LLM failure Limited"""
+    fake_client = _FakeLLMClient(raise_exc=RuntimeError("network down"))
+    monkeypatch.setattr(deep_dive_answer, "LLMClient", lambda: fake_client)
+
+    shrine = _create_shrine("LLM失敗Limited神社")
+    source = _create_source("公式")
+    deity = _create_deity(shrine, "大国魂大神", confidence="medium")
+    history = _create_history(shrine, "由緒", confidence="medium")
+    for fact in (deity, history):
+        fact.sources.add(source)
+
+    result = generate_deep_dive_answer(shrine_id=shrine.id, question_text="誰を祀っていますか？")
+
+    assert result.readiness == "limited"
+    assert result.llm_used is False
+    assert result.answer == "大国魂大神をお祀りしていると伝わっています。"
+    assert result.limitations is not None
+    assert "限られており" in result.limitations
+
+
+# --- 7. sources provenance維持 / 8. limitations維持: answerの生成元
+# (LLM成功/deterministic fallback/最終fallback)に関わらずfacts_used/
+# sources_used/limitationsは不変。 ---
+
+
+def test_7_sources_provenance_unchanged_between_llm_success_and_deterministic_fallback(
+    monkeypatch,
+):
+    """7. sources provenance維持"""
+    shrine = _create_shrine("Provenance比較神社")
+    source = _create_source("公式")
+    deity = _create_deity(shrine, "神")
+    history = _create_history(shrine, "由緒")
+    for fact in (deity, history):
+        fact.sources.add(source)
+
+    fake_client = _FakeLLMClient(content="LLM生成の回答文。")
+    monkeypatch.setattr(deep_dive_answer, "LLMClient", lambda: fake_client)
+    llm_success_result = generate_deep_dive_answer(
+        shrine_id=shrine.id, question_text="誰を祀っていますか？"
+    )
+
+    fallback_client = _FakeLLMClient(raise_exc=RuntimeError("down"))
+    monkeypatch.setattr(deep_dive_answer, "LLMClient", lambda: fallback_client)
+    fallback_result = generate_deep_dive_answer(
+        shrine_id=shrine.id, question_text="誰を祀っていますか？"
+    )
+
+    assert llm_success_result.answer == "LLM生成の回答文。"
+    assert fallback_result.answer == "神をお祀りしています。"
+    assert llm_success_result.answer != fallback_result.answer
+    # answerの生成元が違っても、provenanceは完全に一致する。
+    assert {f.id for f in llm_success_result.facts_used} == {
+        f.id for f in fallback_result.facts_used
+    }
+    assert {s.id for s in llm_success_result.sources_used} == {
+        s.id for s in fallback_result.sources_used
+    }
+
+
+def test_8_limitations_unchanged_between_llm_success_and_deterministic_fallback(monkeypatch):
+    """8. limitations維持"""
+    shrine = _create_shrine("Limitations比較神社")
+    source = _create_source("公式")
+    deity = _create_deity(shrine, "神", confidence="medium")
+    history = _create_history(shrine, "由緒", confidence="medium")
+    for fact in (deity, history):
+        fact.sources.add(source)
+
+    fake_client = _FakeLLMClient(content="LLM生成の回答文。")
+    monkeypatch.setattr(deep_dive_answer, "LLMClient", lambda: fake_client)
+    llm_success_result = generate_deep_dive_answer(
+        shrine_id=shrine.id, question_text="誰を祀っていますか？"
+    )
+
+    fallback_client = _FakeLLMClient(raise_exc=RuntimeError("down"))
+    monkeypatch.setattr(deep_dive_answer, "LLMClient", lambda: fallback_client)
+    fallback_result = generate_deep_dive_answer(
+        shrine_id=shrine.id, question_text="誰を祀っていますか？"
+    )
+
+    assert llm_success_result.limitations == fallback_result.limitations
+    assert llm_success_result.limitations is not None
+    assert "限られており" in llm_success_result.limitations
+
+
+# --- 9. LLM success regression: LLM経路は削除されておらず、成功時は
+# 引き続きLLM出力がそのままanswerになる(Option C、既存挙動の非破壊)。 ---
+
+
+def test_9_llm_success_path_is_not_deleted_llm_output_still_used_when_available(monkeypatch):
+    """9. LLM success regression"""
+    fake_client = _FakeLLMClient(content="LLMによる自然な回答文。")
+    monkeypatch.setattr(deep_dive_answer, "LLMClient", lambda: fake_client)
+
+    shrine = _create_shrine("LLM成功神社")
     source = _create_source("公式")
     deity = _create_deity(shrine, "神")
     history = _create_history(shrine, "由緒")
@@ -300,9 +441,75 @@ def test_llm_disabled_by_feature_flag_returns_safe_fixed_message(settings):
 
     result = generate_deep_dive_answer(shrine_id=shrine.id, question_text="誰を祀っていますか？")
 
+    assert len(fake_client.calls) == 1
+    assert result.llm_used is True
+    # LLMが成功した場合、deterministic answer("神をお祀りしています。")では
+    # なく、LLM出力がそのままanswerになる(deterministic builderが
+    # LLM成功pathを上書きしない)。
+    assert result.answer == "LLMによる自然な回答文。"
+
+
+# --- 10. deterministic builder None: PR-ND1が対応しないquestion_type
+# (source_basis)では、deterministic builderもNoneを返すため、最終的に
+# 既存の_LLM_FAILURE_MESSAGEへfall backする(Final Safe Fallback)。 ---
+
+
+def test_10_deterministic_builder_none_falls_back_to_fixed_failure_message(settings):
+    """10. deterministic builder None"""
+    settings.CONCIERGE_USE_LLM = False
+    shrine = _create_shrine("根拠質問LLM無効神社")
+    source = _create_source("公式")
+    deity = _create_deity(shrine, "神")
+    deity.sources.add(source)
+    history = _create_history(shrine, "由緒")
+    history.sources.add(source)
+
+    from temples.services.deep_dive_retrieval import build_deep_dive_context
+
+    first_context = build_deep_dive_context(shrine_id=shrine.id, question_text="誰を祀っていますか？")
+
+    # source_basisはPR-ND1のbuild_deterministic_answer()が対応しない
+    # question_type(deep_dive_deterministic_answer.pyのdocstring参照)。
+    result = generate_deep_dive_answer(
+        shrine_id=shrine.id,
+        question_text="その根拠は何ですか？",
+        prior_facts=first_context.facts,
+    )
+
     assert result.llm_used is False
-    assert result.answer == "現在、回答の生成に失敗しました。時間をおいて再度お試しください。"
-    assert {f.id for f in result.facts_used} == {deity.id}
+    assert result.answer == deep_dive_answer._LLM_FAILURE_MESSAGE
+    # facts_used/sources_usedは、最終fallback時も安全な情報としてそのまま返る。
+    assert result.facts_used
+
+
+# --- 11. no hallucinated content: deterministic fallbackのanswerは、
+# build_deterministic_answer()を直接呼んだ場合と完全に一致する(Fact本文の
+# 引用・連結以外の文章が混入していない)。 ---
+
+
+def test_11_deterministic_fallback_answer_contains_no_content_beyond_the_facts(settings):
+    """11. no hallucinated content"""
+    settings.CONCIERGE_USE_LLM = False
+    shrine = _create_shrine("捏造なし確認神社")
+    source = _create_source("公式")
+    deity = _create_deity(shrine, "特定の神名")
+    history = _create_history(shrine, "由緒")
+    for fact in (deity, history):
+        fact.sources.add(source)
+
+    from temples.services.deep_dive_deterministic_answer import build_deterministic_answer
+    from temples.services.deep_dive_retrieval import build_deep_dive_context
+
+    context = build_deep_dive_context(shrine_id=shrine.id, question_text="誰を祀っていますか？")
+    expected = build_deterministic_answer(question_type="deity_who", facts=context.facts)
+
+    result = generate_deep_dive_answer(shrine_id=shrine.id, question_text="誰を祀っていますか？")
+
+    assert result.answer == expected
+    assert result.answer == "特定の神名をお祀りしています。"
+    # Fact(display_name)に無い固有名詞が混入していないことを確認する。
+    assert "一般的" not in result.answer
+    assert "神道" not in result.answer
 
 
 # --- Regression: PR #2450のRetrieval Foundationは変更しない ---
