@@ -29,6 +29,19 @@ promptなので後から集合が変化することもない。
 **LLM統合方式**: 既存のtemples.llm.client.LLMClient / settings.CONCIERGE_USE_LLM
 feature-flagパターン（temples/services/concierge_chat_llm_route.pyが確立した
 パターン）をそのまま再利用する。新規のLLM統合方式・新規feature flagは発明しない。
+
+**Deterministic Runtime Fallback（PR-ND2、
+docs/audit/deep-dive-non-llm-runtime-alignment.md）**: LLMが未使用・失敗
+した場合、`_call_llm()`がNoneを返す。この時、Factを一切反映しない固定の
+謝罪文（`_LLM_FAILURE_MESSAGE`）へ即座に縮退するのではなく、まず
+`temples.services.deep_dive_deterministic_answer.build_deterministic_answer()`
+（PR-ND1）でretrieval済みFactからdeterministic answerを構成する
+（Option C: deterministic default + optional LLM enhancement、LLM成功時は
+引き続きLLM出力を使う。LLM経路自体は削除しない）。deterministic builderも
+回答を構成できない場合（対応外のquestion_type等）にのみ、最終的に
+`_LLM_FAILURE_MESSAGE`へ落ちる（Final Safe Fallback）。facts_used/
+sources_used/limitations/unanswered_aspectsの導出はこの変更の影響を
+受けない（§9のprovenance機械導出ロジックはanswerの生成元と独立）。
 """
 
 from __future__ import annotations
@@ -39,6 +52,7 @@ from typing import Iterable, Optional
 
 from temples.llm.client import PLACEHOLDER, LLMClient
 from temples.services import evidence_gate
+from temples.services.deep_dive_deterministic_answer import build_deterministic_answer
 from temples.services.deep_dive_retrieval import (
     DeepDiveFact,
     DeepDiveSource,
@@ -179,6 +193,27 @@ def _sources_used_for(
     return [source for source in all_sources if source.id in source_ids]
 
 
+def _build_deterministic_fallback(
+    question_types: list[str], facts: list[DeepDiveFact]
+) -> Optional[str]:
+    """LLM未使用/失敗時のfallback(PR-ND2)。build_deterministic_answer()
+    (PR-ND1、pure function)をquestion_typeごとに呼び出しsegmentを連結する。
+
+    build_deterministic_answer()自体はfacts_used/sources_used等の
+    provenanceを一切参照・変更しない(呼び出し元のgenerate_deep_dive_answer()
+    が既存どおり別途導出する)。全question_typeでNoneだった場合(対応外の
+    question_type等)はNoneを返し、呼び出し側でさらに_LLM_FAILURE_MESSAGEへ
+    落ちる(Final Safe Fallback)。
+    """
+    segments = [
+        segment
+        for question_type in question_types
+        if (segment := build_deterministic_answer(question_type=question_type, facts=facts))
+        is not None
+    ]
+    return "\n".join(segments) if segments else None
+
+
 def _empty_answer(readiness: str, limitations: Optional[str]) -> DeepDiveAnswer:
     return DeepDiveAnswer(
         answer="",
@@ -242,30 +277,35 @@ def generate_deep_dive_answer(
     facts_used = _facts_used_from(generation_facts)
     sources_used = _sources_used_for(generation_facts, context.sources)
 
-    if answer_text is None:
-        # LLM未使用/失敗: Factを捏造したfallback文章は作らない。retrieval済みの
-        # facts_used/sources_used(mechanicalに確定済み、safeな情報)はそのまま返し、
-        # answerのみ固定のdeterministicな失敗文言にする(§12)。
+    if answer_text is not None:
         return DeepDiveAnswer(
-            answer=_LLM_FAILURE_MESSAGE,
+            answer=answer_text,
             readiness=context.readiness,
             question_type=context.question_type,
             facts_used=facts_used,
             sources_used=sources_used,
             limitations=context.limitations,
             unanswered_aspects=context.unanswered_aspects,
-            llm_used=False,
+            llm_used=True,
         )
 
+    # LLM未使用/失敗(PR-ND2、Option C): Factを捏造したfallback文章は作らない。
+    # まずdeterministic builder(PR-ND1)で、retrieval済みFactのみから実際の
+    # 回答を構成する。facts_used/sources_used(mechanicalに確定済み、safeな
+    # 情報)は生成元に関わらず不変。deterministic builderも構成できない場合
+    # (対応外のquestion_type等)にのみ、固定のdeterministicな失敗文言にする
+    # (§12、Final Safe Fallback)。
+    deterministic_answer = _build_deterministic_fallback(context.question_type, generation_facts)
+
     return DeepDiveAnswer(
-        answer=answer_text,
+        answer=deterministic_answer if deterministic_answer is not None else _LLM_FAILURE_MESSAGE,
         readiness=context.readiness,
         question_type=context.question_type,
         facts_used=facts_used,
         sources_used=sources_used,
         limitations=context.limitations,
         unanswered_aspects=context.unanswered_aspects,
-        llm_used=True,
+        llm_used=False,
     )
 
 

@@ -249,7 +249,7 @@ def test_7c_malformed_json_body_returns_400(client):
 # --- 8. LLM Failure ---
 
 
-def test_8_llm_failure_returns_200_with_fixed_message_and_retrieved_facts(client, monkeypatch):
+def test_8_llm_failure_returns_200_with_deterministic_answer_and_retrieved_facts(client, monkeypatch):
     fake_client = _FakeLLMClient(raise_exc=RuntimeError("network down"))
     monkeypatch.setattr(deep_dive_answer, "LLMClient", lambda: fake_client)
 
@@ -259,7 +259,10 @@ def test_8_llm_failure_returns_200_with_fixed_message_and_retrieved_facts(client
 
     assert res.status_code == 200
     body = res.json()
-    assert body["answer"] == "現在、回答の生成に失敗しました。時間をおいて再度お試しください。"
+    # LLM失敗時はFactを捏造したfallback文章ではなく、deterministic builder
+    # (PR-ND1)による実際のFactに基づく回答が返る(PR-ND2、意図的な契約変更)。
+    assert body["answer"] == "神をお祀りしています。"
+    assert body["answer"] != "現在、回答の生成に失敗しました。時間をおいて再度お試しください。"
     # LLMが失敗しても、retrieval済みの安全なfacts_used/sources_usedはそのまま返る。
     assert len(body["facts_used"]) == 1
     assert len(body["sources_used"]) == 1
