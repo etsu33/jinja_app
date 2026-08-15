@@ -148,6 +148,26 @@ deep-dive-non-llm-runtime-alignment.md`が設計しPR #2457・#2458が実装し�
   PR-ND3（`deity_nature`のrole活用）・PR-ND4（grounding cross-check）は
   Future/hardening扱いのまま、MVP GOの条件にはしない。
 
+## 6. Follow-up Policy: Observation Phase
+
+本書のmerge後、Deep Dive MVPは**Implementation PhaseからObservation
+Phaseへ移行する**。
+
+Critical Bugを除き、新規Deep Dive実装PRは開始しない。以後は以下を
+観察対象とする。
+
+- 実際にユーザーが入力する質問
+- Full / Limited / Not Readyの利用分布
+- Sourceクリック率
+- 回答後の神社詳細滞在
+- 参拝導線への遷移
+- 情報不足質問の種類
+
+新しい実装判断（§5の残件を含む）は、上記の観察データ、または明確な
+ユーザー課題が確認された場合にのみ再開する。§5に記録した残件
+（`source_basis` UI・データ品質観察・PR-ND3/PR-ND4）は、この観察期間中は
+着手しない。
+
 ---
 
 Production code changes = 0
