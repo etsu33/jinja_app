@@ -69,10 +69,17 @@ class DeepDiveFactUsed:
 
 @dataclass(frozen=True)
 class DeepDiveAnswer:
-    """docs/product/deep-dive-answer-generation-contract.md §10 Output Contract。"""
+    """docs/product/deep-dive-answer-generation-contract.md §10 Output Contract。
+
+    question_typeは§10の元表には無いが、build_deep_dive_context()が既に
+    確定させているclassification結果であり、API層(PR-B5)がこれを再分類せずに
+    そのまま公開できるよう、ここでpass throughする(§3の分類結果そのもの、
+    複合質問の場合は複数要素を持つlist)。
+    """
 
     answer: str
     readiness: str
+    question_type: list[str]
     facts_used: list[DeepDiveFactUsed]
     sources_used: list[DeepDiveSource]
     limitations: Optional[str]
@@ -176,6 +183,7 @@ def _empty_answer(readiness: str, limitations: Optional[str]) -> DeepDiveAnswer:
     return DeepDiveAnswer(
         answer="",
         readiness=readiness,
+        question_type=[],
         facts_used=[],
         sources_used=[],
         limitations=limitations,
@@ -221,6 +229,7 @@ def generate_deep_dive_answer(
         return DeepDiveAnswer(
             answer="",
             readiness=context.readiness,
+            question_type=context.question_type,
             facts_used=[],
             sources_used=[],
             limitations=limitations,
@@ -240,6 +249,7 @@ def generate_deep_dive_answer(
         return DeepDiveAnswer(
             answer=_LLM_FAILURE_MESSAGE,
             readiness=context.readiness,
+            question_type=context.question_type,
             facts_used=facts_used,
             sources_used=sources_used,
             limitations=context.limitations,
@@ -250,6 +260,7 @@ def generate_deep_dive_answer(
     return DeepDiveAnswer(
         answer=answer_text,
         readiness=context.readiness,
+        question_type=context.question_type,
         facts_used=facts_used,
         sources_used=sources_used,
         limitations=context.limitations,

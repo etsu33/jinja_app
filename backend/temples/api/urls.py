@@ -48,6 +48,7 @@ from temples.api.views.reflection import ShrineReflectionCreateView, ShrineRefle
 from temples.api.views.shrine_interaction import ShrineInteractionLogCreateView
 from temples.api.views.action_event import ActionEventCreateView
 from temples.api.views.debug_behavior_funnel import DebugBehaviorFunnelView
+from temples.api.views.deep_dive import DeepDiveAskView
 from temples.api.views.score_v3_dashboard import ScoreV3DashboardView
 from temples.api_views import FavoriteViewSet
 
@@ -118,6 +119,7 @@ urlpatterns = [
     path("shrines/<int:pk>/", shrine_detail_view, name="shrine_detail"),
     path("shrines/<int:pk>/data/", shrine_detail_view, name="shrine_detail_data"),
     path("shrines/<int:pk>/meaning/", ShrineMeaningView.as_view(), name="shrine_meaning"),
+    path("deep-dive/ask/", DeepDiveAskView.as_view(), name="deep-dive-ask"),
     path("shrines/nearby/", NearestShrinesAPIView.as_view(), name="nearby"),
     path("shrines/<int:id>/visit/", VisitCreateView.as_view(), name="shrine-visit"),
     path("shrines/<int:pk>/reflection/", ShrineReflectionCreateView.as_view(), name="shrine-reflection-create"),
