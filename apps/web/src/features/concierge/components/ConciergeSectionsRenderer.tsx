@@ -429,11 +429,14 @@ export default function ConciergeSectionsRenderer({
           source: "concierge_result",
           accessLevel,
           visibility: consultationSummaryRoute.visibility,
+          shrineId: heroItem.shrineId,
+          recommendationRank: heroItem.rank,
           mode: heroItem.mode,
           historyTheme: heroItem.historyTheme ?? analyticsContext?.historyTheme,
           ...consultationAxisAnalytics(heroItem.consultationAxis ?? analyticsContext?.consultationAxis),
           threadId: tid ?? undefined,
           resultSetId,
+          recommendationInstanceId: heroItem.recommendationInstanceId ?? null,
         });
       }
     }
@@ -457,6 +460,7 @@ export default function ConciergeSectionsRenderer({
           ...consultationAxisAnalytics(heroItem.consultationAxis ?? analyticsContext?.consultationAxis),
           threadId: tid ?? undefined,
           resultSetId,
+          recommendationInstanceId: heroItem.recommendationInstanceId ?? null,
         });
       }
     }
@@ -480,6 +484,7 @@ export default function ConciergeSectionsRenderer({
           ...consultationAxisAnalytics(heroItem.consultationAxis ?? analyticsContext?.consultationAxis),
           threadId: tid ?? undefined,
           resultSetId,
+          recommendationInstanceId: heroItem.recommendationInstanceId ?? null,
         });
       }
     }
