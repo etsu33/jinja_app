@@ -1,3 +1,5 @@
+import type { ShrineKnowledgeSource } from "@/lib/api/types";
+
 export type DetailReasonGroup = {
   title: string;
   items: string[];
@@ -61,6 +63,10 @@ export type DetailFactDeity = {
 };
 
 export type DetailFactHistoryItem = {
+  // Backend id (ShrineHistory.id), preserved for stable identity across Presentation Grouping
+  // (docs/audit/shrine-knowledge-grouping-implementation-readiness.md §9). Optional so existing
+  // hand-written fixtures/tests that predate this field keep type-checking unchanged.
+  id?: number;
   history_type: string;
   history_type_label: string;
   title: string;
@@ -68,6 +74,9 @@ export type DetailFactHistoryItem = {
   period_text: string;
   sort_order: number;
   displayState: FactDisplayState;
+  // Per-Fact provenance (readiness audit §10). Never shared/merged across Facts, including when
+  // multiple Facts render under one Presentation Grouping heading.
+  sources?: ShrineKnowledgeSource[];
 };
 
 export type DetailFactSection = {

@@ -843,6 +843,11 @@ describe("ShrineDetailArticle", () => {
       expect(screen.getByText("文明10年（1478年）の素盞嗚尊奉祀")).toBeInTheDocument();
       // 御祭神が無い場合は見出しを出さない
       expect(screen.queryByText("御祭神")).not.toBeInTheDocument();
+      // Presentation Grouping（PR-B）: 同じhistory_type="historical_event"の2件は
+      // 「歴史」という1つの共通見出しの下にまとまり、「創始」1件は別見出しの下に残る。
+      // 見出し「歴史」は1つだけ（2枚のcardそれぞれの個別ラベルとしては重複表示しない）。
+      expect(screen.getAllByText("歴史")).toHaveLength(1);
+      expect(screen.getByText("創始")).toBeInTheDocument();
     });
   });
 });

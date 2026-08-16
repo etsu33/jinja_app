@@ -1,5 +1,7 @@
 // apps/web/src/components/shrine/detail/ShrineFactSection.tsx
 import type { DetailFactDeity, DetailFactHistoryItem, DetailFactSection } from "@/components/shrine/detail/types";
+import type { ShrineKnowledgeSource } from "@/lib/api/types";
+import { groupShrineHistoryFacts } from "@/lib/shrine/buildShrineFactSection";
 
 type Props = {
   section: DetailFactSection;
@@ -38,35 +40,97 @@ function DeityList({ deities }: { deities: DetailFactDeity[] }) {
   );
 }
 
+function SourceList({ sources }: { sources: ShrineKnowledgeSource[] }) {
+  if (sources.length === 0) return null;
+
+  return (
+    <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+      {sources.map((source, index) => {
+        const label = source.title || source.publisher || "出典";
+        return source.url ? (
+          <a
+            key={`${source.id}:${index}`}
+            href={source.url}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="text-xs text-[var(--kt-color-text-muted)] underline underline-offset-2"
+          >
+            {label}
+          </a>
+        ) : (
+          <span key={`${source.id}:${index}`} className="text-xs text-[var(--kt-color-text-muted)]">
+            {label}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+// 1 Fact = 1 card。Presentation Grouping（groupShrineHistoryFacts）はこのcardの内容・identity・
+// sourcesを一切変更せず、どのgroupの下に置くかだけを決める。showTypeLabelは、groupの見出しが
+// 既にhistory_type_labelを示している場合（グルーピング済みFact）にラベルの二重表示を避けるため
+// falseにする。disputedなFact（groupingされない、既存の個別表示のまま）ではtrueのままにする。
+function HistoryCard({ history, showTypeLabel }: { history: DetailFactHistoryItem; showTypeLabel: boolean }) {
+  return (
+    <div className="rounded-[var(--kt-radius-card)] border border-[var(--kt-color-border-default)] bg-[var(--kt-color-background-subtle)] p-3">
+      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+        {showTypeLabel ? (
+          <span className="text-[11px] font-semibold tracking-[0.04em] text-[var(--kt-color-text-muted)]">
+            {history.history_type_label}
+          </span>
+        ) : null}
+        {history.title ? (
+          <h4 className="text-sm font-semibold text-[var(--kt-color-text-primary)]">{history.title}</h4>
+        ) : null}
+        {history.period_text ? (
+          <span className="text-xs text-[var(--kt-color-text-muted)]">{history.period_text}</span>
+        ) : null}
+        {history.displayState === "disputed" ? <DisputedBadge /> : null}
+      </div>
+      {history.content ? (
+        <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-[var(--kt-color-text-secondary)]">
+          {history.content}
+        </p>
+      ) : null}
+      {history.sources ? <SourceList sources={history.sources} /> : null}
+    </div>
+  );
+}
+
+function historyCardKey(history: DetailFactHistoryItem, index: number): string {
+  return history.id != null ? String(history.id) : `${history.title}:${index}`;
+}
+
+// Presentation Grouping（docs/knowledge/shrine-knowledge-contract.md「Presentation Groupingの契約」）:
+// 既存canonical history_typeが完全一致するFact群を、Fact本文・identity・sourcesを一切変えずに
+// 共通見出しの下へ表示する。disputedなFactはグルーピングせず、既存の個別表示のまま残す。
 function HistoryList({ histories }: { histories: DetailFactHistoryItem[] }) {
+  const { groups, disputed } = groupShrineHistoryFacts(histories);
+
   return (
     <div>
       <h3 className="text-sm font-semibold text-[var(--kt-color-text-primary)]">由緒・歴史</h3>
-      <div className="mt-2 space-y-3">
-        {histories.map((history, index) => (
-          <div
-            key={`${history.title}:${index}`}
-            className="rounded-[var(--kt-radius-card)] border border-[var(--kt-color-border-default)] bg-[var(--kt-color-background-subtle)] p-3"
-          >
-            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-              <span className="text-[11px] font-semibold tracking-[0.04em] text-[var(--kt-color-text-muted)]">
-                {history.history_type_label}
-              </span>
-              {history.title ? (
-                <h4 className="text-sm font-semibold text-[var(--kt-color-text-primary)]">{history.title}</h4>
-              ) : null}
-              {history.period_text ? (
-                <span className="text-xs text-[var(--kt-color-text-muted)]">{history.period_text}</span>
-              ) : null}
-              {history.displayState === "disputed" ? <DisputedBadge /> : null}
+      <div className="mt-3 space-y-4">
+        {groups.map((group) => (
+          <div key={group.historyType}>
+            <h4 className="text-[11px] font-semibold tracking-[0.04em] text-[var(--kt-color-text-muted)]">
+              {group.label}
+            </h4>
+            <div className="mt-2 space-y-3">
+              {group.items.map((history, index) => (
+                <HistoryCard key={historyCardKey(history, index)} history={history} showTypeLabel={false} />
+              ))}
             </div>
-            {history.content ? (
-              <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-[var(--kt-color-text-secondary)]">
-                {history.content}
-              </p>
-            ) : null}
           </div>
         ))}
+        {disputed.length > 0 ? (
+          <div className="space-y-3">
+            {disputed.map((history, index) => (
+              <HistoryCard key={historyCardKey(history, index)} history={history} showTypeLabel />
+            ))}
+          </div>
+        ) : null}
       </div>
     </div>
   );
