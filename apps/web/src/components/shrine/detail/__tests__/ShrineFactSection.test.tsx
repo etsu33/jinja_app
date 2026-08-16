@@ -180,4 +180,233 @@ describe("ShrineFactSection", () => {
       expect(badge.className).toContain("text-[var(--kt-color-text-muted)]");
     });
   });
+
+  // docs/knowledge/shrine-knowledge-contract.md「Presentation Groupingの契約」
+  describe("Presentation Grouping (PR-B)", () => {
+    it("1件だけのcanonical typeも見出し付きで自然に表示される", () => {
+      render(
+        <ShrineFactSection
+          section={makeSection({
+            histories: [
+              {
+                id: 1,
+                history_type: "founding",
+                history_type_label: "創始",
+                title: "単独の由緒",
+                content: "単独の内容",
+                period_text: "",
+                sort_order: 0,
+                displayState: "full",
+                sources: [],
+              },
+            ],
+          })}
+        />,
+      );
+
+      expect(screen.getByText("創始")).toBeInTheDocument();
+      expect(screen.getByText("単独の由緒")).toBeInTheDocument();
+    });
+
+    it("同一history_typeの非disputed Factは1つの見出しの下にまとまり、両方のFactが表示される", () => {
+      render(
+        <ShrineFactSection
+          section={makeSection({
+            histories: [
+              {
+                id: 1,
+                history_type: "historical_event",
+                history_type_label: "歴史",
+                title: "説A",
+                content: "説Aの内容",
+                period_text: "",
+                sort_order: 0,
+                displayState: "full",
+                sources: [],
+              },
+              {
+                id: 2,
+                history_type: "historical_event",
+                history_type_label: "歴史",
+                title: "説B",
+                content: "説Bの内容",
+                period_text: "",
+                sort_order: 1,
+                displayState: "full",
+                sources: [],
+              },
+            ],
+          })}
+        />,
+      );
+
+      // 見出し「歴史」は1つだけ（各cardの個別ラベルとしては重複表示しない）
+      expect(screen.getAllByText("歴史")).toHaveLength(1);
+      expect(screen.getByText("説A")).toBeInTheDocument();
+      expect(screen.getByText("説Aの内容")).toBeInTheDocument();
+      expect(screen.getByText("説B")).toBeInTheDocument();
+      expect(screen.getByText("説Bの内容")).toBeInTheDocument();
+    });
+
+    it("history_typeが異なるFactは別々の見出しの下に分かれる", () => {
+      render(
+        <ShrineFactSection
+          section={makeSection({
+            histories: [
+              {
+                id: 1,
+                history_type: "founding",
+                history_type_label: "創始",
+                title: "創始の由緒",
+                content: "内容",
+                period_text: "",
+                sort_order: 0,
+                displayState: "full",
+                sources: [],
+              },
+              {
+                id: 2,
+                history_type: "tradition",
+                history_type_label: "伝承",
+                title: "伝承の由緒",
+                content: "内容",
+                period_text: "",
+                sort_order: 1,
+                displayState: "full",
+                sources: [],
+              },
+            ],
+          })}
+        />,
+      );
+
+      expect(screen.getByText("創始")).toBeInTheDocument();
+      expect(screen.getByText("伝承")).toBeInTheDocument();
+      expect(screen.getByText("創始の由緒")).toBeInTheDocument();
+      expect(screen.getByText("伝承の由緒")).toBeInTheDocument();
+    });
+
+    it("disputedなFactは通常のgroupingへ折り込まれず、既存どおり個別のtype labelとdisputedラベル付きで表示される", () => {
+      render(
+        <ShrineFactSection
+          section={makeSection({
+            histories: [
+              {
+                id: 1,
+                history_type: "tradition",
+                history_type_label: "伝承",
+                title: "確定した伝承",
+                content: "内容A",
+                period_text: "",
+                sort_order: 0,
+                displayState: "full",
+                sources: [],
+              },
+              {
+                id: 2,
+                history_type: "tradition",
+                history_type_label: "伝承",
+                title: "対立する説",
+                content: "内容B",
+                period_text: "",
+                sort_order: 1,
+                displayState: "disputed",
+                sources: [],
+              },
+            ],
+          })}
+        />,
+      );
+
+      // グルーピングされた「伝承」見出しは1つ、disputed Factは個別のtype labelを保持するため
+      // 「伝承」というテキストは見出し用1つ + disputed cardの個別ラベル1つ = 合計2つ表示される
+      expect(screen.getAllByText("伝承")).toHaveLength(2);
+      expect(screen.getByText("確定した伝承")).toBeInTheDocument();
+      expect(screen.getByText("対立する説")).toBeInTheDocument();
+      expect(screen.getByText("異なる見解を含む情報")).toBeInTheDocument();
+    });
+
+    it("各Factは自身のsourcesのみを表示する（groupで共有・曖昧化しない）", () => {
+      render(
+        <ShrineFactSection
+          section={makeSection({
+            histories: [
+              {
+                id: 1,
+                history_type: "tradition",
+                history_type_label: "伝承",
+                title: "説A",
+                content: "内容A",
+                period_text: "",
+                sort_order: 0,
+                displayState: "full",
+                sources: [
+                  {
+                    id: 100,
+                    source_type: "shrine_official",
+                    title: "史料A",
+                    publisher: "",
+                    url: "https://example.com/a",
+                    verification_status: "source_confirmed",
+                    confidence: "high",
+                  },
+                ],
+              },
+              {
+                id: 2,
+                history_type: "tradition",
+                history_type_label: "伝承",
+                title: "説B",
+                content: "内容B",
+                period_text: "",
+                sort_order: 1,
+                displayState: "full",
+                sources: [
+                  {
+                    id: 101,
+                    source_type: "local_history",
+                    title: "史料B",
+                    publisher: "",
+                    url: "",
+                    verification_status: "source_confirmed",
+                    confidence: "high",
+                  },
+                ],
+              },
+            ],
+          })}
+        />,
+      );
+
+      const sourceALink = screen.getByRole("link", { name: "史料A" });
+      expect(sourceALink).toHaveAttribute("href", "https://example.com/a");
+      expect(screen.getByText("史料B")).toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: "史料B" })).not.toBeInTheDocument();
+    });
+
+    it("sourcesが空/未指定のFactはSource一覧を表示しない（クラッシュしない）", () => {
+      expect(() =>
+        render(
+          <ShrineFactSection
+            section={makeSection({
+              histories: [
+                {
+                  id: 1,
+                  history_type: "founding",
+                  history_type_label: "創始",
+                  title: "由緒A",
+                  content: "内容A",
+                  period_text: "",
+                  sort_order: 0,
+                  displayState: "full",
+                },
+              ],
+            })}
+          />,
+        ),
+      ).not.toThrow();
+
+      expect(screen.getByText("由緒A")).toBeInTheDocument();
+    });
+  });
 });
