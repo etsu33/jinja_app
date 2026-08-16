@@ -13,6 +13,8 @@
 > **追記（2026-08-02時点、PR-C4A）**: `verification_status: disputed`のFact扱いを「Disputed Evidence Contract」節（本書）で契約確定した。Recommendation側は現行のusable=False（非表示）を正式契約として固定（コード変更なし）。Detail側は「将来的に個別Fact列挙可能」という方向性のみ契約化し、実装（自動グルーピング・自動要約・AIによる正誤判定を明示的に禁止した上での個別Fact列挙）は別PR（PR-C4B候補）へ委ねている。PR-C4A自体もPR-C1と同様Docsのみで、コード・Model・DB・UIの変更は伴わない。
 >
 > **追記（2026-08-03時点、PR-C4B1/PR-C4B2/PR-D1、Current State）**: 上記PR-C4Aが別PRへ委ねていたDetail側の個別Fact列挙表示は、PR-C4B1（Backend、`decide_detail_display_state()`、PR #2232）・PR-C4B2（Web、`FactDisplayState`、PR #2233）として実装・`develop`へマージ済みである。API response相当fixtureからUI表示までの統合回帰テストもPR-D1（PR #2234）で追加済み。Recommendation側の契約（`disputed`を使用しない）はいずれによっても変更されていない。自動グルーピング・自動要約・AIによる正誤判定・`FactSourceEvidence`等の明示的中間Modelは実装後も禁止事項のまま未実装である。詳細は本書「Disputed Evidence Contract」節の「Current State追記」、「後続PR設計」PR2の追記、および「母艦判断項目」の追記を参照。本段落より前の記述（PR2219系列〜PR-C4A時点）は、その時点でのAs-Is・設計判断の履歴として書き換えていない。
+>
+> **追記（2026-08-16時点、PR-C6候補、Presentation Grouping Contract）**: [`docs/audit/shrine-detail-explanation-knowledge-responsibility.md`](../audit/shrine-detail-explanation-knowledge-responsibility.md)（`PARTIAL READY`判定）が、「Shrine Detail Multi-View Contract」節の自動グルーピング禁止と、`ShrineHistory`が同一`history_type`を持つ複数行を安全に保持できることとの間の解釈の空白（Data Merge／Semantic Auto-Grouping／Presentation Groupingの区別が本書に明示されていなかったこと）を指摘した。本追記で新設する「Presentation Groupingの契約」節（「Disputed Evidence Contract」節内）が、コード変更を伴わない契約明確化としてこの空白を埋める。結論のみ先出しする：**既存の`history_type`（canonical、人手割当済み）が一致するFact群を、内容を合成せず・出典を個別保持したまま、共通の見出しの下へ表示することは、本書が禁止する「自動グルーピング」に該当しない（PRESENTATION GROUPING ALLOWED WITH CONSTRAINTS）。** ただし`disputed`のFactを含むグルーピングは本追記の対象外とし、従来どおり「各Factを独立したFactとして個別に表示する」の対象のままとする。詳細・根拠・制約は該当節を参照。
 
 # Shrine Knowledge Contract
 
@@ -675,6 +677,143 @@ Detailで`disputed`のFactを扱う場合は、各Factを**独立したFactと�
 >
 > Recommendation Contract（本節前半）は本追記時点でも変更されていない。`disputed`のFactはRecommendation Reasonへ引き続き使用しない。
 
+### Presentation Groupingの契約（PR-C6候補、2026-08-16追加）
+
+> **Status**: 契約明確化のみ。コード・Model・DB・UI実装は伴わない（PR-C6候補はDocsのみのPR）。production diff = 0。
+
+[`docs/audit/shrine-detail-explanation-knowledge-responsibility.md`](../audit/shrine-detail-explanation-knowledge-responsibility.md)
+（`PARTIAL READY`判定、§12/§15）が指摘した空白を埋める。上記「Shrine Detail Multi-View Contract」節
+および「Multiple Fact保持方針」節（後述）はいずれも「グルーピング」を禁止する記述を含むが、両節とも
+**その語が指す操作の層を明示的に定義していなかった**。本節はこれを3つの操作へ分解し、それぞれについて
+本書のどの既存文言が適用されるかを確定する。
+
+#### 3つの操作の区別
+
+| 操作 | 定義 | 具体例 |
+|---|---|---|
+| **A. Data Merge** | 2つ以上のFactが1つのFactへ統合される（レコードが減る、`content`が合成される） | `ShrineHistory`のFact AとFact Bを1レコードへcompactionする |
+| **B. Semantic Auto-Grouping** | システムがFactのテキスト内容から関連性・同一テーマ性を**推測**し、その推測結果に基づいて分類・関連付けを行う | 「このFactとこのFactは同じ出来事について述べている」とAIが判定し、束ねて表示する |
+| **C. Presentation Grouping** | 各Factが既に持つ**canonical（人手割当済み）**な`history_type`が一致するという、Modelに既存のfieldの値のみを条件として、レコード・content・sourceを一切変更せず、共通の見出しの下へ視覚的に配置する | `history_type="tradition"`のFact AとFact Bを、「伝承」という同じ見出しの下に、それぞれ別カードのまま並べる |
+
+#### 既存文言の再確認と、それぞれがどの操作を指すか
+
+**「Multiple Fact保持方針」節**（本書、後述）: 「1つの`content`へ複数説を合成しない」——これは
+**Operation Aのみ**を指す。レコードの独立性・`content`の非合成について述べており、UI上の見出し・
+コンテナ構造には一切言及していない。
+
+**「Shrine Detail Multi-View Contract」節の禁止事項リスト**（本節前半、`disputed`Fact文脈）を再度
+引用する。
+
+> - 「複数説があります」等のメタ情報をシステムが自動生成すること
+> - どちらの説が正しいかをAIが判定すること
+> - 複数のFactを1つへ自動統合すること
+> - 複数のFactを自動要約すること
+> - 複数のFactを自動グルーピングすること（**同一テーマの複数説であるという判定をシステムが自動で
+>   行うこと**）
+
+最後の項目の括弧内定義（原文のまま）が、この禁止事項の射程を確定する一次的な根拠である。「同一テーマの
+複数説であるという**判定**をシステムが**自動で行う**こと」は、Modelに存在しないテーマ・関連性を
+システムが推測・断定する行為を指しており、これは**Operation B**の定義と一致する。1〜4番目の項目
+（メタ情報自動生成／AI正誤判定／自動統合／自動要約）もすべて「Factの内容・関係性についてシステムが
+新たな判断を下すこと」という共通点を持ち、いずれもOperation A/Bの範疇に入る。**Operation Cを名指しで
+禁止する文言は、本書のどこにも存在しない**（本節作成にあたり「グルーピング」「グループ」の全出現箇所
+を確認済み）。
+
+「複数Factを束ねる新たな集約層を設けない」（同節、個別列挙の指示に続く文）は、文字面だけを見ると
+Operation Cも含み得るように読めるため、本節でこの曖昧さを解消する。この一文は「disputedのFactを
+複数説として列挙する際、それらが同一テーマの異説であるという新たな意味づけをする層（例:
+`FactSourceEvidence`・`EvidenceGroup`・`groupId`・`conflictType`のような明示的中間Model、いずれも
+本節前半で列挙され実装していないと確認済み）を作らない」という意図であり、**disputed Fact特有の
+「対立する複数説をどう見せるか」という文脈に限定される**。同節の見出し自体が「Shrine Detail
+Multi-View Contract」であり、`verification_status: disputed`のFactを対象とすることが明記されている
+（節冒頭）。非`disputed`の、単に同じcanonical `history_type`を持つだけの独立したFact群
+（対立していない、多説併記でもない）を、既存の型ラベルの下へ視覚的に整理する行為は、この節が扱う
+問題設定の外側にある。
+
+#### Provenance（出典）保持の検証
+
+Operation Cが安全である条件として、以下がすべて満たされることを確認した。
+
+| 保持すべき情報 | Presentation Grouping後も保持されるか |
+|---|---|
+| Fact identity | 保持される。各`ShrineHistory`行はグループ化後も個別の`id`・`title`・`content`を持つレコードのまま（データ層は無変更） |
+| Fact text | 保持される。`content`は合成されない（Operation Aを行わないため） |
+| Fact type | 保持される。グループの見出し自体が`history_type_label`（既存、`HISTORY_TYPE_LABELS`）そのものであり、個々のFactからtypeが失われることはない |
+| Source provenance | 保持される。`ShrineHistorySerializer`の`sources`（`shrine.py:92-103`）は各Factレコードに紐づいたまま返る。共有・合算されない |
+| Evidence traceability | 保持される。`verification_status`→`FactDisplayState`（`full`/`disputed`）はFactごとに個別のまま（`resolveFactDisplayState()`は1 Fact = 1呼び出し） |
+| 独立したFactライフサイクル | 保持される。編集・追加・削除は`ShrineHistory`の個別レコードに対して行われ、グルーピングは表示層のみの再配置であるため、Adminでの編集単位に影響しない |
+
+**Provenanceが曖昧になる境界条件**: `disputed`のFactが混在するグループでは、「なぜこの2件が同じ見出しの
+下にあるのか」（`history_type`が一致するからか、それとも対立する2説として意味的に並べられているのか）
+が読み手にとって区別しにくくなる可能性がある。本節は**この境界条件を安全に扱う設計を提示しない**——
+`disputed`を含むFactのグルーピングは、本節の対象外のまま「Shrine Detail Multi-View Contract」節の
+既存文言（個別表示のみ、集約層を設けない）に従う。
+
+#### Canonical-type限定の確認
+
+Presentation Groupingが安全と判断できるのは、グルーピングキーが以下の条件をすべて満たす場合に限る。
+
+1. 既にModelのfieldとして存在する値であること（`ShrineHistory.history_type`、`models.py:526-533`
+   の6値のいずれか）
+2. その値が人手（Admin編集）によって個々のFact作成時に割り当てられていること——AIやシステムが
+   Fact本文から事後的に推測した値ではないこと
+3. 同一の`history_type`値を持つことの判定が、文字列の完全一致のみであること（類似度判定・
+   embedding比較・LLM分類等を一切用いないこと）
+
+**コピーテキストのヒューリスティックからカテゴリを発明することは、本節でも引き続き禁止する**（タスク
+指示のとおり、Future候補として明示されない限り不可）。`period_text`（自由記述）や`content`本文からの
+時代区分推定（例: 「創建」「江戸期」「近代」という時代軸グルーピング）は、既存metadataが構造化された
+形で持たない値であり、本節が許可するPresentation Groupingの範囲に**含まれない**
+（[`shrine-detail-explanation-knowledge-responsibility.md`](../audit/shrine-detail-explanation-knowledge-responsibility.md)
+§13で確認済み）。
+
+#### 許可される例と、許可されない例
+
+**許可される（Operation C）**:
+
+```
+伝承
+  Fact A [Source: ローカル郷土資料]
+  Fact B [Source: 神社公式サイト]
+```
+
+各Factが独立したカード・独立した`sources`を保ったまま、共通の`history_type`見出しの下に配置される。
+
+**許可されない（Operation A、内容合成）**:
+
+```
+伝承
+  Fact AとFact Bを統合した要約文
+```
+
+**許可されない（Operation B、意味推測によるグルーピング）**:
+
+```
+神社の始まり（システムが推測した独自見出し）
+  Fact A（history_type=founding） + Fact C（history_type=official_origin、
+  「実は同じ出来事について言及している」とシステムが判定）
+```
+
+`history_type`が異なるFact同士を、それらが「同じ出来事について述べている」という意味的類似性で
+束ねることは、`history_type`が一致するグルーピングとは別物であり、Operation Bに該当し禁止される。
+
+#### 決定
+
+# PRESENTATION GROUPING ALLOWED WITH CONSTRAINTS
+
+**制約**:
+
+1. グルーピングキーは既存のcanonical `history_type`値の完全一致のみ（§Canonical-type限定の確認）
+2. Operation A（content合成）・Operation B（意味推測）を一切行わない
+3. 各Factの`id`/`content`/`title`/`sources`/`verification_status`/`sort_order`は個別に表示され続ける
+4. グループ見出しは既存の`history_type_label`（`HISTORY_TYPE_LABELS`）をそのまま使う。新規カテゴリ名を
+   発明しない
+5. `disputed`のFactを含むグルーピングは本節の対象外——「Shrine Detail Multi-View Contract」節の
+   既存契約（個別表示のみ）に従い続ける
+6. 本節は契約の明確化のみであり、実装（`buildShrineFactSection.ts`/`ShrineFactSection.tsx`の変更）を
+   authorizeしない。実装着手には別途、実装PR（`shrine-detail-explanation-knowledge-responsibility.md`
+   §16 PR-B候補）としての着手判断が必要
+
 ### history_type / verification_status / confidenceの3軸分離
 
 以下の3軸は、Model上完全に独立したfieldであり、相互に値を制約するvalidationは存在しない。
@@ -1194,6 +1333,17 @@ Codex側では最終決定を行わない。
 > **追記（2026-08-03時点、PR-C4B1/PR-C4B2/PR-D1、Current State）**: 21（Shrine Detailで`disputed`のFactを個別列挙表示する実装）は、PR-C4B1（Backend）・PR-C4B2（Web）として着手・実装済みとなり、PR-D1で統合回帰テストも追加された（詳細は「Disputed Evidence Contract」節「Current State追記」を参照）。ただし「Shrine Detail Multi-View Contract」節が禁止した自動グルーピング・自動要約・AIによる正誤判定・`FactSourceEvidence`等の明示的中間Modelはいずれも実装していない。18・19（Source confidence関連）・20（Conflicting Evidence対応要否）は本追記時点でも変わらず未確定のまま据え置く。加えて、本追記で新たに以下を母艦判断項目へ追加する。
 >
 > **23.** Mobileにおける Knowledge Fact（`deities`/`histories`/`disputed`表示）対応方針。Mobileは本追記時点でKnowledge Factを一切消費していない（本書「Mobile Current State」節を参照）。実装するか、対象外とするか、Web側仕様と統一するかは未確定のまま母艦判断へ委ねる
+>
+> **追記（2026-08-16時点、PR-C6候補）**: 「Presentation Groupingの契約」節（本書、「Disputed Evidence
+> Contract」節内）で、Data Merge／Semantic Auto-Grouping／Presentation Groupingの3操作を区別し、
+> Presentation Grouping（既存canonical `history_type`一致のみによる表示上のグルーピング）は本書の
+> 既存禁止事項に該当しないことを確定した（`PRESENTATION GROUPING ALLOWED WITH CONSTRAINTS`）。これは
+> **契約解釈の確定のみ**であり、以下は本追記でも決定しない。
+>
+> **24.** Presentation Grouping（History/Tradition等のcanonical `history_type`単位でのカード
+> グルーピング表示）を実際に実装するか、実装する場合の時期・PR分割（候補:
+> [`shrine-detail-explanation-knowledge-responsibility.md`](../audit/shrine-detail-explanation-knowledge-responsibility.md)
+> §16 PR-B）
 
 ---
 
