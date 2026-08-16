@@ -111,3 +111,53 @@ describe("Recommendation Instance Identity: impression -> click", () => {
     expect(first).toBe("stable-9f8e");
   });
 });
+
+describe("Recommendation Instance Identity: Result-side meaning card_view (Result <-> Detail duplicate-exposure join, docs/audit/recommendation-result-detail-instrumentation-contract.md §7)", () => {
+  beforeEach(() => {
+    analyticsMocks.trackCardEvent.mockClear();
+    // premium+authenticated so shrine_meaning/action_meaning/consultation_summary resolve to
+    // "visible" (CARD_VISIBILITY_POLICIES) instead of "hidden" (anonymous), which would otherwise
+    // filter them out of conciergeCardRoutes entirely and fire no card_view at all.
+    authMock.useAuth.mockReturnValue({ isLoggedIn: true, loading: false });
+    window.localStorage.clear();
+  });
+
+  it("shrine_meaning / action_meaning / consultation_summaryのcard_viewがrecommendationInstanceId + shrineIdを送る", () => {
+    const heroRec = {
+      shrine_id: 9,
+      display_name: "結合検証神社",
+      reason: "理由文",
+      recommendation_instance_id: "join-key-1234",
+    };
+    const payload = buildTestPayload([heroRec]);
+    render(<ConciergeSectionsRenderer payload={payload} threadId={768} isPremiumActive={true} />);
+
+    for (const cardId of ["consultation_summary", "shrine_meaning", "action_meaning"] as const) {
+      const call = analyticsMocks.trackCardEvent.mock.calls.find(([payload]) => payload.cardId === cardId);
+      expect(call?.[0]).toMatchObject({
+        cardId,
+        source: "concierge_result",
+        shrineId: 9,
+        recommendationInstanceId: "join-key-1234",
+      });
+    }
+  });
+
+  it("recommendation_instance_idが無い候補ではrecommendationInstanceIdにnullを送り、既存fieldは維持される", () => {
+    const heroRec = { shrine_id: 10, display_name: "識別子なし神社", reason: "理由文" };
+    const payload = buildTestPayload([heroRec]);
+
+    expect(() =>
+      render(<ConciergeSectionsRenderer payload={payload} threadId={768} isPremiumActive={true} />),
+    ).not.toThrow();
+
+    const call = analyticsMocks.trackCardEvent.mock.calls.find(([payload]) => payload.cardId === "shrine_meaning");
+    expect(call?.[0]).toMatchObject({
+      cardId: "shrine_meaning",
+      source: "concierge_result",
+      shrineId: 10,
+      recommendationRank: 1,
+      recommendationInstanceId: null,
+    });
+  });
+});

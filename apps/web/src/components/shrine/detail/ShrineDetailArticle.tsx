@@ -134,6 +134,9 @@ function trackShrineDetailCardView(args: {
   payloadSource?: "v2" | "fallback";
   shrineId?: number | string;
   historyTheme?: string | null;
+  // Result <-> Detail duplicate-exposure join key (with shrineId) -- see
+  // docs/audit/recommendation-result-detail-instrumentation-contract.md §7.
+  recommendationInstanceId?: string | null;
 }) {
   if (args.visibility === "hidden") return;
 
@@ -146,6 +149,7 @@ function trackShrineDetailCardView(args: {
     shrineId: args.shrineId,
     historyTheme: args.historyTheme,
     payloadSource: args.payloadSource,
+    recommendationInstanceId: args.recommendationInstanceId ?? null,
   });
 }
 
@@ -527,6 +531,7 @@ export default function ShrineDetailArticle({
         shrineId: cardProps.shrineId,
         historyTheme,
         payloadSource: meaningPayloadSource,
+        recommendationInstanceId,
       });
     }
 
@@ -538,6 +543,7 @@ export default function ShrineDetailArticle({
         shrineId: cardProps.shrineId,
         historyTheme,
         payloadSource: meaningPayloadSource,
+        recommendationInstanceId,
       });
     });
 
@@ -549,6 +555,7 @@ export default function ShrineDetailArticle({
         shrineId: cardProps.shrineId,
         historyTheme,
         payloadSource: meaningPayloadSource,
+        recommendationInstanceId,
       });
     }
 
@@ -560,6 +567,7 @@ export default function ShrineDetailArticle({
         shrineId: cardProps.shrineId,
         historyTheme,
         payloadSource: meaningPayloadSource,
+        recommendationInstanceId,
       });
     });
 
@@ -571,6 +579,7 @@ export default function ShrineDetailArticle({
         shrineId: cardProps.shrineId,
         historyTheme,
         payloadSource: meaningPayloadSource,
+        recommendationInstanceId,
       });
     }
 
@@ -618,6 +627,7 @@ export default function ShrineDetailArticle({
     premiumMeaningBlockCardIdKey,
     premiumMeaningBlockCardIds,
     previousComparisonVisibility,
+    recommendationInstanceId,
     recommendationMeta?.rankBody,
     recommendationMeta?.rankTitle,
     recommendationMetaVisibility,

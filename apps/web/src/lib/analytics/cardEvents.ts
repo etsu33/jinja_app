@@ -46,6 +46,10 @@ export type CardAnalyticsPayload = {
   sessionId?: string;
   threadId?: string;
   resultSetId?: string;
+  // Result <-> Detail duplicate-exposure join key (with shrineId), Backend rid
+  // persisted on the thread snapshot -- see docs/audit/
+  // recommendation-result-detail-instrumentation-contract.md §7.
+  recommendationInstanceId?: string | null;
 };
 
 type SerializedCardAnalyticsPayloadInput = Omit<CardAnalyticsPayload, "event">;

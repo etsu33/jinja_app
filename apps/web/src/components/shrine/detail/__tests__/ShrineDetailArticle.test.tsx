@@ -422,6 +422,76 @@ describe("ShrineDetailArticle", () => {
     });
   });
 
+  describe("Result <-> Detail duplicate-exposure join (docs/audit/recommendation-result-detail-instrumentation-contract.md §7)", () => {
+    const meaningSection = {
+      kind: "meaning",
+      items: [{ key: "consultation_summary" }, { key: "shrine_meaning" }, { key: "action_meaning" }],
+    } as any;
+
+    function renderWithMeaningSection(recommendationInstanceId?: string | null) {
+      return render(
+        <ShrineDetailArticle
+          cardProps={{
+            shrineId: 17,
+            title: "乃木神社",
+            href: "/shrines/17",
+            imageUrl: null,
+            badges: [],
+            metaChips: [],
+            address: "東京都港区赤坂",
+          } as any}
+          heroImageUrl={null}
+          heroMeaningCopy={null}
+          benefitLabels={[]}
+          tags={[]}
+          publicGoshuinsPreview={[]}
+          publicGoshuinsViewAllHref=""
+          sections={[meaningSection]}
+          isPremiumActive
+          recommendationMeta={null}
+          saveActionNode={null}
+          recommendationInstanceId={recommendationInstanceId}
+        />,
+      );
+    }
+
+    it("shrine_meaning / action_meaning / consultation_summaryのcard_viewがrecommendationInstanceId + shrineIdを送る", async () => {
+      renderWithMeaningSection("a1b2c3d4");
+
+      await waitFor(() => {
+        for (const cardId of ["consultation_summary", "shrine_meaning", "action_meaning"] as const) {
+          expect(analyticsMocks.trackCardEvent).toHaveBeenCalledWith(
+            expect.objectContaining({
+              event: "card_view",
+              cardId,
+              source: "shrine_detail",
+              shrineId: 17,
+              recommendationInstanceId: "a1b2c3d4",
+            }),
+          );
+        }
+      });
+    });
+
+    it("recommendationInstanceIdが無い場合はnullを送り、クラッシュせず既存fieldは維持される", async () => {
+      expect(() => renderWithMeaningSection(undefined)).not.toThrow();
+
+      await waitFor(() => {
+        expect(analyticsMocks.trackCardEvent).toHaveBeenCalledWith(
+          expect.objectContaining({
+            event: "card_view",
+            cardId: "shrine_meaning",
+            source: "shrine_detail",
+            accessLevel: "premium",
+            visibility: "visible",
+            shrineId: 17,
+            recommendationInstanceId: null,
+          }),
+        );
+      });
+    });
+  });
+
   it.each([
     [true, "参拝お疲れさまでした"],
     [false, null],
