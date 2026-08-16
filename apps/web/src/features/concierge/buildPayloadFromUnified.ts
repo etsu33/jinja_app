@@ -6,6 +6,8 @@ import type {
   ConciergeFilterState,
 } from "@/features/concierge/sections/types";
 import type { ConciergeReasonFacts, RecommendationReasonV4Detail } from "@/lib/api/concierge";
+import type { ActionSuggestionV4PreviewViewModel } from "@/viewmodels/conciergeResultItem";
+import { normalizeActionSuggestionV4Preview } from "@/viewmodels/actionSuggestionV4Preview";
 import { validDirectionReferenceOrNull, type DirectionReference } from "../../../../../packages/shared/directionReference";
 import {
   normalizeRecommendationInstanceId,
@@ -44,7 +46,7 @@ type NormalizedItemBase = {
     timeEstimate: string;
     measurementKey: string;
   }>;
-  actionSuggestionV4Preview?: unknown;
+  actionSuggestionV4Preview?: ActionSuggestionV4PreviewViewModel | null;
   detailHref?: string;
   isDummy?: boolean;
   directionReference?: DirectionReference | null;
@@ -163,11 +165,12 @@ function normalizeRecommendation(r: any, tid: string | null, analyticsContext: D
     analyticsContext.consultationAxis,
   );
   const actionSuggestions = normalizeActionSuggestions(r);
-  const actionSuggestionV4Preview = r?.action_suggestion_v4_preview ?? r?.actionSuggestionV4Preview ?? null;
+  const actionSuggestionV4PreviewRaw = r?.action_suggestion_v4_preview ?? r?.actionSuggestionV4Preview ?? null;
+  const actionSuggestionV4Preview = normalizeActionSuggestionV4Preview(actionSuggestionV4PreviewRaw);
   const analyticsProvenance = recommendationAnalyticsProvenance({
     primaryReasonSource: r?.primary_reason_source ?? r?._primary_reason_source,
     reasonFacts,
-    actionSuggestionPreview: actionSuggestionV4Preview,
+    actionSuggestionPreview: actionSuggestionV4PreviewRaw,
   });
   const recommendationInstanceId = normalizeRecommendationInstanceId(
     r?.recommendation_instance_id ?? r?.recommendationInstanceId,
