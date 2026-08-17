@@ -42,6 +42,8 @@ action_suggestion_v4.md
 
 ```text
 compass-product-contract.md
+↓
+compass-mvp-runtime-contract.md
 ```
 
 ### 2. 神社詳細・参拝・記録
@@ -91,9 +93,10 @@ billing-paywall.md
 
 ### Compass
 
-| ファイル                       | 役割                                                                                       |
-| ------------------------------ | -------------------------------------------------------------------------------------------- |
-| `compass-product-contract.md`  | Visit CompassのProduct Promise、Authority境界、Signal-to-Explanation Ruleを管理する正本 |
+| ファイル                          | 役割                                                                                       |
+| --------------------------------- | -------------------------------------------------------------------------------------------- |
+| `compass-product-contract.md`     | Visit CompassのProduct Promise、Authority境界、Signal-to-Explanation Ruleを管理する正本 |
+| `compass-mvp-runtime-contract.md` | Visit Compass MVPの最小Runtime入出力契約（time/profile/origin/purpose/direction）を管理する正本 |
 
 ### 神社詳細・参拝・記録
 
