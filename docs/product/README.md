@@ -38,6 +38,12 @@ recommendation-v4-interpreter-contract.md
 action_suggestion_v4.md
 ```
 
+### 1.5 Compass
+
+```text
+compass-product-contract.md
+```
+
 ### 2. 神社詳細・参拝・記録
 
 ```text
@@ -82,6 +88,12 @@ billing-paywall.md
 | `meaning-translation-mapping.md`            | 相談・ご利益・神社・行動を`history_theme`へ接続する変換仕様 |
 | `recommendation-v4-interpreter-contract.md` | Consultation InterpreterのInput / Output契約                |
 | `action_suggestion_v4.md`                   | Action Suggestion v4の契約・Schema                          |
+
+### Compass
+
+| ファイル                       | 役割                                                                                       |
+| ------------------------------ | -------------------------------------------------------------------------------------------- |
+| `compass-product-contract.md`  | Visit CompassのProduct Promise、Authority境界、Signal-to-Explanation Ruleを管理する正本 |
 
 ### 神社詳細・参拝・記録
 
