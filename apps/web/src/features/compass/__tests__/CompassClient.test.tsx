@@ -78,6 +78,42 @@ describe("CompassClient", () => {
     expect(screen.getByText("北西神社")).toBeInTheDocument();
   });
 
+  it("「その他の目的」から選んでも送信payloadは折りたたみ表示に影響されず正しいslugになる（Purpose UI Polish回帰確認）", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        state: "recommendation_success",
+        purpose: "travel_safe",
+        direction_context: {
+          targetDate: "2026-09-15",
+          targetYear: 2026,
+          solarMonthIndex: 8,
+          referenceDirections: ["北西"],
+          calculationMethod: "annual_monthly_kyusei_v1",
+          note: "note",
+        },
+        recommendations: [],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<CompassClient />);
+    fireEvent.click(screen.getByRole("button", { name: /その他の目的を見る/ }));
+    fireEvent.click(screen.getByRole("radio", { name: "移動・安全" }));
+    setOriginViaPrefecture();
+    fireEvent.change(screen.getByLabelText("生年月日（方位計算に使用）"), {
+      target: { value: "1990-01-01" },
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "今月の方向を確認する" }));
+    });
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect(JSON.parse(init.body).purpose).toBe("travel_safe");
+  });
+
   it("direction_zero_candidatesとdirection_filter_unavailableを区別して表示する", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,

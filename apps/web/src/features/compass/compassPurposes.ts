@@ -49,3 +49,31 @@ export const COMPASS_PURPOSE_LABELS_JA: Record<CompassPurpose, string> = {
 export function isCompassPurpose(value: unknown): value is CompassPurpose {
   return typeof value === "string" && (COMPASS_PURPOSES as readonly string[]).includes(value);
 }
+
+// Presentation-only ordering for CompassPurposeSelector's "show primary N,
+// then expand" layout (docs/audit/compass-purpose-first-view-polish.md):
+// Phase 6 QA found 15 equally-weighted chips dominate the 375px first
+// viewport. This reorders which of the *same* 15 purposes render first --
+// it adds/removes/renames nothing. The order is not invented for Compass;
+// it is copied verbatim from the existing backend priority ranking
+// (backend/temples/domain/need_tags.py NEED_PRIORITY), which Concierge
+// already uses to break ties among multiple matched need_tags.
+export const COMPASS_PURPOSES_ORDERED: readonly CompassPurpose[] = [
+  "protection",
+  "marriage",
+  "love",
+  "family",
+  "study",
+  "career",
+  "money",
+  "health",
+  "mental",
+  "relationship",
+  "communication",
+  "courage",
+  "focus",
+  "rest",
+  "travel_safe",
+];
+
+export const COMPASS_PRIMARY_PURPOSE_COUNT = 6;
