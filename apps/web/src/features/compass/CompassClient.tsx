@@ -56,7 +56,6 @@ export default function CompassClient() {
   const missingBirthdate = attempted && !birthdate.trim();
   const missingOrigin = attempted && !origin;
   const missingPurpose = attempted && !purpose;
-  const canSubmit = Boolean(purpose && birthdate.trim() && origin);
 
   const handleSubmit = async () => {
     setAttempted(true);
