@@ -11,7 +11,13 @@ const SIZE = 220;
 const CENTER = SIZE / 2;
 const OUTER_RADIUS = 96;
 const INNER_RADIUS = 58;
-const LABEL_RADIUS = 112;
+// Must stay small enough that the widest single-character label (bold,
+// active state, ~15px wide) never crosses the viewBox edge at the exact
+// East/West axis, where the full radius applies (sin(90deg) = 1): found via
+// live measurement (Phase 6 QA, docs/audit/compass-full-experience-qa.md)
+// that 112 clipped "東"/"西" by several px against the SVG's default
+// overflow:hidden. 100 leaves a small margin at CENTER(110) + 100 + 7.5.
+const LABEL_RADIUS = 100;
 const GAP_DEGREES = 2;
 
 function polarToCartesian(radius: number, angleDeg: number) {

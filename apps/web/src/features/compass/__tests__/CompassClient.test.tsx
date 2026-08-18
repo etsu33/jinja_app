@@ -23,7 +23,8 @@ describe("CompassClient", () => {
 
   it("初期状態では月見出しとProduct Promiseのみを表示し、結果セクションは出さない", () => {
     render(<CompassClient />);
-    expect(screen.getByText("今月の参拝コンパス")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "今月の参拝コンパス" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "今月の参拝コンパス" })).toBeInTheDocument();
     expect(screen.getByText("今月の流れと目的から、向かう方向と参拝候補を見つけます。")).toBeInTheDocument();
     expect(screen.queryByText("この方向の参拝候補")).not.toBeInTheDocument();
   });
