@@ -95,6 +95,12 @@ export default function CompassClient() {
 
   return (
     <div className="mx-auto w-full max-w-2xl space-y-6 px-4 py-8">
+      {/* DetailSection titles render as h2 (shared component, matches
+          Concierge/Shrine Detail's existing outline); this page-level h1
+          is sr-only so the visual heading stays exactly as designed while
+          giving the document a correct heading hierarchy for screen readers
+          (Phase 6 QA finding, docs/audit/compass-full-experience-qa.md). */}
+      <h1 className="sr-only">今月の参拝コンパス</h1>
       <DetailSection title="今月の参拝コンパス" variant="primary" right={formatTargetMonth(now)}>
         <p className="text-sm leading-6 text-[var(--kt-color-text-secondary)]">
           今月の流れと目的から、向かう方向と参拝候補を見つけます。
