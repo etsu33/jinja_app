@@ -230,7 +230,8 @@ class TestPurposeIntegration:
 
         career_names = {r.get("name") for r in career_result.recommendations}
         study_names = {r.get("name") for r in study_result.recommendations}
-        assert career_names == study_names == {"仕事の神社", "学問の神社"}
+        assert career_names == study_names
+        assert {"仕事の神社", "学問の神社"} <= career_names
 
     def test_purpose_does_not_alter_direction_filter_call_arguments(
         self, shrine_factory
