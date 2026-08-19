@@ -110,6 +110,7 @@ describe("CompassClient lifecycle analytics", () => {
               calculationMethod: "annual_monthly_kyusei_v1",
               note: "note",
             },
+            recommendation_instance_id: "compass01",
             recommendations: [
               { shrine_id: 1, name: "北西神社", reason: "仕事運との一致" },
               { shrine_id: 2, name: "北西二の宮", reason: "縁結び" },
@@ -132,6 +133,7 @@ describe("CompassClient lifecycle analytics", () => {
         origin_mode: "prefecture",
         has_birthdate: true,
         recommendation_count: 2,
+        recommendationInstanceId: "compass01",
       });
 
       // PII / data-minimization contract (task §10, §24 of the readiness audit):

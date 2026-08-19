@@ -16,6 +16,7 @@ compass_recommendation_orchestrator.get_compass_recommendations().
 from __future__ import annotations
 
 import logging
+import uuid
 
 from rest_framework import status
 from rest_framework.permissions import AllowAny
@@ -46,6 +47,7 @@ class CompassRecommendationsView(APIView):
     throttle_scope = "compass"
 
     def post(self, request, *args, **kwargs):
+        recommendation_instance_id = uuid.uuid4().hex[:8]
         data = request.data or {}
 
         purpose = str(data.get("purpose") or "").strip()
@@ -71,11 +73,16 @@ class CompassRecommendationsView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
+        recommendations = [
+            {**recommendation, "recommendation_instance_id": recommendation_instance_id}
+            for recommendation in result.recommendations
+        ]
         body = {
             "state": result.state,
             "purpose": result.purpose,
             "direction_context": result.direction_context,
-            "recommendations": result.recommendations,
+            "recommendation_instance_id": recommendation_instance_id,
+            "recommendations": recommendations,
         }
 
         if result.state == STATE_INVALID_PURPOSE:

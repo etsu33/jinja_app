@@ -33,7 +33,7 @@ export type SearchAnalyticsEventName =
 type SearchAnalyticsPrimitive = string | number | boolean | null | undefined;
 
 export type SearchAnalyticsPayload = {
-  source?: "concierge_result" | "shrine_detail" | "map" | "shrines" | "home" | null;
+  source?: "concierge_result" | "compass" | "shrine_detail" | "map" | "shrines" | "home" | null;
   analyticsSessionId?: string | null;
   threadId?: string | null;
   resultSetId?: string | null;

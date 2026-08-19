@@ -77,4 +77,23 @@ describe("Recommendation Instance Identity: detail -> route", () => {
       }),
     );
   });
+
+  it("Compass detail viewへ同じinstance・shrine・rankを渡す", () => {
+    render(
+      <ShrineDetailViewTracker
+        shrineId={42}
+        ctx="compass"
+        recommendationInstanceId="compass01"
+        recommendationRank={2}
+      />,
+    );
+
+    expect(trackSearchEvent).toHaveBeenCalledWith("shrine_detail_view", {
+      source: "compass",
+      shrineId: 42,
+      threadId: undefined,
+      recommendationInstanceId: "compass01",
+      recommendationRank: 2,
+    });
+  });
 });

@@ -53,6 +53,29 @@ def test_valid_request_returns_recommendation_success(client, shrine_factory):
     assert body["direction_context"]["referenceDirections"] == ["北西"]
     names = [rec["name"] for rec in body["recommendations"]]
     assert "北西の神社" in names
+    assert len(body["recommendation_instance_id"]) == 8
+    assert all(
+        rec["recommendation_instance_id"] == body["recommendation_instance_id"]
+        for rec in body["recommendations"]
+    )
+
+
+@pytest.mark.django_db
+def test_separate_compass_results_get_separate_recommendation_instances(client, shrine_factory):
+    shrine_factory(name="北西の神社", latitude=35.5, longitude=134.5, goriyaku="仕事運")
+    payload = json.dumps(
+        {
+            "purpose": "career",
+            "origin": ORIGIN,
+            "birthdate": BIRTHDATE,
+            "target_date": TARGET_DATE,
+        }
+    )
+
+    first = client.post(URL, data=payload, content_type="application/json").json()
+    second = client.post(URL, data=payload, content_type="application/json").json()
+
+    assert first["recommendation_instance_id"] != second["recommendation_instance_id"]
 
 
 @pytest.mark.django_db

@@ -60,6 +60,7 @@ export type CompassRecommendation = {
   distance_m?: number | null;
   reason?: string | null;
   place_id?: string | null;
+  recommendation_instance_id?: string | null;
   [key: string]: unknown;
 };
 
@@ -72,5 +73,6 @@ export type CompassRecommendationsResponse = {
     | "recommendation_success";
   purpose: string | null;
   direction_context: CompassDirectionRuntime | null;
+  recommendation_instance_id: string;
   recommendations: CompassRecommendation[];
 };

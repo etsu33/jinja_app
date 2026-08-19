@@ -2,7 +2,7 @@ import type { AccessLevel } from "../premium/accessLevel";
 import type { CardId, CardVisibilityState } from "../premium/cardVisibility";
 import { getAnalyticsProvider, type AnalyticsPayload } from "@/lib/analytics/providers";
 
-export type AnalyticsSource = "concierge_result" | "shrine_detail" | "billing_upgrade" | "mypage";
+export type AnalyticsSource = "concierge_result" | "compass" | "shrine_detail" | "billing_upgrade" | "mypage";
 
 export type CtaType =
   | "organize"
@@ -30,7 +30,7 @@ export type CardAnalyticsPayload = {
   event: CardAnalyticsEvent;
   cardId: CardId;
   source: AnalyticsSource;
-  accessLevel: AccessLevel;
+  accessLevel?: AccessLevel;
   visibility: CardVisibilityState;
   ctaType?: CtaType;
   shrineId?: number | string;
