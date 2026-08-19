@@ -18,7 +18,7 @@ describe("HomeMainClient", () => {
 
     const compassHeading = screen.getByRole("heading", { level: 2, name: "方向から探す" });
     expect(compassHeading).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "参拝コンパスを見る" })).toHaveAttribute("href", "/compass");
+    expect(screen.getByRole("link", { name: "参拝コンパスを見る" })).toHaveAttribute("href", "/compass?ref=home");
   });
 
   it("Compassセクションの見出しは、Concierge前提のSUB PATHS見出しとは異なる文言を持つ", () => {
