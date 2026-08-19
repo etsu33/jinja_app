@@ -655,6 +655,52 @@ describe("ShrineDetailArticle", () => {
       });
     });
 
+    it("ctx=compass の場合、visit_doneはsource=compassを送る（PR-C）", async () => {
+      visitsMocks.addVisit.mockResolvedValue({});
+
+      renderWithVisitCta({ ctx: "compass", historyTheme: "静寂", tid: "tid-1" });
+      fireEvent.click(screen.getByRole("button", { name: "参拝しました" }));
+
+      await waitFor(() => {
+        expect(analyticsMocks.trackSearchEvent).toHaveBeenCalledWith(
+          "visit_done",
+          expect.objectContaining({ source: "compass", shrineId: 17 }),
+        );
+      });
+
+      // Compass is never a Concierge mode -- unaffected, same as ctx=null/map today.
+      const visitDoneCall = analyticsMocks.trackSearchEvent.mock.calls.find(([eventName]) => eventName === "visit_done");
+      expect(visitDoneCall?.[1]?.mode).toBeUndefined();
+    });
+
+    it("ctxが未指定（直接遷移）の場合、visit_doneのsourceはCompassへ漏れずshrine_detailのまま（PR-C）", async () => {
+      visitsMocks.addVisit.mockResolvedValue({});
+
+      renderWithVisitCta();
+      fireEvent.click(screen.getByRole("button", { name: "参拝しました" }));
+
+      await waitFor(() => {
+        expect(analyticsMocks.trackSearchEvent).toHaveBeenCalledWith(
+          "visit_done",
+          expect.objectContaining({ source: "shrine_detail" }),
+        );
+      });
+    });
+
+    it("visit_doneのペイロードにbirthdate・座標を含めない（PR-C PIIチェック）", async () => {
+      visitsMocks.addVisit.mockResolvedValue({});
+
+      renderWithVisitCta({ ctx: "compass" });
+      fireEvent.click(screen.getByRole("button", { name: "参拝しました" }));
+
+      await waitFor(() => expect(analyticsMocks.trackSearchEvent).toHaveBeenCalled());
+
+      const visitDoneCall = analyticsMocks.trackSearchEvent.mock.calls.find(([eventName]) => eventName === "visit_done");
+      expect(visitDoneCall?.[1]).not.toHaveProperty("birthdate");
+      expect(visitDoneCall?.[1]).not.toHaveProperty("latitude");
+      expect(visitDoneCall?.[1]).not.toHaveProperty("longitude");
+    });
+
     it("失敗後はエラー表示になり、再操作可能な状態に戻る", async () => {
       visitsMocks.addVisit.mockRejectedValue(new Error("failed"));
 

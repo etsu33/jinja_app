@@ -35,6 +35,12 @@ export function ShrineReflectionPrompt({
   recommendationInstanceId = null,
 }: Props) {
   const mode = ctx === "concierge" ? "need" : undefined;
+  // PR-C (docs/analytics/compass-analytics-contract.md): only "compass" is
+  // distinguished; concierge/map/direct keep "shrine_detail" unchanged. A
+  // later, separate page visit (no ctx=compass in that URL) correctly falls
+  // back to "shrine_detail" -- Compass provenance is not persisted, so it
+  // cannot legitimately survive to a Reflection outside the same page render.
+  const source = ctx === "compass" ? "compass" : "shrine_detail";
   const [answer, setAnswer] = useState("");
   const [moodBefore, setMoodBefore] = useState("");
   const [moodAfter, setMoodAfter] = useState("");
@@ -47,7 +53,7 @@ export function ShrineReflectionPrompt({
 
   useEffect(() => {
     trackSearchEvent("reflection_prompt_view", {
-      source: "shrine_detail",
+      source,
       shrineId,
       threadId: threadId ?? undefined,
       historyTheme: historyTheme ?? undefined,
@@ -58,7 +64,7 @@ export function ShrineReflectionPrompt({
       recommendationInstanceId,
       ...(analyticsProvenance ? recommendationAnalyticsProperties(analyticsProvenance) : {}),
     });
-  }, [accessLevel, analyticsProvenance, historyTheme, mode, recommendationInstanceId, shrineId, threadId]);
+  }, [accessLevel, analyticsProvenance, historyTheme, mode, recommendationInstanceId, shrineId, source, threadId]);
 
   async function handleSubmit() {
     if (!canSubmit) return;
@@ -79,7 +85,7 @@ export function ShrineReflectionPrompt({
       });
 
       trackSearchEvent("reflection_saved", {
-        source: "shrine_detail",
+        source,
         shrineId,
         threadId: threadId ?? undefined,
         historyTheme: historyTheme ?? undefined,

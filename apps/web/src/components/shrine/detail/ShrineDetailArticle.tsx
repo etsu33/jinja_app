@@ -756,8 +756,11 @@ export default function ShrineDetailArticle({
                       setVisitError(false);
                       try {
                         await addVisit(cardProps.shrineId, tid);
+                        // PR-C (docs/analytics/compass-analytics-contract.md):
+                        // only "compass" is distinguished; concierge/map/direct
+                        // keep the existing "shrine_detail" value unchanged.
                         trackSearchEvent("visit_done", {
-                          source: "shrine_detail",
+                          source: ctx === "compass" ? "compass" : "shrine_detail",
                           shrineId: cardProps.shrineId,
                           threadId: tid != null ? String(tid) : undefined,
                           historyTheme: historyTheme ?? undefined,

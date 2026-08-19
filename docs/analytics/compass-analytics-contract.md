@@ -2,8 +2,8 @@
 
 > Status: Active
 
-Compass の発見から Recommendation 経由の Shrine Detail 表示までを計測する契約。
-Favorite / Visit / Reflection の source 伝播は本契約の対象外（PR-C）である。
+Compass の発見から Recommendation 経由の Shrine Detail 表示、および
+Favorite / Visit / Reflection への source 伝播までを計測する契約。
 
 ## Lifecycle
 
@@ -30,6 +30,37 @@ CompassからShrine DetailへのURLは `ctx=compass`、
 `recommendation_instance_id`、`recommendation_rank`を運ぶ。直接訪問ではこれらを
 合成しない。`ctx=compass`以外の既存経路、特にConciergeのthread snapshotからの
 Recommendation Instance復元は変更しない。
+
+## Action source propagation（PR-C）
+
+Compass経由でShrine Detailに到達した**同一ページrender**の範囲でのみ、
+Favorite / Visit / Reflectionの既存イベントが`source=compass`を伝播する。新規
+イベントは追加しない（既存event + `source`のみ）。
+
+| Action | event（既存、変更なし） | 変更内容 |
+|---|---|---|
+| Favorite | `favorite_click`, `shrine_decision` | `source`を`ctx===compass`のときのみ`"compass"`、それ以外は既存どおり`"shrine_detail"`のまま |
+| Visit | `visit_done` | 同上 |
+| Reflection | `reflection_prompt_view`, `reflection_saved` | 同上 |
+
+Concierge/map/直接訪問の`source`値は変更しない（既存contractのまま）。
+
+`recommendationInstanceId`も同じ範囲で伝播する
+（`compassRecommendationInstanceId ?? conciergeRecommendationInstanceId`）。
+`recommendationRank`はFavorite/Visit/Reflectionへ伝播しない
+— Concierge経由でも現状これらのactionへrankは渡っておらず、PR-Cはその
+既存アーキテクチャに新しい配線を追加しない。
+
+### Attribution strength（帰属の強さ）
+
+| Action | 分類 | 理由 |
+|---|---|---|
+| Favorite | SESSION / NAVIGATION ATTRIBUTION | 同一Shrine Detail page renderの`ctx`クエリパラメータに限定。DB永続化なし |
+| Visit | SESSION / NAVIGATION ATTRIBUTION | 同上 |
+| Reflection（prompt/saved） | SESSION / NAVIGATION ATTRIBUTION（同一page render時のみ） | 同上。**別セッション・別日にShrine Detailへ再訪問してReflectionを書いた場合はMEASUREMENT GAP** — URLに`ctx=compass`が残らないため`source`は正しく`"shrine_detail"`にfallbackする。これは既知の制約であり、永続化で解消しない（PR-Cのスコープ外） |
+
+Compass runtimeは引き続きephemeral。DB change・migration・Compass History・
+Personal Continuityは本PRで一切実装しない。
 
 ## Privacy
 
