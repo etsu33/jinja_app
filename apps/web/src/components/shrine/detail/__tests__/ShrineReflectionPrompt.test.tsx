@@ -47,6 +47,33 @@ describe("ShrineReflectionPrompt", () => {
     });
   });
 
+  it("ctx=compassの場合、reflection_prompt_viewはsource=compassを送る（PR-C）", () => {
+    render(
+      <ShrineReflectionPrompt
+        shrineId={17}
+        historyTheme="静寂"
+        threadId="tid-1"
+        ctx="compass"
+        accessLevel="free"
+        recommendationInstanceId="rid-compass-1"
+      />,
+    );
+
+    expect(mockedTrackSearchEvent).toHaveBeenCalledWith(
+      "reflection_prompt_view",
+      expect.objectContaining({ source: "compass", recommendationInstanceId: "rid-compass-1" }),
+    );
+  });
+
+  it("ctx未指定（直接遷移）の場合、reflection_prompt_viewのsourceはCompassへ漏れずshrine_detailのまま（PR-C）", () => {
+    render(<ShrineReflectionPrompt shrineId={17} historyTheme="静寂" threadId="tid-1" accessLevel="free" />);
+
+    expect(mockedTrackSearchEvent).toHaveBeenCalledWith(
+      "reflection_prompt_view",
+      expect.objectContaining({ source: "shrine_detail" }),
+    );
+  });
+
   it("入力して保存するとAPIを呼び reflection_saved を送信する", async () => {
     const onSaved = vi.fn();
     mockedCreateShrineReflection.mockResolvedValueOnce({
@@ -109,6 +136,50 @@ describe("ShrineReflectionPrompt", () => {
       recommendationInstanceId: null,
     });
     expect(onSaved).toHaveBeenCalled();
+  });
+
+  it("ctx=compassの場合、reflection_savedはsource=compassを送り、PIIを含まない（PR-C）", async () => {
+    mockedCreateShrineReflection.mockResolvedValueOnce({
+      id: 1,
+      user: 10,
+      shrine: 17,
+      history_theme: "静寂",
+      prompt: "参拝して、今どんな変化がありましたか？",
+      answer: "落ち着きました。",
+      mood_before: "",
+      mood_after: "",
+      created_at: "2026-06-03T00:00:00Z",
+    });
+
+    render(
+      <ShrineReflectionPrompt
+        shrineId={17}
+        historyTheme="静寂"
+        threadId="tid-1"
+        ctx="compass"
+        accessLevel="free"
+        recommendationInstanceId="rid-compass-1"
+      />,
+    );
+
+    fireEvent.change(screen.getByPlaceholderText(/少し落ち着いた/), {
+      target: { value: "落ち着きました。" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "振り返りを保存する" }));
+
+    await waitFor(() => {
+      expect(mockedTrackSearchEvent).toHaveBeenCalledWith(
+        "reflection_saved",
+        expect.objectContaining({ source: "compass", recommendationInstanceId: "rid-compass-1" }),
+      );
+    });
+
+    const [, payload] = mockedTrackSearchEvent.mock.calls.find(([eventName]) => eventName === "reflection_saved") ?? [];
+    expect(payload).not.toHaveProperty("birthdate");
+    expect(payload).not.toHaveProperty("latitude");
+    expect(payload).not.toHaveProperty("longitude");
+    // answer本文そのものは元々送信対象外（answerLengthのみ）-- 回帰確認。
+    expect(payload).not.toHaveProperty("answer");
   });
 
   it("threadIdが数値変換できる場合、createShrineReflectionへthread_idとして渡す", async () => {

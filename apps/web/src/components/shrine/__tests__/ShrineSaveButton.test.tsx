@@ -101,6 +101,102 @@ describe("ShrineSaveButton", () => {
     expect(pushMock).not.toHaveBeenCalled();
   });
 
+  it("ctx=compassの場合、favorite_click / shrine_decisionともにsource=compassを送る（PR-C）", async () => {
+    const toggleMock = vi.fn().mockResolvedValue(undefined);
+
+    useFavoriteMock.mockImplementation(() => ({
+      fav: false,
+      busy: false,
+      toggle: toggleMock,
+    }));
+
+    render(
+      <ShrineSaveButton
+        shrineId={17}
+        ctx="compass"
+        tid={null}
+        nextPath="/shrines/17?ctx=compass"
+        guestMode={false}
+        recommendationInstanceId="rid-compass-1"
+        initial={{ fav: false, favorite_id: null }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "あとで見返すために保存" }));
+
+    await waitFor(() => {
+      expect(trackMock).toHaveBeenCalledWith(
+        "favorite_click",
+        expect.objectContaining({ source: "compass", ctx: "compass", recommendationInstanceId: "rid-compass-1" }),
+      );
+    });
+    expect(trackMock).toHaveBeenCalledWith(
+      "shrine_decision",
+      expect.objectContaining({ source: "compass", action: "save", recommendationInstanceId: "rid-compass-1" }),
+    );
+  });
+
+  it("ctx未指定（直接遷移）の場合、Compass由来のsourceは漏れずshrine_detailのままになる（PR-C）", async () => {
+    const toggleMock = vi.fn().mockResolvedValue(undefined);
+
+    useFavoriteMock.mockImplementation(() => ({
+      fav: false,
+      busy: false,
+      toggle: toggleMock,
+    }));
+
+    render(
+      <ShrineSaveButton
+        shrineId={17}
+        nextPath="/shrines/17"
+        guestMode={false}
+        initial={{ fav: false, favorite_id: null }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "あとで見返すために保存" }));
+
+    await waitFor(() => {
+      expect(trackMock).toHaveBeenCalledWith("favorite_click", expect.objectContaining({ source: "shrine_detail" }));
+    });
+
+    const [, favoritePayload] = trackMock.mock.calls.find(([eventName]) => eventName === "favorite_click") ?? [];
+    expect(favoritePayload?.source).not.toBe("compass");
+  });
+
+  it("favorite_click / shrine_decisionのペイロードにbirthdate・座標・生の位置情報テキストを含めない（PR-C PIIチェック）", async () => {
+    const toggleMock = vi.fn().mockResolvedValue(undefined);
+
+    useFavoriteMock.mockImplementation(() => ({
+      fav: false,
+      busy: false,
+      toggle: toggleMock,
+    }));
+
+    render(
+      <ShrineSaveButton
+        shrineId={17}
+        ctx="compass"
+        nextPath="/shrines/17?ctx=compass"
+        guestMode={false}
+        recommendationInstanceId="rid-compass-1"
+        initial={{ fav: false, favorite_id: null }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "あとで見返すために保存" }));
+
+    await waitFor(() => expect(trackMock).toHaveBeenCalled());
+
+    for (const [, payload] of trackMock.mock.calls) {
+      const serialized = JSON.stringify(payload);
+      expect(payload).not.toHaveProperty("birthdate");
+      expect(payload).not.toHaveProperty("latitude");
+      expect(payload).not.toHaveProperty("longitude");
+      expect(serialized).not.toMatch(/\d{4}-\d{2}-\d{2}/);
+    }
+  });
+
   it("解除失敗時にエラー表示を出す", async () => {
     useFavoriteMock.mockImplementation(() => ({
       fav: true,

@@ -14,7 +14,7 @@ import {
 
 type Props = {
   shrineId: number;
-  ctx?: "map" | "concierge" | null;
+  ctx?: "map" | "concierge" | "compass" | null;
   tid?: string | null;
   nextPath?: string;
   guestMode?: boolean;
@@ -59,12 +59,17 @@ export default function ShrineSaveButton({
       const prevFav = fav;
       const nextFav = !prevFav;
       await toggle();
+      // PR-C (docs/analytics/compass-analytics-contract.md): source only
+      // distinguishes "compass" from everything else. Concierge/map/direct
+      // keep their existing "shrine_detail" value unchanged -- widening this
+      // to a full ctx-derived value is out of PR-C's scope.
+      const source = ctx === "compass" ? "compass" : "shrine_detail";
       track("favorite_click", {
         shrineId,
         ctx,
         tid,
         nextFav,
-        source: "shrine_detail",
+        source,
         cardId: "saved_record",
         accessLevel,
         recommendationInstanceId,
@@ -77,6 +82,7 @@ export default function ShrineSaveButton({
           action: "save",
           ctx,
           tid,
+          source,
           recommendationInstanceId,
           ...(analyticsProvenance ? recommendationAnalyticsProperties(analyticsProvenance) : {}),
         });

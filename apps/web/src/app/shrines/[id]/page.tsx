@@ -449,6 +449,12 @@ export default async function Page({ params, searchParams }: Props) {
   const conciergeRecommendationInstanceId = normalizeRecommendationInstanceId(
     selectedRecommendation?.recommendation_instance_id,
   );
+  // PR-C (docs/analytics/compass-analytics-contract.md): the same merge
+  // ShrineDetailViewTracker already used below, now also reaching the
+  // Favorite/Visit/Reflection action boundary -- same-page-render (session/
+  // navigation-level) attribution only, never synthesized across a later,
+  // separate visit.
+  const detailRecommendationInstanceId = compassRecommendationInstanceId ?? conciergeRecommendationInstanceId;
 
   const model = buildShrineDetailModel({
     shrine: s,
@@ -476,7 +482,7 @@ export default async function Page({ params, searchParams }: Props) {
         ctx={ctx}
         tid={tid}
         analyticsProvenance={analyticsProvenance}
-        recommendationInstanceId={compassRecommendationInstanceId ?? conciergeRecommendationInstanceId}
+        recommendationInstanceId={detailRecommendationInstanceId}
         recommendationRank={compassRecommendationRank}
       />
       <ShrineDetailToast shrineId={numericId} />
@@ -499,22 +505,28 @@ export default async function Page({ params, searchParams }: Props) {
       >
         <ShrineDetailArticle
           {...model}
+          // PR-C: overrides model.ctx (downstreamCtx) for this component
+          // only -- the Favorite/Visit/Reflection action boundary may see
+          // the full ctx, including "compass". buildShrineDetailModel's own
+          // computation above (sections, recommendation meta, etc.) still
+          // uses downstreamCtx, unaffected by this override.
+          ctx={ctx}
           stateDelta={stateDelta}
           isPremiumActive={isPremiumActive}
           historyTheme={historyThemeForAnalytics}
           analyticsProvenance={analyticsProvenance}
-          recommendationInstanceId={conciergeRecommendationInstanceId}
+          recommendationInstanceId={detailRecommendationInstanceId}
           addGoshuinHref={addGoshuinHref}
           saveActionNode={
             <ShrineSaveButton
               key={`shrine-save-${numericId}`}
               shrineId={numericId}
-              ctx={downstreamCtx}
+              ctx={ctx}
               tid={tid}
               nextPath={nextPath}
               guestMode={guestMode}
               analyticsProvenance={analyticsProvenance}
-              recommendationInstanceId={conciergeRecommendationInstanceId}
+              recommendationInstanceId={detailRecommendationInstanceId}
               initial={initialFavorite}
             />
           }
