@@ -22,12 +22,18 @@ export type SearchAnalyticsEventName =
   | "empty_state_view"
   | "add_shrine_click"
   | "shrine_card_click"
-  | "shrine_detail_view";
+  | "shrine_detail_view"
+  // Compass lifecycle (docs/audit/compass-analytics-contract-readiness.md
+  // §6-7, PR-A scope only -- discovery/entry/result, no downstream
+  // Recommendation/Shrine-Detail/Favorite/Visit/Reflection attribution).
+  | "home_compass_entry_click"
+  | "compass_entry"
+  | "compass_result";
 
 type SearchAnalyticsPrimitive = string | number | boolean | null | undefined;
 
 export type SearchAnalyticsPayload = {
-  source?: "concierge_result" | "shrine_detail" | "map" | "shrines" | null;
+  source?: "concierge_result" | "shrine_detail" | "map" | "shrines" | "home" | null;
   analyticsSessionId?: string | null;
   threadId?: string | null;
   resultSetId?: string | null;
@@ -76,6 +82,39 @@ export type SearchAnalyticsPayload = {
   answerLength?: number | null;
   moodBefore?: string | null;
   moodAfter?: string | null;
+  /**
+   * Compass lifecycle only (compass_entry). "home" when reached via the
+   * Home Compass entry (`/compass?ref=home`), "direct" otherwise. Distinct
+   * from `source` above, which is reserved for Recommendation/Shrine-Detail
+   * provenance (PR-B/PR-C scope) and must not be overloaded here.
+   */
+  referrer_source?: "home" | "direct" | null;
+  /**
+   * Compass lifecycle only (compass_result). Mirrors
+   * temples.services.compass_recommendation_orchestrator's real state
+   * strings exactly, plus the frontend-only "backend_error" bucket used for
+   * network failures and non-400 error responses. Never collapsed --
+   * docs/audit/compass-analytics-contract-readiness.md §10.
+   */
+  result_state?:
+    | "invalid_purpose"
+    | "direction_filter_unavailable"
+    | "direction_zero_candidates"
+    | "evidence_zero_candidates"
+    | "recommendation_success"
+    | "backend_error"
+    | null;
+  /** Compass lifecycle only. Canonical CompassPurpose slug, never free text. */
+  purpose?: string | null;
+  /**
+   * Compass lifecycle only. Coarse origin category (UserOrigin.source),
+   * never coordinates/address/station text.
+   */
+  origin_mode?: "device" | "station" | "address" | "prefecture" | null;
+  /** Compass lifecycle only. Boolean readiness signal, never the birthdate value itself. */
+  has_birthdate?: boolean | null;
+  /** Compass lifecycle only (compass_result, recommendation_success). */
+  recommendation_count?: number | null;
   [key: string]: SearchAnalyticsPrimitive;
 };
 

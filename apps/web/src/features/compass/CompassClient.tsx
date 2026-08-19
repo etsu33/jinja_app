@@ -8,8 +8,10 @@
 // origin (reused OriginSelector), birthdate (date input), then calls the
 // Compass BFF and renders one of the backend's 5 fail-safe states plus
 // this component's own pre-submit states (birthdate/origin missing).
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import DetailSection from "@/components/shrine/DetailSection";
+import { trackSearchEvent } from "@/lib/analytics/searchEvents";
 import type { UserOrigin } from "../../../../../packages/shared/userOrigin";
 import { toOriginPayload } from "../../../../../packages/shared/userOrigin";
 import CompassDirectionVisual from "./components/CompassDirectionVisual";
@@ -17,6 +19,20 @@ import CompassOriginSummary from "./components/CompassOriginSummary";
 import CompassPurposeSelector from "./components/CompassPurposeSelector";
 import CompassRecommendationsSection from "./components/CompassRecommendationsSection";
 import type { CompassPurpose, CompassRecommendationsResponse, CompassUiState } from "./types";
+
+// Compass lifecycle analytics (PR-A,
+// docs/audit/compass-analytics-contract-readiness.md §6-10). Only the
+// backend orchestrator's own state strings are used -- never renamed for
+// analytics convenience -- plus the frontend-only "backend_error" bucket
+// already used by this component's own uiState for network failures and
+// non-400 error responses.
+type CompassResultState =
+  | "invalid_purpose"
+  | "direction_filter_unavailable"
+  | "direction_zero_candidates"
+  | "evidence_zero_candidates"
+  | "recommendation_success"
+  | "backend_error";
 
 function formatTargetMonth(date: Date): string {
   return `${date.getFullYear()}年${date.getMonth() + 1}月`;
@@ -31,6 +47,32 @@ export default function CompassClient() {
   const [attempted, setAttempted] = useState(false);
   const [uiState, setUiState] = useState<CompassUiState>("initial");
   const [result, setResult] = useState<CompassRecommendationsResponse | null>(null);
+
+  const searchParams = useSearchParams();
+  const entryTrackedRef = useRef(false);
+
+  useEffect(() => {
+    if (entryTrackedRef.current) return;
+    entryTrackedRef.current = true;
+
+    trackSearchEvent("compass_entry", {
+      referrer_source: searchParams.get("ref") === "home" ? "home" : "direct",
+    });
+    // Fires once for the actual Compass entry only -- entryTrackedRef guards
+    // against React re-render/StrictMode double-invocation the same way
+    // ShrineDetailViewTracker.tsx does for shrine_detail_view.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const trackCompassResult = (resultState: CompassResultState, recommendationCount: number | null = null) => {
+    trackSearchEvent("compass_result", {
+      result_state: resultState,
+      purpose,
+      origin_mode: origin?.source ?? null,
+      has_birthdate: true,
+      recommendation_count: recommendationCount,
+    });
+  };
 
   const useDevice = () => {
     setDeviceError(null);
@@ -79,14 +121,20 @@ export default function CompassClient() {
 
       if (!res.ok && res.status !== 400) {
         setUiState("backend_error");
+        trackCompassResult("backend_error");
         return;
       }
 
       const body = (await res.json()) as CompassRecommendationsResponse;
       setResult(body);
       setUiState(body.state);
+      trackCompassResult(
+        body.state,
+        body.state === "recommendation_success" ? (body.recommendations?.length ?? 0) : null,
+      );
     } catch {
       setUiState("backend_error");
+      trackCompassResult("backend_error");
     }
   };
 
