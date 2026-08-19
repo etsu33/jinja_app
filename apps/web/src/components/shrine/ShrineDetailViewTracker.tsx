@@ -10,10 +10,11 @@ import {
 
 type Props = {
   shrineId: number;
-  ctx?: "map" | "concierge" | null;
+  ctx?: "map" | "concierge" | "compass" | null;
   tid?: string | null;
   analyticsProvenance?: RecommendationAnalyticsProvenance;
   recommendationInstanceId?: string | null;
+  recommendationRank?: number | null;
 };
 
 export function ShrineDetailViewTracker({
@@ -22,6 +23,7 @@ export function ShrineDetailViewTracker({
   tid = null,
   analyticsProvenance,
   recommendationInstanceId = null,
+  recommendationRank = null,
 }: Props) {
   const trackedRef = useRef(false);
 
@@ -29,13 +31,15 @@ export function ShrineDetailViewTracker({
     if (trackedRef.current) return;
 
     trackedRef.current = true;
-    const source = ctx === "map" ? "map" : ctx === "concierge" ? "concierge_result" : "shrine_detail";
+    const source =
+      ctx === "map" ? "map" : ctx === "concierge" ? "concierge_result" : ctx === "compass" ? "compass" : "shrine_detail";
 
     trackSearchEvent("shrine_detail_view", {
       source,
       shrineId,
       threadId: tid ?? undefined,
       recommendationInstanceId,
+      recommendationRank,
       ...(analyticsProvenance ? recommendationAnalyticsProperties(analyticsProvenance) : {}),
     });
 
@@ -48,10 +52,11 @@ export function ShrineDetailViewTracker({
         event: "shrine_detail_view",
         ctx,
         recommendation_instance_id: recommendationInstanceId,
+        recommendation_rank: recommendationRank,
         ...(analyticsProvenance ? recommendationAnalyticsProperties(analyticsProvenance) : {}),
       },
     });
-  }, [shrineId, ctx, tid, analyticsProvenance, recommendationInstanceId]);
+  }, [shrineId, ctx, tid, analyticsProvenance, recommendationInstanceId, recommendationRank]);
 
   return null;
 }

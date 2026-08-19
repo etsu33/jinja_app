@@ -64,13 +64,18 @@ export default function CompassClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const trackCompassResult = (resultState: CompassResultState, recommendationCount: number | null = null) => {
+  const trackCompassResult = (
+    resultState: CompassResultState,
+    recommendationCount: number | null = null,
+    recommendationInstanceId: string | null = null,
+  ) => {
     trackSearchEvent("compass_result", {
       result_state: resultState,
       purpose,
       origin_mode: origin?.source ?? null,
       has_birthdate: true,
       recommendation_count: recommendationCount,
+      recommendationInstanceId,
     });
   };
 
@@ -131,6 +136,7 @@ export default function CompassClient() {
       trackCompassResult(
         body.state,
         body.state === "recommendation_success" ? (body.recommendations?.length ?? 0) : null,
+        body.recommendation_instance_id,
       );
     } catch {
       setUiState("backend_error");
@@ -249,7 +255,10 @@ export default function CompassClient() {
       ) : null}
 
       {uiState === "recommendation_success" && result ? (
-        <CompassRecommendationsSection recommendations={result.recommendations} />
+        <CompassRecommendationsSection
+          recommendations={result.recommendations}
+          recommendationInstanceId={result.recommendation_instance_id}
+        />
       ) : null}
     </div>
   );

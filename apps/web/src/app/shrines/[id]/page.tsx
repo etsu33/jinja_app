@@ -52,13 +52,20 @@ import {
   recommendationAnalyticsProvenance,
 } from "../../../../../../packages/shared/recommendationAnalyticsProvenance";
 
-function normalizeCtx(v?: string | null): "map" | "concierge" | null {
-  return v === "map" || v === "concierge" ? v : null;
+function normalizeCtx(v?: string | null): "map" | "concierge" | "compass" | null {
+  return v === "map" || v === "concierge" || v === "compass" ? v : null;
 }
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ ctx?: string; tid?: string; direction_matched?: string; direction_position?: string }>;
+  searchParams?: Promise<{
+    ctx?: string;
+    tid?: string;
+    recommendation_instance_id?: string;
+    recommendation_rank?: string;
+    direction_matched?: string;
+    direction_position?: string;
+  }>;
 };
 
 type RecommendationReasonDetailInput = NonNullable<
@@ -177,10 +184,18 @@ export default async function Page({ params, searchParams }: Props) {
   const sp = (await searchParams) ?? {};
   const ctx = normalizeCtx(sp?.ctx ?? null);
   const tid = sp?.tid ?? null;
+  const compassRecommendationInstanceId =
+    ctx === "compass" ? normalizeRecommendationInstanceId(sp.recommendation_instance_id) : null;
+  const parsedCompassRank = ctx === "compass" ? Number(sp.recommendation_rank) : NaN;
+  const compassRecommendationRank =
+    Number.isInteger(parsedCompassRank) && parsedCompassRank > 0 ? parsedCompassRank : null;
+  // PR-B stops at Shrine Detail view. Compass attribution must not enter
+  // Favorite/Visit/Reflection/route actions before PR-C.
+  const downstreamCtx = ctx === "compass" ? null : ctx;
   const directionRouteContext = parseDirectionRouteContext(sp);
 
   const hideActions = false;
-  const close = buildShrineClose({ ctx, tid });
+  const close = buildShrineClose({ ctx: downstreamCtx, tid });
 
   const numericId = Number(id);
   if (!Number.isFinite(numericId) || numericId <= 0) {
@@ -197,6 +212,8 @@ export default async function Page({ params, searchParams }: Props) {
   const qs = new URLSearchParams();
   if (ctx) qs.set("ctx", ctx);
   if (tid) qs.set("tid", String(tid));
+  if (compassRecommendationInstanceId) qs.set("recommendation_instance_id", compassRecommendationInstanceId);
+  if (compassRecommendationRank) qs.set("recommendation_rank", String(compassRecommendationRank));
   const query = Object.fromEntries(qs.entries());
 
   let shrine: Shrine | null;
@@ -216,7 +233,7 @@ export default async function Page({ params, searchParams }: Props) {
         title="神社の詳細"
         subtitle={null}
         close={close}
-        ctx={ctx}
+        ctx={downstreamCtx}
         tid={tid}
         addGoshuinHref={null}
         saveAction={null}
@@ -429,7 +446,7 @@ export default async function Page({ params, searchParams }: Props) {
   // (docs/audit/recommendation-instance-identity-propagation.md): read-only, Backend
   // rid persisted on the thread snapshot. Direct detail access (no ctx=concierge && tid,
   // i.e. selectedRecommendation stays null) yields null here -- never synthesized.
-  const recommendationInstanceId = normalizeRecommendationInstanceId(
+  const conciergeRecommendationInstanceId = normalizeRecommendationInstanceId(
     selectedRecommendation?.recommendation_instance_id,
   );
 
@@ -447,7 +464,7 @@ export default async function Page({ params, searchParams }: Props) {
     recommendationRankExplanation,
     recommendationRankComparison,
     actionState,
-    ctx,
+    ctx: downstreamCtx,
     tid,
     signals,
   });
@@ -459,7 +476,8 @@ export default async function Page({ params, searchParams }: Props) {
         ctx={ctx}
         tid={tid}
         analyticsProvenance={analyticsProvenance}
-        recommendationInstanceId={recommendationInstanceId}
+        recommendationInstanceId={compassRecommendationInstanceId ?? conciergeRecommendationInstanceId}
+        recommendationRank={compassRecommendationRank}
       />
       <ShrineDetailToast shrineId={numericId} />
       <ShrineDetailShell
@@ -467,11 +485,11 @@ export default async function Page({ params, searchParams }: Props) {
         subtitle={null}
         close={close}
         shrineId={numericId}
-        ctx={ctx}
+        ctx={downstreamCtx}
         tid={tid}
         historyTheme={historyThemeForAnalytics}
         analyticsProvenance={analyticsProvenance}
-        recommendationInstanceId={recommendationInstanceId}
+        recommendationInstanceId={conciergeRecommendationInstanceId}
         directionRouteContext={directionRouteContext}
         addGoshuinHref={null}
         googleDirHref={googleDirHref}
@@ -485,18 +503,18 @@ export default async function Page({ params, searchParams }: Props) {
           isPremiumActive={isPremiumActive}
           historyTheme={historyThemeForAnalytics}
           analyticsProvenance={analyticsProvenance}
-          recommendationInstanceId={recommendationInstanceId}
+          recommendationInstanceId={conciergeRecommendationInstanceId}
           addGoshuinHref={addGoshuinHref}
           saveActionNode={
             <ShrineSaveButton
               key={`shrine-save-${numericId}`}
               shrineId={numericId}
-              ctx={ctx}
+              ctx={downstreamCtx}
               tid={tid}
               nextPath={nextPath}
               guestMode={guestMode}
               analyticsProvenance={analyticsProvenance}
-              recommendationInstanceId={recommendationInstanceId}
+              recommendationInstanceId={conciergeRecommendationInstanceId}
               initial={initialFavorite}
             />
           }
