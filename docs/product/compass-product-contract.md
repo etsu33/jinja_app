@@ -84,21 +84,227 @@ CompassはCompat Modeが契約上なることを禁じられている状態（�
 
 ## 2. Compass Product Promise
 
-**一文定義**:
+> **Status: Active（Section 2.1で改訂、[#2497](../audit/compass-direction-availability-product-decision.md)・[#2496](../audit/compass-direction-filter-unavailable-root-cause.md)の監査結論を反映）**
 
-> 時間・方位runtime signalと目的から、今月意識したい方向と参拝候補を示す。
+**一文定義（改訂）**:
 
-**User-facing候補コピー（評価済み: SUPPORTED WITH CLARIFICATION）**:
+> 時間・方位runtime signalと目的から、今月の方向を解釈し、年盤と月盤が
+> 共通して支持する参考方位がある月はそれを示す。ない月は、その結果自体を
+> 今月の参考情報として示した上で、目的から参拝候補を示す。
 
-> 「今月の流れと目的から、向かう方向と参拝候補を見つけます。」
+改訂前の定義（「今月意識したい方向と参拝候補を示す」）は、方向が常に
+返ることを断定的に示唆していた。Section 2.1で確定した通り、これは
+アルゴリズム的な実態（[#2497](../audit/compass-direction-availability-product-decision.md):
+9本命星×12節気月×9年の972ケース中46.5%で年盤・月盤の共通方位が存在しない）
+と整合しないため、本改訂で「方向がある場合／ない場合」を明示的に区別する
+表現へ改める。**「Compassは常に方向を返す」とは約束しない。**
 
-このコピーを正式なProduct Promiseとして採用する。実装時は、詳細画面またはカード内の補足文言で「参考情報です」という既存共通パターン（`docs/product/direction-ranking-design.md`・`docs/product/compat-mode-ui-flow.md`が共通して採用する表現）を併記することを推奨する（必須ではないが、Section 8のSignal-to-Explanation Ruleと整合させるための推奨事項）。
+**User-facing候補コピー（評価済み・改訂: SUPPORTED WITH CLARIFICATION）**:
+
+> 「今月の流れと目的から、向かう方向と参拝候補を見つけます。方向が重ならない月は、その結果もそのままお伝えします。」
+
+このコピーを正式なProduct Promiseの候補として採用する。**これは最終的な
+UI実装コピーではない**（最終コピーはSection 2.1が定義する
+NO_COMMON_DIRECTION状態のUX原則に従って、別途Frontend実装PRで確定する）。
+実装時は、詳細画面またはカード内の補足文言で「参考情報です」という既存
+共通パターン（`docs/product/direction-ranking-design.md`・
+`docs/product/compat-mode-ui-flow.md`が共通して採用する表現）を併記する
+ことを推奨する（必須ではないが、Section 8のSignal-to-Explanation Ruleと
+整合させるための推奨事項）。
 
 **Conciergeの既存Product Promise（不変、参考として並記）**:
 
 > 「今の悩みや願いをもとに、あなたと接点のある神社を見つけます。」
 
 両者は、ユーザーの起点（相談 vs 時間・方位・目的）と主要な出力（神社の意味 vs 方向+参拝候補）で明確に区別される。Free/Premiumラベルなしで理解可能であることを確認済み。
+
+---
+
+## 2.1 方向が定まらない月の扱い（NO_COMMON_DIRECTION、Decision Record）
+
+> **Status: CANONICAL PRODUCT DIRECTION**
+
+### Decision
+
+「年盤と月盤に共通する参考方位が存在しない」という結果を、**技術的な
+計算失敗・ユーザー入力の不備としてではなく、第一級（first-class）の
+正当なCompass結果として扱う**。
+
+### Evidence
+
+- [`docs/audit/compass-direction-filter-unavailable-root-cause.md`](../audit/compass-direction-filter-unavailable-root-cause.md)
+  （PR #2496、merged） — 既知Production QAリクエストの根本原因を、年盤∩
+  月盤の吉方位交差が空集合になるという構造的性質と確定（Classification:
+  `A — EXPECTED FAIL-SAFE`）。
+- [`docs/audit/compass-direction-availability-product-decision.md`](../audit/compass-direction-availability-product-decision.md)
+  （PR #2497、merged） — 無改変の本番`kyusei.py`を用いた9本命星×12節気月
+  バケット×9年（972ケース）の決定的行列で、**全体の46.5%が空の交差**に
+  なることを実証。日付固有の異常ではなく、アルゴリズム全体を通じた構造的
+  性質であることも確認済み。
+
+### Reason
+
+- 972ケース中46.5%という頻度は、稀な例外ではなく構造的に高頻度な結果
+  である（実ユーザーの遭遇率そのものではない、[#2497](../audit/compass-direction-availability-product-decision.md)
+  §11のInterpretation Boundary参照）。
+- 現在の失敗時コピー（「方向の参考情報を計算できませんでした」「生年月日
+  または出発地点をご確認のうえ、もう一度お試しください」）は、実際の
+  主要因（有効な入力からの正当な計算結果）とは異なる「入力ミス」を
+  ユーザーに示唆しており、[#2497](../audit/compass-direction-availability-product-decision.md)
+  §12で**MISLEADING**と判定されている。
+- 年盤∩月盤の交差ロジック自体（`kyusei.py`）は変更不要——「バグを直す」
+  対象ではなく「製品としてどう解釈し提示するか」という意味づけの問題
+  である。
+- この意味づけの変更だけで、Concierge（Compat Mode含む）を一切変更せずに
+  分離を維持できる（Section 2.1-4参照）。
+- Recommendation Rankingは一切影響を受けない（Section 6のAuthority境界、
+  変更なし）。
+
+**占術的な正しさを主張するものではない**——これは製品/Runtime上の意味づけ
+の決定であり、九星気学の当否を判断するものではない。
+
+### 2.1-1 NO_COMMON_DIRECTIONの定義（概念定義、状態名はCONTRACT TARGET）
+
+以下の条件がすべて成立する場合を指す:
+
+```
+- birthdateが有効
+- target_dateが有効
+- 年盤の吉方位計算が成功した（honmei_starが解決できた）
+- 月盤の吉方位計算が成功した
+- 年盤の吉方位集合と月盤の吉方位集合の交差が空集合
+```
+
+この場合の結果は**正当**であり、以下とは明確に区別する:
+
+```
+INVALID / UNAVAILABLE RUNTIME（既存Fail-safe Contract、変更なし）:
+  - birthdateが欠落・不正
+  - target_dateが不正
+  - originが欠落・不正（Recommendation統合段階）
+  - 計算処理自体が例外で失敗
+```
+
+`NO_COMMON_DIRECTION`という名称は**概念上の識別子であり、CONTRACT
+TARGETとして記載する（現時点で実装されたstate名・API値ではない）**。
+実際の実装が持つ状態名（例: 現行の`direction_filter_unavailable`）を
+本書がどう扱うかはSection 2.1-3の実装ギャップを参照。
+
+### 2.1-2 リトライ意味論（原則のみ、最終UI文言は定義しない）
+
+- `NO_COMMON_DIRECTION`に対して、**再試行を主要な解決策として提示しては
+  ならない**。同一本命星・同一対象月であれば、再計算しても結果は決定的
+  に同一である（[#2497](../audit/compass-direction-availability-product-decision.md)
+  §10で確認: 特定の本命星×月バケットの組み合わせは、複数年にわたり
+  一貫して交差が空集合になり得る）。
+- 生年月日・出発地点の**訂正を促してはならない**——これらが実際に無効
+  である場合（Fail-safe Contract既存行に該当する場合）を除く。
+  `NO_COMMON_DIRECTION`はこれらが有効であることを前提とする状態である。
+- 「別の月であれば結果が変わる可能性がある」という示唆は、断定的な未来
+  予測を避けるという既存の非断定原則（Section 9、`docs/core/meaning-layer.md`）
+  と矛盾しない範囲でのみ、将来のUX実装検討で扱う。
+
+### 2.1-3 現行実装とのギャップ（IMPLEMENTATION GAP、本PRでは修正しない）
+
+```
+現行実装:
+  年盤∩月盤の交差が空集合
+    → build_compass_direction_runtime()がNoneを返す
+    → compass_recommendation_orchestrator.pyがSTATE_DIRECTION_FILTER_UNAVAILABLEへマッピング
+    → 「生年月日・originが欠落/不正」の場合と同一のstate・同一のUI表示
+
+目標契約（本Decision Record）:
+  同じ空集合という計算結果を、正当なNO_COMMON_DIRECTION結果として、
+  入力不備系のfail-safeとは区別可能な形で扱う
+```
+
+これは**IMPLEMENTATION GAPであり、Runtime算出ロジック自体の欠陥ではない**
+（[#2496](../audit/compass-direction-filter-unavailable-root-cause.md)の
+`A — EXPECTED FAIL-SAFE`判定を変更するものではない）。本PRはこのギャップ
+を契約として明文化するのみで、実装による解消は別途将来のPRに委ねる
+（「責務境界」節参照——実装手順自体は本書で管理しない）。
+
+### 2.1-4 Concierge Isolation（本契約変更が適用される範囲）
+
+本Decision Recordは**Compassの製品的解釈にのみ適用される**。以下は明示的に
+不変のまま維持する:
+
+```
+- Concierge挙動: 変更なし
+- Compat Mode: 変更なし
+- kyusei.py（annual_lucky_directions / planned_visit_lucky_directions）:
+  変更なし——`backend/temples/api_views_concierge.py:563`がこれらの関数を
+  直接呼び出していることを[#2497](../audit/compass-direction-availability-product-decision.md)
+  §21で確認済みであり、これらのシグネチャ・返り値契約は変更しない
+- Concierge内での方位前面化制約（Section 5、RESTRICTED）: 不変
+```
+
+将来、NO_COMMON_DIRECTIONを実装レベルで区別する場合は、Compass固有の
+ポリシー（状態判定・UX分岐）を`compass_runtime.py`層に閉じ込め、`kyusei.py`
+自体のシグネチャ・返り値契約を変更しない設計を推奨する
+（[#2497](../audit/compass-direction-availability-product-decision.md)
+§21の設計推奨をそのまま継承）。
+
+### 2.1-5 Shrine Recommendation境界（OPEN PRODUCT DECISION）
+
+方向が定まらない月に、神社推薦をどう扱うかは、本Decision Recordでは
+**確定しない**:
+
+```
+Option A: 方向が定まらない場合、神社推薦も表示しない
+  （現行実装の実際の挙動——direction_contextがNoneの場合、
+  candidate pool自体が構築されない、
+  [#2496](../audit/compass-direction-filter-unavailable-root-cause.md) §11で確認済み。
+  Section 3のフロー図が示す「direction runtime signal → geographic
+  candidate set」という順序とも整合する）
+
+Option B: 方向が定まらなくても、purposeのみに基づく神社推薦を独立して
+  表示する
+```
+
+Section 3のフロー図・Section 6のAuthority境界（Compass Runtime Authority
+は候補集合の絞り込みにのみ関与する）は、方向を候補フィルタの一部として
+位置づけており、Option Aと整合する構造を持つ。しかし、**方向なしを
+「エラー」から「正当な結果」へ再解釈する本Decision Record自体が、
+「正当な結果のときも神社推薦を見せないままでよいか」という新しい問いを
+提起する**。この問いは本PRのスコープ外であり、**OPEN IMPLEMENTATION /
+PRODUCT DECISION**として記録する。現行のRecommendation挙動（Option A相当）
+は、この問いが解決されるまで変更しない。
+
+### 2.1-6 Analytics Contract影響（記録のみ、本PRでは変更しない）
+
+`docs/analytics/compass-posthog-query-contract.md` Section 8は、
+`direction_filter_unavailable`を**ERRORバケット**（`backend_error`と同じ
+分類）に位置づけ、「システムが計算を安全に完了できなかった、最も
+reliability-relevantなシグナル」と記述している。この分類は、現行実装
+（Section 2.1-3のIMPLEMENTATION GAP）の下では今なお技術的に正確だが、
+本Decision Recordが確立した製品的解釈（NO_COMMON_DIRECTIONは正当な結果）
+とは意味論的に緊張関係にある。
+
+**分類: DOC CLARIFICATION REQUIRED**（本PRでは変更しない）。将来、
+Section 2.1-3のIMPLEMENTATION GAPが実装レベルで解消され、
+`direction_filter_unavailable`とNO_COMMON_DIRECTION相当の状態が実際に
+分離された場合、`compass-posthog-query-contract.md` Section 8の
+ERRORバケット分類・SUCCESS/EMPTY/ERROR/OTHER表を合わせて更新する必要が
+ある（FUTURE EVENT/STATE CHANGE REQUIREDへ格上げされる）。Analytics
+instrumentation・イベント・プロパティは本PRでは一切変更しない。
+
+### 2.1-7 Ranking Boundary
+
+```
+Recommendation Ranking変更: NONE
+```
+
+candidate scoring・recommendation weights・ranking order・recommendation
+reason logicのいずれも、本Decision Recordの対象外であり、一切変更しない。
+Direction availability policyはRecommendation Rankingより前段・別関心事
+である（[#2496](../audit/compass-direction-filter-unavailable-root-cause.md)
+§11、[#2497](../audit/compass-direction-availability-product-decision.md)
+§22）。
+
+実装手順・PR分割計画は本書（Product Contract）では管理しない
+（責務境界、および[#2497](../audit/compass-direction-availability-product-decision.md)
+「Future PR Plan」を参照——実装計画はdocs/audit/配下の監査記録が正本）。
 
 ---
 
@@ -329,6 +535,8 @@ Compassの計測契約は、別途Analytics契約PRで定義する。本書で�
 - `docs/audit/concierge-compass-meaning-action-authority-boundary.md`
 - `docs/audit/compass-contract-reconciliation-direction-audit-completion.md`
 - `docs/audit/concierge-compass-product-responsibility-contract.md`
+- `docs/audit/compass-direction-filter-unavailable-root-cause.md`
+- `docs/audit/compass-direction-availability-product-decision.md`
 - `docs/product/concierge-first-final-spec.md`
 - `docs/product/concierge-modes.md`
 - `docs/product/compat-mode-ui-flow.md`
