@@ -1,6 +1,11 @@
 # Compass PostHog Query Contract
 
-> Status: Active
+> Status: Active — revised to align with the `no_common_direction` runtime
+> state ([PR #2499](../audit/compass-direction-filter-unavailable-root-cause.md)-family
+> work: [#2496](../audit/compass-direction-filter-unavailable-root-cause.md),
+> [#2497](../audit/compass-direction-availability-product-decision.md),
+> [#2498](../product/compass-product-contract.md) Section 2.1, #2499 implementation,
+> all merged). See §1.1, §8, §9, §13, §15 for the changes.
 
 This document defines how the already-implemented Compass analytics (PR-A #2488,
 PR-B #2489, PR-C #2490 — all merged) should be **queried** in PostHog. It is a
@@ -10,8 +15,9 @@ pre-implementation proposal). This document defines measurement only. It draws
 no product conclusions, executes no production queries, and adds no
 instrumentation.
 
-Every claim below is verified against current `develop` code (post PR-A/B/C),
-re-read directly for this audit — not assumed from prior audit docs.
+Every claim below is verified against current `develop` code (post PR-A/B/C,
+and post-#2499 for the `no_common_direction` state), re-read directly for
+this revision — not assumed from prior audit docs.
 
 ---
 
@@ -23,8 +29,8 @@ All rows verified directly against current `develop` source.
 |---|---|---|---|---|---|
 | Home → Compass discovery | `home_compass_entry_click` | `source="home"` | PostHog `distinct_id` only | `HomeCompassSection.tsx:34` | Click-only. No impression event exists for the Home section. |
 | Compass entry | `compass_entry` | `referrer_source: "home"\|"direct"` | PostHog `distinct_id` only | `CompassClient.tsx:58-65` | Fires once per mount (`entryTrackedRef` guard). No `recommendationInstanceId` yet — not generated until submit. |
-| Compass result | `compass_result` | `result_state`, `purpose`, `origin_mode`, `has_birthdate`, `recommendation_count`, `recommendationInstanceId` | PostHog `distinct_id`; `recommendationInstanceId` present for every state **except** `backend_error` | `CompassClient.tsx:67-80,127-144` | `result_state` uses the real backend vocabulary + one frontend-only bucket (§3.1). |
-| Recommendation exposure (impression) | `card_view` | `cardId="shrine_compact"`, `source="compass"`, `visibility="visible"`, `shrineId`, `recommendationRank`, `recommendationInstanceId` | `recommendationInstanceId` + `shrineId` | `CompassRecommendationsSection.tsx:36-44` | Deduped client-side via a `Set` keyed `${instanceId}:${shrineId}:${rank}`. Only fires when `result_state==="recommendation_success"` (nothing to show otherwise). |
+| Compass result | `compass_result` | `result_state`, `purpose`, `origin_mode`, `has_birthdate`, `recommendation_count`, `recommendationInstanceId` | PostHog `distinct_id`; `recommendationInstanceId` present for every state **except** `backend_error` | `CompassClient.tsx:67-80,127-144` | `result_state` uses the real backend vocabulary + one frontend-only bucket (§1.1). Now 6 backend values (post-#2499, includes `no_common_direction`) + 1 frontend-only. |
+| Recommendation exposure (impression) | `card_view` | `cardId="shrine_compact"`, `source="compass"`, `visibility="visible"`, `shrineId`, `recommendationRank`, `recommendationInstanceId` | `recommendationInstanceId` + `shrineId` | `CompassRecommendationsSection.tsx:36-44` | Deduped client-side via a `Set` keyed `${instanceId}:${shrineId}:${rank}`. Only fires when `result_state==="recommendation_success"` (nothing to show otherwise — this now also explicitly excludes `no_common_direction`, which likewise renders no recommendation cards, §12). |
 | Recommendation → Shrine Detail (click) | `shrine_detail_transition` | `source="compass"`, `shrineId`, `recommendationRank`, `recommendationInstanceId`, `position="compact"` | `recommendationInstanceId` + `shrineId` | `CompassRecommendationsSection.tsx:71-82` | Fires on the card's `onDetailClick`, before navigation. |
 | Shrine Detail view | `shrine_detail_view` | `source` (`"compass"` when `ctx=compass`), `shrineId`, `recommendationInstanceId`, `recommendationRank`, `threadId` | `recommendationInstanceId` + `shrineId` | `ShrineDetailViewTracker.tsx:30-58` | Fires once per mount (`trackedRef` guard). `ctx`/`recommendationInstanceId`/`recommendationRank` arrive via the URL (`/shrines/:id?ctx=compass&recommendation_instance_id=…&recommendation_rank=…`), built by `buildShrineHref` in `CompassRecommendationsSection.tsx`. |
 | Favorite | `favorite_click`, `shrine_decision` | `source` (`"compass"` when `ctx==="compass"` at render time, else unchanged `"shrine_detail"`), `shrineId`, `recommendationInstanceId`, `analyticsSessionId`/`sessionId` (auto, via `track()`) | `recommendationInstanceId` + `shrineId`, when `source="compass"` | `ShrineSaveButton.tsx:62-90` | PR-C. `ctx`/`recommendationInstanceId` only reach this component within the **same Shrine Detail page render** (`page.tsx` overrides them explicitly on this component only). |
@@ -46,19 +52,22 @@ All rows verified directly against current `develop` source.
 | `accessLevel` (Free/Premium/anonymous plan context) | `favorite_click` (as `accessLevel`, computed from guest/login state), `visit_done`, `reflection_prompt_view`, `reflection_saved`. **Absent from the entire Compass discovery→entry→result→impression→click→detail-view chain.** This is a material limitation for §20 (Free/Premium boundary) below. |
 | PostHog-native anonymous/session identifier | Every event carries PostHog's own auto-generated `distinct_id` (via the SDK itself — no app code needed). The app's own custom `analyticsSessionId`/`sessionId` property is **only** explicitly attached to events dispatched through `track()` (`track.ts`) — i.e. `favorite_click`/`shrine_decision`. Every other Compass event (all `trackSearchEvent`/`trackCardEvent` calls) does **not** carry this custom property; they rely solely on PostHog's native identity. |
 
-**Backend `recommendation_instance_id` generation** (`backend/temples/api_views_compass.py:50,76-86`): `uuid.uuid4().hex[:8]`, generated once per request, stateless (no DB write), embedded in the top-level response body **and** every recommendation item. Present in the response for every state that reaches `body = {...}` — i.e. `invalid_purpose`, `direction_filter_unavailable`, `direction_zero_candidates`, `evidence_zero_candidates`, `recommendation_success`. **Absent** for the HTTP 500 `{"state": "error"}` path (returns before `body` is built) — this is the case the frontend labels `result_state: "backend_error"`, and `trackCompassResult` correctly passes `recommendationInstanceId: null` for it.
+**Backend `recommendation_instance_id` generation** (`backend/temples/api_views_compass.py:50,76-86`): `uuid.uuid4().hex[:8]`, generated once per request, stateless (no DB write), embedded in the top-level response body **and** every recommendation item. Present in the response for every state that reaches `body = {...}` — i.e. `invalid_purpose`, `direction_filter_unavailable`, `no_common_direction`, `direction_zero_candidates`, `evidence_zero_candidates`, `recommendation_success`. **Absent** for the HTTP 500 `{"state": "error"}` path (returns before `body` is built) — this is the case the frontend labels `result_state: "backend_error"`, and `trackCompassResult` correctly passes `recommendationInstanceId: null` for it.
 
-### 1.1 Result state vocabulary (verified against `backend/temples/services/compass_recommendation_orchestrator.py:47-51`)
+### 1.1 Result state vocabulary (verified against `backend/temples/services/compass_recommendation_orchestrator.py:49-54`, current `develop`, post-#2499)
 
 ```
 STATE_INVALID_PURPOSE               = "invalid_purpose"
 STATE_DIRECTION_FILTER_UNAVAILABLE  = "direction_filter_unavailable"
+STATE_NO_COMMON_DIRECTION           = "no_common_direction"          # new, PR #2499
 STATE_DIRECTION_ZERO_CANDIDATES     = "direction_zero_candidates"
 STATE_EVIDENCE_ZERO_CANDIDATES      = "evidence_zero_candidates"
 STATE_RECOMMENDATION_SUCCESS        = "recommendation_success"
 ```
 
-Plus the frontend-only `backend_error` bucket (`CompassClient.tsx`), covering both network exceptions and any non-2xx/non-400 HTTP response. These six values are never renamed or collapsed anywhere in the analytics layer — `compass_result.result_state` uses exactly these strings.
+Plus the frontend-only `backend_error` bucket (`CompassClient.tsx`), covering both network exceptions and any non-2xx/non-400 HTTP response. These **seven** values (six backend + one frontend-only) are never renamed or collapsed anywhere in the analytics layer — `compass_result.result_state` uses exactly these strings. `no_common_direction` is never collapsed into `direction_filter_unavailable`, and the reverse — the two are semantically distinct (Group B "valid, no common direction" vs. Group A "genuinely invalid/unavailable runtime", `docs/product/compass-mvp-runtime-contract.md` Section 8).
+
+**Instrumentation change required to emit `no_common_direction`: NONE.** `trackCompassResult()` (`CompassClient.tsx`) forwards whatever `body.state` string the backend returns, unconditionally — it does not branch on the value. `apps/web/src/lib/analytics/searchEvents.ts`'s `result_state` TypeScript union was widened to include `"no_common_direction"` as part of #2499 (a type-only change, required only to keep compilation valid — no new event, no dispatch logic change). This document's job is purely to define how the already-flowing value should be **queried and interpreted**.
 
 ---
 
@@ -129,7 +138,7 @@ Same-Month Repeat Usage, Month-over-Month Return
 | Metric | Semantic counting unit | Deduplication rule |
 |---|---|---|
 | Compass Entry count | `compass_entry` event | Already deduplicated client-side (`entryTrackedRef`) — one event per actual mount. React re-render does not produce duplicates. |
-| Compass Result Success Rate | `compass_result` event (one per submit attempt) | No client-side submit-dedup exists — a user double-clicking submit while `isLoading` is `false`... actually the button is `disabled={isLoading}` during the request, so a genuine double-submit before the first request resolves is prevented by the UI. Retries (a resubmission after seeing an error) are **new, legitimate** `compass_result` events — not deduplicated, since each is a real distinct attempt. |
+| Compass Runtime Reliability Rate / Recommendation Delivery Rate (§8, split post-#2499) | `compass_result` event (one per submit attempt) | No client-side submit-dedup exists — a user double-clicking submit while `isLoading` is `false`... actually the button is `disabled={isLoading}` during the request, so a genuine double-submit before the first request resolves is prevented by the UI. Retries (a resubmission after seeing an error, or after a legitimate `no_common_direction` result) are **new, legitimate** `compass_result` events — not deduplicated, since each is a real distinct attempt. |
 | Recommendation exposure | Recommendation row = `(recommendationInstanceId, shrineId, rank)` triple | Already deduplicated client-side (`trackedImpressionsRef`, `CompassRecommendationsSection.tsx:25-34`) — one `card_view` per unique triple even across re-renders. |
 | Recommendation → Shrine Detail CTR (numerator) | Recommendation row, **not** raw event count | A recommendation row counts as "opened" if **at least one** `shrine_detail_view{source=compass}` exists with the matching `(recommendationInstanceId, shrineId)` pair — multiple opens of the same row count once for CTR, not N times. |
 | Compass Result → Detail Engagement (§9B) | Compass result instance = `recommendationInstanceId` | A result instance counts as "engaged" if **at least one** of its recommended shrines was opened — multiple shrines opened from the same instance still count once. |
@@ -247,19 +256,45 @@ Same-Month Repeat Usage, Month-over-Month Return
 
 ---
 
-### KPI — Compass Result Success Rate (OPERATIONAL)
+### Two distinct operational questions (revised post-#2499)
 
-**Purpose**: answer "is Compass functioning reliably," not "does Compass create value." Deliberately kept separate from engagement/value KPIs per the task's explicit instruction (§21).
+Before #2499, every non-`recommendation_success` outcome collapsed toward
+either an explicit error state or an implicit "not success" bucket, so a
+single "Compass Result Success Rate" metric could stand in for both "is the
+runtime working" and "did we produce recommendations" without much cost to
+clarity. Now that `no_common_direction` exists as an explicitly **valid,
+non-error, no-recommendation** outcome (`docs/product/compass-product-contract.md`
+Section 2.1), those two questions must be answered by two separate metrics —
+collapsing them back into one would either wrongly penalize
+`no_common_direction` as unreliable, or wrongly credit it as a
+recommendation success. Neither KPI below changes any existing query
+mechanism; both are computable from the same `compass_result.result_state`
+property already in production.
 
-**Product Question**: what percentage of executions successfully produce recommendations? (#5, reliability framing)
+### KPI — Compass Runtime Reliability Rate (OPERATIONAL)
+
+**Purpose**: answer "did the Compass runtime complete normally, without a
+technical or fail-safe failure?" — a purely computational-health question,
+independent of whether a direction or recommendations resulted.
+
+**Product Question**: what percentage of executions completed as a valid
+product outcome, of any kind? (#5, reliability framing, revised)
 
 **Event(s)**: `compass_result`
 
-**Numerator**: `compass_result{result_state="recommendation_success"}` count.
+**Numerator**: `compass_result` count where `result_state` is one of
+`recommendation_success`, `no_common_direction`, `direction_zero_candidates`,
+`evidence_zero_candidates` — i.e. every outcome that represents a **valid,
+completed calculation**, regardless of whether it produced a direction or
+recommendations.
 
-**Denominator**: all `compass_result` events, **including** `backend_error`, `invalid_purpose`, `direction_filter_unavailable`, `direction_zero_candidates`, and `evidence_zero_candidates` — reasoning below.
+**Denominator**: all `compass_result` events, **including** `backend_error`,
+`invalid_purpose`, and `direction_filter_unavailable` — the three genuinely
+non-valid/error outcomes.
 
-**Counting Unit**: `compass_result` event (submit attempt, per §5/§8 above — retries are separate, legitimate attempts and each belongs in the denominator).
+**Counting Unit**: `compass_result` event (submit attempt, per §5/§8 above —
+retries are separate, legitimate attempts and each belongs in the
+denominator).
 
 **Required Properties**: `result_state`.
 
@@ -267,11 +302,12 @@ Same-Month Repeat Usage, Month-over-Month Return
 
 **Filters**: none.
 
-**Exclusions**: none — this is deliberate. Reasoning per state:
-- `backend_error` — **must be in the denominator.** This is exactly the failure mode this metric exists to surface; excluding it would hide system reliability problems.
-- `direction_zero_candidates` / `evidence_zero_candidates` — **must be in the denominator, not counted as success.** A valid, well-formed request that legitimately found nothing is a real outcome the reliability metric should reflect (distinct from an error, but still not "success" for this metric's purpose — see the separate SUCCESS/EMPTY/ERROR breakdown below for the finer distinction).
-- `invalid_purpose` — **must be in the denominator.** Even though normal UI flow (chip selector) makes this state hard to reach organically, the API contract allows it, and any occurrence (malformed request, future UI bug) should count against reliability, not be silently dropped.
-- `direction_filter_unavailable` — **must be in the denominator**, and per §10/§8 of `compass-analytics-contract-readiness.md`, this state specifically represents "the system could not safely complete a computation" — the strongest reliability-relevant signal of the five non-success states.
+**Exclusions**: none — deliberate, reasoning per state:
+- `backend_error` — **must be excluded from the numerator (counted only in the denominator).** This is exactly the failure mode this metric exists to surface.
+- `invalid_purpose` — **must be excluded from the numerator.** The API contract allows it, and any occurrence (malformed request, future UI bug) should count against reliability, not be silently dropped.
+- `direction_filter_unavailable` — **must be excluded from the numerator**, and per §10/§8 of `compass-analytics-contract-readiness.md`, this state specifically represents "the system could not safely complete a computation" — a genuine fail-safe/error signal (Runtime Contract Group A).
+- `no_common_direction` — **must be counted in the numerator, not excluded.** This is a valid, completed calculation (Runtime Contract Group B, `docs/product/compass-mvp-runtime-contract.md` Section 8) — the runtime did not fail, it correctly found no common direction. Excluding it from the numerator would misreport a legitimate, frequent product outcome (empirically ~46.5% of algorithmic cases, `docs/audit/compass-direction-availability-product-decision.md`) as unreliability.
+- `direction_zero_candidates` / `evidence_zero_candidates` — **must be counted in the numerator.** A valid, well-formed request that legitimately found a direction but no matching shrines (or no evidence-usable shrines) is a real, completed outcome, not a runtime failure.
 
 **Deduplication**: none beyond §5's retry handling (each retry is counted).
 
@@ -281,18 +317,72 @@ Same-Month Repeat Usage, Month-over-Month Return
 
 **Known Measurement Gaps**: none for this specific metric; the states are exhaustive and already verified against current backend code (§1.1).
 
-**Minimum Observation Requirement**: §27B — do not compare success rate across small segments (e.g. by purpose, §22) with a trivial sample.
+**Minimum Observation Requirement**: §27B — do not compare reliability across small segments (e.g. by purpose, §22) with a trivial sample.
 
-**Decision Use**: operational health monitoring. A sustained drop signals a backend/data problem, not a product-value problem — do not conflate with engagement metrics below.
+**Decision Use**: operational health monitoring. A sustained drop signals a backend/data/environment problem, not a product-value problem — do not conflate with the Recommendation Delivery Rate below or with engagement metrics further down this document.
 
-**Sub-breakdown (for the separate "operational-quality query" the task requests in §21):**
+**PostHog Representation**: a formula insight — count of `compass_result{result_state IN ("recommendation_success","no_common_direction","direction_zero_candidates","evidence_zero_candidates")}` ÷ total `compass_result` count — over a rolling window.
 
-| Bucket | `result_state` values included |
-|---|---|
-| SUCCESS | `recommendation_success` |
-| EMPTY / NO CANDIDATE | `direction_zero_candidates`, `evidence_zero_candidates` |
-| ERROR | `backend_error`, `direction_filter_unavailable` |
-| OTHER | `invalid_purpose` |
+---
+
+### KPI — Compass Recommendation Delivery Rate (OPERATIONAL)
+
+**Purpose**: answer "what percentage of executions actually produced shrine
+recommendations?" — this is the metric previously named "Compass Result
+Success Rate"; its numerator and denominator are **unchanged** by this
+revision, only its name and framing are corrected to avoid being read as a
+reliability metric (see the split rationale above).
+
+**Product Question**: what percentage of executions successfully produce
+recommendations? (#5, delivery framing)
+
+**Event(s)**: `compass_result`
+
+**Numerator**: `compass_result{result_state="recommendation_success"}` count.
+
+**Denominator**: all `compass_result` events, **including** `backend_error`,
+`invalid_purpose`, `direction_filter_unavailable`, `no_common_direction`,
+`direction_zero_candidates`, and `evidence_zero_candidates` — every attempt,
+regardless of outcome, per the same denominator logic as before #2499.
+`no_common_direction` belongs here for the same reason
+`direction_zero_candidates` always did: it is a real attempt that did not
+result in recommendations, so it correctly depresses this delivery-focused
+rate without implying anything about reliability (that question belongs to
+the KPI above, not this one).
+
+**Counting Unit**: `compass_result` event (submit attempt, per §5/§8 above —
+retries are separate, legitimate attempts and each belongs in the
+denominator).
+
+**Required Properties**: `result_state`.
+
+**Join Keys**: none.
+
+**Filters**: none.
+
+**Exclusions**: none.
+
+**Deduplication**: none beyond §5's retry handling (each retry is counted).
+
+**Attribution Window**: N/A (single event).
+
+**Supported Cohorts**: anonymous, Free, Premium — all includable (no plan property on this event).
+
+**Known Measurement Gaps**: none for this specific metric; the states are exhaustive and already verified against current backend code (§1.1). Note that a low value here can now mean either "runtime is unreliable" (see Reliability Rate above) or "runtime is reliable but frequently finds no common direction / no candidates" — this KPI alone cannot distinguish the two; read it together with the Reliability Rate.
+
+**Minimum Observation Requirement**: §27B — do not compare delivery rate across small segments (e.g. by purpose, §22) with a trivial sample.
+
+**Decision Use**: operational/product-mix monitoring — "how often does using Compass end with something to look at." Do not read a drop here as a reliability regression without also checking the Reliability Rate above; do not conflate with engagement/value metrics below.
+
+**Sub-breakdown (for the "operational-quality query" the task requests in §21, revised to give `no_common_direction` its own bucket rather than folding it into EMPTY/NO CANDIDATE, which is specifically about zero *shrine candidates*, not zero *direction*):**
+
+| Bucket | `result_state` values included | Runtime validity (Reliability Rate numerator?) |
+|---|---|---|
+| SUCCESS | `recommendation_success` | Valid |
+| VALID_NO_DIRECTION | `no_common_direction` | Valid |
+| EMPTY / NO CANDIDATE | `direction_zero_candidates`, `evidence_zero_candidates` | Valid |
+| ERROR | `backend_error`, `direction_filter_unavailable` | Invalid |
+| OTHER | `invalid_purpose` | Invalid |
 
 **PostHog Representation**: Trends (event count, breakdown by `result_state`), or a single formula insight (`recommendation_success` count ÷ total `compass_result` count) over a rolling window.
 
@@ -319,6 +409,8 @@ Same-Month Repeat Usage, Month-over-Month Return
 **Filters**: `source="compass"` on both sides (excludes Concierge/map-originated impressions and detail views from this Compass-specific metric — Concierge has its own separate, pre-existing CTR measurement, unaffected by this document).
 
 **Exclusions**: rows where `recommendationInstanceId` is null (cannot occur for `card_view`, since it only fires after a successful result, §1) or where `shrineId` is null (cannot occur — `CompassRecommendationsSection.tsx:30` explicitly guards `if (shrineId == null) return`).
+
+**`no_common_direction` and `direction_zero_candidates` in this denominator (confirmed, revised post-#2499)**: **neither enters the denominator**, and this requires no query-level exclusion — both are structurally absent from `card_view` by construction. `card_view` only fires when `CompassRecommendationsSection` renders, which only happens when `result_state==="recommendation_success"` (§1 row above); `no_common_direction` and `direction_zero_candidates` both return `recommendations: []` (`compass_recommendation_orchestrator.py`), so no recommendation cards — and therefore no `card_view` impressions — are ever produced for either state. Do not fabricate a recommendation impression for a valid-but-empty result state to "complete" this denominator.
 
 **Deduplication**: §5 — impression-side already deduplicated client-side; detail-view-side collapses to "opened at least once" for this metric.
 
@@ -366,6 +458,8 @@ WHERE card_view.event = 'card_view'
 
 **Denominator**: count of distinct `recommendationInstanceId` values from `compass_result{result_state="recommendation_success", recommendation_count>0}`.
 
+**Denominator meaning (clarified post-#2499)**: this denominator means **result instances that actually contained at least one recommendation**, not **all Compass result attempts**. The `result_state="recommendation_success"` filter already excludes `no_common_direction`, `direction_zero_candidates`, `evidence_zero_candidates`, `invalid_purpose`, `direction_filter_unavailable`, and `backend_error` — none of these ever reach this denominator, and none should: an attempt that produced zero recommendations has nothing for a Shrine Detail view to "engage" with. Before `no_common_direction` existed as a distinct state, this exclusion was less visible (it was one of several outcomes folded under an implicit "not success" umbrella); now that it is a named, expected outcome, this document states explicitly that this KPI answers "of the Compass results that had something to show, how many got at least one look" — not "of all Compass attempts."
+
 **Counting Unit**: Compass result instance (`recommendationInstanceId`) — coarser than the recommendation-row unit above.
 
 **Required Properties**: `recommendationInstanceId`, `recommendation_count` (to exclude instances with zero recommendations from the denominator, though `recommendation_count>0` should already be implied by `result_state="recommendation_success"` — kept as an explicit filter for defensive correctness).
@@ -391,6 +485,8 @@ WHERE card_view.event = 'card_view'
 **PostHog Representation**: Funnel (`compass_result` filtered `result_state=recommendation_success` → `shrine_detail_view` filtered `source=compass`, matched by `recommendationInstanceId`).
 
 ---
+
+**`no_common_direction` and downstream Favorite/Visit/Reflection KPIs (confirmed, revised post-#2499)**: none of the three KPIs below (Favorite, Visit, Reflection) require any change on account of `no_common_direction`. Each is keyed off `shrine_detail_view{source="compass"}` as its base event (directly or via `recommendationInstanceId`+`shrineId`), and — per the CTR reasoning above — `shrine_detail_view{source="compass"}` cannot exist without a prior `card_view`, which cannot exist without `result_state="recommendation_success"`. A `no_common_direction` result never produces a Shrine Detail view under the current implementation (`docs/product/compass-product-contract.md` Section 2.1-5 records the Shrine-Recommendation boundary as an explicit **OPEN PRODUCT DECISION** — current behavior is "no direction → no recommendation candidate flow," unchanged by #2499). Therefore `no_common_direction` cannot enter any Favorite/Visit/Reflection conversion denominator today, and this document does not fabricate one. If that OPEN PRODUCT DECISION is ever resolved in favor of showing purpose-only recommendations without a direction, these KPI definitions will need to be revisited at that time — not before.
 
 ### KPI — Compass-attributed Favorite Rate (PRIMARY)
 
@@ -624,8 +720,16 @@ Every event in this contract was introduced across three merged PRs. Data record
 | `home_compass_entry_click`, `compass_entry`, `compass_result` (without `recommendationInstanceId`) | PR-A (#2488, merged) | OPEN / DEPLOYMENT DATE REQUIRED — exact production deploy timestamp not available to this audit; merge timestamp (`2026-08-19T04:24:55Z`, PR merge record) is the earliest possible bound, not necessarily the production rollout time. |
 | `compass_result.recommendationInstanceId`, `card_view{source=compass}`, `shrine_detail_transition{source=compass}`, `shrine_detail_view{source=compass}` | PR-B (#2489, merged) | OPEN / DEPLOYMENT DATE REQUIRED — merge timestamp `2026-08-19T08:25:22Z` is the earliest possible bound. |
 | `favorite_click`/`shrine_decision`/`visit_done`/`reflection_prompt_view`/`reflection_saved` carrying `source=compass` | PR-C (#2490, merged) | OPEN / DEPLOYMENT DATE REQUIRED — merge timestamp available in git history, exact production deploy timestamp not verified by this audit. |
+| `compass_result{result_state="no_common_direction"}` | PR #2499 (merged) | **`2026-08-20T10:54:25Z`** — confirmed via Vercel production deployment record (`target=production`, `state=READY`, `githubCommitSha` matches PR #2499's merge commit `41cba8d6` exactly) and cross-checked against Render backend `healthz` release (`41cba8d6`, identical commit) — both frontend and backend serving this logic in production from this timestamp, not merely inferred from git merge time. |
 
-Any KPI in this document that spans the PR-A/PR-B boundary (e.g. the Compass Activation funnel, which needs both `compass_entry` and `compass_result`) is valid from PR-A's deployment. Any KPI depending on `recommendationInstanceId`-based joins (Recommendation CTR, Favorite/Visit/Reflection attribution) is valid only from PR-B's deployment onward, **not** from PR-A's. Do not backfill or approximate pre-PR-B data for these.
+Any KPI in this document that spans the PR-A/PR-B boundary (e.g. the Compass Activation funnel, which needs both `compass_entry` and `compass_result`) is valid from PR-A's deployment. Any KPI depending on `recommendationInstanceId`-based joins (Recommendation CTR, Favorite/Visit/Reflection attribution) is valid only from PR-B's deployment onward, **not** from PR-A's. Do not backfill or approximate pre-PR-B data for these. Any query that filters or breaks down by `result_state="no_common_direction"` specifically is valid only from **2026-08-20T10:54:25Z** onward — see the Historical Classification Break note immediately below for why this boundary is unusually important for this particular state.
+
+**HISTORICAL CLASSIFICATION BREAK**: before PR #2499's deployment (`2026-08-20T10:54:25Z`), the `no_common_direction` state **did not exist in the implementation** — a valid, completed calculation with an empty annual/monthly intersection was indistinguishable, at the code level, from a genuinely invalid/unavailable runtime, and both were emitted as `result_state="direction_filter_unavailable"` (`docs/audit/compass-direction-filter-unavailable-root-cause.md`). Consequently:
+
+- **Historical `direction_filter_unavailable` counts recorded before this timestamp are not directly comparable to `direction_filter_unavailable` counts recorded after it.** Pre-#2499, that bucket contains an unknown mixture of true errors (Group A) and what would now be classified `no_common_direction` (Group B) — post-#2499, it contains Group A only. A pre/post trend line on `direction_filter_unavailable` alone would read as a reliability *improvement* that is actually a classification split, not a behavior change.
+- **Do not retroactively reclassify individual historical `direction_filter_unavailable` events as `no_common_direction`** (or vice versa) after the fact. No property recorded on those historical events distinguishes which Group they belonged to (see #2496's audit of the collapse point); any retroactive relabeling would be a fabricated inference, not a query.
+- Any Reliability Rate or Recommendation Delivery Rate trend that spans this boundary must state the boundary explicitly and should not be presented as a single continuous series without that caveat.
+- This is the same category of limitation §14 (Open Items) already names for PR-A/B/C's own undetermined exact deployment timestamps — this row is simply the one boundary in this document precise enough to state exactly, and consequential enough (a real behavior-vs-classification distinction, not just an unknown start date) to call out on its own.
 
 ---
 
@@ -678,7 +782,9 @@ Per the task's instruction to target ~4–6 primary metrics, not a 25-number das
 
 | Metric | Classification |
 |---|---|
-| Compass Result Success Rate | OPERATIONAL |
+| Compass Runtime Reliability Rate (revised, was part of "Compass Result Success Rate") | OPERATIONAL |
+| Compass Recommendation Delivery Rate (revised, was "Compass Result Success Rate") | OPERATIONAL |
+| No-Common-Direction Frequency (`no_common_direction` share of `compass_result`) | SECONDARY / OPERATIONAL DIAGNOSTIC |
 | Recommendation → Shrine Detail CTR | **PRIMARY** |
 | Result Instance → Detail Engagement Rate | SECONDARY |
 | Compass-attributed Favorite Rate | **PRIMARY** |
@@ -692,7 +798,7 @@ Per the task's instruction to target ~4–6 primary metrics, not a 25-number das
 | Purpose segmentation | SECONDARY DIAGNOSTIC |
 | Origin mode segmentation | SECONDARY DIAGNOSTIC |
 
-**Four PRIMARY metrics**: Recommendation → Shrine Detail CTR, Compass-attributed Favorite Rate, Compass-attributed Visit Rate, Month-over-Month Compass Return. Compass Result Success Rate is deliberately kept OPERATIONAL rather than PRIMARY, per the task's explicit instruction not to mix reliability and engagement/value KPIs (§21) — it answers "is Compass working," not "is Compass valuable."
+**Four PRIMARY metrics, unchanged**: Recommendation → Shrine Detail CTR, Compass-attributed Favorite Rate, Compass-attributed Visit Rate, Month-over-Month Compass Return — none of these required semantic revision for `no_common_direction` (each already, structurally, excludes it — see the notes on the CTR/Favorite/Visit/Reflection KPIs above). Compass Runtime Reliability Rate and Compass Recommendation Delivery Rate (the split of the former "Compass Result Success Rate") remain OPERATIONAL rather than PRIMARY, per the task's explicit instruction not to mix reliability and engagement/value KPIs (§21) — they answer "is Compass working" and "does Compass deliver recommendations," not "is Compass valuable." **No-Common-Direction Frequency is not elevated to PRIMARY** — it is a diagnostic breakdown of the Recommendation Delivery Rate's denominator (already computable from the sub-breakdown table above via the `VALID_NO_DIRECTION` bucket), not a new independent metric requiring its own KPI machinery.
 
 ---
 
@@ -727,7 +833,9 @@ Secondary KPIs:
   Compass-attributed Reflection (same-session), Rank/Purpose/Origin-mode diagnostics
 
 Operational KPIs:
-  Compass Result Success Rate (+ SUCCESS/EMPTY/ERROR/OTHER state breakdown)
+  Compass Runtime Reliability Rate, Compass Recommendation Delivery Rate
+  (split post-#2499 from the former single "Compass Result Success Rate";
+  + SUCCESS/VALID_NO_DIRECTION/EMPTY/ERROR/OTHER state breakdown)
 
 Recommendation CTR definition:
   Numerator = distinct (recommendationInstanceId, shrineId) card_view rows with >=1 matching
@@ -777,7 +885,16 @@ Cross-session limitation:
 Measurement valid from:
   PR-A (#2488), PR-B (#2489), PR-C (#2490) merge timestamps are known; exact production
   deployment timestamps are OPEN / DEPLOYMENT DATE REQUIRED. recommendationInstanceId-based
-  joins are valid only from PR-B onward, not from PR-A.
+  joins are valid only from PR-B onward, not from PR-A. result_state="no_common_direction"
+  is valid only from 2026-08-20T10:54:25Z (PR #2499, confirmed via Vercel + Render).
+
+Historical classification break (no_common_direction):
+  Before PR #2499, a valid empty-intersection outcome and a genuinely invalid/unavailable
+  runtime were both emitted as result_state="direction_filter_unavailable" -- they were
+  indistinguishable at the code level. direction_filter_unavailable counts before
+  2026-08-20T10:54:25Z are therefore NOT directly comparable to counts after it, and no
+  individual historical event may be retroactively reclassified. Any Reliability/Delivery
+  Rate trend spanning this boundary must state it explicitly.
 
 Minimum observation gates:
   A. Sample Size -- no threshold invented, PRODUCT/ANALYTICS DECISION REQUIRED if one is needed.
