@@ -44,6 +44,8 @@ action_suggestion_v4.md
 compass-product-contract.md
 ↓
 compass-mvp-runtime-contract.md
+↓
+compass-product-logic-evaluation-framework.md
 ```
 
 ### 2. 神社詳細・参拝・記録
@@ -97,6 +99,7 @@ billing-paywall.md
 | --------------------------------- | -------------------------------------------------------------------------------------------- |
 | `compass-product-contract.md`     | Visit CompassのProduct Promise、Authority境界、Signal-to-Explanation Ruleを管理する正本 |
 | `compass-mvp-runtime-contract.md` | Visit Compass MVPの最小Runtime入出力契約（time/profile/origin/purpose/direction）を管理する正本 |
+| `compass-product-logic-evaluation-framework.md` | Direction Logic選択肢（現行annual∩monthly／fallback／score model等）を比較するための評価軸・判定方法・用語を固定する正本。特定案の採否は決定しない |
 
 ### 神社詳細・参拝・記録
 
