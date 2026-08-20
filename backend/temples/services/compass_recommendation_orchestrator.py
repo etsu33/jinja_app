@@ -35,17 +35,20 @@ from typing import Any, Mapping, Optional, Sequence
 
 from temples.domain.need_tags import NEED_TAGS
 from temples.services.compass_direction_filter import filter_candidates_by_direction
+from temples.services.compass_runtime import NoCommonDirectionResult
 from temples.services.concierge_chat import build_chat_recommendations
 from temples.services.concierge_chat_candidates import build_chat_candidates
 from temples.services.consultation_interpreter import interpret_consultation
 from temples.services.direction_reference import _coordinate
 
-# Fail-safe states (Section 11). Kept as distinct string constants -- never
-# collapse two of these into a shared generic "empty" outcome; that is
-# exactly what compass-mvp-runtime-contract.md Section 8 forbids for
-# origin/target_date fail-safes, and the same principle applies here.
+# Fail-safe / result states (Section 11, plus compass-mvp-runtime-contract.md
+# Section 8 Group A/B). Kept as distinct string constants -- never collapse
+# two of these into a shared generic "empty" outcome; that is exactly what
+# Section 8 forbids for origin/target_date fail-safes, and the same
+# principle applies here.
 STATE_INVALID_PURPOSE = "invalid_purpose"
 STATE_DIRECTION_FILTER_UNAVAILABLE = "direction_filter_unavailable"
+STATE_NO_COMMON_DIRECTION = "no_common_direction"
 STATE_DIRECTION_ZERO_CANDIDATES = "direction_zero_candidates"
 STATE_EVIDENCE_ZERO_CANDIDATES = "evidence_zero_candidates"
 STATE_RECOMMENDATION_SUCCESS = "recommendation_success"
@@ -84,7 +87,7 @@ def get_compass_recommendations(
     *,
     purpose: str,
     origin: Optional[Mapping[str, Any]],
-    direction_context: Optional[Mapping[str, Any]],
+    direction_context: Optional[Mapping[str, Any]] | NoCommonDirectionResult,
     language: str = "ja",
     candidate_pool_limit: int = DEFAULT_CANDIDATE_POOL_LIMIT,
 ) -> CompassRecommendationResult:
@@ -94,13 +97,25 @@ def get_compass_recommendations(
     direction filter as a confirmed-empty one -- see
     compass_direction_filter.filter_candidates_by_direction's own
     None-vs-[] contract, which this function preserves rather than collapses.
+
+    `direction_context` being a NoCommonDirectionResult (Group B -- valid
+    input, empty annual/monthly intersection) is likewise never collapsed
+    into the generic STATE_DIRECTION_FILTER_UNAVAILABLE (Group A -- invalid
+    or unavailable runtime); see compass-mvp-runtime-contract.md Section 8.
     """
     purpose_slug = str(purpose or "").strip()
     if purpose_slug not in NEED_TAGS:
         return CompassRecommendationResult(
             state=STATE_INVALID_PURPOSE,
             purpose=purpose_slug or None,
-            direction_context=direction_context,
+            direction_context=direction_context if isinstance(direction_context, Mapping) else None,
+        )
+
+    if isinstance(direction_context, NoCommonDirectionResult):
+        return CompassRecommendationResult(
+            state=STATE_NO_COMMON_DIRECTION,
+            purpose=purpose_slug,
+            direction_context=None,
         )
 
     if not isinstance(direction_context, Mapping):
@@ -191,6 +206,7 @@ def get_compass_recommendations(
 __all__ = [
     "STATE_INVALID_PURPOSE",
     "STATE_DIRECTION_FILTER_UNAVAILABLE",
+    "STATE_NO_COMMON_DIRECTION",
     "STATE_DIRECTION_ZERO_CANDIDATES",
     "STATE_EVIDENCE_ZERO_CANDIDATES",
     "STATE_RECOMMENDATION_SUCCESS",

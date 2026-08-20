@@ -29,6 +29,7 @@ import type { CompassPurpose, CompassRecommendationsResponse, CompassUiState } f
 type CompassResultState =
   | "invalid_purpose"
   | "direction_filter_unavailable"
+  | "no_common_direction"
   | "direction_zero_candidates"
   | "evidence_zero_candidates"
   | "recommendation_success"
@@ -226,6 +227,14 @@ export default function CompassClient() {
         <DetailSection title="方向の参考情報を計算できませんでした" variant="tertiary">
           <p className="text-sm leading-6 text-[var(--kt-color-text-secondary)]">
             生年月日または出発地点をご確認のうえ、もう一度お試しください。
+          </p>
+        </DetailSection>
+      ) : null}
+
+      {uiState === "no_common_direction" ? (
+        <DetailSection title="今月は年盤と月盤で重なる方位がありません" variant="tertiary">
+          <p className="text-sm leading-6 text-[var(--kt-color-text-secondary)]">
+            生年月日・出発地点はどちらも問題ありません。年盤と月盤がともに支持する方位が今月はなかった、という結果です。
           </p>
         </DetailSection>
       ) : null}

@@ -119,6 +119,33 @@ def test_missing_birthdate_returns_direction_filter_unavailable(client):
 
 
 @pytest.mark.django_db
+def test_no_common_direction_returns_dedicated_state_not_unavailable(client):
+    # Synthetic birthdate (not a real user's), reproduced independently in
+    # docs/audit/compass-direction-filter-unavailable-root-cause.md: for
+    # target_date 2026-08-20 this honmei star's annual/monthly lucky
+    # directions share nothing (empty intersection).
+    r = client.post(
+        URL,
+        data=json.dumps(
+            {
+                "purpose": "career",
+                "origin": ORIGIN,
+                "birthdate": "1975-06-15",
+                "target_date": "2026-08-20",
+            }
+        ),
+        content_type="application/json",
+    )
+
+    assert r.status_code == 200
+    body = r.json()
+    assert body["state"] == "no_common_direction"
+    assert body["state"] != "direction_filter_unavailable"
+    assert body["direction_context"] is None
+    assert body["recommendations"] == []
+
+
+@pytest.mark.django_db
 def test_missing_origin_returns_direction_filter_unavailable(client):
     r = client.post(
         URL,

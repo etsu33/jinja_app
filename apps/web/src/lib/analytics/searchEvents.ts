@@ -99,6 +99,7 @@ export type SearchAnalyticsPayload = {
   result_state?:
     | "invalid_purpose"
     | "direction_filter_unavailable"
+    | "no_common_direction"
     | "direction_zero_candidates"
     | "evidence_zero_candidates"
     | "recommendation_success"
