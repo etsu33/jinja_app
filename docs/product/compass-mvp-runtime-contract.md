@@ -256,6 +256,17 @@ Compassの主要経路は、`backend/temples/domain/kyusei.py:239` `planned_visi
 
 本フェーズはRuntime契約の設計のみであり、`concierge_chat_ranking.py`のいかなる関数・Weightにも変更を加えない。
 
+### 年盤∩月盤の交差が空集合になる場合（Section 8-1・8-2参照）
+
+`referenceDirections`が導出元とする年盤∩月盤の交差は、有効な入力からでも
+正当に空集合になり得る（`compass-product-contract.md` Section 2.1、
+[#2496](../audit/compass-direction-filter-unavailable-root-cause.md)・
+[#2497](../audit/compass-direction-availability-product-decision.md)）。
+この場合の意味論上の扱い（`NO_COMMON_DIRECTION`、入力無効時のfail-safeとの
+区別）はSection 8-1・8-2を正本とする。本Sectionが定義する
+`CompassDirectionRuntime`型自体のSchemaは、この区別のために変更しない
+（型を返すか`None`を返すかの二値のままとする）。
+
 ---
 
 ## 6. Recommendation Handoff（将来の統合のための最小コンテキスト定義のみ）
@@ -319,6 +330,18 @@ type CompassRecommendationHandoffContext = {
 
 すべてのケースにおいて、不足する情報を推測・捏造せず、該当する出力を省略する（既存`direction_reference.py`の「grounded inputsのみ」原則をCompass全体に拡張する）。
 
+> **Status: Active（Section 8-1・8-2で改訂、[compass-product-contract.md](compass-product-contract.md)
+> Section 2.1 Decision Record、[#2496](../audit/compass-direction-filter-unavailable-root-cause.md)・
+> [#2497](../audit/compass-direction-availability-product-decision.md)の監査結論を反映）**
+
+以下の表は、原因を**A. 入力/Runtimeが無効または利用不可**と
+**B. 入力・計算は有効だが結果として共通方位が存在しない（正当な結果）**
+の2グループに明確に分ける。この2グループは意味論として区別しなければ
+ならず、同一の技術的状態へ意味を混在させてはならない（Section 8-1・8-2で
+詳述）。
+
+### A. INVALID / UNAVAILABLE RUNTIME（既存、変更なし）
+
 | ケース | 挙動 |
 |---|---|
 | 生年月日が欠落 | 方向コンテキスト（`CompassDirectionRuntime`）を生成しない。デフォルトの生年月日・本命星を代入しない |
@@ -327,7 +350,29 @@ type CompassRecommendationHandoffContext = {
 | `target_date`が不正 | 未指定として扱わず（Section 1参照）、方向コンテキストを省略する。クライアントの不正値をtodayへ黙って差し替えない |
 | 節気月境界付近 | 特別なフォールバックを設けない。境界を跨いだ結果の違いはそのまま返す（Section 1参照） |
 
-**共通原則**: いかなるフォールバックも、裏付けのない占術/方位の主張を生成してはならない（`compass-product-contract.md` Section 9の絶対的制約を継承）。
+### B. VALID NO-COMMON-DIRECTION RESULT（新規、Section 8-1で追加）
+
+| ケース | 挙動 |
+|---|---|
+| 生年月日・`target_date`とも有効で、方位計算（年盤・月盤）自体も正常に完了したが、年盤の吉方位集合と月盤の吉方位集合の交差が空集合 | **エラーではない。正当なCompass結果**（`compass-product-contract.md` Section 2.1が定義する`NO_COMMON_DIRECTION`、概念上の識別子）として扱う。デフォルト方位を代入せず、かつ「入力を確認してください」という誘導も行わない（Section 8-2） |
+
+**共通原則**: いかなるフォールバックも、裏付けのない占術/方位の主張を生成してはならない（`compass-product-contract.md` Section 9の絶対的制約を継承）。この原則はA・Bいずれのケースにも等しく適用され、既存のfail-safe保護（Aグループの5行）は本改訂によって一切弱められない。
+
+### 8-1 現行実装とのギャップ（IMPLEMENTATION GAP）
+
+現行実装（`backend/temples/services/compass_runtime.py`の`build_compass_direction_runtime()`）は、AグループとBグループのいずれのケースも同一の`None`を返し、呼び出し元（`compass_recommendation_orchestrator.py`）はこれを同一の`STATE_DIRECTION_FILTER_UNAVAILABLE`へマッピングする。**この表がA/Bを分けて定義するのは契約上の意味論の区別であり、現時点の実装がこの区別を状態として表現できているという意味ではない。**
+
+将来この区別を実装レベルで表現する場合、Bグループに対応する新しい状態名（概念上の例: `NO_COMMON_DIRECTION`、実際のAPI/state値の名称は未確定の**CONTRACT TARGET**）を導入するかどうかは別途実装PRで判断する。本書は現時点でその状態名・Schema変更を確定しない。`CompassDirectionRuntime`型自体（Section 5のSchema）は本改訂で変更しない。
+
+### 8-2 リトライ・入力訂正の示唆に関する原則（Bグループ限定）
+
+Bグループ（`NO_COMMON_DIRECTION`）に該当する結果について:
+
+- 再試行を主要な解決策として提示してはならない。同一本命星・同一対象月であれば、再計算しても交差は決定的に同一である。
+- 生年月日・originの訂正を促してはならない——これらはBグループの前提条件として既に有効である。
+- Aグループ（真に入力が無効）とBグループを、ユーザーへの案内文言レベルでも混同してはならない。
+
+（詳細は`compass-product-contract.md` Section 2.1-2を正本とする。本書はRuntime Contractとしての整合性確認のみを目的とし、UX文言の重複管理は行わない。）
 
 ---
 
@@ -369,6 +414,8 @@ Master Principle・Product Promise・Authority境界・Signal-to-Explanation Rul
 - `docs/product/compass-product-contract.md`（上位正本）
 - `docs/audit/premium-visit-compass-recommendation-feasibility.md`
 - `docs/audit/premium-visit-compass-time-model-contract.md`
+- `docs/audit/compass-direction-filter-unavailable-root-cause.md`
+- `docs/audit/compass-direction-availability-product-decision.md`
 - `backend/temples/domain/kyusei.py`
 - `backend/temples/services/direction_reference.py`
 - `packages/shared/userOrigin.ts`
