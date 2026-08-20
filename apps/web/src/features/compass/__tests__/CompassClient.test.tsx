@@ -145,6 +145,62 @@ describe("CompassClient", () => {
     expect(screen.queryByText("この方向の参拝候補")).not.toBeInTheDocument();
   });
 
+  it("no_common_directionは正当な結果として表示し、direction_filter_unavailableの誤解を招く案内文は出さない", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        state: "no_common_direction",
+        purpose: "career",
+        direction_context: null,
+        recommendations: [],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<CompassClient />);
+    fillMinimumValidInput();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "今月の方向を確認する" }));
+    });
+
+    expect(await screen.findByText("今月は年盤と月盤で重なる方位がありません")).toBeInTheDocument();
+    // Must not imply the failure is a calculation error or an input mistake.
+    expect(
+      screen.queryByText("生年月日または出発地点をご確認のうえ、もう一度お試しください。"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("方向の参考情報を計算できませんでした")).not.toBeInTheDocument();
+    // No direction visual, no recommendation cards -- there is nothing to show.
+    expect(screen.queryByText("今月意識したい方向:", { exact: false })).not.toBeInTheDocument();
+    expect(screen.queryByText("この方向の参拝候補")).not.toBeInTheDocument();
+  });
+
+  it("direction_filter_unavailableは引き続き既存のfail-safe文言を表示する", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        state: "direction_filter_unavailable",
+        purpose: "career",
+        direction_context: null,
+        recommendations: [],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<CompassClient />);
+    fillMinimumValidInput();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "今月の方向を確認する" }));
+    });
+
+    expect(await screen.findByText("方向の参考情報を計算できませんでした")).toBeInTheDocument();
+    expect(
+      screen.getByText("生年月日または出発地点をご確認のうえ、もう一度お試しください。"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("今月は年盤と月盤で重なる方位がありません")).not.toBeInTheDocument();
+  });
+
   it("バックエンドエラー時は落ち着いた文言のエラー状態を表示する", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 500 }));
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date
 from unittest.mock import patch
 
-from temples.services.compass_runtime import build_compass_direction_runtime
+from temples.services.compass_runtime import NoCommonDirectionResult, build_compass_direction_runtime
 from temples.services.direction_reference import DIRECTION_REFERENCE_NOTE
 
 BIRTHDATE = "1984-05-15"
@@ -67,7 +67,12 @@ def test_invalid_birthdate_returns_none():
     assert result is None
 
 
-def test_no_lucky_directions_for_period_returns_none():
+def test_no_lucky_directions_for_period_returns_no_common_direction_marker():
+    """Runtime Contract Section 8 Group B: birthdate/target_date were both
+    valid and the calculation completed -- only the annual/monthly
+    intersection is empty. This is NOT the same None used for Group A
+    (invalid/unavailable runtime, see test_missing_birthdate_returns_none
+    and test_invalid_birthdate_returns_none below)."""
     with patch(
         "temples.services.compass_runtime.planned_visit_lucky_directions",
         return_value={
@@ -84,7 +89,17 @@ def test_no_lucky_directions_for_period_returns_none():
     ):
         result = build_compass_direction_runtime(birthdate=BIRTHDATE, target_date="2026-09-15")
 
-    assert result is None
+    assert isinstance(result, NoCommonDirectionResult)
+    assert result is not None
+
+
+def test_no_common_direction_reproducible_against_real_kyusei():
+    """Same case as above, but against the real (unmocked)
+    planned_visit_lucky_directions() -- synthetic birthdate, not a real
+    user's. Confirmed empty for this birthdate/date pair independently in
+    docs/audit/compass-direction-filter-unavailable-root-cause.md."""
+    result = build_compass_direction_runtime(birthdate="1975-06-15", target_date="2026-08-20")
+    assert isinstance(result, NoCommonDirectionResult)
 
 
 def test_does_not_expose_internal_only_fields():

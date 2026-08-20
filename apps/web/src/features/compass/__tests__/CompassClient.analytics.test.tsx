@@ -189,6 +189,48 @@ describe("CompassClient lifecycle analytics", () => {
       expect(zeroCandidatesPayload.recommendation_count).toBeNull();
     });
 
+    it("no_common_directionとdirection_filter_unavailableをresult_stateとして区別する（collapse禁止）", async () => {
+      // Runtime Contract Section 8 Group A (direction_filter_unavailable)
+      // vs Group B (no_common_direction, a VALID result) -- the generic
+      // trackCompassResult() pipeline forwards whatever backend state
+      // string it receives without transformation, so this is a
+      // type-contract/regression check, not new instrumentation logic.
+      const fetchMock = vi.fn();
+      vi.stubGlobal("fetch", fetchMock);
+      render(<CompassClient />);
+      fillMinimumValidInput();
+
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          state: "no_common_direction",
+          purpose: "career",
+          direction_context: null,
+          recommendations: [],
+        }),
+      });
+      await submit();
+
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          state: "direction_filter_unavailable",
+          purpose: "career",
+          direction_context: null,
+          recommendations: [],
+        }),
+      });
+      await submit();
+
+      const resultStates = analyticsMocks.trackSearchEvent.mock.calls
+        .filter(([name]) => name === "compass_result")
+        .map(([, payload]) => (payload as { result_state: string }).result_state);
+
+      expect(resultStates).toEqual(["no_common_direction", "direction_filter_unavailable"]);
+    });
+
     it("invalid_purpose（HTTP 400）をresult_stateとして正しく表す", async () => {
       vi.stubGlobal(
         "fetch",

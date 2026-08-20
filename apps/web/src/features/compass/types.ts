@@ -3,9 +3,14 @@
 // Mirrors docs/product/compass-mvp-runtime-contract.md Section 5
 // (CompassDirectionRuntime) and the response shape of
 // backend/temples/api_views_compass.py::CompassRecommendationsView, which
-// wraps temples.services.compass_recommendation_orchestrator's 5 fail-safe
+// wraps temples.services.compass_recommendation_orchestrator's 6 result
 // states (see that module's docstring). Kept local to the Compass feature
 // rather than packages/shared -- no other app consumes it yet.
+//
+// "no_common_direction" is a VALID result (Runtime Contract Section 8
+// Group B), never collapsed into "direction_filter_unavailable" (Group A --
+// genuinely invalid/unavailable runtime). See compass-product-contract.md
+// Section 2.1.
 
 export type CompassPurpose =
   | "love"
@@ -47,6 +52,7 @@ export type CompassUiState =
   | "loading"
   | "invalid_purpose"
   | "direction_filter_unavailable"
+  | "no_common_direction"
   | "direction_zero_candidates"
   | "evidence_zero_candidates"
   | "recommendation_success"
@@ -68,6 +74,7 @@ export type CompassRecommendationsResponse = {
   state:
     | "invalid_purpose"
     | "direction_filter_unavailable"
+    | "no_common_direction"
     | "direction_zero_candidates"
     | "evidence_zero_candidates"
     | "recommendation_success";

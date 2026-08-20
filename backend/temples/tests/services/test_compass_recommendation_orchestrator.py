@@ -12,9 +12,11 @@ from temples.services.compass_recommendation_orchestrator import (
     STATE_DIRECTION_ZERO_CANDIDATES,
     STATE_EVIDENCE_ZERO_CANDIDATES,
     STATE_INVALID_PURPOSE,
+    STATE_NO_COMMON_DIRECTION,
     STATE_RECOMMENDATION_SUCCESS,
     get_compass_recommendations,
 )
+from temples.services.compass_runtime import NoCommonDirectionResult
 
 ORIGIN = {"lat": 35.0, "lng": 135.0}
 NORTH_DIRECTION_CONTEXT = {"referenceDirections": ["北"]}
@@ -110,6 +112,67 @@ class TestDirectionFilterUnavailable:
                 direction_context=None,
             )
         mock_recommend.assert_not_called()
+
+
+@pytest.mark.django_db
+class TestNoCommonDirection:
+    """Runtime Contract Section 8 Group B: valid input, calculation
+    completed, but annual ∩ monthly is empty. Distinct from Group A
+    (STATE_DIRECTION_FILTER_UNAVAILABLE, tested above)."""
+
+    def test_no_common_direction_marker_maps_to_its_own_state(self) -> None:
+        result = get_compass_recommendations(
+            purpose="career",
+            origin=ORIGIN,
+            direction_context=NoCommonDirectionResult(),
+        )
+        assert result.state == STATE_NO_COMMON_DIRECTION
+        assert result.state != STATE_DIRECTION_FILTER_UNAVAILABLE
+        assert result.recommendations == []
+
+    def test_no_common_direction_never_calls_candidate_filter(self) -> None:
+        with patch(
+            "temples.services.compass_recommendation_orchestrator.filter_candidates_by_direction"
+        ) as mock_filter:
+            get_compass_recommendations(
+                purpose="career",
+                origin=ORIGIN,
+                direction_context=NoCommonDirectionResult(),
+            )
+        mock_filter.assert_not_called()
+
+    def test_no_common_direction_never_calls_recommendation_domain(self) -> None:
+        with patch(
+            "temples.services.compass_recommendation_orchestrator.build_chat_recommendations"
+        ) as mock_recommend:
+            get_compass_recommendations(
+                purpose="career",
+                origin=ORIGIN,
+                direction_context=NoCommonDirectionResult(),
+            )
+        mock_recommend.assert_not_called()
+
+    def test_no_common_direction_response_carries_no_direction_context(self) -> None:
+        result = get_compass_recommendations(
+            purpose="career",
+            origin=ORIGIN,
+            direction_context=NoCommonDirectionResult(),
+        )
+        assert result.direction_context is None
+
+    def test_invalid_purpose_with_no_common_direction_marker_stays_json_safe(self) -> None:
+        """Regression: the NoCommonDirectionResult marker must never leak
+        into CompassRecommendationResult.direction_context, even when a
+        different validation (purpose) fails first -- it is not
+        JSON-serializable and api_views_compass.py serializes this field
+        directly into the HTTP response body."""
+        result = get_compass_recommendations(
+            purpose="not_a_real_need_tag",
+            origin=ORIGIN,
+            direction_context=NoCommonDirectionResult(),
+        )
+        assert result.state == STATE_INVALID_PURPOSE
+        assert result.direction_context is None
 
 
 @pytest.mark.django_db
