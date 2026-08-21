@@ -244,6 +244,61 @@ class TestRecommendationSuccess:
 
 
 @pytest.mark.django_db
+class TestMonthlyFallbackDirectionContext:
+    """Product Contract Section 2.2 / Runtime Contract Section 5-1 (#2508
+    Option C): a Monthly Fallback direction_context is just a
+    CompassDirectionRuntime dict with calculationMethod="monthly_kyusei_v1"
+    instead of "annual_monthly_kyusei_v1" -- this orchestrator does not (and
+    must not) branch on calculationMethod, so a fallback-shaped context must
+    reach exactly the same states (recommendation_success,
+    direction_zero_candidates) as a common-direction context. Proves
+    "fallback direction exists" is not the same thing as "recommendation
+    candidate exists" (Section 27/28 of the implementation task)."""
+
+    FALLBACK_DIRECTION_CONTEXT = {
+        "referenceDirections": ["南東"],
+        "calculationMethod": "monthly_kyusei_v1",
+    }
+
+    def test_fallback_context_reaches_recommendation_success(self, shrine_factory) -> None:
+        shrine_factory(name="南東の神社", latitude=34.5, longitude=136.0, goriyaku="仕事運")
+
+        result = get_compass_recommendations(
+            purpose="career",
+            origin=ORIGIN,
+            direction_context=self.FALLBACK_DIRECTION_CONTEXT,
+        )
+        assert result.state == STATE_RECOMMENDATION_SUCCESS
+        names = [r.get("name") for r in result.recommendations]
+        assert "南東の神社" in names
+
+    def test_fallback_context_calculation_method_passed_through_unmodified(self, shrine_factory) -> None:
+        shrine_factory(name="南東の神社", latitude=34.5, longitude=136.0, goriyaku="仕事運")
+
+        result = get_compass_recommendations(
+            purpose="career",
+            origin=ORIGIN,
+            direction_context=self.FALLBACK_DIRECTION_CONTEXT,
+        )
+        assert result.direction_context == self.FALLBACK_DIRECTION_CONTEXT
+
+    def test_fallback_context_with_no_matching_shrine_is_zero_candidates_not_no_common_direction(
+        self, shrine_factory
+    ) -> None:
+        # North of origin -- outside the authorized "南東" (southeast) sector.
+        shrine_factory(name="北の神社", latitude=36.0, longitude=135.0, goriyaku="仕事運")
+
+        result = get_compass_recommendations(
+            purpose="career",
+            origin=ORIGIN,
+            direction_context=self.FALLBACK_DIRECTION_CONTEXT,
+        )
+        assert result.state == STATE_DIRECTION_ZERO_CANDIDATES
+        assert result.state != STATE_NO_COMMON_DIRECTION
+        assert result.recommendations == []
+
+
+@pytest.mark.django_db
 class TestPurposeIntegration:
     def test_changing_purpose_changes_recommendation_order(self, shrine_factory) -> None:
         # Both north of origin (same authorized sector), so any ranking

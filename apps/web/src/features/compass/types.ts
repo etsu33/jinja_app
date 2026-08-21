@@ -34,7 +34,11 @@ export type CompassDirectionRuntime = {
   targetYear: number;
   solarMonthIndex: number;
   referenceDirections: string[];
-  calculationMethod: "annual_monthly_kyusei_v1";
+  // "monthly_kyusei_v1" = Monthly Fallback (Product Contract Section 2.2 /
+  // Runtime Contract Section 5-1, #2508 Option C): referenceDirections come
+  // from monthly-only guidance, not annual/monthly agreement. Type-only
+  // widening -- no fallback-specific UI/copy is implemented by this change.
+  calculationMethod: "annual_monthly_kyusei_v1" | "monthly_kyusei_v1";
   note: string;
 };
 

@@ -120,10 +120,46 @@ def test_missing_birthdate_returns_direction_filter_unavailable(client):
 
 @pytest.mark.django_db
 def test_no_common_direction_returns_dedicated_state_not_unavailable(client):
-    # Synthetic birthdate (not a real user's), reproduced independently in
-    # docs/audit/compass-direction-filter-unavailable-root-cause.md: for
-    # target_date 2026-08-20 this honmei star's annual/monthly lucky
-    # directions share nothing (empty intersection).
+    # Synthetic birthdate (not a real user's). For target_date 2026-11-15
+    # this honmei star's annual/monthly lucky directions share nothing
+    # (empty intersection) AND monthly-only guidance is also empty -- the
+    # narrowed no_common_direction residual case under Monthly Fallback
+    # (Product Contract Section 2.2-4, #2508 Option C), distinct from
+    # test_monthly_fallback_returns_recommendation_flow_state below where
+    # the intersection is empty but monthly-only guidance is not.
+    r = client.post(
+        URL,
+        data=json.dumps(
+            {
+                "purpose": "career",
+                "origin": ORIGIN,
+                "birthdate": "1976-06-15",
+                "target_date": "2026-11-15",
+            }
+        ),
+        content_type="application/json",
+    )
+
+    assert r.status_code == 200
+    body = r.json()
+    assert body["state"] == "no_common_direction"
+    assert body["state"] != "direction_filter_unavailable"
+    assert body["direction_context"] is None
+    assert body["recommendations"] == []
+
+
+@pytest.mark.django_db
+def test_monthly_fallback_returns_recommendation_flow_state(client, shrine_factory):
+    """Product Contract Section 2.2 / Runtime Contract Section 5-1 (#2508
+    Option C): synthetic birthdate (not a real user's) where, for
+    target_date 2026-08-20, the annual/monthly intersection is empty but
+    monthly-only guidance (["南東"]) is available. This must reach the
+    normal recommendation flow -- not no_common_direction, not
+    direction_filter_unavailable -- with calculationMethod="monthly_kyusei_v1"
+    (never "annual_monthly_kyusei_v1", which would misrepresent this as
+    annual/monthly agreement)."""
+    shrine_factory(name="南東の神社", latitude=34.5, longitude=136.0, goriyaku="仕事運")
+
     r = client.post(
         URL,
         data=json.dumps(
@@ -139,10 +175,12 @@ def test_no_common_direction_returns_dedicated_state_not_unavailable(client):
 
     assert r.status_code == 200
     body = r.json()
-    assert body["state"] == "no_common_direction"
-    assert body["state"] != "direction_filter_unavailable"
-    assert body["direction_context"] is None
-    assert body["recommendations"] == []
+    assert body["state"] == "recommendation_success"
+    assert body["state"] != "no_common_direction"
+    assert body["direction_context"]["referenceDirections"] == ["南東"]
+    assert body["direction_context"]["calculationMethod"] == "monthly_kyusei_v1"
+    names = [rec["name"] for rec in body["recommendations"]]
+    assert "南東の神社" in names
 
 
 @pytest.mark.django_db
