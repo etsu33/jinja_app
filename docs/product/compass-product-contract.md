@@ -2,7 +2,7 @@
 >
 > 本ドキュメントは、Visit Compassの製品責務・Product Promise・Authority境界を管理する正本文書である。
 >
-> 本書は`docs/audit/premium-visit-compass-recommendation-feasibility.md`（PR #2470）・`docs/audit/premium-visit-compass-time-model-contract.md`（PR #2471）・`docs/audit/concierge-compass-meaning-action-authority-boundary.md`（PR #2472）・`docs/audit/compass-contract-reconciliation-direction-audit-completion.md`（PR #2473）・`docs/audit/concierge-compass-product-responsibility-contract.md`（PR #2474）の監査結論を正式化した契約である。
+> 本書は`docs/audit/premium-visit-compass-recommendation-feasibility.md`（PR #2470）・`docs/audit/premium-visit-compass-time-model-contract.md`（PR #2471）・`docs/audit/concierge-compass-meaning-action-authority-boundary.md`（PR #2472）・`docs/audit/compass-contract-reconciliation-direction-audit-completion.md`（PR #2473）・`docs/audit/concierge-compass-product-responsibility-contract.md`（PR #2474）の監査結論を正式化した契約である。Section 2.2は`docs/product/compass-product-direction-decision.md`（PR #2508、Mother Ship Product Decision Record）が確定したFinal Product Promise（B）・Final Direction Logic（Option C — Monthly Fallback）を整合させたものである。
 >
 > 本書はDocsのみのPRとして作成された。コード・Model・Migration・Serializer・API Endpoint・DBデータの変更は一切含まない。記載内容はCompassの製品契約であり、実装済みであることを意味しない。Free/Premium境界の最終決定は本書の対象外とする（Section 12）。
 
@@ -84,30 +84,42 @@ CompassはCompat Modeが契約上なることを禁じられている状態（�
 
 ## 2. Compass Product Promise
 
-> **Status: Active（Section 2.1で改訂、[#2497](../audit/compass-direction-availability-product-decision.md)・[#2496](../audit/compass-direction-filter-unavailable-root-cause.md)の監査結論を反映）**
+> **Status: Active（Section 2.2で改訂、[#2508](compass-product-direction-decision.md)
+> Final Product Promise: B — Actionable Monthly Directionを反映。
+> Section 2.1由来の改訂履歴は[#2497](../audit/compass-direction-availability-product-decision.md)・
+> [#2496](../audit/compass-direction-filter-unavailable-root-cause.md)を継続して参照）**
 
-**一文定義（改訂）**:
+**一文定義（#2508改訂）**:
 
-> 時間・方位runtime signalと目的から、今月の方向を解釈し、年盤と月盤が
-> 共通して支持する参考方位がある月はそれを示す。ない月は、その結果自体を
+> 時間・方位runtime signalと目的から、今月の方向を解釈する。年盤と月盤が
+> 共通して支持する参考方位がある月はそれを示す。共通の参考方位がない月は、
+> 月盤単独の参考方位を示す。月盤単独の参考方位もない月は、その結果自体を
 > 今月の参考情報として示した上で、目的から参拝候補を示す。
 
-改訂前の定義（「今月意識したい方向と参拝候補を示す」）は、方向が常に
-返ることを断定的に示唆していた。Section 2.1で確定した通り、これは
-アルゴリズム的な実態（[#2497](../audit/compass-direction-availability-product-decision.md):
-9本命星×12節気月×9年の972ケース中46.5%で年盤・月盤の共通方位が存在しない）
-と整合しないため、本改訂で「方向がある場合／ない場合」を明示的に区別する
-表現へ改める。**「Compassは常に方向を返す」とは約束しない。**
+改訂前の定義（本Section、#2498時点）は、「共通の参考方位がある場合／ない
+場合」の二値のみを区別しており、月盤単独の参考方位（Monthly Fallback、
+Section 2.2）という中間結果を表現していなかった。[#2508](compass-product-direction-decision.md)
+が確定したFinal Direction Logic（Option C — Monthly Fallback）の下では、
+方向が完全に得られない結果（`no_common_direction`）の頻度は、972ケース中
+46.5%（[#2497](../audit/compass-direction-availability-product-decision.md)、
+年盤∩月盤の交差のみで判定した場合）から3.1%
+（[#2507](../audit/compass-monthly-fallback-availability.md)、月盤単独への
+fallbackを経てもなお得られない場合）へ narrowing される。**「Compassは
+常に方向を返す」とは約束しない**——この点は#2508によっても変わらない。
 
-**User-facing候補コピー（評価済み・改訂: SUPPORTED WITH CLARIFICATION）**:
+**User-facing候補コピー（評価済み・#2498時点: SUPPORTED WITH CLARIFICATION）**:
 
 > 「今月の流れと目的から、向かう方向と参拝候補を見つけます。方向が重ならない月は、その結果もそのままお伝えします。」
 
-このコピーを正式なProduct Promiseの候補として採用する。**これは最終的な
-UI実装コピーではない**（最終コピーはSection 2.1が定義する
-NO_COMMON_DIRECTION状態のUX原則に従って、別途Frontend実装PRで確定する）。
-実装時は、詳細画面またはカード内の補足文言で「参考情報です」という既存
-共通パターン（`docs/product/direction-ranking-design.md`・
+このコピーは#2498時点のものであり、**Monthly Fallback（Section 2.2）を
+まだ反映していない**——「方向が重ならない月」が実際には月盤単独の参考方位
+（Monthly Fallback）を指す場合と、それも存在しない場合（narrowed
+`no_common_direction`）の2通りに分かれることを、このコピーは区別していない。
+**これは最終的なUI実装コピーではない**（最終コピーはSection 2.2が定義する
+Common Direction / Monthly Fallback / narrowed NO_COMMON_DIRECTIONの3状態を
+誠実に区別するUX原則に従って、別途Frontend実装PR（[#2508](compass-product-direction-decision.md)
+§25・§27 PR-3）で確定する）。実装時は、詳細画面またはカード内の補足文言で
+「参考情報です」という既存共通パターン（`docs/product/direction-ranking-design.md`・
 `docs/product/compat-mode-ui-flow.md`が共通して採用する表現）を併記する
 ことを推奨する（必須ではないが、Section 8のSignal-to-Explanation Ruleと
 整合させるための推奨事項）。
@@ -122,7 +134,10 @@ NO_COMMON_DIRECTION状態のUX原則に従って、別途Frontend実装PRで確�
 
 ## 2.1 方向が定まらない月の扱い（NO_COMMON_DIRECTION、Decision Record）
 
-> **Status: CANONICAL PRODUCT DIRECTION**
+> **Status: CANONICAL PRODUCT DIRECTION（トリガー条件はSection 2.2、
+> [#2508](compass-product-direction-decision.md)により narrowing 済み。
+> 本Sectionが確立した「NO_COMMON_DIRECTIONは正当な結果である」という
+> 分類自体は不変のまま維持する）**
 
 ### Decision
 
@@ -173,6 +188,10 @@ NO_COMMON_DIRECTION状態のUX原則に従って、別途Frontend実装PRで確�
 - 年盤の吉方位計算が成功した（honmei_starが解決できた）
 - 月盤の吉方位計算が成功した
 - 年盤の吉方位集合と月盤の吉方位集合の交差が空集合
+- **かつ、月盤単独の吉方位集合（Monthly Fallback、Section 2.2）も空集合**
+  （[#2508](compass-product-direction-decision.md)による narrowing。
+  月盤単独の吉方位集合が空でない場合はMonthly Fallback
+  Direction（Section 2.2）が成立し、NO_COMMON_DIRECTIONには該当しない）
 ```
 
 この場合の結果は**正当**であり、以下とは明確に区別する:
@@ -204,24 +223,36 @@ TARGETとして記載する（現時点で実装されたstate名・API値では
   予測を避けるという既存の非断定原則（Section 9、`docs/core/meaning-layer.md`）
   と矛盾しない範囲でのみ、将来のUX実装検討で扱う。
 
-### 2.1-3 現行実装とのギャップ（IMPLEMENTATION GAP、本PRでは修正しない）
+### 2.1-3 現行実装とのギャップ（IMPLEMENTATION GAP）
+
+> **Status: PARTIALLY CLOSED（#2499で一部解消、[#2508](compass-product-direction-decision.md)
+> が残存ギャップを再定義）**
+
+このSectionが元々記述していたギャップ（年盤∩月盤の交差が空集合の場合と、
+生年月日/origin欠落の場合が同一state・同一UI表示になる）は、**PR #2499で
+既に解消済み**である。現行実装（`backend/temples/services/compass_runtime.py`）
+は両者を明確に区別する:
 
 ```
-現行実装:
+現行実装（#2499以降）:
   年盤∩月盤の交差が空集合
-    → build_compass_direction_runtime()がNoneを返す
-    → compass_recommendation_orchestrator.pyがSTATE_DIRECTION_FILTER_UNAVAILABLEへマッピング
-    → 「生年月日・originが欠落/不正」の場合と同一のstate・同一のUI表示
+    → build_compass_direction_runtime()がNoneではなくNoCommonDirectionResult()を返す
+    → compass_recommendation_orchestrator.pyがSTATE_NO_COMMON_DIRECTION（"no_common_direction"）へマッピング
+    → 「生年月日・originが欠落/不正」の場合（STATE_DIRECTION_FILTER_UNAVAILABLE）とは別state・別分類
 
-目標契約（本Decision Record）:
-  同じ空集合という計算結果を、正当なNO_COMMON_DIRECTION結果として、
-  入力不備系のfail-safeとは区別可能な形で扱う
+残存する実装ギャップ（[#2508](compass-product-direction-decision.md)が定義するMonthly Fallback、Section 2.2）:
+  年盤∩月盤の交差が空集合の場合、現行実装は無条件にNoCommonDirectionResult()を返す
+    → monthly_lucky_directions()（#2506でkyusei.pyへ追加済み、"monthly_kyusei_v1"を返す）を
+      呼び出しておらず、月盤単独の参考方位が存在するかどうかを試みていない
+    → Section 2.2が定義するMonthly Fallback（Option C）は、本書時点ではまだ実装されていない
 ```
 
-これは**IMPLEMENTATION GAPであり、Runtime算出ロジック自体の欠陥ではない**
+Group A/Bの区別自体（本Section）は**Runtime算出ロジックの欠陥ではない**
 （[#2496](../audit/compass-direction-filter-unavailable-root-cause.md)の
-`A — EXPECTED FAIL-SAFE`判定を変更するものではない）。本PRはこのギャップ
-を契約として明文化するのみで、実装による解消は別途将来のPRに委ねる
+`A — EXPECTED FAIL-SAFE`判定を変更するものではない）。Monthly Fallback
+（Section 2.2）の未実装も同様に欠陥ではなく、[#2508](compass-product-direction-decision.md)
+§27が提案する将来のPR-2（Compass Runtime Monthly Fallback実装）に委ねる
+——本書・本PRはこのギャップを契約として明文化するのみで、実装は行わない
 （「責務境界」節参照——実装手順自体は本書で管理しない）。
 
 ### 2.1-4 Concierge Isolation（本契約変更が適用される範囲）
@@ -281,12 +312,19 @@ reliability-relevantなシグナル」と記述している。この分類は、
 本Decision Recordが確立した製品的解釈（NO_COMMON_DIRECTIONは正当な結果）
 とは意味論的に緊張関係にある。
 
-**分類: DOC CLARIFICATION REQUIRED**（本PRでは変更しない）。将来、
-Section 2.1-3のIMPLEMENTATION GAPが実装レベルで解消され、
-`direction_filter_unavailable`とNO_COMMON_DIRECTION相当の状態が実際に
-分離された場合、`compass-posthog-query-contract.md` Section 8の
-ERRORバケット分類・SUCCESS/EMPTY/ERROR/OTHER表を合わせて更新する必要が
-ある（FUTURE EVENT/STATE CHANGE REQUIREDへ格上げされる）。Analytics
+**分類: DOC CLARIFICATION REQUIRED → 完了**（Section 2.1-3で確認した通り、
+`direction_filter_unavailable`とNO_COMMON_DIRECTION相当の状態の分離自体は
+PR #2499・#2500で実装済みであり、`compass-posthog-query-contract.md`の
+`VALID_NO_DIRECTION`バケットがこれを反映している）。
+
+**新たな分類（Monthly Fallback、Section 2.2、[#2508](compass-product-direction-decision.md)
+§24）: REQUIRED、本PRでは変更しない**。Section 2.2が定義するCommon
+DirectionとMonthly Fallback Directionの区別は、現行Analytics Contractの
+どのバケット・イベントにもまだ表現されていない（Monthly Fallback自体が
+Section 2.1-3の通り未実装であるため）。将来Monthly Fallbackが実装される
+際は、`compass-posthog-query-contract.md`のバケット定義・KPI定義を
+Common/Fallbackの区別を反映する形で更新する必要がある
+（[#2508](compass-product-direction-decision.md)§27 PR-4）。Analytics
 instrumentation・イベント・プロパティは本PRでは一切変更しない。
 
 ### 2.1-7 Ranking Boundary
@@ -305,6 +343,150 @@ Direction availability policyはRecommendation Rankingより前段・別関心�
 実装手順・PR分割計画は本書（Product Contract）では管理しない
 （責務境界、および[#2497](../audit/compass-direction-availability-product-decision.md)
 「Future PR Plan」を参照——実装計画はdocs/audit/配下の監査記録が正本）。
+
+---
+
+## 2.2 Monthly Fallback（Option C、Decision Record）
+
+> **Status: CANONICAL PRODUCT DIRECTION（CONTRACT TARGET、未実装）**
+
+### Decision
+
+[#2508](compass-product-direction-decision.md)（Mother Ship Product
+Decision Record）が確定した:
+
+```
+Final Product Promise: B — Actionable Monthly Direction
+Final Direction Logic:  C — Monthly Fallback
+Fallback adopted:       YES
+Fallback type:          MONTHLY（annualではない）
+```
+
+本Sectionは、この決定が定めるCompass Product Promiseの内容を確定する。
+**実装は本書の対象外**——Section 2.1-3が記録する通り、Monthly Fallback
+自体は本書執筆時点でまだ実装されていない。
+
+### 2.2-1 三種類の結果（優先順位順）
+
+Compassの月次方向解釈は、以下の優先順位で解決される（CONTRACT TARGET）:
+
+```
+1. COMMON DIRECTION（最優先、Section 2.1由来、不変）
+   条件: 年盤の吉方位集合と月盤の吉方位集合の交差が空でない
+   結果: その交差（年盤・月盤が共通して支持する方位）を示す
+
+2. MONTHLY FALLBACK DIRECTION（新規、本Section）
+   条件: 1の交差が空集合、かつ月盤単独の吉方位集合（monthly_lucky_directions()、
+         #2506）が空でない
+   結果: 月盤単独の吉方位を示す
+
+3. NO_COMMON_DIRECTION（narrowed、Section 2.1-1）
+   条件: 1・2のいずれも空集合
+   結果: 方向の参考情報がない旨を示した上で、purposeから参拝候補を示す
+         （Section 2.1-5のOPEN DECISIONに従う、変更なし）
+```
+
+### 2.2-2 COMMON DIRECTIONの定義（不変）
+
+年盤信号と月盤信号の**両方**が支持する方位。これは既存の最上位結果であり、
+Monthly Fallbackの導入によってその意味を弱めない。**Monthly Fallbackを
+COMMON DIRECTIONと呼んではならない**——両者は明確に異なる強度の主張である。
+
+### 2.2-3 MONTHLY FALLBACK DIRECTIONの定義（新規）
+
+年盤∩月盤の交差が空集合であるが、月盤単独の吉方位（今月固有の信号）は
+存在する場合の結果。
+
+明示的に:
+
+- これは年盤・月盤の**合意ではない**——年盤の裏付けを持たない
+- これは**今月固有**（target-month-specific）の参考情報である——Section 4の
+  MONTH時間モデルの粒度を維持したまま提供される（Section 2.2-6のAnnual
+  Fallback不採用理由も参照）
+- これは**正当な結果**であり、エラーではない
+- Fallbackの発生条件は決定論的である（Section 2.2-5）
+- **エラーとして扱ってはならない**
+
+### 2.2-4 NO_COMMON_DIRECTIONの narrowing（Section 2.1-1参照）
+
+Section 2.1-1が定義するNO_COMMON_DIRECTIONのトリガー条件は、本Sectionに
+より narrowing される:
+
+```
+旧トリガー（#2498時点）: 年盤∩月盤の交差が空集合
+新トリガー（本Section）: 年盤∩月盤の交差が空集合 AND 月盤単独の吉方位も空集合
+```
+
+測定された頻度（[#2507](../audit/compass-monthly-fallback-availability.md)）:
+
+```
+Direction Availability（Option C）: 96.9%（942/972）
+  内訳: 520（strict、交差が空でない）+ 422（fallback recovered）
+Fallback activation rate:            46.5%（452/972、交差が空だった月）
+Fallback recovery rate:              93.4%（422/452）
+Residual no_common_direction:         3.1%（30/972）
+```
+
+NO_COMMON_DIRECTIONは、narrowing後も引き続き**正当な結果**（Section 2.1
+のDecision、不変）である。頻度が46.5%から3.1%へ減少することは、この分類
+自体の性質（技術的エラーではない）を変えない。
+
+### 2.2-5 決定論性（Determinism）
+
+同一の有効な入力（同一birthdate、同一target_date、同一計算バージョン）は、
+常に同一の分類（COMMON / MONTHLY FALLBACK / NO_COMMON_DIRECTION）と同一の
+参考方位を返さなければならない。ユーザー単位の隠れたヒューリスティクスや
+非決定的な挙動を導入してはならない。
+
+### 2.2-6 Annual Fallback（Option D）を採用しない理由
+
+[#2508](compass-product-direction-decision.md)§18で確定した通り、Annual
+Fallback（Option D、97.5%、Cより+0.6pt）は不採用とする。Cとの可用性差
+0.6ptは、(a) 既存Runtime Contract（`compass-mvp-runtime-contract.md`
+Section 5）が明示的に禁止する年盤単独出力の許可、(b) Section 4が確定する
+MONTH時間モデルの「今月」粒度の放棄、を正当化しない。Monthly Fallbackは
+年盤単独結果を採用せず、月盤単独結果のみを採用する。
+
+### 2.2-7 表示上の正直さ（Signal-to-Explanation Ruleとの整合）
+
+Section 8のSignal-to-Explanation Ruleに基づき、Monthly Fallback
+Directionを**年盤・月盤の合意であるかのように表示してはならない**。
+COMMON DIRECTIONとMONTHLY FALLBACK DIRECTIONは、ユーザー向け説明において
+区別可能でなければならない（最終UIコピーは別途Frontend実装PR、
+[#2508](compass-product-direction-decision.md)§25・§27 PR-3で確定する。
+本書は原則のみを定める）。
+
+### 2.2-8 Concierge / Ranking境界（不変）
+
+Section 2.1-4・2.1-7が確立した境界は、Monthly Fallbackにも同様に適用
+される:
+
+```
+Concierge挙動:        変更なし（`kyusei.py`のシグネチャ・返り値契約は不変。
+                       monthly_lucky_directions()もCompass専用の再利用に
+                       留め、Concierge側の呼び出し箇所には影響しない）
+Recommendation Ranking: 変更なし
+```
+
+Monthly Fallbackのポリシー（COMMON/FALLBACK/NO_COMMON_DIRECTIONの判定
+ロジック）は、実装される場合、Compass Layer B（`compass_runtime.py`）に
+閉じ込める。`kyusei.py`自体（`monthly_lucky_directions()`含む）は
+「製品文脈を持たない純粋な計算モジュール」（Section 1）のままとし、
+fallback判定ロジックを持たせない。
+
+### 2.2-9 Shrine Recommendation境界（変更なし）
+
+Section 2.1-5が記録するOPEN PRODUCT DECISION（方向が定まらない月の神社
+推薦の扱い）は、本Sectionの対象外であり、変更しない。Direction
+Availability（96.9%）はRecommendation Availabilityを意味しない
+（[#2508](compass-product-direction-decision.md)§12・§16の境界をそのまま
+継承する）。
+
+### 2.2-10 Option E（変更なし）
+
+Option E（Weighted Score Model）は[#2508](compass-product-direction-decision.md)
+§14により`OPTIONAL FUTURE EVOLUTION`として deferred されており、本書は
+Score Contractを新設しない。
 
 ---
 
@@ -537,6 +719,9 @@ Compassの計測契約は、別途Analytics契約PRで定義する。本書で�
 - `docs/audit/concierge-compass-product-responsibility-contract.md`
 - `docs/audit/compass-direction-filter-unavailable-root-cause.md`
 - `docs/audit/compass-direction-availability-product-decision.md`
+- `docs/product/compass-product-direction-decision.md`
+- `docs/audit/compass-monthly-direction-calculation-contract.md`
+- `docs/audit/compass-monthly-fallback-availability.md`
 - `docs/product/concierge-first-final-spec.md`
 - `docs/product/concierge-modes.md`
 - `docs/product/compat-mode-ui-flow.md`
