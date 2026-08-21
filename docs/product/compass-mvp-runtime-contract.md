@@ -2,7 +2,7 @@
 >
 > 本ドキュメントは、Visit Compass MVPを実行するために必要な最小Runtime入出力契約を管理する正本文書である。
 >
-> 本書は`docs/product/compass-product-contract.md`（PR #2475）を上位の正本とし、その定めるMaster Principle・Product Promise・Authority境界・Signal-to-Explanation Ruleに従属する。前回監査群（`docs/audit/premium-visit-compass-recommendation-feasibility.md`・`docs/audit/premium-visit-compass-time-model-contract.md`）はここでは補助的な証拠として引用するのみとし、内容が`compass-product-contract.md`と矛盾する場合は`compass-product-contract.md`を優先する。
+> 本書は`docs/product/compass-product-contract.md`（PR #2475、Section 2.2はPR #2508時点）を上位の正本とし、その定めるMaster Principle・Product Promise・Authority境界・Signal-to-Explanation Ruleに従属する。前回監査群（`docs/audit/premium-visit-compass-recommendation-feasibility.md`・`docs/audit/premium-visit-compass-time-model-contract.md`）はここでは補助的な証拠として引用するのみとし、内容が`compass-product-contract.md`と矛盾する場合は`compass-product-contract.md`を優先する。Section 5・Section 8のMonthly Fallback関連改訂は`docs/product/compass-product-direction-decision.md`（PR #2508、Mother Ship Product Decision Record）のFinal Direction Logic（Option C）をCONTRACT TARGETとして整合させたものであり、実装は含まない。
 >
 > 本書はDocsのみのPRとして作成された。コード・Model・Migration・Serializer・API Endpoint・候補フィルタ・Recommendation統合・UI・Premium Gate・Analyticsの実装は一切含まない。記載内容はRuntime契約の設計であり、実装済みであることを意味しない。
 
@@ -220,10 +220,17 @@ type CompassDirectionRuntime = {
   targetYear: number;           // 節気年（kyusei.pyのki_year）
   solarMonthIndex: number;      // 節気月インデックス（1-12、_solar_month_index()由来）
   referenceDirections: string[]; // 8方位ラベルの配列（例: ["北西", "西"]）
-  calculationMethod: "annual_monthly_kyusei_v1";
+  calculationMethod: "annual_monthly_kyusei_v1" | "monthly_kyusei_v1"; // CONTRACT TARGET: 第二値はSection 5-1参照、未実装
   note: string;                 // 既存 DIRECTION_REFERENCE_NOTE と同型の安全な注記文言
 };
 ```
+
+**`calculationMethod`の型改訂（CONTRACT TARGET、未実装）**: `"monthly_kyusei_v1"`は
+`monthly_lucky_directions()`（#2506でkyusei.pyへ追加済み、Section 5-1参照）が
+既に返す固定値である。本書はこれを`CompassDirectionRuntime.calculationMethod`の
+正当な値として受理する契約に改訂する。Schemaのフィールド自体（型・個数）は
+変更しない——`calculationMethod`という既存フィールドが取りうる値の集合を
+拡張するのみである。
 
 ### 年盤情報
 
@@ -263,9 +270,80 @@ Compassの主要経路は、`backend/temples/domain/kyusei.py:239` `planned_visi
 [#2496](../audit/compass-direction-filter-unavailable-root-cause.md)・
 [#2497](../audit/compass-direction-availability-product-decision.md)）。
 この場合の意味論上の扱い（`NO_COMMON_DIRECTION`、入力無効時のfail-safeとの
-区別）はSection 8-1・8-2を正本とする。本Sectionが定義する
-`CompassDirectionRuntime`型自体のSchemaは、この区別のために変更しない
-（型を返すか`None`を返すかの二値のままとする）。
+区別）はSection 8-1・8-2を正本とする。空集合の場合に月盤単独結果を試みる
+Fallback精度についてはSection 5-1（CONTRACT TARGET、未実装）を参照。
+本Sectionが定義する`CompassDirectionRuntime`型自体のSchemaは、この区別の
+ために変更しない（型を返すか`None`を返すかの二値のままとする——
+Fallback導入後も三値目（Fallback結果）は同じ型形状で表現される、
+Section 5-1参照）。
+
+---
+
+### 5-1. Fallback Precedence（Monthly Fallback、CONTRACT TARGET、未実装）
+
+> `docs/product/compass-product-contract.md` Section 2.2、
+> [#2508](../product/compass-product-direction-decision.md) Final Direction
+> Logic（Option C）が確定した契約。**本Sectionは契約のみを定義し、
+> 実装は行わない**——現行`compass_runtime.py`の
+> `build_compass_direction_runtime()`は、この精度をまだ実装していない
+> （Section 8-1参照）。
+
+**判定順序（CONTRACT TARGET）**:
+
+```
+STEP 1: annual_lucky_directions() で年盤の吉方位集合を計算する
+STEP 2: monthly_lucky_directions() で月盤単独の吉方位集合を計算する
+        （既存 planned_visit_lucky_directions() が内部で行っている月盤計算を
+        そのまま公開関数として呼び出す、#2506で追加済み）
+STEP 3: 年盤集合と月盤集合の交差を計算する
+STEP 4: 交差が空でない場合:
+          referenceDirections = 交差
+          calculationMethod   = "annual_monthly_kyusei_v1"
+          （= COMMON DIRECTION、Section 2.2-2、既存Option Bの経路と同一）
+STEP 5: 交差が空、かつ月盤単独集合が空でない場合:
+          referenceDirections = 月盤単独の吉方位集合
+          calculationMethod   = "monthly_kyusei_v1"
+          （= MONTHLY FALLBACK DIRECTION、Section 2.2-3、新規）
+STEP 6: 交差・月盤単独集合ともに空の場合:
+          NoCommonDirectionResult相当を返す
+          （= narrowed NO_COMMON_DIRECTION、Section 2.2-4）
+```
+
+**`referenceDirections`の意味論（source依存、CONTRACT TARGET）**:
+
+`referenceDirections`は、STEP 4とSTEP 5とで異なる由来のデータを保持する
+——フィールド自体は同じ形（8方位ラベルの配列）だが、STEP 4では「年盤・月盤
+の両方が支持する方位」、STEP 5では「月盤のみが支持する方位」を意味する。
+この由来の違いは`calculationMethod`の値（`"annual_monthly_kyusei_v1"`
+vs `"monthly_kyusei_v1"`）によってのみ判別可能であり、`referenceDirections`
+自体の形からは判別できない。
+
+**Fallback source/metadata（機構の決定）**:
+
+`calculationMethod`が既に2つの異なる固定値（STEP 4/STEP 5で相異なる）を
+とるため、**COMMON DIRECTIONとMONTHLY FALLBACK DIRECTIONを区別するための
+新規フィールドは不要と判定する**。`directionSource`や`fallbackUsed`等の
+追加フィールドを新設せず、既存の`calculationMethod`をsource判別の唯一の
+機構として採用する。これは、1つの文字列へ複数の独立した意味を詰め込む
+「overloaded string」とは異なる——`calculationMethod`は元々「どの計算方法
+で導出されたか」を表すフィールドであり、Fallback有無もまさに「どの計算
+方法か」の一種であるため、意味的に整合する。
+
+**決定論性（Determinism、CONTRACT TARGET）**:
+
+同一の`birthdate`・同一の`target_date`・同一の計算バージョンであれば、
+STEP 1-6は常に同一の分類（COMMON / MONTHLY FALLBACK / NO_COMMON_DIRECTION）
+と同一の`referenceDirections`を返さなければならない。リクエストごとに
+異なる結果を返すランダム性、ユーザー単位の隠れたヒューリスティクスは
+導入しない。
+
+**Concierge / Ranking境界（不変）**:
+
+Fallback Precedenceは`compass_runtime.py`（Compass Layer B）にのみ実装
+されるべきポリシーであり、`kyusei.py`（`monthly_lucky_directions()`含む）
+のシグネチャ・返り値契約を変更しない。Recommendation Rankingのスコアリング
+・順位付け・Reason authorityのいずれにも影響しない
+（`compass-product-contract.md` Section 2.2-8）。
 
 ---
 
@@ -332,7 +410,9 @@ type CompassRecommendationHandoffContext = {
 
 > **Status: Active（Section 8-1・8-2で改訂、[compass-product-contract.md](compass-product-contract.md)
 > Section 2.1 Decision Record、[#2496](../audit/compass-direction-filter-unavailable-root-cause.md)・
-> [#2497](../audit/compass-direction-availability-product-decision.md)の監査結論を反映）**
+> [#2497](../audit/compass-direction-availability-product-decision.md)の監査結論を反映。
+> Bグループのトリガー条件はSection 2.2・[#2508](../product/compass-product-direction-decision.md)
+> によりCONTRACT TARGETとしてnarrowing済み——Section 8-1参照）**
 
 以下の表は、原因を**A. 入力/Runtimeが無効または利用不可**と
 **B. 入力・計算は有効だが結果として共通方位が存在しない（正当な結果）**
@@ -350,29 +430,64 @@ type CompassRecommendationHandoffContext = {
 | `target_date`が不正 | 未指定として扱わず（Section 1参照）、方向コンテキストを省略する。クライアントの不正値をtodayへ黙って差し替えない |
 | 節気月境界付近 | 特別なフォールバックを設けない。境界を跨いだ結果の違いはそのまま返す（Section 1参照） |
 
-### B. VALID NO-COMMON-DIRECTION RESULT（新規、Section 8-1で追加）
+### B. VALID NO-COMMON-DIRECTION RESULT（narrowed、Section 8-1で追加・改訂）
 
 | ケース | 挙動 |
 |---|---|
-| 生年月日・`target_date`とも有効で、方位計算（年盤・月盤）自体も正常に完了したが、年盤の吉方位集合と月盤の吉方位集合の交差が空集合 | **エラーではない。正当なCompass結果**（`compass-product-contract.md` Section 2.1が定義する`NO_COMMON_DIRECTION`、概念上の識別子）として扱う。デフォルト方位を代入せず、かつ「入力を確認してください」という誘導も行わない（Section 8-2） |
+| 生年月日・`target_date`とも有効で、方位計算（年盤・月盤）自体も正常に完了したが、年盤の吉方位集合と月盤の吉方位集合の交差が空集合、**かつ月盤単独の吉方位集合（`monthly_lucky_directions()`）も空集合**（CONTRACT TARGET、Section 5-1・Section 8-1） | **エラーではない。正当なCompass結果**（`compass-product-contract.md` Section 2.1・2.2-4が定義するnarrowed `NO_COMMON_DIRECTION`、概念上の識別子）として扱う。デフォルト方位を代入せず、かつ「入力を確認してください」という誘導も行わない（Section 8-2） |
+
+### B'. VALID MONTHLY FALLBACK RESULT（新規、CONTRACT TARGET、未実装、Section 8-1参照）
+
+| ケース | 挙動 |
+|---|---|
+| 生年月日・`target_date`とも有効で、年盤の吉方位集合と月盤の吉方位集合の交差が空集合だが、月盤単独の吉方位集合は空でない（Section 5-1 STEP 5） | **エラーではない。正当なCompass結果**（`compass-product-contract.md` Section 2.2-3が定義するMONTHLY FALLBACK DIRECTION）として扱う。年盤・月盤の合意として表示してはならない（Section 5-1、Signal-to-Explanation Rule）。デフォルト方位を代入せず、「入力を確認してください」という誘導も行わない（Bグループと同じくSection 8-2の原則を適用する） |
 
 **共通原則**: いかなるフォールバックも、裏付けのない占術/方位の主張を生成してはならない（`compass-product-contract.md` Section 9の絶対的制約を継承）。この原則はA・Bいずれのケースにも等しく適用され、既存のfail-safe保護（Aグループの5行）は本改訂によって一切弱められない。
 
 ### 8-1 現行実装とのギャップ（IMPLEMENTATION GAP）
 
-現行実装（`backend/temples/services/compass_runtime.py`の`build_compass_direction_runtime()`）は、AグループとBグループのいずれのケースも同一の`None`を返し、呼び出し元（`compass_recommendation_orchestrator.py`）はこれを同一の`STATE_DIRECTION_FILTER_UNAVAILABLE`へマッピングする。**この表がA/Bを分けて定義するのは契約上の意味論の区別であり、現時点の実装がこの区別を状態として表現できているという意味ではない。**
+> **Status: A/B区別はCLOSED（#2499）。Fallback（B'）はOPEN（[#2508](../product/compass-product-direction-decision.md)、CONTRACT TARGET）**
 
-将来この区別を実装レベルで表現する場合、Bグループに対応する新しい状態名（概念上の例: `NO_COMMON_DIRECTION`、実際のAPI/state値の名称は未確定の**CONTRACT TARGET**）を導入するかどうかは別途実装PRで判断する。本書は現時点でその状態名・Schema変更を確定しない。`CompassDirectionRuntime`型自体（Section 5のSchema）は本改訂で変更しない。
+**A/Bグループの区別（本Section表）— 実装済み**: 現行実装
+（`backend/temples/services/compass_runtime.py`の
+`build_compass_direction_runtime()`）は、AグループとBグループを既に区別
+している。Aグループでは`None`を、Bグループでは`NoCommonDirectionResult()`
+（`None`とは異なる専用マーカー型）を返し、呼び出し元
+（`compass_recommendation_orchestrator.py`）はこれをそれぞれ
+`STATE_DIRECTION_FILTER_UNAVAILABLE`・`STATE_NO_COMMON_DIRECTION`
+（`"no_common_direction"`）という別々のstateへマッピングする。本書が
+以前記録していた「両者が同一のNoneを返す」というギャップは、この実装
+（PR #2499）により解消済みである。
 
-### 8-2 リトライ・入力訂正の示唆に関する原則（Bグループ限定）
+**B'グループ（Monthly Fallback）— 未実装、CONTRACT TARGET**:
+`build_compass_direction_runtime()`は、年盤∩月盤の交差が空集合の場合、
+月盤単独の吉方位（`monthly_lucky_directions()`、#2506でkyusei.pyへ追加
+済み）を試みることなく、無条件に`NoCommonDirectionResult()`を返す。
+すなわち、現行実装のBグループ（`no_common_direction`）は、Section 2.2-4
+がnarrowingする前の旧トリガー条件（交差が空集合のみ）のままである。
+Section 5-1が定義するFallback Precedence（STEP 1-6）・本Sectionの
+Bグループ行の narrowed トリガー条件・B'グループ行は、いずれも**契約上の
+意味論の区別であり、現時点の実装がこれを実装しているという意味ではない**。
 
-Bグループ（`NO_COMMON_DIRECTION`）に該当する結果について:
+将来この区別を実装レベルで表現する場合、B'グループに対応する新しい状態名
+（概念上の例: `monthly_fallback_direction`、実際のAPI/state値の名称は
+未確定の**CONTRACT TARGET**）を導入するかどうかは別途実装PR
+（[#2508](../product/compass-product-direction-decision.md)§27 PR-2）で
+判断する。本書は現時点でその状態名を確定しない。`CompassDirectionRuntime`
+型自体（Section 5のSchema）は、`calculationMethod`の受理値集合の拡張
+（Section 5冒頭）を除き、本改訂で変更しない——新しいフィールドは追加しない。
 
-- 再試行を主要な解決策として提示してはならない。同一本命星・同一対象月であれば、再計算しても交差は決定的に同一である。
-- 生年月日・originの訂正を促してはならない——これらはBグループの前提条件として既に有効である。
-- Aグループ（真に入力が無効）とBグループを、ユーザーへの案内文言レベルでも混同してはならない。
+### 8-2 リトライ・入力訂正の示唆に関する原則（B・B'グループ）
 
-（詳細は`compass-product-contract.md` Section 2.1-2を正本とする。本書はRuntime Contractとしての整合性確認のみを目的とし、UX文言の重複管理は行わない。）
+Bグループ（narrowed `NO_COMMON_DIRECTION`）・B'グループ（`MONTHLY
+FALLBACK DIRECTION`）のいずれに該当する結果についても:
+
+- 再試行を主要な解決策として提示してはならない。同一本命星・同一対象月であれば、再計算しても交差・月盤単独集合は決定的に同一である（Section 5-1 決定論性）。
+- 生年月日・originの訂正を促してはならない——これらはB・B'グループの前提条件として既に有効である。
+- Aグループ（真に入力が無効）とB・B'グループを、ユーザーへの案内文言レベルでも混同してはならない。
+- **B'グループ（Monthly Fallback）はBグループと同じ「エラーではない」トーンを共有しつつも、年盤・月盤の合意（COMMON DIRECTION）であるかのように表示してはならない**（`compass-product-contract.md` Section 2.2-7、Signal-to-Explanation Rule）。
+
+（詳細は`compass-product-contract.md` Section 2.1-2・2.2を正本とする。本書はRuntime Contractとしての整合性確認のみを目的とし、UX文言の重複管理は行わない。）
 
 ---
 
@@ -416,7 +531,11 @@ Master Principle・Product Promise・Authority境界・Signal-to-Explanation Rul
 - `docs/audit/premium-visit-compass-time-model-contract.md`
 - `docs/audit/compass-direction-filter-unavailable-root-cause.md`
 - `docs/audit/compass-direction-availability-product-decision.md`
+- `docs/product/compass-product-direction-decision.md`
+- `docs/audit/compass-monthly-direction-calculation-contract.md`
+- `docs/audit/compass-monthly-fallback-availability.md`
 - `backend/temples/domain/kyusei.py`
+- `backend/temples/services/compass_runtime.py`
 - `backend/temples/services/direction_reference.py`
 - `packages/shared/userOrigin.ts`
 - `docs/core/direction-response-contract.md`
