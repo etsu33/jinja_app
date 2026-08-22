@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import ShrineCardCompact from "../ShrineCardCompact";
+import ShrineCardCompact, { formatDistance } from "../ShrineCardCompact";
 
 describe("ShrineCardCompact", () => {
   it("shows address when address is present", () => {
@@ -29,6 +29,39 @@ describe("ShrineCardCompact", () => {
 
     expect(screen.queryByText(/m$/)).not.toBeInTheDocument();
     expect(screen.queryByText(/km$/)).not.toBeInTheDocument();
+  });
+
+  describe("distanceLabel (Compass Result Experience audit Section 26-3, opt-in only)", () => {
+    it("renders distanceLabel alongside address, without disturbing the existing address/distanceM row", () => {
+      render(
+        <ShrineCardCompact
+          name="検証神社"
+          address="東京都千代田区1-1-1"
+          distanceM={500}
+          distanceLabel="約1.2km"
+        />,
+      );
+
+      expect(screen.getByText("約1.2km")).toBeInTheDocument();
+      // The existing address-vs-distanceM row is unchanged: address shown,
+      // the plain "500m" text (derived from distanceM, not distanceLabel)
+      // still does not appear, because address is present.
+      expect(screen.getByText("東京都千代田区1-1-1")).toBeInTheDocument();
+      expect(screen.queryByText("500m")).not.toBeInTheDocument();
+    });
+
+    it("omits the chip when distanceLabel is not provided -- existing callers (e.g. Concierge) are unaffected", () => {
+      render(<ShrineCardCompact name="検証神社" address="東京都千代田区1-1-1" distanceM={500} />);
+
+      expect(screen.queryByText("約1.2km")).not.toBeInTheDocument();
+      expect(screen.queryByText(/km$/)).not.toBeInTheDocument();
+    });
+
+    it("does not fabricate a chip for null/undefined distance (formatDistance fail-safe)", () => {
+      expect(formatDistance(null)).toBeNull();
+      expect(formatDistance(undefined)).toBeNull();
+      expect(formatDistance(NaN)).toBeNull();
+    });
   });
 
   it("renders a single reason block, not tags", () => {

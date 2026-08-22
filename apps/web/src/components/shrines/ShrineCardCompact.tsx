@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 
-function formatDistance(m?: number | null) {
+export function formatDistance(m?: number | null) {
   if (typeof m !== "number" || !Number.isFinite(m)) return null;
   if (m < 1000) return `${Math.round(m)}m`;
   return `${(m / 1000).toFixed(1)}km`;
@@ -34,6 +34,17 @@ export type ShrineCardCompactProps = {
   trustMetadata?: ShrineCardCompactTrustMetadata | null;
   tags?: string[];
   distanceM?: number | null;
+  // Opt-in only (docs/audit/compass-result-experience.md Section 26-3,
+  // P2 finding): a pre-formatted, already-existing-data comparison label
+  // (e.g. "約1.2km") shown near the shrine name, independent of the
+  // address/distanceM either-or row below. Deliberately a separate prop
+  // from distanceM -- that field already drives the existing address-vs-
+  // distance fallback (line ~107) used by every current caller (Concierge
+  // included); adding a render path gated on distanceM alone would change
+  // Concierge's own cards wherever it already passes distanceM. This prop
+  // defaults to null and no caller other than Compass sets it, so every
+  // other card (Concierge) renders byte-for-byte unchanged.
+  distanceLabel?: string | null;
   onDetailClick?: () => void;
 };
 
@@ -47,6 +58,7 @@ export default function ShrineCardCompact({
   trustMetadata = null,
   tags: _tags = [],
   distanceM = null,
+  distanceLabel = null,
   onDetailClick,
 }: ShrineCardCompactProps) {
   const distText = formatDistance(distanceM);
@@ -70,8 +82,13 @@ export default function ShrineCardCompact({
         <div className="min-w-0 flex-1">
           <div className="space-y-1.5">
             <h3 className="truncate text-sm font-semibold text-[var(--kt-color-text-primary)]">{name}</h3>
-            {visibleTrustLabels.length > 0 ? (
+            {visibleTrustLabels.length > 0 || distanceLabel ? (
               <div className="flex flex-wrap gap-1">
+                {distanceLabel ? (
+                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                    {distanceLabel}
+                  </span>
+                ) : null}
                 {visibleTrustLabels.map((label) => (
                   <span
                     key={label}
