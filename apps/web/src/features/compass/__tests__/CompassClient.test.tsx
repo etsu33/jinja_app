@@ -76,6 +76,9 @@ describe("CompassClient", () => {
     expect(await screen.findByText("今月意識したい方向: 北西")).toBeInTheDocument();
     expect(screen.getByText("この方向の参拝候補")).toBeInTheDocument();
     expect(screen.getByText("北西神社")).toBeInTheDocument();
+    // The no_common_direction continuation CTA is specific to that state
+    // and must not appear on a successful result.
+    expect(screen.queryByRole("link", { name: "コンシェルジュで相談する" })).not.toBeInTheDocument();
   });
 
   it("calculationMethodがannual_monthly_kyusei_v1のとき、共通方位の説明文を表示する（fallback文言は出さない）", async () => {
@@ -308,6 +311,16 @@ describe("CompassClient", () => {
     // No direction visual, no recommendation cards -- there is nothing to show.
     expect(screen.queryByText("今月意識したい方向:", { exact: false })).not.toBeInTheDocument();
     expect(screen.queryByText("この方向の参拝候補")).not.toBeInTheDocument();
+
+    // P2 UX fix (docs/audit/compass-result-experience.md Section 26-2):
+    // a legitimate no-direction result must not be a dead end -- exactly
+    // one clear continuation, pointing to the existing /concierge route.
+    const continueLink = screen.getByRole("link", { name: "コンシェルジュで相談する" });
+    expect(continueLink).toBeInTheDocument();
+    expect(continueLink).toHaveAttribute("href", "/concierge");
+    // Retrying identical inputs must never be offered as the (or a) primary CTA.
+    expect(screen.queryByRole("button", { name: /もう一度/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /もう一度/ })).not.toBeInTheDocument();
   });
 
   it("direction_filter_unavailableは引き続き既存のfail-safe文言を表示する", async () => {
@@ -334,6 +347,11 @@ describe("CompassClient", () => {
       screen.getByText("生年月日または出発地点をご確認のうえ、もう一度お試しください。"),
     ).toBeInTheDocument();
     expect(screen.queryByText("今月は方位の参考情報がありません")).not.toBeInTheDocument();
+    // direction_filter_unavailable is a distinct Group A error state --
+    // the no_common_direction continuation CTA must not leak into it
+    // (docs/audit/compass-result-experience.md Section 26-2, Section 11
+    // "error-state separation").
+    expect(screen.queryByRole("link", { name: "コンシェルジュで相談する" })).not.toBeInTheDocument();
   });
 
   it("バックエンドエラー時は落ち着いた文言のエラー状態を表示する", async () => {
