@@ -78,6 +78,84 @@ describe("CompassClient", () => {
     expect(screen.getByText("北西神社")).toBeInTheDocument();
   });
 
+  it("calculationMethodがannual_monthly_kyusei_v1のとき、共通方位の説明文を表示する（fallback文言は出さない）", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        state: "recommendation_success",
+        purpose: "career",
+        direction_context: {
+          targetDate: "2026-09-15",
+          targetYear: 2026,
+          solarMonthIndex: 8,
+          referenceDirections: ["北西"],
+          calculationMethod: "annual_monthly_kyusei_v1",
+          note: "年盤と月盤による参考情報です。日盤は使用していません。",
+        },
+        recommendations: [{ shrine_id: 1, name: "北西神社", reason: "仕事運との一致" }],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<CompassClient />);
+    fillMinimumValidInput();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "今月の方向を確認する" }));
+    });
+
+    expect(
+      await screen.findByText("年盤と月盤の両方で重なる、今月の参考方位です。日盤は使用していません。（参考情報です）"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "年盤と月盤で重なる方位がないため、今月の月盤を参考にした方位です。日盤は使用していません。（参考情報です）",
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it("calculationMethodがmonthly_kyusei_v1のとき、月盤fallbackの説明文を表示し、共通方位であるかのような文言は出さない", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        state: "recommendation_success",
+        purpose: "career",
+        direction_context: {
+          targetDate: "2026-08-20",
+          targetYear: 2026,
+          solarMonthIndex: 7,
+          referenceDirections: ["南東"],
+          calculationMethod: "monthly_kyusei_v1",
+          note: "年盤と月盤による参考情報です。日盤は使用していません。",
+        },
+        recommendations: [{ shrine_id: 2, name: "南東神社", reason: "仕事運との一致" }],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<CompassClient />);
+    fillMinimumValidInput();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "今月の方向を確認する" }));
+    });
+
+    expect(
+      await screen.findByText(
+        "年盤と月盤で重なる方位がないため、今月の月盤を参考にした方位です。日盤は使用していません。（参考情報です）",
+      ),
+    ).toBeInTheDocument();
+    // Must never claim annual/monthly agreement for a monthly-only result
+    // (Product Contract Section 2.2-7, audit Section 9: SEMANTICALLY MISLEADING).
+    expect(
+      screen.queryByText("年盤と月盤の両方で重なる、今月の参考方位です。日盤は使用していません。（参考情報です）"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("年盤と月盤による参考情報です。日盤は使用していません。（参考情報です）")).not.toBeInTheDocument();
+    // Direction visual and recommendation flow must remain unaffected.
+    expect(screen.getByText("今月意識したい方向: 南東")).toBeInTheDocument();
+    expect(screen.getByText("南東神社")).toBeInTheDocument();
+  });
+
   it("「その他の目的」から選んでも送信payloadは折りたたみ表示に影響されず正しいslugになる（Purpose UI Polish回帰確認）", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -164,7 +242,16 @@ describe("CompassClient", () => {
       fireEvent.click(screen.getByRole("button", { name: "今月の方向を確認する" }));
     });
 
-    expect(await screen.findByText("今月は年盤と月盤で重なる方位がありません")).toBeInTheDocument();
+    expect(await screen.findByText("今月は方位の参考情報がありません")).toBeInTheDocument();
+    // Narrowed residual semantics (#2508 Option C): must communicate that
+    // BOTH the common (annual∩monthly) direction and the monthly-only
+    // fallback were checked and came up empty -- not just the old,
+    // pre-fallback "annual and monthly didn't agree" framing.
+    expect(
+      screen.getByText(
+        "生年月日・出発地点はどちらも問題ありません。年盤と月盤の共通方位も、今月の月盤単独の参考方位も、今月はいずれもありませんでした。",
+      ),
+    ).toBeInTheDocument();
     // Must not imply the failure is a calculation error or an input mistake.
     expect(
       screen.queryByText("生年月日または出発地点をご確認のうえ、もう一度お試しください。"),
@@ -198,7 +285,7 @@ describe("CompassClient", () => {
     expect(
       screen.getByText("生年月日または出発地点をご確認のうえ、もう一度お試しください。"),
     ).toBeInTheDocument();
-    expect(screen.queryByText("今月は年盤と月盤で重なる方位がありません")).not.toBeInTheDocument();
+    expect(screen.queryByText("今月は方位の参考情報がありません")).not.toBeInTheDocument();
   });
 
   it("バックエンドエラー時は落ち着いた文言のエラー状態を表示する", async () => {
