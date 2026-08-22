@@ -18,7 +18,12 @@ import CompassDirectionVisual from "./components/CompassDirectionVisual";
 import CompassOriginSummary from "./components/CompassOriginSummary";
 import CompassPurposeSelector from "./components/CompassPurposeSelector";
 import CompassRecommendationsSection from "./components/CompassRecommendationsSection";
-import type { CompassPurpose, CompassRecommendationsResponse, CompassUiState } from "./types";
+import type {
+  CompassDirectionRuntime,
+  CompassPurpose,
+  CompassRecommendationsResponse,
+  CompassUiState,
+} from "./types";
 
 // Compass lifecycle analytics (PR-A,
 // docs/audit/compass-analytics-contract-readiness.md §6-10). Only the
@@ -37,6 +42,20 @@ type CompassResultState =
 
 function formatTargetMonth(date: Date): string {
   return `${date.getFullYear()}年${date.getMonth() + 1}月`;
+}
+
+// Product Contract Section 2.2-7 / Runtime Contract Section 5-1 (#2508
+// Option C, audited in docs/audit/compass-monthly-fallback-ui-analytics-boundary.md
+// Section 9): a Monthly Fallback direction must never be presented as if it
+// were annual/monthly agreement. The backend's direction_context.note is a
+// fixed constant identical for both calculationMethod values (Signal-to-
+// Explanation Rule violation for the fallback case), so this copy is
+// derived here from calculationMethod instead of rendering note directly.
+function getDirectionNote(calculationMethod: CompassDirectionRuntime["calculationMethod"]): string {
+  if (calculationMethod === "monthly_kyusei_v1") {
+    return "年盤と月盤で重なる方位がないため、今月の月盤を参考にした方位です。日盤は使用していません。";
+  }
+  return "年盤と月盤の両方で重なる、今月の参考方位です。日盤は使用していません。";
 }
 
 export default function CompassClient() {
@@ -218,7 +237,9 @@ export default function CompassClient() {
         <DetailSection title="今月、意識したい方向" variant="secondary">
           <div className="space-y-3">
             <CompassDirectionVisual referenceDirections={directionContext.referenceDirections} />
-            <p className="text-center text-xs text-[var(--kt-color-text-muted)]">{directionContext.note}（参考情報です）</p>
+            <p className="text-center text-xs text-[var(--kt-color-text-muted)]">
+              {getDirectionNote(directionContext.calculationMethod)}（参考情報です）
+            </p>
           </div>
         </DetailSection>
       ) : null}
@@ -232,9 +253,9 @@ export default function CompassClient() {
       ) : null}
 
       {uiState === "no_common_direction" ? (
-        <DetailSection title="今月は年盤と月盤で重なる方位がありません" variant="tertiary">
+        <DetailSection title="今月は方位の参考情報がありません" variant="tertiary">
           <p className="text-sm leading-6 text-[var(--kt-color-text-secondary)]">
-            生年月日・出発地点はどちらも問題ありません。年盤と月盤がともに支持する方位が今月はなかった、という結果です。
+            生年月日・出発地点はどちらも問題ありません。年盤と月盤の共通方位も、今月の月盤単独の参考方位も、今月はいずれもありませんでした。
           </p>
         </DetailSection>
       ) : null}
