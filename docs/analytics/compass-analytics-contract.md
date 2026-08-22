@@ -11,7 +11,7 @@ Favorite / Visit / Reflection への source 伝播までを計測する契約。
 |---|---|---|
 | `home_compass_entry_click` | HomeからCompassを開く | `source=home` |
 | `compass_entry` | Compass表示 | `referrer_source=home\|direct` |
-| `compass_result` | Compass request完了 | `result_state`, `purpose`, `origin_mode`, `has_birthdate`, `recommendation_count`, `recommendationInstanceId` |
+| `compass_result` | Compass request完了 | `result_state`, `purpose`, `origin_mode`, `has_birthdate`, `recommendation_count`, `recommendationInstanceId`, `calculationMethod`（新規、任意。COMMON/MONTHLY FALLBACKの識別用segmentation dimension。詳細は`docs/analytics/compass-posthog-query-contract.md` §1.2） |
 
 ## Recommendation attribution
 

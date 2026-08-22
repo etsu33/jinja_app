@@ -116,6 +116,19 @@ export type SearchAnalyticsPayload = {
   has_birthdate?: boolean | null;
   /** Compass lifecycle only (compass_result, recommendation_success). */
   recommendation_count?: number | null;
+  /**
+   * Compass lifecycle only (compass_result). Segmentation dimension only --
+   * distinguishes a COMMON direction (annual∩monthly agreement) from a
+   * MONTHLY FALLBACK direction (monthly-only guidance, no annual
+   * corroboration); see docs/product/compass-product-contract.md Section 2.2
+   * and docs/product/compass-mvp-runtime-contract.md Section 5-1 (#2508
+   * Option C). Mirrors the backend/Runtime Contract value verbatim -- never
+   * renamed to "COMMON"/"FALLBACK" here. `null` (not fabricated) whenever
+   * the result carries no direction_context (e.g. no_common_direction,
+   * direction_filter_unavailable, backend_error) -- absence of a direction
+   * is not itself a calculation method.
+   */
+  calculationMethod?: "annual_monthly_kyusei_v1" | "monthly_kyusei_v1" | null;
   [key: string]: SearchAnalyticsPrimitive;
 };
 

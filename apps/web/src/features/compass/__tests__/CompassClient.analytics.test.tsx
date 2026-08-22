@@ -134,6 +134,7 @@ describe("CompassClient lifecycle analytics", () => {
         has_birthdate: true,
         recommendation_count: 2,
         recommendationInstanceId: "compass01",
+        calculationMethod: "annual_monthly_kyusei_v1",
       });
 
       // PII / data-minimization contract (task §10, §24 of the readiness audit):
@@ -145,6 +146,56 @@ describe("CompassClient lifecycle analytics", () => {
       expect(serialized).not.toMatch(/東京都/);
       expect(serialized).not.toContain("35.6762");
       expect(serialized).not.toContain("139.6503");
+    });
+
+    it("calculationMethodがmonthly_kyusei_v1（Monthly Fallback）のとき、compass_resultにそのままの値を送る（新規eventは作らない）", async () => {
+      // docs/audit/compass-monthly-fallback-ui-analytics-boundary.md Section 13
+      // Classification B: 既存compass_resultへの同一event拡張で足り、専用の
+      // fallback eventは不要と判定済み。
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            state: "recommendation_success",
+            purpose: "career",
+            direction_context: {
+              targetDate: "2026-08-20",
+              targetYear: 2026,
+              solarMonthIndex: 7,
+              referenceDirections: ["南東"],
+              calculationMethod: "monthly_kyusei_v1",
+              note: "note",
+            },
+            recommendation_instance_id: "compass02",
+            recommendations: [{ shrine_id: 3, name: "南東神社", reason: "仕事運との一致" }],
+          }),
+        }),
+      );
+
+      render(<CompassClient />);
+      fillMinimumValidInput();
+      await submit();
+
+      const resultCalls = analyticsMocks.trackSearchEvent.mock.calls.filter(([name]) => name === "compass_result");
+      expect(resultCalls).toHaveLength(1);
+      const [, payload] = resultCalls[0];
+
+      expect(payload).toEqual({
+        result_state: "recommendation_success",
+        purpose: "career",
+        origin_mode: "prefecture",
+        has_birthdate: true,
+        recommendation_count: 1,
+        recommendationInstanceId: "compass02",
+        calculationMethod: "monthly_kyusei_v1",
+      });
+
+      // No new event name is ever used for the fallback case.
+      const eventNames = analyticsMocks.trackSearchEvent.mock.calls.map(([name]) => name);
+      expect(eventNames).not.toContain("compass_monthly_fallback");
+      expect(eventNames.every((name) => name === "compass_entry" || name === "compass_result")).toBe(true);
     });
 
     it("direction_zero_candidatesとdirection_filter_unavailableをresult_stateとして区別する（collapse禁止）", async () => {
@@ -185,8 +236,17 @@ describe("CompassClient lifecycle analytics", () => {
       // recommendation_count must not be fabricated for non-success states.
       const zeroCandidatesPayload = analyticsMocks.trackSearchEvent.mock.calls.find(
         ([name, payload]) => name === "compass_result" && (payload as { result_state: string }).result_state === "direction_zero_candidates",
-      )?.[1] as { recommendation_count: unknown };
+      )?.[1] as { recommendation_count: unknown; calculationMethod: unknown };
       expect(zeroCandidatesPayload.recommendation_count).toBeNull();
+      // direction_context is null for both fixtures above -- calculationMethod
+      // must not be fabricated (task §12: direction_filter_unavailable stays
+      // ERROR, never gets a fake monthly_kyusei_v1 just because Fallback exists).
+      expect(zeroCandidatesPayload.calculationMethod).toBeNull();
+      const unavailablePayload = analyticsMocks.trackSearchEvent.mock.calls.find(
+        ([name, payload]) =>
+          name === "compass_result" && (payload as { result_state: string }).result_state === "direction_filter_unavailable",
+      )?.[1] as { calculationMethod: unknown };
+      expect(unavailablePayload.calculationMethod).toBeNull();
     });
 
     it("no_common_directionとdirection_filter_unavailableをresult_stateとして区別する（collapse禁止）", async () => {
@@ -229,6 +289,15 @@ describe("CompassClient lifecycle analytics", () => {
         .map(([, payload]) => (payload as { result_state: string }).result_state);
 
       expect(resultStates).toEqual(["no_common_direction", "direction_filter_unavailable"]);
+
+      // Neither state carries a direction_context, so calculationMethod must
+      // not be fabricated for either (task §11: no_common_direction stays
+      // VALID_NO_DIRECTION, never gets a fake calculationMethod value).
+      const payloads = analyticsMocks.trackSearchEvent.mock.calls
+        .filter(([name]) => name === "compass_result")
+        .map(([, payload]) => payload as { calculationMethod: unknown });
+      expect(payloads[0].calculationMethod).toBeNull();
+      expect(payloads[1].calculationMethod).toBeNull();
     });
 
     it("invalid_purpose（HTTP 400）をresult_stateとして正しく表す", async () => {
@@ -264,7 +333,11 @@ describe("CompassClient lifecycle analytics", () => {
 
       const resultCalls = analyticsMocks.trackSearchEvent.mock.calls.filter(([name]) => name === "compass_result");
       expect(resultCalls).toHaveLength(1);
-      expect(resultCalls[0][1]).toMatchObject({ result_state: "backend_error", recommendation_count: null });
+      expect(resultCalls[0][1]).toMatchObject({
+        result_state: "backend_error",
+        recommendation_count: null,
+        calculationMethod: null,
+      });
     });
 
     it("ネットワーク例外もresult_state=backend_errorとして表す", async () => {
@@ -276,7 +349,7 @@ describe("CompassClient lifecycle analytics", () => {
 
       const resultCalls = analyticsMocks.trackSearchEvent.mock.calls.filter(([name]) => name === "compass_result");
       expect(resultCalls).toHaveLength(1);
-      expect(resultCalls[0][1]).toMatchObject({ result_state: "backend_error" });
+      expect(resultCalls[0][1]).toMatchObject({ result_state: "backend_error", calculationMethod: null });
     });
   });
 
