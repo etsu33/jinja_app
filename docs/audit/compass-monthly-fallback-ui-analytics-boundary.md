@@ -1,4 +1,7 @@
-> **Status: Active**
+> **Status: Active — Sections 1-22 are the original point-in-time audit
+> (pre-implementation). Section 23 (new) records production QA evidence
+> gathered after the UI Copy (#2512) and Analytics (#2513) follow-ups this
+> audit called for were implemented and deployed.**
 >
 > This is an **audit-only** document. It does not modify Backend production
 > code, Frontend production code, UI copy, PostHog instrumentation, the
@@ -569,3 +572,108 @@ narrowly-scoped PRs (one Frontend-copy PR per Section 17, one
 Analytics-property PR per Section 18) rather than a single combined PR,
 consistent with #2508's Section 27 implementation-sequence philosophy of
 small, single-concern PRs. No implementation is performed by this document.
+
+---
+
+## 23. Production QA Evidence (post-implementation)
+
+> **Provenance note**: the two follow-ups this audit called for were
+> implemented and merged after Section 1-22 were written — UI Copy
+> Alignment (#2512, closes Section 17) and Analytics Alignment (#2513,
+> closes Section 18). This section records **production** QA evidence
+> gathered after both were live. The `compass_result`/PostHog observations
+> below were reported directly by the repository owner from the production
+> PostHog Activity view — this session has no PostHog query access (no
+> MCP/API tool, no credentials), so these are recorded as **user-reported
+> production evidence**, not as independently queried by this session. The
+> COMMON reproduction condition (birthdate/target_date pair and the claim
+> that it produces a non-empty annual∩monthly intersection) *was*
+> independently verified by this session beforehand, by running the
+> unmodified, current-`develop` `kyusei.py` locally against the exact input
+> before it was used in production (Section 23-2) — that part is
+> code-verified, not merely reported.
+
+### 23-1. MONTHLY_FALLBACK — user-reported
+
+```
+Environment: Production (Vercel + Render)
+Event:       compass_result
+Observed:    result_state = recommendation_success
+             calculationMethod = monthly_kyusei_v1
+Reported by: repository owner, via production PostHog Activity view
+QA date:     2026-08-22
+```
+
+Consistent with the code path this repository's own test suite already
+covers (`test_monthly_fallback_used_when_intersection_empty_but_monthly_available`,
+`test_monthly_fallback_reproducible_against_real_kyusei` in
+`backend/temples/tests/services/test_compass_runtime.py`, and the
+`CompassClient.analytics.test.tsx` test asserting `calculationMethod:
+"monthly_kyusei_v1"` is forwarded verbatim to `compass_result`) — this is
+the same mechanism, observed live rather than under test.
+
+### 23-2. COMMON — condition code-verified by this session, executed by user
+
+**Reproduction condition** (identified from code, not guessed): COMMON is
+selected whenever `planned_visit_lucky_directions()`'s `luckyDirections`
+(the annual∩monthly intersection) is non-empty —
+[`compass_runtime.py:99-108`](../../backend/temples/services/compass_runtime.py)
+— which sets `calculationMethod` to the fixed value
+[`kyusei.py:311`](../../backend/temples/domain/kyusei.py) hardcodes,
+`"annual_monthly_kyusei_v1"`.
+
+Before this condition was given to the user to execute in production, this
+session ran the exact unmodified, current-`develop`
+`planned_visit_lucky_directions()` locally (no code changes) for the
+proposed input and confirmed it returns a non-empty intersection
+(`["東"]`) consistently across the entire current solar-month bucket
+(2026-08-08 through 2026-09-07), not just on the single day it was
+executed.
+
+```
+Environment: Production (Vercel + Render)
+Event:       compass_result
+Input:       synthetic birthdate + today's server date (target_date is not
+             user-settable in the Compass UI) -- exact birthdate withheld
+             from this document per the task's privacy instruction (not
+             a real user's data; kept only in session/scratch notes)
+Observed:    calculationMethod = annual_monthly_kyusei_v1
+Reported by: repository owner, via production PostHog Activity view,
+             new event immediately following the QA submission
+QA date:     2026-08-22
+```
+
+### 23-3. Population Distinctness
+
+Taken together, 23-1 and 23-2 give two `compass_result` events with the
+same event name and different `calculationMethod` values
+(`monthly_kyusei_v1` vs. `annual_monthly_kyusei_v1`) — satisfying the
+distinctness question Section 13 left open. No new event name was used or
+proposed in either case.
+
+### 23-4. Updated Classification
+
+```
+Frontend calculationMethod preserved:  YES (Section 6, unchanged)
+UI distinguishes COMMON/FALLBACK:      YES (#2512, closes Section 17)
+PostHog distinguishes COMMON/FALLBACK: YES (#2513 + 23-1/23-2 production
+                                        evidence, closes Section 18)
+```
+
+### 23-5. Explicit Non-Claims
+
+This section does **not** establish:
+
+- Recommendation Availability, CTR, or any engagement comparison between
+  COMMON and MONTHLY_FALLBACK — the two QA events above are labeled **KNOWN
+  QA TRAFFIC**, not organic behavioral evidence, and must not be mixed into
+  any KPI in `compass-posthog-query-contract.md` §8.
+- A production deployment timestamp / "Measurement Valid From" boundary for
+  `calculationMethod` — that boundary (`compass-posthog-query-contract.md`
+  §9) remains `DEPLOYMENT DATE REQUIRED` and is not resolved by this
+  section; establishing it precisely (Vercel/Render deployment record
+  cross-checked against commit SHA, per that document's existing
+  methodology for the `no_common_direction` boundary) is separate follow-up
+  work, not performed here.
+- Any change to Backend/Frontend production code, the Product/Runtime
+  Contract, or PostHog instrumentation — none is made by this section.
