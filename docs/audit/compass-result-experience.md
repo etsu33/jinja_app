@@ -34,7 +34,7 @@ visualization, result-state messaging, recommendation cards), the detail
 CTA, the route path as far as the existing, unmodified
 `GoogleMapRouteLink`/`ShrineDetailShell`, responsive behavior at
 375/390/430px, and Analytics event readiness for the next action after a
-Compass result. Out of scope (Section 26): any implementation, Ranking,
+Compass result. Out of scope (Section 27): any implementation, Ranking,
 Concierge, shrine data, the Product/Runtime Contract, and DB/migrations.
 
 ## 3. Canonical Sources
@@ -73,8 +73,7 @@ no_common_direction: code/test evidence only -- no birthdate exists for
 ```
 
 No screenshot containing QA personal input (birthdate) is committed to
-this repository — only textual descriptions of what was observed, per
-Section 25.
+this repository — only textual descriptions of what was observed.
 
 ---
 
@@ -660,23 +659,240 @@ PR4 -- Documentation-only: add the route_open source="shrine_detail"
 
 ---
 
-## 26. Non-goals
+## 26. Implementation Follow-up Definitions
+
+> Canonical follow-up definitions for this audit, as directed by the
+> repository owner. These are **definitions only** — no follow-up is
+> implemented by this document, and none is prioritized over another
+> beyond the dependency notes given per item. The audit's existing
+> findings (Sections 6-23) and UX Change Decision (Section 24: **F —
+> MULTIPLE NARROW UX FIXES REQUIRED**) are unchanged by this section — no
+> severity classification is revised here, because no new evidence was
+> gathered; this section only structures the four findings already on
+> record into actionable future-PR shape.
+
+### 26-1. Follow-up 1 — COMMON / MONTHLY_FALLBACK Visual Distinction
+
+```
+Problem:  Copy already distinguishes COMMON from MONTHLY_FALLBACK
+          correctly (#2512), but the visual treatment is structurally
+          identical -- a user who does not read the note carefully cannot
+          tell the two apart at a glance.
+Goal:     A user can identify COMMON vs. MONTHLY_FALLBACK without reading
+          the explanatory note closely.
+```
+
+**Evidence from this audit**: Section 7 (Classification B — SEMANTICALLY
+CORRECT BUT TOO SUBTLE); Section 23's P1 finding (highest severity in this
+audit).
+
+```
+Scope:    CompassClient.tsx's direction-card rendering and/or
+          CompassDirectionVisual.tsx -- a visual/structural treatment
+          (e.g. tone, icon, or label) layered on top of the existing,
+          already-correct copy. Frontend UX only.
+Constraints / Non-goals:
+  - Runtime unchanged -- calculationMethod remains the sole source of
+    truth for which branch renders; no new runtime field required.
+  - Recommendation Ranking unchanged.
+  - Analytics instrumentation unchanged.
+  - Must NOT introduce error framing -- MONTHLY_FALLBACK is a legitimate
+    result (compass-product-contract.md Section 2.2-3), not a degraded or
+    failed one; visual treatment must not read as a warning/error state.
+  - Must not weaken or contradict the existing, contract-compliant copy
+    (Section 2.2-7's Signal-to-Explanation Rule requirement) -- this is
+    additive polish, not a copy rewrite.
+Done Definition:
+  - COMMON and MONTHLY_FALLBACK are visually distinguishable without
+    reading the note text closely.
+  - No layout regression at 375px / 390px / 430px (Sections 16-18's
+    baseline must still hold).
+  - Existing semantics (both the copy and the underlying calculationMethod
+    contract) preserved exactly.
+Likely affected component/docs:
+  apps/web/src/features/compass/CompassClient.tsx,
+  apps/web/src/features/compass/components/CompassDirectionVisual.tsx
+Proposed future PR boundary:
+  PR1 -- Frontend UX only, per the repository owner's directive. Does not
+  touch Runtime, Ranking, Analytics, Concierge, DB, or the Product/Runtime
+  Contract.
+```
+
+### 26-2. Follow-up 2 — `no_common_direction` Continuation
+
+```
+Problem:  The result itself is already explained correctly and honestly,
+          but offers no explicit next action -- the message stops at
+          "here's what happened" without "here's what you could try."
+Goal:     no_common_direction stops being a dead end.
+```
+
+**Evidence from this audit**: Section 8 (Classification: PARTIAL
+CONTINUATION); Section 15 (Next-Action Clarity: UNCLEAR for this state);
+Section 23's P2 finding.
+
+```
+Scope:    CompassClient.tsx's no_common_direction messaging block --
+          adding an explicit next-action affordance (e.g. a prompt to
+          change purpose/origin, or a pointer to Concierge). Frontend
+          navigation/CTA only.
+Constraints / Non-goals:
+  - Retry must NOT be framed as the primary CTA -- Product Contract
+    Section 2.1-2 already establishes retry is not a meaningful solution
+    (the calculation is deterministic for the same inputs/month).
+  - Must not reframe this state as an input error -- birthdate/origin
+    validity is unrelated to this state (Section 2.1-1's definition,
+    unchanged).
+  - Runtime unchanged -- no new state, no new trigger condition.
+  - Must preserve the existing, narrowed residual semantics (#2508/#2517)
+    -- do not reintroduce pre-#2508 framing.
+Done Definition:
+  - An explicit next action exists and is visible without scrolling logic
+    changes elsewhere.
+  - No error-style language or visual treatment is introduced.
+  - Existing Compass semantics (Section 2.1, 2.2-4) remain intact.
+Likely affected component/docs:
+  apps/web/src/features/compass/CompassClient.tsx
+Proposed future PR boundary:
+  PR2 -- Frontend navigation/CTA only, per the repository owner's
+  directive. Does not touch Runtime, Ranking, Analytics, Concierge, DB, or
+  the Product/Runtime Contract.
+```
+
+### 26-3. Follow-up 3 — Shrine Card Differentiation
+
+```
+Problem:  Multiple recommended shrines are not sufficiently distinguished
+          on their cards -- reason text follows an identical template
+          shape, distance is computed but suppressed, and no rank/trust
+          indicator is shown.
+Goal:     A user can compare candidates and choose one.
+```
+
+**Evidence from this audit**: Section 11 (card question-by-question
+evaluation: "why this one over others" = NO); Section 12 (two real
+templated reason strings observed, differing only by substituted
+name/goriyaku keyword); Section 23's P2 finding.
+
+```
+Scope:    Presentation of already-available recommendation data on the
+          existing card (ShrineCardCompact.tsx /
+          CompassRecommendationsSection.tsx) -- e.g. surfacing distance
+          (already computed, currently suppressed), or varying which
+          already-passed fields are shown. Frontend presentation only,
+          using existing recommendation data only.
+Constraints / Non-goals:
+  - No Ranking change -- candidate order, scoring, and Recommendation
+    Reason generation are Recommendation Authority's domain
+    (compass-product-contract.md Section 6), untouched here.
+  - No new score, weight, or ranking signal introduced.
+  - No DB schema change -- only fields already returned by the API
+    (e.g. distance_m, already present but suppressed by
+    ShrineCardCompact's own display logic) may be surfaced differently.
+Done Definition:
+  Each card sufficiently answers:
+  - Why this shrine?
+  - Where is it?
+  - What's different about it from the other candidates?
+  - What can I do next?
+Likely affected component/docs:
+  apps/web/src/components/shrines/ShrineCardCompact.tsx,
+  apps/web/src/features/compass/components/CompassRecommendationsSection.tsx
+Proposed future PR boundary:
+  PR3 -- Frontend presentation only, using existing recommendation data
+  only, per the repository owner's directive. No Ranking or DB changes.
+  Underlying Recommendation Reason *content* generation remains outside
+  this PR's authority (Section 12's own boundary note).
+```
+
+### 26-4. Follow-up 4 — Compass Route Attribution Contract
+
+```
+Problem:  route_open's source property alone cannot identify a
+          Compass-originated route action -- it is hardcoded
+          "shrine_detail" universally, regardless of entry point.
+Goal:     Clarify the Compass -> Detail -> Route measurement contract.
+```
+
+**Evidence from this audit**: Section 20-1 (`GoogleMapRouteLink.tsx:65-73`
+hardcodes `source: "shrine_detail"`; Compass attribution survives only via
+`ctx`/`recommendationInstanceId`, confirmed threaded through by
+`ShrineDetailShell.tsx`); Section 22 (Classification: PARTIAL, not NOT
+MEASURABLE — the properties already exist, the gap is that they are
+undocumented as the correct join key).
+
+```
+Scope:    Docs-only investigation first, per the repository owner's
+          directive -- determine whether the existing ctx/
+          recommendationInstanceId properties on route_open are
+          sufficient to answer "was this route opened after a Compass
+          recommendation," and if so, document that query contract
+          explicitly. Do not add instrumentation until that
+          investigation concludes it is actually insufficient.
+Constraints / Non-goals:
+  - No new Analytics event.
+  - Must verify existing properties are proven insufficient before
+    proposing any instrumentation change -- this audit's own trace
+    (Section 20-1) found the properties already survive the join; the
+    gap identified is documentation, not missing data.
+  - Any future instrumentation PR (only if genuinely needed) remains
+    out of this follow-up's initial scope.
+Done Definition (either of):
+  - compass-posthog-query-contract.md is updated to explicitly define the
+    Compass -> Route query (joining route_open on ctx=compass AND/OR
+    recommendationInstanceId, not source), closing the gap with existing
+    properties; OR
+  - if that investigation instead finds the existing properties
+    insufficient, a single, minimal Instrumentation Gap is defined (not
+    implemented) naming exactly what property is missing and why
+    ctx/recommendationInstanceId do not already cover it.
+Likely affected component/docs:
+  docs/analytics/compass-posthog-query-contract.md (primary);
+  apps/web/src/components/shrine/GoogleMapRouteLink.tsx (reference only,
+  not necessarily changed)
+Proposed future PR boundary:
+  PR4 -- Docs/Analytics contract investigation first, per the repository
+  owner's directive. An instrumentation PR is only defined as a *future*
+  possibility, contingent on that investigation's outcome -- not assumed
+  necessary by this document.
+```
+
+### 26-5. Dependency Notes (not a priority decision)
+
+```
+Follow-ups 1, 2, and 3 are independent of each other and of Follow-up 4 --
+none blocks another. Follow-up 4 is independent of the other three (it
+concerns Detail->Route measurement, not the result screen itself). No
+follow-up depends on another completing first. This section records
+independence only; it does not rank or sequence the four beyond what
+Sections 26-1 through 26-4 already state as their own proposed PR
+boundary.
+```
+
+---
+
+## 27. Non-goals
 
 This audit does not:
 
 - Change Compass direction logic, Monthly Fallback runtime, Recommendation
   Ranking, candidate filtering, shrine DB data, Concierge, Analytics
   instrumentation, the Product/Runtime Contract, or the DB.
-- Implement any of Section 25's recommended follow-ups.
+- Implement any of Section 25's recommended follow-ups, or Section 26's
+  finalized follow-up definitions.
 - Calculate any Compass → Route or Compass → Detail funnel rate.
 - Perform a full WCAG accessibility audit (Section 19 is a quick check
   only).
 - Reproduce `no_common_direction` in a live browser this session (Section
   4's stated limitation).
+- Make a final implementation priority decision beyond Section 26-5's
+  independence notes.
+- Add any new Analytics event (Section 26-4 explicitly rules this out for
+  its own follow-up).
 
 ---
 
-## 27. Impact
+## 28. Impact
 
 ```
 Production code changed:          NO
@@ -692,7 +908,7 @@ Migration:                        NONE
 
 ---
 
-## 28. Verification
+## 29. Verification
 
 ```
 git status --short   -> only this document (+ known untracked
