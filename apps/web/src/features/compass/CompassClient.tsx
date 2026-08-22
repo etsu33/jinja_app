@@ -58,6 +58,29 @@ function getDirectionNote(calculationMethod: CompassDirectionRuntime["calculatio
   return "年盤と月盤の両方で重なる、今月の参考方位です。日盤は使用していません。";
 }
 
+// Result Experience audit (docs/audit/compass-result-experience.md Section
+// 26-1, P1 finding): COMMON and MONTHLY_FALLBACK carry correct but
+// visually-identical copy -- a user who does not read getDirectionNote()
+// closely cannot tell them apart. This small label, derived only from
+// calculationMethod (never from direction count/copy/result_state, per the
+// follow-up definition's own constraint), gives an at-a-glance distinction
+// without reading the note. Deliberately calm/equal-weight for both values
+// -- same pill style, same size -- so neither reads as stronger, more
+// certain, or more alarming than the other; MONTHLY_FALLBACK is a
+// legitimate result, not a degraded one (compass-product-contract.md
+// Section 2.2-3). Returns null (renders nothing) for any value other than
+// the two known ones, rather than defaulting to a COMMON-looking label --
+// unlike getDirectionNote() above, this never fabricates a classification.
+function getDirectionStatusLabel(calculationMethod: CompassDirectionRuntime["calculationMethod"]): string | null {
+  if (calculationMethod === "annual_monthly_kyusei_v1") {
+    return "年盤・月盤 共通";
+  }
+  if (calculationMethod === "monthly_kyusei_v1") {
+    return "今月の月盤を参考";
+  }
+  return null;
+}
+
 export default function CompassClient() {
   const [now] = useState(() => new Date());
   const [purpose, setPurpose] = useState<CompassPurpose | null>(null);
@@ -237,7 +260,17 @@ export default function CompassClient() {
       </DetailSection>
 
       {directionContext ? (
-        <DetailSection title="今月、意識したい方向" variant="secondary">
+        <DetailSection
+          title="今月、意識したい方向"
+          variant="secondary"
+          right={
+            getDirectionStatusLabel(directionContext.calculationMethod) ? (
+              <span className="rounded-full bg-[var(--kt-color-background-subtle)] px-2 py-0.5 text-[11px] font-medium text-[var(--kt-color-text-secondary)]">
+                {getDirectionStatusLabel(directionContext.calculationMethod)}
+              </span>
+            ) : undefined
+          }
+        >
           <div className="space-y-3">
             <CompassDirectionVisual referenceDirections={directionContext.referenceDirections} />
             <p className="text-center text-xs text-[var(--kt-color-text-muted)]">

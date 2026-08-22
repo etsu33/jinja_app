@@ -112,6 +112,10 @@ describe("CompassClient", () => {
         "年盤と月盤で重なる方位がないため、今月の月盤を参考にした方位です。日盤は使用していません。（参考情報です）",
       ),
     ).not.toBeInTheDocument();
+    // P1 UX fix (docs/audit/compass-result-experience.md Section 26-1):
+    // at-a-glance visual distinction, not just the explanatory note.
+    expect(screen.getByText("年盤・月盤 共通")).toBeInTheDocument();
+    expect(screen.queryByText("今月の月盤を参考")).not.toBeInTheDocument();
   });
 
   it("calculationMethodがmonthly_kyusei_v1のとき、月盤fallbackの説明文を表示し、共通方位であるかのような文言は出さない", async () => {
@@ -154,6 +158,50 @@ describe("CompassClient", () => {
     // Direction visual and recommendation flow must remain unaffected.
     expect(screen.getByText("今月意識したい方向: 南東")).toBeInTheDocument();
     expect(screen.getByText("南東神社")).toBeInTheDocument();
+    // P1 UX fix (docs/audit/compass-result-experience.md Section 26-1):
+    // at-a-glance visual distinction, not error/warning framed, not the
+    // COMMON label.
+    expect(screen.getByText("今月の月盤を参考")).toBeInTheDocument();
+    expect(screen.queryByText("年盤・月盤 共通")).not.toBeInTheDocument();
+  });
+
+  it("calculationMethodが未知の値のとき、COMMON/FALLBACKいずれのラベルも捏造せず表示を安定させる", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        state: "recommendation_success",
+        purpose: "career",
+        direction_context: {
+          targetDate: "2026-09-15",
+          targetYear: 2026,
+          solarMonthIndex: 8,
+          referenceDirections: ["北西"],
+          // Intentionally not one of the two known contract values --
+          // simulates a future/unexpected calculationMethod reaching the
+          // frontend unchanged.
+          calculationMethod: "unknown_future_method_v1" as never,
+          note: "note",
+        },
+        recommendations: [{ shrine_id: 3, name: "北西神社", reason: "仕事運との一致" }],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<CompassClient />);
+    fillMinimumValidInput();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "今月の方向を確認する" }));
+    });
+
+    // The direction visual and recommendations still render (component
+    // does not crash or hide unrelated content because of an unrecognized
+    // calculationMethod).
+    expect(await screen.findByText("今月意識したい方向: 北西")).toBeInTheDocument();
+    expect(screen.getByText("北西神社")).toBeInTheDocument();
+    // Neither label is fabricated for an unrecognized value.
+    expect(screen.queryByText("年盤・月盤 共通")).not.toBeInTheDocument();
+    expect(screen.queryByText("今月の月盤を参考")).not.toBeInTheDocument();
   });
 
   it("「その他の目的」から選んでも送信payloadは折りたたみ表示に影響されず正しいslugになる（Purpose UI Polish回帰確認）", async () => {
