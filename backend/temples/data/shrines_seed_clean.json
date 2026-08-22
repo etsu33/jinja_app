@@ -1211,8 +1211,8 @@
   {
     "name_jp": "多摩川浅間神社",
     "address": "東京都大田区田園調布1-55-12",
-    "latitude": 35.5898,
-    "longitude": 139.6688,
+    "latitude": 35.5875263,
+    "longitude": 139.6687549,
     "goriyaku": "開運・縁結び・家内安全",
     "kyusei": null,
     "astro_elements": [
@@ -1224,8 +1224,8 @@
       "love"
     ],
     "location": {
-      "lat": 35.5898,
-      "lng": 139.6688
+      "lat": 35.5875263,
+      "lng": 139.6687549
     }
   },
   {
