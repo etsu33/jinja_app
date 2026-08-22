@@ -9,6 +9,7 @@
 // Compass BFF and renders one of the backend's 5 fail-safe states plus
 // this component's own pre-submit states (birthdate/origin missing).
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import DetailSection from "@/components/shrine/DetailSection";
 import { trackSearchEvent } from "@/lib/analytics/searchEvents";
@@ -290,9 +291,25 @@ export default function CompassClient() {
 
       {uiState === "no_common_direction" ? (
         <DetailSection title="今月は方位の参考情報がありません" variant="tertiary">
-          <p className="text-sm leading-6 text-[var(--kt-color-text-secondary)]">
-            生年月日・出発地点はどちらも問題ありません。年盤と月盤の共通方位も、今月の月盤単独の参考方位も、今月はいずれもありませんでした。
-          </p>
+          <div className="space-y-3">
+            <p className="text-sm leading-6 text-[var(--kt-color-text-secondary)]">
+              生年月日・出発地点はどちらも問題ありません。年盤と月盤の共通方位も、今月の月盤単独の参考方位も、今月はいずれもありませんでした。
+            </p>
+            {/* Result Experience audit (docs/audit/compass-result-experience.md
+                Section 26-2, P2 finding): a legitimate result must not be a
+                dead end. Reuses the existing, already-established /concierge
+                route (same plain Link pattern app/shrines/page.tsx already
+                uses to point elsewhere in the product toward Concierge) --
+                no new route, no query params, no Compass personal input
+                (birthdate/origin/purpose) forwarded. This is the one primary
+                continuation; retrying identical inputs is never suggested. */}
+            <Link
+              href="/concierge"
+              className="inline-flex min-h-11 items-center rounded-[var(--kt-radius-pill)] border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] px-4 py-2 text-sm font-semibold text-[var(--kt-color-text-secondary)] hover:bg-[var(--kt-color-background-subtle)]"
+            >
+              コンシェルジュで相談する
+            </Link>
+          </div>
         </DetailSection>
       ) : null}
 
