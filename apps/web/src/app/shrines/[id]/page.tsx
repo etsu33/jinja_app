@@ -189,8 +189,10 @@ export default async function Page({ params, searchParams }: Props) {
   const parsedCompassRank = ctx === "compass" ? Number(sp.recommendation_rank) : NaN;
   const compassRecommendationRank =
     Number.isInteger(parsedCompassRank) && parsedCompassRank > 0 ? parsedCompassRank : null;
-  // PR-B stops at Shrine Detail view. Compass attribution must not enter
-  // Favorite/Visit/Reflection/route actions before PR-C.
+  // downstreamCtx feeds only non-action rendering (close link, buildShrineDetailModel).
+  // Favorite/Visit/Reflection (PR-C) and route (PR5) action boundaries each
+  // receive the full, un-nulled ctx explicitly at their own call sites below --
+  // they do not read downstreamCtx.
   const downstreamCtx = ctx === "compass" ? null : ctx;
   const directionRouteContext = parseDirectionRouteContext(sp);
 
@@ -491,11 +493,21 @@ export default async function Page({ params, searchParams }: Props) {
         subtitle={null}
         close={close}
         shrineId={numericId}
-        ctx={downstreamCtx}
+        // PR5 (docs/audit/compass-route-attribution-contract.md): route_open
+        // is fired from inside this shell's GoogleMapRouteLink child. It must
+        // see the same Compass-aware ctx/recommendationInstanceId that the
+        // sibling Favorite/Visit/Reflection boundary already receives below
+        // (PR-C) -- downstreamCtx/conciergeRecommendationInstanceId were
+        // never valid for this specific child, since ctx/recommendationInstanceId
+        // here are used only to build the route_open analytics payload, not
+        // to gate rendering or navigation. For any non-Compass ctx this is a
+        // no-op: downstreamCtx === ctx and detailRecommendationInstanceId ===
+        // conciergeRecommendationInstanceId whenever ctx !== "compass".
+        ctx={ctx}
         tid={tid}
         historyTheme={historyThemeForAnalytics}
         analyticsProvenance={analyticsProvenance}
-        recommendationInstanceId={conciergeRecommendationInstanceId}
+        recommendationInstanceId={detailRecommendationInstanceId}
         directionRouteContext={directionRouteContext}
         addGoshuinHref={null}
         googleDirHref={googleDirHref}
