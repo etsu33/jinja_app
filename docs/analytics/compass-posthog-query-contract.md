@@ -29,7 +29,7 @@ All rows verified directly against current `develop` source.
 |---|---|---|---|---|---|
 | Home → Compass discovery | `home_compass_entry_click` | `source="home"` | PostHog `distinct_id` only | `HomeCompassSection.tsx:34` | Click-only. No impression event exists for the Home section. |
 | Compass entry | `compass_entry` | `referrer_source: "home"\|"direct"` | PostHog `distinct_id` only | `CompassClient.tsx:58-65` | Fires once per mount (`entryTrackedRef` guard). No `recommendationInstanceId` yet — not generated until submit. |
-| Compass result | `compass_result` | `result_state`, `purpose`, `origin_mode`, `has_birthdate`, `recommendation_count`, `recommendationInstanceId` | PostHog `distinct_id`; `recommendationInstanceId` present for every state **except** `backend_error` | `CompassClient.tsx:67-80,127-144` | `result_state` uses the real backend vocabulary + one frontend-only bucket (§1.1). Now 6 backend values (post-#2499, includes `no_common_direction`) + 1 frontend-only. |
+| Compass result | `compass_result` | `result_state`, `purpose`, `origin_mode`, `has_birthdate`, `recommendation_count`, `recommendationInstanceId`, `calculationMethod` (new, optional — §1.2) | PostHog `distinct_id`; `recommendationInstanceId` present for every state **except** `backend_error`; `calculationMethod` present only when the result carries a `direction_context` | `CompassClient.tsx:67-80,127-144` | `result_state` uses the real backend vocabulary + one frontend-only bucket (§1.1). Now 6 backend values (post-#2499, includes `no_common_direction`) + 1 frontend-only. |
 | Recommendation exposure (impression) | `card_view` | `cardId="shrine_compact"`, `source="compass"`, `visibility="visible"`, `shrineId`, `recommendationRank`, `recommendationInstanceId` | `recommendationInstanceId` + `shrineId` | `CompassRecommendationsSection.tsx:36-44` | Deduped client-side via a `Set` keyed `${instanceId}:${shrineId}:${rank}`. Only fires when `result_state==="recommendation_success"` (nothing to show otherwise — this now also explicitly excludes `no_common_direction`, which likewise renders no recommendation cards, §12). |
 | Recommendation → Shrine Detail (click) | `shrine_detail_transition` | `source="compass"`, `shrineId`, `recommendationRank`, `recommendationInstanceId`, `position="compact"` | `recommendationInstanceId` + `shrineId` | `CompassRecommendationsSection.tsx:71-82` | Fires on the card's `onDetailClick`, before navigation. |
 | Shrine Detail view | `shrine_detail_view` | `source` (`"compass"` when `ctx=compass`), `shrineId`, `recommendationInstanceId`, `recommendationRank`, `threadId` | `recommendationInstanceId` + `shrineId` | `ShrineDetailViewTracker.tsx:30-58` | Fires once per mount (`trackedRef` guard). `ctx`/`recommendationInstanceId`/`recommendationRank` arrive via the URL (`/shrines/:id?ctx=compass&recommendation_instance_id=…&recommendation_rank=…`), built by `buildShrineHref` in `CompassRecommendationsSection.tsx`. |
@@ -68,6 +68,56 @@ STATE_RECOMMENDATION_SUCCESS        = "recommendation_success"
 Plus the frontend-only `backend_error` bucket (`CompassClient.tsx`), covering both network exceptions and any non-2xx/non-400 HTTP response. These **seven** values (six backend + one frontend-only) are never renamed or collapsed anywhere in the analytics layer — `compass_result.result_state` uses exactly these strings. `no_common_direction` is never collapsed into `direction_filter_unavailable`, and the reverse — the two are semantically distinct (Group B "valid, no common direction" vs. Group A "genuinely invalid/unavailable runtime", `docs/product/compass-mvp-runtime-contract.md` Section 8).
 
 **Instrumentation change required to emit `no_common_direction`: NONE.** `trackCompassResult()` (`CompassClient.tsx`) forwards whatever `body.state` string the backend returns, unconditionally — it does not branch on the value. `apps/web/src/lib/analytics/searchEvents.ts`'s `result_state` TypeScript union was widened to include `"no_common_direction"` as part of #2499 (a type-only change, required only to keep compilation valid — no new event, no dispatch logic change). This document's job is purely to define how the already-flowing value should be **queried and interpreted**.
+
+### 1.2 `calculationMethod` segmentation dimension (Monthly Fallback, new)
+
+Added to `compass_result` per
+[`compass-monthly-fallback-ui-analytics-boundary.md`](../audit/compass-monthly-fallback-ui-analytics-boundary.md)
+Section 13 (Classification B: existing-event extension, no new event) and
+[`compass-product-contract.md`](../product/compass-product-contract.md)
+Section 2.2 / [`compass-mvp-runtime-contract.md`](../product/compass-mvp-runtime-contract.md)
+Section 5-1 (#2508 Option C).
+
+```
+"annual_monthly_kyusei_v1"  -- COMMON DIRECTION (annual ∩ monthly non-empty)
+"monthly_kyusei_v1"         -- MONTHLY FALLBACK DIRECTION (annual ∩ monthly empty, monthly-only used)
+null                        -- no direction_context on this result (no_common_direction,
+                               direction_filter_unavailable, invalid_purpose, backend_error)
+```
+
+**Query use**:
+
+```
+COMMON population:           compass_result WHERE calculationMethod = "annual_monthly_kyusei_v1"
+MONTHLY_FALLBACK population: compass_result WHERE calculationMethod = "monthly_kyusei_v1"
+```
+
+**This is a diagnostic/segmentation dimension only.** It:
+
+- does **not** alter Recommendation CTR identity (§4's join keys are
+  unchanged — `recommendationInstanceId`/`shrineId`, never `calculationMethod`);
+- does **not** redefine Compass Runtime Reliability Rate or Compass
+  Recommendation Delivery Rate (§8) — a MONTHLY FALLBACK result is exactly
+  as "reliable" and exactly as eligible for Recommendation Delivery as a
+  COMMON result; only its calculation source differs;
+- must **not** be read as "Fallback is an error" — a MONTHLY FALLBACK
+  `calculationMethod` value co-occurs with `result_state` values including
+  `recommendation_success`, `direction_zero_candidates`, and
+  `evidence_zero_candidates`, exactly like a COMMON value would (§1.1's
+  state vocabulary is unaffected by this dimension);
+- must **not** be read as changing `no_common_direction`'s classification —
+  it remains `VALID_NO_DIRECTION` (restated from §1.1 above);
+  `calculationMethod` is simply absent (`null`) on that state, never
+  fabricated as `"monthly_kyusei_v1"` or any other value merely because a
+  fallback mechanism exists elsewhere in the system;
+- must **not** be presented as evidence that Monthly Fallback "improves
+  engagement" — its existence changes which direction is shown, not
+  whether a user engages with the result; any such claim requires an
+  actual engagement-KPI comparison, not an existence argument.
+
+Instrumentation: `trackCompassResult()` (`CompassClient.tsx`) now threads
+`body.direction_context?.calculationMethod ?? null` through as a fourth,
+optional argument — no new tracking call, no new event.
 
 ---
 
@@ -709,6 +759,8 @@ Status: INSUFFICIENT OBSERVATION WINDOW
 
 **Origin mode segmentation** (§24): `origin_mode` (`"device"|"station"|"address"|"prefecture"`) is present on `compass_result` — safe as a coarse, non-PII breakdown dimension. **Never** use `latitude`/`longitude`/raw address/station text for PostHog segmentation — these are never sent (§2) and must never be added for this purpose.
 
+**`calculationMethod` segmentation** (Monthly Fallback, §1.2): `calculationMethod` (`"annual_monthly_kyusei_v1"|"monthly_kyusei_v1"|null`) is present on `compass_result` — safe as a coarse, non-PII breakdown dimension, same category as `purpose`/`origin_mode` above. **Classification: SECONDARY DIAGNOSTIC**, not a standalone KPI and not a redefinition of any KPI in §8 (see §1.2 for the full boundary). Do not interpret a CTR/engagement difference between COMMON and MONTHLY_FALLBACK populations as proof one calculation source is "better" — the same non-comparison caveat given for Purpose segmentation above applies here.
+
 ---
 
 ## 9. Existing Data Limitations — Measurement Valid From
@@ -721,6 +773,7 @@ Every event in this contract was introduced across three merged PRs. Data record
 | `compass_result.recommendationInstanceId`, `card_view{source=compass}`, `shrine_detail_transition{source=compass}`, `shrine_detail_view{source=compass}` | PR-B (#2489, merged) | OPEN / DEPLOYMENT DATE REQUIRED — merge timestamp `2026-08-19T08:25:22Z` is the earliest possible bound. |
 | `favorite_click`/`shrine_decision`/`visit_done`/`reflection_prompt_view`/`reflection_saved` carrying `source=compass` | PR-C (#2490, merged) | OPEN / DEPLOYMENT DATE REQUIRED — merge timestamp available in git history, exact production deploy timestamp not verified by this audit. |
 | `compass_result{result_state="no_common_direction"}` | PR #2499 (merged) | **`2026-08-20T10:54:25Z`** — confirmed via Vercel production deployment record (`target=production`, `state=READY`, `githubCommitSha` matches PR #2499's merge commit `41cba8d6` exactly) and cross-checked against Render backend `healthz` release (`41cba8d6`, identical commit) — both frontend and backend serving this logic in production from this timestamp, not merely inferred from git merge time. |
+| `compass_result.calculationMethod` (Monthly Fallback segmentation, §1.2) | This PR (Analytics Alignment) | OPEN / DEPLOYMENT DATE REQUIRED — not established here; this is an implementation-only PR (task §31 explicit instruction not to run Production PostHog queries or establish the deploy boundary). The actual production deploy timestamp is to be recorded during the later, separate Production Verification task, following the same evidence standard as the `no_common_direction` row above (Vercel/Render deployment records cross-checked against the merge commit, not the git merge timestamp alone). |
 
 Any KPI in this document that spans the PR-A/PR-B boundary (e.g. the Compass Activation funnel, which needs both `compass_entry` and `compass_result`) is valid from PR-A's deployment. Any KPI depending on `recommendationInstanceId`-based joins (Recommendation CTR, Favorite/Visit/Reflection attribution) is valid only from PR-B's deployment onward, **not** from PR-A's. Do not backfill or approximate pre-PR-B data for these. Any query that filters or breaks down by `result_state="no_common_direction"` specifically is valid only from **2026-08-20T10:54:25Z** onward — see the Historical Classification Break note immediately below for why this boundary is unusually important for this particular state.
 
@@ -730,6 +783,11 @@ Any KPI in this document that spans the PR-A/PR-B boundary (e.g. the Compass Act
 - **Do not retroactively reclassify individual historical `direction_filter_unavailable` events as `no_common_direction`** (or vice versa) after the fact. No property recorded on those historical events distinguishes which Group they belonged to (see #2496's audit of the collapse point); any retroactive relabeling would be a fabricated inference, not a query.
 - Any Reliability Rate or Recommendation Delivery Rate trend that spans this boundary must state the boundary explicitly and should not be presented as a single continuous series without that caveat.
 - This is the same category of limitation §14 (Open Items) already names for PR-A/B/C's own undetermined exact deployment timestamps — this row is simply the one boundary in this document precise enough to state exactly, and consequential enough (a real behavior-vs-classification distinction, not just an unknown start date) to call out on its own.
+
+**HISTORICAL BOUNDARY (calculationMethod, §1.2)**: before this Analytics Alignment PR's production deployment, `compass_result` never carried a `calculationMethod` property at all — the Monthly Fallback Runtime (#2510) and UI/Copy Alignment (#2512) changes were already live in production by that point, but PostHog had no way to observe which of a request's results were COMMON vs. MONTHLY_FALLBACK. Consequently:
+
+- **Do not retroactively infer `calculationMethod` for historical `compass_result` events recorded before this property's deployment** from timestamps, shrine IDs, recommendation results, or historical `result_state` distributions. Correlation is not provenance (task §29) — no historical event carries the information needed to determine which branch produced it.
+- Any query segmenting by `calculationMethod` is valid only from this PR's own, separately-established production deploy timestamp onward (row above) — not from #2510's or #2512's deploy dates, which predate PostHog's ability to observe this dimension at all.
 
 ---
 

@@ -88,6 +88,7 @@ export default function CompassClient() {
     resultState: CompassResultState,
     recommendationCount: number | null = null,
     recommendationInstanceId: string | null = null,
+    calculationMethod: CompassDirectionRuntime["calculationMethod"] | null = null,
   ) => {
     trackSearchEvent("compass_result", {
       result_state: resultState,
@@ -96,6 +97,7 @@ export default function CompassClient() {
       has_birthdate: true,
       recommendation_count: recommendationCount,
       recommendationInstanceId,
+      calculationMethod,
     });
   };
 
@@ -157,6 +159,7 @@ export default function CompassClient() {
         body.state,
         body.state === "recommendation_success" ? (body.recommendations?.length ?? 0) : null,
         body.recommendation_instance_id,
+        body.direction_context?.calculationMethod ?? null,
       );
     } catch {
       setUiState("backend_error");
