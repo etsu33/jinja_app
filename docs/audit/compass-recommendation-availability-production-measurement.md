@@ -1,4 +1,8 @@
-> **Status: PRODUCTION QUERY BLOCKED**
+> **Status: Sections 1-27 are the original PRODUCTION QUERY BLOCKED record
+> — preserved unchanged as historical record, not rewritten as if access
+> had never been blocked. Section 28 (new) records the valid-window
+> measurement the repository owner subsequently obtained by running the
+> prepared query directly.**
 >
 > This is a **measurement** record, not an implementation. It does not
 > modify Backend production code, Frontend production code, Runtime,
@@ -9,10 +13,12 @@
 > capability (no MCP/API tool, no credentials), same limitation already
 > established in
 > [`compass-monthly-fallback-ui-analytics-boundary.md`](compass-monthly-fallback-ui-analytics-boundary.md).
-> No count in this document is fabricated. Sections 7-19 record the exact
-> queries required and are ready for either (a) a future session with
-> PostHog access, or (b) the repository owner running them manually and
-> reporting aggregate results back.
+> No count in Sections 1-27 is fabricated. Section 28's counts are
+> **reported directly by the repository owner** from a production PostHog
+> SQL query they ran themselves (Section 4's prepared Query 2, with the
+> [#2517](compass-calculation-method-measurement-valid-from.md)-confirmed
+> validity boundary applied) — not independently re-queried by this
+> session, which still has no PostHog access.
 
 # Compass Recommendation Availability — Production Measurement
 
@@ -407,3 +413,199 @@ are written to require the Section 3 validity boundary once established.
 Zero-candidate states kept separate throughout (Section 16). QA limitation
 documented (Section 19). No PII in any query or in this document. No
 production code changed.
+
+---
+
+## 28. Valid Window Production Measurement
+
+> Everything in this section is **reported by the repository owner**, who
+> ran Section 4's prepared Query 2 (with `timestamp >=
+> 2026-08-22T01:09:00Z`, the boundary
+> [#2517](compass-calculation-method-measurement-valid-from.md)
+> established) directly in production PostHog. This session did not run
+> the query and has no way to independently re-verify it — the same
+> attribution standard already used for the COMMON/FALLBACK QA evidence in
+> [`compass-monthly-fallback-ui-analytics-boundary.md`](compass-monthly-fallback-ui-analytics-boundary.md)
+> Section 23.
+
+### 28-1. Measurement Valid From
+
+```
+2026-08-22T01:09:00Z  (per #2517, unchanged, not re-derived here)
+```
+
+### 28-2. Query Used
+
+Section 4's Query 2, unmodified in semantics (only the `timestamp >=`
+literal filled in):
+
+```sql
+SELECT
+  properties.result_state AS result_state,
+  properties.calculationMethod AS calculationMethod,
+  count() AS count
+FROM events
+WHERE event = 'compass_result'
+  AND timestamp >= toDateTime('2026-08-22 01:09:00', 'UTC')
+GROUP BY
+  properties.result_state,
+  properties.calculationMethod
+ORDER BY count DESC
+```
+
+### 28-3. Raw Aggregate Counts (as reported)
+
+| result_state | calculationMethod | count |
+|---|---|---|
+| `recommendation_success` | `monthly_kyusei_v1` | 2 |
+| `recommendation_success` | `annual_monthly_kyusei_v1` | 1 |
+
+No other rows were returned — in particular, **no**
+`direction_zero_candidates`, `evidence_zero_candidates`,
+`no_common_direction`, or `direction_filter_unavailable` rows appear in
+the valid window. No unexpected/unknown `result_state` values were
+reported either.
+
+### 28-4. Eligible Population
+
+```
+recommendation_success:       3  (2 + 1, summed across both calculationMethod values)
+direction_zero_candidates:    0
+evidence_zero_candidates:     0
+eligible_count:                3
+```
+
+### 28-5. Overall Recommendation Availability
+
+```
+Numerator:   3  (recommendation_success)
+Denominator: 3  (eligible_count)
+Rate:        100%  (3 / 3)
+```
+
+**Descriptive only** (Section 28-11) — see the caveat below before reading
+this as a health signal.
+
+### 28-6. COMMON Recommendation Availability
+
+```
+Eligible:        1
+Success:         1
+Zero candidates: 0
+Rate:            100%  (1 / 1)
+```
+
+### 28-7. MONTHLY_FALLBACK Recommendation Availability
+
+```
+Eligible:        2
+Success:         2
+Zero candidates: 0
+Rate:            100%  (2 / 2)
+```
+
+### 28-8. Segment Reconciliation
+
+```
+COMMON eligible (1) + MONTHLY_FALLBACK eligible (2) = 3
+Overall eligible_count = 3
+PASS
+```
+
+No null/unknown `calculationMethod` rows, no unaccounted `result_state`
+values — the segmented and overall counts reconcile exactly.
+
+### 28-9. Post-Valid-Window NULL Check
+
+```
+recommendation_success + calculationMethod = NULL: 0 rows
+```
+
+**Consistent with [#2517](compass-calculation-method-measurement-valid-from.md)'s
+prediction** (Section 12 of that document: `recommendation_success` +
+NULL is contract-invalid under current code, and both previously-observed
+NULL events were independently timestamped as pre-dating this validity
+boundary). This observed `0` corroborates that finding — it is not, by
+itself, new evidence of anything; it is the expected outcome #2517 already
+committed to in writing before this query ran.
+
+### 28-10. QA Traffic Boundary
+
+**All 3 eligible events are very likely known QA traffic, not organic
+usage.** Cross-referencing against
+[`compass-monthly-fallback-ui-analytics-boundary.md`](compass-monthly-fallback-ui-analytics-boundary.md)
+Section 23 (one COMMON QA event, one MONTHLY_FALLBACK QA event,
+`recommendation_success` both) and the additional MONTHLY_FALLBACK
+verification referenced earlier in this audit chain (prior to the formal
+Production QA write-up) plausibly accounts for the 2nd `monthly_kyusei_v1`
+row. As established in Section 19 (unchanged): **`compass_result` carries
+no property distinguishing QA-originated events from organic ones**, so
+this cross-reference is circumstantial, not a query-level exclusion —
+`QA TRAFFIC NOT RELIABLY SEPARABLE` still holds exactly as Section 19
+states. No events were deleted or filtered to produce this count.
+
+### 28-11. Observation Sufficiency
+
+```
+DESCRIPTIVE RATE ONLY
+```
+
+Reason: `eligible_count = 3`, and per Section 28-10, all 3 are plausibly
+attributable to known QA activity rather than organic product usage. A
+100% rate over 3 known-QA-heavy events says only "the instrumentation and
+happy-path code work as designed when deliberately exercised" — it says
+nothing about organic Recommendation Availability, which remains
+unmeasured (zero confirmed organic eligible events observed).
+
+### 28-12. Product Interpretation
+
+The 100% figures in Sections 28-5/28-6/28-7 are **not** read as evidence
+that Compass reliably returns recommendations in general use. Per Section
+21 (unchanged) and this section's own 28-11: Direction Availability
+(96.9%, theoretical) and Recommendation Availability remain distinct
+metrics, and this measurement — being entirely QA-traffic-composed at
+N=3 — cannot yet inform either a "healthy" or "unhealthy" product
+conclusion. It confirms only that the metric is now actually queryable and
+that no contract violation appears in the queried data (Section 28-9).
+
+### 28-13. Next Gate
+
+```
+A — HEALTHY DESCRIPTIVE SIGNAL; WAIT FOR MORE ORGANIC DATA
+```
+
+Not **G** (Product-Decision-Ready) — explicitly ruled out per Section
+28-11/28-12: N=3, entirely plausible QA composition. Not **B/C/D**
+(a Recommendation Availability / COMMON / MONTHLY_FALLBACK problem) — no
+zero-candidate event was observed at all in the valid window. Not **E**
+(post-valid-window analytics defect) — Section 28-9 found zero NULL
+`calculationMethod` events, consistent with #2517's contract analysis, not
+contradicting it. Not **F** (no eligible observation) — 3 eligible events
+exist. The correct, conservative read is: the instrumentation is verified
+working end-to-end in production; the next step is accumulating organic
+volume before any rate here can inform a product decision — not further
+audits and not implementation.
+
+### 28-14. Impact
+
+```
+Production code changed:          NO
+Frontend production code changed: NO
+Backend production code changed:  NO
+Analytics instrumentation changed: NO
+Runtime changed:                  NO
+Recommendation Ranking changed:   NO
+Concierge changed:                NO
+DB changed:                       NONE
+Migration:                        NONE
+```
+
+### 28-15. Verification
+
+```
+Numbers transcribed verbatim from the repository owner's report, not
+re-derived or rounded. Arithmetic re-checked: 2+1=3 (Section 28-4),
+1+2=3=eligible_count (Section 28-8), 3/3=100%, 1/1=100%, 2/2=100%
+(Sections 28-5/28-6/28-7) -- all confirmed by this session's own
+calculation from the reported raw counts, not merely copied.
+```
