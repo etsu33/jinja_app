@@ -86,4 +86,12 @@ export type CompassRecommendationsResponse = {
   direction_context: CompassDirectionRuntime | null;
   recommendation_instance_id: string;
   recommendations: CompassRecommendation[];
+  // Compass Geographic Distance Boundary metadata (backend orchestrator is
+  // the source of truth -- never recomputed here). null for every fail-safe
+  // state that never reaches the distance stage (invalid_purpose,
+  // direction_filter_unavailable, no_common_direction); see
+  // temples.services.compass_recommendation_orchestrator.
+  distance_stage_km: 15 | 30 | 60 | null;
+  direction_candidate_count: number | null;
+  distance_candidate_count: number | null;
 };

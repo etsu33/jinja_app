@@ -113,6 +113,9 @@ export default function CompassClient() {
     recommendationCount: number | null = null,
     recommendationInstanceId: string | null = null,
     calculationMethod: CompassDirectionRuntime["calculationMethod"] | null = null,
+    distanceStageKm: 15 | 30 | 60 | null = null,
+    directionCandidateCount: number | null = null,
+    distanceCandidateCount: number | null = null,
   ) => {
     trackSearchEvent("compass_result", {
       result_state: resultState,
@@ -122,6 +125,9 @@ export default function CompassClient() {
       recommendation_count: recommendationCount,
       recommendationInstanceId,
       calculationMethod,
+      distance_stage_km: distanceStageKm,
+      direction_candidate_count: directionCandidateCount,
+      distance_candidate_count: distanceCandidateCount,
     });
   };
 
@@ -184,6 +190,9 @@ export default function CompassClient() {
         body.state === "recommendation_success" ? (body.recommendations?.length ?? 0) : null,
         body.recommendation_instance_id,
         body.direction_context?.calculationMethod ?? null,
+        body.distance_stage_km ?? null,
+        body.direction_candidate_count ?? null,
+        body.distance_candidate_count ?? null,
       );
     } catch {
       setUiState("backend_error");

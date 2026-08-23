@@ -129,6 +129,18 @@ export type SearchAnalyticsPayload = {
    * is not itself a calculation method.
    */
   calculationMethod?: "annual_monthly_kyusei_v1" | "monthly_kyusei_v1" | null;
+  /**
+   * Compass lifecycle only (compass_result). Compass Geographic Distance
+   * Boundary metadata, mirrored verbatim from the backend orchestrator's
+   * CompassRecommendationResult -- never recomputed on the frontend. null
+   * whenever the result carries no direction_context (same absence rule as
+   * calculationMethod above).
+   */
+  distance_stage_km?: 15 | 30 | 60 | null;
+  /** Compass lifecycle only (compass_result). Candidate count immediately after Direction Filter, before the distance stage. */
+  direction_candidate_count?: number | null;
+  /** Compass lifecycle only (compass_result). Candidate count within the adopted distance_stage_km ring. */
+  distance_candidate_count?: number | null;
   [key: string]: SearchAnalyticsPrimitive;
 };
 

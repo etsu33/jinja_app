@@ -115,6 +115,11 @@ describe("CompassClient lifecycle analytics", () => {
               { shrine_id: 1, name: "北西神社", reason: "仕事運との一致" },
               { shrine_id: 2, name: "北西二の宮", reason: "縁結び" },
             ],
+            // Compass Geographic Distance Boundary metadata -- backend
+            // orchestrator is the source of truth, mirrored verbatim.
+            distance_stage_km: 15,
+            direction_candidate_count: 6,
+            distance_candidate_count: 2,
           }),
         }),
       );
@@ -135,6 +140,9 @@ describe("CompassClient lifecycle analytics", () => {
         recommendation_count: 2,
         recommendationInstanceId: "compass01",
         calculationMethod: "annual_monthly_kyusei_v1",
+        distance_stage_km: 15,
+        direction_candidate_count: 6,
+        distance_candidate_count: 2,
       });
 
       // PII / data-minimization contract (task §10, §24 of the readiness audit):
@@ -170,6 +178,11 @@ describe("CompassClient lifecycle analytics", () => {
             },
             recommendation_instance_id: "compass02",
             recommendations: [{ shrine_id: 3, name: "南東神社", reason: "仕事運との一致" }],
+            // Monthly Fallback uses the identical Distance Boundary contract
+            // as COMMON -- same metadata shape, no separate rule.
+            distance_stage_km: 60,
+            direction_candidate_count: 1,
+            distance_candidate_count: 1,
           }),
         }),
       );
@@ -190,6 +203,9 @@ describe("CompassClient lifecycle analytics", () => {
         recommendation_count: 1,
         recommendationInstanceId: "compass02",
         calculationMethod: "monthly_kyusei_v1",
+        distance_stage_km: 60,
+        direction_candidate_count: 1,
+        distance_candidate_count: 1,
       });
 
       // No new event name is ever used for the fallback case.
@@ -212,6 +228,13 @@ describe("CompassClient lifecycle analytics", () => {
           purpose: "career",
           direction_context: null,
           recommendations: [],
+          // Direction Filter found candidates, but none survived the
+          // Distance Stage's 60km outer ring (§ Fail-safe "Direction候補は
+          // あるが60km以内0件"): stage=60, direction count > 0, distance
+          // count = 0. Not fabricated -- mirrors what the backend would send.
+          distance_stage_km: 60,
+          direction_candidate_count: 3,
+          distance_candidate_count: 0,
         }),
       });
       await submit();
@@ -236,8 +259,28 @@ describe("CompassClient lifecycle analytics", () => {
       // recommendation_count must not be fabricated for non-success states.
       const zeroCandidatesPayload = analyticsMocks.trackSearchEvent.mock.calls.find(
         ([name, payload]) => name === "compass_result" && (payload as { result_state: string }).result_state === "direction_zero_candidates",
-      )?.[1] as { recommendation_count: unknown; calculationMethod: unknown };
+      )?.[1] as {
+        recommendation_count: unknown;
+        calculationMethod: unknown;
+        distance_stage_km: unknown;
+        direction_candidate_count: unknown;
+        distance_candidate_count: unknown;
+      };
       expect(zeroCandidatesPayload.recommendation_count).toBeNull();
+      // Distance Boundary metadata forwards verbatim even for a zero-candidate result.
+      expect(zeroCandidatesPayload.distance_stage_km).toBe(60);
+      expect(zeroCandidatesPayload.direction_candidate_count).toBe(3);
+      expect(zeroCandidatesPayload.distance_candidate_count).toBe(0);
+
+      // direction_filter_unavailable never reaches the distance stage --
+      // metadata must stay null, never fabricated from the previous request.
+      const unavailableDistancePayload = analyticsMocks.trackSearchEvent.mock.calls.find(
+        ([name, payload]) =>
+          name === "compass_result" && (payload as { result_state: string }).result_state === "direction_filter_unavailable",
+      )?.[1] as { distance_stage_km: unknown; direction_candidate_count: unknown; distance_candidate_count: unknown };
+      expect(unavailableDistancePayload.distance_stage_km).toBeNull();
+      expect(unavailableDistancePayload.direction_candidate_count).toBeNull();
+      expect(unavailableDistancePayload.distance_candidate_count).toBeNull();
       // direction_context is null for both fixtures above -- calculationMethod
       // must not be fabricated (task §12: direction_filter_unavailable stays
       // ERROR, never gets a fake monthly_kyusei_v1 just because Fallback exists).

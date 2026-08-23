@@ -11,6 +11,13 @@ ORIGIN = {"lat": 35.0, "lng": 135.0}
 BIRTHDATE = "1984-05-15"
 TARGET_DATE = "2026-09-15"
 
+# Shrine fixture coordinates below are chosen to stay within the Compass
+# Geographic Distance Boundary's 60km outer stage while preserving the same
+# direction label as before this feature existed -- verified against the
+# real _bearing()/_direction_label() functions. See
+# test_compass_recommendation_orchestrator.py for the boundary behavior
+# itself (this file only checks the metadata round-trips through the API).
+
 
 @pytest.fixture
 def shrine_factory(db):
@@ -31,7 +38,7 @@ def shrine_factory(db):
 @pytest.mark.django_db
 def test_valid_request_returns_recommendation_success(client, shrine_factory):
     # 2026-09-15 + 1984-05-15 birthdate resolves to 北西 (see test_kyusei_direction.py)
-    shrine_factory(name="北西の神社", latitude=35.5, longitude=134.5, goriyaku="仕事運")
+    shrine_factory(name="北西の神社", latitude=35.25, longitude=134.75, goriyaku="仕事運")
 
     r = client.post(
         URL,
@@ -62,7 +69,7 @@ def test_valid_request_returns_recommendation_success(client, shrine_factory):
 
 @pytest.mark.django_db
 def test_separate_compass_results_get_separate_recommendation_instances(client, shrine_factory):
-    shrine_factory(name="北西の神社", latitude=35.5, longitude=134.5, goriyaku="仕事運")
+    shrine_factory(name="北西の神社", latitude=35.25, longitude=134.75, goriyaku="仕事運")
     payload = json.dumps(
         {
             "purpose": "career",
@@ -158,7 +165,7 @@ def test_monthly_fallback_returns_recommendation_flow_state(client, shrine_facto
     direction_filter_unavailable -- with calculationMethod="monthly_kyusei_v1"
     (never "annual_monthly_kyusei_v1", which would misrepresent this as
     annual/monthly agreement)."""
-    shrine_factory(name="南東の神社", latitude=34.5, longitude=136.0, goriyaku="仕事運")
+    shrine_factory(name="南東の神社", latitude=34.825, longitude=135.35, goriyaku="仕事運")
 
     r = client.post(
         URL,
@@ -238,8 +245,85 @@ def test_missing_purpose_returns_400(client):
 
 
 @pytest.mark.django_db
+def test_recommendation_success_response_includes_distance_stage_metadata(client, shrine_factory):
+    # ~35.9km from ORIGIN, northwest -- the only candidate, so it lands at
+    # Stage 60 (too few candidates within 15km/30km's expansion threshold).
+    shrine_factory(name="北西の神社", latitude=35.25, longitude=134.75, goriyaku="仕事運")
+
+    r = client.post(
+        URL,
+        data=json.dumps(
+            {
+                "purpose": "career",
+                "origin": ORIGIN,
+                "birthdate": BIRTHDATE,
+                "target_date": TARGET_DATE,
+            }
+        ),
+        content_type="application/json",
+    )
+
+    assert r.status_code == 200
+    body = r.json()
+    assert body["state"] == "recommendation_success"
+    assert body["distance_stage_km"] == 60
+    assert body["direction_candidate_count"] == 1
+    assert body["distance_candidate_count"] == 1
+
+
+@pytest.mark.django_db
+def test_direction_zero_candidates_response_has_null_stage_and_zero_counts(client, shrine_factory):
+    # South of origin -- outside the 北西 (northwest) authorized sector, so
+    # excluded by Direction Filter itself; the distance stage is never
+    # reached.
+    shrine_factory(name="南の神社", latitude=34.0, longitude=135.0)
+
+    r = client.post(
+        URL,
+        data=json.dumps(
+            {
+                "purpose": "career",
+                "origin": ORIGIN,
+                "birthdate": BIRTHDATE,
+                "target_date": TARGET_DATE,
+            }
+        ),
+        content_type="application/json",
+    )
+
+    assert r.status_code == 200
+    body = r.json()
+    assert body["state"] == "direction_zero_candidates"
+    assert body["distance_stage_km"] is None
+    assert body["direction_candidate_count"] == 0
+    assert body["distance_candidate_count"] == 0
+
+
+@pytest.mark.django_db
+def test_invalid_purpose_response_has_null_distance_stage_metadata(client):
+    r = client.post(
+        URL,
+        data=json.dumps(
+            {
+                "purpose": "not_a_real_tag",
+                "origin": ORIGIN,
+                "birthdate": BIRTHDATE,
+                "target_date": TARGET_DATE,
+            }
+        ),
+        content_type="application/json",
+    )
+
+    assert r.status_code == 400
+    body = r.json()
+    assert body["distance_stage_km"] is None
+    assert body["direction_candidate_count"] is None
+    assert body["distance_candidate_count"] is None
+
+
+@pytest.mark.django_db
 def test_response_never_leaks_internal_direction_fields(client, shrine_factory):
-    shrine_factory(name="北西の神社", latitude=35.5, longitude=134.5, goriyaku="仕事運")
+    shrine_factory(name="北西の神社", latitude=35.25, longitude=134.75, goriyaku="仕事運")
 
     r = client.post(
         URL,
