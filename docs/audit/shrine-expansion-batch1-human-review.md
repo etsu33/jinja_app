@@ -54,6 +54,17 @@
 | worktree内working tree | clean（作成直後に確認） |
 | Compass branch/worktreeへの変更 | 0（一切touchしていない） |
 
+波上宮H5-B Closure分（本改訂）:
+
+| 項目 | 結果 |
+|---|---|
+| メインworking tree | 変更なし（`docs/shrine-geographic-expansion-rollout-plan`branch、touchしていない） |
+| 既存`audit/shrine-expansion-batch1-human-review`worktree | 変更なし（`../jinja_app-shrine-human-review`、PR #2536としてmerge済み。touchしていない） |
+| 既存branch/worktree再利用 | `audit/shrine-expansion-batch1-naminoue-human-review` / `../jinja_app-naminoue-human-review`をそのまま使用。新規branch・新規worktreeは作成していない |
+| PR #2538状態確認 | `git fetch origin`後、PR #2538が`open`、HEAD SHA=`bfbbb871f53bcd75c857532f93ed0d8530241698`であることを確認。worktreeのHEADと一致することを確認済み |
+| 作業開始前のworking tree | clean（確認済み） |
+| Compass branch/worktreeへの変更 | 0（一切touchしていない） |
+
 STOP条件（branch/worktree衝突、origin/develop以外を基点、Compass branchへの
 変更が必要、unrelated working tree変更の発見）はいずれも該当しなかった。
 
@@ -241,7 +252,7 @@ source_confirmed`として構造検証（validate-only/dry-run PASS、Evidence G
 | H3 | regional_context | 那覇港・航海安全・琉球王府崇敬・琉球八社における地域的文脈 | null | source_confirmed | high | **PASS** |
 | H4 | historical_event | 明治23年 官幣小社列格 | null | source_confirmed | high | **PASS** |
 | H5-A | historical_event | 戦争による被災 | null | source_confirmed | high | **PASS** |
-| H5-B | historical_event | 昭和28年以降の社殿再建・平成の造営および境内整備 | null | source_confirmed | high | **PASS** |
+| H5-B | historical_event | 昭和28年以降の社殿再建・平成の造営 | null | source_confirmed | high | **REVISE → PASS** |
 
 **H1（founding、創始年不詳）**: `docs/knowledge/shrine-knowledge-contract.md`
 「history_type一覧」節の`founding`定義（「創建・鎮座に関する情報（確定年・
@@ -269,22 +280,41 @@ source_confirmed`として構造検証（validate-only/dry-run PASS、Evidence G
 妥当。
 
 **H5-A（historical_event、戦災）・H5-B（historical_event、戦後再建、
-confidence根拠を最終確認）**: Fact Generation Pilot時点の単一History
+本改訂でEvidence Final Closure）**: Fact Generation Pilot時点の単一History
 （「波上宮は先の大戦で被災し、昭和28年に本殿と社務所、昭和36年に拝殿を
 再建し、平成5年には平成の御造営による社殿が竣工した。」）を、被災（H5-A）と
 戦後の再建・造営プロセス（H5-B）に分割した形になっている。H5-Bの中心的主張
 （昭和28年の本殿・社務所再建、昭和36年の拝殿再建、平成5年の平成の御造営）は
 Pilot時点で既にSource確認済みの内容と直接一致し、一連の復興過程をSource本文が
-直接支持している。**ただし「境内整備」という表現は、Pilot時点で記録された
-Source確認内容（本殿・社務所・拝殿の再建、社殿の竣工）には明示的に含まれて
-おらず、本監査は`WebFetch`によるSource本文の再取得ができないため
+直接支持している。
+
+**「境内整備」表現のHuman Review Evidence Final Closure（本改訂）**: PR #2538
+時点では、「境内整備」という表現がPilot時点で記録されたSource確認内容には
+明示的に含まれておらず、Source本文の再確認を推奨する未解決事項として記録して
+いた。本改訂で波上宮公式「由緒」（https://naminouegu.jp/yuisyo.html）に対する
+直接照合を試みた。`WebFetch`は本セッションでも`EGRESS_BLOCKED`で失敗し
 （`docs/audit/shrine-knowledge-source-automation-readiness.md`が記録した
-ネットワークegress制約が本セッションでも継続）、この語のSource本文への
-直接対応を独立に再確認できていない。** 「御造営」という語が社殿本体に加えて
-境内整備を含みうる一般的な範囲の表現であり、新しい年代・出来事・因果関係を
-追加するものではないと判断し、**この限定的な不確実性を明記した上でconfidence:
-highを維持する**（HOLDへは倒さない）。Production Seed化時点でSource本文の
-再確認を推奨する（§9 Unresolved参照）。
+ネットワークegress制約が継続）、`WebSearch`による間接確認を3回実施した結果、
+「境内整備」という語自体は一度も出現せず、代わりに「昭和62年（1987年）旧
+社務所並びに参集所を撤去し新社務所を新築」「平成2年（1990年）一の鳥居を
+改築」「平成6年（1994年）5月、**全整備事業**の終了により竣功奉告祭」という、
+Pilot時点の記録より詳細だが**別の語**（「境内整備」ではなく「全整備事業」）が
+一貫して現れた。これは`naminouegu.jp`自体を直接fetchした結果ではなく、
+検索エンジンによる間接的な要約であり、公式Source本文の逐語引用として確認
+できたわけではない。
+
+「全整備事業」は「境内整備」と意味的に近いが同一の語ではなく、禁止事項8
+「『境内整備』がSourceにない場合、意味的に近いという理由でPASSさせない」に
+従い、これを「境内整備」の直接的な裏付けとして採用しない（Case B）。
+したがって、H5-Bの`content`を**Source本文と直接対応が確認できる範囲へ縮小**
+し、「昭和28年以降の社殿再建・平成の造営」（「および境内整備」を除去）とする。
+縮小後の内容は、Pilot時点のSource確認記録・本改訂のWebSearch結果のいずれとも
+矛盾なく一致し、`history_type: historical_event`・`verification_status:
+source_confirmed`・`confidence: high`をそのまま維持する（新しい年代・出来事・
+因果関係を追加していないため、confidenceを再判定する必要はない）。
+
+**Review: REVISE → PASS。** HOLDへは倒していない——H5-Bの中心的主張（社殿
+再建・平成の造営）自体はSource本文との直接対応が確認できているため。
 
 ### 5.3 Fact Boundary
 
@@ -313,9 +343,10 @@ Reviewが、既存運用上「複数人または承認工程でレビュー済�
 
 ### 5.5 波上宮 Review Result
 
-**`PASS`（全12 Fact: Deity 6・History 6）。REVISE・HOLD・STOPは0件。
-新たなSource conflictは発見されなかったため、いずれのFactにも`disputed`を
-付与していない。**
+**`PASS`（全12 Fact: Deity 6・History 6）。うちH5-Bは本改訂のEvidence Final
+Closureで`content`を1件REVISE → PASS（「境内整備」除去、§5.2参照）。それ以外
+11 FactはPASS（revision無し）。HOLD・STOPは0件。新たなSource conflictは
+発見されなかったため、いずれのFactにも`disputed`を付与していない。**
 
 ## 6. H2 Conflict Evidence
 
@@ -355,7 +386,7 @@ dry-runの再実行も未実施）。
 |---|---|---|---|
 | 北海道神宮 | Deity 4・History 3（H1: `tradition`） | Deity 4・History 3（H1: `founding`） | H1のhistory_type訂正（§3参照）。Fact件数に変化なし |
 | 建部大社 | Deity 2・History 3（H2は単一Fact、Source 2件） | Deity 2・History 4（H2→H2-A/H2-B、Source 3件） | H2を675年説/676年説の2 Factへ分離。Source Bが新規追加。history_type/role/verification_status/confidenceの意味的判断はH1・H3・D1・D2について変更なし（PASS） |
-| 波上宮 | Deity 6・History 5・Total 11 | Deity 6・History 6・Total 12 | Human Review時点で取得可能な公式Source本文と既存Knowledge Contractから Human Review Candidateを再構成した結果。**旧History Candidate本文はscratch Seedにのみ存在しrepositoryへ保存されていないため、「旧Pilot Factを修正した」という表現ではなく「再構成した」と記録する。旧Pilot Candidateとの1対1差分比較は不可能**（§5.3参照） |
+| 波上宮 | Deity 6・History 5・Total 11 | Deity 6・History 6・Total 12 | Human Review時点で取得可能な公式Source本文と既存Knowledge Contractから Human Review Candidateを再構成した結果。**旧History Candidate本文はscratch Seedにのみ存在しrepositoryへ保存されていないため、「旧Pilot Factを修正した」という表現ではなく「再構成した」と記録する。旧Pilot Candidateとの1対1差分比較は不可能**（§5.3参照）。件数はPR #2538時点から変化なし。ただしH5-Bの`content`はPR #2538後のEvidence Final Closure（本改訂）で「境内整備」を除去する1件のREVISEを行った（§5.2参照、Fact件数への影響なし） |
 
 ## 9. STOP / HOLD
 
@@ -363,8 +394,23 @@ dry-runの再実行も未実施）。
 
 前版（PR #2536）では、波上宮のHuman Review完了を示す記録がrepository内に
 存在しないことを確認し、タスク指示に従い着手せずSTOPとして記録していた。
-本改訂で波上宮のHuman Reviewを実施・記録し、このSTOP事項を解消した
+PR #2538で波上宮のHuman Reviewを実施・記録し、このSTOP事項を解消した
 （§5参照）。波上宮のHuman Review Result: `PASS`（全12 Fact）。
+
+### 波上宮H5-B「境内整備」（本改訂でClosure完了、旧Unresolved事項を解消）
+
+PR #2538時点では、H5-Bの「境内整備」という表現がPilot時点で記録された
+Source確認内容に明示的な対応が確認できておらず、ネットワークegress制約に
+より`WebFetch`でのSource本文再取得ができなかったため、Production Seed化前の
+再確認を推奨する未解決事項として記録していた。
+
+本改訂で、波上宮公式「由緒」への直接照合（`WebFetch`、`EGRESS_BLOCKED`で失敗）
+および間接確認（`WebSearch`、3回実施）を行った結果、「境内整備」という語自体は
+一度も確認できず、代わりに「全整備事業」（平成6年5月、竣功奉告祭）という
+別の語が一貫して現れた。禁止事項8（意味的に近いという理由でPASSさせない）に
+従い、H5-Bの`content`を「昭和28年以降の社殿再建・平成の造営」（「境内整備」を
+除去）へ縮小するCase Bとして処理し、Closureを完了した（§5.2参照）。
+`history_type`・`verification_status`・`confidence`はいずれも変更していない。
 
 ### 残る未解決事項
 
@@ -374,10 +420,6 @@ dry-runの再実行も未実施）。
 - Source B（建部大社公式「見どころ」）のURLは本Human Review入力に含まれて
   おらず、本監査では推測補完していない。Production Seed化を検討する際は
   別途URL確認が必要
-- 波上宮H5-Bの「境内整備」という表現は、Pilot時点で記録されたSource確認内容
-  に明示的な対応が確認できておらず、本監査はネットワークegress制約により
-  Source本文を再取得できなかった（§5.2参照）。confidence: highは維持したが、
-  Production Seed化前にSource本文の直接再確認を推奨する
 - D1/D2/H1/H3（建部大社）・全12 Fact（波上宮）のHuman Reviewは、本監査
   セッションが直接Source本文を再取得して行ったものではなく、Fact Generation
   Pilot時点で記録済みのSource確認内容（Sourceの`note`、各Factの`note`）との
@@ -399,8 +441,10 @@ dry-runの再実行も未実施）。
   Deity 2・History 4（合計6 Fact）。Source BのURL未確認という未解決事項が
   残る。Human Review後のvalidate-only/dry-run再実行はまだ行っていない
 - **波上宮**: PASS（全12 Fact: Deity 6・History 6）。Human Reviewは完了。
-  H5-Bの「境内整備」表現に軽微な未確認事項が残る。Human Review後の
-  validate-only/dry-run再実行はまだ行っていない
+  H5-Bの「境内整備」表現は本改訂（Evidence Final Closure）でSource本文との
+  直接対応が確認できないことが確定したため`content`から除去し、未解決事項は
+  解消した（§5.2・§9参照）。Human Review後のvalidate-only/dry-run再実行は
+  まだ行っていない
 - **3社共通**: 北海道神宮・建部大社・波上宮のいずれもHuman Review自体は
   完了した。Human Review後のFact内容（北海道神宮H1のhistory_type変更、
   建部大社H2の2 Fact分離、波上宮の6 History再構成）を反映した新しい
@@ -443,6 +487,25 @@ batch_1_7_seed.json`の8坂神社Multiple Fact実例、`batch_16_seed.json`の
 - validate-only / dry-run再実行 = 0
 - Compass branch/worktreeへの変更 = 0
 - 旧scratch Fact Candidate（History 5件分の本文）の推測復元 = 0
+- H5-B「境内整備」Closure時点でのunrelated file変更 = 0
 
-STOP条件はいずれも該当しなかった。波上宮の旧STOP事項はHuman Review完了に
-より解消された。
+STOP条件はいずれも該当しなかった。波上宮の旧STOP事項（未Review）はPR #2538の
+Human Review完了により解消され、H5-B「境内整備」の未解決事項（Source本文
+再確認推奨）は本改訂のEvidence Final Closure（`content`縮小、Case B）により
+解消された。
+
+**本改訂のValidation実行結果**（`../jinja_app-naminoue-human-review`
+worktree内）:
+
+```
+$ git diff --check
+（無出力 = 問題なし）
+$ git status --short
+ M docs/audit/shrine-expansion-batch1-human-review.md
+$ git diff -- docs/audit/shrine-expansion-batch1-human-review.md
+（本ドキュメントのみの差分を確認、他fileへの変更なし）
+```
+
+Audit文書1件のみの変更であることを確認した。Seed変更0・Code変更0・
+Model変更0・Migration変更0・Contract変更0・unrelated変更0。Docs-onlyの
+ためDjango testは実行していない。
