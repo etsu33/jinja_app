@@ -1,0 +1,460 @@
+{
+  "schema_version": "1.0",
+  "sources": [
+    {
+      "key": "batch17-hokkaidojingu-official",
+      "source_type": "shrine_official",
+      "title": "由緒",
+      "publisher": "北海道神宮",
+      "url": "https://www.hokkaidojingu.or.jp/history.html",
+      "bibliography": "",
+      "accessed_at": "2026-08-23",
+      "verified_at": "2026-08-23T07:00:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "御祭神4柱、北海道鎮座神祭、札幌神社への社名決定、明治天皇増祀・北海道神宮への改称を本文で直接確認。"
+    },
+    {
+      "key": "batch17-takebetaisha-official-about",
+      "source_type": "shrine_official",
+      "title": "建部大社について",
+      "publisher": "建部大社",
+      "url": "https://takebetaisha.jp/about/",
+      "bibliography": "",
+      "accessed_at": "2026-08-23",
+      "verified_at": "2026-08-23T07:00:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "日本武尊・大己貴命、景行天皇46年の創建由緒、天武天皇期の瀬田への移転、源頼朝に関する由緒を直接確認。"
+    },
+    {
+      "key": "batch17-takebetaisha-official-highlights",
+      "source_type": "shrine_official",
+      "title": "見どころ",
+      "publisher": "建部大社",
+      "url": "https://takebetaisha.jp/features/",
+      "bibliography": "",
+      "accessed_at": "2026-08-23",
+      "verified_at": "2026-08-23T07:00:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "Human Review（docs/audit/shrine-expansion-batch1-human-review.md）で新規登場したSource。白鳳4年（675年）に瀬田へ遷し祀られた趣旨。URLはdocs/audit/shrine-expansion-batch1-data-quality-closure.md §2でhttps://takebetaisha.jp/features/ をSource A（同一公式ドメインtakebetaisha.jp）との整合およびtitle/publisher一致によりRESOLVEDと確認済み。"
+    },
+    {
+      "key": "batch17-takebetaisha-japan-heritage",
+      "source_type": "government",
+      "title": "建部大社",
+      "publisher": "日本遺産ポータルサイト",
+      "url": "https://japan-heritage.bunka.go.jp/ja/culturalproperties/result/6883/",
+      "bibliography": "",
+      "accessed_at": "2026-08-23",
+      "verified_at": "2026-08-23T07:00:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "祭神・遷座について公式Sourceを補助する行政Source。遷座時期は公式サイトより具体的な「天武天皇4年（676）」と記載するが「伝わる」としている。"
+    },
+    {
+      "key": "batch17-naminouegu-official",
+      "source_type": "shrine_official",
+      "title": "波上宮由緒",
+      "publisher": "波上宮",
+      "url": "https://naminouegu.jp/yuisyo.html",
+      "bibliography": "",
+      "accessed_at": "2026-08-23",
+      "verified_at": "2026-08-23T07:00:00+00:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "創始年不詳、御鎮座伝説、琉球王府期の信仰、明治23年の列格、戦後再建、御祭神を本文で直接確認。"
+    }
+  ],
+  "shrines": [
+    {
+      "shrine_ref": {
+        "name_jp": "北海道神宮",
+        "address": "北海道札幌市中央区宮ヶ丘474"
+      },
+      "deities": [
+        {
+          "display_name": "大国魂神",
+          "canonical_name": "大国魂神",
+          "role": "unknown",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-23T07:00:00+00:00",
+          "note": "",
+          "source_keys": [
+            "batch17-hokkaidojingu-official"
+          ]
+        },
+        {
+          "display_name": "大那牟遅神",
+          "canonical_name": "大那牟遅神",
+          "role": "unknown",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-23T07:00:00+00:00",
+          "note": "",
+          "source_keys": [
+            "batch17-hokkaidojingu-official"
+          ]
+        },
+        {
+          "display_name": "少彦名神",
+          "canonical_name": "少彦名神",
+          "role": "unknown",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-23T07:00:00+00:00",
+          "note": "",
+          "source_keys": [
+            "batch17-hokkaidojingu-official"
+          ]
+        },
+        {
+          "display_name": "明治天皇",
+          "canonical_name": "明治天皇",
+          "role": "unknown",
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-23T07:00:00+00:00",
+          "note": "",
+          "source_keys": [
+            "batch17-hokkaidojingu-official"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "founding",
+          "title": "明治2年の北海道鎮座神祭を創祀とする由緒",
+          "content": "明治2年9月1日、明治天皇の聖旨により東京の神祇官で大国魂神・大那牟遅神・少彦名神を祀る北海道鎮座神祭が斎行された。",
+          "period_text": "明治2年（1869）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-23T07:00:00+00:00",
+          "note": "Human Review（docs/audit/shrine-expansion-batch1-human-review.md §3）によりtradition→foundingへrevision。Knowledge Contractのfounding定義「創建・鎮座に関する情報（確定年・推定年代・不詳を区別）」に整合するため。Sourceにない「北海道神宮はこれを創祀としている」という追加表現をcontentから除去した。",
+          "source_keys": [
+            "batch17-hokkaidojingu-official"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "明治4年の札幌神社への社名決定と円山遷座",
+          "content": "明治4年5月に社名が札幌神社と定められ、同年9月には現在の円山の地に社殿が完成し遷座祭が行われた。",
+          "period_text": "明治4年（1871）",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-23T07:00:00+00:00",
+          "note": "",
+          "source_keys": [
+            "batch17-hokkaidojingu-official"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "昭和39年の明治天皇増祀と北海道神宮への改称",
+          "content": "昭和39年に明治天皇が増祀され、同時に社名が札幌神社から北海道神宮へ改称された。",
+          "period_text": "昭和39年（1964）",
+          "event_date": null,
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-23T07:00:00+00:00",
+          "note": "",
+          "source_keys": [
+            "batch17-hokkaidojingu-official"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "建部大社",
+        "address": "滋賀県大津市神領1-16-1"
+      },
+      "deities": [
+        {
+          "display_name": "日本武尊",
+          "canonical_name": "日本武尊",
+          "role": "unknown",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-23T07:00:00+00:00",
+          "note": "",
+          "source_keys": [
+            "batch17-takebetaisha-official-about",
+            "batch17-takebetaisha-japan-heritage"
+          ]
+        },
+        {
+          "display_name": "大己貴命",
+          "canonical_name": "大己貴命",
+          "role": "unknown",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-23T07:00:00+00:00",
+          "note": "",
+          "source_keys": [
+            "batch17-takebetaisha-official-about",
+            "batch17-takebetaisha-japan-heritage"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "景行天皇46年を起源とする創建由緒",
+          "content": "建部大社公式は、景行天皇46年（西暦116年）、日本武尊の功績をたたえ、神前郡武部・鈴鹿郡能褒野の郷千草嶽に社殿を創建して日本武尊を斎祭したことを由緒としている。",
+          "period_text": "景行天皇46年（西暦116年、由緒）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-23T07:00:00+00:00",
+          "note": "古代の創建由緒を現代の確定史実へ格上げしないためtraditionとして保持する。Human Review（§4.2）でPASS。",
+          "source_keys": [
+            "batch17-takebetaisha-official-about"
+          ]
+        },
+        {
+          "history_type": "tradition",
+          "title": "白鳳4年（675年）に瀬田へ遷し祀られたとする由緒",
+          "content": "建部大社公式「見どころ」は、白鳳4年（675年）に瀬田へ遷し祀られたとしている。",
+          "period_text": "白鳳4年（675年）",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "disputed",
+          "confidence": "high",
+          "verified_at": "2026-08-23T07:00:00+00:00",
+          "note": "Human Review（§4.3・§6）確定。日本遺産ポータル（H2-B）と同一の瀬田遷座を扱うが具体年が675年/676年で競合し解消不能なためdisputed。confidenceはSource本文が675年を直接記載していることを根拠にhigh（shrine_official自体を根拠にしていない）。旧Pilotの単一History（天武天皇期の瀬田への遷座伝承）から分離。",
+          "source_keys": [
+            "batch17-takebetaisha-official-highlights"
+          ]
+        },
+        {
+          "history_type": "tradition",
+          "title": "天武天皇4年（676年）に現在地へ移されたと伝わる",
+          "content": "日本遺産ポータルは、建部大社が天武天皇4年（676年）に現在地へ移されたと伝わるとしている。",
+          "period_text": "天武天皇4年（676年）",
+          "event_date": null,
+          "sort_order": 2,
+          "verification_status": "disputed",
+          "confidence": "high",
+          "verified_at": "2026-08-23T07:00:00+00:00",
+          "note": "Human Review（§4.3・§6）確定。建部大社公式「見どころ」（H2-A）と同一の瀬田遷座を扱うが具体年が675年/676年で競合し解消不能なためdisputed。confidenceはSourceが具体年と「伝わる」という伝承性を明示していることを根拠にhigh。旧Pilotの単一History（天武天皇期の瀬田への遷座伝承）から分離。",
+          "source_keys": [
+            "batch17-takebetaisha-japan-heritage"
+          ]
+        },
+        {
+          "history_type": "tradition",
+          "title": "源頼朝の祈願と源氏再興後の寄進伝承",
+          "content": "建部大社公式は、源頼朝が平家に捕らわれた際に当社で前途を祈願し、後に源氏再興を果たして再び参拝し、神宝と神領を寄進したとする由緒を掲載している。",
+          "period_text": "平安時代末期",
+          "event_date": null,
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-23T07:00:00+00:00",
+          "note": "公式サイトは平治物語を根拠として挙げる。一次史料検証を今回行っていないためhistorical_eventへ確定せずtradition側に倒す。Human Review（§4.4）でPASS。",
+          "source_keys": [
+            "batch17-takebetaisha-official-about"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "波上宮",
+        "address": "沖縄県那覇市若狭1-25-11"
+      },
+      "deities": [
+        {
+          "display_name": "伊弉冉尊",
+          "canonical_name": "伊弉冉尊",
+          "role": "unknown",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-23T07:00:00+00:00",
+          "note": "",
+          "source_keys": [
+            "batch17-naminouegu-official"
+          ]
+        },
+        {
+          "display_name": "速玉男尊",
+          "canonical_name": "速玉男尊",
+          "role": "unknown",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-23T07:00:00+00:00",
+          "note": "",
+          "source_keys": [
+            "batch17-naminouegu-official"
+          ]
+        },
+        {
+          "display_name": "事解男尊",
+          "canonical_name": "事解男尊",
+          "role": "unknown",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-23T07:00:00+00:00",
+          "note": "",
+          "source_keys": [
+            "batch17-naminouegu-official"
+          ]
+        },
+        {
+          "display_name": "火神",
+          "canonical_name": "火神",
+          "role": "enshrined",
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-23T07:00:00+00:00",
+          "note": "公式サイトが「別鎮斎」として御祭神三柱とは区分して掲載。既存Seedのenshrined運用と整合確認済み。",
+          "source_keys": [
+            "batch17-naminouegu-official"
+          ]
+        },
+        {
+          "display_name": "産土神",
+          "canonical_name": "産土神",
+          "role": "enshrined",
+          "sort_order": 4,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-23T07:00:00+00:00",
+          "note": "公式サイトが「別鎮斎」として御祭神三柱とは区分して掲載。既存Seedのenshrined運用と整合確認済み。",
+          "source_keys": [
+            "batch17-naminouegu-official"
+          ]
+        },
+        {
+          "display_name": "少彦名神",
+          "canonical_name": "少彦名神",
+          "role": "enshrined",
+          "sort_order": 5,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-23T07:00:00+00:00",
+          "note": "公式サイトが「別鎮斎」として区分し、薬祖神と記載。既存Seedのenshrined運用と整合確認済み。",
+          "source_keys": [
+            "batch17-naminouegu-official"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "founding",
+          "title": "波上の崖を祈りの聖地とした信仰背景",
+          "content": "波上宮公式は、創始年は不詳とした上で、古くから人々が海の彼方のニライカナイの神々に豊漁・豊穣と平穏を祈り、波の上の崖端を聖地・拝所として祈りを捧げたことを由緒の背景としている。",
+          "period_text": "創始年不詳",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-23T07:00:00+00:00",
+          "note": "Human Review（§5.2）によりregional_context→foundingへrevision。Knowledge Contractのfounding定義が「不詳」の場合も許容するため。contentは変更なし。",
+          "source_keys": [
+            "batch17-naminouegu-official"
+          ]
+        },
+        {
+          "history_type": "tradition",
+          "title": "霊石と熊野権現の神託による御鎮座伝説",
+          "content": "波上宮公式は、南風原の崎山の里主が海浜で霊石を得て祈ったところ豊漁となり、波上山で熊野権現からこの地に社を建てるよう神託を受け、王府が社殿を建立したという御鎮座伝説を掲載している。",
+          "period_text": "年代不詳（御鎮座伝説）",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-23T07:00:00+00:00",
+          "note": "公式自身が「御鎮座伝説」と明記しているためtradition。霊石・神託をhistorical_eventへ昇格しない。Human Review（§5.2）でPASS。",
+          "source_keys": [
+            "batch17-naminouegu-official"
+          ]
+        },
+        {
+          "history_type": "regional_context",
+          "title": "琉球王府と海上交通の中での崇敬",
+          "content": "波上宮公式は、那覇港を往来する船が航海の平安を祈り、琉球王府も深く信仰し、琉球八社の制では第一の神社として尊崇されたと記している。",
+          "period_text": "琉球王府時代",
+          "event_date": null,
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-23T07:00:00+00:00",
+          "note": "Human Review（§5.2）でconfidence根拠を最終確認しhighを確定。unsupported interpretationなし。",
+          "source_keys": [
+            "batch17-naminouegu-official"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "明治23年の官幣小社列格",
+          "content": "明治23年に官幣小社へ列格したと波上宮公式は記している。",
+          "period_text": "明治23年（1890）",
+          "event_date": null,
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-23T07:00:00+00:00",
+          "note": "Human Review（§5.2）でPASS。",
+          "source_keys": [
+            "batch17-naminouegu-official"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "戦争による被災",
+          "content": "波上宮公式は、先の大戦で被災したと記している。",
+          "period_text": "戦後（時期不詳）",
+          "event_date": null,
+          "sort_order": 4,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-23T07:00:00+00:00",
+          "note": "旧Pilotの単一History（戦災と戦後の社殿再建）から被災部分のみを分離。Human Review（§5.2）でPASS。",
+          "source_keys": [
+            "batch17-naminouegu-official"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "昭和28年以降の社殿再建・平成の造営",
+          "content": "波上宮公式は、昭和28年に本殿と社務所、昭和36年に拝殿を再建し、平成5年には平成の御造営による社殿が竣工したと記している。",
+          "period_text": "昭和28年（1953）〜平成5年（1993）",
+          "event_date": null,
+          "sort_order": 5,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-08-23T07:00:00+00:00",
+          "note": "旧Pilotの単一Historyから戦後再建部分のみを分離。PR #2538時点の「境内整備」表現はPR #2540のHuman Review Evidence Final Closureで、Source本文との直接対応が確認できなかったため除去済み（Case B）。",
+          "source_keys": [
+            "batch17-naminouegu-official"
+          ]
+        }
+      ]
+    }
+  ]
+}
