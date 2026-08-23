@@ -1717,5 +1717,44 @@
       "lat": 32.9519,
       "lng": 131.1211
     }
+  },
+  {
+    "name_jp": "北海道神宮",
+    "address": "北海道札幌市中央区宮ヶ丘474",
+    "latitude": 43.0553,
+    "longitude": 141.3126,
+    "goriyaku": "",
+    "kyusei": null,
+    "astro_elements": [],
+    "location": {
+      "lat": 43.0553,
+      "lng": 141.3126
+    }
+  },
+  {
+    "name_jp": "建部大社",
+    "address": "滋賀県大津市神領1-16-1",
+    "latitude": 34.9735,
+    "longitude": 135.9135,
+    "goriyaku": "",
+    "kyusei": null,
+    "astro_elements": [],
+    "location": {
+      "lat": 34.9735,
+      "lng": 135.9135
+    }
+  },
+  {
+    "name_jp": "波上宮",
+    "address": "沖縄県那覇市若狭1-25-11",
+    "latitude": 26.2144,
+    "longitude": 127.6672,
+    "goriyaku": "",
+    "kyusei": null,
+    "astro_elements": [],
+    "location": {
+      "lat": 26.2144,
+      "lng": 127.6672
+    }
   }
 ]
