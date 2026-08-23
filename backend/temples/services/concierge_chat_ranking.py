@@ -1843,6 +1843,9 @@ def _build_need_lead(tag: str, goriyaku: str) -> str:
         "career": "仕事運",
         "money": "金運",
         "courage": "開運",
+        # NEED_TO_GORIYAKU_IDS["protection"]の主要な一致先である実在
+        # GoriyakuTag「厄除け」(id=2) をそのまま短いlead語として使う。
+        "protection": "厄除け",
     }
     return fallback.get(tag, "ご利益")
 
@@ -2061,6 +2064,10 @@ def _build_need_reason_text(
         "career": "仕事や転機",
         "money": "金運向上",
         "courage": "前進や後押し",
+        # NEED_LABELS_JA["protection"]（"厄除け・守り"）と同じ2語を、
+        # 既存の「AやB」文型へそのまま流し込む。新しい意味解釈は加えない
+        # (docs/audit/compass-protection-signal-completion.md Phase 6/7)。
+        "protection": "厄除けや守り",
     }
 
     user_intent = intent_map.get(tag, "今の願い")
@@ -2077,6 +2084,8 @@ def _build_need_reason_text(
         "career": "仕事や転機を後押ししたい今の願いに寄り添いやすく、参拝にも向いています。",
         "money": "金運や仕事の流れを整えたい今の願いに寄り添いやすく、参拝にも向いています。",
         "courage": "前に進みたい、流れを変えたい今の気持ちを後押しする参拝に向いています。",
+        # study/loveと同じ「〜を願う今の気持ちに寄り添いやすく」文型を再利用。
+        "protection": "厄除けや守りを願う今の気持ちに寄り添いやすく、参拝にも向いています。",
     }
     return mapping.get(tag, "今の悩みや願いに寄り添いやすい神社としておすすめしています。")
 
