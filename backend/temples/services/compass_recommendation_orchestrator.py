@@ -26,6 +26,16 @@ Boundary this module deliberately keeps:
   (kyusei.honmei_star et al.) already consumed it upstream to produce
   `direction_context`; CompassRecommendationHandoffContext has no birthdate
   field, so it does not travel further into Recommendation Integration.
+
+Compass Geographic Distance Boundary: `filter_candidates_by_direction` is
+bearing-only and has no distance cap of its own (by design -- distance is
+this module's responsibility, not Direction Filter's). This module applies
+`_apply_compass_distance_stage` (15km -> 30km -> 60km, expanding only when a
+narrower ring is too thin to compare) between Direction Filter and
+Recommendation Ranking, so a candidate merely sharing the right compass
+sector at, say, 90km no longer reaches Recommendation. This is Compass-only:
+it does not touch Concierge, Ranking's own distance decay, or Direction
+Filter's bearing math.
 """
 
 from __future__ import annotations
@@ -61,6 +71,24 @@ STATE_RECOMMENDATION_SUCCESS = "recommendation_success"
 # build_chat_candidates() itself or its default for other callers.
 DEFAULT_CANDIDATE_POOL_LIMIT = 60
 
+# Compass Geographic Distance Boundary (Compass-only; does not touch
+# Recommendation Ranking's existing distance decay, Concierge, or
+# filter_candidates_by_direction's bearing-only responsibility). Direction
+# Filter alone has no distance cap -- any candidate whose bearing falls in
+# an authorized sector passes regardless of distance (docs/audit/
+# shrine-dataset-integrity.md Section 14 confirmed this reaches ~99km in
+# practice). This stage narrows that to a realistic visiting distance,
+# expanding outward only when the narrower ring is too thin to compare.
+DISTANCE_STAGE_1_KM = 15
+DISTANCE_STAGE_2_KM = 30
+DISTANCE_STAGE_3_KM = 60
+
+# Not a minimum candidate count for Recommendation to proceed (1-4 survive
+# happily at Stage 3, see _apply_compass_distance_stage docstring) -- this is
+# only the "is this narrower ring thick enough to compare candidates in"
+# threshold that decides whether to expand to the next stage.
+DISTANCE_STAGE_EXPANSION_THRESHOLD = 5
+
 
 @dataclass(frozen=True)
 class CompassRecommendationResult:
@@ -81,6 +109,66 @@ class CompassRecommendationResult:
     recommendations: list[dict[str, Any]] = field(default_factory=list)
     purpose: Optional[str] = None
     direction_context: Optional[Mapping[str, Any]] = None
+    # Compass Geographic Distance Boundary metadata (None for every fail-safe
+    # state that never reaches the distance stage -- invalid_purpose,
+    # direction_filter_unavailable, no_common_direction -- see
+    # _apply_compass_distance_stage and get_compass_recommendations).
+    distance_stage_km: Optional[int] = None
+    direction_candidate_count: Optional[int] = None
+    distance_candidate_count: Optional[int] = None
+
+
+def _apply_compass_distance_stage(
+    candidates: Sequence[Mapping[str, Any]],
+) -> tuple[list[Mapping[str, Any]], int]:
+    """Compass-only Geographic Distance Boundary, applied after Direction
+    Filter and before Recommendation Ranking.
+
+    Pure, deterministic, order-preserving: returns a subset of `candidates`
+    in their original order, never re-ranked, re-scored, or reshaped -- the
+    same isolation contract filter_candidates_by_direction already follows.
+
+    Tries 15km, then 30km, then 60km, in that order. `5` is not a minimum
+    candidate count for Recommendation to proceed -- it only decides whether
+    the current (narrower) ring has enough candidates to compare, or whether
+    to expand to the next one. Stage 3 (60km) is terminal: 1-4 candidates
+    there is a normal success, and 0 there means genuinely no candidate
+    exists within any realistic visiting distance in this direction -- never
+    backfilled from beyond 60km.
+
+    A candidate with a missing/invalid `distance_m` is excluded from every
+    stage (never eligible at any distance), but never raises -- one bad
+    candidate must not break the whole batch (same isolation pattern as
+    filter_candidates_by_direction).
+
+    Returns (eligible_candidates, distance_stage_km) -- the second value is
+    always the last stage actually reached (15, 30, or 60), even when that
+    stage's result is empty, so callers can tell "Stage 3 tried and failed"
+    apart from "never reached the distance stage at all" (None).
+    """
+
+    def _within(limit_m: int) -> list[Mapping[str, Any]]:
+        eligible: list[Mapping[str, Any]] = []
+        for candidate in candidates:
+            if not isinstance(candidate, Mapping):
+                continue
+            distance = candidate.get("distance_m")
+            if not isinstance(distance, (int, float)) or isinstance(distance, bool):
+                continue
+            if distance <= limit_m:
+                eligible.append(candidate)
+        return eligible
+
+    stage_1 = _within(DISTANCE_STAGE_1_KM * 1000)
+    if len(stage_1) >= DISTANCE_STAGE_EXPANSION_THRESHOLD:
+        return stage_1, DISTANCE_STAGE_1_KM
+
+    stage_2 = _within(DISTANCE_STAGE_2_KM * 1000)
+    if len(stage_2) >= DISTANCE_STAGE_EXPANSION_THRESHOLD:
+        return stage_2, DISTANCE_STAGE_2_KM
+
+    stage_3 = _within(DISTANCE_STAGE_3_KM * 1000)
+    return stage_3, DISTANCE_STAGE_3_KM
 
 
 def get_compass_recommendations(
@@ -161,6 +249,27 @@ def get_compass_recommendations(
             state=STATE_DIRECTION_ZERO_CANDIDATES,
             purpose=purpose_slug,
             direction_context=direction_context,
+            direction_candidate_count=0,
+            distance_candidate_count=0,
+            distance_stage_km=None,
+        )
+
+    direction_candidate_count = len(filtered_candidates)
+    distance_filtered_candidates, distance_stage_km = _apply_compass_distance_stage(filtered_candidates)
+    distance_candidate_count = len(distance_filtered_candidates)
+
+    if not distance_filtered_candidates:
+        # Direction Filter found candidates, but none within even the widest
+        # (60km) ring -- distinct from the direction_candidate_count=0 case
+        # above via metadata, not a new result_state (Required Behavior:
+        # "この2状態を新しいresult_stateへ分割しない").
+        return CompassRecommendationResult(
+            state=STATE_DIRECTION_ZERO_CANDIDATES,
+            purpose=purpose_slug,
+            direction_context=direction_context,
+            direction_candidate_count=direction_candidate_count,
+            distance_candidate_count=0,
+            distance_stage_km=distance_stage_km,
         )
 
     bias = (
@@ -172,7 +281,7 @@ def get_compass_recommendations(
     recs = build_chat_recommendations(
         query="",
         language=language,
-        candidates=list(filtered_candidates),
+        candidates=list(distance_filtered_candidates),
         bias=bias,
         need_tags=[purpose_slug],
         public_mode="need",
@@ -193,6 +302,9 @@ def get_compass_recommendations(
             state=STATE_EVIDENCE_ZERO_CANDIDATES,
             purpose=purpose_slug,
             direction_context=direction_context,
+            direction_candidate_count=direction_candidate_count,
+            distance_candidate_count=distance_candidate_count,
+            distance_stage_km=distance_stage_km,
         )
 
     return CompassRecommendationResult(
@@ -200,6 +312,9 @@ def get_compass_recommendations(
         recommendations=recommendations,
         purpose=purpose_slug,
         direction_context=direction_context,
+        direction_candidate_count=direction_candidate_count,
+        distance_candidate_count=distance_candidate_count,
+        distance_stage_km=distance_stage_km,
     )
 
 
@@ -210,6 +325,10 @@ __all__ = [
     "STATE_DIRECTION_ZERO_CANDIDATES",
     "STATE_EVIDENCE_ZERO_CANDIDATES",
     "STATE_RECOMMENDATION_SUCCESS",
+    "DISTANCE_STAGE_1_KM",
+    "DISTANCE_STAGE_2_KM",
+    "DISTANCE_STAGE_3_KM",
+    "DISTANCE_STAGE_EXPANSION_THRESHOLD",
     "CompassRecommendationResult",
     "get_compass_recommendations",
 ]

@@ -83,6 +83,9 @@ class CompassRecommendationsView(APIView):
             "direction_context": result.direction_context,
             "recommendation_instance_id": recommendation_instance_id,
             "recommendations": recommendations,
+            "distance_stage_km": result.distance_stage_km,
+            "direction_candidate_count": result.direction_candidate_count,
+            "distance_candidate_count": result.distance_candidate_count,
         }
 
         if result.state == STATE_INVALID_PURPOSE:
