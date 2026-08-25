@@ -120,6 +120,49 @@ class TestResolveMatchedLeadEvidence:
         assert gid_label == "仕事運"
         assert text_hint is None
 
+    def test_winner_gid_uses_gid_label_even_with_text_present(self):
+        # docs/audit/compass-scoring-explanation-evidence-handoff.md
+        # (USE_WINNER_FOR_LEAD_ONLY), 9-1: BOTH candidate, C1 winner=gid.
+        rec = {
+            "goriyaku_tag_ids": [12],
+            "_prefilter_debug": {
+                "matched_text_hints_by_tag": {"career": ["仕事運"]},
+            },
+            "breakdown": {"need_evidence_winner_by_tag": {"career": "gid"}},
+        }
+        gid_label, text_hint = _resolve_matched_lead_evidence(rec, "career", {12: "仕事運"})
+        assert gid_label == "仕事運"
+        assert text_hint is None
+
+    def test_winner_text_uses_text_hint_even_with_gid_present(self):
+        # 9-2: BOTH candidate, C1 winner=text -- the real career/59 case
+        # (乃木神社: gid label "仕事運" but text winner "勝運").
+        rec = {
+            "goriyaku_tag_ids": [12],
+            "_prefilter_debug": {
+                "matched_text_hints_by_tag": {"career": ["勝運", "仕事運"]},
+            },
+            "breakdown": {"need_evidence_winner_by_tag": {"career": "text"}},
+        }
+        gid_label, text_hint = _resolve_matched_lead_evidence(rec, "career", {12: "仕事運"})
+        assert gid_label is None
+        assert text_hint == "勝運"
+
+    def test_winner_missing_for_tag_falls_back_to_gid_first(self):
+        # 9-3 (tie -> GID): the Contract records "gid" for a tie (unreachable
+        # via real weights, docs/audit/compass-text-evidence-scoring-decision.md),
+        # but a missing/absent winner entry must behave identically -- GID first.
+        rec = {
+            "goriyaku_tag_ids": [12],
+            "_prefilter_debug": {
+                "matched_text_hints_by_tag": {"career": ["勝運"]},
+            },
+            "breakdown": {"need_evidence_winner_by_tag": {}},
+        }
+        gid_label, text_hint = _resolve_matched_lead_evidence(rec, "career", {12: "仕事運"})
+        assert gid_label == "仕事運"
+        assert text_hint is None
+
     def test_no_query_when_need_gid_label_by_id_is_empty(self):
         rec = {"goriyaku_tag_ids": [2], "_prefilter_debug": {}}
         gid_label, text_hint = _resolve_matched_lead_evidence(rec, "protection", {})
@@ -145,6 +188,53 @@ class TestBuildRecommendationReasonLeadWiring:
             need_gid_label_by_id={2: "厄除け", 11: "勝運", 32: "災難除け"},
         )
         assert text == "厄除けのご利益で知られる赤坂氷川神社は、厄除けや守りを願う参拝先として適しています。"
+
+    def test_both_with_winner_text_uses_text_hint_as_lead_end_to_end(self):
+        # docs/audit/compass-scoring-explanation-evidence-handoff.md
+        # (USE_WINNER_FOR_LEAD_ONLY) end-to-end through build_recommendation_reason:
+        # a BOTH candidate whose C1 winner is text (as _attach_breakdown would
+        # record it) must show the text hint as Lead, not the GID label, even
+        # though matched_gid_label is also available.
+        rec = {
+            "name": "乃木神社",
+            "goriyaku": "仕事運・勝運・家内安全",
+            "goriyaku_tag_ids": [12],
+            "_prefilter_debug": {"matched_text_hints_by_tag": {"career": ["勝運", "仕事運"]}},
+            "breakdown": {
+                "matched_need_tags": ["career"],
+                "need_evidence_winner_by_tag": {"career": "text"},
+            },
+            "_primary_reason_label": "career",
+        }
+        text = build_recommendation_reason(
+            rec,
+            public_mode="need",
+            birthdate=None,
+            need_tags=["career"],
+            need_gid_label_by_id={12: "仕事運"},
+        )
+        assert text == "勝運のご利益で知られる乃木神社は、仕事や転機を願う参拝先として適しています。"
+
+    def test_both_with_winner_gid_uses_gid_label_as_lead_end_to_end(self):
+        rec = {
+            "name": "赤坂氷川神社",
+            "goriyaku": "縁結び・厄除け・仕事運",
+            "goriyaku_tag_ids": [12],
+            "_prefilter_debug": {"matched_text_hints_by_tag": {"career": ["仕事運"]}},
+            "breakdown": {
+                "matched_need_tags": ["career"],
+                "need_evidence_winner_by_tag": {"career": "gid"},
+            },
+            "_primary_reason_label": "career",
+        }
+        text = build_recommendation_reason(
+            rec,
+            public_mode="need",
+            birthdate=None,
+            need_tags=["career"],
+            need_gid_label_by_id={12: "仕事運"},
+        )
+        assert text == "仕事運のご利益で知られる赤坂氷川神社は、仕事や転機を願う参拝先として適しています。"
 
     def test_purpose_matched_via_text_only_uses_matched_text_hint_as_lead(self):
         rec = {

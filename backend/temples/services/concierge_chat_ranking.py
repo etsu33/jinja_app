@@ -1139,17 +1139,48 @@ def _attach_breakdown(
         matched_by_user_selected_gid=matched_by_user_selected_gid,
     )
 
+    # Text Evidence Scoring Contract (docs/audit/compass-text-evidence-scoring-decision.md,
+    # RECOMMEND_C1_MAX): per-tag, GID and Text evidence are no longer summed
+    # -- the larger of the two is taken (tie -> GID), removing the BOTH-state
+    # double-count while GID_ONLY/TEXT_ONLY/NONE stay exactly as before.
+    # matched_by_gid/matched_by_text/text_score_by_tag/matched_all are left
+    # untouched (raw evidence stays observable) -- only the rank contribution
+    # formula changes. astro (matched_by_tag) is a separate evidence channel,
+    # out of this Contract's scope, and keeps its own flat +2 unconditionally.
+    need_evidence_winner_by_tag: Dict[str, str] = {}
+    gid_text_contribution = 0
+    gid_text_contribution_weighted = 0.0
+    for tag in set(matched_by_gid) | set(matched_by_text):
+        gid_present = tag in matched_by_gid
+        text_present = tag in matched_by_text
+        gid_raw, gid_weighted = (2, 2.0) if gid_present else (0, 0.0)
+        text_raw = text_score_by_tag.get(tag, 0) if text_present else 0
+        text_weighted = text_raw * 1.2
+
+        if gid_present and text_present:
+            winner = "text" if text_weighted > gid_weighted else "gid"
+        elif gid_present:
+            winner = "gid"
+        else:
+            winner = "text"
+        need_evidence_winner_by_tag[tag] = winner
+
+        if winner == "gid":
+            gid_text_contribution += gid_raw
+            gid_text_contribution_weighted += gid_weighted
+        else:
+            gid_text_contribution += text_raw
+            gid_text_contribution_weighted += text_weighted
+
     score_need_rank = (
         len(matched_by_tag) * 2
-        + len(matched_by_gid) * 2
-        + sum(text_score_by_tag.values())
+        + gid_text_contribution
         + study_bonus
     )
 
     score_need_rank_weighted = (
         len(matched_by_tag) * 2.0
-        + len(matched_by_gid) * 2.0
-        + sum(text_score_by_tag.values()) * 1.2
+        + gid_text_contribution_weighted
         + study_bonus
     )
 
@@ -1311,6 +1342,7 @@ def _attach_breakdown(
             "direction_bonus": 0.0,
         },
         "matched_need_tags": matched_all,
+        "need_evidence_winner_by_tag": dict(need_evidence_winner_by_tag),
         "profile_signal": {
             "score": float(profile_signal_score),
             "matched": profile_signal_matched,
@@ -1761,6 +1793,17 @@ def _resolve_matched_lead_evidence(
     """Resolve Lead evidence for `tag` from data `_prefilter_candidates_for_need`/
     `_attach_breakdown` already attached to `rec` -- no per-candidate DB query
     (docs/audit/compass-need-lead-purpose-alignment.md Phase A7/A8).
+
+    Priority follows the C1 Max scoring winner recorded by `_attach_breakdown`
+    in `rec["breakdown"]["need_evidence_winner_by_tag"]` (docs/audit/compass-
+    scoring-explanation-evidence-handoff.md, USE_WINNER_FOR_LEAD_ONLY): the
+    Lead cites whichever of GID/Text evidence the score actually used for
+    `tag`. `_build_need_lead` itself is unchanged and always prefers a
+    non-empty matched_gid_label over matched_text_hint -- when the winner is
+    text, matched_gid_label is withheld here so that preference falls through
+    to matched_text_hint. When no winner is recorded for `tag` (rec built
+    without going through `_attach_breakdown`), this falls back to the
+    pre-C1 GID-first order.
     """
     matched_gid_label: Optional[str] = None
     if need_gid_label_by_id:
@@ -1774,12 +1817,19 @@ def _resolve_matched_lead_evidence(
         if matched_gids:
             matched_gid_label = need_gid_label_by_id.get(matched_gids[0])
 
+    winner = ((rec.get("breakdown") or {}).get("need_evidence_winner_by_tag") or {}).get(tag)
+
     matched_text_hint: Optional[str] = None
-    if not matched_gid_label:
+    if winner == "text" or not matched_gid_label:
         hints = ((rec.get("_prefilter_debug") or {}).get("matched_text_hints_by_tag") or {}).get(tag) or []
         if hints:
             text_weights = NEED_TEXT_WEIGHTS.get(tag, {})
             matched_text_hint = max(hints, key=lambda h: text_weights.get(h, 0))
+
+    if winner == "text":
+        # Withhold matched_gid_label so _build_need_lead's unchanged
+        # gid-first check falls through to matched_text_hint.
+        return None, matched_text_hint
 
     return matched_gid_label, matched_text_hint
 

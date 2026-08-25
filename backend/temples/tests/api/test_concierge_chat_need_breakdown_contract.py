@@ -155,6 +155,7 @@ def test_concierge_chat_need_and_breakdown_contract(client, monkeypatch, setting
             "direction_bonus",
             "weights",
             "matched_need_tags",
+            "need_evidence_winner_by_tag",
             "profile_signal",
             "direction_signal",
             "behavior_profile",
