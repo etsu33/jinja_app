@@ -17,12 +17,22 @@ class TestProtectionReason:
         assert "今の願いを願う参拝先" not in text
         assert "厄除けや守りを願う参拝先" in text
 
-    def test_protection_with_name_uses_first_goriyaku_item_as_lead_unchanged(self):
-        # _build_need_lead's goriyaku-present branch is untouched by this PR
-        # (only its goriyaku-empty fallback dict was extended) -- the lead
-        # must still be the candidate's own first-listed benefit.
+    def test_protection_with_name_and_no_matched_evidence_uses_purpose_fallback(self):
+        # docs/audit/compass-need-lead-purpose-alignment.md (Option C):
+        # goriyaku's own first-listed item is no longer used as the lead --
+        # it is not matched evidence for the tag. Without matched_gid_label/
+        # matched_text_hint, the lead falls to the Purpose fallback.
         text = _build_need_reason_text("protection", name="明治神宮", goriyaku="縁結び・厄除け・交通安全")
-        assert text == "縁結びのご利益で知られる明治神宮は、厄除けや守りを願う参拝先として適しています。"
+        assert text == "厄除けのご利益で知られる明治神宮は、厄除けや守りを願う参拝先として適しています。"
+
+    def test_protection_with_name_prefers_matched_gid_label_over_goriyaku(self):
+        text = _build_need_reason_text(
+            "protection",
+            name="明治神宮",
+            goriyaku="縁結び・厄除け・交通安全",
+            matched_gid_label="厄除け",
+        )
+        assert text == "厄除けのご利益で知られる明治神宮は、厄除けや守りを願う参拝先として適しています。"
 
     def test_protection_without_name_no_longer_falls_back_to_generic_copy(self):
         text = _build_need_reason_text("protection", name="", goriyaku="")
@@ -42,9 +52,18 @@ class TestProtectionReason:
 
 
 class TestProtectionLead:
-    def test_protection_lead_with_goriyaku_uses_first_listed_item(self):
+    def test_protection_lead_without_matched_evidence_uses_purpose_fallback(self):
+        # docs/audit/compass-need-lead-purpose-alignment.md (Option C):
+        # goriyaku is no longer consulted for the lead; without matched
+        # evidence this always resolves to protection's Purpose fallback.
         assert _build_need_lead("protection", "厄除け・家内安全") == "厄除け"
-        assert _build_need_lead("protection", "縁結び・厄除け") == "縁結び"
+        assert _build_need_lead("protection", "縁結び・厄除け") == "厄除け"
+
+    def test_protection_lead_prefers_matched_gid_label(self):
+        assert (
+            _build_need_lead("protection", "縁結び・厄除け", matched_gid_label="厄除け")
+            == "厄除け"
+        )
 
     def test_protection_lead_falls_back_to_specific_term_not_generic_goriyaku(self):
         assert _build_need_lead("protection", "") != "ご利益"
@@ -56,13 +75,22 @@ class TestOtherPurposesUnchanged:
     intent_map / lead-fallback entries."""
 
     def test_intent_map_with_name_unchanged_for_existing_purposes(self):
+        # intent_map（user_intent句）自体はこのPRで変更していない。lead部分は
+        # matched evidence未指定のためPurpose fallbackへ変わる
+        # (docs/audit/compass-need-lead-purpose-alignment.md Option C)。
         assert _build_need_reason_text("love", name="明治神宮", goriyaku="縁結び") == (
-            "縁結びのご利益で知られる明治神宮は、恋愛や良縁を願う参拝先として適しています。"
+            "良縁成就のご利益で知られる明治神宮は、恋愛や良縁を願う参拝先として適しています。"
         )
         assert _build_need_reason_text("study", name="湯島天満宮", goriyaku="学業成就") == (
             "学業成就のご利益で知られる湯島天満宮は、学業や合格を願う参拝先として適しています。"
         )
         assert _build_need_reason_text("money", name="花園神社", goriyaku="商売繁盛") == (
+            "金運のご利益で知られる花園神社は、金運向上を願う参拝先として適しています。"
+        )
+        # matched_gid_labelを指定すれば、その具体的な語がleadに使われる。
+        assert _build_need_reason_text(
+            "money", name="花園神社", goriyaku="商売繁盛", matched_gid_label="商売繁盛"
+        ) == (
             "商売繁盛のご利益で知られる花園神社は、金運向上を願う参拝先として適しています。"
         )
 
