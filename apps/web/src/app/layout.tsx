@@ -45,12 +45,12 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ja" className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+    <html lang="ja" className={`${geistSans.variable} ${geistMono.variable} dark antialiased`}>
       <body className="min-h-dvh flex flex-col">
         <AuthProvider>
           <ClientBootstrap />
 
-          <header className="sticky top-0 z-[100] bg-white">
+          <header className="sticky top-0 z-[100] bg-[var(--kt-color-surface-default)]">
             <nav className="mx-auto flex max-w-5xl items-center gap-4 p-3">
               <HomeLogoLink />
 
