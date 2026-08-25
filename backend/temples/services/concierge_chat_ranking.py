@@ -1753,12 +1753,44 @@ def _resolve_flow_from_mode(
     return "A"
 
 
+def _resolve_matched_lead_evidence(
+    rec: Dict[str, Any],
+    tag: str,
+    need_gid_label_by_id: Optional[Dict[int, str]],
+) -> tuple[Optional[str], Optional[str]]:
+    """Resolve Lead evidence for `tag` from data `_prefilter_candidates_for_need`/
+    `_attach_breakdown` already attached to `rec` -- no per-candidate DB query
+    (docs/audit/compass-need-lead-purpose-alignment.md Phase A7/A8).
+    """
+    matched_gid_label: Optional[str] = None
+    if need_gid_label_by_id:
+        candidate_gid_set = {
+            int(x)
+            for x in (rec.get("goriyaku_tag_ids") or [])
+            if isinstance(x, int) or (isinstance(x, str) and str(x).strip().isdigit())
+        }
+        expected_gids = need_tags_to_goriyaku_ids([tag])
+        matched_gids = sorted(candidate_gid_set & expected_gids & set(need_gid_label_by_id.keys()))
+        if matched_gids:
+            matched_gid_label = need_gid_label_by_id.get(matched_gids[0])
+
+    matched_text_hint: Optional[str] = None
+    if not matched_gid_label:
+        hints = ((rec.get("_prefilter_debug") or {}).get("matched_text_hints_by_tag") or {}).get(tag) or []
+        if hints:
+            text_weights = NEED_TEXT_WEIGHTS.get(tag, {})
+            matched_text_hint = max(hints, key=lambda h: text_weights.get(h, 0))
+
+    return matched_gid_label, matched_text_hint
+
+
 def build_recommendation_reason(
     rec: Dict[str, Any],
     *,
     public_mode: PublicMode,
     birthdate: Optional[str],
     need_tags: List[str],
+    need_gid_label_by_id: Optional[Dict[int, str]] = None,
 ) -> str:
     if public_mode == "compat":
         user_element = None
@@ -1810,17 +1842,27 @@ def build_recommendation_reason(
     goriyaku = str(rec.get("goriyaku") or "").strip()
 
     if primary_label:
+        matched_gid_label, matched_text_hint = _resolve_matched_lead_evidence(
+            rec, primary_label, need_gid_label_by_id
+        )
         return _build_need_reason_text(
             primary_label,
             name=name,
             goriyaku=goriyaku,
+            matched_gid_label=matched_gid_label,
+            matched_text_hint=matched_text_hint,
         )
 
     if matched_tags:
+        matched_gid_label, matched_text_hint = _resolve_matched_lead_evidence(
+            rec, matched_tags[0], need_gid_label_by_id
+        )
         return _build_need_reason_text(
             matched_tags[0],
             name=name,
             goriyaku=goriyaku,
+            matched_gid_label=matched_gid_label,
+            matched_text_hint=matched_text_hint,
         )
 
     if name:
@@ -1828,12 +1870,23 @@ def build_recommendation_reason(
     return "今の悩みや願いに合わせた参拝先の候補としておすすめしています。"
 
 
-def _build_need_lead(tag: str, goriyaku: str) -> str:
-    if goriyaku:
-        normalized = goriyaku.replace("、", "・").replace("，", "・").replace("/", "・")
-        parts = [p.strip() for p in normalized.split("・") if p.strip()]
-        if parts:
-            return parts[0]
+def _build_need_lead(
+    tag: str,
+    goriyaku: str,
+    *,
+    matched_gid_label: str | None = None,
+    matched_text_hint: str | None = None,
+) -> str:
+    # Evidence Chain (docs/audit/compass-need-lead-purpose-alignment.md
+    # Option C): matched goriyaku_tag label -> matched text_hint -> Purpose
+    # fallback -> generic. `goriyaku`'s own first-listed item is no longer
+    # used -- it is not matched evidence for `tag` and produced Purpose-
+    # unrelated leads (see the audit's MISALIGNED cases). Kept as a
+    # parameter only for call-site/signature stability.
+    if matched_gid_label:
+        return matched_gid_label
+    if matched_text_hint:
+        return matched_text_hint
 
     fallback = {
         "study": "学業成就",
@@ -2055,6 +2108,8 @@ def _build_need_reason_text(
     *,
     name: str = "",
     goriyaku: str = "",
+    matched_gid_label: str | None = None,
+    matched_text_hint: str | None = None,
 ) -> str:
     intent_map = {
         "study": "学業や合格",
@@ -2073,7 +2128,12 @@ def _build_need_reason_text(
     user_intent = intent_map.get(tag, "今の願い")
 
     if name:
-        lead = _build_need_lead(tag, goriyaku)
+        lead = _build_need_lead(
+            tag,
+            goriyaku,
+            matched_gid_label=matched_gid_label,
+            matched_text_hint=matched_text_hint,
+        )
         return f"{lead}のご利益で知られる{name}は、{user_intent}を願う参拝先として適しています。"
 
     mapping = {
