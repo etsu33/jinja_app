@@ -32,16 +32,16 @@ export default function FavoritesSection({ initialFavorites }: Props) {
   const visible = sorted.slice(0, 3);
 
   return (
-    <section className="space-y-3 rounded-2xl border border-stone-200/20 bg-stone-50/30 p-5 sm:p-6">
-      <header className="flex items-center justify-between gap-2 text-xs text-stone-500">
+    <section className="space-y-3 rounded-2xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-5 sm:p-6">
+      <header className="flex items-center justify-between gap-2 text-xs text-[var(--kt-color-text-muted)]">
         <p>
-          <span className="font-medium text-stone-700">保存した神社</span>
-          <span className="ml-2 text-[11px] text-stone-400">{hasData ? `${count}件` : "0件"}</span>
+          <span className="font-medium text-[var(--kt-color-text-secondary)]">保存した神社</span>
+          <span className="ml-2 text-[11px] text-[var(--kt-color-text-muted)]">{hasData ? `${count}件` : "0件"}</span>
         </p>
         {hasData && (
           <Link
             href="/favorites"
-            className="rounded-full border border-stone-200/40 bg-stone-50/20 px-3 py-1 text-[11px] text-stone-600 transition hover:bg-stone-100/50"
+            className="rounded-full border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] px-3 py-1 text-[11px] text-[var(--kt-color-text-secondary)] transition hover:bg-[var(--kt-color-background-subtle)]"
           >
             すべて見る
           </Link>
@@ -49,16 +49,16 @@ export default function FavoritesSection({ initialFavorites }: Props) {
       </header>
 
       {error && (
-        <div className="rounded-xl border border-rose-700/10 bg-rose-50/50 px-3 py-2 text-sm text-rose-700">{error}</div>
+        <div className="rounded-xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] px-3 py-2 text-sm text-[var(--kt-color-status-error)]">{error}</div>
       )}
 
       {!hasData ? (
-        <div className="space-y-2 rounded-2xl border border-stone-200/20 bg-stone-50/20 px-4 py-6 text-center text-sm text-stone-700">
+        <div className="space-y-2 rounded-2xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] px-4 py-6 text-center text-sm text-[var(--kt-color-text-secondary)]">
           <p className="font-medium">保存した神社はまだありません</p>
-          <p className="text-xs text-stone-500">気になる神社を保存できます。</p>
+          <p className="text-xs text-[var(--kt-color-text-muted)]">気になる神社を保存できます。</p>
           <Link
             href="/map"
-            className="mt-2 inline-block rounded-full border border-emerald-700/20 bg-emerald-800 px-4 py-1.5 text-xs font-medium text-white transition hover:bg-emerald-900"
+            className="mt-2 inline-block rounded-full border border-[var(--kt-color-action-primary)] bg-[var(--kt-color-action-primary)] px-4 py-1.5 text-xs font-medium text-[var(--kt-color-action-primary-text)] transition hover:bg-[var(--kt-color-action-primary-hover)]"
           >
             近くの神社を探す
           </Link>
