@@ -46,6 +46,6 @@ describe("HomeCompassSection", () => {
     const { container } = render(<HomeCompassSection />);
     const card = container.firstElementChild;
     expect(card?.className).toContain("rounded-3xl");
-    expect(card?.className).toContain("border-stone-200/25");
+    expect(card?.className).toContain("border-[var(--kt-color-border-default)]");
   });
 });

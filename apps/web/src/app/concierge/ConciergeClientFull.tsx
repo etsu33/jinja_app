@@ -37,7 +37,7 @@ import type { UserOrigin } from "../../../../../packages/shared/userOrigin";
 
 import { conciergeLog } from "@/lib/log/concierge";
 import { EVT_CLOSE_CONCIERGE } from "@/lib/events";
-const conciergeCardClass = "rounded-3xl border border-stone-200/45 bg-white/75 p-6";
+const conciergeCardClass = "rounded-3xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-6";
 
 import { isValidISODate, normalizeBirthdateInput } from "@/lib/date/normalizeBirthdateInput";
 import { track } from "@/lib/analytics/track";
@@ -1718,8 +1718,8 @@ export default function ConciergeClientFull() {
         <div className="px-4 pt-6">
           <div className={`relative ${conciergeCardClass}`}>
             {isBusy ? (
-              <div className="absolute inset-0 z-10 flex items-center justify-center rounded-3xl bg-white/65 backdrop-blur-sm">
-                <div className="rounded-full border border-stone-200/60 bg-stone-50/90 px-3 py-1.5 text-sm text-stone-700">
+              <div className="absolute inset-0 z-10 flex items-center justify-center rounded-3xl bg-[var(--kt-color-overlay-default)] backdrop-blur-sm">
+                <div className="rounded-full border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] px-3 py-1.5 text-sm text-[var(--kt-color-text-secondary)]">
                   選定中です…
                 </div>
               </div>
@@ -1870,9 +1870,9 @@ export default function ConciergeClientFull() {
             </div>
 
             {!isBusy && isUiPaywall ? (
-              <div className="mt-5 rounded-3xl border border-stone-200/50 bg-stone-50/70 px-5 py-4 text-sm text-stone-700">
-                <p className="font-medium text-stone-800">無料回数を使い切りました。</p>
-                <p className="mt-1 text-xs leading-6 text-stone-500">
+              <div className="mt-5 rounded-3xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] px-5 py-4 text-sm text-[var(--kt-color-text-secondary)]">
+                <p className="font-medium text-[var(--kt-color-text-primary)]">無料回数を使い切りました。</p>
+                <p className="mt-1 text-xs leading-6 text-[var(--kt-color-text-muted)]">
                   {isLoggedIn
                     ? "続けるには有料プランへの切り替えが必要です。"
                     : "続けるにはログイン、または有料プランへの切り替えが必要です。"}
@@ -1881,7 +1881,7 @@ export default function ConciergeClientFull() {
                   {!isLoggedIn ? (
                     <button
                       type="button"
-                      className="w-full rounded-full border border-stone-200/70 bg-white/85 px-4 py-2 text-sm font-medium text-stone-700 sm:w-auto"
+                      className="w-full rounded-full border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] px-4 py-2 text-sm font-medium text-[var(--kt-color-text-secondary)] sm:w-auto"
                       onClick={() => redirectToAuth("login")}
                     >
                       ログイン
@@ -1889,7 +1889,7 @@ export default function ConciergeClientFull() {
                   ) : null}
                   <Link
                     href="/billing/upgrade"
-                    className="w-full rounded-full border border-emerald-200/70 bg-emerald-50/90 px-4 py-2 text-center text-sm font-medium text-emerald-900 sm:w-auto"
+                    className="w-full rounded-full border border-[var(--kt-color-action-primary)] bg-[var(--kt-color-background-subtle)] px-4 py-2 text-center text-sm font-medium text-[var(--kt-color-action-primary)] sm:w-auto"
                   >
                     有料プランを見る
                   </Link>
@@ -1898,24 +1898,24 @@ export default function ConciergeClientFull() {
             ) : null}
 
             {!isBusy && entryValidationError ? (
-              <div className="mt-3 rounded-3xl border border-amber-200/70 bg-amber-50/70 px-5 py-4 text-sm text-amber-900">
+              <div className="mt-3 rounded-3xl border border-[var(--kt-color-status-warning)] bg-[var(--kt-color-background-subtle)] px-5 py-4 text-sm text-[var(--kt-color-status-warning)]">
                 <p className="font-medium">{entryValidationError}</p>
               </div>
             ) : null}
 
             {shouldShowEntryError ? (
               <div className={`mt-3 ${conciergeCardClass}`}>
-                <p className="text-sm font-semibold text-rose-600">うまく取得できませんでした</p>
+                <p className="text-sm font-semibold text-[var(--kt-color-status-error)]">うまく取得できませんでした</p>
                 <div className="mt-2 grid gap-2">
                   <Link
                     href="/map"
-                    className="w-full rounded-xl bg-slate-900 px-4 py-2 text-center text-sm font-semibold text-white"
+                    className="w-full rounded-xl bg-[var(--kt-color-action-primary)] px-4 py-2 text-center text-sm font-semibold text-[var(--kt-color-action-primary-text)]"
                   >
                     近い神社を地図で見る
                   </Link>
                   <button
                     type="button"
-                    className="w-full rounded-xl border bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                    className="w-full rounded-xl border bg-[var(--kt-color-surface-default)] px-4 py-2 text-sm font-semibold text-[var(--kt-color-text-secondary)] hover:bg-[var(--kt-color-background-subtle)]"
                     onClick={() => {
                       snap("action:error_retry_filter", {});
                       setIsFilterOpen(true);
@@ -1934,9 +1934,9 @@ export default function ConciergeClientFull() {
       {hydrated && shouldShowThreadRenderer ? (
         <div className="p-4 space-y-5">
           {isFiltering ? (
-            <div className="rounded-3xl border border-emerald-100 bg-emerald-50/70 px-5 py-4 text-sm text-emerald-900">
+            <div className="rounded-3xl border border-[var(--kt-color-action-primary)] bg-[var(--kt-color-background-subtle)] px-5 py-4 text-sm text-[var(--kt-color-action-primary)]">
               <p className="font-semibold">条件に合わせて再提案しています</p>
-              <p className="mt-1 text-xs leading-6 text-slate-600">
+              <p className="mt-1 text-xs leading-6 text-[var(--kt-color-text-muted)]">
                 候補を絞り直しているため、少しだけお待ちください。
               </p>
             </div>
@@ -1958,9 +1958,9 @@ export default function ConciergeClientFull() {
           <ConciergeDebugPanel unified={displayUnified} />
 
           {!isBusy && isUiPaywall ? (
-            <div className="rounded-3xl border border-stone-200/50 bg-stone-50/70 px-5 py-4 text-sm text-stone-700">
-              <p className="font-medium text-stone-800">無料回数を使い切りました。</p>
-              <p className="mt-1 text-xs leading-6 text-stone-500">
+            <div className="rounded-3xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] px-5 py-4 text-sm text-[var(--kt-color-text-secondary)]">
+              <p className="font-medium text-[var(--kt-color-text-primary)]">無料回数を使い切りました。</p>
+              <p className="mt-1 text-xs leading-6 text-[var(--kt-color-text-muted)]">
                 {isLoggedIn
                   ? "続けるには有料プランへの切り替えが必要です。"
                   : "続けるにはログイン、または有料プランへの切り替えが必要です。"}
@@ -1969,7 +1969,7 @@ export default function ConciergeClientFull() {
                 {!isLoggedIn ? (
                   <button
                     type="button"
-                    className="w-full rounded-full border border-stone-200/70 bg-white/85 px-4 py-2 text-sm font-medium text-stone-700 sm:w-auto"
+                    className="w-full rounded-full border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] px-4 py-2 text-sm font-medium text-[var(--kt-color-text-secondary)] sm:w-auto"
                     onClick={() => redirectToAuth("login")}
                   >
                     ログイン
@@ -1977,7 +1977,7 @@ export default function ConciergeClientFull() {
                 ) : null}
                 <Link
                   href="/billing/upgrade"
-                  className="w-full rounded-full border border-emerald-200/70 bg-emerald-50/90 px-4 py-2 text-center text-sm font-medium text-emerald-900 sm:w-auto"
+                  className="w-full rounded-full border border-[var(--kt-color-action-primary)] bg-[var(--kt-color-background-subtle)] px-4 py-2 text-center text-sm font-medium text-[var(--kt-color-action-primary)] sm:w-auto"
                 >
                   有料プランを見る
                 </Link>

@@ -54,8 +54,8 @@ export function HomeHeroConsultationInput() {
   };
 
   return (
-    <div className="w-full max-w-2xl rounded-[2rem] border border-white/70 bg-white/70 p-4 text-left shadow-sm shadow-stone-900/5 sm:p-5">
-      <label htmlFor="home-hero-consultation" className="block text-[11px] font-medium text-stone-500">
+    <div className="w-full max-w-2xl rounded-[2rem] border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-elevated)] p-4 text-left shadow-sm sm:p-5">
+      <label htmlFor="home-hero-consultation" className="block text-[11px] font-medium text-[var(--kt-color-text-muted)]">
         今の気持ちを少しだけ書く
       </label>
 
@@ -65,11 +65,11 @@ export function HomeHeroConsultationInput() {
         onChange={(event) => setTheme(event.target.value)}
         placeholder="例: 気持ちを切り替えたい、これからのことを考えたい"
         rows={3}
-        className="mt-2 w-full resize-none rounded-3xl border border-stone-200/50 bg-stone-50/70 px-4 py-3 text-sm leading-7 text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-emerald-200 focus:ring-1 focus:ring-emerald-100"
+        className="mt-2 w-full resize-none rounded-3xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] px-4 py-3 text-sm leading-7 text-[var(--kt-color-text-primary)] outline-none transition placeholder:text-[var(--kt-color-text-muted)] focus:border-[var(--kt-color-border-focus)] focus:ring-1 focus:ring-[var(--kt-color-border-focus)]"
       />
 
       <div className="mt-3">
-        <p className="text-[11px] font-medium text-stone-500">相談のきっかけ</p>
+        <p className="text-[11px] font-medium text-[var(--kt-color-text-muted)]">相談のきっかけ</p>
         <div className="mt-2 flex flex-wrap gap-2">
           {CONSULTATION_THEME_CHIPS.map((chip) => {
             const isSelected = theme.trim() === chip.text;
@@ -80,8 +80,8 @@ export function HomeHeroConsultationInput() {
                 className={[
                   "rounded-full border px-3 py-1.5 text-xs font-medium transition active:scale-[0.98]",
                   isSelected
-                    ? "border-emerald-200/80 bg-emerald-50/90 text-emerald-800 shadow-sm shadow-emerald-900/5"
-                    : "border-stone-200/60 bg-white/55 text-stone-600 hover:bg-stone-50",
+                    ? "border-[var(--kt-color-action-primary)] bg-[var(--kt-color-background-subtle)] text-[var(--kt-color-action-primary)] shadow-sm"
+                    : "border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] text-[var(--kt-color-text-secondary)] hover:bg-[var(--kt-color-background-subtle)]",
                 ].join(" ")}
                 onClick={() => setTheme(chip.text)}
                 aria-pressed={isSelected}
@@ -94,17 +94,17 @@ export function HomeHeroConsultationInput() {
         </div>
       </div>
 
-      <div className="mt-3 border-t border-stone-200/50 pt-3">
+      <div className="mt-3 border-t border-[var(--kt-color-border-default)] pt-3">
         <button
           type="button"
-          className="inline-flex items-center rounded-full px-1 text-xs font-medium text-stone-600 transition hover:text-emerald-800"
+          className="inline-flex items-center rounded-full px-1 text-xs font-medium text-[var(--kt-color-text-secondary)] transition hover:text-[var(--kt-color-action-primary)]"
           onClick={() => setIsConditionHintOpen((current) => !current)}
           aria-expanded={isConditionHintOpen}
         >
           ＋ 条件を追加する
         </button>
         {isConditionHintOpen ? (
-          <p className="mt-2 rounded-2xl border border-stone-200/55 bg-stone-50/70 px-3 py-2 text-xs leading-6 text-stone-500">
+          <p className="mt-2 rounded-2xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] px-3 py-2 text-xs leading-6 text-[var(--kt-color-text-muted)]">
             誕生日やご利益、参拝スタイルなどの条件は次のステップで追加できます。
           </p>
         ) : null}
@@ -113,7 +113,7 @@ export function HomeHeroConsultationInput() {
       <div className="mt-4 flex flex-col gap-2 sm:flex-row">
         <button
           type="button"
-          className="inline-flex min-h-[40px] w-full items-center justify-center rounded-full border border-emerald-200/70 bg-emerald-50/90 px-5 py-2 text-sm font-medium text-emerald-900 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-45"
+          className="inline-flex min-h-[40px] w-full items-center justify-center rounded-full border border-[var(--kt-color-action-primary)] bg-[var(--kt-color-background-subtle)] px-5 py-2 text-sm font-medium text-[var(--kt-color-action-primary)] transition hover:bg-[var(--kt-color-surface-default)] disabled:cursor-not-allowed disabled:opacity-45"
           disabled={!canSubmit}
           onClick={() => submitTheme(theme)}
         >
