@@ -97,7 +97,7 @@ export default function ShrineDetailShell({
                 directionRouteContext={directionRouteContext}
                 analyticsProvenance={analyticsProvenance}
                 recommendationInstanceId={recommendationInstanceId}
-                className="inline-flex min-h-[44px] w-full items-center justify-center rounded-[var(--kt-radius-panel)] bg-slate-900 px-4 py-3 text-sm font-semibold text-[var(--kt-color-text-inverse)] hover:bg-slate-800"
+                className="inline-flex min-h-[44px] w-full items-center justify-center rounded-[var(--kt-radius-panel)] bg-[var(--kt-color-action-primary)] px-4 py-3 text-sm font-semibold text-[var(--kt-color-text-inverse)] hover:bg-[var(--kt-color-action-primary-hover)]"
               />
             ) : null}
 
