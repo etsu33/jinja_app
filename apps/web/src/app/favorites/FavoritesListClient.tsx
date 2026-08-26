@@ -88,16 +88,16 @@ export default function FavoritesListClient({ initialFavorites }: Props) {
 
   return (
     <div className="space-y-3">
-      {err && <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
+      {err && <div className="rounded-md border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] px-3 py-2 text-sm text-[var(--kt-color-status-error)]">{err}</div>}
 
       {items.length === 0 ? (
-        <div className="rounded-2xl border border-dashed bg-orange-50/40 px-4 py-6 text-sm text-gray-700">
+        <div className="rounded-2xl border border-dashed bg-[var(--kt-color-background-subtle)] px-4 py-6 text-sm text-[var(--kt-color-text-secondary)]">
           <p className="mb-1 font-semibold">お気に入りの神社はまだありません</p>
-          <p className="text-xs text-gray-500">神社詳細ページから「保存」をタップすると、ここに一覧で表示されます。</p>
+          <p className="text-xs text-[var(--kt-color-text-muted)]">神社詳細ページから「保存」をタップすると、ここに一覧で表示されます。</p>
           <Link
             href="/map"
             prefetch={false}
-            className="mt-3 inline-block rounded-full bg-orange-500 px-4 py-1 text-xs font-medium text-white hover:bg-orange-600"
+            className="mt-3 inline-block rounded-full bg-[var(--kt-color-action-primary)] px-4 py-1 text-xs font-medium text-[var(--kt-color-action-primary-text)] hover:bg-[var(--kt-color-action-primary-hover)]"
           >
             近くの神社を探す
           </Link>

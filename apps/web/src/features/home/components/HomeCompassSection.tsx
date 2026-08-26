@@ -22,17 +22,17 @@ import { trackSearchEvent } from "@/lib/analytics/searchEvents";
 
 export function HomeCompassSection() {
   return (
-    <div className="rounded-3xl border border-stone-200/25 bg-white/60 px-5 py-7 sm:py-8">
+    <div className="rounded-3xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] px-5 py-7 sm:py-8">
       <div className="space-y-1">
-        <p className="text-sm font-medium text-stone-800">今月から探す</p>
-        <p className="text-xs text-stone-500">今月の流れと方向から、参拝のきっかけを見つけます。</p>
+        <p className="text-sm font-medium text-[var(--kt-color-text-primary)]">今月から探す</p>
+        <p className="text-xs text-[var(--kt-color-text-muted)]">今月の流れと方向から、参拝のきっかけを見つけます。</p>
       </div>
 
       <div className="mt-5">
         <Link
           href="/compass?ref=home"
           onClick={() => trackSearchEvent("home_compass_entry_click", { source: "home" })}
-          className="inline-flex min-h-[36px] items-center justify-center rounded-full border border-stone-200/55 bg-stone-50/80 px-4 py-1.5 text-sm font-normal text-stone-700 transition hover:bg-stone-100"
+          className="inline-flex min-h-[36px] items-center justify-center rounded-full border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] px-4 py-1.5 text-sm font-normal text-[var(--kt-color-text-secondary)] transition hover:bg-[var(--kt-color-background-subtle)]"
         >
           参拝コンパスを見る
         </Link>

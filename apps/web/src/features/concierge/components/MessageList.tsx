@@ -27,7 +27,7 @@ export default function MessageList({ messages }: Props) {
                 "inline-block max-w-[80%] rounded-2xl px-3 py-2 text-[13px] leading-relaxed",
                 isUser
                   ? "bg-[var(--kt-color-message-own-background)] text-[var(--kt-color-message-own-text)]"
-                  : "bg-white text-gray-900 border border-gray-200",
+                  : "bg-[var(--kt-color-surface-default)] text-[var(--kt-color-text-primary)] border border-[var(--kt-color-border-default)]",
               ].join(" ")}
             >
               {m.content}

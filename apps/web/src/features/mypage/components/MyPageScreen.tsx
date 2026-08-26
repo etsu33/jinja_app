@@ -91,12 +91,12 @@ export default function MyPageScreen({ activeTab }: MyPageScreenProps) {
 
   if (!isLoggedIn || !user) {
     return (
-      <main className="mx-auto max-w-3xl p-6 text-stone-800">
+      <main className="mx-auto max-w-3xl p-6 text-[var(--kt-color-text-primary)]">
         <h1 className="mb-4 text-xl font-semibold">マイページ</h1>
-        <div className="rounded-2xl border border-stone-200/20 bg-stone-50/30 p-6">
-          <p className="mb-3 text-sm text-stone-600">御朱印帳はログイン後に使えます。</p>
+        <div className="rounded-2xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-6">
+          <p className="mb-3 text-sm text-[var(--kt-color-text-secondary)]">御朱印帳はログイン後に使えます。</p>
           <Link
-            className="inline-block rounded-full border border-emerald-700/20 bg-emerald-800 px-4 py-2 text-sm text-white transition hover:bg-emerald-900"
+            className="inline-block rounded-full border border-[var(--kt-color-action-primary)] bg-[var(--kt-color-action-primary)] px-4 py-2 text-sm text-[var(--kt-color-action-primary-text)] transition hover:bg-[var(--kt-color-action-primary-hover)]"
             href={buildLoginHref(hasShrine ? `/mypage?tab=goshuin&shrine=${shrineId}` : `/mypage?tab=goshuin`)}
           >
             ログインへ
@@ -109,7 +109,7 @@ export default function MyPageScreen({ activeTab }: MyPageScreenProps) {
   return (
     <div className="space-y-6">
       <header className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-stone-900">マイページ</h1>
+        <h1 className="text-xl font-semibold text-[var(--kt-color-text-primary)]">マイページ</h1>
 
         <button
           type="button"
@@ -117,7 +117,7 @@ export default function MyPageScreen({ activeTab }: MyPageScreenProps) {
             await logout();
             router.replace("/");
           }}
-          className="rounded-full border border-stone-200/40 bg-stone-50/20 px-3 py-1.5 text-xs font-medium text-stone-500 transition hover:bg-stone-100/50 hover:text-stone-700"
+          className="rounded-full border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] px-3 py-1.5 text-xs font-medium text-[var(--kt-color-text-muted)] transition hover:bg-[var(--kt-color-background-subtle)] hover:text-[var(--kt-color-text-secondary)]"
         >
           ログアウト
         </button>
@@ -125,7 +125,7 @@ export default function MyPageScreen({ activeTab }: MyPageScreenProps) {
 
       {showSubmissionPendingBanner && (
         <div
-          className="whitespace-pre-line rounded-xl border border-emerald-700/10 bg-emerald-50/40 px-4 py-3 text-sm leading-6 text-emerald-900/80"
+          className="whitespace-pre-line rounded-xl border border-[var(--kt-color-action-primary)] bg-[var(--kt-color-background-subtle)] px-4 py-3 text-sm leading-6 text-[var(--kt-color-action-primary)]"
           role="status"
           aria-live="polite"
         >
@@ -142,18 +142,18 @@ export default function MyPageScreen({ activeTab }: MyPageScreenProps) {
             description="投稿した神社の状態を確認できます。"
           >
             {submissionsLoading ? (
-              <p className="text-sm text-stone-500">読み込み中…</p>
+              <p className="text-sm text-[var(--kt-color-text-secondary)]">読み込み中…</p>
             ) : submissionsError ? (
-              <p className="text-sm text-rose-700">{submissionsError}</p>
+              <p className="text-sm text-[var(--kt-color-status-error)]">{submissionsError}</p>
             ) : submissions.length === 0 ? (
-              <p className="text-sm text-stone-500">投稿した神社はまだありません。</p>
+              <p className="text-sm text-[var(--kt-color-text-secondary)]">投稿した神社はまだありません。</p>
             ) : (
               <div className="space-y-5">
                 <section className="space-y-3">
-                  <h3 className="text-sm font-medium text-stone-700">公開済み</h3>
+                  <h3 className="text-sm font-medium text-[var(--kt-color-text-secondary)]">公開済み</h3>
 
                   {approvedSubmissions.length === 0 ? (
-                    <p className="rounded-xl border border-stone-200/20 bg-stone-50/30 p-4 text-sm text-stone-500">
+                    <p className="rounded-xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-4 text-sm text-[var(--kt-color-text-secondary)]">
                       まだ公開された神社はありません。
                     </p>
                   ) : (
@@ -161,21 +161,21 @@ export default function MyPageScreen({ activeTab }: MyPageScreenProps) {
                       const searchHref = `/shrines?q=${encodeURIComponent(submission.name)}`;
 
                       return (
-                        <div key={submission.id} className="rounded-xl border border-stone-200/20 bg-stone-50/30 p-4">
+                        <div key={submission.id} className="rounded-xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-4">
                           <div className="flex items-start justify-between gap-3">
                             <div>
-                              <p className="font-medium text-stone-900">{submission.name}</p>
-                              <p className="mt-1 text-xs text-stone-500">{submission.address}</p>
+                              <p className="font-medium text-[var(--kt-color-text-primary)]">{submission.name}</p>
+                              <p className="mt-1 text-xs text-[var(--kt-color-text-muted)]">{submission.address}</p>
                             </div>
-                            <span className="rounded-full border border-emerald-700/10 bg-emerald-50/50 px-2 py-1 text-xs font-medium text-emerald-800/80">
+                            <span className="rounded-full border border-[var(--kt-color-status-success-border)] bg-[var(--kt-color-status-success-surface)] px-2 py-1 text-xs font-medium text-[var(--kt-color-status-success-text)]">
                               公開済み
                             </span>
                           </div>
 
-                          <p className="mt-3 text-xs leading-6 text-stone-500">検索から確認できます。</p>
+                          <p className="mt-3 text-xs leading-6 text-[var(--kt-color-text-muted)]">検索から確認できます。</p>
 
                           <Link
-                            className="mt-2 inline-flex w-fit items-center rounded-full border border-emerald-700/20 bg-emerald-800 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-emerald-900"
+                            className="mt-2 inline-flex w-fit items-center rounded-full border border-[var(--kt-color-action-primary)] bg-[var(--kt-color-action-primary)] px-3 py-1.5 text-xs font-medium text-[var(--kt-color-action-primary-text)] transition hover:bg-[var(--kt-color-action-primary-hover)]"
                             href={searchHref}
                           >
                             検索で見る
@@ -188,21 +188,21 @@ export default function MyPageScreen({ activeTab }: MyPageScreenProps) {
 
                 {pendingSubmissions.length > 0 && (
                   <section className="space-y-3">
-                    <h3 className="text-sm font-medium text-stone-700">審査中</h3>
+                    <h3 className="text-sm font-medium text-[var(--kt-color-text-secondary)]">審査中</h3>
 
                     {pendingSubmissions.map((submission) => (
-                      <div key={submission.id} className="rounded-xl border border-stone-200/20 bg-stone-50/30 p-4">
+                      <div key={submission.id} className="rounded-xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-4">
                         <div className="flex items-start justify-between gap-3">
                           <div>
-                            <p className="font-medium text-stone-900">{submission.name}</p>
-                            <p className="mt-1 text-xs text-stone-500">{submission.address}</p>
+                            <p className="font-medium text-[var(--kt-color-text-primary)]">{submission.name}</p>
+                            <p className="mt-1 text-xs text-[var(--kt-color-text-muted)]">{submission.address}</p>
                           </div>
-                          <span className="rounded-full border border-stone-300/30 bg-stone-100/50 px-2 py-1 text-xs font-medium text-stone-600">
+                          <span className="rounded-full border border-[var(--kt-color-status-warning)] bg-[var(--kt-color-background-subtle)] px-2 py-1 text-xs font-medium text-[var(--kt-color-status-warning)]">
                             審査中
                           </span>
                         </div>
 
-                        <p className="mt-3 text-xs leading-6 text-stone-500">公開までしばらくお待ちください。</p>
+                        <p className="mt-3 text-xs leading-6 text-[var(--kt-color-text-muted)]">公開までしばらくお待ちください。</p>
                       </div>
                     ))}
                   </section>

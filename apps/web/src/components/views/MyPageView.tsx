@@ -43,8 +43,8 @@ function TabLink({ href, active, children }: { href: string; active: boolean; ch
       href={href}
       className={`rounded-full px-3 py-1.5 text-sm transition ${
         active
-          ? "border border-stone-300/50 bg-stone-200/50 text-stone-900"
-          : "border border-stone-200/20 bg-stone-50/20 text-stone-500 hover:bg-stone-100/40 hover:text-stone-800"
+          ? "border border-[var(--kt-color-border-strong)] bg-[var(--kt-color-surface-default)] text-[var(--kt-color-text-primary)]"
+          : "border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] text-[var(--kt-color-text-secondary)] hover:bg-[var(--kt-color-background-subtle)] hover:text-[var(--kt-color-text-primary)]"
       }`}
     >
       {children}
@@ -232,7 +232,7 @@ export default function MyPageView({ initialFavorites }: Props) {
 
   if (loading) {
     return (
-      <div className="p-4 text-sm text-stone-500" role="status" aria-busy="true">
+      <div className="p-4 text-sm text-[var(--kt-color-text-secondary)]" role="status" aria-busy="true">
         読み込み中...
       </div>
     );
@@ -241,13 +241,13 @@ export default function MyPageView({ initialFavorites }: Props) {
   if (!user) {
     const next = tab === "goshuin" || tab === "favorites" || tab === "submissions" || tab === "visits" ? `/mypage?tab=${tab}` : "/mypage?tab=profile";
     return (
-      <main className="mx-auto max-w-3xl p-6 text-stone-800">
+      <main className="mx-auto max-w-3xl p-6 text-[var(--kt-color-text-primary)]">
         <h1 className="mb-4 text-xl font-semibold">マイページ</h1>
-        <div className="rounded-2xl border border-stone-200/20 bg-stone-50/30 p-6">
-          <p className="mb-3 text-sm text-stone-600">ログインしてご利用ください。</p>
+        <div className="rounded-2xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-6">
+          <p className="mb-3 text-sm text-[var(--kt-color-text-secondary)]">ログインしてご利用ください。</p>
           <Link
             href={buildLoginHref(next)}
-            className="inline-block rounded-full border border-emerald-700/20 bg-emerald-800 px-4 py-2 text-sm text-white transition hover:bg-emerald-900"
+            className="inline-block rounded-full border border-[var(--kt-color-action-primary)] bg-[var(--kt-color-action-primary)] px-4 py-2 text-sm text-[var(--kt-color-action-primary-text)] transition hover:bg-[var(--kt-color-action-primary-hover)]"
           >
             ログインへ
           </Link>
@@ -257,8 +257,8 @@ export default function MyPageView({ initialFavorites }: Props) {
   }
 
   return (
-    <main className="mx-auto max-w-4xl space-y-6 px-4 py-6 text-stone-800 sm:px-6">
-      <div className="flex flex-wrap gap-2 border-b border-stone-200/20 pb-3">
+    <main className="mx-auto max-w-4xl space-y-6 px-4 py-6 text-[var(--kt-color-text-primary)] sm:px-6">
+      <div className="flex flex-wrap gap-2 border-b border-[var(--kt-color-border-default)] pb-3">
         <TabLink href="/mypage?tab=profile" active={tab === "profile"}>
           プロフィール
         </TabLink>
@@ -284,7 +284,7 @@ export default function MyPageView({ initialFavorites }: Props) {
         <Link
           href="/mypage/history"
           onClick={() => trackConsultationHistoryEntryClicked()}
-          className="rounded-full border border-stone-200/20 bg-stone-50/20 px-3 py-1.5 text-sm text-stone-500 transition hover:bg-stone-100/40 hover:text-stone-800"
+          className="rounded-full border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] px-3 py-1.5 text-sm text-[var(--kt-color-text-secondary)] transition hover:bg-[var(--kt-color-background-subtle)] hover:text-[var(--kt-color-text-primary)]"
         >
           相談履歴
         </Link>
@@ -297,42 +297,42 @@ export default function MyPageView({ initialFavorites }: Props) {
       ) : tab === "favorites" ? (
         <FavoritesSection initialFavorites={initialFavorites} />
       ) : tab === "visits" ? (
-        <section className="space-y-4 rounded-2xl border border-stone-200/20 bg-stone-50/30 p-5 sm:p-6">
+        <section className="space-y-4 rounded-2xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-5 sm:p-6">
           <div>
-            <h2 className="text-lg font-semibold text-stone-900">参拝履歴</h2>
-            <p className="mt-1 text-sm text-stone-500">参拝済みにした神社を見返せます。</p>
+            <h2 className="text-lg font-semibold text-[var(--kt-color-text-primary)]">参拝履歴</h2>
+            <p className="mt-1 text-sm text-[var(--kt-color-text-secondary)]">参拝済みにした神社を見返せます。</p>
           </div>
 
           {visitsLoading ? (
-            <p className="text-sm text-stone-500" role="status" aria-busy="true">
+            <p className="text-sm text-[var(--kt-color-text-secondary)]" role="status" aria-busy="true">
               参拝履歴を読み込み中...
             </p>
           ) : visitsError ? (
-            <div className="rounded-xl border border-rose-200 bg-white p-4">
-              <p className="text-sm font-medium text-rose-700">{visitsError}</p>
+            <div className="rounded-xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-4">
+              <p className="text-sm font-medium text-[var(--kt-color-status-error)]">{visitsError}</p>
             </div>
           ) : aggregatedVisits.length === 0 ? (
-            <div className="rounded-xl border border-stone-200/40 bg-white p-4">
-              <p className="text-sm font-medium text-stone-700">参拝履歴はまだありません。</p>
-              <p className="mt-1 text-xs text-stone-500">神社詳細から「参拝済みにする」を押すとここに表示されます。</p>
+            <div className="rounded-xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-4">
+              <p className="text-sm font-medium text-[var(--kt-color-text-secondary)]">参拝履歴はまだありません。</p>
+              <p className="mt-1 text-xs text-[var(--kt-color-text-muted)]">神社詳細から「参拝済みにする」を押すとここに表示されます。</p>
             </div>
           ) : (
             <div className="space-y-3">
               {aggregatedVisits.map((visit) => {
                 return (
-                  <article key={visit.key} className="rounded-xl border border-stone-200/40 bg-white p-4">
+                  <article key={visit.key} className="rounded-xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-4">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                       <div>
-                        <h3 className="text-base font-semibold text-stone-900">{visit.shrineName}</h3>
-                        {visit.shrineAddress ? <p className="mt-1 text-xs text-stone-500">{visit.shrineAddress}</p> : null}
-                        <p className="mt-2 text-xs text-stone-500">最新参拝：{formatVisitedAt(visit.latestVisitedAt)}</p>
-                        <p className="mt-1 text-xs font-medium text-emerald-700">参拝回数：{visit.visitCount}回</p>
+                        <h3 className="text-base font-semibold text-[var(--kt-color-text-primary)]">{visit.shrineName}</h3>
+                        {visit.shrineAddress ? <p className="mt-1 text-xs text-[var(--kt-color-text-muted)]">{visit.shrineAddress}</p> : null}
+                        <p className="mt-2 text-xs text-[var(--kt-color-text-muted)]">最新参拝：{formatVisitedAt(visit.latestVisitedAt)}</p>
+                        <p className="mt-1 text-xs font-medium text-[var(--kt-color-status-success)]">参拝回数：{visit.visitCount}回</p>
                       </div>
 
                       {visit.shrineId ? (
                         <Link
                           href={`/shrines/${visit.shrineId}`}
-                          className="inline-flex shrink-0 items-center justify-center rounded-full border border-emerald-700/20 bg-emerald-800 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-emerald-900"
+                          className="inline-flex shrink-0 items-center justify-center rounded-full border border-[var(--kt-color-action-primary)] bg-[var(--kt-color-action-primary)] px-3 py-1.5 text-xs font-medium text-[var(--kt-color-action-primary-text)] transition hover:bg-[var(--kt-color-action-primary-hover)]"
                         >
                           詳細を見る
                         </Link>
@@ -345,30 +345,30 @@ export default function MyPageView({ initialFavorites }: Props) {
           )}
         </section>
       ) : (
-        <section className="space-y-5 rounded-2xl border border-stone-200/20 bg-stone-50/30 p-5 sm:p-6">
+        <section className="space-y-5 rounded-2xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-5 sm:p-6">
           <div>
-            <label className="mb-1 block text-sm font-medium text-stone-700">ニックネーム</label>
+            <label className="mb-1 block text-sm font-medium text-[var(--kt-color-text-secondary)]">ニックネーム</label>
             <input
               type="text"
               value={form.nickname}
               onChange={(e) => setForm((f) => ({ ...f, nickname: e.target.value }))}
               disabled={saving}
-              className="w-full rounded-xl border border-stone-200/30 bg-stone-50/30 px-3 py-2 text-sm text-stone-800 outline-none transition placeholder:text-stone-300 focus:border-stone-300/70 focus:ring-2 focus:ring-stone-200/30 disabled:opacity-60"
+              className="w-full rounded-xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] px-3 py-2 text-sm text-[var(--kt-color-text-primary)] outline-none transition placeholder:text-[var(--kt-color-text-muted)] focus:border-[var(--kt-color-border-strong)] focus:ring-2 focus:ring-[var(--kt-color-border-default)] disabled:opacity-60"
             />
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block text-sm font-medium text-stone-700">
+            <label className="block text-sm font-medium text-[var(--kt-color-text-secondary)]">
               生年月日
-              <input type="date" min="1900-01-01" max={`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-${String(new Date().getDate()).padStart(2, "0")}`} value={form.birthday} onChange={(e) => setForm((f) => ({ ...f, birthday: e.target.value }))} disabled={saving} className="mt-1 w-full rounded-xl border border-stone-200/30 bg-stone-50/30 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-stone-200/30" />
+              <input type="date" min="1900-01-01" max={`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-${String(new Date().getDate()).padStart(2, "0")}`} value={form.birthday} onChange={(e) => setForm((f) => ({ ...f, birthday: e.target.value }))} disabled={saving} className="mt-1 w-full rounded-xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--kt-color-border-default)]" />
             </label>
-            <label className="block text-sm font-medium text-stone-700">
-              出生時間 <span className="font-normal text-stone-400">（不明でも可）</span>
-              <input type="time" step="300" value={form.birth_time} onChange={(e) => setForm((f) => ({ ...f, birth_time: e.target.value }))} disabled={saving} className="mt-1 w-full rounded-xl border border-stone-200/30 bg-stone-50/30 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-stone-200/30" />
+            <label className="block text-sm font-medium text-[var(--kt-color-text-secondary)]">
+              出生時間 <span className="font-normal text-[var(--kt-color-text-muted)]">（不明でも可）</span>
+              <input type="time" step="300" value={form.birth_time} onChange={(e) => setForm((f) => ({ ...f, birth_time: e.target.value }))} disabled={saving} className="mt-1 w-full rounded-xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--kt-color-border-default)]" />
             </label>
-            <label className="block text-sm font-medium text-stone-700">
+            <label className="block text-sm font-medium text-[var(--kt-color-text-secondary)]">
               出生地
-              <select value={form.birth_place} onChange={(e) => setForm((f) => ({ ...f, birth_place: e.target.value }))} disabled={saving} className="mt-1 w-full rounded-xl border border-stone-200/30 bg-stone-50/30 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-stone-200/30">
+              <select value={form.birth_place} onChange={(e) => setForm((f) => ({ ...f, birth_place: e.target.value }))} disabled={saving} className="mt-1 w-full rounded-xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--kt-color-border-default)]">
                 <option value="">不明・未設定</option>
                 {PREFECTURES.map((prefecture) => <option key={prefecture} value={prefecture}>{prefecture}</option>)}
               </select>
@@ -376,37 +376,37 @@ export default function MyPageView({ initialFavorites }: Props) {
           </div>
 
           <fieldset disabled={saving}>
-            <legend className="mb-2 text-sm font-medium text-stone-700">参拝スタイル</legend>
+            <legend className="mb-2 text-sm font-medium text-[var(--kt-color-text-secondary)]">参拝スタイル</legend>
             <div className="flex flex-wrap gap-2">
               {WORSHIP_STYLES.map((style) => {
                 const selected = form.worship_style === style;
-                return <button key={style} type="button" aria-pressed={selected} onClick={() => setForm((f) => ({ ...f, worship_style: selected ? "" : style }))} className={`rounded-full border px-3 py-1.5 text-sm transition ${selected ? "border-emerald-700/30 bg-emerald-800 text-white" : "border-stone-200/40 bg-white text-stone-600 hover:bg-stone-100"}`}>{style}</button>;
+                return <button key={style} type="button" aria-pressed={selected} onClick={() => setForm((f) => ({ ...f, worship_style: selected ? "" : style }))} className={`rounded-full border px-3 py-1.5 text-sm transition ${selected ? "border-[var(--kt-color-action-primary)] bg-[var(--kt-color-action-primary)] text-[var(--kt-color-action-primary-text)]" : "border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] text-[var(--kt-color-text-secondary)] hover:bg-[var(--kt-color-background-subtle)]"}`}>{style}</button>;
               })}
             </div>
           </fieldset>
 
-          <div className="rounded-2xl border border-stone-200/30 bg-white/70 p-4">
-            <h3 className="text-sm font-semibold text-stone-800">派生プロフィール</h3>
-            <p className="mt-1 text-xs text-stone-500">生年月日の入力に応じて自動更新されます。</p>
+          <div className="rounded-2xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-4">
+            <h3 className="text-sm font-semibold text-[var(--kt-color-text-primary)]">派生プロフィール</h3>
+            <p className="mt-1 text-xs text-[var(--kt-color-text-muted)]">生年月日の入力に応じて自動更新されます。</p>
             <dl className="mt-3 grid grid-cols-3 gap-3 text-sm">
-              <div><dt className="text-xs text-stone-400">九星</dt><dd className="mt-1 font-medium">{derivedProfile.kyusei ?? "未計算"}</dd></div>
-              <div><dt className="text-xs text-stone-400">五行</dt><dd className="mt-1 font-medium">{derivedProfile.gogyo ?? "未計算"}</dd></div>
-              <div><dt className="text-xs text-stone-400">ライフパス</dt><dd className="mt-1 font-medium">{derivedProfile.lifePath ?? "未計算"}</dd></div>
+              <div><dt className="text-xs text-[var(--kt-color-text-muted)]">九星</dt><dd className="mt-1 font-medium">{derivedProfile.kyusei ?? "未計算"}</dd></div>
+              <div><dt className="text-xs text-[var(--kt-color-text-muted)]">五行</dt><dd className="mt-1 font-medium">{derivedProfile.gogyo ?? "未計算"}</dd></div>
+              <div><dt className="text-xs text-[var(--kt-color-text-muted)]">ライフパス</dt><dd className="mt-1 font-medium">{derivedProfile.lifePath ?? "未計算"}</dd></div>
             </dl>
-            <div className="mt-4 border-t border-stone-200/40 pt-3">
-              <p className="text-xs text-stone-400">{directionProfile.targetYear ? `${directionProfile.targetYear}年の吉方位` : "吉方位"}</p>
+            <div className="mt-4 border-t border-[var(--kt-color-border-default)] pt-3">
+              <p className="text-xs text-[var(--kt-color-text-muted)]">{directionProfile.targetYear ? `${directionProfile.targetYear}年の吉方位` : "吉方位"}</p>
               <p className="mt-1 font-medium">{directionProfile.luckyDirections?.length ? directionProfile.luckyDirections.join("・") : "未計算"}</p>
-              <p className="mt-1 text-xs text-stone-500">年盤をもとに凶方位を除外した補助情報です。月盤・日盤は含みません。</p>
+              <p className="mt-1 text-xs text-[var(--kt-color-text-muted)]">年盤をもとに凶方位を除外した補助情報です。月盤・日盤は含みません。</p>
             </div>
           </div>
 
-          <label className="inline-flex items-center gap-2 text-sm text-stone-700">
+          <label className="inline-flex items-center gap-2 text-sm text-[var(--kt-color-text-secondary)]">
             <input
               type="checkbox"
               checked={form.is_public}
               onChange={(e) => setForm((f) => ({ ...f, is_public: e.target.checked }))}
               disabled={saving}
-              className="h-4 w-4 rounded border-stone-300 text-emerald-800 focus:ring-stone-200"
+              className="h-4 w-4 rounded border-[var(--kt-color-border-strong)] text-[var(--kt-color-action-primary)] focus:ring-[var(--kt-color-border-default)]"
             />
             <span>プロフィールを公開</span>
           </label>
@@ -415,7 +415,7 @@ export default function MyPageView({ initialFavorites }: Props) {
             <button
               onClick={handleSave}
               disabled={!dirty || saving}
-              className="rounded-full border border-emerald-700/20 bg-emerald-800 px-4 py-2 text-sm text-white transition hover:bg-emerald-900 disabled:opacity-40"
+              className="rounded-full border border-[var(--kt-color-action-primary)] bg-[var(--kt-color-action-primary)] px-4 py-2 text-sm text-[var(--kt-color-action-primary-text)] transition hover:bg-[var(--kt-color-action-primary-hover)] disabled:opacity-40"
             >
               {saving ? "保存中..." : "保存"}
             </button>
@@ -423,13 +423,13 @@ export default function MyPageView({ initialFavorites }: Props) {
               type="button"
               onClick={handleReset}
               disabled={!dirty || saving}
-              className="rounded-full border border-stone-200/40 bg-stone-50/20 px-4 py-2 text-sm text-stone-600 transition hover:bg-stone-100/50 disabled:opacity-40"
+              className="rounded-full border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] px-4 py-2 text-sm text-[var(--kt-color-text-secondary)] transition hover:bg-[var(--kt-color-background-subtle)] disabled:opacity-40"
             >
               変更を破棄
             </button>
           </div>
-          {saveMessage ? <p role="status" className="text-sm font-medium text-emerald-700">{saveMessage}</p> : null}
-          {saveError ? <p role="alert" className="text-sm font-medium text-rose-700">{saveError}</p> : null}
+          {saveMessage ? <p role="status" className="text-sm font-medium text-[var(--kt-color-status-success)]">{saveMessage}</p> : null}
+          {saveError ? <p role="alert" className="text-sm font-medium text-[var(--kt-color-status-error)]">{saveError}</p> : null}
         </section>
       )}
     </main>

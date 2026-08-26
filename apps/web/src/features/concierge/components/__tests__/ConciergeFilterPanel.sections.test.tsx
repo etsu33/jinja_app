@@ -54,7 +54,7 @@ describe("ConciergeFilterPanel Personalize section separation", () => {
 
     const { unmount } = render(<ConciergeFilterPanel {...props} />);
     expect(screen.getByDisplayValue("1990-05-20")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "縁結び" })).toHaveClass("border-emerald-600");
+    expect(screen.getByRole("button", { name: "縁結び" })).toHaveClass("border-[var(--kt-color-action-primary)]");
     unmount();
 
     // Simulates close (unmount) + reopen (remount) with the same lifted
@@ -63,6 +63,6 @@ describe("ConciergeFilterPanel Personalize section separation", () => {
     // extraCondition/visitPreferences, so the parent-held values survive.
     render(<ConciergeFilterPanel {...props} />);
     expect(screen.getByDisplayValue("1990-05-20")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "縁結び" })).toHaveClass("border-emerald-600");
+    expect(screen.getByRole("button", { name: "縁結び" })).toHaveClass("border-[var(--kt-color-action-primary)]");
   });
 });
