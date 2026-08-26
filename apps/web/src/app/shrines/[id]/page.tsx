@@ -203,8 +203,8 @@ export default async function Page({ params, searchParams }: Props) {
   if (!Number.isFinite(numericId) || numericId <= 0) {
     return (
       <main className="mx-auto max-w-md space-y-6 p-4">
-        <div className="rounded-xl border bg-white p-4 text-center text-sm">不正な神社IDです。</div>
-        <Link href="/map" className="inline-flex items-center text-sm text-emerald-700 hover:underline">
+        <div className="rounded-xl border bg-[var(--kt-color-surface-default)] p-4 text-center text-sm">不正な神社IDです。</div>
+        <Link href="/map" className="inline-flex items-center text-sm text-[var(--kt-color-action-primary)] hover:underline">
           ← 地図に戻る
         </Link>
       </main>
@@ -243,7 +243,7 @@ export default async function Page({ params, searchParams }: Props) {
         googleDirFallbackText="神社情報が見つからなかったため、経路案内を表示できません。"
         hideActions={hideActions}
       >
-        <div className="rounded-2xl border bg-white p-4 text-sm text-slate-700">
+        <div className="rounded-2xl border bg-[var(--kt-color-surface-default)] p-4 text-sm text-[var(--kt-color-text-secondary)]">
           神社の詳細情報が見つかりませんでした。
         </div>
       </ShrineDetailShell>

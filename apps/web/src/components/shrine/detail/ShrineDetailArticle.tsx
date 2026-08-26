@@ -193,7 +193,7 @@ function PremiumUpgradePrompt({
             ? "今の状態整理と、この神社を選ぶ意味を深められます。"
             : "今の状態整理と、この神社を選ぶ意味をPremiumで深掘りできます。"}
         </p>
-        <p className="text-xs leading-6 text-slate-600">相談内容に基づく状態整理、相性、行動の意味づけを表示します。</p>
+        <p className="text-xs leading-6 text-[var(--kt-color-text-secondary)]">相談内容に基づく状態整理、相性、行動の意味づけを表示します。</p>
         <Link
           href={href}
           className="inline-flex items-center rounded-[var(--kt-radius-panel)] bg-[var(--kt-color-premium-accent)] px-3 py-2 text-xs font-semibold text-[var(--kt-color-text-inverse)] hover:bg-amber-800"
@@ -229,9 +229,9 @@ function ShrineDetailHeroHeader(props: { title: string; heroMeaningCopy?: string
 
         <p className="text-[11px] font-semibold tracking-[0.08em] text-[var(--kt-color-text-muted)]">この神社の意味</p>
 
-        <p className="text-[15px] leading-7 text-slate-800">{resolvedHeroMeaningCopy}</p>
+        <p className="text-[15px] leading-7 text-[var(--kt-color-text-primary)]">{resolvedHeroMeaningCopy}</p>
 
-        {props.address ? <p className="text-[11px] leading-5 text-slate-400">{props.address}</p> : null}
+        {props.address ? <p className="text-[11px] leading-5 text-[var(--kt-color-text-muted)]">{props.address}</p> : null}
       </div>
     </section>
   );
@@ -303,7 +303,7 @@ function ShrineDetailStateDeltaSection({
         <div className="space-y-2">
           <p className="text-xs font-semibold tracking-[0.08em] text-[var(--kt-color-premium-accent)]">前回との違い</p>
           <p className="text-sm font-semibold leading-6 text-amber-950">Premiumでは、前回からの変化をこの神社選びとあわせて確認できます。</p>
-          <p className="text-xs leading-6 text-slate-600">今回強く出たテーマや、変わらず残っているテーマを見返せます。</p>
+          <p className="text-xs leading-6 text-[var(--kt-color-text-secondary)]">今回強く出たテーマや、変わらず残っているテーマを見返せます。</p>
           <Link href="/billing/upgrade?source=shrine_detail_state_delta&funnelStep=comparison_preview" className="inline-flex rounded-[var(--kt-radius-card)] bg-[var(--kt-color-premium-accent)] px-4 py-2 text-sm font-semibold text-[var(--kt-color-text-inverse)] hover:bg-amber-800">
             前回との違いを見る
           </Link>
@@ -316,7 +316,7 @@ function ShrineDetailStateDeltaSection({
     <section className="rounded-[var(--kt-radius-card)] border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-4 shadow-[var(--kt-shadow-medium)]">
       <div className="space-y-4">
         <div>
-          <p className="text-xs font-semibold tracking-[0.08em] text-slate-400">前回との違い</p>
+          <p className="text-xs font-semibold tracking-[0.08em] text-[var(--kt-color-text-muted)]">前回との違い</p>
           <p className="mt-2 text-sm leading-6 text-[var(--kt-color-text-secondary)]">
             {stateDelta.summary ??
               "今回の相談内容から、前回との違いを整理しています。相談を重ねるほど、変化の見え方が安定します。"}
@@ -326,7 +326,7 @@ function ShrineDetailStateDeltaSection({
         {stateDelta.transitionNarrative?.summary ? (
           <div className="rounded-[var(--kt-radius-card)] bg-emerald-50/60 p-3">
             <p className="text-xs font-semibold text-emerald-700">前回から変わったこと</p>
-            <p className="mt-1 text-sm font-semibold leading-6 text-slate-800">
+            <p className="mt-1 text-sm font-semibold leading-6 text-[var(--kt-color-text-primary)]">
               {stateDelta.transitionNarrative.title}
             </p>
             <p className="mt-2 text-sm leading-6 text-[var(--kt-color-text-secondary)]">{stateDelta.transitionNarrative.summary}</p>
@@ -336,7 +336,7 @@ function ShrineDetailStateDeltaSection({
         {stateDelta.actionReflection ? (
           <div className="rounded-[var(--kt-radius-card)] bg-amber-50/70 p-3">
             <p className="text-xs font-semibold text-[var(--kt-color-premium-accent)]">前回の行動</p>
-            <p className="mt-1 text-sm font-semibold leading-6 text-slate-800">{stateDelta.actionReflection.title}</p>
+            <p className="mt-1 text-sm font-semibold leading-6 text-[var(--kt-color-text-primary)]">{stateDelta.actionReflection.title}</p>
             <p className="mt-2 text-sm leading-6 text-[var(--kt-color-text-secondary)]">{stateDelta.actionReflection.summary}</p>
             <p className="mt-2 text-xs font-semibold text-[var(--kt-color-premium-accent)]">{stateDelta.actionReflection.nextActionLabel}</p>
           </div>
@@ -665,7 +665,7 @@ export default function ShrineDetailArticle({
         {showAfterVisitCopy ? (
           <div className="rounded-[var(--kt-radius-card)] border border-emerald-200 bg-[var(--kt-color-surface-default)] p-3 mt-2">
             <p className="text-sm font-semibold text-emerald-700">参拝お疲れさまでした</p>
-            <p className="mt-1 text-xs text-slate-600">
+            <p className="mt-1 text-xs text-[var(--kt-color-text-secondary)]">
               あなたの参拝が記録されました。次回の相談で前回の行動として振り返ることができます。
             </p>
           </div>
@@ -699,7 +699,7 @@ export default function ShrineDetailArticle({
           <div className="overflow-hidden rounded-[var(--kt-radius-card)] border border-emerald-200 bg-[var(--kt-color-surface-default)]">
             <div className="space-y-2 p-4">
               {resolvedSaveActionNode}
-              <p className="text-xs leading-5 text-slate-600">あとで記録から見返せます</p>
+              <p className="text-xs leading-5 text-[var(--kt-color-text-secondary)]">あとで記録から見返せます</p>
               <Link
                 href="/favorites"
                 className="inline-flex items-center text-sm font-semibold text-emerald-700 hover:underline"
@@ -712,7 +712,7 @@ export default function ShrineDetailArticle({
               ) : null}
 
               {favoriteNoticeState === "removed" ? (
-                <p className="text-xs font-semibold text-slate-600">{FAVORITE_LABELS.removed}</p>
+                <p className="text-xs font-semibold text-[var(--kt-color-text-secondary)]">{FAVORITE_LABELS.removed}</p>
               ) : null}
             </div>
 
@@ -721,7 +721,7 @@ export default function ShrineDetailArticle({
                 {hasVisitHistory ? (
                   <div className="rounded-[var(--kt-radius-panel)] border border-emerald-200 bg-emerald-50/70 p-3">
                     <p className="text-sm font-semibold text-emerald-700">参拝を記録しました</p>
-                    <p className="mt-1 text-xs text-slate-600">次回の相談で、前回の行動として振り返れます。</p>
+                    <p className="mt-1 text-xs text-[var(--kt-color-text-secondary)]">次回の相談で、前回の行動として振り返れます。</p>
                   </div>
                 ) : (
                   <p className="text-xs leading-5 text-[var(--kt-color-text-muted)]">参拝後に記録できます</p>
@@ -831,7 +831,7 @@ export default function ShrineDetailArticle({
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-slate-400">ご利益情報は準備中です。</p>
+              <p className="text-xs text-[var(--kt-color-text-muted)]">ご利益情報は準備中です。</p>
             )}
           </DetailDisclosureBlock>
         </div>
