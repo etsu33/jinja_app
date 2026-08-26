@@ -40,29 +40,51 @@ function DeityList({ deities }: { deities: DetailFactDeity[] }) {
   );
 }
 
+// Section末尾へ集約表示するSource一覧。dedupe基準はurl（非空の場合）、urlを持たないSourceは
+// id基準でdedupeする。異なるSource（url/idが異なる）は失わない — 同一urlのみを1件へまとめる。
+function collectSectionSources(histories: DetailFactHistoryItem[]): ShrineKnowledgeSource[] {
+  const seen = new Set<string>();
+  const collected: ShrineKnowledgeSource[] = [];
+
+  for (const history of histories) {
+    for (const source of history.sources ?? []) {
+      const dedupeKey = source.url ? `url:${source.url}` : `id:${source.id}`;
+      if (seen.has(dedupeKey)) continue;
+      seen.add(dedupeKey);
+      collected.push(source);
+    }
+  }
+
+  return collected;
+}
+
 function SourceList({ sources }: { sources: ShrineKnowledgeSource[] }) {
   if (sources.length === 0) return null;
 
   return (
-    <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
-      {sources.map((source, index) => {
-        const label = source.title || source.publisher || "出典";
-        return source.url ? (
-          <a
-            key={`${source.id}:${index}`}
-            href={source.url}
-            target="_blank"
-            rel="noreferrer noopener"
-            className="text-xs text-[var(--kt-color-text-muted)] underline underline-offset-2"
-          >
-            {label}
-          </a>
-        ) : (
-          <span key={`${source.id}:${index}`} className="text-xs text-[var(--kt-color-text-muted)]">
-            {label}
-          </span>
-        );
-      })}
+    <div className="mt-3 border-t border-[var(--kt-color-border-default)] pt-3">
+      <h4 className="text-[11px] font-semibold tracking-[0.04em] text-[var(--kt-color-text-muted)]">出典</h4>
+      <ul className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
+        {sources.map((source, index) => {
+          const label = source.title || source.publisher || "出典";
+          return (
+            <li key={`${source.id}:${index}`}>
+              {source.url ? (
+                <a
+                  href={source.url}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="text-xs text-[var(--kt-color-text-muted)] underline underline-offset-2"
+                >
+                  {label}
+                </a>
+              ) : (
+                <span className="text-xs text-[var(--kt-color-text-muted)]">{label}</span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }
@@ -93,7 +115,6 @@ function HistoryCard({ history, showTypeLabel }: { history: DetailFactHistoryIte
           {history.content}
         </p>
       ) : null}
-      {history.sources ? <SourceList sources={history.sources} /> : null}
     </div>
   );
 }
@@ -132,6 +153,7 @@ function HistoryList({ histories }: { histories: DetailFactHistoryItem[] }) {
           </div>
         ) : null}
       </div>
+      <SourceList sources={collectSectionSources(histories)} />
     </div>
   );
 }
