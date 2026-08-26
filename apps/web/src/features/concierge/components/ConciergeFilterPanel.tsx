@@ -226,7 +226,9 @@ export default function ConciergeFilterPanel({
                     key={t.id}
                     type="button"
                     className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${
-                      on ? "border-emerald-600 bg-emerald-50" : "bg-white"
+                      on
+                        ? "border-[var(--kt-color-action-primary)] bg-[var(--kt-color-background-subtle)] text-[var(--kt-color-action-primary)]"
+                        : "border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] text-[var(--kt-color-text-secondary)]"
                     }`}
                     onClick={() => onToggleTag(t.id)}
                   >
@@ -243,10 +245,10 @@ export default function ConciergeFilterPanel({
           not a "おすすめテーマ"/Personal Profile. Kept distinct from L2
           (参拝スタイル) and L3-A (誕生日) above (Task 7). */}
       {tagsLoading || tagsError || visibleGoriyakuTags.length > 0 || hiddenGoriyakuCount > 0 ? (
-        <section aria-label="ご利益を指定する" className="space-y-1 rounded-xl border border-slate-200 bg-white p-2">
+        <section aria-label="ご利益を指定する" className="space-y-1 rounded-xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-2">
           <div>
-            <div className="text-[10px] font-semibold text-slate-600">ご利益を指定する</div>
-            <p className="mt-0.5 text-[10px] leading-4 text-slate-400">
+            <div className="text-[10px] font-semibold text-[var(--kt-color-text-secondary)]">ご利益を指定する</div>
+            <p className="mt-0.5 text-[10px] leading-4 text-[var(--kt-color-text-muted)]">
               相談テーマを主軸にしつつ、願いたいことに近いものを候補の絞り込みとして使います。
             </p>
           </div>
@@ -262,7 +264,9 @@ export default function ConciergeFilterPanel({
                     key={t.id}
                     type="button"
                     className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${
-                      on ? "border-emerald-600 bg-emerald-50" : "bg-white"
+                      on
+                        ? "border-[var(--kt-color-action-primary)] bg-[var(--kt-color-background-subtle)] text-[var(--kt-color-action-primary)]"
+                        : "border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] text-[var(--kt-color-text-secondary)]"
                     }`}
                     onClick={() => onToggleTag(t.id)}
                   >
