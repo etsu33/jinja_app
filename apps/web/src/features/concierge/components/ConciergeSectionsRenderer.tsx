@@ -8,8 +8,10 @@ import ShrineSaveButton from "@/components/shrine/ShrineSaveButton";
 import ConciergeFilterPanel from "@/features/concierge/components/ConciergeFilterPanel";
 import ModeBadge from "@/features/concierge/components/ModeBadge";
 import { buildRecommendationReasonViewModel } from "@/lib/concierge/buildRecommendationReasonViewModel";
+import { adaptReasonFactsForViewModel } from "@/lib/concierge/adaptReasonFactsForViewModel";
 import { buildHeroReasonV4Sections } from "@/features/concierge/buildHeroReasonV4Sections";
 import { buildHeroConclusionLines } from "@/features/concierge/buildHeroConclusion";
+import { buildRuntimeMatchLines } from "@/features/concierge/buildRuntimeMatchLine";
 import ConciergeTopRecommendationHero from "@/features/concierge/components/ConciergeTopRecommendationHero";
 import ShrineCardCompact from "@/components/shrines/ShrineCardCompact";
 
@@ -924,12 +926,36 @@ export default function ConciergeSectionsRenderer({
                             : typeof (heroItem as any).historyContext === "string"
                               ? (heroItem as any).historyContext
                               : null;
+                        // historyContext(Backendから届く生テキスト)はFactに近い扱いを維持する。
+                        // 一方、buildHistoryThemeDisplay()のfallbackは完全にFrontend側で合成した
+                        // 解釈(Derived Meaning)であり、Fact/Meaning境界を明示するため見出しを
+                        // 分ける(Concierge Evidence Explanation PR)。
                         const historyThemeDisplay = historyContext
                           ? {
                               title: "この神社が持つ文脈",
                               body: historyContext,
+                              isInterpretation: false,
                             }
-                          : buildHistoryThemeDisplay(historyTheme);
+                          : (() => {
+                              const fallback = buildHistoryThemeDisplay(historyTheme);
+                              return fallback ? { ...fallback, isInterpretation: true } : null;
+                            })();
+
+                        // "今回の相談との接点"(Runtime Match): 既にBackend/既存Adapterが選定済みの
+                        // 信号(matched_need_tags、reason_facts is_primary goriyaku_tag)だけを使う。
+                        // 新たな一致判定は行わない(Concierge Evidence Explanation PR、
+                        // docs/product/recommendation-signal-authority.md §10)。
+                        const adaptedReasonFacts = adaptReasonFactsForViewModel(heroItem.reasonFacts ?? null);
+                        const runtimeMatchGoriyakuLabel =
+                          adaptedReasonFacts?.primary_fact_type === "goriyaku_tag"
+                            ? (adaptedReasonFacts.shrine_benefit ?? null)
+                            : heroReasonV4.factSource === "goriyaku"
+                              ? heroReasonV4.factText
+                              : null;
+                        const runtimeMatchLines = buildRuntimeMatchLines({
+                          needTags: effectiveNeedTags,
+                          goriyakuLabel: runtimeMatchGoriyakuLabel,
+                        });
 
                         return (
                           <div key={`rec-${i}-hero-${heroItem.shrineId}`} className="space-y-2">
@@ -974,6 +1000,21 @@ export default function ConciergeSectionsRenderer({
                             />
                             <DirectionReferenceCard reference={reasonDisplay.directionReference} recommendationKey={heroItem.shrineId} rank={1} />
 
+                            {runtimeMatchLines.length > 0 ? (
+                              <section className={conciergeSoftCardClass} data-testid="recommendation-runtime-match">
+                                <div className="space-y-2">
+                                  <p className="text-xs font-semibold tracking-[0.12em] text-[var(--kt-color-text-muted)]">
+                                    今回の相談との接点
+                                  </p>
+                                  {runtimeMatchLines.map((line) => (
+                                    <p key={line} className="text-sm leading-7 text-[var(--kt-color-text-secondary)]">
+                                      {line}
+                                    </p>
+                                  ))}
+                                </div>
+                              </section>
+                            ) : null}
+
                             {/* trustMetadata + historyTheme render adjacently, right after the
                                 Hero (docs/product/recommendation-result-information-architecture.md
                                 §13 v2 "trustMetadata・historyTheme" grouping, Finding 5 follow-up):
@@ -1011,7 +1052,9 @@ export default function ConciergeSectionsRenderer({
                               <section className={conciergeSoftCardClass} data-testid="recommendation-history-theme">
                                 <div className="space-y-2">
                                   <p className="text-xs font-semibold tracking-[0.12em] text-[var(--kt-color-text-muted)]">
-                                    この神社が持つ文脈
+                                    {historyThemeDisplay.isInterpretation
+                                      ? "この神社をどう捉えるか（KAMI MUSUBIの解釈）"
+                                      : "この神社が持つ文脈"}
                                   </p>
 
                                   <p className="text-sm leading-7 text-[var(--kt-color-text-secondary)]">{historyThemeDisplay.body}</p>
@@ -1023,7 +1066,7 @@ export default function ConciergeSectionsRenderer({
                               <section className={conciergeSoftCardClass}>
                                 <div className="space-y-2">
                                   <p className="text-xs font-semibold tracking-[0.12em] text-[var(--kt-color-text-muted)]">
-                                    相談から見た意味
+                                    相談から見た意味（KAMI MUSUBIの解釈）
                                   </p>
                                   <p className="text-sm leading-7 text-[var(--kt-color-text-secondary)]">{reasonVm.detail.shrineMeaning}</p>
                                 </div>

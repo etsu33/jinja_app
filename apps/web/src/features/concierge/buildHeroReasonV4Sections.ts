@@ -1,7 +1,7 @@
 // apps/web/src/features/concierge/buildHeroReasonV4Sections.ts
 import type { RecommendationReasonV4Detail } from "@/lib/api/concierge";
 import { buildRecommendationReasonDisplay } from "../../../../../packages/shared/recommendationReasonDisplay";
-import { isExplanationOnlyFactSource, pickReasonV4Fact } from "./reasonV4FactPriority";
+import { isExplanationOnlyFactSource, pickReasonV4Fact, type ReasonV4FactSource } from "./reasonV4FactPriority";
 
 export type HeroReasonV4Sections = {
   // Ranking-related fact only (goriyaku/history_theme won the pick) -- feeds Conclusion,
@@ -16,6 +16,10 @@ export type HeroReasonV4Sections = {
   actionText: string | null;
   hasStructured: boolean;
   fallbackText: string | null;
+  // どのfieldが採用されたか(reasonV4FactPriority.tsの優先順位そのまま)。選択ロジックは
+  // 一切変えず、呼び出し元が「今回の相談との接点」等、source別の表示判断をできるように
+  // するための追加情報のみ(Concierge Evidence Explanation PR)。
+  factSource: ReasonV4FactSource | null;
 };
 
 function clean(value: unknown): string | null {
@@ -80,5 +84,13 @@ export function buildHeroReasonV4Sections(params: {
     ? null
     : safeText(pickFirst(detail?.reason_text, params.recommendationReasonV4, params.reason));
 
-  return { factText, explanationOnlyFactText, interpretationText, actionText, hasStructured, fallbackText };
+  return {
+    factText,
+    explanationOnlyFactText,
+    interpretationText,
+    actionText,
+    hasStructured,
+    fallbackText,
+    factSource: pickedFact?.source ?? null,
+  };
 }

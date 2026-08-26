@@ -68,6 +68,11 @@ export type ReasonNarrative = {
 };
 
 
+// 未知のASCII識別子(内部tag key)はラベル化できたとみなさない。既知mapに無い値でも、
+// 日本語の相談テーマ文字列(ユーザー入力由来)はそのまま安全に表示できるため区別する
+// (apps/web/src/lib/concierge/needTagLabelMap.tsと同じ判定基準)。
+const RAW_ASCII_NEED_PATTERN = /^[a-z0-9_]+$/i;
+
 function buildNeedThemeLabel(need?: string | null): string | null {
   const normalized = clean(need);
   if (!normalized) return null;
@@ -87,6 +92,8 @@ function buildNeedThemeLabel(need?: string | null): string | null {
   if (normalized === "恋愛") return "関係性";
   if (normalized === "健康") return "心身調整";
   if (normalized === "学業") return "学業";
+
+  if (RAW_ASCII_NEED_PATTERN.test(normalized)) return null;
 
   return normalized;
 }
@@ -266,11 +273,14 @@ function buildQueryCandidates(params: BuildParams): Candidate[] {
 
   if (primary) {
     out.push({ key: "need_match", text: primary });
-  } else if (consultation.needPrimary) {
-    out.push({
-      key: "need_match",
-      text: `今回の相談の中心にある「${buildNeedThemeLabel(consultation.needPrimary)}」のテーマと重なるため、この神社が候補に入っています。`,
-    });
+  } else {
+    const needLabel = buildNeedThemeLabel(consultation.needPrimary);
+    if (needLabel) {
+      out.push({
+        key: "need_match",
+        text: `今回の相談の中心にある「${needLabel}」のテーマと重なるため、この神社が候補に入っています。`,
+      });
+    }
   }
 
   if (consultation.needSecondary) {
@@ -409,11 +419,14 @@ function buildFactsCandidates(params: BuildParams, inputType: ReturnType<typeof 
       });
       if (text) {
         out.push({ key: "need_match", text });
-      } else if (consultation.needPrimary) {
-        out.push({
-          key: "need_match",
-          text: `今回の相談の中心にある「${buildNeedThemeLabel(consultation.needPrimary)}」のテーマと重なるため、この神社が候補に入っています。`,
-        });
+      } else {
+        const needLabel = buildNeedThemeLabel(consultation.needPrimary);
+        if (needLabel) {
+          out.push({
+            key: "need_match",
+            text: `今回の相談の中心にある「${needLabel}」のテーマと重なるため、この神社が候補に入っています。`,
+          });
+        }
       }
       break;
     }
