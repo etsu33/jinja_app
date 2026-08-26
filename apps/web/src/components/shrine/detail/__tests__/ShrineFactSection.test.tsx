@@ -326,7 +326,7 @@ describe("ShrineFactSection", () => {
       expect(screen.getByText("異なる見解を含む情報")).toBeInTheDocument();
     });
 
-    it("各Factは自身のsourcesのみを表示する（groupで共有・曖昧化しない）", () => {
+    it("異なるSourceはSection末尾の出典一覧へ集約され、いずれも失われない", () => {
       render(
         <ShrineFactSection
           section={makeSection({
@@ -378,10 +378,56 @@ describe("ShrineFactSection", () => {
         />,
       );
 
+      // Fact本体のcard内にはSourceが描画されず、Section末尾の「出典」見出し配下に集約される
+      expect(screen.getByText("出典")).toBeInTheDocument();
       const sourceALink = screen.getByRole("link", { name: "史料A" });
       expect(sourceALink).toHaveAttribute("href", "https://example.com/a");
       expect(screen.getByText("史料B")).toBeInTheDocument();
       expect(screen.queryByRole("link", { name: "史料B" })).not.toBeInTheDocument();
+    });
+
+    it("同一URLのSourceは複数Factにまたがっても出典一覧で1回だけ表示される（dedupe）", () => {
+      const sharedSource = {
+        id: 200,
+        source_type: "shrine_official" as const,
+        title: "○○神社 公式サイト",
+        publisher: "",
+        url: "https://example.com/official",
+        verification_status: "source_confirmed",
+        confidence: "high",
+      };
+      render(
+        <ShrineFactSection
+          section={makeSection({
+            histories: [
+              {
+                id: 1,
+                history_type: "founding",
+                history_type_label: "創始",
+                title: "由緒A",
+                content: "内容A",
+                period_text: "",
+                sort_order: 0,
+                displayState: "full",
+                sources: [sharedSource],
+              },
+              {
+                id: 2,
+                history_type: "historical_event",
+                history_type_label: "歴史",
+                title: "由緒B",
+                content: "内容B",
+                period_text: "",
+                sort_order: 1,
+                displayState: "full",
+                sources: [{ ...sharedSource, id: 201 }],
+              },
+            ],
+          })}
+        />,
+      );
+
+      expect(screen.getAllByRole("link", { name: "○○神社 公式サイト" })).toHaveLength(1);
     });
 
     it("sourcesが空/未指定のFactはSource一覧を表示しない（クラッシュしない）", () => {
