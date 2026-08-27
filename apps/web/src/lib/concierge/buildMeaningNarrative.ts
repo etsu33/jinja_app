@@ -288,7 +288,10 @@ function buildMeaningCore(args: {
 }): string {
   const needFact = (() => {
     if (args.mode === "compat") return "生年月日から見た相性を補助線にしながら";
-    if (args.need) return `「${toNeedTagLabel(args.need)}」という相談テーマに対して`;
+    if (args.need) {
+      const label = toNeedTagLabel(args.need);
+      if (label) return `「${label}」という相談テーマに対して`;
+    }
     return "今の状態を整理する入口として";
   })();
 
