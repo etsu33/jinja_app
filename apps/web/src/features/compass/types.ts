@@ -62,6 +62,22 @@ export type CompassUiState =
   | "recommendation_success"
   | "backend_error";
 
+// Already present on the raw recommendation dict Compass's response returns
+// today (backend/temples/api_views_compass.py has no serializer -- the dict
+// build_chat_recommendations() produces is spread into the response as-is).
+// Only the two fields this PR's Explanation actually reads are typed here;
+// everything else on the dict is still covered by the index signature below.
+export type CompassReasonFact = {
+  type?: string | null;
+  label?: string | null;
+  label_ja?: string | null;
+  is_primary?: boolean | null;
+};
+
+export type CompassRecommendationBreakdown = {
+  matched_need_tags?: string[] | null;
+};
+
 export type CompassRecommendation = {
   shrine_id?: number | string | null;
   id?: number | string | null;
@@ -71,6 +87,8 @@ export type CompassRecommendation = {
   reason?: string | null;
   place_id?: string | null;
   recommendation_instance_id?: string | null;
+  breakdown?: CompassRecommendationBreakdown | null;
+  reason_facts?: CompassReasonFact[] | null;
   [key: string]: unknown;
 };
 

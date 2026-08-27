@@ -11,16 +11,22 @@ import { trackCardEvent } from "@/lib/analytics/cardEvents";
 import { trackSearchEvent } from "@/lib/analytics/searchEvents";
 import { buildShrineHref } from "@/lib/nav/buildShrineHref";
 import { useEffect, useRef } from "react";
+import { resolveCompassSupplementaryFactText } from "../resolveCompassSupplementaryFactText";
 import type { CompassRecommendation } from "../types";
 
 export type CompassRecommendationsSectionProps = {
   recommendations: CompassRecommendation[];
   recommendationInstanceId: string;
+  // Optional: omitted callers (existing tests, future callers that don't
+  // have it yet) render exactly as before -- resolveCompassSupplementaryFactText
+  // never fabricates a purpose match when this is unknown.
+  purpose?: string | null;
 };
 
 export default function CompassRecommendationsSection({
   recommendations,
   recommendationInstanceId,
+  purpose = null,
 }: CompassRecommendationsSectionProps) {
   const trackedImpressionsRef = useRef(new Set<string>());
 
@@ -62,6 +68,7 @@ export default function CompassRecommendationsSection({
           // fetched or derived -- this only surfaces an existing field via
           // the opt-in distanceLabel prop, which no other caller sets.
           const formattedDistance = formatDistance(distanceM);
+          const explanationOnlyFactText = resolveCompassSupplementaryFactText(rec, purpose);
           return (
             <ShrineCardCompact
               key={key}
@@ -70,6 +77,7 @@ export default function CompassRecommendationsSection({
               distanceM={distanceM}
               distanceLabel={formattedDistance ? `約${formattedDistance}` : null}
               reason={typeof rec.reason === "string" ? rec.reason : null}
+              explanationOnlyFactText={explanationOnlyFactText}
               href={
                 shrineId != null
                   ? buildShrineHref(shrineId, {

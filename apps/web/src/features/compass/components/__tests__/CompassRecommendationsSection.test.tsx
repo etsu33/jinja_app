@@ -138,4 +138,85 @@ describe("CompassRecommendationsSection", () => {
       position: "compact",
     });
   });
+
+  // Concierge Evidence Explanation pattern reuse (PR #2581) applied to
+  // Compass: Fact/Meaning/Runtime boundary -- history_theme is a Derived
+  // Meaning (KAMI MUSUBI's own interpretation), never presented as an
+  // official Fact.
+  it("history_themeのreason_factをKAMI MUSUBIの解釈として参考情報に表示する", () => {
+    render(
+      <CompassRecommendationsSection
+        recommendationInstanceId="compass01"
+        purpose="protection"
+        recommendations={[
+          {
+            shrine_id: 1,
+            name: "北西神社",
+            reason: "厄除けのご利益で知られる神社です。",
+            breakdown: { matched_need_tags: ["protection"] },
+            reason_facts: [{ type: "history_theme", label: "守り", is_primary: true }],
+          },
+        ]}
+      />,
+    );
+
+    const fact = screen.getByTestId("recommendation-compact-explanation-only-fact");
+    expect(fact).toHaveTextContent("守りという文脈（KAMI MUSUBIの解釈）");
+  });
+
+  // Test Case 2 (Direction + Distanceのみ): Purpose Matchを捏造しない -- 実際に
+  // matched_need_tagsへ入っていない候補では、Purpose一致文言を表示せず、
+  // 代わりにFilter Context（方向・距離条件）のみを表示する。
+  it("purposeがmatched_need_tagsに無い候補ではPurpose一致を捏造せずFilter Contextを表示する", () => {
+    render(
+      <CompassRecommendationsSection
+        recommendationInstanceId="compass01"
+        purpose="study"
+        recommendations={[
+          {
+            shrine_id: 1,
+            name: "北西神社",
+            reason: "近くの神社です。",
+            breakdown: { matched_need_tags: [] },
+          },
+        ]}
+      />,
+    );
+
+    const fact = screen.getByTestId("recommendation-compact-explanation-only-fact");
+    expect(fact).toHaveTextContent("今回の方向・距離の条件に合う候補です");
+    expect(fact).not.toHaveTextContent("study");
+  });
+
+  // Case 1相当: Purpose Evidenceが既にmatched_need_tagsにあり、reasonが既に
+  // 説明済みの場合は参考情報ブロック自体を表示しない（重複させない・placeholder禁止）。
+  it("purposeが一致しhistory_themeも無い場合は参考情報ブロックを表示しない", () => {
+    render(
+      <CompassRecommendationsSection
+        recommendationInstanceId="compass01"
+        purpose="career"
+        recommendations={[
+          {
+            shrine_id: 1,
+            name: "北西神社",
+            reason: "仕事運とのご利益一致",
+            breakdown: { matched_need_tags: ["career"] },
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.queryByTestId("recommendation-compact-explanation-only-fact")).not.toBeInTheDocument();
+  });
+
+  it("purposeを渡さない既存呼び出しは参考情報ブロックを新設しない（後方互換）", () => {
+    render(
+      <CompassRecommendationsSection
+        recommendationInstanceId="compass01"
+        recommendations={[{ shrine_id: 1, name: "北西神社", reason: "仕事運とのご利益一致" }]}
+      />,
+    );
+
+    expect(screen.queryByTestId("recommendation-compact-explanation-only-fact")).not.toBeInTheDocument();
+  });
 });
