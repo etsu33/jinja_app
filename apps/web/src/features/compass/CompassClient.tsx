@@ -350,6 +350,7 @@ export default function CompassClient() {
         <CompassRecommendationsSection
           recommendations={result.recommendations}
           recommendationInstanceId={result.recommendation_instance_id}
+          purpose={purpose}
         />
       ) : null}
     </div>
