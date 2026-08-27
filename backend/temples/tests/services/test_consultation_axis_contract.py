@@ -108,7 +108,11 @@ def test_resolve_consultation_axis_relationship_and_love_share_axis_via_need_tag
     [
         "恋愛について悩んでいる",
         "いい出会いがほしい",
-        "良縁を願いたい",
+        # "良縁を願いたい" now correctly resolves to need_tags=["marriage"]
+        # (docs/audit/marriage-need-independence-implementation.md), not
+        # "love" -- replaced with "復縁したい", an unambiguous love-only
+        # keyword (temples/domain/need_tags.py KEYWORDS["love"]).
+        "復縁したい",
     ],
 )
 def test_resolve_consultation_axis_love_phrasing_resolves_to_relationship_repair(query):

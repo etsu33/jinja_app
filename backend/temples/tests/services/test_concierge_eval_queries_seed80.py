@@ -13,9 +13,13 @@ SEED_PATH = Path(__file__).resolve().parents[2] / "seed" / "representative_shrin
 
 SEED80_EVAL_CASES = [
     {
-        "id": "seed80_love_001",
+        # "良縁" is a domain-level "marriage" keyword (temples/domain/
+        # need_tags.py KEYWORDS["marriage"]), not "love" -- previously
+        # collapsed to "love" via the now-removed NEED_TAG_ALIASES entry,
+        # see docs/audit/marriage-need-independence-implementation.md.
+        "id": "seed80_marriage_001",
         "query": "良縁に恵まれたい",
-        "expected_need": "love",
+        "expected_need": "marriage",
         "expected_top_names": [
             "出雲大社",
             "東京大神宮",
@@ -25,7 +29,7 @@ SEED80_EVAL_CASES = [
             "伊弉諾神宮",
             "明治神宮",
         ],
-        "note": "良縁・縁結び系の代表候補が上位に来ること",
+        "note": "良縁・縁結び系の代表候補が上位に来ること（marriage）",
     },
     {
         "id": "seed80_love_002",

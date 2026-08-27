@@ -20,14 +20,18 @@ NEED_TO_GORIYAKU_IDS: Dict[str, Set[int]] = {
     # relationship/health/focus/family corrected against real GoriyakuTag
     # labels; see docs/audit/remaining-need-goriyaku-semantic-mapping.md
     # (SAFE_CORRECTIONS, Section 19) for the VALID/QUESTIONABLE/INVALID/
-    # CLEAR_MISSING classification this is based on. marriage/communication/
-    # mental/courage remain unchanged pending Mother Ship product decisions
-    # (same document, Section 20) -- marriage in particular is aliased to
-    # "love" by NEED_TAG_ALIASES before this dict is ever consulted, making
-    # any correction to its own entry inert at runtime (Section 16).
+    # CLEAR_MISSING classification this is based on. communication/mental/
+    # courage remain unchanged pending Mother Ship product decisions (same
+    # document, Section 20).
+    #
+    # marriage corrected to {1, 18} (縁結び VALID + 夫婦円満 CLEAR_MISSING;
+    # 27/29 INVALID, fresh-classified) and is now independently reachable --
+    # NEED_TAG_ALIASES["marriage"]="love" was removed, see
+    # docs/audit/marriage-love-alias-boundary.md and
+    # docs/audit/marriage-need-independence-implementation.md.
     "love": {1, 20},
     "relationship": {1},
-    "marriage": {1, 27, 29},
+    "marriage": {1, 18},
     "communication": {30, 33, 37, 39},
     "career": {6, 21, 30, 12, 27},
     "money": {5, 36, 4, 28},

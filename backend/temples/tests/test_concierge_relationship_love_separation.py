@@ -83,13 +83,28 @@ def test_love_does_not_normalize_to_relationship(normalize_fn):
     [normalize_need_tag, _normalize_need_tag],
     ids=["concierge_chat_need", "concierge_chat_ranking"],
 )
-@pytest.mark.parametrize("alias", ["marriage", "romance"])
-def test_love_synonym_aliases_are_unchanged(normalize_fn, alias):
-    """Task 4 backward compatibility: "marriage"/"romance" (English
-    synonyms for the *romantic* concept "love", not human-relationship
-    synonyms) remain aliased to "love" -- only "relationship" itself was
-    removed from the table."""
-    assert normalize_fn(alias) == "love"
+def test_love_synonym_alias_is_unchanged(normalize_fn):
+    """Task 4 backward compatibility: "romance" (a plain English synonym
+    for "love", with no independent keyword list of its own) remains
+    aliased to "love"."""
+    assert normalize_fn("romance") == "love"
+
+
+@pytest.mark.parametrize(
+    "normalize_fn",
+    [normalize_need_tag, _normalize_need_tag],
+    ids=["concierge_chat_need", "concierge_chat_ranking"],
+)
+def test_marriage_no_longer_aliases_to_love(normalize_fn):
+    """docs/audit/marriage-love-alias-boundary.md /
+    marriage-need-independence-implementation.md: unlike "romance",
+    "marriage" has a real, independently-defined keyword list
+    (結婚/婚活/夫婦円満, temples/domain/need_tags.py KEYWORDS["marriage"]
+    and temples/services/consultation_interpreter.py
+    NEED_KEYWORDS["marriage"]) that the alias discarded end-to-end.
+    "marriage" was removed from NEED_TAG_ALIASES and is now
+    independently reachable."""
+    assert normalize_fn("marriage") == "marriage"
 
 
 # ---------------------------------------------------------------------------
@@ -145,14 +160,14 @@ def test_love_phrasing_still_resolves_to_love(query):
     assert "love" in payload["tags"]
 
 
-def test_marriage_keyword_phrasing_still_resolves_to_love_via_unchanged_alias():
+def test_marriage_keyword_phrasing_now_resolves_to_marriage_not_love():
     """"良縁" is a domain-level "marriage" keyword (temples/domain/
-    need_tags.py KEYWORDS["marriage"]), not "relationship" -- it reaches
-    "love" via the untouched marriage->love alias, exactly as before
-    this fix (Task 3: marriage/romance aliases are explicitly out of
-    scope, only relationship was removed)."""
+    need_tags.py KEYWORDS["marriage"]), not "love" or "relationship".
+    Following docs/audit/marriage-need-independence-implementation.md,
+    the marriage->love alias was removed, so this now resolves to
+    "marriage" instead of collapsing into "love" as it did before."""
     payload = resolve_need_payload(query="良縁を願いたい", need_tags=[], max_tags=3)
-    assert payload["tags"] == ["love"]
+    assert payload["tags"] == ["marriage"]
 
 
 # ---------------------------------------------------------------------------

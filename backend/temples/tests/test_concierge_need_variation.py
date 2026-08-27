@@ -61,7 +61,11 @@ def test_need_variation_changes_matched_tags_and_score(monkeypatch):
     ]
 
     cases = [
-        ("近場で縁結び", "love", "恋愛神社"),
+        # "縁結び" now correctly extracts "marriage" (docs/audit/
+        # marriage-need-independence-implementation.md), not "love" --
+        # use an unambiguous love-only keyword (KEYWORDS["love"]) so this
+        # case keeps testing love-need matching, not marriage's.
+        ("近場で出会いがほしい", "love", "恋愛神社"),
         ("仕事運を上げたい", "career", "仕事神社"),
         ("不安が強いので厄除けしたい", "mental", "厄除け神社"),
         ("金運を上げたい", "money", "金運神社"),
@@ -129,7 +133,9 @@ def test_need_match_by_astro_tags_only(monkeypatch):
     ]
 
     recs = build_chat_recommendations(
-        query="縁結びで探したい",
+        # "縁結び" now correctly extracts "marriage", not "love" -- see
+        # docs/audit/marriage-need-independence-implementation.md.
+        query="出会いを探したい",
         language="ja",
         candidates=candidates,
         bias=None,
@@ -179,7 +185,12 @@ def test_need_match_by_text_only(monkeypatch):
     ]
 
     recs = build_chat_recommendations(
-        query="近場で縁結び",
+        # "縁結び" now correctly extracts "marriage", not "love" -- see
+        # docs/audit/marriage-need-independence-implementation.md. The
+        # candidate's own goriyaku text (縁結び・恋愛成就・良縁, unchanged)
+        # still matches NEED_TEXT_WEIGHTS["love"] once need_tags_clean
+        # resolves to "love" via this unambiguous query.
+        query="近場で出会いがほしい",
         language="ja",
         candidates=candidates,
         bias=None,
