@@ -15,23 +15,30 @@ NEED_TO_GORIYAKU_IDS: Dict[str, Set[int]] = {
     # current 39-row canonical master; travel_safe corrected to the
     # canonical master's actual travel-safety labels; see
     # docs/audit/goriyaku-mapping-master-integrity.md and
-    # docs/audit/goriyaku-mapping-master-integrity-correction.md. Remaining
-    # QUESTIONABLE/broken mappings for the other Purposes are unchanged and
-    # out of scope for this correction.
+    # docs/audit/goriyaku-mapping-master-integrity-correction.md.
+    #
+    # relationship/health/focus/family corrected against real GoriyakuTag
+    # labels; see docs/audit/remaining-need-goriyaku-semantic-mapping.md
+    # (SAFE_CORRECTIONS, Section 19) for the VALID/QUESTIONABLE/INVALID/
+    # CLEAR_MISSING classification this is based on. marriage/communication/
+    # mental/courage remain unchanged pending Mother Ship product decisions
+    # (same document, Section 20) -- marriage in particular is aliased to
+    # "love" by NEED_TAG_ALIASES before this dict is ever consulted, making
+    # any correction to its own entry inert at runtime (Section 16).
     "love": {1, 20},
-    "relationship": {1, 27, 34},
+    "relationship": {1},
     "marriage": {1, 27, 29},
     "communication": {30, 33, 37, 39},
     "career": {6, 21, 30, 12, 27},
     "money": {5, 36, 4, 28},
     "study": {9, 10},
-    "health": {7, 8},
+    "health": {7, 8, 24, 33, 38},
     "mental": {11, 16, 26, 28, 38},
     "protection": {11, 32, 2},
     "courage": {12, 15, 18, 20, 24, 30, 38},
-    "focus": {3, 4, 39},
+    "focus": {9, 10},
     "rest": {7, 8},
-    "family": {2, 25, 27, 34},
+    "family": {2, 26, 34},
     "travel_safe": {3, 13, 14},
 }
 
