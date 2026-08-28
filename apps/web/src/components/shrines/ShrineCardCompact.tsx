@@ -71,9 +71,9 @@ export default function ShrineCardCompact({
   const originSummary = trustMetadata?.originSummary?.trim() || null;
 
   return (
-    <article className="rounded-[var(--kt-radius-card)] border border-slate-100 bg-white/90 p-3">
+    <article className="rounded-[var(--kt-radius-card)] border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-3">
       <div className="flex gap-3">
-        <div className="h-14 w-16 shrink-0 overflow-hidden rounded-[var(--kt-radius-image)] bg-slate-100">
+        <div className="h-14 w-16 shrink-0 overflow-hidden rounded-[var(--kt-radius-image)] bg-[var(--kt-color-background-subtle)]">
           {imageUrl ? (
             <Image src={imageUrl} alt={name} width={64} height={56} className="h-full w-full object-cover" />
           ) : null}
@@ -85,14 +85,14 @@ export default function ShrineCardCompact({
             {visibleTrustLabels.length > 0 || distanceLabel ? (
               <div className="flex flex-wrap gap-1">
                 {distanceLabel ? (
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                  <span className="rounded-full bg-[var(--kt-color-background-subtle)] px-2 py-0.5 text-[10px] font-semibold text-[var(--kt-color-text-secondary)]">
                     {distanceLabel}
                   </span>
                 ) : null}
                 {visibleTrustLabels.map((label) => (
                   <span
                     key={label}
-                    className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600"
+                    className="rounded-full bg-[var(--kt-color-background-subtle)] px-2 py-0.5 text-[10px] font-semibold text-[var(--kt-color-text-secondary)]"
                   >
                     {label}
                   </span>
@@ -127,7 +127,7 @@ export default function ShrineCardCompact({
                 <Link
                   href={href}
                   onClick={onDetailClick}
-                  className="-m-3 ml-auto inline-flex items-center p-3 text-[11px] font-normal text-slate-400 transition hover:text-slate-600"
+                  className="-m-3 ml-auto inline-flex items-center p-3 text-[11px] font-normal text-[var(--kt-color-text-muted)] transition hover:text-[var(--kt-color-text-secondary)]"
                 >
                   詳細だけ見る
                 </Link>

@@ -2209,14 +2209,9 @@ def _build_need_reason_text(
         # 結婚成立や関係修復を保証する断定表現も避ける
         # (docs/audit/marriage-reason-copy-implementation.md)。
         "marriage": "良縁や夫婦円満",
-        # focus: NEED_LABELS_JA["focus"]（"集中・継続"）と同じ語感を、既存の
-        # 「AやB」文型へそのまま流し込む。KEYWORDS["focus"]（集中/習慣/継続/
-        # やる気/ルーティン/先延ばし）由来で新しい意味解釈は加えない。SEMANTIC_SAFE
-        # 判定 (docs/audit/semantic-followup-decision-and-pr-split.md §8)。
+        "relationship": "人間関係の改善や修復",
+        "health": "健康や体調の安定",
         "focus": "集中や習慣づくり",
-        # travel_safe: NEED_LABELS_JA["travel_safe"]（"移動・安全"）と同じ語感。
-        # KEYWORDS["travel_safe"]（旅行/旅/出張/移動/交通安全/安全祈願）由来。
-        # SEMANTIC_SAFE 判定 (docs/audit/semantic-followup-decision-and-pr-split.md §8)。
         "travel_safe": "移動や旅の安全",
     }
 
