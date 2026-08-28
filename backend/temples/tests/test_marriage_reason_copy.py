@@ -164,7 +164,14 @@ def test_love_reason_unchanged():
     assert "恋愛や良縁を願う参拝先として適しています。" in reason
 
 
-def test_relationship_reason_unchanged():
+def test_relationship_reason_not_collapsed_into_marriage_copy():
+    """Originally asserted relationship's Reason stayed on the generic
+    "今の願い" fallback -- that assumption became stale once
+    fix/reason-relationship-health gave relationship its own intent_map
+    entry ("人間関係の改善や修復", docs/audit/reason-relationship-health-
+    implementation.md). The invariant this test actually protects --
+    relationship must never pick up marriage's own copy, since both share
+    GoriyakuTag id=1 (縁結び) -- is unchanged and still asserted below."""
     recs = build_chat_recommendations(
         query="職場の人間関係を改善したい",
         language="ja",
@@ -173,7 +180,7 @@ def test_relationship_reason_unchanged():
         flow="A",
     )
     reason = recs["recommendations"][0]["reason"]
-    assert "今の願いを願う参拝先として適しています。" in reason
+    assert "人間関係の改善や修復を願う参拝先として適しています。" in reason
     assert "良縁や夫婦円満" not in reason
 
 
