@@ -2209,19 +2209,13 @@ def _build_need_reason_text(
         # 結婚成立や関係修復を保証する断定表現も避ける
         # (docs/audit/marriage-reason-copy-implementation.md)。
         "marriage": "良縁や夫婦円満",
-        # relationship: SEMANTIC_SAFE_WITH_LIMITATION 判定 (docs/audit/
-        # semantic-followup-decision-and-pr-split.md §8) -- KEYWORDS
-        # ["relationship"]（人間関係/職場/上司/同僚/家族/親子/友達/対人）由来。
-        # GID={1}（縁結び）はlove/marriageと共有のため、Leadが同じ"縁結び"を
-        # 引用しうる点は差別化しきれない既知の限界（同ドキュメント参照）。
-        # marriage/loveの語（夫婦円満・恋愛）は含めず区別する。
         "relationship": "人間関係の改善や修復",
-        # health: SEMANTIC_SAFE_WITH_LIMITATION 判定（同ドキュメント）。
-        # KEYWORDS["health"]（健康/体調/病気/不調/体力/治す）由来。GID=
-        # {7,8,24,33,38}に家内安全(7)・福徳(8)という個人の健康より広い語が
-        # 含まれるため、Leadが必ずしも健康寄りの語を引用しない点は既知の限界。
         "health": "健康や体調の安定",
+        "focus": "集中や習慣づくり",
+        "travel_safe": "移動や旅の安全",
     }
+
+    user_intent = intent_map.get(tag, "今の願い")
 
     user_intent = intent_map.get(tag, "今の願い")
 
