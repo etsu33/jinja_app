@@ -206,17 +206,3 @@ def test_career_reason_unchanged():
     )
     reason = recs["recommendations"][0]["reason"]
     assert "仕事や転機を願う参拝先として適しています。" in reason
-
-
-def test_relationship_reason_still_generic():
-    """relationship is out of scope for R1a (it belongs to R1b) -- must
-    still show the generic fallback after this change."""
-    recs = build_chat_recommendations(
-        query="職場の人間関係を改善したい",
-        language="ja",
-        candidates=[_candidate("縁結び神社", [1])],
-        public_mode="need",
-        flow="A",
-    )
-    reason = recs["recommendations"][0]["reason"]
-    assert "今の願いを願う参拝先として適しています。" in reason

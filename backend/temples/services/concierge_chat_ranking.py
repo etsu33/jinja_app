@@ -2217,8 +2217,6 @@ def _build_need_reason_text(
 
     user_intent = intent_map.get(tag, "今の願い")
 
-    user_intent = intent_map.get(tag, "今の願い")
-
     if name:
         lead = _build_need_lead(
             tag,
