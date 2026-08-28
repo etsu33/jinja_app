@@ -7,7 +7,7 @@
 // Hero(要約向け)とDetail(詳細向け)は表示量・画面構造が異なるため、
 // 画面用のAdapter自体は別ファイルとして分離する。
 import { buildRecommendationReasonDisplay } from "../../../../../packages/shared/recommendationReasonDisplay";
-import { pickReasonV4FactText } from "@/features/concierge/reasonV4FactPriority";
+import { isExplanationOnlyFactSource, pickReasonV4Fact } from "@/features/concierge/reasonV4FactPriority";
 
 export type RecommendationReasonV4DetailFact = {
   label?: string | null;
@@ -28,7 +28,15 @@ export type RecommendationReasonV4DetailShape = {
 };
 
 export type ShrineDetailReasonV4Sections = {
+  // Ranking-related fact only (goriyaku/history_theme won the pick) -- same meaning as
+  // buildHeroReasonV4Sections.ts's factText.
   factText: string | null;
+  // Explanation-only Knowledge fact only (deity/shrine_history won the pick) -- Signal
+  // Authority正本§8: Rank/Eligibilityに一切寄与しないKnowledge fact。「② 選ばれた背景」
+  // (Recommendation reason)へは混ぜず、呼び出し元で「参考情報」等の従属的な別枠として
+  // 表示する(buildHeroReasonV4Sections.tsと同じ境界、App-wide Evidence & Dark UI
+  // Regression Audit Bug-1)。
+  explanationOnlyFactText: string | null;
   interpretationText: string | null;
   actionText: string | null;
   hasStructured: boolean;
@@ -88,16 +96,22 @@ export function normalizeRecommendationReasonV4Detail(raw: unknown): Recommendat
  * Shrine Detail画面表示用のFact/Interpretation/Actionセクションを組み立てる。
  *
  * place_context(住所)とlabelはFact本文の候補にしない(優先順位の実体はreasonV4FactPriority.ts)。
- * いずれか1つ以上のセクションが表示できる場合にhasStructured=trueとする。
+ * いずれか1つ以上のセクションが表示できる場合にhasStructured=trueとする(explanationOnlyFactText
+ * は含めない -- buildHeroReasonV4Sections.tsと同じFallback Contract。Explanation-onlyの情報
+ * だけでRecommendationが相談に意味的一致したかのように見せない)。
  */
 export function buildShrineDetailReasonV4Sections(
   detail: RecommendationReasonV4DetailShape | null | undefined,
 ): ShrineDetailReasonV4Sections {
-  const factText = safeText(detail ? pickReasonV4FactText(detail.fact) : null);
+  // 優先順位の実体はreasonV4FactPriority.tsに集約する(Hero/Shrine Detailで共通)。
+  const pickedFact = detail ? pickReasonV4Fact(detail.fact) : null;
+  const isPickedFactExplanationOnly = pickedFact ? isExplanationOnlyFactSource(pickedFact.source) : false;
+  const factText = safeText(!isPickedFactExplanationOnly ? (pickedFact?.text ?? null) : null);
+  const explanationOnlyFactText = safeText(isPickedFactExplanationOnly ? (pickedFact?.text ?? null) : null);
   const interpretationText = safeText(detail ? clean(detail.interpretation?.text) : null);
   const actionText = safeText(detail ? clean(detail.action?.text) : null);
 
   const hasStructured = Boolean(factText || interpretationText || actionText);
 
-  return { factText, interpretationText, actionText, hasStructured };
+  return { factText, explanationOnlyFactText, interpretationText, actionText, hasStructured };
 }

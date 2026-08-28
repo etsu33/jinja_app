@@ -511,7 +511,7 @@ describe("buildShrineDetailModel", () => {
         tid: "thread-1",
         recommendationReasonV4Detail: {
           reason_text: "reason_text",
-          fact: { deity: "武神", shrine_history: null, place_context: "住所情報", goriyaku: null, history_theme: null },
+          fact: { deity: null, shrine_history: null, place_context: "住所情報", goriyaku: "縁結び", history_theme: null },
           interpretation: { text: "今回の相談との意味(V4)" },
           action: { text: "参拝するときの視点(V4)" },
         },
@@ -523,7 +523,7 @@ describe("buildShrineDetailModel", () => {
 
       const reasonSection = premiumSections.find((section: any) => section.kind === "reason");
       expect(reasonSection.heading).toBe("② 選ばれた背景");
-      expect(reasonSection.groups[0].items).toEqual(["武神"]);
+      expect(reasonSection.groups[0].items).toEqual(["縁結び"]);
       expect(JSON.stringify(reasonSection)).not.toContain("住所情報");
       expect(JSON.stringify(reasonSection)).not.toContain("旧型");
 
@@ -536,6 +536,100 @@ describe("buildShrineDetailModel", () => {
       expect(actionSection.heading).toBe("④ 参拝するときの視点");
       expect(actionSection.items[0].body).toBe("参拝するときの視点(V4)");
       expect(JSON.stringify(actionSection)).not.toContain("旧型");
+    });
+
+    // App-wide Evidence & Dark UI Regression Audit Bug-1: deity/shrine_historyはExplanation-only
+    // Knowledge Fact(Rank/Eligibilityに一切寄与しない)であり、「② 選ばれた背景」
+    // (Recommendation reason)へ混入させてはならない。既存fixtureで実際に再現していた
+    // (deityが勝ちfactになりそのまま「② 選ばれた背景」へ表示されていた)ケース。
+    it("Bug-1: Explanation-only Fact(deity)は「② 選ばれた背景」に混入せず「参考情報」へ分離される", () => {
+      const result = buildShrineDetailModel({
+        shrine: shrineStub,
+        publicGoshuins: publicGoshuinsStub,
+        conciergeBreakdown: conciergeBreakdownStub,
+        conciergeMode: "need",
+        ctx: "concierge",
+        tid: "thread-1",
+        recommendationReasonV4Detail: {
+          reason_text: "reason_text",
+          fact: { deity: "武神", shrine_history: null, place_context: "住所情報", goriyaku: null, history_theme: null },
+          interpretation: { text: "今回の相談との意味(V4)" },
+          action: { text: "参拝するときの視点(V4)" },
+        },
+      });
+
+      const premiumSections = result.premiumDisplaySections.map((item: { section: any }) => item.section);
+
+      // Explanation-onlyのみでは②「選ばれた背景」を生成しない -- Ranking理由として
+      // 表示すべきfactTextはnullのため、reason kindは旧factText経路からは出てこない。
+      const reasonSections = premiumSections.filter((section: any) => section.kind === "reason");
+      expect(reasonSections.every((section: any) => section.heading !== "② 選ばれた背景")).toBe(true);
+
+      // 「武神」自体は表示価値を保つが、Recommendation reasonではなく「参考情報」として分離される。
+      const explanationOnlySection = premiumSections.find(
+        (section: any) => section.kind === "reason" && section.heading === "参考情報",
+      );
+      expect(explanationOnlySection).toBeDefined();
+      expect(explanationOnlySection.groups[0].items).toEqual(["武神"]);
+
+      // interpretation/actionはV4のまま正しく表示される(factTextがnullでも他は独立して機能する)。
+      const meaningSection = premiumSections.find((section: any) => section.kind === "meaning");
+      expect(meaningSection.items[0].body).toBe("今回の相談との意味(V4)");
+      const actionSection = premiumSections.find((section: any) => section.kind === "action");
+      expect(actionSection.items[0].body).toBe("参拝するときの視点(V4)");
+    });
+
+    it("Bug-1: Ranking Evidence(goriyaku)のみの場合は従来どおり「② 選ばれた背景」に残り、「参考情報」は生成されない", () => {
+      const result = buildShrineDetailModel({
+        shrine: shrineStub,
+        publicGoshuins: publicGoshuinsStub,
+        conciergeBreakdown: conciergeBreakdownStub,
+        conciergeMode: "need",
+        ctx: "concierge",
+        tid: "thread-1",
+        recommendationReasonV4Detail: {
+          reason_text: "reason_text",
+          fact: { deity: null, shrine_history: null, place_context: null, goriyaku: "縁結び", history_theme: null },
+          interpretation: { text: "" },
+          action: { text: "" },
+        },
+      });
+
+      const premiumSections = result.premiumDisplaySections.map((item: { section: any }) => item.section);
+      const reasonSection = premiumSections.find((section: any) => section.kind === "reason");
+      expect(reasonSection.heading).toBe("② 選ばれた背景");
+      expect(reasonSection.groups[0].items).toEqual(["縁結び"]);
+      expect(premiumSections.some((section: any) => section.heading === "参考情報")).toBe(false);
+    });
+
+    it("Bug-1: Ranking Evidence(goriyaku)とExplanation-only Fact(deity)が両方存在する場合は混ざらない(deityは勝ちfactにならない)", () => {
+      const result = buildShrineDetailModel({
+        shrine: shrineStub,
+        publicGoshuins: publicGoshuinsStub,
+        conciergeBreakdown: conciergeBreakdownStub,
+        conciergeMode: "need",
+        ctx: "concierge",
+        tid: "thread-1",
+        recommendationReasonV4Detail: {
+          reason_text: "reason_text",
+          fact: { deity: "武神", shrine_history: null, place_context: null, goriyaku: "縁結び", history_theme: null },
+          interpretation: { text: "" },
+          action: { text: "" },
+        },
+      });
+
+      // 優先順位はreasonV4FactPriority.ts(deity > shrine_history > goriyaku > history_theme)の
+      // まま変更していない -- deityが勝ちfactとなるため、goriyakuは今回このcandidateからは
+      // 表示されない(Priorityの再決定はスコープ外)。ただし勝ちfactがExplanation-onlyである
+      // ため、少なくとも「② 選ばれた背景」へは混入しないことを確認する。
+      const premiumSections = result.premiumDisplaySections.map((item: { section: any }) => item.section);
+      const reasonHeadings = premiumSections
+        .filter((section: any) => section.kind === "reason")
+        .map((section: any) => section.heading);
+      expect(reasonHeadings).not.toContain("② 選ばれた背景");
+      expect(reasonHeadings).toContain("参考情報");
+      const explanationOnlySection = premiumSections.find((section: any) => section.heading === "参考情報");
+      expect(explanationOnlySection.groups[0].items).toEqual(["武神"]);
     });
 
     it("Interpretationのみ存在する場合、meaning sectionのみV4に置き換わりreason/actionは欠落する", () => {
