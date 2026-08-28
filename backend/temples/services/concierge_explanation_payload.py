@@ -18,6 +18,14 @@ NEED_LABELS_JA: Dict[str, str] = {
     "protection": "厄除け・守り",
     "focus": "集中・継続",
     "travel_safe": "移動・安全",
+    # Added by fix/need-labels-ja-completeness -- kept textually identical
+    # to concierge_chat_ranking.py's NEED_LABELS_JA/NEED_TAG_LABELS_JA
+    # (docs/audit/need-labels-ja-completeness-implementation.md).
+    "marriage": "結婚・夫婦円満",
+    "relationship": "人間関係",
+    "communication": "コミュニケーション",
+    "health": "健康",
+    "family": "家族",
     "element": "生年月日との相性",
     "fallback": "近い候補",
     "visit_style": "参拝スタイル",

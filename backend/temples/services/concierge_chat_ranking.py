@@ -497,6 +497,18 @@ NEED_LABELS_JA: Dict[str, str] = {
     "protection": "厄除け・守り",
     "focus": "集中・継続",
     "travel_safe": "移動・安全",
+    # Added by fix/need-labels-ja-completeness (docs/audit/need-labels-ja-completeness-implementation.md):
+    # the remaining 5 of 15 canonical Need tags (temples/domain/need_tags.py
+    # NEED_TAGS), previously absent from every copy of this dict and
+    # falling back to the raw English key. See that doc's Label Contract
+    # section for sourcing; scope-sensitive labels ("family") are
+    # deliberately scope-neutral pending the separate Mother Ship decision
+    # in docs/audit/semantic-followup-decision-and-pr-split.md.
+    "marriage": "結婚・夫婦円満",
+    "relationship": "人間関係",
+    "communication": "コミュニケーション",
+    "health": "健康",
+    "family": "家族",
     "element": "生年月日との相性",
     "fallback": "近い候補",
     "history_theme": "歴史文脈",
@@ -584,6 +596,13 @@ NEED_TAG_LABELS_JA = {
     "protection": "厄除け・守り",
     "focus": "集中・継続",
     "travel_safe": "移動・安全",
+    # Added by fix/need-labels-ja-completeness -- kept textually identical
+    # to NEED_LABELS_JA's own additions above (same 5 Needs, same source).
+    "marriage": "結婚・夫婦円満",
+    "relationship": "人間関係",
+    "communication": "コミュニケーション",
+    "health": "健康",
+    "family": "家族",
 }
 
 
