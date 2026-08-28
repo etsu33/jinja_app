@@ -46,7 +46,17 @@ NEED_PRIORITY: List[NeedTag] = [
 ]
 
 KEYWORDS: Dict[NeedTag, List[str]] = {
-    "marriage": ["縁結び", "良縁", "結婚", "婚活", "結縁", "ご縁", "夫婦円満"],
+    # "夫婦関係"/"夫婦仲" added for existing-marriage coverage (docs/audit/
+    # marriage-consultation-interpreter-coverage.md Section 13, both from
+    # the existing 夫婦-root family already present via 夫婦円満 -- no
+    # broader vocabulary invented). NEED_PRIORITY already ranks "marriage"
+    # above "mental"/"rest", so "夫婦関係を整えたい" (which also still hits
+    # mental/rest's own "整えたい") correctly resolves to
+    # tags=["marriage","mental","rest"] under the existing, unmodified
+    # priority contract -- marriage is not lost, and mental/rest are not
+    # suppressed. See docs/audit/marriage-interpreter-coverage-
+    # implementation.md.
+    "marriage": ["縁結び", "良縁", "結婚", "婚活", "結縁", "ご縁", "夫婦円満", "夫婦関係", "夫婦仲"],
     "love": ["恋愛", "恋", "復縁", "片思い", "両思い", "出会い", "告白"],
     "relationship": ["人間関係", "職場", "上司", "同僚", "家族", "親子", "友達", "対人"],
     "communication": ["会話", "発信", "伝える", "話す", "営業", "交渉", "プレゼン", "面接"],
