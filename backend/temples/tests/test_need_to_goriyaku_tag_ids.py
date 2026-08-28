@@ -10,9 +10,13 @@
 #   invalid {10, 22, 23}).
 # - docs/audit/remaining-need-goriyaku-semantic-mapping.md
 #   (SAFE_CORRECTIONS, Section 19) / safe-remaining-need-goriyaku-mapping-
-#   correction.md: relationship/health/focus/family corrected. marriage/
-#   communication/mental/courage remain unchanged (Section 20, Mother Ship
-#   product decisions pending).
+#   correction.md: relationship/health/focus/family corrected. communication/
+#   mental/courage remain unchanged (Section 20, Mother Ship product
+#   decisions pending).
+# - docs/audit/marriage-love-alias-boundary.md /
+#   marriage-need-independence-implementation.md: marriage corrected to
+#   {1, 18} and made independently reachable (NEED_TAG_ALIASES["marriage"]
+#   removed).
 # A future edit to NEED_TO_GORIYAKU_IDS surfaces as an intentional diff
 # here rather than a silent regression.
 from temples.domain.need_to_goriyaku_tag_ids import NEED_TO_GORIYAKU_IDS
@@ -72,12 +76,17 @@ def test_family_mapping_matches_safe_remaining_need_correction():
     assert NEED_TO_GORIYAKU_IDS["family"] == {2, 26, 34}
 
 
+def test_marriage_mapping_matches_need_independence_correction():
+    assert NEED_TO_GORIYAKU_IDS["marriage"] == {1, 18}
+    assert 27 not in NEED_TO_GORIYAKU_IDS["marriage"]
+    assert 29 not in NEED_TO_GORIYAKU_IDS["marriage"]
+
+
 def test_purposes_outside_correction_scope_are_unchanged():
-    # marriage/communication/mental/courage remain Mother Ship product
-    # decisions (docs/audit/remaining-need-goriyaku-semantic-mapping.md
-    # Section 20) -- pinned so a future edit can't silently widen the
-    # change beyond the four approved Needs above.
-    assert NEED_TO_GORIYAKU_IDS["marriage"] == {1, 27, 29}
+    # communication/mental/courage remain Mother Ship product decisions
+    # (docs/audit/remaining-need-goriyaku-semantic-mapping.md Section 20)
+    # -- pinned so a future edit can't silently widen the change beyond
+    # the approved Needs above.
     assert NEED_TO_GORIYAKU_IDS["communication"] == {30, 33, 37, 39}
     assert NEED_TO_GORIYAKU_IDS["mental"] == {11, 16, 26, 28, 38}
     assert NEED_TO_GORIYAKU_IDS["courage"] == {12, 15, 18, 20, 24, 30, 38}

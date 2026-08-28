@@ -371,7 +371,6 @@ def _score_profile_signal(
     return min(score, PROFILE_SIGNAL_MAX), matched
 
 NEED_TAG_ALIASES: Dict[str, str] = {
-    "marriage": "love",
     "romance": "love",
     "anxiety": "mental",
     "healing": "rest",
@@ -389,6 +388,16 @@ NEED_TAG_ALIASES: Dict[str, str] = {
 # _attach_breakdown's matching path; both had to be fixed for the
 # alias removal to actually take effect end-to-end, see
 # docs/audit/concierge-l1-freetext-readiness.md Finding C / PR #2409).
+#
+# "marriage" (結婚/婚活/夫婦円満) was removed from this table for the
+# same reason relationship was: need_tags.py and consultation_interpreter.py
+# both independently define a real, distinct marriage keyword list, and
+# collapsing it into "love" discarded that distinction end-to-end -- see
+# docs/audit/marriage-love-alias-boundary.md (PRODUCT_SEMANTIC_DECISION_REQUIRED,
+# resolved in favor of independence) and
+# docs/audit/marriage-need-independence-implementation.md. "romance" (a
+# plain English synonym with no independent keyword list of its own)
+# remains aliased to "love".
 
 
 NEED_TEXT_WEIGHTS: Dict[str, Dict[str, int]] = {
