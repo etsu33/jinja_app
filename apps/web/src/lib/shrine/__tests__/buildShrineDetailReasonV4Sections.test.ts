@@ -38,6 +38,7 @@ describe("buildShrineDetailReasonV4Sections", () => {
 
     expect(result.hasStructured).toBe(true);
     expect(result.factText).toBe("縁結び・厄除け");
+    expect(result.explanationOnlyFactText).toBeNull();
     expect(result.interpretationText).toBe("相談内容から、今扱いたいテーマを読み取っています。");
     expect(result.actionText).toBe("参拝前に、問いを一つに絞ることを決めておきます。");
   });
@@ -49,10 +50,51 @@ describe("buildShrineDetailReasonV4Sections", () => {
       }),
     );
 
-    expect(result.factText).toBe("武神");
+    expect(result.factText).toBeNull();
   });
 
-  it("deity/shrine_history/goriyakuが無い場合はhistory_themeを使う", () => {
+  // App-wide Evidence & Dark UI Regression Audit Bug-1: deity/shrine_historyはExplanation-only
+  // Knowledge Fact(Signal Authority正本§8、Rank/Eligibilityに一切寄与しない)。factTextへは
+  // 混ぜず、explanationOnlyFactTextへ分離する。buildHeroReasonV4Sections.tsと同じ境界。
+  it("deityが勝ちfactの場合、factTextではなくexplanationOnlyFactTextへ分離される", () => {
+    const result = buildShrineDetailReasonV4Sections(
+      makeDetail({
+        fact: { deity: "武神", shrine_history: null, place_context: null, goriyaku: "縁結び", history_theme: "再出発" },
+        interpretation: { text: "" },
+        action: { text: "" },
+      }),
+    );
+
+    expect(result.factText).toBeNull();
+    expect(result.explanationOnlyFactText).toBe("武神");
+    // Explanation-onlyのみでは「構造化されたRecommendation理由」として数えない
+    // (hasStructuredはfactText/interpretationText/actionTextのみで判定する)。
+    expect(result.hasStructured).toBe(false);
+  });
+
+  it("shrine_historyが勝ちfactの場合も同様にexplanationOnlyFactTextへ分離される", () => {
+    const result = buildShrineDetailReasonV4Sections(
+      makeDetail({
+        fact: { deity: null, shrine_history: "由緒あり", place_context: null, goriyaku: "縁結び", history_theme: "再出発" },
+      }),
+    );
+
+    expect(result.factText).toBeNull();
+    expect(result.explanationOnlyFactText).toBe("由緒あり");
+  });
+
+  it("deity/shrine_historyが無い場合、goriyakuはfactTextのまま(explanationOnlyFactTextはnull)", () => {
+    const result = buildShrineDetailReasonV4Sections(
+      makeDetail({
+        fact: { deity: null, shrine_history: null, place_context: null, goriyaku: "縁結び", history_theme: "再出発" },
+      }),
+    );
+
+    expect(result.factText).toBe("縁結び");
+    expect(result.explanationOnlyFactText).toBeNull();
+  });
+
+  it("deity/shrine_history/goriyakuが無い場合はhistory_themeを使う(factTextのまま)", () => {
     const result = buildShrineDetailReasonV4Sections(
       makeDetail({
         fact: { deity: null, shrine_history: null, place_context: "住所情報", goriyaku: null, history_theme: "再出発" },
@@ -60,6 +102,7 @@ describe("buildShrineDetailReasonV4Sections", () => {
     );
 
     expect(result.factText).toBe("再出発");
+    expect(result.explanationOnlyFactText).toBeNull();
   });
 
   it("place_contextだけではFactを生成しない(住所を神社の特徴として表示しない)", () => {
@@ -105,6 +148,7 @@ describe("buildShrineDetailReasonV4Sections", () => {
 
     expect(result).toEqual({
       factText: null,
+      explanationOnlyFactText: null,
       interpretationText: null,
       actionText: null,
       hasStructured: false,

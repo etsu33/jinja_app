@@ -5,7 +5,7 @@ import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { buildLoginHref } from "@/lib/nav/login";
-import { pickReasonV4FactText } from "@/features/concierge/reasonV4FactPriority";
+import { isExplanationOnlyFactSource, pickReasonV4Fact } from "@/features/concierge/reasonV4FactPriority";
 import {
   trackConsultationHistoryDetailViewed,
   trackConsultationHistoryShrineOpened,
@@ -53,7 +53,13 @@ function RecommendationCard({
   rank: number;
 }) {
   const shrineId = extractShrineId(rec);
-  const factText = pickReasonV4FactText(rec.recommendation_reason_v4_detail?.fact);
+  // Ranking / Runtime EvidenceとExplanation-only Knowledge Fact(deity/shrine_history)を
+  // 分離する(reasonV4FactPriority.tsの共通契約、buildHeroReasonV4Sections.tsと同じ境界。
+  // App-wide Evidence & Dark UI Regression Audit Bug-2修正)。
+  const pickedFact = pickReasonV4Fact(rec.recommendation_reason_v4_detail?.fact);
+  const isPickedFactExplanationOnly = pickedFact ? isExplanationOnlyFactSource(pickedFact.source) : false;
+  const factText = pickedFact && !isPickedFactExplanationOnly ? pickedFact.text : null;
+  const explanationOnlyFactText = pickedFact && isPickedFactExplanationOnly ? pickedFact.text : null;
   const actionLabel = rec.action_state ? ACTION_STATE_LABEL[rec.action_state] : null;
 
   return (
@@ -68,6 +74,12 @@ function RecommendationCard({
       </div>
       {rec.address ? <p className="mt-1 text-xs text-stone-500">{rec.address}</p> : null}
       {factText ? <p className="mt-2 text-sm text-stone-700">{factText}</p> : null}
+      {explanationOnlyFactText ? (
+        <p className="mt-2 text-sm text-stone-500" data-testid="consultation-history-explanation-only-fact">
+          <span className="font-semibold">参考情報: </span>
+          {explanationOnlyFactText}
+        </p>
+      ) : null}
       {shrineId != null ? (
         <Link
           href={`/shrines/${shrineId}?ctx=concierge&tid=${encodeURIComponent(tid)}`}

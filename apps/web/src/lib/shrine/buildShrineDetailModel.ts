@@ -1624,54 +1624,74 @@ export function buildShrineDetailModel({
   // 相談文脈をShrine APIの値から推測することはない。
   const reasonV4 = isConciergeContext
     ? buildShrineDetailReasonV4Sections(recommendationReasonV4Detail)
-    : { factText: null, interpretationText: null, actionText: null, hasStructured: false };
+    : { factText: null, explanationOnlyFactText: null, interpretationText: null, actionText: null, hasStructured: false };
 
-  const premiumDisplaySections = reasonV4.hasStructured
-    ? [
-        ...premiumDisplaySectionsBeforeReasonV4.filter(
-          (item) => item.section.kind !== "reason" && item.section.kind !== "meaning" && item.section.kind !== "action",
-        ),
-        ...(reasonV4.factText
-          ? [
-              {
-                tier: "premium" as const,
-                layer: "context" as const,
-                section: {
-                  kind: "reason" as const,
-                  heading: "② 選ばれた背景",
-                  groups: [{ title: "神社の背景", items: [reasonV4.factText] }],
+  const premiumDisplaySections = [
+    ...(reasonV4.hasStructured
+      ? [
+          ...premiumDisplaySectionsBeforeReasonV4.filter(
+            (item) => item.section.kind !== "reason" && item.section.kind !== "meaning" && item.section.kind !== "action",
+          ),
+          ...(reasonV4.factText
+            ? [
+                {
+                  tier: "premium" as const,
+                  layer: "context" as const,
+                  section: {
+                    kind: "reason" as const,
+                    heading: "② 選ばれた背景",
+                    groups: [{ title: "神社の背景", items: [reasonV4.factText] }],
+                  },
                 },
-              },
-            ]
-          : []),
-        ...(reasonV4.interpretationText
-          ? [
-              {
-                tier: "premium" as const,
-                layer: "context" as const,
-                section: {
-                  kind: "meaning" as const,
-                  heading: "③ 今回の相談との意味",
-                  items: [{ key: "reason_v4_interpretation", title: "今回の相談との意味", body: reasonV4.interpretationText }],
+              ]
+            : []),
+          ...(reasonV4.interpretationText
+            ? [
+                {
+                  tier: "premium" as const,
+                  layer: "context" as const,
+                  section: {
+                    kind: "meaning" as const,
+                    heading: "③ 今回の相談との意味",
+                    items: [{ key: "reason_v4_interpretation", title: "今回の相談との意味", body: reasonV4.interpretationText }],
+                  },
                 },
-              },
-            ]
-          : []),
-        ...(reasonV4.actionText
-          ? [
-              {
-                tier: "premium" as const,
-                layer: "context" as const,
-                section: {
-                  kind: "action" as const,
-                  heading: "④ 参拝するときの視点",
-                  items: [{ key: "reason_v4_action", title: "参拝するときの視点", body: reasonV4.actionText }],
+              ]
+            : []),
+          ...(reasonV4.actionText
+            ? [
+                {
+                  tier: "premium" as const,
+                  layer: "context" as const,
+                  section: {
+                    kind: "action" as const,
+                    heading: "④ 参拝するときの視点",
+                    items: [{ key: "reason_v4_action", title: "参拝するときの視点", body: reasonV4.actionText }],
+                  },
                 },
-              },
-            ]
-          : []),
-      ]
-    : premiumDisplaySectionsBeforeReasonV4;
+              ]
+            : []),
+        ]
+      : premiumDisplaySectionsBeforeReasonV4),
+    // Explanation-only Knowledge fact(deity/shrine_history): Recommendation reason(②)とは
+    // 別枠の補足として表示する(buildHeroReasonV4Sections.tsのexplanationOnlyFactTextと同じ
+    // 境界、App-wide Evidence & Dark UI Regression Audit Bug-1修正)。hasStructuredの分岐と
+    // 独立して、値がある場合は常に追加する -- ②③④が旧表示にfallbackした場合でも、
+    // Explanation-only Factの表示価値自体は失わない。
+    ...(reasonV4.explanationOnlyFactText
+      ? [
+          {
+            tier: "premium" as const,
+            layer: "context" as const,
+            section: {
+              kind: "reason" as const,
+              heading: "参考情報",
+              groups: [{ title: "神社の由緒・御祭神", items: [reasonV4.explanationOnlyFactText] }],
+            },
+          },
+        ]
+      : []),
+  ];
 
   const sections: ShrineDetailSectionModel[] = [
     ...freeDisplaySections.map((item) => item.section),
