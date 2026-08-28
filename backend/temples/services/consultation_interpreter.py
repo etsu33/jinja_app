@@ -11,7 +11,13 @@ NEED_KEYWORDS: dict[str, tuple[str, ...]] = {
     # see that file's comment and docs/audit/marriage-interpreter-coverage-
     # implementation.md for why "夫婦関係"/"夫婦仲" were added.
     "marriage": ("縁結び", "良縁", "結婚", "婚活", "結縁", "ご縁", "夫婦円満", "夫婦関係", "夫婦仲"),
-    "communication": ("会話", "発信", "伝える", "話す", "営業", "交渉", "プレゼン", "面接"),
+    # kept identical to temples/domain/need_tags.py KEYWORDS["communication"]
+    # -- see that file's comment and docs/audit/communication-interpreter-
+    # coverage-implementation.md for why the 5 new entries were added.
+    "communication": (
+        "会話", "発信", "伝える", "話す", "営業", "交渉", "プレゼン", "面接",
+        "コミュニケーション", "話せる", "話せない", "伝えられない", "伝わらない",
+    ),
     "career": (
         "転職", "仕事", "就職", "昇進", "独立", "起業", "キャリア", "天職",
         "副業", "働き方", "好きな仕事", "仕事を辞めたい", "会社を作りたい", "道を開く",
