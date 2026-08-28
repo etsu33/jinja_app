@@ -181,10 +181,18 @@ NEED_TAG_TO_CONSULTATION_AXIS: Dict[str, ConsultationAxis] = {
     "focus": "study_success",
     "relationship": "relationship_repair",
     "love": "relationship_repair",
+    "marriage": "relationship_repair",
 }
 # "relationship" and "love" stay distinct need_tags (PR #2410) but share
 # the relationship_repair consultation_axis -- see the CONSULTATION_AXIS_ALIASES
 # comment above for the design rationale (score-v3-consultation-axis-history-theme-mapping.md §6.2).
+# "marriage" (independent need_tag since PR #2586, NEED_TO_GORIYAKU_IDS
+# {1, 18}) joins the same axis -- docs/audit/marriage-consultation-
+# interpreter-coverage.md Section 8 (SAFE_TO_REUSE): this only feeds
+# resolve_history_theme_candidate_boost's secondary ranking-magnitude
+# signal, verified not to change matched_need_tags, the GID set consulted,
+# or the C1 winner for "marriage" -- and marriage-need-independence-
+# implementation.md Section 22.
 
 CONSULTATION_AXIS_PRIORITY: Dict[ConsultationAxis, int] = {
     axis: index for index, axis in enumerate(CONSULTATION_AXES)

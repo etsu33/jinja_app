@@ -88,6 +88,7 @@ def test_resolve_consultation_axis_from_query(query, expected):
     [
         (["relationship"], "relationship_repair"),
         (["love"], "relationship_repair"),
+        (["marriage"], "relationship_repair"),
     ],
 )
 def test_resolve_consultation_axis_relationship_and_love_share_axis_via_need_tags(need_tags, expected):
@@ -96,10 +97,30 @@ def test_resolve_consultation_axis_relationship_and_love_share_axis_via_need_tag
     tested via need_tags here to isolate the fallback branch) must still
     resolve through the need_tags fallback -- relationship and love are
     PR #2410-distinct need_tags but share this one consultation_axis
-    (score-v3-consultation-axis-history-theme-mapping.md §6.2)."""
+    (score-v3-consultation-axis-history-theme-mapping.md §6.2). marriage
+    (independent since PR #2586) joins the same axis -- docs/audit/
+    marriage-consultation-axis-implementation.md."""
     result = resolve_consultation_axis(query="", need_tags=need_tags)
 
     assert result.axis == expected
+    assert result.source == "need_tags"
+
+
+def test_resolve_consultation_axis_marriage_phrasing_resolves_to_relationship_repair():
+    """"結婚したい" has no dedicated CONSULTATION_AXIS_KEYWORDS entry
+    (marriage-specific words are not duplicated into that list, same
+    design as love), so it reaches relationship_repair via the
+    need_tags="marriage" fallback -- and marriage stays the normalized
+    Need tag throughout, it does not collapse into "love" or
+    "relationship" (no alias exists for marriage since PR #2586)."""
+    from temples.services.concierge_chat_need import resolve_need_payload
+
+    need = resolve_need_payload(query="結婚したい", need_tags=[], max_tags=3)
+    assert need["tags"] == ["marriage"]
+
+    result = resolve_consultation_axis(query="結婚したい", need_tags=need["tags"])
+
+    assert result.axis == "relationship_repair"
     assert result.source == "need_tags"
 
 
@@ -269,6 +290,70 @@ def test_love_consultation_activates_same_history_theme_candidate_boost(settings
     boost = top1["breakdown_detail"]["features"]["history_theme_candidate_boost"]
     assert boost["consultation_axis"] == "relationship_repair"
     assert boost["raw"] == pytest.approx(1.0)
+
+
+def test_marriage_consultation_activates_same_history_theme_candidate_boost(settings):
+    """marriage joins the relationship_repair axis (docs/audit/marriage-
+    consultation-axis-implementation.md), so a marriage query against the
+    same 縁-themed candidate must activate the identical boost -- while
+    the Need tag stays "marriage" (not aliased, not collapsed) and the
+    GID mapping used is marriage's own {1, 18}, not love's or
+    relationship's."""
+    settings.CONCIERGE_USE_LLM = False
+    recs = build_chat_recommendations(
+        query="結婚したい",
+        language="ja",
+        candidates=[
+            {
+                "name": "つながりの杜神社",
+                "goriyaku_tag_ids": [1],
+                "history_theme": "縁",
+                "popular_score": 1.0,
+            }
+        ],
+    )
+
+    assert recs["consultation_axis"] == "relationship_repair"
+    assert recs["_need"]["tags"] == ["marriage"]
+
+    top1 = recs["recommendations"][0]
+    assert top1["breakdown"]["matched_need_tags"] == ["marriage"]
+    boost = top1["breakdown_detail"]["features"]["history_theme_candidate_boost"]
+    assert boost["consultation_axis"] == "relationship_repair"
+    assert boost["raw"] == pytest.approx(1.0)
+
+
+def test_marriage_consultation_axis_sharing_does_not_reintroduce_love_reason(settings):
+    """Mirrors test_relationship_consultation_axis_sharing_does_not_
+    reintroduce_love_reason: with relationship_repair wired up for
+    marriage too, matched_need_tags must stay ["marriage"] (never "love"
+    -- there is no alias, PR #2586), and the visible reason text must
+    never contain love-only phrasing, regardless of which evidence wins
+    the Primary Reason priority."""
+    settings.CONCIERGE_USE_LLM = False
+    recs = build_chat_recommendations(
+        query="結婚したい",
+        language="ja",
+        candidates=[
+            {
+                "name": "つながりの杜神社",
+                "goriyaku_tag_ids": [1],
+                "history_theme": "縁",
+                "goriyaku": "心願成就",
+                "popular_score": 1.0,
+            }
+        ],
+    )
+
+    assert recs["consultation_axis"] == "relationship_repair"
+    assert recs["_need"]["tags"] == ["marriage"]
+
+    top1 = recs["recommendations"][0]
+    assert top1["breakdown"]["matched_need_tags"] == ["marriage"]
+    assert top1["_primary_reason_label"] != "love"
+    assert top1["_primary_reason_source"] != "fallback"
+    for phrase in ("恋愛", "良縁", "縁結び", "恋愛成就", "片思い", "復縁", "両思い"):
+        assert phrase not in top1["reason"]
 
 
 def test_relationship_consultation_axis_history_theme_boost_is_zero_without_relationship_axis(settings):
