@@ -2182,6 +2182,14 @@ def _build_need_reason_text(
         # 既存の「AやB」文型へそのまま流し込む。新しい意味解釈は加えない
         # (docs/audit/compass-protection-signal-completion.md Phase 6/7)。
         "protection": "厄除けや守り",
+        # 縁結び（GoriyakuTag id=1、結婚を願う相談）と夫婦円満（id=18、既に
+        # ある夫婦関係を願う相談）の両方を1語で言い切らず、"良縁"（marriage
+        # の実キーワードの一つ、temples/domain/need_tags.py KEYWORDS
+        # ["marriage"]）と"夫婦円満"（id=18の実ラベルそのもの）をそのまま
+        # 組み合わせる。"恋愛"を含めず"love"の"恋愛や良縁"と区別しつつ、
+        # 結婚成立や関係修復を保証する断定表現も避ける
+        # (docs/audit/marriage-reason-copy-implementation.md)。
+        "marriage": "良縁や夫婦円満",
     }
 
     user_intent = intent_map.get(tag, "今の願い")
