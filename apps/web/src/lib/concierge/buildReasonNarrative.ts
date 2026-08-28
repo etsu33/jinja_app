@@ -23,6 +23,7 @@ import {
   buildRecommendationMatchModel,
 } from "./buildRecommendationReasonViewModel";
 import type { BuildParams, ReasonKey, Candidate } from "./buildRecommendationReasonViewModel";
+import { toNeedTagLabel } from "./needTagLabelMap";
 
 export type ReasonNarrative = {
   hero: {
@@ -68,22 +69,18 @@ export type ReasonNarrative = {
 };
 
 
-// 未知のASCII識別子(内部tag key)はラベル化できたとみなさない。既知mapに無い値でも、
-// 日本語の相談テーマ文字列(ユーザー入力由来)はそのまま安全に表示できるため区別する
-// (apps/web/src/lib/concierge/needTagLabelMap.tsと同じ判定基準)。
-const RAW_ASCII_NEED_PATTERN = /^[a-z0-9_]+$/i;
-
+// App-wide Evidence & Dark UI Regression Audit Bug-3: 内部need_tag(ASCII slug、例: "money")の
+// ラベル化は共有正本(needTagLabelMap.ts、PR #2581でinternal tag leak防止のため導入)へ委譲する。
+// 同じtagがRuntime Match(buildRuntimeMatchLine.ts)・相談から見た意味(buildMeaningNarrative.ts)
+// ブロックと同じ文言になるよう統一し、画面内での表記ゆれを解消する。未知ASCIIはtoNeedTagLabelが
+// nullを返し非表示になる(既存のraw key非表示contractをそのまま踏襲)。
+//
+// 以下のJA分岐(厄除け/仕事/金運/転機/恋愛/健康/学業)はASCII need_tag slugではなく、旧Thread
+// snapshot等が持つ非canonicalなJA category文言向けの意味変換であり、needTagLabelMap.tsの対象
+// (ASCII slug専用)外のため統一しない(既存test群がこの分岐を広くカバーしている、後方互換)。
 function buildNeedThemeLabel(need?: string | null): string | null {
   const normalized = clean(need);
   if (!normalized) return null;
-
-  if (normalized === "money") return "流れの立て直し";
-  if (normalized === "career") return "仕事";
-  if (normalized === "mental") return "気持ちの立て直し";
-  if (normalized === "rest") return "休息";
-  if (normalized === "courage") return "前進のきっかけ";
-  if (normalized === "love") return "関係性";
-  if (normalized === "study") return "学業";
 
   if (normalized === "厄除け") return "立て直し";
   if (normalized === "仕事") return "仕事";
@@ -93,9 +90,7 @@ function buildNeedThemeLabel(need?: string | null): string | null {
   if (normalized === "健康") return "心身調整";
   if (normalized === "学業") return "学業";
 
-  if (RAW_ASCII_NEED_PATTERN.test(normalized)) return null;
-
-  return normalized;
+  return toNeedTagLabel(normalized);
 }
 
 function buildBenefitMeaningLabel(benefit?: string | null, tone?: "strong" | "quiet" | "tight" | "open" | "neutral" | null): string | null {

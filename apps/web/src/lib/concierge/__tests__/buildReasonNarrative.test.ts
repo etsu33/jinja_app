@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildReasonNarrative } from "../buildReasonNarrative";
+import { buildRuntimeMatchLines } from "../../../features/concierge/buildRuntimeMatchLine";
+import { toNeedTagLabel } from "../needTagLabelMap";
 import type { BuildParams } from "../buildRecommendationReasonViewModel";
 
 function params(overrides: Partial<BuildParams> = {}): BuildParams {
@@ -11,6 +13,74 @@ function params(overrides: Partial<BuildParams> = {}): BuildParams {
     ...overrides,
   };
 }
+
+// ---------------------------------------------------------------------------
+// App-wide Evidence & Dark UI Regression Audit Bug-3: 内部need_tag(ASCII slug)の
+// ラベルはneedTagLabelMap.ts(共有正本)へ統一されており、Runtime Match等の他ブロックと
+// 同じ文言になる。JA category文言(厄除け/仕事/金運等、旧Thread互換)は対象外のまま。
+// ---------------------------------------------------------------------------
+describe("need tag label source consolidation (Bug-3)", () => {
+  // Case 1: Known Tag -- 共有mapのlabelを使用する。
+  it.each([
+    ["money", "金運や巡りを整えたい"],
+    ["career", "仕事や転機を見直したい"],
+    ["mental", "気持ちを整理したい"],
+    ["rest", "静かに休みたい"],
+    ["courage", "前に進むきっかけがほしい"],
+    ["love", "良縁や関係性を整えたい"],
+    ["study", "学びや集中を整えたい"],
+  ])("ASCII need tag=%s は共有ラベル「%s」を使う", (tag, expectedLabel) => {
+    const r = buildReasonNarrative(params({ needTags: [tag] }));
+    expect(r.list.primaryPhrase).toContain(expectedLabel);
+  });
+
+  // Case 2: Same Tag Across Helpers -- buildReasonNarrativeとbuildRuntimeMatchLineで
+  // 同じuser-facing labelになる(修正前は異なる文言だった)。
+  it.each(["money", "career", "mental", "rest", "courage", "love", "study"])(
+    "need tag=%s はbuildRuntimeMatchLineと同じ共有ラベルを使う",
+    (tag) => {
+      const sharedLabel = toNeedTagLabel(tag);
+      expect(sharedLabel).not.toBeNull();
+
+      const narrative = buildReasonNarrative(params({ needTags: [tag] }));
+      const runtimeMatchLines = buildRuntimeMatchLines({ needTags: [tag], goriyakuLabel: null });
+
+      expect(narrative.list.primaryPhrase).toContain(sharedLabel as string);
+      expect(runtimeMatchLines[0]).toContain(sharedLabel as string);
+    },
+  );
+
+  // Case 3: Unknown Tag -- raw internal keyを表示しない。
+  it("未知のASCII need tagはraw keyを表示しない(候補自体が生成されない)", () => {
+    const r = buildReasonNarrative(params({ needTags: ["unknown_internal_key"] }));
+    expect(r.list.primaryPhrase).not.toContain("unknown_internal_key");
+    expect(r.list.secondaryPhrase ?? "").not.toContain("unknown_internal_key");
+  });
+
+  it("snake_case内部tagが露出しない", () => {
+    const r = buildReasonNarrative(params({ needTags: ["travel_safe_unmapped"] }));
+    expect(JSON.stringify(r)).not.toContain("travel_safe_unmapped");
+  });
+
+  // 従来buildReasonNarrative独自dictに無かったASCII tagも、共有map経由で
+  // ラベル化されるようになる(以前は候補自体が生成されなかった)。
+  it("共有mapにのみ存在するtag(relationship/protection)も共有ラベルで表示される", () => {
+    const relationship = buildReasonNarrative(params({ needTags: ["relationship"] }));
+    expect(relationship.list.primaryPhrase).toContain("人間関係を整えたい");
+
+    const protection = buildReasonNarrative(params({ needTags: ["protection"] }));
+    expect(protection.list.primaryPhrase).toContain("安心できる感覚を持ちたい");
+  });
+
+  // JA category文言(旧Thread互換)は共有map対象外のため、既存の意味変換のまま変わらない。
+  it("JA category文言(厄除け等)は共有mapへ委譲されず既存の変換のまま", () => {
+    const r = buildReasonNarrative(params({ needTags: ["厄除け"] }));
+    expect(r.list.primaryPhrase).toContain("立て直し");
+    // needTagLabelMapには「厄除け」というキーは存在しない(ASCII slug専用)ため、
+    // 委譲していれば素通し(不変)になるはずだが、実際はJA分岐が先に処理する。
+    expect(toNeedTagLabel("厄除け")).toBe("厄除け");
+  });
+});
 
 // ---------------------------------------------------------------------------
 // inputType 分類
