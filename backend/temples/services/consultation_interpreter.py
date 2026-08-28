@@ -7,7 +7,10 @@ from typing import Any
 NEED_KEYWORDS: dict[str, tuple[str, ...]] = {
     "love": ("恋愛", "恋", "復縁", "片思い", "両思い", "出会い", "告白"),
     "relationship": ("人間関係", "職場", "上司", "同僚", "家族", "親子", "友達", "対人"),
-    "marriage": ("縁結び", "良縁", "結婚", "婚活", "結縁", "ご縁", "夫婦円満"),
+    # kept identical to temples/domain/need_tags.py KEYWORDS["marriage"] --
+    # see that file's comment and docs/audit/marriage-interpreter-coverage-
+    # implementation.md for why "夫婦関係"/"夫婦仲" were added.
+    "marriage": ("縁結び", "良縁", "結婚", "婚活", "結縁", "ご縁", "夫婦円満", "夫婦関係", "夫婦仲"),
     "communication": ("会話", "発信", "伝える", "話す", "営業", "交渉", "プレゼン", "面接"),
     "career": (
         "転職", "仕事", "就職", "昇進", "独立", "起業", "キャリア", "天職",
