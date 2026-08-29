@@ -222,10 +222,10 @@ Per-Fact classification (`MATCH` / `PARTIAL` / `UNSUPPORTED` / `MISSING` / `REVI
 | P4 | history | "…垂仁天皇の御代…" (`history_type = tradition`) | not re-fetched | `source_confirmed` / `medium` | **REVIEW_REQUIRED** — tradition-type; wording must be checked against the source for non-assertive lineage phrasing (`shrine-knowledge-contract.md`) |
 | P5 阿佐ヶ谷 | deity ×3 | 天照大神 (`primary`, official) + 2 `secondary` | primary URL `shinmeiguu.com`; secondaries cite ja.wikipedia | primary `high`; secondaries `medium` | **REVIEW_REQUIRED** + **`CONFIDENCE_MIXED`** — `FULL_SUPPRESSION` applies to Reason (decision record; not a defect) |
 | P6 給田六所 | deity ×2 / history ×4 | 大国魂大神 ほか | **no `shrine_official`** — `secondary_editorial` (Wikipedia) + `local_history` (tesshow.jp) | all `medium` | **REVIEW_REQUIRED** + **`PROVENANCE_WEAK`** — allowed source types per contract, but no primary/official source for any fact |
-| P7 護王神社 | deity ×4 / history ×2 | 和気清麻呂公命 ほか | official `gooujinja.or.jp/yuisho/` recorded; history text explicitly quotes the source's "創建年は伝えられていません" | `source_confirmed` / `high` | **MATCH** (provisional; confirm in PR-C) — good example of faithful uncertainty transcription |
+| P7 護王神社 | deity ×4 / history ×2 | 和気清麻呂公命 ほか | official `gooujinja.or.jp/yuisho/` recorded but **not fetched this session** | `source_confirmed` / `high` | **REVIEW_REQUIRED** — `source_confirmed` is insufficient on its own; the DB history text *appears* to quote the source's "創建年は伝えられていません" uncertainty faithfully, but that was not verified against the fetched page. Confirm in PR-C. |
 | P8 長太稲荷 | — | none | — | — | **MISSING** (Zero-Knowledge) |
 
-`source_confirmed` in the DB is **not** treated as sufficient on its own — P1/P3 were confirmed against fetched source text; P4–P7 are `REVIEW_REQUIRED` pending a PR-C fetch.
+`source_confirmed` in the DB is **not** treated as sufficient on its own. **Only P1 明治神宮 and P3 太宰府天満宮 had their official sources fetched and compared this session** → only their deity/history rows are `MATCH`. **P2, P4, P5, P6, P7 are `REVIEW_REQUIRED`** pending a PR-C source fetch. P8 is `MISSING`.
 
 ## 15. Goriyaku / Recommendation Evidence results
 
@@ -242,9 +242,9 @@ Applying `recommendation-evidence-review-contract.md` to each pilot shrine's `go
 | P2 品川神社 | 開運, 金運 | not fetched this session | `UNKNOWN` | pending | **REVIEW_REQUIRED** · `LEGACY_EXISTING_WITHOUT_PROVENANCE` (no review doc) |
 | P4 伊勢内宮 | 開運, 厄除け, 家内安全 | not fetched | `UNKNOWN` | pending | **REVIEW_REQUIRED** · `LEGACY_EXISTING_WITHOUT_PROVENANCE` |
 | P5 阿佐ヶ谷 | 厄除け, 八難除, 縁結び | not fetched | `UNKNOWN` | pending | **REVIEW_REQUIRED** · `LEGACY_EXISTING_WITHOUT_PROVENANCE` |
-| P6 給田六所 | *(prose sentence, tags 地域安泰 + 家内安全)* | prose text is not a benefit declaration; `地域安泰` label not literally in the text | `REVIEW_REQUIRED` | **HOLD** | **UNSUPPORTED / REVIEW_REQUIRED** — tag set may have been hand-set, not `backfill`-derived; `地域安泰` is also an **UNWIRED** GID (§16) |
-| P7 護王神社 | 足腰健康, 厄除け, 勝運 | official URL recorded, not fetched | `UNKNOWN` | pending | **REVIEW_REQUIRED** · `LEGACY_EXISTING_WITHOUT_PROVENANCE` |
-| P8 長太稲荷 | *(none)* | — | — | `NO_EVIDENCE` (no goriyaku, no source) | **MISSING** |
+| P6 給田六所 | *(prose sentence, tags 地域安泰 + 家内安全)* | source not fetched; prose text is not a benefit declaration; `地域安泰` not literally in the text | `UNKNOWN` (source not reviewed) | not reviewed | **REVIEW_REQUIRED** — tag set may have been hand-set, not `backfill`-derived. `地域安泰` is a **legacy-taxonomy label, not in the canonical 39-row master**; via the dev-DB PK drift its PK (14) spuriously intersects `travel_safe = {3, 13, 14}` (§16.3.B). `家内安全` is canonically wired (`health`/`rest`). |
+| P7 護王神社 | 足腰健康, 厄除け, 勝運 | official URL recorded, not fetched | `UNKNOWN` | not reviewed | **REVIEW_REQUIRED** · `LEGACY_EXISTING_WITHOUT_PROVENANCE`. All three labels are canonically wired (§16.3.A: 足腰健康→id 38, 厄除け→id 2, 勝運→id 11); dev-DB runtime connectivity is unreliable (§16.3.B). |
+| P8 長太稲荷 | *(none)* | — | `UNKNOWN` (no goriyaku, no reviewed Source — the contract's `NO_EVIDENCE` requires a *reviewed Source set with no explicit evidence*, which does not apply here) | N/A (not reviewed) | **MISSING** |
 
 **`LEGACY_EXISTING_WITHOUT_PROVENANCE` count in the pilot: 5 shrines** (P1, P2, P4, P5, P7) carry seed `goriyaku` with no Evidence-Review-Contract provenance record. Not grandfathered — flagged.
 
@@ -277,9 +277,37 @@ Read `backend/temples/domain/need_to_goriyaku_tag_ids.py` [repo] and checked it 
 1. **Dev-DB-only corruption** — Production has the clean 39-row master at ids 1–39, the legacy 15-row block was never present / already cleaned there, and this dev DB is simply an unreliable substrate. (The mapping code + tests would then be correct against Production.)
 2. **Production also drifted** — Production carries the same 46-row mixed table, in which case the live Recommendation Engine mis-routes Purposes (e.g. 太宰府 → `money`/`family`, not `study`) for real users.
 
-### 16.3 UNWIRED canonical tags (independent, name-level) [dev-db] + [repo]
+### 16.3 Canonical connectivity — two separate questions
 
-By **name**, several canonical GoriyakuTag concepts are consumed by no Need in `NEED_TO_GORIYAKU_IDS`: 商売繁盛, 福徳, 航海安全, 海上安全, 安産, 恋愛成就, 美容, 芸能運, 技芸上達, 八方除け, 火防, 子宝, 心願成就, 延命長寿, 足腰健康, 農業守護, 地域安泰. Notable for the pilot: **`安産` and `子宝` (family's *intent*) and `足腰健康` (P7 護王神社's headline benefit) are UNWIRED by name** — `family = {16, 35}` only reaches them if the DB numbering matches the canonical master (§16.1). `communication = set()` is intentionally UNWIRED (EVIDENCE_LIMITED). `travel_safe = {3, 13, 14}` **is** wired [repo] — the stale "13/14 unwired" doc note is not reproduced.
+The earlier draft of this section conflated two different things. They must be
+kept apart:
+
+- **A. `CANONICAL_NAME_LEVEL_CONNECTIVITY`** — under the canonical 39-row
+  master (`recommendation-evidence-review-contract.md` §5, id = list
+  position: `id 13 = 航海安全`, `id 14 = 海上安全`, `id 16 = 安産`,
+  `id 35 = 子宝`, `id 38 = 足腰健康`, …), is a canonical concept consumed by
+  any Need in the **current** `NEED_TO_GORIYAKU_IDS` [repo]?
+- **B. `DEV_DB_RUNTIME_CONNECTIVITY`** — given the local dev DB's 46-row
+  `GoriyakuTag` table with the PK drift of §16.1, does a shrine's stored tag
+  PK actually reach a Need at runtime?
+
+#### A. CANONICAL_NAME_LEVEL_CONNECTIVITY (computed from `NEED_TO_GORIYAKU_IDS` [repo] + the §5 master)
+
+Mapped canonical ids = `{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,18,20,21,24,26,27,28,30,32,33,35,36,38}` — **29 of 39** canonical concepts are wired.
+
+`安産` (id 16 → `family`), `子宝` (id 35 → `family`), `航海安全` (id 13 → `travel_safe`), `海上安全` (id 14 → `travel_safe`), `足腰健康` (id 38 → `courage`/`health`/`mental`), `健康長寿` (id 24 → `courage`/`health`), `商売繁盛` (id 4 → `money`), `福徳` (id 8 → `health`/`rest`), `恋愛成就` (id 20 → `love`/`courage`), `心願成就` (id 36 → `money`), `八方除け` (id 32 → `protection`) are **all WIRED at the canonical name level.** The earlier draft wrongly listed several of these as unwired — that error came from reading the *drifted dev-DB* reverse index instead of the canonical master. Corrected.
+
+**Truly unwired canonical concepts (10 of 39):** `八方除` (id 17), `八難除` (id 19), `美容` (id 22), `方除け` (id 23), `芸能` (id 25), `芸能運` (id 29), `技芸上達` (id 31), `火防` (id 34), `延命長寿` (id 37), `農業守護` (id 39). All ten are niche / non-consultation concepts; none is a pilot shrine's headline benefit. `communication = set()` is intentionally not consuming any tag (EVIDENCE_LIMITED). `travel_safe = {3, 13, 14}` **is** wired [repo] — the stale "ids 13/14 unwired" doc note in `recommendation-evidence-review-contract.md` §8/§19 is not reproduced.
+
+#### B. DEV_DB_RUNTIME_CONNECTIVITY (this dev DB only, because of §16.1)
+
+Because the dev DB stores different names at the canonical PKs, canonically-wired concepts do **not** connect at dev-DB runtime for the pilot shrines:
+
+- 護王神社 (P7) carries tag **PK 45** for `足腰健康`; `courage`/`health`/`mental` expect id **38** (which in this dev DB holds `強運厄除け`) → 護王神社's `足腰健康` reaches **no Need** at dev-DB runtime, even though `足腰健康` is canonically wired.
+- 給田六所神社 (P6) carries tag **PK 14** for `地域安泰` (a **legacy-taxonomy label, not in the canonical 39-row master at all**); `travel_safe = {3, 13, 14}` includes id 14 → 給田六所 **spuriously matches `travel_safe`** at dev-DB runtime.
+- 太宰府天満宮 (P3): as §16.1 — `study` missed, `money`/`family` spuriously hit.
+
+`DEV_DB_RUNTIME_CONNECTIVITY` for every pilot shrine is therefore **unreliable and not auditable** until the canonical `GoriyakuTag` table question (§20.2) is resolved. `CANONICAL_NAME_LEVEL_CONNECTIVITY` (question A) is sound and recorded above.
 
 ## 17. Per-shrine integrity matrix
 
@@ -292,9 +320,9 @@ By **name**, several canonical GoriyakuTag concepts are consumed by no Need in `
 | P3 | 太宰府天満宮 | id 6 | NOT VERIFIED | present; NOT VERIFIED | present | MATCH [src] | MATCH [src] | ox-cart legend noted | strong (`shrine_official`) | `学業成就・合格祈願・厄除け` | (3,学業成就)(4,合格祈願)(16,厄除け) | 学業成就/合格祈願/厄除け = **PASS ×3** | **BROKEN in this DB** — tags `[3,4,16]` miss `study={9,10}`, spuriously hit `money`/`family` (§16.1) | **REVIEW_REQUIRED** | `TAG_DRIFT` (severe) | do **not** touch tags; resolve canonical `GoriyakuTag` table first | Pilot pool | yes |
 | P4 | 伊勢神宮（内宮） | id 3 | NOT VERIFIED | present; NOT VERIFIED | **present now** (1d/1h) | REVIEW_REQUIRED | REVIEW_REQUIRED (`tradition`) | tradition-type; wording check needed | `shrine_official` recorded | `開運・厄除け・家内安全` | (16,厄除け)(9,家内安全)(18,開運) | UNKNOWN | **BLOCKED (§16)** | **REVIEW_REQUIRED** | `KNOWLEDGE_DRIFT` (prior "Zero-Knowledge" now stale), `TAG_DRIFT` | fetch source; verify tradition wording is non-assertive | `recommendation-readiness.md` (Zero-Knowledge — stale) | yes |
 | P5 | 阿佐ヶ谷神明宮 | id 29 | NOT VERIFIED | present; NOT VERIFIED | present (3d/0h) | REVIEW_REQUIRED; **CONFIDENCE_MIXED** | MISSING (0 history) | n/a | mixed: 1 `shrine_official` + 2 `secondary_editorial` | `厄除け・八難除・縁結び` | (28,八難除)(16,厄除け)(1,縁結び) | UNKNOWN | **BLOCKED (§16)** | **REVIEW_REQUIRED** | `PROVENANCE_WEAK` (secondaries), `TAG_DRIFT` | none in PR-B; `FULL_SUPPRESSION` already governs Reason | `mixed-confidence-policy-decision.md` | yes |
-| P6 | 給田六所神社 | id 22 | NOT VERIFIED | present; NOT VERIFIED | present (2d/4h) | REVIEW_REQUIRED | REVIEW_REQUIRED | founding-lineage phrasing | **no `shrine_official`** (`secondary_editorial` + `local_history`), all `medium` | prose sentence | (14,地域安泰)(9,家内安全) | 地域安泰 is UNWIRED (§16.3); prose ≠ benefit statement | **UNSUPPORTED** | `PROVENANCE_WEAK`, `TAG_DRIFT`, `DB_DRIFT` (goriyaku stored as prose) | seek an official source; re-derive tags from an explicit benefit statement or set to none | Pilot #5 (`給田六所`) | yes |
-| P7 | 護王神社 | id 99 | NOT VERIFIED | present; NOT VERIFIED | present (4d/2h) | MATCH (provisional) | MATCH (provisional; faithful uncertainty) | n/a | strong (`shrine_official`) | `足腰健康・厄除け・勝運` | (45,足腰健康)(16,厄除け)(20,勝運) | `足腰健康` UNWIRED by name (§16.3); rest BLOCKED (§16.1) | **REVIEW_REQUIRED** | `TAG_DRIFT` | fetch source to confirm PASS for 足腰健康/厄除け/勝運; note 足腰健康 has no Purpose route | negative-pilot pool / niche | yes |
-| P8 | 長太稲荷神社 | id 21 | NOT VERIFIED | present; NOT VERIFIED | **absent** | MISSING | MISSING | n/a | none | *(empty)* | *(none)* | none | n/a | **MISSING** | `KNOWLEDGE_DRIFT` (no facts), historical-duplicate context | Fact generation track; identity check vs Production 21/103 pair | `shrine-dataset-integrity.md`, negative-pilot | yes |
+| P6 | 給田六所神社 | id 22 | NOT VERIFIED | present; NOT VERIFIED | present (2d/4h) | REVIEW_REQUIRED | REVIEW_REQUIRED | founding-lineage phrasing | **no `shrine_official`** (`secondary_editorial` + `local_history`), all `medium` | prose sentence | (14,地域安泰)(9,家内安全) | `地域安泰` not in canonical master; via PK drift its PK 14 spuriously hits `travel_safe` at dev-DB runtime (§16.3.B); `家内安全` canonically wired; prose ≠ benefit statement | **UNSUPPORTED** | `PROVENANCE_WEAK`, `TAG_DRIFT`, `DB_DRIFT` (goriyaku stored as prose) | seek an official source; re-derive tags from an explicit benefit statement or set to none | Pilot #5 (`給田六所`) | yes |
+| P7 | 護王神社 | id 99 | NOT VERIFIED | present; NOT VERIFIED | present (4d/2h) | REVIEW_REQUIRED (source not fetched) | REVIEW_REQUIRED (source not fetched) | n/a | recorded `shrine_official`, not fetched | `足腰健康・厄除け・勝運` | (45,足腰健康)(16,厄除け)(20,勝運) | all 3 labels **canonically wired** (§16.3.A: 足腰健康→id 38 health/mental/courage, 厄除け→id 2 protection, 勝運→id 11 mental/protection); dev-DB runtime connectivity unreliable (§16.3.B — 護王's PK 45 for 足腰健康 reaches no Need) | **REVIEW_REQUIRED** | `TAG_DRIFT` | fetch official source; run Evidence Review for 足腰健康/厄除け/勝運 | negative-pilot pool / niche | yes |
+| P8 | 長太稲荷神社 | id 21 | NOT VERIFIED | present; NOT VERIFIED | **absent** | MISSING | MISSING | n/a | none | *(empty)* | *(none)* | eligibility `UNKNOWN`; review state N/A (not reviewed) — **not** `NO_EVIDENCE` (no reviewed Source set) | n/a | **MISSING** | `KNOWLEDGE_DRIFT` (no facts), historical-duplicate context | Fact generation track; identity check vs Production 21/103 pair | `shrine-dataset-integrity.md`, negative-pilot | yes |
 
 ## 18. Aggregate pilot findings
 
@@ -304,17 +332,17 @@ Pilot n = 8 real shrine identities. **Not extrapolated to the full set** — thi
 |---|---|
 | Identity match rate (Spreadsheet↔DB) | **0 / 8 verifiable** — `CODEX_SESSION_SPREADSHEET_ACCESS = BLOCKED` |
 | Location match rate | **0 / 8 verifiable** — coordinates present in DB for 7/8, correctness needs Spreadsheet `reference_*` columns |
-| Knowledge Fact: `MATCH` | 4 fact-groups fully source-checked this session (P1 deity+history, P3 deity+history) |
-| Knowledge Fact: `REVIEW_REQUIRED` | P2, P4, P5, P6, P7 (source not re-fetched) |
-| Knowledge Fact: `MISSING` | P8 (Zero-Knowledge); P5 has 0 history |
-| Source provenance quality | strong (`shrine_official`): P1, P2, P3, P4, P7 · mixed: P5 · **weak (no official)**: P6 · none: P8 |
-| GoriyakuTag: `MATCH` | P3 (3/3 PASS by name) |
-| GoriyakuTag: `UNSUPPORTED` (on checked source) | P1 (縁結び, 交通安全); P6 (prose) |
-| GoriyakuTag: `REVIEW_REQUIRED` | P2, P4, P5, P7 (source not fetched) |
+| Knowledge Fact: `MATCH` | **2 shrines** — P1 (deity+history), P3 (deity+history) — the **only** two whose official sources were fetched and compared this session |
+| Knowledge Fact: `REVIEW_REQUIRED` | **5 shrines** — P2, P4, P5, P6, P7 (official source not fetched; `source_confirmed` alone is insufficient) |
+| Knowledge Fact: `MISSING` | P8 (Zero-Knowledge, 0 facts); P5 has 0 history rows |
+| Source provenance quality | strong (`shrine_official`) — **fetched**: P1, P3 · **recorded, not fetched**: P2, P4, P7 · mixed (1 official + 2 secondary): P5 · **weak (no official at all)**: P6 · none: P8 |
+| GoriyakuTag: `MATCH` | P3 (3/3 `PASS` by name, sources fetched) |
+| GoriyakuTag: `UNSUPPORTED` (on checked source) | P1 — 縁結び, 交通安全 (fetched, benefit not stated); P6 — prose goriyaku (observable) |
+| GoriyakuTag: `REVIEW_REQUIRED` / `UNKNOWN` (source not fetched) | P2, P4, P5, P7 |
 | `LEGACY_EXISTING_WITHOUT_PROVENANCE` | **5 / 8** (P1, P2, P4, P5, P7) |
-| Recommendation Evidence PASS / HOLD / NO_EVIDENCE / REVISE | PASS = 4 label-items (P3 ×3, P1 厄除け) · HOLD = 3 (P1 ×2, P6) · NO_EVIDENCE = 1 shrine (P8) · REVISE = 0 · remaining = UNKNOWN (not fetched) |
-| Purpose-wired PASS evidence count | **0 confirmed** — every PASS is blocked by the §16 `GoriyakuTag` PK drift; 太宰府's 3 PASS labels do not reach `study` in this DB |
-| Needs represented (by intended tag names in the pilot) | study, money-ish (開運/金運), family-ish (厄除け), protection (厄除け), courage (勝運/開運), health (足腰健康 — UNWIRED), relationship/love (縁結び), travel (交通安全) |
+| Recommendation Evidence review-state counts | **PASS = 4 label-items** (P3: 学業成就 / 合格祈願 / 厄除け; P1: 厄除け). **HOLD = 2 label-items** (P1: 縁結び, 交通安全). **NO_EVIDENCE = 0** (P8 has no reviewed Source set → `UNKNOWN`, not `NO_EVIDENCE`). **REVISE = 0**. **UNKNOWN / not reviewed** = every other label (P2 ×2, P4 ×3, P5 ×3, P6, P7 ×3) and P8 (no goriyaku). |
+| Purpose-wired PASS evidence count | **0 confirmed** at dev-DB runtime — every PASS label is canonically wired (§16.3.A) but the dev-DB `GoriyakuTag` PK drift (§16.3.B) means, e.g., 太宰府's 3 PASS labels do not reach `study` in this DB. Canonical-level wiring is intact; dev-DB runtime wiring is unverifiable. |
+| Needs represented (by canonical tag names in the pilot's goriyaku) | study (学業成就/合格祈願), money (商売繁盛-adjacent 開運/金運), family (安産/子宝 not present; 厄除け present), protection (厄除け/勝運), courage (勝運/開運/足腰健康), health (足腰健康/家内安全), love/relationship (縁結び), travel (交通安全). All canonically wired except the legacy-only label `地域安泰` (P6). |
 
 ## 19. Method problems / revisions
 
@@ -327,7 +355,11 @@ Pilot n = 8 real shrine identities. **Not extrapolated to the full set** — thi
 | M5 | **`goriyaku` stored as prose** (P6) breaks the `backfill_goriyaku_tags` delimiter assumption. | Add matrix flag `goriyaku_text_shape ∈ {DELIMITED_LABELS, PROSE, EMPTY}`; PROSE rows are automatically `REVIEW_REQUIRED` for tag provenance. |
 | M6 | `decide_fact_usability` is keyword-only (`verification_status`, `confidence`, `source_verification_statuses`) — an audit helper must build the source-status list from the M2M, not call positionally. | Documented here; PR-C uses the keyword form (as this pilot did after correction). No production helper added. |
 
-The identity/knowledge/source/goriyaku **method mechanics worked end-to-end** for the shrines where data was available (P1, P3 fully; P6/P7 partially) — the blockers are data access and the `GoriyakuTag` table, not the matrix design.
+The identity/knowledge/source/goriyaku **method mechanics worked end-to-end** for the two shrines whose official sources were fetched (P1, P3) — the blockers are data access (Spreadsheet, Production) and the `GoriyakuTag` table, not the matrix design.
+
+| M7 | **`NO_EVIDENCE` was mis-assigned** — the earlier draft marked P8 長太稲荷神社 `NO_EVIDENCE`. The contract's `NO_EVIDENCE` requires *a reviewed Source set with no explicit evidence*; P8 has no goriyaku and no reviewed Source, so its eligibility is `UNKNOWN` / review state N/A. | PR-C: only assign `NO_EVIDENCE` after a Source set has actually been reviewed in full. A shrine with no goriyaku and no reviewed Source is `UNKNOWN` + `integrity_status = MISSING`. |
+| M8 | **`source_confirmed` was over-trusted** — the earlier draft marked P7 護王神社 deity/history `MATCH` on the strength of the DB `verification_status` alone. | PR-C: a Knowledge Fact is `MATCH` only after its official Source is fetched and compared this session; otherwise `REVIEW_REQUIRED`, regardless of `verification_status`. Applied retroactively here (only P1/P3 remain `MATCH`). |
+| M9 | **Canonical vs dev-DB connectivity were conflated** — the earlier §16.3 called canonically-wired concepts (`安産`, `子宝`, `航海安全`, `海上安全`, `足腰健康`) "UNWIRED" by reading the drifted dev-DB reverse index. | PR-C: compute `CANONICAL_NAME_LEVEL_CONNECTIVITY` from `NEED_TO_GORIYAKU_IDS` + the §5 master (question A), and `DEV_DB_RUNTIME_CONNECTIVITY` separately (question B). Never call a canonical concept unwired because the drifted DB stores a different name at its PK. Corrected in §16.3. |
 
 ## 20. Mother Ship decisions
 
@@ -337,7 +369,7 @@ The identity/knowledge/source/goriyaku **method mechanics worked end-to-end** fo
 4. **Spreadsheet access** — supply a read-only CSV/snapshot with the §6 columns.
 5. **Duplicate real-shrine rows** (長太稲荷神社, 給田六所神社, 富岡八幡宮) — confirm current Production state; decide merge / keep-both-with-canonical-flag / defer. (No PR-B action.)
 6. **`LEGACY_EXISTING_WITHOUT_PROVENANCE`** (5/8 in the pilot; likely ~most of the ~86 goriyaku-bearing shrines) — does PR-C retro-review provenance to the current Source standard, or record-and-accept per Evidence Review Contract §12?
-7. **UNWIRED benefit tags** (`安産`, `子宝`, `足腰健康`, `航海安全`, `海上安全`, …) — is a Purpose-routing follow-up wanted, or recorded per shrine only? (Out of this audit's authority to change mappings.)
+7. **Truly-unwired canonical concepts (10 of 39)** — `八方除` (17), `八難除` (19), `美容` (22), `方除け` (23), `芸能` (25), `芸能運` (29), `技芸上達` (31), `火防` (34), `延命長寿` (37), `農業守護` (39) are consumed by no Need in `NEED_TO_GORIYAKU_IDS` (§16.3.A). All ten are niche / non-consultation concepts and no pilot shrine's headline benefit depends on them. Is a Purpose-routing follow-up wanted for any of them, or record-only? (Out of this audit's authority to change mappings.) **Note:** `安産`, `子宝`, `航海安全`, `海上安全`, `足腰健康` are **already wired** at the canonical level — the earlier draft's claim that they were unwired was a drift-reading error, now corrected (M9).
 8. **`canonical_status` / `official_name` / `official_address`** — DB home (later PR) or audit-layer only? (Repeat of PR-A §15.7.)
 9. **Audit-only labels** — accept `MATCH/PARTIAL/UNSUPPORTED/MISSING/REVIEW_REQUIRED` + the drift root-cause set for PR-C output; confirm they never enter product taxonomy.
 
@@ -351,7 +383,8 @@ The identity/knowledge/source/goriyaku **method mechanics worked end-to-end** fo
   1. Read-only Production DB or an authorized Production dump (M3).
   2. That DB's `GoriyakuTag` table verified `ALIGNED` to the canonical 39-row master, or an explicit Mother Ship ruling on §20.2. If `PK_DRIFT`, **stop and escalate** — do not audit Purpose connectivity on a drifted table.
   3. A read-only Google Spreadsheet CSV/snapshot with the §6 columns (M2).
-- **Source requirements:** official shrine site → official jinja organisation → government / cultural-property → other contract-permitted types. Wikipedia/tourism only when no official source exists. No deity/history/reputation/AI → benefit inference.
+- **Connectivity computation (two columns, never merged):** `canonical_name_level_connectivity` (from `NEED_TO_GORIYAKU_IDS` + the §5 39-row master — question A, computed and recorded even if the audited DB is drifted) and `dev_or_prod_db_runtime_connectivity` (only meaningful once `goriyaku_tag_master_alignment = ALIGNED`).
+- **Source requirements:** official shrine site → official jinja organisation → government / cultural-property → other contract-permitted types. Wikipedia/tourism only when no official source exists. No deity/history/reputation/AI → benefit inference. A Knowledge Fact / goriyaku label is `MATCH` / `PASS` **only** after its official Source is fetched and compared in that batch; `verification_status = source_confirmed` alone yields `REVIEW_REQUIRED` (M8). `NO_EVIDENCE` requires a fully reviewed Source set (M7).
 - **Batching:** by prefecture (derived from `address`), ~10–15 shrines per batch; each batch its own section in the output doc, committed incrementally; identity/location dimension first (fast, spreadsheet-join), then knowledge/source/goriyaku (slow, per-shrine fetch).
 - **Output document(s):** `docs/audit/shrine-evidence-full-integrity-audit.md` (matrix + aggregate), plus one Evidence-Review provenance appendix per batch following `recommendation-evidence-review-contract.md` §6.
 - **Verification checks per batch:** `knowledge_coverage_report` diff vs baseline (must be 0 — read-only); Evidence-Gate test suite; `git diff --check`; markdownlint; no production file touched.
@@ -364,9 +397,9 @@ The identity/knowledge/source/goriyaku **method mechanics worked end-to-end** fo
 Three canonical prerequisites are unmet this session and each independently blocks a required phase:
 
 1. **`CANONICAL_REAL_SHRINE_SET = NOT VERIFIED`** — no Production read (§7). Phase 1 / denominator (§9) held.
-2. **Canonical `GoriyakuTag` table not established** — the local dev DB's 46-row `GoriyakuTag` PK space does not match the canonical-master numbering `NEED_TO_GORIYAKU_IDS` assumes (§16). Phase 10 (Purpose connectivity) is un-auditable; 太宰府天満宮's 3 valid PASS labels do not reach `study` in this DB.
+2. **Canonical `GoriyakuTag` table not established** — the local dev DB's 46-row `GoriyakuTag` PK space does not match the canonical-master numbering `NEED_TO_GORIYAKU_IDS` assumes (§16, `PK_DRIFT` finding intact). `CANONICAL_NAME_LEVEL_CONNECTIVITY` is sound and recorded (§16.3.A — 29/39 canonical concepts wired, including 安産/子宝/航海安全/海上安全/足腰健康); but `DEV_DB_RUNTIME_CONNECTIVITY` (§16.3.B) is unreliable — e.g. 太宰府天満宮's 3 canonically-wired PASS labels do not reach `study` at dev-DB runtime. Phase 10 stays un-auditable until §20.2 resolves. **Production reach of the drift = NOT VERIFIED.**
 3. **`CODEX_SESSION_SPREADSHEET_ACCESS = BLOCKED`** — no identity/location join (§11). Phase 5 held.
 
-The **matrix and method for the knowledge / source / goriyaku layers are validated** — they ran end-to-end for the shrines with available data (P1, P3 fully; P6, P7 partially), producing concrete `MATCH` / `UNSUPPORTED` / `HOLD` / `MISSING` results and a `LEGACY_EXISTING_WITHOUT_PROVENANCE = 5/8` finding. PR-C is specified (§21) and can proceed once §20's decisions 1–4 land. No blocker was found in the Recommendation Engine contracts themselves; the `GoriyakuTag` PK drift is a **data / seed integrity** issue whose Production reach is unknown and is escalated as §20.2.
+The **matrix and method for the knowledge / source / goriyaku layers are validated** — they ran end-to-end for the two shrines whose official sources were fetched (P1, P3), producing concrete `MATCH` / `PASS` / `UNSUPPORTED` / `HOLD` results and a `LEGACY_EXISTING_WITHOUT_PROVENANCE = 5/8` finding. Reconciled review-state counts: **PASS = 4 label-items, HOLD = 2, NO_EVIDENCE = 0, REVISE = 0, UNKNOWN = the rest** (§18). PR-C is specified (§21) and can proceed once §20's decisions 1–4 land. No blocker was found in the Recommendation Engine contracts themselves; the `GoriyakuTag` PK drift is a **data / seed integrity** issue whose Production reach is unknown and is escalated as §20.2.
 
 **No Production DB, no Spreadsheet, no Recommendation Engine config, no Knowledge data, no GoriyakuTag, no `Shrine.goriyaku`, no Need mapping, no fixture/seed/model/migration, and no frontend was changed by this task.** This branch adds one file: `docs/audit/shrine-evidence-integrity-pilot.md`.
