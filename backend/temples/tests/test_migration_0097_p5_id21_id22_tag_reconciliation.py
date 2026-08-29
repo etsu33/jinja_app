@@ -52,10 +52,38 @@ CANON = {
 }
 
 
+def _align_pk_sequence(model):
+    """Realign a Postgres identity/serial sequence to MAX(pk).
+
+    Seeding the canonical master with explicit primary keys
+    (``update_or_create(id=i, ...)``) does not advance Postgres' sequence, so a
+    later ``objects.create()`` with an auto-assigned pk would draw a value still
+    inside the seeded range and collide on the pkey. Bumping the sequence to the
+    current MAX(pk) makes auto-assigned pks land past the canonical rows. No-op
+    on non-Postgres backends (SQLite derives the next rowid from MAX itself).
+    """
+    from django.db import connection
+
+    if connection.vendor != "postgresql":
+        return
+    table = model._meta.db_table
+    column = model._meta.pk.column
+    with connection.cursor() as cur:
+        cur.execute(
+            'SELECT setval('
+            '  pg_get_serial_sequence(%s, %s),'
+            f'  (SELECT COALESCE(MAX("{column}"), 1) FROM "{table}"),'
+            '  true'
+            ')',
+            [table, column],
+        )
+
+
 @pytest.fixture(autouse=True)
 def _canonical_master(db):
     for i, name in CANON.items():
         GoriyakuTag.objects.update_or_create(id=i, defaults={"name": name})
+    _align_pk_sequence(GoriyakuTag)
 
 
 def _tag(name):
