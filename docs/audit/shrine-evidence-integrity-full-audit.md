@@ -293,7 +293,7 @@ Audit-only labels; multiple may apply per shrine. Counts over the 103.
 | Root cause | Shrines | Exact counting condition |
 |---|---|---|
 | `PROVENANCE_GAP` | **84** | shrine has ≥1 deity or history Fact (knowledge-bearing) **AND** ≥1 stored `goriyaku` label **AND** not every stored label is confirmed PASS against a fetched official Source this session. = 89 knowledge-bearing − 3 with empty `goriyaku` (106, 107, 108) − 2 all-labels-PASS (id 6, id 26) = **84**. |
-| `GORIYAKU_EVIDENCE_GAP` | **23** | label reviewed HOLD / not-supported on a fetched Source (1, 10, 64, 99), **or** Source-explicit benefit not captured as a label (106, 107, 108), **or** shrine has `goriyaku` labels with **zero** Knowledge/Source to anchor them (the 14 zero-Knowledge shrines), **or** ≥1 PASS + ≥1 HOLD split (44, 62). Union = 14 + {1,10,44,62,64,99} + {106,107,108} = **23**. |
+| `GORIYAKU_EVIDENCE_GAP` | **23** | ≥1 stored label reviewed this session and **not confirmed** (HOLD; Dimension C `CANONICAL_BUT_UNSUPPORTED` for 1/99, `REVIEW_REQUIRED` for 10/64) — ids 1, 10, 64, 99; **or** Source-explicit benefit not captured as a label (106, 107, 108); **or** `goriyaku` labels with **zero** Knowledge/Source to anchor them (the 14 zero-Knowledge shrines); **or** ≥1 PASS + ≥1 HOLD split (44, 62). Union = 14 + {1,10,44,62,64,99} + {106,107,108} = **23**. |
 | `SOURCE_GAP` | **16** | 14 zero-Source shrines + 2 knowledge-bearing with no official/primary Source (10, 22) |
 | `KNOWLEDGE_GAP` | **14** | zero deity + zero history (21, 27, 42, 46, 58, 61, 63, 67, 72, 73, 78, 86, 87, 89) |
 | `PURPOSE_MAPPING_GAP` | **14** shrines (Dimension D; 10 concepts) | shrine carries ≥1 tag whose concept is `UNWIRED_CANONICAL` (ids 26, 29, 34, 35, 38, 52, 56, 61, 76, 77, 86, 96, 97, 100). **Not** a Dimension C defect — those tags are `CANONICAL_MATCH`. id 26 is the only shrine whose *defining* benefit (八方除) is the unwired one. |
@@ -315,7 +315,7 @@ No generic `DATA_GAP` bucket is used — each shrine's missing layer is named.
 |---|---|---|
 | `MATCH` | **1** | id 6 太宰府天満宮 — Source fetched; deity + history + all 3 `goriyaku` labels confirmed; all wired |
 | `PARTIAL` | **84** | Evidence-Gate-usable Knowledge present and Source-linked, but `goriyaku` is `LEGACY_EXISTING` without review provenance and/or Source not re-fetched; includes 8 sampled shrines with mixed confirmation |
-| `UNSUPPORTED` | **0** | no whole-shrine case; label-level unsupported-on-source exists for ids 1/10/64/99 |
+| `UNSUPPORTED` | **0** | no whole-shrine case. Label-level: only `CANONICAL_BUT_UNSUPPORTED` (Dimension C), **scoped to the fetched official/primary Source**, for **4 label-items / 2 shrines — id 1 (縁結び, 交通安全) and id 99 (厄除け, 勝運) only**. Ids 10 and 64 are **not** unsupported — only a non-primary Source (10) / an origin-narrative page (64) was reviewed, so their labels are `REVIEW_REQUIRED` / eligibility `UNKNOWN`. |
 | `MISSING` | **14** | zero Knowledge + zero Source (the 14 zero-knowledge ids) |
 | `REVIEW_REQUIRED` | **4** | ids 10, 22 (no official Source), 26 (deity unconfirmed on fetched page), 106 (empty goriyaku, eligibility UNKNOWN) |
 | **Total** | **103** | `1 + 84 + 0 + 14 + 4` |
