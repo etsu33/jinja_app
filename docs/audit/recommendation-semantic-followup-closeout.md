@@ -495,6 +495,40 @@ sources: `semantic-followup-decision-and-pr-split.md`,
 
 No item reclassifies as **REGRESSION** or **BLOCKER**.
 
+### §15 count reconciliation
+
+- **Unique gap items: 17** (rows 1–17 above).
+- **Category assignments: 20.** The categories are **not** mutually
+  exclusive — 3 items are intentionally multi-classified (2 categories
+  each), so 17 unique items + 3 extra assignments = 20.
+- **Multi-classified items:**
+  - **#4** (`communication` mapped to invalid GIDs) = `CLOSED` +
+    `INTENTIONAL_LIMITATION` — the invalid-mapping defect is *closed*
+    (mapping is now `set()`), while the resulting no-GID-evidence state
+    *continues* as the adopted `EVIDENCE_LIMITED` policy.
+  - **#13** (`career` / 赤坂氷川神社 winner↔Reason-source conflict) =
+    `PRODUCT_DECISION` + `FUTURE_ENHANCEMENT` — [prior] flagged it as
+    "SHOULD_FIX, optional" (a product call) *and* as an optional future
+    Engine PR-C.
+  - **#15** (stale / unmapped canonical tags) = `DATA_GAP` +
+    `INTENTIONAL_LIMITATION` — it is a data-coverage artefact *and* the
+    decision packets explicitly chose to leave the ids in the master.
+- **Per-category totals** (counting every assignment):
+
+  | Category | Count | Items |
+  |---|---|---|
+  | CLOSED | 5 | 1, 2, 3, 4, 5 |
+  | INTENTIONAL_LIMITATION | 5 | 4, 6, 8, 14, 15 |
+  | DATA_GAP | 4 | 7, 10, 15, 16 |
+  | PRODUCT_DECISION | 3 | 9, 13, 17 |
+  | FUTURE_ENHANCEMENT | 3 | 11, 12, 13 |
+  | **Total assignments** | **20** | (17 unique items) |
+
+  (The `(was PRODUCT_DECISION)` note on item 6 and the `FUTURE_ENHANCEMENT`
+  mentions inside the Basis prose of items 6 and 7 describe the *prior*
+  classification and *derived follow-up actions* respectively; they are not
+  additional current classifications and are not counted above.)
+
 ## 16. Regression Results
 
 Runner: `pytest -q --reuse-db` via the repo's `PYTEST` invocation, Python
@@ -613,9 +647,15 @@ Text coverage, communication taxonomy, one legacy Reason-source conflict).
 None of them violates a contract or degrades engine correctness.
 
 This verdict is unchanged in kind from the prior
-`compass-recommendation-engine-finalization.md` verdict; this series
-**closed** four specific gaps that were open at that time (§15 items 1–5)
-and formalised three more as adopted limitations.
+`compass-recommendation-engine-finalization.md` verdict. Against the §15
+reclassification (17 unique gap items, 20 category assignments, 3 items
+multi-classified), this series **CLOSED 5 items** (§15 rows 1–5 — rows 1–3
+and 5 cleanly, plus row 4 whose invalid-mapping defect is fixed while its
+evidence limitation continues as the adopted `EVIDENCE_LIMITED` policy) and
+**formalised 5 items as `INTENTIONAL_LIMITATION`** (rows 4, 6, 8, 14, and
+part of 15). The rest are pre-existing `DATA_GAP` / `PRODUCT_DECISION` /
+`FUTURE_ENHANCEMENT` items carried forward unchanged. **REGRESSION = 0,
+BLOCKER = 0.**
 
 ## 18. Follow-up Items
 
