@@ -131,6 +131,14 @@ REGEX: Dict[NeedTag, List[re.Pattern]] = {
         re.compile(r"辛い"),
         re.compile(r"苦しい"),
         re.compile(r"心を整え"),
+        # 使役・鎮静の意図表現「気持ち／心を落ち着けたい（落ち着けたく）」を
+        # mental として加算的に拾う。desiderative 形（たい／たく）に限定し、
+        # rest 側の語根 REGEX r"落ち着" は変更しない。可能形の連体
+        # 「落ち着ける（場所）」や接続形「落ち着けて」は対象外に保ち、
+        # 既存の rest 単独判定（例: 「落ち着ける場所に行きたい」）を維持する。
+        # docs/audit/remaining-need-semantic-decision-packets.md §16-17
+        # (Mental/Rest = EXPAND_MENTAL, Track D1a)。
+        re.compile(r"落ち着け(たい|たく)"),
         re.compile(r"疲れ(て|が|た)?"),
         re.compile(r"流れが悪い"),
         re.compile(r"最近うまくいかない"),
