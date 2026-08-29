@@ -297,9 +297,14 @@ def test_reverse_does_not_create_missing_legacy_tag(targets):
     forward(APPS, None)
     reverse(APPS, None)
     assert not GoriyakuTag.objects.filter(name="地域安泰").exists()
-    # ...but a present 地域安泰 IS restored
+    # ...but a present 地域安泰 IS restored. The tag row is shared across both
+    # RECONCILE targets, so under the STRICT_EXACT optional contract it must be
+    # attached to BOTH before forward -- attaching it to only one would make the
+    # other a PreconditionViolation (see test_optional_tag_present_relation_absent
+    # _forward_fails_closed / test_cross_target_optional_drift_forward_fails_closed).
     legacy = GoriyakuTag.objects.create(name="地域安泰")
     targets["s21"].goriyaku_tags.add(legacy)
+    targets["s22"].goriyaku_tags.add(legacy)
     forward(APPS, None)
     reverse(APPS, None)
     targets["s21"].refresh_from_db()
@@ -473,3 +478,54 @@ def test_reverse_then_reapply_cycle(targets):
     targets["s22"].refresh_from_db()
     assert _tag_names(targets["s21"]) == []
     assert _tag_names(targets["s22"]) == []
+
+
+# ---------------------------------------------------------------------------
+# Optional relation STRICT-EXACT fix (PR #2629 follow-up). The optional
+# `地域安泰` relation is handled per the 3-state Mother Ship contract:
+#   1. optional tag row absent            -> validation PASS, forward no-op
+#   2. optional tag row + relation present -> validation PASS, forward removes,
+#                                              reverse restores
+#   3. optional tag row present, relation absent -> PreconditionViolation,
+#                                                    mutation 0 for ALL targets
+# Case 1 is already covered by test_chiiki_antai_absent_in_production_shape_is_safe_noop
+# above; case 2 by test_chiiki_antai_removed_when_present_local_shape above.
+# ---------------------------------------------------------------------------
+
+
+# Case 3 — optional tag row exists but the shrine does NOT currently hold that
+# relation: without this fix, forward would treat this as a silent no-op (best
+# -effort skip) and reverse would then unconditionally .add() it, fabricating a
+# relation that never existed pre-forward — breaking STRICT_EXACT. Forward must
+# now raise PreconditionViolation before mutating anything, for any target,
+# including required relations that were individually valid.
+@pytest.mark.django_db
+def test_optional_tag_present_relation_absent_forward_fails_closed(targets):
+    GoriyakuTag.objects.create(name="地域安泰")  # row exists, but no shrine holds it
+    before21 = set(_tag_names(targets["s21"]))
+    before22 = set(_tag_names(targets["s22"]))
+
+    with pytest.raises(PreconditionViolation):
+        forward(APPS, None)
+
+    targets["s21"].refresh_from_db()
+    targets["s22"].refresh_from_db()
+    assert set(_tag_names(targets["s21"])) == before21  # required relations untouched too
+    assert set(_tag_names(targets["s22"])) == before22
+
+
+# Cross-target optional drift — id21 is fully valid (required + optional all
+# consistent); id22's 地域安泰 row exists but is not attached to id22. The
+# violation on id22 must still block id21's otherwise-valid mutation
+# (validate-all-then-mutate-all, not per-shrine).
+@pytest.mark.django_db
+def test_cross_target_optional_drift_forward_fails_closed(targets):
+    legacy = GoriyakuTag.objects.create(name="地域安泰")
+    targets["s21"].goriyaku_tags.add(legacy)  # id21: optional relation present too — fully valid
+    before21 = set(_tag_names(targets["s21"]))
+
+    with pytest.raises(PreconditionViolation):
+        forward(APPS, None)
+
+    targets["s21"].refresh_from_db()
+    assert set(_tag_names(targets["s21"])) == before21  # untouched despite being individually valid
