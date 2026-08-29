@@ -524,11 +524,64 @@ repository evidence is insufficient to assert intent either way).
 
 | Topic | Current Behavior | Problem | Option A | Option B | Option C | Technical Consequence | Decision Required |
 |---|---|---|---|---|---|---|---|
-| Family scope | KEYWORDS=fertility-only; GID={2,26,34}=household-flavored; ids 16/35 (best fertility fits) sit outside family's mapping | Three internally-inconsistent signals for what "family" means | `FAMILY_SCOPE_NARROW` (`TECHNICALLY_LOWEST_RISK`) | `FAMILY_SCOPE_BROAD` | `FAMILY_SPLIT_REQUIRED` | Narrow: 2–3 PRs, no taxonomy change. Broad: 3+ PRs, deliberate new `relationship` collision. Split: 0 PRs (docs-only) or 4+ PRs (new 16th Need tag) | Yes |
-| Mental/rest boundary | Shared vocabulary (`整えたい`,`疲れ`,`癒し`) plus rest's bare-root REGEX causes co-extraction and, in one case, complete `mental` loss | Intentional multi-Need signaling, or a defect? | Keep as-is (`TECHNICALLY_LOWEST_RISK`) | Narrow rest's REGEX root | Expand mental's own coverage (additive) | Keep: 0 PRs. Narrow: 1 PR + full REGEX-dependent regression, risks a new MISSED case. Additive: 1 PR, lower risk | Yes |
-| Communication taxonomy | No canonical tag fits (0 `CLEAR_FIT`, Section 20); current mapping is a placeholder | Invest in new evidence, or accept permanent GID-sparsity? | Reuse existing tag (no strong candidate exists) | Add new canonical taxonomy | Interpreter-recognized, evidence-limited (`TECHNICALLY_LOWEST_RISK`) | Reuse: not viable per Section 20/21. New taxonomy: full Mapping/Axis/Reason chain. Evidence-limited: PR #2601 already delivers this option's full value | Yes |
-| Courage/勝運 evidence boundary | ids 12/30 officially shared with career; zero leakage observed live; removing costs courage real evidence strength (−60%) | Intentional, or should it be separated? | Leave as-is (`TECHNICALLY_LOWEST_RISK`) | Remove courage's claim on 12/30 | Remove career's claim on 12/30 | Leave: 0 PRs. Remove-from-courage: 1 PR, courage evidence −60%. Remove-from-career: 1 PR, career minimally affected | Yes |
-| Missing Reason items (decision-gated) | `family`, `communication` remain on generic fallback Reason text | Blocked by the two decisions above, not by Reason-writing itself | Resolve via Family Scope Decision first | Resolve via Communication Taxonomy Decision first | — | See Section 28's R2/R3 tracks | Yes (inherited) |
+| Family scope | KEYWORDS=fertility-only; GID={2,26,34}=household-flavored; ids 16/35 (best fertility fits) sit outside family's mapping | Three internally-inconsistent signals for what "family" means | `FAMILY_SCOPE_NARROW` (`TECHNICALLY_LOWEST_RISK`) | `FAMILY_SCOPE_BROAD` | `FAMILY_SPLIT_REQUIRED` | Narrow: 2–3 PRs, no taxonomy change. Broad: 3+ PRs, deliberate new `relationship` collision. Split: 0 PRs (docs-only) or 4+ PRs (new 16th Need tag) | **RESOLVED 2026-08-29 — `FAMILY_SCOPE_NARROW` (Option A).** See `## Mother Ship Decisions` below. |
+| Mental/rest boundary | Shared vocabulary (`整えたい`,`疲れ`,`癒し`) plus rest's bare-root REGEX causes co-extraction and, in one case, complete `mental` loss | Intentional multi-Need signaling, or a defect? | Keep as-is (`TECHNICALLY_LOWEST_RISK`) | Narrow rest's REGEX root | Expand mental's own coverage (additive) | Keep: 0 PRs. Narrow: 1 PR + full REGEX-dependent regression, risks a new MISSED case. Additive: 1 PR, lower risk | **RESOLVED 2026-08-29 — `EXPAND_MENTAL` (Option C → Track D1a).** See `## Mother Ship Decisions` below. |
+| Communication taxonomy | No canonical tag fits (0 `CLEAR_FIT`, Section 20); current mapping is a placeholder | Invest in new evidence, or accept permanent GID-sparsity? | Reuse existing tag (no strong candidate exists) | Add new canonical taxonomy | Interpreter-recognized, evidence-limited (`TECHNICALLY_LOWEST_RISK`) | Reuse: not viable per Section 20/21. New taxonomy: full Mapping/Axis/Reason chain. Evidence-limited: PR #2601 already delivers this option's full value | **RESOLVED 2026-08-29 — `EVIDENCE_LIMITED` (Option C) + Evidence Policy `DISABLE_GID_EVIDENCE`.** See `## Mother Ship Decisions` below. |
+| Courage/勝運 evidence boundary | ids 12/30 officially shared with career; zero leakage observed live; removing costs courage real evidence strength (−60%) | Intentional, or should it be separated? | Leave as-is (`TECHNICALLY_LOWEST_RISK`) | Remove courage's claim on 12/30 | Remove career's claim on 12/30 | Leave: 0 PRs. Remove-from-courage: 1 PR, courage evidence −60%. Remove-from-career: 1 PR, career minimally affected | **RESOLVED 2026-08-29 — `KEEP_SHARED` (Option A). No production PR.** See `## Mother Ship Decisions` below. |
+| Missing Reason items (decision-gated) | `family`, `communication` remain on generic fallback Reason text | Blocked by the two decisions above, not by Reason-writing itself | Resolve via Family Scope Decision first | Resolve via Communication Taxonomy Decision first | — | See Section 28's R2/R3 tracks | **RESOLVED (inherited) 2026-08-29 — R2 (family Reason) proceeds after M1; R3 (communication Reason) NOT pursued (no `NEW_TAXONOMY`).** |
+
+## Mother Ship Decisions
+
+Recorded verbatim from the Mother Ship. No interpretation, optimization, or
+reinterpretation has been applied. The Sections 10–26 option analysis above
+is retained unchanged as audit history.
+
+- **Decision date:** 2026-08-29
+- **Family:** `NARROW` — i.e. `FAMILY_SCOPE_NARROW` (Section 10 / Option A).
+  Family stays pregnancy / childbirth / parenting-centered, matching the
+  current KEYWORDS. Household / family-relationship interpreter vocabulary is
+  **not** expanded.
+- **Mental / Rest:** `EXPAND_MENTAL` — i.e. Section 17 Option C (Track D1a).
+  Add `mental` coverage for the causative calming form so that
+  `気持ちを落ち着けたい` → `mental` + `rest`. `rest` behavior is **not**
+  narrowed.
+- **Communication:** `EVIDENCE_LIMITED` — i.e. Section 21 Option C. No new
+  canonical `GoriyakuTag` taxonomy is created.
+  - **Evidence Policy:** `DISABLE_GID_EVIDENCE` — the current semantically
+    invalid mapping `communication = {30, 33, 37, 39}` is disabled /
+    removed until a valid taxonomy exists. (This is the Mother Ship's
+    selection of sub-decision **B** from the Communication `EVIDENCE_LIMITED`
+    branch; sub-decision A — "keep the weak mapping as a documented
+    limitation" — was **not** selected.)
+  - PR #2601 interpreter behavior remains unchanged.
+- **Courage / Career:** `KEEP_SHARED` — i.e. Section 25 Option A. GID ids
+  `{12, 30}` and the `勝運` text-evidence term remain shared between
+  `courage` and `career`. **No production PR.**
+
+### Newly surfaced sub-decision returned to Mother Ship (blocks Track M1)
+
+`FAMILY_SCOPE_NARROW` unambiguously resolves two of the three M1 mapping
+questions (Section 10, "GID Mapping" row):
+
+1. Reassign id=16 (`安産`, safe childbirth) from `mental` → `family`.
+2. Add orphaned id=35 (`子宝`, blessed with children) to `family`.
+
+It does **not** resolve the third — "decide fate of ids 2/26/34
+(`厄除け` / `家庭円満` / `火防`, household-flavored, poor fit here)". Whether
+`family` keeps, drops, or partially keeps `{2, 26, 34}` is a product-semantic
+decision the recorded `NARROW` value does not specify, and it changes
+ranking eligibility for the 51 shrines carrying id=2 (shared with
+`protection`). Per the task's safety rules this document does **not** choose
+it. Track M1 (and therefore Track R2, which depends on M1) is **BLOCKED**
+until the Mother Ship specifies one of:
+
+- **M1-opt-1 — KEEP:** `family` = `{2, 26, 34, 16, 35}` (add fertility ids,
+  keep household ids).
+- **M1-opt-2 — DROP_ALL:** `family` = `{16, 35}` (fertility-only; remove all
+  three household ids — largest ranking-eligibility change: −51-shrine id=2
+  overlap with `protection`).
+- **M1-opt-3 — KEEP_HARMONY_ONLY:** `family` = `{26, 16, 35}` (keep
+  `家庭円満` only; drop `厄除け` + `火防`).
 
 ## 28. Future Need-Specific PR Blueprints
 
@@ -642,6 +695,46 @@ default or assumed path.
 No business/product priority is assigned to any track or decision — order
 above is technical dependency only.
 
+## 29a. Resolved Implementation Tracks (Mother Ship 2026-08-29)
+
+Translation of the four recorded decisions into required implementation
+tracks. Only tracks marked **REQUIRED** produce a production PR.
+
+| Decision | Value | Track(s) | Status |
+|---|---|---|---|
+| Family | `NARROW` | **M1** (GID mapping correction) | **REQUIRED — BLOCKED** on the `{2,26,34}` sub-decision (see `## Mother Ship Decisions`). |
+| Family | `NARROW` | **R2** (family Reason copy — `intent_map["family"]`) | **REQUIRED — BLOCKED** (depends on M1). |
+| Family | `NARROW` | E1 (interpreter vocabulary expansion) | NOT REQUIRED — `NARROW` forbids household/family-relations vocabulary expansion. |
+| Family | `NARROW` | S1 (split taxonomy / 16th Need) | NOT REQUIRED — not `SPLIT`. |
+| Family | `NARROW` | family Text Evidence (`NEED_TEXT_WEIGHTS["family"]`) | NOT REQUIRED — the recorded decision does not call for it; no speculative addition. |
+| Family | `NARROW` | family Axis | NOT REQUIRED — stays `other` (Section 10); any new axis is a separate future decision. |
+| Mental / Rest | `EXPAND_MENTAL` | **D1a** (add `mental` causative-calming coverage, additive) | **REQUIRED — READY.** Target: `気持ちを落ち着けたい` → `['mental','rest']`. |
+| Mental / Rest | `EXPAND_MENTAL` | D1b (narrow `rest` REGEX) / D1c (deduplicate) | NOT REQUIRED — mutually exclusive with D1a; `rest` must not be narrowed. |
+| Communication | `EVIDENCE_LIMITED` + `DISABLE_GID_EVIDENCE` | **C-EL** (remove `NEED_TO_GORIYAKU_IDS["communication"] = {30,33,37,39}` GID evidence) | **REQUIRED — READY.** |
+| Communication | `EVIDENCE_LIMITED` | C2 / C2m / C2t / C3 / R3 (new taxonomy chain) | NOT REQUIRED — not `NEW_TAXONOMY`. |
+| Communication | `EVIDENCE_LIMITED` | C1 interpreter (PR #2601) | UNCHANGED — no modification. |
+| Courage / Career | `KEEP_SHARED` | G1a / G1b / G1c | NOT REQUIRED — no production PR; shared `{12,30}` + `勝運` preserved as-is. |
+
+## 29b. PR Split Plan (technical dependency order only)
+
+No business priority is assigned. Ordering is technical dependency only.
+Each PR has exactly one semantic responsibility and is built in its own
+isolated worktree started from the latest `origin/develop` after any
+required predecessor PR is merged.
+
+| # | Track | Need | Purpose | Files likely touched | Dependency | Expected behavior change | Explicit non-goals | Focused tests | Full regression |
+|---|---|---|---|---|---|---|---|---|---|
+| PR-1 | Phase 1 docs | — | Record the four Mother Ship decisions + M1 sub-decision block in this audit doc | `docs/audit/remaining-need-semantic-decision-packets.md` only | none | None (docs only) | No production/DB/frontend change; no deletion of Sections 10–26 option analysis | markdownlint | Not applicable (docs-only) |
+| PR-2 | D1a | mental, rest | Add `mental` interpreter coverage for the causative calming form `落ち着け`, additive only | `backend/temples/domain/need_tags.py` | none (independent) | `気持ちを落ち着けたい` → `['mental','rest']` (was `['rest']` only); other 6 corpus queries unchanged | No `rest` change; no REGEX narrowing; no Mapping/Axis/Reason change; `NEED_TEXT_HINTS` dead code untouched | Section 16 7-query corpus; interpreter tests; `mental`/`rest` overlap tests; Lead/Reason/Top3 churn=0 except the one intended query | Full backend suite |
+| PR-3 | C-EL | communication | Remove the semantically invalid `{30,33,37,39}` GID evidence from `communication` (Evidence Policy `DISABLE_GID_EVIDENCE`) | `backend/temples/domain/need_to_goriyaku_tag_ids.py` | none (independent) | `communication` candidates no longer gain GID evidence / Lead citations from 強運厄除け・病気平癒・延命長寿・農業守護; `communication` remains interpreter-matchable (`score_need` still reachable via matched Need) | No new taxonomy; no interpreter change (PR #2601 intact); no Axis/Text-Evidence/Reason addition; **must not** touch id 30 for `career`/`courage` or id 33 for `health` | communication evidence/Lead/Reason tests; C1 scoring tests; Top3 eligibility for communication candidates; `career`/`courage`/`health` GID evidence unchanged | Full backend suite |
+| PR-4 | M1 | family | Correct `family` GID mapping: id=16 `mental`→`family`, add id=35; `{2,26,34}` fate per Mother Ship M1 sub-decision | `backend/temples/domain/need_to_goriyaku_tag_ids.py` | **BLOCKED** on M1 sub-decision; then start from latest `origin/develop` | `family` evidence pool changes from the current household-flavored 54-shrine pool to a fertility-specific pool; `mental` loses id=16 | No interpreter/Axis/Reason change in this PR; no change to any Need other than `family` and `mental`(id=16 removal) | `mental` fixtures re-checked for id=16 reliance; `family` + `mental` evidence recount; GID-matching tests; Lead/Top3 for affected candidates | Full backend suite |
+| PR-5 | R2 | family | Add `intent_map["family"]` Reason copy | `backend/temples/services/concierge_chat_ranking.py` | **M1 merged** | `family`-primary recommendations use dedicated Reason copy instead of the generic fallback | No Mapping/interpreter/Axis change; same gates as R1a/R1b | Reason completeness test; `family` Reason output; Ranking/Lead/Top3 churn=0 | Full backend suite |
+
+PRs PR-2, PR-3 are mutually independent and may be built in any order or in
+parallel once PR-1's plan is reviewed. PR-4 and PR-5 are strictly
+sequential and both gated on the M1 sub-decision. Per the task completion
+rule, each PR STOPs for review and merge before its dependent PR begins.
+
 ## 30. Production Safety
 
 No production code, DB, model, migration, seed, or frontend file was
@@ -663,7 +756,15 @@ this document (Sections 7–8).
 
 ## 32. STOP
 
-Draft PR only. Four Mother Ship decisions (family scope, mental/rest
-boundary, communication taxonomy, courage/career evidence) remain open.
-R1a, R1b, and C1 are merged; those completed tracks are unaffected by this
-document.
+**Update 2026-08-29:** the four Mother Ship decisions are now recorded (see
+`## Mother Ship Decisions`, Sections 27, 29a, 29b). Sections 1–28 and 30–31
+above are retained unchanged as audit history and their "no decision made /
+remains open" language refers to the state before this update.
+
+This PR remains **docs-only**. Production implementation has **not** started.
+One newly surfaced product-semantic sub-decision — the fate of `family` GID
+ids `{2, 26, 34}` under `NARROW` — is returned to the Mother Ship and
+**blocks Tracks M1 and R2**. Tracks D1a and C-EL are unblocked and ready but
+await plan review before any production code is written.
+
+R1a, R1b, and C1 remain merged and unaffected by this document.
