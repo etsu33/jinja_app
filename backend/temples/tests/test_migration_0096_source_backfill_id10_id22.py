@@ -19,9 +19,11 @@ from temples.services.shrine_knowledge_selector import fetch_fact_ready_knowledg
 _mod = importlib.import_module("temples.migrations.0096_source_backfill_id10_id22")
 apply_backfill = _mod.apply_source_backfill
 revert_backfill = _mod.revert_source_backfill
+MIGRATION_TAG = _mod.MIGRATION_TAG
 
 SRC10_URL = "https://online.bunka.go.jp/heritages/detail/160978"
 SRC22_URL = "https://www.dentou-hasshin.bunka.go.jp/search/158.html"
+SRC10_TYPE = "cultural_property"
 
 
 class _Apps:
@@ -262,6 +264,86 @@ def test_reverse_keeps_source_if_still_referenced_elsewhere(targets):
     assert ShrineKnowledgeSource.objects.filter(url=SRC10_URL).exists()
     assert SRC10_URL not in _src_urls(targets["h13"])
     assert SRC10_URL in _src_urls(targets["h15"])
+
+
+# ---------------------------------------------------------------------------
+# F5 — reverse must not remove state that forward did not create
+# (docs/audit/source-backfill-id10-id22-reproducibility.md "0096 reverse edge case")
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_f5_preexisting_source_and_relation_survive_reverse(targets):
+    """PRE-0096: the id10 Source row already exists AND h13/h14 already cite it.
+    forward → relation unchanged; reverse → relation AND Source row still there.
+    """
+    pre = ShrineKnowledgeSource.objects.create(
+        source_type=SRC10_TYPE, title="誰かが先に登録した文化財レコード",
+        url=SRC10_URL, verification_status="reviewed", confidence="medium",
+        verified_at=timezone.now(), note="manually curated — not migration 0096",
+    )
+    targets["h13"].sources.add(pre)
+    targets["h14"].sources.add(pre)
+    pre_pk = pre.pk
+
+    apply_backfill(APPS, None)
+    # forward: no new row, no changed relation
+    assert ShrineKnowledgeSource.objects.filter(url=SRC10_URL).count() == 1
+    assert ShrineKnowledgeSource.objects.get(url=SRC10_URL).pk == pre_pk
+    assert SRC10_URL in _src_urls(targets["h13"])
+    assert SRC10_URL in _src_urls(targets["h14"])
+
+    revert_backfill(APPS, None)
+    # reverse: the pre-existing Source and both relations are preserved
+    assert ShrineKnowledgeSource.objects.filter(pk=pre_pk).exists()
+    assert SRC10_URL in _src_urls(targets["h13"])
+    assert SRC10_URL in _src_urls(targets["h14"])
+    assert ShrineKnowledgeSource.objects.get(pk=pre_pk).note == "manually curated — not migration 0096"
+
+
+@pytest.mark.django_db
+def test_f5_forward_stamps_marker_only_on_rows_it_creates(targets):
+    apply_backfill(APPS, None)
+    for url in (SRC10_URL, SRC22_URL):
+        src = ShrineKnowledgeSource.objects.get(url=url)
+        assert MIGRATION_TAG in src.note
+    # a pre-existing unrelated source is not stamped
+    other = ShrineKnowledgeSource.objects.get(url="https://ja.wikipedia.org/wiki/tsurugaoka")
+    assert MIGRATION_TAG not in (other.note or "")
+
+
+@pytest.mark.django_db
+def test_f5_reverse_ignores_a_source_it_did_not_stamp(targets):
+    """A pre-existing id22 Source with the exact url/type but NO marker, with no
+    pre-existing relation: forward reuses it and adds the relation; reverse
+    leaves that Source (and the relation) alone because it carries no marker."""
+    pre = ShrineKnowledgeSource.objects.create(
+        source_type="government", title="外部が登録", url=SRC22_URL,
+        verification_status="reviewed", confidence="medium", verified_at=timezone.now(),
+        note="",
+    )
+    apply_backfill(APPS, None)
+    assert SRC22_URL in _src_urls(targets["h27"])  # forward reused + related
+
+    revert_backfill(APPS, None)
+    # unmarked → reverse does not touch it
+    assert ShrineKnowledgeSource.objects.filter(pk=pre.pk).exists()
+    assert SRC22_URL in _src_urls(targets["h27"])
+
+
+@pytest.mark.django_db
+def test_f5_reapply_after_reverse_recreates_and_re_marks(targets):
+    apply_backfill(APPS, None)
+    revert_backfill(APPS, None)
+    assert not ShrineKnowledgeSource.objects.filter(url=SRC10_URL).exists()
+
+    apply_backfill(APPS, None)
+    src = ShrineKnowledgeSource.objects.get(url=SRC10_URL)
+    assert MIGRATION_TAG in src.note
+    assert SRC10_URL in _src_urls(targets["h13"])
+
+    revert_backfill(APPS, None)
+    assert not ShrineKnowledgeSource.objects.filter(url=SRC10_URL).exists()
 
 
 # 13 — Knowledge selector still works with the added Source relation

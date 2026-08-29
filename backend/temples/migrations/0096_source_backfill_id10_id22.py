@@ -33,9 +33,23 @@ relates the reviewed Source to the same semantic Fact in every environment.
   `title`; no match ⇒ that relation is skipped;
 - the `ShrineKnowledgeSource` is looked up by exact `url` + `source_type`
   first (re-run reuses it — no duplicate Source row);
-- `.add()` on the M2M is a no-op when the relation already exists (idempotent);
-- reverse removes exactly the relations this migration added and deletes the
-  Source row only when it is left with no remaining relations.
+- `.add()` on the M2M is a no-op when the relation already exists (idempotent).
+
+**Reverse safety (F5, `docs/audit/source-backfill-id10-id22-reproducibility.md`
+"0096 reverse edge case").** Forward stamps a sentinel into `note`
+(`MIGRATION_TAG`) **only on a Source row it creates itself**; a pre-existing
+Source that forward merely *reuses* is never modified. Reverse then acts
+**only** on a Source carrying that exact `MIGRATION_TAG` — it never removes a
+`history ↔ Source` relation, and never deletes a Source row, that pre-existed
+this migration's forward pass. This mirrors 0095's "reverse only undoes the
+exact state forward wrote" mechanism. Concretely:
+
+- PRE-0096: Source present **and** target history already cites it → forward is
+  a no-op for that Source (reuse, no stamp); reverse sees no `MIGRATION_TAG`
+  and is a no-op → the pre-existing relation and Source row are preserved.
+- Normal: Source absent → forward creates it (stamped) and adds the intended
+  relations; reverse removes those relations and deletes the row (only because
+  it created it, and only if nothing else now cites it).
 
 `SELECT` on `Shrine` excludes `location` (`.only(...)`, the 0091/0094 legacy
 `text`-column guard).
@@ -47,6 +61,17 @@ from django.db.models import F
 SHRINE_LOOKUP_FIELDS = ("id", "name_jp", "place_ref_id", "updated_at")
 
 VERIFIED_AT = "2026-08-29T00:00:00+00:00"
+
+# Sentinel written to `ShrineKnowledgeSource.note` **only** on rows this
+# migration's forward pass creates. Reverse touches a Source only if its `note`
+# contains this exact marker, so a pre-existing (reused) Source and its
+# pre-existing relations are never removed on rollback.
+MIGRATION_TAG = "[temples.0096:auto-created]"
+MIGRATION_NOTE = (
+    MIGRATION_TAG
+    + " P4 provenance backfill — created by data migration temples.0096; "
+    "reverse of temples.0096 removes this row and the relations it added."
+)
 
 # One reviewed Source per shrine + the existing histories it corroborates.
 BACKFILL = [
@@ -97,13 +122,23 @@ def _target_shrine(Shrine, pk, expected_name):
     return shrine
 
 
-def _get_or_create_source(ShrineKnowledgeSource, spec, *, create):
-    src = ShrineKnowledgeSource.objects.filter(
+def _find_source(ShrineKnowledgeSource, spec):
+    return ShrineKnowledgeSource.objects.filter(
         url=spec["url"], source_type=spec["source_type"]
     ).first()
-    if src is not None or not create:
-        return src
-    return ShrineKnowledgeSource.objects.create(
+
+
+def _get_or_create_source(ShrineKnowledgeSource, spec):
+    """Return ``(source, created_by_this_migration)``.
+
+    A pre-existing row is reused **as-is** (``created`` is ``False`` and its
+    ``note`` is never modified). A newly created row carries ``MIGRATION_NOTE``
+    so reverse can tell it apart from anything it must not touch.
+    """
+    src = _find_source(ShrineKnowledgeSource, spec)
+    if src is not None:
+        return src, False
+    src = ShrineKnowledgeSource.objects.create(
         source_type=spec["source_type"],
         title=spec["title"],
         publisher=spec.get("publisher", ""),
@@ -112,7 +147,9 @@ def _get_or_create_source(ShrineKnowledgeSource, spec, *, create):
         verification_status="source_confirmed",
         confidence=spec.get("confidence", ""),
         verified_at=VERIFIED_AT,
+        note=MIGRATION_NOTE,
     )
+    return src, True
 
 
 def _matching_histories(ShrineHistory, shrine_id, specs):
@@ -142,7 +179,7 @@ def apply_source_backfill(apps, schema_editor):
         histories = _matching_histories(ShrineHistory, shrine.id, entry["histories"])
         if not histories:
             continue
-        src = _get_or_create_source(ShrineKnowledgeSource, entry["source"], create=True)
+        src, _created = _get_or_create_source(ShrineKnowledgeSource, entry["source"])
         for h in histories:
             h.sources.add(src)  # no-op if already related
 
@@ -156,13 +193,20 @@ def revert_source_backfill(apps, schema_editor):
         shrine = _target_shrine(Shrine, entry["shrine_id"], entry["shrine_name"])
         if shrine is None:
             continue
-        src = _get_or_create_source(ShrineKnowledgeSource, entry["source"], create=False)
+        src = _find_source(ShrineKnowledgeSource, entry["source"])
         if src is None:
+            continue
+        # F5 guard: only undo a Source row this migration's forward pass
+        # actually created (identified by the sentinel in `note`). A
+        # pre-existing / reused Source — and any relation it already had — is
+        # left exactly as found.
+        if MIGRATION_TAG not in (src.note or ""):
             continue
         histories = _matching_histories(ShrineHistory, shrine.id, entry["histories"])
         for h in histories:
             h.sources.remove(src)
-        # delete the Source only if nothing else references it anymore
+        # delete the row this migration created, unless something else now
+        # references it.
         if not src.deities.exists() and not src.histories.exists():
             src.delete()
 
