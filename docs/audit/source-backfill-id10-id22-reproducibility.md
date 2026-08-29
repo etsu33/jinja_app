@@ -246,3 +246,99 @@ fixing it **before** 0096 is authorized for Production.
   artifact only — Production has never applied 0096, so it starts clean.
 - Delivered as its own PR (`fix/migration-0096-reverse-guard`), **not** bundled
   with the P5-DATA tag reconciliation.
+- **`PR_2623_SOURCE_LEVEL_FIX = MERGED`** — merged to `develop`
+  2026-08-29T15:15:51Z (squash `f9ba0b697462fb1d1a19f1f3412af10b5c81f49b`).
+  It fixed **Source-row** ownership but did **not** fully encode **relation**
+  ownership — see §21.
+
+## 21. F5.1 — migration 0096 relation-level reverse safety
+
+The §20 patch protects a pre-existing Source *row* and its pre-existing
+*relations*, but a Source-row-level sentinel cannot record **which individual
+`history ↔ Source` links forward created**. It therefore left one edge case
+open:
+
+- **`0096_RELATION_LEVEL_REVERSE_EDGE_CASE_BEFORE = CONFIRMED`.** PRE-0096 a
+  `ShrineKnowledgeSource` with the same `url` + `source_type` already exists
+  (curated by hand, no `MIGRATION_TAG`) **but a target `ShrineHistory` does
+  not yet cite it** (Case B). Forward reuses the row and `add()`s the link —
+  a relation this migration created. The §20 reverse sees no `MIGRATION_TAG`
+  on the row and skips it entirely, so the **link 0096 introduced survives a
+  rollback**. Same gap for the B-half of a mixed history set (Case D: history
+  A already linked, history B not).
+
+- **`0096_RELATION_LEVEL_REVERSE_EDGE_CASE_AFTER = FIXED`.** Forward now also
+  records **relation** ownership. After adding links, if it created ≥1 *new*
+  target link (one absent beforehand) it appends a single delimited,
+  append-only line to `note`:
+
+  ```text
+  <original note>\n\n[temples.0096:added-histories] <type>::<title> | <type>::<title>
+  ```
+
+  The line lists **only** links forward newly created. Reverse reads it,
+  removes exactly those links (each token matched against this entry's static
+  `histories` spec — the free text is never trusted), then restores `note` to
+  the exact byte-for-byte prefix before `"\n\n[temples.0096:added-histories]"`.
+  A pre-existing link forward left untouched is never recorded and never
+  removed. When forward creates no new link (every target link already
+  existed) it writes no line and does not touch `note`. This is 0095's
+  "reverse only undoes the exact state forward wrote", applied at the
+  individual-relation level. First forward wins: a re-run that finds the line
+  already present re-ensures the links but never rewrites or drops the
+  recorded set, so idempotent forward and forward→reverse→forward are
+  deterministic.
+
+- **Contract now honoured for all four cases** (PRE = before forward):
+
+  | Case | PRE | forward | reverse |
+  |---|---|---|---|
+  | A | reused Source + target link present | no-op, no marker line | no-op — row, link, curated `note` all preserved |
+  | B | reused Source + target link absent | add link, record it | remove that link, keep row, restore `note` exactly |
+  | C | Source absent | `create()` (tagged) + add links + record | remove links, delete row iff unreferenced |
+  | D | reused Source, history A linked, B not | add B, record only B | remove B, keep A, keep row, restore `note` |
+
+- **Metadata:** a pre-existing curated `ShrineKnowledgeSource.note` is only
+  ever **appended to** (never overwritten), and only while 0096 is applied;
+  reverse restores it byte-for-byte (verified for empty, plain, multi-line,
+  and trailing-newline notes). `verification_status` / `confidence` /
+  `verified_at` / `title` / `url` / `publisher` are never touched;
+  `save(update_fields=["note"])` only.
+
+- **`MIGRATION_FILE_STATUS =
+  MERGED_IN_DEVELOP_BUT_NOT_APPLIED_TO_PRODUCTION_AT_TIME_OF_AMENDMENT`.**
+  PR #2623 (§20) is merged to `develop` (`f9ba0b69`); PR #2624 (P5-DATA
+  migration 0097) is merged to `develop` (`18e4cf48df93256c6ca606c99bccc2283395fb6c`).
+  The Production `django_migrations` ledger (read-only, this session) still
+  shows the latest applied `temples` migration as
+  `0094_fix_shrine_70_coordinates` (2026-08-23) — **0095 / 0096 / 0097 are
+  all `<NOT APPLIED>`**. No persistent staging/preview DB exists to check
+  (only `production-db.env` is configured). So 0096 is amended in place — the
+  repository-approved path for a migration that is merged but has **not** run
+  against Production; no already-applied migration contract is rewritten. On
+  the first authorized Production apply, forward creates both Sources fresh,
+  stamps `MIGRATION_TAG`, and records the added-history links, so the fix is
+  fully effective there. Ephemeral CI databases do not gate this amendment;
+  a Local dev DB that already recorded `0096` as applied does not either, but
+  is noted because Django will not re-run `0096` after its Python file
+  changes — the amended reverse only takes effect on a fresh
+  migrate/rollback or via the migration unit tests.
+
+- **`0096_SOURCE_ROW_REVERSE_SAFETY = FIXED`** (§20).
+  **`0096_RELATION_LEVEL_REVERSE_SAFETY = FIXED`** (this section) — asserted
+  by `test_migration_0096_source_backfill_id10_id22.py`
+  (`test_case_a_*`, `test_case_b_*`, `test_case_c_*`, `test_case_d_mixed_*`,
+  `test_case_b_curated_note_with_trailing_newline_restored_exactly`,
+  `test_forward_idempotent_does_not_stack_marker_lines`,
+  `test_mixed_reverse_keeps_row_when_created_source_shared_elsewhere`,
+  `test_f5_reverse_removes_relation_it_added_to_an_unstamped_source`), all
+  §20 F5 tests retained (Case A survival, marker-only-on-created,
+  reapply-after-reverse), plus the pre-existing coverage (scope, identity
+  guard, `place_ref` duplicate guard, Local/Production PK-drift matching,
+  idempotent forward, Source shared with another Fact, Knowledge selector,
+  Evidence Gate). Fresh-DB validated (`pytest --create-db`) — forward
+  actually executes; full `temples` suite green;
+  `makemigrations temples --check` → "No changes detected".
+
+- Delivered as a **new PR** (`fix/migration-0096-relation-reverse-safety`)
+  from current `develop`, because PR #2623 is already merged; **not** merged.

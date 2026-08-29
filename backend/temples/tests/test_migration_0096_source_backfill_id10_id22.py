@@ -313,22 +313,26 @@ def test_f5_forward_stamps_marker_only_on_rows_it_creates(targets):
 
 
 @pytest.mark.django_db
-def test_f5_reverse_ignores_a_source_it_did_not_stamp(targets):
-    """A pre-existing id22 Source with the exact url/type but NO marker, with no
-    pre-existing relation: forward reuses it and adds the relation; reverse
-    leaves that Source (and the relation) alone because it carries no marker."""
+def test_f5_reverse_removes_relation_it_added_to_an_unstamped_source(targets):
+    """Case B — a pre-existing id22 Source with the exact url/type but NO marker
+    and NO pre-existing relation: forward reuses the row and adds the relation;
+    reverse removes exactly that relation (relation ownership) but keeps the
+    pre-existing Source row and restores its `note`."""
     pre = ShrineKnowledgeSource.objects.create(
         source_type="government", title="外部が登録", url=SRC22_URL,
         verification_status="reviewed", confidence="medium", verified_at=timezone.now(),
         note="",
     )
     apply_backfill(APPS, None)
+    assert ShrineKnowledgeSource.objects.filter(url=SRC22_URL).count() == 1  # reused
+    assert ShrineKnowledgeSource.objects.get(url=SRC22_URL).pk == pre.pk
     assert SRC22_URL in _src_urls(targets["h27"])  # forward reused + related
 
     revert_backfill(APPS, None)
-    # unmarked → reverse does not touch it
+    # row survives (not migration-created), relation forward added is removed
     assert ShrineKnowledgeSource.objects.filter(pk=pre.pk).exists()
-    assert SRC22_URL in _src_urls(targets["h27"])
+    assert SRC22_URL not in _src_urls(targets["h27"])
+    assert ShrineKnowledgeSource.objects.get(pk=pre.pk).note == ""
 
 
 @pytest.mark.django_db
@@ -344,6 +348,166 @@ def test_f5_reapply_after_reverse_recreates_and_re_marks(targets):
 
     revert_backfill(APPS, None)
     assert not ShrineKnowledgeSource.objects.filter(url=SRC10_URL).exists()
+
+
+# ---------------------------------------------------------------------------
+# F5.1 — relation-level reverse ownership: Cases A / B / C / mixed
+# (docs/audit/source-backfill-id10-id22-reproducibility.md §21)
+# ---------------------------------------------------------------------------
+
+
+def _pre_id10_source(note="手動キュレーション（migration 0096ではない）"):
+    return ShrineKnowledgeSource.objects.create(
+        source_type=SRC10_TYPE, title="先行登録の文化財レコード", url=SRC10_URL,
+        verification_status="reviewed", confidence="medium",
+        verified_at=timezone.now(), note=note,
+    )
+
+
+@pytest.mark.django_db
+def test_case_a_preexisting_source_and_relation_untouched_by_reverse(targets):
+    """A: reused Source + target relation already present → forward no-op,
+    reverse no-op. Source row, both relations, and curated note all survive."""
+    pre = _pre_id10_source()
+    targets["h13"].sources.add(pre)
+    targets["h14"].sources.add(pre)
+    pre_pk, pre_note = pre.pk, pre.note
+
+    apply_backfill(APPS, None)
+    assert ShrineKnowledgeSource.objects.filter(url=SRC10_URL).count() == 1
+    assert ShrineKnowledgeSource.objects.get(url=SRC10_URL).pk == pre_pk
+    # forward recorded nothing (no new link) → note is byte-identical
+    assert ShrineKnowledgeSource.objects.get(pk=pre_pk).note == pre_note
+
+    revert_backfill(APPS, None)
+    assert ShrineKnowledgeSource.objects.filter(pk=pre_pk).exists()
+    assert SRC10_URL in _src_urls(targets["h13"])
+    assert SRC10_URL in _src_urls(targets["h14"])
+    assert ShrineKnowledgeSource.objects.get(pk=pre_pk).note == pre_note
+
+
+@pytest.mark.django_db
+def test_case_b_preexisting_source_added_relation_removed_on_reverse(targets):
+    """B: reused Source + target relation absent → forward adds it and records
+    it; reverse removes exactly that relation, keeps the row, restores note."""
+    pre = _pre_id10_source()
+    pre_pk, pre_note = pre.pk, pre.note
+
+    apply_backfill(APPS, None)
+    assert ShrineKnowledgeSource.objects.get(url=SRC10_URL).pk == pre_pk  # reused
+    assert SRC10_URL in _src_urls(targets["h13"])
+    assert SRC10_URL in _src_urls(targets["h14"])
+
+    revert_backfill(APPS, None)
+    assert ShrineKnowledgeSource.objects.filter(pk=pre_pk).exists()  # row kept
+    assert SRC10_URL not in _src_urls(targets["h13"])
+    assert SRC10_URL not in _src_urls(targets["h14"])
+    assert ShrineKnowledgeSource.objects.get(pk=pre_pk).note == pre_note  # exact
+
+
+@pytest.mark.django_db
+def test_case_c_migration_created_source_fully_reverted(targets):
+    """C: Source absent → forward creates + links; reverse removes links and
+    deletes the row (nothing else cites it)."""
+    assert not ShrineKnowledgeSource.objects.filter(url=SRC10_URL).exists()
+
+    apply_backfill(APPS, None)
+    src = ShrineKnowledgeSource.objects.get(url=SRC10_URL)
+    assert MIGRATION_TAG in src.note
+    assert SRC10_URL in _src_urls(targets["h13"])
+    assert SRC10_URL in _src_urls(targets["h14"])
+
+    revert_backfill(APPS, None)
+    assert not ShrineKnowledgeSource.objects.filter(url=SRC10_URL).exists()
+    assert SRC10_URL not in _src_urls(targets["h13"])
+    assert SRC10_URL not in _src_urls(targets["h14"])
+
+
+@pytest.mark.django_db
+def test_case_d_mixed_relation_state_on_one_reused_source(targets):
+    """D: reused Source, history A (h13) already linked, history B (h14) not.
+    forward: A unchanged, B added. reverse: A remains, B removed, row remains."""
+    pre = _pre_id10_source()
+    targets["h13"].sources.add(pre)  # A pre-linked
+    pre_pk, pre_note = pre.pk, pre.note
+
+    apply_backfill(APPS, None)
+    assert ShrineKnowledgeSource.objects.get(url=SRC10_URL).pk == pre_pk
+    assert SRC10_URL in _src_urls(targets["h13"])  # A
+    assert SRC10_URL in _src_urls(targets["h14"])  # B added
+
+    revert_backfill(APPS, None)
+    assert ShrineKnowledgeSource.objects.filter(pk=pre_pk).exists()  # row kept
+    assert SRC10_URL in _src_urls(targets["h13"])      # A (pre-existing) kept
+    assert SRC10_URL not in _src_urls(targets["h14"])  # B (0096-added) removed
+    assert ShrineKnowledgeSource.objects.get(pk=pre_pk).note == pre_note
+
+
+@pytest.mark.django_db
+def test_case_d_mixed_forward_reverse_forward_cycle(targets):
+    """D through a forward → reverse → forward cycle stays deterministic."""
+    pre = _pre_id10_source()
+    targets["h13"].sources.add(pre)
+
+    apply_backfill(APPS, None)
+    revert_backfill(APPS, None)
+    assert SRC10_URL in _src_urls(targets["h13"])
+    assert SRC10_URL not in _src_urls(targets["h14"])
+    assert ShrineKnowledgeSource.objects.get(url=SRC10_URL).note == pre.note
+
+    apply_backfill(APPS, None)
+    assert SRC10_URL in _src_urls(targets["h13"])
+    assert SRC10_URL in _src_urls(targets["h14"])
+
+    revert_backfill(APPS, None)
+    assert SRC10_URL in _src_urls(targets["h13"])
+    assert SRC10_URL not in _src_urls(targets["h14"])
+    assert ShrineKnowledgeSource.objects.get(url=SRC10_URL).note == pre.note
+
+
+@pytest.mark.django_db
+def test_case_b_curated_note_with_trailing_newline_restored_exactly(targets):
+    """The note-prefix restore is byte-exact even with awkward whitespace."""
+    pre = _pre_id10_source(note="行1\n行2\n")
+    apply_backfill(APPS, None)
+    stamped = ShrineKnowledgeSource.objects.get(url=SRC10_URL).note
+    assert stamped.startswith("行1\n行2\n")
+    assert "[temples.0096:added-histories]" in stamped
+
+    revert_backfill(APPS, None)
+    assert ShrineKnowledgeSource.objects.get(url=SRC10_URL).note == "行1\n行2\n"
+
+
+@pytest.mark.django_db
+def test_forward_idempotent_does_not_stack_marker_lines(targets):
+    """Repeated forward keeps a single relation-ownership line and one link."""
+    pre = _pre_id10_source(note="curated")
+    apply_backfill(APPS, None)
+    apply_backfill(APPS, None)
+    apply_backfill(APPS, None)
+    note = ShrineKnowledgeSource.objects.get(url=SRC10_URL).note
+    assert note.count("[temples.0096:added-histories]") == 1
+    assert note.startswith("curated\n\n")
+    assert targets["h13"].sources.filter(url=SRC10_URL).count() == 1
+
+    revert_backfill(APPS, None)
+    assert ShrineKnowledgeSource.objects.get(url=SRC10_URL).note == "curated"
+    assert SRC10_URL not in _src_urls(targets["h13"])
+
+
+@pytest.mark.django_db
+def test_mixed_reverse_keeps_row_when_created_source_shared_elsewhere(targets):
+    """A migration-created Source that a later unrelated Fact also cites is not
+    deleted by reverse; its target links are still removed."""
+    apply_backfill(APPS, None)
+    src = ShrineKnowledgeSource.objects.get(url=SRC10_URL)
+    targets["h15"].sources.add(src)  # unrelated Fact now cites it
+
+    revert_backfill(APPS, None)
+    assert ShrineKnowledgeSource.objects.filter(url=SRC10_URL).exists()
+    assert SRC10_URL not in _src_urls(targets["h13"])
+    assert SRC10_URL not in _src_urls(targets["h14"])
+    assert SRC10_URL in _src_urls(targets["h15"])
 
 
 # 13 — Knowledge selector still works with the added Source relation
