@@ -87,7 +87,15 @@ def render_text_report(report: dict) -> str:
         f"[= Coverage Scope count; mode={scope.get('mode', 'qa_filtered_db')} — "
         f"NOT necessarily the canonical unique-real-shrine denominator]"
     )
-    lines.append(f"Excluded Test Shrines: {report['excluded_test_shrines']}")
+    lines.append(
+        f"Excluded Test Shrines: {report['excluded_test_shrines']} "
+        f"(QA/test fixture exclusion count over ALL DB rows — "
+        f"exclude_qa_fixture_shrines; NOT 'rows outside the reporting scope')"
+    )
+    lines.append(
+        f"Rows Outside Reporting Scope: {scope.get('outside_scope_count', '?')} "
+        f"(total_db_shrines - Coverage Scope count)"
+    )
     lines.append("")
     lines.append(f"Knowledge Coverage: {_format_count(report['knowledge_coverage'])}")
     lines.append(f"Zero Knowledge: {_format_count(report['zero_knowledge'])}")

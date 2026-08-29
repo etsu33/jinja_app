@@ -107,15 +107,29 @@ shrines". This distinction is covered by a dedicated test
   `excluded_test_shrines`, and all of the above. The management command still
   prints the `Total DB Shrines:` / `Audit Target Shrines:` /
   `Excluded Test Shrines:` lines.
+- **`excluded_test_shrines` keeps its literal meaning: the actual count of rows
+  removed by `exclude_qa_fixture_shrines(Shrine.objects.all())`** — computed
+  independently of the reporting scope. It is **not** reinterpreted as "rows
+  outside the current scope". Previously it happened to equal
+  `total_db_shrines − audit_target_shrines` only because the audit target was
+  always the QA-filtered scope; for an explicit scope those numbers differ
+  (Production: `total 108`, `excluded_test_shrines 1`, canonical scope `103`,
+  `scope.outside_scope_count 5`). "Rows outside the reporting scope" now lives
+  at `scope.outside_scope_count` (= `total_db_shrines − scope.count`), and
+  `scope.qa_fixture_excluded_count` mirrors the top-level `excluded_test_shrines`
+  so the two semantics are side by side. These numbers are computed
+  dynamically; none is hardcoded.
 - **Option A (preserve key, add metadata)** was chosen over a breaking rename:
   `audit_target_shrines` keeps its key but its meaning is now
   scope-dependent, and a new `scope` block makes the semantics explicit
-  (`mode`, `count`, `total_db_shrines`, `outside_scope_count`,
-  `resolved_in_db`, `note`). The command's text output annotates the line —
-  `Audit Target Shrines: N [= Coverage Scope count; mode=… — NOT necessarily
-  the canonical unique-real-shrine denominator]` — and adds a
-  `Coverage Scope:` line. So `107` is never presented as the canonical
-  real-shrine denominator.
+  (`mode`, `count`, `total_db_shrines`, `qa_fixture_excluded_count`,
+  `outside_scope_count`, `resolved_in_db`, `note`). The command's text output
+  annotates the `Audit Target Shrines:` line — `[= Coverage Scope count;
+  mode=… — NOT necessarily the canonical unique-real-shrine denominator]` —
+  clarifies the `Excluded Test Shrines:` line as the QA-only count, and adds
+  `Coverage Scope:` and `Rows Outside Reporting Scope:` lines. So `107` is
+  never presented as the canonical real-shrine denominator, and `5` is never
+  presented as "5 test fixtures".
 
 ## 6. Explicit canonical scope behavior
 
@@ -143,13 +157,17 @@ silently fall back to a wrong denominator.
 |---|---|---|
 | `total_db_shrines` | all `Shrine` rows | unchanged |
 | `audit_target_shrines` | QA-filtered DB row count (**implied canonical**) | scope count; meaning set by `scope.mode` |
-| `excluded_test_shrines` | `total − audit_target` | unchanged key; = rows outside the scope |
-| `scope` | *(absent)* | `{mode, count, total_db_shrines, outside_scope_count, resolved_in_db, note}` |
-| command text | `Audit Target Shrines: 107` | `Coverage Scope: qa_filtered_db (107 …)` + annotated `Audit Target Shrines: 107 [… NOT necessarily the canonical … denominator]` |
+| `excluded_test_shrines` | `total − audit_target` (== QA count only because scope was always QA-filtered) | **actual `exclude_qa_fixture_shrines` count**, computed independent of scope; explicit-scope example: `1`, not `5` |
+| `scope` | *(absent)* | `{mode, count, total_db_shrines, qa_fixture_excluded_count, outside_scope_count, resolved_in_db, note}` |
+| `scope.outside_scope_count` | — | `total_db_shrines − scope.count` — "rows outside the reporting scope" (may differ from `excluded_test_shrines`) |
+| `scope.qa_fixture_excluded_count` | — | mirrors top-level `excluded_test_shrines` (QA/test fixture exclusion count) |
+| command text | `Audit Target Shrines: 107` / `Excluded Test Shrines: 5` | `Coverage Scope: <mode> (…)` + annotated `Audit Target Shrines:` + `Excluded Test Shrines: N (QA/test fixture exclusion count over ALL DB rows …)` + `Rows Outside Reporting Scope: M` |
 | `scope.mode` values | — | `qa_filtered_db` (default) / `explicit` |
 
-All metric calculations and percentage denominators are unchanged in formula —
-only which id list feeds them.
+For `qa_filtered_db` mode `excluded_test_shrines == scope.outside_scope_count`
+(they coincide). For `explicit` mode they are computed separately and generally
+differ. All metric calculations and percentage denominators are unchanged in
+formula — only which id list feeds them.
 
 ## 8. Auto-discovery boundary
 

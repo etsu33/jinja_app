@@ -95,11 +95,13 @@ def _audit_scoped_sources_queryset(shrine_ids: list[int]) -> QuerySet:
 
 def _resolve_scope(
     shrine_ids: Iterable[int] | QuerySet | None,
+    *,
+    default_ids: list[int],
 ) -> tuple[str, list[int]]:
     """母集団選択をここに一本化する（集計ロジックとは分離）。
 
-    - ``None``      → 既定スコープ（QA fixture除外後の全DB行）。「canonical
-      unique-real-shrine set」ではない点に注意。
+    - ``None``      → 既定スコープ（``default_ids`` = QA fixture除外後の全DB行）。
+      「canonical unique-real-shrine set」ではない点に注意。
     - iterable/QuerySet → 明示スコープ。**空**（``[]`` / 空QuerySet）は
       「0社を監査する」を意味し、``None`` とは決して同一視しない。
 
@@ -108,7 +110,7 @@ def _resolve_scope(
     で乖離が見える）。
     """
     if shrine_ids is None:
-        return "qa_filtered_db", _qa_filtered_shrine_ids()
+        return "qa_filtered_db", list(default_ids)
     if isinstance(shrine_ids, QuerySet):
         ids = list(shrine_ids.values_list("id", flat=True))
     else:
@@ -135,14 +137,30 @@ def build_knowledge_coverage_report(
 
     件数(count)に加え、対象スコープ件数に対する割合(percentage、小数1桁)も
     併記する。DB実測値をhardcodeせず、呼び出し時点のDB状態から毎回計算する。
-    ``scope`` キーに母数の意味論（mode / count / total_db_shrines /
-    outside_scope_count / resolved_in_db / note）を明示する。
+
+    母数の意味論を混同しないための2つの独立した件数:
+
+    - ``excluded_test_shrines``（top-level, 後方互換キー）
+      = ``exclude_qa_fixture_shrines(Shrine.objects.all())`` が実際に除外した
+        行数。**QA/テストfixture除外数そのもの**であり、選択スコープには依存
+        しない。explicit スコープでも「スコープ外の全行数」に読み替えない。
+    - ``scope.outside_scope_count``
+      = 選択された reporting scope の外にある DB 行数
+        （``total_db_shrines - scope.count``）。
+
+    ``qa_filtered_db`` モードでは両者は一致することがある。``explicit`` モード
+    では一致しない（例: total 108 / canonical scope 103 のとき
+    ``excluded_test_shrines = 1``、``outside_scope_count = 5``）。
     """
 
     total_db_shrines = Shrine.objects.count()
-    scope_mode, audit_target_ids = _resolve_scope(shrine_ids)
+    # QA/テストfixture除外「そのもの」の件数。選択スコープとは無関係に常に算出。
+    qa_filtered_ids = _qa_filtered_shrine_ids()
+    excluded_test_shrines = total_db_shrines - len(qa_filtered_ids)
+
+    scope_mode, audit_target_ids = _resolve_scope(shrine_ids, default_ids=qa_filtered_ids)
     audit_target_shrines = len(audit_target_ids)
-    excluded_test_shrines = total_db_shrines - audit_target_shrines
+    outside_scope_count = total_db_shrines - audit_target_shrines
     resolved_in_db = (
         Shrine.objects.filter(id__in=audit_target_ids).count() if audit_target_ids else 0
     )
@@ -158,12 +176,17 @@ def build_knowledge_coverage_report(
         scope_note = (
             "explicit: 呼び出し側が明示指定した audit scope ちょうどで集計。"
             "空スコープは0社監査を意味する（既定スコープにフォールバックしない）。"
+            " outside_scope_count（スコープ外行数）は QA fixture 除外数"
+            "（excluded_test_shrines）とは別物。"
         )
     scope = {
         "mode": scope_mode,
         "count": audit_target_shrines,
         "total_db_shrines": total_db_shrines,
-        "outside_scope_count": excluded_test_shrines,
+        # QA/テストfixture除外「そのもの」の件数（= top-level excluded_test_shrines）
+        "qa_fixture_excluded_count": excluded_test_shrines,
+        # 選択スコープの外にある DB 行数（QA除外数とは限らない）
+        "outside_scope_count": outside_scope_count,
         "resolved_in_db": resolved_in_db,
         "note": scope_note,
     }
