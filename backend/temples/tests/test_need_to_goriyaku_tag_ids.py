@@ -10,16 +10,24 @@
 #   invalid {10, 22, 23}).
 # - docs/audit/remaining-need-goriyaku-semantic-mapping.md
 #   (SAFE_CORRECTIONS, Section 19) / safe-remaining-need-goriyaku-mapping-
-#   correction.md: relationship/health/focus/family corrected. communication/
-#   mental/courage remain unchanged (Section 20, Mother Ship product
-#   decisions pending).
+#   correction.md: relationship/health/focus/family corrected.
+# - docs/audit/remaining-need-semantic-decision-packets.md
+#   ("## Mother Ship Decisions", 2026-08-29): communication = EVIDENCE_LIMITED
+#   with Evidence Policy DISABLE_GID_EVIDENCE -- its invalid mapping
+#   {30, 33, 37, 39} is removed (now set()); no replacement GID, no Text
+#   Evidence. mental/courage still remain unchanged pending their own
+#   Mother Ship decisions (courage = KEEP_SHARED is recorded but out of
+#   scope for the communication PR).
 # - docs/audit/marriage-love-alias-boundary.md /
 #   marriage-need-independence-implementation.md: marriage corrected to
 #   {1, 18} and made independently reachable (NEED_TAG_ALIASES["marriage"]
 #   removed).
 # A future edit to NEED_TO_GORIYAKU_IDS surfaces as an intentional diff
 # here rather than a silent regression.
-from temples.domain.need_to_goriyaku_tag_ids import NEED_TO_GORIYAKU_IDS
+from temples.domain.need_to_goriyaku_tag_ids import (
+    NEED_TO_GORIYAKU_IDS,
+    need_tags_to_goriyaku_ids,
+)
 
 # Canonical GoriyakuTag master baseline (docs/audit/goriyaku-mapping-master-
 # integrity.md Section 4): 39 rows, contiguous ids 1-39. Any
@@ -82,12 +90,29 @@ def test_marriage_mapping_matches_need_independence_correction():
     assert 29 not in NEED_TO_GORIYAKU_IDS["marriage"]
 
 
+def test_communication_gid_evidence_is_disabled():
+    # Mother Ship 2026-08-29: Communication = EVIDENCE_LIMITED, Evidence
+    # Policy = DISABLE_GID_EVIDENCE
+    # (docs/audit/remaining-need-semantic-decision-packets.md
+    # "## Mother Ship Decisions"). The semantically invalid mapping
+    # {30, 33, 37, 39} is removed; no replacement GID is added.
+    assert NEED_TO_GORIYAKU_IDS["communication"] == set()
+    assert need_tags_to_goriyaku_ids(["communication"]) == set()
+
+
+def test_disabling_communication_does_not_touch_other_needs_sharing_those_gids():
+    # GID 30 (強運厄除け) stays with career + courage; GID 33 (病気平癒)
+    # stays with health. Only communication's relationship to the invalid
+    # GIDs is removed -- canonical GoriyakuTag records are untouched.
+    assert 30 in NEED_TO_GORIYAKU_IDS["career"]
+    assert 30 in NEED_TO_GORIYAKU_IDS["courage"]
+    assert 33 in NEED_TO_GORIYAKU_IDS["health"]
+
+
 def test_purposes_outside_correction_scope_are_unchanged():
-    # communication/mental/courage remain Mother Ship product decisions
-    # (docs/audit/remaining-need-goriyaku-semantic-mapping.md Section 20)
+    # mental/courage remain Mother Ship product decisions of their own
     # -- pinned so a future edit can't silently widen the change beyond
     # the approved Needs above.
-    assert NEED_TO_GORIYAKU_IDS["communication"] == {30, 33, 37, 39}
     assert NEED_TO_GORIYAKU_IDS["mental"] == {11, 16, 26, 28, 38}
     assert NEED_TO_GORIYAKU_IDS["courage"] == {12, 15, 18, 20, 24, 30, 38}
 

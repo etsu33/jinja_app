@@ -143,12 +143,20 @@ def _candidate(name, goriyaku_tag_ids, **overrides):
     return base
 
 
+# NOTE: `communication` was previously exercised here via a candidate
+# carrying GID 30. Mother Ship 2026-08-29 (Communication = EVIDENCE_LIMITED,
+# Evidence Policy = DISABLE_GID_EVIDENCE --
+# docs/audit/remaining-need-semantic-decision-packets.md) removed
+# communication's GID mapping, so it can no longer produce a matched-via-GID
+# recommendation and cannot be a case for this live path. communication's
+# `label_ja` entry itself is still pinned by
+# test_all_canonical_needs_have_a_label / test_no_canonical_need_resolves_to
+# _its_own_raw_key (both parametrized over all 15 NEED_TAGS).
 @pytest.mark.parametrize(
     ("need", "query", "candidate_name", "goriyaku_tag_ids"),
     [
         ("marriage", "結婚したい", "夫婦円満神社", [18]),
         ("relationship", "職場の人間関係を改善したい", "縁結び神社", [1]),
-        ("communication", "営業で成果を出したい", "商売繁盛神社", [30]),
         ("health", "健康でいたい", "健康神社", [7]),
         ("family", "子宝に恵まれたい", "子宝神社", [2]),
     ],
