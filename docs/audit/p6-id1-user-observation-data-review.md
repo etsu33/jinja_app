@@ -42,12 +42,16 @@ confirms and fully characterises it.
   spurious `source_type_distribution: {user_observation: 1}` entry and
   `total_source_count` / `verified_source_count` drop by 1. **No shrine's
   coverage / fact-ready classification changes.**
-- **Integrity classification: `UNSUPPORTED`.** **Recommended data action:
-  `REMOVE_CANDIDATE`** (audit-only task — nothing is deleted or mutated here).
-- **Proposed delivery (P6-DATA, not this task):** a scoped, reversible
-  `RunPython` data migration (`0098`), identity-guarded, matching by semantic
-  identity never by pk, paired with removing `src-999004` from
-  `batch_1_7_seed.json` so a future re-import cannot reintroduce it.
+- **Integrity classification (audit conclusion): `UNSUPPORTED`.**
+  **Recommended data action (audit conclusion): `REMOVE_CANDIDATE`.** The
+  disposition of the target Source, the removal scope, the delivery mechanism,
+  and the seed fix are **Mother Ship decisions and remain pending** — see §16.
+- **`RECOMMENDED_IMPLEMENTATION` (candidate, not a final decision), for P6-DATA
+  only:** a scoped, reversible `RunPython` data migration (`0098`),
+  identity-guarded, matching by semantic identity never by Source pk, removing
+  the 2 M2M links and deleting the Source only when unreferenced, paired with
+  removing `src-999004` from `batch_1_7_seed.json` so a future re-import cannot
+  reintroduce it.
 
 ## 2. Baseline
 
@@ -321,10 +325,11 @@ removed:
 | Knowledge coverage report | `source_type_distribution` loses `user_observation: 1`; `total_source_count` 114 → 113; `verified_source_count` −1; `source_count_distribution` for id 1 shifts one bucket. **`knowledge_coverage`, `deity_coverage`, `history_coverage`, `both_deity_and_history_coverage`, `fact_ready_*`, `zero_knowledge` — all unchanged** (id 1 still has deity + history + Source 1). |
 | Admin | one fewer `user_observation` row in the Source list filter |
 
-**`P6_RECOMMENDATION_IMPACT = NONE`. `P6_KNOWLEDGE_COVERAGE_IMPACT = YES`**
-(audit-report metrics only: `total_source_count` / `verified_source_count` −1,
-`source_type_distribution` drops `user_observation:1`; **zero** change to any
-shrine's coverage classification — non-material).
+**`P6_RECOMMENDATION_IMPACT = NONE`. `P6_KNOWLEDGE_COVERAGE_IMPACT =
+YES_NON_MATERIAL`** (audit-report metrics only: `total_source_count` /
+`verified_source_count` −1, `source_type_distribution` drops
+`user_observation:1`; **zero** change to any shrine's coverage
+classification).
 
 ## 14. Proposed Remediation
 
@@ -338,7 +343,11 @@ shrine's coverage classification — non-material).
 | B. management command | One-off, not version-pinned, no automatic reverse, no ledger record, easy to misrun. Repo commands are for repeatable ingestion (`import_shrine_knowledge`), not one-shot deletions. Rejected. |
 | C. manual Production deletion | No identity guard, no test, no reverse, no audit trail; contradicts the `scripts/migration_safety` "no ad-hoc Production writes" posture. Rejected. |
 
-### Recommended design (proposal only)
+### `RECOMMENDED_IMPLEMENTATION` — candidate design, not a `FINAL_DECISION`
+
+This section is the audit's engineering recommendation for *how* a removal
+would be built **if** the Mother Ship decides to remove (§16). It is not a
+decision and nothing here is implemented in this task.
 
 Next migration number after `0097` → **`0098`** (confirm against `develop` at
 implementation time; do not hard-code).
@@ -364,11 +373,16 @@ implementation time; do not hard-code).
   and re-add it to the two deities — mirroring 0096's reversibility contract.
 - **Idempotent:** re-running forward after it has run is a no-op (0 matches /
   links already gone).
-- **`P6_REMOVAL_SCOPE = FACT_AND_SOURCE`** — remove the 2 M2M links **and**
-  delete the now-orphan Source row (it carries no independent value; keeping an
-  orphan test Source has no provenance benefit). Unlink-only
-  (`TARGET_FACT_ONLY`) is the conservative fallback if the Mother Ship prefers
-  to retain the row.
+- **Removal-scope candidate options** (the target *is* a Source, so the scope
+  is expressed in Source terms — Mother Ship selects one, see §16):
+  - `SOURCE_AND_RELATIONS` — remove the 2 `ShrineDeity ↔ Source` M2M links
+    **and** delete the now-orphan `ShrineKnowledgeSource` row. *(This is the
+    scope the candidate design above is written for; an orphan test Source
+    carries no provenance value.)*
+  - `RELATIONS_ONLY` — remove the 2 M2M links, **retain** the Source row
+    (conservative; leaves an orphan row that still shows in
+    `source_type_distribution`).
+  - `KEEP` — take no action (record the finding only).
 
 ### Companion seed fix (same P6-DATA PR, or an explicitly linked one)
 
@@ -417,31 +431,58 @@ A P6-DATA implementation must add tests asserting:
 
 ## 16. Mother Ship Decision Packet
 
-Established as technical facts by this audit:
+The three categories below are kept strictly separate. Only the first is a set
+of audit conclusions; nothing in it authorises a change.
+
+### 16.1 Established findings (audit conclusions — technically verified)
 
 ```text
-P6_TARGET_FACT_STATUS       = REMOVE_CANDIDATE
-P6_REMOVAL_SCOPE            = FACT_AND_SOURCE   (2 ShrineDeity↔Source links + the now-orphan ShrineKnowledgeSource row; TARGET_FACT_ONLY = conservative fallback)
-P6_DELIVERY                = REVERSIBLE_DATA_MIGRATION   (scoped RunPython "0098", + companion batch_1_7_seed.json fix)
-P6_RECOMMENDATION_IMPACT   = NONE
-P6_KNOWLEDGE_COVERAGE_IMPACT = YES   (audit report only: verified_source_count / total_source_count -1; source_type_distribution drops user_observation:1; NO shrine coverage classification changes)
-P6_CONTAMINATION_SCOPE     = ISOLATED   (1 Source row, 1 shrine id 1, 2 deity links; full sweep found nothing else)
+P6_INTEGRITY_CLASSIFICATION  = UNSUPPORTED
+P6_RECOMMENDED_DATA_ACTION   = REMOVE_CANDIDATE
+P6_RECOMMENDATION_IMPACT     = NONE
+P6_KNOWLEDGE_COVERAGE_IMPACT = YES_NON_MATERIAL   (audit report only: total_source_count / verified_source_count -1; source_type_distribution drops user_observation:1; NO shrine coverage classification changes)
+P6_CONTAMINATION_SCOPE       = ISOLATED           (1 ShrineKnowledgeSource row, 1 shrine id 1, 2 ShrineDeity M2M links; full sweep found nothing else)
 ```
 
-Decisions still requiring Mother Ship / data-governance judgment (not
-technical facts):
+### 16.2 `RECOMMENDED_IMPLEMENTATION` (engineering recommendation — NOT a `FINAL_DECISION`)
 
-1. **Ratify `REMOVE` vs `KEEP`.** The audit recommends removal; the record is
-   harmless to Recommendation but is served as a bogus citation on Meiji
-   Jingū's Shrine Detail page.
-2. **Row disposition:** delete the orphan Source row (`FACT_AND_SOURCE`,
-   recommended) vs unlink-only and retain the row (`TARGET_FACT_ONLY`).
-3. **Seed-fix coupling:** confirm the `batch_1_7_seed.json` `src-999004`
-   removal ships in the same P6-DATA PR as the migration (recommended) so
-   re-import cannot reintroduce it.
-4. **Sequencing** relative to the still-unapplied 0095–0097 (the migration
-   number and `dependencies` must be finalised against `develop` at
-   implementation time).
+Applicable only if 16.3 resolves to a removal. Detailed in §14:
+
+- scoped **reversible `RunPython`** data migration (`0098`; number +
+  `dependencies` confirmed against `develop` at implementation time), CI-tested
+  — **not** a management command, **not** a manual Production deletion;
+- **semantic identity matching, never the Source pk** — on
+  `source_type` / `title` / `url=""` / `bibliography` (Production pk 2 vs
+  local pk 999004);
+- Shrine guard `pk=1 AND name_jp="明治神宮" AND place_ref_id IS NULL`; deities
+  matched by `shrine_id=1` + `display_name`;
+- forward removes the **2 `ShrineDeity ↔ Source` M2M links**, then deletes the
+  Source row **only when it is unreferenced** by any deity/history; reverse
+  recreates the seed row and re-links both deities;
+- **companion seed cleanup**: remove `src-999004` (and its two `source_keys`
+  entries) from `backend/temples/data/knowledge_seeds/batch_1_7_seed.json` to
+  prevent re-import from reintroducing an orphan row;
+- the 12-point regression contract in §15.
+
+### 16.3 Mother Ship decisions — PENDING (governance judgment, not technical facts)
+
+```text
+P6_TARGET_SOURCE_STATUS = PENDING_MOTHER_SHIP
+P6_REMOVAL_SCOPE        = PENDING_MOTHER_SHIP
+P6_DELIVERY             = PENDING_MOTHER_SHIP
+P6_SEED_FIX             = PENDING_MOTHER_SHIP
+```
+
+| Field | Candidate options | Audit's recommendation (non-binding) |
+|---|---|---|
+| `P6_TARGET_SOURCE_STATUS` | `REMOVE` / `KEEP` | `REMOVE` — harmless to Recommendation, but served as a bogus citation on 明治神宮's Shrine Detail page; origin is a fabricated seed placeholder |
+| `P6_REMOVAL_SCOPE` | `SOURCE_AND_RELATIONS` / `RELATIONS_ONLY` / `KEEP` | `SOURCE_AND_RELATIONS` — the orphan test Source has no provenance value |
+| `P6_DELIVERY` | `REVERSIBLE_DATA_MIGRATION` / `MANAGEMENT_COMMAND` / `MANUAL` / `N_A` | `REVERSIBLE_DATA_MIGRATION` (scoped `RunPython` `0098`) — matches repo convention 0090–0097 |
+| `P6_SEED_FIX` | `BUNDLED_WITH_MIGRATION_PR` / `SEPARATE_LINKED_PR` / `NONE` | `BUNDLED_WITH_MIGRATION_PR` — otherwise a later `import_shrine_knowledge` re-creates the orphan row |
+
+Additional pending item: **sequencing** relative to the still-unapplied
+0095–0097 — the `0098` number and `dependencies` must be finalised against
+`develop` at P6-DATA implementation time.
 
 ## 17. STOP
 
@@ -456,4 +497,5 @@ This is an audit / decision packet only.
 - Baseline confirmed: `origin/develop` @ `92004df5c35a3872f66d81362d2bdfada77a3095`.
 - **Does not** implement P6-DATA. **Does not** continue to P8.
 
-Next step is a Mother Ship decision on §16, then a separate P6-DATA PR.
+Next step is a Mother Ship decision on §16.3, then a separate P6-DATA PR
+implementing §16.2 if a removal is chosen.
