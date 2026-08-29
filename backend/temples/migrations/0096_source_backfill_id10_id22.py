@@ -35,21 +35,49 @@ relates the reviewed Source to the same semantic Fact in every environment.
   first (re-run reuses it — no duplicate Source row);
 - `.add()` on the M2M is a no-op when the relation already exists (idempotent).
 
-**Reverse safety (F5, `docs/audit/source-backfill-id10-id22-reproducibility.md`
-"0096 reverse edge case").** Forward stamps a sentinel into `note`
-(`MIGRATION_TAG`) **only on a Source row it creates itself**; a pre-existing
-Source that forward merely *reuses* is never modified. Reverse then acts
-**only** on a Source carrying that exact `MIGRATION_TAG` — it never removes a
-`history ↔ Source` relation, and never deletes a Source row, that pre-existed
-this migration's forward pass. This mirrors 0095's "reverse only undoes the
-exact state forward wrote" mechanism. Concretely:
+**Reverse safety — row ownership AND relation ownership**
+(`docs/audit/source-backfill-id10-id22-reproducibility.md` §20 / §21).
 
-- PRE-0096: Source present **and** target history already cites it → forward is
-  a no-op for that Source (reuse, no stamp); reverse sees no `MIGRATION_TAG`
-  and is a no-op → the pre-existing relation and Source row are preserved.
-- Normal: Source absent → forward creates it (stamped) and adds the intended
-  relations; reverse removes those relations and deletes the row (only because
-  it created it, and only if nothing else now cites it).
+Reverse must restore the exact PRE-forward semantic state, which means it has
+to tell apart two independent kinds of ownership:
+
+1. **Source-row ownership.** Forward stamps `MIGRATION_TAG` into
+   `ShrineKnowledgeSource.note` **only on a row it `create()`s itself**. A
+   pre-existing Source that forward merely *reuses* by `url` + `source_type`
+   never gets that tag, and reverse never deletes such a row.
+
+2. **Relation ownership.** A row-level tag cannot say *which* individual
+   `history ↔ Source` links forward added — a reused Source may already cite
+   some target histories (curated by hand) while forward adds the link to the
+   others. So forward records the links it actually creates in a single
+   delimited, append-only line in `note`:
+
+       <original note><SEP>[temples.0096:added-histories] <type>::<title> | ...
+
+   `SEP` is `"\n\n"`. The line lists **only** links this migration's forward
+   pass newly created (target links that were absent beforehand). Reverse
+   reads that line, removes exactly those links (matched against this entry's
+   static `histories` spec — never trusting the free-text token), then
+   restores `note` to the exact byte-for-byte prefix before
+   `SEP + prefix`. A pre-existing link that forward left untouched is never
+   recorded and never removed. If forward added no new link (every target link
+   already existed) it writes no line and does not touch `note` at all.
+
+This mirrors 0095's "reverse only undoes the exact state forward wrote" — at
+the level of the individual relation.
+
+Concretely (PRE = state before forward):
+
+- **A. reused Source + target link already present** → forward adds nothing,
+  writes no marker line; reverse is a no-op → the pre-existing link and row
+  (and its curated `note`) are preserved untouched.
+- **B. reused Source + target link absent** → forward adds the link and
+  records it; reverse removes that link, strips its own `note` line back to
+  the original, and keeps the row.
+- **C. Source absent** → forward `create()`s it (tagged) and adds the links;
+  reverse removes the links and deletes the row iff nothing else cites it.
+- **D. mixed** — reused Source, history A already linked, history B not →
+  forward records only B; reverse removes only B, keeps A, keeps the row.
 
 `SELECT` on `Shrine` excludes `location` (`.only(...)`, the 0091/0094 legacy
 `text`-column guard).
@@ -63,15 +91,23 @@ SHRINE_LOOKUP_FIELDS = ("id", "name_jp", "place_ref_id", "updated_at")
 VERIFIED_AT = "2026-08-29T00:00:00+00:00"
 
 # Sentinel written to `ShrineKnowledgeSource.note` **only** on rows this
-# migration's forward pass creates. Reverse touches a Source only if its `note`
-# contains this exact marker, so a pre-existing (reused) Source and its
-# pre-existing relations are never removed on rollback.
+# migration's forward pass creates. Reverse deletes a Source row only if its
+# `note` contains this exact marker (row ownership).
 MIGRATION_TAG = "[temples.0096:auto-created]"
 MIGRATION_NOTE = (
     MIGRATION_TAG
     + " P4 provenance backfill — created by data migration temples.0096; "
     "reverse of temples.0096 removes this row and the relations it added."
 )
+
+# Prefix of the single append-only line that records which `history ↔ Source`
+# links forward newly created (relation ownership). Never written when forward
+# added no new link. `ADDED_HISTORIES_SEP` always precedes it so reverse can
+# restore the exact original `note` prefix.
+ADDED_HISTORIES_PREFIX = "[temples.0096:added-histories]"
+ADDED_HISTORIES_SEP = "\n\n"
+_HISTORY_TOKEN_SEP = " | "
+_TYPE_TITLE_SEP = "::"
 
 # One reviewed Source per shrine + the existing histories it corroborates.
 BACKFILL = [
@@ -131,9 +167,10 @@ def _find_source(ShrineKnowledgeSource, spec):
 def _get_or_create_source(ShrineKnowledgeSource, spec):
     """Return ``(source, created_by_this_migration)``.
 
-    A pre-existing row is reused **as-is** (``created`` is ``False`` and its
-    ``note`` is never modified). A newly created row carries ``MIGRATION_NOTE``
-    so reverse can tell it apart from anything it must not touch.
+    A pre-existing row is reused **as-is** (``created`` is ``False``); its
+    ``note`` is preserved verbatim except for the append-only
+    relation-ownership line, which reverse strips back off. A newly created row
+    carries ``MIGRATION_NOTE`` so reverse can tell it apart for row deletion.
     """
     src = _find_source(ShrineKnowledgeSource, spec)
     if src is not None:
@@ -167,6 +204,42 @@ def _matching_histories(ShrineHistory, shrine_id, specs):
     return out
 
 
+def _history_token(htype, title):
+    return f"{htype}{_TYPE_TITLE_SEP}{title}"
+
+
+def _parse_added_histories(note):
+    """Return the set of ``type::title`` tokens recorded by forward, or ``None``
+    if no relation-ownership line is present."""
+    for line in (note or "").splitlines():
+        stripped = line.strip()
+        if stripped.startswith(ADDED_HISTORIES_PREFIX):
+            rest = stripped[len(ADDED_HISTORIES_PREFIX):].strip()
+            return {
+                tok.strip()
+                for tok in rest.split(_HISTORY_TOKEN_SEP.strip())
+                if tok.strip()
+            }
+    return None
+
+
+def _note_prefix_before_marker(note):
+    """The exact original ``note`` text — everything before
+    ``ADDED_HISTORIES_SEP + ADDED_HISTORIES_PREFIX``. Byte-for-byte reversible."""
+    needle = ADDED_HISTORIES_SEP + ADDED_HISTORIES_PREFIX
+    return (note or "").split(needle, 1)[0]
+
+
+def _with_added_histories_line(base_note, tokens):
+    return (
+        base_note
+        + ADDED_HISTORIES_SEP
+        + ADDED_HISTORIES_PREFIX
+        + " "
+        + _HISTORY_TOKEN_SEP.join(tokens)
+    )
+
+
 def apply_source_backfill(apps, schema_editor):
     Shrine = apps.get_model("temples", "Shrine")
     ShrineHistory = apps.get_model("temples", "ShrineHistory")
@@ -179,9 +252,29 @@ def apply_source_backfill(apps, schema_editor):
         histories = _matching_histories(ShrineHistory, shrine.id, entry["histories"])
         if not histories:
             continue
+
         src, _created = _get_or_create_source(ShrineKnowledgeSource, entry["source"])
+
+        already_recorded = _parse_added_histories(src.note)
+
+        # Links this forward pass newly creates (absent beforehand). Computed
+        # BEFORE any `.add()`, and only when no prior forward pass has already
+        # recorded its set — so re-running forward never rewrites or loses the
+        # true PRE-forward relation ownership.
+        newly_linked = []
+        if already_recorded is None:
+            for h in histories:
+                if not h.sources.filter(pk=src.pk).exists():
+                    newly_linked.append(h)
+
         for h in histories:
             h.sources.add(src)  # no-op if already related
+
+        if already_recorded is None and newly_linked:
+            tokens = [_history_token(h.history_type, h.title) for h in newly_linked]
+            base_note = _note_prefix_before_marker(src.note)
+            src.note = _with_added_histories_line(base_note, tokens)
+            src.save(update_fields=["note"])
 
 
 def revert_source_backfill(apps, schema_editor):
@@ -196,19 +289,42 @@ def revert_source_backfill(apps, schema_editor):
         src = _find_source(ShrineKnowledgeSource, entry["source"])
         if src is None:
             continue
-        # F5 guard: only undo a Source row this migration's forward pass
-        # actually created (identified by the sentinel in `note`). A
-        # pre-existing / reused Source — and any relation it already had — is
-        # left exactly as found.
-        if MIGRATION_TAG not in (src.note or ""):
-            continue
-        histories = _matching_histories(ShrineHistory, shrine.id, entry["histories"])
-        for h in histories:
+
+        recorded_tokens = _parse_added_histories(src.note)
+        row_created_here = MIGRATION_TAG in (src.note or "")
+
+        # Which target links did forward create? Only those it recorded, matched
+        # against this entry's static spec (never trusting the free-text token).
+        # Fallback: a forward-created row with no recorded line (should not
+        # occur — a created row always has >=1 new link) owns every target
+        # link. A reused row with no recorded line added nothing → no-op.
+        if recorded_tokens is not None:
+            owned_specs = [
+                (htype, title)
+                for (htype, title) in entry["histories"]
+                if _history_token(htype, title) in recorded_tokens
+            ]
+        elif row_created_here:
+            owned_specs = list(entry["histories"])
+        else:
+            owned_specs = []
+
+        for h in _matching_histories(ShrineHistory, shrine.id, owned_specs):
             h.sources.remove(src)
-        # delete the row this migration created, unless something else now
-        # references it.
-        if not src.deities.exists() and not src.histories.exists():
-            src.delete()
+
+        if row_created_here:
+            # A row forward created: drop it unless something else now cites it.
+            if not src.deities.exists() and not src.histories.exists():
+                src.delete()
+                continue
+
+        if recorded_tokens is not None:
+            # Reused (or surviving created) row: restore `note` to the exact
+            # pre-forward text.
+            restored = _note_prefix_before_marker(src.note)
+            if restored != (src.note or ""):
+                src.note = restored
+                src.save(update_fields=["note"])
 
 
 class Migration(migrations.Migration):
