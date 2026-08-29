@@ -27,8 +27,9 @@ Background reading (read in this order):
 | `dump_readonly.sh` | Read-only logical dump (`pg_dumpall --roles-only` + `pg_dump --schema-only` + `pg_dump --data-only`, `public` schema only) of a URL you pass explicitly. Logs no connection-target component and keeps the URL out of child-process argv. |
 | `restore_isolated.sh` | Restores a dump into a target URL only after `guard.py` confirms the target is a disposable local database. Logs no connection-target component and keeps the URL out of `psql` argv. |
 | `sql/migration_state.sql` | SELECT-only. Per-app latest applied migration. |
-| `sql/pre_migration_snapshot.sql` | SELECT-only. Run immediately before a backup/migration attempt; records the baseline to compare against later. |
-| `sql/post_migration_verification.sql` | SELECT-only. Run after migration; every value must match the pre-migration snapshot except the two migrations you intentionally applied. |
+| `sql/pre_migration_snapshot.sql` | SELECT-only. **Historical runbook for `users 0006` / `temples 0090-0093` only.** Run immediately before that backup/migration attempt; records the baseline to compare against later. Not used for, and not updated for, the `temples 0095-0098` preflight below — that is a separate, later migration boundary with its own file. |
+| `sql/post_migration_verification.sql` | SELECT-only. **Historical runbook for `users 0006` / `temples 0090-0093` only**, paired with `pre_migration_snapshot.sql` above. Run after that migration; every value must match the pre-migration snapshot except the two migrations intentionally applied. Same scope note as above — not reused for `temples 0095-0098`. |
+| `sql/temples_0095_0098_preflight.sql` | SELECT-only. **`temples` 0095→0096→0097→0098 Production-apply preflight — use this immediately before applying those four, and only those four.** Confirms `temples` migration ledger position (0094 applied, 0095-0098 not) and, section by section, the exact precondition each of the four migrations' own `forward` implementation checks before mutating anything — derived by reading each migration's code and tests, not guessed. See "Runbook: temples 0095-0098 Preflight" below. |
 | `tests/test_guard.py` | Unit tests for `guard.py`, including the credential-bridge functions (`describe_url_shape`, `is_readonly_sql`, `pg_env_exports`). No DB required. |
 | `tests/test_backup_restore_e2e.sh` | End-to-end local test: builds a `users=0005`/`temples=0089` local database, dumps it, restores it into a second isolated database through the actual guarded scripts, verifies they match, applies `users 0006` + `temples 0090-0093` to the restored copy, verifies again, rolls back. Never touches Production. |
 | `tests/test_credential_bridge_e2e.sh` | End-to-end local test of the credential bridge using a fake local credential (never Production): presence check leaks nothing, a read-only query actually connects, writes/`EXPLAIN ANALYZE`/wrong-permissions/in-repo-path are all refused pre-connection. |
@@ -243,6 +244,55 @@ explicit staleness threshold once real Production dump/restore timing is
 known; this hasn't been measured against Production and is marked
 `UNVERIFIED` accordingly.
 
+## Runbook: `temples` 0095-0098 Preflight
+
+**This is a separate, later precondition check from the Phase 1-3 backup/
+restore runbook above.** `sql/pre_migration_snapshot.sql` and
+`sql/post_migration_verification.sql` are the historical runbook for `users
+0006` / `temples 0090-0093` — they check that earlier migration boundary
+and are not edited or reused here. `sql/temples_0095_0098_preflight.sql` is
+its own file, scoped only to confirming Production is in the expected
+pre-state for applying `temples` **0095 → 0096 → 0097 → 0098**, in that
+order, as a group.
+
+Each of that file's sections was derived by reading the named migration's
+own `forward` implementation and its own test suite — not guessed — so it
+checks exactly the condition that migration's code checks before mutating
+anything:
+
+- **Section 0** — `django_migrations` ledger: `0094` applied, `0095-0098`
+  not; a STOP-worthy output if that's not the case.
+- **Section 1** (`0095`) — shrine 107 / 108 identity, empty `goriyaku` +
+  zero `goriyaku_tags`, and that every canonical PASS label already exists
+  in the `GoriyakuTag` master. `0095` is **best-effort, not fail-closed** —
+  a deviation makes that shrine a silent no-op, not an error.
+- **Section 2** (`0096`) — shrine 10 / 22 identity, target `ShrineHistory`
+  rows, existing-vs-to-be-created state of each target `ShrineKnowledgeSource`
+  (matched by `url` + `source_type`, never pk), and existing history↔Source
+  relation state.
+- **Section 3** (`0097`) — shrine 21 / 22 identity, required `GoriyakuTag`
+  rows + required relations, and the optional `地域安泰` tag's 3-state
+  STRICT_EXACT contract (row absent = safe; row + relation present = safe;
+  row present with relation absent = **will raise and block the whole
+  migration**). `0095`/`0096` are best-effort; `0097` (and `0098`) are
+  **fail-closed** — any violation here changes zero rows.
+- **Section 4** (`0098`) — shrine 1 identity, the exact 5-field stray
+  `ShrineKnowledgeSource` semantic identity, the two target `ShrineDeity`
+  rows, and that the Source is cited by exactly those two relations and no
+  `ShrineHistory`. Fail-closed, same as `0097`.
+
+**How to run** (read-only; never paste the credential into chat):
+
+```bash
+scripts/migration_safety/readonly_query.sh \
+  ~/.config/kami-musubi/production-db.env DATABASE_URL \
+  scripts/migration_safety/sql/temples_0095_0098_preflight.sql
+```
+
+Run it once well ahead of the migration window, and again immediately
+before the actual `migrate` command — treat any change in Section 0's
+ledger output between the two runs as a reason to stop and re-derive.
+
 ## Runbook: Migration Execution Candidates (Phase 4) — reference only, not endorsement
 
 These commands are documented for completeness; **do not run them without
@@ -318,3 +368,20 @@ running this end-to-end rather than just describing it.
   credential is available to this environment (see the Manual Backup
   Restore Gate doc). Everything above is proven against a local
   simulation of Production's known shape, not against Production itself.
+- `readonly_query.sh` / `check_credential_presence.sh`'s permission check
+  (`stat -f '%OLp' ... || stat -c '%a' ...`) assumes a BSD-style `stat -f`
+  that either succeeds with the requested format or fails cleanly to
+  stderr. On at least one Linux sandbox with GNU coreutils `stat`, `-f`
+  instead means "filesystem status" and both prints unrelated filesystem
+  info to stdout *and* still exits non-zero, so the `||` fallback to
+  `stat -c` never triggers and the script reports a false "BLOCKED: file
+  permissions are ..." even on an actual `600` file. This reproduces
+  identically against pre-existing scripts and SQL (`migration_state.sql`,
+  `test_readonly_query_hostname_redaction.sh`) — it is a pre-existing
+  environment-portability gap, not something introduced by
+  `temples_0095_0098_preflight.sql`. The read-only-SQL check itself
+  (`guard.py check-readonly-sql`, `is_readonly_sql`) does not use `stat` and
+  is unaffected — verified directly against the new SQL file and covered by
+  `tests/test_guard.py::TestTemples0095_0098PreflightSqlIsReadonly`. On a
+  real macOS/BSD `stat` (or a Linux fix using `stat -c` first) this
+  end-to-end path is expected to work as designed.

@@ -279,3 +279,25 @@ class TestPgEnvExports:
             check=True,
         )
         assert result.stdout == "it's$(touch_pwned)`x`"
+
+
+class TestTemples0095_0098PreflightSqlIsReadonly:
+    """No DB, no shell wrapper -- exercises exactly the check
+    `readonly_query.sh` runs before ever touching a credential
+    (`guard.py check-readonly-sql`), directly against the real preflight
+    SQL file for temples migrations 0095-0098."""
+
+    SQL_PATH = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "sql",
+        "temples_0095_0098_preflight.sql",
+    )
+
+    def test_file_exists(self):
+        assert os.path.isfile(self.SQL_PATH)
+
+    def test_every_statement_is_readonly(self):
+        with open(self.SQL_PATH, encoding="utf-8") as f:
+            sql_text = f.read()
+        ok, reason = is_readonly_sql(sql_text)
+        assert ok is True, reason
