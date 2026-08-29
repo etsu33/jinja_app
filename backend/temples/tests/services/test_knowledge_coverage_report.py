@@ -160,6 +160,204 @@ def test_report_does_not_write_to_database():
     assert ShrineKnowledgeSource.objects.count() == 0
 
 
+# --------------------------------------------------------------------------
+# P9: 母集団選択（POPULATION SELECTION）と集計（COVERAGE CALCULATION）の分離
+# docs/audit/knowledge-coverage-canonical-scope-fix.md
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_none_scope_defaults_to_qa_filtered_db():
+    baseline = build_knowledge_coverage_report()  # shrine_ids=None
+    assert baseline["scope"]["mode"] == "qa_filtered_db"
+    assert baseline["scope"]["count"] == baseline["audit_target_shrines"]
+
+    _shrine("実在神社A")
+    _shrine("承認テスト神社")  # QA fixture 命名 → 既定スコープからは除外される
+
+    report = build_knowledge_coverage_report()
+
+    assert report["scope"]["mode"] == "qa_filtered_db"
+    # 「実在神社A」だけ +1、「承認テスト神社」は QA 除外
+    assert report["audit_target_shrines"] == baseline["audit_target_shrines"] + 1
+
+
+@pytest.mark.django_db
+def test_explicit_scope_population_injection_ignores_qa_and_artifact_and_dup_rows():
+    """A/B ちょうどを scope に渡すと、QA fixture / artifact風 / duplicate風の
+    余剰行があっても canonical scope = 2 として集計できる
+    （global な QA 除外ルールを変えずに）。"""
+    a = _shrine("実在神社A")
+    b = _shrine("実在神社B")
+    _shrine("承認テスト神社")          # QA fixture
+    _shrine("広島市")                   # 非-shrine artifact 風
+    Shrine.objects.create(
+        name_jp="実在神社A", address="日本、〒000-0000 東京都別区", popular_score=0.0
+    )  # 同名 duplicate 風（別 pk / 別 address）
+
+    report = build_knowledge_coverage_report(shrine_ids=[a.id, b.id])
+
+    assert report["scope"]["mode"] == "explicit"
+    assert report["scope"]["count"] == 2
+    assert report["audit_target_shrines"] == 2
+    assert report["scope"]["resolved_in_db"] == 2
+    # DB 全行数は増えているが、スコープは供給された 2 社ちょうど
+    assert report["total_db_shrines"] >= 6
+
+
+@pytest.mark.django_db
+def test_explicit_scope_percentages_use_supplied_scope_not_all_db_rows():
+    a = _shrine("知識あり神社")
+    b = _shrine("知識なし神社")
+    for i in range(20):
+        Shrine.objects.create(
+            name_jp=f"ノイズ神社{i}", address=f"東京都ノイズ区{i}", popular_score=0.0
+        )  # 大量の DB 行（スコープ外）
+
+    source = _source()
+    deity = ShrineDeity.objects.create(
+        shrine=a, display_name="祭神A", sort_order=0,
+        verification_status="source_confirmed", verified_at=timezone.now(),
+    )
+    deity.sources.add(source)
+
+    report = build_knowledge_coverage_report(shrine_ids=[a.id, b.id])
+
+    assert report["audit_target_shrines"] == 2
+    assert report["knowledge_coverage"] == {"count": 1, "percentage": 50.0}
+    assert report["zero_knowledge"] == {"count": 1, "percentage": 50.0}
+
+
+@pytest.mark.django_db
+def test_explicit_empty_scope_audits_zero_and_does_not_fall_back_to_all():
+    _shrine("実在神社A")
+    _shrine("実在神社B")
+
+    report = build_knowledge_coverage_report(shrine_ids=[])
+
+    assert report["scope"]["mode"] == "explicit"
+    assert report["audit_target_shrines"] == 0
+    assert report["scope"]["count"] == 0
+    assert report["knowledge_coverage"] == {"count": 0, "percentage": 0.0}
+    assert report["zero_knowledge"] == {"count": 0, "percentage": 0.0}
+    assert report["verified_source_count"] == 0
+    assert report["total_source_count"] == 0
+    # 明示的な空スコープは None（既定スコープ）とは別物
+    assert report["audit_target_shrines"] != build_knowledge_coverage_report()["audit_target_shrines"]
+
+
+@pytest.mark.django_db
+def test_explicit_scope_accepts_a_queryset():
+    a = _shrine("実在神社A")
+    b = _shrine("実在神社B")
+    _shrine("承認テスト神社")
+
+    qs = Shrine.objects.filter(id__in=[a.id, b.id])
+    report = build_knowledge_coverage_report(shrine_ids=qs)
+
+    assert report["scope"]["mode"] == "explicit"
+    assert report["audit_target_shrines"] == 2
+
+
+@pytest.mark.django_db
+def test_scope_metadata_shape_and_semantics():
+    a = _shrine("実在神社A")
+    report = build_knowledge_coverage_report(shrine_ids=[a.id, a.id, 999999])
+
+    scope = report["scope"]
+    assert set(scope.keys()) == {
+        "mode", "count", "total_db_shrines", "qa_fixture_excluded_count",
+        "outside_scope_count", "resolved_in_db", "note",
+    }
+    assert scope["mode"] == "explicit"
+    # 重複 id は決定的に除去される
+    assert scope["count"] == 2
+    # 存在しない id は隠さず可視化する（resolved_in_db で乖離が分かる）
+    assert scope["resolved_in_db"] == 1
+    assert isinstance(scope["note"], str) and scope["note"]
+
+
+@pytest.mark.django_db
+def test_p9_did_not_repurpose_qa_helper_into_canonical_identity_resolver():
+    """回帰: exclude_qa_fixture_shrines は QA/テスト命名規約のみを責務とする。
+    P9 は artifact / duplicate identity をここで解決しない。"""
+    from temples.services.shrine_qa_fixture_exclusion import exclude_qa_fixture_shrines
+
+    _shrine("実在神社A")
+    Shrine.objects.create(name_jp="実在神社A", address="東京都別区", popular_score=0.0)  # dup 風
+    _shrine("広島市")       # 非-shrine artifact 風
+
+    remaining = set(
+        exclude_qa_fixture_shrines(Shrine.objects.exclude(pk=1)).values_list("name_jp", flat=True)
+    )
+    # duplicate 風 / artifact 風 は QA 除外の対象ではない（除外されない）
+    assert "実在神社A" in remaining
+    assert "広島市" in remaining
+
+
+@pytest.mark.django_db
+def test_excluded_test_shrines_stays_qa_only_while_outside_scope_count_tracks_scope():
+    """excluded_test_shrines は「QA/test fixture 除外数そのもの」であり続ける。
+    explicit スコープ外の artifact風 / duplicate風 行は QA fixture として数えない。
+
+    autouse の pk=1「テスト神社」は QA 命名なので、名前だけ実在神社に更新して
+    （delete は別スキーマの cascade を踏むため update で無害化）DB をちょうど
+    6 行にし、QA 命名は「承認テスト神社」1 行だけにする:
+      total_db_shrines = 6
+      audit_target_shrines = 2
+      excluded_test_shrines = 1      （QA fixture 命名の 1 行のみ）
+      scope.outside_scope_count = 4  （6 - 2）
+    数値は固定値ではなく、行構成から動的に導出できる関係として検証する。
+    """
+    Shrine.objects.filter(pk=1).update(name_jp="pk1実在神社", address="東京都pk1区")
+
+    a = _shrine("実在神社A")
+    b = _shrine("実在神社B")
+    _shrine("承認テスト神社")  # QA fixture 命名（← これだけが QA 除外対象）
+    _shrine("広島市")           # 非-shrine artifact 風（QA命名ではない）
+    Shrine.objects.create(
+        name_jp="実在神社A", address="東京都別区", popular_score=0.0
+    )  # duplicate 風（QA命名ではない）
+
+    report = build_knowledge_coverage_report(shrine_ids=[a.id, b.id])
+
+    assert report["total_db_shrines"] == 6
+    assert report["audit_target_shrines"] == 2
+    # QA fixture 命名は「承認テスト神社」の 1 行のみ。
+    # 広島市（artifact風）/ duplicate 実在神社A は QA fixture として数えない。
+    assert report["excluded_test_shrines"] == 1
+    assert report["scope"]["qa_fixture_excluded_count"] == 1
+    # スコープ外行数 = total - scope.count = 6 - 2 = 4（QA除外数 1 とは別物）
+    assert report["scope"]["outside_scope_count"] == report["total_db_shrines"] - report["audit_target_shrines"]
+    assert report["scope"]["outside_scope_count"] == 4
+    assert report["scope"]["outside_scope_count"] != report["excluded_test_shrines"]
+
+
+@pytest.mark.django_db
+def test_default_scope_qa_excluded_equals_outside_scope_count():
+    """qa_filtered_db モードでは両者が一致する（従来挙動の維持）。"""
+    _shrine("実在神社A")
+    _shrine("承認テスト神社")
+
+    report = build_knowledge_coverage_report()  # None → qa_filtered_db
+
+    assert report["excluded_test_shrines"] == report["scope"]["outside_scope_count"]
+    assert report["excluded_test_shrines"] == report["scope"]["qa_fixture_excluded_count"]
+
+
+@pytest.mark.django_db
+def test_explicit_scope_report_is_read_only():
+    a = _shrine("実在神社A")
+    b = _shrine("実在神社B")
+    before = list(Shrine.objects.values_list("id", "name_jp"))
+    build_knowledge_coverage_report(shrine_ids=[a.id, b.id])
+    build_knowledge_coverage_report(shrine_ids=[])
+    after = list(Shrine.objects.values_list("id", "name_jp"))
+    assert before == after
+    assert ShrineDeity.objects.count() == 0
+    assert ShrineHistory.objects.count() == 0
+
+
 @pytest.mark.django_db
 def test_orphan_source_with_no_fact_relation_is_excluded_from_scoped_counts():
     """shrine/factのいずれにも紐付かないSourceは、audit-target-scoped集計に含めない
