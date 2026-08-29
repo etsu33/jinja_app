@@ -32,7 +32,18 @@ NEED_TO_GORIYAKU_IDS: Dict[str, Set[int]] = {
     "love": {1, 20},
     "relationship": {1},
     "marriage": {1, 18},
-    "communication": {30, 33, 37, 39},
+    # communication GID evidence disabled (Mother Ship 2026-08-29:
+    # Communication = EVIDENCE_LIMITED, Evidence Policy = DISABLE_GID_EVIDENCE
+    # -- docs/audit/remaining-need-semantic-decision-packets.md
+    # "## Mother Ship Decisions" / Sections 20-21). The previous mapping
+    # {30, 33, 37, 39} = 強運厄除け/病気平癒/延命長寿/農業守護 is semantically
+    # unrelated to interpersonal communication. Left empty (no replacement
+    # GID, no Text Evidence) until a valid communication-specific taxonomy
+    # exists. Interpreter recognition of `communication` (KEYWORDS /
+    # NEED_KEYWORDS, PR #2601) is unchanged; a communication-only candidate
+    # now takes the C1 NONE branch and contributes score_need = 0 -- this is
+    # the intended, contract-correct outcome.
+    "communication": set(),
     "career": {6, 21, 30, 12, 27},
     "money": {5, 36, 4, 28},
     "study": {9, 10},
