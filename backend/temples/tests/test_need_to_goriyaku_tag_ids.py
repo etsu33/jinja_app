@@ -12,12 +12,17 @@
 #   (SAFE_CORRECTIONS, Section 19) / safe-remaining-need-goriyaku-mapping-
 #   correction.md: relationship/health/focus/family corrected.
 # - docs/audit/remaining-need-semantic-decision-packets.md
-#   ("## Mother Ship Decisions", 2026-08-29): communication = EVIDENCE_LIMITED
-#   with Evidence Policy DISABLE_GID_EVIDENCE -- its invalid mapping
-#   {30, 33, 37, 39} is removed (now set()); no replacement GID, no Text
-#   Evidence. mental/courage still remain unchanged pending their own
-#   Mother Ship decisions (courage = KEEP_SHARED is recorded but out of
-#   scope for the communication PR).
+#   ("## Mother Ship Decisions", 2026-08-29):
+#   * Communication = EVIDENCE_LIMITED / Evidence Policy = DISABLE_GID_EVIDENCE
+#     -- its invalid mapping {30, 33, 37, 39} is removed (now set()); no
+#     replacement GID, no Text Evidence.
+#   * Family = NARROW / Family GID Policy = DROP_ALL (Track M1) -- family was
+#     {2, 26, 34} (household-flavored), now {16, 35} = 安産 (reassigned from
+#     mental) + 子宝 (previously orphaned). mental correspondingly drops id
+#     16 -> {11, 26, 28, 38}. id 2 stays with protection; ids 26/34 stay in
+#     the canonical master, just unreferenced by family.
+#   courage still remains a Mother Ship decision of its own (KEEP_SHARED
+#   recorded, out of scope here).
 # - docs/audit/marriage-love-alias-boundary.md /
 #   marriage-need-independence-implementation.md: marriage corrected to
 #   {1, 18} and made independently reachable (NEED_TAG_ALIASES["marriage"]
@@ -61,10 +66,9 @@ def test_travel_safe_mapping_matches_master_integrity_correction():
 
 
 def test_stale_ids_removed_from_previously_referencing_purposes():
-    # relationship/health/family were also touched by the safe-remaining-
-    # need correction below; only mental/rest remain exactly as the
-    # stale-id removal alone left them.
-    assert NEED_TO_GORIYAKU_IDS["mental"] == {11, 16, 26, 28, 38}
+    # rest still reflects the stale-id removal alone. mental lost id 16
+    # (安産) under Track M1 (see test_mental_mapping_drops_id_16_to_family).
+    assert NEED_TO_GORIYAKU_IDS["mental"] == {11, 26, 28, 38}
     assert NEED_TO_GORIYAKU_IDS["rest"] == {7, 8}
 
 
@@ -80,8 +84,33 @@ def test_focus_mapping_matches_safe_remaining_need_correction():
     assert NEED_TO_GORIYAKU_IDS["focus"] == {9, 10}
 
 
-def test_family_mapping_matches_safe_remaining_need_correction():
-    assert NEED_TO_GORIYAKU_IDS["family"] == {2, 26, 34}
+def test_family_mapping_matches_narrow_family_decision():
+    # Mother Ship 2026-08-29: Family = NARROW, Family GID Policy = DROP_ALL
+    # (docs/audit/remaining-need-semantic-decision-packets.md
+    # "## Mother Ship Decisions" / "### Family GID Mapping sub-decision").
+    # Was {2, 26, 34} = 厄除け/家庭円満/火防 (household-flavored, dropped).
+    # Now {16, 35} = 安産 (reassigned from mental) + 子宝 (previously
+    # orphaned).
+    assert NEED_TO_GORIYAKU_IDS["family"] == {16, 35}
+
+
+def test_mental_mapping_drops_id_16_to_family():
+    # id 16 (安産) moved mental -> family under Track M1; mental keeps
+    # {11, 26, 28, 38}. Family now owns 16; mental no longer does.
+    assert NEED_TO_GORIYAKU_IDS["mental"] == {11, 26, 28, 38}
+    assert 16 not in NEED_TO_GORIYAKU_IDS["mental"]
+    assert 16 in NEED_TO_GORIYAKU_IDS["family"]
+
+
+def test_family_narrowing_does_not_touch_protection_or_canonical_master():
+    # id 2 (厄除け) stays with protection; ids 26/34 are only removed from
+    # family's *reference*, not from the canonical master (nothing here
+    # deletes GoriyakuTag rows).
+    assert 2 in NEED_TO_GORIYAKU_IDS["protection"]
+    assert NEED_TO_GORIYAKU_IDS["protection"] == {11, 32, 2}
+    assert 2 not in NEED_TO_GORIYAKU_IDS["family"]
+    assert 26 not in NEED_TO_GORIYAKU_IDS["family"]
+    assert 34 not in NEED_TO_GORIYAKU_IDS["family"]
 
 
 def test_marriage_mapping_matches_need_independence_correction():
@@ -110,10 +139,10 @@ def test_disabling_communication_does_not_touch_other_needs_sharing_those_gids()
 
 
 def test_purposes_outside_correction_scope_are_unchanged():
-    # mental/courage remain Mother Ship product decisions of their own
-    # -- pinned so a future edit can't silently widen the change beyond
-    # the approved Needs above.
-    assert NEED_TO_GORIYAKU_IDS["mental"] == {11, 16, 26, 28, 38}
+    # courage remains a Mother Ship product decision of its own (KEEP_SHARED
+    # is recorded but out of scope here) -- pinned so a future edit can't
+    # silently widen the change beyond the approved Needs above. mental is
+    # pinned by test_mental_mapping_drops_id_16_to_family.
     assert NEED_TO_GORIYAKU_IDS["courage"] == {12, 15, 18, 20, 24, 30, 38}
 
 

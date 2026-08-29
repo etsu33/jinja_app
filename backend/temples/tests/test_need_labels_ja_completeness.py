@@ -158,7 +158,10 @@ def _candidate(name, goriyaku_tag_ids, **overrides):
         ("marriage", "結婚したい", "夫婦円満神社", [18]),
         ("relationship", "職場の人間関係を改善したい", "縁結び神社", [1]),
         ("health", "健康でいたい", "健康神社", [7]),
-        ("family", "子宝に恵まれたい", "子宝神社", [2]),
+        # family GID mapping narrowed to {16, 35} under Track M1 (Mother Ship
+        # 2026-08-29, Family = NARROW / DROP_ALL); id 16 (安産) is now family
+        # evidence, id 2 (厄除け, formerly family, now protection-only) is not.
+        ("family", "子宝に恵まれたい", "子宝神社", [16]),
     ],
 )
 def test_previously_missing_needs_resolve_to_real_japanese_label_live(

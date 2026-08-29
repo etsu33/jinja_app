@@ -48,12 +48,30 @@ NEED_TO_GORIYAKU_IDS: Dict[str, Set[int]] = {
     "money": {5, 36, 4, 28},
     "study": {9, 10},
     "health": {7, 8, 24, 33, 38},
-    "mental": {11, 16, 26, 28, 38},
+    # id 16 (安産) removed from mental -- reassigned to family below. Mother
+    # Ship 2026-08-29: Family = NARROW / Family GID Policy = DROP_ALL
+    # (docs/audit/remaining-need-semantic-decision-packets.md
+    # "## Mother Ship Decisions"). 安産 (safe childbirth) is a fertility
+    # concept and belongs with family, not mental. mental's remaining ids
+    # {11, 26, 28, 38} are unchanged.
+    "mental": {11, 26, 28, 38},
     "protection": {11, 32, 2},
     "courage": {12, 15, 18, 20, 24, 30, 38},
     "focus": {9, 10},
     "rest": {7, 8},
-    "family": {2, 26, 34},
+    # family narrowed to fertility / childbirth / parenting evidence only
+    # (Mother Ship 2026-08-29: Family = NARROW, Family GID Policy = DROP_ALL
+    # -- docs/audit/remaining-need-semantic-decision-packets.md
+    # "## Mother Ship Decisions" / "### Family GID Mapping sub-decision").
+    # Was {2, 26, 34} = 厄除け / 家庭円満 / 火防 -- household-protection /
+    # household-harmony tags, a poor fit for the narrow reading and
+    # dropped. Now {16, 35} = 安産 (reassigned from mental) + 子宝
+    # (previously orphaned, owned by no Need). id 2 stays with protection
+    # ({11, 32, 2}); ids 26/34 remain in the canonical master, just no
+    # longer referenced by family. No replacement/fallback GID beyond
+    # {16, 35}. Interpreter vocabulary, consultation axis and Reason copy
+    # are unchanged in this PR (Reason copy is Track R2).
+    "family": {16, 35},
     "travel_safe": {3, 13, 14},
 }
 
