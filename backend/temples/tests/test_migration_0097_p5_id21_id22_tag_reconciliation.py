@@ -20,6 +20,7 @@ from temples.models import GoriyakuTag, Shrine, ShrineDeity, ShrineHistory, Shri
 _mod = importlib.import_module("temples.migrations.0097_p5_id21_id22_tag_reconciliation")
 forward = _mod.reconcile_forward
 reverse = _mod.reconcile_reverse
+PreconditionViolation = _mod.PreconditionViolation
 
 ID21_PROSE = "地域に根ざした稲荷社として、商売繁盛や五穀豊穣、日々の暮らしの安定を願う神社。"
 ID22_PROSE = "地域の氏神として、暮らしや家内安全、日々の無事を見守る神社。"
@@ -258,12 +259,21 @@ def test_knowledge_and_sources_unchanged(targets):
     assert ShrineHistory.objects.count() == hist_count
 
 
-# 16 — forward idempotent
+# 16 — forward re-apply contract: SAFE_REAPPLY = FAIL_CLOSED (supersedes the
+# earlier "forward is idempotent" contract — see module docstring). A first
+# forward succeeds; the required relations are then gone, so a second forward
+# finds its own precondition violated and raises, changing nothing further.
 @pytest.mark.django_db
-def test_forward_idempotent(targets):
+def test_forward_reapply_is_fail_closed(targets):
     forward(APPS, None)
-    forward(APPS, None)
-    forward(APPS, None)
+    targets["s21"].refresh_from_db()
+    targets["s22"].refresh_from_db()
+    assert _tag_names(targets["s21"]) == []
+    assert _tag_names(targets["s22"]) == []
+
+    with pytest.raises(PreconditionViolation):
+        forward(APPS, None)
+
     targets["s21"].refresh_from_db()
     targets["s22"].refresh_from_db()
     assert _tag_names(targets["s21"]) == []
@@ -287,9 +297,14 @@ def test_reverse_does_not_create_missing_legacy_tag(targets):
     forward(APPS, None)
     reverse(APPS, None)
     assert not GoriyakuTag.objects.filter(name="地域安泰").exists()
-    # ...but a present 地域安泰 IS restored
+    # ...but a present 地域安泰 IS restored. The tag row is shared across both
+    # RECONCILE targets, so under the STRICT_EXACT optional contract it must be
+    # attached to BOTH before forward -- attaching it to only one would make the
+    # other a PreconditionViolation (see test_optional_tag_present_relation_absent
+    # _forward_fails_closed / test_cross_target_optional_drift_forward_fails_closed).
     legacy = GoriyakuTag.objects.create(name="地域安泰")
     targets["s21"].goriyaku_tags.add(legacy)
+    targets["s22"].goriyaku_tags.add(legacy)
     forward(APPS, None)
     reverse(APPS, None)
     targets["s21"].refresh_from_db()
@@ -353,3 +368,164 @@ def test_unrelated_shrine_m2m_stable(targets):
     forward(APPS, None)
     other.refresh_from_db()
     assert set(_tag_names(other)) == before
+
+
+# ---------------------------------------------------------------------------
+# Fail-closed precondition guard (0097_REVERSE_CONTRACT=STRICT_EXACT /
+# FORWARD_POLICY=PRECONDITION_GUARDED_FAIL_CLOSED). Case A ("existing state
+# round-trip") is already covered by test_reverse_restores_canonical_relations
+# above. These cover Case B (relation already absent), Mixed, cross-target
+# fail-closed, reverse idempotency, and the reverse -> re-apply cycle.
+# ---------------------------------------------------------------------------
+
+
+# Case B — a single required relation is already absent before forward runs:
+# forward must raise PreconditionViolation and change nothing, for either
+# shrine (reverse is never reached, since forward never gets there).
+@pytest.mark.django_db
+def test_missing_required_relation_forward_fails_closed(targets):
+    targets["s21"].goriyaku_tags.remove(_tag("五穀豊穣"))  # drift: one required relation gone
+    before21 = set(_tag_names(targets["s21"]))
+    before22 = set(_tag_names(targets["s22"]))
+
+    with pytest.raises(PreconditionViolation):
+        forward(APPS, None)
+
+    targets["s21"].refresh_from_db()
+    targets["s22"].refresh_from_db()
+    assert set(_tag_names(targets["s21"])) == before21  # unchanged (still missing 五穀豊穣)
+    assert set(_tag_names(targets["s22"])) == before22  # unchanged — id22 never mutated either
+
+
+# Mixed — within a single shrine, one required relation present (商売繁盛) and
+# one absent (五穀豊穣): forward must not remove the present one either. No
+# partial mutation within a shrine.
+@pytest.mark.django_db
+def test_mixed_required_relations_forward_fails_closed(targets):
+    targets["s21"].goriyaku_tags.remove(_tag("五穀豊穣"))
+
+    with pytest.raises(PreconditionViolation):
+        forward(APPS, None)
+
+    targets["s21"].refresh_from_db()
+    assert "商売繁盛" in _tag_names(targets["s21"])       # present relation NOT removed
+    assert "五穀豊穣" not in _tag_names(targets["s21"])    # was already absent, stays absent
+
+
+# Multiple targets fail-closed — id22 has a precondition violation; id21 is
+# fully valid on its own but must still not be mutated. validate-all-then-
+# mutate-all across RECONCILE, not per-shrine.
+@pytest.mark.django_db
+def test_cross_shrine_precondition_violation_blocks_valid_shrine(targets):
+    targets["s22"].goriyaku_tags.remove(_tag("家内安全"))
+    before21 = set(_tag_names(targets["s21"]))  # {五穀豊穣, 商売繁盛} — individually fully valid
+
+    with pytest.raises(PreconditionViolation):
+        forward(APPS, None)
+
+    targets["s21"].refresh_from_db()
+    assert set(_tag_names(targets["s21"])) == before21  # untouched despite being individually valid
+
+
+# A required GoriyakuTag row itself missing (not just the relation) is the
+# same class of precondition violation — no row to relate to, no partial
+# mutation of the other shrine.
+@pytest.mark.django_db
+def test_missing_required_tag_row_forward_fails_closed(targets):
+    _tag("五穀豊穣").delete()
+    before22 = set(_tag_names(targets["s22"]))
+
+    with pytest.raises(PreconditionViolation):
+        forward(APPS, None)
+
+    targets["s21"].refresh_from_db()
+    targets["s22"].refresh_from_db()
+    assert "商売繁盛" in _tag_names(targets["s21"])  # untouched
+    assert set(_tag_names(targets["s22"])) == before22  # untouched
+
+
+# Reverse idempotency — calling reverse repeatedly must not create duplicate
+# M2M rows or raise.
+@pytest.mark.django_db
+def test_reverse_idempotent_no_duplicate_relations(targets):
+    forward(APPS, None)
+    reverse(APPS, None)
+    reverse(APPS, None)
+    reverse(APPS, None)
+    targets["s21"].refresh_from_db()
+    targets["s22"].refresh_from_db()
+    assert set(_tag_names(targets["s21"])) == {"五穀豊穣", "商売繁盛"}
+    assert _tag_names(targets["s22"]) == ["家内安全"]
+    assert targets["s21"].goriyaku_tags.filter(name="商売繁盛").count() == 1
+    assert targets["s22"].goriyaku_tags.filter(name="家内安全").count() == 1
+
+
+# Reverse -> re-apply cycle: reverse restores the required relations, so a
+# subsequent forward's precondition passes again (the ordinary retry path,
+# since a bare re-forward is fail-closed per SAFE_REAPPLY=FAIL_CLOSED above).
+@pytest.mark.django_db
+def test_reverse_then_reapply_cycle(targets):
+    forward(APPS, None)
+    reverse(APPS, None)
+    targets["s21"].refresh_from_db()
+    targets["s22"].refresh_from_db()
+    assert set(_tag_names(targets["s21"])) == {"五穀豊穣", "商売繁盛"}
+    assert _tag_names(targets["s22"]) == ["家内安全"]
+
+    forward(APPS, None)  # must succeed — precondition restored by reverse
+
+    targets["s21"].refresh_from_db()
+    targets["s22"].refresh_from_db()
+    assert _tag_names(targets["s21"]) == []
+    assert _tag_names(targets["s22"]) == []
+
+
+# ---------------------------------------------------------------------------
+# Optional relation STRICT-EXACT fix (PR #2629 follow-up). The optional
+# `地域安泰` relation is handled per the 3-state Mother Ship contract:
+#   1. optional tag row absent            -> validation PASS, forward no-op
+#   2. optional tag row + relation present -> validation PASS, forward removes,
+#                                              reverse restores
+#   3. optional tag row present, relation absent -> PreconditionViolation,
+#                                                    mutation 0 for ALL targets
+# Case 1 is already covered by test_chiiki_antai_absent_in_production_shape_is_safe_noop
+# above; case 2 by test_chiiki_antai_removed_when_present_local_shape above.
+# ---------------------------------------------------------------------------
+
+
+# Case 3 — optional tag row exists but the shrine does NOT currently hold that
+# relation: without this fix, forward would treat this as a silent no-op (best
+# -effort skip) and reverse would then unconditionally .add() it, fabricating a
+# relation that never existed pre-forward — breaking STRICT_EXACT. Forward must
+# now raise PreconditionViolation before mutating anything, for any target,
+# including required relations that were individually valid.
+@pytest.mark.django_db
+def test_optional_tag_present_relation_absent_forward_fails_closed(targets):
+    GoriyakuTag.objects.create(name="地域安泰")  # row exists, but no shrine holds it
+    before21 = set(_tag_names(targets["s21"]))
+    before22 = set(_tag_names(targets["s22"]))
+
+    with pytest.raises(PreconditionViolation):
+        forward(APPS, None)
+
+    targets["s21"].refresh_from_db()
+    targets["s22"].refresh_from_db()
+    assert set(_tag_names(targets["s21"])) == before21  # required relations untouched too
+    assert set(_tag_names(targets["s22"])) == before22
+
+
+# Cross-target optional drift — id21 is fully valid (required + optional all
+# consistent); id22's 地域安泰 row exists but is not attached to id22. The
+# violation on id22 must still block id21's otherwise-valid mutation
+# (validate-all-then-mutate-all, not per-shrine).
+@pytest.mark.django_db
+def test_cross_target_optional_drift_forward_fails_closed(targets):
+    legacy = GoriyakuTag.objects.create(name="地域安泰")
+    targets["s21"].goriyaku_tags.add(legacy)  # id21: optional relation present too — fully valid
+    before21 = set(_tag_names(targets["s21"]))
+
+    with pytest.raises(PreconditionViolation):
+        forward(APPS, None)
+
+    targets["s21"].refresh_from_db()
+    assert set(_tag_names(targets["s21"])) == before21  # untouched despite being individually valid
