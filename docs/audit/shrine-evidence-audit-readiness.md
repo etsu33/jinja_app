@@ -44,9 +44,10 @@
   identity, location, deity, history, tradition, goriyaku, Knowledge Fact
   verification, provenance, Recommendation Evidence eligibility, Readiness,
   and Coverage.
-- Google-Spreadsheet responsibility mapping (structure NOT VERIFIED — 401).
+- Google-Spreadsheet responsibility mapping (structure NOT VERIFIED —
+  `CODEX_SESSION_SPREADSHEET_ACCESS = BLOCKED`, §7).
 - Current DB shrine set (`[dev-db]`) and the DB ↔ Spreadsheet join design
-  (join itself NOT executed — spreadsheet inaccessible).
+  (join itself NOT executed — sheet not read this session).
 - Existing verification-coverage summary and the remaining unverified
   surface.
 - Proposed full-audit row schema, pilot selection (5–10 shrines), and the
@@ -55,8 +56,8 @@
 
 ### Out of scope (this PR, and enforced)
 
-Shrine production data · Recommendation Engine behaviour · re-auditing all
-105/100 shrines · source-by-source external research · DB writes · fixture /
+Shrine production data · Recommendation Engine behaviour · re-auditing every
+shrine · source-by-source external research · DB writes · fixture /
 seed / migration / model changes · GoriyakuTag changes · Knowledge data
 changes · frontend · **any edit to the Google Spreadsheet** · Production
 changes. The only file this PR adds is this document.
@@ -72,7 +73,7 @@ implementation code and tests. The inventory below applies that rule.
 
 ### 4.1 Active contract documents (authoritative for the full audit)
 
-| Path | Status [repo] | Purpose | Reusable in 105/100-shrine audit? |
+| Path | Status [repo] | Purpose | Reusable in the full integrity audit? |
 |---|---|---|---|
 | `docs/knowledge/shrine-knowledge-contract.md` | **Active** (1359 lines) | Normative meaning/source/`verification_status`/`confidence`/Fact-usability/display/AI-generation/conflict rules for `deity`, `shrine_history`, tradition, `ShrineKnowledgeSource` | Yes — the semantic-fact contract the audit measures against |
 | `docs/knowledge/recommendation-evidence-review-contract.md` | **Contract definition** (Active) | ELIGIBLE_EXPLICIT / REVIEW_REQUIRED / INELIGIBLE / UNKNOWN rules; PASS / HOLD / NO_EVIDENCE / REVISE review states; `Shrine.goriyaku` reviewed-write rules; provenance format; shrine-level RECOMMENDATION_READY / PARTIALLY_READY / NO_RECOMMENDATION_EVIDENCE / HOLD | Yes — the goriyaku/Recommendation-Evidence contract |
@@ -84,7 +85,16 @@ implementation code and tests. The inventory below applies that rule.
 | `docs/product/meaning-translation-mapping.md` | **Active** | `history_theme` generation source / transform / connection (Derived layer) | Yes (Derived-field context) |
 | `docs/core/meaning-layer.md`, `meaning-layer-connection.md`, `narrative-guideline.md` | Active | Non-assertion principle, meaning-layer connection | Reference only |
 | `docs/knowledge/glossary.md` | Active | Defines **Stored / Derived / Runtime / Governance** layer terms | Yes — layer vocabulary |
-| `docs/audit/mixed-confidence-policy-decision.md` | **Decided (技術Policy固定)** — a *decision record*, not an audit | `FULL_SUPPRESSION` retained: on `CONFIDENCE_MIXED` deity facts, whole-fact Reason suppression stays | Yes — a fixed policy the audit must respect, not re-litigate |
+
+### 4.1a Decision record referenced by current implementation
+
+Classified **separately** from §4.1 because it lives in `docs/audit/*` (a
+point-in-time record location, per the governance rule above), not in a
+`core/` / `knowledge/` / `product/` contract location.
+
+| Path | Status [repo] | Classification | Relevance to the full audit |
+|---|---|---|---|
+| `docs/audit/mixed-confidence-policy-decision.md` | **Decided (技術Policy固定)** | **`DECISION_RECORD_REFERENCED_BY_CURRENT_IMPLEMENTATION`** (a.k.a. `ACTIVE_DECISION_RECORD`) — a fixed Mother Ship decision record, not a specification-authority contract | The `FULL_SUPPRESSION` decision (on `CONFIDENCE_MIXED` deity facts the whole Deity fact set is suppressed from the Reason; `recommendation_reason_v4._build_fact()`) **remains relevant and in effect** — the full audit must record which shrines are in this state and **must not re-litigate or change the decision**. |
 
 ### 4.2 Current tooling (read-only; reusable as audit instruments)
 
@@ -131,7 +141,8 @@ DB only unless a `*-production-import-execution.md` doc says otherwise.**
 
 | Classification | Members |
 |---|---|
-| **ACTIVE_CONTRACT** | `docs/knowledge/shrine-knowledge-contract.md`; `docs/knowledge/recommendation-evidence-review-contract.md`; `docs/knowledge/shrine-profile-spec.md`; `docs/knowledge/shrine-data-guide.md`; `docs/core/recommendation-readiness.md`; `docs/core/recommendation-architecture.md`; `docs/core/recommendation-reason-contract.md`; `docs/product/meaning-translation-mapping.md`; `docs/knowledge/glossary.md`; `docs/audit/mixed-confidence-policy-decision.md` (fixed policy record) |
+| **ACTIVE_CONTRACT** | `docs/knowledge/shrine-knowledge-contract.md`; `docs/knowledge/recommendation-evidence-review-contract.md`; `docs/knowledge/shrine-profile-spec.md`; `docs/knowledge/shrine-data-guide.md`; `docs/core/recommendation-readiness.md`; `docs/core/recommendation-architecture.md`; `docs/core/recommendation-reason-contract.md`; `docs/product/meaning-translation-mapping.md`; `docs/knowledge/glossary.md` — **all in `core/` / `knowledge/` / `product/`, none in `docs/audit/`** |
+| **ACTIVE_DECISION_RECORD** (`DECISION_RECORD_REFERENCED_BY_CURRENT_IMPLEMENTATION`) | `docs/audit/mixed-confidence-policy-decision.md` — a fixed Mother Ship decision record in `docs/audit/*`, **not** a specification-authority contract. Its `FULL_SUPPRESSION` decision remains in effect and is referenced by `recommendation_reason_v4._build_fact()`; the audit respects it, never re-litigates it (§4.1a) |
 | **CURRENT_TOOLING** | `knowledge_coverage_report` command + service; `evidence_gate.py`; `shrine_knowledge_selector.py`; `shrine_qa_fixture_exclusion.py`; `import/export_shrine_knowledge` + `knowledge_seed.py`; `backfill_goriyaku_tags.py`; `measure_knowledge_recommendation_quality.py`; migration `0094` + its test; identity/dedup tests |
 | **HISTORICAL_AUDIT** | `shrine-dataset-integrity.md`; `shrine-70-coordinate-correction.md`; `shrine-geographic-knowledge-coverage.md`; `shrine-data-pipeline-phase0-audit.md`; `knowledge-batch{8..17}-*` (preflight/target/closure/import-execution); `shrine-knowledge-rollout-batch-1..7.md`; `knowledge-production-readiness-audit.md`; `mixed-confidence-policy-audit.md`; `shrine-knowledge-recommendation-evidence-bridge.md`; `recommendation-evidence-followup-design.md`; `batch17-recommendation-evidence-review.md`; `shrine-knowledge-source-automation-readiness.md`; `shrine-discovery-automation-readiness.md`; the goriyaku-mapping-correction audits |
 | **ARCHIVE_REFERENCE** | `shrine-knowledge-pilot-5-result.md` (Status: Archive); `shrine-knowledge-real-data-pilot-1.md`; `knowledge-model-pilot-2-shinagawa.md`; `recommendation-fact-integrity-negative-pilot.md` (Status: Archive); `recommendation-v4-reason-facts-e2e-audit.md` (Status: Archive); `reason-facts-coverage*.md`; `knowledge-base-consistency-audit.md` |
@@ -158,11 +169,24 @@ None of the above is redefined by this document.
 
 ## 7. Spreadsheet responsibility
 
-**Spreadsheet content NOT VERIFIED this session** — `https://docs.google.com/
-spreadsheets/d/1v6bLXuM1q9UGyZMxv2GvbsFD2ECrE1rHSvKPjydSEP8/…` returned
-**HTTP 401 Unauthorized** for both the `/edit` and `?format=csv` URLs. The
-column list below is the **task-provided known role**, to be confirmed
-against the live sheet by whoever runs PR-B (with authenticated access).
+**`CODEX_SESSION_SPREADSHEET_ACCESS = BLOCKED`** — factual observation: the
+Codex execution environment for this session received **HTTP 401
+Unauthorized** from `https://docs.google.com/spreadsheets/d/
+1v6bLXuM1q9UGyZMxv2GvbsFD2ECrE1rHSvKPjydSEP8/…` for both the `/edit` and
+`?format=csv` URLs, so no cell content was read.
+
+This is a **session / environment limitation, not a proven project-wide
+Spreadsheet access blocker.** Authenticated access to the sheet may well be
+available through a Mother Ship operator or a connected Google Drive / Sheets
+environment. Therefore:
+
+- **DB ↔ Spreadsheet join = NOT VERIFIED in this PR** (§8.2).
+- The full project audit is **not** proven blocked *solely* because Codex
+  could not read the sheet — it is blocked only until an authenticated read
+  is performed by whoever/whatever runs PR-B.
+- No Spreadsheet contents are invented anywhere in this document; the column
+  list below is the **task-provided known role**, to be confirmed against the
+  live sheet during PR-B.
 
 ### 7.1 Responsibility matrix
 
@@ -195,43 +219,58 @@ against the live sheet by whoever runs PR-B (with authenticated access).
 | `kind='shrine'` | 105 (0 temples) | `[dev-db]` |
 | id range | 1..105, **contiguous** | `[dev-db]` |
 | QA / test fixture rows (`exclude_qa_fixture_shrines`) | **5** — ids **101–105**: `承認テスト神社`, `admin承認テスト神社`, `重複検証神社`, `重複検証神社`, `重複検証神社（別宮）` | `[dev-db]` + `shrine_qa_fixture_exclusion.py` [repo] |
-| **Audit-target real shrines** | **100** (ids 1–100) | `knowledge_coverage_report` "Audit Target Shrines: 100" `[dev-db]` |
+| `DEV_DB_AUDIT_TARGET_CANDIDATE` | **100** (ids 1–100) — the local dev DB row count minus the 5 QA fixtures. This is a **dev-DB-derived candidate**, not the confirmed audit denominator | `knowledge_coverage_report` "Audit Target Shrines: 100" `[dev-db]` |
 | Real-shrine duplicate `name_jp` in dev DB | **0** (only the QA fixture `重複検証神社` repeats) | `[dev-db]` |
 | Rows with lat AND lng | 105 / 105 | `[dev-db]` |
 | Rows with `place_ref` set | **0** | `[dev-db]` |
 
+### 8.1.1 Denominator status (do not choose the number in this PR)
+
+| Term | Value | Meaning |
+|---|---|---|
+| `DEV_DB_AUDIT_TARGET_CANDIDATE` | **100** | local dev DB (105 rows) with the 5 QA-fixture rows removed by `exclude_qa_fixture_shrines` [repo]. Proven only for **this session's local dev DB**. |
+| `CANONICAL_REAL_SHRINE_SET` | **NOT VERIFIED** | current Production has not been re-read this session; the last Production record (`[prior]` `shrine-dataset-integrity.md`) reports a **different** 105-row state (3 duplicate real-shrine `name_jp` pairs, so ~102 unique real shrines). Whether Production still matches that, or has changed, is unknown. |
+| `FULL_AUDIT_DENOMINATOR` | **`MOTHER_SHIP_DECISION_PENDING`** | the future full audit may run against **100**, **102**, **105**, or another reconciled set. This PR does **not** select it (§15 decision 1). |
+
 **Count reconciliation vs [prior] `shrine-dataset-integrity.md`:**
 
-| Set | Count | Distinct `name_jp` | Extra rows are… |
-|---|---|---|---|
-| TRACKED SEED / LOCAL DB `[prior]` | 100 | 100 | — |
-| **This session's dev DB** `[dev-db]` | 105 | 104 | ids 101–105 = QA/test fixtures (not real shrines) |
-| PRODUCTION `[prior]` | 105 | 103 | 3 **duplicate real-shrine** `name_jp` pairs (長太稲荷神社 21/103, 給田六所神社 22/101, + 富岡八幡宮 49/104 weaker) |
+| Set | Count | Distinct `name_jp` | Extra rows are… | Evidence |
+|---|---|---|---|---|
+| TRACKED SEED / LOCAL DB | 100 | 100 | — | `[prior]` |
+| **This session's dev DB** | 105 | 104 | ids 101–105 = QA/test fixtures (not real shrines) | `[dev-db]` |
+| PRODUCTION (last recorded state) | 105 | 103 | 3 **duplicate real-shrine** `name_jp` pairs (長太稲荷神社 21/103, 給田六所神社 22/101, + 富岡八幡宮 49/104 weaker) ⇒ ~102 unique | `[prior]`, **not re-verified this session** |
 
-⇒ **The "105" in three different places is not the same 105.** The task's
-"current 105 Shrine records" most closely matches the raw DB/Production row
-count; the real integrity-audit surface is **100** in dev, **~102 unique**
-in Production. This discrepancy is itself finding **U-1** (§10).
+⇒ **The "105" in three different places is not the same 105**, and no single
+one is confirmed as the audit denominator. `DEV_DB_AUDIT_TARGET_CANDIDATE =
+100`; `CANONICAL_REAL_SHRINE_SET = NOT VERIFIED`; `FULL_AUDIT_DENOMINATOR =
+MOTHER_SHIP_DECISION_PENDING`. This is finding **U-1** (§10).
 
 ### 8.2 Join execution
 
 | Join dimension | Result |
 |---|---|
-| DB id ↔ spreadsheet id | **NOT VERIFIED** — spreadsheet inaccessible (401). Design: attempt `EXACT_ID_MATCH` on a stable id column first; the DB has contiguous ids 1–105 `[dev-db]`, but whether the sheet carries the same id space is unknown |
-| all 100/105 DB shrines present in sheet | **NOT VERIFIED** |
+| DB id ↔ spreadsheet id | **NOT VERIFIED** — `CODEX_SESSION_SPREADSHEET_ACCESS = BLOCKED` (§7). Design: attempt `EXACT_ID_MATCH` on a stable id column first; the DB has contiguous ids 1–105 `[dev-db]`, but whether the sheet carries the same id space is unknown |
+| every DB shrine present in the sheet | **NOT VERIFIED** |
 | sheet rows not in DB | **NOT VERIFIED** |
 | duplicate IDs / names in sheet | **NOT VERIFIED** (DB side: only the QA fixture repeats, `[dev-db]`) |
 
 Join classification counts (`EXACT_ID_MATCH` / `IDENTITY_MATCH` / `AMBIGUOUS`
-/ `MISSING_IN_SHEET` / `MISSING_IN_DB`): **all NOT VERIFIED** — cannot be
-produced without authenticated spreadsheet access. Producing them is the
-first deliverable of PR-B.
+/ `MISSING_IN_SHEET` / `MISSING_IN_DB`): **all NOT VERIFIED** — not produced
+because the Codex session could not read the sheet (§7). They can be
+produced once an authenticated read is available (Mother Ship operator or a
+connected Google Drive/Sheets environment). Producing them is the first
+deliverable of PR-B.
 
 ## 9. Existing verification coverage
 
 **All figures `[dev-db]` via `knowledge_coverage_report` unless noted — NOT
 Production-verified; every row carries `REVALIDATION_REQUIRED`.** Denominator
-is the 100 audit-target shrines unless stated.
+is `DEV_DB_AUDIT_TARGET_CANDIDATE` (= 100 this session); the confirmed
+`FULL_AUDIT_DENOMINATOR` is `MOTHER_SHIP_DECISION_PENDING` (§8.1.1), so read
+every "/ 100" below as "/ dev-DB candidate", not "/ final audit set".
+"NOT VERIFIED (spreadsheet)" below means the sheet was not read this session
+(`CODEX_SESSION_SPREADSHEET_ACCESS = BLOCKED`, §7), not that the data is
+unobtainable.
 
 | Verification type | `[dev-db]` state | Contract basis |
 |---|---|---|
@@ -250,15 +289,15 @@ fact-ready Source. Confidence distribution `{high: 396, medium: 19}`, no
 
 ## 10. Unverified surface
 
-The remaining audit surface for the full 105/100-shrine integrity audit.
-None is fixed here.
+The remaining audit surface for the future full integrity audit, whatever
+`FULL_AUDIT_DENOMINATOR` the Mother Ship sets (§8.1.1). None is fixed here.
 
 | ID | Unverified surface | Affected set | Why it is open |
 |---|---|---|---|
-| **U-1** | **"105" identity ambiguity** — dev DB 105 (100 real + 5 QA fixtures) ≠ tracked seed 100 ≠ Production 105 (3 duplicate real-shrine pairs). The canonical audit-target set is undefined across environments | all | §8.1; needs a live Production read + MS decision on which set is "the 105" |
-| **U-2** | **Spreadsheet ↔ DB join** — every join dimension (id match, presence, extras, duplicates) | all | spreadsheet 401; §8.2 |
-| **U-3** | **Identity governance fields** — `canonical_status` / `official_name` / `official_address` have **no DB column**; their per-shrine values and DB agreement are unknown | all | spreadsheet 401; model has no equivalent |
-| **U-4** | **Location correctness** beyond id=70 — Google-Places / coordinate-audit status per shrine; whether id=70's fix is in Production | 99–104 shrines | spreadsheet 401; `shrine-70` Production apply not confirmed |
+| **U-1** | **Audit-denominator ambiguity** — `DEV_DB_AUDIT_TARGET_CANDIDATE = 100`; `CANONICAL_REAL_SHRINE_SET = NOT VERIFIED` (Production not re-read; last-recorded Production state = 105 rows / ~102 unique with 3 duplicate real-shrine pairs, `[prior]`). `FULL_AUDIT_DENOMINATOR` may be 100 / 102 / 105 / another reconciled set | all | §8.1.1; needs a live Production read + MS decision (§15.1) |
+| **U-2** | **Spreadsheet ↔ DB join** — every join dimension (id match, presence, extras, duplicates) | all | `CODEX_SESSION_SPREADSHEET_ACCESS = BLOCKED` (§7); §8.2 |
+| **U-3** | **Identity governance fields** — `canonical_status` / `official_name` / `official_address` have **no DB column**; their per-shrine values and DB agreement are unknown | all | session could not read the sheet (§7); model has no equivalent |
+| **U-4** | **Location correctness** beyond id=70 — Google-Places / coordinate-audit status per shrine; whether id=70's fix is in Production | most shrines | session could not read the sheet (§7); `shrine-70` Production apply not confirmed |
 | **U-5** | **Zero-Knowledge shrines** — **14 / 100** `[dev-db]` have no deity and no history (e.g. id=3 伊勢神宮（内宮）) | 14 | no Knowledge Facts exist to audit; needs Fact generation first |
 | **U-6** | **LEGACY_EXISTING goriyaku provenance** — ~100 shrines carry `goriyaku_tags` from the original seed with **no** Evidence-Review-Contract provenance record | ~97 (100 minus the 3 batch-17-reviewed) | Evidence Review Contract §12 explicitly does not retro-validate legacy `goriyaku` |
 | **U-7** | **Knowledge present, provenance not re-validated to current standard** — Batches 1–7 were Django-shell ORM inserts; their Source rigor predates the current Source 契約 | Batch 1–7 shrines | `[prior]` `knowledge-batch17-production-import.md` "LOCAL_DB_ONLY … not reproducible" |
@@ -309,7 +348,8 @@ values reuse existing repo terminology; new analytical labels are marked
 ## 12. Pilot selection
 
 10 shrines for PR-B (all `[dev-db]` ids; deliberately mixed difficulty).
-Final list confirmable once the spreadsheet is accessible.
+Final list confirmable once an authenticated spreadsheet read is available
+(§7).
 
 | # | Shrine | id `[dev-db]` | Why chosen (variety axis) |
 |---|---|---|---|
@@ -330,40 +370,53 @@ Coverage of the required variety: well-verified (1, 2), knowledge-rich (1, 2,
 is a candidate swap-in if a coordinate-correction case is wanted explicitly;
 weak/absent provenance (8, 9). Not only easy cases.
 
-## 13. Full 105-shrine audit plan
+## 13. Full integrity audit plan
 
 ### 13.1 PR sequence
 
 | PR | Name | Scope | Explicit non-goals |
 |---|---|---|---|
 | **PR-A** | **Readiness / inventory** (this PR) | This document only | any data touch |
-| **PR-B** | **5–10 shrine integrity pilot** | Run the §11 matrix for the §12 pilot: Spreadsheet ↔ DB ↔ Official Source ↔ Knowledge Facts ↔ GoriyakuTag ↔ Recommendation Evidence. Confirm the row schema + classification labels are workable. Requires **authenticated spreadsheet access** + a **Production (or fresh Production dump) DB read** | no data fixes; no schema change; do not expand to all 105 until the format is confirmed |
-| **PR-C** | **Full 105/100-shrine integrity audit** | Populate the matrix for every audit-target shrine; per-shrine `integrity_status` + `root_cause` | no data fixes |
+| **PR-B** | **5–10 shrine integrity pilot** | Run the §11 matrix for the §12 pilot: Spreadsheet ↔ DB ↔ Official Source ↔ Knowledge Facts ↔ GoriyakuTag ↔ Recommendation Evidence. Confirm the row schema + classification labels are workable. Requires an **authenticated Google Spreadsheet read** (Mother Ship operator or connected Drive/Sheets env) + a **Production (or fresh Production dump) DB read** | no data fixes; no schema change; do not expand to the full set until the pilot format is confirmed |
+| **PR-C** | **Full integrity audit** across the confirmed `FULL_AUDIT_DENOMINATOR` (§8.1.1) | Populate the matrix for every audit-target shrine; per-shrine `integrity_status` + `root_cause` | no data fixes |
 | **PR-D** | **Remediation plan** | Group PR-C findings into isolated fix batches; per batch: risk, contract check, MS decisions needed | no execution |
 | **PR-E** | **Data fixes in isolated batches** | Execute PR-D batches one at a time, each its own PR, each behind its own gate (identity fixes ≠ knowledge fixes ≠ goriyaku fixes) | never a single mega-fix PR |
 
 ### 13.2 PR-B entry conditions (gates)
 
-1. Authenticated read of the Google Spreadsheet "神社のDB" — column headers,
-   row count, id column confirmed (resolves `U-2`, `U-3`).
+1. **Authenticated Google Spreadsheet "神社のDB" read** — column headers, row
+   count, id column confirmed. Not available to the Codex session
+   (`CODEX_SESSION_SPREADSHEET_ACCESS = BLOCKED`, §7); expected to be
+   available via a Mother Ship operator or a connected Google Drive/Sheets
+   environment. (resolves `U-2`, `U-3`.)
 2. A Production DB read path (the existing `~/.config/kami-musubi/
    production-db.env` credential-bridge pattern, read-only) **or** an
-   explicitly authorized fresh Production dump (resolves `U-1`, `U-11`).
-3. MS decision on which shrine set is "the 105/100" (§15).
+   explicitly authorized fresh Production dump (resolves `U-1`, `U-11`;
+   establishes `CANONICAL_REAL_SHRINE_SET`).
+3. Mother Ship decision on `FULL_AUDIT_DENOMINATOR` — 100 / 102 / 105 / other
+   reconciled set (§15.1).
 
 Until (1)–(3) exist, PR-B can only run against `[dev-db]` and its
-spreadsheet-side columns stay NOT VERIFIED.
+spreadsheet-side columns stay NOT VERIFIED. Gate (1) being unmet for *this
+session* does not mean it is unmeetable — it is an access step, not a
+project blocker.
 
 ## 14. Known limitations
 
-- **Google Spreadsheet inaccessible** (HTTP 401) — all spreadsheet-derived
-  facts in this document are the task-stated known role, NOT VERIFIED.
-- **No Production DB access this session** — every count is `[dev-db]`, a
-  local Postgres that is neither the tracked seed (100) nor a confirmed
-  Production mirror (105 with duplicate pairs).
-- The dev DB's ids 101–105 are QA fixtures; Production's extra 5 rows are
-  duplicate real shrines — so "id 101" means different things per
-  environment.
+- **`CODEX_SESSION_SPREADSHEET_ACCESS = BLOCKED`** — the Codex session got
+  HTTP 401 and read no cells; all spreadsheet-derived facts here are the
+  task-stated known role, NOT VERIFIED. This is a session/environment limit;
+  authenticated access may exist via a Mother Ship operator or connected
+  Google Drive/Sheets. The full project audit is **not** proven blocked
+  solely by this.
+- **No Production DB access this session** — every count is `[dev-db]`.
+  `DEV_DB_AUDIT_TARGET_CANDIDATE = 100`; `CANONICAL_REAL_SHRINE_SET = NOT
+  VERIFIED` (last-recorded Production state `[prior]` = 105 rows / ~102
+  unique with 3 duplicate real-shrine pairs); `FULL_AUDIT_DENOMINATOR =
+  MOTHER_SHIP_DECISION_PENDING`.
+- The dev DB's ids 101–105 are QA fixtures; the last-recorded Production
+  state's extra rows are duplicate real shrines — so "id 101" means
+  different things per environment.
 - Prior audits (Pilot 5, negative pilot, batches 1–17) were local-DB-only
   unless a `*-production-import-execution.md` states otherwise; their
   findings are historical, not current DB truth.
@@ -380,19 +433,22 @@ spreadsheet-side columns stay NOT VERIFIED.
 
 ## 15. Mother Ship decisions required
 
-1. **Canonical audit-target set** — is the full audit run against the
-   **100** real dev shrines, the **105** Production rows (incl. duplicate
-   pairs), or a de-duplicated **~102**? (`U-1`)
+1. **`FULL_AUDIT_DENOMINATOR`** — set the canonical audit-target set:
+   **100** (`DEV_DB_AUDIT_TARGET_CANDIDATE`), **105** (last-recorded
+   Production rows incl. duplicate pairs), de-duplicated **~102**, or another
+   reconciled set. This PR does not choose it. (`U-1`)
 2. **Production access for PR-B/PR-C** — approve a read-only Production DB
-   path (credential-bridge) or authorize a fresh Production dump.
-3. **Spreadsheet access** — provide authenticated access (or an exported
-   CSV/snapshot) for the identity/location join.
+   path (credential-bridge) or authorize a fresh Production dump so
+   `CANONICAL_REAL_SHRINE_SET` can be established.
+3. **Spreadsheet access** — confirm the authenticated read path for PR-B (a
+   Mother Ship operator, a connected Google Drive/Sheets environment, or an
+   exported CSV/snapshot) for the identity/location join.
 4. **Duplicate real-shrine rows** (長太稲荷神社 21/103, 給田六所神社 22/101,
    富岡八幡宮 49/104) — merge, keep-both-with-canonical-flag, or defer? This
    sets `db_identity_status` semantics.
-5. **Zero-Knowledge shrines (14/100 `[dev-db]`)** — in-scope for the
-   integrity audit as `MISSING`, or deferred to a separate Fact-generation
-   track?
+5. **Zero-Knowledge shrines** (14 of `DEV_DB_AUDIT_TARGET_CANDIDATE`,
+   `[dev-db]`) — in-scope for the integrity audit as `MISSING`, or deferred
+   to a separate Fact-generation track?
 6. **LEGACY_EXISTING goriyaku** (~97 shrines) — does the full audit
    retro-review their provenance to the current Source standard, or record
    them as `LEGACY_EXISTING`-accepted (per Evidence Review Contract §12) and
@@ -408,7 +464,7 @@ spreadsheet-side columns stay NOT VERIFIED.
 
 ## 16. Final readiness verdict
 
-**`READINESS_AUDIT_COMPLETE_FULL_AUDIT_BLOCKED_ON_ACCESS`**
+**`READINESS_AUDIT_COMPLETE_PR_B_GATED_ON_ACCESS_AND_DENOMINATOR_DECISION`**
 
 - The **contract layer is ready**: every concern (identity, location,
   deity, history, tradition, goriyaku, Fact verification, provenance,
@@ -419,13 +475,19 @@ spreadsheet-side columns stay NOT VERIFIED.
 - The **audit design is ready**: the per-shrine matrix (§11), classification
   vocabulary (§11.1), pilot set (§12), and PR-A…PR-E sequence (§13) are
   defined and reuse existing terminology.
-- The **full audit cannot start** until three access blockers clear
-  (§13.2): authenticated Google Spreadsheet access, a Production DB read (or
-  authorized dump), and an MS decision on the canonical 100/105/~102 set.
-  Until then, only `[dev-db]`-side observation is possible and the entire
-  Spreadsheet↔DB join (§8.2) is NOT VERIFIED.
-- **No blocker was found in the engine or the contracts** — the blockers are
-  data-access and a scoping decision, not correctness defects.
+- **PR-B cannot start from this session** until three items resolve
+  (§13.2): (1) an authenticated Google Spreadsheet read —
+  `CODEX_SESSION_SPREADSHEET_ACCESS = BLOCKED` for the Codex session, but
+  expected to be available via a Mother Ship operator or connected Google
+  Drive/Sheets, so this is an access step, **not** a proven project-wide
+  blocker; (2) a Production DB read (or authorized dump) to establish
+  `CANONICAL_REAL_SHRINE_SET`; (3) a Mother Ship decision on
+  `FULL_AUDIT_DENOMINATOR` (100 / 102 / 105 / other — `MOTHER_SHIP_
+  DECISION_PENDING`, not chosen here). Until then only `[dev-db]`-side
+  observation is possible and the Spreadsheet↔DB join (§8.2) is NOT
+  VERIFIED.
+- **No blocker was found in the engine or the contracts** — the open items
+  are data access and a scoping decision, not correctness defects.
 
 Recommended next action: **PR-B (5–10 shrine pilot)**, gated on §15
 decisions 1–3.
