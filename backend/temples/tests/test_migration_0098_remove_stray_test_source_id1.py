@@ -3,13 +3,15 @@
 
 P6-DATA — `docs/audit/p6-id1-user-observation-data-review.md`.
 
+`P6_0098_PRESTATE_POLICY = FAIL_CLOSED`: forward runs only when the COMPLETE
+audited PRE state is present and raises `RuntimeError` ("PRESTATE_MISMATCH")
+otherwise (aborting the migration transaction). There is no "successful no-op"
+path.
+
 Forward/reverse callables are exercised directly against the real models via a
 tiny `apps` shim (GIS/nogis-independent), matching the 0095 / 0096 / 0097
-migration-test pattern.
-
-`conftest._ensure_shrine_exists` (autouse) always provides `Shrine` pk 1, so
-these tests **reshape** that row into 明治神宮 rather than creating it, and
-scrub any pre-existing id-1 Knowledge so assertions are deterministic.
+migration-test pattern. `conftest._ensure_shrine_exists` (autouse) always
+provides `Shrine` pk 1, so these tests reshape that row into 明治神宮.
 """
 
 import importlib
@@ -31,6 +33,7 @@ STRAY = _mod.STRAY_SOURCE
 STRAY_SEED = _mod.STRAY_SOURCE_SEED
 
 OFFICIAL_URL = "https://www.meijijingu.or.jp/about/"
+MISMATCH = "PRESTATE_MISMATCH"
 
 
 class _Apps:
@@ -70,7 +73,6 @@ def _mk_official():
 
 
 def _reshape_shrine1_as_meiji():
-    """conftest already made Shrine pk 1; reshape it and clear its Knowledge."""
     s1 = Shrine.objects.get(pk=1)
     s1.name_jp = "明治神宮"
     s1.address = "東京都渋谷区代々木神園町1-1"
@@ -88,21 +90,23 @@ def _new_shrine(name_jp):
     return Shrine.objects.create(id=next_id, name_jp=name_jp, address="x", kind="shrine")
 
 
+def _mk_deity(shrine, display_name, sort_order):
+    return ShrineDeity.objects.create(
+        shrine=shrine, display_name=display_name, canonical_name=display_name,
+        role="enshrined", sort_order=sort_order,
+        verification_status="source_confirmed", confidence="high", verified_at=timezone.now(),
+    )
+
+
 @pytest.fixture
 def prod_shape(db):
-    """Recreate the Production shape for Shrine id 1 (明治神宮)."""
+    """The exact audited Production PRE shape for Shrine id 1 (明治神宮)."""
     s1 = _reshape_shrine1_as_meiji()
     official = _mk_official()
     stray = _mk_stray()
 
-    d_meiji = ShrineDeity.objects.create(
-        shrine=s1, display_name="明治天皇", canonical_name="明治天皇", role="enshrined",
-        sort_order=0, verification_status="source_confirmed", confidence="high", verified_at=timezone.now(),
-    )
-    d_shoken = ShrineDeity.objects.create(
-        shrine=s1, display_name="昭憲皇太后", canonical_name="昭憲皇太后", role="enshrined",
-        sort_order=1, verification_status="source_confirmed", confidence="high", verified_at=timezone.now(),
-    )
+    d_meiji = _mk_deity(s1, "明治天皇", 0)
+    d_shoken = _mk_deity(s1, "昭憲皇太后", 1)
     for d in (d_meiji, d_shoken):
         d.sources.set([official, stray])
 
@@ -125,178 +129,238 @@ def _src_ids(fact):
     return set(fact.sources.values_list("id", flat=True))
 
 
-# 1 / 2 — exact target Source + exactly the two deity relations removed
+def _semantic_snapshot():
+    """A pk-independent snapshot of everything this migration could plausibly
+    touch (relations are keyed by the linked Source's semantic identity, so a
+    recreated-with-a-new-pk Source still compares equal)."""
+    return {
+        "sources": sorted(
+            ShrineKnowledgeSource.objects.values_list(
+                "source_type", "title", "publisher", "url", "bibliography",
+                "verification_status", "confidence",
+            )
+        ),
+        "deity_links": sorted(
+            ShrineDeity.objects.filter(shrine_id=1)
+            .values_list("display_name", "sources__source_type", "sources__title")
+        ),
+        "history_links": sorted(
+            ShrineHistory.objects.filter(shrine_id=1)
+            .values_list("title", "sources__source_type", "sources__title")
+        ),
+    }
+
+
+# 1 — exact Production-shaped PRE → forward succeeds
 @pytest.mark.django_db
-def test_forward_removes_target_source_and_the_two_relations(prod_shape):
+def test_valid_prestate_forward_succeeds(prod_shape):
     forward(APPS, None)
-    assert not _stray_qs().exists()                                        # (1)
-    assert _src_ids(prod_shape["d_meiji"]) == {prod_shape["official"].id}   # (2)
-    assert _src_ids(prod_shape["d_shoken"]) == {prod_shape["official"].id}  # (2)
+    assert not _stray_qs().exists()
+    assert _src_ids(prod_shape["d_meiji"]) == {prod_shape["official"].id}
+    assert _src_ids(prod_shape["d_shoken"]) == {prod_shape["official"].id}
 
 
-# 3 — genuine official Source preserved
+# applicability boundary — no Shrine pk 1 row at all → clean no-op (fresh DB)
 @pytest.mark.django_db
-def test_official_source_preserved(prod_shape):
-    forward(APPS, None)
-    assert ShrineKnowledgeSource.objects.filter(url=OFFICIAL_URL, source_type="shrine_official").count() == 1
-    assert prod_shape["official"].id in _src_ids(prod_shape["d_meiji"])
-    assert prod_shape["official"].id in _src_ids(prod_shape["d_shoken"])
-    assert prod_shape["official"].id in _src_ids(prod_shape["h"])
+def test_no_shrine1_row_is_clean_noop(db):
+    # Raw delete to bypass the ORM cascade collector (unrelated to this
+    # migration); conftest's autouse fixture created Shrine pk 1.
+    from django.db import connection
+
+    with connection.cursor() as cur:
+        cur.execute("DELETE FROM temples_shrine WHERE id = 1")
+    assert not Shrine.objects.filter(pk=1).exists()
+
+    forward(APPS, None)   # must NOT raise
+    reverse(APPS, None)   # must NOT raise
+    assert not _stray_qs().exists()  # reverse did not fabricate anything
 
 
-# 4 — unrelated id1 Sources preserved
+# 2 — zero Source PRE (Shrine pk 1 present) → forward raises / aborts
 @pytest.mark.django_db
-def test_unrelated_id1_sources_preserved(prod_shape):
-    extra = ShrineKnowledgeSource.objects.create(
-        source_type="academic", title="別の学術出典", url="https://example.org/x",
-        verification_status="reviewed", confidence="medium", verified_at=timezone.now(),
-    )
-    prod_shape["d_meiji"].sources.add(extra)
-    forward(APPS, None)
-    assert ShrineKnowledgeSource.objects.filter(id=extra.id).exists()
-    assert extra.id in _src_ids(prod_shape["d_meiji"])
+def test_zero_source_forward_raises(db):
+    _reshape_shrine1_as_meiji()  # 明治神宮 present, but no stray Source, no deities
+    with pytest.raises(RuntimeError, match=MISMATCH):
+        forward(APPS, None)
 
 
-# 5 — unrelated id1 Facts preserved
 @pytest.mark.django_db
-def test_unrelated_id1_facts_preserved(prod_shape):
-    forward(APPS, None)
-    for d in (prod_shape["d_meiji"], prod_shape["d_shoken"]):
-        d.refresh_from_db()
-        assert d.verification_status == "source_confirmed" and d.confidence == "high"
-    prod_shape["h"].refresh_from_db()
-    assert prod_shape["h"].title == "明治神宮の創建"
-    assert ShrineDeity.objects.filter(shrine_id=1).count() == 2
-    assert ShrineHistory.objects.filter(shrine_id=1).count() == 1
+def test_zero_source_but_full_deities_forward_raises(prod_shape):
+    # stray Source removed, deities + relations otherwise intact
+    prod_shape["d_meiji"].sources.set([prod_shape["official"]])
+    prod_shape["d_shoken"].sources.set([prod_shape["official"]])
+    prod_shape["stray"].delete()
+    with pytest.raises(RuntimeError, match=MISMATCH):
+        forward(APPS, None)
 
 
-# 6 — other shrine data preserved
+# 3 — multiple Source PRE → forward raises / aborts
 @pytest.mark.django_db
-def test_other_shrine_data_preserved(prod_shape):
-    other = _new_shrine("伏見稲荷大社")
-    osrc = ShrineKnowledgeSource.objects.create(
-        source_type="shrine_official", title="ご祭神｜伏見稲荷大社", url="https://inari.jp/about/saijin/",
-        verification_status="source_confirmed", confidence="high", verified_at=timezone.now(),
-    )
-    od = ShrineDeity.objects.create(
-        shrine=other, display_name="宇迦之御魂大神", role="primary", sort_order=0,
-        verification_status="source_confirmed", confidence="high", verified_at=timezone.now(),
-    )
-    od.sources.set([osrc])
-    forward(APPS, None)
-    assert _src_ids(od) == {osrc.id}
-    assert ShrineKnowledgeSource.objects.filter(id=osrc.id).exists()
+def test_multiple_source_matches_forward_raises(prod_shape):
+    dup = _mk_stray()
+    prod_shape["d_meiji"].sources.add(dup)
+    with pytest.raises(RuntimeError, match=MISMATCH):
+        forward(APPS, None)
+    assert _stray_qs().count() == 2  # nothing deleted
 
 
-# 7 — wrong Shrine identity = no-op
+# 4 — wrong Shrine identity → forward raises / aborts
 @pytest.mark.django_db
-def test_wrong_shrine_identity_is_noop(prod_shape):
+def test_wrong_shrine_identity_forward_raises(prod_shape):
     prod_shape["s1"].name_jp = "改名された神社"
     prod_shape["s1"].save(update_fields=["name_jp"])
-    forward(APPS, None)
+    with pytest.raises(RuntimeError, match=MISMATCH):
+        forward(APPS, None)
     assert _stray_qs().exists()
-    assert prod_shape["stray"].id in _src_ids(prod_shape["d_meiji"])
 
 
+# 5 — place_ref-set identity → forward raises / aborts
 @pytest.mark.django_db
-def test_place_ref_set_row_is_noop(prod_shape):
+def test_place_ref_set_forward_raises(prod_shape):
     from temples.models import PlaceRef
 
     pr = PlaceRef.objects.create(place_id="ChIJ_shadow_meiji", name="明治神宮")
     prod_shape["s1"].place_ref = pr
     prod_shape["s1"].save(update_fields=["place_ref"])
-    forward(APPS, None)
-    assert _stray_qs().exists()  # place_ref-set row is guarded out
-    assert prod_shape["stray"].id in _src_ids(prod_shape["d_meiji"])
+    with pytest.raises(RuntimeError, match=MISMATCH):
+        forward(APPS, None)
+    assert _stray_qs().exists()
 
 
-# 8 — Source semantic mismatch = no-op
+# 6 — semantic mismatch → forward raises / aborts
 @pytest.mark.django_db
-def test_semantic_mismatch_bibliography_is_noop(prod_shape):
+def test_semantic_mismatch_bibliography_forward_raises(prod_shape):
     prod_shape["stray"].bibliography = "何か別の書誌"
     prod_shape["stray"].save(update_fields=["bibliography"])
-    forward(APPS, None)
+    with pytest.raises(RuntimeError, match=MISMATCH):
+        forward(APPS, None)
     assert ShrineKnowledgeSource.objects.filter(id=prod_shape["stray"].id).exists()
-    assert prod_shape["stray"].id in _src_ids(prod_shape["d_meiji"])
 
 
 @pytest.mark.django_db
-def test_semantic_mismatch_nonempty_url_is_noop(prod_shape):
+def test_semantic_mismatch_nonempty_url_forward_raises(prod_shape):
     prod_shape["stray"].url = "https://example.org/observed"
     prod_shape["stray"].save(update_fields=["url"])
-    forward(APPS, None)
-    assert ShrineKnowledgeSource.objects.filter(id=prod_shape["stray"].id).exists()
+    with pytest.raises(RuntimeError, match=MISMATCH):
+        forward(APPS, None)
 
 
-# 9 — zero match safe
+# 7 — missing 明治天皇 → forward raises
 @pytest.mark.django_db
-def test_zero_match_is_safe(db):
-    _reshape_shrine1_as_meiji()  # 明治神宮, but no stray Source at all
-    forward(APPS, None)  # must not raise
-    assert not _stray_qs().exists()
+def test_missing_meiji_deity_forward_raises(prod_shape):
+    prod_shape["d_meiji"].delete()
+    with pytest.raises(RuntimeError, match=MISMATCH):
+        forward(APPS, None)
+    assert _stray_qs().exists()
 
 
-# 10 — multiple semantic matches safe (no deletion, no guess)
+# 8 — missing 昭憲皇太后 → forward raises
 @pytest.mark.django_db
-def test_multiple_matches_is_safe_noop(prod_shape):
-    dup = _mk_stray()  # a second row with identical semantic identity
-    prod_shape["d_meiji"].sources.add(dup)
-    forward(APPS, None)
-    assert _stray_qs().count() == 2  # nothing deleted
+def test_missing_shoken_deity_forward_raises(prod_shape):
+    prod_shape["d_shoken"].delete()
+    with pytest.raises(RuntimeError, match=MISMATCH):
+        forward(APPS, None)
+    assert _stray_qs().exists()
+
+
+@pytest.mark.django_db
+def test_duplicate_target_deity_forward_raises(prod_shape):
+    extra = _mk_deity(prod_shape["s1"], "明治天皇", 2)  # a second 明治天皇 row
+    extra.sources.set([prod_shape["official"], prod_shape["stray"]])
+    with pytest.raises(RuntimeError, match=MISMATCH):
+        forward(APPS, None)
+
+
+# 9 — stray Source linked only to 明治天皇 → forward raises
+@pytest.mark.django_db
+def test_only_meiji_relation_present_forward_raises(prod_shape):
+    prod_shape["d_shoken"].sources.set([prod_shape["official"]])  # drop stray from 昭憲皇太后
+    with pytest.raises(RuntimeError, match=MISMATCH):
+        forward(APPS, None)
+    assert _stray_qs().exists()
+    assert prod_shape["stray"].id in _src_ids(prod_shape["d_meiji"])  # untouched
+
+
+# 10 — stray Source linked only to 昭憲皇太后 → forward raises
+@pytest.mark.django_db
+def test_only_shoken_relation_present_forward_raises(prod_shape):
+    prod_shape["d_meiji"].sources.set([prod_shape["official"]])
+    with pytest.raises(RuntimeError, match=MISMATCH):
+        forward(APPS, None)
+    assert prod_shape["stray"].id in _src_ids(prod_shape["d_shoken"])  # untouched
+
+
+# 11 — neither target relation exists → forward raises
+@pytest.mark.django_db
+def test_neither_relation_present_forward_raises(prod_shape):
+    prod_shape["d_meiji"].sources.set([prod_shape["official"]])
+    prod_shape["d_shoken"].sources.set([prod_shape["official"]])
+    with pytest.raises(RuntimeError, match=MISMATCH):
+        forward(APPS, None)
+    assert _stray_qs().exists()
+
+
+@pytest.mark.django_db
+def test_stray_source_referenced_elsewhere_forward_raises(prod_shape):
+    # a third Fact (history) also cites the stray Source → not safely deletable
+    prod_shape["h"].sources.add(prod_shape["stray"])
+    with pytest.raises(RuntimeError, match=MISMATCH):
+        forward(APPS, None)
+    assert _stray_qs().exists()
     assert prod_shape["stray"].id in _src_ids(prod_shape["d_meiji"])
 
 
-# 11 — Source pk drift does not matter (match is by semantic identity)
+# 12 — failure leaves DB semantically unchanged
 @pytest.mark.django_db
-def test_pk_drift_does_not_matter(db):
-    s1 = _reshape_shrine1_as_meiji()
-    official = _mk_official()
-    stray = _mk_stray(id=999004)  # local-dev-style pk
-    assert stray.id == 999004
-    d = ShrineDeity.objects.create(
-        shrine=s1, display_name="明治天皇", role="enshrined", sort_order=0,
-        verification_status="source_confirmed", confidence="high", verified_at=timezone.now(),
-    )
-    d.sources.set([official, stray])
-    forward(APPS, None)
-    assert not ShrineKnowledgeSource.objects.filter(id=999004).exists()
-    assert _src_ids(d) == {official.id}
+def test_failed_forward_leaves_db_unchanged(prod_shape):
+    prod_shape["d_shoken"].sources.set([prod_shape["official"]])  # trip a guard
+    before = _semantic_snapshot()
+    with pytest.raises(RuntimeError, match=MISMATCH):
+        forward(APPS, None)
+    assert _semantic_snapshot() == before
 
 
-# 12 / 13 — reverse recreates exact Source state + restores exactly the two links
+# 13 — valid forward → reverse restores exact Source + exactly the two links
 @pytest.mark.django_db
-def test_reverse_recreates_source_and_two_links(prod_shape):
+def test_reverse_restores_exact_prestate(prod_shape):
+    before = _semantic_snapshot()
+
     forward(APPS, None)
     reverse(APPS, None)
 
     matches = list(_stray_qs())
     assert len(matches) == 1
     src = matches[0]
-    assert src.source_type == "user_observation"
-    assert src.title == "テスト神社 境内案内板"
-    assert src.publisher == "テスト神社"
-    assert src.url == ""
-    assert src.bibliography == "テスト神社境内案内板（2026-08-01現地確認）"
-    assert src.verification_status == "source_confirmed"
-    assert src.confidence == "medium"
-    assert src.language == "ja"
-    assert src.accessed_at is None
+    assert (src.source_type, src.title, src.publisher, src.url, src.bibliography) == (
+        "user_observation", "テスト神社 境内案内板", "テスト神社", "",
+        "テスト神社境内案内板（2026-08-01現地確認）",
+    )
+    assert (src.verification_status, src.confidence, src.language, src.accessed_at) == (
+        "source_confirmed", "medium", "ja", None,
+    )
     assert src.id in _src_ids(prod_shape["d_meiji"])
     assert src.id in _src_ids(prod_shape["d_shoken"])
-    assert prod_shape["official"].id in _src_ids(prod_shape["d_meiji"])
-    assert src.id not in _src_ids(prod_shape["h"])  # history never gained the link
+    assert src.id not in _src_ids(prod_shape["h"])
+    # exact-state: only the stray Source pk may differ (row was recreated)
+    assert _semantic_snapshot() == before
 
 
-# 14 — no duplicate Source on reverse / reapply
+# 14 — valid forward → reverse → forward remains deterministic
 @pytest.mark.django_db
-def test_no_duplicate_source_on_reverse_or_reapply(prod_shape):
+def test_forward_reverse_forward_deterministic(prod_shape):
     forward(APPS, None)
     reverse(APPS, None)
-    reverse(APPS, None)
-    assert _stray_qs().count() == 1
-    forward(APPS, None)
-    reverse(APPS, None)
-    assert _stray_qs().count() == 1
+    forward(APPS, None)  # PRE valid again → succeeds
+    assert not _stray_qs().exists()
+    assert _src_ids(prod_shape["d_meiji"]) == {prod_shape["official"].id}
+    assert _src_ids(prod_shape["d_shoken"]) == {prod_shape["official"].id}
+
+
+@pytest.mark.django_db
+def test_second_forward_after_deletion_raises(prod_shape):
+    forward(APPS, None)  # succeeds
+    with pytest.raises(RuntimeError, match=MISMATCH):
+        forward(APPS, None)  # stray Source now gone → PRESTATE_MISMATCH
 
 
 @pytest.mark.django_db
@@ -304,30 +368,65 @@ def test_reverse_reuses_existing_source_no_duplicate(prod_shape):
     reverse(APPS, None)  # stray still present (forward not run) → reuse, not create
     assert _stray_qs().count() == 1
     assert _stray_qs().first().id == prod_shape["stray"].id
-
-
-# 15 — forward idempotent
-@pytest.mark.django_db
-def test_forward_idempotent(prod_shape):
-    forward(APPS, None)
-    forward(APPS, None)
-    forward(APPS, None)
-    assert not _stray_qs().exists()
-    assert _src_ids(prod_shape["d_meiji"]) == {prod_shape["official"].id}
-
-
-# 16 — forward -> reverse -> forward deterministic
-@pytest.mark.django_db
-def test_forward_reverse_forward_deterministic(prod_shape):
-    forward(APPS, None)
+    # extra reverse still no duplicate
     reverse(APPS, None)
+    assert _stray_qs().count() == 1
+
+
+# 15 — genuine shrine_official Source remains untouched
+@pytest.mark.django_db
+def test_official_source_untouched(prod_shape):
     forward(APPS, None)
-    assert not _stray_qs().exists()
-    assert _src_ids(prod_shape["d_meiji"]) == {prod_shape["official"].id}
-    assert _src_ids(prod_shape["d_shoken"]) == {prod_shape["official"].id}
+    assert ShrineKnowledgeSource.objects.filter(url=OFFICIAL_URL, source_type="shrine_official").count() == 1
+    assert prod_shape["official"].id in _src_ids(prod_shape["d_meiji"])
+    assert prod_shape["official"].id in _src_ids(prod_shape["d_shoken"])
+    assert prod_shape["official"].id in _src_ids(prod_shape["h"])
+    reverse(APPS, None)
+    assert prod_shape["official"].id in _src_ids(prod_shape["d_meiji"])
+    assert prod_shape["official"].id in _src_ids(prod_shape["h"])
 
 
-# 17 — Evidence Gate usability for both deities unchanged
+# 16 — unrelated Source / history references remain untouched
+@pytest.mark.django_db
+def test_unrelated_references_untouched(prod_shape):
+    other = _new_shrine("伏見稲荷大社")
+    osrc = ShrineKnowledgeSource.objects.create(
+        source_type="shrine_official", title="ご祭神｜伏見稲荷大社", url="https://inari.jp/about/saijin/",
+        verification_status="source_confirmed", confidence="high", verified_at=timezone.now(),
+    )
+    od = _mk_deity(other, "宇迦之御魂大神", 0)
+    od.sources.set([osrc])
+
+    forward(APPS, None)
+
+    assert _src_ids(od) == {osrc.id}
+    prod_shape["h"].refresh_from_db()
+    assert prod_shape["h"].title == "明治神宮の創建"
+    assert _src_ids(prod_shape["h"]) == {prod_shape["official"].id}
+    assert ShrineDeity.objects.filter(shrine_id=1).count() == 2
+    assert ShrineHistory.objects.filter(shrine_id=1).count() == 1
+
+
+# 17 — PK drift still irrelevant (match is by semantic identity)
+@pytest.mark.django_db
+def test_pk_drift_still_irrelevant(db):
+    s1 = _reshape_shrine1_as_meiji()
+    official = _mk_official()
+    stray = _mk_stray(id=999004)  # local-dev-style pk
+    assert stray.id == 999004
+    d_meiji = _mk_deity(s1, "明治天皇", 0)
+    d_shoken = _mk_deity(s1, "昭憲皇太后", 1)
+    for d in (d_meiji, d_shoken):
+        d.sources.set([official, stray])
+
+    forward(APPS, None)
+
+    assert not ShrineKnowledgeSource.objects.filter(id=999004).exists()
+    assert _src_ids(d_meiji) == {official.id}
+    assert _src_ids(d_shoken) == {official.id}
+
+
+# 18 — Evidence Gate usability for both deities unchanged
 @pytest.mark.django_db
 def test_evidence_gate_usability_unchanged(prod_shape):
     def usable(d):
@@ -345,7 +444,7 @@ def test_evidence_gate_usability_unchanged(prod_shape):
     assert after == before and all(after.values())
 
 
-# 18 — Recommendation Knowledge payload unchanged
+# 19 — Recommendation Knowledge payload unchanged
 @pytest.mark.django_db
 def test_recommendation_knowledge_payload_unchanged(prod_shape):
     before = fetch_fact_ready_knowledge_deities([1])
@@ -356,7 +455,6 @@ def test_recommendation_knowledge_payload_unchanged(prod_shape):
     assert [d["confidence"] for d in after.get(1, [])] == ["high", "high"]
 
 
-# 19 — score_need / C1 / ranking inputs (goriyaku_tags + goriyaku + identity) untouched
 @pytest.mark.django_db
 def test_scoring_inputs_untouched(prod_shape):
     from temples.models import GoriyakuTag
@@ -375,7 +473,6 @@ def test_scoring_inputs_untouched(prod_shape):
     assert Shrine.objects.get(id=1).name_jp == "明治神宮"
 
 
-# 20 — Knowledge coverage delta exactly as audited
 @pytest.mark.django_db
 def test_knowledge_coverage_delta(prod_shape):
     def snapshot():
@@ -398,10 +495,10 @@ def test_knowledge_coverage_delta(prod_shape):
     assert before["user_obs"] == 1 and after["user_obs"] == 0
     assert after["id1_deity_facts"] == before["id1_deity_facts"] == 2
     assert after["id1_history_facts"] == before["id1_history_facts"] == 1
-    assert after["id1_has_source"] is True  # no coverage classification change
+    assert after["id1_has_source"] is True
 
 
-# 21 — seed import no longer recreates src-999004 (BUNDLED_WITH_MIGRATION_PR)
+# 20 — seed import no longer recreates src-999004 (BUNDLED_WITH_MIGRATION_PR)
 def test_seed_no_longer_defines_the_test_source():
     seed_path = (
         Path(__file__).resolve().parents[1] / "data" / "knowledge_seeds" / "batch_1_7_seed.json"

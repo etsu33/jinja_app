@@ -333,6 +333,13 @@ classification).
 
 ## 14. Proposed Remediation
 
+> **Superseded by §18.4.** This section is the pre-implementation proposal. The
+> delivered migration uses a stricter **`P6_0098_PRESTATE_POLICY = FAIL_CLOSED`**
+> contract: the "safe no-op" / "idempotent after deletion" framing below is
+> **withdrawn** — once `Shrine` pk 1 exists, an unexpected pre-state raises and
+> aborts instead of silently no-opping. See §18.4–§18.6 for the contract that
+> was actually built.
+
 **Not implemented in this task.** For P6-DATA:
 
 ### Delivery mechanism — comparison
@@ -533,32 +540,74 @@ Latest applied `temples` migration in Production =
 to the linear chain; on the next authorized Production `migrate` it runs after
 0095→0096→0097. No Production write in this task.
 
-### 18.4 Forward behaviour
+### 18.4 Reverse-safety correction — `P6_0098_PRESTATE_POLICY = FAIL_CLOSED`
 
-1. Resolve the shrine: `pk=1 AND name_jp="明治神宮" AND place_ref_id IS NULL`
-   (`.only(...)` excludes `location`). Mismatch ⇒ safe no-op.
-2. Resolve the stray Source by **full semantic identity, never pk**
-   (`source_type="user_observation"`, `title="テスト神社 境内案内板"`,
-   `publisher="テスト神社"`, `url=""`,
-   `bibliography="テスト神社境内案内板（2026-08-01現地確認）"`). **0 matches**
-   (already clean) or **>1 matches** (ambiguous) ⇒ safe no-op, no deletion.
-3. With exactly one match: remove the Source from `明治天皇` and `昭憲皇太后`
-   (`shrine_id=1`), only where the relation exists.
-4. `SOURCE_AND_RELATIONS`: `src.delete()` **iff** `not src.deities.exists()
-   and not src.histories.exists()`.
+The first implementation treated "shrine identity mismatch", "zero Source
+matches", and ">1 Source matches" as **successful safe no-ops**, and forward as
+generally idempotent (a re-run after deletion found 0 matches → no-op). That is
+**not** exactly reversible: without persistent migration-owned state, once the
+Source row is deleted there is no durable marker distinguishing (A) the Source
+was absent before forward from (B) the Source existed and forward deleted it —
+so `reverse` on a "Case Z" pre-state (valid shrine, stray Source absent) would
+**fabricate** contamination that never existed; and a pre-state with only one
+of the two approved relations would have forward remove that one and reverse
+add **both**.
 
-Idempotent: a re-run finds 0 matches → no-op.
+**Corrected contract: `P6_0098_PRESTATE_POLICY = FAIL_CLOSED`.** Those claims
+are withdrawn. 0098 applies only to the exact audited Production shape:
 
-### 18.5 Reverse behaviour
+- **Applicability boundary — the one clean no-op.** If `Shrine` pk 1 does not
+  exist at all (a fresh/empty database migrated from scratch, or any database
+  without this subject), forward and reverse are both a clean no-op — `migrate`
+  on an empty database still succeeds.
+- **Once a `Shrine` pk 1 row exists, forward asserts the complete PRE contract
+  and raises** `RuntimeError("[temples.0098] PRESTATE_MISMATCH: …")` on any
+  deviation, aborting the migration transaction so 0098 is **not** recorded as
+  applied. Unexpected state is an error, never repaired or guessed at.
+- Therefore, on a database that has `Shrine` pk 1, a **recorded/applied 0098
+  implies the exact reversible PRE contract held**.
 
-Restores only what this migration owns. Same shrine guard. Finds the Source by
-the same semantic identity; **reuses** it if present (never duplicates), else
-recreates it with the reviewed seed values (`source_confirmed` / `medium` /
-`ja` / `verified_at=2026-08-01T07:30:00+00:00` / no URL). Re-links **only**
-`明治天皇` and `昭憲皇太后` on Shrine id 1. Never by pk; never recreates the
-deities; never touches the genuine `shrine_official` Source.
+### 18.5 Forward behaviour
 
-### 18.6 Seed cleanup (`BUNDLED_WITH_MIGRATION_PR`)
+If `Shrine` pk 1 is absent → clean no-op. Otherwise **all** of the following
+must hold or forward **raises** before any mutation:
+
+1. the `Shrine` pk 1 row has `name_jp = 明治神宮` and `place_ref_id IS NULL`
+   (`.only(...)` excludes `location`);
+2. **exactly one** `ShrineKnowledgeSource` matches the full semantic identity
+   `source_type=user_observation` + `title=テスト神社 境内案内板` +
+   `publisher=テスト神社` + `url=""` +
+   `bibliography=テスト神社境内案内板（2026-08-01現地確認）` (never pk —
+   Production pk 2, local pk 999004); 0 or >1 → raise;
+3. **exactly** the two `ShrineDeity` rows `明治天皇` and `昭憲皇太后` exist on
+   `shrine_id = 1` (missing / duplicate / extra → raise);
+4. **both** cite the target Source (either relation absent → raise), and the
+   target Source is cited by **only** those two relations — no third deity, no
+   history (→ raise), so the row is safely deletable and exactly reversible.
+
+Then, and only then: remove the Source from both deities and `src.delete()`
+(it is now provably unreferenced). A second forward after a successful apply
+finds zero Source matches → **raises** (`PRESTATE_MISMATCH`) — there is no
+"idempotent re-run" claim.
+
+### 18.6 Reverse behaviour
+
+Reverse runs only after a forward that applied the remediation or was a clean
+no-op. It restores **only** when it can see the audited shape — `Shrine` pk 1 =
+明治神宮 / `place_ref_id IS NULL` **and** exactly the two target deities. On any
+other database (fresh, partially shaped, or a full temples migration-chain
+reversal in tests/tooling) reverse is a **clean no-op** and never fabricates
+the stray Source. It raises only on genuine ambiguity (more than one Source
+already matches the semantic identity). When it restores: reuse an equivalent
+Source row if exactly one is present (never duplicating), else recreate it from
+the reviewed seed values (`source_confirmed` / `medium` / `ja` /
+`verified_at=2026-08-01T07:30:00+00:00` / no URL); re-link **only** `明治天皇`
+and `昭憲皇太后`. Never by pk; never recreates the deities; never touches the
+genuine `shrine_official` Source. `forward → reverse` restores the exact
+pre-state (only the recreated Source's pk may differ); `forward → reverse →
+forward` is deterministic.
+
+### 18.7 Seed cleanup (`BUNDLED_WITH_MIGRATION_PR`)
 
 `backend/temples/data/knowledge_seeds/batch_1_7_seed.json`:
 
@@ -571,30 +620,40 @@ deities; never touches the genuine `shrine_official` Source.
 - Verified: a future `import_shrine_knowledge batch_1_7_seed.json` can no
   longer create the test Source (`test_seed_no_longer_defines_the_test_source`).
 
-### 18.7 Regression
+### 18.8 Regression
 
-- New `test_migration_0098_remove_stray_test_source_id1.py` — **22 tests**
-  covering the full P6-DATA regression contract (exact target + two relations
-  removed; official Source preserved; unrelated id-1 Sources / Facts preserved;
-  other-shrine data preserved; wrong-identity no-op; `place_ref`-set no-op;
-  semantic-mismatch no-op ×2; zero-match safe; multiple-match safe; pk-drift
-  irrelevant; reverse recreates exact Source + exactly two links; no duplicate
-  on reverse/reapply; reverse reuses an existing row; forward idempotent;
-  forward→reverse→forward deterministic; Evidence Gate usability unchanged;
-  Recommendation Knowledge payload unchanged; scoring inputs untouched;
-  Knowledge coverage delta exactly `total_source_count −1` /
+- `test_migration_0098_remove_stray_test_source_id1.py` — **30 tests** for the
+  fail-closed contract: applicability boundary (no `Shrine` pk 1 → clean
+  no-op, forward + reverse); exact Production-shaped PRE → forward succeeds;
+  **forward raises** on — zero Source, zero-Source-with-full-deities, multiple
+  Source matches, renamed shrine, `place_ref`-set shrine, bibliography
+  mismatch, non-empty-url mismatch, missing 明治天皇, missing 昭憲皇太后,
+  duplicate 明治天皇, only-明治天皇 relation, only-昭憲皇太后 relation, neither
+  relation, Source also cited by a history; failed forward leaves the DB
+  semantically unchanged; second forward after a successful apply raises;
+  reverse restores the exact pre-state (Source fields + exactly the two
+  links); `forward → reverse → forward` deterministic; reverse reuses an
+  existing Source (no duplicate) ×2; genuine `shrine_official` Source
+  untouched; unrelated Source/history references untouched; pk-drift
+  irrelevant (Source at pk 999004 still matched/removed); Evidence Gate
+  usability unchanged; Recommendation Knowledge payload unchanged; scoring
+  inputs untouched; Knowledge coverage delta exactly `total_source_count −1` /
   `user_observation 1→0` with no shrine classification change; seed no longer
-  defines the test Source).
-- Focused regression (0091 / 0095 / 0096 / 0097 / 0098 migration tests,
-  Shrine Knowledge models, Shrine Knowledge migration, Knowledge coverage
-  command): **112 passed**.
-- Full `backend/temples`: **1969 passed, 13 skipped, 0 failed** (skips are the
-  pre-existing GDAL / PostGIS / ambiguous-axis ones, unchanged).
+  defines the test Source.
+- Focused regression (0091 GIS / 0095 / 0096 / 0097 / 0098 migration tests,
+  Evidence Gate, Shrine Knowledge selector, Knowledge coverage command,
+  Shrine Knowledge models + migration): **152 passed** (nogis lineage).
+- Full `backend/temples`, fresh test DB, both migration lineages:
+  **nogis (CI-equivalent): 1964 passed, 12 skipped, 0 failed**;
+  **GIS lineage: 1976 passed, 13 skipped, 0 failed**. Skips are the
+  pre-existing GDAL / PostGIS / ambiguous-axis ones, unchanged. A fresh
+  `migrate` in the GIS lineage runs 0098 as the applicability-boundary no-op
+  (empty `temples_shrine`) and succeeds.
 - `python manage.py makemigrations temples --check --dry-run` → "No changes
-  detected in app 'temples'".
+  detected in app 'temples'" (both lineages).
 - `git diff --check` → clean.
 
-### 18.8 Impact (matches the audit)
+### 18.9 Impact (matches the audit)
 
 - **Evidence Gate:** `明治天皇` / `昭憲皇太后` remain `usable` via the genuine
   `shrine_official` Source — unchanged.
@@ -607,7 +666,7 @@ deities; never touches the genuine `shrine_official` Source.
 - **Shrine Detail API:** 明治神宮's two enshrined-deity Facts stop serving the
   `テスト神社 境内案内板` citation (2 → 1 sources each).
 
-### 18.9 Status
+### 18.10 Status
 
 - **Production write status: NONE.** Read-only ledger check only; every
   statement `guard.py`-checked; credential never printed / logged / in argv.
