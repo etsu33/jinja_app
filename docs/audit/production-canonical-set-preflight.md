@@ -143,8 +143,8 @@ PR #2611 found a **46-row** `GoriyakuTag` table in the local dev DB (`jinja_db`)
 | 95–100 | 忌宮神社 / 高良大社 / 寳登山神社 / 枚岡神社 / 護王神社 / 阿蘇神社 | (real addresses) | no | real shrines |
 | **101** | 給田六所神社 | 〒157-0064 東京都世田谷区給田１丁目３−７ | **yes** | duplicate shadow of id 22 |
 | **102** | テスト確認神社 20260611 | 東京テスト | no | **QA/test row** (0 lat/lng, 0 tags, 0 knowledge, empty goriyaku/sajin) |
-| **103** | 長太稲荷神社 | 〒157-0065 東京都世田谷区上祖師谷１丁目３−１０ | **yes** | duplicate shadow of id 21 |
-| **104** | 富岡八幡宮 | 〒135-0047 東京都江東区富岡１丁目２０−３ | **yes** | duplicate shadow of id 49 |
+| **103** | 長太稲荷神社 | 〒157-0065 東京都世田谷区上祖師谷１丁目３−１０ | **yes** | confirmed duplicate shadow of id 21 (§10) |
+| **104** | 富岡八幡宮 | 〒135-0047 東京都江東区富岡１丁目２０−３ | **yes** | **candidate** shadow of id 49 — identity `AMBIGUOUS_PENDING_IDENTITY_CONFIRMATION` (§10) |
 | **105** | 広島市 | 日本、広島県広島市 | **yes** | **NON-SHRINE** — coords (34.3853, 132.4553) = Hiroshima City centre; `google_place_id` for the city; 0 tags, 0 deity, 0 history, empty goriyaku/sajin. A geocoding artifact, not a shrine. |
 | **106** | 北海道神宮 | 北海道札幌市中央区宮ヶ丘474 | no | real shrine (Batch 17) |
 | **107** | 建部大社 | 滋賀県大津市神領1-16-1 | no | real shrine (Batch 17) |
@@ -168,7 +168,9 @@ Applying `shrine_qa_fixture_exclusion.exclude_qa_fixture_shrines` **conceptually
 
 **Id 105 `広島市` is a non-shrine identity row that `shrine_qa_fixture_exclusion` does NOT catch** — its name contains no `テスト` / `検証` / `test` / noisy token, so the name-convention rule passes it through as if it were a real shrine. It is a Google-Places geocoding artifact (a city). This is not a QA fixture and not a real shrine; it needs its own disposition (§15.3) and, separately, the exclusion function may warrant a non-shrine-artifact guard (§15.5, out of this task's scope).
 
-The local dev DB's QA fixtures (`承認テスト神社`, `admin承認テスト神社`, `重複検証神社`×3 at ids 101–105) are **NOT present in Production** — those are local-dev-only rows. Production's ids 101/103/104 are duplicate shadows and 102/105 are the test/artifact rows above.
+The local dev DB's QA fixtures (`承認テスト神社`, `admin承認テスト神社`, `重複検証神社`×3 at ids 101–105) are **NOT present in Production** — those are local-dev-only rows. Production's ids 101/103 are confirmed duplicate shadows, 104 is a candidate shadow (identity pending, §10), and 102/105 are the test/artifact rows above.
+
+> **Spreadsheet row-id ≠ Production row-id.** The Mother Ship's authenticated Spreadsheet inspection [MS] confirms Spreadsheet **id 104 is a QA fixture named `重複検証神社`**, *not* the Production shadow row. Spreadsheet row-id equality therefore **cannot** be used to validate any Production identity claim; the join must use the §6 fallback order (name / official_name / address / coordinates / Google Place identity), never id alone.
 
 ## 10. Duplicate real-shrine reconciliation
 
@@ -181,13 +183,19 @@ Exact-name duplicate groups in Production [prod] — **all three historical cand
 | **給田六所神社** | 22 | 〒157-0064 …給田１丁目３−７ | 35.662443 / 139.5920237 | — | 1 / 2 / 4 | primary (holds all knowledge) |
 | | 101 | *(identical)* | *(identical)* | `ChIJl-MEepfxGGAR1Eo44p__GaE` | 0 / 0 / 0 | shadow → **`SAME_REAL_SHRINE_DUPLICATE`** |
 | **富岡八幡宮** | 49 | 東京都江東区富岡1-20-3 | 35.6733 / 139.7967 | — | 2 / 1 / 2 | primary |
-| | 104 | 〒135-0047 東京都江東区富岡１丁目２０−３ | 35.6717809 / 139.799519 | `ChIJK11I4BGJGGAR5mZswigcu58` | 0 / 0 / 0 | shadow → **`SAME_REAL_SHRINE_DUPLICATE`** (caveat) |
+| | 104 | 〒135-0047 東京都江東区富岡１丁目２０−３ | 35.6717809 / 139.799519 | `ChIJK11I4BGJGGAR5mZswigcu58` (PlaceRef `name = 富岡八幡宮`) | 0 / 0 / 0 | candidate shadow → **`AMBIGUOUS_PENDING_IDENTITY_CONFIRMATION`** |
 
-- 長太稲荷 / 給田六所: **address and coordinates byte-identical** between the pair; the shadow row carries a `place_ref` and zero data. Unambiguous.
-- 富岡八幡宮: name identical, both at 江東区富岡 1-20-3; address differs **only in format** (`日本、〒135-0047 …１丁目２０−３` vs `東京都江東区富岡1-20-3`); coordinates ~300 m apart (manual entry vs Google-Places geocode of the same address); shadow row carries a `place_ref` and zero data. Same pattern as the other two → classified `SAME_REAL_SHRINE_DUPLICATE`, with the coordinate/address-format delta flagged for confirmation against the Spreadsheet's `coordinate_delta_m` / `coordinate_status` columns [MS] (§15.4). Conservative fallback label if the Spreadsheet disagrees: `AMBIGUOUS`.
-- **No rows deleted or merged.** Every DB row is preserved. For each pair the audit unit (PR-C) is the **data-bearing primary id** (21, 22, 49), with the shadow id kept in the evidence table (per PR #2611 §8).
+- **長太稲荷 {21, 103} / 給田六所 {22, 101}: `SAME_REAL_SHRINE_DUPLICATE` — CONFIRMED.** address and coordinates **byte-identical** between the pair; the shadow row's `place_ref` PlaceRef carries the *same* name and *same* address as the primary; shadow row has zero tags / zero knowledge; created within the same window. Two independent identity signals agree → confirmed.
+- **富岡八幡宮 {49, 104}: `AMBIGUOUS_PENDING_IDENTITY_CONFIRMATION`.** The evidence is *suggestive but not conclusive*, and per the Mother Ship's ruling, **same name is not proof**:
+  - *For SAME:* id 49's manual address (`…富岡1-20-3`) and id 104's PlaceRef address (`…富岡１丁目２０−３`) resolve to the **same street lot, 江東区富岡 1-20-3**; the PlaceRef row is itself named `富岡八幡宮`; id 104 was created 2026-06-12, one day after id 49 (2026-06-11) and follows the identical zero-data `place_ref`-shadow pattern as the two confirmed pairs.
+  - *Against / unresolved:* coordinates are **~300 m apart** (unlike the two confirmed pairs, which are byte-identical); the designated Identity/Location audit reference — the Google Spreadsheet — has **no populated `reference_latitude` / `reference_longitude` / `coordinate_delta_m` / `coordinate_status`** for its row id 49 [MS], so the requested coordinate confirmation **cannot be performed from the current audit columns**; and Spreadsheet id 104 is an unrelated QA fixture (`重複検証神社`), so no Spreadsheet-side row corresponds to the Production shadow.
+  - **No stronger *independent* current read-only evidence is available in this task.** The address-lot match plus PlaceRef self-name is the strongest obtainable here and is not sufficient to override the Mother Ship's conservative stance. → held as `AMBIGUOUS_PENDING_IDENTITY_CONFIRMATION`.
+- **No rows deleted or merged.** Every DB row is preserved. For each *confirmed* pair the audit unit (PR-C) is the **data-bearing primary id** (21, 22), with the shadow id kept in the evidence table (per PR #2611 §8). For 富岡, both rows (49, 104) enter PR-C as a `REVIEW_REQUIRED` identity pair until confirmed.
 
-`CONFIRMED_DUPLICATE_EXTRA_ROWS = 3` (the shadow rows 101, 103, 104).
+| Term | Value |
+|---|---|
+| `CONFIRMED_DUPLICATE_EXTRA_ROWS` | **2** (shadow rows 101, 103) |
+| `AMBIGUOUS_DUPLICATE_EXTRA_ROWS` | **1** (shadow row 104 — 富岡八幡宮) |
 
 ## 11. Canonical real-shrine identity set
 
@@ -195,12 +203,13 @@ Exact-name duplicate groups in Production [prod] — **all three historical cand
 |---|---|---|
 | `RAW_PRODUCTION_SHRINE_ROWS` | **108** | [prod] |
 | `QA_FIXTURE_ROWS` | **1** | id 102 (§9) |
-| `REAL_PRODUCTION_DB_ROWS` | **107** | 108 − 1 (what the current repo QA function removes) |
-| `CONFIRMED_DUPLICATE_EXTRA_ROWS` | **3** | ids 101, 103, 104 (§10) |
-| Non-shrine artifact rows | **1** | id 105 `広島市` (§9 gap) |
-| `UNIQUE_REAL_SHRINE_IDENTITIES` | **103** | 107 − 3 (dup shadows) − 1 (非-shrine 105) |
+| `POST_QA_PRODUCTION_ROWS` | **107** | 108 − 1 (what the current repo QA function removes). **Still includes id 105 `広島市`**, which is not a real shrine — so this is *not* "real shrine rows" without qualification. |
+| `NON_SHRINE_ARTIFACT_ROWS` | **1** | id 105 `広島市` (§9 gap) — a Google-Places geocode artifact, not a shrine and not a QA fixture |
+| `CONFIRMED_DUPLICATE_EXTRA_ROWS` | **2** | shadow rows 101, 103 (§10 — both byte-identical to their primary, two independent identity signals) |
+| `AMBIGUOUS_DUPLICATE_EXTRA_ROWS` | **1** | shadow row 104 (§10 — 富岡八幡宮; `AMBIGUOUS_PENDING_IDENTITY_CONFIRMATION`) |
+| `UNIQUE_REAL_SHRINE_IDENTITIES` | **103 if 富岡 {49,104} is SAME · 104 if DISTINCT** | 107 − 1 (非-shrine 105) − 2 (confirmed dup shadows) − (1 if 富岡 SAME, else 0) |
 
-The duplicate classification is **sufficiently supported** (§10: two exact matches + one same-shrine-same-block with a format/geocode delta), and the non-shrine row is unambiguous, so `UNIQUE_REAL_SHRINE_IDENTITIES` is a real computed value, not `NOT_VERIFIED`.
+The two confirmed duplicate pairs are **fully supported** (§10: byte-identical address+coords + PlaceRef self-name agreement). The non-shrine row (id 105) is unambiguous. **富岡八幡宮 {49,104} is not resolvable from current read-only evidence** (§10) — its ~300 m coordinate delta and the absence of Spreadsheet coordinate-audit values for row 49 leave it `AMBIGUOUS_PENDING_IDENTITY_CONFIRMATION`. Therefore `UNIQUE_REAL_SHRINE_IDENTITIES` has a **candidate range of 103–104**, not a single finalized value.
 
 ## 12. FULL_AUDIT_DENOMINATOR packet
 
@@ -210,14 +219,15 @@ Definition: *number of unique real shrine identities that must undergo the full 
 |---|---|
 | `RAW_PRODUCTION_SHRINE_ROWS` | 108 |
 | `QA_FIXTURE_ROWS` | 1 |
-| `REAL_PRODUCTION_DB_ROWS` | 107 |
-| `CONFIRMED_DUPLICATE_EXTRA_ROWS` | 3 |
-| Non-shrine artifact rows | 1 |
-| `UNIQUE_REAL_SHRINE_IDENTITIES` | **103** |
+| `NON_SHRINE_ARTIFACT_ROWS` | 1 (id 105 `広島市`) |
+| `POST_QA_PRODUCTION_ROWS` | 107 (108 − QA; still contains the non-shrine row) |
+| `CONFIRMED_DUPLICATE_EXTRA_ROWS` | 2 (shadow rows 101, 103) |
+| `AMBIGUOUS_DUPLICATE_EXTRA_ROWS` | 1 (shadow row 104 — 富岡八幡宮) |
+| `UNIQUE_REAL_SHRINE_IDENTITIES` | **103** if 富岡 {49,104} is SAME · **104** if DISTINCT |
 
-**`RECOMMENDED_FULL_AUDIT_DENOMINATOR = 103`**
+**`FULL_AUDIT_DENOMINATOR = MOTHER_SHIP_DECISION_PENDING`** — candidate range **103–104**, pending 富岡八幡宮 {49,104} identity confirmation (§10).
 
-Computed from a direct read-only Production read (not inferred from the historical 100 / 102 / 105 figures). Subject to one Mother Ship confirmation (§13, §15.1–15.4): approve 103, and rule on whether rows 101/103/104 (dup shadows) and 105 (`広島市`) are cleaned pre-audit or carried into PR-C's matrix as `REVIEW_REQUIRED` / `MISSING` rows (either way the denominator of *real shrine identities* stays 103).
+This is computed from a direct read-only Production read (not inferred from the historical 100 / 102 / 105 figures). It is **not** finalized at 103: the 富岡 identity question is unresolved, and the disposition of the QA row (102), the non-shrine row (105), and the confirmed/ambiguous duplicate shadow rows (101, 103, 104) still needs a Mother Ship ruling (§15). Whatever the disposition of those anomalous rows, the *real shrine identity* count is **103 or 104**, decided solely by 富岡.
 
 ## 13. PR-C entry gate
 
@@ -226,17 +236,17 @@ Computed from a direct read-only Production read (not inferred from the historic
 | 1 | Production Shrine set verified | **GREEN** | §8 — 108 rows read, all identity fields, classified |
 | 2 | Production GoriyakuTag master state verified | **GREEN** | §7 — 39 rows, ids 1–39, `ALIGNED`, 0 mismatch |
 | 3 | Spreadsheet authenticated read path available | **GREEN (project)** | §6 — `MOTHER_SHIP_AUTHENTICATED_SPREADSHEET_READ = VERIFIED`. PR-C must actually receive the snapshot; Codex session path stays `BLOCKED`. |
-| 4 | `FULL_AUDIT_DENOMINATOR` determinable or MS-approved | **AMBER** | §12 — value **determined** = 103; needs a one-line MS sign-off + disposition of 4 non-standard rows before PR-C locks its input set |
+| 4 | `FULL_AUDIT_DENOMINATOR` determinable or MS-approved | **RED** | §12 — **not finalized.** `MOTHER_SHIP_DECISION_PENDING`, candidate range 103–104. Blocked on (a) 富岡八幡宮 {49,104} identity confirmation and (b) final denominator sign-off. |
 | 5 | No unresolved Production `GoriyakuTag` `PK_DRIFT` | **GREEN** | §7 — Production `ALIGNED`; the PR #2611 drift is `LOCAL_DEV_ONLY_CONFIRMED` |
 
 **`PR_C_ENTRY_GATE = BLOCKED_ON_DENOMINATOR_DECISION`**
 
-Single remaining blocker: condition 4. All technical gates (1, 2, 3, 5) are GREEN. This is a lightweight sign-off, not a re-investigation:
+Technical gates 1, 2, 3, 5 are GREEN. Gate 4 is **RED** — the denominator is **not** technically finalized. Two things must resolve before PR-C locks its input set:
 
-- approve `FULL_AUDIT_DENOMINATOR = 103`, **and**
-- choose the pre-audit disposition of ids 101, 103, 104 (duplicate shadows) and id 105 (`広島市` non-shrine).
+- **富岡八幡宮 {49,104} identity confirmation** — resolve `AMBIGUOUS_PENDING_IDENTITY_CONFIRMATION` (§10) to `SAME` or `DISTINCT`. This alone sets `UNIQUE_REAL_SHRINE_IDENTITIES` to 103 or 104. Current read-only sources cannot settle it (no Spreadsheet coordinate-audit values for row 49; Spreadsheet id 104 is an unrelated QA fixture); it needs a Mother Ship / human identity ruling, ideally with a field-authoritative source (shrine official record, an updated Spreadsheet coordinate audit for row 49, or a manual on-map check).
+- **Final denominator sign-off** — approve the resulting 103 or 104, and rule on the pre-audit disposition of the anomalous rows: QA row 102, non-shrine row 105 (`広島市`), and the duplicate shadow rows 101 / 103 (confirmed) / 104 (pending).
 
-If the Mother Ship pre-approves both in the PR-C kickoff, PR-C is immediately `READY`.
+Until both land, PR-C stays blocked. All other technical prerequisites are satisfied.
 
 ## 14. Goriyaku remediation packet, if needed
 
@@ -246,13 +256,13 @@ If the Mother Ship pre-approves both in the PR-C kickoff, PR-C is immediately `R
 
 ## 15. Mother Ship decisions
 
-1. **Approve `FULL_AUDIT_DENOMINATOR = 103`** (§12) — the count of unique real Production shrine identities, QA row and non-shrine row and duplicate shadows excluded.
-2. **Duplicate shadow rows 101 / 103 / 104** (place_ref shadows of 給田六所神社 / 長太稲荷神社 / 富岡八幡宮, each 0 tags & 0 knowledge) — pre-audit cleanup (a separate, gated, isolated PR), or carried into PR-C's matrix as `REVIEW_REQUIRED` rows attached to their primary identity? **Do not delete in PR-C.**
-3. **Non-shrine row id 105 `広島市`** (Hiroshima City geocode artifact, place_ref, 0 data) — pre-audit removal (separate gated PR), or carried as a `MISSING` / `REVIEW_REQUIRED` row? It is currently a real `temples_shrine` row that the QA-exclusion function passes through.
-4. **富岡八幡宮 {49, 104}** — confirm `SAME_REAL_SHRINE_DUPLICATE` using the Spreadsheet's `coordinate_delta_m` / `coordinate_status` for the pair [MS]; if the Spreadsheet treats them as distinct, downgrade to `AMBIGUOUS` and add to the PR-C human-review list.
+1. **富岡八幡宮 {49, 104} identity — REQUIRED, blocks the denominator.** Resolve `AMBIGUOUS_PENDING_IDENTITY_CONFIRMATION` (§10) to `SAME` or `DISTINCT`. Current read-only sources cannot settle it: the Spreadsheet's row id 49 has **no populated** `reference_latitude` / `reference_longitude` / `coordinate_delta_m` / `coordinate_status` [MS], and Spreadsheet id 104 is an unrelated QA fixture (`重複検証神社`), so no Spreadsheet row corresponds to the Production shadow. Needs a Mother Ship / human identity ruling (shrine official record, an updated row-49 coordinate audit, or a manual on-map check). This alone sets `UNIQUE_REAL_SHRINE_IDENTITIES` to **103 (SAME)** or **104 (DISTINCT)**.
+2. **Final `FULL_AUDIT_DENOMINATOR` sign-off** (§12) — currently `MOTHER_SHIP_DECISION_PENDING`, candidate range **103–104**. Approve the value that follows from decision 1.
+3. **Duplicate shadow rows** — 101 / 103 (confirmed shadows of 給田六所神社 / 長太稲荷神社, 0 tags & 0 knowledge) and 104 (candidate shadow of 富岡八幡宮): pre-audit cleanup (a separate, gated, isolated PR), or carried into PR-C's matrix as `REVIEW_REQUIRED` rows attached to their primary identity? **Do not delete in PR-C.**
+4. **Non-shrine row id 105 `広島市`** (Hiroshima City geocode artifact, place_ref, 0 data) — pre-audit removal (separate gated PR), or carried as a `MISSING` / `REVIEW_REQUIRED` row? It is currently a real `temples_shrine` row that the QA-exclusion function passes through.
 5. **`shrine_qa_fixture_exclusion` scope** — should it gain a guard for non-shrine geocode artifacts (city / prefecture / station names, or rows whose only identity signal is a `google_place_id` with no shrine-typed content)? Separate PR; **out of this task's scope**; noted because §9's gap will otherwise recur.
 6. **Local dev DB `GoriyakuTag` reproducibility** — the local `jinja_db` carries the drifted 46-row table (§7). Approve a separate local-dev-only remediation / re-seed so future audits and pilots run on a canonical substrate. **Not a Production issue**; not done here.
-7. **PR-C audit unit for a `SAME_REAL_SHRINE_DUPLICATE` pair** — confirm it is the data-bearing primary id (21 / 22 / 49), with the shadow id retained in the evidence table (PR #2611 §8 pattern).
+7. **PR-C audit unit for a `SAME_REAL_SHRINE_DUPLICATE` pair** — confirm it is the data-bearing primary id (21 / 22, and 49 if 富岡 resolves to SAME), with the shadow id retained in the evidence table (PR #2611 §8 pattern).
 
 ## 16. Tests / verification
 
@@ -285,10 +295,11 @@ If the Mother Ship pre-approves both in the PR-C kickoff, PR-C is immediately `R
 ## 17. Final verdict
 
 - **`PRODUCTION_READ_PATH = DIRECT_DB`** (sanctioned read-only credential bridge; credential never seen).
-- **`PRODUCTION_GORIYAKU_MASTER = ALIGNED`** — 39 rows, ids 1–39, exact canonical master, 0 drift. The PR #2611 `PK_DRIFT` is **`LOCAL_DEV_ONLY_CONFIRMED`**. No remediation packet needed for Production.
-- **Production Shrine set = verified:** 108 raw rows → 1 QA row (id 102) → 107 real DB rows → −3 duplicate shadows (101/103/104) → −1 non-shrine artifact (id 105 `広島市`) → **`UNIQUE_REAL_SHRINE_IDENTITIES = 103`**.
-- **`RECOMMENDED_FULL_AUDIT_DENOMINATOR = 103`** (computed from Production, not from history).
-- **`PR_C_ENTRY_GATE = BLOCKED_ON_DENOMINATOR_DECISION`** — the only open item. Gates 1, 2, 3, 5 are GREEN. PR-C needs a Mother Ship sign-off on the denominator (103) and the disposition of the 4 non-standard rows; then it is `READY`.
-- New findings surfaced for Mother Ship: a non-shrine geocode-artifact row that the QA-exclusion function does not catch (id 105); 3 zero-data `place_ref` duplicate shadow rows still present in Production; the local dev DB needs a canonical `GoriyakuTag` re-seed before it is used as an audit substrate again.
+- **`PRODUCTION_GORIYAKU_MASTER = ALIGNED`** — 39 rows, ids 1–39, exact canonical master, 0 drift. The PR #2611 `PK_DRIFT` is **`LOCAL_DEV_ONLY_CONFIRMED`** (`DEV_DB_PK_DRIFT_SCOPE = LOCAL_DEV_ONLY_CONFIRMED`). No remediation packet needed for Production.
+- **Production Shrine set = read and classified:** 108 raw rows → −1 QA row (id 102) → `POST_QA_PRODUCTION_ROWS = 107` → −1 **non-shrine artifact** (id 105 `広島市`) → −2 **confirmed** duplicate shadows (101, 103) → −(1 if 富岡 {49,104} is SAME) **candidate** shadow (104) → **`UNIQUE_REAL_SHRINE_IDENTITIES` = 103 (富岡 SAME) or 104 (富岡 DISTINCT)`**.
+- **`FULL_AUDIT_DENOMINATOR = MOTHER_SHIP_DECISION_PENDING`**, candidate range **103–104** — **not** finalized at 103. The 富岡八幡宮 {49,104} identity question (`AMBIGUOUS_PENDING_IDENTITY_CONFIRMATION`, §10) is the sole determinant and cannot be settled from current read-only sources.
+- **`PR_C_ENTRY_GATE = BLOCKED_ON_DENOMINATOR_DECISION`** — technical gates 1, 2, 3, 5 GREEN; gate 4 RED. PR-C is blocked specifically on **(a) 富岡八幡宮 identity confirmation** and **(b) final denominator sign-off** (plus the disposition of the anomalous rows 102 / 105 / 101 / 103 / 104). The denominator is **not** treated as technically finalized while (a) is open.
+- New findings surfaced for Mother Ship: a non-shrine geocode-artifact row that the QA-exclusion function does not catch (id 105 `広島市`); zero-data `place_ref` duplicate shadow rows still present in Production (101, 103 confirmed; 104 pending); 富岡八幡宮 {49,104} is an unresolved identity pair; the local dev DB needs a canonical `GoriyakuTag` re-seed before it is used as an audit substrate again.
+- Confirmed unchanged: Production `GoriyakuTag` = `ALIGNED` 39/39; `DEV_DB_PK_DRIFT_SCOPE = LOCAL_DEV_ONLY_CONFIRMED`; `PRODUCTION_READ_PATH = DIRECT_DB`; id 105 `広島市` non-shrine finding; **no Production remediation performed**.
 
 **Explicit confirmation:** nothing was written to Production, the Google Spreadsheet, DB data, Recommendation configuration, Knowledge data, `GoriyakuTag` rows, `Shrine` rows, `Shrine.goriyaku`, Need mappings, fixtures, seeds, models, or migrations. All Production access was read-only via the repo's sanctioned credential bridge. The only change in this branch is the new file `docs/audit/production-canonical-set-preflight.md`.
