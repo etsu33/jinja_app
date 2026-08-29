@@ -174,23 +174,25 @@ Per `recommendation-evidence-review-contract.md`: `ELIGIBLE_EXPLICIT` / `REVIEW_
 | 6 | 合格祈願 | 「受験合格祈願」 | ELIGIBLE_EXPLICIT | **PASS** |
 | 6 | 厄除け | 「厄除けの神様」/「厄除祈願」 | ELIGIBLE_EXPLICIT | **PASS** |
 | 1 明治神宮 | 厄除け | 「厄祓等の御祈願」 | ELIGIBLE_EXPLICIT | **PASS** (厄祓→厄除け) |
-| 1 | 縁結び | not stated on `/about/` (結婚式 is a service) | REVIEW_REQUIRED | **HOLD** — `UNSUPPORTED` on the checked Source |
-| 1 | 交通安全 | not stated on `/about/` | REVIEW_REQUIRED | **HOLD** — `UNSUPPORTED` on the checked Source |
+| 1 | 縁結び | not stated on `/about/` (結婚式 is a service) | REVIEW_REQUIRED | **HOLD** — Dimension C `CANONICAL_BUT_UNSUPPORTED` **on the reviewed official Source** (scoped; the shrine's own `/about/` enumerates 家内安全・厄祓 and omits 縁結び). Not a global "proven unsupported" claim. |
+| 1 | 交通安全 | not stated on `/about/` | REVIEW_REQUIRED | **HOLD** — Dimension C `CANONICAL_BUT_UNSUPPORTED` **on the reviewed official Source** (scoped). |
 | 44 東京大神宮 | 縁結び | 「縁結びに御利益のある神社としても知られ」 | ELIGIBLE_EXPLICIT | **PASS** |
 | 44 | 恋愛成就 | phrase not used | REVIEW_REQUIRED | **HOLD** |
 | 62 小網神社 | 強運厄除け | 「強運厄除」 | ELIGIBLE_EXPLICIT | **PASS** |
 | 62 | 金運 | 「財運」(銭洗い井) | ELIGIBLE_EXPLICIT | **PASS** (財運→金運 narrow normalization; noted borderline) |
 | 62 | 商売繁盛 | phrase not on the fetched page | REVIEW_REQUIRED | **HOLD** |
 | 99 護王神社 | 足腰健康 | 「足腰の健康・安全」「足腰の守護神」(`yuisho/goriyaku.html`) | ELIGIBLE_EXPLICIT | **PASS** — DB Source records `yuisho/`; benefit is on the sibling page (same official site) |
-| 99 | 厄除け | not stated on either page | REVIEW_REQUIRED | **HOLD** — `UNSUPPORTED` on the checked Source |
-| 99 | 勝運 | 「スポーツ守護」「必勝祈願」(sports-bound) | REVIEW_REQUIRED | **HOLD** |
-| 26 寒川神社 | 八方除 | 「全国唯一の八方除の守護神」 | ELIGIBLE_EXPLICIT | **PASS** — but tag id 17 八方除 is **UNWIRED** (Section 12); PASS does not route |
+| 99 | 厄除け | not on the fetched 由緒 / ご利益 pages (which do enumerate benefits) | REVIEW_REQUIRED | **HOLD** — Dimension C `CANONICAL_BUT_UNSUPPORTED` **on the reviewed official pages** (scoped). |
+| 99 | 勝運 | 「スポーツ守護」「必勝祈願」(sports-bound) | REVIEW_REQUIRED | **HOLD** — Dimension C `CANONICAL_BUT_UNSUPPORTED` on the reviewed official pages (scoped; sports-context 必勝 is not general 勝運). |
+| 26 寒川神社 | 八方除 | 「全国唯一の八方除の守護神」 | ELIGIBLE_EXPLICIT | **PASS** — Dimension C `CANONICAL_MATCH` (Source-backed). Tag id 17 八方除 is `UNWIRED_CANONICAL` in Dimension D (Section 12) — a Purpose-routing gap, **not** a tag-integrity defect. |
 | 26 | 開運 | 「福徳開運を招き」 | ELIGIBLE_EXPLICIT | **PASS** |
 | 26 | 厄除け | 「すべての悪事災難をとり除き」 | ELIGIBLE_EXPLICIT | **PASS** (explicit misfortune-removal) |
-| 10 鶴岡八幡宮 | 勝運 / 仕事運 / 厄除け | tourism page states **no** ご利益 | INELIGIBLE (on this Source) | **HOLD** ×3 — reputation-based inference is not permitted |
-| 64 湯島天満宮 | 学業成就 / 合格祈願 / 開運 | recorded `engi.htm` states **no** explicit benefit | UNKNOWN (this Source) | **HOLD** ×3 — needs a benefit-stating page; likely correct but unverified |
+| 10 鶴岡八幡宮 | 勝運 / 仕事運 / 厄除け | only a **tourism** (non-primary) page reviewed; it carries no ご利益 section | **UNKNOWN** | **HOLD** ×3 — a tourism page's silence is **not** a contradiction; Dimension C = `REVIEW_REQUIRED` (no primary Source reviewed), **not** `UNSUPPORTED` |
+| 64 湯島天満宮 | 学業成就 / 合格祈願 / 開運 | recorded `engi.htm` is an **origin / 縁起** narrative page, not a benefits page | **UNKNOWN** | **HOLD** ×3 — Dimension C = `REVIEW_REQUIRED`; "not on the fetched page" ≠ "proven unsupported"; a benefits page (祈祷 menu) still needs review |
 
-Reconciled sampled review-state counts: **PASS = 11 label-items** · **HOLD = 12 label-items** · NO_EVIDENCE = 0 · REVISE = 0.
+Reconciled sampled review-state counts: **PASS = 11 label-items** · **HOLD = 12 label-items** · NO_EVIDENCE = 0 · REVISE = 0. **Shrine-level:** PASS shrines = **6** `{1, 6, 26, 44, 62, 99}` · HOLD shrines = **6** `{1, 10, 44, 62, 64, 99}` · shrines with both ≥1 PASS and ≥1 HOLD = **4** `{1, 44, 62, 99}`. Computed by direct enumeration of the table above, not by subtraction.
+
+**Dimension C vs Dimension B note:** review state HOLD (Dimension B eligibility) and `CANONICAL_BUT_UNSUPPORTED` (Dimension C tag integrity) are distinct axes. `CANONICAL_BUT_UNSUPPORTED` is asserted here **only** where an official/primary Source was actually fetched and does not carry the benefit (id 1 縁結び/交通安全, id 99 厄除け/勝運 — 4 label-items, 2 shrines), and is always scoped to that Source, never a global "existing evidence is proven wrong" claim. Where only a non-primary Source (id 10) or a non-benefits page (id 64) was reviewed, the labels are `REVIEW_REQUIRED` in Dimension C and `UNKNOWN` in eligibility.
 
 ### 10.2 `goriyaku`-bearing shrines with explicit Source benefit **not captured** (Batch 17)
 
@@ -198,26 +200,42 @@ Reconciled sampled review-state counts: **PASS = 11 label-items** · **HOLD = 12
 - **107 建部大社** — Source states 「御神徳：開運・厄除・災難除・出世・必勝」 and 「縁結び・商売繁盛・家内安全・病気平癒・醸造」. `goriyaku` **empty**. Same gap.
 - **106 北海道神宮** — Source not fetched this session; `goriyaku` empty; `[prior]` (`recommendation-evidence-followup-design.md` §6) reports no Source-backed benefit language → eligibility `UNKNOWN` pending a PR-C-style fetch (not `NO_EVIDENCE`).
 
-### 10.3 Un-sampled `goriyaku`-bearing shrines (86)
+### 10.3 `LEGACY_EXISTING` `goriyaku` population
 
-All carry `LEGACY_EXISTING` `goriyaku` with **no** Recommendation-Evidence-Review provenance record. Eligibility = **`UNKNOWN`** (Source not fetched this session). Not grandfathered — flagged as `PROVENANCE_GAP`. This is the dominant systemic finding (Section 13).
+**86** canonical shrines carry ≥1 stored `goriyaku` label backed by Knowledge — the whole `LEGACY_EXISTING` population = 89 knowledge-bearing shrines − 3 with empty `goriyaku` (106, 107, 108). Of the 86:
+
+- **8 were sampled** this session (ids 1, 6, 10, 26, 44, 62, 64, 99) — every stored label of each was reviewed against a fetched Source (results in §10.1). Only **id 6 and id 26** had *all* their labels confirmed PASS.
+- **78 were not sampled** — eligibility = **`UNKNOWN`** (Source not fetched); not grandfathered.
+
+None of the 86 has a formal `recommendation-evidence-review-contract.md` §6 provenance record. **`PROVENANCE_GAP` = 84** = the 86 minus the 2 (id 6, id 26) whose every stored label is Source-backed PASS this session (Section 13; the counting rule and the earlier 83-vs-86 drift are reconciled there). This is the dominant systemic finding.
+
+The **14 zero-Knowledge shrines** (Section 9.3) also carry `LEGACY_EXISTING` `goriyaku`, but their gap is more fundamental — **no Source exists to review** — so they are counted under `KNOWLEDGE_GAP` + `SOURCE_GAP` + `GORIYAKU_EVIDENCE_GAP`, **not** `PROVENANCE_GAP`.
 
 ## 11. Goriyaku / GoriyakuTag integrity (Dimension C)
 
-`CANONICAL_MATCH` / `CANONICAL_BUT_UNSUPPORTED` / `TEXT_TAG_MISMATCH` / `NONCANONICAL_LABEL` / `NO_TAG` / `REVIEW_REQUIRED`.
+`CANONICAL_MATCH` / `CANONICAL_BUT_UNSUPPORTED` / `TEXT_TAG_MISMATCH` / `NONCANONICAL_LABEL` / `NO_TAG` / `REVIEW_REQUIRED`. **This dimension judges only whether a stored tag is canonical and whether a reviewed Source supports its recommendation claim. It is independent of Dimension D (whether a Need consumes the tag).** An unwired canonical tag is **never** `CANONICAL_BUT_UNSUPPORTED` for that reason alone.
 
-| Observation | Count / ids [prod] |
+### 11.1 Mechanical integrity [prod]
+
+| Observation | Count / ids |
 |---|---|
 | `goriyaku` text shape | **98 DELIMITED** (canonical labels, `・`-separated) · **2 PROSE** (ids 21, 22) · **3 EMPTY** (ids 106, 107, 108) |
-| delimited shrines whose `parse_goriyaku(goriyaku)` label set **==** `goriyaku_tags` name set | **98 / 98** — exact agreement; no `TEXT_TAG_MISMATCH` among delimited shrines |
-| distinct `GoriyakuTag` ids attached across the 103 | **39 / 39** — every canonical tag is used by ≥1 shrine |
-| every attached tag id is canonical (1–39) | **yes** — no `NONCANONICAL_LABEL` anywhere |
-| `NO_TAG` | ids 106, 107, 108 (Batch 17, empty goriyaku) |
-| `TEXT_TAG_MISMATCH` (prose; tags not `parse_goriyaku`-derivable) | ids **21** (`商売繁盛`/`五穀豊穣` hand-set from prose `…商売繁盛や五穀豊穣…`) and **22** (`家内安全` hand-set from prose `…暮らしや家内安全…`) — `TAG_INTEGRITY_GAP` |
-| `CANONICAL_MATCH` but Source-support **not** established this session | 96 goriyaku-bearing shrines minus the sampled PASS items — the tag string is mechanically valid, **not** proven Source-backed (`recommendation-evidence-review-contract.md` §5: mechanical validity ≠ Source-backing) |
-| `CANONICAL_BUT_UNSUPPORTED` (label PASS-eligible but on an **unwired** tag) | id 26 寒川神社 `八方除` (tag 17); at concept level also ids 34/56 `美容`(22), 52/61/76 `芸能運`(29), 38 `芸能`(25), 77 `技芸上達`(31), 86/97 `火防`(34), 96 `延命長寿`(37), 100 `農業守護`(39), 29 `八難除`(19), 35 `方除け`(23) — all 14 also carry ≥1 wired tag |
+| delimited shrines whose `parse_goriyaku(goriyaku)` label set **==** `goriyaku_tags` name set | **98 / 98** — exact agreement |
+| distinct `GoriyakuTag` ids attached across the 103 | **39 / 39** — every canonical tag used by ≥1 shrine |
+| every attached tag id canonical (1–39) | **yes** — **0** `NONCANONICAL_LABEL` |
+| `NO_TAG` | ids 106, 107, 108 (Batch 17, empty `goriyaku`) — **3** |
+| `TEXT_TAG_MISMATCH` (prose; tags not `parse_goriyaku`-derivable) | ids **21** (`商売繁盛`/`五穀豊穣` hand-set from prose) and **22** (`家内安全` hand-set from prose) — **2**, `TAG_INTEGRITY_GAP` |
 
-**Dimension C headline:** the `goriyaku` / `goriyaku_tags` layer is *mechanically* clean (100% canonical, 100% text↔tag agreement for delimited shrines, all 39 tags exercised) but *evidentially* unbacked at scale — 86 shrines' labels have no reviewed Source, and 3 Batch-17 shrines have Source-explicit benefits with no label.
+### 11.2 Source-support classification (per stored label)
+
+| Class | Label-items / shrines | Basis |
+|---|---|---|
+| `CANONICAL_MATCH` (canonical tag, reviewed Source explicitly supports the claim) | **11 label-items / 6 shrines** — id 6 (学業成就, 合格祈願, 厄除け), id 26 (八方除, 開運, 厄除け), id 1 (厄除け), id 44 (縁結び), id 62 (強運厄除け, 金運), id 99 (足腰健康) | §10.1 PASS items |
+| `CANONICAL_BUT_UNSUPPORTED` (canonical tag; an **official/primary** Source was fetched and does **not** carry the benefit — scoped to that Source, not a global claim) | **4 label-items / 2 shrines** — id 1 (縁結び, 交通安全), id 99 (厄除け, 勝運) | §10.1 |
+| `REVIEW_REQUIRED` (canonical tag; Source not adequately reviewed — un-sampled, or only a non-primary / non-benefits page checked) | **~268 label-items / 92 shrines** — the 6 sampled labels on id 10 + id 64, plus every stored label on the 92 un-sampled `goriyaku`-bearing shrines (incl. the 14 zero-Knowledge shrines and id 22 prose) | §10.3 |
+| `NO_TAG` | 3 shrines (106, 107, 108) | — |
+
+**Dimension C headline:** *mechanically* clean (100% canonical, 98/98 text↔tag agreement, all 39 tags exercised, zero non-canonical labels) but *evidentially* thin — only 11 label-items on 6 shrines are Source-confirmed `CANONICAL_MATCH`; 4 label-items on 2 shrines are `CANONICAL_BUT_UNSUPPORTED` on the reviewed official Source; the rest are `REVIEW_REQUIRED`. No shrine is `CANONICAL_BUT_UNSUPPORTED` merely for carrying an unwired tag — that is a Dimension D finding (Section 12).
 
 ## 12. Purpose connectivity (Dimension D)
 
@@ -231,6 +249,8 @@ Computed from **current** `NEED_TO_GORIYAKU_IDS` [repo] against the **`ALIGNED`*
 **`UNWIRED_CANONICAL` — 10 of 39:** `八方除`(17), `八難除`(19), `美容`(22), `方除け`(23), `芸能`(25), `芸能運`(29), `技芸上達`(31), `火防`(34), `延命長寿`(37), `農業守護`(39). All ten are niche / non-consultation concepts; none is a Compass/Concierge Purpose axis. `communication = set()` is **`INTENTIONALLY_DISABLED`** (EVIDENCE_LIMITED / DISABLE_GID_EVIDENCE, Mother Ship 2026-08-29) — not accidental data loss; no substitute tag invented.
 
 `安産`(16), `子宝`(35), `航海安全`(13), `海上安全`(14), `足腰健康`(38) are all **WIRED** at the canonical level — see `DOC_DRIFT_CURRENT_MAPPING` (Section 15).
+
+**Axis note.** `UNWIRED_CANONICAL` is a **Dimension D** classification (no Need consumes the concept). It is *not* a Dimension C tag-integrity defect: each of the 10 tags is `CANONICAL_MATCH` in Dimension C (canonical id, exact name, and — where reviewed — Source-backed). Example: id 26 寒川神社 `八方除` — **Dimension C = `CANONICAL_MATCH`** (official Source states 「全国唯一の八方除の守護神」), **Dimension D = `UNWIRED_CANONICAL`** (tag id 17 in no Need's set). The 14 shrines carrying one of these 10 tags (26, 29, 34, 35, 38, 52, 56, 61, 76, 77, 86, 96, 97, 100) each also carry ≥1 wired tag, so none is Purpose-orphaned. `NEED_TO_GORIYAKU_IDS` is **not** changed by this audit.
 
 ### 12.2 Runtime connectivity (per shrine, `goriyaku_tags` → Need)
 
@@ -264,26 +284,28 @@ Every goriyaku-bearing shrine — including all 14 that carry an unwired niche t
 | family | {16, 35} | **5** | 0 | `安産`(19,51,72,79,87) + `子宝`(87) — narrowest Purpose |
 | travel_safe | {3, 13, 14} | 10 | 0 | `交通安全`/`航海安全`/`海上安全`; 波上宮(108) evidence exists but uncaptured (Section 10.2) |
 
-`PASS-backed` counts are tiny **by construction** — only 10 shrines were Source-reviewed this session and 86 goriyaku-bearing shrines carry unverified `LEGACY_EXISTING` labels.
+`PASS-backed` counts are tiny **by construction** — only 10 shrines were Source-reviewed this session, and of the 86 `LEGACY_EXISTING` goriyaku-bearing shrines only id 6 and id 26 have every label Source-confirmed (the other 84 carry `PROVENANCE_GAP`, Section 13).
 
 ## 13. Root-cause breakdown (Phase 5)
 
 Audit-only labels; multiple may apply per shrine. Counts over the 103.
 
-| Root cause | Shrines | What it means |
+| Root cause | Shrines | Exact counting condition |
 |---|---|---|
-| `PROVENANCE_GAP` | **83** | `LEGACY_EXISTING` `goriyaku` with no Recommendation-Evidence-Review provenance record (+ stray/weak Source on 1, 10, 22) |
-| `GORIYAKU_EVIDENCE_GAP` | **23** | label unsupported on a fetched Source (1, 10, 64, 99), or Source-explicit benefit not captured as a label (107, 108, + the 14 zero-knowledge shrines whose labels are wholly unbacked, + 44, 62) |
-| `SOURCE_GAP` | **16** | 14 zero-Source shrines + 2 with no official/primary Source (10, 22) |
+| `PROVENANCE_GAP` | **84** | shrine has ≥1 deity or history Fact (knowledge-bearing) **AND** ≥1 stored `goriyaku` label **AND** not every stored label is confirmed PASS against a fetched official Source this session. = 89 knowledge-bearing − 3 with empty `goriyaku` (106, 107, 108) − 2 all-labels-PASS (id 6, id 26) = **84**. |
+| `GORIYAKU_EVIDENCE_GAP` | **23** | label reviewed HOLD / not-supported on a fetched Source (1, 10, 64, 99), **or** Source-explicit benefit not captured as a label (106, 107, 108), **or** shrine has `goriyaku` labels with **zero** Knowledge/Source to anchor them (the 14 zero-Knowledge shrines), **or** ≥1 PASS + ≥1 HOLD split (44, 62). Union = 14 + {1,10,44,62,64,99} + {106,107,108} = **23**. |
+| `SOURCE_GAP` | **16** | 14 zero-Source shrines + 2 knowledge-bearing with no official/primary Source (10, 22) |
 | `KNOWLEDGE_GAP` | **14** | zero deity + zero history (21, 27, 42, 46, 58, 61, 63, 67, 72, 73, 78, 86, 87, 89) |
-| `PURPOSE_MAPPING_GAP` | **14** (concept-level; 10 concepts) | a stored tag maps to an `UNWIRED_CANONICAL` concept (id 26 is the only case where the shrine's *defining* benefit is the unwired one) |
+| `PURPOSE_MAPPING_GAP` | **14** shrines (Dimension D; 10 concepts) | shrine carries ≥1 tag whose concept is `UNWIRED_CANONICAL` (ids 26, 29, 34, 35, 38, 52, 56, 61, 76, 77, 86, 96, 97, 100). **Not** a Dimension C defect — those tags are `CANONICAL_MATCH`. id 26 is the only shrine whose *defining* benefit (八方除) is the unwired one. |
 | `TAG_INTEGRITY_GAP` | **2** | `goriyaku` stored as prose; tags not `parse_goriyaku`-derivable (21, 22) |
 | `IDENTITY_DATA_GAP` | **2** | duplicate-primary shrines carrying a resolved shadow (21↔103, 22↔101; 49↔104 also, matrix-tracked) |
 | `TOOLING_GAP` | 1 finding | `KNOWLEDGE_COVERAGE_TOOL_DENOMINATOR_MISMATCH` (Section 7) |
 | `DOC_DRIFT` | 1 finding | `recommendation-evidence-review-contract.md` §8/§19 stale re `travel_safe` 13/14 + stale ids 42–45 reference (Section 15) |
-| `REVIEW_REQUIRED` | 82 (Dimension A) | Fact fidelity not re-verified this session for 79 un-sampled + 3 sampled-partial |
+| `REVIEW_REQUIRED` (Dimension A) | **82** | Fact fidelity not re-verified this session: 79 un-sampled knowledge-bearing + 3 sampled-partial (10, 26, 64) |
 
 No generic `DATA_GAP` bucket is used — each shrine's missing layer is named.
+
+**`PROVENANCE_GAP` 83 → 84 reconciliation.** The earlier draft reported 83 from a per-shrine root-cause pass that was internally inconsistent: it omitted `PROVENANCE_GAP` from ids 44 and 62 (each has a HOLD label → not all-PASS → the gap applies) and wrongly included id 26 (whose 3 labels are all Source-backed PASS → the gap does **not** apply). Net correction **+2 −1 = 84**. The distinct figure **86** in Section 10.3 is the whole `LEGACY_EXISTING`-goriyaku population (89 knowledge-bearing − 3 empty-goriyaku); the two shrines that separate 86 from 84 are **id 6 太宰府天満宮 and id 26 寒川神社** (every stored label confirmed PASS this session). Neither 83 nor 86 was the clean answer — the counting rule above yields **84**.
 
 ## 14. Aggregate 103-shrine results (Phase 8)
 
@@ -319,10 +341,12 @@ No generic `DATA_GAP` bucket is used — each shrine's missing layer is named.
 | shrines with ≥1 fact-ready deity Fact | 89 | 86.4% |
 | shrines with ≥1 fact-ready history Fact | 87 | 84.5% |
 | shrines Purpose-`WIRED` at runtime | 100 | 97.1% |
-| shrines with ≥1 **PASS** `goriyaku` label (this session) | 5 | 4.9% |
-| shrines with a **HOLD** label (this session) | 5 | 4.9% |
+| shrines with ≥1 **PASS** `goriyaku` label (this session) — ids `{1, 6, 26, 44, 62, 99}` | 6 | 5.8% |
+| shrines with ≥1 **HOLD** `goriyaku` label (this session) — ids `{1, 10, 44, 62, 64, 99}` | 6 | 5.8% |
+| shrines in **both** PASS and HOLD sets — ids `{1, 44, 62, 99}` | 4 | 3.9% |
 | shrines with **NO_EVIDENCE** (reviewed Source set, none found) | 0 | 0% |
-| shrines with eligibility **UNKNOWN** | 98 | 95.1% |
+| shrines with `goriyaku` eligibility **UNKNOWN** (carries ≥1 stored label; **no** label reviewed against a fetched Source this session) — direct enumeration: the 8 sampled `goriyaku`-bearing shrines each had *all* labels reviewed, so the remaining 92 are wholly UNKNOWN | 92 | 89.3% |
+| shrines with `goriyaku` eligibility **N/A** (no stored `goriyaku` label) — ids 106, 107, 108 | 3 | 2.9% |
 
 ### 14.3 Evidence-item counts (reported separately from shrine counts)
 
@@ -358,12 +382,12 @@ PR-C repairs nothing. Prioritisation is returned to the Mother Ship. Follow-up t
 | # | Affected ids / names | Layer | Current stored state | Source-backed expected state | Risk | Recommended follow-up |
 |---|---|---|---|---|---|---|
 | P1 | 21 長太稲荷神社, 27 榛名神社, 42 高千穂神社, 46 愛宕神社, 58 靖國神社, 61 花園神社, 63 鳥越神社, 67 千住神社, 72 氷川女體神社, 73 調神社, 78 千葉神社, 86 古峯神社, 87 冠稲荷神社, 89 赤城神社 | Knowledge + Source | 0 deity / 0 history / 0 Source; `goriyaku` labels present but wholly unbacked | at least deity + founding history from an official Source, per `shrine-knowledge-contract.md` | medium — these shrines rank on `goriyaku` with no evidence chain at all | `KNOWLEDGE_BACKFILL` + `SOURCE_BACKFILL` (14 shrines) |
-| P2 | all 86 `goriyaku`-bearing shrines with `LEGACY_EXISTING` labels and no review record | Recommendation Evidence provenance | canonical tags attached; no `recommendation-evidence-review-contract.md` provenance | each label PASS/HOLD/NO_EVIDENCE against an explicit official-Source statement | medium — labels drive Compass + Concierge ranking with unverified evidence | `GORIYAKU_REVIEW` — batch by prefecture, per §6 of the Evidence Review Contract; Mother Ship decides retro-review vs record-and-accept per §12 |
+| P2 | 84 `PROVENANCE_GAP` shrines (the 86 `LEGACY_EXISTING`-goriyaku knowledge shrines minus id 6, id 26 which are fully Source-confirmed this session) | Recommendation Evidence provenance | canonical tags attached; no `recommendation-evidence-review-contract.md` §6 provenance record | each stored label PASS/HOLD/NO_EVIDENCE against an explicit official-Source statement | medium — labels drive Compass + Concierge ranking with unverified evidence | `GORIYAKU_REVIEW` — batch by prefecture, per §6 of the Evidence Review Contract; Mother Ship decides retro-review vs record-and-accept per §12. (A formal provenance record for id 6 / id 26 is also still absent.) |
 | P3 | 108 波上宮, 107 建部大社 (and 106 北海道神宮 pending fetch) | `goriyaku` ← Knowledge bridge | `goriyaku` empty though the Source states explicit 御神徳 (波上宮: 豊漁/豊穣/航路の平安 → 航海安全/海上安全; 建部: 開運/厄除/出世/縁結び/商売繁盛…) | reviewed labels written into `Shrine.goriyaku`, then `backfill_goriyaku_tags` | low — under-recall, not wrong data | `GORIYAKU_REVIEW` (Batch 17 Recommendation Evidence Review) |
 | P4 | 10 鶴岡八幡宮, 22 給田六所神社 | Source provenance | Knowledge backed only by `tourism_official` + `secondary_editorial` (10) / `local_history` + `secondary_editorial` (22) — no primary | ≥1 `shrine_official` or cultural-property Source per Fact | medium — Fact fidelity cannot be confirmed to contract standard | `SOURCE_BACKFILL` + `DATA_REVIEW` |
 | P5 | 21 長太稲荷神社, 22 給田六所神社 | `goriyaku` text shape | free-sentence prose; `goriyaku_tags` hand-set, not `parse_goriyaku`-derivable | delimiter-separated canonical labels **or** cleared to none, with review provenance | low — tags happen to be reasonable but bypass the pipeline | `TAG_RECONCILIATION` + `GORIYAKU_REVIEW` |
 | P6 | 1 明治神宮 | Source | stray `user_observation` "テスト神社 境内案内板" (no URL) alongside the real official Source | remove the test artifact | low | `DATA_REVIEW` |
-| P7 | concept-level: `八方除`(17), `八難除`(19), `美容`(22), `方除け`(23), `芸能`(25), `芸能運`(29), `技芸上達`(31), `火防`(34), `延命長寿`(37), `農業守護`(39); shrine 26 寒川神社 most affected (its defining `八方除` PASS does not route) | Purpose mapping | 10 canonical concepts consumed by no Need | Mother Ship decides per concept: wire into a Need, or accept as non-consultation | low–medium — niche; no shrine is Purpose-orphaned (all also carry a wired tag) | `PURPOSE_MAPPING_REVIEW` — Mother Ship only; `NEED_TO_GORIYAKU_IDS` is frozen for PR-C |
+| P7 | **Dimension D only** — concepts `八方除`(17), `八難除`(19), `美容`(22), `方除け`(23), `芸能`(25), `芸能運`(29), `技芸上達`(31), `火防`(34), `延命長寿`(37), `農業守護`(39); 14 shrines carry one (26, 29, 34, 35, 38, 52, 56, 61, 76, 77, 86, 96, 97, 100); id 26 寒川神社 most affected (its defining `八方除` is Source-backed PASS / Dimension C `CANONICAL_MATCH`, but routes to no Need) | Purpose mapping (`NEED_TO_GORIYAKU_IDS`) | 10 canonical concepts consumed by no Need | Mother Ship decides per concept: wire into a Need, or accept as non-consultation | low–medium — niche; **not** a tag-integrity defect (all 10 tags are `CANONICAL_MATCH`); no shrine is Purpose-orphaned (each also carries a wired tag) | `PURPOSE_MAPPING_REVIEW` — Mother Ship only; `NEED_TO_GORIYAKU_IDS` is frozen for PR-C |
 | P8 | duplicate shadows 101 (→22), 103 (→21), 104 (→49); non-shrine 105 `広島市`; id 49 coordinate ~306–312 m off (#2613 §12) | identity / coordinate | shadows retained; 105 retained; 49 coordinate imprecise | pre-audit cleanup or carry as `REVIEW_REQUIRED` rows attached to the primary | low (audit denominator already excludes them) | `IDENTITY_REMEDIATION` (101/103/104/105) + `COORDINATE_REMEDIATION` (49) — **not** in PR-C |
 | P9 | `knowledge_coverage_report` denominator | tooling | audit target = 107 (name-convention only) | canonical-identity-aware denominator (103) | low — reporting only | `TOOLING_FIX` |
 | P10 | `recommendation-evidence-review-contract.md` §8 / §19 | docs | stale "ids 13/14 unwired" + stale ids 42–45 | reconcile to current `NEED_TO_GORIYAKU_IDS` | low | `DOC_RECONCILIATION` |
@@ -408,7 +432,7 @@ All **103** canonical unique real shrine identities are inventoried and classifi
 
 Cross-layer status over 103: **`MATCH` 1 · `PARTIAL` 84 · `UNSUPPORTED` 0 · `MISSING` 14 · `REVIEW_REQUIRED` 4**.
 
-The evidence chain is **structurally sound and mechanically clean** — Production `GoriyakuTag` is `ALIGNED` 39/39, every `goriyaku_tags` link is canonical, delimited `goriyaku` text and tags agree 98/98, every Knowledge Fact is Evidence-Gate `usable` (bar 2 correctly-`disputed` histories), and 100/103 shrines route to ≥1 Purpose — but **evidentially thin**: 86 goriyaku-bearing shrines carry `LEGACY_EXISTING` labels with no Recommendation-Evidence-Review provenance, 14 shrines have zero Knowledge and zero Source, 3 Batch-17 shrines have Source-explicit benefits not captured as labels, and only 10 official Sources were fetched and compared this session. The dominant systemic gap is **`PROVENANCE_GAP` (83 shrines)**: the Recommendation ranking layer runs on `goriyaku` labels whose Source-backing has never been reviewed to the current contract standard.
+The evidence chain is **structurally sound and mechanically clean** — Production `GoriyakuTag` is `ALIGNED` 39/39, every `goriyaku_tags` link is canonical, delimited `goriyaku` text and tags agree 98/98, every Knowledge Fact is Evidence-Gate `usable` (bar 2 correctly-`disputed` histories), and 100/103 shrines route to ≥1 Purpose — but **evidentially thin**: 86 goriyaku-bearing knowledge shrines carry `LEGACY_EXISTING` labels, 14 shrines have zero Knowledge and zero Source, 3 Batch-17 shrines have Source-explicit benefits not captured as labels, and only 10 official Sources were fetched and compared this session (yielding 6 PASS shrines `{1, 6, 26, 44, 62, 99}`, 6 HOLD shrines `{1, 10, 44, 62, 64, 99}`, 92 `goriyaku`-eligibility-`UNKNOWN` shrines). The dominant systemic gap is **`PROVENANCE_GAP` (84 shrines)** — knowledge-bearing shrines carrying ≥1 stored `goriyaku` label not confirmed PASS this session (= 86 `LEGACY_EXISTING`-goriyaku knowledge shrines − id 6 − id 26): the Recommendation ranking layer runs on `goriyaku` labels whose Source-backing has never been reviewed to the current contract standard.
 
 Two known drifts persist and are recorded, not fixed: `KNOWLEDGE_COVERAGE_TOOL_DENOMINATOR_MISMATCH` (tool → 107, canonical → 103) and `DOC_DRIFT_CURRENT_MAPPING` (`recommendation-evidence-review-contract.md` §8/§19 stale on `travel_safe` 13/14). Production `GoriyakuTag` alignment is **confirmed `ALIGNED` 39/39** independently this session.
 

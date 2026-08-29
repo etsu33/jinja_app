@@ -28,7 +28,7 @@ change.**
 | `fr d/h` | Evidence-Gate **fact-ready** deity / history counts (`decide_fact_usability`: fact `source_confirmed`/`reviewed` AND ≥1 `source_confirmed`/`reviewed` Source). `disputed` history is not fact-ready. |
 | `purpose_conn` | runtime Purpose connectivity of the stored `goriyaku_tags` against **current** `NEED_TO_GORIYAKU_IDS` [repo]: `WIRED` = ≥1 tag id ∈ a Need's id set · `UNWIRED_CANONICAL` = tags exist but none is consumed by any Need · `NOT_APPLICABLE` = zero `goriyaku_tags` |
 | `status` | Phase 7 cross-layer integrity: `MATCH` / `PARTIAL` / `UNSUPPORTED` / `MISSING` / `REVIEW_REQUIRED` |
-| `root_causes` | audit-only labels (`·concept` = the shrine also carries wired tags — the mapping gap is at the concept level, not shrine-fatal) |
+| `root_causes` | audit-only labels. `PURPOSE_MAPPING_GAP·concept` is a **Dimension D** flag (the shrine carries an `UNWIRED_CANONICAL` tag; it also carries a wired tag, so it is not shrine-fatal) — it is **not** a Dimension C (`CANONICAL_BUT_UNSUPPORTED`) defect. |
 | `S` | `Y` = official Source fetched and compared **this session** (10 shrines); `·` = Source recorded, not re-fetched (Fact fidelity therefore `REVIEW_REQUIRED` per the pilot's M8 rule) |
 
 ## Status assignment rule (Phase 7)
@@ -46,10 +46,23 @@ change.**
   is present and structurally Source-linked, but the `goriyaku` is
   `LEGACY_EXISTING` without Recommendation-Evidence-Review provenance and/or the
   Source was not re-fetched this session. → **84** shrines.
-- **UNSUPPORTED** — stored Recommendation evidence contradicted by a reviewed
-  Source. → **0** at the whole-shrine level (individual labels are
-  unsupported-on-source for ids 1 / 10 / 64 / 99, but each of those shrines has
-  other valid layers → `PARTIAL` / `REVIEW_REQUIRED`).
+- **UNSUPPORTED** — stored Recommendation evidence proven contradicted by a
+  reviewed Source. → **0** at the whole-shrine level. At label level, only ids 1
+  (縁結び, 交通安全) and 99 (厄除け, 勝運) reach Dimension C
+  `CANONICAL_BUT_UNSUPPORTED`, and only **scoped to the fetched official Source**
+  (the shrine's own page enumerates other benefits and omits these) — not a
+  global "proven unsupported" claim. Ids 10 and 64 are **not** unsupported: only
+  a non-primary Source (10) / an origin-narrative page (64) was reviewed, so
+  their labels are `REVIEW_REQUIRED` / eligibility `UNKNOWN`.
+
+Shrine-level Recommendation-Evidence eligibility (Dimension B), by direct
+enumeration of the §10.1 table: **PASS shrines = 6** `{1, 6, 26, 44, 62, 99}` ·
+**HOLD shrines = 6** `{1, 10, 44, 62, 64, 99}` · both = `{1, 44, 62, 99}` ·
+**UNKNOWN = 92** (carries ≥1 stored label, none reviewed this session) ·
+**N/A = 3** (106, 107, 108 — no stored label). `6 + 92` reviewed/unreviewed
+`goriyaku`-bearing + `3` empty + … the 8 sampled `goriyaku`-bearing shrines
+(`{1, 6, 10, 26, 44, 62, 64, 99}`) had every label reviewed, so the other 92
+`goriyaku`-bearing shrines are wholly UNKNOWN.
 
 ### A. ids 1–40
 
@@ -80,7 +93,7 @@ change.**
 | 23 | 神田神社（神田明神） | 東京都 | DELIM | 3/5 | 2 | secondary_editorial,shrine_official | 縁結び/商売繁盛/仕事運 | 3/5 | WIRED | **PARTIAL** | PROVENANCE_GAP | · |
 | 24 | 浅草神社 | 東京都 | DELIM | 3/2 | 1 | shrine_official | 厄除け/商売繁盛/家内安全 | 3/2 | WIRED | **PARTIAL** | PROVENANCE_GAP | · |
 | 25 | 大國魂神社 | 東京都 | DELIM | 7/2 | 1 | shrine_official | 縁結び/厄除け/開運 | 7/2 | WIRED | **PARTIAL** | PROVENANCE_GAP | · |
-| 26 | 寒川神社 | 神奈川県 | DELIM | 2/2 | 1 | shrine_official | 厄除け/開運/八方除 | 2/2 | WIRED | **REVIEW_REQUIRED** | PURPOSE_MAPPING_GAP;PROVENANCE_GAP | Y |
+| 26 | 寒川神社 | 神奈川県 | DELIM | 2/2 | 1 | shrine_official | 厄除け/開運/八方除 | 2/2 | WIRED | **REVIEW_REQUIRED** | PURPOSE_MAPPING_GAP·concept (八方除 tag17, Dim D) | Y |
 | 27 | 榛名神社 | 群馬県 | DELIM | 0/0 | 0 | - | 商売繁盛/五穀豊穣/開運 | 0/0 | WIRED | **MISSING** | KNOWLEDGE_GAP;SOURCE_GAP;GORIYAKU_EVIDENCE_GAP | · |
 | 28 | 筑波山神社 | 茨城県 | DELIM | 2/1 | 1 | shrine_official | 縁結び/開運/夫婦円満 | 2/1 | WIRED | **PARTIAL** | PROVENANCE_GAP | · |
 | 29 | 阿佐ヶ谷神明宮 | 東京都 | DELIM | 3/0 | 2 | secondary_editorial,shrine_official | 縁結び/厄除け/八難除 | 3/0 | WIRED | **PARTIAL** | PROVENANCE_GAP;PURPOSE_MAPPING_GAP·concept | · |
