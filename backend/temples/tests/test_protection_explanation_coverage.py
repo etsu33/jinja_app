@@ -108,13 +108,14 @@ class TestOtherPurposesUnchanged:
         assert _build_need_lead("courage", "") == "開運"
 
     def test_untouched_purposes_still_fall_back_to_generic_copy(self):
-        # Purposes outside this PR's scope (career/health/etc. that still
-        # have no intent_map entry) must keep falling back exactly as
-        # before -- this PR only added "protection".
-        assert _build_need_reason_text("family", name="", goriyaku="") == (
+        # A Need with no intent_map entry must keep falling back to the
+        # generic copy. `family` used to be that example; it now has an
+        # intent_map entry (Track R2), so `communication` -- the only
+        # remaining Need without one -- stands in here.
+        assert _build_need_reason_text("communication", name="", goriyaku="") == (
             "今の悩みや願いに寄り添いやすい神社としておすすめしています。"
         )
-        assert _build_need_reason_text("family", name="X", goriyaku="") == (
+        assert _build_need_reason_text("communication", name="X", goriyaku="") == (
             "ご利益のご利益で知られるXは、今の願いを願う参拝先として適しています。"
         )
-        assert _build_need_lead("family", "") == "ご利益"
+        assert _build_need_lead("communication", "") == "ご利益"

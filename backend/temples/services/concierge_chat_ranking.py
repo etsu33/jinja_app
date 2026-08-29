@@ -2213,6 +2213,14 @@ def _build_need_reason_text(
         "health": "健康や体調の安定",
         "focus": "集中や習慣づくり",
         "travel_safe": "移動や旅の安全",
+        # family の M1 後マッピング {16, 35} の実ラベルそのもの
+        # （子宝 = id=35、安産 = id=16）を、既存の「AやB」文型へそのまま
+        # 流し込む。Mother Ship 2026-08-29: Family = NARROW / DROP_ALL
+        # （docs/audit/remaining-need-semantic-decision-packets.md
+        # 「## Mother Ship Decisions」）で family は fertility / childbirth /
+        # parenting に限定されており、家庭円満・家族関係の修復・対人関係へ
+        # 広げる語は含めない。断定的・超自然的な表現も避ける。
+        "family": "子宝や安産",
     }
 
     user_intent = intent_map.get(tag, "今の願い")

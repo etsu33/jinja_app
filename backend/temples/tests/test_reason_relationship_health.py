@@ -272,9 +272,12 @@ def test_rest_reason_unchanged():
     assert "休息や気持ちの切り替えを願う参拝先として適しています。" in reason
 
 
-def test_family_reason_still_generic():
-    """family is decision-gated (DECISION_REQUIRED) -- must remain generic,
-    unaffected by this PR."""
+def test_family_reason_generic_without_valid_family_evidence():
+    """family now has M1 mapping {16, 35} + R2 intent_map copy "子宝や安産".
+    A family-intent query still falls back to the generic copy when the
+    candidate carries no valid family GID -- here the former family GID 2,
+    which M1 removed. The family-specific copy is covered in
+    test_reason_family.py."""
     recs = build_chat_recommendations(
         query="子宝に恵まれたい",
         language="ja",
@@ -284,3 +287,4 @@ def test_family_reason_still_generic():
     )
     reason = recs["recommendations"][0]["reason"]
     assert "今の願いを願う参拝先として適しています。" in reason
+    assert "子宝や安産を願う参拝先として" not in reason
