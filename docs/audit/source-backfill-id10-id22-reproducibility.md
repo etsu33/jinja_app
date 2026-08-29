@@ -198,3 +198,51 @@ No frontend PR packet — missing-detail behavior is already safe (Section 12).
 ## 19. STOP confirmation
 
 No STOP-without-write condition triggered: Spreadsheet ↔ Production identity match; Production targets unambiguous; the two written Sources have unambiguous identity and were first-hand retrieved; no Fact write requires inference; the migration reproduces Local ↔ Production deterministically (identity-based matching); no safety control bypassed; missing-detail behavior needs no Product/UI decision. The two unreachable official domains were classified `HOLD_SOURCE` and deferred — they do not block the government/cultural-property backfill that P4 does perform. PR created. **Not merged.** P4 not broadened. P1 / P2 / P5 / P6 / P7 / P8 not started.
+
+## 20. F5 — migration 0096 reverse-safety fix (post-P5-preflight)
+
+`docs/audit/p5-id21-id22-current-state-evidence.md` §14 confirmed a
+reverse-safety edge case in this migration, and the Mother Ship approved
+fixing it **before** 0096 is authorized for Production.
+
+- **`0096_REVERSE_EDGE_CASE_BEFORE = CONFIRMED`.** Original `revert_source_backfill`
+  called `history.sources.remove(source)` for every target history and deleted
+  the Source if it became unreferenced — **unconditionally**. If, before 0096
+  forward, a `ShrineKnowledgeSource` with the same `url` + `source_type`
+  already existed and a target history already cited it, forward was an
+  effective no-op (reuse + idempotent `.add()`), but reverse would still strip
+  that pre-existing relation and could delete a pre-existing Source row —
+  removing state 0096 never created.
+- **`0096_REVERSE_EDGE_CASE_AFTER = FIXED`.** Forward now writes a sentinel
+  (`MIGRATION_TAG = "[temples.0096:auto-created]"`) into `ShrineKnowledgeSource.note`
+  **only on a row it creates itself**; a reused pre-existing Source is never
+  modified. Reverse acts **only** on a Source whose `note` contains that exact
+  sentinel — so a pre-existing (reused) Source, and any relation it already
+  had, is left exactly as found. This mirrors 0095's "reverse only undoes the
+  exact state forward wrote". Forward's provenance semantics (which Source,
+  which target histories, identity guards, `.only()` `location` guard,
+  Local/Production title-based matching) are otherwise **unchanged**; the only
+  forward change is the rollback-tracking `note` stamp.
+- **`PRODUCTION_0096_STATUS = PENDING_AUTHORIZED_APPLY`** — verified this
+  session against the Production `django_migrations` ledger (read-only): the
+  latest applied `temples` migration is `0094_fix_shrine_70_coordinates`;
+  **0095 and 0096 are both `<NOT APPLIED>`**. So 0096 is edited in place (the
+  repository-approved path for an unapplied migration); no already-applied
+  migration contract is rewritten. On the first authorized Production apply,
+  forward creates the two Sources fresh and stamps them, so the fix is fully
+  effective there. `PRODUCTION_IMPACT` of the original edge case remains
+  `NONE_CURRENTLY` — neither P4 Source URL exists in Production today.
+- Tests: `test_migration_0096_source_backfill_id10_id22.py` gains
+  `test_f5_preexisting_source_and_relation_survive_reverse` (the required
+  scenario), `test_f5_forward_stamps_marker_only_on_rows_it_creates`,
+  `test_f5_reverse_ignores_a_source_it_did_not_stamp`,
+  `test_f5_reapply_after_reverse_recreates_and_re_marks`; all prior coverage
+  (new-Source creation, relation creation, normal reverse, Source shared by
+  another Fact, idempotent forward, repeated apply, wrong-identity no-op,
+  Local/Production PK drift, unrelated shrines unchanged) is retained.
+- **Local-DB note:** the local `jinja_db` may still hold the two P4 Source
+  rows from an earlier *pre-F5* apply of 0096 with an empty `note`; the F5
+  reverse conservatively leaves such unmarked rows alone. This is a dev-DB
+  artifact only — Production has never applied 0096, so it starts clean.
+- Delivered as its own PR (`fix/migration-0096-reverse-guard`), **not** bundled
+  with the P5-DATA tag reconciliation.
