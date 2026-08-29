@@ -499,3 +499,123 @@ This is an audit / decision packet only.
 
 Next step is a Mother Ship decision on §16.3, then a separate P6-DATA PR
 implementing §16.2 if a removal is chosen.
+
+## 18. Implementation outcome (P6-DATA)
+
+The audit findings (§1–§15) are unchanged. This section records the
+implementation only.
+
+### 18.1 Mother Ship decisions (final, as supplied)
+
+```text
+P6_TARGET_SOURCE_STATUS = REMOVE
+P6_REMOVAL_SCOPE        = SOURCE_AND_RELATIONS
+P6_DELIVERY             = REVERSIBLE_DATA_MIGRATION
+P6_SEED_FIX             = BUNDLED_WITH_MIGRATION_PR
+```
+
+### 18.2 Delivery
+
+- Branch `fix/p6-remove-stray-user-observation-source` from `origin/develop` @
+  `e6aa8d818914e5b5768de7bfa88be782f2894f8d` (post-PR #2627). Isolated
+  worktree; working tree otherwise clean.
+- **Migration identifier: `temples/migrations/0098_remove_stray_test_source_id1.py`**
+  — verified as the next number against `develop` (0090–0097 present);
+  `dependencies = [("temples", "0097_p5_id21_id22_tag_reconciliation")]`.
+  Scoped reversible `RunPython`, GIS-lineage only (like 0095–0097; no
+  `migrations_nogis` counterpart).
+
+### 18.3 Production migration ledger — hard gate (fresh read-only)
+
+Latest applied `temples` migration in Production =
+**`0094_fix_shrine_70_coordinates`** (2026-08-23). **`0095`, `0096`, `0097`,
+`0098` are all `<NOT APPLIED>`.** So 0098 is a new unapplied migration appended
+to the linear chain; on the next authorized Production `migrate` it runs after
+0095→0096→0097. No Production write in this task.
+
+### 18.4 Forward behaviour
+
+1. Resolve the shrine: `pk=1 AND name_jp="明治神宮" AND place_ref_id IS NULL`
+   (`.only(...)` excludes `location`). Mismatch ⇒ safe no-op.
+2. Resolve the stray Source by **full semantic identity, never pk**
+   (`source_type="user_observation"`, `title="テスト神社 境内案内板"`,
+   `publisher="テスト神社"`, `url=""`,
+   `bibliography="テスト神社境内案内板（2026-08-01現地確認）"`). **0 matches**
+   (already clean) or **>1 matches** (ambiguous) ⇒ safe no-op, no deletion.
+3. With exactly one match: remove the Source from `明治天皇` and `昭憲皇太后`
+   (`shrine_id=1`), only where the relation exists.
+4. `SOURCE_AND_RELATIONS`: `src.delete()` **iff** `not src.deities.exists()
+   and not src.histories.exists()`.
+
+Idempotent: a re-run finds 0 matches → no-op.
+
+### 18.5 Reverse behaviour
+
+Restores only what this migration owns. Same shrine guard. Finds the Source by
+the same semantic identity; **reuses** it if present (never duplicates), else
+recreates it with the reviewed seed values (`source_confirmed` / `medium` /
+`ja` / `verified_at=2026-08-01T07:30:00+00:00` / no URL). Re-links **only**
+`明治天皇` and `昭憲皇太后` on Shrine id 1. Never by pk; never recreates the
+deities; never touches the genuine `shrine_official` Source.
+
+### 18.6 Seed cleanup (`BUNDLED_WITH_MIGRATION_PR`)
+
+`backend/temples/data/knowledge_seeds/batch_1_7_seed.json`:
+
+- `src-999004` removed from `sources` (59 → 58 entries; no reference remains
+  anywhere in the file).
+- Both 明治神宮 deity blocks: `source_keys` `["src-999005", "src-999004"]` →
+  `["src-999005"]`.
+- The genuine `src-999005` (`shrine_official`,
+  `https://www.meijijingu.or.jp/about/`) is untouched.
+- Verified: a future `import_shrine_knowledge batch_1_7_seed.json` can no
+  longer create the test Source (`test_seed_no_longer_defines_the_test_source`).
+
+### 18.7 Regression
+
+- New `test_migration_0098_remove_stray_test_source_id1.py` — **22 tests**
+  covering the full P6-DATA regression contract (exact target + two relations
+  removed; official Source preserved; unrelated id-1 Sources / Facts preserved;
+  other-shrine data preserved; wrong-identity no-op; `place_ref`-set no-op;
+  semantic-mismatch no-op ×2; zero-match safe; multiple-match safe; pk-drift
+  irrelevant; reverse recreates exact Source + exactly two links; no duplicate
+  on reverse/reapply; reverse reuses an existing row; forward idempotent;
+  forward→reverse→forward deterministic; Evidence Gate usability unchanged;
+  Recommendation Knowledge payload unchanged; scoring inputs untouched;
+  Knowledge coverage delta exactly `total_source_count −1` /
+  `user_observation 1→0` with no shrine classification change; seed no longer
+  defines the test Source).
+- Focused regression (0091 / 0095 / 0096 / 0097 / 0098 migration tests,
+  Shrine Knowledge models, Shrine Knowledge migration, Knowledge coverage
+  command): **112 passed**.
+- Full `backend/temples`: **1969 passed, 13 skipped, 0 failed** (skips are the
+  pre-existing GDAL / PostGIS / ambiguous-axis ones, unchanged).
+- `python manage.py makemigrations temples --check --dry-run` → "No changes
+  detected in app 'temples'".
+- `git diff --check` → clean.
+
+### 18.8 Impact (matches the audit)
+
+- **Evidence Gate:** `明治天皇` / `昭憲皇太后` remain `usable` via the genuine
+  `shrine_official` Source — unchanged.
+- **Recommendation:** `fetch_fact_ready_knowledge_deities([1])` payload
+  byte-identical (`display_name`, `confidence`); no scoring / ranking / C1 /
+  Lead / Reason / Need-mapping / GoriyakuTag change.
+- **Knowledge coverage:** `total_source_count` / `verified_source_count` −1;
+  `source_type_distribution` loses `user_observation:1`; **no** shrine's
+  coverage classification changes.
+- **Shrine Detail API:** 明治神宮's two enshrined-deity Facts stop serving the
+  `テスト神社 境内案内板` citation (2 → 1 sources each).
+
+### 18.9 Status
+
+- **Production write status: NONE.** Read-only ledger check only; every
+  statement `guard.py`-checked; credential never printed / logged / in argv.
+- **Spreadsheet write status: NONE** (not accessed).
+- **Deployment status: PENDING** — PR created against `develop`, **not
+  merged**. 0098 applies to Production only on the next authorized `migrate`.
+- Changed files (this PR): `backend/temples/migrations/0098_remove_stray_test_source_id1.py`
+  (new), `backend/temples/tests/test_migration_0098_remove_stray_test_source_id1.py`
+  (new), `backend/temples/data/knowledge_seeds/batch_1_7_seed.json` (seed
+  cleanup), `docs/audit/p6-id1-user-observation-data-review.md` (this section).
+- P8 not started.
