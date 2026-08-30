@@ -1313,3 +1313,70 @@ Mother Ship's** — this preflight authorizes nothing.
 The §21 Closeout verdict is unchanged: `P8_REPOSITORY_STATUS = COMPLETE`,
 `P8_PRODUCTION_STATUS = PENDING_MIGRATION_APPLY`,
 `P8_CLOSEOUT_STATUS = REPOSITORY_COMPLETE_DEPLOYMENT_PENDING`.
+
+## 23. Production Applied — Post-Deploy Verification (2026-08-30)
+
+The pending `temples` chain **was applied to Production** on **2026-08-30**
+(ledger timestamps 04:46:32–04:46:34 UTC) via the canonical **LOCAL_DIRECT**
+path (`docs/audit/production-migration-local-execution-runbook.md`). The
+authorized single mutation was `manage.py migrate temples 0101 --noinput`
+(app + target explicit; not bare `migrate`), run from `backend/` with
+`DEBUG=0 USE_GIS=1`, the Production `DATABASE_URL` sourced from
+`~/.config/kami-musubi/production-db.env` inside the command subshell (never
+in argv / logs / history). It was run **once** and exited **0**. §21 / §22
+are unchanged; this section records the applied result.
+
+### 23.1 Execution facts
+
+| Fact | Value |
+|---|---|
+| `EXECUTION_DEVELOP_SHA` | `57c0a94af1f4f7f9cb45ac74eb93ef98ac5da572` (PR #2644 merge commit, = `origin/develop`) |
+| Execution path | `LOCAL_DIRECT` (canonical runbook; Render `RUN_MIGRATIONS_ON_START` toggle **not** used) |
+| Migration command shape | `( set -a; source <prod-env>; set +a; DEBUG=0 USE_GIS=1 SECRET_KEY=<any> .venv/bin/python3 manage.py migrate temples 0101 --noinput )` |
+| Execution-time Production head (before) | `0094_fix_shrine_70_coordinates` (0095–0101 = 0 ledger rows) |
+| `EXECUTION_GATE` | **PASS** — every mutable fail-closed PRE (0097 tags, 0098 stray source + deity ownership, 0099 exact OLD id 49 coord, 0100 shadow/primary identity + zero-payload + audited-log global uniqueness, 0101 id 105 identity + coord + strict `PlaceRef` types + zero relations) re-verified read-only immediately before the write and matched exactly |
+| `migrate` exit status | `0` |
+| Applied (in order) | `0095` OK · `0096` OK · `0097` OK · `0098` OK · `0099` OK · `0100` OK · `0101` OK — no warning, no traceback, no `PreconditionViolation` |
+| Manual Production repair | **none** — no `UPDATE` / `DELETE` / `INSERT` / `django_migrations` edit; the only write was the `migrate` command |
+
+### 23.2 Post-deploy verification (all read-only, sanctioned bridge)
+
+| Check | Result | Verdict |
+|---|---|---|
+| **Ledger** | `temples` latest = `0101_p8b_remove_non_shrine_artifact_id105`; exactly one applied row each for 0095–0101 | `MIGRATION_LEDGER_POSTCHECK = PASS` |
+| **Raw `temples_shrine` count** | **104** (`min(id)=1`, `max(id)=108`) | matches `RAW_SHRINE_COUNT = 104` |
+| **Canonical denominator** | 104 − QA fixture id 102 (`テスト確認神社 20260611`, present) = **103** | `POST_P8_CANONICAL_DENOMINATOR = 103` |
+| **Removed rows** | ids **101, 103, 104, 105** all ABSENT | PASS |
+| **Canonical rows** | ids **21, 22, 49** PRESENT, `name_jp` unchanged | PASS |
+| **id 49 coordinate** | `富岡八幡宮` / `latitude = 35.6717809` / `longitude = 139.799519` / `place_ref_id = NULL`; `address` / `goriyaku` / `history_theme` / `sajin` / `description` unchanged | `P8_ID49_COORDINATE_POSTCHECK = PASS` |
+| **Interaction logs** | former-shadow-101 event (`user_id=1` + `detail_view` + `ctx=map` + `2026-06-11T07:18:05.580624+00:00`) → **exactly one** global match, `shrine_id = 22`; former-shadow-103 event (…`08:00:22.085501+00:00`) → **exactly one** global match, `shrine_id = 21` | `P8_INTERACTION_LOG_POSTCHECK = PASS` (`INTERACTION_101_OWNER = 22`, `INTERACTION_103_OWNER = 21`) |
+| **Shadow `PlaceRef`** | `ChIJl-MEepfxGGAR1Eo44p__GaE`, `ChIJX19mq8nxGGARsA2kP4gX90M`, `ChIJK11I4BGJGGAR5mZswigcu58` all present, **claimed by no Shrine** (orphaned, `DROP_SHADOW_ONLY`) | PASS |
+| **id 105 `PlaceRef`** | `ChIJu0_z7giZWjURcvfBz1DO5Ac` present; Shrine id 105 absent; `PlaceRef` attached to no Shrine (`DROP_SHRINE_LINK_ONLY`) | `P8_PLACE_REF_POSTCHECK = PASS` |
+| **0095** (P3) | id 107 `goriyaku` = `開運・厄除け・出世運・勝運・縁結び・商売繁盛・家内安全・病気平癒` + 8 `goriyaku_tags`; id 108 `goriyaku` = `海上安全・家内安全・商売繁盛・厄除け・安産・交通安全・合格祈願・心願成就` + 8 `goriyaku_tags` | PASS |
+| **0096** (P4) | 2 new `ShrineKnowledgeSource` (id 115 `cultural_property` bunka.go.jp/160978; id 116 `government` dentou-hasshin/158), each carrying `[temples.0096:auto-created]` + `[temples.0096:added-histories]`; **3** history↔source links (id 10 `founding` + `historical_event` → src 115; id 22 `founding` → src 116) | PASS |
+| **0097** (P5-DATA) | id 21 `goriyaku_tags` → 0 (`商売繁盛`, `五穀豊穣` removed); id 22 `goriyaku_tags` → 0 (`家内安全` removed); nothing else removed | PASS |
+| **0098** (P6-DATA) | stray `user_observation` source (`テスト神社 境内案内板`) rows = **0**; `明治天皇` and `昭憲皇太后` now cite **only** the genuine `shrine_official` source (id 1, `明治神宮 公式サイト「明治神宮とは」`) | PASS |
+| **Recommendation data** | canonical 21 / 22 / 49 all remain; 22 keeps 2 `ShrineDeity` + 4 `ShrineHistory`; 49 keeps 2 `goriyaku_tags` + 1 `ShrineDeity` + 2 `ShrineHistory`; **no P8 migration (0099/0100/0101) removed any Knowledge fact or recommendation evidence** — id 21 `goriyaku_tags = 0` is solely the separately-approved 0097 / P5-DATA effect | `P8_RECOMMENDATION_DATA_POSTCHECK = PASS` |
+
+### 23.3 Final status
+
+```text
+PRODUCTION_TEMPLES_HEAD       = 0101_p8b_remove_non_shrine_artifact_id105
+RAW_SHRINE_COUNT              = 104
+POST_P8_CANONICAL_DENOMINATOR = 103
+REMOVED_IDS                   = 101, 103, 104, 105
+ID49_COORDINATE              = 35.6717809, 139.799519
+INTERACTION_101_OWNER         = 22
+INTERACTION_103_OWNER         = 21
+
+P8_REPOSITORY_STATUS = COMPLETE
+P8_PRODUCTION_STATUS = FULLY_APPLIED
+P8_DEPLOYMENT_STATE  = FULLY_APPLIED
+P8_CLOSEOUT_STATUS   = COMPLETE
+```
+
+P8 Identity / Coordinate Remediation is **complete in both the repository and
+Production**. The §21 verdict line
+`P8_CLOSEOUT_STATUS = REPOSITORY_COMPLETE_DEPLOYMENT_PENDING` was the
+correct state at Closeout time and is now superseded by this section:
+deployment is applied and verified.
