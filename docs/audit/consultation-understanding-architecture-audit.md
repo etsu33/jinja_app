@@ -490,6 +490,66 @@ object today whose shape can carry a polarity value, and no consumer that
 would read one. `REPRESENTABLE_BUT_UNUSED` does **not** apply — even
 `state=uncertain` is a coincidental state label, not a polarity slot.
 
+### 13.1 Two candidate mitigations, precisely defined
+
+These two Decision 5 values are distinct **by what they preserve
+downstream**, not by how they are implemented. A parser / preprocess step
+may be the *producer* in either case — that alone does not decide the
+classification.
+
+**`PREPROCESS_GUARD`** — a Concierge-side pre-interpretation protection
+mechanism that detects negated / excluded / contrasted phrases and
+**suppresses or adjusts keyword / regex matching before semantic output is
+produced**. Properties:
+
+- **no** first-class polarity field is added to the semantic model;
+- **no** polarity object is carried downstream;
+- **no** new semantic schema is introduced;
+- **no** downstream consumer receives `"negated"` as structured semantic
+  data — consumers see only the post-guard semantic result;
+- its effect is behavioural filtering / suppression before normal
+  extraction;
+- it is a bounded, compatibility-oriented mitigation;
+- it is Concierge-side and does not change Compass `purpose` input directly.
+
+  *Example:* on `恋愛の相談ではない` a `PREPROCESS_GUARD` may stop `恋愛` from
+  producing `need_tag=love`. Downstream structures do **not** receive
+  `polarity = negated`; they receive only the (now love-free) semantic
+  result.
+
+**`POLARITY_SIGNAL`** — polarity is **preserved explicitly as part of the
+consultation semantic representation and remains available to downstream
+consumers**. Properties:
+
+- introduces a first-class polarity field (or equivalent structured signal),
+  conceptually able to represent at least `asserted` / `negated` /
+  `de-emphasised` / `contrasted`, and `uncertain` / `hypothetical` if a
+  later design supports them;
+- polarity survives interpretation;
+- downstream consumers (Reason / explanation / future ranking) can inspect
+  it;
+- it is **not** merely suppression before extraction.
+
+  *Clarification:* a `POLARITY_SIGNAL` **may** be populated by a lightweight
+  parser or preprocess step. "Implemented by a preprocess parser" does
+  **not** make it a `PREPROCESS_GUARD`. The classification depends solely on
+  whether polarity is preserved as structured semantic data downstream.
+
+### 13.2 Contrast table
+
+| property | `PREPROCESS_GUARD` | `POLARITY_SIGNAL` |
+|---|---|---|
+| blocks a false keyword match | yes | yes (can) |
+| adds a semantic field | no | yes |
+| polarity survives downstream | no | yes |
+| schema change | no | yes |
+| Reason can inspect negation directly | no | yes |
+| ranking can inspect negation directly | no | yes, if wired |
+| compatibility risk | lower | higher |
+| semantic fidelity | limited (suppression only) | higher (structured) |
+| Compass `purpose` input affected | no (Concierge-side) | no directly; shared profile schema changes |
+| producer | parser / preprocess step | parser / preprocess step **or** later a clause model — but the signal is retained |
+
 ---
 
 ## 14. Multi-Signal Capacity
@@ -536,7 +596,7 @@ discarded), **L8** (GID union — per-tag identity lost), **L11**
 
 | change | Compass impact | severity |
 |---|---|---|
-| add/adjust `KEYWORDS`/`REGEX`, add negation preprocessing, clause segmentation, free-text polarity | **none** (Compass has no free text) | LOW |
+| add/adjust `KEYWORDS`/`REGEX`; add a `PREPROCESS_GUARD` (suppression) or a Concierge-side polarity-signal producer; clause segmentation | **none** (Compass has no free text) | LOW |
 | change the `NEED_TAGS` *set* (add/remove/rename) | **breaks** Compass `purpose` validation + API contract | HIGH |
 | change `NEED_TO_GORIYAKU_IDS` | shifts Compass ranking for that `purpose` | MEDIUM |
 | change `_attach_breakdown` / `score_need` / `_sort` | changes Compass ordering | MEDIUM–HIGH |
@@ -600,12 +660,15 @@ No `BLOCKER`-severity smell found.
 Keep `need_tags`, `consultation_axis`, `interpretation_profile` exactly.
 Only add adapters/consumers: e.g. wire `state_profile`/`outcome_hint` into the
 **legacy** `reason`/Lead the way reason_v4 already does; de-gate the
-`history_theme` fact; add a negation *preprocess guard* that suppresses
-`extract_need_tags` hits inside a negated span (a string transform before the
-existing matcher, no schema).
+`history_theme` fact; add a schema-free negation mitigation — a
+`PREPROCESS_GUARD` (§13.1) that suppresses `extract_need_tags` hits inside a
+negated span (a string transform before the existing matcher; **no polarity
+field, nothing carried downstream**).
 
-- **effort:** LOW–MEDIUM. **semantic fidelity gain:** LOW–MEDIUM (negation
-  guard fixes ~6/34 cases; state reaches the legacy Reason).
+- **Decision 5 alignment:** Option A uses `NEGATION_MODEL = PREPROCESS_GUARD`
+  (suppression only; no structured polarity).
+- **effort:** LOW–MEDIUM. **semantic fidelity gain:** LOW–MEDIUM (the guard
+  fixes ~6/34 cases by *suppression*; state reaches the legacy Reason).
 - **risk:** LOW (no schema, no set change). **back-compat:** HIGH-safe.
 - **complexity:** adds a preprocess step + Reason branches; the three-table
   `DUPLICATE_INTERPRETER` and `SEMANTIC_OVERLOAD` smells **remain**.
@@ -638,8 +701,11 @@ the legacy Reason.
 - **back-compat:** MEDIUM (`reason_facts` type values, `_v4_detail` shape,
   ranking order all shift). **Compass:** shares the profile + ranking →
   MEDIUM; gate activation per entrypoint to isolate.
-- **still missing:** negation (no field on the profile) — Option B does not
-  add polarity by itself.
+- **still missing:** negation — Option B does not add polarity by itself.
+- **Decision 5 alignment:** Option B may pair with either
+  `NEGATION_MODEL = PREPROCESS_GUARD` (schema-free suppression, if the
+  profile schema is left unextended) **or** `NEGATION_MODEL = POLARITY_SIGNAL`
+  (if the profile schema gains a polarity field as part of the promotion).
 
 ### Option C — Normalize the Semantic Model (canonical layer)
 
@@ -674,23 +740,36 @@ views** over it (adapters preserve every current output).
   `purpose`→`need_tag` adapter is preserved verbatim.
 - **maintainability:** best long-term; single source of semantic truth; kills
   the three-table drift.
+- **Decision 5 alignment:** the canonical layer carries `{value, confidence,
+  polarity}` per signal, so it naturally supports
+  `NEGATION_MODEL = POLARITY_SIGNAL`, and is the option in which
+  `NEGATION_MODEL = CLAUSE_LEVEL_MODEL` (polarity/scope attached at the
+  clause level) becomes feasible.
 
 ### Option D — Hybrid: normalize the *container*, defer the *model*
 
 Do the minimal normalization from Option B's prerequisite (one need
 extractor; consistent `{primary, candidates[], confidence, polarity}` block
-shape; rename the colliding keys) **and** add a polarity field to
-`interpretation_profile` populated by a preprocess guard — but do **not**
-promote it to ranking yet. Keep Score v3 shadow. Wire the normalized profile
-(with polarity) into reason_v4 and a new `reason_fact` type only.
+shape; rename the colliding keys) **and add a first-class polarity field to
+the normalized interpretation profile, populated by a lightweight
+Concierge-side parser / preprocess step** — but do **not** promote the
+profile to ranking yet. Keep Score v3 shadow. Wire the normalized profile
+(polarity included) into reason_v4 and a new `reason_fact` type only.
 
+- **Decision 5 alignment:** Option D uses `NEGATION_MODEL = POLARITY_SIGNAL`.
+  The polarity field is **first-class and retained downstream** (reason_v4
+  and the new `reason_fact` type can inspect it). The parser / preprocess
+  step is **only the producer** of that signal — it is not a
+  `PREPROCESS_GUARD`, because polarity is preserved as structured semantic
+  data rather than consumed as pre-extraction suppression.
 - **effort:** MEDIUM. **fidelity:** MEDIUM (negation + state visible in the
-  explanation; ranking unchanged → low ranking risk).
+  explanation as structured data; ranking unchanged → low ranking risk).
 - **risk:** LOW–MEDIUM (no ranking change; additive schema). **migration:**
   none. **back-compat:** HIGH-safe (additive). **Compass:** reason_v4 shared
   → MEDIUM; ranking untouched → LOW.
 - **positions for later:** leaves Option B (flip Score v3) or Option C
-  (full canonical layer) as a clean next step on a consistent base.
+  (full canonical layer) as a clean next step on a consistent base — and the
+  polarity signal is already in place for either.
 
 *No option is selected. No option is ranked as product priority.*
 
@@ -702,7 +781,7 @@ Scale: ✅ strong / �observed-neutral / ⚠ weak-or-risky (evidence-based, not
 
 | criterion | A Preserve | B Promote | C Normalize | D Hybrid |
 |---|---|---|---|---|
-| 1. semantic fidelity | ⚠ ceiling at single-container | ✅ state/outcome load-bearing; ⚠ no negation | ✅ topic/state/intention/polarity separated | ○ explanation-only fidelity now |
+| 1. semantic fidelity | ⚠ ceiling at single-container; negation via `PREPROCESS_GUARD` suppression only (no structured polarity) | ✅ state/outcome load-bearing; negation only if schema extended (`PREPROCESS_GUARD` or `POLARITY_SIGNAL`) | ✅ topic/state/intention/polarity separated (`POLARITY_SIGNAL`/`CLAUSE_LEVEL_MODEL`) | ○ explanation-only fidelity now; negation as structured `POLARITY_SIGNAL` (retained downstream), ranking unchanged |
 | 2. reuse of tested behavior | ✅ maximal | ✅ high (Score v3 weights, reason_v4 exist) | ⚠ re-expressed via adapters | ✅ high |
 | 3. backward compatibility | ✅ | ⚠ ranking + fact types shift | ✅ if adapters exact (needs parity suite) | ✅ additive |
 | 4. complexity | ✅ low | ○ medium | ⚠ high | ○ medium |
@@ -748,10 +827,21 @@ colliding names. `PROMOTE` as-is would route ranking on the wrong need list.
 
 **Decision 5 — `NEGATION_MODEL`** ∈ {`NO_CHANGE`, `PREPROCESS_GUARD`,
 `POLARITY_SIGNAL`, `CLAUSE_LEVEL_MODEL`}.
-Evidence: §13, L1, PR #2646 §10/§17 (6/34 cases). Nothing today can carry
-polarity. `PREPROCESS_GUARD` is Concierge-only and schema-free but blunt;
-`POLARITY_SIGNAL` needs one field plus one consumer; `CLAUSE_LEVEL_MODEL`
-implies Option C-scale work.
+Evidence: §13 / §13.1 / §13.2, L1, PR #2646 §10/§17 (6/34 cases). Nothing
+today can carry polarity (§13). Value definitions:
+
+- `NO_CHANGE` — leave the current negation limitation unresolved; the 6/34
+  mis-fire cases persist.
+- `PREPROCESS_GUARD` — schema-free suppression / correction of keyword /
+  regex matches **before** semantic extraction; no polarity field, nothing
+  carried downstream (§13.1). Concierge-side; blunt but low-risk.
+- `POLARITY_SIGNAL` — a first-class structured polarity signal that is
+  **retained downstream** and inspectable by Reason / explanation / future
+  ranking (§13.1); needs one field plus at least one consumer. May be
+  produced by a lightweight parser without becoming a `PREPROCESS_GUARD`.
+- `CLAUSE_LEVEL_MODEL` — clause-aware semantic interpretation where polarity
+  and scope are attached at the clause or per-signal level; a larger
+  architecture change (Option C-scale).
 
 **Decision 6 — `MULTI_SIGNAL_POLICY`** ∈ {`KEEP_MAX3_PRIORITY`,
 `EXPAND_LIST`, `PRIMARY_SECONDARY`, `STRUCTURED_MULTI_DIMENSION`}.
@@ -760,13 +850,22 @@ axis, and the GID union are four independent destructive reducers.
 `PRIMARY_SECONDARY` needs a rationale field; `STRUCTURED_MULTI_DIMENSION` is
 Option C.
 
-**Cross-decision dependencies:** D1=`PRESERVE_CURRENT` ⇒ D4=`SHADOW`,
-D6∈{`KEEP_MAX3_PRIORITY`}. D1=`PROMOTE_PROFILE` ⇒ D4∈{`PROMOTE`,
-`NORMALIZE_FIRST`} and requires L15 fixed. D1=`NORMALIZE_MODEL` ⇒
-D2=`EVIDENCE_ROUTING_LAYER`, D3∈{`DERIVED_ONLY`,`MULTI_VALUE_FUTURE`},
-D5∈{`POLARITY_SIGNAL`,`CLAUSE_LEVEL_MODEL`},
-D6=`STRUCTURED_MULTI_DIMENSION`. D5=`NO_CHANGE` leaves the 6/34 negation
-cases unaddressed regardless of D1.
+**Cross-decision dependencies:**
+
+- D1=`PRESERVE_CURRENT` (Option A) ⇒ D4=`SHADOW`, D6∈{`KEEP_MAX3_PRIORITY`};
+  D5 pairs with `PREPROCESS_GUARD` (schema-free suppression — Option A adds
+  no polarity field).
+- D1=`PROMOTE_PROFILE` (Option B) ⇒ D4∈{`PROMOTE`, `NORMALIZE_FIRST`} and
+  requires L15 fixed; D5 may be `PREPROCESS_GUARD` **or** `POLARITY_SIGNAL`
+  depending on whether the profile schema is extended with a polarity field.
+- D1=`NORMALIZE_MODEL` (Option C) ⇒ D2=`EVIDENCE_ROUTING_LAYER`,
+  D3∈{`DERIVED_ONLY`,`MULTI_VALUE_FUTURE`},
+  D5∈{`POLARITY_SIGNAL`,`CLAUSE_LEVEL_MODEL`}, D6=`STRUCTURED_MULTI_DIMENSION`.
+- **Option D (Hybrid) ⇒ D5=`POLARITY_SIGNAL`** — a first-class polarity field
+  is added to the normalized profile and retained downstream; the
+  parser / preprocess step is only its producer, not a `PREPROCESS_GUARD`.
+  D4=`NORMALIZE_FIRST`, ranking unchanged, D6 unconstrained.
+- D5=`NO_CHANGE` leaves the 6/34 negation cases unaddressed regardless of D1.
 
 ---
 
