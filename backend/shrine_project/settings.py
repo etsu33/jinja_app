@@ -72,8 +72,26 @@ USE_SQLITE = env_bool("USE_SQLITE", default=False)  # ← 明示したときだ�
 USE_GIS = env_bool("USE_GIS", default=True)
 DISABLE_GIS_FOR_TESTS = env_bool("DISABLE_GIS_FOR_TESTS", default=False)
 
+# temples の NoGIS squashed migration set（temples/migrations_nogis/）へ切り替えて
+# よいのは、実際に pytest 経由で起動し、かつ明示的に GIS を無効化したい場合だけ。
+# `not USE_SQLITE` は SQLite 実行時の既存挙動（spatialite/sqlite3 の通常経路）を
+# 変えないためのガード。
+#
+# 過去に一度、このガードから IS_PYTEST 判定が失われ（commit d5655e17b,
+# 2026-03-16）、単なる `not USE_GIS and not USE_SQLITE` になっていたことがある。
+# IS_PYTEST は実際の pytest プロセス以外では絶対に true にならないが、
+# `USE_GIS` 単体は本番の環境変数一つで（意図せず）false になり得るため、
+# その版では Production 環境で USE_GIS が false に倒れた際に
+# `temples.migrations_nogis`（テスト/CI専用の squashed migration lineage、
+# 通常の 99 件超の temples/migrations/ とは無関係に手動維持されている別物）へ
+# 静かに切り替わってしまい、Production の migration lineage 混入という実害を
+# 起こした（詳細: docs/audit/production-migration-modules-nogis-root-cause.md）。
+# 二度と `USE_GIS` 単体を判定条件にしないよう、ここで判定用の変数として
+# 明示的に固定する。
+TEMPLES_USE_NOGIS_MIGRATIONS = IS_PYTEST and DISABLE_GIS_FOR_TESTS and not USE_SQLITE
+
 # pytest で GIS を無効化したい時だけ off（フラグ解釈はここで一度だけ）
-if IS_PYTEST and DISABLE_GIS_FOR_TESTS:
+if TEMPLES_USE_NOGIS_MIGRATIONS:
     USE_GIS = False
 
 # SQLite + GIS を使う場合のためのヒント
@@ -189,7 +207,11 @@ DATABASES = {
 }
 
 # ---- NoGIS固定（テスト/CIで使う）: DB構成は変えず migration だけ切り替える ----
-if not USE_GIS and not USE_SQLITE:
+# `TEMPLES_USE_NOGIS_MIGRATIONS`（pytest かつ DISABLE_GIS_FOR_TESTS の場合のみ
+# true）でのみ発火する。`USE_GIS` 単体では絶対に判定しない — Production 等の
+# 通常起動プロセスでは IS_PYTEST が true になり得ないため、USE_GIS が
+# どんな値であってもこのブロックは発火しない。
+if TEMPLES_USE_NOGIS_MIGRATIONS:
     MIGRATION_MODULES = {**globals().get("MIGRATION_MODULES", {})}
     MIGRATION_MODULES["temples"] = "temples.migrations_nogis"
 
