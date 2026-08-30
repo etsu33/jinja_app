@@ -285,10 +285,13 @@ row: **id 49** (data-bearing, earliest, Spreadsheet `MATCH`).
 
 **Technical recommendation: `KEEP_PRIMARY_REMOVE_SHADOW` — but coordinate-coupled.**
 id 104 holds the **only accurate** coordinate + the `place_of_worship`
-`place_ref`. P8-A's id-104 step **must** first copy 104's coordinate (and,
-optionally, `place_ref`) onto id 49 — i.e. **P8-C is a precondition of the
-id-104 removal**, or the two are done in one migration. Deleting 104 alone
-would strip the good position.
+`place_ref`. Deleting id 104 alone would strip the good position, so id 49's
+coordinate must be corrected **before or atomically with** the id-104
+removal — via §16 **Design A** (a standalone P8-C applied first, after which
+P8-A does not touch id 49's coordinate) **or** **Design B** (the coordinate
+update is P8-A's atomic step 1). The two designs are **mutually exclusive**;
+`NO_CHANGE_REQUIRED` (accept ~306 m) is also valid and leaves id 49's
+coordinate as-is.
 
 ## 9. Artifact Review — id 105 `広島市`
 
@@ -485,11 +488,16 @@ For each approved shadow pair:
 7. **expected user-owned reference state matches** — no user-owned row
    (favourite / visit / reflection / goshuin) on any shadow. Any such row →
    `ABORT` (do not auto-move it without an explicit Mother Ship decision).
-8. **coordinate-coupling requirement for id 104 matches** — id 49 either
-   already holds the corrected coordinate (P8-C applied) **or** this
-   migration's step 1 will set it; id 104's coordinate == its audited value
-   `35.6717809, 139.799519`. If id 49's coordinate is neither the audited
-   drifted value A nor the corrected value B → `ABORT`.
+8. **coordinate-coupling requirement for id 104 matches** — id 104's
+   coordinate == its audited value `35.6717809, 139.799519`, **and** id 49's
+   coordinate matches what the chosen delivery design (§16) expects:
+   - **Design A** (independent P8-C ran first): id 49 == `35.6717809,
+     139.799519`; if it is still `35.6733, 139.7967` → `ABORT` (run P8-C
+     first). P8-A does **not** touch id 49's coordinate.
+   - **Design B** (folded): id 49 == the audited drifted value `35.6733,
+     139.7967`; P8-A step 1 updates it, fail-closed on that exact value.
+   - **`NO_CHANGE_REQUIRED`**: id 49 == `35.6733, 139.7967`; P8-A leaves it.
+   Any id 49 coordinate not matching the design's expected value → `ABORT`.
 
 If an approved subject exists but **any** field/relation above differs:
 `RAISE` / `ABORT`. Do not repair, do not guess, do not proceed with the
@@ -669,10 +677,13 @@ temples_shrineinteractionlog` unchanged (moved, not deleted).
 | manual Production edit | no guard, no test, no reverse, no audit trail; contradicts `migration_safety` posture. Rejected. |
 
 **`P8_DELIVERY` recommendation:** `SPLIT_MIGRATIONS` — P8-A (shadows) and
-P8-B (artefact) as two independent reversible migrations, with P8-C
-(coordinate) either its own migration ordered **before** P8-A's id-104 step
-or folded into P8-A step 1. (One combined migration is acceptable but couples
-three unrelated rollbacks.) **Not selected — Mother Ship decision.**
+P8-B (artefact) as two independent reversible migrations. The coordinate
+change is handled by **exactly one** of §16's mutually exclusive designs:
+**Design A** (a standalone P8-C migration, applied before P8-A, after which
+P8-A never touches id 49's coordinate) **or** **Design B** (no standalone
+P8-C; the coordinate update is P8-A's atomic step 1). **Both mechanisms must
+never coexist in one migration lineage.** **Not selected — Mother Ship
+decision.**
 
 ## 15. P8-B Remediation Design — Non-shrine Artefact (id 105 `広島市`)
 
@@ -756,45 +767,116 @@ call**, so this is a design, not an obligation.
 - **Expected old coordinate:** `35.6733, 139.7967`.
 - **Expected new coordinate:** `35.6717809, 139.799519`.
 - **Distance delta:** ≈ **305.6 m** (Δlat +0.0015191, Δlng −0.0028190).
-- **`P8_C_PRESTATE_POLICY = FAIL_CLOSED`.** For the intended Production
-  remediation, forward requires: pk 49 **and** `name_jp == '富岡八幡宮'`
-  **and** `address` normalizes to `東京都江東区富岡1-20-3` **and** the current
-  coordinate is exactly the expected old value `35.6733, 139.7967`. **Any
-  mismatch → `RAISE` / `ABORT`** (not a silent successful no-op); forward is
-  not recorded as applied. This mirrors `0094_fix_shrine_70_coordinates` and
-  the P6 / `0097` / `0098` fail-closed corrections.
-- **Applicability boundary (the only clean no-op):** a fresh / empty lineage
-  where id 49 already holds the corrected coordinate `35.6717809, 139.799519`
-  (e.g. a test DB seeded with the fixed value, or after P8-A step 1 already
-  applied it) **and** P8-C has never been recorded applied — a documented
-  clean no-op, distinct from a mismatch. If P8-C and P8-A step 1 both run,
-  the second sees "already corrected" via this boundary, not via a mismatch
-  abort.
-- **Reversible update:** forward sets the new pair after the PRE check;
-  reverse restores `35.6733, 139.7967`, guarded by the "from" value matching
-  `35.6717809, 139.799519` (else reverse is a no-op). Reverse assumes the
-  exact PRE contract held because forward `RAISE`s otherwise.
+- **`P8_C_PRESTATE_POLICY = FAIL_CLOSED` (no "already-corrected" no-op).**
+  For an intended database where Shrine id 49 **exists**, forward may run
+  **only if all**: pk == 49 **and** `name_jp == '富岡八幡宮'` **and**
+  `address` normalizes to `東京都江東区富岡1-20-3` **and** the current
+  coordinate is **exactly** the audited old value `35.6733, 139.7967`. If
+  id 49 already holds `35.6717809, 139.799519` (or any third value), forward
+  **`RAISE`s / `ABORT`s** — it is **not** treated as a successful no-op and
+  is **not** recorded as applied. (Reason: a recorded-applied forward must
+  imply id 49 held the exact old coordinate, so that reverse can restore it
+  from the exact new coordinate without creating drift that never existed.)
+  This mirrors `0094_fix_shrine_70_coordinates` and the P6 / `0097` (PR
+  #2629) / `0098` fail-closed corrections.
+- **Applicability boundary — `PENDING_IMPLEMENTATION_REVIEW`.** Coordinate
+  state is a single scalar pair; reverse **cannot** distinguish
+  "old→new by this migration" from "already-new, untouched" purely from the
+  observable value. Therefore:
+  - The **only** candidate clean no-op is **subject genuinely absent** (no
+    row at pk 49 and no row whose identity matches 富岡八幡宮 anywhere) on a
+    fresh migration lineage that never recorded P8-C applied — and even that
+    is offered **only if** a fresh-schema / test DB needs it. "id 49 exists
+    with the corrected coordinate" is **explicitly not** a boundary.
+  - If subject-absent reverse still cannot be made symmetric from observable
+    DB state, P8-C **must** use a persisted migration-owned marker (Strategy
+    B of §14) or **omit the clean-no-op path entirely** and rely on Django's
+    migration ledger (a recorded-applied P8-C is the only state from which
+    reverse runs). Prefer the ledger-only contract.
+- **Reverse contract.** A successfully applied forward implies id 49 held the
+  exact audited old coordinate. Reverse restores `35.6733, 139.7967` **only
+  from the exact new coordinate `35.6717809, 139.799519`**. If reverse sees
+  any other value it **`RAISE`s / `ABORT`s** (or uses the repository's
+  documented reverse fail-closed behaviour) — it does **not** silently
+  overwrite an unexpected value.
 - **Map / recommendation regression tests:** id 49 still appears in
   `NearestShrinesAPIView` / map for a Monzen-nakacho query (now at the
   correct spot); `build_chat_candidates` distance for a nearby `lat`/`lng`
   shifts by ~306 m (assert the new distance); scoring / Reason / Knowledge
   unchanged (coordinate is not a scoring input); `PopularShrineListView`
   ordering unchanged.
-- **Sequencing:** if P8-A will also copy id 104's coordinate onto id 49,
-  P8-C is redundant with that step — pick one. If P8-A uses
-  `DROP_SHADOW_ONLY` for id 104's `place_ref`, run P8-C **before** P8-A so the
-  good coordinate is captured onto id 49 before id 104 is deleted.
+
+### Two mutually exclusive delivery designs (never both in one lineage)
+
+Exactly one of the following is chosen. **A single migration lineage must
+never contain both an independent P8-C migration and a P8-A that also mutates
+id 49's coordinate.**
+
+#### Design A — independent P8-C migration
+
+1. P8-C updates id 49's coordinate (`35.6733, 139.7967` → `35.6717809,
+   139.799519`), fail-closed on the exact old value per above.
+2. P8-A runs **later**.
+3. P8-A **must not** update id 49's coordinate again — it neither reads nor
+   writes `Shrine.latitude` / `longitude` for id 49.
+4. P8-A handles **only** the shadow relations / `place_ref` cleanup /
+   deletion per the Mother Ship decision (for id 104, `place_ref` is
+   `DROP_SHADOW_ONLY` or moved to id 49 — but the *coordinate* is already
+   correct from P8-C).
+5. P8-A's Precondition 8 (§14) becomes: id 49 coordinate == the **corrected**
+   value `35.6717809, 139.799519` (P8-C already applied); if it is still the
+   drifted value → `ABORT` (P8-C was skipped — run it first).
+
+#### Design B — coordinate folded into P8-A
+
+1. **No independent P8-C migration exists.**
+2. P8-A validates id 49's exact old coordinate `35.6733, 139.7967` **and**
+   id 104's trusted coordinate `35.6717809, 139.799519`.
+3. P8-A updates id 49 to the trusted coordinate as part of the same
+   `atomic()` remediation (its step 1).
+4. P8-A then deletes id 104 after every guard (§14 Preconditions 1–8) passes.
+5. Reverse restores **both** — id 104 (from its static audited snapshot) and
+   id 49's old coordinate `35.6733, 139.7967` (from the exact new value,
+   fail-closed).
 
 **If the Mother Ship judges ~306 m acceptable for this app's map
-granularity:** `P8_C_ACTION = NO_CHANGE_REQUIRED` is a valid outcome — do not
-create migration work solely because the P8-C label exists.
+granularity:** `P8_C_ACTION = NO_CHANGE_REQUIRED` — no coordinate migration
+in either design; P8-A then treats id 104's `place_ref` per the Mother Ship
+decision and leaves id 49's coordinate as the audited drifted value (its
+Precondition 8 checks for `35.6733, 139.7967`).
+
+### Tests (a P8-C PR — or the folded P8-A coordinate step — must add)
+
+1. **exact old PRE → forward updates to new** — id 49 at `35.6733, 139.7967`
+   ⇒ after forward, `35.6717809, 139.799519`.
+2. **already-corrected PRE → forward raises** — id 49 at `35.6717809,
+   139.799519` ⇒ forward `raise`s; DB unchanged.
+3. **wrong identity → forward raises** — pk 49 renamed / address changed ⇒
+   `raise`; DB unchanged.
+4. **unexpected third coordinate → forward raises** — id 49 at any value
+   other than the exact old pair ⇒ `raise`; DB unchanged.
+5. **failed forward leaves the DB unchanged** — after tests 2–4, id 49's row
+   is byte-identical to before.
+6. **valid forward → reverse restores the exact old coordinate** —
+   `35.6717809, 139.799519` → `35.6733, 139.7967`.
+7. **valid forward → reverse → forward is deterministic** (ends at the new
+   coordinate).
+8. **reverse from an unexpected coordinate does not overwrite it** — seed
+   id 49 with a third value, run reverse ⇒ `raise` / documented reverse
+   fail-closed; the third value is **not** overwritten.
+9. **independent-P8-C + P8-A sequencing does not apply the coordinate update
+   twice** — after Design A's P8-C, P8-A neither reads nor writes id 49's
+   coordinate; running P8-A leaves it at `35.6717809, 139.799519`.
+10. **folded (Design B) has no independent P8-C migration** — the migration
+    lineage contains no standalone P8-C; the coordinate change is P8-A's
+    step 1 and its reverse restores the old coordinate together with id 104.
 
 ## 17. Risks / Blockers
 
 | # | Risk / blocker | Mitigation |
 |---|---|---|
-| 1 | **id 104 holds the only accurate 富岡八幡宮 coordinate + `place_of_worship` `place_ref`.** Deleting it via P8-A without P8-C first loses the good position. | P8-A step 1 copies 104 → 49, **or** P8-C runs first. Documented as a hard precondition (§14, §16). |
-| 2 | `0095`–`0098` are **merged to `develop` but unapplied to Production** (ledger latest = `0094`). A new P8 migration's number (`0099`+), `dependencies`, and deploy order interact with them. | Mother Ship decides sequencing (§19). Each P8 migration is **`FAIL_CLOSED`**: when the audited Production subject is present it must match its exact approved PRE state or `RAISE` (never a silent successful no-op / "idempotent after deletion"); the **only** clean no-op is the narrowly documented fresh/empty applicability boundary (§14, §15, §16). Same contract class as the P6 / `0097` (PR #2629) / `0098` corrections. |
+| 1 | **id 104 holds the only accurate 富岡八幡宮 coordinate + `place_of_worship` `place_ref`.** Deleting it without first correcting id 49's coordinate loses the good position. | §16 **Design A** (standalone P8-C applied before P8-A; P8-A never re-touches id 49's coordinate) **XOR** **Design B** (coordinate update = P8-A atomic step 1). Never both in one lineage. `NO_CHANGE_REQUIRED` also valid. Hard precondition — §14 Precondition 8, §16. |
+| 2 | `0095`–`0098` are **merged to `develop` but unapplied to Production** (ledger latest = `0094`). A new P8 migration's number (`0099`+), `dependencies`, and deploy order interact with them. | Mother Ship decides sequencing (§19). Each P8 migration is **`FAIL_CLOSED`**: when the audited Production subject is present it must match its exact approved PRE state or `RAISE` (never a silent successful no-op / "idempotent after deletion"). For P8-A / P8-B the only clean no-op is the narrowly documented fresh/empty **subject-absent** boundary (§14, §15). **P8-C has no "already-corrected" no-op** — an id 49 already at the corrected coordinate `RAISE`s; P8-C prefers a ledger-only contract (§16). Same contract class as the P6 / `0097` (PR #2629) / `0098` corrections. |
 | 3 | 2 `ShrineInteractionLog` rows on 101/103 are **user-owned** (`user_id=1`). CASCADE would delete them silently. | P8-A explicitly `MOVE`s them (§12). Mother Ship may instead accept the loss (operator `ctx=map` rows) — an explicit decision, not a default. |
 | 4 | Display endpoints (`Popular`, `Ranking`, `Nearest`, `ShrineViewSet`, `PublicShrineDetailView`) **do not** call `exclude_qa_fixture_shrines`. Even after P8, a *future* mis-created row would leak again. | Out of P8 scope, but recorded: consider centralising the canonical filter in a manager/queryset. **Not** a P8 change. |
 | 5 | `CODEX_SESSION_SPREADSHEET_ACCESS = BLOCKED`. | All Spreadsheet facts are `[MS]`-verified & merged; every identity was resolvable without a fresh read. No blocker. |
@@ -824,7 +906,7 @@ create migration work solely because the P8-C label exists.
 ```text
 P8_A_PRESTATE_POLICY = FAIL_CLOSED   # §14 — audited subject present ⇒ exact PRE match or RAISE; only clean no-op = fresh/empty applicability boundary
 P8_B_PRESTATE_POLICY = FAIL_CLOSED   # §15 — same, for id 105
-P8_C_PRESTATE_POLICY = FAIL_CLOSED   # §16 — coordinate mismatch ⇒ RAISE/ABORT, not a silent successful no-op
+P8_C_PRESTATE_POLICY = FAIL_CLOSED   # §16 — id 49 present ⇒ current coord must be EXACTLY 35.6733,139.7967 or RAISE/ABORT; "already-corrected" is NOT a no-op; reverse restores old only from the exact new value or RAISE; no both-mechanisms lineage (Design A xor Design B)
 ```
 
 - No P8 migration may treat an unexpected present state as a "safe
@@ -852,7 +934,8 @@ P8_103_ACTION            = PENDING_MOTHER_SHIP   # audit recommends REMOVE_SHADO
 P8_104_ACTION            = PENDING_MOTHER_SHIP   # audit recommends REMOVE_SHADOW (→ 49), coordinate-coupled to P8_49_COORDINATE_ACTION
 P8_105_ACTION            = PENDING_MOTHER_SHIP   # audit recommends REMOVE_ARTIFACT
 P8_49_COORDINATE_ACTION  = PENDING_MOTHER_SHIP   # audit recommends UPDATE → 35.6717809, 139.799519 (Δ ≈ 305.6 m); NO_CHANGE_REQUIRED is valid if ~306 m is within map tolerance
-P8_DELIVERY              = PENDING_MOTHER_SHIP   # audit recommends SPLIT_MIGRATIONS (P8-A shadows / P8-B artefact / P8-C coordinate as independent reversible RunPython migrations)
+P8_DELIVERY              = PENDING_MOTHER_SHIP   # audit recommends SPLIT_MIGRATIONS: P8-A shadows + P8-B artefact as independent reversible RunPython migrations; the id 49 coordinate via §16 Design A (standalone P8-C, before P8-A) XOR Design B (folded into P8-A step 1) — never both
+P8_C_DELIVERY_DESIGN     = PENDING_MOTHER_SHIP   # DESIGN_A_INDEPENDENT_P8C / DESIGN_B_FOLDED_INTO_P8A / NO_CHANGE_REQUIRED
 P8_USER_DATA_POLICY      = PENDING_MOTHER_SHIP   # audit recommends MOVE_TO_PRIMARY (the 2 ShrineInteractionLog rows → 22 / 21). NO_USER_DATA is factually true for 104/105 but NOT for 101/103.
 P8_COUNTER_POLICY        = PENDING_MOTHER_SHIP   # moot for current data (all counters 0 / RankingLog table absent); audit recommends PRIMARY_ONLY, with SUM reserved for any future raw tally column
 ```
@@ -864,7 +947,10 @@ Additional pending items:
 2. Whether id 104's `place_ref` (Google Place link) should be **moved to
    id 49** on removal (gives id 49 a `place_of_worship` provider record) or
    dropped.
-3. Whether P8-C is executed at all (`UPDATE` vs `NO_CHANGE_REQUIRED`).
+3. Whether the id 49 coordinate is changed at all (`UPDATE` vs
+   `NO_CHANGE_REQUIRED`) and, if changed, via §16 **Design A** (standalone
+   P8-C) or **Design B** (folded into P8-A) — the two are mutually exclusive
+   and must never both appear in one migration lineage.
 4. Whether the 2 operator `ShrineInteractionLog` rows are moved or accepted
    as CASCADE loss.
 
