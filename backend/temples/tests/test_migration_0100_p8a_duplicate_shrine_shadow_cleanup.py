@@ -477,22 +477,119 @@ def test_absent_subject_forward_and_reverse_are_symmetric_noops(db):
 
 
 @pytest.mark.django_db
-def test_primaries_only_forward_noop_then_reverse_noop(db, django_user_model):
+def test_reverse_on_fresh_db_is_noop(db):
+    reverse(APPS, SE)
+    assert not Shrine.objects.filter(pk__in=[101, 103, 104]).exists()
+
+
+# --------------------------------------------------------------------------- #
+# F1 — narrowed applicability boundary: "primaries-only" is now FAIL_CLOSED
+# --------------------------------------------------------------------------- #
+@pytest.mark.django_db
+def test_forward_shadows_absent_all_primaries_present_raises(db, django_user_model):
     _place_refs()
     _make_primary(22, S22)
     _make_primary(21, S21)
     _make_primary(49, S49)
     assert not Shrine.objects.filter(pk__in=[101, 103, 104]).exists()
-
-    forward(APPS, SE)  # no shadows -> clean no-op
+    with pytest.raises(PreconditionViolation):
+        forward(APPS, SE)  # F1 #3
     assert not Shrine.objects.filter(pk__in=[101, 103, 104]).exists()
-
-    reverse(APPS, SE)  # primaries present but no moved il rows -> clean no-op
-    assert not Shrine.objects.filter(pk__in=[101, 103, 104]).exists()
-    assert not ShrineInteractionLog.objects.filter(shrine_id__in=[21, 22]).exists()
+    assert not ShrineInteractionLog.objects.exists()
 
 
 @pytest.mark.django_db
-def test_reverse_on_fresh_db_is_noop(db):
-    reverse(APPS, SE)
+def test_forward_shadows_absent_one_primary_present_raises(db):
+    _make_primary(22, S22)  # only one primary
+    assert not Shrine.objects.filter(pk__in=[21, 49, 101, 103, 104]).exists()
+    with pytest.raises(PreconditionViolation):
+        forward(APPS, SE)  # F1 #4
+    assert _row(22) is not None and not Shrine.objects.filter(pk__in=[101, 103, 104]).exists()
+
+
+@pytest.mark.django_db
+def test_forward_shadows_absent_audited_log_anywhere_raises(db, django_user_model):
+    op = _operator(django_user_model)
+    # an audited-101 interaction event sitting on an unrelated shrine
+    _make_il(op, 1, IL101_TS)  # Shrine pk 1 from the autouse conftest fixture
+    assert not Shrine.objects.filter(pk__in=[21, 22, 49, 101, 103, 104]).exists()
+    with pytest.raises(PreconditionViolation):
+        forward(APPS, SE)  # F1 #5
+    assert ShrineInteractionLog.objects.count() == 1  # not mutated
+
+
+@pytest.mark.django_db
+def test_reverse_after_valid_forward_primary_22_renamed_raises(full_pre):
+    il1_pk, il3_pk = full_pre["il1"].pk, full_pre["il3"].pk
+    p49_before = _snapshot_49(_row(49))
+    forward(APPS, SE)
+    Shrine.objects.filter(pk=22).update(name_jp="改名された神社")
+    with pytest.raises(PreconditionViolation):
+        reverse(APPS, SE)  # F1 #6
+    # no partial restore / logs & primaries & id49 unchanged  (F1 #12)
     assert not Shrine.objects.filter(pk__in=[101, 103, 104]).exists()
+    assert _il_shrine(il1_pk) == 22 and _il_shrine(il3_pk) == 21
+    assert _row(21) is not None and _snapshot_49(_row(49)) == p49_before
+
+
+@pytest.mark.django_db
+def test_reverse_after_valid_forward_primary_21_missing_raises(full_pre):
+    il1_pk = full_pre["il1"].pk
+    forward(APPS, SE)
+    ShrineInteractionLog.objects.filter(shrine_id=21).delete()  # its moved log first
+    _row(21).goriyaku_tags.clear()
+    _raw_delete_shrine(21)
+    with pytest.raises(PreconditionViolation):
+        reverse(APPS, SE)  # F1 #7
+    assert not Shrine.objects.filter(pk__in=[101, 103, 104]).exists()  # F1 #12
+    assert _il_shrine(il1_pk) == 22
+    assert _row(22) is not None and _row(49) is not None
+
+
+@pytest.mark.django_db
+def test_reverse_after_valid_forward_primary_49_missing_raises(full_pre):
+    il1_pk, il3_pk = full_pre["il1"].pk, full_pre["il3"].pk
+    forward(APPS, SE)
+    _row(49).goriyaku_tags.clear()
+    _raw_delete_shrine(49)
+    with pytest.raises(PreconditionViolation):
+        reverse(APPS, SE)  # F1 #8
+    assert not Shrine.objects.filter(pk__in=[101, 103, 104]).exists()  # F1 #12
+    assert _il_shrine(il1_pk) == 22 and _il_shrine(il3_pk) == 21
+
+
+@pytest.mark.django_db
+def test_reverse_partial_primary_set_raises(full_pre):
+    forward(APPS, SE)
+    ShrineInteractionLog.objects.filter(shrine_id=21).delete()
+    ShrineInteractionLog.objects.filter(shrine_id=22).delete()
+    ShrineDeity.objects.filter(shrine_id=22).delete()
+    ShrineHistory.objects.filter(shrine_id=22).delete()
+    _row(21).goriyaku_tags.clear()
+    _row(22).goriyaku_tags.clear()
+    _raw_delete_shrine(21)
+    _raw_delete_shrine(22)  # only primary 49 remains
+    with pytest.raises(PreconditionViolation):
+        reverse(APPS, SE)  # F1 #9
+    assert not Shrine.objects.filter(pk__in=[101, 103, 104]).exists()  # F1 #12
+    assert _row(49) is not None
+
+
+@pytest.mark.django_db
+def test_reverse_shadows_absent_primaries_present_zero_moved_logs_raises(full_pre):
+    forward(APPS, SE)
+    ShrineInteractionLog.objects.filter(shrine_id__in=[21, 22]).delete()  # both moved logs gone
+    with pytest.raises(PreconditionViolation):
+        reverse(APPS, SE)  # F1 #10
+    assert not Shrine.objects.filter(pk__in=[101, 103, 104]).exists()
+
+
+@pytest.mark.django_db
+def test_reverse_no_primaries_but_audited_log_exists_raises(db, django_user_model):
+    op = _operator(django_user_model)
+    _make_il(op, 1, IL103_TS)  # audited-103 event on an unrelated shrine
+    assert not Shrine.objects.filter(pk__in=[21, 22, 49, 101, 103, 104]).exists()
+    with pytest.raises(PreconditionViolation):
+        reverse(APPS, SE)  # F1 #11
+    assert not Shrine.objects.filter(pk__in=[101, 103, 104]).exists()
+    assert ShrineInteractionLog.objects.count() == 1
