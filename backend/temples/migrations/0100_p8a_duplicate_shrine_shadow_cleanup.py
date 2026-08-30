@@ -60,12 +60,16 @@ Any other state is `FAIL_CLOSED`:
 - **Reverse.** Not the fresh boundary ⇒ the full audited post-forward shape
   must be *exactly* present: all three primaries present with their audited
   `name_jp` / `address`, id 49 at the P8-C-corrected coordinate, all three
-  shadows absent, and **exactly one** audited moved interaction-log row on
-  each of primary 22 / 21 (with none left on the original shadow). A missing
-  or renamed primary, a wrong id 49 coordinate, a partial primary set, a
-  missing/duplicated moved log, or an occupied shadow pk each `RAISE` — never
-  a successful no-op (which would let Django unrecord 0100 while leaving the
-  shadows deleted and the logs moved).
+  shadows absent, and — for each audited moved interaction event — **exactly
+  one global match** (searched anywhere by the single canonical predicate
+  `user_id` + `action_type` + `metadata.ctx` + exact `created_at`) **whose
+  unique row sits on its expected primary** (former-101 event → shrine 22,
+  former-103 event → shrine 21). A missing or renamed primary, a wrong id 49
+  coordinate, a partial primary set, a missing moved log, **a second
+  identical-predicate row on any other Shrine**, a moved log on the wrong
+  Shrine (including one still on the original shadow), or an occupied shadow
+  pk each `RAISE` — never a successful no-op (which would let Django unrecord
+  0100 while leaving the shadows deleted and the logs moved).
 
 This is exactly symmetric: forward and reverse use the **same** fresh-lineage
 predicate (shadows + primaries + audited events all absent), so the only
@@ -547,32 +551,32 @@ def cleanup_reverse(apps, schema_editor):
             "recreate over an existing row (expected the post-forward shape: all shadows absent)"
         )
 
-    # exactly one audited moved log on each of primary 22 / 21
+    # Each audited moved interaction event must have **exactly one global
+    # match** (searched anywhere by the single canonical predicate: user_id +
+    # action_type + metadata.ctx + exact created_at) **and that unique row must
+    # sit on its expected primary**. A second identical-predicate row on any
+    # other Shrine, a missing row, or a row on the wrong Shrine (including one
+    # still on the original shadow) all RAISE — the post-forward state is then
+    # not exactly the audited one, so reverse must not partially restore.
     moved = {}
     for pair in PAIRS:
         if pair["il"] is None:
             continue
-        moved[pair["shadow_pk"]] = _audited_logs_matching(
-            ShrineInteractionLog, pair["il"], shrine_id=pair["primary_pk"]
-        )
-    n_moved = {k: len(v) for k, v in moved.items()}
-    if any(v != 1 for v in n_moved.values()):
-        raise _err(
-            "reverse: expected exactly one audited moved interaction-log row on each of "
-            f"primaries 22 / 21 (post-forward shape), found {n_moved} — cannot restore"
-        )
-    # and neither audited event may still exist on its original shadow
-    for pair in PAIRS:
-        if pair["il"] is None:
-            continue
-        stray = _audited_logs_matching(
-            ShrineInteractionLog, pair["il"], shrine_id=pair["shadow_pk"]
-        )
-        if stray:
+        rows = _audited_logs_matching(ShrineInteractionLog, pair["il"])  # shrine_id=None -> global
+        if len(rows) != 1:
             raise _err(
-                f"reverse: audited interaction event still present on shadow pk "
-                f"{pair['shadow_pk']} — inconsistent with a completed forward"
+                f"reverse: audited moved interaction event for former shadow "
+                f"{pair['shadow_pk']} has {len(rows)} global matches (user_id + action_type + "
+                "metadata.ctx + exact created_at), expected exactly 1 — cannot restore"
             )
+        row = rows[0]
+        if row.shrine_id != pair["primary_pk"]:
+            raise _err(
+                f"reverse: the unique audited moved interaction event for former shadow "
+                f"{pair['shadow_pk']} is on shrine_id {row.shrine_id}, expected its primary "
+                f"{pair['primary_pk']} (post-forward shape)"
+            )
+        moved[pair["shadow_pk"]] = row
 
     # ---- fail-closed reverse PRE for the full-restore path ----
     if PlaceRef.objects.filter(pk__in=SHADOW_PLACE_REF_IDS).count() != len(SHADOW_PLACE_REF_IDS):
@@ -611,7 +615,7 @@ def cleanup_reverse(apps, schema_editor):
     for pair in PAIRS:
         if pair["il"] is None:
             continue
-        il_row = moved[pair["shadow_pk"]][0]
+        il_row = moved[pair["shadow_pk"]]
         ShrineInteractionLog.objects.filter(pk=il_row.pk).update(shrine_id=pair["shadow_pk"])
 
 

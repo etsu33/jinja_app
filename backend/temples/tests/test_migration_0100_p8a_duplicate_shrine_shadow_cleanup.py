@@ -593,3 +593,69 @@ def test_reverse_no_primaries_but_audited_log_exists_raises(db, django_user_mode
         reverse(APPS, SE)  # F1 #11
     assert not Shrine.objects.filter(pk__in=[101, 103, 104]).exists()
     assert ShrineInteractionLog.objects.count() == 1
+
+
+# --------------------------------------------------------------------------- #
+# F2 — each audited moved event must have exactly ONE global match, on its
+#      expected primary. A duplicate on an unrelated Shrine -> reverse RAISES.
+# --------------------------------------------------------------------------- #
+def _unrelated_shrine(pk=990070):
+    return Shrine.objects.create(
+        id=pk, kind="shrine", name_jp="無関係神社2", address="どこか2",
+        latitude=35.0, longitude=135.0,
+    )
+
+
+@pytest.mark.django_db
+def test_reverse_duplicate_former_101_event_elsewhere_raises(full_pre):
+    il1_pk, il3_pk = full_pre["il1"].pk, full_pre["il3"].pk
+    p49_before = _snapshot_49(_row(49))
+    forward(APPS, SE)  # former-101 event now on shrine 22
+
+    other = _unrelated_shrine()
+    dup = _make_il(full_pre["op"], other.id, IL101_TS)  # second identical-predicate row
+
+    with pytest.raises(PreconditionViolation):
+        reverse(APPS, SE)  # F2 #1
+
+    # F2 #3 — nothing partially restored / everything unchanged
+    assert not Shrine.objects.filter(pk__in=[101, 103, 104]).exists()
+    assert _il_shrine(il1_pk) == 22 and _il_shrine(il3_pk) == 21
+    assert _il_shrine(dup.pk) == other.id
+    assert _row(21) is not None and _row(22) is not None
+    assert _snapshot_49(_row(49)) == p49_before
+
+
+@pytest.mark.django_db
+def test_reverse_duplicate_former_103_event_elsewhere_raises(full_pre):
+    il1_pk, il3_pk = full_pre["il1"].pk, full_pre["il3"].pk
+    p49_before = _snapshot_49(_row(49))
+    forward(APPS, SE)  # former-103 event now on shrine 21
+
+    other = _unrelated_shrine()
+    dup = _make_il(full_pre["op"], other.id, IL103_TS)
+
+    with pytest.raises(PreconditionViolation):
+        reverse(APPS, SE)  # F2 #2
+
+    assert not Shrine.objects.filter(pk__in=[101, 103, 104]).exists()
+    assert _il_shrine(il1_pk) == 22 and _il_shrine(il3_pk) == 21
+    assert _il_shrine(dup.pk) == other.id
+    assert _row(21) is not None and _row(22) is not None
+    assert _snapshot_49(_row(49)) == p49_before
+
+
+@pytest.mark.django_db
+def test_reverse_moved_event_on_wrong_shrine_raises(full_pre):
+    """The unique global match must be on the *expected* primary."""
+    il1_pk = full_pre["il1"].pk
+    forward(APPS, SE)
+    # move the former-101 event off primary 22 onto an unrelated shrine
+    other = _unrelated_shrine()
+    ShrineInteractionLog.objects.filter(pk=il1_pk).update(shrine_id=other.id)
+
+    with pytest.raises(PreconditionViolation):
+        reverse(APPS, SE)  # F2 — single global match but wrong shrine_id
+
+    assert not Shrine.objects.filter(pk__in=[101, 103, 104]).exists()
+    assert _il_shrine(il1_pk) == other.id
