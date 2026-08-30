@@ -25,13 +25,21 @@ engagement. **id 22 / 49 / 104 / 105 have zero rows** across every
 Shrine-referencing table. No favourites, visits, reflections, goshuin,
 concierge threads, or action events reference any target.
 
-**Runtime:** none of the seven rows participate in scoring (`goriyaku_tag`
-GID intersection only; shadows/artifact have 0 tags). They **do** leak into
-**display** surfaces — `PopularShrineListView`, `RankingAPIView`,
-`NearestShrinesAPIView`, `ShrineViewSet`, `PublicShrineDetailView` all query
-`Shrine.objects.all()` with **no `exclude_qa_fixture_shrines` call**, so
-`広島市` and the three shadows are served as list cards / map pins / detail
-pages (sorted last, `popular_score = 0`).
+**Runtime — scoring:** the **canonical primaries** carry Recommendation
+scoring evidence — id 21 = `SCORING_USED` (`goriyaku_tags` 4, 5), id 22 =
+`SCORING_USED` (tag 7), id 49 = `SCORING_USED` (tags 4, 11). The **P8 removal
+targets** carry none — id 101 / 103 / 104 / 105 = `SCORING_NOT_USED` (0
+`goriyaku_tags`; scoring is `goriyaku_tag`-GID intersection only). Therefore
+**removing the three shadows + the non-shrine artefact has
+`RECOMMENDATION_IMPACT = NONE`** — the removal targets hold no scoring
+evidence, and the primaries (21/22/49) are untouched.
+
+**Runtime — display:** the removal targets **do** leak into **display**
+surfaces — `PopularShrineListView`, `RankingAPIView`, `NearestShrinesAPIView`,
+`ShrineViewSet`, `PublicShrineDetailView` all query `Shrine.objects.all()`
+with **no `exclude_qa_fixture_shrines` call**, so `広島市` and the three
+shadows are served as list cards / map pins / detail pages (sorted last,
+`popular_score = 0`).
 
 **Canonical denominator:** `UNIQUE_REAL_SHRINE_IDENTITIES = 103` is
 **re-confirmed** (raw 108 − 1 QA fixture `id 102` − 1 non-shrine artefact
@@ -359,10 +367,10 @@ Traced against actual code paths (`concierge_chat_candidates.build_chat_candidat
 | **21** | yes (2 tags) | `SCORING_USED` | used | `DISPLAY_USED` | `MAP_USED` / `DISPLAY_USED` | 0 rows | 0 | — | visible | counted (0-knowledge shrine) | `SCORING_USED, DISPLAY_USED, MAP_USED` |
 | **22** | yes (1 tag) | `SCORING_USED` | used | `DISPLAY_USED` (2 deities + 4 histories) | `MAP_USED` | 0 | 0 | — | visible | counted (has knowledge) | `SCORING_USED, DISPLAY_USED, MAP_USED` |
 | **49** | yes (2 tags) | `SCORING_USED` | used | `DISPLAY_USED` (1 deity + 2 histories) | `MAP_USED` (**at the drifted coordinate**) | 0 | 0 | — | visible | counted (has knowledge) | `SCORING_USED, DISPLAY_USED, MAP_USED` |
-| **101** | only via non-goriyaku query; scores 0 → never recommended | `NOT_USED` (0 tags → C1 NONE, `score_need`=0) | `NOT_USED` | `DISPLAY_USED` — `/shrines/101` renders (empty) | `MAP_USED` / `DISPLAY_USED` — duplicate 給田六所神社 pin/card (last) | 0 | **`USER_DATA_REFERENCED`** — 1 operator `detail_view` row; also read by `concierge_history` (per-user "already seen" check for user 1) & `behavior_funnel` counts | `ANALYTICS_USED` (1 row in funnel totals) | `ADMIN_ONLY` visible | **counted in the coverage-tool default (107)** as a 0-knowledge shrine | `DISPLAY_USED, MAP_USED, USER_DATA_REFERENCED, ANALYTICS_USED, ADMIN_ONLY` |
-| **103** | as 101 | `NOT_USED` | `NOT_USED` | `DISPLAY_USED` (empty) | `MAP_USED` / `DISPLAY_USED` — duplicate 長太稲荷神社 pin/card | 0 | **`USER_DATA_REFERENCED`** — 1 operator `detail_view` row | `ANALYTICS_USED` | `ADMIN_ONLY` | counted in default 107 | `DISPLAY_USED, MAP_USED, USER_DATA_REFERENCED, ANALYTICS_USED, ADMIN_ONLY` |
-| **104** | as 101 | `NOT_USED` | `NOT_USED` | `DISPLAY_USED` (empty) | `MAP_USED` / `DISPLAY_USED` — duplicate 富岡八幡宮 pin/card **at the correct coordinate** | 0 | 0 | — | `ADMIN_ONLY` | counted in default 107 | `DISPLAY_USED, MAP_USED, ADMIN_ONLY` |
-| **105** | only via non-goriyaku query; scores 0 | `NOT_USED` | `NOT_USED` | `DISPLAY_USED` — `/shrines/105` renders an empty "shrine" for a city | `MAP_USED` / `DISPLAY_USED` — `広島市` pin/card | 0 | 0 | — | `ADMIN_ONLY` | counted in default 107 | `DISPLAY_USED, MAP_USED, ADMIN_ONLY` |
+| **101** | only via non-goriyaku query; scores 0 → never recommended | **`SCORING_NOT_USED`** (0 tags → C1 NONE, `score_need`=0) | `NOT_USED` | `DISPLAY_USED` — `/shrines/101` renders (empty) | `MAP_USED` / `DISPLAY_USED` — duplicate 給田六所神社 pin/card (last) | 0 | **`USER_DATA_REFERENCED`** — 1 operator `detail_view` row; also read by `concierge_history` (per-user "already seen" check for user 1) & `behavior_funnel` counts | `ANALYTICS_USED` (1 row in funnel totals) | `ADMIN_ONLY` visible | **counted in the coverage-tool default (107)** as a 0-knowledge shrine | `SCORING_NOT_USED, DISPLAY_USED, MAP_USED, USER_DATA_REFERENCED, ANALYTICS_USED, ADMIN_ONLY` |
+| **103** | as 101 | **`SCORING_NOT_USED`** | `NOT_USED` | `DISPLAY_USED` (empty) | `MAP_USED` / `DISPLAY_USED` — duplicate 長太稲荷神社 pin/card | 0 | **`USER_DATA_REFERENCED`** — 1 operator `detail_view` row | `ANALYTICS_USED` | `ADMIN_ONLY` | counted in default 107 | `SCORING_NOT_USED, DISPLAY_USED, MAP_USED, USER_DATA_REFERENCED, ANALYTICS_USED, ADMIN_ONLY` |
+| **104** | as 101 | **`SCORING_NOT_USED`** | `NOT_USED` | `DISPLAY_USED` (empty) | `MAP_USED` / `DISPLAY_USED` — duplicate 富岡八幡宮 pin/card **at the correct coordinate** | 0 | 0 | — | `ADMIN_ONLY` | counted in default 107 | `SCORING_NOT_USED, DISPLAY_USED, MAP_USED, ADMIN_ONLY` |
+| **105** | only via non-goriyaku query; scores 0 | **`SCORING_NOT_USED`** | `NOT_USED` | `DISPLAY_USED` — `/shrines/105` renders an empty "shrine" for a city | `MAP_USED` / `DISPLAY_USED` — `広島市` pin/card | 0 | 0 | — | `ADMIN_ONLY` | counted in default 107 | `SCORING_NOT_USED, DISPLAY_USED, MAP_USED, ADMIN_ONLY` |
 
 **Not inferred from field presence** — every "DISPLAY_USED / MAP_USED" above
 was traced to a view whose queryset is `Shrine.objects.all()` **without**
@@ -370,11 +378,13 @@ was traced to a view whose queryset is `Shrine.objects.all()` **without**
 `knowledge_coverage_report` call that helper, and it filters by *name* — the
 shadows' real names and `広島市` slip through).
 
-**Net scoring impact of the full P8 remediation: NONE.** The shadows /
-artefact carry 0 `goriyaku_tags`, and scoring reads only
-`goriyaku_tags`-GID intersection. Removing them changes no
-candidate-eligibility, `score_need`, C1, ranking, Need-match, Lead, or Reason
-output for any real shrine.
+**`RECOMMENDATION_IMPACT = NONE` for the P8 removal (shadows 101/103/104 +
+artefact 105).** Those four rows are `SCORING_NOT_USED` — they carry 0
+`goriyaku_tags`, and scoring reads only `goriyaku_tags`-GID intersection.
+Removing them changes no candidate-eligibility, `score_need`, C1, ranking,
+Need-match, Lead, or Reason output for any real shrine. The canonical
+primaries **21 / 22 / 49 are `SCORING_USED`** (they carry the shrine's tags)
+and are **not** touched by P8-A / P8-B.
 
 ## 12. User Data / Relation Migration Matrix
 
@@ -437,22 +447,74 @@ no `REVIEW_REQUIRED`.
 
 **Design only. Not implemented.**
 
-### Preconditions
+### `P8_A_PRESTATE_POLICY = FAIL_CLOSED`
 
-1. Fresh state gate at implementation time: re-assert (a) each shadow still
-   `name_jp` + `address` + coordinate match its primary (101/103 byte-identical;
-   104 within ~306 m and `NORMALIZED_MATCH` address), (b) each shadow still
-   has 0 deity / 0 history / 0 Source / 0 tag / 0 `goriyaku`, (c)
-   `ShrineInteractionLog` rows on 101/103 are still exactly the 2 known
-   operator rows (else `HOLD`), (d) 22 / 21 / 49 still carry their data.
-2. **id 104 is coordinate-coupled to P8-C** — do not delete id 104 until
-   id 49 holds an accurate coordinate (either P8-C ran first, or the same
-   migration copies 104's coordinate to 49 as step 0).
-3. Migration number confirmed against `develop` at implementation time — as
-   of this audit the highest is `0098_remove_stray_test_source_id1` (PR
-   #2628), so P8 migrations would start at **`0099`**. Note `0095`–`0098`
-   are all merged to `develop` but **unapplied to Production** (ledger latest
-   = `0094`) — sequencing decision for the Mother Ship, §19.
+P8-A is a scoped remediation of a **specific audited Production state**. For
+every Mother-Ship-approved pair, the migration must verify that the pair
+matches its **exact approved PRE state** before any mutation. **Unexpected
+state aborts the migration (`RAISE`) before any write** — it is **not**
+treated as a "safe successful no-op", it is **not** described as
+"idempotent after deletion", and forward must **not** be recordable as
+applied when a mismatch is seen. Do not repair or guess.
+
+The single exception is the **applicability boundary** (below): a fresh /
+empty migration lineage where the audited Production subject *cannot* exist
+(no row at the pk, no row with the audited identity anywhere) may be a
+**narrowly documented clean no-op**. Absence produced *by a prior successful
+P8-A run* is **not** the same state and must not reuse that no-op path.
+
+### Preconditions (exact PRE dimensions — all must match, else `RAISE` / `ABORT`)
+
+For each approved shadow pair:
+
+1. **primary identity matches** — pk + exact `name_jp` + exact `address`
+   (+ for id 49: 1 deity + 2 histories present).
+2. **shadow identity matches** — pk + exact `name_jp` + exact `address`.
+3. **expected `place_ref` matches** — shadow `place_ref_id` == the audited
+   Google `place_id` (101 `ChIJl-MEepfxGGAR1Eo44p__GaE`, 103
+   `ChIJX19mq8nxGGARsA2kP4gX90M`, 104 `ChIJK11I4BGJGGAR5mZswigcu58`).
+4. **expected zero-data state matches** — shadow has 0 `ShrineDeity` / 0
+   `ShrineHistory` / 0 Source / 0 `goriyaku_tags` / empty `goriyaku` /
+   `updated_at == created_at`.
+5. **expected relation counts match** — shadow: 0 `Favorite` / 0 `Visit` /
+   0 `ShrineReflection` / 0 `Goshuin` / 0 `ActionEvent` / 0
+   `ConciergeThread.main_shrine`.
+6. **expected `ShrineInteractionLog` state matches** — **exactly 1** row on
+   id 101 and **exactly 1** on id 103 (`action_type='detail_view'`,
+   `user_id=1`), **0** on id 104. A count / attribute mismatch → `ABORT`.
+7. **expected user-owned reference state matches** — no user-owned row
+   (favourite / visit / reflection / goshuin) on any shadow. Any such row →
+   `ABORT` (do not auto-move it without an explicit Mother Ship decision).
+8. **coordinate-coupling requirement for id 104 matches** — id 49 either
+   already holds the corrected coordinate (P8-C applied) **or** this
+   migration's step 1 will set it; id 104's coordinate == its audited value
+   `35.6717809, 139.799519`. If id 49's coordinate is neither the audited
+   drifted value A nor the corrected value B → `ABORT`.
+
+If an approved subject exists but **any** field/relation above differs:
+`RAISE` / `ABORT`. Do not repair, do not guess, do not proceed with the
+other pairs from a partially-mutated transaction (the whole `atomic()`
+block rolls back).
+
+### Applicability boundary (the only clean no-op)
+
+If, at apply time, **no row exists at the approved pk and no row with the
+approved shadow identity (`name_jp` + `address` + `place_ref_id`) exists
+anywhere**, and the migration lineage shows P8-A has **never** been applied
+in this environment (fresh DB / test DB seeded without the shadows), the pair
+is a **documented clean no-op** — recorded explicitly as
+`APPLICABILITY_BOUNDARY_FRESH_LINEAGE`, distinct from a mismatch. This path
+exists so the migration runs on a fresh local/CI DB that never had the
+Production shadows; it is **not** reachable after a real P8-A run deleted the
+rows (that history makes reverse — not a re-forward — the correct operation).
+
+### Migration number / sequencing
+
+Confirmed against `develop` at implementation time — as of this audit the
+highest is `0098_remove_stray_test_source_id1` (PR #2628), so P8 migrations
+would start at **`0099`**. `0095`–`0098` are merged to `develop` but
+**unapplied to Production** (ledger latest = `0094`) — sequencing decision
+for the Mother Ship, §19.
 
 ### Relation-migration order (per pair, inside one `atomic()` block)
 
@@ -460,10 +522,14 @@ no `REVIEW_REQUIRED`.
    from id 104 → id 49 **iff** id 49's coordinate is still the drifted A and
    the Mother Ship chose `UPDATE` (P8-C).
 2. `ShrineInteractionLog`: `UPDATE … SET shrine_id = <primary> WHERE
-   shrine_id = <shadow>` (moves the 1 row for 101/103; no-op for 104).
+   shrine_id = <shadow>` — after Precondition 6 confirmed exactly 1 row on
+   id 101 and 1 on id 103 (0 on id 104, so this UPDATE legitimately affects
+   0 rows for that pair — an audited zero, not a mismatch).
 3. `Favorite` / `Visit` / `ShrineReflection` / `Goshuin` / `ActionEvent` /
-   `ConciergeThread.main_shrine`: apply the §12 contract (today all 0 rows →
-   no-ops; `Favorite` de-dupe on collision).
+   `ConciergeThread.main_shrine`: Preconditions 5 & 7 already confirmed these
+   are 0 on every shadow — so this step legitimately does nothing. (The §12
+   `MOVE` + `Favorite` de-dupe contract is retained for the case a future
+   Mother-Ship-approved PRE state *includes* such rows.)
 4. Clear the shadow's `place_ref_id` (O2O) — either re-point to the primary
    (104 → 49, if chosen) or set NULL (101/103).
 5. Delete the shadow row **only if** a final guard passes: shadow still
@@ -471,57 +537,121 @@ no `REVIEW_REQUIRED`.
    `Visit` / `ShrineReflection` / `Goshuin` / `ShrineInteractionLog` /
    `goriyaku_tags` rows, `name_jp`/`address` unchanged from the audited value.
 
-### Canonical identity guards (never delete by pk alone)
+### Canonical identity guards (never act by pk alone)
 
-- Primary matched by **pk + exact `name_jp` + exact `address`** (and, for 49,
-  assert 1 deity + 2 histories present).
-- Shadow matched by **pk + exact `name_jp` + exact `address` + `place_ref_id`
-  = the audited Google `place_id` + `updated_at == created_at` + zero-data**.
-- Any mismatch ⇒ that pair is a **no-op** (fail-closed, mirroring `0097`'s
-  precondition guard, PR #2629).
+- Guards are the PRE dimensions above. On a mismatch the migration **raises**
+  (aborts the `atomic()` block) — it does **not** silently no-op a
+  mismatched-but-present subject. This is stricter than, and the same
+  contract class as, the P6 / `0098` and `0097` (PR #2629) fail-closed
+  precondition corrections.
 
-### Reversible strategy
+### Reverse-state strategy — deterministic static audited data (no ephemeral forward state)
 
-- Forward stores, in the migration's own `RunPython` (or a companion audit
-  row / `note`), the deleted shadow's full field snapshot (`name_jp`,
-  `address`, `latitude`, `longitude`, `place_ref_id`, `created_at`) and the
-  moved `ShrineInteractionLog` ids.
-- Reverse re-creates the shadow row (new pk — pk is not identity) with the
-  snapshot values and moves the recorded `ShrineInteractionLog` rows back.
-- Reverse is best-effort for pk (documented), exact for identity + relations
-  — same contract as `0095` / `0096`.
+A `RunPython` forward function's local variables **do not survive** until
+reverse. Reverse must reconstruct the PRE state from data that is actually
+available:
 
-### Exact deletion conditions
+- **Strategy A (preferred, sufficient here): static audited snapshot baked
+  into the migration module.** The shadow rows' full field values are known
+  and fixed from this audit — bake a constant per pair:
+  `{pk_hint, name_jp, address, latitude, longitude, place_ref_id,
+  created_at, kind='shrine'}` for 101 / 103 / 104, plus the corrected id 49
+  coordinate. Reverse re-creates each shadow from its constant (a **new pk** —
+  pk is not identity; document this) and re-establishes its `place_ref`.
+- **The 2 `ShrineInteractionLog` rows are identified by stable audited
+  semantics, not by forward-run memory:** `shrine_id ∈ {21, 22}` (post-move)
+  **AND** `user_id = 1` **AND** `action_type = 'detail_view'` **AND**
+  `metadata->>'ctx' = 'map'` **AND** `created_at` == the audited value
+  (`2026-06-11 07:18:05` for the id-101 row, `2026-06-11 08:00:22` for the
+  id-103 row). Reverse moves exactly those back to the re-created shadows.
+  Forward's `MOVE` is `UPDATE … SET shrine_id = <primary> WHERE` that same
+  audited predicate (before the move it selects on the shadow's `shrine_id`).
+- **Strategy B (only if A is judged insufficient): an explicitly persisted
+  migration-owned marker** — e.g. a `note`/audit row the migration writes and
+  reverse reads. Do **not** rely on anything that is not persisted.
+- Reverse is exact for identity + relations; pk is best-effort (new pk) and
+  documented — same contract as `0095` / `0096`.
 
-Delete shadow `S` (pair primary `P`) **iff all**: `S.name_jp == audited`,
-`S.address == audited`, `S.place_ref_id == audited place_id`,
-`S.updated_at == S.created_at`, `S` has 0 `ShrineDeity` + 0 `ShrineHistory` +
-0 `goriyaku_tags` + 0 `Favorite` + 0 `Visit` + 0 `ShrineReflection` + 0
-`Goshuin` + 0 `ShrineInteractionLog` (after step 2), and `P` exists with its
-audited data.
+### Reverse precondition
+
+Reverse may assume the **exact approved PRE contract held** only because
+forward `RAISE`s on any mismatch (it is never recorded as applied otherwise).
+Reverse restores **only** the state this migration owns (the 3 shadow rows it
+deleted, the 2 interaction-log rows it moved, and — if bundled — id 49's
+coordinate). It must **not** re-create a shadow when a row with that shadow
+identity already exists (guard reverse too), and it must **not** run on a
+lineage that only ever hit the `APPLICABILITY_BOUNDARY_FRESH_LINEAGE` no-op.
+
+### Exact deletion conditions (unchanged intent, restated under FAIL_CLOSED)
+
+Delete shadow `S` (pair primary `P`) only after **all** PRE dimensions
+(§Preconditions 1–8) have passed for that pair and steps 1–4 completed in the
+same transaction. Any deviation detected at any step → `RAISE` → whole
+`atomic()` block rolls back, nothing deleted.
 
 ### Rollback behaviour
 
-`migrate temples <prev>` re-creates all three shadows (new pks) and restores
-the 2 interaction-log rows to them. Coordinate/`place_ref` changes to id 49
-(if bundled) reverse to A / NULL.
+After a **successfully recorded** P8-A, `migrate temples <prev>` re-creates
+all three shadows from the static audited snapshots (new pks) and moves the 2
+audited interaction-log rows back. Coordinate / `place_ref` changes to id 49
+(if bundled) reverse to A / NULL. Reverse is a **no-op** for a pair whose
+shadow identity already exists, and for a lineage that only ever hit the
+fresh-lineage applicability boundary.
 
-### Tests (a P8-A PR must add)
+### Tests (a P8-A PR must add) — under `FAIL_CLOSED`
 
-1. each shadow removed; each primary's `ShrineDeity` / `ShrineHistory` /
-   `goriyaku` / `goriyaku_tags` **unchanged**.
-2. the 2 `ShrineInteractionLog` rows now point at id 22 / id 21, with
-   `user_id` / `action_type` / `metadata` / `created_at` preserved.
-3. wrong-identity shadow (renamed, or non-zero data, or different
-   `place_ref_id`) ⇒ **no-op**.
-4. other shrines untouched (spot-check a real shrine + id 105).
-5. `Favorite` collision path: seed a favourite on both shadow and primary
+Valid path:
+
+1. **valid forward** — each shadow removed; each primary's `ShrineDeity` /
+   `ShrineHistory` / `goriyaku` / `goriyaku_tags` **unchanged**; the 2
+   `ShrineInteractionLog` rows now point at id 22 / id 21 with `user_id` /
+   `action_type` / `metadata` / `created_at` preserved.
+2. **valid forward → reverse restores the exact audited PRE state** — 3
+   shadow rows back (audited `name_jp` / `address` / coordinate /
+   `place_ref_id`; new pks allowed), 2 interaction-log rows back on the
+   shadows, id 49 coordinate back to A (if bundled).
+3. **valid forward → reverse → forward is deterministic** (same end state as
+   after test 1).
+4. `Favorite` collision path: seed a favourite on both shadow and primary
    for one user ⇒ after migrate, exactly one row, older `created_at` kept.
-6. reverse re-creates 3 shadows + moves interaction logs back.
-7. idempotent forward (run ×2).
-8. Recommendation snapshot for 給田六所神社 / 長太稲荷神社 / 富岡八幡宮
-   byte-identical before/after (0 scoring impact).
-9. Knowledge-coverage default denominator: 107 → 104 (before P8-B) exactly.
+5. other shrines untouched (spot-check a real shrine + id 105).
+6. Recommendation snapshot for 給田六所神社 / 長太稲荷神社 / 富岡八幡宮
+   byte-identical before/after (`SCORING_NOT_USED` targets removed;
+   `SCORING_USED` primaries untouched).
+7. Knowledge-coverage default denominator: 107 → 104 (before P8-B) exactly.
+
+Abort path (each must `raise` and leave the DB **byte-unchanged**):
+
+1. **wrong primary identity** (primary renamed / address changed / id 49
+   missing its deity+histories) → raises / aborts.
+2. **wrong shadow identity** (shadow renamed / address changed / different
+   `place_ref_id`) → raises / aborts.
+3. **unexpected shadow data** (shadow has a `ShrineDeity` / `ShrineHistory`
+   / `goriyaku_tags` / non-empty `goriyaku` / `updated_at != created_at`) →
+   raises / aborts.
+4. **`ShrineInteractionLog` count / attribute mismatch** (0 or 2 rows on a
+   shadow, or a row with a different `user_id` / `action_type` / `ctx`) →
+   raises / aborts.
+5. **unexpected user-owned reference** (a favourite / visit / reflection /
+   goshuin on a shadow) → raises / aborts.
+6. **id 104 coordinate-coupling not satisfied** (id 49 coordinate is neither
+   A nor B) → raises / aborts.
+7. **failed forward leaves the DB unchanged** — after any abort test, every
+   row count and every target row is identical to before the migration ran
+   (the whole `atomic()` block rolled back).
+
+Applicability boundary:
+
+1. **fresh / empty lineage** — on a DB where no row exists at the approved
+   pks and no row with the approved shadow identity exists anywhere, and
+   P8-A has never been recorded applied, forward is a documented clean
+   no-op (`APPLICABILITY_BOUNDARY_FRESH_LINEAGE`); reverse on that lineage
+   is also a no-op (does **not** create shadows).
+2. **absence-after-cleanup is NOT the boundary** — after a valid forward
+   deleted the shadows, re-running forward is **not** a "successful no-op":
+   it either detects the recorded-applied state and is inert, or (if
+   re-invoked) raises rather than silently re-passing; the correct operation
+   on that lineage is reverse.
 
 ### Production deployment gate
 
@@ -548,31 +678,68 @@ three unrelated rollbacks.) **Not selected — Mother Ship decision.**
 
 **Design only. Not implemented.**
 
-- **Identity guard:** act only if pk 105 **and** `name_jp == '広島市'`
-  **and** `address == '日本、広島県広島市'` **and** `place_ref_id ==
-  'ChIJu0_z7giZWjURcvfBz1DO5Ac'` **and** the `place_ref` snapshot `types`
-  contain `locality` **and** 0 `ShrineDeity` / 0 `ShrineHistory` / 0
-  `goriyaku_tags` / empty `goriyaku`. Any mismatch ⇒ no-op.
-- **Reference guard:** assert 0 rows in every user-owned / analytics table
-  (`Favorite`, `Visit`, `ShrineReflection`, `Goshuin`,
-  `ShrineInteractionLog`, `ActionEvent`, `ConciergeThread.main_shrine`)
-  before delete; if any is non-zero ⇒ `HOLD`.
-- **User-data guard:** none expected; contract = if a row appears, `HOLD` for
-  Mother Ship (do **not** auto-move a real user favourite onto "nothing" —
-  there is no primary to move to).
-- **Deletion condition:** all guards pass ⇒ delete pk 105; orphan its
-  `place_ref` cache row (harmless).
-- **Reverse:** re-create a `Shrine` (new pk) with the exact snapshot
-  (`kind='shrine'`, `name_jp='広島市'`, `address`, `latitude`, `longitude`,
-  `place_ref_id`).
-- **Coverage / count effects:** raw `Shrine` 108 → 107 (with P8-A: → 104);
-  coverage-tool default denominator 107 → 106 (with P8-A: → 103);
-  `source_type` / knowledge metrics unchanged (105 had none); one spurious
-  Hiroshima map point removed. Canonical identity count **unchanged (103)**.
-- **Tests:** artefact removed; identity-mismatch no-op; reference-guard
-  `HOLD` path (seed a favourite → migration refuses); reverse re-creates;
-  idempotent; a real shrine and the P8-A primaries untouched; coverage
-  default denominator delta exactly −1.
+### `P8_B_PRESTATE_POLICY = FAIL_CLOSED`
+
+Same principle as P8-A. When the audited subject **exists**, the migration
+requires its **exact approved PRE state** and **raises / aborts** on any
+mismatch — a present-but-different id 105 is **not** a "safe successful
+no-op". Forward is not recordable as applied on a mismatch. The only clean
+no-op is the **applicability boundary**: a fresh / empty lineage where no row
+exists at pk 105 and no row with the audited artefact identity
+(`name_jp='広島市'` + `address` + `place_ref_id`) exists anywhere, and P8-B
+has never been recorded applied. Absence produced by a prior successful P8-B
+run is **not** that state (reverse is the correct operation there).
+
+### Exact PRE dimensions (all must match, else `RAISE` / `ABORT`)
+
+- pk 105 **and** `name_jp == '広島市'` **and** `address == '日本、広島県広島市'`
+  **and** `place_ref_id == 'ChIJu0_z7giZWjURcvfBz1DO5Ac'` **and** the
+  `place_ref` snapshot `types` contain `locality` (and not
+  `place_of_worship`).
+- 0 `ShrineDeity` / 0 `ShrineHistory` / 0 Source / 0 `goriyaku_tags` / empty
+  `goriyaku`.
+- **0 rows** in every user-owned / analytics table (`Favorite`, `Visit`,
+  `ShrineReflection`, `Goshuin`, `ShrineInteractionLog`, `ActionEvent`,
+  `ConciergeThread.main_shrine`). Any non-zero → `ABORT` (do **not** auto-move
+  a real user row — there is no primary to move it to; escalate to the
+  Mother Ship).
+
+### Deletion + reverse
+
+- All PRE dimensions pass ⇒ delete pk 105 inside `atomic()`; orphan its
+  `place_ref` cache row (harmless). Any deviation → `RAISE` → rollback,
+  nothing deleted.
+- **Reverse-state strategy:** a static audited snapshot baked into the
+  migration module (`kind='shrine'`, `name_jp='広島市'`, `address`,
+  `latitude 34.3852894`, `longitude 132.4553055`,
+  `place_ref_id='ChIJu0_z7giZWjURcvfBz1DO5Ac'`) — no ephemeral forward state.
+- **Reverse precondition:** runs only after a forward whose exact PRE
+  contract passed and was recorded applied. Reverse is a **no-op** if a row
+  with the artefact identity already exists, and on a lineage that only hit
+  the fresh-lineage boundary.
+
+### Coverage / count effects
+
+Raw `Shrine` 108 → 107 (with P8-A: → 104); coverage-tool default denominator
+107 → 106 (with P8-A: → 103); `source_type` / knowledge metrics unchanged
+(105 had none); one spurious Hiroshima map point removed. Canonical identity
+count **unchanged (103)**.
+
+### Tests — under `FAIL_CLOSED`
+
+Valid: valid forward removes the artefact; valid forward → reverse restores
+the exact audited snapshot; forward → reverse → forward deterministic; a
+real shrine and the P8-A primaries untouched; coverage default denominator
+delta exactly −1.
+Abort (each must `raise`, DB byte-unchanged): wrong id-105 identity
+(`name_jp` / `address` / `place_ref_id` differ); `place_ref` type is
+`place_of_worship` not `locality`; any `ShrineDeity` / `ShrineHistory` /
+`goriyaku_tags` present; **any user-owned / analytics row present** (seed a
+favourite → migration raises, does **not** silently `HOLD`-skip); failed
+forward leaves the DB unchanged.
+Applicability boundary: fresh / empty lineage (no pk 105, no artefact
+identity anywhere, never recorded applied) → documented clean no-op;
+absence-after-cleanup is **not** that path.
 
 ## 16. P8-C Remediation Design — id 49 Coordinate
 
@@ -586,16 +753,27 @@ call**, so this is a design, not an obligation.
   coordinate; on the shrine grounds at the `MUNICIPAL_OFFICIAL` address).
   No paid API call — the value already exists in Production (`place_ref`
   table + id 104 row).
-- **Expected old coordinate:** `35.6733, 139.7967` (guard: refuse if id 49's
-  current coordinate is not this — fail-closed).
+- **Expected old coordinate:** `35.6733, 139.7967`.
 - **Expected new coordinate:** `35.6717809, 139.799519`.
 - **Distance delta:** ≈ **305.6 m** (Δlat +0.0015191, Δlng −0.0028190).
-- **Identity guard:** pk 49 **and** `name_jp == '富岡八幡宮'` **and**
-  `address` normalizes to `東京都江東区富岡1-20-3`. Any mismatch ⇒ no-op.
-  (Same shape as migration `0094_fix_shrine_70_coordinates`.)
-- **Reversible update:** forward sets the new pair; reverse restores
-  `35.6733, 139.7967`; guard on both directions checks the "from" value
-  matches before writing.
+- **`P8_C_PRESTATE_POLICY = FAIL_CLOSED`.** For the intended Production
+  remediation, forward requires: pk 49 **and** `name_jp == '富岡八幡宮'`
+  **and** `address` normalizes to `東京都江東区富岡1-20-3` **and** the current
+  coordinate is exactly the expected old value `35.6733, 139.7967`. **Any
+  mismatch → `RAISE` / `ABORT`** (not a silent successful no-op); forward is
+  not recorded as applied. This mirrors `0094_fix_shrine_70_coordinates` and
+  the P6 / `0097` / `0098` fail-closed corrections.
+- **Applicability boundary (the only clean no-op):** a fresh / empty lineage
+  where id 49 already holds the corrected coordinate `35.6717809, 139.799519`
+  (e.g. a test DB seeded with the fixed value, or after P8-A step 1 already
+  applied it) **and** P8-C has never been recorded applied — a documented
+  clean no-op, distinct from a mismatch. If P8-C and P8-A step 1 both run,
+  the second sees "already corrected" via this boundary, not via a mismatch
+  abort.
+- **Reversible update:** forward sets the new pair after the PRE check;
+  reverse restores `35.6733, 139.7967`, guarded by the "from" value matching
+  `35.6717809, 139.799519` (else reverse is a no-op). Reverse assumes the
+  exact PRE contract held because forward `RAISE`s otherwise.
 - **Map / recommendation regression tests:** id 49 still appears in
   `NearestShrinesAPIView` / map for a Monzen-nakacho query (now at the
   correct spot); `build_chat_candidates` distance for a nearby `lat`/`lng`
@@ -616,7 +794,7 @@ create migration work solely because the P8-C label exists.
 | # | Risk / blocker | Mitigation |
 |---|---|---|
 | 1 | **id 104 holds the only accurate 富岡八幡宮 coordinate + `place_of_worship` `place_ref`.** Deleting it via P8-A without P8-C first loses the good position. | P8-A step 1 copies 104 → 49, **or** P8-C runs first. Documented as a hard precondition (§14, §16). |
-| 2 | `0095`–`0098` are **merged to `develop` but unapplied to Production** (ledger latest = `0094`). A new P8 migration's number (`0099`+), `dependencies`, and deploy order interact with them. | Mother Ship decides sequencing (§19). The P8 migrations must be written so forward is a no-op if the target state is already clean (fail-closed guards, per `#2629`). |
+| 2 | `0095`–`0098` are **merged to `develop` but unapplied to Production** (ledger latest = `0094`). A new P8 migration's number (`0099`+), `dependencies`, and deploy order interact with them. | Mother Ship decides sequencing (§19). Each P8 migration is **`FAIL_CLOSED`**: when the audited Production subject is present it must match its exact approved PRE state or `RAISE` (never a silent successful no-op / "idempotent after deletion"); the **only** clean no-op is the narrowly documented fresh/empty applicability boundary (§14, §15, §16). Same contract class as the P6 / `0097` (PR #2629) / `0098` corrections. |
 | 3 | 2 `ShrineInteractionLog` rows on 101/103 are **user-owned** (`user_id=1`). CASCADE would delete them silently. | P8-A explicitly `MOVE`s them (§12). Mother Ship may instead accept the loss (operator `ctx=map` rows) — an explicit decision, not a default. |
 | 4 | Display endpoints (`Popular`, `Ranking`, `Nearest`, `ShrineViewSet`, `PublicShrineDetailView`) **do not** call `exclude_qa_fixture_shrines`. Even after P8, a *future* mis-created row would leak again. | Out of P8 scope, but recorded: consider centralising the canonical filter in a manager/queryset. **Not** a P8 change. |
 | 5 | `CODEX_SESSION_SPREADSHEET_ACCESS = BLOCKED`. | All Spreadsheet facts are `[MS]`-verified & merged; every identity was resolvable without a fresh read. No blocker. |
@@ -634,12 +812,36 @@ create migration work solely because the P8-C label exists.
 | T5 | id 49 identity = `IDENTITY_MATCH` | **FINAL** |
 | T6 | id 49 coordinate = `COORDINATE_DRIFT` ≈ 305.6 m from the trusted reference `35.6717809, 139.799519` | **FINAL** (measurement); remediation necessity = Mother Ship |
 | T7 | User-owned rows on any P8 target = **2** `ShrineInteractionLog` (id 101, id 103; `user_id=1`, operator `ctx=map`). Everything else = 0. | **FINAL** |
-| T8 | Removing 101/103/104/105 has **zero** Recommendation scoring impact and **zero** Knowledge-content impact | **FINAL** (traced code paths §11) |
+| T8 | id 21 / 22 / 49 are `SCORING_USED` (carry `goriyaku_tags`); id 101 / 103 / 104 / 105 are `SCORING_NOT_USED` (0 `goriyaku_tags`). Removing the four `SCORING_NOT_USED` targets (shadows 101/103/104 + artefact 105) has `RECOMMENDATION_IMPACT = NONE` and **zero** Knowledge-content impact; the `SCORING_USED` primaries 21/22/49 are not touched by P8-A / P8-B | **FINAL** (traced code paths §11) |
 | T9 | `UNIQUE_REAL_SHRINE_IDENTITIES = 103`; coverage-tool **default** denominator is currently **107** and would become **103** after P8-A + P8-B **without a policy change** | **FINAL** |
 | T10 | `temples_like` / `temples_rankinglog` / `temples_conciergehistory` do not exist in Production; `temples_shrine_deities` is an empty legacy table | **FINAL** |
 | T11 | Only `build_chat_candidates` and `knowledge_coverage_report` apply `exclude_qa_fixture_shrines`; all Shrine display APIs do not | **FINAL** |
 
 ## 19. Mother Ship Decision Packet
+
+### Remediation safety contract (fixed by this audit — **not** a Mother Ship choice)
+
+```text
+P8_A_PRESTATE_POLICY = FAIL_CLOSED   # §14 — audited subject present ⇒ exact PRE match or RAISE; only clean no-op = fresh/empty applicability boundary
+P8_B_PRESTATE_POLICY = FAIL_CLOSED   # §15 — same, for id 105
+P8_C_PRESTATE_POLICY = FAIL_CLOSED   # §16 — coordinate mismatch ⇒ RAISE/ABORT, not a silent successful no-op
+```
+
+- No P8 migration may treat an unexpected present state as a "safe
+  successful no-op" or as "idempotent after deletion".
+- Reverse-state is reconstructed from **static audited snapshots baked into
+  the migration** (Strategy A) or an **explicitly persisted migration-owned
+  marker** (Strategy B) — never from `RunPython` in-memory forward state,
+  which does not survive to reverse.
+- The 2 `ShrineInteractionLog` rows are addressed by a **stable audited
+  predicate** (`user_id=1` + `action_type='detail_view'` + `ctx='map'` +
+  audited `created_at`), not by ephemeral forward-run ids.
+- Reverse may assume the exact approved PRE contract held **because** forward
+  `RAISE`s on any mismatch; reverse restores only migration-owned state and
+  is itself guarded (no re-create when the identity already exists; no-op on
+  a fresh-lineage-only history).
+
+### Mother Ship actions
 
 Technical findings (§18) are evidence-final. **Product / governance actions
 below are `PENDING_MOTHER_SHIP` — not inferred here.**
