@@ -54,9 +54,15 @@ Principal findings (evidence in later sections):
    います"; when a mismatched GID matched, the Lead can cite a
    Purpose-unrelated label (a known, documented limitation for `health`).
 
-**First-loss-point distribution** across the 34 natural-language audit cases
-(Section 15/17): INTERPRETER 8, NEED→GORIYAKU mapping 7, EVIDENCE 4,
-NEGATION 5, MULTI-SIGNAL/AXIS 4, none-lost 6. No CANDIDATE_GAP was observed
+**First-loss-point distribution** — the authoritative single-attribution over
+all **34** named natural-language cases, each counted **exactly once**
+(Section 17): INTERPRETER 5, NEGATION 6, PURPOSE/NEED-taxonomy 2,
+NEED→GORIYAKU mapping 11, EVIDENCE 0, AXIS/MULTI-SIGNAL 3, NONE_LOST 7.
+Sum = 34. Evidence / Data shortfalls (no calm/healing GoriyakuTag;
+`夫婦円満`/`子宝` on 1 shrine each; 3/103 shrines with no tag) are
+**structural gaps** held outside the 34-case denominator (Section 18,
+denominator C). Section 16's numbers are a separate *any-layer* view in which
+one case may appear under several categories. No CANDIDATE_GAP was observed
 (the canonical pool is only 103 shrines and every free-text request scores
 the whole pool). No blocker to safe operation was found; the gaps degrade
 *nuance fidelity*, not availability.
@@ -641,7 +647,14 @@ on base `4d7685f0`. `state/outcome` from `interpret_consultation` (shadow).
 requirement. Score/rank/Lead columns are reasoned from Section 13 (offline;
 per-request ranking depends on area/pool and was not run against a live DB).
 
-| id | input | expected (audit) | actual need_tags | actual axis | actual GID (names) | shadow state/outcome | first loss point |
+The **"loss layers (narrative)"** column below lists *every* layer that
+carries an issue for a case (it feeds Section 16's any-layer counts,
+denominator A). It is **not** the single-attribution — for the one
+authoritative first-loss layer per case (denominator B, sums to 34) see
+**Section 17**, whose per-case notes reconcile any multi-layer entry here to
+its earliest point.
+
+| id | input | expected (audit) | actual need_tags | actual axis | actual GID (names) | shadow state/outcome | loss layers (narrative — see §17 for single-attribution) |
 |---|---|---|---|---|---|---|---|
 | Career-A | 転職して新しい環境に進みたい | career + forward intent | `['career']` | career_change (query) | 開運, 仕事運, 導き, 出世運, 強運厄除け | –/– | none (topic ok; "新環境へ進みたい" intent dropped, acceptable) |
 | Career-B | 転職したいけど一歩踏み出すのが怖い | career + fear/hesitation | `['career','courage']` | career_change (query) | 開運,仕事運,武運長久,夫婦円満,恋愛成就,導き,健康長寿,出世運,強運厄除け,足腰健康 | anxious/– | INTERPRETER_MISS (fear not modelled; courage from 踏み出す masks it) + MULTI_SIGNAL_LOSS (GID union to 10, incl. 夫婦円満/恋愛成就) |
@@ -682,47 +695,109 @@ per-request ranking depends on area/pool and was not run against a live DB).
 
 ## 16. Failure Classification
 
-Counts across the 34 cases (a case may carry more than one; `BOTH` used only
-where two layers are clearly jointly responsible). "Root cause" (first loss
-point) counts are in Section 17 and are the authoritative single-attribution.
+**Denominator A — any-layer issue counts.** A case may appear under several
+categories (it carries the issue *somewhere* in its analysis). This is **not**
+the 34-case single-attribution — that is Section 17 (denominator B).
+Mechanism- and structure-level rows (`SCORING_GAP` … `DOC_CODE_DRIFT`) are not
+case-indexed; they are counted as distinct observations and, where structural,
+belong to denominator C (Section 18).
 
-| category | count (any-layer) | representative cases |
+| category | count (any-layer) | cases / observations |
 |---|---|---|
-| `INTERPRETER_MISS` | 8 | Love-E, Family-B (total miss); Career-B (fear), MR-D & Neg-3 & Neg-5 (asserted clause missed), Career-C (confidence only via bare 自信), Family-A ("family harmony") |
+| `INTERPRETER_MISS` | 9 | Love-E, Family-B (total miss); Career-B (fear unmodelled); Career-C (only bare 自信 lands); Love-B (「維持」vs「出会い」collapsed); Family-A (家族→`relationship` misroute); MR-D (「前に進」runtime-absent); Neg-3 (「迷い」runtime-absent); Neg-5 (「環境を変えたい」absent) |
 | `INTERPRETER_OVERMATCH` | 3 | Career-E (集中→study axis), Protect-A (`mental` co-fires on 流れが悪い), Travel-A (`relationship` co-fires on 家族) |
-| `NEGATION_FAILURE` | 5 | Neg-1, Neg-2, Neg-3, Neg-4, Neg-5 (+ Theme-3 via より) |
+| `NEGATION_FAILURE` | 6 | Neg-1, Neg-2, Neg-3, Neg-4, Neg-5, Theme-3 (「恋愛より」— fired on the de-emphasised span) |
 | `MULTI_SIGNAL_LOSS` | 4 | Career-B, Theme-1 (GID union to 10 incl. off-topic ids), MR-D, Travel-A |
 | `THEME_FREE_TEXT_CONFLICT` | 4 | Career-E, Neg-4, Theme-2 (fatigue overrides notional theme), Theme-3 |
-| `PURPOSE_NEED_MAPPING_GAP` | 2 | Health-A (`health` → axis `other`), `independence`/`nature_reset` axes unreachable from need_tags |
-| `NEED_GORIYAKU_MAPPING_GAP` | 7 | Career-C/D, Career-F, Family-D, MR-A/C, Courage-A, Love-D (communication empty) |
-| `EVIDENCE_GAP` | 4 | MR-B, Theme-2, marriage→夫婦円満(1), family→子宝(1) |
+| `PURPOSE_NEED_MAPPING_GAP` | 2 | Health-A (`health` has no `consultation_axis` producer → `other`), Family-A (no "family wellbeing" Need; `family` = fertility only) |
+| `NEED_GORIYAKU_MAPPING_GAP` | 11 | Career-C, Career-D, Career-F, Love-D (communication empty + courage scattered), Family-C, Family-D, MR-A, MR-B, MR-C, Theme-2, Courage-A |
+| `EVIDENCE_GAP` (case-level) | 2 | MR-B, Theme-2 (mapped concept has no populated tag). *Structural evidence shortfalls are denominator C — see below.* |
 | `CANDIDATE_GAP` | 0 | — (pool = whole canonical set) |
-| `SCORING_GAP` | 3 | communication (C1 NONE by design), `score_need` = flat channel count (no graded fit), astro flat +2 can dominate |
-| `RANKING_GAP` | 2 | thin `score_need` outweighed by `score_popular`/`distance`; `_diversify_by_need` can reorder near-ties |
-| `LEAD_GAP` | 2 | `health` Lead may cite 家内安全 (documented limitation); generic fallback Lead when `score_need=0` |
-| `REASON_GAP` | 3 | generic "今の悩みや願いに合わせて…" when no match; Reason foregrounds user-picked tag over free-text nuance on conflict; `communication` Reason has no evidence to cite |
-| `DATA_GAP` | 3 | no `癒し`/`静寂`/`rest` GoriyakuTag in the 39-row master; `夫婦円満`/`福徳`/`導き`/… on only 1 shrine each; 3/103 canonical shrines have 0 `goriyaku_tags` |
-| `DOC_CODE_DRIFT` | 3 | 15-row stale `fixtures/goriyaku_tags.json` vs 39-row runtime master; `consultation_interpreter.NEED_KEYWORDS` vs `domain/need_tags.KEYWORDS` drift; `interpretation_profile` computed-but-shadow (docstring says "prepares structured input for … future Score v3" — matches code, but product surface implies it is used) |
+| `SCORING_GAP` (mechanism) | 3 | `communication` → C1 NONE by design (instance: Love-D); `score_need` = flat channel count (no graded fit); `astro_tags` flat +2 can dominate |
+| `RANKING_GAP` (mechanism) | 2 | thin `score_need` outweighed by `score_popular`/`distance`; `_diversify_by_need` can reorder near-ties |
+| `LEAD_GAP` (mechanism) | 2 | `health` Lead may cite 家内安全 (documented limitation; instance: Health-A); generic fallback Lead when `score_need = 0` |
+| `REASON_GAP` (mechanism) | 3 | generic "今の悩みや願いに合わせて…" when no match; Reason foregrounds user-picked tag over free-text nuance on conflict; `communication` Reason has no evidence to cite |
+| `DATA_GAP` (structural — denominator C) | 3 | no `癒し`/`静寂`/`rest` GoriyakuTag in the 39-row master; 16 GoriyakuTags on 1 shrine each (`夫婦円満`, `福徳`, `導き`, `子宝`, …); 3/103 canonical shrines have 0 `goriyaku_tags` |
+| `DOC_CODE_DRIFT` (structural — denominator C) | 3 | 15-row stale `fixtures/goriyaku_tags.json` vs 39-row runtime master; `consultation_interpreter.NEED_KEYWORDS` vs `domain/need_tags.KEYWORDS` drift; `interpretation_profile` computed-but-shadow |
+
+**Denominator C — structural / non-case gaps** (not attributable to any single
+natural-language case, held out of the 34-case denominator entirely):
+
+- No `癒し` / `静穏` / `心の平安` GoriyakuTag exists in the 39-row master to
+  map `mental` / `rest` to (root cause behind Findings 3–4).
+- `夫婦円満`(1), `子宝`(1), `福徳`(1), `導き`(1) and 12 more tags each on a
+  single canonical shrine → `marriage`/`family`/`courage` draw near-zero from
+  those ids regardless of the query.
+- `consultation_axis` values `independence`, `nature_reset` have **no**
+  `NEED_TAG_TO_CONSULTATION_AXIS` producer (reachable only from query
+  keywords); `health` has none at all.
+- 3 / 103 canonical shrines carry 0 `goriyaku_tags` (post-P5/P8).
+- `DOC_CODE_DRIFT` ×3 (as above).
 
 ---
 
 ## 17. First-Loss-Point Analysis (mandatory)
 
-For each case, the **first** layer at which the audit-expected meaning is lost:
+**Denominator B — the authoritative single-attribution.** All **34** named
+natural-language cases from Section 15, each assigned to **exactly one**
+first-loss layer: the *first* point in the pipeline where the audit-expected
+meaning is lost. Downstream effects (e.g. a later axis mis-pick) are recorded
+as secondary findings in Section 15 / 16 but never as the first-loss layer.
+Structural gaps (denominator C) and any-layer issue counts (denominator A) are
+**not** mixed into this table.
 
 | first-loss layer | cases | count |
 |---|---|---|
-| **INTERPRETER** (miss or overmatch before Need is formed) | Love-E, Family-B, Career-B, Career-E, Neg-3, Neg-5, MR-D, Career-C | 8 |
-| **NEGATION** (interpreter fired on negated text) | Neg-1, Neg-2, Neg-4, Theme-3, (Neg-3 counted at interpreter) | 4 |
-| **NEED→GORIYAKU mapping** (Need correct, mapped ids wrong/loose) | Career-D, Career-F, Family-D, MR-A, MR-C, Courage-A, Love-D | 7 |
-| **EVIDENCE** (Need + mapping fine, no eligible shrine in pool) | MR-B, Theme-2, (marriage/夫婦円満 & family/子宝 as structural) | 4 |
-| **AXIS / MULTI-SIGNAL** (Need list ok, axis mis-pick or GID dilution changes framing) | Neg-4→axis, Travel-A, Theme-1, Protect-A | 4 |
-| **none lost** (topic + evidence adequate) | Career-A, Love-A, Love-C, Money-A, Study-A, Focus-A | 6 |
+| **INTERPRETER_MISS / OVERMATCH** (wording→Need step: total miss, wrong-Need misframe, unmodelled state/intention, nuance collapse) | Career-B, Love-B, Love-E, Family-B, MR-D | 5 |
+| **NEGATION_FAILURE** (interpreter fired on a negated / de-emphasised span) | Neg-1, Neg-2, Neg-3, Neg-4, Neg-5, Theme-3 | 6 |
+| **PURPOSE_NEED_MAPPING_GAP** (Need formed, but no correct Purpose slot / no `consultation_axis` producer) | Family-A, Health-A | 2 |
+| **NEED_GORIYAKU_MAPPING_GAP** (Need + Purpose correct, `NEED_TO_GORIYAKU_IDS` maps to wrong / loose / borrowed / empty tags) | Career-C, Career-D, Career-F, Love-D, Family-C, Family-D, MR-A, MR-B, MR-C, Theme-2, Courage-A | 11 |
+| **EVIDENCE_GAP** (Need + mapping semantically fine, but no eligible shrine carries the tag) | — | 0 |
+| **AXIS / MULTI-SIGNAL** (Need list correct, but a secondary co-fired tag or an axis flip changes the framing, and that is the first real loss) | Career-E, Theme-1, Travel-A | 3 |
+| **NONE_LOST / END_TO_END_ADEQUATE** (topic captured, evidence adequate, recommendation and explanation reflect the intent) | Career-A, Love-A, Love-C, Money-A, Study-A, Protect-A, Focus-A | 7 |
+| **TOTAL** | 34 cases | **34** |
 
-Rule applied: e.g. Career-F — interpreter *correctly* yields `relationship`,
-Need is right, so the loss is at **mapping** (`relationship → {縁結び}`), not
-`INTERPRETER_MISS`. e.g. Love-E — interpreter yields nothing, so the loss is
-at **INTERPRETER**, regardless of downstream.
+Reconciliation notes for the four previously-missing cases and Neg-4:
+
+- **Love-B** (`今の恋人との関係を大切にしたい`) → **INTERPRETER**. `extract_need_tags`
+  yields `['love']` (GID `{縁結び, 恋愛成就}`) — identical to Love-A
+  (`新しい出会いがほしい`). The interpreter has no vocabulary or structure to
+  represent "nurture an existing relationship" as distinct from "seek a new
+  one"; the nuance is collapsed at formation. A love recommendation is
+  reasonable, but the specific meaning is lost first at the interpreter.
+- **Family-A** (`家族が穏やかに過ごせたらいい`) → **PURPOSE_NEED_MAPPING_GAP**.
+  `['relationship','rest']` — 家族 routes to `relationship` (interpersonal
+  repair, GID `{縁結び}`). The 15-need taxonomy has no "family wellbeing /
+  harmony" slot (`family` = fertility only, by Mother Ship `NARROW`), so the
+  concept has nowhere correct to land; the loss is the missing Purpose slot,
+  upstream of the `relationship → {縁結び}` mapping issue.
+- **Family-C** (`出産を控えていて不安`) → **NEED_GORIYAKU_MAPPING_GAP**.
+  `['family','mental']` — the `family` half is served well (`{安産, 子宝}`,
+  clean). The first material loss is the `mental` half's mapping
+  (`{勝運, 家庭円満, 金運, 足腰健康}` — none denotes prenatal anxiety); the
+  `restart_mindset` axis mis-pick is secondary.
+- **Health-A** (`健康で長生きしたい`) → **PURPOSE_NEED_MAPPING_GAP**.
+  `['health']` is correct and `{病気平癒, 健康長寿}` are clean, but `health`
+  has **no** `NEED_TAG_TO_CONSULTATION_AXIS` entry and no
+  `CONSULTATION_AXIS_KEYWORDS` hit → axis resolves to `other`, so no
+  `history_theme_candidate_boost` is ever available for a health consultation.
+  The first loss is the absent Purpose→axis wiring; `家内安全` dominating the
+  GID reach is a secondary precision issue.
+- **Neg-4** (`結婚より今は仕事を優先したい`) → **NEGATION_FAILURE** only.
+  The first loss is at the interpreter: `結婚` inside `結婚より…` is matched as
+  asserted → `['marriage','career']`. The subsequent axis resolution to
+  `relationship_repair` (need-tag fallback picking `marriage`) is a
+  *downstream consequence* of that first mis-fire and is documented as a
+  secondary finding in Section 15, **not** as a second first-loss attribution.
+
+General rule (unchanged): the loss is charged to the *earliest* layer.
+Career-F — the interpreter *correctly* yields `relationship`, so the loss is
+at **mapping** (`relationship → {縁結び}`), not `INTERPRETER_MISS`. Love-E —
+the interpreter yields nothing, so the loss is at **INTERPRETER** regardless
+of what any downstream layer would have done. EVIDENCE is `0` as a *first*
+loss because every emotional-state case (`mental`/`rest`) is already lost one
+layer earlier at the semantically-wrong `NEED_TO_GORIYAKU_IDS` mapping;
+genuine evidence/data shortfalls are structural (denominator C).
 
 ---
 
