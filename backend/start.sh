@@ -27,6 +27,14 @@ echo "=== migration divergence diagnostics (temples 0079-0089) ==="
   echo "RENDER_GIT_COMMIT=${RENDER_GIT_COMMIT:-unset}"
   echo "--- temples/migrations file listing (0079-0089) ---"
   ls -1 temples/migrations 2>&1 | grep -E '^00(79|8[0-9])_' || true
+  echo "--- python/django migration module resolution diagnostics ---"
+  if resolution_output=$(python manage.py shell -c "import os, sys; from pprint import pformat; from django.apps import apps; from django.conf import settings; import temples; import temples.migrations; from django.db.migrations.loader import MigrationLoader; print('DJANGO_SETTINGS_MODULE=' + os.environ.get('DJANGO_SETTINGS_MODULE', 'unset')); print('settings.MIGRATION_MODULES=' + repr(getattr(settings, 'MIGRATION_MODULES', None))); print('temples.__file__=' + str(getattr(temples, '__file__', None))); app_config = apps.get_app_config('temples'); print('temples AppConfig path=' + str(getattr(app_config, 'path', None))); print('temples.migrations.__file__=' + str(getattr(temples.migrations, '__file__', None))); print('temples.migrations.__path__=' + str(getattr(temples.migrations, '__path__', None))); print('sys.path=' + pformat(sys.path)); loader = MigrationLoader(None, ignore_no_migrations=True); disk = loader.disk_migrations.get('temples', {}); names = sorted(disk.keys()) if isinstance(disk, dict) else sorted(str(item) for item in disk); print('MigrationLoader.disk_migrations[temples]=' + repr(names));" 2>&1); then
+    echo "${resolution_output}"
+  else
+    resolution_exit=$?
+    echo "Django migration module resolution diagnostics FAILED (exit=${resolution_exit}); full stdout/stderr below:"
+    echo "${resolution_output}"
+  fi
   echo "--- showmigrations temples (0079-0089) ---"
   if showmigrations_output=$(python manage.py showmigrations temples 2>&1); then
     echo "${showmigrations_output}"
