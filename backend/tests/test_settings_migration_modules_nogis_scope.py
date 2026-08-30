@@ -18,6 +18,23 @@ cannot exercise this import-time logic). Each subprocess is given a
 minimal, explicit environment — never the parent pytest process's own
 environment — so a scenario meant to look like Production (no `IS_PYTEST`,
 no `PYTEST_CURRENT_TEST`, no `"pytest"` in argv) actually behaves like one.
+
+**No `django.setup()` here.** What's under test is purely the plain-Python
+module-level branching in `settings.py` (`USE_GIS` / `USE_SQLITE` /
+`MIGRATION_MODULES` / the `DATABASES["default"]["ENGINE"]` string it
+computes) — `shrine_project/settings.py` itself imports nothing from
+`django.contrib.gis` at module level, so a plain `import
+shrine_project.settings` never touches GDAL/GEOS regardless of what
+`USE_GIS` resolves to. `django.setup()` populates Django's full app
+registry, which imports `django.contrib.auth.models` ->
+`AbstractBaseUser`, which resolves the DB backend named by `ENGINE` at
+model class-body evaluation time -- for a `USE_GIS=1` scenario that is
+`django.contrib.gis.db.backends.postgis`, which imports the real GDAL
+bindings and raises `ImproperlyConfigured` on any runner without GDAL
+installed (exactly the failure this file's `USE_GIS=1` scenarios hit in
+CI's GDAL-less "unit" job). Since this file only ever needs the *string*
+value of `ENGINE`, not a working DB backend, skipping `django.setup()`
+entirely removes that dependency without weakening what's being verified.
 """
 
 import json
@@ -32,12 +49,10 @@ BACKEND_DIR = Path(__file__).resolve().parents[1]
 
 _PROBE_SCRIPT = """
 import json
-import django
-django.setup()
-from django.conf import settings
+import shrine_project.settings as settings
 print(json.dumps({
-    "migration_modules_temples": settings.MIGRATION_MODULES.get("temples"),
-    "migration_modules_has_temples_key": "temples" in settings.MIGRATION_MODULES,
+    "migration_modules_temples": getattr(settings, "MIGRATION_MODULES", {}).get("temples"),
+    "migration_modules_has_temples_key": "temples" in getattr(settings, "MIGRATION_MODULES", {}),
     "use_gis": settings.USE_GIS,
     "use_sqlite": settings.USE_SQLITE,
     "engine": settings.DATABASES["default"]["ENGINE"],
@@ -45,7 +60,6 @@ print(json.dumps({
 """
 
 _BASE_ENV = {
-    "DJANGO_SETTINGS_MODULE": "shrine_project.settings",
     "PYTHONPATH": str(BACKEND_DIR),
     "DJANGO_SECRET_KEY": "test-secret-key-for-settings-probe-only",
     "DEBUG": "0",
