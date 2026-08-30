@@ -1165,3 +1165,151 @@ id 49's coordinate (`35.6717809, 139.799519`), and that the two audited
 `ShrineInteractionLog` rows now sit on ids 22 / 21 — at which point
 `P8_PRODUCTION_STATUS` becomes `FULLY_APPLIED` and `P8_CLOSEOUT_STATUS`
 becomes `COMPLETE`.
+
+## 22. Production Migration Apply Preflight — `temples` 0095 → 0101 (2026-08-30)
+
+READ-ONLY preflight for the authorized deployment of the full pending
+`temples` chain. **No migration was executed. No Production write.** All
+Production facts below come from the sanctioned read-only bridge
+(`scripts/migration_safety/readonly_query.sh`).
+
+### 22.1 Fresh state
+
+| Fact | Value |
+|---|---|
+| Fresh `origin/develop` SHA | `eacc53e4aef9fefe8bf0bcf01547a82ccc079ef5` |
+| PR #2643 (Closeout) | **MERGED** 2026-08-30T03:12:34Z, merge commit `eacc53e4…`, in `origin/develop` |
+| Worktree | `audit/p8-production-migration-preflight`, clean |
+| `PRODUCTION_MIGRATION_HEAD` (`temples`) | **`0094_fix_shrine_70_coordinates`** — applied 2026-08-23 03:57:18 UTC |
+| `REPOSITORY_MIGRATION_HEAD` (`temples`) | `0101_p8b_remove_non_shrine_artifact_id105` |
+| Pending chain | `0094 ← 0095 ← 0096 ← 0097 ← 0098 ← 0099 ← 0100 ← 0101` (strictly linear; each `dependencies` names only its immediate predecessor) |
+| Ledger rows for 0095–0101 | **none** — all seven `NOT_APPLIED` |
+| Other apps (Production vs repo) | `users` 0006 = 0006, `favorites` 0002 = 0002 — **current**; only `temples` has pending migrations. `manage.py migrate` will apply **exactly** `temples` 0095–0101 and nothing else. |
+| Raw `temples_shrine` row count (now) | **108** (`min(id)=1`, `max(id)=108`) |
+
+Production has **not** advanced beyond 0094 → applicability of every audited
+PRE is unchanged; no STOP.
+
+### 22.2 Deployment execution mechanism
+
+`DEPLOYMENT_EXECUTION_PATH = RESOLVED` (repo-supported, no Render Shell
+required, no deployment-config change required).
+
+- **What starts the backend service:** `backend/start.sh` (the Render Web
+  Service start command — it prints `=== Render startup ===`, reads
+  `RENDER_EXTERNAL_HOSTNAME`, and ends with
+  `exec gunicorn shrine_project.wsgi:application`). `backend/Dockerfile.web`'s
+  `CMD` (`python manage.py migrate && runserver`) is the local /
+  docker-compose default and is **not** the Render path.
+- **Is `manage.py migrate` run automatically?** **No.** `start.sh` runs
+  `python manage.py migrate --noinput` **only** when the environment variable
+  `RUN_MIGRATIONS_ON_START=1`. For normal deploys it is unset / `0` and
+  `start.sh` prints "Skipping migrations." (documented in
+  `docs/infra/render-startup.md`). A read-only "migration divergence
+  diagnostics" block runs earlier in `start.sh` but is `showmigrations` /
+  `shell` only, wrapped so it cannot mutate or abort startup.
+- **Stage, when enabled:** container startup — after the read-only
+  diagnostics block, before gunicorn binds the port.
+- **Repo-supported paths without Render Shell (two, both documented):**
+  1. **Render env-var toggle** — `docs/infra/render-startup.md` §"Migration
+     deploy": set `RUN_MIGRATIONS_ON_START=1` → trigger a manual deploy →
+     wait for logs to show migrations complete + gunicorn started → set the
+     variable back to `0` → trigger a normal deploy.
+  2. **Local direct execution** — `docs/audit/production-migration-local-execution-runbook.md`
+     (marked 正本 / canonical): an operator runs `python manage.py migrate`
+     from `backend/` with `USE_GIS=1` and the Production `DATABASE_URL`. This
+     is the method actually used for the last real Production migrations
+     (`users 0006`, `temples 0090`–`0093`; `0094` under the same gate).
+- **Every-restart hazard:** leaving `RUN_MIGRATIONS_ON_START=1` set makes
+  every subsequent restart run `migrate` before port binding — the toggle
+  MUST be returned to `0` after the deploy (both runbooks require this).
+- **One-shot / guarded path already in the repo:** yes — the
+  `RUN_MIGRATIONS_ON_START` gate in `start.sh` is exactly that (the
+  `RUN_*_REPAIR` / `RUN_BOOTSTRAP_ON_START` gates are separate and not used
+  here).
+
+### 22.3 Migration-by-migration PRE verdict (Production, read-only)
+
+| Migration | Contract | Forward PRE — Production observation | Verdict |
+|---|---|---|---|
+| **0095** batch17 evidence activation (ids 107, 108) | best-effort, self-guarded no-op on drift (never raises) | 107 建部大社 / `滋賀県大津市神領1-16-1` / `goriyaku` empty / 0 tags; 108 波上宮 / `沖縄県那覇市若狭1-25-11` / `goriyaku` empty / 0 tags; all 16 label names present in the clean **39-row** `GoriyakuTag` master | **PASS** — will activate both (write `goriyaku` + 8 M2M links each) |
+| **0096** P4 source backfill (ids 10, 22) | best-effort, self-guarded no-op on drift (never raises) | 10 鶴岡八幡宮 / `place_ref_id IS NULL`; 22 給田六所神社 / `place_ref_id IS NULL`; target `ShrineHistory` present — 10:`(founding, 由比若宮の勧請)`+`(historical_event, 現在地への遷座)`, 22:`(founding, 武蔵総社六所宮よりの分霊勧請)`; neither source URL exists yet | **PASS** — creates 2 `ShrineKnowledgeSource` rows + 3 history↔source links + note lines |
+| **0097** P5 tag reconciliation (ids 21, 22) | **FAIL-CLOSED** (`PreconditionViolation`, all-or-nothing) | 21 長太稲荷神社 / `place_ref_id IS NULL`, tags = `{商売繁盛, 五穀豊穣}` (both required relations present); 22 給田六所神社 / `place_ref_id IS NULL`, tags = `{家内安全}` (required relation present); optional `地域安泰` **absent from the Production master** → 3-state contract = skip (no violation) | **PASS** — removes 21↔`商売繁盛`, 21↔`五穀豊穣`, 22↔`家内安全` (21 and 22 each end with 0 `goriyaku_tags`; this is the approved P5-DATA effect, not a P8 change) |
+| **0098** remove stray `user_observation` source (id 1) | **FAIL-CLOSED** (`RuntimeError` PRESTATE_MISMATCH) | Shrine 1 明治神宮 / `place_ref_id IS NULL`; **exactly one** matching `ShrineKnowledgeSource` (Production pk **2**); `ShrineDeity` on shrine 1 = exactly `明治天皇` + `昭憲皇太后`; both cite source 2; source 2 cited by **exactly** those 2 deity relations, 0 history relations; the genuine `shrine_official` source (pk 1) is independently on both deities | **PASS** — removes the 2 relations + deletes source pk 2; genuine source pk 1 untouched |
+| **0099** P8-C id 49 coordinate | **FAIL-CLOSED** (`PreconditionViolation`) | Shrine 49 富岡八幡宮 / `東京都江東区富岡1-20-3` / `latitude = 35.6733` / `longitude = 139.7967` (exact pre-P8-C values) | **PASS** — writes `(35.6717809, 139.799519)` + `updated_at` |
+| **0100** P8-A shadow cleanup (101→22, 103→21, 104→49) | **FAIL-CLOSED** (`PreconditionViolation`, one atomic unit) — *evaluated against the projected post-0099 state* | all three shadows present with exact audited `name_jp` / `address` / `latitude` / `longitude` / `place_ref_id`; primaries 21 / 22 / 49 present with exact `name_jp` / `address`; **id 49 coordinate = the P8-C-corrected `(35.6717809, 139.799519)` *after* 0099 runs** (currently the pre-P8-C value — 0100's own guard names this and requires 0099 first); every shadow zero-payload check = 0 (`goriyaku_tags`, `ShrineDeity`, `ShrineHistory`, legacy `temples_shrine_deities`, `Favorite`, `Visit`, `ShrineReflection`, `Goshuin`, `ActionEvent`, `ConciergeThread`); counters 0 / `goriyaku` / `history_theme` blank; shadow 101 → exactly one `ShrineInteractionLog` (pk 2, `user_id=1`, `detail_view`, `ctx=map`, `2026-06-11T07:18:05.580624+00:00`); shadow 103 → exactly one (pk 4, …`08:00:22.085501+00:00`); shadow 104 → 0; each audited predicate has **exactly one global match** (both currently on their shadow); all three shadow `place_ref` rows present | **PASS (projected post-0099)** — moves il pk 2 → shrine 22, il pk 4 → shrine 21, raw-`DELETE` shrine rows 101 / 103 / 104; shadow `place_ref` rows kept (orphaned, `DROP_SHADOW_ONLY`) |
+| **0101** P8-B remove artefact id 105 | **FAIL-CLOSED** (`PreconditionViolation`) — *evaluated against the projected post-0100 state* | Shrine 105 `kind=shrine` / `name_jp=広島市` / `address=日本、広島県広島市` / `latitude=34.3852894` / `longitude=132.4553055` / `place_ref_id=ChIJu0_z7giZWjURcvfBz1DO5Ac`; `goriyaku` / `history_theme` / `sajin` / `description` all blank; all counters 0; `owner_id` NULL; `place_ref` `snapshot_json` is a dict, `types` is a list = `["locality","political"]` (contains `locality`, not `place_of_worship`); no other Shrine claims that `place_ref`; **0 rows** in every relation table; migrations 0095–0100 touch none of id 105's fields or relations | **PASS (projected post-0100)** — raw-`DELETE` shrine row 105; `place_ref` row kept (`DROP_SHRINE_LINK_ONLY`) |
+
+`temples_shrine.location` is a legacy **`text`** column in Production (the
+historical model declares a PostGIS `PointField`) — confirmed; every migration
+in the chain uses the `.only(...)` guard, so no `GEOSException`.
+`latitude` / `longitude` are `double precision`; the fail-closed float
+equality checks in 0099 / 0100 / 0101 compare against the exact stored seed
+literals and are safe.
+
+### 22.4 Sequential logical state simulation (read-only reasoning)
+
+| After | `temples_shrine` rows | Notable state | Feeds next |
+|---|---|---|---|
+| **0094 (now)** | 108 | id49 `(35.6733,139.7967)`; shadows 101/103/104 present; artefact 105 present; stray source pk 2 on shrine-1 deities; 21 tags `{商売繁盛,五穀豊穣}`, 22 tags `{家内安全}`; 107/108 no `goriyaku` | 0095 |
+| after **0095** | 108 | 107, 108 gain `goriyaku` + 8 tags each | 0096 |
+| after **0096** | 108 | +2 `ShrineKnowledgeSource`; id10/id22 history↔source links added | 0097 |
+| after **0097** | 108 | 21 tags → `{}`, 22 tags → `{}` (P5-DATA) | 0098 |
+| after **0098** | 108 | stray source pk 2 deleted; 明治天皇 / 昭憲皇太后 keep only genuine source pk 1 | 0099 |
+| after **0099** | 108 | **id49 `(35.6717809,139.799519)`** | 0100 (needs corrected id49) |
+| after **0100** | **105** | rows 101/103/104 deleted; il pk 2 → shrine 22, il pk 4 → shrine 21; 3 shadow `place_ref` rows now orphaned | 0101 |
+| after **0101** | **104** | row 105 deleted; `place_ref` `ChIJu0_z7giZWjURcvfBz1DO5Ac` retained, attached to no Shrine | — |
+
+### 22.5 Expected post-deploy verification contract
+
+Run **after** an authorized apply, all read-only:
+
+- **Ledger:** `temples` latest applied = `0101_p8b_remove_non_shrine_artifact_id105`; rows exist for 0095–0101.
+- **Raw `temples_shrine` count = 104** (108 − 101 − 103 − 104 − 105). *(Not the canonical denominator.)*
+- **Canonical denominator = 103** (104 − QA fixture id 102 `テスト確認神社 20260611`).
+- **Removed — must be absent:** ids 101, 103, 104, 105.
+- **Canonical — must remain:** ids 21, 22, 49 with unchanged `name_jp` / `address`.
+- **id 49 coordinate = `35.6717809, 139.799519`**; `place_ref_id` still `NULL`.
+- **Interaction logs:** `ShrineInteractionLog` pk 2 → `shrine_id = 22`; pk 4 → `shrine_id = 21`; each audited predicate (`user_id=1` + `detail_view` + `ctx=map` + exact `created_at`) has **exactly one** global match, on its expected primary.
+- **P8-B `PlaceRef`:** `place_ref` `ChIJu0_z7giZWjURcvfBz1DO5Ac` present; **no** Shrine has `place_ref_id = ChIJu0_z7giZWjURcvfBz1DO5Ac`.
+- **Shadow `place_ref` rows** (`ChIJl-MEep…`, `ChIJX19mq8…`, `ChIJK11I4B…`) present and orphaned; primary 49 `place_ref_id` still `NULL`.
+- **Recommendation evidence intact for canonical rows:** 22 keeps 2 `ShrineDeity` + 4 `ShrineHistory`; 49 keeps 1 `ShrineDeity` + 2 `ShrineHistory` + 2 `goriyaku_tags`. (21 / 22 `goriyaku_tags` → 0 is the separately-approved **0097 / P5-DATA** effect, *not* a P8 change; P8's own migrations 0099 / 0100 / 0101 remove no recommendation evidence.)
+
+### 22.6 Rollback / partial-apply semantics
+
+`manage.py migrate` applies the seven pending migrations **one at a time**;
+each is a single `RunPython` with `Migration.atomic` at its Django default
+`True`, so on PostgreSQL **each migration commits in its own transaction**.
+There is **no** enclosing transaction spanning 0095→0101.
+
+- If migration *N* raises: *N*'s transaction rolls back fully and *N* is
+  **not** recorded in `django_migrations`; migrations 0095…*N*−1 that already
+  succeeded **remain applied and recorded**.
+- `manage.py migrate` exits non-zero. Under the Render-toggle path,
+  `start.sh` (`set -e`) then aborts before `exec gunicorn`, so the deploy
+  fails and Render keeps the previous instance; under the local-direct path
+  the operator sees the traceback. Either way the ledger is left at
+  0095…*N*−1.
+- Example: 0099 applied, 0100 raises → Production sits at **0099**
+  (id 49 corrected, shadows still present). Recoverable: fix the cause and
+  re-run — every fail-closed migration re-validates its full PRE on the
+  retry; 0095/0096 are also independently reversible, 0097–0101 reverse
+  under their own fail-closed guards.
+
+### 22.7 Readiness
+
+```text
+P8_DEPLOY_READINESS = READY_FOR_AUTHORIZED_APPLY
+BLOCKERS            = (none)
+```
+
+All readiness conditions hold: Production ledger at the expected `0094`;
+every 0095–0101 forward PRE satisfied by the current (and, for 0100/0101,
+projected) Production state; sequential state compatible; execution path
+known, repo-supported, Shell-free; post-deploy verification contract defined;
+rollback / partial-apply behaviour understood. **The write decision remains
+Mother Ship's** — this preflight authorizes nothing.
+
+The §21 Closeout verdict is unchanged: `P8_REPOSITORY_STATUS = COMPLETE`,
+`P8_PRODUCTION_STATUS = PENDING_MIGRATION_APPLY`,
+`P8_CLOSEOUT_STATUS = REPOSITORY_COMPLETE_DEPLOYMENT_PENDING`.
