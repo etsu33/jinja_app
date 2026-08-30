@@ -28,7 +28,14 @@ echo "=== migration divergence diagnostics (temples 0079-0089) ==="
   echo "--- temples/migrations file listing (0079-0089) ---"
   ls -1 temples/migrations 2>&1 | grep -E '^00(79|8[0-9])_'
   echo "--- showmigrations temples (0079-0089) ---"
-  python manage.py showmigrations temples 2>&1 | grep -E '00(79|8[0-9])_'
+  showmigrations_output="$(python manage.py showmigrations temples 2>&1)"
+  showmigrations_exit=$?
+  if [ "${showmigrations_exit}" -eq 0 ]; then
+    echo "${showmigrations_output}" | grep -E '00(79|8[0-9])_' || echo "showmigrations temples succeeded but found no 0079-0089 lines"
+  else
+    echo "showmigrations temples FAILED (exit=${showmigrations_exit}); full stdout/stderr below:"
+    echo "${showmigrations_output}"
+  fi
 } || echo "migration divergence diagnostics failed; continuing startup"
 echo "=== end migration divergence diagnostics ==="
 
