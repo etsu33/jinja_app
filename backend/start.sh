@@ -14,6 +14,24 @@ echo "RENDER_EXTERNAL_HOSTNAME=${RENDER_EXTERNAL_HOSTNAME:-unset}"
 echo "USE_GIS=${USE_GIS:-unset}"
 echo "USE_SQLITE=${USE_SQLITE:-unset}"
 
+# --- Diagnostics: Production migration divergence investigation (temples
+# 0079-0089) -----------------------------------------------------------------
+# Read-only, best-effort logging only: no DB write, no migration execution,
+# no repair/bootstrap action. Runs unconditionally, before the migration
+# execution decision and before gunicorn starts, on every startup regardless
+# of RUN_MIGRATIONS_ON_START. The whole block is grouped as the left side of
+# `||` so a failure of any single command inside it (missing directory,
+# manage.py error, etc.) cannot trigger `set -e` and cannot abort startup.
+echo "=== migration divergence diagnostics (temples 0079-0089) ==="
+{
+  echo "RENDER_GIT_COMMIT=${RENDER_GIT_COMMIT:-unset}"
+  echo "--- temples/migrations file listing (0079-0089) ---"
+  ls -1 temples/migrations 2>&1 | grep -E '^00(79|8[0-9])_'
+  echo "--- showmigrations temples (0079-0089) ---"
+  python manage.py showmigrations temples 2>&1 | grep -E '00(79|8[0-9])_'
+} || echo "migration divergence diagnostics failed; continuing startup"
+echo "=== end migration divergence diagnostics ==="
+
 if [ "${RUN_STARTUP_CHECK:-0}" = "1" ]; then
   echo "Running startup system check because RUN_STARTUP_CHECK=1..."
   python manage.py check
