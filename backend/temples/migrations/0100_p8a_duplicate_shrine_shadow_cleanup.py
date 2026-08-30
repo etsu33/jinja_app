@@ -39,27 +39,38 @@ audited interaction-log state is verified. A failure on any PRE raises
 mutated and 0100 is not recorded as applied. There is no "repair", no
 "guess", and no partial cleanup of one pair while another fails.
 
-**Applicability boundary (proven symmetric — the only clean no-op).** A fresh
-database / a migration-graph run before any `Shrine` seed has none of the
-shadow rows.
+**Applicability boundary — narrow, and identical in both directions (proven
+symmetric).** The *only* clean no-op is a genuinely fresh / pre-seed lineage
+in which the **entire audited P8-A subject is absent**:
 
-- **Forward:** if none of pk 101 / 103 / 104 exist → clean no-op (the audited
-  subject is genuinely absent). If **any** shadow row exists, all three must
-  exist and the full fail-closed PRE applies.
-- **Reverse:** decides *only* from observable state whether forward did the
-  real work — the sole signal is the two moved interaction-log rows now on
-  primaries 22 / 21 (exact `user_id` + `action_type` + `ctx` + `created_at`).
-  If primaries 21 / 22 / 49 are not all present with their audited identity →
-  clean no-op (fresh DB). If they are present but **no** moved il row is
-  found and all shadows are absent → clean no-op (forward was a boundary
-  no-op — there is nothing to restore). If **both** moved il rows are found
-  and all shadows are absent → full restore. Any in-between (one il row, an
-  unexpected count, a shadow pk already occupied) → `PreconditionViolation`.
+- shadow pk 101, 103, 104 all absent, **and**
+- primary pk 21, 22, 49 all absent, **and**
+- neither audited interaction-log event exists **anywhere** (searched
+  globally by `user_id` + `action_type` + `metadata.ctx` + exact
+  `created_at`, not scoped to a shrine).
 
-This is exactly symmetric: the boundary no-op is reachable only when the
-shadow rows are genuinely absent, and reverse can always tell "forward
-mutated" (two il rows moved onto primaries) from "forward no-op'd" (no moved
-il rows) purely from the database — no migration-owned persisted state.
+Any other state is `FAIL_CLOSED`:
+
+- **Forward.** All shadows absent **but** any primary present → `RAISE`
+  ("primaries-only" is not a fresh lineage and not a successful no-op). All
+  shadows absent **but** an audited interaction event exists anywhere →
+  `RAISE` (a successful no-op must not mask previously-moved or
+  manually-altered state). All three shadows present → full PRE. A partial
+  shadow set → `RAISE`.
+- **Reverse.** Not the fresh boundary ⇒ the full audited post-forward shape
+  must be *exactly* present: all three primaries present with their audited
+  `name_jp` / `address`, id 49 at the P8-C-corrected coordinate, all three
+  shadows absent, and **exactly one** audited moved interaction-log row on
+  each of primary 22 / 21 (with none left on the original shadow). A missing
+  or renamed primary, a wrong id 49 coordinate, a partial primary set, a
+  missing/duplicated moved log, or an occupied shadow pk each `RAISE` — never
+  a successful no-op (which would let Django unrecord 0100 while leaving the
+  shadows deleted and the logs moved).
+
+This is exactly symmetric: forward and reverse use the **same** fresh-lineage
+predicate (shadows + primaries + audited events all absent), so the only
+state where both no-op is the genuine fresh lineage; after a real forward the
+post-forward shape is unambiguous and reverse fully restores.
 
 **Reverse restoration** is from a static audited snapshot embedded below
 (never from ephemeral `RunPython` forward state). It recreates the three
@@ -185,6 +196,7 @@ PAIRS = [
 ]
 
 SHADOW_PKS = [p["shadow_pk"] for p in PAIRS]
+PRIMARY_PKS = [p["primary_pk"] for p in PAIRS]
 SHADOW_PLACE_REF_IDS = [p["shadow"]["place_ref_id"] for p in PAIRS]
 
 
@@ -374,6 +386,36 @@ def _audited_il_or_error(ShrineInteractionLog, shadow_pk, spec):
     return row
 
 
+def _audited_logs_matching(ShrineInteractionLog, spec, *, shrine_id=None):
+    """Every `ShrineInteractionLog` matching the stable audited predicate
+    (`user_id` + `action_type` + `metadata.ctx` + exact `created_at`).
+
+    `shrine_id=None` searches **globally** (used for fresh-lineage boundary
+    detection — an audited event existing *anywhere* means the subject is not
+    genuinely absent). Pass `shrine_id` to scope to one shrine.
+    """
+    qs = ShrineInteractionLog.objects.filter(
+        user_id=spec["user_id"],
+        action_type=spec["action_type"],
+        created_at=_parse_ts(spec["created_at"]),
+    )
+    if shrine_id is not None:
+        qs = qs.filter(shrine_id=shrine_id)
+    return [r for r in qs if _meta_ctx(r) == spec["ctx"]]
+
+
+def _any_audited_log_anywhere(ShrineInteractionLog):
+    return any(
+        _audited_logs_matching(ShrineInteractionLog, pair["il"])
+        for pair in PAIRS
+        if pair["il"] is not None
+    )
+
+
+def _present_pks(Shrine, pks):
+    return [pk for pk in pks if Shrine.objects.filter(pk=pk).exists()]
+
+
 def _models(apps):
     return {
         name: apps.get_model("temples", name)
@@ -399,9 +441,30 @@ def cleanup_forward(apps, schema_editor):
     Shrine = m["Shrine"]
     ShrineInteractionLog = m["ShrineInteractionLog"]
 
-    existing_shadows = [pk for pk in SHADOW_PKS if Shrine.objects.filter(pk=pk).exists()]
+    existing_shadows = _present_pks(Shrine, SHADOW_PKS)
+    existing_primaries = _present_pks(Shrine, PRIMARY_PKS)
+    audited_log_anywhere = _any_audited_log_anywhere(ShrineInteractionLog)
+
     if not existing_shadows:
-        return  # applicability boundary: audited subject genuinely absent -> clean no-op
+        # Candidate for the ONLY clean no-op: a genuinely fresh / pre-seed
+        # lineage where the ENTIRE audited P8-A subject is absent. "Primaries
+        # only" (or any lingering audited interaction event) is NOT a
+        # successful no-op — P8_A_PRESTATE_POLICY = FAIL_CLOSED.
+        if existing_primaries:
+            raise _err(
+                f"no shadow rows present, but canonical primaries "
+                f"{sorted(existing_primaries)} exist — 'primaries-only' is not a fresh "
+                "lineage and not a successful no-op (a fresh lineage has shadows AND "
+                "primaries AND both audited interaction events all absent)"
+            )
+        if audited_log_anywhere:
+            raise _err(
+                "no shadow rows present, but an audited interaction-log event exists "
+                "somewhere (user_id + action_type + metadata.ctx + exact created_at) — "
+                "refusing a successful no-op that would mask previously-moved or "
+                "manually-altered state"
+            )
+        return  # genuinely fresh lineage: full audited subject absent -> clean no-op
 
     if len(existing_shadows) != len(SHADOW_PKS):
         raise _err(
@@ -458,53 +521,58 @@ def cleanup_reverse(apps, schema_editor):
     ShrineInteractionLog = m["ShrineInteractionLog"]
     PlaceRef = m["PlaceRef"]
 
-    # primaries present with audited identity?
-    primaries = {}
-    for pair in PAIRS:
-        primaries[pair["primary_pk"]] = _load_shrine(Shrine, pair["primary_pk"])
-    primaries_ok = True
-    for pair in PAIRS:
-        row = primaries[pair["primary_pk"]]
-        if row is None or row.name_jp != pair["primary"]["name_jp"] or row.address != pair["primary"]["address"]:
-            primaries_ok = False
-            break
-    if not primaries_ok:
-        return  # fresh DB / primaries absent -> nothing to restore (symmetric no-op)
+    shadows_present = _present_pks(Shrine, SHADOW_PKS)
+    primaries = {pk: _load_shrine(Shrine, pk) for pk in PRIMARY_PKS}
+    primaries_present = [pk for pk, row in primaries.items() if row is not None]
+    audited_log_anywhere = _any_audited_log_anywhere(ShrineInteractionLog)
 
-    # find the two moved interaction-log rows on the primaries
+    # ---- The ONLY clean no-op: a genuinely fresh / pre-seed lineage where the
+    #      ENTIRE audited P8-A subject is absent (shadows AND primaries AND both
+    #      audited interaction events). Anything else is FAIL_CLOSED. ----
+    if not shadows_present and not primaries_present and not audited_log_anywhere:
+        return
+
+    # ---- FAIL_CLOSED reverse: the full audited post-forward state must be
+    #      *exactly* present. A renamed / missing primary, a wrong id 49
+    #      coordinate, a partial primary set, or a missing moved log all RAISE
+    #      (never a successful no-op that would let Django unrecord 0100 while
+    #      leaving shadows deleted and logs moved). ----
+    for pair in PAIRS:
+        _assert_primary_identity(primaries[pair["primary_pk"]], pair["primary"])
+    _assert_primary_49_coordinate(primaries[49])
+
+    if shadows_present:
+        raise _err(
+            f"reverse: shadow pk(s) {sorted(shadows_present)} already exist — refusing to "
+            "recreate over an existing row (expected the post-forward shape: all shadows absent)"
+        )
+
+    # exactly one audited moved log on each of primary 22 / 21
     moved = {}
     for pair in PAIRS:
         if pair["il"] is None:
             continue
-        want_ts = _parse_ts(pair["il"]["created_at"])
-        rows = [
-            r
-            for r in ShrineInteractionLog.objects.filter(
-                shrine_id=pair["primary_pk"],
-                user_id=pair["il"]["user_id"],
-                action_type=pair["il"]["action_type"],
-                created_at=want_ts,
-            )
-            if _meta_ctx(r) == pair["il"]["ctx"]
-        ]
-        moved[pair["shadow_pk"]] = rows
-
-    shadows_present = [pk for pk in SHADOW_PKS if Shrine.objects.filter(pk=pk).exists()]
+        moved[pair["shadow_pk"]] = _audited_logs_matching(
+            ShrineInteractionLog, pair["il"], shrine_id=pair["primary_pk"]
+        )
     n_moved = {k: len(v) for k, v in moved.items()}
-
-    if all(v == 0 for v in n_moved.values()) and not shadows_present:
-        return  # forward was a boundary no-op -> nothing to restore (symmetric)
-
     if any(v != 1 for v in n_moved.values()):
         raise _err(
-            f"reverse: expected exactly one moved interaction-log row per audited shadow, "
-            f"found {n_moved} on primaries 22/21 — ambiguous, refusing to guess"
+            "reverse: expected exactly one audited moved interaction-log row on each of "
+            f"primaries 22 / 21 (post-forward shape), found {n_moved} — cannot restore"
         )
-    if shadows_present:
-        raise _err(
-            f"reverse: shadow pk(s) {sorted(shadows_present)} already exist — refusing to "
-            "recreate over an existing row"
+    # and neither audited event may still exist on its original shadow
+    for pair in PAIRS:
+        if pair["il"] is None:
+            continue
+        stray = _audited_logs_matching(
+            ShrineInteractionLog, pair["il"], shrine_id=pair["shadow_pk"]
         )
+        if stray:
+            raise _err(
+                f"reverse: audited interaction event still present on shadow pk "
+                f"{pair['shadow_pk']} — inconsistent with a completed forward"
+            )
 
     # ---- fail-closed reverse PRE for the full-restore path ----
     if PlaceRef.objects.filter(pk__in=SHADOW_PLACE_REF_IDS).count() != len(SHADOW_PLACE_REF_IDS):
@@ -522,13 +590,8 @@ def cleanup_reverse(apps, schema_editor):
             f"reverse: shadow place_ref id(s) are already claimed by another Shrine row: "
             f"{claimed}"
         )
-    p49 = primaries[49]
-    if (p49.latitude, p49.longitude) != PRIMARY_49_CORRECTED_COORD:
-        raise _err(
-            f"reverse: Shrine id 49 coordinate is {(p49.latitude, p49.longitude)!r}, expected "
-            f"the P8-C-corrected {PRIMARY_49_CORRECTED_COORD!r} — reverse does not touch id 49's "
-            "coordinate and will not restore into an inconsistent state"
-        )
+    # (id 49's coordinate was already asserted == the P8-C-corrected value above;
+    #  reverse never writes it — Design A: temples.0099 owns id 49's coordinate.)
 
     # ---- restore: recreate the three shadow rows from the static snapshot ----
     for pair in PAIRS:
