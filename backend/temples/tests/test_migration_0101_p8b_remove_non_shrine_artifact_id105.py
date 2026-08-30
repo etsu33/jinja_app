@@ -201,6 +201,108 @@ def test_place_ref_is_place_of_worship_forward_raises(full_pre):
     assert _row() is not None
 
 
+# --------------------------------------------------------------------------- #
+# F1 — strict, unconditional PlaceRef type validation
+# --------------------------------------------------------------------------- #
+def _pre_snapshot():
+    r = _row()
+    pr = PlaceRef.objects.get(pk=PID)
+    return (r.kind, r.name_jp, r.address, r.latitude, r.longitude, r.place_ref_id,
+            r.popular_score, r.owner_id, pr.snapshot_json)
+
+
+def _assert_p8b_intact(before):
+    assert _row() is not None
+    r = _row()
+    pr = PlaceRef.objects.get(pk=PID)
+    assert (r.kind, r.name_jp, r.address, r.latitude, r.longitude, r.place_ref_id,
+            r.popular_score, r.owner_id, pr.snapshot_json) == before
+
+
+@pytest.mark.django_db
+def test_place_ref_types_empty_list_forward_raises(full_pre):
+    PlaceRef.objects.filter(pk=PID).update(snapshot_json={"name": NAME, "types": []})
+    before = _pre_snapshot()
+    with pytest.raises(PreconditionViolation):
+        forward(APPS, SE)
+    _assert_p8b_intact(before)  # F1 #1
+
+
+@pytest.mark.django_db
+def test_place_ref_types_absent_forward_raises(full_pre):
+    PlaceRef.objects.filter(pk=PID).update(snapshot_json={"name": NAME, "formatted_address": ADDR})
+    before = _pre_snapshot()
+    with pytest.raises(PreconditionViolation):
+        forward(APPS, SE)
+    _assert_p8b_intact(before)  # F1 #2
+
+
+@pytest.mark.django_db
+def test_place_ref_types_not_a_list_forward_raises(full_pre):
+    PlaceRef.objects.filter(pk=PID).update(snapshot_json={"types": "locality"})
+    before = _pre_snapshot()
+    with pytest.raises(PreconditionViolation):
+        forward(APPS, SE)
+    _assert_p8b_intact(before)  # F1 #3
+
+
+@pytest.mark.django_db
+def test_place_ref_snapshot_not_a_dict_forward_raises(full_pre):
+    PlaceRef.objects.filter(pk=PID).update(snapshot_json=["locality", "political"])
+    before = _pre_snapshot()
+    with pytest.raises(PreconditionViolation):
+        forward(APPS, SE)
+    _assert_p8b_intact(before)
+
+
+@pytest.mark.django_db
+def test_place_ref_types_political_only_forward_raises(full_pre):
+    PlaceRef.objects.filter(pk=PID).update(snapshot_json={"types": ["political"]})
+    before = _pre_snapshot()
+    with pytest.raises(PreconditionViolation):
+        forward(APPS, SE)
+    _assert_p8b_intact(before)  # F1 #4
+
+
+@pytest.mark.django_db
+def test_place_ref_types_locality_political_forward_succeeds(full_pre):
+    # exact audited shape (locality present, place_of_worship absent)
+    assert PlaceRef.objects.get(pk=PID).snapshot_json["types"] == ["locality", "political"]
+    forward(APPS, SE)
+    assert _row() is None                                             # F1 #5
+    assert PlaceRef.objects.filter(pk=PID).exists()
+
+
+@pytest.mark.django_db
+def test_place_ref_types_with_place_of_worship_forward_raises(full_pre):
+    PlaceRef.objects.filter(pk=PID).update(
+        snapshot_json={"types": ["locality", "political", "place_of_worship"]}
+    )
+    before = _pre_snapshot()
+    with pytest.raises(PreconditionViolation):
+        forward(APPS, SE)
+    _assert_p8b_intact(before)  # F1 #6
+
+
+# --------------------------------------------------------------------------- #
+# F1 optional — exact forward coordinate PRE (reverse restores static values)
+# --------------------------------------------------------------------------- #
+@pytest.mark.django_db
+def test_wrong_latitude_forward_raises(full_pre):
+    Shrine.objects.filter(pk=ID).update(latitude=34.4)
+    with pytest.raises(PreconditionViolation):
+        forward(APPS, SE)
+    assert _row() is not None and _row().latitude == 34.4
+
+
+@pytest.mark.django_db
+def test_wrong_longitude_forward_raises(full_pre):
+    Shrine.objects.filter(pk=ID).update(longitude=132.5)
+    with pytest.raises(PreconditionViolation):
+        forward(APPS, SE)
+    assert _row() is not None and _row().longitude == 132.5
+
+
 @pytest.mark.django_db
 def test_unexpected_goriyaku_tag_forward_raises(full_pre):
     t, _ = GoriyakuTag.objects.get_or_create(name="想定外タグ")

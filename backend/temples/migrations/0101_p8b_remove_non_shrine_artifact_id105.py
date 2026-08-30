@@ -26,6 +26,16 @@ begins until every PRE condition is verified; a failure raises
 recorded as applied. No repair, no guess, no partial relation cleanup.
 (Same contract class as `temples.0097` / `0098` / `0099` / `0100`.)
 
+Forward's PRE (when pk 105 exists) requires exact `pk` / `kind` / `name_jp` /
+`address` / `latitude` / `longitude` (the last two match the static values
+reverse restores); `place_ref_id` == the audited id **and** the `place_ref`
+row's `snapshot_json` is a dict whose `types` is a **list** containing
+`"locality"` and **not** `"place_of_worship"` (strict, unconditional — an
+empty / missing / non-list `types` is a `PreconditionViolation`; locality is
+never inferred from name / address / coordinates / place_ref id); every
+semantic text field blank; every counter 0; no `owner`; and 0 rows in every
+`Shrine`-FK relation table.
+
 **`P8_B_PLACE_REF_POLICY = DROP_SHRINE_LINK_ONLY`.** Forward deletes only the
 `Shrine` row; the standalone `place_ref` cache row
 (`ChIJu0_z7giZWjURcvfBz1DO5Ac`) — a valid locality/political `PlaceRef`
@@ -193,12 +203,6 @@ def _place_ref_row(PlaceRef):
     return PlaceRef.objects.filter(pk=ARTIFACT_PLACE_REF_ID).first()
 
 
-def _place_ref_types(pr):
-    snap = pr.snapshot_json if isinstance(pr.snapshot_json, dict) else {}
-    types = snap.get("types")
-    return types if isinstance(types, list) else []
-
-
 def _assert_artifact_identity(row):
     if row.kind != ARTIFACT_KIND:
         raise _err(f"Shrine pk {ARTIFACT_ID} kind is {row.kind!r}, expected {ARTIFACT_KIND!r}")
@@ -206,6 +210,12 @@ def _assert_artifact_identity(row):
         raise _err(f"Shrine pk {ARTIFACT_ID} name_jp is {row.name_jp!r}, expected {ARTIFACT_NAME!r}")
     if row.address != ARTIFACT_ADDRESS:
         raise _err(f"Shrine pk {ARTIFACT_ID} address is {row.address!r}, expected {ARTIFACT_ADDRESS!r}")
+    if row.latitude != ARTIFACT_LAT or row.longitude != ARTIFACT_LNG:
+        raise _err(
+            f"Shrine pk {ARTIFACT_ID} coordinate is ({row.latitude!r}, {row.longitude!r}), "
+            f"expected the audited ({ARTIFACT_LAT!r}, {ARTIFACT_LNG!r}) — reverse restores "
+            "exactly these static values"
+        )
     if row.place_ref_id != ARTIFACT_PLACE_REF_ID:
         raise _err(
             f"Shrine pk {ARTIFACT_ID} place_ref_id is {row.place_ref_id!r}, expected "
@@ -228,25 +238,45 @@ def _assert_artifact_identity(row):
 
 
 def _assert_place_ref_is_the_locality_artifact(PlaceRef):
+    """Strict, unconditional PlaceRef type validation (P8-B F1).
+
+    The audited artefact's Google-place must be a locality. Missing or
+    malformed type evidence is **not** acceptable for a fail-closed
+    deletion — `snapshot_json` must be a dict whose `types` is a list that
+    contains `"locality"` and does **not** contain `"place_of_worship"`.
+    Locality is never inferred from name / address / coordinates / place_ref id.
+    """
     pr = _place_ref_row(PlaceRef)
     if pr is None:
         raise _err(
             f"the audited PlaceRef {ARTIFACT_PLACE_REF_ID!r} does not exist — cannot "
             "confirm Shrine pk 105 is the locality artefact"
         )
-    types = _place_ref_types(pr)
-    if types:
-        if PLACE_REF_FORBIDDEN_TOKEN in types:
-            raise _err(
-                f"PlaceRef {ARTIFACT_PLACE_REF_ID!r} types {types!r} include "
-                f"{PLACE_REF_FORBIDDEN_TOKEN!r} — this is a place of worship, not the "
-                "audited locality artefact; refusing to delete"
-            )
-        if PLACE_REF_LOCALITY_TOKEN not in types:
-            raise _err(
-                f"PlaceRef {ARTIFACT_PLACE_REF_ID!r} types {types!r} do not include "
-                f"{PLACE_REF_LOCALITY_TOKEN!r} — not the audited locality artefact shape"
-            )
+    snap = pr.snapshot_json
+    if not isinstance(snap, dict):
+        raise _err(
+            f"PlaceRef {ARTIFACT_PLACE_REF_ID!r} snapshot_json is "
+            f"{type(snap).__name__} (expected a dict with a 'types' list) — "
+            "missing/malformed type evidence is not acceptable for a fail-closed delete"
+        )
+    types = snap.get("types")
+    if not isinstance(types, list):
+        raise _err(
+            f"PlaceRef {ARTIFACT_PLACE_REF_ID!r} snapshot_json['types'] is "
+            f"{'absent' if types is None else type(types).__name__} — expected a list "
+            f"containing {PLACE_REF_LOCALITY_TOKEN!r}"
+        )
+    if PLACE_REF_FORBIDDEN_TOKEN in types:
+        raise _err(
+            f"PlaceRef {ARTIFACT_PLACE_REF_ID!r} types {types!r} include "
+            f"{PLACE_REF_FORBIDDEN_TOKEN!r} — this is a place of worship, not the "
+            "audited locality artefact; refusing to delete"
+        )
+    if PLACE_REF_LOCALITY_TOKEN not in types:
+        raise _err(
+            f"PlaceRef {ARTIFACT_PLACE_REF_ID!r} types {types!r} do not include "
+            f"{PLACE_REF_LOCALITY_TOKEN!r} — not the audited locality artefact shape"
+        )
     return pr
 
 
