@@ -881,6 +881,153 @@ decide them.
 
 ---
 
+## 19. F1 — Post-`PremiumMeaningContext` Revalidation (2026-08-30)
+
+> Delta-only revalidation of §1–§18 against `origin/develop` after PR #2648
+> (`PremiumMeaningContext` contract/types, PR-A) and PR #2650
+> (`mapConciergeResponseToPremiumMeaningContext`, PR-B). **The original D1
+> comparison stands; nothing in §4–§18 is recomputed.** No D1 / D2–D6 value
+> is selected.
+
+### 19.1 Revalidation base
+
+| item | value |
+|---|---|
+| **Original D1 audit base** | `5b273f7fcdb0e98e373f0f0c1d4590300d374785` (PR #2647 merge) — the "re-confirmed at `5b273f7f`" statements in §2, §3, §14.3, §14.4, §16, Appendix A remain the original audit base and are **not** rewritten |
+| **Post-audit delta revalidated through** | `42b0042499af6ff1ea2053488c184d0af48c059a` (current `origin/develop`) |
+| **Commits inspected since `5b273f7f`** | `d6f181e6` — `feat: add PremiumMeaningContext contract/types foundation (PR-A) (#2648)`; `42b00424` — `feat: map existing Concierge Response fields into PremiumMeaningContext (PR-B) (#2650)`. `origin/develop` had advanced past `d6f181e6`, so `#2650` was also inspected (per the F1 rule). No further commits. |
+
+### 19.2 Backend semantic runtime delta
+
+`git diff --stat 5b273f7f..42b00424 -- backend/` is **empty** — **zero
+backend files changed** across both commits. Both PRs touch only
+`apps/web/src/lib/concierge/` (four files: `premiumMeaningContext.ts` +
+its test, `mapConciergeResponseToPremiumMeaningContext.ts` + its test). Every
+file named in §3 / §4 / Appendix A of this audit is byte-identical to the
+original audit base.
+
+```text
+BACKEND_SEMANTIC_RUNTIME_DELTA = NONE
+```
+
+### 19.3 `PremiumMeaningContext` contract finding (verified from code)
+
+`apps/web/src/lib/concierge/premiumMeaningContext.ts` @ `42b00424`:
+
+| check | finding |
+|---|---|
+| contains `consultation.interpretedContext` | **yes** — `interpretedContext: InterpretedConsultationContext \| null` on `PremiumMeaningConsultationContext` |
+| `interpretedContext` kept structurally opaque | **yes** — `export type InterpretedConsultationContext = Record<string, unknown>;` — no named sub-fields; docstring: "Deliberately opaque in PR-A … PR-A does not invent new interpretation concepts" |
+| avoids naming Topic / State / Intention / Polarity as mandatory canonical Backend fields | **yes** — none appear; docstring explicitly notes the audit "did not confirm a stable Backend/API contract field for named sub-concepts such as 'state tone' or 'emotion intensity'" |
+| avoids selecting `PRESERVE_CURRENT` / `PROMOTE_PROFILE` / `NORMALIZE_MODEL` | **yes** — no D1 term or strategy reference anywhere in the module |
+| redefines Need semantics | **no** — `primaryNeed` / `secondaryNeed` are bare `string \| null` slots ("nullable when no need tag resolved") |
+| redefines `consultation_axis` | **no** — no axis concept exists in the type |
+| alters Need → GoriyakuTag routing | **no** — frontend type/validity module; "is not wired into buildRecommendationReasonViewModel …" |
+| alters Backend Recommendation ranking | **no** — "Score/is_primary bookkeeping stays outside the Context"; `computePremiumMeaningValidity` is a pure function over the passed object |
+
+PR #2650 (`mapConciergeResponseToPremiumMeaningContext.ts`) **fixes
+`interpretedContext` to `null`** ("the only candidate source
+(`interpret_consultation()` / InterpretationProfile) is debug-only, not a
+stable Contract field … intentionally does not read `_debug`"), reads only
+already-typed Frontend client fields (`ConciergeRecommendation` /
+`ConciergeNeed`), never throws, and introduces no Topic/State/Intention/
+Polarity concept. `primaryNeed`/`secondaryNeed` = `need.tags[0]`/`[1]` from
+the existing `_need` payload.
+
+**`interpretedContext` final type / opacity:** `Record<string, unknown> |
+null`, currently populated as `null`; only its **presence (non-null) vs
+absence** is load-bearing (it gates `consultationContextValid` alongside
+`primaryNeed`), never its internal shape.
+
+### 19.4 D1 A/B/C compatibility with `PremiumMeaningContext`
+
+The `interpretedContext` slot is `Record<string, unknown>` — structurally
+unconstrained — so any D1 output serialisable to a non-null object satisfies
+it. The adapter is **defined only after Mother Ship selects D1** (§19.5).
+
+| D1 strategy | can its output be adapted into `interpretedContext`? | classification | reason (evidence) |
+|---|---|---|---|
+| `PRESERVE_CURRENT` | yes — the current `need` / shadow `interpretation_profile` payload (or a stable contract field carrying it) serialises directly into an opaque record | **COMPATIBLE** | the slot already accepts `Record<string, unknown>`; PRESERVE adds no new shape the consumer would reject |
+| `PROMOTE_PROFILE` | yes — a normalized `interpretation_profile` (`{primary, candidates[], confidence}` blocks) serialises into `Record<string, unknown>` | **COMPATIBLE** | the contract docstring explicitly anticipates this: "PR-B's API → Context mapping decides what (if anything) populates this, once a Source of Truth is confirmed" |
+| `NORMALIZE_MODEL` | yes — a canonical `consultation_semantics` object (`topic[]` / `state[]` / `intention[]` / `polarity` / …) is likewise just an opaque record to this consumer | **COMPATIBLE** | opacity means no field-name or shape coupling; the adapter down-projects at the boundary exactly as §18/§14.1 describe for Need routing |
+
+No strategy is `INCOMPATIBLE` or `CONDITIONALLY_COMPATIBLE` — the opacity is
+the enabling property. `PremiumMeaningContext` **does not prematurely fix or
+constrain D1**.
+
+```text
+PREMIUM_CONTEXT_D1_CONSTRAINT_STATUS = NON_CONSTRAINING
+PREMIUM_CONTEXT_ROLE                 = DOWNSTREAM_CONSUMER
+```
+
+### 19.5 Adapter boundary
+
+```text
+Semantic Core (D1 output)  →  adapter  →  PremiumMeaningContext.consultation.interpretedContext
+```
+
+- The **Semantic Core remains the single source of consultation meaning**
+  (whichever of `PRESERVE_CURRENT` / `PROMOTE_PROFILE` / `NORMALIZE_MODEL`
+  Mother Ship selects).
+- `PremiumMeaningContext` is a **consumer / transport context for the
+  Premium experience** (Deep Recommendation Reason / Personal Meaning /
+  Action Meaning validity gating). It is **not** the canonical consultation
+  semantic model and must not become one.
+- The **adapter is specified only after D1 is selected**; its
+  implementation is **not** designed in this audit.
+- Entitlement does not define semantic-understanding quality (§19.6).
+
+### 19.6 FREE / Premium boundary (unchanged)
+
+The §14.5 rule stands: **semantic-understanding quality is evaluated
+independently of entitlement.** PR #2648 / #2650 do not introduce a
+"FREE = weaker interpretation / Premium = stronger interpretation" split —
+`interpretedContext` opacity is identical regardless of plan, and
+`computePremiumMeaningValidity` reads no entitlement field. Polarity,
+normalization, negation handling, and semantic correctness are **not**
+Premium-only. Premium may *consume* richer semantic output; it does not
+*define* whether the consultation was interpreted correctly.
+
+### 19.7 34-case, L1–L16, ranking, and Compass deltas
+
+Backend semantic runtime delta is `NONE` (§19.2) and `PremiumMeaningContext`
+is a frontend downstream-only consumer (§19.3–§19.4). Therefore:
+
+| revalidated item | result |
+|---|---|
+| Topic / State / Intention / Polarity / Primary-Secondary / Contrast retention (§7–§10) | **unchanged** — no cell recomputed; the mechanisms (`extract_need_tags`, `interpret_consultation`, `NEED_TO_GORIYAKU_IDS`, `_attach_breakdown`, …) are byte-identical |
+| L1–L16 interpretation-loss findings (§11) | **unchanged** — PR #2648/#2650 add no interpreter, no clause parsing, no polarity field, no extractor consolidation |
+| `SEMANTIC_RANKING_SEPARATION_STATUS` (§14.2) | **CONFIRMED, unchanged** — `PremiumMeaningContext` does not activate Score v3 (`SCORE_V3_MODE` untouched), does not change candidate generation, `score_need`, ranking order, or Need → GID routing; it consumes `reason_facts` / `recommendation_reason_v4_detail` / `_need` that already exist on the response |
+| Compass comparison (§14.4) | **unchanged** — no Compass runtime file and no shared Backend semantic contract changed; `api_views_compass.py` / `compass_recommendation_orchestrator.py` byte-identical since 2026-08-23; the LOW / MEDIUM / MEDIUM classifications stand |
+
+```text
+D1_34_CASE_RESULT_DELTA    = NONE
+D1_RETENTION_MATRIX_STATUS = UNCHANGED
+L1_L16_DELTA               = NONE
+SEMANTIC_RANKING_DELTA     = NONE
+COMPASS_D1_DELTA           = NONE
+```
+
+### 19.8 F1 verdict
+
+```text
+D1_POST_PREMIUM_CONTEXT_REVALIDATION_STATUS = COMPLETE
+BACKEND_SEMANTIC_RUNTIME_DELTA              = NONE
+PREMIUM_CONTEXT_D1_CONSTRAINT_STATUS        = NON_CONSTRAINING
+PREMIUM_CONTEXT_ROLE                        = DOWNSTREAM_CONSUMER
+D1_34_CASE_RESULT_DELTA                     = NONE
+SEMANTIC_RANKING_DELTA                      = NONE
+COMPASS_D1_DELTA                            = NONE
+MOTHER_SHIP_D1_STATUS                       = DECISION_REQUIRED
+BLOCKERS                                    = 0
+```
+
+The D1 Decision Packet (§17) and the D1 → D2–D6 dependency table (§18) are
+**valid without modification**. The next step remains a Mother Ship D1
+decision review; no D1 or D2–D6 value is selected here.
+
+---
+
 ## Appendix A — Method / Reproducibility
 
 - Code re-read at `origin/develop` `5b273f7fcdb0e98e373f0f0c1d4590300d374785`
