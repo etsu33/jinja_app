@@ -804,7 +804,9 @@ genuine evidence/data shortfalls are structural (denominator C).
 ## 18. Known Gaps (audit facts, not proposals)
 
 1. **No negation / de-emphasis handling** at any layer (`ない`, `わけではない`,
-   `より`, `というより`). 5–6 of 34 cases mis-fire.
+   `より`, `というより`). 6 of 34 cases mis-fire (`NEGATION_FAILURE` — the
+   authoritative first-loss count, Section 17 denominator B; matches the
+   any-layer count in Section 16).
 2. **No clause segmentation** — the whole query is one match surface, so
    `A けど B` and `A より B` both contribute A and B equally.
 3. **State and Intention are not first-class runtime signals.** They exist
@@ -854,7 +856,7 @@ require an explicit decision.
 
 | # | observed problem (section) | candidate direction | affected layer | affected audit cases | risk | work type |
 |---|---|---|---|---|---|---|
-| C1 | Negation mis-fires (§10, §17: 5–6 cases) | add a negation/de-emphasis guard (`…ない`, `わけではない`, `より`, `というより`) that suppresses hits in the negated span | interpreter (`domain/need_tags`, `consultation_axis`) | Neg-1…5, Theme-3 | over-suppression of legit hits; JA parsing is heuristic; needs its own test corpus | code + tests |
+| C1 | Negation mis-fires (§10, §17: 6 cases) | add a negation/de-emphasis guard (`…ない`, `わけではない`, `より`, `というより`) that suppresses hits in the negated span | interpreter (`domain/need_tags`, `consultation_axis`) | Neg-1…5, Theme-3 | over-suppression of legit hits; JA parsing is heuristic; needs its own test corpus | code + tests |
 | C2 | Whole-query match surface (§7.1, §9) | clause-split on `けど/が/より/。/、` and weight/section the segments | interpreter | Career-B, Neg-4, Theme-2/3 | changes which tag is "primary"; ranking sensitivity | code + tests |
 | C3 | State not load-bearing (§8.2, §18.3) | promote selected `state_profile` signals (tired/anxious/uncertain) into a runtime signal that biases ranking or Reason | interpreter → scoring/Reason | Career-C, Family-B/C, MR-*, Neg-3 | Score v3 is still shadow; wiring it in is a scoring-behaviour change; needs A/B | code + taxonomy + tests |
 | C4 | Intention not load-bearing (§8.3) | represent "decide / move-forward / repair / leave / rest" as an Intention signal feeding axis or Reason | interpreter → axis/Reason | Career-A/B, MR-D, Neg-5, Love-E | new taxonomy dimension; product-defining | taxonomy + code + tests |
