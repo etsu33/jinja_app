@@ -993,3 +993,175 @@ Additional pending items:
 
 Next step: Mother Ship decisions on §19, then independent P8-A / P8-B / P8-C
 implementation PRs.
+
+> **Superseded (2026-08-30).** The Mother Ship decisions were taken and the
+> P8-A / P8-B / P8-C implementation PRs were merged into `develop`. See
+> **§21 Closeout** for the adopted decision packet, the merged PR chain, and
+> the repository-vs-Production status.
+
+## 21. Closeout (2026-08-30)
+
+All approved P8 remediation is **merged into `develop`**. This section records
+the final state; §1–§20 remain the audit of record and are unchanged.
+
+### 21.1 Two-axis verdict
+
+```text
+P8_REPOSITORY_STATUS = COMPLETE
+P8_PRODUCTION_STATUS = PENDING_MIGRATION_APPLY
+P8_DEPLOYMENT_STATE  = NOT_APPLIED
+P8_CLOSEOUT_STATUS   = REPOSITORY_COMPLETE_DEPLOYMENT_PENDING
+```
+
+- **Repository:** every approved P8 remediation migration + tests is merged
+  into `develop` (SHA `e5fd3a01b2aad2215488ba943a83cceea28d9aa2`).
+- **Production:** a fresh read-only `django_migrations` check
+  (`scripts/migration_safety/readonly_query.sh`, this session) shows the
+  latest applied `temples` migration is **`0094_fix_shrine_70_coordinates`**
+  (2026-08-23). `0095`–`0101` are **NOT applied**. `temples.0099` /
+  `0100` / `0101` are `NOT_APPLIED`.
+
+> **Repository merge state ≠ Production migration state.** Do **not** read this
+> closeout as "Production cleanup complete", "Production raw row count is now
+> 103", "ids 101/103/104/105 are removed", or "id 49's coordinate is
+> corrected". None of that has happened in Production yet — it happens on the
+> next authorized `migrate` / deploy (order `0095 → 0096 → 0097 → 0098 →
+> 0099 → 0100 → 0101`), after which it must be independently verified.
+
+### 21.2 Final decision packet (adopted)
+
+```text
+P8_101_ACTION           = REMOVE_SHADOW
+P8_103_ACTION           = REMOVE_SHADOW
+P8_104_ACTION           = REMOVE_SHADOW
+P8_105_ACTION           = REMOVE_ARTIFACT
+P8_49_COORDINATE_ACTION = UPDATE
+P8_C_DELIVERY_DESIGN    = DESIGN_A_INDEPENDENT_P8C
+P8_DELIVERY             = SPLIT_MIGRATIONS
+P8_USER_DATA_POLICY     = MOVE_TO_PRIMARY
+P8_COUNTER_POLICY       = PRIMARY_ONLY
+P8_B_PLACE_REF_POLICY   = DROP_SHRINE_LINK_ONLY
+```
+
+(These supersede the `PENDING_MOTHER_SHIP` fields in §19 — §19 records the
+audit-time packet, §21.2 the adopted result.)
+
+### 21.3 Final identity / data outcomes (intended post-migration)
+
+| Row | Final outcome (applies on deploy, not yet in Production) |
+|---|---|
+| **id 101** | duplicate shadow of canonical **id 22 給田六所神社** → `REMOVE_SHADOW`. Its one audited `ShrineInteractionLog` row (`user_id 1`, `detail_view`, `ctx=map`) → **`MOVE_TO_PRIMARY` id 22** before deletion. |
+| **id 103** | duplicate shadow of canonical **id 21 長太稲荷神社** → `REMOVE_SHADOW`. Its one audited `ShrineInteractionLog` row → **`MOVE_TO_PRIMARY` id 21** before deletion. |
+| **id 104** | duplicate shadow of canonical **id 49 富岡八幡宮** → `REMOVE_SHADOW`. No user-owned rows. Its `place_ref` cache row is orphaned (`DROP_SHADOW_ONLY`), not merged to id 49. |
+| **id 105 `広島市`** | `CONFIRMED_NON_SHRINE_ARTIFACT` (Google-place types `["locality","political"]`, no shrine data) → `REMOVE_ARTIFACT`. **Recommendation impact: NONE** (0 `GoriyakuTag`). PlaceRef policy: **`DROP_SHRINE_LINK_ONLY`** — the `Shrine` row is deleted, the standalone `place_ref` cache row is kept; reverse re-links the exact same `place_ref_id`. |
+| **id 49 富岡八幡宮** | coordinate `UPDATE`: **OLD `35.6733, 139.7967` → NEW `35.6717809, 139.799519`**. Coordinate ownership: **`temples.0099` only**. `temples.0100` (P8-A) treats id 49's coordinate as **READ-only** (a fail-closed PRE, never a write). |
+
+### 21.4 Final migration ownership
+
+| Migration | Track | Owns | Key safety properties (as merged) |
+|---|---|---|---|
+| **`0099_fix_shrine_49_coordinates`** | P8-C | **id 49 coordinate correction only** (`35.6733, 139.7967` → `35.6717809, 139.799519`). | fail-closed exact-old-coordinate PRE; applicability boundary = subject genuinely absent; reverse restores only from the exact new value; `.only()` `location` GEOSException guard. |
+| **`0100_p8a_duplicate_shrine_shadow_cleanup`** | P8-A | duplicate-shadow cleanup **101 → 22, 103 → 21, 104 → 49**; moves the **two** audited `ShrineInteractionLog` rows to their canonical primaries before deletion. | fail-closed applicability boundary — clean no-op **only** when shadows **and** primaries **and** both audited interaction events are all absent (F1); reverse requires the exact audited post-forward state; each audited moved interaction event requires **exactly one global match on its expected primary** (F2); **id 49 coordinate is READ-only** (Design A — `0099` owns it); `place_ref` shadow policy `DROP_SHADOW_ONLY` (unchanged); raw-SQL delete; `Migration.atomic` default. |
+| **`0101_p8b_remove_non_shrine_artifact_id105`** | P8-B | removal of the non-shrine artefact **id 105 only**. | exact identity PRE (`pk`/`kind`/`name_jp`/`address`); exact coordinate PRE (`34.3852894, 132.4553055`); **strict, unconditional PlaceRef type PRE** — `snapshot_json` must be a dict, `types` a list, `"locality"` present, `"place_of_worship"` absent (locality never inferred from name/address/coord/id); relation-zero PRE across every `Shrine`-FK table; **`DROP_SHRINE_LINK_ONLY`** (no `PlaceRef` create/delete/mutate); reversible from a static migration-owned snapshot; fail-closed; narrowest observable applicability boundary. |
+
+Dependency chain (verified on `develop`): `0098 ← 0099 ← 0100 ← 0101`.
+
+### 21.5 Final P8 PR chain (GitHub, fetched this session)
+
+| PR | Title | State | Merge commit | Purpose |
+|---|---|---|---|---|
+| [#2631](https://github.com/etsu33/jinja_app/pull/2631) | docs: P8 identity / coordinate remediation監査 | **MERGED** | `421d9745577c1a3df460e1b3a177c53f79c0a6c5` | the P8 audit / remediation-design document (§1–§20 of this file). |
+| [#2633](https://github.com/etsu33/jinja_app/pull/2633) | fix: 富岡八幡宮の座標を正規位置へ補正 | **MERGED** | `06898a1b0df4dd124fe98f92e2f0520007b15ca2` | **P8-C** — `temples.0099`, id 49 coordinate correction. |
+| [#2635](https://github.com/etsu33/jinja_app/pull/2635) | fix: 重複神社shadow 101・103・104を安全に整理 | **MERGED** | `1fc2eaa920952717777d7ad5b46306423310a989` | **P8-A** — initial `temples.0100`, duplicate-shadow cleanup + interaction-log move. |
+| [#2638](https://github.com/etsu33/jinja_app/pull/2638) | fix: P8-Aの適用境界をfail-closed化 | **MERGED** | `0526adada11d87f43251e38d7f5afb891106f451` | **P8-A F1** — narrowed `0100`'s fresh-lineage applicability boundary to fail-closed (in-place edit; `0100` unapplied in Production). |
+| [#2639](https://github.com/etsu33/jinja_app/pull/2639) | fix: P8-A reverseの監査イベント一意性をfail-closed化 | **MERGED** | `c71db2bd1cfeb0a5eaf4eb0c46cafe04428065f0` | **P8-A F2** — `0100` reverse requires each audited moved interaction event to have exactly one global match on its expected primary. |
+| [#2641](https://github.com/etsu33/jinja_app/pull/2641) | fix: 非神社artifact id105を安全に削除 | **MERGED** | `e5fd3a01b2aad2215488ba943a83cceea28d9aa2` | **P8-B** (+ F1) — `temples.0101`, id 105 artefact removal; F1 made the PlaceRef type PRE strict/unconditional and added an exact-coordinate PRE. |
+
+(Old PR history is not rewritten; this is the audit trail only.)
+
+### 21.6 Canonical denominator
+
+The P8 audit's arithmetic (§13) is unchanged:
+
+```text
+RAW_PRODUCTION_SHRINE_ROWS (audit time)     = 108
+QA_FIXTURE_EXCLUSION (id 102)               = 1
+NON_SHRINE_ARTEFACT (id 105)                = 1
+DUPLICATE_SHADOWS (id 101 / 103 / 104)      = 3
+POST_P8_EXPECTED_CANONICAL_DENOMINATOR      = 103
+```
+
+- **`POST_P8_EXPECTED_CANONICAL_DENOMINATOR = 103`** — the intended count of
+  unique real-shrine identities once P8-A + P8-B are applied. It was already
+  103 as an *identity* count before P8 (the removed rows were never canonical).
+- **Current physical Production state:** `SELECT COUNT(*) FROM temples_shrine`
+  is still **108** (0100/0101 not applied). Do **not** label 103 as the
+  current raw Production row count. After deploy, the raw row count becomes
+  108 − 3 shadows − 1 artefact = **104**, and the QA-name-filtered /
+  canonical-identity denominator becomes **103**.
+
+### 21.7 Recommendation impact
+
+**`P8_RECOMMENDATION_IMPACT = NONE`** for the removed shadow / artefact rows:
+
+- shadows 101 / 103 / 104 carry **no** Recommendation evidence (0
+  `goriyaku_tags`); Recommendation scoring reads only the
+  `goriyaku_tags`-GID intersection.
+- artefact 105 carries **no** `GoriyakuTag` evidence.
+- canonical 21 / 22 / 49 remain untouched (identity, `goriyaku`,
+  `goriyaku_tags`, `ShrineDeity` / `ShrineHistory` / `ShrineKnowledgeSource`).
+- id 49's coordinate correction affects **map / nearest / distance-signal**
+  quality only, **not** Need-scoring semantics (coordinate is not a
+  Need-scoring input).
+
+The Recommendation Engine's behaviour is **not** changed by P8.
+
+### 21.8 Safety contracts P8 leaves behind
+
+1. Identity is **not** joined by Spreadsheet id alone (Prod id 104 = a
+   富岡八幡宮 shadow; Spreadsheet id 104 = an unrelated QA fixture).
+2. Duplicate-shadow cleanup requires an **exact canonical identity PRE** for
+   both the shadow and the primary.
+3. Destructive data migrations are **fail-closed**: unexpected state raises,
+   the whole transaction rolls back, the migration is not recorded applied.
+4. A "clean no-op" boundary must be provable from **observable state** — the
+   entire audited subject genuinely absent — never a bare `if not exists:
+   return`.
+5. Reverse must **not** infer or recreate ambiguous data; it restores only
+   from a static migration-owned snapshot and its own fail-closed PRE.
+6. User-owned data is **explicitly preserved** (`MOVE_TO_PRIMARY`) or
+   **explicitly rejected** (`RAISE`) — never silently cascade-deleted.
+7. Recommendation eligibility and data identity are **separate concerns**:
+   removing a row with no `goriyaku_tags` has no scoring impact.
+8. `PlaceRef` cache identity is **not** automatically `Shrine` identity —
+   deleting a bogus `Shrine` keeps the standalone `PlaceRef`
+   (`DROP_SHRINE_LINK_ONLY`).
+9. Repository merge state and Production migration state are **separate** —
+   "merged" is not "applied".
+10. Coordinate ownership belongs to **one** migration only (`0099` owns id
+    49's coordinate; `0100` reads it, never writes it).
+
+### 21.9 Closeout no-write confirmation
+
+- Production access this session was **read-only** (migration-ledger
+  inspection via the sanctioned bridge; `guard.py`-checked; credential never
+  exposed). No `migrate`, `UPDATE`, `DELETE`, `INSERT`, manual `Shrine` /
+  `PlaceRef` / `django_migrations` edit.
+- **No Spreadsheet access.** P8 identity classification is not reopened.
+- This closeout **modifies no migration** (`0099` / `0100` / `0101`
+  unchanged), **creates no `0102`**, changes **no application code, no test,
+  no seed**. The only change is this `## 21` section appended to
+  `docs/audit/p8-identity-coordinate-remediation.md`.
+- `README_UPDATE = NOT_REQUIRED`, `ARCHITECTURE_UPDATE = NOT_REQUIRED`,
+  `ROADMAP_UPDATE = NOT_REQUIRED` — the repository has no
+  `architecture.md` / `roadmap.md`, and `README.md` / `docs/README.md` carry
+  no P8 or canonical-shrine-count status to go stale.
+- Does **not** start P1. Does **not** deploy migrations.
+
+**Next step:** an authorized Production deploy applies `0095 → … → 0101` in
+order; then verify the Production `django_migrations` ledger, the raw
+`temples_shrine` count (expected 104), the absence of ids 101/103/104/105,
+id 49's coordinate (`35.6717809, 139.799519`), and that the two audited
+`ShrineInteractionLog` rows now sit on ids 22 / 21 — at which point
+`P8_PRODUCTION_STATUS` becomes `FULLY_APPLIED` and `P8_CLOSEOUT_STATUS`
+becomes `COMPLETE`.
