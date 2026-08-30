@@ -26,13 +26,12 @@ echo "=== migration divergence diagnostics (temples 0079-0089) ==="
 {
   echo "RENDER_GIT_COMMIT=${RENDER_GIT_COMMIT:-unset}"
   echo "--- temples/migrations file listing (0079-0089) ---"
-  ls -1 temples/migrations 2>&1 | grep -E '^00(79|8[0-9])_'
+  ls -1 temples/migrations 2>&1 | grep -E '^00(79|8[0-9])_' || true
   echo "--- showmigrations temples (0079-0089) ---"
-  showmigrations_output="$(python manage.py showmigrations temples 2>&1)"
-  showmigrations_exit=$?
-  if [ "${showmigrations_exit}" -eq 0 ]; then
-    echo "${showmigrations_output}" | grep -E '00(79|8[0-9])_' || echo "showmigrations temples succeeded but found no 0079-0089 lines"
+  if showmigrations_output=$(python manage.py showmigrations temples 2>&1); then
+    echo "${showmigrations_output}"
   else
+    showmigrations_exit=$?
     echo "showmigrations temples FAILED (exit=${showmigrations_exit}); full stdout/stderr below:"
     echo "${showmigrations_output}"
   fi
