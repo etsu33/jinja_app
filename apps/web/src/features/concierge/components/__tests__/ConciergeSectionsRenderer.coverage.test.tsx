@@ -182,13 +182,13 @@ describe("ConciergeSectionsRenderer - 既存経路のCoverage補完", () => {
     expect(analyticsMocks.trackCardEvent).toHaveBeenCalledWith(
       expect.objectContaining({ event: "premium_preview_click", cardId: "premium_preview" }),
     );
-    // CTA-A copy responsibility is Meaning Depth (deep reason / personal
-    // meaning / action meaning), not continuity or persistence.
-    expect(
-      screen.getByText(
-        "Premiumでは、この神社が選ばれた深い理由と、あなたにとっての意味・参拝で意識することまで読めます。",
-      ),
-    ).toBeInTheDocument();
+    // PR-G2 follow-up: the single seam carries the allowed per-card teasers
+    // (shrine_meaning / action_meaning) -- the same approved strings the
+    // standalone teaser sections used before -- so a "teaser" visibility maps
+    // to real teaser content. CTA-A responsibility stays Meaning Depth.
+    const seam = screen.getByTestId("recommendation-premium-preview");
+    expect(seam).toHaveTextContent("この神社が選ばれた深い理由は、Premiumで読めます。");
+    expect(seam).toHaveTextContent("参拝で意識することの意味づけは、Premiumで読めます。");
   });
 
   it("Heroのtrust_metadataと詳細リンクのクリックが機能する", () => {

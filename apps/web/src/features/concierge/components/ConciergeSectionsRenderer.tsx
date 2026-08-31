@@ -17,7 +17,7 @@ import ShrineCardCompact from "@/components/shrines/ShrineCardCompact";
 
 import { buildLoginHref } from "@/lib/nav/login";
 import { resolveAccessLevel } from "@/lib/premium/accessLevel";
-import { getVisibilityForCard } from "@/lib/premium/cardVisibility";
+import { getVisibilityForCard, type CardVisibilityState } from "@/lib/premium/cardVisibility";
 import ConciergeConsultationSummary from "@/features/concierge/components/ConciergeConsultationSummary";
 import DirectionReferenceCard from "@/features/concierge/components/DirectionReferenceCard";
 
@@ -123,10 +123,17 @@ function AstroCard(props: { sunSign?: string; element?: string; reason?: string 
  * Free -> Premium seam in the Concierge Result. One restrained boundary into
  * the deeper meaning layers, carrying CTA-A (Meaning Depth) exactly once.
  *
- * - Guest / Free see this instead of the gated shrine_meaning / action_meaning
- *   bodies (cardVisibility "teaser").
- * - Premium never renders it (premium_preview = "hidden") and reads the full
- *   sections directly -- no upsell surface for someone who already has depth.
+ * - Guest / Free see this instead of standalone shrine_meaning / action_meaning
+ *   sections. The seam itself carries the *allowed teaser* for each card whose
+ *   visibility is "teaser" -- so a "teaser" in cardVisibility.ts always
+ *   corresponds to real teaser content the user can see, matching the
+ *   shrine_meaning / action_meaning card_teaser_view impression events (which
+ *   still fire from the effect below, unchanged). The full bodies are never
+ *   rendered for "teaser" and are never masked -- they exist only under
+ *   "visible".
+ * - Premium never renders the seam (premium_preview = "hidden") and reads the
+ *   full sections directly -- no upsell surface for someone who already has
+ *   depth.
  *
  * Restrained by design: a soft `--kt-color-premium-surface` tint, no border,
  * no shadow, no PREMIUM badge / lock icon; the CTA is a text link, never a
@@ -135,7 +142,8 @@ function AstroCard(props: { sunSign?: string; element?: string; reason?: string 
  * keep a visually distinct treatment.
  *
  * Route, analytics event + payload, and the approved CTA labels are unchanged
- * from the previous ConciergePremiumEntryCard.
+ * from the previous ConciergePremiumEntryCard; the per-card teaser sentences
+ * are the same approved strings the standalone teaser sections used before G2.
  */
 function PremiumSeam(props: {
   shrineId?: number | null;
@@ -143,6 +151,8 @@ function PremiumSeam(props: {
   isGuestUser?: boolean;
   accessLevel: "anonymous" | "free" | "premium";
   analyticsContext?: AnalyticsContext;
+  shrineMeaningVisibility: CardVisibilityState;
+  actionMeaningVisibility: CardVisibilityState;
 }) {
   const href = props.isGuestUser ? buildLoginHref("/billing/upgrade") : "/billing/upgrade";
   const ctaLabel = props.isGuestUser ? "ログインして意味を深掘りする" : "この神社を選ぶ意味を深掘りする";
@@ -155,14 +165,16 @@ function PremiumSeam(props: {
         <p className="text-[11px] font-semibold tracking-[0.14em] text-[var(--kt-color-premium-accent)]">
           ここから、より深い意味へ
         </p>
-        <p className="text-sm leading-6 text-[var(--kt-color-text-secondary)]">
-          {props.isGuestUser
-            ? "この神社が選ばれた深い理由と、あなたにとっての意味は、Premiumで読めます。"
-            : "Premiumでは、この神社が選ばれた深い理由と、あなたにとっての意味・参拝で意識することまで読めます。"}
-        </p>
-        <p className="text-xs leading-6 text-[var(--kt-color-text-muted)]">
-          相談内容に基づく、選定理由の掘り下げ・個人的な意味・行動の意味を表示します。
-        </p>
+        {props.shrineMeaningVisibility === "teaser" ? (
+          <p className="text-sm leading-6 text-[var(--kt-color-text-secondary)]">
+            この神社が選ばれた深い理由は、Premiumで読めます。
+          </p>
+        ) : null}
+        {props.actionMeaningVisibility === "teaser" ? (
+          <p className="text-sm leading-6 text-[var(--kt-color-text-secondary)]">
+            参拝で意識することの意味づけは、Premiumで読めます。
+          </p>
+        ) : null}
         {/* Text link, not a filled button: Hero's "神社の詳細を見る" must stay the
             only strong CTA (recommendation-result-information-architecture.md §6/§11). */}
         <a
@@ -1099,6 +1111,8 @@ export default function ConciergeSectionsRenderer({
                                 isGuestUser={isGuestUser}
                                 accessLevel={accessLevel}
                                 analyticsContext={analyticsContext}
+                                shrineMeaningVisibility={shrineMeaningVisibility}
+                                actionMeaningVisibility={actionMeaningVisibility}
                               />
                             ) : null}
 
