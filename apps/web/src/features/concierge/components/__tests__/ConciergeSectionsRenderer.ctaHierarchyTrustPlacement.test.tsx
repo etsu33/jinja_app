@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // docs/product/recommendation-result-information-architecture.md §6, §11, §13, §15 PR3:
@@ -278,5 +278,145 @@ describe("Recommendation Result CTA Hierarchy & Trust Placement", () => {
       expect(section!.className).not.toMatch(/\bborder\b/);
       expect(section!.className).not.toMatch(/shadow-\[/);
     }
+  });
+
+  // ---- PR-G2: Premium seam + CTA architecture -----------------------------
+  // docs/design/premium-meaning-ui-direction.md §7 / §10.
+
+  it("G2-1. Free: 単一の Premium seam のみ。CTA-A(意味を深掘り)は1回だけ、filled button ではない", () => {
+    authMock.useAuth.mockReturnValue({ isLoggedIn: true, loading: false });
+    const payload = buildTestPayload([heroRec({ breakdown: { matched_need_tags: ["career"] } })]);
+    render(<ConciergeSectionsRenderer payload={payload} threadId={500} isPremiumActive={false} />);
+
+    // seam は1つだけ
+    expect(screen.getAllByTestId("recommendation-premium-preview")).toHaveLength(1);
+
+    // CTA-A は1つだけ
+    const ctaA = screen.getAllByRole("link", { name: "この神社を選ぶ意味を深掘りする" });
+    expect(ctaA).toHaveLength(1);
+
+    // 唯一の strong CTA は Hero の Primary CTA のまま
+    const strongCtas = strongCtaElements();
+    expect(strongCtas).toHaveLength(1);
+    expect(strongCtas[0]).toHaveTextContent("神社の詳細を見る");
+    expect(ctaA[0].className).not.toContain(PRIMARY_CTA_CLASS_FRAGMENT);
+
+    // seam は amber literal を持たず Premium Token を使う(dark 対応)
+    const seam = screen.getByTestId("recommendation-premium-preview");
+    expect(seam.className).not.toMatch(/amber-\d/);
+    expect(seam.className).toContain("bg-[var(--kt-color-premium-surface)]");
+  });
+
+  it("G2-2. Free: 許可された shrine_meaning / action_meaning の teaser が単一 seam の中に実際に表示される", () => {
+    authMock.useAuth.mockReturnValue({ isLoggedIn: true, loading: false });
+    const payload = buildTestPayload([heroRec({ breakdown: { matched_need_tags: ["career"] } })]);
+    render(<ConciergeSectionsRenderer payload={payload} threadId={500} isPremiumActive={false} />);
+
+    const seam = screen.getByTestId("recommendation-premium-preview");
+    // teaser が実際に見える(cardVisibility "teaser" と一致 = analytics との整合)
+    expect(within(seam).getByText("この神社が選ばれた深い理由は、Premiumで読めます。")).toBeInTheDocument();
+    expect(within(seam).getByText("参拝で意識することの意味づけは、Premiumで読めます。")).toBeInTheDocument();
+    // teaser は seam の中だけ(別カード化していない)
+    expect(screen.getAllByText("この神社が選ばれた深い理由は、Premiumで読めます。")).toHaveLength(1);
+    expect(screen.getAllByText("参拝で意識することの意味づけは、Premiumで読めます。")).toHaveLength(1);
+  });
+
+  it("G2-2b. Free: 深い意味セクションの見出し / 本文は独立して描画されない(full body 非表示・非マスク)", () => {
+    authMock.useAuth.mockReturnValue({ isLoggedIn: true, loading: false });
+    const payload = buildTestPayload([heroRec({ breakdown: { matched_need_tags: ["career"] } })]);
+    render(<ConciergeSectionsRenderer payload={payload} threadId={500} isPremiumActive={false} />);
+
+    // 単独の <h2> Meaning セクション(= Premium full 用)は無い
+    const h2s = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
+    expect(h2s).not.toContain("相談から見た意味（KAMI MUSUBIの解釈）");
+    expect(h2s).not.toContain("今の自分への問い");
+  });
+
+  it("G2-3. Premium: seam は出ず、深い意味セクションが本文付きで描画される", () => {
+    authMock.useAuth.mockReturnValue({ isLoggedIn: true, loading: false });
+    const payload = buildTestPayload([heroRec({ breakdown: { matched_need_tags: ["career"] } })]);
+    render(<ConciergeSectionsRenderer payload={payload} threadId={500} isPremiumActive={true} />);
+
+    expect(screen.queryByTestId("recommendation-premium-preview")).not.toBeInTheDocument();
+    expect(screen.getByText("相談から見た意味（KAMI MUSUBIの解釈）")).toBeInTheDocument();
+    expect(screen.getByText("今の自分への問い")).toBeInTheDocument();
+  });
+
+  it("G2-4. Guest: seam は login 経由の upgrade へ向かい、CTA-A ラベルと analytics は不変", () => {
+    authMock.useAuth.mockReturnValue({ isLoggedIn: false, loading: false });
+    const payload = buildTestPayload([heroRec()]);
+    render(<ConciergeSectionsRenderer payload={payload} threadId={500} isPremiumActive={false} />);
+
+    const cta = screen.getByRole("link", { name: "ログインして意味を深掘りする" });
+    const href = cta.getAttribute("href") ?? "";
+    // guest -> login flow, returnTo == the upgrade destination (unchanged from ConciergePremiumEntryCard)
+    expect(href).toContain("/auth/login");
+    expect(decodeURIComponent(href)).toContain("/billing/upgrade");
+
+    fireEvent.click(cta);
+    expect(analyticsMocks.trackCardEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "premium_preview_click",
+        cardId: "premium_preview",
+        visibility: "teaser",
+        ctaType: "continue_with_premium",
+        accessLevel: "anonymous",
+      }),
+    );
+  });
+
+  it("G2-5. seam は Hero / FREE reason 層のあとに現れる(いきなり Premium 誘導しない)", () => {
+    authMock.useAuth.mockReturnValue({ isLoggedIn: true, loading: false });
+    const payload = buildTestPayload([heroRec({ breakdown: { matched_need_tags: ["career"] } })]);
+    render(<ConciergeSectionsRenderer payload={payload} threadId={500} isPremiumActive={false} />);
+
+    const primaryCta = strongCtaElements()[0];
+    const runtimeMatch = screen.getByTestId("recommendation-runtime-match");
+    const seam = screen.getByTestId("recommendation-premium-preview");
+
+    expect(primaryCta.compareDocumentPosition(seam) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(runtimeMatch.compareDocumentPosition(seam) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("G2-6. Free: shrine_meaning / action_meaning の teaser impression 契約(card_teaser_view)は不変で、表示中の teaser と一致する", () => {
+    authMock.useAuth.mockReturnValue({ isLoggedIn: true, loading: false });
+    const payload = buildTestPayload([heroRec({ shrine_id: 42, breakdown: { matched_need_tags: ["career"] } })]);
+    render(<ConciergeSectionsRenderer payload={payload} threadId={500} isPremiumActive={false} />);
+
+    for (const cardId of ["shrine_meaning", "action_meaning"] as const) {
+      expect(analyticsMocks.trackCardEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: "card_teaser_view",
+          cardId,
+          source: "concierge_result",
+          accessLevel: "free",
+          visibility: "teaser",
+          shrineId: 42,
+        }),
+      );
+    }
+
+    // その teaser 内容が実際に seam に描画されている(event と表示の整合)
+    const seam = screen.getByTestId("recommendation-premium-preview");
+    expect(seam).toHaveTextContent("この神社が選ばれた深い理由は、Premiumで読めます。");
+    expect(seam).toHaveTextContent("参拝で意識することの意味づけは、Premiumで読めます。");
+  });
+
+  it("G2-7. Free: Premium teaser の surface は seam 1つだけ(amber カードの再導入なし)", () => {
+    authMock.useAuth.mockReturnValue({ isLoggedIn: true, loading: false });
+    const payload = buildTestPayload([
+      heroRec({ trust_metadata: trustFixture, history_theme: "再出発", breakdown: { matched_need_tags: ["career"] } }),
+    ]);
+    const { container } = render(
+      <ConciergeSectionsRenderer payload={payload} threadId={500} isPremiumActive={false} />,
+    );
+
+    // premium-surface tint を持つ要素は seam ただ1つ
+    const premiumSurfaces = container.querySelectorAll('[class*="bg-[var(--kt-color-premium-surface)]"]');
+    expect(premiumSurfaces).toHaveLength(1);
+    expect(premiumSurfaces[0]).toBe(screen.getByTestId("recommendation-premium-preview"));
+
+    // amber literal のカードはどこにも無い
+    expect(container.querySelector('[class*="amber-"]')).toBeNull();
   });
 });

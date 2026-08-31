@@ -17,7 +17,7 @@ import ShrineCardCompact from "@/components/shrines/ShrineCardCompact";
 
 import { buildLoginHref } from "@/lib/nav/login";
 import { resolveAccessLevel } from "@/lib/premium/accessLevel";
-import { getVisibilityForCard } from "@/lib/premium/cardVisibility";
+import { getVisibilityForCard, type CardVisibilityState } from "@/lib/premium/cardVisibility";
 import ConciergeConsultationSummary from "@/features/concierge/components/ConciergeConsultationSummary";
 import DirectionReferenceCard from "@/features/concierge/components/DirectionReferenceCard";
 
@@ -56,8 +56,6 @@ const conciergeSoftCardClass =
 // 本カードの意味は「Notice(警告・注意喚起)」でありPremiumではないため、
 // 意味の異なるTokenを流用しないよう非適用とする(radius/shadowのみ置換)。
 const conciergeNoticeCardClass = "rounded-[var(--kt-radius-card)] border border-amber-200 bg-amber-50 shadow-[var(--kt-shadow-medium)] p-4";
-const conciergePremiumCardClass =
-  "rounded-[var(--kt-radius-card)] border border-[var(--kt-color-premium-border)] bg-amber-50/80 shadow-[var(--kt-shadow-medium)] p-4";
 
 // PR-G1 (docs/design/premium-meaning-ui-direction.md §3.2 / §7, Direction C):
 // the recommendation reading flow is carried by typography + spacing, not by
@@ -120,35 +118,68 @@ function AstroCard(props: { sunSign?: string; element?: string; reason?: string 
   );
 }
 
-function ConciergePremiumEntryCard(props: {
+/**
+ * PR-G2 (docs/design/premium-meaning-ui-direction.md §7 / §10): the single
+ * Free -> Premium seam in the Concierge Result. One restrained boundary into
+ * the deeper meaning layers, carrying CTA-A (Meaning Depth) exactly once.
+ *
+ * - Guest / Free see this instead of standalone shrine_meaning / action_meaning
+ *   sections. The seam itself carries the *allowed teaser* for each card whose
+ *   visibility is "teaser" -- so a "teaser" in cardVisibility.ts always
+ *   corresponds to real teaser content the user can see, matching the
+ *   shrine_meaning / action_meaning card_teaser_view impression events (which
+ *   still fire from the effect below, unchanged). The full bodies are never
+ *   rendered for "teaser" and are never masked -- they exist only under
+ *   "visible".
+ * - Premium never renders the seam (premium_preview = "hidden") and reads the
+ *   full sections directly -- no upsell surface for someone who already has
+ *   depth.
+ *
+ * Restrained by design: a soft `--kt-color-premium-surface` tint, no border,
+ * no shadow, no PREMIUM badge / lock icon; the CTA is a text link, never a
+ * filled button, so the Hero's "神社の詳細を見る" stays the only strong CTA.
+ * CTA-B (continuity, PremiumStateDeltaCard) and CTA-C (quota, isUiPaywall) each
+ * keep a visually distinct treatment.
+ *
+ * Route, analytics event + payload, and the approved CTA labels are unchanged
+ * from the previous ConciergePremiumEntryCard; the per-card teaser sentences
+ * are the same approved strings the standalone teaser sections used before G2.
+ */
+function PremiumSeam(props: {
   shrineId?: number | null;
   tid?: string | null;
   isGuestUser?: boolean;
   accessLevel: "anonymous" | "free" | "premium";
   analyticsContext?: AnalyticsContext;
+  shrineMeaningVisibility: CardVisibilityState;
+  actionMeaningVisibility: CardVisibilityState;
 }) {
   const href = props.isGuestUser ? buildLoginHref("/billing/upgrade") : "/billing/upgrade";
-  // CTA-A responsibility = Meaning Depth. This card sells the deep
-  // recommendation reason / personal meaning / action meaning -- NOT continuity
-  // ("前回との違い" / "変化を見返す" belongs to CTA-B / state-delta cards) and
-  // NOT quota ("あと N 回" belongs to CTA-C). Keep those copy responsibilities
-  // separate even though all three land on the same KAMI MUSUBI Premium.
   const ctaLabel = props.isGuestUser ? "ログインして意味を深掘りする" : "この神社を選ぶ意味を深掘りする";
   return (
-    <section className={conciergePremiumCardClass} data-testid="recommendation-premium-preview">
+    <section
+      className="rounded-[var(--kt-radius-panel)] bg-[var(--kt-color-premium-surface)] px-4 py-4"
+      data-testid="recommendation-premium-preview"
+    >
       <div className="space-y-2">
-        {/* font-medium (not font-semibold): Hero's Primary CTA ("神社の詳細を見る") must stay
-            the only strong visual claim on the screen (docs/product/
-            recommendation-result-information-architecture.md §6/§11/§15 PR3, Finding 7). */}
-        <p className="text-sm font-medium leading-6 text-amber-950">
-          {props.isGuestUser
-            ? "この神社が選ばれた深い理由と、あなたにとっての意味は、Premiumで読めます。"
-            : "Premiumでは、この神社が選ばれた深い理由と、あなたにとっての意味・参拝で意識することまで読めます。"}
+        <p className="text-[11px] font-semibold tracking-[0.14em] text-[var(--kt-color-premium-accent)]">
+          ここから、より深い意味へ
         </p>
-        <p className="text-xs leading-6 text-slate-600">相談内容に基づく、選定理由の掘り下げ・個人的な意味・行動の意味を表示します。</p>
+        {props.shrineMeaningVisibility === "teaser" ? (
+          <p className="text-sm leading-6 text-[var(--kt-color-text-secondary)]">
+            この神社が選ばれた深い理由は、Premiumで読めます。
+          </p>
+        ) : null}
+        {props.actionMeaningVisibility === "teaser" ? (
+          <p className="text-sm leading-6 text-[var(--kt-color-text-secondary)]">
+            参拝で意識することの意味づけは、Premiumで読めます。
+          </p>
+        ) : null}
+        {/* Text link, not a filled button: Hero's "神社の詳細を見る" must stay the
+            only strong CTA (recommendation-result-information-architecture.md §6/§11). */}
         <a
           href={href}
-          className="inline-flex items-center rounded-[var(--kt-radius-panel)] bg-[var(--kt-color-premium-accent)] px-3 py-2 text-xs font-semibold text-[var(--kt-color-text-inverse)] hover:bg-amber-800"
+          className="inline-flex items-center text-sm font-semibold text-[var(--kt-color-premium-accent)] underline underline-offset-2 hover:opacity-80"
           onClick={() => {
             trackCardEvent({
               event: "premium_preview_click",
@@ -1066,22 +1097,39 @@ export default function ConciergeSectionsRenderer({
                               </div>
                             ) : null}
 
-                            {shrineMeaningVisibility !== "hidden" ? (
+                            {/* Free -> Premium seam (PR-G2): one restrained boundary, placed
+                                where the FREE reason layers end and the deeper meaning begins.
+                                Guest / Free see the seam here instead of the gated
+                                shrine_meaning / action_meaning bodies; Premium skips it. The
+                                shrine_meaning / action_meaning card_view / card_teaser_view
+                                analytics still fire from the effect above (cardVisibility
+                                routes), independent of this JSX. */}
+                            {premiumPreviewVisibility !== "hidden" ? (
+                              <PremiumSeam
+                                shrineId={heroItem.shrineId}
+                                tid={tid}
+                                isGuestUser={isGuestUser}
+                                accessLevel={accessLevel}
+                                analyticsContext={analyticsContext}
+                                shrineMeaningVisibility={shrineMeaningVisibility}
+                                actionMeaningVisibility={actionMeaningVisibility}
+                              />
+                            ) : null}
+
+                            {/* Full deep-meaning bodies: Premium only ("visible"). "teaser"
+                                (Guest / Free) renders nothing here -- the content is not in
+                                the DOM at all (no masked / withheld-mid-sentence content),
+                                the seam above represents it. */}
+                            {shrineMeaningVisibility === "visible" ? (
                               <DetailSection variant="plain" title="相談から見た意味（KAMI MUSUBIの解釈）">
-                                <p className={narrativeBodyClass}>
-                                  {shrineMeaningVisibility === "teaser"
-                                    ? "この神社が選ばれた深い理由は、Premiumで読めます。"
-                                    : reasonVm.detail.shrineMeaning}
-                                </p>
+                                <p className={narrativeBodyClass}>{reasonVm.detail.shrineMeaning}</p>
                               </DetailSection>
                             ) : null}
 
-                            {actionMeaningVisibility !== "hidden" ? (
+                            {actionMeaningVisibility === "visible" ? (
                               <DetailSection variant="plain" title="今の自分への問い">
                                 <p className={narrativeBodyClass}>
-                                  {actionMeaningVisibility === "teaser"
-                                    ? "参拝で意識することの意味づけは、Premiumで読めます。"
-                                    : (reasonVm.detail.actionMeaning ?? reasonVm.detail.shrineMeaning)}
+                                  {reasonVm.detail.actionMeaning ?? reasonVm.detail.shrineMeaning}
                                 </p>
                               </DetailSection>
                             ) : null}
@@ -1095,16 +1143,6 @@ export default function ConciergeSectionsRenderer({
                               recommendationInstanceId={heroItem.recommendationInstanceId ?? null}
                               analyticsProvenance={heroItem.analyticsProvenance}
                             />
-
-                            {premiumPreviewVisibility !== "hidden" ? (
-                              <ConciergePremiumEntryCard
-                                shrineId={heroItem.shrineId}
-                                tid={tid}
-                                isGuestUser={isGuestUser}
-                                accessLevel={accessLevel}
-                                analyticsContext={analyticsContext}
-                              />
-                            ) : null}
 
                             {/* Layer 8 (evidence): shrine-side facts, de-emphasised into a
                                 recessed surface. Previously a conciergeSoftCardClass box
