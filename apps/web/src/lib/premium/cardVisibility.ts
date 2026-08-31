@@ -76,9 +76,13 @@ export const CARD_VISIBILITY_POLICIES: CardVisibilityPolicy[] = [
     premium: "hidden",
   },
   {
+    // Consultation Summary is FREE for everyone and always shown in full --
+    // Guest / Free / Premium all "visible" (KAMI MUSUBI Premium boundary:
+    // Consultation Summary is never a paywall surface, login only gates
+    // persistence / account, never the summary itself).
     cardId: "consultation_summary",
-    anonymous: "hidden",
-    free: "partial",
+    anonymous: "visible",
+    free: "visible",
     premium: "visible",
   },
   {
@@ -94,14 +98,19 @@ export const CARD_VISIBILITY_POLICIES: CardVisibilityPolicy[] = [
     premium: "visible",
   },
   {
+    // Deep Recommendation Reason / Personal Meaning -- PREMIUM. Guest and Free
+    // both get a teaser (the section shell is shown, the meaning content is
+    // gated). Free is a teaser, never a "partial" -- deep sections are not
+    // truncated for Free, they are teased.
     cardId: "shrine_meaning",
-    anonymous: "hidden",
-    free: "partial",
+    anonymous: "teaser",
+    free: "teaser",
     premium: "visible",
   },
   {
+    // Action Meaning -- PREMIUM. Guest and Free both get a teaser.
     cardId: "action_meaning",
-    anonymous: "hidden",
+    anonymous: "teaser",
     free: "teaser",
     premium: "visible",
   },
@@ -154,14 +163,18 @@ export const CARD_VISIBILITY_POLICIES: CardVisibilityPolicy[] = [
     premium: "visible",
   },
   {
+    // Basic Reason -- FREE for everyone, shown in full. Not a deep section, so
+    // it is "visible" for Guest / Free, never "partial" (the deep reason lives
+    // in personal_meaning / shrine_meaning below and is teased instead).
     cardId: "context_reason",
-    anonymous: "hidden",
-    free: "partial",
+    anonymous: "visible",
+    free: "visible",
     premium: "visible",
   },
   {
+    // Personal Meaning -- PREMIUM. Guest and Free both get a teaser.
     cardId: "personal_meaning",
-    anonymous: "hidden",
+    anonymous: "teaser",
     free: "teaser",
     premium: "visible",
   },
@@ -172,8 +185,10 @@ export const CARD_VISIBILITY_POLICIES: CardVisibilityPolicy[] = [
     premium: "visible",
   },
   {
+    // Recommendation Evidence / rank reason -- FREE. The recommendation itself
+    // is never paywalled, so its evidence is visible to Guest as well.
     cardId: "recommendation_meta",
-    anonymous: "hidden",
+    anonymous: "visible",
     free: "visible",
     premium: "visible",
   },
