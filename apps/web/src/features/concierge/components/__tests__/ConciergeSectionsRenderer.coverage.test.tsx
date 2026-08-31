@@ -176,13 +176,19 @@ describe("ConciergeSectionsRenderer - 既存経路のCoverage補完", () => {
     const payload = buildTestPayload(u);
     render(<ConciergeSectionsRenderer payload={payload} threadId={1} isPremiumActive={false} />);
 
-    const cta = screen.getByRole("link", { name: "変化を見返せるようにする" });
+    const cta = screen.getByRole("link", { name: "この神社を選ぶ意味を深掘りする" });
     fireEvent.click(cta);
 
     expect(analyticsMocks.trackCardEvent).toHaveBeenCalledWith(
       expect.objectContaining({ event: "premium_preview_click", cardId: "premium_preview" }),
     );
-    expect(screen.getByText("この結果を保存すると、今の状態や選んだ理由をあとから見返せます。")).toBeInTheDocument();
+    // CTA-A copy responsibility is Meaning Depth (deep reason / personal
+    // meaning / action meaning), not continuity or persistence.
+    expect(
+      screen.getByText(
+        "Premiumでは、この神社が選ばれた深い理由と、あなたにとっての意味・参拝で意識することまで読めます。",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("Heroのtrust_metadataと詳細リンクのクリックが機能する", () => {
