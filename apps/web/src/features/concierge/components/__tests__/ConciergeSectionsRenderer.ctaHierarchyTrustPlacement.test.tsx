@@ -160,7 +160,12 @@ describe("Recommendation Result CTA Hierarchy & Trust Placement", () => {
     expect(screen.queryByTestId("recommendation-premium-preview")).not.toBeInTheDocument();
   });
 
-  it("4. trustMetadataありでlayoutが成立し、trust直後にhistoryThemeが隣接表示される", () => {
+  it("4. trustMetadataはEvidenceとして推薦理由ナラティブ(historyTheme等)より後段に置かれる", () => {
+    // PR-G1 (docs/design/premium-meaning-ui-direction.md §7/§9, Direction C):
+    // trustMetadata は Shrine Fact = Evidence(Layer 8)であり、reason/meaning の
+    // ナラティブ(historyTheme を含む)より後に、控えめな recessed surface で表示する。
+    // 以前の §13「trust 直後に historyTheme」グルーピングはこの階層設計で置き換わった。
+    // trust が Conclusion / Primary Reason に混ざらないことは test 5 で引き続き検証する。
     const payload = buildTestPayload([heroRec({ trust_metadata: trustFixture, history_theme: "再出発" })]);
     render(<ConciergeSectionsRenderer payload={payload} threadId={500} isPremiumActive={false} />);
 
@@ -170,8 +175,8 @@ describe("Recommendation Result CTA Hierarchy & Trust Placement", () => {
     expect(trust).toHaveTextContent("古くから信仰を集める神社です。");
     expect(history).toBeInTheDocument();
 
-    // DOM順序: trustMetadataがhistoryThemeより先
-    const position = trust.compareDocumentPosition(history);
+    // DOM順序: historyTheme(ナラティブ)が trustMetadata(Evidence)より先
+    const position = history.compareDocumentPosition(trust);
     expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
@@ -233,5 +238,45 @@ describe("Recommendation Result CTA Hierarchy & Trust Placement", () => {
     expect(analyticsMocks.trackCardEvent).toHaveBeenCalledWith(
       expect.objectContaining({ event: "premium_preview_click", cardId: "premium_preview", shrineId: 1 }),
     );
+  });
+
+  // ---- PR-G1: Concierge Result information hierarchy ------------------------
+  // docs/design/premium-meaning-ui-direction.md §7 (Direction C).
+
+  it("7. Consultation Context(今回の相談の整理)が Shrine Meaning より前に読める", () => {
+    authMock.useAuth.mockReturnValue({ isLoggedIn: true, loading: false });
+    const payload = buildTestPayload([heroRec({ breakdown: { matched_need_tags: ["career"] } })]);
+    // premium: shrine_meaning は teaser ではなく本文が出る = 両方が DOM に存在する
+    render(<ConciergeSectionsRenderer payload={payload} threadId={500} isPremiumActive={true} />);
+
+    const consultation = screen.getByText("今回の相談の整理");
+    const shrineMeaning = screen.getByText("相談から見た意味（KAMI MUSUBIの解釈）");
+
+    const position = consultation.compareDocumentPosition(shrineMeaning);
+    expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("8. 推薦理由ナラティブの各セクション見出しが <h2> で、bordered card ではない", () => {
+    authMock.useAuth.mockReturnValue({ isLoggedIn: true, loading: false });
+    const payload = buildTestPayload([
+      heroRec({ trust_metadata: trustFixture, history_theme: "再出発", breakdown: { matched_need_tags: ["career"] } }),
+    ]);
+    render(<ConciergeSectionsRenderer payload={payload} threadId={500} isPremiumActive={true} />);
+
+    for (const label of [
+      "今回の相談との接点",
+      "この神社をどう捉えるか（KAMI MUSUBIの解釈）",
+      "相談から見た意味（KAMI MUSUBIの解釈）",
+      "今の自分への問い",
+    ]) {
+      const heading = screen.getByText(label);
+      expect(heading.tagName).toBe("H2");
+
+      // 見出しを含むセクションが soft card(border + shadow + surface)化していない
+      const section = heading.closest("section");
+      expect(section).not.toBeNull();
+      expect(section!.className).not.toMatch(/\bborder\b/);
+      expect(section!.className).not.toMatch(/shadow-\[/);
+    }
   });
 });

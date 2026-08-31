@@ -59,6 +59,15 @@ const conciergeNoticeCardClass = "rounded-[var(--kt-radius-card)] border border-
 const conciergePremiumCardClass =
   "rounded-[var(--kt-radius-card)] border border-[var(--kt-color-premium-border)] bg-amber-50/80 shadow-[var(--kt-shadow-medium)] p-4";
 
+// PR-G1 (docs/design/premium-meaning-ui-direction.md §3.2 / §7, Direction C):
+// the recommendation reading flow is carried by typography + spacing, not by
+// stacked bordered cards (audit #2656 A-C1/A-C4/A-C5). Narrative section
+// headings use `<DetailSection variant="plain">` (renders an <h2> at
+// `text-base font-semibold text-[--kt-color-text-primary]`); section bodies use
+// this one combo. `text-[15px]` is not a new value -- it already matches
+// ShrineDetailHeroHeader's body size in the codebase.
+const narrativeBodyClass = "text-[15px] leading-7 text-[var(--kt-color-text-primary)]";
+
 /**
  * Conciergeではfavorite操作を提供しない。
  *
@@ -963,145 +972,118 @@ export default function ConciergeSectionsRenderer({
                         });
 
                         return (
-                          <div key={`rec-${i}-hero-${heroItem.shrineId}`} className="space-y-2">
-                            <ConciergeTopRecommendationHero
-                              name={heroItem.title}
-                              href={withDirectionRouteContext(heroItem.detailHref, heroItem.directionReference, "hero")}
-                              address={null}
-                              topReasonLabel={reasonVm.hero.topReasonLabel ?? null}
-                              eyebrowLabel={reasonVm.hero.eyebrowLabel ?? null}
-                              conclusionLines={conclusionLines}
-                              explanationOnlyFactText={heroReasonV4.explanationOnlyFactText}
-                              actionReason={heroReasonV4.actionText}
-                              actionSuggestionV4Preview={(heroItem as any).actionSuggestionV4Preview ?? null}
-                              analyticsSource="concierge_result"
-                              threadId={tid ?? null}
-                              resultSetId={resultSetId}
-                              shrineId={heroItem.shrineId}
-                              recommendationRank={1}
-                              historyTheme={historyTheme ?? analyticsContext?.historyTheme ?? null}
-                              routeLabel="神社の詳細を見る"
-                              onDetailClick={() =>
-                                { if (heroItem.directionReference?.matched) trackWebDirection("direction_match_detail_opened", { matched: true, recommendation_rank: 1 }); trackSearchEvent("shrine_detail_transition", {
-                                  source: "concierge_result",
-                                  threadId: tid ?? undefined,
-                                  resultSetId,
-                                  position: "hero_primary",
-                                  recommendationRank: 1,
-                                  shrineId: heroItem.shrineId,
-                                  mode: analyticsContext?.mode ?? normalizedMode,
-                                  flow: analyticsContext?.flow,
-                                  hasBirthdate: analyticsContext?.hasBirthdate,
-                                  recommendationCount: analyticsContext?.recommendationCount,
-                                  historyTheme: historyTheme ?? analyticsContext?.historyTheme,
-                                  ...consultationAxisAnalytics(heroItem.consultationAxis ?? analyticsContext?.consultationAxis),
-                                  firstClick: resolveFirstResultClick(resultSetId),
-                                  recommendationInstanceId: heroItem.recommendationInstanceId ?? null,
-                                  ...(heroItem.analyticsProvenance
-                                    ? recommendationAnalyticsProperties(heroItem.analyticsProvenance)
-                                    : {}),
-                                }); }
-                              }
-                            />
-                            <DirectionReferenceCard reference={reasonDisplay.directionReference} recommendationKey={heroItem.shrineId} rank={1} />
+                          /* PR-G1 (docs/design/premium-meaning-ui-direction.md §7, Direction C):
+                             the recommendation now reads as one vertical narrative --
+                             Recommended shrine -> the consultation it answers -> why this
+                             shrine / how it connects -> meaning -> action -> (evidence).
+                             The reason/meaning layers are borderless <h2> sections separated
+                             by whitespace (space-y-6 = --kt-space-section-y), not repeated
+                             bordered cards (audit #2656 A-C1/A-C2/A-C4/A-C5). No Premium
+                             behaviour, visibility, analytics, or generation change here --
+                             the teaser text and the ConciergePremiumEntryCard box are
+                             untouched (PR-G2 owns the single Free->Premium seam). */
+                          <div key={`rec-${i}-hero-${heroItem.shrineId}`} className="space-y-6">
+                            <div className="space-y-3">
+                              <ConciergeTopRecommendationHero
+                                name={heroItem.title}
+                                href={withDirectionRouteContext(heroItem.detailHref, heroItem.directionReference, "hero")}
+                                address={null}
+                                topReasonLabel={reasonVm.hero.topReasonLabel ?? null}
+                                eyebrowLabel={reasonVm.hero.eyebrowLabel ?? null}
+                                conclusionLines={conclusionLines}
+                                explanationOnlyFactText={heroReasonV4.explanationOnlyFactText}
+                                actionReason={heroReasonV4.actionText}
+                                actionSuggestionV4Preview={(heroItem as any).actionSuggestionV4Preview ?? null}
+                                analyticsSource="concierge_result"
+                                threadId={tid ?? null}
+                                resultSetId={resultSetId}
+                                shrineId={heroItem.shrineId}
+                                recommendationRank={1}
+                                historyTheme={historyTheme ?? analyticsContext?.historyTheme ?? null}
+                                routeLabel="神社の詳細を見る"
+                                onDetailClick={() =>
+                                  { if (heroItem.directionReference?.matched) trackWebDirection("direction_match_detail_opened", { matched: true, recommendation_rank: 1 }); trackSearchEvent("shrine_detail_transition", {
+                                    source: "concierge_result",
+                                    threadId: tid ?? undefined,
+                                    resultSetId,
+                                    position: "hero_primary",
+                                    recommendationRank: 1,
+                                    shrineId: heroItem.shrineId,
+                                    mode: analyticsContext?.mode ?? normalizedMode,
+                                    flow: analyticsContext?.flow,
+                                    hasBirthdate: analyticsContext?.hasBirthdate,
+                                    recommendationCount: analyticsContext?.recommendationCount,
+                                    historyTheme: historyTheme ?? analyticsContext?.historyTheme,
+                                    ...consultationAxisAnalytics(heroItem.consultationAxis ?? analyticsContext?.consultationAxis),
+                                    firstClick: resolveFirstResultClick(resultSetId),
+                                    recommendationInstanceId: heroItem.recommendationInstanceId ?? null,
+                                    ...(heroItem.analyticsProvenance
+                                      ? recommendationAnalyticsProperties(heroItem.analyticsProvenance)
+                                      : {}),
+                                  }); }
+                                }
+                              />
+                              <DirectionReferenceCard reference={reasonDisplay.directionReference} recommendationKey={heroItem.shrineId} rank={1} />
+                            </div>
 
-                            {runtimeMatchLines.length > 0 ? (
-                              <section className={conciergeSoftCardClass} data-testid="recommendation-runtime-match">
-                                <div className="space-y-2">
-                                  <p className="text-xs font-semibold tracking-[0.12em] text-[var(--kt-color-text-muted)]">
-                                    今回の相談との接点
-                                  </p>
-                                  {runtimeMatchLines.map((line) => (
-                                    <p key={line} className="text-sm leading-7 text-[var(--kt-color-text-secondary)]">
-                                      {line}
-                                    </p>
-                                  ))}
-                                </div>
-                              </section>
-                            ) : null}
-
-                            {/* trustMetadata + historyTheme render adjacently, right after the
-                                Hero (docs/product/recommendation-result-information-architecture.md
-                                §13 v2 "trustMetadata・historyTheme" grouping, Finding 5 follow-up):
-                                both are Shrine-side facts, not a Recommendation reason -- they
-                                never feed into Conclusion/conclusionLines and never re-decide
-                                Primary Reason. Positioned right after the Hero's Primary CTA
-                                because that CTA is Hero's own last element (§6 Desired Contract);
-                                grouping these two together keeps the "神社の事実" thread from
-                                fragmenting further once past that boundary (historyTheme
-                                previously rendered after shrineMeaning, separated from
-                                trustMetadata by a gated section). */}
-                            {trustMetadata ? (
-                              <section className={conciergeSoftCardClass} data-testid="recommendation-trust">
-                                <div className="space-y-2">
-                                  <div className="flex flex-wrap gap-1">
-                                    {trustLabels.slice(0, 4).map((label: string) => (
-                                      <span
-                                        key={label}
-                                        className="rounded-[var(--kt-radius-pill)] bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600"
-                                      >
-                                        {label}
-                                      </span>
-                                    ))}
-                                  </div>
-                                  {trustMetadata.origin_summary || trustMetadata.originSummary ? (
-                                    <p className="text-xs leading-6 text-slate-600">
-                                      {trustMetadata.origin_summary ?? trustMetadata.originSummary}
-                                    </p>
-                                  ) : null}
-                                </div>
-                              </section>
-                            ) : null}
-
-                            {historyThemeDisplay ? (
-                              <section className={conciergeSoftCardClass} data-testid="recommendation-history-theme">
-                                <div className="space-y-2">
-                                  <p className="text-xs font-semibold tracking-[0.12em] text-[var(--kt-color-text-muted)]">
-                                    {historyThemeDisplay.isInterpretation
-                                      ? "この神社をどう捉えるか（KAMI MUSUBIの解釈）"
-                                      : "この神社が持つ文脈"}
-                                  </p>
-
-                                  <p className="text-sm leading-7 text-[var(--kt-color-text-secondary)]">{historyThemeDisplay.body}</p>
-                                </div>
-                              </section>
-                            ) : null}
-
-                            {shrineMeaningVisibility !== "hidden" ? (
-                              <section className={conciergeSoftCardClass}>
-                                <div className="space-y-2">
-                                  <p className="text-xs font-semibold tracking-[0.12em] text-[var(--kt-color-text-muted)]">
-                                    相談から見た意味（KAMI MUSUBIの解釈）
-                                  </p>
-                                  <p className="text-sm leading-7 text-[var(--kt-color-text-secondary)]">
-                                    {shrineMeaningVisibility === "teaser"
-                                      ? "この神社が選ばれた深い理由は、Premiumで読めます。"
-                                      : reasonVm.detail.shrineMeaning}
-                                  </p>
-                                </div>
-                              </section>
-                            ) : null}
-
-                            {actionMeaningVisibility !== "hidden" ? (
-                              <section className={conciergeSoftCardClass}>
-                                <div className="space-y-2">
-                                  <p className="text-xs font-semibold tracking-[0.12em] text-[var(--kt-color-text-muted)]">
-                                    今の自分への問い
-                                  </p>
-                                  <p className="text-sm leading-7 text-[var(--kt-color-text-secondary)]">
-                                    {actionMeaningVisibility === "teaser"
-                                      ? "参拝で意識することの意味づけは、Premiumで読めます。"
-                                      : (reasonVm.detail.actionMeaning ?? reasonVm.detail.shrineMeaning)}
-                                  </p>
-                                </div>
-                              </section>
-                            ) : null}
-
+                            {/* Layer 1 bridge: the consultation this recommendation answers.
+                                Moved up from below the meaning layers (audit #2656 A-C2); kept
+                                just under the Hero so the shrine + its Primary CTA still lead
+                                the first viewport on mobile. */}
                             {consultationSummaryVisibility !== "hidden" && reasonVm.detail.consultationSummary ? (
                               <ConciergeConsultationSummary
                                 summary={reasonVm.detail.consultationSummary}
                                 modeLabel={normalizedMode === "compat" ? "相性ベース" : "悩みベース"}
                               />
+                            ) : null}
+
+                            {runtimeMatchLines.length > 0 ? (
+                              <div data-testid="recommendation-runtime-match">
+                                <DetailSection variant="plain" title="今回の相談との接点">
+                                  <div className="space-y-2">
+                                    {runtimeMatchLines.map((line) => (
+                                      <p key={line} className={narrativeBodyClass}>
+                                        {line}
+                                      </p>
+                                    ))}
+                                  </div>
+                                </DetailSection>
+                              </div>
+                            ) : null}
+
+                            {historyThemeDisplay ? (
+                              <div data-testid="recommendation-history-theme">
+                                <DetailSection
+                                  variant="plain"
+                                  title={
+                                    historyThemeDisplay.isInterpretation
+                                      ? "この神社をどう捉えるか（KAMI MUSUBIの解釈）"
+                                      : "この神社が持つ文脈"
+                                  }
+                                >
+                                  <p className={narrativeBodyClass}>{historyThemeDisplay.body}</p>
+                                </DetailSection>
+                              </div>
+                            ) : null}
+
+                            {shrineMeaningVisibility !== "hidden" ? (
+                              <DetailSection variant="plain" title="相談から見た意味（KAMI MUSUBIの解釈）">
+                                <p className={narrativeBodyClass}>
+                                  {shrineMeaningVisibility === "teaser"
+                                    ? "この神社が選ばれた深い理由は、Premiumで読めます。"
+                                    : reasonVm.detail.shrineMeaning}
+                                </p>
+                              </DetailSection>
+                            ) : null}
+
+                            {actionMeaningVisibility !== "hidden" ? (
+                              <DetailSection variant="plain" title="今の自分への問い">
+                                <p className={narrativeBodyClass}>
+                                  {actionMeaningVisibility === "teaser"
+                                    ? "参拝で意識することの意味づけは、Premiumで読めます。"
+                                    : (reasonVm.detail.actionMeaning ?? reasonVm.detail.shrineMeaning)}
+                                </p>
+                              </DetailSection>
                             ) : null}
 
                             <ShrineSaveButton
@@ -1122,6 +1104,39 @@ export default function ConciergeSectionsRenderer({
                                 accessLevel={accessLevel}
                                 analyticsContext={analyticsContext}
                               />
+                            ) : null}
+
+                            {/* Layer 8 (evidence): shrine-side facts, de-emphasised into a
+                                recessed surface. Previously a conciergeSoftCardClass box
+                                directly under the Hero, grouped with historyTheme
+                                (recommendation-result-information-architecture.md §13); that
+                                grouping is superseded by the Direction-C hierarchy
+                                (docs/design/premium-meaning-ui-direction.md §7/§9) -- trust
+                                metadata is evidence, not part of the reason narrative, so it
+                                moves below it. Still never feeds Conclusion / Primary Reason. */}
+                            {trustMetadata ? (
+                              <section
+                                data-testid="recommendation-trust"
+                                className="rounded-[var(--kt-radius-card)] bg-[var(--kt-color-background-subtle)] p-4"
+                              >
+                                <div className="space-y-2">
+                                  <div className="flex flex-wrap gap-1">
+                                    {trustLabels.slice(0, 4).map((label: string) => (
+                                      <span
+                                        key={label}
+                                        className="rounded-[var(--kt-radius-pill)] bg-[var(--kt-color-surface-default)] px-2 py-0.5 text-[11px] font-semibold text-[var(--kt-color-text-muted)]"
+                                      >
+                                        {label}
+                                      </span>
+                                    ))}
+                                  </div>
+                                  {trustMetadata.origin_summary || trustMetadata.originSummary ? (
+                                    <p className="text-xs leading-6 text-[var(--kt-color-text-muted)]">
+                                      {trustMetadata.origin_summary ?? trustMetadata.originSummary}
+                                    </p>
+                                  ) : null}
+                                </div>
+                              </section>
                             ) : null}
                           </div>
                         );
