@@ -12,16 +12,69 @@
 //
 // This module does not redefine the PR-C signal taxonomy or the
 // Recommendation Evidence fact shape -- it imports both from
-// ./premiumMeaningContext and normalizes only what it actually used into
-// DeepRecommendationReason's own sources shape.
+// ./premiumMeaningContext (the contract types stay exactly as approved).
+//
+// PR-D review correction (Mother Ship, PR #2655 CHANGES_REQUIRED):
+//
+// The first version of this builder produced `lines` whenever BOTH a
+// Structured Consultation Context signal AND a valid primary
+// Recommendation Evidence fact existed, using a generic template. That is
+// a contract violation: presence of both is not proof they are RELATED,
+// and the Output Contract v1 null rule requires null when "both exist but
+// a supported relationship cannot be established."
+//
+// Investigation into whether current data can prove such a relationship
+// (see PR #2655 review thread for the full writeup):
+//
+//   1. What Recommendation Evidence currently contains --
+//      ConciergeReasonFact.type (backend: concierge_chat_ranking.
+//      _build_reason_facts) is one of: history_theme / culture_translation
+//      / user_selected_tag / need_tag / goriyaku_tag / text_hint /
+//      visit_style / element / fallback. Its `evidence` field is a list of
+//      synthetic bookkeeping strings ("score_element:2", "text_score:3",
+//      "matched_need_tags", a raw need_tag/goriyaku_tag slug, etc.) --
+//      never a literal free_text span.
+//
+//   2. Why that is insufficient for a safe relationship judgment -- every
+//      one of those fact types is produced by a system architecturally
+//      separate from Consultation Meaning v1 extraction
+//      (consultation_meaning.py, PR-C): need_tag keyword matching
+//      (domain/need_tags.py), consultation_axis keyword matching
+//      (domain/consultation_axis.py, itself a THIRD independent keyword
+//      vocabulary gating history_theme_candidate_boost), birthdate/element
+//      compatibility, or explicit UI-selected goriyaku/visit-style
+//      preferences. None of them read or reference
+//      situationSignals/desiredOutcomeSignals/explicitConstraintSignals,
+//      and no field anywhere carries a link back to a specific Consultation
+//      Meaning v1 signal. Proving a relationship would require either
+//      reading raw free_text and comparing it against evidence spans (bars:
+//      "Do NOT use raw free_text"), or treating label/keyword overlap
+//      across these disjoint vocabularies as meaningful (bars: "Do NOT
+//      infer this from label similarity unless that mapping is already
+//      part of the approved Recommendation contract" -- no such contract
+//      exists).
+//
+//   3. Minimum additional stable contract that would be required -- a
+//      Backend-emitted field (e.g. on ConciergeReasonFact, populated by
+//      _build_reason_facts / _resolve_primary_reason) that records which
+//      specific Consultation Meaning v1 signal(s) (by category + type)
+//      actually contributed to that fact's ranking authority, following
+//      the same evidence-required, no-inference discipline as PR-C's own
+//      Extraction Contract. That contract does not exist yet and is not
+//      designed here -- inventing one in this builder would be exactly the
+//      workaround this review explicitly prohibits.
+//
+// Until that contract exists, this builder cannot honestly ever return a
+// non-null DeepRecommendationReason, so it always returns null. The output
+// types below are kept exactly as approved so a future implementation can
+// fill in the real gate without changing the contract. There is no
+// semantic pairing logic here: no "重なっています" relationship-generation
+// template, no situation > desired_outcome > explicit_constraint priority,
+// no automatic pairing, and no assumption that co-presence of a valid
+// Structured Consultation Context and valid Recommendation Evidence
+// proves relevance between them.
 
-import type {
-  DesiredOutcomeSignal,
-  ExplicitConstraintSignal,
-  PremiumMeaningContext,
-  PremiumMeaningReasonFact,
-  SituationSignal,
-} from "./premiumMeaningContext";
+import type { PremiumMeaningContext } from "./premiumMeaningContext";
 
 export type DeepRecommendationReasonConsultationSource = {
   category: "situation" | "desired_outcome" | "explicit_constraint";
@@ -44,156 +97,17 @@ export type DeepRecommendationReason = {
 
 export type DeepRecommendationReasonResult = DeepRecommendationReason | null;
 
-function clean(value?: string | null): string {
-  return (value ?? "").trim();
-}
-
-type ConsultationSignal = SituationSignal | DesiredOutcomeSignal | ExplicitConstraintSignal;
-
-type UsableSignal = {
-  category: DeepRecommendationReasonConsultationSource["category"];
-  type: string;
-  evidenceTexts: string[];
-};
-
-const CATEGORY_NOUN: Record<UsableSignal["category"], string> = {
-  situation: "状態",
-  desired_outcome: "ご希望",
-  explicit_constraint: "状況",
-};
-
-function evidenceTextsOf(signal: ConsultationSignal): string[] {
-  return signal.evidence.map((e) => clean(e.text)).filter((t) => t.length > 0);
-}
-
-function toUsableSignals(
-  category: UsableSignal["category"],
-  signals: ConsultationSignal[],
-): UsableSignal[] {
-  const out: UsableSignal[] = [];
-  for (const s of signals) {
-    const evidenceTexts = evidenceTextsOf(s);
-    if (evidenceTexts.length > 0) out.push({ category, type: s.type, evidenceTexts });
-  }
-  return out;
-}
-
 /**
- * Collects every consultation signal that actually carries usable
- * (non-empty) evidence, in a fixed, documented priority order: situation
- * (current state) before desired_outcome (goal) before explicit_constraint
- * (limiting condition) -- the same field order as
- * PremiumMeaningConsultationContext / StructuredConsultationContextV1.
- * This ordering is a builder-level display choice for selecting which
- * signal(s) to surface in `lines`; it is not the Extraction Contract's "no
- * primary/secondary ranking" rule, which governs extraction only.
- */
-function collectUsableSignals(consultation: PremiumMeaningContext["consultation"]): UsableSignal[] {
-  return [
-    ...toUsableSignals("situation", consultation.situationSignals),
-    ...toUsableSignals("desired_outcome", consultation.desiredOutcomeSignals),
-    ...toUsableSignals("explicit_constraint", consultation.explicitConstraintSignals),
-  ];
-}
-
-function toConsultationSource(signal: UsableSignal): DeepRecommendationReasonConsultationSource {
-  return { category: signal.category, type: signal.type, evidence: signal.evidenceTexts };
-}
-
-function factLabel(fact: PremiumMeaningReasonFact | null | undefined): string {
-  return clean(fact?.label);
-}
-
-function buildPrimaryLine(signal: UsableSignal, primaryFactLabel: string): string {
-  const noun = CATEGORY_NOUN[signal.category];
-  const quoted = signal.evidenceTexts[0];
-  return `「${quoted}」という今回の${noun}に、この神社の「${primaryFactLabel}」という点が重なっています。`;
-}
-
-function buildSecondaryFactLine(signal: UsableSignal, secondaryFactLabel: string): string {
-  const noun = CATEGORY_NOUN[signal.category];
-  return `あわせて、「${secondaryFactLabel}」という点も、今回の${noun}と重なっています。`;
-}
-
-function buildSecondarySignalLine(signal: UsableSignal, primaryFactLabel: string): string {
-  const noun = CATEGORY_NOUN[signal.category];
-  const quoted = signal.evidenceTexts[0];
-  return `あわせて、「${quoted}」という${noun}も、「${primaryFactLabel}」という点と重なっています。`;
-}
-
-/**
- * Builds Deep Recommendation Reason v1: 1-2 lines expressing why THIS
- * shrine was surfaced for THIS consultation, by explicitly pairing one
- * Structured Consultation Context signal's literal evidence with the
- * Recommendation Evidence fact(s) actually used. Every substantive claim
- * in `lines` traces to at least one entry in `sources.consultation` and
- * `sources.recommendation` by construction -- only the signal(s)/fact(s)
- * actually quoted are ever added to `sources`.
- *
- * Returns null when:
- * - context.validity.deepReasonValid is false;
- * - consultation evidence is insufficient (no signal carries a non-empty
- *   evidence span, even if signal entries exist);
- * - recommendation evidence is insufficient (no primary reason fact with a
- *   non-empty type and label);
- * - both exist -- the relationship is established structurally by pairing
- *   the most salient consultation signal with the primary Recommendation
- *   Evidence fact resolved for this same recommendation; no other
- *   compatibility judgment is specified by the Deep Recommendation Reason
- *   Output Contract v1, so this pairing is the only case this builder
- *   evaluates.
- *
- * Never returns an empty object and never generates fallback prose --
- * absence of a supported relationship is expressed as null, not as an
- * empty DeepRecommendationReason.
+ * Builds Deep Recommendation Reason v1. Always returns null -- see the
+ * module doc above. No compatibility gate is implemented because no
+ * existing, already-approved field proves a relationship between any
+ * Recommendation Evidence fact and any Structured Consultation Context
+ * signal; fabricating one (via label similarity, raw free_text, shrine
+ * facts, or inference) is explicitly out of scope for this correction.
  */
 export function buildDeepRecommendationReason(
   context: PremiumMeaningContext,
 ): DeepRecommendationReasonResult {
-  if (!context.validity.deepReasonValid) return null;
-
-  const usableSignals = collectUsableSignals(context.consultation);
-  if (usableSignals.length === 0) return null;
-
-  const primaryFact = context.recommendationEvidence.primaryReasonFact;
-  const primaryFactType = clean(primaryFact?.type);
-  const primaryFactLabel = factLabel(primaryFact);
-  if (!primaryFact || !primaryFactType || !primaryFactLabel) return null;
-
-  const [primarySignal, ...restSignals] = usableSignals;
-
-  const lines: string[] = [buildPrimaryLine(primarySignal, primaryFactLabel)];
-  const consultationSources: DeepRecommendationReasonConsultationSource[] = [
-    toConsultationSource(primarySignal),
-  ];
-  const recommendationSources: DeepRecommendationReasonRecommendationSource[] = [
-    { role: "primary", text: primaryFactLabel },
-  ];
-
-  const secondaryFact = context.recommendationEvidence.secondaryReasonFacts.find((fact) => {
-    const label = factLabel(fact);
-    return label.length > 0 && label !== primaryFactLabel;
-  });
-
-  if (secondaryFact) {
-    const secondaryFactLabel = factLabel(secondaryFact);
-    lines.push(buildSecondaryFactLine(primarySignal, secondaryFactLabel));
-    recommendationSources.push({ role: "secondary", text: secondaryFactLabel });
-  } else {
-    const secondSignal = restSignals.find(
-      (s) => s.type !== primarySignal.type || s.category !== primarySignal.category,
-    );
-    if (secondSignal) {
-      lines.push(buildSecondarySignalLine(secondSignal, primaryFactLabel));
-      consultationSources.push(toConsultationSource(secondSignal));
-    }
-  }
-
-  return {
-    lines,
-    sources: {
-      consultation: consultationSources,
-      recommendation: recommendationSources,
-    },
-  };
+  void context;
+  return null;
 }
