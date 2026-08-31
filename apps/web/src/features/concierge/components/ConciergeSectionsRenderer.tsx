@@ -119,7 +119,12 @@ function ConciergePremiumEntryCard(props: {
   analyticsContext?: AnalyticsContext;
 }) {
   const href = props.isGuestUser ? buildLoginHref("/billing/upgrade") : "/billing/upgrade";
-  const ctaLabel = props.isGuestUser ? "ログインして変化を見返す" : "変化を見返せるようにする";
+  // CTA-A responsibility = Meaning Depth. This card sells the deep
+  // recommendation reason / personal meaning / action meaning -- NOT continuity
+  // ("前回との違い" / "変化を見返す" belongs to CTA-B / state-delta cards) and
+  // NOT quota ("あと N 回" belongs to CTA-C). Keep those copy responsibilities
+  // separate even though all three land on the same KAMI MUSUBI Premium.
+  const ctaLabel = props.isGuestUser ? "ログインして意味を深掘りする" : "この神社を選ぶ意味を深掘りする";
   return (
     <section className={conciergePremiumCardClass} data-testid="recommendation-premium-preview">
       <div className="space-y-2">
@@ -128,10 +133,10 @@ function ConciergePremiumEntryCard(props: {
             recommendation-result-information-architecture.md §6/§11/§15 PR3, Finding 7). */}
         <p className="text-sm font-medium leading-6 text-amber-950">
           {props.isGuestUser
-            ? "相談を保存すると、今の状態や選んだ理由をあとから見返せます。"
-            : "Premiumでは、前回との違いや状態の変化をあとから見返せます。"}
+            ? "この神社が選ばれた深い理由と、あなたにとっての意味は、Premiumで読めます。"
+            : "Premiumでは、この神社が選ばれた深い理由と、あなたにとっての意味・参拝で意識することまで読めます。"}
         </p>
-        <p className="text-xs leading-6 text-slate-600">相談内容に基づく状態整理、選んだ理由、行動の意味を記録として残せます。</p>
+        <p className="text-xs leading-6 text-slate-600">相談内容に基づく、選定理由の掘り下げ・個人的な意味・行動の意味を表示します。</p>
         <a
           href={href}
           className="inline-flex items-center rounded-[var(--kt-radius-panel)] bg-[var(--kt-color-premium-accent)] px-3 py-2 text-xs font-semibold text-[var(--kt-color-text-inverse)] hover:bg-amber-800"
@@ -1068,7 +1073,11 @@ export default function ConciergeSectionsRenderer({
                                   <p className="text-xs font-semibold tracking-[0.12em] text-[var(--kt-color-text-muted)]">
                                     相談から見た意味（KAMI MUSUBIの解釈）
                                   </p>
-                                  <p className="text-sm leading-7 text-[var(--kt-color-text-secondary)]">{reasonVm.detail.shrineMeaning}</p>
+                                  <p className="text-sm leading-7 text-[var(--kt-color-text-secondary)]">
+                                    {shrineMeaningVisibility === "teaser"
+                                      ? "この神社が選ばれた深い理由は、Premiumで読めます。"
+                                      : reasonVm.detail.shrineMeaning}
+                                  </p>
                                 </div>
                               </section>
                             ) : null}
@@ -1081,7 +1090,7 @@ export default function ConciergeSectionsRenderer({
                                   </p>
                                   <p className="text-sm leading-7 text-[var(--kt-color-text-secondary)]">
                                     {actionMeaningVisibility === "teaser"
-                                      ? "この結果を保存すると、今の状態や選んだ理由をあとから見返せます。"
+                                      ? "参拝で意識することの意味づけは、Premiumで読めます。"
                                       : (reasonVm.detail.actionMeaning ?? reasonVm.detail.shrineMeaning)}
                                   </p>
                                 </div>
