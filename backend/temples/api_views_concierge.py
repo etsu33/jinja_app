@@ -52,6 +52,7 @@ from temples.services.concierge_history import append_chat
 from temples.services.direction_reference import attach_direction_references
 from temples.services.concierge_plan import build_plan_response
 from temples.services.consultation_interpreter import interpret_consultation
+from temples.services.consultation_meaning import extract_consultation_meaning
 from temples.services.billing_state import is_premium_for_user  # test monkeypatch compatibility
 
 
@@ -328,6 +329,7 @@ def _build_chat_response(
     thread: Optional[Any],
     debug: Optional[Dict[str, Any]],
     anon_cookie_value: Optional[str],
+    consultation_meaning: Dict[str, Any],
 ) -> Dict[str, Any]:
     thread_id = str(thread.id) if thread is not None else None
 
@@ -347,6 +349,11 @@ def _build_chat_response(
         "data": data,
         "plan": plan,
         "reply": reply,
+        # Consultation Meaning v1 (PR-C): stable, top-level, request-level
+        # field -- one per consultation turn, not per-recommendation. Never
+        # sourced from _debug/interpretation_profile; always present (empty
+        # arrays, never omitted) regardless of quota/Recommendation state.
+        "consultation_meaning": consultation_meaning,
     }
 
     if remaining is not None:
@@ -677,6 +684,7 @@ class ConciergeChatView(APIView):
                         if plan_context.plan == "anonymous" and plan_context.anon_id
                         else None
                     ),
+                    consultation_meaning=extract_consultation_meaning(query).as_dict(),
                 )
                 # 互換が不要なら削除
                 # body["note"] = "limit-reached"
@@ -1042,6 +1050,7 @@ class ConciergeChatView(APIView):
                         if plan_context.plan == "anonymous" and plan_context.anon_id
                         else None
                     ),
+                    consultation_meaning=extract_consultation_meaning(query).as_dict(),
                 )
 
             phase = "response"
