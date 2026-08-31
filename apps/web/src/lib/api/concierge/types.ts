@@ -43,6 +43,31 @@ export type ConciergeChatResponse = {
   remaining?: number | null;
   limit?: number | null;
   limitReached?: boolean;
+
+  /** Consultation Meaning v1 (PR-C). Stable, top-level, one per
+   * consultation turn -- not nested under `data` (that's per-recommendation
+   * territory) and never under `_debug`. Always present with all three
+   * families as arrays (empty when no signal was extracted). */
+  consultation_meaning?: ConsultationMeaning;
+};
+
+export type ConsultationMeaningEvidence = {
+  text: string;
+};
+
+export type SituationSignalType = "depleted" | "undecided" | "stalled";
+
+export type DesiredOutcomeSignalType = "decide" | "clarify" | "progress" | "calm";
+
+export type ExplicitConstraintSignalType = "time" | "money" | "other_person_availability";
+
+export type ConsultationMeaning = {
+  situation_signals: Array<{ type: SituationSignalType; evidence: ConsultationMeaningEvidence[] }>;
+  desired_outcome_signals: Array<{ type: DesiredOutcomeSignalType; evidence: ConsultationMeaningEvidence[] }>;
+  explicit_constraint_signals: Array<{
+    type: ExplicitConstraintSignalType;
+    evidence: ConsultationMeaningEvidence[];
+  }>;
 };
 
 // Backend契約(GET /api/concierge-threads/{pk}/, ConciergeThreadDetailView)は

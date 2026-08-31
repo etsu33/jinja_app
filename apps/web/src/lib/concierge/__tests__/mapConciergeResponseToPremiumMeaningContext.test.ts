@@ -135,16 +135,6 @@ describe("mapConciergeResponseToPremiumMeaningContext: shrine evidence mapping",
 });
 
 describe("mapConciergeResponseToPremiumMeaningContext: fixed null fields", () => {
-  it("interpretedContextは常にnullになる(_debug interpretation_profileを利用しない)", () => {
-    const ctx = mapConciergeResponseToPremiumMeaningContext({
-      rec: rec(),
-      need: { tags: ["転機"] },
-      mode: "need",
-    });
-
-    expect(ctx?.consultation.interpretedContext).toBeNull();
-  });
-
   it("relevantToConsultationは常にnullになる(Evidence存在から推定しない)", () => {
     const ctx = mapConciergeResponseToPremiumMeaningContext({
       rec: rec({
@@ -257,6 +247,87 @@ describe("mapConciergeResponseToPremiumMeaningContext: _need / mode mapping", ()
     expect(ctx?.consultation.primaryNeed).toBe("転機");
     expect(ctx?.consultation.secondaryNeed).toBe("仕事");
     expect(ctx?.consultation.mode).toBe("need");
+  });
+});
+
+describe("mapConciergeResponseToPremiumMeaningContext: consultation_meaning mapping (PR-C)", () => {
+  it("snake_case APIのconsultation_meaningをcamelCaseの3配列へmappingする", () => {
+    const ctx = mapConciergeResponseToPremiumMeaningContext({
+      rec: rec(),
+      consultationMeaning: {
+        situation_signals: [{ type: "depleted", evidence: [{ text: "疲れている" }] }],
+        desired_outcome_signals: [{ type: "clarify", evidence: [{ text: "整理したい" }] }],
+        explicit_constraint_signals: [],
+      },
+    });
+
+    expect(ctx?.consultation.situationSignals).toEqual([{ type: "depleted", evidence: [{ text: "疲れている" }] }]);
+    expect(ctx?.consultation.desiredOutcomeSignals).toEqual([{ type: "clarify", evidence: [{ text: "整理したい" }] }]);
+    expect(ctx?.consultation.explicitConstraintSignals).toEqual([]);
+  });
+
+  it("consultation_meaningが未定義の場合、3配列は空配列になる(throwしない)", () => {
+    const ctx = mapConciergeResponseToPremiumMeaningContext({ rec: rec() });
+
+    expect(ctx?.consultation.situationSignals).toEqual([]);
+    expect(ctx?.consultation.desiredOutcomeSignals).toEqual([]);
+    expect(ctx?.consultation.explicitConstraintSignals).toEqual([]);
+  });
+
+  it("consultation_meaningがnullでもthrowせず空配列になる", () => {
+    expect(() =>
+      mapConciergeResponseToPremiumMeaningContext({ rec: rec(), consultationMeaning: null }),
+    ).not.toThrow();
+
+    const ctx = mapConciergeResponseToPremiumMeaningContext({ rec: rec(), consultationMeaning: null });
+    expect(ctx?.consultation.situationSignals).toEqual([]);
+  });
+
+  it("mappingされたsituationSignalsがuserContextValid/personalMeaningValidを成立させる(need_tag非依存)", () => {
+    const ctx = mapConciergeResponseToPremiumMeaningContext({
+      rec: rec({
+        recommendation_reason_v4_detail: {
+          version: "v4",
+          reason_text: "",
+          fact: {
+            label: "",
+            name: null,
+            deity: "祭神A",
+            shrine_history: null,
+            place_context: null,
+            history_theme: null,
+            goriyaku: null,
+            visit_style_tags: [],
+            evidence: [],
+          },
+          interpretation: { theme: "", text: "" },
+          action: { text: "", source: "" },
+        },
+      }),
+      consultationMeaning: {
+        situation_signals: [{ type: "depleted", evidence: [{ text: "疲れている" }] }],
+        desired_outcome_signals: [],
+        explicit_constraint_signals: [],
+      },
+    });
+
+    expect(ctx?.validity.userContextValid).toBe(true);
+    // relevantToConsultationは常にnull(fixed null field)のため、
+    // shrineEvidenceValid/personalMeaningValid自体はまだfalseのまま
+    expect(ctx?.shrineEvidence.relevantToConsultation).toBeNull();
+    expect(ctx?.validity.personalMeaningValid).toBe(false);
+  });
+
+  it("primaryNeedのみ(consultation_meaningなし)ではuserContextValidが成立しない(need_tagはRecommendation Signalのみ)", () => {
+    const ctx = mapConciergeResponseToPremiumMeaningContext({
+      rec: rec(),
+      need: { tags: ["転機"] },
+      mode: "need",
+    });
+
+    expect(ctx?.consultation.primaryNeed).toBe("転機");
+    expect(ctx?.validity.consultationContextValid).toBe(false);
+    expect(ctx?.validity.userContextValid).toBe(false);
   });
 });
 
