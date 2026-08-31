@@ -438,7 +438,7 @@ No source files changed.
 
 ## 13. PR URL
 
-_(to be filled after `gh pr create` — see branch `audit/deep-reason-premium-ui-connection`)_
+https://github.com/etsu33/jinja_app/pull/2656
 
 ---
 
