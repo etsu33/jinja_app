@@ -53,7 +53,7 @@ function baseContext(overrides: BaseContextOverrides = {}): PremiumMeaningContex
   };
 }
 
-describe("buildDeepRecommendationReason: null contract", () => {
+describe("buildDeepRecommendationReason: no stable relationship-proof exists yet (PR-D review correction)", () => {
   it("returns null when deepReasonValid is false (no consultation signal, no reason fact)", () => {
     const ctx = baseContext();
     expect(ctx.validity.deepReasonValid).toBe(false);
@@ -81,189 +81,49 @@ describe("buildDeepRecommendationReason: null contract", () => {
     expect(buildDeepRecommendationReason(ctx)).toBeNull();
   });
 
-  it("returns null when primaryReasonFact has an empty label", () => {
+  it("returns null even when a consultation signal (with evidence) and a valid, unrelated primary reason fact both exist and deepReasonValid is true -- presence of both is not proof of a relationship", () => {
     const ctx = baseContext({
       consultation: {
         situationSignals: [{ type: "depleted", evidence: [{ text: "疲れている" }] }],
       },
       recommendationEvidence: {
-        primaryReasonFact: { type: "need_tag", label: "", evidence: [] },
+        primaryReasonFact: { type: "need_tag", label: "転機", evidence: ["need_tag:転機"] },
+        secondaryReasonFacts: [],
+      },
+    });
+    expect(ctx.validity.deepReasonValid).toBe(true);
+    expect(buildDeepRecommendationReason(ctx)).toBeNull();
+  });
+
+  it("returns null for a distance/popularity-derived fallback reason fact paired with a desired_outcome signal (an unrelated pair by construction, since no shared vocabulary exists)", () => {
+    const ctx = baseContext({
+      consultation: {
+        desiredOutcomeSignals: [{ type: "decide", evidence: [{ text: "決めたい" }] }],
+      },
+      recommendationEvidence: {
+        primaryReasonFact: { type: "fallback", label: "近い候補", evidence: [] },
         secondaryReasonFacts: [],
       },
     });
     expect(buildDeepRecommendationReason(ctx)).toBeNull();
   });
 
-  it("never returns an empty object -- null or a fully-populated DeepRecommendationReason only", () => {
-    const ctx = baseContext();
-    const result = buildDeepRecommendationReason(ctx);
-    expect(result === null || (result.lines.length > 0 && result.sources.consultation.length > 0 && result.sources.recommendation.length > 0)).toBe(true);
-  });
-});
-
-describe("buildDeepRecommendationReason: single-signal, single-fact case", () => {
-  it("produces exactly 1 line, quoting the evidence verbatim and the fact label, with exactly one source each", () => {
-    const ctx = baseContext({
-      consultation: {
-        situationSignals: [{ type: "depleted", evidence: [{ text: "疲れている" }] }],
-      },
-      recommendationEvidence: {
-        primaryReasonFact: { type: "history_theme", label: "静穏な由緒", evidence: [] },
-        secondaryReasonFacts: [],
-      },
-    });
-
-    const result = buildDeepRecommendationReason(ctx);
-    expect(result).not.toBeNull();
-    expect(result!.lines.length).toBe(1);
-    expect(result!.lines[0]).toContain("疲れている");
-    expect(result!.lines[0]).toContain("静穏な由緒");
-
-    expect(result!.sources.consultation).toEqual([
-      { category: "situation", type: "depleted", evidence: ["疲れている"] },
-    ]);
-    expect(result!.sources.recommendation).toEqual([{ role: "primary", text: "静穏な由緒" }]);
-  });
-
-  it("selects situation before desired_outcome before explicit_constraint when multiple families have evidence, and only sources the one actually used", () => {
-    const ctx = baseContext({
-      consultation: {
-        situationSignals: [],
-        desiredOutcomeSignals: [{ type: "decide", evidence: [{ text: "決めたい" }] }],
-        explicitConstraintSignals: [{ type: "money", evidence: [{ text: "お金が足りなくて" }] }],
-      },
-      recommendationEvidence: {
-        primaryReasonFact: { type: "need_tag", label: "転機", evidence: [] },
-        secondaryReasonFacts: [],
-      },
-    });
-
-    const result = buildDeepRecommendationReason(ctx);
-    expect(result).not.toBeNull();
-    // desired_outcome comes before explicit_constraint in priority order
-    expect(result!.sources.consultation[0].category).toBe("desired_outcome");
-  });
-});
-
-describe("buildDeepRecommendationReason: 2-line cases", () => {
-  it("adds a second line from a distinct secondary reason fact, keeping the same consultation source", () => {
-    const ctx = baseContext({
-      consultation: {
-        situationSignals: [{ type: "depleted", evidence: [{ text: "疲れている" }] }],
-      },
-      recommendationEvidence: {
-        primaryReasonFact: { type: "need_tag", label: "転機", evidence: [] },
-        secondaryReasonFacts: [{ type: "history_theme", label: "静穏な由緒", evidence: [] }],
-      },
-    });
-
-    const result = buildDeepRecommendationReason(ctx);
-    expect(result).not.toBeNull();
-    expect(result!.lines.length).toBe(2);
-    expect(result!.lines[1]).toContain("静穏な由緒");
-    expect(result!.sources.consultation.length).toBe(1);
-    expect(result!.sources.recommendation).toEqual([
-      { role: "primary", text: "転機" },
-      { role: "secondary", text: "静穏な由緒" },
-    ]);
-  });
-
-  it("adds a second line from a distinct second consultation signal when no usable secondary fact exists", () => {
-    const ctx = baseContext({
-      consultation: {
-        situationSignals: [{ type: "depleted", evidence: [{ text: "疲れている" }] }],
-        desiredOutcomeSignals: [{ type: "decide", evidence: [{ text: "決めたい" }] }],
-      },
-      recommendationEvidence: {
-        primaryReasonFact: { type: "need_tag", label: "転機", evidence: [] },
-        secondaryReasonFacts: [],
-      },
-    });
-
-    const result = buildDeepRecommendationReason(ctx);
-    expect(result).not.toBeNull();
-    expect(result!.lines.length).toBe(2);
-    expect(result!.lines[1]).toContain("決めたい");
-    expect(result!.sources.consultation).toEqual([
-      { category: "situation", type: "depleted", evidence: ["疲れている"] },
-      { category: "desired_outcome", type: "decide", evidence: ["決めたい"] },
-    ]);
-    expect(result!.sources.recommendation).toEqual([{ role: "primary", text: "転機" }]);
-  });
-
-  it("does not fabricate a secondary reason fact source when secondaryReasonFacts only duplicates the primary label", () => {
-    const ctx = baseContext({
-      consultation: {
-        situationSignals: [{ type: "depleted", evidence: [{ text: "疲れている" }] }],
-      },
-      recommendationEvidence: {
-        primaryReasonFact: { type: "need_tag", label: "転機", evidence: [] },
-        secondaryReasonFacts: [{ type: "goriyaku_tag", label: "転機", evidence: [] }],
-      },
-    });
-
-    const result = buildDeepRecommendationReason(ctx);
-    expect(result).not.toBeNull();
-    expect(result!.lines.length).toBe(1);
-    expect(result!.sources.recommendation).toEqual([{ role: "primary", text: "転機" }]);
-  });
-
-  it("stays at 1 line when only one signal and one fact exist, with no fabricated second entry", () => {
-    const ctx = baseContext({
-      consultation: {
-        situationSignals: [{ type: "depleted", evidence: [{ text: "疲れている" }] }],
-      },
-      recommendationEvidence: {
-        primaryReasonFact: { type: "need_tag", label: "転機", evidence: [] },
-        secondaryReasonFacts: [],
-      },
-    });
-
-    const result = buildDeepRecommendationReason(ctx);
-    expect(result!.lines.length).toBe(1);
-    expect(result!.sources.consultation.length).toBe(1);
-    expect(result!.sources.recommendation.length).toBe(1);
-  });
-});
-
-describe("buildDeepRecommendationReason: traceability invariant", () => {
-  it("always includes at least one consultation source and one recommendation source when non-null", () => {
+  it("returns null with multiple consultation signals across all three families and both a primary and secondary reason fact present", () => {
     const ctx = baseContext({
       consultation: {
         situationSignals: [{ type: "stalled", evidence: [{ text: "動けない" }] }],
-      },
-      recommendationEvidence: {
-        primaryReasonFact: { type: "text_hint", label: "静けさ", evidence: [] },
-        secondaryReasonFacts: [],
-      },
-    });
-
-    const result = buildDeepRecommendationReason(ctx);
-    expect(result).not.toBeNull();
-    expect(result!.sources.consultation.length).toBeGreaterThanOrEqual(1);
-    expect(result!.sources.recommendation.length).toBeGreaterThanOrEqual(1);
-  });
-
-  it("every evidence string quoted in lines[0] appears in sources.consultation[0].evidence", () => {
-    const ctx = baseContext({
-      consultation: {
+        desiredOutcomeSignals: [{ type: "clarify", evidence: [{ text: "整理したい" }] }],
         explicitConstraintSignals: [{ type: "time", evidence: [{ text: "余裕がない" }] }],
       },
       recommendationEvidence: {
-        primaryReasonFact: { type: "visit_style", label: "近場で無理なく", evidence: [] },
-        secondaryReasonFacts: [],
+        primaryReasonFact: { type: "history_theme", label: "静穏な由緒", evidence: ["history_theme", "matched_need_tags"] },
+        secondaryReasonFacts: [{ type: "visit_style", label: "静か", evidence: ["quiet"] }],
       },
     });
-
-    const result = buildDeepRecommendationReason(ctx);
-    expect(result).not.toBeNull();
-    expect(result!.lines[0]).toContain("余裕がない");
-    expect(result!.sources.consultation[0].evidence).toContain("余裕がない");
+    expect(buildDeepRecommendationReason(ctx)).toBeNull();
   });
-});
 
-describe("buildDeepRecommendationReason: semantic boundary", () => {
-  it("output shape carries no Personal Meaning or Action Meaning fields", () => {
+  it("never returns an empty object -- always exactly null", () => {
     const ctx = baseContext({
       consultation: {
         situationSignals: [{ type: "depleted", evidence: [{ text: "疲れている" }] }],
@@ -273,9 +133,22 @@ describe("buildDeepRecommendationReason: semantic boundary", () => {
         secondaryReasonFacts: [],
       },
     });
-
     const result = buildDeepRecommendationReason(ctx);
-    expect(result).not.toBeNull();
-    expect(Object.keys(result!)).toEqual(["lines", "sources"]);
+    expect(result).toBeNull();
+  });
+
+  it("does not mutate the input context", () => {
+    const ctx = baseContext({
+      consultation: {
+        situationSignals: [{ type: "depleted", evidence: [{ text: "疲れている" }] }],
+      },
+      recommendationEvidence: {
+        primaryReasonFact: { type: "need_tag", label: "転機", evidence: [] },
+        secondaryReasonFacts: [],
+      },
+    });
+    const snapshot = JSON.parse(JSON.stringify(ctx));
+    buildDeepRecommendationReason(ctx);
+    expect(ctx).toEqual(snapshot);
   });
 });
