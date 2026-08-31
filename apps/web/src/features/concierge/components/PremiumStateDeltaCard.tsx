@@ -56,16 +56,24 @@ export default function PremiumStateDeltaCard({ stateDelta, isPremium }: Props) 
   ]);
 
   if (!isPremium) {
+    // CTA-B (Continuity). PR-G2 (docs/design/premium-meaning-ui-direction.md
+    // §10): restyled to a restrained, neutral secondary surface so it no longer
+    // reads as a second Premium amber box competing with CTA-A (the seam). Only
+    // presentation changes -- copy, the /billing/upgrade destination, and the
+    // premium_history_comparison_click event / payload are unchanged, and it
+    // still renders under exactly the same condition.
     return (
-      <section className="mx-4 mt-4 rounded-3xl border border-[var(--kt-color-premium-border)] bg-amber-50/80 p-4">
+      <section className="mx-4 mt-4 rounded-[var(--kt-radius-card)] border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-4">
         <div className="space-y-2">
-          <p className="text-sm font-semibold text-amber-950">前回との違いをPremiumで確認できます。</p>
+          <p className="text-sm font-semibold text-[var(--kt-color-text-primary)]">前回との違いをPremiumで確認できます。</p>
 
-          <p className="text-xs leading-6 text-slate-600">気持ちの変化や、続いているテーマをあとから振り返れます。</p>
+          <p className="text-xs leading-6 text-[var(--kt-color-text-secondary)]">
+            気持ちの変化や、続いているテーマをあとから振り返れます。
+          </p>
 
           <Link
             href="/billing/upgrade?source=state_delta_card&funnelStep=comparison_preview"
-            className="inline-flex rounded-2xl bg-[var(--kt-color-premium-accent)] px-4 py-2 text-sm font-semibold text-white"
+            className="inline-flex items-center text-sm font-semibold text-[var(--kt-color-text-secondary)] underline underline-offset-2 hover:text-[var(--kt-color-text-primary)]"
             onClick={() =>
               trackRetentionEvent("premium_history_comparison_click", {
                 source: "state_delta_card",
