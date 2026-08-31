@@ -183,6 +183,10 @@ function PremiumUpgradePrompt({
   const { isLoggedIn, loading: authLoading } = useAuth();
   const isGuestUser = !authLoading && !isLoggedIn;
   const href = isGuestUser ? buildLoginHref("/billing/upgrade") : "/billing/upgrade";
+  // CTA-A responsibility = Meaning Depth: the deep recommendation reason,
+  // personal meaning and action meaning for this shrine. Consultation Summary
+  // ("状態整理") is FREE and must not be pitched here; continuity ("前回との
+  // 違い") is CTA-B and lives on the state-delta card.
   const ctaLabel = isGuestUser ? "ログインして意味を深掘りする" : "この神社を選ぶ意味を深掘りする";
 
   return (
@@ -190,10 +194,10 @@ function PremiumUpgradePrompt({
       <div className="space-y-2">
         <p className="text-sm font-semibold leading-6 text-amber-950">
           {isGuestUser
-            ? "今の状態整理と、この神社を選ぶ意味を深められます。"
-            : "今の状態整理と、この神社を選ぶ意味をPremiumで深掘りできます。"}
+            ? "この神社が選ばれた深い理由と、あなたにとっての意味を深められます。"
+            : "この神社が選ばれた深い理由と、あなたにとっての意味を、Premiumで深掘りできます。"}
         </p>
-        <p className="text-xs leading-6 text-[var(--kt-color-text-secondary)]">相談内容に基づく状態整理、相性、行動の意味づけを表示します。</p>
+        <p className="text-xs leading-6 text-[var(--kt-color-text-secondary)]">相談内容に基づく、選定理由の掘り下げ・相性・行動の意味づけを表示します。</p>
         <Link
           href={href}
           className="inline-flex items-center rounded-[var(--kt-radius-panel)] bg-[var(--kt-color-premium-accent)] px-3 py-2 text-xs font-semibold text-[var(--kt-color-text-inverse)] hover:bg-amber-800"
