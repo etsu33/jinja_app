@@ -17,7 +17,9 @@ function baseContext(overrides: Partial<PremiumMeaningContext> = {}): PremiumMea
     primaryNeed: "転機",
     secondaryNeed: null,
     mode: "need",
-    interpretedContext: { resolved: true },
+    situationSignals: [],
+    desiredOutcomeSignals: [],
+    explicitConstraintSignals: [],
   };
   const recommendationEvidence: PremiumMeaningContext["recommendationEvidence"] = {
     primaryReasonFact: { type: "need_tag", label: "転機", evidence: ["need_tag:転機"] },
@@ -62,7 +64,9 @@ describe("PremiumMeaningContext: required field contract", () => {
     expect(ctx.shrineId).toBe(17);
     expect(ctx.consultation).toHaveProperty("primaryNeed");
     expect(ctx.consultation).toHaveProperty("mode");
-    expect(ctx.consultation).toHaveProperty("interpretedContext");
+    expect(ctx.consultation).toHaveProperty("situationSignals");
+    expect(ctx.consultation).toHaveProperty("desiredOutcomeSignals");
+    expect(ctx.consultation).toHaveProperty("explicitConstraintSignals");
     expect(ctx.recommendationEvidence).toHaveProperty("primaryReasonFact");
     expect(ctx.recommendationEvidence).toHaveProperty("secondaryReasonFacts");
     expect(ctx.shrineEvidence).toHaveProperty("relevantToConsultation");
@@ -76,6 +80,11 @@ describe("PremiumMeaningContext: required field contract", () => {
     expect(ctx.validity).toHaveProperty("deepReasonValid");
     expect(ctx.validity).toHaveProperty("personalMeaningValid");
     expect(ctx.validity).toHaveProperty("actionMeaningValid");
+  });
+
+  it("interpretedContextはもはや存在しない(PR-Cでsituation/desiredOutcome/explicitConstraintSignalsへ置き換え)", () => {
+    const ctx = baseContext();
+    expect(ctx.consultation).not.toHaveProperty("interpretedContext");
   });
 
   it("primaryReasonFactがnullでもContext自体は構築できる(field slot必須・valueはnullable)", () => {
@@ -130,47 +139,65 @@ describe("PremiumMeaningContext: secondary reason facts", () => {
   });
 });
 
-describe("PremiumMeaningContext: Structured Consultation/User Context validity", () => {
-  it("primaryNeedだけではconsultationContextValid/userContextValid/personalMeaningValidにならない(interpretedContextがnull)", () => {
+describe("PremiumMeaningContext: Structured Consultation/User Context validity (PR-C)", () => {
+  it("primaryNeedだけではconsultationContextValid/userContextValid/personalMeaningValidにならない(situationSignals等が空)", () => {
     const ctx = baseContext();
-    ctx.consultation.interpretedContext = null;
     ctx.shrineEvidence.deity = "祭神A";
     ctx.shrineEvidence.relevantToConsultation = true;
 
     const validity = computePremiumMeaningValidity(ctx);
 
     expect(ctx.consultation.primaryNeed).toBe("転機");
+    expect(ctx.consultation.situationSignals).toEqual([]);
     expect(validity.consultationContextValid).toBe(false);
     expect(validity.userContextValid).toBe(false);
     expect(validity.personalMeaningValid).toBe(false);
     expect(validity.deepReasonValid).toBe(false);
   });
 
-  it("Structured User Context VALIDをprimaryNeedとは別条件として表現できる(同じprimaryNeedでもinterpretedContextの有無で結果が変わる)", () => {
-    const withInterpretedContext = baseContext();
-    withInterpretedContext.consultation.primaryNeed = "仕事";
-    withInterpretedContext.consultation.interpretedContext = { someOpaqueSignal: true };
-
-    const withoutInterpretedContext = baseContext();
-    withoutInterpretedContext.consultation.primaryNeed = "仕事";
-    withoutInterpretedContext.consultation.interpretedContext = null;
-
-    expect(computePremiumMeaningValidity(withInterpretedContext).userContextValid).toBe(true);
-    expect(computePremiumMeaningValidity(withoutInterpretedContext).userContextValid).toBe(false);
-  });
-
-  it("primaryNeedが無ければinterpretedContextがあってもconsultationContextValidにならない", () => {
+  it("primaryNeedが無くてもsituationSignalsがあればconsultationContextValid/userContextValidになる(need_tagはもはや条件に関与しない)", () => {
     const ctx = baseContext();
     ctx.consultation.primaryNeed = null;
-    ctx.consultation.interpretedContext = { someOpaqueSignal: true };
+    ctx.consultation.mode = null;
+    ctx.consultation.situationSignals = [{ type: "depleted", evidence: [{ text: "疲れている" }] }];
 
-    expect(computePremiumMeaningValidity(ctx).consultationContextValid).toBe(false);
+    const validity = computePremiumMeaningValidity(ctx);
+
+    expect(validity.consultationContextValid).toBe(true);
+    expect(validity.userContextValid).toBe(true);
+  });
+
+  it("desiredOutcomeSignalsだけでもconsultationContextValid/userContextValidになる", () => {
+    const ctx = baseContext();
+    ctx.consultation.desiredOutcomeSignals = [{ type: "clarify", evidence: [{ text: "整理したい" }] }];
+
+    expect(computePremiumMeaningValidity(ctx).userContextValid).toBe(true);
+  });
+
+  it("explicitConstraintSignalsだけでもconsultationContextValid/userContextValidになる", () => {
+    const ctx = baseContext();
+    ctx.consultation.explicitConstraintSignals = [{ type: "time", evidence: [{ text: "余裕がない" }] }];
+
+    expect(computePremiumMeaningValidity(ctx).userContextValid).toBe(true);
+  });
+
+  it("primaryNeed/secondaryNeed/modeがすべて存在しても、3配列が空ならconsultationContextValid/userContextValidはfalseのまま", () => {
+    const ctx = baseContext();
+    ctx.consultation.primaryNeed = "転機";
+    ctx.consultation.secondaryNeed = "仕事";
+    ctx.consultation.mode = "need";
+
+    const validity = computePremiumMeaningValidity(ctx);
+
+    expect(validity.consultationContextValid).toBe(false);
+    expect(validity.userContextValid).toBe(false);
   });
 });
 
 describe("PremiumMeaningContext: Shrine Evidence PRESENT vs RELEVANT", () => {
   it("deityが存在するだけではpersonalMeaningValidにならない(relevantToConsultation未設定)", () => {
     const ctx = baseContext();
+    ctx.consultation.situationSignals = [{ type: "depleted", evidence: [{ text: "疲れている" }] }];
     ctx.shrineEvidence.deity = "祭神A";
     ctx.shrineEvidence.relevantToConsultation = null;
 
@@ -183,6 +210,7 @@ describe("PremiumMeaningContext: Shrine Evidence PRESENT vs RELEVANT", () => {
 
   it("historyが存在するだけではpersonalMeaningValidにならない(relevantToConsultation未設定)", () => {
     const ctx = baseContext();
+    ctx.consultation.situationSignals = [{ type: "depleted", evidence: [{ text: "疲れている" }] }];
     ctx.shrineEvidence.history = "由緒の記述";
     ctx.shrineEvidence.relevantToConsultation = null;
 
@@ -195,6 +223,7 @@ describe("PremiumMeaningContext: Shrine Evidence PRESENT vs RELEVANT", () => {
 
   it("placeContextが存在するだけではpersonalMeaningValidにならない(relevantToConsultation未設定)", () => {
     const ctx = baseContext();
+    ctx.consultation.situationSignals = [{ type: "depleted", evidence: [{ text: "疲れている" }] }];
     ctx.shrineEvidence.placeContext = "山間の参道";
     ctx.shrineEvidence.relevantToConsultation = null;
 
@@ -207,6 +236,7 @@ describe("PremiumMeaningContext: Shrine Evidence PRESENT vs RELEVANT", () => {
 
   it("relevantToConsultation=falseの場合も、存在するだけではpersonalMeaningValidにならない", () => {
     const ctx = baseContext();
+    ctx.consultation.situationSignals = [{ type: "depleted", evidence: [{ text: "疲れている" }] }];
     ctx.shrineEvidence.deity = "祭神A";
     ctx.shrineEvidence.relevantToConsultation = false;
 
@@ -215,6 +245,7 @@ describe("PremiumMeaningContext: Shrine Evidence PRESENT vs RELEVANT", () => {
 
   it("goriyaku(タグ)しかない場合はshrineEvidencePresentもfalseになる(LOW specificityは対象外)", () => {
     const ctx = baseContext();
+    ctx.consultation.situationSignals = [{ type: "depleted", evidence: [{ text: "疲れている" }] }];
     ctx.shrineEvidence.goriyaku = ["金運"];
     ctx.shrineEvidence.relevantToConsultation = true;
 
@@ -225,22 +256,38 @@ describe("PremiumMeaningContext: Shrine Evidence PRESENT vs RELEVANT", () => {
     expect(validity.personalMeaningValid).toBe(false);
   });
 
-  it("Relevant Shrine Evidence成立時(PRESENT かつ relevantToConsultation=true)のみpersonalMeaningValidになる", () => {
+  it("Relevant Shrine Evidence成立時(PRESENT かつ relevantToConsultation=true)のみpersonalMeaningValidになる(userContextValidも必要)", () => {
     const ctx = baseContext();
+    ctx.consultation.situationSignals = [{ type: "depleted", evidence: [{ text: "疲れている" }] }];
     ctx.shrineEvidence.deity = "祭神A";
     ctx.shrineEvidence.relevantToConsultation = true;
 
     const validity = computePremiumMeaningValidity(ctx);
 
+    expect(validity.userContextValid).toBe(true);
     expect(validity.shrineEvidencePresent).toBe(true);
     expect(validity.shrineEvidenceValid).toBe(true);
     expect(validity.personalMeaningValid).toBe(true);
+  });
+
+  it("Shrine Evidenceが揃っていてもuserContextValidがfalseならpersonalMeaningValidにならない", () => {
+    const ctx = baseContext();
+    ctx.shrineEvidence.deity = "祭神A";
+    ctx.shrineEvidence.relevantToConsultation = true;
+    // situation/desiredOutcome/explicitConstraint すべて空のまま
+
+    const validity = computePremiumMeaningValidity(ctx);
+
+    expect(validity.userContextValid).toBe(false);
+    expect(validity.shrineEvidenceValid).toBe(true);
+    expect(validity.personalMeaningValid).toBe(false);
   });
 });
 
 describe("PremiumMeaningContext: Action Meaning validity", () => {
   it("actionMeaningValidはshrineEvidenceValidの再利用ではなく、独立したrelevantToVisitに依存する", () => {
     const ctx = baseContext();
+    ctx.consultation.situationSignals = [{ type: "depleted", evidence: [{ text: "疲れている" }] }];
     ctx.shrineEvidence.deity = "祭神A";
     ctx.shrineEvidence.relevantToConsultation = true; // personalMeaningValid = true
     ctx.shrineEvidence.relevantToVisit = null; // Action Meaning用のRelevanceは未設定
@@ -254,6 +301,7 @@ describe("PremiumMeaningContext: Action Meaning validity", () => {
 
   it("personalMeaningValid=true かつ relevantToVisit=trueの場合のみactionMeaningValidになる", () => {
     const ctx = baseContext();
+    ctx.consultation.situationSignals = [{ type: "depleted", evidence: [{ text: "疲れている" }] }];
     ctx.shrineEvidence.deity = "祭神A";
     ctx.shrineEvidence.relevantToConsultation = true;
     ctx.shrineEvidence.relevantToVisit = true;
@@ -267,6 +315,7 @@ describe("PremiumMeaningContext: Action Meaning validity", () => {
 
   it("Personal MeaningがINVALIDならrelevantToVisit=trueでもactionMeaningValidはINVALID(前提条件の連鎖)", () => {
     const ctx = baseContext();
+    ctx.consultation.situationSignals = [{ type: "depleted", evidence: [{ text: "疲れている" }] }];
     ctx.shrineEvidence.deity = null;
     ctx.shrineEvidence.history = null;
     ctx.shrineEvidence.placeContext = null;
@@ -280,8 +329,9 @@ describe("PremiumMeaningContext: Action Meaning validity", () => {
 });
 
 describe("PremiumMeaningContext: full validity state", () => {
-  it("Consultation Context/Recommendation Evidence/Relevant Shrine Evidence/Relevant Shrine Contextが全て揃う場合、Deep/Personal/Actionまで全てvalidになる", () => {
+  it("Consultation Meaning/Recommendation Evidence/Relevant Shrine Evidence/Relevant Shrine Contextが全て揃う場合、Deep/Personal/Actionまで全てvalidになる", () => {
     const ctx = baseContext();
+    ctx.consultation.situationSignals = [{ type: "depleted", evidence: [{ text: "疲れている" }] }];
     ctx.shrineEvidence.deity = "祭神A";
     ctx.shrineEvidence.relevantToConsultation = true;
     ctx.shrineEvidence.relevantToVisit = true;
@@ -303,6 +353,7 @@ describe("PremiumMeaningContext: full validity state", () => {
 
   it("primaryReasonFactが無い場合、recommendationEvidenceValidとdeepReasonValidのみfalseになる(Personal Meaningには影響しない)", () => {
     const ctx = baseContext();
+    ctx.consultation.situationSignals = [{ type: "depleted", evidence: [{ text: "疲れている" }] }];
     ctx.recommendationEvidence.primaryReasonFact = null;
     ctx.shrineEvidence.deity = "祭神A";
     ctx.shrineEvidence.relevantToConsultation = true;
@@ -349,6 +400,11 @@ describe("PremiumMeaningContext: excluded fields", () => {
       "stateTone",
       "emotionIntensity",
       "actionIntent",
+      "interpretedContext",
+      "confidence",
+      "primarySituation",
+      "primaryOutcome",
+      "primaryConstraint",
     ];
 
     for (const key of excluded) {
