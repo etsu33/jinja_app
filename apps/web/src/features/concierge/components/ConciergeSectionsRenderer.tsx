@@ -857,7 +857,10 @@ export default function ConciergeSectionsRenderer({
                 )}
 
                 {(isFallback || hasDummy) && (
-                  <div className="mt-3 grid grid-cols-2 gap-2">
+                  // PR-G4: 1 column at mobile widths so the JP labels never wrap to
+                  // uneven 2-line buttons at 375px; 2 columns from `sm` up. Same
+                  // pattern as ConciergeTopRecommendationHero / ShrineReflectionPrompt.
+                  <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <button
                       type="button"
                       className="rounded-[var(--kt-radius-panel)] border px-4 py-3 text-sm font-semibold"
