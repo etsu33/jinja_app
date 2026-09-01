@@ -48,6 +48,7 @@ import ShrineProposalSection from "@/components/shrine/detail/ShrineProposalSect
 import ShrineReasonSection from "@/components/shrine/detail/ShrineReasonSection";
 import ShrineSupplementSection from "@/components/shrine/detail/ShrineSupplementSection";
 import ShrineFactSection from "@/components/shrine/detail/ShrineFactSection";
+import { RecommendationMetaSection } from "@/components/shrine/detail/RecommendationMetaSection";
 import ShrineDetailHeroCard from "@/components/shrine/detail/ShrineDetailHeroCard";
 import DetailDisclosureBlock from "@/components/shrine/DetailDisclosureBlock";
 import { FAVORITE_LABELS } from "@/lib/ui/labels";
@@ -741,7 +742,15 @@ export default function ShrineDetailArticle({
         />
       ) : null}
 
-      {/* Premium比較カードは後続PRで再設計する。 */}
+      {/* recommendation_meta（PR-N3b）: なぜこの順位/推薦位置なのかの補足。
+          Meaning のあと・Evidence / supporting-detail 領域に、弱い階層で表示する
+          （Meaning body でも Fact でも Premium seam でもない）。描画条件は既存の
+          recommendation_meta analytics event と同じ（rankTitle && rankBody）にして、
+          計測される exposure が常に visible DOM と一致するようにする。event/CardId/
+          payload は不変。 */}
+      {recommendationMeta?.rankTitle && recommendationMeta?.rankBody ? (
+        <RecommendationMetaSection recommendationMeta={recommendationMeta} />
+      ) : null}
 
       {/* Deep Dive Q&A。readiness/Fact選択/Source選択はすべてBackend Authority
           (POST /api/deep-dive/ask/)。Frontend側でreadinessを先読みして表示可否を

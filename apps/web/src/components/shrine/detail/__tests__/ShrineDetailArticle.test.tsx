@@ -1104,4 +1104,126 @@ describe("ShrineDetailArticle", () => {
       );
     });
   });
+
+  describe("PR-N3b: recommendation_meta in the Evidence layer", () => {
+    const rmBaseProps = {
+      cardProps: {
+        shrineId: 17,
+        title: "乃木神社",
+        href: "/shrines/17",
+        imageUrl: null,
+        badges: [],
+        metaChips: [],
+        address: "東京都港区赤坂",
+      } as any,
+      heroImageUrl: null,
+      heroMeaningCopy: null,
+      benefitLabels: [],
+      tags: [],
+      publicGoshuinsPreview: [],
+      publicGoshuinsViewAllHref: "",
+      sections: [],
+      saveActionNode: null,
+    };
+
+    const rm = {
+      rankTitle: "1位との違い",
+      rankBody: "1位とは相談テーマの重なりの強さが少し違います。",
+      rankComparison: { is_top: false, gap_from_top: 0.42 },
+    };
+
+    beforeEach(() => {
+      authMock.useAuth.mockReturnValue({ isLoggedIn: true, loading: false });
+    });
+
+    it("rankTitle && rankBody がある場合、Evidence surfaceとして title / body を表示する", () => {
+      render(<ShrineDetailArticle {...rmBaseProps} recommendationMeta={rm} isPremiumActive={false} />);
+
+      const surface = screen.getByTestId("shrine-detail-recommendation-meta");
+      expect(within(surface).getByText("1位との違い")).toBeInTheDocument();
+      expect(within(surface).getByText("1位とは相談テーマの重なりの強さが少し違います。")).toBeInTheDocument();
+      expect(within(surface).getByText("1位との差: 0.42")).toBeInTheDocument();
+    });
+
+    it("recommendationMeta が null / body 欠落なら表示しない（既存fallback非破壊）", () => {
+      const { rerender } = render(
+        <ShrineDetailArticle {...rmBaseProps} recommendationMeta={null} isPremiumActive={false} />,
+      );
+      expect(screen.queryByTestId("shrine-detail-recommendation-meta")).not.toBeInTheDocument();
+
+      rerender(
+        <ShrineDetailArticle
+          {...rmBaseProps}
+          recommendationMeta={{ rankTitle: "1位との違い", rankBody: null } as any}
+          isPremiumActive={false}
+        />,
+      );
+      expect(screen.queryByTestId("shrine-detail-recommendation-meta")).not.toBeInTheDocument();
+    });
+
+    it.each([
+      ["free", false],
+      ["premium", true],
+    ])("%s: data がある場合は同じ Evidence contract で表示する", (_label, isPremiumActive) => {
+      render(<ShrineDetailArticle {...rmBaseProps} recommendationMeta={rm} isPremiumActive={isPremiumActive as boolean} />);
+      expect(screen.getByTestId("shrine-detail-recommendation-meta")).toBeInTheDocument();
+      expect(screen.getByText("1位との違い")).toBeInTheDocument();
+    });
+
+    it("既存の recommendation_meta card_view event が payload 不変で発火し続ける（新規eventなし）", async () => {
+      render(<ShrineDetailArticle {...rmBaseProps} recommendationMeta={rm} isPremiumActive={false} />);
+
+      await waitFor(() => {
+        expect(analyticsMocks.trackCardEvent).toHaveBeenCalledWith(
+          expect.objectContaining({
+            event: "card_view",
+            cardId: "recommendation_meta",
+            source: "shrine_detail",
+            accessLevel: "free",
+            visibility: "visible",
+            shrineId: 17,
+          }),
+        );
+      });
+
+      const rmCalls = analyticsMocks.trackCardEvent.mock.calls
+        .map(([p]: any[]) => p)
+        .filter((p: any) => p.cardId === "recommendation_meta");
+      expect(rmCalls).toHaveLength(1);
+      expect(rmCalls[0].event).toBe("card_view");
+    });
+
+    it("DOM順: Meaning（context_reason）の後、Deep Dive の前の Evidence 領域に置かれる", () => {
+      render(
+        <ShrineDetailArticle
+          {...rmBaseProps}
+          freeDisplaySections={[{ tier: "free", layer: "context", section: { kind: "reason" } }] as any}
+          premiumDisplaySections={[]}
+          recommendationMeta={rm}
+          isPremiumActive={false}
+        />,
+      );
+
+      const meaning = screen.getByTestId("shrine-reason-section");
+      const rmSurface = screen.getByTestId("shrine-detail-recommendation-meta");
+      const deepDive = screen.getByText("この神社について質問する");
+
+      expect(meaning.compareDocumentPosition(rmSurface) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(rmSurface.compareDocumentPosition(deepDive) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it("弱い階層: borderless / no amber / no shadow / no premium accent（standalone promotional card ではない）", () => {
+      render(<ShrineDetailArticle {...rmBaseProps} recommendationMeta={rm} isPremiumActive={false} />);
+      const surface = screen.getByTestId("shrine-detail-recommendation-meta");
+      expect(surface.className).not.toMatch(/amber-\d/);
+      expect(surface.className).not.toMatch(/\bborder\b/);
+      expect(surface.className).not.toMatch(/shadow-\[/);
+      expect(surface.className).not.toContain("bg-[var(--kt-color-premium-surface)]");
+      expect(surface.className).not.toContain("bg-[var(--kt-color-premium-accent)]");
+      // heading is subordinate (<h3>, muted)
+      const heading = within(surface).getByText("1位との違い");
+      expect(heading.tagName).toBe("H3");
+      expect(heading.className).toContain("text-[var(--kt-color-text-muted)]");
+    });
+  });
 });
