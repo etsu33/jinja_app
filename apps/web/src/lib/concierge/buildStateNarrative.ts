@@ -10,20 +10,20 @@
  * - 神社説明は扱わない
  */
 
-import { clean, buildConsultationMeaningSlots } from "./buildRecommendationReasonViewModel";
-import type { BuildParams, Candidate, ConsultationMeaningSlots } from "./buildRecommendationReasonViewModel";
+import { clean, buildNeedTagMeaningSlots } from "./buildRecommendationReasonViewModel";
+import type { BuildParams, Candidate, NeedTagMeaningSlots } from "./buildRecommendationReasonViewModel";
 
 export type StateNarrative = {
   consultationSummary: string;
 };
 
-function hasConsultationNeed(slots: ConsultationMeaningSlots): boolean {
+function hasConsultationNeed(slots: NeedTagMeaningSlots): boolean {
   return Boolean(clean(slots.needPrimary));
 }
 
 function buildStateStuckText(
   params: BuildParams,
-  slots: ConsultationMeaningSlots,
+  slots: NeedTagMeaningSlots,
   primary: Candidate,
 ): string {
   const need = clean(slots.needPrimary);
@@ -73,7 +73,7 @@ function buildStateStuckText(
 
 function buildStatePriorityText(
   params: BuildParams,
-  slots: ConsultationMeaningSlots,
+  slots: NeedTagMeaningSlots,
   primary: Candidate,
 ): string {
   const need = clean(slots.needPrimary);
@@ -123,7 +123,7 @@ function buildStatePriorityText(
 
 function buildConsultationSummary(
   params: BuildParams,
-  slots: ConsultationMeaningSlots,
+  slots: NeedTagMeaningSlots,
   primary: Candidate,
   _secondary?: Candidate,
 ): string {
@@ -138,7 +138,7 @@ export function buildStateNarrative(args: {
   primary: Candidate;
   secondary?: Candidate;
 }): StateNarrative {
-  const slots = buildConsultationMeaningSlots(args.params);
+  const slots = buildNeedTagMeaningSlots(args.params);
 
   return {
     consultationSummary: buildConsultationSummary(args.params, slots, args.primary, args.secondary),

@@ -21,13 +21,13 @@
 
 import {
   clean,
-  buildConsultationMeaningSlots,
+  buildNeedTagMeaningSlots,
   buildShrineMeaningSlots,
 } from "./buildRecommendationReasonViewModel";
 import type {
   BuildParams,
   Candidate,
-  ConsultationMeaningSlots,
+  NeedTagMeaningSlots,
   ShrineMeaningSlots,
 } from "./buildRecommendationReasonViewModel";
 import { toNeedTagLabel } from "./needTagLabelMap";
@@ -53,7 +53,7 @@ function buildReflectionQuestion(args: {
   mode: BuildParams["mode"];
   need: string | null;
   shrine: ShrineMeaningSlots;
-  consultation: ConsultationMeaningSlots;
+  consultation: NeedTagMeaningSlots;
   primary: Candidate;
   context: ShrineNarrativeContext;
 }): string {
@@ -368,7 +368,7 @@ function buildMeaningCore(args: {
 function buildWhyNow(args: {
   mode: BuildParams["mode"];
   need: string | null;
-  consultation: ConsultationMeaningSlots;
+  consultation: NeedTagMeaningSlots;
   primary: Candidate;
 }): string {
   if (args.mode === "compat") return "勢いで合う・合わないを決めるほど感覚がぶれやすい今は、";
@@ -394,7 +394,7 @@ function buildActionRole(args: {
   mode: BuildParams["mode"];
   need: string | null;
   shrine: ShrineMeaningSlots;
-  consultation: ConsultationMeaningSlots;
+  consultation: NeedTagMeaningSlots;
   primary: Candidate;
   context: ShrineNarrativeContext;
 }): string {
@@ -470,7 +470,7 @@ export function buildMeaningNarrative(args: {
 }): MeaningNarrative {
   const { params, primary, secondary } = args;
 
-  const consultation = buildConsultationMeaningSlots(params);
+  const consultation = buildNeedTagMeaningSlots(params);
   const shrine       = buildShrineMeaningSlots(params);
   const need         = clean(consultation.needPrimary) || clean(params.needTags?.[0]) || null;
   const context      = resolveShrineContext(params);

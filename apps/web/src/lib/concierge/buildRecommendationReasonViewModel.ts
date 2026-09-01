@@ -106,7 +106,7 @@ export type Candidate = {
   text: string;
 };
 
-export type ConsultationMeaningSlots = {
+export type NeedTagMeaningSlots = {
   needPrimary: string | null;
   needSecondary?: string | null;
   state: string | null;
@@ -276,7 +276,7 @@ function getShrineFeatureLabel(rec: RecommendationLike, shrineFeatureLabels?: st
   return null;
 }
 
-export function buildConsultationMeaningSlots(params: BuildParams): ConsultationMeaningSlots {
+export function buildNeedTagMeaningSlots(params: BuildParams): NeedTagMeaningSlots {
   const needPrimary = clean(params.needTags?.[0]) || null;
   const needSecondary = clean(params.needTags?.[1]) || null;
 
@@ -419,7 +419,7 @@ export function buildShrineMeaningSlots(params: BuildParams): ShrineMeaningSlots
 
 export function buildRecommendationMatchModel(args: {
   params: BuildParams;
-  consultation: ConsultationMeaningSlots;
+  consultation: NeedTagMeaningSlots;
   shrine: ShrineMeaningSlots;
   inputType: ReasonInputType;
   rec: RecommendationLike;

@@ -18,7 +18,7 @@ import {
   formatDistance,
   resolveInputType,
   getPrimaryElement,
-  buildConsultationMeaningSlots,
+  buildNeedTagMeaningSlots,
   buildShrineMeaningSlots,
   buildRecommendationMatchModel,
 } from "./buildRecommendationReasonViewModel";
@@ -254,7 +254,7 @@ function buildFeatureSupportText(
 }
 
 function buildQueryCandidates(params: BuildParams): Candidate[] {
-  const consultation = buildConsultationMeaningSlots(params);
+  const consultation = buildNeedTagMeaningSlots(params);
   const shrine = buildShrineMeaningSlots(params);
   const rec = params.rec;
   const out: Candidate[] = [];
@@ -360,7 +360,7 @@ function buildFallbackCandidates(params: BuildParams): Candidate[] {
 }
 
 function buildFactsCandidates(params: BuildParams, inputType: ReturnType<typeof resolveInputType>): Candidate[] {
-  const consultation = buildConsultationMeaningSlots(params);
+  const consultation = buildNeedTagMeaningSlots(params);
   const shrine = buildShrineMeaningSlots(params);
   const match = buildRecommendationMatchModel({
     params,
@@ -592,7 +592,7 @@ function buildRankReason(
   }
 
   const inputType = resolveInputType(params);
-  const consultation = buildConsultationMeaningSlots(params);
+  const consultation = buildNeedTagMeaningSlots(params);
   const shrine = buildShrineMeaningSlots(params);
   const match = buildRecommendationMatchModel({
     params,
