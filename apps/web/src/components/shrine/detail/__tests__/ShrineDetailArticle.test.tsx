@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const analyticsMocks = vi.hoisted(() => ({
@@ -22,6 +22,13 @@ const visitsMocks = vi.hoisted(() => ({
 vi.mock("@/lib/api/visits", () => ({
   addVisit: visitsMocks.addVisit,
   getVisits: visitsMocks.getVisits,
+}));
+
+const authMock = vi.hoisted(() => ({
+  useAuth: vi.fn(() => ({ isLoggedIn: false, loading: false })),
+}));
+vi.mock("@/lib/auth/AuthProvider", () => ({
+  useAuth: authMock.useAuth,
 }));
 
 import ShrineDetailArticle from "../ShrineDetailArticle";
@@ -915,6 +922,186 @@ describe("ShrineDetailArticle", () => {
       // 見出し「歴史」は1つだけ（2枚のcardそれぞれの個別ラベルとしては重複表示しない）。
       expect(screen.getAllByText("歴史")).toHaveLength(1);
       expect(screen.getByText("創始")).toBeInTheDocument();
+    });
+  });
+
+  describe("PR-N3: semantic Meaning teaser <-> analytics alignment (Guest/Free)", () => {
+    const teaserBaseProps = {
+      cardProps: {
+        shrineId: 17,
+        title: "乃木神社",
+        href: "/shrines/17",
+        imageUrl: null,
+        badges: [],
+        metaChips: [],
+        address: "東京都港区赤坂",
+      } as any,
+      heroImageUrl: null,
+      heroMeaningCopy: null,
+      benefitLabels: [],
+      tags: [],
+      publicGoshuinsPreview: [],
+      publicGoshuinsViewAllHref: "",
+      sections: [],
+      recommendationMeta: null,
+      saveActionNode: null,
+    };
+
+    // A premium Meaning bundle whose items carry the semantic keys that
+    // collectMeaningBlockCardIds() picks up (mirrors a payloadV2 premium block set).
+    const premiumMeaningBundle = [
+      {
+        section: {
+          kind: "meaning",
+          heading: "この神社で受け取る意味",
+          items: [
+            { key: "consultation_summary", title: "相談の整理", body: "本文S" },
+            { key: "shrine_meaning", title: "この神社の意味", body: "本文M" },
+            { key: "action_meaning", title: "参拝の視点", body: "本文A" },
+          ],
+        },
+      },
+    ] as any;
+
+    beforeEach(() => {
+      authMock.useAuth.mockReturnValue({ isLoggedIn: true, loading: false }); // Free (logged-in, not premium)
+    });
+
+    it("Free: 1つのPremium teaser surfaceだけを表示し、3 semantic teaserがすべてvisible / Premium full bodyは非表示", () => {
+      render(
+        <ShrineDetailArticle
+          {...teaserBaseProps}
+          premiumDisplaySections={premiumMeaningBundle}
+          isPremiumActive={false}
+        />,
+      );
+
+      const surfaces = screen.getAllByTestId("shrine-detail-premium-teaser");
+      expect(surfaces).toHaveLength(1);
+      const surface = surfaces[0];
+
+      // 各semantic CardIdに対応するvisible teaser（G2 Concierge承認copy再利用 + consultation_summary generic）
+      expect(within(surface).getByText("この神社が選ばれた深い理由は、Premiumで読めます。")).toBeInTheDocument();
+      expect(within(surface).getByText("参拝で意識することの意味づけは、Premiumで読めます。")).toBeInTheDocument();
+      expect(within(surface).getByText("相談内容とのつながりの整理は、Premiumで読めます。")).toBeInTheDocument();
+
+      // Premium full body(ShrineJudgeSection)はGuest/Freeでは描画されない
+      expect(screen.queryByTestId("shrine-judge-section")).not.toBeInTheDocument();
+
+      // CTAは1つだけ
+      expect(within(surface).getAllByRole("link", { name: "この神社を選ぶ意味を深掘りする" })).toHaveLength(1);
+    });
+
+    it("Free: teaser surfaceが amber literal / border / heavy shadow を持たず、1 seam のまま（card stacking回帰なし）", () => {
+      render(
+        <ShrineDetailArticle
+          {...teaserBaseProps}
+          premiumDisplaySections={premiumMeaningBundle}
+          isPremiumActive={false}
+        />,
+      );
+      const surface = screen.getByTestId("shrine-detail-premium-teaser");
+      expect(surface.className).not.toMatch(/amber-\d/);
+      expect(surface.className).not.toMatch(/\bborder\b/);
+      expect(surface.className).not.toMatch(/shadow-\[/);
+      expect(surface.className).toContain("bg-[var(--kt-color-premium-surface)]");
+    });
+
+    it("Free: 発火する semantic analytics event と visible teaser が一致する（event contract不変）", async () => {
+      render(
+        <ShrineDetailArticle
+          {...teaserBaseProps}
+          premiumDisplaySections={premiumMeaningBundle}
+          isPremiumActive={false}
+          recommendationInstanceId="ri-123"
+        />,
+      );
+
+      await waitFor(() => {
+        // umbrella
+        expect(analyticsMocks.trackCardEvent).toHaveBeenCalledWith(
+          expect.objectContaining({
+            event: "card_partial_view",
+            cardId: "personal_meaning",
+            source: "shrine_detail",
+            accessLevel: "free",
+            visibility: "teaser",
+          }),
+        );
+        // semantic — event names / payload unchanged, still card_partial_view
+        for (const cardId of ["consultation_summary", "shrine_meaning", "action_meaning"] as const) {
+          expect(analyticsMocks.trackCardEvent).toHaveBeenCalledWith(
+            expect.objectContaining({
+              event: "card_partial_view",
+              cardId,
+              source: "shrine_detail",
+              accessLevel: "free",
+              visibility: "teaser",
+              shrineId: 17,
+            }),
+          );
+        }
+      });
+
+      // no card_teaser_view rename, no card_view for these on shrine_detail
+      const calls = analyticsMocks.trackCardEvent.mock.calls.map(([p]: any[]) => p);
+      expect(calls.some((p: any) => p.event === "card_teaser_view")).toBe(false);
+      expect(
+        calls.some(
+          (p: any) => p.source === "shrine_detail" && p.event === "card_view" && p.cardId === "shrine_meaning",
+        ),
+      ).toBe(false);
+    });
+
+    it("Free: gated semantic keyが1つだけならその1 teaserのみ表示する", () => {
+      render(
+        <ShrineDetailArticle
+          {...teaserBaseProps}
+          premiumDisplaySections={[
+            { section: { kind: "meaning", heading: "x", items: [{ key: "action_meaning", title: "t", body: "b" }] } },
+          ] as any}
+          isPremiumActive={false}
+        />,
+      );
+      const surface = screen.getByTestId("shrine-detail-premium-teaser");
+      expect(within(surface).getByText("参拝で意識することの意味づけは、Premiumで読めます。")).toBeInTheDocument();
+      expect(within(surface).queryByText("この神社が選ばれた深い理由は、Premiumで読めます。")).not.toBeInTheDocument();
+      expect(within(surface).queryByText("相談内容とのつながりの整理は、Premiumで読めます。")).not.toBeInTheDocument();
+    });
+
+    it("Premium: teaser surfaceは表示されず、premium full sectionsが描画される", () => {
+      authMock.useAuth.mockReturnValue({ isLoggedIn: true, loading: false });
+      render(
+        <ShrineDetailArticle
+          {...teaserBaseProps}
+          premiumDisplaySections={premiumMeaningBundle}
+          isPremiumActive
+        />,
+      );
+      expect(screen.queryByTestId("shrine-detail-premium-teaser")).not.toBeInTheDocument();
+      expect(screen.getByTestId("shrine-judge-section")).toBeInTheDocument();
+    });
+
+    it("Free: CTA click analytics (premium_preview_click) は不変", () => {
+      render(
+        <ShrineDetailArticle
+          {...teaserBaseProps}
+          premiumDisplaySections={premiumMeaningBundle}
+          isPremiumActive={false}
+        />,
+      );
+      const cta = screen.getByRole("link", { name: "この神社を選ぶ意味を深掘りする" });
+      fireEvent.click(cta);
+      expect(analyticsMocks.trackCardEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: "premium_preview_click",
+          cardId: "premium_preview",
+          source: "shrine_detail",
+          visibility: "teaser",
+          ctaType: "continue_with_premium",
+          shrineId: 17,
+        }),
+      );
     });
   });
 });

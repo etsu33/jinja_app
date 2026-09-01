@@ -179,33 +179,71 @@ function PremiumUpgradePrompt({
   ctx,
   tid,
   historyTheme,
+  gatedSemanticCardIds = [],
 }: {
   shrineId?: number | string | null;
   ctx?: string | null;
   tid?: string | number | null;
   historyTheme?: string | null;
+  // Which semantic Meaning CardIds are gated for this Guest/Free render (i.e.
+  // fire a `card_partial_view` from the Shrine Detail analytics effect). Each
+  // gets a visible teaser line so the semantic exposure event corresponds to
+  // something the user can actually read (PR-N3, Mother Ship Policy B). The
+  // `personal_meaning` umbrella event corresponds to this whole surface.
+  gatedSemanticCardIds?: ShrineDetailTrackedCardId[];
 }) {
   const { isLoggedIn, loading: authLoading } = useAuth();
   const isGuestUser = !authLoading && !isLoggedIn;
   const href = isGuestUser ? buildLoginHref("/billing/upgrade") : "/billing/upgrade";
   // CTA-A responsibility = Meaning Depth: the deep recommendation reason,
-  // personal meaning and action meaning for this shrine. Consultation Summary
-  // ("状態整理") is FREE and must not be pitched here; continuity ("前回との
+  // personal meaning and action meaning for this shrine. Continuity ("前回との
   // 違い") is CTA-B and lives on the state-delta card.
   const ctaLabel = isGuestUser ? "ログインして意味を深掘りする" : "この神社を選ぶ意味を深掘りする";
 
+  const gated = new Set(gatedSemanticCardIds);
+
   return (
-    <section className="rounded-[var(--kt-radius-card)] border border-amber-100 bg-amber-50/70 p-4">
+    // One restrained Premium seam (Direction C): soft premium-surface tint, no
+    // border / shadow / badge / lock icon; CTA is a text link, not a filled
+    // button. Mirrors the Concierge PremiumSeam (PR-G2). Tokens only (dark-safe).
+    <section
+      data-testid="shrine-detail-premium-teaser"
+      className="rounded-[var(--kt-radius-panel)] bg-[var(--kt-color-premium-surface)] px-4 py-4"
+    >
       <div className="space-y-2">
-        <p className="text-sm font-semibold leading-6 text-amber-950">
+        <p className="text-[11px] font-semibold tracking-[0.14em] text-[var(--kt-color-premium-accent)]">
+          ここから、より深い意味へ
+        </p>
+
+        {/* Umbrella (personal_meaning) — this surface as a whole. */}
+        <p className="text-sm leading-6 text-[var(--kt-color-text-secondary)]">
           {isGuestUser
             ? "この神社が選ばれた深い理由と、あなたにとっての意味を深められます。"
             : "この神社が選ばれた深い理由と、あなたにとっての意味を、Premiumで深掘りできます。"}
         </p>
-        <p className="text-xs leading-6 text-[var(--kt-color-text-secondary)]">相談内容に基づく、選定理由の掘り下げ・相性・行動の意味づけを表示します。</p>
+
+        {/* Per-semantic teasers — one line per gated semantic CardId that fires
+            a card_partial_view for this render. Approved copy reused from the
+            Concierge PremiumSeam where it exists. */}
+        {gated.has("shrine_meaning") ? (
+          <p className="text-sm leading-6 text-[var(--kt-color-text-secondary)]">
+            この神社が選ばれた深い理由は、Premiumで読めます。
+          </p>
+        ) : null}
+        {gated.has("action_meaning") ? (
+          <p className="text-sm leading-6 text-[var(--kt-color-text-secondary)]">
+            参拝で意識することの意味づけは、Premiumで読めます。
+          </p>
+        ) : null}
+        {gated.has("consultation_summary") ? (
+          <p className="text-sm leading-6 text-[var(--kt-color-text-secondary)]">
+            相談内容とのつながりの整理は、Premiumで読めます。
+          </p>
+        ) : null}
+
         <Link
           href={href}
-          className="inline-flex items-center rounded-[var(--kt-radius-panel)] bg-[var(--kt-color-premium-accent)] px-3 py-2 text-xs font-semibold text-[var(--kt-color-text-inverse)] hover:bg-amber-800"
+          className="inline-flex items-center text-sm font-semibold text-[var(--kt-color-premium-accent)] underline underline-offset-2 hover:opacity-80"
           onClick={() =>
             trackCardEvent({
               event: "premium_preview_click",
@@ -694,7 +732,13 @@ export default function ShrineDetailArticle({
       ) : null}
 
       {personalMeaningVisibility === "teaser" && hasPremiumSections ? (
-        <PremiumUpgradePrompt shrineId={cardProps.shrineId} ctx={ctx} tid={tid} historyTheme={historyTheme} />
+        <PremiumUpgradePrompt
+          shrineId={cardProps.shrineId}
+          ctx={ctx}
+          tid={tid}
+          historyTheme={historyTheme}
+          gatedSemanticCardIds={premiumMeaningBlockCardIds}
+        />
       ) : null}
 
       {/* Premium比較カードは後続PRで再設計する。 */}
