@@ -33,4 +33,18 @@ describe("ShrineProposalSection", () => {
       expect(screen.getByText("今の状態整理").className).toContain("text-[var(--kt-color-text-primary)]");
     });
   });
+
+  describe("variant=plain (PR-G3 editorial flow)", () => {
+    it("borderless: 外枠sectionにborder/surface/shadowクラスを持たず、見出し(<h2>)・lead・bodyは維持する", () => {
+      const { container } = render(<ShrineProposalSection section={section} variant="plain" />);
+      const outer = container.querySelector("section")!;
+      expect(outer.className).not.toMatch(/\bborder\b/);
+      expect(outer.className).not.toContain("bg-[var(--kt-color-surface-default)]");
+      expect(outer.className).not.toMatch(/shadow-\[/);
+
+      expect(screen.getByText("今の状態整理").tagName).toBe("H2");
+      expect(screen.getByText("リード文")).toBeInTheDocument();
+      expect(screen.getByText("本文")).toBeInTheDocument();
+    });
+  });
 });

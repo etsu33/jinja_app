@@ -38,4 +38,18 @@ describe("ShrineSupplementSection", () => {
       expect(screen.getByText("健康").className).toContain("rounded-[var(--kt-radius-pill)]");
     });
   });
+
+  describe("variant=plain (PR-G3 editorial flow)", () => {
+    it("borderless: 外枠sectionにborder/surface/shadowクラスを持たず、見出し(<h2>)・group・タグは維持する", () => {
+      const { container } = render(<ShrineSupplementSection section={section} variant="plain" />);
+      const outer = container.querySelector("section")!;
+      expect(outer.className).not.toMatch(/\bborder\b/);
+      expect(outer.className).not.toContain("bg-[var(--kt-color-surface-default)]");
+      expect(outer.className).not.toMatch(/shadow-\[/);
+
+      expect(screen.getByText("神社情報").tagName).toBe("H2");
+      expect(screen.getByText("ご利益")).toBeInTheDocument();
+      expect(screen.getByText("健康")).toBeInTheDocument();
+    });
+  });
 });

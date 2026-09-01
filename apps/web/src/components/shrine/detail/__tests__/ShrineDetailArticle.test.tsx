@@ -806,6 +806,27 @@ describe("ShrineDetailArticle", () => {
       expect(screen.queryByText("神社について")).not.toBeInTheDocument();
     });
 
+    it("PR-G3: 公開Fact(神社について)を解釈レイヤー(context_reason)より前に表示する", () => {
+      render(
+        <ShrineDetailArticle
+          {...baseProps}
+          factSection={{
+            kind: "fact",
+            heading: "神社について",
+            deities: [{ display_name: "明治天皇", sort_order: 0, displayState: "full" }],
+            histories: [],
+          } as any}
+          freeDisplaySections={[{ tier: "free", layer: "context", section: { kind: "reason" } }] as any}
+          premiumDisplaySections={[]}
+          isPremiumActive={false}
+        />,
+      );
+
+      const fact = screen.getByText("神社について");
+      const reason = screen.getByTestId("shrine-reason-section");
+      expect(fact.compareDocumentPosition(reason) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
     it("御祭神とHistoryを表示する", () => {
       render(
         <ShrineDetailArticle

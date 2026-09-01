@@ -83,4 +83,32 @@ describe("ShrineJudgeSection", () => {
       expect(badge.className).toContain("bg-[var(--kt-color-background-subtle)]");
     });
   });
+
+  describe("variant=plain (PR-G3 editorial flow)", () => {
+    it("borderless: 外枠section・各itemにborder/surface/shadowクラスを持たず、title/bodyは維持する", () => {
+      const { container } = render(<ShrineJudgeSection section={buildSection()} variant="plain" />);
+
+      const outer = container.querySelector("section")!;
+      expect(outer.className).not.toMatch(/\bborder\b/);
+      expect(outer.className).not.toContain("bg-[var(--kt-color-surface-default)]");
+
+      // per-item gold sub-card は消える(amber literal / shadow なし)
+      const actionItem = screen.getByText("参拝するときの視点").closest("div")!;
+      expect(actionItem.className).not.toMatch(/amber-\d/);
+      expect(actionItem.className).not.toContain("bg-[var(--kt-color-premium-surface)]");
+      expect(actionItem.className).not.toMatch(/shadow-\[/);
+
+      expect(screen.getByText("この神社の意味")).toBeInTheDocument();
+      expect(screen.getByText("本文A")).toBeInTheDocument();
+      expect(screen.getByText("参拝するときの視点")).toBeInTheDocument();
+      expect(screen.getByText("本文B")).toBeInTheDocument();
+    });
+
+    it("plainでも「補足」sectionはEvidence disclosure(details)のまま", () => {
+      const { container } = render(
+        <ShrineJudgeSection section={buildSection({ heading: "補足情報" })} variant="plain" />,
+      );
+      expect(container.querySelector("details")).toBeInTheDocument();
+    });
+  });
 });

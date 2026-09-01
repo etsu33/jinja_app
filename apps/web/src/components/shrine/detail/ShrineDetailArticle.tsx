@@ -77,22 +77,27 @@ import {
 
 
 function ShrineDetailSections({ sections }: { sections: ShrineDetailSectionModel[] }) {
+  // PR-G3 (docs/design/premium-meaning-ui-direction.md §6, Direction C): the
+  // interpretation layer reads as one editorial narrative -- borderless
+  // sections separated by whitespace, not a stack of repeated cards. Shrine
+  // facts (ShrineFactSection) keep their card so the fact / interpretation
+  // boundary stays visible. No content / analytics / Premium change.
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {sections.map((section, index) => {
         const key = `${section.kind}:${index}`;
 
         switch (section.kind) {
           case "reason":
-            return <ShrineReasonSection key={key} section={section} />;
+            return <ShrineReasonSection key={key} section={section} variant="plain" />;
           case "proposal":
-            return <ShrineProposalSection key={key} section={section} />;
+            return <ShrineProposalSection key={key} section={section} variant="plain" />;
           case "meaning":
-            return <ShrineJudgeSection key={key} section={section} />;
+            return <ShrineJudgeSection key={key} section={section} variant="plain" />;
           case "action":
-            return <ShrineActionSection key={key} section={section} />;
+            return <ShrineActionSection key={key} section={section} variant="plain" />;
           case "supplement":
-            return <ShrineSupplementSection key={key} section={section} />;
+            return <ShrineSupplementSection key={key} section={section} variant="plain" />;
           default:
             return null;
         }
@@ -676,6 +681,12 @@ export default function ShrineDetailArticle({
         ) : null}
       </section>
 
+      {/* 神社Fact（祭神・由緒・歴史）。PR-G3: Fact -> Interpretation の順で読ませるため
+          Hero直後・解釈レイヤーの前に置く。Interpretation/Recommendation/Actionとは
+          独立した表示責務で、Fact は spine としてカード表示を維持する（Fact/Meaning境界）。
+          Premium gatingの対象にせず、Knowledge未登録（deities/historiesとも空）ならnullで非表示。 */}
+      {factSection ? <ShrineFactSection section={factSection} /> : null}
+
       {hasContextReasonSections ? <ShrineDetailSections sections={contextReasonSections} /> : null}
 
       {personalMeaningVisibility === "visible" && hasPremiumSections ? (
@@ -687,10 +698,6 @@ export default function ShrineDetailArticle({
       ) : null}
 
       {/* Premium比較カードは後続PRで再設計する。 */}
-
-      {/* 神社Fact（祭神・由緒・歴史）。Interpretation/Recommendation/Actionとは独立した表示責務。
-          Premium gatingの対象にせず、Knowledge未登録（deities/historiesとも空）ならnullで非表示。 */}
-      {factSection ? <ShrineFactSection section={factSection} /> : null}
 
       {/* Deep Dive Q&A。readiness/Fact選択/Source選択はすべてBackend Authority
           (POST /api/deep-dive/ask/)。Frontend側でreadinessを先読みして表示可否を
