@@ -39,7 +39,22 @@ def test_recommendation_file_does_not_import_history_theme_assignment(relative_p
 
 
 def test_no_file_under_temples_imports_history_theme_assignment_outside_its_own_module_and_tests():
-    allowed_prefixes = ("models.py", "admin.py", "tests/", "migrations/0102_")
+    # migrations/0102_... and migrations_nogis/0009_... are the two
+    # independent, legitimate PR-F2 migration artifacts (see
+    # docs/audit/production-migration-modules-nogis-root-cause.md for why
+    # this repository has two parallel, independently-maintained `temples`
+    # migration lineages). A migration file defining the model's schema is
+    # an expected structural reference, not a runtime Recommendation/
+    # Ranking/Concierge integration -- so both, and only these two exact
+    # files, are allowed here. This intentionally does not allowlist all of
+    # migrations/ or migrations_nogis/, to keep the check scoped.
+    allowed_prefixes = (
+        "models.py",
+        "admin.py",
+        "tests/",
+        "migrations/0102_history_theme_assignment_foundation.py",
+        "migrations_nogis/0009_historythemeassignment.py",
+    )
     offenders = []
     for path in _TEMPLES_DIR.rglob("*.py"):
         if "__pycache__" in path.parts:
