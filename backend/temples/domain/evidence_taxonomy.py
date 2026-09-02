@@ -39,19 +39,25 @@ EVIDENCE_TAXONOMY_NAMESPACE_SET = set(EVIDENCE_TAXONOMY_NAMESPACES)
 @dataclass(frozen=True)
 class TaxonomyVersion:
     """あるnamespaceのtaxonomyが、どのversionで意味づけされたかを追跡する
-    ための最小contract。"""
+    ための最小contract。
+
+    versionはMother Ship FINAL contractに従い文字列（例: "v1"）。将来の
+    normalized Evidence transport（PR-F5）のtaxonomyVersionも文字列であり、
+    Foundation全体で単一の表現（文字列）のみを正とする。整数表現との
+    変換ヘルパーは意図的に用意しない。
+    """
 
     namespace: TaxonomyNamespace
-    version: int
+    version: str
 
 
 # 両namespaceとも、PR-F1時点ではまだ実際のcanonical key一覧を持たない
-# （F2/F3で決定）。そのため両方ともbaseline版としてversion=1から開始する。
+# （F2/F3で決定）。そのため両方ともbaseline版として"v1"から開始する。
 # これは「既存taxonomy内容を再設計した」という意味ではなく、versioning
 # infrastructureそのものの初期値。
-_CURRENT_TAXONOMY_VERSION_BY_NAMESPACE: Dict[TaxonomyNamespace, int] = {
-    "history_theme": 1,
-    "goriyaku": 1,
+_CURRENT_TAXONOMY_VERSION_BY_NAMESPACE: Dict[TaxonomyNamespace, str] = {
+    "history_theme": "v1",
+    "goriyaku": "v1",
 }
 
 
