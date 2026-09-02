@@ -1212,6 +1212,134 @@ describe("ShrineDetailArticle", () => {
     });
   });
 
+  describe("Premium CTA auth-state alignment (RH3-2)", () => {
+    const premiumMeaningBundle = [
+      {
+        section: {
+          kind: "meaning",
+          heading: "この神社で受け取る意味",
+          items: [
+            { key: "consultation_summary", title: "相談の整理", body: "本文S" },
+            { key: "shrine_meaning", title: "この神社の意味", body: "本文M" },
+            { key: "action_meaning", title: "参拝の視点", body: "本文A" },
+          ],
+        },
+      },
+    ] as any;
+
+    const ctaBaseProps = {
+      cardProps: {
+        shrineId: 17,
+        title: "乃木神社",
+        href: "/shrines/17",
+        imageUrl: null,
+        badges: [],
+        metaChips: [],
+        address: "東京都港区赤坂",
+      } as any,
+      heroImageUrl: null,
+      heroMeaningCopy: null,
+      benefitLabels: [],
+      tags: [],
+      publicGoshuinsPreview: [],
+      publicGoshuinsViewAllHref: "",
+      sections: [],
+      recommendationMeta: null,
+      saveActionNode: null,
+      premiumDisplaySections: premiumMeaningBundle,
+      isPremiumActive: false,
+    };
+
+    it("anonymous (guestMode=true): login CTA と returnTo=/billing/upgrade を維持し、free copy は出さない", () => {
+      // Even if the client heuristic somehow reads logged-in, the SSR signal wins.
+      authMock.useAuth.mockReturnValue({ isLoggedIn: true, loading: false });
+
+      render(<ShrineDetailArticle {...(ctaBaseProps as any)} guestMode={true} />);
+
+      const surface = screen.getByTestId("shrine-detail-premium-teaser");
+      const cta = within(surface).getByRole("link", { name: "ログインして意味を深掘りする" });
+      const href = cta.getAttribute("href") ?? "";
+      expect(href).toContain("/auth/login");
+      expect(decodeURIComponent(href)).toContain("returnTo=/billing/upgrade");
+      expect(
+        within(surface).queryByRole("link", { name: "この神社を選ぶ意味を深掘りする" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("authenticated free (guestMode=false): upgrade copy と /billing/upgrade へ直接遷移。login route を通らない", () => {
+      // The core bug: AuthProvider does not hydrate on /shrines/[id], so the
+      // client heuristic can report guest. The SSR guestMode=false must still
+      // produce the authenticated Free CTA.
+      authMock.useAuth.mockReturnValue({ isLoggedIn: false, loading: false });
+
+      render(<ShrineDetailArticle {...(ctaBaseProps as any)} guestMode={false} />);
+
+      const surface = screen.getByTestId("shrine-detail-premium-teaser");
+      const cta = within(surface).getByRole("link", { name: "この神社を選ぶ意味を深掘りする" });
+      expect(cta.getAttribute("href")).toBe("/billing/upgrade");
+      expect(cta.getAttribute("href")).not.toContain("/auth/login");
+      expect(
+        within(surface).queryByRole("link", { name: "ログインして意味を深掘りする" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("premium: upgrade CTA を出さず、Premium full body を表示する", () => {
+      authMock.useAuth.mockReturnValue({ isLoggedIn: true, loading: false });
+
+      render(<ShrineDetailArticle {...(ctaBaseProps as any)} guestMode={false} isPremiumActive />);
+
+      expect(screen.queryByTestId("shrine-detail-premium-teaser")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: "ログインして意味を深掘りする" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: "この神社を選ぶ意味を深掘りする" }),
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId("shrine-judge-section")).toBeInTheDocument();
+    });
+
+    it("Premium content boundary: authenticated free では Premium full body が漏れない（teaser のみ）", () => {
+      authMock.useAuth.mockReturnValue({ isLoggedIn: false, loading: false });
+
+      render(<ShrineDetailArticle {...(ctaBaseProps as any)} guestMode={false} />);
+
+      expect(screen.getByTestId("shrine-detail-premium-teaser")).toBeInTheDocument();
+      expect(screen.queryByTestId("shrine-judge-section")).not.toBeInTheDocument();
+    });
+
+    it("Analytics regression: premium_preview_click の event / cardId / source / ctaType / visibility は不変", () => {
+      authMock.useAuth.mockReturnValue({ isLoggedIn: false, loading: false });
+
+      render(<ShrineDetailArticle {...(ctaBaseProps as any)} guestMode={false} />);
+
+      const cta = screen.getByRole("link", { name: "この神社を選ぶ意味を深掘りする" });
+      fireEvent.click(cta);
+
+      expect(analyticsMocks.trackCardEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: "premium_preview_click",
+          cardId: "premium_preview",
+          source: "shrine_detail",
+          visibility: "teaser",
+          ctaType: "continue_with_premium",
+          accessLevel: "free",
+          shrineId: 17,
+        }),
+      );
+    });
+
+    it("guestMode 未指定なら従来どおり client useAuth() にフォールバックする", () => {
+      authMock.useAuth.mockReturnValue({ isLoggedIn: true, loading: false });
+
+      render(<ShrineDetailArticle {...(ctaBaseProps as any)} />);
+
+      const surface = screen.getByTestId("shrine-detail-premium-teaser");
+      expect(
+        within(surface).getByRole("link", { name: "この神社を選ぶ意味を深掘りする" }),
+      ).toBeInTheDocument();
+    });
+  });
+
   describe("PR-N3b: recommendation_meta in the Evidence layer", () => {
     const rmBaseProps = {
       cardProps: {
