@@ -13,6 +13,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import DetailSection from "@/components/shrine/DetailSection";
 import { trackSearchEvent } from "@/lib/analytics/searchEvents";
+import { requestCurrentPosition } from "@/lib/geo/currentPosition";
 import type { UserOrigin } from "../../../../../packages/shared/userOrigin";
 import { toOriginPayload } from "../../../../../packages/shared/userOrigin";
 import CompassDirectionVisual from "./components/CompassDirectionVisual";
@@ -131,24 +132,24 @@ export default function CompassClient() {
     });
   };
 
-  const useDevice = () => {
+  const useDevice = async () => {
     setDeviceError(null);
-    if (!("geolocation" in navigator)) {
-      setDeviceError("この端末では現在地を取得できません。駅名・住所から指定してください。");
+    const result = await requestCurrentPosition();
+    if (result.ok) {
+      setOrigin({
+        latitude: result.lat,
+        longitude: result.lng,
+        source: "device",
+        accuracy: "precise",
+      });
       return;
     }
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setOrigin({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          source: "device",
-          accuracy: "precise",
-        });
-      },
-      () => {
-        setDeviceError("現在地を取得できませんでした。駅名・住所から指定してください。");
-      },
+    setDeviceError(
+      result.reason === "unsupported"
+        ? "この端末では現在地を取得できません。駅名・住所から指定してください。"
+        : result.reason === "denied"
+          ? "位置情報がブロックされています。ブラウザの位置情報を許可するか、駅名・住所から指定してください。"
+          : "現在地を取得できませんでした。駅名・住所から指定してください。",
     );
   };
 

@@ -1,6 +1,43 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { vi } from "vitest";
 import CompassClient from "../CompassClient";
+
+type GetCurrentPosition = typeof navigator.geolocation.getCurrentPosition;
+
+function stubGeolocation(impl: GetCurrentPosition) {
+  Object.defineProperty(navigator, "geolocation", {
+    configurable: true,
+    value: { getCurrentPosition: impl },
+  });
+}
+
+function geoSuccess(lat: number, lng: number): GetCurrentPosition {
+  return ((success) =>
+    success({
+      coords: {
+        latitude: lat,
+        longitude: lng,
+        accuracy: 40,
+        altitude: null,
+        altitudeAccuracy: null,
+        heading: null,
+        speed: null,
+      },
+      timestamp: Date.now(),
+    } as GeolocationPosition)) as GetCurrentPosition;
+}
+
+function geoError(code: number): GetCurrentPosition {
+  return ((_success, error) =>
+    error?.({ code, message: "x" } as GeolocationPositionError)) as GetCurrentPosition;
+}
+
+async function openDeviceOrigin() {
+  fireEvent.click(screen.getByRole("button", { name: "変更する" }));
+  await act(async () => {
+    fireEvent.click(screen.getByRole("radio", { name: "現在地を使用" }));
+  });
+}
 
 function setOriginViaPrefecture() {
   fireEvent.click(screen.getByRole("button", { name: "変更する" }));
@@ -385,6 +422,81 @@ describe("CompassClient", () => {
 
     await act(async () => {
       resolveFetch({ ok: true, status: 200, json: async () => ({ state: "direction_zero_candidates", purpose: "career", direction_context: null, recommendations: [] }) });
+    });
+  });
+
+  describe("出発地点「現在地を使用」(RH3-4b)", () => {
+    it("geolocation 成功時は現在地を出発地点に設定し、deviceError を出さない", async () => {
+      stubGeolocation(geoSuccess(35.5, 139.5));
+      render(<CompassClient />);
+
+      await openDeviceOrigin();
+
+      await waitFor(() => {
+        expect(screen.getAllByText("現在の出発地点は現在地、確定した位置です。").length).toBeGreaterThan(0);
+      });
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+
+    it("PERMISSION_DENIED (code 1) は許可を促す文言 + 駅名・住所 fallback を表示し、crash しない", async () => {
+      stubGeolocation(geoError(1));
+      render(<CompassClient />);
+
+      await openDeviceOrigin();
+
+      const alert = await screen.findByRole("alert");
+      expect(alert).toHaveTextContent("位置情報がブロックされています");
+      expect(screen.getByRole("button", { name: "駅名・住所から指定する" })).toBeEnabled();
+      // 出発地点は未設定のまま（fallback へ誘導）
+      expect(screen.getAllByText("出発地点は設定されていません。").length).toBeGreaterThan(0);
+    });
+
+    it("TIMEOUT (code 3) は汎用の取得失敗文言を表示する", async () => {
+      stubGeolocation(geoError(3));
+      render(<CompassClient />);
+
+      await openDeviceOrigin();
+
+      const alert = await screen.findByRole("alert");
+      expect(alert).toHaveTextContent("現在地を取得できませんでした。駅名・住所から指定してください。");
+    });
+
+    it("POSITION_UNAVAILABLE (code 2) も汎用の取得失敗文言を表示する", async () => {
+      stubGeolocation(geoError(2));
+      render(<CompassClient />);
+
+      await openDeviceOrigin();
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "現在地を取得できませんでした。駅名・住所から指定してください。",
+      );
+    });
+
+    it("retry: 1回目失敗 → 2回目成功で現在地が設定され、古いエラーが success を上書きしない", async () => {
+      let call = 0;
+      stubGeolocation(((success, error) => {
+        call += 1;
+        if (call === 1) error?.({ code: 3, message: "timeout" } as GeolocationPositionError);
+        else geoSuccess(35.6, 139.6)(success, error, undefined as unknown as PositionOptions);
+      }) as GetCurrentPosition);
+
+      render(<CompassClient />);
+
+      await openDeviceOrigin();
+      expect(await screen.findByRole("alert")).toBeInTheDocument();
+
+      // 別モードへ切り替えてから再度「現在地を使用」= retry
+      await act(async () => {
+        fireEvent.click(screen.getByRole("radio", { name: "駅名・住所から指定" }));
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByRole("radio", { name: "現在地を使用" }));
+      });
+
+      await waitFor(() => {
+        expect(screen.getAllByText("現在の出発地点は現在地、確定した位置です。").length).toBeGreaterThan(0);
+      });
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     });
   });
 });
