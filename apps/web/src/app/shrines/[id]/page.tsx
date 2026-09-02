@@ -529,6 +529,7 @@ export default async function Page({ params, searchParams }: Props) {
           analyticsProvenance={analyticsProvenance}
           recommendationInstanceId={detailRecommendationInstanceId}
           addGoshuinHref={addGoshuinHref}
+          guestMode={guestMode}
           saveActionNode={
             <ShrineSaveButton
               key={`shrine-save-${numericId}`}

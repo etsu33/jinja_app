@@ -230,6 +230,7 @@ function PremiumUpgradePrompt({
   tid,
   historyTheme,
   gatedSemanticCardIds = [],
+  guestMode,
 }: {
   shrineId?: number | string | null;
   ctx?: string | null;
@@ -241,13 +242,22 @@ function PremiumUpgradePrompt({
   // something the user can actually read (PR-N3, Mother Ship Policy B). The
   // `personal_meaning` umbrella event corresponds to this whole surface.
   gatedSemanticCardIds?: ShrineDetailTrackedCardId[];
+  // SSR-resolved auth context for this request (from getShrineFavoriteInitialState:
+  // true = no auth context / 401). Authoritative on /shrines/[id], where
+  // AuthProvider intentionally does NOT auto-fetch /api/users/me
+  // (AuthProvider.shouldAutoFetchMe) -- so the client `useAuth()` heuristic can
+  // read an authenticated Free user as a guest and route them through /auth/login.
+  // Prefer this when provided; fall back to the client heuristic only when absent.
+  guestMode?: boolean;
 }) {
   const { isLoggedIn, loading: authLoading } = useAuth();
-  const isGuestUser = !authLoading && !isLoggedIn;
-  const href = isGuestUser ? buildLoginHref("/billing/upgrade") : "/billing/upgrade";
+  const isGuestUser = typeof guestMode === "boolean" ? guestMode : !authLoading && !isLoggedIn;
   // CTA-A responsibility = Meaning Depth: the deep recommendation reason,
   // personal meaning and action meaning for this shrine. Continuity ("前回との
   // 違い") is CTA-B and lives on the state-delta card.
+  // - anonymous          : login copy, login flow (returnTo=/billing/upgrade kept)
+  // - authenticated Free  : upgrade copy, direct /billing/upgrade (no login hop)
+  const href = isGuestUser ? buildLoginHref("/billing/upgrade") : "/billing/upgrade";
   const ctaLabel = isGuestUser ? "ログインして意味を深掘りする" : "この神社を選ぶ意味を深掘りする";
 
   const gated = new Set(gatedSemanticCardIds);
@@ -499,6 +509,7 @@ export default function ShrineDetailArticle({
   actionState,
   directionSupportCopy = null,
   factSection = null,
+  guestMode,
 }: {
   cardProps: ShrineCardAdapterProps;
   heroImageUrl?: string | null;
@@ -532,6 +543,9 @@ export default function ShrineDetailArticle({
   actionState?: "none" | "detail_viewed" | "saved" | "route_opened" | "visited" | "reflected" | null;
   directionSupportCopy?: string | null;
   factSection?: DetailFactSection | null;
+  // SSR-resolved auth context (true = anonymous / no valid session). Passed to
+  // the Premium CTA so an authenticated Free user is not shown the login CTA.
+  guestMode?: boolean;
 }) {
 
   const hasLayeredSections = freeDisplaySections.length > 0 || premiumDisplaySections.length > 0;
@@ -819,6 +833,7 @@ export default function ShrineDetailArticle({
           tid={tid}
           historyTheme={historyTheme}
           gatedSemanticCardIds={premiumMeaningBlockCardIds}
+          guestMode={guestMode}
         />
       ) : null}
 
