@@ -499,6 +499,113 @@ describe("ShrineDetailArticle", () => {
     });
   });
 
+  describe("card_view firing-layer dedupe (Phase RH3-1)", () => {
+    const meaningSection = {
+      kind: "meaning",
+      items: [{ key: "consultation_summary" }, { key: "shrine_meaning" }, { key: "action_meaning" }],
+    } as any;
+
+    const dedupeProps = {
+      cardProps: {
+        shrineId: 17,
+        title: "乃木神社",
+        href: "/shrines/17",
+        imageUrl: null,
+        badges: [],
+        metaChips: [],
+        address: "東京都港区赤坂",
+      } as any,
+      heroImageUrl: null,
+      heroMeaningCopy: null,
+      benefitLabels: [],
+      tags: [],
+      publicGoshuinsPreview: [],
+      publicGoshuinsViewAllHref: "",
+      sections: [meaningSection],
+      isPremiumActive: true,
+      recommendationMeta: {
+        rankTitle: "この神社が1位の理由",
+        rankBody: "相談内容との一致が主因です。",
+        rankComparison: { is_top: true, gap_from_top: 0 },
+      },
+      saveActionNode: null,
+      recommendationInstanceId: "rid-dedupe",
+    };
+
+    function cardViewCountsByCardId() {
+      const counts = new Map<string, number>();
+      for (const call of analyticsMocks.trackCardEvent.mock.calls as any[]) {
+        const payload = call[0];
+        if (!payload || payload.source !== "shrine_detail") continue;
+        if (payload.event !== "card_view" && payload.event !== "card_partial_view") continue;
+        counts.set(payload.cardId, (counts.get(payload.cardId) ?? 0) + 1);
+      }
+      return counts;
+    }
+
+    function cardViewCountFor(cardId: string) {
+      return cardViewCountsByCardId().get(cardId) ?? 0;
+    }
+
+    it("同一 page view で再レンダーしても card_view は cardId ごとに1回だけ発火する", async () => {
+      const { rerender } = render(<ShrineDetailArticle {...(dedupeProps as any)} />);
+
+      await waitFor(() => {
+        expect(cardViewCountFor("shrine_meaning")).toBe(1);
+      });
+
+      // Several re-renders within the same page view (same component instance).
+      for (let i = 0; i < 3; i += 1) {
+        rerender(<ShrineDetailArticle {...(dedupeProps as any)} />);
+      }
+
+      const counts = cardViewCountsByCardId();
+      expect(counts.size).toBeGreaterThan(0);
+      for (const [cardId, count] of counts) {
+        expect(`${cardId}:${count}`).toBe(`${cardId}:1`);
+      }
+    });
+
+    it("visit 履歴の非同期解決による再レンダーでも card_view は重複しない", async () => {
+      let resolveVisits: (visits: unknown[]) => void = () => {};
+      visitsMocks.getVisits.mockImplementationOnce(
+        () =>
+          new Promise((res) => {
+            resolveVisits = res as (visits: unknown[]) => void;
+          }),
+      );
+
+      render(<ShrineDetailArticle {...(dedupeProps as any)} />);
+      await waitFor(() => {
+        expect(cardViewCountFor("shrine_meaning")).toBe(1);
+      });
+
+      // getVisits settles -> setVisitSummary -> a genuine re-render.
+      resolveVisits([{ id: 1, shrine: 17, visited_at: "2026-01-01T00:00:00.000Z" }]);
+
+      await waitFor(() => {
+        expect(cardViewCountFor("shrine_meaning")).toBe(1);
+      });
+      const counts = cardViewCountsByCardId();
+      for (const [cardId, count] of counts) {
+        expect(`${cardId}:${count}`).toBe(`${cardId}:1`);
+      }
+    });
+
+    it("別 page view（unmount → 再 mount）では card_view が再度発火する", async () => {
+      const first = render(<ShrineDetailArticle {...(dedupeProps as any)} />);
+      await waitFor(() => {
+        expect(cardViewCountFor("shrine_meaning")).toBe(1);
+      });
+      first.unmount();
+
+      render(<ShrineDetailArticle {...(dedupeProps as any)} />);
+      await waitFor(() => {
+        expect(cardViewCountFor("shrine_meaning")).toBe(2);
+      });
+    });
+  });
+
   it.each([
     [true, "参拝お疲れさまでした"],
     [false, null],
