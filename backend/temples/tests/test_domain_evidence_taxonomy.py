@@ -32,11 +32,20 @@ def test_is_registered_taxonomy_namespace(namespace, expected):
 def test_get_current_taxonomy_version_for_registered_namespace():
     version = get_current_taxonomy_version("history_theme")
     assert version.namespace == "history_theme"
-    assert version.version == 1
+    assert version.version == "v1"
 
     version = get_current_taxonomy_version("goriyaku")
     assert version.namespace == "goriyaku"
-    assert version.version == 1
+    assert version.version == "v1"
+
+
+def test_taxonomy_version_is_string_not_integer():
+    # Mother Ship FINAL contract: taxonomyVersion is a string end-to-end
+    # (matches the future PR-F5 normalized_evidence transport contract).
+    # No integer representation or integer<->string conversion helper exists.
+    version = get_current_taxonomy_version("history_theme")
+    assert isinstance(version.version, str)
+    assert not isinstance(version.version, bool)
 
 
 def test_get_current_taxonomy_version_rejects_unregistered_namespace():

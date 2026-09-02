@@ -11,6 +11,7 @@ from django.urls import reverse
 from .models import (
     Goshuin,
     GoshuinImage,
+    HistoryThemeAssignment,
     Shrine,
     ShrineDeity,
     ShrineHistory,
@@ -328,6 +329,29 @@ class ShrineHistoryAdmin(admin.ModelAdmin):
     ordering = ("shrine", "sort_order")
 
 
+@admin.register(HistoryThemeAssignment)
+class HistoryThemeAssignmentAdmin(admin.ModelAdmin):
+    """Evidence Foundation PR-F2: history_theme semantic assignmentの管理画面。
+    既存Shrine.history_theme（compatibility path）とは独立した別モデル。
+    docs/knowledge/evidence-foundation-shared-contract.md参照。
+    """
+
+    list_display = (
+        "id",
+        "shrine",
+        "canonical_key",
+        "taxonomy_version",
+        "lifecycle",
+        "producer",
+        "mechanism",
+        "assigned_at",
+        "created_at",
+    )
+    list_filter = ("lifecycle", "producer", "mechanism", "taxonomy_version")
+    search_fields = ("canonical_key", "shrine__name_jp")
+    ordering = ("shrine", "-created_at")
+
+
 class ShrineDeityInline(admin.TabularInline):
     model = ShrineDeity
     extra = 1
@@ -340,6 +364,19 @@ class ShrineHistoryInline(admin.TabularInline):
     extra = 1
     fields = ("history_type", "title", "content", "period_text", "event_date", "sort_order", "verification_status", "confidence", "verified_at")
     filter_horizontal = ("sources",)
+
+
+class HistoryThemeAssignmentInline(admin.TabularInline):
+    """Evidence Foundation PR-F2: HistoryThemeAssignmentのinline編集。
+
+    既存ShrineDeityInline/ShrineHistoryInlineと同じ構造。producer/mechanism/
+    assigned_atはPR-F1 provenance契約の値を明示的に入力する（暗黙のprovenance
+    生成・auto-supersede・taxonomy推定は行わない -- 値はここで一切自動化しない）。
+    """
+
+    model = HistoryThemeAssignment
+    extra = 1
+    fields = ("canonical_key", "taxonomy_version", "lifecycle", "producer", "mechanism", "assigned_at")
 
 
 class ShrineAdmin(admin.ModelAdmin):
@@ -360,7 +397,7 @@ class ShrineAdmin(admin.ModelAdmin):
     readonly_fields = ("last_popular_calc_at",)
     filter_horizontal = ("goriyaku_tags",)
     actions = ["seed_history_theme"]
-    inlines = [ShrineDeityInline, ShrineHistoryInline]
+    inlines = [ShrineDeityInline, ShrineHistoryInline, HistoryThemeAssignmentInline]
 
     @admin.action(description="history_theme 初期値を投入する")
     def seed_history_theme(self, request, queryset):

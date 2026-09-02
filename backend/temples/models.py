@@ -11,6 +11,12 @@ from django.utils import timezone
 from .models_places_seeds import PlacesSeed, PlacesSeedState  # noqa
 from .models_concierge_analytics import ConciergeRecommendationLog
 from .models_usage import FeatureUsage  # noqa
+from temples.domain.evidence_provenance import EVIDENCE_MECHANISMS, EVIDENCE_PRODUCERS
+from temples.domain.evidence_taxonomy import get_current_taxonomy_version
+from temples.domain.history_theme_taxonomy_v1 import (
+    HISTORY_THEME_TAXONOMY_NAMESPACE,
+    validate_history_theme_v1_canonical_key,
+)
 
 # GeoDjango switch
 USE_REAL_GIS = bool(getattr(settings, "USE_GIS", False)) and not bool(
@@ -571,6 +577,93 @@ class ShrineHistory(models.Model):
     def clean(self) -> None:
         super().clean()
         _validate_verified_at_consistency(self.verification_status, self.verified_at)
+
+
+class HistoryThemeAssignment(models.Model):
+    """Evidence Foundation PR-F2: history_theme semantic assignmentの
+    qualification path。docs/knowledge/evidence-foundation-shared-contract.md
+    「HistoryThemeAssignment」節を参照。
+
+    既存`Shrine.history_theme`（compatibility / 現行read path）とは独立
+    しており、どちらもこのモデルによって自動的に書き換えられることはない。
+    このモデル単体はまだQualified Evidenceではない（Source Evidence link
+    はPR-F4）。
+    """
+
+    class Lifecycle(models.TextChoices):
+        ACTIVE = "ACTIVE", "ACTIVE"
+        SUPERSEDED = "SUPERSEDED", "SUPERSEDED"
+
+    shrine = models.ForeignKey(
+        Shrine, on_delete=models.CASCADE, related_name="history_theme_assignments"
+    )
+    canonical_key = models.CharField(
+        max_length=64,
+        help_text="Evidence Foundation canonical semantic key（例: history_theme:restart）。"
+        "Shrine.history_themeの日本語表示値とは別の、機械識別子。",
+    )
+    taxonomy_version = models.CharField(
+        max_length=8,
+        help_text="canonical_keyがどのhistory_theme taxonomy versionで解釈されるか"
+        "（Mother Ship FINAL contract: 文字列表現、例 \"v1\"）。",
+    )
+    lifecycle = models.CharField(
+        max_length=16,
+        choices=Lifecycle.choices,
+    )
+    producer = models.CharField(
+        max_length=32,
+        choices=[(value, value) for value in EVIDENCE_PRODUCERS],
+        help_text="PR-F1 evidence_provenance.EVIDENCE_PRODUCERSをそのまま再利用。",
+    )
+    mechanism = models.CharField(
+        max_length=32,
+        choices=[(value, value) for value in EVIDENCE_MECHANISMS],
+        help_text="PR-F1 evidence_provenance.EVIDENCE_MECHANISMSをそのまま再利用。",
+    )
+    assigned_at = models.DateTimeField(
+        help_text="provenanceに基づく、実際にsemantic assignmentが行われた時刻。"
+        "created_at（DB行の作成時刻）とは責務が異なり、呼び出し側が明示的に指定する。",
+    )
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["shrine_id", "-created_at"]
+        constraints = [
+            UniqueConstraint(
+                fields=["shrine"],
+                condition=Q(lifecycle="ACTIVE"),
+                name="uniq_history_theme_assignment_active_per_shrine",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.shrine_id}:{self.canonical_key}:{self.lifecycle}"
+
+    def clean(self) -> None:
+        super().clean()
+
+        key_validation = validate_history_theme_v1_canonical_key(self.canonical_key)
+        if not key_validation.valid:
+            raise ValidationError(
+                {
+                    "canonical_key": (
+                        f"canonical_keyが無効です（reason={key_validation.reason}）: "
+                        f"{self.canonical_key!r}"
+                    )
+                }
+            )
+
+        current_version = get_current_taxonomy_version(HISTORY_THEME_TAXONOMY_NAMESPACE).version
+        if self.taxonomy_version != current_version:
+            raise ValidationError(
+                {
+                    "taxonomy_version": (
+                        f"taxonomy_version={self.taxonomy_version!r}は現行version"
+                        f"（{current_version!r}）と一致しません。"
+                    )
+                }
+            )
 
 
 class Favorite(models.Model):
