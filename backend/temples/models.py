@@ -13,6 +13,10 @@ from .models_concierge_analytics import ConciergeRecommendationLog
 from .models_usage import FeatureUsage  # noqa
 from temples.domain.evidence_provenance import EVIDENCE_MECHANISMS, EVIDENCE_PRODUCERS
 from temples.domain.evidence_taxonomy import get_current_taxonomy_version
+from temples.domain.goriyaku_taxonomy_v1 import (
+    GORIYAKU_TAXONOMY_NAMESPACE,
+    validate_goriyaku_v1_canonical_key,
+)
 from temples.domain.history_theme_taxonomy_v1 import (
     HISTORY_THEME_TAXONOMY_NAMESPACE,
     validate_history_theme_v1_canonical_key,
@@ -655,6 +659,102 @@ class HistoryThemeAssignment(models.Model):
             )
 
         current_version = get_current_taxonomy_version(HISTORY_THEME_TAXONOMY_NAMESPACE).version
+        if self.taxonomy_version != current_version:
+            raise ValidationError(
+                {
+                    "taxonomy_version": (
+                        f"taxonomy_version={self.taxonomy_version!r}は現行version"
+                        f"（{current_version!r}）と一致しません。"
+                    )
+                }
+            )
+
+
+class ShrineGoriyakuAssignment(models.Model):
+    """Evidence Foundation PR-F3: goriyaku semantic assignmentの
+    qualification path。docs/knowledge/evidence-foundation-shared-contract.md
+    「ShrineGoriyakuAssignment」節を参照。
+
+    既存`Shrine.goriyaku_tags`（M2M、Recommendation Signal / compatibility
+    layer）とは完全に独立しており、どちらもこのモデルによって自動的に
+    書き換えられることはない。このモデル単体はまだQualified Evidenceでは
+    ない（Source Evidence linkはPR-F4）。
+
+    重要（Mother Ship FINAL、Decision 1 = Option B）: PR-F3時点では
+    承認済みcanonical key registry
+    （`temples.domain.goriyaku_taxonomy_v1.GORIYAKU_V1_CANONICAL_KEYS`）が
+    意図的に空である。したがって、このモデルは現時点でいかなる
+    canonical_keyも受理せず（fail-closed）、実際にAssignment行を作成
+    できるのは、後続のDATA_REVIEWでcanonical keyが登録されて以降になる。
+    これは意図された制約であり、バグではない。
+    """
+
+    class Lifecycle(models.TextChoices):
+        ACTIVE = "ACTIVE", "ACTIVE"
+        REVOKED = "REVOKED", "REVOKED"
+
+    shrine = models.ForeignKey(
+        Shrine, on_delete=models.CASCADE, related_name="goriyaku_assignments"
+    )
+    canonical_key = models.CharField(
+        max_length=64,
+        help_text="Evidence Foundation canonical semantic key（例: goriyaku:<stable_key>）。"
+        "既存GoriyakuTag.nameとは別の、機械識別子。PR-F3時点では承認済みkeyが"
+        "存在しないため、いかなる値も現時点ではvalidationを通過しない。",
+    )
+    taxonomy_version = models.CharField(
+        max_length=8,
+        help_text="canonical_keyがどのgoriyaku taxonomy versionで解釈されるか"
+        "（Mother Ship FINAL contract: 文字列表現、例 \"v1\"）。",
+    )
+    lifecycle = models.CharField(
+        max_length=16,
+        choices=Lifecycle.choices,
+    )
+    producer = models.CharField(
+        max_length=32,
+        choices=[(value, value) for value in EVIDENCE_PRODUCERS],
+        help_text="PR-F1 evidence_provenance.EVIDENCE_PRODUCERSをそのまま再利用。",
+    )
+    mechanism = models.CharField(
+        max_length=32,
+        choices=[(value, value) for value in EVIDENCE_MECHANISMS],
+        help_text="PR-F1 evidence_provenance.EVIDENCE_MECHANISMSをそのまま再利用。",
+    )
+    assigned_at = models.DateTimeField(
+        help_text="provenanceに基づく、実際にsemantic assignmentが行われた時刻。"
+        "created_at（DB行の作成時刻）とは責務が異なり、呼び出し側が明示的に指定する。",
+    )
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["shrine_id", "canonical_key", "-created_at"]
+        constraints = [
+            UniqueConstraint(
+                fields=["shrine", "canonical_key", "taxonomy_version"],
+                condition=Q(lifecycle="ACTIVE"),
+                name="uniq_goriyaku_assignment_active_per_shrine_tag_version",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.shrine_id}:{self.canonical_key}:{self.lifecycle}"
+
+    def clean(self) -> None:
+        super().clean()
+
+        key_validation = validate_goriyaku_v1_canonical_key(self.canonical_key)
+        if not key_validation.valid:
+            raise ValidationError(
+                {
+                    "canonical_key": (
+                        f"canonical_keyが無効です（reason={key_validation.reason}）: "
+                        f"{self.canonical_key!r}"
+                    )
+                }
+            )
+
+        current_version = get_current_taxonomy_version(GORIYAKU_TAXONOMY_NAMESPACE).version
         if self.taxonomy_version != current_version:
             raise ValidationError(
                 {

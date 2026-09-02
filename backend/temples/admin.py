@@ -14,6 +14,7 @@ from .models import (
     HistoryThemeAssignment,
     Shrine,
     ShrineDeity,
+    ShrineGoriyakuAssignment,
     ShrineHistory,
     ShrineKnowledgeSource,
     ShrineSubmission,
@@ -352,6 +353,35 @@ class HistoryThemeAssignmentAdmin(admin.ModelAdmin):
     ordering = ("shrine", "-created_at")
 
 
+@admin.register(ShrineGoriyakuAssignment)
+class ShrineGoriyakuAssignmentAdmin(admin.ModelAdmin):
+    """Evidence Foundation PR-F3: goriyaku semantic assignmentの管理画面。
+    既存Shrine.goriyaku_tags（Recommendation Signal / compatibility layer）
+    とは独立した別モデル。docs/knowledge/evidence-foundation-shared-contract.md
+    参照。
+
+    PR-F3時点ではcanonical key registryが意図的に空のため、server-side
+    validation（ShrineGoriyakuAssignment.clean()）によりいかなる
+    canonical_keyも現時点では保存できない（fail-closed）。この管理画面が
+    存在することと、実際にAssignmentを作成できることは同義ではない。
+    """
+
+    list_display = (
+        "id",
+        "shrine",
+        "canonical_key",
+        "taxonomy_version",
+        "lifecycle",
+        "producer",
+        "mechanism",
+        "assigned_at",
+        "created_at",
+    )
+    list_filter = ("lifecycle", "producer", "mechanism", "taxonomy_version")
+    search_fields = ("canonical_key", "shrine__name_jp")
+    ordering = ("shrine", "canonical_key", "-created_at")
+
+
 class ShrineDeityInline(admin.TabularInline):
     model = ShrineDeity
     extra = 1
@@ -379,6 +409,20 @@ class HistoryThemeAssignmentInline(admin.TabularInline):
     fields = ("canonical_key", "taxonomy_version", "lifecycle", "producer", "mechanism", "assigned_at")
 
 
+class ShrineGoriyakuAssignmentInline(admin.TabularInline):
+    """Evidence Foundation PR-F3: ShrineGoriyakuAssignmentのinline編集。
+
+    HistoryThemeAssignmentInlineと同じ構造。PR-F3時点ではcanonical key
+    registryが空のため、ここから保存を試みてもserver-side validationで
+    reject される（fail-closed、意図した挙動）。既存
+    ShrineAdmin.filter_horizontal = ("goriyaku_tags",) には一切触れない。
+    """
+
+    model = ShrineGoriyakuAssignment
+    extra = 1
+    fields = ("canonical_key", "taxonomy_version", "lifecycle", "producer", "mechanism", "assigned_at")
+
+
 class ShrineAdmin(admin.ModelAdmin):
     """神社モデルの管理画面（GISウィジェットなしの暫定版）"""
 
@@ -397,7 +441,12 @@ class ShrineAdmin(admin.ModelAdmin):
     readonly_fields = ("last_popular_calc_at",)
     filter_horizontal = ("goriyaku_tags",)
     actions = ["seed_history_theme"]
-    inlines = [ShrineDeityInline, ShrineHistoryInline, HistoryThemeAssignmentInline]
+    inlines = [
+        ShrineDeityInline,
+        ShrineHistoryInline,
+        HistoryThemeAssignmentInline,
+        ShrineGoriyakuAssignmentInline,
+    ]
 
     @admin.action(description="history_theme 初期値を投入する")
     def seed_history_theme(self, request, queryset):
