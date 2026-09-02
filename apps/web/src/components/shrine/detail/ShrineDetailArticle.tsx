@@ -61,7 +61,7 @@ import type { ShrineCardAdapterProps } from "@/components/shrine/buildShrineCard
 import type { DetailFactSection, ShrineDetailSectionModel } from "@/components/shrine/detail/types";
 
 import { resolveAccessLevel } from "@/lib/premium/accessLevel";
-import { getVisibilityForCard, type CardVisibilityState } from "@/lib/premium/cardVisibility";
+import { getVisibilityForCard, type CardId, type CardVisibilityState } from "@/lib/premium/cardVisibility";
 import { trackCardEvent } from "@/lib/analytics/cardEvents";
 import type { StateDelta } from "@/lib/concierge/stateComparison";
 import { toNeedTagLabels } from "@/lib/concierge/needTagLabelMap";
@@ -133,8 +133,42 @@ type ShrineDetailTrackedCardId =
   | "shrine_meaning"
   | "action_meaning";
 
+type ShrineDetailCardViewEvent = "card_view" | "card_partial_view";
+
+function shrineDetailCardViewEvent(visibility: CardVisibilityState): ShrineDetailCardViewEvent {
+  return visibility === "partial" || visibility === "teaser" ? "card_partial_view" : "card_view";
+}
+
+/**
+ * Firing-layer dedupe key for a Shrine Detail `card_view` / `card_partial_view`.
+ *
+ * One impression per (event x cardId x visibility x accessLevel) within a single
+ * Shrine Detail page view + result context (shrineId + recommendationInstanceId).
+ * The `Set` that stores these keys lives on a ref for the lifetime of the
+ * component instance, so a spurious re-render, a React Strict Mode double-invoke,
+ * or an async state settle does NOT re-emit; a genuine navigation remounts the
+ * component and starts a fresh set.
+ */
+function shrineDetailCardViewKey(input: {
+  event: ShrineDetailCardViewEvent;
+  cardId: CardId;
+  visibility: CardVisibilityState;
+  accessLevel: "anonymous" | "free" | "premium";
+  shrineId?: number | string;
+  recommendationInstanceId?: string | null;
+}): string {
+  return [
+    input.event,
+    input.cardId,
+    input.visibility,
+    input.accessLevel,
+    input.shrineId ?? "",
+    input.recommendationInstanceId ?? "",
+  ].join("::");
+}
+
 function trackShrineDetailCardView(args: {
-  cardId: ShrineDetailTrackedCardId;
+  cardId: CardId;
   accessLevel: "anonymous" | "free" | "premium";
   visibility: CardVisibilityState;
   payloadSource?: "v2" | "fallback";
@@ -143,11 +177,26 @@ function trackShrineDetailCardView(args: {
   // Result <-> Detail duplicate-exposure join key (with shrineId) -- see
   // docs/audit/recommendation-result-detail-instrumentation-contract.md §7.
   recommendationInstanceId?: string | null;
+  // Firing-layer dedupe: the caller's per-page-view key set. A repeat impression
+  // for the same key is a no-op (schema / payload / event name unchanged).
+  seen: Set<string>;
 }) {
   if (args.visibility === "hidden") return;
 
+  const event = shrineDetailCardViewEvent(args.visibility);
+  const key = shrineDetailCardViewKey({
+    event,
+    cardId: args.cardId,
+    visibility: args.visibility,
+    accessLevel: args.accessLevel,
+    shrineId: args.shrineId,
+    recommendationInstanceId: args.recommendationInstanceId ?? null,
+  });
+  if (args.seen.has(key)) return;
+  args.seen.add(key);
+
   trackCardEvent({
-    event: args.visibility === "partial" || args.visibility === "teaser" ? "card_partial_view" : "card_view",
+    event,
     cardId: args.cardId,
     source: "shrine_detail",
     accessLevel: args.accessLevel,
@@ -537,6 +586,10 @@ export default function ShrineDetailArticle({
   const [visitSubmitting, setVisitSubmitting] = useState(false);
   const [visitError, setVisitError] = useState(false);
   const visitSubmittingRef = React.useRef(false);
+  // Firing-layer dedupe for card_view / card_partial_view. Lives for this
+  // component instance (this Shrine Detail page view); a genuine navigation
+  // remounts and resets it. See trackShrineDetailCardView / shrineDetailCardViewKey.
+  const firedCardViewKeysRef = React.useRef<Set<string>>(new Set());
   const [visitSummary, setVisitSummary] = useState<VisitSummary>({ visitCount: 0, latestVisitedAt: null });
   const hasVisitHistory = visitSummary.visitCount > 0;
 
@@ -580,6 +633,7 @@ export default function ShrineDetailArticle({
         historyTheme,
         payloadSource: meaningPayloadSource,
         recommendationInstanceId,
+        seen: firedCardViewKeysRef.current,
       });
     }
 
@@ -592,6 +646,7 @@ export default function ShrineDetailArticle({
         historyTheme,
         payloadSource: meaningPayloadSource,
         recommendationInstanceId,
+        seen: firedCardViewKeysRef.current,
       });
     });
 
@@ -604,6 +659,7 @@ export default function ShrineDetailArticle({
         historyTheme,
         payloadSource: meaningPayloadSource,
         recommendationInstanceId,
+        seen: firedCardViewKeysRef.current,
       });
     }
 
@@ -616,6 +672,7 @@ export default function ShrineDetailArticle({
         historyTheme,
         payloadSource: meaningPayloadSource,
         recommendationInstanceId,
+        seen: firedCardViewKeysRef.current,
       });
     });
 
@@ -628,39 +685,62 @@ export default function ShrineDetailArticle({
         historyTheme,
         payloadSource: meaningPayloadSource,
         recommendationInstanceId,
+        seen: firedCardViewKeysRef.current,
       });
     }
 
     if (recommendationMeta?.rankTitle && recommendationMeta?.rankBody) {
-      trackCardEvent({
-        event:
-          recommendationMetaVisibility === "partial" || recommendationMetaVisibility === "teaser"
-            ? "card_partial_view"
-            : "card_view",
+      const recommendationMetaEvent = shrineDetailCardViewEvent(recommendationMetaVisibility);
+      const recommendationMetaKey = shrineDetailCardViewKey({
+        event: recommendationMetaEvent,
         cardId: "recommendation_meta",
-        source: "shrine_detail",
-        accessLevel,
         visibility: recommendationMetaVisibility,
+        accessLevel,
         shrineId: cardProps.shrineId,
-        historyTheme,
-        payloadSource: meaningPayloadSource,
       });
+      if (!firedCardViewKeysRef.current.has(recommendationMetaKey)) {
+        firedCardViewKeysRef.current.add(recommendationMetaKey);
+        trackCardEvent({
+          event:
+            recommendationMetaVisibility === "partial" || recommendationMetaVisibility === "teaser"
+              ? "card_partial_view"
+              : "card_view",
+          cardId: "recommendation_meta",
+          source: "shrine_detail",
+          accessLevel,
+          visibility: recommendationMetaVisibility,
+          shrineId: cardProps.shrineId,
+          historyTheme,
+          payloadSource: meaningPayloadSource,
+        });
+      }
     }
 
     if (stateDelta && previousComparisonVisibility !== "hidden") {
-      trackCardEvent({
-        event:
-          previousComparisonVisibility === "partial" || previousComparisonVisibility === "teaser"
-            ? "card_partial_view"
-            : "card_view",
+      const previousComparisonEvent = shrineDetailCardViewEvent(previousComparisonVisibility);
+      const previousComparisonKey = shrineDetailCardViewKey({
+        event: previousComparisonEvent,
         cardId: "previous_comparison",
-        source: "shrine_detail",
-        accessLevel,
         visibility: previousComparisonVisibility,
+        accessLevel,
         shrineId: cardProps.shrineId,
-        historyTheme,
-        payloadSource: meaningPayloadSource,
       });
+      if (!firedCardViewKeysRef.current.has(previousComparisonKey)) {
+        firedCardViewKeysRef.current.add(previousComparisonKey);
+        trackCardEvent({
+          event:
+            previousComparisonVisibility === "partial" || previousComparisonVisibility === "teaser"
+              ? "card_partial_view"
+              : "card_view",
+          cardId: "previous_comparison",
+          source: "shrine_detail",
+          accessLevel,
+          visibility: previousComparisonVisibility,
+          shrineId: cardProps.shrineId,
+          historyTheme,
+          payloadSource: meaningPayloadSource,
+        });
+      }
     }
   }, [
     accessLevel,
