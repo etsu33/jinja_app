@@ -52,10 +52,12 @@ type AnalyticsContext = Pick<
 // Design Token v1: 実値が完全一致する箇所のみ --kt-* 参照へ置換 (docs/design/design-token.md)
 const conciergeSoftCardClass =
   "rounded-[var(--kt-radius-card)] border border-[var(--kt-color-border-default)] bg-[var(--kt-color-background-subtle)] shadow-[var(--kt-shadow-medium)] p-4";
-// border-amber-200 / bg-amber-50 は値としてはPremium Tokenと一致するが、
-// 本カードの意味は「Notice(警告・注意喚起)」でありPremiumではないため、
-// 意味の異なるTokenを流用しないよう非適用とする(radius/shadowのみ置換)。
-const conciergeNoticeCardClass = "rounded-[var(--kt-radius-card)] border border-amber-200 bg-amber-50 shadow-[var(--kt-shadow-medium)] p-4";
+// Notice専用Token（--kt-color-notice-*）へ移行済み。
+// 値としてはPremium Tokenと一致していたが、本カードの意味は
+// 「Notice(警告・注意喚起)」でありPremiumではないため、
+// 意味の異なるTokenを流用せず専用Tokenへ分離した。
+const conciergeNoticeCardClass =
+  "rounded-[var(--kt-radius-card)] border border-[var(--kt-color-notice-border)] bg-[var(--kt-color-notice-bg)] shadow-[var(--kt-shadow-medium)] p-4";
 
 // PR-G1 (docs/design/premium-meaning-ui-direction.md §3.2 / §7, Direction C):
 // the recommendation reading flow is carried by typography + spacing, not by
@@ -99,7 +101,9 @@ function pickAnalyticsString(...values: unknown[]): string | undefined {
   return undefined;
 }
 
-function consultationAxisAnalytics(axis: unknown): Pick<CardAnalyticsPayload, "consultationAxis"> | Record<string, never> {
+function consultationAxisAnalytics(
+  axis: unknown,
+): Pick<CardAnalyticsPayload, "consultationAxis"> | Record<string, never> {
   const consultationAxis = pickAnalyticsString(axis);
   return consultationAxis ? { consultationAxis } : {};
 }
@@ -211,7 +215,6 @@ type Props = {
   isPremiumActive?: boolean;
   analyticsContext?: AnalyticsContext;
 };
-
 
 function parseExtraTokens(extra: string | undefined | null): string[] {
   return (extra || "")
@@ -451,9 +454,7 @@ export default function ConciergeSectionsRenderer({
         historyTheme: item.historyTheme ?? analyticsContext?.historyTheme,
         recommendationInstanceId: item.recommendationInstanceId,
         ...consultationAxisAnalytics(item.consultationAxis ?? analyticsContext?.consultationAxis),
-        ...(item.analyticsProvenance
-          ? recommendationAnalyticsProperties(item.analyticsProvenance)
-          : {}),
+        ...(item.analyticsProvenance ? recommendationAnalyticsProperties(item.analyticsProvenance) : {}),
       });
     });
   }, [analyticsContext?.consultationAxis, analyticsContext?.historyTheme, resultImpressions, resultSetId, tid]);
@@ -750,9 +751,7 @@ export default function ConciergeSectionsRenderer({
                   tagsLoading={state.tagsLoading}
                   tagsError={state.tagsError}
                   extraCondition={state.extraCondition}
-                  onExtraConditionChange={(v: string) =>
-                    onAction?.({ type: "filter_set_extra", extraCondition: v })
-                  }
+                  onExtraConditionChange={(v: string) => onAction?.({ type: "filter_set_extra", extraCondition: v })}
                   visitPreferences={state.visitPreferences}
                   onVisitPreferencesChange={(tags: string[]) =>
                     onAction?.({ type: "filter_set_visit_preferences", visitPreferences: tags })
@@ -851,7 +850,9 @@ export default function ConciergeSectionsRenderer({
                 )}
 
                 {bannerText && (
-                  <div className={`mb-3 ${conciergeNoticeCardClass} text-sm leading-6 text-amber-900`}>
+                  <div
+                    className={`mb-3 ${conciergeNoticeCardClass} text-sm leading-6 text-[var(--kt-color-notice-text)]`}
+                  >
                     {bannerText}
                   </div>
                 )}
@@ -1020,7 +1021,11 @@ export default function ConciergeSectionsRenderer({
                             <div className="space-y-3">
                               <ConciergeTopRecommendationHero
                                 name={heroItem.title}
-                                href={withDirectionRouteContext(heroItem.detailHref, heroItem.directionReference, "hero")}
+                                href={withDirectionRouteContext(
+                                  heroItem.detailHref,
+                                  heroItem.directionReference,
+                                  "hero",
+                                )}
                                 address={null}
                                 topReasonLabel={reasonVm.hero.topReasonLabel ?? null}
                                 eyebrowLabel={reasonVm.hero.eyebrowLabel ?? null}
@@ -1035,8 +1040,13 @@ export default function ConciergeSectionsRenderer({
                                 recommendationRank={1}
                                 historyTheme={historyTheme ?? analyticsContext?.historyTheme ?? null}
                                 routeLabel="神社の詳細を見る"
-                                onDetailClick={() =>
-                                  { if (heroItem.directionReference?.matched) trackWebDirection("direction_match_detail_opened", { matched: true, recommendation_rank: 1 }); trackSearchEvent("shrine_detail_transition", {
+                                onDetailClick={() => {
+                                  if (heroItem.directionReference?.matched)
+                                    trackWebDirection("direction_match_detail_opened", {
+                                      matched: true,
+                                      recommendation_rank: 1,
+                                    });
+                                  trackSearchEvent("shrine_detail_transition", {
                                     source: "concierge_result",
                                     threadId: tid ?? undefined,
                                     resultSetId,
@@ -1048,16 +1058,22 @@ export default function ConciergeSectionsRenderer({
                                     hasBirthdate: analyticsContext?.hasBirthdate,
                                     recommendationCount: analyticsContext?.recommendationCount,
                                     historyTheme: historyTheme ?? analyticsContext?.historyTheme,
-                                    ...consultationAxisAnalytics(heroItem.consultationAxis ?? analyticsContext?.consultationAxis),
+                                    ...consultationAxisAnalytics(
+                                      heroItem.consultationAxis ?? analyticsContext?.consultationAxis,
+                                    ),
                                     firstClick: resolveFirstResultClick(resultSetId),
                                     recommendationInstanceId: heroItem.recommendationInstanceId ?? null,
                                     ...(heroItem.analyticsProvenance
                                       ? recommendationAnalyticsProperties(heroItem.analyticsProvenance)
                                       : {}),
-                                  }); }
-                                }
+                                  });
+                                }}
                               />
-                              <DirectionReferenceCard reference={reasonDisplay.directionReference} recommendationKey={heroItem.shrineId} rank={1} />
+                              <DirectionReferenceCard
+                                reference={reasonDisplay.directionReference}
+                                recommendationKey={heroItem.shrineId}
+                                rank={1}
+                              />
                             </div>
 
                             {/* Layer 1 bridge: the consultation this recommendation answers.
@@ -1201,7 +1217,9 @@ export default function ConciergeSectionsRenderer({
                           <div className="mb-2 mt-3 text-xs font-semibold tracking-[0.16em] text-[var(--kt-color-text-muted)]">
                             ほかの神社
                           </div>
-                          <p className="mb-3 text-xs leading-5 text-[var(--kt-color-text-muted)]">迷った時の参考です。</p>
+                          <p className="mb-3 text-xs leading-5 text-[var(--kt-color-text-muted)]">
+                            迷った時の参考です。
+                          </p>
 
                           <div className="space-y-3">
                             {otherRegisteredItems.map((item: RegisteredShrineItem, compactIdx: number) => {
@@ -1262,8 +1280,13 @@ export default function ConciergeSectionsRenderer({
                                     explanationOnlyFactText={compactReasonV4.explanationOnlyFactText}
                                     tags={[]}
                                     distanceM={(item as any).distance_m ?? null}
-                                    onDetailClick={() =>
-                                      { if (item.directionReference?.matched) trackWebDirection("direction_match_detail_opened", { matched: true, recommendation_rank: compactIdx + 2 }); trackSearchEvent("shrine_detail_transition", {
+                                    onDetailClick={() => {
+                                      if (item.directionReference?.matched)
+                                        trackWebDirection("direction_match_detail_opened", {
+                                          matched: true,
+                                          recommendation_rank: compactIdx + 2,
+                                        });
+                                      trackSearchEvent("shrine_detail_transition", {
                                         source: "concierge_result",
                                         threadId: tid ?? undefined,
                                         resultSetId,
@@ -1288,10 +1311,14 @@ export default function ConciergeSectionsRenderer({
                                         ...(item.analyticsProvenance
                                           ? recommendationAnalyticsProperties(item.analyticsProvenance)
                                           : {}),
-                                      }); }
-                                    }
+                                      });
+                                    }}
                                   />
-                                  <DirectionReferenceCard reference={compactReasonDisplay.directionReference} recommendationKey={item.shrineId} rank={compactIdx + 2} />
+                                  <DirectionReferenceCard
+                                    reference={compactReasonDisplay.directionReference}
+                                    recommendationKey={item.shrineId}
+                                    rank={compactIdx + 2}
+                                  />
                                 </div>
                               );
                             })}
