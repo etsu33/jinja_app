@@ -18,6 +18,10 @@ cannot exercise this import-time logic). Each subprocess is given a
 minimal, explicit environment — never the parent pytest process's own
 environment — so a scenario meant to look like Production (no `IS_PYTEST`,
 no `PYTEST_CURRENT_TEST`, no `"pytest"` in argv) actually behaves like one.
+That explicit environment is also the *only* input: the probe stubs out
+`environ.Env.read_env` before importing settings, so neither
+`backend/.env.local` nor `backend/.env.test` can overwrite a scenario's
+values (see `_PROBE_SCRIPT`).
 
 **No `django.setup()` here.** What's under test is purely the plain-Python
 module-level branching in `settings.py` (`USE_GIS` / `USE_SQLITE` /
@@ -49,6 +53,27 @@ BACKEND_DIR = Path(__file__).resolve().parents[1]
 
 _PROBE_SCRIPT = """
 import json
+
+# Neutralise dotenv loading before importing settings.
+#
+# `shrine_project/settings.py` reads `backend/.env.local`, and -- once it
+# decides it is running under pytest -- also reads `backend/.env.test` with
+# `overwrite=True`. That second read stomps on the explicit environment this
+# probe was handed, so a scenario asking for `USE_GIS=0` /
+# `DISABLE_GIS_FOR_TESTS=1` silently became whatever the developer's local
+# `.env.test` happened to contain, and the assertions below tested that file
+# instead of the branching logic.
+#
+# `.gitignore` excludes `backend/.env.*`, so CI runners have neither file and
+# never observed the leak; only developers with a local `.env.test` saw
+# `test_pytest_with_disable_gis_for_tests_still_uses_migrations_nogis` fail.
+#
+# This probe supplies every variable it cares about explicitly, so there is
+# nothing legitimate for it to read from disk -- stubbing `read_env` out makes
+# the subprocess as hermetic as this module's docstring already claims.
+import environ
+environ.Env.read_env = staticmethod(lambda *args, **kwargs: None)
+
 import shrine_project.settings as settings
 print(json.dumps({
     "migration_modules_temples": getattr(settings, "MIGRATION_MODULES", {}).get("temples"),
@@ -80,6 +105,9 @@ def _run_settings_probe(extra_env: dict) -> dict:
     NOT `os.environ.copy()` — so no ambient `IS_PYTEST` / `PYTEST_CURRENT_TEST`
     / pytest-ish `argv` leaks in from the parent test process), and return
     the probe script's reported settings as a dict.
+
+    The probe script also disables dotenv loading, so a developer's local
+    `backend/.env.local` / `backend/.env.test` cannot overwrite `extra_env`.
     """
     env = {**_BASE_ENV, **extra_env}
     result = subprocess.run(
