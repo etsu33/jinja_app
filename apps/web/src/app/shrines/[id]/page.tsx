@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import type { Shrine } from "@/lib/api/shrines";
@@ -15,6 +16,10 @@ import { buildShrineClose } from "@/lib/navigation/shrineClose";
 import { buildDeepReason } from "@/lib/concierge/buildDeepReason";
 import { buildRecommendationReasonViewModel } from "@/lib/concierge/buildRecommendationReasonViewModel";
 import { buildShrineDetailModel } from "@/lib/shrine/buildShrineDetailModel";
+import {
+  SHRINE_DETAIL_GENERIC_METADATA,
+  buildShrineDetailMetadata,
+} from "@/lib/shrine/buildShrineDetailMetadata";
 import type { NarrativeFallback } from "@/lib/concierge/narrative/types";
 import {
   pickExplanationPayloadFromThread,
@@ -176,6 +181,32 @@ export function buildRecommendationReasonDetailInput(
     recommendationReasonDetail,
     conciergeDeepReason,
   };
+}
+
+// Page本体と同じ getShrineDetailServer（cache: "no-store"）だけを使う。metadata専用endpoint・
+// React.cache()・unstable_cache()・force-cache等の共有キャッシュは追加しない。
+// 取得失敗時もPage本体のerror behaviorは変更せず、metadataだけをfail-safeなgenericへ倒す。
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { id } = await params;
+  const numericId = Number(id);
+
+  // 不正IDでは不要なAPI requestを発生させない（Page本体の不正ID判定と同じ条件）。
+  if (!Number.isFinite(numericId) || numericId <= 0) {
+    return SHRINE_DETAIL_GENERIC_METADATA;
+  }
+
+  let shrine: Shrine | null;
+  try {
+    shrine = await getShrineDetailServer(numericId);
+  } catch {
+    return SHRINE_DETAIL_GENERIC_METADATA;
+  }
+
+  if (!shrine) {
+    return SHRINE_DETAIL_GENERIC_METADATA;
+  }
+
+  return buildShrineDetailMetadata(shrine);
 }
 
 export default async function Page({ params, searchParams }: Props) {
