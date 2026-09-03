@@ -33,6 +33,19 @@ function mockGeolocationSuccess() {
   });
 }
 
+function mockGeolocationError(code: number) {
+  Object.defineProperty(navigator, "geolocation", {
+    configurable: true,
+    value: {
+      getCurrentPosition: vi.fn(
+        (_success: PositionCallback, error?: PositionErrorCallback) => {
+          error?.({ code, message: "x" } as GeolocationPositionError);
+        },
+      ),
+    },
+  });
+}
+
 describe("NearbyShrineCardListClient", () => {
   beforeEach(() => {
     mockSearchParams.clear();
@@ -72,5 +85,34 @@ describe("NearbyShrineCardListClient", () => {
       /「テスト神社」の投稿を受け付けました。\s*現在審査中のため、公開検索にはまだ表示されません。\s*審査完了後に公開されます。/,
     );
     expect(await screen.findByText("近くに候補が見つかりませんでした。")).toBeInTheDocument();
+  });
+
+  it.each([[1], [2], [3]])(
+    "geolocation error(code %i) では東京駅 fallback で検索を継続し、crash / loading 永久化しない (RH3-4b)",
+    async (code) => {
+      mockGeolocationError(code);
+
+      render(<NearbyShrineCardListClient />);
+
+      // fail-safe: fallback (東京駅) の告知が出る & 検索は継続する
+      expect(await screen.findByText("現在地が取れないため仮の場所（東京駅）で検索中")).toBeInTheDocument();
+      await waitFor(() => {
+        expect(fetch).toHaveBeenCalledWith(
+          expect.stringContaining("lat=35.681236"),
+          expect.any(Object),
+        );
+      });
+      expect(await screen.findByText("近くに候補が見つかりませんでした。")).toBeInTheDocument();
+    },
+  );
+
+  it("geolocation 成功時は fallback 告知を出さず、取得座標で検索する (RH3-4b)", async () => {
+    // beforeEach の mockGeolocationSuccess をそのまま使う
+    render(<NearbyShrineCardListClient />);
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(expect.stringContaining("lat=35.681236"), expect.any(Object));
+    });
+    expect(screen.queryByText("現在地が取れないため仮の場所（東京駅）で検索中")).not.toBeInTheDocument();
   });
 });

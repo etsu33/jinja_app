@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import type { PlacesNearbyResponse } from "@/lib/api/places.nearby.types";
+import { requestCurrentPosition } from "@/lib/geo/currentPosition";
 import { buildGoogleMapsDirUrl, buildGoogleMapsSearchUrl } from "@/lib/maps/googleMaps";
 import { buildMapDetailHref } from "@/lib/nav/buildMapDetailHref";
 
@@ -59,36 +60,26 @@ export default function NearbyShrineCardListClient() {
   const lastKeyRef = useRef<string>("");
   const abortRef = useRef<AbortController | null>(null);
 
-  // 位置情報取得
+  // 位置情報取得 — coarse fix is enough for "nearby shrines" and far more
+  // reliable on mobile than a high-accuracy GPS acquisition (RH3-4b). On any
+  // failure we keep the existing FALLBACK (東京駅) behaviour.
   useEffect(() => {
     let cancelled = false;
     setLoadingLoc(true);
 
-    if (!navigator.geolocation) {
-      clientLog("LOC_UNSUPPORTED");
-      setCoords(FALLBACK);
-      setUsedFallback(true);
-      setLoadingLoc(false);
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        if (cancelled) return;
-        clientLog("LOC_OK", { acc: pos.coords.accuracy });
-        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+    void requestCurrentPosition().then((result) => {
+      if (cancelled) return;
+      if (result.ok) {
+        clientLog("LOC_OK", { acc: result.accuracy });
+        setCoords({ lat: result.lat, lng: result.lng });
         setUsedFallback(false);
-        setLoadingLoc(false);
-      },
-      (e) => {
-        if (cancelled) return;
-        clientLog("LOC_FAILED", { code: (e as any).code });
+      } else {
+        clientLog("LOC_FAILED", { reason: result.reason });
         setCoords(FALLBACK);
         setUsedFallback(true);
-        setLoadingLoc(false);
-      },
-      { enableHighAccuracy: true, timeout: 8000 },
-    );
+      }
+      setLoadingLoc(false);
+    });
 
     return () => {
       cancelled = true;
