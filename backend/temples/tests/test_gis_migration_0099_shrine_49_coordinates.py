@@ -37,7 +37,6 @@ PreconditionViolation = _mod.PreconditionViolation
 
 PRE_0099 = [("temples", "0098_remove_stray_test_source_id1")]
 AT_0099 = [("temples", "0099_fix_shrine_49_coordinates")]
-HEAD = AT_0099
 
 SHRINE_ID = 49
 NAME = "富岡八幡宮"
@@ -74,14 +73,33 @@ def _truncate_shrine_tables():
         cur.execute("TRUNCATE temples_shrine CASCADE")
 
 
+def _temples_head(executor: MigrationExecutor):
+    """The actual latest `temples` migration in this lineage, resolved at call
+    time from the migration graph."""
+    return list(executor.loader.graph.leaf_nodes("temples"))
+
+
+def _restore_head(executor: MigrationExecutor):
+    """Roll `temples` forward to the real latest migration after a test.
+
+    Previously this restored to a hardcoded `HEAD` pinned at 0099, which left
+    every later migration unapplied for the remainder of the pytest session --
+    including 0102's `HistoryThemeAssignment` table. `pytest-randomly` shuffles
+    module order, so on any seed that placed this file before an unrelated test
+    needing that schema, the unrelated test failed against a stale database.
+    """
+    _truncate_shrine_tables()
+    _migrate(executor, _temples_head(executor))
+
+
 @pytest.fixture
 def pre_0099():
-    """Reverse temples to 0098 (0099 unapplied) and restore to HEAD after.
+    """Reverse temples to 0098 (0099 unapplied) and restore to the real HEAD after.
 
-    Shrine tables are truncated on both sides so the 0095-0098 fail-closed
+    Shrine tables are truncated on both sides so the 0095+ fail-closed
     guards are clean no-ops regardless of suite ordering. Raise-path tests
     also delete the pk-49 row they seed before returning, so this teardown's
-    `_migrate(executor, HEAD)` hits 0099's absent-subject no-op.
+    forward roll hits 0099's absent-subject no-op.
     """
     executor = _executor()
     _truncate_shrine_tables()
@@ -89,8 +107,7 @@ def pre_0099():
     try:
         yield executor
     finally:
-        _truncate_shrine_tables()
-        _migrate(executor, HEAD)
+        _restore_head(executor)
 
 
 def _historical_shrine_model(executor: MigrationExecutor):
