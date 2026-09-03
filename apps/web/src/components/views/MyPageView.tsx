@@ -189,8 +189,8 @@ export default function MyPageView({ initialFavorites }: Props) {
     return (Object.keys(initial) as (keyof ProfileForm)[]).some((key) => form[key] !== initial[key]);
   }, [user, form]);
 
-  const derivedProfile = useMemo(() => buildDerivedProfile(form), [form.birthday]);
-  const directionProfile = useMemo(() => buildDirectionProfile(form), [form.birthday]);
+  const derivedProfile = useMemo(() => buildDerivedProfile(form), [form]);
+  const directionProfile = useMemo(() => buildDirectionProfile(form), [form]);
 
   const aggregatedVisits = useMemo(() => aggregateVisitsByShrine(visits), [visits]);
 
