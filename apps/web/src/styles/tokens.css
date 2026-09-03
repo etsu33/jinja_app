@@ -66,6 +66,11 @@
   --kt-color-status-error: var(--color-red-600);
   --kt-color-status-info: var(--color-slate-600);
 
+   /* ---- Notice（Amber系から分離、Premiumとの混同防止） ---- */
+   --kt-color-notice-bg: var(--color-slate-50);
+   --kt-color-notice-border: var(--color-slate-200);
+   --kt-color-notice-text: var(--color-slate-700);
+
   /* ---- Semantic Token: premium ---- */
   /* Web現行: amber-*系 (17ファイルで使用) */
   --kt-color-premium-accent: var(--color-amber-700);
@@ -266,6 +271,11 @@
      既存Error Token（Red系）を維持。暗い背景での視認性確保のため
      Light版(600)より明るい階調(400)へシフトする。 */
   --kt-color-status-error: var(--color-red-400);
+
+  /* ---- Notice（Amber系から分離、Premiumとの混同防止） ---- */
+  --kt-color-notice-bg: #0b1424;
+  --kt-color-notice-border: #384154;
+  --kt-color-notice-text: #b8aa8e;
 
   /* ---- Premium（母艦Decision: Amber/Gold系をIdentityとして維持） ----
      Web既存のAmber系（Priority 4）を維持。ExpoのGold（Primary Actionと

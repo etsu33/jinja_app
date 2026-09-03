@@ -112,7 +112,7 @@ function BillingSuccessContent() {
       ) : isPremiumActive ? (
         <p className="mt-2 text-sm leading-6 text-slate-600">現在のプランに反映されています。</p>
       ) : (
-        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+        <div className="mt-4 rounded-xl border border-[var(--kt-color-notice-border)] bg-[var(--kt-color-notice-bg)] p-4 text-sm leading-6 text-[var(--kt-color-notice-text)]">
           決済完了後の反映待ちです。少し時間をおいてからプラン状況を再確認してください。
         </div>
       )}
