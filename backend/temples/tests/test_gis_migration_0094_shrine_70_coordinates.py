@@ -29,7 +29,6 @@ if os.getenv("USE_GIS") != "1":
 
 PRE_0094 = [("temples", "0093_shrine_knowledge_model_foundation")]
 AT_0094 = [("temples", "0094_fix_shrine_70_coordinates")]
-HEAD = AT_0094
 
 SHRINE_ID = 70
 NAME = "多摩川浅間神社"
@@ -49,6 +48,35 @@ def _migrate(executor: MigrationExecutor, target):
     executor.loader.build_graph()
 
 
+def _temples_head(executor: MigrationExecutor):
+    """The actual latest `temples` migration in this lineage, resolved at call
+    time from the migration graph."""
+    return list(executor.loader.graph.leaf_nodes("temples"))
+
+
+def _truncate_shrine_tables():
+    """Empty every Shrine-derived table so the forward roll back to HEAD is a
+    guaranteed clean no-op through the fail-closed data migrations (0095+),
+    which raise once their audited subject row exists but does not match.
+    Mirrors `test_gis_migration_0099`'s teardown."""
+    with connection.cursor() as cur:
+        cur.execute("TRUNCATE temples_shrine CASCADE")
+
+
+def _restore_head(executor: MigrationExecutor):
+    """Roll `temples` forward to the real latest migration after a test.
+
+    Previously this restored to a hardcoded `HEAD` pinned at the migration
+    under test (0094), which left every later migration unapplied for the
+    remainder of the pytest session -- including 0102's
+    `HistoryThemeAssignment` table. `pytest-randomly` shuffles module order,
+    so on any seed that placed this file before an unrelated test needing
+    that schema, the unrelated test failed against a stale database.
+    """
+    _truncate_shrine_tables()
+    _migrate(executor, _temples_head(executor))
+
+
 @pytest.fixture
 def pre_0094():
     """Reverse temples to 0093 (0094 unapplied) and restore afterwards."""
@@ -57,7 +85,7 @@ def pre_0094():
     try:
         yield executor
     finally:
-        _migrate(executor, HEAD)
+        _restore_head(executor)
 
 
 def _historical_shrine_model(executor: MigrationExecutor):
