@@ -108,3 +108,5 @@ apps/web/test-results/
 /r1.json
 /payload.json
 /snippet.txt
+apps/web/AGENTS.md
+apps/web/CLAUDE.md
