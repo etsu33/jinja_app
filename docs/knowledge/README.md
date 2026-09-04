@@ -29,7 +29,7 @@ KAMI MUSUBIが、神社の事実をどのように意味へ変換し、推薦・
 | ドキュメント | 責務 |
 | --- | --- |
 | `recommendation-v4-copy-guideline.md` | Recommendation v4固有のコピー規則を補足する。共通の文章原則は`recommendation-copy-guide.md`、Input / Output契約は`docs/product/recommendation-v4-interpreter-contract.md`を正本とする |
-| `evidence-foundation-shared-contract.md` | Evidence Foundation Shared Contract（PR-F1: EvidenceQualification / Taxonomy / Provenance）の責務を定義する。既存Recommendation / Rankingとは独立しており、本PR時点では未接続 |
+| `evidence-foundation-shared-contract.md` | Evidence Foundation Shared Contract（PR-F1〜F4: Qualification / Taxonomy / Provenance / Assignment / EvidenceLink preparation）の責務を定義する。既存Recommendation / Rankingとは独立しており、F4時点でも未接続 |
 
 ---
 

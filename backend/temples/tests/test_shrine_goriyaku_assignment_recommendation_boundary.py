@@ -5,6 +5,7 @@ access -- it only inspects source text, matching the same boundary check
 performed for HistoryThemeAssignment in PR-F2 (including that PR's
 allowlist-scope correction: migration filenames are allowlisted by exact
 name, not by directory prefix)."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -49,14 +50,18 @@ def test_no_file_under_temples_imports_shrine_goriyaku_assignment_outside_its_ow
     # allowlist shape). A migration file defining the model's schema is an
     # expected structural reference, not a runtime Recommendation/Ranking/
     # Concierge integration -- so both, and only these two exact files, are
-    # allowed here. This intentionally does not allowlist all of
-    # migrations/ or migrations_nogis/, to keep the check scoped.
+    # allowed here. PR-F4 adds exactly two Evidence Foundation runtime modules
+    # that are also legitimate references; neither is a Recommendation/
+    # Ranking/Concierge importer. This intentionally does not allowlist whole
+    # directories, to keep the check scoped.
     allowed_prefixes = (
         "models.py",
         "admin.py",
         "tests/",
         "migrations/0103_goriyaku_evidence_foundation.py",
         "migrations_nogis/0010_shrinegoriyakuassignment.py",
+        "domain/evidence_link.py",
+        "services/evidence_foundation.py",
     )
     offenders = []
     for path in _TEMPLES_DIR.rglob("*.py"):

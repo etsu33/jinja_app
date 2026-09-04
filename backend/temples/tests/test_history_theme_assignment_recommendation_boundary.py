@@ -3,6 +3,7 @@
 Recommendation/Ranking/Concierge importer. This does not require DB access --
 it only inspects source text, matching the same boundary check performed
 manually during PR-F1/PR-F2 development."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -46,14 +47,18 @@ def test_no_file_under_temples_imports_history_theme_assignment_outside_its_own_
     # migration lineages). A migration file defining the model's schema is
     # an expected structural reference, not a runtime Recommendation/
     # Ranking/Concierge integration -- so both, and only these two exact
-    # files, are allowed here. This intentionally does not allowlist all of
-    # migrations/ or migrations_nogis/, to keep the check scoped.
+    # files, are allowed here. PR-F4 adds exactly two Evidence Foundation
+    # runtime modules that are also legitimate references; neither is a
+    # Recommendation/Ranking/Concierge importer. This intentionally does not
+    # allowlist whole directories, to keep the check scoped.
     allowed_prefixes = (
         "models.py",
         "admin.py",
         "tests/",
         "migrations/0102_history_theme_assignment_foundation.py",
         "migrations_nogis/0009_historythemeassignment.py",
+        "domain/evidence_link.py",
+        "services/evidence_foundation.py",
     )
     offenders = []
     for path in _TEMPLES_DIR.rglob("*.py"):
