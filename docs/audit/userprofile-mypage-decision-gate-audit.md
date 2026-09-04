@@ -422,6 +422,7 @@ lib/premium/cardVisibility.ts::CARD_VISIBILITY_POLICIES（23カード × 3階層
 | **D14** | `middleware.ts` の保護対象を `/mypage` のみとするか | `apps/web/middleware.ts:8-22`（cookie の存在のみ判定） | **FACT_VERIFICATION** | 事実は `CONFIRMED`。ただし**実害は限定的** — 全ての実データは BFF → Django の `IsAuthenticated` で守られており、middleware は UX 上のリダイレクトにすぎない | 技術判断（middleware をどう位置づけるか）。製品判断ではない |
 | **D15** *(new)* | Free の Concierge 上限が 5 であり、かつ日次ではなく**累積で恒久的に枯れる** | `settings.py:16`／`quota_service.py:196-198,108-170`／`models_usage.py:8-33`／`test_concierge_chat_response_matrix_contract.py:142` | **CONTRACT_MISMATCH**（M3） | `billing-paywall.md`「当日の利用回数」と runtime が不一致 | 日次リセットを実装するか、契約側を「累積」に改めるか |
 | **D16** *(new)* | 匿名で 3 回使い切った後に登録すると quota がリセットされ +5 回得られる | `quota_service.py:113-134`（scope が anonymous → user で別行） | **FACT_VERIFICATION** | 事実は `CONFIRMED` | 意図された導線（登録インセンティブ）か抜け穴かの確認。仕様化するなら製品判断へ昇格 |
+| ↳ | **D16 は §15 で D16-A / D16-B へ分割済み。** 上記行は分割前の記述として保持する（履歴保存） | §15 | — | — | §15 参照 |
 | **D17** *(new)* | `AuthUser.nickname` / `AuthUser.birthday`（top-level）が live serializer に存在せず、表示名解決が縮退している | `users/api/serializers.py:52-57`／`lib/auth/types.ts:7-8,30-35`／`ConciergeClientFull.tsx:529,538`／`resolveDisplayName.ts` | **CONTRACT_MISMATCH**（M9） | 常に undefined、`toProfileState` は呼び出し元 0件 | serializer を合わせるか型を落とすか（実装判断） |
 
 ### 11-1. 分類サマリ
@@ -480,7 +481,162 @@ lib/premium/cardVisibility.ts::CARD_VISIBILITY_POLICIES（23カード × 3階層
 
 | # | 項目 | 理由 |
 | --- | --- | --- |
-| U1 | 本番環境の `BILLING_PROVIDER` / `BILLING_STUB_PLAN` / `BILLING_STUB_ACTIVE` / `STRIPE_SECRET_KEY` / `STRIPE_PREMIUM_PRICE_ID` | いずれもリポジトリ内に存在しない（`.env.example` にキーごと不在、`settings.py` でも `os.getenv` 直読み）。**リポジトリから推測してはならない**ため、デプロイ環境での確認が必要（D7 / P0） |
+| U1 | 本番環境の `BILLING_PROVIDER` / `BILLING_STUB_PLAN` / `BILLING_STUB_ACTIVE` / `STRIPE_SECRET_KEY` / `STRIPE_PREMIUM_PRICE_ID` | いずれもリポジトリ内に存在しない（`.env.example` にキーごと不在、`settings.py` でも `os.getenv` 直読み）。**リポジトリから推測してはならない**ため、デプロイ環境での確認が必要（D7 / P0）<br>**［訂正: §16-1］** 「`.env.example` にキーごと不在」は**ルートの `.env.example` についてのみ正しい**。`backend/.env.example` には `BILLING_STUB_PLAN` / `BILLING_STUB_ACTIVE` / `STRIPE_*` のキーが存在する（値は空またはローカル用）。結論（本番値は UNRESOLVED_EXTERNAL）は変わらない |
 | U2 | Concierge の precedence 食い違い時（P1）および birthday/birthTime 分離（P3）の実挙動 | コード上の順序は `CONFIRMED` だが、該当 test が存在せず、実行検証もしていない |
 | U3 | 本書が引用した全 test の pass/fail | テスト環境未構築（`node_modules` 未インストール、Django 未インストール）。assertion の存在のみ確認済み |
 | U4 | `backend/favorites/` アプリの migration が本番 DB に適用済みか | `INSTALLED_APPS` にあるため適用されている可能性が高いが、DB 実体は未確認。P1 の削除範囲判断に影響 |
+
+---
+
+## 15. D16 Classification
+
+> 追記日: 2026-09-04（同 commit `f9ff610` の runtime code に対する再確認）。
+> §11 の D16 行は分割前の記述として保持している（silent rewrite を避けるため削除していない）。
+
+### 15-1. D16-A — FACT_VERIFICATION
+
+**Question**: 匿名の利用実績は、signup 後も登録ユーザーの利用実績と分離されたままか。
+
+**Status: CONFIRMED**
+
+| 検証項目 | 実装 | 結果 |
+| --- | --- | --- |
+| 匿名の usage identifier | `backend/temples/services/anonymous_id.py` — cookie `concierge_anon_id`（`ANONYMOUS_ID_COOKIE_NAME:16`）に `django.core.signing` で署名した UUID（`issue_anonymous_id:53`）。`plan_service.py::resolve_plan_context:40-48` が `PlanContext(plan="anonymous", user_id=None, anon_id=…)` を組む | `FeatureUsage.anon_id`（文字列） |
+| 認証済みの usage identifier | `plan_service.py:25-38` が `PlanContext(plan="premium"\|"free", user_id=user.id, anon_id=None)` を組む | `FeatureUsage.user_id`（FK） |
+| storage model | `backend/temples/models_usage.py::FeatureUsage:8-52` — `scope`(`"anonymous"`/`"user"`), `user`(FK, null可), `anon_id`(CharField), `feature`, `count`。**日付フィールドなし**。UniqueConstraint は `(user, feature) where scope="user"` と `(anon_id, feature) where scope="anonymous"` の**2本が独立** | 匿名行と user 行は別レコード |
+| lookup logic | `backend/temples/services/quota_service.py::get_used_count:108-146` — `plan_context.plan == "anonymous"` なら `get_or_create(scope="anonymous", anon_id=…, feature=…)`、それ以外は `get_or_create(scope="user", user_id=…, feature=…)`。**anon_id を user 行へ持ち込む分岐は存在しない** | 完全分離 |
+| write logic | `quota_service.py::consume_quota:224-262` — 同じ2分岐で `count += 1` | 同上 |
+| signup flow | `backend/users/api/views.py::SignupView.post:108-123` → `SignupSerializer.create`（`users/api/serializers.py:20-26`）→ `User.objects.create_user()` のみ。**quota / FeatureUsage / anon_id に一切触れない**。副作用は `users/apps.py::ensure_profile:19-23`（`UserProfile` を作るだけ） | usage 移行なし |
+| BFF signup | `apps/web/src/app/api/auth/register/route.ts` — body を `/api/users/signup/` へ転送するだけ。cookie 操作なし。`concierge_anon_id` の削除・転送・読み取りいずれもなし | usage 移行なし |
+| migration / claim code の探索 | `grep -rniE "anon.*(migrat\|transfer\|merge\|claim\|reconcil\|adopt\|inherit\|takeover)\|…" --include=*.py backend/`（`/migrations/` 除外）→ **該当0件**。`FeatureUsage` の全参照は `quota_service.py` / `models_usage.py` / `models.py:13` のみ。login / signup / webhook のいずれにも移行処理なし | **NOT_FOUND** |
+| frontend 側の関連処理 | `ConciergeClientFull.tsx::clearAnonymousSnapshot:251-257` は `sessionStorage` のキー1つを消すだけで、`concierge_anon_id` cookie（HttpOnly）にも DB にも触れない | usage 移行なし |
+
+**帰結**: 匿名で上限（`QUOTA_POLICY["anonymous"]["concierge"]["limit"] = 3`、`quota_policy.py:9`）に達した後に登録すると、`PlanContext.plan` が `anonymous` → `free` に変わり、`get_used_count` の参照先が `FeatureUsage(scope="anonymous", anon_id=…)` から `FeatureUsage(scope="user", user_id=…)` の**新規行（count=0）**へ切り替わる。結果として `settings.CONCIERGE_DAILY_FREE_LIMIT = 5`（`shrine_project/settings.py:16`、`quota_service.py:196-198`）の枠が丸ごと新規に付与される。
+
+**test 状況**: 匿名→登録の usage 継続／リセットを assert するテストは **NOT_FOUND**（`grep -rl "check_quota\|quota" backend/temples/tests backend/tests` の該当ファイルに signup を跨ぐケースなし）。個別の quota 挙動は `temples/tests/api/test_concierge_rate_limit_message_contract.py` / `test_concierge_chat_response_matrix_contract.py:142` が扱うが、いずれも単一 scope 内。**本項の CONFIRMED は静的トレースに基づく（テスト未実行、`CONFIRMED (static)`）。**
+
+### 15-2. D16-B — MOTHER_SHIP_DECISION
+
+D16-A が CONFIRMED であるため、以下の製品判断が未解決として残る。**本書は A / B のいずれも選択しない。**
+
+> **未解決の製品判断（D16-B）**
+>
+> 匿名利用者が登録した時点で、それまでの匿名利用実績を
+>
+> **A. 意図的にリセットする**（登録インセンティブとして扱い、登録直後に Free 枠を満額付与する）
+>
+> **B. 認証済みユーザーの利用実績へ引き継ぐ**（匿名分を合算し、登録によって上限が回復しないようにする）
+>
+> のいずれとして扱うか。
+
+決定に伴って波及する範囲（決定そのものではなく、影響先の記録）:
+
+- A を採る場合 — 現行実装が既に A の挙動であるため**コード変更は不要**。ただし「意図した仕様」であることを `docs/product/billing-paywall.md` 側へ明記する必要がある（現状は仕様記述がなく、実装だけが存在する）。加えて D15（Free 上限が日次ではなく累積である件、M3）との整合が必要 — 累積のままだと「登録で1回だけ枠が回復し、その後は恒久的に枯れる」という体験になる。
+- B を採る場合 — `consume_quota` / `get_used_count` の外側に移行処理が必要になり、`concierge_anon_id` cookie（HttpOnly、`sameSite=None`、90日、`anonymous_id.py:72-83`）を signup 応答時に読める経路の設計が要る。現行の signup は BFF `app/api/auth/register/route.ts` が cookie を扱わないため、**BFF と backend の双方に新規責務が発生する**。
+- いずれの場合も D12（匿名 `ConciergeThread` の claim 経路が存在しない）と設計が連動する。usage だけ引き継いで履歴を引き継がない／その逆は、ユーザーから見て一貫しない。
+
+---
+
+## 16. Production Billing Environment Gate
+
+### 16-1. 先行記述の訂正（履歴保存）
+
+| 訂正 | 先行記述（§14 U1 / §11 D7） | 実際 | 結論への影響 |
+| --- | --- | --- | --- |
+| E1 | 「`.env.example` にキーごと不在」 | **ルート `/.env.example`** には確かに BILLING / STRIPE キーが存在しない。しかし **`backend/.env.example` には存在する** — `BILLING_STUB_PLAN=free`（`:34`）、`BILLING_STUB_ACTIVE=0`（`:35`）、`STRIPE_SECRET_KEY=` / `STRIPE_PRICE_ID=` / `STRIPE_WEBHOOK_SECRET=`（`:38-40`、いずれも空値）。ただし **`BILLING_PROVIDER` はどちらの `.env.example` にも存在しない** | **なし**。`.env.example` は本番値の証拠として採用できない（本監査の検証ルール）。本番値は依然 `UNRESOLVED_EXTERNAL` |
+| E2 | 「`settings.py` でも `os.getenv` 直読み」（BILLING 系） | 正確には **`settings.py` に `BILLING_*` の定義は一切なく**、`billing_state.py` が `os.getenv` を直接呼ぶ。一方 `STRIPE_*` は `settings.py:384-388` に定義がある | なし（記述の精密化のみ） |
+
+### 16-2. Provider 解決パス（repository verification）
+
+**fallback / default を決定する唯一の symbol**:
+
+```
+backend/temples/services/billing_state.py:26-28
+
+    def provider() -> str:
+        p = (os.getenv("BILLING_PROVIDER", "stub") or "stub").strip().lower()
+        return p if p in PROVIDER_CHOICES else "unknown"
+```
+
+- setting 名: `BILLING_PROVIDER`（環境変数のみ。Django settings には**存在しない**）
+- **repository default: `"stub"`** — `os.getenv` の第2引数、かつ空文字列も `or "stub"` で `"stub"` に落ちる
+- 許容値: `PROVIDER_CHOICES = ("stub", "stripe", "revenuecat", "unknown")`（`billing_state.py:13`）。**リストにない値（打ち間違い含む）は `"unknown"` に縮退し、エラーにならない**
+
+**stub 挙動**: `billing_state.py::_status_from_stub_env:85-122`
+- `BILLING_STUB_PLAN`（既定 `"free"`）／`BILLING_STUB_ACTIVE`（既定 `"0"`、真値集合 `{1,true,yes,y,on}`）を正本とする
+- `:101` — `plan=="premium"` かつ `BILLING_STUB_ACTIVE` が**未設定**（`"0"` ではなく `None`）なら `active=True` に強制
+- `:106-108` — `plan=="premium"` かつ `prov=="stub"` のとき、返す `provider` を `"stripe"` に**書き換える**。`backend/README.md`「`provider` は表示・デバッグ用途とし、UI分岐の根拠には使用しません」により機能影響はないが、レスポンスは実態と異なる provider 名を返す
+- **stub 判定は user 引数を見ない**（`get_billing_status:56-58`）。認証済みでも `UserProfile` を読まない
+- **stub plan は全ユーザー共通のグローバル値**。個別ユーザーの premium 化はできない
+
+**non-stub 挙動**: `billing_state.py::get_billing_status:59-83`
+- `prov != "stub"` かつ user が authenticated → `UserProfile.subscription_status` / `current_period_end` を読み、`users/services/billing.py::is_subscription_active:12-28` で判定（`current_period_end` があれば期限優先、無ければ `status in {"active","trialing"}`）
+- 未認証 → `_status_from_stub_env`（`:82`）
+
+**checkout の provider 選択**: `backend/temples/services/billing_checkout.py::create_checkout_session:38-46`
+- 条件は `provider() != "stripe"` → stub セッション（`session_id = f"stub_checkout_{user.pk}"`、`checkout_url = success_url + ?checkout_session_id=...`）を返し、**Stripe を呼ばず決済なしで success へ遷移させる**
+- `"stripe"` のときのみ `STRIPE_SECRET_KEY` + `STRIPE_PREMIUM_PRICE_ID`(または `STRIPE_PRICE_ID`) を要求し、欠落なら `RuntimeError("stripe checkout is not configured")` → `CheckoutUnavailable`(503)（`temples/api/views/billing.py:28-31, 105-106`）
+
+**⚠ status と checkout の分岐条件が非対称**: status は `prov == "stub"` で分岐、checkout は `prov != "stripe"` で分岐する。したがって `BILLING_PROVIDER=revenuecat` または打ち間違いによる `"unknown"` では、**認証済みユーザーの status は DB を読む一方、checkout は決済なしの stub 成功を返す**。status: **CONFIRMED**
+
+**webhook 挙動**: `temples/api/views/billing.py::BillingStripeWebhookView:120-146`
+- `permission_classes = [AllowAny]`, `authentication_classes = []`, `csrf_exempt`
+- **`provider()` を参照しない**。`STRIPE_WEBHOOK_SECRET` と `stripe` SDK があれば署名検証し（`users/services/stripe_webhook.py::construct_stripe_event:58-88`、未設定なら 503）、`apply_stripe_event` が `UserProfile` を更新する
+- → **`BILLING_PROVIDER=stub` のままでも webhook は `UserProfile` を書き込む。その値は `get_billing_status` に読まれない**（書き込み先と読み取り元が切断される）。status: **CONFIRMED**
+
+**UserProfile billing フィールド**: `backend/users/models.py:22-32` — `stripe_customer_id`(webhook 書き / checkout 読み) / `stripe_subscription_id`(write-only) / `stripe_price_id`(write-only) / `subscription_status`(webhook 書き、non-stub 時のみ読み) / `current_period_end`(同左)。いずれも API serializer に非収載（§1 参照）
+
+**環境ドキュメント**: `backend/README.md:113-131`「Billing運用契約」が `BILLING_PROVIDER=stub` → 環境変数が正本、`=stripe` → `UserProfile` が正本と規定。**runtime と一致している**（mismatch なし）。`docs/infra/env_policy.md`（Status: Active）は「実際の環境変数定義および既定値は `backend/.env.example` を正本とする」と述べるが、**本番実値は同書にも記載がない**
+
+**Stripe 依存**: `backend/requirements.txt:17` `stripe>=15.3.1,<16.0.0` — SDK は本番にインストールされている（`StripeWebhookNotConfigured("stripe sdk is not installed")` 経路には落ちない）。status: **CONFIRMED**
+
+### 16-3. 本番値の検証
+
+**`PRODUCTION_VALUE = UNRESOLVED_EXTERNAL`**
+
+リポジトリに本番環境の設定ソースが存在しないことを確認した:
+
+| 探索対象 | 結果 |
+| --- | --- |
+| `render.yaml` / `render.yml` / `Procfile` / `fly.toml` / `app.yaml` | **存在しない**（`find` 実行、`.git` 除外） |
+| `backend/start.sh`（Render の起動スクリプト、`docs/infra/render-startup.md` が参照） | `PORT` / `WEB_CONCURRENCY` を export するのみ。**`BILLING_*` / `STRIPE_*` を設定しない** |
+| `.github/workflows/`（`deploy.yml.disabled` 含む） | `BILLING` / `STRIPE` の記述 **0件** |
+| `infra/README.md` | Render の Environment に設定すべき変数として `DATABASE_URL` / `ALLOWED_HOSTS` / `CSRF_TRUSTED_ORIGINS` 等を列挙するのみ。**BILLING 系の記載なし** |
+| リポジトリ内の `BILLING_*` 出現箇所 | `Makefile:12`（ローカル dev target）、`backend/pytest.ini:29-30`（テスト）、`backend/.env.example:34-35`（ローカル例）、`backend/README.md`（仕様説明）、`billing_state.py`（実装）、各 test の `monkeypatch.setenv`。**いずれも本番設定ソースではない** |
+| 本監査セッションのコンテナ環境変数 | `BILLING_PROVIDER` / `BILLING_STUB_PLAN` / `BILLING_STUB_ACTIVE` / `BILLING_STUB_CANCEL_AT_PERIOD_END` / `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` / `STRIPE_PRICE_ID` / `STRIPE_PREMIUM_PRICE_ID` すべて **ABSENT**、かつ `RENDER` / `RENDER_SERVICE_ID` も **ABSENT** → **本監査環境は本番環境ではない**。値の代替根拠にはならない |
+
+検証ルールに従い、default・`.env.example`・ローカル `.env`・テスト・README 例・デプロイ手順書のいずれも本番値の根拠として採用していない。
+
+#### 外部で確認すべき事項（Render Dashboard → Web Service → Environment）
+
+| キー | 必要性 | 確認内容（**値そのものは記録しない。present / absent / 実配置値の分類のみ**） |
+| --- | --- | --- |
+| **`BILLING_PROVIDER`** | **必須** | 未設定か、`stub` / `stripe` / `revenuecat` / その他（→ `unknown` に縮退）か。provider 解決の唯一の入力 |
+| `BILLING_STUB_PLAN` | provider が `stub` に解決される場合のみ意味を持つ | `free` / `premium` / 未設定。`premium` なら**全ユーザーが premium** になる |
+| `BILLING_STUB_ACTIVE` | 同上 | `0` / 真値 / **未設定**。`BILLING_STUB_PLAN=premium` かつ**未設定**だと `active=True` に強制される（`billing_state.py:101`）ため、`0` と未設定の区別が必要 |
+| `BILLING_STUB_CANCEL_AT_PERIOD_END` | stub 時の表示のみ。機能影響なし | present / absent |
+| `STRIPE_SECRET_KEY` | provider が `stripe` の場合、checkout 成立に必須 | **present / absent のみ** |
+| `STRIPE_PREMIUM_PRICE_ID` または `STRIPE_PRICE_ID` | 同上（`settings.py:387` で前者優先、無ければ後者） | **present / absent のみ** |
+| `STRIPE_WEBHOOK_SECRET` | provider を問わず webhook 受信に必須（`construct_stripe_event`）。未設定なら webhook は 503 | **present / absent のみ** |
+
+**秘匿値は出力しない。** 上表は present / absent の分類のみを記録する運用とする。
+
+### 16-4. Production Billing Matrix
+
+現行コードのみに基づく。`user` は認証済みユーザーを指す。
+
+| Condition | Billing status source | Checkout behavior | DB UserProfile used? |
+| --- | --- | --- | --- |
+| **provider = stub**（`BILLING_PROVIDER=stub`、または空文字列） | `BILLING_STUB_PLAN` / `BILLING_STUB_ACTIVE`（環境変数）。**認証済みでも user を見ない**（`billing_state.py:56-58`）。全ユーザー共通のグローバル値 | **Stripe を呼ばない**。`session_id="stub_checkout_<pk>"` と `success_url?checkout_session_id=…` を返し、決済なしで `/billing/success` へ遷移（`billing_checkout.py:40-46`） | **No**（status 判定では未使用）。ただし webhook が届けば `UserProfile` は**書き込まれる**（読まれない） |
+| **provider = stripe**（production provider） | 認証済み: `UserProfile.subscription_status` + `current_period_end` → `is_subscription_active`（`billing_state.py:59-80`）／未認証: stub env（`:82`） | `STRIPE_SECRET_KEY` + price id 必須。欠落時 503（`CheckoutUnavailable`）。揃っていれば `stripe.checkout.Session.create`（mode=`subscription`、`client_reference_id=user.pk`、`metadata.user_id`）→ 実 checkout URL | **Yes**（認証済みの場合） |
+| **provider unset**（`BILLING_PROVIDER` 未設定） | **`provider()` が `"stub"` を返す**（`os.getenv("BILLING_PROVIDER","stub")`）→ 1行目と完全に同一 | 1行目と同一（stub 短絡） | 1行目と同一（**No**） |
+| *(参考)* **provider = revenuecat / 未知の値（→ `"unknown"`）** | 認証済み: `UserProfile` を読む（2行目と同じ経路）／未認証: stub env | **stub 短絡**（`provider() != "stripe"` のため）。決済なしで success へ遷移 | **Yes**（認証済みの場合）。**status と checkout の分岐が非対称**（§16-2） |
+
+いずれの行でも `is_premium_for_user`（`billing_state.py:130-138`）は `user.is_staff` を無条件に premium とする（D8）。
+
+### 16-5. 後続 Billing 作業への影響
+
+- **P0（環境実値の確認）は依然として未完了。** `BILLING_PROVIDER` が `stub` に解決される限り、checkout → webhook → `UserProfile` → plan 判定のループは閉じておらず、**Premium は製品フロー上で到達不能**（`is_staff` と `BILLING_STUB_PLAN=premium` を除く）。
+- D7 の分類は **FACT_VERIFICATION のまま変更なし**。ただし「リポジトリ内に手がかりが一切ない」から「**リポジトリ内には仕様（`backend/README.md`）と実装（`billing_state.py`）が揃っており、欠けているのは本番の env 実値のみ**」へ、記述の精度を上げた（§16-1 E1 / E2）。
+- P4（quota の意味の確定）、P5（quota policy 一本化）、P6（Premium 正本一本化）、P11（My Page 再配置）は、いずれも P0 の結果に依存しない**が**、P6 の「backend フィルタを入れるか」は Premium が実際に到達可能かどうか（= P0）を前提とするため、**P0 → P6 の順序は維持する**。
+- 本節の確認によってアプリケーション挙動は一切変更していない。missing な本番設定を補うためのコード変更も行っていない。
