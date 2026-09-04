@@ -1,4 +1,4 @@
-> **Status: Active（PR-F1 Shared Contracts + PR-F2 HistoryThemeAssignment + PR-F3 ShrineGoriyakuAssignment）**
+> **Status: Active（PR-F1 Shared Contracts + PR-F2 HistoryThemeAssignment + PR-F3 ShrineGoriyakuAssignment + PR-F3b Goriyaku canonical registry v1）**
 >
 > 本書は、Evidence Foundation の Shared Evidence Foundation Contract（PR-F1）と、その具体的assignmentモデルである HistoryThemeAssignment（PR-F2）・ShrineGoriyakuAssignment（PR-F3）の責務を記録する。
 >
@@ -178,19 +178,20 @@ PR-F1の`evidence_provenance.EVIDENCE_PRODUCERS` / `EVIDENCE_MECHANISMS`をそ�
 
 ### Taxonomy v1（namespace: `goriyaku`、version: `"v1"`）
 
-`backend/temples/domain/goriyaku_taxonomy_v1.py`が、PR-F1のformat validator（`evidence_taxonomy.validate_canonical_semantic_key()`）を再利用した構造のみを提供する。`history_theme_taxonomy_v1.py`と同型のモジュールだが、内容は異なる:
+`backend/temples/domain/goriyaku_taxonomy_v1.py`が、PR-F1のformat validator（`evidence_taxonomy.validate_canonical_semantic_key()`）を再利用したregistryを提供する（`history_theme_taxonomy_v1.py`と同型）。
 
-```text
-GORIYAKU_V1_CANONICAL_KEYS: Dict[str, str] = {}   # 意図的に空
-```
+**Canonical registry: PR-F3では未投入（空・fail-closed）だったが、PR-F3bでProduction canonical master 39件をMother Ship FINALとして投入済み。** DATA_REVIEWはこの39件の範囲で完了している。
 
-**Canonical registry: PR-F3では未投入（not populated）。DATA_REVIEW必須。** 46件のGoriyakuTagへの具体的key割当はCodexが行わず、日本語ラベルからのslug生成も行っていない。
+- 母集団はProduction canonical master **39件**。local dev DBにのみ存在するlegacy 7件（`子宝・安産` / `金運・商売繁盛` / `仕事運・出世` / `厄除け・方除け` / `勝運・必勝祈願` / `地域安泰` / `開運招福`）は**registry対象外**。
+- **39 concept → 39 canonical identity**を維持する。semantic merge・alias・synonym inferenceは行わない。表記が近い概念（`八方除`=`goriyaku:happo_jo` と `八方除け`=`goriyaku:happo_yoke`、`芸能` と `芸能運`、`健康長寿` と `延命長寿` 等）は別identityとして保持する。
+- canonical keyがimmutable identityであり、日本語ラベルはdisplay valueに過ぎない。`GoriyakuTag.id`はbackfill順に依存する不安定な値のため、identityとして使用しない。
+- registryの正本はcode-level versioned registry（このモジュール）であり、DBではない。taxonomy用のDB tableは作らない。
 
 ### Fail-Closed（重要）
 
-承認済みcanonical key registryが空であるため、`ShrineGoriyakuAssignment.clean()`は**いかなる`goriyaku:<key>`も現時点では受理しない**。「registryが空だから任意のkeyを許可する」も「formatが正しければ許可する」もいずれも実装していない — unknown/unregistered canonical keyは常にrejectされる。
+registryは**closed vocabulary**であり、`ShrineGoriyakuAssignment.clean()`は登録済み39件の`goriyaku:<key>`のみを受理する。未登録キーは常にreject（`reason="unknown_goriyaku_key"`）される。「formatが正しければ許可する」は実装していない — formatの正しさはregistry登録の代替にならない。
 
-これは意図された状態であり、バグではない。空registry期間中は実際のAssignment行を1件も作成できないが、これは安全側（fail-closed）の性質であり、承認済みcanonical keyがDATA_REVIEWで登録されるまで続く。
+PR-F3の「registryが空なので何も受理しない」状態から、PR-F3bで「登録済み39件のみ受理する」状態へ移行した。fail-closedの性質自体は変わっていない。
 
 ### Lifecycle
 
@@ -206,7 +207,7 @@ PR-F1の`evidence_provenance.EVIDENCE_PRODUCERS` / `EVIDENCE_MECHANISMS`をそ�
 
 ### Admin
 
-`ShrineGoriyakuAssignmentAdmin`（標準登録）と`ShrineGoriyakuAssignmentInline`（`ShrineAdmin.inlines`へadditiveに追加）を用意した。既存`ShrineAdmin.filter_horizontal = ("goriyaku_tags",)`には一切触れていない。Admin UIが存在することと、Assignmentを実際に作成できることは同義ではない — server-side validationのfail-closed動作により、registry未投入の間はAdmin経由でも保存できない。
+`ShrineGoriyakuAssignmentAdmin`（標準登録）と`ShrineGoriyakuAssignmentInline`（`ShrineAdmin.inlines`へadditiveに追加）を用意した。既存`ShrineAdmin.filter_horizontal = ("goriyaku_tags",)`には一切触れていない。Admin経由でも同じserver-side validationが働くため、未登録canonical keyはAdminからも保存できない。
 
 ### Qualified Evidenceではない
 
@@ -214,13 +215,14 @@ PR-F1の`evidence_provenance.EVIDENCE_PRODUCERS` / `EVIDENCE_MECHANISMS`をそ�
 
 ### 既存データとの関係
 
-既存GoriyakuTag・`Shrine.goriyaku_tags`データからの自動backfillは行わない。Data migrationも一切実装していない（schema onlyのmigration）。したがって、このPRの直後は全神社が`ShrineGoriyakuAssignment`を0件持つ状態が正しい（canonical key registryが空である以上、これ以外の状態にはなり得ない）。
+既存GoriyakuTag・`Shrine.goriyaku_tags`データからの自動backfillは行わない。Data migrationも一切実装していない（PR-F3のschema onlyのmigrationのみ。PR-F3bはmigrationを追加していない）。registryへ39件が登録された後も、`ShrineGoriyakuAssignment`行は明示的に作成されない限り0件のままであり、既存M2Mから自動生成されることはない。
 
 ### 未解決事項
 
-- canonical key registry population（46件対応表）: DATA_REVIEW
-- duplicate / near-duplicate判定: DATA_REVIEW
-- Legacy taxonomy governance: Future Governance PR（HOLD、MVP必須ではない）
+- canonical key registry population: **PR-F3bで解決済み**（Production 39件）
+- duplicate / near-duplicate統合判定: 未実施。39 concept → 39 identityとして分離保持しており、統合するか否かの判断自体が将来課題（統合は現時点で明示的に禁止）
+- Legacy taxonomy governance（`GoriyakuTag` / `GoriyakuTagAdmin` / `backfill_goriyaku_tags.py` / `NEED_TO_GORIYAKU_IDS`）: Future Governance PR（HOLD、MVP必須ではない）
+- local dev DBのlegacy 7件とProduction 39件の環境差（`DEV_DB_PK_DRIFT`）: registry対象外として据え置き
 
 ---
 

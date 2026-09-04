@@ -1,31 +1,32 @@
 # backend/temples/domain/goriyaku_taxonomy_v1.py
-"""Evidence Foundation PR-F3: Goriyaku v1 canonical taxonomy registry.
+"""Evidence Foundation PR-F3 / PR-F3b: Goriyaku v1 canonical taxonomy registry.
 
 PR-F1（`evidence_taxonomy.py`）は namespace（"history_theme" / "goriyaku"）と
 canonical key format (`<namespace>:<key>`) のみを定義し、実際に有効な
 key一覧はF2/F3のHOLD事項として意図的に未定義のままだった。PR-F2は
-history_theme側のみを解決した。
+history_theme側のみを解決し、PR-F3はgoriyaku側の**構造**のみを追加して
+registryを意図的に空のまま（fail-closed）にしていた。
 
-本モジュールは、その残りのHOLD事項のうち goriyaku の**構造**だけを解決する。
-PR-F1のformat validator (`validate_canonical_semantic_key`) をそのまま
-再利用し、format検証ロジックを重複させない。
+PR-F3bは、そのDATA_REVIEWを完了させ、Production canonical master 39件の
+canonical identityをMother Ship FINALとして登録する。registryはclosed
+vocabularyであり、未登録のcanonical keyは常にrejectされる（fail-closedの
+性質は維持され、「registryにある39件だけが有効」という形に変わっただけ）。
 
-重要（Mother Ship FINAL、Decision 1 = Option B）:
-    46件の既存GoriyakuTagに対応する具体的canonical key（例:
-    "goriyaku:enmusubi"）は、本PRでは一切登録しない。
-    `GORIYAKU_V1_CANONICAL_KEYS`は意図的に空である。
+registryの正本はこのcode-level versioned registryであり、DBではない。
+canonical keyはimmutable identityとして扱い、日本語ラベルは display value
+に過ぎない（`GoriyakuTag.id`をidentityとして使わないのは、そのPKが
+backfill順に依存する不安定な値であるため）。
 
-    これは未完成ではなく、意図されたfail-closed状態である:
-    承認済みcanonical keyがまだ存在しないため、どのgoriyaku:*キーも
-    現時点では有効なEvidence Foundation semantic identityとして
-    受理されない。Codexはこの空集合へ、テストのためであっても
-    具体的なkeyを追加しない（canonical key発明の禁止、Decision 1で
-    確定）。実際のkey命名・46件対応表の確定は、後続のDATA_REVIEWで
-    Mother Shipが行う。
-
-    duplicate / near-duplicate（表記差・spelling variant等）の扱いも
-    同様にDecision 2としてDATA_REVIEWへ分離されており、本モジュールは
-    一切のnormalization / alias解決を行わない（Decision 2 = Option B）。
+境界（PR-F3bで変更していないこと）:
+    - semantic merge / alias / synonym inference を一切行わない。
+      表記が近い概念（`八方除` と `八方除け`、`芸能` と `芸能運` 等）は
+      別々のcanonical identityとして保持する（39 concept → 39 identity）。
+    - local dev DBにのみ存在するlegacy 7件（`子宝・安産` / `金運・商売繁盛`
+      / `仕事運・出世` / `厄除け・方除け` / `勝運・必勝祈願` / `地域安泰` /
+      `開運招福`）はProduction masterに存在しないため、registry対象外。
+    - 既存の`GoriyakuTag` / `Shrine.goriyaku_tags` / `Shrine.goriyaku` /
+      `NEED_TO_GORIYAKU_IDS`、Recommendation / Ranking / Concierge /
+      Compassのいずれも変更していない。
 """
 from __future__ import annotations
 
@@ -44,12 +45,54 @@ GORIYAKU_TAXONOMY_NAMESPACE: TaxonomyNamespace = "goriyaku"
 # （バージョン番号をここで再定義しない）。
 GORIYAKU_TAXONOMY_VERSION = get_current_taxonomy_version(GORIYAKU_TAXONOMY_NAMESPACE).version
 
-# Mother Ship FINAL（Decision 1 = Option B）: PR-F3時点では意図的に空。
-# 46件のGoriyakuTagへのcanonical key割当はDATA_REVIEW事項であり、
-# Codexが日本語ラベルからslugを生成することは禁止されている。
-# この辞書が空である限り、validate_goriyaku_v1_canonical_key()は
-# いかなる`goriyaku:<key>`も無条件でreject する（fail-closed）。
-GORIYAKU_V1_CANONICAL_KEYS: Dict[str, str] = {}
+# Mother Ship FINAL（PR-F3b）: canonical key（ローカル部分、namespace
+# prefixなし）→ 日本語表示ラベル。Production canonical master 39件に
+# 1:1で対応する closed vocabulary であり、ここに無いkeyは常にreject
+# される。順序はProduction masterのID順（1〜39）で、追跡可能性のため
+# だけに保っている（順序自体はidentityではない）。
+GORIYAKU_V1_CANONICAL_KEYS: Dict[str, str] = {
+    "enmusubi": "縁結び",
+    "yakuyoke": "厄除け",
+    "kotsu_anzen": "交通安全",
+    "shobai_hanjo": "商売繁盛",
+    "gokoku_hojo": "五穀豊穣",
+    "kaiun": "開運",
+    "kanai_anzen": "家内安全",
+    "fukutoku": "福徳",
+    "gakugyo_joju": "学業成就",
+    "gokaku_kigan": "合格祈願",
+    "shoun": "勝運",
+    "shigoto_un": "仕事運",
+    "kokai_anzen": "航海安全",
+    "kaijo_anzen": "海上安全",
+    "bun_chokyu": "武運長久",
+    "anzan": "安産",
+    # `happo_jo`（八方除）と`happo_yoke`（八方除け）は別concept として
+    # 保持する。統合はMother Ship FINALで明示的に禁止されている。
+    "happo_jo": "八方除",
+    "fufu_enman": "夫婦円満",
+    "hachinan_jo": "八難除",
+    "renai_joju": "恋愛成就",
+    "michibiki": "導き",
+    "biyo": "美容",
+    "katayoke": "方除け",
+    "kenko_choju": "健康長寿",
+    "geino": "芸能",
+    "katei_enman": "家庭円満",
+    "shusse_un": "出世運",
+    "kinun": "金運",
+    "geino_un": "芸能運",
+    "kyoun_yakuyoke": "強運厄除け",
+    "gigei_jotatsu": "技芸上達",
+    "happo_yoke": "八方除け",
+    "byoki_heiyu": "病気平癒",
+    "hibuse": "火防",
+    "kodakara": "子宝",
+    "shingan_joju": "心願成就",
+    "enmei_choju": "延命長寿",
+    "ashikoshi_kenko": "足腰健康",
+    "nogyo_shugo": "農業守護",
+}
 
 GORIYAKU_V1_CANONICAL_KEY_SET = set(GORIYAKU_V1_CANONICAL_KEYS)
 
@@ -70,10 +113,10 @@ def validate_goriyaku_v1_canonical_key(value: Optional[str]) -> GoriyakuV1KeyVal
       のformat検証を重複実装しない）。
     - namespaceが"goriyaku"以外（例: "history_theme:restart"）の場合は
       reject。
-    - `GORIYAKU_V1_CANONICAL_KEYS`が空である現時点では、format・namespace
-      が正しくても、keyが承認済み集合に含まれることは決してないため、
-      常にreject結果（reason="unknown_goriyaku_key"）を返す。これは
-      意図されたfail-closed動作であり、バグではない。
+    - keyがv1の39件に含まれない場合はreject（reason=
+      "unknown_goriyaku_key"）。closed vocabularyであり、fuzzy
+      normalization・日本語ラベルからの自動推定・alias解決は一切行わない。
+      formatが正しいことはregistry登録の代替にならない。
     """
     format_result = validate_canonical_semantic_key(value)
 
