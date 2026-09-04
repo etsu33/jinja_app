@@ -36,6 +36,8 @@ from temples.domain.evidence_qualification import (
     evaluate_evidence_qualification,
 )
 from temples.domain.evidence_transport import (
+    SHRINE_KNOWLEDGE_SOURCE,
+    TRANSPORT_SCHEMA_VERSION,
     NormalizedAssignmentRefV1,
     NormalizedAssignmentV1,
     NormalizedEvidenceLinkV1,
@@ -243,6 +245,117 @@ def build_normalized_evidence(snapshot) -> NormalizedEvidenceV1:
     return NormalizedEvidenceV1(assignment=assignment, evidence_links=tuple(links))
 
 
+# --------------------------------------------------------------------------
+# authoritative expectation（Normalizerを経由しない独立経路）
+# --------------------------------------------------------------------------
+#
+# Transport Integrityのauthoritative側は、``build_normalized_evidence()`` とも
+# その出力とも独立に、authoritative snapshotから直接組み立てる。両辺を
+# Normalizer outputにするとNormalizer自身のfield欠落・改変を検出できないため、
+# ここは意図的に別経路として維持する（共有するのはdomainのcanonical
+# date/datetime serializerだけ）。
+
+
+def _expected_source_payload(source: object) -> dict:
+    return {
+        "type": SHRINE_KNOWLEDGE_SOURCE,
+        "id": source.pk,
+        "sourceType": source.source_type,
+        "title": source.title,
+        "publisher": source.publisher,
+        "url": source.url,
+        "bibliography": source.bibliography,
+        "accessedAt": canonical_date(source.accessed_at),
+        "verifiedAt": canonical_datetime(source.verified_at),
+        "verificationStatus": source.verification_status,
+        "confidence": source.confidence,
+        "language": source.language,
+    }
+
+
+def _expected_fact_payload(fact_model: str, fact: object) -> dict:
+    if fact_model == SHRINE_HISTORY:
+        return {
+            "historyType": fact.history_type,
+            "title": fact.title,
+            "content": fact.content,
+            "periodText": fact.period_text,
+            "eventDate": canonical_date(fact.event_date),
+        }
+    return {
+        "displayName": fact.display_name,
+        "canonicalName": fact.canonical_name,
+        "role": fact.role,
+    }
+
+
+def _expected_fact(fact_model: str, fact: object) -> dict:
+    return {
+        "type": fact_model,
+        "id": fact.pk,
+        "shrineId": fact.shrine_id,
+        "verificationStatus": fact.verification_status,
+        "confidence": fact.confidence,
+        "verifiedAt": canonical_datetime(fact.verified_at),
+        "payload": _expected_fact_payload(fact_model, fact),
+        "sources": [_expected_source_payload(source) for source in fact.sources.all()],
+    }
+
+
+def build_authoritative_expectation(snapshot) -> dict:
+    """authoritative snapshotからtransport expectationをNormalizer非経由で生成する。
+
+    ``build_normalized_evidence()`` およびその出力は一切参照しない。
+    """
+
+    assignment = snapshot.assignment
+    assignment_model = snapshot.assignment_model
+    namespace = _TAXONOMY_NAMESPACE_BY_ASSIGNMENT_MODEL.get(assignment_model)
+    if namespace is None:
+        raise TransportProviderError(
+            f"{REQUIRED_DIMENSION_PROVIDER_INVALID}: assignment.taxonomy.namespace"
+        )
+    expected_links = []
+    for link in snapshot.links:
+        # Fact selectorの解決もNormalizerと共有せず、snapshotから直接判定する。
+        if link.shrine_history_id is not None and link.shrine_deity_id is None:
+            fact_model, fact = SHRINE_HISTORY, link.shrine_history
+        elif link.shrine_deity_id is not None and link.shrine_history_id is None:
+            fact_model, fact = SHRINE_DEITY, link.shrine_deity
+        else:
+            raise TransportProviderError(f"{REQUIRED_DIMENSION_PROVIDER_INVALID}: link.fact")
+        if fact is None:
+            raise TransportProviderError(f"{REQUIRED_DIMENSION_PROVIDER_INVALID}: link.fact")
+        expected_links.append(
+            {
+                "id": link.pk,
+                "assignmentRef": {"type": assignment_model, "id": assignment.pk},
+                "rationale": link.rationale,
+                "fact": _expected_fact(fact_model, fact),
+            }
+        )
+    return {
+        "schemaVersion": TRANSPORT_SCHEMA_VERSION,
+        "assignment": {
+            "type": assignment_model,
+            "id": assignment.pk,
+            "shrineId": assignment.shrine_id,
+            "canonicalKey": assignment.canonical_key,
+            "taxonomy": {
+                "namespace": namespace,
+                "taxonomyVersion": assignment.taxonomy_version,
+            },
+            "lifecycle": assignment.lifecycle,
+            "provenance": {
+                "producer": assignment.producer,
+                "mechanism": assignment.mechanism,
+                "assignedAt": canonical_datetime(assignment.assigned_at),
+            },
+        },
+        "evidenceLinks": expected_links,
+    }
+
+
 def _blocked_normalization(
     f4_preparation: F4QualificationPreparation, block_reasons: Tuple[str, ...]
 ) -> F5NormalizationResult:
@@ -267,6 +380,8 @@ def normalize_evidence_transport(assignment: object) -> F5NormalizationResult:
 
     try:
         normalized = build_normalized_evidence(snapshot)
+        candidate = serialize_normalized_evidence(normalized)
+        expectation = build_authoritative_expectation(snapshot)
     except TransportSerializationError:
         return _blocked_normalization(
             f4_preparation, f4_preparation.block_reasons + (INVALID_TRANSPORT_DATETIME,)
@@ -281,10 +396,7 @@ def normalize_evidence_transport(assignment: object) -> F5NormalizationResult:
             f4_preparation, f4_preparation.block_reasons + (REQUIRED_PROVIDER_UNAVAILABLE,)
         )
 
-    integrity = verify_transport_integrity(
-        authoritative=normalized,
-        candidate=serialize_normalized_evidence(normalized),
-    )
+    integrity = verify_transport_integrity(authoritative=expectation, candidate=candidate)
     return F5NormalizationResult(
         f4_preparation=f4_preparation,
         normalized_evidence=normalized,
@@ -300,8 +412,9 @@ def build_final_qualification(
 ) -> EvidenceQualificationOutcome:
     """F5NormalizationResultだけを入力とするfinal qualification orchestration。
 
-    DBを再取得せず、dimensionを再計算しない。BUILD BLOCK時はEvaluatorを
-    呼ばない（BLOCKED != NOT QUALIFIED）。
+    DBを再取得せず、dimensionを再計算しない。BUILD BLOCK時、および5次元の
+    いずれかがexact boolでない場合はEvaluatorを呼ばない
+    （BLOCKED != NOT QUALIFIED）。
     """
 
     if normalization.build_blocked:
@@ -314,6 +427,24 @@ def build_final_qualification(
         )
 
     dimensions = normalization.f4_preparation.dimensions
+    assembled = (
+        dimensions.identifiable,
+        dimensions.taxonomy_stable,
+        dimensions.provenance_satisfied,
+        dimensions.semantic_assignment_traceable,
+        normalization.transport_traceable,
+    )
+    if any(not isinstance(value, bool) for value in assembled):
+        # non-boolはEvaluatorのinvalid_inputへ委譲せず、provider不備として
+        # ここでBUILD BLOCKする（BLOCKED != NOT QUALIFIED）。
+        return EvidenceQualificationOutcome(
+            status=FinalQualificationStatus.BLOCKED,
+            build_blocked=True,
+            block_reasons=normalization.block_reasons + (REQUIRED_DIMENSION_PROVIDER_INVALID,),
+            qualification_input=None,
+            qualification_result=None,
+        )
+
     qualification_input = EvidenceQualificationInput(
         identifiable=dimensions.identifiable,
         taxonomy_stable=dimensions.taxonomy_stable,
@@ -345,6 +476,7 @@ __all__ = [
     "F5NormalizationResult",
     "FinalQualificationStatus",
     "TransportProviderError",
+    "build_authoritative_expectation",
     "build_final_qualification",
     "build_normalized_evidence",
     "normalize_evidence_transport",

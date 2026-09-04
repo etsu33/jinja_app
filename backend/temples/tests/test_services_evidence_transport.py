@@ -635,3 +635,157 @@ def test_goriyaku_cannot_be_qualified_until_canonical_registry_data_review():
     assert outcome.status is FinalQualificationStatus.EVALUATED
     assert outcome.qualification_result.qualified is False
     assert "taxonomy_stable" in outcome.qualification_result.unmet_dimensions
+
+
+# --------------------------------------------------------------------------
+# Transport IntegrityはNormalizer自身のbugを検知する
+# --------------------------------------------------------------------------
+
+
+def _two_source_fixture():
+    shrine = _shrine()
+    assignment = _assignment(shrine)
+    history = _history(shrine)
+    history.sources.add(_source("reviewed"), _source("source_confirmed"))
+    EvidenceLink.objects.create(
+        history_theme_assignment=assignment,
+        shrine_history=history,
+        rationale="由緒が再出発を裏付ける。",
+    )
+    return assignment
+
+
+def _sabotaged_normalizer(monkeypatch, transform):
+    """official orchestration pathのNormalizerだけを意図的に破損させる。"""
+
+    original = evidence_transport.build_normalized_evidence
+
+    def broken(snapshot):
+        return transform(original(snapshot))
+
+    monkeypatch.setattr(evidence_transport, "build_normalized_evidence", broken)
+
+
+def _replace_first_link(evidence, **changes):
+    link = dataclasses.replace(evidence.evidence_links[0], **changes)
+    return dataclasses.replace(
+        evidence, evidence_links=(link,) + evidence.evidence_links[1:]
+    )
+
+
+def test_normalizer_dropping_one_source_is_detected_by_transport_integrity(monkeypatch):
+    assignment = _two_source_fixture()
+
+    def drop_last_source(evidence):
+        fact = evidence.evidence_links[0].fact
+        return _replace_first_link(
+            evidence, fact=dataclasses.replace(fact, sources=fact.sources[:-1])
+        )
+
+    _sabotaged_normalizer(monkeypatch, drop_last_source)
+
+    result = normalize_evidence_transport(assignment)
+    outcome = build_final_qualification(result)
+
+    assert result.build_blocked is False
+    assert result.transport_traceable is False
+    assert "source_set_mismatch" in tuple(issue.code for issue in result.transport_issues)
+    assert outcome.status is FinalQualificationStatus.EVALUATED
+    assert outcome.qualification_result.qualified is False
+    assert outcome.qualification_result.unmet_dimensions == ("transport_traceable",)
+
+
+def test_normalizer_mutating_rationale_is_detected_by_transport_integrity(monkeypatch):
+    assignment = _qualified_fixture()
+
+    _sabotaged_normalizer(
+        monkeypatch, lambda evidence: _replace_first_link(evidence, rationale="書き換えた根拠。")
+    )
+
+    result = normalize_evidence_transport(assignment)
+
+    assert result.transport_traceable is False
+    assert "rationale_mismatch" in tuple(issue.code for issue in result.transport_issues)
+
+
+def test_normalizer_mutating_fact_payload_is_detected_by_transport_integrity(monkeypatch):
+    assignment = _qualified_fixture()
+
+    def mutate_payload(evidence):
+        fact = evidence.evidence_links[0].fact
+        payload = dataclasses.replace(fact.payload, title="改変されたタイトル")
+        return _replace_first_link(evidence, fact=dataclasses.replace(fact, payload=payload))
+
+    _sabotaged_normalizer(monkeypatch, mutate_payload)
+
+    result = normalize_evidence_transport(assignment)
+
+    assert result.transport_traceable is False
+    assert "fact_payload_mismatch" in tuple(issue.code for issue in result.transport_issues)
+
+
+def test_authoritative_expectation_is_built_without_the_normalizer(monkeypatch):
+    assignment = _two_source_fixture()
+    snapshot = evidence_foundation.materialize_evidence_snapshot(assignment)
+
+    def fail_if_called(value):  # pragma: no cover - 呼ばれたら即失敗させるための番人
+        raise AssertionError("authoritative expectationはNormalizerを経由してはいけない")
+
+    monkeypatch.setattr(evidence_transport, "build_normalized_evidence", fail_if_called)
+
+    expectation = evidence_transport.build_authoritative_expectation(snapshot)
+
+    assert expectation["schemaVersion"] == "v1"
+    assert expectation["assignment"]["id"] == assignment.pk
+    assert len(expectation["evidenceLinks"][0]["fact"]["sources"]) == 2
+
+
+# --------------------------------------------------------------------------
+# final qualification: 5 dimensionsのbool contract
+# --------------------------------------------------------------------------
+
+
+def test_non_bool_transport_traceable_is_blocked_without_calling_the_evaluator(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        evidence_transport,
+        "evaluate_evidence_qualification",
+        lambda *args, **kwargs: calls.append(args),
+    )
+
+    outcome = build_final_qualification(_normalization(transport_traceable=None))
+
+    assert outcome.status is FinalQualificationStatus.BLOCKED
+    assert outcome.build_blocked is True
+    assert outcome.block_reasons == ("required_dimension_provider_invalid",)
+    assert outcome.qualification_input is None
+    assert outcome.qualification_result is None
+    assert calls == []
+
+
+@pytest.mark.parametrize(
+    "dimension, value",
+    [
+        ("identifiable", None),
+        ("taxonomy_stable", "True"),
+        ("provenance_satisfied", 1),
+        ("semantic_assignment_traceable", object()),
+    ],
+)
+def test_non_bool_f4_dimension_is_blocked_without_calling_the_evaluator(
+    monkeypatch, dimension, value
+):
+    calls = []
+    monkeypatch.setattr(
+        evidence_transport,
+        "evaluate_evidence_qualification",
+        lambda *args, **kwargs: calls.append(args),
+    )
+
+    outcome = build_final_qualification(_normalization(**{dimension: value}))
+
+    assert outcome.status is FinalQualificationStatus.BLOCKED
+    assert outcome.build_blocked is True
+    assert outcome.block_reasons == ("required_dimension_provider_invalid",)
+    assert outcome.qualification_result is None
+    assert calls == []

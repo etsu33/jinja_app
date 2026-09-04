@@ -576,8 +576,10 @@ def _compare_fields(
 
 
 def _compare_assignment(
-    expected: Mapping[str, Any], actual: Any, issues: _IssueCollector
+    expected: Any, actual: Any, issues: _IssueCollector
 ) -> None:
+    if not isinstance(expected, Mapping):
+        return
     path = "$.assignment"
     _compare_fields(expected, actual, ("type", "id"), ASSIGNMENT_IDENTITY_MISMATCH, path, issues)
     _compare_fields(
@@ -740,12 +742,14 @@ def _compare_link(
 
 
 def _compare_links(
-    expected_links: Sequence[Any],
+    expected_links: Any,
     actual_links: Any,
     assignment: Any,
     issues: _IssueCollector,
 ) -> None:
-    if not isinstance(actual_links, (list, tuple)):
+    if not isinstance(expected_links, (list, tuple)) or not isinstance(
+        actual_links, (list, tuple)
+    ):
         return
     _compare_ordering_and_set(
         expected_links,
@@ -771,16 +775,28 @@ def _compare_links(
 
 def verify_transport_integrity(
     *,
-    authoritative: NormalizedEvidenceV1,
+    authoritative: Mapping[str, Any],
     candidate: Any,
 ) -> TransportIntegrityResult:
-    """authoritative snapshot由来のnormalized evidenceとtransport candidateを照合する。
+    """authoritative expectationとtransport candidateを照合する。
+
+    ``authoritative`` は authoritative snapshotから **Normalizerを経由せずに**
+    生成されたprimitive expectation payloadである（生成責務は
+    ``temples.services.evidence_transport.build_authoritative_expectation``）。
+    Normalizer outputを両辺に渡す自己比較は、Normalier自身の欠落・改変を検出
+    できないため契約違反とする。
 
     pure deterministic function。DB・ORM・外部API・現在時刻へは触れない。
 
     ``transport_traceable`` は「issueが0件であること」と同値であり、0 EvidenceLink
     （``evidenceLinks == []``）はTransport failureではない。
     """
+
+    if not isinstance(authoritative, Mapping):
+        raise TypeError(
+            "authoritative expectation must be a primitive Mapping built from the "
+            "authoritative snapshot, not a normalizer output object"
+        )
 
     issues = _IssueCollector()
     if not isinstance(candidate, Mapping):
@@ -794,17 +810,18 @@ def verify_transport_integrity(
 
     _validate_structure(candidate, issues)
 
-    expected = serialize_normalized_evidence(authoritative)
     _compare_value(
-        expected["schemaVersion"],
+        authoritative.get("schemaVersion", _MISSING),
         schema_version,
         UNSUPPORTED_SCHEMA_VERSION,
         "$.schemaVersion",
         issues,
     )
-    _compare_assignment(expected["assignment"], candidate.get("assignment", _MISSING), issues)
+    _compare_assignment(
+        authoritative.get("assignment", _MISSING), candidate.get("assignment", _MISSING), issues
+    )
     _compare_links(
-        expected["evidenceLinks"],
+        authoritative.get("evidenceLinks", _MISSING),
         candidate.get("evidenceLinks", _MISSING),
         candidate.get("assignment", _MISSING),
         issues,

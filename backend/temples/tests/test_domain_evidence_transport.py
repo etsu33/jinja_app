@@ -149,8 +149,15 @@ def _candidate(evidence: NormalizedEvidenceV1):
     return copy.deepcopy(serialize_normalized_evidence(evidence))
 
 
-def _codes(evidence, candidate):
-    return verify_transport_integrity(authoritative=evidence, candidate=candidate).codes
+def _expected(evidence: NormalizedEvidenceV1):
+    """authoritative expectation（primitive payload）。
+
+    serviceのofficial pathではNormalizerを経由しない独立経路で生成されるが、
+    predicate単体testでは同じprimitive形状であれば十分なので、canonical
+    serializerの出力をexpectationとして与える。
+    """
+
+    return serialize_normalized_evidence(evidence)
 
 
 # --------------------------------------------------------------------------
@@ -335,14 +342,18 @@ def test_transport_issue_codes_are_a_stable_contract():
 
 def test_exact_complete_transport_is_traceable():
     evidence = _evidence()
-    result = verify_transport_integrity(authoritative=evidence, candidate=_candidate(evidence))
+    result = verify_transport_integrity(
+        authoritative=_expected(evidence), candidate=_candidate(evidence)
+    )
     assert result.transport_traceable is True
     assert result.issues == ()
 
 
 def test_zero_evidence_link_is_valid_transport():
     evidence = _evidence(links=())
-    result = verify_transport_integrity(authoritative=evidence, candidate=_candidate(evidence))
+    result = verify_transport_integrity(
+        authoritative=_expected(evidence), candidate=_candidate(evidence)
+    )
     assert _candidate(evidence)["evidenceLinks"] == []
     assert result.transport_traceable is True
     assert result.issues == ()
@@ -366,7 +377,9 @@ def test_multiple_links_and_sources_exact_transport_is_traceable():
             ),
         )
     )
-    result = verify_transport_integrity(authoritative=evidence, candidate=_candidate(evidence))
+    result = verify_transport_integrity(
+        authoritative=_expected(evidence), candidate=_candidate(evidence)
+    )
     assert result.transport_traceable is True
 
 
@@ -379,7 +392,7 @@ def _assert_issue(candidate_mutation, expected_code, *, evidence=None):
     evidence = evidence or _evidence()
     candidate = _candidate(evidence)
     candidate_mutation(candidate)
-    result = verify_transport_integrity(authoritative=evidence, candidate=candidate)
+    result = verify_transport_integrity(authoritative=_expected(evidence), candidate=candidate)
     assert result.transport_traceable is False
     assert expected_code in result.codes, result.codes
 
@@ -488,7 +501,9 @@ def test_cross_shrine_authoritative_graph_is_not_transport_traceable():
             ),
         )
     )
-    result = verify_transport_integrity(authoritative=evidence, candidate=_candidate(evidence))
+    result = verify_transport_integrity(
+        authoritative=_expected(evidence), candidate=_candidate(evidence)
+    )
     assert result.transport_traceable is False
     assert CROSS_SHRINE in result.codes
 
@@ -565,11 +580,13 @@ def test_null_to_blank_coercion_is_detected():
 
 def test_transport_traceable_is_equivalent_to_zero_issues():
     evidence = _evidence()
-    ok = verify_transport_integrity(authoritative=evidence, candidate=_candidate(evidence))
+    ok = verify_transport_integrity(
+        authoritative=_expected(evidence), candidate=_candidate(evidence)
+    )
     assert ok.transport_traceable is (len(ok.issues) == 0)
     broken_candidate = _candidate(evidence)
     broken_candidate["evidenceLinks"][0]["rationale"] = "改変"
-    broken = verify_transport_integrity(authoritative=evidence, candidate=broken_candidate)
+    broken = verify_transport_integrity(authoritative=_expected(evidence), candidate=broken_candidate)
     assert broken.transport_traceable is (len(broken.issues) == 0)
 
 
@@ -578,6 +595,12 @@ def test_issue_order_is_deterministic():
     candidate = _candidate(evidence)
     candidate["assignment"]["id"] = 999
     candidate["evidenceLinks"][0]["rationale"] = "改変"
-    first = verify_transport_integrity(authoritative=evidence, candidate=candidate)
-    second = verify_transport_integrity(authoritative=evidence, candidate=candidate)
+    first = verify_transport_integrity(authoritative=_expected(evidence), candidate=candidate)
+    second = verify_transport_integrity(authoritative=_expected(evidence), candidate=candidate)
     assert first.issues == second.issues
+
+
+def test_authoritative_expectation_must_be_a_primitive_mapping():
+    evidence = _evidence()
+    with pytest.raises(TypeError):
+        verify_transport_integrity(authoritative=evidence, candidate=_candidate(evidence))
