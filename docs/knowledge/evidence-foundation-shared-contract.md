@@ -224,9 +224,55 @@ PR-F1の`evidence_provenance.EVIDENCE_PRODUCERS` / `EVIDENCE_MECHANISMS`をそ�
 
 ---
 
+## EvidenceLink（PR-F4）
+
+`EvidenceLink`は、許可されたSemantic Assignmentと、その根拠となるStored Factの
+exact edgeをrationale付きで永続化する。F4 v1のallowlistは次の4組だけである。
+
+```text
+HistoryThemeAssignment   → ShrineHistory | ShrineDeity
+ShrineGoriyakuAssignment → ShrineHistory | ShrineDeity
+```
+
+単一の明示的Django modelを使用し、GenericForeignKey / ContentType、pair別model、
+Assignment共通基底modelは使用しない。Assignment FKはexactly oneかつCASCADE、Fact FKは
+exactly oneかつPROTECTである。`rationale`は必須で、DBは空文字を拒否し、model validationは
+strip後の空文字も拒否する。4つのpartial unique constraintにより、rationaleが異なっても
+同じAssignment × Fact edgeの重複を許可しない。
+
+Same-Shrineの正式条件は、選択されたAssignmentとStored Factの`shrine_id`一致である。
+cross-table CheckConstraintやtriggerは追加せず、`EvidenceLink.clean()`とF4 preparation時の
+structural revalidationでfail closedにする。通常の`save()`は必ず`full_clean()`を通り、
+bulk write用の迂回経路は提供しない。
+
+Assignmentの`ACTIVE → SUPERSEDED` / `ACTIVE → REVOKED`はhard deleteではないため、Link、
+rationale、Fact、Sourceを保持する。旧Linkを新しいACTIVE Assignmentへ自動コピーしない。
+Assignment hard deleteはLinkへCASCADEするが、参照中のFact hard deleteはPROTECTする。
+
+### F4 predicatesとpreparation
+
+- structural validity: persisted Link identity、exactly-one selectors、C-1 allowlist、relation解決、
+  Same-Shrine、nonblank string rationaleをDB非依存snapshot上で判定する。
+- Fact / Source Quality: 既存`KNOWLEDGE_FACT_READY_VERIFICATION_STATUSES`を正本とし、Factがready、
+  かつready Sourceが最低1件ある場合だけPASS。複数Factは全件PASS必須。0件は
+  `NOT_APPLICABLE`であり、PASSへ読み替えない。confidenceは使わない。
+- `semantic_assignment_traceable`: AssignmentにLinkが1件以上あり、全Linkがstable identityを持つ
+  exact edgeとしてnonblank rationaleを再取得できる場合だけtrue。0件はfalseだがstructural
+  corruptionではない。Same-ShrineやQualityはこのpredicateへ混ぜない。
+- F4 preparation: ACTIVE lifecycle、structural、Qualityをprerequisiteとして別々に追跡し、
+  `identifiable` / `taxonomy_stable` / `provenance_satisfied` /
+  `semantic_assignment_traceable`の4 dimensionを準備する。taxonomyとprovenanceはF1〜F3の
+  validator / builderをそのまま再利用する。BUILD BLOCKとdimension falseは別状態で保持する。
+
+F4 production codeはRecommendation / Ranking / Concierge / Compassへ接続しない。また、
+`transport_traceable`を仮値でも算出せず、最終`EvidenceQualificationInput`を作らず、
+`evaluate_evidence_qualification()`を呼ばない。normalized Evidence transportはPR-F5に残す。
+
+---
+
 ## 責務境界
 
 - 本書はEvidence Foundationの共有契約層（Qualification / Taxonomy / Provenance）と、HistoryThemeAssignment（PR-F2）・ShrineGoriyakuAssignment（PR-F3）の責務を管理する。
-- Source Evidence Linkの実装、normalized transportのAPI契約は、将来PR（F4〜F5）ごとに別途文書化する。
+- Source Evidence LinkはPR-F4の上記契約を正本とする。normalized transportのAPI契約はPR-F5で別途文書化する。
 - goriyaku canonical key registryの具体的内容（46件対応表）、duplicate/near-duplicate判定、legacy taxonomy governanceは、いずれも後続のDATA_REVIEW / Governance PRで別途文書化する。本書はPR-F3時点でこれらが「未確定である」という事実のみを記録する。
 - 既存の`docs/knowledge/shrine-knowledge-contract.md`（`ShrineKnowledgeSource` / `ShrineDeity` / `ShrineHistory`のSource契約）はEvidence Foundationとは独立した既存正本であり、本書はその内容を変更しない。

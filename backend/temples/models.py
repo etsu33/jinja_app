@@ -766,6 +766,151 @@ class ShrineGoriyakuAssignment(models.Model):
             )
 
 
+class EvidenceLink(models.Model):
+    """Semantic AssignmentとStored Factの根拠edgeを永続化するF4 foundation。"""
+
+    history_theme_assignment = models.ForeignKey(
+        HistoryThemeAssignment,
+        on_delete=models.CASCADE,
+        related_name="evidence_links",
+        null=True,
+        blank=True,
+    )
+    goriyaku_assignment = models.ForeignKey(
+        ShrineGoriyakuAssignment,
+        on_delete=models.CASCADE,
+        related_name="evidence_links",
+        null=True,
+        blank=True,
+    )
+    shrine_history = models.ForeignKey(
+        ShrineHistory,
+        on_delete=models.PROTECT,
+        related_name="evidence_links",
+        null=True,
+        blank=True,
+    )
+    shrine_deity = models.ForeignKey(
+        ShrineDeity,
+        on_delete=models.PROTECT,
+        related_name="evidence_links",
+        null=True,
+        blank=True,
+    )
+    rationale = models.TextField()
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["id"]
+        constraints = [
+            CheckConstraint(
+                condition=(
+                    Q(history_theme_assignment__isnull=False, goriyaku_assignment__isnull=True)
+                    | Q(history_theme_assignment__isnull=True, goriyaku_assignment__isnull=False)
+                ),
+                name="chk_evlink_one_assignment",
+            ),
+            CheckConstraint(
+                condition=(
+                    Q(shrine_history__isnull=False, shrine_deity__isnull=True)
+                    | Q(shrine_history__isnull=True, shrine_deity__isnull=False)
+                ),
+                name="chk_evlink_one_fact",
+            ),
+            CheckConstraint(condition=~Q(rationale=""), name="chk_evlink_rationale_nonempty"),
+            UniqueConstraint(
+                fields=["history_theme_assignment", "shrine_history"],
+                condition=Q(
+                    history_theme_assignment__isnull=False,
+                    shrine_history__isnull=False,
+                ),
+                name="uniq_evlink_ht_history",
+            ),
+            UniqueConstraint(
+                fields=["history_theme_assignment", "shrine_deity"],
+                condition=Q(
+                    history_theme_assignment__isnull=False,
+                    shrine_deity__isnull=False,
+                ),
+                name="uniq_evlink_ht_deity",
+            ),
+            UniqueConstraint(
+                fields=["goriyaku_assignment", "shrine_history"],
+                condition=Q(
+                    goriyaku_assignment__isnull=False,
+                    shrine_history__isnull=False,
+                ),
+                name="uniq_evlink_gori_history",
+            ),
+            UniqueConstraint(
+                fields=["goriyaku_assignment", "shrine_deity"],
+                condition=Q(
+                    goriyaku_assignment__isnull=False,
+                    shrine_deity__isnull=False,
+                ),
+                name="uniq_evlink_gori_deity",
+            ),
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        errors = {}
+
+        assignment_fields = (
+            "history_theme_assignment",
+            "goriyaku_assignment",
+        )
+        fact_fields = ("shrine_history", "shrine_deity")
+        selected_assignment_fields = [
+            field for field in assignment_fields if getattr(self, f"{field}_id") is not None
+        ]
+        selected_fact_fields = [
+            field for field in fact_fields if getattr(self, f"{field}_id") is not None
+        ]
+
+        if len(selected_assignment_fields) != 1:
+            errors["history_theme_assignment"] = (
+                "history_theme_assignment / goriyaku_assignmentのどちらか一方だけが必要です。"
+            )
+        if len(selected_fact_fields) != 1:
+            errors["shrine_history"] = (
+                "shrine_history / shrine_deityのどちらか一方だけが必要です。"
+            )
+        if not isinstance(self.rationale, str) or not self.rationale.strip():
+            errors["rationale"] = "rationaleは空白以外の文字を1文字以上必要とします。"
+
+        if len(selected_assignment_fields) == 1 and len(selected_fact_fields) == 1:
+            assignment_field = selected_assignment_fields[0]
+            fact_field = selected_fact_fields[0]
+            try:
+                assignment = getattr(self, assignment_field)
+            except HistoryThemeAssignment.DoesNotExist:
+                assignment = None
+            except ShrineGoriyakuAssignment.DoesNotExist:
+                assignment = None
+            try:
+                fact = getattr(self, fact_field)
+            except ShrineHistory.DoesNotExist:
+                fact = None
+            except ShrineDeity.DoesNotExist:
+                fact = None
+
+            if assignment is None:
+                errors[assignment_field] = "参照するAssignmentを解決できません。"
+            if fact is None:
+                errors[fact_field] = "参照するStored Factを解決できません。"
+            if assignment is not None and fact is not None:
+                if assignment.shrine_id != fact.shrine_id:
+                    errors[fact_field] = "AssignmentとStored Factは同じShrineに属する必要があります。"
+
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+
 class Favorite(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="favorite_shrines"
