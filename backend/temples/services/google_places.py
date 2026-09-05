@@ -66,6 +66,115 @@ def _resolve_api_key() -> str | None:
 API_KEY: str | None = _resolve_api_key()
 
 
+# ------------------------------------------------------------
+# 例外（status_code と「一時障害かどうか」を保持する）
+# ------------------------------------------------------------
+class GooglePlacesError(RuntimeError):
+    """Google Places upstream 呼び出しに関する基底例外。"""
+
+    transient = False
+
+    def __init__(self, message: str, *, status_code: Optional[int] = None):
+        super().__init__(message)
+        self.status_code = status_code
+
+
+class GooglePlacesConfigError(GooglePlacesError):
+    """設定不備・決定的な validation error。retry も fallback もしない。"""
+
+    transient = False
+
+
+class GooglePlacesTransientError(GooglePlacesError):
+    """5xx / timeout / connection error。fallback を許可してよい。"""
+
+    transient = True
+
+
+class GooglePlacesQuotaError(GooglePlacesError):
+    """
+    429 / quota 超過。
+
+    429 は Google Cloud の quota / rate limit がコスト上限として効いている
+    合図なので、別 SKU へ fallback して通信を続けると quota による停止を
+    迂回してしまう。よって transient 扱いにせず fail closed にする。
+    """
+
+    transient = False
+
+
+class GooglePlacesDisabled(GooglePlacesConfigError):
+    """server-side kill switch により upstream 呼び出しが停止されている。"""
+
+
+# ------------------------------------------------------------
+# Cost telemetry（安全な値のみを出す）
+# ------------------------------------------------------------
+def log_places_upstream(
+    *,
+    api: str,
+    operation: str,
+    attempt: int,
+    status_code: Optional[int] = None,
+    upstream_status: Optional[str] = None,
+    fallback_reason: Optional[str] = None,
+    outcome: Optional[str] = None,
+) -> None:
+    """
+    Google upstream の課金観測ログ。
+
+    出してよいもの: provider / legacy|new / operation / attempt /
+    fallback reason / status code / Google の status 文字列。
+    出さないもの: API key, lat, lng, keyword 全文, user input 全文,
+    query string 付きの Google URL。
+    """
+    logger.info(
+        "places.upstream provider=google api=%s operation=%s attempt=%s "
+        "status_code=%s upstream_status=%s fallback_reason=%s outcome=%s",
+        api,
+        operation,
+        attempt,
+        status_code,
+        upstream_status,
+        fallback_reason,
+        outcome,
+    )
+
+
+# ------------------------------------------------------------
+# Server-side kill switch
+# ------------------------------------------------------------
+_KILL_SWITCH_OFF_VALUES = {"0", "false", "no", "off"}
+
+
+def places_upstream_enabled() -> bool:
+    """
+    GOOGLE_PLACES_ENABLED が明示的に OFF の時だけ False を返す。
+    未設定時は既存動作を壊さないため True（= 有効）。
+    """
+    value = _get_setting("GOOGLE_PLACES_ENABLED")
+    if value is None:
+        value = os.getenv("GOOGLE_PLACES_ENABLED")
+    if value is None:
+        return True
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() not in _KILL_SWITCH_OFF_VALUES
+
+
+def _ensure_upstream_enabled(*, api: str, operation: str) -> None:
+    """kill switch が OFF なら Google へ HTTP request を出さずに例外化する。"""
+    if places_upstream_enabled():
+        return
+    log_places_upstream(
+        api=api,
+        operation=operation,
+        attempt=0,
+        outcome="blocked_by_kill_switch",
+    )
+    raise GooglePlacesDisabled("Google Places upstream is disabled by server configuration.")
+
+
 
 # ------------------------------------------------------------
 # 高レベルクライアント
@@ -85,6 +194,7 @@ class GooglePlacesClient:
         )
 
     def _get(self, path: str, params: Dict[str, Any]) -> requests.Response:
+        _ensure_upstream_enabled(api="legacy", operation=path)
         url = f"{self.BASE_URL}/{path}/json"
         q = {"key": self.api_key, **params}
 
@@ -258,6 +368,9 @@ class GooglePlacesClient:
 
         data = self._get("nearbysearch", params).json()
         status = data.get("status")
+        log_places_upstream(
+            api="legacy", operation="nearbysearch", attempt=1, upstream_status=status
+        )
 
         # INVALID_REQUEST は 1 回だけリトライ（pagetoken の有無を問わない：tests 想定）
         if status == "INVALID_REQUEST":
@@ -265,6 +378,9 @@ class GooglePlacesClient:
             time.sleep(1.2)
             data = self._get("nearbysearch", params).json()
             status = data.get("status")
+            log_places_upstream(
+                api="legacy", operation="nearbysearch", attempt=2, upstream_status=status
+            )
             if status == "INVALID_REQUEST":
                 logger.warning("Places nearby_search still INVALID_REQUEST; giving up.")
                 return {"results": [], "status": status}, None
@@ -322,6 +438,7 @@ class GooglePlacesClient:
         maxwidth: Optional[int] = 800,
         maxheight: Optional[int] = None,
     ) -> Tuple[bytes, str]:
+        _ensure_upstream_enabled(api="legacy", operation="photo")
         url = f"{self.BASE_URL}/photo"
         params = self.build_photo_params(photo_reference, maxwidth=maxwidth, maxheight=maxheight)
         resp = requests.get(url, params=params, timeout=self.timeout, stream=True)
@@ -371,6 +488,7 @@ def textsearch(
     type: Optional[str] = None,
     pagetoken: Optional[str] = None,
 ) -> Dict[str, Any]:
+    _ensure_upstream_enabled(api="legacy", operation="textsearch")
     url = "https://maps.googleapis.com/maps/api/place/textsearch/json"
     params = {
         "key": API_KEY,
@@ -409,6 +527,7 @@ def details(
         if fields is None:
             fields = params.get("fields")
 
+    _ensure_upstream_enabled(api="legacy", operation="details")
     url = "https://maps.googleapis.com/maps/api/place/details/json"
     params2 = {
         "key": API_KEY,
@@ -431,6 +550,7 @@ def findplacefromtext(
     locationbias: Optional[str] = None,
     fields: Optional[str] = None,
 ) -> Dict[str, Any]:
+    _ensure_upstream_enabled(api="legacy", operation="findplacefromtext")
     url = "https://maps.googleapis.com/maps/api/place/findplacefromtext/json"
     params = {
         "key": API_KEY,
@@ -609,13 +729,25 @@ def nearby_search_new(
     limit: int = 10,
     keyword: str | None = None,
 ) -> dict:
-    # ガード：神社検索以外は New API を使わない（安全策）
+    """
+    Places API (New) searchText。
+
+    - FieldMask は Nearby 経路が実際に使う field だけに絞る（高 SKU 回避）。
+      rating / userRatingCount / photos / currentOpeningHours は取得しない。
+    - 既存 Nearby response contract を壊さないため、取得しなくなった値は
+      None（optional/null）で返す。
+    - 例外は status_code と transient フラグを持たせ、呼び出し側が
+      「一時障害だけ legacy へ fallback する」判断をできるようにする。
+    """
+    # ガード：神社検索以外は New API を使わない（安全策）。決定的な validation error。
     if keyword not in (None, "神社"):
-        raise RuntimeError("nearby_search_new is shrine-only")
+        raise GooglePlacesConfigError("nearby_search_new is shrine-only")
 
     api_key = _resolve_api_key()
     if not api_key:
-        raise RuntimeError("Google Places API key is not set.")
+        raise GooglePlacesConfigError("Google Places API key is not set.")
+
+    _ensure_upstream_enabled(api="new", operation="searchText")
 
     url = "https://places.googleapis.com/v1/places:searchText"
     headers = {
@@ -626,10 +758,6 @@ def nearby_search_new(
             "places.formattedAddress",
             "places.location",
             "places.types",
-            "places.rating",
-            "places.userRatingCount",
-            "places.photos",
-            "places.currentOpeningHours",
         ]),
     }
 
@@ -645,40 +773,69 @@ def nearby_search_new(
         "rankPreference": "DISTANCE",
         "languageCode": "ja",
         "regionCode": "JP",
-
-        
     }
 
-    resp = requests.post(url, headers=headers, json=body, timeout=8)
+    try:
+        resp = requests.post(url, headers=headers, json=body, timeout=8)
+    except requests.Timeout as e:
+        log_places_upstream(
+            api="new", operation="searchText", attempt=1, outcome="timeout"
+        )
+        raise GooglePlacesTransientError("Places(New) searchText timeout") from e
+    except requests.ConnectionError as e:
+        log_places_upstream(
+            api="new", operation="searchText", attempt=1, outcome="connection_error"
+        )
+        raise GooglePlacesTransientError("Places(New) searchText connection error") from e
+
+    status_code = resp.status_code
+    log_places_upstream(
+        api="new",
+        operation="searchText",
+        attempt=1,
+        status_code=status_code,
+        outcome="ok" if resp.ok else "http_error",
+    )
+
     if not resp.ok:
-        raise RuntimeError(f"Places(New) searchText error: {resp.status_code} {resp.text[:300]}")
+        # 429 は quota / rate limit の防波堤として発生しうる。legacy へ落とすと
+        # 別 SKU で通信を継続し quota によるコスト停止を迂回するため fail closed。
+        if status_code == 429:
+            raise GooglePlacesQuotaError(
+                f"Places(New) searchText quota exhausted: {status_code}",
+                status_code=status_code,
+            )
+        # 5xx のみ一時障害として扱う。4xx（400/401/403 等）は決定的な失敗。
+        if 500 <= status_code < 600:
+            raise GooglePlacesTransientError(
+                f"Places(New) searchText transient error: {status_code}",
+                status_code=status_code,
+            )
+        raise GooglePlacesConfigError(
+            f"Places(New) searchText error: {status_code}",
+            status_code=status_code,
+        )
 
     raw = resp.json() or {}
     results = []
     for p in raw.get("places", []) or []:
         loc = p.get("location") or {}
-
-        # photos: 1枚目だけ拾って legacy の photo_reference に合わせる
-        photos = p.get("photos") or []
-        first_photo = photos[0] if photos else None
-        photo_ref = (first_photo or {}).get("name")  # ※ New API は photo_reference じゃなく name になりがち
-
-        # opening hours: open_now 相当
-        coh = p.get("currentOpeningHours") or {}
-        open_now = coh.get("openNow")
+        address = p.get("formattedAddress")
 
         results.append({
             "place_id": p.get("id"),
             "name": (p.get("displayName") or {}).get("text"),
-            "address": p.get("formattedAddress"),
+            "address": address,
+            "formatted_address": address,
             "lat": loc.get("latitude"),
             "lng": loc.get("longitude"),
             "types": p.get("types") or [],
-            "rating": p.get("rating"),
-            "user_ratings_total": p.get("userRatingCount"),
-            "photo_reference": photo_ref,  # 互換キー名で返す
-            "open_now": open_now,
-            "icon": None,  # New API では旧 icon が無いことが多いので null でOK
+            # 以下は FieldMask から外したため常に None（既存キーは互換のため残す）
+            "rating": None,
+            "user_ratings_total": None,
+            "photo_reference": None,
+            "open_now": None,
+            "icon": None,
         })
 
     return {"results": results, "status": "OK" if results else "ZERO_RESULTS"}
@@ -698,6 +855,15 @@ __all__ = [
     "find_place_from_text",
     "find_place",
     "find_place_text",
+    "nearby_search_new",
+    # 例外 / 運用フック
+    "GooglePlacesError",
+    "GooglePlacesConfigError",
+    "GooglePlacesTransientError",
+    "GooglePlacesQuotaError",
+    "GooglePlacesDisabled",
+    "places_upstream_enabled",
+    "log_places_upstream",
     # テスト用フック
     "req_history",
     "API_KEY",

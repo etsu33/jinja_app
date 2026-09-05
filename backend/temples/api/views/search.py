@@ -55,6 +55,28 @@ def _nearby_ident(request) -> str:
     return request.META.get("REMOTE_ADDR") or "anon"
 
 
+def _nearby_upstream_error_response():
+    return Response(
+        {"detail": "places.nearby_search は内部エラーのため失敗しました"},
+        status=status.HTTP_502_BAD_GATEWAY,
+    )
+
+
+def _places_disabled_response():
+    """
+    kill switch OFF 時の controlled response。
+    results キーを必ず含めるため、直接叩く consumer も壊れない。
+    """
+    return Response(
+        {
+            "detail": "places upstream is disabled",
+            "status": "PLACES_DISABLED",
+            "results": [],
+        },
+        status=status.HTTP_503_SERVICE_UNAVAILABLE,
+    )
+
+
 def _apply_places_nearby_throttle(request):
     """
     /api/places/nearby_search/ 用の手動スロットル。
@@ -217,6 +239,67 @@ def text_search_legacy(request):
     return _text_search_response(request)
 
 
+def _try_nearby_search_new(*, lat, lng, radius, limit, keyword):
+    """
+    Places API (New) を 1 回だけ試す。
+
+    戻り値 (data, error_response):
+      - (dict, None)  : New API 成功
+      - (None, None)  : 一時障害なので legacy fallback してよい
+      - (None, Response): fallback せずにこの response を返す
+    """
+    try:
+        data = GP.nearby_search_new(
+            lat=lat, lng=lng, radius=radius, limit=limit, keyword=keyword
+        )
+        return data, None
+
+    except GP.GooglePlacesDisabled:
+        return None, _places_disabled_response()
+
+    except GP.GooglePlacesError as e:
+        status_code = getattr(e, "status_code", None)
+        if getattr(e, "transient", False):
+            # 429 / 5xx / timeout / connection error のみ legacy へ落とす
+            GP.log_places_upstream(
+                api="new",
+                operation="searchText",
+                attempt=1,
+                status_code=status_code,
+                fallback_reason="transient_upstream_error",
+                outcome="fallback_to_legacy",
+            )
+            return None, None
+
+        # 400 / 401 / 403 / API key 未設定 / 設定不備 / 決定的な validation error。
+        # legacy へ流しても同じ理由で失敗し課金だけ増えるため fallback しない。
+        GP.log_places_upstream(
+            api="new",
+            operation="searchText",
+            attempt=1,
+            status_code=status_code,
+            fallback_reason="non_transient_no_fallback",
+            outcome="failed",
+        )
+        return None, _nearby_upstream_error_response()
+
+    except Exception as e:
+        # 分類できない失敗は fail-closed（課金を増やさない）。
+        # requests系例外はURL全体（API key含む）をメッセージへ埋め込みうるため
+        # str(e)/repr(e) はログへ含めない。
+        GP.log_places_upstream(
+            api="new",
+            operation="searchText",
+            attempt=1,
+            fallback_reason="unclassified_error_no_fallback",
+            outcome="failed",
+        )
+        logger.warning(
+            "nearby_search_new unclassified failure: error_type=%s", type(e).__name__
+        )
+        return None, _nearby_upstream_error_response()
+
+
 # --- /api/places/nearby_search/ ---
 @extend_schema(
     operation_id="api_places_nearby_retrieve",
@@ -240,6 +323,10 @@ def nearby_search(request):
     if throttled is not None:
         return throttled
 
+    # server-side kill switch: Google へは HTTP request を一切出さない
+    if not GP.places_upstream_enabled():
+        return _places_disabled_response()
+
     try:
         lat = float(request.query_params.get("lat"))
         lng = float(request.query_params.get("lng"))
@@ -248,117 +335,62 @@ def nearby_search(request):
         return Response({"detail": "lat,lng は float、radius は int で指定してください"}, status=400)
 
     limit = int(request.query_params.get("limit", 10))
-    keyword = request.query_params.get("keyword")
-    place_type = request.query_params.get("type")
+    keyword = (request.query_params.get("keyword") or "").strip() or None
+    place_type = (request.query_params.get("type") or "").strip() or None
 
-    if not keyword and not place_type:
+    # keyword も type も無い場合だけデフォルトで「神社」を補う。
+    # type だけ指定された場合は shrine_mode にせず、type もそのまま保持する。
+    if keyword is None and place_type is None:
         keyword = "神社"
 
-    shrine_mode = keyword in (None, "神社")
-    if shrine_mode:
-        place_type = None
+    shrine_mode = keyword == "神社"
 
     use_new = (os.getenv("PLACES_API_NEW") == "1") and shrine_mode
     data = None
 
-    # ① NEW を試す（失敗してもOK）
+    # ① NEW を試す（一時障害のときだけ legacy へ fallback する）
     if use_new:
-        try:
-            data = GP.nearby_search_new(lat=lat, lng=lng, radius=radius, limit=limit, keyword=keyword)
-        except Exception as e:
-            logger.warning(
-                "nearby_search_new failed; fallback to legacy attempts: error_type=%s",
-                type(e).__name__,
-            )
-            data = None
+        data, error_response = _try_nearby_search_new(
+            lat=lat, lng=lng, radius=radius, limit=limit, keyword=keyword
+        )
+        if error_response is not None:
+            return error_response
 
-    # ② data が無ければ legacy attempts
+    # ② data が無ければ legacy を canonical params で 1 回だけ呼ぶ
     if data is None:
-        def opt_args():
-            d = {}
-            if keyword:
-                d["keyword"] = keyword
-            if place_type:
-                d["type"] = place_type
-            return d
+        call_kwargs = {"location": f"{lat},{lng}", "radius": radius}
+        if keyword:
+            call_kwargs["keyword"] = keyword
+        if place_type:
+            call_kwargs["type_"] = place_type
 
-        attempts = [
-            dict(location=(lat, lng), radius=radius, **opt_args()),
-            dict(location=f"{lat},{lng}", radius=radius, **opt_args()),
-            dict(location=(lat, lng), radius=radius),
-            dict(location=f"{lat},{lng}", radius=radius),
-            dict(lat=lat, lng=lng, radius=radius, **opt_args()),
-            dict(lat=lat, lng=lng, radius=radius),
-        ]
-
-        first_err = None
-
-        for kwargs in attempts:
-            try:
-                data = GP.nearby_search(**kwargs)
-                break
-
-            except TypeError as e:
-                first_err = first_err or e
-                logger.info(
-                    "places.nearby_search TypeError (attempt skipped): error_type=%s kwarg_keys=%s",
-                    type(e).__name__,
-                    sorted(kwargs.keys()),
-                )
-                continue
-
-            except RuntimeError as e:
-                # msgはGoogle Places APIのstatus/error_messageに由来し、
-                # lat/lng/keyword等のrequest paramsを含まないことを確認済み。
-                msg = str(e)
-                logger.exception(
-                    "places.nearby_search RuntimeError: msg=%s kwarg_keys=%s",
-                    msg,
-                    sorted(kwargs.keys()),
-                )
-
-                if "INVALID_REQUEST" in msg:
-                    first_err = first_err or e
-                    continue
-
-                first_err = first_err or e
-                return Response(
-                    {"detail": "places.nearby_search は内部エラーのため失敗しました"},
-                    status=status.HTTP_502_BAD_GATEWAY,
-                )
-
-            except Exception as e:
-                # requestsの接続/タイムアウト系例外はURL全体（API key含む）を
-                # メッセージへ埋め込むため、repr(e)/str(e)はログへ含めない（実測確認済み）。
-                first_err = first_err or e
-                logger.warning(
-                    "places.nearby_search Exception (attempt continue): error_type=%s kwarg_keys=%s",
-                    type(e).__name__,
-                    sorted(kwargs.keys()),
-                )
-                continue
+        try:
+            data = GP.nearby_search(**call_kwargs)
+        except GP.GooglePlacesDisabled:
+            return _places_disabled_response()
+        except Exception as e:
+            # msg/URLには lat/lng/keyword や API key が入りうるため、
+            # 例外の型名と渡した kwarg のキーのみをログする。
+            logger.warning(
+                "places.nearby_search failed: error_type=%s kwarg_keys=%s",
+                type(e).__name__,
+                sorted(call_kwargs.keys()),
+            )
+            return _nearby_upstream_error_response()
 
         if data is None:
-            logger.exception(
-                "places.nearby_search のフォールバックを全て失敗しました: first_err_type=%s",
-                type(first_err).__name__ if first_err else None,
-            )
-            return Response(
-                {"detail": "places.nearby_search は内部エラーのため失敗しました"},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
+            logger.warning("places.nearby_search returned no data")
+            return _nearby_upstream_error_response()
 
     # ③ サーバ側フィルタ
     results = data.get("results", [])
 
-    if keyword in (None, "神社"):
+    if shrine_mode:
         results = [r for r in results if is_shrine_like(r)]
         prefer = [r for r in results if prefer_explicit_jinja(r)]
         results = prefer or results
-    else:
-        place_type_req = request.query_params.get("type")
-        if place_type_req:
-            results = [r for r in results if place_type_req in (r.get("types") or [])]
+    elif place_type:
+        results = [r for r in results if place_type in (r.get("types") or [])]
 
     # ④ distance_m 付与
     out = []
