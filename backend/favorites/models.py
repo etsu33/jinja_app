@@ -1,26 +1,7 @@
 # backend/favorites/models.py
 
-from django.conf import settings
-from django.db import models
-
-
-class Favorite(models.Model):
-    TARGET_CHOICES = (("shrine", "Shrine"),)
-
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="favorites"
-    )
-    target_type = models.CharField(max_length=20, choices=TARGET_CHOICES)
-    target_id = models.PositiveIntegerField()
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(
-                fields=["user", "target_type", "target_id"],
-                name="uniq_favorite_per_user_and_target",
-            )
-        ]
-
-    def __str__(self):
-        return f"{self.user_id}:{self.target_type}:{self.target_id}"
+# legacy `Favorite` model は `favorites.0003_retire_legacy_favorite` で退役済み。
+# favorite の live 正本は `temples.models.Favorite`（table `temples_favorite`）。
+#
+# この app は Stage 1 時点では INSTALLED_APPS に残しており（`favorites.permissions` に
+# test consumer があるため）、model を持たない状態で維持する。
