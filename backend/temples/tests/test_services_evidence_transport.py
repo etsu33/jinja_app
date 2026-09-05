@@ -611,11 +611,11 @@ def test_stale_taxonomy_version_is_not_qualified_but_not_blocked():
     assert outcome.qualification_result.unmet_dimensions == ("taxonomy_stable",)
 
 
-def test_goriyaku_cannot_be_qualified_until_canonical_registry_data_review():
-    # DATA_REVIEW未完了のため承認済みcanonical keyは1件も存在しない。
-    # ここで使うkeyは承認済みkeyの代用ではなく、「どのkeyも承認されていない」
-    # というfail-closed状態をそのまま踏む値である。
-    assert GORIYAKU_V1_CANONICAL_KEYS == {}
+def test_unapproved_goriyaku_canonical_key_is_not_taxonomy_stable():
+    # G1 activated 18 approved canonical keys, but the registry stays
+    # fail-closed for everything else: an unapproved key still cannot make
+    # taxonomy_stable True.
+    assert "unapproved_pending_data_review" not in GORIYAKU_V1_CANONICAL_KEYS
     shrine = _shrine()
     assignment = ShrineGoriyakuAssignment.objects.create(
         shrine=shrine,
@@ -635,6 +635,67 @@ def test_goriyaku_cannot_be_qualified_until_canonical_registry_data_review():
     assert outcome.status is FinalQualificationStatus.EVALUATED
     assert outcome.qualification_result.qualified is False
     assert "taxonomy_stable" in outcome.qualification_result.unmet_dimensions
+
+
+def test_goriyaku_assignment_with_approved_key_can_be_qualified():
+    # G1: with an approved canonical key (goriyaku:misfortune_warding) the
+    # existing 5-dimension evaluator reaches qualified=True through the same
+    # official path used by history_theme -- no qualification logic changed,
+    # and taxonomy_stable alone is still not sufficient (the other four
+    # dimensions are satisfied by this fixture's links/provenance/transport).
+    assert "misfortune_warding" in GORIYAKU_V1_CANONICAL_KEYS
+    shrine = _shrine()
+    assignment = ShrineGoriyakuAssignment.objects.create(
+        shrine=shrine,
+        canonical_key="goriyaku:misfortune_warding",
+        taxonomy_version="v1",
+        lifecycle=ShrineGoriyakuAssignment.Lifecycle.ACTIVE,
+        producer="admin",
+        mechanism="manual_review",
+        assigned_at=_ASSIGNED_AT,
+    )
+    history = _history(shrine)
+    history.sources.add(_source())
+    EvidenceLink.objects.create(
+        goriyaku_assignment=assignment,
+        shrine_history=history,
+        rationale="由緒が厄除けの由来を裏付ける。",
+    )
+
+    normalization = normalize_evidence_transport(assignment)
+    outcome = qualify_evidence(assignment)
+
+    assert normalization.f4_preparation.assignment_model == GORIYAKU_ASSIGNMENT
+    assert normalization.f4_preparation.dimensions.taxonomy_stable is True
+    assert normalization.build_blocked is False
+    assert normalization.transport_traceable is True
+    assert normalization.normalized_evidence.assignment.canonical_key == (
+        "goriyaku:misfortune_warding"
+    )
+    assert outcome.status is FinalQualificationStatus.EVALUATED
+    assert outcome.qualification_result.qualified is True
+    assert outcome.qualification_result.unmet_dimensions == ()
+
+
+def test_taxonomy_stable_alone_does_not_qualify_a_goriyaku_assignment():
+    # F4/F5 regression guard: an approved canonical key makes taxonomy_stable
+    # True, but with no EvidenceLink the assignment is still not qualified.
+    shrine = _shrine()
+    assignment = ShrineGoriyakuAssignment.objects.create(
+        shrine=shrine,
+        canonical_key="goriyaku:misfortune_warding",
+        taxonomy_version="v1",
+        lifecycle=ShrineGoriyakuAssignment.Lifecycle.ACTIVE,
+        producer="admin",
+        mechanism="manual_review",
+        assigned_at=_ASSIGNED_AT,
+    )
+
+    outcome = qualify_evidence(assignment)
+
+    assert outcome.status is FinalQualificationStatus.EVALUATED
+    assert outcome.qualification_result.qualified is False
+    assert "semantic_assignment_traceable" in outcome.qualification_result.unmet_dimensions
 
 
 # --------------------------------------------------------------------------

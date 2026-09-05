@@ -360,10 +360,12 @@ class ShrineGoriyakuAssignmentAdmin(admin.ModelAdmin):
     とは独立した別モデル。docs/knowledge/evidence-foundation-shared-contract.md
     参照。
 
-    PR-F3時点ではcanonical key registryが意図的に空のため、server-side
-    validation（ShrineGoriyakuAssignment.clean()）によりいかなる
-    canonical_keyも現時点では保存できない（fail-closed）。この管理画面が
-    存在することと、実際にAssignmentを作成できることは同義ではない。
+    G1のDATA_REVIEWでcanonical key registryが18件でactivatedされたため、
+    承認済みcanonical keyを持つAssignmentはこの管理画面から保存できる
+    （PR-F3時点の「registryが空なので何も保存できない」は当時のstateで
+    あり、現行のCURRENT FACTではない）。承認済み18件以外のcanonical key
+    は、server-side validation（ShrineGoriyakuAssignment.clean()）により
+    引き続きfail-closedでrejectされる。
     """
 
     list_display = (

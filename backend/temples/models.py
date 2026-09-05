@@ -680,13 +680,17 @@ class ShrineGoriyakuAssignment(models.Model):
     書き換えられることはない。このモデル単体はまだQualified Evidenceでは
     ない（Source Evidence linkはPR-F4）。
 
-    重要（Mother Ship FINAL、Decision 1 = Option B）: PR-F3時点では
-    承認済みcanonical key registry
-    （`temples.domain.goriyaku_taxonomy_v1.GORIYAKU_V1_CANONICAL_KEYS`）が
-    意図的に空である。したがって、このモデルは現時点でいかなる
-    canonical_keyも受理せず（fail-closed）、実際にAssignment行を作成
-    できるのは、後続のDATA_REVIEWでcanonical keyが登録されて以降になる。
-    これは意図された制約であり、バグではない。
+    重要（G1 DATA_REVIEW）: 承認済みcanonical key registry
+    （`temples.domain.goriyaku_taxonomy_v1.GORIYAKU_V1_CANONICAL_KEYS`）は
+    18件でactivated済みである。PR-F3時点の「意図的に空 / いかなる
+    canonical_keyも受理しない」はpoint-in-time recordであり、現行の
+    CURRENT FACTではない。承認済み18件以外のcanonical keyは引き続き
+    fail-closedでrejectされる。
+
+    NOTE: `canonical_key`のhelp_textはPR-F3時点の文面のままである。
+    help_textの変更はschema migrationを発生させるため、migration 0件を
+    要件とするG1では変更していない（文言更新は後続のmigration可能なPRで
+    行う）。
     """
 
     class Lifecycle(models.TextChoices):

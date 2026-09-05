@@ -1,6 +1,8 @@
-> **Status: Active（PR-F1 Shared Contracts + PR-F2 HistoryThemeAssignment + PR-F3 ShrineGoriyakuAssignment）**
+> **Status: Active（PR-F1 Shared Contracts + PR-F2 HistoryThemeAssignment + PR-F3 ShrineGoriyakuAssignment + PR-F4 EvidenceLink + PR-F5 normalized transport + G1 Goriyaku canonical registry activation）**
 >
 > 本書は、Evidence Foundation の Shared Evidence Foundation Contract（PR-F1）と、その具体的assignmentモデルである HistoryThemeAssignment（PR-F2）・ShrineGoriyakuAssignment（PR-F3）の責務を記録する。
+>
+> **CURRENT FACT（G1）**: goriyaku canonical key registryは**exactly 18件でactivated済み**、goriyaku alias registryは**exactly 1件**である。本書および他文書に残る「canonical registryは意図的に空」「46件対応表は未確定」という記述は、いずれもPR-F3時点のpoint-in-time recordであり、現行の事実ではない。
 >
 > Evidence Foundationは現時点でRecommendation / Ranking / Concierge / Premium / Readiness判定のいずれにも接続されていない。既存の`Shrine.history_theme` / `Shrine.goriyaku_tags` / `GoriyakuTag.id`は本書の対象外であり、変更されていない。
 
@@ -10,7 +12,7 @@
 
 Evidence Qualification・Source Evidence・Meaning接続の基礎となる、Evidence Foundationの共有契約層（Qualification Contract / Taxonomy Contract / Provenance Contract）と、その上に構築されるdomain assignmentモデル（HistoryThemeAssignment、ShrineGoriyakuAssignment）を定義する。
 
-本書が扱うのはPR-F1（Shared Contracts）・PR-F2（HistoryThemeAssignment）・PR-F3（ShrineGoriyakuAssignment schema foundation）で実装した範囲のみ。Source Evidence Link・normalized_evidence transportは、いずれも将来PR（F4〜F5）で追加される別責務であり、本書では扱わない。
+本書が扱うのはPR-F1（Shared Contracts）・PR-F2（HistoryThemeAssignment）・PR-F3（ShrineGoriyakuAssignment schema foundation）・PR-F4（EvidenceLink）・PR-F5（normalized transport）・G1（goriyaku canonical registry activation + alias registry）で実装した範囲。
 
 ---
 
@@ -20,7 +22,8 @@ Evidence Qualification・Source Evidence・Meaning接続の基礎となる、Evi
 `backend/temples/domain/evidence_taxonomy.py`（PR-F1）
 `backend/temples/domain/evidence_provenance.py`（PR-F1）
 `backend/temples/domain/history_theme_taxonomy_v1.py`（PR-F2）
-`backend/temples/domain/goriyaku_taxonomy_v1.py`（PR-F3）
+`backend/temples/domain/goriyaku_taxonomy_v1.py`（PR-F3で構造、G1で18件のcanonical key registryをactivate）
+`backend/temples/domain/goriyaku_alias_v1.py`（G1、alias registry / alias resolver）
 `backend/temples/models.py`（`HistoryThemeAssignment` PR-F2、`ShrineGoriyakuAssignment` PR-F3）
 `backend/temples/admin.py`（`HistoryThemeAssignmentAdmin`/`Inline` PR-F2、`ShrineGoriyakuAssignmentAdmin`/`Inline` PR-F3）
 
@@ -64,7 +67,7 @@ canonical semantic keyの形式は`<namespace>:<key>`（例: `history_theme:<key
 
 **PR-F1時点でのscope境界**:
 
-- 実際に有効なcanonical key一覧（例: `history_theme:再出発`に対応する実際のkey文字列）は、本PR（PR-F1）では一切定義していない。history_theme側はPR-F2で7値を確定済み。goriyaku側は、PR-F3でschema/registryの**構造**（`backend/temples/domain/goriyaku_taxonomy_v1.py`）のみを追加し、既存GoriyakuTag 46件へのcanonical key対応表は意図的に未定義のまま（DATA_REVIEW事項、下記「ShrineGoriyakuAssignment（PR-F3）」節参照）。
+- 実際に有効なcanonical key一覧（例: `history_theme:再出発`に対応する実際のkey文字列）は、本PR（PR-F1）では一切定義していない。history_theme側はPR-F2で7値を確定済み。goriyaku側は、PR-F3でschema/registryの**構造**（`backend/temples/domain/goriyaku_taxonomy_v1.py`）のみを追加し、canonical key一覧は意図的に未定義のままだった（当時のDATA_REVIEW事項）。G1のDATA_REVIEWでcanonical key 18件が確定・activatedされている（下記「Goriyaku Canonical Registry v1（G1）」節参照）。
 - key part（`:`より後ろ）の文字種ルールは、既存taxonomy実態（日本語ラベル、一部「・」区切りの複合語）を踏まえ、ASCII限定regexへ意図的に固定していない。文字種ルールの最終決定もHOLD事項。
 - namespaceごとのtaxonomy versionは、両方ともbaseline値`"v1"`から開始する（既存taxonomy内容の再設計ではなく、versioning infrastructureの初期値）。taxonomy versionはMother Ship FINAL contractに従い文字列表現のみを正とし、整数表現は存在しない（PR-F2で修正済み。詳細は「HistoryThemeAssignment（PR-F2）」節のShared Contract Correctionを参照）。
 
@@ -161,7 +164,7 @@ PR-F1の`evidence_provenance.EVIDENCE_PRODUCERS` / `EVIDENCE_MECHANISMS`をそ�
 
 ## ShrineGoriyakuAssignment（PR-F3）
 
-`ShrineGoriyakuAssignment`は、神社のご利益（goriyaku）semantic assignmentを、Evidence Foundation上で将来Qualified Evidenceとして扱えるようにするための器（schema foundation）。PR-F3ではschemaのみを追加し、実際にAssignment行を作成できる状態にはしない（下記「Fail-Closed」参照）。
+`ShrineGoriyakuAssignment`は、神社のご利益（goriyaku）semantic assignmentを、Evidence Foundation上でQualified Evidenceとして扱えるようにするための器。PR-F3ではschemaのみを追加し、canonical key registryが空だったため実際にAssignment行を作成できない状態だった。G1でregistryが18件activatedされ、承認済みcanonical keyを持つAssignmentが作成可能になっている（下記「Fail-Closed」参照）。
 
 ### 既存Shrine.goriyaku_tagsとの分離
 
@@ -172,25 +175,23 @@ PR-F1の`evidence_provenance.EVIDENCE_PRODUCERS` / `EVIDENCE_MECHANISMS`をそ�
 
 ### Mother Ship Decisions（PR-F3設計ゲートで確定、FINAL）
 
-- **Decision 1（Canonical Key）= Option B**: PR-F3ではAssignment schemaのみ実装し、既存GoriyakuTag 46件への具体的canonical key（`goriyaku:<stable_key>`）対応は後続DATA_REVIEWへ分離する。
-- **Decision 2（Duplicate Handling）= Option B**: 既存GoriyakuTagのduplicate / near-duplicateはPR-F3では一切解決しない（normalization・merge・alias作成・synonym inference・rename・delete・ID変更のいずれも禁止）。判断は後続DATA_REVIEWで行う。
+- **Decision 1（Canonical Key）= Option B**: PR-F3ではAssignment schemaのみ実装し、具体的canonical key（`goriyaku:<stable_key>`）の確定は後続DATA_REVIEWへ分離した。**→ G1のDATA_REVIEWで18件が確定・activated（下記「Goriyaku Canonical Registry v1（G1）」節）。**
+- **Decision 2（Duplicate Handling）= Option B**: 既存GoriyakuTagのduplicate / near-duplicateはPR-F3では一切解決しない（normalization・merge・alias作成・synonym inference・rename・delete・ID変更のいずれも禁止）。判断は後続DATA_REVIEWで行う。**→ G1のDATA_REVIEWで承認されたaliasは1件のみ（`八方除け -> all_direction_warding`）であり、canonical registryとは分離した専用のalias registry / resolverとして実装した。legacy `GoriyakuTag`のmerge / rename / delete / ID変更は依然として行っていない。**
 - **Decision 3（Legacy Governance）= Option C**: legacy goriyaku taxonomy（`GoriyakuTag`・`GoriyakuTagAdmin`・`backfill_goriyaku_tags.py`・`ShrineAdmin.filter_horizontal`・`NEED_TO_GORIYAKU_IDS`・Recommendation/Ranking挙動）はPR-F3では一切変更しない。将来のGovernance PRとしてHOLD・ロードマップ化し、MVP必須とはしない。
 
 ### Taxonomy v1（namespace: `goriyaku`、version: `"v1"`）
 
-`backend/temples/domain/goriyaku_taxonomy_v1.py`が、PR-F1のformat validator（`evidence_taxonomy.validate_canonical_semantic_key()`）を再利用した構造のみを提供する。`history_theme_taxonomy_v1.py`と同型のモジュールだが、内容は異なる:
+`backend/temples/domain/goriyaku_taxonomy_v1.py`が、PR-F1のformat validator（`evidence_taxonomy.validate_canonical_semantic_key()`）を再利用し、承認済みcanonical keyの登録と検証を提供する。`history_theme_taxonomy_v1.py`と同型のモジュール。
 
-```text
-GORIYAKU_V1_CANONICAL_KEYS: Dict[str, str] = {}   # 意図的に空
-```
+canonical key全体形は`goriyaku:<local_key>`。local keyはMother Ship DATA_REVIEWで確定した機械識別子であり、日本語ラベルはdisplay valueに過ぎない。`GoriyakuTag` PK・Purpose・Shrine identityとは独立している。
 
-**Canonical registry: PR-F3では未投入（not populated）。DATA_REVIEW必須。** 46件のGoriyakuTagへの具体的key割当はCodexが行わず、日本語ラベルからのslug生成も行っていない。
+**Canonical registryの現行内容（exactly 18件）は下記「Goriyaku Canonical Registry v1（G1）」節を参照。** PR-F3時点では`GORIYAKU_V1_CANONICAL_KEYS`は意図的に空であり、そのため当時はいかなる`goriyaku:<key>`も受理されなかった — これは当時のpoint-in-time stateであって、現行の事実ではない。
 
 ### Fail-Closed（重要）
 
-承認済みcanonical key registryが空であるため、`ShrineGoriyakuAssignment.clean()`は**いかなる`goriyaku:<key>`も現時点では受理しない**。「registryが空だから任意のkeyを許可する」も「formatが正しければ許可する」もいずれも実装していない — unknown/unregistered canonical keyは常にrejectされる。
+`ShrineGoriyakuAssignment.clean()`は、承認済みcanonical key registryに存在する`goriyaku:<key>`のみを受理する。「formatが正しければ許可する」は実装していない — unknown/unregistered canonical keyは常にreject（`reason="unknown_goriyaku_key"`）される。
 
-これは意図された状態であり、バグではない。空registry期間中は実際のAssignment行を1件も作成できないが、これは安全側（fail-closed）の性質であり、承認済みcanonical keyがDATA_REVIEWで登録されるまで続く。
+G1で18件がactivatedされた後もこのfail-closed性は変わらない。DEFERRED扱いの20 conceptsを含め、承認されていないkeyはすべてrejectされる。
 
 ### Lifecycle
 
@@ -206,21 +207,112 @@ PR-F1の`evidence_provenance.EVIDENCE_PRODUCERS` / `EVIDENCE_MECHANISMS`をそ�
 
 ### Admin
 
-`ShrineGoriyakuAssignmentAdmin`（標準登録）と`ShrineGoriyakuAssignmentInline`（`ShrineAdmin.inlines`へadditiveに追加）を用意した。既存`ShrineAdmin.filter_horizontal = ("goriyaku_tags",)`には一切触れていない。Admin UIが存在することと、Assignmentを実際に作成できることは同義ではない — server-side validationのfail-closed動作により、registry未投入の間はAdmin経由でも保存できない。
+`ShrineGoriyakuAssignmentAdmin`（標準登録）と`ShrineGoriyakuAssignmentInline`（`ShrineAdmin.inlines`へadditiveに追加）を用意した。既存`ShrineAdmin.filter_horizontal = ("goriyaku_tags",)`には一切触れていない。G1でregistryがactivatedされたため、承認済みcanonical keyを持つAssignmentはAdmin経由でも保存できる。承認済み18件以外はserver-side validationにより引き続きrejectされる（PR-F3時点の「registry未投入なのでAdmin経由でも保存できない」は当時のstate）。
 
 ### Qualified Evidenceではない
 
-`ShrineGoriyakuAssignment`はPR-F3単体では**Qualified Evidenceにならない**。Source Evidence link・rationaleはPR-F4のscope（HOLD）。normalized_evidence transportはPR-F5のscope（HOLD）。producer/mechanismが揃っていても、それだけでqualification（`evidence_qualification.evaluate_evidence_qualification()`の5次元判定）がTrueになることはない。
+`ShrineGoriyakuAssignment`は単体では**Qualified Evidenceにならない**。Source Evidence link・rationaleはPR-F4、normalized_evidence transportはPR-F5が担う。producer/mechanismが揃っていても、また`taxonomy_stable=True`であっても、それだけでqualification（`evidence_qualification.evaluate_evidence_qualification()`の5次元判定）がTrueになることはない。G1はこの5次元評価ロジックを一切変更していない。
 
 ### 既存データとの関係
 
-既存GoriyakuTag・`Shrine.goriyaku_tags`データからの自動backfillは行わない。Data migrationも一切実装していない（schema onlyのmigration）。したがって、このPRの直後は全神社が`ShrineGoriyakuAssignment`を0件持つ状態が正しい（canonical key registryが空である以上、これ以外の状態にはなり得ない）。
+既存GoriyakuTag・`Shrine.goriyaku_tags`データからの自動backfillは行わない。Data migrationも一切実装していない。G1もdata migration / backfill / RunPython / RunSQLを追加していない（migration追加は0件）。したがってG1直後も、明示的に作成されない限り全神社が`ShrineGoriyakuAssignment`を0件持つ状態が正しい。
 
 ### 未解決事項
 
-- canonical key registry population（46件対応表）: DATA_REVIEW
-- duplicate / near-duplicate判定: DATA_REVIEW
+- canonical key registry population: **G1で解決済み（18件activated）**
+- duplicate / near-duplicate判定: **G1で承認済みalias 1件のみ実装。残りは後続DATA_REVIEW**
+- DEFERRED 20 concepts: 後続DATA_REVIEW（G1では一切追加しない）
 - Legacy taxonomy governance: Future Governance PR（HOLD、MVP必須ではない）
+- `ShrineGoriyakuAssignment.canonical_key`の`help_text`はPR-F3時点の文面のまま。help_text変更はschema migrationを発生させるため、migration 0件を要件とするG1では変更していない（migration可能な後続PRで更新する）
+
+---
+
+## Goriyaku Canonical Registry v1（G1）
+
+Mother Ship DATA_REVIEWで承認された18件のcanonical semantic identity。`backend/temples/domain/goriyaku_taxonomy_v1.GORIYAKU_V1_CANONICAL_KEYS`がこの表そのものである（exactly 18件、追加・削除・rename・別英訳・slug変更はいずれも禁止）。
+
+| canonical key | display label (ja) |
+| --- | --- |
+| `goriyaku:relationship_bonding` | 縁結び |
+| `goriyaku:misfortune_warding` | 厄除け |
+| `goriyaku:traffic_safety` | 交通安全 |
+| `goriyaku:business_prosperity` | 商売繁盛 |
+| `goriyaku:good_fortune` | 開運 |
+| `goriyaku:household_safety` | 家内安全 |
+| `goriyaku:academic_success` | 学業成就 |
+| `goriyaku:exam_success` | 合格祈願 |
+| `goriyaku:victory_fortune` | 勝運 |
+| `goriyaku:maritime_safety` | 海上安全 |
+| `goriyaku:safe_childbirth` | 安産 |
+| `goriyaku:all_direction_warding` | 八方除 |
+| `goriyaku:career_advancement` | 出世運 |
+| `goriyaku:financial_fortune` | 金運 |
+| `goriyaku:strong_fortune_warding` | 強運厄除け |
+| `goriyaku:illness_recovery` | 病気平癒 |
+| `goriyaku:wish_fulfillment` | 心願成就 |
+| `goriyaku:leg_lower_back_health` | 足腰健康 |
+
+canonical keyはmachine identity、日本語labelはdisplay value。両者は`GoriyakuTag` PK・Purpose・Shrine identityとは独立している。
+
+DEFERRED扱いの20 conceptsはこの表に含まれず、G1では一切追加していない。
+
+---
+
+## Goriyaku Alias Registry v1（G1）
+
+`backend/temples/domain/goriyaku_alias_v1.py`。canonical registryとは**分離した別モジュール**であり、canonical registryへaliasを混ぜない。
+
+承認済みalias（exactly 1件）:
+
+| input alias | canonical key | display label (ja) |
+| --- | --- | --- |
+| `八方除け` | `goriyaku:all_direction_warding` | 八方除 |
+
+`八方除`はcanonical display labelであってaliasではないため、alias registryには登録しない。
+
+### Alias Resolver Contract
+
+`resolve_goriyaku_alias(value)` はsurface string 1件を受け取り、immutableな`GoriyakuAliasResolutionResult`を返す。pure / deterministic / DB-free（DB・現在時刻・LLM・外部APIへ依存しない）。
+
+result fields: `resolved` / `reason` / `input_alias` / `canonical_key` / `display_label_ja`
+
+reason vocabulary（4状態）:
+
+| reason | 意味 | canonical_key |
+| --- | --- | --- |
+| `resolved` | exact registered aliasを解決した | `goriyaku:<local_key>` |
+| `unknown_alias` | v1 alias registryに存在しないsurface（= 「v1で未解決」であって「invalid concept」ではない） | `None` |
+| `invalid_input` | `None` / non-string / empty string（fail closed） | `None` |
+| `invalid_alias_target` | alias targetがcanonical registryに不在 | `None` |
+
+### Exact-Match Contract
+
+alias lookup前にpreprocessingを一切行わない。唯一の一致条件はexact string equality。
+
+禁止: strip / lower / replace / Unicode normalization / prefix match / suffix match / substring match / regex normalization / delimiter split。
+
+したがって whitespace-only string（半角・全角問わず）もstripされず、`unknown_alias`として扱う（`invalid_input`ではない）。
+
+### Fuzzy Normalization: 全面禁止
+
+spelling similarity / semantic similarity / LLM inference / embedding similarity / 自動suffix・prefix除去 / Recommendation mapping fallback / legacy `GoriyakuTag` fallback — いずれも実装しない。unknown aliasはexceptionを投げず、canonical assignmentへも進めない。
+
+### Resolver / Validator Boundary
+
+`resolve != validate`。既存`validate_goriyaku_v1_canonical_key()`の責務（canonical key format / namespace / v1 registry membership）は変更していない。validatorへalias lookup・日本語label lookup・fuzzy normalizationを追加していない。
+
+公式flow:
+
+```text
+surface alias
+  -> resolve_goriyaku_alias()
+  -> canonical full key
+  -> validate_goriyaku_v1_canonical_key()
+```
+
+### Runtime Boundary
+
+alias registry / resolverはEvidence Foundation内部に閉じている。Recommendation / Ranking / Concierge / Compassからの新しいruntime wiringは追加していない（`backend/temples/tests/test_evidence_foundation_g1_runtime_boundary.py`で固定）。
 
 ---
 
@@ -274,5 +366,5 @@ F4 production codeはRecommendation / Ranking / Concierge / Compassへ接続し�
 
 - 本書はEvidence Foundationの共有契約層（Qualification / Taxonomy / Provenance）と、HistoryThemeAssignment（PR-F2）・ShrineGoriyakuAssignment（PR-F3）の責務を管理する。
 - Source Evidence LinkはPR-F4の上記契約を正本とする。normalized transportのAPI契約はPR-F5で別途文書化する。
-- goriyaku canonical key registryの具体的内容（46件対応表）、duplicate/near-duplicate判定、legacy taxonomy governanceは、いずれも後続のDATA_REVIEW / Governance PRで別途文書化する。本書はPR-F3時点でこれらが「未確定である」という事実のみを記録する。
+- goriyaku canonical key registryの具体的内容（18件）とalias registry（1件）は本書の上記2節を正本とする。DEFERRED 20 concepts、残りのduplicate/near-duplicate判定、legacy taxonomy governanceは、いずれも後続のDATA_REVIEW / Governance PRで別途文書化する。
 - 既存の`docs/knowledge/shrine-knowledge-contract.md`（`ShrineKnowledgeSource` / `ShrineDeity` / `ShrineHistory`のSource契約）はEvidence Foundationとは独立した既存正本であり、本書はその内容を変更しない。
