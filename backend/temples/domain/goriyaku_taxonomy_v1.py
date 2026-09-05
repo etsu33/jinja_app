@@ -1,31 +1,44 @@
 # backend/temples/domain/goriyaku_taxonomy_v1.py
-"""Evidence Foundation PR-F3: Goriyaku v1 canonical taxonomy registry.
+"""Evidence Foundation: Goriyaku v1 canonical taxonomy registry。
 
 PR-F1（`evidence_taxonomy.py`）は namespace（"history_theme" / "goriyaku"）と
 canonical key format (`<namespace>:<key>`) のみを定義し、実際に有効な
 key一覧はF2/F3のHOLD事項として意図的に未定義のままだった。PR-F2は
-history_theme側のみを解決した。
+history_theme側のみを解決し、PR-F3は goriyaku の**構造**だけを解決した
+（`GORIYAKU_V1_CANONICAL_KEYS`は意図的に空のまま）。
 
-本モジュールは、その残りのHOLD事項のうち goriyaku の**構造**だけを解決する。
-PR-F1のformat validator (`validate_canonical_semantic_key`) をそのまま
-再利用し、format検証ロジックを重複させない。
+本モジュールはG1時点の状態を表す。PR-F3のHOLD事項であった canonical key
+registryは、Mother Ship DATA_REVIEWで承認された18件のcanonical semantic
+identityで**activated済み**である（PR-F3時点の「意図的に空」は当時の
+point-in-time recordであり、現行のCURRENT FACTではない）。
 
-重要（Mother Ship FINAL、Decision 1 = Option B）:
-    46件の既存GoriyakuTagに対応する具体的canonical key（例:
-    "goriyaku:enmusubi"）は、本PRでは一切登録しない。
-    `GORIYAKU_V1_CANONICAL_KEYS`は意図的に空である。
+G1 canonical mapping（承認済み18件、canonical key → 日本語表示ラベル）:
+    relationship_bonding   → 縁結び
+    misfortune_warding     → 厄除け
+    traffic_safety         → 交通安全
+    business_prosperity    → 商売繁盛
+    good_fortune           → 開運
+    household_safety       → 家内安全
+    academic_success       → 学業成就
+    exam_success           → 合格祈願
+    victory_fortune        → 勝運
+    maritime_safety        → 海上安全
+    safe_childbirth        → 安産
+    all_direction_warding  → 八方除
+    career_advancement     → 出世運
+    financial_fortune      → 金運
+    strong_fortune_warding → 強運厄除け
+    illness_recovery       → 病気平癒
+    wish_fulfillment       → 心願成就
+    leg_lower_back_health  → 足腰健康
 
-    これは未完成ではなく、意図されたfail-closed状態である:
-    承認済みcanonical keyがまだ存在しないため、どのgoriyaku:*キーも
-    現時点では有効なEvidence Foundation semantic identityとして
-    受理されない。Codexはこの空集合へ、テストのためであっても
-    具体的なkeyを追加しない（canonical key発明の禁止、Decision 1で
-    確定）。実際のkey命名・46件対応表の確定は、後続のDATA_REVIEWで
-    Mother Shipが行う。
+canonical keyは機械識別子（machine identity）であり、日本語ラベルは表示値
+（display value）に過ぎない。`GoriyakuTag` PK・Purpose・Shrine identityとは
+独立した、Evidence Foundation側の識別子体系である。
 
-    duplicate / near-duplicate（表記差・spelling variant等）の扱いも
-    同様にDecision 2としてDATA_REVIEWへ分離されており、本モジュールは
-    一切のnormalization / alias解決を行わない（Decision 2 = Option B）。
+本モジュールはalias解決を一切行わない（Decision 2の分離を維持）。承認済み
+aliasの解決責務は `goriyaku_alias_v1.py` にあり、canonical registryへalias
+（表記ゆれ・spelling variant）を混ぜない。`resolve != validate`。
 """
 from __future__ import annotations
 
@@ -44,12 +57,32 @@ GORIYAKU_TAXONOMY_NAMESPACE: TaxonomyNamespace = "goriyaku"
 # （バージョン番号をここで再定義しない）。
 GORIYAKU_TAXONOMY_VERSION = get_current_taxonomy_version(GORIYAKU_TAXONOMY_NAMESPACE).version
 
-# Mother Ship FINAL（Decision 1 = Option B）: PR-F3時点では意図的に空。
-# 46件のGoriyakuTagへのcanonical key割当はDATA_REVIEW事項であり、
-# Codexが日本語ラベルからslugを生成することは禁止されている。
-# この辞書が空である限り、validate_goriyaku_v1_canonical_key()は
-# いかなる`goriyaku:<key>`も無条件でreject する（fail-closed）。
-GORIYAKU_V1_CANONICAL_KEYS: Dict[str, str] = {}
+# Mother Ship DATA_REVIEW FINAL（G1）: 承認済みcanonical key（ローカル部分、
+# namespace prefixなし）→ 日本語表示ラベル。exactly 18件。
+#
+# この18件はMother Ship DATA_REVIEWで確定した集合をそのまま転記したもので
+# あり、Codexがslug生成・英訳・名称変更・追加・削除を行っていない。
+# DEFERRED 20 conceptsはこの集合に含まれない（後続DATA_REVIEW事項）。
+GORIYAKU_V1_CANONICAL_KEYS: Dict[str, str] = {
+    "relationship_bonding": "縁結び",
+    "misfortune_warding": "厄除け",
+    "traffic_safety": "交通安全",
+    "business_prosperity": "商売繁盛",
+    "good_fortune": "開運",
+    "household_safety": "家内安全",
+    "academic_success": "学業成就",
+    "exam_success": "合格祈願",
+    "victory_fortune": "勝運",
+    "maritime_safety": "海上安全",
+    "safe_childbirth": "安産",
+    "all_direction_warding": "八方除",
+    "career_advancement": "出世運",
+    "financial_fortune": "金運",
+    "strong_fortune_warding": "強運厄除け",
+    "illness_recovery": "病気平癒",
+    "wish_fulfillment": "心願成就",
+    "leg_lower_back_health": "足腰健康",
+}
 
 GORIYAKU_V1_CANONICAL_KEY_SET = set(GORIYAKU_V1_CANONICAL_KEYS)
 
@@ -70,10 +103,11 @@ def validate_goriyaku_v1_canonical_key(value: Optional[str]) -> GoriyakuV1KeyVal
       のformat検証を重複実装しない）。
     - namespaceが"goriyaku"以外（例: "history_theme:restart"）の場合は
       reject。
-    - `GORIYAKU_V1_CANONICAL_KEYS`が空である現時点では、format・namespace
-      が正しくても、keyが承認済み集合に含まれることは決してないため、
-      常にreject結果（reason="unknown_goriyaku_key"）を返す。これは
-      意図されたfail-closed動作であり、バグではない。
+    - keyが承認済み18件に含まれない場合はreject（reason=
+      "unknown_goriyaku_key"）。fuzzy normalization・日本語ラベルからの
+      自動推定・alias解決はここでは一切行わない（alias解決は
+      `goriyaku_alias_v1.resolve_goriyaku_alias()`の責務であり、本
+      validatorへは統合しない）。
     """
     format_result = validate_canonical_semantic_key(value)
 

@@ -1,3 +1,5 @@
+> **[G1 追記 / point-in-time note]** 本書はPR-F3以前の時点で作成されたpoint-in-time auditである。本文中の「canonical registryは未定義 / 意図的に空」「46件のGoriyakuTagへの対応表は未確定」等の記述は、**当時の事実**であって現行の事実ではない。G1のDATA_REVIEWでgoriyaku canonical registryはexactly 18件でactivated、alias registryはexactly 1件（`八方除け -> all_direction_warding`）で確定している。現行契約は`docs/knowledge/evidence-foundation-shared-contract.md`を参照すること。本書の監査結果そのものは記録として改変していない。
+>
 > **Status: Audit only — read-only. No model change, no migration, no DB write, no backfill, no seed change, no admin change, no Recommendation/Ranking/Concierge change.**
 >
 > 本書は、GoriyakuTag / Evidence Foundation に関する過去監査群を、最新`develop`・現行コード・（到達可能な範囲の）DBと突き合わせ、**過去監査の再発見ではなく、過去監査と現在との差分**を明示する目的で新規作成した。
