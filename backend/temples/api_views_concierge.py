@@ -47,7 +47,10 @@ from temples.services.concierge_chat import build_chat_recommendations
 from temples.services.concierge_chat_ranking import (
     _resolve_public_mode,
 )
-from temples.services.concierge_chat_candidates import build_chat_candidates
+from temples.services.concierge_chat_candidates import (
+    build_chat_candidates,
+    filter_recommendation_eligible_candidates,
+)
 from temples.services.concierge_history import append_chat
 from temples.services.direction_reference import attach_direction_references
 from temples.services.concierge_plan import build_plan_response
@@ -459,14 +462,22 @@ def _build_chat_candidates_pipeline(
     )
 
     merged_candidates = user_candidates + raw_built_candidates
-    deduped_candidates = _dedupe_candidates(merged_candidates)
+    # Shared Recommendation Eligibility gate。build_chat_candidates()が返す候補は
+    # 生成時点で既にgate済みなので、ここでの再適用は追加クエリを発生させない。
+    # requestで持ち込まれた候補（user_candidates）はその共有層を通っていないため、
+    # 同じ共有関数でここでも必ず通す -- ineligibleなShrineがrequest経由で
+    # Recommendationへ再流入する経路を残さない（判定式は複製していない）。
+    eligible_candidates = filter_recommendation_eligible_candidates(merged_candidates)
+    deduped_candidates = _dedupe_candidates(eligible_candidates)
 
     log.info(
-        "[api/chat] build_candidates_output trace=%s user=%d built=%d merged=%d deduped=%d",
+        "[api/chat] build_candidates_output trace=%s user=%d built=%d merged=%d "
+        "eligible=%d deduped=%d",
         getattr(request, "_concierge_trace_id", ""),
         len(user_candidates),
         len(raw_built_candidates),
         len(merged_candidates),
+        len(eligible_candidates),
         len(deduped_candidates),
     )
 

@@ -5,6 +5,7 @@ import json
 import pytest
 
 from temples.models import Shrine
+from temples.tests.support.recommendation_eligibility import attach_usable_deity_fact
 
 URL = "/api/compass/recommendations/"
 ORIGIN = {"lat": 35.0, "lng": 135.0}
@@ -21,7 +22,14 @@ TARGET_DATE = "2026-09-15"
 
 @pytest.fixture
 def shrine_factory(db):
-    def _factory(*, name: str, latitude: float, longitude: float, goriyaku: str = "") -> Shrine:
+    def _factory(
+        *,
+        name: str,
+        latitude: float,
+        longitude: float,
+        goriyaku: str = "",
+        usable_knowledge: bool = True,
+    ) -> Shrine:
         shrine = Shrine(
             name_jp=name,
             address="東京都千代田区",
@@ -30,7 +38,10 @@ def shrine_factory(db):
             goriyaku=goriyaku,
         )
         Shrine.objects.bulk_create([shrine])
-        return Shrine.objects.get(pk=shrine.pk)
+        created = Shrine.objects.get(pk=shrine.pk)
+        if usable_knowledge:
+            attach_usable_deity_fact(created, display_name=f"{name}の祭神")
+        return created
 
     return _factory
 

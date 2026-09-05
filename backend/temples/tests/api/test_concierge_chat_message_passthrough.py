@@ -2,6 +2,9 @@
 import json
 import pytest
 
+from temples.models import Shrine
+from temples.tests.support.recommendation_eligibility import attach_usable_deity_fact
+
 @pytest.mark.django_db
 def test_concierge_message_passthrough(client, settings, monkeypatch):
     settings.GOOGLE_MAPS_API_KEY = "dummy"
@@ -14,12 +17,26 @@ def test_concierge_message_passthrough(client, settings, monkeypatch):
 
     monkeypatch.setattr(ConciergeOrchestrator, "suggest", _fake_suggest)
 
+    # Shared Recommendation Eligibility gate: requestで持ち込む候補も
+    # usable Knowledge Factを持つShrineを指していなければRecommendationへ入らない。
+    shrine = Shrine.objects.create(
+        name_jp="赤坂氷川神社",
+        address="東京都港区赤坂6-10-12",
+        latitude=35.67,
+        longitude=139.73,
+    )
+    attach_usable_deity_fact(shrine)
+
     payload = {
         "message": "テスト",
         "lat": 35.0,
         "lng": 139.0,
         "candidates": [
-            {"name": "赤坂氷川神社", "formatted_address": "日本、〒107-0052 東京都港区赤坂6丁目10−12"}
+            {
+                "shrine_id": shrine.id,
+                "name": "赤坂氷川神社",
+                "formatted_address": "日本、〒107-0052 東京都港区赤坂6丁目10−12",
+            }
         ],
     }
     r = client.post(

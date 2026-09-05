@@ -18,6 +18,8 @@
 
 # Shrine Knowledge Contract
 
+> **Recommendation Eligibility との関係**: 本書の「Evidence Gate要件」（`decide_fact_usability()`）は、Concierge / Compass の Shared Recommendation Eligibility gate の usability authority でもある。Recommendation 候補の適格条件（usable Deity Fact または usable History Fact が1件以上）は `docs/knowledge/recommendation-eligibility-contract.md` を参照。本書の判定基準そのものは変更していない。
+
 ## 目的
 
 本ドキュメントは、以下を単一の情報源として固定する。
