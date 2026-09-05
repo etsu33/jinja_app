@@ -335,7 +335,7 @@ export default function CompassClient() {
         <DetailSection title="ご案内できる参拝候補がまだありません" variant="tertiary">
           <div className="space-y-3">
             <p className="text-sm leading-6 text-[var(--kt-color-text-secondary)]">
-              方向の参考情報は問題ありません。ご案内に必要な由緒・御祭神の情報が揃った神社が、現在まだ登録されていません。
+              現在の条件では、ご案内に必要な情報を確認できる神社が見つかりませんでした。
             </p>
             <Link
               href="/concierge"

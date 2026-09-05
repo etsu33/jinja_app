@@ -264,12 +264,18 @@ def get_compass_recommendations(
             eligible_candidate_count=candidate_build.eligible_count,
         )
 
-    if candidate_build.eligible_count == 0:
-        # 候補生成は正常に完了したが、Shared Recommendation Eligibility契約を
-        # 満たすShrineが1件も無かった。Direction Filterが候補を落としたのでは
-        # なく、そもそもDirection Filterへ渡せるeligibleな候補が存在しない。
+    if candidate_build.source_count > 0 and candidate_build.eligible_count == 0:
+        # 候補sourceは存在したのに、Shared Recommendation Eligibility契約を
+        # 満たすShrineが1件も残らなかった場合だけこのstateを返す。
+        # Direction Filterが候補を落としたのではなく、そもそもDirection Filterへ
+        # 渡せるeligibleな候補が存在しない、という別事実である。
         # direction_zero_candidates（eligibleな候補はあったが方位で全滅）とは
         # 区別し、ineligibleなShrineをここで復活させることもしない。
+        #
+        # source_count == 0（候補sourceそのものが0件）はeligibility failureでは
+        # ないため、ここでは扱わない。既存のzero-candidate flow
+        # （空poolがDirection Filterを通り direction_zero_candidates へ落ちる）
+        # にそのまま任せる -- 新しいstateは追加しない。
         return CompassRecommendationResult(
             state=STATE_RECOMMENDATION_ELIGIBILITY_ZERO_CANDIDATES,
             purpose=purpose_slug,
