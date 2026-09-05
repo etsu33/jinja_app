@@ -125,7 +125,7 @@ def test_new_success_does_not_call_legacy(monkeypatch):
 # ---------------------------------------------------------------
 @pytest.mark.django_db
 @responses.activate
-@pytest.mark.parametrize("upstream_status", [429, 500, 502, 503])
+@pytest.mark.parametrize("upstream_status", [500, 502, 503])
 def test_new_transient_error_falls_back_to_legacy_once(monkeypatch, upstream_status):
     monkeypatch.setenv("PLACES_API_NEW", "1")
     responses.add(responses.POST, NEW_SEARCH_TEXT, json={}, status=upstream_status)
@@ -136,6 +136,27 @@ def test_new_transient_error_falls_back_to_legacy_once(monkeypatch, upstream_sta
     assert r.status_code == 200, r.content
     assert len(_new_calls()) == 1
     assert len(_legacy_calls()) == 1
+
+
+@pytest.mark.django_db
+@responses.activate
+def test_new_429_does_not_fall_back_to_legacy(monkeypatch):
+    """
+    429 は Google Cloud quota / rate limit がコスト上限として効いている合図。
+    legacy へ fallback すると別 SKU で通信を継続し quota による停止を
+    迂回してしまうため、fail closed（controlled failure）にする。
+    """
+    monkeypatch.setenv("PLACES_API_NEW", "1")
+    responses.add(responses.POST, NEW_SEARCH_TEXT, json={}, status=429)
+    responses.add(responses.GET, LEGACY_NEARBY, json=_legacy_body(), status=200)
+
+    r = APIClient().get(NEARBY_URL, {"lat": 35.0, "lng": 139.0})
+
+    assert len(_new_calls()) == 1
+    assert len(_legacy_calls()) == 0
+    # controlled failure: 500 ではなく 502、かつ JSON の detail を返す
+    assert r.status_code == 502, r.content
+    assert "detail" in r.json()
 
 
 @pytest.mark.django_db

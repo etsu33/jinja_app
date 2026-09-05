@@ -86,9 +86,21 @@ class GooglePlacesConfigError(GooglePlacesError):
 
 
 class GooglePlacesTransientError(GooglePlacesError):
-    """429 / 5xx / timeout / connection error。fallback を許可してよい。"""
+    """5xx / timeout / connection error。fallback を許可してよい。"""
 
     transient = True
+
+
+class GooglePlacesQuotaError(GooglePlacesError):
+    """
+    429 / quota 超過。
+
+    429 は Google Cloud の quota / rate limit がコスト上限として効いている
+    合図なので、別 SKU へ fallback して通信を続けると quota による停止を
+    迂回してしまう。よって transient 扱いにせず fail closed にする。
+    """
+
+    transient = False
 
 
 class GooglePlacesDisabled(GooglePlacesConfigError):
@@ -786,8 +798,15 @@ def nearby_search_new(
     )
 
     if not resp.ok:
-        # 429 / 5xx のみ一時障害として扱う。4xx（400/401/403 等）は決定的な失敗。
-        if status_code == 429 or 500 <= status_code < 600:
+        # 429 は quota / rate limit の防波堤として発生しうる。legacy へ落とすと
+        # 別 SKU で通信を継続し quota によるコスト停止を迂回するため fail closed。
+        if status_code == 429:
+            raise GooglePlacesQuotaError(
+                f"Places(New) searchText quota exhausted: {status_code}",
+                status_code=status_code,
+            )
+        # 5xx のみ一時障害として扱う。4xx（400/401/403 等）は決定的な失敗。
+        if 500 <= status_code < 600:
             raise GooglePlacesTransientError(
                 f"Places(New) searchText transient error: {status_code}",
                 status_code=status_code,
@@ -841,6 +860,7 @@ __all__ = [
     "GooglePlacesError",
     "GooglePlacesConfigError",
     "GooglePlacesTransientError",
+    "GooglePlacesQuotaError",
     "GooglePlacesDisabled",
     "places_upstream_enabled",
     "log_places_upstream",
