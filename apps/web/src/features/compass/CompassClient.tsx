@@ -145,12 +145,17 @@ export default function CompassClient() {
       });
       return;
     }
+    // Fail-safe copy: one fixed lead sentence for every failure, plus a hint only
+    // where it adds something the user can act on. The alternative route is
+    // OriginSelector's own 「駅名・住所から指定」 radio, so it is not repeated here.
+    // The reason branches are requestCurrentPosition's classification used as-is --
+    // this only changes wording, never how a GeolocationPositionError is classified.
     setDeviceError(
       result.reason === "unsupported"
-        ? "この端末では現在地を取得できません。駅名・住所から指定してください。"
+        ? "現在地を取得できませんでした。この端末では利用できません。"
         : result.reason === "denied"
-          ? "位置情報がブロックされています。ブラウザの位置情報を許可するか、駅名・住所から指定してください。"
-          : "現在地を取得できませんでした。駅名・住所から指定してください。",
+          ? "現在地を取得できませんでした。位置情報の許可を確認してください。"
+          : "現在地を取得できませんでした。",
     );
   };
 
