@@ -144,7 +144,7 @@ export function ShrineDeepDivePrompt({ shrineId }: Props) {
         type="button"
         disabled={!canSubmit}
         onClick={handleSubmit}
-        className="mt-3 w-full rounded-2xl bg-[var(--kt-color-action-primary)] px-4 py-2 text-sm font-semibold text-[var(--kt-color-action-primary-text)] transition hover:bg-[var(--kt-color-action-primary-hover)] disabled:cursor-not-allowed disabled:opacity-60"
+        className="mt-3 w-full rounded-2xl bg-[var(--kt-color-action-primary)] px-4 py-2 text-sm font-semibold text-[var(--kt-color-background-base)] transition hover:bg-[var(--kt-color-action-primary-hover)] disabled:cursor-not-allowed disabled:opacity-60"
       >
         {submitting ? "回答を生成中..." : "質問する"}
       </button>
