@@ -90,6 +90,14 @@ describe("Compass recommendation_eligibility_zero_candidates", () => {
     await submit();
 
     expect(screen.getByText("ご案内できる参拝候補がまだありません")).toBeTruthy();
+    // 4: 「該当する神社が1件も登録されていない」と断定せず、現在の条件に
+    // 限定した表現であること。
+    expect(
+      screen.getByText("現在の条件では、ご案内に必要な情報を確認できる神社が見つかりませんでした。"),
+    ).toBeTruthy();
+    expect(screen.queryByText(/登録されていません/)).toBeNull();
+    // 既存の /concierge CTA と空結果UI構造は維持する。
+    expect(screen.getByRole("link", { name: "コンシェルジュで相談する" })).toBeTruthy();
     expect(screen.queryByText("只今、確認できませんでした")).toBeNull();
     expect(screen.queryByText("方向の参考情報を計算できませんでした")).toBeNull();
     expect(screen.queryByText("この方向の参拝候補が見つかりませんでした")).toBeNull();

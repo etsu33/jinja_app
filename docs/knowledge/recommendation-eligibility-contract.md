@@ -118,7 +118,7 @@ evidence_zero_candidates
 | purpose が不正 | `invalid_purpose` |
 | origin / direction 入力が不正・不足（Group A: runtime 不成立） | `direction_filter_unavailable` |
 | 年盤・月盤の共通方位が空 | `no_common_direction` |
-| **共有 Eligibility 契約を満たす Shrine が0件** | **`recommendation_eligibility_zero_candidates`** |
+| **候補 source は存在したが、共有 Eligibility 契約を満たす Shrine が0件**（`source_count > 0 && eligible_count == 0`） | **`recommendation_eligibility_zero_candidates`** |
 | 方位内に候補0 / 方位内にはあるが60km圏内に0 | `direction_zero_candidates`（メタデータで区別） |
 | direction / distance は候補を残したが Recommendation が0件 | `evidence_zero_candidates` |
 | 推薦が1件以上 | `recommendation_success` |
@@ -131,7 +131,7 @@ build_chat_candidates_with_eligibility()
     ├─ Direction Filter が実行不能（origin / referenceDirections 不正）
     │      -> direction_filter_unavailable   ← Group A は常に先
     │
-    ├─ eligible 候補 0 件
+    ├─ source_count > 0 かつ eligible_count == 0
     │      -> recommendation_eligibility_zero_candidates
     │
     ├─ Direction Filter 後 0 件 / 60km 圏内 0 件
@@ -146,6 +146,19 @@ build_chat_candidates_with_eligibility()
 `direction_filter_unavailable` を eligibility 判定より先に置くのは、`filter_candidates_by_direction()` の `None` 契約が **origin / referenceDirections だけ**で決まり候補件数に依存しないためである（`compass-mvp-runtime-contract.md` Section 8 の Group A / Group B 分離）。この順序でも「候補が0件だから unavailable になる」ことは起きない。
 
 `recommendation_eligibility_zero_candidates` は**正常な product result** であり technical error ではない。候補生成は正常に完了しており、共有 Eligibility 契約を満たす Shrine が存在しなかったという事実だけを表す。ineligible な Shrine をここで復活させない。
+
+成立条件は **`source_count > 0` かつ `eligible_count == 0`** に限る。
+
+```text
+source_count > 0 && eligible_count == 0
+    -> recommendation_eligibility_zero_candidates
+
+source_count == 0 && eligible_count == 0
+    -> eligibility failure ではない
+       （既存の zero-candidate flow がそのまま扱う。専用 state を追加しない）
+```
+
+候補 source そのものが 0 件の状態は「Eligibility が候補を落とした」ではないため、この state で表現しない。空 pool は従来どおり Direction Filter を通り `direction_zero_candidates` に落ちる。
 
 #### Compass が eligibility を判定しないための metadata
 
@@ -163,12 +176,12 @@ class CandidateBuildResult:
 
 `build_chat_candidates()` は従来どおり候補 list のみを返す薄い adapter として残る（Concierge 側の呼び出し形は不変）。`build_chat_candidates_with_eligibility()` が内訳付きの正本である。
 
-`CompassRecommendationResult` は `source_candidate_count` / `eligible_candidate_count` としてこの値をそのまま保持する。これにより「候補 source は存在したが Eligibility で全滅した」と「そもそも候補 source が0件だった」も観測できる（state はどちらも `recommendation_eligibility_zero_candidates`）。
+`CompassRecommendationResult` は `source_candidate_count` / `eligible_candidate_count` としてこの値をそのまま保持する。この2つが「候補 source は存在したが Eligibility で全滅した」と「そもそも候補 source が0件だった」を分ける判定入力そのものであり、後者は `recommendation_eligibility_zero_candidates` にならない。
 
 #### API / frontend / analytics
 
 - API は `recommendation_eligibility_zero_candidates` を **HTTP 200** でそのまま返す（`invalid_purpose` のみ 400）。
-- frontend の state union（`CompassUiState` / `CompassRecommendationsResponse["state"]`）に追加済み。backend error / direction failure / `direction_zero_candidates` / `evidence_zero_candidates` のいずれとしても扱わない。表示は既存の空結果表示（`DetailSection variant="tertiary"` + `no_common_direction` と同じ `/concierge` 導線）を再利用する。
+- frontend の state union（`CompassUiState` / `CompassRecommendationsResponse["state"]`）に追加済み。backend error / direction failure / `direction_zero_candidates` / `evidence_zero_candidates` のいずれとしても扱わない。表示は既存の空結果表示（`DetailSection variant="tertiary"` + `no_common_direction` と同じ `/concierge` 導線）を再利用する。文言は**現在の条件に限定した表現**とし、「該当する神社が1件も登録されていない」と断定しない（本文: 「現在の条件では、ご案内に必要な情報を確認できる神社が見つかりませんでした。」）。
 - analytics は既存の `compass_result` イベントの `result_state` として独立した値で送出する。他の zero カテゴリへ統合しない。
 
 ## 変更していないもの
