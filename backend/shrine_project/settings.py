@@ -380,6 +380,16 @@ AUTO_GEOCODE_ON_SAVE = os.getenv("AUTO_GEOCODE_ON_SAVE", "0").lower() in ("1", "
 GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY", "")
 GOOGLE_PLACES_API_KEY = os.getenv("GOOGLE_PLACES_API_KEY", "") or GOOGLE_MAPS_API_KEY
 
+# Google Places upstream kill switch。
+# 明示的に OFF（0/false/no/off）にした時だけ Google への HTTP request を停止する。
+# 未設定時は既存動作のまま有効。
+GOOGLE_PLACES_ENABLED = os.getenv("GOOGLE_PLACES_ENABLED", "1").strip().lower() not in (
+    "0",
+    "false",
+    "no",
+    "off",
+)
+
 # Stripe
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")

@@ -134,7 +134,7 @@ export default function ConciergeTopRecommendationHero({
   ]);
 
   return (
-    <section className="rounded-[30px] border border-emerald-200 bg-gradient-to-b from-emerald-50/80 to-white p-6 shadow-lg shadow-emerald-900/10 ring-1 ring-emerald-100">
+    <section className="rounded-[30px] border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-6 shadow-[var(--kt-shadow-high)]">
       <div className="space-y-5">
         <div className="space-y-3">
           <div className="space-y-2">
@@ -148,7 +148,7 @@ export default function ConciergeTopRecommendationHero({
                 {visibleTrustLabels.map((label) => (
                   <span
                     key={label}
-                    className="rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-emerald-800 ring-1 ring-emerald-100"
+                    className="rounded-full bg-[var(--kt-color-background-subtle)] px-2.5 py-1 text-[11px] font-semibold text-[var(--kt-color-text-secondary)]"
                   >
                     {label}
                   </span>
@@ -163,13 +163,13 @@ export default function ConciergeTopRecommendationHero({
 
         {conclusionLines.length > 0 ? (
           <div
-            className="rounded-[var(--kt-radius-card)] border border-emerald-100 bg-white/70 px-4 py-3 shadow-sm shadow-emerald-900/5"
+            className="rounded-[var(--kt-radius-card)] border border-[var(--kt-color-border-default)] bg-[var(--kt-color-background-subtle)] px-4 py-3 shadow-[var(--kt-shadow-low)]"
             data-testid="recommendation-conclusion"
           >
             <div className="space-y-1.5">
               <p className="text-[11px] font-semibold tracking-[0.14em] text-emerald-700">相談内容・ご利益との一致</p>
               {conclusionLines.map((line, index) => (
-                <p key={index} className="text-sm font-semibold leading-6 text-slate-800">
+                <p key={index} className="text-sm font-semibold leading-6 text-[var(--kt-color-text-primary)]">
                   {line}
                 </p>
               ))}
@@ -184,7 +184,7 @@ export default function ConciergeTopRecommendationHero({
           // CTA below (Required UI, §15 PR5). "参考情報" makes explicit that this is
           // knowledge about the candidate, not a reason it was recommended.
           <div className="px-1" data-testid="recommendation-explanation-only-fact">
-            <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold tracking-[0.08em] text-slate-500">
+            <span className="inline-flex items-center rounded-full bg-[var(--kt-color-background-subtle)] px-2 py-0.5 text-[10px] font-semibold tracking-[0.08em] text-[var(--kt-color-text-secondary)]">
               参考情報
             </span>
             <p className="mt-1 text-xs leading-5 text-[var(--kt-color-text-muted)]">{explanationOnlyFactText}</p>
@@ -193,7 +193,7 @@ export default function ConciergeTopRecommendationHero({
 
         {nextActionLines.length > 0 ? (
           <div
-            className="rounded-[var(--kt-radius-card)] border border-teal-100 bg-teal-50/70 px-4 py-3 shadow-sm shadow-teal-900/5"
+            className="rounded-[var(--kt-radius-card)] border border-[var(--kt-color-border-default)] bg-[var(--kt-color-background-subtle)] px-4 py-3 shadow-[var(--kt-shadow-low)]"
             data-testid="recommendation-next-action"
           >
             <div className="space-y-1">
