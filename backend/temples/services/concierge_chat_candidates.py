@@ -19,7 +19,7 @@ from __future__ import annotations
 import logging
 import math
 from typing import Any, Dict, Iterable, List, Optional
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 
 from django.db.models import Q
 
@@ -146,6 +146,33 @@ def _distance_m(
     return int(2 * r * math.atan2(math.sqrt(a), math.sqrt(1 - a)))
 
 
+@dataclass(frozen=True)
+class CandidateBuildResult:
+    """build_chat_candidates()の結果と、Shared Recommendation Eligibility gateが
+    何を落としたかの内訳。
+
+    呼び出し側（Compass orchestrator）が
+
+        「候補sourceは存在したが、Recommendation Eligibilityで全て除外された」
+
+    と
+
+        「eligibleな候補は存在したが、Direction Filterで全て落ちた」
+
+    を区別できるようにするための最小限のmetadataだけを持つ。eligibility判定
+    そのものは共有層（is_recommendation_eligible）に一本化されたままであり、
+    呼び出し側はKnowledge / Evidenceを一切参照しない。
+    """
+
+    candidates: List[Dict[str, Any]]
+    # gate適用前に候補sourceとして取得できたShrine数（QA除外・座標/住所条件の後）。
+    source_count: int
+    # gate通過数（= len(candidates)）。
+    eligible_count: int
+    # gateで除外した数（source_count - eligible_count）。
+    ineligible_count: int
+
+
 def build_chat_candidates(
     *,
     goriyaku_tag_ids: Optional[List[int]] = None,
@@ -156,6 +183,33 @@ def build_chat_candidates(
     trace_id: str | None = None,
     interpretation_profile: dict[str, Any] | None = None,
 ) -> List[Dict[str, Any]]:
+    """候補listのみを返す既存の公開API（Concierge側の呼び出し形は不変）。
+
+    eligibilityの内訳が必要な呼び出し側は
+    build_chat_candidates_with_eligibility() を使う。判定・生成ロジックは
+    そちらに一本化されており、ここは薄いadapterに過ぎない。
+    """
+    return build_chat_candidates_with_eligibility(
+        goriyaku_tag_ids=goriyaku_tag_ids,
+        area=area,
+        lat=lat,
+        lng=lng,
+        limit=limit,
+        trace_id=trace_id,
+        interpretation_profile=interpretation_profile,
+    ).candidates
+
+
+def build_chat_candidates_with_eligibility(
+    *,
+    goriyaku_tag_ids: Optional[List[int]] = None,
+    area: Optional[str] = None,
+    lat: Optional[float] = None,
+    lng: Optional[float] = None,
+    limit: int = DEFAULT_LIMIT,
+    trace_id: str | None = None,
+    interpretation_profile: dict[str, Any] | None = None,
+) -> CandidateBuildResult:
     qs = Shrine.objects.all()
 
     if goriyaku_tag_ids:
@@ -302,4 +356,9 @@ def build_chat_candidates(
         limit,
     )
 
-    return candidates
+    return CandidateBuildResult(
+        candidates=candidates,
+        source_count=len(shrines),
+        eligible_count=len(candidates),
+        ineligible_count=ineligible_count,
+    )

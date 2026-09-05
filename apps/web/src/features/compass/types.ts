@@ -57,6 +57,7 @@ export type CompassUiState =
   | "invalid_purpose"
   | "direction_filter_unavailable"
   | "no_common_direction"
+  | "recommendation_eligibility_zero_candidates"
   | "direction_zero_candidates"
   | "evidence_zero_candidates"
   | "recommendation_success"
@@ -97,6 +98,7 @@ export type CompassRecommendationsResponse = {
     | "invalid_purpose"
     | "direction_filter_unavailable"
     | "no_common_direction"
+    | "recommendation_eligibility_zero_candidates"
     | "direction_zero_candidates"
     | "evidence_zero_candidates"
     | "recommendation_success";

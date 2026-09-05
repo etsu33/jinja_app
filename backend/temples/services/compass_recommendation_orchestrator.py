@@ -47,7 +47,7 @@ from temples.domain.need_tags import NEED_TAGS
 from temples.services.compass_direction_filter import filter_candidates_by_direction
 from temples.services.compass_runtime import NoCommonDirectionResult
 from temples.services.concierge_chat import build_chat_recommendations
-from temples.services.concierge_chat_candidates import build_chat_candidates
+from temples.services.concierge_chat_candidates import build_chat_candidates_with_eligibility
 from temples.services.consultation_interpreter import interpret_consultation
 from temples.services.direction_reference import _coordinate
 
@@ -59,6 +59,12 @@ from temples.services.direction_reference import _coordinate
 STATE_INVALID_PURPOSE = "invalid_purpose"
 STATE_DIRECTION_FILTER_UNAVAILABLE = "direction_filter_unavailable"
 STATE_NO_COMMON_DIRECTION = "no_common_direction"
+# Shared Recommendation Eligibility gate（concierge_chat_candidates）が候補を
+# 全て除外した状態。「方位で落ちた」でも「Recommendationが0件を返した」でもなく、
+# 「共有Eligibility契約を満たすShrineが1件も無かった」という別事実であり、
+# 正常なproduct resultである（technical errorではない）。他のzero状態へ
+# 統合しない。
+STATE_RECOMMENDATION_ELIGIBILITY_ZERO_CANDIDATES = "recommendation_eligibility_zero_candidates"
 STATE_DIRECTION_ZERO_CANDIDATES = "direction_zero_candidates"
 STATE_EVIDENCE_ZERO_CANDIDATES = "evidence_zero_candidates"
 STATE_RECOMMENDATION_SUCCESS = "recommendation_success"
@@ -116,6 +122,12 @@ class CompassRecommendationResult:
     distance_stage_km: Optional[int] = None
     direction_candidate_count: Optional[int] = None
     distance_candidate_count: Optional[int] = None
+    # Shared Recommendation Eligibility gateの内訳（共有層が返す値をそのまま
+    # 保持するだけで、Compassはeligibilityを自分で判定しない）。候補生成へ
+    # 到達しないfail-safe state（invalid_purpose / no_common_direction /
+    # direction_filter_unavailable）ではNone。
+    source_candidate_count: Optional[int] = None
+    eligible_candidate_count: Optional[int] = None
 
 
 def _apply_compass_distance_stage(
@@ -224,12 +236,13 @@ def get_compass_recommendations(
         selected_goriyaku_tag_ids=[],
     )
 
-    candidate_pool = build_chat_candidates(
+    candidate_build = build_chat_candidates_with_eligibility(
         lat=origin_lat,
         lng=origin_lng,
         limit=candidate_pool_limit,
         interpretation_profile=interpretation_profile,
     )
+    candidate_pool = candidate_build.candidates
 
     filtered_candidates = filter_candidates_by_direction(
         candidate_pool,
@@ -237,11 +250,35 @@ def get_compass_recommendations(
         reference_directions=reference_directions,
     )
 
+    # Group A（入力/runtimeがそもそも成立していない）はGroup Bの
+    # product resultより先に判定する。filter_candidates_by_direction()の
+    # None契約はorigin / reference_directionsだけで決まり、候補件数には
+    # 依存しないため、この順序でも「候補が0件だからunavailableになる」ことは
+    # 起きない（compass-mvp-runtime-contract.md Section 8のGroup A/B分離）。
     if filtered_candidates is None:
         return CompassRecommendationResult(
             state=STATE_DIRECTION_FILTER_UNAVAILABLE,
             purpose=purpose_slug,
             direction_context=direction_context,
+            source_candidate_count=candidate_build.source_count,
+            eligible_candidate_count=candidate_build.eligible_count,
+        )
+
+    if candidate_build.eligible_count == 0:
+        # 候補生成は正常に完了したが、Shared Recommendation Eligibility契約を
+        # 満たすShrineが1件も無かった。Direction Filterが候補を落としたのでは
+        # なく、そもそもDirection Filterへ渡せるeligibleな候補が存在しない。
+        # direction_zero_candidates（eligibleな候補はあったが方位で全滅）とは
+        # 区別し、ineligibleなShrineをここで復活させることもしない。
+        return CompassRecommendationResult(
+            state=STATE_RECOMMENDATION_ELIGIBILITY_ZERO_CANDIDATES,
+            purpose=purpose_slug,
+            direction_context=direction_context,
+            direction_candidate_count=None,
+            distance_candidate_count=None,
+            distance_stage_km=None,
+            source_candidate_count=candidate_build.source_count,
+            eligible_candidate_count=candidate_build.eligible_count,
         )
 
     if not filtered_candidates:
@@ -252,6 +289,8 @@ def get_compass_recommendations(
             direction_candidate_count=0,
             distance_candidate_count=0,
             distance_stage_km=None,
+            source_candidate_count=candidate_build.source_count,
+            eligible_candidate_count=candidate_build.eligible_count,
         )
 
     direction_candidate_count = len(filtered_candidates)
@@ -270,6 +309,8 @@ def get_compass_recommendations(
             direction_candidate_count=direction_candidate_count,
             distance_candidate_count=0,
             distance_stage_km=distance_stage_km,
+            source_candidate_count=candidate_build.source_count,
+            eligible_candidate_count=candidate_build.eligible_count,
         )
 
     bias = (
@@ -305,6 +346,8 @@ def get_compass_recommendations(
             direction_candidate_count=direction_candidate_count,
             distance_candidate_count=distance_candidate_count,
             distance_stage_km=distance_stage_km,
+            source_candidate_count=candidate_build.source_count,
+            eligible_candidate_count=candidate_build.eligible_count,
         )
 
     return CompassRecommendationResult(
@@ -315,11 +358,14 @@ def get_compass_recommendations(
         direction_candidate_count=direction_candidate_count,
         distance_candidate_count=distance_candidate_count,
         distance_stage_km=distance_stage_km,
+        source_candidate_count=candidate_build.source_count,
+        eligible_candidate_count=candidate_build.eligible_count,
     )
 
 
 __all__ = [
     "STATE_INVALID_PURPOSE",
+    "STATE_RECOMMENDATION_ELIGIBILITY_ZERO_CANDIDATES",
     "STATE_DIRECTION_FILTER_UNAVAILABLE",
     "STATE_NO_COMMON_DIRECTION",
     "STATE_DIRECTION_ZERO_CANDIDATES",

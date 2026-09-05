@@ -23,7 +23,9 @@ from temples.services import compass_recommendation_orchestrator as compass_orch
 from temples.services.compass_direction_filter import filter_candidates_by_direction
 from temples.services.compass_recommendation_orchestrator import (
     STATE_DIRECTION_FILTER_UNAVAILABLE,
+    STATE_DIRECTION_ZERO_CANDIDATES,
     STATE_EVIDENCE_ZERO_CANDIDATES,
+    STATE_RECOMMENDATION_ELIGIBILITY_ZERO_CANDIDATES,
     STATE_RECOMMENDATION_SUCCESS,
     _apply_compass_distance_stage,
     get_compass_recommendations,
@@ -31,6 +33,7 @@ from temples.services.compass_recommendation_orchestrator import (
 from temples.services.concierge_chat import build_chat_recommendations
 from temples.services.concierge_chat_candidates import (
     build_chat_candidates,
+    build_chat_candidates_with_eligibility,
     filter_recommendation_eligible_candidates,
     is_recommendation_eligible,
 )
@@ -164,14 +167,14 @@ def test_compass_candidate_pool_comes_from_the_same_shared_builder():
     _shrine("不適格神社", latitude=35.3, longitude=135.0)
 
     captured: dict[str, object] = {}
-    original = compass_orch.build_chat_candidates
+    original = compass_orch.build_chat_candidates_with_eligibility
 
     def _spy(**kwargs):
         result = original(**kwargs)
-        captured["names"] = [c["name"] for c in result]
+        captured["names"] = [c["name"] for c in result.candidates]
         return result
 
-    compass_orch.build_chat_candidates = _spy  # type: ignore[assignment]
+    compass_orch.build_chat_candidates_with_eligibility = _spy  # type: ignore[assignment]
     try:
         get_compass_recommendations(
             purpose="career",
@@ -179,7 +182,7 @@ def test_compass_candidate_pool_comes_from_the_same_shared_builder():
             direction_context=NORTH_DIRECTION_CONTEXT,
         )
     finally:
-        compass_orch.build_chat_candidates = original  # type: ignore[assignment]
+        compass_orch.build_chat_candidates_with_eligibility = original  # type: ignore[assignment]
 
     assert captured["names"] == ["適格神社"]
 
@@ -340,7 +343,7 @@ def test_compass_evidence_zero_state_is_not_converted(monkeypatch):
 
 
 def test_compass_eligibility_removal_never_fabricates_or_reports_unavailable():
-    """eligibility gateが候補を全て落とした場合でも、fail-safe stateを返すだけで
+    """eligibility gateが候補を全て落とした場合、専用stateを返すだけで
     fallback推薦を作らず、direction_filter_unavailable（入力不正）にもしない。"""
     _shrine("北の不適格神社", latitude=35.2, longitude=135.0)
 
@@ -348,9 +351,139 @@ def test_compass_eligibility_removal_never_fabricates_or_reports_unavailable():
         purpose="career", origin=ORIGIN, direction_context=NORTH_DIRECTION_CONTEXT
     )
 
+    assert result.state == STATE_RECOMMENDATION_ELIGIBILITY_ZERO_CANDIDATES
     assert result.recommendations == []
     assert result.state != STATE_DIRECTION_FILTER_UNAVAILABLE
     assert result.state != STATE_RECOMMENDATION_SUCCESS
+
+
+# --------------------------------------------------------------------------
+# Compass zero-candidate state separation
+# --------------------------------------------------------------------------
+
+
+def test_all_source_candidates_ineligible_reports_eligibility_zero_state():
+    # 1: 候補sourceは存在するが、全てeligibilityで除外される。
+    for i in range(3):
+        _shrine(f"不適格{i}", latitude=35.2 + i * 0.01, longitude=135.0)
+
+    result = get_compass_recommendations(
+        purpose="career", origin=ORIGIN, direction_context=NORTH_DIRECTION_CONTEXT
+    )
+
+    assert result.state == STATE_RECOMMENDATION_ELIGIBILITY_ZERO_CANDIDATES
+    assert result.state != STATE_DIRECTION_ZERO_CANDIDATES
+    assert result.state != STATE_EVIDENCE_ZERO_CANDIDATES
+    # 候補sourceは存在した -- 「Shrineが1件も無い」ではなくgateが落とした、と
+    # 区別できるmetadataを共有層から受け取っている。
+    assert result.source_candidate_count == 3
+    assert result.eligible_candidate_count == 0
+    # Direction / Distance stageへは到達していない。
+    assert result.direction_candidate_count is None
+    assert result.distance_candidate_count is None
+    assert result.distance_stage_km is None
+
+
+def test_eligibility_zero_state_restores_no_ineligible_shrine():
+    # 2: ineligibleなShrineは静かに復活しない。
+    _shrine("北の不適格神社", latitude=35.2, longitude=135.0)
+
+    result = get_compass_recommendations(
+        purpose="career", origin=ORIGIN, direction_context=NORTH_DIRECTION_CONTEXT
+    )
+
+    assert result.state == STATE_RECOMMENDATION_ELIGIBILITY_ZERO_CANDIDATES
+    assert result.recommendations == []
+
+
+def test_eligible_candidates_removed_by_direction_report_direction_zero():
+    # 3: eligibleな候補は存在するが、方位で全て落ちる。
+    attach_usable_deity_fact(_shrine("南の適格神社", latitude=34.8, longitude=135.0))
+
+    result = get_compass_recommendations(
+        purpose="career", origin=ORIGIN, direction_context=NORTH_DIRECTION_CONTEXT
+    )
+
+    assert result.state == STATE_DIRECTION_ZERO_CANDIDATES
+    assert result.state != STATE_RECOMMENDATION_ELIGIBILITY_ZERO_CANDIDATES
+    assert result.eligible_candidate_count == 1
+    assert result.direction_candidate_count == 0
+
+
+def test_direction_candidates_but_no_recommendations_report_evidence_zero(monkeypatch):
+    # 4: 方位候補は残ったが、Rankingが0件を返す。
+    attach_usable_deity_fact(_shrine("北の適格神社", latitude=35.2, longitude=135.0))
+    monkeypatch.setattr(
+        compass_orch, "build_chat_recommendations", lambda **kwargs: {"recommendations": []}
+    )
+
+    result = get_compass_recommendations(
+        purpose="career", origin=ORIGIN, direction_context=NORTH_DIRECTION_CONTEXT
+    )
+
+    assert result.state == STATE_EVIDENCE_ZERO_CANDIDATES
+    assert result.state != STATE_RECOMMENDATION_ELIGIBILITY_ZERO_CANDIDATES
+    assert result.state != STATE_DIRECTION_ZERO_CANDIDATES
+    assert result.eligible_candidate_count == 1
+    assert result.direction_candidate_count == 1
+
+
+def test_successful_flow_still_reports_recommendation_success():
+    # 5: 成功パスは変わらない。
+    attach_usable_deity_fact(_shrine("北の適格神社", latitude=35.2, longitude=135.0))
+
+    result = get_compass_recommendations(
+        purpose="career", origin=ORIGIN, direction_context=NORTH_DIRECTION_CONTEXT
+    )
+
+    assert result.state == STATE_RECOMMENDATION_SUCCESS
+    assert result.recommendations
+    assert result.eligible_candidate_count == 1
+
+
+def test_all_four_zero_and_success_states_are_distinct_strings():
+    states = {
+        STATE_RECOMMENDATION_ELIGIBILITY_ZERO_CANDIDATES,
+        STATE_DIRECTION_ZERO_CANDIDATES,
+        STATE_EVIDENCE_ZERO_CANDIDATES,
+        STATE_DIRECTION_FILTER_UNAVAILABLE,
+        STATE_RECOMMENDATION_SUCCESS,
+    }
+    assert len(states) == 5
+    assert (
+        STATE_RECOMMENDATION_ELIGIBILITY_ZERO_CANDIDATES
+        == "recommendation_eligibility_zero_candidates"
+    )
+
+
+def test_invalid_input_still_wins_over_eligibility_zero():
+    # Group A（入力/runtime不成立）はGroup B（product result）より先。
+    _shrine("不適格神社", latitude=35.2, longitude=135.0)
+
+    result = get_compass_recommendations(
+        purpose="career", origin=None, direction_context=NORTH_DIRECTION_CONTEXT
+    )
+
+    assert result.state == STATE_DIRECTION_FILTER_UNAVAILABLE
+    assert result.state != STATE_RECOMMENDATION_ELIGIBILITY_ZERO_CANDIDATES
+
+
+def test_shared_builder_reports_eligibility_breakdown():
+    attach_usable_deity_fact(_shrine("適格神社"))
+    _shrine("不適格神社", latitude=35.01, longitude=139.01)
+
+    built = build_chat_candidates_with_eligibility(
+        lat=35.0, lng=139.0, area=None, goriyaku_tag_ids=None, trace_id="t"
+    )
+
+    assert built.source_count == 2
+    assert built.eligible_count == 1
+    assert built.ineligible_count == 1
+    assert [c["name"] for c in built.candidates] == ["適格神社"]
+    # 既存の公開APIは候補listのみを返す形のまま（Concierge側の呼び出しは不変）。
+    assert build_chat_candidates(
+        lat=35.0, lng=139.0, area=None, goriyaku_tag_ids=None, trace_id="t"
+    ) == built.candidates
 
 
 def test_compass_invalid_origin_still_reports_direction_filter_unavailable():

@@ -352,3 +352,40 @@ def test_response_never_leaks_internal_direction_fields(client, shrine_factory):
     direction_context = r.json()["direction_context"]
     assert "excludedDirections" not in direction_context
     assert "luckyDirection" not in direction_context
+
+
+@pytest.mark.django_db
+def test_eligibility_zero_state_is_a_normal_200_result_not_an_error(client, shrine_factory):
+    """Shared Recommendation Eligibility gateが候補を全て除外した状態は、
+    正常なproduct result（HTTP 200）としてそのままAPI契約に載る。
+    backend error（4xx/5xx）にも、他のzero stateにも変換しない。"""
+    shrine_factory(
+        name="北西の不適格神社",
+        latitude=35.25,
+        longitude=134.75,
+        goriyaku="仕事運",
+        usable_knowledge=False,
+    )
+
+    r = client.post(
+        URL,
+        data=json.dumps(
+            {
+                "purpose": "career",
+                "origin": ORIGIN,
+                "birthdate": BIRTHDATE,
+                "target_date": TARGET_DATE,
+            }
+        ),
+        content_type="application/json",
+    )
+
+    assert r.status_code == 200
+    body = r.json()
+    assert body["state"] == "recommendation_eligibility_zero_candidates"
+    assert body["recommendations"] == []
+    # Direction / Distance stageへ到達していないためmetadataはnullのまま
+    # （でっち上げない）。
+    assert body["distance_stage_km"] is None
+    assert body["direction_candidate_count"] is None
+    assert body["distance_candidate_count"] is None
