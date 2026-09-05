@@ -157,13 +157,13 @@ export default function OriginSelector({
         </div>
       ) : null}
 
+      {/* Fail-safe copy only. The alternative route is the「駅名・住所から指定」radio
+          in the group above, so an in-error CTA would duplicate the control sitting
+          right there and make the failure louder than the selection UI itself. */}
       {deviceError && mode === "device" ? (
-        <div role="alert" className="space-y-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
-          <p>{deviceError}</p>
-          <button type="button" onClick={() => switchMode("manual")} className="min-h-11 rounded-lg border border-amber-500 bg-white px-3 py-2 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-700">
-            駅名・住所から指定する
-          </button>
-        </div>
+        <p role="alert" className="text-sm leading-6 text-rose-700">
+          {deviceError}
+        </p>
       ) : null}
 
       <p role="status" aria-live="polite" className="text-sm font-medium text-emerald-800">

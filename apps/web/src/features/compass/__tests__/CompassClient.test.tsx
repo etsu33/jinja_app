@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { vi } from "vitest";
 import CompassClient from "../CompassClient";
 
@@ -445,8 +445,8 @@ describe("CompassClient", () => {
       await openDeviceOrigin();
 
       const alert = await screen.findByRole("alert");
-      expect(alert).toHaveTextContent("位置情報がブロックされています");
-      expect(screen.getByRole("button", { name: "駅名・住所から指定する" })).toBeEnabled();
+      expect(alert.textContent).toBe("現在地を取得できませんでした。位置情報の許可を確認してください。");
+      expect(screen.getByRole("radio", { name: "駅名・住所から指定" })).toBeEnabled();
       // 出発地点は未設定のまま（fallback へ誘導）
       expect(screen.getAllByText("出発地点は設定されていません。").length).toBeGreaterThan(0);
     });
@@ -458,7 +458,7 @@ describe("CompassClient", () => {
       await openDeviceOrigin();
 
       const alert = await screen.findByRole("alert");
-      expect(alert).toHaveTextContent("現在地を取得できませんでした。駅名・住所から指定してください。");
+      expect(alert.textContent).toBe("現在地を取得できませんでした。");
     });
 
     it("POSITION_UNAVAILABLE (code 2) も汎用の取得失敗文言を表示する", async () => {
@@ -467,9 +467,25 @@ describe("CompassClient", () => {
 
       await openDeviceOrigin();
 
-      expect(await screen.findByRole("alert")).toHaveTextContent(
-        "現在地を取得できませんでした。駅名・住所から指定してください。",
-      );
+      expect((await screen.findByRole("alert")).textContent).toBe("現在地を取得できませんでした。");
+    });
+
+    it("失敗表示は重複CTAを内包せず、既存の「駅名・住所から指定」へそのまま移れる", async () => {
+      stubGeolocation(geoError(2));
+      render(<CompassClient />);
+
+      await openDeviceOrigin();
+
+      const alert = await screen.findByRole("alert");
+      // 代替導線はラジオ側に一本化する（エラー領域内にCTAを持たない）
+      expect(within(alert).queryByRole("button")).not.toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole("radio", { name: "駅名・住所から指定" }));
+      });
+
+      expect(screen.getByRole("combobox", { name: "駅名または住所" })).toBeEnabled();
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     });
 
     it("retry: 1回目失敗 → 2回目成功で現在地が設定され、古いエラーが success を上書きしない", async () => {

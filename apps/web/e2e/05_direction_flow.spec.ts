@@ -145,8 +145,9 @@ test.describe("方位条件のWeb E2E", () => {
     await openPersonalize(page);
 
     await page.getByRole("radio", { name: "現在地を使用" }).click();
+    // 失敗表示はコンパクトな文言のみ。代替導線は既存の指定方法radioに一本化されている。
     await expect(
-      page.getByRole("button", { name: "駅名・住所から指定する" }),
+      page.getByText("現在地を取得できませんでした。位置情報の許可を確認してください。"),
     ).toBeVisible();
     await page.getByRole("radio", { name: "駅名・住所から指定" }).click();
     await page.getByLabel("駅名または住所").fill("東京駅");
