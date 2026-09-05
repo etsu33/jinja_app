@@ -526,18 +526,18 @@ export default function ConciergeClientFull() {
     () =>
       resolveDisplayName({
         sessionNickname: sessionState.sessionNickname,
-        profileNickname: user?.nickname ?? null,
+        profileNickname: user?.profile?.nickname ?? null,
       }),
-    [sessionState.sessionNickname, user?.nickname],
+    [sessionState.sessionNickname, user?.profile?.nickname],
   );
 
   const displayLabel = useMemo(
     () =>
       resolveDisplayLabel({
         sessionNickname: sessionState.sessionNickname,
-        profileNickname: user?.nickname ?? null,
+        profileNickname: user?.profile?.nickname ?? null,
       }),
-    [sessionState.sessionNickname, user?.nickname],
+    [sessionState.sessionNickname, user?.profile?.nickname],
   );
 
   const [liveUnified, setLiveUnified] = useState<UnifiedConciergeResponse | null>(null);
