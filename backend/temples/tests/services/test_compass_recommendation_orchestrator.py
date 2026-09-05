@@ -7,6 +7,7 @@ from unittest.mock import patch
 import pytest
 
 from temples.models import Shrine
+from temples.tests.support.recommendation_eligibility import attach_usable_deity_fact
 from temples.services import compass_recommendation_orchestrator as orchestrator
 from temples.services.compass_recommendation_orchestrator import (
     STATE_DIRECTION_FILTER_UNAVAILABLE,
@@ -40,6 +41,7 @@ def shrine_factory(db):
         goriyaku: str = "",
         address: str = "東京都千代田区",
         popular_score: float = 0.0,
+        usable_knowledge: bool = True,
     ) -> Shrine:
         shrine = Shrine(
             name_jp=name,
@@ -50,7 +52,13 @@ def shrine_factory(db):
             popular_score=popular_score,
         )
         Shrine.objects.bulk_create([shrine])
-        return Shrine.objects.get(pk=shrine.pk)
+        created = Shrine.objects.get(pk=shrine.pk)
+        if usable_knowledge:
+            # Shared Recommendation Eligibility gate（build_chat_candidates）を
+            # 通過させるためのusable Deity Fact。Compass側にeligibility判定は
+            # 一切実装していない -- 共有層の判定をそのまま受けている。
+            attach_usable_deity_fact(created, display_name=f"{name}の祭神")
+        return created
 
     return _factory
 

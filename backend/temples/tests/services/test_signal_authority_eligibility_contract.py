@@ -28,6 +28,7 @@ from __future__ import annotations
 import pytest
 
 from temples.models import GoriyakuTag, Shrine
+from temples.tests.support.recommendation_eligibility import attach_usable_deity_fact
 from temples.services.concierge_chat import build_chat_recommendations
 from temples.services.concierge_chat_candidates import build_chat_candidates
 
@@ -42,10 +43,13 @@ def shrine_factory(db):
             longitude=139.0,
             popular_score=1.0,
         )
+        usable_knowledge = overrides.pop("usable_knowledge", True)
         base.update(overrides)
         shrine = Shrine.objects.create(**base)
         if goriyaku_tags:
             shrine.goriyaku_tags.set(goriyaku_tags)
+        if usable_knowledge:
+            attach_usable_deity_fact(shrine, display_name=f"{name}の祭神")
         return shrine
 
     return _factory

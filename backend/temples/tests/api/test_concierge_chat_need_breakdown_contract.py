@@ -3,7 +3,27 @@ import json
 
 import pytest
 
+from temples.models import Shrine
+from temples.tests.support.recommendation_eligibility import attach_usable_deity_fact
+
 URL = "/api/concierge/chat/"
+
+
+def _eligible_shrine(name: str, *, latitude: float = 35.0, longitude: float = 139.0) -> Shrine:
+    """Shared Recommendation Eligibility gateを通過できるShrineを1件作る。
+
+    requestで持ち込まれる候補も共有gateを通るため、usable Knowledge Factを
+    持つShrineを指すshrine_idが必要になる（ineligibleな候補のfallback再流入禁止）。
+    """
+    shrine = Shrine.objects.create(
+        name_jp=name,
+        address="東京都千代田区1-1",
+        latitude=latitude,
+        longitude=longitude,
+    )
+    attach_usable_deity_fact(shrine)
+    return shrine
+
 
 # This contract test assumes LLM enabled so orchestrator is used.
 @pytest.mark.django_db
@@ -97,7 +117,11 @@ def test_concierge_chat_need_and_breakdown_contract(client, monkeypatch, setting
         "birthdate": "1984-05-15",
         "lat": 35.0,
         "lng": 139.0,
-        "candidates": [{"name": "A"}, {"name": "B"}, {"name": "C"}],
+        "candidates": [
+            {"shrine_id": _eligible_shrine("A").id, "name": "A"},
+            {"shrine_id": _eligible_shrine("B").id, "name": "B"},
+            {"shrine_id": _eligible_shrine("C").id, "name": "C"},
+        ],
     }
 
     r = client.post(URL, data=json.dumps(payload), content_type="application/json")
@@ -189,6 +213,7 @@ def test_concierge_chat_result_state_and_reason_source_contract(client, monkeypa
         "goriyaku_tag_ids": [999],  # どの候補にも一致しない -> fallback を起こす
         "candidates": [
             {
+                "shrine_id": _eligible_shrine("A", latitude=35.001, longitude=139.001).id,
                 "name": "A",
                 "lat": 35.001,
                 "lng": 139.001,
@@ -197,6 +222,7 @@ def test_concierge_chat_result_state_and_reason_source_contract(client, monkeypa
                 "popular_score": 8.0,
             },
             {
+                "shrine_id": _eligible_shrine("B", latitude=35.002, longitude=139.002).id,
                 "name": "B",
                 "lat": 35.002,
                 "lng": 139.002,
@@ -205,6 +231,7 @@ def test_concierge_chat_result_state_and_reason_source_contract(client, monkeypa
                 "popular_score": 5.0,
             },
             {
+                "shrine_id": _eligible_shrine("C", latitude=35.003, longitude=139.003).id,
                 "name": "C",
                 "lat": 35.003,
                 "lng": 139.003,
@@ -265,6 +292,7 @@ def test_concierge_chat_explanation_payload_v2_contract(client, monkeypatch, set
         "lng": 139.0,
         "candidates": [
             {
+                "shrine_id": _eligible_shrine("A").id,
                 "name": "A",
                 "goriyaku": "仕事運・勝運",
                 "astro_tags": ["career"],

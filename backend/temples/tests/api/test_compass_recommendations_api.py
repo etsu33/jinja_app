@@ -5,6 +5,7 @@ import json
 import pytest
 
 from temples.models import Shrine
+from temples.tests.support.recommendation_eligibility import attach_usable_deity_fact
 
 URL = "/api/compass/recommendations/"
 ORIGIN = {"lat": 35.0, "lng": 135.0}
@@ -21,7 +22,14 @@ TARGET_DATE = "2026-09-15"
 
 @pytest.fixture
 def shrine_factory(db):
-    def _factory(*, name: str, latitude: float, longitude: float, goriyaku: str = "") -> Shrine:
+    def _factory(
+        *,
+        name: str,
+        latitude: float,
+        longitude: float,
+        goriyaku: str = "",
+        usable_knowledge: bool = True,
+    ) -> Shrine:
         shrine = Shrine(
             name_jp=name,
             address="東京都千代田区",
@@ -30,7 +38,10 @@ def shrine_factory(db):
             goriyaku=goriyaku,
         )
         Shrine.objects.bulk_create([shrine])
-        return Shrine.objects.get(pk=shrine.pk)
+        created = Shrine.objects.get(pk=shrine.pk)
+        if usable_knowledge:
+            attach_usable_deity_fact(created, display_name=f"{name}の祭神")
+        return created
 
     return _factory
 
@@ -341,3 +352,40 @@ def test_response_never_leaks_internal_direction_fields(client, shrine_factory):
     direction_context = r.json()["direction_context"]
     assert "excludedDirections" not in direction_context
     assert "luckyDirection" not in direction_context
+
+
+@pytest.mark.django_db
+def test_eligibility_zero_state_is_a_normal_200_result_not_an_error(client, shrine_factory):
+    """Shared Recommendation Eligibility gateが候補を全て除外した状態は、
+    正常なproduct result（HTTP 200）としてそのままAPI契約に載る。
+    backend error（4xx/5xx）にも、他のzero stateにも変換しない。"""
+    shrine_factory(
+        name="北西の不適格神社",
+        latitude=35.25,
+        longitude=134.75,
+        goriyaku="仕事運",
+        usable_knowledge=False,
+    )
+
+    r = client.post(
+        URL,
+        data=json.dumps(
+            {
+                "purpose": "career",
+                "origin": ORIGIN,
+                "birthdate": BIRTHDATE,
+                "target_date": TARGET_DATE,
+            }
+        ),
+        content_type="application/json",
+    )
+
+    assert r.status_code == 200
+    body = r.json()
+    assert body["state"] == "recommendation_eligibility_zero_candidates"
+    assert body["recommendations"] == []
+    # Direction / Distance stageへ到達していないためmetadataはnullのまま
+    # （でっち上げない）。
+    assert body["distance_stage_km"] is None
+    assert body["direction_candidate_count"] is None
+    assert body["distance_candidate_count"] is None

@@ -6,6 +6,10 @@ from django.utils import timezone
 
 from temples.models import PlaceRef, Shrine, ShrineDeity, ShrineHistory, ShrineKnowledgeSource
 from temples.services.concierge_chat_candidates import build_chat_candidates
+from temples.tests.support.recommendation_eligibility import (
+    attach_usable_deity_fact,
+    attach_usable_history_fact,
+)
 
 
 @pytest.fixture
@@ -18,6 +22,7 @@ def shrine_factory(db):
         address: str = "東京都千代田区",
         place_id: str | None = None,
         popular_score: float = 0.0,
+        usable_knowledge: bool = True,
     ) -> Shrine:
         place_ref = None
         if place_id:
@@ -32,7 +37,12 @@ def shrine_factory(db):
             place_ref=place_ref,
         )
         Shrine.objects.bulk_create([shrine])
-        return Shrine.objects.get(pk=shrine.pk)
+        created = Shrine.objects.get(pk=shrine.pk)
+        if usable_knowledge:
+            # Shared Recommendation Eligibility gate: 候補に載るには
+            # usable Deity/History Factが最低1件必要。
+            attach_usable_deity_fact(created, display_name=f"{name}の祭神")
+        return created
 
     return _factory
 
@@ -202,7 +212,10 @@ def _create_source(verification_status: str = "source_confirmed") -> ShrineKnowl
 
 @pytest.mark.django_db
 def test_candidates_include_fact_ready_knowledge_deities_and_histories(shrine_factory):
-    shrine = shrine_factory(name="Knowledge神社", latitude=35.0, longitude=139.0)
+    # このtestは自前でusable Deity/Historyを作るため、factoryの自動付与は使わない。
+    shrine = shrine_factory(
+        name="Knowledge神社", latitude=35.0, longitude=139.0, usable_knowledge=False
+    )
     source = _create_source("source_confirmed")
 
     deity = ShrineDeity.objects.create(
@@ -226,7 +239,14 @@ def test_candidates_include_fact_ready_knowledge_deities_and_histories(shrine_fa
 
 @pytest.mark.django_db
 def test_candidates_exclude_non_fact_ready_knowledge(shrine_factory):
-    shrine = shrine_factory(name="Draft神社", latitude=35.0, longitude=139.0)
+    # usable_knowledge=False にした上で、eligibilityはusable History Factで
+    # 満たす。これによりcandidateには載るが、draft Deityはknowledge_deitiesへ
+    # 現れない -- Evidence Gateのusable判定がeligibility gateとは独立に
+    # 効いていることを示す。
+    shrine = shrine_factory(
+        name="Draft神社", latitude=35.0, longitude=139.0, usable_knowledge=False
+    )
+    attach_usable_history_fact(shrine)
     source = _create_source("source_confirmed")
 
     deity = ShrineDeity.objects.create(

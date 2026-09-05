@@ -37,6 +37,7 @@ type CompassResultState =
   | "invalid_purpose"
   | "direction_filter_unavailable"
   | "no_common_direction"
+  | "recommendation_eligibility_zero_candidates"
   | "direction_zero_candidates"
   | "evidence_zero_candidates"
   | "recommendation_success"
@@ -313,6 +314,29 @@ export default function CompassClient() {
                 no new route, no query params, no Compass personal input
                 (birthdate/origin/purpose) forwarded. This is the one primary
                 continuation; retrying identical inputs is never suggested. */}
+            <Link
+              href="/concierge"
+              className="inline-flex min-h-11 items-center rounded-[var(--kt-radius-pill)] border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] px-4 py-2 text-sm font-semibold text-[var(--kt-color-text-secondary)] hover:bg-[var(--kt-color-background-subtle)]"
+            >
+              コンシェルジュで相談する
+            </Link>
+          </div>
+        </DetailSection>
+      ) : null}
+
+      {/* Shared Recommendation Eligibility gateが候補を全て除外した状態
+          (docs/knowledge/recommendation-eligibility-contract.md)。
+          backend error でも direction failure でもなく、
+          direction_zero_candidates / evidence_zero_candidates とも
+          別の正常なproduct resultとして表示する。既存の空結果表示
+          (DetailSection variant="tertiary") をそのまま再利用し、
+          no_common_direction と同じ /concierge 導線だけを添える。 */}
+      {uiState === "recommendation_eligibility_zero_candidates" ? (
+        <DetailSection title="ご案内できる参拝候補がまだありません" variant="tertiary">
+          <div className="space-y-3">
+            <p className="text-sm leading-6 text-[var(--kt-color-text-secondary)]">
+              方向の参考情報は問題ありません。ご案内に必要な由緒・御祭神の情報が揃った神社が、現在まだ登録されていません。
+            </p>
             <Link
               href="/concierge"
               className="inline-flex min-h-11 items-center rounded-[var(--kt-radius-pill)] border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] px-4 py-2 text-sm font-semibold text-[var(--kt-color-text-secondary)] hover:bg-[var(--kt-color-background-subtle)]"
