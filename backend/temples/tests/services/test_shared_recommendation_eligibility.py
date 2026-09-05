@@ -374,14 +374,29 @@ def test_all_source_candidates_ineligible_reports_eligibility_zero_state():
     assert result.state == STATE_RECOMMENDATION_ELIGIBILITY_ZERO_CANDIDATES
     assert result.state != STATE_DIRECTION_ZERO_CANDIDATES
     assert result.state != STATE_EVIDENCE_ZERO_CANDIDATES
-    # 候補sourceは存在した -- 「Shrineが1件も無い」ではなくgateが落とした、と
-    # 区別できるmetadataを共有層から受け取っている。
+    # このstateの成立条件は source_count > 0 AND eligible_count == 0。
+    # 「Shrineが1件も無い」ではなくgateが落とした、と区別できる。
     assert result.source_candidate_count == 3
+    assert result.source_candidate_count > 0
     assert result.eligible_candidate_count == 0
     # Direction / Distance stageへは到達していない。
     assert result.direction_candidate_count is None
     assert result.distance_candidate_count is None
     assert result.distance_stage_km is None
+
+
+def test_no_source_candidates_is_not_classified_as_eligibility_failure():
+    # 2: source_count == 0（候補sourceそのものが0件）はeligibility failureでは
+    # ない。既存のzero-candidate flowへそのまま流し、新しいstateも追加しない。
+    result = get_compass_recommendations(
+        purpose="career", origin=ORIGIN, direction_context=NORTH_DIRECTION_CONTEXT
+    )
+
+    assert result.state != STATE_RECOMMENDATION_ELIGIBILITY_ZERO_CANDIDATES
+    assert result.state == STATE_DIRECTION_ZERO_CANDIDATES
+    assert result.source_candidate_count == 0
+    assert result.eligible_candidate_count == 0
+    assert result.recommendations == []
 
 
 def test_eligibility_zero_state_restores_no_ineligible_shrine():
