@@ -137,14 +137,14 @@ export function ShrineDeepDivePrompt({ shrineId }: Props) {
         onChange={(event) => setQuestion(event.target.value)}
         maxLength={QUESTION_MAX_LENGTH}
         placeholder="例：誰を祀っていますか？ / なぜ創建されたのですか？"
-        className="mt-3 w-full rounded-[var(--kt-radius-panel)] border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] px-3 py-2 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-[var(--kt-color-border-focus)]"
+        className="mt-3 w-full rounded-[var(--kt-radius-panel)] border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] px-3 py-2 text-sm text-[var(--kt-color-text-primary)] outline-none placeholder:text-[var(--kt-color-text-muted)] focus:border-[var(--kt-color-border-focus)]"
       />
 
       <button
         type="button"
         disabled={!canSubmit}
         onClick={handleSubmit}
-        className="mt-3 w-full rounded-2xl bg-[var(--kt-color-text-primary)] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+        className="mt-3 w-full rounded-2xl bg-[var(--kt-color-action-primary)] px-4 py-2 text-sm font-semibold text-[var(--kt-color-background-base)] transition hover:bg-[var(--kt-color-action-primary-hover)] disabled:cursor-not-allowed disabled:opacity-60"
       >
         {submitting ? "回答を生成中..." : "質問する"}
       </button>
