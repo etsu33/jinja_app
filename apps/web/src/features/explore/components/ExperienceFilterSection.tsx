@@ -12,10 +12,10 @@ type ExperienceFilterSectionProps = {
 
 export function ExperienceFilterSection({ activeTag, onSelectTag }: ExperienceFilterSectionProps) {
   return (
-    <section className="rounded-3xl border border-stone-200/25 bg-stone-50/30 p-4">
+    <section className="rounded-3xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-background-subtle)] p-4">
       <div className="space-y-1">
-        <p className="text-[11px] font-medium tracking-[0.2em] text-stone-500">EXPERIENCE</p>
-        <h2 className="text-sm font-medium text-stone-800">どんな時間を過ごしたいですか</h2>
+        <p className="text-[11px] font-medium tracking-[0.2em] text-[var(--kt-color-text-muted)]">EXPERIENCE</p>
+        <h2 className="text-sm font-medium text-[var(--kt-color-text-primary)]">どんな時間を過ごしたいですか</h2>
       </div>
 
       <div className="mt-4 space-y-4">
@@ -36,7 +36,7 @@ type FilterTagGroupProps = {
 function FilterTagGroup({ title, tags, activeTag, onSelectTag }: FilterTagGroupProps) {
   return (
     <div className="space-y-2">
-      <p className="text-[11px] font-medium text-stone-500">{title}</p>
+      <p className="text-[11px] font-medium text-[var(--kt-color-text-muted)]">{title}</p>
       <div className="flex flex-wrap gap-2">
         {tags.map((tag) => {
           const isActive = tag === activeTag;
@@ -51,7 +51,7 @@ function FilterTagGroup({ title, tags, activeTag, onSelectTag }: FilterTagGroupP
                 "rounded-full border px-3 py-1.5 text-xs font-medium transition",
                 isActive
                   ? "border-emerald-200/70 bg-emerald-50/80 text-emerald-700"
-                  : "border-stone-200/40 bg-white/65 text-stone-600 hover:bg-stone-100/45",
+                  : "border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] text-[var(--kt-color-text-secondary)] hover:bg-[var(--kt-color-background-subtle)]",
               ].join(" ")}
             >
               {tag}
