@@ -62,9 +62,9 @@ function fillMinimumValidInput() {
   fireEvent.click(screen.getByRole("button", { name: "変更する" }));
   fireEvent.click(screen.getByRole("radio", { name: "都道府県から指定" }));
   fireEvent.change(screen.getByLabelText("都道府県"), { target: { value: "東京都" } });
-  fireEvent.change(screen.getByLabelText("生年月日（方位計算に使用）"), {
-    target: { value: "1990-01-01" },
-  });
+  fireEvent.change(screen.getByLabelText("生年月日の年"), { target: { value: "1990" } });
+  fireEvent.change(screen.getByLabelText("生年月日の月"), { target: { value: "01" } });
+  fireEvent.change(screen.getByLabelText("生年月日の日"), { target: { value: "01" } });
 }
 
 async function submit() {
