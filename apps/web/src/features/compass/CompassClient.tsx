@@ -426,7 +426,7 @@ export default function CompassClient({
             </div>
             {isLoggedIn ? (
               <p className="text-xs text-[var(--kt-color-text-muted)]">
-                ログイン中は次回以降も利用できるよう保存されます。
+                ログイン中は、生年月日を保存してコンシェルジュとコンパスで共通利用します。
               </p>
             ) : null}
             {missingBirthdate ? (
