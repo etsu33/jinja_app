@@ -199,3 +199,32 @@ D4 RankingLog: REMOVE
 D5 PlacesSeed / PlacesSeedState: RESTORE_NOW
 
 Status: MOTHER_SHIP_DECIDED
+
+
+---
+
+## Implementation Validation / QA Evidence
+
+Date: 2026-09-14
+Status: VALIDATED_FOR_PR
+
+Mother Ship Decisions D1-D5 were re-validated against the current runtime before Production remediation.
+
+Validation results:
+- Like / ConciergeRecommendationClickLog / ConciergeHistory / RankingLog: no current runtime requirement contradicting REMOVE was found.
+- Favorite remains the active saved-shrine authority.
+- ConciergeThread and the current visit / reflection / recommendation structures remain the active concierge-history path.
+- Current ranking does not require RankingLog.
+- ConciergeRecommendationClickLog has no active production writer/read path requiring restoration.
+- PlacesSeed / PlacesSeedState retain live management-command read/write responsibility and remain RESTORE_NOW.
+- Migration 0107 restores only missing PlacesSeed tables from Django schema state and preserves ProjectState.
+- Migration 0108 retires the four legacy models using SeparateDatabaseAndState and DROP TABLE IF EXISTS without CASCADE.
+- 0107 / 0108 dedicated migration tests: 23 passed after correcting the test-only NoGIS MigrationLoader assumption.
+- The NoGIS test fix is scoped to test_migration_0108_remove_legacy_temples_models.py; .env.test, settings.py, and migration implementations were not changed.
+- python manage.py makemigrations --check --dry-run: No changes detected.
+- Main-lineage migrate --plan resolved the dependency chain through 0105 -> 0106 -> 0107 -> 0108.
+- The local --plan output is not the Production execution plan because the local migration ledger is behind Production.
+
+Production application is NOT part of this validation PR. Production remediation must proceed through a separate Migration Gate, remain app/target scoped, and must not use bare migrate or --fake.
+
+Status: IMPLEMENTATION_VALIDATED_AWAITING_PRODUCTION_GATE
