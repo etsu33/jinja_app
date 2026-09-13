@@ -1,0 +1,191 @@
+// apps/web/src/app/privacy/page.tsx
+//
+// 記載方針:
+//   - 現行コードで確認できる事実だけを書く。
+//   - 保存期間 / 削除範囲 / 事業者情報など、コードから確認できないものは
+//     「まだ定めていない」「お問い合わせで承る」と書き、具体的な期間や方式を捏造しない。
+//   - 外部生成AIについては Mother Ship 確定事項に従い、現在送信していない旨を明記する。
+// 色は既存のDark Forest Semantic Tokenのみを使い、新規Tokenは追加しない。
+
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "プライバシーポリシー | KAMI MUSUBI",
+  description:
+    "KAMI MUSUBIが取得する情報、その利用目的、外部サービスの利用および外部生成AIの取扱いについて説明します。",
+};
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="mt-8">
+      <h2 className="text-sm font-semibold text-[var(--kt-color-text-primary)]">{title}</h2>
+      <div className="mt-2 space-y-2 text-sm leading-6 text-[var(--kt-color-text-secondary)]">
+        {children}
+      </div>
+    </section>
+  );
+}
+
+export default function PrivacyPolicyPage() {
+  return (
+    <article className="mx-auto w-full max-w-2xl px-4 py-8">
+      <h1 className="text-xl font-semibold text-[var(--kt-color-text-primary)]">
+        プライバシーポリシー
+      </h1>
+      <p className="mt-2 text-sm leading-6 text-[var(--kt-color-text-secondary)]">
+        KAMI MUSUBI（以下「本サービス」）における、利用者の情報の取扱いについて説明します。
+      </p>
+
+      <Section title="1. 取得する情報">
+        <p>本サービスは、次の情報を取得します。</p>
+        <ul className="list-disc space-y-1 pl-5">
+          <li>アカウント情報：ユーザー名、メールアドレス</li>
+          <li>
+            プロフィール情報：ニックネーム、自己紹介、アイコン画像、生年月日、出生時刻、出生地、公開設定。
+            いずれも利用者が任意で入力・変更できます。
+          </li>
+          <li>相談内容：コンシェルジュへ送信された相談のテキストおよびその履歴</li>
+          <li>
+            神社に関する行動情報：お気に入り、参拝記録、ふりかえり、御朱印の画像、いいね、画面の閲覧・操作ログ
+          </li>
+          <li>位置情報：利用者が許可した場合の、ブラウザから取得する現在地</li>
+          <li>
+            決済に関する情報：Stripeの顧客ID、サブスクリプションID、契約状態、契約期間の終了日。
+            クレジットカード番号などの支払手段そのものは本サービスのサーバーに保存しません。
+          </li>
+          <li>Cookie / ブラウザ内の保存領域に保持する情報（第5項に記載）</li>
+        </ul>
+      </Section>
+
+      <Section title="2. 利用目的">
+        <ul className="list-disc space-y-1 pl-5">
+          <li>本サービスの提供、アカウントの認証および維持</li>
+          <li>相談内容に応じた神社の提案、および提案理由の提示</li>
+          <li>参拝記録・ふりかえりなど、利用者自身の記録の保存と表示</li>
+          <li>Premium（有料プラン）の契約状態の管理</li>
+          <li>不具合の調査、および本サービスの改善</li>
+          <li>利用者からのお問い合わせへの対応</li>
+        </ul>
+      </Section>
+
+      <Section title="3. 相談内容について">
+        <p>
+          コンシェルジュへ送信された相談内容は、提案の生成と履歴の表示のために、本サービスのデータベースへ保存します。
+        </p>
+        <p>
+          相談内容を、利用者本人以外へ公開することはありません。ただし、利用者が公開設定を有効にした投稿
+          （公開プロフィール、公開した御朱印など）は、この限りではありません。
+        </p>
+        <p>相談内容の外部生成AIへの送信については、第8項に記載します。</p>
+      </Section>
+
+      <Section title="4. 位置情報について">
+        <p>
+          位置情報は、近くの神社の検索および経路の案内のために利用します。取得はブラウザの許可を得た場合に限られ、
+          許可しない場合でも、現在地を用いない機能は利用できます。
+        </p>
+        <p>
+          位置情報の取扱いは、ブラウザおよび端末の設定からいつでも変更できます。
+        </p>
+      </Section>
+
+      <Section title="5. Cookie / localStorageについて">
+        <p>本サービスは、次の目的でCookieおよびブラウザ内の保存領域を利用します。</p>
+        <ul className="list-disc space-y-1 pl-5">
+          <li>
+            ログイン状態の維持：認証用のトークンをCookieに保存します（<code>access_token</code> /{" "}
+            <code>refresh_token</code>）。
+          </li>
+          <li>
+            未ログイン利用の識別：ログインせずに相談した場合の一時的な識別子をCookieに保存します
+            （<code>concierge_anon_id</code>）。
+          </li>
+          <li>
+            画面の状態およびアクセス解析用の識別子：localStorage / sessionStorage に保存します。
+          </li>
+        </ul>
+        <p>
+          Cookieはブラウザの設定から削除・拒否できます。ただし、認証用Cookieを拒否した場合、ログインが必要な機能は利用できません。
+        </p>
+      </Section>
+
+      <Section title="6. Analyticsについて">
+        <p>
+          本サービスは、利用状況の把握と改善のために、アクセス解析サービスとしてPostHogを利用する場合があります。
+          画面の操作やPremium導線の通過といったイベントと、その付随情報を送信します。
+        </p>
+        <p>相談内容の本文をアクセス解析サービスへ送信することはありません。</p>
+      </Section>
+
+      <Section title="7. 決済サービスについて">
+        <p>
+          Premiumの決済は、Stripe社の提供する決済サービスを利用します。カード情報の入力および保持はStripeが行い、
+          本サービスはカード番号などの支払手段そのものを受け取らず、保存もしません。
+        </p>
+        <p>
+          本サービスが保持するのは、Stripeが発行する顧客ID・サブスクリプションID、契約状態および契約期間の終了日です。
+          解約や支払方法の変更は、Stripeの提供する管理画面（Customer Portal）から行えます。
+        </p>
+        <p>Stripeにおける情報の取扱いは、同社のプライバシーポリシーに従います。</p>
+      </Section>
+
+      <Section title="8. 外部AIサービスについて">
+        <p>
+          現在、KAMI MUSUBIでは、利用者の相談内容を外部の生成AIサービスへ送信していません。
+        </p>
+        <p>
+          将来、外部AIサービスを利用する機能を導入する場合は、利用するサービスおよび情報の取扱いについて必要な告知を行い、
+          本プライバシーポリシーを更新します。
+        </p>
+      </Section>
+
+      <Section title="9. 外部サービスについて">
+        <p>本サービスは、機能の提供のために次の外部サービスを利用します。</p>
+        <ul className="list-disc space-y-1 pl-5">
+          <li>Stripe（決済）</li>
+          <li>Google Maps Platform（地名・場所情報の検索、地図に関する機能）</li>
+          <li>OpenStreetMapに基づくサービス（住所の逆引き、経路の算出）</li>
+          <li>PostHog（アクセス解析）</li>
+        </ul>
+        <p>
+          これらのサービスへは、機能の実行に必要な範囲の情報（検索語、座標など）が送信されます。
+          各サービスにおける情報の取扱いは、それぞれの事業者の定めに従います。
+        </p>
+      </Section>
+
+      <Section title="10. 保存期間">
+        <p>
+          取得した情報は、本サービスの提供に必要な期間、保存します。
+          現時点では、情報の種類ごとの保存期間の上限や、期間経過による自動削除の仕組みは定めていません。
+        </p>
+        <p>保存期間を定めた場合は、本プライバシーポリシーを更新して告知します。</p>
+      </Section>
+
+      <Section title="11. 開示・訂正・削除等">
+        <p>
+          プロフィール情報など、画面から変更できる情報は、利用者自身でいつでも訂正できます。
+        </p>
+        <p>
+          それ以外の情報の開示、訂正、利用停止および削除のご依頼は、第12項のお問い合わせ窓口で承ります。
+          現時点では、画面上から利用者自身でアカウントを削除する機能は提供していません。
+        </p>
+        <p>
+          削除のご依頼をいただいた際に削除できる範囲は、ご依頼の内容にあわせて個別にご案内します。
+        </p>
+      </Section>
+
+      <Section title="12. お問い合わせ">
+        <p>
+          本ポリシーに関するお問い合わせ、および前項のご依頼は、画面下部の「お問い合わせ」からご連絡ください。
+        </p>
+      </Section>
+
+      <Section title="本ポリシーの変更">
+        <p>
+          本サービスの内容の変更や、外部サービスの利用状況の変更にあわせて、本プライバシーポリシーを更新することがあります。
+          重要な変更を行う場合は、本サービス上で告知します。
+        </p>
+      </Section>
+    </article>
+  );
+}

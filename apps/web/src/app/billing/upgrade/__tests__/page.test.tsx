@@ -89,6 +89,30 @@ describe("BillingUpgradePage", () => {
     expect(screen.getByRole("link", { name: "プラン状況を確認する" })).toHaveAttribute("href", "/billing");
   });
 
+  it("利用規約とプライバシーポリシーへ到達できる", () => {
+    render(<BillingUpgradePage />);
+
+    expect(screen.getByRole("link", { name: "利用規約" })).toHaveAttribute("href", "/terms");
+    expect(screen.getByRole("link", { name: "プライバシーポリシー" })).toHaveAttribute(
+      "href",
+      "/privacy",
+    );
+  });
+
+  it("LegalリンクはCTAより視覚的に弱い", () => {
+    render(<BillingUpgradePage />);
+
+    const cta = screen.getByRole("button", { name: "Premiumを始める" });
+    const legal = screen.getByRole("link", { name: "利用規約" });
+
+    // CTAは面を持つ塗りボタン、Legalは下線テキストのみ
+    expect(cta.className).toContain("bg-slate-900");
+    expect(legal.className).not.toContain("bg-");
+    expect(legal.className).toContain("underline");
+    // 文字サイズもCTA(text-sm)より小さいこと
+    expect(legal.closest("p")?.className ?? "").toContain("text-[11px]");
+  });
+
   it("将来予定コピーとRecommendation精度の誤認表現を含まない", () => {
     const { container } = render(<BillingUpgradePage />);
     const text = container.textContent ?? "";
