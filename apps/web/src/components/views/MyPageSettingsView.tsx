@@ -63,14 +63,27 @@ export default function MyPageSettingsView() {
     setSaveMessage(null);
     setSaveError(null);
 
+    // birthday と同じ失敗境界。「プロフィール更新」と「Auth Context再同期」を
+    // 1つの try にまとめると、PATCH成功後に refreshMe だけ失敗したケースを
+    // 「保存できませんでした」と報告してしまい、Backendの実態と食い違う。
     try {
       const updated = await updateUser({ nickname: nextDisplayName });
+      // ここまで来たら保存は確定。以降の失敗を保存失敗として扱わない。
       setDisplayName((updated.profile?.nickname ?? "").trim());
       setDisplayNameDirty(false);
-      setSaveMessage("表示名を保存しました。");
-      await refreshMe();
     } catch {
       setSaveError("表示名を保存できませんでした。入力内容を確認して、もう一度お試しください。");
+      setSaving(false);
+      return;
+    }
+
+    try {
+      await refreshMe();
+      setSaveMessage("表示名を保存しました。");
+    } catch {
+      setSaveMessage(
+        "表示名は保存されましたが、表示の更新に失敗しました。ページを再読み込みしてください。",
+      );
     } finally {
       setSaving(false);
     }
@@ -84,14 +97,26 @@ export default function MyPageSettingsView() {
     setSaveError(null);
     setIsPublic(next);
 
+    // rollback は PATCH が失敗したときだけ行う。
+    // 再同期の失敗で戻すと、保存済みの値を未保存のように見せてしまう。
     try {
       const updated = await updateUser({ is_public: next });
+      // ここまで来たら保存は確定。以降の失敗で savedIsPublic へ戻さない。
       setIsPublic(Boolean(updated.profile?.is_public));
-      setSaveMessage("公開設定を保存しました。");
-      await refreshMe();
     } catch {
       setIsPublic(savedIsPublic);
       setSaveError("公開設定を保存できませんでした。時間をおいて、もう一度お試しください。");
+      setSaving(false);
+      return;
+    }
+
+    try {
+      await refreshMe();
+      setSaveMessage("公開設定を保存しました。");
+    } catch {
+      setSaveMessage(
+        "公開設定は保存されましたが、表示の更新に失敗しました。ページを再読み込みしてください。",
+      );
     } finally {
       setSaving(false);
     }
