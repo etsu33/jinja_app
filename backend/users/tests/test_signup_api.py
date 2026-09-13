@@ -3,12 +3,18 @@
 
 Backend を validation の正本とするため、Frontend の入力チェックとは独立に
 username / email / password の必須条件をここで固定する。
+
+あわせて、User 作成と必須 UserProfile 生成の atomicity（all-or-nothing）も
+ここで固定する。
 """
+
+from unittest.mock import patch
 
 import pytest
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from tests.utils import api_client_as
+from users.models import UserProfile
 
 SIGNUP_URL_NAME = "users_api:signup"
 
@@ -31,6 +37,11 @@ def test_signup_succeeds_with_username_email_password():
     user = User.objects.get(username="tarou")
     assert user.email == "tarou@example.com"
     assert user.check_password("password123")
+
+    # Signup 成功時は UserProfile も必ず存在する（既定値は現行挙動のまま）
+    profile = UserProfile.objects.get(user=user)
+    assert profile.nickname == "tarou"
+    assert profile.is_public is False
 
 
 @pytest.mark.django_db
@@ -122,3 +133,33 @@ def test_signup_does_not_return_password():
 
     assert res.status_code == 201
     assert "password" not in res.json()
+
+
+@pytest.mark.django_db
+def test_signup_rolls_back_user_when_profile_creation_fails():
+    """UserProfile 生成が失敗したら User も残さない（all-or-nothing）。
+
+    failure injection は `UserProfile.objects.get_or_create` の mock で行う。
+    migration / schema を壊して失敗を作らない。
+    主契約は HTTP status ではなく DB rollback。
+    """
+    payload = {
+        "username": "atomic-victim",
+        "email": "atomic-victim@example.com",
+        "password": "password123",
+    }
+
+    with patch.object(
+        UserProfile.objects,
+        "get_or_create",
+        side_effect=RuntimeError("injected profile failure"),
+    ) as get_or_create:
+        # Signup は失敗する（status ではなく「成功しない」ことが契約）
+        with pytest.raises(RuntimeError, match="injected profile failure"):
+            _post(payload)
+
+    assert get_or_create.called, "failure injection が signup 経路に届いていない"
+
+    # User も UserProfile も残っていない
+    assert User.objects.filter(username="atomic-victim").exists() is False
+    assert UserProfile.objects.filter(user__username="atomic-victim").exists() is False

@@ -4,6 +4,7 @@ from __future__ import annotations
 import logging
 
 from django.conf import settings
+from django.db import transaction
 from django.db.models import Count, Sum
 from django.http import HttpRequest, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -118,7 +119,14 @@ class SignupView(APIView):
         s = SignupSerializer(data=request.data)
         if not s.is_valid():
             return Response(s.errors, status=status.HTTP_400_BAD_REQUEST)
-        user = s.save()
+
+        # Signup は「User 作成」と「必須 UserProfile 生成」で 1 つのユースケース。
+        # UserProfile は User の post_save signal（users.apps.ensure_profile）が
+        # 作るため、User の INSERT まで rollback 対象に含める必要がある。
+        # signal だけを atomic にしても User は残ってしまうので、境界は save() に置く。
+        with transaction.atomic():
+            user = s.save()
+
         return Response({"id": user.id, "username": user.username}, status=status.HTTP_201_CREATED)
 
 
