@@ -110,7 +110,7 @@ test.describe("方位条件のWeb E2E", () => {
     await expect(
       page.getByText("現在の出発地点は現在地、確定した位置です。"),
     ).toBeVisible();
-    await page.getByLabel("参拝予定日（任意）").fill("2026-09-15");
+    await page.getByLabel("参拝予定日").fill("2026-09-15");
     await fillAndSubmit(page);
 
     await expect(page.getByText("方位の参考情報")).toBeVisible();
@@ -155,7 +155,7 @@ test.describe("方位条件のWeb E2E", () => {
     await expect(
       page.getByText("現在の出発地点は東京駅、確定した位置です。"),
     ).toBeVisible();
-    await page.getByLabel("参拝予定日（任意）").fill("2026-09-15");
+    await page.getByLabel("参拝予定日").fill("2026-09-15");
     await fillAndSubmit(page);
 
     await expect(page.getByText("現在地から見た方角は、予定日の参考方位とは異なります。")).toBeVisible();
@@ -176,7 +176,7 @@ test.describe("方位条件のWeb E2E", () => {
     await page.getByRole("radio", { name: "都道府県から指定" }).click();
     await page.getByLabel("都道府県").selectOption({ label: "東京都" });
     await expect(page.getByText(/東京都のおおよその位置を出発地点として使用します/)).toBeVisible();
-    await page.getByLabel("参拝予定日（任意）").fill("2026-09-15");
+    await page.getByLabel("参拝予定日").fill("2026-09-15");
     await fillAndSubmit(page);
 
     await expect(page.getByText(/東京都のおおよその位置を基準にした参考情報/)).toBeVisible();
@@ -190,7 +190,7 @@ test.describe("方位条件のWeb E2E", () => {
     await openPersonalize(page);
 
     await page.getByRole("radio", { name: "方位情報を使用しない" }).click();
-    await page.getByLabel("参拝予定日（任意）").fill("2026-09-15");
+    await page.getByLabel("参拝予定日").fill("2026-09-15");
     await fillAndSubmit(page);
 
     await expect(page.getByText("固定レスポンス神社504")).toBeVisible();
