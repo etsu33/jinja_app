@@ -45,7 +45,7 @@ describe("CompassClient Shared Birthday Context", () => {
     expect(screen.getByLabelText("生年月日の年")).toHaveValue("1984");
     expect(screen.getByLabelText("生年月日の月")).toHaveValue("05");
     expect(screen.getByLabelText("生年月日の日")).toHaveValue("15");
-    expect(screen.getByText("ログイン中は次回以降も利用できるよう保存されます。")).toBeInTheDocument();
+    expect(screen.getByText("ログイン中は、生年月日を保存してコンシェルジュとコンパスで共通利用します。")).toBeInTheDocument();
   });
 
   it("Auth hydrationで保存birthdayが後から届いた場合、未編集ならprefillする", async () => {
