@@ -111,7 +111,9 @@ def _reset_to_fresh_bootstrap_state() -> None:
 
     for model in BOOTSTRAP_OWNED_MODELS:
         if model is Shrine:
-            # Avoid Django deletion collector: ConciergeHistory model relation remains while the DB shrine_id column was removed by migration 0047.
+            # Avoid Django deletion collector: it walks every reverse relation of
+            # Shrine, including ones whose physical column/table may differ per
+            # environment. Raw DELETE keeps this reset independent of that drift.
             Shrine.goriyaku_tags.through.objects.all().delete()
             table = connection.ops.quote_name(Shrine._meta.db_table)
             with connection.cursor() as cursor:

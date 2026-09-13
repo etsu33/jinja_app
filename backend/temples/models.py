@@ -1241,51 +1241,6 @@ class GoshuinImage(models.Model):
         indexes = [models.Index(fields=["order"])]
 
 
-class Like(models.Model):
-    shrine = models.ForeignKey(Shrine, on_delete=models.CASCADE, related_name="likes")
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=["shrine", "user"], name="uq_like_shrine_user")
-        ]
-
-
-class RankingLog(models.Model):
-    shrine = models.ForeignKey(Shrine, on_delete=models.CASCADE, related_name="ranking_logs")
-    date = models.DateField(default=timezone.localdate)
-    view_count = models.PositiveIntegerField(default=0)
-    like_count = models.PositiveIntegerField(default=0)
-
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=["shrine", "date"], name="uq_rankinglog_shrine_date")
-        ]
-
-
-class ConciergeHistory(models.Model):
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="concierge_histories"
-    )
-    shrine = models.ForeignKey(
-        Shrine,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="recommended_histories",
-    )
-    reason = models.TextField()
-    tags = models.JSONField(default=list, blank=True)
-    created_at = models.DateTimeField(default=timezone.now)
-
-    class Meta:
-        ordering = ["-created_at"]
-
-
-
 class Deity(models.Model):
     name = models.CharField(max_length=64, unique=True)
     kana = models.CharField(max_length=128, blank=True, default="")

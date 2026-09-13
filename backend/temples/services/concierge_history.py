@@ -9,7 +9,6 @@ from django.utils import timezone
 
 from temples.models import (
     ActionEvent,
-    ConciergeHistory,
     ConciergeMessage,
     ConciergeThread,
     Favorite,
@@ -22,11 +21,6 @@ from temples.services.reflection_state_change import build_reflection_state_chan
 
 
 HistoryActionState = str
-
-
-def classify_history_action(*, user, history: ConciergeHistory) -> HistoryActionState:
-    shrine_id = getattr(history, "shrine_id", None)
-    return classify_shrine_action_state(user=user, shrine_id=shrine_id)
 
 
 def classify_shrine_action_state(*, user, shrine_id: int | None) -> HistoryActionState:
