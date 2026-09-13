@@ -55,6 +55,37 @@ describe("PrivacyPolicyPage", () => {
     }
   });
 
+  it("現行UIで変更できないプロフィール項目を変更可能と読ませない", () => {
+    const { container } = render(<PrivacyPolicyPage />);
+    const text = container.textContent ?? "";
+
+    // 現行UIが書き込むのは nickname / is_public と、
+    // コンシェルジュ・コンパス経由の birthday のみ。
+    // 全項目を任意に変更できるという断定を置かない。
+    expect(text).not.toContain("いずれも利用者が任意で入力・変更できます");
+    expect(text).toContain("現在の画面から利用者が変更できるのは、表示名と公開設定です");
+    expect(text).toContain("生年月日は、コンシェルジュやコンパスで入力した場合に保存されます");
+    expect(text).toContain(
+      "自己紹介、アイコン画像、出生時刻、出生地については、現時点では画面から入力・変更する導線を提供していません",
+    );
+  });
+
+  it("相談内容の非公開と、公開投稿の説明を別の文に分ける", () => {
+    const { container } = render(<PrivacyPolicyPage />);
+    const text = container.textContent ?? "";
+
+    // 「相談内容は非公開。ただし公開設定は別」という続き方をすると、
+    // 相談内容が公開されうると読めてしまう。
+    expect(text).toContain("本サービスには、相談内容を他の利用者へ公開する機能はありません。");
+    expect(text).not.toContain("ただし、利用者が公開設定を有効にした投稿");
+
+    const consultIndex = text.indexOf("相談内容を他の利用者へ公開する機能はありません");
+    const publicIndex = text.indexOf("公開設定を有効にした場合に他の利用者から閲覧可能になるのは");
+    expect(consultIndex).toBeGreaterThan(-1);
+    expect(publicIndex).toBeGreaterThan(consultIndex);
+    expect(text).toContain("相談内容はこれに含まれません");
+  });
+
   it("確認できない保存期間・削除方式を断定しない", () => {
     const { container } = render(<PrivacyPolicyPage />);
     const text = container.textContent ?? "";

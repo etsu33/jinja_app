@@ -79,7 +79,7 @@ export default function TermsOfServicePage() {
       <Section title="5. Premium">
         <p>Premiumは、月額の自動更新による有料プランです。</p>
         <ul className="list-disc space-y-1 pl-5">
-          <li>β Early User価格は月額780円（税込）です。</li>
+          <li>β Early User価格は月額780円です。</li>
           <li>
             契約は、利用者ごとの契約開始日を基準として毎月自動更新されます。全利用者に共通の締め日はありません。
           </li>

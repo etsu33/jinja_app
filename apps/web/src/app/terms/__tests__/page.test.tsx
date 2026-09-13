@@ -53,6 +53,10 @@ describe("TermsOfServicePage", () => {
     const text = container.textContent ?? "";
 
     expect(text).toContain("月額780円");
+    // 税区分は未確定。780円が税込であると断定しない。
+    expect(text).not.toContain("税込");
+    expect(text).not.toContain("税抜");
+    expect(text).not.toContain("税別");
     expect(text).toContain("契約開始日を基準として毎月自動更新");
     expect(text).toContain("全利用者に共通の締め日はありません");
     expect(text).toContain("解約後も、現在の契約期間が終了するまではPremiumを利用できます");
