@@ -708,6 +708,9 @@ export default function ConciergeSectionsRenderer({
                   applyLabel={isEntryRoute ? "この条件で提案を見る" : "この条件で提案を更新"}
                   birthdate={state.birthdate}
                   onBirthdateChange={(v: string) => onAction?.({ type: "filter_set_birthdate", birthdate: v })}
+                  // 認証判定の入口はここ1箇所。auth解決前は false 扱いにして、
+                  // 未確定の状態で保存説明を出さない（accessLevel と同じ条件）。
+                  isLoggedIn={!authLoading && isLoggedIn}
                   element4={state.element4}
                   goriyakuTags={state.goriyakuTags}
                   suggestedTags={state.suggestedTags}

@@ -16,6 +16,12 @@ type Props = {
   birthdate: string;
   onBirthdateChange: (v: string) => void;
 
+  // 誕生日はログイン中のみ profile へ永続化される（useSharedBirthdayPersistence）。
+  // このパネルは useAuth() を直接呼ばず、認証状態は ConciergeSectionsRenderer から
+  // prop で受け取る（認証の入口を1箇所に保つため）。
+  // 既定は false。未指定の呼び出し元やGuestに対して「保存されます」と誤認させない。
+  isLoggedIn?: boolean;
+
   element4: Element4 | null;
 
   goriyakuTags: readonly GoriyakuTag[];
@@ -133,6 +139,7 @@ export default function ConciergeFilterPanel({
   onApply,
   birthdate,
   onBirthdateChange,
+  isLoggedIn = false,
   element4,
   goriyakuTags,
   suggestedTags,
@@ -222,6 +229,13 @@ export default function ConciergeFilterPanel({
             onChange={(e) => onBirthdateChange(e.target.value)}
             className="w-full rounded-xl border px-3 py-1.5 text-sm"
           />
+          {/* ログイン中だけ profile へ保存されるため、その場合のみ説明を出す。
+              Guest には出さない（保存されると誤認させないため）。 */}
+          {isLoggedIn ? (
+            <p className="text-[10px] leading-4 text-slate-400">
+              ログイン中は次回以降も利用できるよう、生年月日を保存します。
+            </p>
+          ) : null}
         </section>
 
         {element4 ? (
