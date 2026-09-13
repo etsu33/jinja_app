@@ -2,12 +2,53 @@
 "use client";
 
 import { useRef, useState } from "react";
-import type { AxiosError } from "axios";
 import { signup, login as loginApi } from "@/lib/api/auth";
 
 type Props = {
   returnTo?: string | null;
 };
+
+// Backend（DRF の EmailField）を validation の正本としたうえで、
+// 明らかな入力ミスを送信前に弾くための最小限のパターン。
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const PASSWORD_MIN_LENGTH = 8;
+
+const GENERIC_NETWORK_ERROR = "通信に失敗しました。";
+const GENERIC_SERVER_ERROR = "サーバーエラーが発生しました。";
+
+/**
+ * signup の失敗から status / body を取り出す。
+ * `SignupRequestError`（`@/lib/api/auth`）が持つ形を duck typing で読む。
+ * status が取れない失敗（例: 後続の login が投げる素の Error）は undefined を返し、
+ * generic な通信エラーとして扱う。
+ */
+function readSignupFailure(err: unknown): { status: number | null | undefined; data: unknown } {
+  if (err && typeof err === "object" && "status" in err) {
+    const status = (err as { status: unknown }).status;
+    if (typeof status === "number" || status === null) {
+      const data = "data" in err ? (err as { data: unknown }).data : null;
+      return { status, data };
+    }
+  }
+  return { status: undefined, data: null };
+}
+
+/** Backend の validation error body を画面表示用の文字列にする。 */
+export function formatValidationErrors(data: unknown): string {
+  if (!data) return "";
+  if (typeof data === "string") return data;
+  if (Array.isArray(data)) return data.map((v) => formatValidationErrors(v)).filter(Boolean).join(" ");
+
+  if (typeof data === "object") {
+    return Object.values(data as Record<string, unknown>)
+      .map((v) => formatValidationErrors(v))
+      .filter(Boolean)
+      .join(" ");
+  }
+
+  return String(data);
+}
 
 export default function SignupForm({ returnTo }: Props) {
   const [username, setU] = useState("");
@@ -21,8 +62,23 @@ export default function SignupForm({ returnTo }: Props) {
     e.preventDefault();
     if (inFlight.current || loading) return;
 
-    if (!username || password.length < 8) {
-      setErr("ユーザー名と8文字以上のパスワードを入力してください");
+    const trimmedUsername = username.trim();
+    const trimmedEmail = email.trim();
+
+    if (!trimmedUsername) {
+      setErr("ユーザー名を入力してください");
+      return;
+    }
+    if (!trimmedEmail) {
+      setErr("メールアドレスを入力してください");
+      return;
+    }
+    if (!EMAIL_PATTERN.test(trimmedEmail)) {
+      setErr("メールアドレスの形式が正しくありません");
+      return;
+    }
+    if (password.length < PASSWORD_MIN_LENGTH) {
+      setErr(`パスワードは${PASSWORD_MIN_LENGTH}文字以上で入力してください`);
       return;
     }
 
@@ -31,21 +87,21 @@ export default function SignupForm({ returnTo }: Props) {
     inFlight.current = true;
 
     try {
-      await signup({ username, password, email: email || undefined });
-      await loginApi({ username, password });
+      await signup({ username: trimmedUsername, password, email: trimmedEmail });
+      await loginApi({ username: trimmedUsername, password });
       window.location.replace(returnTo || "/mypage");
     } catch (err) {
-      const e = err as AxiosError<any>;
+      const { status, data } = readSignupFailure(err);
 
-      if (e?.response?.status === 400 && e.response.data) {
-        const msgs = Object.values(e.response.data).flat().join(" ");
-        setErr(msgs || "入力内容をご確認ください。");
-      } else if (e?.response?.status === 409) {
+      if (status === 400) {
+        // Backend が返した validation error。generic な通信エラーに丸めない。
+        setErr(formatValidationErrors(data) || "入力内容をご確認ください。");
+      } else if (status === 409) {
         setErr("そのユーザー名は既に使われています。");
-      } else if ((e?.response?.status ?? 0) >= 500) {
-        setErr("サーバーエラーが発生しました。");
+      } else if (status !== null && status !== undefined && status >= 500) {
+        setErr(GENERIC_SERVER_ERROR);
       } else {
-        setErr("通信に失敗しました。");
+        setErr(GENERIC_NETWORK_ERROR);
       }
     } finally {
       setL(false);
@@ -59,7 +115,12 @@ export default function SignupForm({ returnTo }: Props) {
 
       {error && <div className="mb-4 rounded border border-red-400 bg-red-100 px-4 py-3 text-red-700">{error}</div>}
 
-      <form onSubmit={onSubmit} className="space-y-4">
+      {/*
+        type="email" によるブラウザ標準の interactive validation は抑止し（noValidate）、
+        エラー表示をこのフォーム自身のメッセージ欄に一本化する。
+        type 自体はモバイルのキーボード最適化のために残す。
+      */}
+      <form onSubmit={onSubmit} className="space-y-4" noValidate>
         <div>
           <label className="mb-1 block text-sm">ユーザー名</label>
           <input
@@ -68,17 +129,20 @@ export default function SignupForm({ returnTo }: Props) {
             onChange={(e) => setU(e.target.value)}
             disabled={loading}
             autoComplete="username"
+            aria-required="true"
           />
         </div>
 
         <div>
-          <label className="mb-1 block text-sm">メール（任意）</label>
+          <label className="mb-1 block text-sm">メールアドレス</label>
           <input
+            type="email"
             className="w-full rounded border p-2"
             value={email}
             onChange={(e) => setE(e.target.value)}
             disabled={loading}
             autoComplete="email"
+            aria-required="true"
           />
         </div>
 
@@ -91,6 +155,7 @@ export default function SignupForm({ returnTo }: Props) {
             onChange={(e) => setP(e.target.value)}
             disabled={loading}
             autoComplete="new-password"
+            aria-required="true"
           />
           <p className="mt-1 text-xs text-[var(--kt-color-text-secondary)]">8文字以上</p>
         </div>
