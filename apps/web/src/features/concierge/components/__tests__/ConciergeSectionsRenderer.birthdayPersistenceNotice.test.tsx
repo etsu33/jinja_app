@@ -15,7 +15,7 @@ vi.mock("@/lib/analytics/cardEvents", () => ({ trackCardEvent: vi.fn() }));
 import ConciergeSectionsRenderer from "../ConciergeSectionsRenderer";
 import { buildPayloadFromUnified } from "@/features/concierge/buildPayloadFromUnified";
 
-const NOTICE = "ログイン中は次回以降も利用できるよう、生年月日を保存します。";
+const NOTICE = "ログイン中は、生年月日を保存してコンシェルジュとコンパスで共通利用します。";
 
 const openFilterState: any = {
   isOpen: true,

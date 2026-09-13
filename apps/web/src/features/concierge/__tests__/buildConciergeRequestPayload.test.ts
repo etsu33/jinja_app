@@ -129,6 +129,52 @@ describe("buildConciergeRequestPayload", () => {
     expect(payload.visit_preferences).toBeUndefined();
   });
 
+  // Shared Birthday Context の解決順序。
+  // 既存の Full Integration ケースは temporaryBirthdate と savedProfile.birthday が
+  // 同値なので、どちらが勝つかを区別できない。ここで別々の値を与えて固定する。
+  it("Shared Birthday: 今回入力したbirthdateを保存済みbirthdayより優先する", () => {
+    const payload = buildConciergeRequestPayload({
+      ...baseParams,
+      needText: "相性を見てほしい",
+      temporaryBirthdate: "2000-12-31",
+      savedProfile: { birthday: "1990-05-20", birth_time: "08:30", birth_place: "東京都" },
+    });
+
+    expect(payload.birthdate).toBe("2000-12-31");
+    expect(payload.filters?.birthdate).toBe("2000-12-31");
+    expect(payload.profile_context?.user_profile).toMatchObject({ birthday: "2000-12-31" });
+    // 保存済みの他項目は temporary birthday に置き換えられない
+    expect(payload.profile_context?.user_profile).toMatchObject({
+      birthTime: "08:30",
+      birthPlace: "東京都",
+    });
+  });
+
+  it("Shared Birthday: 今回入力がない場合は保存済みbirthdayを再利用する", () => {
+    const payload = buildConciergeRequestPayload({
+      ...baseParams,
+      needText: "相性を見てほしい",
+      temporaryBirthdate: "",
+      savedProfile: { birthday: "1990-05-20", birth_time: null, birth_place: null },
+    });
+
+    expect(payload.birthdate).toBe("1990-05-20");
+    expect(payload.filters?.birthdate).toBe("1990-05-20");
+    expect(payload.profile_context?.user_profile).toMatchObject({ birthday: "1990-05-20" });
+  });
+
+  it("Shared Birthday: 今回入力も保存済みも無い場合はbirthdateを送らない", () => {
+    const payload = buildConciergeRequestPayload({
+      ...baseParams,
+      needText: "相性を見てほしい",
+      temporaryBirthdate: "",
+      savedProfile: null,
+    });
+
+    expect(payload.birthdate).toBeUndefined();
+    expect(payload.filters?.birthdate).toBeUndefined();
+  });
+
   it("Full Integration: L1 + L2 + L3-A + L3-B + L3-C all combine without cross-contamination", () => {
     const payload = buildConciergeRequestPayload({
       needText: "仕事の迷いを整理したい",

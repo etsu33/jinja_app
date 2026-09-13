@@ -233,7 +233,7 @@ export default function ConciergeFilterPanel({
               Guest には出さない（保存されると誤認させないため）。 */}
           {isLoggedIn ? (
             <p className="text-[10px] leading-4 text-slate-400">
-              ログイン中は次回以降も利用できるよう、生年月日を保存します。
+              ログイン中は、生年月日を保存してコンシェルジュとコンパスで共通利用します。
             </p>
           ) : null}
         </section>

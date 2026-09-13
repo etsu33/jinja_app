@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import ConciergeFilterPanel from "../ConciergeFilterPanel";
 
-const NOTICE = "ログイン中は次回以降も利用できるよう、生年月日を保存します。";
+const NOTICE = "ログイン中は、生年月日を保存してコンシェルジュとコンパスで共通利用します。";
 
 const baseProps = {
   isOpen: true,
