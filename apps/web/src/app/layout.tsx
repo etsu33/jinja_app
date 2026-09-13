@@ -5,6 +5,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { ClientToaster } from "./ClientToaster";
 import HomeLogoLink from "@/components/layout/HomeLogoLink";
+import { LegalFooter } from "@/components/layout/LegalFooter";
 
 import ClientBootstrap from "./providers/ClientBootstrap";
 
@@ -62,7 +63,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </nav>
           </header>
 
-          <main className="flex-1 min-h-0 overflow-y-auto">{children}</main>
+          {/* LegalFooter は main の内側・本文の後ろに置く。
+              flex の外へ出すとビューポート下端に貼り付いて常時可視になり、
+              Home / Concierge の主要導線より前に出てしまうため。 */}
+          <main className="flex-1 min-h-0 overflow-y-auto">
+            {children}
+            <LegalFooter />
+          </main>
 
           <ClientToaster />
         </AuthProvider>

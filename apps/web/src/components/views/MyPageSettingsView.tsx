@@ -7,6 +7,11 @@ import { useEffect, useState } from "react";
 import { updateUser } from "@/lib/api/users";
 import { useAuth as useAuthContext } from "@/lib/auth/AuthProvider";
 import { buildLoginHref } from "@/lib/nav/login";
+import { normalizeBirthday } from "@/lib/profile/derivedProfile";
+
+// 解除は取り消せない操作なので、何が起きるかを明示してから実行する。
+const CLEAR_BIRTHDAY_CONFIRM =
+  "生年月日の登録を解除しますか？\n解除すると、コンシェルジュとコンパスで保存済みの生年月日を自動利用しなくなります。";
 
 export default function MyPageSettingsView() {
   const router = useRouter();
@@ -14,6 +19,9 @@ export default function MyPageSettingsView() {
 
   const savedDisplayName = (authUser?.profile?.nickname ?? "").trim();
   const savedIsPublic = Boolean(authUser?.profile?.is_public);
+  // Shared Birthday Context が実際に読む値と同じ normalize を通す。
+  // ここで別の解釈をすると、設定画面の表示と Concierge / Compass が使う値がずれる。
+  const savedBirthday = normalizeBirthday(authUser?.profile?.birthday) ?? "";
 
   const [displayName, setDisplayName] = useState("");
   const [displayNameDirty, setDisplayNameDirty] = useState(false);
@@ -21,6 +29,11 @@ export default function MyPageSettingsView() {
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [birthday, setBirthday] = useState("");
+  const [birthdayDirty, setBirthdayDirty] = useState(false);
+  // 生年月日セクションの結果は、離れた場所ではなく同じセクション内に出す。
+  const [birthdayMessage, setBirthdayMessage] = useState<string | null>(null);
+  const [birthdayError, setBirthdayError] = useState<string | null>(null);
 
   useEffect(() => {
     setDisplayName(savedDisplayName);
@@ -30,6 +43,11 @@ export default function MyPageSettingsView() {
   useEffect(() => {
     setIsPublic(savedIsPublic);
   }, [authUser?.id, savedIsPublic]);
+
+  useEffect(() => {
+    setBirthday(savedBirthday);
+    setBirthdayDirty(false);
+  }, [authUser?.id, savedBirthday]);
 
   const handleSaveDisplayName = async () => {
     if (!authUser || saving || !displayNameDirty) return;
@@ -79,6 +97,63 @@ export default function MyPageSettingsView() {
     }
   };
 
+  const handleSaveBirthday = async () => {
+    if (!authUser || saving || !birthdayDirty) return;
+
+    const next = birthday.trim();
+    if (!next || next === savedBirthday) {
+      setBirthdayDirty(false);
+      return;
+    }
+
+    // 保存前に Shared Birthday Context と同じ規則で弾く（未来日・範囲外など）。
+    const normalized = normalizeBirthday(next);
+    if (!normalized) {
+      setBirthdayMessage(null);
+      setBirthdayError("有効な生年月日を入力してください。");
+      return;
+    }
+
+    setSaving(true);
+    setBirthdayMessage(null);
+    setBirthdayError(null);
+
+    try {
+      const updated = await updateUser({ birthday: normalized });
+      setBirthday(normalizeBirthday(updated.profile?.birthday) ?? normalized);
+      setBirthdayDirty(false);
+      setBirthdayMessage("生年月日を保存しました。");
+      await refreshMe();
+    } catch {
+      setBirthdayError("生年月日を保存できませんでした。入力内容を確認して、もう一度お試しください。");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleClearBirthday = async () => {
+    if (!authUser || saving) return;
+
+    const ok = window.confirm(CLEAR_BIRTHDAY_CONFIRM);
+    if (!ok) return;
+
+    setSaving(true);
+    setBirthdayMessage(null);
+    setBirthdayError(null);
+
+    try {
+      await updateUser({ birthday: null });
+      setBirthday("");
+      setBirthdayDirty(false);
+      setBirthdayMessage("生年月日の登録を解除しました。");
+      await refreshMe();
+    } catch {
+      setBirthdayError("生年月日の登録を解除できませんでした。時間をおいて、もう一度お試しください。");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleLogout = async () => {
     const ok = window.confirm("ログアウトしますか？");
     if (!ok) return;
@@ -114,6 +189,7 @@ export default function MyPageSettingsView() {
 
   const username = (authUser.username ?? "").trim();
   const hasPublicPage = Boolean(username) && isPublic;
+  const hasSavedBirthday = Boolean(savedBirthday);
 
   return (
     <main className="mx-auto max-w-3xl space-y-4 px-4 py-6 text-[var(--kt-color-text-primary)] sm:px-6">
@@ -150,6 +226,69 @@ export default function MyPageSettingsView() {
           >
             表示名を保存
           </button>
+        </div>
+      </section>
+
+      <section className="space-y-4 rounded-2xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-5">
+        <div>
+          <label htmlFor="settings-birthday" className="mb-1 block text-sm font-medium text-[var(--kt-color-text-secondary)]">
+            生年月日
+          </label>
+          <p className="mb-2 text-xs text-[var(--kt-color-text-muted)]">
+            現在の登録：{hasSavedBirthday ? savedBirthday : "未登録"}
+          </p>
+          <input
+            id="settings-birthday"
+            type="date"
+            value={birthday}
+            onChange={(event) => {
+              setBirthday(event.target.value);
+              setBirthdayDirty(true);
+              setBirthdayMessage(null);
+              setBirthdayError(null);
+            }}
+            disabled={saving}
+            className="min-h-11 w-full rounded-xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] px-3 py-2 text-sm text-[var(--kt-color-text-primary)] outline-none transition focus:border-[var(--kt-color-border-strong)] focus:ring-2 focus:ring-[var(--kt-color-border-default)] disabled:opacity-60"
+          />
+          <p className="mt-2 text-xs text-[var(--kt-color-text-muted)]">
+            {hasSavedBirthday
+              ? "コンシェルジュとコンパスで共通利用します。"
+              : "登録すると、コンシェルジュとコンパスで共通利用できます。"}
+          </p>
+
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => void handleSaveBirthday()}
+              disabled={!birthdayDirty || !birthday || saving}
+              className="inline-flex min-h-11 items-center rounded-full border border-[var(--kt-color-action-primary)] bg-[var(--kt-color-action-primary)] px-4 text-sm font-medium text-[var(--kt-color-action-primary-text)] transition hover:bg-[var(--kt-color-action-primary-hover)] disabled:opacity-40"
+            >
+              生年月日を保存
+            </button>
+
+            {/* 解除は保存済みのときだけ出す。未登録時に押せる意味がない。 */}
+            {hasSavedBirthday ? (
+              <button
+                type="button"
+                onClick={() => void handleClearBirthday()}
+                disabled={saving}
+                className="inline-flex min-h-11 items-center rounded-full border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] px-4 text-sm font-medium text-[var(--kt-color-text-secondary)] transition hover:bg-[var(--kt-color-background-subtle)] disabled:opacity-40"
+              >
+                登録を解除
+              </button>
+            ) : null}
+          </div>
+
+          {birthdayMessage ? (
+            <p role="status" className="mt-3 text-sm font-medium text-[var(--kt-color-status-success)]">
+              {birthdayMessage}
+            </p>
+          ) : null}
+          {birthdayError ? (
+            <p role="alert" className="mt-3 text-sm font-medium text-[var(--kt-color-status-error)]">
+              {birthdayError}
+            </p>
+          ) : null}
         </div>
       </section>
 

@@ -3,16 +3,17 @@
 ## Status
 
 - Status: `ACTIVE`
-- Effective from: `2026-09-09`
+- Effective from: `2026-09-10`
 - Scope: KAMI MUSUBI 神社500社拡充の pre-import Candidate 管理
+- Schema version: `1.2`
 - Runtime / DB schema change: なし
 
 ## 目的
 
-神社500社拡充で、候補発見・重複確認・公式Source確認・Knowledge確認・DB投入を分離する。
+神社500社拡充で、候補発見・重複確認・公式Source確認・Knowledge確認・Data Build・Production Import・CORE READY確認を分離する。
 
 Candidate Masterは本番Shrine DBではない。
-候補を登録しただけでは、Concierge / Compassで利用可能とはみなさない。
+Candidate Masterへ登録しただけでは、Concierge / Compassで利用可能とはみなさない。
 
 ## 正本ファイル
 
@@ -22,15 +23,35 @@ Candidate Masterは本番Shrine DBではない。
 
 Candidateは `candidate_id` で一意に管理する。
 
-`candidate_name + prefecture` はDiscovery時点の識別補助であり、
-正式なreal-world identity確定キーとして扱わない。
+`candidate_name + prefecture` はDiscovery時点の識別補助であり、正式なreal-world identity確定キーとして扱わない。
 
 同名神社は別Candidateになり得るため、name-only dedupeは禁止する。
 
+`wave_id` はCandidateが属するExpansion Waveを表す。Wave0では `W0` を使用する。
+
+## Candidate Defaults
+
+Candidate Masterは、Wave単位で共通する値を `candidate_defaults` に保持できる。
+
+P0-A Wave0では以下を共通値として持つ。
+
+```text
+wave_id = W0
+identity_status = UNREVIEWED
+official_source_status = AVAILABLE
+knowledge_status = ACQUISITION_PATH_CONFIRMED
+candidate_reason = historical_recovered_popularity_candidate
+```
+
+Candidate objectに同名fieldが存在する場合は、Candidate側の値をoverrideとして優先する。
+
+例として `諏訪大社 下社秋宮` は43 NEW scope外のため、`official_source_status` と `knowledge_status` を `UNREVIEWED` でoverrideする。
+
+`candidate_defaults` は値の省略を可能にするためのJSON正規化であり、監査結果を変更する仕組みではない。
+
 ## Discovery Provenance
 
-同一Candidateが複数Sourceに現れることを前提に、
-Discovery情報は `discovery_sources[]` として複数保持する。
+同一Candidateが複数Sourceに現れることを前提に、Discovery情報は `discovery_sources[]` として複数保持する。
 
 各Discovery Sourceには最低限以下を必須とする。
 
@@ -43,7 +64,7 @@ captured_at
 
 ### discovery_source
 
-候補を発見したSource名。
+候補を見つけたSource名。
 
 例:
 
@@ -55,7 +76,7 @@ Omairi 全国神社人気ランキング2026
 
 ### discovery_source_url
 
-候補を発見したページのURL。
+候補を見つけたページのURL。
 
 神社の祭神・由緒・所在地・ご利益を確定するFact Sourceとしては使わない。
 
@@ -67,8 +88,7 @@ Omairi 全国神社人気ランキング2026
 
 ### captured_at
 
-そのDiscovery Sourceを確認した日付。
-`YYYY-MM-DD` とする。
+そのDiscovery Sourceを確認した日付。`YYYY-MM-DD` とする。
 
 ランキングは変動するため、URLだけ保存して日時を省略してはならない。
 
@@ -84,24 +104,269 @@ Official Fact Source
 = 神社について事実を確定する根拠
 ```
 
-祭神、由緒、所在地、ご利益等は、
-神社公式サイト、神社庁、自治体、文化財資料等の確認可能なSourceで確定する。
+祭神、由緒、所在地、ご利益等は、神社公式サイト、神社庁、自治体、文化財資料等の確認可能なSourceで確定する。
 
 Popularity / RankingはRecommendation Scoreの根拠にしない。
 
-## Candidate Status
+## Candidate Lifecycle
 
-初期状態:
+`candidate_status` はCandidateのData Build / Production lifecycleだけを表す。Evidence分類やduplicate分類をこの1fieldへ押し込まない。
+
+許可値:
 
 ```text
-candidate_status = DISCOVERED
-identity_status = UNREVIEWED
-duplicate_status = UNREVIEWED
-official_source_status = UNREVIEWED
-knowledge_status = UNREVIEWED
+DISCOVERED
+BUILD_READY
+IMPORTED
+CORE_READY
+HOLD
+REVIEW
 ```
 
-将来の状態追加は別PRで契約を更新する。
+### DISCOVERED
+
+Candidate Poolへ発見・登録された状態。Build readinessはまだ主張しない。
+
+### BUILD_READY
+
+Pre-build Availability / QA Gateを通過し、Data Build Batchへ進める状態。
+
+これは以下を意味しない。
+
+- Production DBへ投入済み
+- Candidate Masterのfactual fieldがすべてhydration済み
+- Production Import許可済み
+- Recommendation eligible
+- CORE READY
+
+Wave0 P0-Aでは、PR #2779で抽出した35社だけを `BUILD_READY` とする。
+
+### IMPORTED
+
+Base ShrineおよびそのBatchで必要なKnowledge dataがProductionへwrite済みの状態。
+Post-import CORE READY QAはまだ完了していない。
+
+`IMPORTED` が主張するのはProductionへのwrite完了だけである。
+
+- `build_batch` は `BUILD_READY` 時点の値をそのまま保持する。
+- `IMPORTED` だけでは `CORE_READY` ではない。
+- `IMPORTED` はRecommendation eligibilityを意味しない。
+
+Knowledgeの質は `candidate_status` ではなく `knowledge_status` が表す。
+Production上でusable Knowledgeまで確認できた場合に限り `FACT_READY` を
+Candidate objectへ明示する。
+
+### CORE_READY
+
+`docs/audit/shrine-expansion-wave0-data-build-plan.md` のCORE READY Completion Contractを満たし、Production post-import QAがcloseした状態。
+
+### HOLD
+
+Candidateは保持するが、明示的なunresolved GateによりData Buildへ進めない状態。
+
+Wave0で使用する理由コード:
+
+```text
+HOLD_MAPPING
+SOURCE_HOLD
+UNKNOWN_EVIDENCE
+```
+
+HOLDをCandidate rejectionと同義にしない。
+
+### REVIEW
+
+Mother Ship判断または明示的なhuman review待ち。
+
+Wave0では `ENTITY_GRANULARITY_REVIEW` を使用する。
+
+`諏訪大社 下社秋宮` はこの状態を維持する。
+
+## status_reason_code
+
+`candidate_status` の理由をmachine-readableに保持する。
+
+Wave0 P0-Aで許可する値:
+
+```text
+WAVE0_CORE_READY_CANDIDATE
+HOLD_MAPPING
+SOURCE_HOLD
+UNKNOWN_EVIDENCE
+ENTITY_GRANULARITY_REVIEW
+```
+
+Lifecycle stateとEvidence詳細を分離したまま、後続Batchが「なぜ止まっているか」を追跡できることを目的とする。
+
+## build_batch
+
+Data Buildのoperational grouping。
+
+### canonical namespace（schema 1.2 以降）
+
+`build_batch` に許可される値は次の 7 つと `null` だけである。
+
+```text
+W0-DB01
+W0-DB02
+W0-DB03
+W0-DB04
+W0-DB05
+W0-DB06
+W0-DB07
+```
+
+- 初期Registry時点では35社が `BUILD_READY` としてbatch assignmentを持つ。
+- 各Batchは5社。
+- HOLD / REVIEWは `null`。
+- Batch順はProduct priorityではない。
+- PR #2780のdeterministic groupingをそのまま使用する（member setは不変）。
+
+### build_batchはData Build provenanceである
+
+`build_batch` はlifecycle stateではなく、**そのCandidateがどのData Build Batch
+で処理されたか**というprovenanceである。したがってlifecycle遷移で消さない。
+
+```text
+BUILD_READY -> IMPORTED   build_batchは不変
+IMPORTED    -> CORE_READY build_batchは不変
+```
+
+「`BUILD_READY` の行だけがbatch assignmentを持つ」は**初期Registry時点の
+スナップショット**であって恒久ルールではない。Import後も `build_batch` を
+保持しないと、Production上のどのShrineがどのBatchで入ったのかを追跡できなくなる。
+
+恒久的な不変条件は次の2つ。
+
+- `build_batch` が非nullの行のstatusは `BUILD_READY` または `IMPORTED`
+  （以降 `CORE_READY` を含む）である。
+- `HOLD` / `REVIEW` はBatch未割り当てなので `build_batch = null` を維持する。
+
+固定test:
+`backend/temples/tests/test_shrine_expansion_candidate_master.py::test_build_batch_survives_the_import_lifecycle_transition`
+
+### legacy mapping（schema 1.1 以前）
+
+schema 1.1 までは `W0-B01`〜`W0-B07` を使用していた。この文字列は Wave0 の
+**工程ID** と完全に衝突していた。
+
+```text
+工程ID   W0-B01 = Base Shrine Seed Build
+工程ID   W0-B02 = Production Shrine Reconciliation
+工程ID   W0-B03 = Data Batch Namespace Reconciliation（本改名を行った工程）
+```
+
+同じ `W0-B01` が「Base Shrine Seed Build という工程」と「Data Build の第1
+バッチ」の両方を指す状態だったため、Data Build Batch 側だけを改名した。
+
+| legacy `build_batch` | canonical `build_batch` |
+|---|---|
+| `W0-B01` | `W0-DB01` |
+| `W0-B02` | `W0-DB02` |
+| `W0-B03` | `W0-DB03` |
+| `W0-B04` | `W0-DB04` |
+| `W0-B05` | `W0-DB05` |
+| `W0-B06` | `W0-DB06` |
+| `W0-B07` | `W0-DB07` |
+
+改名は `build_batch` の**値のみ**を対象とする。工程IDは変更しない。
+candidate identity / order / status / status_reason_code / duplicate_status /
+discovery provenance はいずれも不変であり、factual hydration も行っていない。
+
+Candidate Master に legacy `W0-B01`〜`W0-B07` が `build_batch` として残って
+いないことは
+`backend/temples/tests/test_shrine_expansion_candidate_master.py::test_wave0_build_batch_uses_the_canonical_db_namespace_only`
+が固定する。
+
+### 次の Data Build target
+
+```text
+W0-DB01 = 三輪神社 / 大鳥大社 / 御岩神社 / 烏森神社 / 榴岡天満宮
+```
+
+この member set は
+`test_wave0_db01_member_set_is_frozen` が exact に固定する。
+
+## Sub-status Contract
+
+Lifecycleと個別Gateを分離するため、以下を別fieldで保持する。
+
+### identity_status
+
+```text
+UNREVIEWED
+CONFIRMED
+```
+
+P0-A Registry Populationではfinal Source Packet Freezeをまだ実施しないため、Wave0候補は `UNREVIEWED` のまま保持する。
+
+### duplicate_status
+
+```text
+UNREVIEWED
+NEW
+DUPLICATE
+ALIAS
+SAME_NAME_DIFFERENT_SHRINE
+REVIEW
+```
+
+Wave0 Current DB Duplicate Audit結果をそのまま使用する。
+
+### official_source_status
+
+```text
+UNREVIEWED
+AVAILABLE
+CONFIRMED
+HOLD
+```
+
+`AVAILABLE` はAccepted Sourceへの取得経路が確認済みという意味であり、per-batch Source Packet Freeze済みという意味ではない。
+
+### knowledge_status
+
+```text
+UNREVIEWED
+ACQUISITION_PATH_CONFIRMED
+FACT_READY
+HOLD
+```
+
+`ACQUISITION_PATH_CONFIRMED` はusable Deity / History候補を生成できる取得経路が確認済みという意味であり、Fact生成・Source relation・Evidence Gate完了を意味しない。
+
+`FACT_READY` は**Production上でusable Knowledgeが確認された**状態を指す。
+Deity / History / Source のCoverageとFact-ready判定がProduction実測で揃った
+Candidateにのみ、行レベルでoverrideとして付与する。
+
+`FACT_READY` も `CORE_READY` を意味しない。CORE READYはData Build Planの
+Completion Contract側が判定する。
+
+`candidate_defaults.knowledge_status` は `ACQUISITION_PATH_CONFIRMED` のまま
+据え置く。defaultsを `FACT_READY` にすると、未importのCandidateまで
+「Production上でusable Knowledgeが確認済み」と読めてしまう。
+
+## Factual Field Hydration Boundary
+
+P0-AはRegistry / Lifecycle Foundationであり、過去AuditのFact候補をCandidate Masterへ一括転記しない。
+
+以下は各Data Build Batchの `Source Packet Freeze -> Candidate Master Update` で確定値を入れる。
+
+```text
+official_name
+official_address
+official_source_type
+official_source_url
+verified_at
+latitude
+longitude
+goriyaku
+goriyaku_tags
+```
+
+したがって `BUILD_READY` でも、P0-A直後はこれらがCandidate objectから省略されているか、null / emptyであり得る。
+
+これは欠損ではなく、監査上の「取得可能」とData Build上の「採用済み」を分離するための意図的な境界である。
 
 ## Duplicate Rule
 
@@ -119,8 +384,7 @@ longitude
 Google Place ID / provider identity（利用可能な場合）
 ```
 
-Candidate Master内で同一real-world shrineと確定したCandidateは、
-別レコードのまま放置せずcanonical CandidateへDiscovery Sourceを統合する。
+Candidate Master内で同一real-world shrineと確定したCandidateは、別レコードのまま放置せずcanonical CandidateへDiscovery Sourceを統合する。
 
 ## Fact / Knowledge Fields
 
@@ -141,33 +405,98 @@ goriyaku_tags
 
 `goriyaku` と `goriyaku_tags` は推測で埋めない。
 
+## Lifecycle Transition
+
+標準遷移:
+
+```text
+DISCOVERED
+  -> BUILD_READY
+  -> IMPORTED
+  -> CORE_READY
+```
+
+Gate未解決時:
+
+```text
+DISCOVERED / BUILD_READY / IMPORTED
+  -> HOLD or REVIEW
+```
+
+解決後:
+
+```text
+HOLD / REVIEW
+  -> BUILD_READY
+```
+
+遷移は監査・Production実測を根拠に行う。状態を見た目だけ合わせるための自動昇格は禁止する。
+
+遷移で消してはならないfield:
+
+```text
+build_batch          Data Build provenance。遷移全体で不変
+status_reason_code   Registry登録理由。lifecycleと独立
+duplicate_status     duplicate監査結果。lifecycleと独立
+```
+
+`HOLD` / `REVIEW` から `BUILD_READY` へ戻す場合のみ、Batch割り当てが未確定な
+ためこの時点の `build_batch` は `null` である。
+
 ## Concierge / Compass Boundary
 
-Candidate Masterへの登録はRecommendation eligibilityを意味しない。
+Candidate Masterへの登録や `BUILD_READY` はRecommendation eligibilityを意味しない。
 
-DB投入後も、現行の共有Recommendation Eligibilityおよび
-Concierge / Compassのruntime contractを通過する必要がある。
+DB投入後も、現行の共有Recommendation EligibilityおよびConcierge / Compassのruntime contractを通過する必要がある。
 
 Candidate MasterはRanking / Direction / Distance / Recommendation Scoreを変更しない。
 
-## Historical Recovery
+## Historical Wave0 Registry
 
-初期Candidate Poolには、
-過去のOmairi監査から再確認できた44社を `historical_recovered_popularity_candidate`
-として登録する。
+初期Candidate Registryには、過去のOmairi監査から再確認できた44社を `historical_recovered_popularity_candidate` として登録する。
 
-過去に主張された50社のうち残り6社は、
-`docs/audit/shrine-expansion-historical-candidate-audit.md` の結論に従い
-推測で補完しない。
+会計（**初期Registry時点**。以降のlifecycle遷移でstatus内訳は動く。総数44と
+HOLD / REVIEWの内訳は不変）:
 
-初期44社のOmairi断片は同一日時の単一TOP100ではないため、
-各Discovery Sourceにページごとの `captured_at` を保持する。
+```text
+BUILD_READY = 35
+HOLD = 8
+  HOLD_MAPPING = 2
+  SOURCE_HOLD = 3
+  UNKNOWN_EVIDENCE = 3
+REVIEW = 1
+  ENTITY_GRANULARITY_REVIEW = 1
+TOTAL = 44
+```
+
+### 現在のlifecycle会計
+
+W0-DB01のProduction Import完了を反映した実測値。
+
+```text
+BUILD_READY = 30   W0-DB02〜W0-DB07
+IMPORTED    = 5    W0-DB01
+HOLD        = 8
+REVIEW      = 1
+TOTAL       = 44
+```
+
+W0-DB01の5社（三輪神社 / 大鳥大社 / 御岩神社 / 烏森神社 / 榴岡天満宮）は
+`candidate_status = IMPORTED` / `knowledge_status = FACT_READY` /
+`build_batch = W0-DB01` である。`CORE_READY` へはまだ進めていない。
+
+過去に主張された50社のうち残り6社は、`docs/audit/shrine-expansion-historical-candidate-audit.md` の結論に従い推測で補完しない。
+
+初期44社のOmairi断片は同一日時の単一TOP100ではないため、各Discovery Sourceにページごとの `captured_at` を保持する。
 
 ## Non-Goals
 
 - Candidate登録だけでShrine DBへ投入しない
-- Candidate登録だけでRecommendation対象にしない
+- `BUILD_READY`だけでRecommendation対象にしない
+- P0-AでSource本文の再採用判断をしない
+- P0-Aでfactual fieldsを監査文書から一括転記しない
 - Ranking SourceをFact Sourceにしない
 - PopularityをRecommendation Scoreへ追加しない
 - name-onlyでduplicate判定しない
 - 不明なFactをAI推測で補完しない
+- HOLD / REVIEWを自動解除しない

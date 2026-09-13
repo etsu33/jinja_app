@@ -20,9 +20,12 @@ import { useSharedBirthdayPersistence } from "@/lib/profile/useSharedBirthdayPer
 function setAuth({
   isLoggedIn,
   birthday,
+  plan,
 }: {
   isLoggedIn: boolean;
   birthday?: string | null;
+  // 保存境界は plan を見ない。Premium分岐が紛れ込んでいないことを示すためだけに受ける。
+  plan?: "free" | "premium";
 }) {
   mocks.useAuth.mockReturnValue({
     user: isLoggedIn
@@ -30,6 +33,7 @@ function setAuth({
           id: 1,
           username: "tarou",
           email: "tarou@example.com",
+          plan: plan ?? "free",
           profile: { nickname: "太郎", is_public: false, birthday: birthday ?? null },
         }
       : null,
@@ -81,6 +85,25 @@ describe("useSharedBirthdayPersistence", () => {
     await waitFor(() => expect(mocks.updateUser).toHaveBeenCalledWith({ birthday: "1990-01-01" }));
     await waitFor(() => expect(mocks.refreshMe).toHaveBeenCalledTimes(1));
   });
+
+  // birthday は Premium専用データではない。ログインしていれば Free でも保存する。
+  // 将来 plan による分岐が紛れ込んだらここで落ちる。
+  it.each(["free", "premium"] as const)(
+    "%s プランでも、ログイン中なら同じ条件でbirthdayを保存する",
+    async (plan) => {
+      setAuth({ isLoggedIn: true, birthday: null, plan });
+
+      const { result } = renderHook(() => useSharedBirthdayPersistence());
+      act(() => {
+        result.current.persistBirthday("1990-01-01");
+      });
+
+      await waitFor(() =>
+        expect(mocks.updateUser).toHaveBeenCalledWith({ birthday: "1990-01-01" }),
+      );
+      expect(mocks.updateUser).toHaveBeenCalledTimes(1);
+    },
+  );
 
   it("不正なbirthdayは保存しない", () => {
     setAuth({ isLoggedIn: true, birthday: null });

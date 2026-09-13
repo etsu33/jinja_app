@@ -56,7 +56,6 @@ export default function BillingPage() {
         </div>
       </div>
 
-      <p className="mt-3 text-xs text-[var(--kt-color-text-secondary)]">※ 決済連携はこの後でOK。まずは「状態が見える」ことを優先。</p>
     </div>
   );
 }

@@ -45,22 +45,38 @@ const CONSULTATION_THEME_CHIPS = [
 export function HomeHeroConsultationInput() {
   const router = useRouter();
   const [theme, setTheme] = useState("");
-  const [isConditionHintOpen, setIsConditionHintOpen] = useState(false);
 
   const canSubmit = useMemo(() => theme.trim().length > 0, [theme]);
 
   const submitTheme = (value: string) => {
-    const href = buildConciergeHref(value, { openFilter: isConditionHintOpen });
-    router.push(href);
+    router.push(buildConciergeHref(value));
   };
 
   return (
     // Home構成の主コンテンツ。入力カード → chips → 条件リンクの順で縦に積み、
     // 「相談カードが主、それ以外は補助」という階層を並び順そのもので表す。
     <div className="w-full space-y-6 text-left">
-      {/* 相談入力カード: この画面唯一の焦点。金の送信ボタンだけが光を持つ。 */}
-      <div className="rounded-[1.75rem] border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-4">
-        <label htmlFor="home-hero-consultation" className="block text-[11px] font-medium text-[var(--kt-color-text-muted)]">
+      {/*
+        相談入力カード: この画面唯一の焦点。
+        面はマットのまま (Glassmorphismにしない = 背景の波線を透かさない)。
+        「光が当たる部分だけ」を上辺のhairline highlightと、下へ落ちる
+        極薄のwarm glowで表す。どちらもbrass Tokenのcolor-mixで、
+        新しい色は作らない。これで入力エリアが、周囲のマットな補助カード
+        (HomeActionCard) より一段手前にある主アクション面として読める。
+      */}
+      <div
+        className="rounded-[1.75rem] border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-4"
+        style={{
+          boxShadow: [
+            "inset 0 1px 0 color-mix(in oklab, var(--home-path, var(--kt-color-action-primary)) 20%, transparent)",
+            "0 20px 44px -30px color-mix(in oklab, var(--home-path, var(--kt-color-action-primary)) 34%, transparent)",
+          ].join(", "),
+        }}
+      >
+        <label
+          htmlFor="home-hero-consultation"
+          className="block text-[11px] font-medium text-[var(--kt-color-text-muted)]"
+        >
           今の気持ちを少しだけ書く
         </label>
 
@@ -132,16 +148,10 @@ export function HomeHeroConsultationInput() {
         <button
           type="button"
           className="inline-flex items-center text-xs font-medium text-[var(--kt-color-text-secondary)] transition hover:text-[var(--kt-color-action-primary)]"
-          onClick={() => setIsConditionHintOpen((current) => !current)}
-          aria-expanded={isConditionHintOpen}
+          onClick={() => router.push(buildConciergeHref(theme, { openFilter: true }))}
         >
           ＋ 条件を追加する
         </button>
-        {isConditionHintOpen ? (
-          <p className="mt-2 rounded-2xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] px-3 py-2 text-xs leading-6 text-[var(--kt-color-text-muted)]">
-            誕生日やご利益、参拝スタイルなどの条件は次のステップで追加できます。
-          </p>
-        ) : null}
       </div>
     </div>
   );

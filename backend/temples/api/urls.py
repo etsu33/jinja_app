@@ -8,6 +8,7 @@ from rest_framework.routers import DefaultRouter
 from temples import api_views_concierge as concierge
 from temples.api.views.billing import (
     BillingCheckoutView,
+    BillingPortalView,
     BillingStatusLegacyView,
     BillingStatusView,
     BillingStripeWebhookView,
@@ -52,6 +53,7 @@ from temples.api.views.deep_dive import DeepDiveAskView
 from temples.api.views.score_v3_dashboard import ScoreV3DashboardView
 from temples.api_views import FavoriteViewSet
 from temples.api_views_compass import CompassRecommendationsView
+from temples.api_views_compass_weekly import CompassWeeklyView
 
 
 app_name = "temples"
@@ -140,8 +142,10 @@ urlpatterns = [
     path("concierge-threads/", ConciergeThreadListView.as_view(), name="concierge-thread-list"),
     path("concierge-threads/<int:pk>/", ConciergeThreadDetailView.as_view(), name="concierge-thread-detail"),
     path("compass/recommendations/", CompassRecommendationsView.as_view(), name="compass-recommendations"),
+    path("compass/weekly/", CompassWeeklyView.as_view(), name="compass-weekly"),
     path("billing/status/", BillingStatusLegacyView.as_view(), name="billing-status-legacy"),
     path("billings/checkout/", BillingCheckoutView.as_view(), name="billing-checkout"),
+    path("billings/portal/", BillingPortalView.as_view(), name="billing-portal"),
     path("billings/status/", BillingStatusView.as_view(), name="billing-status"),
     path("billings/webhook/", BillingStripeWebhookView.as_view(), name="billing-stripe-webhook"),
     path("profiles/<str:username>/", public_profile, name="public_profile"),
