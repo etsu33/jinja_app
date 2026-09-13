@@ -17,6 +17,13 @@ import { buildLoginHref } from "@/lib/nav/login";
 
 const UPGRADE_ENTRY_CONTEXT_STORAGE_KEY = "upgrade:entry-context";
 
+// 「今できること」だけを書く。将来予定・拡張予定はここに入れない。
+const PREMIUM_VALUES = [
+  "何度でも相談できる",
+  "なぜ今、この神社なのかを深く知る",
+  "前回からの自分の変化を振り返る",
+] as const;
+
 type UpgradeEntryContext = {
   entryPoint: BillingFunnelSource | null;
   entryStep: BillingFunnelStep | null;
@@ -102,28 +109,32 @@ function BillingUpgradeContent() {
   return (
     <div className="mx-auto w-full max-w-md px-4 py-6">
       <section className="space-y-2">
-        <h1 className="text-xl font-semibold text-slate-900">もっと自分に合う神社提案を受け取りたい方へ</h1>
+        <h1 className="text-xl font-semibold text-slate-900">KAMI MUSUBI Premium</h1>
         <p className="text-sm leading-6 text-slate-600">
-          プレミアムでは、より継続的にコンシェルジュ体験を使いやすくしていく予定です。
+          一度の答えではなく、変化を重ねていくために。
         </p>
       </section>
 
       <section className="mt-6 rounded-2xl border bg-white p-4 shadow-sm">
-        <h2 className="text-sm font-semibold text-slate-900">無料プランとの違い</h2>
-        <div className="mt-3 space-y-3 text-sm text-slate-700">
-          <div className="rounded-lg bg-slate-50 p-3">
-            <p className="font-medium text-slate-900">無料</p>
-            <p className="mt-1 text-slate-600">
-              まずは気軽にコンシェルジュを試したい方向け。基本的な神社提案を利用できます。
-            </p>
-          </div>
-          <div className="rounded-lg border border-slate-200 p-3">
-            <p className="font-medium text-slate-900">プレミアム</p>
-            <p className="mt-1 text-slate-600">
-              継続的に使いたい方向け。より自分に合った提案体験や、今後の拡張機能を使いやすくしていく予定です。
-            </p>
-          </div>
-        </div>
+        <h2 className="text-sm font-semibold text-slate-900">Premiumでできること</h2>
+        <ul className="mt-3 space-y-3 text-sm text-slate-700">
+          {PREMIUM_VALUES.map((value) => (
+            <li key={value} className="flex gap-2">
+              <span aria-hidden="true" className="mt-[2px] text-[var(--kt-color-premium-accent)]">
+                ●
+              </span>
+              <span>{value}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="mt-4 rounded-2xl border bg-white p-4 shadow-sm">
+        <p className="text-[11px] font-semibold tracking-[0.14em] text-[var(--kt-color-premium-accent)]">
+          β Early User価格
+        </p>
+        <p className="mt-1 text-2xl font-semibold text-slate-900">780円 / 月</p>
+        <p className="mt-1 text-xs leading-5 text-slate-600">β期間中の初期ユーザー向け価格です。</p>
       </section>
 
       {error ? (
@@ -139,8 +150,11 @@ function BillingUpgradeContent() {
           disabled={auth.loading || submitting}
           className="inline-flex items-center justify-center rounded-md bg-slate-900 px-4 py-3 text-sm font-semibold text-white"
         >
-          {submitting ? "決済画面を準備中…" : "プレミアムにする"}
+          {submitting ? "決済画面を準備中…" : "Premiumを始める"}
         </button>
+        <p className="text-xs leading-5 text-slate-600">
+          プランはStripeの管理画面から変更・解約できます。
+        </p>
         <Link
           href="/billing"
           className="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-800"
