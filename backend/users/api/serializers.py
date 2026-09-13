@@ -11,7 +11,11 @@ User = get_user_model()
 
 class SignupSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
-    email = serializers.EmailField(required=False, allow_blank=True, allow_null=True)
+    # email は Signup の必須項目。
+    # Django 標準 User.email は blank=True のため、ModelSerializer の自動生成に任せると
+    # required=False / allow_blank=True になり、空文字や未送信を受け入れてしまう。
+    # Backend を validation の正本とするため、ここで明示的に上書きする。
+    email = serializers.EmailField(required=True, allow_blank=False, allow_null=False)
 
     class Meta:
         model = User
@@ -21,7 +25,7 @@ class SignupSerializer(serializers.ModelSerializer):
         return User.objects.create_user(
             username=validated_data["username"],
             password=validated_data["password"],
-            email=validated_data.get("email") or "",
+            email=validated_data["email"],
         )
 
 
