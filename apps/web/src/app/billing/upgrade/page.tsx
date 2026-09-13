@@ -155,6 +155,20 @@ function BillingUpgradeContent() {
         <p className="text-xs leading-5 text-slate-600">
           プランはStripeの管理画面から変更・解約できます。
         </p>
+        {/* Legal導線はCTAより必ず弱く見せる（面を持たせず、文字も一段落とす）。
+            サイト全体の正本は RootLayout の LegalFooter で、ここは購入直前に
+            条件を確認できるようにするための最小の再掲に留める。 */}
+        <p className="text-[11px] leading-5 text-slate-500">
+          お申し込みの前に
+          <Link href="/terms" className="mx-1 underline underline-offset-2 hover:text-slate-700">
+            利用規約
+          </Link>
+          と
+          <Link href="/privacy" className="mx-1 underline underline-offset-2 hover:text-slate-700">
+            プライバシーポリシー
+          </Link>
+          をご確認ください。
+        </p>
         <Link
           href="/billing"
           className="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-800"
