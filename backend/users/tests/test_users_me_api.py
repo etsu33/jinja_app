@@ -85,6 +85,61 @@ def test_me_patch_persists_birth_profile_fields_and_get_restores_them():
 
 
 @pytest.mark.django_db
+def test_me_patch_clears_birthday_with_explicit_null():
+    """
+    MyPage の「登録を解除」は PATCH /api/users/me/ に birthday: null を送る。
+
+    Shared Birthday Context（Concierge / Compass）は UserProfile.birthday を
+    正本として読むので、null で確実に空へ戻せることを固定する。
+    birth_time / birth_place は解除対象ではないので巻き込まれないことも見る。
+    """
+    user = UserFactory()
+    UserProfile.objects.get_or_create(user=user)
+    c = api_client_as(user)
+
+    seeded = c.patch(
+        reverse(ME_URL_NAME),
+        {"birthday": "1984-05-15", "birth_time": "05:25", "birth_place": "東京都"},
+        format="json",
+    )
+    assert seeded.status_code == 200
+    assert seeded.json()["profile"]["birthday"] == "1984-05-15"
+
+    cleared = c.patch(reverse(ME_URL_NAME), {"birthday": None}, format="json")
+
+    assert cleared.status_code == 200
+    assert cleared.json()["profile"]["birthday"] is None
+
+    # DB とGETの双方で空になっていること
+    profile = UserProfile.objects.get(user=user)
+    assert profile.birthday is None
+
+    restored = c.get(reverse(ME_URL_NAME))
+    assert restored.status_code == 200
+    restored_profile = restored.json()["profile"]
+    assert restored_profile["birthday"] is None
+    # 解除対象外のフィールドは残る
+    assert restored_profile["birth_time"] == "05:25:00"
+    assert restored_profile["birth_place"] == "東京都"
+
+
+@pytest.mark.django_db
+def test_me_patch_clearing_birthday_is_idempotent():
+    """未登録の状態で解除しても 200 で、他のフィールドを壊さない。"""
+    user = UserFactory()
+    UserProfile.objects.get_or_create(user=user)
+    c = api_client_as(user)
+    c.patch(reverse(ME_URL_NAME), {"nickname": "太郎"}, format="json")
+
+    res = c.patch(reverse(ME_URL_NAME), {"birthday": None}, format="json")
+
+    assert res.status_code == 200
+    body = res.json()["profile"]
+    assert body["birthday"] is None
+    assert body["nickname"] == "太郎"
+
+
+@pytest.mark.django_db
 def test_me_response_does_not_expose_retired_worship_style():
     """worship_styleはProfile schemaから退役済みなので、GET/PATCHどちらの応答にも出さない。"""
     user = UserFactory()
