@@ -262,6 +262,66 @@ describe("/mypage/settings", () => {
       ).toBeInTheDocument();
     });
 
+    // PATCH は成功しているので、refreshMe の失敗を「保存できませんでした」と
+    // 報告すると Backend の実態と食い違う。失敗境界を分けたことを固定する。
+    it("保存は成功しrefreshMeだけ失敗した場合、保存失敗として表示しない", async () => {
+      setUser({ nickname: "太郎", is_public: true, birthday: "1984-05-15" });
+      mocks.updateUser.mockResolvedValue(
+        authUser({ profile: { nickname: "太郎", is_public: true, birthday: "1990-01-02" } }),
+      );
+      mocks.refreshMe.mockRejectedValue(new Error("refreshMe failed"));
+
+      render(<MyPageSettingsView />);
+
+      fireEvent.change(screen.getByLabelText("生年月日"), { target: { value: "1990-01-02" } });
+      fireEvent.click(screen.getByRole("button", { name: "生年月日を保存" }));
+
+      // PATCH は実行済み
+      await waitFor(() => expect(mocks.updateUser).toHaveBeenCalledWith({ birthday: "1990-01-02" }));
+      await waitFor(() => expect(mocks.refreshMe).toHaveBeenCalledTimes(1));
+
+      expect(
+        await screen.findByText(
+          "生年月日は保存されましたが、表示の更新に失敗しました。ページを再読み込みしてください。",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(
+          "生年月日を保存できませんでした。入力内容を確認して、もう一度お試しください。",
+        ),
+      ).not.toBeInTheDocument();
+      // 保存は確定しているので入力値も戻さない
+      expect(screen.getByLabelText("生年月日")).toHaveValue("1990-01-02");
+    });
+
+    it("解除は成功しrefreshMeだけ失敗した場合、解除失敗として表示しない", async () => {
+      setUser({ nickname: "太郎", is_public: true, birthday: "1984-05-15" });
+      vi.spyOn(window, "confirm").mockReturnValue(true);
+      mocks.updateUser.mockResolvedValue(
+        authUser({ profile: { nickname: "太郎", is_public: true, birthday: null } }),
+      );
+      mocks.refreshMe.mockRejectedValue(new Error("refreshMe failed"));
+
+      render(<MyPageSettingsView />);
+      fireEvent.click(screen.getByRole("button", { name: "登録を解除" }));
+
+      await waitFor(() => expect(mocks.updateUser).toHaveBeenCalledWith({ birthday: null }));
+      await waitFor(() => expect(mocks.refreshMe).toHaveBeenCalledTimes(1));
+
+      expect(
+        await screen.findByText(
+          "生年月日の登録解除は完了しましたが、表示の更新に失敗しました。ページを再読み込みしてください。",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(
+          "生年月日の登録を解除できませんでした。時間をおいて、もう一度お試しください。",
+        ),
+      ).not.toBeInTheDocument();
+      // 解除は確定しているので入力は空のまま
+      expect(screen.getByLabelText("生年月日")).toHaveValue("");
+    });
+
     it("登録解除の確認でキャンセルするとAPIを呼ばない", () => {
       setUser({ nickname: "太郎", is_public: true, birthday: "1984-05-15" });
       vi.spyOn(window, "confirm").mockReturnValue(false);
