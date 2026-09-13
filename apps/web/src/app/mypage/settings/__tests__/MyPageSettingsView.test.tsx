@@ -82,10 +82,13 @@ describe("/mypage/settings", () => {
     expect(screen.getByLabelText("表示名")).toHaveValue("次郎");
   });
 
-  it("Personal Contextの入力項目は設定に表示しない", () => {
+  // 生年月日は Shared Birthday Context のセルフ管理対象としてここに出す。
+  // それ以外の Personal Context（出生時間 / 出生地 / 参拝スタイル / 九星 / 五行）は
+  // 引き続き設定に出さない。この境界を崩さないために除外側を残す。
+  it("生年月日以外のPersonal Context入力項目は設定に表示しない", () => {
     render(<MyPageSettingsView />);
 
-    expect(screen.queryByLabelText("生年月日")).toBeNull();
+    expect(screen.getByLabelText("生年月日")).toBeInTheDocument();
     expect(screen.queryByLabelText(/出生時間/)).toBeNull();
     expect(screen.queryByLabelText("出生地")).toBeNull();
     expect(screen.queryByText("参拝スタイル")).toBeNull();
@@ -166,6 +169,191 @@ describe("/mypage/settings", () => {
 
     await waitFor(() => expect(mocks.logout).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith("/"));
+  });
+
+  describe("生年月日のセルフ管理", () => {
+    const CONFIRM_TEXT =
+      "生年月日の登録を解除しますか？\n解除すると、コンシェルジュとコンパスで保存済みの生年月日を自動利用しなくなります。";
+
+    function setUser(profile: AuthUser["profile"]) {
+      mocks.useAuth.mockReturnValue({
+        user: authUser({ profile }),
+        loading: false,
+        isLoggedIn: true,
+        logout: mocks.logout,
+        refreshMe: mocks.refreshMe,
+      });
+    }
+
+    it("保存済みbirthdayを表示する", () => {
+      setUser({ nickname: "太郎", is_public: true, birthday: "1984-05-15" });
+
+      render(<MyPageSettingsView />);
+
+      expect(screen.getByLabelText("生年月日")).toHaveValue("1984-05-15");
+      expect(screen.getByText("現在の登録：1984-05-15")).toBeInTheDocument();
+      expect(screen.getByText("コンシェルジュとコンパスで共通利用します。")).toBeInTheDocument();
+    });
+
+    it("birthday未登録なら「未登録」と登録を促す説明を出し、解除ボタンを出さない", () => {
+      setUser({ nickname: "太郎", is_public: true, birthday: null });
+
+      render(<MyPageSettingsView />);
+
+      expect(screen.getByLabelText("生年月日")).toHaveValue("");
+      expect(screen.getByText("現在の登録：未登録")).toBeInTheDocument();
+      expect(
+        screen.getByText("登録すると、コンシェルジュとコンパスで共通利用できます。"),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "登録を解除" })).not.toBeInTheDocument();
+    });
+
+    it("変更がないうちは保存できない", () => {
+      setUser({ nickname: "太郎", is_public: true, birthday: "1984-05-15" });
+
+      render(<MyPageSettingsView />);
+
+      expect(screen.getByRole("button", { name: "生年月日を保存" })).toBeDisabled();
+    });
+
+    it("birthdayを変更するとupdateUserへ新しい値を渡し、保存後にrefreshMeする", async () => {
+      setUser({ nickname: "太郎", is_public: true, birthday: "1984-05-15" });
+      mocks.updateUser.mockResolvedValue(
+        authUser({ profile: { nickname: "太郎", is_public: true, birthday: "1990-01-02" } }),
+      );
+
+      render(<MyPageSettingsView />);
+
+      fireEvent.change(screen.getByLabelText("生年月日"), { target: { value: "1990-01-02" } });
+      fireEvent.click(screen.getByRole("button", { name: "生年月日を保存" }));
+
+      await waitFor(() => expect(mocks.updateUser).toHaveBeenCalledWith({ birthday: "1990-01-02" }));
+      expect(await screen.findByText("生年月日を保存しました。")).toBeInTheDocument();
+      await waitFor(() => expect(mocks.refreshMe).toHaveBeenCalledTimes(1));
+    });
+
+    it("未登録から新規登録できる", async () => {
+      setUser({ nickname: "太郎", is_public: true, birthday: null });
+      mocks.updateUser.mockResolvedValue(
+        authUser({ profile: { nickname: "太郎", is_public: true, birthday: "1990-01-02" } }),
+      );
+
+      render(<MyPageSettingsView />);
+
+      fireEvent.change(screen.getByLabelText("生年月日"), { target: { value: "1990-01-02" } });
+      fireEvent.click(screen.getByRole("button", { name: "生年月日を保存" }));
+
+      await waitFor(() => expect(mocks.updateUser).toHaveBeenCalledWith({ birthday: "1990-01-02" }));
+    });
+
+    it("保存に失敗したらエラーを表示する", async () => {
+      setUser({ nickname: "太郎", is_public: true, birthday: "1984-05-15" });
+      mocks.updateUser.mockRejectedValue(new Error("updateUser failed: 400"));
+
+      render(<MyPageSettingsView />);
+
+      fireEvent.change(screen.getByLabelText("生年月日"), { target: { value: "1990-01-02" } });
+      fireEvent.click(screen.getByRole("button", { name: "生年月日を保存" }));
+
+      expect(
+        await screen.findByText(
+          "生年月日を保存できませんでした。入力内容を確認して、もう一度お試しください。",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("登録解除の確認でキャンセルするとAPIを呼ばない", () => {
+      setUser({ nickname: "太郎", is_public: true, birthday: "1984-05-15" });
+      vi.spyOn(window, "confirm").mockReturnValue(false);
+
+      render(<MyPageSettingsView />);
+      fireEvent.click(screen.getByRole("button", { name: "登録を解除" }));
+
+      expect(window.confirm).toHaveBeenCalledWith(CONFIRM_TEXT);
+      expect(mocks.updateUser).not.toHaveBeenCalled();
+      expect(mocks.refreshMe).not.toHaveBeenCalled();
+    });
+
+    it("登録解除を承認するとbirthday:nullでPATCHし、refreshMe後に未登録状態にする", async () => {
+      setUser({ nickname: "太郎", is_public: true, birthday: "1984-05-15" });
+      vi.spyOn(window, "confirm").mockReturnValue(true);
+      mocks.updateUser.mockResolvedValue(
+        authUser({ profile: { nickname: "太郎", is_public: true, birthday: null } }),
+      );
+      // 「現在の登録」と解除ボタンは auth context の保存値を正本にしている。
+      // 実アプリでは refreshMe() が context を更新して未登録状態になるので、
+      // その更新をテストでも再現する。
+      mocks.refreshMe.mockImplementation(async () => {
+        setUser({ nickname: "太郎", is_public: true, birthday: null });
+      });
+
+      const { rerender } = render(<MyPageSettingsView />);
+      fireEvent.click(screen.getByRole("button", { name: "登録を解除" }));
+
+      await waitFor(() => expect(mocks.updateUser).toHaveBeenCalledWith({ birthday: null }));
+      await waitFor(() => expect(mocks.refreshMe).toHaveBeenCalledTimes(1));
+      expect(await screen.findByText("生年月日の登録を解除しました。")).toBeInTheDocument();
+
+      rerender(<MyPageSettingsView />);
+
+      expect(screen.getByLabelText("生年月日")).toHaveValue("");
+      expect(screen.getByText("現在の登録：未登録")).toBeInTheDocument();
+      expect(
+        screen.getByText("登録すると、コンシェルジュとコンパスで共通利用できます。"),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "登録を解除" })).not.toBeInTheDocument();
+    });
+
+    it("解除に失敗したらエラーを表示し、登録状態を保つ", async () => {
+      setUser({ nickname: "太郎", is_public: true, birthday: "1984-05-15" });
+      vi.spyOn(window, "confirm").mockReturnValue(true);
+      mocks.updateUser.mockRejectedValue(new Error("updateUser failed: 500"));
+
+      render(<MyPageSettingsView />);
+      fireEvent.click(screen.getByRole("button", { name: "登録を解除" }));
+
+      expect(
+        await screen.findByText(
+          "生年月日の登録を解除できませんでした。時間をおいて、もう一度お試しください。",
+        ),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "登録を解除" })).toBeInTheDocument();
+    });
+
+    // birthday は Premium専用データではない。plan でUIを変えない。
+    it.each(["free", "premium"] as const)("%s プランでも同じUIを出す", (plan) => {
+      mocks.useAuth.mockReturnValue({
+        user: { ...authUser({ profile: { nickname: "太郎", is_public: true, birthday: "1984-05-15" } }), plan },
+        loading: false,
+        isLoggedIn: true,
+        logout: mocks.logout,
+        refreshMe: mocks.refreshMe,
+      });
+
+      render(<MyPageSettingsView />);
+
+      expect(screen.getByLabelText("生年月日")).toHaveValue("1984-05-15");
+      expect(screen.getByRole("button", { name: "生年月日を保存" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "登録を解除" })).toBeInTheDocument();
+    });
+
+    it("Guestには編集UIを出さず、既存のlogin導線のままにする", () => {
+      mocks.useAuth.mockReturnValue({
+        user: null,
+        loading: false,
+        isLoggedIn: false,
+        logout: mocks.logout,
+        refreshMe: mocks.refreshMe,
+      });
+
+      render(<MyPageSettingsView />);
+
+      expect(screen.queryByLabelText("生年月日")).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "生年月日を保存" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "登録を解除" })).not.toBeInTheDocument();
+      // 既存のlogin導線は変えない
+      expect(screen.getByRole("link", { name: "ログインへ" })).toBeInTheDocument();
+    });
   });
 
   it("メール変更・パスワード変更・アカウント削除などのplaceholderは置かない", () => {
