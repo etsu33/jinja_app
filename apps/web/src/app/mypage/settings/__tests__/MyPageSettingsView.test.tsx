@@ -35,6 +35,11 @@ function authUser(overrides: Partial<AuthUser> = {}): AuthUser {
 describe("/mypage/settings", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // clearAllMocks は呼び出し履歴だけを消し、mockResolvedValue /
+    // mockRejectedValue の実装は残す。refreshMe を reject させるテストの
+    // 設定が後続テストへ漏れるため、実装ごと落としておく。
+    mocks.updateUser.mockReset();
+    mocks.refreshMe.mockReset();
     mocks.useAuth.mockReturnValue({
       user: authUser(),
       loading: false,
@@ -80,6 +85,59 @@ describe("/mypage/settings", () => {
       await screen.findByText("表示名を保存できませんでした。入力内容を確認して、もう一度お試しください。"),
     ).toBeInTheDocument();
     expect(screen.getByLabelText("表示名")).toHaveValue("次郎");
+  });
+
+  // PATCH は成功しているので、refreshMe の失敗を「保存できませんでした」と
+  // 報告すると Backend の実態と食い違う。birthday と同じ失敗境界を固定する。
+  it("表示名の保存は成功しrefreshMeだけ失敗した場合、保存失敗として表示しない", async () => {
+    mocks.updateUser.mockResolvedValue(authUser({ profile: { nickname: "次郎", is_public: true } }));
+    mocks.refreshMe.mockRejectedValue(new Error("refreshMe failed"));
+
+    render(<MyPageSettingsView />);
+
+    fireEvent.change(screen.getByLabelText("表示名"), { target: { value: "次郎" } });
+    fireEvent.click(screen.getByRole("button", { name: "表示名を保存" }));
+
+    // PATCH は実行済み
+    await waitFor(() => expect(mocks.updateUser).toHaveBeenCalledWith({ nickname: "次郎" }));
+    await waitFor(() => expect(mocks.refreshMe).toHaveBeenCalledTimes(1));
+
+    expect(
+      await screen.findByText(
+        "表示名は保存されましたが、表示の更新に失敗しました。ページを再読み込みしてください。",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("表示名を保存できませんでした。入力内容を確認して、もう一度お試しください。"),
+    ).not.toBeInTheDocument();
+    // 保存は確定しているので更新後の表示名を維持する
+    expect(screen.getByLabelText("表示名")).toHaveValue("次郎");
+  });
+
+  it("公開設定の保存は成功しrefreshMeだけ失敗した場合、rollbackも保存失敗表示もしない", async () => {
+    // savedIsPublic は true。false へ切り替えた結果が維持されることを見る。
+    mocks.updateUser.mockResolvedValue(authUser({ profile: { nickname: "太郎", is_public: false } }));
+    mocks.refreshMe.mockRejectedValue(new Error("refreshMe failed"));
+
+    render(<MyPageSettingsView />);
+
+    const checkbox = screen.getByRole("checkbox", { name: "プロフィールを公開" });
+    expect(checkbox).toBeChecked();
+    fireEvent.click(checkbox);
+
+    await waitFor(() => expect(mocks.updateUser).toHaveBeenCalledWith({ is_public: false }));
+    await waitFor(() => expect(mocks.refreshMe).toHaveBeenCalledTimes(1));
+
+    expect(
+      await screen.findByText(
+        "公開設定は保存されましたが、表示の更新に失敗しました。ページを再読み込みしてください。",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("公開設定を保存できませんでした。時間をおいて、もう一度お試しください。"),
+    ).not.toBeInTheDocument();
+    // returned is_public を維持し、savedIsPublic(true) へ戻さない
+    expect(screen.getByRole("checkbox", { name: "プロフィールを公開" })).not.toBeChecked();
   });
 
   // 生年月日は Shared Birthday Context のセルフ管理対象としてここに出す。
@@ -260,6 +318,66 @@ describe("/mypage/settings", () => {
           "生年月日を保存できませんでした。入力内容を確認して、もう一度お試しください。",
         ),
       ).toBeInTheDocument();
+    });
+
+    // PATCH は成功しているので、refreshMe の失敗を「保存できませんでした」と
+    // 報告すると Backend の実態と食い違う。失敗境界を分けたことを固定する。
+    it("保存は成功しrefreshMeだけ失敗した場合、保存失敗として表示しない", async () => {
+      setUser({ nickname: "太郎", is_public: true, birthday: "1984-05-15" });
+      mocks.updateUser.mockResolvedValue(
+        authUser({ profile: { nickname: "太郎", is_public: true, birthday: "1990-01-02" } }),
+      );
+      mocks.refreshMe.mockRejectedValue(new Error("refreshMe failed"));
+
+      render(<MyPageSettingsView />);
+
+      fireEvent.change(screen.getByLabelText("生年月日"), { target: { value: "1990-01-02" } });
+      fireEvent.click(screen.getByRole("button", { name: "生年月日を保存" }));
+
+      // PATCH は実行済み
+      await waitFor(() => expect(mocks.updateUser).toHaveBeenCalledWith({ birthday: "1990-01-02" }));
+      await waitFor(() => expect(mocks.refreshMe).toHaveBeenCalledTimes(1));
+
+      expect(
+        await screen.findByText(
+          "生年月日は保存されましたが、表示の更新に失敗しました。ページを再読み込みしてください。",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(
+          "生年月日を保存できませんでした。入力内容を確認して、もう一度お試しください。",
+        ),
+      ).not.toBeInTheDocument();
+      // 保存は確定しているので入力値も戻さない
+      expect(screen.getByLabelText("生年月日")).toHaveValue("1990-01-02");
+    });
+
+    it("解除は成功しrefreshMeだけ失敗した場合、解除失敗として表示しない", async () => {
+      setUser({ nickname: "太郎", is_public: true, birthday: "1984-05-15" });
+      vi.spyOn(window, "confirm").mockReturnValue(true);
+      mocks.updateUser.mockResolvedValue(
+        authUser({ profile: { nickname: "太郎", is_public: true, birthday: null } }),
+      );
+      mocks.refreshMe.mockRejectedValue(new Error("refreshMe failed"));
+
+      render(<MyPageSettingsView />);
+      fireEvent.click(screen.getByRole("button", { name: "登録を解除" }));
+
+      await waitFor(() => expect(mocks.updateUser).toHaveBeenCalledWith({ birthday: null }));
+      await waitFor(() => expect(mocks.refreshMe).toHaveBeenCalledTimes(1));
+
+      expect(
+        await screen.findByText(
+          "生年月日の登録解除は完了しましたが、表示の更新に失敗しました。ページを再読み込みしてください。",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(
+          "生年月日の登録を解除できませんでした。時間をおいて、もう一度お試しください。",
+        ),
+      ).not.toBeInTheDocument();
+      // 解除は確定しているので入力は空のまま
+      expect(screen.getByLabelText("生年月日")).toHaveValue("");
     });
 
     it("登録解除の確認でキャンセルするとAPIを呼ばない", () => {
