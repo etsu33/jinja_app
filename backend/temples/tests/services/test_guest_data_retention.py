@@ -14,6 +14,7 @@ from __future__ import annotations
 from datetime import timedelta
 
 import pytest
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from temples.models import (
@@ -286,6 +287,80 @@ def test_user_owned_weekly_snapshot_is_never_deleted():
 # --------------------------------------------------------------------------
 # dry-run / 冪等性
 # --------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_weekly_snapshot_with_empty_anonymous_id_is_not_guessed_at():
+    """匿名Ownerを特定できない row は、期限を過ぎても削除しない。
+
+    Owner XOR 制約により user=NULL なら anonymous_id は非NULL のはずだが、
+    空文字は制約を通ってしまう。Thread / FeatureUsage と同じ安全契約に揃える。
+    """
+    snapshot = _snapshot(created_at=_ago(200), anonymous_id="placeholder")
+    WeeklyPresentationSnapshot.objects.filter(pk=snapshot.pk).update(anonymous_id="")
+
+    report = _purge()
+
+    assert WeeklyPresentationSnapshot.objects.filter(pk=snapshot.pk).exists()
+    assert report.counts["WeeklyPresentationSnapshot"] == 0
+
+
+@pytest.mark.django_db
+def test_feature_usage_cannot_hold_a_user_while_scope_is_anonymous():
+    """「scope=anonymous なのに user を持つ」row は DB 制約が発生自体を止める。
+
+    そのため「その row を Retention が削除しない」という回帰testは DB 上で書けない
+    （UPDATE が chk_feature_usage_scope_target で弾かれる）。
+    `expired_anonymous_feature_usages` の `user__isnull=True` は、この制約が将来
+    ゆるめられたときのための二重防御として意図的に残している。制約が外れたら
+    このtestが落ちるので、そのときに二重防御の要否を再判断すること。
+    """
+    user = UserFactory()
+    usage = _feature_usage(anon_id="anon-old", updated_at=_ago(200))
+
+    with pytest.raises(IntegrityError):
+        with transaction.atomic():
+            FeatureUsage.objects.filter(pk=usage.pk).update(user=user)
+
+
+@pytest.mark.django_db
+def test_recommendation_log_owned_by_a_user_survives_its_anonymous_thread():
+    """匿名Threadに紐づいていても、認証済み user を持つ log は匿名データではない。
+
+    Thread は削除され、log の thread は SET_NULL になるが、log 自体と
+    user との紐付けは残る（匿名で始めた相談の途中でログインした場合など）。
+    """
+    user = UserFactory()
+    thread = _thread(created_at=_ago(200), last_message_at=None)
+    anonymous_log = ConciergeRecommendationLog.objects.create(thread=thread, query="anon")
+    user_log = ConciergeRecommendationLog.objects.create(thread=thread, user=user, query="mine")
+
+    report = _purge()
+
+    # Thread 自体は期限切れなので消える
+    assert not ConciergeThread.objects.filter(pk=thread.pk).exists()
+    # 匿名の log だけが消える
+    assert not ConciergeRecommendationLog.objects.filter(pk=anonymous_log.pk).exists()
+    assert report.counts["ConciergeRecommendationLog"] == 1
+
+    user_log.refresh_from_db()
+    assert user_log.thread_id is None  # SET_NULL
+    assert user_log.user_id == user.pk  # 紐付けは維持
+
+
+@pytest.mark.django_db
+def test_dry_run_count_excludes_user_owned_recommendation_logs():
+    """dry-run の見積りと実削除の対象が一致すること。"""
+    user = UserFactory()
+    thread = _thread(created_at=_ago(200), last_message_at=None)
+    ConciergeRecommendationLog.objects.create(thread=thread, query="anon")
+    ConciergeRecommendationLog.objects.create(thread=thread, user=user, query="mine")
+
+    dry = run_guest_data_retention(days=DEFAULT_RETENTION_DAYS, execute=False, now=NOW)
+    executed = _purge()
+
+    assert dry.counts["ConciergeRecommendationLog"] == 1
+    assert executed.counts["ConciergeRecommendationLog"] == 1
 
 
 @pytest.mark.django_db

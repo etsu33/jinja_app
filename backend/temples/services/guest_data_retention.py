@@ -70,11 +70,16 @@ def expired_anonymous_threads(*, cutoff: datetime) -> QuerySet[ConciergeThread]:
 def expired_anonymous_feature_usages(*, cutoff: datetime) -> QuerySet[FeatureUsage]:
     """期限切れの匿名 FeatureUsage。
 
-    scope=anonymous かつ anon_id が空でない row のみ。
+    scope=anonymous かつ user を持たず、anon_id が空でない row のみ。
     scope=user の row と、scope が anonymous でも anon_id を持たない異常 row は残す。
+
+    `chk_feature_usage_scope_target` により scope=anonymous なら user は NULL のはずだが、
+    DB制約に依存せず query 自身でも認証User除外を保証する。制約が将来ゆるめられても
+    Retention の安全契約が崩れないようにするため。
     """
     return FeatureUsage.objects.filter(
         scope=FeatureUsage.Scope.ANONYMOUS,
+        user__isnull=True,
         updated_at__lt=cutoff,
     ).exclude(anon_id="")
 
@@ -82,13 +87,30 @@ def expired_anonymous_feature_usages(*, cutoff: datetime) -> QuerySet[FeatureUsa
 def expired_anonymous_weekly_snapshots(*, cutoff: datetime) -> QuerySet[WeeklyPresentationSnapshot]:
     """期限切れの匿名 WeeklyPresentationSnapshot。
 
-    user IS NULL かつ anonymous_id IS NOT NULL の row のみ。
+    user IS NULL かつ anonymous_id が非NULL・非空の row のみ。
     Owner XOR 制約があるため通常は両立しないが、制約に依存せず明示的に絞る。
+
+    anonymous_id="" は「匿名Ownerを特定できない異常 row」として扱い、削除しない。
+    ConciergeThread / FeatureUsage と同じ安全契約に揃える。
     """
     return WeeklyPresentationSnapshot.objects.filter(
         user__isnull=True,
         anonymous_id__isnull=False,
         created_at__lt=cutoff,
+    ).exclude(anonymous_id="")
+
+
+def expired_anonymous_recommendation_logs(
+    *, thread_ids
+) -> QuerySet[ConciergeRecommendationLog]:
+    """削除対象Threadに紐づく RecommendationLog のうち、匿名Ownerのものだけ。
+
+    Thread が匿名でも、log 自身が認証済み user を持つことがある
+    （匿名で始めた相談の途中でログインした場合など）。その log は匿名データではないので
+    削除しない。Thread 削除時に `thread` が SET_NULL になり、user との紐付けは残る。
+    """
+    return ConciergeRecommendationLog.objects.filter(
+        thread_id__in=thread_ids, user__isnull=True
     )
 
 
@@ -117,8 +139,8 @@ def collect_expired_counts(*, cutoff: datetime) -> dict[str, int]:
     return {
         "ConciergeThread": threads.count(),
         "ConciergeMessage": ConciergeMessage.objects.filter(thread__in=threads).count(),
-        "ConciergeRecommendationLog": ConciergeRecommendationLog.objects.filter(
-            thread__in=threads
+        "ConciergeRecommendationLog": expired_anonymous_recommendation_logs(
+            thread_ids=threads.values_list("id", flat=True)
         ).count(),
         "FeatureUsage": expired_anonymous_feature_usages(cutoff=cutoff).count(),
         "WeeklyPresentationSnapshot": expired_anonymous_weekly_snapshots(cutoff=cutoff).count(),
@@ -130,9 +152,10 @@ def purge_expired_guest_data(*, cutoff: datetime) -> dict[str, int]:
     """期限切れの匿名データを削除し、モデル別の削除件数を返す。
 
     削除順序（この順でなければならない）:
-        1. ConciergeRecommendationLog
+        1. ConciergeRecommendationLog（匿名Ownerのものだけ）
            `thread` は on_delete=SET_NULL なので、Thread を先に消すと
            log 側は thread=NULL で残ってしまう。明示的に先へ削除する。
+           認証済み user を持つ log は削除せず、thread=NULL で残す。
         2. ConciergeThread
            ConciergeMessage は thread の CASCADE で同時に消える。
         3. FeatureUsage / WeeklyPresentationSnapshot（Thread とは独立）
@@ -155,9 +178,7 @@ def purge_expired_guest_data(*, cutoff: datetime) -> dict[str, int]:
     }
 
     if thread_ids:
-        log_deleted, _ = ConciergeRecommendationLog.objects.filter(
-            thread_id__in=thread_ids
-        ).delete()
+        log_deleted, _ = expired_anonymous_recommendation_logs(thread_ids=thread_ids).delete()
         counts["ConciergeRecommendationLog"] = log_deleted
 
         # CASCADE 分も含めた内訳が per-model dict で返る。
