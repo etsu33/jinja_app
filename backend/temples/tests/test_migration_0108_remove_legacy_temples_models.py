@@ -9,9 +9,11 @@ database 側の挙動（fresh / drift / partial drift）は pytest が実際に�
 NoGIS lineage の migration を `Migration.apply()` で動かして検証する。
 
 なぜ主系 migration を executor で動かさないか:
-    pytest 実行時は `MIGRATION_MODULES["temples"] = "temples.migrations_nogis"` に
-    切り替わる（`TEMPLES_USE_NOGIS_MIGRATIONS`）。主系 lineage をこのプロセスで
-    読み込むと `0045_add_location_state_only` が GDAL を要求して CI で落ちる。
+    pytest 実行時の設定だけでは NoGIS lineage に自動切替されないため、
+    NoGIS graph が必要な箇所ではテスト内部で
+    `MIGRATION_MODULES["temples"] = "temples.migrations_nogis"` を明示して読み込む。
+    主系 lineage をこのプロセスで読み込むと
+    `0045_add_location_state_only` が GDAL を要求して CI で落ちる。
     主系側の `makemigrations --check` / leaf / final ProjectState は
     PR の Migration QA 手順で確認する。
 """
@@ -25,6 +27,7 @@ from django.db import connection, migrations
 from django.db.migrations.exceptions import IrreversibleError
 from django.db.migrations.loader import MigrationLoader
 from django.db.migrations.state import ProjectState
+from django.test import override_settings
 from django.test.utils import CaptureQueriesContext
 
 from temples.models import Shrine
@@ -57,7 +60,10 @@ def _table_names():
 
 def _nogis_parent_state():
     """NoGIS lineage の 0012 時点の ProjectState（= 4 model がまだ在る状態）。"""
-    loader = MigrationLoader(connection, ignore_no_migrations=True)
+    with override_settings(
+        MIGRATION_MODULES={"temples": "temples.migrations_nogis"}
+    ):
+        loader = MigrationLoader(connection, ignore_no_migrations=True)
     return loader, loader.project_state(("temples", NOGIS_PARENT))
 
 
