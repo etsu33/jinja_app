@@ -51,7 +51,6 @@ def test_openapi_conventions(client: APIClient):
             "/api/my/goshuins/",
             "/api/my/goshuins/{id}/",
             "/api/my/goshuins/count/",
-            "/api/public/shrines/{id}/",
             "/api/debug/behavior-funnel/",
             "/api/concierge/score-v3/dashboard/",
             "/api/deep-dive/ask/",

@@ -4,11 +4,6 @@ import type { Paginated, Shrine } from "./types";
 export type { Shrine } from "./types";
 export { fetchPopular as getPopularShrines } from "./popular";
 
-export async function getShrinePublic(id: number): Promise<Shrine> {
-  const { getShrinePublicClient } = await import("./shrines.client");
-  return getShrinePublicClient(id);
-}
-
 export async function getShrines(params?: { q?: string }): Promise<Shrine[]> {
   const { getShrinesClient } = await import("./shrines.list.client");
   return getShrinesClient(params);
@@ -28,8 +23,6 @@ export async function getShrinePrivate(id: number): Promise<any> {
 
   return res.json();
 }
-
-export const getShrine = getShrinePublic;
 
 export async function fetchNearestShrines(params: {
   lat: number;

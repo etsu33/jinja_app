@@ -4,7 +4,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
 import GoshuinUploadForm from "../GoshuinUploadForm";
 import { uploadMyGoshuin } from "@/lib/api/goshuin";
-import { getShrine } from "@/lib/api/shrines";
+import { getShrinePrivate } from "@/lib/api/shrines";
 
 const pushMock = vi.fn();
 
@@ -28,7 +28,7 @@ vi.mock("@/lib/api/goshuin", () => ({
 }));
 
 vi.mock("@/lib/api/shrines", () => ({
-  getShrine: vi.fn(),
+  getShrinePrivate: vi.fn(),
 }));
 
 describe("GoshuinUploadForm", () => {
@@ -42,7 +42,7 @@ describe("GoshuinUploadForm", () => {
       // shrine_name が無いケースでも補完できるように
     });
 
-    (getShrine as any).mockResolvedValue({
+    (getShrinePrivate as any).mockResolvedValue({
       id: 3,
       name_jp: "テスト神社",
       address: "テスト住所",

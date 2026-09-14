@@ -3,7 +3,7 @@
 // Google Maps 経路案内URLへ `origin`（出発地）を渡すときの共通契約。
 //
 // 実装関数は画面ごとに分かれている（Map画面: buildGoogleMapsDirUrl /
-// `/navi/[id]`・`/shrines/[id]`: gmapsDirUrl）が、
+// `/shrines/[id]`: gmapsDirUrl）が、
 // 「どんな座標なら origin として Google Maps に渡してよいか」という挙動契約は
 // ここに一本化する。
 //
