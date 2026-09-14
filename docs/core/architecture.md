@@ -189,8 +189,10 @@ FrontendおよびMobileは、Backendが返す観測用Scoreを独自に順位へ
 
 ScoreのSignal、Component、Weight、計算式、評価方法および適用状況は、以下を正本とする。
 
-- `docs/analytics/recommendation-score-v3-design.md`
+- `docs/analytics/recommendation-score-v2-current-design.md`
 - 関連するBackend実装およびテスト
+
+`docs/analytics/recommendation-score-v3-design.md`はReference / Future Designであり、Current Score正本として扱わない（`docs/audit/rule-conflict-resolution.md` Decision B）。
 
 ---
 
@@ -349,7 +351,8 @@ request.user
 ### Analytics
 
 - Analytics文書の入口：`docs/analytics/README.md`
-- Recommendation Score v3：`docs/analytics/recommendation-score-v3-design.md`
+- Recommendation Score（Current正本）：`docs/analytics/recommendation-score-v2-current-design.md`
+- Recommendation Score v3（Reference / Future Design。Current正本ではない）：`docs/analytics/recommendation-score-v3-design.md`
 
 ### Audit
 
