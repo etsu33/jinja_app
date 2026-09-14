@@ -36,7 +36,7 @@
 ### 対象外
 
 - 個別Fieldの正確なSchema・型・Enum定義（各専門正本を参照）
-- Score計算式・Weight数値（`docs/analytics/recommendation-score-v3-design.md`を参照）
+- Score計算式・Weight数値（`docs/analytics/recommendation-score-v2-current-design.md`および現行Backend実装・テストを参照）
 - Recommendation Reasonの出力Schema（`docs/core/recommendation-reason-contract.md`を参照）
 - Consultation Interpretationの各Fieldの意味定義（`docs/product/recommendation-v4-interpreter-contract.md`を参照）
 - API Endpoint・Payload仕様（`docs/openapi.yaml`および各実装契約を参照）
@@ -59,6 +59,7 @@ Recommendation関連の設計判断は複数の文書に分散している。本
 | `docs/product/recommendation-v4-interpreter-contract.md` | Consultation Interpreterの9Field（raw_query/state_profile/need_profile/direction_profile/emotion_profile/action_intent/decision_context/constraint_profile/outcome_hint）の意味正本 |
 | `docs/core/recommendation-reason-contract.md` | Recommendation ReasonのInput/Output/Fact-Interpretation-Action/保存/表示/互換責務の正本 |
 | `docs/core/recommendation-readiness.md` | 神社データのKnowledge Coverage・Verification・Usabilityを観測するGovernance Contractの正本（Runtime candidate除外には接続しない） |
+| `docs/knowledge/recommendation-eligibility-contract.md` | Shared Recommendation Eligibility（Concierge / Compass共有のRuntime candidate boundary）の正本。Section 2の段階5が参照する |
 | `docs/product/recommendation-v4-frontend-adapter-contract.md` | `recommendation_reason_v4_detail`のWeb/Mobile表示Adapter契約 |
 | `docs/product/action_suggestion_v4.md` | Action Suggestion v4の入出力・生成原則の正本 |
 | `docs/product/visit-reflection-flow.md` | 参拝記録から振り返り・履歴・次回相談までの体験責務の正本 |
@@ -76,7 +77,7 @@ Recommendation関連の設計判断は複数の文書に分散している。本
 |------|------|
 | `docs/analytics/recommendation-score-v2.md` | Score v2の設計背景 |
 | `docs/analytics/recommendation-score-v2-foundation.md` | Score v2の基礎設計 |
-| `docs/analytics/recommendation-score-v3-design.md` | Score v3の設計。**注意**: `docs/core/architecture.md`は本文書をScoreの正本として参照しているが、本文書自身のStatusヘッダは`Reference`である。この不整合は本書の変更範囲外とし、「母艦判断項目」へ記録する |
+| `docs/analytics/recommendation-score-v3-design.md` | Score v3の設計（**Reference / Future Design**）。Current Score正本ではない。Current Score authorityは`docs/analytics/recommendation-score-v2-current-design.md` + 現行Backend実装 + 関連テストとする（`docs/audit/rule-conflict-resolution.md` Decision B）。v3のsignal / weight / phase構成をCurrent runtime contractとして扱わない |
 | `docs/analytics/reflection-next-recommendation-design.md` | Reflectionから次回推薦への接続に関する設計背景 |
 
 ### Archive（過去の設計判断・未実行の計画として記録するのみ。新規実装の根拠にしない）
@@ -127,7 +128,7 @@ Recommendationパイプラインを以下の12段階として定義する。`doc
    ↓
 4. Candidate Retrieval
    ↓
-5. Eligibility Filter
+5. Shared Recommendation Eligibility
    ↓
 6. Scoring
    ↓
@@ -183,26 +184,48 @@ Recommendationパイプラインを以下の12段階として定義する。`doc
 - **出力**: 候補神社の広めの集合（最終順位付け前）
 - **責務**: 取りこぼしを避けるため広めに候補を取得する。この段階では最終順位を確定しない
 - **正本データ**: 実装コードが正本（専用ドキュメント未整備）
-- **次工程への引き渡し**: Eligibility Filterへ候補集合を渡す
-- **禁止事項**: LLMへ全候補を無条件に渡す設計を正本にしない。候補数の絞り込みは本段階とEligibility Filterで行う
+- **次工程への引き渡し**: Shared Recommendation Eligibilityへ候補集合を渡す
+- **禁止事項**: LLMへ全候補を無条件に渡す設計を正本にしない。候補数の絞り込みは本段階とShared Recommendation Eligibilityで行う
 
-### 5. Eligibility Filter（再評価済み。§As-Is参照）
+### 5. Shared Recommendation Eligibility
+
+```text
+Candidate Retrieval
+↓
+Shared Recommendation Eligibility
+↓
+Scoring
+```
 
 - **入力**: 候補神社集合
-- **出力**: Recommendation対象として適格な候補集合（現状は候補集合をそのまま通過させる）
-- **責務**: 現状は明示的な除外を行わない。Knowledge完全性を理由とした候補除外の要否は`docs/core/recommendation-readiness.md`のMother Ship Decisionsへ委ねる
-- **正本データ**: `docs/core/recommendation-readiness.md`（Runtime / Governance Boundary）
-- **次工程への引き渡し**: Scoringへ候補集合を渡す
-- **禁止事項**: （現状規定なし。Product判断で除外を採用する場合は本Sectionを更新する）
+- **出力**: Recommendation対象として適格な候補集合（usable Factを持たない候補を除外した集合）
+- **責務**: Recommendation候補集合の**境界**を決める。適格条件は次のとおり。
 
-**As-Is（監査により確定）**: 本段階が前提としていた「Readiness Level1未達候補の除外」は、Knowledge Model・Evidence Gate実装後の監査（`docs/core/recommendation-readiness.md`§Runtime / Governance Boundary）により、Candidate Generation・Evidence Gate・Reason V4 fallback chainの組み合わせで既に安全に動作することが確認されたため、`REMOVE_FROM_CONTRACT`（削除）を技術的な第一候補として扱う。ただし候補除外自体を将来行うかどうかはProduct判断であり、本書は独断で確定しない。
+  ```text
+  Recommendation eligibility
+  = usable Deity Fact >= 1
+    OR usable History Fact >= 1
+  ```
+
+- **正本データ**: `docs/knowledge/recommendation-eligibility-contract.md` + 現行Backend実装（`backend/temples/services/concierge_chat_candidates.py`）+ 関連テスト
+- **次工程への引き渡し**: Scoringへ適格候補集合を渡す
+- **禁止事項**:
+  - eligibilityをranking signalとして扱わない（scoreへ一切寄与しない）
+  - ineligibleなShrineをScoreを下げて候補へ残さない
+  - ineligibleなShrineをfallback / 後段再投入で復活させない
+  - legacy `Shrine.goriyaku` / `Shrine.history_theme` からeligibilityを推定しない
+  - Compass側にeligibility判定を複製しない（共有層の返り値をそのまま受け取る）
+
+**責務境界**: 本段階は`docs/core/recommendation-readiness.md`（Governance観測）とは**別責務**である。Recommendation Readinessはcandidate exclusionを持たず、Shared EligibilityはRanking / Scoreを持たない。またShared Eligibilityは旧Readiness Level 0〜3の復活ではない。`usable`判定そのものはEvidence Gate（`evidence_gate.decide_fact_usability()`）へ委譲し、本段階で再定義しない。
+
+**Authority**: 本Sectionは`docs/audit/rule-conflict-resolution.md`（Phase 2B、Decision A: KEEP CURRENT SHARED ELIGIBILITY）で確定したCurrent truthへ整合している。zero-candidate挙動、Compass state契約、`pool_limit`との関係等の詳細は`docs/knowledge/recommendation-eligibility-contract.md`を正本とし、本書へ再掲しない。
 
 ### 6. Scoring
 
 - **入力**: 適格候補集合、`interpretation_profile`、条件UI入力、行動データ
 - **出力**: 候補ごとのScore（`score_element` / `score_need` / `score_popular` / `score_total`等）
 - **責務**: 候補神社の評価・順位決定の主要な計算を行う
-- **正本データ**: `docs/analytics/recommendation-score-v3-design.md`（`docs/core/architecture.md`が正本として指定）、`backend/temples/services/concierge_chat_ranking.py`
+- **正本データ**: `docs/analytics/recommendation-score-v2-current-design.md` + 現行Backend実装（`backend/temples/services/concierge_chat_ranking.py`等）+ 関連テスト。`docs/analytics/recommendation-score-v3-design.md`は**Reference / Future Design**であり、Current Score正本として扱わない（`docs/audit/rule-conflict-resolution.md` Decision B）
 - **次工程への引き渡し**: Re-rankingへScore付き候補を渡す
 - **禁止事項**: FrontendおよびMobileはBackendが返す観測用Scoreを独自に順位へ反映しない
 
@@ -333,8 +356,8 @@ Consultation Interpretationの出力を、検索実行可能な条件へ変換�
 - geo条件: 位置情報、距離範囲
 - structured filter: 誕生日由来の五行・九星、visit_style
 - boost対象: `history_theme`一致、`consultation_axis`一致
-- exclusion対象: Readiness Level未達候補、非公開ShrineSubmission
-- data quality threshold: Evidence不足候補の扱い（Section 6のEligibility Filterと接続）
+- exclusion対象: 非公開ShrineSubmission（Knowledge由来のcandidate除外はRetrieval Queryでは行わず、§Shared Recommendation Eligibilityが担う。旧Readiness Levelを除外条件として使用しない）
+- data quality threshold: Evidence不足候補の扱いは§Shared Recommendation Eligibilityと接続する
 
 **原則**: この段階は検索条件の生成に限定し、最終順位を決定しない。
 
@@ -345,7 +368,7 @@ Consultation Interpretationの出力を、検索実行可能な条件へ変換�
 **原則**:
 
 - 「広め取得」と「最終順位付け」を明確に分離する。Candidate Retrievalは取りこぼし防止を優先し、Re-rankingで最終順位を確定する
-- LLMへ候補を渡す設計を採用する場合も、全候補無条件渡しを正本としない。Eligibility FilterとRetrieval Queryによる事前絞り込みを経由する
+- LLMへ候補を渡す設計を採用する場合も、全候補無条件渡しを正本としない。Shared Recommendation EligibilityとRetrieval Queryによる事前絞り込みを経由する
 
 ---
 
@@ -635,7 +658,7 @@ Shrine Knowledge Contract（Section 11）の設計を実データで検証する
 9. Web側`visit_style_tags`相当の入力方式の統一方針（Section 14）
 10. Recommendation Reasonにおけるfallbackの全面禁止可否
 11. Pilot神社の具体的な選定（Section 18の基準を満たす実際の3〜5社）
-12. `docs/analytics/recommendation-score-v3-design.md`のStatus（Reference）と`docs/core/architecture.md`がこれを正本として参照している点の不整合の解消方針（Section 1）
+12. ~~`docs/analytics/recommendation-score-v3-design.md`のStatus（Reference）と`docs/core/architecture.md`がこれを正本として参照している点の不整合の解消方針（Section 1）~~ → **解決済み**。Phase 2B（`docs/audit/rule-conflict-resolution.md` Decision B）でCurrent Score authorityを`docs/analytics/recommendation-score-v2-current-design.md` + 現行Backend実装 + 関連テストと確定し、v3はReference / Future Designのまま維持することとした
 
 ---
 
@@ -655,7 +678,9 @@ Shrine Knowledge Contract（Section 11）の設計を実データで検証する
 - `docs/knowledge/shrine-profile-spec.md`
 - `docs/knowledge/shrine-knowledge-contract.md`
 - `docs/knowledge/shrine-data-guide.md`
-- `docs/analytics/recommendation-score-v2-current-design.md`
-- `docs/analytics/recommendation-score-v3-design.md`
+- `docs/analytics/recommendation-score-v2-current-design.md`（Current Score正本）
+- `docs/analytics/recommendation-score-v3-design.md`（Reference / Future Design）
+- `docs/knowledge/recommendation-eligibility-contract.md`（Shared Recommendation Eligibility正本）
+- `docs/audit/rule-conflict-resolution.md`（Phase 2B Decision Record）
 - `docs/audit/concierge-end-to-end-consistency-audit.md`
 - `docs/audit/recommendation-v5-design.md`
