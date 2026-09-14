@@ -19,3 +19,27 @@ export async function PATCH(req: NextRequest) {
     body: bodyText,
   });
 }
+
+export async function DELETE(req: NextRequest) {
+  const response = await bffFetchWithAuthFromReq(req, "/api/users/me/", {
+    method: "DELETE",
+  });
+
+  // Backend が削除完了を 204 で確定した場合だけ認証Cookieを破棄する。
+  // 503 / 401 / その他の失敗時は Account が残っている可能性があるため、
+  // Cookie を維持して再試行できる状態を残す。
+  if (response.status !== 204) {
+    return response;
+  }
+
+  response.cookies.set("access_token", "", {
+    path: "/",
+    maxAge: 0,
+  });
+  response.cookies.set("refresh_token", "", {
+    path: "/",
+    maxAge: 0,
+  });
+
+  return response;
+}
