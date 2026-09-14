@@ -22,7 +22,11 @@ export function sanitizeNext(next: string | null | undefined): string | null {
     t.startsWith("/shrines") ||
     t.startsWith("/mypage") ||
     t.startsWith("/concierge") ||
-    t.startsWith("/billing")
+    t.startsWith("/billing") ||
+    t === "/favorites" ||
+    t.startsWith("/favorites?") ||
+    t === "/goshuin/new" ||
+    t.startsWith("/goshuin/new?")
   ) {
     return t;
   }

@@ -2,12 +2,14 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Favorite } from "@/lib/api/favorites";
 import { normalizeFavorite } from "@/lib/favorites/normalize";
 import { removeFavoriteFromCacheByPk, clearFavoritesInFlight } from "@/lib/favoritesCache";
 import { FavoriteShrineCard } from "@/features/mypage/components/FavoriteShrineCard";
+import { useAuth } from "@/lib/auth/AuthProvider";
+import { buildLoginHref } from "@/lib/nav/login";
 
 
 
@@ -22,7 +24,14 @@ async function fetchFavoritesDirect(): Promise<Favorite[]> {
 
 export default function FavoritesListClient({ initialFavorites }: Props) {
   const router = useRouter();
+  const { isLoggedIn, loading } = useAuth();
   const [items, setItems] = useState<Favorite[]>(initialFavorites);
+
+  useEffect(() => {
+    if (!loading && !isLoggedIn) {
+      router.replace(buildLoginHref("/favorites"));
+    }
+  }, [isLoggedIn, loading, router]);
   const [err, setErr] = useState<string | null>(null);
 
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -84,6 +93,14 @@ export default function FavoritesListClient({ initialFavorites }: Props) {
       setBusyId(null);
       setBusyKind(null);
     }
+  }
+
+  if (loading || !isLoggedIn) {
+    return (
+      <div className="p-4 text-sm text-[var(--kt-color-text-secondary)]" role="status" aria-busy={loading}>
+        認証状態を確認しています...
+      </div>
+    );
   }
 
   return (

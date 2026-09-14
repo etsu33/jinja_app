@@ -19,6 +19,23 @@ describe("sanitizeReturnTo", () => {
     expect(sanitizeReturnTo("/billing/upgrade")).toBe("/billing/upgrade");
   });
 
+  it("/favorites は復帰先として通す", () => {
+    expect(sanitizeReturnTo("/favorites")).toBe("/favorites");
+  });
+
+  it("/favorites のクエリ付きパスは復帰先として通す", () => {
+    expect(sanitizeReturnTo("/favorites?source=detail")).toBe("/favorites?source=detail");
+  });
+
+  it("/goshuin/new のクエリ付きパスは復帰先として通す", () => {
+    expect(sanitizeReturnTo("/goshuin/new?shrine=123")).toBe("/goshuin/new?shrine=123");
+  });
+
+  it("許可routeに似ただけのパスは拒否する", () => {
+    expect(sanitizeReturnTo("/favorites-old")).toBeNull();
+    expect(sanitizeReturnTo("/goshuin/new-old")).toBeNull();
+  });
+
   it("クエリ付き内部パスは通す", () => {
     expect(sanitizeReturnTo("/shrines/1?ctx=concierge&tid=123")).toBe(
       "/shrines/1?ctx=concierge&tid=123",
@@ -59,6 +76,14 @@ describe("buildLoginHref", () => {
 
   it("/billing/upgrade を returnTo に付ける", () => {
     expect(buildLoginHref("/billing/upgrade")).toBe("/auth/login?returnTo=%2Fbilling%2Fupgrade");
+  });
+
+  it("/favorites を returnTo に付ける", () => {
+    expect(buildLoginHref("/favorites")).toBe("/auth/login?returnTo=%2Ffavorites");
+  });
+
+  it("/goshuin/new のqueryを保持して returnTo に付ける", () => {
+    expect(buildLoginHref("/goshuin/new?shrine=123")).toBe("/auth/login?returnTo=%2Fgoshuin%2Fnew%3Fshrine%3D123");
   });
 
   it("unsafe な returnTo のとき /auth/login に落とす", () => {
