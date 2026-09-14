@@ -99,12 +99,29 @@
 |---|---|
 | 神社Profile項目の一覧（どの項目が存在するか） | `shrine-profile-spec.md` |
 | 項目の必須・任意・Coverage | `shrine-profile-spec.md` |
-| 項目のRecommendation利用に必要な充足条件 | `shrine-profile-spec.md`（Readiness判定材料の提供）、`docs/core/recommendation-readiness.md`（Readiness Level本体） |
 | `deity` / `shrine_history`の値の意味・分類・不明値の扱い | 本書 |
 | Source（出典）の項目・確認状態・信頼度 | 本書 |
 | Fact利用条件・表示条件・AI生成値の制約 | 本書 |
+| Factのusable判定（Evidence Gate要件） | 本書 |
 | 情報矛盾時の扱い | 本書 |
+| Recommendation candidate eligibility（どのShrineが候補になれるか） | `docs/knowledge/recommendation-eligibility-contract.md` |
+| Knowledge Coverage / Verification / Usability状態のGovernance観測 | `docs/core/recommendation-readiness.md` |
 | Recommendationパイプライン全体の段階構成 | `docs/core/recommendation-architecture.md` |
+
+「Recommendationに利用できるか」は単一の責務ではなく、次の3つに分離する。旧Runtime Readiness Level 0〜3はSupersededであり、いずれの判定にも使用しない。
+
+```text
+Factをこの1件として利用してよいか
+  -> Evidence Gate（本書「Evidence Gate要件」）
+
+このShrineがRecommendation候補になれるか
+  -> Shared Recommendation Eligibility
+     （docs/knowledge/recommendation-eligibility-contract.md）
+
+この神社群のKnowledge整備状態はどうなっているか
+  -> Recommendation Readiness（Governance観測。
+     docs/core/recommendation-readiness.md）
+```
 
 本書は`shrine-profile-spec.md`を統合・吸収しない。`shrine-profile-spec.md`の「⑥ Trust Layer」「未確定事項 5. Trust Layerの実装場所」は、本書公開後は本書への参照ポインタとして扱う（本書がその内容を正本化したことの明示のみを`shrine-profile-spec.md`側へ最小限追記する。項目定義の書き換えは行わない）。
 
