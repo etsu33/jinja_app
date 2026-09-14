@@ -1,5 +1,6 @@
 // apps/web/src/lib/maps/googleMaps.ts
 
+import { resolveDestination, type DestinationInput } from "./destinationContract";
 import { toValidOrigin } from "./originContract";
 
 function enc(v: string) {
@@ -14,25 +15,22 @@ export function buildGoogleMapsSearchUrl(name: string, address?: string) {
 /**
  * Google Maps の経路案内URLを生成する。
  *
- * destination: 既存仕様を維持する（lat/lng → address → fallbackName）。
+ * destination: `resolveDestination()` の契約に従う（`destinationContract.ts` 参照）。
+ *   有効座標 → trim後に空でないaddress → trim後に空でないfallbackName の順。
+ *   候補が1つも無ければ `null` を返し、東京駅などへはフォールバックしない。
+ *   呼び出し側は `null` のとき経路案内CTAを出さないこと。
  * origin: `toValidOrigin()` を通過した場合のみ付与する（`originContract.ts` 参照）。
  *   現在地が取れていない・fallback 座標しかない場合は origin を付けず、
  *   従来どおり destination だけで Google Maps を開く。
  */
 export function buildGoogleMapsDirUrl(params: {
   origin?: { lat?: number | null; lng?: number | null } | null;
-  destination: { lat?: number; lng?: number; address?: string; fallbackName?: string };
-}) {
-  const dest = params.destination;
+  destination: DestinationInput;
+}): string | null {
+  const destination = resolveDestination(params.destination);
+  if (!destination) return null;
 
-  const destinationParam =
-    typeof dest.lat === "number" && typeof dest.lng === "number"
-      ? `${dest.lat},${dest.lng}`
-      : dest.address
-        ? dest.address
-        : (dest.fallbackName ?? "東京駅");
-
-  let url = `https://www.google.com/maps/dir/?api=1&destination=${enc(destinationParam)}`;
+  let url = `https://www.google.com/maps/dir/?api=1&destination=${enc(destination.value)}`;
 
   const origin = toValidOrigin(params.origin);
   if (origin) url += `&origin=${enc(`${origin.lat},${origin.lng}`)}`;
