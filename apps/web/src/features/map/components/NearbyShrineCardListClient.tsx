@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { trackNearbyFetch } from "@/lib/analytics/searchEvents";
 import type { PlacesNearbyResponse } from "@/lib/api/places.nearby.types";
 import { requestCurrentPosition } from "@/lib/geo/currentPosition";
+import GoogleMapRouteLink from "@/components/shrine/GoogleMapRouteLink";
 import { buildGoogleMapsDirUrl, buildGoogleMapsSearchUrl } from "@/lib/maps/googleMaps";
 import { buildMapDetailHref } from "@/lib/nav/buildMapDetailHref";
 
@@ -313,7 +314,7 @@ export default function NearbyShrineCardListClient() {
                     </a>
                   )}
 
-                  <a
+                  <GoogleMapRouteLink
                     className="rounded-full border border-emerald-200/55 bg-emerald-50/80 px-3 py-1.5 text-center text-xs font-normal text-emerald-900 hover:bg-emerald-100"
                     href={buildGoogleMapsDirUrl({
                       // 実現在地が取れているときだけ origin を渡す。
@@ -326,11 +327,15 @@ export default function NearbyShrineCardListClient() {
                         fallbackName: p.name,
                       },
                     })}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    経路案内
-                  </a>
+                    label="経路案内"
+                    source="map"
+                    // shrine_idを持つ候補だけBackend ShrineInteractionLogの対象になる。
+                    // Google Places-only候補ではshrineIdを渡さないため、route_open
+                    // analyticsだけが飛びBackendへは送られない。
+                    shrineId={shrineId}
+                    // tidが実在するときだけthreadIdとして渡す（空文字は未指定扱い）。
+                    tid={tid || undefined}
+                  />
                 </div>
               </li>
             );
