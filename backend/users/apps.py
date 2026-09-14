@@ -27,3 +27,9 @@ class UsersConfig(AppConfig):
             dispatch_uid="users.ensure_profile",  # ← 重複防止
             weak=False,  # ← GC対策
         )
+
+        # UserProfile.icon の Storage cleanup receiver を登録する。
+        # import するまで誰もこのモジュールを読んでおらず、receiver は runtime で
+        # 一つも登録されていなかった（= icon の実ファイルが孤児化していた）。
+        # 各 receiver は dispatch_uid を持つので、二重 import しても登録は1回。
+        from . import signals  # noqa: F401
