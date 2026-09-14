@@ -377,7 +377,7 @@ def delete_user_account(*, user) -> AccountDeletionResult:
             "exists and deletion can be retried)",
             type(exc).__name__,
         )
-        raise AccountDataDeletionFailed("failed to delete account data") from exc
+        raise AccountDataDeletionFailed("failed to delete account data") from None
 
     return AccountDeletionResult(
         account_deleted=True,

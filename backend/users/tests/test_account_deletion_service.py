@@ -448,14 +448,25 @@ def test_db_failure_does_not_blacklist_or_delete_rows(settings):
     stripe = _stripe_mock()
 
     with _patch_stripe(stripe):
-        with patch.object(type(user), "delete", side_effect=RuntimeError("db boom")):
-            with pytest.raises(AccountDataDeletionFailed):
+        with patch.object(
+            type(user),
+            "delete",
+            side_effect=RuntimeError(
+                "db failure email=user@example.com password=hunter2"
+            ),
+        ):
+            with pytest.raises(AccountDataDeletionFailed) as excinfo:
                 delete_user_account(user=user)
 
     # transaction rollback により blacklist も log 削除も巻き戻る
     assert BlacklistedToken.objects.count() == 0
     assert ConciergeRecommendationLog.objects.filter(pk=log.pk).exists()
 
+    # raw DB exceptionをdomain exceptionとして外へ露出させない
+    assert excinfo.value.__cause__ is None
+    assert excinfo.value.__suppress_context__ is True
+    assert "hunter2" not in str(excinfo.value)
+    assert "user@example.com" not in str(excinfo.value)
 
 # ------------------------------------------- Stripe partial failure (phase B)
 
