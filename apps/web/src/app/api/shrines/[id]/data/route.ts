@@ -6,7 +6,7 @@ type Ctx = { params: Promise<{ id: string }> };
 export const dynamic = "force-dynamic";
 
 // 通常Detail API（ShrineViewSet.retrieve、AllowAny）へのBFF境界。
-// /api/public/shrines/[id]/route.tsと同じ中継パターン（djFetch経由）に揃える。
+// Shrine詳細を取得する唯一のBFF経路（djFetch経由で中継する）。
 const DJANGO_SHRINE_DATA_BASE = "/api/shrines";
 
 export async function GET(req: NextRequest, ctx: Ctx) {

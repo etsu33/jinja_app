@@ -20,7 +20,7 @@ function resolveBackendPublicBaseUrl(): string | null {
 
 // 通常Detail API（/api/shrines/{id}/data/、ShrineViewSet.retrieve）を使用する。
 // AllowAnyのためanonymous SSR fetchのまま（認証headerは付けない）。
-// Public API（/api/public/shrines/{id}/）は/navi/[id]専用として維持し、ここでは呼ばない。
+// Shrine詳細のupstreamはこの通常Detail APIに一本化されている。
 export async function getShrineDetailServer(id: number): Promise<Shrine> {
   const base = resolveBackendPublicBaseUrl() ?? (await resolveServerBaseUrl());
   const url = `${base}/api/shrines/${id}/data/`;

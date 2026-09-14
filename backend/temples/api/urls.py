@@ -41,7 +41,6 @@ from temples.api.views.shrine import (
     PopularShrineListView,
     ShrineViewSet,
 )
-from temples.api.views.shrine_public import PublicShrineDetailView
 from temples.api.views.tags import goriyaku_tags_list
 from temples.api.views.shrine_meaning import ShrineMeaningView
 from temples.api.views.visit import VisitCreateView, UserVisitListView
@@ -133,7 +132,6 @@ urlpatterns = [
     path("concierge/score-v3/dashboard/", ScoreV3DashboardView.as_view(), name="score-v3-dashboard"),
     path("visits/", UserVisitListView.as_view(), name="visit-list"),
     path("journeys/timeline/", JourneyTimelineView.as_view(), name="journey-timeline"),
-    path("public/shrines/<int:pk>/", PublicShrineDetailView.as_view(), name="public-shrine-detail"),
     path("populars/", PopularShrineListView.as_view(), name="popular-shrines"),
     path("concierge/chat/", concierge_chat_compat, name="concierge-chat"),
     path("concierge/chat", concierge_chat_compat_noslash, name="concierge-chat-noslash"),
