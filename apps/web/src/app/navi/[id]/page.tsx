@@ -65,8 +65,10 @@ export default function NaviPage() {
 
   const dirUrl = useMemo(() => {
     if (!destination) return null;
-    return gmapsDirUrl({ dest: destination });
-  }, [destination]);
+    // origin は現在地取得に成功したときだけ state に入る。
+    // 失敗時は null のままで、従来どおり destination だけで Google Maps を開く。
+    return gmapsDirUrl({ dest: destination, origin });
+  }, [destination, origin]);
 
   const searchUrl = useMemo(() => {
     return buildGoogleMapsSearchUrl(shrine?.name_jp ?? "神社", shrine?.address ?? undefined);
