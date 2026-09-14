@@ -13,6 +13,11 @@ import { normalizeBirthday } from "@/lib/profile/derivedProfile";
 const CLEAR_BIRTHDAY_CONFIRM =
   "生年月日の登録を解除しますか？\n解除すると、コンシェルジュとコンパスで保存済みの生年月日を自動利用しなくなります。";
 
+const ACCOUNT_DELETE_CONFIRM =
+  "アカウントを削除しますか？\n\nPremium利用中の場合は即時終了し、次回以降の請求を停止します。残りの利用期間は引き継がれず、利用者都合の削除では日割り返金はありません。";
+
+const ACCOUNT_DELETE_FINAL_CONFIRM = "この操作は取り消せません。\n本当にアカウントを削除しますか？";
+
 export default function MyPageSettingsView() {
   const router = useRouter();
   const { user: authUser, loading, logout, refreshMe } = useAuthContext();
@@ -34,6 +39,8 @@ export default function MyPageSettingsView() {
   // 生年月日セクションの結果は、離れた場所ではなく同じセクション内に出す。
   const [birthdayMessage, setBirthdayMessage] = useState<string | null>(null);
   const [birthdayError, setBirthdayError] = useState<string | null>(null);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [deleteAccountError, setDeleteAccountError] = useState<string | null>(null);
 
   useEffect(() => {
     setDisplayName(savedDisplayName);
@@ -203,6 +210,44 @@ export default function MyPageSettingsView() {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    if (!authUser || saving || deletingAccount) return;
+
+    const firstConfirmed = window.confirm(ACCOUNT_DELETE_CONFIRM);
+    if (!firstConfirmed) return;
+
+    const finalConfirmed = window.confirm(ACCOUNT_DELETE_FINAL_CONFIRM);
+    if (!finalConfirmed) return;
+
+    setSaving(true);
+    setDeletingAccount(true);
+    setDeleteAccountError(null);
+
+    try {
+      const response = await fetch("/api/users/me/", {
+        method: "DELETE",
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+
+      if (response.status !== 204) {
+        setDeleteAccountError("アカウントを削除できませんでした。時間をおいて、もう一度お試しください。");
+        return;
+      }
+
+      // BFFの204で認証Cookieは削除済み。
+      // AuthProvider側もguest状態へ同期してからトップへ戻す。
+      await refreshMe();
+      router.replace("/");
+      router.refresh();
+    } catch {
+      setDeleteAccountError("アカウントを削除できませんでした。時間をおいて、もう一度お試しください。");
+    } finally {
+      setDeletingAccount(false);
+      setSaving(false);
+    }
+  };
+
   const handleLogout = async () => {
     const ok = window.confirm("ログアウトしますか？");
     if (!ok) return;
@@ -251,7 +296,10 @@ export default function MyPageSettingsView() {
 
       <section className="space-y-4 rounded-2xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-5">
         <div>
-          <label htmlFor="settings-display-name" className="mb-1 block text-sm font-medium text-[var(--kt-color-text-secondary)]">
+          <label
+            htmlFor="settings-display-name"
+            className="mb-1 block text-sm font-medium text-[var(--kt-color-text-secondary)]"
+          >
             表示名
           </label>
           <input
@@ -280,7 +328,10 @@ export default function MyPageSettingsView() {
 
       <section className="space-y-4 rounded-2xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-5">
         <div>
-          <label htmlFor="settings-birthday" className="mb-1 block text-sm font-medium text-[var(--kt-color-text-secondary)]">
+          <label
+            htmlFor="settings-birthday"
+            className="mb-1 block text-sm font-medium text-[var(--kt-color-text-secondary)]"
+          >
             生年月日
           </label>
           <p className="mb-2 text-xs text-[var(--kt-color-text-muted)]">
@@ -385,6 +436,33 @@ export default function MyPageSettingsView() {
         >
           ログアウト
         </button>
+      </section>
+
+      <section className="space-y-4 rounded-2xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-5">
+        <div className="space-y-2">
+          <h2 className="text-sm font-semibold text-[var(--kt-color-status-error)]">アカウント削除</h2>
+
+          <p className="text-xs leading-relaxed text-[var(--kt-color-text-muted)]">
+            この操作は取り消せません。Premium利用中の場合は即時終了し、
+            次回以降の請求を停止します。残りの利用期間は引き継がれず、
+            利用者都合のアカウント削除では日割り返金はありません。
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => void handleDeleteAccount()}
+          disabled={saving || deletingAccount}
+          className="inline-flex min-h-11 w-full items-center justify-center rounded-full border border-[var(--kt-color-status-error)] bg-[var(--kt-color-surface-default)] px-4 text-sm font-medium text-[var(--kt-color-status-error)] transition hover:bg-[var(--kt-color-background-subtle)] disabled:opacity-40"
+        >
+          {deletingAccount ? "削除中..." : "アカウントを削除"}
+        </button>
+
+        {deleteAccountError ? (
+          <p role="alert" className="text-sm font-medium text-[var(--kt-color-status-error)]">
+            {deleteAccountError}
+          </p>
+        ) : null}
       </section>
     </main>
   );
