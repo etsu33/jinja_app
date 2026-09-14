@@ -20,7 +20,27 @@ export async function PATCH(req: NextRequest) {
   });
 }
 
+function isAllowedOrigin(req: NextRequest): boolean {
+  const origin = req.headers.get("origin");
+
+  // Originを送らない非ブラウザクライアント等はここでは拒否しない。
+  // ブラウザからのcross-origin requestはOriginで判定する。
+  if (!origin) {
+    return true;
+  }
+
+  try {
+    return new URL(origin).origin === req.nextUrl.origin;
+  } catch {
+    return false;
+  }
+}
+
 export async function DELETE(req: NextRequest) {
+  if (!isAllowedOrigin(req)) {
+    return new Response(null, { status: 403 });
+  }
+
   const response = await bffFetchWithAuthFromReq(req, "/api/users/me/", {
     method: "DELETE",
   });
