@@ -474,10 +474,127 @@ describe("/mypage/settings", () => {
     });
   });
 
-  it("メール変更・パスワード変更・アカウント削除などのplaceholderは置かない", () => {
+  describe("アカウント削除", () => {
+    const FIRST_CONFIRM =
+      "アカウントを削除しますか？\n\nPremium利用中の場合は即時終了し、次回以降の請求を停止します。残りの利用期間は引き継がれず、利用者都合の削除では日割り返金はありません。";
+
+    const FINAL_CONFIRM = "この操作は取り消せません。\n本当にアカウントを削除しますか？";
+
+    it("アカウント削除の説明と削除ボタンを表示する", () => {
+      render(<MyPageSettingsView />);
+
+      expect(screen.getByRole("heading", { name: "アカウント削除" })).toBeInTheDocument();
+
+      expect(screen.getByRole("button", { name: "アカウントを削除" })).toBeInTheDocument();
+
+      expect(screen.getByText(/Premium利用中の場合は即時終了/)).toBeInTheDocument();
+    });
+
+    it("1回目の確認をキャンセルするとDELETEしない", () => {
+      const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+      const fetchMock = vi.spyOn(globalThis, "fetch");
+
+      render(<MyPageSettingsView />);
+
+      fireEvent.click(screen.getByRole("button", { name: "アカウントを削除" }));
+
+      expect(confirm).toHaveBeenCalledTimes(1);
+      expect(confirm).toHaveBeenCalledWith(FIRST_CONFIRM);
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(mocks.refreshMe).not.toHaveBeenCalled();
+      expect(mocks.replace).not.toHaveBeenCalled();
+    });
+
+    it("2回目の確認をキャンセルするとDELETEしない", () => {
+      const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(true).mockReturnValueOnce(false);
+
+      const fetchMock = vi.spyOn(globalThis, "fetch");
+
+      render(<MyPageSettingsView />);
+
+      fireEvent.click(screen.getByRole("button", { name: "アカウントを削除" }));
+
+      expect(confirm).toHaveBeenCalledTimes(2);
+      expect(confirm).toHaveBeenNthCalledWith(1, FIRST_CONFIRM);
+      expect(confirm).toHaveBeenNthCalledWith(2, FINAL_CONFIRM);
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(mocks.refreshMe).not.toHaveBeenCalled();
+      expect(mocks.replace).not.toHaveBeenCalled();
+    });
+
+    it("二重確認後にDELETEし、204なら認証状態を再同期してトップへ遷移する", async () => {
+      vi.spyOn(window, "confirm").mockReturnValue(true);
+
+      const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 204 }));
+
+      mocks.refreshMe.mockResolvedValue(undefined);
+
+      render(<MyPageSettingsView />);
+
+      fireEvent.click(screen.getByRole("button", { name: "アカウントを削除" }));
+
+      await waitFor(() =>
+        expect(fetchMock).toHaveBeenCalledWith("/api/users/me/", {
+          method: "DELETE",
+          credentials: "same-origin",
+          cache: "no-store",
+        }),
+      );
+
+      await waitFor(() => expect(mocks.refreshMe).toHaveBeenCalledTimes(1));
+      await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith("/"));
+    });
+
+    it("Backendが204以外なら削除完了扱いにせずエラーを表示する", async () => {
+      vi.spyOn(window, "confirm").mockReturnValue(true);
+
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            code: "account_deletion_unavailable",
+            detail: "failed",
+          }),
+          {
+            status: 503,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      );
+
+      render(<MyPageSettingsView />);
+
+      fireEvent.click(screen.getByRole("button", { name: "アカウントを削除" }));
+
+      expect(
+        await screen.findByText("アカウントを削除できませんでした。時間をおいて、もう一度お試しください。"),
+      ).toBeInTheDocument();
+
+      expect(mocks.refreshMe).not.toHaveBeenCalled();
+      expect(mocks.replace).not.toHaveBeenCalled();
+    });
+
+    it("通信失敗時も削除完了扱いにせずエラーを表示する", async () => {
+      vi.spyOn(window, "confirm").mockReturnValue(true);
+
+      vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("network error"));
+
+      render(<MyPageSettingsView />);
+
+      fireEvent.click(screen.getByRole("button", { name: "アカウントを削除" }));
+
+      expect(
+        await screen.findByText("アカウントを削除できませんでした。時間をおいて、もう一度お試しください。"),
+      ).toBeInTheDocument();
+
+      expect(mocks.refreshMe).not.toHaveBeenCalled();
+      expect(mocks.replace).not.toHaveBeenCalled();
+    });
+  });
+
+  it("未実装の設定placeholderは置かない", () => {
     render(<MyPageSettingsView />);
 
-    for (const label of ["メールアドレスを変更", "パスワードを変更", "アカウントを削除", "通知設定", "プランを管理"]) {
+    for (const label of ["メールアドレスを変更", "パスワードを変更", "通知設定", "プランを管理"]) {
       expect(screen.queryByText(label)).toBeNull();
     }
   });

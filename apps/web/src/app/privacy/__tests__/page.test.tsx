@@ -55,18 +55,18 @@ describe("PrivacyPolicyPage", () => {
     }
   });
 
-  it("現行UIで変更できないプロフィール項目を変更可能と読ませない", () => {
+  it("現行UIで変更できるプロフィール項目と変更できない項目を正しく区別する", () => {
     const { container } = render(<PrivacyPolicyPage />);
     const text = container.textContent ?? "";
 
-    // 現行UIが書き込むのは nickname / is_public と、
-    // コンシェルジュ・コンパス経由の birthday のみ。
-    // 全項目を任意に変更できるという断定を置かない。
     expect(text).not.toContain("いずれも利用者が任意で入力・変更できます");
-    expect(text).toContain("現在の画面から利用者が変更できるのは、表示名と公開設定です");
-    expect(text).toContain("生年月日は、コンシェルジュやコンパスで入力した場合に保存されます");
+
+    expect(text).toContain("現在の設定画面から利用者が変更できるのは、表示名、公開設定および生年月日です");
+
+    expect(text).toContain("生年月日は、設定画面のほか、コンシェルジュやコンパスで入力した場合にも保存され");
+
     expect(text).toContain(
-      "自己紹介、アイコン画像、出生時刻、出生地については、現時点では画面から入力・変更する導線を提供していません",
+      "自己紹介、アイコン画像、出生時刻、出生地については、現時点では設定画面から入力・変更する導線を提供していません",
     );
   });
 
@@ -86,15 +86,17 @@ describe("PrivacyPolicyPage", () => {
     expect(text).toContain("相談内容はこれに含まれません");
   });
 
-  it("確認できない保存期間・削除方式を断定しない", () => {
+  it("匿名データの90日Retentionと自動削除ではない境界を正しく記載する", () => {
     const { container } = render(<PrivacyPolicyPage />);
     const text = container.textContent ?? "";
 
-    // 具体的な保存期間を勝手に決めていないこと
-    for (const banned of ["30日", "90日", "1年間", "6か月", "完全に削除します"]) {
-      expect(text).not.toContain(banned);
-    }
-    expect(text).toContain("保存期間の上限や、期間経過による自動削除の仕組みは定めていません");
+    expect(text).toContain("90日を超えたデータを削除対象とします");
+
+    expect(text).toContain("認証済みアカウントに紐づく情報には、この90日の匿名データ保持ルールを適用しません");
+
+    expect(text).not.toContain("90日後に自動削除");
+    expect(text).not.toContain("90日経過時に自動削除");
+    expect(text).not.toContain("完全に削除します");
   });
 
   it("現行実装で確認できる取得情報と外部サービスを記載する", () => {
@@ -115,3 +117,14 @@ describe("PrivacyPolicyPage", () => {
     expect(text).toContain("クレジットカード番号などの支払手段そのものは本サービスのサーバーに保存しません");
   });
 });
+
+  it("アカウント削除とPremium課金停止の現在仕様を明記する", () => {
+    const { container } = render(<PrivacyPolicyPage />);
+    const text = container.textContent ?? "";
+
+    expect(text).toContain("利用者は設定画面から、自身のアカウントを削除できます");
+
+    expect(text).toContain("将来の請求停止を確認したうえでPremiumを終了し、アカウント削除を進めます");
+
+    expect(text).toContain("アカウントとの紐付けを解除したうえで保持される場合があります");
+  });
