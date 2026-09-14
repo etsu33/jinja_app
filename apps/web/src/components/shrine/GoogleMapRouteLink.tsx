@@ -9,9 +9,18 @@ import {
   type RecommendationAnalyticsProvenance,
 } from "../../../../../packages/shared/recommendationAnalyticsProvenance";
 
+/**
+ * route_open を送る surface。SearchAnalyticsPayload["source"] の部分集合で、
+ * 実際にこのコンポーネントを使っている画面だけに限定する（推測で広げない）。
+ * ShrineInteractionLog の source にも同じ値を使う。
+ */
+export type GoogleMapRouteLinkSource = "shrine_detail" | "map";
+
 type Props = {
   href: string;
   label: string;
+  /** 既定は既存互換の "shrine_detail"。 */
+  source?: GoogleMapRouteLinkSource;
   shrineId?: number | string | null;
   ctx?: string | null;
   tid?: string | number | null;
@@ -25,6 +34,7 @@ type Props = {
 export default function GoogleMapRouteLink({
   href,
   label,
+  source = "shrine_detail",
   shrineId = null,
   ctx = null,
   tid = null,
@@ -63,7 +73,7 @@ export default function GoogleMapRouteLink({
         }
         try {
           trackSearchEvent("route_open", {
-            source: "shrine_detail",
+            source,
             routeTarget: "google_maps",
             shrineId: shrineId ?? undefined,
             threadId: tid != null ? String(tid) : undefined,
@@ -82,7 +92,7 @@ export default function GoogleMapRouteLink({
             void trackShrineInteraction({
               shrineId: shrineIdNumber,
               actionType: "route_open",
-              source: "shrine_detail",
+              source,
               threadId: tid,
               metadata: {
                 event: "route_open",
