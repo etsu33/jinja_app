@@ -54,7 +54,28 @@ class AccountDeletionError(RuntimeError):
 
 
 class BillingCleanupFailed(AccountDeletionError):
-    """Stripe 側の停止を確認できなかった。DB は一切変更していない。"""
+    """将来請求の停止を確認できなかった。DB は一切変更していない。
+
+    Account も billing mirror もそのまま。retry で最初からやり直せる。
+    """
+
+
+class BillingStateSyncFailed(AccountDeletionError):
+    """将来請求は停止したが、ローカルの billing mirror 更新に失敗した。
+
+    Account は残り、Stripe の subscription は停止済み。mirror が canceled へ
+    倒れていないため、Premium active に見えたままになりうる。
+    User.delete へは進まない。retry すると mirror 更新からやり直す
+    （subscription は既に canceled なので Stripe 側は idempotent）。
+    """
+
+
+class BillingCustomerCleanupFailed(AccountDeletionError):
+    """将来請求は停止し mirror も canceled だが、Customer 削除に失敗した。
+
+    Account 本体は削除していない。課金は止まっているので緊急度は低いが、
+    Stripe に customer が残る。retry すると customer 削除からやり直す。
+    """
 
 
 class AccountDataDeletionFailed(AccountDeletionError):
@@ -147,10 +168,37 @@ def _delete_customer(stripe: Any, customer_id: str) -> None:
             raise
 
 
-def _cleanup_billing(*, profile: Optional[UserProfile]) -> bool:
-    """Stripe 側の将来請求を止める。実際に外部APIを呼んだら True。
+def _fail_closed(exc: Exception, error_class, phase: str, detail: str):
+    """Stripe 例外を安全な domain exception へ畳む。
 
-    停止を確認できない場合は必ず BillingCleanupFailed を送出する。
+    `from None` で `__cause__` / `__context__` を切る。raw Stripe exception は
+    customer / subscription ID や secret を本文へ含みうるので、traceback にも
+    error monitoring にも流さない。ここで残すのは型名だけ。
+    """
+    logger.error(
+        "[account-deletion] stripe %s failed error_type=%s (%s)",
+        phase,
+        type(exc).__name__,
+        detail,
+    )
+    raise error_class(f"stripe {phase} failed") from None
+
+
+def _cleanup_billing(*, profile: Optional[UserProfile]) -> bool:
+    """Stripe 側の後始末。実際に外部APIを呼んだら True。
+
+    2段階に分ける。境界はそのまま失敗契約になっている。
+
+        Phase A: 将来請求を止める（Subscription cancel）
+                 → 失敗: BillingCleanupFailed（DB 無変更）
+        --- ここで billing mirror を canceled へ確定させる ---
+                 → 失敗: BillingStateSyncFailed（Account 削除へ進まない）
+        Phase B: Customer を消す
+                 → 失敗: BillingCustomerCleanupFailed（Account 削除へ進まない）
+
+    Phase B は「課金は既に止まっている」状態なので、Account を消さずに
+    retry させる。Account を先に消すと Stripe の customer を消す手がかりが
+    DB から失われる。
     """
     subscription_id = (getattr(profile, "stripe_subscription_id", "") or "").strip()
     customer_id = (getattr(profile, "stripe_customer_id", "") or "").strip()
@@ -161,26 +209,47 @@ def _cleanup_billing(*, profile: Optional[UserProfile]) -> bool:
 
     stripe = _stripe_module()
 
-    try:
-        if subscription_id:
+    # --- Phase A: 将来請求の停止 ---
+    if subscription_id:
+        try:
             # subscription_id しか無い異常系でも、ここで customer を確認できる。
             # ID を推測で組み立てることはしない。
             discovered_customer_id = _cancel_subscription(stripe, subscription_id)
-            if not customer_id and discovered_customer_id:
-                customer_id = discovered_customer_id
+        except Exception as exc:
+            _fail_closed(
+                exc,
+                BillingCleanupFailed,
+                "subscription cancel",
+                "account was NOT deleted; no DB rows were touched",
+            )
+        if not customer_id and discovered_customer_id:
+            customer_id = discovered_customer_id
 
-        if customer_id:
-            _delete_customer(stripe, customer_id)
-    except BillingCleanupFailed:
-        raise
+    # --- 将来請求が止まった事実を、ここで確定させる ---
+    # Phase B や DB 削除が落ちても Premium active に見えないようにするため、
+    # Customer 削除より前に倒す。
+    try:
+        _mark_billing_canceled(profile=profile)
     except Exception as exc:
-        # 例外本文には customer / subscription ID が載りうるので出さない。
         logger.error(
-            "[account-deletion] stripe cleanup failed error_type=%s "
-            "(account was NOT deleted; no DB rows were touched)",
+            "[account-deletion] local billing mirror update failed error_type=%s "
+            "(future charges are already stopped; the account still exists and "
+            "may still appear premium until this is retried)",
             type(exc).__name__,
         )
-        raise BillingCleanupFailed("failed to stop stripe billing") from exc
+        raise BillingStateSyncFailed("failed to sync local billing state") from None
+
+    # --- Phase B: Customer cleanup ---
+    if customer_id:
+        try:
+            _delete_customer(stripe, customer_id)
+        except Exception as exc:
+            _fail_closed(
+                exc,
+                BillingCustomerCleanupFailed,
+                "customer delete",
+                "future charges are already stopped; the account was NOT deleted",
+            )
 
     return True
 
@@ -256,14 +325,11 @@ def delete_user_account(*, user) -> AccountDeletionResult:
     """
     profile = UserProfile.objects.filter(user=user).first()
 
-    # 1. Stripe を先に止める。ここで失敗したら DB は一切触らない。
+    # 1. Stripe の後始末。将来請求の停止 → billing mirror 確定 → customer 削除。
+    #    どの段階で失敗しても Account は削除しない（段階ごとに別の例外を返す）。
     billing_cleanup_performed = _cleanup_billing(profile=profile)
 
-    # 2. Stripe が止まった事実を、削除 transaction の外で確定させる。
-    if billing_cleanup_performed:
-        _mark_billing_canceled(profile=profile)
-
-    # 3. DB 削除。Storage 削除は post_delete receiver が on_commit へ積む。
+    # 2. DB 削除。Storage 削除は post_delete receiver が on_commit へ積む。
     try:
         with transaction.atomic():
             tokens_blacklisted = _blacklist_outstanding_tokens(user=user)

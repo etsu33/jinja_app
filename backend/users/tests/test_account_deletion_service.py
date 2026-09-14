@@ -27,6 +27,7 @@ from temples.models import (
     Goshuin,
     GoshuinImage,
     Shrine,
+    ShrineInteractionLog,
     ShrineReflection,
     ShrineSubmission,
     Visit,
@@ -37,6 +38,8 @@ from users.models import UserProfile
 from users.services.account_deletion import (
     AccountDataDeletionFailed,
     BillingCleanupFailed,
+    BillingCustomerCleanupFailed,
+    BillingStateSyncFailed,
     delete_user_account,
 )
 
@@ -101,6 +104,9 @@ def test_personal_cascade_data_is_deleted(settings):
     Visit.objects.create(user=user, shrine=shrine)
     ShrineReflection.objects.create(user=user, shrine=shrine)
     ActionEvent.objects.create(user=user, action_type="view")
+    ShrineInteractionLog.objects.create(
+        user=user, shrine=shrine, action_type=ShrineInteractionLog.ActionType.DETAIL_VIEW
+    )
     goshuin = Goshuin.objects.create(user=user, shrine=shrine)
     GoshuinImage.objects.create(goshuin=goshuin)
     ConciergeUsage.objects.create(user=user, date=timezone.now().date())
@@ -124,6 +130,7 @@ def test_personal_cascade_data_is_deleted(settings):
     assert Visit.objects.count() == 0
     assert ShrineReflection.objects.count() == 0
     assert ActionEvent.objects.count() == 0
+    assert ShrineInteractionLog.objects.count() == 0
     assert Goshuin.objects.count() == 0
     assert GoshuinImage.objects.count() == 0
     assert ConciergeUsage.objects.count() == 0
@@ -402,7 +409,7 @@ def test_stripe_failure_log_contains_no_ids_or_secrets(settings, caplog):
     message = caplog.records[0].getMessage()
     for secret in ("cus_", "sub_", "sk_live", "sk_test", user.email):
         assert secret not in message
-    assert "stripe cleanup failed" in message
+    assert "stripe subscription cancel failed" in message
 
 
 # ------------------------------------------------------- partial failure
@@ -448,3 +455,172 @@ def test_db_failure_does_not_blacklist_or_delete_rows(settings):
     # transaction rollback により blacklist も log 削除も巻き戻る
     assert BlacklistedToken.objects.count() == 0
     assert ConciergeRecommendationLog.objects.filter(pk=log.pk).exists()
+
+
+# ------------------------------------------- Stripe partial failure (phase B)
+
+
+def test_customer_delete_failure_keeps_the_account_but_stops_future_charges(settings):
+    """Subscription cancel 成功 → Customer delete 失敗。
+
+    将来請求は止まっている。Account は消さず、retry 可能な例外を返す。
+    Account を先に消すと Stripe の customer を消す手がかりが DB から失われる。
+    """
+    settings.STRIPE_SECRET_KEY = "sk_test_dummy"
+    user = _premium_user()
+    log = ConciergeRecommendationLog.objects.create(user=user, query="mine")
+    RefreshToken.for_user(user)
+    stripe = _stripe_mock()
+    stripe.Customer.delete.side_effect = _stripe_error(code=None)
+
+    with _patch_stripe(stripe):
+        with pytest.raises(BillingCustomerCleanupFailed):
+            delete_user_account(user=user)
+
+    # 将来請求は停止済み
+    stripe.Subscription.cancel.assert_called_once_with("sub_1")
+    # Account 本体は残る
+    assert type(user).objects.filter(pk=user.pk).exists()
+    assert ConciergeRecommendationLog.objects.filter(pk=log.pk).exists()
+    assert BlacklistedToken.objects.count() == 0
+
+
+def test_customer_delete_failure_still_leaves_billing_mirror_canceled(settings):
+    """課金が止まった事実は、Customer 削除の成否と無関係に確定させる。"""
+    settings.STRIPE_SECRET_KEY = "sk_test_dummy"
+    user = _premium_user()
+    stripe = _stripe_mock()
+    stripe.Customer.delete.side_effect = _stripe_error(code=None)
+
+    with _patch_stripe(stripe):
+        with pytest.raises(BillingCustomerCleanupFailed):
+            delete_user_account(user=user)
+
+    profile = UserProfile.objects.get(user=user)
+    assert profile.subscription_status == "canceled"
+    assert profile.current_period_end is None
+    assert profile.cancel_at_period_end is False
+
+
+def test_retry_after_customer_delete_failure_is_idempotent(settings):
+    """retry 時、既に canceled な Subscription へ cancel を投げ直さない。"""
+    settings.STRIPE_SECRET_KEY = "sk_test_dummy"
+    user = _premium_user()
+
+    failing = _stripe_mock()
+    failing.Customer.delete.side_effect = _stripe_error(code=None)
+    with _patch_stripe(failing):
+        with pytest.raises(BillingCustomerCleanupFailed):
+            delete_user_account(user=user)
+
+    # retry: Stripe 側では subscription は既に canceled
+    retry = _stripe_mock(
+        subscription={"id": "sub_1", "customer": "cus_1", "status": "canceled"}
+    )
+    with _patch_stripe(retry):
+        result = delete_user_account(user=user)
+
+    retry.Subscription.cancel.assert_not_called()
+    retry.Customer.delete.assert_called_once_with("cus_1")
+    assert result.account_deleted is True
+    assert not type(user).objects.filter(pk=user.pk).exists()
+
+
+# --------------------------------------------- billing mirror update failure
+
+
+def test_billing_mirror_update_failure_stops_before_user_delete(settings):
+    """mirror 更新に失敗したら User.delete へ進まない。"""
+    settings.STRIPE_SECRET_KEY = "sk_test_dummy"
+    user = _premium_user()
+    stripe = _stripe_mock()
+
+    with _patch_stripe(stripe):
+        with patch(
+            "users.services.account_deletion._mark_billing_canceled",
+            side_effect=RuntimeError("db boom"),
+        ):
+            with pytest.raises(BillingStateSyncFailed):
+                delete_user_account(user=user)
+
+    # 将来請求は止まっているが、Account は残る
+    stripe.Subscription.cancel.assert_called_once_with("sub_1")
+    stripe.Customer.delete.assert_not_called()
+    assert type(user).objects.filter(pk=user.pk).exists()
+    assert UserProfile.objects.filter(user=user).exists()
+
+
+def test_billing_mirror_update_failure_does_not_leak_the_raw_db_exception(settings):
+    """raw DB exception を API 契約としてそのまま返さない。"""
+    settings.STRIPE_SECRET_KEY = "sk_test_dummy"
+    user = _premium_user()
+    stripe = _stripe_mock()
+
+    with _patch_stripe(stripe):
+        with patch(
+            "users.services.account_deletion._mark_billing_canceled",
+            side_effect=RuntimeError("connection to cus_1 failed: password=hunter2"),
+        ):
+            with pytest.raises(BillingStateSyncFailed) as excinfo:
+                delete_user_account(user=user)
+
+    assert excinfo.value.__cause__ is None
+    assert excinfo.value.__suppress_context__ is True
+    assert "hunter2" not in str(excinfo.value)
+    assert "cus_1" not in str(excinfo.value)
+
+
+# ------------------------------------------------ raw Stripe cause 非伝播
+
+
+@pytest.mark.parametrize(
+    "failing_call,expected",
+    [
+        ("Subscription.retrieve", BillingCleanupFailed),
+        ("Customer.delete", BillingCustomerCleanupFailed),
+    ],
+)
+def test_raw_stripe_exception_is_not_propagated_as_cause(settings, failing_call, expected):
+    """raw Stripe exception が traceback / error monitoring へ流れないこと。"""
+    settings.STRIPE_SECRET_KEY = "sk_test_dummy"
+    user = _premium_user()
+    stripe = _stripe_mock()
+    target = stripe
+    for part in failing_call.split("."):
+        target = getattr(target, part)
+    target.side_effect = _stripe_error(code=None)
+
+    with _patch_stripe(stripe):
+        with pytest.raises(expected) as excinfo:
+            delete_user_account(user=user)
+
+    # __cause__ / __context__ が切れている = raw 例外が外へ出ない
+    assert excinfo.value.__cause__ is None
+    assert excinfo.value.__suppress_context__ is True
+    message = str(excinfo.value)
+    for secret in ("cus_", "sub_", "sk_live", "sk_test", user.email):
+        assert secret not in message
+
+
+# ------------------------------------------------- ShrineInteractionLog CASCADE
+
+
+def test_shrine_interaction_logs_are_cascaded_without_touching_other_users(settings):
+    """ShrineInteractionLog.user は CASCADE。Shrine 本体と他 User の log は残る。"""
+    settings.STRIPE_SECRET_KEY = "sk_test_dummy"
+    user = UserFactory()
+    other = UserFactory()
+    shrine = _shrine()
+    mine = ShrineInteractionLog.objects.create(
+        user=user, shrine=shrine, action_type=ShrineInteractionLog.ActionType.DETAIL_VIEW
+    )
+    theirs = ShrineInteractionLog.objects.create(
+        user=other, shrine=shrine, action_type=ShrineInteractionLog.ActionType.ROUTE_OPEN
+    )
+
+    delete_user_account(user=user)
+
+    assert not ShrineInteractionLog.objects.filter(pk=mine.pk).exists()
+    assert ShrineInteractionLog.objects.filter(pk=theirs.pk).exists()
+    # 共有 master data は残る
+    assert Shrine.objects.filter(pk=shrine.pk).exists()
