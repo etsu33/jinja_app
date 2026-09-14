@@ -3,10 +3,16 @@ export function sanitizeNext(next: string | null | undefined): string | null {
   if (!t0) return null;
 
   let t = t0;
-  try {
-    t = decodeURIComponent(t0);
-  } catch {
-    // ignore
+
+  // /goshuin/new は nested query の percent-encoding を保持する
+  const preserveEncodedQuery = t0 === "/goshuin/new" || t0.startsWith("/goshuin/new?");
+
+  if (!preserveEncodedQuery) {
+    try {
+      t = decodeURIComponent(t0);
+    } catch {
+      // ignore
+    }
   }
 
   if (!t.startsWith("/")) return null;
@@ -39,10 +45,12 @@ export function normalizeReturnTo(input: string | null | undefined): string | nu
   if (!t0) return null;
 
   let t = t0;
-  try {
-    t = decodeURIComponent(t0);
-  } catch {
-    // ignore
+  if (!t.startsWith("/")) {
+    try {
+      t = decodeURIComponent(t0);
+    } catch {
+      // ignore
+    }
   }
 
   // 内部パス以外は reject
@@ -62,8 +70,6 @@ export function normalizeReturnTo(input: string | null | undefined): string | nu
   const nextSearch = params.toString();
   return nextSearch ? `${path}?${nextSearch}` : path;
 }
-
-
 
 export function sanitizeReturnTo(returnTo: string | null | undefined): string | null {
   return sanitizeNext(normalizeReturnTo(returnTo));

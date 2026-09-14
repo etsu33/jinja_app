@@ -82,6 +82,14 @@ describe("buildLoginHref", () => {
     expect(buildLoginHref("/favorites")).toBe("/auth/login?returnTo=%2Ffavorites");
   });
 
+  it("/goshuin/new の nested from query を壊さず保持する", () => {
+    const input = "/goshuin/new?from=%2Fshrines%2F17%3Fctx%3Dconcierge&shrine=17";
+    expect(sanitizeReturnTo(input)).toBe(input);
+    expect(buildLoginHref(input)).toBe(
+      "/auth/login?returnTo=%2Fgoshuin%2Fnew%3Ffrom%3D%252Fshrines%252F17%253Fctx%253Dconcierge%26shrine%3D17",
+    );
+  });
+
   it("/goshuin/new のqueryを保持して returnTo に付ける", () => {
     expect(buildLoginHref("/goshuin/new?shrine=123")).toBe("/auth/login?returnTo=%2Fgoshuin%2Fnew%3Fshrine%3D123");
   });
