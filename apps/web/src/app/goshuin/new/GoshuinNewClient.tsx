@@ -2,11 +2,13 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { uploadMyGoshuin, fetchMyGoshuinCount, type GoshuinCount } from "@/lib/api/goshuin";
 import Image from "next/image";
 import { buildShrineHref } from "@/lib/nav/buildShrineHref";
+import { useAuth } from "@/lib/auth/AuthProvider";
+import { buildLoginHref } from "@/lib/nav/login";
 
 function safeDecode(v: string) {
   try {
@@ -26,6 +28,18 @@ function firstNonEmpty(...xs: Array<string | null | undefined>) {
 
 export default function GoshuinNewClient() {
   const sp = useSearchParams();
+  const router = useRouter();
+  const { isLoggedIn, loading } = useAuth();
+  const currentPath = useMemo(() => {
+    const query = sp.toString();
+    return query ? `/goshuin/new?${query}` : "/goshuin/new";
+  }, [sp]);
+
+  React.useEffect(() => {
+    if (!loading && !isLoggedIn) {
+      router.replace(buildLoginHref(currentPath));
+    }
+  }, [currentPath, isLoggedIn, loading, router]);
 
   const from = useMemo(() => sp.get("from"), [sp]);
   const shrine = useMemo(() => sp.get("shrine"), [sp]);
@@ -47,6 +61,8 @@ export default function GoshuinNewClient() {
   const [countLoading, setCountLoading] = useState(true);
 
   React.useEffect(() => {
+    if (loading || !isLoggedIn) return;
+
     let alive = true;
     (async () => {
       try {
@@ -63,7 +79,7 @@ export default function GoshuinNewClient() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [isLoggedIn, loading]);
 
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   React.useEffect(() => {
@@ -132,6 +148,14 @@ export default function GoshuinNewClient() {
     } finally {
       setBusy(false);
     }
+  }
+
+  if (loading || !isLoggedIn) {
+    return (
+      <div className="p-4 text-sm text-[var(--kt-color-text-secondary)]" role="status" aria-busy={loading}>
+        認証状態を確認しています...
+      </div>
+    );
   }
 
   return (
