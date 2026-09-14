@@ -25,9 +25,11 @@ AND
 
 ただし、これは「推薦理由が空にならない条件」であり、「推薦品質が十分である条件」ではない。
 
-Recommendation ReadinessのLevel、Coverage、推薦可能条件は、以下を正本とする。
+Recommendation関連の責務は次の3つに分離する。旧Runtime Readiness Level 0〜3はSupersededであり、Current概念として参照しない。
 
-- `docs/core/recommendation-readiness.md`
+- Factを1件として利用してよいか（usable判定 / Evidence Gate）: `docs/knowledge/shrine-knowledge-contract.md`
+- このShrineがRecommendation候補になれるか（candidate eligibility）: `docs/knowledge/recommendation-eligibility-contract.md`
+- Knowledge Coverage / Verification / Usability状態のGovernance観測: `docs/core/recommendation-readiness.md`
 
 本書では、神社プロフィールの構造と、Recommendation Readinessへ渡す判定材料のみを定義する。
 
@@ -64,7 +66,7 @@ Recommendation ReadinessのLevel、Coverage、推薦可能条件は、以下を�
         ↓
 ⑥ Trust Layer                この知識はどれくらい信用できるか
         ↓
-⑦ Recommendation Readiness   どの品質なら利用可能か
+⑦ Recommendation Readiness   Knowledge整備状態をどう観測するか
 ```
 
 層の関係は一方向の依存であって並列ではない。
@@ -90,7 +92,8 @@ Recommendation ReadinessのLevel、Coverage、推薦可能条件は、以下を�
 
 ### 対象外（この仕様書では扱わない）
 
-- Recommendation ReadinessのLevel、Coverage、推薦可能条件の定義
+- Recommendation candidate eligibilityの定義（`docs/knowledge/recommendation-eligibility-contract.md`が正本）
+- Knowledge Coverage / Capability観測の定義（`docs/core/recommendation-readiness.md`が正本）
 - 推薦スコアリングの重み付けロジック本体
 - Score v2 / Score v3の実装
 - reason_facts / action_suggestion_v4の文章生成プロンプト
@@ -99,11 +102,13 @@ Recommendation ReadinessのLevel、Coverage、推薦可能条件は、以下を�
 - Readiness判定結果の保存方式
 - Coverageの自動集計方法
 
-Recommendation ReadinessのLevel、Coverage、推薦可能条件は、以下を正本とする。
+Recommendation関連の責務は次の3つに分離する。旧Runtime Readiness Level 0〜3はSupersededであり、Current概念として参照しない。
 
-- `docs/core/recommendation-readiness.md`
+- Factを1件として利用してよいか（usable判定 / Evidence Gate）: `docs/knowledge/shrine-knowledge-contract.md`
+- このShrineがRecommendation候補になれるか（candidate eligibility）: `docs/knowledge/recommendation-eligibility-contract.md`
+- Knowledge Coverage / Verification / Usability状態のGovernance観測: `docs/core/recommendation-readiness.md`
 
-本書は「どのデータが存在し、どの区分に属するか」までを定義し、そのデータからどのLevelを判定するか、またはどう点数化するかには踏み込まない。
+本書は「どのデータが存在し、どの区分に属するか」までを定義し、そのデータから候補適格性を判定するか、Coverageをどう観測するか、またはどう点数化するかには踏み込まない。
 
 ---
 
@@ -308,7 +313,7 @@ Fact、Meaning、Consultationの情報を、「実際にどのような行動へ
 
 - Action Layerは既存項目の再利用を中心とする
 - 神社固有の事実が不足している場合、一般論のActionへ劣化する
-- Recommendation Readinessの判定結果によって、Action生成可否を制御する必要がある
+- Action生成可否は、利用するFactがusableであるか（Evidence Gate、`docs/knowledge/shrine-knowledge-contract.md`）に従う。Governance観測であるRecommendation Readinessや旧Readiness LevelからAction利用可否を推論しない
 
 Actionの出力契約は、以下を正本とする。
 
@@ -361,7 +366,7 @@ Trust Layerの物理的な保存方法は本書では決定しない。値の意
 
 ---
 
-### ⑦ Recommendation Readiness — どの品質なら利用可能か
+### ⑦ Recommendation Readiness — Knowledge整備状態をどう観測するか
 
 Recommendation Readinessの詳細仕様は、以下を正本とする。
 
@@ -369,12 +374,7 @@ Recommendation Readinessの詳細仕様は、以下を正本とする。
 
 本仕様書では、神社プロフィールとRecommendation Readinessの接続のみを扱う。
 
-Recommendation Readinessは、Fact Layer、Meaning Layer、Trust Layerなどによって構成される神社プロフィールの品質を評価し、以下の利用可否を判定する品質レイヤである。
-
-- 基本情報の表示
-- Recommendation
-- Action
-- Reflection
+Recommendation Readinessは、Fact Layer、Meaning Layer、Trust Layerなどによって構成される神社プロフィールのKnowledge整備状態を、Coverage / Verification / Usabilityの観点から観測するGovernanceレイヤである。個々の利用可否（Fact利用可否、候補適格性）を判定するレイヤではない。
 
 神社プロフィール側では、以下を定義する。
 
@@ -382,16 +382,18 @@ Recommendation Readinessは、Fact Layer、Meaning Layer、Trust Layerなどに�
 - Derived情報として何を生成するか
 - Runtime情報として何を分離するか
 - Governance情報として何を管理するか
-- Readiness判定へどの項目を渡すか
+- Governance観測へどの項目を渡すか
 
-以下はCoreのRecommendation Readinessを参照する。
+以下は`docs/core/recommendation-readiness.md`を参照する。
 
-- Readiness Level
 - Coverageの区分
-- Recommendation可能条件
-- Action利用可能条件
-- Reflection利用可能条件
-- Readinessの責務境界
+- Capability Set
+- Readinessの責務境界（Non-responsibilities）
+
+以下は本書でもRecommendation Readinessでもなく、それぞれの正本を参照する。
+
+- Factのusable判定: `docs/knowledge/shrine-knowledge-contract.md`（Evidence Gate要件）
+- Recommendation candidate eligibility: `docs/knowledge/recommendation-eligibility-contract.md`
 
 ---
 
@@ -549,9 +551,11 @@ P0は、DB適用、Prompt反映、Recommendation v5等へ進む前の前提条�
 
 ### 1. Recommendation Readinessの物理実装方法（未決定）
 
-Recommendation ReadinessのLevel、Coverage、推薦可能条件は、以下を正本とする。
+Recommendation関連の責務は次の3つに分離する。旧Runtime Readiness Level 0〜3はSupersededであり、Current概念として参照しない。
 
-- `docs/core/recommendation-readiness.md`
+- Factを1件として利用してよいか（usable判定 / Evidence Gate）: `docs/knowledge/shrine-knowledge-contract.md`
+- このShrineがRecommendation候補になれるか（candidate eligibility）: `docs/knowledge/recommendation-eligibility-contract.md`
+- Knowledge Coverage / Verification / Usability状態のGovernance観測: `docs/core/recommendation-readiness.md`
 
 本書では、神社プロフィールとRecommendation Readinessの接続のみを扱う。
 
@@ -581,7 +585,7 @@ Profile v2で必須項目へ格上げするかは、以下とのトレードオ�
 
 本仕様書では必須化のタイミングを決定しない。
 
-Recommendation ReadinessのLevel条件に従って段階的に扱う。
+すべての神社が同じKnowledge Capabilityを最初から満たす必要はない。各神社のCoverage / Verification / Usability状態を観測しながら段階的に扱う。
 
 ---
 
@@ -703,16 +707,14 @@ Recommendation Readinessの詳細仕様は、`docs/core/recommendation-readiness
 - Stored / Derived / Runtime / Governanceの責務境界が変わった場合
 - 表示用項目または推薦用項目の割り当てが変わった場合
 - Trust Layerの出典要否基準が変わった場合
-- Recommendation Readinessへ渡す判定材料が変わった場合
+- Recommendation ReadinessのGovernance観測へ渡す材料が変わった場合
 - 現行DB項目との対応関係が変わった場合
 
 以下の場合は、本書ではなく各正本文書を更新する。
 
-- Readiness Levelの変更
-- Coverage定義の変更
-- Recommendation可能条件の変更
-- Action利用可能条件の変更
-- Reflection利用可能条件の変更
+- Coverage定義・Capability Setの変更（`docs/core/recommendation-readiness.md`）
+- Recommendation candidate eligibility条件の変更（`docs/knowledge/recommendation-eligibility-contract.md`）
+- Factのusable判定条件の変更（`docs/knowledge/shrine-knowledge-contract.md`）
 - Recommendation ScoreまたはRankingの変更
 - Action Suggestionの出力契約変更
 - Visit / Reflection Flowの変更
