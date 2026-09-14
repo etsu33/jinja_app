@@ -15,11 +15,13 @@
 
 入力者や入力時期が変わっても、事実・解釈・提案の境界と品質が変わらない状態を目的とする。
 
-Recommendation ReadinessのLevel、Coverage、推薦可能条件および責務境界の詳細は、以下を正本とする。
+Recommendation関連の責務は次の3つに分離する。旧Runtime Readiness Level 0〜3はSupersededであり、Current運用では使用しない。
 
-- `docs/core/recommendation-readiness.md`
+- Knowledge Coverage / Verification / Usability状態のGovernance観測: `docs/core/recommendation-readiness.md`
+- Recommendation candidate eligibility（どのShrineが候補になれるか）: `docs/knowledge/recommendation-eligibility-contract.md`
+- Factのusable判定（Evidence Gate要件）: `docs/knowledge/shrine-knowledge-contract.md`
 
-本書では、正本で定義された品質基準を満たすためのデータ入力・確認・運用上のルールを扱う。
+本書では、これらの正本が定義する品質基準を満たすためのデータ入力・確認・運用上のルールを扱う。
 
 ---
 
@@ -37,9 +39,9 @@ Recommendation ReadinessのLevel、Coverage、推薦可能条件および責務�
 
 本書では以下を定義しない。
 
-- Recommendation ReadinessのLevel定義
-- Coverageの定義
-- Recommendation可能条件
+- Coverage / Capability Setの定義
+- Recommendation candidate eligibility条件
+- Factのusable判定条件（Evidence Gate要件）
 - Recommendation Score
 - Rankingの重み
 - Recommendation Reasonの生成ロジック
@@ -196,9 +198,9 @@ recovery
 
 ## 入力項目の考え方
 
-入力対象はRecommendation Readinessの段階に応じて異なる。
+入力対象は、その神社がどのKnowledge Capabilityを満たしているかによって異なる。すべての神社が同じCapabilityを最初から満たす必要はない。
 
-Levelごとの条件と利用可能範囲は、以下を参照する。
+Capability SetとCoverageの区分は、以下を参照する。
 
 - `docs/core/recommendation-readiness.md`
 
@@ -230,9 +232,9 @@ Levelごとの条件と利用可能範囲は、以下を参照する。
 - `history_theme`
 - `goriyaku_tags`
 
-推薦可能条件そのものは、本書で再定義せず、以下を正本とする。
+上記は入力作業上の確認対象であり、Recommendation候補適格性の判定条件ではない。Recommendation candidate eligibilityそのものは、本書で再定義せず、以下を正本とする。
 
-- `docs/core/recommendation-readiness.md`
+- `docs/knowledge/recommendation-eligibility-contract.md`
 
 `history_theme`を入力・生成する場合は、根拠となる由緒、歴史、祭神、ご利益などのStored情報を追跡可能にする。
 
@@ -436,7 +438,7 @@ Reflectionは神社の歴史・意味・相談内容を接続する。
 - 占い結果のように未来を断定する
 - Recommendationの主役を誕生日・九星・五行にする
 - Runtimeの一致結果を神社固有の事実として扱う
-- Recommendation Readinessを満たさないデータを無条件で推薦に利用する
+- Recommendation candidate eligibility（`docs/knowledge/recommendation-eligibility-contract.md`）を満たさないデータを、推薦候補として扱えるかのように入力・運用する
 
 ---
 
@@ -466,7 +468,7 @@ Reflectionは神社の歴史・意味・相談内容を接続する。
 - Runtime情報をShrineプロフィールへ固定情報として保存する
 - 内部タグをそのままユーザーへ表示する
 - 出典情報を削除する
-- Readiness未判定のまま本番運用へ投入する
+- Coverage / Verification / Usability状態を確認しないまま本番運用へ投入する
 - 未確認情報を確認済みとして扱う
 - `verified_at`を事実確認なしで更新する
 - Recommendation Readinessの詳細基準を本書へ重複定義する
@@ -503,7 +505,7 @@ Reflectionは神社の歴史・意味・相談内容を接続する。
 
 ### Recommendation Readinessの確認
 
-Recommendation Readinessの判定基準は、以下を正本とする。
+Recommendation ReadinessはGovernance観測であり、候補適格性やFact利用可否を判定するものではない。観測区分（Coverage / Capability Set）は以下を正本とする。
 
 - `docs/core/recommendation-readiness.md`
 
@@ -517,7 +519,7 @@ Recommendation Readinessの判定基準は、以下を正本とする。
 6. Derived情報がStored情報を参照可能か
 7. 未確認項目がGovernance情報として記録されているか
 
-Readinessは入力者の印象で決めず、正本の条件に従って判定する。
+Coverage / Verification / Usability状態は入力者の印象で決めず、正本の区分に従って観測する。
 
 ---
 
@@ -553,7 +555,7 @@ Coverageの定義は、以下を正本とする。
 - Recommendation処理が実際に参照できる形式か
 - 内部タグが正規化されているか
 - Derived情報の根拠が存在するか
-- Recommendation Readinessの条件を満たしているか
+- Recommendation candidate eligibility（`docs/knowledge/recommendation-eligibility-contract.md`）を満たす形式で保持されているか
 
 Coverageは単純な入力率ではなく、用途に対して利用できる状態かを確認する。
 
@@ -561,21 +563,21 @@ Coverageは単純な入力率ではなく、用途に対して利用できる状
 
 ### 完了条件
 
-神社データは、対象とするRecommendation ReadinessのLevelに応じた条件を満たし、以下を確認できた時点で入力完了とする。
+神社データは、その入力作業で満たそうとしたKnowledge Capabilityについて、以下を確認できた時点で入力完了とする。
 
-- 対象Levelに必要な項目が入力されている
+- 対象とするCapabilityに必要な項目が入力されている
 - 事実情報の出典が確認されている
-- Recommendation Readinessが判定されている
+- Coverage / Verification / Usability状態が観測・記録されている
 - 事実と解釈が分離されている
 - Derived情報の根拠となるStored情報が追跡可能である
 - Runtime情報が固定プロフィールへ混在していない
-- 対象Levelで必要なAction・Reflectionへ接続可能である
+- 対象とするCapabilityで必要なAction・Reflectionへ接続可能である
 - `editor_notes`に未確認事項が記録されている
 - `verified_at`が実際の確認日に更新されている
 
-すべての神社が最初から最高Levelである必要はない。
+**すべての神社が同じKnowledge Capabilityを最初から満たす必要はない。** 各神社について、どのCapability / Coverage / Source / Verification / Usability状態にあるかを観測し、未整備項目を追跡可能にすることを優先する。
 
-どのLevelまで利用可能かを明示し、未整備項目を追跡可能にすることを優先する。
+Recommendation候補になれるかどうかは本書の完了条件とは別の契約であり、`docs/knowledge/recommendation-eligibility-contract.md`へ委譲する。
 
 ---
 
@@ -606,7 +608,7 @@ Coverageは単純な入力率ではなく、用途に対して利用できる状
 
 ### Recommendation
 
-Recommendation Readinessの定義自体は、以下を正本とする。
+Recommendation ReadinessのGovernance観測の定義自体は、以下を正本とする。
 
 - `docs/core/recommendation-readiness.md`
 
@@ -670,9 +672,9 @@ Recommendation Readinessの定義自体は、以下を正本とする。
 
 以下の場合は、本書ではなく各正本文書を更新する。
 
-- Recommendation ReadinessのLevel変更
-- Coverage定義の変更
-- Recommendation可能条件の変更
+- Coverage定義・Capability Setの変更（`docs/core/recommendation-readiness.md`）
+- Recommendation candidate eligibility条件の変更（`docs/knowledge/recommendation-eligibility-contract.md`）
+- Factのusable判定条件の変更（`docs/knowledge/shrine-knowledge-contract.md`）
 - Recommendation ScoreまたはRankingの変更
 - Action Suggestionの出力契約変更
 - Reflection Flowの変更
