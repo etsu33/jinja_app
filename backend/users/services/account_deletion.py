@@ -73,6 +73,9 @@ class BillingStateSyncFailed(AccountDeletionError):
 class BillingCustomerCleanupFailed(AccountDeletionError):
     """将来請求は停止し mirror も canceled だが、Customer 削除に失敗した。
 
+    subscription 経路でのみ送出する。customer-only 経路では「将来請求を止めた」
+    と言える操作が無いため、この例外は使わず BillingCleanupFailed を返す。
+
     Account 本体は削除していない。課金は止まっているので緊急度は低いが、
     Stripe に customer が残る。retry すると customer 削除からやり直す。
     """
@@ -209,37 +212,50 @@ def _cleanup_billing(*, profile: Optional[UserProfile]) -> bool:
 
     stripe = _stripe_module()
 
-    # --- Phase A: 将来請求の停止 ---
-    if subscription_id:
+    if not subscription_id:
+        # --- customer-only 経路 ---
+        # subscription が無いので「将来請求を止めた」と言える操作が存在しない。
+        # Customer cleanup の成功をもって初めて billing 側の後始末が済んだと
+        # みなせるため、mirror を倒すのはその後にする。
+        # 先に mirror を canceled にすると、Customer が残ったまま
+        # 「停止済み」と記録することになる。
         try:
-            # subscription_id しか無い異常系でも、ここで customer を確認できる。
-            # ID を推測で組み立てることはしない。
-            discovered_customer_id = _cancel_subscription(stripe, subscription_id)
+            _delete_customer(stripe, customer_id)
         except Exception as exc:
+            # この時点では将来請求の停止を保証できない。DB は一切変更していない
+            # ので、最初からやり直せる BillingCleanupFailed を返す。
             _fail_closed(
                 exc,
                 BillingCleanupFailed,
-                "subscription cancel",
+                "customer delete",
                 "account was NOT deleted; no DB rows were touched",
             )
-        if not customer_id and discovered_customer_id:
-            customer_id = discovered_customer_id
+
+        _sync_billing_mirror(profile=profile)
+        return True
+
+    # --- subscription 経路（既存契約） ---
+    # Phase A: 将来請求の停止
+    try:
+        # subscription_id しか無い異常系でも、ここで customer を確認できる。
+        # ID を推測で組み立てることはしない。
+        discovered_customer_id = _cancel_subscription(stripe, subscription_id)
+    except Exception as exc:
+        _fail_closed(
+            exc,
+            BillingCleanupFailed,
+            "subscription cancel",
+            "account was NOT deleted; no DB rows were touched",
+        )
+    if not customer_id and discovered_customer_id:
+        customer_id = discovered_customer_id
 
     # --- 将来請求が止まった事実を、ここで確定させる ---
     # Phase B や DB 削除が落ちても Premium active に見えないようにするため、
     # Customer 削除より前に倒す。
-    try:
-        _mark_billing_canceled(profile=profile)
-    except Exception as exc:
-        logger.error(
-            "[account-deletion] local billing mirror update failed error_type=%s "
-            "(future charges are already stopped; the account still exists and "
-            "may still appear premium until this is retried)",
-            type(exc).__name__,
-        )
-        raise BillingStateSyncFailed("failed to sync local billing state") from None
+    _sync_billing_mirror(profile=profile)
 
-    # --- Phase B: Customer cleanup ---
+    # Phase B: Customer cleanup
     if customer_id:
         try:
             _delete_customer(stripe, customer_id)
@@ -252,6 +268,23 @@ def _cleanup_billing(*, profile: Optional[UserProfile]) -> bool:
             )
 
     return True
+
+
+def _sync_billing_mirror(*, profile: Optional[UserProfile]) -> None:
+    """billing mirror を canceled へ倒す。失敗は domain exception へ畳む。
+
+    raw DB exception を API 契約として直接返さない。
+    """
+    try:
+        _mark_billing_canceled(profile=profile)
+    except Exception as exc:
+        logger.error(
+            "[account-deletion] local billing mirror update failed error_type=%s "
+            "(stripe billing cleanup already succeeded; the account still exists "
+            "and may still appear premium until this is retried)",
+            type(exc).__name__,
+        )
+        raise BillingStateSyncFailed("failed to sync local billing state") from None
 
 
 def _mark_billing_canceled(*, profile: Optional[UserProfile]) -> None:

@@ -624,3 +624,144 @@ def test_shrine_interaction_logs_are_cascaded_without_touching_other_users(setti
     assert ShrineInteractionLog.objects.filter(pk=theirs.pk).exists()
     # 共有 master data は残る
     assert Shrine.objects.filter(pk=shrine.pk).exists()
+
+
+# --------------------------------------------------- customer-only 経路
+
+
+def _customer_only_user(cus="cus_only"):
+    """subscription を持たず customer だけが残っている User。"""
+    user = UserFactory()
+    period_end = timezone.now() + timedelta(days=20)
+    _profile(
+        user,
+        stripe_subscription_id="",
+        stripe_customer_id=cus,
+        subscription_status="active",
+        current_period_end=period_end,
+        cancel_at_period_end=False,
+    )
+    return user, period_end
+
+
+def test_customer_only_deletes_customer_without_touching_subscription_api(settings):
+    settings.STRIPE_SECRET_KEY = "sk_test_dummy"
+    user, _ = _customer_only_user()
+    stripe = MagicMock()
+
+    with _patch_stripe(stripe):
+        result = delete_user_account(user=user)
+
+    # subscription が無い経路では Subscription API を一切触らない
+    stripe.Subscription.retrieve.assert_not_called()
+    stripe.Subscription.cancel.assert_not_called()
+    stripe.Customer.delete.assert_called_once_with("cus_only")
+    assert result.billing_cleanup_performed is True
+    assert result.account_deleted is True
+    assert not type(user).objects.filter(pk=user.pk).exists()
+
+
+def test_customer_only_failure_leaves_the_billing_mirror_untouched(settings):
+    """Customer cleanup 成功前に mirror を変更しない。
+
+    subscription が無いこの経路では「将来請求を止めた」と言える操作が存在せず、
+    Customer が残ったまま canceled と記録してはいけない。
+    """
+    settings.STRIPE_SECRET_KEY = "sk_test_dummy"
+    user, period_end = _customer_only_user()
+    log = ConciergeRecommendationLog.objects.create(user=user, query="mine")
+    RefreshToken.for_user(user)
+    stripe = MagicMock()
+    stripe.Customer.delete.side_effect = _stripe_error(code=None)
+
+    with _patch_stripe(stripe):
+        with pytest.raises(BillingCleanupFailed):
+            delete_user_account(user=user)
+
+    # Account も UserProfile も残る
+    assert type(user).objects.filter(pk=user.pk).exists()
+    profile = UserProfile.objects.get(user=user)
+    # mirror は変更前のまま
+    assert profile.subscription_status == "active"
+    assert profile.current_period_end is not None
+    assert int(profile.current_period_end.timestamp()) == int(period_end.timestamp())
+    assert profile.cancel_at_period_end is False
+    # DB 側の削除も token blacklist も始まっていない
+    assert ConciergeRecommendationLog.objects.filter(pk=log.pk).exists()
+    assert BlacklistedToken.objects.count() == 0
+
+
+def test_customer_only_failure_does_not_claim_charges_are_stopped(settings, caplog):
+    """この時点では将来請求の停止を保証できないため、そう読める文言を出さない。"""
+    import logging
+
+    settings.STRIPE_SECRET_KEY = "sk_test_dummy"
+    user, _ = _customer_only_user()
+    stripe = MagicMock()
+    stripe.Customer.delete.side_effect = _stripe_error(code=None)
+
+    with _patch_stripe(stripe):
+        with caplog.at_level(logging.ERROR, logger="users.services.account_deletion"):
+            with pytest.raises(BillingCleanupFailed) as excinfo:
+                delete_user_account(user=user)
+
+    message = caplog.records[0].getMessage()
+    assert "future charges are already stopped" not in message
+    assert "no DB rows were touched" in message
+    # raw Stripe exception を外へ出さない
+    assert excinfo.value.__cause__ is None
+    assert excinfo.value.__suppress_context__ is True
+    for secret in ("cus_", "sk_live", "sk_test", user.email):
+        assert secret not in str(excinfo.value)
+
+
+def test_customer_only_resource_missing_is_idempotent_success(settings):
+    settings.STRIPE_SECRET_KEY = "sk_test_dummy"
+    user, _ = _customer_only_user()
+    stripe = MagicMock()
+    stripe.Customer.delete.side_effect = _stripe_error(code="resource_missing")
+
+    with _patch_stripe(stripe):
+        result = delete_user_account(user=user)
+
+    assert result.account_deleted is True
+    assert not type(user).objects.filter(pk=user.pk).exists()
+    assert not UserProfile.objects.filter(user_id=user.pk).exists()
+
+
+def test_customer_only_retry_after_failure_succeeds(settings):
+    """初回失敗では無変更、retry で mirror canceled → Account 削除まで進む。"""
+    settings.STRIPE_SECRET_KEY = "sk_test_dummy"
+    user, period_end = _customer_only_user()
+    other = UserFactory()
+    _profile(other, stripe_customer_id="cus_other", subscription_status="active")
+    other_log = ConciergeRecommendationLog.objects.create(user=other, query="theirs")
+
+    failing = MagicMock()
+    failing.Customer.delete.side_effect = _stripe_error(code=None)
+    with _patch_stripe(failing):
+        with pytest.raises(BillingCleanupFailed):
+            delete_user_account(user=user)
+
+    # 初回: Account も mirror も無変更
+    assert type(user).objects.filter(pk=user.pk).exists()
+    profile = UserProfile.objects.get(user=user)
+    assert profile.subscription_status == "active"
+    assert int(profile.current_period_end.timestamp()) == int(period_end.timestamp())
+
+    # retry: 成功
+    retry = MagicMock()
+    with _patch_stripe(retry):
+        result = delete_user_account(user=user)
+
+    retry.Customer.delete.assert_called_once_with("cus_only")
+    retry.Subscription.cancel.assert_not_called()
+    assert result.account_deleted is True
+    assert not type(user).objects.filter(pk=user.pk).exists()
+
+    # 他 User の Stripe / DB data には触れていない
+    other_profile = UserProfile.objects.get(user=other)
+    assert other_profile.stripe_customer_id == "cus_other"
+    assert other_profile.subscription_status == "active"
+    assert ConciergeRecommendationLog.objects.filter(pk=other_log.pk).exists()
+    assert "cus_other" not in [c.args[0] for c in retry.Customer.delete.call_args_list]
