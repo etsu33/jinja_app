@@ -316,10 +316,15 @@ export default function NearbyShrineCardListClient() {
                   <a
                     className="rounded-full border border-emerald-200/55 bg-emerald-50/80 px-3 py-1.5 text-center text-xs font-normal text-emerald-900 hover:bg-emerald-100"
                     href={buildGoogleMapsDirUrl({
-                      lat: p.lat ?? undefined,
-                      lng: p.lng ?? undefined,
-                      address: p.address ?? undefined,
-                      fallbackName: p.name,
+                      // 実現在地が取れているときだけ origin を渡す。
+                      // 東京駅 fallback (usedFallback) は Google Maps の出発地にしない。
+                      origin: usedFallback ? null : coords,
+                      destination: {
+                        lat: p.lat ?? undefined,
+                        lng: p.lng ?? undefined,
+                        address: p.address ?? undefined,
+                        fallbackName: p.name,
+                      },
                     })}
                     target="_blank"
                     rel="noreferrer"
