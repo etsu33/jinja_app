@@ -323,7 +323,7 @@ request.user
 - Meaning Layer：`docs/core/meaning-layer.md`
 - Meaning接続：`docs/core/meaning-layer-connection.md`
 - Narrative原則：`docs/core/narrative-guideline.md`
-- Recommendation品質：`docs/core/recommendation-readiness.md`
+- Knowledge CoverageのGovernance観測：`docs/core/recommendation-readiness.md`
 - Recommendation Reason：`docs/core/recommendation-reason-contract.md`
 - 認証：`docs/core/authentication-flow.md`
 - 認証画面遷移：`docs/core/auth-flow.md`

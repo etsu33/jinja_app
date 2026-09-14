@@ -420,13 +420,16 @@ Recommendation Reasonは最低限以下を満たす。
 - 宗教的・心理的効果を断定しない
 - Action Suggestionと矛盾しない
 
-Recommendation可能条件は、`docs/core/recommendation-readiness.md`を正本とする。
+Recommendation candidate eligibility（どのShrineがRecommendation候補になれるか）は、`docs/knowledge/recommendation-eligibility-contract.md` + 現行Backend実装 + 関連テストを正本とする。本書はその条件を再定義しない。
+
+`docs/core/recommendation-readiness.md`はKnowledge Coverage / Verification / UsabilityのGovernance Contractであり、candidate eligibilityの正本ではない。
 
 ## 関連ドキュメント
 
 - `docs/core/architecture.md`
 - `docs/core/meaning-layer.md`
-- `docs/core/recommendation-readiness.md`
+- `docs/knowledge/recommendation-eligibility-contract.md`（Recommendation candidate eligibilityの正本）
+- `docs/core/recommendation-readiness.md`（Knowledge CoverageのGovernance観測。eligibility正本ではない）
 - `docs/product/meaning-translation-mapping.md`
 - `docs/product/action_suggestion_v4.md`
 - `docs/knowledge/shrine-profile-spec.md`
