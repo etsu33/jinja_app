@@ -47,6 +47,22 @@ CANDIDATE_MASTER_RELATIVE_PATH = Path("temples") / "data" / "shrine_expansion_ca
 
 
 @dataclass(frozen=True)
+class ShrineIdentity:
+    """Candidate Masterのcanonical identity。
+
+    Shrineは `(name_jp, address, location)` がuniqueであり、`name_jp` 単独では
+    同名別所在の神社を一意に特定できない。Batch解決では Candidate Master の
+    `(official_name, official_address)` を canonical identity として用いる。
+    """
+
+    name: str
+    address: str
+
+    def label(self) -> str:
+        return f"{self.name} / {self.address}"
+
+
+@dataclass(frozen=True)
 class ShrineEligibilityResult:
     """1 Shrineあたりの検証結果。
 
@@ -125,12 +141,20 @@ def _candidate_master_path() -> Path:
     return Path(settings.BASE_DIR) / CANDIDATE_MASTER_RELATIVE_PATH
 
 
-def load_batch_shrine_names(build_batch: str, *, path: Path | None = None) -> list[str]:
-    """Candidate Masterから指定`build_batch`のShrine名を読み出す（read-only）。
+def load_batch_shrine_identities(
+    build_batch: str, *, path: Path | None = None
+) -> list[ShrineIdentity]:
+    """Candidate Masterから指定`build_batch`のcanonical identityを読み出す（read-only）。
 
-    `official_name` を優先し、無ければ `candidate_name` を使う。Candidate Master
-    は本番Shrine DBではないため、ここで得られるのは「そのBatchが対象とする
-    identity」であって、eligibilityでもProduction存在保証でもない。
+    `(official_name, official_address)` を identity として返す。`name_jp` 単独では
+    同名別所在の神社を一意に特定できないため、name-only解決は行わない。
+
+    `official_name` / `official_address` のいずれかが欠けるCandidateは、canonical
+    identityが確定していないため**含めない**（推測で`candidate_name`等へ代替しない）。
+    欠落は呼び出し側が件数差として検知できる。
+
+    Candidate Masterは本番Shrine DBではないため、ここで得られるのは「そのBatchが
+    対象とするidentity」であって、eligibilityでもProduction存在保証でもない。
     """
     master_path = path or _candidate_master_path()
     if not master_path.is_file():
@@ -141,32 +165,59 @@ def load_batch_shrine_names(build_batch: str, *, path: Path | None = None) -> li
     if not isinstance(candidates, list):
         raise ValueError(f"unexpected candidate master shape: {master_path}")
 
-    names: list[str] = []
+    identities: list[ShrineIdentity] = []
     for candidate in candidates:
         if not isinstance(candidate, dict):
             continue
         if candidate.get("build_batch") != build_batch:
             continue
-        name = candidate.get("official_name") or candidate.get("candidate_name")
-        if isinstance(name, str) and name.strip():
-            names.append(name.strip())
-    return names
+        name = candidate.get("official_name")
+        address = candidate.get("official_address")
+        if not isinstance(name, str) or not name.strip():
+            continue
+        if not isinstance(address, str) or not address.strip():
+            continue
+        identities.append(ShrineIdentity(name=name.strip(), address=address.strip()))
+    return identities
+
+
+def count_batch_candidates(build_batch: str, *, path: Path | None = None) -> int:
+    """指定`build_batch`のCandidate総数（canonical identity欠落分を含む）。"""
+    master_path = path or _candidate_master_path()
+    if not master_path.is_file():
+        raise FileNotFoundError(f"candidate master not found: {master_path}")
+    payload = json.loads(master_path.read_text(encoding="utf-8"))
+    candidates = payload.get("candidates") if isinstance(payload, dict) else payload
+    if not isinstance(candidates, list):
+        raise ValueError(f"unexpected candidate master shape: {master_path}")
+    return sum(
+        1
+        for c in candidates
+        if isinstance(c, dict) and c.get("build_batch") == build_batch
+    )
 
 
 def _resolve_identities(
     *,
     shrine_ids: Iterable[int],
     shrine_names: Iterable[str],
+    shrine_identities: Iterable[ShrineIdentity],
 ) -> list[tuple[str, Shrine | None, str | None]]:
     """要求identityをProduction Shrineへ解決する（read-only）。
 
     戻り値は (requested, shrine|None, note) のlist。要求順を保持する。
-    名前が複数Shrineへ一致する場合は曖昧としてUNRESOLVED扱いにし、
-    どれか1件を推測で採用しない。
+
+    解決方式は3種類あり、いずれも推測解決をしない。
+
+    - `shrine_ids`: Shrine idで一意に解決する
+    - `shrine_identities`: canonical identity `(name_jp, address)` で解決する
+    - `shrine_names`: `name_jp` のみで解決する。同名が複数ある場合はUNRESOLVED
+      （どれか1件を推測で採用しない）
     """
     resolved: list[tuple[str, Shrine | None, str | None]] = []
 
     id_list = list(dict.fromkeys(shrine_ids))
+    identity_list = list(dict.fromkeys(shrine_identities))
     name_list = list(dict.fromkeys(shrine_names))
 
     by_id = {s.id: s for s in Shrine.objects.filter(id__in=id_list)} if id_list else {}
@@ -174,6 +225,33 @@ def _resolve_identities(
         shrine = by_id.get(shrine_id)
         note = None if shrine else "shrine id not found in Production Shrine table"
         resolved.append((str(shrine_id), shrine, note))
+
+    if identity_list:
+        identity_names = {identity.name for identity in identity_list}
+        by_identity: dict[tuple[str, str], list[Shrine]] = {}
+        for shrine in Shrine.objects.filter(name_jp__in=identity_names):
+            by_identity.setdefault((shrine.name_jp, shrine.address), []).append(shrine)
+        for identity in identity_list:
+            found = by_identity.get((identity.name, identity.address)) or []
+            if len(found) == 1:
+                resolved.append((identity.label(), found[0], None))
+            elif not found:
+                resolved.append(
+                    (
+                        identity.label(),
+                        None,
+                        "(name_jp, address) not found in Production Shrine table",
+                    )
+                )
+            else:
+                ids = ", ".join(str(s.id) for s in sorted(found, key=lambda s: s.id))
+                resolved.append(
+                    (
+                        identity.label(),
+                        None,
+                        f"(name_jp, address) matched multiple shrines (ids: {ids}); not resolved",
+                    )
+                )
 
     if name_list:
         matches: dict[str, list[Shrine]] = {name: [] for name in name_list}
@@ -198,6 +276,7 @@ def verify_recommendation_eligibility(
     *,
     shrine_ids: Iterable[int] = (),
     shrine_names: Iterable[str] = (),
+    shrine_identities: Iterable[ShrineIdentity] = (),
 ) -> EligibilityVerificationReport:
     """指定Shrineのeligibilityをread-onlyで検証する。
 
@@ -208,7 +287,11 @@ def verify_recommendation_eligibility(
     出力にはEvidence件数（usable Deity Fact数 / usable History Fact数）を含める。
     これは結果を説明するための最小限の根拠であり、閾値判定には使用しない。
     """
-    resolved = _resolve_identities(shrine_ids=shrine_ids, shrine_names=shrine_names)
+    resolved = _resolve_identities(
+        shrine_ids=shrine_ids,
+        shrine_names=shrine_names,
+        shrine_identities=shrine_identities,
+    )
 
     found_ids = [shrine.id for _, shrine, _ in resolved if shrine is not None]
     deities_by_shrine = fetch_fact_ready_knowledge_deities(found_ids) if found_ids else {}

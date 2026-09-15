@@ -30,7 +30,8 @@ from django.utils.dateparse import parse_datetime
 from temples.models import Shrine, ShrineDeity, ShrineHistory, ShrineKnowledgeSource
 from temples.services.recommendation_eligibility_verifier import (
     ELIGIBLE,
-    load_batch_shrine_names,
+    count_batch_candidates,
+    load_batch_shrine_identities,
     verify_recommendation_eligibility,
 )
 
@@ -137,13 +138,29 @@ def w0_db01_state() -> dict[str, Shrine]:
 
 
 def test_candidate_master_resolves_w0_db01_to_the_five_known_shrines():
-    assert set(load_batch_shrine_names("W0-DB01")) == W0_DB01_EXPECTED_NAMES
+    identities = load_batch_shrine_identities("W0-DB01")
+
+    assert count_batch_candidates("W0-DB01") == 5
+    assert len(identities) == 5
+    assert {i.name for i in identities} == W0_DB01_EXPECTED_NAMES
+    # canonical identityはaddressを必ず持つ（name-onlyへ退化しない）
+    assert all(i.address.strip() for i in identities)
+
+
+def test_candidate_master_addresses_match_the_base_seed(w0_db01_state):
+    """Candidate Masterのofficial_addressがProduction Shrineのaddressと一致する。
+
+    一致しなければ --batch は解決できない。identity契約の前提を固定する。
+    """
+    for identity in load_batch_shrine_identities("W0-DB01"):
+        shrine = w0_db01_state[identity.name]
+        assert shrine.address == identity.address
 
 
 def test_w0_db01_five_shrines_are_all_eligible(w0_db01_state):
     """W0-DB01 CORE READY Gate §9.1 の結論を再現する。"""
     report = verify_recommendation_eligibility(
-        shrine_names=load_batch_shrine_names("W0-DB01"),
+        shrine_identities=load_batch_shrine_identities("W0-DB01"),
     )
 
     assert report.summary_counts() == (5, 0, 0)
@@ -178,7 +195,7 @@ def test_w0_db01_shrines_without_knowledge_would_be_ineligible():
     _load_base_shrines(W0_DB01_EXPECTED_NAMES)
 
     report = verify_recommendation_eligibility(
-        shrine_names=load_batch_shrine_names("W0-DB01"),
+        shrine_identities=load_batch_shrine_identities("W0-DB01"),
     )
 
     assert report.eligible_count == 0

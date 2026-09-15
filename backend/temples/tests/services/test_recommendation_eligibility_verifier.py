@@ -31,7 +31,9 @@ from temples.services.recommendation_eligibility_verifier import (
     ELIGIBLE,
     INELIGIBLE,
     UNRESOLVED,
-    load_batch_shrine_names,
+    ShrineIdentity,
+    count_batch_candidates,
+    load_batch_shrine_identities,
     verify_recommendation_eligibility,
 )
 from temples.tests.support.recommendation_eligibility import (
@@ -340,13 +342,190 @@ def test_require_all_eligible_fails_on_ineligible():
 # ---------------------------------------------------------------------------
 
 
-def test_load_batch_shrine_names_resolves_w0_db01():
-    names = load_batch_shrine_names("W0-DB01")
+def test_load_batch_shrine_identities_resolves_w0_db01():
+    identities = load_batch_shrine_identities("W0-DB01")
 
-    assert len(names) == 5
-    assert "三輪神社" in names
-    assert "榴岡天満宮" in names
+    assert len(identities) == 5
+    assert count_batch_candidates("W0-DB01") == 5
+    by_name = {i.name: i.address for i in identities}
+    assert by_name["三輪神社"] == "愛知県名古屋市中区大須3-9-32"
+    assert by_name["榴岡天満宮"] == "宮城県仙台市宮城野区榴ケ岡105-3"
 
 
-def test_load_batch_shrine_names_unknown_batch_is_empty():
-    assert load_batch_shrine_names("W0-DB99") == []
+def test_load_batch_shrine_identities_all_have_address():
+    """canonical identityはaddress必須。name-onlyのidentityを返さない。"""
+    for identity in load_batch_shrine_identities("W0-DB01"):
+        assert identity.address.strip()
+
+
+def test_load_batch_shrine_identities_unknown_batch_is_empty():
+    assert load_batch_shrine_identities("W0-DB99") == []
+    assert count_batch_candidates("W0-DB99") == 0
+
+
+# ---------------------------------------------------------------------------
+# canonical identity resolution
+#
+# Shrineは (name_jp, address, location) がunique。同名別所在の神社は実在するため、
+# name-onlyでは一意に解決できない。--batch は Candidate Master の
+# (official_name, official_address) を canonical identity として解決する。
+# ---------------------------------------------------------------------------
+
+
+_AMBIGUOUS_NAME = "諏訪神社"
+_ADDRESS_A = "長野県諏訪市中洲1-1"
+_ADDRESS_B = "北海道札幌市中央区2-2"
+
+
+@pytest.fixture
+def same_name_different_address() -> dict[str, Shrine]:
+    """同名・別所在の2社。一方のみusable Factを持つ。"""
+    a = _shrine(_AMBIGUOUS_NAME, address=_ADDRESS_A, latitude=36.0, longitude=138.1)
+    b = _shrine(_AMBIGUOUS_NAME, address=_ADDRESS_B, latitude=43.0, longitude=141.3)
+    attach_usable_deity_fact(a)
+    return {"a": a, "b": b}
+
+
+def test_shrine_name_stays_unresolved_for_same_name_different_address(
+    same_name_different_address,
+):
+    """--shrine-name の挙動は不変。同名一致は推測解決せずUNRESOLVED。"""
+    report = verify_recommendation_eligibility(shrine_names=[_AMBIGUOUS_NAME])
+
+    result = report.results[0]
+    assert result.status == UNRESOLVED
+    assert result.shrine_id is None
+    assert "name_jp matched multiple shrines" in (result.note or "")
+    assert report.eligible_count == 0
+    assert report.all_eligible is False
+
+
+def test_canonical_identity_resolves_the_correct_shrine_deterministically(
+    same_name_different_address,
+):
+    """(name_jp, address) はusable Factを持つ側を一意に解決する。"""
+    eligible_side = same_name_different_address["a"]
+
+    report = verify_recommendation_eligibility(
+        shrine_identities=[ShrineIdentity(name=_AMBIGUOUS_NAME, address=_ADDRESS_A)],
+    )
+
+    result = report.results[0]
+    assert result.status == ELIGIBLE
+    assert result.shrine_id == eligible_side.id
+    assert result.usable_deity_fact_count == 1
+    assert report.all_eligible is True
+
+
+def test_canonical_identity_resolves_the_other_shrine_independently(
+    same_name_different_address,
+):
+    """同名でもaddressが異なればもう一方を独立に解決する（取り違えない）。"""
+    ineligible_side = same_name_different_address["b"]
+
+    report = verify_recommendation_eligibility(
+        shrine_identities=[ShrineIdentity(name=_AMBIGUOUS_NAME, address=_ADDRESS_B)],
+    )
+
+    result = report.results[0]
+    assert result.status == INELIGIBLE
+    assert result.shrine_id == ineligible_side.id
+    assert result.usable_fact_count == 0
+
+
+def test_canonical_identity_resolution_is_deterministic_across_runs(
+    same_name_different_address,
+):
+    identity = ShrineIdentity(name=_AMBIGUOUS_NAME, address=_ADDRESS_A)
+    first = verify_recommendation_eligibility(shrine_identities=[identity]).results[0]
+    second = verify_recommendation_eligibility(shrine_identities=[identity]).results[0]
+
+    assert first.shrine_id == second.shrine_id
+    assert first.status == second.status == ELIGIBLE
+
+
+def test_canonical_identity_with_unknown_address_is_unresolved(
+    same_name_different_address,
+):
+    """addressが一致しなければ、同名Shrineが存在しても解決しない。"""
+    report = verify_recommendation_eligibility(
+        shrine_identities=[ShrineIdentity(name=_AMBIGUOUS_NAME, address="存在しない住所")],
+    )
+
+    result = report.results[0]
+    assert result.status == UNRESOLVED
+    assert "(name_jp, address) not found" in (result.note or "")
+
+
+def test_canonical_identity_label_is_reported_as_requested(
+    same_name_different_address,
+):
+    report = verify_recommendation_eligibility(
+        shrine_identities=[ShrineIdentity(name=_AMBIGUOUS_NAME, address=_ADDRESS_A)],
+    )
+
+    assert report.results[0].requested == f"{_AMBIGUOUS_NAME} / {_ADDRESS_A}"
+
+
+def test_batch_command_uses_canonical_identity_not_name_only(
+    same_name_different_address, tmp_path
+):
+    """--batch がCandidate Masterのcanonical identityで解決することを固定する。
+
+    同名別所在の2社が存在する状況で、Candidate Masterが `official_address` に
+    片方を指定していれば、その1社だけが解決される。
+    """
+    master = tmp_path / "candidate_master.json"
+    master.write_text(
+        json.dumps(
+            {
+                "candidates": [
+                    {
+                        "candidate_id": "amb-001",
+                        "build_batch": "TEST-AMB",
+                        "official_name": _AMBIGUOUS_NAME,
+                        "official_address": _ADDRESS_A,
+                    }
+                ]
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    identities = load_batch_shrine_identities("TEST-AMB", path=master)
+    assert identities == [ShrineIdentity(name=_AMBIGUOUS_NAME, address=_ADDRESS_A)]
+
+    report = verify_recommendation_eligibility(shrine_identities=identities)
+    assert report.results[0].shrine_id == same_name_different_address["a"].id
+    assert report.results[0].status == ELIGIBLE
+
+
+def test_batch_aborts_when_candidate_lacks_canonical_identity(tmp_path):
+    """official_addressが欠けるCandidateを推測解決しない（件数差で中止）。"""
+    master = tmp_path / "candidate_master.json"
+    master.write_text(
+        json.dumps(
+            {
+                "candidates": [
+                    {
+                        "candidate_id": "ok-001",
+                        "build_batch": "TEST-PARTIAL",
+                        "official_name": "住所あり神社",
+                        "official_address": "東京都港区1-1",
+                    },
+                    {
+                        "candidate_id": "ng-001",
+                        "build_batch": "TEST-PARTIAL",
+                        "candidate_name": "住所なし神社",
+                        "official_name": "住所なし神社",
+                    },
+                ]
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    assert count_batch_candidates("TEST-PARTIAL", path=master) == 2
+    assert len(load_batch_shrine_identities("TEST-PARTIAL", path=master)) == 1

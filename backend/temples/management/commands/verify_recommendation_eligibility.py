@@ -9,13 +9,14 @@ eligibility ruleとEvidence Gate条件は本commandで定義せず、既存autho
 
 使用例:
 
-    # Data Build Batch単位（Candidate Masterのbuild_batchで解決）
+    # Data Build Batch単位
+    # （Candidate Masterのcanonical identity official_name + official_address で解決）
     python manage.py verify_recommendation_eligibility --batch W0-DB01
 
     # Shrine id指定
     python manage.py verify_recommendation_eligibility --shrine-id 12 --shrine-id 34
 
-    # Shrine名指定
+    # Shrine名指定（同名別所在がある場合はUNRESOLVED。推測解決しない）
     python manage.py verify_recommendation_eligibility --shrine-name 三輪神社
 
     # JSON出力（Batch QA記録へ貼り付ける用途）
@@ -32,7 +33,8 @@ import json
 from django.core.management.base import BaseCommand, CommandError
 
 from temples.services.recommendation_eligibility_verifier import (
-    load_batch_shrine_names,
+    count_batch_candidates,
+    load_batch_shrine_identities,
     render_text_report,
     verify_recommendation_eligibility,
 )
@@ -48,7 +50,10 @@ class Command(BaseCommand):
         parser.add_argument(
             "--batch",
             dest="batch",
-            help="Candidate Masterのbuild_batch（例: W0-DB01）で対象Shrineを解決する",
+            help=(
+                "Candidate Masterのbuild_batch（例: W0-DB01）で対象Shrineを解決する。"
+                "canonical identity (official_name, official_address) を使用する"
+            ),
         )
         parser.add_argument(
             "--shrine-id",
@@ -83,16 +88,25 @@ class Command(BaseCommand):
         shrine_ids = list(options.get("shrine_ids") or [])
         shrine_names = list(options.get("shrine_names") or [])
 
+        shrine_identities = []
         if batch:
             try:
-                batch_names = load_batch_shrine_names(batch)
+                shrine_identities = load_batch_shrine_identities(batch)
+                batch_total = count_batch_candidates(batch)
             except (FileNotFoundError, ValueError) as exc:
                 raise CommandError(str(exc)) from exc
-            if not batch_names:
+            if batch_total == 0:
                 raise CommandError(f"--batch: no candidates found for build_batch={batch}")
-            shrine_names.extend(batch_names)
+            if len(shrine_identities) != batch_total:
+                # canonical identity (official_name + official_address) が未確定の
+                # Candidateは推測で解決しない。件数差を明示して停止する。
+                raise CommandError(
+                    f"--batch {batch}: {batch_total}件中 {len(shrine_identities)}件しか "
+                    "canonical identity (official_name + official_address) を持たない。"
+                    "未確定Candidateを推測で解決しないため中止する。"
+                )
 
-        if not shrine_ids and not shrine_names:
+        if not shrine_ids and not shrine_names and not shrine_identities:
             raise CommandError(
                 "対象を指定してください（--batch / --shrine-id / --shrine-name のいずれか）"
             )
@@ -100,6 +114,7 @@ class Command(BaseCommand):
         report = verify_recommendation_eligibility(
             shrine_ids=shrine_ids,
             shrine_names=shrine_names,
+            shrine_identities=shrine_identities,
         )
 
         if options.get("as_json"):
