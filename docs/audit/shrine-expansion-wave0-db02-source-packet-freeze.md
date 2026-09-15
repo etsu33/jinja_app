@@ -1,282 +1,537 @@
-# Wave0 W0-DB02 Source Packet Freeze — HOLD
+# W0-DB02 Source Packet Freeze
 
-> **Status: `HOLD_AT_PHASE_1_SOURCE_PACKET_FREEZE`**
->
-> W0-DB02（5社）のData Buildを試行し、**Phase 1（Source Packet Freeze）で停止した**。
->
-> 停止理由は候補神社側の欠陥ではない。実行環境からSource本文へ到達できず、
-> `docs/audit/shrine-expansion-wave0-data-build-plan.md` Phase 1が要求する
-> 「既存Auditで採用したSourceの**再確認**」を実施できなかったためである。
->
-> 本PRはSeed dataを変更していない。Candidate Master、Base Shrine Seed、
-> Knowledge Seedのいずれも無変更であり、Production writeも行っていない。
+## Status
 
-## 0. 対象
+- Batch: `W0-DB02`
+- Verified / accessed date: `2026-09-15`
+- `verified_at` normalization for seed work: `2026-09-15T00:00:00+09:00`
+- Scope: 射水神社 / 別小江神社 / 戸隠神社 中社 / 札幌諏訪神社 / 少彦名神社
+- Source Packet Freeze: `PASS`
+- Position Gate: `5/5 PASS`
+- Production write: `NONE`
+- Candidate Master write: `NONE`
+- Base Seed write: `NONE`
+- Knowledge Seed write: `NONE`
 
-| candidate_id | candidate_name | prefecture | build_batch | 着手前 candidate_status |
-| --- | --- | --- | --- | --- |
-| `wave0-007` | 射水神社 | 富山県 | W0-DB02 | `BUILD_READY` |
-| `wave0-008` | 別小江神社 | 愛知県 | W0-DB02 | `BUILD_READY` |
-| `wave0-009` | 戸隠神社 中社 | 長野県 | W0-DB02 | `BUILD_READY` |
-| `wave0-010` | 札幌諏訪神社 | 北海道 | W0-DB02 | `BUILD_READY` |
-| `wave0-011` | 少彦名神社 | 大阪府 | W0-DB02 | `BUILD_READY` |
+This packet is frozen research input for the W0-DB02 Data Build. It does not itself authorize Production import.
 
-Base commit: `425104a`（PR #2853 merge後）
+## Governing rules
+
+- Shrine position means **Visitor / Navigation Anchor**, not legal-office / historical / parcel / centroid coordinates.
+- No fixed meter threshold is used for coordinate PASS. Deltas below are audit observations only.
+- Recommendation evidence is limited to the existing canonical 39 `GoriyakuTag` labels.
+- Exact match or narrow single-candidate normalization is allowed; ambiguous / compound / taxonomy-gap wording is held, not invented.
+- Deity / History Facts are source-backed separately from Recommendation Evidence.
 
 ---
 
-## 1. Phase 1が要求する確定項目
+# 1. 射水神社
 
-`docs/audit/shrine-expansion-wave0-data-build-plan.md` Phase 1: Source Packet Freeze
+## Canonical identity
 
 ```text
-official_name
-official_address
-official_source_type
-official_source_url
-verified_at
-latitude
-longitude
-approved goriyaku wording
-safe canonical goriyaku_tags
-Deity source-backed facts
-History source-backed facts
+candidate_id      = wave0-007
+official_name     = 射水神社
+official_address  = 富山県高岡市古城1番1号
+official_source_type = shrine_official
+verified_at       = 2026-09-15T00:00:00+09:00
 ```
 
-同Phaseは次も定める。
+Official sources:
+- About / deity / history / blessings: https://www.imizujinjya.or.jp/about
+- Address / access: https://www.imizujinjya.or.jp/access
 
-> 新しいFactを神社名・祭神名・歴史イメージから推測しない。
->
-> Source本文が変わっており過去Auditと整合しない場合は、そのShrineだけHOLDへ戻す。
+Identity note:
+- Target is the current shrine in 高岡古城公園, `古城1番1号`.
+- Do **not** resolve to the same-name shrine around 二上1519 / 二上谷内1519.
 
----
-
-## 2. 着手前に確認した事実（repo内）
-
-### 2.1 既存Auditは「取得可能性」までしか確定していない
-
-| Audit | 5社の記録内容 | 実値の有無 |
-| --- | --- | --- |
-| `shrine-expansion-wave0-official-source-availability.md` | 5社すべて `PASS_FIRST_PARTY` / `shrine_official` / 公式URL | URLのみ。Source本文・`verified_at`なし |
-| `shrine-expansion-wave0-coordinate-availability.md` | 5社すべて `PASS`（取得経路あり） | **座標値なし** |
-| `shrine-expansion-wave0-deity-fact-availability.md` | 5社すべて `PASS_DEITY`（Fact化可能） | **Fact本文・per-fact Sourceなし** |
-| `shrine-expansion-wave0-history-fact-availability.md` | 5社すべて `PASS_HISTORY`（Fact化可能） | **Fact本文・per-fact Sourceなし** |
-
-coordinate availability監査は自ら次を明記している。
+## Position
 
 ```text
-ACQUISITION = AVAILABLE
-ADOPTION = REVIEW_REQUIRED
+position_status      = PASS
+latitude             = 36.7484968
+longitude            = 137.0215428
+position_source_type = map_provider_poi
 ```
 
-> 本監査では座標値をCandidate Master / Shrine Seed / Production DBへ書き込まない。
+Primary position source:
+- Yahoo! Map current POI for the 高岡古城公園-side 射水神社, verified during this freeze.
 
-したがって採用値（coordinate・Fact本文・出典対応・`verified_at`）はいずれもrepo内に存在せず、**Data Build時点でSourceから取得する設計**である。
+Current-identity corroboration:
+- Mapion current POI: https://www.mapion.co.jp/phonebook/M06005/16202/ILSP0000082533_ipclm/
+- GeoShape historical place record: https://geoshape.ex.nii.ac.jp/nrct-poi/resource/16/160000266500.html
+  - coordinate `36.749287, 137.020691`
+  - delta from adopted point: `116.1 m`
 
-### 2.2 Candidate Masterの5社はidentity未確定
+Conflict note:
+- Mapion also has a different same-name shrine at 二上谷内1519. It is excluded by canonical identity.
+- Official access guidance warns car navigation can terminate around the park / restricted approaches. This is a route-access note, not a reason to replace the shrine Visitor / Navigation Anchor.
 
-5 Candidateはいずれも `official_name` / `official_address` / `latitude` / `longitude` /
-`official_source_url` / `verified_at` を持たず、Discovery情報（Omairiランキング）のみを保持する。
+## Knowledge Facts
 
-### 2.3 既存成果物なし
+Source key:
+`wave0-db02-imizu-official`
 
-- `backend/temples/data/knowledge_seeds/` にW0-DB02 seedなし
-- `backend/temples/data/shrines_seed_clean.json` に5社なし
-- W0-DB02のaudit記録なし（本書が最初）
-
----
-
-## 3. 停止理由：Source本文へ到達できない
-
-Phase 1の「再確認」を行うため、既存Auditが採用した一次Sourceへアクセスを試行した。
-実行環境のnetwork egress policyにより**全件403で拒否**された。
-
-### 3.1 神社公式Source（`shrine_official`）
-
-| 神社 | 採用Source | 到達結果 |
-| --- | --- | --- |
-| 射水神社 | `https://www.imizujinjya.or.jp/` | **BLOCKED**（egress proxy 403） |
-| 別小江神社 | `https://www.wakeoe.com/` | **BLOCKED** |
-| 戸隠神社 中社 | `https://www.togakushi-jinja.jp/about/` | **BLOCKED** |
-| 札幌諏訪神社 | `https://www.sapporo-suwajinja.com/` | **BLOCKED** |
-| 少彦名神社 | `https://www.sinnosan.jp/` | **BLOCKED** |
-
-### 3.2 Position Source
-
-`shrine-expansion-wave0-coordinate-availability.md` が挙げたGeoShape / MapFan /
-自治体公式、および国土地理院も同様に到達できない。
+### Deity
 
 ```text
-geoshape.ex.nii.ac.jp        BLOCKED
-mapfan.com / www.mapfan.com  BLOCKED
-www.city.nagano.nagano.jp    BLOCKED
-www.city.takaoka.toyama.jp   BLOCKED
-maps.gsi.go.jp               BLOCKED
+display_name   = 二上神（瓊瓊杵尊）
+canonical_name = 瓊瓊杵尊
+role           = unknown
+verification_status = source_confirmed
+confidence     = high
+source_keys    = [wave0-db02-imizu-official]
 ```
 
-proxy status APIは次を返した。
+Boundary note: do not create `二上神` and `瓊瓊杵尊` as two separate deities from this source statement.
+
+### History 1
 
 ```text
-kind   : connect_rejected
-detail : gateway answered 403 to CONNECT (policy denial or upstream failure)
+history_type = historical_event
+title        = 明治8年の高岡公園本丸跡への遷座
+period_text  = 明治8年（1875）
+content      = 1875年9月16日、二上山から高岡公園本丸跡へ遷座した。
+verification_status = source_confirmed
+confidence   = high
 ```
 
-package registry（pypi.org等）は200で到達できるため、egress policyが
-一般webドメインを遮断している状態である。
-
-### 3.3 検索エンジン経由の代替は採用しない
-
-web検索は到達するが、返るのは**検索エンジン側の要約**であり一次Source本文ではない。
-これをFactの根拠に用いることは、次の現行契約に違反するため採用しない。
-
-- `docs/core/fixed-rules.md` `FR-KNOW-01`: EvidenceなしにShrine Factを主張・確定しない
-- `docs/core/fixed-rules.md` `FR-KNOW-02`: 確度と種別を混同しない
-- `docs/knowledge/shrine-data-guide.md`: AI生成だけで事実項目を確定しない
-- Data Build Plan Phase 1: 新しいFactを神社名・祭神名・歴史イメージから推測しない
-- `docs/knowledge/shrine-knowledge-contract.md`: AI生成のみの祭神情報を
-  `verification_status: source_confirmed` 以上として保存しない
-
-要約からFactを組み立てれば`source_confirmed`として保存することになり、
-Evidence Gateが前提とするSource確認の意味が失われる。
-
-### 3.4 座標は推測しない
-
-`docs/knowledge/shrine-position-contract.md` は次を定める。
-
-- HOLD状態では座標を推測してSeed / Productionへ投入しない
-- current candidateを距離だけで自動採用しない
-- OSM / Wikidataを唯一のprimary sourceにしない
-
-primary position sourceへ到達できない以上、採用座標を確定できない。
-
----
-
-## 4. 5社のStatus
-
-| 神社 | Source再確認 | Position検証 | identity確定 | 本書での扱い |
-| --- | --- | --- | --- | --- |
-| 射水神社 | 不能（BLOCKED） | 不能 | 未確定 | `HOLD_SOURCE_UNREACHABLE` |
-| 別小江神社 | 不能（BLOCKED） | 不能 | 未確定 | `HOLD_SOURCE_UNREACHABLE` |
-| 戸隠神社 中社 | 不能（BLOCKED） | 不能 | 未確定 | `HOLD_SOURCE_UNREACHABLE` |
-| 札幌諏訪神社 | 不能（BLOCKED） | 不能 | 未確定 | `HOLD_SOURCE_UNREACHABLE` |
-| 少彦名神社 | 不能（BLOCKED） | 不能 | 未確定 | `HOLD_SOURCE_UNREACHABLE` |
-
-**5社すべてがPhase 1を通過していない。** Phase 2以降（Candidate Master Update /
-Base Seed Build / Knowledge Seed Build / isolated DB preflight / Production import）は
-いずれも着手していない。
-
-### 4.1 Candidate Masterの`candidate_status`を変更しない理由
-
-本書は5社を `HOLD` へ**書き換えていない**。
-
-Candidate Masterの既存HOLD reason codeは `HOLD_MAPPING` / `SOURCE_HOLD` /
-`UNKNOWN_EVIDENCE` であり、いずれも**候補側の問題**を表す。今回の停止要因は
-実行環境のegress policyであって候補の欠陥ではない。既存コードを流用すると
-「この5社にはSource上の問題がある」という誤った記録が残る。
-
-`docs/core/fixed-rules.md` `FR-GOV-01`（Conflictを推測で解決しない）および
-`FR-KNOW-02`（情報の確度と種別を混同しない）に従い、実態と異なる分類を
-付与せず、`BUILD_READY` のまま据え置いて本書へ事実を記録する。
-
-新しいreason codeの新設は、Candidate Master Contractの変更にあたるため
-本PRのscope外とする（§7）。
-
----
-
-## 5. 射水神社のidentity（再開時の必須条件として保全）
-
-タスク指定の特記事項に対応する確認結果を、失われないよう本書へ保全する。
-
-`shrine-expansion-wave0-coordinate-availability.md` §Same-name / Identity Risks は
-次を確定済みである。
+### History 2
 
 ```text
-〒933-0044 富山県高岡市古城1番1号
+history_type = historical_event
+title        = 高岡大火後の現社殿再建
+period_text  = 明治33年（1900）〜明治35年（1902）
+content      = 1900年の高岡大火で社殿が類焼し、1902年に本殿・拝殿等が竣工した。
+verification_status = source_confirmed
+confidence   = high
 ```
 
-> 公開地理データには富山県高岡市内の「射水神社」が複数存在する。
-> したがって、二上1519側recordではなく、古城1番側recordを対象と識別できる。
+## Recommendation Evidence review
 
-再開時は `official_address` を `高岡市古城1-1` 側で確定し、二上側同名社を採用しない。
-verifierは canonical identity `(official_name, official_address)` で解決するため
-（PR #2853 `f420e9f`）、Candidate Masterへ古城側addressを記録すれば取り違えは防止できる。
+Official wording includes:
+- 五穀豊穣
+- 商業繁栄
+- 家内安全
+- 縁結び
+- 開運厄祓
+- みちひらき
 
-**ただし現時点では公式Source本文で再確認できていないため、この住所を採用値として
-Seedへ書き込まない。**
-
----
-
-## 6. 再開条件
-
-次のいずれかが満たされれば、本書の§1のとおりPhase 1から再開できる。
-
-1. 実行環境のegress policyが対象Source domainを許可する
-2. Source Packet（公式Source本文の凍結写し・取得日時付き）がrepo内または
-   別経路で提供される
-
-再開時に必要な入力は既にrepo内で揃っている。
-
-- 5社の一次Source URL（`official-source-availability`）
-- coordinate取得経路（`coordinate-availability`）
-- Deity / History のFact化可否（`deity-` / `history-fact-availability`）
-- 射水神社のidentity解決条件（本書§5）
-
-### 6.1 検証側は準備済み
-
-W0-DB02が要求する検証のうち、Shared Recommendation Eligibilityは
-PR #2853 で自動化済みであり、Data Build完了後に即時実行できる。
-
-```bash
-python manage.py verify_recommendation_eligibility --batch W0-DB02 --require-all-eligible
-```
-
-同commandはCandidate Masterの canonical identity
-`(official_name, official_address)` で解決するため、**Candidate Masterへ
-official_addressが記録されるまでW0-DB02では解決できない**（未記録の
-Candidateを含むBatchは件数差を検知して中止する）。これはPhase 2完了が
-前提条件であることを意味する。
-
----
-
-## 7. 本PRで行っていないこと
-
-- Candidate Masterの変更（`candidate_status` / identity / coordinate いずれも）
-- Base Shrine Seedの変更
-- W0-DB02 Knowledge Seedの作成
-- 既存Shrine rowの変更
-- isolated DB preflight（Phase 1未通過のため未着手）
-- Production write
-- Recommendation / Ranking / Compass logicの変更
-- eligibility / Evidence Gate条件の変更
-- 新規GoriyakuTagの作成
-- Candidate Master Contractへの新reason code追加
-- 代替神社の選定（タスク指定により禁止）
-
----
-
-## 8. 結論
+Approved canonical subset:
 
 ```text
-W0-DB02 Phase 1 (Source Packet Freeze) = HOLD
-対象5社 = すべてHOLD（候補側の欠陥ではない）
-Seed data変更 = なし
-Production import readiness = NOT READY
+goriyaku      = 五穀豊穣・商売繁盛・家内安全・縁結び
+goriyaku_tags = [五穀豊穣, 商売繁盛, 家内安全, 縁結び]
 ```
 
-Data Build Plan Phase 1が要求するSource再確認を実施できない状態で
-Seedを構築すれば、出典未確認のFactを`source_confirmed`として投入することになる。
-これは現行のEvidence Gate契約とFixed Rulesが明示的に禁止する行為であるため、
-**推測でのSeed構築は行わず、Phase 1でHOLDする**。
+Normalization:
+- `商業繁栄` -> `商売繁盛`: PASS, narrow normalization.
 
-## 関連ドキュメント
+Held wording:
+- `開運厄祓`: HOLD. Compound wording is not automatically split into `開運` + `厄除け` in this packet.
+- `みちひらき`: HOLD. Do not silently rewrite to `導き` without separate review.
 
-- `docs/audit/shrine-expansion-wave0-data-build-plan.md`
-- `docs/audit/shrine-expansion-wave0-official-source-availability.md`
-- `docs/audit/shrine-expansion-wave0-coordinate-availability.md`
-- `docs/audit/shrine-expansion-wave0-deity-fact-availability.md`
-- `docs/audit/shrine-expansion-wave0-history-fact-availability.md`
-- `docs/audit/shrine-expansion-wave0-db01-core-ready-gate.md`（W0-DB01の完了手順）
-- `docs/knowledge/shrine-position-contract.md`
-- `docs/knowledge/shrine-knowledge-contract.md`
-- `docs/knowledge/recommendation-eligibility-contract.md`
-- `docs/core/fixed-rules.md`
+---
+
+# 2. 別小江神社
+
+## Canonical identity
+
+```text
+candidate_id      = wave0-008
+official_name     = 別小江神社
+official_address  = 愛知県名古屋市北区安井4丁目14-14
+official_source_type = shrine_official
+verified_at       = 2026-09-15T00:00:00+09:00
+```
+
+Official sources:
+- Home / blessing categories / address: https://www.wakeoe.com/
+- About / deities / founding tradition: https://www.wakeoe.com/about.html
+- Access: https://www.wakeoe.com/access.html
+
+Address normalization note:
+- Official typography uses `14−14`; canonical seed uses ASCII hyphen `14-14` only as surface normalization.
+
+## Position
+
+```text
+position_status      = PASS
+latitude             = 35.21055728
+longitude            = 136.92090454
+position_source_type = map_provider_poi
+position_source_url  = https://www.mapion.co.jp/phonebook/M06005/23103/L0734620/
+```
+
+Corroboration:
+- GeoShape: https://geoshape.ex.nii.ac.jp/nrct-poi/resource/23/230000037900.html
+- GeoShape coordinate: `35.210171, 136.920959`
+- GeoShape address: 安井四丁目14番14号
+- delta: `43.2 m`
+
+## Knowledge Facts
+
+Source keys:
+- `wave0-db02-wakeoe-official-about`
+- `wave0-db02-wakeoe-official-home`
+
+### Deities
+
+All `source_confirmed`, `confidence=high`, `role=unknown`:
+
+1. 伊弉諾尊
+2. 伊弉冉尊
+3. 天照大神
+4. 月読命
+5. 素戔嗚尊
+6. 蛭子命
+
+### History
+
+```text
+history_type = tradition
+title        = 神功皇后の出産伝承に結びつく創始由緒
+period_text  = 創始伝承
+content      = 神功皇后の出産時に埋められた胎盤を祀り、両御神を祀るため別小江神社が創建されたと伝えられている。
+verification_status = source_confirmed
+confidence   = high
+```
+
+Important source conflict:
+- Official homepage says approximately **1300 years** old.
+- Official about page says approximately **1700 years** ago.
+- Do not reconcile or store either numeric age in the History Fact. Preserve the founding story without the disputed elapsed-year figure.
+
+## Recommendation Evidence review
+
+Shrine-level official blessing / prayer categories support this conservative subset:
+
+```text
+goriyaku      = 八方除け・子宝・安産・金運・縁結び・商売繁盛・交通安全・厄除け
+goriyaku_tags = [八方除け, 子宝, 安産, 金運, 縁結び, 商売繁盛, 交通安全, 厄除け]
+```
+
+Narrow normalization:
+- `子授け` -> `子宝`: PASS
+- `安産祈願` -> `安産`: PASS
+- `金運祈願` -> `金運`: PASS
+- `事業繁栄` -> `商売繁盛`: PASS
+
+Exact:
+- 八方除け / 縁結び / 交通安全 / 厄除け
+
+Boundary:
+- Generic deity-description benefits on the same page are not promoted into additional shrine-level tags in this packet. This keeps the W0-DB02 write set tied to the site's explicit shrine-level blessing / prayer categories.
+
+---
+
+# 3. 戸隠神社 中社
+
+## Canonical identity
+
+```text
+candidate_id      = wave0-009
+official_name     = 戸隠神社 中社
+official_address  = 長野県長野市戸隠3506
+official_source_type = shrine_official
+verified_at       = 2026-09-15T00:00:00+09:00
+```
+
+Official sources:
+- History / Chusha deity / blessings: https://www.togakushi-jinja.jp/about/
+- Official postal address for shrine office: https://www.togakushi-jinja.jp/pray/postal.php
+
+Identity note:
+- Map providers may label the POI `戸隠神社中社` without a space and the address as `戸隠中社3506`.
+- Candidate canonical name remains `戸隠神社 中社`; canonical visitor address remains official `戸隠3506`.
+
+## Position
+
+```text
+position_status      = PASS
+latitude             = 36.7425065
+longitude            = 138.0850524
+position_source_type = map_provider_poi
+position_source_url  = https://mapfan.com/spots/SC3W3%2CJ%2CUA
+```
+
+Corroboration:
+- Mapion: https://www.mapion.co.jp/phonebook/M06005/20201/ILSP0000082556_ipclm/
+- corroboration coordinate: `36.74250646, 138.08505247`
+- delta: `0.008 m` (display as `0.0 m` if rounded to 0.1m)
+- Mapion phone `026-254-2001` matches official shrine office phone.
+
+## Knowledge Facts
+
+Source key:
+`wave0-db02-togakushi-official`
+
+### Deity
+
+```text
+display_name   = 天八意思兼命
+canonical_name = 天八意思兼命
+role           = unknown
+verification_status = source_confirmed
+confidence     = high
+source_keys    = [wave0-db02-togakushi-official]
+```
+
+### History
+
+Use a Chusha-specific, source-backed event rather than copying whole-complex history into the sub-shrine row:
+
+```text
+history_type = historical_event
+title        = 龍の天井絵の復元
+period_text  = 平成15年（2003）
+content      = 中社社殿の天井には、河鍋暁斎による「龍の天井絵」が2003年に復元された。
+verification_status = source_confirmed
+confidence   = high
+```
+
+## Recommendation Evidence review
+
+Official Chusha wording:
+- 学業成就
+- 商売繁盛
+- 開運
+- 厄除
+- 家内安全
+
+Approved canonical subset:
+
+```text
+goriyaku      = 学業成就・商売繁盛・開運・厄除け・家内安全
+goriyaku_tags = [学業成就, 商売繁盛, 開運, 厄除け, 家内安全]
+```
+
+Normalization:
+- `厄除` -> `厄除け`: PASS, surface-form normalization.
+
+---
+
+# 4. 札幌諏訪神社
+
+## Canonical identity
+
+```text
+candidate_id      = wave0-010
+official_name     = 札幌諏訪神社
+official_address  = 北海道札幌市東区北12条東1丁目1番10号
+official_source_type = shrine_official
+verified_at       = 2026-09-15T00:00:00+09:00
+```
+
+Sources:
+- Shrine official / history / address / benefits: https://www.sapporo-suwajinja.com/
+- Shrine authority for deity names and matching address: https://hokkaidojinjacho.jp/%E8%AB%8F%E8%A8%AA%E7%A5%9E%E7%A4%BE/
+
+Address normalization note:
+- Shrine official displays `札幌市東区...`; canonical seed adds `北海道` because the authoritative shrine registry and DB address convention use full prefecture-qualified address.
+
+## Position
+
+```text
+position_status      = PASS
+latitude             = 43.07591648
+longitude            = 141.35421487
+position_source_type = map_provider_poi
+position_source_url  = https://www.mapion.co.jp/phonebook/M06005/01103/ILSP0000081995_ipclm/
+```
+
+Corroboration:
+- GeoShape Hokkaido place record `諏訪神社`: `43.075871, 141.353882`
+- source index: https://geoshape.ex.nii.ac.jp/nrct-poi/resource/01/index.html
+- delta: `27.5 m`
+
+## Knowledge Facts
+
+Source keys:
+- `wave0-db02-sapporo-suwa-official`
+- `wave0-db02-sapporo-suwa-jinja-authority`
+
+### Deities
+
+From 北海道神社庁, matching the same address / phone:
+
+1. 建御名方命
+2. 八坂刀売命
+
+Both:
+
+```text
+verification_status = source_confirmed
+confidence = high
+role = unknown
+source_keys = [wave0-db02-sapporo-suwa-jinja-authority]
+```
+
+### History
+
+```text
+history_type = historical_event
+title        = 諏訪神社の御分霊勧請と奉斎
+period_text  = 明治15年（1882）3月12日
+content      = 1882年3月12日、官幣大社諏訪神社（現諏訪大社）の御分霊を勧請し、上島氏邸内の小祠に奉斎したことを創始としている。
+verification_status = source_confirmed
+confidence   = high
+```
+
+Conflict boundary:
+- The shrine official says 上島氏の移住 was 明治10年.
+- 北海道神社庁 says 明治11年.
+- Do not store that migration-year detail. The 1882-03-12 enshrinement event is shared and is retained.
+
+## Recommendation Evidence review
+
+Shrine official heading states:
+- 縁結び
+- 夫婦円満
+- 子授
+- 安産
+- 厄除開運
+- 戦の神様
+
+Approved canonical subset:
+
+```text
+goriyaku      = 縁結び・夫婦円満・子宝・安産
+goriyaku_tags = [縁結び, 夫婦円満, 子宝, 安産]
+```
+
+Normalization:
+- `子授` -> `子宝`: PASS
+
+Held:
+- `厄除開運`: HOLD. Do not auto-split compound wording into two tags in this packet.
+- `戦の神様`: HOLD / NO_DIRECT_MAPPING. Do not infer `勝運` or `武運長久` from the label alone.
+
+---
+
+# 5. 少彦名神社
+
+## Canonical identity
+
+```text
+candidate_id      = wave0-011
+official_name     = 少彦名神社
+official_address  = 大阪府大阪市中央区道修町2-1-8
+official_source_type = shrine_official
+verified_at       = 2026-09-15T00:00:00+09:00
+```
+
+Official sources:
+- Home / address / shrine-level benefit headline: https://www.sinnosan.jp/
+- Deities / history: https://www.sinnosan.jp/about/
+
+## Position
+
+```text
+position_status      = PASS
+latitude             = 34.6885642
+longitude            = 135.50596579
+position_source_type = map_provider_poi
+position_source_url  = https://www.mapion.co.jp/phonebook/M06005/27128/L0710542/
+```
+
+Corroboration:
+- GeoShape: https://geoshape.ex.nii.ac.jp/nrct-poi/resource/28/280000121000.html
+- coordinate `34.688538, 135.506027`
+- exact official-style address `道修町二丁目1番8号`
+- delta: `6.3 m`
+
+## Knowledge Facts
+
+Source key:
+`wave0-db02-sukunahikona-official`
+
+### Deities
+
+1. 少彦名命
+2. 炎帝神農
+
+Both:
+
+```text
+verification_status = source_confirmed
+confidence = high
+role = unknown
+source_keys = [wave0-db02-sukunahikona-official]
+```
+
+### History 1
+
+```text
+history_type = historical_event
+title        = 少彦名命の勧請と炎帝神農との奉斎
+period_text  = 安永9年（1780）
+content      = 1780年、京都の五條天神から少彦名命を薬種業者の寄合所に招き、以前から祀られていた炎帝神農とともに祀ったことを始まりとしている。
+verification_status = source_confirmed
+confidence   = high
+```
+
+### History 2
+
+```text
+history_type = historical_event
+title        = 文政5年のコレラ流行と張り子の虎
+period_text  = 文政5年（1822）
+content      = 1822年の大坂でのコレラ流行時、虎頭殺鬼雄黄圓とともに張り子の虎が守りとして配られたと伝える。
+verification_status = source_confirmed
+confidence   = high
+```
+
+## Recommendation Evidence review
+
+Official shrine-level wording:
+- 病気平癒
+- 健康成就
+
+Approved canonical subset:
+
+```text
+goriyaku      = 病気平癒
+goriyaku_tags = [病気平癒]
+```
+
+Held:
+- `健康成就`: HOLD_TAXONOMY_GAP. Current canonical 39 has no exact `健康成就`; do not rewrite it to `健康長寿` without a separate taxonomy/evidence decision.
+- The historical page describes `張り子の虎` as associated with 家内安全・無病息災, but this packet does not promote that amulet-history statement into a shrine-level `家内安全` recommendation tag.
+
+---
+
+# Batch freeze summary
+
+| Shrine | Identity | Position | Deity Fact | History Fact | Safe goriyaku subset | Build Phase 2 |
+|---|---|---|---|---|---|---|
+| 射水神社 | PASS | PASS | PASS | PASS | 4 tags | READY |
+| 別小江神社 | PASS | PASS | PASS | PASS with age conflict excluded | 8 tags | READY |
+| 戸隠神社 中社 | PASS | PASS | PASS | PASS | 5 tags | READY |
+| 札幌諏訪神社 | PASS | PASS | PASS via shrine authority | PASS with migration-year conflict excluded | 4 tags | READY |
+| 少彦名神社 | PASS | PASS | PASS | PASS | 1 tag | READY |
+
+```text
+W0_DB02_SOURCE_PACKET_FREEZE = PASS
+W0_DB02_POSITION_GATE        = 5/5 PASS
+W0_DB02_PHASE_2_READY        = YES
+PRODUCTION_WRITE             = NONE
+```
+
+Recommendation-evidence HOLD items are intentionally omitted from Seed `goriyaku` / `goriyaku_tags`; they do not block the source-backed Shrine / Knowledge build because each shrine has usable Deity and/or History evidence available for the later Evidence Gate.
+
+# Phase 2 handoff to Codex
+
+Use this packet as frozen input. Do not re-derive shrine facts from model knowledge, search snippets, deity-name inference, or prior legacy fields.
+
+Next changes may include only the W0-DB02 scope:
+
+1. Hydrate Candidate Master rows `wave0-007` ... `wave0-011` with the frozen canonical identity, source, position, reviewed goriyaku, and `build_batch=W0-DB02` provenance.
+2. Add exactly these 5 Base Seed rows using the adopted coordinates above.
+3. Build `backend/temples/data/knowledge_seeds/wave0_batch_02_seed.json` using W0-DB01 schema.
+4. Add focused batch tests.
+5. Run isolated PostgreSQL preflight.
+6. Run read-only eligibility verifier after isolated import.
+7. Do not touch Production in the Data PR.
+8. STOP if any frozen value conflicts with current canonical contracts or existing identities. Do not “fix” the packet by inference.
+
