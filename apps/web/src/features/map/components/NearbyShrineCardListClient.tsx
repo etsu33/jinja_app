@@ -277,6 +277,20 @@ export default function NearbyShrineCardListClient() {
           {items.map((p, idx) => {
             const shrineId = (p as any).shrine_id ?? null;
 
+            // destinationを解決できない候補では経路案内CTAを出さない。
+            // 東京駅などの既定値へフォールバックさせないため（destinationContract.ts）。
+            const routeHref = buildGoogleMapsDirUrl({
+              // 実現在地が取れているときだけ origin を渡す。
+              // 東京駅 fallback (usedFallback) は Google Maps の出発地にしない。
+              origin: usedFallback ? null : coords,
+              destination: {
+                lat: p.lat ?? undefined,
+                lng: p.lng ?? undefined,
+                address: p.address ?? undefined,
+                fallbackName: p.name,
+              },
+            });
+
             const key =
               p.place_id ??
               (shrineId ? `shrine:${shrineId}` : `fallback:${p.name}:${p.lat ?? ""},${p.lng ?? ""}:${p.address ?? ""}`);
@@ -314,28 +328,20 @@ export default function NearbyShrineCardListClient() {
                     </a>
                   )}
 
-                  <GoogleMapRouteLink
-                    className="rounded-full border border-emerald-200/55 bg-emerald-50/80 px-3 py-1.5 text-center text-xs font-normal text-emerald-900 hover:bg-emerald-100"
-                    href={buildGoogleMapsDirUrl({
-                      // 実現在地が取れているときだけ origin を渡す。
-                      // 東京駅 fallback (usedFallback) は Google Maps の出発地にしない。
-                      origin: usedFallback ? null : coords,
-                      destination: {
-                        lat: p.lat ?? undefined,
-                        lng: p.lng ?? undefined,
-                        address: p.address ?? undefined,
-                        fallbackName: p.name,
-                      },
-                    })}
-                    label="経路案内"
-                    source="map"
-                    // shrine_idを持つ候補だけBackend ShrineInteractionLogの対象になる。
-                    // Google Places-only候補ではshrineIdを渡さないため、route_open
-                    // analyticsだけが飛びBackendへは送られない。
-                    shrineId={shrineId}
-                    // tidが実在するときだけthreadIdとして渡す（空文字は未指定扱い）。
-                    tid={tid || undefined}
-                  />
+                  {routeHref ? (
+                    <GoogleMapRouteLink
+                      className="rounded-full border border-emerald-200/55 bg-emerald-50/80 px-3 py-1.5 text-center text-xs font-normal text-emerald-900 hover:bg-emerald-100"
+                      href={routeHref}
+                      label="経路案内"
+                      source="map"
+                      // shrine_idを持つ候補だけBackend ShrineInteractionLogの対象になる。
+                      // Google Places-only候補ではshrineIdを渡さないため、route_open
+                      // analyticsだけが飛びBackendへは送られない。
+                      shrineId={shrineId}
+                      // tidが実在するときだけthreadIdとして渡す（空文字は未指定扱い）。
+                      tid={tid || undefined}
+                    />
+                  ) : null}
                 </div>
               </li>
             );

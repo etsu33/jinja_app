@@ -11,6 +11,7 @@ import { getShrineFavoriteInitialState } from "@/lib/server/favorites.server";
 
 import { serverLog } from "@/lib/server/logging";
 import { gmapsDirUrl } from "@/lib/maps";
+import { toValidDestinationCoords } from "@/lib/maps/destinationContract";
 import { buildShrineHref } from "@/lib/nav/buildShrineHref";
 import { buildShrineClose } from "@/lib/navigation/shrineClose";
 import { buildDeepReason } from "@/lib/concierge/buildDeepReason";
@@ -286,17 +287,15 @@ export default async function Page({ params, searchParams }: Props) {
   const shrineMeaningPayloadV2 = await fetchShrineMeaningPayloadV2Server(numericId);
   const historyThemeForAnalytics = shrineMeaningPayloadV2?.source?.historyTheme ?? null;
 
-  const latNum = Number(s.latitude ?? NaN);
-  const lngNum = Number(s.longitude ?? NaN);
-  const hasLocation =
-    Number.isFinite(latNum) &&
-    Number.isFinite(lngNum) &&
-    latNum >= -90 &&
-    latNum <= 90 &&
-    lngNum >= -180 &&
-    lngNum <= 180;
+  // destination座標の有効判定は destinationContract.ts の共通契約へ寄せる
+  // （number / finite / WGS84値域）。APIがstringで返す場合があるためNumber()で
+  // 数値化してから渡す。座標が無効ならCTAを出さない（住所や名前へは落とさない）。
+  const destCoords = toValidDestinationCoords({
+    lat: Number(s.latitude ?? NaN),
+    lng: Number(s.longitude ?? NaN),
+  });
 
-  const googleDirHref = hasLocation ? gmapsDirUrl({ dest: { lat: latNum, lng: lngNum }, mode: "walk" }) : null;
+  const googleDirHref = destCoords ? gmapsDirUrl({ dest: destCoords, mode: "walk" }) : null;
   const nextPath = buildShrineHref(numericId, { query: Object.keys(query).length ? query : undefined });
 
   const addQ = new URLSearchParams();

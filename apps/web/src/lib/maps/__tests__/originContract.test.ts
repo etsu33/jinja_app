@@ -43,7 +43,9 @@ describe("toValidOrigin", () => {
   });
 });
 
-describe("buildGoogleMapsDirUrl - destination（既存仕様の維持）", () => {
+// destinationの詳細な契約は destinationContract.test.ts が正本。
+// ここでは origin 変更の巻き添えでdestinationが壊れていないことだけ確認する。
+describe("buildGoogleMapsDirUrl - destination（origin変更の非破壊確認）", () => {
   it("lat/lng があれば座標を使う", () => {
     expect(buildGoogleMapsDirUrl({ destination: { lat: 35.1, lng: 139.2, address: "住所", fallbackName: "名前" } })).toBe(
       "https://www.google.com/maps/dir/?api=1&destination=35.1%2C139.2",
@@ -62,10 +64,8 @@ describe("buildGoogleMapsDirUrl - destination（既存仕様の維持）", () =>
     );
   });
 
-  it("fallbackName もなければ東京駅", () => {
-    expect(buildGoogleMapsDirUrl({ destination: {} })).toBe(
-      "https://www.google.com/maps/dir/?api=1&destination=%E6%9D%B1%E4%BA%AC%E9%A7%85",
-    );
+  it("候補が全て無ければ東京駅へ落とさず null を返す", () => {
+    expect(buildGoogleMapsDirUrl({ destination: {} })).toBeNull();
   });
 });
 
