@@ -1,0 +1,418 @@
+{
+  "schema_version": "1.0",
+  "sources": [
+    {
+      "key": "wave0-db02-imizu-official",
+      "source_type": "shrine_official",
+      "title": "射水神社 由緒・御祭神・御神徳",
+      "publisher": "射水神社",
+      "url": "https://www.imizujinjya.or.jp/about",
+      "bibliography": "",
+      "accessed_at": "2026-09-15",
+      "verified_at": "2026-09-15T00:00:00+09:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "W0-DB02 Source Packet Freezeで確認した公式Source。"
+    },
+    {
+      "key": "wave0-db02-wakeoe-official-about",
+      "source_type": "shrine_official",
+      "title": "別小江神社 御由緒・御祭神",
+      "publisher": "別小江神社",
+      "url": "https://www.wakeoe.com/about.html",
+      "bibliography": "",
+      "accessed_at": "2026-09-15",
+      "verified_at": "2026-09-15T00:00:00+09:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "W0-DB02 Source Packet Freezeで確認した公式Source。"
+    },
+    {
+      "key": "wave0-db02-wakeoe-official-home",
+      "source_type": "shrine_official",
+      "title": "別小江神社 公式サイト",
+      "publisher": "別小江神社",
+      "url": "https://www.wakeoe.com/",
+      "bibliography": "",
+      "accessed_at": "2026-09-15",
+      "verified_at": "2026-09-15T00:00:00+09:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "W0-DB02 Source Packet Freezeで確認した公式Source。"
+    },
+    {
+      "key": "wave0-db02-togakushi-official",
+      "source_type": "shrine_official",
+      "title": "戸隠神社 中社 由緒・御祭神・御神徳",
+      "publisher": "戸隠神社",
+      "url": "https://www.togakushi-jinja.jp/about/",
+      "bibliography": "",
+      "accessed_at": "2026-09-15",
+      "verified_at": "2026-09-15T00:00:00+09:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "W0-DB02 Source Packet Freezeで確認した公式Source。"
+    },
+    {
+      "key": "wave0-db02-sapporo-suwa-official",
+      "source_type": "shrine_official",
+      "title": "札幌諏訪神社 由緒・御神徳",
+      "publisher": "札幌諏訪神社",
+      "url": "https://www.sapporo-suwajinja.com/",
+      "bibliography": "",
+      "accessed_at": "2026-09-15",
+      "verified_at": "2026-09-15T00:00:00+09:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "W0-DB02 Source Packet Freezeで確認した公式Source。"
+    },
+    {
+      "key": "wave0-db02-sapporo-suwa-jinja-authority",
+      "source_type": "government",
+      "title": "北海道神社庁「諏訪神社」",
+      "publisher": "北海道神社庁",
+      "url": "https://hokkaidojinjacho.jp/%E8%AB%8F%E8%A8%AA%E7%A5%9E%E7%A4%BE/",
+      "bibliography": "",
+      "accessed_at": "2026-09-15",
+      "verified_at": "2026-09-15T00:00:00+09:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "都道府県神社庁Sourceは既存seedの分類規約に従いgovernmentとする（前例: 東京都神社庁, batch_1_7_seed.json）。"
+    },
+    {
+      "key": "wave0-db02-sukunahikona-official",
+      "source_type": "shrine_official",
+      "title": "少彦名神社 御祭神・由緒",
+      "publisher": "少彦名神社",
+      "url": "https://www.sinnosan.jp/about/",
+      "bibliography": "",
+      "accessed_at": "2026-09-15",
+      "verified_at": "2026-09-15T00:00:00+09:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "W0-DB02 Source Packet Freezeで確認した公式Source。"
+    }
+  ],
+  "shrines": [
+    {
+      "shrine_ref": {
+        "name_jp": "射水神社",
+        "address": "富山県高岡市古城1番1号"
+      },
+      "deities": [
+        {
+          "display_name": "二上神（瓊瓊杵尊）",
+          "canonical_name": "瓊瓊杵尊",
+          "role": "unknown",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-09-15T00:00:00+09:00",
+          "note": "packet境界: 二上神と瓊瓊杵尊を2件の祭神へ分割しない。",
+          "source_keys": [
+            "wave0-db02-imizu-official"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "historical_event",
+          "title": "明治8年の高岡公園本丸跡への遷座",
+          "content": "1875年9月16日、二上山から高岡公園本丸跡へ遷座した。",
+          "period_text": "明治8年（1875）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-09-15T00:00:00+09:00",
+          "note": "",
+          "source_keys": [
+            "wave0-db02-imizu-official"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "高岡大火後の現社殿再建",
+          "content": "1900年の高岡大火で社殿が類焼し、1902年に本殿・拝殿等が竣工した。",
+          "period_text": "明治33年（1900）〜明治35年（1902）",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-09-15T00:00:00+09:00",
+          "note": "",
+          "source_keys": [
+            "wave0-db02-imizu-official"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "別小江神社",
+        "address": "愛知県名古屋市北区安井4丁目14-14"
+      },
+      "deities": [
+        {
+          "display_name": "伊弉諾尊",
+          "canonical_name": "伊弉諾尊",
+          "role": "unknown",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-09-15T00:00:00+09:00",
+          "note": "",
+          "source_keys": [
+            "wave0-db02-wakeoe-official-about"
+          ]
+        },
+        {
+          "display_name": "伊弉冉尊",
+          "canonical_name": "伊弉冉尊",
+          "role": "unknown",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-09-15T00:00:00+09:00",
+          "note": "",
+          "source_keys": [
+            "wave0-db02-wakeoe-official-about"
+          ]
+        },
+        {
+          "display_name": "天照大神",
+          "canonical_name": "天照大神",
+          "role": "unknown",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-09-15T00:00:00+09:00",
+          "note": "",
+          "source_keys": [
+            "wave0-db02-wakeoe-official-about"
+          ]
+        },
+        {
+          "display_name": "月読命",
+          "canonical_name": "月読命",
+          "role": "unknown",
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-09-15T00:00:00+09:00",
+          "note": "",
+          "source_keys": [
+            "wave0-db02-wakeoe-official-about"
+          ]
+        },
+        {
+          "display_name": "素戔嗚尊",
+          "canonical_name": "素戔嗚尊",
+          "role": "unknown",
+          "sort_order": 4,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-09-15T00:00:00+09:00",
+          "note": "",
+          "source_keys": [
+            "wave0-db02-wakeoe-official-about"
+          ]
+        },
+        {
+          "display_name": "蛭子命",
+          "canonical_name": "蛭子命",
+          "role": "unknown",
+          "sort_order": 5,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-09-15T00:00:00+09:00",
+          "note": "",
+          "source_keys": [
+            "wave0-db02-wakeoe-official-about"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "tradition",
+          "title": "神功皇后の出産伝承に結びつく創始由緒",
+          "content": "神功皇后の出産時に埋められた胎盤を祀り、両御神を祀るため別小江神社が創建されたと伝えられている。",
+          "period_text": "創始伝承",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-09-15T00:00:00+09:00",
+          "note": "packet境界: 公式内で約1300年/約1700年と記載が割れるため、経過年数はFactへ保存しない。",
+          "source_keys": [
+            "wave0-db02-wakeoe-official-about",
+            "wave0-db02-wakeoe-official-home"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "戸隠神社 中社",
+        "address": "長野県長野市戸隠3506"
+      },
+      "deities": [
+        {
+          "display_name": "天八意思兼命",
+          "canonical_name": "天八意思兼命",
+          "role": "unknown",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-09-15T00:00:00+09:00",
+          "note": "",
+          "source_keys": [
+            "wave0-db02-togakushi-official"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "historical_event",
+          "title": "龍の天井絵の復元",
+          "content": "中社社殿の天井には、河鍋暁斎による「龍の天井絵」が2003年に復元された。",
+          "period_text": "平成15年（2003）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-09-15T00:00:00+09:00",
+          "note": "packet境界: 戸隠全体史ではなく中社固有のsource-backed eventを採用する。",
+          "source_keys": [
+            "wave0-db02-togakushi-official"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "札幌諏訪神社",
+        "address": "北海道札幌市東区北12条東1丁目1番10号"
+      },
+      "deities": [
+        {
+          "display_name": "建御名方命",
+          "canonical_name": "建御名方命",
+          "role": "unknown",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-09-15T00:00:00+09:00",
+          "note": "",
+          "source_keys": [
+            "wave0-db02-sapporo-suwa-jinja-authority"
+          ]
+        },
+        {
+          "display_name": "八坂刀売命",
+          "canonical_name": "八坂刀売命",
+          "role": "unknown",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-09-15T00:00:00+09:00",
+          "note": "",
+          "source_keys": [
+            "wave0-db02-sapporo-suwa-jinja-authority"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "historical_event",
+          "title": "諏訪神社の御分霊勧請と奉斎",
+          "content": "1882年3月12日、官幣大社諏訪神社（現諏訪大社）の御分霊を勧請し、上島氏邸内の小祠に奉斎したことを創始としている。",
+          "period_text": "明治15年（1882）3月12日",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-09-15T00:00:00+09:00",
+          "note": "packet境界: 上島氏移住年（明治10年/明治11年）はSource間で割れるためFactへ保存しない。",
+          "source_keys": [
+            "wave0-db02-sapporo-suwa-official",
+            "wave0-db02-sapporo-suwa-jinja-authority"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "少彦名神社",
+        "address": "大阪府大阪市中央区道修町2-1-8"
+      },
+      "deities": [
+        {
+          "display_name": "少彦名命",
+          "canonical_name": "少彦名命",
+          "role": "unknown",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-09-15T00:00:00+09:00",
+          "note": "",
+          "source_keys": [
+            "wave0-db02-sukunahikona-official"
+          ]
+        },
+        {
+          "display_name": "炎帝神農",
+          "canonical_name": "炎帝神農",
+          "role": "unknown",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-09-15T00:00:00+09:00",
+          "note": "",
+          "source_keys": [
+            "wave0-db02-sukunahikona-official"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "historical_event",
+          "title": "少彦名命の勧請と炎帝神農との奉斎",
+          "content": "1780年、京都の五條天神から少彦名命を薬種業者の寄合所に招き、以前から祀られていた炎帝神農とともに祀ったことを始まりとしている。",
+          "period_text": "安永9年（1780）",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-09-15T00:00:00+09:00",
+          "note": "",
+          "source_keys": [
+            "wave0-db02-sukunahikona-official"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "文政5年のコレラ流行と張り子の虎",
+          "content": "1822年の大坂でのコレラ流行時、虎頭殺鬼雄黄圓とともに張り子の虎が守りとして配られたと伝える。",
+          "period_text": "文政5年（1822）",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-09-15T00:00:00+09:00",
+          "note": "",
+          "source_keys": [
+            "wave0-db02-sukunahikona-official"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -75,6 +75,27 @@ EXPECTED_W0_DB01_MEMBERS = {
 EXPECTED_W0_DB01_STATUS = "CORE_READY"
 EXPECTED_W0_DB01_KNOWLEDGE_STATUS = "FACT_READY"
 
+# W0-DB02 は Seed Build 完了・Production Import 前の状態。
+#
+# Candidate Master / Base Seed / Knowledge Seed は frozen Source Packet
+# (docs/audit/shrine-expansion-wave0-db02-source-packet-freeze.md) から
+# hydrate 済みだが、Production import と CORE_READY 昇格は未実施のため
+# `candidate_status` は `BUILD_READY` のまま据え置く。
+EXPECTED_W0_DB02_MEMBERS = {
+    "射水神社",
+    "別小江神社",
+    "戸隠神社 中社",
+    "札幌諏訪神社",
+    "少彦名神社",
+}
+
+EXPECTED_W0_DB02_STATUS = "BUILD_READY"
+EXPECTED_W0_DB02_KNOWLEDGE_STATUS = "FACT_READY"
+
+# Seed Build 済みの batch。identity / official source / knowledge が
+# hydrate 済みであることを共通で要求する。
+HYDRATED_BUILD_BATCHES = ("W0-DB01", "W0-DB02")
+
 REQUIRED_W0_DB01_HYDRATION_FIELDS = {
     "official_name",
     "official_address",
@@ -298,6 +319,50 @@ def test_wave0_db01_candidates_are_hydrated_from_frozen_source_packet():
             assert row[field] == expected_value
 
 
+def test_wave0_db02_candidates_are_hydrated_but_not_yet_imported():
+    """W0-DB02 は Seed Build 完了状態。hydrate 済みだが CORE_READY ではない。
+
+    座標・canonical identity の値そのものは frozen Source Packet と突き合わせる
+    `test_wave0_db02_shrine_seed.py` 側で固定する。ここでは Registry 上の
+    lifecycle と hydration の有無だけを契約として持つ。
+    """
+    master = _load_master()
+    rows = {
+        row["candidate_name"]: row
+        for row in master["candidates"]
+        if row["build_batch"] == "W0-DB02"
+    }
+
+    assert set(rows) == EXPECTED_W0_DB02_MEMBERS
+
+    for name, row in rows.items():
+        effective = _effective(master, row)
+
+        assert REQUIRED_W0_DB01_HYDRATION_FIELDS <= row.keys(), name
+        assert effective["identity_status"] == "CONFIRMED", name
+        assert effective["official_source_status"] == "CONFIRMED", name
+        assert effective["knowledge_status"] == EXPECTED_W0_DB02_KNOWLEDGE_STATUS, name
+        assert row["status_reason_code"] == "WAVE0_CORE_READY_CANDIDATE", name
+        assert row["duplicate_status"] == "NEW", name
+
+        # Production import 前のため CORE_READY / IMPORTED へは進めない。
+        assert row["candidate_status"] == EXPECTED_W0_DB02_STATUS, name
+
+
+def test_wave0_db03_to_db07_remain_unhydrated():
+    """Seed Build 未着手の batch に hydration fields を持ち込まない。"""
+    master = _load_master()
+
+    for batch in CANONICAL_BUILD_BATCHES:
+        if batch in HYDRATED_BUILD_BATCHES:
+            continue
+        for row in master["candidates"]:
+            if row["build_batch"] != batch:
+                continue
+            leaked = REQUIRED_W0_DB01_HYDRATION_FIELDS & row.keys()
+            assert not leaked, (batch, row["candidate_id"], sorted(leaked))
+
+
 def test_wave0_hold_and_review_candidates_stay_separated():
     candidates = _load_master()["candidates"]
 
@@ -338,10 +403,10 @@ def test_wave0_duplicate_and_availability_states_match_completed_audits():
 
     for row in candidates:
         effective = _effective(master, row)
-        if row["build_batch"] == "W0-DB01":
+        if row["build_batch"] in HYDRATED_BUILD_BATCHES:
             assert effective["identity_status"] == "CONFIRMED"
             assert effective["official_source_status"] == "CONFIRMED"
-            assert effective["knowledge_status"] == EXPECTED_W0_DB01_KNOWLEDGE_STATUS
+            assert effective["knowledge_status"] == "FACT_READY"
         elif row["candidate_status"] == "REVIEW":
             assert effective["identity_status"] == "UNREVIEWED"
             assert effective["official_source_status"] == "UNREVIEWED"

@@ -2013,5 +2013,102 @@
       "lat": 38.260624,
       "lng": 140.893021
     }
+  },
+  {
+    "name_jp": "射水神社",
+    "address": "富山県高岡市古城1番1号",
+    "latitude": 36.7484968,
+    "longitude": 137.0215428,
+    "goriyaku": "五穀豊穣・商売繁盛・家内安全・縁結び",
+    "goriyaku_tags": [
+      "五穀豊穣",
+      "商売繁盛",
+      "家内安全",
+      "縁結び"
+    ],
+    "kyusei": null,
+    "astro_elements": [],
+    "location": {
+      "lat": 36.7484968,
+      "lng": 137.0215428
+    }
+  },
+  {
+    "name_jp": "別小江神社",
+    "address": "愛知県名古屋市北区安井4丁目14-14",
+    "latitude": 35.21055728,
+    "longitude": 136.92090454,
+    "goriyaku": "八方除け・子宝・安産・金運・縁結び・商売繁盛・交通安全・厄除け",
+    "goriyaku_tags": [
+      "八方除け",
+      "子宝",
+      "安産",
+      "金運",
+      "縁結び",
+      "商売繁盛",
+      "交通安全",
+      "厄除け"
+    ],
+    "kyusei": null,
+    "astro_elements": [],
+    "location": {
+      "lat": 35.21055728,
+      "lng": 136.92090454
+    }
+  },
+  {
+    "name_jp": "戸隠神社 中社",
+    "address": "長野県長野市戸隠3506",
+    "latitude": 36.7425065,
+    "longitude": 138.0850524,
+    "goriyaku": "学業成就・商売繁盛・開運・厄除け・家内安全",
+    "goriyaku_tags": [
+      "学業成就",
+      "商売繁盛",
+      "開運",
+      "厄除け",
+      "家内安全"
+    ],
+    "kyusei": null,
+    "astro_elements": [],
+    "location": {
+      "lat": 36.7425065,
+      "lng": 138.0850524
+    }
+  },
+  {
+    "name_jp": "札幌諏訪神社",
+    "address": "北海道札幌市東区北12条東1丁目1番10号",
+    "latitude": 43.07591648,
+    "longitude": 141.35421487,
+    "goriyaku": "縁結び・夫婦円満・子宝・安産",
+    "goriyaku_tags": [
+      "縁結び",
+      "夫婦円満",
+      "子宝",
+      "安産"
+    ],
+    "kyusei": null,
+    "astro_elements": [],
+    "location": {
+      "lat": 43.07591648,
+      "lng": 141.35421487
+    }
+  },
+  {
+    "name_jp": "少彦名神社",
+    "address": "大阪府大阪市中央区道修町2-1-8",
+    "latitude": 34.6885642,
+    "longitude": 135.50596579,
+    "goriyaku": "病気平癒",
+    "goriyaku_tags": [
+      "病気平癒"
+    ],
+    "kyusei": null,
+    "astro_elements": [],
+    "location": {
+      "lat": 34.6885642,
+      "lng": 135.50596579
+    }
   }
 ]

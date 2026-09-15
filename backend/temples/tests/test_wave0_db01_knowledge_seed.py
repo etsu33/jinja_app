@@ -57,7 +57,7 @@ def test_wave0_db01_shrine_refs_exist_in_base_seed():
     base_rows = json.loads(BASE_SEED_PATH.read_text(encoding="utf-8"))
     base_identities = {(row["name_jp"], row["address"]) for row in base_rows}
 
-    assert len(base_rows) == 108
+    assert len(base_rows) == 113
     assert all(identity in base_identities for identity in TARGETS)
 
 
