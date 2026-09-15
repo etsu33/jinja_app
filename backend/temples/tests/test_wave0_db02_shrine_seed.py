@@ -6,8 +6,22 @@
 - Base Seed 行（`shrines_seed_clean.json`）
 - Knowledge Seed（`wave0_batch_02_seed.json`）
 
-座標・canonical identity は Packet markdown から直接読み出して比較する。
-テスト側に期待値を転記すると、転記が正本になってしまうため。
+canonical identity・Knowledge Fact・goriyaku は Packet markdown から直接
+読み出して比較する。テスト側に期待値を転記すると、転記が正本になってしまうため。
+
+Position だけは正本が分かれる。凍結 Packet は 2026-09-15 時点の記録であり、
+freeze 以後に人間 map QA で Visitor / Navigation Anchor を再解決した候補は
+`docs/audit/shrine-position/` の Position Resolution Record が Current 正本に
+なる（`docs/knowledge/shrine-position-contract.md`）。
+
+したがって Position の検証は次の2系統に分ける。
+
+- 再解決されていない候補 : 凍結 Packet の値と厳密一致すること
+- 再解決された候補       : Resolution Record の値に従うこと
+
+Packet を無条件に Current Position 正本として扱うと、freeze 後の QA 結果を
+反映した時点でテストが必ず落ちる。それは検知ではなく構造的欠陥なので、
+「Packet = 過去の凍結 / Record = 現在の Position」として責務を分離する。
 """
 
 import ast
@@ -35,7 +49,26 @@ CANONICAL_TAG_CONTRACT_PATH = (
     TESTS_DIR / "test_bootstrap_goriyaku_master_exact39_contract.py"
 )
 
+# Source Packet Freeze 以後に Position を再解決した候補と、その Current 正本。
+# ここに載らない候補の Position は凍結 Packet が Current 正本のままである。
+POSITION_RESOLUTION_PATHS = {
+    "wave0-010": (
+        REPO_ROOT
+        / "docs"
+        / "audit"
+        / "shrine-position"
+        / "sapporo-suwa-jinja-position-resolution.md"
+    ),
+}
+
 CANDIDATE_IDS = ["wave0-007", "wave0-008", "wave0-009", "wave0-010", "wave0-011"]
+
+# Position が凍結 Packet のままである候補。
+POSITION_FROZEN_CANDIDATE_IDS = [
+    candidate_id
+    for candidate_id in CANDIDATE_IDS
+    if candidate_id not in POSITION_RESOLUTION_PATHS
+]
 
 EXPECTED_FACT_COUNTS = {
     "射水神社": (1, 2),
@@ -75,6 +108,53 @@ def _load_packet_identities():
     return entries
 
 
+PENDING = "PENDING_HUMAN_QA_INPUT"
+
+
+def _load_position_resolution(candidate_id):
+    """Position Resolution Record を markdown から読み出す。
+
+    Packet と同じく、値は record 側を直接パースする。テストへ転記しない。
+    """
+    text = POSITION_RESOLUTION_PATHS[candidate_id].read_text(encoding="utf-8")
+
+    def field(name):
+        match = re.search(r"^%s\s+= (.+)$" % re.escape(name), text, re.M)
+        assert match, "%s not found in %s" % (name, candidate_id)
+        return match.group(1).strip()
+
+    return {
+        "candidate_id": field("candidate_id"),
+        "official_name": field("official_name"),
+        "official_address": field("official_address"),
+        "position_status": field("position_status"),
+        "old_latitude": field("old_latitude"),
+        "old_longitude": field("old_longitude"),
+        "old_position_source_url": field("old_position_source_url"),
+        "latitude": field("new_latitude"),
+        "longitude": field("new_longitude"),
+        "position_source_type": field("new_position_source_type"),
+        "position_source_url": field("new_position_source_url"),
+        "coordinate_delta_m": field("coordinate_delta_m"),
+    }
+
+
+def _current_position(candidate_id, packet):
+    """その候補の Current Position 正本を返す。
+
+    再解決済みなら Resolution Record、未再解決なら凍結 Packet。
+    再解決が HOLD_POSITION_REVIEW の間は採用値が存在しないため None を返す。
+    """
+    if candidate_id not in POSITION_RESOLUTION_PATHS:
+        frozen = packet[candidate_id]
+        return frozen["latitude"], frozen["longitude"]
+
+    record = _load_position_resolution(candidate_id)
+    if record["position_status"] != "PASS":
+        return None
+    return record["latitude"], record["longitude"]
+
+
 def _load_candidates():
     master = json.loads(CANDIDATE_MASTER_PATH.read_text(encoding="utf-8"))
     return {row["candidate_id"]: row for row in master["candidates"]}
@@ -98,7 +178,13 @@ def _canonical_goriyaku_tags():
     raise AssertionError("CANONICAL_MASTER not found")
 
 
-def test_wave0_db02_packet_freeze_is_readable_and_all_pass():
+def test_wave0_db02_packet_freeze_is_readable_and_all_pass_at_freeze_time():
+    """凍結 Packet 自体は 2026-09-15 時点の記録として不変であること。
+
+    ここでの `PASS` は freeze 時点の判定であり、現在の Position 正本ではない。
+    freeze 後に再解決された候補の Current Position は
+    `POSITION_RESOLUTION_PATHS` 側が持つ。
+    """
     packet = _load_packet_identities()
 
     assert sorted(packet) == CANDIDATE_IDS
@@ -132,7 +218,124 @@ def test_wave0_db02_candidates_stay_build_ready_in_w0_db02():
         assert row["candidate_status"] == "BUILD_READY"
 
 
-def test_wave0_db02_coordinates_are_identical_across_packet_master_and_base_seed():
+def test_wave0_db02_unresolved_shrines_keep_the_frozen_packet_position():
+    """Position を再解決していない候補は、凍結 Packet と完全一致し続ける。
+
+    これは「他4社に diff が無い」ことの固定でもある。
+    """
+    packet = _load_packet_identities()
+    candidates = _load_candidates()
+    base_rows = {(row["name_jp"], row["address"]): row for row in _load_base_rows()}
+
+    assert POSITION_FROZEN_CANDIDATE_IDS == [
+        "wave0-007",
+        "wave0-008",
+        "wave0-009",
+        "wave0-011",
+    ]
+
+    for candidate_id in POSITION_FROZEN_CANDIDATE_IDS:
+        frozen = packet[candidate_id]
+        master_row = candidates[candidate_id]
+        base_row = base_rows[(frozen["official_name"], frozen["official_address"])]
+
+        # repr 比較にすることで、桁落ち・丸め・再計算を検出する。
+        assert repr(master_row["latitude"]) == frozen["latitude"], candidate_id
+        assert repr(master_row["longitude"]) == frozen["longitude"], candidate_id
+        assert repr(base_row["latitude"]) == frozen["latitude"], candidate_id
+        assert repr(base_row["longitude"]) == frozen["longitude"], candidate_id
+
+
+def test_wave0_db02_position_resolution_records_are_wellformed():
+    """再解決 record が Position Contract の要求項目を保持していること。"""
+    packet = _load_packet_identities()
+
+    for candidate_id in POSITION_RESOLUTION_PATHS:
+        record = _load_position_resolution(candidate_id)
+        frozen = packet[candidate_id]
+
+        assert record["candidate_id"] == candidate_id
+        # identity は Position correction で変更しない。
+        assert record["official_name"] == frozen["official_name"]
+        assert record["official_address"] == frozen["official_address"]
+        # 旧値は凍結 Packet の値を逐語で保持する（履歴として追跡可能にする）。
+        assert record["old_latitude"] == frozen["latitude"]
+        assert record["old_longitude"] == frozen["longitude"]
+        assert record["old_position_source_url"]
+        assert record["position_status"] in ("PASS", "HOLD_POSITION_REVIEW")
+
+        if record["position_status"] == "PASS":
+            # 採用済みなら、推測値ではない実値と Source が揃っていること。
+            for key in (
+                "latitude",
+                "longitude",
+                "position_source_type",
+                "position_source_url",
+                "coordinate_delta_m",
+            ):
+                assert record[key] != PENDING, (candidate_id, key)
+            assert float(record["latitude"])
+            assert float(record["longitude"])
+            # 再解決した以上、旧座標と同じ値ではないはず。
+            assert (record["latitude"], record["longitude"]) != (
+                record["old_latitude"],
+                record["old_longitude"],
+            )
+
+
+def test_wave0_db02_resolved_shrine_position_follows_the_resolution_record():
+    """再解決済み候補の Seed / Candidate Master は Resolution Record に従う。
+
+    `HOLD_POSITION_REVIEW` の間は採用値が存在しない。Position Contract
+    「HOLD 状態では座標を推測して Seed / Production へ投入しない」に従い、
+    この間は Seed へ新座標を書かない。旧座標が残っている場合も、それは
+    `PASS` ではなく HOLD 中の未反映状態として扱う。
+    """
+    packet = _load_packet_identities()
+    candidates = _load_candidates()
+    base_rows = {(row["name_jp"], row["address"]): row for row in _load_base_rows()}
+
+    for candidate_id in POSITION_RESOLUTION_PATHS:
+        record = _load_position_resolution(candidate_id)
+        adopted = _current_position(candidate_id, packet)
+        master_row = candidates[candidate_id]
+        base_row = base_rows[
+            (record["official_name"], record["official_address"])
+        ]
+
+        if adopted is None:
+            # HOLD 中: 採用値が無いので Seed へ新座標を投入していないこと。
+            assert record["latitude"] == PENDING, candidate_id
+            assert record["longitude"] == PENDING, candidate_id
+            continue
+
+        latitude, longitude = adopted
+        assert repr(master_row["latitude"]) == latitude, candidate_id
+        assert repr(master_row["longitude"]) == longitude, candidate_id
+        assert repr(base_row["latitude"]) == latitude, candidate_id
+        assert repr(base_row["longitude"]) == longitude, candidate_id
+
+
+def test_wave0_db02_base_seed_location_mirrors_latitude_longitude():
+    """`location` は常に `latitude` / `longitude` と完全一致する。
+
+    Position を再解決した候補でも、この対応が崩れないことを固定する。
+    """
+    packet = _load_packet_identities()
+    base_rows = {(row["name_jp"], row["address"]): row for row in _load_base_rows()}
+
+    for candidate_id in CANDIDATE_IDS:
+        frozen = packet[candidate_id]
+        base_row = base_rows[(frozen["official_name"], frozen["official_address"])]
+
+        assert base_row["location"] == {
+            "lat": base_row["latitude"],
+            "lng": base_row["longitude"],
+        }, candidate_id
+
+
+def test_wave0_db02_candidate_master_and_base_seed_positions_always_agree():
+    """Position 正本がどちらでも、Candidate Master と Base Seed は一致する。"""
     packet = _load_packet_identities()
     candidates = _load_candidates()
     base_rows = {(row["name_jp"], row["address"]): row for row in _load_base_rows()}
@@ -142,15 +345,8 @@ def test_wave0_db02_coordinates_are_identical_across_packet_master_and_base_seed
         master_row = candidates[candidate_id]
         base_row = base_rows[(frozen["official_name"], frozen["official_address"])]
 
-        # repr 比較にすることで、桁落ち・丸め・再計算を検出する。
-        assert repr(master_row["latitude"]) == frozen["latitude"]
-        assert repr(master_row["longitude"]) == frozen["longitude"]
-        assert repr(base_row["latitude"]) == frozen["latitude"]
-        assert repr(base_row["longitude"]) == frozen["longitude"]
-        assert base_row["location"] == {
-            "lat": base_row["latitude"],
-            "lng": base_row["longitude"],
-        }
+        assert master_row["latitude"] == base_row["latitude"], candidate_id
+        assert master_row["longitude"] == base_row["longitude"], candidate_id
 
 
 def test_wave0_db02_base_seed_appends_five_rows_without_duplicates():
