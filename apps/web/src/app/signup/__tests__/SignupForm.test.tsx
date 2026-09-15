@@ -53,9 +53,44 @@ describe("SignupForm", () => {
       });
     });
 
-    expect(loginApiMock).toHaveBeenCalledWith({
-      username: "tester",
+    await waitFor(() => {
+      expect(loginApiMock).toHaveBeenCalledWith({
+        username: "tester",
+        password: "password123",
+      });
+    });
+  });
+
+  it("signup response の正規化済み username を login に使う", async () => {
+    signupMock.mockResolvedValue({
+      id: 10,
+      username: "qaテスト999",
+    });
+    loginApiMock.mockResolvedValue(undefined);
+
+    const { container } = render(<SignupForm />);
+
+    fillForm(container, {
+      username: "qaテスト９９９",
+      email: "tester@example.com",
       password: "password123",
+    });
+
+    submit();
+
+    await waitFor(() => {
+      expect(signupMock).toHaveBeenCalledWith({
+        username: "qaテスト９９９",
+        password: "password123",
+        email: "tester@example.com",
+      });
+    });
+
+    await waitFor(() => {
+      expect(loginApiMock).toHaveBeenCalledWith({
+        username: "qaテスト999",
+        password: "password123",
+      });
     });
   });
 
@@ -75,9 +110,11 @@ describe("SignupForm", () => {
       });
     });
 
-    expect(loginApiMock).toHaveBeenCalledWith({
-      username: "tester",
-      password: "password123",
+    await waitFor(() => {
+      expect(loginApiMock).toHaveBeenCalledWith({
+        username: "tester",
+        password: "password123",
+      });
     });
   });
 

@@ -87,8 +87,23 @@ export default function SignupForm({ returnTo }: Props) {
     inFlight.current = true;
 
     try {
-      await signup({ username: trimmedUsername, password, email: trimmedEmail });
-      await loginApi({ username: trimmedUsername, password });
+      const signupResult = await signup({
+        username: trimmedUsername,
+        password,
+        email: trimmedEmail,
+      });
+
+      const normalizedUsername =
+        signupResult &&
+        typeof signupResult.username === "string"
+          ? signupResult.username
+          : trimmedUsername;
+
+      await loginApi({
+        username: normalizedUsername,
+        password,
+      });
+
       window.location.replace(returnTo || "/mypage");
     } catch (err) {
       const { status, data } = readSignupFailure(err);
