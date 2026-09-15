@@ -92,51 +92,115 @@ Anchor としては不適格である。本件はこの区別に該当する。
 
 ## 新 Position（採用値）
 
-```text
-position_status          = HOLD_POSITION_REVIEW
-new_latitude             = PENDING_HUMAN_QA_INPUT
-new_longitude            = PENDING_HUMAN_QA_INPUT
-new_position_source_type = PENDING_HUMAN_QA_INPUT
-new_position_source_url  = PENDING_HUMAN_QA_INPUT
-verified_at              = PENDING_HUMAN_QA_INPUT
-coordinate_delta_m       = PENDING_HUMAN_QA_INPUT
-```
-
-### なぜ PENDING か
-
-人間 map QA が drift を検出した事実は本タスクで与えられたが、**採用すべき
-新座標と新 Source は与えられていない**。
-
-Position Contract §Source Adoption Rule は次を要求する。
-
-> 6. 競合が説明不能な場合は座標を推測せず `HOLD_POSITION_REVIEW` とする。
-
-および §Position Status。
-
-> HOLD 状態では座標を推測して Seed / Production へ投入しない。
-
-したがって本書は、新座標が供給されるまで `HOLD_POSITION_REVIEW` を保持する。
-旧座標を Seed に残したまま `PASS` と主張することも、新座標を推測することも
-行わない。
-
-### 採用時に必要な入力
-
-新座標を採用する際、Position Contract §Audit Record が要求する項目を本書へ
-記録する。
+2026-09-16 Mother Ship review で Position を再確認し、次を採用した。
 
 ```text
-new_latitude
-new_longitude
-new_position_source_type      （primary position source の種別）
-new_position_source_url
-verified_at
-corroboration_source_url(s)
-corroboration_coordinate(s)
-coordinate_delta_m            （旧→新の観測値。自動採用閾値ではない）
+position_status          = PASS
+new_latitude             = 43.07603505258046
+new_longitude            = 141.3540979693115
+new_position_source_type = shrine_authority_access_map
+new_position_source_url  = https://jinjasapporo.net/find-shrine/%E8%AB%8F%E8%A8%AA%E7%A5%9E%E7%A4%BE/
+verified_at              = 2026-09-16
+coordinate_delta_m       = 16.25
 ```
 
-`coordinate_delta_m` は旧座標 `43.07591648 / 141.35421487` からの距離を
-観測値として記録する。Contract の通り、この距離は PASS 判定の閾値ではない。
+### Primary evidence
+
+北海道神社庁札幌支部の札幌諏訪神社ページに掲載された「アクセスマップ」の
+Google Maps iframe。iframe query に `43.07603505258046, 141.3540979693115` が
+明示されている。
+
+Position Contract §Primary position source は採用可能な例として次を挙げる。
+
+> - 神社公式が直接掲載・リンクする navigation map / map provider
+> - 現行 identity と整合する公的または準公的な位置資料
+
+北海道神社庁札幌支部は当該 Shrine を所管する神社庁支部であり、準公的な位置
+資料に該当する。かつ掲載されているのは参拝者向けの**アクセスマップ**、すなわち
+navigation target そのものである。Visitor / Navigation Anchor の定義と用途が
+直接一致する。
+
+### 採用理由（旧 Source との関係）
+
+旧 Source は map provider の POI ページ（Mapion）であった。Contract は
+map provider POI も primary 候補として認めるが、同時に次を定める。
+
+> Source 種別だけで自動 PASS にはしない。名称・所在地・POI の対象 entity を
+> 併せて確認する。
+
+人間 map QA は、Mapion POI 点が参拝導線の代表点として drift していることを
+検出した。これに対し新 Source は、当該 Shrine を所管する神社庁支部が
+**参拝者向けアクセス案内として自ら提示している地点**であり、Visitor /
+Navigation Anchor の用途に対してより直接的な根拠を持つ。
+
+したがって「distance が近いから」ではなく、**Source の用途が Anchor の定義と
+一致するから**採用する。Contract §Existing Coordinate Conflict の
+「current candidate を距離だけで自動採用しない」に従う。
+
+### position_source_type の新規値について
+
+`shrine_authority_access_map` は本リポジトリで初めて使用する値である。
+
+`position_source_type` は DB field を持たない文書上の provenance 記録であり
+（`docs/audit/` 内の既存記録では `map_provider_poi` のみが使用されている）、
+enum 制約は存在しない。Contract §Primary position source は source の**種別を
+記述的に列挙**しており、閉じた値リストを定義していないため、本値の導入は
+Contract 違反にあたらない。
+
+Mapion POI と神社庁支部アクセスマップは provenance として性質が異なるため、
+両方を `map_provider_poi` に丸めず区別して記録する。
+
+## Independent corroboration
+
+```text
+corroboration_source     = MapFan 札幌諏訪神社 POI
+corroboration_source_url = https://mapfan.com/spots/SC3W3%2CJ%2CY0
+corroboration_coordinate = 43.0759164, 141.3542148
+```
+
+同一の札幌諏訪神社 POI として境内付近を指す。
+
+### 距離の実測
+
+本書作成時に haversine で再計算した観測値（地球平均半径 6371008.8 m）。
+
+| 区間 | 距離 |
+| --- | --- |
+| 新 Anchor ← 旧 Anchor | **16.25 m** |
+| 新 Anchor ← MapFan corroboration | **16.25 m** |
+| 旧 Anchor ← MapFan corroboration | **0.01 m** |
+| 新 Anchor ← GeoShape（Freeze 時 corroboration） | 25.31 m |
+
+### 注記: corroboration は旧 Anchor とほぼ同一点である
+
+MapFan corroboration は旧 Anchor から **0.01 m** であり、実質的に同一点を
+指している。すなわち本 corroboration は、**新 Anchor の優位性を裏づける
+ものではなく、当該 Shrine の境内付近であることを示す独立確認**である。
+
+これは Contract の corroboration の扱いと整合する。
+
+> OSM / Wikidata 等は独立 corroboration として使用できる。
+> ただし、先行採用候補と current authoritative identity が競合している場合、
+> OSM / Wikidata のみを primary source として adopted coordinate へ
+> 昇格させない。
+
+本件で新 Anchor を支えるのは corroboration ではなく **primary source
+（神社庁支部アクセスマップ）である**。corroboration は「新 Anchor が
+まったく別の場所を指していないこと」の確認として機能する。
+
+Contract の通り、16.25 m / 0.01 m / 25.31 m はいずれも自動 PASS 閾値ではなく
+観測値である。
+
+## Gate result
+
+```text
+POSITION_GATE      = PASS
+POSITION_STATUS    = PASS
+ADOPTED_COORDINATE = 43.07603505258046, 141.3540979693115
+```
+
+本決定は Position 正本の確定と Seed / Candidate Master への反映であり、
+**Production DB への write を意味しない**。
 
 ## 影響範囲
 
