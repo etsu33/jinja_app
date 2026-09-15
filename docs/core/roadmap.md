@@ -85,7 +85,7 @@ KAMI MUSUBIは、Concierge Firstを起点として、推薦、神社詳細、経
 以下は実装が進行しているが、完了範囲または完了判定に母艦判断を要する。
 
 - Shrine Knowledge Model Foundationの100%完了判定（Real Data Pilotは明治神宮・品川神社の2社で実施済みだが、3〜5社規模のPilot本体、105件Rolloutは未着手）
-- Recommendation Readiness（神社単位のReadiness Level分類）は未着手。Fact単位の利用可否判定（Evidence Gate）は先行して実装済みだが、両者は別責務であり混同しない
+- Recommendation Readiness（Governance Capability観測・Coverage集計・Admin表示）は未着手。Fact単位の利用可否判定（Evidence Gate）とRuntime candidate boundary（Shared Recommendation Eligibility）は実装済みであり、いずれもGovernance観測とは別責務として混同しない
 - Mobile Search / MapおよびWeb Map（MapLibre GL JS）は実装が進行しているが、roadmap上のPhase 8（Mobile展開）はPhase 7（Release Readiness）完了後に位置づけられており、実装順序と本書記載の順序が一致していない
 
 ### 現在の主フェーズ
@@ -94,13 +94,13 @@ KAMI MUSUBIは、Concierge Firstを起点として、推薦、神社詳細、経
 
 特に以下を優先する。
 
-- Recommendation Readinessの定義統一（神社単位のReadiness Level分類は未着手。Fact単位のEvidence Gateは実装済み）
+- Recommendation ReadinessのGovernance観測整備（Coverage集計・Capability観測・Admin表示は未着手。Fact単位のEvidence GateとShared Recommendation Eligibilityは実装済み）
 - Coverageの定義統一
 - Fact / Meaning / Runtime / Governanceの責務分離（Evidence Gateの実装によりFact usability判定は分離済み）
 - 神社固有情報を利用したRecommendation Reason（Reason V4として実装済み、継続改善）
 - Action / Reflectionとの一貫性
 - 神社データの出典・検証・利用可能性（Shrine Knowledge Model FoundationとEvidence Gateとして実装済み、Pilot拡大は未着手）
-- Readiness条件とBackend実装の接続
+- Governance Coverage / Capability観測とAdmin / Rollout判断の接続
 
 PremiumおよびAnalyticsは独立した一時的フェーズとして終了させず、Recommendation品質、継続利用および収益性を確認する横断的な検証基盤として運用する。
 
@@ -282,7 +282,9 @@ reflection_saved
 
 ### Score v3
 
-Score v3はshadow modeで観測を続ける。
+Score v3はshadow modeで観測を続ける。shadow modeは`SCORE_V3_MODE`のdefaultであり、この状態ではRankingの並び順にScore v3を使用しない（`resolve_score_sort_key()`）。
+
+したがってCurrent Score Authorityは`docs/analytics/recommendation-score-v2-current-design.md` + 現行Backend実装 + 関連テストのままである（`docs/audit/rule-conflict-resolution.md` Decision B）。`docs/analytics/recommendation-score-v3-design.md`はReference / Future Designであり、shadow観測が存在することはv3をCurrent Score正本に昇格させるものではない。
 
 active化は、推薦ログと行動ファネルの実測を確認した後に検討する。
 
@@ -292,11 +294,11 @@ active化は、推薦ログと行動ファネルの実測を確認した後に�
 - FactとMeaningが混在しない
 - Actionが推薦理由と矛盾しない
 - Reflectionが相談・推薦・参拝に接続する
-- Readiness不足の神社を識別できる
+- Knowledge整備が不足している神社をGovernance観測で識別できる
 
 ### 現在の状況
 
-Recommendation Reasonの固有性（V4構造化表示）、FactとMeaningの分離（Evidence Gate）は実装済み。神社単位のReadiness不足識別（Readiness Level分類）は未着手。
+Recommendation Reasonの固有性（V4構造化表示）、FactとMeaningの分離（Evidence Gate）、Runtime candidate boundary（Shared Recommendation Eligibility）は実装済み。Knowledge整備不足神社のGovernance観測（Coverage集計・Capability観測）は未着手。
 
 ---
 
