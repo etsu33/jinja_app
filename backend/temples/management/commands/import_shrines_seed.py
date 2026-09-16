@@ -1,4 +1,5 @@
 import json
+import math
 import os
 from pathlib import Path
 
@@ -16,6 +17,51 @@ from temples.models import GoriyakuTag, Shrine
 
 
 CANONICAL_GORIYAKU_TAG_IDS = tuple(range(1, 40))
+
+# Float Comparison Contract v1 — latitude / longitude 専用の絶対許容差。
+#
+# Production の PostgreSQL は `extra_float_digits=0` で float8 をテキスト化する
+# ため、ORM が読み戻す Python float は Seed の canonical 値と「同一の binary」で
+# ありながら strict equality では不一致になりうる（例: Shrine id=117 札幌諏訪神社
+# は lat/lng とも DB 内部 binary が Seed と一致するのに、読み戻し値は
+# 43.0760350525805 / 141.354097969312 になる）。この round-trip 由来の微小差分で
+# 偽の UPDATE が出ることを防ぐのがこの tolerance の唯一の目的。
+#
+# 意図的に「絶対差のみ」で、relative tolerance は持たせない。緯度経度は取りうる
+# レンジが有限（±90 / ±180）で、意味のある位置補正は 1e-12 度（赤道上で約
+# 0.1 マイクロメートル）よりはるかに大きいため、absolute だけで round-trip 差分と
+# 実データ補正を確実に切り分けられる。
+COORDINATE_ABS_TOLERANCE = 1e-12
+
+# tolerance 比較を適用する field。ここを広げてはいけない（FC-01 / FC-06）。
+COORDINATE_FIELDS = frozenset({"latitude", "longitude"})
+
+
+def _coordinate_values_equal(current, incoming) -> bool:
+    """latitude / longitude を `COORDINATE_ABS_TOLERANCE` 以内なら同値とみなす。
+
+    None の意味は厳密に維持する（FC-05）。
+
+    * None vs None       -> equal
+    * None vs numeric    -> different
+    * numeric vs None    -> different
+    * numeric vs numeric -> abs(current - incoming) <= COORDINATE_ABS_TOLERANCE
+
+    numeric 以外（Decimal 以外の非数値・文字列など想定外の型）が来た場合は
+    tolerance 判定に落とさず strict equality へ戻す（fail closed）。
+    """
+    if current is None or incoming is None:
+        return current is None and incoming is None
+
+    if not isinstance(current, (int, float)) or not isinstance(incoming, (int, float)):
+        return current == incoming
+
+    return math.isclose(
+        float(current),
+        float(incoming),
+        rel_tol=0.0,
+        abs_tol=COORDINATE_ABS_TOLERANCE,
+    )
 
 
 def _parse_visit_style_tags(data: list[dict]) -> dict[int, list[str]]:
@@ -319,6 +365,12 @@ class Command(BaseCommand):
                         current_cmp = str(current) if current is not None else None
                         value_cmp = str(value) if value is not None else None
                         if current_cmp != value_cmp:
+                            setattr(obj, field, value)
+                            changed_fields.append(field)
+                    elif field in COORDINATE_FIELDS:
+                        # float8 round-trip 由来の微小差分を UPDATE にしない。
+                        # tolerance 内なら DB 側の現在値をそのまま残す。
+                        if not _coordinate_values_equal(current, value):
                             setattr(obj, field, value)
                             changed_fields.append(field)
                     else:
