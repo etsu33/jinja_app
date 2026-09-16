@@ -207,15 +207,29 @@ def test_wave0_db02_candidate_master_matches_packet_identity():
         assert row["knowledge_status"] == "FACT_READY"
 
 
-def test_wave0_db02_candidates_stay_build_ready_in_w0_db02():
+def test_wave0_db02_candidates_are_imported_after_production_import():
+    """W0-DB02 は Base / Knowledge とも Production Import 完了済み。
+
+    実測は `docs/audit/shrine-expansion-wave0-db02-production-import.md`。
+
+    `IMPORTED` が主張するのは Production への write 完了だけである
+    （`docs/knowledge/shrine-expansion-candidate-master-contract.md`）。
+    CORE_READY は Completion Contract 12/12 を要する別 Gate であり、
+    ここでは判定しない。Recommendation eligibility も `candidate_status`
+    ではなく別 Gate が表す（W0-DB02 は 5/5 PASS を実測済みだが、それは
+    `IMPORTED` の意味ではない）。
+
+    `build_batch` は lifecycle state ではなく Data Build provenance なので、
+    BUILD_READY -> IMPORTED の遷移でも `W0-DB02` のまま不変である。
+    """
     candidates = _load_candidates()
 
     for candidate_id in CANDIDATE_IDS:
         row = candidates[candidate_id]
         assert row["build_batch"] == "W0-DB02"
-        # このバッチは Base/Knowledge Seed の作成までを範囲とする。
-        # Production import と CORE_READY 昇格は別フェーズ。
-        assert row["candidate_status"] == "BUILD_READY"
+        assert row["candidate_status"] == "IMPORTED"
+        # Knowledge の質は candidate_status ではなく knowledge_status が表す。
+        assert row["knowledge_status"] == "FACT_READY"
 
 
 def test_wave0_db02_unresolved_shrines_keep_the_frozen_packet_position():

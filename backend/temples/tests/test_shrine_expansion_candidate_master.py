@@ -11,7 +11,8 @@ MASTER_PATH = (
 )
 
 EXPECTED_STATUS_COUNTS = {
-    "BUILD_READY": 30,
+    "BUILD_READY": 25,
+    "IMPORTED": 5,
     "CORE_READY": 5,
     "HOLD": 8,
     "REVIEW": 1,
@@ -75,12 +76,16 @@ EXPECTED_W0_DB01_MEMBERS = {
 EXPECTED_W0_DB01_STATUS = "CORE_READY"
 EXPECTED_W0_DB01_KNOWLEDGE_STATUS = "FACT_READY"
 
-# W0-DB02 は Seed Build 完了・Production Import 前の状態。
+# W0-DB02 は Production Import 完了後の状態。
 #
 # Candidate Master / Base Seed / Knowledge Seed は frozen Source Packet
 # (docs/audit/shrine-expansion-wave0-db02-source-packet-freeze.md) から
-# hydrate 済みだが、Production import と CORE_READY 昇格は未実施のため
-# `candidate_status` は `BUILD_READY` のまま据え置く。
+# hydrate 済みで、Base / Knowledge とも Production へ write 済みのため
+# `candidate_status` は `IMPORTED`。実測は
+# docs/audit/shrine-expansion-wave0-db02-production-import.md。
+#
+# `IMPORTED` は Production write 完了だけを主張する。CORE_READY は
+# Completion Contract 12/12 を要する別 Gate であり未判定。
 EXPECTED_W0_DB02_MEMBERS = {
     "射水神社",
     "別小江神社",
@@ -89,7 +94,7 @@ EXPECTED_W0_DB02_MEMBERS = {
     "少彦名神社",
 }
 
-EXPECTED_W0_DB02_STATUS = "BUILD_READY"
+EXPECTED_W0_DB02_STATUS = "IMPORTED"
 EXPECTED_W0_DB02_KNOWLEDGE_STATUS = "FACT_READY"
 
 # Seed Build 済みの batch。identity / official source / knowledge が
@@ -232,8 +237,11 @@ def test_build_batch_survives_the_import_lifecycle_transition():
     candidates = _load_master()["candidates"]
 
     imported_or_core_ready = [row for row in candidates if row["candidate_status"] in {"IMPORTED", "CORE_READY"}]
-    assert len(imported_or_core_ready) == 5
-    assert all(row["build_batch"] == "W0-DB01" for row in imported_or_core_ready)
+    assert len(imported_or_core_ready) == 10
+    assert Counter(row["build_batch"] for row in imported_or_core_ready) == {
+        "W0-DB01": 5,
+        "W0-DB02": 5,
+    }
     assert all(_effective(_load_master(), row)["knowledge_status"] == "FACT_READY" for row in imported_or_core_ready)
 
     # Batch 未割り当ての lifecycle state は null を維持する。
@@ -244,11 +252,11 @@ def test_build_batch_survives_the_import_lifecycle_transition():
     )
 
 
-def test_w0_db02_to_db07_stay_build_ready():
-    """今回の import は W0-DB01 のみ。残り 30 社は BUILD_READY のまま。"""
+def test_w0_db03_to_db07_stay_build_ready():
+    """Production Import 済みは W0-DB01 / W0-DB02。残り 25 社は BUILD_READY のまま。"""
     candidates = _load_master()["candidates"]
 
-    for batch in CANONICAL_BUILD_BATCHES[1:]:
+    for batch in CANONICAL_BUILD_BATCHES[2:]:
         members = [row for row in candidates if row["build_batch"] == batch]
         assert len(members) == 5, batch
         assert all(row["candidate_status"] == "BUILD_READY" for row in members), batch
@@ -319,8 +327,8 @@ def test_wave0_db01_candidates_are_hydrated_from_frozen_source_packet():
             assert row[field] == expected_value
 
 
-def test_wave0_db02_candidates_are_hydrated_but_not_yet_imported():
-    """W0-DB02 は Seed Build 完了状態。hydrate 済みだが CORE_READY ではない。
+def test_wave0_db02_candidates_are_hydrated_and_imported():
+    """W0-DB02 は Production Import 完了状態。IMPORTED だが CORE_READY ではない。
 
     座標・canonical identity の値そのものは frozen Source Packet と突き合わせる
     `test_wave0_db02_shrine_seed.py` 側で固定する。ここでは Registry 上の
@@ -345,7 +353,7 @@ def test_wave0_db02_candidates_are_hydrated_but_not_yet_imported():
         assert row["status_reason_code"] == "WAVE0_CORE_READY_CANDIDATE", name
         assert row["duplicate_status"] == "NEW", name
 
-        # Production import 前のため CORE_READY / IMPORTED へは進めない。
+        # Production import 済み。CORE_READY は別 Gate のため進めない。
         assert row["candidate_status"] == EXPECTED_W0_DB02_STATUS, name
 
 
