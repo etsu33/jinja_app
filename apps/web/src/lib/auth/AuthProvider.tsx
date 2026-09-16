@@ -3,6 +3,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import type { AuthState, AuthUser } from "@/lib/auth/types";
+import { markLoggedIn, markLoggedOut, maybeLoggedIn } from "@/lib/auth/loggedInMarker";
 
 type AuthCtx = {
   user: AuthUser | null;
@@ -20,32 +21,6 @@ export const useAuth = () => {
   if (!ctx) throw new Error("AuthProvider is missing");
   return ctx;
 };
-
-const LS_AUTH = "auth:logged_in";
-
-function markLoggedIn() {
-  try {
-    localStorage.setItem(LS_AUTH, "1");
-  } catch {
-    // ignore
-  }
-}
-
-function markLoggedOut() {
-  try {
-    localStorage.removeItem(LS_AUTH);
-  } catch {
-    // ignore
-  }
-}
-
-function maybeLoggedIn(): boolean {
-  try {
-    return localStorage.getItem(LS_AUTH) === "1";
-  } catch {
-    return false;
-  }
-}
 
 async function fetchMe(): Promise<AuthUser | null> {
   

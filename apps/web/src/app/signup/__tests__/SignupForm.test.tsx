@@ -219,4 +219,54 @@ describe("SignupForm", () => {
 
     expect(await screen.findByText("通信に失敗しました。")).toBeInTheDocument();
   });
+
+  // E2E-003 (docs/audit/beta-core-flow-e2e-audit.md):
+  // 登録直後の自動ログインは、通常ログインと同じ canonical な遷移
+  // （`@/lib/api/auth` の `login`）を通らなければならない。ここを別実装に
+  // すると logged-in マーカーが立たず、`/` ・`/shrines/*` ・`/concierge*`
+  // で認証済みユーザーが Guest として描画される。
+  // マーカーが実際に立つことは
+  // src/lib/auth/__tests__/signupAuthStateSync.test.tsx が担保する。
+  describe("E2E-003: canonical login transition", () => {
+    it("signup 成功時は canonical login を通ってから遷移する", async () => {
+      signupMock.mockResolvedValue(undefined);
+      loginApiMock.mockResolvedValue(undefined);
+
+      const { container } = render(<SignupForm returnTo="/shrines/49" />);
+      fillForm(container);
+      submit();
+
+      await waitFor(() => {
+        expect(loginApiMock).toHaveBeenCalledTimes(1);
+      });
+
+      // signup -> login の順序が逆転すると、cookie が無い状態で
+      // マーカーだけが立つ。順序も契約の一部として固定する。
+      expect(signupMock.mock.invocationCallOrder[0]).toBeLessThan(
+        loginApiMock.mock.invocationCallOrder[0],
+      );
+    });
+
+    it("signup 失敗時は canonical login を呼ばない", async () => {
+      signupMock.mockRejectedValue(signupFailure(400, { username: ["この項目は必須です。"] }));
+
+      const { container } = render(<SignupForm />);
+      fillForm(container);
+      submit();
+
+      expect(await screen.findByText(/この項目は必須です。/)).toBeInTheDocument();
+      expect(loginApiMock).not.toHaveBeenCalled();
+    });
+
+    it("login 失敗時はエラーを表示し、認証済みとして遷移しない", async () => {
+      signupMock.mockResolvedValue(undefined);
+      loginApiMock.mockRejectedValue(new Error("login failed: 401"));
+
+      const { container } = render(<SignupForm returnTo="/shrines/49" />);
+      fillForm(container);
+      submit();
+
+      expect(await screen.findByText("通信に失敗しました。")).toBeInTheDocument();
+    });
+  });
 });

@@ -99,6 +99,12 @@ export default function SignupForm({ returnTo }: Props) {
           ? signupResult.username
           : trimmedUsername;
 
+      // 登録直後の自動ログインは通常ログインと同じ canonical な遷移を通す。
+      // `login()` が cookie と合わせて logged-in マーカーも立てるため、
+      // このあとの full reload 後に AuthProvider が認証済みとして復帰する
+      // （`/`・`/shrines/*`・`/concierge*` は `/api/users/me/` を自動で
+      // 叩かないので、マーカーが無いと Guest 扱いになる）。
+      // login が失敗した場合は catch へ抜け、マーカーは立たない。
       await loginApi({
         username: normalizedUsername,
         password,
