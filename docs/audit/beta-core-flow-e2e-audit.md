@@ -535,8 +535,34 @@ branch 名を `audit/beta-core-flow-stability` に揃える必要がある場合
 
 ## 9. 追加した監査用テスト
 
-`apps/web/src/lib/server/__tests__/bffFetch.audit.test.ts`
+監査時点（base commit `6c94cdb`）では
+`apps/web/src/lib/server/__tests__/bffFetch.audit.test.ts` に
+E2E-001 / E2E-002 の**現状挙動**を固定するテストだけを置いた。望ましい挙動の
+assertion ではなく、実装コードには一切触れていない。
 
-- E2E-001 / E2E-002 の**現状挙動**を固定するためだけのテストである。望ましい挙動の assertion ではない。
-- 上記の fix PR（PR-A）でこのファイルは正しい期待値へ書き換えられることを前提にしている。
-- 実装コードには一切触れていない。
+このファイルは §10 のとおり PR-A で
+`apps/web/src/lib/server/__tests__/bffFetch.refreshIsolation.test.ts`
+（正しい期待値の regression test）へ置き換えられた。
+
+---
+
+## 10. 更新履歴
+
+本セクションだけは監査後の状態追跡のために追記する。§3〜§8 の記述は
+base commit `6c94cdb` 時点の観測記録であり、遡って書き換えない。
+
+### PR-A — Auth Refresh Isolation（`fix/auth-refresh-isolation`）
+
+| Finding | 監査時 Status | PR-A 後 |
+| --- | --- | --- |
+| E2E-001 | CONFIRMED | **RESOLVED** — in-flight refresh を refresh token 単位の Map に分離 |
+| E2E-002 | CONFIRMED | **RESOLVED** — cookie 属性を `lib/server/authCookies.ts` に一本化し `Secure` を共有 |
+| E2E-020 | CONFIRMED | **RESOLVED** — Web origin 側の `concierge_anon_id` を `SameSite=Lax` + 条件付き `Secure` へ |
+| E2E-023 | CONFIRMED | **RESOLVED** — refresh + retry の起動条件を 401 のみに限定 |
+
+- Regression test: `apps/web/src/lib/server/__tests__/bffFetch.refreshIsolation.test.ts`（8 cases）。
+  修正前の実装に対して 4 cases が落ちることを実測で確認済み。
+- E2E-011（JWT 寿命と cookie `maxAge` の不一致）は **未解決のまま**である。
+  PR-A は cookie の `maxAge` 値を変更しておらず、`SIMPLE_JWT` にも触れていない。
+  E2E-001 の発火頻度を押し上げる増幅要因は残っているため、PR-I は引き続き必要。
+- E2E-003 / E2E-004 / E2E-005 ほかは PR-A のスコープ外で、未着手のままである。
