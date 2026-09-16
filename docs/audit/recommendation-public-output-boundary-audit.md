@@ -30,15 +30,22 @@ Recommendation の出力経路には、**transport 境界（何がブラウザ�
 - Frontend の `normalizeRecommendations()` は `{...r}` で**全フィールドを素通し**する。ここに public DTO は無い。
 - 一方 `buildPayloadFromUnified.normalizeRecommendation()` は明示的な field selection を行っており、**事実上の rendering 境界**として機能している。つまり境界は存在するが、置かれている位置が「送信の後」であって「送信の前」ではない。
 
-この構造自体は P2（設計上の負債）だが、**そこから1件だけ実際の画面に内部値が抜け出している**。
+さらに、**内部値を落とすべき分岐点は public response の組み立て時点より前にある。** Recommendation は
+`api_views_concierge.py:881` で `thread_recommendations = recs.get("recommendations")` として取り出され、
+`append_chat()`（`:894` / `:905`）で**先に永続化**される。`_build_chat_response()` が呼ばれるのは `:996` で、
+**永続化の後**である。したがって `_build_chat_response()` 内だけを sanitize しても、thread endpoint 経由の
+露出は防げない（§8 / REC-012）。
 
-> **最大リスク（REC-001 / P1）**: Shrine Detail の `recommendation_meta` セクションが、内部ランキングスコアの差分を
-> **`1位との差: 0.27` という素の数値としてユーザーに表示している。** `gap_from_top` は
-> `top._score_total - rec._score_total` であり、Recommendation Score の生値である。
-> さらに同じ数値が `comparison_summary` の文中にも埋め込まれているため、**同一画面に同じ内部スコアが2回**出る。
-> アクセス階層のゲートは無く、**Guest / Free / Premium すべてが見る。**
+> **最大リスク（REC-002 / P1）**: public response と永続化 thread の双方に、Recommendation の内部フィールド
+> （`_score_total` / `breakdown.score_*` / `weights` / `rank_explanation.contributors[].raw` 等）が
+> **素通しで残る。** 画面には出ないが、DevTools・レスポンス保存・拡張機能から誰でも読める。
+>
+> **要 product 判断（REC-001 / P2）**: Shrine Detail の `recommendation_meta` が、内部ランキングスコアに由来する
+> 数値差分を `1位との差: 0.27` として表示している。**この値が public であってよいかは未決の製品判断**であり、
+> 本監査はそれを「事故による漏洩」と断定しない（§5 / REC-001 と §10 UNCONFIRMED REC-U3 を参照）。
+> 一方、**同じ数値が同一セクションに2回出ること**（REC-005）は製品判断とは独立した表示欠陥である。
 
-確定 findings は P0 = 0 / P1 = 2 / P2 = 9。P0 は無い（内部スコアは製品的に無意味な数値ではあるが、認証情報・他ユーザーデータ・課金境界の破れではない）。
+確定 findings は **P0 = 0 / P1 = 1 / P2 = 9**。P0 は無い（認証情報・他ユーザーデータ・課金境界の破れは見つかっていない）。
 
 ---
 
@@ -52,8 +59,9 @@ Recommendation の出力経路には、**transport 境界（何がブラウザ�
 | 候補生成 | `backend/temples/services/concierge_chat_candidates.py`（`trust_metadata` 等を付与） |
 | Ranking / 内部フィールド付与 | `backend/temples/services/concierge_chat_ranking.py`（`_score_total:1343` / `_reason_facts:1562` / `_primary_reason_source:1564` / `_primary_reason_label:1565` / `rank_explanation:1567` / `rank_comparison:2164`） |
 | 表示整形 | `backend/temples/services/concierge_chat_presentation.py`（`reason_source` / `bullets` / Top3 トリム） |
-| public response 組み立て | `backend/temples/api_views_concierge.py::_build_chat_response`（`:282-336`） |
-| Thread 永続化 | `backend/temples/services/concierge_history.py::append_chat` — **ranking 後の dict をそのまま保存**する |
+| public response 組み立て | `backend/temples/api_views_concierge.py::_build_chat_response`（`:282-336`、呼び出しは `:996`）。**永続化の後**に走るため、ここでの sanitize は live response にしか効かない（§8 / REC-012） |
+| **公開形への分岐点** | `backend/temples/api_views_concierge.py:881` — `thread_recommendations = recs.get("recommendations")`。ここから永続化と public response の両方へ**同一 dict**が流れる |
+| Thread 永続化 | `backend/temples/services/concierge_history.py::append_chat` — **ranking 後の dict をそのまま保存**する。呼び出しは `api_views_concierge.py:894` / `:905` で、**`_build_chat_response`（`:996`）より前に走る** |
 | Thread 読み出し | `GET /api/concierge-threads/<id>/` → `backend/temples/api/views/concierge.py::ConciergeThreadDetailView`（所有権判定あり） |
 
 ### 2.2 BFF
@@ -98,8 +106,8 @@ Recommendation の出力経路には、**transport 境界（何がブラウザ�
 | 8 | 由緒要約 | `trust_metadata.origin_summary` | そのまま | 同上 | 可 / 可 / 可 | YES |
 | 9 | fallback バナー | `_signals.result_state.fallback_reason_ja` / `ui_disclaimer_ja` | そのまま | recommendations section | 可 / 可 / 可 | YES（`_ja` 接尾辞＝表示用） |
 | 10 | 距離 | `distance_m` | Compact カード | Compact | 可 / 可 / 可 | YES |
-| 11 | **順位理由本文** | `rank_explanation.summary`（1位）/ `rank_comparison.comparison_summary`（2位以下） | `buildRecommendationMeta` → `rankBody` | `RecommendationMetaSection` | 可 / 可 / 可 | **部分的に NO → REC-001** |
-| 12 | **1位との差（数値）** | `rank_comparison.gap_from_top` | 素通し | `RecommendationMetaSection:44` | 可 / 可 / 可 | **NO → REC-001** |
+| 11 | **順位理由本文** | `rank_explanation.summary`（1位）/ `rank_comparison.comparison_summary`（2位以下） | `buildRecommendationMeta` → `rankBody` | `RecommendationMetaSection` | 可 / 可 / 可 | **意図的に public（Backend が日本語コピーとして生成）。ただし文中の数値差分の可否は未決 → REC-001 / REC-U3** |
+| 12 | **1位との差（数値）** | `rank_comparison.gap_from_top` | 素通し | `RecommendationMetaSection:44` | 可 / 可 / 可 | **未決 → REC-001 / REC-U3**（公開を禁じる契約も許す契約も発見できず） |
 | 13 | action 状態バッジ | `action_state` | `ACTION_STATE_LABEL` map（未知は非表示） | `ConsultationHistoryDetailView` | 認証必須 | YES |
 | 14 | 深い意味 / 個人的意味 | shrine meaning payload（**別 endpoint**） | server 側で plan 整形 | `ShrineDetailSections` | teaser / teaser / visible | YES（Premium） |
 | 15 | 状態差分 | thread 履歴からクライアント計算 | `compareState` | `PremiumStateDeltaCard` | hidden / hidden / visible | YES（Premium）だが **UI gate のみ → REC-008** |
@@ -118,24 +126,26 @@ Recommendation の出力経路には、**transport 境界（何がブラウザ�
 | Premium 値は backend/BFF で保護されているか | **一部のみ。** 深い意味は server 整形（保護あり）。`previous_comparison` / `history_shift` / `deep_reflection` は**自分の thread データからクライアント計算**され、UI の `getVisibilityForCard` でのみ隠される → REC-008 |
 | `accessLevel` は正しく導出されるか | **Shrine Detail で誤り。** `ShrineDetailArticle.tsx:558-564` が `resolveAccessLevel({...}, true)` と `isAuthenticated` を `true` 固定 → Guest が `free` として計上される → REC-007 |
 | 誤った access state で内部値が見えるか | **No。** `isPremiumActive` は billing 由来で、上記の hardcode は Premium を付与しない。表示ゲートへの影響は無く、汚染されるのは Analytics のみ |
-| REC-001 は階層で変わるか | **変わらない。** `RecommendationMetaSection` は JSX 上いかなる階層判定も持たず、`recommendation_meta` policy 自体も3階層とも `visible` |
+| REC-001 の数値表示は階層で変わるか | **変わらない。** `RecommendationMetaSection` は JSX 上いかなる階層判定も持たず、`recommendation_meta` policy 自体も3階層とも `visible`。Guest でも同じ数値が出る |
 
 ---
 
-## 5. Internal-data leakage findings
+## 5. Internal-data leakage / data-contract findings
 
-### REC-001 — 内部ランキングスコア差分が画面に出ている
+### REC-001 — ランキングスコア由来の数値差分が画面に出ている（public 可否は未決）
 
 | 項目 | 内容 |
 | --- | --- |
-| **分類 / Severity / Status** | `LEAKAGE` / **P1** / **CONFIRMED** |
+| **分類 / Severity / Status** | `DATA_CONTRACT` / **P2** / **CONFIRMED（事実のみ）／ public 可否は UNCONFIRMED（REC-U3）** |
 | **File / Function** | `apps/web/src/components/shrine/detail/RecommendationMetaSection.tsx:44`（`RecommendationMetaSection`）、`backend/temples/services/concierge_chat_ranking.py:2157,2161`（`_attach_rank_comparison`） |
 | **Field** | `rank_comparison.gap_from_top`、`rank_comparison.comparison_summary` |
 | **Data flow** | `concierge_chat_ranking.py:2106-2114` で `top_score = float(top["_score_total"])`、`gap_from_top = round(top_score - rec_score, 6)` → `rank_comparison` に格納 → thread へ永続化 → `shrines/[id]/page.tsx:374` が raw recommendation から読む → `buildShrineDetailModel.ts:243` が `rankBody = comparison_summary` → `RecommendationMetaSection:44` が `{gap.toFixed(2)}` を描画 |
-| **User-visible impact** | 2位以下の神社詳細に「**1位との差: 0.27**」という単位も意味も無い数値が出る。同じ値が本文「1位との差は 0.27 です。」にも入るため**同一セクション内に2回**現れる |
+| **User-visible impact** | 2位以下の神社詳細に「**1位との差: 0.27**」という、単位も基準も示されない数値が出る。同じ値が本文「1位との差は 0.27 です。」にも入るため**同一セクション内に2回**現れる |
 | **再現条件** | Concierge で相談 → 2位以下の候補カードから詳細へ（`/shrines/<id>?ctx=concierge&tid=<thread_id>`）→「1位との違い」セクション。Guest でも再現する |
-| **なぜ public でないか** | `_score_total` は Ranking の内部権威であり、製品として公開されたスケールを持たない。`docs/audit/beta-core-flow-e2e-audit.md` の Strict Constraints でも Score/Ranking は非公開前提。桁・スケール・重み構成が推測可能になる |
-| **Evidence** | `recommendationPublicOutput.audit.test.tsx::REC-001`（3 cases、PASS） |
+| **確定している事実** | (a) 数値のランキング差分がユーザーに見えている。(b) 同じ数値が同一セクションに2回描画される（→ REC-005）。(c) その値は内部ランキングスコア `_score_total` から導出されている。**この3点はコードで確認済み** |
+| **未決の製品判断** | **「数値のランキング差分を public にしてよいか」は未決である。** 本監査はこれを事故による漏洩とは断定しない。Backend は `comparison_summary` を**意図的に日本語のユーザー向けコピーとして組み立てており**（`:2150-2162`）、その文面に差分値を埋め込むことも明示的な実装判断である。「公開してはならない」と定める製品契約・公開契約は、本監査の調査範囲では**発見できなかった**。逆に「公開してよい」と定める契約も見つかっていない。→ UNCONFIRMED **REC-U3** |
+| **懸念（判断材料として記録）** | 値は単位も基準も伴わず、スケールが製品的に定義されていない。桁・スケール・重み構成が外部から推測可能になる。ただしこれは**懸念であって契約違反の証明ではない** |
+| **Evidence** | `recommendationPublicOutput.audit.test.tsx::REC-001`（3 cases、PASS）。テストは「表示されている」「2回出る」「セクション自体に階層ゲートが無い」という**事実のみ**を固定し、可否の判断は含まない |
 
 ### REC-002 — public response に内部フィールドが載り続ける（transport 境界の不在）
 
@@ -184,7 +194,7 @@ Recommendation の出力経路には、**transport 境界（何がブラウザ�
 | **Field** | `rankBody`（文中）と `gap_from_top`（独立行） |
 | **User-visible impact** | 「1位との差は 0.27 です。」の直下に「1位との差: 0.27」。同一情報の二重提示 |
 | **Evidence** | `recommendationPublicOutput.audit.test.tsx`「shows the same score twice」（PASS、出現回数 2 を固定） |
-| **備考** | REC-001 を直せば同時に解消する可能性が高いが、**表示の重複は data 正しさとは別の欠陥**として分けて記録する |
+| **備考** | **この欠陥は REC-001 の製品判断とは独立している。** 「数値差分を public にしてよいか」の結論がどちらであっても、同じ値を同一セクションに2回出す必要は無い。したがって REC-PR1 は製品判断を待たずに重複だけを解消できる |
 
 ### REC-006 — 名称欠損時の fallback が正規化層ごとに異なる
 
@@ -213,7 +223,7 @@ Recommendation の出力経路には、**transport 境界（何がブラウザ�
 | Hero 結論 | `recommendation_reason_v4` / `reason_facts`（Backend Authority） | 妥当 |
 | 短い理由 | `reason`（Backend 生成、`concierge_chat_presentation.py` で fallback 補完） | 妥当 |
 | need ラベル | `breakdown.matched_need_tags` → 日本語マップ | 妥当 |
-| **1位理由 / 1位との違い** | `rank_explanation.summary` / `rank_comparison.comparison_summary` | **REC-001**: 内部スコア差分を文中に含む |
+| **1位理由 / 1位との違い** | `rank_explanation.summary` / `rank_comparison.comparison_summary` | Backend が意図的に生成した日本語コピー。**REC-001**: 文中にランキングスコア由来の数値差分を含む（可否は未決） |
 | 意味レイヤー | shrine meaning payload（plan 整形済み） | 妥当 |
 
 ### REC-010 — `reason_facts[].evidence` は内部 bookkeeping 文字列である
@@ -242,21 +252,26 @@ Recommendation の出力経路には、**transport 境界（何がブラウザ�
 
 | 層 | 素通し | 明示選択 | 内部値除去 |
 | --- | --- | --- | --- |
-| Backend `_build_chat_response` | ✅ | ❌ | `data._debug` のみ |
+| Backend `append_chat`（永続化・**先に走る**） | ✅ | ❌ | ❌ |
+| Backend `_build_chat_response`（live response・**後に走る**） | ✅ | ❌ | `data._debug` のみ |
 | BFF chat / thread route | ✅ | ❌ | ❌ |
 | `normalizeRecommendations` | ✅（`...r`） | ❌ | ❌ |
 | `buildPayloadFromUnified.normalizeRecommendation` | ❌ | ✅ | 実質的に除去される |
 | Shrine Detail SSR（`shrines/[id]/page.tsx`） | ✅ | ❌ | ❌ |
 | UI components | — | 部分的 | — |
 
-### REC-012 — 内部値を落とすべき最早の境界が実装されていない
+### REC-012 — public projection 境界が、永続化との分岐点より後ろにしか存在しない
 
 | 項目 | 内容 |
 | --- | --- |
 | **分類 / Severity / Status** | `PUBLIC_BOUNDARY` / **P2** / **CONFIRMED** |
-| **所見** | 内部値を落とすべき最早の地点は **`_build_chat_response`（`api_views_concierge.py:282-336`）**である。ここは既に `data._debug` を落としており、「public 境界」としての責務が認識されている唯一の場所でもある。recommendation dict 単位の allowlist をここに置けば、chat response と thread 永続化の**両方**が同時に守られる（`append_chat` は ranking 後の dict をそのまま保存するため、Backend 側で落とさない限り thread 経由の露出は残る） |
-| **代替案の評価** | `normalizeRecommendations` に allowlist を置く案は、既にブラウザへ到達したあとなので transport 露出を解消しない。`buildPayloadFromUnified` は既に選択的だが、Shrine Detail SSR がこの層を経由しないため**単独では不十分** |
-| **注意** | 本 PR では設計しない。`_score_total` 等は Backend 内部処理（`concierge_chat.py:143,256`、`concierge_chat_ranking.py:2106-2123`）が参照するため、**除去は response 組み立て時点に限定**する必要がある |
+| **実行順序（コードで確認済み）** | `api_views_concierge.py` の主経路は次の順に進む。<br>`:881` `thread_recommendations = recs.get("recommendations")` — **ここが分岐点**<br>`:894` / `:905` `append_chat(..., recommendations=thread_recommendations, ...)` — **永続化（先）**<br>`:996` `body = _build_chat_response(recs=recs, ...)` — **public response 組み立て（後）** |
+| **訂正** | 本監査の初版は「`_build_chat_response` に allowlist を置けば chat response と thread 永続化の両方が守られる」と記述していたが、**これは誤りである。** 永続化は `_build_chat_response` より前に完了しており、しかも両者は `recs["recommendations"]` の**同一 list / 同一 dict を共有**する（`_build_chat_response` の `data = dict(recs)` は shallow copy）。したがって `_build_chat_response` 内だけで sanitize しても、`GET /api/concierge-threads/<id>/` 経由の露出は**防げない** |
+| **現在の live-response sanitization point** | **`_build_chat_response`（`:282-336`）。** 現状 public 境界としての責務を負っている唯一の場所であり、実際に `data._debug` を落としている。ただしその効力は **live response のみ**で、既に保存された thread には及ばない |
+| **将来必要な public recommendation projection boundary** | **recommendation が永続化と public response へ分岐する前（`:881` より上流）。** そこで「内部計算用 recommendation」から「public recommendation」への projection を行えば、live response と thread 読み出しの双方が同一の公開形を共有する。本監査ではこの projection を**設計しない** |
+| **代替案の評価** | `normalizeRecommendations` に allowlist を置く案は、既にブラウザへ到達したあとなので transport 露出を解消しない。`buildPayloadFromUnified` は既に選択的だが、Shrine Detail SSR がこの層を経由しないため**単独では不十分**。どちらも Backend 側の projection の代替にはならない |
+| **注意（将来の実装者向け）** | `_score_total` 等は Backend の内部処理（`concierge_chat.py:143,256`、`concierge_chat_ranking.py:2106-2123`）が参照する。projection は**内部 dict を破壊せず別オブジェクトを生成する**形でなければならない。また `:641` の limit-reached 経路は `thread=None` で `append_chat` を呼ばないため、分岐点を持たない別経路である |
+| **既存データへの影響** | 分岐点より上流で projection を入れても、**過去に保存済みの thread には内部フィールドが残る。** 既存レコードの扱い（放置 / 読み出し時 projection / backfill）は別途の製品・運用判断であり、本監査では決めない |
 
 ### REC-007 — Shrine Detail の accessLevel 導出が誤っている
 
@@ -304,7 +319,7 @@ Recommendation の出力経路には、**transport 境界（何がブラウザ�
 
 | ID | 分類 | Severity | Status | 一行要約 |
 | --- | --- | --- | --- | --- |
-| REC-001 | LEAKAGE | **P1** | CONFIRMED | 内部ランキングスコア差分が `1位との差: 0.27` として画面に出る |
+| REC-001 | DATA_CONTRACT | P2 | CONFIRMED（事実のみ） | ランキングスコア由来の数値差分が画面に出る。**public 可否は未決（REC-U3）** |
 | REC-002 | PUBLIC_BOUNDARY | **P1** | CONFIRMED | public response と client ViewModel に内部フィールドが素通しで残る |
 | REC-003 | LEAKAGE | P2 | CONFIRMED | `rank_explanation.contributors` が軸別の生スコアを運ぶ（UI 露出なし） |
 | REC-004 | PRESENTATION | P2 | CONFIRMED（到達不能） | 未マップ need tag をそのまま出すラベル関数が2系統ある |
@@ -313,11 +328,13 @@ Recommendation の出力経路には、**transport 境界（何がブラウザ�
 | REC-007 | ACCESS_LEVEL | P2 | CONFIRMED（既知） | Shrine Detail の `accessLevel` が Guest を `free` と誤計上 |
 | REC-008 | ACCESS_LEVEL | P2 | CONFIRMED | 一部 Premium カードが UI gate のみで守られている |
 | REC-010 | REASON_CONTRACT | P2 | CONFIRMED（露出なし） | `reason_facts[].evidence` は内部 bookkeeping 文字列 |
-| REC-012 | PUBLIC_BOUNDARY | P2 | CONFIRMED | 内部値を落とすべき最早の境界が未実装 |
+| REC-012 | PUBLIC_BOUNDARY | P2 | CONFIRMED | public projection 境界が永続化との分岐点より後ろにしかない |
 | REC-009 | — | — | NON_ISSUE | 生 object / `undefined` の描画は無い |
 | REC-011 | — | — | NON_ISSUE | 根拠不足の理由は設計上封じられている |
 
-**確定件数: P0 = 0 / P1 = 2 / P2 = 8**（NON_ISSUE 2件を除く）
+**確定件数: P0 = 0 / P1 = 1 / P2 = 9**（確定 findings 計 10件。NON_ISSUE 2件と UNCONFIRMED 3件は含まない）
+
+内訳: P1 = REC-002。P2 = REC-001 / REC-003 / REC-004 / REC-005 / REC-006 / REC-007 / REC-008 / REC-010 / REC-012。
 
 ### UNCONFIRMED
 
@@ -325,6 +342,7 @@ Recommendation の出力経路には、**transport 境界（何がブラウザ�
 | --- | --- | --- |
 | REC-U1 | `breakdown_detail`（`any` 型で item まで運ばれる）に、本監査で列挙した以外の内部値が含まれる可能性 | Backend `_build_breakdown_detail` の全キー列挙と、実レスポンスのサンプル。型が `any` のため静的には追い切れない |
 | REC-U2 | `score` / `score_v2` の現在の実値と用途 | 付与箇所は特定したが、どのランキング世代の残骸かは runtime サンプルが必要 |
+| **REC-U3** | **数値のランキング差分（`gap_from_top`）を public にしてよいか** | **製品判断（Mother Ship）。** 「公開してはならない」と定める製品契約・公開契約は本監査の調査範囲で発見できず、「公開してよい」と定める契約も見つからなかった。Backend は当該値を含む日本語コピーを意図的に組み立てており、事故ではなく実装判断である。判断が下るまで、本監査はこれを漏洩と断定しない |
 
 ---
 
@@ -332,12 +350,12 @@ Recommendation の出力経路には、**transport 境界（何がブラウザ�
 
 | 群 | 根本原因 | 該当 |
 | --- | --- | --- |
-| **A. transport 境界の不在** | Backend が内部計算用の dict をそのまま public response の body として使い、除去処理が `_debug` 1箇所しかない | REC-002 / REC-003 / REC-010 / REC-012 |
-| **B. 内部値が「表示用コピー」に混入** | `comparison_summary` を Backend が組み立てる際、内部スコアを文字列に埋め込んだ | REC-001 / REC-005 |
+| **A. public projection の不在** | Backend が内部計算用の dict をそのまま永続化し、かつ public response の body としても使う。除去処理は `_build_chat_response` の `_debug` 1箇所のみで、しかもそれは**永続化より後**に走る | REC-002 / REC-003 / REC-010 / REC-012 |
+| **B. ランキング由来の数値が表示用コピーに含まれる** | `comparison_summary` を Backend が組み立てる際、スコア差分を文字列に埋め込み、UI 側でも同じ値を独立行として描画した。**A と違い「内部値の意図せぬ流出」ではなく、意図的な実装の是非が未決という性質** | REC-001（可否は未決）/ REC-005（重複は独立した欠陥） |
 | **C. 表示変換ポリシーの二重化** | 同じ種類のデータ（need tag / 名称 fallback）に対して方針の違うヘルパが並存 | REC-004 / REC-006 |
 | **D. 階層判定の分散** | `accessLevel` の導出と Premium gate がコンポーネント側に散っており、server 側の正本と連動しない | REC-007 / REC-008 |
 
-群 A が最も広く、群 B が唯一ユーザーに見えている。**群 B は群 A とは独立に修正できる**（`comparison_summary` の生成と `RecommendationMetaSection` の描画だけで閉じる）。
+群 A が最も広く、群 B が唯一ユーザーに見えている。**群 B のうち重複表示（REC-005）は、製品判断を待たずに単独で修正できる**（`RecommendationMetaSection` の描画だけで閉じる）。一方、数値そのものを出すか否か（REC-001）は製品判断が先である。
 
 ---
 
@@ -347,13 +365,19 @@ Recommendation の出力経路には、**transport 境界（何がブラウザ�
 
 | PR | 範囲 | 含む | 独立性 | 備考 |
 | --- | --- | --- | --- | --- |
-| **REC-PR1** | 順位理由から内部スコアを外す | REC-001 / REC-005 | 完全に独立 | **最優先**。`RecommendationMetaSection.tsx` の数値行削除と、`concierge_chat_ranking.py` の `comparison_summary` 文面から差分数値を外す。**Ranking ロジックは変更しない**（`gap_from_top` フィールド自体は残し、表示だけ止めるのが最小） |
-| **REC-PR2** | public response の recommendation allowlist | REC-002 / REC-003 / REC-010 | A群の本体 | `_build_chat_response` に per-recommendation の public field allowlist を追加。**`append_chat` の永続化にも効くことを確認すること**。API schema 変更を伴うため製品判断を先に置く |
+| **REC-PR1** | 順位理由セクションの重複表示解消 | REC-005 | 完全に独立 | **最優先**。`RecommendationMetaSection.tsx:41-45` の独立行を消し、同じ値が2回出る状態だけを解消する。<br>**REC-PR1 は「数値を public にしてよいか」の製品判断を前提にしない。** 文中に値が残る形でも、重複は解消できる。<br>`comparison_summary`（`concierge_chat_ranking.py:2150-2162`）から数値そのものを外すことは**別スコープ**であり、**Mother Ship の製品確認（REC-U3）が必要**。確認が下りるまで Backend のコピー生成には触れない。**Ranking ロジックと `gap_from_top` フィールドは変更しない** |
+| **REC-PR2** | recommendation の public projection 境界を新設 | REC-002 / REC-003 / REC-010 / REC-012 | A群の本体 | **`_build_chat_response` への追加では不十分**（永続化が先に走るため）。projection は `api_views_concierge.py:881` の分岐点より**上流**に置き、live response と `append_chat` の両方が同じ公開形を受け取るようにする。<br>内部 dict を破壊しない別オブジェクト生成であること、`:641` の limit-reached 経路を壊さないこと、**過去に保存済み thread の扱い**（放置 / 読み出し時 projection / backfill）を決めること。API schema 変更を伴うため製品判断を先に置く |
 | **REC-PR3** | 表示ラベル方針の一本化 | REC-004 / REC-006 | 独立 | `labelNeedDisplayTag` を `toNeedTagLabel` の「未知 ASCII は出さない」方針へ統一。未使用の `NeedChips` / `MatchChips` / `ConciergeBreakdownBody` の扱い（削除か存続か）も同時に決める |
 | **REC-PR4** | accessLevel 導出の是正 | REC-007 | 独立 | `ShrineDetailArticle.tsx:558-564`。**Analytics の event 名・property 名は変更しない**（値のみ） |
 | **REC-PR5** | Premium gate の server 側移管 | REC-008 | 要製品判断 | state-delta 系を server 整形にするか、UI gate のままとするかの決定が先。Billing / Auth には触れない |
 
-推奨順序: **REC-PR1 → REC-PR4 → REC-PR3 → REC-PR2 → REC-PR5**。PR1 が唯一のユーザー可視の欠陥、PR4/PR3 は小さく独立、PR2 は契約変更、PR5 は製品判断待ち。
+推奨順序: **REC-PR1 → REC-PR4 → REC-PR3 → REC-PR2 → REC-PR5**。PR1 は製品判断に依存しない唯一のユーザー可視の修正、PR4 / PR3 は小さく独立、PR2 は契約変更かつ projection 位置の設計が必要、PR5 は製品判断待ち。
+
+**製品判断待ちの項目（Mother Ship）**:
+
+- **REC-U3 / REC-001** — 数値のランキング差分を public にしてよいか。NO なら `comparison_summary` の文面変更（Backend）と `RecommendationMetaSection` の数値行削除をまとめて行う。YES なら REC-PR1 の重複解消のみで完了する
+- **REC-PR2** — public projection のフィールド allowlist と、既存 thread レコードの扱い
+- **REC-PR5** — state-delta 系 Premium カードを server 整形へ移すか、UI gate のままとするか
 
 ---
 
@@ -385,7 +409,7 @@ Recommendation の出力経路には、**transport 境界（何がブラウザ�
 | `npx eslint . --cache --cache-location .eslintcache`（root） | **PASS** |
 | 同（`apps/web`） | **PASS** |
 | `git diff --check` | clean |
-| audit-only test | **PASS** — 5 cases（REC-001 / REC-002 / REC-006 の現状を固定） |
+| audit-only test | **PASS** — 5 cases（REC-001 / REC-002 / REC-006 の**現状の事実のみ**を固定。REC-001 の public 可否は assert しない） |
 | Backend focused tests | **実行不能（環境要因）** — 本監査コンテナに GDAL / PostGIS が無く、`django.core.exceptions.ImproperlyConfigured: Could not find the GDAL library` で collection 前に失敗する。`apt-get install libgdal-dev` も upstream 404 で失敗。Backend 側の所見はすべて実装読解と既存テストの assertion 内容で確認した |
 
 ---

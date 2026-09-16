@@ -6,9 +6,12 @@
  * rewritten by the fix PRs the document proposes.
  *
  * Covered findings:
- *   REC-001  the internal ranking score delta (`gap_from_top`, derived from
+ *   REC-001  FACTS ONLY. A numeric ranking delta (`gap_from_top`, derived from
  *            `_score_total`) is rendered to the user as a bare number, and the
- *            same number also appears inside `comparison_summary`.
+ *            same number also appears inside `comparison_summary`. These tests
+ *            assert only that this is what happens today. Whether a numeric
+ *            ranking delta is ALLOWED to be public is an unresolved product
+ *            decision (audit REC-U3) and is deliberately NOT asserted here.
  *   REC-002  `normalizeRecommendations()` spreads the backend object, so every
  *            internal field (`_score_total`, `_primary_reason_label`,
  *            `_explanation_payload`, `breakdown.score_*`) survives into the
@@ -82,8 +85,8 @@ describe("REC-002: the client ViewModel has no public field allowlist", () => {
   });
 });
 
-describe("REC-001: the internal ranking score delta is user-visible", () => {
-  it("renders the raw score gap as a bare number, with no unit or product meaning", () => {
+describe("REC-001: a ranking-score-derived delta is user-visible (facts only)", () => {
+  it("renders the score gap as a bare number, with no unit or stated basis", () => {
     render(
       <RecommendationMetaSection
         recommendationMeta={{
@@ -98,6 +101,7 @@ describe("REC-001: the internal ranking score delta is user-visible", () => {
     );
 
     // The bare number line, rendered from gap_from_top (= top._score_total - rec._score_total).
+    // Recorded as current behaviour; the public/non-public question stays open (REC-U3).
     expect(screen.getByText("1位との差: 0.27")).toBeInTheDocument();
   });
 
