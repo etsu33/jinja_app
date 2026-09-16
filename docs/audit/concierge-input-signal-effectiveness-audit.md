@@ -24,32 +24,39 @@
 
 ## 1. Executive Summary
 
-Concierge の **active input は 9 個**。うち Recommendation の候補選定またはランキングに実際に効くのは **6 個**である。
+Concierge の **active input は 9 個**（§2）。うち `Candidate` / `Filter` / `Score` / `Rank` のいずれかが YES となるのは **8 個**で、効かないのは**セッション表示名（意図的に送信しない）だけ**である。
 
-| 結論 | 件数 |
-| --- | --- |
-| `FULLY_CONNECTED`（候補/スコア/理由まで到達） | 4 |
-| `RANK_ONLY`（順位に効くが理由に出ない） | 2 |
-| `FILTER_ONLY` | 0 |
-| `TRANSPORT_ONLY`（送信されるが consumer 無し） | 2 |
-| `DEAD_OR_LEGACY`（live UI から到達不能） | 1 |
-| `DUPLICATE_SIGNAL`（別 finding として併記） | 2 pair |
-| `BROKEN_WIRE` | 2 |
+以下はすべて **§15 の最終分類マトリクス（13 行）を母数とした集計**である。マトリクスは 9 個の active input に加え、`crowd` / `duration_max_min` / `free_text` / `mode` の 4 行を含み、`query` に合流する「相談テキスト」と「テーマ chip」を 1 行に統合するため、行数は 13 になる。
 
-**最大リスク（CIS-001 / P1）**: 「この条件で探す」（filter_apply）が request に `mode: "compat"` を載せるため、**Backend の重み profile が入れ替わる**。
+| 分類 | 件数 | 内訳 |
+| --- | --- | --- |
+| `FULLY_CONNECTED` | **6** | query / ご利益 tags / 相性から見た候補 tags / 参拝スタイル text / 参拝予定日 / mode |
+| `RANK_ONLY`（順位に効くが理由に出ない） | **2** | 誕生日 / 出発地点 |
+| `FILTER_ONLY` | **0** | — |
+| `DUPLICATE_SIGNAL` | **1** | 参拝スタイル preset（tags）※ dedup 済み |
+| `BROKEN_WIRE` | **2** | crowd / duration_max_min |
+| `TRANSPORT_ONLY` | **1** | free_text |
+| `DEAD_OR_LEGACY` | **1** | セッション表示名（表示専用・意図的） |
+| **計** | **13** | — |
+
+**唯一の hard filter（Eligibility 層）**: `goriyaku_tag_ids` は `build_chat_candidates_with_eligibility()` が `qs.filter(goriyaku_tags__id__in=goriyaku_tag_ids).distinct()` として **DB 段階で候補集合そのものを絞る**（`backend/temples/services/concierge_chat_candidates.py:213-216`）。これは Ranking より前段の Eligibility であり、`docs/product/recommendation-signal-authority.md` の Eligibility 定義（「Signal を変えると Candidate 集合が変わる」「Scoring に一切依存しない」「該当する唯一の現行 Signal は `goriyaku_tag_ids`」）と一致する。一方その明示選択値は `score_need` / `score_need_rank_weighted` の**いずれにも入らない**（§7）。
+
+**確定した mode 切替（CIS-001 / P2）**: 「この条件で探す」（filter_apply）が request に `mode: "compat"` を載せるため、**Backend の重み profile が入れ替わる**。
 
 | | element | need | popular | distance | astro_bonus |
 | --- | --- | --- | --- | --- | --- |
 | `need`（初回相談） | 0.6 | **0.3** | 0.1 | 0.35 | **無効** |
 | `compat`（条件適用後） | **0.8** | **0.2** | 0.0 | 0.15 | **有効（+0.6 / +0.3）** |
 
-一方 Advanced Filter パネルの説明文は「**相談テーマを主軸にしたまま**、過ごし方や行きやすさを補助条件として加えます」と書かれている。実際には need 重みが 0.3 → 0.2 に**下がり**、生年月日由来の element 重みが 0.6 → 0.8 に**上がる**。この切り替えは `ModeBadge` の「並び順」ボタンを**押した場合にのみ**説明が出る（Flow A では既定で折りたたまれている）。
+重み profile が差し替わること自体は **CONFIRMED** である。一方 Advanced Filter パネルの説明文は「**相談テーマを主軸にしたまま**、過ごし方や行きやすさを補助条件として加えます」と書かれており、実際には need 係数が 0.3 → 0.2 に下がり element 係数が 0.6 → 0.8 に上がる。ただし**係数が下がったことだけでは、この文言が偽であることの証明にはならない**。`docs/product/recommendation-signal-authority.md` は Primary Recommendation を「単なる score 寄与量の大小ではなく、Recommendation Meaning の主根拠であること」と**意味論で定義**しており、係数の大小で定義していない。本監査は「compat 切替により Personalization / Context が Intent の意味論的主権を実際に上書けるか」を制御実験で示せていないため（backend test 実行環境が無い・§21）、**矛盾の主張は P2 / product-contract risk に留める**（CIS-001 / CIS-U4）。この切り替えは `ModeBadge` の「並び順」ボタンを**押した場合にのみ**説明が出る（Flow A では既定で折りたたまれている）。
 
 **次点（CIS-002 / P2・BROKEN_WIRE）**: `crowd` / `duration_max_min` は **二重に死んでいる**。(a) 導出条件が live UI のどのプリセット文字列にも一致せず、(b) 仮に送られても Backend がこれらのキーを**一度も読まない**。
 
-**説明ギャップ（CIS-006 / P1）**: 既定の `need` モードでは `score_element`（生年月日由来、重み 0.6 = 単一で最大）がランキングに効くにもかかわらず、`element` の reason fact は `astro_bonus_enabled`（= compat のみ）で gate されているため**絶対に生成されない**。つまり**最も重い信号が、既定フローでは理由として一切説明されない**。
+**説明ギャップ（CIS-006 / P1）**: 既定の `need` モードでは `score_element`（生年月日由来）が **active な ranking signal** であるにもかかわらず、`element` の reason fact は `astro_bonus_enabled`（= compat のみ）で gate されているため**絶対に生成されない**。Explanation Contract の観点で、**順位に寄与している signal が理由集合から構造的に欠落している**。
 
-確定件数: **P0 = 0 / P1 = 2 / P2 = 7**。
+なお `w1 = 0.6`（need）は**単一係数としては最大**だが、`score_element` の値域は `element_priority()` により **0..2 に限られる**（`domain/astrology.py:88-106`）。対して semantic 側の `score_need_rank_weighted` は一致タグごとに寄与を累積しうる（`concierge_chat_ranking.py:1194-1204`）。したがって本監査の言明は次に限定する: **生年月日由来の element は need モードで単一最大の係数を持つ active な ranking signal である。ただし semantic signal に対する総合的な順位影響力は、係数の大小だけでは確定しない。**
+
+確定件数: **P0 = 0 / P1 = 1 / P2 = 8**。
 
 ---
 
@@ -182,7 +189,7 @@ live UI（`ConciergeEntryCard.tsx` / `ConciergeFilterPanel.tsx`）から実際�
 | `query` | text hint | `NEED_TEXT_WEIGHTS` 経由の text 一致（`concierge_chat_ranking.py:1095`） |
 | `query` | Consultation Meaning v1 | `services/consultation_meaning.py::extract_consultation_meaning` |
 | `birthdate` | element（火/土/風/水） | `domain/astrology.py::sun_sign_and_element` → `element_priority` |
-| `goriyaku_tag_ids` | 明示ご利益制約 | `concierge_chat.py:208` → `requested_goriyaku_tag_ids` |
+| `goriyaku_tag_ids` | 明示ご利益制約（Eligibility） | 候補生成: `concierge_chat_candidates.py:213-216`（DB filter）／説明: `concierge_chat.py:208` → `requested_goriyaku_tag_ids` |
 | `extra_condition` | visit_style tags（keyword 一致） | `domain/extra_condition_tags.py`（例: `less_crowded` ← 「混雑しにくい」「落ち着いた場所」） |
 | `visit_preferences` | visit_style tags（canonical） | `domain/visit_preference.py` |
 | `extra_condition` ∪ `visit_preferences` | 統合 visit_style tag set | `concierge_chat_extra_condition.py::resolve_visit_preference_tags` |
@@ -199,7 +206,7 @@ live UI（`ConciergeEntryCard.tsx` / `ConciergeFilterPanel.tsx`）から実際�
 | consultation axis | NO | NO | INDIRECT | INDIRECT | `history_theme_candidate_boost` 経由（`:1204`） | — | 加算 |
 | element（birthdate 由来） | NO | NO | YES | YES | `score_element` | **element = 0.6 / 0.8** | 加算（0/1/2） |
 | astro_bonus | NO | NO | CONDITIONAL | CONDITIONAL | `astro_bonus` | +0.6 / +0.3 | **compat モードのみ** |
-| goriyaku_tag_ids | UNCONFIRMED | UNCONFIRMED | YES | YES | `score_need` の一致材料 + `user_selected_tag` fact | need 重みに合流 | 加算 |
+| goriyaku_tag_ids（明示選択） | **YES** | **YES（hard filter）** | **NO** | **NO（生存候補内）** | `user_selected_tag` fact / breakdown metadata のみ | — | **Eligibility（候補集合を縮小）** |
 | visit_style tags | NO | NO | YES | YES | `score_visit_style` | **w5 = 0.35（固定）** | 加算（一致タグ数） |
 | distance | NO | NO | YES | YES | `score_distance` | **distance = 0.35 / 0.15** | 減衰加算 |
 | popular | NO | NO | YES | YES | `score_popular` | popular = 0.1 / 0.0 | 加算 |
@@ -223,6 +230,20 @@ score_total_ranked = score_element*w1 + score_need_rank_weighted*w2 + score_popu
 ```
 
 **`score_distance` と `score_visit_style` は順位にのみ効き、公開 `score_total` には入らない。** distance の重み 0.35、visit_style の重み 0.35 はいずれも need 重み（0.3）より大きい。
+
+### 明示 `goriyaku_tag_ids` が score / rank に入らないことの根拠
+
+`matched_by_user_selected_gid`（`concierge_chat_ranking.py:1117` = 候補が持つ gid ∩ ユーザー指定 gid）は、
+
+- `matched_all` に**含まれない**（`:1130-1135` は `matched_by_tag + matched_by_text + matched_by_gid` のみを連結）
+- したがって `score_need = len(matched_all)`（`:1137`）に**入らない**
+- `score_need_rank_weighted`（`:1194-1204` = `len(matched_by_tag)*2.0 + gid_text_contribution_weighted + study_bonus + history_theme_candidate_boost`）にも**入らない**
+
+使用箇所は `:652`（reason fact `user_selected_tag`、evidence `requested_goriyaku_tag_ids`）と `:964` / `:1525`（breakdown metadata `matched_user_selected_goriyaku_tag_ids`）の**説明層のみ**である。
+
+`matched_all` に合流する `matched_by_gid`（`:1119-1123`）は **need tag 由来**であり（`need_tags_to_goriyaku_ids(need_tags_clean)`）、ユーザーの明示選択値ではない。
+
+→ 明示 `goriyaku_tag_ids` の影響は「候補集合を縮める」ことと「理由に出る」ことに限られ、**生き残った候補どうしの順位づけには寄与しない**。これは `docs/product/recommendation-signal-authority.md:291` が既知の所見として記録する「`goriyaku_tag_ids` の Rank非寄与」と一致する。
 
 ---
 
@@ -258,14 +279,20 @@ score_total_ranked = score_element*w1 + score_need_rank_weighted*w2 + score_popu
 | **transport presence** | **YES** | `birthdate` が top-level と `filters` の両方に載る。audit test `CIS-005` |
 | **canonicalization** | **YES** | `normalize_birthdate()` が `YYYY-MM-DD` / `YYYY/MM/DD` / `YYYYMMDD` を受理。無効値は捨てる（例外は投げない） |
 | **calculation presence** | **YES（条件付き）** | `sun_sign_and_element(birthdate)` → `element_priority(user_elem, rec["astro_elements"])`。**候補神社に `astro_elements` が無ければ常に 0**（`domain/astrology.py:88-90`） |
-| **ranking effect** | **YES** | `score_element * w1`、`w1 = 0.6`（need）/ `0.8`（compat）。**単一の重みとして最大** |
+| **ranking effect** | **YES** | `score_element * w1`、`w1 = 0.6`（need）/ `0.8`（compat）。**need モードで単一最大の係数**（総合影響力については下記注記） |
 | **astro_bonus** | **compat モードのみ** | `astro_bonus_enabled = public_mode == "compat"`（`concierge_chat.py:764`） |
 | **explanation effect** | **既定フローでは NO** | `element` fact は `astro_bonus_enabled` で gate（`:708`）。need モードでは生成されない |
 
 **データ側の前提**: `backend/temples/data/` の seed を機械集計したところ、神社様の行 113 件中 **82 件（約 73%）** に `astro_elements` が入っていた。production DB の実測ではないため、実効カバレッジは `UNCONFIRMED`（CIS-U1）。
 
-**結論**: 生年月日は **transport / calculation / ranking のすべてに効いており、しかも最大重み**である。ただし**既定モードでは理由として一度も説明されない**。「payload に存在する＝効いている」ではないという前提で検証した結果、**効いている**ことが確認できた。
+**結論**: 生年月日は **transport / calculation / ranking のすべてに効いている**。「payload に存在する＝効いている」ではないという前提で検証した結果、**効いている**ことが確認できた。ただし**既定モードでは理由として一度も説明されない**（CIS-006）。
 
+> **影響力の大きさについての限定**
+>
+> `w1 = 0.6` は need モードの重み profile における**単一最大の係数**である（`concierge_chat_ranking.py:829-842`）。しかしこれは「生年月日が順位を最も動かす」ことを意味しない。`score_element` は `element_priority()` の戻り値であり **0 / 1 / 2 の 3 値に限られる**（`domain/astrology.py:88-106`）ため、need モードでの寄与上限は `2 × 0.6 = 1.2` である。対して `score_need_rank_weighted` は一致した need tag ごとに寄与を累積する（`:1194-1204`）ため上限を持たない。
+>
+> したがって本監査が主張するのは次に限る: **生年月日由来の element は、need モードにおいて単一最大の係数を持つ active な ranking signal である。semantic signal に対する総合的な順位影響力は、係数の大小だけでは確定しない。** 実測には backend 側の制御実験が必要であり、本監査環境では実行できない（§21）。
+>
 > 本監査は占術的・心理的な妥当性について一切の主張をしない。ソフトウェア配線のみの記録である。
 
 ---
@@ -279,9 +306,13 @@ score_total_ranked = score_element*w1 + score_need_rank_weighted*w2 + score_popu
 | 参拝予定日 | NO | NO | **極小 YES**（`direction_signal_score` max +0.02） | 実質 tie-breaker | 一部 | **tie-breaker 相当** |
 | crowd | NO | NO | **NO** | NO | NO | **消費者なし** |
 | duration_max_min | NO | NO | **NO** | NO | NO | **消費者なし** |
-| goriyaku_tag_ids | UNCONFIRMED | NO | YES | NO | NO | **score signal**（hard filter かは CIS-U2） |
+| goriyaku_tag_ids | **YES** | NO | **NO** | NO | NO | **hard filter（Eligibility）**。候補集合そのものを縮小し、スコアには寄与しない |
 
-**重要**: 実用条件はいずれも **hard filter として動作していない**。UI の「候補の絞り込みとして使います」という説明に対し、実装は**加点**である。
+**重要**: 実用条件のうち **hard filter として動作するのは `goriyaku_tag_ids` のみ**である（`concierge_chat_candidates.py:213-216` の `qs.filter(goriyaku_tags__id__in=...).distinct()`）。参拝スタイル / 距離 / 参拝予定日 は候補を除外せず**加点**にとどまり、`crowd` / `duration_max_min` は消費者が無い。したがって UI の「候補の絞り込みとして使います」という説明は、**`goriyaku_tag_ids` については実装と一致し、それ以外の条件については一致しない**。
+
+> **候補生成が読む位置についての注記**
+>
+> 候補生成は `request.data.get("goriyaku_tag_ids")`（**top-level のみ**）を読む（`api_views_concierge.py:413-414`）。canonicalization が `filters` から補完した値（`concierge_input_contract.py:104-115`）は候補生成側には渡らない。live UI は常に top-level と `filters` の両方へ同値を載せるため（§4・CIS-005）、**現行 UI からこの差は観測されない**。
 
 ---
 
@@ -292,10 +323,10 @@ score_total_ranked = score_element*w1 + score_need_rank_weighted*w2 + score_popu
 | D1 | `extra_condition`（text）と `visit_preferences`（tags）が同じ preset クリックから同時に出る | **`SAFE_DUPLICATION`** | `resolve_visit_preference_tags()` が両者を**同一の canonical 語彙へ解決して set union**。`score_visit_style` は「一致タグ数」を数えるため、両方から来ても 1 回しか加点されない（`concierge_chat_extra_condition.py:50-63` にコメントで明記） |
 | D2 | `birthdate` / `goriyaku_tag_ids` / `extra_condition` が top-level と `filters` の両方に入る | **`LEGACY_DUPLICATION`** → 実害なし | `_resolve_request_inputs_basic()` が「top-level が空なら filters から補完」する片方向マージ。同値なので実質 no-op |
 | D3 | `extra_condition` と `filters.free_text` が同値 | **`LEGACY_DUPLICATION`** | `free_text` に backend consumer が無いため二重計上は起きない |
-| D4 | query 由来の need tag と、明示選択した `goriyaku_tag_ids` | **`SEMANTIC_OVERLAP`** | 別 fact type（`need_tag` / `user_selected_tag`）として別々に facts に入り、`score_need` では `matched_all` に合流する。**同一タグが両経路から来た場合の重複除去は `UNCONFIRMED`（CIS-U3）** |
+| D4 | query 由来の need tag と、明示選択した `goriyaku_tag_ids` | **`SEMANTIC_OVERLAP`（説明層のみ）** | 明示選択値 `matched_by_user_selected_gid`（`:1117`）は `matched_all`（`:1130-1135`）・`score_need`（`:1137`）・`score_need_rank_weighted`（`:1194-1204`）の**いずれにも入らない**ため、**順位側の二重計上は起きない**。`matched_all` に合流する `matched_by_gid`（`:1119-1123`）は need tag 由来の別 evidence channel であり、同一タグが gid / text の両方から来た場合は `need_evidence_winner_by_tag`（`:1163-1186`）が**勝者を1つだけ採る**。残る重複は**説明層**のみ: 同一のご利益が `user_selected_tag` fact と `need_tag` / `goriyaku_tag` fact の双方として facts に並びうる（CIS-U3） |
 | D5 | `crowd` と `extra_condition` の相互変換 | **`NON_ISSUE`（両方 dead）** | `hooks.ts:282-288` は crowd → text の逆変換を持つが、crowd 自体が常に空のため発火しない |
 
-**`DOUBLE_COUNT_RISK` に分類したものは無い。** D4 のみ未確認。
+**`DOUBLE_COUNT_RISK` に分類したものは無い。** D4 の**順位側は CONFIRMED で二重計上なし**。未確認として残るのは**説明層での重複表示**のみ（CIS-U3）。
 
 ---
 
@@ -332,11 +363,13 @@ score_total_ranked = score_element*w1 + score_need_rank_weighted*w2 + score_popu
 
 | 項目 | 内容 |
 | --- | --- |
-| **分類 / Severity / Status** | `REQUEST_CONTRACT` + `RANKING` + `EXPLANATION` / **P1** / **CONFIRMED** |
+| **分類 / Severity / Status** | `REQUEST_CONTRACT` + `RANKING` + `EXPLANATION` / **P2（product-contract risk）** / **mode 切替と重み差し替えは CONFIRMED。UI 文言との「矛盾」の成立は UNCONFIRMED（CIS-U4）** |
 | **File** | `apps/web/src/app/concierge/ConciergeClientFull.tsx:1630-1637`（`mode: "compat" as const`）、`backend/temples/services/concierge_chat_ranking.py:829-842`（重み）、`concierge_chat.py:764`（astro gate） |
 | **Data flow** | 「この条件で探す」→ `filter_apply` → `{...buildFilterPayload(), mode: "compat"}` → `_resolve_public_mode` が explicit 値を優先 → `_resolve_mode_weights` が compat profile を返す |
 | **効果** | element 0.6→**0.8** / need 0.3→**0.2** / popular 0.1→**0.0** / distance 0.35→**0.15**、かつ astro_bonus（+0.6 / +0.3）が**有効化**される |
-| **UI 文言との矛盾** | Filter パネルは「**相談テーマを主軸にしたまま**、過ごし方や行きやすさを補助条件として加えます」（`ConciergeFilterPanel.tsx:187`）と説明するが、実際には need 重みが下がる |
+| **UI 文言との関係** | Filter パネルは「**相談テーマを主軸にしたまま**、過ごし方や行きやすさを補助条件として加えます」（`ConciergeFilterPanel.tsx:187`）と説明する。実装では need 係数が 0.3 → 0.2 に下がり element 係数が 0.6 → 0.8 に上がる。**これは係数の事実であり、文言が偽であることの証明ではない** |
+| **なぜ P1 にしないか** | `docs/product/recommendation-signal-authority.md` は Primary Recommendation を「単なる score 寄与量の大小ではなく、**Recommendation Meaning の主根拠**であること」と意味論で定義し、Personalization（`birthdate` を含む）は「今回の相談の意味（Primary）を上書きしない」と規定する。「主軸のまま」が偽であると言うには、**compat 切替により Personalization / Context が Intent の意味論的主権を実際に上書けることを制御実験で示す**必要がある。本監査環境では backend test を実行できない（§21）ため、その証明が得られていない。よって矛盾の主張は **P2 / product-contract risk** に留め、確定事実（隠れた mode 切替と重み差し替え）だけを CONFIRMED として保持する |
+| **未証明の命題** | CIS-U4（§16 UNCONFIRMED） |
 | **緩和要因** | `ModeBadge`（`ConciergeSectionsRenderer.tsx:788`）が backend の `ui_label_ja` / `ui_note_ja` を表示する。ただし Flow A では「並び順」ボタンを**クリックしないと**説明が出ない（`ModeBadge.tsx:34-40`） |
 | **再現** | 相談を送信（need）→ Advanced Filter で任意の条件を付け「この条件で探す」→ 同じ相談文のまま順位が変わる |
 | **Evidence** | audit test `CIS-001`（2 cases、PASS） |
@@ -359,14 +392,15 @@ score_total_ranked = score_element*w1 + score_need_rank_weighted*w2 + score_popu
 | **分類 / Severity / Status** | `REQUEST_CONTRACT` + `CANONICALIZATION` / **P2** / **CONFIRMED** |
 | **根拠** | `buildConciergeRequestPayload.ts:79` は常に送る。backend に `get("free_text")` / `["free_text"]` が存在しない。`consultation_meaning.extract_consultation_meaning(free_text=...)` は仮引数名が同じだけで、実引数は `query`（`api_views_concierge.py:1018`） |
 
-### CIS-006 — 最大重みの signal が既定フローで説明されない
+### CIS-006 — 順位に寄与する element signal が既定フローの Explanation Contract から欠落する
 
 | 項目 | 内容 |
 | --- | --- |
 | **分類 / Severity / Status** | `EXPLANATION` / **P1** / **CONFIRMED** |
-| **File** | `backend/temples/services/concierge_chat_ranking.py:708` |
-| **内容** | `score_element`（birthdate 由来）は need モードで重み 0.6 = **単一最大**だが、`element` reason fact は `if astro_bonus_enabled and score_element > 0` で gate される。`astro_bonus_enabled` は compat のみ true。したがって**既定の相談フローでは、順位を最も動かす signal が理由として一度も現れない** |
-| **ユーザーへの影響** | 「なぜこの神社が1位か」の説明から生年月日の寄与が完全に欠落する。ユーザーは need 一致だけで選ばれたと理解する |
+| **File** | `backend/temples/services/concierge_chat_ranking.py:708`（fact gate）、`:829-842`（重み）、`:1269` / `:1293-1340`（score 式） |
+| **内容（Explanation Contract fidelity）** | need モードでも `score_element`（birthdate 由来）は `_score_total` に `score_element * 0.6` として**確実に入る**。一方 `element` reason fact は `if astro_bonus_enabled and score_element > 0` で gate され、`astro_bonus_enabled` は compat のみ true。したがって**既定の相談フローでは、順位に寄与している signal が理由集合に一度も現れない**。説明層が scoring 層を忠実に写していない、という構造的欠落である |
+| **主張の限定** | 本 finding は「element が最も順位を動かす」という**支配性の主張ではない**（§9 の限定を参照）。主張は「**active な ranking signal が説明されない**」という Explanation Contract の不整合に限る |
+| **ユーザーへの影響** | 「なぜこの神社が1位か」の説明から生年月日の寄与が完全に欠落し、ユーザーは need 一致のみで選ばれたと理解する。なお `recommendation-signal-authority.md` §10 が列挙する anti-pattern は「Explanation-only の情報を Ranking 根拠として提示する」側（過剰主張）であり、本 finding の「Ranking に効く signal を説明しない」側（欠落）は同書に明示規定が無い。**本監査はこれを Explanation Contract の未規定領域として記録するに留め、違反とは断定しない** |
 
 ### CIS-007 — distance / popular / behavior が順位に効くが fact type を持たない
 
@@ -415,9 +449,9 @@ score_total_ranked = score_element*w1 + score_need_rank_weighted*w2 + score_popu
 | Input | Request field | Canonical | Signal | Candidate | Filter | Score | Rank | Reason | Classification |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 相談テキスト / テーマ chip | `query` | `CANONICAL` | need tags / axis / text hint / meaning | INDIRECT | NO | YES | YES | YES | **`FULLY_CONNECTED`** |
-| 誕生日 | `birthdate`（×2） | `CANONICAL` | element（0/1/2） | NO | NO | YES | **YES（w=0.6、単一最大）** | **NO（need モード）** | **`RANK_ONLY`** |
-| ご利益 tags | `goriyaku_tag_ids`（×2） | `CANONICAL` | 明示ご利益制約 | UNCONFIRMED | UNCONFIRMED | YES | YES | YES（`user_selected_tag`） | **`FULLY_CONNECTED`** |
-| 相性から見た候補 tags | `goriyaku_tag_ids`（×2） | `CANONICAL` | 同上（frontend 近似で提示） | UNCONFIRMED | UNCONFIRMED | YES | YES | YES | **`FULLY_CONNECTED`**（提示元は CIS-009） |
+| 誕生日 | `birthdate`（×2） | `CANONICAL` | element（0/1/2） | NO | NO | YES | **YES（need mode の単一最大係数 0.6。総合影響力は未確定・§9）** | **NO（need モード）** | **`RANK_ONLY`** |
+| ご利益 tags | `goriyaku_tag_ids`（×2） | `CANONICAL` | 明示ご利益制約（Eligibility） | **YES** | **YES（hard filter）** | **NO** | **NO（生存候補内）** | YES（`user_selected_tag`） | **`FULLY_CONNECTED`**（Eligibility + Reason。score / rank には非寄与） |
+| 相性から見た候補 tags | `goriyaku_tag_ids`（×2） | `CANONICAL` | 同上（frontend 近似で提示） | **YES** | **YES（hard filter）** | **NO** | **NO（生存候補内）** | YES | **`FULLY_CONNECTED`**（同上。提示元は CIS-009） |
 | 参拝スタイル preset（text） | `extra_condition`（×2） | `LEGACY_COMPAT` | visit_style tags | NO | NO | YES | YES（w5=0.35） | YES（`visit_style`） | **`FULLY_CONNECTED`** |
 | 参拝スタイル preset（tags） | `visit_preferences` | `CANONICAL` | visit_style tags（同一集合） | NO | NO | YES | YES | YES | **`DUPLICATE_SIGNAL`**（D1・dedup 済み） |
 | 出発地点 | `location.{lat,lng}` | `CANONICAL` | distance | NO | NO | YES | **YES（w4=0.35）** | **NO** | **`RANK_ONLY`** |
@@ -432,14 +466,19 @@ score_total_ranked = score_element*w1 + score_need_rank_weighted*w2 + score_popu
 
 | 指標 | 件数 |
 | --- | --- |
-| active input（live UI から到達可能） | **9** |
-| うち候補選定またはランキングに実効 | **6** |
-| `FULLY_CONNECTED` | 4（query / goriyaku 2系統 / visit style text / visit_date） |
-| `RANK_ONLY`（順位に効くが理由に出ない） | **2**（birthdate / distance） |
+| マトリクスの行数（集計の母数） | **13** |
+| active input（live UI から到達可能・§2） | **9** |
+| うち `Candidate`/`Filter`/`Score`/`Rank` のいずれかが YES | **8**（効かないのはセッション表示名のみ） |
+| hard filter（Eligibility 層）として働く field | **1**（`goriyaku_tag_ids` — UI 上の 2 セクションが同一 field を共有） |
+| `FULLY_CONNECTED` | **6**（query / ご利益 tags / 相性から見た候補 tags / 参拝スタイル text / 参拝予定日 / mode） |
+| `RANK_ONLY`（順位に効くが理由に出ない） | **2**（誕生日 / 出発地点） |
+| `FILTER_ONLY` | **0** |
+| `DUPLICATE_SIGNAL` | **1**（参拝スタイル preset tags — D1、dedup 済み） |
 | `BROKEN_WIRE` | **2**（crowd / duration_max_min） |
-| `TRANSPORT_ONLY` | 1（free_text） |
-| `DEAD_OR_LEGACY` | 1（セッション表示名 — 意図的） |
-| `DUPLICATE_SIGNAL` pair | 2（D1 visit style、D2 top-level/filters） |
+| `TRANSPORT_ONLY` | **1**（free_text） |
+| `DEAD_OR_LEGACY` | **1**（セッション表示名 — 意図的） |
+
+> 重複 pair（D1〜D5）は入力 1 行に 1 分類を割り当てるマトリクスとは別軸の観測であり、§11 に単独で列挙する。ここでの `DUPLICATE_SIGNAL = 1` は「マトリクス上で `DUPLICATE_SIGNAL` に分類した行数」であって、pair の数ではない。
 
 ---
 
@@ -447,8 +486,8 @@ score_total_ranked = score_element*w1 + score_need_rank_weighted*w2 + score_popu
 
 | ID | 分類 | Root cause | Sev | Status | 一行要約 |
 | --- | --- | --- | --- | --- | --- |
-| CIS-001 | `REQUEST_CONTRACT` `RANKING` `EXPLANATION` | `MULTI_LAYER` | **P1** | CONFIRMED | filter_apply が compat へ切り替え、need 重みが下がるが UI 文言は「主軸のまま」 |
-| CIS-006 | `EXPLANATION` | `EXPLANATION` | **P1** | CONFIRMED | 最大重みの element signal が既定フローで理由に出ない |
+| CIS-006 | `EXPLANATION` | `EXPLANATION` | **P1** | CONFIRMED | 順位に寄与する element signal が既定フローの理由集合に現れない |
+| CIS-001 | `REQUEST_CONTRACT` `RANKING` `EXPLANATION` | `MULTI_LAYER` | P2 | 切替・重み差し替えは CONFIRMED／矛盾主張は UNCONFIRMED（CIS-U4） | filter_apply が compat へ切り替え need 係数が下がる（UI 文言との矛盾は product-contract risk） |
 | CIS-002 | `UI` `REQUEST_CONTRACT` `CANONICALIZATION` | `MULTI_LAYER` | P2 | CONFIRMED | crowd / duration が導出不発 かつ 消費者なし |
 | CIS-003 | `REQUEST_CONTRACT` `CANONICALIZATION` | `LEGACY_COMPAT` | P2 | CONFIRMED | `filters.free_text` に consumer が無い |
 | CIS-004 | `MAPPING` | `LEGACY_COMPAT` | P2 | CONFIRMED（NON_ISSUE 寄り） | preset が text と tags を二重送信（dedup 済み） |
@@ -457,15 +496,17 @@ score_total_ranked = score_element*w1 + score_need_rank_weighted*w2 + score_popu
 | CIS-008 | `SCORING` `EXPLANATION` | `SCORING` | P2 | CONFIRMED | 公開 score_total から順位が再現できない |
 | CIS-009 | `UI` `MAPPING` | `UI` | P2 | CONFIRMED | frontend の element 表記「地」が backend canon「土」と不一致 |
 
-**確定件数: P0 = 0 / P1 = 2 / P2 = 7**（計 9 件）
+**確定件数: P0 = 0 / P1 = 1 / P2 = 8**（計 9 件）
 
 ### UNCONFIRMED
 
 | ID | 内容 | 必要な追加証拠 |
 | --- | --- | --- |
 | CIS-U1 | production DB における `astro_elements` の実カバレッジ | seed 集計では 82/113（約 73%）。production の実測が必要 |
-| CIS-U2 | `goriyaku_tag_ids` が候補生成の hard filter として働くか | `_build_chat_candidates_pipeline` の SQL 経路の追跡が必要 |
-| CIS-U3 | 同一タグが need 由来と明示選択の両方から来た場合の重複除去 | `matched_all` の構築を実データで確認する必要 |
+| CIS-U3 | 同一のご利益が `user_selected_tag` fact と `need_tag` / `goriyaku_tag` fact の双方として facts に**重複表示**されるか（**説明層のみ**。順位側に二重計上が無いことは §7・§11 で確認済み） | 実データでの `reason_facts` 配列の観測 |
+| CIS-U4 | `filter_apply → compat` により Personalization / Context が Intent の**意味論的主権**を実際に上書けるか（CIS-001 の「文言矛盾」が成立する条件） | 制御実験: 同一 query・同一候補集合で need / compat を比較し、`primary_reason_source` と順位の入れ替わりを実測する。backend test を実行できる環境が必要（§21） |
+
+> `goriyaku_tag_ids` の hard filter 性は本改訂で **CONFIRMED** となったため、旧 CIS-U2 は UNCONFIRMED から除去した（根拠: `concierge_chat_candidates.py:213-216`。本文 §1 / §7 / §10 / §15 に反映済み）。
 
 ---
 
@@ -474,7 +515,7 @@ score_total_ranked = score_element*w1 + score_need_rank_weighted*w2 + score_popu
 | 群 | 根本原因 | 該当 |
 | --- | --- | --- |
 | **A. 説明層が scoring 層に追従していない** | reason fact の type 集合が、実際にランキングへ寄与する signal 集合より狭い | CIS-006 / CIS-007 / CIS-008 |
-| **B. mode 切り替えが UI 契約と非同期** | request の `mode` が重み profile 全体を入れ替えるのに、UI はそれを「補助条件の追加」として説明する | CIS-001 |
+| **B. mode 切り替えが UI 契約と非同期** | request の `mode` が重み profile 全体を入れ替えるのに、UI はそれを「補助条件の追加」としてのみ説明し、切替自体は既定で不可視 | CIS-001 |
 | **C. legacy 互換フィールドの堆積** | 旧契約の field が frontend に残り、backend 側の consumer だけが先に消えた | CIS-002 / CIS-003 / CIS-005 |
 | **D. 同一概念の二重表現** | Structured 移行期に legacy 表現を併走させている（dedup 済み） | CIS-004 |
 | **E. frontend 独自近似** | 表示補助のための簡易実装が backend canon と語彙を共有していない | CIS-009 |
@@ -488,9 +529,10 @@ score_total_ranked = score_element*w1 + score_need_rank_weighted*w2 + score_popu
 | `docs/product/concierge-input-architecture.md` | Level 2 に `extra_condition` / `crowd` / `duration_max_min` を列挙 | `crowd` / `duration_max_min` は canonical contract に存在せず consumer も無い | **DRIFT**（CIS-002） |
 | `docs/audit/concierge-input-level-signal-inventory.md` | Gap C（top-level/filters 二重送信）を未解決として記録 | 実装は現在も同じ。**記述は正確** | 一致 |
 | `concierge_input_contract.py` の docstring | 「`visit_preferences` は Gap C を継承しない」 | 実装どおり（top-level のみ） | 一致 |
-| `ConciergeFilterPanel.tsx` の説明文 | 「相談テーマを主軸にしたまま」「候補の絞り込みとして使います」 | 実際は compat で need 重みが下がり、かつ絞り込みではなく加点 | **DRIFT**（CIS-001 / §10） |
+| `ConciergeFilterPanel.tsx` の説明文 | 「相談テーマを主軸にしたまま」 | compat 切替で need 係数が 0.3 → 0.2 に下がる（係数は事実。文言が偽かは CIS-U4） | **要確認**（CIS-001） |
+| `ConciergeFilterPanel.tsx` の説明文 | 「候補の絞り込みとして使います」 | `goriyaku_tag_ids` のみ実際に候補を絞る（hard filter）。参拝スタイル / 距離 / 参拝予定日は絞り込みではなく加点 | **部分 DRIFT**（§10） |
 
-**本監査では product architecture 文書を更新しない。** 上記 2 件の drift は別 documentation PR として §18 に提案する。
+**本監査では product architecture 文書を更新しない。** 上記の DRIFT / 部分 DRIFT / 要確認は、別 documentation PR として §19（CIS-PR5 / CIS-PR2）に提案する。
 
 ---
 
@@ -501,7 +543,7 @@ score_total_ranked = score_element*w1 + score_need_rank_weighted*w2 + score_popu
 | PR | 範囲 | 含む | 備考 |
 | --- | --- | --- | --- |
 | **CIS-PR1** | legacy dead field の撤去 | CIS-002 / CIS-003 | frontend から `crowd` / `duration_max_min` / `free_text` の生成を削除。**backend は元から読んでいないため後方互換の心配が無い**。最も安全 |
-| **CIS-PR2** | mode 切り替えの可視化 | CIS-001 | **製品判断が先**: (a) filter_apply で compat へ切り替える現行仕様を維持し UI 文言を実態に合わせるか、(b) need のまま条件だけ加えるか。**ranking / weights は変更しない前提で文言のみ直す案が最小** |
+| **CIS-PR2** | mode 切り替えの可視化 | CIS-001 | **先に CIS-U4 の制御実験**（need / compat で `primary_reason_source` と順位がどう入れ替わるかの実測）。その結果を踏まえた**製品判断**: (a) filter_apply で compat へ切り替える現行仕様を維持し UI 文言を実態に合わせるか、(b) need のまま条件だけ加えるか。**ranking / weights は変更しない前提で文言のみ直す案が最小** |
 | **CIS-PR3** | 説明層の拡張 | CIS-006 / CIS-007 | reason fact に element / distance を含めるかは**製品判断**。`astro_bonus_enabled` gate を外すと既定フローの理由が変わるため、Mother Ship 確認が必要 |
 | **CIS-PR4** | element 語彙の統一 | CIS-009 | frontend の `"地"` を backend canon `"土"` に寄せる。表示文字列のみで scoring には触れない |
 | **CIS-PR5** | 文書 drift の解消 | §17 | `concierge-input-architecture.md` から dead field を削除。**CIS-PR1 の後に行う** |
@@ -540,4 +582,4 @@ score_total_ranked = score_element*w1 + score_need_rank_weighted*w2 + score_popu
 | `npx eslint . --cache --cache-location .eslintcache`（root / `apps/web`） | **PASS**（いずれも exit 0） |
 | `git diff --check` | clean |
 | audit-only test | **PASS** — 10 cases（CIS-001 / CIS-002 / CIS-003 / CIS-004 / CIS-005 の現状を固定） |
-| Backend focused tests（request normalization / need resolution / candidate generation / ranking） | **実行不能（環境要因）** — 本監査コンテナに GDAL / PostGIS が無く、`django.core.exceptions.ImproperlyConfigured: Could not find the GDAL library` で collection 前に失敗する。`apt-get install libgdal-dev` も upstream 404 で失敗。Backend 側の所見はすべて実装読解で確認し、推測が残る箇所は `UNCONFIRMED`（CIS-U1〜U3）として明示した |
+| Backend focused tests（request normalization / need resolution / candidate generation / ranking） | **実行不能（環境要因）** — 本監査コンテナに GDAL / PostGIS が無く、`django.core.exceptions.ImproperlyConfigured: Could not find the GDAL library` で collection 前に失敗する。`apt-get install libgdal-dev` も upstream 404 で失敗。Backend 側の所見はすべて実装読解で確認し、推測が残る箇所は `UNCONFIRMED`（CIS-U1 / CIS-U3 / CIS-U4）として明示した。とくに CIS-U4（compat 切替が Intent の意味論的主権を上書きするか）は制御実験を要するため、本監査では CIS-001 の矛盾主張を P2 に留める根拠となっている |
