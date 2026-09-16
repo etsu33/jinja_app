@@ -7,7 +7,8 @@
 > 正本関係:
 >
 > - Position の採用意味・Source 要件・Gate: `docs/knowledge/shrine-position-contract.md`
-> - 本書は上記 Contract に基づく、`wave0-010` の **Current Position 正本**である。
+> - 本書は上記 Contract に基づき、`wave0-010` について採用した Position と
+>   その判断履歴を記録する。
 > - `docs/audit/shrine-expansion-wave0-db02-source-packet-freeze.md` は
 >   2026-09-15 時点の凍結記録であり、Position については本書に置き換わる。
 >   Freeze 記録側は過去時点の記録として変更しない。
@@ -240,23 +241,23 @@ ADOPTED_COORDINATE = 43.07603505258046, 141.3540979693115
 
 ### 他4社の Position は凍結 Packet のまま
 
-本 correction の対象は `wave0-010` のみである。他4社は Source Packet Freeze の
-値を Current Position 正本として保持する。
+本 correction の対象は `wave0-010` のみである。他4社については、本監査では
+Source Packet Freeze で採用した Position を変更していない。
 
 | candidate_id | 神社 | Position |
 | --- | --- | --- |
 | `wave0-007` | 射水神社 | Freeze のまま（変更なし） |
 | `wave0-008` | 別小江神社 | Freeze のまま（変更なし） |
 | `wave0-009` | 戸隠神社 中社 | Freeze のまま（変更なし） |
-| `wave0-010` | 札幌諏訪神社 | **本書が Current 正本** |
+| `wave0-010` | 札幌諏訪神社 | **本書で採用 Position を記録** |
 | `wave0-011` | 少彦名神社 | Freeze のまま（変更なし） |
 
 ## Production 現況（PR #2855 時点 — Historical）
 
 > **本 section は PR #2855 時点の Production 状態の記録であり、現況ではない。**
 > ここに記載された「旧座標のまま」「Production write なし」は、2026-09-16 の
-> targeted apply によって解消済みである。現況は
-> §「Production Position Correction Finalization」を正とする。
+> targeted apply によって解消済みである。その後の Production 実測は
+> §「Production Position Correction Finalization」に記録している。
 > 本 section は当時の判断根拠を再検証可能にするため、内容を変更せず保持する。
 
 ```text
