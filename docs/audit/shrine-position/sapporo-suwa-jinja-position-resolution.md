@@ -275,9 +275,12 @@ Production 反映までの間、Production と Seed の間に意図的な差分�
 
 ## Production Position Correction Finalization
 
-> **本 section が Production の現況正本である。** 2026-09-16 に実施した
-> Production Position Correction と、その後に検出した Importer idempotency
-> incident の解決までを確定記録とする。
+> **本 section は、本 Position correction chain における最終監査記録である。**
+> 2026-09-16 に実施した Production Position Correction と、その後に検出した
+> Importer idempotency incident の解決までを確定記録とする。
+>
+> 本 section は**記録された時点の実測**であり、Production の
+> Current Source of Truth ではない。Production の現在値は Production 自身が正である。
 
 ### Status
 
@@ -502,13 +505,31 @@ ORM が読み戻した Python float は、DB 内部 binary が Seed と同一で
 `43.0760350525805` / `141.354097969312` となり、Seed 値との `!=` が成立する。
 その結果、実際には書き換える必要が無い行が UPDATE 対象として報告された。
 
-**diagnostic signature**: この false UPDATE の `fields` は
-`['latitude', 'longitude']` であり、**`location` を含まない**。
-apply 時（§4）の `fields` が `['latitude', 'longitude', 'location']` だったのと
-対照的である。PostGIS geometry は WKB で読み戻されるため text round-trip を
-経由せず、`location` の比較は一致したままだった。この差自体が
-「原因は float8 の text round-trip であって座標の実差分ではない」ことを
-示している。
+**observed field signature**（観測事実のみ）:
+
+| 時点 | `fields` |
+| --- | --- |
+| targeted apply（§4） | `['latitude', 'longitude', 'location']` |
+| false UPDATE（本 §7） | `['latitude', 'longitude']` |
+
+`location` は false UPDATE に含まれなかった。
+
+**この観測から `location` 側の serialization mechanism を推定しない。**
+本監査は観測された `fields` の差をそのまま記録するにとどめ、`location` が
+false UPDATE に含まれなかった理由は確定させない。
+
+root cause は、`location` の挙動ではなく次の4点で確定した。
+
+```text
+1. Production float8 binary == Seed Python float binary   （§6）
+2. ORM 取得値 != Seed 値 under strict equality             （§7 冒頭）
+3. extra_float_digits = 0                                 （§5 / §6）
+4. PR #2858 後の同一 subset dry-run で updated=0 / skipped=1（§9）
+```
+
+4 は、Importer の比較ロジックのみを変更した結果 false UPDATE が消えたことを
+意味する。Production の値を一切書き換えずに解消した以上、原因が Production
+データ側ではなく比較ロジック側にあったことが確定する。
 
 ```text
 INCIDENT_CLASS          = false UPDATE (float8 text round-trip)
