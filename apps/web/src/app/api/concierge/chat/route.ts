@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { djFetch } from "@/lib/server/backend";
+import {
+  isSecureRequest,
+  setAccessTokenCookie,
+  setAnonymousConciergeCookie,
+  setRefreshTokenCookie,
+} from "@/lib/server/authCookies";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-
-const ANON_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 90;
-const ACCESS_COOKIE_MAX_AGE_SECONDS = 60 * 60;
-const REFRESH_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 
 type RefreshResponse = { access?: string; refresh?: string };
 
@@ -28,7 +30,7 @@ function getResponseSetCookies(upstream: Response): string[] {
   return single ? [single] : [];
 }
 
-function attachAnonCookieFromBody(res: NextResponse, body: string, phase: string) {
+function attachAnonCookieFromBody(res: NextResponse, body: string, phase: string, secure: boolean) {
   try {
     const json = JSON.parse(body);
     const anonCookieValue = json?._anon_cookie_value;
@@ -37,13 +39,7 @@ function attachAnonCookieFromBody(res: NextResponse, body: string, phase: string
 
     if (!anonCookieValue) return;
 
-    res.cookies.set("concierge_anon_id", anonCookieValue, {
-      httpOnly: true,
-      sameSite: "none",
-      secure: true,
-      path: "/",
-      maxAge: ANON_COOKIE_MAX_AGE_SECONDS,
-    });
+    setAnonymousConciergeCookie(res, anonCookieValue, { secure });
 
     console.log("[BFF_ANON_COOKIE_SET_RESULT]", { phase, attached: true });
   } catch (error) {
@@ -51,23 +47,13 @@ function attachAnonCookieFromBody(res: NextResponse, body: string, phase: string
   }
 }
 
-function attachAuthCookies(res: NextResponse, refreshJson: RefreshResponse) {
+function attachAuthCookies(res: NextResponse, refreshJson: RefreshResponse, secure: boolean) {
   if (refreshJson.access) {
-    res.cookies.set("access_token", refreshJson.access, {
-      httpOnly: true,
-      sameSite: "lax",
-      path: "/",
-      maxAge: ACCESS_COOKIE_MAX_AGE_SECONDS,
-    });
+    setAccessTokenCookie(res, refreshJson.access, { secure });
   }
 
   if (refreshJson.refresh) {
-    res.cookies.set("refresh_token", refreshJson.refresh, {
-      httpOnly: true,
-      sameSite: "lax",
-      path: "/",
-      maxAge: REFRESH_COOKIE_MAX_AGE_SECONDS,
-    });
+    setRefreshTokenCookie(res, refreshJson.refresh, { secure });
   }
 }
 
@@ -101,6 +87,7 @@ export async function POST(req: NextRequest) {
   const payload = await req.text();
   const contentType = req.headers.get("content-type") ?? "application/json";
   const refreshToken = req.cookies.get("refresh_token")?.value ?? null;
+  const secureCookies = isSecureRequest(req);
 
   const doChat = (accessToken: string | null) => {
     const upstreamUrl = "/api/concierge/chat/";
@@ -150,8 +137,8 @@ export async function POST(req: NextRequest) {
 
         const body = await upstream.text();
         const res = buildProxyResponse(upstream, body);
-        attachAnonCookieFromBody(res, body, "refresh-success");
-        attachAuthCookies(res, refreshJson);
+        attachAnonCookieFromBody(res, body, "refresh-success", secureCookies);
+        attachAuthCookies(res, refreshJson, secureCookies);
 
         console.log("[BFF_CHAT_RETURN] refresh-success");
         return res;
@@ -162,7 +149,7 @@ export async function POST(req: NextRequest) {
 
     const body = await upstream.text();
     const res = buildProxyResponse(upstream, body);
-    attachAnonCookieFromBody(res, body, "refresh-fallback");
+    attachAnonCookieFromBody(res, body, "refresh-fallback", secureCookies);
     res.cookies.delete("access_token");
 
     console.log("[BFF_CHAT_RETURN] refresh-fallback-delete-access");
@@ -172,7 +159,7 @@ export async function POST(req: NextRequest) {
   const body = await upstream.text();
   const res = buildProxyResponse(upstream, body);
 
-  attachAnonCookieFromBody(res, body, "normal");
+  attachAnonCookieFromBody(res, body, "normal", secureCookies);
 
   console.log("[BFF_CHAT_RETURN] normal");
   return res;

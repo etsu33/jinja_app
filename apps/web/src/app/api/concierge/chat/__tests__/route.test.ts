@@ -5,6 +5,8 @@ import { NextRequest } from "next/server";
 
 const djFetchMock = vi.fn();
 
+vi.mock("server-only", () => ({}));
+
 vi.mock("@/lib/server/backend", () => ({
   djFetch: (...args: unknown[]) => djFetchMock(...args),
 }));
@@ -93,8 +95,11 @@ describe("/api/concierge/chat BFF contract", () => {
     expect(cookies).toContain("concierge_anon_id=anon-cookie-value");
     expect(cookies).toContain("HttpOnly");
     expect(cookies).toContain("Path=/");
-    expect(cookies).toMatch(/SameSite=None/i);
-    expect(cookies).toMatch(/Secure/i);
+    // Web origin 側のコピーは同一オリジンでしか読み戻さないため Lax。
+    // Secure は request（production + https）に従うので、テスト環境では付かない。
+    // 契約の根拠は lib/server/authCookies.ts のコメントを参照。
+    expect(cookies).toMatch(/SameSite=lax/i);
+    expect(cookies).not.toMatch(/;\s*Secure/i);
     expect(JSON.stringify(log.mock.calls)).not.toContain("anon-cookie-value");
     expect(log).toHaveBeenCalledWith("[BFF_ANON_COOKIE_SET_RESULT]", { phase: "normal", attached: true });
     log.mockRestore();

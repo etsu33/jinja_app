@@ -4,6 +4,7 @@ import "server-only";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getDjangoOrigin } from "@/lib/server/backend";
+import { isSecureRequest, setAccessTokenCookie } from "@/lib/server/authCookies";
 
 
 
@@ -31,16 +32,47 @@ function getUpstreamSetCookies(upstream: Response): string[] {
   return single ? [single] : [];
 }
 
-let refreshInFlight: Promise<string | null> | null = null;
+/**
+ * 進行中の token refresh を「その refresh token 単位で」束ねる。
+ *
+ * ここが module scope の単一 Promise だったとき、1 つの server instance が
+ * 複数ユーザーのリクエストを並行処理する環境（本番の Next.js route handler が
+ * まさにそれ）では、後から入ったユーザーが先行ユーザーの access token を
+ * そのまま受け取り、Set-Cookie まで書かれていた
+ * （docs/audit/beta-core-flow-e2e-audit.md E2E-001）。
+ *
+ * key は refresh token の文字列そのものを使う。
+ * - 異なるユーザーが同じ refresh JWT を持つことはない（jti / user_id を含む）
+ *   ため、この key は認証 identity の境界そのものになる。
+ * - digest ではなく完全一致の文字列を key にすることで、ハッシュ衝突による
+ *   identity 混線が原理的に起こり得ない。
+ *
+ * entry は成功・失敗・reject のいずれでも settle 時点で必ず取り除く。
+ * したがって「あるユーザーの refresh 失敗」が Map に残って他のユーザーへ
+ * 観測されることはなく、同一 identity の次のリクエストは再試行できる。
+ */
+const refreshInFlightByToken = new Map<string, Promise<string | null>>();
 
 async function refreshAccessViaBackendMutex(refresh: string): Promise<string | null> {
-  if (refreshInFlight) return refreshInFlight;
+  const inFlight = refreshInFlightByToken.get(refresh);
+  if (inFlight) return inFlight;
 
-  refreshInFlight = refreshAccessViaBackend(refresh).finally(() => {
-    refreshInFlight = null;
+  const pending: Promise<string | null> = refreshAccessViaBackend(refresh).finally(() => {
+    // 自分が登録した entry だけを消す（同じ token で後続の refresh が
+    // 既に登録し直している可能性があるため）。
+    if (refreshInFlightByToken.get(refresh) === pending) {
+      refreshInFlightByToken.delete(refresh);
+    }
   });
 
-  return refreshInFlight;
+  refreshInFlightByToken.set(refresh, pending);
+
+  return pending;
+}
+
+/** テスト用。進行中の refresh を持ち越さずにケースを独立させるため。 */
+export function __resetRefreshInFlightForTest(): void {
+  refreshInFlightByToken.clear();
 }
 
 async function refreshAccessViaBackend(refresh: string): Promise<string | null> {
@@ -160,7 +192,12 @@ export async function bffFetchWithAuthFromReq(
   let upstream = await doFetch(preRefreshedAccess);
 
   let newAccess: string | null = null;
-  if ((upstream.status === 401 || upstream.status === 403) && retryOn401 && refresh) {
+  // 401 だけが「この access token はもう受け付けられない」を意味する。
+  // 403 は認証済み principal に対する認可判断（例: 非管理者が IsAdminUser の
+  // view を叩いた）であり、refresh しても結果は変わらない。retry すると
+  // backend 往復が増え、不要な token 再発行まで起きる
+  // （docs/audit/beta-core-flow-e2e-audit.md E2E-023）。
+  if (upstream.status === 401 && retryOn401 && refresh) {
     newAccess = await refreshAccessViaBackendMutex(refresh);
     if (newAccess) upstream = await doFetch(newAccess);
   }
@@ -195,12 +232,8 @@ export async function bffFetchWithAuthFromReq(
 
   const tokenToSet = newAccess ?? preRefreshedAccess;
   if (tokenToSet && setAccessCookie) {
-    res.cookies.set("access_token", tokenToSet, {
-      httpOnly: true,
-      sameSite: "lax",
-      path: "/",
-      maxAge: 60 * 60,
-    });
+    // 属性は /api/auth/login と同じ契約（Secure を含む）を共有する。
+    setAccessTokenCookie(res, tokenToSet, { secure: isSecureRequest(req) });
   }
 
   return res;
