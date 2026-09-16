@@ -178,15 +178,22 @@ FULL_SEED_PRODUCTION_APPLY = BLOCKED
 W0_DB02_POSITION = PASS
 ```
 
-正本:
+Position Resolution Record:
 `docs/audit/shrine-position/sapporo-suwa-jinja-position-resolution.md`
 （`STATUS = CLOSED` / `POSITION_GATE = PASS` /
 `PRODUCTION_POSITION_CORRECTION = PASS`）
 
 **本 Audit では Position を再判断しない。** 採用 Position・Position Source・
 `position_source_type` のいずれも本書では変更・再評価せず、上記 Record を
-参照するにとどめる。Position 採用の意味・Source 要件・Gate の Contract は
-`docs/knowledge/shrine-position-contract.md` が持つ。
+参照するにとどめる。
+
+責務の区別:
+
+| 対象 | 責務 |
+|---|---|
+| `docs/knowledge/shrine-position-contract.md` | Position の採用意味・Source 要件・Gate の **authority** |
+| `docs/audit/shrine-position/sapporo-suwa-jinja-position-resolution.md` | `wave0-010` について採用した Position と判断履歴の **point-in-time / resolution record** |
+| Seed / Candidate Master | 採用済みの **Current Position data** |
 
 他4社（`wave0-007` / `008` / `009` / `011`）の Position は Source Packet Freeze
 （`docs/audit/shrine-expansion-wave0-db02-source-packet-freeze.md`）の値から
@@ -450,5 +457,5 @@ W0_DB02_CORE_READY = NOT_YET_DETERMINED
 - `docs/knowledge/shrine-expansion-candidate-master-contract.md`（Candidate lifecycle の Contract）
 - `docs/audit/shrine-expansion-wave0-db02-source-packet-freeze.md`（2026-09-15 凍結記録）
 - `docs/audit/shrine-expansion-wave0-db02-isolated-preflight.md`（Phase 6 実測記録）
-- `docs/audit/shrine-position/sapporo-suwa-jinja-position-resolution.md`（札幌諏訪神社 Position 正本）
+- `docs/audit/shrine-position/sapporo-suwa-jinja-position-resolution.md`（札幌諏訪神社 Position Resolution Record / 採用判断履歴）
 - `docs/knowledge/recommendation-eligibility-contract.md`（Recommendation eligibility の Contract）
