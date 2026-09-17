@@ -310,14 +310,43 @@ resolution_reusable             上記を満たし、かつ実際に再利用し
 `RESOLUTION_*_MISSING` は「どちらの経路が実際に使われるか」を決めた**後**に
 しか出さない。
 
+#### positive な AUTO_PASS 根拠は排他的
+
+`RESOLUTION_RECORD_REUSED` の意味を次に限定する。
+
+> **Resolution Record を fallback proof path として実際に使った。**
+
+したがって `PRIMARY_SOURCE_VERIFIED` が立っているときは
+`RESOLUTION_RECORD_REUSED` を**出さない**。evidence 経路が現在の position を
+独立に検証できている以上、record は使っていないからである。
+
+Resolution 再利用を使うのは次を**すべて**満たすときだけ。
+
+```text
+PrimaryPositionEvidence が現在の position を独立に検証していない
+resolution が有効な candidate である
+resolution の provenance が完備している
+より新しい矛盾 evidence が存在しない
+```
+
+履歴としての追跡可能性は出力の `existing_resolution_record` が担う。
+これは経路に関係なく常に populate される。
+
 #### 経路ごとの挙動
 
 | 状況 | 結果 |
 | --- | --- |
-| 有効な evidence なし + record 完備 | `RESOLUTION_RECORD_REUSED` → `AUTO_PASS` |
+| 有効な evidence なし + record 完備・一致 | `RESOLUTION_RECORD_REUSED` → `AUTO_PASS` |
 | 有効な evidence なし + record 不完全 | `RESOLUTION_*_MISSING` で fail closed |
-| **完全に有効な evidence あり + record 不完全** | **evidence 経路を独立に評価。`RESOLUTION_*_MISSING` は出さず、`REVIEW` / `HOLD` へ落とさない** |
+| 有効な evidence なし + record 座標食い違い | `RESOLUTION_RECORD_COORDINATE_MISMATCH` → `REVIEW` |
+| **有効な evidence あり + record 完備・一致** | **`PRIMARY_SOURCE_VERIFIED` のみ。`RESOLUTION_RECORD_REUSED` は出さない** |
+| **有効な evidence あり + record 不完全** | **evidence 経路を独立に評価。`RESOLUTION_*_MISSING` を出さず降格もしない** |
+| **有効な evidence あり + record 座標食い違い** | **`RESOLUTION_RECORD_COORDINATE_MISMATCH` を status に効かせない** |
 | evidence が record と矛盾 | `RESOLUTION_RECORD_REUSED` を出さない |
+
+**歴史的 record の座標食い違いで、検証済み evidence 経路を引き下げない。**
+`RESOLUTION_RECORD_COORDINATE_MISMATCH` は Resolution 経路に依存している
+ときにのみ status を駆動する。
 
 #### provenance 欠落時（Resolution 経路に依存している場合のみ）
 
@@ -349,8 +378,9 @@ MULTIPLE_POI_CANDIDATES
 これらは既に `HOLD` / `REVIEW` を生んでいるため、矛盾時に
 `RESOLUTION_*_MISSING` を重ねて出すことはしない。
 
-なお **座標不一致**（`RESOLUTION_RECORD_COORDINATE_MISMATCH`）は record が
-候補ですらないことを示す観測事実なので、evidence の有無に関わらず出す。
+なお **座標不一致**（`RESOLUTION_RECORD_COORDINATE_MISMATCH`）も、
+Resolution 経路に依存している場合にのみ出す。evidence 経路が独立に
+検証できているなら、過去の record の食い違いは status を駆動しない。
 
 > **freshness threshold は導入しない。**
 > 「verified_at が N 日より古ければ stale」という判定は行わない。

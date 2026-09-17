@@ -575,9 +575,11 @@ def evaluate(item: ShrinePositionAuditInput) -> ShrinePositionAuditResult:
     #
     #   resolution_candidate  : PASS + identity exact + Seed/Production 座標一致
     #   resolution_provenance_complete : record 自身の provenance が揃っている
-    #   resolution_reusable   : 上記を両方満たし、かつ実際に再利用してよい
+    #   resolution_coordinate_mismatch : record の採用座標が現在値と食い違う
+    #   resolution_reusable   : 実際に fallback proof path として使う
     resolution_candidate = False
     resolution_provenance_complete = False
+    resolution_coordinate_mismatch = False
     if resolution_is_pass and identity_is_exact and seed is not None and prod is not None:
         matches_seed = coordinates_equal(
             seed.latitude, resolution.adopted_latitude
@@ -586,8 +588,10 @@ def evaluate(item: ShrinePositionAuditInput) -> ShrinePositionAuditResult:
             prod.latitude, resolution.adopted_latitude
         ) and coordinates_equal(prod.longitude, resolution.adopted_longitude)
         if not (matches_seed and matches_prod):
-            # 座標不一致は record 経路の有無に関係なく観測事実として出す。
-            codes.add(RC_RESOLUTION_RECORD_COORDINATE_MISMATCH)
+            # 歴史的 record の座標食い違い。これも §5c まで code 化を遅延する。
+            # 現在の position を evidence 経路が独立に検証できているなら、
+            # 過去の record の食い違いで status を引き下げない。
+            resolution_coordinate_mismatch = True
         else:
             resolution_candidate = True
             resolution_provenance_complete = bool(
@@ -675,8 +679,22 @@ def evaluate(item: ShrinePositionAuditInput) -> ShrinePositionAuditResult:
     evidence_path_verified = RC_PRIMARY_SOURCE_VERIFIED in codes
     evidence_path_conflicting = bool(codes & RESOLUTION_CONFLICTING_EVIDENCE_CODES)
 
+    # positive な AUTO_PASS 根拠は **排他的**である。
+    #
+    # `RESOLUTION_RECORD_REUSED` は「Resolution Record を fallback proof path
+    # として実際に使った」という意味に限定する。evidence 経路が現在の position を
+    # 独立に検証できているなら record は使っていないので、その code は出さない。
+    # 履歴としての追跡可能性は出力の `existing_resolution_record` が担う。
     resolution_reusable = False
-    if resolution_candidate:
+    if evidence_path_verified:
+        # evidence 経路が単独で成立している。Resolution 経路は使わない。
+        # したがって RESOLUTION_RECORD_REUSED も RESOLUTION_*_MISSING も
+        # RESOLUTION_RECORD_COORDINATE_MISMATCH も status に効かせない。
+        pass
+    elif resolution_coordinate_mismatch:
+        # Resolution 経路に依存しているのに、record の採用座標が現在値と違う。
+        codes.add(RC_RESOLUTION_RECORD_COORDINATE_MISMATCH)
+    elif resolution_candidate:
         if evidence_path_conflicting:
             # より新しい evidence が矛盾している。再利用したと主張しない。
             # 矛盾自体が既に HOLD / REVIEW を生んでいるので code は足さない。
@@ -684,7 +702,7 @@ def evaluate(item: ShrinePositionAuditInput) -> ShrinePositionAuditResult:
         elif resolution_provenance_complete:
             resolution_reusable = True
             codes.add(RC_RESOLUTION_RECORD_REUSED)
-        elif not evidence_path_verified:
+        else:
             # Resolution 経路に依存しているのに provenance が追跡できない。
             # ここで初めて fail closed する（fallback は発明しない）。
             if not resolution.position_source_url:
@@ -693,8 +711,6 @@ def evaluate(item: ShrinePositionAuditInput) -> ShrinePositionAuditResult:
                 codes.add(RC_RESOLUTION_SOURCE_TYPE_MISSING)
             if not resolution.verified_at:
                 codes.add(RC_RESOLUTION_VERIFIED_AT_MISSING)
-        # evidence_path_verified かつ record が不完全な場合は、evidence 経路が
-        # 単独で成立しているので RESOLUTION_*_MISSING を出さない。
 
     # --- 5d. 出力 provenance の確定 ---------------------------------------
     #

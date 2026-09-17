@@ -1607,8 +1607,14 @@ def test_resolution_candidate_and_reusable_are_separate_concepts():
     assert audit.RC_RESOLUTION_VERIFIED_AT_MISSING not in with_evidence.reason_codes
 
 
-def test_resolution_coordinate_mismatch_is_reported_regardless_of_evidence():
-    """座標不一致は観測事実として、evidence の有無に関わらず出す。"""
+def test_resolution_coordinate_mismatch_does_not_downgrade_verified_evidence():
+    """歴史的 record の座標食い違いで、検証済み evidence 経路を引き下げない。
+
+    以前はこの code を evidence の有無に関わらず出していたため、古い record が
+    有効な PrimaryPositionEvidence 経路を REVIEW へ落としていた。
+    現在の position を evidence が独立に検証できているなら、過去の record の
+    食い違いは status を駆動しない。
+    """
     mismatched = _resolution(adopted_latitude=35.9, adopted_longitude=139.9)
     result = audit.evaluate(
         _item(
@@ -1617,5 +1623,142 @@ def test_resolution_coordinate_mismatch_is_reported_regardless_of_evidence():
             existing_resolution=mismatched,
         )
     )
-    assert audit.RC_RESOLUTION_RECORD_COORDINATE_MISMATCH in result.reason_codes
+    assert result.audit_status == audit.AUTO_PASS
+    assert audit.RC_PRIMARY_SOURCE_VERIFIED in result.reason_codes
+    assert audit.RC_RESOLUTION_RECORD_COORDINATE_MISMATCH not in result.reason_codes
+    assert audit.RC_RESOLUTION_RECORD_REUSED not in result.reason_codes
+    # 履歴としての追跡可能性は保持する。
+    assert result.existing_resolution_record == mismatched.record_path
+
+
+# ---------------------------------------------------------------------------
+# Review fix: exclusive positive proof paths + mismatch isolation
+#
+# RESOLUTION_RECORD_REUSED は「Resolution Record を fallback proof path として
+# 実際に使った」という意味に限定する。evidence 経路が現在の position を独立に
+# 検証できているなら record は使っていないので出さない。履歴としての
+# 追跡可能性は existing_resolution_record が担う。
+# ---------------------------------------------------------------------------
+
+
+def test_case_a_valid_evidence_with_mismatched_resolution_is_auto_pass():
+    """A: 有効な evidence + 古い/食い違う record -> AUTO_PASS。"""
+    mismatched = _resolution(adopted_latitude=35.9, adopted_longitude=139.9)
+    result = audit.evaluate(
+        _item(
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=_full_evidence(),
+            existing_resolution=mismatched,
+        )
+    )
+    assert result.audit_status == audit.AUTO_PASS
+    assert audit.RC_PRIMARY_SOURCE_VERIFIED in result.reason_codes
+    assert audit.RC_RESOLUTION_RECORD_REUSED not in result.reason_codes
+    assert audit.RC_RESOLUTION_RECORD_COORDINATE_MISMATCH not in result.reason_codes
+    assert result.existing_resolution_record == mismatched.record_path
+
+
+def test_case_b_no_valid_evidence_with_mismatched_resolution_is_review():
+    """B: 有効な evidence なし + 食い違う record -> REVIEW。
+
+    Spreadsheet は traceable な source を持つ（`_sheet()`）。持たない
+    `_bare_sheet()` だと `PRIMARY_SOURCE_MISSING` が別途 HOLD を立ててしまい、
+    mismatch が status を駆動しているかを測れない。
+    """
+    mismatched = _resolution(adopted_latitude=35.9, adopted_longitude=139.9)
+    result = audit.evaluate(
+        _item(
+            spreadsheet=_sheet(),
+            primary_position_evidence=None,
+            existing_resolution=mismatched,
+        )
+    )
     assert result.audit_status == audit.REVIEW
+    assert audit.RC_RESOLUTION_RECORD_COORDINATE_MISMATCH in result.reason_codes
+    assert audit.RC_RESOLUTION_RECORD_REUSED not in result.reason_codes
+
+
+def test_case_c_valid_evidence_with_matching_complete_resolution_is_exclusive():
+    """C: 有効な evidence + 一致する完備 record -> PRIMARY_SOURCE_VERIFIED のみ。"""
+    record = _resolution()
+    result = audit.evaluate(
+        _item(
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=_full_evidence(),
+            existing_resolution=record,
+        )
+    )
+    assert result.audit_status == audit.AUTO_PASS
+    assert audit.RC_PRIMARY_SOURCE_VERIFIED in result.reason_codes
+    assert audit.RC_RESOLUTION_RECORD_REUSED not in result.reason_codes
+    # 履歴としての追跡可能性は残る。
+    assert result.existing_resolution_record == record.record_path
+    # 出力 provenance は evidence 側。
+    assert result.primary_source_url == "https://example.invalid/shrine/access"
+    assert result.verified_at == "2026-09-17"
+
+
+def test_case_d_no_evidence_with_matching_complete_resolution_is_reused():
+    """D: evidence なし + 一致する完備 record -> RESOLUTION_RECORD_REUSED。"""
+    record = _resolution()
+    result = audit.evaluate(
+        _item(
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=None,
+            existing_resolution=record,
+        )
+    )
+    assert result.audit_status == audit.AUTO_PASS
+    assert audit.RC_RESOLUTION_RECORD_REUSED in result.reason_codes
+    assert audit.RC_PRIMARY_SOURCE_VERIFIED not in result.reason_codes
+    assert result.existing_resolution_record == record.record_path
+    # 出力 provenance は record 側。
+    assert result.primary_source_url == "https://example.invalid/authority/access"
+    assert result.verified_at == "2026-09-16"
+
+
+def test_positive_proof_codes_are_mutually_exclusive():
+    """PRIMARY_SOURCE_VERIFIED と RESOLUTION_RECORD_REUSED は同時に立たない。"""
+    combinations = [
+        (_full_evidence(), _resolution()),
+        (_full_evidence(), _resolution(verified_at=None)),
+        (None, _resolution()),
+        (None, None),
+    ]
+    for evidence, record in combinations:
+        result = audit.evaluate(
+            _item(
+                spreadsheet=_bare_sheet(),
+                primary_position_evidence=evidence,
+                existing_resolution=record,
+            )
+        )
+        positives = {
+            audit.RC_PRIMARY_SOURCE_VERIFIED,
+            audit.RC_RESOLUTION_RECORD_REUSED,
+        } & set(result.reason_codes)
+        assert len(positives) <= 1, (evidence, record, result.reason_codes)
+
+
+def test_incomplete_resolution_with_valid_evidence_emits_no_resolution_codes():
+    """指示3: 「不完全 record + 完全 evidence -> REUSED」は誤り。
+
+    evidence 経路が単独で成立している場合、Resolution 由来の code は
+    positive（REUSED）も negative（*_MISSING / MISMATCH）も出さない。
+    """
+    result = audit.evaluate(
+        _item(
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=_full_evidence(),
+            existing_resolution=_resolution(
+                position_source_url=None,
+                position_source_type=None,
+                verified_at=None,
+            ),
+        )
+    )
+    assert result.audit_status == audit.AUTO_PASS
+    resolution_codes = [
+        code for code in result.reason_codes if code.startswith("RESOLUTION_")
+    ]
+    assert resolution_codes == []
