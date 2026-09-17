@@ -70,6 +70,11 @@ scripts/migration_safety/readonly_query.sh \
 出力 field: `id` / `name_jp` / `address` / `latitude` / `longitude` / `kind` /
 `place_ref_id`。
 
+`place_ref_id` は `PlaceRef.place_id`（`CharField(primary_key=True)`）への
+FK 値であり、**Google Place ID の文字列**である。内部の連番 id ではない。
+したがって Spreadsheet の `google_place_id` と直接突合でき、join rule 2
+（place_id corroboration）の Production 側入力として使う。
+
 ### Spreadsheet snapshot
 
 `--spreadsheet-snapshot PATH` で明示的に受け取る（`.json` / `.csv`）。
@@ -78,10 +83,37 @@ live Google Sheets 認証は監査 core の要件にしない。
 運用データを含む snapshot は、既存の repository policy が明示的に許可しない限り
 **commit しない**。本 PR も snapshot を commit していない。
 
-### Primary Position Evidence の live retrieval
+### Primary Position Evidence snapshot
 
-本実装は evidence を**データとして受け取る**構造にしてあり、live fetch を
-core に埋め込んでいない。live retrieval を実装する場合の制約:
+`--primary-evidence-snapshot PATH` で明示的に受け取る（`.json` / `.csv`）。
+**live retrieval は行わない。** file 入力のみである。
+
+各行は次の field を持つ。
+
+```text
+status                 OK / NOT_RETRIEVED / FETCH_FAILED / PARSE_FAILED / REDIRECTED
+source_type
+source_url
+source_name
+source_address
+latitude
+longitude
+entity_match           SAME / DIFFERENT / NON_SHRINE / AMBIGUOUS
+poi_candidate_count
+```
+
+対象 Shrine は次のいずれかで指す（両方あっても良い）。
+
+- `candidate_id`
+- verified shrine identity = `official_name` + `official_address`
+
+どちらも無い行は identity を推測せず `AuditError` にする（fail closed）。
+未知の `status` も拒否する。
+
+`build_inputs()` はこの snapshot から `primary_position_evidence` を実際に
+埋める。CLI から評価まで一本で到達する経路である。
+
+将来 live retrieval を足す場合の制約:
 
 - 取得してよいのは明示された `position_source_url` / `official_source_url` のみ
 - 検索エンジンによる広域探索を行わない
@@ -150,12 +182,39 @@ HOLD       必要な evidence または identity certainty が欠けている
 - Spreadsheet identity が `JOIN_EXACT` または `JOIN_CORROBORATED`
 - 有効な primary position source が存在する
 - primary source が取得可能、または有効な現行 Resolution Record で代替されている
-- source が指す entity が同一 Shrine であると示せる
+- source が指す entity が **同一 Shrine であると示せる**
+  （`evidence.status == "OK"` かつ `evidence.entity_match == "SAME"`）
 - primary 座標が追跡可能
 - Seed と Production の座標が同値
 - Production 座標が採用済み / 検証済み position と一致する
 - identity / address / coordinate に説明不能な conflict が無い
 - wrong-entity / non-shrine evidence が無い
+
+### entity 同定は fail closed
+
+`PRIMARY_SOURCE_VERIFIED` は次を**すべて**満たすときにしか出さない。
+
+```text
+evidence.status       == "OK"
+evidence.entity_match == "SAME"   （大小文字・前後空白は無視）
+latitude / longitude  が追跡可能
+```
+
+`entity_match` が未設定 / 空 / 未知の値のときは「同一だと示せていない」の
+であって「同一である」ではない。したがって:
+
+| `entity_match` | 扱い |
+| --- | --- |
+| `SAME` | `PRIMARY_SOURCE_VERIFIED`（AUTO_PASS 資格あり） |
+| `DIFFERENT` | `PRIMARY_SOURCE_WRONG_ENTITY` → `HOLD` |
+| `NON_SHRINE` | `PRIMARY_SOURCE_NON_SHRINE_ENTITY` → `HOLD` |
+| `AMBIGUOUS` | `PRIMARY_ENTITY_AMBIGUOUS` → `REVIEW` |
+| None / 空 | `IDENTITY_EVIDENCE_MISSING` → `HOLD` |
+| 上記以外の未知値 | `PRIMARY_ENTITY_AMBIGUOUS` → `REVIEW` |
+
+Position Contract §Source Adoption Rule の「primary position source が
+同一Shrineの POI / place_of_worship / navigation target を示している」を
+満たさないまま AUTO_PASS へ倒れることを防ぐ。
 
 ### 既存 PASS Resolution Record の再利用
 
@@ -232,6 +291,7 @@ python3 scripts/migration_safety/guard.py check-readonly-sql \
 python scripts/audit_shrine_positions_v2.py \
   --production-snapshot PATH \
   --spreadsheet-snapshot PATH \
+  --primary-evidence-snapshot PATH \
   --output-json PATH \
   --output-md PATH \
   [--candidate-ids wave0-007 wave0-008 ...] \
@@ -280,9 +340,13 @@ human map QA で既に見えている差異を再現・表面化できるかを�
 本 PR の pilot は **input-incomplete モード**で実行した。
 
 ```text
-production snapshot  = 未取得（本実行環境に Production credential が存在しない）
-spreadsheet snapshot = 未取得（運用データを commit しない方針）
+production snapshot       = 未取得（本実行環境に Production credential が存在しない）
+spreadsheet snapshot      = 未取得（運用データを commit しない方針）
+primary evidence snapshot = 未取得（一次位置資料の検証済み export が未供給）
 ```
+
+CLI は3つとも消費できる（`--production-snapshot` / `--spreadsheet-snapshot` /
+`--primary-evidence-snapshot`）。欠けているのは入力であって経路ではない。
 
 Production snapshot の取得は sanctioned な read-only credential bridge を
 必要とし、監査の設計上**取得と評価は別ステップ**である。したがって本 PR で
@@ -320,8 +384,11 @@ HOLD      = 5
 ### 注意: この pilot は triage の実質を示していない
 
 `HOLD` × 5 は「5社の position が悪い」という意味では**ない**。
-「Production / Spreadsheet の入力が無いので判定できない」という意味である。
-この区別を取り違えてはならない。
+「Production / Spreadsheet / Primary evidence の入力が無いので判定できない」
+という意味である。この区別を取り違えてはならない。
+
+**実世界の discrepancy pilot は完了していない。** 3つの snapshot が供給される
+までは、human map QA で見えている差異を再現できるかは未検証である。
 
 実質的な pilot は、Mother Ship 側で snapshot を取得してから再実行する。
 
@@ -335,6 +402,7 @@ python scripts/audit_shrine_positions_v2.py \
   --batch W0-DB02 \
   --production-snapshot /path/outside/repo/production-position-snapshot.txt \
   --spreadsheet-snapshot /path/outside/repo/spreadsheet-snapshot.json \
+  --primary-evidence-snapshot /path/outside/repo/primary-evidence-snapshot.json \
   --output-json /path/outside/repo/w0-db02-pilot.json \
   --output-md   /path/outside/repo/w0-db02-pilot.md
 ```
@@ -348,10 +416,13 @@ Resolution Record 再利用経路が評価される。
 
 ## 11. 既知の限界
 
-1. **Primary evidence の live retrieval は未実装。**
-   evidence はデータとして受け取る構造のみを提供している。取得器を足すまで、
-   Resolution Record で代替できない行は `PRIMARY_EVIDENCE_NOT_RETRIEVED`
-   （`REVIEW`）または `PRIMARY_SOURCE_MISSING`（`HOLD`）に倒れる。
+1. **Primary evidence の live retrieval は未実装（意図的）。**
+   evidence は `--primary-evidence-snapshot` の file 入力としてのみ受け取る。
+   snapshot が供給されない行は、Resolution Record で代替できない限り
+   `PRIMARY_EVIDENCE_NOT_RETRIEVED`（`REVIEW`）または
+   `PRIMARY_SOURCE_MISSING`（`HOLD`）に倒れる。
+   evidence の収集そのもの（誰がどう検証して `entity_match` を決めるか）は
+   本監査の外側にある運用手順である。
 
 2. **本 PR の pilot は入力不足のため triage の実質を示していない。**（§10）
 
@@ -359,11 +430,11 @@ Resolution Record 再利用経路が評価される。
    丁目 / 番 / 番地 / 号 の表記揺れは同一視されず、差分として表面化する。
    過剰正規化より fail closed を選んだ結果であり、`REVIEW` が増える方向に効く。
 
-4. **`google_place_id` による corroboration は Production 側 place_id を要求する。**
-   現行 snapshot は `place_ref_id`（内部 FK）までしか持たず、外部 place_id を
-   持たない。したがって join rule 2 は Spreadsheet 側に place_id があっても
-   Production 側の値が供給されるまで発火しない。`--production-place-id` 相当の
-   入力経路は未実装。
+4. **`google_place_id` corroboration は Production 行に `place_ref_id` がある場合のみ効く。**
+   `place_ref_id` は `PlaceRef.place_id`（Google Place ID 文字列）であり、
+   snapshot から join rule 2 へ配線済みである。ただし `place_ref` が未設定の
+   Shrine 行では `None` になるため、その行では rule 2 は発火せず rule 3 / 4 へ
+   落ちる。Production 上でどれだけの行が `place_ref` を持つかは未計測。
 
 5. **`AMBIGUOUS_SAME_NAME_SHRINE` / `IDENTITY_EVIDENCE_MISSING` /
    `CORROBORATION_CONFLICT` / `IDENTITY_NORMALIZATION_REQUIRED` は

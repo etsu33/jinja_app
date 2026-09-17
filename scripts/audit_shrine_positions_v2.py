@@ -316,7 +316,9 @@ class ProductionPosition:
     latitude: float | None = None
     longitude: float | None = None
     kind: str | None = None
-    place_ref_id: int | None = None
+    # `temples_shrine.place_ref_id` は `PlaceRef.place_id`（CharField primary key）
+    # への FK 値であり、Google Place ID の文字列である。内部の連番 id ではない。
+    place_ref_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -543,18 +545,35 @@ def evaluate(item: ShrinePositionAuditInput) -> ShrinePositionAuditResult:
     evidence_status = evidence.status if evidence is not None else "NOT_RETRIEVED"
 
     if evidence is not None and evidence_status == "OK":
-        # entity 同定
-        if evidence.entity_match == "DIFFERENT":
+        # --- entity 同定（fail closed）---
+        #
+        # `PRIMARY_SOURCE_VERIFIED` は「その source が **同一 Shrine** を指すと
+        # 示せた」ときにしか出さない。Position Contract §Source Adoption Rule の
+        # 「primary position source が同一Shrineの POI / place_of_worship /
+        # navigation target を示している」を満たさないまま AUTO_PASS へ倒れるのを
+        # 防ぐ。entity_match が未設定・空・未知の値のときは「同一と示せていない」
+        # のであって「同一である」ではない。
+        entity_match = (evidence.entity_match or "").strip().upper()
+
+        if entity_match == "DIFFERENT":
             codes.add(RC_PRIMARY_SOURCE_WRONG_ENTITY)
-        elif evidence.entity_match == "NON_SHRINE":
+        elif entity_match == "NON_SHRINE":
             codes.add(RC_PRIMARY_SOURCE_NON_SHRINE_ENTITY)
-        elif evidence.entity_match == "AMBIGUOUS":
+        elif entity_match == "AMBIGUOUS":
             codes.add(RC_PRIMARY_ENTITY_AMBIGUOUS)
+        elif entity_match == "":
+            # entity 同定の evidence 自体が無い -> HOLD。
+            codes.add(RC_IDENTITY_EVIDENCE_MISSING)
+        elif entity_match != "SAME":
+            # 未知の値を SAME と解釈しない。人間の解釈へ回す。
+            codes.add(RC_PRIMARY_ENTITY_AMBIGUOUS)
+
         if (evidence.poi_candidate_count or 0) > 1:
             codes.add(RC_MULTIPLE_POI_CANDIDATES)
+
         if evidence.latitude is None or evidence.longitude is None:
             codes.add(RC_PRIMARY_COORDINATE_UNTRACEABLE)
-        else:
+        elif entity_match == "SAME":
             codes.add(RC_PRIMARY_SOURCE_VERIFIED)
             # primary 座標 vs Production 座標。差があれば REVIEW（自動採用しない）。
             if prod is not None and not (
@@ -732,7 +751,7 @@ def load_production_snapshot(path: Path) -> list[dict[str, Any]]:
                 "latitude": _as_float(row.get("latitude")),
                 "longitude": _as_float(row.get("longitude")),
                 "kind": row.get("kind"),
-                "place_ref_id": row.get("place_ref_id"),
+                "place_ref_id": _as_str(row.get("place_ref_id")),
             }
         )
     return rows
@@ -802,6 +821,94 @@ def load_spreadsheet_snapshot(path: Path) -> list[SpreadsheetRow]:
         for row in payload
         if isinstance(row, dict)
     ]
+
+
+_EVIDENCE_STATUSES = frozenset(
+    {"OK", "NOT_RETRIEVED", "FETCH_FAILED", "PARSE_FAILED", "REDIRECTED"}
+)
+
+
+def _evidence_from_mapping(row: dict[str, Any]) -> PrimaryPositionEvidence:
+    status = (_as_str(row.get("status")) or "NOT_RETRIEVED").upper()
+    if status not in _EVIDENCE_STATUSES:
+        raise AuditError(
+            f"unknown primary evidence status {status!r}; "
+            f"expected one of {sorted(_EVIDENCE_STATUSES)}"
+        )
+    count = row.get("poi_candidate_count")
+    return PrimaryPositionEvidence(
+        status=status,
+        source_type=_as_str(row.get("source_type")),
+        source_url=_as_str(row.get("source_url")),
+        source_name=_as_str(row.get("source_name")),
+        source_address=_as_str(row.get("source_address")),
+        latitude=_as_float(row.get("latitude")),
+        longitude=_as_float(row.get("longitude")),
+        entity_match=_as_str(row.get("entity_match")),
+        poi_candidate_count=(None if count in (None, "") else int(count)),
+    )
+
+
+def load_primary_evidence_snapshot(
+    path: Path,
+) -> tuple[dict[str, PrimaryPositionEvidence], dict[tuple[str, str], PrimaryPositionEvidence]]:
+    """Primary Position Evidence snapshot（JSON / CSV）を read-only で読む。
+
+    本 PR では **live retrieval を行わない**。evidence は明示的な file 入力
+    としてのみ受け取る（検索エンジンによる広域探索は導入しない）。
+
+    各行は次のいずれかで対象 Shrine を指す。両方あっても良い。
+
+    * `candidate_id`
+    * verified shrine identity = `official_name` + `official_address`
+
+    どちらも無い行は identity を推測せず `AuditError` にする（fail closed）。
+
+    戻り値は (candidate_id 索引, (name, address) 索引)。
+    """
+    if not path.exists():
+        raise AuditError(f"primary evidence snapshot not found: {path}")
+
+    text = path.read_text(encoding="utf-8")
+    if path.suffix.lower() == ".csv":
+        payload: list[dict[str, Any]] = [dict(row) for row in csv.DictReader(text.splitlines())]
+    else:
+        decoded = json.loads(text)
+        if isinstance(decoded, dict):
+            decoded = decoded.get("rows", [])
+        if not isinstance(decoded, list):
+            raise AuditError(
+                "primary evidence snapshot must decode to a list (or {'rows': [...]})"
+            )
+        payload = [row for row in decoded if isinstance(row, dict)]
+
+    by_candidate: dict[str, PrimaryPositionEvidence] = {}
+    by_identity: dict[tuple[str, str], PrimaryPositionEvidence] = {}
+
+    for index, row in enumerate(payload):
+        evidence = _evidence_from_mapping(row)
+        candidate_id = _as_str(row.get("candidate_id"))
+        official_name = _as_str(row.get("official_name"))
+        official_address = _as_str(row.get("official_address"))
+
+        if not candidate_id and not (official_name and official_address):
+            raise AuditError(
+                f"primary evidence row {index} has neither candidate_id nor "
+                "official_name + official_address; identity は推測しない"
+            )
+        if candidate_id:
+            if candidate_id in by_candidate:
+                raise AuditError(
+                    f"duplicate primary evidence for candidate_id {candidate_id!r}"
+                )
+            by_candidate[candidate_id] = evidence
+        if official_name and official_address:
+            key = (official_name, official_address)
+            if key in by_identity:
+                raise AuditError(f"duplicate primary evidence for identity {key!r}")
+            by_identity[key] = evidence
+
+    return by_candidate, by_identity
 
 
 def load_candidate_master(path: Path = CANDIDATE_MASTER_PATH) -> list[dict[str, Any]]:
@@ -999,6 +1106,9 @@ def build_inputs(
     spreadsheet_rows: Sequence[SpreadsheetRow] | None,
     candidates: Sequence[dict[str, Any]],
     resolution_records: dict[str, ExistingResolution],
+    primary_evidence_by_candidate: dict[str, PrimaryPositionEvidence] | None = None,
+    primary_evidence_by_identity: dict[tuple[str, str], PrimaryPositionEvidence]
+    | None = None,
     candidate_ids: Sequence[str] | None = None,
     batch: str | None = None,
 ) -> list[ShrinePositionAuditInput]:
@@ -1021,6 +1131,18 @@ def build_inputs(
     selected.sort(key=lambda row: str(row.get("candidate_id")))
 
     seed_index = {(row["name_jp"], row["address"]): row for row in seed_rows}
+    evidence_by_candidate = primary_evidence_by_candidate or {}
+    evidence_by_identity = primary_evidence_by_identity or {}
+
+    def _evidence_for(
+        candidate_id: str | None, official_name: str | None, official_address: str | None
+    ) -> PrimaryPositionEvidence | None:
+        """candidate_id を優先し、無ければ verified identity で引く。"""
+        if candidate_id and candidate_id in evidence_by_candidate:
+            return evidence_by_candidate[candidate_id]
+        if official_name and official_address:
+            return evidence_by_identity.get((official_name, official_address))
+        return None
 
     items: list[ShrinePositionAuditInput] = []
     for row in selected:
@@ -1078,7 +1200,11 @@ def build_inputs(
                 production_row,
                 seed_row,
                 spreadsheet_rows,
-                production_place_id=None,
+                # Production 側 place_ref_id は PlaceRef.place_id（= Google Place ID）
+                # の文字列。join rule 2（place_id corroboration）を実際に到達可能にする。
+                production_place_id=(
+                    production_row.get("place_ref_id") if production_row else None
+                ),
             )
 
         items.append(
@@ -1108,6 +1234,9 @@ def build_inputs(
                 spreadsheet=sheet_row,
                 spreadsheet_join_status=sheet_status,
                 spreadsheet_review_candidates=sheet_candidates,
+                primary_position_evidence=_evidence_for(
+                    candidate_id, official_name, official_address
+                ),
                 existing_resolution=resolution_records.get(candidate_id or ""),
                 seed_production_join_status=join_status,
                 production_snapshot_available=production_rows is not None,
@@ -1247,6 +1376,16 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default=None,
         help="Spreadsheet export snapshot（.json / .csv）。Evidence Index であり Ground Truth ではない。",
     )
+    parser.add_argument(
+        "--primary-evidence-snapshot",
+        type=Path,
+        default=None,
+        help=(
+            "Primary Position Evidence snapshot（.json / .csv）。"
+            "candidate_id または official_name + official_address で Shrine を指す。"
+            "live retrieval は行わない（file 入力のみ）。"
+        ),
+    )
     parser.add_argument("--output-json", type=Path, default=None, help="JSON report 出力先")
     parser.add_argument("--output-md", type=Path, default=None, help="Markdown summary 出力先")
     parser.add_argument(
@@ -1288,12 +1427,26 @@ def main(argv: Sequence[str] | None = None) -> int:
             "--spreadsheet-snapshot で渡すこと。"
         )
 
+    evidence_by_candidate: dict[str, PrimaryPositionEvidence] = {}
+    evidence_by_identity: dict[tuple[str, str], PrimaryPositionEvidence] = {}
+    if args.primary_evidence_snapshot is not None:
+        evidence_by_candidate, evidence_by_identity = load_primary_evidence_snapshot(
+            args.primary_evidence_snapshot
+        )
+    else:
+        unresolved.append(
+            "primary evidence snapshot 未指定。Position Contract 適合の一次位置資料を "
+            "--primary-evidence-snapshot で渡すこと。"
+        )
+
     items = build_inputs(
         seed_rows=seed_rows,
         production_rows=production_rows,
         spreadsheet_rows=spreadsheet_rows,
         candidates=candidates,
         resolution_records=resolution_records,
+        primary_evidence_by_candidate=evidence_by_candidate,
+        primary_evidence_by_identity=evidence_by_identity,
         candidate_ids=args.candidate_ids,
         batch=args.batch,
     )

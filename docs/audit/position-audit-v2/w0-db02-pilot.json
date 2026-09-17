@@ -150,6 +150,7 @@
   },
   "unresolved_input_dependencies": [
     "production snapshot 未指定。sql/shrine_position_audit_snapshot.sql を readonly_query.sh 経由で取得し --production-snapshot で渡すこと。",
-    "spreadsheet snapshot 未指定。Evidence Index を export し --spreadsheet-snapshot で渡すこと。"
+    "spreadsheet snapshot 未指定。Evidence Index を export し --spreadsheet-snapshot で渡すこと。",
+    "primary evidence snapshot 未指定。Position Contract 適合の一次位置資料を --primary-evidence-snapshot で渡すこと。"
   ]
 }

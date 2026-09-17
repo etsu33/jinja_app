@@ -830,3 +830,240 @@ def test_w0_db02_pilot_selects_exactly_five_candidates():
     results = [audit.evaluate(item) for item in items]
     assert all(r.audit_status == audit.HOLD for r in results)
     assert all(r.reason_codes for r in results)
+
+
+# ---------------------------------------------------------------------------
+# Review fix 1: Primary evidence snapshot が CLI pipeline から到達可能であること
+# ---------------------------------------------------------------------------
+
+CANDIDATE_ROW = {
+    "candidate_id": "wave0-999",
+    "candidate_name": "契約テスト神社",
+    "official_name": SEED_ROW["name_jp"],
+    "official_address": SEED_ROW["address"],
+    "build_batch": "W0-TEST",
+    "candidate_status": "IMPORTED",
+}
+
+
+def _build(**overrides):
+    """build_inputs() を最小の hermetic 入力で呼ぶ。"""
+    values = dict(
+        seed_rows=[SEED_ROW],
+        production_rows=[_production_row()],
+        spreadsheet_rows=[_sheet()],
+        candidates=[CANDIDATE_ROW],
+        resolution_records={},
+    )
+    values.update(overrides)
+    return audit.build_inputs(**values)
+
+
+def test_primary_evidence_snapshot_loads_json_and_csv(tmp_path):
+    json_path = tmp_path / "evidence.json"
+    json_path.write_text(
+        json.dumps(
+            [
+                {
+                    "candidate_id": "wave0-999",
+                    "status": "OK",
+                    "source_type": "shrine_official",
+                    "source_url": "https://example.invalid/access",
+                    "source_name": "契約テスト神社",
+                    "source_address": "東京都千代田区1-1",
+                    "latitude": 35.0,
+                    "longitude": 139.0,
+                    "entity_match": "SAME",
+                    "poi_candidate_count": 1,
+                }
+            ],
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    by_candidate, by_identity = audit.load_primary_evidence_snapshot(json_path)
+    assert by_candidate["wave0-999"].status == "OK"
+    assert by_candidate["wave0-999"].entity_match == "SAME"
+    assert by_candidate["wave0-999"].latitude == 35.0
+    assert by_identity == {}
+
+    csv_path = tmp_path / "evidence.csv"
+    csv_path.write_text(
+        "official_name,official_address,status,latitude,longitude,entity_match\n"
+        "契約テスト神社,東京都千代田区1-1,OK,35.0,139.0,SAME\n",
+        encoding="utf-8",
+    )
+    csv_by_candidate, csv_by_identity = audit.load_primary_evidence_snapshot(csv_path)
+    assert csv_by_candidate == {}
+    key = (SEED_ROW["name_jp"], SEED_ROW["address"])
+    assert csv_by_identity[key].entity_match == "SAME"
+
+
+def test_primary_evidence_snapshot_rejects_rows_without_identity(tmp_path):
+    """identity を推測しない（fail closed）。"""
+    path = tmp_path / "evidence.json"
+    path.write_text(
+        json.dumps([{"status": "OK", "latitude": 35.0, "longitude": 139.0}]),
+        encoding="utf-8",
+    )
+    with pytest.raises(audit.AuditError):
+        audit.load_primary_evidence_snapshot(path)
+
+
+def test_primary_evidence_snapshot_rejects_unknown_status(tmp_path):
+    path = tmp_path / "evidence.json"
+    path.write_text(
+        json.dumps([{"candidate_id": "wave0-999", "status": "TOTALLY_FINE"}]),
+        encoding="utf-8",
+    )
+    with pytest.raises(audit.AuditError):
+        audit.load_primary_evidence_snapshot(path)
+
+
+def test_build_inputs_populates_primary_evidence_by_candidate_id():
+    items = _build(
+        primary_evidence_by_candidate={"wave0-999": _evidence()},
+    )
+    assert len(items) == 1
+    assert items[0].primary_position_evidence is not None
+    assert items[0].primary_position_evidence.entity_match == "SAME"
+
+    # evidence が pipeline を通って AUTO_PASS まで到達する。
+    result = audit.evaluate(items[0])
+    assert result.audit_status == audit.AUTO_PASS
+    assert audit.RC_PRIMARY_SOURCE_VERIFIED in result.reason_codes
+
+
+def test_build_inputs_populates_primary_evidence_by_verified_identity():
+    key = (SEED_ROW["name_jp"], SEED_ROW["address"])
+    items = _build(primary_evidence_by_identity={key: _evidence()})
+    assert items[0].primary_position_evidence is not None
+    assert audit.evaluate(items[0]).audit_status == audit.AUTO_PASS
+
+
+def test_build_inputs_without_evidence_never_reaches_auto_pass():
+    items = _build()
+    assert items[0].primary_position_evidence is None
+    assert audit.evaluate(items[0]).audit_status != audit.AUTO_PASS
+
+
+def test_cli_exposes_primary_evidence_snapshot_flag():
+    parser = audit.build_arg_parser()
+    args = parser.parse_args(["--primary-evidence-snapshot", "/tmp/evidence.json"])
+    assert args.primary_evidence_snapshot == Path("/tmp/evidence.json")
+    # 既定では要求しない（ambient credential も file も必須にしない）。
+    assert parser.parse_args([]).primary_evidence_snapshot is None
+
+
+# ---------------------------------------------------------------------------
+# Review fix 2: place_ref_id = PlaceRef.place_id（Google Place ID 文字列）
+# ---------------------------------------------------------------------------
+
+
+def test_production_snapshot_keeps_place_ref_id_as_string(tmp_path):
+    path = tmp_path / "snapshot.json"
+    path.write_text(
+        json.dumps(
+            [
+                {
+                    "id": 500,
+                    "name_jp": SEED_ROW["name_jp"],
+                    "address": SEED_ROW["address"],
+                    "latitude": 35.0,
+                    "longitude": 139.0,
+                    "kind": "shrine",
+                    "place_ref_id": "ChIJ_prod_place",
+                }
+            ],
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    rows = audit.load_production_snapshot(path)
+    assert rows[0]["place_ref_id"] == "ChIJ_prod_place"
+    assert isinstance(rows[0]["place_ref_id"], str)
+
+
+def test_build_inputs_wires_place_id_corroboration_end_to_end():
+    """join rule 2 が build_inputs() 経由で実際に到達可能であること。
+
+    直接 join_production_to_spreadsheet() を呼ぶ unit test だけでは、
+    production_place_id=None のまま配線が死んでいても気づけない。
+    """
+    production = _production_row(place_ref_id="ChIJ_prod_place")
+    # address は不一致。place_id + name 一致だけで CORROBORATED になるべき。
+    sheet = _sheet(
+        row_id="unrelated-row-id",
+        official_name=SEED_ROW["name_jp"],
+        official_address="大阪府大阪市中央区9-9",
+        google_place_id="ChIJ_prod_place",
+    )
+    items = _build(production_rows=[production], spreadsheet_rows=[sheet])
+
+    assert items[0].spreadsheet_join_status == audit.SHEET_JOIN_CORROBORATED
+    assert items[0].spreadsheet is not None
+    assert items[0].production.place_ref_id == "ChIJ_prod_place"
+
+
+def test_build_inputs_place_id_mismatch_does_not_corroborate():
+    production = _production_row(place_ref_id="ChIJ_prod_place")
+    sheet = _sheet(
+        row_id="unrelated-row-id",
+        official_name="まったく別の神社",
+        official_address="北海道札幌市9-9",
+        google_place_id="ChIJ_other_place",
+    )
+    items = _build(production_rows=[production], spreadsheet_rows=[sheet])
+    assert items[0].spreadsheet_join_status not in (
+        audit.SHEET_JOIN_EXACT,
+        audit.SHEET_JOIN_CORROBORATED,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Review fix 3: entity_match が SAME でなければ AUTO_PASS にしない
+# ---------------------------------------------------------------------------
+
+
+def test_entity_match_same_is_eligible_for_auto_pass():
+    result = audit.evaluate(
+        _item(primary_position_evidence=_evidence(entity_match="SAME"))
+    )
+    assert result.audit_status == audit.AUTO_PASS
+    assert audit.RC_PRIMARY_SOURCE_VERIFIED in result.reason_codes
+
+
+def test_entity_match_none_never_auto_pass():
+    result = audit.evaluate(
+        _item(primary_position_evidence=_evidence(entity_match=None))
+    )
+    assert result.audit_status != audit.AUTO_PASS
+    assert audit.RC_PRIMARY_SOURCE_VERIFIED not in result.reason_codes
+    assert result.audit_status == audit.HOLD
+    assert audit.RC_IDENTITY_EVIDENCE_MISSING in result.reason_codes
+
+
+def test_entity_match_empty_never_auto_pass():
+    for empty in ("", "   "):
+        result = audit.evaluate(
+            _item(primary_position_evidence=_evidence(entity_match=empty))
+        )
+        assert result.audit_status != audit.AUTO_PASS, empty
+        assert audit.RC_PRIMARY_SOURCE_VERIFIED not in result.reason_codes, empty
+        assert audit.RC_IDENTITY_EVIDENCE_MISSING in result.reason_codes, empty
+
+
+def test_unknown_entity_match_value_is_not_treated_as_same():
+    result = audit.evaluate(
+        _item(primary_position_evidence=_evidence(entity_match="PROBABLY_OK"))
+    )
+    assert result.audit_status != audit.AUTO_PASS
+    assert audit.RC_PRIMARY_SOURCE_VERIFIED not in result.reason_codes
+    assert audit.RC_PRIMARY_ENTITY_AMBIGUOUS in result.reason_codes
+
+
+def test_entity_match_is_case_and_whitespace_insensitive():
+    result = audit.evaluate(
+        _item(primary_position_evidence=_evidence(entity_match=" same "))
+    )
+    assert result.audit_status == audit.AUTO_PASS
