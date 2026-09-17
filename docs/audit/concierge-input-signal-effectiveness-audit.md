@@ -310,9 +310,20 @@ score_total_ranked = score_element*w1 + score_need_rank_weighted*w2 + score_popu
 
 **重要**: 実用条件のうち **hard filter として動作するのは `goriyaku_tag_ids` のみ**である（`concierge_chat_candidates.py:213-216` の `qs.filter(goriyaku_tags__id__in=...).distinct()`）。参拝スタイル / 距離 / 参拝予定日 は候補を除外せず**加点**にとどまり、`crowd` / `duration_max_min` は消費者が無い。したがって UI の「候補の絞り込みとして使います」という説明は、**`goriyaku_tag_ids` については実装と一致し、それ以外の条件については一致しない**。
 
-> **候補生成が読む位置についての注記**
+> **候補生成が読む位置についての注記（`NON_ISSUE` / 意図された互換動作）**
 >
-> 候補生成は `request.data.get("goriyaku_tag_ids")`（**top-level のみ**）を読む（`api_views_concierge.py:413-414`）。canonicalization が `filters` から補完した値（`concierge_input_contract.py:104-115`）は候補生成側には渡らない。live UI は常に top-level と `filters` の両方へ同値を載せるため（§4・CIS-005）、**現行 UI からこの差は観測されない**。
+> 候補生成は `request.data.get("goriyaku_tag_ids")` を読む（`api_views_concierge.py:406,413-414`）。この読み取りは **top-level と `filters` の両方を拾う**。実行順序が次のとおりだからである。
+>
+> 1. `data = request.data or {}`（`api_views_concierge.py:495`）
+> 2. `normalize_concierge_request(data)`（`:511`）
+> 3. その内部で `_resolve_request_inputs_basic(data)` が **同じ `data` オブジェクトを in-place で変更**する（`concierge_input_contract.py:220` → `:91-115`）
+> 4. top-level の `goriyaku_tag_ids` が空で `filters.goriyaku_tag_ids` があれば、`data["goriyaku_tag_ids"]` に `filters` 側の値を**書き込む**（`:103-105` / `:112-113`）
+> 5. その後 `_build_chat_candidates_pipeline()` が `request.data.get("goriyaku_tag_ids")` を読む（`:406,413-414`）
+> 6. したがって候補生成は**正規化後の top-level 値**を受け取る
+>
+> `_resolve_request_inputs_basic()` の docstring はこの in-place mutation に後続の `request.data.get(...)` が依存していることを**明示している**（「Later, independent `request.data.get(...)` reads elsewhere in the view (e.g. `_build_chat_candidates_pipeline`'s own `data.get("goriyaku_tag_ids")`) rely on this mutation having already happened on the same `data` object」）。
+>
+> → **`filters` にのみ `goriyaku_tag_ids` を載せるクライアントでも hard filter は正しく適用される。**「理由だけ出て候補が絞られない」という非対称は**存在しない**。本経路は `NON_ISSUE`（文書化された互換動作）として分類する。top-level / `filters` の二重送信そのものは `LEGACY_DUPLICATION`（CIS-005 / D2）のまま据え置く。
 
 ---
 
@@ -432,6 +443,7 @@ score_total_ranked = score_element*w1 + score_need_rank_weighted*w2 + score_popu
 | --- | --- | --- |
 | visit_preferences と extra_condition の重複 | canonical 語彙へ解決して set union、`score_visit_style` は distinct 数を数えるため二重計上なし | `concierge_chat_extra_condition.py:50-63` |
 | top-level / filters の二重送信 | 片方向マージ（top-level 優先）。同値のため no-op | `concierge_input_contract.py:104-116` |
+| `filters` のみに `goriyaku_tag_ids` を載せた場合の候補生成 | `_resolve_request_inputs_basic()` が `request.data` を **in-place で正規化**してから `_build_chat_candidates_pipeline()` が `data.get("goriyaku_tag_ids")` を読むため、**hard filter は正しく適用される**。docstring がこの依存関係を明示している（意図された互換動作） | `concierge_input_contract.py:91-115`（docstring 含む）、`api_views_concierge.py:495` → `:511` → `:406,413-414` |
 | `direction_bonus` が 0 固定 | `DIRECTION_BONUS_MAX = 0.0` かつ関数 docstring に "Deprecated direction_bonus contract; active scoring is direction_signal" と明記。意図的な無効化 | `concierge_chat_ranking.py:32, 907-913` |
 | `visit_preferences` の語彙検証 | `normalize_visit_preferences()` が canonical 語彙外を落とす | `domain/visit_preference.py` |
 | 生年月日のみ入力時の救済 | `query` が日付文字列なら `birthdate` に寄せ、`query` を空にする（二重解釈を防ぐ） | `concierge_input_contract.py:127-133` |
