@@ -1439,3 +1439,183 @@ def test_resolution_provenance_output_is_byte_stable():
     second = audit.dump_json(audit.build_report([audit.evaluate(i) for i in items]))
     assert first == second
     assert first.encode("utf-8") == second.encode("utf-8")
+
+
+# ---------------------------------------------------------------------------
+# Review fix: path isolation
+#
+# Resolution Record の provenance 欠落は **Resolution 再利用経路だけ** を塞ぐ。
+# 有効な PrimaryPositionEvidence 経路を汚染してはならない。
+# ---------------------------------------------------------------------------
+
+RESOLUTION_MISSING_CODES = (
+    "RESOLUTION_SOURCE_URL_MISSING",
+    "RESOLUTION_SOURCE_TYPE_MISSING",
+    "RESOLUTION_VERIFIED_AT_MISSING",
+)
+
+
+def test_incomplete_resolution_does_not_poison_valid_primary_evidence():
+    """C: 完全な新 evidence があるなら、古い不完全 record は影響しない。"""
+    result = audit.evaluate(
+        _item(
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=_full_evidence(),
+            existing_resolution=_resolution(
+                position_source_url=None,
+                position_source_type=None,
+                verified_at=None,
+            ),
+        )
+    )
+    assert result.audit_status == audit.AUTO_PASS
+    assert audit.RC_PRIMARY_SOURCE_VERIFIED in result.reason_codes
+    for code in RESOLUTION_MISSING_CODES:
+        assert code not in result.reason_codes, code
+    assert audit.RC_RESOLUTION_RECORD_REUSED not in result.reason_codes
+
+
+def test_complete_resolution_with_wrong_entity_evidence_is_hold():
+    """D: wrong-entity の新 evidence があれば再利用を主張しない。"""
+    result = audit.evaluate(
+        _item(
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=_full_evidence(entity_match="DIFFERENT"),
+            existing_resolution=_resolution(),
+        )
+    )
+    assert result.audit_status == audit.HOLD
+    assert audit.RC_PRIMARY_SOURCE_WRONG_ENTITY in result.reason_codes
+    assert audit.RC_RESOLUTION_RECORD_REUSED not in result.reason_codes
+
+
+def test_complete_resolution_with_coordinate_conflicting_evidence_is_review():
+    """D: 座標が矛盾する新 evidence があれば再利用を主張しない。"""
+    result = audit.evaluate(
+        _item(
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=_full_evidence(
+                latitude=35.01, longitude=139.01
+            ),
+            existing_resolution=_resolution(),
+        )
+    )
+    assert result.audit_status == audit.REVIEW
+    assert audit.RC_PRIMARY_COORDINATE_DIFFERS in result.reason_codes
+    assert audit.RC_RESOLUTION_RECORD_REUSED not in result.reason_codes
+
+
+def test_no_new_evidence_with_incomplete_resolution_url_is_hold():
+    """B: Resolution 経路に依存しているなら provenance 欠落で fail closed。"""
+    result = audit.evaluate(
+        _item(
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=None,
+            existing_resolution=_resolution(position_source_url=None),
+        )
+    )
+    assert result.audit_status == audit.HOLD
+    assert audit.RC_RESOLUTION_SOURCE_URL_MISSING in result.reason_codes
+    assert audit.RC_RESOLUTION_RECORD_REUSED not in result.reason_codes
+
+
+def test_no_new_evidence_with_complete_resolution_is_auto_pass():
+    """A: 新 evidence が無く record が完備なら再利用できる。"""
+    result = audit.evaluate(
+        _item(
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=None,
+            existing_resolution=_resolution(),
+        )
+    )
+    assert result.audit_status == audit.AUTO_PASS
+    assert audit.RC_RESOLUTION_RECORD_REUSED in result.reason_codes
+
+
+@pytest.mark.parametrize(
+    "conflicting_evidence",
+    [
+        pytest.param({"entity_match": "DIFFERENT"}, id="wrong_entity"),
+        pytest.param({"entity_match": "NON_SHRINE"}, id="non_shrine"),
+        pytest.param({"entity_match": "AMBIGUOUS"}, id="ambiguous"),
+        pytest.param({"entity_match": None}, id="identity_evidence_missing"),
+        pytest.param({"poi_candidate_count": 3}, id="multiple_poi"),
+        pytest.param({"latitude": 35.01, "longitude": 139.01}, id="coordinate_differs"),
+    ],
+)
+def test_every_conflicting_evidence_kind_blocks_resolution_reuse(conflicting_evidence):
+    """D の列挙すべてが RESOLUTION_RECORD_REUSED を止める。"""
+    result = audit.evaluate(
+        _item(
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=_full_evidence(**conflicting_evidence),
+            existing_resolution=_resolution(),
+        )
+    )
+    assert result.audit_status != audit.AUTO_PASS
+    assert audit.RC_RESOLUTION_RECORD_REUSED not in result.reason_codes
+
+
+def test_conflicting_evidence_does_not_add_resolution_missing_codes():
+    """矛盾しているときは Resolution の provenance 欠落 code も足さない。
+
+    矛盾自体が既に HOLD / REVIEW を生んでいる。経路が使われていない以上、
+    その経路の欠落を理由として並べない。
+    """
+    result = audit.evaluate(
+        _item(
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=_full_evidence(entity_match="DIFFERENT"),
+            existing_resolution=_resolution(
+                position_source_url=None, position_source_type=None, verified_at=None
+            ),
+        )
+    )
+    assert result.audit_status == audit.HOLD
+    for code in RESOLUTION_MISSING_CODES:
+        assert code not in result.reason_codes, code
+
+
+def test_resolution_candidate_and_reusable_are_separate_concepts():
+    """candidate（座標一致）と reusable（provenance 完備）は別物。
+
+    不完全 record + 完全 evidence では、record は candidate だが reusable では
+    ない。にもかかわらず evidence 経路は独立に AUTO_PASS へ到達する。
+    """
+    incomplete_record = _resolution(verified_at=None)
+
+    # evidence 無し -> record 経路に依存 -> fail closed
+    without_evidence = audit.evaluate(
+        _item(
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=None,
+            existing_resolution=incomplete_record,
+        )
+    )
+    assert without_evidence.audit_status == audit.REVIEW
+    assert audit.RC_RESOLUTION_VERIFIED_AT_MISSING in without_evidence.reason_codes
+
+    # 同じ record + 完全 evidence -> evidence 経路が独立に成立
+    with_evidence = audit.evaluate(
+        _item(
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=_full_evidence(),
+            existing_resolution=incomplete_record,
+        )
+    )
+    assert with_evidence.audit_status == audit.AUTO_PASS
+    assert audit.RC_RESOLUTION_VERIFIED_AT_MISSING not in with_evidence.reason_codes
+
+
+def test_resolution_coordinate_mismatch_is_reported_regardless_of_evidence():
+    """座標不一致は観測事実として、evidence の有無に関わらず出す。"""
+    mismatched = _resolution(adopted_latitude=35.9, adopted_longitude=139.9)
+    result = audit.evaluate(
+        _item(
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=_full_evidence(),
+            existing_resolution=mismatched,
+        )
+    )
+    assert audit.RC_RESOLUTION_RECORD_COORDINATE_MISMATCH in result.reason_codes
+    assert result.audit_status == audit.REVIEW

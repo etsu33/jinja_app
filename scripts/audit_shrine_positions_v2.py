@@ -195,6 +195,20 @@ REVIEW_REASON_CODES = frozenset(
     }
 )
 
+# より新しい PrimaryPositionEvidence が prior Resolution Record と「矛盾している」
+# とみなす code。これらが立っているとき、Resolution Record を再利用したとは
+# 主張しない（RESOLUTION_RECORD_REUSED を出さない）。
+RESOLUTION_CONFLICTING_EVIDENCE_CODES = frozenset(
+    {
+        RC_PRIMARY_COORDINATE_DIFFERS,
+        RC_PRIMARY_SOURCE_WRONG_ENTITY,
+        RC_PRIMARY_SOURCE_NON_SHRINE_ENTITY,
+        RC_PRIMARY_ENTITY_AMBIGUOUS,
+        RC_IDENTITY_EVIDENCE_MISSING,
+        RC_MULTIPLE_POI_CANDIDATES,
+    }
+)
+
 # 類似候補の表示しきい値。REVIEW 候補の提示専用であり、自動 MATCH には使わない。
 SIMILARITY_THRESHOLD = 0.80
 
@@ -552,11 +566,18 @@ def evaluate(item: ShrinePositionAuditInput) -> ShrinePositionAuditResult:
     if resolution is not None and resolution.position_status == "HOLD_POSITION_REVIEW":
         codes.add(RC_POSITION_CONTRACT_HOLD_RECORD)
 
-    # 既存 PASS Resolution Record の再利用条件:
-    #   current Seed == current Production == recorded adopted coordinate
-    # Resolution Record 再利用は **provenance bypass ではない**。
-    # PrimaryPositionEvidence 経由の AUTO_PASS と同じ traceability を要求する。
-    resolution_reusable = False
+    # --- Resolution Record: ここでは **候補かどうかだけ** を判定する ----------
+    #
+    # provenance 欠落の reason code をこの時点で出すと、有効な
+    # PrimaryPositionEvidence 経路まで巻き添えで REVIEW / HOLD に落ちる
+    # （path poisoning）。どちらの経路が実際に使われるかを決めてから
+    # §5c でまとめて判定する。
+    #
+    #   resolution_candidate  : PASS + identity exact + Seed/Production 座標一致
+    #   resolution_provenance_complete : record 自身の provenance が揃っている
+    #   resolution_reusable   : 上記を両方満たし、かつ実際に再利用してよい
+    resolution_candidate = False
+    resolution_provenance_complete = False
     if resolution_is_pass and identity_is_exact and seed is not None and prod is not None:
         matches_seed = coordinates_equal(
             seed.latitude, resolution.adopted_latitude
@@ -565,22 +586,15 @@ def evaluate(item: ShrinePositionAuditInput) -> ShrinePositionAuditResult:
             prod.latitude, resolution.adopted_latitude
         ) and coordinates_equal(prod.longitude, resolution.adopted_longitude)
         if not (matches_seed and matches_prod):
+            # 座標不一致は record 経路の有無に関係なく観測事実として出す。
             codes.add(RC_RESOLUTION_RECORD_COORDINATE_MISMATCH)
         else:
-            # 座標が揃っていても、record 自身の provenance が追跡できなければ
-            # 再利用しない（fallback を発明しない）。
-            if not resolution.position_source_url:
-                codes.add(RC_RESOLUTION_SOURCE_URL_MISSING)
-            if not resolution.position_source_type:
-                codes.add(RC_RESOLUTION_SOURCE_TYPE_MISSING)
-            if not resolution.verified_at:
-                codes.add(RC_RESOLUTION_VERIFIED_AT_MISSING)
-            if (
+            resolution_candidate = True
+            resolution_provenance_complete = bool(
                 resolution.position_source_url
                 and resolution.position_source_type
                 and resolution.verified_at
-            ):
-                resolution_reusable = True
+            )
 
     evidence_status = evidence.status if evidence is not None else "NOT_RETRIEVED"
 
@@ -644,20 +658,45 @@ def evaluate(item: ShrinePositionAuditInput) -> ShrinePositionAuditResult:
     elif evidence_status == "REDIRECTED":
         codes.add(RC_POSITION_SOURCE_REDIRECTED)
     else:
-        # evidence を取得していない。Resolution Record で代替できるか。
-        if resolution_reusable:
-            codes.add(RC_RESOLUTION_RECORD_REUSED)
-        elif not primary_url:
-            codes.add(RC_PRIMARY_SOURCE_MISSING)
-        else:
-            codes.add(RC_PRIMARY_EVIDENCE_NOT_RETRIEVED)
+        # evidence を取得していない。Resolution Record で代替できるかは §5c で決める。
+        if not resolution_candidate:
+            if not primary_url:
+                codes.add(RC_PRIMARY_SOURCE_MISSING)
+            else:
+                codes.add(RC_PRIMARY_EVIDENCE_NOT_RETRIEVED)
 
-    # evidence を取得していても、Record と矛盾しないことを併せて記録する。
-    if resolution_reusable and RC_RESOLUTION_RECORD_REUSED not in codes:
-        if RC_PRIMARY_COORDINATE_DIFFERS not in codes:
-            codes.add(RC_RESOLUTION_RECORD_REUSED)
+    # --- 5c. 経路の確定 ----------------------------------------------------
+    #
+    # Resolution Record の provenance 欠落は **Resolution 再利用経路だけ** を
+    # 塞ぐ。有効な PrimaryPositionEvidence 経路を汚染してはならない。
+    #
+    #   evidence_path_verified    : evidence 経路単独で AUTO_PASS 資格がある
+    #   evidence_path_conflicting : evidence が prior Resolution と矛盾している
+    evidence_path_verified = RC_PRIMARY_SOURCE_VERIFIED in codes
+    evidence_path_conflicting = bool(codes & RESOLUTION_CONFLICTING_EVIDENCE_CODES)
 
-    # --- 5b. 出力 provenance の確定 ---------------------------------------
+    resolution_reusable = False
+    if resolution_candidate:
+        if evidence_path_conflicting:
+            # より新しい evidence が矛盾している。再利用したと主張しない。
+            # 矛盾自体が既に HOLD / REVIEW を生んでいるので code は足さない。
+            pass
+        elif resolution_provenance_complete:
+            resolution_reusable = True
+            codes.add(RC_RESOLUTION_RECORD_REUSED)
+        elif not evidence_path_verified:
+            # Resolution 経路に依存しているのに provenance が追跡できない。
+            # ここで初めて fail closed する（fallback は発明しない）。
+            if not resolution.position_source_url:
+                codes.add(RC_RESOLUTION_SOURCE_URL_MISSING)
+            if not resolution.position_source_type:
+                codes.add(RC_RESOLUTION_SOURCE_TYPE_MISSING)
+            if not resolution.verified_at:
+                codes.add(RC_RESOLUTION_VERIFIED_AT_MISSING)
+        # evidence_path_verified かつ record が不完全な場合は、evidence 経路が
+        # 単独で成立しているので RESOLUTION_*_MISSING を出さない。
+
+    # --- 5d. 出力 provenance の確定 ---------------------------------------
     #
     # Resolution Record が evidence source であり、かつ新しい
     # PrimaryPositionEvidence が adopted source を供給していない場合は、

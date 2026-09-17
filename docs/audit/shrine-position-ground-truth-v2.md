@@ -294,7 +294,32 @@ new_position_source_url   ->  resolution.position_source_url
 verified_at               ->  resolution.verified_at
 ```
 
-#### provenance 欠落時
+#### candidate と reusable を分ける（path isolation）
+
+Resolution Record の provenance 欠落は **Resolution 再利用経路だけ**を塞ぐ。
+有効な `PrimaryPositionEvidence` 経路を巻き添えにしてはならない。
+
+そのため2つの概念を分離している。
+
+```text
+resolution_candidate            PASS + identity exact + Seed/Production 座標一致
+resolution_provenance_complete  record 自身の provenance が揃っている
+resolution_reusable             上記を満たし、かつ実際に再利用してよい
+```
+
+`RESOLUTION_*_MISSING` は「どちらの経路が実際に使われるか」を決めた**後**に
+しか出さない。
+
+#### 経路ごとの挙動
+
+| 状況 | 結果 |
+| --- | --- |
+| 有効な evidence なし + record 完備 | `RESOLUTION_RECORD_REUSED` → `AUTO_PASS` |
+| 有効な evidence なし + record 不完全 | `RESOLUTION_*_MISSING` で fail closed |
+| **完全に有効な evidence あり + record 不完全** | **evidence 経路を独立に評価。`RESOLUTION_*_MISSING` は出さず、`REVIEW` / `HOLD` へ落とさない** |
+| evidence が record と矛盾 | `RESOLUTION_RECORD_REUSED` を出さない |
+
+#### provenance 欠落時（Resolution 経路に依存している場合のみ）
 
 | 欠落 | reason_code | status |
 | --- | --- | --- |
@@ -306,9 +331,26 @@ provenance が不完全なら `RESOLUTION_RECORD_REUSED` を**出さない**。
 
 #### conflict precedence
 
-より新しい `PrimaryPositionEvidence` が record と矛盾する場合は、
-provenance が完備していても `PRIMARY_COORDINATE_DIFFERS` として `REVIEW` に
-倒れ、`RESOLUTION_RECORD_REUSED` を出さない。
+より新しい `PrimaryPositionEvidence` が record と矛盾する場合は、provenance が
+完備していても `RESOLUTION_RECORD_REUSED` を出さない。**より新しい evidence が
+現に矛盾しているのに「record を再利用した」と主張しない。**
+
+矛盾とみなす code:
+
+```text
+PRIMARY_COORDINATE_DIFFERS
+PRIMARY_SOURCE_WRONG_ENTITY
+PRIMARY_SOURCE_NON_SHRINE_ENTITY
+PRIMARY_ENTITY_AMBIGUOUS
+IDENTITY_EVIDENCE_MISSING
+MULTIPLE_POI_CANDIDATES
+```
+
+これらは既に `HOLD` / `REVIEW` を生んでいるため、矛盾時に
+`RESOLUTION_*_MISSING` を重ねて出すことはしない。
+
+なお **座標不一致**（`RESOLUTION_RECORD_COORDINATE_MISMATCH`）は record が
+候補ですらないことを示す観測事実なので、evidence の有無に関わらず出す。
 
 > **freshness threshold は導入しない。**
 > 「verified_at が N 日より古ければ stale」という判定は行わない。
