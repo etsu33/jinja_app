@@ -146,6 +146,8 @@ RC_SPREADSHEET_IDENTITY_REVIEW = "SPREADSHEET_IDENTITY_REVIEW"
 RC_IDENTITY_NORMALIZATION_REQUIRED = "IDENTITY_NORMALIZATION_REQUIRED"
 RC_POSITION_SOURCE_REDIRECTED = "POSITION_SOURCE_REDIRECTED"
 RC_SEED_PRODUCTION_COORDINATE_DIFFERS = "SEED_PRODUCTION_COORDINATE_DIFFERS"
+RC_PRIMARY_SOURCE_TYPE_MISSING = "PRIMARY_SOURCE_TYPE_MISSING"
+RC_PRIMARY_SOURCE_VERIFIED_AT_MISSING = "PRIMARY_SOURCE_VERIFIED_AT_MISSING"
 RC_RESOLUTION_RECORD_COORDINATE_MISMATCH = "RESOLUTION_RECORD_COORDINATE_MISMATCH"
 
 HOLD_REASON_CODES = frozenset(
@@ -182,6 +184,8 @@ REVIEW_REASON_CODES = frozenset(
         RC_POSITION_SOURCE_REDIRECTED,
         RC_SEED_PRODUCTION_COORDINATE_DIFFERS,
         RC_RESOLUTION_RECORD_COORDINATE_MISMATCH,
+        RC_PRIMARY_SOURCE_TYPE_MISSING,
+        RC_PRIMARY_SOURCE_VERIFIED_AT_MISSING,
     }
 )
 
@@ -358,6 +362,7 @@ class PrimaryPositionEvidence:
     longitude: float | None = None
     entity_match: str | None = None  # SAME / DIFFERENT / NON_SHRINE / AMBIGUOUS
     poi_candidate_count: int | None = None
+    verified_at: str | None = None
 
 
 @dataclass(frozen=True)
@@ -512,14 +517,23 @@ def evaluate(item: ShrinePositionAuditInput) -> ShrinePositionAuditResult:
             codes.add(RC_ADDRESS_CONFLICT_UNEXPLAINED)
 
     # --- 5. Primary position evidence ------------------------------------
-    primary_url = None
-    primary_type = None
-    if sheet is not None:
-        primary_url = sheet.position_source_url or sheet.official_source_url
-        primary_type = sheet.position_source_type or sheet.official_source_type
-    if evidence is not None:
-        primary_url = evidence.source_url or primary_url
-        primary_type = evidence.source_type or primary_type
+    # --- effective primary-source provenance -----------------------------
+    #
+    # PrimaryPositionEvidence を最優先し、欠けている field だけ Spreadsheet の
+    # joined row で補う。evidence snapshot 側に source metadata を重複させる
+    # ことを要求しない（joined Spreadsheet が同じ traceable source を持つなら
+    # それで足りる）。
+    sheet_url = (
+        (sheet.position_source_url or sheet.official_source_url) if sheet else None
+    )
+    sheet_type = (
+        (sheet.position_source_type or sheet.official_source_type) if sheet else None
+    )
+    primary_url = (evidence.source_url if evidence else None) or sheet_url
+    primary_type = (evidence.source_type if evidence else None) or sheet_type
+    effective_verified_at = (evidence.verified_at if evidence else None) or (
+        sheet.verified_at if sheet else None
+    )
 
     resolution_is_pass = (
         resolution is not None and resolution.position_status == "PASS"
@@ -574,8 +588,24 @@ def evaluate(item: ShrinePositionAuditInput) -> ShrinePositionAuditResult:
         if evidence.latitude is None or evidence.longitude is None:
             codes.add(RC_PRIMARY_COORDINATE_UNTRACEABLE)
         elif entity_match == "SAME":
-            codes.add(RC_PRIMARY_SOURCE_VERIFIED)
+            # --- provenance が追跡可能でなければ VERIFIED を出さない ---
+            #
+            # Position Contract §Audit Record は position_source_type /
+            # position_source_url / verified_at を追跡可能にすることを求める。
+            # 座標と entity だけ揃っていても、どの source をいつ確認したのかを
+            # 示せないなら machine-verified とは言えない。
+            if not primary_url:
+                codes.add(RC_PRIMARY_SOURCE_MISSING)
+            else:
+                if not primary_type:
+                    codes.add(RC_PRIMARY_SOURCE_TYPE_MISSING)
+                if not effective_verified_at:
+                    codes.add(RC_PRIMARY_SOURCE_VERIFIED_AT_MISSING)
+                if primary_type and effective_verified_at:
+                    codes.add(RC_PRIMARY_SOURCE_VERIFIED)
+
             # primary 座標 vs Production 座標。差があれば REVIEW（自動採用しない）。
+            # provenance の充足とは独立に観測して表面化する。
             if prod is not None and not (
                 coordinates_equal(evidence.latitude, prod.latitude)
                 and coordinates_equal(evidence.longitude, prod.longitude)
@@ -665,7 +695,7 @@ def evaluate(item: ShrinePositionAuditInput) -> ShrinePositionAuditResult:
         primary_source_url=primary_url,
         corroboration_sources=corroboration_payload,
         existing_resolution_record=resolution.record_path if resolution else None,
-        verified_at=sheet.verified_at if sheet else None,
+        verified_at=effective_verified_at,
     )
     return result
 
@@ -846,6 +876,7 @@ def _evidence_from_mapping(row: dict[str, Any]) -> PrimaryPositionEvidence:
         longitude=_as_float(row.get("longitude")),
         entity_match=_as_str(row.get("entity_match")),
         poi_candidate_count=(None if count in (None, "") else int(count)),
+        verified_at=_as_str(row.get("verified_at")),
     )
 
 

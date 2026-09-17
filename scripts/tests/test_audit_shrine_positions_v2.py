@@ -1067,3 +1067,205 @@ def test_entity_match_is_case_and_whitespace_insensitive():
         _item(primary_position_evidence=_evidence(entity_match=" same "))
     )
     assert result.audit_status == audit.AUTO_PASS
+
+
+# ---------------------------------------------------------------------------
+# Review fix: AUTO_PASS は traceable primary-source provenance を要求する
+#
+# Position Contract §Audit Record は position_source_type / position_source_url /
+# verified_at の追跡可能性を求める。座標と entity だけでは machine-verified と
+# 言えない。effective provenance は evidence を優先し、欠けた field だけ
+# joined Spreadsheet で補う。
+# ---------------------------------------------------------------------------
+
+
+def _full_evidence(**overrides) -> "audit.PrimaryPositionEvidence":
+    """provenance を evidence 側で完結させた fixture。"""
+    values = dict(
+        status="OK",
+        source_type="shrine_official",
+        source_url="https://example.invalid/shrine/access",
+        latitude=35.0,
+        longitude=139.0,
+        entity_match="SAME",
+        poi_candidate_count=1,
+        verified_at="2026-09-17",
+    )
+    values.update(overrides)
+    return audit.PrimaryPositionEvidence(**values)
+
+
+def _bare_sheet(**overrides) -> "audit.SpreadsheetRow":
+    """provenance を持たない Spreadsheet 行（fallback させない）。"""
+    values = {
+        "row_id": "500",
+        "official_name": SEED_ROW["name_jp"],
+        "official_address": SEED_ROW["address"],
+        "position_source_type": None,
+        "position_source_url": None,
+        "official_source_type": None,
+        "official_source_url": None,
+        "verified_at": None,
+    }
+    values.update(overrides)
+    return audit.SpreadsheetRow(**values)
+
+
+def test_complete_provenance_is_auto_pass_eligible():
+    """OK + SAME + 座標 + source_type + source_url + verified_at => AUTO_PASS。"""
+    result = audit.evaluate(
+        _item(spreadsheet=_bare_sheet(), primary_position_evidence=_full_evidence())
+    )
+    assert result.audit_status == audit.AUTO_PASS
+    assert audit.RC_PRIMARY_SOURCE_VERIFIED in result.reason_codes
+    assert result.primary_source_type == "shrine_official"
+    assert result.primary_source_url == "https://example.invalid/shrine/access"
+    assert result.verified_at == "2026-09-17"
+
+
+def test_missing_source_url_never_auto_pass():
+    """source_url が無ければ HOLD / PRIMARY_SOURCE_MISSING。"""
+    result = audit.evaluate(
+        _item(
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=_full_evidence(source_url=None),
+        )
+    )
+    assert result.audit_status != audit.AUTO_PASS
+    assert result.audit_status == audit.HOLD
+    assert audit.RC_PRIMARY_SOURCE_MISSING in result.reason_codes
+    assert audit.RC_PRIMARY_SOURCE_VERIFIED not in result.reason_codes
+
+
+def test_missing_source_type_never_auto_pass():
+    """source_type が無ければ stable な explicit reason code で fail closed。"""
+    result = audit.evaluate(
+        _item(
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=_full_evidence(source_type=None),
+        )
+    )
+    assert result.audit_status != audit.AUTO_PASS
+    assert audit.RC_PRIMARY_SOURCE_TYPE_MISSING in result.reason_codes
+    assert audit.RC_PRIMARY_SOURCE_VERIFIED not in result.reason_codes
+
+
+def test_missing_verified_at_never_auto_pass():
+    """verified_at が無ければ REVIEW（stable な explicit reason code）。"""
+    result = audit.evaluate(
+        _item(
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=_full_evidence(verified_at=None),
+        )
+    )
+    assert result.audit_status != audit.AUTO_PASS
+    assert result.audit_status == audit.REVIEW
+    assert audit.RC_PRIMARY_SOURCE_VERIFIED_AT_MISSING in result.reason_codes
+    assert audit.RC_PRIMARY_SOURCE_VERIFIED not in result.reason_codes
+
+
+def test_spreadsheet_fallback_supplies_missing_evidence_provenance():
+    """evidence が source metadata を持たなくても、joined Spreadsheet が
+    同じ traceable source を持つなら AUTO_PASS 資格を満たす。
+
+    evidence snapshot 側に source metadata の重複を要求しない。
+    """
+    evidence_without_metadata = _full_evidence(
+        source_type=None, source_url=None, verified_at=None
+    )
+    sheet_with_provenance = _sheet(
+        position_source_type="shrine_authority_access_map",
+        position_source_url="https://example.invalid/authority/access",
+        verified_at="2026-09-15",
+    )
+    result = audit.evaluate(
+        _item(
+            spreadsheet=sheet_with_provenance,
+            primary_position_evidence=evidence_without_metadata,
+        )
+    )
+    assert result.audit_status == audit.AUTO_PASS
+    assert audit.RC_PRIMARY_SOURCE_VERIFIED in result.reason_codes
+    # fallback 値が出力に出る。
+    assert result.primary_source_type == "shrine_authority_access_map"
+    assert result.primary_source_url == "https://example.invalid/authority/access"
+    assert result.verified_at == "2026-09-15"
+
+
+def test_evidence_verified_at_overrides_spreadsheet_verified_at():
+    """出力の verified_at は evidence を優先し、次に Spreadsheet を使う。"""
+    result = audit.evaluate(
+        _item(
+            spreadsheet=_sheet(verified_at="2026-01-01"),
+            primary_position_evidence=_full_evidence(verified_at="2026-09-17"),
+        )
+    )
+    assert result.verified_at == "2026-09-17"
+    assert result.audit_status == audit.AUTO_PASS
+
+    # evidence 側が無いときだけ Spreadsheet の値になる。
+    fallback = audit.evaluate(
+        _item(
+            spreadsheet=_sheet(verified_at="2026-01-01"),
+            primary_position_evidence=_full_evidence(verified_at=None),
+        )
+    )
+    assert fallback.verified_at == "2026-01-01"
+
+
+def test_evidence_source_url_overrides_spreadsheet_source_url():
+    result = audit.evaluate(
+        _item(
+            spreadsheet=_sheet(
+                position_source_url="https://example.invalid/sheet",
+                position_source_type="map_provider_poi",
+            ),
+            primary_position_evidence=_full_evidence(),
+        )
+    )
+    assert result.primary_source_url == "https://example.invalid/shrine/access"
+    assert result.primary_source_type == "shrine_official"
+
+
+def test_primary_evidence_snapshot_reads_verified_at(tmp_path):
+    path = tmp_path / "evidence.json"
+    path.write_text(
+        json.dumps(
+            [
+                {
+                    "candidate_id": "wave0-999",
+                    "status": "OK",
+                    "source_type": "shrine_official",
+                    "source_url": "https://example.invalid/access",
+                    "latitude": 35.0,
+                    "longitude": 139.0,
+                    "entity_match": "SAME",
+                    "verified_at": "2026-09-17",
+                }
+            ],
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    by_candidate, _by_identity = audit.load_primary_evidence_snapshot(path)
+    assert by_candidate["wave0-999"].verified_at == "2026-09-17"
+
+
+def test_provenance_gap_reaches_auto_pass_only_with_full_provenance_via_build_inputs():
+    """build_inputs() 経由でも provenance 不足は AUTO_PASS にならない。"""
+    complete = _build(
+        spreadsheet_rows=[_bare_sheet()],
+        primary_evidence_by_candidate={"wave0-999": _full_evidence()},
+    )
+    assert audit.evaluate(complete[0]).audit_status == audit.AUTO_PASS
+
+    incomplete = _build(
+        spreadsheet_rows=[_bare_sheet()],
+        primary_evidence_by_candidate={
+            "wave0-999": _full_evidence(verified_at=None, source_type=None)
+        },
+    )
+    result = audit.evaluate(incomplete[0])
+    assert result.audit_status != audit.AUTO_PASS
+    assert audit.RC_PRIMARY_SOURCE_TYPE_MISSING in result.reason_codes
+    assert audit.RC_PRIMARY_SOURCE_VERIFIED_AT_MISSING in result.reason_codes

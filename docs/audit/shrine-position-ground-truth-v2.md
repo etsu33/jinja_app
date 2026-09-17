@@ -100,6 +100,7 @@ latitude
 longitude
 entity_match           SAME / DIFFERENT / NON_SHRINE / AMBIGUOUS
 poi_candidate_count
+verified_at
 ```
 
 対象 Shrine は次のいずれかで指す（両方あっても良い）。
@@ -185,6 +186,8 @@ HOLD       必要な evidence または identity certainty が欠けている
 - source が指す entity が **同一 Shrine であると示せる**
   （`evidence.status == "OK"` かつ `evidence.entity_match == "SAME"`）
 - primary 座標が追跡可能
+- **primary-source provenance が追跡可能**
+  （effective な `source_type` / `source_url` / `verified_at` がすべて存在する）
 - Seed と Production の座標が同値
 - Production 座標が採用済み / 検証済み position と一致する
 - identity / address / coordinate に説明不能な conflict が無い
@@ -216,6 +219,54 @@ Position Contract §Source Adoption Rule の「primary position source が
 同一Shrineの POI / place_of_worship / navigation target を示している」を
 満たさないまま AUTO_PASS へ倒れることを防ぐ。
 
+### provenance も fail closed
+
+entity が同一だと示せても、**どの source をいつ確認したのかを示せなければ
+machine-verified とは言えない**。Position Contract §Audit Record は
+`position_source_type` / `position_source_url` / `verified_at` を追跡可能に
+することを求めている。
+
+したがって `PRIMARY_SOURCE_VERIFIED` は次を**すべて**満たすときにしか出さない。
+
+```text
+evidence.status       == "OK"
+evidence.entity_match == "SAME"
+latitude / longitude          が存在する
+effective source_type         が存在する
+effective source_url          が存在する
+effective verified_at         が存在する
+```
+
+#### effective provenance の解決順
+
+`PrimaryPositionEvidence` を優先し、**欠けている field だけ** joined
+Spreadsheet 行で補う。
+
+```text
+source_type   = evidence.source_type   or spreadsheet.position_source_type
+                                       or spreadsheet.official_source_type
+source_url    = evidence.source_url    or spreadsheet.position_source_url
+                                       or spreadsheet.official_source_url
+verified_at   = evidence.verified_at   or spreadsheet.verified_at
+```
+
+evidence snapshot 側に source metadata を**重複させることは要求しない**。
+joined Spreadsheet が同じ traceable source を持つならそれで足りる。
+
+出力の `verified_at` もこの解決順に従う（evidence が優先）。
+
+#### 欠落時の扱い
+
+| 欠落 | reason_code | status |
+| --- | --- | --- |
+| effective `source_url` | `PRIMARY_SOURCE_MISSING` | `HOLD` |
+| effective `source_type` | `PRIMARY_SOURCE_TYPE_MISSING` | `REVIEW` |
+| effective `verified_at` | `PRIMARY_SOURCE_VERIFIED_AT_MISSING` | `REVIEW` |
+
+provenance が不完全なまま黙って `AUTO_PASS` にはしない。
+`PRIMARY_COORDINATE_DIFFERS` の観測は provenance の充足とは独立に行い、
+差があれば併せて表面化する。
+
 ### 既存 PASS Resolution Record の再利用
 
 次を**すべて**満たすときだけ、外部 position の判断を代替できる。
@@ -241,7 +292,7 @@ HOLD   = 必要な evidence または identity の確からしさ自体が無い
 | --- | --- |
 | AUTO_PASS 根拠 | `SEED_PRODUCTION_EXACT` / `PRIMARY_SOURCE_VERIFIED` / `RESOLUTION_RECORD_REUSED` |
 | HOLD | `MISSING_SEED` / `MISSING_PRODUCTION` / `DUPLICATE_PRODUCTION_IDENTITY` / `IDENTITY_NOT_EXACT` / `PRODUCTION_SNAPSHOT_UNAVAILABLE` / `PRIMARY_SOURCE_MISSING` / `PRIMARY_SOURCE_WRONG_ENTITY` / `PRIMARY_SOURCE_NON_SHRINE_ENTITY` / `PRIMARY_COORDINATE_UNTRACEABLE` / `AMBIGUOUS_SAME_NAME_SHRINE` / `IDENTITY_EVIDENCE_MISSING` / `POSITION_CONTRACT_HOLD_RECORD` |
-| REVIEW | `PRIMARY_COORDINATE_DIFFERS` / `SOURCE_PARSE_FAILED` / `SOURCE_FETCH_FAILED` / `PRIMARY_EVIDENCE_NOT_RETRIEVED` / `ADDRESS_CONFLICT_UNEXPLAINED` / `CORROBORATION_CONFLICT` / `MULTIPLE_POI_CANDIDATES` / `PRIMARY_ENTITY_AMBIGUOUS` / `SPREADSHEET_ROW_MISSING` / `SPREADSHEET_SNAPSHOT_UNAVAILABLE` / `SPREADSHEET_IDENTITY_REVIEW` / `IDENTITY_NORMALIZATION_REQUIRED` / `POSITION_SOURCE_REDIRECTED` / `SEED_PRODUCTION_COORDINATE_DIFFERS` / `RESOLUTION_RECORD_COORDINATE_MISMATCH` |
+| REVIEW | `PRIMARY_COORDINATE_DIFFERS` / `SOURCE_PARSE_FAILED` / `SOURCE_FETCH_FAILED` / `PRIMARY_EVIDENCE_NOT_RETRIEVED` / `ADDRESS_CONFLICT_UNEXPLAINED` / `CORROBORATION_CONFLICT` / `MULTIPLE_POI_CANDIDATES` / `PRIMARY_ENTITY_AMBIGUOUS` / `SPREADSHEET_ROW_MISSING` / `SPREADSHEET_SNAPSHOT_UNAVAILABLE` / `SPREADSHEET_IDENTITY_REVIEW` / `IDENTITY_NORMALIZATION_REQUIRED` / `POSITION_SOURCE_REDIRECTED` / `SEED_PRODUCTION_COORDINATE_DIFFERS` / `RESOLUTION_RECORD_COORDINATE_MISMATCH` / `PRIMARY_SOURCE_TYPE_MISSING` / `PRIMARY_SOURCE_VERIFIED_AT_MISSING` |
 
 ## 6. 座標比較
 
