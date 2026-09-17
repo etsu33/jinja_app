@@ -109,6 +109,25 @@ def _item(**overrides) -> "audit.ShrinePositionAuditInput":
     return audit.ShrinePositionAuditInput(**values)
 
 
+def _resolution(**overrides) -> "audit.ExistingResolution":
+    """provenance が完備した PASS Resolution Record。
+
+    Resolution Record 再利用も PrimaryPositionEvidence 経由と同じ
+    traceability（source_type / source_url / verified_at）を要求する。
+    """
+    values = dict(
+        record_path="docs/audit/shrine-position/example.md",
+        position_status="PASS",
+        adopted_latitude=35.0,
+        adopted_longitude=139.0,
+        position_source_type="shrine_authority_access_map",
+        position_source_url="https://example.invalid/authority/access",
+        verified_at="2026-09-16",
+    )
+    values.update(overrides)
+    return audit.ExistingResolution(**values)
+
+
 def _evidence(**overrides) -> "audit.PrimaryPositionEvidence":
     values = dict(
         status="OK",
@@ -368,12 +387,7 @@ def test_m_existing_pass_resolution_record_is_reusable():
     result = audit.evaluate(
         _item(
             primary_position_evidence=None,
-            existing_resolution=audit.ExistingResolution(
-                record_path="docs/audit/shrine-position/example.md",
-                position_status="PASS",
-                adopted_latitude=35.0,
-                adopted_longitude=139.0,
-            ),
+            existing_resolution=_resolution(),
         )
     )
     assert result.audit_status == audit.AUTO_PASS
@@ -384,11 +398,8 @@ def test_m2_resolution_record_coordinate_mismatch_blocks_reuse():
     result = audit.evaluate(
         _item(
             primary_position_evidence=None,
-            existing_resolution=audit.ExistingResolution(
-                record_path="docs/audit/shrine-position/example.md",
-                position_status="PASS",
-                adopted_latitude=35.5,
-                adopted_longitude=139.5,
+            existing_resolution=_resolution(
+                adopted_latitude=35.5, adopted_longitude=139.5
             ),
         )
     )
@@ -401,10 +412,7 @@ def test_m3_hold_position_review_record_is_hold():
     result = audit.evaluate(
         _item(
             primary_position_evidence=_evidence(),
-            existing_resolution=audit.ExistingResolution(
-                record_path="docs/audit/shrine-position/example.md",
-                position_status="HOLD_POSITION_REVIEW",
-            ),
+            existing_resolution=_resolution(position_status="HOLD_POSITION_REVIEW"),
         )
     )
     assert result.audit_status == audit.HOLD
@@ -416,12 +424,7 @@ def test_n_newer_conflict_overrides_resolution_reuse():
     result = audit.evaluate(
         _item(
             primary_position_evidence=_evidence(latitude=35.002, longitude=139.002),
-            existing_resolution=audit.ExistingResolution(
-                record_path="docs/audit/shrine-position/example.md",
-                position_status="PASS",
-                adopted_latitude=35.0,
-                adopted_longitude=139.0,
-            ),
+            existing_resolution=_resolution(),
         )
     )
     assert result.audit_status == audit.REVIEW
@@ -1269,3 +1272,170 @@ def test_provenance_gap_reaches_auto_pass_only_with_full_provenance_via_build_in
     assert result.audit_status != audit.AUTO_PASS
     assert audit.RC_PRIMARY_SOURCE_TYPE_MISSING in result.reason_codes
     assert audit.RC_PRIMARY_SOURCE_VERIFIED_AT_MISSING in result.reason_codes
+
+
+# ---------------------------------------------------------------------------
+# Review fix: Resolution Record 再利用は provenance bypass ではない
+#
+# PrimaryPositionEvidence 経由の AUTO_PASS と同じ traceability
+# （position_source_type / position_source_url / verified_at）を要求する。
+# ---------------------------------------------------------------------------
+
+
+def test_resolution_reuse_requires_complete_provenance():
+    """PASS record + 座標一致 + provenance 完備 => AUTO_PASS。"""
+    result = audit.evaluate(
+        _item(
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=None,
+            existing_resolution=_resolution(),
+        )
+    )
+    assert result.audit_status == audit.AUTO_PASS
+    assert audit.RC_RESOLUTION_RECORD_REUSED in result.reason_codes
+    # 出力は record 自身の provenance を引き継ぐ（追跡可能なまま）。
+    assert result.primary_source_type == "shrine_authority_access_map"
+    assert result.primary_source_url == "https://example.invalid/authority/access"
+    assert result.verified_at == "2026-09-16"
+
+
+def test_resolution_missing_source_url_never_auto_pass():
+    result = audit.evaluate(
+        _item(
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=None,
+            existing_resolution=_resolution(position_source_url=None),
+        )
+    )
+    assert result.audit_status != audit.AUTO_PASS
+    assert result.audit_status == audit.HOLD
+    assert audit.RC_RESOLUTION_SOURCE_URL_MISSING in result.reason_codes
+    assert audit.RC_RESOLUTION_RECORD_REUSED not in result.reason_codes
+
+
+def test_resolution_missing_source_type_never_auto_pass():
+    result = audit.evaluate(
+        _item(
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=None,
+            existing_resolution=_resolution(position_source_type=None),
+        )
+    )
+    assert result.audit_status != audit.AUTO_PASS
+    assert audit.RC_RESOLUTION_SOURCE_TYPE_MISSING in result.reason_codes
+    assert audit.RC_RESOLUTION_RECORD_REUSED not in result.reason_codes
+
+
+def test_resolution_missing_verified_at_never_auto_pass():
+    result = audit.evaluate(
+        _item(
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=None,
+            existing_resolution=_resolution(verified_at=None),
+        )
+    )
+    assert result.audit_status != audit.AUTO_PASS
+    assert audit.RC_RESOLUTION_VERIFIED_AT_MISSING in result.reason_codes
+    assert audit.RC_RESOLUTION_RECORD_REUSED not in result.reason_codes
+
+
+def test_sapporo_suwa_resolution_record_parses_full_provenance():
+    """実 repository の Position Resolution Record が provenance まで読める。"""
+    records = audit.load_resolution_records()
+    record = records["wave0-010"]
+
+    assert record.position_status == "PASS"
+    assert record.adopted_latitude == 43.07603505258046
+    assert record.adopted_longitude == 141.3540979693115
+    assert record.position_source_type == "shrine_authority_access_map"
+    assert record.position_source_url == (
+        "https://jinjasapporo.net/find-shrine/"
+        "%E8%AB%8F%E8%A8%AA%E7%A5%9E%E7%A4%BE/"
+    )
+    assert record.verified_at == "2026-09-16"
+
+
+def test_sapporo_suwa_record_is_reusable_when_coordinates_agree():
+    """実 record + 実採用座標なら再利用できる（provenance 完備のため）。"""
+    records = audit.load_resolution_records()
+    record = records["wave0-010"]
+    lat, lng = record.adopted_latitude, record.adopted_longitude
+
+    result = audit.evaluate(
+        _item(
+            seed=audit.SeedPosition(latitude=lat, longitude=lng),
+            production=audit.ProductionPosition(latitude=lat, longitude=lng),
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=None,
+            existing_resolution=record,
+        )
+    )
+    assert result.audit_status == audit.AUTO_PASS
+    assert audit.RC_RESOLUTION_RECORD_REUSED in result.reason_codes
+    assert result.verified_at == "2026-09-16"
+
+
+def test_newer_conflicting_evidence_still_overrides_complete_resolution():
+    """provenance が完備していても、新しい evidence の矛盾が優先する。
+
+    freshness threshold は導入しない（Position Contract に定義が無い）。
+    """
+    result = audit.evaluate(
+        _item(
+            primary_position_evidence=_full_evidence(
+                latitude=35.002, longitude=139.002
+            ),
+            existing_resolution=_resolution(),
+        )
+    )
+    assert result.audit_status != audit.AUTO_PASS
+    assert audit.RC_PRIMARY_COORDINATE_DIFFERS in result.reason_codes
+    assert audit.RC_RESOLUTION_RECORD_REUSED not in result.reason_codes
+
+
+def test_newer_evidence_supplies_output_provenance_over_resolution():
+    """新しい evidence が adopted source を供給するなら、その provenance を出す。"""
+    result = audit.evaluate(
+        _item(
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=_full_evidence(),
+            existing_resolution=_resolution(),
+        )
+    )
+    assert result.audit_status == audit.AUTO_PASS
+    assert result.primary_source_url == "https://example.invalid/shrine/access"
+    assert result.primary_source_type == "shrine_official"
+    assert result.verified_at == "2026-09-17"
+
+
+def test_no_freshness_threshold_is_applied_to_resolution_records():
+    """古い verified_at でも、それだけでは再利用を止めない。
+
+    Position Contract は「N 日より古ければ stale」という閾値を定義していない。
+    発明しない。
+    """
+    result = audit.evaluate(
+        _item(
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=None,
+            existing_resolution=_resolution(verified_at="2001-01-01"),
+        )
+    )
+    assert result.audit_status == audit.AUTO_PASS
+    assert audit.RC_RESOLUTION_RECORD_REUSED in result.reason_codes
+    assert result.verified_at == "2001-01-01"
+
+
+def test_resolution_provenance_output_is_byte_stable():
+    items = [
+        _item(
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=None,
+            existing_resolution=_resolution(),
+        )
+        for _ in range(3)
+    ]
+    first = audit.dump_json(audit.build_report([audit.evaluate(i) for i in items]))
+    second = audit.dump_json(audit.build_report([audit.evaluate(i) for i in items]))
+    assert first == second
+    assert first.encode("utf-8") == second.encode("utf-8")

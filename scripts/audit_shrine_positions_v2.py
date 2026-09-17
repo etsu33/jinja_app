@@ -148,6 +148,9 @@ RC_POSITION_SOURCE_REDIRECTED = "POSITION_SOURCE_REDIRECTED"
 RC_SEED_PRODUCTION_COORDINATE_DIFFERS = "SEED_PRODUCTION_COORDINATE_DIFFERS"
 RC_PRIMARY_SOURCE_TYPE_MISSING = "PRIMARY_SOURCE_TYPE_MISSING"
 RC_PRIMARY_SOURCE_VERIFIED_AT_MISSING = "PRIMARY_SOURCE_VERIFIED_AT_MISSING"
+RC_RESOLUTION_SOURCE_URL_MISSING = "RESOLUTION_SOURCE_URL_MISSING"
+RC_RESOLUTION_SOURCE_TYPE_MISSING = "RESOLUTION_SOURCE_TYPE_MISSING"
+RC_RESOLUTION_VERIFIED_AT_MISSING = "RESOLUTION_VERIFIED_AT_MISSING"
 RC_RESOLUTION_RECORD_COORDINATE_MISMATCH = "RESOLUTION_RECORD_COORDINATE_MISMATCH"
 
 HOLD_REASON_CODES = frozenset(
@@ -164,6 +167,7 @@ HOLD_REASON_CODES = frozenset(
         RC_AMBIGUOUS_SAME_NAME_SHRINE,
         RC_IDENTITY_EVIDENCE_MISSING,
         RC_POSITION_CONTRACT_HOLD_RECORD,
+        RC_RESOLUTION_SOURCE_URL_MISSING,
     }
 )
 
@@ -186,6 +190,8 @@ REVIEW_REASON_CODES = frozenset(
         RC_RESOLUTION_RECORD_COORDINATE_MISMATCH,
         RC_PRIMARY_SOURCE_TYPE_MISSING,
         RC_PRIMARY_SOURCE_VERIFIED_AT_MISSING,
+        RC_RESOLUTION_SOURCE_TYPE_MISSING,
+        RC_RESOLUTION_VERIFIED_AT_MISSING,
     }
 )
 
@@ -379,6 +385,11 @@ class ExistingResolution:
     position_status: str | None = None
     adopted_latitude: float | None = None
     adopted_longitude: float | None = None
+    # Position Contract §Audit Record が追跡可能性を求める provenance。
+    # Resolution Record 再利用も他の AUTO_PASS 経路と同じ基準を満たす必要がある。
+    position_source_type: str | None = None
+    position_source_url: str | None = None
+    verified_at: str | None = None
 
 
 @dataclass(frozen=True)
@@ -543,6 +554,8 @@ def evaluate(item: ShrinePositionAuditInput) -> ShrinePositionAuditResult:
 
     # 既存 PASS Resolution Record の再利用条件:
     #   current Seed == current Production == recorded adopted coordinate
+    # Resolution Record 再利用は **provenance bypass ではない**。
+    # PrimaryPositionEvidence 経由の AUTO_PASS と同じ traceability を要求する。
     resolution_reusable = False
     if resolution_is_pass and identity_is_exact and seed is not None and prod is not None:
         matches_seed = coordinates_equal(
@@ -551,10 +564,23 @@ def evaluate(item: ShrinePositionAuditInput) -> ShrinePositionAuditResult:
         matches_prod = coordinates_equal(
             prod.latitude, resolution.adopted_latitude
         ) and coordinates_equal(prod.longitude, resolution.adopted_longitude)
-        if matches_seed and matches_prod:
-            resolution_reusable = True
-        else:
+        if not (matches_seed and matches_prod):
             codes.add(RC_RESOLUTION_RECORD_COORDINATE_MISMATCH)
+        else:
+            # 座標が揃っていても、record 自身の provenance が追跡できなければ
+            # 再利用しない（fallback を発明しない）。
+            if not resolution.position_source_url:
+                codes.add(RC_RESOLUTION_SOURCE_URL_MISSING)
+            if not resolution.position_source_type:
+                codes.add(RC_RESOLUTION_SOURCE_TYPE_MISSING)
+            if not resolution.verified_at:
+                codes.add(RC_RESOLUTION_VERIFIED_AT_MISSING)
+            if (
+                resolution.position_source_url
+                and resolution.position_source_type
+                and resolution.verified_at
+            ):
+                resolution_reusable = True
 
     evidence_status = evidence.status if evidence is not None else "NOT_RETRIEVED"
 
@@ -630,6 +656,22 @@ def evaluate(item: ShrinePositionAuditInput) -> ShrinePositionAuditResult:
     if resolution_reusable and RC_RESOLUTION_RECORD_REUSED not in codes:
         if RC_PRIMARY_COORDINATE_DIFFERS not in codes:
             codes.add(RC_RESOLUTION_RECORD_REUSED)
+
+    # --- 5b. 出力 provenance の確定 ---------------------------------------
+    #
+    # Resolution Record が evidence source であり、かつ新しい
+    # PrimaryPositionEvidence が adopted source を供給していない場合は、
+    # record 自身の provenance を出力する。AUTO_PASS の出力が
+    # 追跡不能にならないようにするため。
+    evidence_supplies_source = (
+        evidence is not None
+        and evidence_status == "OK"
+        and bool(evidence.source_url)
+    )
+    if resolution_reusable and not evidence_supplies_source:
+        primary_type = resolution.position_source_type or primary_type
+        primary_url = resolution.position_source_url or primary_url
+        effective_verified_at = resolution.verified_at or effective_verified_at
 
     # --- 6. Corroboration -------------------------------------------------
     corroboration_payload: list[dict[str, Any]] = []
@@ -986,6 +1028,10 @@ def load_resolution_records(
             position_status=_record_field(text, "position_status"),
             adopted_latitude=_as_float(_record_field(text, "new_latitude")),
             adopted_longitude=_as_float(_record_field(text, "new_longitude")),
+            # record に書かれている値だけを読む。fallback を発明しない。
+            position_source_type=_record_field(text, "new_position_source_type"),
+            position_source_url=_record_field(text, "new_position_source_url"),
+            verified_at=_record_field(text, "verified_at"),
         )
     return records
 

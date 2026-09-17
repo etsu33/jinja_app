@@ -183,6 +183,7 @@ HOLD       必要な evidence または identity certainty が欠けている
 - Spreadsheet identity が `JOIN_EXACT` または `JOIN_CORROBORATED`
 - 有効な primary position source が存在する
 - primary source が取得可能、または有効な現行 Resolution Record で代替されている
+  （Resolution Record 経路も **同じ provenance 要件**を満たすこと）
 - source が指す entity が **同一 Shrine であると示せる**
   （`evidence.status == "OK"` かつ `evidence.entity_match == "SAME"`）
 - primary 座標が追跡可能
@@ -269,15 +270,64 @@ provenance が不完全なまま黙って `AUTO_PASS` にはしない。
 
 ### 既存 PASS Resolution Record の再利用
 
+> **Resolution Record 再利用は provenance bypass ではない。**
+> 他の AUTO_PASS 経路とまったく同じ traceability を満たす必要がある。
+
 次を**すべて**満たすときだけ、外部 position の判断を代替できる。
 
 ```text
-current Seed == current Production == recorded adopted coordinate
+resolution.position_status      == "PASS"
+Seed ↔ Production identity      が exact
+current Seed        == recorded adopted coordinate
+current Production  == recorded adopted coordinate
+resolution.position_source_type が存在する
+resolution.position_source_url  が存在する
+resolution.verified_at          が存在する
 ```
 
-かつ、より新しい evidence が record と矛盾していないこと。
-矛盾する場合は `PRIMARY_COORDINATE_DIFFERS` として `REVIEW` に倒れ、
-自動再利用しない。
+record の provenance は Position Resolution Record の次の field から読む。
+**fallback 値を発明しない。**
+
+```text
+new_position_source_type  ->  resolution.position_source_type
+new_position_source_url   ->  resolution.position_source_url
+verified_at               ->  resolution.verified_at
+```
+
+#### provenance 欠落時
+
+| 欠落 | reason_code | status |
+| --- | --- | --- |
+| `position_source_url` | `RESOLUTION_SOURCE_URL_MISSING` | `HOLD` |
+| `position_source_type` | `RESOLUTION_SOURCE_TYPE_MISSING` | `REVIEW` |
+| `verified_at` | `RESOLUTION_VERIFIED_AT_MISSING` | `REVIEW` |
+
+provenance が不完全なら `RESOLUTION_RECORD_REUSED` を**出さない**。
+
+#### conflict precedence
+
+より新しい `PrimaryPositionEvidence` が record と矛盾する場合は、
+provenance が完備していても `PRIMARY_COORDINATE_DIFFERS` として `REVIEW` に
+倒れ、`RESOLUTION_RECORD_REUSED` を出さない。
+
+> **freshness threshold は導入しない。**
+> 「verified_at が N 日より古ければ stale」という判定は行わない。
+> Position Contract は現時点でそのような閾値を定義していない。
+
+#### 出力 provenance
+
+Resolution Record が evidence source であり、かつ新しい
+`PrimaryPositionEvidence` が adopted source を供給していない場合、出力は
+record 自身の provenance を引き継ぐ。
+
+```text
+primary_source_type = resolution.position_source_type
+primary_source_url  = resolution.position_source_url
+verified_at         = resolution.verified_at
+```
+
+これにより、`RESOLUTION_RECORD_REUSED` による AUTO_PASS も出力レベルで
+追跡可能なまま保たれる。
 
 ### REVIEW と HOLD の区別
 
@@ -291,8 +341,8 @@ HOLD   = 必要な evidence または identity の確からしさ自体が無い
 | status | reason_code |
 | --- | --- |
 | AUTO_PASS 根拠 | `SEED_PRODUCTION_EXACT` / `PRIMARY_SOURCE_VERIFIED` / `RESOLUTION_RECORD_REUSED` |
-| HOLD | `MISSING_SEED` / `MISSING_PRODUCTION` / `DUPLICATE_PRODUCTION_IDENTITY` / `IDENTITY_NOT_EXACT` / `PRODUCTION_SNAPSHOT_UNAVAILABLE` / `PRIMARY_SOURCE_MISSING` / `PRIMARY_SOURCE_WRONG_ENTITY` / `PRIMARY_SOURCE_NON_SHRINE_ENTITY` / `PRIMARY_COORDINATE_UNTRACEABLE` / `AMBIGUOUS_SAME_NAME_SHRINE` / `IDENTITY_EVIDENCE_MISSING` / `POSITION_CONTRACT_HOLD_RECORD` |
-| REVIEW | `PRIMARY_COORDINATE_DIFFERS` / `SOURCE_PARSE_FAILED` / `SOURCE_FETCH_FAILED` / `PRIMARY_EVIDENCE_NOT_RETRIEVED` / `ADDRESS_CONFLICT_UNEXPLAINED` / `CORROBORATION_CONFLICT` / `MULTIPLE_POI_CANDIDATES` / `PRIMARY_ENTITY_AMBIGUOUS` / `SPREADSHEET_ROW_MISSING` / `SPREADSHEET_SNAPSHOT_UNAVAILABLE` / `SPREADSHEET_IDENTITY_REVIEW` / `IDENTITY_NORMALIZATION_REQUIRED` / `POSITION_SOURCE_REDIRECTED` / `SEED_PRODUCTION_COORDINATE_DIFFERS` / `RESOLUTION_RECORD_COORDINATE_MISMATCH` / `PRIMARY_SOURCE_TYPE_MISSING` / `PRIMARY_SOURCE_VERIFIED_AT_MISSING` |
+| HOLD | `MISSING_SEED` / `MISSING_PRODUCTION` / `DUPLICATE_PRODUCTION_IDENTITY` / `IDENTITY_NOT_EXACT` / `PRODUCTION_SNAPSHOT_UNAVAILABLE` / `PRIMARY_SOURCE_MISSING` / `PRIMARY_SOURCE_WRONG_ENTITY` / `PRIMARY_SOURCE_NON_SHRINE_ENTITY` / `PRIMARY_COORDINATE_UNTRACEABLE` / `AMBIGUOUS_SAME_NAME_SHRINE` / `IDENTITY_EVIDENCE_MISSING` / `POSITION_CONTRACT_HOLD_RECORD` / `RESOLUTION_SOURCE_URL_MISSING` |
+| REVIEW | `PRIMARY_COORDINATE_DIFFERS` / `SOURCE_PARSE_FAILED` / `SOURCE_FETCH_FAILED` / `PRIMARY_EVIDENCE_NOT_RETRIEVED` / `ADDRESS_CONFLICT_UNEXPLAINED` / `CORROBORATION_CONFLICT` / `MULTIPLE_POI_CANDIDATES` / `PRIMARY_ENTITY_AMBIGUOUS` / `SPREADSHEET_ROW_MISSING` / `SPREADSHEET_SNAPSHOT_UNAVAILABLE` / `SPREADSHEET_IDENTITY_REVIEW` / `IDENTITY_NORMALIZATION_REQUIRED` / `POSITION_SOURCE_REDIRECTED` / `SEED_PRODUCTION_COORDINATE_DIFFERS` / `RESOLUTION_RECORD_COORDINATE_MISMATCH` / `PRIMARY_SOURCE_TYPE_MISSING` / `PRIMARY_SOURCE_VERIFIED_AT_MISSING` / `RESOLUTION_SOURCE_TYPE_MISSING` / `RESOLUTION_VERIFIED_AT_MISSING` |
 
 ## 6. 座標比較
 
