@@ -197,6 +197,72 @@ canonical Position decision = HOLD_POSITION_REVIEW
 Production correction       = NONE
 ```
 
+#### なぜ 007 だけ HOLD なのか（repo 上の artifact 差）
+
+**この HOLD は 33.751 m という距離値によるものではない。** 距離は観測値であり、
+Position Contract は採否閾値を定義していない。理由は
+**existing stored coordinate の adopted provenance artifact が、Position
+Contract の要求する traceability で repository 上に完備していない**ことである。
+
+`wave0-007` の frozen Source Packet
+（`docs/audit/shrine-expansion-wave0-db02-source-packet-freeze.md`）が
+持つもの / 持たないもの:
+
+```text
+持つ  : position_status = PASS
+持つ  : latitude / longitude = 36.7484968, 137.0215428   （= stored）
+持つ  : position_source_type = map_provider_poi
+持つ  : 採用根拠の記述 = 「Yahoo! Map current POI（freeze 時に確認）」
+持たない: その historical adopted point に対応する position_source_url
+```
+
+Packet には Mapion / GeoShape の URL があるが、これらは
+`Current-identity corroboration` として記録されたものであり、
+**adopted point の position_source_url ではない。**
+
+結果として、**現在の repository だけから
+`36.7484968, 137.0215428` をどの traceable source から採用したかを
+決定論的に再構成できない。**
+
+current Google Maps Primary Evidence URL は存在し `36.7487585, 137.0213509`
+を追跡できるが、これは stored coordinate と一致しない。したがって
+**current source URL の追跡性が解決しても、historical stored coordinate の
+adopted provenance 欠落は解決しない。** この2つは別の問題である。
+
+##### 他4社との差
+
+| candidate | stored coordinate の adopted provenance artifact |
+| --- | --- |
+| `wave0-007` | **無し**（`position_source_url` が frozen Source Packet に存在しない） |
+| `wave0-008` | frozen Source Packet に stored coordinate と `position_source_url` = Mapion が存在 |
+| `wave0-009` | frozen Source Packet に stored coordinate と `position_source_url` = MapFan が存在（2026-09-18 machine Primary の Mapion とは source role / observation time が異なる） |
+| `wave0-010` | Position Resolution Record に adopted coordinate / `position_source_type` / `position_source_url` / `verified_at` が存在 |
+| `wave0-011` | frozen Source Packet に stored coordinate と `position_source_url` = Mapion が存在 |
+
+4社は `PASS` の根拠を repository 上の artifact から再構成できる。
+**007 だけがそれを持たない。** これが machine layer では見えない非対称性である。
+
+##### 適用したルール
+
+Position Contract §Existing Coordinate Conflict:
+
+- 既存座標を惰性で維持しない（1）
+- current candidate を距離だけで自動採用しない（2）
+- deterministic に visitor anchor を確定できなければ `HOLD_POSITION_REVIEW`（4）
+- Mother Ship で Source / policy が確定した後にのみ `PASS` へ更新する（5）
+
+同 §Audit Record は座標採用時に `position_source_url` を追跡可能にすることを
+要求している。007 はこれを満たしていない。
+
+##### この記録がしないこと
+
+- frozen Source Packet は **historical record** であり、本 PR で
+  **修正・上書きしない**。
+- **「当時 PASS だったのは誤り」とは断定しない。** 記録するのは
+  「**現在の Position Contract に基づく再検証では adopted provenance を
+  再構成できない**」という事実のみである。
+- 他4社を `HOLD` へ変更しない。
+
 **PASS へ丸めない。** Adopted Visitor Anchor の確定には
 **別 PR / 別 Position Adoption Gate** が必要である。
 
