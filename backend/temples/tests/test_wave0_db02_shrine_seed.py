@@ -52,6 +52,13 @@ CANONICAL_TAG_CONTRACT_PATH = (
 # Source Packet Freeze 以後に Position を再解決した候補と、その Current 正本。
 # ここに載らない候補の Position は凍結 Packet が Current 正本のままである。
 POSITION_RESOLUTION_PATHS = {
+    "wave0-007": (
+        REPO_ROOT
+        / "docs"
+        / "audit"
+        / "shrine-position"
+        / "imizu-jinja-position-resolution.md"
+    ),
     "wave0-010": (
         REPO_ROOT
         / "docs"
@@ -101,6 +108,17 @@ def _load_packet_identities():
                 r"official_source_type = (.+)", block
             ).group(1).strip(),
             "position_status": re.search(r"position_status\s+= (\S+)", block).group(1),
+            # 凍結 Packet 側に旧採用点の URL が実在するか。record の
+            # `NOT_RECORDED_IN_SOURCE_PACKET` 宣言を裏取りするために読む。
+            "position_source_url": (
+                match.group(1).strip()
+                if (
+                    match := re.search(
+                        r"^position_source_url\s+= (.+)$", block, re.M
+                    )
+                )
+                else None
+            ),
             # 文字列のまま保持する。float 経由で丸めると等値検証の意味が失われる。
             "latitude": re.search(r"^latitude\s+= (\S+)", block, re.M).group(1),
             "longitude": re.search(r"^longitude\s+= (\S+)", block, re.M).group(1),
@@ -110,6 +128,17 @@ def _load_packet_identities():
 
 PENDING = "PENDING_HUMAN_QA_INPUT"
 
+# 凍結 Packet が旧採用点に対応する `position_source_url` を記録していない状態。
+#
+# URL field へ偽の URL や非 URL sentinel を入れると、以後の機械読取が
+# 「URL が存在する」と誤認する。そのため record は `old_position_source_url`
+# field 自体を持たず、専用の status field でその不在を宣言する。
+#
+# この表現は Position Resolution Record format のものであり、
+# `docs/knowledge/shrine-position-contract.md`（採用ルールの authority）は
+# `old_*` 系 field を定義していない。authority 側は変更しない。
+SOURCE_URL_NOT_RECORDED = "NOT_RECORDED_IN_SOURCE_PACKET"
+
 
 def _load_position_resolution(candidate_id):
     """Position Resolution Record を markdown から読み出す。
@@ -118,10 +147,14 @@ def _load_position_resolution(candidate_id):
     """
     text = POSITION_RESOLUTION_PATHS[candidate_id].read_text(encoding="utf-8")
 
-    def field(name):
+    def optional_field(name):
         match = re.search(r"^%s\s+= (.+)$" % re.escape(name), text, re.M)
-        assert match, "%s not found in %s" % (name, candidate_id)
-        return match.group(1).strip()
+        return match.group(1).strip() if match else None
+
+    def field(name):
+        value = optional_field(name)
+        assert value is not None, "%s not found in %s" % (name, candidate_id)
+        return value
 
     return {
         "candidate_id": field("candidate_id"),
@@ -130,7 +163,12 @@ def _load_position_resolution(candidate_id):
         "position_status": field("position_status"),
         "old_latitude": field("old_latitude"),
         "old_longitude": field("old_longitude"),
-        "old_position_source_url": field("old_position_source_url"),
+        # 旧採用点の URL が記録されていない record が存在しうるため optional。
+        # 不在は `old_position_source_url_status` で明示的に宣言させる。
+        "old_position_source_url": optional_field("old_position_source_url"),
+        "old_position_source_url_status": optional_field(
+            "old_position_source_url_status"
+        ),
         "latitude": field("new_latitude"),
         "longitude": field("new_longitude"),
         "position_source_type": field("new_position_source_type"),
@@ -241,8 +279,10 @@ def test_wave0_db02_unresolved_shrines_keep_the_frozen_packet_position():
     candidates = _load_candidates()
     base_rows = {(row["name_jp"], row["address"]): row for row in _load_base_rows()}
 
+    # `wave0-007` は Position Resolution Record（HOLD_POSITION_REVIEW）を
+    # 持つため、この pin の対象ではない。HOLD 中に Seed 座標が動かないことは
+    # `test_hold_position_review_freezes_the_existing_seed_coordinate` が守る。
     assert POSITION_FROZEN_CANDIDATE_IDS == [
-        "wave0-007",
         "wave0-008",
         "wave0-009",
         "wave0-011",
@@ -275,7 +315,22 @@ def test_wave0_db02_position_resolution_records_are_wellformed():
         # 旧値は凍結 Packet の値を逐語で保持する（履歴として追跡可能にする）。
         assert record["old_latitude"] == frozen["latitude"]
         assert record["old_longitude"] == frozen["longitude"]
-        assert record["old_position_source_url"]
+        # 旧 source URL は「URL が記録されている」か「記録が無いと明示宣言
+        # されている」かのどちらかでなければならない。URL field へ sentinel を
+        # 入れて truthiness だけ満たす表現は許さない。
+        url = record["old_position_source_url"]
+        url_status = record["old_position_source_url_status"]
+        if url_status == SOURCE_URL_NOT_RECORDED:
+            # 宣言した以上、URL field は本当に存在しないこと。
+            assert url is None, (candidate_id, url)
+            # 宣言の裏取り: 凍結 Packet 側にも実際に URL が無いこと。
+            # Packet に URL があるのに未記録と宣言する record を弾く。
+            assert frozen["position_source_url"] is None, candidate_id
+        else:
+            assert url_status is None, (candidate_id, url_status)
+            assert url and url.startswith("http"), (candidate_id, url)
+            assert url == frozen["position_source_url"], candidate_id
+
         assert record["position_status"] in ("PASS", "HOLD_POSITION_REVIEW")
 
         if record["position_status"] == "PASS":
@@ -328,6 +383,56 @@ def test_wave0_db02_resolved_shrine_position_follows_the_resolution_record():
         assert repr(master_row["longitude"]) == longitude, candidate_id
         assert repr(base_row["latitude"]) == latitude, candidate_id
         assert repr(base_row["longitude"]) == longitude, candidate_id
+
+
+def test_hold_position_review_freezes_the_existing_seed_coordinate():
+    """HOLD 中は Base Seed / Candidate Master の座標が凍結 Packet のまま動かない。
+
+    `POSITION_FROZEN_CANDIDATE_IDS` の pin は「Resolution Record を持たない
+    候補」しか守らない。HOLD の Record を持つ候補はその対象から外れるため、
+    採用値が確定するまで座標が書き換わらないことをここで別途固定する。
+
+    Position Contract §HOLD_POSITION_REVIEW
+    「HOLD状態では座標を推測してSeed / Productionへ投入しない」。
+
+    旧座標が残っていること自体は `PASS` を意味しない。HOLD 中の未反映状態
+    である（`test_wave0_db02_resolved_shrine_position_follows_the_resolution_record`
+    の docstring と同じ扱い）。
+    """
+    packet = _load_packet_identities()
+    candidates = _load_candidates()
+    base_rows = {(row["name_jp"], row["address"]): row for row in _load_base_rows()}
+
+    held = [
+        candidate_id
+        for candidate_id in POSITION_RESOLUTION_PATHS
+        if _load_position_resolution(candidate_id)["position_status"]
+        == "HOLD_POSITION_REVIEW"
+    ]
+    assert held == ["wave0-007"]
+
+    for candidate_id in held:
+        frozen = packet[candidate_id]
+        master_row = candidates[candidate_id]
+        base_row = base_rows[(frozen["official_name"], frozen["official_address"])]
+
+        # repr 比較にすることで、桁落ち・丸め・再計算を検出する。
+        assert repr(master_row["latitude"]) == frozen["latitude"], candidate_id
+        assert repr(master_row["longitude"]) == frozen["longitude"], candidate_id
+        assert repr(base_row["latitude"]) == frozen["latitude"], candidate_id
+        assert repr(base_row["longitude"]) == frozen["longitude"], candidate_id
+
+        # HOLD 中に location だけが差し替わる経路も塞ぐ。
+        assert base_row["location"] == {
+            "lat": base_row["latitude"],
+            "lng": base_row["longitude"],
+        }, candidate_id
+
+        # 採用値を持たないこと（推測値が record へ入っていないこと）。
+        record = _load_position_resolution(candidate_id)
+        assert record["latitude"] == PENDING, candidate_id
+        assert record["longitude"] == PENDING, candidate_id
+        assert _current_position(candidate_id, packet) is None, candidate_id
 
 
 def test_wave0_db02_base_seed_location_mirrors_latitude_longitude():
