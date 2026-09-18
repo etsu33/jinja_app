@@ -94,8 +94,7 @@ VALUE_COMPLETION               = NONE（提供されていない値は補完し�
 | --- | --- |
 | pilot 実行の正確な UTC instant | `NOT_RECORDED` |
 | 実行 operator | `NOT_RECORDED` |
-| 007 / 008 の primary source URL | `NOT_TRANSCRIBED`（ローカル evidence snapshot 内） |
-| 009 の primary source URL | `NOT_TRANSCRIBED`（後述の注記を参照） |
+| 007 の primary source URL | `NOT_TRANSCRIBED`（literal URL 未提供。**推測で構成しない**。§4 参照） |
 
 ## 4. Machine Audit 結果（確定値）
 
@@ -130,6 +129,29 @@ HOLD      = 0
   **これは5社すべてを `REVIEW` に留めた共通要因**であり、Position の良し悪しとは
   別の運用 Gap である（§6）。
 
+### current machine Primary Evidence provenance
+
+本 pilot で **machine Primary Evidence** として使われた source の provenance。
+`PRIMARY_SOURCE_VERIFIED = 5/5` はこの provenance が5社とも揃っていたことによる。
+
+**これは「今回の machine 入力が何だったか」の記録であり、adopted canonical
+anchor の宣言ではない。** 採用判断は Position Contract 側（§5 / §6）にある。
+
+| candidate_id | source_type | source_url | entity_match | verified_at |
+| --- | --- | --- | --- | --- |
+| `wave0-007` | `map_provider_poi` | `NOT_TRANSCRIBED` | `SAME` | `2026-09-18` |
+| `wave0-008` | `shrine_official_embedded_google_place` | `https://maps.app.goo.gl/Fk2D5T9FFsCW9YAPA` | `SAME` | `2026-09-17` |
+| `wave0-009` | `map_provider_poi` | `https://www.mapion.co.jp/phonebook/M06005/20201/ILSP0000082556_ipclm/` | `SAME` | `2026-09-17` |
+| `wave0-010` | `shrine_authority_access_map` | `https://jinjasapporo.net/find-shrine/%E8%AB%8F%E8%A8%AA%E7%A5%9E%E7%A4%BE/` | `SAME` | `2026-09-17` |
+| `wave0-011` | `map_provider_poi` | Google Maps 少彦名神社 place URL（全文は §5 `wave0-011`） | `SAME` | `2026-09-18` |
+
+`wave0-007` の `source_url` は literal URL が本書へ提供されていないため
+`NOT_TRANSCRIBED` とする。**推測で URL を構成しない。** `source_type` /
+`entity_match` / `verified_at` は確定値である。
+
+機械可読な同一値は同名 `.json` の `primary_source_type` /
+`primary_source_url` / `verified_at` にある。
+
 ## 5. 各社の結果
 
 ### wave0-007 / Production `114` / 射水神社
@@ -143,6 +165,17 @@ machine delta  = 33.751 m
 
 machine codes: `PRIMARY_COORDINATE_DIFFERS` / `PRIMARY_SOURCE_VERIFIED` /
 `SEED_PRODUCTION_EXACT` / `SPREADSHEET_ROW_MISSING`
+
+current machine Primary Evidence provenance:
+
+```text
+source_type    = map_provider_poi
+source_url     = NOT_TRANSCRIBED（Google Maps 射水神社 place URL。literal URL 未提供）
+source_name    = 越中総鎮守一宮 射水神社
+source_address = 富山県高岡市古城1-1
+entity_match   = SAME
+verified_at    = 2026-09-18
+```
 
 **Human QA:**
 
@@ -170,6 +203,17 @@ stored         = 35.21055728, 136.92090454
 Google Maps POI = 35.2105722, 136.9208909
 machine delta  = 2.071 m
 Plus Code      = 6W6C+69 名古屋市、愛知県
+```
+
+current machine Primary Evidence provenance:
+
+```text
+source_type    = shrine_official_embedded_google_place
+source_url     = https://maps.app.goo.gl/Fk2D5T9FFsCW9YAPA
+source_name    = 別小江神社
+source_address = 愛知県名古屋市北区安井4丁目14-14
+entity_match   = SAME
+verified_at    = 2026-09-17
 ```
 
 **Human QA:**
@@ -203,11 +247,30 @@ Google place URL:
 https://www.google.com/maps/place/%E6%88%B8%E9%9A%A0%E7%A5%9E%E7%A4%BE+%E4%B8%AD%E7%A4%BE/@36.749081,138.0529213,14z/data=!4m10!1m2!2m1!1z5oi46Zqg56We56S-IOS4reekvg!3m6!1s0x5ff7856ba4a846a9:0x2ab70333f870faea!8m2!3d36.7424835!4d138.0850293!15sChPmiLjpmqDnpZ7npL4g5Lit56S-WhciFeaIuOmaoCDnpZ7npL4g5LitIOekvpIBDXNoaW50b19zaHJpbmWaAURDaTlEUVVsUlFVTnZaRU5vZEhsalJqbHZUMnRPZVZac1JuWmhia0l4WkRGa1VrMXRXVFZPTTJjeFdUSm9lbVF3UlJBQuABAPoBBAgAECA!16zL20vMGcwZGNk
 ```
 
-> **注記:** 本 pilot の machine Primary は Mapion と記録されている。一方、凍結
-> Source Packet（`shrine-expansion-wave0-db02-source-packet-freeze.md`）が
-> `wave0-009` に持つ `position_source_url` は MapFan である。両者の対応関係を
-> 本書では**推測で解決しない**ため、Mapion の URL は転記していない。実 URL は
-> ローカル evidence snapshot 側にある。
+current machine Primary Evidence provenance:
+
+```text
+source_type    = map_provider_poi
+source_url     = https://www.mapion.co.jp/phonebook/M06005/20201/ILSP0000082556_ipclm/
+source_name    = 戸隠神社中社
+source_address = 長野県長野市戸隠中社3506
+entity_match   = SAME
+verified_at    = 2026-09-17
+```
+
+> **注記: MapFan と Mapion は source role / observation time の違いである。**
+>
+> | 区分 | source | 位置づけ |
+> | --- | --- | --- |
+> | 凍結 Source Packet（`shrine-expansion-wave0-db02-source-packet-freeze.md`）の `position_source_url` | **MapFan** | **historical adopted / source evidence**（2026-09-15 凍結時点） |
+> | 2026-09-18 Real-Data Pilot の machine Primary Evidence | **Mapion** | **current machine Primary Evidence**（`verified_at = 2026-09-17`） |
+>
+> これは **source role と observation time の違い**であり、
+> **「MapFan と Mapion の不整合が未解決」という扱いはしない。**
+>
+> - 2つの source の座標値を**推測で統合しない**（どちらかへ寄せる操作をしない）。
+> - 凍結 Source Packet は**変更しない**。
+> - Human QA の `PASS` / `KEEP` 判断は**変更しない**（下記のとおり）。
 
 **Human QA:**
 
@@ -238,7 +301,18 @@ Google place URL:
 https://www.google.com/maps/place/%E6%9C%AD%E5%B9%8C%E8%AB%8F%E8%A8%AA%E7%A5%9E%E7%A4%BE/@43.0758494,141.3512123,17z/data=!3m1!4b1!4m6!3m5!1s0x5f0b2911efbc43a3:0x61a48fd7fd74e07e!8m2!3d43.0758455!4d141.3537926!16s%2Fg%2F11b7rv8g61
 ```
 
-authoritative Primary は既存の Position Resolution Record と同一である。
+current machine Primary Evidence provenance:
+
+```text
+source_type    = shrine_authority_access_map
+source_url     = https://jinjasapporo.net/find-shrine/%E8%AB%8F%E8%A8%AA%E7%A5%9E%E7%A4%BE/
+source_name    = 諏訪神社
+source_address = 北海道札幌市東区北12条東1丁目1-10
+entity_match   = SAME
+verified_at    = 2026-09-17
+```
+
+この Primary は既存の Position Resolution Record と同一 source である。
 
 ```text
 position_source_type = shrine_authority_access_map
@@ -246,6 +320,11 @@ position_source_url  = https://jinjasapporo.net/find-shrine/%E8%AB%8F%E8%A8%AA%E
 verified_at          = 2026-09-16
 record               = docs/audit/shrine-position/sapporo-suwa-jinja-position-resolution.md
 ```
+
+`source_type` / `source_url` / 座標は Resolution Record と一致する。
+`verified_at` のみ Resolution Record が `2026-09-16`、本 pilot の Primary
+Evidence が `2026-09-17` である。これは**同一 source の再確認時点の違い**として
+両方を記録する。**どちらかへ上書きしない。**
 
 **Human QA:**
 
@@ -263,8 +342,8 @@ correction                  = NONE
 
 ```text
 machine status  = REVIEW
-stored / existing Mapion     = 34.6885642, 135.50596579
-final Google Maps Primary Evidence = 34.6887805, 135.5060349
+stored / existing Mapion        = 34.6885642, 135.50596579
+current machine Primary Evidence = 34.6887805, 135.5060349   （Google Maps POI）
 machine delta   = 24.868 m
 Plus Code       = MGQ4+GC 大阪市、大阪府
 ```
@@ -274,6 +353,22 @@ Google place URL:
 ```text
 https://www.google.com/maps/place/%E5%B0%91%E5%BD%A6%E5%90%8D%E7%A5%9E%E7%A4%BE/@34.6887849,135.5034546,17z/data=!3m1!4b1!4m6!3m5!1s0x6000e6e08135522d:0x284613ba2ff6a514!8m2!3d34.6887805!4d135.5060349!16s%2Fg%2F120jr550
 ```
+
+current machine Primary Evidence provenance:
+
+```text
+source_type    = map_provider_poi
+source_url     = https://www.google.com/maps/place/%E5%B0%91%E5%BD%A6%E5%90%8D%E7%A5%9E%E7%A4%BE/@34.6887849,135.5034546,17z/data=!3m1!4b1!4m6!3m5!1s0x6000e6e08135522d:0x284613ba2ff6a514!8m2!3d34.6887805!4d135.5060349!16s%2Fg%2F120jr550
+source_name    = 少彦名神社
+source_address = 大阪府大阪市中央区道修町2-1-8
+entity_match   = SAME
+verified_at    = 2026-09-18
+```
+
+> **注記:** ここでの Google Maps POI は **今回の machine Primary Evidence
+> （機械監査の入力）** であって、**adopted canonical anchor ではない。**
+> Production の adopted 座標は既存 Mapion 由来値のままであり、本 pilot で
+> 変更していない（`KEEP` / `correction = NONE`）。
 
 既存 corroboration:
 

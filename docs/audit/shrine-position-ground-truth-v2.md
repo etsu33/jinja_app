@@ -570,6 +570,12 @@ HOLD      = 5
 
 実質的な pilot は、Mother Ship 側で snapshot を取得してから再実行する。
 
+> **注記（2026-09-18 追記 / scope）:** 直上の「triage の実質を示していない」
+> という限界は、**2026-09-17 時点の input-incomplete pilot だけ**を指す。
+> 3 snapshot が揃った状態での**実質的な triage は 2026-09-18 Real-Data Pilot
+> follow-up（本 §10 末尾）で完了済み**である。
+> この段落は当時の記録として保持しており、現在の到達点ではない。
+
 ```bash
 scripts/migration_safety/readonly_query.sh \
   ~/.config/kami-musubi/production-db.env DATABASE_URL \
@@ -641,6 +647,15 @@ adjudication を実施した、という順序構造である。
    本監査の外側にある運用手順である。
 
 2. **本 PR の pilot は入力不足のため triage の実質を示していない。**（§10）
+
+   この限界は **2026-09-17 の input-incomplete pilot に限定**される。
+   3 snapshot が揃った実質 triage は **2026-09-18 Real-Data Pilot follow-up
+   で完了済み**であり、結果は
+   `docs/audit/position-audit-v2/w0-db02-real-data-pilot-2026-09-18.md` /
+   `.json` にある（machine `5/5 REVIEW`、Human QA `PASS 4` /
+   `HOLD_POSITION_REVIEW 1`）。
+   上の行は 2026-09-17 時点の historical limitation として保持しており、
+   現在の到達点を表すものではない。
 
 3. **住所の意味的正規化を持たない。**
    丁目 / 番 / 番地 / 号 の表記揺れは同一視されず、差分として表面化する。
