@@ -14,7 +14,12 @@ POSITION_AUDIT_V2          = IMPLEMENTED
 AUDIT_WRITE_PATH           = NONE
 COORDINATE_CORRECTION      = NOT_IN_SCOPE
 W0_DB02_PILOT              = EXECUTED (input-incomplete)
+W0_DB02_REAL_DATA_PILOT    = RECORDED (2026-09-18, 別記録)
 ```
+
+2026-09-18 の Real-Data Pilot と Human QA の確定結果は
+`docs/audit/position-audit-v2/w0-db02-real-data-pilot-2026-09-18.md` にある
+（§10 末尾の follow-up 節を参照）。
 
 ## 1. 目的と非目的
 
@@ -565,6 +570,12 @@ HOLD      = 5
 
 実質的な pilot は、Mother Ship 側で snapshot を取得してから再実行する。
 
+> **注記（2026-09-18 追記 / scope）:** 直上の「triage の実質を示していない」
+> という限界は、**2026-09-17 時点の input-incomplete pilot だけ**を指す。
+> 3 snapshot が揃った状態での**実質的な triage は 2026-09-18 Real-Data Pilot
+> follow-up（本 §10 末尾）で完了済み**である。
+> この段落は当時の記録として保持しており、現在の到達点ではない。
+
 ```bash
 scripts/migration_safety/readonly_query.sh \
   ~/.config/kami-musubi/production-db.env DATABASE_URL \
@@ -587,6 +598,44 @@ Resolution Record 再利用経路が評価される。
 `scripts/tests/test_audit_shrine_positions_v2.py::test_repository_resolution_records_are_loadable`
 が実ファイルに対してこれを固定している。
 
+### 2026-09-18 Real-Data Pilot follow-up
+
+上記 §10 は **2026-09-17 時点の input-incomplete historical snapshot** であり、
+そのまま保持する（修正しない）。
+
+3つの snapshot が揃った状態での実データ pilot と、それに続く Human QA の
+確定結果は**別記録**として保存した。
+
+- `docs/audit/position-audit-v2/w0-db02-real-data-pilot-2026-09-18.md`
+- `docs/audit/position-audit-v2/w0-db02-real-data-pilot-2026-09-18.json`
+
+結果サマリ:
+
+```text
+Machine Audit        total = 5 / AUTO_PASS = 0 / REVIEW = 5 / HOLD = 0
+reason_code_counts   PRIMARY_COORDINATE_DIFFERS = 4
+                     PRIMARY_SOURCE_VERIFIED    = 5
+                     SEED_PRODUCTION_EXACT      = 5
+                     SPREADSHEET_ROW_MISSING    = 5
+
+Human QA（Position Contract adjudication）
+                     PASS                 = 4
+                     HOLD_POSITION_REVIEW = 1  （射水神社 / wave0-007）
+
+Production coordinate correction = NONE（5社とも）
+```
+
+**`AUTO_PASS` / `REVIEW` / `HOLD` は audit status、`PASS` /
+`HOLD_POSITION_REVIEW` は Position Contract の decision であり、別レイヤである。**
+Human QA は machine audit 結果を上書きしたのではなく、machine triage が human
+review を要すると分類した5件に対して Position Contract に基づく human
+adjudication を実施した、という順序構造である。
+
+`SPREADSHEET_ROW_MISSING = 5/5` は Position 不良ではなく Evidence Index の
+**運用 Gap** であり、別 follow-up として分離している。
+射水神社の Adopted Visitor Anchor 確定も**別 PR / 別 Position Adoption Gate**
+の対象である。
+
 ## 11. 既知の限界
 
 1. **Primary evidence の live retrieval は未実装（意図的）。**
@@ -598,6 +647,15 @@ Resolution Record 再利用経路が評価される。
    本監査の外側にある運用手順である。
 
 2. **本 PR の pilot は入力不足のため triage の実質を示していない。**（§10）
+
+   この限界は **2026-09-17 の input-incomplete pilot に限定**される。
+   3 snapshot が揃った実質 triage は **2026-09-18 Real-Data Pilot follow-up
+   で完了済み**であり、結果は
+   `docs/audit/position-audit-v2/w0-db02-real-data-pilot-2026-09-18.md` /
+   `.json` にある（machine `5/5 REVIEW`、Human QA `PASS 4` /
+   `HOLD_POSITION_REVIEW 1`）。
+   上の行は 2026-09-17 時点の historical limitation として保持しており、
+   現在の到達点を表すものではない。
 
 3. **住所の意味的正規化を持たない。**
    丁目 / 番 / 番地 / 号 の表記揺れは同一視されず、差分として表面化する。
