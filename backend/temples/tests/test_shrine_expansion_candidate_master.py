@@ -1,4 +1,5 @@
 import json
+import re
 from collections import Counter
 from pathlib import Path
 
@@ -9,6 +10,22 @@ MASTER_PATH = (
     / "data"
     / "shrine_expansion_candidate_master.json"
 )
+
+# Position Resolution Record の置き場所。Position 採用判断の Current 正本は
+# `docs/knowledge/shrine-position-contract.md` を authority として、この
+# directory の record が持つ（`scripts/audit_shrine_positions_v2.py` も同じ
+# directory を glob して読む）。
+#
+# Candidate Master は Position provenance を所有しない。ここでは lifecycle
+# 昇格の可否を判定するために record の `position_status` を**読むだけ**である。
+POSITION_RESOLUTION_DIR = (
+    Path(__file__).resolve().parents[3]
+    / "docs"
+    / "audit"
+    / "shrine-position"
+)
+
+POSITION_HOLD = "HOLD_POSITION_REVIEW"
 
 EXPECTED_STATUS_COUNTS = {
     "BUILD_READY": 25,
@@ -192,6 +209,98 @@ EXPECTED_W0_DB01_HYDRATION = {
         ],
     },
 }
+
+
+CANONICAL_POSITION_STATUSES = frozenset({"PASS", POSITION_HOLD})
+
+
+def _held_position_candidate_ids() -> tuple[set[str], int]:
+    """HOLD 中の candidate_id 集合と、走査した record 件数を返す。
+
+    値は record から直接 parse する。テスト側へ転記すると転記が正本に
+    なってしまうため、期待値をここへ書かない。
+
+    判定規則は **fail closed** である。1 record 内の `^position_status` 行の
+    うち **1つでも** `HOLD_POSITION_REVIEW` があれば、その candidate は HOLD
+    として扱う。
+
+    record は凍結 Source Packet の内容を逐語引用することがあり、その引用が
+    `position_status = PASS` を含みうる（`imizu-jinja-position-resolution.md`
+    は Packet の旧 Position ブロックをそのまま引用している）。
+    `scripts/audit_shrine_positions_v2.py` は「最初の一致」を採るが、guard は
+    report ではなく昇格の可否を決めるため、ブロックの並び順で結果が変わる
+    規則を採らない。**HOLD の痕跡がある record は昇格させない**、が本 guard の
+    規則である。
+
+    `old_position_status` は行頭が一致しないため拾わない（過去の状態であり
+    Current 正本ではない）。
+    """
+    held: set[str] = set()
+    seen: set[str] = set()
+    record_count = 0
+    for path in sorted(POSITION_RESOLUTION_DIR.glob("*.md")):
+        text = path.read_text(encoding="utf-8")
+        candidate_ids = set(re.findall(r"^candidate_id\s+= (\S+)$", text, re.M))
+        statuses = set(re.findall(r"^position_status\s+= (\S+)$", text, re.M))
+        if not candidate_ids or not statuses:
+            continue
+
+        # 1 record = 1 candidate。複数 candidate を混ぜた record は、どの
+        # status がどの candidate のものか決められないので弾く。
+        assert len(candidate_ids) == 1, (path.name, sorted(candidate_ids))
+        # 未知の status を「HOLD ではない」と黙って解釈しない。
+        unknown = statuses - CANONICAL_POSITION_STATUSES
+        assert not unknown, (path.name, sorted(unknown))
+
+        candidate_id = candidate_ids.pop()
+        assert candidate_id not in seen, (path.name, candidate_id)
+        seen.add(candidate_id)
+        record_count += 1
+        if POSITION_HOLD in statuses:
+            held.add(candidate_id)
+    return held, record_count
+
+
+def test_position_hold_candidates_are_never_core_ready():
+    """`HOLD_POSITION_REVIEW` の Candidate を `CORE_READY` へ昇格させない。
+
+    Position Contract §HOLD_POSITION_REVIEW は HOLD 中に座標を Seed /
+    Production へ投入しないことを求めるが、**lifecycle 昇格を止める実行可能な
+    guard はこれまで存在しなかった**。
+
+    - Shared Recommendation Eligibility は usable Deity / History Fact だけで
+      判定し、Position を読まない（`concierge_chat_candidates.is_recommendation_eligible`）。
+    - Post-Import CORE READY QA の Position 項目は座標一致と Compass 計算の
+      成否だけで、Position status を見ない。
+    - `candidate_status` を書き換える実行コードは存在せず、Candidate Master は
+      手編集 + テスト検証で守られている。
+
+    したがって HOLD の Candidate が `CORE_READY` へ進める経路が開いていた。
+    この guard はその経路だけを塞ぐ。Position 判断そのものは行わず、
+    Resolution Record の `position_status` を読むだけである。
+
+    eligibility rule には触れない（Knowledge ベースの判定式であり、Position
+    governance を混ぜると責務が壊れるため）。
+    """
+    held, record_count = _held_position_candidate_ids()
+
+    # record を1件も読めていないのに無言で通過し、guard として機能しなく
+    # なることを防ぐ（path の typo / directory 移動の検知）。
+    assert record_count, "no Position Resolution Record found in %s" % POSITION_RESOLUTION_DIR
+
+    rows = {row["candidate_id"]: row for row in _load_master()["candidates"]}
+
+    for candidate_id in sorted(held):
+        row = rows.get(candidate_id)
+        # record はあるが Candidate Master に居ない、は昇格の危険が無いので許す。
+        if row is None:
+            continue
+        assert row["candidate_status"] != "CORE_READY", (
+            candidate_id,
+            row["candidate_status"],
+            "Position status is %s; CORE_READY promotion is blocked until the "
+            "Position Resolution Record reaches PASS." % POSITION_HOLD,
+        )
 
 
 def _load_master() -> dict:
