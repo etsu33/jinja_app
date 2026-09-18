@@ -14,7 +14,12 @@ POSITION_AUDIT_V2          = IMPLEMENTED
 AUDIT_WRITE_PATH           = NONE
 COORDINATE_CORRECTION      = NOT_IN_SCOPE
 W0_DB02_PILOT              = EXECUTED (input-incomplete)
+W0_DB02_REAL_DATA_PILOT    = RECORDED (2026-09-18, 別記録)
 ```
+
+2026-09-18 の Real-Data Pilot と Human QA の確定結果は
+`docs/audit/position-audit-v2/w0-db02-real-data-pilot-2026-09-18.md` にある
+（§10 末尾の follow-up 節を参照）。
 
 ## 1. 目的と非目的
 
@@ -586,6 +591,44 @@ repository から正しく読めており、Production snapshot が入れば
 Resolution Record 再利用経路が評価される。
 `scripts/tests/test_audit_shrine_positions_v2.py::test_repository_resolution_records_are_loadable`
 が実ファイルに対してこれを固定している。
+
+### 2026-09-18 Real-Data Pilot follow-up
+
+上記 §10 は **2026-09-17 時点の input-incomplete historical snapshot** であり、
+そのまま保持する（修正しない）。
+
+3つの snapshot が揃った状態での実データ pilot と、それに続く Human QA の
+確定結果は**別記録**として保存した。
+
+- `docs/audit/position-audit-v2/w0-db02-real-data-pilot-2026-09-18.md`
+- `docs/audit/position-audit-v2/w0-db02-real-data-pilot-2026-09-18.json`
+
+結果サマリ:
+
+```text
+Machine Audit        total = 5 / AUTO_PASS = 0 / REVIEW = 5 / HOLD = 0
+reason_code_counts   PRIMARY_COORDINATE_DIFFERS = 4
+                     PRIMARY_SOURCE_VERIFIED    = 5
+                     SEED_PRODUCTION_EXACT      = 5
+                     SPREADSHEET_ROW_MISSING    = 5
+
+Human QA（Position Contract adjudication）
+                     PASS                 = 4
+                     HOLD_POSITION_REVIEW = 1  （射水神社 / wave0-007）
+
+Production coordinate correction = NONE（5社とも）
+```
+
+**`AUTO_PASS` / `REVIEW` / `HOLD` は audit status、`PASS` /
+`HOLD_POSITION_REVIEW` は Position Contract の decision であり、別レイヤである。**
+Human QA は machine audit 結果を上書きしたのではなく、machine triage が human
+review を要すると分類した5件に対して Position Contract に基づく human
+adjudication を実施した、という順序構造である。
+
+`SPREADSHEET_ROW_MISSING = 5/5` は Position 不良ではなく Evidence Index の
+**運用 Gap** であり、別 follow-up として分離している。
+射水神社の Adopted Visitor Anchor 確定も**別 PR / 別 Position Adoption Gate**
+の対象である。
 
 ## 11. 既知の限界
 
