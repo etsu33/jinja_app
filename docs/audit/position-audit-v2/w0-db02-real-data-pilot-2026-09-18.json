@@ -8,10 +8,7 @@
     "official_address"
   ],
   "human_qa_included": false,
-  "note": "2026-09-18 Real-Data Position Pilot の **machine audit 結果のみ** を転記した記録である。raw Production snapshot / Spreadsheet snapshot / Primary Evidence snapshot は repository へ commit しない。primary_source_type / primary_source_url / verified_at は当該 pilot の current machine Primary Evidence の provenance であり、adopted canonical anchor の宣言ではない。wave0-007 の primary_source_url は literal URL が未提供のため null とし（推測で構成しない）、primary_source_url_not_transcribed に列挙する。AUTO_PASS / REVIEW / HOLD は audit status であり、Position Contract の PASS / HOLD_POSITION_REVIEW とは別レイヤである。Human QA による Position Contract adjudication は本 JSON に含めない（同名 .md を参照）。",
-  "primary_source_url_not_transcribed": [
-    "wave0-007"
-  ],
+  "note": "2026-09-18 Real-Data Position Pilot の **machine audit 結果のみ** を転記した記録である。raw Production snapshot / Spreadsheet snapshot / Primary Evidence snapshot は repository へ commit しない。primary_source_type / primary_source_url / verified_at は当該 pilot の current machine Primary Evidence の provenance であり、adopted canonical anchor の宣言ではない。source_url が追跡可能であることと、stored coordinate がその source から決定論的に再現できることは別である（wave0-007 は前者を満たすが後者を満たさず、Position Contract 上は HOLD_POSITION_REVIEW）。AUTO_PASS / REVIEW / HOLD は audit status であり、Position Contract の PASS / HOLD_POSITION_REVIEW とは別レイヤである。Human QA による Position Contract adjudication は本 JSON に含めない（同名 .md を参照）。",
   "raw_input_snapshots_committed": false,
   "reason_code_counts": {
     "PRIMARY_COORDINATE_DIFFERS": 4,
@@ -32,7 +29,7 @@
       "primary_latitude": 36.7487585,
       "primary_longitude": 137.0213509,
       "primary_source_type": "map_provider_poi",
-      "primary_source_url": null,
+      "primary_source_url": "https://www.google.com/maps/place/%E8%B6%8A%E4%B8%AD%E7%B7%8F%E9%8E%AE%E5%AE%88%E4%B8%80%E5%AE%AE+%E5%B0%84%E6%B0%B4%E7%A5%9E%E7%A4%BE/@36.7487628,137.0187706,17z/data=!4m14!1m7!3m6!1s0x5ff782b4e4d6b057:0x35f602686ce24412!2z6LaK5Lit57eP6Y6u5a6I5LiA5a6uIOWwhOawtOelnuekvg!8m2!3d36.7487585!4d137.0213509!16s%2Fg%2F120yf1fd!3m5!1s0x5ff782b4e4d6b057:0x35f602686ce24412!8m2!3d36.7487585!4d137.0213509!16s%2Fg%2F120yf1fd",
       "production_id": 114,
       "reason_codes": [
         "PRIMARY_COORDINATE_DIFFERS",

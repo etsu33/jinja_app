@@ -94,7 +94,6 @@ VALUE_COMPLETION               = NONE（提供されていない値は補完し�
 | --- | --- |
 | pilot 実行の正確な UTC instant | `NOT_RECORDED` |
 | 実行 operator | `NOT_RECORDED` |
-| 007 の primary source URL | `NOT_TRANSCRIBED`（literal URL 未提供。**推測で構成しない**。§4 参照） |
 
 ## 4. Machine Audit 結果（確定値）
 
@@ -139,15 +138,18 @@ anchor の宣言ではない。** 採用判断は Position Contract 側（§5 / 
 
 | candidate_id | source_type | source_url | entity_match | verified_at |
 | --- | --- | --- | --- | --- |
-| `wave0-007` | `map_provider_poi` | `NOT_TRANSCRIBED` | `SAME` | `2026-09-18` |
+| `wave0-007` | `map_provider_poi` | Google Maps 射水神社 place URL（全文は §5 `wave0-007`） | `SAME` | `2026-09-18` |
 | `wave0-008` | `shrine_official_embedded_google_place` | `https://maps.app.goo.gl/Fk2D5T9FFsCW9YAPA` | `SAME` | `2026-09-17` |
 | `wave0-009` | `map_provider_poi` | `https://www.mapion.co.jp/phonebook/M06005/20201/ILSP0000082556_ipclm/` | `SAME` | `2026-09-17` |
 | `wave0-010` | `shrine_authority_access_map` | `https://jinjasapporo.net/find-shrine/%E8%AB%8F%E8%A8%AA%E7%A5%9E%E7%A4%BE/` | `SAME` | `2026-09-17` |
 | `wave0-011` | `map_provider_poi` | Google Maps 少彦名神社 place URL（全文は §5 `wave0-011`） | `SAME` | `2026-09-18` |
 
-`wave0-007` の `source_url` は literal URL が本書へ提供されていないため
-`NOT_TRANSCRIBED` とする。**推測で URL を構成しない。** `source_type` /
-`entity_match` / `verified_at` は確定値である。
+5社とも `source_type` / `source_url` / `entity_match` / `verified_at` は
+確定値であり、`NOT_TRANSCRIBED` は無い。
+
+**source_url が追跡可能であることと、stored coordinate がその source から
+決定論的に再現できることは別である。** `wave0-007` は前者を満たすが後者を
+満たさないため `HOLD_POSITION_REVIEW` のままである（§5 / §6）。
 
 機械可読な同一値は同名 `.json` の `primary_source_type` /
 `primary_source_url` / `verified_at` にある。
@@ -170,7 +172,7 @@ current machine Primary Evidence provenance:
 
 ```text
 source_type    = map_provider_poi
-source_url     = NOT_TRANSCRIBED（Google Maps 射水神社 place URL。literal URL 未提供）
+source_url     = https://www.google.com/maps/place/%E8%B6%8A%E4%B8%AD%E7%B7%8F%E9%8E%AE%E5%AE%88%E4%B8%80%E5%AE%AE+%E5%B0%84%E6%B0%B4%E7%A5%9E%E7%A4%BE/@36.7487628,137.0187706,17z/data=!4m14!1m7!3m6!1s0x5ff782b4e4d6b057:0x35f602686ce24412!2z6LaK5Lit57eP6Y6u5a6I5LiA5a6uIOWwhOawtOelnuekvg!8m2!3d36.7487585!4d137.0213509!16s%2Fg%2F120yf1fd!3m5!1s0x5ff782b4e4d6b057:0x35f602686ce24412!8m2!3d36.7487585!4d137.0213509!16s%2Fg%2F120yf1fd
 source_name    = 越中総鎮守一宮 射水神社
 source_address = 富山県高岡市古城1-1
 entity_match   = SAME
@@ -182,9 +184,12 @@ verified_at    = 2026-09-18
 - official identity = `PASS`
 - visitor address = 富山県高岡市古城1番1号
 - Google Maps 現行 Shrine POI entity = `SAME`、Google POI は traceable
+- current machine Primary Evidence の place URL は**転記済み**であり、
+  そこから `36.7487585, 137.0213509` を追跡できる
 - historical / current map evidence は同一境内を指す
 - ただし **stored coordinate `36.7484968, 137.0215428` そのものを、
   current traceable POI URL から決定論的に再現できていない**
+  （**URL の追跡性が解決しても、この点は解決していない**）
 - Google との差 33.751 m を**距離閾値だけで採否判定しない**
 
 ```text
