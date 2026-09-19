@@ -21,6 +21,8 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 MODULE_PATH = REPO_ROOT / "scripts" / "japanese_address_normalization.py"
 AUDIT_PATH = REPO_ROOT / "scripts" / "audit_shrine_positions_v2.py"
 
+_KATAKANA_PROLONGED_SOUND_MARK = "ー"
+
 
 def _load(name: str, path: Path):
     spec = importlib.util.spec_from_file_location(name, path)
@@ -121,6 +123,8 @@ def test_rule_and_reason_vocabularies_match_the_contract():
 # Contract §2.2 — Stage 1 Lexical Normalization
 # ---------------------------------------------------------------------------
 
+# U+30FC を含まない入力。ここでは legacy Position Audit の Stage 1 と
+# 結果が一致する。
 STAGE1_SAMPLES = (
     "日本、〒101-0021 東京都千代田区外神田２－１６－２",
     "日本、〒135-0047 東京都江東区富岡１丁目２０−３",
@@ -132,14 +136,62 @@ STAGE1_SAMPLES = (
 
 
 @pytest.mark.parametrize("raw", STAGE1_SAMPLES)
-def test_stage1_matches_the_existing_position_audit_lexical_contract(raw):
-    """Stage 1 は既存 Position Audit v2 の `normalize_address()` と同値。
+def test_stage1_agrees_with_legacy_normalization_apart_from_u30fc(raw):
+    """U+30FC を含まない入力では legacy Position Audit Stage 1 と一致する。
 
-    依存方向を作らないため実装は分けているが、規則が分岐しないことを
-    ここで固定する。既存側の挙動は本 PR で変更していない。
+    完全同値は **主張しない**。canonical な Stage 2 実装と legacy
+    `scripts/audit_shrine_positions_v2.py` は U+30FC の扱いだけが意図的に
+    異なる（次の test が固定する）。legacy 側は本 PR で変更していない。
     """
+    assert _KATAKANA_PROLONGED_SOUND_MARK not in raw
     audit = _load("audit_shrine_positions_v2_for_address_test", AUDIT_PATH)
     assert jan.lexical_normalize(raw) == audit.normalize_address(raw)
+
+
+def test_stage1_keeps_the_katakana_prolonged_sound_mark():
+    """U+30FC `ー` は dash 異体字ではない。日本語テキストの正規の構成文字。
+
+    legacy Position Audit Stage 1 は一律で `-` へ寄せるが、canonical な
+    Stage 2 はそれを引き継がない。`building_component` を壊し、将来の
+    Identity evidence を信頼できなくするためである。
+    """
+    assert _KATAKANA_PROLONGED_SOUND_MARK not in jan._DASH_VARIANTS
+    assert jan.lexical_normalize("パークタワー") == "パークタワー"
+    assert (
+        jan.lexical_normalize("東京都中央区銀座1-2-3 パークタワー3階")
+        == "東京都中央区銀座1-2-3 パークタワー3階"
+    )
+
+
+def test_stage1_intentionally_differs_from_legacy_on_u30fc():
+    """意図的な差分であることを明示的に固定する（回帰したら気づける）。"""
+    audit = _load("audit_shrine_positions_v2_for_address_test", AUDIT_PATH)
+    value = "東京都中央区銀座1-2-3 パークタワー3階"
+
+    # legacy は長音をすべて dash へ寄せてしまう（本 PR では変更しない）。
+    assert audit.normalize_address(value) == "東京都中央区銀座1-2-3 パ-クタワ-3階"
+    # canonical な Stage 2 は保持する。
+    assert jan.lexical_normalize(value) == value
+    assert jan.lexical_normalize(value) != audit.normalize_address(value)
+
+
+@pytest.mark.parametrize(
+    ("variant", "expected"),
+    [
+        ("東京都千代田区外神田2－16－2", "東京都千代田区外神田2-16-2"),  # U+FF0D
+        ("東京都千代田区外神田2‐16‐2", "東京都千代田区外神田2-16-2"),  # U+2010
+        ("東京都千代田区外神田2‑16‑2", "東京都千代田区外神田2-16-2"),  # U+2011
+        ("東京都千代田区外神田2‒16‒2", "東京都千代田区外神田2-16-2"),  # U+2012
+        ("東京都千代田区外神田2–16–2", "東京都千代田区外神田2-16-2"),  # U+2013
+        ("東京都千代田区外神田2—16—2", "東京都千代田区外神田2-16-2"),  # U+2014
+        ("東京都千代田区外神田2―16―2", "東京都千代田区外神田2-16-2"),  # U+2015
+        ("東京都千代田区外神田2−16−2", "東京都千代田区外神田2-16-2"),  # U+2212
+    ],
+)
+def test_real_dash_variants_are_still_normalized(variant, expected):
+    """本物の dash / minus 異体字は従来どおり ASCII `-` に寄せる。"""
+    assert jan.lexical_normalize(variant) == expected
+    assert jan.normalize_address_structured(variant).address_core == expected
 
 
 def test_stage1_applies_only_lexical_rules():
@@ -699,3 +751,94 @@ def test_whitespace_between_administrative_components_is_tolerated(address):
     assert result.municipality == "千代田区"
     assert result.locality == "外神田"
     assert result.address_core == "東京都千代田区外神田2-16-2"
+
+
+def test_building_component_preserves_the_prolonged_sound_mark():
+    """カタカナ長音を含む建物名が破壊されないこと（U+30FC 修正の regression）。"""
+    result = jan.normalize_address_structured("東京都中央区銀座1-2-3 パークタワー3階")
+
+    assert result.building_component == "パークタワー"
+    assert result.floor_component == "3階"
+    assert result.unit_component is None
+    assert result.address_core == "東京都中央区銀座1-2-3"
+
+    # 長音がそのまま残る（`パークタワ-` にならない）。
+    assert _KATAKANA_PROLONGED_SOUND_MARK in result.building_component
+    assert "-" not in result.building_component
+    assert "パークタワー" in result.structured_address
+    assert result.normalization_rules_applied == (
+        "BUILDING_COMPONENT_SPLIT",
+        "FLOOR_COMPONENT_SPLIT",
+    )
+
+    # 同一地番の別建物として正しく比較できる（潰れて同一視されない）。
+    pair = jan.compare_addresses(
+        "東京都中央区銀座1-2-3 パークタワー3階",
+        "東京都中央区銀座1-2-3 パークタワ-3階",
+    )
+    assert pair.address_identity_status == jan.ADDRESS_CORE_MATCH_WITH_COMPONENT_DIFF
+    assert pair.left.building_component != pair.right.building_component
+
+
+def test_markerless_numeric_slots_are_positional_not_semantic():
+    """marker 無しの hyphen 表記の slot は比較用であり意味の立証ではない。
+
+    `2-16-2` は決定的比較のために block/lot/sub_lot へ割り当てるが、
+    `2丁目16番2号` という行政上の事実を独立に立証したわけではない。
+    意味が確定したかどうかは `normalization_rules_applied` が区別する。
+    """
+    markerless = jan.normalize_address_structured("東京都千代田区外神田2-16-2")
+    semantic = jan.normalize_address_structured("東京都千代田区外神田2丁目16番2号")
+
+    # 比較用の slot 値は一致する。
+    assert (markerless.block, markerless.lot, markerless.sub_lot) == (2, 16, 2)
+    assert (semantic.block, semantic.lot, semantic.sub_lot) == (2, 16, 2)
+    assert markerless.address_core == semantic.address_core
+
+    # しかし「丁目/番/号 を読み取った」という主張は marker 付きの側にしかない。
+    assert markerless.normalization_rules_applied == ()
+    assert markerless.normalization_status == jan.NO_CHANGE
+    assert semantic.normalization_rules_applied == (
+        "CHOME_TO_BLOCK",
+        "BAN_TO_LOT",
+        "GO_TO_SUB_LOT",
+    )
+    assert semantic.normalization_status == jan.NORMALIZED
+
+    # marker 無し側が `丁目` / `番` / `号` を主張していないこと。
+    for rule in ("CHOME_TO_BLOCK", "BAN_TO_LOT", "BANCHI_TO_LOT", "GO_TO_SUB_LOT"):
+        assert rule not in markerless.normalization_rules_applied
+
+    # 住所比較の evidence としては一致してよい（Identity 確定ではない）。
+    pair = jan.compare_addresses(
+        "東京都千代田区外神田2-16-2", "東京都千代田区外神田2丁目16番2号"
+    )
+    assert pair.address_identity_status == jan.ADDRESS_NORMALIZED_MATCH
+    assert pair.address_identity_status not in FORBIDDEN_ENTITY_VERDICTS
+
+
+def test_single_markerless_number_is_a_positional_slot_too():
+    """裸の1数値は lot slot に入るが `番地` を立証したわけではない。"""
+    result = jan.normalize_address_structured("埼玉県某市石神976")
+    assert (result.block, result.lot, result.sub_lot) == (None, 976, None)
+    assert result.normalization_rules_applied == ()
+    assert result.address_core == "埼玉県某市石神976"
+
+    banchi = jan.normalize_address_structured("埼玉県某市石神976番地")
+    assert banchi.lot == 976
+    assert banchi.normalization_rules_applied == ("BANCHI_TO_LOT",)
+
+
+def test_structured_address_is_core_plus_building_components():
+    """`structured_address` = address_core + building/floor/unit（存在時）。"""
+    with_building = jan.normalize_address_structured(
+        "東京都中央区銀座1-2-3 パークタワー3階201号室"
+    )
+    assert with_building.address_core == "東京都中央区銀座1-2-3"
+    assert with_building.structured_address == (
+        "東京都中央区銀座1-2-3 パークタワー 3階 201号室"
+    )
+
+    # component が無ければ address_core と同一。
+    without_building = jan.normalize_address_structured("東京都中央区銀座1-2-3")
+    assert without_building.structured_address == without_building.address_core

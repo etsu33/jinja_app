@@ -138,21 +138,31 @@ ADDRESS_IDENTITY_STATUSES = frozenset(
 # ---------------------------------------------------------------------------
 # Stage 1 — Lexical Normalization（Contract §2.2）
 # ---------------------------------------------------------------------------
-# `scripts/audit_shrine_positions_v2.py` の `normalize_address()` と
-# **同一の規則**を実装する。両者が同値であることは
-# `scripts/tests/test_japanese_address_normalization.py` が固定する。
+# 本 module が Stage 2 の **canonical** な Stage 1 実装である。
 #
-# 依存方向を作らないため import ではなく再実装している。既存側の挙動は
-# 変更しない（P2-B02 は foundation であり、統合は別 PR）。
+# `scripts/audit_shrine_positions_v2.py` の `normalize_address()` は
+# legacy behavior として当面そのまま残る。両者は dash 異体字の扱いだけが
+# 意図的に異なる（下記 U+30FC）。legacy 側は本 PR で変更しない。
 #
-# 既知の制約: dash 異体字集合に `ー`（U+30FC）を含む。住所表記で dash の
-# 代用に使われるための既存契約だが、カタカナ長音を含む建物名は
-# `パークタワー` -> `パークタワ-` のように変形する。既存 audit 契約との
-# 同値性を優先し、本 PR では変更しない。
+# ## U+30FC `ー` を dash 異体字に含めない理由
+#
+# `ー`（KATAKANA-HIRAGANA PROLONGED SOUND MARK）は日本語テキストの
+# **正規の構成文字**であり、建物名に普通に現れる。legacy 実装のように
+# 一律で `-` へ寄せると
+#
+#     パークタワー -> パークタワ-
+#
+# のように `building_component` を破壊し、将来の Identity evidence を
+# 信頼できなくする。したがって Stage 2 canonical では変換しない。
+#
+# 実際の dash / minus 異体字（`－ ‐ ‑ ‒ – — ― −`）は従来どおり ASCII `-`
+# へ寄せる。
 _WHITESPACE_RE = re.compile(r"\s+")
 _POSTAL_PREFIX_RE = re.compile(r"^〒?\s*\d{3}\s*-?\s*\d{4}\s*")
-_DASH_VARIANTS = "－‐‑‒–—―ー−"
+# U+30FC `ー` は **意図的に含めない**（上記参照）。
+_DASH_VARIANTS = "－‐‑‒–—―−"
 _DASH_TABLE = {ord(ch): "-" for ch in _DASH_VARIANTS}
+_KATAKANA_PROLONGED_SOUND_MARK = "ー"
 _JAPAN_PREFIX = "日本、"
 
 
@@ -338,13 +348,22 @@ def _parse_numbers(tail: str) -> _NumberComponents:
     marker 付き token（`丁目` / `番` / `番地` / `号`）を先に消費し、残った
     hyphen 区切りの数値を空いている slot へ順に詰める。
 
-    marker が1つも無い裸の数値列は位置で決める。
+    marker が1つも無い裸の数値列（`2-16-2` 等）は位置で決める。
 
     ```text
     3個 -> block, lot, sub_lot
     2個 -> block, lot
-    1個 -> lot        （番地単独とみなす）
+    1個 -> lot
     ```
+
+    **この割当は比較用の positional slot であって、行政上の
+    `丁目` / `番` / `号` の意味を確定したものではない。**
+
+    `2-16-2` が `block=2 / lot=16 / sub_lot=2` に落ちるのは決定的な比較を
+    成立させるためであり、`2丁目16番2号` という事実を独立に立証したことには
+    ならない。意味が確定するのは marker 付き token
+    （`丁目` / `番` / `番地` / `号`）を実際に消費したときだけで、それは
+    `normalization_rules_applied` に現れる。
 
     slot 数を超える数値列は発明せず `UNSUPPORTED_LOT_STRUCTURE` にする。
     """
@@ -490,6 +509,14 @@ class AddressNormalizationResult:
 
     `address_core` / `structured_address` は **comparison-only derived value**
     であり保存値ではない（Contract §2.5）。
+
+    `structured_address` は `address_core` に building / floor / unit を
+    付け足した完全表記である（component が存在する場合）。
+
+    `block` / `lot` / `sub_lot` は、marker 無しの hyphen 表記から得た場合は
+    **positional comparison slot** であり、行政上の `丁目` / `番` / `号` を
+    立証したものではない。意味が確定したかどうかは
+    `normalization_rules_applied` を見て判断する。
     """
 
     raw_address: str
