@@ -3,7 +3,7 @@
 ## Status
 
 ```text
-STATUS = ACTIVE
+STATUS = CLOSED
 PHASE = PHASE_1_EVIDENCE_COLLECTION
 WRITE_PATH = NONE
 COORDINATE_REMEDIATION = NOT_IN_SCOPE
@@ -1664,34 +1664,11 @@ notes = This Pilot is a WAVE0_CONTROL and standard tracked Position case. The W0
 
 ---
 
-## 9. Remaining Pilot Records
+## 9. Pilot Completion Record
 
-The same record structure defined in §8 must be used for:
+All 20 Pilot Shrine evidence records are complete and retain the full schema defined in §6.
 
-```text
-03 千葉神社
-04 住吉神社（博多）
-05 伊勢神宮（内宮）
-06 伏見稲荷大社
-07 鹿島神宮
-08 宇佐神宮
-09 三峯神社
-10 金刀比羅宮
-11 貴船神社
-12 厳島神社
-13 江島神社
-14 彌彦神社
-15 多摩川浅間神社
-16 富岡八幡宮
-17 御岩神社
-18 射水神社
-19 札幌諏訪神社
-20 大鳥大社
-```
-
-Each record must retain the complete schema.
-
-No Shrine-specific shortcut is permitted.
+No Shrine-specific shortcut was used.
 
 ---
 
@@ -1717,25 +1694,105 @@ Completion does not imply remediation.
 
 ---
 
-## 11. Open Items
+## 11. Phase 1 Findings
 
-* Collect official identity evidence for all 20 Shrines.
-* Inspect repository Position records for all 20 Shrines.
-* Collect Primary Position Source evidence using the fixed procedure.
-* Record `entity_match`.
-* Record coordinate traceability.
-* Determine corroboration requirements.
-* Collect Provider POI evidence after Primary roles are established.
-* Measure observational coordinate deltas.
-* Classify discrepancies into the Phase 1 error taxonomy.
-* Determine which checks may become deterministic Phase 2 rules.
-* Do not remediate coordinate data inside this Pilot.
+The 20-Shrine Primary Position Evidence Pilot is complete.
+
+### 11.1 Legacy coordinates are primarily a provenance problem
+
+`LEGACY_UNTRACED` means that current repository evidence cannot deterministically reproduce the original Position provenance.
+
+It does not independently mean that the stored coordinate is incorrect.
+
+Across the legacy Pilot population, stored-to-Primary coordinate deltas ranged from approximately 5 m to more than 1 km.
+
+Therefore, coordinate distance alone cannot classify a legacy Position as valid or invalid.
+
+### 11.2 A fixed meter threshold is not sufficient
+
+The Pilot does not support introducing a universal distance threshold for Position adoption.
+
+Examples include:
+
+* Pilot 18 射水神社 remains `HOLD_POSITION_REVIEW` because the provenance of the stored coordinate cannot be deterministically reproduced, not because its delta is approximately 33.75 m.
+* Pilot 19 札幌諏訪神社 demonstrates that a smaller coordinate difference can still represent a meaningful Visitor / Navigation Anchor correction when a Shrine-authority access map provides stronger semantic evidence.
+
+Distance remains observational evidence only.
+
+### 11.3 Phase 2 deterministic checks require multiple dimensions
+
+The Pilot supports evaluating at least the following dimensions separately:
+
+1. provenance reproducibility
+2. Shrine entity identity
+3. Visitor / Navigation Anchor meaning
+4. coordinate consistency
+5. artifact synchronization
+
+No single dimension is sufficient by itself.
+
+### 11.4 Multi-site and large-precinct Shrines require semantic handling
+
+The Pilot confirms that a Shrine entity may not map cleanly to one obvious navigation point.
+
+Relevant distinctions include:
+
+* Shrine entity
+* individual worship site
+* entrance
+* parking
+* trailhead
+* mountain / precinct POI
+
+These cases must not be reduced to coordinate proximity alone.
+
+### 11.5 Position correctness and artifact synchronization are separate defects
+
+Pilot 16 富岡八幡宮 demonstrates that a corrected Position can exist while another repository artifact still contains a legacy coordinate.
+
+Therefore:
+
+`Position correctness`
+
+and
+
+`artifact synchronization`
+
+must be audited independently.
+
+### 11.6 Control cases reproduced expected states
+
+The control population reproduced the intended known conditions:
+
+* Pilot 15 多摩川浅間神社: known corrected Position
+* Pilot 16 富岡八幡宮: known correction with Base Seed drift
+* Pilot 17 御岩神社: adopted Position reproduced at 0.00 m delta
+* Pilot 18 射水神社: review-sensitive provenance gap
+* Pilot 19 札幌諏訪神社: authority access-map anchor reproduced at 0.00 m delta
+* Pilot 20 大鳥大社: standard tracked Position reproduced at 0.00 m delta
+
+This indicates that the fixed Evidence Collection procedure can distinguish materially different Position states instead of merely confirming existing coordinates.
+
+### 11.7 Phase 1 conclusion
+
+Phase 1 identified the dominant risk as a combination of:
+
+`PROVENANCE / IDENTITY / ANCHOR SEMANTICS / ARTIFACT SYNCHRONIZATION`
+
+rather than a single coordinate-error mechanism.
+
+Phase 1 does not authorize coordinate remediation.
+
+The next phase, if authorized by Mother Ship, is to define deterministic Position Audit rules from these findings without changing the canonical Position Contract.
+
 
 ---
 
 ## 12. STOP
 
-This document records Phase 1 evidence collection only.
+Phase 1 evidence collection is CLOSED.
+
+Completion Gate = PASS.
 
 No coordinate remediation is authorized by this Pilot.
 
