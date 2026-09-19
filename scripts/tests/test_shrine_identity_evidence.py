@@ -941,6 +941,23 @@ def test_evaluation_does_not_mutate_inputs():
 
 
 def test_b03_is_not_wired_into_any_existing_caller():
+    """**暫定の layer-boundary 不変条件**（P2-B03 時点）。
+
+    現時点で B03 を消費する層は存在しない。ただしこれは恒久的な契約では
+    なく、P2-B04 の導入によって **設計どおり失効する**。
+
+    B04 実装時にはこの test を、B02 側と同じ厳密な allowlist 方式へ
+    置き換えること。
+
+    ```python
+    SANCTIONED_CONSUMERS = {"scripts/<b04 module>.py"}
+    assert set(callers) == SANCTIONED_CONSUMERS, callers
+    ```
+
+    `<=` ではなく `==` を使う（必要な依存が消えたことも検出するため）。
+    推移的依存は上流の allowlist に載せない。B02 が sanction するのは
+    B03 だけであり、B04 は B03 の allowlist にだけ載る。
+    """
     callers = []
     for path in sorted(REPO_ROOT.glob("scripts/*.py")) + sorted(
         (REPO_ROOT / "backend").rglob("*.py")

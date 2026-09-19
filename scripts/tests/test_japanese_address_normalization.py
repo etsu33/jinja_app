@@ -719,8 +719,38 @@ def test_existing_normalizers_keep_their_own_behavior():
     assert jan.normalize_address_structured(value).address_core == "東京都江東区富岡1-20-3"
 
 
-def test_stage2_module_is_not_wired_into_any_existing_caller():
-    """P2-B02 は foundation。既存経路へは結線しない。"""
+# B02 canonical address layer を **直接** 消費してよい module の厳密な集合。
+#
+# P2-B02 時点の暫定不変条件「B02 には consumer が存在しない」は、
+# P2-B03（identity evidence layer）の導入によって **設計どおり失効した**。
+# 以後は wildcard でも substring 一致でもなく、明示的な allowlist で管理する。
+#
+# 推移的依存はここに現れない。
+#
+#     B04 -> B03 -> B02
+#
+# のとき B02 が sanction するのは B03 だけであり、B04 が B02 に推移的に
+# 依存することを理由に B02 の allowlist へ加えてはならない。
+SANCTIONED_CONSUMERS = {
+    "scripts/shrine_identity_evidence.py",
+}
+
+
+def test_stage2_module_has_exactly_the_sanctioned_direct_consumers():
+    """B02 の直接 consumer が allowlist と **完全一致** すること。
+
+    ```text
+    B02 canonical address layer
+    → exactly one sanctioned direct consumer
+    → scripts/shrine_identity_evidence.py
+    ```
+
+    `<=` ではなく `==` で比較する。部分集合比較だと、想定外の consumer を
+    検出できる一方で、**必要な B03 依存が消えたこと**を検出できないため。
+
+    * 想定外の直接 consumer が増えたら落ちる
+    * sanction された consumer が消えても落ちる
+    """
     callers = []
     for path in sorted(REPO_ROOT.glob("scripts/*.py")) + sorted(
         (REPO_ROOT / "backend").rglob("*.py")
@@ -729,7 +759,42 @@ def test_stage2_module_is_not_wired_into_any_existing_caller():
             continue
         if "japanese_address_normalization" in path.read_text(encoding="utf-8"):
             callers.append(str(path.relative_to(REPO_ROOT)))
-    assert callers == [], callers
+    assert set(callers) == SANCTIONED_CONSUMERS, callers
+
+
+def test_sanctioned_consumers_really_depend_on_the_canonical_module():
+    """allowlist の consumer が **実際に** canonical module へ依存すること。
+
+    直前の test は repository 全体を文字列走査して直接 consumer を数える。
+    それだけだと docstring に module 名を書いただけの file も consumer と
+    数えてしまい、実依存が壊れても検出できない。ここで実体を確認する。
+    """
+    for relative in sorted(SANCTIONED_CONSUMERS):
+        consumer_path = REPO_ROOT / relative
+        assert consumer_path.exists(), relative
+        consumer = _load(f"sanctioned_consumer_{consumer_path.stem}", consumer_path)
+        linked = [
+            name
+            for name, value in vars(consumer).items()
+            if getattr(value, "__file__", None) == str(MODULE_PATH)
+            or getattr(value, "__module__", None) == MODULE_PATH.stem
+        ]
+        assert linked, f"{relative} does not actually depend on {MODULE_PATH.name}"
+
+
+def test_position_audit_does_not_directly_consume_the_canonical_address_layer():
+    """Position Audit / Production join は B02 を直接消費しない。
+
+    legacy Stage 1 との境界を保つための不変条件であり、allowlist 化した
+    あとも守り続ける。
+    """
+    for relative in (
+        "scripts/audit_shrine_positions_v2.py",
+        "scripts/reconcile_production_shrine_identity.py",
+    ):
+        assert relative not in SANCTIONED_CONSUMERS
+        source = (REPO_ROOT / relative).read_text(encoding="utf-8")
+        assert "japanese_address_normalization" not in source, relative
 
 
 @pytest.mark.parametrize(
