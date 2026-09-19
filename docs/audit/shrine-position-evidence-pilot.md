@@ -555,7 +555,7 @@ candidate_id = NOT_RETRIEVED
 
 official_name = 神田神社
 official_address = 東京都千代田区外神田2-16-2
-identity_source_url = 神田明神公式アクセスページ
+identity_source_url = https://www.kandamyoujin.or.jp/access/
 
 stored_latitude = 35.7019
 stored_longitude = 139.7674
@@ -656,6 +656,8 @@ provider_plus_code = NOT_RETRIEVED
 stored_vs_primary_delta_m = 173.53
 stored_vs_provider_delta_m = 173.53
 primary_vs_corroboration_delta_m = 1.78
+
+evidence_collected_at = 2026-09-19
 
 notes = No dedicated Position Resolution Record / Source Packet / Candidate Master record was found for this legacy Shrine. Current MapFan POI identifies the same Ikuta Shrine entity and reports 34.6948193, 135.1906845. The legacy stored coordinate differs from this Primary coordinate by approximately 173.53 m. Wikidata independently identifies the same Kobe Ikuta Shrine at 34.69480556, 135.19069444, approximately 1.78 m from the Primary coordinate. Distance values are observational only and are not used as PASS/HOLD thresholds.
 
@@ -992,6 +994,7 @@ notes = No dedicated Position Resolution Record / Source Packet / Candidate Mast
 ```
 ### 8.9 Pilot 09 — 三峯神社
 
+```text
 pilot_no = 09
 pilot_group = LEGACY_UNTRACED
 candidate_id = NOT_RETRIEVED
@@ -1043,9 +1046,11 @@ primary_vs_corroboration_delta_m = 7.80
 
 evidence_collected_at = 2026-09-19
 notes = No dedicated Position Resolution Record / Source Packet / Candidate Master Position record was found for this legacy Shrine. The official Shrine site confirms the Chichibu Mitsumine Shrine identity and address. MapFan identifies the same Shrine at 35.9253985, 138.9304005. Kokugakuin University independently identifies the same Shrine and links the official site, reporting 35.92534611, 138.93045806, approximately 7.80 m from the Primary coordinate. The legacy stored coordinate differs from the Primary coordinate by approximately 466.40 m. Because this is a mountain Shrine with multiple nearby visitor and mountain-related POIs, coordinate distance alone does not determine Position validity.
+```
 
 ### 8.10 Pilot 10 — 金刀比羅宮
 
+```text
 pilot_no = 10
 pilot_group = LEGACY_UNTRACED
 candidate_id = NOT_RETRIEVED
@@ -1097,9 +1102,11 @@ primary_vs_corroboration_delta_m = 34.45
 
 evidence_collected_at = 2026-09-19
 notes = No dedicated Position Resolution Record / Source Packet / Candidate Master Position record was found for this legacy Shrine. The official site confirms Kotohira-gu at Kagawa-ken Nakatado-gun Kotohira-cho 892-1 and describes a long pedestrian approach to the Main Sanctuary and Inner Shrine. MapFan identifies the same Kotohira-gu entity at 34.183994, 133.809418. Wikidata independently identifies the same Shrine at 34.184258, 133.809614, approximately 34.45 m from the Primary coordinate. The legacy stored coordinate differs from the Primary coordinate by approximately 1165.87 m. Because the precinct and approach span a large mountainside area and the official site explicitly warns against using the Shrine itself as an automobile navigation destination, coordinate distance alone does not determine Position validity.
+```
 
 ### 8.11 Pilot 11 — 貴船神社
 
+```text
 pilot_no = 11
 pilot_group = LEGACY_UNTRACED
 candidate_id = NOT_RETRIEVED
@@ -1151,9 +1158,11 @@ primary_vs_corroboration_delta_m = 13.56
 
 evidence_collected_at = 2026-09-19
 notes = No dedicated Position Resolution Record / Source Packet / Candidate Master Position record was found for this legacy Shrine. The official Kifune Shrine site confirms the Kyoto identity and address and explicitly defines the Shrine as a three-site pilgrimage consisting of Hongu, Yui-no-Yashiro, and Okumiya. MapFan identifies the Kyoto Kifune Shrine at 35.1216434, 135.7628869. Wikidata independently identifies the same Kyoto Shrine at 35.121733, 135.762988, approximately 13.56 m from the Primary coordinate. The legacy stored coordinate differs from the Primary coordinate by approximately 80.91 m. Because Kifune Shrine is a multi-site Shrine, coordinate distance alone does not determine Position validity.
+```
 
 ### 8.12 Pilot 12 — 厳島神社
 
+```text
 pilot_no = 12
 pilot_group = LEGACY_UNTRACED
 candidate_id = NOT_RETRIEVED
@@ -1205,9 +1214,11 @@ primary_vs_corroboration_delta_m = 30.24
 
 evidence_collected_at = 2026-09-19
 notes = No dedicated Position Resolution Record / Source Packet / Candidate Master Position record was found for this legacy Shrine. The official Itsukushima Shrine site confirms the Shrine identity and address at Miyajima-cho 1-1 and defines a visitor route from Miyajima Pier to the Shrine entrance. MapFan identifies the same Shrine at 34.2959214, 132.3198133. Wikidata independently identifies the same Itsukushima Shrine at 34.29580556, 132.32011111, approximately 30.24 m from the Primary coordinate. The legacy stored coordinate differs from the Primary coordinate by approximately 8.31 m. The Great Torii, ferry pier, parking context, and other island POIs must not be substituted for the Shrine representative Position. Distance values are observational only and are not used as PASS/HOLD thresholds.
+```
 
 ### 8.13 Pilot 13 — 江島神社
 
+```text
 pilot_no = 13
 pilot_group = LEGACY_UNTRACED
 candidate_id = NOT_RETRIEVED
@@ -1259,9 +1270,11 @@ primary_vs_corroboration_delta_m = 3.87
 
 evidence_collected_at = 2026-09-19
 notes = No dedicated Position Resolution Record / Source Packet / Candidate Master Position record was found for this legacy Shrine. The official Enoshima Shrine identity and Fujisawa address are consistent with the current MapFan POI at 35.3003555, 139.4795689. Wikidata independently identifies the same Fujisawa Enoshima Shrine at 35.300361, 139.479611, approximately 3.87 m from the Primary coordinate. The legacy stored coordinate differs from the Primary coordinate by approximately 134.79 m. Because Enoshima Shrine is a multi-site Shrine distributed across the island, coordinate distance alone does not determine Position validity.
+```
 
 ### 8.14 Pilot 14 — 彌彦神社
 
+```text
 pilot_no = 14
 pilot_group = LEGACY_UNTRACED
 candidate_id = NOT_RETRIEVED
@@ -1313,9 +1326,11 @@ primary_vs_corroboration_delta_m = 36.40
 
 evidence_collected_at = 2026-09-19
 notes = No dedicated Position Resolution Record / Source Packet / Candidate Master Position record was found for this legacy Shrine. The official Yahiko Shrine site confirms the current Shrine identity and address at Yahiko 2887-2. MapFan identifies the same Shrine at 37.7067028, 138.8259704. Kokugakuin University independently identifies the same Shrine at 37.70651389, 138.82630833, approximately 36.40 m from the Primary coordinate. The legacy stored coordinate differs from the Primary coordinate by approximately 327.50 m. Nearby POIs such as the treasure hall, shrine grove, ropeway facilities, and parking must not be substituted for the Shrine representative Position. Distance values are observational only and are not used as PASS/HOLD thresholds.
+```
 
 ### 8.15 Pilot 15 — 多摩川浅間神社
 
+```text
 pilot_no = 15
 pilot_group = KNOWN_CORRECTED
 candidate_id = NOT_RETRIEVED
@@ -1367,6 +1382,7 @@ primary_vs_corroboration_delta_m = 36.51
 
 evidence_collected_at = 2026-09-19
 notes = This Pilot is a KNOWN_CORRECTED control. Repository audit history records that the previous coordinate 35.5898, 139.6688 resolved near a nearby non-Shrine location and was corrected to 35.5875263, 139.6687549 through the shrine-70 coordinate correction and migration 0094. The current Base Seed contains the corrected coordinate. The current Primary evidence reproduces the same corrected coordinate exactly, producing a 0.00 m stored-vs-Primary delta. Wikidata independently identifies the same Tamagawa Sengen Shrine and official website at 35.58721944, 139.66861111, approximately 36.51 m from the Primary coordinate. This control therefore reproduces the known correction under the current Evidence Collection procedure. Distance values remain observational and are not PASS/HOLD thresholds.
+```
 
 ### 8.16 Pilot 16 — 富岡八幡宮
 
@@ -1480,6 +1496,7 @@ notes = This Pilot is a WAVE0_CONTROL. The existing Position Resolution Record a
 ```
 ### 8.18 Pilot 18 — 射水神社
 
+```text
 pilot_no = 18
 pilot_group = WAVE0_CONTROL
 candidate_id = wave0-007
@@ -1506,7 +1523,7 @@ primary_verified_at = 2026-09-19
 retrieval_status = OK
 entity_match = SAME
 
-entry_status = MULTI_CANDIDATE
+entry_status = NOT_CONFIRMED
 anchor_complexity = HIGH
 multi_site_status = NOT_RETRIEVED
 visitor_flow_note = 公式アクセスでは射水神社が高岡古城公園中央に位置し、参拝者駐車場への進入経路を別途案内している。高岡駅から徒歩約10分の参拝導線も提示されている
@@ -1531,9 +1548,11 @@ primary_vs_corroboration_delta_m = 30.52
 
 evidence_collected_at = 2026-09-19
 notes = This Pilot is a WAVE0_CONTROL and review-sensitive Position case. A current Position Resolution Record exists with position_status = HOLD_POSITION_REVIEW. The stored coordinate 36.7484968, 137.0215428 originates from the earlier frozen Source Packet, but the original source URL was not preserved; the Resolution Record explicitly records old_position_source_url_status = NOT_RECORDED_IN_SOURCE_PACKET. Current Google Maps Primary Evidence identifies the same Imizu Shrine entity at 36.7487585, 137.0213509. Wikidata independently identifies the same Takaoka Kojo Park Imizu Shrine at 36.748529, 137.021163. The stored coordinate differs from the current Primary by approximately 33.75 m, while Primary and corroboration differ by approximately 30.52 m. The HOLD is therefore not justified by a distance threshold; it remains because the provenance of the currently stored coordinate cannot be deterministically reproduced from its original source.
+```
 
 ### 8.19 Pilot 19 — 札幌諏訪神社
 
+```text
 pilot_no = 19
 pilot_group = WAVE0_CONTROL
 candidate_id = wave0-010
@@ -1585,9 +1604,11 @@ primary_vs_corroboration_delta_m = 16.25
 
 evidence_collected_at = 2026-09-19
 notes = This Pilot is a WAVE0_CONTROL and corrected access-map anchor case. The existing CLOSED Position Resolution Record has position_status = PASS and adopts 43.07603505258046, 141.3540979693115 as the Visitor / Navigation Anchor. The coordinate is derived from the Google Maps iframe embedded in the Hokkaido Jinja-cho Sapporo Branch page for the same Suwa Shrine identity and address. The current Base Seed contains the adopted coordinate exactly, producing a 0.00 m stored-vs-Primary delta. MapFan independently identifies the same Shrine at 43.0759164, 141.3542148, approximately 16.25 m from the adopted Primary and effectively identical to the former anchor. The correction therefore reflects source meaning and Visitor / Navigation Anchor semantics rather than a distance threshold.
+```
 
 ### 8.20 Pilot 20 — 大鳥大社
 
+```text
 pilot_no = 20
 pilot_group = WAVE0_CONTROL
 candidate_id = wave0-002
@@ -1639,6 +1660,7 @@ primary_vs_corroboration_delta_m = 16.00
 
 evidence_collected_at = 2026-09-19
 notes = This Pilot is a WAVE0_CONTROL and standard tracked Position case. The W0-DB01 Source Packet Freeze records the Kokugakuin University Shrine Database as the Position source and freezes 34.5367778, 135.4608611 with position_status = PASS. Candidate Master, Base Seed, and Production import records preserve the same coordinate. Current Kokugakuin evidence continues to identify Otori Taisha at Sakai-shi Nishi-ku Otorikita-machi 1-1-2 and publishes the same source coordinate. Wikidata independently identifies the same Shrine at 34.536898, 135.460765, approximately 16.00 m from the Primary coordinate. The stored and Primary coordinates therefore reproduce the tracked Position exactly at 0.00 m delta. Nearby entrance, intersection, and parking POIs must not be substituted for the Shrine representative Position.
+```
 
 ---
 
