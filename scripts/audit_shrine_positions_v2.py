@@ -1017,17 +1017,25 @@ def evaluate(item: ShrinePositionAuditInput) -> ShrinePositionAuditResult:
         and prod.longitude is not None
     )
     if not artifact_reference_available:
-        if (
-            item.production_snapshot_available
-            and item.seed_production_join_status == JOIN_MISSING_PRODUCTION
-        ):
-            # Seed には在るのに Production に無い。live artifact が
-            # adopted Position を保持していない = 実在する drift。
-            codes.add(RC_ARTIFACT_PRODUCTION_DRIFT)
-        else:
-            # snapshot 不在 / 重複 / identity 未確定 / 座標欠落。
-            # 「揃っている」とも「ずれている」とも言えない。
-            codes.add(RC_ARTIFACT_SYNC_INPUT_UNAVAILABLE)
+        # 参照基準（Production 座標）が無いので、揃っているともずれている
+        # とも言えない。snapshot 不在 / 重複 / identity 未確定 / 座標欠落 /
+        # `MISSING_PRODUCTION` のすべてがここに入る。
+        #
+        # `MISSING_PRODUCTION` を drift と断定しないことが重要である。
+        # この join status が示すのは次だけであり、
+        #
+        #   production snapshot が存在する
+        #   かつ Seed identity が存在する
+        #   かつ exact (name_jp, address) の一致件数が 0
+        #
+        # 「その Shrine が Production に**存在しない**」ことは証明していない。
+        # 同じ Shrine が別の name / address 表現で存在しうる（§3 の join は
+        # 正規化も fuzzy match も行わない）。したがって不在ではなく
+        # **判定不能**として扱う。
+        #
+        # `ARTIFACT_PRODUCTION_DRIFT` は、より強い identity resolution に
+        # よって Production 不在を確定できる将来の状態のために予約する。
+        codes.add(RC_ARTIFACT_SYNC_INPUT_UNAVAILABLE)
     else:
         ref_lat = prod.latitude
         ref_lng = prod.longitude

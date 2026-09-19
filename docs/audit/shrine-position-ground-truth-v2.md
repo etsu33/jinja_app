@@ -644,10 +644,40 @@ audit_status = REVIEW     かつ  artifact_sync_status = SYNCED  … 成立す�
 | `ARTIFACT_BASE_SEED_DRIFT` | Base Seed 座標 ≠ Production |
 | `ARTIFACT_CANDIDATE_MASTER_DRIFT` | Candidate Master 座標 ≠ Production |
 | `ARTIFACT_RESOLUTION_DRIFT` | 現在採用中の `PASS` Resolution Record の採用座標 ≠ Production |
-| `ARTIFACT_PRODUCTION_DRIFT` | Seed に在るのに Production に行が無い（`MISSING_PRODUCTION`） |
-| `ARTIFACT_SYNC_INPUT_UNAVAILABLE` | snapshot 不在 / 重複 / identity 未確定 / 基準座標欠落で比較できない |
+| `ARTIFACT_PRODUCTION_DRIFT` | **予約。現契約では発火しない**（下記） |
+| `ARTIFACT_SYNC_INPUT_UNAVAILABLE` | snapshot 不在 / 重複 / identity 未確定 / 基準座標欠落 / `MISSING_PRODUCTION` で比較できない |
 
 `artifact_sync_status` は `DRIFT` > `UNKNOWN` > `SYNCED` の優先順で決まる。
+
+#### `MISSING_PRODUCTION` は drift ではない
+
+`JOIN_MISSING_PRODUCTION` が示すのは次だけである。
+
+```text
+production snapshot が存在する
+かつ Seed identity が存在する
+かつ exact (name_jp, address) の Production 一致件数が 0
+```
+
+これは「その Shrine が Production に**存在しない**」ことを証明していない。
+§3 の Seed ↔ Production join は正規化も fuzzy match も行わないため、
+同じ Shrine が別の name / address 表現で Production に存在しうる。
+
+したがって不在と断定せず、**判定不能**として扱う。
+
+```text
+JOIN_MISSING_PRODUCTION
+→ ARTIFACT_SYNC_INPUT_UNAVAILABLE
+→ artifact_sync_status = UNKNOWN
+```
+
+`ARTIFACT_PRODUCTION_DRIFT` は、より強い identity resolution によって
+Production の不在を確定できる将来の状態のために**予約**する。現契約では
+どの入力でも発火しない。P2-A02 §22 の承認済み集合からは外さない。
+
+Position 側の意味論は変えない。`MISSING_PRODUCTION` は従来どおり
+`HOLD_REASON_CODES` に属し、`audit_status = HOLD` を生む。
+artifact 軸の分類だけが `DRIFT` から `UNKNOWN` へ変わる。
 
 これらの code は `HOLD_REASON_CODES` / `REVIEW_REASON_CODES` の**どちらにも
 属さない**。`SEED_PRODUCTION_COORDINATE_DIFFERS` は後方互換の観測値として

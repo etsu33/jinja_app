@@ -2711,17 +2711,85 @@ def test_artifact_sync_is_unknown_when_inputs_cannot_be_compared():
     assert result.audit_status == audit.HOLD
 
 
-def test_missing_production_row_is_artifact_production_drift():
+def test_missing_production_row_is_artifact_sync_input_unavailable():
+    """`MISSING_PRODUCTION` は Production 不在を証明しない。
+
+    この join status が示すのは次だけである。
+
+    ```text
+    production snapshot が存在する
+    かつ Seed identity が存在する
+    かつ exact (name_jp, address) の一致件数が 0
+    ```
+
+    同じ Shrine が別の name / address 表現で Production に存在しうるため、
+    drift と断定せず **判定不能**（UNKNOWN）として扱う。
+    `ARTIFACT_PRODUCTION_DRIFT` はより強い identity resolution 後の
+    将来の状態のために予約する。
+    """
     result = audit.evaluate(
         _item(
             production=None,
             spreadsheet=_bare_sheet(),
             seed_production_join_status=audit.JOIN_MISSING_PRODUCTION,
+            production_snapshot_available=True,
         )
     )
-    assert audit.RC_ARTIFACT_PRODUCTION_DRIFT in result.reason_codes
-    assert result.artifact_sync_status == audit.ARTIFACT_DRIFT
+    assert audit.RC_ARTIFACT_SYNC_INPUT_UNAVAILABLE in result.reason_codes
+    assert audit.RC_ARTIFACT_PRODUCTION_DRIFT not in result.reason_codes
+    assert result.artifact_sync_status == audit.ARTIFACT_UNKNOWN
+
+    # Position 側の意味論は変えない。
+    assert audit.RC_MISSING_PRODUCTION in result.reason_codes
     assert result.audit_status == audit.HOLD
+
+
+def test_artifact_production_drift_is_reserved_and_never_emitted():
+    """現契約では `ARTIFACT_PRODUCTION_DRIFT` を発火させる入力が存在しない。
+
+    code 自体は P2-A02 §22 の承認済み集合として保持するが、Production の
+    不在を確定できる identity resolution が無い間は使わない。
+    """
+    cases = [
+        _item(
+            production=None,
+            spreadsheet=_bare_sheet(),
+            seed_production_join_status=audit.JOIN_MISSING_PRODUCTION,
+            production_snapshot_available=True,
+        ),
+        _item(
+            production=None,
+            spreadsheet=_bare_sheet(),
+            seed_production_join_status=audit.JOIN_PRODUCTION_SNAPSHOT_UNAVAILABLE,
+            production_snapshot_available=False,
+        ),
+        _item(
+            spreadsheet=_bare_sheet(),
+            seed_production_join_status=audit.JOIN_DUPLICATE_MATCH,
+        ),
+        _item(
+            spreadsheet=_bare_sheet(),
+            seed_production_join_status=audit.JOIN_IDENTITY_REVIEW_REQUIRED,
+        ),
+        _item(
+            spreadsheet=_bare_sheet(),
+            seed_production_join_status=audit.JOIN_MISSING_SEED,
+        ),
+        _item(
+            production=audit.ProductionPosition(latitude=None, longitude=None),
+            spreadsheet=_bare_sheet(),
+        ),
+        _item(spreadsheet=_bare_sheet(), primary_position_evidence=_full_evidence()),
+    ]
+    for item in cases:
+        result = audit.evaluate(item)
+        assert audit.RC_ARTIFACT_PRODUCTION_DRIFT not in result.reason_codes, (
+            item.seed_production_join_status
+        )
+
+    # 予約されているだけで、承認済みの集合からは外さない。
+    assert audit.RC_ARTIFACT_PRODUCTION_DRIFT in audit.ARTIFACT_DRIFT_REASON_CODES
+    assert audit.RC_ARTIFACT_PRODUCTION_DRIFT in audit.ARTIFACT_SYNC_REASON_CODES
 
 
 def test_historical_artifacts_are_not_synchronization_authorities():
