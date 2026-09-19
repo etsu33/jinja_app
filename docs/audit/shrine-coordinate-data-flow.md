@@ -1044,6 +1044,459 @@ Do not modify:
 
 Remediation belongs to a separately gated follow-up after the Pilot classification is complete.
 
+### 8.2 Primary Position Evidence Collection Procedure
+
+#### Purpose
+
+This procedure defines how Primary Position Evidence is collected for the 20-Shrine Phase 1 Pilot.
+
+It does not redefine:
+
+* `docs/knowledge/shrine-position-contract.md`
+* `docs/audit/shrine-position-ground-truth-v2.md`
+* `scripts/audit_shrine_positions_v2.py`
+
+The Position Contract remains the authority for canonical Position adoption.
+
+Position Audit v2 remains the authority for machine-verifiability triage.
+
+This procedure only standardizes the human evidence-collection step that occurs before those rules are applied.
+
+#### Layer separation
+
+The following layers must remain separate.
+
+```text
+Human Evidence Collection
+↓
+Primary Position Evidence snapshot
+↓
+Position Audit v2
+AUTO_PASS / REVIEW / HOLD
+↓
+Human Position adjudication
+PASS / HOLD_POSITION_REVIEW
+```
+
+Evidence collection does not itself produce canonical `PASS`.
+
+Likewise, a machine `REVIEW` does not mean the Position is incorrect.
+
+---
+
+#### Step 1 — Freeze Shrine identity
+
+Record:
+
+```text
+official_name
+official_address
+candidate_id
+```
+
+when available.
+
+The identity must be supported by a current authoritative visitor-facing source.
+
+Do not infer Shrine identity from coordinates alone.
+
+Do not merge same-name Shrines by name similarity.
+
+Do not replace a visitor-facing address with a legal / registered-office address without explicit evidence that both represent the same address purpose.
+
+---
+
+#### Step 2 — Inspect existing Position records
+
+Check whether repository-controlled Position evidence already exists.
+
+Examples include:
+
+```text
+Position Resolution Record
+Source Packet Freeze
+Candidate Master
+previous coordinate correction audit
+```
+
+Classify the existing record by role:
+
+```text
+CURRENT_ADOPTED_RECORD
+HISTORICAL_RECORD
+NONE
+```
+
+A historical or frozen record must not automatically replace current external evidence.
+
+A current Resolution Record may supply adopted provenance only when its:
+
+```text
+source_type
+source_url
+latitude
+longitude
+verified_at
+```
+
+remain traceable under the current Position Contract.
+
+---
+
+#### Step 3 — Identify Primary Position Source candidates
+
+Primary Position Source candidates may include:
+
+* Shrine-official navigation / access map
+* map provider directly linked by the Shrine official site
+* municipality / prefecture / Shrine-authority visitor-facing map
+* current map-provider POI identifying the same Shrine
+* other current public or quasi-public position material consistent with the Shrine identity
+
+This list defines eligible source categories.
+
+It does not establish an absolute trust ranking.
+
+Source type alone must not determine adoption.
+
+The relevant questions are:
+
+```text
+Does the source identify the same Shrine?
+Can the coordinate be traced from the source?
+Does the represented point make sense as a Visitor / Navigation Anchor?
+```
+
+---
+
+#### Step 4 — Separate human discovery from machine retrieval
+
+Position Audit v2 does not perform arbitrary search-engine discovery.
+
+For legacy Shrines without repository-tracked Position URLs, human Phase 1 research may identify a candidate Primary Position Source.
+
+Once identified, the exact source URL and provenance must be recorded before machine evaluation.
+
+The machine audit must not:
+
+* invent an alternative URL
+* search broadly for a replacement source
+* infer a coordinate from an address
+* silently substitute another map provider
+
+Human source discovery and machine source verification are therefore separate responsibilities.
+
+---
+
+#### Step 5 — Verify source entity
+
+For each candidate Primary Position Source, record:
+
+```text
+source_name
+source_address
+entity_match
+```
+
+Use the existing Position Audit v2 vocabulary:
+
+```text
+SAME
+DIFFERENT
+NON_SHRINE
+AMBIGUOUS
+```
+
+Interpretation:
+
+```text
+SAME
+= evidence supports the same Shrine identity
+
+DIFFERENT
+= source represents another entity
+
+NON_SHRINE
+= source represents a parking area, station, office,
+  mountain area, trailhead, unrelated facility, etc.
+
+AMBIGUOUS
+= available evidence cannot deterministically establish identity
+```
+
+Missing entity evidence must not be interpreted as `SAME`.
+
+---
+
+#### Step 6 — Verify coordinate traceability
+
+The Primary Position coordinate must be reproducible from the recorded source.
+
+Record:
+
+```text
+latitude
+longitude
+source_type
+source_url
+verified_at
+```
+
+The coordinate must not be reconstructed by:
+
+* visual approximation
+* address centroid inference
+* nearby landmark substitution
+* coordinate averaging
+* interpolation between providers
+
+If the source identifies the Shrine but the coordinate cannot be deterministically traced, record the evidence as incomplete rather than inventing a point.
+
+---
+
+#### Step 7 — Evaluate Visitor / Navigation Anchor meaning
+
+The candidate point must be interpretable under the Position Contract as a Visitor / Navigation Anchor.
+
+Record observations about:
+
+```text
+entry_status
+anchor_complexity
+multi_site_status
+visitor_flow_note
+navigation_risk_note
+```
+
+Do not automatically treat the following as the Shrine Anchor:
+
+* parking lot
+* shrine office
+* trailhead
+* precinct centroid
+* mountain centroid
+* legal registered address
+* arbitrary parcel coordinate
+
+For large, mountain, island, linear-approach, or multi-site Shrines, record why the candidate point is meaningful for visitor navigation.
+
+`anchor_complexity` remains an audit observation only and does not determine canonical Position status.
+
+---
+
+#### Step 8 — Collect corroboration when needed
+
+Independent corroboration is required when:
+
+* existing and current coordinates conflict
+* address sources conflict
+* more than one plausible POI exists
+* Shrine identity is difficult to distinguish
+* Primary Anchor meaning is not self-evident
+
+Possible corroboration sources include:
+
+```text
+other map providers
+OSM
+Wikidata
+public visitor maps
+other independent current sources
+```
+
+Corroboration must not silently replace the Primary Position Source.
+
+OSM / Wikidata alone must not be promoted to adopted Primary when the Position Contract requires stronger evidence.
+
+---
+
+#### Step 9 — Preserve Provider role
+
+A map-provider POI may have either role:
+
+```text
+PRIMARY
+CORROBORATION
+```
+
+The provider name itself does not determine the role.
+
+Examples already present in the repository:
+
+```text
+御岩神社
+Mapion = Primary Position Source
+
+札幌諏訪神社
+Shrine-authority access map = Primary
+Google Maps = corroboration
+```
+
+Therefore Provider POI collection must record:
+
+```text
+provider
+provider_role
+provider_poi_url
+provider_latitude
+provider_longitude
+provider_plus_code
+```
+
+where available.
+
+A Plus Code is supplemental identification evidence and is not independently the canonical Visitor / Navigation Anchor.
+
+---
+
+#### Step 10 — Use existing retrieval status vocabulary
+
+Primary Position Evidence retrieval uses the Position Audit v2 status vocabulary:
+
+```text
+OK
+NOT_RETRIEVED
+FETCH_FAILED
+PARSE_FAILED
+REDIRECTED
+```
+
+Do not introduce a parallel Primary Evidence status taxonomy during Phase 1.
+
+Entity identity remains separately represented by:
+
+```text
+SAME
+DIFFERENT
+NON_SHRINE
+AMBIGUOUS
+```
+
+---
+
+#### Step 11 — Record coordinate deltas
+
+After source coordinates are collected, calculate observational deltas:
+
+```text
+stored_vs_primary_delta_m
+stored_vs_provider_delta_m
+primary_vs_corroboration_delta_m
+```
+
+These values are evidence only.
+
+No Phase 1 meter threshold determines:
+
+```text
+AUTO_PASS
+REVIEW
+HOLD
+
+or
+
+PASS
+HOLD_POSITION_REVIEW
+```
+
+A small delta does not prove a Position is valid.
+
+A large delta does not independently prove a Position is invalid.
+
+---
+
+#### Step 12 — Hand evidence to existing audit layers
+
+Collected evidence is evaluated through the existing Position Audit v2 contract.
+
+Machine triage vocabulary:
+
+```text
+AUTO_PASS
+REVIEW
+HOLD
+```
+
+Canonical Position vocabulary:
+
+```text
+PASS
+HOLD_POSITION_REVIEW
+```
+
+These statuses must remain separate.
+
+Phase 1 evidence collection does not modify:
+
+* Base Seed
+* Candidate Master
+* Production DB
+* migrations
+* Recommendation
+* Compass
+* Ranking
+
+Any coordinate remediation requires a separately gated follow-up.
+
+#### Collection record
+
+Each Pilot Shrine should use the following record structure:
+
+```text
+pilot_no
+pilot_group
+candidate_id
+
+official_name
+official_address
+identity_source_url
+
+existing_position_record
+existing_position_record_role
+
+primary_source_type
+primary_source_url
+primary_source_name
+primary_source_address
+primary_latitude
+primary_longitude
+primary_verified_at
+
+retrieval_status
+entity_match
+
+entry_status
+anchor_complexity
+multi_site_status
+visitor_flow_note
+navigation_risk_note
+
+corroboration_required
+corroboration_source_type
+corroboration_source_url
+corroboration_latitude
+corroboration_longitude
+
+provider
+provider_role
+provider_poi_url
+provider_latitude
+provider_longitude
+provider_plus_code
+
+stored_vs_primary_delta_m
+stored_vs_provider_delta_m
+primary_vs_corroboration_delta_m
+
+notes
+```
+
+Unknown or not-yet-collected evidence must remain explicitly unfilled or `NOT_RETRIEVED`.
+
+It must not be converted into an inferred `PASS`.
+
+
+
 ## 9. Open Items
 
 * Collect Primary Position Evidence for the 20-Shrine Pilot using one fixed procedure.
