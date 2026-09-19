@@ -99,6 +99,44 @@ dash異体字統一
 連続空白整理
 ```
 
+### 2.2.1 dash異体字の範囲
+
+`dash異体字統一` の対象は **実際のdash / minus異体字のみ**とする。
+
+```text
+－  U+FF0D
+‐  U+2010
+‑  U+2011
+‒  U+2012
+–  U+2013
+—  U+2014
+―  U+2015
+−  U+2212
+```
+
+`ー`（U+30FC KATAKANA-HIRAGANA PROLONGED SOUND MARK）は
+**dash異体字に含めない**。
+
+理由:
+
+```text
+ー は日本語テキストの正規の構成文字であり、建物名に通常出現する
+```
+
+一律にASCII `-` へ寄せると次のように `building_component` を破壊し、
+将来のIdentity evidenceを信頼できなくする。
+
+```text
+パークタワー
+→ パークタワ-   ← 禁止
+```
+
+Stage 2 canonical実装は `ー` を変換せずそのまま保持する。
+
+`scripts/audit_shrine_positions_v2.py` の既存Stage 1は `ー` を変換する
+legacy behaviorを持つが、本ContractのStage 2はそれを引き継がない。
+両者の差分は **意図的**である。
+
 ---
 
 ## 2.3 行政・町字component
@@ -148,6 +186,51 @@ block   = 1
 lot     = 20
 sub_lot = 3
 ```
+
+### 2.4.1 marker無しhyphen表記のslot
+
+marker（`丁目` / `番` / `番地` / `号`）を持たないhyphen表記は、
+位置でslotへ割り当てる。
+
+```text
+3 numeric segments → block / lot / sub_lot
+2 numeric segments → block / lot
+1 numeric segment  → lot
+```
+
+**この割当は決定的比較のためのpositional comparison slotであり、
+行政上の `丁目 / 番 / 号` の意味を立証したものではない。**
+
+例:
+
+```text
+2-16-2
+```
+
+は比較のため次のようにserializeしてよい。
+
+```text
+block   = 2
+lot     = 16
+sub_lot = 2
+```
+
+しかしこれは次を独立に確立した事実として **含意しない**。
+
+```text
+2丁目16番2号
+```
+
+意味が確定するのはmarker付きtokenを実際に消費したときだけであり、
+その区別は `normalization_rules_applied` に現れる。
+
+```text
+marker無し  2-16-2        → normalization_rules_applied = []
+marker付き  2丁目16番2号   → ["CHOME_TO_BLOCK", "BAN_TO_LOT", "GO_TO_SUB_LOT"]
+```
+
+下流のIdentity Layerは、行政区画の意味を必要とする判断に
+marker無し由来のslot値を根拠として使ってはならない。
 
 ---
 
