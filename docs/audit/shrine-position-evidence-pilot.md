@@ -565,7 +565,7 @@ existing_position_record = NONE
 existing_position_record_role = NONE
 
 primary_source_type = shrine_official_linked_google_place
-primary_source_url = 神田明神公式アクセスページから直接リンクされたGoogle Maps POI
+primary_source_url = NOT_RETRIEVED
 primary_source_name = 江戸総鎮守 神田明神（神田神社）
 primary_source_address = 東京都千代田区外神田2-16-2
 primary_latitude = 35.7019218
@@ -589,7 +589,7 @@ corroboration_longitude = 139.76778056
 
 provider = Google Maps
 provider_role = PRIMARY
-provider_poi_url = 神田明神公式アクセスページから直接リンクされたGoogle Maps POI
+provider_poi_url = NOT_RETRIEVED
 provider_latitude = 35.7019218
 provider_longitude = 139.7678456
 provider_plus_code = NOT_RETRIEVED
@@ -844,7 +844,7 @@ existing_position_record = NONE
 existing_position_record_role = NONE
 
 primary_source_type = map_provider_poi
-primary_source_url = Google Maps Fushimi Inari Taisha POI
+primary_source_url = NOT_RETRIEVED
 primary_source_name = 伏見稲荷大社
 primary_source_address = 京都府京都市伏見区深草薮之内町68
 primary_latitude = 34.9671402
@@ -868,10 +868,10 @@ corroboration_longitude = 135.773386
 
 provider = Google Maps
 provider_role = PRIMARY
-provider_poi_url = Google Maps Fushimi Inari Taisha POI
+provider_poi_url = NOT_RETRIEVED
 provider_latitude = 34.9671402
 provider_longitude = 135.7726717
-provider_plus_code = XQ9H+3M Kyoto, Japan
+provider_plus_code = NOT_RETRIEVED
 
 stored_vs_primary_delta_m = 5.16
 stored_vs_provider_delta_m = 5.16
@@ -909,10 +909,10 @@ primary_verified_at = 2026-09-19
 retrieval_status = OK
 entity_match = SAME
 
-entry_status = MULTI_CANDIDATE
+entry_status = NOT_CONFIRMED
 anchor_complexity = HIGH
 multi_site_status = NOT_RETRIEVED
-visitor_flow_note = 公式アクセス情報は表参道・大鳥居側の参拝導線と複数の駐車場を区別して案内している
+visitor_flow_note = 公式アクセス情報は表参道・大鳥居側の参拝導線と複数の駐車場を区別して案内している。旧entry_status = MULTI_CANDIDATE
 navigation_risk_note = 鹿島神宮本体・社務所・駐車場・楼門・御手洗池等の個別POIを代表Positionと混同しない。大規模境内のため代表点の意味を明示する必要がある
 
 corroboration_required = YES
@@ -1180,10 +1180,10 @@ primary_verified_at = 2026-09-19
 retrieval_status = OK
 entity_match = SAME
 
-entry_status = SINGLE_ROUTE
+entry_status = NOT_CONFIRMED
 anchor_complexity = MEDIUM
 multi_site_status = NOT_RETRIEVED
-visitor_flow_note = 公式アクセスでは宮島口からフェリーで宮島桟橋へ渡り、徒歩で神社入口へ向かう単一の主要参拝導線を案内している。公式参拝順路では入口から御本社を経て出口へ進む
+visitor_flow_note = 公式アクセスでは宮島口からフェリーで宮島桟橋へ渡り、徒歩で神社入口へ向かう単一の主要参拝導線を案内している。公式参拝順路では入口から御本社を経て出口へ進む。旧entry_status = SINGLE_ROUTE
 navigation_risk_note = 厳島神社本体・大鳥居・宮島桟橋・宝物館・境外摂末社を代表Positionとして混同しない。神社専用駐車場はなく、自動車で神社本体へ直接到達する前提ではない
 
 corroboration_required = YES
@@ -1332,7 +1332,7 @@ existing_position_record = docs/audit/shrine-70-coordinate-correction.md
 existing_position_record_role = HISTORICAL_RECORD
 
 primary_source_type = map_provider_poi
-primary_source_url = Google Maps 多摩川浅間神社 POI
+primary_source_url = NOT_RETRIEVED
 primary_source_name = 多摩川浅間神社
 primary_source_address = 東京都大田区田園調布1-55-12
 primary_latitude = 35.5875263
@@ -1342,10 +1342,10 @@ primary_verified_at = 2026-09-19
 retrieval_status = OK
 entity_match = SAME
 
-entry_status = SINGLE_CANDIDATE
+entry_status = NOT_CONFIRMED
 anchor_complexity = LOW
 multi_site_status = NOT_RETRIEVED
-visitor_flow_note = 多摩川駅側から神社境内へ向かう通常の参拝導線を持ち、神社本体の代表POIを特定可能
+visitor_flow_note = 多摩川駅側から神社境内へ向かう通常の参拝導線を持ち、神社本体の代表POIを特定可能。旧entry_status = SINGLE_CANDIDATE
 navigation_risk_note = 過去のlegacy座標は多摩川駅周辺の近隣地点へずれていたため、駅・周辺店舗等を神社代表Positionとして混同しない
 
 corroboration_required = YES
@@ -1356,7 +1356,7 @@ corroboration_longitude = 139.66861111
 
 provider = Google Maps
 provider_role = PRIMARY
-provider_poi_url = Google Maps 多摩川浅間神社 POI
+provider_poi_url = NOT_RETRIEVED
 provider_latitude = 35.5875263
 provider_longitude = 139.6687549
 provider_plus_code = NOT_RETRIEVED
@@ -1387,7 +1387,7 @@ existing_position_record = docs/audit/p8-identity-coordinate-remediation.md
 existing_position_record_role = HISTORICAL_RECORD
 
 primary_source_type = google_place_of_worship
-primary_source_url = Google Place ChIJK11I4BGJGGAR5mZswigcu58
+primary_source_url = NOT_RETRIEVED
 primary_source_name = 富岡八幡宮
 primary_source_address = 東京都江東区富岡1-20-3
 primary_latitude = 35.6717809
@@ -1411,7 +1411,7 @@ corroboration_longitude = 139.7995823
 
 provider = Google Places
 provider_role = PRIMARY
-provider_poi_url = Google Place ChIJK11I4BGJGGAR5mZswigcu58
+provider_poi_url = NOT_RETRIEVED
 provider_latitude = 35.6717809
 provider_longitude = 139.799519
 provider_plus_code = NOT_RETRIEVED
@@ -1421,7 +1421,7 @@ stored_vs_provider_delta_m = 305.57
 primary_vs_corroboration_delta_m = 12.24
 
 evidence_collected_at = 2026-09-19
-notes = This Pilot is a KNOWN_CORRECTION_WITH_SEED_DRIFT control. Repository audit history and migration 0099 identify 35.6717809, 139.799519 as the corrected position for the Koto-ku Tomioka Hachimangu entity at Tomioka 1-20-3. The current Base Seed still contains the legacy coordinate 35.6733, 139.7967, approximately 305.57 m from the corrected Primary coordinate. Current MapFan independently identifies the same Shrine at 35.6718782, 139.7995823, approximately 12.24 m from the Primary coordinate. This control reproduces the known artifact synchronization defect: remediation exists, but the Base Seed remains stale. Distance values are observational only and are not used as PASS/HOLD thresholds.
+notes = Google Place ID = ChIJK11I4BGJGGAR5mZswigcu58. This Pilot is a KNOWN_CORRECTION_WITH_SEED_DRIFT control. Repository audit history and migration 0099 identify 35.6717809, 139.799519 as the corrected position for the Koto-ku Tomioka Hachimangu entity at Tomioka 1-20-3. The current Base Seed still contains the legacy coordinate 35.6733, 139.7967, approximately 305.57 m from the corrected Primary coordinate. Current MapFan independently identifies the same Shrine at 35.6718782, 139.7995823, approximately 12.24 m from the Primary coordinate. This control reproduces the known artifact synchronization defect: remediation exists, but the Base Seed remains stale. Distance values are observational only and are not used as PASS/HOLD thresholds.
 ```
 ### 8.17 Pilot 17 — 御岩神社
 
