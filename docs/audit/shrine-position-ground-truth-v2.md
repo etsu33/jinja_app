@@ -545,7 +545,8 @@ Markdown summary は集計 / `position_proof_path` / `anchor_semantics_status` /
 ### 9.1 schema version
 
 ```text
-position-audit-v2/1.0  →  position-audit-v2/1.1
+position-audit-v2/1.0  →  position-audit-v2/1.1  （P2-B01）
+position-audit-v2/1.1  →  position-audit-v2/1.2  （P2-B04）
 ```
 
 P2-B01 で contract-significant な serialized field を**追加**した。
@@ -561,7 +562,59 @@ minor を上げる。Repository の慣行（`shrine_expansion_candidate_master.j
 の `schema_version` 1.1 → 1.2 = 後方互換な追加/改名で minor bump し、
 test と contract doc を同時に更新する）と同じ扱いである。
 
+P2-B04 では `seed_production_identity_status` を追加した。これも後方互換な
+追加であり、同じ理由で minor を上げる。既存 field の意味は変えていない
+（`join_status` は従来どおり raw exact join の結果だけを表す）。
+
 版は `test_schema_version_reflects_the_added_contract_fields` が固定する。
+
+### 9.1.1 Seed ↔ Production identity 軸（P2-B04）
+
+`seed_production_join_status` とは **別の軸**である。join status を
+上書きしない。
+
+```text
+EXACT / SAME_SUPPORTED / REVIEW_REQUIRED / CONFLICT / INSUFFICIENT / NOT_EVALUATED
+```
+
+| join / evidence | identity_status |
+| --- | --- |
+| `JOIN_MATCH_EXACT` | `EXACT` |
+| 非 exact + B03 `SAME_SUPPORTED` | `SAME_SUPPORTED` |
+| 非 exact + B03 `REVIEW_REQUIRED` | `REVIEW_REQUIRED` |
+| 非 exact + B03 `CONFLICT` | `CONFLICT` |
+| 非 exact + B03 `INSUFFICIENT` | `INSUFFICIENT` |
+| B03 未評価 | `NOT_EVALUATED` |
+
+**`EXACT` は raw exact join だけが生み出す。** normalization / fuzzy /
+alias / B03 evidence のいずれも `JOIN_MATCH_EXACT` や `EXACT` を作らない。
+非 exact join から `EXACT` を持ち込んでも採用せず `NOT_EVALUATED` へ倒す。
+
+exact identity 条件は次の **両方**を要求する。
+
+```text
+RC_SEED_PRODUCTION_EXACT が立っている
+かつ
+seed_production_identity_status == EXACT
+```
+
+`SAME_SUPPORTED` は強い支持 evidence だが exact identity ではない。
+次のいずれも開かない。
+
+```text
+RC_SEED_PRODUCTION_EXACT
+Resolution fallback
+artifact Production 参照基準
+identity 経由の AUTO_PASS
+```
+
+評価済み identity evidence（`SAME_SUPPORTED` / `REVIEW_REQUIRED` /
+`CONFLICT` / `INSUFFICIENT`）は `IDENTITY_EVIDENCE_*` code として
+**REVIEW** を駆動する。HOLD は作らない。B03 の `CONFLICT` 単独を
+Primary Position Evidence の `entity_match = DIFFERENT / NON_SHRINE` と
+同一視しない（後者は独立したより強い Position evidence 経路として残る）。
+
+`NOT_EVALUATED` のときの挙動は P2-B04 以前と完全に同じである。
 
 ### 9.2 Position proof path
 

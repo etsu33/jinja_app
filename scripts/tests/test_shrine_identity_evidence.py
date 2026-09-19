@@ -940,23 +940,37 @@ def test_evaluation_does_not_mutate_inputs():
 # ---------------------------------------------------------------------------
 
 
-def test_b03_is_not_wired_into_any_existing_caller():
-    """**暫定の layer-boundary 不変条件**（P2-B03 時点）。
+# B03 identity evidence layer を **直接** 消費してよい module の厳密な集合。
+#
+# P2-B03 時点の暫定不変条件「B03 には consumer が存在しない」は、
+# P2-B04（position identity integration adapter）の導入によって
+# **設計どおり失効した**。以後は B02 と同じ allowlist 方式で管理する。
+#
+# 推移的依存はここに現れない。
+#
+#     B04 -> B03 -> B02
+#
+# のとき B03 が sanction するのは B04 adapter だけであり、B02 の
+# allowlist に B04 を加えてはならない。
+SANCTIONED_CONSUMERS = {
+    "scripts/position_identity_integration.py",
+}
 
-    現時点で B03 を消費する層は存在しない。ただしこれは恒久的な契約では
-    なく、P2-B04 の導入によって **設計どおり失効する**。
 
-    B04 実装時にはこの test を、B02 側と同じ厳密な allowlist 方式へ
-    置き換えること。
+def test_b03_has_exactly_the_sanctioned_direct_consumers():
+    """B03 の直接 consumer が allowlist と **完全一致** すること。
 
-    ```python
-    SANCTIONED_CONSUMERS = {"scripts/<b04 module>.py"}
-    assert set(callers) == SANCTIONED_CONSUMERS, callers
+    ```text
+    B03 identity evidence layer
+    → exactly one sanctioned direct consumer
+    → scripts/position_identity_integration.py
     ```
 
-    `<=` ではなく `==` を使う（必要な依存が消えたことも検出するため）。
-    推移的依存は上流の allowlist に載せない。B02 が sanction するのは
-    B03 だけであり、B04 は B03 の allowlist にだけ載る。
+    `<=` ではなく `==` で比較する。部分集合比較では、想定外の consumer は
+    検出できても **必要な B04 依存が消えたこと**を検出できないため。
+
+    * 想定外の直接 consumer が増えたら落ちる
+    * sanction された consumer が消えても落ちる
     """
     callers = []
     for path in sorted(REPO_ROOT.glob("scripts/*.py")) + sorted(
@@ -966,7 +980,26 @@ def test_b03_is_not_wired_into_any_existing_caller():
             continue
         if "shrine_identity_evidence" in path.read_text(encoding="utf-8"):
             callers.append(str(path.relative_to(REPO_ROOT)))
-    assert callers == [], callers
+    assert set(callers) == SANCTIONED_CONSUMERS, callers
+
+
+def test_sanctioned_consumers_really_depend_on_b03():
+    """allowlist の consumer が **実際に** B03 へ依存すること。
+
+    文字列走査だけだと docstring に module 名を書いただけの file も
+    consumer と数えてしまうため、実体を確認する。
+    """
+    for relative in sorted(SANCTIONED_CONSUMERS):
+        consumer_path = REPO_ROOT / relative
+        assert consumer_path.exists(), relative
+        consumer = _load(f"sanctioned_consumer_{consumer_path.stem}", consumer_path)
+        linked = [
+            name
+            for name, value in vars(consumer).items()
+            if getattr(value, "__file__", None) == str(MODULE_PATH)
+            or getattr(value, "__module__", None) == MODULE_PATH.stem
+        ]
+        assert linked, f"{relative} does not actually depend on {MODULE_PATH.name}"
 
 
 def test_position_audit_join_semantics_are_not_referenced():

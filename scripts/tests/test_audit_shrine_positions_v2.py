@@ -2850,8 +2850,14 @@ def test_schema_version_reflects_the_added_contract_fields():
 
     既存 field の削除・改名・再解釈は無く、後方互換な追加なので minor bump。
     Repository の慣行（candidate master schema 1.1 -> 1.2）と同じ扱い。
+
+    ```text
+    1.0 -> 1.1  P2-B01  position_proof_path / anchor_semantics_status /
+                        artifact_sync_status
+    1.1 -> 1.2  P2-B04  seed_production_identity_status
+    ```
     """
-    assert audit.SCHEMA_VERSION == "position-audit-v2/1.1"
+    assert audit.SCHEMA_VERSION == "position-audit-v2/1.2"
 
     report = audit.build_report(
         [
@@ -2863,12 +2869,13 @@ def test_schema_version_reflects_the_added_contract_fields():
             )
         ]
     )
-    assert report["schema_version"] == "position-audit-v2/1.1"
+    assert report["schema_version"] == "position-audit-v2/1.2"
     row = report["results"][0]
     for field_name in (
         "position_proof_path",
         "anchor_semantics_status",
         "artifact_sync_status",
+        "seed_production_identity_status",
     ):
         assert field_name in row
 
