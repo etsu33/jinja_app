@@ -104,6 +104,11 @@ def _item(**overrides) -> "audit.ShrinePositionAuditInput":
         spreadsheet=_sheet(),
         spreadsheet_join_status=audit.SHEET_JOIN_EXACT,
         seed_production_join_status=audit.JOIN_MATCH_EXACT,
+        # Anchor Semantics は明示的な入力であり、既定では未評価 = REVIEW。
+        # 既存 contract test の関心は Position proof 側なので、fixture 側で
+        # 「意味論は確認済み」を明示して gate を開けておく（P2-A02 §7）。
+        # gate 自体は Anchor Semantics 専用の test が固定する。
+        anchor_semantics_status=audit.ANCHOR_SEMANTICS_CONFIRMED,
     )
     values.update(overrides)
     return audit.ShrinePositionAuditInput(**values)
@@ -137,6 +142,9 @@ def _evidence(**overrides) -> "audit.PrimaryPositionEvidence":
         longitude=139.0,
         entity_match="SAME",
         poi_candidate_count=1,
+        # Anchor Semantics は evidence snapshot 行が明示的に運ぶ入力。
+        # build_inputs() 経由の path でも gate を通せるようにしておく。
+        anchor_semantics_status=audit.ANCHOR_SEMANTICS_CONFIRMED,
     )
     values.update(overrides)
     return audit.PrimaryPositionEvidence(**values)
@@ -315,15 +323,25 @@ def test_i_external_coordinate_conflict_is_review():
     assert result.coordinate_delta_m > 0
 
 
-def test_j_missing_primary_source_is_hold():
+def test_j_no_evidence_and_no_fallback_has_no_proof_path():
+    """evidence 未取得 + 再利用可能な Resolution 無し => proof path 不在。
+
+    P2-A02 §12 / GC-24。取得できていないこと自体は observation であり、
+    status を決めるのは「有効な proof path が存在しない」という事実である。
+    `PRIMARY_SOURCE_MISSING`（HOLD）は **取得できた evidence の source
+    identity が不明** な場合の code であって、未取得の場合の code ではない。
+    """
     result = audit.evaluate(
         _item(
             spreadsheet=_sheet(position_source_url=None, official_source_url=None),
             primary_position_evidence=None,
         )
     )
-    assert result.audit_status == audit.HOLD
-    assert audit.RC_PRIMARY_SOURCE_MISSING in result.reason_codes
+    assert result.position_proof_path == audit.PROOF_NONE
+    assert result.audit_status == audit.REVIEW
+    assert audit.RC_PRIMARY_EVIDENCE_NOT_RETRIEVED in result.reason_codes
+    assert audit.RC_POSITION_PROOF_UNAVAILABLE in result.reason_codes
+    assert audit.RC_PRIMARY_SOURCE_MISSING not in result.reason_codes
 
 
 def test_k_wrong_or_non_shrine_entity_is_hold():
@@ -369,12 +387,30 @@ def test_l_parser_or_fetch_failure_is_review():
     assert audit.RC_POSITION_SOURCE_REDIRECTED in redirected.reason_codes
 
 
-def test_multiple_poi_candidates_is_review():
+def test_multiple_poi_candidates_is_observation_only():
+    """POI 候補が複数でも、Anchor Semantics が解決済みなら status を下げない。
+
+    P2-A02 §13 / §18 / GC-12。複数候補は構造の observation であり、
+    意味論を決めるのは `anchor_semantics_status` である。
+    """
     result = audit.evaluate(
         _item(primary_position_evidence=_evidence(poi_candidate_count=3))
     )
-    assert result.audit_status == audit.REVIEW
     assert audit.RC_MULTIPLE_POI_CANDIDATES in result.reason_codes
+    assert audit.RC_MULTIPLE_POI_CANDIDATES not in audit.REVIEW_REASON_CODES
+    assert audit.RC_MULTIPLE_POI_CANDIDATES not in audit.HOLD_REASON_CODES
+    assert result.position_proof_path == audit.PROOF_PRIMARY_EVIDENCE
+    assert result.audit_status == audit.AUTO_PASS
+
+    # Anchor Semantics が未解決なら、複数候補ではなく gate が REVIEW を作る。
+    unresolved = audit.evaluate(
+        _item(
+            primary_position_evidence=_evidence(poi_candidate_count=3),
+            anchor_semantics_status=audit.ANCHOR_SEMANTICS_REVIEW_REQUIRED,
+        )
+    )
+    assert unresolved.audit_status == audit.REVIEW
+    assert audit.RC_ANCHOR_SEMANTICS_REVIEW_REQUIRED in unresolved.reason_codes
 
 
 # ---------------------------------------------------------------------------
@@ -461,8 +497,14 @@ def test_p_beyond_tolerance_remains_different():
             ),
         )
     )
-    assert result.audit_status == audit.REVIEW
+    # Seed ↔ Production の差は **artifact 同期**の問題であり、
+    # Position の正しさではない（P2-A02 §22 / GC-20）。
     assert audit.RC_SEED_PRODUCTION_COORDINATE_DIFFERS in result.reason_codes
+    assert audit.RC_ARTIFACT_BASE_SEED_DRIFT in result.reason_codes
+    assert result.artifact_sync_status == audit.ARTIFACT_DRIFT
+    # Primary Evidence は現在の Production 座標を独立に証明できている。
+    assert result.position_proof_path == audit.PROOF_PRIMARY_EVIDENCE
+    assert result.audit_status == audit.AUTO_PASS
 
 
 def test_tolerance_matches_the_importer_float_comparison_contract():
@@ -500,7 +542,9 @@ def test_q_coordinate_distance_alone_never_produces_auto_pass():
         )
     )
     assert result.audit_status != audit.AUTO_PASS
-    assert audit.RC_PRIMARY_SOURCE_MISSING in result.reason_codes
+    # corroboration は proof path を作らない（P2-A02 §12）。
+    assert result.position_proof_path == audit.PROOF_NONE
+    assert audit.RC_POSITION_PROOF_UNAVAILABLE in result.reason_codes
 
 
 def test_corroboration_alone_never_promotes_to_auto_pass():
@@ -542,10 +586,11 @@ def test_report_totals_and_reason_code_counts():
         audit.evaluate(
             _item(primary_position_evidence=_evidence(latitude=35.5, longitude=139.5))
         ),
+        # 取得できた evidence の source identity が不明 => HOLD（GC-18）。
         audit.evaluate(
             _item(
-                spreadsheet=_sheet(position_source_url=None, official_source_url=None),
-                primary_position_evidence=None,
+                spreadsheet=_bare_sheet(),
+                primary_position_evidence=_evidence(source_url=None),
             )
         ),
     ]
@@ -559,6 +604,22 @@ def test_report_totals_and_reason_code_counts():
     assert report["reason_code_counts"][audit.RC_SEED_PRODUCTION_EXACT] == 3
     # reason_code_counts は key 順が安定していること
     assert list(report["reason_code_counts"]) == sorted(report["reason_code_counts"])
+
+    # Position / Anchor / Artifact は独立の軸として集計される。
+    assert report["position_proof_path_counts"] == {
+        audit.PROOF_NONE: 2,
+        audit.PROOF_PRIMARY_EVIDENCE: 1,
+    }
+    assert report["anchor_semantics_counts"] == {
+        audit.ANCHOR_SEMANTICS_CONFIRMED: 3
+    }
+    assert report["artifact_sync_counts"] == {audit.ARTIFACT_SYNCED: 3}
+    for key in (
+        "position_proof_path_counts",
+        "anchor_semantics_counts",
+        "artifact_sync_counts",
+    ):
+        assert list(report[key]) == sorted(report[key])
 
 
 def test_markdown_summary_contains_required_sections():
@@ -1093,6 +1154,7 @@ def _full_evidence(**overrides) -> "audit.PrimaryPositionEvidence":
         entity_match="SAME",
         poi_candidate_count=1,
         verified_at="2026-09-17",
+        anchor_semantics_status=audit.ANCHOR_SEMANTICS_CONFIRMED,
     )
     values.update(overrides)
     return audit.PrimaryPositionEvidence(**values)
@@ -1167,11 +1229,11 @@ def test_missing_verified_at_never_auto_pass():
     assert audit.RC_PRIMARY_SOURCE_VERIFIED not in result.reason_codes
 
 
-def test_spreadsheet_fallback_supplies_missing_evidence_provenance():
-    """evidence が source metadata を持たなくても、joined Spreadsheet が
-    同じ traceable source を持つなら AUTO_PASS 資格を満たす。
+def test_spreadsheet_cannot_supply_a_missing_primary_source_url():
+    """Primary source_url が無いとき、Spreadsheet の URL を流し込まない。
 
-    evidence snapshot 側に source metadata の重複を要求しない。
+    P2-A02 §15 / GC-18。Primary の座標がその URL 由来である証拠が無い以上、
+    同一 source だと機械的に確認できない。provenance を合成してはならない。
     """
     evidence_without_metadata = _full_evidence(
         source_type=None, source_url=None, verified_at=None
@@ -1187,12 +1249,76 @@ def test_spreadsheet_fallback_supplies_missing_evidence_provenance():
             primary_position_evidence=evidence_without_metadata,
         )
     )
-    assert result.audit_status == audit.AUTO_PASS
-    assert audit.RC_PRIMARY_SOURCE_VERIFIED in result.reason_codes
-    # fallback 値が出力に出る。
-    assert result.primary_source_type == "shrine_authority_access_map"
-    assert result.primary_source_url == "https://example.invalid/authority/access"
-    assert result.verified_at == "2026-09-15"
+    assert result.audit_status == audit.HOLD
+    assert audit.RC_PRIMARY_SOURCE_MISSING in result.reason_codes
+    assert audit.RC_PRIMARY_SOURCE_VERIFIED not in result.reason_codes
+    assert result.position_proof_path == audit.PROOF_NONE
+    # Spreadsheet の値が Primary provenance へ漏れていない。
+    assert result.primary_source_url is None
+    assert result.primary_source_type is None
+    assert result.verified_at is None
+    # 比較対象の Primary URL が無いので「不一致」ではない（P2-A02 §16）。
+    assert audit.RC_SPREADSHEET_POSITION_SOURCE_MISMATCH not in result.reason_codes
+
+
+def test_spreadsheet_supplements_only_when_the_position_source_is_identical():
+    """同一 Position source だと確認できたときだけ metadata を補完する。
+
+    P2-A02 §15。`official_source_url` / `official_source_type` は identity
+    provenance であり、Position provenance の代用にはならない。
+    """
+    evidence = _full_evidence(source_type=None, verified_at=None)
+    same_source_sheet = _sheet(
+        position_source_url=evidence.source_url,
+        position_source_type="shrine_official",
+        verified_at="2026-09-15",
+    )
+    supplemented = audit.evaluate(
+        _item(spreadsheet=same_source_sheet, primary_position_evidence=evidence)
+    )
+    assert supplemented.position_proof_path == audit.PROOF_PRIMARY_EVIDENCE
+    assert supplemented.audit_status == audit.AUTO_PASS
+    assert supplemented.primary_source_type == "shrine_official"
+    assert supplemented.verified_at == "2026-09-15"
+
+    # 別 source の行は補完できず、mismatch として観測されるだけ。
+    other_source_sheet = _sheet(
+        position_source_url="https://example.invalid/other/source",
+        position_source_type="shrine_official",
+        verified_at="2026-09-15",
+    )
+    not_supplemented = audit.evaluate(
+        _item(spreadsheet=other_source_sheet, primary_position_evidence=evidence)
+    )
+    assert not_supplemented.primary_source_type is None
+    assert not_supplemented.verified_at is None
+    assert audit.RC_PRIMARY_SOURCE_TYPE_MISSING in not_supplemented.reason_codes
+    assert (
+        audit.RC_SPREADSHEET_POSITION_SOURCE_MISMATCH
+        in not_supplemented.reason_codes
+    )
+    assert not_supplemented.audit_status == audit.REVIEW
+
+
+def test_official_source_url_is_never_position_provenance():
+    """identity provenance を Position provenance に流用しない（P2-A02 §15）。"""
+    identity_only_sheet = _bare_sheet(
+        official_source_type="shrine_official",
+        official_source_url="https://example.invalid/identity/source",
+        verified_at="2026-09-15",
+    )
+    result = audit.evaluate(
+        _item(
+            spreadsheet=identity_only_sheet,
+            primary_position_evidence=_full_evidence(
+                source_type=None, source_url=None, verified_at=None
+            ),
+        )
+    )
+    assert result.primary_source_url is None
+    assert result.primary_source_type is None
+    assert result.verified_at is None
+    assert audit.RC_PRIMARY_SOURCE_MISSING in result.reason_codes
 
 
 def test_evidence_verified_at_overrides_spreadsheet_verified_at():
@@ -1539,7 +1665,6 @@ def test_no_new_evidence_with_complete_resolution_is_auto_pass():
         pytest.param({"entity_match": "NON_SHRINE"}, id="non_shrine"),
         pytest.param({"entity_match": "AMBIGUOUS"}, id="ambiguous"),
         pytest.param({"entity_match": None}, id="identity_evidence_missing"),
-        pytest.param({"poi_candidate_count": 3}, id="multiple_poi"),
         pytest.param({"latitude": 35.01, "longitude": 139.01}, id="coordinate_differs"),
     ],
 )
@@ -1554,6 +1679,29 @@ def test_every_conflicting_evidence_kind_blocks_resolution_reuse(conflicting_evi
     )
     assert result.audit_status != audit.AUTO_PASS
     assert audit.RC_RESOLUTION_RECORD_REUSED not in result.reason_codes
+
+
+def test_multiple_poi_candidates_alone_does_not_block_resolution_reuse():
+    """複数 POI 候補は「より新しい矛盾」ではない（P2-A02 §13）。
+
+    Anchor Semantics が明示的に解決されていれば、候補数だけを理由に
+    Resolution fallback を塞いではならない。
+    """
+    assert audit.RC_MULTIPLE_POI_CANDIDATES not in audit.PRIMARY_BLOCKING_CONFLICT_CODES
+
+    result = audit.evaluate(
+        _item(
+            spreadsheet=_bare_sheet(),
+            # 取得はできたが provenance が無く、Primary 単独では証明できない。
+            primary_position_evidence=_full_evidence(
+                status="FETCH_FAILED", poi_candidate_count=4
+            ),
+            existing_resolution=_resolution(),
+        )
+    )
+    assert result.position_proof_path == audit.PROOF_RESOLUTION_FALLBACK
+    assert audit.RC_RESOLUTION_RECORD_REUSED in result.reason_codes
+    assert result.audit_status == audit.AUTO_PASS
 
 
 def test_conflicting_evidence_does_not_add_resolution_missing_codes():
@@ -1762,3 +1910,1080 @@ def test_incomplete_resolution_with_valid_evidence_emits_no_resolution_codes():
         code for code in result.reason_codes if code.startswith("RESOLUTION_")
     ]
     assert resolution_codes == []
+
+
+# ---------------------------------------------------------------------------
+# P2-A03 Golden Cases
+#
+# `docs/audit/position-audit-v2/p2-a03-golden-cases.md` を authority として、
+# 承認済み 12 ケースを決定的な regression test に固定する。
+#
+# 各ケースで最低限そろえて固定するもの:
+#   position_proof_path / anchor_semantics_status / artifact_sync_status /
+#   expected_reason_codes / forbidden_reason_codes / audit_status
+#
+# final status だけでは不十分（P2-A02 §26）。
+# ---------------------------------------------------------------------------
+
+ANCHOR_REASON_CODES = (
+    audit.RC_ANCHOR_SEMANTICS_REVIEW_REQUIRED,
+    audit.RC_ANCHOR_SEMANTICS_NOT_EVALUATED,
+    audit.RC_ANCHOR_SEMANTICS_UNKNOWN,
+)
+
+ARTIFACT_DRIFT_CODES = (
+    audit.RC_ARTIFACT_BASE_SEED_DRIFT,
+    audit.RC_ARTIFACT_PRODUCTION_DRIFT,
+    audit.RC_ARTIFACT_CANDIDATE_MASTER_DRIFT,
+    audit.RC_ARTIFACT_RESOLUTION_DRIFT,
+)
+
+
+def _assert_golden_case(
+    result,
+    *,
+    case_id: str,
+    position_proof_path: str,
+    anchor_semantics_status: str,
+    artifact_sync_status: str,
+    expected_reason_codes: tuple[str, ...],
+    forbidden_reason_codes: tuple[str, ...],
+    audit_status: str,
+) -> None:
+    """Golden Case が固定する6軸をすべて検証する。"""
+    codes = set(result.reason_codes)
+    assert result.position_proof_path == position_proof_path, case_id
+    assert result.anchor_semantics_status == anchor_semantics_status, case_id
+    assert result.artifact_sync_status == artifact_sync_status, case_id
+    for code in expected_reason_codes:
+        assert code in codes, f"{case_id}: expected {code}"
+    for code in forbidden_reason_codes:
+        assert code not in codes, f"{case_id}: forbidden {code}"
+    assert result.audit_status == audit_status, case_id
+
+
+def test_gc_01_clean_primary_auto_pass():
+    """完備した Primary Evidence が単独で現在の Position を証明する。"""
+    result = audit.evaluate(
+        _item(spreadsheet=_bare_sheet(), primary_position_evidence=_full_evidence())
+    )
+    _assert_golden_case(
+        result,
+        case_id="GC-01",
+        position_proof_path=audit.PROOF_PRIMARY_EVIDENCE,
+        anchor_semantics_status=audit.ANCHOR_SEMANTICS_CONFIRMED,
+        artifact_sync_status=audit.ARTIFACT_SYNCED,
+        expected_reason_codes=(audit.RC_PRIMARY_SOURCE_VERIFIED,),
+        forbidden_reason_codes=(
+            audit.RC_RESOLUTION_RECORD_REUSED,
+            audit.RC_POSITION_PROOF_UNAVAILABLE,
+            *ANCHOR_REASON_CODES,
+        ),
+        audit_status=audit.AUTO_PASS,
+    )
+
+
+def test_gc_02_valid_primary_isolates_broken_resolution():
+    """使っていない Resolution 経路の欠陥が、選ばれた経路を汚染しない。"""
+    result = audit.evaluate(
+        _item(
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=_full_evidence(),
+            existing_resolution=_resolution(
+                position_source_url=None,
+                position_source_type=None,
+                verified_at=None,
+            ),
+        )
+    )
+    _assert_golden_case(
+        result,
+        case_id="GC-02",
+        position_proof_path=audit.PROOF_PRIMARY_EVIDENCE,
+        anchor_semantics_status=audit.ANCHOR_SEMANTICS_CONFIRMED,
+        artifact_sync_status=audit.ARTIFACT_SYNCED,
+        expected_reason_codes=(audit.RC_PRIMARY_SOURCE_VERIFIED,),
+        forbidden_reason_codes=(
+            audit.RC_RESOLUTION_RECORD_REUSED,
+            audit.RC_RESOLUTION_SOURCE_URL_MISSING,
+            audit.RC_RESOLUTION_SOURCE_TYPE_MISSING,
+            audit.RC_RESOLUTION_VERIFIED_AT_MISSING,
+            audit.RC_RESOLUTION_RECORD_COORDINATE_MISMATCH,
+            audit.RC_POSITION_PROOF_UNAVAILABLE,
+        ),
+        audit_status=audit.AUTO_PASS,
+    )
+
+
+def test_gc_03_fetch_failed_with_valid_resolution_fallback():
+    """取得失敗は observation。有効な fallback があれば status を下げない。"""
+    result = audit.evaluate(
+        _item(
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=_full_evidence(status="FETCH_FAILED"),
+            existing_resolution=_resolution(),
+        )
+    )
+    _assert_golden_case(
+        result,
+        case_id="GC-03",
+        position_proof_path=audit.PROOF_RESOLUTION_FALLBACK,
+        anchor_semantics_status=audit.ANCHOR_SEMANTICS_CONFIRMED,
+        artifact_sync_status=audit.ARTIFACT_SYNCED,
+        expected_reason_codes=(
+            audit.RC_SOURCE_FETCH_FAILED,
+            audit.RC_RESOLUTION_RECORD_REUSED,
+        ),
+        forbidden_reason_codes=(
+            audit.RC_PRIMARY_SOURCE_VERIFIED,
+            audit.RC_POSITION_PROOF_UNAVAILABLE,
+            audit.RC_RESOLUTION_SOURCE_URL_MISSING,
+            audit.RC_RESOLUTION_SOURCE_TYPE_MISSING,
+            audit.RC_RESOLUTION_VERIFIED_AT_MISSING,
+            audit.RC_RESOLUTION_RECORD_COORDINATE_MISMATCH,
+            *ANCHOR_REASON_CODES,
+        ),
+        audit_status=audit.AUTO_PASS,
+    )
+
+    # 出力 provenance は選ばれた経路（Resolution Record）から取る。
+    assert result.primary_source_url == "https://example.invalid/authority/access"
+    assert result.primary_source_type == "shrine_authority_access_map"
+    assert result.verified_at == "2026-09-16"
+
+    # Resolution fallback も Anchor Semantics gate を迂回しない。
+    # 同じ入力で anchor を NOT_EVALUATED にすると REVIEW になる。
+    gated = audit.evaluate(
+        _item(
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=_full_evidence(status="FETCH_FAILED"),
+            existing_resolution=_resolution(),
+            anchor_semantics_status=audit.ANCHOR_SEMANTICS_NOT_EVALUATED,
+        )
+    )
+    assert gated.position_proof_path == audit.PROOF_RESOLUTION_FALLBACK
+    assert gated.audit_status == audit.REVIEW
+    assert audit.RC_ANCHOR_SEMANTICS_NOT_EVALUATED in gated.reason_codes
+
+
+def test_gc_06_newer_coordinate_conflict_blocks_fallback():
+    """より新しい Primary の座標矛盾は、歴史的 Resolution の再利用を塞ぐ。"""
+    result = audit.evaluate(
+        _item(
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=_full_evidence(
+                latitude=35.02, longitude=139.02
+            ),
+            existing_resolution=_resolution(),
+        )
+    )
+    _assert_golden_case(
+        result,
+        case_id="GC-06",
+        position_proof_path=audit.PROOF_NONE,
+        anchor_semantics_status=audit.ANCHOR_SEMANTICS_CONFIRMED,
+        artifact_sync_status=audit.ARTIFACT_SYNCED,
+        expected_reason_codes=(audit.RC_PRIMARY_COORDINATE_DIFFERS,),
+        forbidden_reason_codes=(
+            audit.RC_RESOLUTION_RECORD_REUSED,
+            audit.RC_PRIMARY_SOURCE_VERIFIED,
+            audit.RC_POSITION_PROOF_UNAVAILABLE,
+        ),
+        audit_status=audit.REVIEW,
+    )
+
+    # FETCH_FAILED（証明も反証もできない）と COORDINATE_CONFLICT
+    # （能動的に食い違う）の境界を固定する。
+    fetch_failed = audit.evaluate(
+        _item(
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=_full_evidence(status="FETCH_FAILED"),
+            existing_resolution=_resolution(),
+        )
+    )
+    assert fetch_failed.position_proof_path == audit.PROOF_RESOLUTION_FALLBACK
+    assert fetch_failed.audit_status == audit.AUTO_PASS
+
+
+def test_gc_10_valid_primary_with_unevaluated_semantics_is_review():
+    """有効な proof path でも Anchor Semantics gate は迂回できない。"""
+    result = audit.evaluate(
+        _item(
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=_full_evidence(),
+            anchor_semantics_status=audit.ANCHOR_SEMANTICS_NOT_EVALUATED,
+        )
+    )
+    _assert_golden_case(
+        result,
+        case_id="GC-10",
+        position_proof_path=audit.PROOF_PRIMARY_EVIDENCE,
+        anchor_semantics_status=audit.ANCHOR_SEMANTICS_NOT_EVALUATED,
+        artifact_sync_status=audit.ARTIFACT_SYNCED,
+        expected_reason_codes=(
+            audit.RC_PRIMARY_SOURCE_VERIFIED,
+            audit.RC_ANCHOR_SEMANTICS_NOT_EVALUATED,
+        ),
+        forbidden_reason_codes=(
+            audit.RC_RESOLUTION_RECORD_REUSED,
+            audit.RC_POSITION_PROOF_UNAVAILABLE,
+            audit.RC_ANCHOR_SEMANTICS_REVIEW_REQUIRED,
+            audit.RC_ANCHOR_SEMANTICS_UNKNOWN,
+        ),
+        audit_status=audit.REVIEW,
+    )
+
+
+def test_gc_12_multi_site_with_confirmed_semantics_is_auto_pass_eligible():
+    """構造的な複雑さは、確認済みの Anchor Semantics を覆さない。
+
+    `multi_site_status` / `anchor_complexity` は入力 model に存在しない
+    （Anchor Semantics をそこから導出してはならないため / P2-A02 §6）。
+    Golden Case の言う "equivalent supporting evidence" として、機械可読な
+    `poi_candidate_count > 1` で複数拠点性を表現する。
+    """
+    result = audit.evaluate(
+        _item(
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=_full_evidence(poi_candidate_count=3),
+        )
+    )
+    _assert_golden_case(
+        result,
+        case_id="GC-12",
+        position_proof_path=audit.PROOF_PRIMARY_EVIDENCE,
+        anchor_semantics_status=audit.ANCHOR_SEMANTICS_CONFIRMED,
+        artifact_sync_status=audit.ARTIFACT_SYNCED,
+        expected_reason_codes=(audit.RC_PRIMARY_SOURCE_VERIFIED,),
+        forbidden_reason_codes=(
+            *ANCHOR_REASON_CODES,
+            audit.RC_POSITION_PROOF_UNAVAILABLE,
+            audit.RC_RESOLUTION_RECORD_REUSED,
+        ),
+        audit_status=audit.AUTO_PASS,
+    )
+    # 後方互換の observation として出てよいが、status は駆動しない。
+    assert audit.RC_MULTIPLE_POI_CANDIDATES in result.reason_codes
+
+
+def test_gc_15_spreadsheet_row_missing_does_not_downgrade():
+    """Spreadsheet 行の欠落は、完備した Primary proof path を下げない。"""
+    result = audit.evaluate(
+        _item(
+            spreadsheet=None,
+            spreadsheet_join_status=audit.SHEET_JOIN_NONE,
+            spreadsheet_snapshot_available=True,
+            primary_position_evidence=_full_evidence(),
+        )
+    )
+    _assert_golden_case(
+        result,
+        case_id="GC-15",
+        position_proof_path=audit.PROOF_PRIMARY_EVIDENCE,
+        anchor_semantics_status=audit.ANCHOR_SEMANTICS_CONFIRMED,
+        artifact_sync_status=audit.ARTIFACT_SYNCED,
+        expected_reason_codes=(
+            audit.RC_PRIMARY_SOURCE_VERIFIED,
+            audit.RC_SPREADSHEET_ROW_MISSING,
+        ),
+        forbidden_reason_codes=(
+            audit.RC_POSITION_PROOF_UNAVAILABLE,
+            audit.RC_RESOLUTION_RECORD_REUSED,
+            *ANCHOR_REASON_CODES,
+        ),
+        audit_status=audit.AUTO_PASS,
+    )
+    # Spreadsheet は canonical な Position artifact ではない。
+    assert audit.RC_ARTIFACT_SYNC_INPUT_UNAVAILABLE not in result.reason_codes
+
+
+def test_gc_18_missing_primary_source_url_cannot_be_supplemented():
+    """Primary source_url 不在を Spreadsheet の URL で埋めてはならない。"""
+    result = audit.evaluate(
+        _item(
+            spreadsheet=_sheet(
+                position_source_type="shrine_authority_access_map",
+                position_source_url="https://example.invalid/authority/access",
+                verified_at="2026-09-15",
+            ),
+            primary_position_evidence=_full_evidence(source_url=None),
+        )
+    )
+    _assert_golden_case(
+        result,
+        case_id="GC-18",
+        position_proof_path=audit.PROOF_NONE,
+        anchor_semantics_status=audit.ANCHOR_SEMANTICS_CONFIRMED,
+        artifact_sync_status=audit.ARTIFACT_SYNCED,
+        expected_reason_codes=(audit.RC_PRIMARY_SOURCE_MISSING,),
+        forbidden_reason_codes=(
+            audit.RC_PRIMARY_SOURCE_VERIFIED,
+            audit.RC_RESOLUTION_RECORD_REUSED,
+            # 比較対象の Primary URL が無いので「不一致」ではない。
+            audit.RC_SPREADSHEET_POSITION_SOURCE_MISMATCH,
+        ),
+        audit_status=audit.HOLD,
+    )
+    # Spreadsheet の provenance が Primary 側へ漏れていない。
+    assert result.primary_source_url is None
+
+
+def test_gc_20_position_auto_pass_with_artifact_drift():
+    """artifact の drift は、有効な proof path を単独で下げない。"""
+    result = audit.evaluate(
+        _item(
+            seed=audit.SeedPosition(latitude=34.9, longitude=138.9),
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=_full_evidence(),
+        )
+    )
+    _assert_golden_case(
+        result,
+        case_id="GC-20",
+        position_proof_path=audit.PROOF_PRIMARY_EVIDENCE,
+        anchor_semantics_status=audit.ANCHOR_SEMANTICS_CONFIRMED,
+        artifact_sync_status=audit.ARTIFACT_DRIFT,
+        expected_reason_codes=(
+            audit.RC_PRIMARY_SOURCE_VERIFIED,
+            audit.RC_ARTIFACT_BASE_SEED_DRIFT,
+        ),
+        forbidden_reason_codes=(
+            audit.RC_POSITION_PROOF_UNAVAILABLE,
+            audit.RC_RESOLUTION_RECORD_REUSED,
+            *ANCHOR_REASON_CODES,
+        ),
+        audit_status=audit.AUTO_PASS,
+    )
+    # legacy code は後方互換で出てよいが、Position status は駆動しない。
+    assert audit.RC_SEED_PRODUCTION_COORDINATE_DIFFERS in result.reason_codes
+
+
+def test_gc_21_artifact_synced_with_position_review():
+    """artifact が揃っていることは Position の正しさの証明ではない。"""
+    result = audit.evaluate(
+        _item(
+            spreadsheet=_bare_sheet(),
+            candidate_master=audit.CandidateMasterPosition(
+                latitude=35.0, longitude=139.0
+            ),
+            existing_resolution=_resolution(),
+            primary_position_evidence=_full_evidence(),
+            anchor_semantics_status=audit.ANCHOR_SEMANTICS_NOT_EVALUATED,
+        )
+    )
+    _assert_golden_case(
+        result,
+        case_id="GC-21",
+        position_proof_path=audit.PROOF_PRIMARY_EVIDENCE,
+        anchor_semantics_status=audit.ANCHOR_SEMANTICS_NOT_EVALUATED,
+        artifact_sync_status=audit.ARTIFACT_SYNCED,
+        expected_reason_codes=(
+            audit.RC_PRIMARY_SOURCE_VERIFIED,
+            audit.RC_ANCHOR_SEMANTICS_NOT_EVALUATED,
+        ),
+        forbidden_reason_codes=(
+            audit.RC_POSITION_PROOF_UNAVAILABLE,
+            audit.RC_RESOLUTION_RECORD_REUSED,
+            *ARTIFACT_DRIFT_CODES,
+        ),
+        audit_status=audit.REVIEW,
+    )
+
+
+def test_gc_23_canonical_hold_wins():
+    """canonical HOLD は Machine Audit が自動解除できない。"""
+    result = audit.evaluate(
+        _item(
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=_full_evidence(),
+            existing_resolution=_resolution(
+                position_status="HOLD_POSITION_REVIEW"
+            ),
+        )
+    )
+    _assert_golden_case(
+        result,
+        case_id="GC-23",
+        position_proof_path=audit.PROOF_NONE,
+        anchor_semantics_status=audit.ANCHOR_SEMANTICS_CONFIRMED,
+        artifact_sync_status=audit.ARTIFACT_SYNCED,
+        expected_reason_codes=(audit.RC_POSITION_CONTRACT_HOLD_RECORD,),
+        forbidden_reason_codes=(
+            audit.RC_RESOLUTION_RECORD_REUSED,
+            audit.RC_POSITION_PROOF_UNAVAILABLE,
+        ),
+        audit_status=audit.HOLD,
+    )
+
+    # canonical HOLD が無ければ同じ入力は AUTO_PASS になりうる、という対比。
+    without_hold = audit.evaluate(
+        _item(spreadsheet=_bare_sheet(), primary_position_evidence=_full_evidence())
+    )
+    assert without_hold.audit_status == audit.AUTO_PASS
+    assert without_hold.position_proof_path == audit.PROOF_PRIMARY_EVIDENCE
+
+
+def test_gc_24_no_proof_path_is_review():
+    """有効な proof path が無いことを明示し、AUTO_PASS を主張しない。"""
+    result = audit.evaluate(
+        _item(
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=_full_evidence(status="FETCH_FAILED"),
+            existing_resolution=None,
+        )
+    )
+    _assert_golden_case(
+        result,
+        case_id="GC-24",
+        position_proof_path=audit.PROOF_NONE,
+        anchor_semantics_status=audit.ANCHOR_SEMANTICS_CONFIRMED,
+        artifact_sync_status=audit.ARTIFACT_SYNCED,
+        expected_reason_codes=(
+            audit.RC_SOURCE_FETCH_FAILED,
+            audit.RC_POSITION_PROOF_UNAVAILABLE,
+        ),
+        forbidden_reason_codes=(
+            audit.RC_PRIMARY_SOURCE_VERIFIED,
+            audit.RC_RESOLUTION_RECORD_REUSED,
+            *ANCHOR_REASON_CODES,
+        ),
+        audit_status=audit.REVIEW,
+    )
+
+
+# ---------------------------------------------------------------------------
+# P2-A02 §17 / §22 — Reason Code responsibility classes
+# ---------------------------------------------------------------------------
+
+
+def test_artifact_reason_codes_never_drive_position_status():
+    """artifact 同期の code は HOLD / REVIEW のどちらにも属さない（§22）。"""
+    for code in audit.ARTIFACT_SYNC_REASON_CODES:
+        assert code not in audit.HOLD_REASON_CODES, code
+        assert code not in audit.REVIEW_REASON_CODES, code
+    assert not (audit.ARTIFACT_SYNC_REASON_CODES & audit.HOLD_REASON_CODES)
+    assert not (audit.ARTIFACT_SYNC_REASON_CODES & audit.REVIEW_REASON_CODES)
+
+
+def test_observation_reason_codes_never_drive_position_status():
+    """§18 が observation と定めた code は status を駆動しない。"""
+    observation_only = {
+        audit.RC_SOURCE_FETCH_FAILED,
+        audit.RC_SOURCE_PARSE_FAILED,
+        audit.RC_POSITION_SOURCE_REDIRECTED,
+        audit.RC_PRIMARY_EVIDENCE_NOT_RETRIEVED,
+        audit.RC_SPREADSHEET_ROW_MISSING,
+        audit.RC_SPREADSHEET_SNAPSHOT_UNAVAILABLE,
+        audit.RC_SPREADSHEET_IDENTITY_REVIEW,
+        audit.RC_IDENTITY_NORMALIZATION_REQUIRED,
+        audit.RC_MULTIPLE_POI_CANDIDATES,
+        audit.RC_SEED_PRODUCTION_EXACT,
+        # §22: legacy 観測値。Position の正しさを単独で定義しない。
+        audit.RC_SEED_PRODUCTION_COORDINATE_DIFFERS,
+        # §16
+        audit.RC_SPREADSHEET_POSITION_SOURCE_MISMATCH,
+    }
+    for code in observation_only:
+        assert code not in audit.HOLD_REASON_CODES, code
+        assert code not in audit.REVIEW_REASON_CODES, code
+        assert audit._classify({code}) == audit.AUTO_PASS, code
+
+
+def test_reason_code_string_values_are_preserved():
+    """既存の stable な reason code 文字列を改名・削除しない（§17 / §27）。"""
+    for name, value in (
+        ("RC_SEED_PRODUCTION_EXACT", "SEED_PRODUCTION_EXACT"),
+        ("RC_PRIMARY_SOURCE_VERIFIED", "PRIMARY_SOURCE_VERIFIED"),
+        ("RC_RESOLUTION_RECORD_REUSED", "RESOLUTION_RECORD_REUSED"),
+        ("RC_POSITION_CONTRACT_HOLD_RECORD", "POSITION_CONTRACT_HOLD_RECORD"),
+        ("RC_PRIMARY_SOURCE_MISSING", "PRIMARY_SOURCE_MISSING"),
+        ("RC_PRIMARY_COORDINATE_DIFFERS", "PRIMARY_COORDINATE_DIFFERS"),
+        ("RC_SOURCE_FETCH_FAILED", "SOURCE_FETCH_FAILED"),
+        ("RC_SPREADSHEET_ROW_MISSING", "SPREADSHEET_ROW_MISSING"),
+        ("RC_SEED_PRODUCTION_COORDINATE_DIFFERS", "SEED_PRODUCTION_COORDINATE_DIFFERS"),
+        # P2-B01 で追加した承認済み code
+        ("RC_ANCHOR_SEMANTICS_REVIEW_REQUIRED", "ANCHOR_SEMANTICS_REVIEW_REQUIRED"),
+        ("RC_ANCHOR_SEMANTICS_NOT_EVALUATED", "ANCHOR_SEMANTICS_NOT_EVALUATED"),
+        ("RC_ANCHOR_SEMANTICS_UNKNOWN", "ANCHOR_SEMANTICS_UNKNOWN"),
+        ("RC_POSITION_PROOF_UNAVAILABLE", "POSITION_PROOF_UNAVAILABLE"),
+        (
+            "RC_SPREADSHEET_POSITION_SOURCE_MISMATCH",
+            "SPREADSHEET_POSITION_SOURCE_MISMATCH",
+        ),
+        ("RC_ARTIFACT_BASE_SEED_DRIFT", "ARTIFACT_BASE_SEED_DRIFT"),
+        ("RC_ARTIFACT_PRODUCTION_DRIFT", "ARTIFACT_PRODUCTION_DRIFT"),
+        ("RC_ARTIFACT_CANDIDATE_MASTER_DRIFT", "ARTIFACT_CANDIDATE_MASTER_DRIFT"),
+        ("RC_ARTIFACT_RESOLUTION_DRIFT", "ARTIFACT_RESOLUTION_DRIFT"),
+        ("RC_ARTIFACT_SYNC_INPUT_UNAVAILABLE", "ARTIFACT_SYNC_INPUT_UNAVAILABLE"),
+    ):
+        assert getattr(audit, name) == value, name
+
+
+# ---------------------------------------------------------------------------
+# P2-A02 §6 / §7 — Anchor Semantics
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("status", "expected_status", "expected_code"),
+    [
+        (audit.ANCHOR_SEMANTICS_CONFIRMED, audit.AUTO_PASS, None),
+        (audit.ANCHOR_SEMANTICS_NOT_APPLICABLE, audit.AUTO_PASS, None),
+        (
+            audit.ANCHOR_SEMANTICS_REVIEW_REQUIRED,
+            audit.REVIEW,
+            audit.RC_ANCHOR_SEMANTICS_REVIEW_REQUIRED,
+        ),
+        (
+            audit.ANCHOR_SEMANTICS_NOT_EVALUATED,
+            audit.REVIEW,
+            audit.RC_ANCHOR_SEMANTICS_NOT_EVALUATED,
+        ),
+        (None, audit.REVIEW, audit.RC_ANCHOR_SEMANTICS_NOT_EVALUATED),
+        ("", audit.REVIEW, audit.RC_ANCHOR_SEMANTICS_NOT_EVALUATED),
+        ("PROBABLY_FINE", audit.REVIEW, audit.RC_ANCHOR_SEMANTICS_UNKNOWN),
+        ("confirmed-ish", audit.REVIEW, audit.RC_ANCHOR_SEMANTICS_UNKNOWN),
+    ],
+)
+def test_anchor_semantics_gate(status, expected_status, expected_code):
+    """AUTO_PASS 資格は CONFIRMED / NOT_APPLICABLE のみ。未知は fail safe。"""
+    result = audit.evaluate(
+        _item(
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=_full_evidence(),
+            anchor_semantics_status=status,
+        )
+    )
+    assert result.audit_status == expected_status
+    if expected_code is None:
+        assert not (set(result.reason_codes) & audit.ANCHOR_SEMANTICS_REASON_CODES)
+    else:
+        assert expected_code in result.reason_codes
+    # proof path は Anchor Semantics とは独立に成立している。
+    assert result.position_proof_path == audit.PROOF_PRIMARY_EVIDENCE
+
+
+def test_anchor_semantics_alone_never_creates_hold():
+    """Anchor Semantics 単独では HOLD 経路を作らない（§7）。"""
+    for code in audit.ANCHOR_SEMANTICS_REASON_CODES:
+        assert code not in audit.HOLD_REASON_CODES, code
+        assert audit._classify({code}) == audit.REVIEW, code
+
+
+def test_anchor_semantics_is_case_and_whitespace_insensitive():
+    assert audit.normalize_anchor_semantics("  confirmed  ") == (
+        audit.ANCHOR_SEMANTICS_CONFIRMED
+    )
+    assert audit.normalize_anchor_semantics("Not_Applicable") == (
+        audit.ANCHOR_SEMANTICS_NOT_APPLICABLE
+    )
+
+
+def test_anchor_semantics_is_never_derived_from_supporting_evidence():
+    """支援的な evidence から意味論を導出しない（§6）。
+
+    POI 候補数・provider・座標距離・名称類似度が何であれ、
+    `anchor_semantics_status` を与えなければ `NOT_EVALUATED` のままである。
+    """
+    result = audit.evaluate(
+        _item(
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=_full_evidence(
+                poi_candidate_count=1,
+                source_type="shrine_official",
+            ),
+            corroboration=(
+                audit.CorroborationSource(
+                    source_type="osm",
+                    source_url="https://example.invalid/osm",
+                    latitude=35.0,
+                    longitude=139.0,
+                ),
+            ),
+            anchor_semantics_status=None,
+        )
+    )
+    assert result.anchor_semantics_status == audit.ANCHOR_SEMANTICS_NOT_EVALUATED
+    assert audit.RC_ANCHOR_SEMANTICS_NOT_EVALUATED in result.reason_codes
+
+
+def test_anchor_semantics_status_is_a_closed_enum_in_output():
+    """出力 field は閉じた enum。未知入力をそのまま serialize しない。"""
+    allowed = audit.ANCHOR_SEMANTICS_INPUT_VALUES | {audit.ANCHOR_SEMANTICS_UNKNOWN}
+    for supplied in ("CONFIRMED", "REVIEW_REQUIRED", "NOT_EVALUATED",
+                     "NOT_APPLICABLE", "totally bogus", None, ""):
+        result = audit.evaluate(
+            _item(
+                spreadsheet=_bare_sheet(),
+                primary_position_evidence=_full_evidence(),
+                anchor_semantics_status=supplied,
+            )
+        )
+        assert result.anchor_semantics_status in allowed
+        assert result.to_dict()["anchor_semantics_status"] in allowed
+
+
+def test_anchor_semantics_flows_from_the_evidence_snapshot(tmp_path):
+    """snapshot が明示的に書いた値だけが入力として流れる。"""
+    path = tmp_path / "evidence.json"
+    path.write_text(
+        json.dumps(
+            [
+                {
+                    "candidate_id": "wave0-999",
+                    "status": "OK",
+                    "source_type": "shrine_official",
+                    "source_url": "https://example.invalid/access",
+                    "latitude": 35.0,
+                    "longitude": 139.0,
+                    "entity_match": "SAME",
+                    "verified_at": "2026-09-17",
+                    "anchor_semantics_status": "CONFIRMED",
+                }
+            ],
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    by_candidate, _ = audit.load_primary_evidence_snapshot(path)
+    assert by_candidate["wave0-999"].anchor_semantics_status == "CONFIRMED"
+
+    items = _build(primary_evidence_by_candidate=by_candidate)
+    assert items[0].anchor_semantics_status == "CONFIRMED"
+    result = audit.evaluate(items[0])
+    assert result.anchor_semantics_status == audit.ANCHOR_SEMANTICS_CONFIRMED
+    assert result.audit_status == audit.AUTO_PASS
+
+    # 書かれていなければ未評価のまま（推測で埋めない）。
+    without = _build(primary_evidence_by_candidate={})
+    assert without[0].anchor_semantics_status is None
+    assert (
+        audit.evaluate(without[0]).anchor_semantics_status
+        == audit.ANCHOR_SEMANTICS_NOT_EVALUATED
+    )
+
+
+# ---------------------------------------------------------------------------
+# P2-A02 §8 — Position proof path
+# ---------------------------------------------------------------------------
+
+
+def test_position_proof_path_is_a_closed_enum():
+    assert {
+        audit.PROOF_PRIMARY_EVIDENCE,
+        audit.PROOF_RESOLUTION_FALLBACK,
+        audit.PROOF_NONE,
+    } == {"PRIMARY_EVIDENCE", "RESOLUTION_FALLBACK", "NONE"}
+
+
+def test_only_one_proof_path_is_ever_selected():
+    """positive proof reason は排他的（§8 / §9）。"""
+    cases = [
+        _item(spreadsheet=_bare_sheet(), primary_position_evidence=_full_evidence()),
+        _item(
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=_full_evidence(),
+            existing_resolution=_resolution(),
+        ),
+        _item(
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=_full_evidence(status="FETCH_FAILED"),
+            existing_resolution=_resolution(),
+        ),
+        _item(spreadsheet=_bare_sheet(), primary_position_evidence=None),
+    ]
+    for item in cases:
+        result = audit.evaluate(item)
+        codes = set(result.reason_codes)
+        positives = codes & {
+            audit.RC_PRIMARY_SOURCE_VERIFIED,
+            audit.RC_RESOLUTION_RECORD_REUSED,
+        }
+        assert len(positives) <= 1, result.reason_codes
+        if result.position_proof_path == audit.PROOF_PRIMARY_EVIDENCE:
+            assert positives == {audit.RC_PRIMARY_SOURCE_VERIFIED}
+        elif result.position_proof_path == audit.PROOF_RESOLUTION_FALLBACK:
+            assert positives == {audit.RC_RESOLUTION_RECORD_REUSED}
+        else:
+            assert positives == set()
+
+
+def test_position_proof_unavailable_only_when_it_drives_status():
+    """NONE の理由が別にあるなら proof unavailable を重ねて言わない（§12）。"""
+    # 説明する code がある -> 出さない
+    explained = audit.evaluate(
+        _item(
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=_full_evidence(latitude=35.02, longitude=139.02),
+        )
+    )
+    assert explained.position_proof_path == audit.PROOF_NONE
+    assert audit.RC_POSITION_PROOF_UNAVAILABLE not in explained.reason_codes
+
+    # 説明する code が無い -> 出す
+    unexplained = audit.evaluate(
+        _item(
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=_full_evidence(status="FETCH_FAILED"),
+        )
+    )
+    assert unexplained.position_proof_path == audit.PROOF_NONE
+    assert audit.RC_POSITION_PROOF_UNAVAILABLE in unexplained.reason_codes
+
+
+def test_output_provenance_comes_only_from_the_selected_proof_path():
+    """無関係な経路の metadata を混ぜた hybrid provenance を作らない（§24）。"""
+    fallback = audit.evaluate(
+        _item(
+            spreadsheet=_sheet(
+                position_source_url="https://example.invalid/sheet-only",
+                position_source_type="map_provider_poi",
+                verified_at="2020-01-01",
+            ),
+            primary_position_evidence=_full_evidence(status="FETCH_FAILED"),
+            existing_resolution=_resolution(),
+        )
+    )
+    assert fallback.position_proof_path == audit.PROOF_RESOLUTION_FALLBACK
+    assert fallback.primary_source_url == "https://example.invalid/authority/access"
+    assert fallback.primary_source_type == "shrine_authority_access_map"
+    assert fallback.verified_at == "2026-09-16"
+
+
+# ---------------------------------------------------------------------------
+# P2-A02 §20 / §21 — Artifact Synchronization
+# ---------------------------------------------------------------------------
+
+
+def test_artifact_sync_status_is_a_closed_enum():
+    assert {audit.ARTIFACT_SYNCED, audit.ARTIFACT_DRIFT, audit.ARTIFACT_UNKNOWN} == {
+        "SYNCED",
+        "DRIFT",
+        "UNKNOWN",
+    }
+
+
+def test_candidate_master_drift_is_detected_independently():
+    result = audit.evaluate(
+        _item(
+            spreadsheet=_bare_sheet(),
+            candidate_master=audit.CandidateMasterPosition(
+                latitude=34.5, longitude=138.5
+            ),
+            primary_position_evidence=_full_evidence(),
+        )
+    )
+    assert audit.RC_ARTIFACT_CANDIDATE_MASTER_DRIFT in result.reason_codes
+    assert result.artifact_sync_status == audit.ARTIFACT_DRIFT
+    assert result.audit_status == audit.AUTO_PASS
+
+
+def test_resolution_record_drift_is_detected_independently():
+    result = audit.evaluate(
+        _item(
+            spreadsheet=_bare_sheet(),
+            existing_resolution=_resolution(
+                adopted_latitude=34.5, adopted_longitude=138.5
+            ),
+            primary_position_evidence=_full_evidence(),
+        )
+    )
+    assert audit.RC_ARTIFACT_RESOLUTION_DRIFT in result.reason_codes
+    assert result.artifact_sync_status == audit.ARTIFACT_DRIFT
+    # 使っていない Resolution 経路の欠陥は Position status を下げない。
+    assert result.audit_status == audit.AUTO_PASS
+
+
+def test_artifact_sync_is_unknown_when_inputs_cannot_be_compared():
+    result = audit.evaluate(
+        _item(
+            production=None,
+            spreadsheet=None,
+            spreadsheet_join_status=audit.SHEET_JOIN_NONE,
+            seed_production_join_status=audit.JOIN_PRODUCTION_SNAPSHOT_UNAVAILABLE,
+            production_snapshot_available=False,
+            spreadsheet_snapshot_available=False,
+        )
+    )
+    assert result.artifact_sync_status == audit.ARTIFACT_UNKNOWN
+    assert audit.RC_ARTIFACT_SYNC_INPUT_UNAVAILABLE in result.reason_codes
+    # 入力不在は依然として Position 側の HOLD である。
+    assert result.audit_status == audit.HOLD
+
+
+def test_missing_production_row_is_artifact_production_drift():
+    result = audit.evaluate(
+        _item(
+            production=None,
+            spreadsheet=_bare_sheet(),
+            seed_production_join_status=audit.JOIN_MISSING_PRODUCTION,
+        )
+    )
+    assert audit.RC_ARTIFACT_PRODUCTION_DRIFT in result.reason_codes
+    assert result.artifact_sync_status == audit.ARTIFACT_DRIFT
+    assert result.audit_status == audit.HOLD
+
+
+def test_historical_artifacts_are_not_synchronization_authorities():
+    """canonical HOLD record は adopted Position ではない（§21）。
+
+    HOLD record の座標が現在値と違っても artifact drift にはしない。
+    """
+    result = audit.evaluate(
+        _item(
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=_full_evidence(),
+            existing_resolution=_resolution(
+                position_status="HOLD_POSITION_REVIEW",
+                adopted_latitude=34.5,
+                adopted_longitude=138.5,
+            ),
+        )
+    )
+    assert audit.RC_ARTIFACT_RESOLUTION_DRIFT not in result.reason_codes
+    assert result.artifact_sync_status == audit.ARTIFACT_SYNCED
+    assert result.audit_status == audit.HOLD
+
+
+# ---------------------------------------------------------------------------
+# P2-A02 §25 — 決定的評価順
+# ---------------------------------------------------------------------------
+
+
+def test_later_layers_never_override_canonical_hold():
+    """後段（proof path / anchor / artifact）が canonical HOLD を覆さない。"""
+    for overrides in (
+        {"primary_position_evidence": _full_evidence()},
+        {"primary_position_evidence": _full_evidence(status="FETCH_FAILED")},
+        {"anchor_semantics_status": audit.ANCHOR_SEMANTICS_NOT_APPLICABLE},
+        {"candidate_master": audit.CandidateMasterPosition(34.5, 138.5)},
+    ):
+        result = audit.evaluate(
+            _item(
+                spreadsheet=_bare_sheet(),
+                existing_resolution=_resolution(
+                    position_status="HOLD_POSITION_REVIEW"
+                ),
+                **overrides,
+            )
+        )
+        assert result.audit_status == audit.HOLD, overrides
+        assert result.position_proof_path == audit.PROOF_NONE, overrides
+        assert audit.RC_POSITION_CONTRACT_HOLD_RECORD in result.reason_codes
+
+
+# ---------------------------------------------------------------------------
+# P2-A02 §28 — schema version gate
+# ---------------------------------------------------------------------------
+
+
+def test_schema_version_reflects_the_added_contract_fields():
+    """contract-significant field を足したので schema を意図的に上げる。
+
+    既存 field の削除・改名・再解釈は無く、後方互換な追加なので minor bump。
+    Repository の慣行（candidate master schema 1.1 -> 1.2）と同じ扱い。
+    """
+    assert audit.SCHEMA_VERSION == "position-audit-v2/1.1"
+
+    report = audit.build_report(
+        [
+            audit.evaluate(
+                _item(
+                    spreadsheet=_bare_sheet(),
+                    primary_position_evidence=_full_evidence(),
+                )
+            )
+        ]
+    )
+    assert report["schema_version"] == "position-audit-v2/1.1"
+    row = report["results"][0]
+    for field_name in (
+        "position_proof_path",
+        "anchor_semantics_status",
+        "artifact_sync_status",
+    ):
+        assert field_name in row
+
+
+def test_existing_serialized_fields_are_not_reinterpreted():
+    """既存 field を黙って作り替えない（§27）。"""
+    result = audit.evaluate(
+        _item(spreadsheet=_bare_sheet(), primary_position_evidence=_full_evidence())
+    )
+    row = result.to_dict()
+    for field_name in (
+        "candidate_id",
+        "production_id",
+        "name_jp",
+        "join_status",
+        "spreadsheet_join_status",
+        "audit_status",
+        "reason_codes",
+        "stored_address",
+        "official_address",
+        "stored_latitude",
+        "stored_longitude",
+        "seed_latitude",
+        "seed_longitude",
+        "primary_latitude",
+        "primary_longitude",
+        "coordinate_delta_m",
+        "primary_source_type",
+        "primary_source_url",
+        "corroboration_sources",
+        "existing_resolution_record",
+        "verified_at",
+    ):
+        assert field_name in row, field_name
+    assert row["audit_status"] in {audit.AUTO_PASS, audit.REVIEW, audit.HOLD}
+
+
+# ---------------------------------------------------------------------------
+# 決定的 serialization（新 field を含む）
+# ---------------------------------------------------------------------------
+
+
+def test_new_contract_fields_are_byte_stable():
+    items = [
+        _item(spreadsheet=_bare_sheet(), primary_position_evidence=_full_evidence()),
+        _item(
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=_full_evidence(status="FETCH_FAILED"),
+            existing_resolution=_resolution(),
+        ),
+        _item(
+            seed=audit.SeedPosition(latitude=34.9, longitude=138.9),
+            spreadsheet=_bare_sheet(),
+            primary_position_evidence=_full_evidence(),
+            anchor_semantics_status=audit.ANCHOR_SEMANTICS_REVIEW_REQUIRED,
+        ),
+    ]
+    first = audit.dump_json(audit.build_report([audit.evaluate(i) for i in items]))
+    second = audit.dump_json(audit.build_report([audit.evaluate(i) for i in items]))
+    assert first.encode("utf-8") == second.encode("utf-8")
+
+    decoded = json.loads(first)
+    assert [r["position_proof_path"] for r in decoded["results"]] == [
+        audit.PROOF_PRIMARY_EVIDENCE,
+        audit.PROOF_RESOLUTION_FALLBACK,
+        audit.PROOF_PRIMARY_EVIDENCE,
+    ]
+    assert [r["artifact_sync_status"] for r in decoded["results"]] == [
+        audit.ARTIFACT_SYNCED,
+        audit.ARTIFACT_SYNCED,
+        audit.ARTIFACT_DRIFT,
+    ]
+    # reason_codes は常に sorted（集合順に依存しない）。
+    for row in decoded["results"]:
+        assert row["reason_codes"] == sorted(row["reason_codes"])
+
+
+def test_reason_code_ordering_is_independent_of_input_ordering():
+    """同一入力なら reason-code 順序も安定する。"""
+    item = _item(
+        seed=audit.SeedPosition(latitude=34.9, longitude=138.9),
+        spreadsheet=_bare_sheet(),
+        primary_position_evidence=_full_evidence(poi_candidate_count=5),
+        anchor_semantics_status="unrecognised",
+    )
+    runs = [audit.evaluate(item).reason_codes for _ in range(5)]
+    assert all(run == runs[0] for run in runs)
+    assert runs[0] == sorted(runs[0])
+
+
+# ---------------------------------------------------------------------------
+# Zero-write guarantee — P2-B01 で追加した経路の追加防御
+# ---------------------------------------------------------------------------
+
+# evaluate() 内で禁止する I/O 呼び出し。評価は純粋な in-memory 変換であり、
+# Anchor Semantics / Artifact Synchronization を足したあとも file / network /
+# DB に触れてはならない。
+FORBIDDEN_EVALUATE_CALL_ATTRS = frozenset(
+    {
+        "open",
+        "read_text",
+        "read_bytes",
+        "write_text",
+        "write_bytes",
+        "glob",
+        "iterdir",
+        "exists",
+        "mkdir",
+        "unlink",
+        "urlopen",
+        "get",
+        "post",
+        "request",
+    }
+)
+
+
+def _function_node(name: str):
+    import ast
+
+    tree = ast.parse(AUDIT_PATH.read_text(encoding="utf-8"))
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name == name:
+            return node
+    raise AssertionError(f"function {name!r} not found")
+
+
+def test_evaluate_performs_no_io():
+    """新しい評価層（anchor / proof path / artifact sync）が I/O を持たない。"""
+    import ast
+
+    node = _function_node("evaluate")
+    for child in ast.walk(node):
+        if isinstance(child, ast.Call) and isinstance(child.func, ast.Attribute):
+            assert child.func.attr not in FORBIDDEN_EVALUATE_CALL_ATTRS, (
+                child.func.attr
+            )
+        if isinstance(child, ast.Call) and isinstance(child.func, ast.Name):
+            assert child.func.id != "open", "evaluate() must not open files"
+
+
+def test_new_input_dataclasses_are_frozen():
+    """新しい入力 model も immutable（評価が入力を書き換えない）。"""
+    import dataclasses
+
+    for cls in (
+        audit.CandidateMasterPosition,
+        audit.ShrinePositionAuditInput,
+        audit.PrimaryPositionEvidence,
+    ):
+        assert dataclasses.is_dataclass(cls)
+        assert cls.__dataclass_params__.frozen, cls.__name__
+
+    master = audit.CandidateMasterPosition(latitude=35.0, longitude=139.0)
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        master.latitude = 1.0  # type: ignore[misc]
+
+
+def test_evaluate_does_not_mutate_its_input():
+    """同じ入力 object を再評価しても結果が変わらない（純関数）。"""
+    item = _item(
+        spreadsheet=_bare_sheet(),
+        candidate_master=audit.CandidateMasterPosition(latitude=34.5, longitude=138.5),
+        primary_position_evidence=_full_evidence(),
+        existing_resolution=_resolution(),
+    )
+    before = audit.evaluate(item).to_dict()
+    again = audit.evaluate(item).to_dict()
+    assert before == again
+
+
+def test_artifact_sync_layer_has_no_new_write_path():
+    """artifact sync は snapshot file を読み直さず、既存入力だけを使う。"""
+    import ast
+
+    tree = ast.parse(AUDIT_PATH.read_text(encoding="utf-8"))
+    write_targets: list[str] = []
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr in {"write_text", "write_bytes", "open"}
+        ):
+            write_targets.append(ast.unparse(node.func.value))
+    # P2-B01 後も書き込み先は report file 2つだけ。
+    assert sorted(set(write_targets)) == ["args.output_json", "args.output_md"]

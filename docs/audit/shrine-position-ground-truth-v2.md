@@ -106,7 +106,12 @@ longitude
 entity_match           SAME / DIFFERENT / NON_SHRINE / AMBIGUOUS
 poi_candidate_count
 verified_at
+anchor_semantics_status  CONFIRMED / REVIEW_REQUIRED / NOT_EVALUATED / NOT_APPLICABLE
 ```
+
+`anchor_semantics_status` は **明示的に書かれた値だけ**を読む（§9.3）。
+他の field から導出しない。書かれていなければ `NOT_EVALUATED` として
+扱われ、AUTO_PASS 資格を失う（fail safe）。
 
 対象 Shrine は次のいずれかで指す（両方あっても良い）。
 
@@ -124,7 +129,10 @@ verified_at
 - 取得してよいのは明示された `position_source_url` / `official_source_url` のみ
 - 検索エンジンによる広域探索を行わない
 - 代替 URL を発明しない
-- timeout / fetch / parser 失敗は **fail closed で `REVIEW`**
+- timeout / fetch / parser 失敗は **observation** として記録する。
+  有効な Resolution fallback があるなら status を下げない。
+  どちらの proof path も成立しないときに `POSITION_PROOF_UNAVAILABLE`
+  → `REVIEW` へ倒す（§9.2）
 - テストは fixture のみ。live network に出ない
 
 ## 3. Identity Join 契約
@@ -185,19 +193,26 @@ HOLD       必要な evidence または identity certainty が欠けている
 ### AUTO_PASS の必要条件（すべて）
 
 - Seed ↔ Production が exact 1:1
-- Spreadsheet identity が `JOIN_EXACT` または `JOIN_CORROBORATED`
-- 有効な primary position source が存在する
-- primary source が取得可能、または有効な現行 Resolution Record で代替されている
-  （Resolution Record 経路も **同じ provenance 要件**を満たすこと）
+- **有効な Position proof path がちょうど1つ成立している**
+  （`PRIMARY_EVIDENCE` または `RESOLUTION_FALLBACK`。詳細は §9.2）
 - source が指す entity が **同一 Shrine であると示せる**
   （`evidence.status == "OK"` かつ `evidence.entity_match == "SAME"`）
 - primary 座標が追跡可能
-- **primary-source provenance が追跡可能**
-  （effective な `source_type` / `source_url` / `verified_at` がすべて存在する）
-- Seed と Production の座標が同値
-- Production 座標が採用済み / 検証済み position と一致する
+- **選ばれた経路の provenance が追跡可能**
+  （`source_type` / `source_url` / `verified_at` がすべて存在する）
+- **`anchor_semantics_status` が `CONFIRMED` または `NOT_APPLICABLE`**（§9.3）
 - identity / address / coordinate に説明不能な conflict が無い
 - wrong-entity / non-shrine evidence が無い
+- canonical `HOLD_POSITION_REVIEW` record が存在しない
+
+次は **AUTO_PASS の必要条件ではない**。
+
+| 条件 | 理由 |
+| --- | --- |
+| Spreadsheet identity が `JOIN_EXACT` / `JOIN_CORROBORATED` | Spreadsheet は Ground Truth でも Position proof path でもない（§9.6） |
+| Seed と Production の座標が同値 | artifact 同期の問題であり Position の正しさではない（§9.4） |
+| primary source の retrieval が成功していること | 有効な fallback があるなら取得失敗は observation（§9.2） |
+| POI 候補が1件であること | 構造の observation。意味論は `anchor_semantics_status` が持つ（§9.3） |
 
 ### entity 同定は fail closed
 
@@ -245,21 +260,34 @@ effective verified_at         が存在する
 
 #### effective provenance の解決順
 
-`PrimaryPositionEvidence` を優先し、**欠けている field だけ** joined
-Spreadsheet 行で補う。
+`source_url` は **`PrimaryPositionEvidence` 由来のものだけ**を使う。
+Spreadsheet による補完は、同じ Position source だと機械的に確認できるとき
+（`evidence.source_url == spreadsheet.position_source_url`）に限る。
 
 ```text
-source_type   = evidence.source_type   or spreadsheet.position_source_type
-                                       or spreadsheet.official_source_type
-source_url    = evidence.source_url    or spreadsheet.position_source_url
-                                       or spreadsheet.official_source_url
-verified_at   = evidence.verified_at   or spreadsheet.verified_at
+source_url  = evidence.source_url        （Spreadsheet からは補完しない）
+
+same_source = evidence.source_url が存在し、かつ
+              spreadsheet.position_source_url と完全一致する
+
+source_type = evidence.source_type or (spreadsheet.position_source_type if same_source)
+verified_at = evidence.verified_at or (spreadsheet.verified_at         if same_source)
 ```
 
-evidence snapshot 側に source metadata を**重複させることは要求しない**。
-joined Spreadsheet が同じ traceable source を持つならそれで足りる。
+Primary `source_url` が無いまま Spreadsheet の URL を流し込むと、
+**その URL から座標を得た証拠が無いのに provenance を捏造する**ことになる。
+したがってコピーしない（§9.6 / GC-18）。
 
-出力の `verified_at` もこの解決順に従う（evidence が優先）。
+`official_source_url` / `official_source_type` は identity provenance であり、
+Position provenance の代用にはしない。両者は別責務である。
+
+`evidence.source_url` と `spreadsheet.position_source_url` が**両方存在して
+食い違う**ときだけ `SPREADSHEET_POSITION_SOURCE_MISMATCH`（observation）を
+出す。比較対象が無い場合は「不一致」ではないので出さない。
+
+出力 provenance は**選ばれた proof path**からのみ取る（§9.2）。
+`RESOLUTION_FALLBACK` が選ばれた場合は Resolution Record 自身の
+`position_source_type` / `position_source_url` / `verified_at` を出力する。
 
 #### 欠落時の扱い
 
@@ -271,7 +299,9 @@ joined Spreadsheet が同じ traceable source を持つならそれで足りる�
 
 provenance が不完全なまま黙って `AUTO_PASS` にはしない。
 `PRIMARY_COORDINATE_DIFFERS` の観測は provenance の充足とは独立に行い、
-差があれば併せて表面化する。
+差があれば併せて表面化する。ただし座標が現在の Production と食い違う場合、
+その evidence は現在の Position を証明していないので
+`PRIMARY_SOURCE_VERIFIED` は出さない（proof path は `NONE` になる / GC-06）。
 
 ### 既存 PASS Resolution Record の再利用
 
@@ -487,11 +517,16 @@ JSON は `sort_keys=True` / `indent=2` で決定性を持たせ、同一入力�
 ```text
 schema_version
 totals { total, auto_pass, review, hold }
+position_proof_path_counts
+anchor_semantics_counts
+artifact_sync_counts
 reason_code_counts
 unresolved_input_dependencies
 results[] {
   candidate_id, production_id, name_jp,
-  join_status, spreadsheet_join_status, audit_status, reason_codes[],
+  join_status, spreadsheet_join_status, audit_status,
+  position_proof_path, anchor_semantics_status, artifact_sync_status,
+  reason_codes[],
   stored_address, official_address,
   stored_latitude, stored_longitude,
   seed_latitude, seed_longitude,
@@ -503,8 +538,203 @@ results[] {
 }
 ```
 
-Markdown summary は集計 / `AUTO_PASS` 行 / `REVIEW` 行 / `HOLD` 行 /
+Markdown summary は集計 / `position_proof_path` / `anchor_semantics_status` /
+`artifact_sync_status` の内訳 / `AUTO_PASS` 行 / `REVIEW` 行 / `HOLD` 行 /
 未解決の入力依存を含む。
+
+### 9.1 schema version
+
+```text
+position-audit-v2/1.0  →  position-audit-v2/1.1
+```
+
+P2-B01 で contract-significant な serialized field を**追加**した。
+
+```text
+position_proof_path
+anchor_semantics_status
+artifact_sync_status
+```
+
+既存 field の削除・改名・再解釈は行っていないため後方互換な追加であり、
+minor を上げる。Repository の慣行（`shrine_expansion_candidate_master.json`
+の `schema_version` 1.1 → 1.2 = 後方互換な追加/改名で minor bump し、
+test と contract doc を同時に更新する）と同じ扱いである。
+
+版は `test_schema_version_reflects_the_added_contract_fields` が固定する。
+
+### 9.2 Position proof path
+
+現在の Position を**どの経路で機械的に証明したか**。排他的に1つだけ選ぶ。
+
+```text
+PRIMARY_EVIDENCE  >  RESOLUTION_FALLBACK  >  NONE
+```
+
+| 値 | 条件 | positive reason code |
+| --- | --- | --- |
+| `PRIMARY_EVIDENCE` | retrieval status = OK / `entity_match = SAME` / 座標追跡可能 / 座標が現在の Production と一致 / Position provenance 完備 / blocking conflict なし | `PRIMARY_SOURCE_VERIFIED` |
+| `RESOLUTION_FALLBACK` | Primary が単独で証明できず、record が `PASS` + identity exact + Seed/Production 座標一致 + provenance 完備 + より新しい矛盾なし | `RESOLUTION_RECORD_REUSED` |
+| `NONE` | どちらも成立しない | （下記） |
+
+選ばれなかった経路の欠陥は、選ばれた経路を汚染しない。
+`RESOLUTION_*_MISSING` / `RESOLUTION_RECORD_COORDINATE_MISMATCH` は
+Resolution 経路が実際に必要なときにだけ status を動かす。
+
+出力 provenance（`primary_source_type` / `primary_source_url` /
+`verified_at`）は**選ばれた経路からのみ**取る。異なる経路の metadata を
+混ぜた hybrid provenance は作らない。
+
+### `POSITION_PROOF_UNAVAILABLE` の境界
+
+```text
+SOURCE_FETCH_FAILED         = 取得できなかったという観測
+POSITION_PROOF_UNAVAILABLE  = 有効な proof path が存在しない
+```
+
+`POSITION_PROOF_UNAVAILABLE` は proof path = `NONE` かつ、なぜ `NONE` なのかを
+説明する status-driving な Position reason が他に無いときだけ出す。
+Anchor Semantics の code は「proof が無い理由」ではないため、この抑止条件には
+含めない。
+
+```text
+FETCH_FAILED + 有効な Resolution fallback  → RESOLUTION_FALLBACK / AUTO_PASS 資格
+FETCH_FAILED + fallback なし               → NONE / POSITION_PROOF_UNAVAILABLE / REVIEW
+PRIMARY_COORDINATE_DIFFERS                 → NONE（理由は座標矛盾側）
+canonical HOLD_POSITION_REVIEW             → NONE（理由は canonical HOLD 側）
+```
+
+### 9.3 Anchor Semantics
+
+「その座標が Visitor / Navigation Anchor として妥当か」という**意味的**判断。
+座標が追跡可能であることとは別の責務であり、**明示的な入力としてのみ**受け取る。
+
+| `anchor_semantics_status` | AUTO_PASS 資格 | reason code |
+| --- | --- | --- |
+| `CONFIRMED` | 保持 | （なし） |
+| `NOT_APPLICABLE` | 保持 | （なし） |
+| `REVIEW_REQUIRED` | 失う | `ANCHOR_SEMANTICS_REVIEW_REQUIRED` |
+| `NOT_EVALUATED`（未設定・空を含む） | 失う | `ANCHOR_SEMANTICS_NOT_EVALUATED` |
+| 上記以外（出力は `UNKNOWN` に正規化） | 失う | `ANCHOR_SEMANTICS_UNKNOWN` |
+
+* 未知の値を `CONFIRMED` と解釈しない（fail safe）。
+* Anchor Semantics 単独では **HOLD を作らない**。3つとも REVIEW へ写像する。
+* Resolution fallback もこの gate を迂回できない。
+* 次の field から**導出しない**: `entry_status` / `multi_site_status` /
+  `anchor_complexity` / `poi_candidate_count` / provider / 座標距離 /
+  名称類似度 / source authority / `visitor_flow_note` / `navigation_risk_note`。
+
+入力経路は primary evidence snapshot の `anchor_semantics_status` 列である。
+書かれていなければ `NOT_EVALUATED` のままであり、推測で埋めない。
+
+### 9.4 Artifact Synchronization
+
+repository が管理する current-state artifact が adopted Position と揃って
+いるか。**Position の正しさとは独立の軸**であり、`audit_status` を左右しない。
+
+```text
+audit_status = AUTO_PASS  かつ  artifact_sync_status = DRIFT   … 成立する
+audit_status = REVIEW     かつ  artifact_sync_status = SYNCED  … 成立する
+```
+
+参照基準は **Production 座標**（= live な adopted Position）。
+
+| reason code | 条件 |
+| --- | --- |
+| `ARTIFACT_BASE_SEED_DRIFT` | Base Seed 座標 ≠ Production |
+| `ARTIFACT_CANDIDATE_MASTER_DRIFT` | Candidate Master 座標 ≠ Production |
+| `ARTIFACT_RESOLUTION_DRIFT` | 現在採用中の `PASS` Resolution Record の採用座標 ≠ Production |
+| `ARTIFACT_PRODUCTION_DRIFT` | Seed に在るのに Production に行が無い（`MISSING_PRODUCTION`） |
+| `ARTIFACT_SYNC_INPUT_UNAVAILABLE` | snapshot 不在 / 重複 / identity 未確定 / 基準座標欠落で比較できない |
+
+`artifact_sync_status` は `DRIFT` > `UNKNOWN` > `SYNCED` の優先順で決まる。
+
+これらの code は `HOLD_REASON_CODES` / `REVIEW_REASON_CODES` の**どちらにも
+属さない**。`SEED_PRODUCTION_COORDINATE_DIFFERS` は後方互換の観測値として
+出し続けるが、Position の正しさを単独で定義しない。
+
+歴史的 artifact（closed audit / 歴史的 Source Packet / superseded Resolution
+Record / 歴史的 snapshot）は同期の authority ではないため比較対象にしない。
+canonical `HOLD_POSITION_REVIEW` record は adopted Position を持たないので
+`ARTIFACT_RESOLUTION_DRIFT` の対象外である。
+
+### 9.5 Reason Code の責務クラス
+
+```text
+POSITION_STATUS_REASON   audit_status を駆動する
+OBSERVATION_REASON       報告のみ。単独では status を動かさない
+ARTIFACT_SYNC_REASON     artifact_sync_status だけを駆動する
+```
+
+既存の stable な reason code 文字列は改名・削除しない。`reason_codes` に
+出続けることと、`_classify()` に参加することは別である。
+
+observation として扱う code:
+
+```text
+SOURCE_FETCH_FAILED             SPREADSHEET_ROW_MISSING
+SOURCE_PARSE_FAILED             SPREADSHEET_SNAPSHOT_UNAVAILABLE
+POSITION_SOURCE_REDIRECTED      SPREADSHEET_IDENTITY_REVIEW
+PRIMARY_EVIDENCE_NOT_RETRIEVED  SPREADSHEET_POSITION_SOURCE_MISMATCH
+IDENTITY_NORMALIZATION_REQUIRED MULTIPLE_POI_CANDIDATES
+SEED_PRODUCTION_EXACT           SEED_PRODUCTION_COORDINATE_DIFFERS
+```
+
+### 9.6 Spreadsheet の責務
+
+```text
+Spreadsheet = OPTIONAL_EVIDENCE_INDEX + OPTIONAL_PROVENANCE_SUPPLEMENT
+```
+
+Ground Truth でも、AUTO_PASS の必須 evidence でも、Position proof path でも
+ない。行の欠落・snapshot の欠落・identity review は、完備した Primary proof
+path を単独で downgrade しない。
+
+provenance の補完は、**同じ Position source だと機械的に確認できるとき**に
+限る。
+
+```text
+Primary source_url = X  かつ  Spreadsheet.position_source_url = X
+  → position_source_type / verified_at を補完してよい
+
+Primary source_url が無い
+  → Spreadsheet の URL を Primary provenance へ **コピーしない**
+  → 「不一致」ではないので SPREADSHEET_POSITION_SOURCE_MISMATCH も出さない
+  → PRIMARY_SOURCE_MISSING（HOLD）
+```
+
+`official_source_url` / `official_source_type` は identity provenance であり、
+Position provenance の代用にはならない。
+
+### 9.7 決定的評価順
+
+```text
+1. canonical HOLD          6. Anchor Semantics gate
+2. identity validation     7. Position status reason
+3. Primary Evidence        8. Artifact Synchronization
+4. newer conflict          9. final audit status
+5. proof path selection   10. serialization
+```
+
+後段の層が前段の権威ある結果を黙って上書きしてはならない。
+canonical `HOLD_POSITION_REVIEW` は常に勝ち、Machine Audit が自動で解除しない。
+
+### 9.8 Golden Cases
+
+`docs/audit/position-audit-v2/p2-a03-golden-cases.md` の承認済み 12 ケースを
+`scripts/tests/test_audit_shrine_positions_v2.py` の `test_gc_*` が
+regression test として固定している。各ケースで
+`position_proof_path` / `anchor_semantics_status` / `artifact_sync_status` /
+expected reason codes / forbidden reason codes / `audit_status` の6軸を検証する。
+
+```text
+GC-01 clean Primary AUTO_PASS          GC-15 Spreadsheet row missing は downgrade しない
+GC-02 valid Primary が壊れた Resolution を隔離  GC-18 Primary source_url 不在は補完不可
+GC-03 FETCH_FAILED + 有効な fallback    GC-20 Position AUTO_PASS + artifact DRIFT
+GC-06 新しい座標矛盾が fallback を塞ぐ  GC-21 artifact SYNCED + Position REVIEW
+GC-10 valid Primary + 意味論未評価 → REVIEW  GC-23 canonical HOLD が勝つ
+GC-12 multi-site + 意味論 CONFIRMED → AUTO_PASS  GC-24 proof path 無し → REVIEW
+```
 
 ## 10. W0-DB02 pilot
 
