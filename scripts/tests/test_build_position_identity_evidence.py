@@ -170,7 +170,9 @@ def test_gc03_incomplete_candidate_metadata_fails_closed(field):
     result = _build(candidate=_candidate(**{field: None}))
     assert result.activation_status == supply.INPUT_UNAVAILABLE
     assert result.integration is None
-    assert result.identity_evidence_status == sie.INSUFFICIENT
+    # 未評価であって「評価したが evidence 不足」ではない。
+    assert result.identity_evidence_status == supply.EVIDENCE_NOT_EVALUATED
+    assert result.identity_evidence_status != sie.INSUFFICIENT
 
 
 PROVENANCE_FIELDS = ("official_source_type", "official_source_url", "verified_at")
@@ -223,12 +225,17 @@ def test_gc05_absent_production_snapshot_fails_closed():
 
 
 def test_gc06_duplicate_production_rows_are_not_auto_adopted():
+    """SUPPLY-GC04: duplicate では個別 identity が確定していない。"""
     rows = [_production_row(), _production_row(id=901, place_ref_id="PLACE-901")]
     result = _build(production_rows=rows, spreadsheet_rows=[_sheet_row()])
     assert result.join_status == audit.JOIN_DUPLICATE_MATCH
-    assert result.integration.production_id is None
-    assert result.integration.duplicate_production_ids == (900, 901)
-    assert result.activation_status != supply.ACTIVATED
+    # どの行も選ばない。assessment も integration も作らない。
+    assert result.integration is None
+    assert result.duplicate_production_ids == (900, 901)
+    assert result.identity_status == b04.IDENTITY_NOT_EVALUATED
+    assert result.identity_evidence_status == supply.EVIDENCE_NOT_EVALUATED
+    assert result.activation_status == supply.INPUT_UNAVAILABLE
+    assert supply.REASON_PRODUCTION_IDENTITY_AMBIGUOUS in result.review_reasons
 
 
 def test_gc07_spreadsheet_row_id_is_never_treated_as_production_id():
@@ -247,6 +254,230 @@ def test_gc08_absent_spreadsheet_snapshot_is_recorded_not_inferred():
     result = _build(production_rows=[_production_row()], spreadsheet_rows=None)
     assert supply.REASON_SPREADSHEET_SNAPSHOT_UNAVAILABLE in result.review_reasons
     assert result.place_id_status == sie.PLACE_ID_UNAVAILABLE
+
+
+# ---------------------------------------------------------------------------
+# SUPPLY-GC01..GC06 — 未評価と評価済みの区別（review correction）
+# ---------------------------------------------------------------------------
+#
+#   NOT_EVALUATED = 決定的な Production 比較対象が存在しない
+#   INSUFFICIENT  = 比較対象は存在し B03 は実際に評価された。その上で
+#                   必須 evidence が足りなかった
+#
+# この2つを混ぜない。
+
+
+def test_supply_gc01_missing_production_yields_not_evaluated_without_integration():
+    """SUPPLY-GC01: 明示的な Production candidate が無ければ未評価。"""
+    result = _build(production_rows=[], spreadsheet_rows=[_sheet_row()])
+    assert result.join_status == audit.JOIN_MISSING_PRODUCTION
+    assert result.integration is None
+    assert result.identity_status == b04.IDENTITY_NOT_EVALUATED
+    assert result.identity_evidence_status == supply.EVIDENCE_NOT_EVALUATED
+    # 未評価を評価済みへ格上げしない。
+    assert result.identity_evidence_status != sie.INSUFFICIENT
+    assert result.name_identity_status != sie.NAME_UNSUPPORTED
+    assert result.address_identity_status != sie.ADDRESS_UNSUPPORTED
+
+
+def test_supply_gc02_missing_production_is_excluded_from_the_integration_mapping():
+    """SUPPLY-GC02: mapping に載せない。"""
+    supplies = supply.build_identity_supply(
+        candidate_ids=["pilot-001"],
+        candidates=[_candidate()],
+        seed_rows=[_seed_row()],
+        production_rows=[],
+        spreadsheet_rows=[_sheet_row()],
+    )
+    assert supply.identity_integrations_by_candidate(supplies) == {}
+
+
+def test_supply_gc03_position_audit_keeps_rc_missing_production_and_holds():
+    """SUPPLY-GC03: Position Audit は B04 導入前の挙動を保つ。"""
+    supplies = supply.build_identity_supply(
+        candidate_ids=["pilot-001"],
+        candidates=[_candidate()],
+        seed_rows=[_seed_row()],
+        production_rows=[],
+        spreadsheet_rows=[_sheet_row()],
+    )
+    mapping = supply.identity_integrations_by_candidate(supplies)
+    assert mapping == {}
+
+    inputs = audit.build_inputs(
+        seed_rows=[_seed_row()],
+        production_rows=[],
+        spreadsheet_rows=[],
+        candidates=[_candidate()],
+        resolution_records={},
+        identity_integrations_by_candidate=mapping,
+        candidate_ids=["pilot-001"],
+    )
+    assert len(inputs) == 1
+    assert inputs[0].seed_production_join_status == audit.JOIN_MISSING_PRODUCTION
+    assert inputs[0].position_identity_integration is None
+
+    result = audit.evaluate(inputs[0])
+    assert audit.RC_MISSING_PRODUCTION in result.reason_codes
+    assert result.audit_status == audit.HOLD
+
+
+def test_supply_gc04_duplicate_match_resolves_no_individual_identity():
+    """SUPPLY-GC04: duplicate も未評価。構造的 HOLD が権威のまま。"""
+    rows = [_production_row(), _production_row(id=901, place_ref_id="PLACE-901")]
+    supplies = supply.build_identity_supply(
+        candidate_ids=["pilot-001"],
+        candidates=[_candidate()],
+        seed_rows=[_seed_row()],
+        production_rows=rows,
+        spreadsheet_rows=[_sheet_row()],
+    )
+    assert supply.identity_integrations_by_candidate(supplies) == {}
+
+    inputs = audit.build_inputs(
+        seed_rows=[_seed_row()],
+        production_rows=rows,
+        spreadsheet_rows=[],
+        candidates=[_candidate()],
+        resolution_records={},
+        identity_integrations_by_candidate={},
+        candidate_ids=["pilot-001"],
+    )
+    result = audit.evaluate(inputs[0])
+    assert audit.RC_DUPLICATE_PRODUCTION_IDENTITY in result.reason_codes
+    assert result.audit_status == audit.HOLD
+
+
+def test_supply_gc05_match_exact_activation_behavior_is_unchanged():
+    """SUPPLY-GC05: exact join の挙動は Pilot 1 のまま。"""
+    result = _build(
+        production_rows=[_production_row()], spreadsheet_rows=[_sheet_row()]
+    )
+    assert result.join_status == audit.JOIN_MATCH_EXACT
+    assert result.integration is not None
+    assert isinstance(result.integration, b04.PositionIdentityIntegrationResult)
+    assert result.integration.production_id == 900
+    assert result.identity_status == b04.IDENTITY_EXACT
+    assert result.identity_evidence_status == sie.SAME_SUPPORTED
+    assert result.activation_status == supply.ACTIVATED
+
+
+def test_supply_gc06_genuine_insufficient_remains_possible():
+    """SUPPLY-GC06: 比較対象があり、必須 evidence が本当に欠けている場合。
+
+    Candidate Master が `identity_status = PENDING` だと official source
+    corroboration が成立せず、place_id / resolution も無い。name と
+    address は評価できているが独立 corroborator がゼロなので、B03 は
+    **実際に評価した上で** `INSUFFICIENT` を返す。
+
+    この状態を `NOT_EVALUATED` へ潰してはならない。
+    """
+    result = _build(
+        candidate=_candidate(identity_status="PENDING"),
+        production_rows=[_production_row(place_ref_id=None)],
+        spreadsheet_rows=[],
+    )
+    assert result.join_status == audit.JOIN_MATCH_EXACT
+    assert result.integration is not None
+    # B03 は評価されている（軸に実データの status が入っている）。
+    assert result.name_identity_status == sie.NAME_EXACT_MATCH
+    assert result.address_identity_status == sie.ADDRESS_EXACT_MATCH
+    assert result.official_source_entity_status == sie.OFFICIAL_SOURCE_UNAVAILABLE
+    assert result.place_id_status == sie.PLACE_ID_UNAVAILABLE
+    assert result.existing_resolution_status == sie.RESOLUTION_UNAVAILABLE
+    # その結果としての INSUFFICIENT（未評価ではない）。
+    assert result.identity_evidence_status == sie.INSUFFICIENT
+    assert result.identity_evidence_status != supply.EVIDENCE_NOT_EVALUATED
+    assert supply.REASON_CANDIDATE_IDENTITY_NOT_CONFIRMED in result.review_reasons
+
+
+ACTIVATION_MAPPING = (
+    (b04.IDENTITY_EXACT, supply.ACTIVATED),
+    (b04.IDENTITY_SAME_SUPPORTED, supply.ACTIVATED),
+    (b04.IDENTITY_REVIEW_REQUIRED, supply.REVIEW_REQUIRED),
+    (b04.IDENTITY_CONFLICT, supply.REVIEW_REQUIRED),
+    (b04.IDENTITY_INSUFFICIENT, supply.NOT_ACTIVATED),
+    (b04.IDENTITY_NOT_EVALUATED, supply.NOT_ACTIVATED),
+)
+
+
+@pytest.mark.parametrize(("identity_status", "expected"), ACTIVATION_MAPPING)
+def test_activation_status_mapping_is_fixed(identity_status, expected):
+    """activation の写像を固定する。
+
+    Pilot 1 では integration が作られるのは exact join のときだけなので
+    `EXACT` 以外は到達しない。将来 Production candidate linkage が
+    供給されたときの写像をここで先に固定しておく（B04 の非 exact
+    救済経路を消さないため）。
+    """
+    integration = b04.PositionIdentityIntegrationResult(
+        join_status=audit.JOIN_MISSING_PRODUCTION,
+        identity_status=identity_status,
+    )
+    assert supply._activation_status(integration, None) == expected
+
+
+def test_activation_status_without_integration_is_input_unavailable():
+    """integration が無い＝未評価。`NOT_ACTIVATED` に倒さない。"""
+    assert supply._activation_status(None, None) == supply.INPUT_UNAVAILABLE
+    assert supply._activation_status(None, sie.INSUFFICIENT) == supply.INPUT_UNAVAILABLE
+
+
+def test_evidence_not_evaluated_is_report_only_vocabulary():
+    """`NOT_EVALUATED` は B03 のどの status 語彙にも属さない。"""
+    assert supply.EVIDENCE_NOT_EVALUATED not in sie.IDENTITY_EVIDENCE_STATUSES
+    assert supply.EVIDENCE_NOT_EVALUATED not in sie.NAME_IDENTITY_STATUSES
+    assert supply.EVIDENCE_NOT_EVALUATED not in sie.ADDRESS_IDENTITY_STATUSES
+    assert supply.EVIDENCE_NOT_EVALUATED not in sie.OFFICIAL_SOURCE_ENTITY_STATUSES
+    assert supply.EVIDENCE_NOT_EVALUATED not in sie.PLACE_ID_STATUSES
+    assert supply.EVIDENCE_NOT_EVALUATED not in sie.EXISTING_RESOLUTION_STATUSES
+
+
+def test_b03_is_not_called_without_a_production_comparison_target(monkeypatch):
+    """比較対象が無いときに B03 / B04 を **呼ばない** ことを直接固定する。"""
+    calls: list[str] = []
+
+    def _assess(**kwargs):
+        calls.append("b03")
+        raise AssertionError("assess_identity_evidence must not be called")
+
+    def _integrate(**kwargs):
+        calls.append("b04")
+        raise AssertionError("integrate_position_identity must not be called")
+
+    monkeypatch.setattr(sie, "assess_identity_evidence", _assess)
+    monkeypatch.setattr(b04, "integrate_position_identity", _integrate)
+
+    for production_rows in (
+        None,
+        [],
+        [_production_row(), _production_row(id=901)],
+    ):
+        result = _build(production_rows=production_rows)
+        assert result.integration is None
+        assert result.identity_status == b04.IDENTITY_NOT_EVALUATED
+    assert calls == []
+
+
+def test_non_exact_b04_support_is_not_removed():
+    """B04 側の非 exact 救済経路そのものは残す（将来の linkage 用）。
+
+    Pilot 1 が使わないだけであり、B04 の contract は変更していない。
+    """
+    assessment = sie.assess_identity_evidence(
+        address_comparison=sie.compare_addresses(OFFICIAL_ADDRESS, OFFICIAL_ADDRESS),
+        name_identity_status=sie.NAME_EXACT_MATCH,
+        official_source_entity_status=sie.OFFICIAL_SOURCE_SAME,
+        place_id_status=sie.PLACE_ID_MATCH,
+        existing_resolution_status=sie.RESOLUTION_UNAVAILABLE,
+    )
+    assert assessment.identity_evidence_status == sie.SAME_SUPPORTED
+    integration = b04.integrate_position_identity(
+        join_status=audit.JOIN_MISSING_PRODUCTION,
+        identity_assessment=assessment,
+    )
+    assert integration.identity_status == b04.IDENTITY_SAME_SUPPORTED
+    assert integration.production_id is None
 
 
 # ---------------------------------------------------------------------------
@@ -534,10 +765,10 @@ def test_mutation_missing_production_candidate_does_not_trigger_fuzzy_discovery(
     )
     result = _build(production_rows=[near_miss], spreadsheet_rows=[_sheet_row()])
     assert result.join_status == audit.JOIN_MISSING_PRODUCTION
-    assert result.integration.production_id is None
-    assert result.identity_evidence_status == sie.INSUFFICIENT
-    assert result.identity_status == b04.IDENTITY_INSUFFICIENT
-    assert result.activation_status == supply.NOT_ACTIVATED
+    assert result.integration is None
+    assert result.identity_status == b04.IDENTITY_NOT_EVALUATED
+    assert result.identity_evidence_status == supply.EVIDENCE_NOT_EVALUATED
+    assert result.activation_status == supply.INPUT_UNAVAILABLE
     assert supply.REASON_PRODUCTION_CANDIDATE_UNRESOLVED in result.review_reasons
 
 
@@ -598,11 +829,24 @@ def test_resolution_same_is_never_emitted():
     assert "RESOLUTION_DIFFERENT" not in referenced
 
 
-def test_resolution_record_does_not_activate_a_candidate():
+def test_resolution_record_does_not_supply_identity_on_an_evaluated_candidate():
+    """比較対象が存在する場合でも Resolution Record は identity を供給しない。"""
+    record = audit.ExistingResolution(record_path="x.md", position_status="PASS")
+    result = _build(
+        production_rows=[_production_row(place_ref_id=None)],
+        spreadsheet_rows=[],
+        resolution=record,
+    )
+    assert result.existing_resolution_status == sie.RESOLUTION_UNAVAILABLE
+    assert supply.REASON_RESOLUTION_PRODUCTION_LINK_UNPROVEN in result.review_reasons
+
+
+def test_resolution_record_does_not_rescue_an_unresolved_production_candidate():
     record = audit.ExistingResolution(record_path="x.md", position_status="PASS")
     result = _build(production_rows=[], resolution=record)
-    assert result.activation_status != supply.ACTIVATED
-    assert supply.REASON_RESOLUTION_PRODUCTION_LINK_UNPROVEN in result.review_reasons
+    assert result.integration is None
+    assert result.identity_status == b04.IDENTITY_NOT_EVALUATED
+    assert result.activation_status == supply.INPUT_UNAVAILABLE
 
 
 # ---------------------------------------------------------------------------

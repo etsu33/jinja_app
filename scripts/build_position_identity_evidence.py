@@ -42,6 +42,21 @@ decision も変更しない。
 * alias registry の新設
 
 入力が欠けている・確定できない場合は fail closed する。
+
+## Pilot 1 の構造的限界
+
+```text
+Pilot 1 は非 exact join の B04 救済経路を活性化できない。
+```
+
+決定的な Production candidate linkage が無いかぎり、非 exact identity は
+`NOT_EVALUATED` のままであり、B04 integration も供給されない。
+`MISSING_PRODUCTION` が正当に B03 / B04 evidence を受け取れるようになる
+には、canonical な Production candidate linkage が先に必要である。
+
+`MISSING_PRODUCTION` の結果を `INSUFFICIENT` と記述しない。
+`INSUFFICIENT` は「比較対象が存在し B03 が実際に評価した上で必須
+evidence が足りなかった」状態にだけ使う。
 """
 
 from __future__ import annotations
@@ -111,6 +126,19 @@ ACTIVATION_STATUSES = frozenset(
 # 別の事実であり、入力 metadata 不足をそれで騙らない。
 JOIN_NOT_EVALUATED = "JOIN_NOT_EVALUATED"
 
+# evidence 軸が **評価されなかった** ことを表す supply report 専用の値。
+#
+# ```text
+# NOT_EVALUATED = 決定的な Production 比較対象がそもそも存在しない
+# INSUFFICIENT  = 比較対象は存在し B03 は実際に評価された。その上で
+#                 必須 evidence が足りなかった
+# ```
+#
+# この2つを混ぜない。比較対象が無いことを `*_UNSUPPORTED` や
+# `INSUFFICIENT` に変換すると、**未評価を評価済みに格上げ**してしまう。
+# B03 / B04 のどの status 語彙にも属さない（test が固定する）。
+EVIDENCE_NOT_EVALUATED = "NOT_EVALUATED"
+
 # ---------------------------------------------------------------------------
 # supply review reasons
 # ---------------------------------------------------------------------------
@@ -124,6 +152,7 @@ REASON_OFFICIAL_IDENTITY_NOT_CORROBORATED = "OFFICIAL_IDENTITY_NOT_CORROBORATED"
 REASON_SEED_ROW_MISSING = "SEED_ROW_MISSING"
 REASON_PRODUCTION_SNAPSHOT_UNAVAILABLE = "PRODUCTION_SNAPSHOT_UNAVAILABLE"
 REASON_PRODUCTION_CANDIDATE_UNRESOLVED = "PRODUCTION_CANDIDATE_UNRESOLVED"
+REASON_PRODUCTION_IDENTITY_AMBIGUOUS = "PRODUCTION_IDENTITY_AMBIGUOUS"
 REASON_SPREADSHEET_SNAPSHOT_UNAVAILABLE = "SPREADSHEET_SNAPSHOT_UNAVAILABLE"
 REASON_NAME_NOT_RAW_EQUAL = "NAME_NOT_RAW_EQUAL"
 REASON_PLACE_ID_UNAVAILABLE = "PLACE_ID_UNAVAILABLE"
@@ -140,6 +169,7 @@ REVIEW_REASON_ORDER = (
     REASON_SEED_ROW_MISSING,
     REASON_PRODUCTION_SNAPSHOT_UNAVAILABLE,
     REASON_PRODUCTION_CANDIDATE_UNRESOLVED,
+    REASON_PRODUCTION_IDENTITY_AMBIGUOUS,
     REASON_SPREADSHEET_SNAPSHOT_UNAVAILABLE,
     REASON_NAME_NOT_RAW_EQUAL,
     REASON_PLACE_ID_UNAVAILABLE,
@@ -206,9 +236,14 @@ class CandidateIdentitySupply:
     identity_status: str
 
     activation_status: str
+    duplicate_production_ids: tuple[int, ...] = ()
     review_reasons: tuple[str, ...] = ()
 
-    # Position Audit へ渡す本物の B04 結果（未確定なら None）。
+    # Position Audit へ渡す本物の B04 結果。
+    #
+    # **決定的な Production 比較対象が解決できた場合にのみ存在する。**
+    # 未評価（比較対象なし）のときは `None` のままであり、
+    # `identity_integrations_by_candidate()` にも載らない。
     integration: Any = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -224,6 +259,7 @@ class CandidateIdentitySupply:
             "join_status": self.join_status,
             "identity_status": self.identity_status,
             "activation_status": self.activation_status,
+            "duplicate_production_ids": list(self.duplicate_production_ids),
             "review_reasons": list(self.review_reasons),
         }
 
@@ -381,6 +417,15 @@ def derive_existing_resolution_status(
 
 
 def _activation_status(integration: Any, evidence_status: str | None) -> str:
+    """supply report 専用の activation status を決める。
+
+    `integration is None` は「決定的な Production 比較対象が無く、
+    identity は **未評価** のまま」という意味であり、`INPUT_UNAVAILABLE`
+    になる。`NOT_ACTIVATED` / `REVIEW_REQUIRED` は「評価された上で
+    activate しない」状態であり、Pilot 1 では到達しない。
+    非 exact join に対する B04 の救済経路は、明示的な Production
+    candidate linkage が供給されて初めて成立するためである。
+    """
     if integration is None:
         return INPUT_UNAVAILABLE
     status = integration.identity_status
@@ -409,38 +454,68 @@ def build_candidate_identity_supply(
     """1候補分の identity evidence を決定的に構成する（純関数）。
 
     候補探索は行わない。Production 行は既存の exact join でのみ解決する。
-    解決できない場合は推測せず未評価の supply 結果を返す。
+
+    ## 比較対象の有無で分岐する
+
+    ```text
+    MATCH_EXACT                    -> Production 行あり
+                                   -> B03 assessment
+                                   -> B04 integration
+                                   -> Position Audit へ供給しうる
+
+    MISSING_PRODUCTION             -> 比較対象なし
+    DUPLICATE_MATCH                -> 個別 identity 未確定
+    PRODUCTION_SNAPSHOT_UNAVAILABLE-> 入力なし
+    MISSING_SEED                   -> 入力なし
+                                   -> B03 を呼ばない
+                                   -> B04 integration を作らない
+                                   -> identity_status = NOT_EVALUATED
+    ```
+
+    後者で B03 を呼ぶと `INSUFFICIENT`（評価済みだが evidence 不足）に
+    化ける。**未評価を評価済みへ格上げしない**のがこの層の責務である。
     """
     reasons: list[str] = []
     availability: list[str] = []
 
-    def _unavailable(**kwargs: str) -> CandidateIdentitySupply:
-        defaults = dict(
-            name_identity_status=identity_evidence.NAME_UNSUPPORTED,
-            address_identity_status=identity_evidence.ADDRESS_UNSUPPORTED,
-            official_source_entity_status=(
-                identity_evidence.OFFICIAL_SOURCE_UNAVAILABLE
-            ),
-            place_id_status=identity_evidence.PLACE_ID_UNAVAILABLE,
-            existing_resolution_status=identity_evidence.RESOLUTION_UNAVAILABLE,
-            identity_evidence_status=identity_evidence.INSUFFICIENT,
-            join_status=JOIN_NOT_EVALUATED,
-            identity_status=identity_integration.IDENTITY_NOT_EVALUATED,
-        )
-        defaults.update(kwargs)
+    def _not_evaluated(
+        *,
+        join_status: str = JOIN_NOT_EVALUATED,
+        duplicate_production_ids: tuple[int, ...] = (),
+    ) -> CandidateIdentitySupply:
+        """**未評価**の supply 結果を返す（B03 も B04 も呼ばない）。
+
+        決定的な Production 比較対象が存在しない状態である。B03 は
+        「2つの identity を比較する」層であり、比較対象が無いときに
+        呼べば `NAME_UNSUPPORTED` + `ADDRESS_UNSUPPORTED` から
+        `INSUFFICIENT` が出てしまう。それは「評価したが evidence が
+        足りなかった」という **別の状態**であり、未評価をそこへ格上げ
+        しない。
+
+        B04 integration も作らない。作れば Position Audit は
+        `NOT_EVALUATED` ではなく評価済み identity を受け取ることになる。
+        """
         return CandidateIdentitySupply(
             candidate_id=candidate_id,
             input_availability=tuple(availability),
+            name_identity_status=EVIDENCE_NOT_EVALUATED,
+            address_identity_status=EVIDENCE_NOT_EVALUATED,
+            official_source_entity_status=EVIDENCE_NOT_EVALUATED,
+            place_id_status=EVIDENCE_NOT_EVALUATED,
+            existing_resolution_status=EVIDENCE_NOT_EVALUATED,
+            identity_evidence_status=EVIDENCE_NOT_EVALUATED,
+            join_status=join_status,
+            identity_status=identity_integration.IDENTITY_NOT_EVALUATED,
             activation_status=INPUT_UNAVAILABLE,
+            duplicate_production_ids=duplicate_production_ids,
             review_reasons=_order_reasons(reasons),
             integration=None,
-            **defaults,
         )
 
     # --- Candidate Master ---------------------------------------------------
     if candidate is None:
         reasons.append(REASON_CANDIDATE_MASTER_ROW_MISSING)
-        return _unavailable()
+        return _not_evaluated()
     availability.append("candidate_master")
 
     missing = [
@@ -448,7 +523,7 @@ def build_candidate_identity_supply(
     ]
     if missing:
         reasons.append(REASON_OFFICIAL_SOURCE_PROVENANCE_INCOMPLETE)
-        return _unavailable()
+        return _not_evaluated()
 
     official_name = _text(candidate["official_name"])
     official_address = _text(candidate["official_address"])
@@ -460,13 +535,13 @@ def build_candidate_identity_supply(
     seed_row = seed_index.get((official_name, official_address))
     if seed_row is None:
         reasons.append(REASON_SEED_ROW_MISSING)
-        return _unavailable(join_status=position_audit.JOIN_MISSING_SEED)
+        return _not_evaluated(join_status=position_audit.JOIN_MISSING_SEED)
     availability.append("seed")
 
     # --- Production（既存 exact join のみ。候補探索はしない）----------------
     if production_rows is None:
         reasons.append(REASON_PRODUCTION_SNAPSHOT_UNAVAILABLE)
-        return _unavailable(
+        return _not_evaluated(
             join_status=position_audit.JOIN_PRODUCTION_SNAPSHOT_UNAVAILABLE
         )
     availability.append("production_snapshot")
@@ -475,10 +550,32 @@ def build_candidate_identity_supply(
         seed_row, production_rows
     )
     if production_row is None:
-        # fuzzy 探索も自動採用もしない。
-        reasons.append(REASON_PRODUCTION_CANDIDATE_UNRESOLVED)
-    else:
-        availability.append("production_row")
+        # 比較対象の Production identity が解決できていない。
+        #
+        # ```text
+        # MISSING_PRODUCTION  -> 候補が無い。fuzzy 探索も自動採用もしない
+        # DUPLICATE_MATCH     -> 候補が複数。どれか1行を選ばない
+        # ```
+        #
+        # どちらも「個別の Production identity が確定していない」状態で
+        # あり、任意の行に対して identity assessment を作らない。B03 も
+        # B04 も呼ばずに未評価のまま返す。Position Audit は従来どおり
+        # `RC_MISSING_PRODUCTION` / `RC_DUPLICATE_PRODUCTION_IDENTITY` で
+        # HOLD する（B04 導入前の挙動を保つ）。
+        #
+        # 将来、明示的で信頼できる Production candidate linkage
+        # （例: canonical な resolution production_shrine_id）が供給
+        # されれば、その候補に対して B02 -> B03 -> B04 -> REVIEW の
+        # 経路が成立しうる。Pilot 1 はその linkage 源を持たない。
+        if join_status == position_audit.JOIN_DUPLICATE_MATCH:
+            reasons.append(REASON_PRODUCTION_IDENTITY_AMBIGUOUS)
+        else:
+            reasons.append(REASON_PRODUCTION_CANDIDATE_UNRESOLVED)
+        return _not_evaluated(
+            join_status=join_status,
+            duplicate_production_ids=tuple(duplicates),
+        )
+    availability.append("production_row")
 
     # --- Spreadsheet（任意）-------------------------------------------------
     sheet_row = None
@@ -498,12 +595,9 @@ def build_candidate_identity_supply(
         if sheet_row is not None:
             availability.append("spreadsheet_row")
 
-    production_name = (
-        _text(production_row.get("name_jp")) if production_row else None
-    )
-    production_address = (
-        _text(production_row.get("address")) if production_row else None
-    )
+    # ここから先は「決定的な Production 比較対象が存在する」状態である。
+    production_name = _text(production_row.get("name_jp"))
+    production_address = _text(production_row.get("address"))
 
     # --- evidence 導出 ------------------------------------------------------
     name_status = derive_name_identity_status(official_name, production_name)
@@ -519,7 +613,7 @@ def build_candidate_identity_supply(
         candidate, production_name, production_address, reasons
     )
     place_status = derive_place_id_status(
-        production_row.get("place_ref_id") if production_row else None,
+        production_row.get("place_ref_id"),
         getattr(sheet_row, "google_place_id", None) if sheet_row else None,
     )
     if place_status == identity_evidence.PLACE_ID_UNAVAILABLE:
@@ -538,7 +632,7 @@ def build_candidate_identity_supply(
     # --- B04（本物の統合結果。互換 object を捏造しない）---------------------
     integration = identity_integration.integrate_position_identity(
         join_status=join_status,
-        production_id=int(production_row["id"]) if production_row else None,
+        production_id=int(production_row["id"]),
         duplicate_production_ids=duplicates,
         identity_assessment=assessment,
     )
@@ -557,6 +651,7 @@ def build_candidate_identity_supply(
         activation_status=_activation_status(
             integration, assessment.identity_evidence_status
         ),
+        duplicate_production_ids=tuple(duplicates),
         review_reasons=_order_reasons(reasons),
         integration=integration,
     )
@@ -596,8 +691,12 @@ def identity_integrations_by_candidate(
 ) -> dict[str, Any]:
     """Position Audit `build_inputs()` へ渡す mapping を作る。
 
-    値は **本物の** `PositionIdentityIntegrationResult` である。未確定の
-    候補は mapping に載せない（未評価のまま従来挙動を保つ）。
+    値は **本物の** `PositionIdentityIntegrationResult` である。
+
+    決定的な Production 比較対象が解決できなかった候補は mapping に
+    **載せない**。Position Audit はその候補について B04 導入前の挙動を
+    保ち、`RC_MISSING_PRODUCTION` / `RC_DUPLICATE_PRODUCTION_IDENTITY`
+    による HOLD のままになる。
     """
     return {
         supply.candidate_id: supply.integration
@@ -673,7 +772,11 @@ def render_markdown(report: dict[str, Any]) -> str:
     lines.append("")
     for row in report["results"]:
         reasons = ", ".join(f"`{reason}`" for reason in row["review_reasons"]) or "なし"
-        lines.append(f"- `{row['candidate_id']}`: {reasons}")
+        duplicates = row["duplicate_production_ids"]
+        suffix = (
+            f"（duplicate_production_ids = {duplicates}）" if duplicates else ""
+        )
+        lines.append(f"- `{row['candidate_id']}`: {reasons}{suffix}")
     lines.append("")
     return "\n".join(lines)
 
