@@ -59,8 +59,12 @@ Concierge/map/直接訪問の`source`値は変更しない（既存contractの�
 | Visit | SESSION / NAVIGATION ATTRIBUTION | 同上 |
 | Reflection（prompt/saved） | SESSION / NAVIGATION ATTRIBUTION（同一page render時のみ） | 同上。**別セッション・別日にShrine Detailへ再訪問してReflectionを書いた場合はMEASUREMENT GAP** — URLに`ctx=compass`が残らないため`source`は正しく`"shrine_detail"`にfallbackする。これは既知の制約であり、永続化で解消しない（PR-Cのスコープ外） |
 
-Compass runtimeは引き続きephemeral。DB change・migration・Compass History・
-Personal Continuityは本PRで一切実装しない。
+本契約が扱うRecommendation attribution contextは引き続きephemeralである。
+`recommendation_instance_id`はDBへ保存せず、APIレスポンスと遷移URLの範囲でのみ利用する。
+
+現行Compassに存在する`WeeklyPresentationSnapshot`は、このAnalytics attributionとは別責務である。
+同SnapshotはWeekly Presentationの表示結果を週内で固定するためのPresentation Persistenceであり、
+`recommendation_instance_id`の永続化、Analytics History、またはCompass Historyとして扱わない。
 
 ## Privacy
 
@@ -70,5 +74,13 @@ coarseな`origin_mode`、`has_birthdate`のみである。
 
 ## Persistence boundary
 
-DB change、migration、Compass Historyは作成しない。Recommendation InstanceはAPI
-レスポンスと遷移URLに限定したanalytics contextである。
+Recommendation InstanceはAPIレスポンスと遷移URLに限定したephemeral analytics contextであり、
+DBへ保存しない。
+
+`WeeklyPresentationSnapshot`はowner / week / purpose / direction fingerprint /
+presentation version単位でWeekly Presentationの結果を固定するためのpersistent stateである。
+これはRecommendation InstanceまたはAnalytics event/historyの永続化ではない。
+
+本契約の変更によって新しいDB change・migration・Compass History・Personal Continuityを追加しない。
+また、Weekly Compass固有のAnalytics eventは現行本契約では定義されていないため、
+本整合作業では新設・推測せず、別契約で定義されるまでMISSINGとして扱う。
