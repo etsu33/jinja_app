@@ -234,6 +234,17 @@ REVOKED row は保持し、削除しない。
 | --- | --- | --- |
 | `revoked_at` | string (`YYYY-MM-DD`) | 失効させた日 |
 | `revoked_reason` | enum | 失効理由（§9.2） |
+| `revocation_evidence_refs` | string[] | **失効を正当化する** evidence（§8.4） |
+
+`evidence_refs` と `revocation_evidence_refs` は別物である。混ぜない。
+
+```text
+evidence_refs
+= CONFIRMED linkage を成立させた evidence
+
+revocation_evidence_refs
+= その linkage を失効させることを正当化する evidence
+```
 
 任意:
 
@@ -243,7 +254,7 @@ REVOKED row は保持し、削除しない。
 
 ### 4.3 追加 field を設けた理由
 
-指示の最小 field は9つであった。本契約は3つ（+任意1つ）を追加する。
+指示の最小 field は9つであった。本契約は4つ（+任意1つ）を追加する。
 いずれも **指示された semantics を成立させるために必要**である。
 
 | field | 必要な理由 |
@@ -251,6 +262,7 @@ REVOKED row は保持し、削除しない。
 | `linkage_id` | `REVOKED` row を保持する設計（§7.2）では、同一 `candidate_id` の row が複数存在する。決定的な順序と一意参照には安定 id が要る |
 | `revoked_at` | 「`verified_at` がどう変化するか定義せよ」への答え。`verified_at` は **CONFIRMED を確認した日**であり、失効時に書き換えない。失効日は別 field に記録する（§9.3） |
 | `revoked_reason` | Production 行 lifecycle（§9）の事象を機械可読に残すため |
+| `revocation_evidence_refs` | `revoked_reason` は **分類であって証拠ではない**。`PRODUCTION_ROW_MERGED` と書けることと、実際に merge が起きたことは別である。失効も成立と同じ水準の追跡可能性を要求する（§8.4 / §13） |
 | `supersedes` | 監査で「どの linkage がどれを置き換えたか」を辿るため。任意（§9.4 に MS-FOLLOWUP） |
 
 ### 4.4 identity key の責務
@@ -384,14 +396,37 @@ REVOKED row は保持し、削除しない。
 
 ```text
 W1  既存 CONFIRMED row を REVOKED へ更新する
-    （linkage_status / revoked_at / revoked_reason を書く）
-
 W2  新しい CONFIRMED row を追加する
 ```
 
-row の削除は行わない。W1 以外の既存 row 更新も行わない
-（`verified_at` / `production_shrine_id` / `evidence_refs` などを
-後から書き換えない）。
+#### W1 の mutation boundary
+
+W1 で **変更してよい field はこの4つだけ**である。
+
+```text
+linkage_status              CONFIRMED -> REVOKED
+revoked_at
+revoked_reason
+revocation_evidence_refs
+```
+
+次の field は確認後 **immutable** であり、W1 で書き換えてはならない。
+
+```text
+candidate_id
+production_shrine_id
+linkage_source
+verified_at
+official_name
+official_address
+evidence_refs
+linkage_id
+```
+
+とくに `evidence_refs`（成立時の確認 evidence）を書き換えない。
+失効しても「何を根拠に成立していたか」は記録として残す。
+
+row の削除は行わない。W1 / W2 以外の書き込みも行わない。
 
 理由: 監査可能な履歴を残しつつ、active linkage の一意性を保てる。
 「現在行だけを1行で表す」方式は履歴を失うため採らない。
@@ -447,9 +482,19 @@ UNREVIEWED / NEW / DUPLICATE / ALIAS / SAME_NAME_DIFFERENT_SHRINE / REVIEW
 
 ---
 
-## 8. `evidence_refs`
+## 8. Evidence 参照
 
-### 8.1 要件
+本契約は2つの evidence 集合を持つ。**混ぜない。**
+
+```text
+evidence_refs
+= CONFIRMED linkage を成立させた evidence
+
+revocation_evidence_refs
+= その linkage を失効させることを正当化する evidence
+```
+
+### 8.1 `evidence_refs` の要件
 
 ```text
 CONFIRMED row は evidence_refs を1件以上持たなければならない。
@@ -472,7 +517,7 @@ live URL のみに依存する linkage を作らない。
 ならず、後から変わりうる散文や到達不能になりうる URL だけに依存しては
 ならない。
 
-### 8.2 決定性
+### 8.2 決定性（`evidence_refs` / `revocation_evidence_refs` 共通）
 
 ```text
 重複を除去する（同一文字列は1回だけ）
@@ -484,6 +529,46 @@ live URL のみに依存する linkage を作らない。
 
 `note` は人間向けの補足であり、**機械判定に一切使わない**。
 `note` に書いた内容は evidence ではない。
+
+### 8.4 `revocation_evidence_refs` の要件
+
+```text
+REVOKED row は revocation_evidence_refs を1件以上持たなければならない。
+少なくとも1件は repository で追跡可能な参照でなければならない。
+```
+
+参照形式は §8.1 と **同一**である。
+
+```text
+<repo-relative-path>
+<repo-relative-path>#<anchor>
+git:<full-40-hex-sha>
+pr:<number>
+```
+
+決定性の規則（重複除去 / byte 順昇順 / 空文字列禁止）も §8.2 と同一である。
+
+外部 URL は **補足としてのみ**載せてよく、失効 evidence の唯一の根拠に
+してはならない。
+
+#### `revoked_reason` では足りない理由
+
+`revoked_reason` は **分類であって証拠ではない**。
+
+```text
+PRODUCTION_ROW_MERGED と書けること
+!=
+実際に merge が起きたこと
+```
+
+`revoked_reason` だけでは、lifecycle 事象が実際に発生したことの証明に
+ならない。失効は成立と同じ水準の追跡可能性を要求する（§13）。
+
+#### `evidence_refs` を流用しない
+
+`revocation_evidence_refs` に、その row の `evidence_refs` をそのまま
+複製してはならない。`evidence_refs` は **linkage が成立していたこと**の
+証拠であり、**失効すべきであること**の証拠ではない。
 
 ---
 
@@ -509,8 +594,9 @@ artifact 上の操作としては次の2つになる（§7.2 の W1 / W2）。
 
 ```text
 W1  既存の CONFIRMED row を、その場で REVOKED へ更新する
-    （linkage_status / revoked_at / revoked_reason を書く。
-      row を削除しない。verified_at も書き換えない）
+    （linkage_status / revoked_at / revoked_reason /
+      revocation_evidence_refs の4つだけを書く。
+      row を削除しない。verified_at も evidence_refs も書き換えない）
 
 W2  置き換えの linkage を、新しい独立した CONFIRMED row として追加する
 ```
@@ -549,11 +635,30 @@ verified_at は「その linkage を CONFIRMED と確認した日」であり、
 新しい linkage row は **自分の** `verified_at`（新しい確認日）を持つ。
 古い row の `verified_at` を引き継がない。
 
+`evidence_refs` も同様に書き換えない。失効した row は
+「何を根拠に成立し、何を根拠に失効したか」を並べて保持する。
+
+```text
+evidence_refs             + verified_at   -> なぜ CONFIRMED だったか
+revocation_evidence_refs  + revoked_at    -> なぜ REVOKED になったか
+                          + revoked_reason
+```
+
 ### 9.4 新 linkage の evidence
 
-新しい `CONFIRMED` row は、§8 を満たす **新しい** `evidence_refs` を持つ。
+新しい `CONFIRMED` row は、§8.1 を満たす **新しい** `evidence_refs` を持つ。
 古い row の evidence をそのまま再利用してはならない（古い evidence は
 古い Production id についての確認だから）。
+
+同時に、失効させる古い row は §8.4 を満たす `revocation_evidence_refs` を
+持たなければならない。**置き換えは2つの独立した evidence を要求する。**
+
+```text
+古い row  ->  REVOKED    revocation_evidence_refs（失効の根拠）
+新しい row ->  CONFIRMED  evidence_refs（新しい成立の根拠）
+```
+
+片方だけでは置き換えを完了できない。
 
 ```text
 MS-FOLLOWUP-03
@@ -722,19 +827,45 @@ linkage は **探索の結果ではなく、確認の記録**である。
 
 ## 13. 監査可能性の要件
 
+### 13.1 成立と失効は同じ水準の追跡可能性を要求する
+
 ```text
-1. CONFIRMED row は repository 追跡可能な evidence を1件以上持つ（§8）
-2. REVOKED row は削除せず保持する（§7.2）
-3. artifact への書き込みは W1（CONFIRMED -> REVOKED 更新）と
+canonical linkage の成立には、追跡可能な confirmation evidence を要求する。
+canonical linkage の失効には、追跡可能な revocation evidence を要求する。
+```
+
+**`revoked_reason` の値だけでは、その lifecycle 事象が実際に起きたことの
+証明にならない。**
+
+```text
+git diff            変更が起きたことの可視性を与える
+revocation_evidence_refs  その変更が正しいことの根拠を与える
+```
+
+この2つは別物である。可視性は正当性を保証しない。
+
+### 13.2 要件一覧
+
+```text
+1. CONFIRMED row は repository 追跡可能な evidence_refs を
+   1件以上持つ（§8.1）
+2. REVOKED row は repository 追跡可能な revocation_evidence_refs を
+   1件以上持つ（§8.4）
+3. REVOKED row は削除せず保持する（§7.2）
+4. artifact への書き込みは W1（CONFIRMED -> REVOKED 更新）と
    W2（新 CONFIRMED row の追加）の2種類だけであり、row の削除も
    それ以外の既存 row 更新も行わない（§7.2）
-4. verified_at / revoked_at により、row 単位で時系列が復元できる（§9.3）
-5. linkage の追加も失効も git diff で review できる
+5. W1 で変更してよいのは linkage_status / revoked_at / revoked_reason /
+   revocation_evidence_refs の4 field だけであり、evidence_refs を
+   含む確認時の記録は immutable である（§7.2）
+6. verified_at / revoked_at により、row 単位で時系列が復元できる（§9.3）
+7. linkage の追加も失効も git diff で review できる
    （追加は row の追加として、失効は当該 row の
-     linkage_status / revoked_at / revoked_reason の変更として現れる）
-6. repository レベルの監査履歴は git history が担う
-7. linkage_source が「誰が / 何によって」確認したかの class を示す
-8. note は監査の補助であり、判定根拠にしてはならない（§8.3）
+     linkage_status / revoked_at / revoked_reason /
+     revocation_evidence_refs の変更として現れる）
+8. repository レベルの監査履歴は git history が担う
+9. linkage_source が「誰が / 何によって」確認したかの class を示す
+10. note は監査の補助であり、判定根拠にしてはならない（§8.3）
 ```
 
 ---
