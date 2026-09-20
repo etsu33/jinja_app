@@ -762,7 +762,11 @@ def build_chat_recommendations(
     )
 
     astro_bonus_enabled = public_mode == "compat"
-    llm_enabled = bool(getattr(dj_settings, "CONCIERGE_USE_LLM", False))
+
+    if llm_enabled is None:
+        llm_enabled = bool(getattr(dj_settings, "CONCIERGE_USE_LLM", False))
+    else:
+        llm_enabled = bool(llm_enabled)
 
     route = resolve_llm_route(
         query=query or "",

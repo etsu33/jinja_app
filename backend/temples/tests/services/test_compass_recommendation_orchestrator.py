@@ -433,6 +433,35 @@ class TestRankingAndReasonAuthorityUnchanged:
         assert "weights" not in kwargs
         assert kwargs["public_mode"] == "need"
 
+    def test_orchestrator_explicitly_disables_llm(
+        self,
+        shrine_factory,
+        settings,
+    ) -> None:
+        settings.CONCIERGE_USE_LLM = True
+
+        shrine_factory(
+            name="北の神社",
+            latitude=35.3,
+            longitude=135.0,
+            goriyaku="仕事運",
+        )
+
+        with patch(
+            "temples.services.compass_recommendation_orchestrator.build_chat_recommendations",
+            wraps=orchestrator.build_chat_recommendations,
+        ) as spy:
+            result = get_compass_recommendations(
+                purpose="career",
+                origin=ORIGIN,
+                direction_context=NORTH_DIRECTION_CONTEXT,
+            )
+
+        assert result.state == STATE_RECOMMENDATION_SUCCESS
+
+        _, kwargs = spy.call_args
+        assert kwargs["llm_enabled"] is False
+
     def test_recommendation_reason_field_is_present_and_shrine_grounded(
         self, shrine_factory
     ) -> None:

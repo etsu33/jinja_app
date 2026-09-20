@@ -333,6 +333,7 @@ def get_compass_recommendations(
         need_tags=[purpose_slug],
         public_mode="need",
         flow="A",
+        llm_enabled=False,
         interpretation_profile=interpretation_profile,
     )
 
