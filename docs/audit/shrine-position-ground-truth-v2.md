@@ -608,20 +608,25 @@ artifact Production 参照基準
 identity 経由の AUTO_PASS
 ```
 
-評価済み identity evidence（`SAME_SUPPORTED` / `REVIEW_REQUIRED` /
-`CONFLICT` / `INSUFFICIENT`）は `IDENTITY_EVIDENCE_*` code として
-**REVIEW** を駆動する。HOLD は作らない。B03 の `CONFLICT` 単独を
-Primary Position Evidence の `entity_match = DIFFERENT / NON_SHRINE` と
-同一視しない（後者は独立したより強い Position evidence 経路として残る）。
+identity evidence は **それ自体が新しい HOLD reason を作らない**。
+B03 の `CONFLICT` 単独を Primary Position Evidence の
+`entity_match = DIFFERENT / NON_SHRINE` と同一視しない（後者は独立した
+より強い Position evidence 経路として残る）。
+
+**ただし、既存の構造的 HOLD を抑止することもしない。**
+
+`IDENTITY_EVIDENCE_*` code が `REVIEW` を駆動するのは、
+`JOIN_MISSING_PRODUCTION` 経路で有効な B04 integration evidence が
+供給されたときだけである。
 
 `NOT_EVALUATED` のときの挙動は P2-B04 以前と完全に同じである。
 
 #### HOLD → REVIEW の転換は `JOIN_MISSING_PRODUCTION` だけ
 
-B03 evidence は **構造的な join 失敗を置き換えない**。
+identity evidence は **構造的な join 失敗を置き換えない**。
 
 ```text
-JOIN_MISSING_PRODUCTION + B03 評価済み
+JOIN_MISSING_PRODUCTION + 有効な B04 integration evidence
   → join_status は保持
   → IDENTITY_EVIDENCE_* を出す
   → Machine Audit REVIEW          ← 承認済みの転換はここだけ
@@ -642,26 +647,52 @@ raw join の事実は `join_status` に serialize され続ける。
 
 | join status | reason code | 理由 |
 | --- | --- | --- |
-| `JOIN_MISSING_SEED` | `MISSING_SEED` | B03 は Seed 側 identity anchor の不在を修復できない |
-| `JOIN_DUPLICATE_MATCH` | `DUPLICATE_PRODUCTION_IDENTITY` | B03 は duplicate resolution 機構ではない。複数の exact Production 行から1つを選ばない |
-| `PRODUCTION_SNAPSHOT_UNAVAILABLE` | `PRODUCTION_SNAPSHOT_UNAVAILABLE` | B03 evidence は snapshot 不在の代替にならない |
+| `JOIN_MISSING_SEED` | `MISSING_SEED` | identity evidence は Seed 側 identity anchor の不在を修復できない |
+| `JOIN_DUPLICATE_MATCH` | `DUPLICATE_PRODUCTION_IDENTITY` | identity evidence は duplicate resolution 機構ではない。複数の exact Production 行から1つを選ばない |
+| `JOIN_IDENTITY_REVIEW_REQUIRED` | `IDENTITY_NOT_EXACT` | 既存どおり `HOLD_REASON_CODES` 所属。**review-class ではない** |
+| `PRODUCTION_SNAPSHOT_UNAVAILABLE` | `PRODUCTION_SNAPSHOT_UNAVAILABLE` | identity evidence は snapshot 不在の代替にならない |
 
-`JOIN_IDENTITY_REVIEW_REQUIRED` は既に review-class の identity 状態で
-あり、B03 evidence は `seed_production_identity_status` として共存するが
-exact identity には変えない。B03 が `CONFLICT` でも**新しい** HOLD 経路は
+`JOIN_IDENTITY_REVIEW_REQUIRED` について: identity evidence は
+`seed_production_identity_status` として共存するが、exact identity には
+変えず、既存の HOLD も抑止しない。`CONFLICT` でも**新しい** HOLD 経路は
 作らない（HOLD は既存の `IDENTITY_NOT_EXACT` 由来のまま）。
 
 #### 評価順
 
 ```text
-1. production snapshot unavailable      既存の失敗
-2. JOIN_MISSING_PRODUCTION + B03 評価済み  identity 軸 REVIEW（承認済み転換）
-   JOIN_MISSING_PRODUCTION + B03 未評価    既存 HOLD
-3. JOIN_MISSING_SEED                    既存 HOLD
-4. JOIN_DUPLICATE_MATCH                 既存 HOLD
-5. JOIN_IDENTITY_REVIEW_REQUIRED        既存の identity 状態を維持
-6. JOIN_MATCH_EXACT                     exact path
+1. production snapshot unavailable           既存の失敗（HOLD）
+2. JOIN_MISSING_PRODUCTION + 有効な B04 evidence  identity 軸 REVIEW（承認済み転換）
+   JOIN_MISSING_PRODUCTION + evidence 無し        既存 HOLD
+3. JOIN_MISSING_SEED                         既存 HOLD
+4. JOIN_DUPLICATE_MATCH                      既存 HOLD
+5. JOIN_IDENTITY_REVIEW_REQUIRED             既存 HOLD
+6. JOIN_MATCH_EXACT                          exact path
 ```
+
+#### 信頼境界
+
+identity 軸を起動できるのは、B04 adapter が返した
+`PositionIdentityIntegrationResult` の **実体だけ**である。
+
+```text
+B03 IdentityEvidenceAssessment
+→ B04 integrate_position_identity()
+→ PositionIdentityIntegrationResult
+→ Position Audit input（position_identity_integration）
+→ evaluate()
+```
+
+status 文字列を直接渡しても採用しない。同じ形の別 object も採用しない
+（型で認証する）。別 join に対する integration result も流用しない。
+いずれも `NOT_EVALUATED` へ倒れ、P2-B04 以前と同じ挙動になる。
+
+依存方向は次で固定する。
+
+```text
+Position Audit  ->  B04 integration boundary  ->  B03  ->  B02
+```
+
+Position Audit は B03 / B02 を **直接 import / load しない**。
 
 ### 9.2 Position proof path
 

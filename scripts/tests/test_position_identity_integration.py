@@ -92,6 +92,16 @@ def _assessment(status: str):
     return result
 
 
+def _integration(join_status: str, evidence_status: str | None = None):
+    """本物の B04 integration result を作る（信頼境界を通す唯一の経路）。"""
+    return adapter.integrate_position_identity(
+        join_status=join_status,
+        identity_assessment=(
+            _assessment(evidence_status) if evidence_status else None
+        ),
+    )
+
+
 def _audit_item(**overrides):
     values = dict(
         identity=audit.Identity(
@@ -212,7 +222,7 @@ def test_b04_gc01_exact_raw_join_is_exact_identity():
 
     audited = audit.evaluate(
         _audit_item(
-            seed_production_identity_status=result.identity_status,
+            position_identity_integration=result,
             primary_position_evidence=_evidence(),
         )
     )
@@ -240,7 +250,7 @@ def test_b04_gc02_exact_miss_with_same_supported_is_review_not_exact():
         _audit_item(
             production=None,
             seed_production_join_status=audit.JOIN_MISSING_PRODUCTION,
-            seed_production_identity_status=result.identity_status,
+            position_identity_integration=result,
             primary_position_evidence=_evidence(),
         )
     )
@@ -290,7 +300,9 @@ def test_b04_gc03_gc04_gc05_non_exact_identity_evidence_is_review(
         _audit_item(
             production=None,
             seed_production_join_status=audit.JOIN_MISSING_PRODUCTION,
-            seed_production_identity_status=identity_status,
+            position_identity_integration=_integration(
+                audit.JOIN_MISSING_PRODUCTION, evidence_status
+            ),
             primary_position_evidence=_evidence(),
         )
     )
@@ -306,7 +318,9 @@ def test_b04_gc05_conflict_does_not_become_hold_or_primary_entity_evidence():
         _audit_item(
             production=None,
             seed_production_join_status=audit.JOIN_MISSING_PRODUCTION,
-            seed_production_identity_status=adapter.IDENTITY_CONFLICT,
+            position_identity_integration=_integration(
+                audit.JOIN_MISSING_PRODUCTION, "CONFLICT"
+            ),
             primary_position_evidence=_evidence(),
         )
     )
@@ -321,7 +335,7 @@ def test_b04_gc05_conflict_does_not_become_hold_or_primary_entity_evidence():
     # Primary 側の entity 証拠は依然として独立に HOLD を作る。
     stronger = audit.evaluate(
         _audit_item(
-            seed_production_identity_status=adapter.IDENTITY_EXACT,
+            position_identity_integration=_integration(audit.JOIN_MATCH_EXACT),
             primary_position_evidence=_evidence(entity_match="DIFFERENT"),
         )
     )
@@ -335,7 +349,9 @@ def test_b04_gc06_same_supported_does_not_enable_resolution_fallback():
         _audit_item(
             production=None,
             seed_production_join_status=audit.JOIN_MISSING_PRODUCTION,
-            seed_production_identity_status=adapter.IDENTITY_SAME_SUPPORTED,
+            position_identity_integration=_integration(
+                audit.JOIN_MISSING_PRODUCTION, "SAME_SUPPORTED"
+            ),
             primary_position_evidence=None,
             existing_resolution=_resolution(),
         )
@@ -348,7 +364,7 @@ def test_b04_gc06_same_supported_does_not_enable_resolution_fallback():
     # exact identity なら従来どおり fallback が成立する。
     exact = audit.evaluate(
         _audit_item(
-            seed_production_identity_status=adapter.IDENTITY_EXACT,
+            position_identity_integration=_integration(audit.JOIN_MATCH_EXACT),
             primary_position_evidence=None,
             existing_resolution=_resolution(),
         )
@@ -367,7 +383,9 @@ def test_b04_gc06_same_supported_blocks_fallback_even_with_a_production_row():
         # Production 行も座標も揃っているが、join は exact ではない。
         production=audit.ProductionPosition(latitude=35.0, longitude=139.0),
         seed_production_join_status=audit.JOIN_IDENTITY_REVIEW_REQUIRED,
-        seed_production_identity_status=adapter.IDENTITY_SAME_SUPPORTED,
+        position_identity_integration=_integration(
+            audit.JOIN_IDENTITY_REVIEW_REQUIRED, "SAME_SUPPORTED"
+        ),
         primary_position_evidence=None,
         existing_resolution=_resolution(),
     )
@@ -400,7 +418,9 @@ def test_b04_gc07_same_supported_keeps_artifact_sync_unknown():
         _audit_item(
             production=None,
             seed_production_join_status=audit.JOIN_MISSING_PRODUCTION,
-            seed_production_identity_status=adapter.IDENTITY_SAME_SUPPORTED,
+            position_identity_integration=_integration(
+                audit.JOIN_MISSING_PRODUCTION, "SAME_SUPPORTED"
+            ),
             primary_position_evidence=_evidence(),
         )
     )
@@ -525,7 +545,9 @@ def test_b04_gc12_deterministic_byte_stable_result():
             _audit_item(
                 production=None,
                 seed_production_join_status=audit.JOIN_MISSING_PRODUCTION,
-                seed_production_identity_status=adapter.IDENTITY_SAME_SUPPORTED,
+                position_identity_integration=_integration(
+                    audit.JOIN_MISSING_PRODUCTION, "SAME_SUPPORTED"
+                ),
                 primary_position_evidence=_evidence(),
             )
         ).to_dict()
@@ -568,7 +590,7 @@ def test_supplied_exact_on_a_non_exact_join_is_refused():
         _audit_item(
             production=None,
             seed_production_join_status=audit.JOIN_MISSING_PRODUCTION,
-            seed_production_identity_status=audit.IDENTITY_EXACT,
+            position_identity_integration=audit.IDENTITY_EXACT,
             primary_position_evidence=_evidence(),
         )
     )
@@ -584,7 +606,7 @@ def test_unknown_identity_status_fails_safe_to_not_evaluated():
         _audit_item(
             production=None,
             seed_production_join_status=audit.JOIN_MISSING_PRODUCTION,
-            seed_production_identity_status="PROBABLY_THE_SAME",
+            position_identity_integration="PROBABLY_THE_SAME",
             primary_position_evidence=_evidence(),
         )
     )
@@ -617,7 +639,9 @@ def test_same_supported_is_not_auto_pass_evidence():
             _audit_item(
                 production=None,
                 seed_production_join_status=audit.JOIN_MISSING_PRODUCTION,
-                seed_production_identity_status=adapter.IDENTITY_SAME_SUPPORTED,
+                position_identity_integration=_integration(
+                    audit.JOIN_MISSING_PRODUCTION, "SAME_SUPPORTED"
+                ),
                 primary_position_evidence=primary,
                 existing_resolution=_resolution(),
             )
@@ -631,7 +655,9 @@ def test_canonical_hold_still_wins_over_identity_evidence():
         _audit_item(
             production=None,
             seed_production_join_status=audit.JOIN_MISSING_PRODUCTION,
-            seed_production_identity_status=adapter.IDENTITY_SAME_SUPPORTED,
+            position_identity_integration=_integration(
+                audit.JOIN_MISSING_PRODUCTION, "SAME_SUPPORTED"
+            ),
             primary_position_evidence=_evidence(),
             existing_resolution=audit.ExistingResolution(
                 record_path="docs/audit/shrine-position/example.md",
@@ -678,7 +704,11 @@ def test_build_inputs_uses_identity_only_when_explicitly_supplied():
         candidates=[candidate],
         resolution_records={},
     )
-    assert items[0].seed_production_identity_status == audit.IDENTITY_NOT_EVALUATED
+    assert items[0].position_identity_integration is None
+    assert (
+        audit.evaluate(items[0]).seed_production_identity_status
+        == audit.IDENTITY_NOT_EVALUATED
+    )
     assert audit.evaluate(items[0]).audit_status == audit.HOLD
 
     # 明示的に供給したときだけ identity 軸が動く。
@@ -688,10 +718,18 @@ def test_build_inputs_uses_identity_only_when_explicitly_supplied():
         spreadsheet_rows=None,
         candidates=[candidate],
         resolution_records={},
-        identity_statuses_by_candidate={"wave0-999": adapter.IDENTITY_SAME_SUPPORTED},
+        identity_integrations_by_candidate={
+            "wave0-999": _integration(
+                audit.JOIN_MISSING_PRODUCTION, "SAME_SUPPORTED"
+            )
+        },
     )
-    assert items[0].seed_production_identity_status == adapter.IDENTITY_SAME_SUPPORTED
+    assert isinstance(
+        items[0].position_identity_integration,
+        adapter.PositionIdentityIntegrationResult,
+    )
     result = audit.evaluate(items[0])
+    assert result.seed_production_identity_status == adapter.IDENTITY_SAME_SUPPORTED
     assert result.audit_status == audit.REVIEW
     assert audit.RC_IDENTITY_EVIDENCE_SAME_SUPPORTED in result.reason_codes
 
@@ -771,18 +809,24 @@ def test_adapter_result_is_immutable():
         result.identity_status = adapter.IDENTITY_SAME_SUPPORTED  # type: ignore[misc]
 
 
-def test_b04_is_not_wired_into_any_further_consumer():
-    """**暫定の layer-boundary 不変条件**（P2-B04 時点）。
+# B04 integration boundary を **直接** 消費してよい module の厳密な集合。
+#
+# Position Audit は identity evidence に B04 を通してのみ触れる。
+# B03 / B02 を直接 import / load してはならない（推移的依存は上流の
+# allowlist に載せない）。
+B04_SANCTIONED_CONSUMERS = {
+    "scripts/audit_shrine_positions_v2.py",
+}
 
-    現時点で B04 adapter を消費する層は存在しない。次の層が導入される
-    ときは、B02 / B03 と同じ厳密 allowlist 方式へ置き換えること。
 
-    ```python
-    SANCTIONED_CONSUMERS = {"scripts/<next layer>.py"}
-    assert set(callers) == SANCTIONED_CONSUMERS, callers
+def test_b04_has_exactly_the_sanctioned_direct_consumers():
+    """B04 の直接 consumer が allowlist と **完全一致** すること。
+
+    ```text
+    Position Audit -> B04 integration boundary -> B03 -> B02
     ```
 
-    `<=` ではなく `==` を使う。推移的依存は上流の allowlist に載せない。
+    `<=` ではなく `==` を使う（必要な依存が消えたことも検出するため）。
     """
     callers = []
     for path in sorted(REPO_ROOT.glob("scripts/*.py")) + sorted(
@@ -792,7 +836,36 @@ def test_b04_is_not_wired_into_any_further_consumer():
             continue
         if "position_identity_integration" in path.read_text(encoding="utf-8"):
             callers.append(str(path.relative_to(REPO_ROOT)))
-    assert callers == [], callers
+    assert set(callers) == B04_SANCTIONED_CONSUMERS, callers
+
+
+def test_position_audit_never_directly_depends_on_b03_or_b02():
+    """Position Audit は B03 / B02 を直接 import / load しない。"""
+    source = AUDIT_PATH.read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                assert "shrine_identity_evidence" not in alias.name
+                assert "japanese_address_normalization" not in alias.name
+        elif isinstance(node, ast.ImportFrom):
+            module = node.module or ""
+            assert "shrine_identity_evidence" not in module
+            assert "japanese_address_normalization" not in module
+    for forbidden in (
+        "shrine_identity_evidence",
+        "japanese_address_normalization",
+        "compare_addresses",
+        "assess_identity_evidence",
+    ):
+        assert forbidden not in source, forbidden
+
+    # 読み込むのは B04 だけ。
+    assert audit.identity_integration.__file__ == str(MODULE_PATH)
+    # B03 / B02 へは B04 経由で推移的に到達する。
+    assert audit.identity_integration.identity_evidence.__file__ == str(
+        IDENTITY_MODULE_PATH
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -825,7 +898,9 @@ def test_structural_join_failures_stay_hold_even_with_identity_evidence(
         _audit_item(
             production=None,
             seed_production_join_status=getattr(audit, join_attr),
-            seed_production_identity_status=identity_status,
+            position_identity_integration=_integration(
+                getattr(audit, join_attr), identity_status
+            ),
             primary_position_evidence=_evidence(),
         )
     )
@@ -852,7 +927,9 @@ def test_production_snapshot_unavailable_is_unchanged_by_identity_evidence(
             production=None,
             seed_production_join_status=audit.JOIN_PRODUCTION_SNAPSHOT_UNAVAILABLE,
             production_snapshot_available=False,
-            seed_production_identity_status=identity_status,
+            position_identity_integration=_integration(
+                audit.JOIN_PRODUCTION_SNAPSHOT_UNAVAILABLE, identity_status
+            ),
             primary_position_evidence=_evidence(),
         )
     )
@@ -878,7 +955,9 @@ def test_identity_review_required_join_keeps_its_existing_state(identity_status)
     audited = audit.evaluate(
         _audit_item(
             seed_production_join_status=audit.JOIN_IDENTITY_REVIEW_REQUIRED,
-            seed_production_identity_status=identity_status,
+            position_identity_integration=_integration(
+                audit.JOIN_IDENTITY_REVIEW_REQUIRED, identity_status
+            ),
             primary_position_evidence=_evidence(),
         )
     )
@@ -896,7 +975,9 @@ def test_only_missing_production_gets_the_hold_to_review_transition():
         _audit_item(
             production=None,
             seed_production_join_status=audit.JOIN_MISSING_PRODUCTION,
-            seed_production_identity_status=adapter.IDENTITY_SAME_SUPPORTED,
+            position_identity_integration=_integration(
+                audit.JOIN_MISSING_PRODUCTION, "SAME_SUPPORTED"
+            ),
             primary_position_evidence=_evidence(),
         )
     )
@@ -915,7 +996,9 @@ def test_only_missing_production_gets_the_hold_to_review_transition():
             _audit_item(
                 production=None,
                 seed_production_join_status=join_status,
-                seed_production_identity_status=adapter.IDENTITY_SAME_SUPPORTED,
+                position_identity_integration=_integration(
+                    join_status, "SAME_SUPPORTED"
+                ),
                 primary_position_evidence=_evidence(),
             )
         )
@@ -934,3 +1017,198 @@ def test_missing_production_without_identity_evidence_is_unchanged():
     assert audited.audit_status == audit.HOLD
     assert audit.RC_MISSING_PRODUCTION in audited.reason_codes
     assert audited.seed_production_identity_status == audit.IDENTITY_NOT_EVALUATED
+
+
+# ---------------------------------------------------------------------------
+# 信頼境界の Golden Cases（B04-GC19 〜 GC26）
+#
+# HOLD → REVIEW の転換を起動できるのは、B04 adapter が返した
+# `PositionIdentityIntegrationResult` の実体だけである。status 文字列を
+# 直接渡しても起動しない。
+# ---------------------------------------------------------------------------
+
+
+def test_b04_gc19_raw_status_string_cannot_suppress_missing_production_hold():
+    """生の status 文字列では HOLD を抑止できない（provenance 不足）。"""
+    audited = audit.evaluate(
+        _audit_item(
+            production=None,
+            seed_production_join_status=audit.JOIN_MISSING_PRODUCTION,
+            # B04 を通していない生文字列。
+            position_identity_integration="SAME_SUPPORTED",
+            primary_position_evidence=_evidence(),
+        )
+    )
+    assert audited.audit_status == audit.HOLD
+    assert audit.RC_MISSING_PRODUCTION in audited.reason_codes
+    assert audited.seed_production_identity_status == audit.IDENTITY_NOT_EVALUATED
+    for code in audit.IDENTITY_EVIDENCE_REVIEW_CODES:
+        assert code not in audited.reason_codes, code
+
+
+def test_b04_gc19_look_alike_object_cannot_suppress_hold():
+    """同じ形の別 object でも起動しない（型で認証する）。"""
+    from dataclasses import dataclass as _dataclass
+
+    @_dataclass(frozen=True)
+    class FakeIntegration:
+        join_status: str = "MISSING_PRODUCTION"
+        identity_status: str = "SAME_SUPPORTED"
+        production_id: int | None = None
+        duplicate_production_ids: tuple = ()
+        identity_review_reasons: tuple = ()
+
+    audited = audit.evaluate(
+        _audit_item(
+            production=None,
+            seed_production_join_status=audit.JOIN_MISSING_PRODUCTION,
+            position_identity_integration=FakeIntegration(),
+            primary_position_evidence=_evidence(),
+        )
+    )
+    assert audited.audit_status == audit.HOLD
+    assert audit.RC_MISSING_PRODUCTION in audited.reason_codes
+    assert audited.seed_production_identity_status == audit.IDENTITY_NOT_EVALUATED
+
+
+def test_b04_gc19_integration_for_a_different_join_is_not_reused():
+    """別 join に対する integration result を流用しない。"""
+    audited = audit.evaluate(
+        _audit_item(
+            production=None,
+            seed_production_join_status=audit.JOIN_MISSING_PRODUCTION,
+            position_identity_integration=_integration(
+                audit.JOIN_IDENTITY_REVIEW_REQUIRED, "SAME_SUPPORTED"
+            ),
+            primary_position_evidence=_evidence(),
+        )
+    )
+    assert audited.audit_status == audit.HOLD
+    assert audited.seed_production_identity_status == audit.IDENTITY_NOT_EVALUATED
+
+
+def test_b04_gc20_valid_integration_same_supported_is_review():
+    audited = audit.evaluate(
+        _audit_item(
+            production=None,
+            seed_production_join_status=audit.JOIN_MISSING_PRODUCTION,
+            position_identity_integration=_integration(
+                audit.JOIN_MISSING_PRODUCTION, "SAME_SUPPORTED"
+            ),
+            primary_position_evidence=_evidence(),
+        )
+    )
+    assert audited.audit_status == audit.REVIEW
+    assert audited.seed_production_identity_status == adapter.IDENTITY_SAME_SUPPORTED
+    assert audit.RC_IDENTITY_EVIDENCE_SAME_SUPPORTED in audited.reason_codes
+    assert audit.RC_SEED_PRODUCTION_EXACT not in audited.reason_codes
+
+
+def test_b04_gc21_valid_integration_conflict_is_review_without_new_hold():
+    audited = audit.evaluate(
+        _audit_item(
+            production=None,
+            seed_production_join_status=audit.JOIN_MISSING_PRODUCTION,
+            position_identity_integration=_integration(
+                audit.JOIN_MISSING_PRODUCTION, "CONFLICT"
+            ),
+            primary_position_evidence=_evidence(),
+        )
+    )
+    assert audited.audit_status == audit.REVIEW
+    assert audited.seed_production_identity_status == adapter.IDENTITY_CONFLICT
+    assert audit.RC_IDENTITY_EVIDENCE_CONFLICT in audited.reason_codes
+    assert audit.RC_IDENTITY_EVIDENCE_CONFLICT not in audit.HOLD_REASON_CODES
+
+
+@pytest.mark.parametrize(
+    ("case_id", "join_attr", "code_attr", "snapshot_available"),
+    [
+        ("B04-GC22", "JOIN_MISSING_SEED", "RC_MISSING_SEED", True),
+        (
+            "B04-GC23",
+            "JOIN_DUPLICATE_MATCH",
+            "RC_DUPLICATE_PRODUCTION_IDENTITY",
+            True,
+        ),
+        (
+            "B04-GC24",
+            "JOIN_IDENTITY_REVIEW_REQUIRED",
+            "RC_IDENTITY_NOT_EXACT",
+            True,
+        ),
+        (
+            "B04-GC25",
+            "JOIN_PRODUCTION_SNAPSHOT_UNAVAILABLE",
+            "RC_PRODUCTION_SNAPSHOT_UNAVAILABLE",
+            False,
+        ),
+    ],
+)
+def test_b04_gc22_gc25_valid_integration_never_suppresses_structural_hold(
+    case_id, join_attr, code_attr, snapshot_available
+):
+    """**有効な** B04 integration でも構造的 HOLD は抑止されない。
+
+    転換が承認されているのは `JOIN_MISSING_PRODUCTION` だけである。
+    `JOIN_IDENTITY_REVIEW_REQUIRED` は既存どおり `RC_IDENTITY_NOT_EXACT`
+    による HOLD であり、review-class ではない。
+    """
+    join_status = getattr(audit, join_attr)
+    audited = audit.evaluate(
+        _audit_item(
+            production=None,
+            seed_production_join_status=join_status,
+            production_snapshot_available=snapshot_available,
+            position_identity_integration=_integration(
+                join_status, "SAME_SUPPORTED"
+            ),
+            primary_position_evidence=_evidence(),
+        )
+    )
+    assert audited.audit_status == audit.HOLD, case_id
+    assert getattr(audit, code_attr) in audited.reason_codes, case_id
+    for code in audit.IDENTITY_EVIDENCE_REVIEW_CODES:
+        assert code not in audited.reason_codes, (case_id, code)
+    assert audit.RC_SEED_PRODUCTION_EXACT not in audited.reason_codes, case_id
+
+
+def test_b04_gc26_no_integration_supplied_is_identical_to_pre_b04():
+    """integration 未供給なら P2-B04 以前と完全に同じ挙動。"""
+    for join_attr, code_attr, snapshot in (
+        ("JOIN_MISSING_PRODUCTION", "RC_MISSING_PRODUCTION", True),
+        ("JOIN_MISSING_SEED", "RC_MISSING_SEED", True),
+        ("JOIN_DUPLICATE_MATCH", "RC_DUPLICATE_PRODUCTION_IDENTITY", True),
+        ("JOIN_IDENTITY_REVIEW_REQUIRED", "RC_IDENTITY_NOT_EXACT", True),
+        (
+            "JOIN_PRODUCTION_SNAPSHOT_UNAVAILABLE",
+            "RC_PRODUCTION_SNAPSHOT_UNAVAILABLE",
+            False,
+        ),
+    ):
+        audited = audit.evaluate(
+            _audit_item(
+                production=None,
+                seed_production_join_status=getattr(audit, join_attr),
+                production_snapshot_available=snapshot,
+                primary_position_evidence=_evidence(),
+            )
+        )
+        assert audited.seed_production_identity_status == audit.IDENTITY_NOT_EVALUATED
+        assert audited.audit_status == audit.HOLD, join_attr
+        assert getattr(audit, code_attr) in audited.reason_codes, join_attr
+
+    # exact join は従来どおり AUTO_PASS へ到達できる。
+    exact = audit.evaluate(_audit_item(primary_position_evidence=_evidence()))
+    assert exact.seed_production_identity_status == audit.IDENTITY_EXACT
+    assert exact.audit_status == audit.AUTO_PASS
+
+
+def test_schema_version_is_unchanged_by_the_trust_boundary_correction():
+    """信頼境界の修正では schema を上げない（field は既に 1.2 で追加済み）。"""
+    assert audit.SCHEMA_VERSION == "position-audit-v2/1.2"
+    report = audit.build_report(
+        [audit.evaluate(_audit_item(primary_position_evidence=_evidence()))]
+    )
+    assert report["schema_version"] == "position-audit-v2/1.2"
+    assert "seed_production_identity_status" in report["results"][0]
