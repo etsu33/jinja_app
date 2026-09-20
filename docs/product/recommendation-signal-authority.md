@@ -185,6 +185,7 @@ Candidate/Rankを一切変えず、推薦理由の説明にのみ使用するSig
 | `goriyaku`（自由文） | Secondary（`matched_by_text`経由、`NEED_TEXT_WEIGHTS`） | **Secondary** | 構造化されていない自由文一致であり、`need_tags`ほど確実な意味一致ではない。現状のSecondary位置づけは妥当 | Medium |
 | `goriyaku_tag_ids` | **Eligibility**（DB hard filter）。Rank寄与ゼロ（実測確認）。`reason_facts`ではpriority 4 | **Eligibility + Explanation**（Rank非寄与を維持） | §9で詳述。Eligibilityとして機能させつつ、Rankへ二重に加点しないことは、既にfilterした候補集合内で同一Signalを再度優遇しないという一貫性のある設計 | High |
 | `history_theme` | `consultation_axis`一致時のみRank寄与（最大+1.0）。`reason_facts` priority最高位（0） | **Primary（条件付き）** | 一致時の説明力の強さ（priority 0）に見合うだけの実効力（他のneed_tag一致と同等以上）を既に持つ。現状維持が妥当 | Medium（発火条件の狭さは§12でGap記録） |
+| `culture_translation` | Explanation補助。`matched_need_tags`があり、かつ`culture_translation`が存在する場合にnon-primaryの`reason_fact`として生成される。`_resolve_primary_reason()`ではPrimary候補から明示的に除外される。Score/Rankingへの直接寄与はない。一方、現行`PRIMARY_REASON_PRIORITY`には残存しており、Primary Tier定義との構造的不整合がある | **Explanation-only** | 神社固有の文脈を推薦理由の補足として使用するSignal。Recommendation Meaningや順位を決定するAuthorityは持たせず、semantic match成立後の説明材料としてのみ利用する | High |
 | `deity` | **Explanation-only**（`recommendation_reason_v4`のみ、`reason_facts`不接続） | **Explanation-only（現状維持、A）** | §8で詳述 | High |
 | `shrine_history` | **Explanation-only**（同上） | **Explanation-only（現状維持、A）** | §8で詳述 | High |
 | `knowledge_deities` | `deity`の入力元（新Knowledge Model優先、Legacy `sajin`へfallback） | **Explanation-only（現状維持、A）** | §8で詳述 | High |
