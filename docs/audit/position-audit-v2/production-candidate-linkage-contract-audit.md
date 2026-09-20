@@ -8,7 +8,25 @@ audited_at    = 2026-09-20
 base          = develop f2452aad
 mode          = read-only
 implementation = NONE
+revision      = 2（review correction 適用）
 ```
+
+### revision 2 で直した点（文言精度のみ・判定は不変）
+
+```text
+1. Candidate A の循環に関する表現
+   「ExistingResolution の拡張は本質的・論理的に不可能」とは述べない。
+   否定しているのは「現在の Record 自体を linkage の authority に据えること」
+   であり、別 contract が linkage を先に確立した場合の carrier 適性までは
+   証明していない（§5.1 / §6）。
+
+2. pilot 前提条件の依存関係
+   「条件1 が満たされないかぎり 2–6 は始められない」を撤回し、
+   条件4（母集団特定）が独立した read-only 監査であることを明示した（§8.8）。
+```
+
+`production_shrine_id = 117` を自動 linkage に対して **non-canonical** と
+する判定は変更していない。
 
 本書は **監査記録であり、実装でも Mother Ship 決定でもない。**
 
@@ -324,12 +342,21 @@ imizu の `verified_at` は `PENDING_HUMAN_QA_INPUT` という sentinel 文字�
 | 3 | machine-readable である | **PARTIAL** | 行形式は `_record_field` の正規表現に一致する。ただし **machine-readable ≠ machine-loaded**。loader は読んでおらず、読める形であることは contract ではない |
 | 4 | 意味として candidate → Production identity linkage と定義されている | **NO** | 設置 section は「Production 現況（PR #2855 時点 — Historical）」。兄弟 field は `production_position = 旧座標`。この block は Position 反映状況の観測であり identity 束縛ではない。record 自身の `Canonical identity` block は Production id を含まない |
 | 5 | Position correction 履歴と独立に安定している | **NO** | この field は Position correction を実施した record にのみ出現した（`Fix/w0 db02 sapporo suwa position` #2855 由来）。correction を実施していない imizu には無い。**存在が identity ではなく correction 履歴に相関している** |
-| 6 | B03 / B04 の候補選択に使って安全である | **NO** | 1–5 が満たされないことに加え、**循環がある**（§5.1） |
+| 6 | B03 / B04 の候補選択に使って安全である | **NO** | 1–5 が満たされないことに加え、現在の Record 自体を linkage の authority に据えると責務・authority の循環が生じる（§5.1） |
 
-### 5.1 循環依存（決定的な技術的障害）
+### 5.1 責務・authority の循環（現在の Record を authority に据えた場合）
 
-`docs/audit/shrine-position-ground-truth-v2.md` §「既存 PASS Resolution
-Record の再利用」は、Resolution Record を使える前提条件を次のように定める。
+#### 検証した事実
+
+```text
+現在の Resolution 再利用経路は identity_is_exact を要求する。
+
+唯一実在する production_shrine_id の値は Historical な Position status
+section の内側にあり、独立した identity-linkage authority を持たない。
+```
+
+前者の根拠。`docs/audit/shrine-position-ground-truth-v2.md` §「既存 PASS
+Resolution Record の再利用」は前提条件を次のように定める。
 
 ```text
 resolution.position_status      == "PASS"
@@ -352,17 +379,43 @@ if (
     resolution_candidate = True
 ```
 
-つまり **Resolution Record は identity を前提として消費する層**であり、
-identity を確立する層ではない。そこから identity linkage を取り出して
-非 exact identity を解決しようとすると、
+後者の根拠は §2.3 / §2.4 に示したとおりである。
+
+#### 導かれる結論
+
+```text
+現在の Resolution Record それ自体を Production candidate linkage の
+authority として使うことは、責務・authority の循環を生むため妥当でない。
+```
+
+Resolution Record の再利用経路は identity を **前提として消費する**層であり、
+その同じ record を identity の authority に据えれば
 
 ```text
 identity を決めるために Resolution Record を使う
   -> Resolution Record を使うには identity exact が要る
 ```
 
-という循環になる。これは field を1つ足せば解消する類の問題ではなく、
-**責務の所在の問題**である。
+となる。現在唯一実在する値が Historical section にあり独立した
+linkage authority を持たない以上、この循環を断つ材料が record 内に無い。
+
+#### この結論が **含意しないこと**
+
+```text
+これは、独立した canonical linkage contract が先に linkage を確立した場合に
+ExistingResolution がその linkage data の carrier になり得ない、
+ということまでは証明していない。
+```
+
+authority（linkage を成立させる根拠）と carrier（成立済みの値を運ぶ型）は
+別の問題である。本監査が否定しているのは前者、すなわち
+
+```text
+現在の Record を linkage の authority として扱うこと
+```
+
+であって、型としての運搬可能性ではない。§6 の Candidate A 評価もこの区別の
+上に立つ（責務適合と backfill 制約の問題であり、論理的不可能性の主張ではない）。
 
 ### 5.2 判定
 
@@ -387,19 +440,39 @@ canonical な linkage contract ではない。自動 linkage には使えない�
 ExistingResolution.production_shrine_id
 ```
 
+#### 評価の前提：2つの読み方を分ける
+
+```text
+A-1  現在の Resolution Record を linkage の authority として読む
+     （record に書かれた値がそのまま linkage の根拠になる）
+
+A-2  別の canonical linkage contract が先に linkage を確立し、
+     ExistingResolution はその値の carrier として運ぶだけ
+```
+
+**A-1 は §5.1 により妥当でない。** 以下の表は主に A-1 を評価する。
+A-2 は §5.1 が否定していない形であり、評価が変わる項目には注記する。
+
 | 観点 | 評価 |
 | --- | --- |
-| 責務適合 | **低い。** `ExistingResolution` は Position Contract §Audit Record が要求する **Position provenance** を運ぶ型である。Production entity identity はその責務ではない。§5.1 の循環をこの型の内部に持ち込むことになる |
+| 責務適合 | **低い。** `ExistingResolution` は Position Contract §Audit Record が要求する **Position provenance** を運ぶ型である。Production entity identity はその責務ではない。A-1 では §5.1 の循環をこの型の内部に持ち込むことになる（A-2 なら循環は生じないが、型の責務が2つになる点は残る） |
 | coverage | **1/2 record（50%）。** imizu には元 data が無い。そもそも Base Seed 113 行のうち Resolution Record を持つのは 2 件だけで、W0-DB02 の他3候補（`wave0-008` / `wave0-009` / `wave0-011`）にも record が無い。全体 coverage は極小 |
-| 後方互換 | 型は frozen dataclass で default 付き field を足せば互換。ただし **意味の互換は壊れる**。「Position 履歴の記録」型が entity identity の authority を兼ねる |
+| 後方互換 | 型は frozen dataclass で default 付き field を足せば互換。ただし A-1 では **意味の互換が壊れる**（「Position 履歴の記録」型が entity identity の authority を兼ねる）。A-2 なら authority は外部にあるため、壊れるのは「Position provenance 専用」という型の純度だけになる |
 | record 欠落時の挙動 | `None` になる。現状 Resolution Record を持つのは 2 候補のみなので、大半の候補で `None`。fail closed としては正しいが、**linkage 機構としては機能しない** |
 | Position 履歴と entity identity の結合リスク | **高い。** correction 履歴の有無で identity が解決できたりできなかったりする（§5 要件5）。Position correction を実施すると identity が解決され、実施しないと解決されない、という逆立ちした依存が生じる |
-| migration / backfill | 全候補について record を新規作成するか、既存 record に field を追記する必要がある。後者は **過去時点記録を書き換える**ことになり、両 record が明文で禁じている（「内容を変更せず保持する」「Freeze 記録側は過去時点の記録として変更しない」） |
+| migration / backfill | A-1 / A-2 いずれでも、値を record から読むなら全候補について record を新規作成するか、既存 record に field を追記する必要がある。後者は **過去時点記録を書き換える**ことになり、両 record が明文で禁じている（「内容を変更せず保持する」「Freeze 記録側は過去時点の記録として変更しない」）。A-2 で値の出所を外部 artifact に置くなら、そもそも `ExistingResolution` に持たせる利点が薄れる |
 | test 影響 | `test_sapporo_suwa_resolution_record_parses_full_provenance` 等の既存 test に加え、Historical section から値を読んでよいかの判定、`position_status` 同様の multi-match 曖昧性（§4.2）、`record_kind` 不在（§4.1）への対処が必要 |
 
-**Candidate A の致命的な点**: 値の供給源が Historical section である以上、
-loader 拡張は「過去時点の観測値を現在の identity として読む」ことになる。
-record 自身がそれを禁じている。
+**Candidate A（A-1）の決定的な難点**: 現時点で値の供給源は Historical section
+だけである。したがって A-1 の loader 拡張は「過去時点の観測値を現在の
+identity として読む」ことになり、record 自身の明示（「現況ではない」）と
+矛盾する。
+
+これは **A-1 に対する評価**であって、`ExistingResolution` という型が
+linkage data を運べないことの証明ではない。別 contract が linkage を
+独立に確立していれば（A-2）、この難点は値の出所が変わることで解消しうる。
+その場合に残るのは責務の純度と backfill の問題であり、論理的不可能性では
+ない。
 
 ### Candidate B — 専用 Production Candidate Linkage Artifact
 
@@ -422,7 +495,7 @@ verified_at
 | coverage / backfill | 新規 artifact なので **初期 coverage はゼロ**。ただし空 = `NOT_LINKED` として fail closed に定義でき、部分 coverage でも矛盾しない。段階的に埋められる |
 | 決定的な読み込み | **容易。** 単一 file（JSON / 構造化 md）で schema を明示できる。§4 の脆弱性（共通 schema 不在・先頭一致・汎用名 `id` の多義・一意性未強制・型なし）をすべて設計時に排除できる |
 | review 可能性 | **高い。** linkage 追加は差分が1行で、`linkage_source` と `verified_at` が必ず付く。Position correction の長大な作業記録に埋もれない |
-| 将来の非 exact identity 活性化 | **直接的。** supply layer が `candidate_id -> production_shrine_id` を引き、その行を Production snapshot から取得して B02 → B03 → B04 に流せる。§5.1 の循環が生じない（linkage は Position 判定に依存しない） |
+| 将来の非 exact identity 活性化 | **直接的。** supply layer が `candidate_id -> production_shrine_id` を引き、その行を Production snapshot から取得して B02 → B03 → B04 に流せる。linkage の authority が Position 判定から独立しているため §5.1 の循環が生じない |
 
 ### 6.1 責務境界に関する技術的観察
 
@@ -434,14 +507,21 @@ verified_at
 
 根拠は3点。
 
-1. **循環の有無。** Resolution Record の再利用経路は仕様・実装の双方で
-   `identity_is_exact` を前提にしている（§5.1）。同じ artifact から
-   identity を導出する設計は循環する。Candidate B は循環しない。
-2. **値の出自。** Candidate A が読むことになる唯一の実在値は、record 自身が
+1. **authority の所在。** Resolution Record の再利用経路は仕様・実装の双方で
+   `identity_is_exact` を前提にしている（§5.1）。したがって同じ record を
+   linkage の authority に据える設計（A-1）は循環する。Candidate B は
+   authority を最初から Position 判定の外に置くため循環しない。
+2. **値の出自。** A-1 が読むことになる唯一の実在値は、record 自身が
    Historical と明示した section にある（§2.3）。Candidate B は新規に
    current 宣言として書ける。
-3. **存在条件。** Candidate A では linkage の存在が Position correction 履歴に
+3. **存在条件。** A-1 では linkage の存在が Position correction 履歴に
    相関する（§5 要件5）。Candidate B では identity 確認の有無だけに相関する。
+
+なお A-2（別 contract が linkage を確立し `ExistingResolution` は carrier
+に徹する形）は §5.1 が否定していない。ただしその場合 authority は結局
+Candidate B と同等の独立 contract になるため、**A-2 は B の代替ではなく
+B を前提とした運搬方法の選択肢**になる。この点も含めて、責務境界が明確
+なのは B であるという観察は変わらない。
 
 ただし Candidate B にも未解決の設計論点があり、**本監査では決めない**。
 
@@ -465,8 +545,12 @@ AND
 明示的で canonical な Production candidate linkage が存在する
 ```
 
-**両方が揃わないかぎり pilot は開始できない。** 現時点では後者が存在しない
-ため（§5）、この pilot は **実行不能**である。
+**両方が揃わないかぎり pilot 本体（activation の実行）は開始できない。**
+現時点では後者が存在しないため（§5）、pilot 本体は **実行不能**である。
+
+ただしこれは pilot に向かう作業が全部止まる、という意味ではない。
+依存関係の正確な形は §8.8 に示す。とくに **母集団の特定（条件4）は
+linkage contract の確定を待たない独立した read-only 監査**である。
 
 ### 7.2 意図する pipeline
 
@@ -547,8 +631,12 @@ wave0-010 MATCH_EXACT
 wave0-011 MATCH_EXACT
 ```
 
-非 exact pilot には **実際に `MISSING_PRODUCTION` になる候補の特定が先に
-必要**であり、それ自体が未着手である。
+非 exact pilot には **実際に `MISSING_PRODUCTION` になる候補の特定**が
+必要であり、それ自体が未着手である。
+
+この特定作業は Base Seed と Production snapshot の exact join を観測する
+だけの **read-only 監査**であり、linkage contract の確定を待たない
+（§8.8 依存関係）。
 
 ---
 
@@ -583,9 +671,15 @@ NO
 
 6要件のうち満たすのは「machine-readable（部分的）」のみ。
 contract 定義なし・coverage 50%・意味は Historical な Position 反映状況の
-観測・存在が correction 履歴に相関・B03/B04 候補選択には循環がある。
+観測・存在が correction 履歴に相関。加えて、現在の Record 自体を linkage の
+authority に据えると責務・authority の循環が生じる（§5.1）。
 
-**自動 linkage に対して non-canonical と分類する。**
+**現在の `production_shrine_id = 117` を、自動 linkage に対して
+non-canonical と分類する。**
+
+この判定は「値が canonical でない」ことについてのものであり、
+`ExistingResolution` という型が将来 linkage data の carrier になり得ない
+ことまでは述べていない（§5.1 / §6 の A-1 / A-2 の区別を参照）。
 
 ### 8.4 `ExistingResolution` はそれを公開しているか
 
@@ -610,8 +704,13 @@ NO
 1. coverage が 2 候補しかなく、そのうち linkage 値を持つのは 1 候補
 2. その値は record 自身が Historical と明示した section にある
 3. contract 定義が無く、意味が identity linkage として宣言されていない
-4. Resolution Record の再利用経路は identity exact を **前提**としており循環する
+4. Resolution Record の再利用経路は identity exact を **前提**としているため、
+   現在の Record 自体を linkage の authority に据えると循環する（§5.1）
 5. record format に schema・型・一意性・先頭一致曖昧性の保証が無い（§4）
+
+いずれも **現在の Resolution Record をそのまま authority として使う場合**の
+評価である。独立した canonical linkage contract が先に linkage を確立した
+うえで、その値をどこに置くか（carrier）は別問題として残る。
 
 ### 8.6 不足している情報
 
@@ -648,10 +747,10 @@ E. 未決の contract 論点
 | --- | --- | --- |
 | 実装コスト（初期） | 小 | 中 |
 | 責務適合 | 低（Position 履歴に identity を兼務させる） | 高（単一責務） |
-| §5.1 の循環 | **生じる** | 生じない |
-| 値の出自 | Historical section（record が現況でないと明示） | current 宣言として新規に書ける |
+| §5.1 の循環 | **A-1（record を authority にする）では生じる。** A-2（外部 contract が確立した値の carrier に徹する）では生じない | 生じない |
+| 値の出自 | 現在の実在値は Historical section のみ（record が現況でないと明示） | current 宣言として新規に書ける |
 | 現在の coverage | 1 候補 | 0 候補（ただし fail closed で整合） |
-| backfill | 過去時点記録の書き換えが要る（record が禁止） | 追記のみ。既存記録を触らない |
+| backfill | 過去時点記録の書き換えが要る（record が禁止）。A-2 で出所を外部に置くなら、`ExistingResolution` に持たせる利点自体が薄れる | 追記のみ。既存記録を触らない |
 | Position correction 履歴との結合 | 強い（存在が履歴に相関） | 無し |
 | review 可能性 | 低（長大な作業記録に埋もれる） | 高（1行差分 + source + verified_at） |
 | 非 exact 活性化への適性 | 低 | 高 |
@@ -682,8 +781,36 @@ E. 未決の contract 論点
    mutation 証明がある
 ```
 
-**1 が満たされないかぎり 2–6 は始められない。**
-現時点で 1 は満たされていない。
+#### 依存関係（正確な形）
+
+```text
+条件 1 は、条件 2 / 3 / 5 / 6 に依拠する activation の実装へ進む前に
+定義されている必要がある。
+
+条件 4 — 実際に MISSING_PRODUCTION になる母集団の特定 — は独立した
+read-only 監査であり、linkage contract の確定を待たずに着手してよい。
+```
+
+明示しておく。
+
+```text
+W0-DB02 はその母集団になり得ない。5候補すべてが MATCH_EXACT だからである。
+```
+
+したがって現時点の状態は次のとおり。
+
+| 条件 | 状態 | 依存 |
+| --- | --- | --- |
+| 1. canonical linkage contract | **未定義** | — |
+| 2. 対象候補の linkage 実在 | 未着手 | 1 の定義が必要 |
+| 3. duplicate 時の contract（P4） | 未決 | 1 の定義が必要 |
+| 4. 非 exact 母集団の特定 | 未着手 | **1 に依存しない。先行可能** |
+| 5. supply layer の fail-closed 維持 test | 未着手 | 1 の定義が必要 |
+| 6. fuzzy discovery 不発火の mutation 証明 | 未着手 | 1 の定義が必要 |
+
+条件 4 を先行させると、そもそも非 exact 候補が実在するのか、実在するなら
+何件でどの性質かが分かる。これは linkage contract を設計するときの入力に
+もなるため、**順序として 4 を先に回すことに技術的な障害は無い**。
 
 ---
 
