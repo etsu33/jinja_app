@@ -20,6 +20,7 @@ KAMI MUSUBIが、神社の事実をどのように意味へ変換し、推薦・
 | `shrine-knowledge-contract.md` | 神社Knowledge（deity/shrine_history等）の値の意味、出典、確認状態、信頼度、Fact利用条件およびAI生成値の制約を定義 |
 | `shrine-data-guide.md` | 神社データの入力・出典・品質基準を定義 |
 | `shrine-position-contract.md` | `Shrine.latitude` / `longitude` をVisitor / Navigation Anchorとして採用する意味、Source要件、競合時のHOLD/PASS判定を定義 |
+| `production-candidate-linkage-contract.md` | Candidate identityとProduction Shrine rowのcanonical linkage authority、status、evidence、失効およびfail-closed規則を定義 |
 | `recommendation-copy-guide.md` | 推薦理由の共通文章構造を定義 |
 | `action-guide.md` | 行動提案の生成原則を定義 |
 | `reflection-guide.md` | 振り返りの問いと接続方法を定義 |
