@@ -18,12 +18,20 @@ from __future__ import annotations
 import logging
 import uuid
 
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
+from temples.api.compass_public_projection import project_compass_recommendations
+from temples.api.serializers.compass import (
+    CompassErrorResponseSerializer,
+    CompassRecommendationsInvalidPurposeResponseSerializer,
+    CompassRecommendationsRequestSerializer,
+    CompassRecommendationsResponseSerializer,
+)
 from temples.services.compass_recommendation_orchestrator import (
     STATE_INVALID_PURPOSE,
     get_compass_recommendations,
@@ -46,7 +54,20 @@ class CompassRecommendationsView(APIView):
     authentication_classes = [JWTAuthentication]
     throttle_scope = "compass"
 
+    @extend_schema(
+        tags=["Compass"],
+        summary="Compass Monthly recommendations",
+        request=CompassRecommendationsRequestSerializer,
+        responses={
+            200: CompassRecommendationsResponseSerializer,
+            400: CompassRecommendationsInvalidPurposeResponseSerializer,
+            500: CompassErrorResponseSerializer,
+        },
+    )
     def post(self, request, *args, **kwargs):
+        # serializerはOpenAPI記述専用。ここでの入力解釈は従来どおり
+        # 手動で行う（docs/audit/compass-monthly-api-boundary.md Section 4:
+        # schema生成のためにruntime validation semanticsを変えない）。
         recommendation_instance_id = uuid.uuid4().hex[:8]
         data = request.data or {}
 
@@ -73,10 +94,13 @@ class CompassRecommendationsView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        recommendations = [
-            {**recommendation, "recommendation_instance_id": recommendation_instance_id}
-            for recommendation in result.recommendations
-        ]
+        # Shared Recommendation dict をそのまま widen して返さない。
+        # Public Contract v1 の allowlist へ投影してから HTTP へ載せる
+        # （同 audit Section 7 / G4、Section 10）。
+        recommendations = project_compass_recommendations(
+            result.recommendations,
+            recommendation_instance_id=recommendation_instance_id,
+        )
         body = {
             "state": result.state,
             "purpose": result.purpose,
