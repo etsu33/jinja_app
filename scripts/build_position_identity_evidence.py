@@ -12,12 +12,18 @@ candidate_id  ->  PositionIdentityIntegrationResult
 ## 位置づけ
 
 ```text
-Candidate Master / Seed / Production snapshot / Spreadsheet snapshot / Resolution
+Candidate Master / Seed / Production snapshot / Spreadsheet snapshot /
+Resolution / Canonical Production Candidate Linkage
 → 本 module（supply layer）
 → B03 assess_identity_evidence()
 → B04 integrate_position_identity()
 → Position Audit build_inputs()
 ```
+
+非 exact join（`MISSING_PRODUCTION`）では canonical linkage が
+**比較対象の Production 行だけ**を選ぶ。linkage 自体は identity の
+証明ではなく、evidence も作らない。判定は既存の B03 / B04 がそのまま
+行う。
 
 下流の B02 / B03 / B04 の規則は **再実装しない**。既存 API をそのまま呼ぶ。
 住所比較はすべて B02 の `compare_addresses()` を通す（legacy Position Audit
@@ -95,12 +101,18 @@ def _load_sibling(module_name: str) -> Any:
 #     supply layer -> B03 shrine_identity_evidence
 #                  -> B04 position_identity_integration
 #                  -> Position Audit（loader / exact join の再利用）
+#                  -> canonical linkage loader
 #
 # B02 は **直接読まない**。住所 API は B03 が再公開しているものを使う
 # （B02 の直接 consumer は B03 のままに保つ）。
+#
+# canonical linkage の parse / 検証 / active 一意性 / 逆方向曖昧さ /
+# CONFIRMED・REVOKED 判定 / evidence 検証は **すべて loader の責務**で
+# ある。本 module は検証済みの結果を消費するだけで、再実装しない。
 identity_evidence = _load_sibling("shrine_identity_evidence")
 identity_integration = _load_sibling("position_identity_integration")
 position_audit = _load_sibling("audit_shrine_positions_v2")
+canonical_linkage = _load_sibling("production_candidate_linkage")
 
 # B02 canonical address API（B03 経由の再公開）。
 compare_addresses = identity_evidence.compare_addresses
@@ -118,6 +130,29 @@ INPUT_UNAVAILABLE = "INPUT_UNAVAILABLE"
 
 ACTIVATION_STATUSES = frozenset(
     {ACTIVATED, NOT_ACTIVATED, REVIEW_REQUIRED, INPUT_UNAVAILABLE}
+)
+
+# Production 比較対象がどこから来たかを表す **supply report 専用**の
+# provenance。
+#
+# ```text
+# EXACT_JOIN         raw exact Seed ↔ Production join が返した行
+# CANONICAL_LINKAGE  canonical linkage が指した production_shrine_id の行
+# NONE               比較対象なし
+# ```
+#
+# これは **report metadata** であり、B03 の evidence でも Position Audit の
+# status でもない。B03 の採点にも B04 の identity 規則にも影響しない。
+TARGET_SOURCE_EXACT_JOIN = "EXACT_JOIN"
+TARGET_SOURCE_CANONICAL_LINKAGE = "CANONICAL_LINKAGE"
+TARGET_SOURCE_NONE = "NONE"
+
+PRODUCTION_TARGET_SOURCES = frozenset(
+    {
+        TARGET_SOURCE_EXACT_JOIN,
+        TARGET_SOURCE_CANONICAL_LINKAGE,
+        TARGET_SOURCE_NONE,
+    }
 )
 
 # Seed ↔ Production join まで到達しなかったことを表す **supply report 専用**
@@ -153,6 +188,15 @@ REASON_SEED_ROW_MISSING = "SEED_ROW_MISSING"
 REASON_PRODUCTION_SNAPSHOT_UNAVAILABLE = "PRODUCTION_SNAPSHOT_UNAVAILABLE"
 REASON_PRODUCTION_CANDIDATE_UNRESOLVED = "PRODUCTION_CANDIDATE_UNRESOLVED"
 REASON_PRODUCTION_IDENTITY_AMBIGUOUS = "PRODUCTION_IDENTITY_AMBIGUOUS"
+# canonical linkage 活性化の失敗理由（supply layer 語彙）。
+# loader の issue code を複製しない。要約だけを持つ。
+REASON_LINKAGE_ARTIFACT_UNAVAILABLE = "LINKAGE_ARTIFACT_UNAVAILABLE"
+REASON_LINKAGE_ARTIFACT_INVALID = "LINKAGE_ARTIFACT_INVALID"
+REASON_LINKAGE_NOT_AVAILABLE_FOR_CANDIDATE = (
+    "LINKAGE_NOT_AVAILABLE_FOR_CANDIDATE"
+)
+REASON_LINKAGE_TARGET_ROW_ABSENT = "LINKAGE_TARGET_ROW_ABSENT"
+REASON_LINKAGE_TARGET_ROW_DUPLICATED = "LINKAGE_TARGET_ROW_DUPLICATED"
 REASON_SPREADSHEET_SNAPSHOT_UNAVAILABLE = "SPREADSHEET_SNAPSHOT_UNAVAILABLE"
 REASON_NAME_NOT_RAW_EQUAL = "NAME_NOT_RAW_EQUAL"
 REASON_PLACE_ID_UNAVAILABLE = "PLACE_ID_UNAVAILABLE"
@@ -170,6 +214,11 @@ REVIEW_REASON_ORDER = (
     REASON_PRODUCTION_SNAPSHOT_UNAVAILABLE,
     REASON_PRODUCTION_CANDIDATE_UNRESOLVED,
     REASON_PRODUCTION_IDENTITY_AMBIGUOUS,
+    REASON_LINKAGE_ARTIFACT_UNAVAILABLE,
+    REASON_LINKAGE_ARTIFACT_INVALID,
+    REASON_LINKAGE_NOT_AVAILABLE_FOR_CANDIDATE,
+    REASON_LINKAGE_TARGET_ROW_ABSENT,
+    REASON_LINKAGE_TARGET_ROW_DUPLICATED,
     REASON_SPREADSHEET_SNAPSHOT_UNAVAILABLE,
     REASON_NAME_NOT_RAW_EQUAL,
     REASON_PLACE_ID_UNAVAILABLE,
@@ -236,6 +285,8 @@ class CandidateIdentitySupply:
     identity_status: str
 
     activation_status: str
+    # Production 比較対象の出どころ（report metadata）。
+    production_target_source: str = TARGET_SOURCE_NONE
     duplicate_production_ids: tuple[int, ...] = ()
     review_reasons: tuple[str, ...] = ()
 
@@ -259,6 +310,7 @@ class CandidateIdentitySupply:
             "join_status": self.join_status,
             "identity_status": self.identity_status,
             "activation_status": self.activation_status,
+            "production_target_source": self.production_target_source,
             "duplicate_production_ids": list(self.duplicate_production_ids),
             "review_reasons": list(self.review_reasons),
         }
@@ -416,6 +468,81 @@ def derive_existing_resolution_status(
     return identity_evidence.RESOLUTION_UNAVAILABLE
 
 
+def _resolve_linkage_target(
+    *,
+    candidate_id: str,
+    linkage_artifact: Any,
+    production_rows: Sequence[dict[str, Any]],
+    reasons: list[str],
+    availability: list[str],
+) -> dict[str, Any] | None:
+    """canonical linkage から Production 比較対象を1行だけ解決する。
+
+    ## これは identity の証明ではない
+
+    ```text
+    canonical linkage が意味するのは
+      「比較してよい Production 行はこれだ」
+    だけである。
+
+    同一神社であること / SAME_SUPPORTED / IDENTITY_EXACT /
+    canonical PASS のいずれも意味しない。
+    ```
+
+    したがって本関数は evidence を一切作らない。行を1つ返すだけで、
+    判定は既存の B03 / B04 経路がそのまま行う。
+
+    ## 解決は primary key の exact 一致のみ
+
+    ```text
+    row["id"] == active_linkage.production_shrine_id
+    ```
+
+    名称 / 住所 / 正規化住所 / fuzzy / 座標近接 / place id / 近傍 id /
+    Spreadsheet join のいずれも **使わない**。linkage が既に比較対象を
+    選んでいるので、supply layer が代替を探してはならない。
+
+    解決できないときは `None` を返し、呼び出し側は未評価のままにする。
+    """
+    # 型による信頼境界。検証済みでない object を linkage として扱わない。
+    if not isinstance(linkage_artifact, canonical_linkage.LinkageArtifact):
+        reasons.append(REASON_LINKAGE_ARTIFACT_UNAVAILABLE)
+        return None
+    if linkage_artifact.artifact_state == canonical_linkage.ARTIFACT_NOT_PRESENT:
+        # artifact 不在は正常な状態。identity の問題の証拠ではない。
+        reasons.append(REASON_LINKAGE_ARTIFACT_UNAVAILABLE)
+        return None
+    if not linkage_artifact.is_valid:
+        reasons.append(REASON_LINKAGE_ARTIFACT_INVALID)
+        return None
+    availability.append("linkage_artifact")
+
+    # active 一意性・REVOKED・逆方向曖昧さの判定は loader の責務である。
+    # ここで raw row を読み直して推測しない。
+    active = linkage_artifact.active_linkage_for(candidate_id)
+    if active is None:
+        reasons.append(REASON_LINKAGE_NOT_AVAILABLE_FOR_CANDIDATE)
+        return None
+    availability.append("linkage_active")
+
+    target_id = active.production_shrine_id
+    matches = [
+        row
+        for row in production_rows
+        if not isinstance(row.get("id"), bool) and row.get("id") == target_id
+    ]
+    if not matches:
+        # linked 行が現況 snapshot に無い。代替行を探さない。
+        reasons.append(REASON_LINKAGE_TARGET_ROW_ABSENT)
+        return None
+    if len(matches) > 1:
+        # 供給された snapshot が壊れている。先頭を黙って採らない。
+        reasons.append(REASON_LINKAGE_TARGET_ROW_DUPLICATED)
+        return None
+    availability.append("linkage_target_row")
+    return matches[0]
+
+
 def _activation_status(integration: Any, evidence_status: str | None) -> str:
     """supply report 専用の activation status を決める。
 
@@ -450,21 +577,30 @@ def build_candidate_identity_supply(
     production_rows: Sequence[dict[str, Any]] | None,
     spreadsheet_rows: Sequence[Any] | None,
     resolution: Any = None,
+    linkage_artifact: Any = None,
 ) -> CandidateIdentitySupply:
     """1候補分の identity evidence を決定的に構成する（純関数）。
 
-    候補探索は行わない。Production 行は既存の exact join でのみ解決する。
+    候補探索は行わない。Production 行は次の2経路でだけ解決する。
+
+    ```text
+    EXACT_JOIN         raw exact Seed ↔ Production join
+    CANONICAL_LINKAGE  canonical linkage が指した production_shrine_id
+    ```
 
     ## 比較対象の有無で分岐する
 
     ```text
-    MATCH_EXACT                    -> Production 行あり
+    MATCH_EXACT                    -> Production 行あり（従来どおり）
                                    -> B03 assessment
                                    -> B04 integration
                                    -> Position Audit へ供給しうる
 
-    MISSING_PRODUCTION             -> 比較対象なし
-    DUPLICATE_MATCH                -> 個別 identity 未確定
+    MISSING_PRODUCTION             -> canonical linkage を引く
+                                      解決できれば B03 / B04 へ
+                                      解決できなければ NOT_EVALUATED
+
+    DUPLICATE_MATCH                -> 従来どおり（linkage で救済しない）
     PRODUCTION_SNAPSHOT_UNAVAILABLE-> 入力なし
     MISSING_SEED                   -> 入力なし
                                    -> B03 を呼ばない
@@ -472,8 +608,12 @@ def build_candidate_identity_supply(
                                    -> identity_status = NOT_EVALUATED
     ```
 
-    後者で B03 を呼ぶと `INSUFFICIENT`（評価済みだが evidence 不足）に
-    化ける。**未評価を評価済みへ格上げしない**のがこの層の責務である。
+    比較対象が無いまま B03 を呼ぶと `INSUFFICIENT`（評価済みだが evidence
+    不足）に化ける。**未評価を評価済みへ格上げしない**のがこの層の責務で
+    ある。linkage 解決の失敗もすべて `NOT_EVALUATED` に留める。
+
+    `linkage_artifact` は **検証済みの** loader 結果を受け取る。raw JSON を
+    受け取らないし、候補ごとに artifact を読み直しもしない。
     """
     reasons: list[str] = []
     availability: list[str] = []
@@ -568,14 +708,35 @@ def build_candidate_identity_supply(
         # されれば、その候補に対して B02 -> B03 -> B04 -> REVIEW の
         # 経路が成立しうる。Pilot 1 はその linkage 源を持たない。
         if join_status == position_audit.JOIN_DUPLICATE_MATCH:
+            # MS-FOLLOWUP-05 は未決。linkage で duplicate を救済しない。
             reasons.append(REASON_PRODUCTION_IDENTITY_AMBIGUOUS)
-        else:
-            reasons.append(REASON_PRODUCTION_CANDIDATE_UNRESOLVED)
-        return _not_evaluated(
-            join_status=join_status,
-            duplicate_production_ids=tuple(duplicates),
+            return _not_evaluated(
+                join_status=join_status,
+                duplicate_production_ids=tuple(duplicates),
+            )
+
+        # MISSING_PRODUCTION のみ canonical linkage を引く。
+        reasons.append(REASON_PRODUCTION_CANDIDATE_UNRESOLVED)
+        production_row = _resolve_linkage_target(
+            candidate_id=candidate_id,
+            linkage_artifact=linkage_artifact,
+            production_rows=production_rows,
+            reasons=reasons,
+            availability=availability,
         )
-    availability.append("production_row")
+        if production_row is None:
+            return _not_evaluated(
+                join_status=join_status,
+                duplicate_production_ids=tuple(duplicates),
+            )
+        # raw join の結果は書き換えない。MISSING_PRODUCTION のままにする。
+        # canonical linkage は **比較対象の別経路**であって、exact join の
+        # 成立ではない。この区別は観測可能なまま保つ。
+        target_source = TARGET_SOURCE_CANONICAL_LINKAGE
+        availability.append("production_row")
+    else:
+        target_source = TARGET_SOURCE_EXACT_JOIN
+        availability.append("production_row")
 
     # --- Spreadsheet（任意）-------------------------------------------------
     sheet_row = None
@@ -651,6 +812,7 @@ def build_candidate_identity_supply(
         activation_status=_activation_status(
             integration, assessment.identity_evidence_status
         ),
+        production_target_source=target_source,
         duplicate_production_ids=tuple(duplicates),
         review_reasons=_order_reasons(reasons),
         integration=integration,
@@ -665,8 +827,13 @@ def build_identity_supply(
     production_rows: Sequence[dict[str, Any]] | None,
     spreadsheet_rows: Sequence[Any] | None,
     resolution_records: dict[str, Any] | None = None,
+    linkage_artifact: Any = None,
 ) -> list[CandidateIdentitySupply]:
-    """候補群の supply 結果を candidate_id 順で返す（決定的）。"""
+    """候補群の supply 結果を candidate_id 順で返す（決定的）。
+
+    `linkage_artifact` は **一度だけ読み込んだ検証済み結果**を受け取り、
+    全候補で使い回す。候補ごとに artifact file を読み直さない。
+    """
     by_id = {
         str(row.get("candidate_id")): row
         for row in candidates
@@ -681,6 +848,7 @@ def build_identity_supply(
             production_rows=production_rows,
             spreadsheet_rows=spreadsheet_rows,
             resolution=records.get(candidate_id),
+            linkage_artifact=linkage_artifact,
         )
         for candidate_id in sorted(candidate_ids)
     ]
@@ -709,17 +877,41 @@ def identity_integrations_by_candidate(
 # report
 # ---------------------------------------------------------------------------
 
-SCHEMA_VERSION = "position-identity-supply/1.0"
+# 1.0 -> 1.1 は additive。`production_target_source` /
+# `target_source_counts` / `linkage_artifact_state` を足しただけで、
+# 既存 field の意味は変えていない。
+SCHEMA_VERSION = "position-identity-supply/1.1"
 
 
-def build_report(supplies: Sequence[CandidateIdentitySupply]) -> dict[str, Any]:
+def build_report(
+    supplies: Sequence[CandidateIdentitySupply],
+    *,
+    linkage_artifact: Any = None,
+) -> dict[str, Any]:
+    """決定的な supply report を作る。
+
+    `linkage_artifact` を渡すと、loader の artifact state を診断として
+    そのまま載せる。loader の判定を supply 側で作り直さない。
+    """
     counts: dict[str, int] = {}
+    target_counts: dict[str, int] = {}
     for supply in supplies:
         counts[supply.activation_status] = counts.get(supply.activation_status, 0) + 1
+        target_counts[supply.production_target_source] = (
+            target_counts.get(supply.production_target_source, 0) + 1
+        )
+
+    if isinstance(linkage_artifact, canonical_linkage.LinkageArtifact):
+        linkage_state = linkage_artifact.artifact_state
+    else:
+        linkage_state = None
+
     return {
         "schema_version": SCHEMA_VERSION,
         "totals": {"total": len(supplies)},
         "activation_counts": dict(sorted(counts.items())),
+        "target_source_counts": dict(sorted(target_counts.items())),
+        "linkage_artifact_state": linkage_state,
         "results": [supply.to_dict() for supply in supplies],
     }
 
@@ -750,17 +942,35 @@ def render_markdown(report: dict[str, Any]) -> str:
         lines.append(f"{status} = {count}")
     lines.append("```")
     lines.append("")
+    lines.append("### Production 比較対象の出どころ")
+    lines.append("")
+    lines.append(
+        "`production_target_source` は report metadata であり、B03 の "
+        "evidence でも Position Audit の status でもない。"
+    )
+    lines.append("")
+    lines.append("```text")
+    lines.append(
+        f"linkage_artifact_state = {report['linkage_artifact_state'] or '-'}"
+    )
+    for source, count in report["target_source_counts"].items():
+        lines.append(f"{source} = {count}")
+    lines.append("```")
+    lines.append("")
     lines.append("## 候補ごとの結果")
     lines.append("")
     lines.append(
-        "| candidate_id | inputs | name | address | official_source | place_id | "
-        "resolution | B03 | B04 join | B04 identity | activation |"
+        "| candidate_id | inputs | target | name | address | official_source | "
+        "place_id | resolution | B03 | B04 join | B04 identity | activation |"
     )
-    lines.append("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |")
+    lines.append(
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |"
+    )
     for row in report["results"]:
         inputs = ", ".join(row["input_availability"]) or "-"
         lines.append(
-            f"| {row['candidate_id']} | {inputs} | {row['name_identity_status']} | "
+            f"| {row['candidate_id']} | {inputs} | "
+            f"{row['production_target_source']} | {row['name_identity_status']} | "
             f"{row['address_identity_status']} | "
             f"{row['official_source_entity_status']} | {row['place_id_status']} | "
             f"{row['existing_resolution_status']} | "
@@ -800,6 +1010,15 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--candidate-ids", nargs="*", default=list(W0_DB02_CANDIDATE_IDS)
     )
+    parser.add_argument(
+        "--linkage-artifact",
+        type=Path,
+        default=None,
+        help=(
+            "canonical linkage artifact の path。省略時は canonical な既定 "
+            "path を読む。存在しなければ ARTIFACT_NOT_PRESENT として扱う。"
+        ),
+    )
     return parser
 
 
@@ -817,6 +1036,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         else None
     )
 
+    # canonical artifact は **ここで一度だけ**読む。候補ごとに読み直さない。
+    linkage_artifact = canonical_linkage.load_linkage_artifact(
+        args.linkage_artifact
+        if args.linkage_artifact
+        else canonical_linkage.DEFAULT_ARTIFACT_PATH
+    )
+
     supplies = build_identity_supply(
         candidate_ids=args.candidate_ids,
         candidates=position_audit.load_candidate_master(),
@@ -824,8 +1050,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         production_rows=production_rows,
         spreadsheet_rows=spreadsheet_rows,
         resolution_records=position_audit.load_resolution_records(),
+        linkage_artifact=linkage_artifact,
     )
-    report = build_report(supplies)
+    report = build_report(supplies, linkage_artifact=linkage_artifact)
 
     if args.output_json:
         args.output_json.write_text(dump_json(report), encoding="utf-8")
