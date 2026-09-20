@@ -18,7 +18,7 @@
 4. Purpose Runtimeの最小表現と、既存taxonomyの再利用を定義する
 5. Direction Runtime出力（Compass Runtime Authorityが返す最小情報）を定義する
 6. Recommendation Handoffのために将来必要となる最小Runtimeコンテキストを分離定義する（統合自体は実装しない）
-7. 永続化要否を判定する
+7. Compass Direction Runtime Authority自体の永続化要否を判定する
 8. Fail-safe契約を定義する
 
 ## 対象範囲
@@ -28,7 +28,7 @@
 - Compass Runtime Authorityの入出力Schema設計
 - `target_date`・origin・birthdate・purposeの責務分離
 - Direction Runtime出力の最小形
-- 永続化要否
+- Compass Direction Runtime Authority自体の永続化要否
 - Fail-safe挙動
 
 ### 対象外
@@ -39,7 +39,7 @@
 - Premium Gate（Phase 7）
 - Analytics（Phase 8）
 - Concierge既存リクエストSchemaの変更（変更しない）
-- DB Migration（本書は不要と判定する。根拠はSection 7）
+- Compass Direction Runtime Authority以外の永続化設計・DB Migration（Weekly Presentation Snapshotを含む。Section 7）
 
 ---
 
@@ -381,26 +381,143 @@ type CompassRecommendationHandoffContext = {
 
 ## 7. Persistence（永続化）
 
-### Compass MVPはSession/Runtime-onlyで完結できるか
+### 7-1. 本Sectionの責務
 
-**YES**。Compass Runtime Authorityを構成する全関数（`kyusei.py`・`direction_reference.py`）は副作用のない純粋関数であり、`docs/audit/premium-visit-compass-time-model-contract.md` Section 6-6で確認済みの通り、生年月日+対象日があればいつでも同一結果を再計算できる。
+本Sectionが判定するのは、**Compass Direction Runtime Authority自体の永続化要否のみ**である。
 
-### 永続化が技術的に必要か
+ここでいうDirection Runtime Authorityとは、生年月日と`target_date`から既存の九星計算を用いて`CompassDirectionRuntime`を導出する責務を指す。
 
-**NO**。計算コストは軽量であり、キャッシュ・永続化を要求する技術的理由は確認できない。
+本Sectionは、Compass製品全体について「永続化を禁止する」と定義するものではない。また、Weekly Presentationなど、Direction Runtimeの計算結果を利用して別の表示体験を固定するPresentation層の永続化要否は、本書の責務外とする。
 
-### DB/Model/Migration影響
+---
 
-- DB Change: **NONE**
-- Migration: **NONE**
+### 7-2. Direction RuntimeはSession / Runtime-onlyで完結できるか
 
-### 優先方針
+**YES**。
 
-証拠が必要性を示さない限り、永続化を行わない方針を維持する。
+Compass Direction Runtime Authorityを構成する`kyusei.py`および`compass_runtime.py`の計算は、必要な入力と計算ルールが同一であれば再計算可能である。
 
-### Visit/Reflectionとの関係
+そのため、Direction Runtimeの結果を再利用する目的だけで、新しいCompass専用DB Model・cache table・履歴tableを追加する技術的必要性はない。
 
-既存`Visit`/`ShrineReflection`モデルは、Compass経由の参拝についても将来的に再利用できる可能性があるが、これは本書のスコープ外（将来のPhase 4以降で検討）とする。本書はCompass Runtime Authority自体の永続化要否のみを判定し、YES/NOともに「不要」と結論する。
+```text
+birthdate + target_date
+        ↓
+Compass Direction Runtime Authority
+        ↓
+CompassDirectionRuntime
+```
+
+この経路はRuntimeで完結する。
+
+---
+
+### 7-3. Direction Runtimeの永続化が技術的に必要か
+
+**NO**。
+
+Direction Runtimeについては、以下を新しいCompass-owned stateとして永続化しない。
+
+- `CompassDirectionRuntime`そのもの
+- `referenceDirections`
+- `calculationMethod`
+- `solarMonthIndex`
+- `targetYear`
+- Direction計算結果を再利用するためだけのcache / snapshot
+
+同一入力から再計算可能なDirection Runtime結果をDBへ固定する必要性は、現行実装から確認されていない。
+
+既存のUser Profile等が別責務で保持するデータの扱いを、本Sectionが変更するものではない。
+
+---
+
+### 7-4. Weekly Presentation Persistenceとの境界
+
+現行Compassには、Direction Runtimeとは別責務として`WeeklyPresentationSnapshot`が存在する。
+
+Weekly Presentationでは、同一Ownerの同一週における表示結果の再現性を維持するため、概ね以下のキーでPresentation結果を固定する。
+
+```text
+owner
++ week_start
++ purpose
++ direction_fingerprint
++ presentation_version
+```
+
+Snapshotには、確定した`weekly_theme`および`featured_shrine_ids`等のPresentation結果を保存する。
+
+これは、Direction Runtimeの計算コストを避けるためのCalculation Persistenceではなく、**同一週のPresentation結果を安定させるためのPresentation Persistence**である。
+
+したがって、
+
+```text
+Direction Runtime = ephemeral
+Weekly Presentation = persistent
+```
+
+は矛盾しない。
+
+Weekly Presentation SnapshotのSchema・Owner・週境界・再現性・Retention等の詳細契約は、Weekly Presentation側の契約で管理し、本書では定義しない。
+
+---
+
+### 7-5. Privacy / Data Boundary
+
+Weekly Presentation Persistenceが存在しても、Direction Runtimeのraw入力・raw出力をそのままSnapshotへ複製することを意味しない。
+
+現行`WeeklyPresentationSnapshot`は、Presentation再現性に必要な情報を保持し、少なくとも以下をSnapshotの正本データとして保存する設計ではない。
+
+- birthdate
+- origin
+- latitude / longitude
+- raw `direction_context`
+- raw Recommendation response
+
+Direction RuntimeとPresentation Persistenceは、データ責務として分離する。
+
+---
+
+### 7-6. DB / Model / Migration影響
+
+**Compass Direction Runtime Authorityについては以下を維持する。**
+
+- New DB Change: **NONE**
+- New Model: **NONE**
+- New Migration: **NONE**
+
+これはWeekly Presentation側に既存のDB Model / Migrationが存在しない、という意味ではない。
+
+`WeeklyPresentationSnapshot`およびそのMigrationはPresentation層の既存実装であり、本Sectionの「Direction Runtimeに新規永続化は不要」という判断とは別責務である。
+
+---
+
+### 7-7. 優先方針
+
+永続化の判断はLayer単位で行う。
+
+```text
+Calculation / Direction Runtime
+  → 同一入力から再計算可能
+  → 原則として永続化しない
+
+Presentation
+  → 同一期間・同一Ownerへの表示結果を固定する必要がある場合
+  → 契約上の必要性が確認された範囲で永続化を許容する
+```
+
+「Compassだから保存しない」「Compassだから保存する」という製品単位の判断にはしない。
+
+保存する責務・保存しない責務を分離し、それぞれのAuthority Contractに従う。
+
+---
+
+### 7-8. Visit / Reflectionとの関係
+
+既存`Visit` / `ShrineReflection`等の永続データは、それぞれ既存ドメインのAuthorityに属する。
+
+Compass経由で参拝・Reflectionへ到達した場合でも、それらをCompass Direction Runtimeの永続化とは扱わない。
+
+本書が定義するのは、あくまで**Compass Direction Runtime Authority自体には新しい永続化が不要である**という境界である。
 
 ---
 
@@ -497,7 +614,7 @@ FALLBACK DIRECTION`）のいずれに該当する結果についても:
 
 - `target_date`/origin/purpose/directionの入出力責務の定義
 - Fail-safe挙動の定義
-- 永続化要否の判定
+- Compass Direction Runtime Authority自体の永続化要否の判定
 
 ### Backend・実装
 
@@ -548,5 +665,5 @@ Master Principle・Product Promise・Authority境界・Signal-to-Explanation Rul
 - 本書はCompass MVPのRuntime入出力契約のみを管理する。
 - 候補フィルタ・Recommendation統合・UI・Premium・Analyticsの実装詳細は、各Phase実装時に別途正本を作成し、本書へ重複記載しない。
 - `docs/product/compass-product-contract.md`のMaster Principle・Authority境界が変更される場合は、本書との整合を確認する。
-- `target_date`/origin/purpose/directionの責務分離が変更される場合のみ、本書を更新する。
+- `target_date`/origin/purpose/directionの責務分離、またはCompass Direction Runtime AuthorityのPersistence境界が変更される場合は、本書との整合を確認する。
 - TODO、実装進捗、PR計画は本書へ記載しない。

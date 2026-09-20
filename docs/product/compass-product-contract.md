@@ -5,6 +5,8 @@
 > 本書は`docs/audit/premium-visit-compass-recommendation-feasibility.md`（PR #2470）・`docs/audit/premium-visit-compass-time-model-contract.md`（PR #2471）・`docs/audit/concierge-compass-meaning-action-authority-boundary.md`（PR #2472）・`docs/audit/compass-contract-reconciliation-direction-audit-completion.md`（PR #2473）・`docs/audit/concierge-compass-product-responsibility-contract.md`（PR #2474）の監査結論を正式化した契約である。Section 2.2は`docs/product/compass-product-direction-decision.md`（PR #2508、Mother Ship Product Decision Record）が確定したFinal Product Promise（B）・Final Direction Logic（Option C — Monthly Fallback）を整合させたものである。
 >
 > 本書はDocsのみのPRとして作成された。コード・Model・Migration・Serializer・API Endpoint・DBデータの変更は一切含まない。記載内容はCompassの製品契約であり、実装済みであることを意味しない。Free/Premium境界の最終決定は本書の対象外とする（Section 12）。
+>
+> 現行Weekly CompassのPresentation責務（Weekly Theme / Featured Shrine / Owner / Snapshot / Reproducibility）は`docs/product/compass-weekly-presentation-contract.md`を下位正本とする。Weekly側は本書のMaster Principle・5 Authority・Signal-to-Explanation Ruleを継承し、それらを再定義しない。
 
 # Visit Compass Product Contract
 
@@ -21,6 +23,7 @@
 7. Signal-to-Explanation Rule（実際に影響した信号のみを翻訳して提示する原則）を確定する
 8. purpose・origin・time・directionの入力責務を分離する
 9. Free/Premium境界の決定を明示的に将来へ委譲する
+10. Weekly Presentationの具体的なProduct責務を専用契約へ委譲し、本書との上下関係を定義する
 
 ## 対象範囲
 
@@ -32,6 +35,7 @@
 - Authority Matrix（5 Authority）
 - Signal-to-Explanation Rule
 - purpose/origin/time/directionの責務分離
+- Weekly Presentationに対する上位Product / Authority境界
 
 ### 対象外
 
@@ -511,6 +515,16 @@ shrine
 compass-specific explanation（「なぜこの方向か」+「なぜこの神社か」、Section 7で分離）
 ```
 
+### 3.1 Weekly Presentationとの関係
+
+Weekly CompassはSection 3のPrimary Experienceを置き換える別のDirection Modelではなく、Monthly Compassの成功結果に追加されるPresentation層である。
+
+Weeklyの「週」はPresentation cadence / continuityの単位であり、Section 4が定義するCompassのDirection Time Model（MONTH）をWEEKへ変更しない。Weekly専用の方位計算を導入せず、既存Compass Runtime AuthorityのDirection Runtimeを再利用する。
+
+Weekly Theme・Featured Shrine・Owner・Snapshot・Reproducibility等の具体的なProduct責務は`docs/product/compass-weekly-presentation-contract.md`へ委譲する。
+
+Weekly Presentationの永続化はPresentation結果の安定化を目的とし、Compass Direction Runtime Authority自体の永続化を意味しない。Direction RuntimeのPersistence境界は`docs/product/compass-mvp-runtime-contract.md`を正本とする。
+
 ---
 
 ## 4. 時間モデル: MONTH
@@ -560,6 +574,8 @@ compass-specific explanation（「なぜこの方向か」+「なぜこの神社
 | Recommendation Authority | なぜ候補集合の中からこの神社候補が選ばれたか、実際に寄与したRecommendation信号 | 裏付けのない神社事実、未使用の占術/方位信号 |
 | Shrine Knowledge Authority | 神社の由緒、祭神/事実/出典、裏付けのあるご利益/意味情報 | 個人化された方位、個人の未来の結果 |
 | Presentation Authority | 上記4 Authorityの出力を、意味を変えずに翻訳・整形すること | 新規Factの生成、Consultation/方位の再解釈、順位の再計算 |
+
+Weekly Presentationは第6のtop-level Authorityを追加しない。`docs/product/compass-weekly-presentation-contract.md`が定義するWeekly Presentation責務は、既存Presentation AuthorityのWeekly特化責務として扱う。したがってWeekly側はRecommendation Authority・Compass Runtime Authority・Shrine Knowledge Authorityを上書きしない。
 
 **Recommendation AuthorityとShrine Knowledge Authorityとの境界**: Compass Runtime Authorityは、候補集合の絞り込み（Section 3の「geographic candidate set」）にのみ関与し、絞り込んだ候補集合の中でどの神社が最も意味的に合うかを決定する権限を持たない。その決定はRecommendation Authority（既存スコアリング）とShrine Knowledge Authority（Reason生成）の合成結果としてのみ成立する。
 
@@ -663,6 +679,7 @@ Productでは以下を管理する。
 - Authority境界の定義
 - 方位前面化の条件
 - purpose/origin/time/directionの責務分離
+- Weekly Presentationに適用される上位Product / Authority境界。Weekly固有の詳細は`docs/product/compass-weekly-presentation-contract.md`へ委譲する
 
 ### Core
 
@@ -729,6 +746,7 @@ Compassの計測契約は、別途Analytics契約PRで定義する。本書で�
 - `docs/core/direction-response-contract.md`
 - `docs/product/action_suggestion_v4.md`
 - `docs/product/premium-experience.md`
+- `docs/product/compass-weekly-presentation-contract.md`
 - `docs/analytics/recommendation-score-v2-current-design.md`
 - `docs/ops/direction-fail-safe.md`
 
@@ -741,4 +759,5 @@ Compassの計測契約は、別途Analytics契約PRで定義する。本書で�
 - Free/Premium境界、価格、Analytics契約が確定した場合は、専用の正本文書で管理し、本書へ重複記載しない。
 - Master Principle（Section 0）またはAuthority境界（Section 6）が変更される場合のみ、本書を更新する。
 - Concierge側の契約（`concierge-first-final-spec.md`等）が変更される場合は、本書のSection 5との整合を確認する。
+- Weekly Presentation Contractが本書のMaster Principle・MONTH時間モデル・5 Authority境界へ影響する変更を行う場合は、本書との整合を確認する。Weekly固有のPresentation詳細のみの変更はWeekly Contract側で管理する。
 - TODO、実装進捗、PR計画、監査の時点記録は本書へ記載しない（それらは`docs/audit/`配下で管理する）。
