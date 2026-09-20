@@ -616,6 +616,53 @@ Primary Position Evidence の `entity_match = DIFFERENT / NON_SHRINE` と
 
 `NOT_EVALUATED` のときの挙動は P2-B04 以前と完全に同じである。
 
+#### HOLD → REVIEW の転換は `JOIN_MISSING_PRODUCTION` だけ
+
+B03 evidence は **構造的な join 失敗を置き換えない**。
+
+```text
+JOIN_MISSING_PRODUCTION + B03 評価済み
+  → join_status は保持
+  → IDENTITY_EVIDENCE_* を出す
+  → Machine Audit REVIEW          ← 承認済みの転換はここだけ
+```
+
+`JOIN_MISSING_PRODUCTION` が示すのは
+
+```text
+production snapshot が存在する
+かつ raw exact (name_jp, address) の一致件数 = 0
+```
+
+だけで、「その Shrine が Production に存在しない」ことは証明していない。
+この経路では `RC_MISSING_PRODUCTION` を `reason_codes` に残さないが、
+raw join の事実は `join_status` に serialize され続ける。
+
+次は B03 evidence があっても **HOLD のまま**である。
+
+| join status | reason code | 理由 |
+| --- | --- | --- |
+| `JOIN_MISSING_SEED` | `MISSING_SEED` | B03 は Seed 側 identity anchor の不在を修復できない |
+| `JOIN_DUPLICATE_MATCH` | `DUPLICATE_PRODUCTION_IDENTITY` | B03 は duplicate resolution 機構ではない。複数の exact Production 行から1つを選ばない |
+| `PRODUCTION_SNAPSHOT_UNAVAILABLE` | `PRODUCTION_SNAPSHOT_UNAVAILABLE` | B03 evidence は snapshot 不在の代替にならない |
+
+`JOIN_IDENTITY_REVIEW_REQUIRED` は既に review-class の identity 状態で
+あり、B03 evidence は `seed_production_identity_status` として共存するが
+exact identity には変えない。B03 が `CONFLICT` でも**新しい** HOLD 経路は
+作らない（HOLD は既存の `IDENTITY_NOT_EXACT` 由来のまま）。
+
+#### 評価順
+
+```text
+1. production snapshot unavailable      既存の失敗
+2. JOIN_MISSING_PRODUCTION + B03 評価済み  identity 軸 REVIEW（承認済み転換）
+   JOIN_MISSING_PRODUCTION + B03 未評価    既存 HOLD
+3. JOIN_MISSING_SEED                    既存 HOLD
+4. JOIN_DUPLICATE_MATCH                 既存 HOLD
+5. JOIN_IDENTITY_REVIEW_REQUIRED        既存の identity 状態を維持
+6. JOIN_MATCH_EXACT                     exact path
+```
+
 ### 9.2 Position proof path
 
 現在の Position を**どの経路で機械的に証明したか**。排他的に1つだけ選ぶ。

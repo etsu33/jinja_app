@@ -375,7 +375,10 @@ def test_b04_gc06_same_supported_blocks_fallback_even_with_a_production_row():
     assert audited.position_proof_path == audit.PROOF_NONE
     assert audit.RC_RESOLUTION_RECORD_REUSED not in audited.reason_codes
     assert audit.RC_SEED_PRODUCTION_EXACT not in audited.reason_codes
-    assert audited.audit_status == audit.REVIEW
+    # B03 evidence は identity 軸として共存するが exact identity にしない。
+    assert audited.seed_production_identity_status == adapter.IDENTITY_SAME_SUPPORTED
+    # `JOIN_IDENTITY_REVIEW_REQUIRED` の既存 identity 状態は維持される。
+    assert audit.RC_IDENTITY_NOT_EXACT in audited.reason_codes
     # Seed/Production 座標差の観測も exact identity 前提なので出さない。
     assert audit.RC_SEED_PRODUCTION_COORDINATE_DIFFERS not in audited.reason_codes
 
@@ -790,3 +793,144 @@ def test_b04_is_not_wired_into_any_further_consumer():
         if "position_identity_integration" in path.read_text(encoding="utf-8"):
             callers.append(str(path.relative_to(REPO_ROOT)))
     assert callers == [], callers
+
+
+# ---------------------------------------------------------------------------
+# 構造的 join 失敗は B03 evidence で置き換えない（review correction）
+# ---------------------------------------------------------------------------
+
+STRUCTURAL_HOLD_JOINS = (
+    ("MISSING_SEED", "JOIN_MISSING_SEED", "RC_MISSING_SEED"),
+    ("DUPLICATE_MATCH", "JOIN_DUPLICATE_MATCH", "RC_DUPLICATE_PRODUCTION_IDENTITY"),
+)
+
+
+@pytest.mark.parametrize(("label", "join_attr", "code_attr"), STRUCTURAL_HOLD_JOINS)
+@pytest.mark.parametrize(
+    "identity_status",
+    ["SAME_SUPPORTED", "REVIEW_REQUIRED", "CONFLICT", "INSUFFICIENT"],
+)
+def test_structural_join_failures_stay_hold_even_with_identity_evidence(
+    label, join_attr, code_attr, identity_status
+):
+    """B03 evidence は構造的 join 失敗を修復しない。
+
+    * `JOIN_MISSING_SEED`      Seed 側の identity anchor 不在
+    * `JOIN_DUPLICATE_MATCH`   exact Production 行が複数
+
+    B03 は Seed 不在を修復できず、duplicate resolution 機構でもない。
+    複数の exact Production 行から1つを選んではならない。
+    """
+    audited = audit.evaluate(
+        _audit_item(
+            production=None,
+            seed_production_join_status=getattr(audit, join_attr),
+            seed_production_identity_status=identity_status,
+            primary_position_evidence=_evidence(),
+        )
+    )
+    assert audited.audit_status == audit.HOLD, (label, identity_status)
+    assert getattr(audit, code_attr) in audited.reason_codes, label
+    # identity 軸としては記録されるが、HOLD を置き換えない。
+    assert audited.seed_production_identity_status == identity_status
+    for code in audit.IDENTITY_EVIDENCE_REVIEW_CODES:
+        assert code not in audited.reason_codes, (label, code)
+    # exact identity にはならない。
+    assert audit.RC_SEED_PRODUCTION_EXACT not in audited.reason_codes
+
+
+@pytest.mark.parametrize(
+    "identity_status",
+    ["SAME_SUPPORTED", "REVIEW_REQUIRED", "CONFLICT", "INSUFFICIENT"],
+)
+def test_production_snapshot_unavailable_is_unchanged_by_identity_evidence(
+    identity_status,
+):
+    """snapshot 不在は B03 evidence で代替されない。"""
+    audited = audit.evaluate(
+        _audit_item(
+            production=None,
+            seed_production_join_status=audit.JOIN_PRODUCTION_SNAPSHOT_UNAVAILABLE,
+            production_snapshot_available=False,
+            seed_production_identity_status=identity_status,
+            primary_position_evidence=_evidence(),
+        )
+    )
+    assert audited.audit_status == audit.HOLD
+    assert audit.RC_PRODUCTION_SNAPSHOT_UNAVAILABLE in audited.reason_codes
+    for code in audit.IDENTITY_EVIDENCE_REVIEW_CODES:
+        assert code not in audited.reason_codes, code
+
+
+@pytest.mark.parametrize(
+    "identity_status",
+    ["SAME_SUPPORTED", "REVIEW_REQUIRED", "CONFLICT", "INSUFFICIENT"],
+)
+def test_identity_review_required_join_keeps_its_existing_state(identity_status):
+    """`JOIN_IDENTITY_REVIEW_REQUIRED` は既存の identity 状態を保つ。
+
+    B03 evidence は `seed_production_identity_status` として共存するが、
+
+    * exact identity には変えない
+    * B03 が `CONFLICT` でも **新しい** HOLD 経路を作らない
+      （HOLD は既存の `RC_IDENTITY_NOT_EXACT` 由来のまま）
+    """
+    audited = audit.evaluate(
+        _audit_item(
+            seed_production_join_status=audit.JOIN_IDENTITY_REVIEW_REQUIRED,
+            seed_production_identity_status=identity_status,
+            primary_position_evidence=_evidence(),
+        )
+    )
+    assert audited.seed_production_identity_status == identity_status
+    assert audit.RC_SEED_PRODUCTION_EXACT not in audited.reason_codes
+    # B03 由来の新しい HOLD code は増えていない。
+    assert audit.RC_IDENTITY_NOT_EXACT in audited.reason_codes
+    for code in audit.IDENTITY_EVIDENCE_REVIEW_CODES:
+        assert code not in audit.HOLD_REASON_CODES, code
+
+
+def test_only_missing_production_gets_the_hold_to_review_transition():
+    """承認された HOLD → REVIEW 転換は `JOIN_MISSING_PRODUCTION` だけ。"""
+    transitioned = audit.evaluate(
+        _audit_item(
+            production=None,
+            seed_production_join_status=audit.JOIN_MISSING_PRODUCTION,
+            seed_production_identity_status=adapter.IDENTITY_SAME_SUPPORTED,
+            primary_position_evidence=_evidence(),
+        )
+    )
+    assert transitioned.audit_status == audit.REVIEW
+    assert audit.RC_IDENTITY_EVIDENCE_SAME_SUPPORTED in transitioned.reason_codes
+    # raw join の事実は join_status に残る。
+    assert transitioned.join_status == audit.JOIN_MISSING_PRODUCTION
+
+    # 他の非 exact join は転換しない。
+    for join_status in (
+        audit.JOIN_MISSING_SEED,
+        audit.JOIN_DUPLICATE_MATCH,
+        audit.JOIN_IDENTITY_REVIEW_REQUIRED,
+    ):
+        audited = audit.evaluate(
+            _audit_item(
+                production=None,
+                seed_production_join_status=join_status,
+                seed_production_identity_status=adapter.IDENTITY_SAME_SUPPORTED,
+                primary_position_evidence=_evidence(),
+            )
+        )
+        assert audited.audit_status == audit.HOLD, join_status
+
+
+def test_missing_production_without_identity_evidence_is_unchanged():
+    """B03 未評価なら `JOIN_MISSING_PRODUCTION` は従来どおり HOLD。"""
+    audited = audit.evaluate(
+        _audit_item(
+            production=None,
+            seed_production_join_status=audit.JOIN_MISSING_PRODUCTION,
+            primary_position_evidence=_evidence(),
+        )
+    )
+    assert audited.audit_status == audit.HOLD
+    assert audit.RC_MISSING_PRODUCTION in audited.reason_codes
+    assert audited.seed_production_identity_status == audit.IDENTITY_NOT_EVALUATED

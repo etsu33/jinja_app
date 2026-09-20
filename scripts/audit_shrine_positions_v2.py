@@ -835,24 +835,47 @@ def evaluate(item: ShrinePositionAuditInput) -> ShrinePositionAuditResult:
         IDENTITY_NOT_EVALUATED,
     )
 
+    # 構造的な join 失敗は B03 evidence で置き換えない。
+    #
+    # HOLD → REVIEW の転換が承認されているのは `JOIN_MISSING_PRODUCTION`
+    # **だけ**である。その join status が示すのは
+    #
+    #     production snapshot が存在する
+    #     かつ raw exact (name_jp, address) の一致件数 = 0
+    #
+    # だけで、「その Shrine が Production に存在しない」ことは証明して
+    # いない。B03 evidence が明示的に評価されていれば「identity evidence
+    # が欠けている」状態ではないため、identity 軸の REVIEW code を出す。
+    # raw join の事実は `join_status` に serialize され続ける。
+    #
+    # 次の構造的失敗は B03 evidence があっても HOLD のまま維持する。
+    #
+    #     JOIN_MISSING_SEED                    Seed 側の identity anchor 不在
+    #     JOIN_DUPLICATE_MATCH                 exact Production 行が複数
+    #     JOIN_PRODUCTION_SNAPSHOT_UNAVAILABLE snapshot 自体が無い
+    #
+    # B03 は Seed 不在を修復できず、duplicate resolution 機構でもない。
+    # 複数の exact Production 行から1つを選んではならない。
     if not item.production_snapshot_available:
         codes.add(RC_PRODUCTION_SNAPSHOT_UNAVAILABLE)
-    elif identity_evidence_evaluated:
-        # 非 exact join に対して B03 identity evidence が明示的に供給された。
-        # 「identity evidence が欠けている」状態ではないので、従来の
-        # identity HOLD ではなく identity 軸の REVIEW code を出す。
-        #
-        # exact identity ではないことは変わらない。`RC_SEED_PRODUCTION_EXACT`
-        # は出さず、Resolution fallback も artifact Production 参照も
-        # 開かない。B03 の CONFLICT 単独でも HOLD にしない（v1）。
-        codes.add(IDENTITY_STATUS_REASON_CODES[identity_status])
     elif item.seed_production_join_status == JOIN_MISSING_PRODUCTION:
-        codes.add(RC_MISSING_PRODUCTION)
+        if identity_evidence_evaluated:
+            # 承認済みの HOLD → REVIEW 転換はここだけ。
+            # exact identity ではないことは変わらない。
+            # `RC_SEED_PRODUCTION_EXACT` は出さず、Resolution fallback も
+            # artifact Production 参照も開かない。B03 の CONFLICT 単独でも
+            # 新しい HOLD を作らない（v1）。
+            codes.add(IDENTITY_STATUS_REASON_CODES[identity_status])
+        else:
+            codes.add(RC_MISSING_PRODUCTION)
     elif item.seed_production_join_status == JOIN_MISSING_SEED:
         codes.add(RC_MISSING_SEED)
     elif item.seed_production_join_status == JOIN_DUPLICATE_MATCH:
         codes.add(RC_DUPLICATE_PRODUCTION_IDENTITY)
     elif item.seed_production_join_status == JOIN_IDENTITY_REVIEW_REQUIRED:
+        # 既に review-class の identity 状態。B03 evidence は
+        # `seed_production_identity_status` として共存するが、exact identity
+        # には変えない。B03 が CONFLICT でも新しい HOLD 経路を作らない。
         codes.add(RC_IDENTITY_NOT_EXACT)
     else:
         codes.add(RC_SEED_PRODUCTION_EXACT)
