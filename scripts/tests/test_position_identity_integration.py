@@ -503,7 +503,20 @@ def test_b04_gc10_b04_depends_on_b03_only_and_never_directly_on_b02():
     )
 
 
-def test_b04_gc11_b03_direct_consumers_are_exactly_the_b04_adapter():
+# B03 を **直接** 消費してよい module の厳密な集合。
+#
+# B04 導入時点では B04 adapter だけだったが、real-data supply layer の
+# 追加でこの不変条件は設計どおり更新された（supply layer は B03 の
+# `assess_identity_evidence()` を直接呼ぶ必要がある）。
+# canonical な allowlist は `scripts/tests/test_shrine_identity_evidence.py`
+# が持ち、ここではそれと同値であることを固定する。
+B03_SANCTIONED_CONSUMERS = {
+    "scripts/position_identity_integration.py",
+    "scripts/build_position_identity_evidence.py",
+}
+
+
+def test_b04_gc11_b03_direct_consumers_are_exactly_the_sanctioned_set():
     callers = []
     for path in sorted(REPO_ROOT.glob("scripts/*.py")) + sorted(
         (REPO_ROOT / "backend").rglob("*.py")
@@ -512,7 +525,7 @@ def test_b04_gc11_b03_direct_consumers_are_exactly_the_b04_adapter():
             continue
         if "shrine_identity_evidence" in path.read_text(encoding="utf-8"):
             callers.append(str(path.relative_to(REPO_ROOT)))
-    assert set(callers) == {"scripts/position_identity_integration.py"}, callers
+    assert set(callers) == B03_SANCTIONED_CONSUMERS, callers
 
 
 def test_b04_gc11_b02_direct_consumers_remain_exactly_b03():
@@ -814,8 +827,13 @@ def test_adapter_result_is_immutable():
 # Position Audit は identity evidence に B04 を通してのみ触れる。
 # B03 / B02 を直接 import / load してはならない（推移的依存は上流の
 # allowlist に載せない）。
+#
+# supply layer（real-data identity evidence）は本物の
+# `PositionIdentityIntegrationResult` を構成する必要があるため、B04 を
+# 直接消費する。互換 object の捏造を避けるための sanction である。
 B04_SANCTIONED_CONSUMERS = {
     "scripts/audit_shrine_positions_v2.py",
+    "scripts/build_position_identity_evidence.py",
 }
 
 
@@ -823,7 +841,8 @@ def test_b04_has_exactly_the_sanctioned_direct_consumers():
     """B04 の直接 consumer が allowlist と **完全一致** すること。
 
     ```text
-    Position Audit -> B04 integration boundary -> B03 -> B02
+    Position Audit        -> B04 integration boundary -> B03 -> B02
+    real-data supply layer -> B04 integration boundary
     ```
 
     `<=` ではなく `==` を使う（必要な依存が消えたことも検出するため）。
