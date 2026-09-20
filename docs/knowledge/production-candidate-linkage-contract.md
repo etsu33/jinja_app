@@ -838,7 +838,7 @@ canonical linkage の失効には、追跡可能な revocation evidence を要�
 証明にならない。**
 
 ```text
-git diff            変更が起きたことの可視性を与える
+git diff                  変更が起きたことの可視性を与える
 revocation_evidence_refs  その変更が正しいことの根拠を与える
 ```
 
