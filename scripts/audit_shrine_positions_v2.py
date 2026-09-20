@@ -50,6 +50,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import importlib.util
 import json
 import math
 import re
@@ -66,12 +67,58 @@ CANDIDATE_MASTER_PATH = (
 )
 RESOLUTION_RECORD_DIR = REPO_ROOT / "docs" / "audit" / "shrine-position"
 
+# ---------------------------------------------------------------------------
+# B04 integration boundary（P2-B04）
+# ---------------------------------------------------------------------------
+# 依存方向は次で固定する。
+#
+#     Position Audit  ->  B04 integration boundary  ->  B03  ->  B02
+#
+# Position Audit は **B03 も B02 も直接 import / load しない**。identity
+# evidence に触れるのは B04 adapter を通じてだけである。B04 adapter は
+# Position Audit を import しないため、この向きに loader cycle は無い。
+#
+# `scripts/` は package ではないため、既存の canonical loader pattern を使う。
+_IDENTITY_INTEGRATION_MODULE_NAME = "position_identity_integration"
+_IDENTITY_INTEGRATION_MODULE_PATH = (
+    Path(__file__).resolve().parent / f"{_IDENTITY_INTEGRATION_MODULE_NAME}.py"
+)
+
+
+def _load_identity_integration_module() -> Any:
+    cached = sys.modules.get(_IDENTITY_INTEGRATION_MODULE_NAME)
+    if cached is not None and getattr(cached, "__file__", None) == str(
+        _IDENTITY_INTEGRATION_MODULE_PATH
+    ):
+        return cached
+    spec = importlib.util.spec_from_file_location(
+        _IDENTITY_INTEGRATION_MODULE_NAME, _IDENTITY_INTEGRATION_MODULE_PATH
+    )
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[_IDENTITY_INTEGRATION_MODULE_NAME] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+identity_integration = _load_identity_integration_module()
+
+# HOLD -> REVIEW の転換を起動できるのは **この型の実体だけ**である。
+# 任意の status 文字列では起動しない（provenance が不十分なため）。
+PositionIdentityIntegrationResult = (
+    identity_integration.PositionIdentityIntegrationResult
+)
+
 # P2-B01 で contract-significant な serialized field を **追加**した
 # （`position_proof_path` / `anchor_semantics_status` / `artifact_sync_status`）。
 # 既存 field の削除・改名・再解釈は行っていないため、後方互換な追加として
 # minor を上げる。Repository の慣行（`shrine_expansion_candidate_master.json`
 # の `schema_version` 1.1 -> 1.2 = 後方互換な追加/改名）と同じ扱いである。
-SCHEMA_VERSION = "position-audit-v2/1.1"
+#
+# P2-B04 で `seed_production_identity_status` を追加した。これも
+# contract-significant な serialized field の追加であり、P2-A02 §28 の
+# 「silent schema drift を許さない」に従って意図的に minor を上げる。
+# 既存 field の意味は変えていない（`join_status` は従来どおり）。
+SCHEMA_VERSION = "position-audit-v2/1.2"
 
 # ---------------------------------------------------------------------------
 # Float Comparison Contract v1
@@ -156,6 +203,37 @@ JOIN_IDENTITY_REVIEW_REQUIRED = "IDENTITY_REVIEW_REQUIRED"
 # Production snapshot 自体が無い場合。MATCH_EXACT を騙らせない。
 JOIN_PRODUCTION_SNAPSHOT_UNAVAILABLE = "PRODUCTION_SNAPSHOT_UNAVAILABLE"
 
+# ---------------------------------------------------------------------------
+# Seed ↔ Production identity 軸（P2-B04）
+# ---------------------------------------------------------------------------
+# `seed_production_join_status` とは **別の軸**である。join status を
+# 上書きしない。`JOIN_MATCH_EXACT` の意味は従来どおり
+#
+#     raw exact (name_jp, address) で Production 行がちょうど1件
+#
+# だけであり、normalization / fuzzy / alias / B03 evidence のいずれも
+# `JOIN_MATCH_EXACT` を生まない。
+#
+# exact identity と認められるのは `IDENTITY_EXACT` だけである。
+# B03 の `SAME_SUPPORTED` は強い支持 evidence だが exact identity ではない。
+IDENTITY_EXACT = "EXACT"
+IDENTITY_SAME_SUPPORTED = "SAME_SUPPORTED"
+IDENTITY_REVIEW_REQUIRED = "REVIEW_REQUIRED"
+IDENTITY_CONFLICT = "CONFLICT"
+IDENTITY_INSUFFICIENT = "INSUFFICIENT"
+IDENTITY_NOT_EVALUATED = "NOT_EVALUATED"
+
+SEED_PRODUCTION_IDENTITY_STATUSES = frozenset(
+    {
+        IDENTITY_EXACT,
+        IDENTITY_SAME_SUPPORTED,
+        IDENTITY_REVIEW_REQUIRED,
+        IDENTITY_CONFLICT,
+        IDENTITY_INSUFFICIENT,
+        IDENTITY_NOT_EVALUATED,
+    }
+)
+
 # Production ↔ Spreadsheet join
 SHEET_JOIN_EXACT = "JOIN_EXACT"
 SHEET_JOIN_CORROBORATED = "JOIN_CORROBORATED"
@@ -227,6 +305,36 @@ RC_ARTIFACT_CANDIDATE_MASTER_DRIFT = "ARTIFACT_CANDIDATE_MASTER_DRIFT"
 RC_ARTIFACT_RESOLUTION_DRIFT = "ARTIFACT_RESOLUTION_DRIFT"
 RC_ARTIFACT_SYNC_INPUT_UNAVAILABLE = "ARTIFACT_SYNC_INPUT_UNAVAILABLE"
 
+# --- Seed ↔ Production identity 軸（P2-B04）---
+#
+# `RC_SEED_PRODUCTION_EXACT` とは **別語彙**である。混ぜてはならない。
+# `SAME_SUPPORTED` を AUTO_PASS evidence として扱わない。
+# B03 の `CONFLICT` 単独を HOLD にしない（P2-B04 v1）。
+RC_IDENTITY_EVIDENCE_SAME_SUPPORTED = "IDENTITY_EVIDENCE_SAME_SUPPORTED"
+RC_IDENTITY_EVIDENCE_REVIEW_REQUIRED = "IDENTITY_EVIDENCE_REVIEW_REQUIRED"
+RC_IDENTITY_EVIDENCE_CONFLICT = "IDENTITY_EVIDENCE_CONFLICT"
+RC_IDENTITY_EVIDENCE_INSUFFICIENT = "IDENTITY_EVIDENCE_INSUFFICIENT"
+RC_IDENTITY_EVIDENCE_NOT_EVALUATED = "IDENTITY_EVIDENCE_NOT_EVALUATED"
+
+# 評価済み identity evidence は REVIEW を駆動する（HOLD は作らない）。
+IDENTITY_EVIDENCE_REVIEW_CODES = frozenset(
+    {
+        RC_IDENTITY_EVIDENCE_SAME_SUPPORTED,
+        RC_IDENTITY_EVIDENCE_REVIEW_REQUIRED,
+        RC_IDENTITY_EVIDENCE_CONFLICT,
+        RC_IDENTITY_EVIDENCE_INSUFFICIENT,
+    }
+)
+
+# identity status -> reason code。
+IDENTITY_STATUS_REASON_CODES = {
+    IDENTITY_SAME_SUPPORTED: RC_IDENTITY_EVIDENCE_SAME_SUPPORTED,
+    IDENTITY_REVIEW_REQUIRED: RC_IDENTITY_EVIDENCE_REVIEW_REQUIRED,
+    IDENTITY_CONFLICT: RC_IDENTITY_EVIDENCE_CONFLICT,
+    IDENTITY_INSUFFICIENT: RC_IDENTITY_EVIDENCE_INSUFFICIENT,
+    IDENTITY_NOT_EVALUATED: RC_IDENTITY_EVIDENCE_NOT_EVALUATED,
+}
+
 ANCHOR_SEMANTICS_REASON_CODES = frozenset(
     {
         RC_ANCHOR_SEMANTICS_REVIEW_REQUIRED,
@@ -285,6 +393,12 @@ REVIEW_REASON_CODES = frozenset(
         RC_ANCHOR_SEMANTICS_REVIEW_REQUIRED,
         RC_ANCHOR_SEMANTICS_NOT_EVALUATED,
         RC_ANCHOR_SEMANTICS_UNKNOWN,
+        # P2-B04: 評価済み identity evidence は REVIEW を駆動する。
+        # HOLD には入れない（B03 の CONFLICT 単独を HOLD にしない）。
+        RC_IDENTITY_EVIDENCE_SAME_SUPPORTED,
+        RC_IDENTITY_EVIDENCE_REVIEW_REQUIRED,
+        RC_IDENTITY_EVIDENCE_CONFLICT,
+        RC_IDENTITY_EVIDENCE_INSUFFICIENT,
     }
 )
 
@@ -315,6 +429,9 @@ OBSERVATION_REASON_CODES = frozenset(
         RC_SEED_PRODUCTION_COORDINATE_DIFFERS,
         # positive な観測
         RC_SEED_PRODUCTION_EXACT,
+        # P2-B04: identity evidence 未評価は観測のみ。status を動かさない
+        # （既存挙動との後方互換）。
+        RC_IDENTITY_EVIDENCE_NOT_EVALUATED,
     }
 )
 
@@ -603,6 +720,16 @@ class ShrinePositionAuditInput:
     # None は「未評価」であって「確認済み」ではない。
     anchor_semantics_status: str | None = None
     seed_production_join_status: str = JOIN_MATCH_EXACT
+    # P2-B04: join status とは **別軸** の identity evidence。
+    #
+    # 受け取るのは B04 adapter が返した `PositionIdentityIntegrationResult`
+    # の **実体だけ**である。status 文字列を直接渡しても採用しない
+    # （HOLD を抑止するには provenance が不十分なため）。
+    #
+    # 未供給（既定）なら未評価であり、その場合の挙動は P2-B04 以前と
+    # 完全に同じである。非 exact join からここへ `EXACT` を持ち込むことは
+    # できない。
+    position_identity_integration: Any = None
     production_snapshot_available: bool = True
     spreadsheet_snapshot_available: bool = True
     duplicate_production_ids: tuple[int, ...] = ()
@@ -616,6 +743,8 @@ class ShrinePositionAuditResult:
     join_status: str
     spreadsheet_join_status: str
     audit_status: str
+    # P2-B04 で追加した identity 軸（join_status とは別）。
+    seed_production_identity_status: str = IDENTITY_NOT_EVALUATED
     # P2-B01 で追加した contract-significant field（schema 1.1）。
     position_proof_path: str = PROOF_NONE
     anchor_semantics_status: str = ANCHOR_SEMANTICS_NOT_EVALUATED
@@ -644,6 +773,7 @@ class ShrinePositionAuditResult:
             "join_status": self.join_status,
             "spreadsheet_join_status": self.spreadsheet_join_status,
             "audit_status": self.audit_status,
+            "seed_production_identity_status": self.seed_production_identity_status,
             "position_proof_path": self.position_proof_path,
             "anchor_semantics_status": self.anchor_semantics_status,
             "artifact_sync_status": self.artifact_sync_status,
@@ -668,6 +798,35 @@ class ShrinePositionAuditResult:
 # ---------------------------------------------------------------------------
 # Evaluator
 # ---------------------------------------------------------------------------
+
+
+def _integration_identity_status(integration: Any, join_status: str) -> str:
+    """B04 integration result から effective identity status を取り出す。
+
+    信頼境界はここである。次を **すべて** 満たすときだけ採用する。
+
+    ```text
+    B04 adapter が返した PositionIdentityIntegrationResult の実体である
+    かつ その join_status が監査対象の join_status と一致する
+    かつ identity_status が閉じた enum の値である
+    かつ identity_status が EXACT ではない
+    ```
+
+    status 文字列を直接渡しても採用しない。任意の文字列で既存の HOLD を
+    抑止できてしまうと provenance が成立しないためである。
+
+    満たさない場合は推測せず `NOT_EVALUATED` へ倒す（P2-B04 以前と同じ挙動）。
+    """
+    if not isinstance(integration, PositionIdentityIntegrationResult):
+        return IDENTITY_NOT_EVALUATED
+    if integration.join_status != join_status:
+        # 別の join に対する評価結果を流用しない。
+        return IDENTITY_NOT_EVALUATED
+    status = str(integration.identity_status or "").strip().upper()
+    if status not in SEED_PRODUCTION_IDENTITY_STATUSES or status == IDENTITY_EXACT:
+        # `EXACT` は raw exact join だけが生み出す。
+        return IDENTITY_NOT_EVALUATED
+    return status
 
 
 def _classify(reason_codes: Iterable[str]) -> str:
@@ -732,20 +891,73 @@ def evaluate(item: ShrinePositionAuditInput) -> ShrinePositionAuditResult:
     # =====================================================================
     # 2. identity validation
     # =====================================================================
+    # --- identity 軸の確定（P2-B04）---------------------------------------
+    #
+    # `EXACT` は raw exact join だけが生み出す。B03 evidence がどれほど
+    # 強くても exact identity にはならない。非 exact join から `EXACT` が
+    # 持ち込まれた場合は採用せず未評価へ倒す（fail safe）。
+    if item.seed_production_join_status == JOIN_MATCH_EXACT:
+        identity_status = IDENTITY_EXACT
+    else:
+        identity_status = _integration_identity_status(
+            item.position_identity_integration, item.seed_production_join_status
+        )
+
+    identity_evidence_evaluated = identity_status not in (
+        IDENTITY_EXACT,
+        IDENTITY_NOT_EVALUATED,
+    )
+
+    # 構造的な join 失敗は B03 evidence で置き換えない。
+    #
+    # HOLD → REVIEW の転換が承認されているのは `JOIN_MISSING_PRODUCTION`
+    # **だけ**である。その join status が示すのは
+    #
+    #     production snapshot が存在する
+    #     かつ raw exact (name_jp, address) の一致件数 = 0
+    #
+    # だけで、「その Shrine が Production に存在しない」ことは証明して
+    # いない。B03 evidence が明示的に評価されていれば「identity evidence
+    # が欠けている」状態ではないため、identity 軸の REVIEW code を出す。
+    # raw join の事実は `join_status` に serialize され続ける。
+    #
+    # 次の構造的失敗は B03 evidence があっても HOLD のまま維持する。
+    #
+    #     JOIN_MISSING_SEED                    Seed 側の identity anchor 不在
+    #     JOIN_DUPLICATE_MATCH                 exact Production 行が複数
+    #     JOIN_PRODUCTION_SNAPSHOT_UNAVAILABLE snapshot 自体が無い
+    #
+    # B03 は Seed 不在を修復できず、duplicate resolution 機構でもない。
+    # 複数の exact Production 行から1つを選んではならない。
     if not item.production_snapshot_available:
         codes.add(RC_PRODUCTION_SNAPSHOT_UNAVAILABLE)
     elif item.seed_production_join_status == JOIN_MISSING_PRODUCTION:
-        codes.add(RC_MISSING_PRODUCTION)
+        if identity_evidence_evaluated:
+            # 承認済みの HOLD → REVIEW 転換はここだけ。
+            # exact identity ではないことは変わらない。
+            # `RC_SEED_PRODUCTION_EXACT` は出さず、Resolution fallback も
+            # artifact Production 参照も開かない。B03 の CONFLICT 単独でも
+            # 新しい HOLD を作らない（v1）。
+            codes.add(IDENTITY_STATUS_REASON_CODES[identity_status])
+        else:
+            codes.add(RC_MISSING_PRODUCTION)
     elif item.seed_production_join_status == JOIN_MISSING_SEED:
         codes.add(RC_MISSING_SEED)
     elif item.seed_production_join_status == JOIN_DUPLICATE_MATCH:
         codes.add(RC_DUPLICATE_PRODUCTION_IDENTITY)
     elif item.seed_production_join_status == JOIN_IDENTITY_REVIEW_REQUIRED:
+        # 既存挙動どおり `RC_IDENTITY_NOT_EXACT`（HOLD_REASON_CODES 所属）
+        # を出す。identity evidence はこの HOLD を抑止しない。
+        # evidence は `seed_production_identity_status` として共存するが、
+        # exact identity には変えず、新しい HOLD 経路も作らない。
         codes.add(RC_IDENTITY_NOT_EXACT)
     else:
         codes.add(RC_SEED_PRODUCTION_EXACT)
 
-    identity_is_exact = RC_SEED_PRODUCTION_EXACT in codes
+    # exact identity 条件は **両方**を要求する。片方だけでは成立しない。
+    identity_is_exact = (
+        RC_SEED_PRODUCTION_EXACT in codes and identity_status == IDENTITY_EXACT
+    )
 
     # Seed ↔ Production の座標差は **artifact 同期の観測**であって Position の
     # 正しさではない（P2-A02 §22）。legacy code は後方互換のため出し続けるが、
@@ -1121,6 +1333,7 @@ def evaluate(item: ShrinePositionAuditInput) -> ShrinePositionAuditResult:
         join_status=item.seed_production_join_status,
         spreadsheet_join_status=item.spreadsheet_join_status,
         audit_status=_classify(codes),
+        seed_production_identity_status=identity_status,
         position_proof_path=position_proof_path,
         anchor_semantics_status=anchor_semantics_status,
         artifact_sync_status=artifact_sync_status,
@@ -1590,6 +1803,7 @@ def build_inputs(
     primary_evidence_by_candidate: dict[str, PrimaryPositionEvidence] | None = None,
     primary_evidence_by_identity: dict[tuple[str, str], PrimaryPositionEvidence]
     | None = None,
+    identity_integrations_by_candidate: dict[str, Any] | None = None,
     candidate_ids: Sequence[str] | None = None,
     batch: str | None = None,
 ) -> list[ShrinePositionAuditInput]:
@@ -1612,6 +1826,10 @@ def build_inputs(
     selected.sort(key=lambda row: str(row.get("candidate_id")))
 
     seed_index = {(row["name_jp"], row["address"]): row for row in seed_rows}
+    # P2-B04: identity 軸は **B04 integration result が明示的に供給された
+    # ときだけ** 使う。status 文字列の mapping は受け取らない（信頼境界）。
+    # 候補探索も推測もしない（未供給は NOT_EVALUATED）。
+    identity_integrations = identity_integrations_by_candidate or {}
     evidence_by_candidate = primary_evidence_by_candidate or {}
     evidence_by_identity = primary_evidence_by_identity or {}
 
@@ -1648,6 +1866,9 @@ def build_inputs(
                         name_jp=str(row.get("candidate_name") or ""),
                     ),
                     anchor_semantics_status=anchor_semantics_status,
+                    position_identity_integration=identity_integrations.get(
+                        candidate_id or ""
+                    ),
                     seed_production_join_status=JOIN_IDENTITY_REVIEW_REQUIRED,
                     production_snapshot_available=production_rows is not None,
                     spreadsheet_snapshot_available=spreadsheet_rows is not None,
@@ -1667,6 +1888,9 @@ def build_inputs(
                         official_address=official_address,
                     ),
                     anchor_semantics_status=anchor_semantics_status,
+                    position_identity_integration=identity_integrations.get(
+                        candidate_id or ""
+                    ),
                     seed_production_join_status=JOIN_MISSING_SEED,
                     production_snapshot_available=production_rows is not None,
                     spreadsheet_snapshot_available=spreadsheet_rows is not None,
@@ -1732,6 +1956,9 @@ def build_inputs(
                 primary_position_evidence=evidence_row,
                 anchor_semantics_status=anchor_semantics_status,
                 existing_resolution=resolution_records.get(candidate_id or ""),
+                position_identity_integration=identity_integrations.get(
+                    candidate_id or ""
+                ),
                 seed_production_join_status=join_status,
                 production_snapshot_available=production_rows is not None,
                 spreadsheet_snapshot_available=spreadsheet_rows is not None,
@@ -1771,6 +1998,7 @@ def build_report(
         "totals": totals,
         # Position の証明経路 / 意味的 gate / artifact 同期は互いに独立の軸。
         # 集計も分けて出す（P2-A02 §20）。
+        "seed_production_identity_counts": _counts("seed_production_identity_status"),
         "position_proof_path_counts": _counts("position_proof_path"),
         "anchor_semantics_counts": _counts("anchor_semantics_status"),
         "artifact_sync_counts": _counts("artifact_sync_status"),
@@ -1806,6 +2034,7 @@ def render_markdown(report: dict[str, Any]) -> str:
     lines.append("")
 
     for key, heading in (
+        ("seed_production_identity_counts", "seed_production_identity_status"),
         ("position_proof_path_counts", "position_proof_path"),
         ("anchor_semantics_counts", "anchor_semantics_status"),
         ("artifact_sync_counts", "artifact_sync_status"),

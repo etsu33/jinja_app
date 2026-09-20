@@ -545,7 +545,8 @@ Markdown summary は集計 / `position_proof_path` / `anchor_semantics_status` /
 ### 9.1 schema version
 
 ```text
-position-audit-v2/1.0  →  position-audit-v2/1.1
+position-audit-v2/1.0  →  position-audit-v2/1.1  （P2-B01）
+position-audit-v2/1.1  →  position-audit-v2/1.2  （P2-B04）
 ```
 
 P2-B01 で contract-significant な serialized field を**追加**した。
@@ -561,7 +562,137 @@ minor を上げる。Repository の慣行（`shrine_expansion_candidate_master.j
 の `schema_version` 1.1 → 1.2 = 後方互換な追加/改名で minor bump し、
 test と contract doc を同時に更新する）と同じ扱いである。
 
+P2-B04 では `seed_production_identity_status` を追加した。これも後方互換な
+追加であり、同じ理由で minor を上げる。既存 field の意味は変えていない
+（`join_status` は従来どおり raw exact join の結果だけを表す）。
+
 版は `test_schema_version_reflects_the_added_contract_fields` が固定する。
+
+### 9.1.1 Seed ↔ Production identity 軸（P2-B04）
+
+`seed_production_join_status` とは **別の軸**である。join status を
+上書きしない。
+
+```text
+EXACT / SAME_SUPPORTED / REVIEW_REQUIRED / CONFLICT / INSUFFICIENT / NOT_EVALUATED
+```
+
+| join / evidence | identity_status |
+| --- | --- |
+| `JOIN_MATCH_EXACT` | `EXACT` |
+| 非 exact + B03 `SAME_SUPPORTED` | `SAME_SUPPORTED` |
+| 非 exact + B03 `REVIEW_REQUIRED` | `REVIEW_REQUIRED` |
+| 非 exact + B03 `CONFLICT` | `CONFLICT` |
+| 非 exact + B03 `INSUFFICIENT` | `INSUFFICIENT` |
+| B03 未評価 | `NOT_EVALUATED` |
+
+**`EXACT` は raw exact join だけが生み出す。** normalization / fuzzy /
+alias / B03 evidence のいずれも `JOIN_MATCH_EXACT` や `EXACT` を作らない。
+非 exact join から `EXACT` を持ち込んでも採用せず `NOT_EVALUATED` へ倒す。
+
+exact identity 条件は次の **両方**を要求する。
+
+```text
+RC_SEED_PRODUCTION_EXACT が立っている
+かつ
+seed_production_identity_status == EXACT
+```
+
+`SAME_SUPPORTED` は強い支持 evidence だが exact identity ではない。
+次のいずれも開かない。
+
+```text
+RC_SEED_PRODUCTION_EXACT
+Resolution fallback
+artifact Production 参照基準
+identity 経由の AUTO_PASS
+```
+
+identity evidence は **それ自体が新しい HOLD reason を作らない**。
+B03 の `CONFLICT` 単独を Primary Position Evidence の
+`entity_match = DIFFERENT / NON_SHRINE` と同一視しない（後者は独立した
+より強い Position evidence 経路として残る）。
+
+**ただし、既存の構造的 HOLD を抑止することもしない。**
+
+`IDENTITY_EVIDENCE_*` code が `REVIEW` を駆動するのは、
+`JOIN_MISSING_PRODUCTION` 経路で有効な B04 integration evidence が
+供給されたときだけである。
+
+`NOT_EVALUATED` のときの挙動は P2-B04 以前と完全に同じである。
+
+#### HOLD → REVIEW の転換は `JOIN_MISSING_PRODUCTION` だけ
+
+identity evidence は **構造的な join 失敗を置き換えない**。
+
+```text
+JOIN_MISSING_PRODUCTION + 有効な B04 integration evidence
+  → join_status は保持
+  → IDENTITY_EVIDENCE_* を出す
+  → Machine Audit REVIEW          ← 承認済みの転換はここだけ
+```
+
+`JOIN_MISSING_PRODUCTION` が示すのは
+
+```text
+production snapshot が存在する
+かつ raw exact (name_jp, address) の一致件数 = 0
+```
+
+だけで、「その Shrine が Production に存在しない」ことは証明していない。
+この経路では `RC_MISSING_PRODUCTION` を `reason_codes` に残さないが、
+raw join の事実は `join_status` に serialize され続ける。
+
+次は B03 evidence があっても **HOLD のまま**である。
+
+| join status | reason code | 理由 |
+| --- | --- | --- |
+| `JOIN_MISSING_SEED` | `MISSING_SEED` | identity evidence は Seed 側 identity anchor の不在を修復できない |
+| `JOIN_DUPLICATE_MATCH` | `DUPLICATE_PRODUCTION_IDENTITY` | identity evidence は duplicate resolution 機構ではない。複数の exact Production 行から1つを選ばない |
+| `JOIN_IDENTITY_REVIEW_REQUIRED` | `IDENTITY_NOT_EXACT` | 既存どおり `HOLD_REASON_CODES` 所属。**review-class ではない** |
+| `PRODUCTION_SNAPSHOT_UNAVAILABLE` | `PRODUCTION_SNAPSHOT_UNAVAILABLE` | identity evidence は snapshot 不在の代替にならない |
+
+`JOIN_IDENTITY_REVIEW_REQUIRED` について: identity evidence は
+`seed_production_identity_status` として共存するが、exact identity には
+変えず、既存の HOLD も抑止しない。`CONFLICT` でも**新しい** HOLD 経路は
+作らない（HOLD は既存の `IDENTITY_NOT_EXACT` 由来のまま）。
+
+#### 評価順
+
+```text
+1. production snapshot unavailable           既存の失敗（HOLD）
+2. JOIN_MISSING_PRODUCTION + 有効な B04 evidence  identity 軸 REVIEW（承認済み転換）
+   JOIN_MISSING_PRODUCTION + evidence 無し        既存 HOLD
+3. JOIN_MISSING_SEED                         既存 HOLD
+4. JOIN_DUPLICATE_MATCH                      既存 HOLD
+5. JOIN_IDENTITY_REVIEW_REQUIRED             既存 HOLD
+6. JOIN_MATCH_EXACT                          exact path
+```
+
+#### 信頼境界
+
+identity 軸を起動できるのは、B04 adapter が返した
+`PositionIdentityIntegrationResult` の **実体だけ**である。
+
+```text
+B03 IdentityEvidenceAssessment
+→ B04 integrate_position_identity()
+→ PositionIdentityIntegrationResult
+→ Position Audit input（position_identity_integration）
+→ evaluate()
+```
+
+status 文字列を直接渡しても採用しない。同じ形の別 object も採用しない
+（型で認証する）。別 join に対する integration result も流用しない。
+いずれも `NOT_EVALUATED` へ倒れ、P2-B04 以前と同じ挙動になる。
+
+依存方向は次で固定する。
+
+```text
+Position Audit  ->  B04 integration boundary  ->  B03  ->  B02
+```
+
+Position Audit は B03 / B02 を **直接 import / load しない**。
 
 ### 9.2 Position proof path
 
