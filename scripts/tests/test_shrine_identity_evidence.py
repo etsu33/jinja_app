@@ -954,6 +954,7 @@ def test_evaluation_does_not_mutate_inputs():
 # allowlist に B04 を加えてはならない。
 SANCTIONED_CONSUMERS = {
     "scripts/position_identity_integration.py",
+    "scripts/build_position_identity_evidence.py",
 }
 
 
@@ -962,8 +963,9 @@ def test_b03_has_exactly_the_sanctioned_direct_consumers():
 
     ```text
     B03 identity evidence layer
-    → exactly one sanctioned direct consumer
-    → scripts/position_identity_integration.py
+    → sanctioned direct consumers（この2つだけ）
+    → scripts/position_identity_integration.py   （B04 integration boundary）
+    → scripts/build_position_identity_evidence.py（real-data supply layer）
     ```
 
     `<=` ではなく `==` で比較する。部分集合比較では、想定外の consumer は
