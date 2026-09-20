@@ -509,7 +509,12 @@ NEED_LABELS_JA: Dict[str, str] = {
 
 PRIMARY_REASON_PRIORITY: Dict[str, int] = {
     "history_theme": 0,
-    "culture_translation": 1,
+    # culture_translation is deliberately absent: per
+    # docs/product/recommendation-signal-authority.md §6 it is
+    # Explanation-only and holds no Primary Recommendation / Ranking
+    # Authority, so it must not be Primary Tier eligible either
+    # (PRIMARY_TIER_REASON_TYPES is derived from this dict). It still
+    # appears as a non-primary reason_fact -- see _build_reason_facts().
     "need_tag": 2,
     "text_hint": 3,
     "user_selected_tag": 4,

@@ -129,7 +129,7 @@ ProfileはLevel 1を上書きしない／Learning SignalはLevel 1〜3を上回�
 |---|---|
 | Candidate Retrieval + Eligibility Filter | `build_chat_candidates()`（`concierge_chat_candidates.py`）。`goriyaku_tag_ids`のみがDB-level hard filter |
 | Scoring | `_attach_breakdown()`（`concierge_chat_ranking.py`）。`score_total_ranked = score_element*w1 + score_need_rank_weighted*w2 + score_popular*w3 + score_distance*w4 + score_visit_style*w5 + astro_bonus + capped_behavior_contribution + profile_signal_score + direction_signal_score` |
-| Evidence Assembly | `_build_reason_facts()` + `_resolve_primary_reason()`。`PRIMARY_REASON_PRIORITY`: history_theme(0) > culture_translation(1) > need_tag(2) > text_hint(3) > user_selected_tag(4) > goriyaku_tag(5) > element(6) > visit_style(7) > fallback(9) |
+| Evidence Assembly | `_build_reason_facts()` + `_resolve_primary_reason()`。`PRIMARY_REASON_PRIORITY`: history_theme(0) > need_tag(2) > text_hint(3) > user_selected_tag(4) > goriyaku_tag(5) > element(6) > visit_style(7) > fallback(9) |
 | Explanation Generation | `build_explanation_payload()`（`reason_facts`ベース）と`build_recommendation_reason_v4()`（`candidate_profile`ベース、Knowledge系はここのみ）の**2つの独立した経路** |
 
 `docs/knowledge/shrine-knowledge-contract.md`は、`deity`/
@@ -185,7 +185,7 @@ Candidate/Rankを一切変えず、推薦理由の説明にのみ使用するSig
 | `goriyaku`（自由文） | Secondary（`matched_by_text`経由、`NEED_TEXT_WEIGHTS`） | **Secondary** | 構造化されていない自由文一致であり、`need_tags`ほど確実な意味一致ではない。現状のSecondary位置づけは妥当 | Medium |
 | `goriyaku_tag_ids` | **Eligibility**（DB hard filter）。Rank寄与ゼロ（実測確認）。`reason_facts`ではpriority 4 | **Eligibility + Explanation**（Rank非寄与を維持） | §9で詳述。Eligibilityとして機能させつつ、Rankへ二重に加点しないことは、既にfilterした候補集合内で同一Signalを再度優遇しないという一貫性のある設計 | High |
 | `history_theme` | `consultation_axis`一致時のみRank寄与（最大+1.0）。`reason_facts` priority最高位（0） | **Primary（条件付き）** | 一致時の説明力の強さ（priority 0）に見合うだけの実効力（他のneed_tag一致と同等以上）を既に持つ。現状維持が妥当 | Medium（発火条件の狭さは§12でGap記録） |
-| `culture_translation` | Explanation補助。`matched_need_tags`があり、かつ`culture_translation`が存在する場合にnon-primaryの`reason_fact`として生成される。`_resolve_primary_reason()`ではPrimary候補から明示的に除外される。Score/Rankingへの直接寄与はない。一方、現行`PRIMARY_REASON_PRIORITY`には残存しており、Primary Tier定義との構造的不整合がある | **Explanation-only** | 神社固有の文脈を推薦理由の補足として使用するSignal。Recommendation Meaningや順位を決定するAuthorityは持たせず、semantic match成立後の説明材料としてのみ利用する | High |
+| `culture_translation` | Explanation補助。`matched_need_tags`があり、かつ`culture_translation`が存在する場合にnon-primaryの`reason_fact`として生成される。`_resolve_primary_reason()`ではPrimary候補から明示的に除外され、`PRIMARY_REASON_PRIORITY`にも登録されていないため、`PRIMARY_TIER_REASON_TYPES`（Primary Tier資格）にも含まれない。Score/Rankingへの直接寄与はない | **Explanation-only** | 神社固有の文脈を推薦理由の補足として使用するSignal。Recommendation Meaningや順位を決定するAuthorityは持たせず、semantic match成立後の説明材料としてのみ利用する | High |
 | `deity` | **Explanation-only**（`recommendation_reason_v4`のみ、`reason_facts`不接続） | **Explanation-only（現状維持、A）** | §8で詳述 | High |
 | `shrine_history` | **Explanation-only**（同上） | **Explanation-only（現状維持、A）** | §8で詳述 | High |
 | `knowledge_deities` | `deity`の入力元（新Knowledge Model優先、Legacy `sajin`へfallback） | **Explanation-only（現状維持、A）** | §8で詳述 | High |
@@ -338,16 +338,30 @@ ConstraintはCandidate集合を変更できる）。これはRankでの優先順
 
 ## 10. Explanation Contract
 
-**「なぜこの神社？」への説明は、実際にCandidate/Rankへ寄与した
-Signalと一致すること。**
+**「なぜこの神社？」への説明のうち、順位の根拠として提示される部分
+（Primary Reason）は、実際にCandidate/Rankへ寄与したSignalと一致
+すること。**
 
-- `_reason_facts`/`_primary_reason_source`/`_primary_reason_label`
-  （`rank_explanation`/`_explanation_payload.primary_reason`の元
-  データ）は、実際にScoringへ寄与したSignal（`need_tags`/
+Contractは`reason_facts`全体ではなく、**Primary Reason帰属**に対して
+かかる。`reason_facts`は「順位の根拠」と「順位には寄与しない補足の
+説明素材」の両方を含んでよく、両者の区別は`is_primary`と
+`PRIMARY_TIER_REASON_TYPES`で表現される。
+
+- **Primary Reason帰属**（`_primary_reason_source`/
+  `_primary_reason_label`、`rank_explanation`/
+  `_explanation_payload.primary_reason`の元データ）は、実際に
+  ScoringへAuthorityを持って寄与したSignal（`need_tags`/
   `history_theme`/`text_hint`/`user_selected_tag`/`goriyaku_tag`/
-  `element`/`visit_style`）のみから構成される。**この経路は現状
+  `element`/`visit_style`）からのみ選ばれる。**この経路は現状
   すでにContractを満たしている**（監査で実測確認、Knowledgeは
   この経路に一切現れない）。
+- **Explanation-only素材**（`culture_translation`）は、semantic match
+  成立後に限り`is_primary=false`の`reason_fact`として同居してよい。
+  Score/Rankingへの寄与を持たないため、`PRIMARY_REASON_PRIORITY`にも
+  `PRIMARY_TIER_REASON_TYPES`にも含めない（§6）。すなわち「すべての
+  `reason_fact`がScoringへ寄与していなければならない」わけではなく、
+  「**Primary Reasonとして提示されるものは寄与していなければ
+  ならない**」がContractの正確な内容である。
 - `recommendation_reason_v4`（`rec["recommendation_reason_v4"]`/
   `_detail`）は、Knowledge（`deity`/`shrine_history`）を含む
   **別の経路**であり、Fact layerとして「この神社にはこういう情報が

@@ -75,7 +75,7 @@ def test_primary_tier_reason_types_excludes_element_and_visit_style():
     visit_style must never count, since §7 fixes that neither alone
     constitutes Recommendation Meaning."""
     assert PRIMARY_TIER_REASON_TYPES == {
-        "history_theme", "culture_translation", "need_tag", "text_hint", "user_selected_tag", "goriyaku_tag",
+        "history_theme", "need_tag", "text_hint", "user_selected_tag", "goriyaku_tag",
     }
     assert has_primary_tier_reason([{"type": "element"}]) is False
     assert has_primary_tier_reason([{"type": "visit_style"}]) is False
