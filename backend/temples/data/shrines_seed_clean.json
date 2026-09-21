@@ -79,8 +79,8 @@
   {
     "name_jp": "春日大社",
     "address": "奈良県奈良市春日野町160",
-    "latitude": 34.6814,
-    "longitude": 135.8481,
+    "latitude": 34.6812901,
+    "longitude": 135.8482531,
     "goriyaku": "家内安全・厄除け・開運",
     "kyusei": null,
     "astro_elements": [
@@ -92,8 +92,8 @@
       "nature"
     ],
     "location": {
-      "lat": 34.6814,
-      "lng": 135.8481
+      "lat": 34.6812901,
+      "lng": 135.8482531
     }
   },
   {
