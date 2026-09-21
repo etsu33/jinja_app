@@ -1127,8 +1127,24 @@ def test_loader_never_writes(tmp_path):
     assert path.read_bytes() == before
 
 
-def test_loader_module_is_not_wired_into_any_consumer():
-    """本 PR は foundation のみ。consumer へは接続しない。"""
+# canonical linkage loader を **直接** 消費してよい module の厳密な集合。
+#
+# foundation PR の時点では consumer ゼロだったが、supply layer での
+# activation により設計どおり更新された。loader は artifact の parse /
+# 検証 / active 一意性 / 逆方向曖昧さ / CONFIRMED・REVOKED 判定 /
+# evidence 検証の唯一の所有者であり、consumer はその検証済み結果だけを
+# 消費する。
+LINKAGE_SANCTIONED_CONSUMERS = {
+    "scripts/build_position_identity_evidence.py",
+}
+
+
+def test_loader_has_exactly_the_sanctioned_direct_consumers():
+    """直接 consumer が allowlist と **完全一致** すること。
+
+    `<=` ではなく `==` を使う。想定外の consumer が増えたことも、
+    必要な依存が消えたことも、どちらも検出するため。
+    """
     callers = []
     for path in sorted(REPO_ROOT.glob("scripts/*.py")) + sorted(
         (REPO_ROOT / "backend").rglob("*.py")
@@ -1137,7 +1153,25 @@ def test_loader_module_is_not_wired_into_any_consumer():
             continue
         if "production_candidate_linkage" in path.read_text(encoding="utf-8"):
             callers.append(str(path.relative_to(REPO_ROOT)))
-    assert callers == [], callers
+    assert set(callers) == LINKAGE_SANCTIONED_CONSUMERS, callers
+
+
+def test_sanctioned_consumers_really_depend_on_the_loader():
+    """allowlist の consumer が **実際に** loader へ依存すること。
+
+    文字列走査だけだと docstring に module 名を書いた file も consumer と
+    数えてしまうため、実体を確認する。
+    """
+    for relative in sorted(LINKAGE_SANCTIONED_CONSUMERS):
+        consumer_path = REPO_ROOT / relative
+        assert consumer_path.exists(), relative
+        consumer = _load(f"linkage_consumer_{consumer_path.stem}", consumer_path)
+        linked = [
+            name
+            for name, value in vars(consumer).items()
+            if getattr(value, "__file__", None) == str(MODULE_PATH)
+        ]
+        assert linked, f"{relative} does not actually depend on {MODULE_PATH.name}"
 
 
 # ---------------------------------------------------------------------------

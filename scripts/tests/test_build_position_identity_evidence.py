@@ -124,6 +124,7 @@ def _build(
     production_rows=None,
     spreadsheet_rows=None,
     resolution=None,
+    linkage_artifact=None,
 ):
     return supply.build_candidate_identity_supply(
         candidate=_candidate() if candidate is _DEFAULT else candidate,
@@ -132,6 +133,93 @@ def _build(
         production_rows=production_rows,
         spreadsheet_rows=spreadsheet_rows,
         resolution=resolution,
+        linkage_artifact=linkage_artifact,
+    )
+
+
+# ---------------------------------------------------------------------------
+# canonical linkage fixtures（artifact file は作らない）
+# ---------------------------------------------------------------------------
+
+linkage_mod = supply.canonical_linkage
+
+# exact join では当たらないが、linkage が指す id を持つ Production 行。
+LINKED_PRODUCTION_ID = 777
+
+# raw では OFFICIAL_ADDRESS と異なるが、B02 上は同一住所になる変種。
+# これにより「raw exact join は外れるが evidence は成立しうる」状況を
+# 作れる（linkage 経路を exact 経路と取り違えないため）。
+LINKED_ADDRESS_VARIANT = "日本、東京都千代田区丸の内１丁目１番１号"
+
+
+def _linked_production_row(**overrides):
+    row = {
+        "id": LINKED_PRODUCTION_ID,
+        # 名称・住所とも Seed と異なるため raw exact join では当たらない。
+        "name_jp": "供給テスト神社（別表記）",
+        "address": "東京都千代田区丸ノ内一丁目1-1",
+        "latitude": 35.681236,
+        "longitude": 139.767125,
+        "kind": "shrine",
+        "place_ref_id": None,
+    }
+    row.update(overrides)
+    return row
+
+
+def _linkage_row(
+    *,
+    candidate_id="pilot-001",
+    sequence=1,
+    production_shrine_id=LINKED_PRODUCTION_ID,
+    status="CONFIRMED",
+    **overrides,
+):
+    row = {
+        "linkage_id": f"{candidate_id}#{sequence}",
+        "candidate_id": candidate_id,
+        "production_shrine_id": production_shrine_id,
+        "linkage_status": status,
+        "linkage_source": "HUMAN_IDENTITY_ADJUDICATION",
+        "verified_at": "2026-09-20",
+        "official_name": OFFICIAL_NAME,
+        "official_address": OFFICIAL_ADDRESS,
+        "evidence_refs": ["docs/audit/linkage.md"],
+        "note": "",
+    }
+    if status == "REVOKED":
+        row.update(
+            {
+                "revoked_at": "2026-09-21",
+                "revoked_reason": "IDENTITY_ADJUDICATION_REVERSED",
+                "revocation_evidence_refs": ["docs/audit/revocation.md"],
+            }
+        )
+    row.update(overrides)
+    return row
+
+
+def _linkage_artifact(rows):
+    """検証済み `LinkageArtifact` を in-memory で作る（file を書かない）。"""
+    payload = {
+        "schema_version": "production-candidate-linkage/1.0",
+        "title": "KAMI MUSUBI Production Candidate Linkage",
+        "contract": "docs/knowledge/production-candidate-linkage-contract.md",
+        "recorded_at": "2026-09-20",
+        "linkages": list(rows),
+    }
+    return linkage_mod.validate_linkage_document(payload)
+
+
+def _absent_artifact():
+    return linkage_mod.LinkageArtifact(
+        artifact_state=linkage_mod.ARTIFACT_NOT_PRESENT, path="in-memory"
+    )
+
+
+def _invalid_artifact():
+    return linkage_mod.validate_linkage_document(
+        {"schema_version": "production-candidate-linkage/9.9"}
     )
 
 
@@ -478,6 +566,560 @@ def test_non_exact_b04_support_is_not_removed():
     )
     assert integration.identity_status == b04.IDENTITY_SAME_SUPPORTED
     assert integration.production_id is None
+
+
+# ---------------------------------------------------------------------------
+# LINK-GC01..GC20 — canonical linkage activation
+# ---------------------------------------------------------------------------
+#
+#   canonical linkage が意味するのは
+#     「比較してよい Production 行はこれだ」
+#   だけである。同一神社 / SAME_SUPPORTED / IDENTITY_EXACT /
+#   canonical PASS のいずれも意味しない。
+
+
+def _missing_production_with_linkage(rows=None, **kwargs):
+    """raw exact join が外れる Production snapshot で supply を作る。"""
+    return _build(
+        production_rows=[_linked_production_row()] if rows is None else rows,
+        spreadsheet_rows=[],
+        **kwargs,
+    )
+
+
+# --- MATCH_EXACT は不変 ----------------------------------------------------
+
+
+def test_link_gc01_match_exact_behavior_is_unchanged():
+    result = _build(
+        production_rows=[_production_row()],
+        spreadsheet_rows=[_sheet_row()],
+        linkage_artifact=None,
+    )
+    assert result.join_status == audit.JOIN_MATCH_EXACT
+    assert result.identity_status == b04.IDENTITY_EXACT
+    assert result.integration.production_id == 900
+    assert result.production_target_source == supply.TARGET_SOURCE_EXACT_JOIN
+
+
+def test_link_gc02_match_exact_is_not_overwritten_by_canonical_linkage():
+    """exact join を linkage が上書きしない（MS-FOLLOWUP-04 を解決しない）。"""
+    artifact = _linkage_artifact([_linkage_row(production_shrine_id=555)])
+    with_linkage = _build(
+        production_rows=[_production_row(), _linked_production_row(id=555)],
+        spreadsheet_rows=[_sheet_row()],
+        linkage_artifact=artifact,
+    )
+    without_linkage = _build(
+        production_rows=[_production_row(), _linked_production_row(id=555)],
+        spreadsheet_rows=[_sheet_row()],
+        linkage_artifact=None,
+    )
+    assert with_linkage.join_status == audit.JOIN_MATCH_EXACT
+    assert with_linkage.integration.production_id == 900
+    assert with_linkage.production_target_source == supply.TARGET_SOURCE_EXACT_JOIN
+    assert with_linkage.to_dict() == without_linkage.to_dict()
+
+
+# --- MISSING_PRODUCTION + linkage 解決失敗 ---------------------------------
+
+
+def test_link_gc03_missing_production_with_absent_artifact_is_not_evaluated():
+    result = _missing_production_with_linkage(linkage_artifact=_absent_artifact())
+    assert result.join_status == audit.JOIN_MISSING_PRODUCTION
+    assert result.integration is None
+    assert result.identity_status == b04.IDENTITY_NOT_EVALUATED
+    assert result.identity_evidence_status == supply.EVIDENCE_NOT_EVALUATED
+    assert result.production_target_source == supply.TARGET_SOURCE_NONE
+    assert supply.REASON_LINKAGE_ARTIFACT_UNAVAILABLE in result.review_reasons
+
+
+def test_link_gc04_missing_production_with_no_artifact_argument_is_not_evaluated():
+    result = _missing_production_with_linkage(linkage_artifact=None)
+    assert result.integration is None
+    assert result.production_target_source == supply.TARGET_SOURCE_NONE
+    assert supply.REASON_LINKAGE_ARTIFACT_UNAVAILABLE in result.review_reasons
+
+
+def test_link_gc05_missing_production_with_invalid_artifact_is_not_evaluated():
+    artifact = _invalid_artifact()
+    assert artifact.artifact_state == linkage_mod.ARTIFACT_INVALID
+    result = _missing_production_with_linkage(linkage_artifact=artifact)
+    assert result.integration is None
+    assert result.identity_status == b04.IDENTITY_NOT_EVALUATED
+    assert result.production_target_source == supply.TARGET_SOURCE_NONE
+    assert supply.REASON_LINKAGE_ARTIFACT_INVALID in result.review_reasons
+
+
+def test_link_gc06_missing_production_with_no_active_linkage_is_not_evaluated():
+    result = _missing_production_with_linkage(
+        linkage_artifact=_linkage_artifact([])
+    )
+    assert result.integration is None
+    assert result.production_target_source == supply.TARGET_SOURCE_NONE
+    assert supply.REASON_LINKAGE_NOT_AVAILABLE_FOR_CANDIDATE in result.review_reasons
+
+
+def test_link_gc07_revoked_only_linkage_never_activates():
+    artifact = _linkage_artifact([_linkage_row(status="REVOKED")])
+    assert artifact.artifact_state == linkage_mod.ARTIFACT_VALID
+    assert artifact.rows[0].is_active is False
+    result = _missing_production_with_linkage(linkage_artifact=artifact)
+    assert result.integration is None
+    assert result.identity_status == b04.IDENTITY_NOT_EVALUATED
+    assert result.production_target_source == supply.TARGET_SOURCE_NONE
+    assert supply.REASON_LINKAGE_NOT_AVAILABLE_FOR_CANDIDATE in result.review_reasons
+
+
+def test_link_gc08_duplicate_active_linkage_is_not_evaluated():
+    artifact = _linkage_artifact(
+        [
+            _linkage_row(sequence=1, production_shrine_id=LINKED_PRODUCTION_ID),
+            _linkage_row(sequence=2, production_shrine_id=778),
+        ]
+    )
+    assert artifact.active_linkage_for("pilot-001") is None
+    result = _missing_production_with_linkage(linkage_artifact=artifact)
+    assert result.integration is None
+    assert supply.REASON_LINKAGE_NOT_AVAILABLE_FOR_CANDIDATE in result.review_reasons
+
+
+def test_link_gc09_reverse_production_id_ambiguity_is_not_evaluated():
+    artifact = _linkage_artifact(
+        [
+            _linkage_row(candidate_id="pilot-001"),
+            _linkage_row(candidate_id="pilot-002"),
+        ]
+    )
+    assert artifact.active_linkage_for("pilot-001") is None
+    result = _missing_production_with_linkage(linkage_artifact=artifact)
+    assert result.integration is None
+    assert supply.REASON_LINKAGE_NOT_AVAILABLE_FOR_CANDIDATE in result.review_reasons
+
+
+def test_link_gc10_production_snapshot_absent_never_reaches_linkage():
+    """`production_rows is None` は linkage 以前に fail closed。"""
+    result = _build(
+        production_rows=None, linkage_artifact=_linkage_artifact([_linkage_row()])
+    )
+    assert result.join_status == audit.JOIN_PRODUCTION_SNAPSHOT_UNAVAILABLE
+    assert result.integration is None
+    assert result.production_target_source == supply.TARGET_SOURCE_NONE
+    assert supply.REASON_PRODUCTION_SNAPSHOT_UNAVAILABLE in result.review_reasons
+
+
+def test_link_gc11_linked_target_absent_from_snapshot_is_not_evaluated():
+    artifact = _linkage_artifact([_linkage_row(production_shrine_id=999)])
+    result = _missing_production_with_linkage(linkage_artifact=artifact)
+    assert result.integration is None
+    assert result.identity_status == b04.IDENTITY_NOT_EVALUATED
+    assert result.production_target_source == supply.TARGET_SOURCE_NONE
+    assert supply.REASON_LINKAGE_TARGET_ROW_ABSENT in result.review_reasons
+
+
+def test_link_gc12_duplicated_target_id_is_not_evaluated():
+    """壊れた snapshot から先頭行を黙って採らない。"""
+    artifact = _linkage_artifact([_linkage_row()])
+    rows = [
+        _linked_production_row(),
+        _linked_production_row(name_jp="別の行"),
+    ]
+    result = _missing_production_with_linkage(rows=rows, linkage_artifact=artifact)
+    assert result.integration is None
+    assert result.production_target_source == supply.TARGET_SOURCE_NONE
+    assert supply.REASON_LINKAGE_TARGET_ROW_DUPLICATED in result.review_reasons
+
+
+# --- MISSING_PRODUCTION + linkage 解決成功 ---------------------------------
+
+
+def test_link_gc13_valid_linkage_reaches_the_existing_b03_b04_path():
+    artifact = _linkage_artifact([_linkage_row()])
+    result = _missing_production_with_linkage(linkage_artifact=artifact)
+
+    # B03 が実際に走っている（軸に実データの status が入る）。
+    assert result.identity_evidence_status != supply.EVIDENCE_NOT_EVALUATED
+    assert result.name_identity_status in sie.NAME_IDENTITY_STATUSES
+    assert result.address_identity_status in sie.ADDRESS_IDENTITY_STATUSES
+    # B04 は本物の統合結果。
+    assert isinstance(result.integration, b04.PositionIdentityIntegrationResult)
+    assert type(result.integration) is audit.PositionIdentityIntegrationResult
+    assert result.production_target_source == supply.TARGET_SOURCE_CANONICAL_LINKAGE
+    assert "linkage_target_row" in result.input_availability
+
+
+def test_link_gc14_raw_join_status_remains_missing_production():
+    """linkage が exact join の成立を騙らない。"""
+    artifact = _linkage_artifact([_linkage_row()])
+    result = _missing_production_with_linkage(linkage_artifact=artifact)
+    assert result.join_status == audit.JOIN_MISSING_PRODUCTION
+    assert result.join_status != audit.JOIN_MATCH_EXACT
+    assert result.identity_status != b04.IDENTITY_EXACT
+    assert result.integration.production_id is None
+    assert supply.REASON_PRODUCTION_CANDIDATE_UNRESOLVED in result.review_reasons
+
+
+def test_link_gc15_linkage_itself_does_not_create_same_supported():
+    """linkage は corroborator ではない。evidence を1つも作らない。"""
+    artifact = _linkage_artifact([_linkage_row()])
+    result = _missing_production_with_linkage(linkage_artifact=artifact)
+    # 名称も住所も一致しない行なので、evidence は同一性を支持しない。
+    assert result.identity_evidence_status != sie.SAME_SUPPORTED
+    assert result.identity_status != b04.IDENTITY_SAME_SUPPORTED
+    assert result.official_source_entity_status != sie.OFFICIAL_SOURCE_SAME
+    assert result.place_id_status != sie.PLACE_ID_MATCH
+    assert result.existing_resolution_status != sie.RESOLUTION_SAME
+
+
+def test_link_gc16_linked_row_still_fails_b03_when_evidence_is_insufficient():
+    """比較対象はあるが evidence 不足 -> INSUFFICIENT（未評価ではない）。"""
+    artifact = _linkage_artifact([_linkage_row()])
+    target = _linked_production_row(
+        name_jp=OFFICIAL_NAME, address=LINKED_ADDRESS_VARIANT, place_ref_id=None
+    )
+    result = _missing_production_with_linkage(
+        rows=[target],
+        candidate=_candidate(identity_status="PENDING"),
+        linkage_artifact=artifact,
+    )
+    assert result.join_status == audit.JOIN_MISSING_PRODUCTION
+    assert result.production_target_source == supply.TARGET_SOURCE_CANONICAL_LINKAGE
+    assert result.integration is not None
+    assert result.name_identity_status == sie.NAME_EXACT_MATCH
+    assert result.address_identity_status == sie.ADDRESS_NORMALIZED_MATCH
+    assert result.identity_evidence_status == sie.INSUFFICIENT
+    assert result.identity_evidence_status != supply.EVIDENCE_NOT_EVALUATED
+
+
+def test_link_gc17_linked_row_may_produce_same_supported_from_real_evidence():
+    """SAME_SUPPORTED は既存 evidence 源からのみ出る（linkage からではない）。"""
+    artifact = _linkage_artifact([_linkage_row()])
+    target = _linked_production_row(
+        name_jp=OFFICIAL_NAME, address=LINKED_ADDRESS_VARIANT, place_ref_id=None
+    )
+    result = _missing_production_with_linkage(rows=[target], linkage_artifact=artifact)
+    assert result.production_target_source == supply.TARGET_SOURCE_CANONICAL_LINKAGE
+    # official source corroboration が成立する候補なので SAME_SUPPORTED。
+    assert result.official_source_entity_status == sie.OFFICIAL_SOURCE_SAME
+    assert result.identity_evidence_status == sie.SAME_SUPPORTED
+    assert result.identity_status == b04.IDENTITY_SAME_SUPPORTED
+    assert result.activation_status == supply.ACTIVATED
+    # それでも exact join ではない。
+    assert result.join_status == audit.JOIN_MISSING_PRODUCTION
+
+
+def test_link_gc18_linked_row_may_produce_review_required():
+    artifact = _linkage_artifact([_linkage_row()])
+    target = _linked_production_row(
+        name_jp="まったく別の名前", address=OFFICIAL_ADDRESS
+    )
+    result = _missing_production_with_linkage(rows=[target], linkage_artifact=artifact)
+    assert result.name_identity_status == sie.NAME_AMBIGUOUS
+    assert result.identity_evidence_status == sie.REVIEW_REQUIRED
+    assert result.identity_status == b04.IDENTITY_REVIEW_REQUIRED
+    assert result.activation_status == supply.REVIEW_REQUIRED
+
+
+def test_link_gc19_linked_row_may_produce_conflict():
+    artifact = _linkage_artifact([_linkage_row()])
+    target = _linked_production_row(
+        name_jp=OFFICIAL_NAME,
+        address=LINKED_ADDRESS_VARIANT,
+        place_ref_id="PLACE-OTHER",
+    )
+    sheet = _sheet_row(google_place_id="PLACE-MINE")
+    result = _build(
+        production_rows=[target],
+        spreadsheet_rows=[sheet],
+        linkage_artifact=artifact,
+    )
+    assert result.join_status == audit.JOIN_MISSING_PRODUCTION
+    assert result.place_id_status == sie.PLACE_ID_DIFFERENT
+    assert result.identity_evidence_status == sie.CONFLICT
+    assert result.identity_status == b04.IDENTITY_CONFLICT
+
+
+# --- DUPLICATE_MATCH は救済しない ------------------------------------------
+
+
+def test_link_gc20_duplicate_match_is_not_rescued_by_linkage():
+    """MS-FOLLOWUP-05 は未決。暗黙に解決しない。"""
+    artifact = _linkage_artifact([_linkage_row(production_shrine_id=900)])
+    rows = [_production_row(), _production_row(id=901, place_ref_id="P-901")]
+    with_linkage = _build(
+        production_rows=rows, spreadsheet_rows=[], linkage_artifact=artifact
+    )
+    without_linkage = _build(
+        production_rows=rows, spreadsheet_rows=[], linkage_artifact=None
+    )
+    assert with_linkage.join_status == audit.JOIN_DUPLICATE_MATCH
+    assert with_linkage.integration is None
+    assert with_linkage.production_target_source == supply.TARGET_SOURCE_NONE
+    assert with_linkage.to_dict() == without_linkage.to_dict()
+    assert supply.REASON_PRODUCTION_IDENTITY_AMBIGUOUS in with_linkage.review_reasons
+
+
+# --- 解決経路の制約 --------------------------------------------------------
+
+
+def test_linkage_target_resolution_uses_production_shrine_id_only():
+    """id が一致しなければ、名称・住所が一致していても採らない。"""
+    artifact = _linkage_artifact([_linkage_row(production_shrine_id=999)])
+    # 名称一致 + B02 上は同一住所という「いかにも当たりそうな」行。
+    # それでも id が違えば採らない。
+    decoy = _linked_production_row(
+        id=123, name_jp=OFFICIAL_NAME, address=LINKED_ADDRESS_VARIANT
+    )
+    result = _missing_production_with_linkage(rows=[decoy], linkage_artifact=artifact)
+    assert result.join_status == audit.JOIN_MISSING_PRODUCTION
+    assert result.integration is None
+    assert supply.REASON_LINKAGE_TARGET_ROW_ABSENT in result.review_reasons
+
+
+def test_linkage_resolution_has_no_name_address_or_coordinate_fallback():
+    source = SOURCE[SOURCE.index("def _resolve_linkage_target") :]
+    source = source[: source.index("def _activation_status")]
+    for forbidden in (
+        "name_jp",
+        "address",
+        "latitude",
+        "longitude",
+        "place_ref_id",
+        "compare_addresses",
+        "google_place_id",
+        "row_id",
+    ):
+        assert forbidden not in source, forbidden
+    # 解決は primary key の exact 一致のみ。
+    assert 'row.get("id") == target_id' in source
+
+
+def test_linkage_module_is_loaded_through_the_canonical_sibling_loader():
+    """canonical path から読み込まれていること。
+
+    `sys.modules` の同一性は主張しない。他の test module が同じ module を
+    別名で読み直すことがあり、順序に依存するためである。型の信頼境界が
+    成立する条件は「supply layer が使っている instance から artifact を
+    作ること」であり、それは次の test が固定する。
+    """
+    assert supply.canonical_linkage.__file__ == str(
+        REPO_ROOT / "scripts" / "production_candidate_linkage.py"
+    )
+    assert hasattr(supply.canonical_linkage, "load_linkage_artifact")
+    assert hasattr(supply.canonical_linkage, "LinkageArtifact")
+
+
+def test_artifact_from_a_different_module_instance_is_rejected():
+    """別 instance で作った artifact は型の信頼境界で弾かれる（fail closed）。
+
+    `_load_sibling` が canonical instance を再利用するため実運用では
+    起きないが、起きたときに黙って通さないことを固定する。
+    """
+    other = _load("linkage_other_instance", REPO_ROOT / "scripts" / "production_candidate_linkage.py")
+    assert other is not supply.canonical_linkage
+    foreign = other.validate_linkage_document(
+        {
+            "schema_version": "production-candidate-linkage/1.0",
+            "title": "KAMI MUSUBI Production Candidate Linkage",
+            "contract": "docs/knowledge/production-candidate-linkage-contract.md",
+            "recorded_at": "2026-09-20",
+            "linkages": [_linkage_row()],
+        }
+    )
+    assert foreign.artifact_state == other.ARTIFACT_VALID
+    result = _missing_production_with_linkage(linkage_artifact=foreign)
+    assert result.integration is None
+    assert supply.REASON_LINKAGE_ARTIFACT_UNAVAILABLE in result.review_reasons
+
+
+def test_supply_does_not_reimplement_loader_responsibilities():
+    """artifact の parse / 検証を supply 側でやり直さない。"""
+    for forbidden in (
+        "json.loads",
+        "SUPPORTED_SCHEMA_VERSION",
+        "validate_linkage_document",
+        "classify_evidence_ref",
+        "LINKAGE_STATUSES",
+        "REVOKED_REASONS",
+        "linkages",
+    ):
+        assert forbidden not in SOURCE, forbidden
+    # 消費するのは検証済み API だけ。
+    assert "active_linkage_for" in SOURCE
+    assert "load_linkage_artifact" in SOURCE
+
+
+def test_raw_json_is_never_accepted_as_a_linkage_artifact():
+    """検証済みでない object を linkage として扱わない（型の信頼境界）。"""
+    fake = {
+        "schema_version": "production-candidate-linkage/1.0",
+        "linkages": [_linkage_row()],
+    }
+    result = _missing_production_with_linkage(linkage_artifact=fake)
+    assert result.integration is None
+    assert supply.REASON_LINKAGE_ARTIFACT_UNAVAILABLE in result.review_reasons
+
+
+def test_look_alike_linkage_artifact_is_rejected():
+    class LookAlike:
+        artifact_state = "ARTIFACT_VALID"
+        is_valid = True
+
+        def active_linkage_for(self, candidate_id):
+            raise AssertionError("must not be called")
+
+    result = _missing_production_with_linkage(linkage_artifact=LookAlike())
+    assert result.integration is None
+    assert supply.REASON_LINKAGE_ARTIFACT_UNAVAILABLE in result.review_reasons
+
+
+def test_artifact_is_loaded_once_at_the_outer_boundary(monkeypatch):
+    """候補ごとに artifact file を読み直さない。"""
+    calls = []
+    original = linkage_mod.load_linkage_artifact
+
+    def _counting(path=linkage_mod.DEFAULT_ARTIFACT_PATH):
+        calls.append(path)
+        return original(path)
+
+    monkeypatch.setattr(linkage_mod, "load_linkage_artifact", _counting)
+    supply.build_identity_supply(
+        candidate_ids=["pilot-001", "pilot-002", "pilot-003"],
+        candidates=[
+            _candidate(candidate_id="pilot-001"),
+            _candidate(candidate_id="pilot-002"),
+            _candidate(candidate_id="pilot-003"),
+        ],
+        seed_rows=[_seed_row()],
+        production_rows=[_linked_production_row()],
+        spreadsheet_rows=[],
+        linkage_artifact=_linkage_artifact([_linkage_row()]),
+    )
+    assert calls == []
+
+
+# --- provenance / report ---------------------------------------------------
+
+
+def test_report_distinguishes_exact_linkage_and_absent_targets():
+    """3経路が report 上で区別できること。
+
+    ```text
+    pilot-001  raw exact join で解決     -> EXACT_JOIN
+    pilot-002  canonical linkage で解決  -> CANONICAL_LINKAGE
+    pilot-003  解決できない              -> NONE
+    ```
+    """
+    artifact = _linkage_artifact(
+        [_linkage_row(candidate_id="pilot-002", sequence=1)]
+    )
+    candidates = [
+        _candidate(candidate_id="pilot-001"),
+        _candidate(
+            candidate_id="pilot-002",
+            official_name="供給テスト神社2",
+            official_address="東京都千代田区丸の内2丁目2番2号",
+        ),
+        _candidate(
+            candidate_id="pilot-003",
+            official_name="供給テスト神社3",
+            official_address="東京都千代田区丸の内3丁目3番3号",
+        ),
+    ]
+    seed_rows = [
+        _seed_row(),
+        _seed_row(name_jp="供給テスト神社2", address="東京都千代田区丸の内2丁目2番2号"),
+        _seed_row(name_jp="供給テスト神社3", address="東京都千代田区丸の内3丁目3番3号"),
+    ]
+    supplies = supply.build_identity_supply(
+        candidate_ids=["pilot-001", "pilot-002", "pilot-003"],
+        candidates=candidates,
+        seed_rows=seed_rows,
+        # pilot-001 は exact 一致、pilot-002 は id だけ一致、pilot-003 は無し。
+        production_rows=[_production_row(), _linked_production_row()],
+        spreadsheet_rows=[],
+        linkage_artifact=artifact,
+    )
+    by_id = {item.candidate_id: item for item in supplies}
+    assert (
+        by_id["pilot-001"].production_target_source == supply.TARGET_SOURCE_EXACT_JOIN
+    )
+    assert (
+        by_id["pilot-002"].production_target_source
+        == supply.TARGET_SOURCE_CANONICAL_LINKAGE
+    )
+    assert by_id["pilot-003"].production_target_source == supply.TARGET_SOURCE_NONE
+
+    report = supply.build_report(supplies, linkage_artifact=artifact)
+    assert report["target_source_counts"] == {
+        "CANONICAL_LINKAGE": 1,
+        "EXACT_JOIN": 1,
+        "NONE": 1,
+    }
+    assert report["linkage_artifact_state"] == linkage_mod.ARTIFACT_VALID
+    assert report["schema_version"] == "position-identity-supply/1.1"
+
+
+def test_provenance_is_report_only_vocabulary():
+    assert supply.PRODUCTION_TARGET_SOURCES == {
+        "EXACT_JOIN",
+        "CANONICAL_LINKAGE",
+        "NONE",
+    }
+    assert supply.PRODUCTION_TARGET_SOURCES.isdisjoint(
+        {audit.AUTO_PASS, audit.REVIEW, audit.HOLD}
+    )
+    assert supply.PRODUCTION_TARGET_SOURCES.isdisjoint(
+        sie.IDENTITY_EVIDENCE_STATUSES
+    )
+    assert supply.PRODUCTION_TARGET_SOURCES.isdisjoint(
+        b04.SEED_PRODUCTION_IDENTITY_STATUSES
+    )
+
+
+def test_linkage_reasons_keep_deterministic_ordering():
+    result = _missing_production_with_linkage(linkage_artifact=_absent_artifact())
+    ranks = [supply.REVIEW_REASON_ORDER.index(r) for r in result.review_reasons]
+    assert ranks == sorted(ranks)
+    assert set(result.review_reasons) <= supply.REVIEW_REASONS
+
+
+def test_linkage_supply_is_byte_stable():
+    artifact = _linkage_artifact([_linkage_row()])
+
+    def _run():
+        supplies = supply.build_identity_supply(
+            candidate_ids=["pilot-001"],
+            candidates=[_candidate()],
+            seed_rows=[_seed_row()],
+            production_rows=[_linked_production_row()],
+            spreadsheet_rows=[],
+            linkage_artifact=artifact,
+        )
+        return supply.dump_json(
+            supply.build_report(supplies, linkage_artifact=artifact)
+        )
+
+    assert _run() == _run()
+
+
+def test_linkage_integration_reaches_position_audit_mapping():
+    artifact = _linkage_artifact([_linkage_row()])
+    target = _linked_production_row(
+        name_jp=OFFICIAL_NAME, address=OFFICIAL_ADDRESS
+    )
+    supplies = supply.build_identity_supply(
+        candidate_ids=["pilot-001"],
+        candidates=[_candidate()],
+        seed_rows=[_seed_row()],
+        production_rows=[target],
+        spreadsheet_rows=[],
+        linkage_artifact=artifact,
+    )
+    mapping = supply.identity_integrations_by_candidate(supplies)
+    assert set(mapping) == {"pilot-001"}
+    for value in mapping.values():
+        assert type(value) is audit.PositionIdentityIntegrationResult
 
 
 # ---------------------------------------------------------------------------
