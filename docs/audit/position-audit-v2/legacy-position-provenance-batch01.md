@@ -1,0 +1,272 @@
+# LEGACY_UNTRACED Position Provenance Audit — Batch 01
+
+## Status
+
+- Status: `IN_PROGRESS`
+- Recorded at: `2026-09-21`
+- Batch: `LEGACY_UNTRACED Batch 01`
+- Targets: 10 Shrines
+- Complete: `1/10`
+- PASS: `1`
+- HOLD_POSITION_REVIEW: `0`
+- NOT_ADJUDICATED: `9`
+- Production write: `NONE`
+- Base Seed write: `NONE`
+
+本書は Position Contract の変更ではない。採用ルールの authority は
+`docs/knowledge/shrine-position-contract.md` のままである。
+
+## 1. Batch Scope / Production Snapshot
+
+### Target Shrines
+
+1. 明治神宮
+2. 伏見稲荷大社
+3. 伊勢神宮（内宮）
+4. 出雲大社
+5. 春日大社
+6. 太宰府天満宮
+7. 熱田神宮
+8. 宇佐神宮
+9. 日光東照宮
+10. 鶴岡八幡宮
+
+### Production Snapshot
+
+- source: repo-external `~/production-position-snapshot.txt`
+- recorded_at: `2026-09-21 12:56:35 JST`
+- sha256: `a19b8d3b0868a3b7d2122583140115066258e805c6b0b3b9325a1c5fad8a861f`
+- production_total: `113`
+- batch_target_count: `10`
+- fields: `id / name_jp / address / latitude / longitude / kind / place_ref_id`
+
+Raw Production snapshot は repository に commit しない。
+
+### Current Stored Positions
+
+| # | Shrine | Production ID | Address | Latitude | Longitude | place_ref_id |
+| --- | --- | ---: | --- | ---: | ---: | --- |
+| 01 | 明治神宮 | 1 | 東京都渋谷区代々木神園町1-1 | 35.6764 | 139.6993 | null |
+| 02 | 伏見稲荷大社 | 2 | 京都府京都市伏見区深草薮之内町68 | 34.9671 | 135.7727 | null |
+| 03 | 伊勢神宮（内宮） | 3 | 三重県伊勢市宇治館町1 | 34.455 | 136.7256 | null |
+| 04 | 出雲大社 | 4 | 島根県出雲市大社町杵築東195 | 35.4016 | 132.6853 | null |
+| 05 | 春日大社 | 5 | 奈良県奈良市春日野町160 | 34.6814 | 135.8481 | null |
+| 06 | 太宰府天満宮 | 6 | 福岡県太宰府市宰府4-7-1 | 33.5213 | 130.5351 | null |
+| 07 | 熱田神宮 | 7 | 愛知県名古屋市熱田区神宮1-1-1 | 35.1279 | 136.9114 | null |
+| 08 | 宇佐神宮 | 8 | 大分県宇佐市南宇佐2859 | 33.531 | 131.379 | null |
+| 09 | 日光東照宮 | 9 | 栃木県日光市山内2301 | 36.7579 | 139.5986 | null |
+| 10 | 鶴岡八幡宮 | 10 | 神奈川県鎌倉市雪ノ下2-1-31 | 35.3256 | 139.5566 | null |
+
+## 2. Audit Rules
+
+Authoritative contract:
+
+`docs/knowledge/shrine-position-contract.md`
+
+Machine-audit reference:
+
+`docs/audit/shrine-position-ground-truth-v2.md`
+
+Canonical meaning:
+
+```text
+Shrine.latitude / Shrine.longitude
+= Visitor / Navigation Anchor
+```
+
+Evaluation layers:
+
+```text
+Official Identity
+↓
+Primary Position Source
+↓
+Coordinate Traceability
+↓
+Visitor / Navigation Anchor Semantics
+↓
+Corroboration when required
+↓
+Human Position Adjudication
+PASS / HOLD_POSITION_REVIEW
+```
+
+Rules:
+
+1. Stored Production coordinates are observations, not proof of correctness.
+2. Base Seed equality with Production is artifact synchronization only.
+3. Shrine identity is established independently from coordinates.
+4. Primary Position Source must identify the same real-world Shrine.
+5. Adopted coordinates must be reproducible from the recorded Primary Source.
+6. Coordinate deltas are observational evidence only; no fixed meter threshold yields PASS or HOLD.
+7. Parking, office, trailhead, parcel/precinct centroid, or unrelated auxiliary points are not automatically Visitor / Navigation Anchors.
+8. Corroboration is required when stored and current candidates conflict, multiple plausible POIs exist, or Anchor semantics are unclear.
+9. Incomplete audit state is `NOT_ADJUDICATED`, not `HOLD_POSITION_REVIEW`.
+10. `HOLD_POSITION_REVIEW` is used only after adjudication finds a blocking unresolved conflict.
+11. This audit performs no Production DB, Base Seed, Candidate Master, Recommendation, Compass, or Ranking write.
+
+## 3. Batch 1 Adjudication Status
+
+| # | Shrine | Audit Status | Position Status |
+| --- | --- | --- | --- |
+| 01 | 明治神宮 | IN_PROGRESS | NOT_ADJUDICATED |
+| 02 | 伏見稲荷大社 | IN_PROGRESS | NOT_ADJUDICATED |
+| 03 | 伊勢神宮（内宮） | IN_PROGRESS | NOT_ADJUDICATED |
+| 04 | 出雲大社 | COMPLETE | PASS |
+| 05 | 春日大社 | IN_PROGRESS | NOT_ADJUDICATED |
+| 06 | 太宰府天満宮 | IN_PROGRESS | NOT_ADJUDICATED |
+| 07 | 熱田神宮 | IN_PROGRESS | NOT_ADJUDICATED |
+| 08 | 宇佐神宮 | IN_PROGRESS | NOT_ADJUDICATED |
+| 09 | 日光東照宮 | IN_PROGRESS | NOT_ADJUDICATED |
+| 10 | 鶴岡八幡宮 | IN_PROGRESS | NOT_ADJUDICATED |
+
+```text
+BATCH_TARGETS   = 10
+COMPLETE        = 1
+PASS            = 1
+HOLD            = 0
+NOT_ADJUDICATED = 9
+```
+
+## 4. 出雲大社 — Completed Record
+
+### 4.1 Identity
+
+```text
+production_shrine_id = 4
+official_name = 出雲大社
+official_address = 島根県出雲市大社町杵築東195
+identity_status = SUPPORTED
+```
+
+### 4.2 Current Production Position
+
+```text
+latitude = 35.4016
+longitude = 132.6853
+place_ref_id = null
+provenance = LEGACY_UNTRACED
+```
+
+The stored numeric value alone does not provide reconstructable Primary Position provenance under the current Position Contract.
+
+### 4.3 Primary Position Source
+
+```text
+primary_source_type = map_provider_poi
+primary_source_provider = Mapion
+primary_source_url = https://www.mapion.co.jp/phonebook/M06005/32203/ILSP0000082374_ipclm/
+
+primary_latitude = 35.40190463
+primary_longitude = 132.68547534
+
+retrieval_status = OK
+entity_match = SAME
+coordinate_precision_policy = PRESERVE_PRIMARY_SOURCE_PRECISION
+```
+
+The adopted coordinate preserves the exact coordinate precision exposed by the Primary Source.
+
+### 4.4 Corroboration
+
+```text
+corroboration_source_type = independent_map_provider_poi
+corroboration_source_provider = MapFan
+corroboration_latitude = 35.4019047
+corroboration_longitude = 132.6854754
+corroboration_status = SATISFIED
+```
+
+Observed deltas:
+
+```text
+stored_vs_primary_delta_m ≈ 37.416
+primary_vs_corroboration_delta_m ≈ 0.0095
+```
+
+The deltas are observational only and are not PASS thresholds.
+
+### 4.5 Anchor Semantics
+
+```text
+anchor_type = SHRINE_POI / PRECINCT_CORE
+anchor_semantics = CONFIRMED
+```
+
+The Primary Position is explainable as the representative Shrine / precinct-core point rather than an identified parking location or unrelated auxiliary facility.
+
+The Shrine has multiple visitor-access elements. A future vehicle-specific navigation destination may therefore be modeled separately from the canonical Shrine Position.
+
+### 4.6 Adjudication
+
+```text
+identity_match = SAME
+coordinate_traceability = OK
+anchor_semantics = CONFIRMED
+corroboration_status = SATISFIED
+blocking_conflict = NONE
+
+POSITION_STATUS = PASS
+ADOPTED_COORDINATE = 35.40190463, 132.68547534
+```
+
+### 4.7 Remediation Decision
+
+```text
+current_stored_coordinate = 35.4016, 132.6853
+adopted_coordinate = 35.40190463, 132.68547534
+
+remediation_decision = UPDATE_TO_ADOPTED_PRIMARY
+production_write = NOT_YET_PERFORMED
+base_seed_write = NOT_YET_PERFORMED
+verified_at = 2026-09-21
+```
+
+This decision exists at the audit/adoption layer only. It does not assert that Production or Base Seed has already been modified.
+
+## 5. Remaining Batch 1 Records
+
+| # | Shrine | Official Identity | Primary Source Candidate | Primary Coordinate State | Anchor Semantics | Corroboration | Position |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 01 | 明治神宮 | SUPPORTED | FOUND | EMBED_CENTER_RETRIEVED | NOT_YET_ADJUDICATED | NOT_YET_COMPLETED | NOT_ADJUDICATED |
+| 02 | 伏見稲荷大社 | SUPPORTED | FOUND | EMBED_CENTER_RETRIEVED | NOT_YET_ADJUDICATED | NOT_YET_COMPLETED | NOT_ADJUDICATED |
+| 03 | 伊勢神宮（内宮） | SUPPORTED | FOUND | POI_COORDINATE_RETRIEVED | NOT_YET_ADJUDICATED | NOT_YET_COMPLETED | NOT_ADJUDICATED |
+| 05 | 春日大社 | SUPPORTED | FOUND | SHORTLINK_UNRESOLVED | NOT_YET_ADJUDICATED | NOT_YET_COMPLETED | NOT_ADJUDICATED |
+| 06 | 太宰府天満宮 | SUPPORTED | FOUND | ROUTE_LINK_FOUND_COORDINATE_NOT_RETRIEVED | NOT_YET_ADJUDICATED | NOT_YET_COMPLETED | NOT_ADJUDICATED |
+| 07 | 熱田神宮 | SUPPORTED | FOUND | EMBED_CENTER_RETRIEVED | NOT_YET_ADJUDICATED | NOT_YET_COMPLETED | NOT_ADJUDICATED |
+| 08 | 宇佐神宮 | SUPPORTED | FOUND | NOT_RETRIEVED | NOT_YET_ADJUDICATED | NOT_YET_COMPLETED | NOT_ADJUDICATED |
+| 09 | 日光東照宮 | SUPPORTED | FOUND | NOT_RETRIEVED | NOT_YET_ADJUDICATED | NOT_YET_COMPLETED | NOT_ADJUDICATED |
+| 10 | 鶴岡八幡宮 | SUPPORTED | FOUND | FETCH_INCOMPLETE | NOT_YET_ADJUDICATED | NOT_YET_COMPLETED | NOT_ADJUDICATED |
+
+## 6. Remediation Candidates
+
+| Shrine | Position Status | Remediation Decision | Production Write | Base Seed Write |
+| --- | --- | --- | --- | --- |
+| 出雲大社 | PASS | UPDATE_TO_ADOPTED_PRIMARY | NOT_YET_PERFORMED | NOT_YET_PERFORMED |
+
+Remediation implementation is a separate PR and is not part of this audit document.
+
+## 7. Non-Goals
+
+This Batch does not:
+
+- write Production DB;
+- modify Base Seed;
+- create or modify migrations;
+- alter Recommendation / Ranking / Concierge / Compass logic;
+- define a fixed coordinate-distance PASS threshold;
+- treat an unfinished audit as HOLD;
+- infer missing evidence.
+
+## 8. STOP
+
+Current Batch 1 state:
+
+```text
+COMPLETE = 1/10
+PASS = 1
+HOLD_POSITION_REVIEW = 0
+NOT_ADJUDICATED = 9
+```
+
+Continue remaining Shrines under the same Position Contract and record format.
