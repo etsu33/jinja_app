@@ -11,6 +11,10 @@ on:
         type: string
         required: false
         default: "1000/min"
+      pytest_target:
+        type: string
+        required: false
+        default: ""
     secrets:
       GOOGLE_MAPS_API_KEY: { required: false }
       GOOGLE_PLACES_API_KEY: { required: false }
@@ -25,6 +29,10 @@ on:
         description: "DRF throttle for concierge"
         type: string
         default: "1000/min"
+      pytest_target:
+        description: "Optional pytest file/path for targeted integration validation"
+        type: string
+        default: ""
 
 permissions: { contents: read }
 
@@ -377,13 +385,29 @@ jobs:
         working-directory: backend
         run: python manage.py migrate --plan
 
+      # pytest_target が空のとき: 従来どおり統合スイート全体を実行する
       - name: Run pytest (integration, postgis)
+        if: ${{ (inputs.pytest_target || '') == '' }}
         env:
           PYTHONPATH: ${{ github.workspace }}/backend
         run: |
           python -V
           python -c "import django,sys;print('django', django.get_version());print(sys.version)"
           python -m pytest --cache-clear
+
+      # pytest_target が非空のとき: 同じ PostGIS / USE_GIS=1 環境で、
+      # 指定された 1 つの pytest ファイル/パスだけを実行する。
+      # 入力はシェルへ直接展開せず、環境変数経由で引用して渡す。
+      - name: Run pytest (integration, postgis, targeted path)
+        if: ${{ (inputs.pytest_target || '') != '' }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}/backend
+          PYTEST_TARGET: ${{ inputs.pytest_target }}
+        run: |
+          python -V
+          python -c "import django,sys;print('django', django.get_version());print(sys.version)"
+          echo "targeted pytest path: ${PYTEST_TARGET}"
+          python -m pytest --cache-clear -- "$PYTEST_TARGET"
 
       - name: Show DB container logs (always)
         if: always()
