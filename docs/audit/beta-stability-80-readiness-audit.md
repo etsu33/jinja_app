@@ -1,4 +1,4 @@
-> **Status: Active Tracking（Phase 0 / Audit Contract）**
+> **Status: Active Tracking（Phase 1 / Audit Contract）**
 >
 > 本ドキュメントは、KAMI MUSUBI Beta Stability 80% Readiness Auditの**監査条件契約**である。監査結果ではない。
 >
@@ -48,36 +48,49 @@ Beta公開に耐える安定性が満たされているかを、**再現可能�
 
 ### 2.3 Phaseの割り当て
 
-Phase番号ごとのScopeは本Phase 0では確定していない。現時点で確定しているのは以下のみである。
+現時点で確定しているPhase Scopeは以下のとおりとする。
 
 | Phase | 確定内容 | 出典 |
 | --- | --- | --- |
-| Phase 0 | 監査条件の凍結（本書） | 本タスク |
+| Phase 0 | 監査条件の凍結・Entry Gate契約の整備（本書） | 本タスク |
+| Phase 1 | Core Journey Stability Audit。§3.8のMain E2E Flowを監査baselineとして使用する | 既存`Beta Core Flow E2E Audit` / §3.8 |
 | Phase 2 | signup挙動の監査 | Mother Ship決定 |
 | Phase 4 | Shrine Data validation（監査対象ジャーニーで遭遇したデータに限定） | 本タスク指示 |
 
-Phase 1・Phase 3のScopeは**未定義**である。推測で定義しない。
-
+Phase 3のScopeは**未定義**である。推測で定義しない。
 ---
 
 ## 3. 凍結した監査条件（Frozen Audit Conditions）
 
 凍結時刻における値を記録する。以降のPhaseは本節の条件下でのみ実行する。条件を変更する場合は、本書を更新し、変更前後のBUG記録を区別する。
 
-### 3.1 Revision
+### 3.1 Audit Revision History
+
+| Revision | SHA | Status | Scope |
+| --- | --- | --- | --- |
+| `R0` | `f4a77443061fbb229a326d6c190cac01a6e1f81d` | `HISTORICAL / SUPERSEDED` | Phase 0 baseline |
+| `R1` | `73f60f36ef314f1dba833aa4a2575645339391f5` | `ACTIVE` | Phase 1 Entry Gate以降 |
+
+#### R1 Freeze Rule
+
+- `R0`のSHA・Evidenceは履歴として保持し、上書きしない
+- Phase 1用branchを作成する直前に最新`origin/develop`を確認する
+- その時点のSHAを`R1`へ記録し、Statusを`ACTIVE`へ変更する
+- 既存BUG-IDは振り直さない
+- 各BUG記録は`Audit Revision`と`Observed SHA`で更新前後を区別する
+- 旧RevisionのEvidenceは書き換えない
+
+#### R1 Freeze Record
 
 | 項目 | 値 |
 | --- | --- |
-| 監査Commit SHA | `f4a77443061fbb229a326d6c190cac01a6e1f81d` |
-| Commit subject | `fix: 新規登録後の正規化済みユーザー名で自動ログインする (#2850)` |
-| Commit date | 2026-09-15 10:43:50 +0900 |
 | Base branch | `develop` |
-| 凍結時の`origin/develop` | `f4a77443061fbb229a326d6c190cac01a6e1f81d`（監査SHAと同一） |
-| 監査branch | `audit/beta-stability-80-readiness` |
-| 監査branchの分岐元 | `origin/develop`（上記SHA） |
+| Frozen SHA | `73f60f36ef314f1dba833aa4a2575645339391f5` |
+| Commit subject | `fix(recommendation): remove culture translation from primary authority tier (#2901)` |
+| Freeze date | 2026-09-21 |
+| Phase 1 branch | `audit/beta-stability-phase1-entry-gate-v2` |
 
-Phase 1以降で`develop`が進んでも、監査対象は上記SHAに固定する。SHAを更新する場合は本書を更新し、更新前後のBUG記録を区別する。
-
+`R1`は上記SHAで凍結済みであり、以降のPhase 1観測はこのRevisionを基準とする。
 ### 3.2 Target Environment
 
 **Local development environment**をbaselineとする。Production環境はbaselineとしない。
@@ -166,41 +179,130 @@ Chrome-family以外のbrowserでのみ再現する事象は、本監査のScope�
 | 想定される利用範囲 | 相談・閲覧は可能。保存操作から認証を要求する |
 | 根拠 | `docs/core/auth-flow.md`、`docs/ops/guest-data-retention.md` |
 
-#### `US-AUTH` — 認証済みユーザー（Free tier）
+#### `US-AUTH` — 認証済みユーザー（Free tier） / Auth Contract v2
 
 | 項目 | 凍結内容 |
 | --- | --- |
-| 定義 | 通常のログインフローでセッションを確立した利用者。課金状態はFree |
-| 認証経路 | Login Form → `AuthProvider.login` → `POST /api/auth/login`（BFF） → Django `/api/auth/jwt/create/` → access / refresh tokenをHttpOnly Cookieへ保存 |
-| 根拠 | `docs/core/authentication-flow.md` |
-| アカウント要件 | 既存のlocalアカウントであること / `is_active=True` / 課金状態Free（§3.3） |
-| アカウント選定手順 | `make auth-users`で既存localアカウントを列挙し、監査実行者が1件を選択する（`Makefile:199-203`） |
-| ログイン不能時の回復手順 | `make auth-reset-pass AUTH_USER=<user> AUTH_PASS=<pass>`（`Makefile:205-215`）。これは既存アカウントのパスワード再設定であり、認証バイパスではない |
-| ログイン方法 | アプリケーションの通常ログイン画面（`/auth/login`）からのみ行う |
-| 禁止事項 | 認証バイパスの作成、テスト専用ログイン経路の追加、Cookieの手動注入、認証情報の文書・commit・PRへの記載 |
-| 記録してよいもの | 再現可能な認証**手段**と、必要な**アカウント状態**のみ |
-| 記録してはならないもの | username / email / password / token / cookie値 |
-| **検証状態** | **UNRESOLVED**（§3.9） |
+| 定義 | 通常のLogin Flowを通過し、`GET /api/users/me/`が`200`と有効なuserを返し、`AuthProvider`が`authenticated`状態となった利用者 |
+| 課金状態 | Free tier。`BILLING_STUB_PLAN=free` / `BILLING_STUB_ACTIVE=0`をbaselineとする（§3.3） |
+| 認証経路 | Login Form → `AuthProvider.login` → `POST /api/auth/login`（BFF） → Django JWT endpoint → access / refresh tokenをHttpOnly Cookieへ保存 → `GET /api/users/me/`でidentityを確認 |
+| Frontend identity確定条件 | `/api/users/me/`が`200`を返し、有効なuserを取得できた場合のみ`authenticated`として扱う |
+| `authenticated` | `/me = 200 + valid user`。FrontendはLogged-inとして扱い、logged-in markerを保持・復元する |
+| `unauthenticated` | `/me = 401`。session無効が確定したものとしてGuestへ遷移し、logged-in markerを削除する |
+| `indeterminate` | `/me`の5xx / network failure / response parse failure等。認証状態を確定せず`unknown`として扱い、logged-in markerは保持する |
+| Fail-closed UI | `indeterminate`中は`isLoggedIn=false`として認証済みUIを表示しない。ただしsession失効とは判定しない |
+| Recovery | `indeterminate`後の`refreshMe()`または再mountで`/me`が成功した場合、`authenticated`へ復旧できる |
+| Logged-in marker | `localStorage`上のmarkerは「`/me`を問い合わせるべき可能性がある」というhintであり、認証identityの正本ではない |
+| Token Refresh | Access Token失効時のrefreshはBFFが担当する。Frontend ComponentはRefresh Tokenを直接扱わない |
+| Refresh判定 | Backend `401`のみrefresh retry対象とする。`403`は認可結果としてrefreshしない |
+| Identity isolation | Refresh処理はrefresh token単位で分離し、異なるuser間でaccess token結果を共有しない |
+| 根拠 | `docs/core/authentication-flow.md`、関連するAuth実装およびRegression Test |
+| アカウント要件 | 既存のlocalアカウント / `is_active=True` / Free tier |
+| アカウント選定手順 | `make auth-users`で既存localアカウントを確認し、監査実行者が1件を選択する |
+| ログイン不能時の回復手順 | 必要な場合のみ既存local accountのpasswordを通常の開発手順で再設定する。認証バイパスとして扱わない |
+| ログイン方法 | アプリケーションの通常ログイン画面`/auth/login`からのみ行う |
+| 禁止事項 | 認証バイパス、テスト専用Login route追加、Cookie手動注入、JWT / tokenのFrontend直接読取、認証情報の文書・commit・PRへの記録 |
+| 記録してよいもの | `VERIFIED: YES/NO`、検証日、Audit Revision、Observed SHA、HTTP status、Auth状態遷移 |
+| 記録してはならないもの | username / email / password / access token / refresh token / Cookie値 |
+| 検証状態 | `RUNTIME_REVALIDATION_REQUIRED`（§3.9）。現行Audit Revisionのlocal runtimeで実測後に`RESOLVED / VERIFIED`へ変更する |
 
-signup（新規登録）挙動そのものはPhase 2の監査対象であり、本Phase 0では認証手段として使用しない（Mother Ship決定）。
+signup（新規登録）挙動そのものはPhase 2の監査対象とし、Phase 1 Entry Gateで`US-AUTH`を成立させるための認証手段には使用しない。
+### 3.8 Phase 1 Core Journey Audit Baseline
 
-### 3.8 監査対象Route（Phase 1以降で確定する）
+Phase 1では、既存の`Beta Core Flow E2E Audit`で使用されたMain E2E Flowを
+監査上のCore Journey baselineとして使用する。
 
-本Phase 0ではRoute一覧を確定しない。`apps/web/src/app`配下に41のpage routeが存在するが、どれをBeta Core Journeyとするかは**製品判断**であり、Phase 0の責務外である。
+これは新しいProduct Specificationを定義するものではない。
+本書では、既存監査で実際に使用されたJourneyを
+Beta Stability Auditの再現可能な観測経路として採用する。
 
-- Repository内に`Core Journey`の定義文書は存在しない（`docs/`配下に該当記述なし）
-- 近接する先例は`docs/audit/production-critical-journey-qa.md`のJourney A / B / C / Dのみであり、これはProduction向けのCritical Journey QAであってBeta Core Journeyの正本ではない
+#### Main E2E Flow
 
-Core Journeyの確定が必要になった時点で、§9のSTOP条件（製品仕様判断）に該当する。
+```text
+Home
+→ Concierge Input
+→ Recommendation
+→ Shrine Detail
+→ Route / Save
+→ Auth Return
+→ Premium State
+```
 
+#### Phase 1で扱うRoute / Domain
+
+| Journey Segment | 主な対象 |
+| --- | --- |
+| Home | HomeからConciergeへのentry |
+| Concierge Input | 相談入力・送信 |
+| Recommendation | 推薦結果表示 |
+| Shrine Detail | 神社詳細表示 |
+| Route | 経路導線 |
+| Save | Favorite / 保存操作 |
+| Auth Return | Guest → Login → 元の内部Routeへの復帰 |
+| Premium State | Free / Premium境界の表示・導線 |
+
+#### User State適用
+
+- `US-GUEST`で再現可能なJourney Segmentは、§10のGuest Gateが`READY`であれば観測を開始できる
+- `US-AUTH`を必要とするJourney Segmentは、`UNRES-01`解消後に観測する
+- Guest → Auth Returnの途中で`US-AUTH`成立が必要になった場合、その地点で観測を停止し、Gate解消後に再開する
+
+#### Scope Boundary
+
+Phase 1では以下を評価しない。
+
+- Recommendation ranking / scoring品質
+- Recommendation意味ロジックの妥当性
+- Shrine Seed全体の品質
+- Database schema
+- Production環境
+- Signup機能そのもの（Phase 2）
+- Coordinate Audit / Seed pipeline
+
+Phase 1で観測するのは、
+上記Core Journeyを通過した際の機能安定性・表示・遷移・認証境界・エラー挙動に限定する。
+
+既存`Beta Core Flow E2E Audit`は本節の監査baselineの出典であり、
+Current Source of Truthそのものではない。
+
+---
 ### 3.9 UNRESOLVED条件
 
-| ID | 条件 | 状態 | 理由 | 解消手順 |
+| ID | 条件 | 状態 | 理由 | 解消条件 |
 | --- | --- | --- | --- | --- |
-| `UNRES-01` | `US-AUTH`で使用する既存local test userの実在と、通常ログイン成立の検証 | **UNRESOLVED** | 本Phase 0の実行環境にlocal runtimeが存在しないため検証不能。Docker daemon利用不可、PostgreSQL `127.0.0.1:5432`未起動、Python venv（`.venv`）不在 | ローカル環境で `make auth-users` を実行し`is_active=True`のアカウントが1件以上存在することを確認する。次に`/auth/login`から通常ログインが成立し`GET /api/users/me/`が`200`を返すことを確認する。確認できたら本表を`RESOLVED`へ更新する（**アカウント識別子と認証情報は記録しない**。「検証済み: YES」「検証日」のみ記録する） |
+| `UNRES-01` | Phase 1で使用する`US-AUTH` local Free userが、現行Audit Revision上で通常Login Flowを通り、`/api/users/me/`の`200 + valid user`によって`authenticated`へ到達できること | **RUNTIME_REVALIDATION_REQUIRED** | Auth Contract自体は現行実装・Regression Testで確認済みだが、Phase 1監査で使用するlocal runtime / local accountについては新Audit Revision上でまだ実測していない | local環境で既存`is_active=True`のFree userを1件選択し、`/auth/login`から通常ログインする。Login成功後に`GET /api/users/me/`が`200`と有効なuserを返し、Frontendが`authenticated`となることを確認する。さらにpage reload後も同一identityとして復元されることを確認する。完了後、本項目を`RESOLVED / VERIFIED`へ変更する |
 
-`UNRES-01`が未解消の間、認証済みユーザーを前提とする観測は再現不能である。
+#### UNRES-01 実測時の必須確認
 
+- Loginはアプリケーションの通常`/auth/login`経路から行う
+- Cookie手動注入・認証バイパス・テスト専用Login routeは使用しない
+- `/api/users/me/`が`200`と有効なuserを返すこと
+- `AuthProvider`が`authenticated`として扱うこと
+- page reload後も同一user identityとして復元できること
+- 課金状態はFree baselineのままとする
+- username / email / password / token / Cookie値は監査文書・commit・PRへ記録しない
+- 記録するのは`VERIFIED: YES/NO`、検証日、Audit Revision、Observed SHAのみとする
+
+#### Auth Contract v2で既に固定済みのため、UNRES-01には含めない項目
+
+以下は現行実装およびRegression TestでContractが固定されており、
+`US-AUTH` runtime accountの存在確認とは分離する。
+
+- `/me = 401`のみを`unauthenticated`としてGuestへ遷移させる
+- `/me = 5xx`をGuest確定として扱わない
+- network failureをGuest確定として扱わない
+- response parse failureをGuest確定として扱わない
+- indeterminate時にlogged-in markerを保持する
+- 一時失敗後の`refreshMe()`でauthenticatedへ復旧できる
+- reload後の再試行でauthenticatedへ復旧できる
+- access token refreshをBFF側で処理する
+- refresh retryは401のみとし、403では実行しない
+- refresh処理をuser identity間で共有しない
+
+`UNRES-01`が未解消の間は、Phase 1における
+`US-AUTH`実ブラウザ観測を開始しない。
+`US-GUEST`のみで観測可能な項目については、
+`UNRES-01`を理由に停止する必要はない。
 ---
 
 ## 4. BUG-ID Format
@@ -253,7 +355,9 @@ BETA-NNN
 | `P3` | UX / UI欠陥 / 軽微な挙動の不整合 / 遮断を伴わない機能上の問題 |
 | `P4` | 表層的な問題 / 改善機会 / 遮断を伴わないpolish |
 
-Core Journeyが未確定である間（§3.8）、`P0` / `P1`の「Core Journey」基準は適用できない。該当しうる事象は、Core Journey確定待ちである旨を`Suspected Scope`へ記載し、Priorityを暫定値として記録する。
+Phase 1では§3.8のCore Journey baselineに対して、`P0` / `P1`の「Core Journey」基準を適用する。
+
+§3.8のbaseline外にあるRouteや機能については、Core Journey影響を推測で拡張しない。Evidenceに裏付けられる場合のみ`Suspected Scope`へ記録する。
 
 ---
 
@@ -264,6 +368,8 @@ Core Journeyが未確定である間（§3.8）、`P0` / `P1`の「Core Journey�
 | フィールド | 必須 | 内容 |
 | --- | --- | --- |
 | `BUG-ID` | 必須 | §4の形式 |
+| `Audit Revision` | 必須 | 観測時のAudit Revision（`R0` / `R1` / ...） |
+| `Observed SHA` | 必須 | 観測対象となった正確なcommit SHA |
 | `Phase` | 必須 | 検出したPhase番号 |
 | `Route` | 必須 | 検出したRoute（例: `/shrines/[id]`）。Route外の場合は`N/A`と理由 |
 | `User State` | 必須 | `US-GUEST` / `US-AUTH` |
@@ -285,6 +391,8 @@ Core Journeyが未確定である間（§3.8）、`P0` / `P1`の「Core Journey�
 
 ```text
 BUG-ID:            BETA-000
+Audit Revision:     R0 | R1 | ...
+Observed SHA:
 Phase:
 Route:
 User State:        US-GUEST | US-AUTH
@@ -417,44 +525,100 @@ Phase 4のShrine Data validationは、監査対象ジャーニーを通じて遭
 
 ## 10. Phase 1 Entry Gate
 
-### 10.1 判定
+### 10.1 Gate方針
+
+Phase 1 Entry Gateは、`US-GUEST`と`US-AUTH`を分離して判定する。
+
+`UNRES-01`は`US-AUTH`のlocal runtime再検証に限定された条件であり、
+未解消であることだけを理由に`US-GUEST`で再現可能な観測まで停止しない。
+
+Gate状態は以下の3つを使用する。
+
+| Gate Status | 意味 |
+| --- | --- |
+| `READY` | 必要な監査条件が成立し、対象User StateでPhase 1観測を開始できる |
+| `BLOCKED` | 対象User Stateに必要な未解決条件があり、観測を開始しない |
+| `NOT_APPLICABLE` | 当該条件が対象User Stateの観測に関係しない |
+
+### 10.2 共通条件
 
 | # | 条件 | 判定 | 根拠 |
 | --- | --- | --- | --- |
-| 1 | 監査Commit SHAが凍結されている | PASS | §3.1 |
+| 1 | Audit Revision方式とR1 Freeze Ruleが定義されている | PASS | §3.1 |
 | 2 | Target environmentが記録されている | PASS | §3.2 / §3.3 |
 | 3 | Browser baselineが記録されている | PASS | §3.5 |
 | 4 | 375 / 390 / 430のviewport条件が記録されている | PASS | §3.6 |
-| 5 | Guest / 認証済みユーザー状態が定義されている | PASS | §3.7 |
-| 6 | BUG-ID形式が固定されている | PASS | §4 |
-| 7 | `BUG` / `SPEC` / `DATA` / `UX`の定義が固定されている | PASS | §5 |
-| 8 | `P0`〜`P4`の定義が固定されている | PASS | §6 |
-| 9 | Bug record templateが固定されている | PASS | §7.1 / §7.2 |
-| 10 | Evidence要件が固定されている | PASS | §7.3 |
-| 11 | STOP条件が固定されている | PASS | §9 |
-| 12 | 再現可能なテストを妨げる未解決のPhase 0条件が存在しない | **FAIL** | `UNRES-01`（§3.9） |
+| 5 | `US-GUEST`の状態契約が定義されている | PASS | §3.7 |
+| 6 | `US-AUTH`のAuth Contract v2が定義されている | PASS | §3.7 |
+| 7 | BUG-ID形式が固定されている | PASS | §4 |
+| 8 | `BUG` / `SPEC` / `DATA` / `UX`の定義が固定されている | PASS | §5 |
+| 9 | `P0`〜`P4`の定義が固定されている | PASS | §6 |
+| 10 | Bug record templateが固定されている | PASS | §7.1 / §7.2 |
+| 11 | Evidence要件が固定されている | PASS | §7.3 |
+| 12 | STOP条件が固定されている | PASS | §9 |
 
-### 10.2 結論
+`R1`の実SHAは§3.1で凍結済みである。
 
-Phase 1 Entry Gateの判定は **NOT READY** である。
+### 10.3 User State別判定
 
-`UNRES-01`（既存local test userの実在とログイン成立が未検証）が、認証済みユーザーを前提とする観測の再現性を妨げている。
+#### `US-GUEST`
 
-- `UNRES-01`を解消するまでPhase 1を開始しない
-- `US-GUEST`のみを対象とする観測についても、条件12を満たさない状態でのPhase 1開始は行わない
+| 条件 | 判定 | 根拠 |
+| --- | --- | --- |
+| Guest開始状態を再現できる | READY | §3.7 `US-GUEST` |
+| Guest判定条件が固定されている | READY | `/api/users/me/ = 401` |
+| Guest観測を妨げる未解決条件が存在しない | READY | §3.9 |
+| `UNRES-01` | `NOT_APPLICABLE` | `UNRES-01`は`US-AUTH` runtime revalidationに限定される |
 
+**`US-GUEST` Gate: READY**
+
+`US-GUEST`のみで再現可能なPhase 1観測は開始してよい。
+
+#### `US-AUTH`
+
+| 条件 | 判定 | 根拠 |
+| --- | --- | --- |
+| Auth Contract v2が定義されている | READY | §3.7 |
+| `/me`の状態分類とRecovery Contractが固定されている | READY | §3.7 |
+| Token Refresh / Identity isolation Contractが固定されている | READY | §3.7 |
+| 現行Audit Revisionのlocal Free userで通常Login Flowを実測済み | BLOCKED | `UNRES-01`（§3.9） |
+| Login後`/me = 200 + valid user`を実測済み | BLOCKED | `UNRES-01`（§3.9） |
+| page reload後の同一identity復元を実測済み | BLOCKED | `UNRES-01`（§3.9） |
+
+**`US-AUTH` Gate: BLOCKED**
+
+`UNRES-01`を`RESOLVED / VERIFIED`へ変更するまで、
+`US-AUTH`を前提とするPhase 1実ブラウザ観測は開始しない。
+
+### 10.4 結論
+
+Phase 1 Entry GateはUser Stateごとに以下の状態とする。
+
+```text
+US-GUEST : READY
+US-AUTH  : BLOCKED — UNRES-01 runtime revalidation待ち
+```
+
+したがって、Phase 1全体を`NOT READY`として停止する旧判定は廃止する。
+
+`US-GUEST`のみで完結する観測は開始可能とする。
+
+認証状態、Auth Return、保存操作、My Page等、
+`US-AUTH`成立を必要とする観測は`UNRES-01`解消後に開始する。
+
+`UNRES-01`解消時は§3.9と本§10を同一PRで更新し、
+`US-AUTH Gate`を`READY`へ変更する。
 ---
 
 ## 11. Phase Status
 
 | Phase | 内容 | 状態 |
 | --- | --- | --- |
-| Phase 0 | 監査条件の凍結 | **完了（`UNRES-01`をUNRESOLVEDとして記録）** |
-| Phase 1 | 未定義（§2.3） | 未着手 / Gate NOT READY |
+| Phase 0 | 監査条件の凍結・Entry Gate契約の整備 | **完了**（`R1`を凍結しPhase 1へ移行） |
+| Phase 1 | Core Journey Stability Audit（§3.8） | `US-GUEST`: `READY` / `US-AUTH`: `UNRES-01`により`BLOCKED` |
 | Phase 2 | signup挙動の監査 | 未着手 |
 | Phase 3 | 未定義（§2.3） | 未着手 |
 | Phase 4 | Shrine Data validation（ジャーニー経由で遭遇したデータに限定） | 未着手 |
-
 ---
 
 ## 12. 本書の位置づけと更新ルール
@@ -463,6 +627,7 @@ Phase 1 Entry Gateの判定は **NOT READY** である。
 - 本書は製品仕様・Recommendation契約・DB設計・Analytics契約を定義しない
 - `docs/audit/README.md`は主要3 audit chainのみのnavigationであり、個別audit文書の内容・Status・追加を管理しない。本書の追加に伴う同READMEの更新は行っていない
 - §3の凍結条件を変更する場合、本書を更新し、変更前後のBUG記録を区別する
+- 新しいAudit Revisionを凍結する場合、Revision History・該当Entry Gate・Phase Statusを同一PRで同期する
 - `UNRES-01`等の未解決条件を解消した場合、§3.9と§10を同一PRで更新する
 - 本書へ認証情報・個人情報・正確な位置情報・secret値を記載しない
 
