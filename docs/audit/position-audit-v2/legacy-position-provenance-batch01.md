@@ -6,10 +6,10 @@
 - Recorded at: `2026-09-21`
 - Batch: `LEGACY_UNTRACED Batch 01`
 - Targets: 10 Shrines
-- Complete: `3/10`
-- PASS: `3`
+- Complete: `4/10`
+- PASS: `4`
 - HOLD_POSITION_REVIEW: `0`
-- NOT_ADJUDICATED: `7`
+- NOT_ADJUDICATED: `6`
 - Production write: `NONE`
 - Base Seed write: `NONE`
 
@@ -111,7 +111,7 @@ Rules:
 | --- | --- | --- | --- |
 | 01 | 明治神宮 | COMPLETE | PASS |
 | 02 | 伏見稲荷大社 | COMPLETE | PASS |
-| 03 | 伊勢神宮（内宮） | IN_PROGRESS | NOT_ADJUDICATED |
+| 03 | 伊勢神宮（内宮） | COMPLETE | PASS |
 | 04 | 出雲大社 | COMPLETE | PASS |
 | 05 | 春日大社 | IN_PROGRESS | NOT_ADJUDICATED |
 | 06 | 太宰府天満宮 | IN_PROGRESS | NOT_ADJUDICATED |
@@ -122,10 +122,10 @@ Rules:
 
 ```text
 BATCH_TARGETS   = 10
-COMPLETE        = 3
-PASS            = 3
+COMPLETE        = 4
+PASS            = 4
 HOLD            = 0
-NOT_ADJUDICATED = 7
+NOT_ADJUDICATED = 6
 ```
 
 ## 4. 出雲大社 — Completed Record
@@ -442,11 +442,125 @@ The remediation decision replaces a legacy-untraced stored coordinate with a
 traceable PASS-adjudicated Primary Position. The approximately 44.3 m delta is
 not itself the reason for remediation.
 
-## 7. Remaining Batch 1 Records
+## 7. 伊勢神宮（内宮） — Completed Record
+
+### 7.1 Identity
+
+```text
+production_shrine_id = 3
+official_name = 伊勢神宮（内宮）
+official_address = 三重県伊勢市宇治館町1
+identity_status = SUPPORTED
+```
+
+The official access information identifies 皇大神宮（内宮） at the same address
+recorded in Production.
+
+### 7.2 Current Production Position
+
+```text
+latitude = 34.455
+longitude = 136.7256
+place_ref_id = null
+provenance = LEGACY_UNTRACED
+```
+
+The stored numeric value alone does not provide reconstructable Primary Position
+provenance under the current Position Contract.
+
+### 7.3 Primary Position Source
+
+```text
+primary_source_type = map_provider_poi
+primary_source_provider = MapFan
+
+primary_latitude = 34.4549588
+primary_longitude = 136.7251689
+
+retrieval_status = OK
+entity_match = SAME
+coordinate_precision_policy = PRESERVE_PRIMARY_SOURCE_PRECISION
+```
+
+The Primary candidate is an explicit 伊勢神宮皇大神宮（内宮） Shrine POI.
+
+### 7.4 Corroboration
+
+```text
+corroboration_source_type = independent_shrine_reference_database
+corroboration_source_provider = 國學院大學 古典文化学事業
+
+corroboration_latitude = 34.455111111111115
+corroboration_longitude = 136.7258888888889
+corroboration_status = SATISFIED
+entity_match = SAME
+```
+
+Observed deltas:
+
+```text
+stored_vs_primary_delta_m ≈ 39.79
+primary_vs_corroboration_delta_m ≈ 68.15
+```
+
+The approximately 68 m Primary/corroboration spread is explicitly recorded as an
+observation. It does not itself create a PASS or HOLD threshold.
+
+### 7.5 Anchor Semantics
+
+```text
+anchor_type = SHRINE_POI / PRECINCT_CORE
+anchor_semantics = CONFIRMED
+
+uji_bridge_entry_anchor = SEPARATE_CONCEPT
+parking_anchor = SEPARATE_CONCEPT
+shogu_building_anchor = SEPARATE_CONCEPT
+```
+
+The Inner Shrine is a large precinct with multiple meaningful visitor points.
+The adopted candidate is treated as the Shrine-level representative POI, not as
+an assertion that the same coordinate represents Uji Bridge, a parking facility,
+or the Shogu building itself.
+
+### 7.6 Adjudication
+
+```text
+identity_match = SAME
+coordinate_traceability = OK
+anchor_semantics = CONFIRMED
+corroboration_status = SATISFIED
+primary_vs_corroboration_spread = OBSERVED
+blocking_conflict = NONE_OBSERVED
+
+POSITION_STATUS = PASS
+ADOPTED_COORDINATE = 34.4549588, 136.7251689
+```
+
+The corroboration spread does not block adoption because both sources identify the
+same real-world Shrine and the differing coordinates are explainable within the
+large precinct-level anchor semantics. No evidence collected so far establishes
+that the Primary is a parking-only, gate-only, building-only, or unrelated point.
+
+### 7.7 Remediation Decision
+
+```text
+current_stored_coordinate = 34.455, 136.7256
+adopted_coordinate = 34.4549588, 136.7251689
+
+remediation_decision = UPDATE_TO_ADOPTED_PRIMARY
+production_write = NOT_YET_PERFORMED
+base_seed_write = NOT_YET_PERFORMED
+verified_at = 2026-09-21
+```
+
+The remediation decision replaces a legacy-untraced stored coordinate with the
+traceable PASS-adjudicated Primary Position. The approximately 39.8 m stored /
+Primary delta is not itself the reason for remediation.
+
+## 8. Remaining Batch 1 Records
 
 | # | Shrine | Official Identity | Primary Source Candidate | Primary Coordinate State | Anchor Semantics | Corroboration | Position |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 03 | 伊勢神宮（内宮） | SUPPORTED | FOUND | POI_COORDINATE_RETRIEVED | NOT_YET_ADJUDICATED | NOT_YET_COMPLETED | NOT_ADJUDICATED |
 | 05 | 春日大社 | SUPPORTED | FOUND | SHORTLINK_UNRESOLVED | NOT_YET_ADJUDICATED | NOT_YET_COMPLETED | NOT_ADJUDICATED |
 | 06 | 太宰府天満宮 | SUPPORTED | FOUND | ROUTE_LINK_FOUND_COORDINATE_NOT_RETRIEVED | NOT_YET_ADJUDICATED | NOT_YET_COMPLETED | NOT_ADJUDICATED |
 | 07 | 熱田神宮 | SUPPORTED | FOUND | EMBED_CENTER_RETRIEVED | NOT_YET_ADJUDICATED | NOT_YET_COMPLETED | NOT_ADJUDICATED |
@@ -454,17 +568,18 @@ not itself the reason for remediation.
 | 09 | 日光東照宮 | SUPPORTED | FOUND | NOT_RETRIEVED | NOT_YET_ADJUDICATED | NOT_YET_COMPLETED | NOT_ADJUDICATED |
 | 10 | 鶴岡八幡宮 | SUPPORTED | FOUND | FETCH_INCOMPLETE | NOT_YET_ADJUDICATED | NOT_YET_COMPLETED | NOT_ADJUDICATED |
 
-## 8. Remediation Candidates
+## 9. Remediation Candidates
 
 | Shrine | Position Status | Remediation Decision | Production Write | Base Seed Write |
 | --- | --- | --- | --- | --- |
 | 出雲大社 | PASS | UPDATE_TO_ADOPTED_PRIMARY | NOT_YET_PERFORMED | NOT_YET_PERFORMED |
 | 明治神宮 | PASS | UPDATE_TO_ADOPTED_PRIMARY | NOT_YET_PERFORMED | NOT_YET_PERFORMED |
 | 伏見稲荷大社 | PASS | UPDATE_TO_ADOPTED_PRIMARY | NOT_YET_PERFORMED | NOT_YET_PERFORMED |
+| 伊勢神宮（内宮） | PASS | UPDATE_TO_ADOPTED_PRIMARY | NOT_YET_PERFORMED | NOT_YET_PERFORMED |
 
 Remediation implementation is a separate PR and is not part of this audit document.
 
-## 9. Non-Goals
+## 10. Non-Goals
 
 This Batch does not:
 
@@ -476,15 +591,15 @@ This Batch does not:
 - treat an unfinished audit as HOLD;
 - infer missing evidence.
 
-## 10. STOP
+## 11. STOP
 
 Current Batch 1 state:
 
 ```text
-COMPLETE = 3/10
-PASS = 3
+COMPLETE = 4/10
+PASS = 4
 HOLD_POSITION_REVIEW = 0
-NOT_ADJUDICATED = 7
+NOT_ADJUDICATED = 6
 ```
 
 Continue remaining Shrines under the same Position Contract and record format.
