@@ -12,7 +12,7 @@
 - NOT_ADJUDICATED: `5`
 - Production write during audit: `NONE`
 - Base Seed write during audit: `NONE`
-- Post-audit remediation completed: `2/4`
+- Post-audit remediation completed: `2/5`
 
 本書は Position Contract の変更ではない。採用ルールの authority は
 `docs/knowledge/shrine-position-contract.md` のままである。
@@ -663,14 +663,16 @@ Source and corroborated by a separate source for the same Shrine.
 current_stored_coordinate = 34.6814, 135.8481
 adopted_coordinate = 34.6812901, 135.8482531
 
-remediation_decision = NOT_YET_DECIDED
+remediation_decision = UPDATE_TO_ADOPTED_PRIMARY
 production_write = NOT_YET_PERFORMED
 base_seed_write = NOT_YET_PERFORMED
 verified_at = 2026-09-21
 ```
 
-This completed Position adjudication does not itself authorize or perform
-Production or Base Seed remediation.
+This remediation decision replaces a legacy-untraced stored coordinate with the
+traceable PASS-adjudicated Primary Position. The approximately 18.6 m stored /
+Primary delta is observational and is not itself the reason for remediation.
+This decision does not itself perform a Production or Base Seed write.
 
 ## 9. Remaining Batch 1 Records
 
@@ -690,6 +692,7 @@ Production or Base Seed remediation.
 | 明治神宮 | PASS | UPDATE_TO_ADOPTED_PRIMARY | NOT_YET_PERFORMED | NOT_YET_PERFORMED |
 | 伏見稲荷大社 | PASS | UPDATE_TO_ADOPTED_PRIMARY | PERFORMED | PERFORMED |
 | 伊勢神宮（内宮） | PASS | UPDATE_TO_ADOPTED_PRIMARY | NOT_YET_PERFORMED | NOT_YET_PERFORMED |
+| 春日大社 | PASS | UPDATE_TO_ADOPTED_PRIMARY | NOT_YET_PERFORMED | NOT_YET_PERFORMED |
 
 The individual Remediation Decision blocks above preserve the state at the time
 of adjudication. Current remediation execution state is recorded in this table
@@ -769,7 +772,7 @@ No Shrine identity or address change was performed.
 ### 11.3 Remediation State
 
 ```text
-remediation_candidates = 4
+remediation_candidates = 5
 production_remediation_completed = 2
 base_seed_sync_completed = 2
 
@@ -780,6 +783,7 @@ completed:
 not_yet_remediated:
 - 明治神宮
 - 伊勢神宮（内宮）
+- 春日大社
 ```
 
 Remediation completion does not change the Batch adjudication count.
@@ -811,10 +815,10 @@ Section 11.
 Current Batch 1 state:
 
 ```text
-COMPLETE = 4/10
-PASS = 4
+COMPLETE = 5/10
+PASS = 5
 HOLD_POSITION_REVIEW = 0
-NOT_ADJUDICATED = 6
+NOT_ADJUDICATED = 5
 ```
 
 Continue remaining Shrines under the same Position Contract and record format.
