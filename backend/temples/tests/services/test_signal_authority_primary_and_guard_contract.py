@@ -41,6 +41,7 @@ from temples.models import Shrine, ShrineInteractionLog
 from temples.services.concierge_chat import build_chat_recommendations
 from temples.services.concierge_chat_ranking import (
     PRIMARY_REASON_PRIORITY,
+    PRIMARY_TIER_REASON_TYPES,
     resolve_history_theme_candidate_boost,
 )
 
@@ -184,12 +185,27 @@ def test_non_primary_signal_priority_ordering_is_fixed():
     encodes this by placing element (birthdate) and visit_style at the
     bottom of PRIMARY_REASON_PRIORITY, below every Consultation-Meaning or
     Shrine-side-Evidence type."""
-    primary_tier = ("history_theme", "culture_translation", "need_tag", "text_hint", "user_selected_tag", "goriyaku_tag")
+    primary_tier = ("history_theme", "need_tag", "text_hint", "user_selected_tag", "goriyaku_tag")
     for reason_type in primary_tier:
         assert PRIMARY_REASON_PRIORITY[reason_type] < PRIMARY_REASON_PRIORITY["element"]
         assert PRIMARY_REASON_PRIORITY[reason_type] < PRIMARY_REASON_PRIORITY["visit_style"]
     assert PRIMARY_REASON_PRIORITY["element"] < PRIMARY_REASON_PRIORITY["fallback"]
     assert PRIMARY_REASON_PRIORITY["visit_style"] < PRIMARY_REASON_PRIORITY["fallback"]
+
+
+def test_culture_translation_holds_no_primary_authority():
+    """§6 fixes culture_translation as Explanation-only: it carries no
+    Recommendation/Ranking Authority, so it must not be rankable as a
+    Primary Reason candidate (absent from PRIMARY_REASON_PRIORITY) nor
+    count as established Recommendation Meaning for the Context Override
+    Guard (absent from PRIMARY_TIER_REASON_TYPES).
+
+    This guards the tier boundary only. It deliberately does NOT assert
+    anything about reason_facts: culture_translation legitimately remains
+    a non-primary reason_fact after a semantic match -- see
+    test_culture_translation_primary_attribution_guard.py."""
+    assert "culture_translation" not in PRIMARY_REASON_PRIORITY
+    assert "culture_translation" not in PRIMARY_TIER_REASON_TYPES
 
 
 @pytest.mark.django_db

@@ -126,7 +126,7 @@ def test_visit_style_is_a_priority_tier_below_element_above_fallback():
     # Consultation-Meaning-derived and Explicit-Constraint-derived types all
     # outrank visit_style (Rule: Visit Preference is a "fallback primary
     # reason candidate", Task 8).
-    for stronger in ("history_theme", "culture_translation", "need_tag", "text_hint", "user_selected_tag", "goriyaku_tag"):
+    for stronger in ("history_theme", "need_tag", "text_hint", "user_selected_tag", "goriyaku_tag"):
         assert PRIMARY_REASON_PRIORITY[stronger] < PRIMARY_REASON_PRIORITY["visit_style"]
 
 
