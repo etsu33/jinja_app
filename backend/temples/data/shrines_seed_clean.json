@@ -22,8 +22,8 @@
   {
     "name_jp": "伏見稲荷大社",
     "address": "京都府京都市伏見区深草薮之内町68",
-    "latitude": 34.9671,
-    "longitude": 135.7727,
+    "latitude": 34.967133624329,
+    "longitude": 135.77318468005,
     "goriyaku": "商売繁盛・五穀豊穣",
     "kyusei": null,
     "astro_elements": [
@@ -34,8 +34,8 @@
       "classic"
     ],
     "location": {
-      "lat": 34.9671,
-      "lng": 135.7727
+      "lat": 34.967133624329,
+      "lng": 135.77318468005
     }
   },
   {
