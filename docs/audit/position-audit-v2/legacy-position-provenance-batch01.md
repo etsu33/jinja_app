@@ -10,8 +10,9 @@
 - PASS: `4`
 - HOLD_POSITION_REVIEW: `0`
 - NOT_ADJUDICATED: `6`
-- Production write: `NONE`
-- Base Seed write: `NONE`
+- Production write during audit: `NONE`
+- Base Seed write during audit: `NONE`
+- Post-audit remediation completed: `2/4`
 
 本書は Position Contract の変更ではない。採用ルールの authority は
 `docs/knowledge/shrine-position-contract.md` のままである。
@@ -572,16 +573,114 @@ Primary delta is not itself the reason for remediation.
 
 | Shrine | Position Status | Remediation Decision | Production Write | Base Seed Write |
 | --- | --- | --- | --- | --- |
-| 出雲大社 | PASS | UPDATE_TO_ADOPTED_PRIMARY | NOT_YET_PERFORMED | NOT_YET_PERFORMED |
+| 出雲大社 | PASS | UPDATE_TO_ADOPTED_PRIMARY | PERFORMED | PERFORMED |
 | 明治神宮 | PASS | UPDATE_TO_ADOPTED_PRIMARY | NOT_YET_PERFORMED | NOT_YET_PERFORMED |
-| 伏見稲荷大社 | PASS | UPDATE_TO_ADOPTED_PRIMARY | NOT_YET_PERFORMED | NOT_YET_PERFORMED |
+| 伏見稲荷大社 | PASS | UPDATE_TO_ADOPTED_PRIMARY | PERFORMED | PERFORMED |
 | 伊勢神宮（内宮） | PASS | UPDATE_TO_ADOPTED_PRIMARY | NOT_YET_PERFORMED | NOT_YET_PERFORMED |
 
-Remediation implementation is a separate PR and is not part of this audit document.
+The individual Remediation Decision blocks above preserve the state at the time
+of adjudication. Current remediation execution state is recorded in this table
+and in Section 10.
 
-## 10. Non-Goals
+## 10. Post-audit Remediation Execution Record
 
-This Batch does not:
+This section records remediation executed after Position adjudication.
+
+The original Production Snapshot and each Shrine's "Current Production Position"
+remain unchanged because they represent the observed state at the time of audit.
+
+### 10.1 出雲大社
+
+```text
+audit_status = COMPLETE
+position_status = PASS
+adopted_coordinate = 35.40190463, 132.68547534
+
+production_remediation_pr = #2908
+production_remediation_migration = temples.0109_adopt_izumo_taisha_position
+production_write = PERFORMED
+production_migration_status = APPLIED
+production_post_check = PASS
+
+base_seed_sync_pr = #2909
+base_seed_write = PERFORMED
+base_seed_coordinate = 35.40190463, 132.68547534
+
+verified_at = 2026-09-21
+```
+
+Production read-only verification after migration confirmed:
+
+```text
+id = 4
+name_jp = 出雲大社
+address = 島根県出雲市大社町杵築東195
+latitude = 35.40190463
+longitude = 132.68547534
+```
+
+No Shrine identity or address change was performed.
+
+### 10.2 伏見稲荷大社
+
+```text
+audit_status = COMPLETE
+position_status = PASS
+adopted_coordinate = 34.967133624329, 135.77318468005
+
+production_remediation_pr = #2913
+production_remediation_migration = temples.0110_adopt_fushimi_inari_position
+production_write = PERFORMED
+production_migration_status = APPLIED
+production_post_check = PASS
+
+base_seed_sync_pr = #2915
+base_seed_write = PERFORMED
+base_seed_coordinate = 34.967133624329, 135.77318468005
+
+verified_at = 2026-09-21
+```
+
+Production read-only verification after migration confirmed:
+
+```text
+id = 2
+name_jp = 伏見稲荷大社
+address = 京都府京都市伏見区深草薮之内町68
+latitude = 34.967133624329
+longitude = 135.77318468005
+```
+
+No Shrine identity or address change was performed.
+
+### 10.3 Remediation State
+
+```text
+remediation_candidates = 4
+production_remediation_completed = 2
+base_seed_sync_completed = 2
+
+completed:
+- 出雲大社
+- 伏見稲荷大社
+
+not_yet_remediated:
+- 明治神宮
+- 伊勢神宮（内宮）
+```
+
+Remediation completion does not change the Batch adjudication count.
+
+```text
+COMPLETE = 4/10
+PASS = 4
+HOLD_POSITION_REVIEW = 0
+NOT_ADJUDICATED = 6
+```
+
+## 11. Non-Goals
+
+The Batch adjudication itself does not:
 
 - write Production DB;
 - modify Base Seed;
@@ -591,7 +690,10 @@ This Batch does not:
 - treat an unfinished audit as HOLD;
 - infer missing evidence.
 
-## 11. STOP
+Post-audit remediation is a separate execution phase and is recorded in
+Section 10.
+
+## 12. STOP
 
 Current Batch 1 state:
 
