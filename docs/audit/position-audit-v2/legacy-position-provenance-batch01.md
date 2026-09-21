@@ -6,10 +6,10 @@
 - Recorded at: `2026-09-21`
 - Batch: `LEGACY_UNTRACED Batch 01`
 - Targets: 10 Shrines
-- Complete: `1/10`
-- PASS: `1`
+- Complete: `2/10`
+- PASS: `2`
 - HOLD_POSITION_REVIEW: `0`
-- NOT_ADJUDICATED: `9`
+- NOT_ADJUDICATED: `8`
 - Production write: `NONE`
 - Base Seed write: `NONE`
 
@@ -109,7 +109,7 @@ Rules:
 
 | # | Shrine | Audit Status | Position Status |
 | --- | --- | --- | --- |
-| 01 | 明治神宮 | IN_PROGRESS | NOT_ADJUDICATED |
+| 01 | 明治神宮 | COMPLETE | PASS |
 | 02 | 伏見稲荷大社 | IN_PROGRESS | NOT_ADJUDICATED |
 | 03 | 伊勢神宮（内宮） | IN_PROGRESS | NOT_ADJUDICATED |
 | 04 | 出雲大社 | COMPLETE | PASS |
@@ -122,10 +122,10 @@ Rules:
 
 ```text
 BATCH_TARGETS   = 10
-COMPLETE        = 1
-PASS            = 1
+COMPLETE        = 2
+PASS            = 2
 HOLD            = 0
-NOT_ADJUDICATED = 9
+NOT_ADJUDICATED = 8
 ```
 
 ## 4. 出雲大社 — Completed Record
@@ -224,11 +224,115 @@ verified_at = 2026-09-21
 
 This decision exists at the audit/adoption layer only. It does not assert that Production or Base Seed has already been modified.
 
-## 5. Remaining Batch 1 Records
+## 5. 明治神宮 — Completed Record
+
+### 5.1 Identity
+
+```text
+production_shrine_id = 1
+official_name = 明治神宮
+official_address = 東京都渋谷区代々木神園町1-1
+identity_status = SUPPORTED
+```
+
+Official visitor information identifies the same Shrine and distinguishes the
+canonical Shrine address from vehicle-specific navigation guidance.
+
+### 5.2 Current Production Position
+
+```text
+latitude = 35.6764
+longitude = 139.6993
+place_ref_id = null
+provenance = LEGACY_UNTRACED
+```
+
+The stored numeric value is not itself reconstructable from a recorded Primary
+Position Source under the current Position Contract.
+
+### 5.3 Primary Position Source
+
+```text
+primary_source_type = map_provider_poi
+primary_source_provider = Mapion
+primary_source_url = https://www.mapion.co.jp/phonebook/M06005/13113/ILSP0000081979_ipclm/
+
+primary_latitude = 35.67623602
+primary_longitude = 139.69934113
+
+retrieval_status = OK
+entity_match = SAME
+coordinate_precision_policy = PRESERVE_PRIMARY_SOURCE_PRECISION
+```
+
+### 5.4 Corroboration
+
+```text
+corroboration_source_type = independent_map_provider_poi
+corroboration_source_provider = MapFan
+corroboration_latitude = 35.6762360
+corroboration_longitude = 139.6993411
+corroboration_status = SATISFIED
+```
+
+Observed deltas:
+
+```text
+stored_vs_primary_delta_m ≈ 18.608
+primary_vs_corroboration_delta_m ≈ 0.004
+```
+
+These are observations, not PASS thresholds.
+
+### 5.5 Anchor Semantics
+
+```text
+anchor_type = SHRINE_POI / PRECINCT_CORE
+anchor_semantics = CONFIRMED
+
+pedestrian_entry_anchor = SEPARATE_CONCEPT
+vehicle_entry_anchor = SEPARATE_CONCEPT
+parking_anchor = SEPARATE_CONCEPT
+```
+
+Official visitor guidance describes three pedestrian entrances and separately
+directs vehicle access through the Yoyogi-side entrance. This supports treating
+the canonical Shrine Position as a Shrine-level representative point rather
+than equating it with a specific gate, parking area, or vehicle destination.
+
+### 5.6 Adjudication
+
+```text
+identity_match = SAME
+coordinate_traceability = OK
+anchor_semantics = CONFIRMED
+corroboration_status = SATISFIED
+blocking_conflict = NONE_OBSERVED
+
+POSITION_STATUS = PASS
+ADOPTED_COORDINATE = 35.67623602, 139.69934113
+```
+
+### 5.7 Remediation Decision
+
+```text
+current_stored_coordinate = 35.6764, 139.6993
+adopted_coordinate = 35.67623602, 139.69934113
+
+remediation_decision = UPDATE_TO_ADOPTED_PRIMARY
+production_write = NOT_YET_PERFORMED
+base_seed_write = NOT_YET_PERFORMED
+verified_at = 2026-09-21
+```
+
+The remediation decision is based on replacing a legacy-untraced stored value
+with a traceable PASS-adjudicated Primary Position. The approximately 18.6 m
+delta is not itself the reason for remediation.
+
+## 6. Remaining Batch 1 Records
 
 | # | Shrine | Official Identity | Primary Source Candidate | Primary Coordinate State | Anchor Semantics | Corroboration | Position |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 01 | 明治神宮 | SUPPORTED | FOUND | EMBED_CENTER_RETRIEVED | NOT_YET_ADJUDICATED | NOT_YET_COMPLETED | NOT_ADJUDICATED |
 | 02 | 伏見稲荷大社 | SUPPORTED | FOUND | EMBED_CENTER_RETRIEVED | NOT_YET_ADJUDICATED | NOT_YET_COMPLETED | NOT_ADJUDICATED |
 | 03 | 伊勢神宮（内宮） | SUPPORTED | FOUND | POI_COORDINATE_RETRIEVED | NOT_YET_ADJUDICATED | NOT_YET_COMPLETED | NOT_ADJUDICATED |
 | 05 | 春日大社 | SUPPORTED | FOUND | SHORTLINK_UNRESOLVED | NOT_YET_ADJUDICATED | NOT_YET_COMPLETED | NOT_ADJUDICATED |
@@ -238,15 +342,16 @@ This decision exists at the audit/adoption layer only. It does not assert that P
 | 09 | 日光東照宮 | SUPPORTED | FOUND | NOT_RETRIEVED | NOT_YET_ADJUDICATED | NOT_YET_COMPLETED | NOT_ADJUDICATED |
 | 10 | 鶴岡八幡宮 | SUPPORTED | FOUND | FETCH_INCOMPLETE | NOT_YET_ADJUDICATED | NOT_YET_COMPLETED | NOT_ADJUDICATED |
 
-## 6. Remediation Candidates
+## 7. Remediation Candidates
 
 | Shrine | Position Status | Remediation Decision | Production Write | Base Seed Write |
 | --- | --- | --- | --- | --- |
 | 出雲大社 | PASS | UPDATE_TO_ADOPTED_PRIMARY | NOT_YET_PERFORMED | NOT_YET_PERFORMED |
+| 明治神宮 | PASS | UPDATE_TO_ADOPTED_PRIMARY | NOT_YET_PERFORMED | NOT_YET_PERFORMED |
 
 Remediation implementation is a separate PR and is not part of this audit document.
 
-## 7. Non-Goals
+## 8. Non-Goals
 
 This Batch does not:
 
@@ -258,15 +363,15 @@ This Batch does not:
 - treat an unfinished audit as HOLD;
 - infer missing evidence.
 
-## 8. STOP
+## 9. STOP
 
 Current Batch 1 state:
 
 ```text
-COMPLETE = 1/10
-PASS = 1
+COMPLETE = 2/10
+PASS = 2
 HOLD_POSITION_REVIEW = 0
-NOT_ADJUDICATED = 9
+NOT_ADJUDICATED = 8
 ```
 
 Continue remaining Shrines under the same Position Contract and record format.
