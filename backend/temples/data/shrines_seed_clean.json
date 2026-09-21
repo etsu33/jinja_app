@@ -61,8 +61,8 @@
   {
     "name_jp": "出雲大社",
     "address": "島根県出雲市大社町杵築東195",
-    "latitude": 35.4016,
-    "longitude": 132.6853,
+    "latitude": 35.40190463,
+    "longitude": 132.68547534,
     "goriyaku": "縁結び・開運・福徳",
     "kyusei": null,
     "astro_elements": [
@@ -72,8 +72,8 @@
       "classic"
     ],
     "location": {
-      "lat": 35.4016,
-      "lng": 132.6853
+      "lat": 35.40190463,
+      "lng": 132.68547534
     }
   },
   {
