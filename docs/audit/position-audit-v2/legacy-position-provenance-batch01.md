@@ -6,10 +6,10 @@
 - Recorded at: `2026-09-21`
 - Batch: `LEGACY_UNTRACED Batch 01`
 - Targets: 10 Shrines
-- Complete: `2/10`
-- PASS: `2`
+- Complete: `3/10`
+- PASS: `3`
 - HOLD_POSITION_REVIEW: `0`
-- NOT_ADJUDICATED: `8`
+- NOT_ADJUDICATED: `7`
 - Production write: `NONE`
 - Base Seed write: `NONE`
 
@@ -110,7 +110,7 @@ Rules:
 | # | Shrine | Audit Status | Position Status |
 | --- | --- | --- | --- |
 | 01 | 明治神宮 | COMPLETE | PASS |
-| 02 | 伏見稲荷大社 | IN_PROGRESS | NOT_ADJUDICATED |
+| 02 | 伏見稲荷大社 | COMPLETE | PASS |
 | 03 | 伊勢神宮（内宮） | IN_PROGRESS | NOT_ADJUDICATED |
 | 04 | 出雲大社 | COMPLETE | PASS |
 | 05 | 春日大社 | IN_PROGRESS | NOT_ADJUDICATED |
@@ -122,10 +122,10 @@ Rules:
 
 ```text
 BATCH_TARGETS   = 10
-COMPLETE        = 2
-PASS            = 2
+COMPLETE        = 3
+PASS            = 3
 HOLD            = 0
-NOT_ADJUDICATED = 8
+NOT_ADJUDICATED = 7
 ```
 
 ## 4. 出雲大社 — Completed Record
@@ -329,11 +329,123 @@ The remediation decision is based on replacing a legacy-untraced stored value
 with a traceable PASS-adjudicated Primary Position. The approximately 18.6 m
 delta is not itself the reason for remediation.
 
-## 6. Remaining Batch 1 Records
+## 6. 伏見稲荷大社 — Completed Record
+
+### 6.1 Identity
+
+```text
+production_shrine_id = 2
+official_name = 伏見稲荷大社
+official_address = 京都市伏見区深草薮之内町68番地
+identity_status = SUPPORTED
+```
+
+Production address "京都府京都市伏見区深草薮之内町68" is treated as the same
+visitor-facing identity with an administrative-prefix / suffix notation difference.
+
+### 6.2 Current Production Position
+
+```text
+latitude = 34.9671
+longitude = 135.7727
+place_ref_id = null
+provenance = LEGACY_UNTRACED
+```
+
+The stored numeric value alone does not provide reconstructable Primary Position
+provenance under the current Position Contract.
+
+### 6.3 Primary Position Source
+
+```text
+primary_source_type = map_provider_poi
+primary_source_provider = MapFan
+primary_source_url = https://mapfan.com/directions/points/34.969276371576%2C135.76926894994%2C%E4%BC%8F%E8%A6%8B%E7%A8%B2%E8%8D%B7%E9%A7%85%EF%BC%88%E4%BA%AC%E9%98%AA%E6%9C%AC%E7%B7%9A%EF%BC%89%2CSCH%2CJ%2CIZ7%2C/34.967133624329%2C135.77318468005%2C%E4%BC%8F%E8%A6%8B%E7%A8%B2%E8%8D%B7%E5%A4%A7%E7%A4%BE%2CSC3W3%2CJ%2C6R%2C/types/walk/settings/now%2C4%2C101
+
+primary_latitude = 34.967133624329
+primary_longitude = 135.77318468005
+
+retrieval_status = OK
+entity_match = SAME
+coordinate_precision_policy = PRESERVE_PRIMARY_SOURCE_PRECISION
+```
+
+Mapion was not adopted as Primary for this Shrine because multiple same-name /
+auxiliary POIs were observed during evidence collection, making the candidate less
+clear than the explicit MapFan Shrine destination.
+
+### 6.4 Corroboration
+
+```text
+corroboration_source_type = independent_shrine_reference_database
+corroboration_source_provider = 國學院大學デジタル・ミュージアム
+corroboration_source_url = https://jmapps.ne.jp/kokugakuin/det.html?data_id=53356
+
+corroboration_latitude = 34.967125
+corroboration_longitude = 135.77310833333334
+corroboration_status = SATISFIED
+entity_match = SAME
+```
+
+Observed deltas:
+
+```text
+stored_vs_primary_delta_m ≈ 44.323
+primary_vs_corroboration_delta_m ≈ 7.023
+```
+
+These are observations only and are not PASS thresholds.
+
+### 6.5 Anchor Semantics
+
+```text
+anchor_type = SHRINE_POI / PRECINCT_CORE
+anchor_semantics = CONFIRMED
+
+station_access_point = SEPARATE_CONCEPT
+parking_anchor = SEPARATE_CONCEPT
+specific_gate_anchor = SEPARATE_CONCEPT
+mountain_or_trail_route_point = SEPARATE_CONCEPT
+```
+
+The adopted candidate is an explicit Fushimi Inari Taisha Shrine destination and
+is independently corroborated near the same precinct-core area. It is therefore
+explainable as a Shrine-level Visitor / Navigation Anchor rather than a station,
+parking location, specific gate, or mountain/trail route point.
+
+### 6.6 Adjudication
+
+```text
+identity_match = SAME
+coordinate_traceability = OK
+anchor_semantics = CONFIRMED
+corroboration_status = SATISFIED
+blocking_conflict = NONE_OBSERVED
+
+POSITION_STATUS = PASS
+ADOPTED_COORDINATE = 34.967133624329, 135.77318468005
+```
+
+### 6.7 Remediation Decision
+
+```text
+current_stored_coordinate = 34.9671, 135.7727
+adopted_coordinate = 34.967133624329, 135.77318468005
+
+remediation_decision = UPDATE_TO_ADOPTED_PRIMARY
+production_write = NOT_YET_PERFORMED
+base_seed_write = NOT_YET_PERFORMED
+verified_at = 2026-09-21
+```
+
+The remediation decision replaces a legacy-untraced stored coordinate with a
+traceable PASS-adjudicated Primary Position. The approximately 44.3 m delta is
+not itself the reason for remediation.
+
+## 7. Remaining Batch 1 Records
 
 | # | Shrine | Official Identity | Primary Source Candidate | Primary Coordinate State | Anchor Semantics | Corroboration | Position |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 02 | 伏見稲荷大社 | SUPPORTED | FOUND | EMBED_CENTER_RETRIEVED | NOT_YET_ADJUDICATED | NOT_YET_COMPLETED | NOT_ADJUDICATED |
 | 03 | 伊勢神宮（内宮） | SUPPORTED | FOUND | POI_COORDINATE_RETRIEVED | NOT_YET_ADJUDICATED | NOT_YET_COMPLETED | NOT_ADJUDICATED |
 | 05 | 春日大社 | SUPPORTED | FOUND | SHORTLINK_UNRESOLVED | NOT_YET_ADJUDICATED | NOT_YET_COMPLETED | NOT_ADJUDICATED |
 | 06 | 太宰府天満宮 | SUPPORTED | FOUND | ROUTE_LINK_FOUND_COORDINATE_NOT_RETRIEVED | NOT_YET_ADJUDICATED | NOT_YET_COMPLETED | NOT_ADJUDICATED |
@@ -342,16 +454,17 @@ delta is not itself the reason for remediation.
 | 09 | 日光東照宮 | SUPPORTED | FOUND | NOT_RETRIEVED | NOT_YET_ADJUDICATED | NOT_YET_COMPLETED | NOT_ADJUDICATED |
 | 10 | 鶴岡八幡宮 | SUPPORTED | FOUND | FETCH_INCOMPLETE | NOT_YET_ADJUDICATED | NOT_YET_COMPLETED | NOT_ADJUDICATED |
 
-## 7. Remediation Candidates
+## 8. Remediation Candidates
 
 | Shrine | Position Status | Remediation Decision | Production Write | Base Seed Write |
 | --- | --- | --- | --- | --- |
 | 出雲大社 | PASS | UPDATE_TO_ADOPTED_PRIMARY | NOT_YET_PERFORMED | NOT_YET_PERFORMED |
 | 明治神宮 | PASS | UPDATE_TO_ADOPTED_PRIMARY | NOT_YET_PERFORMED | NOT_YET_PERFORMED |
+| 伏見稲荷大社 | PASS | UPDATE_TO_ADOPTED_PRIMARY | NOT_YET_PERFORMED | NOT_YET_PERFORMED |
 
 Remediation implementation is a separate PR and is not part of this audit document.
 
-## 8. Non-Goals
+## 9. Non-Goals
 
 This Batch does not:
 
@@ -363,15 +476,15 @@ This Batch does not:
 - treat an unfinished audit as HOLD;
 - infer missing evidence.
 
-## 9. STOP
+## 10. STOP
 
 Current Batch 1 state:
 
 ```text
-COMPLETE = 2/10
-PASS = 2
+COMPLETE = 3/10
+PASS = 3
 HOLD_POSITION_REVIEW = 0
-NOT_ADJUDICATED = 8
+NOT_ADJUDICATED = 7
 ```
 
 Continue remaining Shrines under the same Position Contract and record format.
