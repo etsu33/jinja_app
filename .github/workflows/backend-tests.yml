@@ -407,7 +407,7 @@ jobs:
           python -V
           python -c "import django,sys;print('django', django.get_version());print(sys.version)"
           echo "targeted pytest path: ${PYTEST_TARGET}"
-          python -m pytest --cache-clear "$PYTEST_TARGET"
+          python -m pytest --cache-clear -- "$PYTEST_TARGET"
 
       - name: Show DB container logs (always)
         if: always()
