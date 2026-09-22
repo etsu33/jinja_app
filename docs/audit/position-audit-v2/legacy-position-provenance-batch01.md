@@ -6,13 +6,13 @@
 - Recorded at: `2026-09-21`
 - Batch: `LEGACY_UNTRACED Batch 01`
 - Targets: 10 Shrines
-- Complete: `7/10`
-- PASS: `6`
+- Complete: `8/10`
+- PASS: `7`
 - HOLD_POSITION_REVIEW: `1`
-- NOT_ADJUDICATED: `3`
+- NOT_ADJUDICATED: `2`
 - Production write during audit: `NONE`
 - Base Seed write during audit: `NONE`
-- Post-audit remediation completed: `4/6`
+- Post-audit remediation completed: `4/7`
 
 本書は Position Contract の変更ではない。採用ルールの authority は
 `docs/knowledge/shrine-position-contract.md` のままである。
@@ -117,16 +117,16 @@ Rules:
 | 05 | 春日大社 | COMPLETE | PASS |
 | 06 | 太宰府天満宮 | COMPLETE | HOLD_POSITION_REVIEW |
 | 07 | 熱田神宮 | COMPLETE | PASS |
-| 08 | 宇佐神宮 | IN_PROGRESS | NOT_ADJUDICATED |
+| 08 | 宇佐神宮 | COMPLETE | PASS |
 | 09 | 日光東照宮 | IN_PROGRESS | NOT_ADJUDICATED |
 | 10 | 鶴岡八幡宮 | IN_PROGRESS | NOT_ADJUDICATED |
 
 ```text
 BATCH_TARGETS   = 10
-COMPLETE        = 7
-PASS            = 6
+COMPLETE        = 8
+PASS            = 7
 HOLD            = 1
-NOT_ADJUDICATED = 3
+NOT_ADJUDICATED = 2
 ```
 
 ## 4. 出雲大社 — Completed Record
@@ -988,15 +988,164 @@ The remediation decision replaces a legacy-untraced stored coordinate with the
 traceable PASS-adjudicated Primary Position. It does not itself perform any
 Production or Base Seed write.
 
-## 11. Remaining Batch 1 Records
+## 11. 宇佐神宮 — Completed Record
+
+### 11.1 Identity
+
+```text
+production_shrine_id = 8
+official_name = 宇佐神宮
+official_address = 大分県宇佐市南宇佐2859
+identity_status = SUPPORTED
+```
+
+Official / public visitor sources identify the same Shrine at 南宇佐2859:
+
+```text
+https://www.usajinguu.com/
+https://www.city.usa.oita.jp/tourist/touristspot/touristspot2/touristspot3/10171.html
+```
+
+The Mapion and 國學院 records also identify the same 宇佐神宮 / 宇佐八幡宮
+visitor-facing identity.
+
+### 11.2 Current Production Position
+
+```text
+latitude = 33.531
+longitude = 131.379
+place_ref_id = null
+provenance = LEGACY_UNTRACED
+```
+
+The stored numeric value alone does not provide reconstructable Primary Position
+provenance under the current Position Contract.
+
+### 11.3 Primary Position Source
+
+```text
+primary_source_type = map_provider_poi
+primary_source_provider = Mapion
+primary_source_url = https://www.mapion.co.jp/phonebook/M06005/44211/ILSP0000082451_ipclm/
+
+primary_latitude = 33.52344557
+primary_longitude = 131.37716659
+
+retrieval_status = OK
+entity_match = SAME
+coordinate_precision_policy = PRESERVE_PRIMARY_SOURCE_PRECISION
+```
+
+The Mapion record is an explicit 宇佐神宮 Shrine / temple POI at
+大分県宇佐市大字南宇佐2859. The embedded map source exposes the coordinate
+directly, so the Primary Position is reconstructable from the recorded source.
+
+### 11.4 Corroboration
+
+```text
+corroboration_source_type = independent_shrine_reference_database
+corroboration_source_provider = 國學院大學デジタル・ミュージアム
+corroboration_source_url = https://jmapps.ne.jp/kokugakuin/det.html?data_id=53379&data_idx=0
+
+corroboration_latitude = 33.5233833333
+corroboration_longitude = 131.3771777778
+corroboration_status = SATISFIED
+entity_match = SAME
+```
+
+Observed deltas:
+
+```text
+stored_vs_primary_delta_m ≈ 857.033
+primary_vs_corroboration_delta_m ≈ 6.998
+```
+
+These distances are observations only and are not PASS thresholds.
+
+### 11.5 Official Access / Precinct Semantics
+
+Official and local-government visitor guidance establishes a large Shrine
+precinct with distinct visitor concepts, including the 上宮, lower-area
+facilities, 西参道 / 呉橋, bus access and parking.
+
+宇佐市 separately identifies parking facilities rather than treating them as the
+Shrine itself, including 宇佐八幡駐車場 at 南宇佐2181-1 and a separate
+表参道駐車場.
+
+Current MapFan auxiliary POIs likewise place distinct facilities away from the
+Primary Shrine point:
+
+```text
+treasure_museum = 33.5259278, 131.374671
+omotesando_parking = 33.5281052, 131.3748836
+
+primary_vs_treasure_museum_delta_m ≈ 360.136
+primary_vs_omotesando_parking_delta_m ≈ 559.679
+```
+
+These auxiliary coordinates are not used as canonical Shrine Position evidence.
+
+### 11.6 Anchor Semantics
+
+```text
+anchor_type = SHRINE_POI / PRECINCT_CORE
+anchor_semantics = CONFIRMED
+
+upper_shrine_anchor = DISTINCT_VISITOR_POINT
+lower_shrine_area = DISTINCT_VISITOR_CONCEPT
+kurehashi_west_approach = SEPARATE_CONCEPT
+treasure_museum_anchor = SEPARATE_CONCEPT
+parking_anchor = SEPARATE_CONCEPT
+bus_stop_anchor = SEPARATE_CONCEPT
+```
+
+The Primary is an explicit same-Shrine POI and is independently corroborated
+within approximately 7 m by 國學院大學. The reviewed official / public visitor
+sources separately identify parking, access and internal precinct destinations.
+
+No evidence reviewed identifies the Primary point as a parking-only, museum-only,
+bus-stop-only, office-only, or unrelated auxiliary facility.
+
+### 11.7 Adjudication
+
+```text
+identity_match = SAME
+coordinate_traceability = OK
+anchor_semantics = CONFIRMED
+corroboration_status = SATISFIED
+blocking_conflict = NONE_OBSERVED
+
+POSITION_STATUS = PASS
+ADOPTED_COORDINATE = 33.52344557, 131.37716659
+```
+
+The approximately 857 m difference from the legacy Production coordinate is an
+observation, not the reason for PASS or remediation.
+
+### 11.8 Remediation Decision
+
+```text
+current_stored_coordinate = 33.531, 131.379
+adopted_coordinate = 33.52344557, 131.37716659
+
+remediation_decision = UPDATE_TO_ADOPTED_PRIMARY
+production_write = NOT_YET_PERFORMED
+base_seed_write = NOT_YET_PERFORMED
+verified_at = 2026-09-22
+```
+
+The remediation decision replaces a legacy-untraced stored coordinate with the
+traceable PASS-adjudicated Primary Position. It does not itself perform any
+Production or Base Seed write.
+
+## 12. Remaining Batch 1 Records
 
 | # | Shrine | Official Identity | Primary Source Candidate | Primary Coordinate State | Anchor Semantics | Corroboration | Position |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 08 | 宇佐神宮 | SUPPORTED | FOUND | NOT_RETRIEVED | NOT_YET_ADJUDICATED | NOT_YET_COMPLETED | NOT_ADJUDICATED |
 | 09 | 日光東照宮 | SUPPORTED | FOUND | NOT_RETRIEVED | NOT_YET_ADJUDICATED | NOT_YET_COMPLETED | NOT_ADJUDICATED |
 | 10 | 鶴岡八幡宮 | SUPPORTED | FOUND | FETCH_INCOMPLETE | NOT_YET_ADJUDICATED | NOT_YET_COMPLETED | NOT_ADJUDICATED |
 
-## 12. Remediation Candidates
+## 13. Remediation Candidates
 
 | Shrine | Position Status | Remediation Decision | Production Write | Base Seed Write |
 | --- | --- | --- | --- | --- |
@@ -1006,19 +1155,20 @@ Production or Base Seed write.
 | 伊勢神宮（内宮） | PASS | UPDATE_TO_ADOPTED_PRIMARY | NOT_YET_PERFORMED | NOT_YET_PERFORMED |
 | 春日大社 | PASS | UPDATE_TO_ADOPTED_PRIMARY | PERFORMED | PERFORMED |
 | 熱田神宮 | PASS | UPDATE_TO_ADOPTED_PRIMARY | PERFORMED | PERFORMED |
+| 宇佐神宮 | PASS | UPDATE_TO_ADOPTED_PRIMARY | NOT_YET_PERFORMED | NOT_YET_PERFORMED |
 
 The individual Remediation Decision blocks above preserve the state at the time
 of adjudication. Current remediation execution state is recorded in this table
-and in Section 13.
+and in Section 14.
 
-## 13. Post-audit Remediation Execution Record
+## 14. Post-audit Remediation Execution Record
 
 This section records remediation executed after Position adjudication.
 
 The original Production Snapshot and each Shrine's "Current Production Position"
 remain unchanged because they represent the observed state at the time of audit.
 
-### 13.1 出雲大社
+### 14.1 出雲大社
 
 ```text
 audit_status = COMPLETE
@@ -1050,7 +1200,7 @@ longitude = 132.68547534
 
 No Shrine identity or address change was performed.
 
-### 13.2 伏見稲荷大社
+### 14.2 伏見稲荷大社
 
 ```text
 audit_status = COMPLETE
@@ -1082,7 +1232,7 @@ longitude = 135.77318468005
 
 No Shrine identity or address change was performed.
 
-### 13.3 春日大社
+### 14.3 春日大社
 
 ```text
 audit_status = COMPLETE
@@ -1114,7 +1264,7 @@ longitude = 135.8482531
 
 No Shrine identity or address change was performed.
 
-### 13.4 熱田神宮
+### 14.4 熱田神宮
 
 ```text
 audit_status = COMPLETE
@@ -1146,10 +1296,10 @@ longitude = 136.90868002
 
 No Shrine identity or address change was performed.
 
-### 13.5 Remediation State
+### 14.5 Remediation State
 
 ```text
-remediation_candidates = 6
+remediation_candidates = 7
 production_remediation_completed = 4
 base_seed_sync_completed = 4
 
@@ -1162,18 +1312,19 @@ completed:
 not_yet_remediated:
 - 明治神宮
 - 伊勢神宮（内宮）
+- 宇佐神宮
 ```
 
 Remediation completion does not change the Batch adjudication count.
 
 ```text
-COMPLETE = 7/10
-PASS = 6
+COMPLETE = 8/10
+PASS = 7
 HOLD_POSITION_REVIEW = 1
-NOT_ADJUDICATED = 3
+NOT_ADJUDICATED = 2
 ```
 
-## 14. Non-Goals
+## 15. Non-Goals
 
 The Batch adjudication itself does not:
 
@@ -1186,17 +1337,17 @@ The Batch adjudication itself does not:
 - infer missing evidence.
 
 Post-audit remediation is a separate execution phase and is recorded in
-Section 13.
+Section 14.
 
-## 15. STOP
+## 16. STOP
 
 Current Batch 1 state:
 
 ```text
-COMPLETE = 7/10
-PASS = 6
+COMPLETE = 8/10
+PASS = 7
 HOLD_POSITION_REVIEW = 1
-NOT_ADJUDICATED = 3
+NOT_ADJUDICATED = 2
 ```
 
 Continue remaining Shrines under the same Position Contract and record format.
