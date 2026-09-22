@@ -6,13 +6,13 @@
 - Recorded at: `2026-09-21`
 - Batch: `LEGACY_UNTRACED Batch 01`
 - Targets: 10 Shrines
-- Complete: `8/10`
-- PASS: `7`
+- Complete: `9/10`
+- PASS: `8`
 - HOLD_POSITION_REVIEW: `1`
-- NOT_ADJUDICATED: `2`
+- NOT_ADJUDICATED: `1`
 - Production write during audit: `NONE`
 - Base Seed write during audit: `NONE`
-- Post-audit remediation completed: `5/7`
+- Post-audit remediation completed: `5/8`
 
 本書は Position Contract の変更ではない。採用ルールの authority は
 `docs/knowledge/shrine-position-contract.md` のままである。
@@ -118,15 +118,15 @@ Rules:
 | 06 | 太宰府天満宮 | COMPLETE | HOLD_POSITION_REVIEW |
 | 07 | 熱田神宮 | COMPLETE | PASS |
 | 08 | 宇佐神宮 | COMPLETE | PASS |
-| 09 | 日光東照宮 | IN_PROGRESS | NOT_ADJUDICATED |
+| 09 | 日光東照宮 | COMPLETE | PASS |
 | 10 | 鶴岡八幡宮 | IN_PROGRESS | NOT_ADJUDICATED |
 
 ```text
 BATCH_TARGETS   = 10
-COMPLETE        = 8
-PASS            = 7
+COMPLETE        = 9
+PASS            = 8
 HOLD            = 1
-NOT_ADJUDICATED = 2
+NOT_ADJUDICATED = 1
 ```
 
 ## 4. 出雲大社 — Completed Record
@@ -1138,14 +1138,239 @@ The remediation decision replaces a legacy-untraced stored coordinate with the
 traceable PASS-adjudicated Primary Position. It does not itself perform any
 Production or Base Seed write.
 
-## 12. Remaining Batch 1 Records
+## 12. 日光東照宮 — Completed Record
+
+### 12.1 Identity
+
+```text
+production_shrine_id = 9
+official_name = 日光東照宮
+official_address = 栃木県日光市山内2301
+identity_status = SUPPORTED
+```
+
+Official Shrine source:
+
+```text
+https://toshogu.jp/
+```
+
+Additional authoritative visitor source（日光市観光協会公式）:
+
+```text
+https://www.nikko-kankou.org/public/spot/2
+```
+
+Both sources list the same visitor-facing address and telephone number as
+Production:
+
+```text
+〒321-1431 栃木県日光市山内2301
+TEL 0288-54-0560
+```
+
+Production stores the identical address notation, so no address-notation
+difference arises for this Shrine.
+
+### 12.2 Current Production Position
+
+```text
+latitude = 36.7579
+longitude = 139.5986
+place_ref_id = null
+provenance = LEGACY_UNTRACED
+```
+
+The stored numeric value alone does not provide reconstructable Primary Position
+provenance under the current Position Contract.
+
+### 12.3 Primary Position Source
+
+```text
+primary_source_type = map_provider_poi
+primary_source_provider = Mapion
+primary_source_url = https://www.mapion.co.jp/phonebook/M06005/09206/ILSP0000081956_ipclm/
+
+primary_latitude = 36.75811138
+primary_longitude = 139.59874963
+
+retrieval_status = OK
+entity_match = SAME
+coordinate_traceability = OK
+coordinate_precision_policy = PRESERVE_PRIMARY_SOURCE_PRECISION
+```
+
+The Mapion record is an explicit 日光東照宮 POI under the 神社・寺院・仏閣
+category and carries the same name, address and telephone number as the official
+sources:
+
+```text
+name = 日光東照宮
+address = 栃木県日光市山内2301
+phone = 0288-54-0560
+category = 神社・寺院・仏閣
+```
+
+Its "large map" target exposes the coordinate directly in the map URL, so the
+adopted coordinate is reconstructable from the recorded Primary Source:
+
+```text
+https://www.mapion.co.jp/m2/15.00/36.75811138/139.59874963/0/0?poi=ILSP0000081956_ipclm
+```
+
+Additional same-Shrine POI observation from a second map provider:
+
+```text
+mapfan_url = https://mapfan.com/spots/SC3W3%2CJ%2CR
+mapfan_latitude = 36.7581114
+mapfan_longitude = 139.5987496
+
+primary_vs_mapfan_delta_m ≈ 0.004
+```
+
+MapFan resolves to the same point as the Mapion Primary at 7-decimal precision.
+It is recorded as a cross-provider consistency observation, not as the
+independent corroboration required by the Position Contract.
+
+### 12.4 Corroboration
+
+Independent shrine-reference corroboration:
+
+```text
+corroboration_source_type = independent_shrine_reference_database
+corroboration_source_provider = 國學院大學デジタル・ミュージアム
+corroboration_source_url = https://jmapps.ne.jp/kokugakuin/det.html?data_id=53533
+
+corroboration_latitude = 36.7579108333
+corroboration_longitude = 139.5988244444
+corroboration_status = SATISFIED
+entity_match = SAME
+```
+
+The 國學院大學 record identifies 東照宮 / 日光東照宮 / Nikko Toshogu at
+日光市山内 and publishes the position in DMS notation:
+
+```text
+latitude = 北緯36度45分28.479秒
+longitude = 東経139度35分55.768秒
+```
+
+Decimal conversion:
+
+```text
+36 + 45/60 + 28.479/3600  = 36.7579108333
+139 + 35/60 + 55.768/3600 = 139.5988244444
+```
+
+Observed deltas:
+
+```text
+stored_vs_primary_delta_m ≈ 27.021
+primary_vs_corroboration_delta_m ≈ 23.275
+stored_vs_corroboration_delta_m ≈ 20.031
+```
+
+These are observations only and are not PASS thresholds.
+
+### 12.5 Google Maps Surrounding-View QA
+
+Human QA opened each point independently in normal map / place view. The
+directions screen and long-distance walking-route comparison were deliberately
+not used, because a route line is not Position evidence.
+
+```text
+google_named_poi_relation = SAME_SHRINE / MAIN_PRECINCT
+address_geocode_relation = SAME_SHRINE_PRECINCT / NO_BLOCKING_CONFLICT_OBSERVED
+primary_point_relation = INSIDE_MAIN_TOSHOGU_PRECINCT
+stored_point_relation = INSIDE_MAIN_TOSHOGU_PRECINCT / LEGACY_UNTRACED
+primary_auxiliary_conflict = NONE_OBSERVED
+```
+
+The Primary point was checked against auxiliary-facility failure modes and is
+not a parking-only point, museum-only point, road-only point, or an unrelated
+shrine / temple / private facility. The address geocode is recorded as a
+separate observation and was not adopted as the canonical coordinate.
+
+The stored legacy point also falls inside the main 日光東照宮 precinct. It is
+therefore **not** being rejected as geographically wrong; its weakness is
+provenance (`LEGACY_UNTRACED`) alone.
+
+### 12.6 Anchor Semantics
+
+```text
+anchor_type = SHRINE_POI / PRECINCT_CORE
+anchor_semantics = CONFIRMED
+
+main_sanctuary_anchor = DISTINCT_VISITOR_POINT
+worship_area_anchor = DISTINCT_VISITOR_CONCEPT
+entrance_anchor = SEPARATE_CONCEPT
+gate_anchor = SEPARATE_CONCEPT
+parking_anchor = SEPARATE_CONCEPT
+office_anchor = SEPARATE_CONCEPT
+museum_anchor = SEPARATE_CONCEPT
+bus_stop_anchor = SEPARATE_CONCEPT
+```
+
+日光の社寺 is a World Heritage complex in which 日光東照宮, 日光二荒山神社 and
+日光山輪王寺 occupy adjacent precincts, so same-area POIs do not automatically
+share Shrine identity. The adopted Primary is an explicit 日光東照宮 POI, is
+corroborated as the same Shrine by 國學院大學, and was confirmed by
+surrounding-view QA to fall inside the main 東照宮 precinct rather than a
+neighbouring institution.
+
+### 12.7 Navigation Sanity Check
+
+```text
+navigation_destination = 36.75811138, 139.59874963
+navigation_context = REASONABLE
+```
+
+Recorded as a sanity check only. The Primary Position evidence is the Mapion
+Shrine POI together with the independent corroboration, not the navigation
+result.
+
+### 12.8 Adjudication
+
+```text
+identity_match = SAME
+coordinate_traceability = OK
+anchor_semantics = CONFIRMED
+corroboration_status = SATISFIED
+navigation_context = REASONABLE
+blocking_conflict = NONE_OBSERVED
+
+POSITION_STATUS = PASS
+ADOPTED_COORDINATE = 36.75811138, 139.59874963
+```
+
+The approximately 27 m difference from the legacy Production coordinate is an
+observation, not the reason for PASS or remediation.
+
+### 12.9 Remediation Decision
+
+```text
+current_stored_coordinate = 36.7579, 139.5986
+adopted_coordinate = 36.75811138, 139.59874963
+
+remediation_decision = UPDATE_TO_ADOPTED_PRIMARY
+production_write = NOT_YET_PERFORMED
+base_seed_write = NOT_YET_PERFORMED
+verified_at = 2026-09-22
+```
+
+The remediation value here is provenance normalization, not spatial correction.
+Both the stored and the adopted coordinate lie inside the main 東照宮 precinct;
+the change replaces a legacy-untraced stored coordinate with a traceable,
+same-Shrine, independently corroborated Primary Position. It does not itself
+perform any Production or Base Seed write.
+
+## 13. Remaining Batch 1 Records
 
 | # | Shrine | Official Identity | Primary Source Candidate | Primary Coordinate State | Anchor Semantics | Corroboration | Position |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 09 | 日光東照宮 | SUPPORTED | FOUND | NOT_RETRIEVED | NOT_YET_ADJUDICATED | NOT_YET_COMPLETED | NOT_ADJUDICATED |
 | 10 | 鶴岡八幡宮 | SUPPORTED | FOUND | FETCH_INCOMPLETE | NOT_YET_ADJUDICATED | NOT_YET_COMPLETED | NOT_ADJUDICATED |
 
-## 13. Remediation Candidates
+## 14. Remediation Candidates
 
 | Shrine | Position Status | Remediation Decision | Production Write | Base Seed Write |
 | --- | --- | --- | --- | --- |
@@ -1156,19 +1381,20 @@ Production or Base Seed write.
 | 春日大社 | PASS | UPDATE_TO_ADOPTED_PRIMARY | PERFORMED | PERFORMED |
 | 熱田神宮 | PASS | UPDATE_TO_ADOPTED_PRIMARY | PERFORMED | PERFORMED |
 | 宇佐神宮 | PASS | UPDATE_TO_ADOPTED_PRIMARY | PERFORMED | PERFORMED |
+| 日光東照宮 | PASS | UPDATE_TO_ADOPTED_PRIMARY | NOT_YET_PERFORMED | NOT_YET_PERFORMED |
 
 The individual Remediation Decision blocks above preserve the state at the time
 of adjudication. Current remediation execution state is recorded in this table
-and in Section 14.
+and in Section 15.
 
-## 14. Post-audit Remediation Execution Record
+## 15. Post-audit Remediation Execution Record
 
 This section records remediation executed after Position adjudication.
 
 The original Production Snapshot and each Shrine's "Current Production Position"
 remain unchanged because they represent the observed state at the time of audit.
 
-### 14.1 出雲大社
+### 15.1 出雲大社
 
 ```text
 audit_status = COMPLETE
@@ -1200,7 +1426,7 @@ longitude = 132.68547534
 
 No Shrine identity or address change was performed.
 
-### 14.2 伏見稲荷大社
+### 15.2 伏見稲荷大社
 
 ```text
 audit_status = COMPLETE
@@ -1232,7 +1458,7 @@ longitude = 135.77318468005
 
 No Shrine identity or address change was performed.
 
-### 14.3 春日大社
+### 15.3 春日大社
 
 ```text
 audit_status = COMPLETE
@@ -1264,7 +1490,7 @@ longitude = 135.8482531
 
 No Shrine identity or address change was performed.
 
-### 14.4 熱田神宮
+### 15.4 熱田神宮
 
 ```text
 audit_status = COMPLETE
@@ -1296,7 +1522,7 @@ longitude = 136.90868002
 
 No Shrine identity or address change was performed.
 
-### 14.5 宇佐神宮
+### 15.5 宇佐神宮
 
 ```text
 audit_status = COMPLETE
@@ -1328,10 +1554,10 @@ longitude = 131.37716659
 
 No Shrine identity or address change was performed.
 
-### 14.6 Remediation State
+### 15.6 Remediation State
 
 ```text
-remediation_candidates = 7
+remediation_candidates = 8
 production_remediation_completed = 5
 base_seed_sync_completed = 5
 
@@ -1345,18 +1571,19 @@ completed:
 not_yet_remediated:
 - 明治神宮
 - 伊勢神宮（内宮）
+- 日光東照宮
 ```
 
 Remediation completion does not change the Batch adjudication count.
 
 ```text
-COMPLETE = 8/10
-PASS = 7
+COMPLETE = 9/10
+PASS = 8
 HOLD_POSITION_REVIEW = 1
-NOT_ADJUDICATED = 2
+NOT_ADJUDICATED = 1
 ```
 
-## 15. Non-Goals
+## 16. Non-Goals
 
 The Batch adjudication itself does not:
 
@@ -1369,17 +1596,17 @@ The Batch adjudication itself does not:
 - infer missing evidence.
 
 Post-audit remediation is a separate execution phase and is recorded in
-Section 14.
+Section 15.
 
-## 16. STOP
+## 17. STOP
 
 Current Batch 1 state:
 
 ```text
-COMPLETE = 8/10
-PASS = 7
+COMPLETE = 9/10
+PASS = 8
 HOLD_POSITION_REVIEW = 1
-NOT_ADJUDICATED = 2
+NOT_ADJUDICATED = 1
 ```
 
 Continue remaining Shrines under the same Position Contract and record format.
