@@ -4,7 +4,7 @@
 
 - Status: `COMPLETE — PRODUCTION EVIDENCE RECEIVED`
 - Recorded at: `2026-09-22`
-- Production evidence received at: `2026-09-22` (Mother Ship, read-only; complete for all 6 remediation rows)
+- Production evidence received at: `2026-09-22` (Mother Ship, read-only; schema, all 6 remediation rows, and deployed runtime flags)
 - Scope: `Shrine.latitude` / `Shrine.longitude` / `Shrine.location` / Base Seed / importer / builder / migrations / fresh bootstrap
 - Production DB write: `NONE`
 - Base Seed write: `NONE`
@@ -282,21 +282,101 @@ Consequences that follow directly:
   column into a field the model declares as `PointField`. The hazard recorded
   as `D-3` is real, not hypothetical.
 
-### 7.2 Deployed application USE_GIS — still NOT VERIFIED
+### 7.2 Deployed application USE_GIS — VERIFIED
 
 ```text
-PRODUCTION_USE_GIS_SETTING = NOT_VERIFIED
+PRODUCTION_USE_GIS_SETTING = VERIFIED_FALSE
+PRODUCTION_REAL_GIS_BRANCH = DISABLED
 ```
 
-The Mother Ship shell command that produced this evidence explicitly set
-`USE_GIS=1` for a **local management process** connecting to the Production
-database. That establishes the setting for that one ad-hoc process only.
+Mother Ship inspected the deployed Render service directly:
 
-**It does not establish the setting of the deployed Render application.** The
-two are separate processes with separate environments. No inference is drawn
-here about which branch of `queries.py` (§10) Production traffic takes.
+```text
+service        = jinja-backend
+branch         = develop
+start command  = bash start.sh
+```
 
-`Q-2` and `Q-4` remain open.
+`backend/start.sh` L14 echoes the environment variable on every boot:
+
+```text
+echo "USE_GIS=${USE_GIS:-unset}"
+```
+
+Render Production startup logs show `USE_GIS=False` repeatedly across deploy and
+startup events from 2026-09-15 through 2026-09-22, most recently:
+
+```text
+2026-09-22T05:21:26Z   USE_GIS=False
+```
+
+### 7.3 How `USE_GIS=False` resolves — verified from source
+
+The startup line prints the **environment variable**, so the chain from that
+string to runtime behaviour was traced in this session:
+
+```text
+backend/shrine_project/settings.py L19-23
+    def env_bool(name, default=False):
+        v = os.getenv(name)
+        if v is None: return default
+        return v.strip().lower() in {"1", "true", "yes", "on"}
+
+    "False".strip().lower() == "false"  ->  NOT in the accepted set  ->  False
+
+backend/shrine_project/settings.py L72
+    USE_GIS = env_bool("USE_GIS", default=True)   ->  False
+
+backend/temples/queries.py L16-17
+    _use_real_gis() = settings.USE_GIS and not settings.DISABLE_GIS_FOR_TESTS
+                    = False and (...)             ->  False  (short-circuit)
+```
+
+`DISABLE_GIS_FOR_TESTS` does not need to be known: `USE_GIS` is already false,
+so the conjunction short-circuits. `PRODUCTION_REAL_GIS_BRANCH = DISABLED`
+follows from the source, not from an assumption about the deployment.
+
+`Q-2` and `Q-4` are closed by this. See §10.4 for the runtime consequence and
+§7.4 for a second consequence that is easy to miss.
+
+### 7.4 Second-order consequence — the model's own field type in Production
+
+`backend/temples/models.py` L26-30 computes the same expression:
+
+```text
+USE_REAL_GIS = settings.USE_GIS and not settings.DISABLE_GIS_FOR_TESTS
+```
+
+With `USE_GIS=False`, `USE_REAL_GIS` is false in the deployed service, so
+(L31-41) `PointField` resolves to `django.db.models.JSONField` and `Point` is
+`None`. Consequently `Shrine.save()` (§2.1) takes its **non-GIS** branch and
+derives:
+
+```text
+{"type": "Point", "coordinates": [lng, lat], "srid": 4326}
+```
+
+Production's `location` column holds legacy **EWKB hex text** (§8.1). These are
+two different serialisations in the same text column. Any write through the real
+model in the deployed service would therefore replace a row's EWKB with a JSON
+document — a format change, not merely a value change.
+
+This audit does not assert how often a real-model save actually runs in
+Production; that is a separate question. It records the consequence because it
+materially affects what a future `location` repair would have to decide (§15).
+
+### 7.5 A guard worth noting
+
+`settings.py` L96-97 sets `TEMPLES_USE_NOGIS_MIGRATIONS = IS_PYTEST and
+DISABLE_GIS_FOR_TESTS and not USE_SQLITE`. The in-repo comment (L76-94) records
+a past incident in which this condition was briefly reduced to
+`not USE_GIS and not USE_SQLITE`, and Production — running with `USE_GIS` false,
+exactly as it does today — silently switched to the `temples/migrations_nogis`
+lineage.
+
+Production is protected today only because `IS_PYTEST` cannot be true there.
+Recorded as context: the "`USE_GIS` is false in Production" fact this section
+establishes is the same precondition that incident depended on.
 
 ## 8. Existing Production Parity
 
@@ -468,26 +548,44 @@ def get_location(self, obj):
 `latitude` and `longitude` are also serialized as their own fields (L163–L164,
 L176–L178, L208–L215).
 
-**Finding R-1 (revised after §7).** The Production column is confirmed `text`
-(§7.1), so the PostGIS branch would be issuing `ST_DistanceSphere` and `<->`
-against a text column. Two runtime cases remain, and this audit does **not**
-claim which one is live:
+**Finding R-1 (resolved after §7.2).** The Production column is confirmed
+`text` (§7.1) **and** the deployed service runs with `USE_GIS=False` (§7.2), so
+`_use_real_gis()` is false and Production traffic **does not enter** the PostGIS
+branches at `queries.py` L34-45 / L47-57 / L90-100 / L126-133. Neither
+`ST_DistanceSphere(location, …)` nor `location <-> point` executes.
+
+Current Production nearest / distance behaviour is the PostgreSQL **NoGIS
+haversine branch over `latitude` / `longitude`** (`queries.py` L58-75, L109-120,
+L142-155), plus `search.py` L395-402.
 
 ```text
-Case 1  location=text + deployed USE_GIS=OFF
-        -> queries.py takes the haversine branch over latitude/longitude.
-           Stale location is inert for ranking. The API `location` key may
-           still surface it via get_location(), which is a separate question.
-
-Case 2  location=text + deployed USE_GIS=ON
-        -> queries.py attempts PostGIS operations against a text column.
-           Whether PostgreSQL implicitly casts, errors, or silently degrades
-           MUST BE OBSERVED before asserting either stale ranking or
-           successful conversion. Not asserted here.
+PRODUCTION_RANKING_INPUT = latitude / longitude   (canonical, post-remediation)
+PRODUCTION_LOCATION_ROLE_AT_RUNTIME = not consumed for ranking
 ```
 
-Deciding between them requires `Q-2` (deployed USE_GIS) and `Q-4` (observed
-runtime behaviour), both still open.
+The earlier "Case 1 / Case 2" fork recorded in this section is **withdrawn**;
+Case 1 is the live configuration.
+
+### 10.4 What this does and does not mean
+
+**It does not mean the stale values are harmless.** `EXISTING_PRODUCTION_PARITY`
+remains `FAIL`: six rows (§8.1) hold a `location` that contradicts their own
+`latitude`/`longitude`, and fresh bootstrap produces a different state than
+migrated Production (§9).
+
+**It does mean there is no observed ranking defect.** This audit makes **no
+claim** that Production currently ranks or labels distance from stale
+coordinates. The coordinates that feed ranking today are the corrected ones.
+
+The distinction matters for prioritisation: this is schema / synchronisation /
+contract debt, not a live user-visible correctness defect. It would *become*
+one if `USE_GIS` were ever flipped true against the current data — which is
+precisely the state the six stale rows make hazardous.
+
+`get_location()` in the API serializer (§10.3) is a separate surface and is not
+gated by `_use_real_gis()`; whether it currently returns the stale value or the
+lat/lng fallback depends on how `to_lat_lng_dict()` handles EWKB hex text, which
+this audit did not test.
 
 ## 11. Drift Matrix
 
@@ -499,6 +597,10 @@ runtime behaviour), both still open.
 | D-4 | Env-dependent column type | `models.PointField.deconstruct()` L128–L145 | same migration graph yields `geometry` or `jsonb`/`text` per environment | **Yes, structurally** |
 | D-5 | Direct SQL / manual DB edit | outside the ORM | either column can move alone | Unknown |
 | D-6 | `AUTO_GEOCODE_ON_SAVE` signal | `backend/temples/signals.py` L110–L128 | sets lat/lng **and** location together, then `save()` re-derives | Consistent — not a drift source |
+
+Runtime note: with `USE_GIS=False` verified in Production (§7.2), none of the
+above drift makes Production *ranking* wrong today (§10.4); the drift is in
+persisted state and in bootstrap reproducibility.
 
 `location` changed without lat/lng: no ORM path produces it (`save()` always
 overwrites `location` from lat/lng). Only D-5 can.
@@ -590,70 +692,79 @@ legacy EWKB `location` equal to the exact pre-remediation coordinate, while
 
 **G. Drift risk.** See §11.
 
-## 15. Recommended Contract Direction — PARTIALLY RESOLVED
+## 15. Recommended Contract Direction — PRODUCTION STATE RESOLVED
 
-The task instructed stopping before a final ownership recommendation while
-Production evidence was essential. §7 closed the schema question, so the tree is
-revised here. It is **not** resolved to a single direction, because the
-remaining fork (`Q-2` / `Q-4`) still changes the first move.
-
-The previously recorded branch "geometry + USE_GIS on" is **withdrawn**: it does
-not describe Production. The column is `text` (§7.1).
+Production state is now fully characterised. The fork recorded in earlier
+revisions of this section is closed:
 
 ```text
-Both live cases share this, now established:
-
-  * Production location is text, populated, and stale in 6/6 verified rows (§8.1)
-  * fresh bootstrap produces a consistent location (§9)
-  * the two states diverge
-  * backfill_location cannot be used as written (§12)
-
-Case 1  location=text + deployed USE_GIS=OFF
-        Ranking uses latitude/longitude (§10.2), which ARE correct post-
-        remediation. The stale column is then a data-integrity and
-        reproducibility defect, not a user-visible ranking defect.
-        First move is a schema decision: what should this column be, and
-        should it exist at all.
-
-Case 2  location=text + deployed USE_GIS=ON
-        queries.py issues PostGIS operators against a text column. The
-        outcome is unobserved. It could raise, implicitly cast, or degrade
-        silently. Any of those is a live production concern, but WHICH one
-        determines whether this is an outage-class or correctness-class
-        problem.
-        First move is observation, not remediation.
+physical location column   = legacy text, populated with EWKB hex   (§7.1, §8.1)
+deployed USE_GIS           = False                                   (§7.2)
+real-GIS branch            = DISABLED                                (§7.3)
+ranking input              = latitude / longitude                    (§10)
+remediated rows stale      = 6/6                                     (§8.1)
+fresh bootstrap            = internally consistent, diverges from Production (§9)
 ```
 
-Directionally stable regardless of the fork, offered as candidates rather than
-decisions:
+### 15.1 Classification of the debt
+
+```text
+ACTIVE_DEBT = SCHEMA / SYNCHRONIZATION / CONTRACT
+NOT         = observed PostGIS ranking correctness defect
+```
+
+The six stale rows are a real and verified parity failure, but they are not
+currently consumed by Production's nearest / distance path. Treating this as an
+urgent ranking bug would misprioritise it; treating it as harmless would ignore
+that the persisted state is self-contradictory and that bootstrap is not
+reproducible from it.
+
+### 15.2 Candidate directions — decisions for Mother Ship, not taken here
 
 1. Name `latitude`/`longitude` as canonical persisted position and `location`
-   as derived, in `docs/knowledge/shrine-position-contract.md` — the Contract
-   is currently silent on `location` entirely. §8.1 shows the cost of that
+   as derived, in `docs/knowledge/shrine-position-contract.md`. The Contract is
+   currently silent on `location` entirely, and §8.1 shows the cost of that
    silence.
 2. Decide the nested Seed `location` object's fate explicitly. It must not be
    deleted silently (per task constraint), but leaving an inert duplicate that
    no writer reads is itself a trap.
 3. Add a whole-file Seed equality contract test (C-1) whichever way (2) goes.
 4. Do not run `backfill_location` as written (§12).
-5. Before any Production `location` write, settle the column type question. A
-   backfill into a text column reproduces the same ambiguity at a newer
-   coordinate rather than removing it.
+5. Settle the column-type question **before** any Production `location` write.
+   §7.4 sharpens this: with `USE_GIS=False` the real model would write a
+   GeoJSON-shaped JSON document into a column that currently holds EWKB hex, so
+   a naive repair changes the serialisation format rather than reconciling it.
+6. Decide whether `location` should exist in Production at all. It is currently
+   a text column, populated, unread by the live ranking path, contradicted in
+   6/6 remediated rows, and written in two incompatible formats depending on a
+   flag. Retiring it is a legitimate option alongside repairing it.
+
+### 15.3 A flag-flip precondition worth recording
+
+Because ranking currently reads `latitude`/`longitude`, the stale `location`
+values are latent. They would become live the moment `USE_GIS` were set true
+against the present data — the PostGIS branch would then rank six known Shrines
+from their pre-remediation coordinates. That is not a prediction about anyone's
+plans; it is the reason the debt should be closed before any such change, and
+it is why §7.5's note about `USE_GIS` false in Production is recorded rather
+than treated as incidental.
 
 ## 16. Unresolved Questions
 
 ```text
 Q-1  RESOLVED  Production temples_shrine.location: data_type = text, udt_name = text (§7.1)
 
-Q-2  OPEN      Deployed Render application: effective USE_GIS / DISABLE_GIS_FOR_TESTS?
-               (the evidence command's USE_GIS=1 was a local process, §7.2)
+Q-2  RESOLVED  Deployed Render service jinja-backend runs USE_GIS=False, observed in
+               startup logs 2026-09-15 .. 2026-09-22 (latest 2026-09-22T05:21:26Z).
+               DISABLE_GIS_FOR_TESTS is immaterial: the conjunction short-circuits (§7.3).
 
 Q-3  RESOLVED  All 6 remediation rows classified: pk 2/4/5/7/8/70 = STALE (§8.1).
                VERIFIED_REMEDIATED_ROWS = 6/6, STALE_LOCATION_ROWS = 6/6.
 
-Q-4  OPEN      Does Production traffic reach queries.py's PostGIS branch, and if
-               so what does PostgreSQL actually do with ST_DistanceSphere / <->
-               against a text column?
+Q-4  RESOLVED  No. _use_real_gis() is false in Production, so the PostGIS branches
+               are unreachable. Ranking uses the NoGIS lat/lng haversine branch
+               (§10). The "text column under PostGIS operators" question is
+               therefore moot for the current configuration.
 
 Q-5  RESOLVED  For all 6 rows, location is populated — not NULL — and holds
                stale legacy EWKB text (§8.1).
@@ -667,11 +778,17 @@ Q-8  RESOLVED  pk=70 (多摩川浅間神社, migration 0094) = STALE. Raw EWKB s
                and independently decoded in this session (§8.2).
 ```
 
-`Q-2` and `Q-4` are answerable only by inspecting the deployed environment and
-observing runtime behaviour; neither is answerable from the repository or from a
-local process pointed at the Production database. `Q-6`–`Q-7` are policy
-decisions for Mother Ship. Every question answerable from Production data is
-now closed.
+Every factual question this audit raised is now closed. `Q-6` and `Q-7` remain
+open because they are **policy decisions for Mother Ship**, not missing evidence.
+
+One question was opened rather than closed by the runtime evidence:
+
+```text
+Q-9  OPEN      Does any real-model save path run against Production today
+               (admin, importer, signals)? Under USE_GIS=False such a save
+               writes a GeoJSON document into the EWKB text column (§7.4).
+               Not tested by this audit.
+```
 
 ## 17. Scope Statement
 
