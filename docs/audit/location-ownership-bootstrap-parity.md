@@ -818,7 +818,7 @@ Q-9  ANSWERED   Real-model save paths are PRESENT and reachable, but no recent
                Production execution was observed and the location-format sweep
                is not yet available. Q9_FINAL = REACHABLE_BUT_NOT_OBSERVED.
                Full writer inventory and evidence: §17.
-               Follow-ups opened: Q-10 / Q-11 / Q-12 (§17.7).
+               Follow-ups: Q-10 RESOLVED (§17.4); Q-11 / Q-12 OPEN (§17.7).
 ```
 
 ## 17. Q-9 Follow-up — Real-Model Save Paths Against Production
@@ -830,7 +830,7 @@ Scope of this section: does Production execute any write path that uses the
 ```text
 Q9_STATIC_REAL_MODEL_SAVE_PATHS = PRESENT
 Q9_RECENT_PRODUCTION_EXECUTION  = NOT_OBSERVED
-Q9_LOCATION_FORMAT_EVIDENCE     = INDETERMINATE
+Q9_LOCATION_FORMAT_EVIDENCE     = LEGACY_ONLY
 Q9_FINAL                        = REACHABLE_BUT_NOT_OBSERVED
 ```
 
@@ -926,11 +926,19 @@ Mother Ship inspected Render Production logs and request history:
 
 ```text
 Production bootstrap                       skipped (repeatedly, in startup logs)
+RUN_VISIT_STYLE_SYNC_ON_START              skipped (repeatedly, recent window)
+RUN_VISIT_STYLE_ROLLBACK_ON_START          skipped (repeatedly, recent window)
+RUN_BOOTSTRAP_ON_START                     skipped (repeatedly, recent window)
 import_shrines_seed execution              no log in the inspected window
 POST places/resolve                        no matching recent request observed
 shrine-submissions                         no matching recent request observed
 inspected Shrine admin paths               no matching recent request observed
 ```
+
+The three `RUN_*_ON_START` lines directly cover the gates of writers A-1, A-2
+and A-5 (§17.2). They are **recent-window evidence only**: they show those
+flags were off across the observed startups, not that they were never set at
+any point in the service's history. `Q-12` stays open on that basis (§17.7).
 
 ```text
 Q9_RECENT_PRODUCTION_EXECUTION = NOT_OBSERVED
@@ -947,34 +955,69 @@ Per the task constraint, `updated_at` was **not** used to infer a writer.
 ### 17.4 Production location-format evidence
 
 ```text
-Q9_LOCATION_FORMAT_EVIDENCE = INDETERMINATE
+Q9_LOCATION_FORMAT_EVIDENCE = LEGACY_ONLY
+
+PRODUCTION_LOCATION_FORMAT_SWEEP = 113 legacy-hex / 0 JSON / 0 NULL / 0 OTHER
 ```
 
-The read-only Production location-format sweep was announced but **not supplied
-to this session**. No classification over the 113-row table is possible.
-
-What is known, from §8.1 and covering 6 rows only:
+Mother Ship ran the read-only Production location-format sweep **twice**, with
+the identical result both times:
 
 ```text
-pk 2, 4, 5, 7, 8, 70   HEX_EWKB   (legacy representation intact)
-remaining ~107 rows    NOT SAMPLED
+[('HEX_EWKB', 113)]
+
+HEX_EWKB  = 113
+JSON_TEXT = 0
+NULL      = 0
+OTHER     = 0
 ```
 
-Those six are the rows a data migration last touched — the population *least*
-likely to show a real-model rewrite, because the migrations bypass `save()`.
-They are therefore weak evidence about the rest of the table, and
-`LEGACY_ONLY` is **not** claimed.
+The sweep covers the whole table: 113 of 113 rows.
 
-Interpretation to apply when the sweep arrives:
+#### What the sweep proves
+
+Every current Production `location` value is **hex-shaped legacy text**. There
+is no JSON value, no NULL, and nothing that falls outside the classifier. In
+particular there is **no surviving GeoJSON-format trace** of the kind a NoGIS
+real-model save would write (§7.4).
+
+#### What the sweep does not prove — classifier precision
+
+The classifier assigns `HEX_EWKB` by regex:
 
 ```text
-HEX_EWKB    legacy representation remains
-JSON_TEXT   consistent with a NoGIS real-model save having rewritten the
-            representation (§7.4) — would move Q9_FINAL toward
-            ACTIVE_WRITE_PATH_OBSERVED and identify which rows
-NULL        no stored location
-OTHER       requires investigation before classification
+^[0-9A-Fa-f]+$
 ```
+
+That tests the **shape of the string**, not the structural validity of the
+geometry. The sweep therefore establishes "hex-shaped, and not JSON / NULL /
+OTHER" for all 113 rows; it does **not** independently decode 113 rows as
+well-formed SRID-4326 EWKB.
+
+Rows independently decoded as genuine EWKB remain the six from §8.2:
+
+```text
+pk 2, 4, 5, 7, 8, 70   decoded: little-endian Point, SRID 4326   (§8.2)
+remaining 107 rows     hex-shaped by classifier; structure not individually decoded
+```
+
+This distinction is recorded rather than smoothed over: `LEGACY_ONLY` is a
+statement about format classification across the table, not a per-row proof of
+geometry validity.
+
+#### What the sweep does not prove — history
+
+The sweep is a **snapshot of current state**. It does not establish that no
+real-model save ever ran against Production.
+
+A bounded mechanical observation, offered as context and explicitly **not** as
+a conclusion: under `USE_GIS=False` nothing in the repository converts a
+GeoJSON `location` back to hex, so a GeoJSON value written today would be
+expected to persist. That reasoning does not close the historical question,
+because it breaks under at least three conditions this audit cannot rule out —
+a later write while `USE_GIS` was true, a direct SQL correction, or a row
+having been deleted and recreated. Historical usage therefore stays open
+(`Q-12`, §17.7).
 
 ### 17.5 Q-9 decision
 
@@ -990,8 +1033,15 @@ window, and the format sweep that could corroborate or refute a past execution
 is not yet available.
 
 `NOT_REACHABLE` is ruled out by §17.2. `ACTIVE_WRITE_PATH_OBSERVED` is not
-supported by any evidence currently held. `INDETERMINATE` would understate
-§17.2, which is a firm source-level finding.
+supported by any evidence currently held: the format sweep (§17.4) shows
+113/113 legacy-hex and **zero** GeoJSON traces, so there is no positive
+indication that a NoGIS real-model save has landed on Production.
+`INDETERMINATE` would understate §17.2, which is a firm source-level
+finding, and now also §17.4, which is a complete-table measurement.
+
+`REACHABLE_BUT_NOT_OBSERVED` is retained deliberately: reachability is
+established, execution is unobserved, and the snapshot cannot speak to
+history.
 
 ### 17.6 Consequence for the existing decision states
 
@@ -1006,14 +1056,22 @@ existing findings rather than revising them:
 
 `Q-6` and `Q-7` remain Mother Ship policy decisions and are untouched here.
 
-### 17.7 Open after this audit
+### 17.7 State after this audit
 
 ```text
-Q-10 OPEN   Production location-format sweep across all rows (§17.4).
-Q-11 OPEN   Production value of AUTO_GEOCODE_ON_SAVE (not logged by start.sh).
-Q-12 OPEN   Were RUN_VISIT_STYLE_SYNC_ON_START / RUN_VISIT_STYLE_ROLLBACK_ON_START /
-            RUN_BOOTSTRAP_ON_START ever set to 1 in Production? A-1/A-2/A-5 are
-            gated on them and their history was not inspected.
+Q-10 RESOLVED  Production location-format sweep completed across all 113 rows:
+               113 legacy-hex / 0 JSON / 0 NULL / 0 OTHER, run twice with the
+               same result (§17.4). Classifier tests hex shape, not per-row
+               EWKB structure; 6 rows remain the independently decoded set.
+
+Q-11 OPEN      Production value of AUTO_GEOCODE_ON_SAVE (not logged by start.sh).
+               No independent evidence was supplied, so this is unchanged.
+
+Q-12 OPEN      Were RUN_VISIT_STYLE_SYNC_ON_START / RUN_VISIT_STYLE_ROLLBACK_ON_START /
+               RUN_BOOTSTRAP_ON_START ever set to 1 in Production? Recent startup
+               logs show all three repeatedly skipped (§17.3), which covers the
+               observed window only. Historical state outside that window is not
+               established, and the current-state sweep cannot settle it (§17.4).
 ```
 
 ## 18. Scope Statement
