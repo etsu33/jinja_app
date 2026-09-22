@@ -12,7 +12,7 @@
 - NOT_ADJUDICATED: `2`
 - Production write during audit: `NONE`
 - Base Seed write during audit: `NONE`
-- Post-audit remediation completed: `4/7`
+- Post-audit remediation completed: `5/7`
 
 本書は Position Contract の変更ではない。採用ルールの authority は
 `docs/knowledge/shrine-position-contract.md` のままである。
@@ -1155,7 +1155,7 @@ Production or Base Seed write.
 | 伊勢神宮（内宮） | PASS | UPDATE_TO_ADOPTED_PRIMARY | NOT_YET_PERFORMED | NOT_YET_PERFORMED |
 | 春日大社 | PASS | UPDATE_TO_ADOPTED_PRIMARY | PERFORMED | PERFORMED |
 | 熱田神宮 | PASS | UPDATE_TO_ADOPTED_PRIMARY | PERFORMED | PERFORMED |
-| 宇佐神宮 | PASS | UPDATE_TO_ADOPTED_PRIMARY | NOT_YET_PERFORMED | NOT_YET_PERFORMED |
+| 宇佐神宮 | PASS | UPDATE_TO_ADOPTED_PRIMARY | PERFORMED | PERFORMED |
 
 The individual Remediation Decision blocks above preserve the state at the time
 of adjudication. Current remediation execution state is recorded in this table
@@ -1296,23 +1296,55 @@ longitude = 136.90868002
 
 No Shrine identity or address change was performed.
 
-### 14.5 Remediation State
+### 14.5 宇佐神宮
+
+```text
+audit_status = COMPLETE
+position_status = PASS
+adopted_coordinate = 33.52344557, 131.37716659
+
+production_remediation_pr = #2928
+production_remediation_migration = temples.0113_adopt_usa_jingu_position
+production_write = PERFORMED
+production_migration_status = APPLIED
+production_post_check = PASS
+
+base_seed_sync_pr = #2929
+base_seed_write = PERFORMED
+base_seed_coordinate = 33.52344557, 131.37716659
+
+verified_at = 2026-09-22
+```
+
+Production read-only verification after migration confirmed:
+
+```text
+id = 8
+name_jp = 宇佐神宮
+address = 大分県宇佐市南宇佐2859
+latitude = 33.52344557
+longitude = 131.37716659
+```
+
+No Shrine identity or address change was performed.
+
+### 14.6 Remediation State
 
 ```text
 remediation_candidates = 7
-production_remediation_completed = 4
-base_seed_sync_completed = 4
+production_remediation_completed = 5
+base_seed_sync_completed = 5
 
 completed:
 - 出雲大社
 - 伏見稲荷大社
 - 春日大社
 - 熱田神宮
+- 宇佐神宮
 
 not_yet_remediated:
 - 明治神宮
 - 伊勢神宮（内宮）
-- 宇佐神宮
 ```
 
 Remediation completion does not change the Batch adjudication count.
