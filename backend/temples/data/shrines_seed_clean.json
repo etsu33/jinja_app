@@ -139,8 +139,8 @@
   {
     "name_jp": "宇佐神宮",
     "address": "大分県宇佐市南宇佐2859",
-    "latitude": 33.531,
-    "longitude": 131.379,
+    "latitude": 33.52344557,
+    "longitude": 131.37716659,
     "goriyaku": "勝運・厄除け・家内安全",
     "kyusei": null,
     "astro_elements": [
@@ -150,8 +150,8 @@
       "classic"
     ],
     "location": {
-      "lat": 33.531,
-      "lng": 131.379
+      "lat": 33.52344557,
+      "lng": 131.37716659
     }
   },
   {
