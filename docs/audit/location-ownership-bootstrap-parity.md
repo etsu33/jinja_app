@@ -4,7 +4,7 @@
 
 - Status: `COMPLETE — PRODUCTION EVIDENCE RECEIVED`
 - Recorded at: `2026-09-22`
-- Production evidence received at: `2026-09-22` (Mother Ship, read-only)
+- Production evidence received at: `2026-09-22` (Mother Ship, read-only; complete for all 6 remediation rows)
 - Scope: `Shrine.latitude` / `Shrine.longitude` / `Shrine.location` / Base Seed / importer / builder / migrations / fresh bootstrap
 - Production DB write: `NONE`
 - Base Seed write: `NONE`
@@ -302,12 +302,16 @@ here about which branch of `queries.py` (§10) Production traffic takes.
 
 ```text
 EXISTING_PRODUCTION_PARITY = FAIL
+
+VERIFIED_REMEDIATED_ROWS = 6/6
+STALE_LOCATION_ROWS      = 6/6
 ```
 
 ### 8.1 Verified rows
 
-Mother Ship decoded the EWKB text held in `temples_shrine.location` for the five
-Batch 01 rows remediated by `0109`–`0113`:
+Mother Ship decoded the EWKB text held in `temples_shrine.location` for every
+known coordinate-remediation row — the five Batch 01 rows remediated by
+`0109`–`0113`, and `0094`'s 多摩川浅間神社:
 
 | Shrine | pk | migration | current `latitude` / `longitude` | decoded `location` | class |
 | --- | ---: | --- | --- | --- | --- |
@@ -316,14 +320,21 @@ Batch 01 rows remediated by `0109`–`0113`:
 | 春日大社 | 5 | 0111 | 34.6812901 / 135.8482531 | 34.6814 / 135.8481 | **STALE** |
 | 熱田神宮 | 7 | 0112 | 35.12737043 / 136.90868002 | 35.1279 / 136.9114 | **STALE** |
 | 宇佐神宮 | 8 | 0113 | 33.52344557 / 131.37716659 | 33.531 / 131.379 | **STALE** |
+| 多摩川浅間神社 | 70 | 0094 | 35.5875263 / 139.6687549 | 35.5898 / 139.6688 | **STALE** |
 
-`location` is **populated, not NULL**, in every one of the five rows. It holds
-stale EWKB text.
+`location` is **populated, not NULL**, in every one of the six rows. It holds
+stale legacy EWKB text.
+
+Raw value as stored for pk=70 (a `text` column, §7.1):
+
+```text
+0101000020e610000013f241cf667561402497ff907ecb4140
+```
 
 ### 8.2 Cross-check against the migration constants
 
-This session parsed the AST constants of `0109`–`0113` and compared them to the
-supplied evidence. All five rows match on all three axes:
+This session parsed the AST constants of `0094` and `0109`–`0113` and compared
+them to the supplied evidence. All six rows match on all three axes:
 
 ```text
 pk=2  0110  identity OK   location == OLD_LATITUDE/OLD_LONGITUDE OK   lat/lng == NEW_* OK
@@ -331,7 +342,22 @@ pk=4  0109  identity OK   location == OLD_LATITUDE/OLD_LONGITUDE OK   lat/lng ==
 pk=5  0111  identity OK   location == OLD_LATITUDE/OLD_LONGITUDE OK   lat/lng == NEW_* OK
 pk=7  0112  identity OK   location == OLD_LATITUDE/OLD_LONGITUDE OK   lat/lng == NEW_* OK
 pk=8  0113  identity OK   location == OLD_LATITUDE/OLD_LONGITUDE OK   lat/lng == NEW_* OK
+pk=70 0094  identity OK   location == OLD_LATITUDE/OLD_LONGITUDE OK   lat/lng == NEW_* OK
 ```
+
+For pk=70 the raw EWKB hex was supplied, so this session decoded it directly
+with `struct` rather than relying on the supplied decode:
+
+```text
+byte_order  = little
+geom_type   = 1 (Point), SRID flag set
+SRID        = 4326
+X longitude = 139.6688
+Y latitude  = 35.5898
+```
+
+The independent decode reproduces the Mother Ship values exactly, and both
+equal `0094`'s `OLD_LATITUDE` / `OLD_LONGITUDE`.
 
 The decoded `location` of each row is **exactly** the `OLD_LATITUDE` /
 `OLD_LONGITUDE` its migration replaced, and the current `latitude`/`longitude`
@@ -340,17 +366,31 @@ partial application.
 
 This is not merely consistent with `DUAL_WRITE_PATH_WITH_ASYMMETRIC_DERIVATION`
 (§13) — it is a direct positive confirmation of it. The historical model wrote
-two columns and left the third holding the pre-migration value, in five out of
-five cases.
+two columns and left the third holding the pre-migration value in **six out of
+six cases**, across two independent migration generations (`0094`, written
+2026-08, and `0109`–`0113`, written 2026-09). The defect is systematic, not an
+artefact of one authoring session.
 
-### 8.3 Not verified
+### 8.3 Coverage
+
+None. Every coordinate-remediation row known to this audit is now directly
+verified against Production:
 
 ```text
-多摩川浅間神社 pk=70 (migration 0094) = NOT_VERIFIED
+0094  pk=70  多摩川浅間神社   STALE
+0109  pk=4   出雲大社        STALE
+0110  pk=2   伏見稲荷大社     STALE
+0111  pk=5   春日大社        STALE
+0112  pk=7   熱田神宮        STALE
+0113  pk=8   宇佐神宮        STALE
 ```
 
-Mother Ship did not supply this row. The same mechanism applies to it and the
-same prediction stands, but it is recorded as unverified rather than assumed.
+Six of six. No `MATCH`, no `NULL`, no `UNINTERPRETABLE`.
+
+This audit does not claim that these are the only rows in Production whose
+`location` disagrees with `latitude`/`longitude` — only that every row a
+coordinate-remediation migration touched is stale. A full-table sweep was not
+performed and is not asserted.
 
 ## 9. Fresh-Bootstrap Parity
 
@@ -373,7 +413,7 @@ cannot influence it.
 
 **This is the parity gap, and it is now measured rather than predicted:** a
 database built fresh from Seed has `location == f(latitude, longitude)` for
-every row, whereas Production holds five verified rows (§8.1) whose `location`
+every row, whereas Production holds six verified rows (§8.1) whose `location`
 is the pre-remediation coordinate. Fresh bootstrap and migrated Production
 **do diverge in `location` while agreeing in `latitude`/`longitude`**.
 
@@ -453,7 +493,7 @@ runtime behaviour), both still open.
 
 | # | Path | Code | Effect | Live today? |
 | --- | --- | --- | --- | --- |
-| D-1 | Data migration on historical model | `0094`, `0109`–`0113` | lat/lng updated, `location` stale | **Yes — 5 rows VERIFIED (§8.1), pk=70 unverified** |
+| D-1 | Data migration on historical model | `0094`, `0109`–`0113` | lat/lng updated, `location` stale | **Yes — 6 rows VERIFIED (§8.1)** |
 | D-2 | Seed edited top-level only | manual edit; no whole-file test (§3.1) | Seed internally inconsistent; harmless to DB (§5) but misleads readers | Possible; 0 occurrences today |
 | D-3 | `backfill_location` SELECTs `location` | `backfill_location.py` L18 `.only("id","latitude","longitude","location")` | selects a confirmed `text` column into a `PointField` | **Yes, if run — column type now VERIFIED (§7.1)** |
 | D-4 | Env-dependent column type | `models.PointField.deconstruct()` L128–L145 | same migration graph yields `geometry` or `jsonb`/`text` per environment | **Yes, structurally** |
@@ -542,9 +582,11 @@ present function is partial duplication asserted for two named Shrine subsets.
 
 **E. Fresh bootstrap parity.** `PASS`. See §9.
 
-**F. Existing Production parity.** `FAIL`. Five verified rows (pk 2/4/5/7/8)
-hold a populated but stale `location` equal to the exact pre-remediation
-coordinate; pk=70 is unverified. See §8.
+**F. Existing Production parity.** `FAIL`. All six known coordinate-remediation
+rows (pk 2/4/5/7/8/70) are directly verified **STALE**: each holds a populated
+legacy EWKB `location` equal to the exact pre-remediation coordinate, while
+`latitude`/`longitude` hold the post-remediation value. `VERIFIED_REMEDIATED_ROWS
+= 6/6`, `STALE_LOCATION_ROWS = 6/6`. See §8.
 
 **G. Drift risk.** See §11.
 
@@ -561,7 +603,7 @@ not describe Production. The column is `text` (§7.1).
 ```text
 Both live cases share this, now established:
 
-  * Production location is text, populated, and stale in 5 verified rows (§8.1)
+  * Production location is text, populated, and stale in 6/6 verified rows (§8.1)
   * fresh bootstrap produces a consistent location (§9)
   * the two states diverge
   * backfill_location cannot be used as written (§12)
@@ -606,28 +648,30 @@ Q-1  RESOLVED  Production temples_shrine.location: data_type = text, udt_name = 
 Q-2  OPEN      Deployed Render application: effective USE_GIS / DISABLE_GIS_FOR_TESTS?
                (the evidence command's USE_GIS=1 was a local process, §7.2)
 
-Q-3  RESOLVED  5 of 6 remediated rows classified: pk 2/4/5/7/8 = STALE (§8.1).
-               pk=70 remains NOT_VERIFIED (§8.3).
+Q-3  RESOLVED  All 6 remediation rows classified: pk 2/4/5/7/8/70 = STALE (§8.1).
+               VERIFIED_REMEDIATED_ROWS = 6/6, STALE_LOCATION_ROWS = 6/6.
 
 Q-4  OPEN      Does Production traffic reach queries.py's PostGIS branch, and if
                so what does PostgreSQL actually do with ST_DistanceSphere / <->
                against a text column?
 
-Q-5  RESOLVED  For those 5 rows, location is populated — not NULL — and holds
-               stale EWKB text (§8.1).
+Q-5  RESOLVED  For all 6 rows, location is populated — not NULL — and holds
+               stale legacy EWKB text (§8.1).
 
 Q-6  OPEN      Should the nested Seed location be kept as validation input, or retired?
 
 Q-7  OPEN      Is a Production location backfill wanted at all, or is a column-type
                decision the real prerequisite? (§15 candidate 5)
 
-Q-8  OPEN      pk=70 (多摩川浅間神社, migration 0094): same query as §8.1.
+Q-8  RESOLVED  pk=70 (多摩川浅間神社, migration 0094) = STALE. Raw EWKB supplied
+               and independently decoded in this session (§8.2).
 ```
 
 `Q-2` and `Q-4` are answerable only by inspecting the deployed environment and
 observing runtime behaviour; neither is answerable from the repository or from a
 local process pointed at the Production database. `Q-6`–`Q-7` are policy
-decisions for Mother Ship. `Q-8` needs one more read-only row.
+decisions for Mother Ship. Every question answerable from Production data is
+now closed.
 
 ## 17. Scope Statement
 
