@@ -119,8 +119,8 @@
   {
     "name_jp": "熱田神宮",
     "address": "愛知県名古屋市熱田区神宮1-1-1",
-    "latitude": 35.1279,
-    "longitude": 136.9114,
+    "latitude": 35.12737043,
+    "longitude": 136.90868002,
     "goriyaku": "開運・厄除け・家内安全",
     "kyusei": null,
     "astro_elements": [
@@ -132,8 +132,8 @@
       "business"
     ],
     "location": {
-      "lat": 35.1279,
-      "lng": 136.9114
+      "lat": 35.12737043,
+      "lng": 136.90868002
     }
   },
   {
