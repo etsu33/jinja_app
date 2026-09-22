@@ -809,18 +809,272 @@ All factual questions within the **original audit scope** are resolved
 (`Q-1`–`Q-5`, `Q-8`). `Q-6` and `Q-7` remain open because they are **policy
 decisions for Mother Ship**, not missing evidence.
 
-`Q-9` is a **newly discovered factual follow-up**, surfaced by the runtime
-evidence rather than closed by it. It falls outside the original audit closure
-and is not investigated here:
+`Q-9` was a **newly discovered factual follow-up**, surfaced by the runtime
+evidence rather than closed by it. It has since been audited in §17 and is
+recorded here as answered; it opened three further questions of its own:
 
 ```text
-Q-9  OPEN      Does any real-model save path run against Production today
-               (admin, importer, signals)? Under USE_GIS=False such a save
-               writes a GeoJSON document into the EWKB text column (§7.4).
-               Not tested by this audit.
+Q-9  ANSWERED   Real-model save paths are PRESENT and reachable, but no recent
+               Production execution was observed and the location-format sweep
+               is not yet available. Q9_FINAL = REACHABLE_BUT_NOT_OBSERVED.
+               Full writer inventory and evidence: §17.
+               Follow-ups: Q-10 RESOLVED (§17.4); Q-11 / Q-12 OPEN (§17.7).
 ```
 
-## 17. Scope Statement
+## 17. Q-9 Follow-up — Real-Model Save Paths Against Production
+
+Scope of this section: does Production execute any write path that uses the
+**real** `temples.models.Shrine` class, and would therefore re-derive
+`Shrine.location` under `USE_GIS=False` (§7.4)?
+
+```text
+Q9_STATIC_REAL_MODEL_SAVE_PATHS = PRESENT
+Q9_RECENT_PRODUCTION_EXECUTION  = NOT_OBSERVED
+Q9_LOCATION_FORMAT_EVIDENCE     = LEGACY_ONLY
+Q9_FINAL                        = REACHABLE_BUT_NOT_OBSERVED
+```
+
+### 17.1 Why the real model matters here
+
+Only the real model re-derives `location`. `Shrine.save()` (§2.1) recomputes it
+from `latitude`/`longitude` and **auto-adds `"location"` to `update_fields`**,
+so a writer that names only unrelated fields still rewrites the column. Under
+`USE_GIS=False` the derived value is a GeoJSON-shaped dict, not EWKB (§7.4).
+
+A writer therefore matters for Q-9 if and only if it goes through
+`Model.save()`. QuerySet `.update()`, `bulk_update()` and historical-model
+migrations do not.
+
+### 17.2 Writer inventory — STATIC REACHABILITY
+
+Every entry was located by source search in this session and is cited by exact
+path and line.
+
+#### A. Reachable from `backend/start.sh` (opt-in flags, all default off)
+
+| # | Writer | Exact site | Mechanism | Gate |
+| --- | --- | --- | --- | --- |
+| A-1 | `sync_visit_style_tags_from_seed` | L484 `shrine.save(update_fields=["visit_style_tags"])` | real save | `RUN_VISIT_STYLE_SYNC_ON_START=1` |
+| A-2 | `restore_visit_style_tags_snapshot` | L299 `locked_shrine.save(update_fields=["visit_style_tags"])` | real save | `RUN_VISIT_STYLE_ROLLBACK_ON_START=1` |
+| A-3 | `bootstrap_production_data` | L25-41 `call_command("import_shrines_seed")` | delegates to A-4 | `RUN_BOOTSTRAP_ON_START=1` |
+| A-4 | `import_shrines_seed` | L317 `Shrine.objects.create(...)`, L383 `obj.save(update_fields=changed_fields)` | real save | `RUN_BOOTSTRAP_ON_START=1` |
+| A-5 | `backfill_goriyaku_tags --force` | L157 `shrine.save(update_fields=["visit_style_tags","updated_at"])` | real save | `RUN_BOOTSTRAP_ON_START=1` (fallback branch) |
+
+**A-1 is the notable one.** It was not on the original inspect list. It is the
+startup flag the repository documents as *intended* for Production use, it
+writes only `visit_style_tags` by intent — and via §2.1 it would rewrite
+`location` as an unintended side effect on every row whose derived value
+differs. Given §8.1, that is at least the six remediated rows.
+
+`start.sh` makes A-1 / A-2 / A-5 mutually exclusive with each other and with
+every other write-capable flag, and fails closed on misconfiguration.
+
+#### B. Reachable over HTTP / admin
+
+| # | Writer | Exact site | Mechanism | Entry point |
+| --- | --- | --- | --- | --- |
+| B-1 | `get_or_create_shrine_by_place_id` | `backend/temples/services/places.py` L54 `Shrine.objects.create(...)` | real save | `api/views/places_resolve.py` L127; `api/views/shrine.py` L354 |
+| B-2 | Django Shrine admin | `backend/temples/admin.py` L491 `_maybe_register("Shrine", ShrineAdmin)` | `ModelAdmin.save_model` → real save | admin UI |
+| B-3 | ShrineSubmission approval | `backend/temples/services/shrine_submission.py` L213 `Shrine.objects.create(...)` | real save | `ShrineSubmissionAdmin` (admin.py L47) |
+
+**B-2 correction.** `Shrine` is registered **dynamically**, not with an
+`@admin.register(Shrine)` decorator. A grep for the decorator alone reports it
+as unregistered; it is registered at `admin.py` L491 through the
+`_maybe_register()` helper (L252-266). Recorded because the naive search gives
+the wrong answer.
+
+#### C. Signal
+
+| # | Writer | Exact site | Gate |
+| --- | --- | --- | --- |
+| C-1 | `auto_geocode_on_save` | `backend/temples/signals.py` L75-130 | `AUTO_GEOCODE_ON_SAVE`, default `"0"` (`settings.py` L384) |
+
+C-1 is a `pre_save` mutator, not an independent writer: it sets
+`latitude`/`longitude`/`location` together and the subsequent `save()`
+re-derives anyway. It is listed for completeness. Its Production env value is
+not logged by `start.sh` and is **not verified**.
+
+#### D. Defined but NOT routed
+
+| # | Writer | Exact site | Status |
+| --- | --- | --- | --- |
+| D-1 | `shrines_nearby()` | `backend/temples/api/views/shrines_nearby.py` L40 `Shrine.objects.update_or_create(...)` | **No URL maps to it.** The only occurrence of the symbol in the tree is its own definition. It also calls `search_nearby_places()`, which the module never imports. |
+
+Not reachable in the current routing. Recorded because it is a real-model
+writer that would become live the moment it were wired up.
+
+#### E. Present but not Production-reachable
+
+No `start.sh` or `bootstrap_production_data` reference:
+`import_approved_candidates.py` L69, `seed_duplicate_candidate_cases.py` L40,
+`create_initial_shrine.py` L10, `seed_deities.py` L120,
+`seed_history_theme.py` L139.
+
+#### F. Writers that BYPASS `save()` — do **not** re-derive location
+
+| # | Writer | Exact site | Why it is out of scope |
+| --- | --- | --- | --- |
+| F-1 | `recalc_popular_shrines` | L36 `Shrine.objects.filter(id=s.id).update(...)` | QuerySet `.update()` issues SQL directly; `save()` never runs |
+| F-2 | data migrations `0094`, `0109`–`0113` | historical model | §6.1 |
+
+F-1 is worth naming explicitly: it is a Shrine writer that runs over every row,
+and it is **not** a Q-9 risk. Counting it as one would overstate the exposure.
+
+### 17.3 Runtime evidence — OBSERVED vs NOT OBSERVED
+
+Mother Ship inspected Render Production logs and request history:
+
+```text
+Production bootstrap                       skipped (repeatedly, in startup logs)
+RUN_VISIT_STYLE_SYNC_ON_START              skipped (repeatedly, recent window)
+RUN_VISIT_STYLE_ROLLBACK_ON_START          skipped (repeatedly, recent window)
+RUN_BOOTSTRAP_ON_START                     skipped (repeatedly, recent window)
+import_shrines_seed execution              no log in the inspected window
+POST places/resolve                        no matching recent request observed
+shrine-submissions                         no matching recent request observed
+inspected Shrine admin paths               no matching recent request observed
+```
+
+The three `RUN_*_ON_START` lines directly cover the gates of writers A-1, A-2
+and A-5 (§17.2). They are **recent-window evidence only**: they show those
+flags were off across the observed startups, not that they were never set at
+any point in the service's history. `Q-12` stays open on that basis (§17.7).
+
+```text
+Q9_RECENT_PRODUCTION_EXECUTION = NOT_OBSERVED
+```
+
+**Absence of logs is not proof of impossibility.** This audit does **not** claim
+any of A-1..A-5, B-1..B-3 or C-1 is unreachable or disabled. It claims only that
+no execution was observed in the inspected window. Reasons an execution could
+exist without appearing: window bounds, log retention, a path that logs nothing
+on the success branch, or an out-of-band operator action.
+
+Per the task constraint, `updated_at` was **not** used to infer a writer.
+
+### 17.4 Production location-format evidence
+
+```text
+Q9_LOCATION_FORMAT_EVIDENCE = LEGACY_ONLY
+
+PRODUCTION_LOCATION_FORMAT_SWEEP = 113 legacy-hex / 0 JSON / 0 NULL / 0 OTHER
+```
+
+Mother Ship ran the read-only Production location-format sweep **twice**, with
+the identical result both times:
+
+```text
+[('HEX_EWKB', 113)]
+
+HEX_EWKB  = 113
+JSON_TEXT = 0
+NULL      = 0
+OTHER     = 0
+```
+
+The sweep covers the whole table: 113 of 113 rows.
+
+#### What the sweep proves
+
+Every current Production `location` value is **hex-shaped legacy text**. There
+is no JSON value, no NULL, and nothing that falls outside the classifier. In
+particular there is **no surviving GeoJSON-format trace** of the kind a NoGIS
+real-model save would write (§7.4).
+
+#### What the sweep does not prove — classifier precision
+
+The classifier assigns `HEX_EWKB` by regex:
+
+```text
+^[0-9A-Fa-f]+$
+```
+
+That tests the **shape of the string**, not the structural validity of the
+geometry. The sweep therefore establishes "hex-shaped, and not JSON / NULL /
+OTHER" for all 113 rows; it does **not** independently decode 113 rows as
+well-formed SRID-4326 EWKB.
+
+Rows independently decoded as genuine EWKB remain the six from §8.2:
+
+```text
+pk 2, 4, 5, 7, 8, 70   decoded: little-endian Point, SRID 4326   (§8.2)
+remaining 107 rows     hex-shaped by classifier; structure not individually decoded
+```
+
+This distinction is recorded rather than smoothed over: `LEGACY_ONLY` is a
+statement about format classification across the table, not a per-row proof of
+geometry validity.
+
+#### What the sweep does not prove — history
+
+The sweep is a **snapshot of current state**. It does not establish that no
+real-model save ever ran against Production.
+
+A bounded mechanical observation, offered as context and explicitly **not** as
+a conclusion: under `USE_GIS=False` nothing in the repository converts a
+GeoJSON `location` back to hex, so a GeoJSON value written today would be
+expected to persist. That reasoning does not close the historical question,
+because it breaks under at least three conditions this audit cannot rule out —
+a later write while `USE_GIS` was true, a direct SQL correction, or a row
+having been deleted and recreated. Historical usage therefore stays open
+(`Q-12`, §17.7).
+
+### 17.5 Q-9 decision
+
+```text
+Q9_FINAL = REACHABLE_BUT_NOT_OBSERVED
+```
+
+Real-model save paths against Production are **present and reachable** — at
+least five via `start.sh` flags and three over HTTP/admin — and every one of
+them would re-derive `location` into a GeoJSON representation under the current
+`USE_GIS=False` configuration. No execution was observed in the inspected
+window, and the format sweep that could corroborate or refute a past execution
+is not yet available.
+
+`NOT_REACHABLE` is ruled out by §17.2. `ACTIVE_WRITE_PATH_OBSERVED` is not
+supported by any evidence currently held: the format sweep (§17.4) shows
+113/113 legacy-hex and **zero** GeoJSON traces, so there is no positive
+indication that a NoGIS real-model save has landed on Production.
+`INDETERMINATE` would understate §17.2, which is a firm source-level
+finding, and now also §17.4, which is a complete-table measurement.
+
+`REACHABLE_BUT_NOT_OBSERVED` is retained deliberately: reachability is
+established, execution is unobserved, and the snapshot cannot speak to
+history.
+
+### 17.6 Consequence for the existing decision states
+
+No decision state in this document changes. The Q-9 result sharpens two
+existing findings rather than revising them:
+
+- §15.2 candidate 5 (settle the column type before any `location` write) gains
+  urgency: A-1 is a *documented, intended* Production operation that would
+  rewrite `location` format-wide as a side effect of a `visit_style_tags` sync.
+- §11 D-6 (`AUTO_GEOCODE_ON_SAVE`) remains not-a-drift-source, but its
+  Production value is still unverified (C-1).
+
+`Q-6` and `Q-7` remain Mother Ship policy decisions and are untouched here.
+
+### 17.7 State after this audit
+
+```text
+Q-10 RESOLVED  Production location-format sweep completed across all 113 rows:
+               113 legacy-hex / 0 JSON / 0 NULL / 0 OTHER, run twice with the
+               same result (§17.4). Classifier tests hex shape, not per-row
+               EWKB structure; 6 rows remain the independently decoded set.
+
+Q-11 OPEN      Production value of AUTO_GEOCODE_ON_SAVE (not logged by start.sh).
+               No independent evidence was supplied, so this is unchanged.
+
+Q-12 OPEN      Were RUN_VISIT_STYLE_SYNC_ON_START / RUN_VISIT_STYLE_ROLLBACK_ON_START /
+               RUN_BOOTSTRAP_ON_START ever set to 1 in Production? Recent startup
+               logs show all three repeatedly skipped (§17.3), which covers the
+               observed window only. Historical state outside that window is not
+               established, and the current-state sweep cannot settle it (§17.4).
+```
+
+## 18. Scope Statement
 
 This audit update performed no Production DB write, no Base Seed write, no model /
 importer / builder change, no migration, and no backfill. It executed no command
