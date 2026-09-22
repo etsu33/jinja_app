@@ -663,10 +663,37 @@ reconciled it.
 
 ## 14. Answers to the Required Ownership Questions
 
-**A. Runtime authority.** Split. GIS path (`USE_GIS=1` + PostgreSQL /
-Spatialite): `location` for distance, KNN ordering and nearest. Non-GIS path:
-`latitude`/`longitude` via haversine. API serializes both and prefers
-`location` for the `location` key. Which path Production runs is `NOT_VERIFIED`.
+**A. Runtime authority.** The code supports two paths. The GIS path
+(`_use_real_gis()` true + PostgreSQL / Spatialite) reads `location` for
+distance, KNN ordering and nearest. The non-GIS path reads
+`latitude`/`longitude` via haversine.
+
+**Which path Production runs is verified, not open.** The deployed service runs
+`USE_GIS=False` (§7.2), so `_use_real_gis()` is false and the real-GIS branch is
+disabled:
+
+```text
+PRODUCTION_USE_GIS_SETTING = VERIFIED_FALSE
+PRODUCTION_REAL_GIS_BRANCH = DISABLED
+```
+
+Production nearest / distance ranking therefore currently uses the **NoGIS
+`latitude` / `longitude` haversine path** (§10). `location` is not the current
+ranking input.
+
+`location` nonetheless remains relevant on two other surfaces:
+
+```text
+persisted schema / contract debt   6/6 remediated rows are STALE (§8.1);
+                                   Production and fresh bootstrap diverge (§9)
+API representation                 get_location() prefers obj.location over the
+                                   lat/lng fallback (§10.3); not gated by
+                                   _use_real_gis()
+```
+
+So runtime authority for *ranking* is `latitude`/`longitude`; `location` retains
+authority over a persisted column and an API field without being consumed by the
+live ranking path.
 
 **B. Persistence authority.** `latitude` / `longitude`. They are the only
 coordinates every writer sets, the only ones the importer reads, the only ones
@@ -778,10 +805,13 @@ Q-8  RESOLVED  pk=70 (多摩川浅間神社, migration 0094) = STALE. Raw EWKB s
                and independently decoded in this session (§8.2).
 ```
 
-Every factual question this audit raised is now closed. `Q-6` and `Q-7` remain
-open because they are **policy decisions for Mother Ship**, not missing evidence.
+All factual questions within the **original audit scope** are resolved
+(`Q-1`–`Q-5`, `Q-8`). `Q-6` and `Q-7` remain open because they are **policy
+decisions for Mother Ship**, not missing evidence.
 
-One question was opened rather than closed by the runtime evidence:
+`Q-9` is a **newly discovered factual follow-up**, surfaced by the runtime
+evidence rather than closed by it. It falls outside the original audit closure
+and is not investigated here:
 
 ```text
 Q-9  OPEN      Does any real-model save path run against Production today
