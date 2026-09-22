@@ -12,7 +12,7 @@
 - NOT_ADJUDICATED: `5`
 - Production write during audit: `NONE`
 - Base Seed write during audit: `NONE`
-- Post-audit remediation completed: `2/5`
+- Post-audit remediation completed: `3/5`
 
 本書は Position Contract の変更ではない。採用ルールの authority は
 `docs/knowledge/shrine-position-contract.md` のままである。
@@ -692,7 +692,7 @@ This decision does not itself perform a Production or Base Seed write.
 | 明治神宮 | PASS | UPDATE_TO_ADOPTED_PRIMARY | NOT_YET_PERFORMED | NOT_YET_PERFORMED |
 | 伏見稲荷大社 | PASS | UPDATE_TO_ADOPTED_PRIMARY | PERFORMED | PERFORMED |
 | 伊勢神宮（内宮） | PASS | UPDATE_TO_ADOPTED_PRIMARY | NOT_YET_PERFORMED | NOT_YET_PERFORMED |
-| 春日大社 | PASS | UPDATE_TO_ADOPTED_PRIMARY | NOT_YET_PERFORMED | NOT_YET_PERFORMED |
+| 春日大社 | PASS | UPDATE_TO_ADOPTED_PRIMARY | PERFORMED | PERFORMED |
 
 The individual Remediation Decision blocks above preserve the state at the time
 of adjudication. Current remediation execution state is recorded in this table
@@ -769,21 +769,53 @@ longitude = 135.77318468005
 
 No Shrine identity or address change was performed.
 
-### 11.3 Remediation State
+### 11.3 春日大社
+
+```text
+audit_status = COMPLETE
+position_status = PASS
+adopted_coordinate = 34.6812901, 135.8482531
+
+production_remediation_pr = #2919
+production_remediation_migration = temples.0111_adopt_kasuga_taisha_position
+production_write = PERFORMED
+production_migration_status = APPLIED
+production_post_check = PASS
+
+base_seed_sync_pr = #2920
+base_seed_write = PERFORMED
+base_seed_coordinate = 34.6812901, 135.8482531
+
+verified_at = 2026-09-22
+```
+
+Production read-only verification after migration confirmed:
+
+```text
+id = 5
+name_jp = 春日大社
+address = 奈良県奈良市春日野町160
+latitude = 34.6812901
+longitude = 135.8482531
+```
+
+No Shrine identity or address change was performed.
+
+### 11.4 Remediation State
 
 ```text
 remediation_candidates = 5
-production_remediation_completed = 2
-base_seed_sync_completed = 2
+production_remediation_completed = 3
+base_seed_sync_completed = 3
 
 completed:
 - 出雲大社
 - 伏見稲荷大社
+- 春日大社
 
 not_yet_remediated:
 - 明治神宮
 - 伊勢神宮（内宮）
-- 春日大社
 ```
 
 Remediation completion does not change the Batch adjudication count.
