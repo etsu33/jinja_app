@@ -2,8 +2,9 @@
 
 ## Status
 
-- Status: `PARTIAL — PRODUCTION EVIDENCE PENDING`
+- Status: `COMPLETE — PRODUCTION EVIDENCE RECEIVED`
 - Recorded at: `2026-09-22`
+- Production evidence received at: `2026-09-22` (Mother Ship, read-only)
 - Scope: `Shrine.latitude` / `Shrine.longitude` / `Shrine.location` / Base Seed / importer / builder / migrations / fresh bootstrap
 - Production DB write: `NONE`
 - Base Seed write: `NONE`
@@ -12,11 +13,13 @@
 - Backfill executed: `NONE`
 
 All repository claims below were verified by reading source in this session, not
-by citing prior audit prose.
+by citing prior audit prose. Production claims in §7–§8 come from Mother Ship
+read-only evidence; this session re-checked the decoded values against the
+migration constants (§8.2) but did not itself query Production.
 
 ```text
 LOCATION_OWNERSHIP = AMBIGUOUS
-EXISTING_PRODUCTION_PARITY = NOT_VERIFIED
+EXISTING_PRODUCTION_PARITY = FAIL
 FRESH_BOOTSTRAP_PARITY = PASS
 SEED_NESTED_LOCATION_ROLE = REDUNDANT
 ```
@@ -254,51 +257,100 @@ So the exclusion protects against a **schema-type mismatch**, and the resulting
 
 ## 7. Production Schema Evidence
 
+### 7.1 Physical column type — VERIFIED
+
+Mother Ship read-only query against Production:
+
 ```text
-PRODUCTION_COLUMN_TYPE = NOT_VERIFIED
+PRODUCTION_COLUMN_TYPE = VERIFIED_LEGACY_TEXT
+
+data_type = text
+udt_name  = text
+```
+
+This closes `Q-1`. The repository's long-standing assertion — carried in the
+docstrings of `0094` and `0109`–`0113` (§6.2) — is now confirmed against the
+live database rather than inherited from `docs/audit/temples-0091-production-
+remediation.md`.
+
+Consequences that follow directly:
+
+- `temples_shrine.location` is **not** a PostGIS `geometry` column in
+  Production. The migrations' `only()` exclusion was necessary, not defensive
+  over-caution.
+- `backfill_location`'s `.only(..., "location")` (§12) would select a text
+  column into a field the model declares as `PointField`. The hazard recorded
+  as `D-3` is real, not hypothetical.
+
+### 7.2 Deployed application USE_GIS — still NOT VERIFIED
+
+```text
 PRODUCTION_USE_GIS_SETTING = NOT_VERIFIED
-PRODUCTION_LOCATION_VALUES = NOT_VERIFIED
 ```
 
-Mother Ship read-only Production evidence was not supplied to this session. The
-repository asserts the column is legacy `text` (§6.2), and that assertion is
-itself sourced to `docs/audit/temples-0091-production-remediation.md`, but this
-audit did not and cannot confirm the live column type. Per the task's own
-instruction, no schema state is inferred here.
+The Mother Ship shell command that produced this evidence explicitly set
+`USE_GIS=1` for a **local management process** connecting to the Production
+database. That establishes the setting for that one ad-hoc process only.
 
-Required to close this section:
+**It does not establish the setting of the deployed Render application.** The
+two are separate processes with separate environments. No inference is drawn
+here about which branch of `queries.py` (§10) Production traffic takes.
 
-```text
-SELECT column_name, data_type, udt_name
-  FROM information_schema.columns
- WHERE table_name = 'temples_shrine' AND column_name = 'location';
-
-SELECT id, name_jp, latitude, longitude, location::text
-  FROM temples_shrine WHERE id IN (4,2,5,7,8,70);
-
--- and the effective USE_GIS / DISABLE_GIS_FOR_TESTS values of the Production process
-```
+`Q-2` and `Q-4` remain open.
 
 ## 8. Existing Production Parity
 
 ```text
-EXISTING_PRODUCTION_PARITY = NOT_VERIFIED
+EXISTING_PRODUCTION_PARITY = FAIL
 ```
 
-Cannot be classified per row without §7. What the repository *predicts*, stated
-as a hypothesis to be tested rather than a finding:
+### 8.1 Verified rows
 
-| Shrine | pk | remediating migration | predicted `location` state |
-| --- | ---: | --- | --- |
-| 多摩川浅間神社 | 70 | 0094 | STALE (pre-correction value) |
-| 出雲大社 | 4 | 0109 | STALE |
-| 伏見稲荷大社 | 2 | 0110 | STALE |
-| 春日大社 | 5 | 0111 | STALE |
-| 熱田神宮 | 7 | 0112 | STALE |
-| 宇佐神宮 | 8 | 0113 | STALE |
+Mother Ship decoded the EWKB text held in `temples_shrine.location` for the five
+Batch 01 rows remediated by `0109`–`0113`:
 
-Classification vocabulary for when evidence arrives: `MATCH` / `STALE` / `NULL`
-/ `UNINTERPRETABLE` (the last for values the GEOS converter cannot parse).
+| Shrine | pk | migration | current `latitude` / `longitude` | decoded `location` | class |
+| --- | ---: | --- | --- | --- | --- |
+| 伏見稲荷大社 | 2 | 0110 | 34.967133624329 / 135.77318468005 | 34.9671 / 135.7727 | **STALE** |
+| 出雲大社 | 4 | 0109 | 35.40190463 / 132.68547534 | 35.4016 / 132.6853 | **STALE** |
+| 春日大社 | 5 | 0111 | 34.6812901 / 135.8482531 | 34.6814 / 135.8481 | **STALE** |
+| 熱田神宮 | 7 | 0112 | 35.12737043 / 136.90868002 | 35.1279 / 136.9114 | **STALE** |
+| 宇佐神宮 | 8 | 0113 | 33.52344557 / 131.37716659 | 33.531 / 131.379 | **STALE** |
+
+`location` is **populated, not NULL**, in every one of the five rows. It holds
+stale EWKB text.
+
+### 8.2 Cross-check against the migration constants
+
+This session parsed the AST constants of `0109`–`0113` and compared them to the
+supplied evidence. All five rows match on all three axes:
+
+```text
+pk=2  0110  identity OK   location == OLD_LATITUDE/OLD_LONGITUDE OK   lat/lng == NEW_* OK
+pk=4  0109  identity OK   location == OLD_LATITUDE/OLD_LONGITUDE OK   lat/lng == NEW_* OK
+pk=5  0111  identity OK   location == OLD_LATITUDE/OLD_LONGITUDE OK   lat/lng == NEW_* OK
+pk=7  0112  identity OK   location == OLD_LATITUDE/OLD_LONGITUDE OK   lat/lng == NEW_* OK
+pk=8  0113  identity OK   location == OLD_LATITUDE/OLD_LONGITUDE OK   lat/lng == NEW_* OK
+```
+
+The decoded `location` of each row is **exactly** the `OLD_LATITUDE` /
+`OLD_LONGITUDE` its migration replaced, and the current `latitude`/`longitude`
+is **exactly** that migration's `NEW_*`. There is no rounding slack and no
+partial application.
+
+This is not merely consistent with `DUAL_WRITE_PATH_WITH_ASYMMETRIC_DERIVATION`
+(§13) — it is a direct positive confirmation of it. The historical model wrote
+two columns and left the third holding the pre-migration value, in five out of
+five cases.
+
+### 8.3 Not verified
+
+```text
+多摩川浅間神社 pk=70 (migration 0094) = NOT_VERIFIED
+```
+
+Mother Ship did not supply this row. The same mechanism applies to it and the
+same prediction stands, but it is recorded as unverified rather than assumed.
 
 ## 9. Fresh-Bootstrap Parity
 
@@ -319,12 +371,16 @@ The DB result is deterministic and internally consistent, in both the GIS branch
 (`Point`) and the NoGIS branch (GeoJSON-shaped JSON). Nested Seed `location`
 cannot influence it.
 
-**This is the parity gap:** a database built fresh from Seed has
-`location == f(latitude, longitude)` for every row, whereas the existing
-Production database has six rows where migrations moved lat/lng without moving
-`location` (§8, pending verification). Fresh bootstrap and migrated Production
-are therefore predicted to **diverge in `location` while agreeing in
-`latitude`/`longitude`**.
+**This is the parity gap, and it is now measured rather than predicted:** a
+database built fresh from Seed has `location == f(latitude, longitude)` for
+every row, whereas Production holds five verified rows (§8.1) whose `location`
+is the pre-remediation coordinate. Fresh bootstrap and migrated Production
+**do diverge in `location` while agreeing in `latitude`/`longitude`**.
+
+A Shrine's persisted position therefore depends on how its database was
+built, which is the defect `FRESH_BOOTSTRAP_PARITY = PASS` alone does not
+express: bootstrap is internally consistent, but it is not reproducible from
+the migrated Production state.
 
 ## 10. Runtime Authority — which field is actually consumed
 
@@ -372,19 +428,34 @@ def get_location(self, obj):
 `latitude` and `longitude` are also serialized as their own fields (L163–L164,
 L176–L178, L208–L215).
 
-**Finding R-1:** under `USE_GIS=1` + PostgreSQL, a Shrine whose `location` is
-stale would be **ranked and distance-labelled from the old coordinate** while
-the response's `latitude`/`longitude` fields — and the `location` key itself,
-via `get_location` preferring `obj.location` — disagree with each other. Whether
-this branch is live in Production is exactly the unknown in §7.
+**Finding R-1 (revised after §7).** The Production column is confirmed `text`
+(§7.1), so the PostGIS branch would be issuing `ST_DistanceSphere` and `<->`
+against a text column. Two runtime cases remain, and this audit does **not**
+claim which one is live:
+
+```text
+Case 1  location=text + deployed USE_GIS=OFF
+        -> queries.py takes the haversine branch over latitude/longitude.
+           Stale location is inert for ranking. The API `location` key may
+           still surface it via get_location(), which is a separate question.
+
+Case 2  location=text + deployed USE_GIS=ON
+        -> queries.py attempts PostGIS operations against a text column.
+           Whether PostgreSQL implicitly casts, errors, or silently degrades
+           MUST BE OBSERVED before asserting either stale ranking or
+           successful conversion. Not asserted here.
+```
+
+Deciding between them requires `Q-2` (deployed USE_GIS) and `Q-4` (observed
+runtime behaviour), both still open.
 
 ## 11. Drift Matrix
 
 | # | Path | Code | Effect | Live today? |
 | --- | --- | --- | --- | --- |
-| D-1 | Data migration on historical model | `0094`, `0109`–`0113` | lat/lng updated, `location` stale | **Yes — 6 rows** (pending §7) |
+| D-1 | Data migration on historical model | `0094`, `0109`–`0113` | lat/lng updated, `location` stale | **Yes — 5 rows VERIFIED (§8.1), pk=70 unverified** |
 | D-2 | Seed edited top-level only | manual edit; no whole-file test (§3.1) | Seed internally inconsistent; harmless to DB (§5) but misleads readers | Possible; 0 occurrences today |
-| D-3 | `backfill_location` SELECTs `location` | `backfill_location.py` L18 `.only("id","latitude","longitude","location")` | GEOSException against a legacy-text column, before any write | **Yes, if run** |
+| D-3 | `backfill_location` SELECTs `location` | `backfill_location.py` L18 `.only("id","latitude","longitude","location")` | selects a confirmed `text` column into a `PointField` | **Yes, if run — column type now VERIFIED (§7.1)** |
 | D-4 | Env-dependent column type | `models.PointField.deconstruct()` L128–L145 | same migration graph yields `geometry` or `jsonb`/`text` per environment | **Yes, structurally** |
 | D-5 | Direct SQL / manual DB edit | outside the ORM | either column can move alone | Unknown |
 | D-6 | `AUTO_GEOCODE_ON_SAVE` signal | `backend/temples/signals.py` L110–L128 | sets lat/lng **and** location together, then `save()` re-derives | Consistent — not a drift source |
@@ -412,8 +483,11 @@ L21  s.save(update_fields={"latitude","longitude","location"})
   `transaction.atomic()`.
 
 ```text
-BACKFILL_LOCATION_PRODUCTION_SAFETY = NOT_SAFE_AS_WRITTEN (conditional on §7)
+BACKFILL_LOCATION_PRODUCTION_SAFETY = NOT_SAFE_AS_WRITTEN
 ```
+
+No longer conditional: §7.1 confirms the column is `text`, which is the
+precondition this hazard depended on.
 
 Not executed in this session against any database.
 
@@ -468,60 +542,98 @@ present function is partial duplication asserted for two named Shrine subsets.
 
 **E. Fresh bootstrap parity.** `PASS`. See §9.
 
-**F. Existing Production parity.** `NOT_VERIFIED`. See §7–§8.
+**F. Existing Production parity.** `FAIL`. Five verified rows (pk 2/4/5/7/8)
+hold a populated but stale `location` equal to the exact pre-remediation
+coordinate; pk=70 is unverified. See §8.
 
 **G. Drift risk.** See §11.
 
-## 15. Recommended Contract Direction — WITHHELD
+## 15. Recommended Contract Direction — PARTIALLY RESOLVED
 
-The task instructs stopping before a final ownership recommendation when
-Production evidence is essential. It is essential here: the correct direction
-differs materially depending on §7.
+The task instructed stopping before a final ownership recommendation while
+Production evidence was essential. §7 closed the schema question, so the tree is
+revised here. It is **not** resolved to a single direction, because the
+remaining fork (`Q-2` / `Q-4`) still changes the first move.
+
+The previously recorded branch "geometry + USE_GIS on" is **withdrawn**: it does
+not describe Production. The column is `text` (§7.1).
 
 ```text
-If Production location is legacy text AND USE_GIS is off in Production
-  -> location is currently inert at runtime; the debt is latent, and the
-     remedy is a schema decision, not a data backfill.
+Both live cases share this, now established:
 
-If Production location is geometry AND USE_GIS is on
-  -> §10.1 means six remediated Shrines are being ranked from stale points
-     right now; this is a live correctness defect, not documentation debt.
+  * Production location is text, populated, and stale in 5 verified rows (§8.1)
+  * fresh bootstrap produces a consistent location (§9)
+  * the two states diverge
+  * backfill_location cannot be used as written (§12)
+
+Case 1  location=text + deployed USE_GIS=OFF
+        Ranking uses latitude/longitude (§10.2), which ARE correct post-
+        remediation. The stale column is then a data-integrity and
+        reproducibility defect, not a user-visible ranking defect.
+        First move is a schema decision: what should this column be, and
+        should it exist at all.
+
+Case 2  location=text + deployed USE_GIS=ON
+        queries.py issues PostGIS operators against a text column. The
+        outcome is unobserved. It could raise, implicitly cast, or degrade
+        silently. Any of those is a live production concern, but WHICH one
+        determines whether this is an outage-class or correctness-class
+        problem.
+        First move is observation, not remediation.
 ```
 
-Those two worlds call for different first moves, so no single direction is
-recorded as the recommendation.
-
-Directionally stable regardless of §7, and offered as candidates rather than
+Directionally stable regardless of the fork, offered as candidates rather than
 decisions:
 
 1. Name `latitude`/`longitude` as canonical persisted position and `location`
    as derived, in `docs/knowledge/shrine-position-contract.md` — the Contract
-   is currently silent on `location` entirely.
+   is currently silent on `location` entirely. §8.1 shows the cost of that
+   silence.
 2. Decide the nested Seed `location` object's fate explicitly. It must not be
    deleted silently (per task constraint), but leaving an inert duplicate that
    no writer reads is itself a trap.
 3. Add a whole-file Seed equality contract test (C-1) whichever way (2) goes.
 4. Do not run `backfill_location` as written (§12).
+5. Before any Production `location` write, settle the column type question. A
+   backfill into a text column reproduces the same ambiguity at a newer
+   coordinate rather than removing it.
 
 ## 16. Unresolved Questions
 
 ```text
-Q-1  Production temples_shrine.location: actual data_type / udt_name?
-Q-2  Production process: effective USE_GIS / DISABLE_GIS_FOR_TESTS?
-Q-3  Do the 6 remediated rows have MATCH / STALE / NULL / UNINTERPRETABLE location?
-Q-4  Does any Production traffic reach queries.py's PostGIS branch?
-Q-5  If location is legacy text, was it ever populated, or is it NULL throughout?
-Q-6  Should the nested Seed location be kept as validation input, or retired?
-Q-7  Is a Production location backfill wanted at all, or is a column-type
-     decision the real prerequisite?
+Q-1  RESOLVED  Production temples_shrine.location: data_type = text, udt_name = text (§7.1)
+
+Q-2  OPEN      Deployed Render application: effective USE_GIS / DISABLE_GIS_FOR_TESTS?
+               (the evidence command's USE_GIS=1 was a local process, §7.2)
+
+Q-3  RESOLVED  5 of 6 remediated rows classified: pk 2/4/5/7/8 = STALE (§8.1).
+               pk=70 remains NOT_VERIFIED (§8.3).
+
+Q-4  OPEN      Does Production traffic reach queries.py's PostGIS branch, and if
+               so what does PostgreSQL actually do with ST_DistanceSphere / <->
+               against a text column?
+
+Q-5  RESOLVED  For those 5 rows, location is populated — not NULL — and holds
+               stale EWKB text (§8.1).
+
+Q-6  OPEN      Should the nested Seed location be kept as validation input, or retired?
+
+Q-7  OPEN      Is a Production location backfill wanted at all, or is a column-type
+               decision the real prerequisite? (§15 candidate 5)
+
+Q-8  OPEN      pk=70 (多摩川浅間神社, migration 0094): same query as §8.1.
 ```
 
-`Q-1`–`Q-5` are answerable only with Mother Ship read-only Production evidence.
-`Q-6`–`Q-7` are policy decisions for Mother Ship.
+`Q-2` and `Q-4` are answerable only by inspecting the deployed environment and
+observing runtime behaviour; neither is answerable from the repository or from a
+local process pointed at the Production database. `Q-6`–`Q-7` are policy
+decisions for Mother Ship. `Q-8` needs one more read-only row.
 
 ## 17. Scope Statement
 
-This audit performed no Production DB write, no Base Seed write, no model /
+This audit update performed no Production DB write, no Base Seed write, no model /
 importer / builder change, no migration, and no backfill. It executed no command
 against any database. The only repository change is the creation of this
-document.
+document. The Production evidence in §7–§8 was obtained read-only by
+Mother Ship and supplied to this session; this session issued no database
+query of its own.
