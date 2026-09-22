@@ -6,10 +6,10 @@
 - Recorded at: `2026-09-21`
 - Batch: `LEGACY_UNTRACED Batch 01`
 - Targets: 10 Shrines
-- Complete: `5/10`
+- Complete: `6/10`
 - PASS: `5`
-- HOLD_POSITION_REVIEW: `0`
-- NOT_ADJUDICATED: `5`
+- HOLD_POSITION_REVIEW: `1`
+- NOT_ADJUDICATED: `4`
 - Production write during audit: `NONE`
 - Base Seed write during audit: `NONE`
 - Post-audit remediation completed: `3/5`
@@ -115,7 +115,7 @@ Rules:
 | 03 | 伊勢神宮（内宮） | COMPLETE | PASS |
 | 04 | 出雲大社 | COMPLETE | PASS |
 | 05 | 春日大社 | COMPLETE | PASS |
-| 06 | 太宰府天満宮 | IN_PROGRESS | NOT_ADJUDICATED |
+| 06 | 太宰府天満宮 | COMPLETE | HOLD_POSITION_REVIEW |
 | 07 | 熱田神宮 | IN_PROGRESS | NOT_ADJUDICATED |
 | 08 | 宇佐神宮 | IN_PROGRESS | NOT_ADJUDICATED |
 | 09 | 日光東照宮 | IN_PROGRESS | NOT_ADJUDICATED |
@@ -123,10 +123,10 @@ Rules:
 
 ```text
 BATCH_TARGETS   = 10
-COMPLETE        = 5
+COMPLETE        = 6
 PASS            = 5
-HOLD            = 0
-NOT_ADJUDICATED = 5
+HOLD            = 1
+NOT_ADJUDICATED = 4
 ```
 
 ## 4. 出雲大社 — Completed Record
@@ -674,17 +674,170 @@ traceable PASS-adjudicated Primary Position. The approximately 18.6 m stored /
 Primary delta is observational and is not itself the reason for remediation.
 This decision does not itself perform a Production or Base Seed write.
 
-## 9. Remaining Batch 1 Records
+## 9. 太宰府天満宮 — Completed Record
+
+### 9.1 Identity
+
+```text
+production_shrine_id = 6
+official_name = 太宰府天満宮
+official_address = 福岡県太宰府市宰府4丁目7-1
+identity_status = SUPPORTED
+```
+
+Official visitor source:
+
+```text
+https://www.dazaifutenmangu.or.jp/access
+```
+
+The Production address `福岡県太宰府市宰府4-7-1` is treated as the same
+visitor-facing identity with notation differences only.
+
+### 9.2 Current Production Position
+
+```text
+latitude = 33.5213
+longitude = 130.5351
+place_ref_id = null
+provenance = LEGACY_UNTRACED
+```
+
+The stored coordinate is an observation only. It does not provide reconstructable
+Primary Position provenance under the current Position Contract.
+
+### 9.3 Primary Position Candidate
+
+```text
+primary_source_type = map_provider_poi
+primary_source_provider = MapFan
+primary_source_url = https://mapfan.com/spots/SC3W3%2CJ%2CZ2
+
+primary_latitude = 33.5205509
+primary_longitude = 130.5346633
+
+retrieval_status = OK
+entity_match = SAME
+candidate_status = TRACEABLE_SAME_ENTITY_NOT_ADOPTED
+coordinate_precision_policy = PRESERVE_PRIMARY_SOURCE_PRECISION
+```
+
+The MapFan record identifies 太宰府天満宮 as a 神社・寺 POI and exposes a
+traceable coordinate for the same visitor-facing Shrine identity.
+
+### 9.4 Corroboration
+
+```text
+corroboration_source_type = independent_shrine_reference_database
+corroboration_source_provider = 國學院大學デジタル・ミュージアム
+corroboration_source_url = https://jmapps.ne.jp/kokugakuin/det.html?data_id=53444
+
+corroboration_latitude = 33.5213916667
+corroboration_longitude = 130.5348694444
+corroboration_entity_match = SAME
+corroboration_status = LOCATION_CONFLICT_OBSERVED
+```
+
+Observed deltas:
+
+```text
+stored_vs_primary_delta_m ≈ 92.613
+primary_vs_corroboration_delta_m ≈ 95.422
+stored_vs_corroboration_delta_m ≈ 23.679
+```
+
+These distances are observations only and are not PASS/HOLD thresholds.
+
+### 9.5 Anchor Semantics
+
+```text
+candidate_anchor_type = SHRINE_POI
+anchor_semantics = REVIEW_REQUIRED
+
+main_sanctuary_anchor = DISTINCT_VISITOR_POINT
+roumon_anchor = DISTINCT_VISITOR_POINT
+taiko_bridge_shinji_ike_anchor = DISTINCT_VISITOR_POINT
+information_center_anchor = DISTINCT_VISITOR_POINT
+```
+
+The official precinct guidance explicitly distinguishes the 御本殿, 楼門,
+太鼓橋・心字池, 案内所, and other visitor-facing points. The official guidance
+also describes crossing the 太鼓橋・心字池 before proceeding toward the
+御本殿.
+
+This explains why multiple meaningful coordinates can exist within the same
+Shrine precinct, but the official material reviewed here does not expose
+georeferenced coordinates that deterministically identify the MapFan point as
+the canonical Shrine-level Visitor / Navigation Anchor.
+
+### 9.6 Blocking Conflict Adjudication
+
+```text
+identity_match = SAME
+coordinate_traceability = OK
+primary_candidate_entity = SAME_SHRINE
+independent_corroboration_entity = SAME_SHRINE
+primary_vs_corroboration_spread = OBSERVED
+anchor_semantics = REVIEW_REQUIRED
+blocking_conflict = UNRESOLVED_ANCHOR_SEMANTICS_CONFLICT
+```
+
+The conflict is not the approximately 95.4 m distance itself.
+
+The blocking issue is that two traceable sources identify the same Shrine but
+place its representative point in materially different parts of the precinct,
+while the reviewed official visitor guidance establishes multiple distinct
+visitor points without providing enough georeferenced evidence to determine
+which source represents the canonical Shrine-level anchor.
+
+It is plausible that the positions encode different semantics such as approach /
+entry-side navigation versus precinct-core representation. That explanation is
+not proven by the current evidence and therefore is not used to force a PASS.
+
+Under Position Contract §Existing Coordinate Conflict, a deterministic Visitor /
+Navigation Anchor cannot currently be selected without inference.
+
+### 9.7 Adjudication
+
+```text
+POSITION_STATUS = HOLD_POSITION_REVIEW
+ADOPTED_COORDINATE = NOT_DETERMINED
+
+production_write = NONE
+base_seed_write = NONE
+candidate_master_write = NONE
+verified_at = 2026-09-22
+```
+
+No coordinate is adopted by this adjudication. The current Production and Base
+Seed values remain unchanged. HOLD is caused by unresolved anchor semantics, not
+by a meter threshold and not by Shrine identity uncertainty.
+
+### 9.8 HOLD Resolution Condition
+
+The HOLD may be reopened only when evidence or Mother Ship policy can
+deterministically resolve the canonical Visitor / Navigation Anchor, for example:
+
+1. an authoritative or map-provider navigation source that explicitly identifies
+   the semantic role of the selected Shrine-level destination; or
+2. additional traceable evidence that resolves the current same-entity location
+   conflict; or
+3. an explicit Position policy decision defining which precinct semantic
+   (for example Shrine-level representative point versus approach/entry anchor)
+   owns the canonical `Shrine.latitude / Shrine.longitude`.
+
+Until then, do not change Production or Base Seed coordinates for 太宰府天満宮.
+
+## 10. Remaining Batch 1 Records
 
 | # | Shrine | Official Identity | Primary Source Candidate | Primary Coordinate State | Anchor Semantics | Corroboration | Position |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 06 | 太宰府天満宮 | SUPPORTED | FOUND | ROUTE_LINK_FOUND_COORDINATE_NOT_RETRIEVED | NOT_YET_ADJUDICATED | NOT_YET_COMPLETED | NOT_ADJUDICATED |
 | 07 | 熱田神宮 | SUPPORTED | FOUND | EMBED_CENTER_RETRIEVED | NOT_YET_ADJUDICATED | NOT_YET_COMPLETED | NOT_ADJUDICATED |
 | 08 | 宇佐神宮 | SUPPORTED | FOUND | NOT_RETRIEVED | NOT_YET_ADJUDICATED | NOT_YET_COMPLETED | NOT_ADJUDICATED |
 | 09 | 日光東照宮 | SUPPORTED | FOUND | NOT_RETRIEVED | NOT_YET_ADJUDICATED | NOT_YET_COMPLETED | NOT_ADJUDICATED |
 | 10 | 鶴岡八幡宮 | SUPPORTED | FOUND | FETCH_INCOMPLETE | NOT_YET_ADJUDICATED | NOT_YET_COMPLETED | NOT_ADJUDICATED |
 
-## 10. Remediation Candidates
+## 11. Remediation Candidates
 
 | Shrine | Position Status | Remediation Decision | Production Write | Base Seed Write |
 | --- | --- | --- | --- | --- |
@@ -696,16 +849,16 @@ This decision does not itself perform a Production or Base Seed write.
 
 The individual Remediation Decision blocks above preserve the state at the time
 of adjudication. Current remediation execution state is recorded in this table
-and in Section 11.
+and in Section 12.
 
-## 11. Post-audit Remediation Execution Record
+## 12. Post-audit Remediation Execution Record
 
 This section records remediation executed after Position adjudication.
 
 The original Production Snapshot and each Shrine's "Current Production Position"
 remain unchanged because they represent the observed state at the time of audit.
 
-### 11.1 出雲大社
+### 12.1 出雲大社
 
 ```text
 audit_status = COMPLETE
@@ -737,7 +890,7 @@ longitude = 132.68547534
 
 No Shrine identity or address change was performed.
 
-### 11.2 伏見稲荷大社
+### 12.2 伏見稲荷大社
 
 ```text
 audit_status = COMPLETE
@@ -769,7 +922,7 @@ longitude = 135.77318468005
 
 No Shrine identity or address change was performed.
 
-### 11.3 春日大社
+### 12.3 春日大社
 
 ```text
 audit_status = COMPLETE
@@ -801,7 +954,7 @@ longitude = 135.8482531
 
 No Shrine identity or address change was performed.
 
-### 11.4 Remediation State
+### 12.4 Remediation State
 
 ```text
 remediation_candidates = 5
@@ -821,13 +974,13 @@ not_yet_remediated:
 Remediation completion does not change the Batch adjudication count.
 
 ```text
-COMPLETE = 5/10
+COMPLETE = 6/10
 PASS = 5
-HOLD_POSITION_REVIEW = 0
-NOT_ADJUDICATED = 5
+HOLD_POSITION_REVIEW = 1
+NOT_ADJUDICATED = 4
 ```
 
-## 12. Non-Goals
+## 13. Non-Goals
 
 The Batch adjudication itself does not:
 
@@ -842,15 +995,15 @@ The Batch adjudication itself does not:
 Post-audit remediation is a separate execution phase and is recorded in
 Section 11.
 
-## 13. STOP
+## 14. STOP
 
 Current Batch 1 state:
 
 ```text
-COMPLETE = 5/10
+COMPLETE = 6/10
 PASS = 5
-HOLD_POSITION_REVIEW = 0
-NOT_ADJUDICATED = 5
+HOLD_POSITION_REVIEW = 1
+NOT_ADJUDICATED = 4
 ```
 
 Continue remaining Shrines under the same Position Contract and record format.
