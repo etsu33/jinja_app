@@ -6,10 +6,10 @@
 - Recorded at: `2026-09-21`
 - Batch: `LEGACY_UNTRACED Batch 01`
 - Targets: 10 Shrines
-- Complete: `9/10`
+- Complete: `10/10`
 - PASS: `8`
-- HOLD_POSITION_REVIEW: `1`
-- NOT_ADJUDICATED: `1`
+- HOLD_POSITION_REVIEW: `2`
+- NOT_ADJUDICATED: `0`
 - Production write during audit: `NONE`
 - Base Seed write during audit: `NONE`
 - Post-audit remediation completed: `5/8`
@@ -119,14 +119,14 @@ Rules:
 | 07 | 熱田神宮 | COMPLETE | PASS |
 | 08 | 宇佐神宮 | COMPLETE | PASS |
 | 09 | 日光東照宮 | COMPLETE | PASS |
-| 10 | 鶴岡八幡宮 | IN_PROGRESS | NOT_ADJUDICATED |
+| 10 | 鶴岡八幡宮 | COMPLETE | HOLD_POSITION_REVIEW |
 
 ```text
 BATCH_TARGETS   = 10
-COMPLETE        = 9
+COMPLETE        = 10
 PASS            = 8
-HOLD            = 1
-NOT_ADJUDICATED = 1
+HOLD            = 2
+NOT_ADJUDICATED = 0
 ```
 
 ## 4. 出雲大社 — Completed Record
@@ -1364,13 +1364,270 @@ the change replaces a legacy-untraced stored coordinate with a traceable,
 same-Shrine, independently corroborated Primary Position. It does not itself
 perform any Production or Base Seed write.
 
-## 13. Remaining Batch 1 Records
+## 13. 鶴岡八幡宮 — Completed Record
 
-| # | Shrine | Official Identity | Primary Source Candidate | Primary Coordinate State | Anchor Semantics | Corroboration | Position |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| 10 | 鶴岡八幡宮 | SUPPORTED | FOUND | FETCH_INCOMPLETE | NOT_YET_ADJUDICATED | NOT_YET_COMPLETED | NOT_ADJUDICATED |
+### 13.1 Identity
 
-## 14. Remediation Candidates
+```text
+production_shrine_id = 10
+official_name = 鶴岡八幡宮
+official_address = 神奈川県鎌倉市雪ノ下2-1-31
+official_phone = 0467-22-0315
+identity_status = SUPPORTED
+```
+
+Official Shrine source:
+
+```text
+https://www.hachimangu.or.jp/access/
+```
+
+Production stores the same visitor-facing address. The Mapion record writes the
+same address in 丁目 notation (`神奈川県鎌倉市雪ノ下2丁目1-31`); this is a
+notation difference only and is not treated as a different address.
+
+### 13.2 Current Production Position
+
+```text
+latitude = 35.3256
+longitude = 139.5566
+place_ref_id = null
+provenance = LEGACY_UNTRACED
+```
+
+The stored numeric value alone does not provide reconstructable Primary Position
+provenance under the current Position Contract.
+
+### 13.3 Primary Position Candidate
+
+```text
+primary_source_type = map_provider_poi
+primary_source_provider = Mapion
+primary_source_url = https://www.mapion.co.jp/phonebook/M06005/14204/ILSP0000081980_ipclm/
+
+primary_latitude = 35.32485562
+primary_longitude = 139.55608923
+
+retrieval_status = OK
+entity_match = SAME
+coordinate_traceability = OK
+coordinate_precision_policy = PRESERVE_PRIMARY_SOURCE_PRECISION
+```
+
+The Mapion record is an explicit 鶴岡八幡宮 POI under the 神社・寺院・仏閣
+category and carries the same name, address and telephone number as the official
+source:
+
+```text
+name = 鶴岡八幡宮
+address = 神奈川県鎌倉市雪ノ下2丁目1-31
+phone = 0467-22-0315
+category = 神社・寺院・仏閣
+```
+
+The candidate is traceable and identifies the same Shrine. It is recorded as a
+Primary Position **candidate** rather than an adopted Primary because the anchor
+semantics adjudication below is unresolved.
+
+Additional same-Shrine POI observation from a second map provider:
+
+```text
+mapfan_latitude = 35.32485559939
+mapfan_longitude = 139.556089204
+relation = SAME_POINT_AS_PRIMARY
+primary_vs_mapfan_delta_m ≈ 0.003
+```
+
+MapFan resolves to the same point as the Mapion candidate. It is recorded as a
+cross-provider consistency observation and is **not** counted as the independent
+corroboration required by the Position Contract.
+
+### 13.4 Corroboration
+
+```text
+corroboration_source_type = independent_shrine_reference_database
+corroboration_source_provider = 國學院大學デジタル・ミュージアム
+corroboration_source_url = https://jmapps.ne.jp/kokugakuin/det.html?data_id=53485
+
+corroboration_latitude = 35.3258925
+corroboration_longitude = 139.5563380556
+corroboration_status = SATISFIED
+entity_match = SAME
+```
+
+The 國學院大學 record publishes the position in DMS notation:
+
+```text
+latitude = 北緯35度19分33.213秒
+longitude = 東経139度33分22.817秒
+```
+
+Decimal conversion:
+
+```text
+35 + 19/60 + 33.213/3600  = 35.3258925
+139 + 33/60 + 22.817/3600 = 139.5563380556
+```
+
+Observed deltas:
+
+```text
+stored_vs_primary_delta_m ≈ 94.860
+primary_vs_corroboration_delta_m ≈ 117.485
+stored_vs_corroboration_delta_m ≈ 40.281
+primary_vs_mapfan_delta_m ≈ 0.003
+```
+
+These distances are observations only and are not PASS / HOLD thresholds.
+
+Unlike the PASS records in this Batch, the independent corroboration here does
+not cluster with the Primary candidate. The corroboration sits closer to the
+stored legacy coordinate than to the Primary.
+
+### 13.5 Official Access / Precinct Semantics
+
+The official precinct guide distinguishes multiple visitor concepts, including:
+
+```text
+本宮（上宮）
+若宮（下宮）
+舞殿
+白旗神社
+宝物殿
+鶴岡文庫
+鎌倉文華館 鶴岡ミュージアム
+```
+
+Official access guidance separately identifies visitor parking and a second
+parking area. Known separate auxiliary POIs:
+
+```text
+鶴岡八幡宮宝物殿 = 35.3259395, 139.5561629
+鶴岡八幡宮駐車場 = 35.3261076, 139.556453
+鶴岡八幡宮第二駐車場 = 35.3250748, 139.5541405
+```
+
+No auxiliary point is adopted.
+
+### 13.6 Google Maps Surrounding-View QA
+
+Human QA opened each point independently in normal map / place view.
+
+```text
+google_named_poi_relation = SAME_SHRINE / PRECINCT
+address_geocode_relation = SAME_SHRINE_PRECINCT
+primary_point_relation = SHRINE_ADMIN / OFFICE_AREA
+stored_point_relation = WAKAMIYA / LOWER_SHRINE_AREA
+corroboration_point_relation = HONGU / UPPER_SHRINE_AREA
+```
+
+Observed semantics:
+
+```text
+Primary        -> 社務所 / administrative-side concept
+Stored         -> 若宮 / lower-shrine concept
+Corroboration  -> 上宮・本宮-side concept
+```
+
+All three points lie inside the broader 鶴岡八幡宮 precinct. None of them is on
+an unrelated facility. However each resolves to a **materially different
+internal visitor concept**, and no observation alone establishes which internal
+concept should become the single canonical Shrine-level Visitor / Navigation
+Anchor.
+
+### 13.7 Anchor Semantics
+
+```text
+anchor_type = NOT_DETERMINED
+anchor_semantics = REVIEW_REQUIRED
+
+hongu_upper_shrine_anchor = DISTINCT_VISITOR_POINT
+wakamiya_lower_shrine_anchor = DISTINCT_VISITOR_POINT
+shamusho_office_anchor = DISTINCT_VISITOR_POINT
+maidono_anchor = SEPARATE_CONCEPT
+shirahata_shrine_anchor = SEPARATE_CONCEPT
+treasure_hall_anchor = SEPARATE_CONCEPT
+museum_anchor = SEPARATE_CONCEPT
+parking_anchor = SEPARATE_CONCEPT
+```
+
+The traceable Primary candidate resolves to the 社務所 / administrative side.
+Under the Position Contract an office point is explicitly not automatically the
+Visitor / Navigation Anchor, so the candidate cannot be promoted on traceability
+alone.
+
+### 13.8 Blocking Conflict Adjudication
+
+```text
+identity_match = SAME
+coordinate_traceability = OK
+primary_candidate_entity = SAME_SHRINE
+independent_corroboration_entity = SAME_SHRINE
+primary_vs_corroboration_spread = OBSERVED
+anchor_semantics = REVIEW_REQUIRED
+blocking_conflict = UNRESOLVED_ANCHOR_SEMANTICS_CONFLICT
+```
+
+The conflict is not the observed metre distances.
+
+The blocking issue is that three coordinates identify the same Shrine while
+resolving to three different internal visitor concepts — 社務所 (Primary),
+若宮/下宮 (stored legacy), and 本宮/上宮 (corroboration) — and the active
+Position Contract does not define which internal concept owns the canonical
+Shrine-level anchor for a large multi-concept precinct.
+
+Adopting the Primary would silently elevate an administrative/office-side point.
+Retaining the stored coordinate would silently keep a lower-shrine point that is
+also `LEGACY_UNTRACED`. Adopting the corroboration point would promote an
+OSM-class reference source over the primary source, which the Position Contract
+forbids where a primary/corroboration conflict exists.
+
+Under Position Contract §Existing Coordinate Conflict, a deterministic Visitor /
+Navigation Anchor cannot currently be selected without inference.
+
+This is the same class of blocking conflict already recorded for 太宰府天満宮 in
+Section 9.
+
+### 13.9 Adjudication
+
+```text
+identity_match = SAME
+coordinate_traceability = OK
+anchor_semantics = REVIEW_REQUIRED
+corroboration_status = SATISFIED
+blocking_conflict = UNRESOLVED_ANCHOR_SEMANTICS_CONFLICT
+
+POSITION_STATUS = HOLD_POSITION_REVIEW
+ADOPTED_COORDINATE = NOT_DETERMINED
+```
+
+### 13.10 Remediation Decision
+
+```text
+remediation_decision = NONE
+production_write = NONE
+base_seed_write = NONE
+verified_at = 2026-09-22
+```
+
+No coordinate is adopted, so 鶴岡八幡宮 is not added as a remediation candidate.
+Production keeps its existing `LEGACY_UNTRACED` coordinate unchanged.
+
+### 13.11 HOLD Resolution Condition
+
+Resolving this HOLD requires an explicit Position policy decision defining which
+precinct semantic owns the canonical `Shrine.latitude` / `Shrine.longitude` for a
+large multi-concept precinct — for example Shrine-level representative point
+versus main-sanctuary point versus approach/entry anchor — together with a
+primary source that demonstrably encodes the chosen semantic.
+
+Until then, do not change Production or Base Seed coordinates for 鶴岡八幡宮.
+
+## 14. Remaining Batch 1 Records
+
+All 10 Batch 01 Shrines are adjudicated; no records remain outstanding.
+
+## 15. Remediation Candidates
 
 | Shrine | Position Status | Remediation Decision | Production Write | Base Seed Write |
 | --- | --- | --- | --- | --- |
@@ -1385,16 +1642,16 @@ perform any Production or Base Seed write.
 
 The individual Remediation Decision blocks above preserve the state at the time
 of adjudication. Current remediation execution state is recorded in this table
-and in Section 15.
+and in Section 16.
 
-## 15. Post-audit Remediation Execution Record
+## 16. Post-audit Remediation Execution Record
 
 This section records remediation executed after Position adjudication.
 
 The original Production Snapshot and each Shrine's "Current Production Position"
 remain unchanged because they represent the observed state at the time of audit.
 
-### 15.1 出雲大社
+### 16.1 出雲大社
 
 ```text
 audit_status = COMPLETE
@@ -1426,7 +1683,7 @@ longitude = 132.68547534
 
 No Shrine identity or address change was performed.
 
-### 15.2 伏見稲荷大社
+### 16.2 伏見稲荷大社
 
 ```text
 audit_status = COMPLETE
@@ -1458,7 +1715,7 @@ longitude = 135.77318468005
 
 No Shrine identity or address change was performed.
 
-### 15.3 春日大社
+### 16.3 春日大社
 
 ```text
 audit_status = COMPLETE
@@ -1490,7 +1747,7 @@ longitude = 135.8482531
 
 No Shrine identity or address change was performed.
 
-### 15.4 熱田神宮
+### 16.4 熱田神宮
 
 ```text
 audit_status = COMPLETE
@@ -1522,7 +1779,7 @@ longitude = 136.90868002
 
 No Shrine identity or address change was performed.
 
-### 15.5 宇佐神宮
+### 16.5 宇佐神宮
 
 ```text
 audit_status = COMPLETE
@@ -1554,7 +1811,7 @@ longitude = 131.37716659
 
 No Shrine identity or address change was performed.
 
-### 15.6 Remediation State
+### 16.6 Remediation State
 
 ```text
 remediation_candidates = 8
@@ -1577,13 +1834,13 @@ not_yet_remediated:
 Remediation completion does not change the Batch adjudication count.
 
 ```text
-COMPLETE = 9/10
+COMPLETE = 10/10
 PASS = 8
-HOLD_POSITION_REVIEW = 1
-NOT_ADJUDICATED = 1
+HOLD_POSITION_REVIEW = 2
+NOT_ADJUDICATED = 0
 ```
 
-## 16. Non-Goals
+## 17. Non-Goals
 
 The Batch adjudication itself does not:
 
@@ -1596,17 +1853,19 @@ The Batch adjudication itself does not:
 - infer missing evidence.
 
 Post-audit remediation is a separate execution phase and is recorded in
-Section 15.
+Section 16.
 
-## 17. STOP
+## 18. STOP
 
 Current Batch 1 state:
 
 ```text
-COMPLETE = 9/10
+COMPLETE = 10/10
 PASS = 8
-HOLD_POSITION_REVIEW = 1
-NOT_ADJUDICATED = 1
+HOLD_POSITION_REVIEW = 2
+NOT_ADJUDICATED = 0
 ```
 
-Continue remaining Shrines under the same Position Contract and record format.
+Batch 01 adjudication is complete. The two HOLD_POSITION_REVIEW records
+(太宰府天満宮 / 鶴岡八幡宮) await an explicit Position policy decision, and
+post-audit remediation continues separately for the adopted PASS records.
