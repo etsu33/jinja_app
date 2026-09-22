@@ -993,7 +993,7 @@ The Batch adjudication itself does not:
 - infer missing evidence.
 
 Post-audit remediation is a separate execution phase and is recorded in
-Section 11.
+Section 12.
 
 ## 14. STOP
 
