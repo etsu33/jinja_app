@@ -631,3 +631,158 @@ represent after Canonical / Navigation Anchor semantics are decided?"
 7. Route distance_m and recommendation distance_m are separate semantic namespaces.
 8. No Migration Gate option was selected.
 ```
+
+
+---
+
+## 16. Mother Ship Decision — A-3
+
+After the current-state trace, Mother Ship resolved the product meaning of recommendation `distance_m`.
+
+```text
+A-3_DISTANCE_SEMANTICS
+= PROXIMITY
+
+CALCULATION
+= STRAIGHT_LINE / GREAT_CIRCLE
+
+PRODUCT_MEANING
+= GEOGRAPHIC CLOSENESS
+
+NAVIGATION_PROMISE
+= NO
+
+WALKING_DISTANCE_PROMISE
+= NO
+
+ROUTE_DISTANCE_PROMISE
+= NO
+
+CANONICAL_ANCHOR_COMPATIBLE
+= YES, AS PROXIMITY
+
+NAVIGATION_ANCHOR_REQUIRED_FOR_ROUTE
+= YES
+```
+
+The canonical meaning is therefore:
+
+```text
+recommendation.distance_m
+= straight-line geographic proximity between the runtime origin and the selected
+  Shrine reference point used by Recommendation
+```
+
+It may be used to express that a Shrine is geographically nearer or farther within the
+Recommendation context.
+
+It must not be represented as:
+
+```text
+- walking route distance
+- road-network distance
+- remaining travel distance
+- arrival distance
+- route-provider distance
+```
+
+Those meanings belong to a separate navigation / route-distance concern.
+
+### 16.1 Canonical / Navigation responsibility split
+
+If a future Migration Gate adopts a Canonical Shrine Anchor, recommendation proximity
+may be computed to that Canonical point without changing the A-3 meaning:
+
+```text
+user origin -> Canonical Shrine Anchor
+= geographic proximity
+```
+
+Route guidance remains separate:
+
+```text
+user origin -> Navigation Anchor -> route provider
+= navigation / route distance
+```
+
+Therefore:
+
+```text
+PROXIMITY_DISTANCE
+!=
+NAVIGATION_DISTANCE
+```
+
+### 16.2 Existing copy debt
+
+The current producer computes proximity, while some current user-facing copy interprets
+the value as practical ease of travel.
+
+Examples already identified by this audit include wording equivalent to:
+
+```text
+- 実際に向かいやすい
+- 動きやすさを優先
+- 無理なく足を運びやすい
+```
+
+These phrases are stronger than the adopted A-3 Contract meaning because straight-line
+proximity does not prove route accessibility.
+
+This decision does not modify runtime copy.
+It records the following follow-up debt:
+
+```text
+DISTANCE_COPY_ALIGNMENT_DEBT = OPEN
+```
+
+Future copy should distinguish proximity language from route / accessibility claims.
+
+### 16.3 Existing sort-trigger debt
+
+The current `sort_distance` trigger vocabulary includes terms such as:
+
+```text
+近い
+近く
+徒歩
+できるだけ近
+最寄り
+距離優先
+```
+
+The adopted proximity semantics directly support proximity-oriented terms such as:
+
+```text
+近い / 近く / 距離優先
+```
+
+but terms such as `徒歩` and potentially `最寄り` can imply route / access semantics
+that the Haversine value does not prove.
+
+No runtime trigger is changed by this decision.
+The mismatch is recorded as:
+
+```text
+DISTANCE_TRIGGER_ALIGNMENT_DEBT = OPEN
+```
+
+### 16.4 A-3 resolution
+
+```text
+A-3 = RESOLVED
+
+RECOMMENDATION_DISTANCE_SEMANTICS
+= PROXIMITY
+
+ROUTE_DISTANCE_SEMANTICS
+= SEPARATE
+
+DISTANCE_COPY_ALIGNMENT_DEBT
+= OPEN
+
+DISTANCE_TRIGGER_ALIGNMENT_DEBT
+= OPEN
+```
+
+This decision does not select the Canonical Shrine Anchor Migration Gate.
