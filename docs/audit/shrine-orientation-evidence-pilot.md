@@ -2,10 +2,11 @@
 
 ## Status
 
-- Status: `EXECUTED_EVIDENCE_ACQUISITION_BLOCKED`
+- Status: `EXECUTED_VERIFIED_EVIDENCE`
 - Recorded at: `2026-09-23`
 - Pilot Shrines: 5
 - Layer decisions: 15
+- Verified Mother Ship evidence packet: `APPLIED`
 - Production write: `NONE`
 - Base Seed write: `NONE`
 - Shrine model change: `NONE`
@@ -13,51 +14,84 @@
 - Recommendation / Compass logic change: `NONE`
 - Orientation Evidence Contract created: `NO`
 
-本書は Contract ではない。`docs/knowledge/shrine-position-contract.md` の authority は
-変更されない。
+This document is an audit result, not a Contract.
+`docs/knowledge/shrine-position-contract.md` remains authoritative and unchanged.
+
+---
 
 ## 0. Executive Result
 
-The pilot ran to completion against its own rules. It did not acquire evidence.
+The pilot tested whether shrine orientation can be collected reproducibly from
+published cultural-property, shrine-official, municipal, and scholarly evidence
+without inferring unsupported meaning from geometry.
+
+Five shrines were evaluated across three independent layers:
 
 ```text
-PRIMARY_SOURCE_HOSTS_TESTED   = 22
-PRIMARY_SOURCE_HOSTS_REACHED  = 0
-PRIMARY_SOURCE_DOCUMENTS_READ = 0
-CONFIRMED_CELLS               = 0 / 15
+A. PHYSICAL_ORIENTATION
+B. RITUAL_AXIS
+C. SYMBOLIC_ORIENTATION
 ```
 
-Every host in every tier of the Primary evidence policy — 文化庁 databases, 自治体
-文化財資料, 公的研究機関, and all five 神社公式 sites — returned `403` at the session's
-network egress gateway. The corroboration tier (国土地理院, map providers) is blocked
-by the same policy.
-
-This is an **environment constraint, not an evidence finding.** The pilot therefore
-cannot report whether shrine orientation is reproducibly collectible from published
-cultural-property evidence, because it could not open a single such document.
+Final normalized result:
 
 ```text
-ORIENTATION_EVIDENCE_PIPELINE = NOT_DETERMINED_IN_THIS_ENVIRONMENT
+TOTAL_CELLS = 15
+
+CONFIRMED               = 11 / 15 = 73.3 %
+NOT_DETERMINED          =  4 / 15 = 26.7 %
+HOLD_ORIENTATION_REVIEW =  0 / 15 =  0.0 %
 ```
 
-§10 records why none of `VIABLE` / `PARTIALLY_VIABLE` / `NOT_YET_VIABLE` can be
-honestly selected, and what is required to run the pilot as specified.
+Per layer:
+
+```text
+PHYSICAL_ORIENTATION
+  CONFIRMED      = 4 / 5 =  80.0 %
+  NOT_DETERMINED = 1 / 5 =  20.0 %
+  HOLD           = 0 / 5 =   0.0 %
+
+RITUAL_AXIS
+  CONFIRMED      = 5 / 5 = 100.0 %
+  NOT_DETERMINED = 0 / 5 =   0.0 %
+  HOLD           = 0 / 5 =   0.0 %
+
+SYMBOLIC_ORIENTATION
+  CONFIRMED      = 2 / 5 =  40.0 %
+  NOT_DETERMINED = 3 / 5 =  60.0 %
+  HOLD           = 0 / 5 =   0.0 %
+```
+
+Pilot decision:
+
+```text
+ORIENTATION_EVIDENCE_PIPELINE = VIABLE
+```
+
+This does **not** mean every shrine will yield every layer.
+
+It means the pilot established a reproducible process that can:
+
+1. confirm physical orientation where accepted evidence supports it;
+2. identify ritual axes from explicit worship / ritual documentation;
+3. confirm symbolic orientation only when documentary evidence states the target or
+   ritual relation;
+4. return `NOT_DETERMINED` instead of guessing where evidence is insufficient; and
+5. reserve `HOLD_ORIENTATION_REVIEW` for actual accepted-source conflicts.
+
+The lower symbolic-orientation acquisition rate is not a pipeline failure.
+Correct refusal to infer symbolic intent from geometry is part of the success criteria.
+
+---
 
 ## 1. Scope and Non-Goals
 
-Purpose: test whether shrine orientation can be collected reproducibly from published
-cultural-property / architectural evidence **without inference**.
+### 1.1 Purpose
 
-### Non-Goals (all observed)
+Test whether orientation evidence can be acquired and classified reproducibly for a
+small but structurally diverse shrine sample.
 
-- No Production, Base Seed, or Shrine model change.
-- No change to `docs/knowledge/shrine-position-contract.md` or any existing Contract.
-- No change to recommendation / compass logic.
-- No symbolic meaning inferred from geometry.
-- No ritual meaning inferred from map alignment.
-- No formal Orientation Evidence Contract created.
-
-### Pilot Shrines
+### 1.2 Pilot shrines
 
 ```text
 1. 伏見稲荷大社
@@ -67,564 +101,744 @@ cultural-property / architectural evidence **without inference**.
 5. 建勲神社
 ```
 
-## 2. Evidence Policy Applied
+### 1.3 Non-goals
 
-### 2.1 Preferred primary sources
+This pilot does not:
 
-```text
-P-1  文化庁 国指定文化財等データベース
-P-2  国・自治体・教育委員会等の文化財資料
-P-3  公開された文化財修理報告 / 建築調査 / 実測図
-P-4  大学・公的研究機関が公開する建築調査資料
-P-5  神社公式の建築・境内・祭祀構造資料
-```
+- modify Production;
+- modify Base Seed;
+- modify the Shrine model;
+- change `docs/knowledge/shrine-position-contract.md`;
+- change recommendation logic;
+- change Compass logic;
+- change route logic;
+- create the formal Orientation Evidence Contract;
+- assign exact degree values where only cardinal prose is supported;
+- infer symbolic meaning from map geometry or visual alignment.
 
-### 2.2 Corroboration only
+---
 
-```text
-国土地理院
-shrine official map showing spatial relationships without stating orientation
-map providers
-aerial imagery
-```
+## 2. Evidence Model
 
-### 2.3 Not canonical evidence
+### 2.1 Independent layers
 
-```text
-personal blogs / SNS / reviews / unsourced tourism articles
-visual alignment interpreted without documentary support
-```
+#### A. `PHYSICAL_ORIENTATION`
 
-### 2.4 Evidence strength
+Question:
 
-```text
-E1_AUTHORITATIVE  cultural-property authority / government / shrine official direct statement
-E2_SCHOLARLY      university / public research institution / specialist architectural research
-E3_MEASURED       official or scholarly measured drawing / plan / GIS-quality spatial evidence
-E4_CORROBORATION  map / aerial imagery / non-semantic spatial corroboration
-```
+> What direction does the relevant shrine building, sanctuary, or explicitly scoped
+> shrine complex physically face?
 
-`E4` alone is not admissible for `RITUAL_AXIS` or `SYMBOLIC_ORIENTATION`.
+Acceptable evidence includes:
 
-### 2.5 Governing rule
+- direct cultural-property prose such as 東面 / 南面;
+- official or scholarly architectural documentation;
+- measured plans where orientation is explicit and traceable.
+
+Physical direction does **not** prove symbolic intent.
+
+#### B. `RITUAL_AXIS`
+
+Question:
+
+> Does accepted evidence establish a worship / ritual spatial relation between
+> documented places or structures?
+
+Examples:
+
+- 拝殿 → 本殿;
+- 遥拝所 → sacred target;
+- documented worship sequence;
+- a gate explicitly described as standing in front of a principal sanctuary.
+
+A physical layout alone does not automatically prove a ritual axis.
+
+#### C. `SYMBOLIC_ORIENTATION`
+
+Question:
+
+> Does accepted documentary evidence explicitly establish an intentional ritual or
+> symbolic target?
+
+Examples:
+
+- a documented 遥拝 target;
+- an explicit statement that a structure faces a named sacred place;
+- an authoritative explanation of an intended symbolic spatial relation.
+
+Geometry alone is not evidence of symbolic meaning.
+
+### 2.2 Governing rule
 
 ```text
 GEOMETRY PROVES DIRECTION.
 DOCUMENTARY EVIDENCE PROVES MEANING.
 ```
 
-`SYMBOLIC_ORIENTATION` is never derived from `PHYSICAL_ORIENTATION`.
+`SYMBOLIC_ORIENTATION` is never derived from `PHYSICAL_ORIENTATION` alone.
 
-### 2.6 Layer status values
-
-```text
-CONFIRMED                accepted source directly supports the claim
-NOT_DETERMINED           available evidence does not establish the claim
-HOLD_ORIENTATION_REVIEW  accepted sources provide competing or materially ambiguous claims
-```
-
-Missing evidence is **not** `HOLD`. `HOLD` requires two or more accepted sources in
-conflict. No cell in this pilot reaches that condition, because no accepted source was
-read at all.
-
-### 2.7 Retrieval-status qualifier (added by this pilot)
-
-The specified status set cannot distinguish two materially different situations that
-both land on `NOT_DETERMINED`:
+### 2.3 Status values
 
 ```text
-EVIDENCE_INSUFFICIENT  the source was read and does not establish the claim
-SOURCE_UNRETRIEVED     the source was identified but could not be opened
+CONFIRMED
+  accepted evidence directly supports the normalized cell claim
+
+NOT_DETERMINED
+  accepted evidence does not establish the normalized cell claim
+
+HOLD_ORIENTATION_REVIEW
+  accepted sources conflict or remain materially ambiguous after review
 ```
 
-This pilot records the qualifier alongside each `NOT_DETERMINED`. It does not change
-any cell's status value, and it does not introduce a fourth status. All 15 cells in
-this run carry `SOURCE_UNRETRIEVED`; none carries `EVIDENCE_INSUFFICIENT`.
+Missing evidence is not `HOLD`.
 
-The distinction matters for §10: `NOT_YET_VIABLE` is a statement about sources, and
-`SOURCE_UNRETRIEVED` says nothing about sources.
-
-## 3. Evidence Acquisition Attempt — Result
-
-### 3.1 Network egress outcome
-
-All outbound HTTPS in this session passes through a policy-enforcing egress gateway.
-Every candidate evidence host was refused at `CONNECT`.
+### 2.4 Evidence strength
 
 ```text
-gateway response  = 403
-proxy failure kind = connect_rejected
-proxy detail       = "gateway answered 403 to CONNECT (policy denial or upstream failure)"
-observed at        = 2026-09-23T01:21:36Z – 2026-09-23T01:23Z
+E1_AUTHORITATIVE
+  shrine official / Cultural Affairs / government / municipal cultural-property source
+
+E2_SCHOLARLY
+  university / academic society / specialist architectural or historical research
+
+E3_MEASURED
+  official or scholarly measured drawing / plan / GIS-quality spatial evidence
+
+E4_CORROBORATION
+  map / aerial imagery / non-semantic spatial corroboration
 ```
 
-Per the session's egress documentation (`/root/.ccr/README.md`, §"403 / 407 from the
-proxy"): *"The destination host is not allowed by your organization's egress policy for
-this session. Do not retry or route around it — report the blocked host."* No retry,
-mirror, cache, or alternate route was attempted.
+`E4` alone may not establish `RITUAL_AXIS` or `SYMBOLIC_ORIENTATION`.
 
-### 3.2 Blocked host inventory
+---
 
-| # | Host | Evidence tier | Result |
-| ---: | --- | --- | --- |
-| 01 | `kunishitei.bunka.go.jp` | P-1 文化庁 国指定文化財等データベース | `403` |
-| 02 | `online.bunka.go.jp` | P-1 文化遺産オンライン（文化庁） | `403` |
-| 03 | `bunka.nii.ac.jp` | P-1 文化遺産オンライン（NII ミラー） | `403` |
-| 04 | `www.bunka.go.jp` | P-1 文化庁 | `403` |
-| 05 | `www.pref.nara.lg.jp` | P-2 奈良県 文化資源 | `403` |
-| 06 | `www.pref.oita.jp` | P-2 大分県 | `403` |
-| 07 | `www.city.usa.oita.jp` | P-2 宇佐市 | `403` |
-| 08 | `www.city.nikko.lg.jp` | P-2 日光市 | `403` |
-| 09 | `www2.city.kyoto.lg.jp` | P-2 京都市 | `403` |
-| 10 | `oita-digitalzukan.jp` | P-2 おおいた文化財ずかん | `403` |
-| 11 | `cir.nii.ac.jp` | P-4 CiNii Research | `403` |
-| 12 | `inari.jp` | P-5 伏見稲荷大社 公式 | `403` |
-| 13 | `www.toshogu.jp` | P-5 日光東照宮 公式 | `403` |
-| 14 | `www.usajinguu.com` | P-5 宇佐神宮 公式 | `403` |
-| 15 | `www.kasugataisha.or.jp` | P-5 春日大社 公式 | `403` |
-| 16 | `kenkun-jinja.org` | P-5 建勲神社 公式 | `403` |
-| 17 | `www.rinnoji.or.jp` | P-5 日光山輪王寺 公式（大猷院） | `403` |
-| 18 | `www.gsi.go.jp` | Corroboration 国土地理院 | `403` |
-| 19 | `ja.wikipedia.org` | Corroboration / lead-finding | `403` |
-| 20 | `www.nikko-kankou.org` | Non-canonical (tested for completeness) | `403` |
-| 21 | `www.millennium-roman.jp` | Non-canonical (tested for completeness) | `403` |
-| 22 | `github.com` | Control host — not evidence | reachable |
+## 3. Source Authority by Domain
+
+The pilot does not use one universal hierarchy for every claim.
+
+Instead, authority is assigned by information domain.
+
+### 3.1 Shrine meaning / worship / ritual target
+
+Preferred:
 
 ```text
-HOSTS_TESTED  = 22
-BLOCKED       = 21
-REACHABLE     = 1  (control host only; carries no orientation evidence)
+- shrine official material
+- shrine-side authoritative material
+- government / municipal documentation explicitly describing worship or ritual function
 ```
 
-The control host confirms the session has working egress and that the refusals are
-per-host policy denials, not a general network failure.
+### 3.2 Physical building orientation / arrangement
 
-### 3.3 What was reachable, and why it is not evidence
-
-A relayed web-search service remained available and returned result listings. Those
-listings were used **only to identify candidate source URLs** (§4). They were not used
-as evidence, for three reasons:
-
-1. A search-result summary is a third party's rendering of a document, not the
-   document. Its provenance is the search service, which appears in no tier of §2.
-2. The summaries could not be checked against the underlying records, because those
-   records are on blocked hosts.
-3. Two summaries already demonstrate the hazard concretely:
-   - the 宇佐神宮 summary reproduced 桁行 / 梁間 / 八幡造 structural detail but contained
-     **no cardinal orientation statement at all**, although the pilot brief reports the
-     Cultural Affairs record states the three Honden face south;
-   - the 春日大社 summary contained `東側から第一殿〜第四殿まで4つの棟が横に並んで`,
-     an *arrangement* statement carried by a non-accepted site, which under §2.5 does
-     not establish a facing direction.
-
-Recording either as `CONFIRMED` would have manufactured an `E1` citation out of an
-unverifiable intermediary. No such cell exists in §6.
-
-## 4. Primary Source Inventory
-
-Every row below is a **lead**, not evidence. The required inventory fields that depend
-on reading the document (`publication / update date`, `covered structure`,
-`exact factual claim supported`, `evidence strength`, `limitations`) cannot be
-populated without the document, and are recorded as `NOT_RETRIEVED` rather than
-guessed.
-
-Column key: `Layer` = the layer the source is expected to bear on, from its title and
-record type — an acquisition target, not a supported claim.
-
-### 4.1 伏見稲荷大社
-
-| source_title | source_owner | source_type | source_url | Layer target | source_status |
-| --- | --- | --- | --- | --- | --- |
-| 国指定文化財等データベース 伏見稲荷大社 本殿 | 文化庁 | P-1 cultural-property database | `https://kunishitei.bunka.go.jp/heritage/detail/102/00004715` | A | `NOT_RETRIEVED` (`403`) |
-| 文化遺産オンライン 伏見稲荷大社 楼門 | 文化庁 | P-1 | `https://online.bunka.go.jp/heritages/detail/232051` | A / B | `NOT_RETRIEVED` (`403`) |
-| 文化遺産オンライン 伏見稲荷大社 権殿 | 文化庁 | P-1 | `https://online.bunka.go.jp/heritages/detail/232061` | A | `NOT_RETRIEVED` (`403`) |
-| 文化遺産オンライン 伏見稲荷大社 外拝殿 | 文化庁 | P-1 | `https://online.bunka.go.jp/heritages/detail/279510` | A / B | `NOT_RETRIEVED` (`403`) |
-| 文化遺産オンライン 伏見稲荷大社 南北廻廊（南廻廊） | 文化庁 | P-1 | `https://online.bunka.go.jp/heritages/detail/260102` | A | `NOT_RETRIEVED` (`403`) |
-| 文化遺産オンライン 伏見稲荷大社 白狐社 | 文化庁 | P-1 | `https://online.bunka.go.jp/heritages/detail/274693` | A | `NOT_RETRIEVED` (`403`) |
-| 伏見稲荷大社 公式「本殿」 | 伏見稲荷大社 | P-5 shrine official | `https://inari.jp/sp/map/spot_03/` | A / B | `NOT_RETRIEVED` (`403`) |
-
-Acquisition note from the brief, to be verified and not adopted: Cultural Affairs
-material is reported to state the precinct sits on the west foot of 稲荷山 and faces
-west. A precinct-facing statement is not a Honden-facing statement. Under §2.5 the
-equivalence must be established by the document itself, and the document is unread.
-
-### 4.2 日光東照宮
-
-| source_title | source_owner | source_type | source_url | Layer target | source_status |
-| --- | --- | --- | --- | --- | --- |
-| 文化遺産オンライン 東照宮 陽明門 | 文化庁 | P-1 | `https://online.bunka.go.jp/heritages/detail/179105` | A | `NOT_RETRIEVED` (`403`) |
-| 日光市 文化財 / 建造物資料 | 日光市 | P-2 | `https://www.city.nikko.lg.jp/` (entry point) | A / B / C | `NOT_RETRIEVED` (`403`) |
-| 日光山輪王寺 公式「大猷院」 | 日光山輪王寺 | P-5 (separate institution) | `https://www.rinnoji.or.jp/history/temple/taiyuuin.html` | C (Taiyuin-side claim only) | `NOT_RETRIEVED` (`403`) |
-
-Direction-of-claim note: the documented relationship reported in the brief is that
-**Taiyuin buildings face toward Toshogu**. That is a claim about Taiyuin's orientation,
-owned by Rinnoji material. It is not a claim about Toshogu's own orientation and must
-not be reversed into one. No cell in §6 carries it.
-
-### 4.3 宇佐神宮
-
-| source_title | source_owner | source_type | source_url | Layer target | source_status |
-| --- | --- | --- | --- | --- | --- |
-| 文化遺産オンライン 宇佐神宮本殿 | 文化庁 | P-1 | `https://online.bunka.go.jp/heritages/detail/110754` | A / B | `NOT_RETRIEVED` (`403`) |
-| 文化遺産オンライン 宇佐神宮本殿（第一殿） | 文化庁 | P-1 | `https://online.bunka.go.jp/heritages/detail/187746` | A | `NOT_RETRIEVED` (`403`) |
-| 文化遺産オンライン 宇佐神宮本殿（第二殿） | 文化庁 | P-1 | `https://bunka.nii.ac.jp/heritages/detail/124607` | A | `NOT_RETRIEVED` (`403`) |
-| 文化遺産オンライン 宇佐神宮境内 | 文化庁 | P-1 | `https://bunka.nii.ac.jp/heritages/detail/206773` | A / B | `NOT_RETRIEVED` (`403`) |
-| おおいた文化財ずかん 宇佐神宮本殿 | 大分県（自治体系） | P-2 | `https://oita-digitalzukan.jp/cultural_property/宇佐神宮本殿/` | A | `NOT_RETRIEVED` (`403`) |
-| 宇佐神宮 公式「境内のご案内」 | 宇佐神宮 | P-5 | `http://www.usajinguu.com/guide/` | A / B | `NOT_RETRIEVED` (`403`) |
-
-Acquisition note, to be verified and not adopted: the brief reports the Cultural
-Affairs record states the three Honden face south and are arranged east-west. The
-pilot's own question for that record — *does it prove `PHYSICAL_ORIENTATION` only, or
-also a documented `RITUAL_AXIS`?* — is exactly the question that requires the record's
-wording, which is unread.
-
-### 4.4 春日大社
-
-| source_title | source_owner | source_type | source_url | Layer target | source_status |
-| --- | --- | --- | --- | --- | --- |
-| 奈良県「春日大社本社本殿」 | 奈良県 | P-2 | `https://www.pref.nara.lg.jp/ikasu-nara/bunkashigen/main04201.html` | A | `NOT_RETRIEVED` (`403`) |
-| 文化遺産オンライン 春日大社本社 捻廊 | 文化庁 | P-1 | `https://bunka.nii.ac.jp/heritages/detail/123547` | A | `NOT_RETRIEVED` (`403`) |
-| 春日大社 公式（社殿・境内） | 春日大社 | P-5 | `https://www.kasugataisha.or.jp/` (entry point) | A / B | `NOT_RETRIEVED` (`403`) |
-
-Language-version note: the brief permits multilingual shrine pages only where
-provenance is clearly the same official shrine source, with the language/version
-recorded. No shrine page in any language was retrievable, so the provision was never
-exercised.
-
-### 4.5 建勲神社
-
-| source_title | source_owner | source_type | source_url | Layer target | source_status |
-| --- | --- | --- | --- | --- | --- |
-| 国指定文化財等データベース 建勲神社本殿 | 文化庁 | P-1 | `https://kunishitei.bunka.go.jp/heritage/detail/101/00007059` | A | `NOT_RETRIEVED` (`403`) |
-| 文化遺産オンライン 建勲神社本殿 | 文化庁 | P-1 | `https://bunka.nii.ac.jp/heritages/detail/191780` | A | `NOT_RETRIEVED` (`403`) |
-| 文化遺産オンライン 建勲神社祝詞舎 | 文化庁 | P-1 | `https://bunka.nii.ac.jp/heritages/detail/172362` | A / B | `NOT_RETRIEVED` (`403`) |
-| 文化遺産オンライン 建勲神社祭器庫 | 文化庁 | P-1 | `https://bunka.nii.ac.jp/heritages/detail/183276` | A | `NOT_RETRIEVED` (`403`) |
-| 京都市「建勲神社本殿真御柱跡」 | 京都市 | P-2 | `https://www2.city.kyoto.lg.jp/somu/rekishi/fm/ishibumi/html/ki016.html` | A | `NOT_RETRIEVED` (`403`) |
-| 建勲神社 公式「境内案内」 | 建勲神社 | P-5 | `https://kenkun-jinja.org/precincts/` | A / B | `NOT_RETRIEVED` (`403`) |
-
-Acquisition note, to be verified and not adopted: the brief reports the Cultural
-Affairs database describes the Honden as east-facing, and directs that Haiden and
-precinct-related registered buildings also be inspected. The registered 祝詞舎 and
-祭器庫 records were located as leads for that inspection; none was readable.
-
-### 4.6 Inventory totals
+Preferred:
 
 ```text
-LEADS_IDENTIFIED            = 25
-LEADS_RETRIEVED             =  0
-PRIMARY_SOURCE_COUNT (read) =  0
-CORROBORATION_COUNT (read)  =  0
+- Cultural Affairs
+- municipal / prefectural cultural-property authority
+- repair / measured architectural documentation
+- specialist architectural research
 ```
 
-## 5. Recorded Orientation Values
+### 3.3 Historical / symbolic orientation
 
-No `orientation_degrees`, `orientation_cardinal`, `orientation_reference`,
-`orientation_subject`, `axis_from`, `axis_to`, `axis_direction`, `ritual_function`,
-`symbolic_target`, `symbolic_claim`, or `claim_attribution` value is recorded by this
-pilot, for any of the five shrines.
+Preferred:
 
 ```text
-ORIENTATION_VALUES_RECORDED = 0
+- explicit shrine-official documentary statement
+- cultural-historical source
+- scholarly source
 ```
 
-The rule *"Do NOT invent degree values from prose"* was not exercised, because no prose
-was obtained. The stricter rule that no value may be recorded without a read accepted
-source governs instead.
+A documented religious relationship between two places does not by itself establish
+that one structure was intentionally oriented toward the other.
 
-## 6. 15-Cell Result Matrix
+---
 
-Five shrines × three layers. Every cell carries the retrieval qualifier from §2.7.
+## 4. Execution Note — Initial Codex Egress Block
 
-| # | Shrine | Layer | Status | Qualifier | Accepted source read | Basis |
-| ---: | --- | --- | --- | --- | --- | --- |
-| 01 | 伏見稲荷大社 | A `PHYSICAL_ORIENTATION` | `NOT_DETERMINED` | `SOURCE_UNRETRIEVED` | none | 7 leads identified (§4.1), all `403` |
-| 02 | 伏見稲荷大社 | B `RITUAL_AXIS` | `NOT_DETERMINED` | `SOURCE_UNRETRIEVED` | none | no read source; B may not rest on E4 |
-| 03 | 伏見稲荷大社 | C `SYMBOLIC_ORIENTATION` | `NOT_DETERMINED` | `SOURCE_UNRETRIEVED` | none | no documentary claim obtained; geometry excluded by §2.5 |
-| 04 | 日光東照宮 | A `PHYSICAL_ORIENTATION` | `NOT_DETERMINED` | `SOURCE_UNRETRIEVED` | none | 3 leads identified (§4.2), all `403` |
-| 05 | 日光東照宮 | B `RITUAL_AXIS` | `NOT_DETERMINED` | `SOURCE_UNRETRIEVED` | none | no read source; B may not rest on E4 |
-| 06 | 日光東照宮 | C `SYMBOLIC_ORIENTATION` | `NOT_DETERMINED` | `SOURCE_UNRETRIEVED` | none | the located Taiyuin→Toshogu claim is Taiyuin's orientation, unread, and not reversible (§4.2) |
-| 07 | 宇佐神宮 | A `PHYSICAL_ORIENTATION` | `NOT_DETERMINED` | `SOURCE_UNRETRIEVED` | none | 6 leads identified (§4.3), all `403` |
-| 08 | 宇佐神宮 | B `RITUAL_AXIS` | `NOT_DETERMINED` | `SOURCE_UNRETRIEVED` | none | the physical-vs-ritual question for this record requires its wording (§4.3) |
-| 09 | 宇佐神宮 | C `SYMBOLIC_ORIENTATION` | `NOT_DETERMINED` | `SOURCE_UNRETRIEVED` | none | no documentary claim obtained; geometry excluded by §2.5 |
-| 10 | 春日大社 | A `PHYSICAL_ORIENTATION` | `NOT_DETERMINED` | `SOURCE_UNRETRIEVED` | none | 3 leads identified (§4.4), all `403` |
-| 11 | 春日大社 | B `RITUAL_AXIS` | `NOT_DETERMINED` | `SOURCE_UNRETRIEVED` | none | no read source; four-Honden layout unverified |
-| 12 | 春日大社 | C `SYMBOLIC_ORIENTATION` | `NOT_DETERMINED` | `SOURCE_UNRETRIEVED` | none | no documentary claim obtained; geometry excluded by §2.5 |
-| 13 | 建勲神社 | A `PHYSICAL_ORIENTATION` | `NOT_DETERMINED` | `SOURCE_UNRETRIEVED` | none | 6 leads identified (§4.5), all `403` |
-| 14 | 建勲神社 | B `RITUAL_AXIS` | `NOT_DETERMINED` | `SOURCE_UNRETRIEVED` | none | Haiden / 祝詞舎 / 祭器庫 records located but unread |
-| 15 | 建勲神社 | C `SYMBOLIC_ORIENTATION` | `NOT_DETERMINED` | `SOURCE_UNRETRIEVED` | none | no documentary claim obtained; geometry excluded by §2.5 |
+The first Codex-side acquisition attempt could not open the candidate evidence hosts.
 
 ```text
-CELLS = 15
-CONFIRMED               =  0
-NOT_DETERMINED          = 15
-HOLD_ORIENTATION_REVIEW =  0
+INITIAL_CODEX_EXECUTION = BLOCKED_BY_EGRESS
 ```
 
-No cell is `HOLD`. `HOLD` requires competing or materially ambiguous **accepted**
-sources; zero accepted sources were read, so the condition is unreachable in this run.
-Missing evidence was not upgraded to `HOLD`.
-
-## 7. Required 5-Row Summary
-
-| Shrine | PHYSICAL_ORIENTATION | RITUAL_AXIS | SYMBOLIC_ORIENTATION | Strongest Evidence Level | Primary Source Count | Corroboration Count | Open Evidence Gap |
-| --- | --- | --- | --- | --- | ---: | ---: | --- |
-| 伏見稲荷大社 | `NOT_DETERMINED` | `NOT_DETERMINED` | `NOT_DETERMINED` | `NONE_OBTAINED` | 0 | 0 | Whether the reported west-facing statement applies to the precinct or to the Honden; the equivalence is unproven and the record unread |
-| 日光東照宮 | `NOT_DETERMINED` | `NOT_DETERMINED` | `NOT_DETERMINED` | `NONE_OBTAINED` | 0 | 0 | Toshogu's own orientation, stated independently of the Taiyuin→Toshogu relationship; city / measured-drawing sources unread |
-| 宇佐神宮 | `NOT_DETERMINED` | `NOT_DETERMINED` | `NOT_DETERMINED` | `NONE_OBTAINED` | 0 | 0 | Whether the reported south-facing / east-west-arranged wording establishes only layer A or also layer B |
-| 春日大社 | `NOT_DETERMINED` | `NOT_DETERMINED` | `NOT_DETERMINED` | `NONE_OBTAINED` | 0 | 0 | Any cardinal orientation statement at all for the four Honden; none located even in lead titles |
-| 建勲神社 | `NOT_DETERMINED` | `NOT_DETERMINED` | `NOT_DETERMINED` | `NONE_OBTAINED` | 0 | 0 | The reported east-facing Honden wording, and whether Haiden / 祝詞舎 / 祭器庫 records carry a worship-sequence statement |
-
-## 8. Rates
-
-Computed directly from §6. Denominator is 5 per layer, 15 overall.
-
-### 8.1 Per layer
+That execution produced:
 
 ```text
-PHYSICAL_ORIENTATION
-  PHYSICAL_EVIDENCE_ACQUISITION_RATE = 0 / 5  =   0.0 %
-  NOT_DETERMINED_RATE                = 5 / 5  = 100.0 %
-  HOLD_RATE                          = 0 / 5  =   0.0 %
-
-RITUAL_AXIS
-  RITUAL_AXIS_EVIDENCE_ACQUISITION_RATE = 0 / 5 =   0.0 %
-  NOT_DETERMINED_RATE                   = 5 / 5 = 100.0 %
-  HOLD_RATE                             = 0 / 5 =   0.0 %
-
-SYMBOLIC_ORIENTATION
-  SYMBOLIC_EVIDENCE_ACQUISITION_RATE = 0 / 5  =   0.0 %
-  NOT_DETERMINED_RATE                = 5 / 5  = 100.0 %
-  HOLD_RATE                          = 0 / 5  =   0.0 %
+PRIMARY_SOURCE_DOCUMENTS_READ = 0
+CONFIRMED_CELLS               = 0 / 15
 ```
 
-### 8.2 Overall
+This was an environment result, not an evidence-domain result.
+
+The initial run correctly refused to promote search-result snippets, prompt-provided
+claims, inferred geometry, or reversed directional relationships into accepted
+evidence.
+
+Mother Ship subsequently acquired and verified the source material using accepted
+primary / scholarly sources and recorded the evidence in the evidence ledger.
+
+The verified Mother Ship evidence packet supersedes the initial `0 / 15` result for
+pilot assessment.
+
+The initial block is retained only as an execution note because its refusal discipline
+remains relevant:
+
+```text
+CLASSIFICATION_DETERMINISM_HELD = YES
+REFUSAL_DISCIPLINE_HELD         = YES
+```
+
+---
+
+## 5. Verified Source Inventory
+
+The inventory below lists sources actually used in the verified evidence packet.
+
+### 5.1 日光東照宮
+
+#### Physical orientation
+
+- Owner: 文化庁
+- Source: 神社 比較一覧（別添資料3）
+- Type: cultural-property / government material
+- URL:
+  `https://www.bunka.go.jp/seisaku/bunkashingikai/isanbukai/sekaiisanbukai_nittei/2_01/pdf/r1404325_11.pdf`
+- Evidence level: `E1_AUTHORITATIVE`
+- Supported scope: shrine / principal site orientation
+- Supported claim: 日光東照宮 is recorded as `南面、山裾`
+- Limitation: does not establish an exact degree value or a symbolic reason for the
+  south-facing orientation.
+
+#### Ritual structure
+
+- Owner: 日光市教育委員会事務局 文化財課
+- Source: 建造物一覧-東照宮1
+- Type: municipal cultural-property material
+- URL:
+  `https://www.city.nikko.lg.jp/soshiki/10/1041/1_1/2/1/2427.html`
+- Evidence level: `E1_AUTHORITATIVE`
+- Supported claim: 本殿 is the shrine building for 東照大権現, 石の間 connects 本殿
+  and 拝殿, and 拝殿 is the worship building.
+
+#### Architectural corroboration
+
+- Owner: 栃木県
+- Source: 東照宮本殿、石の間及び拝殿
+- Type: prefectural cultural-property material
+- URL:
+  `https://bunkazai.pref.tochigi.lg.jp/cultural/%E3%80%90%E6%9D%B1%E7%85%A7%E5%AE%AE%E6%9C%AC%E6%AE%BF%E3%80%81%E7%9F%B3%E3%81%AE%E9%96%93%E5%8F%8A%E3%81%B3%E6%8B%9D%E6%AE%BF%E3%80%91/`
+- Evidence level: `E1_AUTHORITATIVE`
+- Supported claim: 拝殿 and 本殿 are connected by 石の間 as the 権現造 composition.
+
+#### Counter-evidence / directional non-transfer
+
+- Owner: 国土交通省
+- Source: 日光山輪王寺 本殿、拝殿［大猷院内］
+- Type: government public interpretation
+- URL:
+  `https://www.mlit.go.jp/tagengo-db/H30-00288.html`
+- Evidence level: `E1_AUTHORITATIVE`
+- Supported claim: 大猷院 is documented as oriented toward 東照宮.
+- Limitation: this relation may not be reversed into a claim that 東照宮 is
+  symbolically oriented toward 江戸 or 大猷院.
+
+### 5.2 伏見稲荷大社
+
+#### Precinct physical orientation
+
+- Owner: 文化庁
+- Source: 伏見稲荷大社
+- Type: Cultural Affairs material
+- URL:
+  `https://kunishitei.bunka.go.jp/heritage/detail/102/00004715`
+- Evidence level: `E1_AUTHORITATIVE`
+- Supported claim: the shrine precinct is on the west foot of 稲荷山 and is composed
+  with west as its front.
+- Limitation: precinct-facing direction is not automatically Honden-facing direction.
+
+#### Honden record
+
+- Owner: 文化庁
+- Source: 伏見稲荷大社本殿
+- Type: Cultural Affairs material
+- URL:
+  `https://kunishitei.bunka.go.jp/heritage/detail/102/1925`
+- Evidence level: `E1_AUTHORITATIVE`
+- Supported claim: architectural form / structure of the Honden.
+- Limitation: the reviewed record does not directly establish the Honden cardinal
+  orientation.
+
+#### Ritual / symbolic target
+
+- Owner: 伏見稲荷大社
+- Source: 奥社奉拝所
+- Type: shrine official
+- URL:
+  `https://inari.jp/sp/map/spot_08/`
+- Evidence level: `E1_AUTHORITATIVE`
+- Supported claim: 奥社奉拝所 is a place from which 稲荷山 / 三ヶ峰 is worshipped from
+  afar.
+- Limitation: no exact true-north degree value is adopted.
+
+### 5.3 宇佐神宮
+
+#### Physical orientation
+
+- Owner: 文化庁
+- Source: 宇佐神宮本殿
+- Type: Cultural Affairs material
+- URL:
+  `https://kunishitei.bunka.go.jp/heritage/detail/102/3599`
+- Evidence level: `E1_AUTHORITATIVE`
+- Supported claim: 第一殿・第二殿・第三殿 face south and are arranged east-west.
+- Limitation: `SOUTH` is not converted into an invented `180.0°`.
+
+#### Worship relation
+
+- Owner: 宇佐市
+- Source: 宇佐神宮 上宮
+- Type: municipal official material
+- URL:
+  `https://www.city.usa.oita.jp/tourist/touristspot/touristspot2/touristspot3/10171.html`
+- Evidence level: `E1_AUTHORITATIVE`
+- Supported claim: worshippers face the three Honden in the documented worship
+  arrangement.
+
+#### Central architectural relation
+
+- Owner: 大分県
+- Source: 南中楼門
+- Type: prefectural cultural-property material
+- URL:
+  `https://oita-digitalzukan.jp/cultural_property/%E5%8D%97%E4%B8%AD%E6%A5%BC%E9%96%80/`
+- Evidence level: `E1_AUTHORITATIVE`
+- Supported claim: 南中楼門 is the southern principal gate and stands in front of
+  第二殿.
+
+#### Related sacred place
+
+- Owner: 文化庁
+- Source: 宇佐神宮境内
+- Type: cultural-property / historical material
+- URL:
+  `https://online.bunka.go.jp/heritages/detail/206773`
+- Evidence level: `E1_AUTHORITATIVE`
+- Supported claim: 御許山 has an important religious / historical relation to the
+  shrine and the 比売神 tradition.
+- Limitation: does not establish that the Honden were intentionally oriented toward
+  御許山.
+
+### 5.4 春日大社
+
+#### Physical orientation
+
+- Owner: 日本建築学会 / J-STAGE
+- Source: scholarly architectural research concerning Kasuga Taisha and shrine
+  orientation
+- Type: specialist architectural research
+- URL:
+  `https://www.jstage.jst.go.jp/article/aija/65/530/65_KJ00004225732/_pdf`
+- Evidence level: `E2_SCHOLARLY`
+- Supported claim: the principal Kasuga Taisha sanctuary buildings are south-facing.
+- Limitation: no exact degree value or documented symbolic cause is adopted.
+
+#### Ritual / symbolic target
+
+- Owner: 春日大社
+- Source: 御蓋山浮雲峰遙拝所
+- Type: shrine official
+- URL:
+  `https://www.kasugataisha.or.jp/guidance/index/modal-26/`
+- Evidence level: `E1_AUTHORITATIVE`
+- Supported claim: the worship point is for the 浮雲峰 at the summit of 御蓋山,
+  associated with the descent tradition of 武甕槌命.
+- Supported symbolic relation: the official material also describes a broader spatial /
+  religious relation involving 浮雲峰, the Honden, and 平城京大極殿.
+- Limitation: this does not establish that the Honden were built south-facing for the
+  purpose of facing the Great Audience Hall.
+
+### 5.5 建勲神社
+
+#### Physical orientation
+
+- Owner: 文化庁
+- Source: 建勲神社本殿
+- Type: Cultural Affairs material
+- URL:
+  `https://kunishitei.bunka.go.jp/heritage/detail/101/00007058`
+- Evidence level: `E1_AUTHORITATIVE`
+- Supported claim: the Honden stands on 船岡山 and faces east.
+- Limitation: no exact degree value or symbolic reason is established.
+
+#### Ritual structure
+
+- Owner: 建勲神社
+- Source: 境内案内
+- Type: shrine official
+- URL:
+  `https://kenkun-jinja.org/precincts/`
+- Evidence level: `E1_AUTHORITATIVE`
+- Supported claim: 神門 is in front of the Honden and 拝殿 is east of the Honden.
+
+#### Formal worship relation
+
+- Owner: 建勲神社
+- Source: 正式参拝
+- Type: shrine official
+- URL:
+  `https://kenkun-jinja.org/worship/`
+- Evidence level: `E1_AUTHORITATIVE`
+- Supported claim: formal worship enters within the 神門 and worship is directed to the
+  Honden.
+- Limitation: the worship vector is not stored as `WEST` unless a source explicitly
+  states that cardinal direction.
+
+#### Symbolic geography
+
+- Owner: 建勲神社
+- Source: 船岡大祭 宮司講話「京都の玄武の守りとされる船岡山」
+- Type: shrine official
+- URL:
+  `https://kenkun-jinja.org/greeting/%E8%88%B9%E5%B2%A1%E5%A4%A7%E7%A5%AD-%E5%AE%AE%E5%8F%B8%E8%AC%9B%E8%A9%B1%E3%80%8C%E4%BA%AC%E9%83%BD%E3%81%AE%E7%8E%84%E6%AD%A6%E3%81%AE%E5%AE%88%E3%82%8A%E3%81%A8%E3%81%95%E3%82%8C%E3%82%8B%E8%88%B9/`
+- Evidence level: `E1_AUTHORITATIVE`
+- Supported claim: 船岡山 has a symbolic / directional relation to 平安京 as a
+  northern reference / protective landscape.
+- Limitation: no accepted source establishes that the Honden was built east-facing
+  toward a specific symbolic target.
+
+---
+
+## 6. Normalized 15-Cell Result Matrix
+
+One normalized decision per shrine × layer.
+
+| # | Shrine | Layer | Status | Normalized basis |
+| ---: | --- | --- | --- | --- |
+| 01 | 日光東照宮 | `PHYSICAL_ORIENTATION` | `CONFIRMED` | shrine / principal site recorded as south-facing |
+| 02 | 日光東照宮 | `RITUAL_AXIS` | `CONFIRMED` | 拝殿 → 石の間 → 本殿 ritual / architectural function documented |
+| 03 | 日光東照宮 | `SYMBOLIC_ORIENTATION` | `NOT_DETERMINED` | no accepted source establishes a Toshogu symbolic target such as 江戸 |
+| 04 | 伏見稲荷大社 | `PHYSICAL_ORIENTATION` | `NOT_DETERMINED` | precinct WEST is confirmed, Honden cardinal orientation is not directly established |
+| 05 | 伏見稲荷大社 | `RITUAL_AXIS` | `CONFIRMED` | 奥社奉拝所 → 稲荷山三ヶ峰 documented as 遥拝 relation |
+| 06 | 伏見稲荷大社 | `SYMBOLIC_ORIENTATION` | `CONFIRMED` | explicit ritual target = 稲荷山三ヶ峰 |
+| 07 | 宇佐神宮 | `PHYSICAL_ORIENTATION` | `CONFIRMED` | three Honden explicitly south-facing |
+| 08 | 宇佐神宮 | `RITUAL_AXIS` | `CONFIRMED` | worship side / 南中楼門 relation to principal Honden documented |
+| 09 | 宇佐神宮 | `SYMBOLIC_ORIENTATION` | `NOT_DETERMINED` | 御許山 relationship does not prove orientation toward 御許山 |
+| 10 | 春日大社 | `PHYSICAL_ORIENTATION` | `CONFIRMED` | scholarly architectural evidence supports south-facing Honden |
+| 11 | 春日大社 | `RITUAL_AXIS` | `CONFIRMED` | 御蓋山浮雲峰遙拝所 → 浮雲峰 documented |
+| 12 | 春日大社 | `SYMBOLIC_ORIENTATION` | `CONFIRMED` | explicit worship target = 御蓋山頂 浮雲峰 |
+| 13 | 建勲神社 | `PHYSICAL_ORIENTATION` | `CONFIRMED` | Honden explicitly east-facing |
+| 14 | 建勲神社 | `RITUAL_AXIS` | `CONFIRMED` | Haiden / Shinmon worship relation to Honden documented |
+| 15 | 建勲神社 | `SYMBOLIC_ORIENTATION` | `NOT_DETERMINED` | symbolic geography exists, Honden symbolic target does not |
+
+### 6.1 Fushimi normalization rule
+
+The evidence ledger contains both:
+
+```text
+PRECINCT_FRONT = WEST (CONFIRMED)
+HONDEN_CARDINAL_ORIENTATION = NOT_DETERMINED
+```
+
+The pilot matrix asks whether the relevant shrine building / sanctuary orientation is
+established.
+
+Therefore the single normalized Fushimi `PHYSICAL_ORIENTATION` cell is
+`NOT_DETERMINED`.
+
+No new `PARTIAL` status is introduced.
+
+---
+
+## 7. Rates
+
+### 7.1 PHYSICAL_ORIENTATION
+
+```text
+CONFIRMED      = 4 / 5 = 80.0 %
+NOT_DETERMINED = 1 / 5 = 20.0 %
+HOLD           = 0 / 5 =  0.0 %
+```
+
+### 7.2 RITUAL_AXIS
+
+```text
+CONFIRMED      = 5 / 5 = 100.0 %
+NOT_DETERMINED = 0 / 5 =   0.0 %
+HOLD           = 0 / 5 =   0.0 %
+```
+
+### 7.3 SYMBOLIC_ORIENTATION
+
+```text
+CONFIRMED      = 2 / 5 = 40.0 %
+NOT_DETERMINED = 3 / 5 = 60.0 %
+HOLD           = 0 / 5 =  0.0 %
+```
+
+### 7.4 Overall
 
 ```text
 TOTAL_CELLS                      = 15
-OVERALL_EVIDENCE_ACQUISITION_RATE = 0 / 15 =   0.0 %
-OVERALL_NOT_DETERMINED_RATE       = 15 / 15 = 100.0 %
-OVERALL_HOLD_RATE                 = 0 / 15 =   0.0 %
+OVERALL_EVIDENCE_ACQUISITION_RATE = 11 / 15 = 73.3 %
+OVERALL_NOT_DETERMINED_RATE       =  4 / 15 = 26.7 %
+OVERALL_HOLD_RATE                 =  0 / 15 =  0.0 %
 ```
 
-`NOT_DETERMINED` and `HOLD` are reported separately and are not combined at any point.
+`NOT_DETERMINED` and `HOLD` are not combined.
 
-### 8.3 Rate interpretation warning
+---
 
-These rates measure **this run's retrieval outcome**, not the availability or quality
-of Japanese cultural-property orientation evidence. A `0.0 %` acquisition rate produced
-by a uniform network denial carries no information about the sources themselves, and
-must not be cited as evidence that the sources are inadequate.
+## 8. Evidence Findings and Boundary Rules
 
-## 9. Evidence-Source Gaps
+### 8.1 Structure scope must be explicit
 
-### 9.1 Gap-1 — Environmental (blocking, and the only gap actually measured)
+`orientation_subject` is mandatory.
+
+A statement about:
+
+- 境内;
+- 本殿;
+- 拝殿;
+- 楼門;
+- 遥拝所;
+- mountain / sacred place;
+
+must not be transferred across subjects without evidence.
+
+Fushimi Inari demonstrates this directly:
 
 ```text
-GAP_1 = EGRESS_POLICY_DENIES_ALL_PRIMARY_AND_CORROBORATION_HOSTS
-SEVERITY = BLOCKING
-SCOPE    = all 5 shrines, all 3 layers, all 5 primary tiers, corroboration tier
+precinct front = WEST
+does not automatically mean
+Honden front = WEST
 ```
 
-21 of 22 hosts denied at `CONNECT` (§3.2). This gap is not a property of the evidence
-domain and cannot be closed by changing the evidence policy.
+### 8.2 Physical orientation and ritual direction are separate
 
-### 9.2 Gap-2 — Methodological (identified from lead titles, unmeasured)
+A building may physically face one direction while ritual attention is directed
+elsewhere.
+
+The pilot therefore requires separate storage for:
 
 ```text
-GAP_2 = PRECINCT_VS_BUILDING_SCOPE_AMBIGUITY
+PHYSICAL_ORIENTATION
+RITUAL_AXIS
+SYMBOLIC_ORIENTATION
 ```
 
-Cultural-property records are registered per structure (本殿, 楼門, 権殿, 外拝殿,
-祝詞舎, 祭器庫) and separately per 境内. A statement attached to a 境内 record does not
-transfer to a 本殿 record. `orientation_subject` exists in the schema precisely to carry
-this, and would need to be populated from the record's own scope on every cell. This is
-recorded as a design observation from the lead structure; it was not tested, because no
-record was read.
+### 8.3 Related sacred place is not automatically symbolic orientation
 
-### 9.3 Gap-3 — Structural (identified, unmeasured)
+Usa Jingu demonstrates:
 
 ```text
-GAP_3 = LAYER_B_AND_C_SOURCE_CLASS_MAY_DIFFER_FROM_LAYER_A
+religious / historical relation to 御許山 = supported
+Honden intentionally oriented toward 御許山 = not established
 ```
 
-Layer A is plausibly served by P-1 cultural-property records, whose standard fields
-(`構造及び形式等`) are the natural home of 東面 / 南面 wording. Layers B and C are not
-obviously served by the same records: a worship-sequence statement or a named
-intentional target is more likely to sit in P-3 repair reports, P-4 architectural
-research, or P-5 shrine material. If so, a per-layer source hierarchy would be needed
-rather than one shared hierarchy. This is a hypothesis generated by the pilot's design,
-not a result of it.
+### 8.4 Explicit 遥拝 is strong ritual / symbolic evidence
+
+Fushimi Inari and Kasuga Taisha demonstrate that shrine-official descriptions of
+`遥拝` can support:
+
+```text
+RITUAL_AXIS = CONFIRMED
+SYMBOLIC_ORIENTATION = CONFIRMED
+```
+
+without requiring an invented compass degree.
+
+### 8.5 Symbolic spatial relation is not automatically construction intent
+
+Kasuga Taisha documents a broader symbolic spatial relation involving 浮雲峰, the
+Honden, and 平城京大極殿.
+
+The pilot preserves that relation while refusing to convert it into:
+
+```text
+"The Honden was built south-facing in order to face the Daigokuden."
+```
+
+without an explicit source.
+
+### 8.6 Directional relation may not be reversed
+
+The documented:
+
+```text
+大猷院 -> 東照宮
+```
+
+relationship may not be inverted into:
+
+```text
+東照宮 -> 江戸
+or
+東照宮 -> 大猷院
+```
+
+without independent evidence.
+
+---
+
+## 9. Reproducibility Assessment
+
+### 9.1 Physical evidence
+
+```text
+4 / 5 confirmed
+```
+
+Physical orientation was reproducibly obtainable for most pilot shrines.
+
+The one normalized non-confirmed case is not a source contradiction.
+It is a scope-discipline case: Fushimi precinct orientation is known while the Honden
+orientation remains unestablished under the accepted evidence.
+
+### 9.2 Ritual evidence
+
+```text
+5 / 5 confirmed
+```
+
+The sample shows that ritual-axis evidence can often be obtained from:
+
+- explicit shrine-official worship descriptions;
+- documented role relationships among Honden, Haiden, gates, and worship spaces;
+- explicit 遥拝 descriptions.
+
+### 9.3 Symbolic evidence
+
+```text
+2 / 5 confirmed
+3 / 5 not determined
+```
+
+This lower rate is expected under the evidence rules.
+
+The pipeline is not designed to maximize symbolic coverage.
+It is designed to reject unsupported symbolic claims.
+
+### 9.4 HOLD behavior
+
+```text
+HOLD = 0 / 15
+```
+
+No accepted-source conflict was found in this pilot.
+
+The absence of HOLD does not mean HOLD is unnecessary.
+It means the pilot produced source insufficiency cases, not accepted-source conflicts.
+
+---
 
 ## 10. Pilot Decision
 
-### 10.1 Decision
+The original deterministic decision criteria were:
+
+### `VIABLE`
+
+- PHYSICAL orientation is reproducibly obtainable for most Pilot Shrines; and
+- source hierarchy / STOP rules operate deterministically.
+
+### `PARTIALLY_VIABLE`
+
+- PHYSICAL evidence is usable;
+- RITUAL / SYMBOLIC have substantial source gaps; and
+- the system correctly returns `NOT_DETERMINED` instead of guessing.
+
+### `NOT_YET_VIABLE`
+
+- even PHYSICAL orientation cannot be reproduced reliably from accepted sources; or
+- evidence classification is non-deterministic.
+
+Observed:
 
 ```text
-ORIENTATION_EVIDENCE_PIPELINE = NOT_DETERMINED_IN_THIS_ENVIRONMENT
+PHYSICAL confirmed = 4 / 5
+RITUAL confirmed   = 5 / 5
+classification rules behaved deterministically
+unsupported symbolic claims were refused
+missing evidence remained NOT_DETERMINED
 ```
 
-This value is **not** one of `VIABLE` / `PARTIALLY_VIABLE` / `NOT_YET_VIABLE`. It is
-recorded deliberately, because each of the three specified values would assert
-something this run did not test. The brief requires the decision to follow the
-definitions deterministically rather than a subjective score; applied honestly, the
-definitions do not select any of the three.
-
-### 10.2 Why each specified value is unsupportable
+Therefore:
 
 ```text
-VIABLE
-  requires: PHYSICAL orientation reproducibly obtainable for most Pilot Shrines
-  observed: obtainable for 0 of 5
-  -> unsupportable
-
-PARTIALLY_VIABLE
-  requires: PHYSICAL evidence usable, RITUAL / SYMBOLIC layers gapped,
-            system correctly returning NOT_DETERMINED instead of guessing
-  observed: the second and third conditions hold — the pilot returned
-            NOT_DETERMINED on all 15 cells and declined every available
-            shortcut (§3.3, §4.2, §5) — but the first condition fails
-            outright, since PHYSICAL evidence was never usable
-  -> unsupportable as stated; the pilot passed the discipline half of this
-     definition and failed the evidence half for a reason external to evidence
-
-NOT_YET_VIABLE
-  requires: PHYSICAL orientation cannot be reproduced reliably FROM ACCEPTED
-            SOURCES, or evidence classification is non-deterministic
-  observed: no accepted source was consulted, so nothing was learned about
-            reproducing orientation from accepted sources; and classification
-            behaved deterministically throughout
-  -> unsupportable, and actively misleading: it would attribute to the
-     sources a failure that occurred in the network layer
+ORIENTATION_EVIDENCE_PIPELINE = VIABLE
 ```
 
-Selecting `NOT_YET_VIABLE` is the specific error this section exists to prevent. It is
-the value a careless run would record, and it would wrongly retire an approach that has
-not yet been tested.
+This decision concerns evidence acquisition and classification only.
 
-### 10.3 What the run did establish
+It does not decide whether orientation data must become a Production model field.
 
-Two things were genuinely tested, because they do not depend on network access.
+---
+
+## 11. Contract Drafting Inputs
+
+The pilot supports drafting a formal Orientation Evidence Contract.
 
 ```text
-FINDING_1 = CLASSIFICATION_DETERMINISM_HELD
+ORIENTATION_EVIDENCE_CONTRACT_SUPPORTABLE = YES
+FORMAL_CONTRACT_CREATED                    = NO
 ```
 
-Every cell was classified by rule, and the rules produced the same answer every time.
-`HOLD` was never reached by missing evidence (§6). `NOT_DETERMINED` was never upgraded.
-The `E4`-exclusion rule for layers B and C was never overridden. The
-`GEOMETRY → DIRECTION`, `DOCUMENT → MEANING` separation held on all five layer-C cells.
+At minimum, a future Contract should define:
+
+1. `orientation_subject` as mandatory.
+2. Independent `PHYSICAL_ORIENTATION`, `RITUAL_AXIS`, and
+   `SYMBOLIC_ORIENTATION` layers.
+3. Domain-specific source authority.
+4. `CONFIRMED / NOT_DETERMINED / HOLD_ORIENTATION_REVIEW`.
+5. A prohibition on converting cardinal prose into invented exact degree values.
+6. A prohibition on inferring symbolic intent from geometry.
+7. A prohibition on transferring precinct orientation to a building without evidence.
+8. A prohibition on transferring a sacred-place relationship into an orientation claim.
+9. A prohibition on reversing directional relationships.
+10. Separate handling of a confirmed symbolic spatial relation versus documented
+    construction intent.
+
+---
+
+## 12. Required Statements
 
 ```text
-FINDING_2 = REFUSAL_DISCIPLINE_HELD_UNDER_PRESSURE
+1. No Production data was changed.
+2. No Base Seed data was changed.
+3. No Shrine model was changed.
+4. No Position Contract was changed.
+5. No Recommendation / Compass / Route behavior was changed.
+6. No formal Orientation Evidence Contract was created.
+7. No symbolic meaning was inferred from geometry.
+8. Missing evidence was not classified as HOLD.
+9. No exact degree value was invented from cardinal prose.
+10. The verified Mother Ship evidence packet supersedes the initial blocked 0/15 run
+    for pilot assessment.
 ```
 
-Four separate shortcuts were available and each was declined: adopting search-summary
-text as an `E1` citation (§3.3); adopting the brief's own reported wording for 建勲神社,
-宇佐神宮 and 伏見稲荷大社 as though verified (§4.1, §4.3, §4.5); reversing the
-Taiyuin→Toshogu relationship into a Toshogu orientation (§4.2); and deriving cardinal
-values from precinct geometry (§5).
+---
 
-The brief states that the ability to correctly return `NOT_DETERMINED` is part of the
-Pilot success criteria. On that criterion the run succeeded — but a 100 %
-`NOT_DETERMINED` rate obtained without reading any source is a weak test of it, since
-refusing every cell is also what a broken pipeline would do. The evidence half of the
-pilot remains untested.
-
-### 10.4 Requirement to complete the pilot as specified
-
-Either of the following is sufficient.
+## 13. Final Summary
 
 ```text
-OPTION_1  Egress allowance for the §3.2 hosts, at minimum:
-            kunishitei.bunka.go.jp
-            online.bunka.go.jp
-            bunka.nii.ac.jp
-            inari.jp / www.toshogu.jp / www.usajinguu.com
-            www.kasugataisha.or.jp / kenkun-jinja.org
-          The 25 leads in §4 are already located; the pilot resumes at retrieval.
+PILOT_SHRINES = 5
+LAYER_DECISIONS = 15
 
-OPTION_2  A Mother Ship evidence packet carrying, per source, the verbatim
-          record text (構造及び形式等 / 解説文), the source URL, and the retrieval
-          date — the same pattern used for Production evidence in the
-          position-audit series.
+PHYSICAL_CONFIRMED = 4 / 5 = 80.0 %
+RITUAL_CONFIRMED   = 5 / 5 = 100.0 %
+SYMBOLIC_CONFIRMED = 2 / 5 = 40.0 %
+
+OVERALL_CONFIRMED      = 11 / 15 = 73.3 %
+OVERALL_NOT_DETERMINED =  4 / 15 = 26.7 %
+OVERALL_HOLD           =  0 / 15 =  0.0 %
+
+ORIENTATION_EVIDENCE_PIPELINE = VIABLE
+ORIENTATION_EVIDENCE_CONTRACT_SUPPORTABLE = YES
+FORMAL_CONTRACT_CREATED = NO
 ```
 
-Under either option the 15 cells are re-decided from the documents. Nothing in this run
-is carried forward as a finding about the sources.
+The pilot's main result is not that every orientation field can be filled.
 
-## 11. Reproducibility Assessment
-
-```text
-RETRIEVAL_REPRODUCIBILITY   = NOT_ASSESSED   (0 documents retrieved)
-CLASSIFICATION_REPRODUCIBILITY = HIGH
-```
-
-Classification reproducibility is assessed as high on the basis of §10.3 `FINDING_1`:
-the rule set produced one determinate answer per cell with no discretionary step, and
-the decision path for every cell is recorded in §6 against a named lead inventory in
-§4. A second operator applying §2 to the same inputs would reach the same 15 values.
-
-That assessment covers the decision procedure only. The acquisition procedure — locate,
-retrieve, extract, cite — was exercised only as far as *locate*, which succeeded for all
-five shrines (25 leads, every shrine represented in tiers P-1 and P-5). Whether
-*retrieve → extract → cite* is reproducible is the open half.
-
-## 12. Is a formal Orientation Evidence Contract supportable?
-
-```text
-ORIENTATION_EVIDENCE_CONTRACT_SUPPORTABLE = NOT_YET_ASSESSABLE
-```
-
-A Contract requires evidence that its rules can be satisfied in practice. This run
-produced zero satisfied cells, so it supplies no such evidence — in either direction.
-
-What the run does support, recorded for whoever drafts the Contract later:
-
-1. **The three-layer separation is operationally meaningful.** It forced three distinct
-   questions on each shrine and prevented a layer-A statement from silently answering
-   layer B or C. §4.3 (宇佐神宮) is the clearest instance: the reported record wording
-   plausibly settles A while leaving B open, and the split is what makes that visible.
-2. **`E4`-exclusion for layers B and C is load-bearing.** Without it, map and aerial
-   corroboration would have been the only reachable source class in this run, and would
-   have produced symbolic conclusions from geometry alone.
-3. **A retrieval-status qualifier is needed** (§2.7). Without it a Contract cannot
-   distinguish "read and insufficient" from "never opened", and both collapse into
-   `NOT_DETERMINED` — which is exactly the collapse that would have turned this run into
-   a false `NOT_YET_VIABLE`.
-4. **`orientation_subject` must be mandatory, not optional** (§9.2), because
-   cultural-property records are registered per structure and per precinct, and the two
-   scopes do not transfer.
-
-None of the four is a Contract clause. They are inputs to drafting one, and drafting is
-out of scope for this task.
-
-## 13. Validation
-
-```text
-Pilot Shrines                                    = 5          ✓ exactly 5
-Layer decisions                                  = 15         ✓ exactly 15
-CONFIRMED cells without a cited accepted source  = 0          ✓ (0 CONFIRMED cells exist)
-Symbolic meaning inferred from geometry          = none       ✓
-Missing evidence classified as HOLD              = none       ✓ (HOLD = 0)
-Rates recompute from §6                          = 0/15, 15/15, 0/15  ✓
-NOT_DETERMINED combined with HOLD                = never      ✓
-Production / Base Seed / Shrine model change     = NONE       ✓
-Existing Contract change                         = NONE       ✓
-Recommendation / Compass logic change            = NONE       ✓
-Orientation Evidence Contract created            = NO         ✓
-Repository diff                                  = this document only
-```
-
-## 14. STOP
-
-```text
-EVIDENCE_ACQUISITION          = BLOCKED (21/22 hosts, 403 at CONNECT)
-LAYER_DECISIONS               = 15 / 15 recorded
-CONFIRMED_CELLS               = 0
-PIPELINE_DECISION             = NOT_DETERMINED_IN_THIS_ENVIRONMENT
-CONTRACT_SUPPORTABILITY       = NOT_YET_ASSESSABLE
-CONTRACT_CREATED              = NO
-```
-
-Next action requires a Mother Ship decision between `OPTION_1` (egress allowance) and
-`OPTION_2` (evidence packet) in §10.4.
+The result is that supported orientation claims can be acquired with traceable
+evidence, while unsupported claims can be stopped reproducibly before they enter the
+canonical knowledge layer.
