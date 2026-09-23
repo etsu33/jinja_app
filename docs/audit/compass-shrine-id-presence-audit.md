@@ -783,3 +783,162 @@ NEXT       = R-4 (OpenAPI serializer required / non-null)
 ```
 
 Next action requires a Mother Ship instruction naming `R-4`.
+
+---
+
+## 12. R-4 Implementation Record
+
+### 12.1 Status
+
+```text
+R-4_STATUS = IMPLEMENTED
+
+OPENAPI_REQUIRES_SHRINE_ID    = YES
+OPENAPI_ALLOWS_NULL_SHRINE_ID = NO
+```
+
+```text
+PUBLIC_PROJECTION_REQUIRES_SHRINE_ID_ON_SUCCESS = YES   (R-3 / §11)
+HTTP_REGRESSION_TEST_EXISTS                     = YES   (R-1 / #2951)
+
+FRONTEND_TYPE_REQUIRES_SHRINE_ID = NO
+F1_READY                         = NO
+```
+
+- Recorded at: `2026-09-23`
+- Type: **schema / documentation semantics only**
+- Runtime behavior change: `NONE`
+- §1–§11 は当時の記録として書き換えていない
+
+### 12.2 Serializer change
+
+`backend/temples/api/serializers/compass.py` — `CompassRecommendationItemSerializer`:
+
+```text
+before:  shrine_id = serializers.IntegerField(required=False, allow_null=True)
+after :  shrine_id = serializers.IntegerField(
+             required=True,
+             allow_null=False,
+             help_text="... 必須かつ non-null（R-2 / R-3 / R-4）...",
+         )
+```
+
+`required` / `allow_null` は DRF の既定値に依存させず、契約としてコード上へ明示した。
+クラス docstring も更新し、「recommendation_instance_id 以外は required=False」という
+R-4 以前の記述を、identity と transport metadata を例外とする記述へ置き換えた。
+
+`id` は変更していない:
+
+```text
+id = serializers.IntegerField(required=False, allow_null=True)   (unchanged)
+
+id = COMPATIBILITY_FIELD
+id = NOT_IDENTITY_AUTHORITY
+```
+
+### 12.3 Item-level contract, not state-level branching
+
+State 別の serializer 分岐は導入していない。生成schemaが要求しなかったため。
+
+```text
+契約 = 「Monthly public response に recommendation item が存在するなら、
+         その item の shrine_id は必須かつ non-null」
+```
+
+非success state は `recommendations` が空listのため、この item 契約は空振りする。
+`CompassRecommendationsResponseSerializer` は従来どおり success / 非success の
+両方を記述し続ける。
+
+### 12.4 Generated schema (evidence)
+
+drf-spectacular が実際に生成した `CompassRecommendationItem` component:
+
+```json
+{
+  "required": ["recommendation_instance_id", "shrine_id"],
+  "properties": {
+    "shrine_id": { "type": "integer", "description": "..." },
+    "id":        { "type": "integer", "nullable": true }
+  }
+}
+```
+
+```text
+shrine_id in required     = YES
+shrine_id nullable        = 記述なし（= non-null）
+id in required            = NO        （optional のまま）
+id nullable               = true      （互換fieldとして維持）
+```
+
+### 12.5 Schema test infrastructure
+
+新しいschema-testing frameworkは導入していない。既存の `/api/schema/`
+（`reverse("schema")`, drf-spectacular）を利用しており、これは
+`temples/tests/test_api_style.py` が既に使っている経路である。
+
+新規 file: `backend/temples/tests/api/test_compass_openapi_identity_contract.py`
+
+```text
+A  test_serializer_marks_shrine_id_required_and_non_null
+      field.required is True / field.allow_null is False
+B  test_serializer_keeps_id_optional_as_compatibility_field
+      `id` は存在し、required=False / allow_null=True
+   test_serializer_only_shrine_id_became_required_among_payload_fields
+      required集合 == {"shrine_id", "recommendation_instance_id"}
+      （R-4 の影響範囲が shrine_id だけであることの negative guard）
+C  test_generated_schema_lists_shrine_id_as_required
+   test_generated_schema_does_not_describe_shrine_id_as_nullable
+      OpenAPI 3.0 の nullable と 3.1 の type:[...,"null"] の両形式を検査
+   test_generated_schema_keeps_id_optional
+```
+
+### 12.6 Runtime unchanged
+
+```text
+compass_public_projection.py  未変更
+api_views_compass.py          未変更
+TypeScript                    未変更
+```
+
+serializer は OpenAPI 記述専用であり、レスポンスを validate しない
+（`api_views_compass.py`「serializerはOpenAPI記述専用」）。したがって本変更は
+runtime の挙動を一切変えない。R-3 の fail-closed 挙動と R-1 の DB-backed 正常系は
+そのまま通過することを回帰で確認済み（§12.7）。
+
+### 12.7 Sequence
+
+```text
+R-1  DB-backed HTTP regression            DONE        (#2951)
+R-2  Contract decision                    RESOLVED    (#2952, §10)
+R-3  Public Projection enforcement        IMPLEMENTED (#2953, §11)
+R-4  OpenAPI serializer required/non-null IMPLEMENTED (this section)
+R-5  Frontend type non-optional           NOT_STARTED  types.ts L85
+F-1  Remove Compass `id` fallback         BLOCKED      CompassRecommendationsSection.tsx L58
+```
+
+### 12.8 Required statements for R-4
+
+```text
+1.  Public Projection behavior was NOT modified.
+2.  Compass View runtime behavior was NOT modified.
+3.  No Recommendation / Ranking change.
+4.  TypeScript was NOT modified.
+5.  The Compass navigation fallback was NOT removed.
+6.  `id` was NOT removed and was NOT made required.
+7.  No DB / schema / migration change.
+8.  No Canonical / Navigation Anchor change.
+9.  R-5 / F-1 / F-3 / F-4 / F-5 / F-6 were NOT started.
+10. No new schema-testing framework was introduced.
+```
+
+### 12.9 STOP
+
+```text
+R-4_STATUS = IMPLEMENTED
+OPENAPI_REQUIRES_SHRINE_ID       = YES
+FRONTEND_TYPE_REQUIRES_SHRINE_ID = NO
+F1_READY                         = NO
+NEXT = R-5 (frontend type non-optional)
+```
+
+Next action requires a Mother Ship instruction naming `R-5`.
