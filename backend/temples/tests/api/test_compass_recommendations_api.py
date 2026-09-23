@@ -654,3 +654,86 @@ def test_unexpected_exception_returns_500_error_state(client):
 
     assert r.status_code == 500
     assert r.json() == {"state": "error"}
+
+
+# ---------------------------------------------------------------------------
+# R-1: HTTP-boundary Shrine identity regression
+# docs/audit/compass-shrine-id-presence-audit.md
+#
+# F-2 が記録したとおり、shrine_id は producer 側では保証されている一方、
+# HTTP 境界を固定する regression test が存在しなかった。projection は
+# copy-if-present、serializer は required=False かつ OpenAPI 記述専用、
+# frontend type も optional のため、「実際に出ている」ことを押さえていたのは
+# 手組み stub 相手の test だけだった。
+#
+# 以下は orchestrator / projection / View を一切 mock せず、実 DB の Shrine 行
+# から HTTP レスポンスまでを通して shrine_id の存在と同一性を固定する。
+#
+# 本 test が確立するのは HTTP_REGRESSION_TEST_EXISTS = YES のみ。
+# OPENAPI_REQUIRES_SHRINE_ID / FRONTEND_TYPE_REQUIRES_SHRINE_ID / F1_READY は
+# いずれも NO のまま（公開契約は本 PR では変更しない）。
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_recommendation_success_items_carry_persisted_shrine_id(client, shrine_factory):
+    """R-1: recommendation_success の全itemが永続化Shrine.id由来のshrine_idを持つ。
+
+    orchestrator / projection / View はmockしない。期待値はcandidate payload
+    ではなくDBから読み直したPKで、shrine_idがrank/index/合成値へ退化したり
+    欠落したりした時点で落ちる。
+    """
+
+    # 2026-09-15 + 1984-05-15 -> 北西（test_kyusei_direction.py 参照）。
+    # 同方位・60km stage内に複数置き、単一itemだけの検証にならないようにする。
+    expected = {
+        "北西の神社": shrine_factory(
+            name="北西の神社", latitude=35.25, longitude=134.75, goriyaku="仕事運"
+        ),
+        "北西の別宮": shrine_factory(
+            name="北西の別宮", latitude=35.20, longitude=134.80, goriyaku="仕事運"
+        ),
+        "北西の奥社": shrine_factory(
+            name="北西の奥社", latitude=35.30, longitude=134.70, goriyaku="仕事運"
+        ),
+    }
+
+    body = _post_valid(client).json()
+
+    assert body["state"] == "recommendation_success"
+
+    recommendations = body["recommendations"]
+    assert recommendations, "recommendation_success なのに recommendations が空"
+
+    persisted_ids = set(Shrine.objects.values_list("id", flat=True))
+
+    for index, rec in enumerate(recommendations):
+        assert "shrine_id" in rec, (
+            f"recommendations[{index}] に shrine_id が無い: keys={sorted(rec)}"
+        )
+        assert rec["shrine_id"] is not None, (
+            f"recommendations[{index}] の shrine_id が None: name={rec.get('name')!r}"
+        )
+        assert rec["shrine_id"] in persisted_ids, (
+            f"recommendations[{index}] の shrine_id={rec['shrine_id']!r} が"
+            f"永続化Shrine行に解決しない (persisted={sorted(persisted_ids)})"
+        )
+
+        # 有効なPKではあるが別のShrineを指す退化（rank/index/取り違え）も捕捉する。
+        resolved = Shrine.objects.filter(pk=rec["shrine_id"]).first()
+        assert resolved is not None
+        assert resolved.name_jp == rec["name"], (
+            f"recommendations[{index}] の shrine_id={rec['shrine_id']!r} は "
+            f"{resolved.name_jp!r} を指すが item の name は {rec['name']!r}"
+        )
+
+    # fixture Shrineのうちレスポンスに載ったものは、必ず自身の永続化PKを持つ。
+    returned = {rec["name"]: rec["shrine_id"] for rec in recommendations}
+    matched = {name: sid for name, sid in returned.items() if name in expected}
+    assert matched, (
+        f"fixture Shrineが1件もレスポンスに現れていない: returned={sorted(returned)}"
+    )
+    for name, shrine_id in matched.items():
+        assert shrine_id == expected[name].id, (
+            f"{name}: shrine_id={shrine_id!r} != 永続化Shrine.id={expected[name].id!r}"
+        )
