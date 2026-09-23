@@ -1119,3 +1119,181 @@ NEXT = F-1 (remove the Compass navigation `id` fallback)
 ```
 
 Next action requires a Mother Ship instruction naming `F-1`.
+
+---
+
+## 14. F-1 Implementation Record
+
+### 14.1 Status
+
+```text
+F1_STATUS = IMPLEMENTED
+
+COMPASS_NAVIGATION_USES_SHRINE_ID_ONLY = YES
+COMPASS_ANALYTICS_USES_SHRINE_ID_ONLY  = YES
+COMPASS_ID_FALLBACK                    = REMOVED
+```
+
+```text
+id = COMPATIBILITY_FIELD
+id = NOT_IDENTITY_AUTHORITY
+id = STILL_PRESENT_IN_PUBLIC_CONTRACT
+```
+
+```text
+F1_PREREQUISITES_SATISFIED = YES
+  PUBLIC_PROJECTION_REQUIRES_SHRINE_ID_ON_SUCCESS = YES  (R-3 / §11)
+  OPENAPI_REQUIRES_SHRINE_ID                      = YES  (R-4 / §12)
+  FRONTEND_TYPE_REQUIRES_SHRINE_ID                = YES  (R-5 / §13)
+```
+
+- Recorded at: `2026-09-23`
+- Scope: **Compass Monthly only**
+- §1–§13 は当時の記録として書き換えていない
+
+### 14.2 Fallback sites removed
+
+`apps/web/src/features/compass/components/CompassRecommendationsSection.tsx`
+
+```text
+BEFORE
+  L35  const shrineId = rec.shrine_id ?? rec.id;   (card_view analytics, useEffect 内)
+  L58  const shrineId = rec.shrine_id ?? rec.id;   (render / detail navigation / click analytics)
+
+AFTER
+  L38  const shrineId = rec.shrine_id;
+  L62  const shrineId = rec.shrine_id;
+```
+
+Compass runtime における `rec.shrine_id ?? rec.id` 相当の式:
+
+```text
+before = 2 occurrences
+after  = 0 occurrences
+  (apps/web/src/features/compass/ 配下、__tests__ を除く .ts / .tsx)
+```
+
+### 14.3 Defensive guards unchanged
+
+```text
+L39  if (shrineId == null) return;      (unchanged)
+L86  shrineId != null                   (unchanged)
+L95  shrineId != null                   (unchanged)
+```
+
+R-5 の型により `shrine_id` は `number | string`（non-null）だが、これらの guard は
+dead-code cleanup の対象として扱わず、そのまま残した。F-1 の目的は identity
+authority の除去であって UI refactoring ではない。
+
+### 14.4 Divergent-value regression
+
+`apps/web/src/features/compass/components/__tests__/CompassRecommendationsSection.test.tsx`
+
+意図的に食い違う1件（`shrine_id: 42` / `id: 999`）を渡し、Compass の identity
+消費者すべてが `shrine_id` を使うことを固定する。
+
+```text
+A  detail href                     -> /shrines/42?ctx=compass&...   かつ "999" を含まない
+B  card_view analytics             -> shrineId: 42
+C  shrine_detail_transition        -> shrineId: 42
+D  trackCardEvent / trackSearchEvent の全呼び出しで shrineId !== 999
+```
+
+### 14.5 What this regression does and does not catch
+
+正確に記録する。
+
+```text
+CATCHES     identity authority の反転
+              const shrineId = rec.id ?? rec.shrine_id;
+              -> FAIL: href が /shrines/999 になり assertion が落ちる（実測）
+
+DOES NOT CATCH  fallback 式の単なる復活
+              const shrineId = rec.shrine_id ?? rec.id;
+              -> PASS のまま（実測）
+              `??` は shrine_id が non-null なら分岐しないため、
+              divergent fixture では挙動差が出ない
+```
+
+`?? rec.id` の分岐そのものを不要にしているのは **R-5 の型**である。
+`shrine_id: number | string`（required / non-null）により、fallback 枝は型上
+到達不能になる。したがって現在の保証は2層:
+
+```text
+R-5 型      : shrine_id の欠落・null を型で排除する
+F-1 本regression : `id` が identity として優先される退行を検出する
+```
+
+この分担を明記しておかないと、本 test 単独で fallback 復活まで防げると誤読される。
+
+### 14.6 Preserved
+
+```text
+CompassRecommendation["id"]                       未変更（optional / nullable）
+compass_public_projection.py ITEM_FIELDS の "id"  未変更
+CompassRecommendationItemSerializer の id         未変更
+API payload の id                                  未変更
+```
+
+### 14.7 Scope discipline
+
+```text
+変更した     : CompassRecommendationsSection.tsx（Compass Monthly のみ）
+変更しない   : Concierge identity fallbacks
+               Consultation History
+               Places / Favorites identity behavior
+               repository-wide な `id` fallback cleanup
+               Recommendation / Ranking / direction logic
+```
+
+`docs/audit/shrine-identity-compass-concierge-contract.md` §4.1 / §4.4 が列挙した
+その他の fallback 箇所は手つかずであり、同書 §7 の全体分類
+`PARTIALLY_SHARED` は変わらない（同書 §9 に現在状態を追記した）。
+
+### 14.8 Validation
+
+```text
+pnpm -C apps/web typecheck                          PASS
+CompassRecommendationsSection.test.tsx              11 tests passed
+vitest run src/features/compass                     13 files / 111 tests passed
+git diff --check                                    PASS
+backend files changed                               0
+```
+
+### 14.9 Sequence complete
+
+```text
+R-1  DB-backed HTTP regression            DONE        (#2951)
+R-2  Contract decision                    RESOLVED    (#2952, §10)
+R-3  Public Projection enforcement        IMPLEMENTED (#2953, §11)
+R-4  OpenAPI serializer required/non-null IMPLEMENTED (#2954, §12)
+R-5  Frontend type non-optional           IMPLEMENTED (#2955, §13)
+F-1  Remove Compass `id` fallback         IMPLEMENTED (this section)
+```
+
+### 14.10 Required statements for F-1
+
+```text
+1.  `id` was NOT removed from the type, Public Projection, OpenAPI, or payload.
+2.  Backend was NOT changed.
+3.  OpenAPI was NOT changed.
+4.  Public Projection was NOT changed.
+5.  Recommendation / Ranking / direction logic were NOT changed.
+6.  Concierge fallback behavior was NOT touched.
+7.  Consultation History / Places / Favorites were NOT touched.
+8.  No repository-wide `id` fallback cleanup was performed.
+9.  Defensive guards were NOT broadened or removed.
+10. F-3 / F-4 / F-5 / F-6 were NOT started.
+```
+
+### 14.11 STOP
+
+```text
+F1_STATUS                  = IMPLEMENTED
+F1_PREREQUISITES_SATISFIED = YES
+COMPASS_ID_FALLBACK        = REMOVED
+```
+
+Compass Monthly の shrine_id identity chain（R-1 → F-1）はこれで完結する。
+残る follow-up は `docs/audit/shrine-identity-compass-concierge-contract.md` §8 の
+`F-3` / `F-4` / `F-5` / `F-6`。

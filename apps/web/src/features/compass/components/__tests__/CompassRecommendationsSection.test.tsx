@@ -219,4 +219,72 @@ describe("CompassRecommendationsSection", () => {
 
     expect(screen.queryByTestId("recommendation-compact-explanation-only-fact")).not.toBeInTheDocument();
   });
+
+  // -------------------------------------------------------------------------
+  // F-1: `id` は identity authority ではない
+  // docs/audit/compass-shrine-id-presence-audit.md §14
+  //
+  // shrine_id と id が意図的に食い違う候補を1件渡し、Compass の identity
+  // 消費者（navigation / card_view / shrine_detail_transition）が
+  // すべて shrine_id を使い、id を一切使わないことを証明する。
+  //
+  // 両fieldが公開contractに残り続ける以上、`id` が再び identity へ
+  // 昇格しないことを値の乖離で固定する必要がある。
+  // -------------------------------------------------------------------------
+  it("shrine_idとidが食い違う場合、navigation・analyticsともshrine_idのみを使う（idをidentityにしない）", () => {
+    render(
+      <CompassRecommendationsSection
+        recommendationInstanceId="compass01"
+        recommendations={[
+          {
+            shrine_id: 42,
+            // COMPATIBILITY_FIELD。identity authority ではない。
+            id: 999,
+            name: "識別子乖離神社",
+            address: "東京都千代田区",
+          },
+        ]}
+      />,
+    );
+
+    // A. detail href は shrine_id 側を使う。
+    const link = screen.getByText("詳細だけ見る").closest("a");
+    expect(link).toHaveAttribute(
+      "href",
+      "/shrines/42?ctx=compass&recommendation_instance_id=compass01&recommendation_rank=1",
+    );
+    expect(link?.getAttribute("href")).not.toContain("999");
+
+    // B. card_view analytics は shrineId: 42。
+    expect(analyticsMocks.trackCardEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "card_view",
+        source: "compass",
+        shrineId: 42,
+        recommendationRank: 1,
+        recommendationInstanceId: "compass01",
+      }),
+    );
+
+    // C. shrine_detail_transition analytics も shrineId: 42。
+    fireEvent.click(screen.getByText("詳細だけ見る"));
+    expect(analyticsMocks.trackSearchEvent).toHaveBeenCalledWith("shrine_detail_transition", {
+      source: "compass",
+      shrineId: 42,
+      recommendationRank: 1,
+      recommendationInstanceId: "compass01",
+      position: "compact",
+    });
+
+    // D. 999 はいかなる identity 経路にも現れない。
+    const cardCalls = analyticsMocks.trackCardEvent.mock.calls;
+    const searchCalls = analyticsMocks.trackSearchEvent.mock.calls;
+    for (const [payload] of cardCalls) {
+      expect(payload.shrineId).not.toBe(999);
+    }
+    for (const [, payload] of searchCalls) {
+      expect(payload?.shrineId).not.toBe(999);
+    }
+  });
+
 });
