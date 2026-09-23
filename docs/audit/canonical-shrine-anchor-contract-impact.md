@@ -530,33 +530,66 @@ CAVEAT         = at high zoom inside a large precinct the marker would move to a
                  different building; this is a presentation change, not a contract break
 ```
 
-### 8.2 Distance — `INDETERMINATE`
+### 8.2 Distance — `SEMANTICALLY_COMPATIBLE` as PROXIMITY
+
+Current producer / consumer trace is recorded in:
+
+`docs/audit/canonical-anchor-distance-semantics-current-state.md`
+
+The repository fact is:
 
 ```text
-backend/temples/queries.py L58-75, L109-120, L142-155   haversine over latitude / longitude
-backend/temples/queries.py L34-45, L47-57, L90-100, L126-133  PostGIS branch over location (_use_real_gis(), L15-18 — DISABLED in Production)
-backend/temples/api/views/search.py L37 (def), L402 (call)  _haversine_m(lat, lng, rlat, rlng)
-apps/web/src/components/shrines/ShrineCard.tsx L110     distanceM rendered to the user
-apps/web/src/components/shrines/ShrineCardLite.tsx L68  distanceM rendered to the user
+recommendation.distance_m
+= straight-line great-circle proximity
+  from runtime user origin
+  to Shrine.latitude / Shrine.longitude
 ```
 
-Distance serves two jobs through one number. As a **ranking key** ("which shrines are
-near me") a ritual-center anchor is as valid as a navigation anchor. As a **rendered
-figure** ("420m") it reads to the user as how far they must travel, which is a
-navigation claim.
+It is not a route-provider distance.
 
-The magnitude of divergence is not established. Batch 01 recorded intra-shrine
-separations from ≈7 m (`宇佐神宮` primary vs corroboration) to ≈857 m (`宇佐神宮`
-adopted vs legacy Production). Proposed `P3` (sacred mountain site) admits anchors that
-could sit kilometres from any visitor approach, but no `P3` case has been adjudicated.
+Mother Ship resolved A-3 as:
 
 ```text
-CLASSIFICATION = INDETERMINATE
-DECIDING_QUESTION = does the rendered distanceM figure constitute a navigation
-                    promise to the user, or a proximity indicator?
+A-3_DISTANCE_SEMANTICS
+= PROXIMITY
+
+PRODUCT_MEANING
+= GEOGRAPHIC CLOSENESS
+
+NAVIGATION_PROMISE
+= NO
+
+WALKING_DISTANCE_PROMISE
+= NO
+
+ROUTE_DISTANCE_PROMISE
+= NO
 ```
 
-This audit does not answer that question; it is a product decision, not a repository fact.
+Under this meaning, a future Canonical Shrine Anchor is semantically compatible with
+the Recommendation distance consumer:
+
+```text
+user origin -> Canonical Shrine Anchor
+= geographic proximity
+```
+
+The value must not be presented as actual route distance or remaining walking distance.
+Route distance remains a separate navigation concern and requires Navigation Anchor /
+route-provider semantics.
+
+The current repository also contains presentation debt: some recommendation copy uses
+phrasing such as `向かいやすい` / `動きやすい`, and `sort_distance` triggers include
+`徒歩`. Those are stronger navigation / accessibility implications than A-3 permits.
+They are recorded as follow-up alignment debt, not as a blocker to the proximity
+classification.
+
+```text
+CLASSIFICATION = SEMANTICALLY_COMPATIBLE
+SEMANTICS      = PROXIMITY
+COPY_DEBT      = OPEN
+TRIGGER_DEBT   = OPEN
+```
 
 ### 8.3 Compass direction — `SEMANTICALLY_COMPATIBLE`
 
@@ -631,15 +664,25 @@ CLASSIFICATION = NEEDS_NAVIGATION_ANCHOR_SPLIT
 ### 8.6 Consumer classification summary
 
 ```text
-SEMANTICALLY_COMPATIBLE       = 2  (map display, compass direction)
+SEMANTICALLY_COMPATIBLE       = 3  (map display, proximity distance, compass direction)
 NEEDS_NAVIGATION_ANCHOR_SPLIT = 2  (route guidance, Shrine detail map link)
-INDETERMINATE                 = 1  (distance)
+INDETERMINATE                 = 0
 ```
 
 The two `NEEDS_NAVIGATION_ANCHOR_SPLIT` consumers share one upstream contract
 (`destinationContract.ts` / `gmapsDirUrl()`), so a navigation-anchor split has a single
 insertion point on the web side rather than five. That is a cost observation, not a
-recommendation.
+Migration Gate selection.
+
+A-3 removes the former distance ambiguity:
+
+```text
+Canonical Anchor
+-> may serve proximity semantics
+
+Navigation Anchor
+-> required for route / arrival semantics
+```
 
 This matches the proposal's own sentence: "Navigation destinations are a separate
 concern and must not silently redefine the Canonical Shrine Anchor." The repository
@@ -653,12 +696,15 @@ NAVIGATION_ANCHOR_FIELD_EXISTS = NO
 
 The four options below are the Mother Ship canonical Migration Decision Gate labels.
 The evidence-for / evidence-against / migration-cost analysis under each is supplied by
-this audit and the follow-up A-4 / A-6 / A-7 records; the options themselves are not
-reinterpreted, narrowed, or renamed.
+this audit and the follow-up A-3 / A-4 / A-6 / A-7 records; the options themselves are
+not reinterpreted, narrowed, or renamed.
 
 Follow-up evidence:
 
 ```text
+A-3_DISTANCE_SEMANTICS
+= PROXIMITY
+
 A-4
 = RESOLVED_AT_SEMANTIC_OWNER_LEVEL
 
@@ -673,13 +719,11 @@ A-7_P2_MULTI_BUILDING_REPRESENTATION
 
 A-7_POINT_METHOD
 = UNWEIGHTED_COMPONENT_MEAN
-
-A-7_INPUT_REQUIREMENT
-= ALL_VERIFIED_CO_PRINCIPAL_COMPONENT_COORDINATES
 ```
 
 Sources:
 
+- `docs/audit/canonical-anchor-distance-semantics-current-state.md`
 - `docs/audit/canonical-shrine-anchor-multi-ritual-center-audit.md`
 - `docs/audit/canonical-shrine-anchor-georeference-traceability-audit.md`
 - `docs/audit/canonical-shrine-anchor-p2-representation-decision.md`
@@ -691,45 +735,42 @@ FOR      : 0 downstream consumers break; 8 PASS records keep their evidentiary b
            5 Production rows and 5 Seed rows keep a meaning matching their adoption record
 
 AGAINST  : ritual-center semantics remain outside Shrine.latitude / longitude;
-           A-4 / A-6 / A-7 now show that ritual-center ownership, georeference supply,
-           and P2 multi-building representation can be handled deterministically for
-           the audited cases, so the ritual-center model is no longer blocked by the
-           former A-4 / A-6 / A-7 uncertainties
+           A-3 / A-4 / A-6 / A-7 now remove the earlier distance, semantic-owner,
+           georeference-supply, and P2-representation uncertainties from the proposed
+           ritual-center model
 
 COST     : 0 rows rewritten, 0 code changes
 ```
 
-A-4 / A-6 / A-7 do not change current Position statuses. They reduce uncertainty about
-the proposed ritual-center model only.
+The current coordinate remains a Visitor / Navigation Anchor. Recommendation distance
+continues to be straight-line proximity to that current anchor.
 
 ### Gate B — `ADOPT_CANONICAL_SHRINE_ANCHOR_AND_READJUDICATE`
 
 ```text
-FOR      : single field, no schema change; A-4 supplies a deterministic hierarchy rule
-           for multi-site shrines; A-6 shows geospatial supply in the sample; A-7 now
-           defines a deterministic P2 multi-building representative point
+FOR      : single field, no schema change; A-3 allows Recommendation distance to remain
+           a proximity signal when computed to a Canonical Anchor; A-4 supplies the
+           hierarchy rule; A-6 demonstrates geospatial supply; A-7 supplies the P2
+           multi-building point rule
 
-AGAINST  : 2 downstream consumers (§8.4, §8.5) would emit a ritual-center coordinate
-           as a walking navigation destination; 1 consumer (§8.2) remains
-           INDETERMINATE; A-5 migration handling for 103 unadjudicated Production rows
-           remains OPEN
+AGAINST  : 2 downstream consumers (§8.4, §8.5) would still emit a ritual-center
+           coordinate as a walking navigation destination; A-5 migration handling for
+           103 unadjudicated Production rows remains OPEN
 
 COST     : 8 PASS records re-adjudicated; 5 Production rows + 5 Seed rows rewritten;
            103 unadjudicated rows require an explicit migration policy
 ```
 
-A-7 removes the previous P2 representative-point blocker for Gate B.
-
-It does not remove the navigation-semantic collision caused by reusing the existing
-single coordinate field for route destinations.
+A-3 removes distance as a blocker for Gate B, but it does not remove the route / arrival
+semantic collision caused by reusing the existing single coordinate field.
 
 ### Gate C — `SPLIT_CANONICAL_AND_NAVIGATION_ANCHORS`
 
 ```text
 FOR      : separates ritual-center semantics from route destination semantics;
-           prevents a Canonical ritual-center point from silently becoming the Google
-           Maps walking destination; A-7 supplies the previously missing point rule for
-           multi-building P2 Canonical owners
+           A-3 permits Canonical Anchor to drive geographic proximity while Navigation
+           Anchor owns route / arrival semantics; A-7 supplies the P2 Canonical point
+           rule; route consumers no longer need to reuse the ritual-center point
 
 AGAINST  : schema change on a model whose write paths already carry active
            synchronization debt; adding a second coordinate pair increases that
@@ -741,48 +782,51 @@ COST     : schema + migration + serializer + downstream consumer changes + backf
            and migration behavior
 ```
 
-A-7 resolves the former statement:
+The resulting responsibility model is now semantically explicit:
 
 ```text
-NAVIGATION_ANCHOR_SPLIT
-!=
-CANONICAL_POINT_POLICY
+Canonical Shrine Anchor
+-> shrine geographic / ritual identity
+-> proximity distance
+-> compass direction
+
+Navigation Anchor
+-> route destination
+-> arrival / walking-navigation semantics
 ```
 
-by supplying the missing Canonical point policy.
-
-The concepts remain separate, but both now have defined semantics at the policy level.
+This is a semantic description of Gate C, not a selection of Gate C.
 
 ### Gate D — `OTHER / INDETERMINATE`
 
 The open option. This audit does not define its content; any path that is not A, B or
 C lands here, and what belongs in it is a Mother Ship determination.
 
-The prior bounded unknowns that motivated additional investigation have now progressed:
+The previously investigated uncertainties now stand as:
 
 ```text
+A-3 = resolved: PROXIMITY
 A-4 = resolved at semantic-owner level
-A-6 = geospatial supply observed; single-point issue isolated
+A-6 = geospatial supply observed; point issue isolated
 A-7 = multi-building P2 point policy resolved
 ```
 
-The remaining known open questions are no longer P2 representation questions.
-
-They are:
+The remaining known Migration Gate blocker is:
 
 ```text
-A-3 = product meaning of rendered distanceM
 A-5 = migration policy for 103 unadjudicated Production rows
 ```
 
-This audit does not decide either one.
+The distance-copy and `sort_distance` trigger mismatches recorded by A-3 are product
+alignment debt. They do not reopen the meaning of `distance_m` and do not by themselves
+select a Migration Gate.
 
 ```text
 MIGRATION_GATE_READY_FOR_SELECTION = NO
 GATE_SELECTED = NONE
 ```
 
-The Gate remains unselected because A-3 and A-5 are still open.
+The Gate remains unselected because A-5 is still open.
 
 ## 10. Required Statements
 
@@ -821,7 +865,15 @@ A-2  Does proposed P3 reverse the active Contract's treatment of
         difference is a SEMANTIC_ROLE_CHANGE, not an inversion.
 
 A-3  Is the rendered distanceM figure a navigation promise or a proximity indicator?
-     (§8.2)  -> OPEN
+     (§8.2)
+     -> RESOLVED: PROXIMITY.
+        recommendation.distance_m = straight-line geographic closeness.
+        NAVIGATION_PROMISE = NO.
+        WALKING_DISTANCE_PROMISE = NO.
+        ROUTE_DISTANCE_PROMISE = NO.
+        Canonical Shrine Anchor is compatible with this proximity role.
+        Route distance remains a separate Navigation concern.
+        See docs/audit/canonical-anchor-distance-semantics-current-state.md.
 
 A-4  Under P1/P4, which internal ritual site is primary for 宇佐神宮 (上宮 / 下宮) and
      for 鶴岡八幡宮 (本宮・上宮 / 若宮・下宮)?
@@ -861,10 +913,13 @@ A-7  How should a multi-building P2 semantic owner be represented as Canonical A
 
 ```text
 IMPACT_ASSESSMENT        = COMPLETE
+A-3                      = RESOLVED_PROXIMITY
 A-4                      = RESOLVED_AT_SEMANTIC_OWNER_LEVEL
 A-6                      = PARTIALLY_RESOLVED_AS_SUPPLY_AUDIT
 A-7                      = RESOLVED
 P2_POINT_POLICY          = RESOLVED
+DISTANCE_COPY_DEBT       = OPEN
+DISTANCE_TRIGGER_DEBT    = OPEN
 READJUDICATION           = NOT_PERFORMED
 CONTRACT_MIGRATION       = NOT_PERFORMED
 COORDINATE_REMEDIATION   = NOT_PERFORMED
@@ -873,4 +928,4 @@ GATE_SELECTED            = NONE
 ACTIVE_CONTRACT          = UNCHANGED
 ```
 
-Next action requires Mother Ship decisions on A-3 and A-5.
+Next action requires the Mother Ship decision on A-5.
