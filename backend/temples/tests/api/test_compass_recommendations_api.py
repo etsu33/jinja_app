@@ -737,3 +737,118 @@ def test_recommendation_success_items_carry_persisted_shrine_id(client, shrine_f
         assert shrine_id == expected[name].id, (
             f"{name}: shrine_id={shrine_id!r} != 永続化Shrine.id={expected[name].id!r}"
         )
+
+
+# ---------------------------------------------------------------------------
+# R-3: HTTP fail-closed on missing / null shrine_id
+# docs/audit/compass-shrine-id-presence-audit.md §11
+#
+#   R-3_BEHAVIOR = FAIL_CLOSED_WHOLE_RESPONSE_ON_MISSING_OR_NULL_SHRINE_ID
+#
+# projection は View の try/except の外側で呼ばれるため、contract error は
+# View 側で明示的に既存の error boundary へ正規化される。期待するのは
+# 部分成功でも新規stateでもなく、既存の HTTP 500 / {"state": "error"}。
+#
+# 下の3ケースは「現在到達可能な経路」ではない（F-2 §3 A/B が、実DB経路では
+# shrine_id が常に載ることを確認済み）。構造的に防止されていない状態に対する
+# fail-closed を固定するため、orchestrator を patch して人工的に作り出す。
+# ---------------------------------------------------------------------------
+
+
+def _success_result_with(recommendations):
+    """recommendation_success かつ任意の recommendations[] を返す結果を作る。"""
+    from temples.services.compass_recommendation_orchestrator import (
+        STATE_RECOMMENDATION_SUCCESS,
+        CompassRecommendationResult,
+    )
+
+    return CompassRecommendationResult(
+        state=STATE_RECOMMENDATION_SUCCESS,
+        recommendations=recommendations,
+        purpose="career",
+        direction_context={"referenceDirections": ["北西"]},
+        distance_stage_km=15,
+        direction_candidate_count=len(recommendations),
+        distance_candidate_count=len(recommendations),
+    )
+
+
+@pytest.mark.parametrize(
+    "case, recommendations",
+    [
+        (
+            "A_missing_shrine_id",
+            [{"name": "shrine_idの無い神社", "address": "東京都千代田区"}],
+        ),
+        (
+            "B_null_shrine_id",
+            [{"shrine_id": None, "name": "shrine_idがnullの神社"}],
+        ),
+        (
+            "C_id_without_shrine_id",
+            [{"id": 101, "name": "idだけの神社"}],
+        ),
+    ],
+)
+def test_recommendation_success_fails_closed_without_shrine_id(client, case, recommendations):
+    """R-3: identity 要件違反は HTTP 500 / {"state": "error"} へ fail-closed する。
+
+    Case C は `id` を identity として代用しないことの HTTP 境界での証明。
+    """
+    with patch(
+        "temples.api_views_compass.get_compass_recommendations",
+        return_value=_success_result_with(recommendations),
+    ):
+        r = _post_valid(client)
+
+    assert r.status_code == 500, f"{case}: 期待した 500 ではなく {r.status_code}"
+    assert r.json() == {"state": "error"}, f"{case}: {r.json()!r}"
+
+
+def test_one_invalid_item_fails_the_whole_response(client):
+    """R-3: 有効itemが含まれていても、1件の違反で応答全体が落ちる。
+
+    部分成功を返さない / 不正itemだけを落とさないことの HTTP 境界での証明。
+    """
+    recommendations = [
+        {"shrine_id": 101, "name": "有効1"},
+        {"name": "不正"},
+        {"shrine_id": 103, "name": "有効2"},
+    ]
+
+    with patch(
+        "temples.api_views_compass.get_compass_recommendations",
+        return_value=_success_result_with(recommendations),
+    ):
+        r = _post_valid(client)
+
+    assert r.status_code == 500
+    assert r.json() == {"state": "error"}
+    # 部分投影結果が漏れていないこと（有効itemも返らない）。
+    assert "recommendations" not in r.json()
+
+
+def test_identity_gate_does_not_apply_to_non_success_states(client):
+    """R-3: gate は recommendation_success のみ。非success stateは従来どおり。
+
+    direction_zero_candidates 等では shrine_id を要求しない。
+    """
+    from temples.services.compass_recommendation_orchestrator import (
+        CompassRecommendationResult,
+    )
+
+    result = CompassRecommendationResult(
+        state="direction_zero_candidates",
+        recommendations=[],
+        purpose="career",
+        direction_context={"referenceDirections": ["北西"]},
+    )
+
+    with patch(
+        "temples.api_views_compass.get_compass_recommendations",
+        return_value=result,
+    ):
+        r = _post_valid(client)
+
+    assert r.status_code == 200
+    assert r.json()["state"] == "direction_zero_candidates"

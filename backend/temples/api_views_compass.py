@@ -25,7 +25,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
-from temples.api.compass_public_projection import project_compass_recommendations
+from temples.api.compass_public_projection import (
+    CompassPublicProjectionContractError,
+    project_compass_recommendations,
+)
 from temples.api.serializers.compass import (
     CompassErrorResponseSerializer,
     CompassRecommendationsInvalidPurposeResponseSerializer,
@@ -34,6 +37,7 @@ from temples.api.serializers.compass import (
 )
 from temples.services.compass_recommendation_orchestrator import (
     STATE_INVALID_PURPOSE,
+    STATE_RECOMMENDATION_SUCCESS,
     get_compass_recommendations,
 )
 from temples.services.compass_runtime import build_compass_direction_runtime
@@ -97,10 +101,32 @@ class CompassRecommendationsView(APIView):
         # Shared Recommendation dict をそのまま widen して返さない。
         # Public Contract v1 の allowlist へ投影してから HTTP へ載せる
         # （同 audit Section 7 / G4、Section 10）。
-        recommendations = project_compass_recommendations(
-            result.recommendations,
-            recommendation_instance_id=recommendation_instance_id,
-        )
+        #
+        # R-3 Identity Gate: recommendation_success のときだけ shrine_id を
+        # 必須にする（docs/audit/compass-shrine-id-presence-audit.md §11）。
+        # 投影は上の try/except の外側で行われるため、projection が送出する
+        # contract error はここで明示的に既存の error boundary へ正規化する。
+        # 部分投影結果は返さない（fail-closed / partial success 禁止）。
+        try:
+            recommendations = project_compass_recommendations(
+                result.recommendations,
+                recommendation_instance_id=recommendation_instance_id,
+                require_shrine_id=(result.state == STATE_RECOMMENDATION_SUCCESS),
+            )
+        except CompassPublicProjectionContractError:
+            # payload本体はログへ出さない（内部fieldやuser由来値の露出を避ける）。
+            # 件数とinstance idだけで、どのrequestが落ちたかは追跡できる。
+            log.error(
+                "[compass/recommendations] identity_contract_violation "
+                "instance=%s state=%s item_count=%d",
+                recommendation_instance_id,
+                result.state,
+                len(result.recommendations or []),
+            )
+            return Response(
+                {"state": "error"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
         body = {
             "state": result.state,
             "purpose": result.purpose,
