@@ -86,7 +86,7 @@ P4  multiple principal ritual sites -> adopt only with an authoritative primary
 P5  ritual center undeterminable or not geographically traceable -> HOLD_POSITION_REVIEW
 ```
 
-Explicitly excluded by the proposal:
+Declared not-automatic by the proposal ("It is NOT automatically:"):
 
 ```text
 - postal address geocode
@@ -99,29 +99,50 @@ Explicitly excluded by the proposal:
 
 ### 2.3 Structural relationship between the two contracts
 
-Three relationships are observable, and they are not the same kind of change.
+Both contracts are written in the same register: each lists classes of point that are
+**not automatically** the anchor. Neither contract issues an absolute prohibition on
+any class. The relationships below must be read in that register.
 
 ```text
-RELATION_1 = NARROWING
-RELATION_2 = DIRECT_INVERSION
-RELATION_3 = SOURCE_CLASS_INVALIDATION
+RELATION_1 = SHARED_NON_AUTOMATIC_CLASSES
+RELATION_2 = SEMANTIC_ROLE_CHANGE
+RELATION_3 = SOURCE_CLASS_NO_LONGER_SUFFICIENT_ALONE
 ```
 
-**RELATION_1 — NARROWING.** `precinct centroid`, `main entrance`, `parking area`,
-`shrine office` are excluded by both contracts. On these terms the proposal narrows
-an existing exclusion rather than reversing it.
+**RELATION_1 — SHARED_NON_AUTOMATIC_CLASSES.** `precinct centroid`, `main entrance`,
+`parking area`, `shrine office` appear on both contracts' non-automatic lists. On these
+classes the two contracts agree in substance, and the proposal changes what evidence
+would be needed to overcome the default, not the default itself.
 
-**RELATION_2 — DIRECT_INVERSION.** The active Contract lists
-`山域・御神体・境内全体のcentroid` among the points that are **not** automatically the
-anchor. Proposed `P3` adopts precisely that class — `iwakura, sacred object, sacred
-mountain site` — as the canonical anchor when the shrine is centered on it. This is
-not a gap between the two contracts; it is a reversal of one specific rule. Any
-migration must state that reversal explicitly rather than absorb it silently.
+**RELATION_2 — SEMANTIC_ROLE_CHANGE.** The active Contract lists
+`山域・御神体・境内全体のcentroid` among points **not automatically** treated as the
+Visitor / Navigation Anchor. Proposed `P3` allows a sacred natural object, iwakura, or
+sacred mountain site to become the Canonical Shrine Anchor **only when it is confirmed
+as the Shrine's ritual center**. The two statements do not contradict each other:
 
-**RELATION_3 — SOURCE_CLASS_INVALIDATION.** The proposal excludes
-`a generic map-provider POI`. In Batch 01, **10 of 10** records recorded
-`primary_source_type = map_provider_poi`, and it is the only source class that
-produced traceable coordinates in any record. This is examined in §6.
+```text
+active Contract   evaluates  visitor / navigation semantics
+proposed Contract evaluates  ritual-center semantics
+```
+
+The same physical class of point can be treated differently under the two contracts
+because the semantic role the coordinate is being asked to play has changed — not
+because one contract permits what the other forbids. The active Contract's
+non-automatic list is **not** evidence that such points were absolutely prohibited; it
+is evidence that they do not qualify *as navigation anchors* without further support.
+
+A migration must therefore state that the evaluated role changed. It must not be
+described as a reversal, and this audit does not describe it as one.
+
+**RELATION_3 — SOURCE_CLASS_NO_LONGER_SUFFICIENT_ALONE.** The proposal does **not**
+exclude map-provider POIs. It states that a generic map-provider POI is not
+*automatically* sufficient to establish the Canonical Shrine Anchor. A map-provider
+coordinate may still serve as coordinate traceability once authoritative evidence has
+established that the mapped point is the ritual center.
+
+In Batch 01, **10 of 10** records recorded `primary_source_type = map_provider_poi`.
+That fact does not disqualify those records by itself. What it means for them is
+examined in §6.7.
 
 ## 3. Evidence Basis
 
@@ -187,11 +208,11 @@ executed for the currently adopted Visitor / Navigation Anchor (`docs/audit/posi
 | 03 | 伊勢神宮（内宮） | PASS | `SHRINE_POI / PRECINCT_CORE`, `CONFIRMED`; **`shogu_building_anchor` = SEPARATE_CONCEPT**; `uji_bridge_entry_anchor` / `parking_anchor` = SEPARATE_CONCEPT | 34.4549588, 136.7251689 (adopted) | `map_provider_poi` (MapFan) | NOT_YET_PERFORMED | NOT_YET_PERFORMED | P1 (正宮) | NO — record names the 正宮 and rules it out | REQUIRES_READJUDICATION | The record states the adopted point is "not an assertion that the same coordinate represents … the Shogu building itself". Under the proposal the 正宮 is exactly what the anchor must represent. | Traceable coordinate for the 正宮, plus resolution of the recorded ≈68 m primary/corroboration spread under ritual-center semantics |
 | 04 | 出雲大社 | PASS | `SHRINE_POI / PRECINCT_CORE`, `CONFIRMED`; no auxiliary term recorded | 35.40190463, 132.68547534 (adopted) | `map_provider_poi` (Mapion) | PERFORMED (0109) | PERFORMED | P1 (御本殿) — not identified in record | NO — record names no ritual point | REQUIRES_NEW_EVIDENCE | The record's anchor-semantics block contains only `anchor_type` and `anchor_semantics`. It rules out parking and auxiliary facilities but never locates the 御本殿. | Georeferenced authoritative source locating the 御本殿, traceable to a coordinate |
 | 05 | 春日大社 | PASS | `SHRINE_POI / PRECINCT_CORE`, `CONFIRMED`; **`main_sanctuary_anchor` = SEPARATE_CONCEPT**; `parking` / `bus_stop` / `museum` / `botanical_garden` = SEPARATE_CONCEPT | 34.6812901, 135.8482531 (adopted) | `map_provider_poi` (MapFan) | PERFORMED (0111) | PERFORMED | P1 / P2 (本殿・中門御廊を含む本社域) | NO — record names the main sanctuary and rules it out | REQUIRES_READJUDICATION | `main_sanctuary_anchor = SEPARATE_CONCEPT` is a direct statement that the adopted point is not the main sanctuary. The proposal requires the opposite. | Traceable coordinate for the main sanctuary; determination of whether P1 (single building) or P2 (sanctuary area) applies |
-| 06 | 太宰府天満宮 | HOLD_POSITION_REVIEW | `candidate_anchor_type = SHRINE_POI`, `REVIEW_REQUIRED`; **`main_sanctuary_anchor` = DISTINCT_VISITOR_POINT**; `roumon` / `taiko_bridge_shinji_ike` / `information_center` = DISTINCT_VISITOR_POINT | `ADOPTED_COORDINATE = NOT_DETERMINED`; Production retains 33.5213, 130.5351 (`LEGACY_UNTRACED`) | `map_provider_poi` (MapFan) — candidate only, `TRACEABLE_SAME_ENTITY_NOT_ADOPTED` | NONE | NONE | P1 (御本殿) | NO — the 御本殿 is named but not georeferenced | POTENTIALLY_RESOLVABLE_HOLD | The recorded HOLD cause is that the Contract "does not define which internal concept owns the canonical anchor". The proposal defines it (P1 = 御本殿), removing that specific ambiguity. The HOLD does not clear, because the record also states the official material "does not expose georeferenced coordinates". That is a P5 condition, not a semantic one. | Georeferenced coordinate for the 御本殿 from a source that survives the proposal's exclusion of generic map-provider POIs |
+| 06 | 太宰府天満宮 | HOLD_POSITION_REVIEW | `candidate_anchor_type = SHRINE_POI`, `REVIEW_REQUIRED`; **`main_sanctuary_anchor` = DISTINCT_VISITOR_POINT**; `roumon` / `taiko_bridge_shinji_ike` / `information_center` = DISTINCT_VISITOR_POINT | `ADOPTED_COORDINATE = NOT_DETERMINED`; Production retains 33.5213, 130.5351 (`LEGACY_UNTRACED`) | `map_provider_poi` (MapFan) — candidate only, `TRACEABLE_SAME_ENTITY_NOT_ADOPTED` | NONE | NONE | P1 (御本殿) | NO — the 御本殿 is named but not georeferenced | POTENTIALLY_RESOLVABLE_HOLD | The recorded HOLD cause is that the Contract "does not define which internal concept owns the canonical anchor". The proposal defines it (P1 = 御本殿), removing that specific ambiguity. The HOLD does not clear, because the record also states the official material "does not expose georeferenced coordinates". That is a P5 condition, not a semantic one. | Authoritative evidence establishing that a specific georeferenced point is the 御本殿; a map-provider coordinate may then supply the traceability for it |
 | 07 | 熱田神宮 | PASS | `SHRINE_POI / PRECINCT_CORE`, `CONFIRMED`; **`hongu_anchor` = DISTINCT_VISITOR_POINT**; east/west/south gate, `parking`, `kyucho` = SEPARATE_CONCEPT; `access_map_center` = SEPARATE_ACCESS_OVERVIEW_CONCEPT | 35.12737043, 136.90868002 (adopted) | `map_provider_poi` (Mapion) | PERFORMED (0112) | PERFORMED | P1 (本宮) | NO — the 本宮 is recorded as a *distinct* point from the adopted anchor | REQUIRES_READJUDICATION | `hongu_anchor = DISTINCT_VISITOR_POINT` states the 本宮 is a different point from the adopted one. Under the proposal the 本宮 is the P1 target. | Traceable coordinate for the 本宮 from a source admissible under the proposal |
 | 08 | 宇佐神宮 | PASS | `SHRINE_POI / PRECINCT_CORE`, `CONFIRMED`; **`upper_shrine_anchor` = DISTINCT_VISITOR_POINT**; `lower_shrine_area` = DISTINCT_VISITOR_CONCEPT; `kurehashi_west_approach` / `treasure_museum` / `parking` / `bus_stop` = SEPARATE_CONCEPT | 33.52344557, 131.37716659 (adopted) | `map_provider_poi` (Mapion) | PERFORMED (0113) | PERFORMED | P1, P2 or P4 — undetermined | NO — the 上宮 is recorded as a *distinct* point from the adopted anchor | REQUIRES_READJUDICATION | The record separates 上宮 and 下宮 as distinct internal concepts and adopts neither. The proposal requires one to be designated. The record does not establish whether a single 本殿 within the 上宮 is the primary ritual center, so P1 / P2 / P4 cannot be chosen from the record alone. | Authoritative determination of the primary ritual center between 上宮 / 下宮 and within the 上宮; then a traceable coordinate for it |
 | 09 | 日光東照宮 | PASS | `SHRINE_POI / PRECINCT_CORE`, `CONFIRMED`; **`main_sanctuary_anchor` = DISTINCT_VISITOR_POINT**; `worship_area_anchor` = DISTINCT_VISITOR_CONCEPT; `entrance` / `gate` / `parking` / `office` / `museum` / `bus_stop` = SEPARATE_CONCEPT | 36.75811138, 139.59874963 (adopted) | `map_provider_poi` (Mapion), surrounding-view QA confirmed precinct | NOT_YET_PERFORMED | NOT_YET_PERFORMED | P1 / P2 (御本社 — 本殿・石の間・拝殿) | NO — the main sanctuary is recorded as a *distinct* point from the adopted anchor | REQUIRES_READJUDICATION | The record separates `main_sanctuary_anchor` and `worship_area_anchor` from the adopted anchor. The surrounding-view QA established that the adopted point lies inside the 東照宮 precinct — which is precinct evidence, not ritual-center evidence. | Traceable coordinate for the 御本社; determination of whether P1 (本殿) or P2 (本社域) applies |
-| 10 | 鶴岡八幡宮 | HOLD_POSITION_REVIEW | `anchor_type = NOT_DETERMINED`, `REVIEW_REQUIRED`; **`hongu_upper_shrine_anchor`** / **`wakamiya_lower_shrine_anchor`** / **`shamusho_office_anchor`** = DISTINCT_VISITOR_POINT; `maidono` / `shirahata_shrine` / `treasure_hall` / `museum` / `parking` = SEPARATE_CONCEPT | `ADOPTED_COORDINATE = NOT_DETERMINED`; Production retains 35.3256, 139.5566 (`LEGACY_UNTRACED`) | `map_provider_poi` (Mapion) — candidate resolves to 社務所, not adopted | NONE | NONE | P1 (本宮 / 上宮) | NO — 本宮/上宮 is named, but only via an OSM-class corroboration source | POTENTIALLY_RESOLVABLE_HOLD | The recorded HOLD is a three-way conflict between 社務所 (primary), 若宮/下宮 (stored legacy) and 本宮/上宮 (corroboration), unresolvable because the active Contract does not say which internal concept owns the anchor. The proposal answers that directly: P1 selects 本宮/上宮, and the proposal's own exclusions eliminate both the 社務所 (shrine office) and the map-provider POI. The HOLD does not clear, because the only source pointing at 本宮/上宮 is the corroboration source, which may not be promoted to primary. | A primary-class source that georeferences the 本宮/上宮, independent of the OSM-class corroboration |
+| 10 | 鶴岡八幡宮 | HOLD_POSITION_REVIEW | `anchor_type = NOT_DETERMINED`, `REVIEW_REQUIRED`; **`hongu_upper_shrine_anchor`** / **`wakamiya_lower_shrine_anchor`** / **`shamusho_office_anchor`** = DISTINCT_VISITOR_POINT; `maidono` / `shirahata_shrine` / `treasure_hall` / `museum` / `parking` = SEPARATE_CONCEPT | `ADOPTED_COORDINATE = NOT_DETERMINED`; Production retains 35.3256, 139.5566 (`LEGACY_UNTRACED`) | `map_provider_poi` (Mapion) — candidate resolves to 社務所, not adopted | NONE | NONE | P1 (本宮 / 上宮) | NO — 本宮/上宮 is named, but only via an OSM-class corroboration source | POTENTIALLY_RESOLVABLE_HOLD | The recorded HOLD is a three-way conflict between 社務所 (primary), 若宮/下宮 (stored legacy) and 本宮/上宮 (corroboration), unresolvable because the active Contract does not say which internal concept owns the anchor. The proposal answers that directly: P1 selects 本宮/上宮, and under the proposal neither the 社務所 (shrine office) nor a bare map-provider POI is sufficient on its own to stand in for it. The HOLD does not clear, because the only source pointing at 本宮/上宮 is the corroboration source, which may not be promoted to primary. | A primary-class source that georeferences the 本宮/上宮, independent of the OSM-class corroboration |
 
 ### 5.1 Impact class distribution
 
@@ -354,41 +375,53 @@ BATCH01_DELIBERATE_EXCLUSION_YES            = 7
 BATCH01_RITUAL_CENTER_QUESTION_NEVER_POSED  = 3  (出雲大社, 明治神宮, 伏見稲荷大社)
 ```
 
-### 6.7 Source-class observation
+### 6.7 Source-class sufficiency
 
 ```text
 BATCH01_RECORDS_WITH_primary_source_type = map_provider_poi : 10 / 10
 ```
 
-The proposed contract excludes "a generic map-provider POI" from automatically being
-the Canonical Shrine Anchor. Taken together with §5.1, this yields an observation that
-the migration decision should confront directly:
+This figure is preserved, and it is **not** a disqualification.
 
 ```text
-OBSERVATION: the only source class that produced traceable coordinates in any
-Batch 01 record is the one source class the proposal excludes.
+SOURCE_CLASS_STATUS = NO_LONGER_SUFFICIENT_ALONE
+NOT                 = CATEGORICALLY_EXCLUDED
 ```
 
-Two readings are possible and this audit does not choose between them:
+The proposed contract does not disallow `map_provider_poi`. It states that a generic
+map-provider POI does not by itself establish the Canonical Shrine Anchor. A
+map-provider coordinate remains usable for coordinate traceability once authoritative
+evidence has established that the mapped point is the shrine's ritual center.
 
-- **Reading 1 (narrow):** the proposal excludes map-provider POIs only from
-  *automatic* adoption. A map-provider POI that a source explicitly labels as the
-  本殿 / 本宮 would still be admissible. Under this reading the exclusion is a
-  labelling requirement, not a source ban.
-- **Reading 2 (broad):** the proposal requires evidence "that it represents the
-  Shrine's ritual center", which map-provider shrine POIs structurally do not
-  express — they publish one representative point per entity without internal
-  semantics. Under this reading the source class is effectively unavailable.
+The correct causal statement for §5.1 (`PRESERVED_BY_EXISTING_EVIDENCE = 0`) is
+therefore:
 
 ```text
-SOURCE_CLASS_READING = NOT_RESOLVED_BY_THIS_AUDIT
+NOT:  "map_provider_poi is disallowed, so Batch 01 must be reviewed."
+
+YES:  "the existing Batch 01 records do not establish that the adopted POI
+       represents the ritual center, so the ritual-center claim the proposed
+       Contract requires is unevidenced in those records."
 ```
 
-**Hypothesis, not finding:** if Reading 2 holds, the proposed contract may be
-non-satisfiable at the currently available evidence supply for most shrines, and
-would convert a large share of records to `P5` / `HOLD_POSITION_REVIEW` for an
-indefinite period. This is stated as a hypothesis because no evidence-availability
-survey has been performed. §9 Gate D exists to test it.
+Both `REQUIRES_READJUDICATION` and `REQUIRES_NEW_EVIDENCE` in §5 rest on that second
+statement alone. No row in §5 is classified on the ground that its source class is
+inadmissible, and none would change classification if the source class question were
+settled in the source's favour — because what is missing from those records is the
+ritual-center evidence, not the coordinate.
+
+What the 10/10 figure does establish is a **supply question**, not a rule question:
+
+```text
+SUPPLY_QUESTION: for how many shrines can authoritative evidence be obtained that
+identifies a specific georeferenced point as the ritual center, at a level the
+proposal's own evidence requirements accept?
+```
+
+**Hypothesis, not finding:** if that evidence proves scarce in practice, a large share
+of records would land on `P5` / `HOLD_POSITION_REVIEW` for an extended period. This is
+a hypothesis because no evidence-availability survey has been performed. It is a cost
+input to §9, not an argument against the proposal.
 
 ## 7. Blast Radius
 
@@ -618,18 +651,11 @@ NAVIGATION_ANCHOR_FIELD_EXISTS = NO
 
 ## 9. Migration Decision Gate
 
-Four gates are set out below with the evidence bearing on each.
+The four options below are the Mother Ship canonical Migration Decision Gate labels.
+The evidence-for / evidence-against / migration-cost analysis under each is supplied by
+this audit; the options themselves are not reinterpreted, narrowed, or renamed.
 
-**Provenance note:** the labels and content of gates A–D below were derived by this
-audit from the evidence in §5–§8. They are not quoted from an external specification.
-If the Mother Ship holds a canonical A–D formulation, replace this section with it
-before any gate is selected; the evidence in §5–§8 is independent of how the gates
-are labelled.
-
-### Gate A — `NO_CHANGE`
-
-Keep `Shrine.latitude / longitude = Visitor / Navigation Anchor`. Record the Canonical
-Shrine Anchor as a recognised but unmodeled concept.
+### Gate A — `KEEP_CURRENT_CONTRACT`
 
 ```text
 FOR      : 0 downstream consumers break; 8 PASS records keep their evidentiary basis;
@@ -641,30 +667,26 @@ AGAINST  : both open HOLDs (太宰府天満宮, 鶴岡八幡宮) stay blocked on
 COST     : 0 rows rewritten, 0 code changes
 ```
 
-### Gate B — `REDEFINE_IN_PLACE`
-
-Adopt the Canonical Shrine Anchor as the meaning of `Shrine.latitude / longitude`.
-Re-adjudicate, then remediate Production and Seed. Navigation consumers keep reading
-the same field.
+### Gate B — `ADOPT_CANONICAL_SHRINE_ANCHOR_AND_READJUDICATE`
 
 ```text
-FOR      : single field, no schema change; both HOLDs become resolvable in principle
+FOR      : single field, no schema change; both HOLDs become resolvable in principle;
+           the ritual-center concept that 7/10 records already had to name acquires a
+           defined home
 AGAINST  : 2 downstream consumers (§8.4, §8.5) would emit a ritual-center coordinate
            as a walking navigation destination, which the proposal's own closing
            sentence warns against; 1 consumer (§8.2) is INDETERMINATE
 COST     : 8 PASS records re-adjudicated; 5 Production rows + 5 Seed rows rewritten;
            the 103 unadjudicated rows (pk=70 among them) inherit a claim no audit
-           has made; blocked by the §6.7 source-class question
+           has made; paced by the §6.7 supply question
 ```
 
-### Gate C — `DUAL_ANCHOR_SPLIT`
-
-Introduce a separate navigation-anchor field. `Shrine.latitude / longitude` becomes the
-Canonical Shrine Anchor; route guidance and the detail map link read the new field.
+### Gate C — `SPLIT_CANONICAL_AND_NAVIGATION_ANCHORS`
 
 ```text
-FOR      : the only gate that satisfies "Navigation destinations are a separate concern"
-           without degrading navigation; §8.6 shows a single web-side insertion point
+FOR      : the only option that satisfies "Navigation destinations are a separate
+           concern" without degrading navigation; §8.6 shows a single web-side
+           insertion point
 AGAINST  : schema change on a model whose write paths are already recorded as carrying
            active debt (docs/audit/location-ownership-bootstrap-parity.md:
            ROOT_CAUSE = DUAL_WRITE_PATH_WITH_ASYMMETRIC_DERIVATION); adding a second
@@ -674,19 +696,24 @@ COST     : schema + migration + serializer + 2 web consumers + backfill for 113 
            every row needs two anchors adjudicated instead of one
 ```
 
-### Gate D — `DEFER_PENDING_EVIDENCE_FEASIBILITY`
+### Gate D — `OTHER / INDETERMINATE`
 
-Keep the proposal at `PROPOSED`. First establish, on a bounded sample, whether a `P1`–`P4`
-ritual center is determinable and traceable under the proposal's own evidence rules.
+The open option. This audit does not define its content; any path that is not A, B or
+C lands here, and what belongs in it is a Mother Ship determination.
 
 ```text
-FOR      : §5.1 (PRESERVED = 0) and §6.7 (10/10 records rest on the excluded source
-           class) mean no evidence currently shows the proposal is satisfiable at scale;
-           §6.7 Reading 2, if correct, would push most rows to P5 indefinitely
-AGAINST  : both HOLDs stay open for the duration; the ritual-center question keeps
+FOR      : §5.1 (PRESERVED_BY_EXISTING_EVIDENCE = 0) means no Batch 01 record currently
+           carries the evidence A, B or C would each be decided against; the §6.7
+           supply question is open and bears on B and C alike
+AGAINST  : both HOLDs stay open while D is unresolved; the ritual-center question keeps
            recurring in new audits without a rule
-COST     : audit-only; 0 rows rewritten
+COST     : depends entirely on what is placed in this option
 ```
+
+One example of a path that would fall under D — recorded as an example only, not as a
+definition of the option and not as a recommendation: establishing on a bounded sample
+whether a `P1`–`P4` ritual center is determinable and traceable under the proposal's
+own evidence rules, before choosing between A, B and C.
 
 ```text
 GATE_SELECTED = NONE
@@ -717,10 +744,18 @@ This audit selects no gate. Selection is a Mother Ship decision.
 
 ```text
 A-1  Does "a generic map-provider POI" exclude the source class, or only its automatic
-     adoption without ritual-center labelling? (§6.7)  -> OPEN
+     sufficiency? (§6.7)
+     -> RESOLVED. Not excluded. A generic map-provider POI is not automatically
+        sufficient to establish the Canonical Shrine Anchor; a map-provider coordinate
+        remains usable for traceability once authoritative evidence establishes that
+        the mapped point is the ritual center.
 
-A-2  Does proposed P3 intentionally reverse the active Contract's exclusion of
-     山域・御神体・境内全体のcentroid, or is a narrower reading intended? (§2.3)  -> OPEN
+A-2  Does proposed P3 reverse the active Contract's treatment of
+     山域・御神体・境内全体のcentroid? (§2.3)
+     -> RESOLVED. No reversal. The active Contract's list is "not automatically", not
+        an absolute prohibition. P3 admits such a point only when confirmed as the
+        ritual center. The two contracts evaluate different semantic roles; the
+        difference is a SEMANTIC_ROLE_CHANGE, not an inversion.
 
 A-3  Is the rendered distanceM figure a navigation promise or a proximity indicator?
      (§8.2)  -> OPEN
@@ -731,8 +766,9 @@ A-4  Under P1/P4, which internal ritual site is primary for 宇佐神宮 (上宮
 A-5  If a gate other than A is selected, what becomes of the 103 unadjudicated
      Production rows, pk=70 among them? (§7.5)  -> OPEN
 
-A-6  Is a ritual center determinable and traceable, under the proposal's own evidence
-     rules, for a bounded sample? (§9 Gate D)  -> NOT_TESTED
+A-6  For how many shrines can authoritative evidence identify a specific georeferenced
+     point as the ritual center, at a level the proposal's evidence requirements
+     accept? (§6.7 supply question)  -> NOT_TESTED
 ```
 
 ## 12. STOP
