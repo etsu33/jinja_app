@@ -65,11 +65,16 @@ export type CompassUiState =
   | "recommendation_success"
   | "backend_error";
 
-// Already present on the raw recommendation dict Compass's response returns
-// today (backend/temples/api_views_compass.py has no serializer -- the dict
-// build_chat_recommendations() produces is spread into the response as-is).
-// Only the two fields this PR's Explanation actually reads are typed here;
-// everything else on the dict is still covered by the index signature below.
+// Compass Monthly のレスポンスは、Shared Recommendation dict がそのまま
+// spread されたものではない。現在の経路は:
+//
+//   Backend Shared Recommendation
+//     -> Compass Monthly Public Projection (allowlist 投影)
+//     -> typed frontend response
+//
+// 投影は backend/temples/api/compass_public_projection.py が行い、公開fieldは
+// allowlist で確定する。ここで型付けするのは frontend が読む field であり、
+// 将来の公開field追加は index signature 側で受ける。
 export type CompassReasonFact = {
   type?: string | null;
   label?: string | null;
@@ -82,7 +87,16 @@ export type CompassRecommendationBreakdown = {
 };
 
 export type CompassRecommendation = {
-  shrine_id?: number | string | null;
+  // Shrine identity。recommendation item が存在する限り必須かつ non-null。
+  //   SHRINE_IDENTITY_AUTHORITY = Shrine.id
+  //   PUBLIC_IDENTITY_KEY       = shrine_id
+  // R-2 / #2952 が契約を決定し、R-3 / #2953 が Public Projection で fail-closed
+  // 強制、R-4 / #2954 が OpenAPI を required / non-null へ揃えた。R-5 はその
+  // 契約をfrontend型へ反映する（docs/audit/compass-shrine-id-presence-audit.md §13）。
+  // number | string の両表現を維持する（表現の絞り込みは R-5 のスコープ外）。
+  shrine_id: number | string;
+  // COMPATIBILITY_FIELD。identity authority ではないため optional のまま維持し、
+  // 必須化も削除もしない（R-2 / #2952）。
   id?: number | string | null;
   name?: string | null;
   address?: string | null;

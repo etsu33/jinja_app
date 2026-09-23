@@ -3,7 +3,10 @@ import { resolveCompassSupplementaryFactText } from "../resolveCompassSupplement
 import type { CompassRecommendation } from "../types";
 
 function rec(overrides: Partial<CompassRecommendation>): CompassRecommendation {
-  return { name: "テスト神社", ...overrides };
+  // shrine_id は R-5 以後 required / non-null。本fileが検証するのは
+  // supplementary fact text の組み立てのみで identity は使わないが、
+  // 型が要求するため既定値を持たせる（個別caseで上書き可能）。
+  return { shrine_id: 1, name: "テスト神社", ...overrides };
 }
 
 describe("resolveCompassSupplementaryFactText", () => {

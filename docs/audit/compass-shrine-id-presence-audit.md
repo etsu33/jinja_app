@@ -942,3 +942,180 @@ NEXT = R-5 (frontend type non-optional)
 ```
 
 Next action requires a Mother Ship instruction naming `R-5`.
+
+---
+
+## 13. R-5 Implementation Record
+
+### 13.1 Status
+
+```text
+R-5_STATUS = IMPLEMENTED
+
+FRONTEND_TYPE_REQUIRES_SHRINE_ID    = YES
+FRONTEND_TYPE_ALLOWS_NULL_SHRINE_ID = NO
+```
+
+```text
+PUBLIC_PROJECTION_REQUIRES_SHRINE_ID_ON_SUCCESS = YES   (R-3 / §11)
+OPENAPI_REQUIRES_SHRINE_ID                      = YES   (R-4 / §12)
+HTTP_REGRESSION_TEST_EXISTS                     = YES   (R-1 / #2951)
+
+F1_PREREQUISITES_SATISFIED = YES
+F1_IMPLEMENTED             = NO
+```
+
+- Recorded at: `2026-09-23`
+- Type: frontend type contract only
+- Runtime behavior change: `NONE`
+- §1–§12 は当時の記録として書き換えていない
+
+### 13.2 Type change
+
+`apps/web/src/features/compass/types.ts` — `CompassRecommendation`:
+
+```text
+before:  shrine_id?: number | string | null;
+after :  shrine_id: number | string;
+```
+
+`number | string` の両表現を維持する。表現の絞り込み（`number` のみへ）は R-5 の
+スコープ外。
+
+`id` は未変更:
+
+```text
+id?: number | string | null;   (unchanged)
+
+id = COMPATIBILITY_FIELD
+id = NOT_IDENTITY_AUTHORITY
+```
+
+### 13.3 Stale comment corrected
+
+同 file の comment が Compass レスポンスを「serializer を持たず
+`build_chat_recommendations()` の dict をそのまま spread したもの」と記述していた。
+Compass Monthly Public Projection 導入後はこれが不正確なため、現在の経路へ更新した:
+
+```text
+Backend Shared Recommendation
+  -> Compass Monthly Public Projection (allowlist 投影)
+  -> typed frontend response
+```
+
+それ以外の documentation cleanup は行っていない。
+
+### 13.4 Navigation fallback is still present
+
+```text
+apps/web/src/features/compass/components/CompassRecommendationsSection.tsx
+  L35  const shrineId = rec.shrine_id ?? rec.id;
+  L58  const shrineId = rec.shrine_id ?? rec.id;
+```
+
+本 PR では**意図的に残している**。除去は `F-1`。併せて次も未変更:
+
+```text
+- `shrineId == null` guards
+- href conditions
+- analytics guards
+- key fallback logic
+```
+
+### 13.5 Construction sites inspected
+
+typecheck が露出させた fixture は1件のみ:
+
+```text
+apps/web/src/features/compass/__tests__/resolveCompassSupplementaryFactText.test.ts
+  rec() helper が shrine_id を持たない CompassRecommendation を構築していた
+  -> helper の既定値として shrine_id を追加（個別caseで上書き可能）
+```
+
+既に `shrine_id` を持つ fixture は機械的に編集していない。`recommendations` が
+空listの非success応答へ偽の `shrine_id` を足してもいない。
+
+型検査を迂回する cast は `CompassClient.tsx` L290 の
+`(await res.json()) as CompassRecommendationsResponse` のみで、これは HTTP 境界の
+cast であり R-5 の対象外（backend 側の契約は R-3 / R-4 が保証する）。
+
+### 13.6 Type-contract regression
+
+新規: `apps/web/src/features/compass/__tests__/compassRecommendationIdentityType.test.ts`
+
+tsd 等の型テスト専用 framework は導入していない。既存の Vitest + プロジェクトの
+`tsc -p tsconfig.json --noEmit` をそのまま使う。
+
+```text
+A  { shrine_id: 1 }    satisfies CompassRecommendation      -> 受理
+B  { shrine_id: "1" }  satisfies CompassRecommendation      -> 受理
+C  @ts-expect-error    shrine_id 欠落                        -> 拒否
+D  @ts-expect-error    shrine_id: null                       -> 拒否
+D-b @ts-expect-error   shrine_id: undefined                  -> 拒否
+E  `id` 無し / `id` 有り / `id: null` のいずれも受理          -> optional 維持
+```
+
+`@ts-expect-error` が実際にコンパイラで評価されることを、型を R-5 以前へ戻す
+変異で確認した:
+
+```text
+shrine_id?: number | string | null へ戻すと
+
+  compassRecommendationIdentityType.test.ts(36,1): error TS2578: Unused '@ts-expect-error' directive.
+  compassRecommendationIdentityType.test.ts(40,1): error TS2578: Unused '@ts-expect-error' directive.
+  compassRecommendationIdentityType.test.ts(44,1): error TS2578: Unused '@ts-expect-error' directive.
+```
+
+つまり契約が緩められた場合、typecheck は「directive が未使用」として失敗する。
+
+### 13.7 Validation
+
+```text
+pnpm -C apps/web typecheck                     PASS
+vitest run src/features/compass                13 files / 110 tests passed
+vitest run src/features/compass src/components/shrine
+                                               33 files / 303 tests passed
+backend files changed                          0
+CompassRecommendationsSection.tsx changed      0
+```
+
+### 13.8 Sequence
+
+```text
+R-1  DB-backed HTTP regression            DONE        (#2951)
+R-2  Contract decision                    RESOLVED    (#2952, §10)
+R-3  Public Projection enforcement        IMPLEMENTED (#2953, §11)
+R-4  OpenAPI serializer required/non-null IMPLEMENTED (#2954, §12)
+R-5  Frontend type non-optional           IMPLEMENTED (this section)
+
+F-1  Remove Compass `id` fallback         NOT_IMPLEMENTED
+       prerequisites R-3 / R-4 / R-5 = SATISFIED
+       CompassRecommendationsSection.tsx L35 / L58
+```
+
+### 13.9 Required statements for R-5
+
+```text
+1.  `rec.shrine_id ?? rec.id` was NOT removed.
+2.  CompassRecommendationsSection runtime behavior was NOT modified.
+3.  Backend was NOT modified.
+4.  OpenAPI was NOT modified.
+5.  Public Projection was NOT modified.
+6.  No Recommendation / Ranking change.
+7.  `id` was NOT removed and was NOT made required.
+8.  No DB / schema / migration change.
+9.  No Canonical / Navigation Anchor change.
+10. F-1 / F-3 / F-4 / F-5 / F-6 were NOT started.
+11. No type-testing framework (tsd etc.) was introduced.
+```
+
+### 13.10 STOP
+
+```text
+R-5_STATUS                 = IMPLEMENTED
+F1_PREREQUISITES_SATISFIED = YES
+F1_IMPLEMENTED             = NO
+NEXT = F-1 (remove the Compass navigation `id` fallback)
+```
+
+Next action requires a Mother Ship instruction naming `F-1`.
