@@ -171,7 +171,7 @@ HOLD状態では座標を推測してSeed / Productionへ投入しない。
 ```text
 CONTRACT_TIER            = PROPOSED
 ACTIVE_CANONICAL_MEANING = UNCHANGED
-GATE_SELECTED            = NONE
+GATE_SELECTED            = C
 ```
 
 本節の記載は `Shrine.latitude` / `Shrine.longitude` のCanonical Meaningを変更しない。同フィールドは引き続き **Visitor / Navigation Anchor** である（§Canonical Meaning）。
