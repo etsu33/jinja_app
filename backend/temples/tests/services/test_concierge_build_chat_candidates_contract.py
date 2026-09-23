@@ -5,7 +5,10 @@ from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from temples.models import PlaceRef, Shrine, ShrineDeity, ShrineHistory, ShrineKnowledgeSource
-from temples.services.concierge_chat_candidates import build_chat_candidates
+from temples.services.concierge_chat_candidates import (
+    build_chat_candidates,
+    build_chat_candidates_with_eligibility,
+)
 from temples.tests.support.recommendation_eligibility import (
     attach_usable_deity_fact,
     attach_usable_history_fact,
@@ -332,3 +335,153 @@ def test_candidates_do_not_over_exclude_shrines_with_mid_name_test_substring(shr
 
     assert "距離テスト神社" in names
     assert "place_idテスト神社" in names
+
+
+# ---------------------------------------------------------------------------
+# F-7: Shrine Identity invariant
+# docs/audit/shrine-identity-compass-concierge-contract.md
+#
+#   SHRINE_IDENTITY_AUTHORITY = Shrine.id
+#   PUBLIC_IDENTITY_KEY       = shrine_id
+#
+# 候補emission（concierge_chat_candidates.py の `"id": s.id` /
+# `"shrine_id": s.id`）は Compass と Concierge が共有する唯一の identity 発生点
+# である。両surfaceはここから下流で選抜ロジックだけを変え、identityは変えない。
+#
+# この不変条件はこれまで実装上は真だったが、専用のregression testが無かった。
+# 以下はその境界を直接固定する。
+# ---------------------------------------------------------------------------
+
+
+def _persisted_pk_by_name() -> dict[str, int]:
+    """候補payloadではなく、永続化されたShrine行からname->PKを引き直す。
+
+    assertionのright-hand sideをpayload由来にしないための補助。
+    """
+    return {s.name_jp: s.pk for s in Shrine.objects.all()}
+
+
+@pytest.mark.django_db
+def test_candidate_identity_id_equals_shrine_id_equals_persisted_shrine_pk(shrine_factory):
+    """F-7: candidate["id"] == candidate["shrine_id"] == 永続化されたShrine.id。
+
+    右辺はDBから読み直したPKであり、candidate payloadから導出しない。
+    どちらかのfieldが独立に書き換えられた時点で落ちる。
+    """
+
+    shrine_factory(name="識別子神社A", latitude=35.0, longitude=139.0)
+    shrine_factory(name="識別子神社B", latitude=35.1, longitude=139.1)
+    shrine_factory(name="識別子神社C", latitude=35.2, longitude=139.2)
+
+    expected_pk = _persisted_pk_by_name()
+
+    cands = build_chat_candidates(
+        lat=35.0, lng=139.0, area=None, goriyaku_tag_ids=None, trace_id="test",
+    )
+
+    audited = [c for c in cands if c["name"] in expected_pk]
+    assert len(audited) == 3, "3件すべてが候補に載っていること（前提条件）"
+
+    for cand in audited:
+        pk = expected_pk[cand["name"]]
+
+        assert cand["shrine_id"] == pk, (
+            f"shrine_id が永続化PKと乖離: name={cand['name']} "
+            f"shrine_id={cand['shrine_id']!r} Shrine.id={pk!r}"
+        )
+        assert cand["id"] == pk, (
+            f"id が永続化PKと乖離: name={cand['name']} "
+            f"id={cand['id']!r} Shrine.id={pk!r}"
+        )
+        assert cand["id"] == cand["shrine_id"], (
+            f"id と shrine_id が独立に書き換えられている: name={cand['name']} "
+            f"id={cand['id']!r} shrine_id={cand['shrine_id']!r}"
+        )
+
+        # payload -> DB の逆引きでも同一Shrineに解決すること。
+        # id が rank / result id に化けた場合、別のShrineか存在しない行を指す。
+        resolved = Shrine.objects.filter(pk=cand["shrine_id"]).first()
+        assert resolved is not None, f"shrine_id={cand['shrine_id']!r} がShrine行へ解決しない"
+        assert resolved.name_jp == cand["name"]
+
+
+@pytest.mark.django_db
+def test_candidate_identity_is_not_rank_or_list_index(shrine_factory):
+    """F-7: `id` が rank / list index / 連番へ退化していないこと。
+
+    除外されるdecoyを先に作ってPKを押し上げ、さらにpopular_score降順で
+    「PKが減少しながらindexは増加する」並びを作る。これにより
+    emitted id列は 0..n-1 でも 1..n でもありえない。
+    """
+
+    # 候補に載らないdecoy（座標欠損）。後続ShrineのPKを押し上げるためだけに作る。
+    shrine_factory(name="採番押し上げdecoy", latitude=None, longitude=None)
+
+    # 作成順 = PK昇順。popular_scoreは逆順にして、出力順でPKが減少するようにする。
+    shrine_factory(name="順位神社_低", latitude=35.0, longitude=139.0, popular_score=10)
+    shrine_factory(name="順位神社_中", latitude=35.0, longitude=139.0, popular_score=20)
+    shrine_factory(name="順位神社_高", latitude=35.0, longitude=139.0, popular_score=30)
+
+    expected_pk = _persisted_pk_by_name()
+
+    cands = build_chat_candidates(
+        lat=35.0, lng=139.0, area=None, goriyaku_tag_ids=None, trace_id="test",
+    )
+    audited = [c for c in cands if c["name"].startswith("順位神社_")]
+    assert len(audited) == 3
+
+    # 前提: popular_score降順 = PK降順
+    assert [c["name"] for c in audited] == ["順位神社_高", "順位神社_中", "順位神社_低"]
+    emitted_ids = [c["id"] for c in audited]
+    assert emitted_ids == sorted(emitted_ids, reverse=True), "前提: 出力順でPKが減少する"
+
+    assert emitted_ids != list(range(len(audited))), "id が 0-based list index へ退化している"
+    assert emitted_ids != list(range(1, len(audited) + 1)), "id が 1-based rank へ退化している"
+
+    for cand in audited:
+        assert cand["id"] == expected_pk[cand["name"]]
+        assert cand["shrine_id"] == expected_pk[cand["name"]]
+
+
+@pytest.mark.django_db
+def test_identity_invariant_holds_at_shared_candidate_emission_boundary(shrine_factory):
+    """F-7: Concierge経路とCompass経路で同一のidentityが得られること。
+
+    Concierge : api_views_concierge.py   -> build_chat_candidates()
+    Compass   : compass_recommendation_orchestrator.py
+                                        -> build_chat_candidates_with_eligibility()
+
+    本testはCompass固有コードもConcierge固有UIもimportしない。identityが
+    共有emission境界だけで決まり、どちらのsurfaceにも依存しないことを示す。
+    """
+
+    shrine_factory(name="共有境界神社A", latitude=35.0, longitude=139.0, popular_score=30)
+    shrine_factory(name="共有境界神社B", latitude=35.1, longitude=139.1, popular_score=20)
+
+    expected_pk = _persisted_pk_by_name()
+
+    concierge_entry = build_chat_candidates(
+        lat=35.0, lng=139.0, area=None, goriyaku_tag_ids=None, trace_id="test",
+    )
+    compass_entry = build_chat_candidates_with_eligibility(
+        lat=35.0, lng=139.0, area=None, goriyaku_tag_ids=None, trace_id="test",
+    ).candidates
+
+    def identity_map(candidates):
+        return {
+            c["name"]: (c["id"], c["shrine_id"])
+            for c in candidates
+            if c["name"].startswith("共有境界神社")
+        }
+
+    concierge_identity = identity_map(concierge_entry)
+    compass_identity = identity_map(compass_entry)
+
+    assert len(concierge_identity) == 2
+    assert concierge_identity == compass_identity, (
+        "Concierge経路とCompass経路でShrine identityが乖離している: "
+        f"concierge={concierge_identity!r} compass={compass_identity!r}"
+    )
+
+    for name, (emitted_id, emitted_shrine_id) in compass_identity.items():
+        assert emitted_id == emitted_shrine_id == expected_pk[name]
