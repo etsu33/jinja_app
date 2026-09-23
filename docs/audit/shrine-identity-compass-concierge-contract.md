@@ -9,6 +9,8 @@
 - Related: `docs/audit/canonical-shrine-anchor-gate-c-decision-record.md` (Gate C — Split Anchor)
 - Classification (as audited): **`PARTIALLY_SHARED`** (§7)
 - Updated at: `2026-09-23` — `F-1` 実装により Compass 側の状態が変化（§9）
+- `F-3` design record: `docs/audit/shared-shrine-identity-resolver-design.md`
+  （設計のみ。runtime 未変更）
 
 本書の §1–§8 は監査時点の記録であり、書き換えていない。Compass `id` fallback は
 この監査の時点では残存していたが、**`F-1` で除去済み**。現在状態は §9 を参照。
@@ -387,6 +389,11 @@ F-2  Verify shrine_id is present on every Compass recommendation item, then
 F-3  Introduce one shared identity resolver used by both surfaces
      (a frontend analogue of detailHref.pickShrineId) so the rule lives in one
      place rather than per component.
+     -> DESIGNED. See docs/audit/shared-shrine-identity-resolver-design.md
+        (resolver contract, public_strict / registered_compat policies,
+        prohibited fields, normalization, fail-closed conflict rule,
+        implementation location, consumer classification).
+        Design only — not implemented, no consumer migrated. F-4 implements.
 
 F-4  Normalize ShrineDetailArticle.tsx L368 precedence to shrine_id-first.
 
