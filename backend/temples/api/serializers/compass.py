@@ -115,10 +115,35 @@ class CompassRecommendationItemSerializer(serializers.Serializer):
     """recommendations[] 1件 = Compass Monthly Public Contract v1 の allowlist（Section 9.2）。
 
     allowlist であって「全件が全fieldを持つ」という意味ではないため、
-    recommendation_instance_id 以外は required=False。
+    原則として required=False。
+
+    例外は identity と transport metadata:
+
+    - `shrine_id` は **必須かつ non-null**
+      （R-2 / R-4。docs/audit/compass-shrine-id-presence-audit.md §10 / §12）
+      public response に recommendation item が存在するなら、その item は
+      必ず Shrine identity を持つ。runtime 側の強制は R-3（§11）が
+      Public Projection の identity gate として実装済みで、違反時は
+      HTTP 500 / {"state": "error"} へ fail-closed する。
+      本 serializer は OpenAPI 記述専用であり、runtime validation は行わない。
+
+    - `recommendation_instance_id` は View が注入する互換 alias（Section 8）。
     """
 
-    shrine_id = serializers.IntegerField(required=False, allow_null=True)
+    # SHRINE_IDENTITY_AUTHORITY = Shrine.id / PUBLIC_IDENTITY_KEY = shrine_id。
+    # required / allow_null は DRF の既定値に依存させず、契約としてコード上に
+    # 明示する（R-4）。
+    shrine_id = serializers.IntegerField(
+        required=True,
+        allow_null=False,
+        help_text=(
+            "当該 Shrine の永続化 primary key。recommendation item が存在する限り"
+            "必須かつ non-null（R-2 / R-3 / R-4）。Shrine identity の authority は"
+            "この field であり、`id` ではない。"
+        ),
+    )
+    # `id` は COMPATIBILITY_FIELD。identity authority ではないため optional のまま
+    # 維持する（R-2 / #2952）。必須化も削除も R-4 の対象外。
     id = serializers.IntegerField(required=False, allow_null=True)
     name = serializers.CharField(required=False, allow_null=True)
     address = serializers.CharField(required=False, allow_null=True)
