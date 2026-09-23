@@ -162,6 +162,133 @@ Visitor / Navigation Anchorとしてidentity・primary position source・必要�
 
 HOLD状態では座標を推測してSeed / Productionへ投入しない。
 
+## Canonical Shrine Anchor — Component Membership (A-7b)
+
+### 適用範囲
+
+本節は **PROPOSED** である Canonical Shrine Anchor Contract に属する component 帰属規則を記録する。
+
+```text
+CONTRACT_TIER            = PROPOSED
+ACTIVE_CANONICAL_MEANING = UNCHANGED
+GATE_SELECTED            = NONE
+```
+
+本節の記載は `Shrine.latitude` / `Shrine.longitude` のCanonical Meaningを変更しない。同フィールドは引き続き **Visitor / Navigation Anchor** である（§Canonical Meaning）。
+
+A-7bは、将来Canonical Shrine Anchorが採用される場合にcomponent帰属をどう確定するかのみを定める。本節の存在はその採用を意味しない。
+
+### 決定
+
+```text
+A-7b_COMPONENT_MEMBERSHIP_POLICY
+= AUTHORITATIVE_PRINCIPAL_ENSHRINEMENT_UNIT
+
+semantic owner       = full principal ritual complex
+representative point = UNWEIGHTED_COMPONENT_MEAN
+```
+
+### Component Classification
+
+componentは必ず次の3値のいずれか1つに分類する。
+
+```text
+INCLUDED
+EXCLUDED
+UNCLASSIFIED
+```
+
+#### INCLUDED
+
+authoritative evidenceが当該componentをprincipal main sanctuary / principal enshrinement unitの構成要素として明示的に識別したときに限り、INCLUDEDとする。
+
+authoritative evidence要件は次にも同様に適用する。
+
+- multiple co-equal honden
+- multiple primary sanctuary components
+
+次を根拠にINCLUDEDを推論しない。
+
+- 建築的外観
+- 近接
+- 宗教的重要性
+- 名称の類似
+- 一般的な知識
+
+#### EXCLUDED
+
+evidenceが当該componentをprincipal enshrinement unitの外と識別したとき、EXCLUDEDとする。次のカテゴリを含む。
+
+- gates
+- corridors
+- approach structures
+- visitor facilities
+- parking
+- museums
+- administrative buildings
+- detached auxiliary shrines
+- detached memorial / mausoleum complexes
+- secondary worship complexes
+
+例外: authoritative evidenceが当該componentをprincipal main sanctuaryの構成要素であると明示的に識別する場合は、INCLUDEDとしてよい。
+
+#### UNCLASSIFIED
+
+available evidenceがINCLUDED / EXCLUDEDのいずれも確定できない場合に用いる。
+
+```text
+INCLUDE evidenceの不在を EXCLUDED と解してはならない
+```
+
+未確定のcomponent setを空集合として表現しない。
+
+### Component Set Status
+
+```text
+COMPONENT_SET_STATUS =
+  COMPLETE
+  INCOMPLETE
+```
+
+`COMPLETE`: authoritative evidenceがprincipal enshrinement unitの完全な構成要素集合を確定しており、当該集合に影響する未解決componentがUNCLASSIFIEDとして残っていない。
+
+`INCOMPLETE`: authoritative evidenceから構成要素集合をまだ閉じられない。
+
+完全性はprincipal enshrinement unitにのみ適用する。境内の全構造物を分類することは要求しない。
+
+`COMPONENT_SET_STATUS`は§Position Statusの`PASS` / `HOLD_POSITION_REVIEW`とは別軸であり、`INCOMPLETE`は`HOLD_POSITION_REVIEW`を意味しない。
+
+### Calculation Gate
+
+```text
+UNWEIGHTED_COMPONENT_MEAN は
+COMPONENT_SET_STATUS = COMPLETE のときに限り算出してよい
+```
+
+`COMPONENT_SET_STATUS = INCOMPLETE` のとき:
+
+- 暫定的なmeanを算出しない
+- POIで代替しない
+- 欠落componentを推論しない
+- UNCLASSIFIEDなcomponentを黙って除外しない
+
+`UNWEIGHTED_COMPONENT_MEAN`はprincipal enshrinement unitの構成要素に対する非加重平均である。§Canonical Meaningが自動採用を否定する「山域・御神体・境内全体のcentroid」とは対象範囲が異なる別の量であり、両者を同一視しない。
+
+### Evidence Responsibility
+
+将来のcomponent adjudicationでは、最低限次を追跡可能にする。
+
+```text
+authoritative_source
+source_attested_component_name
+classification            (INCLUDED / EXCLUDED / UNCLASSIFIED)
+classification_rationale
+set_completeness
+coordinate_provenance     (INCLUDED componentのみ)
+```
+
+`source_attested_component_name`はSourceが実際に用いている名称を保持する。監査側の呼称へ置き換えない。
+
 ## Wave0 Decision Record: 御岩神社
 
 2026-09-12 Mother Ship reviewで、御岩神社について次を確認した。
@@ -249,3 +376,4 @@ ADOPTED_COORDINATE = 36.63604985, 140.58558306
 - OSM / Wikidataを唯一のprimary sourceにしない
 - coordinate distanceの固定PASS閾値を新設しない
 - Recommendation / Ranking / Concierge / Compassのscoring logicを変更しない
+- A-7b component membership規則の記載をもってCanonical Shrine Anchorを採用しない
