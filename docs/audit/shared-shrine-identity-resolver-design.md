@@ -303,7 +303,7 @@ Mobile を移行対象に含めるかどうかは、この型差をどう扱う�
 
 ```text
 PUBLIC_STRICT            = 1
-REGISTERED_COMPAT        = 4
+REGISTERED_COMPAT        = 5
 NEEDS_SEPARATE_DECISION  = 2
 OUT_OF_F4_SCOPE          = 1
 TOTAL                    = 8 web + 1 mobile = 9
