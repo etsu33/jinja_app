@@ -32,7 +32,10 @@ export default function CompassRecommendationsSection({
 
   useEffect(() => {
     recommendations.forEach((rec, index) => {
-      const shrineId = rec.shrine_id ?? rec.id;
+      // F-1: Shrine identity は shrine_id のみ。`id` は COMPATIBILITY_FIELD で
+      // identity authority ではないため fallback に使わない
+      // （docs/audit/compass-shrine-id-presence-audit.md §14）。
+      const shrineId = rec.shrine_id;
       if (shrineId == null) return;
       const rank = index + 1;
       const key = `${recommendationInstanceId}:${shrineId}:${rank}`;
@@ -55,7 +58,8 @@ export default function CompassRecommendationsSection({
     <DetailSection title="この方向の参拝候補" variant="secondary">
       <div className="space-y-3">
         {recommendations.map((rec, index) => {
-          const shrineId = rec.shrine_id ?? rec.id;
+          // F-1: navigation / click analytics も shrine_id のみを identity とする。
+          const shrineId = rec.shrine_id;
           const rank = index + 1;
           const key = String(shrineId ?? rec.name ?? Math.random());
           const distanceM = typeof rec.distance_m === "number" ? rec.distance_m : null;

@@ -7,10 +7,11 @@
 - Type: architecture / contract audit. **Read-only.**
 - Runtime behavior change: `NONE`
 - Related: `docs/audit/canonical-shrine-anchor-gate-c-decision-record.md` (Gate C — Split Anchor)
-- Classification: **`PARTIALLY_SHARED`** (§7)
+- Classification (as audited): **`PARTIALLY_SHARED`** (§7)
+- Updated at: `2026-09-23` — `F-1` 実装により Compass 側の状態が変化（§9）
 
-本書は runtime を変更しない。Compass `id` fallback は**まだ除去しない**（§6 で
-follow-up として記録する）。
+本書の §1–§8 は監査時点の記録であり、書き換えていない。Compass `id` fallback は
+この監査の時点では残存していたが、**`F-1` で除去済み**。現在状態は §9 を参照。
 
 ## 1. Mother Ship Architectural Principle
 
@@ -365,6 +366,9 @@ data layer      = SHARED
 contract layer  = NOT YET ENFORCED
 ```
 
+> この分類は監査時点（`2026-09-23`, PR #2948）のもの。`R-3` / `R-4` / `R-5` / `F-1`
+> 完了後の Compass 側の現在状態は §9 を参照。歴史的記録として本節は書き換えない。
+
 ## 8. Future Implementation Follow-ups
 
 None of these are performed by this document.
@@ -427,3 +431,62 @@ FOLLOW_UPS_STARTED   = NONE
 ```
 
 Next action requires a Mother Ship instruction naming a follow-up.
+
+---
+
+## 9. Current State Update — F-1 (Compass `id` fallback removed)
+
+Recorded at: `2026-09-23`. 本節は §1–§8 の監査記録を置き換えるものではなく、
+その後の実装によって変化した **現在状態** を追記するもの。
+
+### 9.1 What changed
+
+```text
+§2.1 / §4.2 / §6.3 が記録した Compass 側の状態:
+
+  BEFORE (audited state, PR #2948 時点)
+    CompassRecommendationsSection.tsx
+      L35  const shrineId = rec.shrine_id ?? rec.id;   (analytics)
+      L58  const shrineId = rec.shrine_id ?? rec.id;   (navigation)
+
+  AFTER (current, F-1)
+      const shrineId = rec.shrine_id;                  (both sites)
+```
+
+```text
+COMPASS_NAVIGATION_USES_SHRINE_ID_ONLY = YES
+COMPASS_ANALYTICS_USES_SHRINE_ID_ONLY  = YES
+COMPASS_ID_FALLBACK                    = REMOVED
+```
+
+### 9.2 R-9 compliance updated
+
+§6.3 は `R-3`（「登録済み Shrine は shrine_id で解決する」）を `PARTIAL`、
+`R-9`（「generic recommendation `id` を identity authority にしない」）を
+`VIOLATED` と記録していた。その根拠は Compass 側の fallback だった。
+
+```text
+Compass Monthly について:
+  R-3 = SATISFIED
+  R-9 = SATISFIED
+```
+
+Concierge 側および §4.1 / §4.4 が列挙したその他の fallback 箇所は **未変更**。
+`F-1` は Compass Monthly のみを対象とし、Concierge / Consultation History /
+Places / Favorites の identity 挙動には触れていない。したがって §7 の
+`PARTIALLY_SHARED` という全体分類は、Compass 以外の箇所が残る限り変わらない。
+
+### 9.3 Scope note
+
+```text
+F-1 changed   : apps/web/src/features/compass/components/CompassRecommendationsSection.tsx
+F-1 preserved : `id` in CompassRecommendation / Public Projection / OpenAPI / API payload
+                id = COMPATIBILITY_FIELD
+                id = NOT_IDENTITY_AUTHORITY
+                id = STILL_PRESENT_IN_PUBLIC_CONTRACT
+F-1 untouched : Concierge fallbacks, Consultation History, Places / Favorites,
+                F-3 / F-4 / F-5 / F-6
+```
+
+実装の詳細と回帰の証跡は
+`docs/audit/compass-shrine-id-presence-audit.md` §14。
