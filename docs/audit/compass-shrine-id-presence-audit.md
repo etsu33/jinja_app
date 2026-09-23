@@ -2,9 +2,11 @@
 
 ## Status
 
-- Status: `AUDITED`
+- Status: `AUDITED` + `DECISION_RECORDED`
 - Recorded at: `2026-09-23`
-- Type: contract-verification audit. **Read-only.**
+- Updated at: `2026-09-23` — `R-2` Mother Ship decision recorded (§10)
+- Type: contract-verification audit, now also carrying the `R-2` contract decision.
+  The audit body (§1–§9) is **read-only history**; §10 is the later decision.
 - Follow-up: `F-2` from `docs/audit/shrine-identity-compass-concierge-contract.md` §8
 - Scope: Compass **Monthly** only — `POST /api/compass/recommendations/`
 - Weekly Compass: out of scope (no shared implementation affects the Monthly guarantee — §2.7)
@@ -16,6 +18,9 @@
 その `F-2` 一問だけを検証する。
 
 ## 1. Final Classification
+
+> 以下は **F-2 記録時点**（`2026-09-23`, PR #2950）の状態である。`R-1` 完了後の
+> 現在値は §10.4 を参照。本節は歴史的記録として書き換えない。
 
 ```text
 COMPASS_SHRINE_ID_PRESENCE = PRODUCER_GUARANTEED_CONTRACT_OPTIONAL
@@ -374,11 +379,15 @@ R-1  (test, no contract change — safest first step)
          rec["shrine_id"] is not None
          rec["shrine_id"] == <persisted Shrine.id>
      Converts HTTP_REGRESSION_TEST_EXISTS to YES without touching any contract.
+     -> DONE. PR #2951 added
+        test_recommendation_success_items_carry_persisted_shrine_id.
 
 R-2  (contract) Decide whether shrine_id becomes REQUIRED in the Compass Monthly
      Public Contract v1. This is a public-contract change and needs its own gate.
      It also governs the fate of `id`, which is in the same allowlist
      (compass_public_projection.py L32-33).
+     -> RESOLVED. See §10. shrine_id = REQUIRED; `id` retained as a
+        compatibility field and NOT removed by that decision.
 
 R-3  (projection) Only if R-2 says required: decide the behavior when a source
      lacks shrine_id — raise, or drop the item. Note this interacts with
@@ -420,7 +429,7 @@ the deletion unsound.
 10. The only committed change is this document.
 ```
 
-## 9. STOP
+## 9. STOP (F-2 audit)
 
 ```text
 COMPASS_SHRINE_ID_PRESENCE = PRODUCER_GUARANTEED_CONTRACT_OPTIONAL
@@ -428,4 +437,195 @@ F1_READY                   = NO
 NEXT                       = R-1 (test-only) then R-2 (contract gate)
 ```
 
-Next action requires a Mother Ship instruction naming `R-1` or `R-2`.
+`R-1` and `R-2` have since been completed. The current state is recorded in §10; this
+section preserves the F-2 audit's own stopping point.
+
+---
+
+## 10. R-2 Mother Ship Decision Record
+
+### 10.1 Status
+
+```text
+R-2_STATUS   = RESOLVED
+R-2_DECISION = REQUIRE_SHRINE_ID_FOR_COMPASS_MONTHLY_SUCCESS_ITEMS
+```
+
+- Recorded at: `2026-09-23`
+- Decision authority: Mother Ship
+- Type: **contract decision record only**
+- Implementation: `NOT_STARTED` — `R-3` / `R-4` / `R-5` are separate tasks
+- Runtime / projection / serializer / TypeScript change by this record: `NONE`
+
+本節は決定の記録であり、契約の実装ではない。§1–§9 の F-2 監査本体は当時の状態を
+保持したまま書き換えていない。
+
+### 10.2 Scope
+
+```text
+endpoint  = POST /api/compass/recommendations/
+surface   = Compass MONTHLY only
+condition = state == "recommendation_success"
+subject   = recommendations[*]   (every item, not only index 0)
+```
+
+Out of scope for this decision:
+
+```text
+- Compass Weekly (separate presentation path — §2.7)
+- non-success states (direction_zero_candidates / error / 400 responses)
+- Concierge (its own identity handling is recorded in
+  docs/audit/shrine-identity-compass-concierge-contract.md)
+```
+
+### 10.3 The contract
+
+When `state = recommendation_success`, every item in `recommendations[*]` must satisfy:
+
+```text
+COMPASS_MONTHLY_SUCCESS_ITEM_IDENTITY_CONTRACT:
+  shrine_id = REQUIRED
+  shrine_id = NON_NULL
+  shrine_id = Shrine.id
+  id        = COMPATIBILITY_FIELD
+  id        = NOT_IDENTITY_AUTHORITY
+```
+
+Identity authority, unchanged from `#2948`:
+
+```text
+SHRINE_IDENTITY_AUTHORITY = Shrine.id
+PUBLIC_IDENTITY_KEY       = shrine_id
+```
+
+`shrine_id = Shrine.id` means the value must be the **persisted primary key of the
+Shrine row the item refers to** — not a rank, list index, result-set ordinal, or the
+primary key of a different row. A structurally valid integer that resolves to the
+wrong Shrine violates this contract.
+
+### 10.4 State after R-1, before R-3 / R-4 / R-5
+
+```text
+PRODUCER_SHRINE_ID_PRESENT            = YES
+ORCHESTRATOR_PRESERVES_SHRINE_ID      = YES
+PUBLIC_PROJECTION_PRESERVES_SHRINE_ID = YES   (preserves — still does not require)
+HTTP_REGRESSION_TEST_EXISTS           = YES   <- changed by R-1 (PR #2951)
+OPENAPI_REQUIRES_SHRINE_ID            = NO
+FRONTEND_TYPE_REQUIRES_SHRINE_ID      = NO
+
+COMPASS_SHRINE_ID_PRESENCE = PRODUCER_GUARANTEED_CONTRACT_OPTIONAL
+F1_READY                   = NO
+```
+
+`R-2` records **what the contract must become**. It does not change any of the three
+`NO` rows above — those are `R-3` / `R-4` / `R-5`. The classification therefore stays
+`PRODUCER_GUARANTEED_CONTRACT_OPTIONAL` until those land.
+
+### 10.5 Status of `id`
+
+```text
+id = COMPATIBILITY_FIELD
+id = NOT_IDENTITY_AUTHORITY
+id = NOT_REMOVED_BY_THIS_DECISION
+```
+
+`id` remains in `COMPASS_MONTHLY_PUBLIC_ITEM_FIELDS`
+(`compass_public_projection.py` L32-33) and in
+`CompassRecommendationItemSerializer` (`serializers/compass.py` L122). Removing it is
+**not decided here** and is not implied by requiring `shrine_id`.
+
+Consequence for consumers: once the contract is implemented, `shrine_id` is the only
+field a client may treat as Shrine identity. `id` may continue to be emitted, but no
+consumer may derive identity from it — which is what makes the `F-1` fallback
+removable later.
+
+### 10.6 Explicitly deferred to R-3
+
+**Not decided by R-2.** What runtime must do if an impossible/invalid source item
+reaches the projection without a usable `shrine_id`:
+
+```text
+OPEN (R-3):
+  - raise
+  - fail closed
+  - drop the offending item
+  - transform the result state
+  - some combination, possibly differing by cause
+```
+
+Recording the constraint without choosing the behavior: `R-3` must not resolve this by
+inventing a `shrine_id`. The projection's existing fail-safe — 「公開対象のsource
+fieldが存在しない場合、代わりの値をでっち上げない」 — and the test that protects it,
+`test_compass_public_projection.py::test_absent_public_fields_are_not_invented`
+(L133), must survive `R-3` in **re-scoped** form rather than be deleted. Fabricating an
+identity is worse than any of the options above.
+
+Per the audited evidence (§3 A / §3 B), no currently reachable Monthly success path
+can produce such an item; `R-3` is defining behavior for a state that is unreachable
+today but not structurally prevented.
+
+### 10.7 Implementation sequence
+
+```text
+R-1  DB-backed HTTP regression                          DONE      (PR #2951)
+R-2  Contract decision                                  RESOLVED  (this section)
+
+R-3  Public Projection enforcement                      NOT_STARTED
+       + resolve the §10.6 behavior question
+R-4  OpenAPI serializer required / non-null             NOT_STARTED
+       serializers/compass.py L121
+R-5  Frontend type non-optional                         NOT_STARTED
+       apps/web/src/features/compass/types.ts L85
+
+F-1  Remove the Compass navigation `id` fallback        BLOCKED
+       CompassRecommendationsSection.tsx L58
+       only after R-3 / R-4 / R-5 are complete AND validated
+```
+
+```text
+ORDER      : R-3 -> R-4 -> R-5 -> F-1
+F1_READY   = NO   (unchanged by this decision)
+```
+
+`F-1` remains blocked. Requiring `shrine_id` by decision does not make the client-side
+fallback removable; only the implemented and validated `R-3` / `R-4` / `R-5` do.
+
+### 10.8 Evidence basis
+
+```text
+PR #2948  Shrine.id = identity authority; shrine_id = public identity key
+          docs/audit/shrine-identity-compass-concierge-contract.md
+PR #2949  F-7 — shared candidate emission regression-protected:
+          Shrine.id == candidate["shrine_id"] == candidate["id"]
+PR #2950  F-2 — runtime preserves shrine_id end-to-end; public / schema /
+          frontend contracts still optional -> PRODUCER_GUARANTEED_CONTRACT_OPTIONAL
+PR #2951  R-1 — DB-backed HTTP regression: every observed recommendation_success
+          item has a non-null shrine_id resolving to the correct persisted row
+```
+
+### 10.9 Required statements for R-2
+
+```text
+1.  compass_public_projection.py was NOT changed.
+2.  CompassRecommendationItemSerializer was NOT changed.
+3.  TypeScript types were NOT changed.
+4.  `id` was NOT removed.
+5.  The Compass navigation fallback was NOT removed.
+6.  No runtime or API response behavior was changed.
+7.  No Recommendation / Ranking change.
+8.  No DB / schema / migration change.
+9.  No Canonical / Navigation Anchor change.
+10. R-3 / R-4 / R-5 / F-1 were NOT started.
+11. The R-3 invalid-item behavior question is explicitly left OPEN (§10.6).
+12. The only committed change is this document.
+```
+
+### 10.10 STOP
+
+```text
+R-2_STATUS = RESOLVED
+IMPLEMENTATION = NOT_STARTED
+NEXT = R-3 (Public Projection enforcement + §10.6 behavior decision)
+```
+
+Next action requires a Mother Ship instruction naming `R-3`.
