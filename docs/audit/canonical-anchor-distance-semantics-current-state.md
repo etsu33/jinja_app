@@ -6,7 +6,7 @@
 - Recorded at: `2026-09-23`
 - Subject: `A-3 distanceM semantics`
 - Scope in this document: current producer / consumer trace only
-- A-3 Mother Ship decision: `NOT_MADE`
+- A-3 Mother Ship decision: `RESOLVED_PROXIMITY`
 - Production write: `NONE`
 - Base Seed write: `NONE`
 - Runtime behavior change: `NONE`
@@ -626,7 +626,7 @@ represent after Canonical / Navigation Anchor semantics are decided?"
 2. No Base Seed data was changed.
 3. No runtime code was changed.
 4. No active Contract was changed.
-5. A-3 was not decided by this audit.
+5. The initial current-state trace did not itself decide A-3; Mother Ship decision is recorded in §16.
 6. Recommendation distance_m is not a route-provider distance.
 7. Route distance_m and recommendation distance_m are separate semantic namespaces.
 8. No Migration Gate option was selected.
