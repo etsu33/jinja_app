@@ -696,8 +696,7 @@ NAVIGATION_ANCHOR_FIELD_EXISTS = NO
 
 The four options below are the Mother Ship canonical Migration Decision Gate labels.
 The evidence-for / evidence-against / migration-cost analysis under each is supplied by
-this audit and the follow-up A-3 / A-4 / A-6 / A-7 records; the options themselves are
-not reinterpreted, narrowed, or renamed.
+this audit and the follow-up A-3 / A-4 / A-5 / A-6 / A-7 records.
 
 Follow-up evidence:
 
@@ -708,11 +707,11 @@ A-3_DISTANCE_SEMANTICS
 A-4
 = RESOLVED_AT_SEMANTIC_OWNER_LEVEL
 
+A-5_MIGRATION_POLICY
+= ADDITIVE_STAGED_NO_SILENT_REINTERPRETATION
+
 A-6_GEOREFERENCE_SUPPLY
 = AVAILABLE_IN_SAMPLE
-
-A-6_SINGLE_POINT_REPRODUCIBILITY
-= PARTIAL (3 / 5 before A-7 point policy)
 
 A-7_P2_MULTI_BUILDING_REPRESENTATION
 = RESOLVED
@@ -725,69 +724,66 @@ Sources:
 
 - `docs/audit/canonical-anchor-distance-semantics-current-state.md`
 - `docs/audit/canonical-shrine-anchor-multi-ritual-center-audit.md`
+- `docs/audit/canonical-shrine-anchor-unadjudicated-migration-policy.md`
 - `docs/audit/canonical-shrine-anchor-georeference-traceability-audit.md`
 - `docs/audit/canonical-shrine-anchor-p2-representation-decision.md`
 
 ### Gate A — `KEEP_CURRENT_CONTRACT`
 
 ```text
-FOR      : 0 downstream consumers break; 8 PASS records keep their evidentiary basis;
-           5 Production rows and 5 Seed rows keep a meaning matching their adoption record
+FOR      : zero semantic migration; current route / arrival behavior remains aligned
+           with the ACTIVE Visitor / Navigation Anchor Contract; no backfill required
 
-AGAINST  : ritual-center semantics remain outside Shrine.latitude / longitude;
-           A-3 / A-4 / A-6 / A-7 now remove the earlier distance, semantic-owner,
-           georeference-supply, and P2-representation uncertainties from the proposed
-           ritual-center model
+AGAINST  : Canonical ritual-center semantics remain unavailable as a first-class
+           coordinate concept; the A-3 / A-4 / A-6 / A-7 work is not used to change
+           the current position model
 
-COST     : 0 rows rewritten, 0 code changes
+A-5 IMPACT:
+           no migration action
 ```
-
-The current coordinate remains a Visitor / Navigation Anchor. Recommendation distance
-continues to be straight-line proximity to that current anchor.
 
 ### Gate B — `ADOPT_CANONICAL_SHRINE_ANCHOR_AND_READJUDICATE`
 
 ```text
-FOR      : single field, no schema change; A-3 allows Recommendation distance to remain
-           a proximity signal when computed to a Canonical Anchor; A-4 supplies the
-           hierarchy rule; A-6 demonstrates geospatial supply; A-7 supplies the P2
-           multi-building point rule
+FOR      : no additional coordinate field; A-3 supports proximity-to-Canonical;
+           A-4 / A-6 / A-7 provide semantic-owner and point rules
 
-AGAINST  : 2 downstream consumers (§8.4, §8.5) would still emit a ritual-center
-           coordinate as a walking navigation destination; A-5 migration handling for
-           103 unadjudicated Production rows remains OPEN
+AGAINST  : the same coordinate remains consumed by route / walking-destination paths,
+           so ritual-center coordinates would still carry navigation semantics;
+           A-5 prohibits partial semantic reinterpretation of the existing field
 
-COST     : 8 PASS records re-adjudicated; 5 Production rows + 5 Seed rows rewritten;
-           103 unadjudicated rows require an explicit migration policy
+A-5 IMPACT:
+           every migration-target row must be Canonical-adjudicated before semantic
+           cutover; existing values cannot be silently retained as Canonical
 ```
 
-A-3 removes distance as a blocker for Gate B, but it does not remove the route / arrival
-semantic collision caused by reusing the existing single coordinate field.
+A-5 therefore makes Gate B an all-target semantic migration rather than a gradual
+row-by-row migration.
 
 ### Gate C — `SPLIT_CANONICAL_AND_NAVIGATION_ANCHORS`
 
 ```text
-FOR      : separates ritual-center semantics from route destination semantics;
-           A-3 permits Canonical Anchor to drive geographic proximity while Navigation
-           Anchor owns route / arrival semantics; A-7 supplies the P2 Canonical point
-           rule; route consumers no longer need to reuse the ritual-center point
+FOR      : preserves Visitor / Navigation coordinates while adding independent
+           Canonical ritual-center semantics; A-3 maps proximity to Canonical and
+           route / arrival behavior to Navigation; A-5 supports additive batch backfill
 
-AGAINST  : schema change on a model whose write paths already carry active
-           synchronization debt; adding a second coordinate pair increases that
-           surface; A-5 migration handling for 103 unadjudicated Production rows
-           remains OPEN
+AGAINST  : schema / serializer / data-ownership work is required; the repository already
+           has active coordinate synchronization debt and a second coordinate domain
+           increases the need for explicit ownership rules
 
-COST     : schema + migration + serializer + downstream consumer changes + backfill;
-           Navigation Anchor and Canonical Anchor each require explicit data ownership
-           and migration behavior
+A-5 IMPACT:
+           existing Navigation values remain intact; Canonical values start absent /
+           NOT_ADJUDICATED and are populated only after evidence-based row adjudication;
+           runtime consumers stay on current semantics until an explicit cutover gate
 ```
 
-The resulting responsibility model is now semantically explicit:
+Gate C is the only listed gate whose model directly represents both currently resolved
+semantic roles at the same time:
 
 ```text
 Canonical Shrine Anchor
--> shrine geographic / ritual identity
--> proximity distance
+-> ritual / geographic identity
+-> proximity
 -> compass direction
 
 Navigation Anchor
@@ -795,38 +791,33 @@ Navigation Anchor
 -> arrival / walking-navigation semantics
 ```
 
-This is a semantic description of Gate C, not a selection of Gate C.
+This statement is a semantic-fit observation. It is not a Gate selection.
 
 ### Gate D — `OTHER / INDETERMINATE`
 
-The open option. This audit does not define its content; any path that is not A, B or
-C lands here, and what belongs in it is a Mother Ship determination.
+The open option for a Mother Ship-defined model outside A / B / C.
 
-The previously investigated uncertainties now stand as:
+The previously blocking audit questions are now resolved or bounded:
 
 ```text
-A-3 = resolved: PROXIMITY
-A-4 = resolved at semantic-owner level
-A-6 = geospatial supply observed; point issue isolated
-A-7 = multi-building P2 point policy resolved
+A-3 = RESOLVED
+A-4 = RESOLVED
+A-5 = RESOLVED
+A-6 = evidence-supply sample completed
+A-7 = RESOLVED
 ```
 
-The remaining known Migration Gate blocker is:
+No known audit question currently requires Gate D.
+
+That does not prohibit Mother Ship from selecting D for a new design not represented
+by A / B / C.
 
 ```text
-A-5 = migration policy for 103 unadjudicated Production rows
-```
-
-The distance-copy and `sort_distance` trigger mismatches recorded by A-3 are product
-alignment debt. They do not reopen the meaning of `distance_m` and do not by themselves
-select a Migration Gate.
-
-```text
-MIGRATION_GATE_READY_FOR_SELECTION = NO
+MIGRATION_GATE_READY_FOR_SELECTION = YES
 GATE_SELECTED = NONE
 ```
 
-The Gate remains unselected because A-5 is still open.
+The audit package is now selection-ready.
 
 ## 10. Required Statements
 
@@ -850,72 +841,54 @@ The Gate remains unselected because A-5 is still open.
 ## 11. Open Questions
 
 ```text
-A-1  Does "a generic map-provider POI" exclude the source class, or only its automatic
-     sufficiency? (§6.7)
-     -> RESOLVED. Not excluded. A generic map-provider POI is not automatically
-        sufficient to establish the Canonical Shrine Anchor; a map-provider coordinate
-        remains usable for traceability once authoritative evidence establishes that
-        the mapped point is the ritual center.
+A-1  Generic map-provider POI sufficiency?
+     -> RESOLVED.
 
-A-2  Does proposed P3 reverse the active Contract's treatment of
-     山域・御神体・境内全体のcentroid? (§2.3)
-     -> RESOLVED. No reversal. The active Contract's list is "not automatically", not
-        an absolute prohibition. P3 admits such a point only when confirmed as the
-        ritual center. The two contracts evaluate different semantic roles; the
-        difference is a SEMANTIC_ROLE_CHANGE, not an inversion.
+A-2  P3 vs active Contract treatment of mountain / sacred-object / precinct centroid?
+     -> RESOLVED.
 
-A-3  Is the rendered distanceM figure a navigation promise or a proximity indicator?
-     (§8.2)
+A-3  Is rendered distanceM a navigation promise or proximity indicator?
      -> RESOLVED: PROXIMITY.
-        recommendation.distance_m = straight-line geographic closeness.
-        NAVIGATION_PROMISE = NO.
-        WALKING_DISTANCE_PROMISE = NO.
-        ROUTE_DISTANCE_PROMISE = NO.
-        Canonical Shrine Anchor is compatible with this proximity role.
-        Route distance remains a separate Navigation concern.
         See docs/audit/canonical-anchor-distance-semantics-current-state.md.
 
-A-4  Under P1/P4, which internal ritual site is primary for 宇佐神宮 (上宮 / 下宮) and
-     for 鶴岡八幡宮 (本宮・上宮 / 若宮・下宮)?
+A-4  How are multiple major ritual sites resolved?
      -> RESOLVED_AT_SEMANTIC_OWNER_LEVEL.
-        宇佐神宮 = 上宮; no single one of the three Honden is selected.
-        鶴岡八幡宮 = 本宮（上宮）.
         See docs/audit/canonical-shrine-anchor-multi-ritual-center-audit.md.
 
-A-5  If a gate other than A is selected, what becomes of the 103 unadjudicated
-     Production rows, pk=70 among them? (§7.5)  -> OPEN
+A-5  What happens to the 103 unadjudicated Production rows?
+     -> RESOLVED.
+        MIGRATION_POLICY = ADDITIVE_STAGED_NO_SILENT_REINTERPRETATION.
+        Unadjudicated Canonical coordinate = ABSENT.
+        Existing Navigation coordinate = PRESERVED.
+        Migration scope = explicitly frozen canonical identity set.
+        Bulk Navigation -> Canonical copy = PROHIBITED.
+        See docs/audit/canonical-shrine-anchor-unadjudicated-migration-policy.md.
 
-A-6  For how many shrines can authoritative evidence identify a specific georeferenced
-     point as the ritual center, at a level the proposal's evidence requirements
-     accept? (§6.7 supply question)
-     -> PARTIALLY_RESOLVED AS AN EVIDENCE-SUPPLY AUDIT.
-        5-shrine sample:
-        SINGLE_POINT_REPRODUCIBLE = 3/5 before A-7.
-        COMPLEX_TRACEABLE_POINT_POLICY_MISSING = 2/5 before A-7.
-        NOT_TRACEABLE = 0/5.
-        A-7 subsequently supplies the missing P2 representative-point policy.
+A-6  Can ritual-center subjects be georeferenced?
+     -> EVIDENCE-SUPPLY SAMPLE COMPLETED.
+        Supply was observed in the 5-shrine sample.
+        The multi-building point-policy gap found there was subsequently closed by A-7.
         See docs/audit/canonical-shrine-anchor-georeference-traceability-audit.md.
 
-A-7  How should a multi-building P2 semantic owner be represented as Canonical Anchor?
+A-7  How should a multi-building P2 semantic owner be represented?
      -> RESOLVED.
         SEMANTIC_OWNER = FULL_PRINCIPAL_RITUAL_COMPLEX.
         POINT_METHOD = UNWEIGHTED_COMPONENT_MEAN.
-        INPUT = ALL_VERIFIED_CO_PRINCIPAL_COMPONENT_COORDINATES.
-        SINGLE_COMPONENT_PRIORITY = PROHIBITED.
-        GENERIC_POI_AUTO_ADOPTION = PROHIBITED.
-        INCOMPLETE_COMPONENT_SET = HOLD_POSITION_REVIEW.
-        REPRESENTATIVE_POINT_IS_SACRED_SITE = NO.
-        REPRESENTATIVE_POINT_IS_NAVIGATION_DESTINATION = NO.
         See docs/audit/canonical-shrine-anchor-p2-representation-decision.md.
 ```
+
+No known A-series question remains OPEN.
 
 ## 12. STOP
 
 ```text
 IMPACT_ASSESSMENT        = COMPLETE
+A-1                      = RESOLVED
+A-2                      = RESOLVED
 A-3                      = RESOLVED_PROXIMITY
 A-4                      = RESOLVED_AT_SEMANTIC_OWNER_LEVEL
-A-6                      = PARTIALLY_RESOLVED_AS_SUPPLY_AUDIT
+A-5                      = RESOLVED_ADDITIVE_STAGED_MIGRATION
+A-6                      = EVIDENCE_SUPPLY_SAMPLE_COMPLETED
 A-7                      = RESOLVED
 P2_POINT_POLICY          = RESOLVED
 DISTANCE_COPY_DEBT       = OPEN
@@ -923,9 +896,10 @@ DISTANCE_TRIGGER_DEBT    = OPEN
 READJUDICATION           = NOT_PERFORMED
 CONTRACT_MIGRATION       = NOT_PERFORMED
 COORDINATE_REMEDIATION   = NOT_PERFORMED
-MIGRATION_GATE_READY     = NO
+MIGRATION_GATE_READY     = YES
 GATE_SELECTED            = NONE
 ACTIVE_CONTRACT          = UNCHANGED
 ```
 
-Next action requires the Mother Ship decision on A-5.
+The audit package is ready for the Mother Ship to select exactly one Migration Gate:
+A / B / C / D.
