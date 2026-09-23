@@ -629,3 +629,157 @@ NEXT = R-3 (Public Projection enforcement + §10.6 behavior decision)
 ```
 
 Next action requires a Mother Ship instruction naming `R-3`.
+
+---
+
+## 11. R-3 Implementation Record
+
+### 11.1 Status
+
+```text
+R-3_STATUS  = IMPLEMENTED
+R-3_BEHAVIOR = FAIL_CLOSED_WHOLE_RESPONSE_ON_MISSING_OR_NULL_SHRINE_ID
+```
+
+```text
+PUBLIC_PROJECTION_REQUIRES_SHRINE_ID_ON_SUCCESS = YES
+
+MISSING_SHRINE_ID_BEHAVIOR = FAIL_CLOSED
+NULL_SHRINE_ID_BEHAVIOR    = FAIL_CLOSED
+ID_FALLBACK                = PROHIBITED
+PARTIAL_SUCCESS            = PROHIBITED
+ERROR_RESPONSE             = HTTP_500_STATE_ERROR
+```
+
+- Recorded at: `2026-09-23`
+- Resolves the behavior question deliberately left OPEN in §10.6
+- §1–§10 は当時の記録として書き換えていない
+
+### 11.2 Scope of enforcement
+
+```text
+endpoint  = POST /api/compass/recommendations/
+condition = result.state == STATE_RECOMMENDATION_SUCCESS
+subject   = recommendations[*]（全件）
+```
+
+Non-success states (`invalid_purpose` / `direction_zero_candidates` / error paths)
+are **not** gated: the View passes `require_shrine_id=False` for them, so their
+projection behavior is byte-for-byte unchanged.
+
+### 11.3 Enforcement boundary
+
+Two layers, because the projection call sits **outside** the View's existing
+try/except — raising from the projection alone would surface as an unhandled
+exception rather than the contract's error body.
+
+```text
+[1] backend/temples/api/compass_public_projection.py
+      CompassPublicProjectionContractError          (new, module-local)
+      _assert_identity_contract(source, *, index)   (new, private)
+      project_compass_recommendations(
+          ..., require_shrine_id: bool              (new, keyword-only, REQUIRED)
+      )
+
+    require_shrine_id has no default. The Monthly caller cannot fall into an
+    ambiguous mode by omission.
+
+    When True, every source item is checked BEFORE any projection begins:
+        - must be a Mapping
+        - "shrine_id" must be present
+        - source["shrine_id"] must not be None
+    Any violation raises and the function returns nothing — not a partially
+    projected list.
+
+    The module remains DB-independent: it does not query Shrine and does not
+    import domain/service layers. Whether shrine_id resolves to a real row is
+    the HTTP-boundary DB-backed regression's job (R-1 / #2951).
+
+[2] backend/temples/api_views_compass.py
+      require_shrine_id=(result.state == STATE_RECOMMENDATION_SUCCESS)
+      except CompassPublicProjectionContractError:
+          log.error(... instance / state / item_count only ...)
+          return Response({"state": "error"}, status=500)
+```
+
+The log line carries the `recommendation_instance_id`, the state and the item count
+only — no payload, no field values, no user-derived input.
+
+### 11.4 What was deliberately NOT done
+
+```text
+- invalid item is NOT dropped              (no partial success)
+- shrine_id is NOT synthesized
+- `id` is NOT copied into shrine_id
+- `id` is NOT accepted as fallback identity
+- no new Compass product result state was introduced
+- the projection does NOT query Shrine
+```
+
+`{"shrine_id": 101, "name": "..."}` passes the gate with no `id` present.
+`{"id": 101, "name": "..."}` is rejected.
+
+### 11.5 Preserved fail-safe (§ C)
+
+`test_absent_public_fields_are_not_invented` is **retained and re-scoped**, not
+deleted. Its docstring now records that it protects the single-item helper's rule
+「投影は値をでっち上げない」 — not a permission for `shrine_id` to be absent. The
+Monthly identity requirement lives at the list boundary
+(`project_compass_recommendations(require_shrine_id=True)`), which the single-item
+helper does not carry.
+
+### 11.6 State after R-3
+
+```text
+PRODUCER_SHRINE_ID_PRESENT                      = YES
+ORCHESTRATOR_PRESERVES_SHRINE_ID                = YES
+PUBLIC_PROJECTION_PRESERVES_SHRINE_ID           = YES
+PUBLIC_PROJECTION_REQUIRES_SHRINE_ID_ON_SUCCESS = YES   <- changed by R-3
+HTTP_REGRESSION_TEST_EXISTS                     = YES   (R-1 / #2951)
+
+OPENAPI_REQUIRES_SHRINE_ID                      = NO
+FRONTEND_TYPE_REQUIRES_SHRINE_ID                = NO
+F1_READY                                        = NO
+```
+
+`R-4` and `R-5` are **not** complete. The OpenAPI serializer still declares
+`required=False, allow_null=True` and the frontend type is still optional, so the
+Compass navigation fallback remains non-removable.
+
+### 11.7 Sequence
+
+```text
+R-1  DB-backed HTTP regression            DONE        (#2951)
+R-2  Contract decision                    RESOLVED    (#2952, §10)
+R-3  Public Projection enforcement        IMPLEMENTED (this section)
+R-4  OpenAPI serializer required/non-null NOT_STARTED  serializers/compass.py L121
+R-5  Frontend type non-optional           NOT_STARTED  types.ts L85
+F-1  Remove Compass `id` fallback         BLOCKED      CompassRecommendationsSection.tsx L58
+```
+
+### 11.8 Required statements for R-3
+
+```text
+1.  CompassRecommendationItemSerializer was NOT modified.
+2.  OpenAPI shrine_id was NOT made required.
+3.  TypeScript types were NOT modified.
+4.  `id` was NOT removed.
+5.  The Compass navigation fallback was NOT removed.
+6.  The projection layer does NOT query Shrine.
+7.  No Recommendation / Ranking change.
+8.  No Compass direction-logic change.
+9.  No DB / schema / migration change.
+10. No Canonical / Navigation Anchor change.
+11. R-4 / R-5 / F-1 / F-3 / F-4 / F-5 / F-6 were NOT started.
+12. Non-success Compass states are unaffected.
+```
+
+### 11.9 STOP
+
+```text
+R-3_STATUS = IMPLEMENTED
+F1_READY   = NO
+NEXT       = R-4 (OpenAPI serializer required / non-null)
+```
+
+Next action requires a Mother Ship instruction naming `R-4`.

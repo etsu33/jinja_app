@@ -8,8 +8,11 @@ from __future__ import annotations
 
 import copy
 
+import pytest
+
 from temples.api.compass_public_projection import (
     COMPASS_MONTHLY_PUBLIC_ITEM_ALLOWLIST,
+    CompassPublicProjectionContractError,
     project_compass_recommendation,
     project_compass_recommendations,
 )
@@ -131,6 +134,17 @@ def test_reason_facts_expose_only_type_and_label():
 
 
 def test_absent_public_fields_are_not_invented():
+    """任意の公開fieldは、単体item投影helperによって捏造されない（Section 11）。
+
+    R-3 以後の scope:
+      本testが守るのは「投影は値をでっち上げない」という fail-safe であり、
+      「shrine_id が無くてもよい」という許可ではない。
+      Monthly の recommendation_success における shrine_id 必須化は
+      list境界の project_compass_recommendations(require_shrine_id=True) が
+      担う（R-3。本file下部の Identity Gate testsを参照）。
+      単体helperは identity gate を持たないため、ここでの shrine_id 不在は
+      「捏造しない」ことの確認対象として有効なまま残る。
+    """
     projected = project_compass_recommendation(
         {"name": "名前だけの神社"}, recommendation_instance_id=INSTANCE_ID
     )
@@ -200,7 +214,9 @@ def test_order_and_count_are_preserved():
         {"shrine_id": 3, "name": "三"},
     ]
 
-    projected = project_compass_recommendations(sources, recommendation_instance_id=INSTANCE_ID)
+    projected = project_compass_recommendations(
+        sources, recommendation_instance_id=INSTANCE_ID, require_shrine_id=False
+    )
 
     assert len(projected) == len(sources)
     assert [item["shrine_id"] for item in projected] == [1, 2, 3]
@@ -210,11 +226,169 @@ def test_every_item_carries_the_request_level_instance_id():
     projected = project_compass_recommendations(
         [{"shrine_id": 1}, {"shrine_id": 2, "recommendation_instance_id": "stale999"}],
         recommendation_instance_id=INSTANCE_ID,
+        require_shrine_id=False,
     )
 
     assert [item["recommendation_instance_id"] for item in projected] == [INSTANCE_ID, INSTANCE_ID]
 
 
 def test_empty_recommendations_project_to_empty_list():
-    assert project_compass_recommendations([], recommendation_instance_id=INSTANCE_ID) == []
-    assert project_compass_recommendations(None, recommendation_instance_id=INSTANCE_ID) == []
+    for require in (False, True):
+        assert (
+            project_compass_recommendations(
+                [], recommendation_instance_id=INSTANCE_ID, require_shrine_id=require
+            )
+            == []
+        )
+        assert (
+            project_compass_recommendations(
+                None, recommendation_instance_id=INSTANCE_ID, require_shrine_id=require
+            )
+            == []
+        )
+
+
+# ---------------------------------------------------------------------------
+# R-3 Identity Gate
+# docs/audit/compass-shrine-id-presence-audit.md §11
+#
+#   R-3_BEHAVIOR = FAIL_CLOSED_WHOLE_RESPONSE_ON_MISSING_OR_NULL_SHRINE_ID
+#
+# require_shrine_id=True（= state recommendation_success）のとき、
+# recommendations[] の全itemが shrine_id を持ち、non-null であることを要求する。
+# `id` は COMPATIBILITY_FIELD であり identity authority ではない（R-2 / #2952）。
+# 本moduleはDBを引かないため、ここで検証するのは存在と非nullのみ。
+# shrine_id が実在Shrine行へ解決することは HTTP 境界の DB-backed regression
+# （R-1 / #2951）が担う。
+# ---------------------------------------------------------------------------
+
+
+def test_identity_gate_passes_with_valid_shrine_id():
+    """(1) require_shrine_id=True + 有効な shrine_id -> 通過する。"""
+    projected = project_compass_recommendations(
+        [{"shrine_id": 101, "name": "一"}, {"shrine_id": 102, "name": "二"}],
+        recommendation_instance_id=INSTANCE_ID,
+        require_shrine_id=True,
+    )
+
+    assert [item["shrine_id"] for item in projected] == [101, 102]
+    assert [item["name"] for item in projected] == ["一", "二"]
+
+
+def test_identity_gate_raises_when_shrine_id_is_missing():
+    """(2) shrine_id 不在 -> CompassPublicProjectionContractError。"""
+    with pytest.raises(CompassPublicProjectionContractError):
+        project_compass_recommendations(
+            [{"name": "shrine_idの無い神社"}],
+            recommendation_instance_id=INSTANCE_ID,
+            require_shrine_id=True,
+        )
+
+
+def test_identity_gate_raises_when_shrine_id_is_none():
+    """(3) shrine_id=None -> CompassPublicProjectionContractError。"""
+    with pytest.raises(CompassPublicProjectionContractError):
+        project_compass_recommendations(
+            [{"shrine_id": None, "name": "shrine_idがnullの神社"}],
+            recommendation_instance_id=INSTANCE_ID,
+            require_shrine_id=True,
+        )
+
+
+def test_identity_gate_does_not_accept_id_as_shrine_id_fallback():
+    """(4) id はあるが shrine_id が無い -> それでも raise。
+
+    `id` を identity として代用しないことの証明。R-2 が定めたとおり
+    `id` は COMPATIBILITY_FIELD であって identity authority ではない。
+    """
+    with pytest.raises(CompassPublicProjectionContractError):
+        project_compass_recommendations(
+            [{"id": 101, "name": "idだけの神社"}],
+            recommendation_instance_id=INSTANCE_ID,
+            require_shrine_id=True,
+        )
+
+
+def test_identity_gate_fails_whole_projection_when_one_item_is_invalid():
+    """(5) 1件でも不正なら投影全体が raise する。
+
+    部分成功を作らない / 不正itemだけを落とさないことの証明。
+    """
+    sources = [
+        {"shrine_id": 101, "name": "有効1"},
+        {"name": "不正"},
+        {"shrine_id": 103, "name": "有効2"},
+    ]
+
+    with pytest.raises(CompassPublicProjectionContractError):
+        project_compass_recommendations(
+            sources,
+            recommendation_instance_id=INSTANCE_ID,
+            require_shrine_id=True,
+        )
+
+
+def test_identity_gate_fails_whole_projection_when_a_later_item_is_null():
+    """(5-b) 違反が末尾にあっても、先行itemの投影結果は返らない。"""
+    sources = [
+        {"shrine_id": 101, "name": "有効1"},
+        {"shrine_id": 102, "name": "有効2"},
+        {"shrine_id": None, "name": "末尾が不正"},
+    ]
+
+    with pytest.raises(CompassPublicProjectionContractError):
+        project_compass_recommendations(
+            sources,
+            recommendation_instance_id=INSTANCE_ID,
+            require_shrine_id=True,
+        )
+
+
+def test_identity_gate_rejects_non_mapping_item():
+    """(5-c) Mapping でない item も identity を持ちえないため raise する。"""
+    with pytest.raises(CompassPublicProjectionContractError):
+        project_compass_recommendations(
+            [{"shrine_id": 101}, "not a recommendation"],
+            recommendation_instance_id=INSTANCE_ID,
+            require_shrine_id=True,
+        )
+
+
+def test_identity_gate_does_not_mutate_source():
+    """(6) gate を通しても source は書き換えられない（成功時・失敗時とも）。"""
+    valid_sources = [{"shrine_id": 101, "name": "一"}, {"shrine_id": 102, "name": "二"}]
+    valid_snapshot = copy.deepcopy(valid_sources)
+
+    project_compass_recommendations(
+        valid_sources,
+        recommendation_instance_id=INSTANCE_ID,
+        require_shrine_id=True,
+    )
+
+    assert valid_sources == valid_snapshot
+
+    invalid_sources = [{"shrine_id": 101, "name": "一"}, {"id": 102, "name": "二"}]
+    invalid_snapshot = copy.deepcopy(invalid_sources)
+
+    with pytest.raises(CompassPublicProjectionContractError):
+        project_compass_recommendations(
+            invalid_sources,
+            recommendation_instance_id=INSTANCE_ID,
+            require_shrine_id=True,
+        )
+
+    assert invalid_sources == invalid_snapshot
+
+
+def test_identity_gate_is_not_applied_when_require_shrine_id_is_false():
+    """非success状態では gate を課さない（direction_zero_candidates 等）。
+
+    require_shrine_id=False のときは従来どおり allowlist 投影のみを行う。
+    """
+    projected = project_compass_recommendations(
+        [{"name": "shrine_idの無い神社"}],
+        recommendation_instance_id=INSTANCE_ID,
+        require_shrine_id=False,
+    )
+
+    assert projected == [{"name": "shrine_idの無い神社", "recommendation_instance_id": INSTANCE_ID}]

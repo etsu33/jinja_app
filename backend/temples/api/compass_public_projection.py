@@ -20,6 +20,23 @@ Fail-safe（Section 11）:
 `recommendation_instance_id` だけは例外で、source ではなく View が
 request単位で生成した transport metadata を各itemへ互換aliasとして
 注入する（Section 8: canonicalはtop-level側）。
+
+R-3 Identity Gate（docs/audit/compass-shrine-id-presence-audit.md §10 / §11）:
+  `state == recommendation_success` の Monthly レスポンスに限り、
+  `project_compass_recommendations(..., require_shrine_id=True)` が
+  `shrine_id` の存在と非nullを要求する。違反時は
+  `CompassPublicProjectionContractError` を送出し、View 側が既存の
+  error boundary（HTTP 500 / {"state": "error"}）へ正規化する。
+
+  この gate は fail-closed であり、
+    - 不正itemだけを落とさない（部分成功を作らない）
+    - `shrine_id` を合成しない
+    - `id` を identity として代用しない
+  `id` は COMPATIBILITY_FIELD であって identity authority ではない（R-2 / #2952）。
+
+  本moduleはDBを引かない。`shrine_id` が実在Shrine行へ解決するかの検証は
+  HTTP境界のDB-backed regression（R-1 / #2951）の責務であり、ここでは
+  「存在すること・nullでないこと」だけを見る。
 """
 
 from __future__ import annotations
@@ -53,6 +70,17 @@ COMPASS_MONTHLY_PUBLIC_ITEM_ALLOWLIST: frozenset[str] = frozenset(
         "reason_facts",
     )
 )
+
+
+class CompassPublicProjectionContractError(Exception):
+    """Compass Monthly Public Contract の identity 要件違反。
+
+    `require_shrine_id=True` で投影した recommendations[] に、
+    `shrine_id` を持たない / `shrine_id is None` のitemが含まれていたときに
+    送出される。View はこれを既存の error boundary へ正規化する。
+
+    投影結果は返さない。部分的に投影済みのlistも返さない（fail-closed）。
+    """
 
 
 def _project_breakdown(raw: Any) -> dict[str, Any] | None:
@@ -127,22 +155,64 @@ def project_compass_recommendation(
     return projected
 
 
+def _assert_identity_contract(source: Any, *, index: int) -> None:
+    """R-3 identity gate。`shrine_id` の存在と非nullのみを検査する。
+
+    DBは引かない。`id` の有無は一切見ない（identity authority ではないため、
+    `id` があっても `shrine_id` の不在を埋め合わせない）。
+    """
+    if not isinstance(source, Mapping):
+        raise CompassPublicProjectionContractError(
+            f"recommendations[{index}] is not a mapping; "
+            "recommendation_success items must carry shrine_id"
+        )
+    if "shrine_id" not in source:
+        raise CompassPublicProjectionContractError(
+            f"recommendations[{index}] has no shrine_id; "
+            "`id` is a compatibility field and is not identity authority"
+        )
+    if source["shrine_id"] is None:
+        raise CompassPublicProjectionContractError(
+            f"recommendations[{index}] has shrine_id=None; "
+            "recommendation_success requires a non-null shrine_id"
+        )
+
+
 def project_compass_recommendations(
     recommendations: Iterable[Any] | None,
     *,
     recommendation_instance_id: str,
+    require_shrine_id: bool,
 ) -> list[dict[str, Any]]:
-    """recommendations[] 全体を投影する。順序と件数は変えない。"""
+    """recommendations[] 全体を投影する。順序と件数は変えない。
+
+    `require_shrine_id` は keyword-only の必須引数。Monthly の呼び出し側が
+    ambiguous mode へ暗黙に落ちないよう、既定値を持たせない。
+    `state == recommendation_success` のときだけ True を渡す。
+
+    True のとき、1件でも identity 要件を満たさなければ
+    `CompassPublicProjectionContractError` を送出し、**何も返さない**。
+    部分的に投影したlistは返さない。
+    """
+    source_items = list(recommendations or [])
+
+    if require_shrine_id:
+        # 投影を始める前に全件を検査する。1件でも違反があれば、
+        # 有効なitemだけを返す余地を作らない（partial success の禁止）。
+        for index, source in enumerate(source_items):
+            _assert_identity_contract(source, index=index)
+
     return [
         project_compass_recommendation(
             recommendation,
             recommendation_instance_id=recommendation_instance_id,
         )
-        for recommendation in (recommendations or [])
+        for recommendation in source_items
     ]
 
 
 __all__ = [
+    "CompassPublicProjectionContractError",
     "COMPASS_MONTHLY_PUBLIC_ITEM_FIELDS",
     "COMPASS_MONTHLY_PUBLIC_BREAKDOWN_FIELDS",
     "COMPASS_MONTHLY_PUBLIC_REASON_FACT_FIELDS",
