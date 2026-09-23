@@ -717,3 +717,49 @@ multi-building P2 class.
    co-principal ritual subject.
 9. No Migration Gate option was selected.
 ```
+
+
+---
+
+## 16. Follow-up Mother Ship Decision — A-7
+
+After this audit, Mother Ship resolved the representative-point policy that this audit
+left open.
+
+Decision record:
+
+`docs/audit/canonical-shrine-anchor-p2-representation-decision.md`
+
+The adopted A-7 policy is:
+
+```text
+A-7_P2_MULTI_BUILDING_REPRESENTATION
+= RESOLVED
+
+SEMANTIC_OWNER
+= FULL_PRINCIPAL_RITUAL_COMPLEX
+
+POINT_METHOD
+= UNWEIGHTED_COMPONENT_MEAN
+
+INPUT_REQUIREMENT
+= ALL_VERIFIED_CO_PRINCIPAL_COMPONENT_COORDINATES
+
+SINGLE_COMPONENT_PRIORITY
+= PROHIBITED
+
+GENERIC_POI_AUTO_ADOPTION
+= PROHIBITED
+
+INCOMPLETE_COMPONENT_SET
+= HOLD_POSITION_REVIEW
+
+REPRESENTATIVE_POINT_IS_SACRED_SITE
+= NO
+
+REPRESENTATIVE_POINT_IS_NAVIGATION_DESTINATION
+= NO
+```
+
+This follow-up does not alter the findings of A-6. A-6 correctly observed that the
+policy was missing at audit time. A-7 subsequently supplies that policy.

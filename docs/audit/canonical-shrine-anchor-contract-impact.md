@@ -653,26 +653,36 @@ NAVIGATION_ANCHOR_FIELD_EXISTS = NO
 
 The four options below are the Mother Ship canonical Migration Decision Gate labels.
 The evidence-for / evidence-against / migration-cost analysis under each is supplied by
-this audit and the follow-up A-4 / A-6 audits; the options themselves are not
+this audit and the follow-up A-4 / A-6 / A-7 records; the options themselves are not
 reinterpreted, narrowed, or renamed.
 
 Follow-up evidence:
 
 ```text
-A-4 = RESOLVED_AT_SEMANTIC_OWNER_LEVEL
+A-4
+= RESOLVED_AT_SEMANTIC_OWNER_LEVEL
 
 A-6_GEOREFERENCE_SUPPLY
 = AVAILABLE_IN_SAMPLE
 
 A-6_SINGLE_POINT_REPRODUCIBILITY
-= PARTIAL (3 / 5)
+= PARTIAL (3 / 5 before A-7 point policy)
 
-A-6_PRIMARY_BLOCKER
-= MULTI_BUILDING_REPRESENTATIVE_POINT_POLICY
+A-7_P2_MULTI_BUILDING_REPRESENTATION
+= RESOLVED
+
+A-7_POINT_METHOD
+= UNWEIGHTED_COMPONENT_MEAN
+
+A-7_INPUT_REQUIREMENT
+= ALL_VERIFIED_CO_PRINCIPAL_COMPONENT_COORDINATES
 ```
 
-Source:
-`docs/audit/canonical-shrine-anchor-georeference-traceability-audit.md`
+Sources:
+
+- `docs/audit/canonical-shrine-anchor-multi-ritual-center-audit.md`
+- `docs/audit/canonical-shrine-anchor-georeference-traceability-audit.md`
+- `docs/audit/canonical-shrine-anchor-p2-representation-decision.md`
 
 ### Gate A — `KEEP_CURRENT_CONTRACT`
 
@@ -681,56 +691,57 @@ FOR      : 0 downstream consumers break; 8 PASS records keep their evidentiary b
            5 Production rows and 5 Seed rows keep a meaning matching their adoption record
 
 AGAINST  : ritual-center semantics remain outside Shrine.latitude / longitude;
-           A-4 now demonstrates that primary ritual ownership can be resolved for
-           previously ambiguous multi-site examples, so the ritual-center concept is
-           no longer merely hypothetical
+           A-4 / A-6 / A-7 now show that ritual-center ownership, georeference supply,
+           and P2 multi-building representation can be handled deterministically for
+           the audited cases, so the ritual-center model is no longer blocked by the
+           former A-4 / A-6 / A-7 uncertainties
 
 COST     : 0 rows rewritten, 0 code changes
 ```
 
-A-4 / A-6 do not change current Position statuses. They only reduce uncertainty about
-the proposed ritual-center model.
+A-4 / A-6 / A-7 do not change current Position statuses. They reduce uncertainty about
+the proposed ritual-center model only.
 
 ### Gate B — `ADOPT_CANONICAL_SHRINE_ANCHOR_AND_READJUDICATE`
 
 ```text
 FOR      : single field, no schema change; A-4 supplies a deterministic hierarchy rule
-           for multi-site shrines; A-6 shows 3/5 sampled ritual owners can be traced to
-           one point
+           for multi-site shrines; A-6 shows geospatial supply in the sample; A-7 now
+           defines a deterministic P2 multi-building representative point
 
 AGAINST  : 2 downstream consumers (§8.4, §8.5) would emit a ritual-center coordinate
            as a walking navigation destination; 1 consumer (§8.2) remains
-           INDETERMINATE; A-6 shows 2/5 sampled P2 multi-building complexes cannot be
-           reduced to one canonical point without an additional representative-point
-           policy
+           INDETERMINATE; A-5 migration handling for 103 unadjudicated Production rows
+           remains OPEN
 
 COST     : 8 PASS records re-adjudicated; 5 Production rows + 5 Seed rows rewritten;
-           103 unadjudicated rows would inherit a new semantic claim; multi-building
-           P2 cases require an additional canonical-point rule before deterministic
-           readjudication
+           103 unadjudicated rows require an explicit migration policy
 ```
 
-A-6 therefore replaces the former generic supply uncertainty with a narrower,
-demonstrated representation problem.
+A-7 removes the previous P2 representative-point blocker for Gate B.
+
+It does not remove the navigation-semantic collision caused by reusing the existing
+single coordinate field for route destinations.
 
 ### Gate C — `SPLIT_CANONICAL_AND_NAVIGATION_ANCHORS`
 
 ```text
 FOR      : separates ritual-center semantics from route destination semantics;
-           prevents a ritual-center point from silently becoming the Google Maps
-           walking destination; §8.6 still shows a limited web-side insertion surface
+           prevents a Canonical ritual-center point from silently becoming the Google
+           Maps walking destination; A-7 supplies the previously missing point rule for
+           multi-building P2 Canonical owners
 
 AGAINST  : schema change on a model whose write paths already carry active
            synchronization debt; adding a second coordinate pair increases that
-           surface; A-6 additionally shows that a new Canonical lat/lng pair is itself
-           not fully specified for multi-building P2 ritual complexes
+           surface; A-5 migration handling for 103 unadjudicated Production rows
+           remains OPEN
 
 COST     : schema + migration + serializer + downstream consumer changes + backfill;
-           Navigation Anchor and Canonical Anchor each require adjudication, and the
-           Canonical side still needs a P2 representative-point policy
+           Navigation Anchor and Canonical Anchor each require explicit data ownership
+           and migration behavior
 ```
 
-Important:
+A-7 resolves the former statement:
 
 ```text
 NAVIGATION_ANCHOR_SPLIT
@@ -738,45 +749,40 @@ NAVIGATION_ANCHOR_SPLIT
 CANONICAL_POINT_POLICY
 ```
 
-C solves the route-semantics collision. It does not by itself decide which one point
-represents 宇佐神宮 上宮 or 春日大社's four-Honden sanctuary.
+by supplying the missing Canonical point policy.
+
+The concepts remain separate, but both now have defined semantics at the policy level.
 
 ### Gate D — `OTHER / INDETERMINATE`
 
 The open option. This audit does not define its content; any path that is not A, B or
 C lands here, and what belongs in it is a Mother Ship determination.
 
-The bounded evidence-availability sample previously listed as an example under D has
-now been executed by A-6.
-
-Observed:
+The prior bounded unknowns that motivated additional investigation have now progressed:
 
 ```text
-geospatial supply unavailable = 0 / 5
-single point reproducible      = 3 / 5
-point-policy missing           = 2 / 5
+A-4 = resolved at semantic-owner level
+A-6 = geospatial supply observed; single-point issue isolated
+A-7 = multi-building P2 point policy resolved
 ```
 
-The remaining unresolved design question is narrower:
+The remaining known open questions are no longer P2 representation questions.
+
+They are:
 
 ```text
-How should a multi-building P2 semantic owner be represented?
-
-- source-provided representative point
-- explicitly defined deterministic derived point
-- geometry / ritual-subject set rather than one point
-- another Mother Ship-defined representation
+A-3 = product meaning of rendered distanceM
+A-5 = migration policy for 103 unadjudicated Production rows
 ```
 
-This audit does not select among those representations.
+This audit does not decide either one.
 
 ```text
 MIGRATION_GATE_READY_FOR_SELECTION = NO
 GATE_SELECTED = NONE
 ```
 
-The Gate remains unselected because B and C are not yet deterministic for the observed
-multi-building P2 class.
+The Gate remains unselected because A-3 and A-5 are still open.
 
 ## 10. Required Statements
 
@@ -830,20 +836,25 @@ A-5  If a gate other than A is selected, what becomes of the 103 unadjudicated
 A-6  For how many shrines can authoritative evidence identify a specific georeferenced
      point as the ritual center, at a level the proposal's evidence requirements
      accept? (§6.7 supply question)
-     -> PARTIALLY_RESOLVED.
+     -> PARTIALLY_RESOLVED AS AN EVIDENCE-SUPPLY AUDIT.
         5-shrine sample:
-        SINGLE_POINT_REPRODUCIBLE = 3/5.
-        COMPLEX_TRACEABLE_POINT_POLICY_MISSING = 2/5.
+        SINGLE_POINT_REPRODUCIBLE = 3/5 before A-7.
+        COMPLEX_TRACEABLE_POINT_POLICY_MISSING = 2/5 before A-7.
         NOT_TRACEABLE = 0/5.
-        The observed blocker is not evidence supply; it is how a multi-building P2
-        semantic owner becomes one canonical point.
+        A-7 subsequently supplies the missing P2 representative-point policy.
         See docs/audit/canonical-shrine-anchor-georeference-traceability-audit.md.
 
 A-7  How should a multi-building P2 semantic owner be represented as Canonical Anchor?
-     -> OPEN.
-        No centroid / midpoint / first-Honden / central-Honden rule is ACTIVE.
-        This question must be resolved before B or C can be deterministic for the
-        observed P2 class.
+     -> RESOLVED.
+        SEMANTIC_OWNER = FULL_PRINCIPAL_RITUAL_COMPLEX.
+        POINT_METHOD = UNWEIGHTED_COMPONENT_MEAN.
+        INPUT = ALL_VERIFIED_CO_PRINCIPAL_COMPONENT_COORDINATES.
+        SINGLE_COMPONENT_PRIORITY = PROHIBITED.
+        GENERIC_POI_AUTO_ADOPTION = PROHIBITED.
+        INCOMPLETE_COMPONENT_SET = HOLD_POSITION_REVIEW.
+        REPRESENTATIVE_POINT_IS_SACRED_SITE = NO.
+        REPRESENTATIVE_POINT_IS_NAVIGATION_DESTINATION = NO.
+        See docs/audit/canonical-shrine-anchor-p2-representation-decision.md.
 ```
 
 ## 12. STOP
@@ -851,8 +862,9 @@ A-7  How should a multi-building P2 semantic owner be represented as Canonical A
 ```text
 IMPACT_ASSESSMENT        = COMPLETE
 A-4                      = RESOLVED_AT_SEMANTIC_OWNER_LEVEL
-A-6                      = PARTIALLY_RESOLVED
-P2_POINT_POLICY          = OPEN
+A-6                      = PARTIALLY_RESOLVED_AS_SUPPLY_AUDIT
+A-7                      = RESOLVED
+P2_POINT_POLICY          = RESOLVED
 READJUDICATION           = NOT_PERFORMED
 CONTRACT_MIGRATION       = NOT_PERFORMED
 COORDINATE_REMEDIATION   = NOT_PERFORMED
@@ -861,5 +873,4 @@ GATE_SELECTED            = NONE
 ACTIVE_CONTRACT          = UNCHANGED
 ```
 
-Next action requires a Mother Ship decision on A-7, and A-3 / A-5 remain open product
-or migration questions.
+Next action requires Mother Ship decisions on A-3 and A-5.
