@@ -1172,8 +1172,14 @@ F6C_PRODUCTION_PRE_READ      = NOT_EXECUTED
 F6C_PRODUCTION_PRE_READ_ONLY = YES
 F6D_PRODUCTION_PRE           = STOP  （理由は NOT_VERIFIED。drift 検出ではない）
 C1_BACKFILL_EXECUTION        = MOTHER_SHIP_DECISION_REQUIRED
+C2_MAPPING_STORAGE           = FIXED
+C3_ROLLBACK                  = FIXED
 F6D_IMPLEMENTED              = NO
 PRODUCTION_DATA_CHANGED      = NO
+
+MIGRATION_0100_CHANGE_REQUIRED = NO
+MIGRATION_0108_CHANGE_REQUIRED = NO
+UNKNOWN_MIGRATION_BRANCH_DETECTION = HARDENED
 ```
 
 ```text
@@ -1264,6 +1270,51 @@ SECTION 6  machine-readable gate summary
 `SECTION 6` は個別 metric を**すべて併記**したうえで `f6d_pre_eligible` を
 出す。単一の boolean の裏に個別の失敗を隠さない。
 
+#### 16.2.1 unknown migration branch 検出の強化
+
+```text
+UNKNOWN_MIGRATION_BRANCH_DETECTION = HARDENED
+EXPECTED_LEAF_NUMBER = 113
+EXPECTED_LEAF_NAME   = 0113_adopt_usa_jingu_position
+```
+
+辞書順比較 `name > '0113_adopt_usa_jingu_position'` **だけには依存しない**。
+辞書順は次の 2 形を取りこぼす。
+
+```text
+(a) 4 桁 prefix が leaf より大きいのに、名前全体が leaf より辞書順で小さい行
+(b) leaf と **同じ番号** の未知の sibling（例 '0113_something_else'）
+    -> leaf より辞書順で上に来ないため、辞書順チェックでは完全に不可視
+```
+
+追加した machine-readable metric（いずれも `f6d_pre_eligible` を gate する）:
+
+```text
+migration_number_above_leaf_count     4 桁 prefix > 113
+unknown_same_number_sibling_count     4 桁 prefix = 113 かつ名前が leaf と異なる
+migration_name_unparseable_count      4 桁 prefix を持たない（想定外 -> fail closed）
+max_migration_number                  観測用
+unknown_migration_branch_detected     上記 + 既存の辞書順チェックの OR
+```
+
+既存チェックは 1 つも弱めていない（`production_has_unknown_newer_migration`
+は従来どおり残し、OR に加えただけ）。`0.1b unknown_migration_branch` が
+該当行と `drift_reason` を個別に出力する。
+
+**強化が load-bearing であることを実証した。** ローカル test DB の
+`django_migrations` へ `0113_a_sibling_before_leaf` を差し込むと:
+
+```text
+辞書順のみの条件           -> 0 件（見逃す）
+unknown_same_number_sibling_count -> 1 件（検出）
+unknown_migration_branch_detected -> True
+f6d_pre_eligible                  -> False
+```
+
+`0114_a` / `0113_unknown_sibling` / `no_numeric_prefix_migration` の 3 種を
+同時に差し込んだ場合も、それぞれ対応する metric が 1 件ずつ立つことを確認した
+（Production ではなくローカル test DB のみ。一時 probe は commit していない）。
+
 `location` は意図的に SELECT していない。Production の
 `temples_shrine.location` は legacy な `text` 列である一方モデルは PostGIS
 `PointField` を宣言しており、素の select は行を読む前に落ちる
@@ -1279,8 +1330,9 @@ Production は読めていないが、**SQL が実際に走ること**はロー�
 スキーマに対して確認した（一時 probe。commit していない）。
 
 ```text
-12 statements すべてが実行され、列名も期待どおり解決した
+13 statements すべてが実行され、列名も期待どおり解決した
 SECTION 6 は空スキーマに対し f6d_pre_eligible = False を返した（fail closed）
+合成 drift 3 種がそれぞれ対応する metric で検出された（§16.2.1）
 ```
 
 ```text
@@ -1333,12 +1385,106 @@ f6d_pre_eligible = true   -> F6D_PRODUCTION_PRE = PASS
   （修復も再解釈もしない。drift はそのまま記録する）
 ```
 
-`PASS` であっても F-6D へは進めない。`C1_BACKFILL_EXECUTION` は依然として
-Mother Ship 決定待ちであり、さらに `F-6A` §7.2 の未決 2 件
-（P8 が place_ref 転送を選択していない／backfill すると 0100 の reverse が
-壊れる）が残っている。
+`PASS` であっても F-6D へは進めない。残る blocker は
+`C1_BACKFILL_EXECUTION`（Mother Ship 決定待ち）のみである。§16.8 を参照。
 
-### 16.6 Identity authority の再確認
+### 16.6 F-6A §7.2 の 2 つ目の blocker は解消済み
+
+> `F-6A` §7.2 は**歴史的な監査証跡としてそのまま保持する**（書き換えない）。
+> 本節はその後の F-6C 設計レビューによる**現在の結論**である。
+
+`F-6A` §7.2 は backfill-ready でない理由を 2 つ挙げていた。
+
+```text
+理由 1  place_ref 転送が P8 のどの Mother Ship 決定でも選択されていない
+理由 2  backfill すると migration 0100 の reverse が壊れる
+```
+
+**理由 2 は解消した。** 0100 の reverse が拒否するのは
+「place_ref が *束縛されたまま* reverse に入る」状態であって、F-6D が
+reversible であれば先に F-6D の reverse が束縛を解くため、0100 の reverse は
+自分が期待する「孤立 PlaceRef」状態を見ることになる。
+
+```text
+F6D_FORWARD_STATE
+  = NOT_LOGICALLY_COMPATIBLE_WITH_0100_REVERSE_WHILE_BOUND
+
+F6D_REVERSE_STATE
+  = LOGICALLY_COMPATIBLE_WITH_0100_REVERSE
+
+LOGICAL_STATE_COMPATIBILITY_WITH_0100_REVERSE
+  = YES_AFTER_F6D_REVERSE
+
+ACTUAL_MIGRATION_CHAIN_ROLLBACK_TO_0100
+  = BLOCKED_BY_0108_IRREVERSIBLE
+
+MIGRATION_0100_CHANGE_REQUIRED = NO
+MIGRATION_0108_CHANGE_REQUIRED = NO
+```
+
+`ACTUAL_MIGRATION_CHAIN_ROLLBACK_TO_0100 = BLOCKED_BY_0108_IRREVERSIBLE` は
+コードから確認できる。0100 まで実際に巻き戻す経路は F-6D の有無に関係なく
+既に存在しない。
+
+```text
+backend/temples/migrations/0108_remove_legacy_temples_models.py
+  L27  「このmigrationは**意図的に irreversible**」
+  L69  「reverse_code=None により reversible=False となり、unapply は」
+  L71  migrations.RunPython(_forwards_noop, reverse_code=None)
+```
+
+したがって F-6D は 0100 の reverse 前提を**論理的に**壊さず、かつ 0100 まで
+巻き戻すチェーン自体が 0108 によって既に塞がれている。**0100 / 0108 の
+いずれも変更する必要はない。**
+
+```text
+以後「Mother Ship が migration 0100 を変更するかどうかを選ぶ必要がある」
+とは記述しない（F-6A §7.2 の理由 2 は superseded）。
+```
+
+残る blocker は理由 1 のみ:
+
+```text
+C1_BACKFILL_EXECUTION = MOTHER_SHIP_DECISION_REQUIRED
+```
+
+### 16.7 既に導出済みの技術決定（C2 / C3）
+
+```text
+C2_MAPPING_STORAGE = MIGRATION_ONLY_DECISION_PROVENANCE
+  - Shrine.place_ref AS RUNTIME_SOURCE_OF_TRUTH
+  - NO_NEW_MAPPING_TABLE
+```
+
+承認済み place_id -> shrine_id マッピングは **migration が決定の provenance を
+持つ**（監査済み migration-0100 マッピング + F-6D 自身の静的 snapshot）。
+runtime の正本は `Shrine.place_ref`（OneToOne）のままであり、
+新しいマッピング table を導入しない。`F-6A` §11.3 E-1 の未決はこれで閉じる。
+
+```text
+C3_ROLLBACK = REVERSIBLE_F6D_MIGRATION
+  - RESTORE_PRE_F6D_ORPHAN_STATE
+  - KEEP_PLACE_REF_ROWS
+  - FAIL_CLOSED_ON_UNEXPECTED_STATE
+```
+
+F-6D は reversible とし、reverse は F-6D 直前の状態
+（primary の `place_ref` が NULL、対象 PlaceRef 行は存在したまま孤立）へ
+戻す。PlaceRef 行そのものは削除しない。期待外の状態では 0097〜0100 と同じく
+fail closed で raise する（修復も推測も行わない）。
+
+これらは技術決定であって実行承認ではない。C1 は依然として未承認である。
+
+### 16.8 現在の blocker
+
+```text
+C1_BACKFILL_EXECUTION = MOTHER_SHIP_DECISION_REQUIRED   ← 唯一の未決
+C2_MAPPING_STORAGE    = FIXED
+C3_ROLLBACK           = FIXED
+F6D_PRODUCTION_PRE    = STOP_NOT_VERIFIED               ← §16.1（認証情報不在）
+```
+
+### 16.9 Identity authority の再確認
 
 ```text
 PLACE_ID_IDENTITY_AUTHORITY = NO（不変）
@@ -1349,7 +1495,7 @@ PLACE_ID_IDENTITY_AUTHORITY = NO（不変）
 migration-0100 明示マッピングのみ。preflight はその一致を**確認**するだけで、
 PlaceRef 側の値から Shrine を選び直さない。
 
-### 16.7 Required statements
+### 16.10 Required statements
 
 ```text
 1.  Production データを変更していない。
@@ -1364,16 +1510,24 @@ PlaceRef 側の値から Shrine を選び直さない。
 10. 取得できていない値を PASS と書かず UNVERIFIED と記録した。
 11. F6D_PRODUCTION_PRE = STOP は「未検証」であって drift 検出ではない、と明示した。
 12. repository leaf を仮定せず依存グラフから解決した（0113）。
+13. F-6A §7.2 は書き換えていない（歴史的証跡として保持）。
+    理由 2 の supersede は §16.6 に現在の結論として記録した。
+14. 0108 の irreversible をコードから確認した（reverse_code=None）。
+15. C2 / C3 は技術決定であり実行承認ではない。C1 を推定していない。
 ```
 
 ## 17. STOP
 
 ```text
 F6C_STATUS            = PREFLIGHT_AUTHORED / PRODUCTION_READ_BLOCKED
-F6D_PRODUCTION_PRE    = STOP（NOT_VERIFIED）
+F6D_PRODUCTION_PRE    = STOP_NOT_VERIFIED
 C1_BACKFILL_EXECUTION = MOTHER_SHIP_DECISION_REQUIRED
+C2_MAPPING_STORAGE    = FIXED
+C3_ROLLBACK           = FIXED
+MIGRATION_0100_CHANGE_REQUIRED = NO
+MIGRATION_0108_CHANGE_REQUIRED = NO
 NEXT                  = 認証情報を持つ環境で §16.5 を実行し実測値を追記する
-BLOCKED_ON            = C1 / F-6A §7.2 の未決 2 件
+BLOCKED_ON            = C1 のみ（§16.8）
 ```
 
 次の行動には Mother Ship 指示が必要。

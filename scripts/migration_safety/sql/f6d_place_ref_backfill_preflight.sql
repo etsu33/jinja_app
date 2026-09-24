@@ -34,19 +34,68 @@
 -- repository leaf?  any future F-6D migration already recorded?
 --
 -- CURRENT_REPOSITORY_LEAF is resolved from fresh develop before running and
--- is pinned here as a literal so the ledger check is reproducible.
+-- is pinned here as a literal so the ledger check is reproducible:
+--
+--   EXPECTED_LEAF_NUMBER = 113
+--   EXPECTED_LEAF_NAME   = 0113_adopt_usa_jingu_position
+--
+-- Drift detection does NOT rely on lexical comparison alone. A lexical
+-- `name > '0113_adopt_usa_jingu_position'` misses two real branch shapes:
+--
+--   (a) a migration whose 4-digit prefix is HIGHER than the leaf but whose
+--       full name sorts LOWER (e.g. '0114_add_x' > leaf lexically, but
+--       '0200_a' vs a longer leaf name can invert depending on the suffix);
+--   (b) an unknown SIBLING at the SAME number as the leaf
+--       (e.g. '0113_something_else'), which never sorts above the leaf at
+--       all and would be completely invisible to a lexical check.
+--
+-- Both are surfaced as explicit metrics and both gate F6D_PRE_ELIGIBLE.
+-- A name that has no parseable 4-digit prefix is also unexpected and gates
+-- (fail closed rather than silently ignoring it).
 
 SELECT
     '0.1 migration_ledger' AS section,
     m.id,
     m.app,
     m.name,
+    (substring(m.name from '^[0-9]{4}'))::int AS migration_number,
     m.applied
 FROM django_migrations AS m
 WHERE m.app = 'temples'
   AND (
         m.name = '0100_p8a_duplicate_shrine_shadow_cleanup'
      OR m.name = '0113_adopt_usa_jingu_position'
+     OR m.name > '0113_adopt_usa_jingu_position'
+     OR (substring(m.name from '^[0-9]{4}'))::int > 113
+     OR ((substring(m.name from '^[0-9]{4}'))::int = 113
+         AND m.name <> '0113_adopt_usa_jingu_position')
+     OR substring(m.name from '^[0-9]{4}') IS NULL
+  )
+ORDER BY m.name;
+
+-- 0.1b Every row that constitutes an UNKNOWN BRANCH, with the reason.
+SELECT
+    '0.1b unknown_migration_branch' AS section,
+    m.name,
+    (substring(m.name from '^[0-9]{4}'))::int AS migration_number,
+    m.applied,
+    CASE
+        WHEN substring(m.name from '^[0-9]{4}') IS NULL
+            THEN 'NO_NUMERIC_PREFIX'
+        WHEN (substring(m.name from '^[0-9]{4}'))::int > 113
+            THEN 'NUMBER_ABOVE_EXPECTED_LEAF'
+        WHEN (substring(m.name from '^[0-9]{4}'))::int = 113
+             AND m.name <> '0113_adopt_usa_jingu_position'
+            THEN 'UNKNOWN_SAME_NUMBER_SIBLING'
+        ELSE 'LEXICALLY_ABOVE_EXPECTED_LEAF'
+    END AS drift_reason
+FROM django_migrations AS m
+WHERE m.app = 'temples'
+  AND (
+        substring(m.name from '^[0-9]{4}') IS NULL
+     OR (substring(m.name from '^[0-9]{4}'))::int > 113
+     OR ((substring(m.name from '^[0-9]{4}'))::int = 113
+         AND m.name <> '0113_adopt_usa_jingu_position')
      OR m.name > '0113_adopt_usa_jingu_position'
   )
 ORDER BY m.name;
@@ -71,6 +120,17 @@ SELECT
     count(*) FILTER (
         WHERE m.name > '0113_adopt_usa_jingu_position'
     ) AS production_has_unknown_newer_migration,
+    count(*) FILTER (
+        WHERE (substring(m.name from '^[0-9]{4}'))::int > 113
+    ) AS migration_number_above_leaf_count,
+    count(*) FILTER (
+        WHERE (substring(m.name from '^[0-9]{4}'))::int = 113
+          AND m.name <> '0113_adopt_usa_jingu_position'
+    ) AS unknown_same_number_sibling_count,
+    count(*) FILTER (
+        WHERE substring(m.name from '^[0-9]{4}') IS NULL
+    ) AS migration_name_unparseable_count,
+    max((substring(m.name from '^[0-9]{4}'))::int) AS max_migration_number,
     count(*) FILTER (
         WHERE m.name ILIKE '%place_ref%backfill%'
            OR m.name ILIKE '%f6d%'
@@ -361,6 +421,16 @@ ledger_stats AS (
             WHERE m.name > '0113_adopt_usa_jingu_position'
         ) AS production_has_unknown_newer_migration,
         count(*) FILTER (
+            WHERE (substring(m.name from '^[0-9]{4}'))::int > 113
+        ) AS migration_number_above_leaf_count,
+        count(*) FILTER (
+            WHERE (substring(m.name from '^[0-9]{4}'))::int = 113
+              AND m.name <> '0113_adopt_usa_jingu_position'
+        ) AS unknown_same_number_sibling_count,
+        count(*) FILTER (
+            WHERE substring(m.name from '^[0-9]{4}') IS NULL
+        ) AS migration_name_unparseable_count,
+        count(*) FILTER (
             WHERE m.name ILIKE '%place_ref%backfill%'
                OR m.name ILIKE '%f6d%'
         ) AS future_f6d_already_recorded
@@ -380,6 +450,17 @@ SELECT
     (ls.migration_0100_applied = 1)                 AS migration_0100_applied,
     (ls.current_parent_applied = 1)                 AS current_parent_applied,
     (ls.production_has_unknown_newer_migration > 0) AS production_has_unknown_newer_migration,
+    113                                             AS expected_leaf_number,
+    '0113_adopt_usa_jingu_position'                 AS expected_leaf_name,
+    ls.migration_number_above_leaf_count            AS migration_number_above_leaf_count,
+    ls.unknown_same_number_sibling_count            AS unknown_same_number_sibling_count,
+    ls.migration_name_unparseable_count             AS migration_name_unparseable_count,
+    (
+        ls.production_has_unknown_newer_migration > 0
+        OR ls.migration_number_above_leaf_count > 0
+        OR ls.unknown_same_number_sibling_count > 0
+        OR ls.migration_name_unparseable_count > 0
+    )                                               AS unknown_migration_branch_detected,
     (ls.future_f6d_already_recorded > 0)            AS future_f6d_already_recorded,
     (
         ps.primary_count = 3
@@ -395,6 +476,9 @@ SELECT
         AND ls.migration_0100_applied = 1
         AND ls.current_parent_applied = 1
         AND ls.production_has_unknown_newer_migration = 0
+        AND ls.migration_number_above_leaf_count = 0
+        AND ls.unknown_same_number_sibling_count = 0
+        AND ls.migration_name_unparseable_count = 0
         AND ls.future_f6d_already_recorded = 0
     )                                               AS f6d_pre_eligible
 FROM primary_stats AS ps
