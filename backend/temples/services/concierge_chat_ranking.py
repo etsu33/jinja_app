@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 import logging
 from typing import Any, Dict, List, Optional, TypedDict
+from temples.domain.shrine_identity import resolve_shrine_id
 from temples.domain.need_to_goriyaku_tag_ids import need_tags_to_goriyaku_ids
 from temples.services.concierge_history import (
     build_recent_reflection_hint,
@@ -1141,11 +1142,9 @@ def _attach_breakdown(
 
     score_need = len(matched_all)
 
-    shrine_id = rec.get("shrine_id") or rec.get("id")
-    try:
-        shrine_id_int = int(shrine_id) if shrine_id is not None else None
-    except (TypeError, ValueError):
-        shrine_id_int = None
+    # F-5B #7: 独自の int / fallback 解析を廃止し共有 resolver へ集約。
+    # int(True) / int(1.5) が Shrine 1 に化けることはなくなる。
+    shrine_id_int = resolve_shrine_id(rec, policy="live_candidate")
 
     shrine_meaning_profile = _build_shrine_meaning_profile(
         rec=rec,

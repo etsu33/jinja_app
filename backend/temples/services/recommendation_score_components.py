@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from temples.domain.shrine_identity import resolve_shrine_identity
+
 
 SCORE_KEYS = (
     "state_match_score",
@@ -111,7 +113,10 @@ def calculate_shrine_profile_score(profile: dict[str, Any] | None) -> float:
     candidate_profile = _as_dict(data.get("candidate_profile"))
 
     score = 0.0
-    if candidate_profile.get("shrine_id") or candidate_profile.get("id"):
+    # F-5B #19: identity completeness の加点は、共有 resolver の解決 status が
+    # `resolved` のときだけ与える。invalid / conflict な generic alias が
+    # completeness を稼ぐことはない。他の score component は未変更。
+    if resolve_shrine_identity(candidate_profile, policy="live_candidate").status == "resolved":
         score += 0.2
     if candidate_profile.get("name") or candidate_profile.get("name_jp"):
         score += 0.2

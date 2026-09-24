@@ -36,6 +36,7 @@ from collections import Counter
 from dataclasses import dataclass
 from typing import Any, Literal
 
+from temples.domain.shrine_identity import resolve_shrine_id
 from temples.models import Shrine, ShrineDeity, ShrineHistory
 from temples.services import evidence_gate
 from temples.services.concierge_chat import _build_score_v3_candidate_profile
@@ -64,6 +65,11 @@ class ShrineReasonProvenance:
     deity_status: FieldStatus
     history_status: FieldStatus
     classification: Classification
+
+
+#: identity を解決できなかった候補の集計用表現。有効な Shrine identity では
+#: ない（VALID_SHRINE_ID = POSITIVE_INTEGER_ONLY）。F-5B #18。
+_SHRINE_ID_REPORTING_SENTINEL = 0
 
 
 def _field_status(*, confidence_is_knowledge: bool, fact_value: Any) -> FieldStatus:
@@ -122,9 +128,24 @@ def build_shrine_reason_provenance(candidate: dict[str, Any]) -> ShrineReasonPro
         fact_value=fact.get("shrine_history"),
     )
 
-    shrine_id = candidate.get("shrine_id") or candidate.get("id")
+    # F-5B #18: 共有 live_candidate resolver へ集約。
+    #
+    #   0 = REPORTING_SENTINEL
+    #   0 != VALID_SHRINE_IDENTITY
+    #
+    # ShrineReasonProvenance.shrine_id は int 非 Optional であり、`0` を
+    # 「identity 不明」の集計用 sentinel として既に使っている。この
+    # reporting 表現は維持するが、`0` が有効な Shrine identity になることは
+    # ない（resolver は POSITIVE_INTEGER_ONLY）。
+    #
+    #   resolved                    -> 解決された正の Shrine id
+    #   absent / invalid / conflict -> 既存の reporting sentinel 0
+    #
+    # 旧実装の unguarded int() は非数値 str に対し live path で ValueError を
+    # 投げていた（F-5A §3.1 D-3）。resolver は例外を投げない。
+    shrine_id = resolve_shrine_id(candidate, policy="live_candidate")
     return ShrineReasonProvenance(
-        shrine_id=int(shrine_id) if shrine_id is not None else 0,
+        shrine_id=shrine_id if shrine_id is not None else _SHRINE_ID_REPORTING_SENTINEL,
         name=str(candidate.get("name") or ""),
         deity_status=deity_status,
         history_status=history_status,

@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional
 
 from django.conf import settings as dj_settings
 from temples.domain.consultation_axis import resolve_consultation_axis
+from temples.domain.shrine_identity import resolve_shrine_id, resolve_shrine_identity
 from temples.domain.need_to_goriyaku_tag_ids import NEED_TO_GORIYAKU_IDS
 from temples.models import GoriyakuTag
 
@@ -404,6 +405,33 @@ def _pick_primary_knowledge_history_type(knowledge_histories: Any) -> str | None
     return str(item.get("history_type") or "").strip() or None
 
 
+def _score_v3_profile_shrine_id(rec: dict[str, Any], source: dict[str, Any]) -> int | None:
+    """score v3 profile 用の Shrine identity（F-5B #8）。
+
+    `meaning_payload.source.shrineId` は **live_candidate policy の許可 alias
+    ではない**。global policy へ足すと、あらゆる live candidate が
+    `shrineId` を identity として読むようになってしまう。ここでは rec 自身の
+    解決が `absent` のときに限り、互換 source として明示的に参照する。
+
+        resolved           -> その Shrine id
+        invalid / conflict -> None（source.shrineId へ **fallback しない**）
+        absent             -> source.shrineId の互換参照を許可
+
+    source.shrineId の正規化も共有 resolver に通す（canonical field へ
+    読み替えるだけで、別の int parser は実装しない）。
+    """
+    resolution = resolve_shrine_identity(rec, policy="live_candidate")
+
+    if resolution.status == "resolved":
+        return resolution.shrine_id
+
+    # identity が主張されているのに使えない場合は fail closed。
+    if resolution.status != "absent":
+        return None
+
+    return resolve_shrine_id({"shrine_id": source.get("shrineId")}, policy="live_candidate")
+
+
 def _build_score_v3_candidate_profile(rec: dict[str, Any]) -> dict[str, Any]:
     meaning_payload = rec.get("meaning_payload") if isinstance(rec.get("meaning_payload"), dict) else {}
     source = meaning_payload.get("source") if isinstance(meaning_payload.get("source"), dict) else {}
@@ -438,7 +466,7 @@ def _build_score_v3_candidate_profile(rec: dict[str, Any]) -> dict[str, Any]:
     )
 
     return {
-        "shrine_id": rec.get("shrine_id") or rec.get("id") or source.get("shrineId"),
+        "shrine_id": _score_v3_profile_shrine_id(rec, source),
         "name": rec.get("name") or source.get("nameJp"),
         "history_theme": rec.get("history_theme") or source.get("historyTheme"),
         "goriyaku": rec.get("goriyaku") or source.get("goriyaku"),
@@ -518,7 +546,9 @@ def _build_reason_v4_preview_payload(
 
         previews.append({
             "rank": index + 1,
-            "shrine_id": rec.get("shrine_id") or rec.get("id"),
+            # F-5B #9: 共有 live_candidate resolver。generic `id` は
+            # COMPATIBILITY_ALIAS として引き続き読むが、独自解析は持たない。
+            "shrine_id": resolve_shrine_id(rec, policy="live_candidate"),
             "name": rec.get("name"),
             "preview": preview,
         })

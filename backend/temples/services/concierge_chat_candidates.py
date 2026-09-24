@@ -23,6 +23,7 @@ from dataclasses import asdict, dataclass
 
 from django.db.models import Q
 
+from temples.domain.shrine_identity import resolve_shrine_id
 from temples.models import Shrine
 from temples.services.concierge_candidate_utils import (
     _dedupe_candidates,
@@ -63,15 +64,16 @@ def is_recommendation_eligible(
 
 
 def _candidate_shrine_id(candidate: Dict[str, Any]) -> Optional[int]:
-    for key in ("shrine_id", "id"):
-        value = candidate.get(key)
-        if isinstance(value, bool):
-            continue
-        if isinstance(value, int):
-            return value
-        if isinstance(value, str) and value.strip().lstrip("-").isdigit():
-            return int(value)
-    return None
+    """共有 resolver への薄い wrapper（F-5B #1）。
+
+    独自の正規化実装は持たない。正本は
+    `temples.domain.shrine_identity.resolve_shrine_id()`。
+
+    F-7 invariant 下の正常な候補（shrine_id == id == Shrine.id）に対する
+    挙動は不変。malformed な 0 / 負数 / float / bool は解決されなくなる
+    （STRICT_FAIL_CLOSED）。
+    """
+    return resolve_shrine_id(candidate, policy="live_candidate")
 
 
 def filter_recommendation_eligible_candidates(

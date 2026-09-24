@@ -6,6 +6,7 @@ from typing import Any
 
 from django.core.management.base import BaseCommand
 
+from temples.domain.shrine_identity import resolve_shrine_id
 from temples.models import Shrine
 from temples.services.concierge_chat import build_chat_recommendations
 
@@ -192,7 +193,9 @@ def _format_recommendation(rec: dict[str, Any], rank: int) -> list[str]:
     lines = [
         f"#### {rank}. {_text_or_dash(rec.get('display_name') or rec.get('name'))}",
         "",
-        f"- shrine_id: `{_text_or_dash(rec.get('shrine_id') or rec.get('id'))}`",
+        # F-5B #20: 共有 live_candidate resolver。resolved は正の ID を表示し、
+        # absent / invalid / conflict は既存の dash 表現のまま。例外は投げない。
+        f"- shrine_id: `{_text_or_dash(resolve_shrine_id(rec, policy='live_candidate'))}`",
         f"- history_theme: `{_text_or_dash(rec.get('history_theme') or payload_history_context.get('theme'))}`",
         f"- reason_source: `{_text_or_dash(rec.get('reason_source'))}`",
         f"- action_state: `{_text_or_dash(rec.get('action_state'))}`",
