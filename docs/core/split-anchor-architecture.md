@@ -8,6 +8,8 @@
 >
 > **Schema implementation:** IMPLEMENTED — FOUNDATION ONLY
 >
+> **PHASE_2 procedure:** DEFINED — NOT_EXECUTED
+>
 > **Canonical backfill:** NOT_STARTED
 >
 > **Runtime cutover:** NOT_PERFORMED
@@ -193,6 +195,35 @@ A-7 / A-7bに従い、確認済みのprincipal component全件の緯度・経度
 ```text
 PARTIAL_COMPONENT_CANONICAL_POINT = PROHIBITED
 ```
+
+### 4.3 subject_type × point_method matrix
+
+PHASE_2開始前のMother Ship decisionとして、許容組合せを次で固定する。
+
+| subject_type | point_method |
+| --- | --- |
+| `SINGLE_PRINCIPAL_UNIT` | `DIRECT_POINT` only |
+| `MULTI_PRINCIPAL_UNIT` | `UNWEIGHTED_COMPONENT_MEAN` only |
+| `NON_BUILDING_RITUAL_CENTER` | semantic subject自体が再現可能な単一点へ追跡できる場合のみ `DIRECT_POINT` |
+
+禁止する組合せ:
+
+```text
+SINGLE_PRINCIPAL_UNIT + UNWEIGHTED_COMPONENT_MEAN
+MULTI_PRINCIPAL_UNIT + DIRECT_POINT
+NON_BUILDING_RITUAL_CENTER + UNWEIGHTED_COMPONENT_MEAN
+```
+
+非建物subjectが山域・森林域・禁足地等の面的対象であり、
+Sourceが代表点を直接規定していない場合は、centroid・山頂・generic POI等を発明しない。
+
+詳細なMother Ship decisionは
+`docs/audit/canonical-anchor-subject-point-method-matrix-decision.md`
+を参照する。
+
+PHASE_2の実際の調査・判定順序は
+`docs/knowledge/canonical-anchor-adjudication-procedure.md`
+を正本とする。
 
 ## 5. ShrineCanonicalAnchorComponent
 
@@ -511,7 +542,9 @@ Split Anchor Architecture
 
 PHASE_2
 Canonical adjudication batch procedure
+-> 手順は docs/knowledge/canonical-anchor-adjudication-procedure.md へ正本化済み
 -> Evidence packet / component completeness / frozen target scope
+-> Batch 01は未実行
 
 PHASE_3
 Canonical backfill
@@ -536,6 +569,10 @@ Schema Foundationの実装は、本書正本化後の別Mother Ship指示を必�
   - Gate C選択の時点記録
 - `docs/audit/canonical-shrine-anchor-p2-representation-decision.md`
   - A-7 `UNWEIGHTED_COMPONENT_MEAN`
+- `docs/audit/canonical-anchor-subject-point-method-matrix-decision.md`
+  - subject_type × point_method のMother Ship決定
+- `docs/knowledge/canonical-anchor-adjudication-procedure.md`
+  - PHASE_2のread-only調査・判定手順
 
 ### 本書が正本とするもの
 
@@ -574,7 +611,8 @@ HIDDEN_CANONICAL_FALLBACK      = PROHIBITED
 NAVIGATION_TO_CANONICAL_COPY   = PROHIBITED
 INITIAL_CANONICAL_POINT_FIELD  = NO
 
-SCHEMA_CHANGE                  = NOT_PERFORMED
+SCHEMA_IMPLEMENTATION          = IMPLEMENTED_FOUNDATION_ONLY
+PHASE_2_PROCEDURE              = DEFINED_NOT_EXECUTED
 PRODUCTION_WRITE               = NONE
 CANONICAL_BACKFILL             = NOT_STARTED
 RUNTIME_CUTOVER                = NOT_PERFORMED
@@ -583,12 +621,15 @@ COMPASS_BEHAVIOR_CHANGE        = NONE
 
 ## 17. STOP
 
-PHASE_1の設計正本化は本書で完了する。
+PHASE_1の設計正本化とSchema Foundation実装は完了し、PHASE_2手順も正本化済みである。
 
-次のschema実装、PHASE_2 Evidence手順、PHASE_3 backfill、PHASE_4 runtime cutoverは
-それぞれ本書の存在だけでは開始しない。
+ただし、PHASE_2 Batch 01のEvidence取得、PHASE_3 backfill、PHASE_4 runtime cutoverは
+それぞれ別のMother Ship指示なしに開始しない。
 
 ```text
-PHASE_1 = DESIGN_CANONICALIZED
-NEXT_IMPLEMENTATION_AUTHORITY = MOTHER_SHIP_REQUIRED
+PHASE_1 = COMPLETE
+SCHEMA_FOUNDATION = IMPLEMENTED
+PHASE_2_PROCEDURE = DEFINED
+PHASE_2_BATCH_01 = NOT_EXECUTED
+NEXT_EXECUTION_AUTHORITY = MOTHER_SHIP_REQUIRED
 ```
