@@ -534,6 +534,35 @@ Release boundary:
 - That gate must confirm a live secret key, live Price ID, live webhook endpoint/signing secret, and one controlled end-to-end Checkout → Webhook → entitlement → Customer Portal verification.
 - No live credential change is part of PR #2977.
 
+
+### 7.9 Stripe Dashboard Sandbox confirmation (2026-09-24)
+
+Evidence:
+- user-provided Stripe Dashboard screenshot
+- Stripe Dashboard banner explicitly shows Sandbox / test mode
+- visible API key prefixes:
+  - secret key: `sk_test_...`
+  - publishable key: `pk_test_...`
+- no full secret value is recorded
+
+Result:
+- Stripe account context currently used for verification is **Sandbox / Test Mode**.
+- This independently confirms the Render-side `STRIPE_SECRET_KEY` test-mode prefix.
+- The current production backend may use the real Stripe integration path while still pointing at Stripe test-mode credentials.
+- This is suitable for development / pre-release QA and does **not** represent live-charge readiness.
+
+Still to verify before live release:
+- `STRIPE_PRICE_ID` belongs to the same Stripe Sandbox/Test environment for current QA.
+- `STRIPE_WEBHOOK_SECRET` belongs to the corresponding Sandbox/Test webhook endpoint.
+- Before live billing, switch as one controlled release gate to:
+  - live secret key (`sk_live_...`)
+  - live publishable context where required
+  - live Price ID
+  - live webhook endpoint/signing secret
+  - one controlled end-to-end live Checkout → Webhook → entitlement → Customer Portal verification.
+
+No live credential change is part of PR #2977.
+
 ## 8. No-change Areas
 
 本監査 PR では変更しない。
