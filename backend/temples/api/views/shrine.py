@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from django.conf import settings
+from django.db import IntegrityError
 from django.db.models import F, Q, Value
 from django.db.models.functions import Coalesce
 
@@ -21,7 +22,17 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.decorators import action
 
-from temples.services.places import get_or_create_shrine_by_place_id, PlacesError
+from temples.api.serializers.places import (
+    ShrineCollisionConflictSerializer,
+    ShrineIngestRequestSerializer,
+)
+from temples.services.places import (
+    SHRINE_COLLISION_PUBLIC_CODE,
+    SHRINE_COLLISION_PUBLIC_DETAIL,
+    get_or_create_shrine_by_place_id,
+    PlacesError,
+    ShrineCollisionReviewRequired,
+)
 from rest_framework import serializers
 from drf_spectacular.utils import extend_schema
 from django.http import Http404
@@ -338,6 +349,16 @@ class ShrineViewSet(viewsets.ModelViewSet):
     
 
 
+    @extend_schema(
+        operation_id="api_shrines_ingest_create",
+        request=ShrineIngestRequestSerializer,
+        responses={
+            200: ShrineDetailSerializer,
+            # F-6B: 登録済み Shrine がこの Place を表しうる場合。作成も束縛もしない。
+            409: ShrineCollisionConflictSerializer,
+        },
+        tags=["shrines"],
+    )
     @action(
         detail=False,
         methods=["post"],
@@ -355,5 +376,21 @@ class ShrineViewSet(viewsets.ModelViewSet):
             data = ShrineDetailSerializer(shrine, context={"request": request}).data
             data["place_id"] = place_id
             return Response(data, status=status.HTTP_200_OK)
+        # F-6B: collision は PlacesError のサブクラスなので、必ず先に捕まえる。
+        #
+        # 例外を文字列化しない（CodeQL: information exposure through an exception）。
+        # public body は固定定数のみで構成する。候補 Shrine の id は載せない
+        # （AUTO_BIND_ON_SINGLE_CANDIDATE = PROHIBITED）。レビューは server log。
+        except ShrineCollisionReviewRequired:
+            return Response(
+                {
+                    "detail": SHRINE_COLLISION_PUBLIC_DETAIL,
+                    "code": SHRINE_COLLISION_PUBLIC_CODE,
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
         except PlacesError as e:
             return Response({"detail": str(e)}, status=getattr(e, "status", 502) or 502)
+        # F-6B S-5: ingest は IntegrityError を捕捉していなかった（未処理 500）。
+        except IntegrityError:
+            return Response({"detail": "db_integrity_error"}, status=500)
