@@ -331,3 +331,50 @@ IMPLEMENTATION    = NOT_STARTED
 ```
 
 Next action requires a Mother Ship instruction opening `PHASE_1`.
+
+## 14. Follow-up — PHASE_1 Design Canonicalized
+
+> 2026-09-24 追記。§1–§13 は Gate C 選択時点の歴史的記録として書き換えない。
+
+Mother Ship の後続指示により、§9 で次工程として記録していた
+`PHASE_1 Split Anchor Architecture design proposal` を次のCore正本へ固定した。
+
+```text
+docs/core/split-anchor-architecture.md
+```
+
+同正本が固定した範囲:
+
+```text
+- 参拝ナビ座標と神社中心座標の物理責務分離
+- ShrineCanonicalAnchor / Component / Evidence の保存target
+- anchor row不在 = NOT_ADJUDICATED
+- CONFIRMED / HOLD_POSITION_REVIEW
+- DIRECT_POINT / UNWEIGHTED_COMPONENT_MEAN
+- component_count / Navigation差分距離は派生値
+- Canonical側PointFieldは初期Schema対象外
+- 将来consumer routing
+- hidden Navigation -> Canonical fallback禁止
+- Schema Foundationの変更境界
+```
+
+本追記は設計正本化の記録であり、§13 のruntime / data stateのうち次は
+依然として変更していない。
+
+```text
+SCHEMA_CHANGE       = NOT_PERFORMED
+CANONICAL_BACKFILL  = NOT_STARTED
+RUNTIME_CUTOVER     = NOT_PERFORMED
+PRODUCTION_WRITE    = NONE
+COMPASS_CHANGE      = NONE
+```
+
+現在状態:
+
+```text
+GATE_SELECTED     = C
+PHASE_1           = DESIGN_CANONICALIZED
+IMPLEMENTATION    = NOT_STARTED
+NEXT              = separate Mother Ship instruction required
+```
+
