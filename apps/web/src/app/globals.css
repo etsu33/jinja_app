@@ -78,54 +78,54 @@
 }
 
 /*
- * shadcn Semantic Token — Visual Direction: Dark Forest (森影)
+ * shadcn Semantic Token — Visual Direction: Deep Ink Navy + restrained shrine-gold
  *
- * 旧実装は hue 264（Navy）系の oklch で統一されていた。
- * 本改訂で色相を森域（緑 ~150 / 金 ~84）へ移し、
- * apps/web/src/styles/tokens.css の --kt-color-* および
- * apps/mobile/design/theme.ts の kamimusubiDark と同一の実値に揃える。
- * 値は tokens.css 側のhexをoklchへ変換したもので、括弧内に対応hexを併記する。
+ * 経緯: hue 264（Navy）系 oklch → Dark Forest（森影, hue ~150）→ 本改訂。
+ * App-wide Web Worldview Rollout により、中立の面・文字・線は
+ * KAMI MUSUBI Worldview Token (--kt-world-*, styles/tokens.css) を参照する。
+ * ここへ色の実値を書かない（Worldview の実値は tokens.css だけに置く）。
  *
- * 面の明度順は background(#0a0f0c) < card(#131a15) < popover(#1a231c) とし、
+ * 面の明度順は background(ground) < card(surface) < popover(surface-elevated) とし、
  * 背景 / カード面 / 浮き面の分離を保つ。
+ *
+ * 状態・意味を持つ色 (primary = gold / destructive / ring = focus gold) は
+ * 責務を保つため、Dark Forest 改訂時の値のまま据え置く。
  */
 .dark {
-  --background: oklch(0.162 0.010 158.7); /* #0a0f0c near-black green */
-  --foreground: oklch(0.950 0.016 86.4); /* #f3eee3 warm mist-ivory */
+  --background: var(--kt-world-ground);
+  --foreground: var(--kt-world-text-primary);
 
-  /* カード面はモスチャコール。浮き面(popover/dialog)は一段明るくする。 */
-  --card: oklch(0.209 0.014 153.9); /* #131a15 */
-  --card-foreground: oklch(0.950 0.016 86.4); /* #f3eee3 */
-  --popover: oklch(0.245 0.018 151.6); /* #1a231c */
-  --popover-foreground: oklch(0.950 0.016 86.4); /* #f3eee3 */
+  /* カード面は surface。浮き面(popover/dialog)は一段明るくする。 */
+  --card: var(--kt-world-surface);
+  --card-foreground: var(--kt-world-text-primary);
+  --popover: var(--kt-world-surface-elevated);
+  --popover-foreground: var(--kt-world-text-primary);
 
-  /* Primary は restrained shrine-gold。明色塗りのため文字は背景色を反転色に使う。
-     tokens.css の --kt-color-action-primary と同値。 */
+  /* Primary は restrained shrine-gold。明色塗りのため文字は暗色を反転色に使う。
+     tokens.css の --kt-color-action-primary / -text と同値。 */
   --primary: oklch(0.749 0.090 83.5); /* #c9a96a */
   --primary-foreground: oklch(0.162 0.010 158.7); /* #0a0f0c */
 
   /* Secondary / muted / accent は「わずかに持ち上げた面」。金は使わない。 */
-  --secondary: oklch(0.245 0.018 151.6); /* #1a231c */
-  --secondary-foreground: oklch(0.950 0.016 86.4); /* #f3eee3 */
-  --muted: oklch(0.245 0.018 151.6); /* #1a231c */
-  --muted-foreground: oklch(0.736 0.025 120.3); /* #a7ac9b sage */
-  --accent: oklch(0.282 0.019 148.1); /* #232c24 */
-  --accent-foreground: oklch(0.950 0.016 86.4); /* #f3eee3 */
+  --secondary: var(--kt-world-surface-elevated);
+  --secondary-foreground: var(--kt-world-text-primary);
+  --muted: var(--kt-world-surface-elevated);
+  --muted-foreground: var(--kt-world-text-muted);
+  --accent: var(--kt-color-surface-emphasis);
+  --accent-foreground: var(--kt-world-text-primary);
 
   /* Error は赤土寄り。tokens.css の --kt-color-status-error と同値。 */
   --destructive: oklch(0.735 0.097 25.2); /* #e0918a */
 
-  /* 線は主張させない。旧実装同様に半透明を保ちつつ、
-     白ではなく森側へ色相を寄せて面に馴染ませる。 */
-  --border: oklch(0.88 0.04 140 / 14%);
-  --input: oklch(0.88 0.04 140 / 18%);
+  /* 線は Worldview の境界線。色を指定しない border もこの値になる。 */
+  --border: var(--kt-world-border);
+  --input: var(--kt-world-border);
 
   /* フォーカスリングは「重要な操作に差す光」= gold。
      tokens.css の --kt-color-border-focus と同値。 */
   --ring: oklch(0.749 0.090 83.5); /* #c9a96a */
 
-  /* chart-* は2026-09時点でComponentからの参照が無い（未使用）。
-     テーマとしての一貫性のため森の色域で定義し、色相を離して識別性を確保する。 */
+  /* chart-* は2026-09時点でComponentからの参照が無い（未使用）。値は据え置く。 */
   --chart-1: oklch(0.749 0.090 83.5); /* gold   hue 84 */
   --chart-2: oklch(0.716 0.069 137.6); /* cedar  hue 138 */
   --chart-3: oklch(0.735 0.097 25.2); /* clay   hue 25 */
@@ -133,14 +133,33 @@
   --chart-5: oklch(0.827 0.022 112.7); /* sage   hue 113 */
 
   /* Sidebar は card 面に揃える。 */
-  --sidebar: oklch(0.209 0.014 153.9); /* #131a15 */
-  --sidebar-foreground: oklch(0.950 0.016 86.4); /* #f3eee3 */
+  --sidebar: var(--kt-world-surface);
+  --sidebar-foreground: var(--kt-world-text-primary);
   --sidebar-primary: oklch(0.749 0.090 83.5); /* #c9a96a */
   --sidebar-primary-foreground: oklch(0.162 0.010 158.7); /* #0a0f0c */
-  --sidebar-accent: oklch(0.282 0.019 148.1); /* #232c24 */
-  --sidebar-accent-foreground: oklch(0.950 0.016 86.4); /* #f3eee3 */
-  --sidebar-border: oklch(0.88 0.04 140 / 14%);
+  --sidebar-accent: var(--kt-color-surface-emphasis);
+  --sidebar-accent-foreground: var(--kt-world-text-primary);
+  --sidebar-border: var(--kt-world-border);
   --sidebar-ring: oklch(0.749 0.090 83.5); /* #c9a96a */
+}
+
+/*
+ * App-wide Worldview の地
+ *
+ * html にも地を与え、overscroll（ラバーバンド）や body より外側の余白で
+ * 旧色が露出しないようにする。:has() には依存しない。
+ *
+ * ページ見出し (h1) は Worldview の明朝Display。
+ * WorldviewFrame の内側に限り、主要な見出しだけへ適用する
+ * （Home は HomeHero が --home-font-display を直接指定しており、この規則の対象外）。
+ * フォーム部品・ボタン・メタ情報は既存のSans のまま。
+ */
+html.dark {
+  background-color: var(--kt-color-background-base);
+}
+
+[data-worldview-frame] h1 {
+  font-family: var(--kt-world-font-display);
 }
 
 /*

@@ -109,15 +109,15 @@ function BillingUpgradeContent() {
   return (
     <div className="mx-auto w-full max-w-md px-4 py-6">
       <section className="space-y-2">
-        <h1 className="text-xl font-semibold text-slate-900">KAMI MUSUBI Premium</h1>
-        <p className="text-sm leading-6 text-slate-600">
+        <h1 className="text-xl font-semibold text-[var(--kt-color-text-primary)]">KAMI MUSUBI Premium</h1>
+        <p className="text-sm leading-6 text-[var(--kt-color-text-secondary)]">
           一度の答えではなく、変化を重ねていくために。
         </p>
       </section>
 
-      <section className="mt-6 rounded-2xl border bg-white p-4 shadow-sm">
-        <h2 className="text-sm font-semibold text-slate-900">Premiumでできること</h2>
-        <ul className="mt-3 space-y-3 text-sm text-slate-700">
+      <section className="mt-6 rounded-2xl border bg-[var(--kt-color-surface-default)] p-4 shadow-sm">
+        <h2 className="text-sm font-semibold text-[var(--kt-color-text-primary)]">Premiumでできること</h2>
+        <ul className="mt-3 space-y-3 text-sm text-[var(--kt-color-text-secondary)]">
           {PREMIUM_VALUES.map((value) => (
             <li key={value} className="flex gap-2">
               <span aria-hidden="true" className="mt-[2px] text-[var(--kt-color-premium-accent)]">
@@ -129,12 +129,12 @@ function BillingUpgradeContent() {
         </ul>
       </section>
 
-      <section className="mt-4 rounded-2xl border bg-white p-4 shadow-sm">
+      <section className="mt-4 rounded-2xl border bg-[var(--kt-color-surface-default)] p-4 shadow-sm">
         <p className="text-[11px] font-semibold tracking-[0.14em] text-[var(--kt-color-premium-accent)]">
           β Early User価格
         </p>
-        <p className="mt-1 text-2xl font-semibold text-slate-900">780円 / 月</p>
-        <p className="mt-1 text-xs leading-5 text-slate-600">β期間中の初期ユーザー向け価格です。</p>
+        <p className="mt-1 text-2xl font-semibold text-[var(--kt-color-text-primary)]">780円 / 月</p>
+        <p className="mt-1 text-xs leading-5 text-[var(--kt-color-text-secondary)]">β期間中の初期ユーザー向け価格です。</p>
       </section>
 
       {error ? (
@@ -148,30 +148,30 @@ function BillingUpgradeContent() {
           type="button"
           onClick={startCheckout}
           disabled={auth.loading || submitting}
-          className="inline-flex items-center justify-center rounded-md bg-slate-900 px-4 py-3 text-sm font-semibold text-white"
+          className="inline-flex items-center justify-center rounded-md bg-[var(--kt-color-surface-emphasis)] px-4 py-3 text-sm font-semibold text-[var(--kt-color-text-primary)]"
         >
           {submitting ? "決済画面を準備中…" : "Premiumを始める"}
         </button>
-        <p className="text-xs leading-5 text-slate-600">
+        <p className="text-xs leading-5 text-[var(--kt-color-text-secondary)]">
           プランはStripeの管理画面から変更・解約できます。
         </p>
         {/* Legal導線はCTAより必ず弱く見せる（面を持たせず、文字も一段落とす）。
             サイト全体の正本は RootLayout の LegalFooter で、ここは購入直前に
             条件を確認できるようにするための最小の再掲に留める。 */}
-        <p className="text-[11px] leading-5 text-slate-500">
+        <p className="text-[11px] leading-5 text-[var(--kt-color-text-muted)]">
           お申し込みの前に
-          <Link href="/terms" className="mx-1 underline underline-offset-2 hover:text-slate-700">
+          <Link href="/terms" className="mx-1 underline underline-offset-2 hover:text-[var(--kt-color-text-secondary)]">
             利用規約
           </Link>
           と
-          <Link href="/privacy" className="mx-1 underline underline-offset-2 hover:text-slate-700">
+          <Link href="/privacy" className="mx-1 underline underline-offset-2 hover:text-[var(--kt-color-text-secondary)]">
             プライバシーポリシー
           </Link>
           をご確認ください。
         </p>
         <Link
           href="/billing"
-          className="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-800"
+          className="inline-flex items-center justify-center rounded-md border border-[var(--kt-color-border-strong)] bg-[var(--kt-color-surface-default)] px-4 py-3 text-sm font-semibold text-[var(--kt-color-text-primary)]"
         >
           プラン状況を確認する
         </Link>
@@ -185,7 +185,7 @@ export default function BillingUpgradePage() {
     <Suspense
       fallback={
         <main className="mx-auto w-full max-w-md px-4 py-6">
-          <p className="text-sm leading-6 text-slate-600">プレミアム登録画面を準備しています...</p>
+          <p className="text-sm leading-6 text-[var(--kt-color-text-secondary)]">プレミアム登録画面を準備しています...</p>
         </main>
       }
     >

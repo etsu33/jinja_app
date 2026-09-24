@@ -105,8 +105,8 @@ describe("BillingUpgradePage", () => {
     const cta = screen.getByRole("button", { name: "Premiumを始める" });
     const legal = screen.getByRole("link", { name: "利用規約" });
 
-    // CTAは面を持つ塗りボタン、Legalは下線テキストのみ
-    expect(cta.className).toContain("bg-slate-900");
+    // CTAは面を持つ塗りボタン（Worldview の強調面）、Legalは下線テキストのみ
+    expect(cta.className).toContain("bg-[var(--kt-color-surface-emphasis)]");
     expect(legal.className).not.toContain("bg-");
     expect(legal.className).toContain("underline");
     // 文字サイズもCTA(text-sm)より小さいこと

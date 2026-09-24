@@ -163,7 +163,7 @@ export default function ShrineCardCompact({
                 className="line-clamp-1 text-[10px] leading-4 text-[var(--kt-color-text-muted)]"
                 data-testid="recommendation-compact-explanation-only-fact"
               >
-                <span className="font-semibold text-slate-500">参考情報: </span>
+                <span className="font-semibold text-[var(--kt-color-text-muted)]">参考情報: </span>
                 {explanationOnlyFactText}
               </p>
             ) : null}

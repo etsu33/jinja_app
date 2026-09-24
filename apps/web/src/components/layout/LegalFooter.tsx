@@ -10,7 +10,8 @@
 // 従属性の担保:
 //   - スティッキーにしない（main の内容の後ろに一度だけ現れる）
 //   - 文字サイズと彩度を落とし、面も持たせない。CTAより必ず弱く見せる
-// 色は既存のDark Forest Semantic Tokenのみを使い、新規Tokenは追加しない。
+// 色は既存の Semantic Token のみを使い、新規Tokenは追加しない
+// （中立色は KAMI MUSUBI Worldview Token を経由して解決される）。
 
 import Link from "next/link";
 

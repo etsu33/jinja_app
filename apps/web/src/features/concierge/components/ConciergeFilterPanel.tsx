@@ -171,10 +171,10 @@ export default function ConciergeFilterPanel({
   const hiddenGoriyakuCount = Math.max(goriyakuTags.length - INITIAL_VISIBLE_GORIYAKU_COUNT, 0);
 
   return (
-    <section className="mx-auto w-full max-w-md min-w-0 space-y-2 rounded-xl border border-slate-200 bg-slate-50/60 p-2 sm:max-h-none">
+    <section className="mx-auto w-full max-w-md min-w-0 space-y-2 rounded-xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-background-subtle)]/60 p-2 sm:max-h-none">
       <div className="flex items-center justify-between">
-        <div className="text-xs font-semibold text-slate-700">{title}</div>
-        <button type="button" className="text-[11px] font-semibold text-slate-600 hover:underline" onClick={onClose}>
+        <div className="text-xs font-semibold text-[var(--kt-color-text-secondary)]">{title}</div>
+        <button type="button" className="text-[11px] font-semibold text-[var(--kt-color-text-secondary)] hover:underline" onClick={onClose}>
           閉じる
         </button>
       </div>
@@ -183,24 +183,24 @@ export default function ConciergeFilterPanel({
         {/* Level 2 Visit Preference */}
         <section aria-label="今回の参拝の希望（任意）" className="space-y-1.5">
           <div>
-            <div className="text-[10px] font-semibold text-slate-600">参拝スタイル</div>
-            <p className="mt-0.5 text-[10px] leading-4 text-slate-400">
+            <div className="text-[10px] font-semibold text-[var(--kt-color-text-secondary)]">参拝スタイル</div>
+            <p className="mt-0.5 text-[10px] leading-4 text-[var(--kt-color-text-muted)]">
               相談テーマを主軸にしたまま、過ごし方や行きやすさを補助条件として加えます。
             </p>
           </div>
 
           {QUICK_PRESET_GROUPS.map((group) => (
-            <div key={group.title} className="space-y-1 rounded-lg border border-slate-100 bg-slate-50/60 p-1.5">
+            <div key={group.title} className="space-y-1 rounded-lg border border-[var(--kt-color-border-default)] bg-[var(--kt-color-background-subtle)]/60 p-1.5">
               <div>
-                <div className="text-[10px] font-semibold text-slate-600">{group.title}</div>
-                <p className="mt-0.5 text-[10px] leading-4 text-slate-400">{group.description}</p>
+                <div className="text-[10px] font-semibold text-[var(--kt-color-text-secondary)]">{group.title}</div>
+                <p className="mt-0.5 text-[10px] leading-4 text-[var(--kt-color-text-muted)]">{group.description}</p>
               </div>
               <div className="flex flex-wrap gap-1">
                 {group.items.map((p) => (
                   <button
                     key={p.label}
                     type="button"
-                    className="rounded-full border bg-[var(--kt-color-surface-default)] px-2.5 py-1 text-xs font-semibold hover:bg-slate-50"
+                    className="rounded-full border bg-[var(--kt-color-surface-default)] px-2.5 py-1 text-xs font-semibold hover:bg-[var(--kt-color-surface-elevated)]"
                     onClick={() => {
                       onExtraConditionChange(mergeExtra(extraCondition, p.value));
                       const tags = PRESET_VISIT_PREFERENCE_TAGS[p.label];
@@ -221,7 +221,7 @@ export default function ConciergeFilterPanel({
         {/* Level 3-A Personal Profile */}
         <section aria-label="誕生日（任意）" className="space-y-0.5">
           <div className="text-[10px] font-semibold text-[var(--kt-color-text-muted)]">誕生日（任意）</div>
-          <div className="text-[10px] text-slate-400">相性候補を見るための任意の補助情報です</div>
+          <div className="text-[10px] text-[var(--kt-color-text-muted)]">相性候補を見るための任意の補助情報です</div>
           <input
             type="date"
             aria-label="誕生日"
@@ -232,7 +232,7 @@ export default function ConciergeFilterPanel({
           {/* ログイン中だけ profile へ保存されるため、その場合のみ説明を出す。
               Guest には出さない（保存されると誤認させないため）。 */}
           {isLoggedIn ? (
-            <p className="text-[10px] leading-4 text-slate-400">
+            <p className="text-[10px] leading-4 text-[var(--kt-color-text-muted)]">
               ログイン中は、生年月日を保存してコンシェルジュとコンパスで共通利用します。
             </p>
           ) : null}
@@ -248,7 +248,7 @@ export default function ConciergeFilterPanel({
         {element4 && suggestedTags.length > 0 ? (
           <div className="space-y-0.5">
             <div className="text-[10px] font-semibold text-[var(--kt-color-text-muted)]">相性から見た候補</div>
-            <p className="text-[10px] leading-4 text-slate-400">
+            <p className="text-[10px] leading-4 text-[var(--kt-color-text-muted)]">
               誕生日情報をもとにした補助候補です。相談テーマとの一致を優先します。
             </p>
             <div className="flex flex-wrap gap-1.5">
@@ -316,7 +316,7 @@ export default function ConciergeFilterPanel({
           {hiddenGoriyakuCount > 0 ? (
             <button
               type="button"
-              className="text-left text-[11px] font-semibold text-[var(--kt-color-text-muted)] hover:text-slate-700 hover:underline"
+              className="text-left text-[11px] font-semibold text-[var(--kt-color-text-muted)] hover:text-[var(--kt-color-text-secondary)] hover:underline"
               onClick={() => setShowAllGoriyakuTags((prev) => !prev)}
             >
               {showAllGoriyakuTags ? "折りたたむ" : `他${hiddenGoriyakuCount}件を表示`}
@@ -328,15 +328,15 @@ export default function ConciergeFilterPanel({
       {/* Level 3-C Recommendation Context */}
       <section
         aria-label="参拝の詳細（任意）"
-        className="space-y-1.5 rounded-xl border border-stone-200/50 bg-white/80 p-2"
+        className="space-y-1.5 rounded-xl border border-[var(--kt-color-border-default)]/50 bg-[var(--kt-color-surface-default)]/80 p-2"
       >
         <div>
-          <div className="text-[10px] font-semibold text-slate-700">参拝の詳細（任意）</div>
-          <p className="mt-0.5 text-[10px] leading-4 text-slate-400">
+          <div className="text-[10px] font-semibold text-[var(--kt-color-text-secondary)]">参拝の詳細（任意）</div>
+          <p className="mt-0.5 text-[10px] leading-4 text-[var(--kt-color-text-muted)]">
             予定日と出発地点から、神社への方角を補助条件として使います。
           </p>
         </div>
-        <label className="block text-sm font-medium text-stone-600">
+        <label className="block text-sm font-medium text-[var(--kt-color-text-secondary)]">
           参拝予定日（任意）
           <input
             type="date"
@@ -344,7 +344,7 @@ export default function ConciergeFilterPanel({
             value={plannedVisitDate}
             min={new Date().toISOString().slice(0, 10)}
             onChange={(event) => onPlannedVisitDateChange(event.target.value)}
-            className="mt-1 min-h-11 w-full rounded-2xl border border-[var(--kt-color-border-strong)] bg-stone-50/25 px-3 py-2 text-base text-[var(--kt-color-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
+            className="mt-1 min-h-11 w-full rounded-2xl border border-[var(--kt-color-border-strong)] bg-[var(--kt-color-background-subtle)]/25 px-3 py-2 text-base text-[var(--kt-color-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
           />
         </label>
         <OriginSelector
@@ -360,7 +360,7 @@ export default function ConciergeFilterPanel({
         ) : null}
       </section>
 
-      <div className="flex justify-end gap-2 border-t border-[var(--kt-color-border-default)] bg-slate-50/95 pt-1.5 pb-0.5">
+      <div className="flex justify-end gap-2 border-t border-[var(--kt-color-border-default)] bg-[var(--kt-color-background-subtle)]/95 pt-1.5 pb-0.5">
         <button
           type="button"
           onClick={() => {
@@ -371,7 +371,7 @@ export default function ConciergeFilterPanel({
             "relative z-20 rounded-xl px-3 py-1.5 text-sm font-semibold transition",
             canApply
               ? "bg-[var(--kt-color-action-primary)] text-[var(--kt-color-action-primary-text)] hover:bg-[var(--kt-color-action-primary-hover)]"
-              : "bg-slate-200 text-slate-400 cursor-not-allowed",
+              : "bg-[var(--kt-color-surface-emphasis)] text-[var(--kt-color-text-muted)] cursor-not-allowed",
           ].join(" ")}
         >
           {applyLabel}

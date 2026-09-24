@@ -81,8 +81,10 @@ describe("WorldviewBackdrop: variantの構図", () => {
     expect(root.querySelectorAll('[data-worldview-layer="orb"]')).toHaveLength(1);
   });
 
-  it("standard: 波線2本、Orbなし、champagneの発光なし", () => {
+  it("standard: 波線2本、Orbなし、champagneの発光なし、下部のdepthなし", () => {
     const root = renderVariant("standard");
+    // 下端に藍の面を残すと、フレーム終端と LegalFooter の間に横一本の継ぎ目が出る
+    expect(WORLDVIEW_BACKDROP_SPECS.standard.atmosphere).toEqual(["lit", "ground"]);
     expect(root.querySelectorAll("path")).toHaveLength(2);
     expect(root.querySelectorAll('[data-worldview-layer="orb"]')).toHaveLength(0);
     for (const stop of root.querySelectorAll("stop")) {

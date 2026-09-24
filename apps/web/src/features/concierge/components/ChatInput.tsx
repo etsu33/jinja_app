@@ -96,7 +96,7 @@ export default function ChatInput({ disabled, onSend, error = null, embedMode = 
         rows={2}
         disabled={disabled}
         className={[
-          "flex-1 resize-none border-0 bg-transparent text-sm leading-relaxed outline-none placeholder:text-gray-400 pt-3",
+          "flex-1 resize-none border-0 bg-transparent text-sm leading-relaxed outline-none placeholder:text-[var(--kt-color-text-muted)] pt-3",
           flash ? "ring-2 ring-rose-400/70 rounded-md" : "",
         ].join(" ")}
       />

@@ -227,12 +227,12 @@ function ShrinesPageContent() {
           >
             {error && <p className="text-red-500">{error}</p>}
 
-            {loading ? <p className="mb-5 text-sm text-stone-500">探しています...</p> : null}
+            {loading ? <p className="mb-5 text-sm text-[var(--kt-color-text-muted)]">探しています...</p> : null}
 
             {hasSearched &&
               (isEmpty ? (
-                <div className="rounded-3xl border border-stone-200/30 bg-stone-50/50 p-5">
-                  <p className="text-sm text-stone-700 opacity-85">
+                <div className="rounded-3xl border border-[var(--kt-color-border-default)]/30 bg-[var(--kt-color-background-subtle)]/50 p-5">
+                  <p className="text-sm text-[var(--kt-color-text-secondary)] opacity-85">
                     {activeGoriyakuTag
                       ? `${activeGoriyakuTag.name}に合う神社はまだ登録されていません。`
                       : "お探しの神社が見つかりませんか？"}
@@ -266,9 +266,9 @@ function ShrinesPageContent() {
                     ))}
                   </ul>
 
-                  <section className="mt-8 rounded-3xl border border-stone-200/25 bg-stone-50/25 p-5">
-                    <p className="text-sm font-medium text-stone-800">迷いが残るときは</p>
-                    <p className="mt-1.5 text-sm leading-6 text-stone-700 opacity-65">
+                  <section className="mt-8 rounded-3xl border border-[var(--kt-color-border-default)]/25 bg-[var(--kt-color-background-subtle)]/25 p-5">
+                    <p className="text-sm font-medium text-[var(--kt-color-text-primary)]">迷いが残るときは</p>
+                    <p className="mt-1.5 text-sm leading-6 text-[var(--kt-color-text-secondary)] opacity-65">
                       気持ちから静かに整える導線があります。
                     </p>
                     <Link

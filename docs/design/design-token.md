@@ -24,7 +24,7 @@ Design Token v1は「値の統一」を最初のゴールにしない。まず�
 
 - 個々のToken実値（HEX、rem、px等の具体的な数値）の最終確定
 - Web Emerald / Mobile Goldのブランドカラー統一可否の決定
-- dark modeの正式対応（Mobileの`kamimusubiDark`は現状維持、Webへのdark mode追加は行わない）
+- dark modeの正式対応（Mobileの`kamimusubiDark`は現状維持。Webは常に Dark 基調で描画しており、light/dark の切り替え機構は持たない）
 - Geist / System Fontの統一可否の決定
 - 既存Component実装のリファクタリング（本文書はToken設計のみを扱い、適用は別PRで行う）
 - `apps/mobile/lib/tokens/*`の削除（デッドコード候補として記録するのみ）
@@ -63,7 +63,7 @@ Design Token v1は「値の統一」を最初のゴールにしない。まず�
 
 Semantic Tokenに対して、各Platform（Web / Mobile、および将来的なlight/dark）ごとの実値を割り当てる層。
 
-- Web Theme: 現行のEmerald系ブランド・Light基調を出発点とする
+- Web Theme: 出発点は Emerald系ブランド・Light基調だったが、現行の Web Theme は下記「Web Visual Direction（現行）」の Dark 基調である
 - Mobile Theme: 現行のGold系ブランド・Dark基調（`kamimusubiDark`）を出発点とする
 - 同一のSemantic Token（例: `color.action.primary`）が、Web Themeでは`emerald.600`相当、Mobile Themeでは`gold.500`相当を指してよい。この差を統一するかどうかは保留事項とする。
 
@@ -76,6 +76,31 @@ Web Theme / Mobile Theme（現行のEmerald/Gold、Light/Darkをそれぞれ尊�
         ↓ 参照
 Component（Semantic Tokenのみを参照）
 ```
+
+#### Web Visual Direction（現行）: KAMI MUSUBI Worldview — Deep Ink Navy + restrained shrine-gold
+
+Web（`apps/web`）の現行の視覚方針は「Deep Ink Navy の地 + 控えめな shrine-gold の参道」である（App-wide Web Worldview Rollout）。Mobile（`apps/mobile`、`kamimusubiDark`）はこの方針の対象外で、変更していない。
+
+階層は次のとおりで、第二のTheme体系は持たない。
+
+```text
+KAMI MUSUBI Worldview Token（--kt-world-*、apps/web/src/styles/tokens.css。Worldviewの実値はここだけ）
+        ↓
+Semantic / shared UI 層（--kt-color-* の .dark、globals.css の shadcn 変数）
+        ↓
+共通の世界観フレーム / 背景（components/worldview/WorldviewFrame・WorldviewBackdrop）
+        ↓
+Route / Feature UI
+```
+
+- **中立の構造色は Worldview を参照する**: background / surface / text / border / notice / surface-emphasis（`--kt-color-*`）と、shadcn の background / foreground / card / popover / secondary / muted / accent / border / input / sidebar は `--kt-world-*` を参照する（導出が必要なものは `color-mix` でWorldview Token同士から作り、新しい実値を書かない）。
+- **状態・意味を持つ色は責務を保つ**: action / premium / success / warning / error / info / selection / saved / message-own / action-disabled / overlay / focus は Worldview の中立Tokenに置き換えない。gold は参道の光・重要な主操作・focus・既存のPremium表現に限る。
+- **背景**: Home は `WorldviewBackdrop variant="home"`（Home 固有の構図）。Home 以外の利用者向け画面は Route Segment の `layout.tsx` に置いた `WorldviewFrame`（既定 `standard`）が1画面に1つだけ背景を持つ。`quiet` は線が主要タスクを視覚的に妨げると確認できた画面だけに使う。
+- **Header / Footer**: 全画面で地と同じ Deep Ink Navy と Worldview の境界線を使い、Header / 本文 / Footer の間に色の継ぎ目を作らない。Home 固有の Header 幅（27rem）は Home 限定ルールのまま一般化しない。
+- **Typography**: `--kt-world-font-display`（OS標準明朝、Webfontなし）は WorldviewFrame 内のページ見出し（h1）と Home の主見出しにだけ使う。フォーム部品・ボタン・メタ情報・数値は既存の Sans のまま。
+- **`--home-*`**: Home 配下の既存参照のための別名であり、Home 以外から参照しない。
+
+契約は `apps/web/src/styles/__tests__/worldviewTokens.test.ts`・`apps/web/src/components/worldview/__tests__/*`・`apps/web/src/app/__tests__/worldviewRouteCoverage.test.ts` が検証する。
 
 ---
 
