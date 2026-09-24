@@ -334,7 +334,7 @@ Recommendation Reasonの固有性（V4構造化表示）、FactとMeaningの分�
 
 祭神・由緒のModel Foundation（`ShrineDeity` / `ShrineHistory` / `ShrineKnowledgeSource`）と、出典確認済みかを判別するEvidence Gate（Fact単位の利用可否・confidence表現・disputed表示）は実装済み。Real Data Pilotは明治神宮・品川神社の2社で実施済みだが、3〜5社規模のPilot本体および105件Rolloutは未着手。Foundationとして100%完了とみなせるかは`docs/knowledge/shrine-knowledge-contract.md`の完了条件（Pilot対象確定含む）に基づき母艦判断待ちとする。
 
-位置情報については Gate C（参拝ナビ座標と神社中心座標を分離）を選択済みで、PHASE_1の保存構造・状態表現・将来consumer routingは`docs/core/split-anchor-architecture.md`へ正本化済み。Schema Foundation、個別神社の中心座標審査、Canonical backfill、Compass等のruntime cutoverは未実施であり、それぞれ別のMother Ship指示を必要とする。
+位置情報については Gate C（参拝ナビ座標と神社中心座標を分離）を選択済み。PHASE_1の保存構造・状態表現・将来consumer routingは`docs/core/split-anchor-architecture.md`へ正本化され、Schema Foundationも実装済み。PHASE_2のsubject_type × point_method matrixおよびread-only調査・判定手順は正本化済みだが、Batch 01（春日大社・宇佐神宮・日光東照宮）の実調査は未実行。Canonical backfillおよびCompass等のruntime cutoverも未実施であり、それぞれ別のMother Ship指示を必要とする。
 
 ---
 
