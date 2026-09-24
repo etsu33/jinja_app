@@ -275,13 +275,11 @@ describe("CompassClient", () => {
       fireEvent.change(screen.getByLabelText("生年月日の日"), { target: { value: "01" } });
     }
 
-    // 「現在地を使用」は Sheet を自動で閉じない（既存挙動）。ユーザー同様 Escape で閉じる。
-    async function useDeviceOriginAndCloseSheet() {
+    async function useDeviceOriginAndWaitForAutoClose() {
       await openDeviceOrigin();
       await waitFor(() => {
         expect(screen.getAllByText("現在の出発地点は現在地、確定した位置です。").length).toBeGreaterThan(0);
       });
-      fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
       await waitFor(() => {
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
       });
@@ -301,7 +299,7 @@ describe("CompassClient", () => {
       const fetchMock = stubSuccessFetch();
       render(<CompassClient />);
       fillPurposeAndBirthdate();
-      await useDeviceOriginAndCloseSheet();
+      await useDeviceOriginAndWaitForAutoClose();
       await submit();
 
       expect(JSON.parse(fetchMock.mock.calls[0][1].body).origin).toEqual({ lat: 35.5, lng: 139.5 });
@@ -326,7 +324,7 @@ describe("CompassClient", () => {
       stubSuccessFetch();
       render(<CompassClient />);
       fillPurposeAndBirthdate();
-      await useDeviceOriginAndCloseSheet();
+      await useDeviceOriginAndWaitForAutoClose();
       await submit();
       expect(routeUrl().searchParams.get("origin")).toBe("35.5,139.5");
 
@@ -665,6 +663,9 @@ describe("CompassClient", () => {
       await waitFor(() => {
         expect(screen.getAllByText("現在の出発地点は現在地、確定した位置です。").length).toBeGreaterThan(0);
       });
+      await waitFor(() => {
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      });
       expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     });
 
@@ -676,6 +677,7 @@ describe("CompassClient", () => {
 
       const alert = await screen.findByRole("alert");
       expect(alert.textContent).toBe("現在地を取得できませんでした。位置情報の許可を確認してください。");
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
       expect(screen.getByRole("radio", { name: "駅名・住所から指定" })).toBeEnabled();
       // 出発地点は未設定のまま（fallback へ誘導）
       expect(screen.getAllByText("出発地点は設定されていません。").length).toBeGreaterThan(0);
@@ -689,6 +691,7 @@ describe("CompassClient", () => {
 
       const alert = await screen.findByRole("alert");
       expect(alert.textContent).toBe("現在地を取得できませんでした。");
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
     });
 
     it("POSITION_UNAVAILABLE (code 2) も汎用の取得失敗文言を表示する", async () => {
@@ -742,7 +745,21 @@ describe("CompassClient", () => {
       await waitFor(() => {
         expect(screen.getAllByText("現在の出発地点は現在地、確定した位置です。").length).toBeGreaterThan(0);
       });
+      await waitFor(() => {
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      });
       expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+
+    it("都道府県を選択した場合も既存どおりSheetを閉じる", async () => {
+      render(<CompassClient />);
+
+      setOriginViaPrefecture();
+
+      await waitFor(() => {
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      });
+      expect(screen.getByText("現在の出発地点は東京都、おおよその位置です。")).toBeInTheDocument();
     });
   });
 });
