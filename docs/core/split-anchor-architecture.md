@@ -6,7 +6,7 @@
 >
 > **Runtime activation:** NONE
 >
-> **Schema implementation:** NOT_STARTED
+> **Schema implementation:** IMPLEMENTED — FOUNDATION ONLY
 >
 > **Canonical backfill:** NOT_STARTED
 >
