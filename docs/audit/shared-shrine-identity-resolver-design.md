@@ -524,6 +524,37 @@ backend/temples/services/concierge_candidate_normalize.py
 frontend に届く。ここを `invalid` と判定すると、未登録候補の
 `/shrines/resolve` 導線が全滅する。したがって `null` は `absent`。
 
+#### 13.3.1a Presence evidence correction（F-5A 追記）
+
+F-3.1 の presence rule 結論は変更しないが、当初引用した repository evidence は
+live path の根拠として不適切だったため訂正する。
+
+```text
+F3_1_PRESENCE_EVIDENCE_CORRECTION
+
+ORIGINAL_EVIDENCE
+= backend/temples/services/concierge_candidate_normalize.py
+= SUPERSEDED
+= PYTHON_IMPORTER_ZERO / DEAD_CODE
+
+CURRENT_LIVE_EVIDENCE
+= backend/temples/services/concierge_candidate_utils.py
+= _normalize_candidate_fields
+
+PRESENCE_RULE_CONCLUSION
+= UNCHANGED
+= null / None IS ABSENT
+```
+
+F-5A の repository-wide audit で、
+`concierge_candidate_normalize.normalize_candidate()` は Python importer 0 件の dead code
+であることを確認した。したがって §13.3.1 の引用は historical record として残すが、
+現在の live evidence には使用しない。
+
+live 経路では `concierge_candidate_utils._normalize_candidate_fields()` が
+`row["shrine_id"]` を無条件に正規化・設定し、解決できない場合は `None` を保持する。
+そのため frontend resolver が `shrine_id: null` を `absent` と扱う結論は変わらない。
+
 #### 13.3.2 Status precedence（F-3.1 で解決した仕様上の曖昧さ）
 
 `F-3.1` の status 定義は、`{ shrine_id: 42, shrineId: "bad" }` に対して
