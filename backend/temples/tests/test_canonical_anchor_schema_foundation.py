@@ -28,7 +28,8 @@ from types import SimpleNamespace
 import pytest
 from django.core.exceptions import ValidationError
 from django.core.management import call_command
-from django.db import IntegrityError, connection, migrations, transaction
+from django.db import IntegrityError, connection, migrations, models, transaction
+from django.db.models.deletion import RestrictedError
 from django.db.migrations.loader import MigrationLoader
 from django.test import override_settings
 from django.test.utils import CaptureQueriesContext
@@ -642,6 +643,69 @@ def test_28_evidence_with_other_anchor_component_is_rejected():
         ShrineCanonicalAnchorEvidence.objects.create(
             anchor=anchor_a, component=foreign, evidence_role="COORDINATE"
         )
+    assert not ShrineCanonicalAnchorEvidence.objects.exists()
+
+
+# --- Evidence.component on_delete = RESTRICT ------------------------------------
+
+
+def _aggregate_with_evidence():
+    anchor = ShrineCanonicalAnchor.objects.create(**_hold_kwargs(_shrine()))
+    component = _component(anchor, "東本殿")
+    component_evidence = ShrineCanonicalAnchorEvidence.objects.create(
+        anchor=anchor, component=component, evidence_role="COORDINATE"
+    )
+    anchor_evidence = ShrineCanonicalAnchorEvidence.objects.create(
+        anchor=anchor, evidence_role="SEMANTIC"
+    )
+    return anchor, component, component_evidence, anchor_evidence
+
+
+def test_28b_evidence_component_on_delete_is_restrict():
+    field = ShrineCanonicalAnchorEvidence._meta.get_field("component")
+    assert field.remote_field.on_delete is models.RESTRICT
+
+
+@pytest.mark.django_db
+def test_28c_component_with_evidence_cannot_be_deleted_alone():
+    anchor, component, component_evidence, anchor_evidence = _aggregate_with_evidence()
+    with pytest.raises(RestrictedError):
+        component.delete()
+    assert ShrineCanonicalAnchorComponent.objects.filter(pk=component.pk).exists()
+    assert (
+        ShrineCanonicalAnchorEvidence.objects.filter(
+            pk__in=[component_evidence.pk, anchor_evidence.pk]
+        ).count()
+        == 2
+    )
+
+
+@pytest.mark.django_db
+def test_28d_component_without_evidence_can_be_deleted():
+    anchor = ShrineCanonicalAnchor.objects.create(**_hold_kwargs(_shrine()))
+    component = _component(anchor, "摂社", classification="UNCLASSIFIED")
+    component.delete()
+    assert not ShrineCanonicalAnchorComponent.objects.filter(pk=component.pk).exists()
+
+
+@pytest.mark.django_db
+def test_28e_explicit_anchor_delete_removes_whole_aggregate():
+    anchor, component, component_evidence, anchor_evidence = _aggregate_with_evidence()
+    anchor.delete()
+    assert not ShrineCanonicalAnchor.objects.filter(pk=anchor.pk).exists()
+    assert not ShrineCanonicalAnchorComponent.objects.filter(pk=component.pk).exists()
+    assert not ShrineCanonicalAnchorEvidence.objects.filter(
+        pk__in=[component_evidence.pk, anchor_evidence.pk]
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_28f_shrine_delete_cascades_whole_aggregate():
+    anchor, component, component_evidence, anchor_evidence = _aggregate_with_evidence()
+    shrine = anchor.shrine
+    shrine.delete()
+    assert not ShrineCanonicalAnchor.objects.filter(pk=anchor.pk).exists()
+    assert not ShrineCanonicalAnchorComponent.objects.filter(pk=component.pk).exists()
     assert not ShrineCanonicalAnchorEvidence.objects.exists()
 
 

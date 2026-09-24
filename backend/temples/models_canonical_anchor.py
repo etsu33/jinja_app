@@ -329,9 +329,12 @@ class ShrineCanonicalAnchorEvidence(models.Model):
         related_name="evidences",
     )
     # component固有Evidenceの場合のみ。component.anchor == anchor を必須とする。
+    # RESTRICT: component単体の削除で監査Evidenceが暗黙に消えることを禁止する。
+    # Anchor削除（Shrine削除経由を含む）では Anchor / Component / Evidence を
+    # aggregate として一括削除できる。
     component = models.ForeignKey(
         ShrineCanonicalAnchorComponent,
-        on_delete=models.CASCADE,
+        on_delete=models.RESTRICT,
         related_name="evidences",
         null=True,
         blank=True,

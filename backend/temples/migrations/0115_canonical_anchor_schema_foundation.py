@@ -203,7 +203,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         blank=True,
                         null=True,
-                        on_delete=django.db.models.deletion.CASCADE,
+                        on_delete=django.db.models.deletion.RESTRICT,
                         related_name="evidences",
                         to="temples.shrinecanonicalanchorcomponent",
                     ),
