@@ -15,6 +15,8 @@ Core文書は、KAMI MUSUBI全体へ横断的に適用されるシステム構�
 ```text
 architecture.md
 ↓
+split-anchor-architecture.md
+↓
 fixed-rules.md
 ↓
 desktop-development-contract.md
@@ -54,6 +56,12 @@ openapi-contract-governance.md
 | `fixed-rules.md` | KAMI MUSUBI全体へ適用する横断Fixed Rule、禁止原則およびRule変更手順 |
 | `desktop-development-contract.md` | active local Repository、local DB、再生成経路および開発環境の正本契約 |
 | `roadmap.md` | 開発フェーズ、実装順序、ゴールおよび完了条件 |
+
+### 位置情報
+
+| 文書 | 責務 |
+| --- | --- |
+| `split-anchor-architecture.md` | 参拝ナビ座標と神社中心座標を分離する物理保存構造、状態表現、将来consumer routingおよびno-fallback境界 |
 
 ### 認証
 
