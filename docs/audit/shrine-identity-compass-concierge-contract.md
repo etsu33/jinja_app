@@ -624,3 +624,72 @@ shadow identity（`F-6`）が未統合のまま残る。
 
 実装の詳細と回帰の証跡は
 `docs/audit/backend-shrine-identity-fallback-consolidation.md` §10–§19。
+
+## 12. Current State Update — F-6A (place_id shadow identity audited)
+
+> 追記。§5 / §8 を含む §1–§11 の歴史的記録は書き換えない。
+
+```text
+F6A_STATUS                  = AUDITED
+PLACE_ID_IDENTITY_AUTHORITY = NO
+RUNTIME_CHANGE              = NONE
+```
+
+### 12.1 §5「place_id は登録済み Shrine identity の代わりになるか」の現在地
+
+§5 の結論（place_id は identity authority ではない）は変わらない。`F-6A` は
+その**再発防止がまだ実装されていない**ことを確定した。
+
+```text
+CURRENT_WRITER = backend/temples/services/places.py::get_or_create_shrine_by_place_id
+COLLISION_DETECTION_PRESENT = NO
+POST_0100_SHADOW_RECREATION_POSSIBLE = YES
+```
+
+migration 0100 は shadow Shrine 101/103/104 を削除したが、docstring の
+`DROP_SHADOW_ONLY` の通り **place_ref を primary へ転送していない**。3 つの
+PlaceRef 行は孤立したまま残っており、同じ place_id を再 resolve すると
+新しい shadow 行が作られる。呼び出し列は
+`docs/audit/place-id-shadow-identity-hardening.md` §2.2。
+
+構造的な理由として、`Shrine` の部分 unique 制約 2 つ
+（`uq_shrine_name_loc` / `uq_shrine_name_addr_when_loc_null`）はどちらも
+`place_ref__isnull=True` を条件に持つため、**place_ref を持つ行は
+name/address の一意性から除外される**（同 §1.6）。
+
+### 12.2 §8「Future Implementation Follow-ups」の現在地
+
+```text
+F-1  完了（#2956）
+F-3  完了（#2957）
+F-4  完了（#2959）
+F-5A 完了（#2960）
+F-5B 完了（#2961）
+F-6A 完了（本 PR。監査・設計のみ）
+F-6B 未着手（実装）
+```
+
+### 12.3 新たに観測した writer（§4 の一覧に無い）
+
+```text
+api/views/shrines_nearby.py:40
+  Shrine.objects.update_or_create(place_ref=pref)
+  -> get_or_create_shrine_by_place_id と同じ shadow 形状
+
+  ただし到達不能:
+    ルーティング参照 0 件
+    search_nearby_places が未定義（呼び出し 1 箇所のみ、import も定義も無い）
+
+  SHRINES_NEARBY_REACHABLE = NO
+  -> F-6B の対象外。削除可否は別決定
+```
+
+### 12.4 §7 分類への影響
+
+```text
+分類は PARTIALLY_SHARED のまま変わらない。
+```
+
+`F-6A` は docs のみであり、runtime の identity 挙動を一切変えていない。
+
+詳細は `docs/audit/place-id-shadow-identity-hardening.md`。
