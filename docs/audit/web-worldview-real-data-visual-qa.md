@@ -196,7 +196,7 @@ Secondary target は regression が見つかった場合だけ深掘りする。
 | /concierge result | no | real | PASS (390x844) | 455px provisional PASS | Navy ground / header continuity / card hierarchy / long-form text / gold CTA remain readable; no horizontal overflow observed | PASS | none |
 | /shrines/[id] | no | real | PASS (390x844) | 455px provisional PASS | Concierge→Shrine Detail continuity preserved; cards, history text, meaning sections remain readable | PASS | semantic-state follow-up only |
 | /shrines/[id]/goshuins | no | real | TODO | TODO if needed | TBD | TBD | TBD |
-| /mypage | yes | real | TODO | TODO if needed | TBD | TBD | TBD |
+| /mypage | yes | real | PASS (390x844) | not required | Logged-out gate, auth login, and authenticated profile/data state remain readable; saved shrine cards and recent consultation fit without overflow | PASS | none |
 | /favorites | yes | real | TODO | TODO if needed | TBD | TBD | TBD |
 | /goshuin/new | yes | real | TODO | TODO if needed | TBD | TBD | TBD |
 | /map | maybe | real | TODO | TODO if needed | TBD | TBD | TBD |
@@ -258,6 +258,57 @@ Not covered by this evidence:
 
 Per the viewport policy, extra widths are required only where a problem is found.
 The semantic-state findings are color-language issues rather than 390px layout failures, so no responsive expansion is required for the core Concierge/Shrine layout at this point.
+
+
+### 7.2 MyPage / Auth — 390px formal observation (2026-09-24)
+
+Evidence:
+- user-provided browser screenshots
+- Chrome responsive viewport: **390 x 844**
+- states:
+  - `/mypage?tab=profile` while logged out
+  - `/auth/login?returnTo=%2Fmypage`
+  - `/mypage` after successful authentication
+- authenticated MyPage contained:
+  - account name / plan badge / email
+  - recent consultation
+  - two saved shrines with addresses
+  - settings entry
+
+Formal findings:
+
+| Area / State | Finding | Classification | Follow-up |
+|---|---|---|---|
+| MyPage logged-out gate | Navy ground, card surface, gold login CTA and footer remain visually continuous; no white/Forest seam | PASS | none |
+| Auth login form | Labels, inputs, gold primary CTA and registration link remain readable; Gold Path stays decorative and does not disrupt form readability | PASS | none |
+| Login → MyPage return flow | The supplied evidence shows the authenticated MyPage state after login; no visual discontinuity was observed across the transition | PASS | none |
+| MyPage authenticated account card | Account name, FREE badge and email retain hierarchy on Navy surfaces | PASS | none |
+| Recent consultation card | Real text truncation and date fit inside the card at 390px; no visible horizontal overflow | PASS | none |
+| Saved shrines list | Two real shrine names and addresses fit within card bounds; nested cards preserve surface hierarchy | PASS | none |
+| Footer / short-page ground | Logged-out MyPage and Login both show the footer above remaining viewport ground without a color seam; the ground stays Deep Ink Navy below it | PASS | none |
+| Header authenticated state | MyPage / Logout controls fit at 390px and remain visually subordinate to page content | PASS | none |
+
+Formal classification for this pass:
+
+```text
+WORLDVIEW_REGRESSION            = 0 observed
+PRE_EXISTING_SEMANTIC_STATE     = 0 newly observed
+CONTENT_DATA_STRESS             = 0 observed
+FUNCTIONAL_NON_VISUAL           = 0 observed in supplied flow
+PASS                            = MyPage / Auth core Worldview
+```
+
+This evidence also closes the previously open **Footer end-of-page seam** check for the supplied short-page states.
+
+Not covered by this evidence:
+- `/mypage/history`
+- `/mypage/history/[tid]`
+- `/mypage/settings`
+- Favorites
+- authenticated empty-state variants
+- Premium account state
+
+Per the viewport policy, no 375 / 430 / 1280 expansion is required for these states because no 390px layout or Worldview regression was observed.
 
 ## 8. No-change Areas
 
