@@ -174,10 +174,10 @@
  * 新しいlocal property (--home-*) である。--kt-* / shadcn変数は一切代入しない。
  * したがってHome以外の画面・Component・Mobileへ値が波及する経路は存在しない。
  *
- * ■ 差分はBaseだけ
- * Stitchの4要素のうち、Surface (Moss Charcoal) / Text (Ivory) /
- * Accent (Warm Brass・Champagne Gold) は既存 --kt-* が既に充足しているため
- * そのまま再利用する。新しい色を作るのはBase (地) と、その上に差す光だけ。
+ * ■ Homeの面と文字
+ * Deep Ink Navyの上でMoss Charcoalの面とsage文字が濁って見えるため、
+ * Home専用の青い面・境界線・白寄りの文字階層を用意する。
+ * GoldのCTAと波線は既存の--kt-*を再利用する。
  *
  * ■ 宣言位置
  * 背景レイヤーはHomeのPage配下にあるが、Headerは Root Layout 側の共有要素で
@@ -189,20 +189,24 @@
 body:has([data-app-frame="home"]) {
   /* 地: Deep Ink Navy / Blue Black。
      コントラスト実測 (WCAG, 対 #0b111c):
-       text-primary(#f3eee3) 16.33 / text-muted(#c6c8b8) 11.12 /
-       text-secondary(#a7ac9b) 8.12 / action-primary(#c9a96a) 8.43 /
-       premium(#e4c88f) 11.66  — いずれもAAA(7.0)以上。
-     相対輝度は 0.00556 で surface-default(#131a15, 0.00931) より低い。
-     これにより background < surface < elevated という面の明度順序が
-     Navy地の上でも崩れない（Moss Charcoalのカードが正しく浮く）。 */
+       primary(#fffdf8) / secondary(#e7eaf0) / muted(#c5cbd6) を
+       青い地の上で明度順に分ける。面も ground < surface < elevated とする。 */
   --home-ground: #0b111c;
 
   /* 上方から差す光。地と同色相をひと段持ち上げた藍で、純黒にも青一色にもしない。 */
   --home-ground-lit: #16203a;
 
-  /* Moss Charcoalのニュアンス。「全面を青一色にしない」ための緑側の残り香。
-     新しい色を作らず、既存のelevated面をそのまま薄く敷く。 */
-  --home-ground-moss: var(--kt-color-surface-elevated);
+  /* 青い地に合わせたHome専用の面と文字。明朝の細い線も読み取れる明度差にする。 */
+  --home-surface: #192231;
+  --home-surface-elevated: #222d3e;
+  --home-border: #455063;
+  --home-border-strong: #718096;
+  --home-text-primary: #fffdf8;
+  --home-text-secondary: #e7eaf0;
+  --home-text-muted: #c5cbd6;
+
+  /* 下部の空気も青系でまとめ、入力面との色相を揃える。 */
+  --home-ground-moss: var(--home-surface-elevated);
 
   /* 参道の光。Warm Brass と Champagne Gold は既存Tokenをそのまま使う。 */
   --home-path: var(--kt-color-action-primary);
@@ -241,19 +245,19 @@ body:has([data-app-frame="home"]) header nav {
       var()の2番目は :has() が効かない場合のfallbackで、従来値と同じ。 */
 body:has([data-app-frame="home"]) header {
   background-color: var(--home-ground, var(--kt-color-background-base));
-  border-bottom: 1px solid var(--kt-color-border-default);
+  border-bottom: 1px solid var(--home-border);
 }
 
-/* 3) 未ログイン時のログインボタンはHomeでのみ静かな枠線にする。
+/* 3) 未ログイン時のログインボタンはHomeでのみ静かな青い枠線にする。
       Homeにはページ側の主CTA(相談をはじめる)があり、goldが二重になると
       「重要な操作にだけ光を差す」原則が崩れるため。
       href は buildLoginHref() が常に /auth/login 始まりを返す契約
       (src/lib/nav/login.ts)。仮にこの形が変わってもHomeでgoldに戻るだけで、
       レイアウトは壊れない。 */
 body:has([data-app-frame="home"]) header nav a[href^="/auth/login"] {
-  background-color: var(--kt-color-surface-default);
-  border: 1px solid var(--kt-color-border-default);
-  color: var(--kt-color-text-secondary);
+  background-color: var(--home-surface);
+  border: 1px solid var(--home-border);
+  color: var(--home-text-secondary);
 }
 
 @layer base {

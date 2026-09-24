@@ -231,14 +231,14 @@
   --kt-color-surface-elevated: #1a231c;
 
   /* ---- Text: warm mist-ivory -> sage ---- */
-  /* Primitive: kamimusubiDark.text / .muted / .mutedSoft
-     secondary=muted、muted=mutedSoft というMobile側のマッピングを踏襲する
-     （muted の方が secondary より明るいという既存の対応関係を維持）。
+  /* Webの明朝本文は細い線が暗い地に沈みやすいため、説明文と補助文字の明度を分ける。
+     primary(#f3eee3) > secondary(#d8d9ce) > muted(#b9bcaf) の順に保つ。
+     Mobile側のPrimitiveはこのWeb画面の調整対象外。
      text-inverse は action-primary(gold) 塗りの上に載る文字色。
      goldは明色のため白ではなく背景色を反転色として使う（Mobileと同値）。 */
   --kt-color-text-primary: #f3eee3;
-  --kt-color-text-secondary: #a7ac9b;
-  --kt-color-text-muted: #c6c8b8;
+  --kt-color-text-secondary: #d8d9ce;
+  --kt-color-text-muted: #b9bcaf;
   --kt-color-text-inverse: #0a0f0c;
 
   /* ---- Border: muted olive-gray ---- */

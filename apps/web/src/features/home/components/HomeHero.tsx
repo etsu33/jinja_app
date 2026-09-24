@@ -9,26 +9,25 @@ export function HomeHero() {
     // これにより「カードが二重になって焦点が割れる」状態を避ける。
     <section className="space-y-7">
       <div className="space-y-3">
-        <p className="text-[10px] font-medium tracking-[0.3em] text-[var(--kt-color-text-muted)]">KAMI MUSUBI</p>
+        <p className="text-[10px] font-medium tracking-[0.3em] text-[var(--home-text-muted)]">KAMI MUSUBI</p>
         {/*
           Japanese Modern Classic の主役。日本語見出しだけを明朝Displayにする。
           Webfontは追加していない（--home-font-display はOS標準明朝への
           フォールバック指定のみ / bundle影響ゼロ）。明朝が無い環境では
           serif、それも無ければ既存の継承フォントに戻るだけで構図は崩れない。
 
-          明朝は同じ字面でも線が細く見えるため、weightをsemibold(600)から
-          medium(500)へ落とし、字間の詰め(tracking-tight)も外して
-          本来の字送りに戻す。文言・改行位置は変更していない。
+          明朝の細い線を暗い地でも読み取りやすくするため、見出しはsemiboldにする。
+          字間と改行位置は維持する。
         */}
         <h1
-          className="text-[27px] font-medium leading-[1.4] text-[var(--kt-color-text-primary)]"
+          className="text-[27px] font-semibold leading-[1.4] text-[var(--home-text-primary)]"
           style={{ fontFamily: "var(--home-font-display)" }}
         >
           今の相談から、
           <br />
           向かう神社を見つける
         </h1>
-        <p className="text-[13px] leading-7 text-[var(--kt-color-text-secondary)]">
+        <p className="text-[13px] font-medium leading-7 text-[var(--home-text-secondary)]" style={{ fontFamily: "var(--home-font-display)" }}>
           迷っていることを一言にすると、今の気持ちに合わせて神社との出会いを整えます。
         </p>
       </div>

@@ -102,7 +102,7 @@ export default function ShrineCardCompact({
             {originSummary ? <p className="line-clamp-1 text-xs leading-5 text-[var(--kt-color-text-muted)]">{originSummary}</p> : null}
             {reason ? (
               <div data-testid="recommendation-match-reason">
-                <p className="text-[10px] font-semibold text-emerald-700">相談内容・ご利益との一致</p>
+                <p className="text-[10px] font-semibold text-[var(--kt-color-action-primary)]">相談内容・ご利益との一致</p>
                 <p className="line-clamp-1 text-xs leading-5 text-[var(--kt-color-text-muted)]">{reason}</p>
               </div>
             ) : null}

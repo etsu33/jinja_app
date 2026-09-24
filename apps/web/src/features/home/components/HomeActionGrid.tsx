@@ -38,8 +38,8 @@ export function HomeActionGrid() {
   return (
     <section className="space-y-4">
       <div className="space-y-1.5 px-1">
-        <p className="text-[9px] font-medium tracking-[0.24em] text-[var(--kt-color-text-muted)]">ANOTHER WAY IN</p>
-        <h2 className="text-[15px] font-medium text-[var(--kt-color-text-primary)]">ほかの入り口から</h2>
+        <p className="text-[9px] font-medium tracking-[0.24em] text-[var(--home-text-muted)]">ANOTHER WAY IN</p>
+        <h2 className="text-[15px] font-medium text-[var(--home-text-primary)]">ほかの入り口から</h2>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
