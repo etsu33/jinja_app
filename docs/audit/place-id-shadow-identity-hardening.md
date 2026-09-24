@@ -1532,3 +1532,310 @@ EXECUTION_BLOCKED_ON  = C1_BACKFILL_EXECUTION + F6D_PRODUCTION_PRE_PASS
 ```
 
 次の行動には Mother Ship 指示が必要。
+
+---
+
+# F-6C（実測結果） / F-6D — Explicit PlaceRef Backfill
+
+> `F-6A`（§1–§13）/ `F-6B`（§14–§15）/ `F-6C`（§16–§17）への**追記**。
+> 既存節は書き換えない。とくに §16 は「認証情報が無く実測できなかった」時点の
+> 記録としてそのまま保持し、本節が **その後 Mother Ship 側で実行された実測結果**
+> を記録する。
+
+## 18. Production PRE の実測結果（Mother Ship 実行）
+
+```text
+F6C_PRODUCTION_PRE_READ      = EXECUTED
+F6C_PRODUCTION_PRE_READ_ONLY = YES
+F6D_PRODUCTION_PRE           = PASS
+```
+
+```text
+PRIMARY_COUNT                   = 3
+PRIMARY_IDENTITY_MATCH_COUNT    = 3
+PRIMARY_PLACE_REF_NONNULL       = 0
+TARGET_PLACE_REF_COUNT          = 3
+TARGET_PLACE_REF_CLAIM_COUNT    = 0
+SHADOW_COUNT                    = 0
+AUDITED_EVENT_EXACT_COUNT       = 2
+AUDITED_EVENT_WRONG_OWNER_COUNT = 0
+
+MIGRATION_0100_APPLIED          = YES
+CURRENT_PARENT_APPLIED          = YES
+PRODUCTION_HAS_UNKNOWN_NEWER_MIGRATION = NO
+MIGRATION_NUMBER_ABOVE_LEAF_COUNT      = 0
+UNKNOWN_SAME_NUMBER_SIBLING_COUNT      = 0
+MIGRATION_NAME_UNPARSEABLE_COUNT       = 0
+UNKNOWN_MIGRATION_BRANCH_DETECTED      = NO
+FUTURE_F6D_ALREADY_RECORDED            = NO
+
+F6D_PRE_ELIGIBLE = TRUE
+```
+
+この実測は Mother Ship が sanctioned SELECT-only bridge 経由で実行したもので
+あり、本 session は Production へ接続していない（§16.1 のとおり認証情報を
+持たない）。
+
+### 18.1 §16 の UNVERIFIED 群との関係
+
+§16 冒頭の `UNVERIFIED` 群は「本 session が読めなかった」という当時の事実の
+記録である。本節がそれを **superseded** する。§16 は書き換えない。
+
+### 18.2 F-6C preflight SQL は歴史的証跡として保持する
+
+```text
+scripts/migration_safety/sql/f6d_place_ref_backfill_preflight.sql = UNCHANGED
+```
+
+この SQL は **F-6D が存在しない時点の PRE gate** であり、`EXPECTED_LEAF_NAME
+= 0113_adopt_usa_jingu_position` に pin されている。F-6D 追加後の leaf
+（0114）を期待するように書き換えると、既に実行済みの PRE 証跡の再現性が
+壊れる。したがって書き換えない。
+
+F-6D 適用後にこの SQL を再実行すると、意図どおり
+`migration_number_above_leaf_count = 1`（0114 を検出）となり
+`f6d_pre_eligible = false` を返す。これは **pre-F6D gate としては正しい挙動**
+であり、bug ではない。
+
+## 19. Mother Ship 決定
+
+```text
+C1_BACKFILL_EXECUTION = YES          ← 承認された
+C2_MAPPING_STORAGE    = FIXED
+C3_ROLLBACK           = FIXED
+
+MIGRATION_0100_CHANGE_REQUIRED = NO
+MIGRATION_0108_CHANGE_REQUIRED = NO
+```
+
+```text
+C2_MAPPING_STORAGE = MIGRATION_ONLY_DECISION_PROVENANCE
+  + Shrine.place_ref AS RUNTIME_SOURCE_OF_TRUTH
+  + NO_NEW_MAPPING_TABLE
+
+C3_ROLLBACK = REVERSIBLE_F6D_MIGRATION
+  + RESTORE_PRE_F6D_ORPHAN_STATE
+  + KEEP_PLACE_REF_ROWS
+  + FAIL_CLOSED_ON_UNEXPECTED_STATE
+```
+
+## 20. F-6D 実装
+
+```text
+F6D_IMPLEMENTED_IN_REPOSITORY      = YES
+F6D_APPLIED_TO_PRODUCTION          = NO
+PRODUCTION_DATA_CHANGED_BY_THIS_PR = NO
+```
+
+```text
+backend/temples/migrations/0114_f6d_explicit_place_ref_backfill.py
+```
+
+### 20.1 migration graph の再解決
+
+leaf は仮定せず、`ast` で全 113 migration の `dependencies` を解析して求めた
+（GDAL 不在のため Django の `MigrationLoader` は使えない）。
+
+```text
+total migrations           = 113
+LEAF_NODES                 = ['0113_adopt_usa_jingu_position']   （単一）
+0113 を参照する migration   = NOTHING
+dangling dependencies      = none
+0114 の既存                 = なし
+develop                    = d9f6d4883413e718467ec2af55bbe93c5b40ffe4
+```
+
+`dependencies = [("temples", "0113_adopt_usa_jingu_position")]`。
+
+### 20.2 静的な承認済みマッピング（3 件のみ）
+
+```text
+Shrine 22 給田六所神社  <- ChIJl-MEepfxGGAR1Eo44p__GaE
+Shrine 21 長太稲荷神社  <- ChIJX19mq8nxGGARsA2kP4gX90M
+Shrine 49 富岡八幡宮    <- ChIJK11I4BGJGGAR5mZswigcu58
+```
+
+```text
+PLACE_REF_BACKFILL_SCOPE    = EXACTLY_3
+IDENTITY_AUTHORITY          = Shrine.id
+PLACE_ID_IDENTITY_AUTHORITY = NO
+HEURISTIC_SELECTION         = PROHIBITED
+HEURISTIC_BINDING           = NO
+```
+
+migration は自身の静的 snapshot を持つ（C2）。`PlaceRef.name` / `address` /
+座標を読んで Shrine を選ぶことはしない。duplicate heuristic / nearest shrine /
+normalized name match のいずれも使わない。
+
+### 20.3 forward
+
+```text
+Phase 1  全 PRE を検証（mutation なし）
+Phase 2  narrow UPDATE で 3 件を束縛
+Phase 3  POST で期待状態を全件検証
+```
+
+PRE:
+
+```text
+3 primary が存在し identity が監査 snapshot と一致（id 49 は座標も）
+3 primary の place_ref_id がすべて NULL
+3 target PlaceRef が存在する
+3 target PlaceRef をどの Shrine も claim していない
+shadow 101 / 103 / 104 が不在
+監査済み interaction event 2 件が GLOBAL で各 1 件、かつ期待 primary 上
+```
+
+```text
+PARTIAL_MUTATION = PROHIBITED
+```
+
+mutation は `QuerySet.update(place_ref_id=...)` のみ。`Model.save()` を
+一切呼ばない（`ast` で `.save(` 呼び出しが 0 件であることを test が保証）。
+
+```text
+UPDATED_AT / LATITUDE / LONGITUDE / LOCATION / NAME / ADDRESS / GORIYAKU /
+KNOWLEDGE / INTERACTION_LOGS / PLACEREF_ROWS = IMMUTABLE
+```
+
+### 20.4 fresh-lineage 対称 no-op
+
+唯一の clean no-op は **監査対象が丸ごと不在**の lineage:
+
+```text
+primary 21 / 22 / 49、target PlaceRef 3 件、shadow 101 / 103 / 104、
+監査済み event 2 件 — そのすべてが不在
+```
+
+部分的な不在はすべて fail closed。したがって
+**forward を成功後にもう一度直接実行しても idempotent success にはならず raise する**
+（0100 と同じ契約）。reverse も同様。
+
+### 20.5 reverse
+
+```text
+F6D_REVERSE_STATE = PRE_F6D_ORPHAN_STATE
+```
+
+3 件の `place_ref_id` を NULL へ戻すだけ。PlaceRef 行は削除せず孤立へ戻す。
+shadow を再作成しない。interaction log を動かさない。0100 の reverse を
+呼ばない。座標・identity・Knowledge・`updated_at` に触れない。
+
+条件 G（partial unique 衝突検査）は **raw SQL** で行う。
+
+```text
+uq_shrine_name_loc                (name_jp, address, location)
+                                  where location IS NOT NULL AND place_ref IS NULL
+uq_shrine_name_addr_when_loc_null (name_jp, address)
+                                  where location IS NULL AND place_ref IS NULL
+```
+
+`place_ref` を外すと行が **両 partial index の対象に入る**ため、同一 identity
+で `place_ref` が NULL の既存行があると違反する。これを mutation 前に検出して
+raise する。
+
+`location` は `IS NULL` / 等価比較にのみ使い、**historical GIS ORM model を
+通して読み出さない**。Production の `temples_shrine.location` は legacy な
+`text` 列であり、PointField として projection すると行を読む前に
+geometry converter が落ちるため（0091 / 0094 / 0098 / 0099 / 0100 が
+`.only(...)` で回避しているのと同じ理由）。Shrine の読み出しはすべて
+`.only(...)` / `.values(...)` で `location` を除外する。
+
+### 20.6 test
+
+```text
+backend/temples/tests/test_migration_0114_f6d_explicit_place_ref_backfill.py
+38 tests PASS
+```
+
+repository の 0095–0100 / 0109–0113 と同じく、forward / reverse の callable を
+`apps` + `schema_editor` shim 経由で実モデルに対して直接実行する。
+
+```text
+REAL_MIGRATION_EXECUTOR_USED = NO
+理由: test DB は temples.migrations_nogis（13 本の凝縮 migration）から構築される。
+      temples.0114 は test lineage から到達できないため、MigrationExecutor で
+      forward/reverse を流すことが構造的にできない。0100 も同じ理由で
+      callable レベルの test になっている（当該 test の docstring に明記）。
+```
+
+要求された 30 観点をすべて実装した（#25 は 3 分割、#26 は 2 分割、#30 は 4 分割）。
+主なもの:
+
+```text
+forward 3 件束縛 / 他 field 不変 / updated_at 不変 / PlaceRef 行不変 /
+event 不変 / shadow 不在維持
+reverse 3 件 NULL 復帰 / PlaceRef 行保持 / round trip で完全復元
+name 不一致 / address 不一致 / id 49 座標不一致 / primary 欠落 /
+target PlaceRef 欠落 / 他 Shrine が claim 済み / 既に束縛済み /
+部分束縛 / shadow 復活 / event 欠落 / event 重複 / event が別 Shrine
+forward 再実行 / reverse 再実行 -> いずれも fail closed
+完全不在 -> 対称 no-op / 部分不在 -> fail closed
+reverse の partial unique 衝突を mutation 前に検出
+dependency が実 leaf / atomic かつ reversible / 無関係 Shrine 不変 /
+SELECT に location を射影しない / runtime model を import しない /
+.save() 呼び出しが 0 件
+```
+
+### 20.7 Validation
+
+```text
+F-6D migration tests                          38 PASS
+0100 P8-A migration tests                     PASS
+0108 irreversible migration tests             PASS
+0113 leaf migration tests                     SKIP（GIS disabled by env）
+F-6B historical shadow regression             PASS
+F-6B collision / resolution / api             PASS
+  上記まとめて                                 153 passed, 1 skipped
+
+backend 全体   3895 passed, 10 skipped, 3 failed
+ruff（新規 2 file、--no-force-exclude）        All checks passed
+git diff --check                              PASS
+migrate                                       実行していない
+```
+
+事前に存在していた失敗（F-6D 起因ではない）:
+
+```text
+temples/tests/test_concierge_api.py::test_chat_backfills_short_location
+temples/tests/test_concierge_api.py::test_radius_km_bias_passthrough
+temples/tests/test_concierge_api.py::test_candidate_formatted_address_is_used
+```
+
+**fresh develop（d9f6d4883413e718467ec2af55bbe93c5b40ffe4）を別 worktree へ
+checkout して実行し、同じ 3 件が同じように失敗することを確認した。**
+この環境で Google Places / geocoding が使えないことに起因する。
+
+### 20.8 Required statements
+
+```text
+1.  Production へ migration を適用していない。
+2.  Production データを変更していない。
+3.  Production へ接続していない。
+4.  backfill 対象は監査済みの 3 件のみ。
+5.  heuristic で Shrine を選んでいない（静的 snapshot のみ）。
+6.  migration 0100 を変更していない。
+7.  migration 0108 を変更していない。
+8.  新しい mapping table / model を作っていない。
+9.  F-6C preflight SQL を書き換えていない（§18.2）。
+10. runtime（recommendation / places resolve / 409 UX / Knowledge /
+    goriyaku / 座標 / PlaceRef payload）を変更していない。
+11. QuerySet.update() のみを使い updated_at を保持した。
+12. location を ORM で projection していない。
+13. leaf を仮定せず graph から再解決した（0113）。
+14. 失敗した test を隠していない。既存 3 件は fresh develop で再現確認済み。
+```
+
+## 21. STOP
+
+```text
+C1_BACKFILL_EXECUTION              = YES
+F6D_PRODUCTION_PRE                 = PASS
+F6D_IMPLEMENTED_IN_REPOSITORY      = YES
+F6D_APPLIED_TO_PRODUCTION          = NO
+PRODUCTION_DATA_CHANGED_BY_THIS_PR = NO
+
+NEXT = Production への適用は Mother Ship の運用手順で行う
+```
+
+本 session は Production へ適用しない。
