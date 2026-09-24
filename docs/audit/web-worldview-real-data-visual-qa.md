@@ -486,6 +486,27 @@ Implementation contract verified from current repository:
 Therefore the local Free/stub screenshot **does not imply that production Stripe is missing or broken**.
 It only proves that the local environment is not exercising a Stripe Premium customer portal flow.
 
+
+### 7.7 Production billing provider direct dashboard confirmation (2026-09-24)
+
+Evidence:
+- user-provided Render Dashboard screenshot
+- workspace: `エツ's workspace`
+- service: `jinja-backend`
+- Environment page
+- visible environment row: `BILLING_PROVIDER = stripe`
+
+Result:
+- Production backend billing provider is **directly confirmed as `stripe`** in Render.
+- This closes the provider-mode uncertainty for production.
+- Secret values were not exposed or recorded.
+- Stripe secret / price / webhook-secret presence remains a separate configuration check.
+- This evidence is configuration QA only and does not prove an end-to-end live Checkout / Customer Portal transaction.
+
+Classification:
+- Production billing mode: **CONFIRMED_STRIPE**
+- Local `stub_checkout_*` behavior remains expected and environment-specific.
+
 ## 8. No-change Areas
 
 本監査 PR では変更しない。
