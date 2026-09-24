@@ -401,6 +401,23 @@ AMENDED_AT  = 2026-09-24
 REASON      = RESOLUTION_STATUS_COLLAPSE_IS_UNSAFE_FOR_PLACE_ID_FALLBACK
 ```
 
+### 13.0 Historical aggregate correction
+
+`F-3` §7 の consumer table を再集計すると、generic `id` を使用している consumer は
+7件である。§7 本文の `6 / 9` は historical record として保持し、本 amendment で
+訂正値を明示する。
+
+```text
+F3_AGGREGATE_CORRECTION
+
+HISTORICAL_RECORDED_CONSUMERS_USING_GENERIC_ID = 6 / 9
+CORRECT_CONSUMERS_USING_GENERIC_ID             = 7 / 9
+
+CORRECTION_BASIS = F-3 §7 consumer table recount
+HISTORICAL_TEXT_REWRITTEN = NO
+```
+
+
 ### 13.1 何が問題だったか
 
 `F-3` §2 の signature は
