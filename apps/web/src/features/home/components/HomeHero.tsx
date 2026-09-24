@@ -9,7 +9,7 @@ export function HomeHero() {
     // これにより「カードが二重になって焦点が割れる」状態を避ける。
     <section className="space-y-7">
       <div className="space-y-3">
-        <p className="text-[10px] font-medium tracking-[0.3em] text-[var(--kt-color-text-muted)]">KAMI MUSUBI</p>
+        <p className="text-[10px] font-medium tracking-[0.3em] text-[var(--home-text-muted)]">KAMI MUSUBI</p>
         {/*
           Japanese Modern Classic の主役。日本語見出しだけを明朝Displayにする。
           Webfontは追加していない（--home-font-display はOS標準明朝への
@@ -20,14 +20,14 @@ export function HomeHero() {
           字間と改行位置は維持する。
         */}
         <h1
-          className="text-[27px] font-semibold leading-[1.4] text-[var(--kt-color-text-primary)]"
+          className="text-[27px] font-semibold leading-[1.4] text-[var(--home-text-primary)]"
           style={{ fontFamily: "var(--home-font-display)" }}
         >
           今の相談から、
           <br />
           向かう神社を見つける
         </h1>
-        <p className="text-[13px] font-medium leading-7 text-[var(--kt-color-text-secondary)]" style={{ fontFamily: "var(--home-font-display)" }}>
+        <p className="text-[13px] font-medium leading-7 text-[var(--home-text-secondary)]" style={{ fontFamily: "var(--home-font-display)" }}>
           迷っていることを一言にすると、今の気持ちに合わせて神社との出会いを整えます。
         </p>
       </div>
