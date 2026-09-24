@@ -8,6 +8,8 @@
 >
 > **Schema implementation:** IMPLEMENTED — FOUNDATION ONLY
 >
+> **PHASE_2 procedure:** DEFINED — NOT_EXECUTED
+>
 > **Canonical backfill:** NOT_STARTED
 >
 > **Runtime cutover:** NOT_PERFORMED
@@ -511,7 +513,9 @@ Split Anchor Architecture
 
 PHASE_2
 Canonical adjudication batch procedure
+-> 手順は docs/knowledge/canonical-anchor-adjudication-procedure.md へ正本化済み
 -> Evidence packet / component completeness / frozen target scope
+-> Batch 01は未実行
 
 PHASE_3
 Canonical backfill
@@ -536,6 +540,10 @@ Schema Foundationの実装は、本書正本化後の別Mother Ship指示を必�
   - Gate C選択の時点記録
 - `docs/audit/canonical-shrine-anchor-p2-representation-decision.md`
   - A-7 `UNWEIGHTED_COMPONENT_MEAN`
+- `docs/audit/canonical-anchor-subject-point-method-matrix-decision.md`
+  - subject_type × point_method のMother Ship決定
+- `docs/knowledge/canonical-anchor-adjudication-procedure.md`
+  - PHASE_2のread-only調査・判定手順
 
 ### 本書が正本とするもの
 
@@ -574,7 +582,8 @@ HIDDEN_CANONICAL_FALLBACK      = PROHIBITED
 NAVIGATION_TO_CANONICAL_COPY   = PROHIBITED
 INITIAL_CANONICAL_POINT_FIELD  = NO
 
-SCHEMA_CHANGE                  = NOT_PERFORMED
+SCHEMA_IMPLEMENTATION          = IMPLEMENTED_FOUNDATION_ONLY
+PHASE_2_PROCEDURE              = DEFINED_NOT_EXECUTED
 PRODUCTION_WRITE               = NONE
 CANONICAL_BACKFILL             = NOT_STARTED
 RUNTIME_CUTOVER                = NOT_PERFORMED
