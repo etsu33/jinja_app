@@ -39,7 +39,7 @@ export default function ModeBadge({ mode }: Props) {
     <div className="relative">
       <button
         type="button"
-        className="text-[11px] font-semibold text-[var(--kt-color-text-muted)] hover:text-slate-700"
+        className="text-[11px] font-semibold text-[var(--kt-color-text-muted)] hover:text-[var(--kt-color-text-secondary)]"
         aria-label="並び順について"
         onClick={() => setOpen((v) => !v)}
       >

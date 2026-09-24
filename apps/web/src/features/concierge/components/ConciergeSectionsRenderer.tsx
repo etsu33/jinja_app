@@ -835,12 +835,12 @@ export default function ConciergeSectionsRenderer({
 
                 {appliedLabel && (
                   <div
-                    className={`mb-2 ${conciergeSoftCardClass} flex items-center justify-between text-xs leading-6 text-slate-600`}
+                    className={`mb-2 ${conciergeSoftCardClass} flex items-center justify-between text-xs leading-6 text-[var(--kt-color-text-secondary)]`}
                   >
                     <span>{appliedLabel}</span>
                     <button
                       type="button"
-                      className="rounded-[var(--kt-radius-control)] px-2 py-1 font-semibold text-[var(--kt-color-text-secondary)] hover:bg-slate-100"
+                      className="rounded-[var(--kt-radius-control)] px-2 py-1 font-semibold text-[var(--kt-color-text-secondary)] hover:bg-[var(--kt-color-surface-elevated)]"
                       onClick={() => onAction?.({ type: "filter_clear" })}
                     >
                       クリア

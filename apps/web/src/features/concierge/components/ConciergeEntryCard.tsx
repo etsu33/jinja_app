@@ -201,7 +201,7 @@ export default function ConciergeEntryCard({
               </button>
               <button
                 type="button"
-                className="rounded-lg border border-[var(--kt-color-border-default)] bg-[var(--kt-color-background-subtle)] px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-stone-100"
+                className="rounded-lg border border-[var(--kt-color-border-default)] bg-[var(--kt-color-background-subtle)] px-2.5 py-1 text-xs font-medium text-[var(--kt-color-text-secondary)] hover:bg-[var(--kt-color-surface-elevated)]"
                 onClick={() => redirectToAuth("register")}
               >
                 新規登録

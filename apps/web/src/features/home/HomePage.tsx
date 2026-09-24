@@ -19,8 +19,8 @@ import { WorldviewBackdrop } from "@/components/worldview/WorldviewBackdrop";
 export default function HomePage() {
   return (
     // 地色はHome限定のArt Direction Layer (--home-ground = Deep Ink Navy)。
-    // Global の --kt-color-background-base は変更していないため、
-    // fallbackとして残し、:has()非対応環境では従来のDark Forest地で描画する。
+    // fallbackの --kt-color-background-base も App-wide Worldview で同じ地
+    // (--kt-world-ground) を指すため、:has()非対応環境でも地は同色になる。
     <div
       data-app-frame="home"
       className="relative isolate min-h-full bg-[var(--home-ground,var(--kt-color-background-base))]"

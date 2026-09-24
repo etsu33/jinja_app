@@ -122,24 +122,24 @@ export function ShrineCard(props: ShrineCardProps) {
 
   const cardClass = [
     "rounded-2xl border p-4 shadow-sm transition-colors",
-    isTopPick ? "border-amber-300 bg-amber-50/40" : "border-slate-200 bg-white",
+    isTopPick ? "border-amber-300 bg-amber-50/40" : "border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)]",
   ].join(" ");
 
   const summaryClass = [
     "mt-2 line-clamp-1",
-    isTopPick ? "text-[12px] leading-5 text-slate-500" : "text-[12px] leading-5 text-slate-600",
+    isTopPick ? "text-[12px] leading-5 text-[var(--kt-color-text-muted)]" : "text-[12px] leading-5 text-[var(--kt-color-text-secondary)]",
   ].join(" ");
 
   const primaryClass = [
     "mt-1 line-clamp-2",
     isTopPick
-      ? "text-[14px] font-semibold leading-6 text-slate-900"
-      : "text-[13px] font-medium leading-6 text-slate-700",
+      ? "text-[14px] font-semibold leading-6 text-[var(--kt-color-text-primary)]"
+      : "text-[13px] font-medium leading-6 text-[var(--kt-color-text-secondary)]",
   ].join(" ");
 
   const MainContent = (
     <div className="flex gap-4">
-      <div className="h-20 w-28 shrink-0 overflow-hidden rounded-xl bg-slate-100">
+      <div className="h-20 w-28 shrink-0 overflow-hidden rounded-xl bg-[var(--kt-color-surface-elevated)]">
         {imageUrl ? (
           <Image src={imageUrl} alt={name} width={112} height={80} className="h-full w-full object-cover" />
         ) : null}
@@ -157,14 +157,14 @@ export function ShrineCard(props: ShrineCardProps) {
                 ) : null}
 
                 {topReasonLabel ? (
-                  <div className="inline-flex rounded-full border border-amber-200 bg-white px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                  <div className="inline-flex rounded-full border border-amber-200 bg-[var(--kt-color-surface-default)] px-2 py-0.5 text-[11px] font-semibold text-amber-700">
                     {topReasonLabel}
                   </div>
                 ) : null}
 
                 {/* 情報補助のため「いちばんおすすめ」より弱い視覚階層に留める（中立色・非semibold）。 */}
                 {isNew ? (
-                  <div className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                  <div className="inline-flex rounded-full border border-[var(--kt-color-border-default)] bg-[var(--kt-color-background-subtle)] px-2 py-0.5 text-[11px] font-medium text-[var(--kt-color-text-secondary)]">
                     新着
                   </div>
                 ) : null}
@@ -172,7 +172,7 @@ export function ShrineCard(props: ShrineCardProps) {
             ) : null}
 
             <div
-              className={["truncate font-semibold text-slate-900", isTopPick ? "text-[16px]" : "text-[15px]"].join(" ")}
+              className={["truncate font-semibold text-[var(--kt-color-text-primary)]", isTopPick ? "text-[16px]" : "text-[15px]"].join(" ")}
             >
               {name}
             </div>
@@ -187,7 +187,7 @@ export function ShrineCard(props: ShrineCardProps) {
             ) : null}
 
             {distText || typeof rating === "number" ? (
-              <div className="mt-2 flex gap-3 text-sm text-slate-600">
+              <div className="mt-2 flex gap-3 text-sm text-[var(--kt-color-text-secondary)]">
                 {distText ? <span>{distText}</span> : null}
                 {typeof rating === "number" ? (
                   <span>
@@ -198,7 +198,7 @@ export function ShrineCard(props: ShrineCardProps) {
               </div>
             ) : null}
 
-            {address ? <div className="mt-1 truncate text-xs text-slate-500">{address}</div> : null}
+            {address ? <div className="mt-1 truncate text-xs text-[var(--kt-color-text-muted)]">{address}</div> : null}
           </div>
 
           {typeof isFavorited === "boolean" && onToggleFavorite ? (
@@ -220,7 +220,7 @@ export function ShrineCard(props: ShrineCardProps) {
         {tags.length ? (
           <div className="mt-3 flex flex-wrap gap-2">
             {tags.slice(0, 3).map((t) => (
-              <span key={t} className="rounded-full bg-slate-100 px-2 py-1 text-[11px] text-slate-500">
+              <span key={t} className="rounded-full bg-[var(--kt-color-surface-elevated)] px-2 py-1 text-[11px] text-[var(--kt-color-text-muted)]">
                 {t}
               </span>
             ))}

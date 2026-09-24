@@ -56,7 +56,7 @@ export default function BillingManagePage() {
   if (billing.loading) {
     return (
       <div className="mx-auto w-full max-w-md px-4 py-6">
-        <p className="text-sm text-slate-600">読み込み中…</p>
+        <p className="text-sm text-[var(--kt-color-text-secondary)]">読み込み中…</p>
       </div>
     );
   }
@@ -69,7 +69,7 @@ export default function BillingManagePage() {
         </p>
         <Link
           href="/billing"
-          className="mt-4 inline-flex items-center justify-center rounded-md bg-slate-900 px-3 py-2 text-xs font-semibold text-white"
+          className="mt-4 inline-flex items-center justify-center rounded-md bg-[var(--kt-color-surface-emphasis)] px-3 py-2 text-xs font-semibold text-[var(--kt-color-text-primary)]"
         >
           プラン状況に戻る
         </Link>
@@ -83,26 +83,26 @@ export default function BillingManagePage() {
 
   return (
     <div className="mx-auto w-full max-w-md px-4 py-6">
-      <h1 className="text-base font-semibold text-slate-900">プランを管理</h1>
-      <p className="mt-1 text-xs text-slate-600">
+      <h1 className="text-base font-semibold text-[var(--kt-color-text-primary)]">プランを管理</h1>
+      <p className="mt-1 text-xs text-[var(--kt-color-text-secondary)]">
         解約・支払い方法の変更はStripeの管理画面で行えます。
       </p>
 
-      <div className="mt-4 rounded-xl border bg-white p-4 shadow-sm">
-        <div className="text-xs text-slate-600">現在のプラン</div>
-        <div className="mt-1 text-lg font-semibold text-slate-900">
+      <div className="mt-4 rounded-xl border bg-[var(--kt-color-surface-default)] p-4 shadow-sm">
+        <div className="text-xs text-[var(--kt-color-text-secondary)]">現在のプラン</div>
+        <div className="mt-1 text-lg font-semibold text-[var(--kt-color-text-primary)]">
           {isPremiumActive ? "Premium（有効）" : "Free"}
         </div>
 
         {isPremiumActive && cancel_at_period_end ? (
-          <p className="mt-2 text-xs text-slate-700">
+          <p className="mt-2 text-xs text-[var(--kt-color-text-secondary)]">
             解約予定です。
             {periodEndLabel ? `${periodEndLabel}まではPremiumをご利用いただけます。` : "契約期間の終了まではPremiumをご利用いただけます。"}
           </p>
         ) : null}
 
         {isPremiumActive && !cancel_at_period_end && periodEndLabel ? (
-          <p className="mt-2 text-xs text-slate-700">次回更新日：{periodEndLabel}</p>
+          <p className="mt-2 text-xs text-[var(--kt-color-text-secondary)]">次回更新日：{periodEndLabel}</p>
         ) : null}
       </div>
 
@@ -118,18 +118,18 @@ export default function BillingManagePage() {
             type="button"
             onClick={openPortal}
             disabled={submitting}
-            className="inline-flex items-center justify-center rounded-md bg-slate-900 px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
+            className="inline-flex items-center justify-center rounded-md bg-[var(--kt-color-surface-emphasis)] px-3 py-2 text-xs font-semibold text-[var(--kt-color-text-primary)] disabled:opacity-60"
           >
             {submitting ? "管理画面を準備中…" : "プランを管理"}
           </button>
         ) : (
           <>
-            <p className="text-xs text-slate-600">
+            <p className="text-xs text-[var(--kt-color-text-secondary)]">
               現在はFreeプランのため、管理できる契約がありません。
             </p>
             <Link
               href="/billing/upgrade"
-              className="inline-flex items-center justify-center rounded-md bg-slate-900 px-3 py-2 text-xs font-semibold text-white"
+              className="inline-flex items-center justify-center rounded-md bg-[var(--kt-color-surface-emphasis)] px-3 py-2 text-xs font-semibold text-[var(--kt-color-text-primary)]"
             >
               プレミアムにする
             </Link>
@@ -139,13 +139,13 @@ export default function BillingManagePage() {
         <div className="flex gap-2">
           <Link
             href="/billing"
-            className="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800"
+            className="inline-flex items-center justify-center rounded-md border border-[var(--kt-color-border-strong)] bg-[var(--kt-color-surface-default)] px-3 py-2 text-xs font-semibold text-[var(--kt-color-text-primary)]"
           >
             プラン状況に戻る
           </Link>
           <Link
             href="/concierge"
-            className="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800"
+            className="inline-flex items-center justify-center rounded-md border border-[var(--kt-color-border-strong)] bg-[var(--kt-color-surface-default)] px-3 py-2 text-xs font-semibold text-[var(--kt-color-text-primary)]"
           >
             コンシェルジュへ戻る
           </Link>

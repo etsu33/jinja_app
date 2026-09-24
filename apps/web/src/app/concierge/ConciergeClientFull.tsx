@@ -1814,20 +1814,20 @@ export default function ConciergeClientFull() {
                 one disclosure (Task 10's 3-state model), but each
                 responsibility keeps its own labeled subsection so they are
                 not shown as one undifferentiated "条件" pile (Task 11). */}
-            <div className="mt-5 rounded-3xl border border-stone-200/45 bg-stone-50/60 p-3.5">
+            <div className="mt-5 rounded-3xl border border-[var(--kt-color-border-default)]/45 bg-[var(--kt-color-background-subtle)]/60 p-3.5">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-[11px] font-medium tracking-[0.2em] text-stone-500">
+                  <p className="text-[11px] font-medium tracking-[0.2em] text-[var(--kt-color-text-muted)]">
                     もう少し自分に合わせる（任意）
                   </p>
-                  <p className="mt-0.5 text-[11px] text-stone-500">
+                  <p className="mt-0.5 text-[11px] text-[var(--kt-color-text-muted)]">
                     参拝の希望・誕生日・ご利益・参拝の詳細は、相談テーマを補う条件として扱います。
                   </p>
                 </div>
                 {!isFilterOpen ? (
                   <button
                     type="button"
-                    className="shrink-0 rounded-full border border-stone-200/70 bg-white/80 px-3 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-50"
+                    className="shrink-0 rounded-full border border-[var(--kt-color-border-default)]/70 bg-[var(--kt-color-surface-default)]/80 px-3 py-1.5 text-xs font-medium text-[var(--kt-color-text-secondary)] hover:bg-[var(--kt-color-surface-elevated)]"
                     onClick={() => setIsFilterOpen(true)}
                     disabled={isBusy}
                   >
@@ -1837,38 +1837,38 @@ export default function ConciergeClientFull() {
               </div>
 
               {!isFilterOpen && hasFilter ? (
-                <div className="mt-4 rounded-2xl border border-stone-200/50 bg-white/80 px-3 py-3">
+                <div className="mt-4 rounded-2xl border border-[var(--kt-color-border-default)]/50 bg-[var(--kt-color-surface-default)]/80 px-3 py-3">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-[11px] font-medium text-stone-500">相談に添えた条件</p>
+                      <p className="text-[11px] font-medium text-[var(--kt-color-text-muted)]">相談に添えた条件</p>
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         {baseFilters.birthdate ? (
-                          <span className="rounded-full border border-stone-200/70 bg-stone-50 px-3 py-1 text-xs font-medium text-stone-700">
+                          <span className="rounded-full border border-[var(--kt-color-border-default)]/70 bg-[var(--kt-color-background-subtle)] px-3 py-1 text-xs font-medium text-[var(--kt-color-text-secondary)]">
                             誕生日を補助条件に追加
                           </span>
                         ) : null}
 
                         {selectedTagNames.length ? (
-                          <span className="rounded-full border border-stone-200/70 bg-stone-50 px-3 py-1 text-xs font-medium text-stone-700">
+                          <span className="rounded-full border border-[var(--kt-color-border-default)]/70 bg-[var(--kt-color-background-subtle)] px-3 py-1 text-xs font-medium text-[var(--kt-color-text-secondary)]">
                             ご利益: {selectedTagNames[0]}
                             {selectedTagNames.length > 1 ? ` 他${selectedTagNames.length - 1}` : ""}
                           </span>
                         ) : null}
 
                         {baseFilters.extra_condition ? (
-                          <span className="rounded-full border border-stone-200/70 bg-stone-50 px-3 py-1 text-xs font-medium text-stone-700">
+                          <span className="rounded-full border border-[var(--kt-color-border-default)]/70 bg-[var(--kt-color-background-subtle)] px-3 py-1 text-xs font-medium text-[var(--kt-color-text-secondary)]">
                             参拝スタイルあり
                           </span>
                         ) : null}
 
                         {plannedVisitDate ? (
-                          <span className="rounded-full border border-stone-200/70 bg-stone-50 px-3 py-1 text-xs font-medium text-stone-700">
+                          <span className="rounded-full border border-[var(--kt-color-border-default)]/70 bg-[var(--kt-color-background-subtle)] px-3 py-1 text-xs font-medium text-[var(--kt-color-text-secondary)]">
                             参拝予定日あり
                           </span>
                         ) : null}
 
                         {userOrigin ? (
-                          <span className="rounded-full border border-stone-200/70 bg-stone-50 px-3 py-1 text-xs font-medium text-stone-700">
+                          <span className="rounded-full border border-[var(--kt-color-border-default)]/70 bg-[var(--kt-color-background-subtle)] px-3 py-1 text-xs font-medium text-[var(--kt-color-text-secondary)]">
                             出発地点あり
                           </span>
                         ) : null}
@@ -1877,7 +1877,7 @@ export default function ConciergeClientFull() {
 
                     <button
                       type="button"
-                      className="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium text-stone-500 hover:bg-stone-100 hover:text-stone-700"
+                      className="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium text-[var(--kt-color-text-muted)] hover:bg-[var(--kt-color-surface-elevated)] hover:text-[var(--kt-color-text-secondary)]"
                       onClick={() => onRendererAction({ type: "filter_clear" })}
                       disabled={isBusy}
                     >

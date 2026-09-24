@@ -62,7 +62,7 @@ export default function ConciergeCard(props: BaseCardProps) {
   const CardInner = (
     <div
       className={cn(
-        "overflow-hidden rounded-[var(--kt-radius-card)] bg-[var(--kt-color-surface-default)] ring-1 ring-neutral-200/70",
+        "overflow-hidden rounded-[var(--kt-radius-card)] bg-[var(--kt-color-surface-default)] ring-1 ring-[var(--kt-color-border-default)]/70",
         "shadow-[var(--kt-shadow-medium)] transition",
         isPrimary && "shadow-md ring-[var(--kt-color-border-default)]",
         detailHref && "cursor-pointer hover:shadow-md",
@@ -81,7 +81,7 @@ export default function ConciergeCard(props: BaseCardProps) {
             unoptimized
           />
         ) : (
-          <div className="h-full w-full bg-gradient-to-br from-neutral-100 to-neutral-50" />
+          <div className="h-full w-full bg-gradient-to-br from-[var(--kt-color-surface-elevated)] to-[var(--kt-color-background-subtle)]" />
         )}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/20 via-black/0 to-black/0" />
         <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-black/5" />
@@ -99,7 +99,7 @@ export default function ConciergeCard(props: BaseCardProps) {
                     "text-[11px] font-medium",
                     isHero
                       ? "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200"
-                      : "bg-neutral-100/80 text-[var(--kt-color-text-muted)] ring-1 ring-inset ring-neutral-200/60",
+                      : "bg-[var(--kt-color-surface-elevated)]/80 text-[var(--kt-color-text-muted)] ring-1 ring-inset ring-[var(--kt-color-border-default)]/60",
                   )}
                 >
                   {badge}
@@ -120,11 +120,11 @@ export default function ConciergeCard(props: BaseCardProps) {
             <div
               className={cn(
                 "mt-0.5 flex size-9 items-center justify-center rounded-[var(--kt-radius-pill)]",
-                "bg-neutral-100 ring-1 ring-inset ring-neutral-200/60",
+                "bg-[var(--kt-color-surface-elevated)] ring-1 ring-inset ring-[var(--kt-color-border-default)]/60",
               )}
               aria-hidden="true"
             >
-              <span className={cn("text-xs font-semibold", isPrimary ? "text-neutral-800" : "text-neutral-600")}>
+              <span className={cn("text-xs font-semibold", isPrimary ? "text-[var(--kt-color-text-primary)]" : "text-[var(--kt-color-text-secondary)]")}>
                 {isPrimary ? "TOP" : "ALT"}
               </span>
             </div>
@@ -152,7 +152,7 @@ export default function ConciergeCard(props: BaseCardProps) {
               <p
                 className={cn(
                   "mt-2 leading-6",
-                  isHero ? "text-[13px] text-[var(--kt-color-text-secondary)]" : "text-[13px] text-neutral-600 line-clamp-2",
+                  isHero ? "text-[13px] text-[var(--kt-color-text-secondary)]" : "text-[13px] text-[var(--kt-color-text-secondary)] line-clamp-2",
                 )}
               >
                 {desc}
@@ -165,13 +165,13 @@ export default function ConciergeCard(props: BaseCardProps) {
                 prefetch={false}
                 className={cn(
                   "mt-4 inline-flex min-h-[44px] w-full items-center justify-center rounded-[var(--kt-radius-panel)] px-3 py-2",
-                  /* bg-neutral-900/hover:bg-neutral-800: Dark Surface Contract Group A候補だが、
-                     --kt-color-surface-emphasis(slate-800/900)とcomputed colorが一致しないため
-                     今回は適用しない(Blocked by Contract)。
-                     詳細は docs/audit/design-token-stage3-dark-surface-decision.md */
-                  "text-sm font-semibold bg-neutral-900 text-white",
-                  "ring-1 ring-inset ring-black/10 transition active:scale-[0.99] hover:bg-neutral-800",
-                  "focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400",
+                  /* 旧 bg-neutral-900/hover:bg-neutral-800。Stage3 では computed color 不一致で
+                     適用を見送った (docs/audit/design-token-stage3-dark-surface-decision.md) が、
+                     App-wide Web Worldview Rollout で Web は常に dark のため、
+                     Worldview の強調面 (surface-emphasis) へ接続した。 */
+                  "text-sm font-semibold bg-[var(--kt-color-surface-emphasis)] text-[var(--kt-color-text-primary)]",
+                  "ring-1 ring-inset ring-black/10 transition active:scale-[0.99] hover:bg-[var(--kt-color-surface-emphasis-hover)]",
+                  "focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--kt-color-border-focus)]",
                 )}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -187,7 +187,7 @@ export default function ConciergeCard(props: BaseCardProps) {
 
       {disclosureBody && disclosureTitle ? (
         <div
-          className="border-t border-neutral-200/70 bg-neutral-50/30"
+          className="border-t border-[var(--kt-color-border-default)]/70 bg-[var(--kt-color-background-subtle)]/30"
           onClick={stopLinkNav}
           onMouseDown={stopLinkNav}
         >
@@ -200,16 +200,16 @@ export default function ConciergeCard(props: BaseCardProps) {
             className={cn(
               "flex w-full items-center justify-between px-4 py-3 text-left",
               "transition hover:bg-[var(--kt-color-background-subtle)]",
-              "focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400",
+              "focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--kt-color-border-focus)]",
             )}
             aria-expanded={open}
           >
-            <span className="text-xs font-semibold text-neutral-800">{disclosureTitle}</span>
+            <span className="text-xs font-semibold text-[var(--kt-color-text-primary)]">{disclosureTitle}</span>
             <Chevron open={open} />
           </button>
 
           {open ? (
-            <div className="px-4 pb-4 pt-1 text-sm leading-relaxed text-neutral-800">{disclosureBody}</div>
+            <div className="px-4 pb-4 pt-1 text-sm leading-relaxed text-[var(--kt-color-text-primary)]">{disclosureBody}</div>
           ) : null}
         </div>
       ) : null}

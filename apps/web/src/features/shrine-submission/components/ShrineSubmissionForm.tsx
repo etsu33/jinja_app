@@ -286,7 +286,7 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <form onSubmit={handleSubmit} className="space-y-6 rounded-2xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-6 shadow-sm">
       {errors.general && (
         <div
           className={`space-y-3 rounded-2xl border p-4 ${duplicateQuery ? "border-red-300 bg-red-50" : "border-red-200 bg-white"}`}
@@ -339,7 +339,7 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
       )}
 
       <div className="space-y-2">
-        <label htmlFor="name" className="text-sm font-medium text-slate-900">
+        <label htmlFor="name" className="text-sm font-medium text-[var(--kt-color-text-primary)]">
           神社名
         </label>
         <input
@@ -348,21 +348,21 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
           value={form.name}
           onChange={handleChange}
           disabled={isSubmitting}
-          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900"
+          className="w-full rounded-xl border border-[var(--kt-color-border-default)] px-3 py-2 text-sm text-[var(--kt-color-text-primary)]"
           placeholder="例: 明治神宮"
         />
         {errors.name && <p className="text-xs text-red-600">{errors.name}</p>}
 
         {!duplicateQuery && (isSuggesting || nameSuggestions.length > 0) && (
-          <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+          <div className="space-y-3 rounded-2xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-background-subtle)]/70 p-4">
             <div>
-              <p className="text-sm font-semibold text-slate-800">既存の神社候補</p>
-              <p className="text-xs font-medium text-slate-700">
+              <p className="text-sm font-semibold text-[var(--kt-color-text-primary)]">既存の神社候補</p>
+              <p className="text-xs font-medium text-[var(--kt-color-text-secondary)]">
                 同じ名前でも場所が違う神社があります。住所が近いか確認してください。違う神社なら、そのまま投稿できます。
               </p>
             </div>
 
-            {isSuggesting && <p className="text-xs text-slate-700 font-medium">候補を確認しています...</p>}
+            {isSuggesting && <p className="text-xs text-[var(--kt-color-text-secondary)] font-medium">候補を確認しています...</p>}
 
             {!isSuggesting && nameSuggestions.length > 0 && (
               <>
@@ -370,11 +370,11 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
                   {nameSuggestions.map((candidate) => (
                     <div
                       key={candidate.id}
-                      className="rounded-lg border border-slate-200 bg-white/90 px-3 py-3 text-sm text-slate-700"
+                      className="rounded-lg border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)]/90 px-3 py-3 text-sm text-[var(--kt-color-text-secondary)]"
                     >
-                      <p className="font-medium text-slate-900">{candidate.name}</p>
-                      <p className="mt-1 text-xs font-medium text-slate-700">{candidate.address || "住所未登録"}</p>
-                      <p className="mt-1 text-[11px] text-slate-500">
+                      <p className="font-medium text-[var(--kt-color-text-primary)]">{candidate.name}</p>
+                      <p className="mt-1 text-xs font-medium text-[var(--kt-color-text-secondary)]">{candidate.address || "住所未登録"}</p>
+                      <p className="mt-1 text-[11px] text-[var(--kt-color-text-muted)]">
                         住所が近い場合は、この神社と同じ可能性があります。
                       </p>
                     </div>
@@ -384,13 +384,13 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
                 <div className="space-y-2">
                   <button
                     type="button"
-                    className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700"
+                    className="rounded-xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] px-4 py-2 text-sm text-[var(--kt-color-text-secondary)]"
                     onClick={handleOpenNameSuggestions}
                   >
                     {nameSuggestions.length === 1 ? "この神社と同じか確認する" : "候補を一覧で見る"}
                   </button>
                   {nameSuggestions.length === 1 && (
-                    <p className="text-xs font-medium text-slate-700">住所が違う場合は、そのまま神社を追加できます。</p>
+                    <p className="text-xs font-medium text-[var(--kt-color-text-secondary)]">住所が違う場合は、そのまま神社を追加できます。</p>
                   )}
                 </div>
               </>
@@ -400,8 +400,8 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
       </div>
 
       <div className="space-y-2">
-        <label htmlFor="address" className="text-sm font-medium text-slate-900">
-          住所 <span className="text-xs font-normal text-slate-500">任意</span>
+        <label htmlFor="address" className="text-sm font-medium text-[var(--kt-color-text-primary)]">
+          住所 <span className="text-xs font-normal text-[var(--kt-color-text-muted)]">任意</span>
         </label>
         <input
           id="address"
@@ -409,7 +409,7 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
           value={form.address}
           onChange={handleChange}
           disabled={isSubmitting}
-          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900"
+          className="w-full rounded-xl border border-[var(--kt-color-border-default)] px-3 py-2 text-sm text-[var(--kt-color-text-primary)]"
           placeholder="例: 東京都渋谷区代々木神園町1-1"
         />
         {errors.address && <p className="text-xs text-red-600">{errors.address}</p>}
@@ -419,18 +419,18 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="text-sm font-semibold text-slate-900">ご利益タグ</p>
-              <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-100">
+              <p className="text-sm font-semibold text-[var(--kt-color-text-primary)]">ご利益タグ</p>
+              <span className="rounded-full bg-[var(--kt-color-surface-default)] px-2 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-100">
                 任意
               </span>
-              <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-slate-500 ring-1 ring-slate-100">
+              <span className="rounded-full bg-[var(--kt-color-surface-default)] px-2 py-0.5 text-[11px] font-medium text-[var(--kt-color-text-muted)] ring-1 ring-[var(--kt-color-border-default)]">
                 参考情報
               </span>
             </div>
-            <p className="text-xs font-medium leading-relaxed text-slate-700">
+            <p className="text-xs font-medium leading-relaxed text-[var(--kt-color-text-secondary)]">
               1つでも選ぶと、他の人に見つけてもらいやすくなります。未選択でも投稿できます。
             </p>
-            <p className="text-[11px] leading-relaxed text-slate-500">
+            <p className="text-[11px] leading-relaxed text-[var(--kt-color-text-muted)]">
               選んだタグは公開前の確認時に参考情報として扱います。
             </p>
           </div>
@@ -438,7 +438,7 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
             className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
               selectedTagNames.length > 0
                 ? "bg-emerald-600 text-white"
-                : "bg-white text-slate-500 ring-1 ring-slate-200"
+                : "bg-[var(--kt-color-surface-default)] text-[var(--kt-color-text-muted)] ring-1 ring-[var(--kt-color-border-default)]"
             }`}
           >
             {tagStatusText}
@@ -448,7 +448,7 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
         {errors.tags && <p className="text-xs text-red-600">{errors.tags}</p>}
 
         {tagsLoading ? (
-          <p className="rounded-xl border border-dashed border-emerald-200 bg-white px-3 py-2 text-xs font-medium text-slate-700">
+          <p className="rounded-xl border border-dashed border-emerald-200 bg-[var(--kt-color-surface-default)] px-3 py-2 text-xs font-medium text-[var(--kt-color-text-secondary)]">
             ご利益タグを読み込んでいます...
           </p>
         ) : tags.length > 0 ? (
@@ -465,7 +465,7 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
                   className={`rounded-full border px-3.5 py-2 text-xs font-semibold shadow-sm transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 ${
                     active
                       ? "border-emerald-600 bg-emerald-600 text-white shadow-emerald-100 ring-2 ring-emerald-100"
-                      : "border-slate-200 bg-white text-slate-700 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
+                      : "border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] text-[var(--kt-color-text-secondary)] hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
                   }`}
                 >
                   {tag.name}
@@ -474,25 +474,25 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
             })}
           </div>
         ) : (
-          <p className="rounded-xl border border-dashed border-emerald-200 bg-white px-3 py-2 text-xs font-medium text-slate-700">
+          <p className="rounded-xl border border-dashed border-emerald-200 bg-[var(--kt-color-surface-default)] px-3 py-2 text-xs font-medium text-[var(--kt-color-text-secondary)]">
             選択できるご利益タグがありません。未選択でも投稿できます。
           </p>
         )}
 
         {selectedTagNames.length > 0 ? (
-          <div className="rounded-xl bg-white px-3 py-2 text-xs font-medium text-emerald-700 ring-1 ring-emerald-100">
+          <div className="rounded-xl bg-[var(--kt-color-surface-default)] px-3 py-2 text-xs font-medium text-emerald-700 ring-1 ring-emerald-100">
             選択中: {selectedTagNames.join("、")}
           </div>
         ) : !tagsLoading && !errors.tags && tags.length > 0 ? (
-          <p className="rounded-xl bg-white px-3 py-2 text-xs font-medium text-slate-600 ring-1 ring-slate-100">
+          <p className="rounded-xl bg-[var(--kt-color-surface-default)] px-3 py-2 text-xs font-medium text-[var(--kt-color-text-secondary)] ring-1 ring-[var(--kt-color-border-default)]">
             未選択でも投稿できます。迷う場合は空欄のままで大丈夫です。
           </p>
         ) : null}
       </div>
 
       <div className="space-y-2">
-        <label htmlFor="note" className="text-sm font-medium text-slate-900">
-          補足文 <span className="text-xs font-normal text-slate-500">任意</span>
+        <label htmlFor="note" className="text-sm font-medium text-[var(--kt-color-text-primary)]">
+          補足文 <span className="text-xs font-normal text-[var(--kt-color-text-muted)]">任意</span>
         </label>
         <textarea
           id="note"
@@ -500,7 +500,7 @@ export function ShrineSubmissionForm({ onSubmitted, onRequireAuth }: Props) {
           value={form.note}
           onChange={handleChange}
           disabled={isSubmitting}
-          className="min-h-32 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900"
+          className="min-h-32 w-full rounded-xl border border-[var(--kt-color-border-default)] px-3 py-2 text-sm text-[var(--kt-color-text-primary)]"
           placeholder="由緒、地元での呼び名、所在地の補足などがあれば書いてください。"
         />
         {errors.note && <p className="text-xs text-red-600">{errors.note}</p>}

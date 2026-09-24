@@ -63,7 +63,7 @@ function DeepDiveResultView({ result }: { result: DeepDiveAnswer }) {
   if (result.readiness === "not_ready") {
     // Not Readyは正常なProduct State(Knowledge不足)。errorではないため、
     // 赤/枠付きにせず、控えめなslateテキストで理由を表示するのみ。
-    return <p className="mt-3 text-xs leading-5 text-slate-400">{result.limitations}</p>;
+    return <p className="mt-3 text-xs leading-5 text-[var(--kt-color-text-muted)]">{result.limitations}</p>;
   }
 
   return (
@@ -73,7 +73,7 @@ function DeepDiveResultView({ result }: { result: DeepDiveAnswer }) {
       </p>
 
       {result.readiness === "limited" && result.limitations ? (
-        <p className="mt-2 text-xs leading-5 text-slate-500">{result.limitations}</p>
+        <p className="mt-2 text-xs leading-5 text-[var(--kt-color-text-muted)]">{result.limitations}</p>
       ) : null}
 
       <DeepDiveUnansweredAspects aspects={result.unanswered_aspects} />

@@ -119,7 +119,7 @@ export function ShrineReflectionPrompt({
         onChange={(event) => setAnswer(event.target.value)}
         rows={4}
         placeholder="例：少し落ち着いた / 次にやることが見えた / まだ迷いはあるけれど一度区切れた"
-        className="mt-3 w-full rounded-[var(--kt-radius-panel)] border border-emerald-100 bg-[var(--kt-color-surface-default)] px-3 py-2 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-[var(--kt-color-border-focus)]"
+        className="mt-3 w-full rounded-[var(--kt-radius-panel)] border border-emerald-100 bg-[var(--kt-color-surface-default)] px-3 py-2 text-sm text-[var(--kt-color-text-primary)] outline-none placeholder:text-[var(--kt-color-text-muted)] focus:border-[var(--kt-color-border-focus)]"
       />
 
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -127,13 +127,13 @@ export function ShrineReflectionPrompt({
           value={moodBefore}
           onChange={(event) => setMoodBefore(event.target.value)}
           placeholder="参拝前の気分 任意"
-          className="rounded-[var(--kt-radius-panel)] border border-emerald-100 bg-[var(--kt-color-surface-default)] px-3 py-2 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-[var(--kt-color-border-focus)]"
+          className="rounded-[var(--kt-radius-panel)] border border-emerald-100 bg-[var(--kt-color-surface-default)] px-3 py-2 text-sm text-[var(--kt-color-text-primary)] outline-none placeholder:text-[var(--kt-color-text-muted)] focus:border-[var(--kt-color-border-focus)]"
         />
         <input
           value={moodAfter}
           onChange={(event) => setMoodAfter(event.target.value)}
           placeholder="参拝後の気分 任意"
-          className="rounded-[var(--kt-radius-panel)] border border-emerald-100 bg-[var(--kt-color-surface-default)] px-3 py-2 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-[var(--kt-color-border-focus)]"
+          className="rounded-[var(--kt-radius-panel)] border border-emerald-100 bg-[var(--kt-color-surface-default)] px-3 py-2 text-sm text-[var(--kt-color-text-primary)] outline-none placeholder:text-[var(--kt-color-text-muted)] focus:border-[var(--kt-color-border-focus)]"
         />
       </div>
 

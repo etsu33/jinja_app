@@ -15,11 +15,10 @@
 //
 // ■ Variant
 //   home     : Home専用の構図。波線3本 + Main Orb。Homeの本文カラムの実測に合わせた配置。
-//   standard : 一般画面向け。上部に波線2本、Orbなし、brassの暖かみなし。
-//              一覧・詳細など本文が縦に長い画面で、見出し帯の背後にだけ参道を通す想定。
-//   quiet    : 入力・決済など集中を要する画面向け。地と上方の光のみで線を持たない。
-// standard / quiet は本PRではどのRouteにも適用しない（段階展開の準備のみ）。
-// 各画面へ展開するときは、その画面の実測に基づいて配置を調整すること。
+//   standard : Home 以外の全画面の既定。上部に波線2本、Orbなし、brassの暖かみなし、
+//              下部の depth なし。見出し帯の背後にだけ参道を通す。
+//   quiet    : 線が主要タスクを視覚的に妨げると確認できた画面だけに使う。地と上方の光のみ。
+// Home 以外の画面へは components/worldview/WorldviewFrame を通して適用する。
 //
 // ■ 色
 // 色はすべて KAMI MUSUBI Worldview Token (--kt-world-*, styles/tokens.css) を参照する。
@@ -225,7 +224,10 @@ const STANDARD_BAND: BandSpec = {
 
 export const WORLDVIEW_BACKDROP_SPECS: Record<WorldviewBackdropVariant, VariantSpec> = {
   home: { atmosphere: ["lit", "warmth", "depth", "ground"], band: HOME_BAND },
-  standard: { atmosphere: ["lit", "depth", "ground"], band: STANDARD_BAND },
+  /* standard は下部の depth を持たない。Home 以外のフレームは本文の直後に
+     RootLayout の LegalFooter（地のみ）が続くため、下端に藍の面が残ると
+     フレームの終端で横一本の継ぎ目になる（App-wide rollout の実測で確認）。 */
+  standard: { atmosphere: ["lit", "ground"], band: STANDARD_BAND },
   quiet: { atmosphere: ["lit", "ground"] },
 };
 

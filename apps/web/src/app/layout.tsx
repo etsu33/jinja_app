@@ -51,7 +51,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AuthProvider>
           <ClientBootstrap />
 
-          <header className="sticky top-0 z-[100] bg-[var(--kt-color-surface-default)]">
+          {/* 地と同じ Deep Ink Navy + Worldview の境界線。Header / 本文 / Footer の間に
+              色の継ぎ目を作らない。Home の幅調整 (27rem) は globals.css の
+              Home 限定ルールが担い、ここでは色だけを持つ。 */}
+          <header className="sticky top-0 z-[100] border-b border-[var(--kt-color-border-default)] bg-[var(--kt-color-background-base)]">
             <nav className="mx-auto flex max-w-5xl items-center gap-4 p-3">
               <HomeLogoLink />
 

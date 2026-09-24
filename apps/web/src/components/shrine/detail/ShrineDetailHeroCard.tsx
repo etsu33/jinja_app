@@ -21,7 +21,7 @@ export default function ShrineDetailHeroCard({ title, imageUrl = null }: Props) 
             null) we render nothing here rather than an empty fixed-height
             bg-slate-100 box — which reads as a bright empty panel in dark mode. */}
         {resolvedImageUrl ? (
-          <div className="relative h-32 w-full bg-slate-100">
+          <div className="relative h-32 w-full bg-[var(--kt-color-surface-elevated)]">
             <Image
               src={resolvedImageUrl}
               alt={title}
