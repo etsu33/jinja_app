@@ -199,9 +199,9 @@ Secondary target は regression が見つかった場合だけ深掘りする。
 | /mypage | yes | real | PASS (390x844) | not required | Logged-out gate, auth login, and authenticated profile/data state remain readable; saved shrine cards and recent consultation fit without overflow | PASS | none |
 | /favorites | yes | real | PASS (390x844) | not required | Two saved shrines, addresses, detail links and remove buttons fit without overflow; Navy surface hierarchy and footer continuity hold | PASS | none |
 | /goshuin/new | yes | n/a | NOT VERIFIED | not required | Current repo keeps /goshuin/new, but /goshuins and /goshuins/public redirect to /; feature is treated as mostly closed for this audit | NOT VERIFIED | defer unless Goshuin flow is reopened |
-| /map | maybe | real | TODO | TODO if needed | TBD | TBD | TBD |
-| /populars | no | real | TODO | TODO if needed | TBD | TBD | TBD |
-| /ranking | no | real | TODO | TODO if needed | TBD | TBD | TBD |
+| /map | yes | real | PARTIAL (390x844) | not required | Worldview/list cards render correctly, but current MapPageClient does not render a map when viewMode=map; the toggle changes state only | FUNCTIONAL_NON_VISUAL | separate map-view implementation task |
+| /populars | no | real | COVERED via /ranking popular tab (390x844) | not required | Popular ranking data renders; same rank-highlight contrast issue applies to #1/#3 cards | PRE_EXISTING_SEMANTIC_STATE | shared RankingList fix |
+| /ranking | no | real | FAIL visual state (390x844) | responsive expansion not needed before fix | Rank #1/#3 use hard-coded light yellow/amber surfaces while text inherits near-white dark-theme foreground, causing severe contrast loss | PRE_EXISTING_SEMANTIC_STATE | dedicated Ranking semantic-surface fix PR |
 | /billing | yes | real | PASS with CTA note (390x844) | not required | Current Free plan card and gold upgrade CTA are readable; upgrade page primary CTA remains neutral surface-emphasis and is visually weaker than the gold action CTA | PRE_EXISTING_SEMANTIC_STATE | CTA hierarchy decision for later polish |
 | /billing/manage | yes | real | NOT VERIFIED | TODO if needed | Not shown in supplied evidence | NOT VERIFIED | verify only if Billing management remains in MVP scope |
 
@@ -372,6 +372,85 @@ Mother Ship interpretation for this audit:
 - Record the Goshuin primary target as **NOT VERIFIED / DEFERRED** unless the feature is explicitly returned to active MVP scope.
 
 This satisfies the audit Done Criteria requirement to either verify a primary target or explicitly mark it NOT VERIFIED with a reason.
+
+
+### 7.5 Explore Map / Ranking — 390px formal observation (2026-09-24)
+
+Evidence:
+- user-provided browser screenshots
+- Chrome responsive viewport: **390 x 844**
+- states:
+  - `/shrines` Explore entry
+  - `/map`
+  - `/ranking` popular tab, before and after geolocation filtering
+- repository verification against current `develop`
+
+#### Map implementation finding
+
+Repository evidence:
+- `MapPageClient` owns `viewMode` and initializes it to `"map"`.
+- `viewMode` is passed into `ExploreLayout`.
+- The rendered body does **not** branch on `viewMode`.
+- `mode === "nearby"` always renders `NearbyShrineCardListClient`.
+- `mode === "search"` renders only the selected-place card.
+- No map component / map canvas is rendered from `MapPageClient`.
+
+Therefore the current “一覧 / 地図” control exposes a **map mode label without a map implementation**.
+This is not a Worldview failure and is classified as `FUNCTIONAL_NON_VISUAL`.
+
+The current list presentation itself passes Worldview QA:
+- Deep Ink Navy ground is continuous.
+- cards remain within the 390px viewport.
+- shrine names / addresses are readable.
+- no visible horizontal overflow was observed.
+
+#### Ranking contrast finding
+
+Observed:
+- rank #1 uses `bg-yellow-50`
+- rank #3 uses `bg-amber-50`
+- ranking card text inherits the dark-theme `text-card-foreground` / Worldview text hierarchy.
+- address / metrics also use `--kt-color-text-secondary`, which is near-white in the current dark theme.
+- supplied screenshots show the #1 / #3 card content becoming extremely low-contrast on the light ranking surfaces.
+
+Historical verification:
+- the hard-coded `bg-yellow-50` / `bg-amber-50` rank surfaces already existed before PR #2974.
+- before PR #2974, dark `--card-foreground` was already a near-white ivory value.
+- PR #2974 changed dark neutral text from Dark Forest ivory to Worldview ivory, but did not introduce the light ranking surfaces.
+
+Therefore this is classified as **PRE_EXISTING_SEMANTIC_STATE**, not `WORLDVIEW_REGRESSION`.
+
+Formal findings:
+
+| Area / State | Finding | Classification | Follow-up |
+|---|---|---|---|
+| /shrines Explore entry | List/explore shell remains readable and visually consistent at 390px | PASS | none |
+| /map list state | Nearby shrine list renders correctly on Navy surfaces | PASS | none |
+| /map map-mode control | “地図” can be selected but no map canvas/component is rendered; list content remains | FUNCTIONAL_NON_VISUAL | separate map implementation task |
+| /ranking normal Navy cards | rank #2 and standard cards remain readable | PASS | none |
+| /ranking rank #1 / #3 highlight cards | hard-coded yellow/amber light surfaces combine with near-white dark-theme text, causing severe contrast failure | PRE_EXISTING_SEMANTIC_STATE | Ranking semantic-surface fix |
+| /ranking geolocation state | location filtering changes list content but does not alter the contrast failure pattern | PRE_EXISTING_SEMANTIC_STATE | same shared fix |
+
+Formal classification for this pass:
+
+```text
+WORLDVIEW_REGRESSION            = 0 observed
+PRE_EXISTING_SEMANTIC_STATE     = 1 confirmed pattern (ranking light rank surfaces)
+CONTENT_DATA_STRESS             = 0 observed
+FUNCTIONAL_NON_VISUAL           = 1 confirmed gap (map mode has no map renderer)
+PASS                            = Explore shell / Map list state / normal ranking cards
+```
+
+Mother Ship follow-up split:
+1. **Ranking Semantic Surface Fix**
+   - keep rank hierarchy
+   - remove unreadable light-surface + ivory-text combination
+   - prefer semantic dark ranking surfaces / border / badge treatment
+   - do not change ranking data, order, counts, favorite behavior, or API
+2. **Map View Implementation**
+   - separate product feature task
+   - current audit only records the missing implementation
+   - do not implement it inside PR #2977
 
 ## 8. No-change Areas
 
