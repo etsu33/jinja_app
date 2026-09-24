@@ -196,6 +196,35 @@ A-7 / A-7bに従い、確認済みのprincipal component全件の緯度・経度
 PARTIAL_COMPONENT_CANONICAL_POINT = PROHIBITED
 ```
 
+### 4.3 subject_type × point_method matrix
+
+PHASE_2開始前のMother Ship decisionとして、許容組合せを次で固定する。
+
+| subject_type | point_method |
+| --- | --- |
+| `SINGLE_PRINCIPAL_UNIT` | `DIRECT_POINT` only |
+| `MULTI_PRINCIPAL_UNIT` | `UNWEIGHTED_COMPONENT_MEAN` only |
+| `NON_BUILDING_RITUAL_CENTER` | semantic subject自体が再現可能な単一点へ追跡できる場合のみ `DIRECT_POINT` |
+
+禁止する組合せ:
+
+```text
+SINGLE_PRINCIPAL_UNIT + UNWEIGHTED_COMPONENT_MEAN
+MULTI_PRINCIPAL_UNIT + DIRECT_POINT
+NON_BUILDING_RITUAL_CENTER + UNWEIGHTED_COMPONENT_MEAN
+```
+
+非建物subjectが山域・森林域・禁足地等の面的対象であり、
+Sourceが代表点を直接規定していない場合は、centroid・山頂・generic POI等を発明しない。
+
+詳細なMother Ship decisionは
+`docs/audit/canonical-anchor-subject-point-method-matrix-decision.md`
+を参照する。
+
+PHASE_2の実際の調査・判定順序は
+`docs/knowledge/canonical-anchor-adjudication-procedure.md`
+を正本とする。
+
 ## 5. ShrineCanonicalAnchorComponent
 
 複数主要構成物を扱う場合の監査可能な入力を保持する。
@@ -592,12 +621,15 @@ COMPASS_BEHAVIOR_CHANGE        = NONE
 
 ## 17. STOP
 
-PHASE_1の設計正本化は本書で完了する。
+PHASE_1の設計正本化とSchema Foundation実装は完了し、PHASE_2手順も正本化済みである。
 
-次のschema実装、PHASE_2 Evidence手順、PHASE_3 backfill、PHASE_4 runtime cutoverは
-それぞれ本書の存在だけでは開始しない。
+ただし、PHASE_2 Batch 01のEvidence取得、PHASE_3 backfill、PHASE_4 runtime cutoverは
+それぞれ別のMother Ship指示なしに開始しない。
 
 ```text
-PHASE_1 = DESIGN_CANONICALIZED
-NEXT_IMPLEMENTATION_AUTHORITY = MOTHER_SHIP_REQUIRED
+PHASE_1 = COMPLETE
+SCHEMA_FOUNDATION = IMPLEMENTED
+PHASE_2_PROCEDURE = DEFINED
+PHASE_2_BATCH_01 = NOT_EXECUTED
+NEXT_EXECUTION_AUTHORITY = MOTHER_SHIP_REQUIRED
 ```
