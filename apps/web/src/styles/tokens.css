@@ -335,3 +335,62 @@
     0 0 0 1px color-mix(in oklab, #c9a96a 14%, transparent),
     0 10px 24px -12px color-mix(in oklab, #c9a96a 22%, transparent);
 }
+
+/*
+ * KAMI MUSUBI Worldview Token — "Deep Ink Navy + restrained shrine-gold path"
+ *
+ * ■ 位置づけ
+ * 旧来 Home だけが持っていた Art Direction Layer (--home-*, globals.css) の
+ * 実値をここへ昇格させ、Web全体で再利用できる世界観Tokenとする。
+ * Dark Forest の Semantic Token (--kt-color-*) は一切変更しない。
+ * このブロックは新しい名前を宣言するだけなので、参照していない画面・
+ * Component・Mobileへ値が波及する経路は存在しない。
+ *
+ * ■ 参照ルール
+ *   - 色の実値 (hex) はこのブロックにだけ書く。Page / Component へ複製しない。
+ *   - 参道の金は新しい色を作らず、既存の action-primary (Warm Brass) /
+ *     premium-accent (Champagne Gold) を指す。
+ *   - Home 固有の --home-* は、このTokenへの別名として globals.css に残る。
+ *     Home以外のComponentは --home-* ではなく --kt-world-* を参照すること。
+ *   - 背景の構図は components/worldview/WorldviewBackdrop が持つ。
+ *
+ * ■ 値の根拠
+ * すべて旧 --home-* と同一値（Home の見た目を変えないため）。
+ * コントラスト実測 (WCAG, 対 --kt-world-ground) の経緯は globals.css の
+ * Home Art Direction Layer のコメントを参照。
+ */
+:root {
+  /* ---- 地 ---- */
+  /* Deep Ink Navy / Blue Black */
+  --kt-world-ground: #0b111c;
+  /* 上方から差す光。地と同色相をひと段持ち上げた藍 */
+  --kt-world-ground-lit: #16203a;
+
+  /* ---- 面 ---- */
+  /* ground < surface < surface-elevated の明度順を保つ */
+  --kt-world-surface: #192231;
+  --kt-world-surface-elevated: #222d3e;
+
+  /* ---- 境界線 ---- */
+  --kt-world-border: #455063;
+  --kt-world-border-strong: #718096;
+
+  /* ---- 文字 ---- */
+  --kt-world-text-primary: #fffdf8;
+  --kt-world-text-secondary: #e7eaf0;
+  --kt-world-text-muted: #c5cbd6;
+
+  /* ---- 参道の光 ---- */
+  /* 新しい金は作らない。既存の Warm Brass / Champagne Gold を指す */
+  --kt-world-path: var(--kt-color-action-primary);
+  --kt-world-path-lit: var(--kt-color-premium-accent);
+
+  /* ---- 明朝Display ---- */
+  /* Webfontは追加しない（OS標準明朝へのフォールバック指定のみ）。
+     総称 serif は fontconfig環境でゴシックへ解決されることがあるため、
+     明朝の実ファミリ名を明示的に並べる（経緯は globals.css 参照）。 */
+  --kt-world-font-display:
+    "Hiragino Mincho ProN", "Hiragino Mincho Pro", "Yu Mincho", YuMincho, "BIZ UDMincho",
+    "MS PMincho", "Noto Serif CJK JP", "Noto Serif JP", "Source Han Serif JP", "IPAexMincho",
+    "IPAPMincho", serif;
+}
