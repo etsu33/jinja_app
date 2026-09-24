@@ -575,15 +575,15 @@ Evidence:
 
 Result:
 - Sandbox/Test mode itself is confirmed.
-- `STRIPE_PRICE_ID` alignment is **not yet confirmed** because the exact Price ID has not yet been compared with Render.
-- A **potential pricing configuration mismatch** exists:
-  - app / Terms: ¥780 / month
-  - visible Stripe Sandbox Premium product: ¥500 / month
-- Do not change either side in this audit. First identify the exact Price ID referenced by Render and determine which Stripe Price it points to.
+- `STRIPE_PRICE_ID` alignment is **confirmed**: the Stripe Sandbox Premium recurring Price ID matches the Render `STRIPE_PRICE_ID`.
+- The currently configured Stripe Sandbox Premium price is **¥500 / month**.
+- The current Web billing UI and Terms state **¥780 / month**.
+- Therefore the pricing configuration mismatch is **confirmed**.
+- Do not change either side inside this audit PR. Mother Ship must first confirm the canonical release price, then a dedicated billing-config follow-up should align Stripe and the product copy.
 
 Classification:
-- `CONFIGURATION_MISMATCH_CANDIDATE`
-- release-significant, but not yet confirmed until Price ID equality is checked.
+- `CONFIGURATION_MISMATCH_CONFIRMED`
+- release-significant and must be resolved before paid release.
 
 ## 8. No-change Areas
 
