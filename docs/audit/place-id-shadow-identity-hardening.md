@@ -1153,3 +1153,382 @@ DB への直接書き込みといった経路は F-6B のスコープ外であ�
 そこから作られる行までは防いでいない（F-6A §3.2 / §11.4）。
 
 次の行動には Mother Ship 指示が必要。
+
+---
+
+# F-6C — Production fresh PRE verification (explicit PlaceRef backfill)
+
+> `F-6A`（§1–§13）/ `F-6B`（§14–§15）への**追記**。既存節は書き換えない。
+
+## 16. F-6C status
+
+```text
+F6C_STATUS                   = PREFLIGHT_AUTHORED / PRODUCTION_READ_BLOCKED
+TYPE                         = READ_ONLY / AUDIT_ONLY
+RECORDED_AT                  = 2026-09-24
+VERIFIED_AGAINST             = develop @ def81b6a (after F-6B #2963)
+
+F6C_PRODUCTION_PRE_READ      = NOT_EXECUTED
+F6C_PRODUCTION_PRE_READ_ONLY = YES
+F6D_PRODUCTION_PRE           = STOP  （理由は NOT_VERIFIED。drift 検出ではない）
+C1_BACKFILL_EXECUTION        = MOTHER_SHIP_DECISION_REQUIRED
+C2_MAPPING_STORAGE           = FIXED
+C3_ROLLBACK                  = FIXED
+F6D_IMPLEMENTED              = NO
+PRODUCTION_DATA_CHANGED      = NO
+
+MIGRATION_0100_CHANGE_REQUIRED = NO
+MIGRATION_0108_CHANGE_REQUIRED = NO
+UNKNOWN_MIGRATION_BRANCH_DETECTION = HARDENED
+```
+
+```text
+CURRENT_REPOSITORY_LEAF = temples.0113_adopt_usa_jingu_position
+PRODUCTION_PARENT_STATE = UNVERIFIED（Production を読めていない）
+```
+
+以下の実測値は **取得できていない**。値を推測して埋めない。
+
+```text
+PRIMARY_COUNT                   = UNVERIFIED
+PRIMARY_IDENTITY_MATCH_COUNT    = UNVERIFIED
+PRIMARY_PLACE_REF_NONNULL       = UNVERIFIED
+TARGET_PLACE_REF_COUNT          = UNVERIFIED
+TARGET_PLACE_REF_CLAIM_COUNT    = UNVERIFIED
+SHADOW_COUNT                    = UNVERIFIED
+AUDITED_EVENT_EXACT_COUNT       = UNVERIFIED
+AUDITED_EVENT_WRONG_OWNER_COUNT = UNVERIFIED
+MIGRATION_0100_APPLIED          = UNVERIFIED
+CURRENT_PARENT_APPLIED          = UNVERIFIED
+PRODUCTION_HAS_UNKNOWN_NEWER_MIGRATION = UNVERIFIED
+F6D_PRE_ELIGIBLE                = UNVERIFIED
+```
+
+### 16.1 なぜ Production を読めないか
+
+認証情報がこの実行環境に存在しない。正規ツール自身の判定:
+
+```text
+$ scripts/migration_safety/check_credential_presence.sh \
+    ~/.config/kami-musubi/production-db.env DATABASE_URL
+VAR_SET=0
+[check_credential_presence] no credential file at that path yet —
+  this is expected before local setup is complete
+
+$ scripts/migration_safety/readonly_query.sh \
+    ~/.config/kami-musubi/production-db.env DATABASE_URL \
+    scripts/migration_safety/sql/f6d_place_ref_backfill_preflight.sql
+[readonly_query] BLOCKED: credential file not found at <path>.
+  See README.md for local setup.
+exit 1
+```
+
+**これは環境不備ではなく設計どおりである。** `scripts/migration_safety/README.md`
+L83-95 は認証情報を「人間がローカルで一度だけ用意するもの」と定め、
+
+```text
+# Never paste it into a chat with an AI assistant. Never commit it.
+```
+
+と明記している。したがって本 remote session がこの値を持つことはない。
+本タスクでは認証情報を要求しておらず、Production への接続も一度も試行して
+いない（bridge は credential に触れる前に BLOCK した）。
+
+```text
+CREDENTIAL_REQUESTED_FROM_USER = NO
+PRODUCTION_CONNECTION_ATTEMPTED = NO
+```
+
+### 16.2 成果物 — SELECT-only preflight SQL
+
+```text
+scripts/migration_safety/sql/f6d_place_ref_backfill_preflight.sql
+```
+
+```text
+$ python3 scripts/migration_safety/guard.py check-readonly-sql \
+    scripts/migration_safety/sql/f6d_place_ref_backfill_preflight.sql
+SAFE: ok
+exit 0
+```
+
+SELECT / WITH のみ。psql メタコマンドを含まない（guard は `;` で分割して
+各文の先頭語を検査するため、`\x` 等は allow-list を通らない）。
+
+構成:
+
+```text
+SECTION 0  migration ledger（0100 / 現行 leaf / それより新しい行 / 将来 F-6D 行）
+SECTION 1  primary Shrine 21 / 22 / 49 と監査済み identity との一致判定
+SECTION 2  target PlaceRef 3 件（OBSERVATION ONLY）
+SECTION 3  3 つの place_id を claim している Shrine（期待 0 行）
+SECTION 4  historical shadow 101 / 103 / 104（期待 0 行）
+SECTION 5  監査済み interaction event 2 件（**global 検索が先**、所有者は後で照合）
+SECTION 6  machine-readable gate summary
+```
+
+`SECTION 6` は個別 metric を**すべて併記**したうえで `f6d_pre_eligible` を
+出す。単一の boolean の裏に個別の失敗を隠さない。
+
+#### 16.2.1 unknown migration branch 検出の強化
+
+```text
+UNKNOWN_MIGRATION_BRANCH_DETECTION = HARDENED
+EXPECTED_LEAF_NUMBER = 113
+EXPECTED_LEAF_NAME   = 0113_adopt_usa_jingu_position
+```
+
+辞書順比較 `name > '0113_adopt_usa_jingu_position'` **だけには依存しない**。
+辞書順は次の 2 形を取りこぼす。
+
+```text
+(a) 4 桁 prefix が leaf より大きいのに、名前全体が leaf より辞書順で小さい行
+(b) leaf と **同じ番号** の未知の sibling（例 '0113_something_else'）
+    -> leaf より辞書順で上に来ないため、辞書順チェックでは完全に不可視
+```
+
+追加した machine-readable metric（いずれも `f6d_pre_eligible` を gate する）:
+
+```text
+migration_number_above_leaf_count     4 桁 prefix > 113
+unknown_same_number_sibling_count     4 桁 prefix = 113 かつ名前が leaf と異なる
+migration_name_unparseable_count      4 桁 prefix を持たない（想定外 -> fail closed）
+max_migration_number                  観測用
+unknown_migration_branch_detected     上記 + 既存の辞書順チェックの OR
+```
+
+既存チェックは 1 つも弱めていない（`production_has_unknown_newer_migration`
+は従来どおり残し、OR に加えただけ）。`0.1b unknown_migration_branch` が
+該当行と `drift_reason` を個別に出力する。
+
+**強化が load-bearing であることを実証した。** ローカル test DB の
+`django_migrations` へ `0113_a_sibling_before_leaf` を差し込むと:
+
+```text
+辞書順のみの条件           -> 0 件（見逃す）
+unknown_same_number_sibling_count -> 1 件（検出）
+unknown_migration_branch_detected -> True
+f6d_pre_eligible                  -> False
+```
+
+`0114_a` / `0113_unknown_sibling` / `no_numeric_prefix_migration` の 3 種を
+同時に差し込んだ場合も、それぞれ対応する metric が 1 件ずつ立つことを確認した
+（Production ではなくローカル test DB のみ。一時 probe は commit していない）。
+
+`location` は意図的に SELECT していない。Production の
+`temples_shrine.location` は legacy な `text` 列である一方モデルは PostGIS
+`PointField` を宣言しており、素の select は行を読む前に落ちる
+（0091 / 0094 / 0098 / 0099 / 0100 が `.only(...)` で回避しているのと同じ理由）。
+
+`snapshot_json` は raw を出さず `(present, text length, md5)` で報告する。
+Google Places の payload は 1 行あたり数 KB あり、psql の整列出力が読めなく
+なるため。md5 により値の同一性は run 間で比較できる。
+
+### 16.3 SQL の実行可能性は検証済み
+
+Production は読めていないが、**SQL が実際に走ること**はローカルの migrate 済み
+スキーマに対して確認した（一時 probe。commit していない）。
+
+```text
+13 statements すべてが実行され、列名も期待どおり解決した
+SECTION 6 は空スキーマに対し f6d_pre_eligible = False を返した（fail closed）
+合成 drift 3 種がそれぞれ対応する metric で検出された（§16.2.1）
+```
+
+```text
+SYNTAX_VALIDATED       = YES
+TABLE_COLUMN_NAMES_VALIDATED = YES
+  temples_shrine / place_ref / temples_shrineinteractionlog / django_migrations
+DATA_MEANINGFUL        = NO（空の test DB。Production の値ではない）
+```
+
+ローカル検証は NoGIS migration 集合（13 行）上で行ったため、`SECTION 0` の
+ledger 判定内容そのものはローカルでは検証できない（構文のみ）。
+
+### 16.4 repository 側の migration state
+
+```text
+CURRENT_REPOSITORY_LEAF = temples.0113_adopt_usa_jingu_position
+TOTAL_TEMPLES_MIGRATIONS = 113
+REPOSITORY_DRIFT = NONE OBSERVED
+```
+
+leaf は「0113 のはず」と仮定せず fresh develop の依存グラフから解決した。
+途中 `0019_favorite_favorite_exactly_one_target` が leaf に見える誤検出が
+あったが、`0020_shrine_popularity_fields` が複数行にまたがる形で 0019 へ
+依存していたための regex の取りこぼしであり、実際の leaf は 0113 のみ。
+
+`F-6B`（#2963）は migration を追加していないため、leaf は `F-6A` 時点から
+変わっていない。migration 0100 / 0108 も変更していない。
+
+### 16.5 人間が実行するコマンド（この session では実行しない）
+
+認証情報を持つ環境で、次を実行して結果を §16 へ追記すること。
+
+```bash
+python3 scripts/migration_safety/guard.py check-readonly-sql \
+  scripts/migration_safety/sql/f6d_place_ref_backfill_preflight.sql
+
+scripts/migration_safety/readonly_query.sh \
+  ~/.config/kami-musubi/production-db.env DATABASE_URL \
+  scripts/migration_safety/sql/f6d_place_ref_backfill_preflight.sql
+```
+
+`6.1 F6D_PRE_GATE_SUMMARY` の行をそのまま貼れば、§16 冒頭の UNVERIFIED 群を
+実測値へ置き換えられる。
+
+判定規則:
+
+```text
+f6d_pre_eligible = true   -> F6D_PRODUCTION_PRE = PASS
+それ以外                   -> F6D_PRODUCTION_PRE = STOP
+  （修復も再解釈もしない。drift はそのまま記録する）
+```
+
+`PASS` であっても F-6D へは進めない。残る blocker は
+`C1_BACKFILL_EXECUTION`（Mother Ship 決定待ち）のみである。§16.8 を参照。
+
+### 16.6 F-6A §7.2 の 2 つ目の blocker は解消済み
+
+> `F-6A` §7.2 は**歴史的な監査証跡としてそのまま保持する**（書き換えない）。
+> 本節はその後の F-6C 設計レビューによる**現在の結論**である。
+
+`F-6A` §7.2 は backfill-ready でない理由を 2 つ挙げていた。
+
+```text
+理由 1  place_ref 転送が P8 のどの Mother Ship 決定でも選択されていない
+理由 2  backfill すると migration 0100 の reverse が壊れる
+```
+
+**理由 2 は解消した。** 0100 の reverse が拒否するのは
+「place_ref が *束縛されたまま* reverse に入る」状態であって、F-6D が
+reversible であれば先に F-6D の reverse が束縛を解くため、0100 の reverse は
+自分が期待する「孤立 PlaceRef」状態を見ることになる。
+
+```text
+F6D_FORWARD_STATE
+  = NOT_LOGICALLY_COMPATIBLE_WITH_0100_REVERSE_WHILE_BOUND
+
+F6D_REVERSE_STATE
+  = LOGICALLY_COMPATIBLE_WITH_0100_REVERSE
+
+LOGICAL_STATE_COMPATIBILITY_WITH_0100_REVERSE
+  = YES_AFTER_F6D_REVERSE
+
+ACTUAL_MIGRATION_CHAIN_ROLLBACK_TO_0100
+  = BLOCKED_BY_0108_IRREVERSIBLE
+
+MIGRATION_0100_CHANGE_REQUIRED = NO
+MIGRATION_0108_CHANGE_REQUIRED = NO
+```
+
+`ACTUAL_MIGRATION_CHAIN_ROLLBACK_TO_0100 = BLOCKED_BY_0108_IRREVERSIBLE` は
+コードから確認できる。0100 まで実際に巻き戻す経路は F-6D の有無に関係なく
+既に存在しない。
+
+```text
+backend/temples/migrations/0108_remove_legacy_temples_models.py
+  L27  「このmigrationは**意図的に irreversible**」
+  L69  「reverse_code=None により reversible=False となり、unapply は」
+  L71  migrations.RunPython(_forwards_noop, reverse_code=None)
+```
+
+したがって F-6D は 0100 の reverse 前提を**論理的に**壊さず、かつ 0100 まで
+巻き戻すチェーン自体が 0108 によって既に塞がれている。**0100 / 0108 の
+いずれも変更する必要はない。**
+
+```text
+以後「Mother Ship が migration 0100 を変更するかどうかを選ぶ必要がある」
+とは記述しない（F-6A §7.2 の理由 2 は superseded）。
+```
+
+残る blocker は理由 1 のみ:
+
+```text
+C1_BACKFILL_EXECUTION = MOTHER_SHIP_DECISION_REQUIRED
+```
+
+### 16.7 既に導出済みの技術決定（C2 / C3）
+
+```text
+C2_MAPPING_STORAGE = MIGRATION_ONLY_DECISION_PROVENANCE
+  - Shrine.place_ref AS RUNTIME_SOURCE_OF_TRUTH
+  - NO_NEW_MAPPING_TABLE
+```
+
+承認済み place_id -> shrine_id マッピングは **migration が決定の provenance を
+持つ**（監査済み migration-0100 マッピング + F-6D 自身の静的 snapshot）。
+runtime の正本は `Shrine.place_ref`（OneToOne）のままであり、
+新しいマッピング table を導入しない。`F-6A` §11.3 E-1 の未決はこれで閉じる。
+
+```text
+C3_ROLLBACK = REVERSIBLE_F6D_MIGRATION
+  - RESTORE_PRE_F6D_ORPHAN_STATE
+  - KEEP_PLACE_REF_ROWS
+  - FAIL_CLOSED_ON_UNEXPECTED_STATE
+```
+
+F-6D は reversible とし、reverse は F-6D 直前の状態
+（primary の `place_ref` が NULL、対象 PlaceRef 行は存在したまま孤立）へ
+戻す。PlaceRef 行そのものは削除しない。期待外の状態では 0097〜0100 と同じく
+fail closed で raise する（修復も推測も行わない）。
+
+これらは技術決定であって実行承認ではない。C1 は依然として未承認である。
+
+### 16.8 現在の blocker
+
+```text
+C1_BACKFILL_EXECUTION = MOTHER_SHIP_DECISION_REQUIRED   ← 唯一の未決
+C2_MAPPING_STORAGE    = FIXED
+C3_ROLLBACK           = FIXED
+F6D_PRODUCTION_PRE    = STOP_NOT_VERIFIED               ← §16.1（認証情報不在）
+```
+
+### 16.9 Identity authority の再確認
+
+```text
+PLACE_ID_IDENTITY_AUTHORITY = NO（不変）
+```
+
+`SECTION 2` が読む PlaceRef の name / address / 座標は **OBSERVATION ONLY**
+であり、Shrine identity の権威ではない。identity mapping の権威は監査済みの
+migration-0100 明示マッピングのみ。preflight はその一致を**確認**するだけで、
+PlaceRef 側の値から Shrine を選び直さない。
+
+### 16.10 Required statements
+
+```text
+1.  Production データを変更していない。
+2.  Production へ接続していない（credential に触れる前に BLOCK された）。
+3.  認証情報をユーザーへ要求していない。
+4.  UPDATE / INSERT / DELETE / ALTER / CREATE / DROP を書いていない。
+5.  PlaceRef を backfill していない。
+6.  F-6D migration を作成していない。
+7.  migration 0100 / 0108 を変更していない。
+8.  runtime を変更していない。
+9.  C1 承認を推定していない。
+10. 取得できていない値を PASS と書かず UNVERIFIED と記録した。
+11. F6D_PRODUCTION_PRE = STOP は「未検証」であって drift 検出ではない、と明示した。
+12. repository leaf を仮定せず依存グラフから解決した（0113）。
+13. F-6A §7.2 は書き換えていない（歴史的証跡として保持）。
+    理由 2 の supersede は §16.6 に現在の結論として記録した。
+14. 0108 の irreversible をコードから確認した（reverse_code=None）。
+15. C2 / C3 は技術決定であり実行承認ではない。C1 を推定していない。
+```
+
+## 17. STOP
+
+```text
+F6C_STATUS            = PREFLIGHT_AUTHORED / PRODUCTION_READ_BLOCKED
+F6D_PRODUCTION_PRE    = STOP_NOT_VERIFIED
+C1_BACKFILL_EXECUTION = MOTHER_SHIP_DECISION_REQUIRED
+C2_MAPPING_STORAGE    = FIXED
+C3_ROLLBACK           = FIXED
+MIGRATION_0100_CHANGE_REQUIRED = NO
+MIGRATION_0108_CHANGE_REQUIRED = NO
+NEXT                  = 認証情報を持つ環境で §16.5 を実行し実測値を追記する
+DECISION_BLOCKED_ON   = C1_BACKFILL_EXECUTION
+EXECUTION_BLOCKED_ON  = C1_BACKFILL_EXECUTION + F6D_PRODUCTION_PRE_PASS
+```
+
+次の行動には Mother Ship 指示が必要。
