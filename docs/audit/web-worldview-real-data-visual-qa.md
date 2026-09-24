@@ -507,6 +507,33 @@ Classification:
 - Production billing mode: **CONFIRMED_STRIPE**
 - Local `stub_checkout_*` behavior remains expected and environment-specific.
 
+
+### 7.8 Production Stripe credential presence / mode confirmation (2026-09-24)
+
+Evidence:
+- user-confirmed Render Environment presence for production backend `jinja-backend`
+- secret values are not recorded
+- only the Stripe secret-key mode prefix was reported
+
+Confirmed:
+- `STRIPE_SECRET_KEY`: **SET**
+- secret key prefix indicates **Stripe test mode** (`sk_test_...`)
+- `STRIPE_PRICE_ID`: **SET**
+- `STRIPE_WEBHOOK_SECRET`: **SET**
+- `BILLING_PROVIDER=stripe`: previously directly confirmed in Render
+
+Interpretation:
+- Production backend is configured to use the Stripe integration, but the current Stripe secret key is a **test-mode key**.
+- Therefore this configuration must not be treated as live-charge ready.
+- A Price ID uses the same `price_...` prefix in test and live mode, so presence alone does not prove its mode. It must belong to the same Stripe mode/account as the active secret key.
+- A webhook signing secret (`whsec_...`) also does not reveal test/live mode from its prefix alone. Its endpoint mode must be confirmed in the Stripe Dashboard.
+
+Release boundary:
+- Keep test-mode credentials during development / QA.
+- Switching to live billing must be a dedicated release gate.
+- That gate must confirm a live secret key, live Price ID, live webhook endpoint/signing secret, and one controlled end-to-end Checkout → Webhook → entitlement → Customer Portal verification.
+- No live credential change is part of PR #2977.
+
 ## 8. No-change Areas
 
 本監査 PR では変更しない。
