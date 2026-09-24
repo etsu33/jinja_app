@@ -555,3 +555,72 @@ REASON = PRE_CUTOVER_ID_ONLY_SNAPSHOT_COMPATIBILITY_NOT_PROVEN
 
 実装の詳細と回帰の証跡は
 `docs/audit/shared-shrine-identity-resolver-design.md` §13（F-3.1）/ §14（F-4）。
+
+## 11. Current State Update — F-5B (backend shared resolver implemented)
+
+> 追記。§1–§10 の歴史的記録は書き換えない。
+
+```text
+BACKEND_SHARED_RESOLVER = backend/temples/domain/shrine_identity.py
+CANONICAL_RESOLVER_MODE = STRICT_FAIL_CLOSED
+VALID_SHRINE_ID         = POSITIVE_INTEGER_ONLY
+F5B_STATUS              = IMPLEMENTED
+```
+
+### 11.1 §4.1 "Backend `shrine_id or id` sites" の現在地
+
+§4.1 は `BACKEND_FALLBACK_SITES = 16 / 8 files` と記録していた。`F-5A`（#2960）
+はそれが**不足**であり実数が 22 / 13 であることを確定した。§4.1 の一覧は
+当時の記録としてそのまま保持する。現在の状態:
+
+```text
+移行済み（共有 resolver へ集約）   16 site
+  concierge_chat_candidates.py / concierge_chat_pool.py（4）
+  concierge_candidate_utils.py / concierge_chat_ranking.py
+  concierge_chat.py（2: #8 #9）/ domain/weekly_presentation.py
+  concierge_chat_observation.py（3）
+  recommendation_quality_measurement.py / recommendation_score_components.py
+  management/commands/export_recommendation_output_snapshot.py
+
+未変更 — 突合 key（identity resolver ではない）   2 site
+  concierge_chat.py:636, 646
+
+未変更 — 履歴 snapshot 互換                      2 site
+  api/views/concierge.py:140 / journey_timeline.py:130
+
+未変更 — dead code（importer 0 件）              2 site
+  concierge_candidate_normalize.py:28, 31
+```
+
+### 11.2 §4.5 の警告が test fixture で現実化していた
+
+§4.5 は次の露出を記録していた。
+
+```text
+「将来の producer が `id` に ranking index / list position を入れたら、
+  Compass navigation が静かに別 Shrine を指す」
+```
+
+`F-5B` の移行中に、`test_concierge_chat_observation` の fixture が
+まさにその形（`{"id": 1, "shrine_id": 101}` — `id` が rank）であることが
+露見した。旧 `or` 実装が `shrine_id` を黙って採用していたため観測されて
+いなかった。
+
+```text
+PRODUCTION_DATA_AFFECTED = NOT OBSERVED
+  F-7 invariant 下の live candidate では id と shrine_id は一致する。
+  影響したのは invariant に違反していた test fixture のみ。
+```
+
+### 11.3 §7 分類への影響
+
+```text
+分類は PARTIALLY_SHARED のまま変わらない。
+```
+
+Web（`F-4`）と backend（`F-5B`）はそれぞれ共有 resolver を持つが、履歴
+snapshot consumer（Web 4 件 / backend 2 件）、突合 key 2 件、place_id
+shadow identity（`F-6`）が未統合のまま残る。
+
+実装の詳細と回帰の証跡は
+`docs/audit/backend-shrine-identity-fallback-consolidation.md` §10–§19。

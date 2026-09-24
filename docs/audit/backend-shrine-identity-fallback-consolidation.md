@@ -767,3 +767,320 @@ DECIDED    = strict fail-closed / positive-integer-only / domain/shrine_identity
 ```
 
 次の行動には `F-5B` を名指しする Mother Ship 指示が必要。
+
+---
+
+# F-5B — Implementation Record
+
+> 本節は `F-5A`（§1–§9）への**追記**である。§1–§9 は監査時点の記録として
+> そのまま保持し、書き換えない。`F5A_STATUS = AUDITED` は **F-5A 時点の事実**
+> として読むこと。現在の実装状態は本節を参照。
+
+## 10. F-5B status
+
+```text
+F5B_STATUS = IMPLEMENTED
+F5B_AT     = 2026-09-24
+VERIFIED_AGAINST = develop @ 9ae2aa4 (after F-5A #2960)
+```
+
+```text
+BACKEND_SHARED_RESOLVER   = backend/temples/domain/shrine_identity.py
+CANONICAL_RESOLVER_MODE   = STRICT_FAIL_CLOSED
+VALID_SHRINE_ID           = POSITIVE_INTEGER_ONLY
+LEGACY_FALSY_FALLBACK     = NO
+INVALID_ALLOWED_ALIAS     = INVALID_WINS
+DIFFERENT_VALID_ALIASES   = CONFLICT
+
+SAFE_F5B_TARGET_SITES     = 16
+SAFE_F5B_MIGRATED         = 16
+HISTORICAL_MIGRATED       = NO
+PLACE_ID_HANDLING_CHANGED = NO
+
+DEFER_HISTORICAL          = 2   #12 #13
+DEFER_NAME_MATCH          = 2   #10 #11
+DEFER_DEAD_CODE           = 2   #21 #22
+```
+
+## 11. Resolver
+
+```python
+backend/temples/domain/shrine_identity.py
+
+ShrineIdentityPolicy = Literal["live_candidate", "historical_snapshot"]
+
+@dataclass(frozen=True)
+class ShrineIdentityResolution:
+    status: Literal["resolved", "absent", "invalid", "conflict"]
+    shrine_id: int | None
+
+resolve_shrine_identity(source, *, policy) -> ShrineIdentityResolution   # authoritative
+resolve_shrine_id(source, *, policy)       -> int | None                 # 委譲のみ
+```
+
+```text
+live_candidate       shrine_id, id
+historical_snapshot  shrine_id, shrineId, shrine, id
+
+IDENTITY_RESOLUTION_IMPLEMENTATIONS = 1
+```
+
+`historical_snapshot` は実装と unit test のみ。consumer（#12 #13）は移行しない。
+
+設置場所は `F-5A` §5.4 の推奨どおり `domain/`。`domain/weekly_presentation.py`
+（#14）が consumer に含まれるため、`services/` に置くと §5.2 の一方向依存
+（domain/ -> services/ が 0 件）をその 1 件だけが破る。移行後に循環 import が
+無いことを実際の import で確認済み。
+
+```text
+PRESENCE = key が存在し、かつ値が None でないときのみ present
+  {"shrine_id": None, "id": 42} -> shrine_id absent -> id が 42 へ解決
+
+PRECEDENCE = absent -> invalid -> conflict -> resolved
+NEVER_RAISES = YES
+```
+
+## 12. 移行した 16 site
+
+| # | file | function | 旧 | 新 | 挙動変化 |
+| ---: | --- | --- | --- | --- | :-: |
+| 1 | `services/concierge_chat_candidates.py` | `_candidate_shrine_id` | A | 共有 resolver への薄い wrapper | 正常候補は不変 / malformed が unresolved |
+| 2 | `services/concierge_chat_pool.py` | `_ensure_pool_size` | B | `resolve_shrine_id` (raw) | D-1 D-2 D-5 |
+| 3 | `services/concierge_chat_pool.py` | `_ensure_pool_size` | B | 同上 | 同上 |
+| 4 | `services/concierge_chat_pool.py` | `_merge_candidate_fields` | B | **`resolve_shrine_identity`** | D-1 D-2 D-5 ＋ name fallback の fail closed |
+| 5 | `services/concierge_chat_pool.py` | `_merge_candidate_fields` | B | 同上 | 同上 |
+| 6 | `services/concierge_candidate_utils.py` | `_candidate_key` | B | **`resolve_shrine_identity`** | D-5（key が int）＋ invalid/conflict で None |
+| 7 | `services/concierge_chat_ranking.py` | `_attach_breakdown` | B2 | `resolve_shrine_id` | D-2 |
+| 8 | `services/concierge_chat.py` | `_build_score_v3_candidate_profile` | B + shrineId | **`resolve_shrine_identity`** ＋ source 互換 | D-1 D-2 ＋ source fallback の fail closed |
+| 9 | `services/concierge_chat.py` | `_build_reason_v4_preview_payload` | B | `resolve_shrine_id` | D-1 D-5 |
+| 14 | `domain/weekly_presentation.py` | `_resolve_shrine_id` | C | `resolve_shrine_id` | conflict / 0 が drop |
+| 15 | `services/concierge_chat_observation.py` | `observe_candidate_pool` | B | `resolve_shrine_id` | D-5 ＋ conflict が None |
+| 16 | `services/concierge_chat_observation.py` | `observe_candidate_pool_debug` | B | 同上 | 同上 |
+| 17 | `services/concierge_chat_observation.py` | `observe_ranking_breakdown` | B | 同上 | 同上 |
+| 18 | `services/recommendation_quality_measurement.py` | `build_shrine_reason_provenance` | G | `resolve_shrine_id` ＋ sentinel | D-3 D-4 の扱いを §13 に明記 |
+| 19 | `services/recommendation_score_components.py` | `calculate_shrine_profile_score` | B | `resolve_shrine_identity`.status | D-1 |
+| 20 | `management/commands/export_recommendation_output_snapshot.py` | `_format_recommendation` | B | `resolve_shrine_id` | D-5 ＋ conflict が dash |
+
+```text
+INDEPENDENT_NORMALIZATION_RETAINED_IN_MIGRATED_SITES = NONE
+```
+
+移行した 16 site に `shrine_id or id` / `int(shrine_id)` /
+bool・float 許容 parser はいずれも残っていない（§16 の再走査で確認）。
+
+### 12.1 raw mapping からの解決（#2–#5）
+
+`_normalize_candidate_fields()` は `shrine_id` / `id` を `_to_int_or_none()`
+で潰すため、**先に normalize すると malformed な identity 情報が消える**
+（`"bad"` も `1.5` も `None` になり、`invalid` を `absent` と誤認する）。
+
+```text
+raw -> identity 解決
+raw -> presentation / candidate field の正規化   （別々に行う）
+```
+
+### 12.2 `_merge_candidate_fields` の status 分岐（#4 #5）
+
+F-3.1 の detailHref と同じ形。
+
+```text
+resolved -> Shrine id で lookup。一致が無くても name へ落とさない
+absent   -> 既存の name fallback を使ってよい
+invalid  -> name fallback を使わない
+conflict -> name fallback を使わない
+```
+
+必須回帰: `{"shrine_id": 42, "id": 999, "name": "A"}` は、name "A" の候補と
+**name 経由で一致してはならない**。
+
+### 12.3 `_candidate_key` の fail closed（#6）
+
+```text
+place_id あり      -> ("place_id", ...)   ← 未変更（F-6）
+resolved           -> ("shrine_id", 正の int)
+absent             -> ("name_address", ...)
+invalid / conflict -> None
+```
+
+`_dedupe_candidates()` は key が `None` の item に重複排除キーを与えず、
+**item 自体は落とさない**。malformed identity の 2 行が name/address 経由で
+同一 Shrine と宣言されるのを防ぐ。
+
+### 12.4 `source.shrineId` の扱い（#8）
+
+`meaning_payload.source.shrineId` は **live_candidate policy の許可 alias に
+足していない**。global policy へ足すと、あらゆる live candidate が `shrineId`
+を identity として読むようになる。
+
+```text
+rec resolved           -> その Shrine id
+rec invalid / conflict -> None（source.shrineId へ fallback しない）
+rec absent             -> source.shrineId を互換として明示参照
+```
+
+`source.shrineId` の正規化も同じ resolver に `{"shrine_id": ...}` として
+読み替えて通す。別の int parser は実装していない。
+
+## 13. Reporting sentinel（#18）
+
+```text
+0 = REPORTING_SENTINEL
+0 != VALID_SHRINE_IDENTITY
+```
+
+`ShrineReasonProvenance.shrine_id` は `int`（非 Optional）であり、`0` を
+「identity 不明」の集計表現として既に使っていた。この reporting 表現は維持する。
+
+```text
+resolved                    -> 解決された正の Shrine id
+absent / invalid / conflict -> 既存の reporting sentinel 0
+```
+
+旧実装の unguarded `int()` は非数値 str に対し **live path で ValueError を
+投げていた**（§3.1 D-3、`concierge_chat.py:589` から呼ばれる）。resolver は
+例外を投げないため、この経路は塞がれた。
+
+## 14. 意図的な契約変更（accidental regression ではない）
+
+Mother Ship 決定に直接由来する変更であり、既存 test / fixture を更新した。
+
+| file | 変更 | 根拠 |
+| --- | --- | --- |
+| `tests/services/test_concierge_candidate_utils.py` | `_candidate_key({"shrine_id": 3})` が `("shrine_id", "3")` から `("shrine_id", 3)` へ | §3.1 D-5。identity key が正規化済み int に統一される |
+| `tests/test_export_..._characterization.py` | `{"shrine_id": 42, "id": 999}` が `42` から dash へ | `DIFFERENT_VALID_ALIASES = CONFLICT` |
+| `tests/services/test_concierge_chat_observation.py` | fixture の `id` を rank（1, 2）から `shrine_id` と同値（101, 102）へ | §14.1 |
+
+### 14.1 既存 fixture が F-7 invariant に違反していた
+
+`test_concierge_chat_observation.test_observe_candidate_pool_logs_counts` の
+fixture は `id` を **rank として** 使っていた。
+
+```text
+{"id": 1, "shrine_id": 101, ...}
+{"id": 2, "shrine_id": 102, ...}
+```
+
+これは F-7 の live candidate invariant
+
+```text
+candidate["id"] == candidate["shrine_id"] == Shrine.id
+```
+
+に違反する形であり、`shrine-identity-compass-concierge-contract.md` §4.5 が
+「将来の producer が `id` に ranking index を入れたら」と警告していた形その
+ものである。旧 `or` 実装は `shrine_id` を黙って採用していたため露見しなかった。
+
+fixture は invariant を満たす形へ揃え、食い違う場合の挙動
+（`None` として記録され、例外は投げない）を別 test で明示的に固定した。
+
+```text
+PRODUCTION_DATA_AFFECTED = NOT OBSERVED
+  F-7 invariant 下の live candidate では id と shrine_id は一致する。
+  影響したのは invariant に違反していた **test fixture** のみ。
+```
+
+## 15. 移行しなかった site
+
+| # | file | 分類 | 理由 |
+| ---: | --- | --- | --- |
+| 10 | `services/concierge_chat.py:636` | `DEFER_NAME_MATCH` | `or rec.get("name")` を含む**突合 key**。identity resolver への単純置換が不可能 |
+| 11 | `services/concierge_chat.py:646` | `DEFER_NAME_MATCH` | #10 と対。片方だけ変えると key が一致しなくなる |
+| 12 | `api/views/concierge.py:140` | `DEFER_HISTORICAL` | 永続化 snapshot。§4.1 の id-only 形状が実在 |
+| 13 | `services/journey_timeline.py:130` | `DEFER_HISTORICAL` | 同上 |
+| 21 | `services/concierge_candidate_normalize.py:28` | `DEFER_DEAD_CODE` | importer 0 件（§5.5）。削除は別決定 |
+| 22 | `services/concierge_candidate_normalize.py:31` | `DEFER_DEAD_CODE` | 同上 |
+
+いずれも **1 行も変更していない**（`git diff` が空）。
+
+```text
+PERSISTED_ID_ONLY_SNAPSHOTS_CAN_BE_DROPPED = NOT_PROVEN   （F-5A §4.1 のまま）
+```
+
+## 16. 実装後の再走査
+
+```text
+残存 `shrine_id or id`（backend runtime）
+  services/concierge_chat.py:636, 646     -> #10 #11  DEFER_NAME_MATCH
+  api/views/concierge.py:140              -> #12      DEFER_HISTORICAL
+
+残存 int() by 単一 alias（identity resolver ではない）
+  services/journey_timeline.py:138        -> #13      DEFER_HISTORICAL
+  services/weekly_presentation_snapshot.py:101
+      select_featured_shrine_ids() が解決済みの id list を int 化するだけ。
+      alias fallback なし。NOT_IDENTITY
+  api/views/debug_behavior_funnel.py:30
+      admin debug view の query param。単一 alias、generic id fallback なし。
+      NOT_IDENTITY
+  services/quota_policy.py:34 / llm/config.py:18
+      設定値。Shrine と無関係。NOT_IDENTITY
+
+F-6（未変更）
+  services/places_sync.py:58 / services/google_places.py:826
+  get_or_create_shrine_by_place_id
+```
+
+```text
+PLACE_ID_HANDLING_CHANGED = NO
+```
+
+## 17. Validation
+
+```text
+domain/test_shrine_identity.py                    169 tests PASS
+concierge_chat_pool characterization + hardening   28 tests PASS
+shrine_identity_consumer_hardening                 26 tests PASS
+concierge_candidate_utils                          11 tests PASS
+export snapshot characterization + hardening       17 tests PASS
+domain weekly presentation                         全 PASS
+concierge_chat_observation                         24 tests PASS
+shared recommendation eligibility                  全 PASS
+recommendation_quality_measurement                 全 PASS
+recommendation_score_components                    全 PASS
+
+backend 全体   3731 passed, 10 skipped, 3 failed
+git diff --check   PASS
+ruff（変更 11 file）  新規指摘 0（B905 は本 PR 内で修正済み）
+```
+
+### 17.1 事前に存在していた失敗（F-5B 起因ではない）
+
+```text
+temples/tests/test_concierge_api.py::test_chat_backfills_short_location
+temples/tests/test_concierge_api.py::test_radius_km_bias_passthrough
+temples/tests/test_concierge_api.py::test_candidate_formatted_address_is_used
+```
+
+pristine な `origin/develop @ 9ae2aa4` を別 worktree へ checkout して実行し、
+**同じ 3 件が同じように失敗する**ことを確認した。この環境で Google Places /
+geocoding が利用できないことに起因するものであり、本 PR は原因でも修正でもない。
+
+## 18. Required statements
+
+```text
+1.  characterization test を runtime 変更の **前に** 追加し、未変更実装に対して
+    24 件すべて pass することを確認した。
+2.  共有 resolver は backend/temples/domain/shrine_identity.py（services/ ではない）。
+3.  identity 解決の実装は 1 つだけ（wrapper は委譲のみ）。
+4.  SAFE_F5B 16 site をすべて移行した。
+5.  #10 #11 #12 #13 #21 #22 は 1 行も変更していない。
+6.  historical_snapshot policy は実装・test のみ。consumer は移行していない。
+7.  place_id の取り扱いは未変更（F-6）。
+8.  frontend / mobile / OpenAPI / DB / schema / migration は未変更。
+9.  Ranking algorithm / Recommendation selection は未変更。
+10. 挙動が変わった箇所を「不変」と偽っていない（§14 に列挙）。
+11. 履歴 id-only snapshot が存在しない、とは推論していない。
+12. F-6 は開始していない。
+```
+
+## 19. STOP
+
+```text
+F5A_STATUS = AUDITED
+F5B_STATUS = IMPLEMENTED
+NEXT       = F-6（place_id shadow identity）
+             / #10 #11 の突合 key 設計
+             / 履歴 snapshot の id-only 実在確認（#12 #13 の前提）
+             / #21 #22 の削除可否
+```
+
+次の行動には Mother Ship 指示が必要。

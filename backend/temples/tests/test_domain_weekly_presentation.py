@@ -401,3 +401,81 @@ def test_selection_is_independent_of_recommendation_instance_identity():
         for index, entry in enumerate(base)
     ]
     assert _select(with_instance_ids) == _select(base)
+
+
+# ---------------------------------------------------------------------------
+# F-5B #14: Weekly Pool の Shrine identity を共有 domain resolver へ集約した。
+#
+# resolver が domain/ にあるのはまさにこの consumer のため（F-5A §5.2:
+# domain/ -> services/ の import は 0 件）。
+#
+# Pool 契約（上位6件境界 / 順序 / 重複排除 / 7位以降から補充しない）は不変。
+# docs/audit/backend-shrine-identity-fallback-consolidation.md §14
+# ---------------------------------------------------------------------------
+
+
+class TestBuildWeeklyPoolIdentityHardening:
+    def test_valid_shrine_id_is_kept(self):
+        assert weekly_presentation.build_weekly_pool([{"shrine_id": 42}]) == [42]
+
+    def test_string_shrine_id_is_normalized(self):
+        assert weekly_presentation.build_weekly_pool([{"shrine_id": "42"}]) == [42]
+
+    def test_id_only_positive_integer_remains_compatible(self):
+        assert weekly_presentation.build_weekly_pool([{"id": 42, "name": "A神社"}]) == [42]
+
+    def test_zero_is_dropped(self):
+        assert weekly_presentation.build_weekly_pool([{"shrine_id": 0}]) == []
+
+    def test_zero_does_not_fall_through_to_generic_id(self):
+        assert weekly_presentation.build_weekly_pool([{"shrine_id": 0, "id": 777}]) == []
+
+    def test_negative_is_dropped(self):
+        assert weekly_presentation.build_weekly_pool([{"shrine_id": -1}]) == []
+        assert weekly_presentation.build_weekly_pool([{"shrine_id": "-1"}]) == []
+
+    def test_float_is_dropped(self):
+        assert weekly_presentation.build_weekly_pool([{"shrine_id": 1.5}]) == []
+        assert weekly_presentation.build_weekly_pool([{"shrine_id": "1.5"}]) == []
+
+    def test_bool_is_dropped_and_never_becomes_shrine_one(self):
+        assert weekly_presentation.build_weekly_pool([{"shrine_id": True}]) == []
+        assert weekly_presentation.build_weekly_pool([{"shrine_id": False}]) == []
+
+    def test_conflict_is_dropped(self):
+        assert weekly_presentation.build_weekly_pool([{"shrine_id": 42, "id": 999}]) == []
+
+    def test_non_numeric_string_is_dropped(self):
+        assert weekly_presentation.build_weekly_pool([{"shrine_id": "abc"}]) == []
+
+    def test_order_is_preserved_after_dropping_invalid_entries(self):
+        pool = weekly_presentation.build_weekly_pool(
+            [{"shrine_id": 10}, {"shrine_id": 0}, {"shrine_id": 20}, {"shrine_id": True}]
+        )
+
+        assert pool == [10, 20]
+
+    def test_duplicates_keep_only_the_first_occurrence(self):
+        assert weekly_presentation.build_weekly_pool([{"shrine_id": 10}, {"id": "10"}, {"shrine_id": 20}]) == [10, 20]
+
+    def test_top_six_boundary_is_unchanged_and_never_backfilled(self):
+        """上位6件を先に切り出す契約は不変。7位以降から補充しない。"""
+        recommendations = [{"shrine_id": 0} for _ in range(6)] + [{"shrine_id": 99}]
+
+        assert weekly_presentation.build_weekly_pool(recommendations) == []
+
+    def test_top_six_boundary_with_a_mix(self):
+        recommendations = [
+            {"shrine_id": 1},
+            {"shrine_id": 0},
+            {"shrine_id": 2},
+            {"shrine_id": "bad"},
+            {"shrine_id": 3},
+            {"shrine_id": 1},
+            {"shrine_id": 99},
+        ]
+
+        assert weekly_presentation.build_weekly_pool(recommendations) == [1, 2, 3]
+
+    def test_non_mapping_entries_are_dropped(self):
+        assert weekly_presentation.build_weekly_pool([None, 42, "x", [], {"shrine_id": 7}]) == [7]

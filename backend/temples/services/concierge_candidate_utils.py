@@ -5,6 +5,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
+from temples.domain.shrine_identity import resolve_shrine_identity
+
 
 def _to_float(v: Any) -> Optional[float]:
     if v is None:
@@ -131,11 +133,29 @@ def _normalize_candidate_fields(c: Dict[str, Any]) -> Dict[str, Any]:
     return row
 
 
-def _candidate_key(c: Dict[str, Any]) -> tuple:
+def _candidate_key(c: Dict[str, Any]) -> Optional[tuple]:
+    """重複排除キーを返す。identity が壊れている場合は None（F-5B #6）。
+
+    place_id 優先の既存挙動は **未変更**（place_id は F-6 のスコープ）。
+
+    place_id が無い場合の Shrine identity は共有 resolver に委ねる:
+
+        resolved           -> ("shrine_id", 正規化済みの正の int)
+        absent             -> 既存の ("name_address", ...) fallback
+        invalid / conflict -> None
+
+    None は「このitemに重複排除キーを与えない」ことを意味する。
+    malformed な identity を name/address の同一性に読み替えて、別Shrineの
+    2行を同一と宣言してしまうのを防ぐ（fail closed）。
+    """
     if c.get("place_id"):
         return ("place_id", str(c["place_id"]))
-    if c.get("shrine_id") or c.get("id"):
-        return ("shrine_id", str(c.get("shrine_id") or c.get("id")))
+
+    identity = resolve_shrine_identity(c, policy="live_candidate")
+    if identity.status == "resolved":
+        return ("shrine_id", identity.shrine_id)
+    if identity.status != "absent":
+        return None
 
     name = str(c.get("name") or "").strip()
     address = str(c.get("address") or c.get("formatted_address") or "").strip()
@@ -150,6 +170,11 @@ def _dedupe_candidates(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         if not isinstance(c, dict):
             continue
         key = _candidate_key(c)
+        # key is None: identity が invalid / conflict。重複排除の対象にせず、
+        # item は落とさずそのまま残す（F-5B #6）。
+        if key is None:
+            out.append(c)
+            continue
         if key in seen:
             continue
         seen.add(key)

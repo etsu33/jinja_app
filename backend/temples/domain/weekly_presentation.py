@@ -27,6 +27,8 @@ import itertools
 import json
 from typing import Any, Mapping, Optional, Sequence
 
+from temples.domain.shrine_identity import resolve_shrine_id
+
 # Weekly Presentation の版。Snapshot の一意性・determinism seed・Theme選択の
 # すべてがこの値に紐づくため、文字列を複数箇所へ直書きせず必ずここを参照する。
 WEEKLY_PRESENTATION_VERSION = "weekly_presentation_v1"
@@ -62,7 +64,6 @@ _SEED_SEPARATOR = "|"
 # seedの先頭へ明示する。
 _SEED_NAMESPACE_THEME = "weekly_theme"
 _SEED_NAMESPACE_FEATURED = "weekly_featured"
-
 
 def _normalize_optional_int(value: Any) -> Optional[int]:
     """int相当の値だけを int へ正規化し、それ以外は None を返す。
@@ -237,18 +238,16 @@ def stable_index(seed: str, modulus: int) -> int:
 
 
 def _resolve_shrine_id(recommendation: Any) -> Optional[int]:
-    """Recommendation entry から Shrine ID を取り出す。
+    """Recommendation entry から Shrine ID を取り出す（F-5B #14）。
 
-    key解決順（`shrine_id` -> `id`）は既存Recommendation層の慣習
-    （`concierge_chat_pool` / `concierge_chat_ranking` と同一）をそのまま
-    踏襲する。Weekly側で独自のID解決規則を作らない。
+    解決規則は共有 domain resolver
+    （`temples.domain.shrine_identity`、live_candidate policy）へ集約した。
+    Weekly側で独自のID解決規則を持たない。resolver が `domain/` にあるのは
+    まさにこの consumer のためである（F-5A §5.2）。
+
+    `0` / 負数 / float / bool / conflict は解決されず、Pool から落ちる。
     """
-    if not isinstance(recommendation, Mapping):
-        return None
-    raw = recommendation.get("shrine_id")
-    if raw is None:
-        raw = recommendation.get("id")
-    return _normalize_optional_int(raw)
+    return resolve_shrine_id(recommendation, policy="live_candidate")
 
 
 def build_weekly_pool(recommendations: Optional[Sequence[Any]]) -> list[int]:

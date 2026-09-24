@@ -231,15 +231,22 @@ def assert_ranking_breakdown_top_row_schema(row):
 def test_observe_candidate_pool_logs_counts(caplog):
     caplog.set_level(logging.DEBUG, logger="temples.services.concierge_chat_observation")
 
+    # F-5B: この fixture は元々 `id` を rank（1, 2）として使い、`shrine_id`
+    # （101, 102）と食い違わせていた。F-7 の live candidate invariant
+    #   candidate["id"] == candidate["shrine_id"] == Shrine.id
+    # に反する形であり、共有 resolver では DIFFERENT_VALID_ALIASES = CONFLICT
+    # として解決不能になる。invariant を満たす形へ揃える。
+    # 食い違う場合の挙動は下の test_observe_candidate_pool_conflicting_identity
+    # で明示的に固定する。
     valid_candidates = [
         {
-            "id": 1,
+            "id": 101,
             "shrine_id": 101,
             "visit_style_tags": ["nature", "quiet"],
             "matched_need_tags": ["rest"],
         },
         {
-            "id": 2,
+            "id": 102,
             "shrine_id": 102,
             "visit_style_tags": ["urban"],
             "matched_need_tags": ["career"],
@@ -256,6 +263,31 @@ def test_observe_candidate_pool_logs_counts(caplog):
     assert "[pool_detail]" in caplog.text
     assert "101" in caplog.text
     assert "nature" in caplog.text
+
+
+def test_observe_candidate_pool_conflicting_identity_logs_none(caplog):
+    """F-5B #15: identity が食い違う候補は None として記録される。
+
+    旧実装は `shrine_id or id` で shrine_id を黙って採用していた。
+    Mother Ship 決定 DIFFERENT_VALID_ALIASES = CONFLICT により、
+    観測ログでも解決できない identity は None になる。
+    observation は malformed identity で例外を投げない。
+    """
+    caplog.set_level(logging.DEBUG, logger="temples.services.concierge_chat_observation")
+
+    observe_candidate_pool(
+        valid_candidates=[
+            {"id": 1, "shrine_id": 101, "visit_style_tags": ["nature"], "matched_need_tags": []},
+            {"shrine_id": "bad", "visit_style_tags": [], "matched_need_tags": []},
+            {"shrine_id": True, "visit_style_tags": [], "matched_need_tags": []},
+        ],
+        visit_style_tags={"nature"},
+        need_tags=["rest"],
+    )
+
+    assert "[pool_detail]" in caplog.text
+    assert "101" not in caplog.text
+    assert "(None," in caplog.text
 
 
 def test_observe_visit_style_before_trim_logs_summary(caplog):
