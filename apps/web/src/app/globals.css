@@ -200,9 +200,17 @@ body:has([data-app-frame="home"]) {
   /* 上方から差す光。地と同色相をひと段持ち上げた藍で、純黒にも青一色にもしない。 */
   --home-ground-lit: #16203a;
 
-  /* Moss Charcoalのニュアンス。「全面を青一色にしない」ための緑側の残り香。
-     新しい色を作らず、既存のelevated面をそのまま薄く敷く。 */
-  --home-ground-moss: var(--kt-color-surface-elevated);
+  /* 青い地に合わせたHome専用の面と文字。明朝の細い線も読み取れる明度差にする。 */
+  --home-surface: #192231;
+  --home-surface-elevated: #222d3e;
+  --home-border: #455063;
+  --home-border-strong: #718096;
+  --home-text-primary: #fffdf8;
+  --home-text-secondary: #e7eaf0;
+  --home-text-muted: #c5cbd6;
+
+  /* 下部の空気も青系でまとめ、入力面との色相を揃える。 */
+  --home-ground-moss: var(--home-surface-elevated);
 
   /* 参道の光。Warm Brass と Champagne Gold は既存Tokenをそのまま使う。 */
   --home-path: var(--kt-color-action-primary);
@@ -241,7 +249,7 @@ body:has([data-app-frame="home"]) header nav {
       var()の2番目は :has() が効かない場合のfallbackで、従来値と同じ。 */
 body:has([data-app-frame="home"]) header {
   background-color: var(--home-ground, var(--kt-color-background-base));
-  border-bottom: 1px solid var(--kt-color-border-default);
+  border-bottom: 1px solid var(--home-border);
 }
 
 /* 3) 未ログイン時のログインボタンはHomeでのみ静かな枠線にする。
@@ -251,9 +259,9 @@ body:has([data-app-frame="home"]) header {
       (src/lib/nav/login.ts)。仮にこの形が変わってもHomeでgoldに戻るだけで、
       レイアウトは壊れない。 */
 body:has([data-app-frame="home"]) header nav a[href^="/auth/login"] {
-  background-color: var(--kt-color-surface-default);
-  border: 1px solid var(--kt-color-border-default);
-  color: var(--kt-color-text-secondary);
+  background-color: var(--home-surface);
+  border: 1px solid var(--home-border);
+  color: var(--home-text-secondary);
 }
 
 @layer base {
