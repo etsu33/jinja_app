@@ -197,13 +197,13 @@ Secondary target は regression が見つかった場合だけ深掘りする。
 | /shrines/[id] | no | real | PASS (390x844) | 455px provisional PASS | Concierge→Shrine Detail continuity preserved; cards, history text, meaning sections remain readable | PASS | semantic-state follow-up only |
 | /shrines/[id]/goshuins | no | real | TODO | TODO if needed | TBD | TBD | TBD |
 | /mypage | yes | real | PASS (390x844) | not required | Logged-out gate, auth login, and authenticated profile/data state remain readable; saved shrine cards and recent consultation fit without overflow | PASS | none |
-| /favorites | yes | real | TODO | TODO if needed | TBD | TBD | TBD |
-| /goshuin/new | yes | real | TODO | TODO if needed | TBD | TBD | TBD |
+| /favorites | yes | real | PASS (390x844) | not required | Two saved shrines, addresses, detail links and remove buttons fit without overflow; Navy surface hierarchy and footer continuity hold | PASS | none |
+| /goshuin/new | yes | n/a | NOT VERIFIED | not required | Current repo keeps /goshuin/new, but /goshuins and /goshuins/public redirect to /; feature is treated as mostly closed for this audit | NOT VERIFIED | defer unless Goshuin flow is reopened |
 | /map | maybe | real | TODO | TODO if needed | TBD | TBD | TBD |
 | /populars | no | real | TODO | TODO if needed | TBD | TBD | TBD |
 | /ranking | no | real | TODO | TODO if needed | TBD | TBD | TBD |
-| /billing | yes | real | TODO | TODO if needed | TBD | TBD | TBD |
-| /billing/manage | yes | real | TODO | TODO if needed | TBD | TBD | TBD |
+| /billing | yes | real | PASS with CTA note (390x844) | not required | Current Free plan card and gold upgrade CTA are readable; upgrade page primary CTA remains neutral surface-emphasis and is visually weaker than the gold action CTA | PRE_EXISTING_SEMANTIC_STATE | CTA hierarchy decision for later polish |
+| /billing/manage | yes | real | NOT VERIFIED | TODO if needed | Not shown in supplied evidence | NOT VERIFIED | verify only if Billing management remains in MVP scope |
 
 Screenshot 自体は repository へ commit しない。
 PR 本文または GitHub attachment / QA note で evidence を参照する。
@@ -309,6 +309,69 @@ Not covered by this evidence:
 - Premium account state
 
 Per the viewport policy, no 375 / 430 / 1280 expansion is required for these states because no 390px layout or Worldview regression was observed.
+
+
+### 7.3 History / Favorites / Billing / additional Shrine evidence — 390px formal observation (2026-09-24)
+
+Evidence:
+- user-provided browser screenshots
+- Chrome responsive viewport: **390 x 844**
+- states:
+  - `/mypage/history`
+  - `/favorites`
+  - `/shrines/10`
+  - `/billing/upgrade`
+  - `/billing`
+  - `/billing/success?checkout_session_id=stub_checkout_1`
+  - external Google Maps route opened from shrine detail
+
+Formal findings:
+
+| Area / State | Finding | Classification | Follow-up |
+|---|---|---|---|
+| MyPage history list | Real consultation title, summary, date and reflection count fit inside a single card at 390px; footer seam remains absent | PASS | none |
+| Favorites list | Two saved shrines with real names/addresses fit without horizontal overflow; remove controls remain visible and subordinate | PASS | none |
+| Additional Shrine Detail data | Multiple deity chips and several historical event cards remain readable; long historical copy wraps without clipping | PASS | none |
+| Billing current plan | Free plan state is readable and the gold `プレミアムにする` action is visually clear | PASS | none |
+| Billing upgrade content | Premium benefits, beta price, legal text and page hierarchy fit cleanly at 390px | PASS | none |
+| Billing upgrade primary CTA | `Premiumを始める` uses the neutral `surface-emphasis` treatment, so it reads weaker than the gold action-primary CTA used on the current-plan page | PRE_EXISTING_SEMANTIC_STATE | Mother Ship CTA hierarchy decision / later Semantic State Polish |
+| Billing success waiting state | Notice, refresh action and retry action remain readable; no Worldview seam or light-surface regression observed | PASS | none |
+| Google Maps handoff | External Google Maps opens and renders route guidance; external provider UI is outside KAMI MUSUBI Worldview scope | PASS | internal `/map` remains separately unverified |
+
+Formal classification for this pass:
+
+```text
+WORLDVIEW_REGRESSION            = 0 observed
+PRE_EXISTING_SEMANTIC_STATE     = 1 observed pattern (Billing CTA hierarchy)
+CONTENT_DATA_STRESS             = 0 observed
+FUNCTIONAL_NON_VISUAL           = 0 observed in supplied flow
+PASS                            = History / Favorites / Shrine data / Billing shell
+```
+
+Not covered by this evidence:
+- `/mypage/history/[tid]`
+- `/mypage/settings`
+- `/billing/manage`
+- Premium-active account state
+- Billing error state
+- internal `/map` UI
+
+Per the viewport policy, no extra width expansion is required for the PASS states because no 390px layout regression was observed.
+
+### 7.4 Goshuin scope verification (repository state, 2026-09-24)
+
+Repository verification:
+- `/goshuins` exists only as a redirect to `/`.
+- `/goshuins/public` exists only as a redirect to `/`.
+- `/goshuin/new` still exists as a user-facing route.
+
+Mother Ship interpretation for this audit:
+- The list/public Goshuin experience is effectively closed in the current Web product.
+- `/goshuin/new` is still present technically, but no active end-to-end Goshuin flow was supplied for real-data QA.
+- Do **not** reopen or redesign Goshuin inside this audit.
+- Record the Goshuin primary target as **NOT VERIFIED / DEFERRED** unless the feature is explicitly returned to active MVP scope.
+
+This satisfies the audit Done Criteria requirement to either verify a primary target or explicitly mark it NOT VERIFIED with a reason.
 
 ## 8. No-change Areas
 
