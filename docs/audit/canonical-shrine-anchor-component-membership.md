@@ -447,3 +447,75 @@ GATE_SELECTED             = NONE
 Next action requires an A-5B Evidence Packet satisfying §4 for at least one shrine,
 or an egress allowance for the source leads recorded in
 `docs/audit/shrine-orientation-evidence-pilot.md` §4.
+
+
+---
+
+## 8. Follow-up Mother Ship Decision — F-7 Representative Point
+
+PHASE_2 Batch 01の実行時に、Historical F-7 calculated_mean が
+DIRECT_POINTを表現できないContract gapが検出された。
+
+後続Mother Ship decision:
+
+docs/audit/canonical-anchor-f7-representative-point-decision.md
+
+により、ACTIVE PHASE_2ではF-7 semanticsを次へ一般化する。
+
+~~~text
+HISTORICAL_A5B_F7
+= calculated_mean
+
+ACTIVE_PHASE_2_F7
+= representative_point
+~~~
+
+ACTIVE PHASE_2 F-7 shape:
+
+~~~text
+latitude
+longitude
+point_method
+input_count
+derivation_note
+~~~
+
+method-specific rule:
+
+~~~text
+DIRECT_POINT
+-> verified subject-matched F-5 coordinateをそのままF-7へコピー
+-> input_count = 1
+-> DIRECT_POINT_AS_MEAN = PROHIBITED
+
+UNWEIGHTED_COMPONENT_MEAN
+-> exactly all INCLUDED F-5 coordinatesのdeterministic mean
+-> input_count = count(INCLUDED) = count(F-5)
+~~~
+
+F-8はACTIVE PHASE_2では常に:
+
+~~~text
+to_coordinate = F-7 representative_point
+~~~
+
+を使用する。
+
+Historical §4のA-5B packet definitionはA-7b時点の記録として書き換えない。
+今後のPHASE_2実行では本Follow-up Decisionと
+docs/knowledge/canonical-anchor-adjudication-procedure.md
+を優先する。
+
+~~~text
+DIRECT_POINT_PACKET_FINAL_POINT_DECISION
+= F7_REPRESENTATIVE_POINT
+
+SCHEMA_CHANGE
+= NONE
+
+CANONICAL_DB_WRITE
+= NONE
+
+PRODUCTION_WRITE
+= NONE
+~~~

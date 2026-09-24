@@ -6,6 +6,7 @@
 - Effective from: 2026-09-24
 - Parent architecture: docs/core/split-anchor-architecture.md
 - Method matrix decision: docs/audit/canonical-anchor-subject-point-method-matrix-decision.md
+- F-7 representative point decision: docs/audit/canonical-anchor-f7-representative-point-decision.md
 - Component membership authority: docs/knowledge/shrine-position-contract.md A-7b
 - Evidence packet authority: docs/audit/canonical-shrine-anchor-component-membership.md F-1..F-8
 - Production write: NONE
@@ -59,7 +60,7 @@ BATCH_01の対象追加・入替はMother Ship判断を必要とする。
 - F-4 set_completeness
 - F-5 included_component_coordinates
 - F-6 coordinate_provenance
-- F-7 calculated_mean
+- F-7 representative_point
 - F-8 displacement
 
 新しい並行フォーマットを作らない。
@@ -258,31 +259,56 @@ semantic subject自体が一点として追跡可能な場合だけcoordinateを
 
 再現できない座標は採用しない。
 
-### STEP 9 — Calculate representative point
+### STEP 9 — Produce F-7 representative_point
 
-DIRECT_POINTの場合、subject-matched coordinateを代表点とする。
+F-7は、既に確定したpoint_methodから生成される最終Canonical candidate pointである。
 
-UNWEIGHTED_COMPONENT_MEANの場合は、repository実装の唯一のhelperである temples.domain.canonical_anchor.compute_unweighted_component_mean() と同じ規則を使用する。
+F-7 shape:
 
-入力は exactly all INCLUDED components。
+~~~text
+latitude
+longitude
+point_method
+input_count
+derivation_note
+~~~
+
+DIRECT_POINTの場合:
+
+- verified subject-matched F-5 coordinateを値を変えずそのままF-7へコピーする
+- point_method = DIRECT_POINT
+- input_count = 1
+- DIRECT_POINTを1-component meanとして扱わない
+
+UNWEIGHTED_COMPONENT_MEANの場合:
+
+- repository実装の唯一のhelperである temples.domain.canonical_anchor.compute_unweighted_component_mean() と同じ規則を使用する
+- 入力は exactly all INCLUDED components
+- point_method = UNWEIGHTED_COMPONENT_MEAN
+- input_count = count(INCLUDED) = count(F-5)
 
 禁止:
 
+- F-7を独立した手入力座標にする
+- DIRECT_POINTをmeanとして再解釈する
 - manual Excel-derived valueをauthorityとして扱う
 - partial components
 - weighting
 - distance correction
 - EXCLUDED / UNCLASSIFIED inclusion
 
-PHASE_2はDB writeをしないため、計算結果はEvidence Packet F-7へ記録するだけとする。
+PHASE_2はDB writeをしないため、F-7はEvidence Packet上の代表点としてのみ記録する。
 
 ### STEP 10 — Record displacement
 
 F-7が存在するときだけF-8を作成する。
 
 - from = current Visitor / Navigation Anchor
-- to = calculated / direct Canonical candidate
+- to = F-7 representative_point
 - method = geodesic
+
+F-8はDIRECT_POINT / UNWEIGHTED_COMPONENT_MEANを再計算しない。
+point_method差はF-7生成時点で解決済みとする。
 
 displacementは観測値であり採否閾値ではない。
 
@@ -362,16 +388,20 @@ PASS F: Human QA
 
 ## 8. Packet Validation Gate
 
-既存A-5B V-1〜V-9をすべて維持する。
+Historical A-5B validationのうちV-1〜V-5、V-7〜V-9は引き続き適用する。
 
-追加PHASE_2 checks:
+Historical V-6はF-7 calculated_mean専用だったため、ACTIVE PHASE_2では以下のmethod-aware validationへ置き換える。
 
 - P2-V10: subject_type / point_method がMother Ship matrixに一致する
 - P2-V11: DIRECT_POINTはsemantic subject自身のsubject-matched coordinateである
 - P2-V12: NON_BUILDING_RITUAL_CENTERのDIRECT_POINTはsemantic subject自体がsingle-point traceableである
 - P2-V13: point_method selectionはNavigation displacementやoutput convenienceで変更されていない
-- P2-V14: F-7のMULTI meanはrepository canonical mean helperと同じ入力集合・規則で再現できる
-- P2-V15: packet final statusとstop reasonが明示されている
+- P2-V14: F-7.point_methodがadjudicated point_methodと一致する
+- P2-V15: DIRECT_POINTではF-7 coordinateが唯一のsubject-matched F-5 coordinateと完全一致し、input_count = 1
+- P2-V16: UNWEIGHTED_COMPONENT_MEANではF-7がrepository canonical mean helperと同じ入力集合・規則で再現でき、input_count = count(INCLUDED) = count(F-5)
+- P2-V17: F-8.to_coordinateがF-7 representative_pointと一致する
+- P2-V18: F-7がF-5 + point_methodから再現可能であり、独立した手入力座標ではない
+- P2-V19: packet final statusとstop reasonが明示されている
 
 1つでも満たさないPacketをCONFIRMEDにしない。
 
@@ -388,7 +418,7 @@ PASS F: Human QA
 5. subject-matched coordinates
 6. coordinate provenance
 7. subject_type × point_method
-8. calculated point reproducibility
+8. representative point reproducibility
 9. no hidden Navigation fallback
 10. final status / stop reason
 
@@ -447,6 +477,10 @@ BATCH_01_TARGETS = 春日大社 / 宇佐神宮 / 日光東照宮
 SUBJECT_POINT_METHOD_MATRIX = DECIDED
 
 EVIDENCE_PACKET = F-1 .. F-8
+
+F7 = representative_point
+
+F8_TO_COORDINATE = F-7 representative_point
 
 CANONICAL_DB_WRITE = NONE
 
