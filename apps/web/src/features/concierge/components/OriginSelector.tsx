@@ -85,7 +85,7 @@ export default function OriginSelector({
 
   return (
     <fieldset className="min-w-0 space-y-3">
-      <legend className="text-sm font-medium text-stone-600">出発地点</legend>
+      <legend className="text-sm font-medium text-[var(--kt-color-text-secondary)]">出発地点</legend>
       <div role="radiogroup" aria-label="出発地点の指定方法" className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
         {modes.map(([value, label]) => {
           const selected = mode === value;
@@ -96,7 +96,7 @@ export default function OriginSelector({
               role="radio"
               aria-checked={selected}
               onClick={() => switchMode(value)}
-              className={`min-h-11 rounded-xl border px-3 py-2 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 ${selected ? "border-emerald-500 bg-emerald-50 font-semibold text-emerald-900" : "border-stone-300 bg-white text-stone-700"}`}
+              className={`min-h-11 rounded-xl border px-3 py-2 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 ${selected ? "border-emerald-500 bg-emerald-50 font-semibold text-emerald-900" : "border-[var(--kt-color-border-strong)] bg-[var(--kt-color-surface-default)] text-[var(--kt-color-text-secondary)]"}`}
             >
               <span aria-hidden="true" className="mr-1 inline-block w-4">{selected ? "✓" : ""}</span>{label}
             </button>
@@ -116,9 +116,9 @@ export default function OriginSelector({
             value={query}
             onChange={(event) => { setQuery(event.target.value); onChange(null); }}
             placeholder="駅名または住所を入力"
-            className="min-h-11 w-full rounded-xl border border-stone-300 px-3 py-2 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
+            className="min-h-11 w-full rounded-xl border border-[var(--kt-color-border-strong)] px-3 py-2 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
           />
-          <p id={statusId} role="status" aria-live="polite" className={status === "error" ? "text-sm text-rose-700" : "text-sm text-stone-600"}>
+          <p id={statusId} role="status" aria-live="polite" className={status === "error" ? "text-sm text-rose-700" : "text-sm text-[var(--kt-color-text-secondary)]"}>
             {statusMessage}
           </p>
           <div id={listboxId} role="listbox" aria-label="出発地点の検索候補">
@@ -133,7 +133,7 @@ export default function OriginSelector({
                   setItems([]);
                   setStatus("idle");
                 }}
-                className="block min-h-11 w-full border-b border-stone-200 px-3 py-2 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-600"
+                className="block min-h-11 w-full border-b border-[var(--kt-color-border-default)] px-3 py-2 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-600"
               >
                 {item.name}
               </button>
@@ -146,14 +146,14 @@ export default function OriginSelector({
         <div className="space-y-2">
           <select
             aria-label="都道府県"
-            className="min-h-11 w-full rounded-xl border border-stone-300 px-3 py-2 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
+            className="min-h-11 w-full rounded-xl border border-[var(--kt-color-border-strong)] px-3 py-2 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
             value={origin?.source === "prefecture" ? origin.displayName : ""}
             onChange={(event) => onChange(prefectureOrigin(event.target.value))}
           >
             <option value="">都道府県を選択</option>
             {PREFECTURE_ORIGINS.map((prefecture) => <option key={prefecture.name}>{prefecture.name}</option>)}
           </select>
-          {origin?.source === "prefecture" ? <p className="text-sm leading-6 text-stone-600">{origin.displayName}のおおよその位置を出発地点として使用します。方位は参考情報として表示されます。</p> : null}
+          {origin?.source === "prefecture" ? <p className="text-sm leading-6 text-[var(--kt-color-text-secondary)]">{origin.displayName}のおおよその位置を出発地点として使用します。方位は参考情報として表示されます。</p> : null}
         </div>
       ) : null}
 

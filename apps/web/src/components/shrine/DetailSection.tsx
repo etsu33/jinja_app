@@ -27,7 +27,7 @@ const TITLE_CLASS: Record<DetailSectionVariant, string> = {
 const RIGHT_CLASS: Record<DetailSectionVariant, string> = {
   primary: "text-xs text-[var(--kt-color-text-muted)]",
   secondary: "text-xs text-[var(--kt-color-text-muted)]",
-  tertiary: "text-[11px] text-slate-400",
+  tertiary: "text-[11px] text-[var(--kt-color-text-muted)]",
   plain: "text-xs text-[var(--kt-color-text-muted)]",
 };
 

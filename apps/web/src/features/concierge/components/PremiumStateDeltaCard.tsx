@@ -92,7 +92,7 @@ export default function PremiumStateDeltaCard({ stateDelta, isPremium }: Props) 
     <section className="mx-4 mt-4 rounded-3xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-4 shadow-sm">
       <div className="space-y-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">前回との違い</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--kt-color-text-muted)]">前回との違い</p>
 
           <p className="mt-2 text-sm leading-6 text-[var(--kt-color-text-secondary)]">
             {stateDelta.summary ??

@@ -86,13 +86,13 @@ export default function PublicGoshuinSection({
                 key={g.id}
                 className={[
                   "overflow-hidden rounded-[var(--kt-radius-panel)] border bg-[var(--kt-color-surface-default)]",
-                  isLead ? "col-span-2 border-[var(--kt-color-border-default)] shadow-[var(--kt-shadow-medium)]" : "border-slate-200/80",
+                  isLead ? "col-span-2 border-[var(--kt-color-border-default)] shadow-[var(--kt-shadow-medium)]" : "border-[var(--kt-color-border-default)]/80",
                 ].join(" ")}
               >
                 <div
                   className={[
                     isLead ? "aspect-[4/3]" : "aspect-[4/5]",
-                    "flex items-center justify-center bg-slate-100 text-xs text-slate-400",
+                    "flex items-center justify-center bg-[var(--kt-color-surface-elevated)] text-xs text-[var(--kt-color-text-muted)]",
                   ].join(" ")}
                 >
                   {g.image_url ? (
@@ -113,7 +113,7 @@ export default function PublicGoshuinSection({
                   <p
                     className={
                       isLead
-                        ? "truncate text-sm font-semibold text-slate-800"
+                        ? "truncate text-sm font-semibold text-[var(--kt-color-text-primary)]"
                         : "truncate text-xs text-[var(--kt-color-text-secondary)]"
                     }
                   >

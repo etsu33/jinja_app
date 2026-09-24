@@ -123,7 +123,7 @@ describe("ShrineDeepDivePrompt", () => {
   });
 
   // --- 5. Not Ready ---
-  it("5. Not Readyはerror alertにせず、静かなslate文言で理由を表示する", async () => {
+  it("5. Not Readyはerror alertにせず、静かなmuted文言で理由を表示する", async () => {
     const response: DeepDiveAnswer = {
       answer: "",
       readiness: "not_ready",
@@ -141,7 +141,7 @@ describe("ShrineDeepDivePrompt", () => {
     const message = await screen.findByText(
       "この神社については、根拠付きで詳しくお答えできる情報がまだ十分ではありません。",
     );
-    expect(message.className).toContain("slate-400");
+    expect(message.className).toContain("text-[var(--kt-color-text-muted)]");
     expect(message.className).not.toContain("rose");
     expect(message.className).not.toContain("border");
   });

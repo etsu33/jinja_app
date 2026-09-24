@@ -165,6 +165,17 @@
 
 /*
  * Dark UI Token Foundation — Visual Direction: Dark Forest (森影)
+ *                             → Worldview改訂: Deep Ink Navy + restrained shrine-gold
+ *
+ * ■ Worldview改訂（App-wide Web Worldview Rollout）
+ * Web の中立の構造色 (background / surface / text / border / notice /
+ * surface-emphasis) は、下の KAMI MUSUBI Worldview Token (--kt-world-*) を
+ * 参照するよう接続し直した。Web全体の地は Deep Ink Navy になる。
+ * 状態・意味を持つ色 (action / premium / success / warning / error / info /
+ * selection / saved / message-own / action-disabled / overlay / focus) は
+ * 責務を保つため、この改訂では値を変えていない。
+ * 以下の Dark Forest の記述は、状態色の由来と経緯として残している。
+ * Mobile (apps/mobile) は本改訂の対象外で、kamimusubiDark は変更していない。
  *
  * 正本: docs/audit/web-mobile-dark-ui-phase1-audit.md（Phase 1 Code Audit）
  *       docs/audit/web-mobile-dark-ui-phase2-decision-gate.md（Phase 2 Decision Gate）
@@ -219,16 +230,18 @@
  * 浮いてしまうため、本改訂で該当Tokenにもdark値を与える。
  */
 .dark {
-  /* ---- Background: near-black green ---- */
-  /* Primitive: kamimusubiDark.background / .surfaceSoft */
-  --kt-color-background-base: #0a0f0c;
-  --kt-color-background-subtle: #0e1410;
+  /* ---- Background: Deep Ink Navy (Worldview) ---- */
+  /* 中立の構造色は KAMI MUSUBI Worldview Token へ接続する（Worldview改訂）。
+     subtle は ground と surface の中間。新しい実値は作らず、2つのTokenの
+     等量混色で導出する。 */
+  --kt-color-background-base: var(--kt-world-ground);
+  --kt-color-background-subtle: color-mix(in oklab, var(--kt-world-ground) 50%, var(--kt-world-surface));
 
-  /* ---- Surface: deep moss charcoal ---- */
-  /* Primitive: kamimusubiDark.surface / .surfaceRaised
-     背景 / カード面 / 浮き面の分離を明度順で保証する（改訂点1）。 */
-  --kt-color-surface-default: #131a15;
-  --kt-color-surface-elevated: #1a231c;
+  /* ---- Surface: Navy surfaces (Worldview) ---- */
+  /* 背景 / カード面 / 浮き面の分離を明度順で保証する（改訂点1）。
+     ground < subtle < default < elevated の単調増加は Worldview 側でも保たれる。 */
+  --kt-color-surface-default: var(--kt-world-surface);
+  --kt-color-surface-elevated: var(--kt-world-surface-elevated);
 
   /* ---- Text: warm mist-ivory -> sage ---- */
   /* Webの明朝本文は細い線が暗い地に沈みやすいため、説明文と補助文字の明度を分ける。
@@ -236,16 +249,20 @@
      Mobile側のPrimitiveはこのWeb画面の調整対象外。
      text-inverse は action-primary(gold) 塗りの上に載る文字色。
      goldは明色のため白ではなく背景色を反転色として使う（Mobileと同値）。 */
-  --kt-color-text-primary: #f3eee3;
-  --kt-color-text-secondary: #d8d9ce;
-  --kt-color-text-muted: #b9bcaf;
-  --kt-color-text-inverse: #0a0f0c;
+  /* Worldview改訂: 文字階層は Worldview の warm ivory / soft white へ接続する。
+     text-inverse は「明色塗りの上に載る地の色」なので ground を指す。 */
+  --kt-color-text-primary: var(--kt-world-text-primary);
+  --kt-color-text-secondary: var(--kt-world-text-secondary);
+  --kt-color-text-muted: var(--kt-world-text-muted);
+  --kt-color-text-inverse: var(--kt-world-ground);
 
   /* ---- Border: muted olive-gray ---- */
   /* Primitive: kamimusubiDark.border / .borderStrong / .gold
      線は主張させず、面の境界は第一に明度差で示す。 */
-  --kt-color-border-default: #333d31;
-  --kt-color-border-strong: #465043;
+  /* Worldview改訂: 中立の境界線は Worldview へ接続する。
+     focus は「重要な操作に差す光」= gold の責務のまま据え置く。 */
+  --kt-color-border-default: var(--kt-world-border);
+  --kt-color-border-strong: var(--kt-world-border-strong);
   --kt-color-border-focus: #c9a96a;
 
   /* ---- Primary Action: restrained shrine-gold ---- */
@@ -283,9 +300,11 @@
   --kt-color-status-info: #a7ac9b;
 
   /* ---- Notice ---- */
-  --kt-color-notice-bg: #0e1410;
-  --kt-color-notice-border: #333d31;
-  --kt-color-notice-text: #c6c8b8;
+  /* 状態色ではなく中立の告知面（旧値は background-subtle / border-default と同値の
+     森色だった）。Worldview改訂で中立の Semantic Token を指す。 */
+  --kt-color-notice-bg: var(--kt-color-background-subtle);
+  --kt-color-notice-border: var(--kt-color-border-default);
+  --kt-color-notice-text: var(--kt-color-text-secondary);
 
   /* ---- Premium ---- */
   /* Primitive: kamimusubiDark.premiumAccent / .surfaceRaised / .borderGold
@@ -312,9 +331,11 @@
 
   /* ---- Surface Emphasis（強調CTA/リンクの濃色背景） ---- */
   /* 旧: slate-800/900。暗背景では「濃い面」で強調できないため、
-     周囲よりわずかに持ち上げた面として再定義する。 */
-  --kt-color-surface-emphasis: #232c24;
-  --kt-color-surface-emphasis-hover: #2a342b;
+     周囲よりわずかに持ち上げた面として再定義する。
+     Worldview改訂: 中立の面なので Worldview から導出する。elevated より一段、
+     hover はさらに一段持ち上げる（border 色を混ぜるだけで新しい実値は作らない）。 */
+  --kt-color-surface-emphasis: color-mix(in oklab, var(--kt-world-surface-elevated) 80%, var(--kt-world-border));
+  --kt-color-surface-emphasis-hover: color-mix(in oklab, var(--kt-world-surface-elevated) 64%, var(--kt-world-border));
 
   /* ---- Message Own（自分側メッセージ） ---- */
   /* 旧: gray-900 + 白文字。暗背景では沈むため、杉寄りに持ち上げる。 */
@@ -342,9 +363,9 @@
  * ■ 位置づけ
  * 旧来 Home だけが持っていた Art Direction Layer (--home-*, globals.css) の
  * 実値をここへ昇格させ、Web全体で再利用できる世界観Tokenとする。
- * Dark Forest の Semantic Token (--kt-color-*) は一切変更しない。
- * このブロックは新しい名前を宣言するだけなので、参照していない画面・
- * Component・Mobileへ値が波及する経路は存在しない。
+ * Web の中立の Semantic Token (--kt-color-background-* / surface-* / text-* /
+ * border-default|strong / notice-* / surface-emphasis*) はこのTokenを参照する
+ * （上の .dark ブロック「Worldview改訂」を参照）。Mobileへ波及する経路はない。
  *
  * ■ 参照ルール
  *   - 色の実値 (hex) はこのブロックにだけ書く。Page / Component へ複製しない。

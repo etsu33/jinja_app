@@ -60,10 +60,10 @@ export default function ChatPanel({
     ? "w-full min-w-0 min-h-[400px] flex flex-col"
     : "w-full min-w-0 flex-1 min-h-0 flex flex-col";
 
-  const frameClass = "relative mx-auto flex w-full max-w-md min-w-0 flex-1 min-h-0 flex-col bg-white overflow-hidden";
+  const frameClass = "relative mx-auto flex w-full max-w-md min-w-0 flex-1 min-h-0 flex-col bg-[var(--kt-color-surface-default)] overflow-hidden";
 
   const inputWrapClass =
-    "shrink-0 border-t border-neutral-200 bg-white px-3 py-3 pb-[calc(env(safe-area-inset-bottom)+12px)]";
+    "shrink-0 border-t border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] px-3 py-3 pb-[calc(env(safe-area-inset-bottom)+12px)]";
 
   const showEmptyHint = !hasCandidates && messages.length === 0 && !loading && !sending;
 
@@ -73,7 +73,7 @@ export default function ChatPanel({
         <div ref={listRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 py-2">
           <div className="space-y-1.5">
             {showEmptyHint && (
-              <div className="mt-4 rounded-xl bg-gray-50 px-3 py-2.5 text-xs text-gray-600">
+              <div className="mt-4 rounded-xl bg-[var(--kt-color-background-subtle)] px-3 py-2.5 text-xs text-[var(--kt-color-text-secondary)]">
                 条件や希望があれば追加してください（例：静か／自然／駅近／人混み少なめ など）
               </div>
             )}
@@ -90,17 +90,17 @@ export default function ChatPanel({
                       className={`whitespace-pre-wrap break-words rounded-2xl px-2.5 py-1.5 text-sm leading-relaxed ${
                         m.role === "user"
                           ? "rounded-br-sm bg-emerald-600 text-white"
-                          : "rounded-bl-sm bg-gray-100 text-gray-900"
+                          : "rounded-bl-sm bg-[var(--kt-color-surface-elevated)] text-[var(--kt-color-text-primary)]"
                       }`}
                     >
                       {displayContent}
                     </div>
 
                     {m.role === "assistant" && m.content.length > 60 && (
-                      <p className="mt-0.5 text-[10px] text-gray-400 text-left">詳細はカードをご確認ください</p>
+                      <p className="mt-0.5 text-[10px] text-[var(--kt-color-text-muted)] text-left">詳細はカードをご確認ください</p>
                     )}
 
-                    <p className={`mt-0.5 text-[10px] text-gray-400 ${m.role === "user" ? "text-right" : "text-left"}`}>
+                    <p className={`mt-0.5 text-[10px] text-[var(--kt-color-text-muted)] ${m.role === "user" ? "text-right" : "text-left"}`}>
                       {timeLabel}
                     </p>
                   </div>
@@ -110,7 +110,7 @@ export default function ChatPanel({
 
             {(loading || sending) && (
               <div className="mt-1.5 flex justify-start">
-                <div className="rounded-2xl rounded-bl-sm bg-gray-100 px-2.5 py-1.5 text-xs text-gray-600">考え中…</div>
+                <div className="rounded-2xl rounded-bl-sm bg-[var(--kt-color-surface-elevated)] px-2.5 py-1.5 text-xs text-[var(--kt-color-text-secondary)]">考え中…</div>
               </div>
             )}
           </div>
@@ -119,7 +119,7 @@ export default function ChatPanel({
         </div>
 
         <div className={inputWrapClass}>
-          <div className="rounded-xl border border-neutral-300 transition focus-within:border-neutral-500 focus-within:ring-1 focus-within:ring-neutral-300">
+          <div className="rounded-xl border border-[var(--kt-color-border-strong)] transition focus-within:border-[var(--kt-color-border-focus)] focus-within:ring-1 focus-within:ring-[var(--kt-color-border-focus)]">
             <ChatInput
               disabled={sending || loading || !canSend}
               onSend={handleSend}
@@ -129,7 +129,7 @@ export default function ChatPanel({
           </div>
 
           {!canSend && (
-            <p className="mt-2 text-xs text-slate-600">
+            <p className="mt-2 text-xs text-[var(--kt-color-text-secondary)]">
               無料枠を使い切りました。続けて利用するにはプレミアムをご確認ください。
             </p>
           )}

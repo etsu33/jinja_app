@@ -20,7 +20,7 @@ function getItemClassName(item: DetailMeaningItem, variant: ShrineDetailSectionV
   }
 
   if (item.key === "today_flow") {
-    return "rounded-[var(--kt-radius-panel)] border border-slate-100 bg-[var(--kt-color-surface-default)] p-3";
+    return "rounded-[var(--kt-radius-panel)] border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-3";
   }
 
   if (item.key === "after_visit_reflection") {
@@ -28,7 +28,7 @@ function getItemClassName(item: DetailMeaningItem, variant: ShrineDetailSectionV
   }
 
   if (item.key === "history_context" || item.key === "deity_symbol" || item.key === "benefit_action") {
-    return "rounded-[var(--kt-radius-panel)] border border-slate-100 bg-slate-50/70 p-3";
+    return "rounded-[var(--kt-radius-panel)] border border-[var(--kt-color-border-default)] bg-[var(--kt-color-background-subtle)]/70 p-3";
   }
 
   return "rounded-[var(--kt-radius-panel)] bg-[var(--kt-color-background-subtle)] p-3";
@@ -68,7 +68,13 @@ function getBodyClassName(item: DetailMeaningItem, variant: ShrineDetailSectionV
     return "mt-2 text-[15px] leading-7 text-amber-950";
   }
 
-  return "mt-1 text-sm leading-7 text-slate-600";
+  // after_visit_reflection は明色の emerald 面 (getItemClassName) に載るため、
+  // 従来の暗い文字色のまま据え置く（状態色の面は Worldview rollout の対象外）。
+  if (item.key === "after_visit_reflection") {
+    return "mt-1 text-sm leading-7 text-slate-600";
+  }
+
+  return "mt-1 text-sm leading-7 text-[var(--kt-color-text-secondary)]";
 }
 
 function MeaningItems({ items, variant }: { items: DetailMeaningItem[]; variant: ShrineDetailSectionVariant }) {

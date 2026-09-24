@@ -3,6 +3,7 @@
 
 import { useEffect } from "react";
 import { clientLog } from "@/lib/client/logging";
+import { WorldviewFrame } from "@/components/worldview/WorldviewFrame";
 
 export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
@@ -14,16 +15,23 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
     });
   }, [error]);
 
+  // Root の error boundary は Route Segment の layout より外側で描画されるため、
+  // 世界観フレームをここで持つ（1画面1 backdrop）。
   return (
-    <main className="mx-auto max-w-md p-6 space-y-3">
-      <h1 className="text-lg font-bold">エラーが発生しました</h1>
-      <pre className="text-xs whitespace-pre-wrap rounded-xl border bg-white p-3">
-        {error.message}
-        {error.digest ? `\n\ndigest: ${error.digest}` : ""}
-      </pre>
-      <button className="rounded-md bg-slate-900 px-3 py-2 text-xs text-white" onClick={() => reset()}>
-        再試行
-      </button>
-    </main>
+    <WorldviewFrame variant="standard">
+      <main className="mx-auto max-w-md p-6 space-y-3">
+        <h1 className="text-lg font-bold text-[var(--kt-color-text-primary)]">エラーが発生しました</h1>
+        <pre className="text-xs whitespace-pre-wrap rounded-xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-3 text-[var(--kt-color-text-secondary)]">
+          {error.message}
+          {error.digest ? `\n\ndigest: ${error.digest}` : ""}
+        </pre>
+        <button
+          className="rounded-md bg-[var(--kt-color-surface-emphasis)] px-3 py-2 text-xs text-[var(--kt-color-text-primary)] hover:bg-[var(--kt-color-surface-emphasis-hover)]"
+          onClick={() => reset()}
+        >
+          再試行
+        </button>
+      </main>
+    </WorldviewFrame>
   );
 }
