@@ -242,6 +242,24 @@ Detail は神社理解を担当し、過度なパーソナライズを行わな�
 
 公開検索、ランキング、コンシェルジュ推薦で参照される神社マスター。
 
+神社位置情報は、既存の参拝ナビ座標と将来の神社中心座標を同一責務として扱わない。
+
+```text
+Shrine.latitude / Shrine.longitude
+= 参拝ナビ座標
+= route / arrival responsibility
+
+ShrineCanonicalAnchor（将来Schema target）
+= 神社中心座標
+= geographic identity / proximity / compass direction responsibility
+```
+
+Split Anchorの物理保存構造、未調査状態、Component / Evidence責務、
+将来consumer routingおよびhidden fallback禁止は
+`docs/core/split-anchor-architecture.md`を正本とする。
+
+同文書の正本化だけではschema変更・backfill・runtime cutoverを行わない。
+
 ### ShrineSubmission
 
 ユーザー投稿の受付・審査用データ。
@@ -320,6 +338,7 @@ request.user
 
 - Core文書の入口：`docs/core/README.md`
 - ローカル開発環境：`docs/core/desktop-development-contract.md`
+- Split Anchor Architecture：`docs/core/split-anchor-architecture.md`
 - Meaning Layer：`docs/core/meaning-layer.md`
 - Meaning接続：`docs/core/meaning-layer-connection.md`
 - Narrative原則：`docs/core/narrative-guideline.md`
