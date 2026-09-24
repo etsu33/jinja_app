@@ -1839,3 +1839,307 @@ NEXT = Production への適用は Mother Ship の運用手順で行う
 ```
 
 本 session は Production へ適用しない。
+
+## 22. F-6D Production Apply Gate
+
+§21 の時点では `temples.0114` は repository にあるだけだった。本節はその
+**Production 適用 Gate** を固定する。本 session では Gate を実行しない。
+
+### 22.1 Gate 実行前の確定状態
+
+```text
+C1_BACKFILL_EXECUTION      = YES
+F6D_PRODUCTION_PRE         = PASS
+PR_2970                    = MERGED
+
+F6D_PRODUCTION_RELEASE_SHA = 6b6387a4731e72ceff0596e81feb26f6fc56a297
+F6D_RENDER_DEPLOY_STATUS   = LIVE
+F6D_RUNTIME_HEALTH         = PASS
+F6D_STARTUP_MIGRATION_EXECUTED = NO
+```
+
+Render runtime の観測（Mother Ship 提供）:
+
+```text
+healthz      = HTTP 200
+start.sh log = "Skipping migrations. Set RUN_MIGRATIONS_ON_START=1 to run them on startup."
+
+RUN_MIGRATIONS_ON_START_EXECUTION_OBSERVED = NO
+```
+
+`F6D_PRODUCTION_RELEASE_SHA` は本 session で `origin/develop` を fetch して
+照合した。`6b6387a4731e72ceff0596e81feb26f6fc56a297` は develop の HEAD であり、
+`0114_f6d_explicit_place_ref_backfill` を含む PR #2970 の merge commit である。
+
+**Render log から DB ledger を推定してはならない。** 上の
+`F6D_STARTUP_MIGRATION_EXECUTED = NO` が言えるのは「起動時に migrate が
+走らなかった」ことだけで、「0114 が未適用である」ことは **DB を読むまで
+確定しない**。ledger の真偽は §22.3 の POST SQL（および適用前の
+fresh PRE）でのみ判定する。
+
+### 22.2 適用方式
+
+```text
+F6D_APPLY_METHOD = LOCAL_SCOPED_DJANGO_MIGRATION
+
+TARGET = temples.0114_f6d_explicit_place_ref_backfill
+
+GLOBAL_MIGRATE          = PROHIBITED_FOR_THIS_GATE
+RUN_MIGRATIONS_ON_START = NOT_USED
+```
+
+理由は Render の起動 script が **global migrate** だからである。
+
+```text
+backend/start.sh:126-130
+  if [ "${RUN_MIGRATIONS_ON_START:-0}" = "1" ]; then
+    echo "Running migrations because RUN_MIGRATIONS_ON_START=1..."
+    python manage.py migrate --noinput          <- app 指定も migration 指定もない
+  else
+    echo "Skipping migrations. Set RUN_MIGRATIONS_ON_START=1 to run them on startup."
+  fi
+```
+
+`python manage.py migrate --noinput` は **全 app の未適用 migration を
+まとめて適用する**。この Gate が適用してよいのは `temples.0114` ただ 1 本
+なので、`RUN_MIGRATIONS_ON_START=1` は適用手段として使えない。
+環境変数も変更しない。
+
+scoped 実行の対象はこの 1 本に限定される:
+
+```text
+python manage.py migrate temples 0114_f6d_explicit_place_ref_backfill
+```
+
+local scoped route を実際に走らせてよいのは、次の 4 条件がすべて成立した
+後だけである:
+
+```text
+1. fresh Production PRE PASS
+2. Django の Production migration graph 上で 0114 が pending であること
+3. fresh backup 成功
+4. Mother Ship の実行承認
+```
+
+**Codex から Production migration を実行しない。**
+
+### 22.3 成果物 — SELECT-only POST check SQL
+
+```text
+scripts/migration_safety/sql/f6d_place_ref_backfill_postcheck.sql
+```
+
+SELECT / WITH のみ。`guard.py check-readonly-sql` = SAFE。
+`temples_shrine.location` は一切 projection しない（Production では legacy
+`text` 列で、model は PostGIS PointField を宣言しているため。0091 / 0094 /
+0098 / 0099 / 0100 / 0114 と同じ guard）。
+
+sanctioned bridge 経由でのみ実行する:
+
+```text
+scripts/migration_safety/readonly_query.sh \
+  ~/.config/kami-musubi/production-db.env DATABASE_URL \
+  scripts/migration_safety/sql/f6d_place_ref_backfill_postcheck.sql
+```
+
+検査する内容:
+
+| section | 検査 | 期待 |
+| --- | --- | --- |
+| 0 | migration ledger | `0114_f6d_explicit_place_ref_backfill` が **ちょうど 1 行**、temples の latest がそれ、0114 超の番号なし、0114 の unknown sibling なし、数値 prefix を持たない名前なし |
+| 1 | primary Shrine 21 / 22 / 49 | 監査済み identity（名称・住所、49 は座標）が不変、かつ各行が監査済み place_ref_id をちょうど 1 つ保持 |
+| 2 | target PlaceRef 3 件 | 3 件とも存在。`name` / `address` / 座標は **observation only**（identity authority ではない）。snapshot は presence / text length / md5 のみ返す |
+| 3 | claim check | target place_id を掴んでいる Shrine が監査済み 3 pair だけであること |
+| 4 | shadow | Shrine 101 / 103 / 104 が不在 |
+| 5 | audited interaction event | canonical predicate で **global** に検索して各 1 件、所有者が 22 / 21 |
+| 6 | machine-readable summary | 下記 |
+
+claim contract:
+
+```text
+TARGET_PLACE_REF_COUNT       = 3
+TARGET_PLACE_REF_CLAIM_COUNT = 3
+EXPECTED_MAPPING_MATCH_COUNT = 3
+UNEXPECTED_CLAIM_COUNT       = 0
+
+SHADOW_COUNT                    = 0
+AUDITED_EVENT_EXACT_COUNT       = 2
+AUDITED_EVENT_WRONG_OWNER_COUNT = 0
+```
+
+machine-readable summary（`6.1 F6D_POST_GATE_SUMMARY`）が返す最小集合:
+
+```text
+MIGRATION_0114_APPLIED
+PRODUCTION_TEMPLES_LATEST_IS_0114
+UNKNOWN_MIGRATION_BRANCH_DETECTED
+
+PRIMARY_COUNT
+PRIMARY_IDENTITY_MATCH_COUNT
+EXPECTED_MAPPING_MATCH_COUNT
+
+TARGET_PLACE_REF_COUNT
+TARGET_PLACE_REF_CLAIM_COUNT
+UNEXPECTED_CLAIM_COUNT
+
+SHADOW_COUNT
+
+AUDITED_EVENT_EXACT_COUNT
+AUDITED_EVENT_WRONG_OWNER_COUNT
+
+F6D_POST_VERIFIED
+```
+
+`F6D_POST_VERIFIED = true` は上記すべての条件が満たされたときだけ。
+**fail closed**（個別 metric も必ず併記するので、失敗が boolean 1 個の
+裏に隠れることはない）。
+
+### 22.4 drift 検出が lexical 比較に依存しない理由
+
+PRE 側（§16.2 / PR #2965 の review finding）と同じ構造を 0114 基準で
+持たせている。
+
+```text
+EXPECTED_LEAF_NUMBER = 114
+EXPECTED_LEAF_NAME   = 0114_f6d_explicit_place_ref_backfill
+```
+
+`name > '0114_f6d_explicit_place_ref_backfill'` という lexical 比較だけでは
+次の 2 形を取りこぼす。
+
+```text
+(a) 4 桁 prefix は 114 より大きいが、suffix 次第で full name が lexically 下に来る行
+(b) 同じ番号 0114 の unknown sibling（'0114_something_else'）
+    — leaf より lexically 上に来るとは限らず、lexical check には
+      まったく映らない
+```
+
+そのため
+
+```text
+lexically_above_leaf_count
+migration_number_above_leaf_count
+unknown_same_number_sibling_count
+migration_name_unparseable_count
+```
+
+の 4 つを独立 metric として出し、いずれかが 0 でなければ
+`UNKNOWN_MIGRATION_BRANCH_DETECTED = true` とし、gate を閉じる。
+4 桁 prefix を持たない名前も「無視する」のではなく **gate する**。
+
+`temples_latest_name` は lexical order ではなく
+`(数値 prefix DESC NULLS LAST, name DESC)` で解決する。
+
+### 22.5 Validation
+
+local の disposable DB に対してのみ実行した。**Production へは接続していない。**
+
+schema は repository の Django migration（`temples.migrations_nogis` lineage、
+pytest 経由）で構築した実 schema を template clone したもの。
+
+```text
+guard.py check-readonly-sql (新 POST SQL)                 SAFE
+guard.py check-readonly-sql (sql/*.sql 11 件すべて)        SAFE
+scripts/migration_safety/tests/test_guard.py              49 passed
+local migrated schema 上で POST SQL を実行（構文検証）      EXECUTES CLEANLY
+git diff --check                                          PASS
+```
+
+synthetic state matrix（各 scenario は seed を作り直してから実行）:
+
+| # | scenario | 期待 | 実測 |
+| --- | --- | --- | --- |
+| s1 | pre-F6D 状態（leaf 0113、place_ref_id は 3 件とも NULL） | false | **false** |
+| s2 | synthetic post-F6D 状態 | true | **true** |
+| s3 | wrong mapping（21 と 22 の place_ref を入れ替え） | false | **false** |
+| s4 | shadow 再発（Shrine 101 が存在） | false | **false** |
+| s5 | event drift（event A の所有者が 49 に移動） | false | **false** |
+| s6 | unknown 0114 sibling（`0114_something_else`） | false | **false** |
+| s7 | 0114 超の migration（`0115_unknown_branch`） | false | **false** |
+| s8 | wrong owner claim（Shrine 50 が 49 の target を掴む） | false | **false** |
+| s9 | target PlaceRef 欠落（1 pair だけ巻き戻った状態） | false | **false** |
+| s10 | 4 桁 prefix を持たない ledger 行（`hotfix_manual_patch`） | false | **false** |
+| s11 | 0114 行の重複（ちょうど 1 行の検査） | false | **false** |
+| s12 | identity drift（Shrine 49 の座標が変わる） | false | **false** |
+
+各 scenario で **どの metric が倒れて false になったか** を個別に確認済み:
+
+```text
+s1  migration_0114_applied = f / production_temples_latest_is_0114 = f /
+    expected_mapping_match_count = 0 / primary_place_ref_null_count = 3 /
+    target_place_ref_claim_count = 0  （= pre-F6D の正しい形）
+s3  expected_mapping_match_count = 1 / unexpected_claim_count = 2
+s4  shadow_count = 1
+s5  audited_event_wrong_owner_count = 1
+s6  unknown_same_number_sibling_count = 1 / production_temples_latest_is_0114 = f
+s7  migration_number_above_leaf_count = 1 / production_temples_latest_is_0114 = f
+s8  unexpected_claim_count = 1 / expected_mapping_match_count = 2
+s9  target_place_ref_count = 2 / expected_mapping_match_count = 2
+s10 migration_name_unparseable_count = 1
+s11 migration_0114_applied = f（0114 行が 2 行）
+s12 primary_identity_match_count = 2
+```
+
+つまり **false は「たまたま落ちた」のではなく、意図した metric が
+倒れた結果**である。
+
+### 22.6 PRE / POST の相補性を実測した
+
+§18.2 で「F-6C preflight SQL は 0114 適用後に `f6d_pre_eligible = false` を
+返すが、それは pre-F6D gate として正しい」と記録した。今回それを
+**主張ではなく実測**で確かめた。
+
+```text
+PRE  SQL（未変更）× pre-F6D  state   -> f6d_pre_eligible  = true
+PRE  SQL（未変更）× post-F6D state   -> f6d_pre_eligible  = false
+POST SQL           × pre-F6D  state  -> f6d_post_verified = false
+POST SQL           × post-F6D state  -> f6d_post_verified = true
+```
+
+2 つの SQL は同じ 1 つの真実を反対側から見ている。両方 true になる状態は
+存在しない。
+
+### 22.7 歴史的 PRE SQL は変更していない
+
+```text
+scripts/migration_safety/sql/f6d_place_ref_backfill_preflight.sql = UNCHANGED
+backend/temples/migrations/0114_f6d_explicit_place_ref_backfill.py = UNCHANGED
+```
+
+PRE は pinned pre-F6D 証跡である。`EXPECTED_LEAF = 0113` のまま保持し、
+POST は別 file として `EXPECTED_LEAF = 0114` を pin する。
+
+### 22.8 Required statements
+
+```text
+1.  Production へ migration を適用していない。
+2.  Production データを変更していない。
+3.  Production へ接続していない。
+4.  PlaceRef を変更していない。
+5.  Shrine 行を変更していない。
+6.  Render の環境変数を変更していない。
+7.  RUN_MIGRATIONS_ON_START を使っていない。
+8.  migration 0114 を変更していない。
+9.  F-6C preflight SQL を変更していない。
+10. 新しい runtime 経路を追加していない（SQL と docs のみ）。
+11. Render log から ledger を推定していない。判定は DB 読取りに限る。
+12. validation は local の disposable DB でのみ行った。
+```
+
+## 23. STOP
+
+```text
+F6D_POSTCHECK_SQL_CREATED   = YES
+F6D_APPLY_GATE_DOCUMENTED   = YES
+
+F6D_APPLIED_TO_PRODUCTION   = NO
+F6D_POST_VERIFIED           = NOT_YET_EXECUTED
+PRODUCTION_DATA_CHANGED     = NO
+PRODUCTION_CONNECTED        = NO
+
+NEXT = Mother Ship が (1) fresh PRE PASS (2) 0114 pending の確認
+       (3) fresh backup (4) 実行承認 を揃えたうえで
+       local scoped migration を実行し、その後 POST SQL を実行する
+```
+
+本 session は Production へ適用しない。
