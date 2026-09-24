@@ -783,7 +783,7 @@ export default function ConciergeSectionsRenderer({
             const otherRegisteredItems = registeredItems.slice(1);
 
             return (
-              <DetailSection key={`recs-${i}`} title={(sec as any).title ?? ""}>
+              <DetailSection key={`recs-${i}`} title={(sec as any).title ?? ""} className="!border-0">
                 <div className="mb-2 flex items-center justify-end">
                   <ModeBadge mode={payload?.meta?.mode} />
                 </div>
