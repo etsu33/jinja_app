@@ -203,7 +203,7 @@ Secondary target は regression が見つかった場合だけ深掘りする。
 | /populars | no | real | COVERED via /ranking popular tab (390x844) | not required | Popular ranking data renders; same rank-highlight contrast issue applies to #1/#3 cards | PRE_EXISTING_SEMANTIC_STATE | shared RankingList fix |
 | /ranking | no | real | FAIL visual state (390x844) | responsive expansion not needed before fix | Rank #1/#3 use hard-coded light yellow/amber surfaces while text inherits near-white dark-theme foreground, causing severe contrast loss | PRE_EXISTING_SEMANTIC_STATE | dedicated Ranking semantic-surface fix PR |
 | /billing | yes | real | PASS with CTA note (390x844) | not required | Current Free plan card and gold upgrade CTA are readable; upgrade page primary CTA remains neutral surface-emphasis and is visually weaker than the gold action CTA | PRE_EXISTING_SEMANTIC_STATE | CTA hierarchy decision for later polish |
-| /billing/manage | yes | real | NOT VERIFIED | TODO if needed | Not shown in supplied evidence | NOT VERIFIED | verify only if Billing management remains in MVP scope |
+| /billing/manage | yes | local stub/free | PASS shell / Stripe portal NOT VERIFIED (390x807) | production check required separately | Free-plan management shell is readable; Stripe Customer Portal is intentionally not invoked for Free accounts and was not exercised in local stub mode | PASS + NOT VERIFIED external portal | verify production Stripe configuration and Premium customer flow separately |
 
 Screenshot 自体は repository へ commit しない。
 PR 本文または GitHub attachment / QA note で evidence を参照する。
@@ -451,6 +451,40 @@ Mother Ship follow-up split:
    - separate product feature task
    - current audit only records the missing implementation
    - do not implement it inside PR #2977
+
+
+### 7.6 History detail / Billing manage — 390px observation (2026-09-24)
+
+Evidence:
+- user-provided browser screenshots
+- Chrome responsive viewport: **390 x 807**
+- states:
+  - `/mypage/history/3`
+  - `/billing/manage` while the authenticated account is Free
+  - `/billing/success?checkout_session_id=stub_checkout_1`
+
+Formal findings:
+
+| Area / State | Finding | Classification | Follow-up |
+|---|---|---|---|
+| /mypage/history/[tid] | Recommendation cards, metadata and long consultation title remain within viewport; no Worldview seam or horizontal overflow observed | PASS | none |
+| /billing/manage — Free state | Current plan card, explanatory copy and navigation controls remain readable and continuous with the Navy shell | PASS | none |
+| Stripe Customer Portal | Not exercised. The Free state intentionally does not call the portal endpoint. The supplied success URL contains `stub_checkout_1`, confirming this local flow is using the billing stub rather than a real Stripe checkout session | NOT VERIFIED | production Stripe configuration + Premium customer flow must be verified separately |
+| /billing/success — stub pending state | Pending-status notice and actions remain readable; this proves the local stub/success shell only, not Stripe production behavior | PASS shell / NOT VERIFIED Stripe behavior | production verification |
+
+Implementation contract verified from current repository:
+- `/billing/manage` only renders the **プランを管理** button when `plan === "premium" && is_active === true`.
+- In that Premium-active state, clicking the button calls `POST /api/billings/portal`.
+- Backend `create_portal_session()` requires:
+  - `BILLING_PROVIDER=stripe`
+  - `STRIPE_SECRET_KEY`
+  - a linked `UserProfile.stripe_customer_id`
+- When those conditions are satisfied, the backend creates a Stripe Billing Portal session and returns `portal_url`; the browser then redirects to Stripe.
+- When the provider is not Stripe, the portal endpoint is intentionally unavailable.
+- Checkout behaves differently in stub mode: a fake `stub_checkout_* ` session redirects back to the local success URL instead of opening Stripe Checkout.
+
+Therefore the local Free/stub screenshot **does not imply that production Stripe is missing or broken**.
+It only proves that the local environment is not exercising a Stripe Premium customer portal flow.
 
 ## 8. No-change Areas
 
