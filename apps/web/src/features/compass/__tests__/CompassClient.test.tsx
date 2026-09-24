@@ -246,6 +246,99 @@ describe("CompassClient", () => {
     expect(screen.queryByRole("link", { name: "コンシェルジュで相談する" })).not.toBeInTheDocument();
   });
 
+  describe("経路CTAのGoogle Maps origin（route URLのみ。backend requestは不変）", () => {
+    const successBody = {
+      state: "recommendation_success",
+      purpose: "career",
+      direction_context: {
+        targetDate: "2026-09-15",
+        targetYear: 2026,
+        solarMonthIndex: 8,
+        referenceDirections: ["北西"],
+        calculationMethod: "annual_monthly_kyusei_v1",
+        note: "年盤と月盤による参考情報です。日盤は使用していません。",
+      },
+      recommendation_instance_id: "compass01",
+      recommendations: [{ shrine_id: 1, name: "北西神社", address: "東京都千代田区" }],
+    };
+
+    function stubSuccessFetch() {
+      const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => successBody });
+      vi.stubGlobal("fetch", fetchMock);
+      return fetchMock;
+    }
+
+    function fillPurposeAndBirthdate() {
+      fireEvent.click(screen.getByRole("radio", { name: "転機・仕事" }));
+      fireEvent.change(screen.getByLabelText("生年月日の年"), { target: { value: "1990" } });
+      fireEvent.change(screen.getByLabelText("生年月日の月"), { target: { value: "01" } });
+      fireEvent.change(screen.getByLabelText("生年月日の日"), { target: { value: "01" } });
+    }
+
+    // 「現在地を使用」は Sheet を自動で閉じない（既存挙動）。ユーザー同様 Escape で閉じる。
+    async function useDeviceOriginAndCloseSheet() {
+      await openDeviceOrigin();
+      await waitFor(() => {
+        expect(screen.getAllByText("現在の出発地点は現在地、確定した位置です。").length).toBeGreaterThan(0);
+      });
+      fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
+      await waitFor(() => {
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      });
+    }
+
+    async function submit() {
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "今月の方向を確認する" }));
+      });
+      return screen.findByRole("link", { name: "経路を見る" });
+    }
+
+    const routeUrl = () => new URL(screen.getByRole("link", { name: "経路を見る" }).getAttribute("href") ?? "");
+
+    it("precise（現在地）originは経路URLのoriginに入る", async () => {
+      stubGeolocation(geoSuccess(35.5, 139.5));
+      const fetchMock = stubSuccessFetch();
+      render(<CompassClient />);
+      fillPurposeAndBirthdate();
+      await useDeviceOriginAndCloseSheet();
+      await submit();
+
+      expect(JSON.parse(fetchMock.mock.calls[0][1].body).origin).toEqual({ lat: 35.5, lng: 139.5 });
+      expect(routeUrl().searchParams.get("origin")).toBe("35.5,139.5");
+      expect(routeUrl().searchParams.get("destination")).toBe("東京都千代田区");
+    });
+
+    it("approximate（都道府県代表座標）originは経路URLに入れず、destinationのみにする", async () => {
+      const fetchMock = stubSuccessFetch();
+      render(<CompassClient />);
+      fillMinimumValidInput();
+      await submit();
+
+      // backend request payload は従来どおり代表座標を送る（候補選定は不変）。
+      expect(JSON.parse(fetchMock.mock.calls[0][1].body).origin).toEqual({ lat: 35.6762, lng: 139.6503 });
+      expect(routeUrl().searchParams.get("origin")).toBeNull();
+      expect(routeUrl().searchParams.get("destination")).toBe("東京都千代田区");
+    });
+
+    it("送信後にUIの出発地点を変えても、表示中の結果の経路originは変わらない", async () => {
+      stubGeolocation(geoSuccess(35.5, 139.5));
+      stubSuccessFetch();
+      render(<CompassClient />);
+      fillPurposeAndBirthdate();
+      await useDeviceOriginAndCloseSheet();
+      await submit();
+      expect(routeUrl().searchParams.get("origin")).toBe("35.5,139.5");
+
+      // 再送信せずに都道府県（approximate）へ切り替えても、結果側は送信時のoriginのまま。
+      fireEvent.click(screen.getByRole("button", { name: "変更する" }));
+      fireEvent.click(screen.getByRole("radio", { name: "都道府県から指定" }));
+      fireEvent.change(screen.getByLabelText("都道府県"), { target: { value: "大阪府" } });
+      expect(routeUrl().searchParams.get("origin")).toBe("35.5,139.5");
+      expect(routeUrl().searchParams.get("destination")).toBe("東京都千代田区");
+    });
+  });
+
   it("calculationMethodがannual_monthly_kyusei_v1のとき、共通方位の説明文を表示する（fallback文言は出さない）", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,

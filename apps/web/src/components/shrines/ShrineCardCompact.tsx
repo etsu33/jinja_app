@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import type { ReactNode } from "react";
 
 export function formatDistance(m?: number | null) {
   if (typeof m !== "number" || !Number.isFinite(m)) return null;
@@ -46,7 +47,26 @@ export type ShrineCardCompactProps = {
   // other card (Concierge) renders byte-for-byte unchanged.
   distanceLabel?: string | null;
   onDetailClick?: () => void;
+  // Opt-in only (Compass Candidate Card v2). "compact" (default) renders the
+  // existing card byte-for-byte unchanged for every current caller
+  // (Concierge included). "candidate" reuses the same card frame and detail
+  // link, but lays out: name -> address + distanceLabel -> `children`
+  // (caller-resolved sections) -> detail / `secondaryAction` CTAs. In
+  // "candidate", `reason` / `explanationOnlyFactText` / `trustMetadata` /
+  // `imageUrl` are not rendered -- the caller supplies its own sections.
+  layout?: "compact" | "candidate";
+  // "candidate" only. Detail CTA label.
+  detailLabel?: string;
+  // "candidate" only. Rendered between the header and the CTAs.
+  children?: ReactNode;
+  // "candidate" only. Rendered next to the detail CTA (e.g. route link).
+  secondaryAction?: ReactNode;
 };
+
+// Shared by the "candidate" detail CTA and any `secondaryAction` the caller
+// passes, so both CTAs keep the same 44px tap target and visual weight.
+export const SHRINE_CARD_CANDIDATE_CTA_CLASS =
+  "inline-flex min-h-11 flex-1 items-center justify-center rounded-full border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] px-3 text-center text-sm font-medium text-[var(--kt-color-text-primary)] transition hover:bg-[var(--kt-color-surface-elevated)]";
 
 export default function ShrineCardCompact({
   name,
@@ -60,7 +80,39 @@ export default function ShrineCardCompact({
   distanceM = null,
   distanceLabel = null,
   onDetailClick,
+  layout = "compact",
+  detailLabel = "詳細を見る",
+  children = null,
+  secondaryAction = null,
 }: ShrineCardCompactProps) {
+  if (layout === "candidate") {
+    return (
+      <article className="rounded-[var(--kt-radius-card)] border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-4">
+        <h3 className="break-words text-base font-semibold text-[var(--kt-color-text-primary)]">{name}</h3>
+        {address || distanceLabel ? (
+          <p className="mt-1 break-words text-xs leading-5 text-[var(--kt-color-text-muted)]" data-testid="shrine-card-candidate-location">
+            {address ? <span>{address}</span> : null}
+            {address && distanceLabel ? <span aria-hidden="true"> ・ </span> : null}
+            {distanceLabel ? <span className="whitespace-nowrap">{distanceLabel}</span> : null}
+          </p>
+        ) : null}
+
+        {children ? <div className="mt-3">{children}</div> : null}
+
+        {href || secondaryAction ? (
+          <div className="mt-4 flex gap-2">
+            {href ? (
+              <Link href={href} onClick={onDetailClick} className={SHRINE_CARD_CANDIDATE_CTA_CLASS}>
+                {detailLabel}
+              </Link>
+            ) : null}
+            {secondaryAction}
+          </div>
+        ) : null}
+      </article>
+    );
+  }
+
   const distText = formatDistance(distanceM);
   const trustLabels = [
     trustMetadata?.rankClass,

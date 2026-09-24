@@ -22,6 +22,7 @@ import CompassPurposeSelector from "./components/CompassPurposeSelector";
 import CompassRecommendationsSection from "./components/CompassRecommendationsSection";
 import WeeklyFeaturedShrinesSection from "./components/WeeklyFeaturedShrinesSection";
 import WeeklyThemeSection from "./components/WeeklyThemeSection";
+import { resolveCompassRouteOrigin } from "./resolveCompassCandidatePresentation";
 import type {
   CompassDirectionRuntime,
   CompassPurpose,
@@ -134,6 +135,9 @@ export default function CompassClient({
   const [attempted, setAttempted] = useState(false);
   const [uiState, setUiState] = useState<CompassUiState>("initial");
   const [result, setResult] = useState<CompassRecommendationsResponse | null>(null);
+  // `result` を得たときに実際に送信した origin。送信後に出発地点を変えても、
+  // 表示中の結果（方向・距離）と経路CTAの出発地がずれないよう別に保持する。
+  const [resultOrigin, setResultOrigin] = useState<UserOrigin | null>(null);
   // Weeklyは補助Presentation。Monthlyの `uiState` とは独立したstateで持ち、
   // Weekly側の失敗が既存Monthly Compassの表示を壊さないようにする。
   const [weeklyResult, setWeeklyResult] = useState<CompassWeeklyResponse | null>(null);
@@ -267,6 +271,7 @@ export default function CompassClient({
 
     setUiState("loading");
     setResult(null);
+    setResultOrigin(null);
     setWeeklyResult(null);
     weeklyRequestIdRef.current += 1;
 
@@ -289,6 +294,7 @@ export default function CompassClient({
 
       const body = (await res.json()) as CompassRecommendationsResponse;
       setResult(body);
+      setResultOrigin(origin);
       setUiState(body.state);
 
       // A structured Compass result means this birthday was actually submitted
@@ -562,7 +568,8 @@ export default function CompassClient({
         <CompassRecommendationsSection
           recommendations={result.recommendations}
           recommendationInstanceId={result.recommendation_instance_id}
-          purpose={purpose}
+          // 経路URLの出発地には precise な送信済み origin だけを渡す（approximate は省略）。
+          origin={resolveCompassRouteOrigin(resultOrigin)}
         />
       ) : null}
     </div>
