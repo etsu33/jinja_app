@@ -563,6 +563,28 @@ Still to verify before live release:
 
 No live credential change is part of PR #2977.
 
+
+### 7.10 Stripe Sandbox product catalog pricing check (2026-09-24)
+
+Evidence:
+- user-provided Stripe Dashboard screenshot
+- Stripe Dashboard is explicitly in Sandbox mode
+- product catalog contains a product named `Premium`
+- visible recurring price for that product: **¥500 JPY / month**
+- current Web billing UI and Terms state **¥780 / month** for the β Early User price
+
+Result:
+- Sandbox/Test mode itself is confirmed.
+- `STRIPE_PRICE_ID` alignment is **not yet confirmed** because the exact Price ID has not yet been compared with Render.
+- A **potential pricing configuration mismatch** exists:
+  - app / Terms: ¥780 / month
+  - visible Stripe Sandbox Premium product: ¥500 / month
+- Do not change either side in this audit. First identify the exact Price ID referenced by Render and determine which Stripe Price it points to.
+
+Classification:
+- `CONFIGURATION_MISMATCH_CANDIDATE`
+- release-significant, but not yet confirmed until Price ID equality is checked.
+
 ## 8. No-change Areas
 
 本監査 PR では変更しない。
