@@ -497,3 +497,61 @@ F-1 untouched : Concierge fallbacks, Consultation History, Places / Favorites,
 
 実装の詳細と回帰の証跡は
 `docs/audit/compass-shrine-id-presence-audit.md` §14。
+
+## 10. Current State Update — F-4 (shared Web resolver implemented)
+
+> 追記。§1–§9 の歴史的記録は書き換えない。
+
+```text
+SHARED_WEB_RESOLVER = apps/web/src/lib/identity/resolveShrineId.ts
+F4_STATUS           = PARTIAL_SAFE_MIGRATION
+```
+
+`F-3`（#2957）が設計した resolver を `F-3.1` で `ShrineIdentityResolution`
+（`resolved` / `absent` / `invalid` / `conflict`）へ拡張したうえで実装し、
+Web の**現行 live 経路**のみを移行した。
+
+### 10.1 §4.4 "Other frontend identity readers" の現在地
+
+§4.4 の一覧は `F-1` 時点のものであり、行番号ごとそのまま保持する。現在の状態:
+
+```text
+移行済み（generic `id` を identity に使わない）
+  features/compass/components/CompassRecommendationsSection.tsx   （F-1 → F-4 で共有化）
+  features/concierge/detailHref.ts                                （pickShrineId 削除）
+  features/concierge/hooks.ts                                     （analytics 2箇所）
+  lib/concierge/mapConciergeResponseToPremiumMeaningContext.ts    （local resolveShrineId 削除）
+
+未変更 — 履歴 snapshot 互換のため意図的に保留
+  ConsultationHistoryDetailView.tsx      L41
+  lib/concierge/buildPreviousConsultationSummary.ts  L16
+  lib/concierge/pickReasonFromThread.ts  L20
+  app/shrines/[id]/page.tsx              L370
+
+未変更 — F-6（place_id shadow identity）経路
+  lib/api/places.ts                      L47
+  components/PlaceCardClientActions.tsx  L29
+  app/shrines/resolve/page.tsx           L38
+
+未変更 — 違反ではない
+  components/shrine/detail/ShrineDetailArticle.tsx  L368
+```
+
+```text
+F4_HISTORICAL_SNAPSHOT_MIGRATION = DEFERRED
+REASON = PRE_CUTOVER_ID_ONLY_SNAPSHOT_COMPATIBILITY_NOT_PROVEN
+```
+
+### 10.2 §7 分類への影響
+
+```text
+分類は PARTIALLY_SHARED のまま変わらない。
+```
+
+`F-4` は Web の live 経路のみを共有実装へ寄せた。§4.1 の backend 16 sites
+（`F-5`）、place_id shadow identity（`F-6`）、履歴 snapshot consumer は未変更で
+あり、Compass と Concierge が**完全に同一の identity 実装を共有している**
+状態にはまだ到達していない。
+
+実装の詳細と回帰の証跡は
+`docs/audit/shared-shrine-identity-resolver-design.md` §13（F-3.1）/ §14（F-4）。

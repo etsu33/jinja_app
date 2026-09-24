@@ -9,6 +9,7 @@ import DetailSection from "@/components/shrine/DetailSection";
 import ShrineCardCompact, { formatDistance } from "@/components/shrines/ShrineCardCompact";
 import { trackCardEvent } from "@/lib/analytics/cardEvents";
 import { trackSearchEvent } from "@/lib/analytics/searchEvents";
+import { resolveShrineId } from "@/lib/identity/resolveShrineId";
 import { buildShrineHref } from "@/lib/nav/buildShrineHref";
 import { useEffect, useRef } from "react";
 import { resolveCompassSupplementaryFactText } from "../resolveCompassSupplementaryFactText";
@@ -35,7 +36,10 @@ export default function CompassRecommendationsSection({
       // F-1: Shrine identity は shrine_id のみ。`id` は COMPATIBILITY_FIELD で
       // identity authority ではないため fallback に使わない
       // （docs/audit/compass-shrine-id-presence-audit.md §14）。
-      const shrineId = rec.shrine_id;
+      // F-4: その判定を共有 resolver へ集約。public_strict は shrine_id のみを
+      // 許可し、alias も generic `id` も一切参照しない
+      // （docs/audit/shared-shrine-identity-resolver-design.md §14）。
+      const shrineId = resolveShrineId(rec, "public_strict");
       if (shrineId == null) return;
       const rank = index + 1;
       const key = `${recommendationInstanceId}:${shrineId}:${rank}`;
@@ -58,8 +62,8 @@ export default function CompassRecommendationsSection({
     <DetailSection title="この方向の参拝候補" variant="secondary">
       <div className="space-y-3">
         {recommendations.map((rec, index) => {
-          // F-1: navigation / click analytics も shrine_id のみを identity とする。
-          const shrineId = rec.shrine_id;
+          // F-1 / F-4: navigation / click analytics も shrine_id のみを identity とする。
+          const shrineId = resolveShrineId(rec, "public_strict");
           const rank = index + 1;
           const key = String(shrineId ?? rec.name ?? Math.random());
           const distanceM = typeof rec.distance_m === "number" ? rec.distance_m : null;

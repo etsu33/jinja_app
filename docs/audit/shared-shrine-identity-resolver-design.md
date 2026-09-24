@@ -383,3 +383,422 @@ NEXT           = F-4 (implement + migrate Web consumers)
 ```
 
 Next action requires a Mother Ship instruction naming `F-4`.
+
+---
+
+# F-3.1 — Design Amendment (resolution status preserved)
+
+> 本節以降は `F-3`（§1–§12）への**追記**である。§1–§12 は `F-3` 時点の記録として
+> そのまま保持し、書き換えない。`F-3` の `F3_STATUS = DESIGNED` /
+> `RUNTIME_CHANGE = NONE` / §11 Required statements は、いずれも
+> **`F-3` 時点の事実**として読むこと。現在の実装状態は §14 を参照。
+
+## 13. F-3.1 amendment
+
+```text
+F3_1_STATUS = AMENDED
+AMENDED_AT  = 2026-09-24
+REASON      = RESOLUTION_STATUS_COLLAPSE_IS_UNSAFE_FOR_PLACE_ID_FALLBACK
+```
+
+### 13.0 Historical aggregate correction
+
+`F-3` §7 の consumer table を再集計すると、generic `id` を使用している consumer は
+7件である。§7 本文の `6 / 9` は historical record として保持し、本 amendment で
+訂正値を明示する。
+
+```text
+F3_AGGREGATE_CORRECTION
+
+HISTORICAL_RECORDED_CONSUMERS_USING_GENERIC_ID = 6 / 9
+CORRECT_CONSUMERS_USING_GENERIC_ID             = 7 / 9
+
+CORRECTION_BASIS = F-3 §7 consumer table recount
+HISTORICAL_TEXT_REWRITTEN = NO
+```
+
+
+### 13.1 何が問題だったか
+
+`F-3` §2 の signature は
+
+```ts
+resolveShrineId(input: unknown, policy): number | null
+```
+
+であり、次の3つを**すべて同じ `null`** に潰していた。
+
+```text
+absent    identity が主張されていない
+invalid   identity は主張されているが使えない
+conflict  許可 alias 同士が食い違っている
+```
+
+`features/concierge/detailHref.ts` は identity が無いとき `place_id` へ
+fallback する。したがって潰された `null` を受け取ると:
+
+```text
+{ shrine_id: 42, shrineId: 99, place_id: "ChIJxxx" }
+  -> conflict
+  -> null
+  -> place_id fallback
+  -> /shrines/resolve?place_id=ChIJxxx
+```
+
+となる。これは `F-3` §6 の `CONFLICT_BEHAVIOR = FAIL_CLOSED` を破っており、
+かつ `F-6` の place_id shadow identity 経路へ入る。**conflict は「identity が
+無い」ではなく「identity が壊れている」であり、代替経路へ落としてはならない。**
+
+### 13.2 Authoritative result contract
+
+```ts
+type ShrineIdentityResolution =
+  | { status: "resolved"; shrineId: number }
+  | { status: "absent";   shrineId: null }
+  | { status: "invalid";  shrineId: null }
+  | { status: "conflict"; shrineId: null };
+```
+
+```ts
+resolveShrineIdentity(
+  input: unknown,
+  policy: "public_strict" | "registered_compat"
+): ShrineIdentityResolution
+```
+
+Optional convenience wrapper:
+
+```ts
+resolveShrineId(
+  input: unknown,
+  policy: "public_strict" | "registered_compat"
+): number | null
+```
+
+```text
+WRAPPER_DELEGATES_TO_AUTHORITATIVE = YES
+IDENTITY_RESOLUTION_IMPLEMENTATIONS = 1
+```
+
+wrapper の実装は `resolveShrineIdentity(input, policy).shrineId` のみ。
+`resolved` なら `shrineId`、それ以外はすべて `null`。分岐も再正規化も持たない。
+
+### 13.3 Status の定義
+
+```text
+absent
+  policy が許可する identity field が1つも present でない
+
+invalid
+  policy が許可する identity field が1つ以上 present だが、
+  正の整数へ正規化できない
+
+conflict
+  2つ以上の有効な許可 alias が、正規化後に異なる ID になる
+
+resolved
+  有効な許可 field が1つ以上あり、present な有効 alias がすべて一致する
+```
+
+`generic id` / `place_id` / `placeId` / `place.id` / 名称 / 住所 / 座標は
+**禁止 source であるため、これら4つの status のどれにも一切参加しない。**
+
+#### 13.3.1 Presence rule（F-3.1 で明示した判断）
+
+```text
+PRESENCE_RULE = KEY_EXISTS_AND_VALUE_IS_NEITHER_UNDEFINED_NOR_NULL
+```
+
+すなわち **`shrine_id: null` は `absent` であり、`invalid` ではない。**
+
+根拠（repository evidence、推測ではない）:
+
+```text
+backend/temples/services/concierge_candidate_normalize.py
+  L20-24  place_id / shrine_id 等の空文字を _none_if_blank() で None に潰す
+  L27     if out.get("shrine_id") is None: ... （key は present のまま None）
+  L58-59  最後に shrine_id / place_id をもう一度 _none_if_blank()
+```
+
+未登録（place_id のみ）の候補は `shrine_id` **key を持ったまま値が `None`** で
+frontend に届く。ここを `invalid` と判定すると、未登録候補の
+`/shrines/resolve` 導線が全滅する。したがって `null` は `absent`。
+
+#### 13.3.2 Status precedence（F-3.1 で解決した仕様上の曖昧さ）
+
+`F-3.1` の status 定義は、`{ shrine_id: 42, shrineId: "bad" }` に対して
+`invalid`（present だが正規化できない alias がある）とも
+`resolved`（present な**有効** alias はすべて一致している）とも読める。
+
+```text
+PRECEDENCE = absent -> invalid -> conflict -> resolved
+DECISION   = INVALID_WINS
+```
+
+採用根拠: 壊れた alias が有効な alias と同居している状態は、conflict と同じく
+**データ整合性の破綻シグナル**であり、黙って捨てるのは `FAIL_CLOSED` の趣旨に
+反する。
+
+```text
+{ shrine_id: 42, shrineId: "bad" } -> invalid   （resolved ではない）
+```
+
+これは `F-3.1` 指示文が明示していなかった点についての実装判断である。
+Mother Ship が `RESOLVED_WINS` を選ぶ場合は上書き可能。
+
+### 13.4 正規化（`F-3` §5 から不変）
+
+```text
+ACCEPT  42, "42"
+REJECT  0 / 負数 / 浮動小数 / 空白文字列 / 非数値文字列 /
+        NaN / Infinity / -Infinity / boolean / null / undefined
+NEVER_THROWS = YES
+```
+
+`boolean` は `number` 判定より前に明示的に弾く（`Number(true) === 1` で
+Shrine 1 に化けるため。backend の `_candidate_shrine_id` も同じ順序）。
+
+### 13.5 Consumer への含意
+
+```text
+非identity fallback を持つ consumer     -> resolveShrineIdentity() 必須
+非identity fallback を持たない consumer -> resolveShrineId() で十分
+```
+
+```text
+detailHref.ts   place_id fallback あり -> resolveShrineIdentity()
+Compass         fallback なし          -> resolveShrineId()
+hooks.ts        fallback なし          -> resolveShrineId()
+```
+
+---
+
+# F-4 — Implementation Status
+
+## 14. F-4 implementation status
+
+```text
+F4_STATUS = PARTIAL_SAFE_MIGRATION
+F4_AT     = 2026-09-24
+```
+
+```text
+SHARED_RESOLVER_IMPLEMENTED               = YES
+PUBLIC_STRICT_CONSUMER_MIGRATED           = YES
+LIVE_REGISTERED_COMPAT_CONSUMERS_MIGRATED = YES
+
+HISTORICAL_SNAPSHOT_CONSUMERS_MIGRATED    = NO
+MOBILE_MIGRATED                           = NO
+
+GENERIC_ID_ALLOWED_BY_SHARED_RESOLVER     = NO
+PLACE_ID_ALLOWED_BY_SHARED_RESOLVER       = NO
+CONFLICT_BEHAVIOR                         = FAIL_CLOSED
+```
+
+### 14.1 実装場所
+
+```text
+apps/web/src/lib/identity/resolveShrineId.ts
+```
+
+`F-3` §8.3 の通り `packages/shared` には置かない（Mobile の `ShrineId = string`
+との返り値型差が未決のため）。
+
+```text
+PUBLIC_STRICT_ALLOWED_FIELDS     = shrine_id
+REGISTERED_COMPAT_ALLOWED_FIELDS = shrine_id, shrineId, shrine.id
+POLICY_ARGUMENT                  = REQUIRED_NO_DEFAULT
+```
+
+### 14.2 移行した consumer
+
+| # | Consumer | Policy | 使った API | 挙動変化 |
+| ---: | --- | --- | --- | --- |
+| 1 | `features/compass/components/CompassRecommendationsSection.tsx` | `public_strict` | `resolveShrineId` | なし（`F-1` で既に `shrine_id` のみ）＋不正値が fail closed |
+| 2 | `features/concierge/detailHref.ts` | `registered_compat` | **`resolveShrineIdentity`** | invalid / conflict が place_id へ落ちなくなった |
+| 3 | `features/concierge/hooks.ts`（analytics 2箇所） | `registered_compat` | `resolveShrineId` | generic `id` fallback を除去 |
+| 5 | `lib/concierge/mapConciergeResponseToPremiumMeaningContext.ts` | `registered_compat` | `resolveShrineId` | generic `id` fallback を除去（意図的な契約修正、§14.4） |
+
+`F-3` §7.1 の名前衝突は、#5 の local `resolveShrineId()` を**削除**して
+共有 resolver を import することで解消した（shadowing を残していない）。
+
+`detailHref.ts` の `pickShrineId()` は export されていたが外部 importer が
+1件も存在しなかったため**削除**した（独自正規化実装を残さないため）。
+`pickPlaceId()` は未変更。
+
+```text
+INDEPENDENT_NORMALIZATION_RETAINED_IN_MIGRATED_CONSUMERS = NONE
+```
+
+### 14.3 `detailHref.ts` の status 分岐
+
+```text
+status=resolved -> buildShrineHref(shrineId)
+status=absent   -> 既存の place_id fallback（/shrines/resolve）を維持
+status=invalid  -> null（place_id へ落とさない）
+status=conflict -> null（place_id へ落とさない）
+```
+
+必須回帰（`apps/web/src/features/concierge/__tests__/detailHref.test.ts`）:
+
+```text
+{ shrine_id: 42, shrineId: 99, place_id: "ChIJxxx" } -> null / not /shrines/resolve
+{ shrine_id: "bad", place_id: "ChIJxxx" }            -> null / not /shrines/resolve
+{ place_id: "ChIJxxx" }                              -> /shrines/resolve?place_id=ChIJxxx&ctx=concierge
+{ shrine_id: null, place_id: "ChIJxxx" }             -> /shrines/resolve（§13.3.1）
+```
+
+### 14.4 意図的な契約修正（accidental regression ではない）
+
+```text
+FILE   apps/web/src/lib/concierge/__tests__/mapConciergeResponseToPremiumMeaningContext.test.ts
+BEFORE { id: 1 } -> shrineId = 1
+AFTER  { id: 1 } -> null
+REASON GENERIC_ID_IS_NOT_SHRINE_IDENTITY_AUTHORITY
+CLASS  INTENTIONAL_F4_CONTRACT_CORRECTION
+```
+
+当該 module は現時点で production importer を持たないが、その test は契約の
+一部として維持する。既存の「shrine_id/id のみでも throw しない」test は
+`{ shrine_id: 1 }` を使うよう書き換え、意図（throw しない・field が埋まる）を
+保持した。
+
+### 14.5 live producer evidence（#3 の移行根拠）
+
+```text
+F-7 が backend で固定:
+  candidate["id"] == candidate["shrine_id"] == Shrine.id
+  backend/temples/tests/services/test_concierge_build_chat_candidates_contract.py
+
+現在の Concierge live recommendation はその共有 producer
+（concierge_chat_candidates.py L284-285）由来。
+```
+
+したがって live 経路で generic `id` fallback を外しても identity は失われない。
+解決できない場合も `shrine_id` を fabricate せず `null` のままとし、
+`serializeSearchAnalyticsPayload()` の既存 null-strip 契約に従う
+（イベント自体は従来どおり送信される）。
+
+### 14.6 移行しなかった consumer（DEFERRED）
+
+```text
+F4_HISTORICAL_SNAPSHOT_MIGRATION = DEFERRED
+REASON = PRE_CUTOVER_ID_ONLY_SNAPSHOT_COMPATIBILITY_NOT_PROVEN
+```
+
+| # | Consumer | 状態 |
+| ---: | --- | --- |
+| 4 | `components/views/ConsultationHistoryDetailView.tsx` L41 | 未変更 |
+| 6 | `lib/concierge/buildPreviousConsultationSummary.ts` L16 | 未変更 |
+| 7 | `lib/concierge/pickReasonFromThread.ts` L20 | 未変更 |
+| 8 | `app/shrines/[id]/page.tsx` L370 | 未変更 |
+| 9 | `apps/mobile/lib/consultationHistoryUi.ts` | 未変更（scope 外） |
+
+根拠（repository evidence）:
+
+```text
+backend/temples/tests/api/test_journey_timeline_api.py
+  recommendations_v2 の item が
+    { "id": shrine.id, ... }
+  という generic `id` のみの形を含む。
+```
+
+保存済み `ConciergeThread` snapshot は JSON であり、repository は
+**すべての履歴 snapshot が `shrine_id` を持つことを証明していない。**
+これら4 consumer から `id` 互換を外すと既存履歴の突合が壊れうる。
+
+```text
+本 PR は「履歴 snapshot に id-only が存在しない」とは推論していない。
+証明されていないため保留した、というのが記録である。
+```
+
+### 14.7 Web runtime に残る generic-`id` identity fallback
+
+```text
+[A] F-4 で除去
+  features/compass/components/CompassRecommendationsSection.tsx  （F-1 で既に除去、F-4 で共有化）
+  features/concierge/detailHref.ts            pickShrineId 削除
+  features/concierge/hooks.ts            L158 / L167
+  lib/concierge/mapConciergeResponseToPremiumMeaningContext.ts  local resolveShrineId 削除
+
+[B] 履歴互換のため意図的に保持（§14.6）
+  components/views/ConsultationHistoryDetailView.tsx        L41
+  lib/concierge/buildPreviousConsultationSummary.ts         L16
+  lib/concierge/pickReasonFromThread.ts                     L20
+  app/shrines/[id]/page.tsx                                 L370
+
+[C] F-6（place_id shadow identity）経路 — /places/resolve/ レスポンス読み取り
+  lib/api/places.ts                                         L47
+  components/PlaceCardClientActions.tsx                     L29
+  app/shrines/resolve/page.tsx                              L38
+
+[D] F-5（backend）
+  16 sites / 8 files — identity contract doc §4.1
+
+[E] 本監査で新たに観測（F-3 §9 の consumer 一覧に無い。F-4 scope 外）
+  lib/server/favorites.server.ts  L29
+    favorite?.shrine_id ?? favorite?.shrine?.id ?? favorite?.target_id
+    generic `id` ではないが、`target_id` は許可 source ではない。
+  lib/concierge/pickBreakdownFromThread.ts  L23
+  features/concierge/buildPayloadFromUnified.ts  L132
+    いずれも generic `id` は読まないが、共有 resolver を使わない
+    独自正規化が残っている（DUPLICATE_NORMALIZATION、違反ではない）。
+  components/shrine/detail/ShrineDetailArticle.tsx  L368
+    Shrine detail payload の `id` は Shrine PK そのもの（identity contract
+    doc §4.4 の既存記録どおり）。違反ではない。
+```
+
+### 14.8 Validation
+
+```text
+pnpm -C apps/web typecheck                     PASS (exit 0)
+vitest run src/lib/identity                    22 tests PASS
+vitest run src/features/compass                PASS
+vitest run src/features/concierge              PASS
+vitest run src/lib/concierge                   PASS
+vitest run（web 全体）                          214 files / 1774 tests PASS
+git diff --check                               PASS
+```
+
+観測した環境上の事実（F-4 では修正していない）:
+
+```text
+apps/web/src/features/concierge/detailHref.ts の隣にある
+detailHref.test.ts は vitest の include glob
+  src/**/tests/*.{ts,tsx}
+  src/**/__tests__/**/*.{test,spec}.{js,ts,tsx}
+に一致しないため **収集されていない**（`No test files found`）。
+同名の __tests__/detailHref.test.ts が実際に走っている方である。
+F-4 の必須回帰は走る側（__tests__/）へ追加した。
+vitest 設定の変更は F-4 のスコープ外のため行っていない。
+```
+
+### 14.9 Required statements
+
+```text
+1.  共有 resolver を実装した（apps/web/src/lib/identity/resolveShrineId.ts）。
+2.  identity 解決の実装は1つだけ（wrapper は委譲のみ）。
+3.  移行した Web consumer は #1 #2 #3 #5 の4件。
+4.  #4 / #6 / #7 / #8 は未変更（DEFERRED）。
+5.  Mobile は未変更。
+6.  Backend は未変更。
+7.  OpenAPI は未変更。
+8.  DB / schema / migration の変更なし。
+9.  Recommendation / Ranking は未変更。
+10. place_id resolver の挙動は未変更（pickPlaceId 含む）。
+11. F-5 の backend fallback は未変更。
+12. F-6 の shadow identity logic は未変更。
+13. 履歴 id-only snapshot が存在しない、という推論はしていない。
+14. F-5 は開始していない。
+```
+
+## 15. STOP
+
+```text
+F3_1_STATUS = AMENDED
+F4_STATUS   = PARTIAL_SAFE_MIGRATION
+NEXT        = F-5 (backend fallback consolidation) / F-6 (place_id shadow identity)
+              + 履歴 snapshot の id-only 実在確認（#4 #6 #7 #8 の前提）
+```
+
+次の行動には `F-5` を名指しする Mother Ship 指示が必要。

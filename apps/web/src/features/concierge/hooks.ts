@@ -18,6 +18,7 @@ import {
 import type { ConciergeChatRequestV1, ConciergeChatFilters } from "@/features/concierge/types/chatRequest";
 import { normalizeBirthdateInput } from "@/lib/date/normalizeBirthdateInput";
 import { trackRecommendationQuality } from "@/lib/analytics/searchEvents";
+import { resolveShrineId } from "@/lib/identity/resolveShrineId";
 import { useSharedBirthdayPersistence } from "@/lib/profile/useSharedBirthdayPersistence";
 import {
   buildRecommendationResultSetId,
@@ -135,6 +136,18 @@ export function normalizeAccessLevel(value: unknown): ConciergeAccessLevel {
   return value === "anonymous" || value === "free" || value === "premium" ? value : null;
 }
 
+/**
+ * F-4: live Concierge recommendation の analytics identity。
+ *
+ * generic `id` は COMPATIBILITY_FIELD であり identity authority ではないため、
+ * ここでは使わない（F-7 が backend 側で
+ * candidate["id"] == candidate["shrine_id"] == Shrine.id を固定しており、
+ * live recommendation はその共有 producer 由来）。
+ * shrine_id が解決できない場合は shrineId を fabricate せず null のままにする
+ * （serializeSearchAnalyticsPayload が null を送信前に落とす既存契約）。
+ *
+ * docs/audit/shared-shrine-identity-resolver-design.md §14
+ */
 export function trackRecommendationQualityFromRecommendations(args: {
   recommendations: ConciergeRecommendation[];
   threadId: string | null;
@@ -142,7 +155,7 @@ export function trackRecommendationQualityFromRecommendations(args: {
 }) {
   const resultSetId = buildRecommendationResultSetId(
     args.threadId,
-    args.recommendations.map((rec) => ({ shrineId: rec.shrine_id ?? rec.id })),
+    args.recommendations.map((rec) => ({ shrineId: resolveShrineId(rec, "registered_compat") })),
   );
   args.recommendations.forEach((rec, index) => {
     const quality = rec.recommendation_reason_quality;
@@ -151,7 +164,7 @@ export function trackRecommendationQualityFromRecommendations(args: {
     trackRecommendationQuality({
       source: "concierge_result",
       threadId: args.threadId,
-      shrineId: rec.shrine_id ?? rec.id ?? null,
+      shrineId: resolveShrineId(rec, "registered_compat"),
       recommendationRank: index + 1,
       resultSetId,
       accessLevel: args.accessLevel,

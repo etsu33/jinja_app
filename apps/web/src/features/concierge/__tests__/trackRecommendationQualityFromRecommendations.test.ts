@@ -187,3 +187,97 @@ describe("trackRecommendationQualityFromRecommendations: Knowledge品質property
     expect(payload).not.toHaveProperty("query");
   });
 });
+
+// ---------------------------------------------------------------------------
+// F-4: live recommendation analytics の Shrine identity。
+//
+// SHRINE_IDENTITY_AUTHORITY = Shrine.id / PUBLIC_IDENTITY_KEY = shrine_id。
+// generic `id` は COMPATIBILITY_FIELD であり identity authority ではない。
+// 移行前は `rec.shrine_id ?? rec.id` で generic `id` へ fallback していた。
+//
+// docs/audit/shared-shrine-identity-resolver-design.md §14
+// ---------------------------------------------------------------------------
+describe("trackRecommendationQualityFromRecommendations: F-4 Shrine identity契約", () => {
+  const trackMock = vi.fn();
+
+  beforeEach(() => {
+    trackMock.mockReset();
+    mockedGetAnalyticsProvider.mockReturnValue({ track: trackMock });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("shrine_idとidが食い違う場合、analyticsのshrineIdはshrine_id側を使う", () => {
+    trackRecommendationQualityFromRecommendations({
+      recommendations: [
+        {
+          name: "食い違い神社",
+          shrine_id: 42,
+          id: 999,
+          recommendation_reason_quality: { shrine_data_rate: 0.5 },
+        } as ConciergeRecommendation,
+      ],
+      threadId: "thread-1",
+      accessLevel: "free",
+    });
+
+    const payload = trackMock.mock.calls[0]?.[1] as Record<string, unknown>;
+    expect(payload.shrineId).toBe(42);
+    expect(payload.shrineId).not.toBe(999);
+    // resultSetId も同じ identity で構成される（generic `id` を混ぜない）。
+    expect(payload.resultSetId).toBe("thread-1:1:42");
+  });
+
+  it("id のみの live recommendation では generic `id` を shrineId にしない", () => {
+    trackRecommendationQualityFromRecommendations({
+      recommendations: [
+        {
+          name: "id のみ神社",
+          id: 999,
+          recommendation_reason_quality: { shrine_data_rate: 0.5 },
+        } as ConciergeRecommendation,
+      ],
+      threadId: "thread-1",
+      accessLevel: "free",
+    });
+
+    const payload = trackMock.mock.calls[0]?.[1] as Record<string, unknown>;
+    // shrineId を fabricate しない。null は既存の serializeSearchAnalyticsPayload
+    // 契約により送信payloadから落ちる（searchEvents.ts）。
+    expect(payload).not.toHaveProperty("shrineId");
+    expect(payload.resultSetId).toBe("thread-1:1:unknown");
+    // イベント自体は従来どおり送信される（identity 欠落で落とさない）。
+    expect(trackMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("shrine_id と shrineId が食い違う場合は conflict として shrineId を送らない", () => {
+    trackRecommendationQualityFromRecommendations({
+      recommendations: [
+        {
+          name: "conflict神社",
+          shrine_id: 42,
+          shrineId: 99,
+          recommendation_reason_quality: { shrine_data_rate: 0.5 },
+        } as unknown as ConciergeRecommendation,
+      ],
+      threadId: "thread-1",
+      accessLevel: "free",
+    });
+
+    const payload = trackMock.mock.calls[0]?.[1] as Record<string, unknown>;
+    expect(payload).not.toHaveProperty("shrineId");
+  });
+
+  it("正常な shrine_id はそのまま shrineId になる（既存挙動の維持）", () => {
+    trackRecommendationQualityFromRecommendations({
+      recommendations: [rec({ shrine_id: 7, recommendation_reason_quality: { shrine_data_rate: 0.5 } })],
+      threadId: "thread-1",
+      accessLevel: "free",
+    });
+
+    const payload = trackMock.mock.calls[0]?.[1] as Record<string, unknown>;
+    expect(payload.shrineId).toBe(7);
+  });
+});
