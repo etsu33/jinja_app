@@ -592,6 +592,121 @@ R-7  §10.1 の test matrix を実装
 候補が 1 件でも自動選択しない（§5.1）。
 ```
 
+### 11.2a F-6B collision predicate — Mother Ship fixed contract
+
+F-6B で使用する collision 判定は次で固定する。
+これは **identity resolution ではなく auto-create を止める安全判定**である。
+
+```text
+F6B_COLLISION_POLICY = CONSERVATIVE
+
+IDENTITY_AUTHORITY
+= Shrine.id
+
+PLACE_ID_IDENTITY_AUTHORITY
+= NO
+
+AUTO_BIND_ON_SINGLE_CANDIDATE
+= PROHIBITED
+```
+
+candidate Shrine が collision と判定される条件:
+
+```text
+COLLISION_CANDIDATE =
+  NORMALIZED_NAME_EXACT
+  AND
+  (
+    STRONG_ADDRESS_MATCH
+    OR DISTANCE_M <= 500
+  )
+```
+
+各 predicate の定義:
+
+```text
+NORMALIZED_NAME_EXACT
+  = normalize_shrine_name_for_duplicate(PlaceRef.name)
+    ==
+    normalize_shrine_name_for_duplicate(Shrine.name_jp)
+
+STRONG_ADDRESS_MATCH
+  = 両方の address が非空
+    AND
+    normalize_shrine_address_for_duplicate(PlaceRef.address)
+    ==
+    normalize_shrine_address_for_duplicate(Shrine.address)
+
+DISTANCE_M <= 500
+  = PlaceRef / Shrine の latitude・longitude が双方そろっている場合のみ
+    geodesic / haversine 相当の直線距離で 500m 以下
+```
+
+**使わないもの:**
+
+```text
+NAME_ONLY        = INSUFFICIENT
+BASE_NAME_ONLY   = INSUFFICIENT
+ADDRESS_ONLY     = INSUFFICIENT
+COORDINATE_ONLY  = INSUFFICIENT
+
+find_duplicate_candidates() の順位 1 位
+= IDENTITY AUTHORITY ではない
+
+address icontains
+= STRONG_ADDRESS_MATCH ではない
+
+候補が 1 件だけ
+= EXPLICIT_MAPPING ではない
+```
+
+collision が検出されたとき:
+
+```text
+RESULT
+= REVIEW_REQUIRED
+
+CREATE_NEW_SHRINE
+= PROHIBITED
+
+AUTO_BIND_EXISTING_SHRINE
+= PROHIBITED
+
+HTTP_STATUS
+= 409
+```
+
+重要:
+
+```text
+COLLISION_DETECTION != IDENTITY_RESOLUTION
+
+「500m以内」
+  != 「同じ神社」
+
+「normalized name + strong address / 500m以内」
+  = 「新しい Shrine.id を自動生成するには危険なので止める」
+```
+
+この 500m は canonical identity 判定の距離閾値ではない。
+既存の富岡八幡宮 shadow 事例では primary / shadow 座標に約 300m の差があり、
+再発防止 guard を 50m / 100m のように狭くすると既知事故を捕捉できないため、
+**collision stop 用の保守的半径**として 500m を採用する。
+
+一方、name が一致しない Shrine は住所・座標だけで collision にしない。
+同一敷地や近接する別社を identity candidate として過剰停止するのを避けるためである。
+
+```text
+PLACE_ID_BACKFILL
+= OUT_OF_F6B_SCOPE
+
+F6B_SCOPE
+= runtime recurrence prevention only
+```
+
+§7 の historical 3 PlaceRef の primary backfill と migration 0100 reverse 契約は
+F-6B に含めず、別の Mother Ship gate で扱う。
+
 ### 11.3 EXPLICIT_BACKFILL
 
 ```text
