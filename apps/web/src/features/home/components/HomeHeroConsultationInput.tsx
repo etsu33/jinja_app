@@ -65,7 +65,7 @@ export function HomeHeroConsultationInput() {
         (HomeActionCard) より一段手前にある主アクション面として読める。
       */}
       <div
-        className="rounded-[1.75rem] border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-4"
+        className="rounded-[1.75rem] border border-[var(--home-border)] bg-[var(--home-surface)] p-4"
         style={{
           boxShadow: [
             "inset 0 1px 0 color-mix(in oklab, var(--home-path, var(--kt-color-action-primary)) 20%, transparent)",
@@ -75,7 +75,7 @@ export function HomeHeroConsultationInput() {
       >
         <label
           htmlFor="home-hero-consultation"
-          className="block text-[11px] font-medium text-[var(--kt-color-text-muted)]"
+          className="block text-[11px] font-medium text-[var(--home-text-muted)]"
         >
           今の気持ちを少しだけ書く
         </label>
@@ -86,11 +86,11 @@ export function HomeHeroConsultationInput() {
           onChange={(event) => setTheme(event.target.value)}
           placeholder="例: 気持ちを切り替えたい、これからのことを考えたい"
           rows={3}
-          className="mt-2 w-full resize-none border-0 bg-transparent px-0 py-1 text-[15px] leading-8 text-[var(--kt-color-text-primary)] outline-none placeholder:text-[var(--kt-color-text-secondary)]"
+          className="mt-2 w-full resize-none border-0 bg-transparent px-0 py-1 text-[15px] leading-8 text-[var(--home-text-primary)] outline-none placeholder:text-[var(--home-text-secondary)]"
         />
 
         <div className="mt-2 flex items-end justify-between gap-4">
-          <p className="text-[11px] leading-5 text-[var(--kt-color-text-secondary)]">
+          <p className="text-[11px] leading-5 text-[var(--home-text-secondary)]">
             あなたの言葉から、ご縁のある神社へ
           </p>
 
@@ -117,7 +117,7 @@ export function HomeHeroConsultationInput() {
 
       {/* 候補チップ: 入力カードの外に出し、補助であることを位置で示す。 */}
       <div>
-        <p className="px-1 text-[11px] font-medium text-[var(--kt-color-text-muted)]">
+        <p className="px-1 text-[11px] font-medium text-[var(--home-text-muted)]">
           ことばが浮かばないときは、ここから
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
@@ -130,8 +130,8 @@ export function HomeHeroConsultationInput() {
                 className={[
                   "rounded-full border px-3 py-1.5 text-xs font-medium transition active:scale-[0.98]",
                   isSelected
-                    ? "border-[var(--kt-color-action-primary)] bg-[var(--kt-color-surface-elevated)] text-[var(--kt-color-action-primary)]"
-                    : "border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] text-[var(--kt-color-text-secondary)] hover:border-[var(--kt-color-border-strong)]",
+                    ? "border-[var(--kt-color-action-primary)] bg-[var(--home-surface-elevated)] text-[var(--kt-color-action-primary)]"
+                    : "border-[var(--home-border)] bg-[var(--home-surface)] text-[var(--home-text-secondary)] hover:border-[var(--home-border-strong)]",
                 ].join(" ")}
                 onClick={() => setTheme(chip.text)}
                 aria-pressed={isSelected}
@@ -147,7 +147,7 @@ export function HomeHeroConsultationInput() {
       <div className="px-1">
         <button
           type="button"
-          className="inline-flex items-center text-xs font-medium text-[var(--kt-color-text-secondary)] transition hover:text-[var(--kt-color-action-primary)]"
+          className="inline-flex items-center text-xs font-medium text-[var(--home-text-secondary)] transition hover:text-[var(--kt-color-action-primary)]"
           onClick={() => router.push(buildConciergeHref(theme, { openFilter: true }))}
         >
           ＋ 条件を追加する
