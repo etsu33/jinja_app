@@ -1153,3 +1153,227 @@ DB への直接書き込みといった経路は F-6B のスコープ外であ�
 そこから作られる行までは防いでいない（F-6A §3.2 / §11.4）。
 
 次の行動には Mother Ship 指示が必要。
+
+---
+
+# F-6C — Production fresh PRE verification (explicit PlaceRef backfill)
+
+> `F-6A`（§1–§13）/ `F-6B`（§14–§15）への**追記**。既存節は書き換えない。
+
+## 16. F-6C status
+
+```text
+F6C_STATUS                   = PREFLIGHT_AUTHORED / PRODUCTION_READ_BLOCKED
+TYPE                         = READ_ONLY / AUDIT_ONLY
+RECORDED_AT                  = 2026-09-24
+VERIFIED_AGAINST             = develop @ def81b6a (after F-6B #2963)
+
+F6C_PRODUCTION_PRE_READ      = NOT_EXECUTED
+F6C_PRODUCTION_PRE_READ_ONLY = YES
+F6D_PRODUCTION_PRE           = STOP  （理由は NOT_VERIFIED。drift 検出ではない）
+C1_BACKFILL_EXECUTION        = MOTHER_SHIP_DECISION_REQUIRED
+F6D_IMPLEMENTED              = NO
+PRODUCTION_DATA_CHANGED      = NO
+```
+
+```text
+CURRENT_REPOSITORY_LEAF = temples.0113_adopt_usa_jingu_position
+PRODUCTION_PARENT_STATE = UNVERIFIED（Production を読めていない）
+```
+
+以下の実測値は **取得できていない**。値を推測して埋めない。
+
+```text
+PRIMARY_COUNT                   = UNVERIFIED
+PRIMARY_IDENTITY_MATCH_COUNT    = UNVERIFIED
+PRIMARY_PLACE_REF_NONNULL       = UNVERIFIED
+TARGET_PLACE_REF_COUNT          = UNVERIFIED
+TARGET_PLACE_REF_CLAIM_COUNT    = UNVERIFIED
+SHADOW_COUNT                    = UNVERIFIED
+AUDITED_EVENT_EXACT_COUNT       = UNVERIFIED
+AUDITED_EVENT_WRONG_OWNER_COUNT = UNVERIFIED
+MIGRATION_0100_APPLIED          = UNVERIFIED
+CURRENT_PARENT_APPLIED          = UNVERIFIED
+PRODUCTION_HAS_UNKNOWN_NEWER_MIGRATION = UNVERIFIED
+F6D_PRE_ELIGIBLE                = UNVERIFIED
+```
+
+### 16.1 なぜ Production を読めないか
+
+認証情報がこの実行環境に存在しない。正規ツール自身の判定:
+
+```text
+$ scripts/migration_safety/check_credential_presence.sh \
+    ~/.config/kami-musubi/production-db.env DATABASE_URL
+VAR_SET=0
+[check_credential_presence] no credential file at that path yet —
+  this is expected before local setup is complete
+
+$ scripts/migration_safety/readonly_query.sh \
+    ~/.config/kami-musubi/production-db.env DATABASE_URL \
+    scripts/migration_safety/sql/f6d_place_ref_backfill_preflight.sql
+[readonly_query] BLOCKED: credential file not found at <path>.
+  See README.md for local setup.
+exit 1
+```
+
+**これは環境不備ではなく設計どおりである。** `scripts/migration_safety/README.md`
+L83-95 は認証情報を「人間がローカルで一度だけ用意するもの」と定め、
+
+```text
+# Never paste it into a chat with an AI assistant. Never commit it.
+```
+
+と明記している。したがって本 remote session がこの値を持つことはない。
+本タスクでは認証情報を要求しておらず、Production への接続も一度も試行して
+いない（bridge は credential に触れる前に BLOCK した）。
+
+```text
+CREDENTIAL_REQUESTED_FROM_USER = NO
+PRODUCTION_CONNECTION_ATTEMPTED = NO
+```
+
+### 16.2 成果物 — SELECT-only preflight SQL
+
+```text
+scripts/migration_safety/sql/f6d_place_ref_backfill_preflight.sql
+```
+
+```text
+$ python3 scripts/migration_safety/guard.py check-readonly-sql \
+    scripts/migration_safety/sql/f6d_place_ref_backfill_preflight.sql
+SAFE: ok
+exit 0
+```
+
+SELECT / WITH のみ。psql メタコマンドを含まない（guard は `;` で分割して
+各文の先頭語を検査するため、`\x` 等は allow-list を通らない）。
+
+構成:
+
+```text
+SECTION 0  migration ledger（0100 / 現行 leaf / それより新しい行 / 将来 F-6D 行）
+SECTION 1  primary Shrine 21 / 22 / 49 と監査済み identity との一致判定
+SECTION 2  target PlaceRef 3 件（OBSERVATION ONLY）
+SECTION 3  3 つの place_id を claim している Shrine（期待 0 行）
+SECTION 4  historical shadow 101 / 103 / 104（期待 0 行）
+SECTION 5  監査済み interaction event 2 件（**global 検索が先**、所有者は後で照合）
+SECTION 6  machine-readable gate summary
+```
+
+`SECTION 6` は個別 metric を**すべて併記**したうえで `f6d_pre_eligible` を
+出す。単一の boolean の裏に個別の失敗を隠さない。
+
+`location` は意図的に SELECT していない。Production の
+`temples_shrine.location` は legacy な `text` 列である一方モデルは PostGIS
+`PointField` を宣言しており、素の select は行を読む前に落ちる
+（0091 / 0094 / 0098 / 0099 / 0100 が `.only(...)` で回避しているのと同じ理由）。
+
+`snapshot_json` は raw を出さず `(present, text length, md5)` で報告する。
+Google Places の payload は 1 行あたり数 KB あり、psql の整列出力が読めなく
+なるため。md5 により値の同一性は run 間で比較できる。
+
+### 16.3 SQL の実行可能性は検証済み
+
+Production は読めていないが、**SQL が実際に走ること**はローカルの migrate 済み
+スキーマに対して確認した（一時 probe。commit していない）。
+
+```text
+12 statements すべてが実行され、列名も期待どおり解決した
+SECTION 6 は空スキーマに対し f6d_pre_eligible = False を返した（fail closed）
+```
+
+```text
+SYNTAX_VALIDATED       = YES
+TABLE_COLUMN_NAMES_VALIDATED = YES
+  temples_shrine / place_ref / temples_shrineinteractionlog / django_migrations
+DATA_MEANINGFUL        = NO（空の test DB。Production の値ではない）
+```
+
+ローカル検証は NoGIS migration 集合（13 行）上で行ったため、`SECTION 0` の
+ledger 判定内容そのものはローカルでは検証できない（構文のみ）。
+
+### 16.4 repository 側の migration state
+
+```text
+CURRENT_REPOSITORY_LEAF = temples.0113_adopt_usa_jingu_position
+TOTAL_TEMPLES_MIGRATIONS = 113
+REPOSITORY_DRIFT = NONE OBSERVED
+```
+
+leaf は「0113 のはず」と仮定せず fresh develop の依存グラフから解決した。
+途中 `0019_favorite_favorite_exactly_one_target` が leaf に見える誤検出が
+あったが、`0020_shrine_popularity_fields` が複数行にまたがる形で 0019 へ
+依存していたための regex の取りこぼしであり、実際の leaf は 0113 のみ。
+
+`F-6B`（#2963）は migration を追加していないため、leaf は `F-6A` 時点から
+変わっていない。migration 0100 / 0108 も変更していない。
+
+### 16.5 人間が実行するコマンド（この session では実行しない）
+
+認証情報を持つ環境で、次を実行して結果を §16 へ追記すること。
+
+```bash
+python3 scripts/migration_safety/guard.py check-readonly-sql \
+  scripts/migration_safety/sql/f6d_place_ref_backfill_preflight.sql
+
+scripts/migration_safety/readonly_query.sh \
+  ~/.config/kami-musubi/production-db.env DATABASE_URL \
+  scripts/migration_safety/sql/f6d_place_ref_backfill_preflight.sql
+```
+
+`6.1 F6D_PRE_GATE_SUMMARY` の行をそのまま貼れば、§16 冒頭の UNVERIFIED 群を
+実測値へ置き換えられる。
+
+判定規則:
+
+```text
+f6d_pre_eligible = true   -> F6D_PRODUCTION_PRE = PASS
+それ以外                   -> F6D_PRODUCTION_PRE = STOP
+  （修復も再解釈もしない。drift はそのまま記録する）
+```
+
+`PASS` であっても F-6D へは進めない。`C1_BACKFILL_EXECUTION` は依然として
+Mother Ship 決定待ちであり、さらに `F-6A` §7.2 の未決 2 件
+（P8 が place_ref 転送を選択していない／backfill すると 0100 の reverse が
+壊れる）が残っている。
+
+### 16.6 Identity authority の再確認
+
+```text
+PLACE_ID_IDENTITY_AUTHORITY = NO（不変）
+```
+
+`SECTION 2` が読む PlaceRef の name / address / 座標は **OBSERVATION ONLY**
+であり、Shrine identity の権威ではない。identity mapping の権威は監査済みの
+migration-0100 明示マッピングのみ。preflight はその一致を**確認**するだけで、
+PlaceRef 側の値から Shrine を選び直さない。
+
+### 16.7 Required statements
+
+```text
+1.  Production データを変更していない。
+2.  Production へ接続していない（credential に触れる前に BLOCK された）。
+3.  認証情報をユーザーへ要求していない。
+4.  UPDATE / INSERT / DELETE / ALTER / CREATE / DROP を書いていない。
+5.  PlaceRef を backfill していない。
+6.  F-6D migration を作成していない。
+7.  migration 0100 / 0108 を変更していない。
+8.  runtime を変更していない。
+9.  C1 承認を推定していない。
+10. 取得できていない値を PASS と書かず UNVERIFIED と記録した。
+11. F6D_PRODUCTION_PRE = STOP は「未検証」であって drift 検出ではない、と明示した。
+12. repository leaf を仮定せず依存グラフから解決した（0113）。
+```
+
+## 17. STOP
+
+```text
+F6C_STATUS            = PREFLIGHT_AUTHORED / PRODUCTION_READ_BLOCKED
+F6D_PRODUCTION_PRE    = STOP（NOT_VERIFIED）
+C1_BACKFILL_EXECUTION = MOTHER_SHIP_DECISION_REQUIRED
+NEXT                  = 認証情報を持つ環境で §16.5 を実行し実測値を追記する
+BLOCKED_ON            = C1 / F-6A §7.2 の未決 2 件
+```
+
+次の行動には Mother Ship 指示が必要。
