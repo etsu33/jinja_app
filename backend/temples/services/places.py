@@ -7,6 +7,7 @@ import logging
 import os
 from hashlib import md5
 from math import atan2, cos, radians, sin
+from dataclasses import dataclass
 from typing import Callable, Any, Dict, Optional, Tuple
 from urllib.parse import urlencode
 
@@ -20,8 +21,9 @@ from . import google_places  # 低レベルHTTPクライアント（関数型）
 
 from rest_framework import serializers
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from .google_places import findplacefromtext  # noqa: F401
+from .place_shrine_collision import find_place_shrine_collisions
 from .places_heuristics import (
     is_shinto_candidate,
     looks_buddhist_by_name,
@@ -40,24 +42,140 @@ _TIMEOUT = 10  # seconds
 DEBUG_PLACES_RANKING = os.getenv("PLACES_DEBUG", "0").lower() in {"1", "true", "on"}
 
 
+class PlacesError(Exception):
+    """Places系のアプリ内エラー。status にHTTP相当を入れてビュー側で使う。"""
+
+    def __init__(self, message: str, status: Optional[int] = None):
+        super().__init__(message)
+        self.status = status
+
+
+@dataclass(frozen=True)
+class PlaceShrineResolution:
+    """place_id -> Shrine 解決の結果（F-6B）。status を潰さずに保つ。
+
+        already_linked            PlaceRef に既に Shrine が紐づいていた
+        created                   collision が無かったので新規作成した
+        collision_review_required 登録済み Shrine が同じ Place を表しうる
+                                  -> 作成も束縛もしない（fail closed）
+    """
+
+    status: str
+    shrine: Optional[Shrine]
+    candidates: tuple
+
+    @property
+    def is_review_required(self) -> bool:
+        return self.status == "collision_review_required"
+
+
+class ShrineCollisionReviewRequired(PlacesError):
+    """登録済み Shrine と衝突したため作成を拒否した（F-6B）。
+
+    `PlacesError` を継承しているので、既存 View の `except PlacesError` が
+    そのまま `status` を HTTP へ写像する（409）。
+
+    候補 Shrine は `candidates` に保持するが、**public response には載せない**。
+    載せると client 側が「1 件だから」と自動束縛しうるため
+    （AUTO_BIND_ON_SINGLE_CANDIDATE = PROHIBITED）。レビューは server log で行う。
+    """
+
+    code = "shrine_collision_review_required"
+
+    def __init__(self, place_id: str, candidates: tuple):
+        super().__init__(
+            "an existing shrine may already represent this place; review required",
+            status=409,
+        )
+        self.place_id = place_id
+        self.candidates = tuple(candidates)
+
+
 @transaction.atomic
-def get_or_create_shrine_by_place_id(place_id: str) -> Shrine:
+def resolve_shrine_by_place_id(place_id: str) -> PlaceShrineResolution:
+    """place_id から Shrine を解決する authoritative 実装（F-6B）。
+
+    shadow identity の再発を防ぐため、未リンクの PlaceRef から新規 Shrine を
+    作る前に collision 検出を通す。collision があれば作成も束縛もしない。
+
+        COLLISION_DETECTION           != IDENTITY_RESOLUTION
+        AUTO_BIND_ON_SINGLE_CANDIDATE  = PROHIBITED
+        CREATE_NEW_SHRINE ON_COLLISION = NO
+
+    並行制御: PlaceRef 行を `select_for_update()` でロックしてから reverse
+    OneToOne を読む。ロック前は 2 並行 resolve が両方「未リンク」と判断し、
+    敗者が OneToOne unique 違反で 500 になっていた（F-6A §9）。
+    """
     pr = get_or_sync_place(place_id)
+
+    # F-6B S-4: 以降の判断が乗る PlaceRef 行をロックする。ロック済みの行を
+    # 読み直すことで reverse OneToOne のキャッシュも確実に外れる。
+    locked = PlaceRef.objects.select_for_update().filter(pk=pr.pk).first()
+    if locked is not None:
+        pr = locked
 
     shrine = getattr(pr, "shrine", None)  # reverse OneToOne
     if shrine and shrine.id:
-        return shrine
+        return PlaceShrineResolution(status="already_linked", shrine=shrine, candidates=())
 
     if pr.latitude is None or pr.longitude is None:
         raise PlacesError("place has no geometry on PlaceRef", status=502)
 
-    return Shrine.objects.create(
-        name_jp=pr.name or "",
-        address=pr.address or "",
+    candidates = find_place_shrine_collisions(
+        name=pr.name,
+        address=pr.address,
         latitude=pr.latitude,
         longitude=pr.longitude,
-        place_ref=pr,
     )
+    if candidates:
+        logger.warning(
+            "[places/resolve] shrine_collision_review_required place_id=%s name=%r "
+            "candidate_shrine_ids=%s",
+            place_id,
+            pr.name,
+            [c.shrine_id for c in candidates],
+        )
+        return PlaceShrineResolution(
+            status="collision_review_required",
+            shrine=None,
+            candidates=tuple(candidates),
+        )
+
+    try:
+        # savepoint。IntegrityError で外側の transaction を壊さずに読み直す。
+        with transaction.atomic():
+            created = Shrine.objects.create(
+                name_jp=pr.name or "",
+                address=pr.address or "",
+                latitude=pr.latitude,
+                longitude=pr.longitude,
+                place_ref=pr,
+            )
+    except IntegrityError:
+        # F-6B S-4（防御的）: ロックが効いていれば到達しないが、先行 transaction が
+        # 同じ PlaceRef へ Shrine を付けていた場合は勝者の Shrine を返す。
+        winner = Shrine.objects.filter(place_ref_id=pr.pk).first()
+        if winner is not None:
+            return PlaceShrineResolution(
+                status="already_linked", shrine=winner, candidates=()
+            )
+        raise
+
+    return PlaceShrineResolution(status="created", shrine=created, candidates=())
+
+
+def get_or_create_shrine_by_place_id(place_id: str) -> Shrine:
+    """既存 signature の convenience wrapper。
+
+    `resolve_shrine_by_place_id()` へ委譲するだけで、解決規則は持たない。
+    collision 時は `ShrineCollisionReviewRequired`（`PlacesError`, status=409）
+    を送出する。例外は atomic ブロックの **外** で送出するため、PlaceRef の
+    同期結果（cache）はロールバックされない。
+    """
+    resolution = resolve_shrine_by_place_id(place_id)
+    if resolution.shrine is not None:
+        return resolution.shrine
+    raise ShrineCollisionReviewRequired(place_id, resolution.candidates)
 
 
 def _log_upstream(name: str, url: str, params: dict) -> None:
@@ -91,6 +209,10 @@ __all__ = [
     "photo",
     "text_search_first",
     "get_or_create_shrine_by_place_id",
+    # F-6B
+    "resolve_shrine_by_place_id",
+    "PlaceShrineResolution",
+    "ShrineCollisionReviewRequired",
 ]
 
 
@@ -188,13 +310,6 @@ def _get_or_set(
     cache.set(key, data, ttl)
     return data, False
 
-
-class PlacesError(Exception):
-    """Places系のアプリ内エラー。status にHTTP相当を入れてビュー側で使う。"""
-
-    def __init__(self, message: str, status: Optional[int] = None):
-        super().__init__(message)
-        self.status = status
 
 def _wrap_call(fn, *args, **kwargs):
     try:

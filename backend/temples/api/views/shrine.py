@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from django.conf import settings
+from django.db import IntegrityError
 from django.db.models import F, Q, Value
 from django.db.models.functions import Coalesce
 
@@ -21,7 +22,11 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.decorators import action
 
-from temples.services.places import get_or_create_shrine_by_place_id, PlacesError
+from temples.services.places import (
+    get_or_create_shrine_by_place_id,
+    PlacesError,
+    ShrineCollisionReviewRequired,
+)
 from rest_framework import serializers
 from drf_spectacular.utils import extend_schema
 from django.http import Http404
@@ -355,5 +360,15 @@ class ShrineViewSet(viewsets.ModelViewSet):
             data = ShrineDetailSerializer(shrine, context={"request": request}).data
             data["place_id"] = place_id
             return Response(data, status=status.HTTP_200_OK)
+        # F-6B: collision は PlacesError のサブクラスなので必ず先に捕まえる。
+        # 候補 Shrine の id は返さない（AUTO_BIND_ON_SINGLE_CANDIDATE = PROHIBITED）。
+        except ShrineCollisionReviewRequired as e:
+            return Response(
+                {"detail": str(e), "code": e.code},
+                status=status.HTTP_409_CONFLICT,
+            )
         except PlacesError as e:
             return Response({"detail": str(e)}, status=getattr(e, "status", 502) or 502)
+        # F-6B S-5: ingest は IntegrityError を捕捉していなかった（未処理 500）。
+        except IntegrityError:
+            return Response({"detail": "db_integrity_error"}, status=500)

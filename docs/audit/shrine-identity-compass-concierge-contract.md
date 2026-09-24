@@ -693,3 +693,61 @@ api/views/shrines_nearby.py:40
 `F-6A` は docs のみであり、runtime の identity 挙動を一切変えていない。
 
 詳細は `docs/audit/place-id-shadow-identity-hardening.md`。
+
+## 13. Current State Update — F-6B (place_id shadow identity hardened)
+
+> 追記。§1–§12 の歴史的記録は書き換えない。
+
+```text
+F6B_STATUS                           = IMPLEMENTED
+POST_0100_SHADOW_RECREATION_POSSIBLE = NO
+CONCURRENT_RESOLVE_SAFE              = ROW_LOCK
+PLACE_ID_IDENTITY_AUTHORITY          = NO（不変）
+```
+
+### 13.1 §12.1 で記録した再発経路を閉じた
+
+`get_or_create_shrine_by_place_id` は、未リンク PlaceRef から新規 Shrine を
+作る前に collision 検出を通すようになった。
+
+```text
+COLLISION_CANDIDATE =
+  NORMALIZED_NAME_EXACT AND ( STRONG_ADDRESS_MATCH OR DISTANCE_M <= 500 )
+
+ON_COLLISION  作成しない / 束縛しない / 409（REVIEW_REQUIRED）
+```
+
+```text
+COLLISION_DETECTION != IDENTITY_RESOLUTION
+AUTO_BIND_ON_SINGLE_CANDIDATE = PROHIBITED
+```
+
+§12.1 が指摘した「部分 unique 制約が place_ref 行を除外する」構造は
+**未変更**（DB 制約は触っていない）。application 層で閉じた。
+
+### 13.2 §5 との関係
+
+§5 の結論（place_id は identity authority ではない）は変わらない。F-6B は
+その規則を **runtime で強制**しただけであり、place_id を identity へ
+昇格させていない。name / address / coordinate も同様で、collision 検出の
+シグナルとしてのみ使う。
+
+### 13.3 未実装のまま残るもの
+
+```text
+EXPLICIT_MAPPING 状態      runtime に存在しない（承認済みマッピングの保持方法が未決）
+place_ref backfill        未実装（0100 の reverse を壊す。F-6A §7.2）
+shrines_nearby の削除可否  未決（到達不能な dead code）
+409 の専用 UX             未実装（frontend 未変更）
+```
+
+### 13.4 §7 分類への影響
+
+```text
+分類は PARTIALLY_SHARED のまま変わらない。
+```
+
+履歴 snapshot consumer（Web 4 件 / backend 2 件）と突合 key 2 件は未統合のまま。
+
+実装の詳細と回帰の証跡は
+`docs/audit/place-id-shadow-identity-hardening.md` §14。

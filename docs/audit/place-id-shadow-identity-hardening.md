@@ -755,3 +755,281 @@ BLOCKED_ON = §7.2 の未決事項 2 件（EXPLICIT_BACKFILL の前提）
 ```
 
 次の行動には `F-6B` を名指しする Mother Ship 指示が必要。
+
+---
+
+# F-6B — Implementation Record
+
+> `F-6A`（§1–§13）への**追記**。既存節は書き換えない。`F6A_STATUS = AUDITED`
+> は F-6A 時点の事実として読むこと。現在の実装状態は本節を参照。
+
+## 14. F-6B status
+
+```text
+F6B_STATUS = IMPLEMENTED
+F6B_AT     = 2026-09-24
+VERIFIED_AGAINST = develop @ 56c12b35 (after F-6A #2962)
+```
+
+```text
+SHRINE_IDENTITY_AUTHORITY     = Shrine.id
+PLACE_ID_IDENTITY_AUTHORITY   = NO
+F6B_COLLISION_POLICY          = CONSERVATIVE
+AUTO_BIND_ON_SINGLE_CANDIDATE = PROHIBITED
+
+ON_COLLISION
+  CREATE_NEW_SHRINE           = NO
+  AUTO_BIND_EXISTING_SHRINE   = NO
+  RESULT                      = REVIEW_REQUIRED
+  HTTP_STATUS                 = 409
+
+POST_0100_SHADOW_RECREATION_POSSIBLE = NO   （§14.3 で回帰を固定）
+PLACE_ID_BACKFILL                    = OUT_OF_F6B_SCOPE（未実装）
+```
+
+### 14.1 Collision detector
+
+```text
+backend/temples/services/place_shrine_collision.py   （新規）
+
+COLLISION_CANDIDATE =
+  NORMALIZED_NAME_EXACT AND ( STRONG_ADDRESS_MATCH OR DISTANCE_M <= 500 )
+```
+
+```text
+COLLISION_DETECTION != IDENTITY_RESOLUTION
+```
+
+返り値は候補の list であり identity ではない。要素が 1 件でも採用しない。
+
+使う正規化は `shrine_duplicate_normalize` の
+`normalize_shrine_name_for_duplicate` / `normalize_shrine_address_for_duplicate`
+のみ（F-6A §4 で `COLLISION_SIGNAL_ONLY` と分類したもの）。
+
+```text
+shrine_name_duplicate_base_key は使わない。
+「稲荷神社」のような base key は全国の別神社に一致するため
+BASE_NAME_ONLY = INSUFFICIENT を満たせない。
+find_duplicate_candidates()（name icontains + base key）も使わない。
+```
+
+**SQL 絞り込みは superset で行い、確定判定は Python 側**で行う。
+SQL 側は「空白全除去 + 全角括弧を半角へ」で粗く絞る。
+`normalize_shrine_name_for_duplicate` で等しい 2 値はこの変換でも必ず等しい
+（normalize は空白を潰すだけ、本変換はさらに全除去する）ため superset であり、
+`NORMALIZED_NAME_EXACT` の判定を緩めない。
+
+距離は本 module 内に private な haversine を置いた。`places.py` の
+`_haversine_m` を import すると循環依存になるため。距離は identity ではないので
+これは identity 実装の重複には当たらない（repository には既に 10 以上の
+haversine 実装が散在しており、その統合は F-6B のスコープ外）。
+
+### 14.2 Writer
+
+```text
+backend/temples/services/places.py
+
+resolve_shrine_by_place_id(place_id) -> PlaceShrineResolution   ← authoritative
+get_or_create_shrine_by_place_id(place_id) -> Shrine            ← 委譲のみ
+```
+
+```text
+PlaceShrineResolution.status
+  already_linked             PlaceRef に既に Shrine が紐づいていた
+  created                    collision 無し -> 新規作成
+  collision_review_required  作成も束縛もしない
+```
+
+`get_or_create_shrine_by_place_id` の signature は**不変**。collision 時は
+`ShrineCollisionReviewRequired`（`PlacesError` のサブクラス、`status=409`）を
+送出する。既存 View の `except PlacesError` がそのまま HTTP へ写像する。
+
+例外は atomic ブロックの**外**で送出するため、`get_or_sync_place()` が同期した
+PlaceRef（cache）はロールバックされない。
+
+判定順（既存契約を壊さないため）:
+
+```text
+1. reverse O2O に Shrine -> already_linked
+2. geometry 欠損         -> PlacesError(status=502)   （既存挙動を維持）
+3. collision あり        -> collision_review_required（409）
+4. それ以外              -> created
+```
+
+### 14.3 shadow 再発経路を閉じた
+
+F-6A §2.2 が証明した経路に対する回帰:
+
+```text
+Shrine 22 相当（給田六所神社）が登録済み
++ 0100 が孤立させた PlaceRef ChIJl-MEepfxGGAR1Eo44p__GaE
+-> POST /api/places/resolve/   = 409
+-> Shrine 件数は増えない
+-> primary の place_ref は NULL のまま（自動束縛しない）
+```
+
+test: `temples/tests/services/test_place_shrine_resolution.py`
+`test_10_historical_place_ids_cannot_recreate_a_shadow_row`
+および `temples/tests/api/test_place_resolve_collision_api.py`
+`test_historical_place_id_returns_409_instead_of_recreating_a_shadow`。
+
+### 14.4 Concurrency（F-6A §9 の解消）
+
+```text
+BEFORE  CONCURRENT_RESOLVE_SAFE = DB_CONSTRAINT_ONLY（敗者は 500）
+AFTER   CONCURRENT_RESOLVE_SAFE = ROW_LOCK
+```
+
+`get_or_sync_place()` の直後に PlaceRef 行を `select_for_update()` でロックし、
+ロック済みの行を読み直してから reverse O2O を見る。読み直すことで reverse O2O の
+キャッシュも確実に外れる。
+
+実スレッド 2 本で検証した（`test_11_concurrent_resolve_creates_one_shrine_and_both_callers_get_it`）:
+
+```text
+Shrine 作成数 = 1
+両 caller が同じ shrine_id を受け取る
+どちらも例外を出さない
+```
+
+`FOR UPDATE` が実際に発行されることを `CaptureQueriesContext` で確認している。
+
+**IntegrityError 復帰分岐は防御的実装であり、専用 test を持たない。**
+`select_for_update()` が PlaceRef 行を保持している間、別 connection から同じ
+`place_ref_id` で `Shrine` を INSERT しようとすると FK share lock が必要になり、
+こちらの `FOR UPDATE` と相互待機して **deadlock する**（実際に試して
+`deadlock detected` を確認した）。つまりロックが効いている限りこの分岐へは
+到達しない。ロックが失われた環境のための保険としてコードは残すが、
+テスト済みとは主張しない。
+
+`shrine.py` の `ingest` は `IntegrityError` を捕捉していなかった（F-6A §9）。
+ハンドラを追加した（F-6B S-5）。
+
+### 14.5 API 契約
+
+```text
+API_RESPONSE_CONTRACT_CHANGES = YES（409 状態の追加。200 の shape は不変）
+```
+
+```json
+409 {"detail": "an existing shrine may already represent this place; review required",
+     "code": "shrine_collision_review_required"}
+```
+
+**候補 Shrine の id は body に載せない。** 載せると client 側が「1 件だから」と
+自動束縛しうるため（`AUTO_BIND_ON_SINGLE_CANDIDATE = PROHIBITED`）。
+レビューは server log（`[places/resolve] shrine_collision_review_required`、
+`candidate_shrine_ids` を含む WARNING）で行う。
+
+OpenAPI に 409 を追記し、生成された schema で検証した
+（`temples/tests/api/test_places_resolve_openapi_409.py`。
+`properties` が `detail` / `code` のみで `shrine_id` / `candidates` を
+含まないことも assert している）。
+
+frontend は未変更。F-6A §8.1 の通り
+`apps/web/src/app/shrines/resolve/page.tsx` は `if (!res.ok)` で汎用 toast、
+`PlaceCardClientActions.tsx` は非 2xx を throw するため**壊れない**。
+専用 UX は F-6C 相当の別タスク。
+
+### 14.6 実装した F-6A plan 項目
+
+```text
+SAFE_AUTOMATIC
+  S-1 ALREADY_LINKED 維持              DONE
+  S-2 UNLINKED_NO_COLLISION の create   DONE
+  S-3 geometry 欠損 502 維持            DONE
+  S-4 PlaceRef の select_for_update     DONE
+  S-5 ingest の IntegrityError ハンドラ  DONE
+
+FAIL_CLOSED_REVIEW
+  R-1 collision 検出                    DONE
+  R-2 collision で作成しない             DONE
+  R-3 ambiguous で作成・束縛しない        DONE
+  R-4 status 付き result type           DONE
+  R-5 View 境界で 409                   DONE
+  R-6 OpenAPI 409                       DONE
+  R-7 test matrix                       DONE（§14.7）
+
+EXPLICIT_BACKFILL                       未実装（PLACE_ID_BACKFILL = OUT_OF_F6B_SCOPE）
+OUT_OF_SCOPE O-1..O-6                   未着手
+```
+
+### 14.7 F-6A §10.1 test matrix の充足
+
+| # | ケース | 実装 |
+| ---: | --- | --- |
+| 1 | already-linked -> 同じ Shrine | `test_1_already_linked_place_ref_returns_the_same_shrine` |
+| 2 | 新規 -> Shrine 1 件 | `test_2_genuinely_new_place_ref_creates_exactly_one_shrine` |
+| 3 | 再 resolve -> 2 件目を作らない | `test_3_repeated_resolve_does_not_create_a_second_shrine` |
+| 4 | collision -> 作成しない | `test_4_collision_candidate_creates_no_shrine` |
+| 5 | collision -> 自動選択しない | `test_5_collision_candidate_is_not_automatically_selected` |
+| 6 | 明示マッピング -> primary を返す | **未実装**（`PLACE_ID_BACKFILL = OUT_OF_F6B_SCOPE`） |
+| 7 | 明示マッピング -> place_ref backfill | **未実装**（同上） |
+| 8 | ambiguous -> fail closed | `test_8_ambiguous_multiple_candidates_fail_closed` |
+| 9 | geometry 欠損の挙動維持 | `test_9_missing_geometry_still_raises_502` |
+| 10 | 0100 の place_id で shadow 再作成不可 | `test_10_historical_place_ids_cannot_recreate_a_shadow_row` |
+| 11 | 並行 resolve | `test_11_concurrent_resolve_creates_one_shrine_and_both_callers_get_it` |
+
+```text
+MATRIX_IMPLEMENTED = 9 / 11
+MATRIX_DEFERRED    = 2（#6 #7 — EXPLICIT_MAPPING。F-6A §7.2 の未決 2 件が前提）
+```
+
+`EXPLICIT_MAPPING` 状態は **runtime に存在しない**。承認済みマッピングの
+保持方法（F-6A §11.3 E-1）が未決のため、F-6B では `already_linked` /
+`created` / `collision_review_required` の 3 状態のみを実装した。
+`AMBIGUOUS_MAPPING` は `collision_review_required` に含まれる（候補 2 件以上）。
+
+### 14.8 Validation
+
+```text
+place_shrine_collision           18 tests PASS
+place_shrine_resolution          15 tests PASS
+place_resolve_collision_api       7 tests PASS
+places_resolve_openapi_409        2 tests PASS
+
+backend 全体   3802 passed, 10 skipped, 3 failed
+git diff --check   PASS
+ruff（変更・新規 7 file）  新規指摘 0
+```
+
+既存の `backend/tests/test_places_resolve_candidate.py`（3 件）は緑のまま。
+いずれも事前リンク済みのため `already_linked` 分岐を通り、挙動は不変。
+
+事前に存在していた失敗（F-6B 起因ではない。F-5B §17.1 で pristine develop でも
+同じく失敗することを別 worktree で確認済み）:
+
+```text
+temples/tests/test_concierge_api.py::test_chat_backfills_short_location
+temples/tests/test_concierge_api.py::test_radius_km_bias_passthrough
+temples/tests/test_concierge_api.py::test_candidate_formatted_address_is_used
+```
+
+### 14.9 Required statements
+
+```text
+1.  collision 検出は identity 解決ではない。候補 list を返すだけ。
+2.  候補 1 件の自動束縛を実装していない（PROHIBITED）。
+3.  name / address / coordinate を identity authority へ昇格させていない。
+4.  base name key / icontains を collision 判定に使っていない。
+5.  place_id の backfill を実装していない。
+6.  migration を作成していない。Production に触れていない。
+7.  frontend / mobile を変更していない。
+8.  200 の response shape を変えていない。
+9.  geometry 欠損の 502 契約を維持した。
+10. IntegrityError 復帰分岐をテスト済みとは主張していない（§14.4）。
+11. test matrix 11 件のうち 2 件（#6 #7）が未実装であることを明示した。
+12. F-6A の決定を再議論していない。
+```
+
+## 15. STOP
+
+```text
+F6A_STATUS = AUDITED
+F6B_STATUS = IMPLEMENTED
+NEXT       = EXPLICIT_BACKFILL（F-6A §7.2 の未決 2 件が前提）
+             / F-6C 相当の 409 専用 UX
+             / O-1 shrines_nearby の削除可否
+```
+
+次の行動には Mother Ship 指示が必要。
