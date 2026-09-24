@@ -1084,3 +1084,176 @@ NEXT       = F-6（place_id shadow identity）
 ```
 
 次の行動には Mother Ship 指示が必要。
+
+---
+
+# F-5B.1 — Normalization boundary fix
+
+> `F-5A`（§1–§9）/ `F-5B`（§10–§19）への**追記**。既存節は書き換えない。
+
+## 20. NORMALIZATION_MUST_NOT_DOWNGRADE
+
+```text
+F5B_1_STATUS = FIXED
+FIXED_AT     = 2026-09-24
+SCOPE        = backend/temples/services/concierge_candidate_utils.py
+```
+
+### 20.1 何が壊れていたか
+
+`F-5B` は consumer 側を `raw -> resolve` に揃えた（§12.1）。しかし
+`_normalize_candidate_fields()` **そのもの** が identity を
+`_to_int_or_none()` で再解釈し続けていたため、正規化済み row を後段で
+解決すると status が downgrade されていた。
+
+```text
+shrine_id = "bad"  -> None  -> 後段の resolver は ABSENT を見る   （正しくは INVALID）
+shrine_id = 1.0    -> 1     -> 後段の resolver は RESOLVED 1 を見る（正しくは INVALID）
+shrine_id = "1.0"  -> 1     -> 同上
+shrine_id = True   -> None  -> ABSENT                            （正しくは INVALID）
+```
+
+`absent` は「非 identity fallback を使ってよい」を意味するため、
+`invalid -> absent` の downgrade は **fail closed の穴** になる。
+`_merge_candidate_fields()` の name 突合（§12.2）がまさにそれで開く。
+
+```text
+CANONICAL_RESOLVER_MODE = STRICT_FAIL_CLOSED   に違反
+VALID_SHRINE_ID = POSITIVE_INTEGER_ONLY        に違反（1.0 -> Shrine 1）
+```
+
+### 20.2 不変条件
+
+```text
+NORMALIZATION_MUST_NOT_DOWNGRADE
+
+invalid  -> absent    PROHIBITED
+invalid  -> resolved  PROHIBITED
+conflict -> absent    PROHIBITED
+conflict -> resolved  PROHIBITED
+```
+
+### 20.3 修正
+
+`_normalize_identity_field()` を追加し、`row["id"]` / `row["shrine_id"]` に
+適用する。
+
+```text
+canonical に有効な値だけ正の int へ揃え、それ以外は値をそのまま返す。
+
+    42      -> 42       （resolved のまま）
+    "42"    -> 42       （resolved のまま）
+    1.0     -> 1.0      （invalid のまま。1 にしない）
+    "1.0"   -> "1.0"    （invalid のまま）
+    True    -> True     （invalid のまま。None にしない）
+    "bad"   -> "bad"    （invalid のまま。None にしない）
+    None    -> None     （absent のまま）
+```
+
+正規化は `resolve_shrine_id({"shrine_id": value}, policy="live_candidate")`
+へ委譲する（§12.4 の `source.shrineId` と同じ adapter 方式）。
+
+```text
+SECOND_SHRINE_ID_PARSER_INTRODUCED = NO
+IDENTITY_RESOLUTION_IMPLEMENTATIONS = 1   （変わらず）
+```
+
+identity 以外の int 正規化（`astro_priority` など）は従来どおり
+`_to_int_or_none()` のまま。`place_id` の扱いも未変更。
+
+```text
+PLACE_ID_HANDLING_CHANGED = NO
+```
+
+### 20.4 副作用として残るもの（明示）
+
+invalid な値をそのまま残すため、**正規化後の row に malformed な値が残る**。
+
+```text
+BEFORE  row["shrine_id"] は int | None に潰されていた
+AFTER   canonical に無効な値は生のまま残る（"bad" / 1.0 / True）
+```
+
+これは status を保つための必然であり、他に手段はない（どんな sentinel へ
+潰しても status は失われる）。影響範囲を確認した結果:
+
+```text
+_normalize_candidate_fields() の呼び出し元は Concierge 経路のみ
+  concierge_chat.py:706
+  concierge_chat_pool.py:14, 40, 59, 97, 115
+
+Compass は build_chat_candidates_with_eligibility() を直接使い、
+_normalize_candidate_fields() を通らない。したがって
+compass_public_projection.py の identity gate は本修正の影響を受けない。
+
+候補 row の shrine_id を読む後段はすべて log / observability dict への
+転記か共有 resolver 経由であり、int を前提とした算術・int() は存在しない
+（§16 の再走査どおり）。
+```
+
+F-7 invariant 下の live candidate では `shrine_id` は常に int であるため、
+この副作用が実データで発現する経路は観測されていない。
+
+```text
+PRODUCTION_DATA_AFFECTED = NOT OBSERVED
+```
+
+### 20.5 検証
+
+実際に `_normalize_candidate_fields()` を通して測定した結果:
+
+```text
+RAW                          BEFORE       AFTER NORMALIZATION
+42                           resolved     resolved
+"42"                         resolved     resolved
+id=42                        resolved     resolved
+1.0                          invalid      invalid
+"1.0"                        invalid      invalid
+True                         invalid      invalid
+"bad"                        invalid      invalid
+shrine_id=42,id=999          conflict     conflict
+
+NORMALIZATION_MUST_NOT_DOWNGRADE = HOLDS
+```
+
+2段パイプライン（`_ensure_pool_size()` -> `_merge_candidate_fields()`）の
+逐次回帰も追加した。
+
+```text
+rec {"shrine_id": "bad", "name": "A"} / cand {"shrine_id": 7, "name": "A", "address": "Tokyo"}
+  -> name 経由で Shrine 7 と merge されない。address を獲得しない
+
+rec {"shrine_id": 42, "id": 999, "name": "A"} / 同 cand
+  -> conflict が 2 段を通しても fail closed のまま
+
+rec {"name": "A"}（absent）/ 同 cand
+  -> 既存の name merge は従来どおり動く（閉じすぎていない）
+```
+
+回帰が load-bearing であることは、runtime 修正を一時的に戻して確認した。
+
+```text
+修正を戻すと 7 件中 4 件が FAIL
+  invalid_identity_is_not_merged_with_shrine_seven_by_name
+  float_identity_stays_invalid_through_both_stages
+  float_string_identity_stays_invalid_through_both_stages
+  bool_identity_stays_invalid_through_both_stages
+
+conflict の 1 件は修正なしでも PASS する。42 と 999 はどちらも有効な int で
+あり、_to_int_or_none() でも downgrade されないため。これは回帰の穴では
+なく、conflict 経路が §12.2 の status 分岐だけで閉じていることの確認になる。
+```
+
+```text
+backend 全体   3762 passed, 10 skipped, 3 failed（§17.1 の既存 3 件のみ）
+git diff --check   PASS
+```
+
+## 21. STOP
+
+```text
+F5B_1_STATUS = FIXED
+NEXT         = F-6（place_id shadow identity）
+```
+
+次の行動には Mother Ship 指示が必要。

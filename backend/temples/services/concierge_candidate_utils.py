@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from temples.domain.shrine_identity import resolve_shrine_identity
+from temples.domain.shrine_identity import resolve_shrine_id, resolve_shrine_identity
 
 
 def _to_float(v: Any) -> Optional[float]:
@@ -83,6 +83,33 @@ def _to_str_list(value: Any, *, dedupe: bool = True, limit: Optional[int] = None
     return out
 
 
+def _normalize_identity_field(value: Any) -> Any:
+    """Shrine identity field を status を壊さずに正規化する。
+
+    canonical に **有効な** 値だけを正の int へ揃え、それ以外は値をそのまま
+    返す。そのまま返すことで、後段の `resolve_shrine_identity()` が
+    `invalid` を `invalid` のまま観測できる。
+
+        42      -> 42      （resolved のまま）
+        "42"    -> 42      （resolved のまま）
+        1.0     -> 1.0     （invalid のまま。1 にしない）
+        "1.0"   -> "1.0"   （invalid のまま）
+        True    -> True    （invalid のまま。None にしない）
+        "bad"   -> "bad"   （invalid のまま。None にしない）
+        None    -> None    （absent のまま）
+
+    正規化は canonical resolver へ委譲する（`{"shrine_id": value}` へ
+    読み替えるだけ）。2 つ目の Shrine-id parser は作らない。
+
+    identity 以外の int 正規化は従来どおり `_to_int_or_none()` を使う。
+    """
+    if value is None:
+        return None
+
+    canonical = resolve_shrine_id({"shrine_id": value}, policy="live_candidate")
+    return canonical if canonical is not None else value
+
+
 def _normalize_candidate_fields(c: Dict[str, Any]) -> Dict[str, Any]:
     """
     候補1件を後段処理しやすい形に正規化して返す。
@@ -115,8 +142,16 @@ def _normalize_candidate_fields(c: Dict[str, Any]) -> Dict[str, Any]:
     row["reason"] = _to_str_or_none(row.get("reason"))
     row["location"] = _to_str_or_none(row.get("location"))
 
-    row["id"] = _to_int_or_none(row.get("id"))
-    row["shrine_id"] = _to_int_or_none(row.get("shrine_id"))
+    # NORMALIZATION_MUST_NOT_DOWNGRADE
+    #
+    # Shrine identity は _to_int_or_none() で再解釈しない。あれは
+    #   "bad" -> None   （invalid が absent に化ける）
+    #   1.0   -> 1      （invalid が resolved 1 に化ける）
+    #   "1.0" -> 1      （同上）
+    # となり、後段の共有 resolver が見る status を壊すため。
+    # 意味論は temples.domain.shrine_identity を正本とする。
+    row["id"] = _normalize_identity_field(row.get("id"))
+    row["shrine_id"] = _normalize_identity_field(row.get("shrine_id"))
 
     row["lat"] = _to_float(row.get("lat"))
     row["lng"] = _to_float(row.get("lng"))

@@ -5,6 +5,10 @@ from temples.services.concierge_candidate_utils import (
     _to_float,
 )
 
+import pytest
+
+from temples.domain.shrine_identity import resolve_shrine_identity
+
 
 def test_to_float_handles_numbers_and_strings():
     assert _to_float(1) == 1.0
@@ -104,3 +108,110 @@ def test_dedupe_still_collapses_absent_identity_by_name_address():
     second = {"name": "A", "address": "Tokyo"}
 
     assert _dedupe_candidates([first, second]) == [first]
+
+
+# ---------------------------------------------------------------------------
+# NORMALIZATION_MUST_NOT_DOWNGRADE
+#
+# _normalize_candidate_fields() は candidate の presentation field を整える層で
+# あり、Shrine identity の意味論を**再解釈してはならない**。正規化の前後で
+# canonical identity status が一致しなければならない。
+#
+#   invalid  -> absent    PROHIBITED
+#   invalid  -> resolved  PROHIBITED
+#   conflict -> absent    PROHIBITED
+#   conflict -> resolved  PROHIBITED
+#
+# docs/audit/backend-shrine-identity-fallback-consolidation.md §20
+# ---------------------------------------------------------------------------
+
+def _status(source):
+    return resolve_shrine_identity(source, policy="live_candidate").status
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected_status"),
+    [
+        ({"shrine_id": 42, "name": "A"}, "resolved"),
+        ({"shrine_id": "42", "name": "A"}, "resolved"),
+        ({"id": 42, "name": "A"}, "resolved"),
+        ({"shrine_id": 1.0, "name": "A"}, "invalid"),
+        ({"shrine_id": "1.0", "name": "A"}, "invalid"),
+        ({"shrine_id": True, "name": "A"}, "invalid"),
+        ({"shrine_id": "bad", "name": "A"}, "invalid"),
+        ({"shrine_id": 42, "id": 999, "name": "A"}, "conflict"),
+    ],
+)
+def test_normalize_candidate_fields_preserves_identity_status(raw, expected_status):
+    before = _status(raw)
+    assert before == expected_status, f"前提が誤り: {raw!r}"
+
+    after = _status(_normalize_candidate_fields(raw))
+
+    assert after == before, (
+        f"{raw!r}: 正規化が identity status を {before} -> {after} へ downgrade した"
+    )
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected_status"),
+    [
+        ({"id": 1.0, "name": "A"}, "invalid"),
+        ({"id": "1.0", "name": "A"}, "invalid"),
+        ({"id": True, "name": "A"}, "invalid"),
+        ({"id": "bad", "name": "A"}, "invalid"),
+        ({"shrine_id": 0, "id": 777, "name": "A"}, "invalid"),
+        ({"shrine_id": -1, "name": "A"}, "invalid"),
+        ({"shrine_id": "-1", "name": "A"}, "invalid"),
+        ({"shrine_id": None, "id": 42, "name": "A"}, "resolved"),
+        ({"shrine_id": None, "name": "A"}, "absent"),
+        ({"name": "A"}, "absent"),
+        ({"shrine_id": "42", "id": 42, "name": "A"}, "resolved"),
+    ],
+)
+def test_normalize_candidate_fields_preserves_identity_status_extended(raw, expected_status):
+    before = _status(raw)
+    assert before == expected_status, f"前提が誤り: {raw!r}"
+
+    assert _status(_normalize_candidate_fields(raw)) == before
+
+
+def test_normalize_candidate_fields_still_normalizes_valid_identity_to_int():
+    out = _normalize_candidate_fields({"shrine_id": "42", "id": "42", "name": "A"})
+
+    assert out["shrine_id"] == 42
+    assert out["id"] == 42
+    assert isinstance(out["shrine_id"], int)
+    assert isinstance(out["id"], int)
+
+
+def test_normalize_candidate_fields_keeps_identity_keys_present():
+    """presence rule（key があり値が None でない）を壊さない。"""
+    out = _normalize_candidate_fields({"name": "A"})
+
+    assert "shrine_id" in out
+    assert "id" in out
+    assert out["shrine_id"] is None
+    assert out["id"] is None
+
+
+def test_normalize_candidate_fields_does_not_mutate_the_input():
+    src = {"shrine_id": "bad", "name": "A"}
+
+    _normalize_candidate_fields(src)
+
+    assert src == {"shrine_id": "bad", "name": "A"}
+
+
+def test_normalize_candidate_fields_does_not_change_place_id_behavior():
+    """place_id の扱いは未変更（F-6 のスコープ）。"""
+    assert _normalize_candidate_fields({"place_id": " pid-1 "})["place_id"] == "pid-1"
+    assert _normalize_candidate_fields({"place_id": ""})["place_id"] is None
+    assert _normalize_candidate_fields({"place_id": "pid-1", "shrine_id": "bad"})["place_id"] == "pid-1"
+
+
+def test_normalize_candidate_fields_still_normalizes_non_identity_ints():
+    """identity 以外の int 正規化は _to_int_or_none() のまま。"""
+    out = _normalize_candidate_fields({"name": "A", "astro_priority": "3"})
+
+    assert out["astro_priority"] == 3

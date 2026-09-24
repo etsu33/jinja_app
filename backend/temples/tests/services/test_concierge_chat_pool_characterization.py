@@ -290,3 +290,94 @@ class TestMergeCandidateFieldsIdentityHardening:
         out = _merge_candidate_fields(recs, candidates=candidates)
 
         assert out["recommendations"][0]["address"] == "東京都"
+
+
+# ---------------------------------------------------------------------------
+# NORMALIZATION_MUST_NOT_DOWNGRADE — 2段パイプラインの逐次回帰。
+#
+#   _ensure_pool_size() -> _merge_candidate_fields()
+#
+# 単体では fail closed でも、1段目の正規化が identity status を潰すと
+# 2段目が `invalid` を `absent` と誤認し、name fallback が開いてしまう。
+# 実際の流れで通しても閉じたままであることを確認する。
+#
+# docs/audit/backend-shrine-identity-fallback-consolidation.md §20
+# ---------------------------------------------------------------------------
+
+
+class TestPoolPipelineIdentityStatusSurvivesNormalization:
+    def test_invalid_identity_is_not_merged_with_shrine_seven_by_name(self):
+        recs = {"recommendations": [_rec(shrine_id="bad", name="A")]}
+        candidates = [_rec(shrine_id=7, name="A", address="Tokyo")]
+
+        staged = _ensure_pool_size(recs, candidates=candidates, size=12)
+        out = _merge_candidate_fields(staged, candidates=candidates)
+
+        rows = out["recommendations"]
+        malformed = [r for r in rows if r.get("name") == "A" and r.get("shrine_id") != 7]
+        assert malformed, rows
+        assert malformed[0].get("address") is None
+        assert malformed[0].get("shrine_id") != 7
+
+    def test_conflict_identity_stays_fail_closed_through_both_stages(self):
+        recs = {"recommendations": [_rec(shrine_id=42, id=999, name="A")]}
+        candidates = [_rec(shrine_id=7, name="A", address="Tokyo")]
+
+        staged = _ensure_pool_size(recs, candidates=candidates, size=12)
+        out = _merge_candidate_fields(staged, candidates=candidates)
+
+        conflicted = out["recommendations"][0]
+        assert conflicted.get("shrine_id") == 42
+        assert conflicted.get("id") == 999
+        assert conflicted.get("address") is None
+
+    def test_float_identity_stays_invalid_through_both_stages(self):
+        """1.0 が 1 へ丸められて Shrine 1 と突合されない。"""
+        recs = {"recommendations": [_rec(shrine_id=1.0, name="A")]}
+        candidates = [_rec(shrine_id=1, name="B", address="Tokyo")]
+
+        staged = _ensure_pool_size(recs, candidates=candidates, size=12)
+        out = _merge_candidate_fields(staged, candidates=candidates)
+
+        assert out["recommendations"][0].get("address") is None
+
+    def test_float_string_identity_stays_invalid_through_both_stages(self):
+        recs = {"recommendations": [_rec(shrine_id="1.0", name="A")]}
+        candidates = [_rec(shrine_id=1, name="A", address="Tokyo")]
+
+        staged = _ensure_pool_size(recs, candidates=candidates, size=12)
+        out = _merge_candidate_fields(staged, candidates=candidates)
+
+        assert out["recommendations"][0].get("address") is None
+
+    def test_bool_identity_stays_invalid_through_both_stages(self):
+        recs = {"recommendations": [_rec(shrine_id=True, name="A")]}
+        candidates = [_rec(shrine_id=1, name="A", address="Tokyo")]
+
+        staged = _ensure_pool_size(recs, candidates=candidates, size=12)
+        out = _merge_candidate_fields(staged, candidates=candidates)
+
+        assert out["recommendations"][0].get("address") is None
+
+    def test_absent_identity_still_merges_by_name_through_both_stages(self):
+        """absent は従来どおり name fallback が効く（閉じすぎていない）。"""
+        recs = {"recommendations": [_rec(name="A")]}
+        candidates = [_rec(shrine_id=7, name="A", address="Tokyo")]
+
+        staged = _ensure_pool_size(recs, candidates=candidates, size=12)
+        out = _merge_candidate_fields(staged, candidates=candidates)
+
+        merged = out["recommendations"][0]
+        assert merged["address"] == "Tokyo"
+        assert merged["shrine_id"] == 7
+
+    def test_resolved_identity_still_merges_by_id_through_both_stages(self):
+        recs = {"recommendations": [_rec(shrine_id="7", name="A")]}
+        candidates = [_rec(shrine_id=7, name="B", address="Tokyo")]
+
+        staged = _ensure_pool_size(recs, candidates=candidates, size=12)
+        out = _merge_candidate_fields(staged, candidates=candidates)
+
+        merged = out["recommendations"][0]
+        assert merged["address"] == "Tokyo"
+        assert merged["shrine_id"] == 7
