@@ -9,6 +9,8 @@
 //
 // legacy `reason` は Meaning の fallback に使わない。Shrine Fact を Meaning へ
 // 昇格させない。
+import { resolveCanonicalHistoryTypeLabel } from "@/lib/shrine/shrineHistoryTypeLabels";
+import { toOriginPayload, type UserOrigin } from "../../../../../packages/shared/userOrigin";
 import type { CompassRecommendation } from "./types";
 
 export type CompassCandidateMeaning = {
@@ -23,19 +25,6 @@ export type CompassCandidateShrineFacts = {
   history: { typeLabel: string | null; content: string } | null;
 };
 
-// Compass Candidate Card 専用の history_type 表示ラベル。未知の値は
-// ラベルを出さない（生の type 文字列を表示しない）。
-// Shrine Detail の HISTORY_TYPE_LABELS（lib/shrine/buildShrineFactSection.ts）
-// とは別契約であり、Detail 側の表示は変更しない。
-export const COMPASS_HISTORY_TYPE_LABELS: Readonly<Record<string, string>> = {
-  official_origin: "由緒",
-  founding: "由緒",
-  historical_event: "歴史",
-  tradition: "伝承",
-  regional_context: "地域との関わり",
-  editorial_summary: "概要",
-};
-
 function nonEmpty(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value : null;
 }
@@ -43,11 +32,16 @@ function nonEmpty(value: unknown): string | null {
 /**
  * backend の順序を保ったまま、`is_primary === true` かつ `label_ja` が空でない
  * 最初の reason_fact だけを Meaning とする。無ければ null（ブロックを出さない）。
+ *
+ * `type === "fallback"`（backend が一致理由を持たない候補に付ける「近い候補」）は
+ * Recommendation Meaning ではないため、primary であっても採用しない。
+ * legacy `reason` や別の fallback 文言で置き換えない。
  */
 export function resolveCompassCandidateMeaning(rec: CompassRecommendation): CompassCandidateMeaning | null {
   const facts = Array.isArray(rec.reason_facts) ? rec.reason_facts : [];
   for (const fact of facts) {
     if (!fact || typeof fact !== "object" || fact.is_primary !== true) continue;
+    if (fact.type === "fallback") continue;
     const labelJa = nonEmpty(fact.label_ja);
     if (!labelJa) continue;
     if (fact.type === "history_theme") {
@@ -72,14 +66,25 @@ export function resolveCompassCandidateShrineFacts(rec: CompassRecommendation): 
   const historyType = facts.history?.history_type;
   const history = content
     ? {
-        typeLabel:
-          typeof historyType === "string" && Object.prototype.hasOwnProperty.call(COMPASS_HISTORY_TYPE_LABELS, historyType)
-            ? COMPASS_HISTORY_TYPE_LABELS[historyType]
-            : null,
+        // Shrine Detail と同じ canonical ラベル。未知の値は内部type文字列を出さずラベルなし。
+        typeLabel: resolveCanonicalHistoryTypeLabel(historyType),
         content,
       }
     : null;
 
   if (!deityName && !history) return null;
   return { deityName, history };
+}
+
+/**
+ * Google Maps 経路URLの出発地（route origin）だけを決める。
+ *
+ * 送信済みの UserOrigin が `accuracy === "precise"`（現在地・駅名・住所）のときだけ
+ * その座標を返す。`approximate`（都道府県の代表座標など）はユーザーの実際の出発地
+ * ではないため null を返し、呼び出し側は destination のみの経路URLにする。
+ * 候補選定・方向・距離（backend request の origin）には使わない。
+ */
+export function resolveCompassRouteOrigin(origin: UserOrigin | null | undefined): { lat: number; lng: number } | null {
+  if (!origin || origin.accuracy !== "precise") return null;
+  return toOriginPayload(origin) ?? null;
 }

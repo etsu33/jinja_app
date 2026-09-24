@@ -22,6 +22,7 @@ import CompassPurposeSelector from "./components/CompassPurposeSelector";
 import CompassRecommendationsSection from "./components/CompassRecommendationsSection";
 import WeeklyFeaturedShrinesSection from "./components/WeeklyFeaturedShrinesSection";
 import WeeklyThemeSection from "./components/WeeklyThemeSection";
+import { resolveCompassRouteOrigin } from "./resolveCompassCandidatePresentation";
 import type {
   CompassDirectionRuntime,
   CompassPurpose,
@@ -567,7 +568,8 @@ export default function CompassClient({
         <CompassRecommendationsSection
           recommendations={result.recommendations}
           recommendationInstanceId={result.recommendation_instance_id}
-          origin={toOriginPayload(resultOrigin) ?? null}
+          // 経路URLの出発地には precise な送信済み origin だけを渡す（approximate は省略）。
+          origin={resolveCompassRouteOrigin(resultOrigin)}
         />
       ) : null}
     </div>

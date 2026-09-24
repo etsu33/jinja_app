@@ -108,6 +108,38 @@ describe("CompassRecommendationsSection (Candidate Card v2)", () => {
     expect(screen.queryByText("仕事運とのご利益一致")).not.toBeInTheDocument();
   });
 
+  it("fallbackのprimary（近い候補）はMeaningとして表示せず、ブロックごと省略する", () => {
+    renderOne({
+      shrine_id: 1,
+      name: "北西神社",
+      reason: "ご利益のご利益で知られる神社です。",
+      reason_facts: [{ type: "fallback", label: "fallback", label_ja: "近い候補", is_primary: true }],
+    });
+
+    expect(screen.queryByTestId("compass-candidate-meaning")).not.toBeInTheDocument();
+    expect(screen.queryByText("今のあなたとの接点")).not.toBeInTheDocument();
+    expect(screen.queryByText(/近い候補/)).not.toBeInTheDocument();
+    // legacy reason でも別の fallback 文言でも置き換えない。
+    expect(screen.queryByText(/ご利益のご利益/)).not.toBeInTheDocument();
+  });
+
+  it("fallbackを飛ばしても、他のprimaryはbackendの順序どおり最初の1件を使う", () => {
+    renderOne({
+      shrine_id: 1,
+      name: "北西神社",
+      reason_facts: [
+        { type: "fallback", label: "fallback", label_ja: "近い候補", is_primary: true },
+        { type: "goriyaku_tag", label: "仕事運", label_ja: "仕事運", is_primary: true },
+        { type: "need_tag", label: "career", label_ja: "転機・仕事", is_primary: true },
+      ],
+    });
+
+    const meaning = screen.getByTestId("compass-candidate-meaning");
+    expect(meaning).toHaveTextContent("仕事運");
+    expect(meaning).not.toHaveTextContent("近い候補");
+    expect(meaning).not.toHaveTextContent("転機・仕事");
+  });
+
   it("history_themeのprimaryはKAMI MUSUBIの解釈として明示する", () => {
     renderOne({
       shrine_id: 1,
@@ -181,12 +213,12 @@ describe("CompassRecommendationsSection (Candidate Card v2)", () => {
 
   it.each([
     ["official_origin", "由緒"],
-    ["founding", "由緒"],
+    ["founding", "創始"],
     ["historical_event", "歴史"],
     ["tradition", "伝承"],
-    ["regional_context", "地域との関わり"],
-    ["editorial_summary", "概要"],
-  ])("history_type=%s は「%s」と表示する", (historyType, label) => {
+    ["regional_context", "地域史"],
+    ["editorial_summary", "要約"],
+  ])("history_type=%s は Shrine Detail と同じ canonical ラベル「%s」で表示する", (historyType, label) => {
     renderOne({
       shrine_id: 1,
       name: "北西神社",

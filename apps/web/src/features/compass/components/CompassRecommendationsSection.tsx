@@ -76,9 +76,9 @@ function CandidateShrineFactsBlock({ facts }: { facts: CompassCandidateShrineFac
 export type CompassRecommendationsSectionProps = {
   recommendations: CompassRecommendation[];
   recommendationInstanceId: string;
-  // The origin actually submitted with this Compass request (the same
-  // coordinates the backend used for direction/distance). Used only as the
-  // Google Maps route origin; omitted/invalid -> destination-only route.
+  // Google Maps route origin only. The caller passes the submitted origin
+  // only when it is precise (never an approximate prefecture centroid);
+  // omitted/invalid -> destination-only route.
   origin?: { lat: number; lng: number } | null;
 };
 
