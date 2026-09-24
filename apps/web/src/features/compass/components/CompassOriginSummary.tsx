@@ -13,7 +13,7 @@ import type { UserOrigin } from "../../../../../../packages/shared/userOrigin";
 export type CompassOriginSummaryProps = {
   origin: UserOrigin | null;
   onChange: (origin: UserOrigin | null) => void;
-  onUseDevice: () => void;
+  onUseDevice: () => Promise<boolean>;
   deviceError?: string | null;
 };
 
@@ -24,6 +24,13 @@ export default function CompassOriginSummary({
   deviceError = null,
 }: CompassOriginSummaryProps) {
   const [open, setOpen] = useState(false);
+
+  const handleUseDevice = () => {
+    void (async () => {
+      const succeeded = await onUseDevice();
+      if (succeeded) setOpen(false);
+    })();
+  };
 
   return (
     <div className="flex items-center justify-between gap-3 rounded-[var(--kt-radius-panel)] border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] px-4 py-3">
@@ -53,7 +60,7 @@ export default function CompassOriginSummary({
                 onChange(next);
                 if (next) setOpen(false);
               }}
-              onUseDevice={onUseDevice}
+              onUseDevice={handleUseDevice}
               deviceError={deviceError}
             />
           </div>

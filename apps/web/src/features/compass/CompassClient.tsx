@@ -193,7 +193,7 @@ export default function CompassClient({
     });
   };
 
-  const useDevice = async () => {
+  const useDevice = async (): Promise<boolean> => {
     setDeviceError(null);
     const result = await requestCurrentPosition();
     if (result.ok) {
@@ -203,7 +203,7 @@ export default function CompassClient({
         source: "device",
         accuracy: "precise",
       });
-      return;
+      return true;
     }
     // Fail-safe copy: one fixed lead sentence for every failure, plus a hint only
     // where it adds something the user can act on. The alternative route is
@@ -217,6 +217,7 @@ export default function CompassClient({
           ? "現在地を取得できませんでした。位置情報の許可を確認してください。"
           : "現在地を取得できませんでした。",
     );
+    return false;
   };
 
   const hasBirthdateInput = Object.values(birthdateParts).some(Boolean);
