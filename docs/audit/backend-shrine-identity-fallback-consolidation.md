@@ -328,19 +328,66 @@ B の戻り値は `by_id` / `seen_ids` / `quality_by_key` の **dict key / set �
 
 ```text
 CONSOLIDATION_IS_NOT_BEHAVIOR_NEUTRAL_BY_DEFAULT = TRUE
+MOTHER_SHIP_DECISION = STRICT_FAIL_CLOSED
 ```
 
 A / B / B2 / C / D / E / F / G はどの 2 つも完全一致しない。
 したがって **「単に共有 resolver へ差し替えれば挙動不変」は成立しない**。
-`F-5B` は次のどちらかを選ぶ必要があり、黙って後者にしてはならない。
+
+F-5B では legacy `or` semantics を canonical resolver の policy として保存しない。
+正常な live candidate については F-7 が
+`candidate["id"] == candidate["shrine_id"] == Shrine.id` を固定しているため、
+strict 化で正常系の identity は変わらない。変化するのは malformed identity の扱いであり、
+これは **意図した hardening** として site ごとに test で固定する。
 
 ```text
-選択肢 1  LEGACY_OR policy を resolver に明示的に持たせ、site ごとに
-          strict / legacy_or を指定して **挙動不変**で統合する
-選択肢 2  strict へ寄せ、site ごとに「どの入力で挙動が変わるか」を declare する
+BACKEND_SHRINE_IDENTITY_RESOLVER = STRICT_FAIL_CLOSED
+
+VALID_SHRINE_ID = POSITIVE_INTEGER_ONLY
+
+ACCEPT
+  42
+  "42"
+
+REJECT
+  0
+  "0"
+  negative integer / string
+  float
+  bool
+  blank string
+  non-numeric string
+  None
+
+GENERIC_ID
+  = COMPATIBILITY_ALIAS
+  = NOT_IDENTITY_AUTHORITY
+
+INVALID_ALLOWED_ALIAS_PRESENT
+  = INVALID_WINS
+
+DIFFERENT_VALID_ALIASES
+  = CONFLICT
+
+LEGACY_FALSY_FALLBACK
+  = NOT_PART_OF_CANONICAL_RESOLVER
 ```
 
-本監査の推奨は **選択肢 1 を既定、`0`/float/bool の 3 入力だけ選択肢 2**（§5.4）。
+例:
+
+```text
+{"shrine_id": 0, "id": 777}
+  old B/B2/D/E/G -> 777
+  F-5B canonical -> invalid
+
+{"shrine_id": true, "id": 777}
+  old B2/D/E/G -> 1 or 777
+  F-5B canonical -> invalid
+
+{"shrine_id": 42, "id": 999}
+  canonical -> conflict
+  （generic id は compatibility alias だが、異なる有効値の同居を黙って採用しない）
+```
 
 ## 4. Policy boundary
 
@@ -530,7 +577,7 @@ F3_1_CORRECT_EVIDENCE         = concierge_candidate_utils._normalize_candidate_f
 # backend/temples/domain/shrine_identity.py   （提案）
 
 ShrineIdentityPolicy = Literal[
-    "live_candidate",        # shrine_id -> id
+    "live_candidate",        # shrine_id -> id compatibility alias
     "historical_snapshot",   # shrine_id -> shrineId -> shrine -> id
 ]
 
@@ -543,40 +590,74 @@ def resolve_shrine_identity(
     source: Any,
     *,
     policy: ShrineIdentityPolicy,
-    legacy_falsy_fallback: bool,   # keyword-only、既定値なし
 ) -> ShrineIdentityResolution: ...
 
 def resolve_shrine_id(
-    source: Any, *, policy: ShrineIdentityPolicy, legacy_falsy_fallback: bool
+    source: Any,
+    *,
+    policy: ShrineIdentityPolicy,
 ) -> int | None: ...
 ```
 
 ```text
-WRAPPER_DELEGATES_TO_AUTHORITATIVE = YES（F-3.1 と同じ形）
+WRAPPER_DELEGATES_TO_AUTHORITATIVE = YES
+LEGACY_FALSY_FALLBACK_ARGUMENT     = REMOVED
+CANONICAL_RESOLVER_MODE            = STRICT_FAIL_CLOSED
 ```
 
-`legacy_falsy_fallback` を**必須 keyword 引数**にする理由は §3.1 D-1。
-`True` は `or` 実装（B/B2/D/E/G）の挙動、`False` は A/C/F の挙動を再現する。
-既定値を置くと、どちらの semantics が選ばれたか呼び出し側から読めなくなる。
-
-正規化（`normalize` 部分は A/C/F 系を正本とする）:
+正規化契約:
 
 ```text
-ACCEPT  int（bool を除く）, 数字のみの str
-REJECT  bool, float, 非数値 str, 空文字, None
-NEVER_RAISES = YES   （D-3 の unguarded int() を塞ぐ）
+VALID_SHRINE_ID = POSITIVE_INTEGER_ONLY
+
+ACCEPT
+  42
+  "42"
+
+REJECT
+  0 / "0"
+  negative integer / negative numeric string
+  float / float-like string
+  bool
+  blank / whitespace string
+  non-numeric string
+  None
+
+NEVER_RAISES = YES
 ```
 
+status 契約:
+
 ```text
-PLACE_ID_IN_F5 = NO
-GENERIC_ID_IDENTITY_AUTHORITY = NO
-GENERIC_ID_COMPATIBILITY_ALIAS = 以下で引き続き必須
-    LIVE_CANDIDATE       #1-#6    （F-7 invariant 下でも外部持込候補のため）
-    LIVE_RECOMMENDATION  #7-#11
-    HISTORICAL_SNAPSHOT  #12 #13  （§4.1）
-    PRESENTATION         #14
-    OBSERVATION_METRICS  #15-#20
+absent
+  policy が許可する identity alias が present でない
+
+invalid
+  許可 alias が present だが positive integer に正規化できない
+
+conflict
+  2つ以上の有効な許可 alias が異なる Shrine id を主張する
+
+resolved
+  1つ以上の有効 alias があり、present な有効 alias がすべて一致する
+
+PRECEDENCE = absent -> invalid -> conflict -> resolved
+DECISION   = INVALID_WINS
 ```
+
+`generic id` は compatibility alias として policy に残るが、identity authority ではない。
+`shrine_id` が present かつ invalid の場合、generic `id` へ逃がさない。
+異なる有効 alias が同居する場合も先頭値を採用せず `conflict` とする。
+
+```text
+PLACE_ID_IN_F5                  = NO
+GENERIC_ID_IDENTITY_AUTHORITY   = NO
+GENERIC_ID_COMPATIBILITY_ALIAS  = YES where policy explicitly allows it
+LEGACY_FALSY_FALLBACK           = NO
+```
+
+historical snapshot policy は互換 alias 集合を**定義だけ**する。
+F-5B では #12 / #13 を移行しないため、永続化済み snapshot の挙動は変更しない。
 
 ## 7. F-5B migration plan
 
@@ -590,22 +671,25 @@ OTHER_DEFERRED                 = 4   （#10 #11 name fallback / #21 #22 dead cod
 
 | # | file | function | 現在の式 | 新 resolver / policy | 挙動変化 | 保護する test |
 | ---: | --- | --- | --- | --- | :-: | --- |
-| 1 | `concierge_chat_candidates.py` | `_candidate_shrine_id` | A | `live_candidate`, legacy=False | NO | `tests/services/test_shared_recommendation_eligibility.py` |
-| 2 | `concierge_chat_pool.py` | `_ensure_pool_size` | B | `live_candidate`, legacy=True | NO | **なし（§7.4）** |
-| 3 | `concierge_chat_pool.py` | `_ensure_pool_size` | B | 同上 | NO | **なし** |
-| 4 | `concierge_chat_pool.py` | `_merge_candidate_fields` | B | 同上 | NO | **なし** |
-| 5 | `concierge_chat_pool.py` | `_merge_candidate_fields` | B | 同上 | NO | **なし** |
-| 6 | `concierge_candidate_utils.py` | `_candidate_key` | B | 同上 | **YES**（D-5: key が int へ統一される） | `tests/services/test_concierge_candidate_utils.py` |
-| 7 | `concierge_chat_ranking.py` | `_attach_breakdown` | B2 | `live_candidate`, legacy=True | **YES**（D-2: float/bool が None へ） | `tests/services/test_score_v3_feature_flag.py` 他 |
-| 8 | `concierge_chat.py` | `_build_score_v3_candidate_profile` | B + shrineId | `live_candidate`, legacy=True ＋ `shrineId` は別途保持 | **YES**（D-5） | `tests/services/test_signal_authority_eligibility_contract.py` |
-| 9 | `concierge_chat.py` | `_build_reason_v4_preview_payload` | B | `live_candidate`, legacy=True | **YES**（D-5） | `tests/api/test_concierge_chat_response_body_contract.py` |
-| 14 | `domain/weekly_presentation.py` | `_resolve_shrine_id` | C | `live_candidate`, legacy=False | NO | `tests/test_domain_weekly_presentation.py` |
-| 15 | `concierge_chat_observation.py` | `observe_candidate_pool` | B | `live_candidate`, legacy=True | **YES**（D-5） | `tests/services/test_concierge_chat_observation.py` |
-| 16 | `concierge_chat_observation.py` | `observe_candidate_pool_debug` | B | 同上 | **YES**（D-5） | 同上 |
-| 17 | `concierge_chat_observation.py` | `observe_ranking_breakdown` | B | 同上 | **YES**（D-5） | 同上 |
-| 18 | `recommendation_quality_measurement.py` | `build_shrine_reason_provenance` | G | `live_candidate`, legacy=True | **YES**（D-3 例外が消える / D-4 の `0` sentinel を維持するか要決定） | `tests/services/test_recommendation_quality_measurement.py` |
-| 19 | `recommendation_score_components.py` | `calculate_shrine_profile_score` | B | 同上（存在判定のみ） | **YES**（D-1: `shrine_id=0` の扱い） | `tests/services/test_recommendation_score_components.py` |
-| 20 | `export_recommendation_output_snapshot.py` | `_format_recommendation` | B | 同上 | **YES**（D-5: 表示が int へ） | **なし** |
+| 1 | `concierge_chat_candidates.py` | `_candidate_shrine_id` | A | `live_candidate` | **YES**（0/負数を invalid 化。正常な正整数は不変） | `tests/services/test_shared_recommendation_eligibility.py` |
+| 2 | `concierge_chat_pool.py` | `_ensure_pool_size` | B | `live_candidate` | **YES**（falsy fallback / 生値 key を strict 化） | **なし（§7.4）** |
+| 3 | `concierge_chat_pool.py` | `_ensure_pool_size` | B | 同上 | **YES** | **なし** |
+| 4 | `concierge_chat_pool.py` | `_merge_candidate_fields` | B | 同上 | **YES** | **なし** |
+| 5 | `concierge_chat_pool.py` | `_merge_candidate_fields` | B | 同上 | **YES** | **なし** |
+| 6 | `concierge_candidate_utils.py` | `_candidate_key` | B | `live_candidate` | **YES**（正規化 int 化 + invalid fail closed） | `tests/services/test_concierge_candidate_utils.py` |
+| 7 | `concierge_chat_ranking.py` | `_attach_breakdown` | B2 | `live_candidate` | **YES**（float/bool/0/負数を invalid 化） | `tests/services/test_score_v3_feature_flag.py` 他 |
+| 8 | `concierge_chat.py` | `_build_score_v3_candidate_profile` | B + shrineId | `live_candidate` + shrineId handling reviewed explicitly | **YES**（strict positive-int / conflict） | `tests/services/test_signal_authority_eligibility_contract.py` |
+| 9 | `concierge_chat.py` | `_build_reason_v4_preview_payload` | B | `live_candidate` | **YES**（strict positive-int / conflict） | `tests/api/test_concierge_chat_response_body_contract.py` |
+| 14 | `domain/weekly_presentation.py` | `_resolve_shrine_id` | C | `live_candidate` | **YES**（0/負数を invalid 化） | `tests/test_domain_weekly_presentation.py` |
+| 15 | `concierge_chat_observation.py` | `observe_candidate_pool` | B | `live_candidate` | **YES**（strict normalization） | `tests/services/test_concierge_chat_observation.py` |
+| 16 | `concierge_chat_observation.py` | `observe_candidate_pool_debug` | B | 同上 | **YES** | 同上 |
+| 17 | `concierge_chat_observation.py` | `observe_ranking_breakdown` | B | 同上 | **YES** | 同上 |
+| 18 | `recommendation_quality_measurement.py` | `build_shrine_reason_provenance` | G | `live_candidate` | **YES**（例外除去 + invalid fail closed。0 sentinel扱いは consumer 側で明示） | `tests/services/test_recommendation_quality_measurement.py` |
+| 19 | `recommendation_score_components.py` | `calculate_shrine_profile_score` | B | `live_candidate` | **YES**（invalid identity を「存在あり」と数えない） | `tests/services/test_recommendation_score_components.py` |
+| 20 | `export_recommendation_output_snapshot.py` | `_format_recommendation` | B | `live_candidate` | **YES**（strict normalization） | **なし** |
+
+正常な F-7 準拠 candidate（正の `Shrine.id`）では結果は不変。
+上表の `YES` は malformed / ambiguous identity に対する**意図的 hardening**を示す。
 
 ### 7.2 DEFER_HISTORICAL（2 site）
 
@@ -678,7 +762,8 @@ PLACE_ID_IN_F5            = NO
 ```text
 F5A_STATUS = AUDITED
 NEXT       = F-5B（characterization test 追加 -> resolver 実装 -> SAFE_F5B 16 site 移行）
-BLOCKED_ON = §3.2 の選択肢 1 / 2、§5.4 の設置場所、§7.4 の未保護 site
+BLOCKED_ON = §7.4 の未保護 site characterization tests
+DECIDED    = strict fail-closed / positive-integer-only / domain/shrine_identity.py
 ```
 
 次の行動には `F-5B` を名指しする Mother Ship 指示が必要。
