@@ -14,7 +14,7 @@
 import { Suspense } from "react";
 import { HomeToastClient } from "@/features/home/components/HomeToastClient";
 import { HomeMainClient } from "@/features/home/components/HomeMainClient";
-import { HomeBackdrop } from "@/features/home/components/HomeBackdrop";
+import { WorldviewBackdrop } from "@/components/worldview/WorldviewBackdrop";
 
 export default function HomePage() {
   return (
@@ -29,8 +29,9 @@ export default function HomePage() {
         背景モチーフ (Deep Ink Navyの地 / 大気 / 波線3本 / Main Orb)。
         旧実装の「木漏れ日」1枚をここへ引き継ぎ、Luminous Pathとして再構成した。
         画像は使わず、CSS gradientとinline SVGのみ。装飾のためaria-hidden。
+        共通の世界観Backdropの home variant（旧 HomeBackdrop と同一の出力）。
       */}
-      <HomeBackdrop />
+      <WorldviewBackdrop variant="home" />
 
       <HomeToastClient />
 

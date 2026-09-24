@@ -176,8 +176,10 @@
  *
  * ■ Homeの面と文字
  * Deep Ink Navyの上でMoss Charcoalの面とsage文字が濁って見えるため、
- * Home専用の青い面・境界線・白寄りの文字階層を用意する。
+ * 青い面・境界線・白寄りの文字階層を用意する。
  * GoldのCTAと波線は既存の--kt-*を再利用する。
+ * 実値は KAMI MUSUBI Worldview Token (--kt-world-*, styles/tokens.css) へ
+ * 昇格済みで、--home-* はその別名である（Homeの見た目は同一）。
  *
  * ■ 宣言位置
  * 背景レイヤーはHomeのPage配下にあるが、Headerは Root Layout 側の共有要素で
@@ -187,30 +189,30 @@
  * 既存のDark Forest表示に留まる（崩れではなく従来表示）。
  */
 body:has([data-app-frame="home"]) {
-  /* 地: Deep Ink Navy / Blue Black。
-     コントラスト実測 (WCAG, 対 #0b111c):
-       primary(#fffdf8) / secondary(#e7eaf0) / muted(#c5cbd6) を
-       青い地の上で明度順に分ける。面も ground < surface < elevated とする。 */
-  --home-ground: #0b111c;
+  /* 実値は KAMI MUSUBI Worldview Token (styles/tokens.css の --kt-world-*) が
+     正本。ここは Home 配下の既存参照 (HomeHero / HomeActionCard /
+     HomeHeroConsultationInput / Header override) を壊さないための別名である。
+     Home以外のComponentはこの --home-* ではなく --kt-world-* を参照すること。
 
-  /* 上方から差す光。地と同色相をひと段持ち上げた藍で、純黒にも青一色にもしない。 */
-  --home-ground-lit: #16203a;
-
-  /* 青い地に合わせたHome専用の面と文字。明朝の細い線も読み取れる明度差にする。 */
-  --home-surface: #192231;
-  --home-surface-elevated: #222d3e;
-  --home-border: #455063;
-  --home-border-strong: #718096;
-  --home-text-primary: #fffdf8;
-  --home-text-secondary: #e7eaf0;
-  --home-text-muted: #c5cbd6;
+     値の経緯 (コントラスト実測 WCAG, 対 --kt-world-ground):
+       primary / secondary / muted を青い地の上で明度順に分け、
+       面も ground < surface < elevated とする。 */
+  --home-ground: var(--kt-world-ground);
+  --home-ground-lit: var(--kt-world-ground-lit);
+  --home-surface: var(--kt-world-surface);
+  --home-surface-elevated: var(--kt-world-surface-elevated);
+  --home-border: var(--kt-world-border);
+  --home-border-strong: var(--kt-world-border-strong);
+  --home-text-primary: var(--kt-world-text-primary);
+  --home-text-secondary: var(--kt-world-text-secondary);
+  --home-text-muted: var(--kt-world-text-muted);
 
   /* 下部の空気も青系でまとめ、入力面との色相を揃える。 */
   --home-ground-moss: var(--home-surface-elevated);
 
   /* 参道の光。Warm Brass と Champagne Gold は既存Tokenをそのまま使う。 */
-  --home-path: var(--kt-color-action-primary);
-  --home-path-lit: var(--kt-color-premium-accent);
+  --home-path: var(--kt-world-path);
+  --home-path-lit: var(--kt-world-path-lit);
 
   /* 主見出しの明朝Display。
      Webfontは追加しない = bundle影響ゼロ、package.json / lockfile も無変更。
@@ -219,15 +221,12 @@ body:has([data-app-frame="home"]) {
      明朝へ寄せるだけで、読み込むリソースは増えない。
      明朝が無い環境では最後の serif、それも無ければ既存の継承値に戻る。
 
-     総称の serif には頼らず、明朝の実ファミリ名を明示的に並べる。
-     fontconfig環境では serif:lang=ja がゴシック系CJKフォントへ解決される
-     ことがあり（本リポジトリのCI相当コンテナで WenQuanYi Zen Hei に解決:
-     実測済み）、serif任せでは明朝にならないため。
-     順序は macOS/iOS → Windows → Android/Linux(Noto/Source Han) → IPA。 */
-  --home-font-display:
-    "Hiragino Mincho ProN", "Hiragino Mincho Pro", "Yu Mincho", YuMincho, "BIZ UDMincho",
-    "MS PMincho", "Noto Serif CJK JP", "Noto Serif JP", "Source Han Serif JP", "IPAexMincho",
-    "IPAPMincho", serif;
+     総称の serif には頼らず、明朝の実ファミリ名を明示的に並べる
+     (--kt-world-font-display)。fontconfig環境では serif:lang=ja が
+     ゴシック系CJKフォントへ解決されることがあり（本リポジトリのCI相当
+     コンテナで WenQuanYi Zen Hei に解決: 実測済み）、serif任せでは
+     明朝にならないため。順序は macOS/iOS → Windows → Android/Linux → IPA。 */
+  --home-font-display: var(--kt-world-font-display);
 }
 
 /* 1) 幅と左右余白を本文カラムへ揃え、ブランドの左端を本文と一致させる。
