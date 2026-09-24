@@ -20,12 +20,12 @@ export function HomeActionCard({ href, icon: Icon, title, subtitle, onClick }: H
     <Link
       href={href}
       onClick={onClick}
-      className="flex min-h-[104px] flex-col justify-between rounded-2xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-surface-default)] p-4 transition hover:border-[var(--kt-color-border-strong)] hover:bg-[var(--kt-color-surface-elevated)]"
+      className="flex min-h-[104px] flex-col justify-between rounded-2xl border border-[var(--home-border)] bg-[var(--home-surface)] p-4 transition hover:border-[var(--home-border-strong)] hover:bg-[var(--home-surface-elevated)]"
     >
-      <Icon className="size-[18px] text-[var(--kt-color-text-secondary)]" aria-hidden />
+      <Icon className="size-[18px] text-[var(--home-text-secondary)]" aria-hidden />
       <div className="mt-4">
-        <p className="text-[13px] font-medium text-[var(--kt-color-text-primary)]">{title}</p>
-        <p className="mt-1 text-[11px] leading-5 text-[var(--kt-color-text-secondary)]">{subtitle}</p>
+        <p className="text-[13px] font-medium text-[var(--home-text-primary)]">{title}</p>
+        <p className="mt-1 text-[11px] leading-5 text-[var(--home-text-secondary)]">{subtitle}</p>
       </div>
     </Link>
   );
