@@ -226,13 +226,81 @@ describe("mapConciergeResponseToPremiumMeaningContext: empty/missing API data do
     expect(ctx?.consultation.primaryNeed).toBeNull();
   });
 
-  it("空のrec({}相当、shrine_id/idのみ)でもフィールドがnull/空で埋まりthrowしない", () => {
-    expect(() => mapConciergeResponseToPremiumMeaningContext({ rec: { id: 1 } as ConciergeRecommendation })).not.toThrow();
+  it("空のrec({}相当、shrine_idのみ)でもフィールドがnull/空で埋まりthrowしない", () => {
+    expect(() =>
+      mapConciergeResponseToPremiumMeaningContext({ rec: { shrine_id: 1 } as ConciergeRecommendation }),
+    ).not.toThrow();
 
-    const ctx = mapConciergeResponseToPremiumMeaningContext({ rec: { id: 1 } as ConciergeRecommendation });
+    const ctx = mapConciergeResponseToPremiumMeaningContext({ rec: { shrine_id: 1 } as ConciergeRecommendation });
     expect(ctx?.shrineId).toBe(1);
     expect(ctx?.recommendationEvidence.primaryReasonFact).toBeNull();
     expect(ctx?.recommendationEvidence.secondaryReasonFacts).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// F-4 意図的な契約修正（accidental regression ではない）。
+//
+// 移行前のこの module は local な resolveShrineId() を持ち、
+// [rec.shrine_id, rec.id] の順で generic `id` へ fallback していた。そのため
+// `{ id: 1 }` は shrineId = 1 として解決されていた。
+//
+// F-4 で共有 resolver（registered_compat）へ集約した結果、generic `id` は
+// identity authority ではないため **もう解決されない**。
+//   SHRINE_IDENTITY_AUTHORITY = Shrine.id
+//   PUBLIC_IDENTITY_KEY       = shrine_id
+//   GENERIC_ID_ALLOWED_BY_SHARED_RESOLVER = NO
+//
+// この module は現時点で production importer を持たないが、契約としての
+// test は維持する。
+// docs/audit/shared-shrine-identity-resolver-design.md §14
+// ---------------------------------------------------------------------------
+describe("mapConciergeResponseToPremiumMeaningContext: F-4 Shrine identity契約", () => {
+  it("generic `id` のみのrecはもはやShrine identityとして解決されない（旧: shrineId=1）", () => {
+    const ctx = mapConciergeResponseToPremiumMeaningContext({
+      rec: { id: 1, name: "id のみ神社" } as ConciergeRecommendation,
+    });
+
+    expect(ctx).toBeNull();
+  });
+
+  it("shrine_idとidが食い違う場合はshrine_id側を採用する", () => {
+    const ctx = mapConciergeResponseToPremiumMeaningContext({
+      rec: { shrine_id: 42, id: 999, name: "食い違い神社" } as ConciergeRecommendation,
+    });
+
+    expect(ctx?.shrineId).toBe(42);
+    expect(ctx?.shrineEvidence.shrineId).toBe(42);
+  });
+
+  it("shrine_idとshrineIdが食い違う場合はconflictとしてnullを返す（fail closed）", () => {
+    const ctx = mapConciergeResponseToPremiumMeaningContext({
+      rec: { shrine_id: 42, shrineId: 99, name: "conflict神社" } as unknown as ConciergeRecommendation,
+    });
+
+    expect(ctx).toBeNull();
+  });
+
+  it("registered_compat の alias（shrineId / shrine.id）は解決される", () => {
+    expect(
+      mapConciergeResponseToPremiumMeaningContext({
+        rec: { shrineId: 7, name: "alias神社" } as unknown as ConciergeRecommendation,
+      })?.shrineId,
+    ).toBe(7);
+
+    expect(
+      mapConciergeResponseToPremiumMeaningContext({
+        rec: { shrine: { id: 7 }, name: "alias神社" } as unknown as ConciergeRecommendation,
+      })?.shrineId,
+    ).toBe(7);
+  });
+
+  it("文字列 shrine_id は number へ正規化される", () => {
+    const ctx = mapConciergeResponseToPremiumMeaningContext({
+      rec: { shrine_id: "42", name: "文字列id神社" } as unknown as ConciergeRecommendation,
+    });
+
+    expect(ctx?.shrineId).toBe(42);
   });
 });
 

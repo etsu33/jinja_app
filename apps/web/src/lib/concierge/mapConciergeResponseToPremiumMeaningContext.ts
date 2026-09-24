@@ -36,6 +36,7 @@ import type {
   PremiumMeaningReasonFact,
   SituationSignal,
 } from "./premiumMeaningContext";
+import { resolveShrineId } from "@/lib/identity/resolveShrineId";
 import { computePremiumMeaningValidity } from "./premiumMeaningContext";
 
 export type MapConciergeResponseParams = {
@@ -49,15 +50,6 @@ function clean(value?: string | null): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   return trimmed ? trimmed : null;
-}
-
-function resolveShrineId(rec?: ConciergeRecommendation | null): number | null {
-  if (!rec) return null;
-  const candidates = [rec.shrine_id, rec.id];
-  for (const candidate of candidates) {
-    if (typeof candidate === "number" && Number.isFinite(candidate)) return candidate;
-  }
-  return null;
 }
 
 function toReasonFact(fact: ConciergeReasonFact | null | undefined): PremiumMeaningReasonFact | null {
@@ -177,9 +169,15 @@ function mapShrineEvidence(shrineId: number, rec: ConciergeRecommendation): Prem
  * Maps the existing, stable Concierge Response shape into a
  * PremiumMeaningContext. Never throws: missing/empty `rec`, `need`,
  * `mode`, or `consultationMeaning` all resolve to null/empty-filled fields
- * rather than an exception. When no shrineId can be resolved (no `rec`, or
- * `rec` without `shrine_id`/`id`), there is nothing to attach Evidence to,
- * so this returns `null` rather than fabricate a Context.
+ * rather than an exception. When no shrineId can be resolved, there is
+ * nothing to attach Evidence to, so this returns `null` rather than
+ * fabricate a Context.
+ *
+ * F-4: identity resolution は共有 resolver（registered_compat）へ集約した。
+ * 許可されるのは shrine_id / shrineId / shrine.id のみで、generic `id` は
+ * identity authority ではないため **もう解決されない**。これは意図的な契約
+ * 修正であり、偶発的な退行ではない
+ * （docs/audit/shared-shrine-identity-resolver-design.md §14）。
  *
  * `personalization` is intentionally left empty ({}): none of its fields
  * (birthdate / astroElement / profileContext / direction) are part of this
@@ -191,7 +189,7 @@ export function mapConciergeResponseToPremiumMeaningContext(
   params: MapConciergeResponseParams,
 ): PremiumMeaningContext | null {
   const rec = params.rec ?? null;
-  const shrineId = resolveShrineId(rec);
+  const shrineId = resolveShrineId(rec, "registered_compat");
   if (shrineId === null || !rec) return null;
 
   const consultation = mapConsultation(params.need, params.mode, params.consultationMeaning);
