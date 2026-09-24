@@ -15,10 +15,13 @@ from temples.models import ShrineCandidate, PlaceRef
 from temples.services import places
 from temples.services import places_rank as rank
 from temples.services.places import (
+    SHRINE_COLLISION_PUBLIC_CODE,
+    SHRINE_COLLISION_PUBLIC_DETAIL,
     PlacesError,
     ShrineCollisionReviewRequired,
     get_or_create_shrine_by_place_id,
 )
+from temples.api.serializers.places import ShrineCollisionConflictSerializer
 from temples.api.serializers.validators import validate_place_id_permissive
 
 
@@ -48,17 +51,6 @@ class PlacesResolvePostResponseSerializer(serializers.Serializer):
     candidate_id = serializers.IntegerField()
 
 
-class PlacesResolveConflictResponseSerializer(serializers.Serializer):
-    """F-6B: shrine collision により作成を拒否したときの body。
-
-    候補 Shrine の id は意図的に含めない
-    （AUTO_BIND_ON_SINGLE_CANDIDATE = PROHIBITED）。
-    """
-
-    detail = serializers.CharField()
-    code = serializers.CharField(help_text="shrine_collision_review_required")
-
-
 # ---- view ----
 
 
@@ -78,7 +70,7 @@ class PlacesResolveConflictResponseSerializer(serializers.Serializer):
         responses={
             200: PlacesResolvePostResponseSerializer,
             # F-6B: 登録済み Shrine がこの Place を表しうる場合。作成も束縛もしない。
-            409: PlacesResolveConflictResponseSerializer,
+            409: ShrineCollisionConflictSerializer,
         },
         tags=["places"],
     ),
@@ -184,11 +176,16 @@ class PlacesResolveView(APIView):
             return Response({"id": shrine.id, "shrine_id": shrine.id, "place_id": place_id, "candidate_id": c.id}, status=200)
 
         # F-6B: collision は PlacesError のサブクラスなので、必ず先に捕まえる。
-        # 候補 Shrine の id は **返さない**（client 側の自動束縛を防ぐ。
-        # AUTO_BIND_ON_SINGLE_CANDIDATE = PROHIBITED）。レビューは server log。
-        except ShrineCollisionReviewRequired as e:
+        #
+        # 例外を文字列化しない（CodeQL: information exposure through an exception）。
+        # public body は固定定数のみで構成する。候補 Shrine の id は載せない
+        # （AUTO_BIND_ON_SINGLE_CANDIDATE = PROHIBITED）。レビューは server log。
+        except ShrineCollisionReviewRequired:
             return Response(
-                {"detail": str(e), "code": e.code},
+                {
+                    "detail": SHRINE_COLLISION_PUBLIC_DETAIL,
+                    "code": SHRINE_COLLISION_PUBLIC_CODE,
+                },
                 status=status.HTTP_409_CONFLICT,
             )
         except PlacesError as e:

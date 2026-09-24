@@ -69,6 +69,18 @@ class PlaceShrineResolution:
         return self.status == "collision_review_required"
 
 
+#: collision 時に public へ返す **固定文字列**（F-6B）。
+#:
+#: View は例外インスタンスを文字列化せず、必ずこの 2 定数を返す。
+#: `str(exception)` を public response に載せると、将来 message に内部情報
+#: （stack trace / DB 詳細 / 候補 id）が混ざったときそのまま外部へ漏れる
+#: （CodeQL "Information exposure through an exception"）。
+SHRINE_COLLISION_PUBLIC_DETAIL = (
+    "an existing shrine may already represent this place; review required"
+)
+SHRINE_COLLISION_PUBLIC_CODE = "shrine_collision_review_required"
+
+
 class ShrineCollisionReviewRequired(PlacesError):
     """登録済み Shrine と衝突したため作成を拒否した（F-6B）。
 
@@ -78,15 +90,15 @@ class ShrineCollisionReviewRequired(PlacesError):
     候補 Shrine は `candidates` に保持するが、**public response には載せない**。
     載せると client 側が「1 件だから」と自動束縛しうるため
     （AUTO_BIND_ON_SINGLE_CANDIDATE = PROHIBITED）。レビューは server log で行う。
+
+    public body は `SHRINE_COLLISION_PUBLIC_DETAIL` /
+    `SHRINE_COLLISION_PUBLIC_CODE` の固定値のみで構成すること。
     """
 
-    code = "shrine_collision_review_required"
+    code = SHRINE_COLLISION_PUBLIC_CODE
 
     def __init__(self, place_id: str, candidates: tuple):
-        super().__init__(
-            "an existing shrine may already represent this place; review required",
-            status=409,
-        )
+        super().__init__(SHRINE_COLLISION_PUBLIC_DETAIL, status=409)
         self.place_id = place_id
         self.candidates = tuple(candidates)
 
@@ -213,6 +225,8 @@ __all__ = [
     "resolve_shrine_by_place_id",
     "PlaceShrineResolution",
     "ShrineCollisionReviewRequired",
+    "SHRINE_COLLISION_PUBLIC_DETAIL",
+    "SHRINE_COLLISION_PUBLIC_CODE",
 ]
 
 

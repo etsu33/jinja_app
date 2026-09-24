@@ -868,10 +868,35 @@ Shrine 22 相当（給田六所神社）が登録済み
 -> primary の place_ref は NULL のまま（自動束縛しない）
 ```
 
-test: `temples/tests/services/test_place_shrine_resolution.py`
-`test_10_historical_place_ids_cannot_recreate_a_shadow_row`
-および `temples/tests/api/test_place_resolve_collision_api.py`
-`test_historical_place_id_returns_409_instead_of_recreating_a_shadow`。
+```text
+HISTORICAL_SHADOW_REGRESSION = 3 / 3
+```
+
+3 ペア全件を parameterized service-level regression で固定した
+（`temples/tests/services/test_place_shrine_historical_shadow_regression.py`、
+3 ペア × 5 観点 = 15 tests）。
+
+| place_id | primary | collision 成立理由 |
+| --- | --- | --- |
+| `ChIJl-MEepfxGGAR1Eo44p__GaE` | 給田六所神社 | name exact + STRONG_ADDRESS_MATCH |
+| `ChIJX19mq8nxGGARsA2kP4gX90M` | 長太稲荷神社 | name exact + STRONG_ADDRESS_MATCH |
+| `ChIJK11I4BGJGGAR5mZswigcu58` | 富岡八幡宮 | name exact + **DISTANCE_M <= 500**（address 表記が 0100 snapshot 上で異なるため住所一致は成立しない） |
+
+各ペアで固定した 5 観点:
+
+```text
+1. primary が一切変更されない（place_ref は NULL のまま）
+2. 孤立 PlaceRef は未束縛のまま（行は残り、どの Shrine からも参照されない）
+3. 新しい Shrine が作られない
+4. resolve の結果が collision_review_required
+5. public HTTP 境界が 409（/api/places/resolve/ と /api/shrines/ingest/ の両方）
+   かつ body に primary の shrine_id が現れない
+```
+
+```text
+PLACE_ID_BACKFILL      = NO   （本 test は PlaceRef を backfill しない）
+MIGRATION_0100_CHANGED = NO
+```
 
 ### 14.4 Concurrency（F-6A §9 の解消）
 
@@ -921,10 +946,26 @@ API_RESPONSE_CONTRACT_CHANGES = YES（409 状態の追加。200 の shape は不
 レビューは server log（`[places/resolve] shrine_collision_review_required`、
 `candidate_shrine_ids` を含む WARNING）で行う。
 
-OpenAPI に 409 を追記し、生成された schema で検証した
-（`temples/tests/api/test_places_resolve_openapi_409.py`。
-`properties` が `detail` / `code` のみで `shrine_id` / `candidates` を
-含まないことも assert している）。
+```text
+OPENAPI_409_ENDPOINTS = 2 / 2
+  POST /api/places/resolve/
+  POST /api/shrines/ingest/
+```
+
+両 endpoint の OpenAPI に 409 を記述し、**生成された schema** で検証した
+（`temples/tests/api/test_places_resolve_openapi_409.py`、parameterized）。
+
+```text
+409 が存在する
+properties が detail + code のみ
+shrine_id を含まない
+candidates を含まない
+2 endpoint が同一の $ref を共有する（契約を二重定義しない）
+```
+
+409 body の serializer は
+`temples/api/serializers/places.py::ShrineCollisionConflictSerializer` に
+一本化した。
 
 frontend は未変更。F-6A §8.1 の通り
 `apps/web/src/app/shrines/resolve/page.tsx` は `if (!res.ok)` で汎用 toast、
@@ -983,14 +1024,17 @@ MATRIX_DEFERRED    = 2（#6 #7 — EXPLICIT_MAPPING。F-6A §7.2 の未決 2 件
 ### 14.8 Validation
 
 ```text
-place_shrine_collision           18 tests PASS
-place_shrine_resolution          15 tests PASS
-place_resolve_collision_api       7 tests PASS
-places_resolve_openapi_409        2 tests PASS
+place_shrine_collision                      25 tests PASS
+place_shrine_resolution                     15 tests PASS
+place_shrine_historical_shadow_regression   15 tests PASS
+place_resolve_collision_api                  7 tests PASS
+places_resolve_openapi_409                   9 tests PASS
+                                            ---
+F-6B targeted（既存 3 件を含む）              74 tests PASS
 
-backend 全体   3802 passed, 10 skipped, 3 failed
+backend 全体   3833 passed, 10 skipped, 3 failed
 git diff --check   PASS
-ruff（変更・新規 7 file）  新規指摘 0
+ruff（変更・新規 10 file）  新規指摘 0（develop の baseline と同一）
 ```
 
 既存の `backend/tests/test_places_resolve_candidate.py`（3 件）は緑のまま。
@@ -1005,7 +1049,64 @@ temples/tests/test_concierge_api.py::test_radius_km_bias_passthrough
 temples/tests/test_concierge_api.py::test_candidate_formatted_address_is_used
 ```
 
-### 14.9 Required statements
+### 14.9 Review findings の解消（PR #2963 追補）
+
+```text
+CODEQL_REVIEW_THREADS_UNRESOLVED = 0
+```
+
+CodeQL が「Information exposure through an exception」として指摘した 2 箇所
+（`places_resolve.py` の collision handler / `shrine.py` ingest の collision
+handler）は、いずれも `str(exception)` を public body に載せていた。
+
+```text
+BEFORE  {"detail": str(e), "code": e.code}
+AFTER   {"detail": SHRINE_COLLISION_PUBLIC_DETAIL,
+         "code":   SHRINE_COLLISION_PUBLIC_CODE}
+```
+
+例外インスタンスを一切参照しない（`except ShrineCollisionReviewRequired:` と
+して変数束縛も外した）。public 文字列は
+`temples/services/places.py` の固定定数 2 つのみ:
+
+```text
+SHRINE_COLLISION_PUBLIC_DETAIL = "an existing shrine may already represent this place; review required"
+SHRINE_COLLISION_PUBLIC_CODE   = "shrine_collision_review_required"
+```
+
+将来 exception message に内部情報（stack trace / DB 詳細 / 候補 id）が
+混ざっても public へ漏れない。候補 Shrine の id は server log のみ
+（`[places/resolve] shrine_collision_review_required` WARNING）。
+
+なお同ファイルに残る `except PlacesError as e: ... str(e)` は **develop 既存
+コード**であり、本 PR の CodeQL 指摘対象ではない（指摘されたのは
+`places_resolve.py:191` と `shrine.py:367` の 2 行＝本 PR が追加した
+collision handler のみ）。F-6B のスコープを越えて触っていない。
+
+### 14.10 距離しきい値の境界
+
+```text
+契約: DISTANCE_M <= 500 -> collision
+```
+
+実座標での境界（子午線に沿って北へずらし、同 module の距離関数で実測）:
+
+```text
+499 m 狙い -> 実測 498.99999999999665  -> collision
+500 m 狙い -> 実測 499.99999999967525  -> collision      （<= 500）
+501 m 狙い -> 実測 501.00000000014387  -> collision でない
+```
+
+浮動小数の都合で実座標から「ちょうど 500.0」は作れないため、比較演算子が
+`<=` であって `<` でないことは距離関数を固定して直接検証した
+（`500.0` -> collision、`500.0000001` -> collision でない）。
+policy は緩めていない（名前の完全一致は依然として必須条件であり、
+距離単独では collision にならない）。
+
+距離が 500 m を超えても `STRONG_ADDRESS_MATCH` が成立すれば collision になる
+（OR 条件）ことも固定した。
+
+### 14.11 Required statements
 
 ```text
 1.  collision 検出は identity 解決ではない。候補 list を返すだけ。
@@ -1020,6 +1121,10 @@ temples/tests/test_concierge_api.py::test_candidate_formatted_address_is_used
 10. IntegrityError 復帰分岐をテスト済みとは主張していない（§14.4）。
 11. test matrix 11 件のうち 2 件（#6 #7）が未実装であることを明示した。
 12. F-6A の決定を再議論していない。
+13. migration 0100 を変更していない。
+14. Production データを変更していない。
+15. CodeQL 指摘 2 件を解消し、collision public response から
+    str(exception) を排除した。
 ```
 
 ## 15. STOP
@@ -1027,9 +1132,24 @@ temples/tests/test_concierge_api.py::test_candidate_formatted_address_is_used
 ```text
 F6A_STATUS = AUDITED
 F6B_STATUS = IMPLEMENTED
+
+HISTORICAL_SHADOW_REGRESSION         = 3 / 3
+OPENAPI_409_ENDPOINTS                = 2 / 2
+CODEQL_REVIEW_THREADS_UNRESOLVED     = 0
+POST_0100_SHADOW_RECREATION_POSSIBLE = NO_ON_HARDENED_RUNTIME_PATH
+PLACE_ID_BACKFILL                    = NO
+MIGRATION_0100_CHANGED               = NO
+PRODUCTION_DATA_CHANGED              = NO
+
 NEXT       = EXPLICIT_BACKFILL（F-6A §7.2 の未決 2 件が前提）
              / F-6C 相当の 409 専用 UX
              / O-1 shrines_nearby の削除可否
 ```
+
+`POST_0100_SHADOW_RECREATION_POSSIBLE = NO_ON_HARDENED_RUNTIME_PATH` は
+「hardening した runtime 経路（`get_or_create_shrine_by_place_id`）からは
+再作成できない」という意味である。Django Admin・management command・
+DB への直接書き込みといった経路は F-6B のスコープ外であり、
+そこから作られる行までは防いでいない（F-6A §3.2 / §11.4）。
 
 次の行動には Mother Ship 指示が必要。
