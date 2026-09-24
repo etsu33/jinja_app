@@ -193,8 +193,8 @@ Secondary target は regression が見つかった場合だけ深掘りする。
 
 | Route / State | Auth | Data | 390px | Other widths | Finding | Classification | Follow-up |
 |---|---|---|---|---|---|---|---|
-| /concierge result | TBD | real | TODO | TODO if needed | TBD | TBD | TBD |
-| /shrines/[id] | no | real | TODO | TODO if needed | TBD | TBD | TBD |
+| /concierge result | no | real | PASS (390x844) | 455px provisional PASS | Navy ground / header continuity / card hierarchy / long-form text / gold CTA remain readable; no horizontal overflow observed | PASS | none |
+| /shrines/[id] | no | real | PASS (390x844) | 455px provisional PASS | Concierge→Shrine Detail continuity preserved; cards, history text, meaning sections remain readable | PASS | semantic-state follow-up only |
 | /shrines/[id]/goshuins | no | real | TODO | TODO if needed | TBD | TBD | TBD |
 | /mypage | yes | real | TODO | TODO if needed | TBD | TBD | TBD |
 | /favorites | yes | real | TODO | TODO if needed | TBD | TBD | TBD |
@@ -207,6 +207,57 @@ Secondary target は regression が見つかった場合だけ深掘りする。
 
 Screenshot 自体は repository へ commit しない。
 PR 本文または GitHub attachment / QA note で evidence を参照する。
+
+
+### 7.1 Concierge / Shrine Detail — 390px formal observation (2026-09-24)
+
+Input used:
+
+> 最近、仕事について少し迷っています。今後の方向性を整理したくて、落ち着いて考えられる神社に行きたいです。人が多すぎず、静かに参拝できる場所が希望です。
+
+Evidence:
+- user-provided browser screenshots
+- Chrome responsive viewport: **390 x 844**
+- flow: Home input → `/concierge?tid=9` → `/shrines/59?ctx=concierge&tid=9`
+- earlier 455px screenshots are treated as provisional corroborating evidence only
+
+Formal findings:
+
+| Area / State | Finding | Classification | Follow-up |
+|---|---|---|---|
+| Home input at 390px | Header controls fit, input surface remains within viewport, Gold Path stays subordinate, no visible horizontal overflow | PASS | none |
+| Concierge result / top recommendation | Deep Ink Navy ground, surface hierarchy, title, reference info and recommendation copy remain readable at 390px | PASS | none |
+| Concierge emerald semantic labels | Emerald labels remain readable but visually sit outside the Navy + shrine-gold neutral language | PRE_EXISTING_SEMANTIC_STATE | Semantic State Polish candidate |
+| Long-form concierge copy | Line length and wrapping remain readable; no clipping or overflow observed in supplied evidence | PASS | none |
+| Shrine Detail / real shrine data | Shrine title, address, deity chips, history cards and meaning sections remain readable at 390px; route continuity is preserved | PASS | none |
+| Premium / login deeper-meaning block | Dark green surface and gold text remain readable but visually stand apart from the canonical Navy neutral system | PRE_EXISTING_SEMANTIC_STATE | Semantic State Polish candidate |
+| Header / page continuity | No Forest / white seam observed in supplied 390px evidence | PASS | none |
+| Gold Path readability | Decorative line remains low-contrast and does not visibly cross text at a disruptive intensity | PASS | none |
+| Horizontal layout | No visible horizontal scrolling or viewport escape in supplied evidence | PASS | none |
+
+Formal classification for this pass:
+
+```text
+WORLDVIEW_REGRESSION            = 0 observed
+PRE_EXISTING_SEMANTIC_STATE     = 2 observed patterns
+CONTENT_DATA_STRESS             = 0 observed
+FUNCTIONAL_NON_VISUAL           = 0 observed in this pass
+PASS                            = Concierge / Shrine Detail core Worldview
+```
+
+The two semantic-state patterns are **not blockers for PR #2974's Worldview rollout**.
+They are candidates for a later Semantic State Polish PR and must not be changed inside this audit PR.
+
+Not covered by this evidence:
+- Concierge loading state
+- explicit disabled state
+- selected/saved state
+- authenticated Premium state
+- Footer end-of-page seam
+- 375 / 430 / 1280 expansion for these real-data states
+
+Per the viewport policy, extra widths are required only where a problem is found.
+The semantic-state findings are color-language issues rather than 390px layout failures, so no responsive expansion is required for the core Concierge/Shrine layout at this point.
 
 ## 8. No-change Areas
 
