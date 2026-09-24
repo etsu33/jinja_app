@@ -14,7 +14,7 @@ import {
  * 実際にこのコンポーネントを使っている画面だけに限定する（推測で広げない）。
  * ShrineInteractionLog の source にも同じ値を使う。
  */
-export type GoogleMapRouteLinkSource = "shrine_detail" | "map";
+export type GoogleMapRouteLinkSource = "shrine_detail" | "map" | "compass";
 
 type Props = {
   href: string;

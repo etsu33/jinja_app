@@ -137,4 +137,54 @@ describe("ShrineCardCompact", () => {
       expect(screen.getByText("短い理由").className).toContain("text-[var(--kt-color-text-muted)]");
     });
   });
+
+  describe('layout="candidate" (Compass Candidate Card v2, opt-in only)', () => {
+    it("default layout ignores candidate-only props and keeps the existing detail link", () => {
+      render(
+        <ShrineCardCompact
+          name="検証神社"
+          href="/shrines/1?ctx=concierge"
+          address="東京都千代田区1-1-1"
+          reason="仕事運とのご利益一致"
+          detailLabel="神社を見る"
+          secondaryAction={<a href="https://example.com">経路を見る</a>}
+        >
+          <p>candidate-only child</p>
+        </ShrineCardCompact>,
+      );
+
+      expect(screen.getByRole("link", { name: "詳細だけ見る" })).toHaveAttribute("href", "/shrines/1?ctx=concierge");
+      expect(screen.getByTestId("recommendation-match-reason")).toHaveTextContent("仕事運とのご利益一致");
+      expect(screen.queryByText("神社を見る")).not.toBeInTheDocument();
+      expect(screen.queryByText("経路を見る")).not.toBeInTheDocument();
+      expect(screen.queryByText("candidate-only child")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("shrine-card-candidate-location")).not.toBeInTheDocument();
+    });
+
+    it("candidate layout renders name, location, children and CTAs without reason/explanation slots", () => {
+      render(
+        <ShrineCardCompact
+          layout="candidate"
+          name="検証神社"
+          href="/shrines/1?ctx=compass"
+          address="東京都千代田区1-1-1"
+          distanceLabel="約1.2km"
+          reason="使われない理由"
+          explanationOnlyFactText="使われない参考情報"
+          detailLabel="神社を見る"
+          secondaryAction={<a href="https://example.com">経路を見る</a>}
+        >
+          <p>candidate-only child</p>
+        </ShrineCardCompact>,
+      );
+
+      expect(screen.getByRole("heading", { level: 3, name: "検証神社" })).toBeInTheDocument();
+      expect(screen.getByTestId("shrine-card-candidate-location")).toHaveTextContent("東京都千代田区1-1-1 ・ 約1.2km");
+      expect(screen.getByText("candidate-only child")).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "神社を見る" })).toHaveAttribute("href", "/shrines/1?ctx=compass");
+      expect(screen.getByRole("link", { name: "経路を見る" })).toBeInTheDocument();
+      expect(screen.queryByText("使われない理由")).not.toBeInTheDocument();
+      expect(screen.queryByText(/使われない参考情報/)).not.toBeInTheDocument();
+    });
+  });
 });

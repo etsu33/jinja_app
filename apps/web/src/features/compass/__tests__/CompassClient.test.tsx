@@ -246,6 +246,45 @@ describe("CompassClient", () => {
     expect(screen.queryByRole("link", { name: "コンシェルジュで相談する" })).not.toBeInTheDocument();
   });
 
+  it("経路CTAは送信時のoriginを使い、送信後に出発地点を変えても結果とずれない", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        state: "recommendation_success",
+        purpose: "career",
+        direction_context: {
+          targetDate: "2026-09-15",
+          targetYear: 2026,
+          solarMonthIndex: 8,
+          referenceDirections: ["北西"],
+          calculationMethod: "annual_monthly_kyusei_v1",
+          note: "年盤と月盤による参考情報です。日盤は使用していません。",
+        },
+        recommendation_instance_id: "compass01",
+        recommendations: [{ shrine_id: 1, name: "北西神社", address: "東京都千代田区" }],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<CompassClient />);
+    fillMinimumValidInput();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "今月の方向を確認する" }));
+    });
+
+    const routeOrigin = () =>
+      new URL(screen.getByRole("link", { name: "経路を見る" }).getAttribute("href") ?? "").searchParams.get("origin");
+    expect(await screen.findByRole("link", { name: "経路を見る" })).toBeInTheDocument();
+    expect(routeOrigin()).toBe("35.6762,139.6503");
+
+    // 再送信せずに出発地点だけ変更しても、表示中の結果の経路originは変わらない。
+    fireEvent.click(screen.getByRole("button", { name: "変更する" }));
+    fireEvent.click(screen.getByRole("radio", { name: "都道府県から指定" }));
+    fireEvent.change(screen.getByLabelText("都道府県"), { target: { value: "大阪府" } });
+    expect(routeOrigin()).toBe("35.6762,139.6503");
+  });
+
   it("calculationMethodがannual_monthly_kyusei_v1のとき、共通方位の説明文を表示する（fallback文言は出さない）", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,

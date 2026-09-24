@@ -1,33 +1,91 @@
-// Reuses the existing ShrineCardCompact as-is (Phase 5 brief Section 11:
-// "Do not invent a parallel shrine-card system solely for Compass"). This
 "use client";
 
-// component only supplies a contextual heading and maps already-Authority-
-// decided fields (name/reason/address/distance) straight through -- it
-// never re-decides or rewrites the shrine-specific reason.
+// Compass Candidate Card v2. Reuses the existing ShrineCardCompact via its
+// opt-in "candidate" layout (Phase 5 brief Section 11: "Do not invent a
+// parallel shrine-card system solely for Compass"). This component only maps
+// already-Authority-decided Public Contract fields straight through:
+//
+//   Meaning     -> reason_facts (primary only)
+//   Shrine Fact -> shrine_facts
+//   Distance    -> distance_m
+//   Identity    -> shrine_id
+//
+// It never re-decides, re-ranks, summarizes, or falls back to legacy `reason`.
 import DetailSection from "@/components/shrine/DetailSection";
-import ShrineCardCompact, { formatDistance } from "@/components/shrines/ShrineCardCompact";
+import GoogleMapRouteLink from "@/components/shrine/GoogleMapRouteLink";
+import ShrineCardCompact, { formatDistance, SHRINE_CARD_CANDIDATE_CTA_CLASS } from "@/components/shrines/ShrineCardCompact";
 import { trackCardEvent } from "@/lib/analytics/cardEvents";
 import { trackSearchEvent } from "@/lib/analytics/searchEvents";
 import { resolveShrineId } from "@/lib/identity/resolveShrineId";
+import { buildGoogleMapsDirUrl } from "@/lib/maps/googleMaps";
 import { buildShrineHref } from "@/lib/nav/buildShrineHref";
 import { useEffect, useRef } from "react";
-import { resolveCompassSupplementaryFactText } from "../resolveCompassSupplementaryFactText";
+import {
+  resolveCompassCandidateMeaning,
+  resolveCompassCandidateShrineFacts,
+  type CompassCandidateMeaning,
+  type CompassCandidateShrineFacts,
+} from "../resolveCompassCandidatePresentation";
 import type { CompassRecommendation } from "../types";
+
+const SECTION_LABEL_CLASS = "text-[11px] font-semibold text-[var(--kt-color-text-secondary)]";
+
+function CandidateMeaningBlock({ meaning }: { meaning: CompassCandidateMeaning }) {
+  return (
+    <div data-testid="compass-candidate-meaning">
+      <p className={SECTION_LABEL_CLASS}>今のあなたとの接点</p>
+      <p className="mt-1 break-words text-sm leading-6 text-[var(--kt-color-text-primary)]">
+        {meaning.text}
+        {meaning.isKamiMusubiInterpretation ? (
+          <span className="text-xs text-[var(--kt-color-text-muted)]">（KAMI MUSUBIの解釈）</span>
+        ) : null}
+      </p>
+    </div>
+  );
+}
+
+function CandidateShrineFactsBlock({ facts }: { facts: CompassCandidateShrineFacts }) {
+  return (
+    <div data-testid="compass-candidate-shrine-facts">
+      <p className={SECTION_LABEL_CLASS}>この神社について</p>
+      {facts.deityName ? (
+        <p className="mt-1 break-words text-sm leading-6 text-[var(--kt-color-text-primary)]" data-testid="compass-candidate-deity">
+          <span className="mr-2 text-xs text-[var(--kt-color-text-muted)]">祭神</span>
+          {facts.deityName}
+        </p>
+      ) : null}
+      {facts.history ? (
+        <div className="mt-1">
+          {facts.history.typeLabel ? (
+            <p className="text-xs text-[var(--kt-color-text-muted)]" data-testid="compass-candidate-history-type">
+              {facts.history.typeLabel}
+            </p>
+          ) : null}
+          <p
+            className="line-clamp-2 break-words text-sm leading-6 text-[var(--kt-color-text-secondary)]"
+            data-testid="compass-candidate-history"
+          >
+            {facts.history.content}
+          </p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 export type CompassRecommendationsSectionProps = {
   recommendations: CompassRecommendation[];
   recommendationInstanceId: string;
-  // Optional: omitted callers (existing tests, future callers that don't
-  // have it yet) render exactly as before -- resolveCompassSupplementaryFactText
-  // never fabricates a purpose match when this is unknown.
-  purpose?: string | null;
+  // The origin actually submitted with this Compass request (the same
+  // coordinates the backend used for direction/distance). Used only as the
+  // Google Maps route origin; omitted/invalid -> destination-only route.
+  origin?: { lat: number; lng: number } | null;
 };
 
 export default function CompassRecommendationsSection({
   recommendations,
   recommendationInstanceId,
-  purpose = null,
+  origin = null,
 }: CompassRecommendationsSectionProps) {
   const trackedImpressionsRef = useRef(new Set<string>());
 
@@ -67,25 +125,25 @@ export default function CompassRecommendationsSection({
           const rank = index + 1;
           const key = String(shrineId ?? rec.name ?? Math.random());
           const distanceM = typeof rec.distance_m === "number" ? rec.distance_m : null;
-          // Result Experience audit (docs/audit/compass-result-experience.md
-          // Section 26-3, P2 finding): distance_m already exists in the
-          // Compass recommendation payload but ShrineCardCompact's own
-          // address-vs-distance row (below) never shows it here, since
-          // Compass candidates always carry a non-empty address
-          // (concierge_chat_candidates.py requires it). No new data is
-          // fetched or derived -- this only surfaces an existing field via
-          // the opt-in distanceLabel prop, which no other caller sets.
           const formattedDistance = formatDistance(distanceM);
-          const explanationOnlyFactText = resolveCompassSupplementaryFactText(rec, purpose);
+          const name = String(rec.name ?? "");
+          const address = typeof rec.address === "string" ? rec.address : null;
+          const meaning = resolveCompassCandidateMeaning(rec);
+          const shrineFacts = resolveCompassCandidateShrineFacts(rec);
+          // destination: address -> name fallback（座標は公開Contractに無い）。
+          // 解決できなければ null を返すので、経路CTAを出さない。
+          const routeHref = buildGoogleMapsDirUrl({
+            origin,
+            destination: { address: address ?? undefined, fallbackName: name },
+          });
           return (
             <ShrineCardCompact
               key={key}
-              name={String(rec.name ?? "")}
-              address={typeof rec.address === "string" ? rec.address : null}
-              distanceM={distanceM}
+              layout="candidate"
+              name={name}
+              address={address}
               distanceLabel={formattedDistance ? `約${formattedDistance}` : null}
-              reason={typeof rec.reason === "string" ? rec.reason : null}
-              explanationOnlyFactText={explanationOnlyFactText}
+              detailLabel="神社を見る"
               href={
                 shrineId != null
                   ? buildShrineHref(shrineId, {
@@ -107,7 +165,30 @@ export default function CompassRecommendationsSection({
                       })
                   : undefined
               }
-            />
+              secondaryAction={
+                routeHref ? (
+                  <GoogleMapRouteLink
+                    href={routeHref}
+                    label="経路を見る"
+                    source="compass"
+                    shrineId={shrineId}
+                    ctx="compass"
+                    recommendationInstanceId={recommendationInstanceId}
+                    className={SHRINE_CARD_CANDIDATE_CTA_CLASS}
+                  />
+                ) : null
+              }
+            >
+              {meaning || shrineFacts ? (
+                <>
+                  {meaning ? <CandidateMeaningBlock meaning={meaning} /> : null}
+                  {meaning && shrineFacts ? (
+                    <hr className="my-3 border-[var(--kt-color-border-default)]" data-testid="compass-candidate-divider" />
+                  ) : null}
+                  {shrineFacts ? <CandidateShrineFactsBlock facts={shrineFacts} /> : null}
+                </>
+              ) : null}
+            </ShrineCardCompact>
           );
         })}
       </div>
