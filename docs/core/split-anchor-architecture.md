@@ -571,6 +571,8 @@ Schema Foundationの実装は、本書正本化後の別Mother Ship指示を必�
   - A-7 `UNWEIGHTED_COMPONENT_MEAN`
 - `docs/audit/canonical-anchor-subject-point-method-matrix-decision.md`
   - subject_type × point_method のMother Ship決定
+- `docs/audit/canonical-anchor-f7-representative-point-decision.md`
+  - PHASE_2 Evidence PacketのF-7 representative_point / F-8接続に関するMother Ship決定
 - `docs/knowledge/canonical-anchor-adjudication-procedure.md`
   - PHASE_2のread-only調査・判定手順
 
