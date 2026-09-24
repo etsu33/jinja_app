@@ -585,6 +585,30 @@ Classification:
 - `CONFIGURATION_MISMATCH_CONFIRMED`
 - release-significant and must be resolved before paid release.
 
+
+### 7.11 Mother Ship decision — β Early User canonical price (2026-09-24)
+
+Decision:
+
+> **β Early User price = ¥780 / month**
+
+Product rationale:
+- KAMI MUSUBI Premium is not positioned as a one-shot shrine search unlock.
+- The paid value is the recurring guidance loop:
+  - Concierge consultation
+  - deeper explanation of why the shrine fits the current state
+  - reflection on changes since prior consultations
+  - Compass as a recurring-use surface
+  - weekly Compass output as a reason to return between consultations
+- The weekly Compass is part of the product-value hypothesis supporting a monthly subscription rather than a one-time purchase.
+- Therefore Mother Ship keeps **¥780 / month** as the canonical β Early User price and treats the current Stripe Sandbox ¥500 recurring Price as configuration drift.
+
+Follow-up boundary:
+- Do not change Stripe configuration inside PR #2977.
+- Create a dedicated billing configuration follow-up after this audit.
+- The follow-up must align Stripe Sandbox to the canonical ¥780 / month price, update Render `STRIPE_PRICE_ID` to the matching Sandbox Price, and re-run Checkout display / webhook / entitlement QA.
+- Live-mode pricing remains a separate pre-release gate.
+
 ## 8. No-change Areas
 
 本監査 PR では変更しない。
