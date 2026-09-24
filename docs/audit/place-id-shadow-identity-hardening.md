@@ -2143,3 +2143,228 @@ NEXT = Mother Ship が (1) fresh PRE PASS (2) 0114 pending の確認
 ```
 
 本 session は Production へ適用しない。
+
+## 24. F-6D Production Apply Result
+
+§23 は「Production 適用前 STOP」の歴史的証跡として保持する。本節は
+2026-09-24 に Mother Ship が実行した fresh PRE / backup / scoped migration /
+POST verification / 全 app migration state 比較の実測結果であり、§23 の
+未適用状態を後続実測として supersede する。
+
+### 24.1 適用直前 Gate の再確認
+
+Production への write 前に、F-6C の pinned PRE SQL を sanctioned read-only
+bridge 経由で再実行した。
+
+```text
+F6D_FRESH_PRODUCTION_PRE         = PASS
+F6D_PRE_ELIGIBLE                 = TRUE
+
+PRODUCTION_TEMPLES_LATEST        = 0113_adopt_usa_jingu_position
+MIGRATION_NUMBER_ABOVE_LEAF      = 0
+UNKNOWN_SAME_NUMBER_SIBLING      = 0
+MIGRATION_NAME_UNPARSEABLE       = 0
+UNKNOWN_MIGRATION_BRANCH         = NO
+FUTURE_F6D_ALREADY_RECORDED      = NO
+
+PRIMARY_COUNT                    = 3
+PRIMARY_IDENTITY_MATCH_COUNT     = 3
+PRIMARY_PLACE_REF_NONNULL        = 0
+TARGET_PLACE_REF_COUNT           = 3
+TARGET_PLACE_REF_CLAIM_COUNT     = 0
+SHADOW_COUNT                     = 0
+AUDITED_EVENT_EXACT_COUNT        = 2
+AUDITED_EVENT_WRONG_OWNER_COUNT  = 0
+```
+
+Django の Production graph も別途確認し、standard
+`temples/migrations` lineage を読んでいること、および 0114 だけが pending
+であることを確認した。
+
+```text
+[X] 0113_adopt_usa_jingu_position
+[ ] 0114_f6d_explicit_place_ref_backfill
+```
+
+全 app の migration baseline も適用前に SELECT-only で取得した。
+
+```text
+PRE_DJANGO_MIGRATION_ROWS = 161
+PRE_TEMPLES_LATEST         = 0113_adopt_usa_jingu_position
+PRE_FAVORITES_LATEST       = 0003_retire_legacy_favorite
+PRE_USERS_LATEST           = 0009_userprofile_cancel_at_period_end
+```
+
+### 24.2 fresh Production backup
+
+最初の `dump_readonly.sh` 実行は PATH 上の PostgreSQL 16.10 client を使用し、
+`pg_dumpall --roles-only` の段階で fail closed した。
+
+```text
+FIRST_BACKUP_ATTEMPT = FAIL_AT_ROLES_DUMP
+PATH_PG_DUMPALL      = PostgreSQL 16.10
+PATH_PG_DUMP         = PostgreSQL 16.10
+PRODUCTION_WRITE     = 0
+```
+
+この失敗時点では schema / data dump へ進まず、Production migration も実行
+していない。
+
+既知の Production server major に合わせ、installed PostgreSQL 17 client を
+明示指定して fresh backup を再実行した。
+
+```text
+PG_DUMP_BIN    = /opt/homebrew/opt/postgresql@17/bin/pg_dump
+PG_DUMPALL_BIN = /opt/homebrew/opt/postgresql@17/bin/pg_dumpall
+
+BACKUP_DIR = ~/kami-musubi-backups/20260924175405
+
+roles.sql  = 5426 bytes
+schema.sql = 106945 bytes
+data.sql   = 7957314 bytes
+
+F6D_FRESH_BACKUP = PASS
+```
+
+backup は repository 外に保存し、Git へ commit していない。
+
+### 24.3 Production scoped apply
+
+Gate 条件がすべて成立した後、Mother Ship は global migrate ではなく、
+F-6D で固定した scoped migration だけを実行した。
+
+```text
+F6D_APPLY_METHOD = LOCAL_SCOPED_DJANGO_MIGRATION
+
+python manage.py migrate temples 0114_f6d_explicit_place_ref_backfill --noinput
+```
+
+Django の実行結果:
+
+```text
+Operations to perform:
+  Target specific migration: 0114_f6d_explicit_place_ref_backfill, from temples
+Running migrations:
+  Applying temples.0114_f6d_explicit_place_ref_backfill... OK
+```
+
+Production ledger 上の適用時刻:
+
+```text
+temples.0114_f6d_explicit_place_ref_backfill
+applied = 2026-09-24 09:01:49.321162+00
+```
+
+`RUN_MIGRATIONS_ON_START` は使用していない。
+`python manage.py migrate --noinput` の global route も使用していない。
+
+### 24.4 Production POST verification
+
+PR #2972 で正本化した SELECT-only POST SQL:
+
+```text
+scripts/migration_safety/sql/f6d_place_ref_backfill_postcheck.sql
+```
+
+を Production に対して実行し、machine-readable summary が PASS した。
+
+```text
+MIGRATION_0114_APPLIED              = TRUE
+PRODUCTION_TEMPLES_LATEST_IS_0114   = TRUE
+UNKNOWN_MIGRATION_BRANCH_DETECTED   = FALSE
+
+PRIMARY_COUNT                       = 3
+PRIMARY_IDENTITY_MATCH_COUNT        = 3
+EXPECTED_MAPPING_MATCH_COUNT        = 3
+PRIMARY_PLACE_REF_NULL_COUNT        = 0
+
+TARGET_PLACE_REF_COUNT              = 3
+TARGET_PLACE_REF_CLAIM_COUNT        = 3
+UNEXPECTED_CLAIM_COUNT              = 0
+
+SHADOW_COUNT                        = 0
+
+AUDITED_EVENT_EXACT_COUNT           = 2
+AUDITED_EVENT_WRONG_OWNER_COUNT     = 0
+
+F6D_POST_VERIFIED                   = TRUE
+```
+
+Production 上で確定した 3 pair:
+
+```text
+Shrine 21 長太稲荷神社
+  <- ChIJX19mq8nxGGARsA2kP4gX90M
+
+Shrine 22 給田六所神社
+  <- ChIJl-MEepfxGGAR1Eo44p__GaE
+
+Shrine 49 富岡八幡宮
+  <- ChIJK11I4BGJGGAR5mZswigcu58
+```
+
+3 primary の audited identity はすべて一致し、target PlaceRef 3 件はすべて
+存在、claim は audited 3 pair のみ、shadow 101 / 103 / 104 は 0 件、
+audited interaction event 2 件も期待 primary のまま保持された。
+
+### 24.5 全 app migration state PRE / POST 比較
+
+F-6D の POST verification 後、`migration_state.sql` を再実行した。
+
+```text
+PRE_DJANGO_MIGRATION_ROWS  = 161
+POST_DJANGO_MIGRATION_ROWS = 162
+DELTA                       = +1
+```
+
+新規行はこの 1 件だけだった。
+
+```text
+temples | 0114_f6d_explicit_place_ref_backfill
+```
+
+他 app の migration state は PRE と同一だった。
+
+```text
+favorites       latest = 0003_retire_legacy_favorite
+users           latest = 0009_userprofile_cancel_at_period_end
+admin           unchanged
+auth            unchanged
+contenttypes    unchanged
+sessions        unchanged
+token_blacklist unchanged
+
+OTHER_APP_MIGRATION_CHANGE = NO
+```
+
+これにより、F-6D 適用時に global migrate 相当の他 app migration 巻き込みが
+発生していないことを PRE / POST の ledger 比較でも確認した。
+
+### 24.6 Final classification
+
+```text
+C1_BACKFILL_EXECUTION           = YES
+
+F6D_FRESH_PRODUCTION_PRE        = PASS
+F6D_FRESH_BACKUP                = PASS
+
+F6D_APPLIED_TO_PRODUCTION       = YES
+F6D_POST_VERIFIED               = TRUE
+
+PRODUCTION_TEMPLES_LATEST       = 0114_f6d_explicit_place_ref_backfill
+PLACE_REF_BACKFILL_SCOPE        = EXACTLY_3
+
+OTHER_APP_MIGRATION_CHANGE      = NO
+UNEXPECTED_CLAIM                = NO
+SHADOW_RECREATION               = NO
+IDENTITY_DRIFT                  = NO
+AUDITED_EVENT_DRIFT             = NO
+
+F6D_PRODUCTION_GATE             = CLOSED_SUCCESS
+```
+
+F-6D の Production data migration は完了した。
+
+本節を追加する documentation PR 自体は Production DB / runtime / migration
+file / PRE SQL / POST SQL を変更しない。
+
