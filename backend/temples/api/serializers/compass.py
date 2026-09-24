@@ -105,10 +105,40 @@ class CompassRecommendationBreakdownSerializer(serializers.Serializer):
 
 
 class CompassReasonFactSerializer(serializers.Serializer):
-    """reason_facts[] の公開部分（Section 9.4）。type / label 以外は公開しない。"""
+    """reason_facts[] の公開部分（Section 9.4）。
+
+    Recommendation Meaning（なぜ今回この神社が候補なのか）。
+    type / label / label_ja / is_primary 以外（evidence / score 等）は公開しない。
+    """
 
     type = serializers.CharField(required=False)
     label = serializers.CharField(required=False)
+    label_ja = serializers.CharField(required=False)
+    is_primary = serializers.BooleanField(required=False)
+
+
+class CompassShrineFactDeitySerializer(serializers.Serializer):
+    """shrine_facts.deity。Evidence Gate 通過済みの祭神Fact 1件。"""
+
+    display_name = serializers.CharField()
+
+
+class CompassShrineFactHistorySerializer(serializers.Serializer):
+    """shrine_facts.history。Evidence Gate 通過済みの由緒Fact 1件。"""
+
+    history_type = serializers.CharField()
+    content = serializers.CharField()
+
+
+class CompassShrineFactsSerializer(serializers.Serializer):
+    """shrine_facts。ユーザーの相談とは独立した、その神社そのものの確認済みFact。
+
+    Recommendation Meaning（reason_facts）ではない。deity / history は
+    それぞれ最大1件で、存在しない側は省略される。
+    """
+
+    deity = CompassShrineFactDeitySerializer(required=False)
+    history = CompassShrineFactHistorySerializer(required=False)
 
 
 class CompassRecommendationItemSerializer(serializers.Serializer):
@@ -157,6 +187,13 @@ class CompassRecommendationItemSerializer(serializers.Serializer):
     )
     breakdown = CompassRecommendationBreakdownSerializer(required=False)
     reason_facts = CompassReasonFactSerializer(many=True, required=False)
+    shrine_facts = CompassShrineFactsSerializer(
+        required=False,
+        help_text=(
+            "その神社そのものの確認済みFact（祭神・由緒 各最大1件）。"
+            "推薦理由（reason_facts）ではない。Factが無い場合はkeyごと省略される。"
+        ),
+    )
 
 
 class CompassRecommendationsResponseSerializer(serializers.Serializer):
@@ -195,6 +232,9 @@ __all__ = [
     "CompassDirectionContextSerializer",
     "CompassRecommendationBreakdownSerializer",
     "CompassReasonFactSerializer",
+    "CompassShrineFactDeitySerializer",
+    "CompassShrineFactHistorySerializer",
+    "CompassShrineFactsSerializer",
     "CompassRecommendationItemSerializer",
     "CompassRecommendationsResponseSerializer",
     "CompassRecommendationsInvalidPurposeResponseSerializer",

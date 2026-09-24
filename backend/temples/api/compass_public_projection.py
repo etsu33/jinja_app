@@ -14,7 +14,7 @@ Allowlist（denylistではない）:
 
 Fail-safe（Section 11）:
   公開対象のsource fieldが存在しない場合、代わりの値をでっち上げない。
-  nested構造（breakdown / reason_facts）が期待した型でない場合、生の値は
+  nested構造（breakdown / reason_facts / shrine_facts の source）が期待した型でない場合、生の値は
   絶対に露出させず、そのkey自体を落とす。
 
 `recommendation_instance_id` だけは例外で、source ではなく View が
@@ -57,8 +57,27 @@ COMPASS_MONTHLY_PUBLIC_ITEM_FIELDS: tuple[str, ...] = (
 # breakdown の公開nested field。
 COMPASS_MONTHLY_PUBLIC_BREAKDOWN_FIELDS: tuple[str, ...] = ("matched_need_tags",)
 
-# reason_facts[] の公開field。
-COMPASS_MONTHLY_PUBLIC_REASON_FACT_FIELDS: tuple[str, ...] = ("type", "label")
+# reason_facts[] の公開field（Recommendation Meaning = なぜ今回この神社が候補なのか）。
+# evidence / score 等の内部値はここに列挙しない限り公開されない。
+COMPASS_MONTHLY_PUBLIC_REASON_FACT_FIELDS: tuple[str, ...] = (
+    "type",
+    "label",
+    "label_ja",
+    "is_primary",
+)
+
+# shrine_facts.deity の公開field。
+# source は Shared Recommendation Candidate の `knowledge_deities`
+# （Knowledge selector + Evidence Gate を通過済み）。
+COMPASS_MONTHLY_PUBLIC_SHRINE_FACT_DEITY_FIELDS: tuple[str, ...] = ("display_name",)
+
+# shrine_facts.history の公開field。
+# source は Shared Recommendation Candidate の `knowledge_histories`
+# （Knowledge selector + Evidence Gate を通過済み）。
+COMPASS_MONTHLY_PUBLIC_SHRINE_FACT_HISTORY_FIELDS: tuple[str, ...] = (
+    "history_type",
+    "content",
+)
 
 # Public Contract v1 で recommendation item が取り得るkeyの全体集合。
 # 実際のitemはこの部分集合であればよく、全keyを持つ必要はない（Section 9.2）。
@@ -68,6 +87,7 @@ COMPASS_MONTHLY_PUBLIC_ITEM_ALLOWLIST: frozenset[str] = frozenset(
         "recommendation_instance_id",
         "breakdown",
         "reason_facts",
+        "shrine_facts",
     )
 )
 
@@ -105,7 +125,7 @@ def _project_breakdown(raw: Any) -> dict[str, Any] | None:
 
 
 def _project_reason_facts(raw: Any) -> list[dict[str, Any]] | None:
-    """reason_facts を type / label のみへ投影する。
+    """reason_facts を COMPASS_MONTHLY_PUBLIC_REASON_FACT_FIELDS のみへ投影する。
 
     list でなければ None（= keyごと落とす）。mapping でない要素は落とす
     （生の要素を露出させない）。
@@ -122,6 +142,56 @@ def _project_reason_facts(raw: Any) -> list[dict[str, Any]] | None:
         }
         projected.append(fact)
     return projected
+
+
+def _is_non_empty_string(value: Any) -> bool:
+    return isinstance(value, str) and bool(value.strip())
+
+
+def _first_valid_fact(raw: Any, fields: tuple[str, ...]) -> dict[str, str] | None:
+    """Knowledge list から、全公開fieldが non-empty string の最初の要素だけを投影する。
+
+    順序は Knowledge selector が決定済みのもの（sort_order, id）をそのまま使い、
+    Compass 独自の ranking はしない。list でなければ None。mapping でない要素や
+    公開fieldが欠けた要素は生の値を露出させずに読み飛ばす。
+    """
+    if not isinstance(raw, list):
+        return None
+
+    for entry in raw:
+        if not isinstance(entry, Mapping):
+            continue
+        if not all(_is_non_empty_string(entry.get(key)) for key in fields):
+            continue
+        return {key: entry[key] for key in fields}
+    return None
+
+
+def _project_shrine_facts(source: Mapping[str, Any]) -> dict[str, Any] | None:
+    """Shrine Fact（ユーザーの相談とは独立した、その神社の確認済みFact）を投影する。
+
+    `knowledge_deities` / `knowledge_histories` の raw key と内部field
+    （confidence / sort_order / title / period_text 等）は公開しない。
+    deity / history はそれぞれ最大1件。どちらも無ければ None（= keyごと落とす）。
+
+    Shrine Fact は Recommendation Meaning（reason_facts）へ昇格させない。
+    goriyaku / description / reason / reason_facts 等からの補完もしない。
+    """
+    shrine_facts: dict[str, Any] = {}
+
+    deity = _first_valid_fact(
+        source.get("knowledge_deities"), COMPASS_MONTHLY_PUBLIC_SHRINE_FACT_DEITY_FIELDS
+    )
+    if deity is not None:
+        shrine_facts["deity"] = deity
+
+    history = _first_valid_fact(
+        source.get("knowledge_histories"), COMPASS_MONTHLY_PUBLIC_SHRINE_FACT_HISTORY_FIELDS
+    )
+    if history is not None:
+        shrine_facts["history"] = history
+
+    return shrine_facts or None
 
 
 def project_compass_recommendation(
@@ -148,6 +218,10 @@ def project_compass_recommendation(
         reason_facts = _project_reason_facts(source["reason_facts"])
         if reason_facts is not None:
             projected["reason_facts"] = reason_facts
+
+    shrine_facts = _project_shrine_facts(source)
+    if shrine_facts is not None:
+        projected["shrine_facts"] = shrine_facts
 
     # Section 11 の唯一の例外: source 由来ではなく、View が生成した
     # request単位のIDを互換aliasとして注入する。
@@ -216,6 +290,8 @@ __all__ = [
     "COMPASS_MONTHLY_PUBLIC_ITEM_FIELDS",
     "COMPASS_MONTHLY_PUBLIC_BREAKDOWN_FIELDS",
     "COMPASS_MONTHLY_PUBLIC_REASON_FACT_FIELDS",
+    "COMPASS_MONTHLY_PUBLIC_SHRINE_FACT_DEITY_FIELDS",
+    "COMPASS_MONTHLY_PUBLIC_SHRINE_FACT_HISTORY_FIELDS",
     "COMPASS_MONTHLY_PUBLIC_ITEM_ALLOWLIST",
     "project_compass_recommendation",
     "project_compass_recommendations",

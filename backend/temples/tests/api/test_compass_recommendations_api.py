@@ -7,7 +7,10 @@ from unittest.mock import patch
 import pytest
 
 from temples.models import Shrine
-from temples.tests.support.recommendation_eligibility import attach_usable_deity_fact
+from temples.tests.support.recommendation_eligibility import (
+    attach_usable_deity_fact,
+    attach_usable_history_fact,
+)
 
 URL = "/api/compass/recommendations/"
 ORIGIN = {"lat": 35.0, "lng": 135.0}
@@ -409,6 +412,7 @@ PUBLIC_ITEM_ALLOWLIST = {
     "recommendation_instance_id",
     "breakdown",
     "reason_facts",
+    "shrine_facts",
 }
 
 PUBLIC_TOP_LEVEL_KEYS = {
@@ -480,7 +484,30 @@ def _polluted_result(count: int = 2):
                     "label_ja": "守り",
                     "is_primary": True,
                     "evidence": ["history_theme"],
+                    "score": 1.0,
                 }
+            ],
+            "knowledge_deities": [
+                {"display_name": f"祭神{index}", "sort_order": 0, "confidence": "high"},
+                {"display_name": f"二番目の祭神{index}", "sort_order": 1, "confidence": "high"},
+            ],
+            "knowledge_histories": [
+                {
+                    "history_type": "official_origin",
+                    "title": "創建",
+                    "content": f"由緒{index}",
+                    "period_text": "奈良時代",
+                    "sort_order": 0,
+                    "confidence": "high",
+                },
+                {
+                    "history_type": "legend",
+                    "title": "伝承",
+                    "content": f"二番目の由緒{index}",
+                    "period_text": None,
+                    "sort_order": 1,
+                    "confidence": "high",
+                },
             ],
             **INTERNAL_FIELDS_THAT_MUST_NOT_LEAK,
         }
@@ -542,7 +569,13 @@ def test_public_recommendation_values_survive_projection(client):
     assert rec["distance_m"] == 1000.0
     assert rec["reason"] == "理由0"
     assert rec["breakdown"] == {"matched_need_tags": ["career"]}
-    assert rec["reason_facts"] == [{"type": "history_theme", "label": "守り"}]
+    assert rec["reason_facts"] == [
+        {"type": "history_theme", "label": "守り", "label_ja": "守り", "is_primary": True}
+    ]
+    assert rec["shrine_facts"] == {
+        "deity": {"display_name": "祭神0"},
+        "history": {"history_type": "official_origin", "content": "由緒0"},
+    }
 
 
 @pytest.mark.django_db
@@ -557,7 +590,8 @@ def test_breakdown_exposes_only_matched_need_tags_over_http(client):
 
 
 @pytest.mark.django_db
-def test_reason_facts_expose_only_type_and_label_over_http(client):
+def test_reason_facts_expose_only_public_meaning_fields_over_http(client):
+    """reason_facts は type / label / label_ja / is_primary のみ。evidence / score は出ない。"""
     with patch(
         "temples.api_views_compass.get_compass_recommendations",
         return_value=_polluted_result(count=1),
@@ -565,7 +599,29 @@ def test_reason_facts_expose_only_type_and_label_over_http(client):
         body = _post_valid(client).json()
 
     for fact in body["recommendations"][0]["reason_facts"]:
-        assert set(fact) <= {"type", "label"}
+        assert set(fact) == {"type", "label", "label_ja", "is_primary"}
+        assert "evidence" not in fact
+        assert "score" not in fact
+
+
+@pytest.mark.django_db
+def test_shrine_facts_expose_only_public_fact_shape_over_http(client):
+    """shrine_facts は deity.display_name / history.history_type / history.content のみ。"""
+    with patch(
+        "temples.api_views_compass.get_compass_recommendations",
+        return_value=_polluted_result(count=2),
+    ):
+        body = _post_valid(client).json()
+
+    for index, rec in enumerate(body["recommendations"]):
+        assert "knowledge_deities" not in rec
+        assert "knowledge_histories" not in rec
+        assert set(rec["shrine_facts"]) == {"deity", "history"}
+        assert rec["shrine_facts"]["deity"] == {"display_name": f"祭神{index}"}
+        assert rec["shrine_facts"]["history"] == {
+            "history_type": "official_origin",
+            "content": f"由緒{index}",
+        }
 
 
 @pytest.mark.django_db
@@ -589,21 +645,34 @@ def test_malformed_nested_payloads_fail_safe_without_leaking_raw_values(client):
                 "breakdown": {"matched_need_tags": {"career": True}, "score_total": 1.0},
                 "reason_facts": ["element", None, {"type": "element", "label": "水", "score": 1}],
             },
+            {
+                "shrine_id": 3,
+                "name": "壊れたKnowledgeの神社",
+                "knowledge_deities": {"display_name": "listではない"},
+                "knowledge_histories": [
+                    "official_origin",
+                    {"history_type": "official_origin", "content": "", "title": "内部"},
+                ],
+            },
         ],
         purpose="career",
         distance_stage_km=15,
-        direction_candidate_count=2,
-        distance_candidate_count=2,
+        direction_candidate_count=3,
+        distance_candidate_count=3,
     )
 
     with patch("temples.api_views_compass.get_compass_recommendations", return_value=result):
         body = _post_valid(client).json()
 
-    first, second = body["recommendations"]
+    first, second, third = body["recommendations"]
     assert "breakdown" not in first
     assert "reason_facts" not in first
     assert second["breakdown"] == {}
     assert second["reason_facts"] == [{"type": "element", "label": "水"}]
+    # 不正なKnowledgeは生のまま出さず、有効なFactが無いので shrine_facts ごと省略。
+    assert "shrine_facts" not in third
+    assert "knowledge_deities" not in third
+    assert "knowledge_histories" not in third
 
 
 @pytest.mark.django_db
@@ -737,6 +806,32 @@ def test_recommendation_success_items_carry_persisted_shrine_id(client, shrine_f
         assert shrine_id == expected[name].id, (
             f"{name}: shrine_id={shrine_id!r} != 永続化Shrine.id={expected[name].id!r}"
         )
+
+
+@pytest.mark.django_db
+def test_recommendation_success_items_carry_db_backed_shrine_facts(client, shrine_factory):
+    """実DB経路で shrine_facts が返ること（mockなし）。
+
+    Shrine DB -> Knowledge selector -> Candidate -> Recommendation
+    -> Compass Public Projection -> HTTP response を通す。
+    """
+    shrine = shrine_factory(name="北西の神社", latitude=35.25, longitude=134.75, goriyaku="仕事運")
+    attach_usable_history_fact(shrine, content="北西の神社の由緒。")
+
+    body = _post_valid(client).json()
+
+    assert body["state"] == "recommendation_success"
+    by_shrine_id = {rec["shrine_id"]: rec for rec in body["recommendations"]}
+    assert shrine.id in by_shrine_id, f"fixture Shrineが返っていない: {sorted(by_shrine_id)}"
+
+    rec = by_shrine_id[shrine.id]
+    assert rec["shrine_facts"] == {
+        "deity": {"display_name": "北西の神社の祭神"},
+        "history": {"history_type": "official_origin", "content": "北西の神社の由緒。"},
+    }
+    assert "knowledge_deities" not in rec
+    assert "knowledge_histories" not in rec
+    assert set(rec).issubset(PUBLIC_ITEM_ALLOWLIST)
 
 
 # ---------------------------------------------------------------------------

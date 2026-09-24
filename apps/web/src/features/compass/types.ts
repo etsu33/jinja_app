@@ -82,6 +82,23 @@ export type CompassReasonFact = {
   is_primary?: boolean | null;
 };
 
+// shrine_facts: ユーザーの相談とは独立した、その神社そのものの確認済みFact。
+// 推薦理由（reason_facts = Recommendation Meaning）ではない。deity / history は
+// それぞれ最大1件で、Factが無い側は省略される。
+export type CompassShrineFactDeity = {
+  display_name: string;
+};
+
+export type CompassShrineFactHistory = {
+  history_type: string;
+  content: string;
+};
+
+export type CompassShrineFacts = {
+  deity?: CompassShrineFactDeity;
+  history?: CompassShrineFactHistory;
+};
+
 export type CompassRecommendationBreakdown = {
   matched_need_tags?: string[] | null;
 };
@@ -106,6 +123,7 @@ export type CompassRecommendation = {
   recommendation_instance_id?: string | null;
   breakdown?: CompassRecommendationBreakdown | null;
   reason_facts?: CompassReasonFact[] | null;
+  shrine_facts?: CompassShrineFacts | null;
   [key: string]: unknown;
 };
 

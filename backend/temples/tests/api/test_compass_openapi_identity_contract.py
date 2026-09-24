@@ -113,3 +113,88 @@ def test_generated_schema_keeps_id_optional(client):
 
     assert "id" in (item.get("properties") or {}), "`id` はschemaに残る"
     assert "id" not in (item.get("required") or [])
+
+
+# ---------------------------------------------------------------------------
+# D: Candidate Fact / Meaning Public Contract
+#
+#   reason_facts  = Recommendation Meaning（なぜ今回この神社が候補なのか）
+#   shrine_facts  = その神社そのものの確認済みFact（相談とは独立）
+# ---------------------------------------------------------------------------
+
+
+def _compass_components(client) -> dict:
+    res = client.get(reverse("schema"))
+    assert res.status_code == 200
+
+    if "application/json" in res["Content-Type"]:
+        schema = res.json()
+    else:
+        schema = json.loads(res.content.decode("utf-8"))
+
+    return (schema.get("components") or {}).get("schemas") or {}
+
+
+def _resolve(components: dict, prop: dict) -> dict:
+    """`$ref` / `allOf: [{$ref}]` 形式の property を component 本体へ解決する。"""
+    ref = prop.get("$ref")
+    if ref is None:
+        for part in prop.get("allOf") or []:
+            if "$ref" in part:
+                ref = part["$ref"]
+                break
+    assert ref is not None, f"$ref を解決できない: {prop!r}"
+    name = ref.rsplit("/", 1)[-1]
+    assert name in components, f"{name} component が存在しない"
+    return components[name]
+
+
+@pytest.mark.django_db
+def test_generated_schema_reason_fact_exposes_only_public_meaning_fields(client):
+    components = _compass_components(client)
+    reason_fact = components.get("CompassReasonFact")
+    assert reason_fact is not None
+
+    properties = set((reason_fact.get("properties") or {}))
+    assert properties == {"type", "label", "label_ja", "is_primary"}
+    # negative guard: 内部値を ReasonFact schema へ追加しない。
+    assert "evidence" not in properties
+    assert "score" not in properties
+    assert not (reason_fact.get("required") or [])
+
+
+@pytest.mark.django_db
+def test_generated_schema_lists_shrine_facts_as_optional_item_property(client):
+    item = _compass_item_schema(client)
+
+    assert "shrine_facts" in (item.get("properties") or {})
+    assert "shrine_facts" not in (item.get("required") or [])
+    # Raw Knowledge は schema にも出さない。
+    assert "knowledge_deities" not in (item.get("properties") or {})
+    assert "knowledge_histories" not in (item.get("properties") or {})
+
+
+@pytest.mark.django_db
+def test_generated_schema_describes_shrine_facts_nested_shape(client):
+    components = _compass_components(client)
+    item = components["CompassRecommendationItem"]
+    shrine_facts = _resolve(components, item["properties"]["shrine_facts"])
+
+    assert set(shrine_facts.get("properties") or {}) == {"deity", "history"}
+    assert not (shrine_facts.get("required") or [])
+
+    deity = _resolve(components, shrine_facts["properties"]["deity"])
+    assert set(deity.get("properties") or {}) == {"display_name"}
+    assert set(deity.get("required") or []) == {"display_name"}
+
+    history = _resolve(components, shrine_facts["properties"]["history"])
+    assert set(history.get("properties") or {}) == {"history_type", "content"}
+    assert set(history.get("required") or []) == {"history_type", "content"}
+
+
+@pytest.mark.django_db
+def test_generated_schema_item_required_set_is_unchanged(client):
+    """今回の変更で recommendation item の required を増やさない。"""
+    item = _compass_item_schema(client)
+
+    assert set(item.get("required") or []) == {"shrine_id", "recommendation_instance_id"}
