@@ -2,7 +2,7 @@
 
 ## Status
 
-- Status: `W0_DB03_BLOCKED_AT_G3_MODEL_FIT`
+- Status: `W0_DB03_SPLIT_DECISION_A_4_CONTINUE_1_MODEL_HOLD`
 - Recorded at: `2026-09-25`
 - Branch: `audit/w0-db03-unified-gate-preflight`
 - Base: `develop@a38e9ebfe9f0da7bfdb6c9ec255710b90cdfe78f`
@@ -197,52 +197,78 @@ Repository上の根拠だけから `PRODUCT_DECISION_REQUIRED` へ昇格させ�
 
 ---
 
-## Why G4-G8 Were Not Executed
+## Why G4-G8 Were Not Executed Yet
 
 Unified Gate Contractでは、upstream blocking causeを下流Gateで迂回しない。
 
-W0-DB03は5社固定Batchとして開始したが、
-G3で1社に`MODEL_CHANGE_REQUIRED`が発生した。
+W0-DB03は5社固定Batchとして開始し、
+G3で宮城縣護國神社のみ `MODEL_CHANGE_REQUIRED` となった。
 
-この状態で:
+Mother Shipは後述のDecision Aを確定したため、
+次工程では4社だけをexecution subsetとしてG4へ進める。
 
-- 宮城縣護國神社をHistory-only Seedで通す
-- 5社Batchを見た目上維持するため別Candidateを自動補充する
-- 4社だけを自動的にProductionへ進める
-- Candidate Master status / build_batchを推測で書き換える
+ただし本PRはG0〜G3 PreflightとMother Ship Decision記録までをscopeとし、
+G4〜G8の実処理自体はまだ実行しない。
 
-ことは本Preflightでは行わない。
+禁止事項は維持する。
 
-Batch handlingはMother Shipの明示判断へ返す。
+- 宮城縣護國神社をHistory-only Seedで通さない
+- 別Candidateを補充して5社へ戻さない
+- W0-DB04以降をrenumberしない
+- Candidate Master status / build_batchを推測で書き換えない
 
 ---
 
-## Mother Ship Decision Boundary
+## Mother Ship Decision
 
-本Auditが確定した事実:
+Mother Ship Decision:
 
 ```text
-W0-DB03 original members = 5
-G0-G2 PASS = 5
-G3 Source PASS = 5
-G3 Model Fit PASS = 4
-G3 MODEL_CHANGE_REQUIRED = 1
-blocking candidate = 宮城縣護國神社
+Decision = A
+
+Original membership = KEEP 5
+Execution subset    = 4 CONTINUE
+Model hold          = 1
+Replacement         = NONE
+Renumbering         = NONE
 ```
 
-Mother Shipが決める必要があるのは、
-このG3 split後のBatch lifecycleだけである。
+### Continue to G4
 
-本Auditでは:
+```text
+大神神社
+北野天満宮
+平安神宮
+岡田宮
+```
 
-- 4社Batchへ縮小する
-- 別Candidateを補充して5社を維持する
-- W0-DB03全体を保留する
+### Isolate at G3
 
-のいずれも選択しない。
+```text
+宮城縣護國神社
+MODEL_CHANGE_REQUIRED
+```
 
-既存deterministic member setを変更する場合は、
-Data Build Plan / Candidate Master / testsへの影響を別PRで記録する。
+W0-DB03のoriginal deterministic membershipは5社のまま監査履歴として保持する。
+
+一方、downstream executionでは問題の所有者だけを隔離し、
+PASS済み4社を止めない。
+
+このDecisionではCandidate Masterの`build_batch`やstatusをこのPRで変更しない。
+Gate-level HOLDは本Auditで追跡し、Candidate Master contractへ新しいfieldやreason codeを
+推測追加しない。
+
+別Candidateの補充およびW0-DB04以降のrenumberは行わない。
+
+これにより:
+
+```text
+deterministic history = KEEP
+gate independence     = KEEP
+blast radius          = 1 shrine
+```
+
+を同時に維持する。
 
 ---
 
@@ -264,11 +290,17 @@ Schema / Migration                  NONE
 ## Final Classification
 
 ```text
-W0_DB03_BLOCKED_AT_G3_MODEL_FIT
+W0_DB03_SPLIT_DECISION_A_4_CONTINUE_1_MODEL_HOLD
 ```
 
 Unified Gateは意図どおり、
 History FactによるModel Risk bypassを防止した。
 
-W0-DB03はG3 split処理のMother Ship判断が確定するまで、
-G4〜G8へ進めない。
+次工程では:
+
+```text
+4 shrines -> G4 Knowledge Fact + Evidence
+1 shrine  -> dedicated Model Risk track
+```
+
+として進める。
