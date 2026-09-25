@@ -473,7 +473,8 @@ def test_wave0_db02_base_seed_appends_five_rows_without_duplicates():
     base_rows = _load_base_rows()
     identities = [(row["name_jp"], row["address"]) for row in base_rows]
 
-    assert len(base_rows) == 113
+    # W0-DB03 G4 で4行（wave0-012 / 013 / 015 / 016）を追加し 113 -> 117。
+    assert len(base_rows) == 117
     assert len(identities) == len(set(identities))
 
     for candidate_id in CANDIDATE_IDS:
