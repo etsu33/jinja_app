@@ -2,8 +2,8 @@
 
 > Status: `MODEL_RISK_RELEASE_CONTRACT_READY`
 >
-> This document fixes the release conditions for the nine shrines previously held under
-> MODEL / PRODUCT HOLD. It is a governance / audit contract only.
+> 本書は、これまで MODEL / PRODUCT HOLD とされていた9社について、
+> HOLD解除条件を固定するためのGovernance / Audit Contractである。
 >
 > Production write: **NO**  
 > Seed change: **NO**  
@@ -14,17 +14,17 @@
 
 ## 0. Audit Base
 
-| Item | Value |
+| 項目 | 値 |
 |---|---|
 | Repository | `etsu33/jinja_app` |
 | Base branch | `develop` |
 | Audit branch | `audit/model-risk-release-contract` |
 | BASE_SHA | `963bd7f318b0b6963b1f5dc9cf420ca74c676bf8` |
-| BASE_SHA vs develop at audit start | identical |
-| Production denominator referenced by prior current-state audit | 113 Shrine rows |
-| Current MODEL / PRODUCT HOLD count | 9 |
+| 監査開始時のBASE_SHAとdevelop | identical |
+| 参照する現行Production denominator | Shrine 113 rows |
+| 対象となるMODEL / PRODUCT HOLD | 9社 |
 
-The nine shrines in scope are:
+対象9社:
 
 - 靖國神社
 - 千葉神社
@@ -36,64 +36,64 @@ The nine shrines in scope are:
 - 高千穂神社
 - 榛名神社
 
-This audit does not decide implementation order, Production write order, or product priority.
+本監査では、実装順・Production write順・事業優先順位は決定しない。
 
 ---
 
 ## 1. Purpose
 
-The purpose of this audit is to answer one question:
+本監査が答える問いは1つである。
 
-> Under what explicit condition may each of the nine currently held shrines leave MODEL / PRODUCT HOLD and re-enter the normal Knowledge creation workflow?
+> 現在MODEL / PRODUCT HOLDとなっている9社について、どの明示条件を満たせばHOLDを解除し、通常のKnowledge作成フローへ戻せるか。
 
-The audit separates the following states:
+本監査では次を明確に分離する。
 
 ```text
-HOLD release
-!= Seed approval
-!= Production write approval
+HOLD解除
+!= Seed承認
+!= Production write承認
 ```
 
-A HOLD release means only that the shrine may return to the normal Knowledge workflow.
+HOLD解除とは、その神社を通常のKnowledge作成工程へ戻してよい状態になったことだけを意味する。
 
-After release, the normal sequence remains:
+解除後も通常フローは維持する。
 
 ```text
-HOLD release
+HOLD解除
 -> Fact research / Fact Sheet
 -> Seed Preflight
 -> Human Approval
 -> Production write
 ```
 
-No shrine is authorized for Production write by this document.
+本書だけでは、いずれの神社についてもProduction writeを承認しない。
 
 ---
 
 ## 2. Non-goals
 
-This audit does not:
+本監査では以下を行わない。
 
-- write or modify Production data,
-- create or modify Knowledge seeds,
-- change Recommendation eligibility or ranking,
-- change `ShrineDeity` / `ShrineHistory` schema,
-- create a migration,
-- invent deity identities,
-- infer missing deity names,
-- flatten unresolved religious relationships into asserted deity facts,
-- decide product scope for a shrine on behalf of Mother Ship.
+- Production dataの書き換え
+- Knowledge Seedの作成・変更
+- Recommendation eligibility / rankingの変更
+- `ShrineDeity` / `ShrineHistory` schema変更
+- Migration作成
+- 祭神identityの創作
+- 不明な祭神名の推測補完
+- 未解決な宗教的relationを断定的Deity Factへ平坦化
+- Mother Shipに代わるProduct Scope判断
 
 ---
 
-## 3. Current Knowledge Model Boundary
+## 3. 現行Knowledge Modelの表現境界
 
 ### 3.1 ShrineDeity
 
-Current `ShrineDeity` is appropriate for:
+現行`ShrineDeity`が安全に表現できる単位は次である。
 
 ```text
-one individually attributable named deity
+1つの個別帰属可能な名指し祭神
 +
 role
 +
@@ -104,45 +104,45 @@ verification_status
 confidence
 ```
 
-Multiple individually named deities are supported as one-to-many rows.
+複数祭神は1対多の複数rowで保持できる。
 
-When Source does not define hierarchy, `role: unknown` is used. The system must not invent a primary deity.
+Sourceに序列がない場合は`role: unknown`を用い、主祭神を推測しない。
 
-Current `ShrineDeity` does not natively represent:
+現行`ShrineDeity`は、次の構造を直接表現しない。
 
-- unnamed / anonymous deity groups,
-- open-ended groups such as “ほか8柱” or “ほか15柱以上”,
-- group membership completeness,
-- collective member count,
-- parent/child relations between a collective and named members,
-- deity-to-Buddhist-figure identity relations,
-- deity-to-gongen / honji-butsu semantic relations,
-- main-shrine / sub-shrine hierarchy,
-- associated worship target classification.
+- 匿名・未確定の集合祭神
+- 「ほか8柱」「ほか15柱以上」のようなopen-ended group
+- 祭神一覧のcomplete / partial
+- 集合祭神の人数
+- 集合名と個別構成員の親子関係
+- 神格と仏教尊格のidentity relation
+- 神格と権現・本地仏のsemantic relation
+- 本社 / 摂社 / 末社のhierarchy
+- Associated Worship Targetの分類
 
 ### 3.2 ShrineHistory
 
-Current `ShrineHistory` supports:
+現行`ShrineHistory`は次を保持できる。
 
-- `official_origin`,
-- `founding`,
-- `historical_event`,
-- `tradition`,
-- `regional_context`,
-- `editorial_summary`,
-- `period_text`,
-- `event_date`,
-- Source relation,
-- verification status,
-- confidence.
+- `official_origin`
+- `founding`
+- `historical_event`
+- `tradition`
+- `regional_context`
+- `editorial_summary`
+- `period_text`
+- `event_date`
+- Source relation
+- verification status
+- confidence
 
-It can represent historical shinbutsu-shugo, former names, Buddhist organizational history, shrine separation, relocation, amalgamation, and traditions when the Source supports them.
+Sourceが裏付ける限り、歴史的神仏習合、旧称、仏教組織との関係、神仏分離、遷座、合祀、伝承などを保持できる。
 
-`ShrineHistory` must not be used as a dumping ground for unresolved current deity identity.
+ただし`ShrineHistory`は、未解決の現在祭神identityを逃がすための代替領域ではない。
 
-### 3.3 Runtime Eligibility is not Model-Risk Resolution
+### 3.3 Runtime EligibilityとModel Risk解除を分離する
 
-Current runtime eligibility is:
+現行Runtime Eligibilityは次である。
 
 ```text
 usable Deity >= 1
@@ -150,23 +150,23 @@ OR
 usable History >= 1
 ```
 
-This runtime rule must not be used to bypass Model Risk.
+このOR条件をModel Risk回避に使用してはならない。
 
-For example:
+例:
 
 ```text
-Current deity structure unresolved
+現在祭神構造 = 未解決
 +
-one usable History fact
+usable History = 1件
 =
-runtime eligibility may be satisfied
-but
-MODEL RISK is NOT resolved
+Runtime Eligibilityは成立し得る
+しかし
+MODEL RISKは未解決
 ```
 
-Therefore:
+したがって以下を固定する。
 
-> Runtime Recommendation Eligibility and Model Risk release are separate gates.
+> Runtime Recommendation Eligibilityの成立と、Model Risk HOLDの解除は別Gateである。
 
 ---
 
@@ -174,85 +174,89 @@ Therefore:
 
 ### 4.1 Collective Deity
 
-`COLLECTIVE_DEITY_MODEL_GAP` applies when current main-shrine deity information contains an unnamed or incomplete collective that cannot be represented without semantic loss by finite named `ShrineDeity` rows.
+`COLLECTIVE_DEITY_MODEL_GAP`は、現在の本社祭神情報に匿名・未確定の集合が含まれ、有限個の名指し`ShrineDeity` rowだけでは意味を保ったまま再現できない状態を指す。
 
-Examples:
+例:
 
 ```text
-A deity
-B deity
+A神
+B神
 ほか8柱
 ```
 
-or:
+または:
 
 ```text
 ほか15柱以上
 ```
 
-This is not merely “many deities”. Twenty individually named deities are representable. A partially named or open-ended collective is not.
+単に祭神数が多いことは問題ではない。
 
-Forbidden fallbacks include:
+20柱すべてが個別名・Source付きで確認できるなら、20 rowで表現できる。
 
-- `UNKNOWN_MEMBER_1`,
-- storing “ほか8柱” as if it were a deity name,
-- inventing missing member names,
-- pretending the named subset is complete when the Source does not support that interpretation.
+禁止するfallback:
+
+- `UNKNOWN_MEMBER_1`等の架空祭神
+- 「ほか8柱」を祭神名として保存
+- 未確認祭神名の創作
+- Sourceが部分一覧しか示していないのに、登録済み祭神を完全一覧として扱うこと
 
 ### 4.2 Shinbutsu-shugo
 
-Historical shinbutsu-shugo alone is not a Model Change condition.
+歴史上の神仏習合が存在すること自体はModel Change条件ではない。
 
-If Source cleanly separates:
-
-```text
-current main-shrine deity
-from
-historical Buddhist / gongen / shugendo context
-```
-
-then:
+Source上で次を分離できる場合、
 
 ```text
-current deity -> ShrineDeity
-historical context -> ShrineHistory
+現在の本社祭神
+と
+歴史的な仏教尊格 / 権現 / 修験道文脈
 ```
 
-is allowed.
+以下の分担で表現できる。
 
-`SHINBUTSU_SHUGO_MODEL_GAP` applies only when the identity of the current principal deity itself cannot be represented without collapsing meaningful religious relations.
+```text
+現在祭神 -> ShrineDeity
+歴史的文脈 -> ShrineHistory
+```
+
+`SHINBUTSU_SHUGO_MODEL_GAP`は、現在の主祭神identity自体が、重要な神仏習合relationを潰さずには表現できない場合に限る。
 
 ### 4.3 Associated Worship Target
 
-An Associated Worship Target is a worship object or associated belief present within the shrine context that is not automatically a current main-shrine deity.
+Associated Worship Targetとは、神社の境内・信仰実践・公式案内上で祀られている／信仰対象となっていても、現在の本社祭神とは自動的に同一視しない対象を指す。
 
-Examples include:
+例:
 
-- 七福神,
-- 富士塚,
-- associated Buddhist worship targets,
-- special worship objects that belong to a separate ritual context.
+- 七福神
+- 富士塚
+- 付随する仏教系信仰対象
+- 本社とは別の儀礼文脈に属する特別な信仰対象
 
-“Appears on the same official page” does not imply “belongs in the parent ShrineDeity set”.
+「同じ公式ページに掲載されている」ことは、「親Shrineの`ShrineDeity`に入る」根拠にならない。
 
-This category is normally curatable without schema change when the main-shrine deity set is independently clear.
+本社祭神集合が独立して確認できる場合、この問題は原則curationで処理できる。
 
 ### 4.4 Main Shrine / Sub-shrine
 
-Knowledge stored on a `Shrine` row must belong directly to the shrine entity represented by that row.
+`Shrine` rowへ保持するKnowledgeは、そのrowが表す神社entityへ直接帰属するFactに限定する。
 
-The following are not promoted to the parent shrine merely because they share the grounds or official website:
+次は、同じ境内・同じ公式サイトに存在するという理由だけでは親神社へ昇格させない。
 
-- 摂社,
-- 末社,
-- 境内社,
-- 別宮,
-- 奥宮,
-- former / absorbed shrine entities.
+- 摂社
+- 末社
+- 境内社
+- 別宮
+- 奥宮
+- 旧社・合祀吸収元
 
-Source page ownership is not Fact ownership.
+```text
+Source page owner
+!=
+Fact owner
+```
 
-Historical absorption may be stored as `ShrineHistory`, but absorbed-shrine deities are current `ShrineDeity` facts only when accepted Source explicitly establishes them as current main-shrine deities.
+合祀された歴史は`ShrineHistory`へ保持できるが、旧社の祭神を現在の親神社`ShrineDeity`へ入れるのは、accepted Sourceが現在の本社祭神として明示する場合に限る。
 
 ---
 
@@ -260,155 +264,155 @@ Historical absorption may be stored as `ShrineHistory`, but absorbed-shrine deit
 
 ### 5.1 CURATION_RELEASE_CANDIDATE
 
-Use when all intended current main-shrine Knowledge can be represented by the existing schema after explicit exclusion / separation of subordinate or associated material.
+既存Schemaのまま、子社・付随対象などを明示的に分離することで、登録予定の現在本社Knowledgeを意味損失なく表現できる場合に使用する。
 
-Requirements:
+必要条件:
 
-1. accepted Source identifies the current main-shrine deity set,
-2. sub-shrine / associated targets can be separated,
-3. the separation does not distort the Source,
-4. no anonymous collective remains,
-5. no unresolved current deity identity remains,
-6. the exclusion rule is recorded in Fact Sheet / Seed Preflight.
+1. accepted Sourceで現在の本社祭神集合を確認できる
+2. Sub-shrine / Associated Targetを分離できる
+3. 分離によりSourceの意味を歪めない
+4. anonymous collectiveが残らない
+5. 現在祭神identityの未解決relationが残らない
+6. 除外境界をFact Sheet / Seed Preflightへ記録する
 
 ### 5.2 RESEARCH_REQUIRED_BEFORE_RELEASE
 
-Use when current Model may be sufficient, but accepted Source evidence is not yet precise enough to establish the current main-shrine boundary.
+現行Modelで表現可能な可能性は高いが、accepted Sourceだけでは現在本社の帰属境界をまだ確定できない場合に使用する。
 
-This is not the same as `MODEL_CHANGE_REQUIRED`.
+これは`MODEL_CHANGE_REQUIRED`とは異なる。
 
 ### 5.3 MODEL_REVIEW_REMAINS
 
-Use when the repository shows a Model-risk pattern, but evidence is still insufficient to determine whether the issue is curatable or requires schema / contract extension.
+Repository上はModel Riskが確認されているが、curationで解消可能なのか、Schema / Contract拡張が必要なのかをまだ判定できない場合に使用する。
 
-The next step is focused Source / identity review, not immediate Model change.
+次工程は即Model変更ではなく、Source / identity境界のfocused reviewである。
 
 ### 5.4 MODEL_CHANGE_REQUIRED
 
-Use only when Source-backed current Knowledge is necessary for the shrine and cannot be represented without semantic loss under the current `ShrineDeity / ShrineHistory` contract.
+Source-backedな現在Knowledgeを、現行`ShrineDeity / ShrineHistory` Contractでは意味損失なしに表現できない場合だけ使用する。
 
-This includes:
+対象例:
 
-- anonymous / incomplete collective deity structure,
-- current principal deity identity that cannot be separated from meaningful shinbutsu-shugo relations,
-- any case where partial registration would materially misrepresent the current deity structure.
+- 匿名・未確定の集合祭神
+- 現在主祭神identityが重要な神仏習合relationから分離不能
+- 一部祭神だけ登録すると現在祭神構造を重大に誤認させるケース
 
 ### 5.5 PRODUCT_DECISION_REQUIRED
 
-Use only when repository governance identifies a product-scope / editorial decision independent of whether the data can technically be modeled.
+技術的なModel表現可否とは独立して、Repository Governance上、製品scope / 編集方針判断が必要とされている場合に使用する。
 
-Model solvability does not automatically release a Product HOLD.
+Modelが表現可能になっただけではProduct HOLDを自動解除しない。
 
 ---
 
-## 6. Nine-shrine Classification
+## 6. 9社の現在分類
 
-| Shrine | Final current classification | Immediate meaning |
+| 神社 | 現在分類 | 意味 |
 |---|---|---|
-| 千住神社 | `CURATION_RELEASE_CANDIDATE` | Existing model is sufficient if associated targets are excluded correctly |
-| 榛名神社 | `RESEARCH_REQUIRED_BEFORE_RELEASE` | Current deity set and historical / subordinate boundaries require accepted-Source reconciliation |
-| 古峯神社 | `RESEARCH_REQUIRED_BEFORE_RELEASE` | Current main-shrine deity identity must be confirmed separately from shugendo / shinbutsu history |
-| 愛宕神社 | `MODEL_REVIEW_REMAINS` | Buddhist titles and current deity structure require identity-boundary review |
-| 赤城神社 | `MODEL_REVIEW_REMAINS` | Shinbutsu-shugo elements require current-deity identity review |
-| 高千穂神社 | `MODEL_CHANGE_REQUIRED` | “ほか8柱” cannot be represented by current one-row-per-named-deity schema |
-| 冠稲荷神社 | `MODEL_CHANGE_REQUIRED` | “ほか15柱以上” remains a Collective Deity gap even if associated target curation succeeds |
-| 千葉神社 | `MODEL_CHANGE_REQUIRED` | Repository records principal-deity identity itself as the unresolved shinbutsu-shugo case |
-| 靖國神社 | `PRODUCT_DECISION_REQUIRED` | Repository classifies this separately from ordinary schema-only Model Risk |
+| 千住神社 | `CURATION_RELEASE_CANDIDATE` | Associated Targetを正しく除外できれば現行Modelで処理可能 |
+| 榛名神社 | `RESEARCH_REQUIRED_BEFORE_RELEASE` | 現在祭神集合と歴史・境内社境界のSource再確認が必要 |
+| 古峯神社 | `RESEARCH_REQUIRED_BEFORE_RELEASE` | 現在本社祭神と修験道・神仏習合史の分離確認が必要 |
+| 愛宕神社 | `MODEL_REVIEW_REMAINS` | 仏教称号と現在祭神構造のidentity境界確認が必要 |
+| 赤城神社 | `MODEL_REVIEW_REMAINS` | 神仏習合要素と現在主祭神identityの境界確認が必要 |
+| 高千穂神社 | `MODEL_CHANGE_REQUIRED` | 「ほか8柱」を現行1 row = 1 named deityで表現不可 |
+| 冠稲荷神社 | `MODEL_CHANGE_REQUIRED` | 「ほか15柱以上」がCollective Deity gapとして残る |
+| 千葉神社 | `MODEL_CHANGE_REQUIRED` | Repository上、主祭神identity自体が未解決な神仏習合ケース |
+| 靖國神社 | `PRODUCT_DECISION_REQUIRED` | Repository Governance上、通常のschema-only問題とは別のProduct Policy Gate |
 
 ---
 
-## 7. Shrine-specific HOLD Release Conditions
+## 7. 神社別HOLD解除条件
 
 ### 7.1 千住神社
 
-Current classification:
+現在分類:
 
 ```text
 CURATION_RELEASE_CANDIDATE
 ```
 
-Release conditions:
+解除条件:
 
-1. accepted Source re-confirms the current main-shrine deity set,
-2. 須佐之男命 and 宇迦之御魂命 remain attributable to the main shrine,
-3. 七福神 / 恵比寿-related material and 富士塚-related material are explicitly excluded from parent `ShrineDeity`,
-4. the exclusion boundary is recorded in Fact Sheet / Seed Preflight,
-5. no additional unresolved collective or subordinate-shrine issue appears during fresh Source review.
+1. accepted Sourceで現在の本社祭神集合をfresh再確認する
+2. 須佐之男命・宇迦之御魂命が本社へ帰属することを維持確認する
+3. 七福神 / 恵比寿関連・富士塚関連を親`ShrineDeity`から明示的に除外する
+4. 除外境界をFact Sheet / Seed Preflightへ記録する
+5. fresh reviewで新しいcollective / subordinate-shrine問題が発生しない
 
-If all conditions pass:
+全条件PASS:
 
 ```text
 MODEL HOLD RELEASE
--> normal Fact / Seed workflow
+-> 通常Fact / Seed workflow
 ```
 
-Otherwise:
+未達:
 
 ```text
 CURATION_HOLD
 ```
 
-continues.
+を維持する。
 
 ### 7.2 榛名神社
 
-Current classification:
+現在分類:
 
 ```text
 RESEARCH_REQUIRED_BEFORE_RELEASE
 ```
 
-Release conditions:
+解除条件:
 
-1. accepted Source fixes the current main-shrine deity set,
-2. prior repository observations such as “主要6柱” and “満行権現から現行二神への改称” are reconciled without inference,
-3. subordinate-shrine / associated deities are separated from main-shrine deities,
-4. 満行権現, historical Buddhist organization, and the shinbutsu-separation transition can be represented as `ShrineHistory`,
-5. current deity identity can be expressed by ordinary named `ShrineDeity` rows without semantic distortion.
+1. accepted Sourceで現在の本社祭神集合を確定する
+2. Repository上の「主要6柱」「満行権現から現行二神への改称」等の記録を、推測せず整合させる
+3. 境内社・関連祭神を本社祭神から分離する
+4. 満行権現、歴史的仏教組織、神仏分離への移行を`ShrineHistory`で表現できる
+5. 現在祭神identityを通常の名指し`ShrineDeity` rowで意味損失なく表現できる
 
-If all conditions pass:
+全条件PASS:
 
 ```text
 CURATION_RELEASE
 ```
 
-If current deity identity remains inseparable from a structure unsupported by the current model:
+現在祭神identityが現行Modelで表現不能:
 
 ```text
 MODEL_CHANGE_REQUIRED
 ```
 
-Otherwise:
+それ以外:
 
 ```text
 RESEARCH_REQUIRED_BEFORE_RELEASE
 ```
 
-continues.
+を維持する。
 
 ### 7.3 古峯神社
 
-Current classification:
+現在分類:
 
 ```text
 RESEARCH_REQUIRED_BEFORE_RELEASE
 ```
 
-Release conditions:
+解除条件:
 
-1. accepted Source directly establishes the current main-shrine deity set,
-2. current deity identity is separable from historical shugendo / shinbutsu-shugo context,
-3. the historical context can be represented as `ShrineHistory`,
-4. no associated target or sub-shrine is promoted into the main-shrine deity set,
-5. no unresolved collective or identity relation remains.
+1. accepted Sourceで現在の本社祭神集合を直接確認する
+2. 現在祭神identityと歴史的な修験道・神仏習合文脈を分離できる
+3. 歴史的文脈を`ShrineHistory`で保持できる
+4. Associated Target / Sub-shrineを本社祭神へ混入させない
+5. unresolved collective / identity relationが残らない
 
-If all conditions pass:
+全条件PASS:
 
 ```text
 CURATION_RELEASE
 ```
 
-If principal deity identity itself cannot be represented under the current contract:
+現在主祭神identity自体が現行Contractで表現不能:
 
 ```text
 MODEL_CHANGE_REQUIRED
@@ -416,64 +420,64 @@ MODEL_CHANGE_REQUIRED
 
 ### 7.4 愛宕神社
 
-Current classification:
+現在分類:
 
 ```text
 MODEL_REVIEW_REMAINS
 ```
 
-Release conditions:
+解除条件:
 
-1. accepted Source establishes the current main-shrine deity set,
-2. the relationship of Buddhist-title material such as 将軍地蔵尊 / 普賢大菩薩 to the current main-shrine deity set is explicitly determined from Source,
-3. the audit must not silently discard Buddhist-title material merely to fit the current schema,
-4. if those titles are historical / associated rather than current main-shrine deity identity, they may be separated by curation,
-5. if the current deity structure itself requires a relation the present model cannot represent, classification changes to `MODEL_CHANGE_REQUIRED`.
+1. accepted Sourceで現在の本社祭神集合を確定する
+2. 将軍地蔵尊・普賢大菩薩等の仏教称号と現在本社祭神集合とのrelationをSourceから確定する
+3. 現行Schemaへ合わせるためだけに仏教称号を黙って捨てない
+4. 歴史・付随対象として分離可能ならcurationで処理する
+5. 現在祭神構造自体が現行Modelで表現できない場合は`MODEL_CHANGE_REQUIRED`へ移す
 
-Result:
+判定:
 
 ```text
-Source-separable
+Source上で分離可能
 -> CURATION_RELEASE
 
-Source-inseparable current deity identity
+Source上でも現在祭神identityが分離不能
 -> MODEL_CHANGE_REQUIRED
 
-Still unresolved
+未解決
 -> MODEL_REVIEW_REMAINS
 ```
 
 ### 7.5 赤城神社
 
-Current classification:
+現在分類:
 
 ```text
 MODEL_REVIEW_REMAINS
 ```
 
-Release conditions:
+解除条件:
 
-1. accepted Source establishes the current main-shrine deity set,
-2. honji-butsu / Buddhist elements such as 千手観音-related material are evaluated as current deity identity vs historical shinbutsu context,
-3. historical material may be separated into `ShrineHistory` only when the Source supports that separation,
-4. no asserted deity relation is invented.
+1. accepted Sourceで現在の本社祭神集合を確定する
+2. 本地仏・千手観音等の要素を、現在祭神identityか歴史的神仏習合文脈かで判定する
+3. Sourceが裏付ける場合に限り、歴史的要素を`ShrineHistory`へ分離する
+4. 未確認のdeity relationを推論しない
 
-Result:
+判定:
 
 ```text
-Source-separable
+Source上で分離可能
 -> CURATION_RELEASE
 
-Current principal identity remains inseparable
+現在主祭神identityが分離不能
 -> MODEL_CHANGE_REQUIRED
 
-Still unresolved
+未解決
 -> MODEL_REVIEW_REMAINS
 ```
 
 ### 7.6 高千穂神社
 
-Current classification:
+現在分類:
 
 ```text
 MODEL_CHANGE_REQUIRED
@@ -487,53 +491,53 @@ Blocking structure:
 ほか8柱
 ```
 
-Release conditions:
+解除条件:
 
-1. Knowledge Contract supports an unnamed / incomplete collective without inventing member identities,
-2. the Model can store the collective nature and Source attribution,
-3. partial named members are not presented as a complete deity list,
-4. the design preserves the existing meaning of ordinary one-row-per-named-deity `ShrineDeity`,
-5. any required Migration / Serializer / Evidence Gate changes are implemented in a dedicated Model-risk PR,
-6. regression tests establish that existing ordinary deity data is not reinterpreted.
+1. unnamed / incomplete collectiveを祭神identity創作なしで表現できるKnowledge Contractがある
+2. 集合であること・Source帰属をModelで保持できる
+3. 名指し済み祭神だけを完全一覧として表示しない
+4. 通常の1 row = 1 named deityという既存`ShrineDeity`意味を壊さない
+5. 必要なMigration / Serializer / Evidence Gate変更を専用Model-risk PRで実装する
+6. 既存通常Deity dataの意味が変わらないことを回帰テストする
 
-Until all conditions pass:
+全条件完了まで:
 
 ```text
 MODEL HOLD
 ```
 
-remains.
+を維持する。
 
 ### 7.7 冠稲荷神社
 
-Current classification:
+現在分類:
 
 ```text
 MODEL_CHANGE_REQUIRED
 ```
 
-Two independent issues exist:
+独立した2問題を持つ。
 
 ```text
-A. main-shrine Collective Deity
+A. Main-shrine Collective Deity
    -> ほか15柱以上
 
-B. associated / subordinate worship target
-   -> 聖天宮 etc.
+B. Associated / Subordinate Worship Target
+   -> 聖天宮等
 ```
 
-Release conditions:
+解除条件:
 
-1. the same Collective Deity capability required by 高千穂神社 is available,
-2. “ほか15柱以上” is represented without fake named deity rows,
-3. 聖天宮 and other associated / subordinate targets are excluded from the parent main-shrine deity set unless accepted Source establishes otherwise,
-4. both issue classes pass independently.
+1. 高千穂神社と同等のCollective Deity表現能力を成立させる
+2. 「ほか15柱以上」を架空の個別祭神rowへ変換しない
+3. 聖天宮等を、accepted Sourceが本社祭神として明示しない限り親`ShrineDeity`へ混入させない
+4. A/B双方を独立にPASSする
 
-Resolving only the associated-target issue does not release the shrine.
+Associated Target問題だけ解決してもHOLDは解除しない。
 
 ### 7.8 千葉神社
 
-Current classification:
+現在分類:
 
 ```text
 MODEL_CHANGE_REQUIRED
@@ -542,113 +546,111 @@ MODEL_CHANGE_REQUIRED
 Blocking issue:
 
 ```text
-current principal-deity identity
+現在主祭神identity
 +
-shinbutsu-shugo / 妙見信仰 relation
+神仏習合 / 妙見信仰relation
 ```
 
-Release conditions:
+解除条件:
 
-1. accepted Source establishes the relevant current and historical identities,
-2. Knowledge Contract can preserve the relationship without flattening multiple religious identities into multiple independent deity rows,
-3. the system does not infer an unsupported equivalence,
-4. Detail / Recommendation transport preserves the intended meaning,
-5. Evidence Gate behavior is explicitly tested,
-6. Model / Contract changes are isolated in a dedicated Model-risk PR.
+1. accepted Sourceで現在・歴史上のidentityを確認する
+2. 複数の宗教的identityを独立した複数祭神rowへ平坦化せずrelationを保持できるKnowledge Contractを成立させる
+3. Sourceにない同一視を推論しない
+4. Detail / Recommendation transportで意味が変質しない
+5. Evidence Gate挙動を明示テストする
+6. Model / Contract変更を専用Model-risk PRに隔離する
 
-Until this relation can be represented without semantic distortion:
+意味損失なくrelationを表現できるまで:
 
 ```text
 MODEL HOLD
 ```
 
-remains.
+を維持する。
 
 ### 7.9 靖國神社
 
-Current classification:
+現在分類:
 
 ```text
 PRODUCT_DECISION_REQUIRED
 ```
 
-This classification is derived from repository governance records. This audit does not independently evaluate the shrine politically or religiously.
+この分類はRepository Governance記録に基づく。本監査は対象神社への政治的・宗教的評価を独自に行わない。
 
-Product HOLD release requires an explicit Mother Ship scope decision.
+Product HOLD解除にはMother Shipによる明示scope判断が必要である。
 
-The decision must state the intended handling for at least:
+少なくとも次のsurfaceについて扱いを明示する。
 
 ```text
-Knowledge registration
-Detail display
-Search / Map visibility
-Recommendation participation
+Knowledge登録
+Detail表示
+Search / Map表示
+Recommendation参加
 ```
 
-These surfaces may be decided separately.
+これらは別々に判断可能である。
 
-A future technical Model solution does not automatically release Product HOLD.
+将来Modelが技術的に表現可能になったとしても、Product HOLDを自動解除しない。
 
-Without explicit Mother Ship scope:
+Mother Shipによる明示scope判断がない場合:
 
 ```text
 PRODUCT_HOLD
 ```
 
-remains.
+を維持する。
 
 ---
 
-## 8. Cross-shrine Release Rules
+## 8. 9社共通Release Rules
 
-The following rules apply to all nine shrines.
+### Rule 1: 構造Gapを推測で埋めない
 
-### Rule 1: No inference to fill structural gaps
+以下を創作しない。
 
-Do not invent:
-
-- missing deity names,
-- deity hierarchy,
-- deity / Buddhist-figure equivalence,
-- completeness of a partial deity list,
-- main-shrine ownership of a subordinate Fact.
+- 不明祭神名
+- 祭神hierarchy
+- 神格 / 仏教尊格の同一視
+- 部分祭神一覧の完全性
+- Sub-shrine Factの本社帰属
 
 ### Rule 2: Source-first boundary
 
-Fact ownership is determined by what the accepted Source says about the target shrine entity, not by:
+Fact ownershipはaccepted Sourceが対象Shrine entityについて何を述べているかで決める。
 
-- being on the same website,
-- being on the same grounds,
-- being historically associated,
-- appearing in the same page section.
+以下は単独では帰属根拠にならない。
 
-### Rule 3: Historical complexity is not itself a Model failure
+- 同じWebsite
+- 同じ境内
+- 歴史的関連
+- 同じpage section
 
-A shrine with complex religious history may be released without schema change if:
+### Rule 3: 歴史が複雑であること自体はModel failureではない
 
 ```text
-current main-shrine deity
-and
-historical context
+現在本社祭神
+と
+歴史的文脈
 ```
 
-can be safely separated.
+をSourceに基づいて安全に分離できるなら、Schema変更なしで処理できる。
 
-### Rule 4: Partial success does not release compound HOLD
+### Rule 4: 複合HOLDは全blocking causeを解消する
 
-If a shrine has multiple independent risk causes, all blocking causes must be resolved.
+1つのriskだけ解決しても、別のblocking causeが残る場合はHOLDを解除しない。
 
-### Rule 5: Model change and Recommendation change are separate
+### Rule 5: Model変更とRecommendation変更を分離する
 
-Any Model-risk implementation must remain separate from Recommendation-quality / ranking changes.
+Model-risk実装はRecommendation quality / ranking変更と分離する。
 
-Do not combine them in one implementation instruction or one PR.
+同一Codex指示・同一PRへ束ねない。
 
-### Rule 6: Product policy is not a schema fallback
+### Rule 6: Product PolicyをSchema問題の逃げ道にしない
 
-A difficult Model case must not be reclassified as Product Decision merely to avoid resolving the data contract.
+Model / Source / curationで解決可能性が残るケースを、難しいという理由だけで`PRODUCT_DECISION_REQUIRED`へ送らない。
 
-Likewise, a Product HOLD is not automatically released because a schema becomes capable of storing the data.
+逆にProduct HOLDは、Schemaが表現可能になっただけでは自動解除しない。
 
 ---
 
@@ -677,46 +679,46 @@ PRODUCT_DECISION_REQUIRED
 └─ 靖國神社
 ```
 
-All nine now have an explicit HOLD-release path.
+9社すべてについて、HOLD解除へ進む条件を明示した。
 
-No HOLD is automatically released by this audit.
+本監査によって自動的にHOLD解除される神社はない。
 
 ---
 
 ## 10. Implementation Boundary
 
-This audit authorizes documentation only.
+本監査が承認するのはDocumentationまでである。
 
-Any later Model change must be a separate task with:
+後続のModel変更は、別タスクとして以下を明示する。
 
-- explicit purpose,
-- explicit non-goals,
-- file / model change scope,
-- migration plan,
-- Evidence Gate impact review,
-- Serializer / API impact review,
-- regression tests,
-- dedicated Human Approval gate.
+- purpose
+- non-goals
+- file / model change scope
+- migration plan
+- Evidence Gate impact
+- Serializer / API impact
+- regression tests
+- dedicated Human Approval gate
 
-Any later Seed / Production work must follow the normal Knowledge pipeline and approval boundary.
+後続Seed / Production作業も、通常Knowledge pipelineとHuman Approval boundaryを維持する。
 
 ---
 
 ## 11. Completion Checklist
 
-- [x] Audit base SHA fixed
-- [x] Existing nine HOLD reasons re-reviewed
-- [x] Collective Deity problem defined
-- [x] Shinbutsu-shugo problem defined
-- [x] Associated Worship Target problem defined
-- [x] Main Shrine / Sub-shrine boundary defined
-- [x] Current ShrineDeity / ShrineHistory representation limits fixed
-- [x] Runtime Eligibility separated from Model Risk resolution
-- [x] CURATION_RELEASE candidate classified
-- [x] MODEL_CHANGE_REQUIRED candidates classified
-- [x] PRODUCT_DECISION_REQUIRED candidate classified
-- [x] Research / review intermediate states preserved
-- [x] Shrine-specific HOLD release conditions fixed
+- [x] 監査開始BASE_SHA固定
+- [x] 9社の既存HOLD根拠を再確認
+- [x] Collective Deity問題を定義
+- [x] Shinbutsu-shugo問題を定義
+- [x] Associated Worship Target問題を定義
+- [x] Main Shrine / Sub-shrine境界を定義
+- [x] 現行ShrineDeity / ShrineHistory表現限界を固定
+- [x] Runtime EligibilityとModel Risk解除を分離
+- [x] CURATION_RELEASE候補を分類
+- [x] MODEL_CHANGE_REQUIRED候補を分類
+- [x] PRODUCT_DECISION_REQUIRED候補を分類
+- [x] Research / Review中間状態を保持
+- [x] 各9社のHOLD解除条件を固定
 - [x] Production write = 0
 - [x] Seed change = 0
 - [x] Recommendation change = 0
@@ -732,7 +734,7 @@ MODEL_RISK_RELEASE_CONTRACT_READY
 
 ## 12. Related Repository Records
 
-Primary prior records used by this audit:
+本監査で参照した主要Repository記録:
 
 - `docs/audit/production-knowledge-gap-14-shrines.md`
 - `docs/audit/post-batch16-knowledge-next-track-comparison.md`
@@ -746,4 +748,4 @@ Primary prior records used by this audit:
 - `docs/knowledge/shrine-knowledge-contract.md`
 - `backend/temples/models.py`
 
-Where older records conflict with later runtime architecture, this document uses the current Model / eligibility contracts at BASE_SHA and treats older runtime descriptions as historical context only.
+古い監査記録に現在Runtime Architectureと矛盾する記述がある場合、本書ではBASE_SHA時点の現行Model / Eligibility Contractを優先し、古いRuntime記述はhistorical contextとしてのみ扱う。
