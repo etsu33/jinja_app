@@ -15,6 +15,27 @@
 Candidate Masterは本番Shrine DBではない。
 Candidate Masterへ登録しただけでは、Concierge / Compassで利用可能とはみなさない。
 
+## Unified Gate Boundary（2026-09-25）
+
+新規Shrine追加のGate順序・責務分離は
+docs/knowledge/shrine-expansion-gate-contract.md を正本とする。
+
+Candidate Masterのcandidate_statusはLifecycleだけを表し、
+Identity / Position / Model Fit / Evidence / Recommendation Eligibility /
+Product Decisionの詳細判定を1fieldへ押し込まない。
+
+したがって:
+
+~~~text
+BUILD_READY != 全Gate PASS
+IMPORTED    != Recommendation eligible
+FACT_READY  != CORE_READY
+CORE_READY   = Unified Gate Closure完了後のみ
+~~~
+
+本追記ではCandidate Master schema / JSON fieldを追加しない。
+machine-readableなGate statusが必要になった場合は別Contract / 別PRで設計する。
+
 ## 正本ファイル
 
 `backend/temples/data/shrine_expansion_candidate_master.json`
