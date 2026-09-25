@@ -20,6 +20,37 @@ Wave0のCORE READY候補35社を、監査上の「取得可能」状態から、
 
 既存Pipelineを捨てて新しい並行実装を作らず、現行の `import_shrines_seed`、`import_shrine_knowledge`、Evidence Gate、Coverage toolingを再利用する。
 
+## Unified Gate Integration（2026-09-25）
+
+今後の新規Shrine追加におけるGate順序・責務分離は、
+docs/knowledge/shrine-expansion-gate-contract.md を正本とする。
+
+本Wave0 Planの既存Phaseは廃止せず、Unified Gateへ次のように接続する。
+
+~~~text
+G0 Candidate Registry
+G1 Identity / Duplicate
+G2 Position / Navigation Anchor
+G3 Source + Knowledge Model Fit
+G4 Knowledge Fact + Evidence
+G5 Shared Recommendation Eligibility
+G6 Runtime QA
+G7 Production Import Gate
+G8 CORE READY Closure
+~~~
+
+重要な追加不変条件:
+
+- Position問題をKnowledge修正で吸収しない
+- Knowledge Model Riskをusable History追加で迂回しない
+- Candidate Master lifecycleをRecommendation eligibilityの代用にしない
+- Product HOLDを技術側で自動解除しない
+- 新規Shrine追加だけを理由にRanking / Scoreを変更しない
+- 複合HOLDは全blocking Gateが解消するまで解除しない
+
+Wave0既存Batch membership、Candidate lifecycle、Production実測値は
+このGate統合だけでは変更しない。
+
 ## CORE READY Completion Contract
 
 各Shrineは、以下をすべて満たした時のみ実 `CORE READY` と扱う。
