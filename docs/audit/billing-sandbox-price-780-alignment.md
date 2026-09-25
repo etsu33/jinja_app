@@ -7,6 +7,7 @@ AUDIT_DATE = 2026-09-24
 SCOPE = Stripe Sandbox / Render configuration alignment only
 CANONICAL_BETA_EARLY_USER_PRICE = 780 JPY / month
 CONFIGURATION_LEVEL_QA = PASS
+ROLLBACK_PRICE_ID_RECORDED = PASS
 CHECKOUT_RUNTIME_E2E = NOT_EXECUTED
 WEBHOOK_ENTITLEMENT_E2E = NOT_EXECUTED
 PRODUCTION_WRITE = NONE_BY_THIS_QA
@@ -55,7 +56,13 @@ It was not deleted or archived during this task.
 
 The rollback object is the retained 500 JPY / month Price under the same Premium Sandbox product.
 
-The exact legacy 500 JPY Price ID was not copied into this audit before the Render variable was updated. Before a rollback is executed, its Price ID must be copied directly from the retained Stripe Sandbox Price entry and verified against 500 JPY / month.
+```text
+ROLLBACK_PRICE = 500 JPY / month
+ROLLBACK_PRICE_ID = price_1T3vXgK6oORw8IU8mmYrl8X1
+ROLLBACK_PRICE_STATUS = RETAINED
+```
+
+The rollback Price was not deleted or archived during this task. If rollback is required, the retained 500 JPY / month Sandbox Price above is the configuration target.
 
 No Live Price was created.
 
@@ -198,6 +205,7 @@ BACKEND_HEALTH = PASS
 WEB_UI_PRICE_780 = PASS
 TERMS_PRICE_780 = PASS
 CONFIGURATION_LEVEL_CHECKOUT_PRICE = PASS
+ROLLBACK_PRICE_REFERENCE = PASS
 ```
 
 This proves the configuration path used to create a Checkout Session resolves to the new 780 JPY/month Sandbox Price.
