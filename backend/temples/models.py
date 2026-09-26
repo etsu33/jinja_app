@@ -623,6 +623,87 @@ class ShrineDeityCollective(models.Model):
             raise ValidationError(errors)
 
 
+class ShrineDeityCollectiveMembership(models.Model):
+    """集合祭神Factと既知の個別 ShrineDeity の関係。docs/audit/collective-deity-model-change-design.md（A-1）§5 の実装。
+
+    Membership Evidence = B: Membership は独自の sources を持つ source-backed relation であり、
+    Collective の Source を自動継承しない。fact-ready な Collective があっても Membership は
+    fact-ready にならない。Membership 行数は Collective.member_count / member_list_status を
+    決めない。本 model は Model Foundation のみであり、Runtime からは読まれない。
+    """
+
+    collective = models.ForeignKey(
+        ShrineDeityCollective, on_delete=models.CASCADE, related_name="memberships"
+    )
+    # evidence-bearing relation のため、参照先 ShrineDeity の削除で黙って消さない（EvidenceLink と同じ方向）。
+    deity = models.ForeignKey(
+        ShrineDeity, on_delete=models.PROTECT, related_name="collective_memberships"
+    )
+    sort_order = models.IntegerField(default=0, validators=[MinValueValidator(0)])
+    sources = models.ManyToManyField(
+        ShrineKnowledgeSource, related_name="deity_collective_memberships", blank=True
+    )
+    verification_status = models.CharField(
+        max_length=32,
+        choices=KNOWLEDGE_VERIFICATION_STATUS_CHOICES,
+        default="draft",
+    )
+    confidence = models.CharField(
+        max_length=8, choices=KNOWLEDGE_CONFIDENCE_CHOICES, blank=True, default=""
+    )
+    verified_at = models.DateTimeField(null=True, blank=True)
+    note = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["sort_order", "id"]
+        constraints = [
+            UniqueConstraint(fields=["collective", "deity"], name="uniq_deity_coll_member"),
+        ]
+        indexes = [
+            models.Index(fields=["collective", "sort_order"], name="idx_deity_coll_member_sort"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.collective_id}:{self.deity_id}"
+
+    def clean(self) -> None:
+        super().clean()
+        errors: dict[str, list] = {}
+        try:
+            _validate_verified_at_consistency(self.verification_status, self.verified_at)
+        except ValidationError as exc:
+            errors.update(exc.message_dict)
+
+        collective = None
+        deity = None
+        if self.collective_id is not None:
+            try:
+                collective = self.collective
+            except ShrineDeityCollective.DoesNotExist:
+                errors.setdefault("collective", []).append("参照する Collective を解決できません。")
+        if self.deity_id is not None:
+            try:
+                deity = self.deity
+            except ShrineDeity.DoesNotExist:
+                errors.setdefault("deity", []).append("参照する ShrineDeity を解決できません。")
+        # shrine identity は推測・修復しない。不一致は拒否するだけである。
+        if collective is not None and deity is not None and collective.shrine_id != deity.shrine_id:
+            errors.setdefault("deity", []).append(
+                "Collective と ShrineDeity は同じ Shrine に属する必要があります。"
+            )
+
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        # 通常の create / update 経路でも same-Shrine 不変条件を通す（EvidenceLink と同じ）。
+        # bulk_create() は save() を通らない。backfill の write path は後続 Gate で扱う。
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+
 class ShrineHistory(models.Model):
     """神社の由緒・歴史Knowledge。docs/knowledge/shrine-knowledge-contract.md「shrine_history契約」の実装。"""
 
