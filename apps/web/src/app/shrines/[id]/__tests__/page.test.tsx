@@ -63,12 +63,16 @@ const baseShrine = {
   goriyaku: null,
 } as unknown;
 
+// Page は Suspense 境界だけを返す。境界内の async ShrineDetailContent を
+// 同じ props で解決し、従来どおり Page 経由の完成出力を描画する。
 async function renderPage(searchParams: Record<string, string>) {
   const { default: Page } = await import("../page");
-  const element = await Page({
+  const boundary = Page({
     params: Promise.resolve({ id: "42" }),
     searchParams: Promise.resolve(searchParams),
   });
+  const content = boundary.props.children;
+  const element = await content.type(content.props);
   render(element);
 }
 

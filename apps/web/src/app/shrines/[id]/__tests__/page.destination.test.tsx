@@ -45,7 +45,9 @@ const baseShrine = {
 async function renderWithCoords(latitude: unknown, longitude: unknown) {
   getShrineDetailServerMock.mockResolvedValue({ ...baseShrine, latitude, longitude } as unknown);
   const { default: Page } = await import("../page");
-  render(await Page({ params: Promise.resolve({ id: "42" }), searchParams: Promise.resolve({}) }));
+  // Page は Suspense 境界だけを返すため、境界内の async content を同じ props で解決して描画する。
+  const content = Page({ params: Promise.resolve({ id: "42" }), searchParams: Promise.resolve({}) }).props.children;
+  render(await content.type(content.props));
 }
 
 function routeCta() {
