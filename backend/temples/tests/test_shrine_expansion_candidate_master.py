@@ -29,8 +29,8 @@ POSITION_HOLD = "HOLD_POSITION_REVIEW"
 
 EXPECTED_STATUS_COUNTS = {
     "BUILD_READY": 21,
-    "IMPORTED": 9,
-    "CORE_READY": 5,
+    "IMPORTED": 5,
+    "CORE_READY": 9,
     "HOLD": 8,
     "REVIEW": 1,
 }
@@ -124,8 +124,9 @@ HYDRATED_BUILD_BATCHES = ("W0-DB01", "W0-DB02")
 # wave0-014 宮城縣護國神社は G3 MODEL_CHANGE_REQUIRED で隔離され未 hydrate。
 #
 # G7 Production Import 完了後（docs/audit/shrine-expansion-wave0-db03-production-import.md）、
-# この4社は IMPORTED / FACT_READY。CORE_READY は G8 の別 Gate であり未判定。
-# wave0-014 は G7 NOT EXECUTED で、BUILD_READY / 未 hydrate のまま。
+# この4社は IMPORTED / FACT_READY となり、G8 CORE READY Closure
+# （docs/audit/shrine-expansion-wave0-db03-core-ready-gate.md）で CORE_READY / FACT_READY へ遷移した。
+# wave0-014 は G4〜G8 NOT EXECUTED で、BUILD_READY / 未 hydrate のまま。
 W0_DB03_G4_HYDRATED_IDS = frozenset({"wave0-012", "wave0-013", "wave0-015", "wave0-016"})
 W0_DB03_MODEL_HOLD_ID = "wave0-014"
 
@@ -374,9 +375,9 @@ def test_build_batch_survives_the_import_lifecycle_transition():
 
 
 def test_w0_db03_to_db07_stay_build_ready():
-    """Production Import 済みは W0-DB01 / W0-DB02 と W0-DB03 の G7 execution subset 4社。
+    """Production Import 済みは W0-DB01 / W0-DB02 と W0-DB03 の G8 execution subset 4社。
 
-    W0-DB03 は original membership 5社のまま、4社 IMPORTED / wave0-014 BUILD_READY の
+    W0-DB03 は original membership 5社のまま、4社 CORE_READY / wave0-014 BUILD_READY の
     混在状態である。W0-DB04〜W0-DB07 の 20 社は BUILD_READY のまま。
     """
     candidates = _load_master()["candidates"]
@@ -385,7 +386,7 @@ def test_w0_db03_to_db07_stay_build_ready():
     assert len(db03) == 5
     assert set(db03) == W0_DB03_G4_HYDRATED_IDS | {W0_DB03_MODEL_HOLD_ID}
     for candidate_id in W0_DB03_G4_HYDRATED_IDS:
-        assert db03[candidate_id]["candidate_status"] == "IMPORTED", candidate_id
+        assert db03[candidate_id]["candidate_status"] == "CORE_READY", candidate_id
         assert db03[candidate_id]["knowledge_status"] == "FACT_READY", candidate_id
     assert db03[W0_DB03_MODEL_HOLD_ID]["candidate_status"] == "BUILD_READY"
 

@@ -219,19 +219,20 @@ def test_original_w0_db03_membership_and_provenance_remain_intact():
     for cid, (name, rank) in ORIGINAL_MEMBERSHIP.items():
         row = members[cid]
         assert row["candidate_name"] == name
-        # G7 後: execution subset は IMPORTED、wave0-014 は BUILD_READY のまま。
-        expected_status = "IMPORTED" if cid in EXECUTION_IDS else "BUILD_READY"
+        # G8 後: execution subset は CORE_READY、wave0-014 は BUILD_READY のまま。
+        expected_status = "CORE_READY" if cid in EXECUTION_IDS else "BUILD_READY"
         assert row["candidate_status"] == expected_status, cid
         assert row["status_reason_code"] == "WAVE0_CORE_READY_CANDIDATE"
         assert row["duplicate_status"] == "NEW"
         assert [source["discovery_rank"] for source in row["discovery_sources"]] == [rank]
 
 
-def test_execution_candidates_are_hydrated_and_imported_but_not_core_ready():
-    """G7 Production Import 完了後の lifecycle。
+def test_execution_candidates_are_hydrated_and_core_ready():
+    """G8 CORE READY Closure 完了後の lifecycle。
 
-    Production 実測は docs/audit/shrine-expansion-wave0-db03-production-import.md。
-    IMPORTED / FACT_READY まで。CORE_READY は G8 の別 Gate であり未判定。
+    G7 Production 実測は docs/audit/shrine-expansion-wave0-db03-production-import.md、
+    G8 Completion Contract 12/12 は docs/audit/shrine-expansion-wave0-db03-core-ready-gate.md。
+    CORE_READY / FACT_READY。build_batch / status_reason_code は Data Build provenance として不変。
     """
     packet = _load_packet()
     candidates = _load_candidates()
@@ -251,10 +252,9 @@ def test_execution_candidates_are_hydrated_and_imported_but_not_core_ready():
         assert row["identity_status"] == "CONFIRMED"
         assert row["official_source_status"] == "CONFIRMED"
 
-        # G7 で Production 上の usable Knowledge を実測済み。
+        # G7 で Production 上の usable Knowledge を実測済み、G8 で Completion Contract 12/12。
         assert row["knowledge_status"] == "FACT_READY"
-        assert row["candidate_status"] == "IMPORTED"
-        assert row["candidate_status"] != "CORE_READY"
+        assert row["candidate_status"] == "CORE_READY"
         assert row["build_batch"] == "W0-DB03"
         assert row["status_reason_code"] == "WAVE0_CORE_READY_CANDIDATE"
 
