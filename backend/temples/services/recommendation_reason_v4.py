@@ -188,6 +188,27 @@ def _apply_tradition_hedge_floor(reason_strength: str, history_type: Any) -> str
     return reason_strength
 
 
+# weakened分岐のhistory本文が、既に伝承・伝聞としてhedge済みの語尾で終わっているか。
+# 表現強度（weakened）の判定には使わない。判定の正本はhistory_type +
+# _apply_tradition_hedge_floor()であり、ここはweakened分岐内で同義hedgeの
+# 重複（「〜と伝えられていると伝えられています。」）を避けるための表示専用判定。
+_HEDGED_HISTORY_TAILS = (
+    "と伝えられている",
+    "と伝えられています",
+    "が伝えられている",
+    "とされている",
+    "とされています",
+    "とされる",
+    "と伝わる",
+    "という伝承がある",
+)
+_TRAILING_PUNCTUATION = "。、．.，,！!？? 　"
+
+
+def _history_already_hedged(history_text: str) -> bool:
+    return history_text.rstrip(_TRAILING_PUNCTUATION).endswith(_HEDGED_HISTORY_TAILS)
+
+
 def _build_fact(
     candidate_profile: dict[str, Any], meaning_translation: dict[str, Any]
 ) -> tuple[dict[str, Any], dict[str, str]]:
@@ -573,7 +594,11 @@ def _build_fact_text(fact: dict[str, Any], reason_strength: dict[str, str] | Non
     elif fact_shrine_history:
         history_text = fact_shrine_history.rstrip("。")
         if strength.get("shrine_history") == "weakened":
-            fact_text = f"{subject}には、{history_text}と伝えられています。"
+            if _history_already_hedged(history_text):
+                # 本文自身のhedgeを尊重し、同義のhedgeを重ねない（weakenedのまま）。
+                fact_text = f"{subject}には、{history_text.rstrip(_TRAILING_PUNCTUATION)}。"
+            else:
+                fact_text = f"{subject}には、{history_text}と伝えられています。"
         else:
             fact_text = f"{subject}には、{history_text}という背景があります。"
         if fact_goriyaku:
