@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 
 import type { Shrine } from "@/lib/api/shrines";
 import type { ConciergeBreakdown } from "@/lib/api/concierge";
@@ -37,6 +38,7 @@ import ShrineSaveButton from "@/components/shrine/ShrineSaveButton";
 import ShrineDetailShell from "@/components/shrine/ShrineDetailShell";
 import ShrineDetailArticle from "@/components/shrine/detail/ShrineDetailArticle";
 import ScrollToTopOnMount from "@/components/navigation/ScrollToTopOnMount";
+import ShrineDetailLoading from "./loading";
 
 import { getBenefitLabels } from "@/lib/shrine/getBenefitLabels";
 import {
@@ -210,7 +212,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return buildShrineDetailMetadata(shrine);
 }
 
-export default async function Page({ params, searchParams }: Props) {
+// Page 自体は何も await せず、Suspense 境界だけを即座に返す。
+// params / searchParams の解決・server fetch・model 構築はすべて
+// ShrineDetailContent（境界の内側）に置き、その間は Route loading と同じ
+// skeleton を出す（docs/audit/shrine-detail-transition-flash.md）。
+// ShrineDetailContent の中身は従来の Page 本体そのまま。
+export default function Page({ params, searchParams }: Props) {
+  return (
+    <Suspense fallback={<ShrineDetailLoading />}>
+      <ShrineDetailContent params={params} searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+async function ShrineDetailContent({ params, searchParams }: Props) {
 
   const { id } = await params;
   const sp = (await searchParams) ?? {};
