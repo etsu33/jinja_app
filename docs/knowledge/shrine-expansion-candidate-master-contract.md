@@ -5,7 +5,7 @@
 - Status: `ACTIVE`
 - Effective from: `2026-09-10`
 - Scope: KAMI MUSUBI 神社500社拡充の pre-import Candidate 管理
-- Schema version: `1.2`
+- Schema version: `1.3`
 - Runtime / DB schema change: なし
 
 ## 目的
@@ -36,6 +36,28 @@ CORE_READY   = Unified Gate Closure完了後のみ
 本追記ではCandidate Master schema / JSON fieldを追加しない。
 machine-readableなGate statusが必要になった場合は別Contract / 別PRで設計する。
 
+## Post-batch HOLD Boundary（schema 1.3 / 2026-09-26）
+
+Mother Ship Decision B
+（`docs/audit/wave0-014-model-risk-lifecycle-review.md` のDesign Family B）により、
+Batch割り当て後にunresolved Gateで止まったCandidateは、`build_batch` provenanceを
+失わずに `HOLD` へ遷移できる。
+
+~~~text
+candidate_status = HOLD
+  = 次のData Build lifecycle stepへ現在進めない
+
+build_batch
+  = 一度割り当てたら不変のprovenance
+
+HOLD / REVIEW + build_batch = null     = Batch割り当て前にHOLD / REVIEWとなった
+HOLD / REVIEW + build_batch = W0-DBxx  = Batch割り当て後にHOLD / REVIEWとなった
+~~~
+
+- Post-batch HOLDで `build_batch` を消さない。
+- HOLD解除は自動ではない。問題を所有するGateを先に再判定する。
+- 本変更でCandidate Masterに新しいfieldは追加しない。Gate結果の詳細は引き続きaudit側が正本である。
+
 ## 正本ファイル
 
 `backend/temples/data/shrine_expansion_candidate_master.json`
@@ -63,6 +85,9 @@ official_source_status = AVAILABLE
 knowledge_status = ACQUISITION_PATH_CONFIRMED
 candidate_reason = historical_recovered_popularity_candidate
 ```
+
+`candidate_reason` はRegistryへの登録理由（admission reason）である。
+現在の `candidate_status` の理由は `status_reason_code` が表す。
 
 Candidate objectに同名fieldが存在する場合は、Candidate側の値をoverrideとして優先する。
 
@@ -183,7 +208,11 @@ Candidate objectへ明示する。
 
 ### HOLD
 
-Candidateは保持するが、明示的なunresolved GateによりData Buildへ進めない状態。
+Candidateは保持するが、明示的なunresolved Gateにより、次のData Build lifecycle stepへ
+現在進めない状態。
+
+Batch割り当ての前後どちらでも成立する。`build_batch` がnullならBatch割り当て前のHOLD、
+`W0-DBxx` ならBatch割り当て後のHOLDである（`build_batch` は消さない）。
 
 Wave0で使用する理由コード:
 
@@ -191,13 +220,19 @@ Wave0で使用する理由コード:
 HOLD_MAPPING
 SOURCE_HOLD
 UNKNOWN_EVIDENCE
+MODEL_CHANGE_REQUIRED
 ```
+
+`MODEL_CHANGE_REQUIRED` は、G3 Model FitでSource-backedな現在Knowledgeを現行
+`ShrineDeity / ShrineHistory` Contractでは意味損失なしに表現できないと判定された場合に使う
+（`docs/knowledge/shrine-expansion-gate-contract.md` §13 / `docs/audit/model-risk-release-contract.md` §5.4）。
 
 HOLDをCandidate rejectionと同義にしない。
 
 ### REVIEW
 
 Mother Ship判断または明示的なhuman review待ち。
+HOLDと同じく、`build_batch` の有無はBatch割り当て前後の区別だけを表す。
 
 Wave0では `ENTITY_GRANULARITY_REVIEW` を使用する。
 
@@ -205,17 +240,22 @@ Wave0では `ENTITY_GRANULARITY_REVIEW` を使用する。
 
 ## status_reason_code
 
-`candidate_status` の理由をmachine-readableに保持する。
+**現在の** `candidate_status` の理由をmachine-readableに保持する。
+Registryへの登録理由は `candidate_reason` が表し、`status_reason_code` とは別である。
+したがって `candidate_status` が変わるとき、`status_reason_code` も新しいstatusの理由へ更新してよい。
 
-Wave0 P0-Aで許可する値:
+Wave0で許可する値:
 
 ```text
 WAVE0_CORE_READY_CANDIDATE
 HOLD_MAPPING
 SOURCE_HOLD
 UNKNOWN_EVIDENCE
+MODEL_CHANGE_REQUIRED
 ENTITY_GRANULARITY_REVIEW
 ```
+
+`MODEL_CHANGE_REQUIRED` は schema 1.3 で追加した。
 
 Lifecycle stateとEvidence詳細を分離したまま、後続Batchが「なぜ止まっているか」を追跡できることを目的とする。
 
@@ -238,8 +278,8 @@ W0-DB07
 ```
 
 - 初期Registry時点では35社が `BUILD_READY` としてbatch assignmentを持つ。
-- 各Batchは5社。
-- HOLD / REVIEWは `null`。
+- 各Batchは5社（original membership。Batch割り当て後のHOLD / REVIEWを含めて数える）。
+- Batch割り当て前にHOLD / REVIEWとなったCandidateは `null`。
 - Batch順はProduct priorityではない。
 - PR #2780のdeterministic groupingをそのまま使用する（member setは不変）。
 
@@ -257,11 +297,17 @@ IMPORTED    -> CORE_READY build_batchは不変
 スナップショット**であって恒久ルールではない。Import後も `build_batch` を
 保持しないと、Production上のどのShrineがどのBatchで入ったのかを追跡できなくなる。
 
-恒久的な不変条件は次の2つ。
+恒久的な不変条件（schema 1.3）:
 
-- `build_batch` が非nullの行のstatusは `BUILD_READY` または `IMPORTED`
-  （以降 `CORE_READY` を含む）である。
-- `HOLD` / `REVIEW` はBatch未割り当てなので `build_batch = null` を維持する。
+- `build_batch` は一度割り当てたら不変である。lifecycle遷移（HOLD / REVIEWへの遷移を含む）で消さない。
+- `build_batch = null` の行は、一度もBatchへ割り当てられていない。`BUILD_READY` / `IMPORTED` /
+  `CORE_READY` は必ずBatch割り当て済み（非null）である。
+- `HOLD` / `REVIEW` は `build_batch` がnull（割り当て前に停止）または非null（割り当て後に停止）の
+  どちらでもよい。
+- Batchのmember数（original membership）は、HOLD / REVIEWへの遷移で変わらない。
+
+schema 1.2 までの「`HOLD` / `REVIEW` は `build_batch = null`」は、HOLD / REVIEWが
+Batch割り当て前にしか発生しなかった初期Registryの前提であり、schema 1.3 で上記へ置き換えた。
 
 固定test:
 `backend/temples/tests/test_shrine_expansion_candidate_master.py::test_build_batch_survives_the_import_lifecycle_transition`
@@ -453,16 +499,31 @@ HOLD / REVIEW
 
 遷移は監査・Production実測を根拠に行う。状態を見た目だけ合わせるための自動昇格は禁止する。
 
+Batch割り当て後にGateが未解決になった場合（schema 1.3）:
+
+```text
+BUILD_READY / IMPORTED
+  -> HOLD or REVIEW     build_batchは保持する
+```
+
 遷移で消してはならないfield:
 
 ```text
-build_batch          Data Build provenance。遷移全体で不変
-status_reason_code   Registry登録理由。lifecycleと独立
+build_batch          Data Build provenance。遷移全体で不変（HOLD / REVIEWを含む）
+candidate_reason     Registry登録理由（admission reason）。lifecycleと独立
 duplicate_status     duplicate監査結果。lifecycleと独立
 ```
 
-`HOLD` / `REVIEW` から `BUILD_READY` へ戻す場合のみ、Batch割り当てが未確定な
-ためこの時点の `build_batch` は `null` である。
+`status_reason_code` は現在のstatusの理由であり、遷移に合わせて更新してよい。
+
+HOLD / REVIEW解除:
+
+- 自動解除しない。問題を所有するGateを先に再判定する
+  （`docs/knowledge/shrine-expansion-gate-contract.md` §14 Re-entry Contract）。
+- Batch割り当て前のHOLD / REVIEW（`build_batch = null`）を `BUILD_READY` へ戻す場合は、
+  その時点でBatch割り当てを別途決める。
+- Batch割り当て後のHOLD / REVIEWを解除する場合、`build_batch` は元の値のままである。
+  戻り先は、所有Gateの再判定後に下流Gateを順に通した結果が示すlifecycle stepとする。
 
 ## Concierge / Compass Boundary
 
@@ -476,8 +537,8 @@ Candidate MasterはRanking / Direction / Distance / Recommendation Scoreを変�
 
 初期Candidate Registryには、過去のOmairi監査から再確認できた44社を `historical_recovered_popularity_candidate` として登録する。
 
-会計（**初期Registry時点**。以降のlifecycle遷移でstatus内訳は動く。総数44と
-HOLD / REVIEWの内訳は不変）:
+会計（**初期Registry時点**。以降のlifecycle遷移でstatus内訳は動く。総数44は不変。
+schema 1.3 以降はBatch割り当て後のHOLD / REVIEWが起こり得るため、HOLD / REVIEWの内訳も動き得る）:
 
 ```text
 BUILD_READY = 35
@@ -492,19 +553,29 @@ TOTAL = 44
 
 ### 現在のlifecycle会計
 
-W0-DB01のProduction Import完了を反映した実測値。
+W0-DB03 G8 CORE READY Closure と wave0-014 の Post-batch HOLD（schema 1.3）を反映した値。
 
 ```text
-BUILD_READY = 30   W0-DB02〜W0-DB07
-IMPORTED    = 5    W0-DB01
-HOLD        = 8
+BUILD_READY = 20   W0-DB04〜W0-DB07
+IMPORTED    = 5    W0-DB02
+CORE_READY  = 9    W0-DB01（5） / W0-DB03 execution subset（4）
+HOLD        = 9
+  HOLD_MAPPING          = 2   build_batch = null
+  SOURCE_HOLD           = 3   build_batch = null
+  UNKNOWN_EVIDENCE      = 3   build_batch = null
+  MODEL_CHANGE_REQUIRED = 1   build_batch = W0-DB03（wave0-014 宮城縣護國神社）
 REVIEW      = 1
+  ENTITY_GRANULARITY_REVIEW = 1   build_batch = null
 TOTAL       = 44
 ```
 
-W0-DB01の5社（三輪神社 / 大鳥大社 / 御岩神社 / 烏森神社 / 榴岡天満宮）は
-`candidate_status = IMPORTED` / `knowledge_status = FACT_READY` /
-`build_batch = W0-DB01` である。`CORE_READY` へはまだ進めていない。
+各Batchのoriginal membershipは5社のまま（W0-DB01〜W0-DB07）。W0-DB03は
+CORE_READY 4社（大神神社 / 北野天満宮 / 平安神宮 / 岡田宮）と
+HOLD 1社（wave0-014 宮城縣護國神社、`MODEL_CHANGE_REQUIRED`）である。
+
+wave0-014 はG3 Model Fitで `MODEL_CHANGE_REQUIRED`
+（`docs/audit/shrine-expansion-wave0-db03-unified-gate-preflight.md`）。
+factual fieldは未hydrateのままで、Base Seed / Knowledge Seed / Productionには存在しない。
 
 過去に主張された50社のうち残り6社は、`docs/audit/shrine-expansion-historical-candidate-audit.md` の結論に従い推測で補完しない。
 

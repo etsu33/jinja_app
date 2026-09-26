@@ -28,10 +28,10 @@ POSITION_RESOLUTION_DIR = (
 POSITION_HOLD = "HOLD_POSITION_REVIEW"
 
 EXPECTED_STATUS_COUNTS = {
-    "BUILD_READY": 21,
+    "BUILD_READY": 20,
     "IMPORTED": 5,
     "CORE_READY": 9,
-    "HOLD": 8,
+    "HOLD": 9,
     "REVIEW": 1,
 }
 EXPECTED_TOTAL = 44
@@ -43,16 +43,26 @@ EXPECTED_TOTAL = 44
 #   CORE_READY  : Completion Contract と post-import QA を完了済み
 #
 # `build_batch` は Data Build provenance であり lifecycle state ではない。
-# BUILD_READY -> IMPORTED -> CORE_READY で消してはならない。HOLD / REVIEW は Batch 未割り当て
-# なので `build_batch` は null のまま。
+# 一度割り当てたら不変で、BUILD_READY -> IMPORTED -> CORE_READY でも、
+# Batch 割り当て後の HOLD / REVIEW への遷移でも消してはならない（schema 1.3）。
+#
+# BATCH_ASSIGNED_STATUSES の行は必ず build_batch を持つ。HOLD / REVIEW は
+# build_batch = null（Batch 割り当て前に停止）/ 非null（割り当て後に停止）のどちらもあり得る。
 BATCH_ASSIGNED_STATUSES = frozenset({"BUILD_READY", "IMPORTED", "CORE_READY"})
 UNASSIGNED_STATUSES = frozenset({"HOLD", "REVIEW"})
 
+# Batch 割り当て後に HOLD / REVIEW となった Candidate と、その保持 build_batch。
+# exact に固定する（ここに無い post-batch HOLD / REVIEW は test failure）。
+EXPECTED_POST_BATCH_HOLDS = {"wave0-014": "W0-DB03"}
+
+# status_reason_code は現在の candidate_status の理由（schema 1.3）。
+# Registry への登録理由は candidate_reason が表す。
 EXPECTED_REASON_COUNTS = {
-    "WAVE0_CORE_READY_CANDIDATE": 35,
+    "WAVE0_CORE_READY_CANDIDATE": 34,
     "HOLD_MAPPING": 2,
     "SOURCE_HOLD": 3,
     "UNKNOWN_EVIDENCE": 3,
+    "MODEL_CHANGE_REQUIRED": 1,
     "ENTITY_GRANULARITY_REVIEW": 1,
 }
 
@@ -60,6 +70,7 @@ EXPECTED_HOLD_BY_REASON = {
     "HOLD_MAPPING": {"姫嶋神社", "行田八幡神社"},
     "SOURCE_HOLD": {"若宮八幡社", "富知六所浅間神社", "若宮神明社"},
     "UNKNOWN_EVIDENCE": {"居多神社", "唐澤山神社", "一之宮貫前神社"},
+    "MODEL_CHANGE_REQUIRED": {"宮城縣護國神社"},
 }
 
 EXPECTED_REVIEW = {"諏訪大社 下社秋宮"}
@@ -327,7 +338,7 @@ def test_wave0_candidate_master_registry_accounting():
     master = _load_master()
     candidates = master["candidates"]
 
-    assert master["schema_version"] == "1.2"
+    assert master["schema_version"] == "1.3"
     assert len(candidates) == EXPECTED_TOTAL
     assert len({row["candidate_id"] for row in candidates}) == EXPECTED_TOTAL
     assert Counter(row["candidate_status"] for row in candidates) == EXPECTED_STATUS_COUNTS
@@ -335,18 +346,38 @@ def test_wave0_candidate_master_registry_accounting():
 
 
 def test_wave0_batch_membership_is_deterministic():
-    """Batch 割り当ては 7 batch x 5 社で固定。
+    """Batch 割り当ては 7 batch x 5 社で固定（original membership）。
 
     初期 Registry 時点では 35 社すべてが `BUILD_READY` だったが、これは
     その時点のスナップショットであって恒久ルールではない。Batch 割り当ての
     不変条件は status ではなく「`build_batch` が付いた行の分布」である。
+    Batch 割り当て後の HOLD / REVIEW も member として数える（schema 1.3）。
     """
     candidates = _load_master()["candidates"]
     assigned = [row for row in candidates if row["build_batch"] is not None]
 
     assert len(assigned) == 35
     assert Counter(row["build_batch"] for row in assigned) == EXPECTED_BUILD_BATCH_COUNTS
-    assert all(row["candidate_status"] in BATCH_ASSIGNED_STATUSES for row in assigned)
+
+    # 割り当て済みの行で BATCH_ASSIGNED_STATUSES 以外なのは、固定した post-batch HOLD だけ。
+    post_batch_holds = {
+        row["candidate_id"]: row["build_batch"]
+        for row in assigned
+        if row["candidate_status"] not in BATCH_ASSIGNED_STATUSES
+    }
+    assert post_batch_holds == EXPECTED_POST_BATCH_HOLDS
+    assert all(
+        row["candidate_status"] in UNASSIGNED_STATUSES
+        for row in assigned
+        if row["candidate_id"] in EXPECTED_POST_BATCH_HOLDS
+    )
+
+    # BUILD_READY / IMPORTED / CORE_READY は必ず Batch 割り当て済み。
+    assert all(
+        row["build_batch"] is not None
+        for row in candidates
+        if row["candidate_status"] in BATCH_ASSIGNED_STATUSES
+    )
 
 
 def test_build_batch_survives_the_import_lifecycle_transition():
@@ -366,19 +397,20 @@ def test_build_batch_survives_the_import_lifecycle_transition():
     }
     assert all(_effective(_load_master(), row)["knowledge_status"] == "FACT_READY" for row in imported_or_core_ready)
 
-    # Batch 未割り当ての lifecycle state は null を維持する。
-    assert all(
-        row["build_batch"] is None
-        for row in candidates
-        if row["candidate_status"] in UNASSIGNED_STATUSES
-    )
+    # HOLD / REVIEW のうち Batch 割り当て前に停止したものは null のまま。
+    # Batch 割り当て後に停止したもの（post-batch HOLD）は build_batch を保持する。
+    held = [row for row in candidates if row["candidate_status"] in UNASSIGNED_STATUSES]
+    assert {
+        row["candidate_id"]: row["build_batch"] for row in held if row["build_batch"] is not None
+    } == EXPECTED_POST_BATCH_HOLDS
+    assert sum(1 for row in held if row["build_batch"] is None) == 9
 
 
 def test_w0_db03_to_db07_stay_build_ready():
     """Production Import 済みは W0-DB01 / W0-DB02 と W0-DB03 の G8 execution subset 4社。
 
-    W0-DB03 は original membership 5社のまま、4社 CORE_READY / wave0-014 BUILD_READY の
-    混在状態である。W0-DB04〜W0-DB07 の 20 社は BUILD_READY のまま。
+    W0-DB03 は original membership 5社のまま、4社 CORE_READY / wave0-014 post-batch HOLD
+    （MODEL_CHANGE_REQUIRED）の混在状態である。W0-DB04〜W0-DB07 の 20 社は BUILD_READY のまま。
     """
     candidates = _load_master()["candidates"]
 
@@ -388,7 +420,9 @@ def test_w0_db03_to_db07_stay_build_ready():
     for candidate_id in W0_DB03_G4_HYDRATED_IDS:
         assert db03[candidate_id]["candidate_status"] == "CORE_READY", candidate_id
         assert db03[candidate_id]["knowledge_status"] == "FACT_READY", candidate_id
-    assert db03[W0_DB03_MODEL_HOLD_ID]["candidate_status"] == "BUILD_READY"
+    assert db03[W0_DB03_MODEL_HOLD_ID]["candidate_status"] == "HOLD"
+    assert db03[W0_DB03_MODEL_HOLD_ID]["status_reason_code"] == "MODEL_CHANGE_REQUIRED"
+    assert db03[W0_DB03_MODEL_HOLD_ID]["build_batch"] == "W0-DB03"
 
     for batch in CANONICAL_BUILD_BATCHES[3:]:
         members = [row for row in candidates if row["build_batch"] == batch]
@@ -580,6 +614,17 @@ def test_candidate_defaults_are_not_promoted_by_a_single_batch_import():
     assert defaults["knowledge_status"] == "ACQUISITION_PATH_CONFIRMED"
     assert defaults["identity_status"] == "UNREVIEWED"
     assert defaults["official_source_status"] == "AVAILABLE"
+
+
+def test_candidate_reason_is_registry_admission_reason_and_not_overridden():
+    """candidate_reason は Registry 登録理由（schema 1.3）。lifecycle 遷移で上書きしない。
+
+    現在の candidate_status の理由は status_reason_code が表す。
+    """
+    master = _load_master()
+
+    assert master["candidate_defaults"]["candidate_reason"] == "historical_recovered_popularity_candidate"
+    assert all("candidate_reason" not in row for row in master["candidates"])
 
 
 def test_wave0_discovery_provenance_has_required_fields():
