@@ -3,6 +3,8 @@ import re
 from collections import Counter
 from pathlib import Path
 
+import pytest
+
 
 MASTER_PATH = (
     Path(__file__).resolve().parents[2]
@@ -324,6 +326,341 @@ def test_position_hold_candidates_are_never_core_ready():
             "Position status is %s; CORE_READY promotion is blocked until the "
             "Position Resolution Record reaches PASS." % POSITION_HOLD,
         )
+
+
+MODEL_RISK_RESOLUTION_DIR = (
+    Path(__file__).resolve().parents[3] / "docs" / "audit" / "shrine-model-risk"
+)
+
+MODEL_RISK_OWNING_GATE = "G3"
+MODEL_RISK_HOLD = "HOLD"
+MODEL_RISK_RELEASE_STATUSES = frozenset({MODEL_RISK_HOLD, "RELEASED"})
+# docs/audit/model-risk-release-contract.md §5 Release Classification Rules。
+MODEL_RISK_CLASSIFICATIONS = frozenset(
+    {
+        "CURATION_RELEASE_CANDIDATE",
+        "RESEARCH_REQUIRED_BEFORE_RELEASE",
+        "MODEL_REVIEW_REMAINS",
+        "MODEL_CHANGE_REQUIRED",
+        "PRODUCT_DECISION_REQUIRED",
+    }
+)
+MODEL_RISK_RECORD_FIELDS = (
+    "candidate_id",
+    "owning_gate",
+    "model_risk_classification",
+    "model_risk_release_status",
+)
+PROMOTED_STATUSES = frozenset({"BUILD_READY", "IMPORTED", "CORE_READY"})
+
+
+class ModelRiskRecordError(ValueError):
+    """Current Model Risk Resolution Record を解釈できない（fail closed）。"""
+
+
+def _parse_model_risk_record(path: Path) -> dict:
+    """1 file = 1 Candidate の record を parse する。
+
+    各 field は行頭の `<field> = <value>` 1行だけを正とする。field 名で始まる
+    行が形式違い（`=` 前後の空白違い・値の後の余分な語など）なら、その行を
+    無視せず error にする。無視すると別の行だけが読まれ、record の意図と
+    異なる状態が current として通過しうるため。
+    """
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        raise ModelRiskRecordError(f"{path.name}: unreadable record: {exc}") from exc
+
+    record: dict[str, str] = {}
+    for field in MODEL_RISK_RECORD_FIELDS:
+        loose = re.findall(rf"^[ \t]*{field}\b.*$", text, re.M)
+        strict = re.findall(rf"^{field} = (\S+)$", text, re.M)
+        if len(loose) != 1 or len(strict) != 1:
+            raise ModelRiskRecordError(
+                f"{path.name}: `{field}` must appear exactly once as `{field} = <value>` "
+                f"(found {len(loose)} line(s), {len(strict)} well-formed)"
+            )
+        record[field] = strict[0]
+
+    if record["owning_gate"] != MODEL_RISK_OWNING_GATE:
+        raise ModelRiskRecordError(
+            f"{path.name}: owning_gate must be G3, got {record['owning_gate']}"
+        )
+    if record["model_risk_classification"] not in MODEL_RISK_CLASSIFICATIONS:
+        raise ModelRiskRecordError(
+            f"{path.name}: unknown model_risk_classification {record['model_risk_classification']}"
+        )
+    if record["model_risk_release_status"] not in MODEL_RISK_RELEASE_STATUSES:
+        raise ModelRiskRecordError(
+            f"{path.name}: unknown model_risk_release_status {record['model_risk_release_status']}"
+        )
+    return record
+
+
+def _load_model_risk_records(directory: Path) -> dict[str, dict]:
+    """directory 内の全 record を candidate_id -> record で返す。
+
+    Candidate を特定の id で絞らない（parser は wave0-014 を知らない）。
+    directory が無い / 読めない / record が0件のとき、guard が無言で通過
+    しないよう error にする。
+    """
+    if not directory.is_dir():
+        raise ModelRiskRecordError(f"Model Risk record directory not found: {directory}")
+    try:
+        paths = sorted(directory.glob("*.md"))
+    except OSError as exc:
+        raise ModelRiskRecordError(
+            f"Model Risk record directory unreadable: {directory}: {exc}"
+        ) from exc
+    if not paths:
+        raise ModelRiskRecordError(f"no Model Risk Resolution Record found in {directory}")
+
+    records: dict[str, dict] = {}
+    for path in paths:
+        record = _parse_model_risk_record(path)
+        candidate_id = record["candidate_id"]
+        if candidate_id in records:
+            raise ModelRiskRecordError(
+                f"duplicate Model Risk record for {candidate_id}: "
+                f"{records[candidate_id]['_path']} and {path.name}"
+            )
+        records[candidate_id] = {**record, "_path": path.name}
+    return records
+
+
+def _model_risk_promotion_violations(records: dict[str, dict], rows: list[dict]) -> list[tuple]:
+    """Model Risk HOLD の Candidate が lifecycle 上で昇格していないかを判定する。
+
+    読むのは record の release status と Candidate Master 行だけである。
+    model code / migration / usable History / eligibility / Production 上の存在
+    からは release を推論しない。HOLD の解除は record を RELEASED へ更新する
+    別タスク（G3 再判定）でだけ起きる。
+    """
+    rows_by_id: dict[str, dict] = {}
+    for row in rows:
+        if row["candidate_id"] in rows_by_id:
+            raise ModelRiskRecordError(f"duplicate Candidate Master row: {row['candidate_id']}")
+        rows_by_id[row["candidate_id"]] = row
+
+    violations = []
+    for candidate_id, record in sorted(records.items()):
+        if record["model_risk_release_status"] != MODEL_RISK_HOLD:
+            continue
+        row = rows_by_id.get(candidate_id)
+        # record はあるが Candidate Master に居ない、は昇格の危険が無いので許す。
+        if row is None:
+            continue
+        if row["candidate_status"] != "HOLD":
+            violations.append((candidate_id, "candidate_status", row["candidate_status"]))
+        if (
+            record["model_risk_classification"] == "MODEL_CHANGE_REQUIRED"
+            and row["status_reason_code"] != "MODEL_CHANGE_REQUIRED"
+        ):
+            violations.append((candidate_id, "status_reason_code", row["status_reason_code"]))
+    return violations
+
+
+def test_model_risk_hold_candidates_are_never_promoted():
+    """Model Risk HOLD の Candidate を BUILD_READY / IMPORTED / CORE_READY へ昇格させない。
+
+    Candidate Master の `candidate_status` / `status_reason_code` だけを書き換えても
+    Model Risk は解除されない。現在の release state は
+    `docs/audit/shrine-model-risk/` の Current Model Risk Resolution Record が持つ。
+    """
+    records = _load_model_risk_records(MODEL_RISK_RESOLUTION_DIR)
+    rows = _load_master()["candidates"]
+
+    assert _model_risk_promotion_violations(records, rows) == []
+
+
+def test_w0_db03_model_hold_has_a_current_model_risk_record():
+    """wave0-014 の record を消すと guard の対象から外れるため、record の存在を固定する。
+
+    parser / guard は特定 Candidate を知らない。ここは current state の pin である。
+    RELEASED への更新は G3 の明示的な再判定を伴う別タスクで、この pin も同時に更新する。
+    """
+    records = _load_model_risk_records(MODEL_RISK_RESOLUTION_DIR)
+    record = records[W0_DB03_MODEL_HOLD_ID]
+
+    assert record["owning_gate"] == "G3"
+    assert record["model_risk_classification"] == "MODEL_CHANGE_REQUIRED"
+    assert record["model_risk_release_status"] == "HOLD"
+
+
+def _write_model_risk_record(directory: Path, name: str, **overrides: str) -> Path:
+    fields = {
+        "candidate_id": "cand-001",
+        "owning_gate": "G3",
+        "model_risk_classification": "MODEL_CHANGE_REQUIRED",
+        "model_risk_release_status": "HOLD",
+        **overrides,
+    }
+    body = "\n".join(f"{key} = {value}" for key, value in fields.items())
+    path = directory / name
+    path.write_text(f"# record\n\n```text\n{body}\n```\n", encoding="utf-8")
+    return path
+
+
+def _held_row(candidate_status: str, status_reason_code: str = "MODEL_CHANGE_REQUIRED") -> dict:
+    return {
+        "candidate_id": "cand-001",
+        "candidate_status": candidate_status,
+        "status_reason_code": status_reason_code,
+    }
+
+
+@pytest.mark.parametrize("promoted_status", sorted(PROMOTED_STATUSES))
+def test_model_risk_hold_blocks_promotion(tmp_path, promoted_status):
+    _write_model_risk_record(tmp_path, "cand-001.md")
+    records = _load_model_risk_records(tmp_path)
+
+    # status_reason_code を HOLD 理由のまま残しても、昇格は拒否される。
+    violations = _model_risk_promotion_violations(records, [_held_row(promoted_status)])
+    assert violations == [("cand-001", "candidate_status", promoted_status)]
+
+    # status_reason_code まで書き換えても、record が HOLD の間は拒否される。
+    violations = _model_risk_promotion_violations(
+        records, [_held_row(promoted_status, "WAVE0_CORE_READY_CANDIDATE")]
+    )
+    assert violations == [
+        ("cand-001", "candidate_status", promoted_status),
+        ("cand-001", "status_reason_code", "WAVE0_CORE_READY_CANDIDATE"),
+    ]
+
+
+def test_model_risk_hold_rejects_review_and_wrong_reason(tmp_path):
+    _write_model_risk_record(tmp_path, "cand-001.md")
+    records = _load_model_risk_records(tmp_path)
+
+    assert _model_risk_promotion_violations(records, [_held_row("REVIEW")]) == [
+        ("cand-001", "candidate_status", "REVIEW")
+    ]
+    assert _model_risk_promotion_violations(records, [_held_row("HOLD", "SOURCE_HOLD")]) == [
+        ("cand-001", "status_reason_code", "SOURCE_HOLD")
+    ]
+    assert _model_risk_promotion_violations(records, [_held_row("HOLD")]) == []
+
+
+def test_model_risk_hold_other_classification_still_requires_hold(tmp_path):
+    _write_model_risk_record(
+        tmp_path, "cand-001.md", model_risk_classification="MODEL_REVIEW_REMAINS"
+    )
+    records = _load_model_risk_records(tmp_path)
+
+    assert _model_risk_promotion_violations(records, [_held_row("HOLD", "UNKNOWN_EVIDENCE")]) == []
+    assert _model_risk_promotion_violations(
+        records, [_held_row("CORE_READY", "UNKNOWN_EVIDENCE")]
+    ) == [("cand-001", "candidate_status", "CORE_READY")]
+
+
+def test_model_risk_released_record_does_not_constrain_lifecycle(tmp_path):
+    _write_model_risk_record(tmp_path, "cand-001.md", model_risk_release_status="RELEASED")
+    records = _load_model_risk_records(tmp_path)
+
+    assert (
+        _model_risk_promotion_violations(
+            records, [_held_row("BUILD_READY", "WAVE0_CORE_READY_CANDIDATE")]
+        )
+        == []
+    )
+
+
+def test_model_risk_record_without_master_row_is_ignored(tmp_path):
+    _write_model_risk_record(tmp_path, "cand-001.md")
+    records = _load_model_risk_records(tmp_path)
+
+    assert _model_risk_promotion_violations(records, []) == []
+
+
+def test_model_risk_guard_rejects_duplicate_master_rows(tmp_path):
+    _write_model_risk_record(tmp_path, "cand-001.md")
+    records = _load_model_risk_records(tmp_path)
+
+    with pytest.raises(ModelRiskRecordError, match="duplicate Candidate Master row"):
+        _model_risk_promotion_violations(records, [_held_row("HOLD"), _held_row("CORE_READY")])
+
+
+@pytest.mark.parametrize(
+    "overrides, message",
+    [
+        ({"owning_gate": "G4"}, "owning_gate must be G3"),
+        ({"model_risk_release_status": "PARTIALLY_RELEASED"}, "unknown model_risk_release_status"),
+        ({"model_risk_release_status": "released"}, "unknown model_risk_release_status"),
+        ({"model_risk_classification": "MODEL_FIXED"}, "unknown model_risk_classification"),
+    ],
+)
+def test_model_risk_parser_rejects_unknown_values(tmp_path, overrides, message):
+    _write_model_risk_record(tmp_path, "cand-001.md", **overrides)
+
+    with pytest.raises(ModelRiskRecordError, match=message):
+        _load_model_risk_records(tmp_path)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        # field 欠落
+        "candidate_id = cand-001\nowning_gate = G3\nmodel_risk_classification = MODEL_CHANGE_REQUIRED\n",
+        # 1 file に2 candidate
+        "candidate_id = cand-001\ncandidate_id = cand-002\nowning_gate = G3\n"
+        "model_risk_classification = MODEL_CHANGE_REQUIRED\nmodel_risk_release_status = HOLD\n",
+        # release status が2行（順序依存で読まない）
+        "candidate_id = cand-001\nowning_gate = G3\nmodel_risk_classification = MODEL_CHANGE_REQUIRED\n"
+        "model_risk_release_status = HOLD\nmodel_risk_release_status = RELEASED\n",
+        # 形式違いの行を無視して別の行を読まない
+        "candidate_id = cand-001\nowning_gate = G3\nmodel_risk_classification = MODEL_CHANGE_REQUIRED\n"
+        "model_risk_release_status = HOLD\nmodel_risk_release_status=RELEASED\n",
+        "candidate_id = cand-001\nowning_gate = G3\nmodel_risk_classification = MODEL_CHANGE_REQUIRED\n"
+        "model_risk_release_status = HOLD pending\n",
+        # 空 file
+        "",
+    ],
+)
+def test_model_risk_parser_rejects_malformed_records(tmp_path, text):
+    (tmp_path / "cand-001.md").write_text(text, encoding="utf-8")
+
+    with pytest.raises(ModelRiskRecordError, match="must appear exactly once"):
+        _load_model_risk_records(tmp_path)
+
+
+def test_model_risk_parser_rejects_duplicate_candidate_records(tmp_path):
+    _write_model_risk_record(tmp_path, "a.md")
+    _write_model_risk_record(tmp_path, "b.md", model_risk_release_status="RELEASED")
+
+    with pytest.raises(ModelRiskRecordError, match="duplicate Model Risk record for cand-001"):
+        _load_model_risk_records(tmp_path)
+
+
+def test_model_risk_parser_rejects_empty_or_missing_directory(tmp_path):
+    with pytest.raises(ModelRiskRecordError, match="no Model Risk Resolution Record"):
+        _load_model_risk_records(tmp_path)
+
+    (tmp_path / "notes.txt").write_text("candidate_id = cand-001\n", encoding="utf-8")
+    with pytest.raises(ModelRiskRecordError, match="no Model Risk Resolution Record"):
+        _load_model_risk_records(tmp_path)
+
+    with pytest.raises(ModelRiskRecordError, match="directory not found"):
+        _load_model_risk_records(tmp_path / "missing")
+
+
+def test_model_risk_parser_rejects_unreadable_record(tmp_path):
+    (tmp_path / "cand-001.md").write_bytes(b"candidate_id = \xff\xfe\n")
+
+    with pytest.raises(ModelRiskRecordError, match="unreadable record"):
+        _load_model_risk_records(tmp_path)
+
+
+def test_model_risk_parser_is_not_bound_to_a_specific_candidate(tmp_path):
+    _write_model_risk_record(tmp_path, "x.md", candidate_id="wave9-999")
+    _write_model_risk_record(
+        tmp_path, "y.md", candidate_id="wave9-998", model_risk_release_status="RELEASED"
+    )
+
+    records = _load_model_risk_records(tmp_path)
+
+    assert set(records) == {"wave9-999", "wave9-998"}
+    assert records["wave9-999"]["model_risk_release_status"] == "HOLD"
+    assert records["wave9-998"]["model_risk_release_status"] == "RELEASED"
 
 
 def _load_master() -> dict:

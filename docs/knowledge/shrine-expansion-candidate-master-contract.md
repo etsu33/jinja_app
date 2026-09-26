@@ -58,6 +58,35 @@ HOLD / REVIEW + build_batch = W0-DBxx  = Batch割り当て後にHOLD / REVIEWと
 - HOLD解除は自動ではない。問題を所有するGateを先に再判定する。
 - 本変更でCandidate Masterに新しいfieldは追加しない。Gate結果の詳細は引き続きaudit側が正本である。
 
+## Current Model Risk Resolution Record（2026-09-26）
+
+G3 Model Riskで止まったCandidateの**現在の** Model Risk release stateは、
+`docs/audit/shrine-model-risk/` 配下のCurrent Model Risk Resolution Recordが持つ。
+Candidate MasterはModel Risk provenanceを所有しない。lifecycle昇格の可否を判定するために
+recordを**読むだけ**である（guard: `backend/temples/tests/test_shrine_expansion_candidate_master.py`）。
+
+record形式:
+
+~~~text
+1 file (*.md) = 1 Candidate。directory内の全 *.md がrecordである。
+各fieldは行頭から次の形式で、1 recordにちょうど1行だけ置く。
+
+candidate_id = <Candidate Masterのcandidate_id>
+owning_gate = G3
+model_risk_classification = <docs/audit/model-risk-release-contract.md §5 の分類>
+model_risk_release_status = HOLD | RELEASED
+~~~
+
+- `model_risk_classification` の許可値: `CURATION_RELEASE_CANDIDATE` / `RESEARCH_REQUIRED_BEFORE_RELEASE` /
+  `MODEL_REVIEW_REMAINS` / `MODEL_CHANGE_REQUIRED` / `PRODUCT_DECISION_REQUIRED`。
+- 同じ `candidate_id` のrecordは1件だけ。未知の値・field欠落・field重複・空directoryはtest failure（fail closed）。
+- `model_risk_release_status = HOLD` のrecordに対応するCandidate Master行は `candidate_status = HOLD` でなければならない。
+  classificationが `MODEL_CHANGE_REQUIRED` の場合は `status_reason_code = MODEL_CHANGE_REQUIRED` も要求する。
+  `BUILD_READY` / `IMPORTED` / `CORE_READY` への昇格はtest failureとなる。
+- `RELEASED` はG3の明示的な再判定とそのaudit evidenceを伴う別タスクだけが記録できる。
+  Model実装・migration・usable History・Recommendation eligibility・Production上の存在からreleaseを推論しない。
+- 過去のaudit（例: W0-DB03 Unified Gate Preflight）は不変の履歴であり、current stateとしてparseしない。
+
 ## 正本ファイル
 
 `backend/temples/data/shrine_expansion_candidate_master.json`
