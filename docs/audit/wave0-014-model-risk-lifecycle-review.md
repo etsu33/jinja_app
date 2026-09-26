@@ -2,19 +2,55 @@
 
 ## Status
 
-- Status: `MOTHER_SHIP_DECISION_REQUIRED`
+- Status: `RESOLVED`
 - Recorded at: `2026-09-26`
-- Base: `develop@2f92ab29422381f4e99f703b959803492e29c382`（PR #2996 merge 後）
+- Resolved at: `2026-09-26`
+- Base: `develop@2f92ab29422381f4e99f703b959803492e29c382`（PR #2996 merge 後。本文の比較・stateはこの時点の履歴）
 - Subject: `wave0-014 宮城縣護國神社`
 - Type: Documentation / Contract analysis only
-- Candidate Master change: `NONE`
-- Runtime / model / migration change: `NONE`
-- Production access / write: `NONE`
-- Design selection: `NOT MADE`（A / B / C の選択は Mother Ship が行う）
+- Candidate Master change at review time: `NONE`
+- Runtime / model / migration change at review time: `NONE`
+- Production access / write at review time: `NONE`
+- Design selection: `B = TRANSITION_TO_HOLD_WITH_CONTRACT_EXTENSION`
+- Resolution implementation: PR #2999
+- Promotion guard: PR #3000
 
 本書は、G3 `MODEL_CHANGE_REQUIRED` で隔離された wave0-014 が Candidate Master 上で
-`BUILD_READY` と表現されている状態の妥当性を監査し、3つの設計ファミリーを比較材料として整理する。
-順位付けも選択も行わない。
+`BUILD_READY` と表現されていた状態の妥当性を監査し、3つの設計ファミリーを比較材料として整理した
+**判断前の履歴記録**である。比較本文は当時の判断材料として保持し、後から現在値へ書き換えない。
+
+## Closure
+
+Mother Ship は Design Family B
+`TRANSITION_TO_HOLD_WITH_CONTRACT_EXTENSION` を最終決定した。
+
+PR #2999 により Candidate Master Contract は schema 1.3 へ更新され、
+batch割り当て後の `HOLD / REVIEW` が `build_batch` provenance を保持できるContractへ変更された。
+同時に wave0-014 は次の lifecycle state へ遷移した。
+
+```text
+candidate_id       = wave0-014
+candidate_status   = HOLD
+status_reason_code = MODEL_CHANGE_REQUIRED
+build_batch        = W0-DB03
+```
+
+PR #3000 により Current Model Risk Resolution Record と昇格guardが追加された。
+現在の Model Risk release state の正本は
+`docs/audit/shrine-model-risk/wave0-014-model-risk-resolution.md` である。
+
+```text
+owning_gate                 = G3
+model_risk_classification   = MODEL_CHANGE_REQUIRED
+model_risk_release_status   = HOLD
+```
+
+このclosureは lifecycle表現のDecisionを解決済みにするだけであり、
+wave0-014 の Model Risk自体を解除しない。
+`RELEASED` への変更には dedicated Model Risk work と G3 の明示的な再判定が必要である。
+
+以降の本文にある「現在」「current canonical state」は、
+本書のRecorded Base（develop@2f92ab2）時点のsnapshotとして読む。
 
 ---
 
