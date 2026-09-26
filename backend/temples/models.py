@@ -536,6 +536,93 @@ class ShrineDeity(models.Model):
         _validate_verified_at_consistency(self.verification_status, self.verified_at)
 
 
+class ShrineDeityCollective(models.Model):
+    """Source-backed な集合祭神Fact。docs/audit/collective-deity-model-change-design.md（A-1）§4 の実装。
+
+    ShrineDeity（個別に帰属可能な名のある祭神 1柱 = 1 row）の意味は変えない。
+    本 model は Model Foundation のみであり、Runtime（Serializer / selector /
+    Recommendation eligibility / Deep Dive / Evidence Transport）からは読まれない。
+    member_count / member_list_status は Source が述べる値であり、Membership 行数から
+    導出しない。
+    """
+
+    MEMBER_COUNT_RELATION_CHOICES = [
+        ("exact", "exact"),
+        ("minimum", "minimum"),
+        ("approximate", "approximate"),
+        ("unspecified", "unspecified"),
+    ]
+    MEMBER_COUNT_RELATIONS_WITH_COUNT = ("exact", "minimum", "approximate")
+
+    MEMBER_LIST_STATUS_CHOICES = [
+        ("complete", "complete"),
+        ("partial", "partial"),
+        ("not_enumerated", "not_enumerated"),
+        ("not_determined", "not_determined"),
+    ]
+
+    shrine = models.ForeignKey(Shrine, on_delete=models.CASCADE, related_name="deity_collectives")
+    source_attested_label = models.CharField(max_length=255, validators=[_validate_not_blank])
+    # role 語彙は ShrineDeity と同一（別語彙を作らない）。
+    role = models.CharField(max_length=16, choices=ShrineDeity.ROLE_CHOICES, default="unknown")
+    sort_order = models.IntegerField(default=0, validators=[MinValueValidator(0)])
+    member_count = models.PositiveIntegerField(null=True, blank=True)
+    member_count_relation = models.CharField(
+        max_length=16, choices=MEMBER_COUNT_RELATION_CHOICES, default="unspecified"
+    )
+    member_list_status = models.CharField(
+        max_length=16, choices=MEMBER_LIST_STATUS_CHOICES, default="not_determined"
+    )
+    sources = models.ManyToManyField(
+        ShrineKnowledgeSource, related_name="deity_collectives", blank=True
+    )
+    verification_status = models.CharField(
+        max_length=32,
+        choices=KNOWLEDGE_VERIFICATION_STATUS_CHOICES,
+        default="draft",
+    )
+    confidence = models.CharField(
+        max_length=8, choices=KNOWLEDGE_CONFIDENCE_CHOICES, blank=True, default=""
+    )
+    verified_at = models.DateTimeField(null=True, blank=True)
+    note = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["sort_order", "id"]
+        indexes = [
+            models.Index(fields=["shrine", "sort_order"], name="idx_shrine_deity_coll_sort"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.shrine_id}:{self.source_attested_label}"
+
+    def clean(self) -> None:
+        super().clean()
+        errors: dict[str, list] = {}
+        try:
+            _validate_verified_at_consistency(self.verification_status, self.verified_at)
+        except ValidationError as exc:
+            errors.update(exc.message_dict)
+
+        if (
+            self.member_count_relation in self.MEMBER_COUNT_RELATIONS_WITH_COUNT
+            and self.member_count is None
+        ):
+            errors.setdefault("member_count", []).append(
+                f"member_count_relation='{self.member_count_relation}' の場合、"
+                "member_count の設定が必要です。"
+            )
+        elif self.member_count_relation == "unspecified" and self.member_count is not None:
+            errors.setdefault("member_count", []).append(
+                "member_count_relation='unspecified' の場合、member_count は null でなければなりません。"
+            )
+
+        if errors:
+            raise ValidationError(errors)
+
+
 class ShrineHistory(models.Model):
     """神社の由緒・歴史Knowledge。docs/knowledge/shrine-knowledge-contract.md「shrine_history契約」の実装。"""
 

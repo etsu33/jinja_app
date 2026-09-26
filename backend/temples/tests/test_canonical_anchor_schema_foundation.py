@@ -756,7 +756,11 @@ def test_29_to_32_applying_migration_leaves_existing_rows_untouched():
     assert any(row[6] == place_ref.place_id for row in created)
 
     loader = _nogis_loader()
-    assert loader.graph.leaf_nodes("temples") == [("temples", NOGIS_TARGET)]
+    # 後続 migration が追加されても leaf 固定で壊れないよう、0014 の親が 0013 であること
+    # （= before_state の前提）だけを固定する。
+    assert loader.graph.node_map[("temples", NOGIS_TARGET)].parents == {
+        loader.graph.node_map[("temples", NOGIS_PARENT)]
+    }
     before_state = loader.project_state(("temples", NOGIS_PARENT))
     with connection.schema_editor() as schema_editor:
         for model in MODELS_CHILD_FIRST:
@@ -877,6 +881,11 @@ _ALLOWED_REFERENCES = {
     "temples/migrations_nogis/0014_canonical_anchor_schema_foundation.py",
 }
 
+_CANONICAL_ANCHOR_MIGRATION_NAMES = (
+    "0115_canonical_anchor_schema_foundation",
+    NOGIS_TARGET,
+)
+
 
 def test_36_no_runtime_consumer_reads_canonical_anchor():
     """Serializer / API / Compass / Map / distance / route 等は Canonical を読まない。"""
@@ -888,6 +897,10 @@ def test_36_no_runtime_consumer_reads_canonical_anchor():
             continue
         if rel in _ALLOWED_REFERENCES:
             continue
-        if pattern.search(path.read_text(encoding="utf-8", errors="ignore")):
+        text = path.read_text(encoding="utf-8", errors="ignore")
+        # 後続 migration の dependencies が持つ migration 名の参照は Runtime consumer ではない。
+        for name in _CANONICAL_ANCHOR_MIGRATION_NAMES:
+            text = text.replace(f'"{name}"', "")
+        if pattern.search(text):
             offenders.append(rel)
     assert offenders == []
