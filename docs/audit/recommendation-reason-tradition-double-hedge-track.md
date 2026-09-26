@@ -302,3 +302,35 @@ This tracking PR must not include:
 - W0-DB03 lifecycle changes
 
 Implementation, if approved later, belongs in a dedicated PR.
+
+---
+
+## 13. Follow-up — Implementation
+
+> 2026-09-26 追記。§1–§12 は tracking 時点の記録として書き換えない。
+
+Branch `fix/recommendation-reason-tradition-double-hedge` で §7 / §8 の境界内の実装を行った。
+
+```text
+owning module = backend/temples/services/recommendation_reason_v4.py
+changed       = _build_fact_text() の history-only + weakened 分岐のみ
+added helper  = _history_already_hedged()（既知のhedge語尾だけを見る決定論的判定）
+```
+
+- 本文末尾（句読点を除く）が既知のhedge語尾で終わる場合は本文をそのまま使い、テンプレートのhedgeを重ねない
+- それ以外は従来どおり「〜と伝えられています。」を付与する
+- weakened かどうかの判定は変更していない（`history_type` + `_apply_tradition_hedge_floor()` が引き続き正本）
+- Knowledge Seed / ShrineHistory / confidence / Evidence Gate / Eligibility / Ranking は変更していない
+
+対象語尾: `と伝えられている` / `と伝えられています` / `が伝えられている` / `とされている` /
+`とされています` / `とされる` / `と伝わる` / `という伝承がある`
+（`とされる` / `が伝えられている` は repository の実 tradition Fact に存在するため追加）
+
+回帰テスト: `backend/temples/tests/services/test_tradition_output_contract.py`（Case A–J）
+
+```text
+TRACK_ID       = REASON_V4_TRADITION_DOUBLE_HEDGE
+IMPLEMENTATION = IMPLEMENTED（本 follow-up の PR）
+SAFETY_CONTRACT = PASS（変更なし）
+COPY_QUALITY   = FIXED（上記語尾の範囲）
+```
