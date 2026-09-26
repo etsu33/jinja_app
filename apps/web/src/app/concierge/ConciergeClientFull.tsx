@@ -20,6 +20,10 @@ import { buildDummySections } from "@/features/concierge/sections/dummy";
 
 import ConciergeSectionsRenderer from "@/features/concierge/components/ConciergeSectionsRenderer";
 import ConciergeEntryCard from "@/features/concierge/components/ConciergeEntryCard";
+import {
+  ConciergeAutoSubmitPendingPanel,
+  readAutoSubmitTheme,
+} from "@/features/concierge/components/ConciergeAutoSubmitPending";
 import { buildPayloadFromUnified } from "@/features/concierge/buildPayloadFromUnified";
 import { buildConciergeRequestPayload } from "@/features/concierge/buildConciergeRequestPayload";
 
@@ -505,6 +509,15 @@ export default function ConciergeClientFull() {
   const [entryValidationError, setEntryValidationError] = useState<string | null>(null);
   const autoSubmitThemeRef = useRef<string | null>(null);
   const autoSubmitConsumedThemeRef = useRef<string | null>(null);
+
+  // Home → /concierge?theme=... の自動送信ルート用の待機状態。
+  // URL の theme から render 時に導出するため、hydrate 前・自動送信 effect 前から立つ。
+  // settled: その theme の自動送信が終わった（成功・失敗・送信不可のいずれか）。
+  // threadNavigationPending: 入口からの送信が成功し ?tid= への replace が確定待ち。
+  //   推薦0件でも入口フォームを一瞬出さず、thread 表示へそのまま移るために使う。
+  const autoSubmitThemeParam = useMemo(() => readAutoSubmitTheme(sp), [sp]);
+  const [autoSubmitSettledTheme, setAutoSubmitSettledTheme] = useState<string | null>(null);
+  const [entryThreadNavigationPending, setEntryThreadNavigationPending] = useState(false);
 
   useEffect(() => {
     const theme = (sp.get("theme") ?? "").trim();
@@ -1284,6 +1297,7 @@ export default function ConciergeClientFull() {
           });
         } else {
           snap("nav:replace", { to: `/concierge?tid=${nextTid}`, reason: "onUnified" });
+          setEntryThreadNavigationPending(true);
           navReplace(`/concierge?tid=${nextTid}`, { reason: "onUnified" });
         }
       }
@@ -1404,7 +1418,11 @@ export default function ConciergeClientFull() {
     if (!theme) return;
     if (!hydrated) return;
     if (!isEntryRoute) return;
-    if (!canSend) return;
+    if (!canSend) {
+      // 送信できない状態（paywall 等）では自動送信しない。待機表示を解き、従来の入口表示へ戻す。
+      setAutoSubmitSettledTheme(theme);
+      return;
+    }
     if (sending) return;
     if (entrySubmitting) return;
 
@@ -1412,7 +1430,9 @@ export default function ConciergeClientFull() {
     autoSubmitConsumedThemeRef.current = theme;
     setNeedText(theme);
     setEntryValidationError(null);
-    void safeSend(theme, { kind: "home_theme_submit", textLen: theme.length });
+    void safeSend(theme, { kind: "home_theme_submit", textLen: theme.length }).finally(() => {
+      setAutoSubmitSettledTheme(theme);
+    });
   }, [canSend, entrySubmitting, hydrated, isEntryRoute, safeSend, sending]);
 
   /* ----------------------------------------
@@ -1425,8 +1445,16 @@ export default function ConciergeClientFull() {
     displayRecommendations.length > 0 &&
     isRecommendationsPayload(payload);
 
-  const shouldShowEntry = hydrated && isEntryRoute && !hasRestoredCandidates;
-  const shouldShowThreadRenderer = hydrated && !shouldShowEntry;
+  // 自動送信ルートでは、hydrate 前 → 自動送信前 → 送信中 → ?tid= 確定までを1つの待機表示にする。
+  // 候補が出たら結果表示を優先する。plain /concierge と ?tid= では常に false。
+  const isAutoSubmitPending =
+    isEntryRoute &&
+    autoSubmitThemeParam !== "" &&
+    !hasRestoredCandidates &&
+    (autoSubmitSettledTheme !== autoSubmitThemeParam || entryThreadNavigationPending);
+
+  const shouldShowEntry = hydrated && isEntryRoute && !hasRestoredCandidates && !isAutoSubmitPending;
+  const shouldShowThreadRenderer = hydrated && !shouldShowEntry && !isAutoSubmitPending;
   const hideChatPanel = !hydrated || (isEntryRoute && !hasRestoredCandidates);
 
   const shouldShowEntryError = !isBusy && !isFiltering && !entryValidationError && !!error && !hasCandidates;
@@ -1450,6 +1478,10 @@ export default function ConciergeClientFull() {
       setEntrySubmitting(false);
     }
   }, [isEntryRoute, entrySubmitting]);
+
+  useEffect(() => {
+    if (!isEntryRoute) setEntryThreadNavigationPending(false);
+  }, [isEntryRoute]);
 
   useEffect(() => {
     if (!entrySubmitting) return;
@@ -1762,6 +1794,9 @@ export default function ConciergeClientFull() {
       embedMode={false}
       hasCandidates={hasCandidates}
     >
+      {/* ===== 自動送信の待機（?theme=、hydrate 前から結果/確定まで） ===== */}
+      {isAutoSubmitPending ? <ConciergeAutoSubmitPendingPanel theme={autoSubmitThemeParam} /> : null}
+
       {/* ===== 入口（tidなし） ===== */}
       {shouldShowEntry ? (
         <div className="px-4 pt-6">
