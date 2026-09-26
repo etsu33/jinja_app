@@ -28,8 +28,8 @@ POSITION_RESOLUTION_DIR = (
 POSITION_HOLD = "HOLD_POSITION_REVIEW"
 
 EXPECTED_STATUS_COUNTS = {
-    "BUILD_READY": 25,
-    "IMPORTED": 5,
+    "BUILD_READY": 21,
+    "IMPORTED": 9,
     "CORE_READY": 5,
     "HOLD": 8,
     "REVIEW": 1,
@@ -123,9 +123,11 @@ HYDRATED_BUILD_BATCHES = ("W0-DB01", "W0-DB02")
 # docs/audit/shrine-expansion-wave0-db03-source-packet-freeze.md）。
 # wave0-014 宮城縣護國神社は G3 MODEL_CHANGE_REQUIRED で隔離され未 hydrate。
 #
-# Production 未 import のため knowledge_status は既定の
-# ACQUISITION_PATH_CONFIRMED のまま（FACT_READY は Production 実測が要件）。
+# G7 Production Import 完了後（docs/audit/shrine-expansion-wave0-db03-production-import.md）、
+# この4社は IMPORTED / FACT_READY。CORE_READY は G8 の別 Gate であり未判定。
+# wave0-014 は G7 NOT EXECUTED で、BUILD_READY / 未 hydrate のまま。
 W0_DB03_G4_HYDRATED_IDS = frozenset({"wave0-012", "wave0-013", "wave0-015", "wave0-016"})
+W0_DB03_MODEL_HOLD_ID = "wave0-014"
 
 REQUIRED_W0_DB01_HYDRATION_FIELDS = {
     "official_name",
@@ -355,10 +357,11 @@ def test_build_batch_survives_the_import_lifecycle_transition():
     candidates = _load_master()["candidates"]
 
     imported_or_core_ready = [row for row in candidates if row["candidate_status"] in {"IMPORTED", "CORE_READY"}]
-    assert len(imported_or_core_ready) == 10
+    assert len(imported_or_core_ready) == 14
     assert Counter(row["build_batch"] for row in imported_or_core_ready) == {
         "W0-DB01": 5,
         "W0-DB02": 5,
+        "W0-DB03": 4,
     }
     assert all(_effective(_load_master(), row)["knowledge_status"] == "FACT_READY" for row in imported_or_core_ready)
 
@@ -371,10 +374,22 @@ def test_build_batch_survives_the_import_lifecycle_transition():
 
 
 def test_w0_db03_to_db07_stay_build_ready():
-    """Production Import 済みは W0-DB01 / W0-DB02。残り 25 社は BUILD_READY のまま。"""
+    """Production Import 済みは W0-DB01 / W0-DB02 と W0-DB03 の G7 execution subset 4社。
+
+    W0-DB03 は original membership 5社のまま、4社 IMPORTED / wave0-014 BUILD_READY の
+    混在状態である。W0-DB04〜W0-DB07 の 20 社は BUILD_READY のまま。
+    """
     candidates = _load_master()["candidates"]
 
-    for batch in CANONICAL_BUILD_BATCHES[2:]:
+    db03 = {row["candidate_id"]: row for row in candidates if row["build_batch"] == "W0-DB03"}
+    assert len(db03) == 5
+    assert set(db03) == W0_DB03_G4_HYDRATED_IDS | {W0_DB03_MODEL_HOLD_ID}
+    for candidate_id in W0_DB03_G4_HYDRATED_IDS:
+        assert db03[candidate_id]["candidate_status"] == "IMPORTED", candidate_id
+        assert db03[candidate_id]["knowledge_status"] == "FACT_READY", candidate_id
+    assert db03[W0_DB03_MODEL_HOLD_ID]["candidate_status"] == "BUILD_READY"
+
+    for batch in CANONICAL_BUILD_BATCHES[3:]:
         members = [row for row in candidates if row["build_batch"] == batch]
         assert len(members) == 5, batch
         assert all(row["candidate_status"] == "BUILD_READY" for row in members), batch
@@ -542,7 +557,7 @@ def test_wave0_duplicate_and_availability_states_match_completed_audits():
         elif row["candidate_id"] in W0_DB03_G4_HYDRATED_IDS:
             assert effective["identity_status"] == "CONFIRMED"
             assert effective["official_source_status"] == "CONFIRMED"
-            assert effective["knowledge_status"] == "ACQUISITION_PATH_CONFIRMED"
+            assert effective["knowledge_status"] == "FACT_READY"
         elif row["candidate_status"] == "REVIEW":
             assert effective["identity_status"] == "UNREVIEWED"
             assert effective["official_source_status"] == "UNREVIEWED"
