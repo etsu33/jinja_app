@@ -139,7 +139,7 @@ HYDRATED_BUILD_BATCHES = ("W0-DB01", "W0-DB02")
 # G7 Production Import 完了後（docs/audit/shrine-expansion-wave0-db03-production-import.md）、
 # この4社は IMPORTED / FACT_READY となり、G8 CORE READY Closure
 # （docs/audit/shrine-expansion-wave0-db03-core-ready-gate.md）で CORE_READY / FACT_READY へ遷移した。
-# wave0-014 は G4〜G8 NOT EXECUTED で、BUILD_READY / 未 hydrate のまま。
+# wave0-014 は G4〜G8 NOT EXECUTED で、HOLD / MODEL_CHANGE_REQUIRED / 未 hydrate のまま。
 W0_DB03_G4_HYDRATED_IDS = frozenset({"wave0-012", "wave0-013", "wave0-015", "wave0-016"})
 W0_DB03_MODEL_HOLD_ID = "wave0-014"
 
