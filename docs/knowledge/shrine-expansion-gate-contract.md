@@ -465,6 +465,25 @@ Evidence result、Production Closure recordで追跡する。
 将来machine-readableなgate statusが必要になった場合は、
 Candidate Master schema変更として別PRで設計する。
 
+### Post-batch HOLD（Candidate Master schema 1.3）
+
+Batch割り当て後にGateが未解決となったCandidateは、`build_batch` を保持したまま
+`candidate_status = HOLD` へ遷移できる
+（`docs/knowledge/shrine-expansion-candidate-master-contract.md`「Post-batch HOLD Boundary」）。
+
+~~~text
+candidate_status   = HOLD                     次のData Build lifecycle stepへ現在進めない
+status_reason_code = 現在のstatusの理由       例: MODEL_CHANGE_REQUIRED
+build_batch        = 割り当て済みBatch        不変のprovenance。HOLDで消さない
+~~~
+
+`status_reason_code` はlifecycle stateの理由を1語で示すだけであり、Gate判定の詳細・根拠・
+解除条件の正本は引き続きbatch audit / Model Risk Contract等である。
+Candidate Masterへ新しいfieldは追加しない。
+
+例: `wave0-014 宮城縣護國神社` は G3 Model Fit `MODEL_CHANGE_REQUIRED` により
+`HOLD / MODEL_CHANGE_REQUIRED / build_batch = W0-DB03`。W0-DB03のoriginal membershipは5社のまま。
+
 ---
 
 ## 13. HOLD / REVIEW Routing
@@ -476,7 +495,7 @@ Candidate Master schema変更として別PRで設計する。
 | G3 Source | Source不足 | RESEARCH_REQUIRED / Source HOLD |
 | G3 Model Fit | curatable | CURATION_RELEASE_CANDIDATE |
 | G3 Model Fit | unresolved | MODEL_REVIEW_REMAINS |
-| G3 Model Fit | schema不足 | MODEL_CHANGE_REQUIRED |
+| G3 Model Fit | schema不足 | MODEL_CHANGE_REQUIRED（Candidate Master: `HOLD` / `MODEL_CHANGE_REQUIRED`） |
 | G3 Product | scope判断必要 | PRODUCT_DECISION_REQUIRED |
 | G4 Evidence | usable Factなし | Evidence / Knowledge HOLD |
 | G5 Eligibility | ineligible | Recommendationへ参加させない |
@@ -484,6 +503,9 @@ Candidate Master schema変更として別PRで設計する。
 | G7 Import | unexpected Production delta | STOP、推測修正しない |
 
 Lifecycle statusとGate reasonは別責務である。
+
+Candidate Masterの `status_reason_code` は現在のlifecycle statusの理由を表す。
+Gate routing値と同じ語（例: `MODEL_CHANGE_REQUIRED`）を使う場合も、Gate判定の正本はauditである。
 
 ---
 
@@ -513,6 +535,9 @@ PRODUCT_DECISION_REQUIRED
 ~~~
 
 HOLD解除したから全Gate PASSという自動昇格は禁止する。
+
+HOLD解除は自動ではない。問題を所有するGateの再判定が先である。
+Batch割り当て後のHOLD（`build_batch` 非null）を解除しても `build_batch` は変えない。
 
 ---
 

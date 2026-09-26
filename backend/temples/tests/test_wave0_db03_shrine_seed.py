@@ -186,15 +186,19 @@ def test_model_hold_shrine_is_absent_from_base_and_knowledge_additions():
     assert "gokokujinja" not in raw_seed
 
 
-def test_model_hold_candidate_row_is_unchanged():
-    """wave0-014 は G3 で隔離。hydration / status 変更を一切受けない。"""
+def test_model_hold_candidate_row_is_exactly_pinned():
+    """wave0-014 は G3 MODEL_CHANGE_REQUIRED で隔離（post-batch HOLD, schema 1.3）。
+
+    status / reason だけが HOLD / MODEL_CHANGE_REQUIRED へ遷移し、build_batch は保持する。
+    factual field の hydration は受けない。
+    """
     row = _load_candidates()[MODEL_HOLD_ID]
     assert row == {
         "candidate_id": "wave0-014",
         "candidate_name": "宮城縣護國神社",
         "prefecture": "宮城県",
-        "candidate_status": "BUILD_READY",
-        "status_reason_code": "WAVE0_CORE_READY_CANDIDATE",
+        "candidate_status": "HOLD",
+        "status_reason_code": "MODEL_CHANGE_REQUIRED",
         "build_batch": "W0-DB03",
         "duplicate_status": "NEW",
         "discovery_sources": [
@@ -219,10 +223,14 @@ def test_original_w0_db03_membership_and_provenance_remain_intact():
     for cid, (name, rank) in ORIGINAL_MEMBERSHIP.items():
         row = members[cid]
         assert row["candidate_name"] == name
-        # G8 後: execution subset は CORE_READY、wave0-014 は BUILD_READY のまま。
-        expected_status = "CORE_READY" if cid in EXECUTION_IDS else "BUILD_READY"
-        assert row["candidate_status"] == expected_status, cid
-        assert row["status_reason_code"] == "WAVE0_CORE_READY_CANDIDATE"
+        # G8 後: execution subset は CORE_READY。wave0-014 は post-batch HOLD
+        # （MODEL_CHANGE_REQUIRED）で、build_batch = W0-DB03 を保持する。
+        if cid in EXECUTION_IDS:
+            assert row["candidate_status"] == "CORE_READY", cid
+            assert row["status_reason_code"] == "WAVE0_CORE_READY_CANDIDATE", cid
+        else:
+            assert row["candidate_status"] == "HOLD", cid
+            assert row["status_reason_code"] == "MODEL_CHANGE_REQUIRED", cid
         assert row["duplicate_status"] == "NEW"
         assert [source["discovery_rank"] for source in row["discovery_sources"]] == [rank]
 
