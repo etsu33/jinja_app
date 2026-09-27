@@ -110,10 +110,9 @@ CompassはCompat Modeが契約上なることを禁じられている状態（�
 
 ## 2. Compass Product Promise
 
-> **Status: Active（Section 2.2で改訂、[#2508](compass-product-direction-decision.md)
-> Final Product Promise: B — Actionable Monthly Directionを反映。
-> Section 2.1由来の改訂履歴は[#2497](../audit/compass-direction-availability-product-decision.md)・
-> [#2496](../audit/compass-direction-filter-unavailable-root-cause.md)を継続して参照）**
+> **Status: Active（2026-09-27 Direction-only改訂）。**
+>
+> [#2508](compass-product-direction-decision.md) の Final Direction Logic: C — Monthly Fallback は継承する。一方、同時点のProduct Promiseに含まれていた `purpose` 起点の推薦・fallbackは、Section 0.1の `COMPASS_SEMANTIC_SCOPE = DIRECTION_ONLY` により supersede される。Section 2.1由来の方向状態・Monthly Fallbackの履歴は継続して参照する。
 
 **一文定義（#2508改訂）**:
 
@@ -189,8 +188,7 @@ fallbackを経てもなお得られない場合）へ narrowing される。**�
   である。
 - この意味づけの変更だけで、Concierge（Compat Mode含む）を一切変更せずに
   分離を維持できる（Section 2.1-4参照）。
-- Recommendation Rankingは一切影響を受けない（Section 6のAuthority境界、
-  変更なし）。
+- ConciergeのRecommendation Rankingは一切変更しない。一方、Compassではpurpose/need/goriyaku scoringを使用しないため、現行Compassのsemantic ranking接続はImplementation Gapとして別PRで切り離す（Section 0.1・10）。
 
 **占術的な正しさを主張するものではない**——これは製品/Runtime上の意味づけ
 の決定であり、九星気学の当否を判断するものではない。
@@ -332,20 +330,17 @@ instrumentation・イベント・プロパティは本PRでは一切変更しな
 
 ### 2.1-7 Ranking Boundary
 
-```
-Recommendation Ranking変更: NONE
+```text
+CONCIERGE_RECOMMENDATION_RANKING = UNCHANGED
+COMPASS_PURPOSE_SCORING          = PROHIBITED
+DIRECTION_SET_RANKING_POLICY     = OPEN
 ```
 
-candidate scoring・recommendation weights・ranking order・recommendation
-reason logicのいずれも、本Decision Recordの対象外であり、一切変更しない。
-Direction availability policyはRecommendation Rankingより前段・別関心事
-である（[#2496](../audit/compass-direction-filter-unavailable-root-cause.md)
-§11、[#2497](../audit/compass-direction-availability-product-decision.md)
-§22）。
+Conciergeのcandidate scoring・recommendation weights・reason logicは変更しない。
 
-実装手順・PR分割計画は本書（Product Contract）では管理しない
-（責務境界、および[#2497](../audit/compass-direction-availability-product-decision.md)
-「Future PR Plan」を参照——実装計画はdocs/audit/配下の監査記録が正本）。
+Compassでは、既存Recommendation Rankingを `purpose` / `need_tag` / `goriyaku` semantic scoringのまま流用してはならない。方位・距離・Eligibilityで成立した候補集合の内部表示順は別Decisionとし、本書では新しい重み・順位規則を定義しない。
+
+実装手順・PR分割計画は本書（Product Contract）では管理しない。
 
 ---
 
@@ -358,14 +353,15 @@ Direction availability policyはRecommendation Rankingより前段・別関心�
 [#2508](compass-product-direction-decision.md)（Mother Ship Product
 Decision Record）が確定した:
 
-```
-Final Product Promise: B — Actionable Monthly Direction
-Final Direction Logic:  C — Monthly Fallback
-Fallback adopted:       YES
-Fallback type:          MONTHLY（annualではない）
+```text
+Historical Product Promise: B — Actionable Monthly Direction
+Final Direction Logic:      C — Monthly Fallback
+Fallback adopted:           YES
+Fallback type:              MONTHLY（annualではない）
+Semantic scope override:    DIRECTION_ONLY（2026-09-27）
 ```
 
-本Sectionは、この決定が定めるCompass Product Promiseの内容を確定する。
+本Sectionは、#2508のうちDirection Logicを継承する。purpose起点の推薦・fallback部分はSection 0.1・2.1-5・10により supersede される。
 **実装は本書の対象外**——Section 2.1-3が記録する通り、Monthly Fallback
 自体は本書執筆時点でまだ実装されていない。
 
@@ -459,31 +455,17 @@ COMMON DIRECTIONとMONTHLY FALLBACK DIRECTIONは、ユーザー向け説明に�
 [#2508](compass-product-direction-decision.md)§25・§27 PR-3で確定する。
 本書は原則のみを定める）。
 
-### 2.2-8 Concierge / Ranking境界（不変）
+### 2.2-8 Concierge / Ranking境界
 
-Section 2.1-4・2.1-7が確立した境界は、Monthly Fallbackにも同様に適用
-される:
+Monthly Fallbackの導入はConciergeを変更しない。`kyusei.py`のシグネチャ・返り値契約も不変とし、`monthly_lucky_directions()`はCompass側で再利用する。
 
-```
-Concierge挙動:        変更なし（`kyusei.py`のシグネチャ・返り値契約は不変。
-                       monthly_lucky_directions()もCompass専用の再利用に
-                       留め、Concierge側の呼び出し箇所には影響しない）
-Recommendation Ranking: 変更なし
-```
+Compassのranking境界はSection 2.1-7に従う。purpose/need/goriyaku scoringは使用禁止であり、direction-eligible set内の表示順は `DIRECTION_SET_RANKING_POLICY = OPEN` のままとする。
 
-Monthly Fallbackのポリシー（COMMON/FALLBACK/NO_COMMON_DIRECTIONの判定
-ロジック）は、実装される場合、Compass Layer B（`compass_runtime.py`）に
-閉じ込める。`kyusei.py`自体（`monthly_lucky_directions()`含む）は
-「製品文脈を持たない純粋な計算モジュール」（Section 1）のままとし、
-fallback判定ロジックを持たせない。
+Monthly Fallbackのポリシー（COMMON/FALLBACK/NO_COMMON_DIRECTIONの判定ロジック）はCompass Layer B（`compass_runtime.py`）に閉じ込める。`kyusei.py`自体は製品文脈を持たない純粋な計算モジュールのままとする。
 
-### 2.2-9 Shrine Recommendation境界（変更なし）
+### 2.2-9 Shrine Recommendation境界
 
-Section 2.1-5が記録するOPEN PRODUCT DECISION（方向が定まらない月の神社
-推薦の扱い）は、本Sectionの対象外であり、変更しない。Direction
-Availability（96.9%）はRecommendation Availabilityを意味しない
-（[#2508](compass-product-direction-decision.md)§12・§16の境界をそのまま
-継承する）。
+Section 2.1-5のDirection-only契約を適用する。NO_COMMON_DIRECTIONではpurpose/need/goriyakuによる神社候補の補充を行わない。Direction AvailabilityはRecommendation Availabilityを意味しないという既存の計測上の区別は維持する。
 
 ### 2.2-10 Option E（変更なし）
 
@@ -549,7 +531,7 @@ Weekly Presentationの永続化はPresentation結果の安定化を目的とし�
 
 **Direction Audit Gate状態（`docs/audit/compass-contract-reconciliation-direction-audit-completion.md`の判定を正式契約として確定）**:
 
-- **Gate A（Ranking組み込み）= RESOLVED**。`docs/analytics/recommendation-score-v2-current-design.md`（Active）が既に`direction_signal`をスコア本体に明記し、「element / birthdate / direction は主理由を上書きしない」というガードレールを既に含む。
+- **Gate A（旧Ranking組み込み）= SUPERSEDED FOR COMPASS**。既存Recommendation Scoreに`direction_signal`が存在する事実は維持するが、それをCompassの最終順位規則として自動採用しない。Direction-only Compassでは `DIRECTION_SET_RANKING_POLICY = OPEN` とし、purpose/need/goriyaku scoringを持ち込まない。Concierge側の既存Score契約は変更しない。
 - **Gate B（UI前面化）= Compassにおいてのみ条件付き解除、Concierge内では不変**。Gate Bの解除はCompassという別製品の存在を正当化するものであり、Concierge自体の表示ルールを一切変更しない。
 
 **重要な確認**: Direction Audit完了は、Concierge内での方位前面化を自動的に許可しない。これは本契約の不可逆の境界である。
