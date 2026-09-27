@@ -6,6 +6,8 @@
 >
 > **2026-09-27 Mother Ship Decision:** `COMPASS_SEMANTIC_SCOPE = DIRECTION_ONLY` を本書の上位契約として確定する。これにより、過去契約に残る `purpose` / `need_tag` / ご利益によるCompass候補選定・順位付け・fallbackの記述は、本改訂と矛盾する範囲で supersede される。Monthly Fallbackの方位計算契約自体は維持する。
 >
+> **2026-09-27 Candidate Universe Decision:** `docs/product/compass-direction-only-candidate-universe-decision.md` を下位Decision Recordとして採用し、Direction-only Compassの候補母集団を「現行の構造条件を満たすShrineのうちoriginから最大60km以内の全件」と確定する。候補membershipに `popular_score`・任意件数LIMIT・purpose / need / goriyakuを使用しない。
+>
 > 本書はDocsのみのPRとして作成された。コード・Model・Migration・Serializer・API Endpoint・DBデータの変更は一切含まない。記載内容はCompassの製品契約であり、実装済みであることを意味しない。Free/Premium境界の最終決定は本書の対象外とする（Section 12）。
 >
 > 現行Weekly CompassのPresentation責務（Weekly Theme / Featured Shrine / Owner / Snapshot / Reproducibility）は`docs/product/compass-weekly-presentation-contract.md`を下位正本とする。Weekly側は本書のMaster Principle・5 Authority・Signal-to-Explanation Ruleを継承し、それらを再定義しない。
@@ -65,11 +67,15 @@ Compassの価値を作るために、Conciergeの挙動・Ranking・API契約・
 ### 0.1 Canonical Semantic Scope
 
 ```text
-COMPASS_SEMANTIC_SCOPE          = DIRECTION_ONLY
-COMPASS_PURPOSE_ROUTING         = PROHIBITED
-COMPASS_GORIYAKU_ROUTING        = PROHIBITED
-NO_DIRECTION_PURPOSE_FALLBACK   = PROHIBITED
-DIRECTION_SET_RANKING_POLICY    = OPEN
+COMPASS_SEMANTIC_SCOPE              = DIRECTION_ONLY
+COMPASS_PURPOSE_ROUTING             = PROHIBITED
+COMPASS_GORIYAKU_ROUTING            = PROHIBITED
+NO_DIRECTION_PURPOSE_FALLBACK       = PROHIBITED
+COMPASS_CANDIDATE_UNIVERSE          = STRUCTURAL_BASE_WITHIN_60KM
+COMPASS_MAX_CANDIDATE_RADIUS_KM     = 60
+COMPASS_POPULARITY_PREFILTER        = PROHIBITED
+COMPASS_PRE_GEOGRAPHIC_COUNT_LIMIT  = PROHIBITED
+DIRECTION_SET_RANKING_POLICY        = OPEN
 ```
 
 Compassが神社候補を作る因果経路は、**時間・生年月日から得た方位runtime signal、出発地点からのbearing、地理的距離、共有Recommendation Eligibility**に限定する。
@@ -77,6 +83,8 @@ Compassが神社候補を作る因果経路は、**時間・生年月日から�
 `purpose` / `need_tag` / `goriyaku_tag_ids` / 相談解釈は、Compassにおける候補選定・順位付け・推薦理由のsemantic signalとして使用してはならない。これらはConciergeの責務である。
 
 Shrine KnowledgeはCompassから削除しない。ただし役割を明確に分離する。祭神・由緒・ご利益等のKnowledgeを**神社固有の事実情報として表示することは許可**する一方、それを「このCompass結果でこの神社が選ばれた理由」として因果づけてはならない。
+
+候補membershipは `docs/product/compass-direction-only-candidate-universe-decision.md` を正本とする。現行共有candidate layerの非意味的な構造条件（QA fixture除外・座標必須・address非空）を起点とし、originから60kmを超えるShrineは候補母集団へ含めない。一方、60km以内の候補を `popular_score` や任意件数LIMITで先に切ってはならない。DB側のbounding box等は、60km以内の候補を欠落させないlossless optimizationとしてのみ許可する。
 
 方位・距離・Eligibilityを満たした候補集合の内部で、どの順序・規則で表示するかは本決定では確定しない。近さ・人気・Knowledge充実度などを暗黙に採用せず、`DIRECTION_SET_RANKING_POLICY = OPEN` として別のMother Ship decisionへ委譲する。
 
@@ -486,11 +494,21 @@ target date（Runtime契約上はtarget_date、Section 4参照）
     ↓
 direction runtime signal（Compass Runtime Authority、Section 6）
     ↓
-geographic candidate set（方位セクター + 距離）
+STRUCTURAL_BASE
+  - QA fixture除外
+  - latitude / longitude必須
+  - address非空
+    ↓
+lossless max-radius boundary: exact distance <= 60km
+  ※ popular_score / arbitrary LIMITで事前切り捨てしない
     ↓
 shared Recommendation Eligibility
     ↓
-direction-eligible shrine set
+direction sector match
+    ↓
+15km → 30km → 60km distance stage
+    ↓
+direction-eligible ACTIVE_SET
     ↓
 DIRECTION_SET_RANKING_POLICY（OPEN。purpose / need / goriyakuを使用しない）
     ↓
@@ -499,6 +517,20 @@ shrine candidate presentation
 compass-specific explanation（「なぜこの方向か」+「なぜ候補に入ったか」）
 + Shrine Knowledge factual presentation（選定理由とは分離）
 ```
+
+### 3-A. Direction-only Candidate Universe
+
+候補母集団のmembershipは `docs/product/compass-direction-only-candidate-universe-decision.md` を正本とする。
+
+```text
+U60 = STRUCTURAL_BASE ∩ exact_distance(origin, shrine) <= 60km
+DIRECTION_ONLY_ELIGIBLE_SET
+  = U60 ∩ Shared Recommendation Eligibility ∩ Direction Sector Match
+```
+
+15 / 30 / 60kmの既存Distance Stageは維持し、Direction + Eligibility通過候補が15kmで5件以上なら15km、そうでなければ30kmで5件以上なら30km、それ以外は60kmをACTIVE_SETとする。60kmで1〜4件でも正常な候補集合とし、0件なら60km超から補充しない。
+
+`popular_score`・Recommendation score・Knowledge量・purpose / need / goriyaku・任意の上位N件LIMITは候補membershipを決めてはならない。性能最適化は、canonicalな60km候補を欠落させないbounding box / spatial pre-filter等に限定する。
 
 ### 3.1 Weekly Presentationとの関係
 
