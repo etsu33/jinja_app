@@ -536,6 +536,10 @@ class ShrineDeity(models.Model):
         _validate_verified_at_consistency(self.verification_status, self.verified_at)
 
 
+# member_count を必須とする member_count_relation。clean() と DB CheckConstraint が共有する。
+_COLLECTIVE_MEMBER_COUNT_RELATIONS_WITH_COUNT = ("exact", "minimum", "approximate")
+
+
 class ShrineDeityCollective(models.Model):
     """Source-backed な集合祭神Fact。docs/audit/collective-deity-model-change-design.md（A-1）§4 の実装。
 
@@ -552,7 +556,7 @@ class ShrineDeityCollective(models.Model):
         ("approximate", "approximate"),
         ("unspecified", "unspecified"),
     ]
-    MEMBER_COUNT_RELATIONS_WITH_COUNT = ("exact", "minimum", "approximate")
+    MEMBER_COUNT_RELATIONS_WITH_COUNT = _COLLECTIVE_MEMBER_COUNT_RELATIONS_WITH_COUNT
 
     MEMBER_LIST_STATUS_CHOICES = [
         ("complete", "complete"),
@@ -593,6 +597,21 @@ class ShrineDeityCollective(models.Model):
         ordering = ["sort_order", "id"]
         indexes = [
             models.Index(fields=["shrine", "sort_order"], name="idx_shrine_deity_coll_sort"),
+        ]
+        # A-4b: clean() と同じ row-local 不変条件を DB でも強制する（objects.create() /
+        # QuerySet.update() / bulk 経路でも破れないように）。member_count の値域
+        # （>0 / >=2 等）や Membership 行数との一致はここで追加しない。
+        constraints = [
+            CheckConstraint(
+                condition=(
+                    Q(
+                        member_count_relation__in=_COLLECTIVE_MEMBER_COUNT_RELATIONS_WITH_COUNT,
+                        member_count__isnull=False,
+                    )
+                    | Q(member_count_relation="unspecified", member_count__isnull=True)
+                ),
+                name="chk_deity_coll_count_rel",
+            ),
         ]
 
     def __str__(self) -> str:
