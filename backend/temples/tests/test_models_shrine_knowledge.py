@@ -5,7 +5,7 @@ from datetime import date
 import pytest
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
-from django.db.models import ProtectedError
+from django.db.models import CheckConstraint, ProtectedError, Q
 from django.utils import timezone
 
 from temples.models import (
@@ -951,3 +951,83 @@ def test_membership_protect_also_blocks_shrine_delete_like_evidence_link():
     collective.memberships.all().delete()
     collective.shrine.delete()
     assert not ShrineDeity.objects.filter(pk=deity.pk).exists()
+
+
+# --- A-4b: ShrineDeityCollective member_count relation DB CheckConstraint ---
+#
+# full_clean() を通らない経路（objects.create() / QuerySet.update()）でも、DB が
+# member_count_relation と member_count の row-local 不変条件を拒否することを確認する。
+# 上の full_clean() / clean() テストは model validation の契約として残す。
+
+
+def _db_collective(**kwargs) -> ShrineDeityCollective:
+    # ShrineDeityCollective は save() で full_clean() を呼ばない。objects.create() は DB だけで守られる。
+    return ShrineDeityCollective.objects.create(
+        shrine=_create_shrine(), source_attested_label="集合祭神", **kwargs
+    )
+
+
+def test_collective_count_relation_constraint_definition():
+    constraints = {
+        c.name: c for c in ShrineDeityCollective._meta.constraints if isinstance(c, CheckConstraint)
+    }
+    assert set(constraints) == {"chk_deity_coll_count_rel"}
+    assert constraints["chk_deity_coll_count_rel"].condition == (
+        Q(
+            member_count_relation__in=("exact", "minimum", "approximate"),
+            member_count__isnull=False,
+        )
+        | Q(member_count_relation="unspecified", member_count__isnull=True)
+    )
+
+
+@pytest.mark.parametrize("relation", ["exact", "minimum", "approximate"])
+def test_collective_db_accepts_count_relation_with_count(relation):
+    collective = _db_collective(member_count=12, member_count_relation=relation)
+    collective.refresh_from_db()
+    assert (collective.member_count_relation, collective.member_count) == (relation, 12)
+
+
+def test_collective_db_accepts_unspecified_with_null_count():
+    collective = _db_collective(member_count=None, member_count_relation="unspecified")
+    collective.refresh_from_db()
+    assert (collective.member_count_relation, collective.member_count) == ("unspecified", None)
+
+
+@pytest.mark.parametrize("relation", ["exact", "minimum", "approximate"])
+def test_collective_db_rejects_count_relation_without_count(relation):
+    with pytest.raises(IntegrityError, match="chk_deity_coll_count_rel"):
+        with transaction.atomic():
+            _db_collective(member_count=None, member_count_relation=relation)
+    assert ShrineDeityCollective.objects.count() == 0
+
+
+def test_collective_db_rejects_unspecified_with_count():
+    with pytest.raises(IntegrityError, match="chk_deity_coll_count_rel"):
+        with transaction.atomic():
+            _db_collective(member_count=8, member_count_relation="unspecified")
+    assert ShrineDeityCollective.objects.count() == 0
+
+
+def test_collective_db_rejects_invalid_pair_via_queryset_update():
+    collective = _db_collective(member_count=9, member_count_relation="exact")
+
+    with pytest.raises(IntegrityError, match="chk_deity_coll_count_rel"):
+        with transaction.atomic():
+            ShrineDeityCollective.objects.filter(pk=collective.pk).update(member_count=None)
+    with pytest.raises(IntegrityError, match="chk_deity_coll_count_rel"):
+        with transaction.atomic():
+            ShrineDeityCollective.objects.filter(pk=collective.pk).update(
+                member_count_relation="unspecified"
+            )
+
+    collective.refresh_from_db()
+    assert (collective.member_count_relation, collective.member_count) == ("exact", 9)
+
+
+def test_collective_db_constraint_does_not_add_a_positive_count_rule():
+    """A-4b は member_count > 0 / >= 2 を追加しない。exact + 0 は本制約では拒否されない。"""
+    collective = _db_collective(member_count=0, member_count_relation="exact")
+    collective.refresh_from_db()
+    assert collective.member_count == 0
+    collective.full_clean()
