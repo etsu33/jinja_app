@@ -1,12 +1,14 @@
 # Weekly Compass — Presentation Product Contract
 
-> **Status: Active**
+> **Status: Active — Direction-only target / v1 implementation gap recorded**
 >
-> 本ドキュメントは、現行Weekly Compass v1のPresentation責務を管理するProduct正本文書である。
+> 本ドキュメントはWeekly CompassのPresentation責務を管理するProduct正本文書である。現行Runtimeにはpurpose-based v1実装が残るが、2026-09-27 Mother Ship DecisionによりDirection-only targetではpurposeをProduct inputとして使用しない。
 >
 > 本書は新しいWeekly挙動を発明するための設計書ではない。PR #2800（Weekly Presentation Foundation）、PR #2801（Weekly Compass API）、PR #2807（Web接続）で実装済みの責務境界を、Product Contractとして集約する。
 >
-> Compass全体のMaster Principle・Authority境界・Signal-to-Explanation Ruleは`docs/product/compass-product-contract.md`を上位正本とする。Direction Runtimeの永続化境界は`docs/product/compass-mvp-runtime-contract.md`、Analytics attributionのPersistence境界は`docs/analytics/compass-analytics-contract.md`を参照する。
+> Compass全体のMaster Principle・Authority境界・Signal-to-Explanation Ruleは`docs/product/compass-product-contract.md`を上位正本とする。Direction-only Ranking / Weekly Themeの決定は`docs/product/compass-direction-only-ranking-weekly-theme-decision.md`を参照する。Direction Runtimeの永続化境界は`docs/product/compass-mvp-runtime-contract.md`、Analytics attributionのPersistence境界は`docs/analytics/compass-analytics-contract.md`を参照する。
+>
+> **Direction-only override:** 本書中の`purpose`を含むv1 Snapshot / API / seedの記述は、現行実装の事実としてのみ有効であり、Direction-only Product Targetを定義しない。Runtime整合後はpurpose依存を解消し、旧v1 Snapshotはhistorical dataとして扱う。
 
 # 目的
 
@@ -29,15 +31,17 @@ Weekly Compassは、既存Monthly Compass / Recommendationの意味・順位・�
 
 ## 1. Product Promise
 
-Weekly Compassが提供する価値は、**毎回Recommendationを再計算して表示内容を揺らすことではなく、同一Owner・同一週・同一purpose・同一direction fingerprint・同一presentation versionの範囲で、Presentation結果を安定して再提示すること**である。
+Weekly Compassが提供する価値は、**Monthly Direction-only結果を週単位で安定して再提示し、参拝検討へつなぐPresentation continuity**である。
 
-現行v1のPresentationは次の2要素で構成する。
+Direction-only targetのPresentationは次の2要素で構成する。
 
 ```text
 Weekly Presentation
-├─ 今週のテーマ
+├─ neutral action prompt
 └─ 今週の神社
 ```
+
+neutral action promptは相談・願い・ご利益・心理状態を解釈する「今週の意味テーマ」ではない。
 
 Weekly Compassは、新しい占術計算、Recommendation score、Shrine Knowledge、Reason Authorityを所有しない。
 
@@ -109,18 +113,18 @@ WeeklyはMonthly Compassと同じ`build_compass_direction_runtime()`を利用す
 
 ## 4. Input Responsibility
 
-Weekly Presentationが利用するProduct入力は以下である。
+Direction-only targetでWeekly Presentationが利用するProduct入力は以下である。
 
 | 入力 | 責務 |
 |---|---|
-| `purpose` | 既存Compass / Recommendationのpurpose。独自taxonomyを作らない |
 | `birthdate` | 既存Direction Runtimeへの入力 |
-| `origin` | 既存Compass Recommendationへの入力 |
+| `origin` | Direction-only候補生成の起点 |
 | Owner | SnapshotのPresentation continuityを分離するIdentity |
+| Backend week boundary | neutral action promptのcadenceとSnapshot週境界 |
 
 Weeklyはpublic inputとして`target_date`・`timezone`を追加しない。
 
-purposeの正本は既存`NEED_TAGS`を再利用し、Weekly専用purpose enumを持たない。
+`purpose` / `need_tag` / `goriyaku` はWeekly Direction-only Product inputではない。現行API / Modelに残るpurposeはImplementation Gapであり、固定値や別名へ置換して残してはならない。
 
 ---
 
@@ -150,48 +154,71 @@ Ownerの違いはPresentation continuityの分離に使うものであり、Reco
 
 ## 6. Weekly Theme Contract
 
-Weekly Themeは**Presentation Copy**である。
-
-Recommendation Signalではない。
-
-Weekly Themeは以下へ影響してはならない。
-
-- Candidate generation
-- Direction filtering
-- Distance stage
-- Recommendation ranking
-- Recommendation score
-- Recommendation Reason
-- Shrine Knowledge
-
-### v1生成方式
-
-現行v1はLLMを使用しない。
-
-versioned curated catalogから、固定ルールによって決定論的にThemeを選択する。
-
 ```text
-purpose
-+ direction_fingerprint
-+ week_start
-+ presentation_version
-    ↓
-weekly_theme
+WEEKLY_THEME_DIRECTION_ONLY_POLICY = NEUTRAL_ACTION_PROMPT
+WEEKLY_THEME_PURPOSE_DEPENDENCY    = PROHIBITED
+WEEKLY_THEME_DIRECTION_SYMBOLISM   = PROHIBITED
+WEEKLY_THEME_SHRINE_SEMANTICS      = PROHIBITED
+WEEKLY_THEME_SELECTION_SEED        = WEEK_START_PLUS_PRESENTATION_VERSION
 ```
 
-`direction_fingerprint`はTheme選択のdeterministic seedの一部としてのみ使用する。
+Direction-only Weeklyでは、旧purpose-based「今週のテーマ」をsemantic Themeとして維持しない。
 
-**方位から新しい象徴意味・心理意味・ご利益意味を生成するためには使用しない。**
+代わりに、Weekly Presentation Copyは**neutral action prompt**として扱う。役割は、Monthly Compassで得た候補を参拝検討へつなぐ軽い操作上のきっかけだけである。
 
-Theme catalogは方位語をRecommendation evidenceとして作らない。
+### 許可される意味範囲
+
+neutral action promptは、たとえば次のような行動レベルまでを扱える。
+
+```text
+- 今月の参考方位にある候補を一つ確認する
+- 気になる候補の経路を確認する
+- 行けそうな距離の候補を見ておく
+```
+
+上記はsemantic contractの例であり、最終UI copyを固定するものではない。
+
+### 禁止事項
+
+neutral action promptは以下を主張してはならない。
+
+```text
+- 恋愛 / 仕事 / 金運等のpurpose
+- need / goriyaku
+- ユーザーの心理状態
+- 「今週必要な行動」という断定
+- 方位の象徴意味
+- 「縁がある」「呼ばれている」等の宗教的因果
+- Shrine Knowledgeから導いた個人向け意味
+```
+
+### Deterministic selection
+
+neutral action promptの選択に使えるのは次だけ。
+
+```text
+week_start
++ presentation_version
+```
+
+同じ週・同じPresentation versionなら同じpromptを返す。Owner、birthdate、purpose、direction_fingerprint、Shrine Knowledge、Recommendation scoreはprompt selectionに使用しない。
+
+`direction_fingerprint` をseedに使わないのは、意味関係がないcopyに対して「この方位だからこのテーマが選ばれた」という誤った因果を作らないためである。
+
+LLMとruntime randomは使用しない。
+
+### v1 implementation gap
+
+現行 `weekly_theme_catalog_v1.py` は15 purpose別catalogであり、`purpose + direction_fingerprint + week_start + presentation_version`をseedへ使用する。これはDirection-only targetと不整合であり、Runtime整合PRで置き換える。
+
+既存Snapshotに保存済みのpurpose-based v1 `weekly_theme` は後から書き換えない。Direction-only cutoverでは新しい`presentation_version`を使用し、旧v1 Snapshotと意味を混在させない。
 
 ### User-facing表示
 
-Frontendは`weekly_theme.title`と`weekly_theme.message`をBackend copyの意味を変更せず表示する。
+FrontendはBackendが返したneutral action promptを意味変更せず表示する。
 
-`weekly_theme.key`はユーザー向け表示に使用しない。
+UI上の見出しを「今週のテーマ」のまま残すことは避け、semantic占い・意味解釈に見えない名称へ変更する。最終copyはFrontend実装PRで確定する。
 
-Themeが`null`の場合はTheme Sectionを表示しない。
 
 ---
 
@@ -427,11 +454,11 @@ Recommendationがnon-successの場合:
 - Featured Shrineを生成しない
 - Monthly結果は維持する
 
-### Theme failure
+### Action prompt failure
 
-Theme選択内部で失敗した場合は、既存固定Fallback Themeへ縮退する。
+neutral action prompt選択内部で失敗してもMonthly Compass全体を失敗させない。
 
-Theme failureによってRecommendationまたはMonthly Compass全体を失敗させない。
+purpose-based旧Fallback Themeへ戻してはならない。Direction-only用の固定neutral fallback promptへ縮退するか、prompt Section自体を非表示にする。どちらのtransport形を採るかは実装PRで既存API互換性を確認して決める。
 
 ### Stale response
 
@@ -448,15 +475,15 @@ Weekly PresentationはCompass全体の第6のtop-level Authorityではない。`
 | Responsibility source | Weeklyでの責務 |
 |---|---|
 | Compass Runtime Authority | Direction Runtimeを提供する |
-| Recommendation Authority | Candidate順位・Reasonを提供する |
-| Shrine Knowledge Authority | Shrine事実・意味の根拠を提供する |
+| Compass Runtime / Direction-only Ranking | Direction RuntimeとDISTANCE_ASCの候補順位を提供する |
+| Shrine Knowledge Authority | Shrine事実を候補化理由と分離して提供する |
 | Existing owner identity resolution | authenticated / anonymous Ownerを解決する |
-| Presentation Authority（Weekly specialization） | ThemeとFeatured ShrineのPresentationを週単位で固定する |
-| Frontend implementation | 保存済み意味を変更せず表示する |
+| Presentation Authority（Weekly specialization） | neutral action promptとFeatured ShrineのPresentationを週単位で固定する |
+| Frontend implementation | 保存済みPresentationの意味を変更せず表示する |
 
 Weekly specializationとしてのPresentation Authorityは、Recommendation Authorityを上書きしない。
 
-Weekly ThemeはShrine Knowledgeを新設しない。
+neutral action promptはShrine Knowledge・purpose・方位象徴意味を新設しない。
 
 SnapshotはDirection Runtime Authorityの正本にならない。
 
@@ -543,7 +570,7 @@ Eligibility変化等によりhydrate可能なShrineが0件になっても、Snap
 3. `weekly_success`かつFeatured Shrine 0件時に専用copy/stateを追加するか
 4. Ownerの初回アクセス時点でSnapshotを固定する現行モデルを将来も維持するか
 5. Weekly固有Analytics event / KPIを定義するか
-6. Weekly Theme catalogの候補数・copy運用を将来どうversioningするか
+6. neutral action prompt catalogの候補数・copy運用をどうversioningするか（semantic sourceはDirection-only Decisionで確定済み）
 
 これらを暗黙に決める変更を、本Contract整合作業へ混在させない。
 
