@@ -2,7 +2,7 @@
 
 ## Status
 
-**A-4: 3_OF_4_MOTHER_SHIP_DECISIONS_FIXED / DOCUMENTATION ONLY**
+**A-4: ALL_MOTHER_SHIP_DECISIONS_FIXED / READY_TO_MERGE**
 
 - Repository: `etsu33/jinja_app`
 - Base branch: `develop`
@@ -551,7 +551,7 @@ Mother Ship confirmed:
 INTEGRITY_BOUNDARY = DB_ROW_LOCAL_MODEL_SERVICE_CROSS_ROW
 ```
 
-補助 decision は未確定:
+Mother Ship confirmed:
 
 ```text
 COUNT_RELATION_DB_CONSTRAINT = ADD_BEFORE_BACKFILL
@@ -885,7 +885,7 @@ COUNT_RELATION_DB_CONSTRAINT =
   ADD_BEFORE_BACKFILL
 ```
 
-Mother Ship has explicitly confirmed the first three values. `COUNT_RELATION_DB_CONSTRAINT` remains pending.
+Mother Ship has explicitly confirmed all four values.
 
 ---
 
@@ -912,11 +912,10 @@ Status: FIXED
 Decision 3a:
 COUNT_RELATION_DB_CONSTRAINT =
   ADD_BEFORE_BACKFILL
-  / KEEP_MODEL_VALIDATION_ONLY
-Status: PENDING
+Status: FIXED
 ```
 
-A-4 closes only after Decision 3a is explicitly fixed.
+All A-4 Mother Ship decisions are fixed.
 
 ---
 
@@ -967,7 +966,9 @@ Collective save and bulk paths remain governed by Decision 2.
 - [x] Mother Ship: WRITE_PATH_AUTHORITY = EXTEND_EXISTING_KNOWLEDGE_IMPORTER
 - [x] Mother Ship: BULK_WRITE_POLICY = PROHIBITED_FOR_COLLECTIVE_BACKFILL
 - [x] Mother Ship: INTEGRITY_BOUNDARY = DB_ROW_LOCAL_MODEL_SERVICE_CROSS_ROW
-- [ ] Mother Ship: COUNT_RELATION_DB_CONSTRAINT selected
+- [x] Mother Ship: COUNT_RELATION_DB_CONSTRAINT = ADD_BEFORE_BACKFILL
+- [x] A-4 Gate decisions fixed
+- [ ] PR #3008 merged
 - [ ] A-4 Gate CLOSED
 ```
 
