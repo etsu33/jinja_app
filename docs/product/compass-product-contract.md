@@ -2,7 +2,9 @@
 >
 > 本ドキュメントは、Visit Compassの製品責務・Product Promise・Authority境界を管理する正本文書である。
 >
-> 本書は`docs/audit/premium-visit-compass-recommendation-feasibility.md`（PR #2470）・`docs/audit/premium-visit-compass-time-model-contract.md`（PR #2471）・`docs/audit/concierge-compass-meaning-action-authority-boundary.md`（PR #2472）・`docs/audit/compass-contract-reconciliation-direction-audit-completion.md`（PR #2473）・`docs/audit/concierge-compass-product-responsibility-contract.md`（PR #2474）の監査結論を正式化した契約である。Section 2.2は`docs/product/compass-product-direction-decision.md`（PR #2508、Mother Ship Product Decision Record）が確定したFinal Product Promise（B）・Final Direction Logic（Option C — Monthly Fallback）を整合させたものである。
+> 本書は`docs/audit/premium-visit-compass-recommendation-feasibility.md`（PR #2470）・`docs/audit/premium-visit-compass-time-model-contract.md`（PR #2471）・`docs/audit/concierge-compass-meaning-action-authority-boundary.md`（PR #2472）・`docs/audit/compass-contract-reconciliation-direction-audit-completion.md`（PR #2473）・`docs/audit/concierge-compass-product-responsibility-contract.md`（PR #2474）の監査結論を正式化した契約である。Section 2.2は`docs/product/compass-product-direction-decision.md`（PR #2508、Mother Ship Product Decision Record）が確定したFinal Direction Logic（Option C — Monthly Fallback）を継承する。
+>
+> **2026-09-27 Mother Ship Decision:** `COMPASS_SEMANTIC_SCOPE = DIRECTION_ONLY` を本書の上位契約として確定する。これにより、過去契約に残る `purpose` / `need_tag` / ご利益によるCompass候補選定・順位付け・fallbackの記述は、本改訂と矛盾する範囲で supersede される。Monthly Fallbackの方位計算契約自体は維持する。
 >
 > 本書はDocsのみのPRとして作成された。コード・Model・Migration・Serializer・API Endpoint・DBデータの変更は一切含まない。記載内容はCompassの製品契約であり、実装済みであることを意味しない。Free/Premium境界の最終決定は本書の対象外とする（Section 12）。
 >
@@ -21,7 +23,7 @@
 5. Compass内での方位前面化を条件付きで許可し、Concierge内での方位前面化制約は不変であることを確定する
 6. Consultation / Compass Runtime / Recommendation / Shrine Knowledge / Presentationの5 Authorityの境界を確定する
 7. Signal-to-Explanation Rule（実際に影響した信号のみを翻訳して提示する原則）を確定する
-8. purpose・origin・time・directionの入力責務を分離する
+8. birthdate・origin・time・directionの入力責務を分離し、purpose・need・goriyakuをCompassのsemantic inputから除外する
 9. Free/Premium境界の決定を明示的に将来へ委譲する
 10. Weekly Presentationの具体的なProduct責務を専用契約へ委譲し、本書との上下関係を定義する
 
@@ -34,7 +36,7 @@
 - Compassの時間モデル・方位前面化条件
 - Authority Matrix（5 Authority）
 - Signal-to-Explanation Rule
-- purpose/origin/time/directionの責務分離
+- birthdate/origin/time/directionの責務分離と、purpose/need/goriyakuのCompass semantic scopeからの除外
 - Weekly Presentationに対する上位Product / Authority境界
 
 ### 対象外
@@ -60,6 +62,26 @@ ConciergeとCompassは別の製品体験である。
 
 Compassの価値を作るために、Conciergeの挙動・Ranking・API契約・UX責務を再設計または弱めてはならない。既存Concierge実装への影響はゼロを維持する（`docs/audit/premium-visit-compass-recommendation-feasibility.md`以降、一貫してExisting Concierge Impact = ZEROと判定済み）。
 
+### 0.1 Canonical Semantic Scope
+
+```text
+COMPASS_SEMANTIC_SCOPE          = DIRECTION_ONLY
+COMPASS_PURPOSE_ROUTING         = PROHIBITED
+COMPASS_GORIYAKU_ROUTING        = PROHIBITED
+NO_DIRECTION_PURPOSE_FALLBACK   = PROHIBITED
+DIRECTION_SET_RANKING_POLICY    = OPEN
+```
+
+Compassが神社候補を作る因果経路は、**時間・生年月日から得た方位runtime signal、出発地点からのbearing、地理的距離、共有Recommendation Eligibility**に限定する。
+
+`purpose` / `need_tag` / `goriyaku_tag_ids` / 相談解釈は、Compassにおける候補選定・順位付け・推薦理由のsemantic signalとして使用してはならない。これらはConciergeの責務である。
+
+Shrine KnowledgeはCompassから削除しない。ただし役割を明確に分離する。祭神・由緒・ご利益等のKnowledgeを**神社固有の事実情報として表示することは許可**する一方、それを「このCompass結果でこの神社が選ばれた理由」として因果づけてはならない。
+
+方位・距離・Eligibilityを満たした候補集合の内部で、どの順序・規則で表示するかは本決定では確定しない。近さ・人気・Knowledge充実度などを暗黙に採用せず、`DIRECTION_SET_RANKING_POLICY = OPEN` として別のMother Ship decisionへ委譲する。
+
+**Implementation gap:** 現行Frontend/Backend/Weekly実装には `purpose` と `need_tags=[purpose]` が残存する。本書の改訂はProduct Contractの正本変更であり、Runtime整合は別PRで行う。現行実装の残存purpose依存を本契約の例外として扱ってはならない。
+
 ---
 
 ## 1. CompassはCompat Modeの拡張ではない
@@ -79,7 +101,7 @@ Authority Reuse（禁止）:
   というConcierge内限定の契約上の役割
   → CompassはこのAuthorityを継承しない。CompassはSection 6で定義する
     独自のCompass Runtime Authorityを持ち、Compassという製品の中でのみ、
-    方位・時間情報が主要な起点になってよい
+    方位・時間情報がCompassのsemantic起点になる
 ```
 
 CompassはCompat Modeが契約上なることを禁じられている状態（方位・時間情報が主導線になること）を、Compat Modeの内部ではなく、Concierge外の独立した別製品として引き受ける。
@@ -95,10 +117,10 @@ CompassはCompat Modeが契約上なることを禁じられている状態（�
 
 **一文定義（#2508改訂）**:
 
-> 時間・方位runtime signalと目的から、今月の方向を解釈する。年盤と月盤が
-> 共通して支持する参考方位がある月はそれを示す。共通の参考方位がない月は、
+> 時間・生年月日から得る方位runtime signalと出発地点から、今月の参考方位を解釈する。
+> 年盤と月盤が共通して支持する参考方位がある月はそれを示す。共通の参考方位がない月は、
 > 月盤単独の参考方位を示す。月盤単独の参考方位もない月は、その結果自体を
-> 今月の参考情報として示した上で、目的から参拝候補を示す。
+> 今月の参考情報として示し、目的・願い・ご利益だけで神社推薦へfallbackしない。
 
 改訂前の定義（本Section、#2498時点）は、「共通の参考方位がある場合／ない
 場合」の二値のみを区別しており、月盤単独の参考方位（Monthly Fallback、
@@ -111,28 +133,19 @@ Section 2.2）という中間結果を表現していなかった。[#2508](comp
 fallbackを経てもなお得られない場合）へ narrowing される。**「Compassは
 常に方向を返す」とは約束しない**——この点は#2508によっても変わらない。
 
-**User-facing候補コピー（評価済み・#2498時点: SUPPORTED WITH CLARIFICATION）**:
+**旧User-facing候補コピー（#2498、SUPERSEDED）**:
 
 > 「今月の流れと目的から、向かう方向と参拝候補を見つけます。方向が重ならない月は、その結果もそのままお伝えします。」
 
-このコピーは#2498時点のものであり、**Monthly Fallback（Section 2.2）を
-まだ反映していない**——「方向が重ならない月」が実際には月盤単独の参考方位
-（Monthly Fallback）を指す場合と、それも存在しない場合（narrowed
-`no_common_direction`）の2通りに分かれることを、このコピーは区別していない。
-**これは最終的なUI実装コピーではない**（最終コピーはSection 2.2が定義する
-Common Direction / Monthly Fallback / narrowed NO_COMMON_DIRECTIONの3状態を
-誠実に区別するUX原則に従って、別途Frontend実装PR（[#2508](compass-product-direction-decision.md)
-§25・§27 PR-3）で確定する）。実装時は、詳細画面またはカード内の補足文言で
-「参考情報です」という既存共通パターン（`docs/product/direction-ranking-design.md`・
-`docs/product/compat-mode-ui-flow.md`が共通して採用する表現）を併記する
-ことを推奨する（必須ではないが、Section 8のSignal-to-Explanation Ruleと
-整合させるための推奨事項）。
+この旧コピーは `purpose` をCompassのsemantic inputとして扱うため、`COMPASS_SEMANTIC_SCOPE = DIRECTION_ONLY` により採用不可とする。
+
+最終UIコピーは、Section 2.2が定義する Common Direction / Monthly Fallback / narrowed NO_COMMON_DIRECTION を誠実に区別しつつ、**相談・願い・ご利益をCompassの選定理由として持ち込まない**こと。詳細画面またはカード内でShrine Knowledgeを事実情報として表示する場合も、方位による候補化との因果を混同しない。
 
 **Conciergeの既存Product Promise（不変、参考として並記）**:
 
 > 「今の悩みや願いをもとに、あなたと接点のある神社を見つけます。」
 
-両者は、ユーザーの起点（相談 vs 時間・方位・目的）と主要な出力（神社の意味 vs 方向+参拝候補）で明確に区別される。Free/Premiumラベルなしで理解可能であることを確認済み。
+両者は、ユーザーの起点（相談・願い vs 時間・生年月日・方位）と主要な出力（神社の意味的Recommendation vs 方向+地理的参拝候補）で明確に区別する。CompassはConciergeのpurpose/need/goriyaku選定を複製しない。
 
 ---
 
@@ -280,31 +293,17 @@ Group A/Bの区別自体（本Section）は**Runtime算出ロジックの欠陥�
 （[#2497](../audit/compass-direction-availability-product-decision.md)
 §21の設計推奨をそのまま継承）。
 
-### 2.1-5 Shrine Recommendation境界（OPEN PRODUCT DECISION）
+### 2.1-5 Shrine Recommendation境界（CANONICAL）
 
-方向が定まらない月に、神社推薦をどう扱うかは、本Decision Recordでは
-**確定しない**:
-
-```
-Option A: 方向が定まらない場合、神社推薦も表示しない
-  （現行実装の実際の挙動——direction_contextがNoneの場合、
-  candidate pool自体が構築されない、
-  [#2496](../audit/compass-direction-filter-unavailable-root-cause.md) §11で確認済み。
-  Section 3のフロー図が示す「direction runtime signal → geographic
-  candidate set」という順序とも整合する）
-
-Option B: 方向が定まらなくても、purposeのみに基づく神社推薦を独立して
-  表示する
+```text
+NO_DIRECTION_PURPOSE_FALLBACK = PROHIBITED
 ```
 
-Section 3のフロー図・Section 6のAuthority境界（Compass Runtime Authority
-は候補集合の絞り込みにのみ関与する）は、方向を候補フィルタの一部として
-位置づけており、Option Aと整合する構造を持つ。しかし、**方向なしを
-「エラー」から「正当な結果」へ再解釈する本Decision Record自体が、
-「正当な結果のときも神社推薦を見せないままでよいか」という新しい問いを
-提起する**。この問いは本PRのスコープ外であり、**OPEN IMPLEMENTATION /
-PRODUCT DECISION**として記録する。現行のRecommendation挙動（Option A相当）
-は、この問いが解決されるまで変更しない。
+方向が定まらない月は、`NO_COMMON_DIRECTION` を正当なCompass結果として表示し、**purpose / need / goriyakuだけを使った神社推薦へfallbackしてはならない**。
+
+過去契約のOption B（方向がなくてもpurposeのみで神社推薦）は、`COMPASS_SEMANTIC_SCOPE = DIRECTION_ONLY` と矛盾するため廃止する。
+
+方向が成立しない状態で相談・願い・ご利益を起点に神社を探す体験はConciergeの責務である。Compassはその責務を代替しない。
 
 ### 2.1-6 Analytics Contract影響（記録のみ、本PRでは変更しない）
 
@@ -386,8 +385,8 @@ Compassの月次方向解釈は、以下の優先順位で解決される（CONT
 
 3. NO_COMMON_DIRECTION（narrowed、Section 2.1-1）
    条件: 1・2のいずれも空集合
-   結果: 方向の参考情報がない旨を示した上で、purposeから参拝候補を示す
-         （Section 2.1-5のOPEN DECISIONに従う、変更なし）
+   結果: 方向の参考情報がない旨を示す。purpose / need / goriyakuのみで
+         参拝候補を補充しない（Section 2.1-5）
 ```
 
 ### 2.2-2 COMMON DIRECTIONの定義（不変）
@@ -502,17 +501,21 @@ Compassは月（month）・方向（direction）・行動（action）の3軸で�
 target date（Runtime契約上はtarget_date、Section 4参照）
 + profile-derived runtime context（生年月日由来のkyusei計算）
 + origin（出発地点）
-+ purpose（目的、構造化選択）
     ↓
 direction runtime signal（Compass Runtime Authority、Section 6）
     ↓
-geographic candidate set（方位セクターによる候補絞り込み。本書執筆時点で未実装、実装PRで扱う）
+geographic candidate set（方位セクター + 距離）
     ↓
-Recommendation（既存ドメイン、無改修で再利用）
+shared Recommendation Eligibility
     ↓
-shrine
+direction-eligible shrine set
     ↓
-compass-specific explanation（「なぜこの方向か」+「なぜこの神社か」、Section 7で分離）
+DIRECTION_SET_RANKING_POLICY（OPEN。purpose / need / goriyakuを使用しない）
+    ↓
+shrine candidate presentation
+    ↓
+compass-specific explanation（「なぜこの方向か」+「なぜ候補に入ったか」）
++ Shrine Knowledge factual presentation（選定理由とは分離）
 ```
 
 ### 3.1 Weekly Presentationとの関係
@@ -559,45 +562,50 @@ Weekly Presentationの永続化はPresentation結果の安定化を目的とし�
 
 | Authority | 責任範囲 | 実装/契約上の所在 |
 |---|---|---|
-| **Consultation Authority** | ユーザーの相談・要望の解釈を所有する | `backend/temples/services/consultation_interpreter.py`、`docs/product/recommendation-v4-interpreter-contract.md` |
-| **Compass Runtime Authority** | 時間的・方位的runtime signalの説明を所有する。「なぜこの方向か」に答える | `backend/temples/domain/kyusei.py` + `backend/temples/services/direction_reference.py` |
-| **Recommendation Authority** | 候補集合の中からなぜその神社が選ばれたかを所有する。「なぜこの神社か」に答える | `build_chat_candidates` + `_attach_breakdown`（`backend/temples/services/concierge_chat_candidates.py`・`concierge_chat_ranking.py`） |
-| **Shrine Knowledge Authority** | 神社固有の事実情報と出典を所有する | `ShrineDeity`/`ShrineHistory`モデル + `evidence_gate.py`（`decide_fact_usability`） |
-| **Presentation Authority** | 実際に使用された信号・根拠を、因果的な意味を変えずに理解可能な言葉へ翻訳する | Frontend表示Adapter（`docs/core/recommendation-reason-contract.md`「Frontendとの境界」節） |
+| **Consultation Authority** | ユーザーの相談・要望の解釈を所有する。**Compass Direction-only経路では使用しない** | `backend/temples/services/consultation_interpreter.py`、`docs/product/recommendation-v4-interpreter-contract.md` |
+| **Compass Runtime Authority** | 時間的・方位的runtime signalと方位候補化の説明を所有する。「なぜこの方向か」「なぜこの候補が方位条件に入ったか」に答える | `backend/temples/domain/kyusei.py` + `backend/temples/services/direction_reference.py` + Compass固有のdirection/distance filter |
+| **Recommendation Authority** | Conciergeのsemantic Recommendationを所有する。Compassでは共有Eligibility基盤のみ再利用可能で、purpose/need/goriyaku scoringは使用しない | 既存Recommendation domain |
+| **Shrine Knowledge Authority** | 神社固有の事実情報と出典を所有する。Compassでは事実表示に使用できるが、direction候補化の因果理由にはしない | `ShrineDeity`/`ShrineHistory`モデル + `evidence_gate.py`（`decide_fact_usability`） |
+| **Presentation Authority** | 実際に使用された方位・距離・Eligibility信号と、別レイヤのShrine Factを因果を混同せず翻訳・整形する | Frontend表示Adapter |
 
 ### Authority境界（May explain / Must not explain）
 
 | Authority | May explain | Must not explain |
 |---|---|---|
-| Consultation Authority | ユーザーが何を相談しているか、既存契約が支持する相談テーマ/needs | 神社固有の事実、方位計算 |
-| Compass Runtime Authority | なぜ方位が表示されているか、実際に使用された時間的/方位的runtime signal | なぜ神社に特定のご利益があるか、神社の由緒、神社固有の意味 |
-| Recommendation Authority | なぜ候補集合の中からこの神社候補が選ばれたか、実際に寄与したRecommendation信号 | 裏付けのない神社事実、未使用の占術/方位信号 |
-| Shrine Knowledge Authority | 神社の由緒、祭神/事実/出典、裏付けのあるご利益/意味情報 | 個人化された方位、個人の未来の結果 |
-| Presentation Authority | 上記4 Authorityの出力を、意味を変えずに翻訳・整形すること | 新規Factの生成、Consultation/方位の再解釈、順位の再計算 |
+| Consultation Authority | Conciergeでユーザーの相談・needsを解釈する | Compass候補選定・順位付けへ相談/needを流入させること |
+| Compass Runtime Authority | なぜ方位が表示されているか、なぜ候補がその方位・距離条件に入ったか | 神社固有のご利益・由緒・意味を生成すること |
+| Recommendation Authority | Concierge semantic Recommendation、Compass共通Eligibility | Compassでpurpose/need/goriyakuによるsemantic scoringを行うこと |
+| Shrine Knowledge Authority | 神社の由緒、祭神/事実/出典、裏付けのあるご利益/意味情報を事実として表示すること | それらのFactをCompass候補化の因果理由として扱うこと、個人の未来の結果 |
+| Presentation Authority | 方位候補化の根拠とShrine Factを別レイヤとして翻訳・整形すること | 新規Factの生成、Consultationの持ち込み、未確定Ranking Policyの発明 |
 
 Weekly Presentationは第6のtop-level Authorityを追加しない。`docs/product/compass-weekly-presentation-contract.md`が定義するWeekly Presentation責務は、既存Presentation AuthorityのWeekly特化責務として扱う。したがってWeekly側はRecommendation Authority・Compass Runtime Authority・Shrine Knowledge Authorityを上書きしない。
 
-**Recommendation AuthorityとShrine Knowledge Authorityとの境界**: Compass Runtime Authorityは、候補集合の絞り込み（Section 3の「geographic candidate set」）にのみ関与し、絞り込んだ候補集合の中でどの神社が最も意味的に合うかを決定する権限を持たない。その決定はRecommendation Authority（既存スコアリング）とShrine Knowledge Authority（Reason生成）の合成結果としてのみ成立する。
+**Direction-only境界**: Compass Runtime Authorityは方位・距離による候補集合を作り、共有Recommendation Eligibilityは候補として表示可能かを判定する。そこから先の表示順序は `DIRECTION_SET_RANKING_POLICY = OPEN` とし、本書では決定しない。既存Recommendation Authorityのpurpose/need/goriyaku scoringやShrine Knowledgeを、未確定の順位規則の代替として流用してはならない。
 
 ---
 
-## 7. 「なぜこの方向か」と「なぜこの神社か」の分離
+## 7. 「なぜこの方向か」「なぜ候補に入ったか」「神社の事実」の分離
 
-2つの独立した説明契約として維持する。
+3つを混同しない。
 
 ```text
 なぜこの方向か:
-  time/month + 実装済みpersonal runtime signal（kyusei） + origin
+  time/month + 生年月日由来runtime signal
   → direction context
-  → Compass Runtime Authorityが単独で担当
+  → Compass Runtime Authority
 
-なぜこの神社か:
-  purpose/need + candidate shrine + Recommendation信号 + Shrine Knowledge
-  → shrine-specific explanation
-  → Recommendation Authority + Shrine Knowledge Authorityが担当
+なぜこの神社がCompass候補に入ったか:
+  origin + direction sector + distance boundary + shared eligibility
+  → direction-eligible candidate
+  → Compass固有のcandidate boundary
+
+この神社について何が分かるか:
+  Shrine Knowledge + Evidence
+  → 祭神・由緒・ご利益等のfact presentation
+  → Shrine Knowledge Authority
 ```
 
-方位の根拠は神社の根拠を代替できない。神社の根拠を占術から捏造してはならない。`docs/core/recommendation-reason-contract.md:246-256`が既に定める「方位一致をRecommendation Reasonの主理由として表示しない」という契約を、Compassにおいてもそのまま適用する。
+Shrine Knowledgeは候補化の理由ではない。逆に、方位一致から「この神社にはあなた向けのご利益がある」「縁がある」といった神社固有の意味を生成してはならない。
 
 ---
 
@@ -609,10 +617,11 @@ Weekly Presentationは第6のtop-level Authorityを追加しない。`docs/produ
 
 - ユーザー向け説明は、実際に使用された信号へ遡れなければならない。
 - データが存在するというだけの理由で、占術・九星気学・方位・ご利益等の用語を表示しない。
-- 未使用の信号を推薦の根拠として提示しない（例: `Shrine.kyusei`という神社側の固定タグはランキングに接続されていないため、これを根拠として提示してはならない）。
+- 未使用の信号を候補化・順位・説明の根拠として提示しない。
 - Concierge説明は実際の相談/推薦信号を優先する。
-- Compassの方位説明は実際の時間的/方位的runtime signalを優先する。
-- Compassの神社説明は、実際のRecommendation + Shrine Knowledge証拠に依然として依拠する。
+- Compassの候補化説明は、実際の時間的/方位的runtime signal、bearing、distance、Eligibilityだけに遡れること。
+- purpose / need / goriyakuをCompass候補化・順位・説明の因果根拠として使用しない。
+- Shrine Knowledgeを表示する場合は神社固有の事実情報として分離し、Compass候補化の理由であるかのように接続しない。
 - 内部スコアの仕組み（数値、内部タグ）をそのまま露出する必要はない。
 - 技術的/占術的用語（九星気学・本命星・月盤・吉方位）は、適切な場合に理解可能な言葉へ翻訳してよい。翻訳の際の優先度は以下の通りとする。
 
@@ -631,19 +640,27 @@ Weekly Presentationは第6のtop-level Authorityを追加しない。`docs/produ
 
 ## 9. 禁止事項（絶対的制約）
 
-- **方位単独で最終的な神社を決定してはならない**。神社の決定は常にRecommendation Authority + Shrine Knowledge Authorityの合成結果とする。
+- **Compassでpurpose / need / goriyakuを使って候補選定・順位付け・fallbackを行ってはならない**。それらはConciergeのsemantic responsibilityである。
+- **未確定の`DIRECTION_SET_RANKING_POLICY`を暗黙に決めてはならない**。近さ・人気・Knowledge量など、Mother Shipが確定していない基準を実装都合で採用しない。
 - **Runtime signal（方位・占術）がShrine Knowledgeを新設・上書きしてはならない**。「この神社は方位的に縁がある」という神社自体の性質としての主張を生成してはならない。
-- **未使用のsignalをrecommendation evidenceとして提示してはならない**。
+- **未使用のsignalをcandidate evidenceとして提示してはならない**。
 - **日次精度を含意してはならない**。「今日の吉方位」のような表現は、実装が持たない精度を暗示するため使用しない（Section 4参照）。
 - **決定論的な未来予測・結果保証をしてはならない**。`docs/core/meaning-layer.md`の非断定原則（Product全体思想）をCompassにも適用する。
 
 ---
 
-## 10. purpose × direction 因果関係
+## 10. Direction-only Semantic Boundary
 
-**purposeは方位計算を変えない**。`backend/temples/domain/kyusei.py`・`backend/temples/services/direction_reference.py`のいずれの関数シグネチャにもpurpose相当の引数は存在しない（`docs/audit/premium-visit-compass-recommendation-feasibility.md`・`docs/audit/premium-visit-compass-time-model-contract.md`の双方で独立に確認済み）。
+```text
+COMPASS_SEMANTIC_SCOPE        = DIRECTION_ONLY
+COMPASS_PURPOSE_ROUTING       = PROHIBITED
+COMPASS_GORIYAKU_ROUTING      = PROHIBITED
+NO_DIRECTION_PURPOSE_FALLBACK = PROHIBITED
+```
 
-purposeとdirection runtime signalは独立した入力であり、両者が交わるのはRecommendation Authorityによる最終合成の段階のみである。「purposeが方位を変える」という挙動は、現行実装にも本契約にも根拠がない。同一月・同一originでpurposeのみを変えた場合、方位（kyusei計算結果・bearing一致判定）は不変のまま、候補神社集合・順位・Reasonは変化しうる。
+`purpose` はCompassの方位計算だけでなく、**候補選定・順位付け・候補化理由にも入力しない**。`need_tag` / `goriyaku_tag_ids` / consultation interpretationも同様にCompass semantic pathから除外する。
+
+現行実装にpurpose依存が残っている事実はImplementation Gapであり、本契約の意味を変更しない。Runtime整合PRでは、ConciergeのRecommendation behaviorを変えず、Compass側だけを切り離す。
 
 ---
 
@@ -651,10 +668,11 @@ purposeとdirection runtime signalは独立した入力であり、両者が交�
 
 | 入力 | 責務 |
 |---|---|
+| **birthdate** | Compass Runtime Authorityへの入力。方位runtime signal算出にのみ使用する |
 | **time**（target_date） | Compass Runtime Authorityへの入力。年盤・月盤（節気月）粒度の方位参考情報を決定する |
-| **origin**（出発地点） | Compass Runtime Authorityへの入力。実方位（bearing）の起点を決定する。技術的に方位計算に必須 |
-| **purpose**（目的） | 候補神社の絞り込み・スコアリングへの入力。既存`need_tag`/`goriyaku_tag_ids`taxonomyを再利用する（新規taxonomyは不要、`docs/audit/premium-visit-compass-recommendation-feasibility.md` Section 9で確認済み） |
-| **direction**（方位runtime signal） | time + origin + 生年月日から導出される、Compass Runtime Authorityの出力。候補空間を作る/絞り込む入力になるが、最終的な神社決定権は持たない |
+| **origin**（出発地点） | 方位sector判定と距離判定の起点 |
+| **direction**（方位runtime signal） | time + birthdateから導出され、originから見た候補空間の方位絞り込みに使用する |
+| **purpose / need / goriyaku** | **Compassでは使用禁止**。相談・願い・ご利益によるsemantic RecommendationはConciergeの責務 |
 
 ---
 
@@ -665,7 +683,7 @@ purposeとdirection runtime signalは独立した入力であり、両者が交�
 参考として、`docs/product/premium-experience.md`との整合性を確認する必要がある未解決事項（前回監査群から継続）を記録するのみに留める:
 
 - `premium-experience.md:63-72`が「地図が高機能になる」「経路案内が便利になる」をPremium訴求の中心表現として禁止している。Compassの訴求文言が、パーソナルな月次文脈・継続利用価値を明示しない限りこの禁止表現と類似して見えるリスクがあるため、Premium訴求文言確定時に個別レビューを行うこと。
-- Compassの価値提案は、推薦精度の向上ではなく、時間・方向・purpose・行動継続性という候補生成の起点の新規性に基づく（Section 0・6）。
+- Compassの価値提案は、推薦精度やご利益マッチの向上ではなく、時間・生年月日・方向・出発地点から行動候補を作る体験と継続性に基づく（Section 0・6）。
 
 ---
 
@@ -678,7 +696,7 @@ Productでは以下を管理する。
 - CompassのProduct Promise、Primary Experience、Signal-to-Explanation Rule
 - Authority境界の定義
 - 方位前面化の条件
-- purpose/origin/time/directionの責務分離
+- birthdate/origin/time/directionの責務分離とpurpose/need/goriyaku除外
 - Weekly Presentationに適用される上位Product / Authority境界。Weekly固有の詳細は`docs/product/compass-weekly-presentation-contract.md`へ委譲する
 
 ### Core
@@ -757,7 +775,7 @@ Compassの計測契約は、別途Analytics契約PRで定義する。本書で�
 - 本書はCompassのProduct Promise、Authority境界、Signal-to-Explanation Ruleを管理する。
 - Compassの具体的なAPI Schema、実装手順、テストケースは本書で重複管理しない。
 - Free/Premium境界、価格、Analytics契約が確定した場合は、専用の正本文書で管理し、本書へ重複記載しない。
-- Master Principle（Section 0）またはAuthority境界（Section 6）が変更される場合のみ、本書を更新する。
+- Master Principle（Section 0）、Canonical Semantic Scope（Section 0.1）、またはAuthority境界（Section 6）が変更される場合のみ、本書を更新する。
 - Concierge側の契約（`concierge-first-final-spec.md`等）が変更される場合は、本書のSection 5との整合を確認する。
 - Weekly Presentation Contractが本書のMaster Principle・MONTH時間モデル・5 Authority境界へ影響する変更を行う場合は、本書との整合を確認する。Weekly固有のPresentation詳細のみの変更はWeekly Contract側で管理する。
 - TODO、実装進捗、PR計画、監査の時点記録は本書へ記載しない（それらは`docs/audit/`配下で管理する）。
