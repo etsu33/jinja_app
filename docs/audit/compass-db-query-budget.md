@@ -208,7 +208,7 @@ anonymous の本数（authenticated は各経路に auth +1）。
 
 根本原因:
 
-1. **Monthly / HIT の「~7」は、auth の1本を domain に数えた値と一致する**。実測では、この1本は JWT 認証の `auth_user` SELECT で、anonymous では出ない。domain query は 6 本である。
+1. **Monthly / HIT の「~7」と実測 domain 6 本の差分は、History Sources prefetch が発行されなかったため**。静的見積もりは ShrineHistory に親 row が存在し、その `sources` prefetch まで走る前提だった。一方、今回の fixture は usable Deity Fact を持つが History Fact は 0 件で、`temples_shrinehistory` SELECT 自体は発行されるものの 0 行を返す。そのため Django は `ShrineHistory.sources` の追加 prefetch query を発行せず、domain query は 7 → 6 となった。authenticated の +1 は JWT の `auth_user` SELECT という**別の認証オーバーヘッド**であり、この anonymous 7 → 6 の差分原因ではない。
 2. **MISS の「~16」は総数では一致するが、うち 2 本は transaction制御**（SAVEPOINT/RELEASE または BEGIN/COMMIT）であり、domain query ではない。domain は 14 本で、その内訳は次のとおり。
    - Recommendation pipeline 6 本（Monthly と同じ）
    - Snapshot 3 本。lookup が2回走る: service の lookup と、`get_or_create_weekly_snapshot` の race-safe な再 lookup
