@@ -2,7 +2,7 @@
 
 ## Status
 
-**A-4: READY_FOR_MOTHER_SHIP_DECISION / DOCUMENTATION ONLY**
+**A-4: 3_OF_4_MOTHER_SHIP_DECISIONS_FIXED / DOCUMENTATION ONLY**
 
 - Repository: `etsu33/jinja_app`
 - Base branch: `develop`
@@ -342,15 +342,15 @@ import_shrine_knowledge.py
 
 **Technical recommendation: SELECT C**
 
-### 4.2 Proposed decision token
+### 4.2 Mother Ship decision
 
-Mother Ship approval candidate:
+Mother Ship confirmed:
 
 ```text
 WRITE_PATH_AUTHORITY = EXTEND_EXISTING_KNOWLEDGE_IMPORTER
 ```
 
-この値が承認された場合、A-5 では
+A-5 では
 `import_shrine_knowledge` の extension だけを canonical backfill write path とする。
 
 Management command は orchestration entry point とし、
@@ -413,9 +413,9 @@ obj.sources.set(...)
 Membership は `save()` 自身も `full_clean()` を呼ぶが、
 write service 側でも intent を明示して validation path を統一してよい。
 
-### 5.3 Proposed decision token
+### 5.3 Mother Ship decision
 
-Mother Ship approval candidate:
+Mother Ship confirmed:
 
 ```text
 BULK_WRITE_POLICY = PROHIBITED_FOR_COLLECTIVE_BACKFILL
@@ -543,15 +543,15 @@ Technical recommendation:
 - parser + `full_clean()` で fail closed
 - shared Knowledge lifecycle 全体のDB hardeningは別track
 
-### 6.6 Proposed boundary token
+### 6.6 Mother Ship decision
 
-Mother Ship approval candidate:
+Mother Ship confirmed:
 
 ```text
 INTEGRITY_BOUNDARY = DB_ROW_LOCAL_MODEL_SERVICE_CROSS_ROW
 ```
 
-補助 decision:
+補助 decision は未確定:
 
 ```text
 COUNT_RELATION_DB_CONSTRAINT = ADD_BEFORE_BACKFILL
@@ -885,40 +885,38 @@ COUNT_RELATION_DB_CONSTRAINT =
   ADD_BEFORE_BACKFILL
 ```
 
-These are not silently converted into Mother Ship decisions by this audit.
+Mother Ship has explicitly confirmed the first three values. `COUNT_RELATION_DB_CONSTRAINT` remains pending.
 
 ---
 
 ## 17. Mother Ship Decision Gate
 
-A-4 closes only after Mother Ship explicitly accepts or replaces the values below.
+Current Mother Ship decisions:
 
 ```text
 Decision 1:
 WRITE_PATH_AUTHORITY =
   EXTEND_EXISTING_KNOWLEDGE_IMPORTER
-  / NEW_DEDICATED_IMPORTER
-  / OTHER
+Status: FIXED
 
 Decision 2:
 BULK_WRITE_POLICY =
   PROHIBITED_FOR_COLLECTIVE_BACKFILL
-  / CONDITIONALLY_ALLOWED
-  / ALLOWED
+Status: FIXED
 
 Decision 3:
 INTEGRITY_BOUNDARY =
   DB_ROW_LOCAL_MODEL_SERVICE_CROSS_ROW
-  / MODEL_SERVICE_ONLY
-  / OTHER
+Status: FIXED
 
 Decision 3a:
 COUNT_RELATION_DB_CONSTRAINT =
   ADD_BEFORE_BACKFILL
   / KEEP_MODEL_VALIDATION_ONLY
+Status: PENDING
 ```
 
-No option may be inferred from document order.
+A-4 closes only after Decision 3a is explicitly fixed.
 
 ---
 
@@ -966,9 +964,9 @@ Collective save and bulk paths remain governed by Decision 2.
 - [x] bulk policy options compared
 - [x] validation / DB constraint boundary documented
 - [x] Production / Runtime / Model Risk boundaries documented
-- [ ] Mother Ship: WRITE_PATH_AUTHORITY selected
-- [ ] Mother Ship: BULK_WRITE_POLICY selected
-- [ ] Mother Ship: INTEGRITY_BOUNDARY selected
+- [x] Mother Ship: WRITE_PATH_AUTHORITY = EXTEND_EXISTING_KNOWLEDGE_IMPORTER
+- [x] Mother Ship: BULK_WRITE_POLICY = PROHIBITED_FOR_COLLECTIVE_BACKFILL
+- [x] Mother Ship: INTEGRITY_BOUNDARY = DB_ROW_LOCAL_MODEL_SERVICE_CROSS_ROW
 - [ ] Mother Ship: COUNT_RELATION_DB_CONSTRAINT selected
 - [ ] A-4 Gate CLOSED
 ```
