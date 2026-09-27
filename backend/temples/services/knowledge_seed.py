@@ -23,22 +23,32 @@ from typing import Any, Literal
 from urllib.parse import urlsplit, urlunsplit
 
 from django.db.models import F
+from django.utils import timezone
 from temples.models import (
     KNOWLEDGE_CONFIDENCE_CHOICES,
     KNOWLEDGE_VERIFICATION_STATUS_CHOICES,
     Shrine,
     ShrineDeity,
+    ShrineDeityCollective,
     ShrineHistory,
     ShrineKnowledgeSource,
 )
 
+# export_shrine_knowledge が出力する version。A-5a では変更しない。
 SCHEMA_VERSION = "1.0"
+# import 側が受け付ける version（docs/audit/collective-deity-knowledge-seed-v1-1-contract.md §3）。
+# 1.0 は従来契約のまま。1.1 は shrine block に optional な `collectives` を追加する。
+COLLECTIVE_SCHEMA_VERSION = "1.1"
+SUPPORTED_SCHEMA_VERSIONS = (SCHEMA_VERSION, COLLECTIVE_SCHEMA_VERSION)
 
 _VALID_VERIFICATION_STATUSES = {v for v, _ in KNOWLEDGE_VERIFICATION_STATUS_CHOICES}
 _VALID_CONFIDENCES = {v for v, _ in KNOWLEDGE_CONFIDENCE_CHOICES} | {""}
 _VALID_SOURCE_TYPES = {v for v, _ in ShrineKnowledgeSource.SOURCE_TYPE_CHOICES}
 _VALID_ROLES = {v for v, _ in ShrineDeity.ROLE_CHOICES}
 _VALID_HISTORY_TYPES = {v for v, _ in ShrineHistory.HISTORY_TYPE_CHOICES}
+_VALID_MEMBER_COUNT_RELATIONS = {v for v, _ in ShrineDeityCollective.MEMBER_COUNT_RELATION_CHOICES}
+_MEMBER_COUNT_RELATIONS_WITH_COUNT = set(ShrineDeityCollective.MEMBER_COUNT_RELATIONS_WITH_COUNT)
+_VALID_MEMBER_LIST_STATUSES = {v for v, _ in ShrineDeityCollective.MEMBER_LIST_STATUS_CHOICES}
 
 ShrineIdentityStatus = Literal["OK", "OK_CANONICAL_PREFERRED", "NOT_FOUND", "AMBIGUOUS"]
 SourceIdentityStatus = Literal["CREATE", "REUSE_EXISTING", "CONFLICT", "AMBIGUOUS"]
@@ -242,6 +252,129 @@ def find_existing_history(shrine: Shrine, history_type: str, title: str) -> Shri
     )
 
 
+MembershipDeityStatus = Literal[
+    "RESOLVED_EXISTING",
+    "RESOLVED_SEED",
+    "MEMBERSHIP_DEITY_NOT_FOUND",
+    "MEMBERSHIP_DEITY_AMBIGUOUS",
+    "MEMBERSHIP_DEITY_WRONG_SHRINE",
+]
+
+
+@dataclass(frozen=True)
+class MembershipDeityResult:
+    deity: ShrineDeity | None
+    status: MembershipDeityStatus
+    detail: str = ""
+
+    @property
+    def resolved(self) -> bool:
+        return self.status in ("RESOLVED_EXISTING", "RESOLVED_SEED")
+
+
+def resolve_membership_deity(
+    shrine: Shrine, display_name: str, seed_deity_names: list[str]
+) -> MembershipDeityResult:
+    """Membership の deity_ref を same Shrine + exact display_name で厳密に解決する。
+
+    `find_existing_deity()` と違い `.first()` で重複を隠さない。既存 DB 行が無い場合だけ、
+    同じ seed / shrine block で宣言された Deity（apply で CREATE される）を参照先として認める。
+    Membership のために Deity を作ることはしない。canonical_name / 別名 / note / 近似名は使わない。
+    """
+    rows = list(ShrineDeity.objects.filter(shrine=shrine, display_name=display_name).order_by("id"))
+    if any(row.shrine_id != shrine.pk for row in rows):
+        return MembershipDeityResult(
+            None, "MEMBERSHIP_DEITY_WRONG_SHRINE", f"display_name={display_name!r}"
+        )
+    if len(rows) > 1:
+        return MembershipDeityResult(
+            None,
+            "MEMBERSHIP_DEITY_AMBIGUOUS",
+            f"{len(rows)} ShrineDeity rows match display_name={display_name!r}",
+        )
+    if len(rows) == 1:
+        return MembershipDeityResult(rows[0], "RESOLVED_EXISTING")
+
+    declared = seed_deity_names.count(display_name)
+    if declared > 1:
+        return MembershipDeityResult(
+            None,
+            "MEMBERSHIP_DEITY_AMBIGUOUS",
+            f"{declared} same-seed deities declare display_name={display_name!r}",
+        )
+    if declared == 1:
+        return MembershipDeityResult(None, "RESOLVED_SEED")
+
+    elsewhere = ShrineDeity.objects.filter(display_name=display_name).exclude(shrine=shrine)
+    if elsewhere.exists():
+        return MembershipDeityResult(
+            None,
+            "MEMBERSHIP_DEITY_WRONG_SHRINE",
+            f"display_name={display_name!r} exists only on another Shrine",
+        )
+    return MembershipDeityResult(
+        None, "MEMBERSHIP_DEITY_NOT_FOUND", f"display_name={display_name!r}"
+    )
+
+
+def find_collectives_by_identity(
+    shrine: Shrine, source_attested_label: str
+) -> list[ShrineDeityCollective]:
+    """Collective identity（resolved Shrine + source_attested_label の完全一致）の全候補。
+
+    `.first()` で曖昧さを隠さないよう、呼び出し側が件数で CREATE / 比較 / AMBIGUOUS を決める。
+    """
+    return list(
+        ShrineDeityCollective.objects.filter(
+            shrine=shrine, source_attested_label=source_attested_label
+        ).order_by("id")
+    )
+
+
+_COLLECTIVE_COMPARE_FIELDS = (
+    "role",
+    "sort_order",
+    "member_count",
+    "member_count_relation",
+    "member_list_status",
+    "verification_status",
+    "confidence",
+    "verified_at",
+    "note",
+)
+_MEMBERSHIP_COMPARE_FIELDS = (
+    "sort_order",
+    "verification_status",
+    "confidence",
+    "verified_at",
+    "note",
+)
+
+
+def _comparable(field_name: str, value: Any) -> Any:
+    if field_name == "verified_at" and isinstance(value, datetime) and timezone.is_naive(value):
+        # DateTimeField は naive 値を TIME_ZONE で保存する。比較も同じ解釈にそろえる。
+        return timezone.make_aware(value)
+    return value
+
+
+def diff_persisted_fields(existing: Any, entry: Any, field_names: tuple[str, ...]) -> list[str]:
+    """既存行と seed entry の不一致 field 名（created_at / updated_at は比較しない）。"""
+    return [
+        name
+        for name in field_names
+        if _comparable(name, getattr(existing, name)) != _comparable(name, getattr(entry, name))
+    ]
+
+
+def diff_collective_fields(existing: ShrineDeityCollective, entry: "CollectiveEntry") -> list[str]:
+    return diff_persisted_fields(existing, entry, _COLLECTIVE_COMPARE_FIELDS)
+
+
+def diff_membership_fields(existing: Any, entry: "MembershipEntry") -> list[str]:
+    return diff_persisted_fields(existing, entry, _MEMBERSHIP_COMPARE_FIELDS)
+
+
 def _parse_date(value: Any, field_name: str, errors: list[str]) -> date | None:
     if value in (None, ""):
         return None
@@ -311,11 +444,43 @@ class HistoryEntry:
 
 
 @dataclass
+class MembershipEntry:
+    """schema 1.1 の ShrineDeityCollectiveMembership 1件。source_keys は Collective から継承しない。"""
+
+    deity_display_name: str
+    sort_order: int = 0
+    verification_status: str = "draft"
+    confidence: str = ""
+    verified_at: datetime | None = None
+    note: str = ""
+    source_keys: list[str] = field(default_factory=list)
+
+
+@dataclass
+class CollectiveEntry:
+    """schema 1.1 の ShrineDeityCollective 1件。identity = resolved Shrine + source_attested_label。"""
+
+    source_attested_label: str
+    role: str = "unknown"
+    sort_order: int = 0
+    member_count: int | None = None
+    member_count_relation: str = "unspecified"
+    member_list_status: str = "not_determined"
+    verification_status: str = "draft"
+    confidence: str = ""
+    verified_at: datetime | None = None
+    note: str = ""
+    source_keys: list[str] = field(default_factory=list)
+    memberships: list[MembershipEntry] = field(default_factory=list)
+
+
+@dataclass
 class ShrineBlock:
     name_jp: str
     address: str
     deities: list[DeityEntry] = field(default_factory=list)
     histories: list[HistoryEntry] = field(default_factory=list)
+    collectives: list[CollectiveEntry] = field(default_factory=list)
 
 
 @dataclass
@@ -450,7 +615,236 @@ def _parse_history(raw: dict, prefix: str, sources: dict, errors: list[str]) -> 
     )
 
 
-def _parse_shrine_block(raw: dict, prefix: str, sources: dict, errors: list[str]) -> ShrineBlock:
+def _is_choice(value: Any, choices: set[str]) -> bool:
+    return isinstance(value, str) and value in choices
+
+
+def _parse_non_negative_int(
+    raw: dict, key: str, prefix: str, errors: list[str], *, allow_none: bool
+) -> int | None:
+    """0 以上の int。bool は int として受け付けない（JSON true/false の誤入力を拒否する）。"""
+    default = None if allow_none else 0
+    value = raw.get(key, default)
+    if value is None and allow_none:
+        return None
+    if isinstance(value, bool) or not isinstance(value, int):
+        errors.append(f"{prefix}.{key}: must be an integer >= 0, got {value!r}")
+        return default
+    if value < 0:
+        errors.append(f"{prefix}.{key}: must be an integer >= 0, got {value!r}")
+        return default
+    return value
+
+
+def _parse_text(raw: dict, key: str, prefix: str, errors: list[str]) -> str:
+    value = raw.get(key, "")
+    if value is None:
+        return ""
+    if not isinstance(value, str):
+        errors.append(f"{prefix}.{key}: must be a string, got {value!r}")
+        return ""
+    return value
+
+
+def _parse_required_source_keys(
+    raw: dict, prefix: str, sources: dict, errors: list[str]
+) -> list[str]:
+    """schema 1.1 の Collective / Membership は自分自身の非空 source_keys を必須とする。"""
+    source_keys = raw.get("source_keys")
+    if not isinstance(source_keys, list) or not source_keys:
+        errors.append(f"{prefix}.source_keys: required, must be a non-empty list")
+        return []
+    valid: list[str] = []
+    for sk in source_keys:
+        if not isinstance(sk, str):
+            errors.append(f"{prefix}.source_keys: source key must be a string, got {sk!r}")
+            continue
+        if sk not in sources:
+            errors.append(f"{prefix}.source_keys: unknown source key {sk!r}")
+            continue
+        valid.append(sk)
+    return valid
+
+
+def _parse_verification(
+    raw: dict, prefix: str, errors: list[str]
+) -> tuple[str, str, datetime | None]:
+    verification_status = raw.get("verification_status", "draft")
+    confidence = raw.get("confidence", "")
+    verified_at = _parse_datetime(raw.get("verified_at"), f"{prefix}.verified_at", errors)
+    if not _is_choice(verification_status, _VALID_VERIFICATION_STATUSES):
+        errors.append(f"{prefix}.verification_status: invalid value {verification_status!r}")
+        verification_status = "draft"
+    if not _is_choice(confidence, _VALID_CONFIDENCES):
+        errors.append(f"{prefix}.confidence: invalid value {confidence!r}")
+        confidence = ""
+    if verification_status in ("source_confirmed", "reviewed") and verified_at is None:
+        errors.append(
+            f"{prefix}.verified_at: required when verification_status={verification_status!r}"
+        )
+    return verification_status, confidence, verified_at
+
+
+def _parse_membership(
+    raw: Any, prefix: str, sources: dict, errors: list[str]
+) -> MembershipEntry | None:
+    if not isinstance(raw, dict):
+        errors.append(f"{prefix}: must be an object")
+        return None
+
+    # deity_ref は {"display_name": "..."} のみ。数値PK・別名・canonical_name では参照しない。
+    deity_ref = raw.get("deity_ref")
+    display_name = ""
+    if not isinstance(deity_ref, dict) or set(deity_ref) != {"display_name"}:
+        errors.append(
+            f"{prefix}.deity_ref: must be an object with exactly one key 'display_name', "
+            f"got {deity_ref!r}"
+        )
+    else:
+        value = deity_ref["display_name"]
+        if not isinstance(value, str) or not value.strip():
+            errors.append(f"{prefix}.deity_ref.display_name: required, must be a non-blank string")
+        else:
+            display_name = value
+
+    sort_order = _parse_non_negative_int(raw, "sort_order", prefix, errors, allow_none=False)
+    verification_status, confidence, verified_at = _parse_verification(raw, prefix, errors)
+    return MembershipEntry(
+        deity_display_name=display_name,
+        sort_order=sort_order or 0,
+        verification_status=verification_status,
+        confidence=confidence,
+        verified_at=verified_at,
+        note=_parse_text(raw, "note", prefix, errors),
+        source_keys=_parse_required_source_keys(raw, prefix, sources, errors),
+    )
+
+
+def _parse_collective(
+    raw: Any, prefix: str, sources: dict, errors: list[str]
+) -> CollectiveEntry | None:
+    if not isinstance(raw, dict):
+        errors.append(f"{prefix}: must be an object")
+        return None
+
+    # Source 上の表記をそのまま identity に使う。trim / 正規化 / 翻訳 / 同義語照合はしない。
+    label = raw.get("source_attested_label")
+    if not isinstance(label, str) or not label.strip():
+        errors.append(f"{prefix}.source_attested_label: required, must be a non-blank string")
+        label = ""
+    elif label != label.strip():
+        errors.append(
+            f"{prefix}.source_attested_label: must not have leading/trailing whitespace, "
+            f"got {label!r}"
+        )
+
+    role = raw.get("role", "unknown")
+    if not _is_choice(role, _VALID_ROLES):
+        errors.append(f"{prefix}.role: invalid value {role!r}")
+        role = "unknown"
+    sort_order = _parse_non_negative_int(raw, "sort_order", prefix, errors, allow_none=False)
+    member_count = _parse_non_negative_int(raw, "member_count", prefix, errors, allow_none=True)
+    member_count_relation = raw.get("member_count_relation", "unspecified")
+    relation_valid = _is_choice(member_count_relation, _VALID_MEMBER_COUNT_RELATIONS)
+    if not relation_valid:
+        errors.append(f"{prefix}.member_count_relation: invalid value {member_count_relation!r}")
+    member_list_status = raw.get("member_list_status", "not_determined")
+    if not _is_choice(member_list_status, _VALID_MEMBER_LIST_STATUSES):
+        errors.append(f"{prefix}.member_list_status: invalid value {member_list_status!r}")
+        member_list_status = "not_determined"
+
+    # DB constraint chk_deity_coll_count_rel と同じ不変条件。値域（>0 等）は追加しない。
+    raw_count = raw.get("member_count")
+    if relation_valid:
+        if member_count_relation in _MEMBER_COUNT_RELATIONS_WITH_COUNT and raw_count is None:
+            errors.append(
+                f"{prefix}.member_count: required when "
+                f"member_count_relation={member_count_relation!r}"
+            )
+        elif member_count_relation == "unspecified" and raw_count is not None:
+            errors.append(
+                f"{prefix}.member_count: must be null when member_count_relation='unspecified'"
+            )
+    else:
+        member_count_relation = "unspecified"
+
+    verification_status, confidence, verified_at = _parse_verification(raw, prefix, errors)
+    source_keys = _parse_required_source_keys(raw, prefix, sources, errors)
+
+    memberships: list[MembershipEntry] = []
+    raw_memberships = raw.get("memberships", [])
+    if not isinstance(raw_memberships, list):
+        errors.append(f"{prefix}.memberships: must be a list")
+        raw_memberships = []
+    seen_deities: set[str] = set()
+    for k, m in enumerate(raw_memberships):
+        membership = _parse_membership(m, f"{prefix}.memberships[{k}]", sources, errors)
+        if membership is None:
+            continue
+        name = membership.deity_display_name
+        if name:
+            if name in seen_deities:
+                errors.append(
+                    f"{prefix}.memberships[{k}].deity_ref.display_name: duplicate {name!r} "
+                    "within this collective"
+                )
+            seen_deities.add(name)
+        memberships.append(membership)
+
+    return CollectiveEntry(
+        source_attested_label=label,
+        role=role,
+        sort_order=sort_order or 0,
+        member_count=member_count,
+        member_count_relation=member_count_relation,
+        member_list_status=member_list_status,
+        verification_status=verification_status,
+        confidence=confidence,
+        verified_at=verified_at,
+        note=_parse_text(raw, "note", prefix, errors),
+        source_keys=source_keys,
+        memberships=memberships,
+    )
+
+
+def _parse_collectives(
+    raw: dict, schema_version: Any, prefix: str, sources: dict, errors: list[str]
+) -> list[CollectiveEntry]:
+    if "collectives" not in raw:
+        return []
+    if schema_version != COLLECTIVE_SCHEMA_VERSION:
+        # 1.0 では空リストでも黙って無視しない（contract §3.1）。
+        errors.append(
+            f"{prefix}.collectives: not allowed in schema_version {schema_version!r}; "
+            f"requires {COLLECTIVE_SCHEMA_VERSION!r}"
+        )
+        return []
+    raw_collectives = raw["collectives"]
+    if not isinstance(raw_collectives, list):
+        errors.append(f"{prefix}.collectives: must be a list")
+        return []
+
+    collectives: list[CollectiveEntry] = []
+    seen_labels: set[str] = set()
+    for j, c in enumerate(raw_collectives):
+        collective = _parse_collective(c, f"{prefix}.collectives[{j}]", sources, errors)
+        if collective is None:
+            continue
+        label = collective.source_attested_label
+        if label:
+            if label in seen_labels:
+                errors.append(
+                    f"{prefix}.collectives[{j}].source_attested_label: duplicate {label!r} "
+                    "within this shrine block"
+                )
+            seen_labels.add(label)
+        collectives.append(collective)
+    return collectives
+
+
+def _parse_shrine_block(
+    raw: dict, prefix: str, sources: dict, errors: list[str], schema_version: Any = SCHEMA_VERSION
+) -> ShrineBlock:
     shrine_ref = raw.get("shrine_ref") or {}
     name_jp = shrine_ref.get("name_jp")
     if not name_jp or not str(name_jp).strip():
@@ -467,8 +861,14 @@ def _parse_shrine_block(raw: dict, prefix: str, sources: dict, errors: list[str]
         for j, h in enumerate(raw.get("histories") or [])
     ]
 
+    collectives = _parse_collectives(raw, schema_version, prefix, sources, errors)
+
     return ShrineBlock(
-        name_jp=str(name_jp), address=str(address), deities=deities, histories=histories
+        name_jp=str(name_jp),
+        address=str(address),
+        deities=deities,
+        histories=histories,
+        collectives=collectives,
     )
 
 
@@ -481,8 +881,11 @@ def parse_seed(raw: dict) -> ParsedSeed:
     errors: list[str] = []
 
     schema_version = raw.get("schema_version")
-    if schema_version != SCHEMA_VERSION:
-        errors.append(f"schema_version: expected {SCHEMA_VERSION!r}, got {schema_version!r}")
+    if schema_version not in SUPPORTED_SCHEMA_VERSIONS:
+        errors.append(
+            f"schema_version: expected one of {list(SUPPORTED_SCHEMA_VERSIONS)!r}, "
+            f"got {schema_version!r}"
+        )
 
     sources: dict[str, SourceEntry] = {}
     raw_sources = raw.get("sources")
@@ -498,7 +901,7 @@ def parse_seed(raw: dict) -> ParsedSeed:
         errors.append("shrines: must be a list")
         raw_shrines = []
     for i, block in enumerate(raw_shrines):
-        shrines.append(_parse_shrine_block(block, f"shrines[{i}]", sources, errors))
+        shrines.append(_parse_shrine_block(block, f"shrines[{i}]", sources, errors, schema_version))
 
     return ParsedSeed(
         schema_version=str(schema_version or ""), sources=sources, shrines=shrines, errors=errors
@@ -507,6 +910,15 @@ def parse_seed(raw: dict) -> ParsedSeed:
 
 __all__ = [
     "SCHEMA_VERSION",
+    "COLLECTIVE_SCHEMA_VERSION",
+    "SUPPORTED_SCHEMA_VERSIONS",
+    "MembershipDeityResult",
+    "resolve_membership_deity",
+    "find_collectives_by_identity",
+    "diff_collective_fields",
+    "diff_membership_fields",
+    "CollectiveEntry",
+    "MembershipEntry",
     "ShrineIdentityResult",
     "SourceIdentityResult",
     "resolve_shrine",
