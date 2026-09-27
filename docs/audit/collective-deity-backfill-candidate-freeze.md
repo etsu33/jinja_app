@@ -2,7 +2,7 @@
 
 ## Status
 
-- Status: CANDIDATE_UNIVERSE_FROZEN / NO DATA WRITE
+- Status: CANDIDATE_UNIVERSE_CLOSED / NO DATA WRITE
 - Recorded at: 2026-09-27
 - Base: develop@a5768c97f1e40184b1e3b5c9fc503cb5ff4015c7
 - A-5a importer: merged by PR #3014
@@ -397,7 +397,84 @@ Therefore the **frozen technically expressible ready universe is 10 Collective c
 
 This is not an execution order and is not a Production authorization.
 
-## 9. Mother Ship execution-set boundary
+## 9. Candidate-universe closure verification
+
+The frozen 10-candidate ready universe was revalidated after freeze against the
+repository-preserved Source identities and the canonical Collective identity
+contract.
+
+### 9.1 Source identity revalidation
+
+For every ready candidate, the Source key named by this freeze document was
+independently located in the existing Knowledge Seed corpus.
+
+~~~text
+ready candidates                  10
+source keys resolved              10
+source_type = shrine_official     10
+unresolved source keys             0
+~~~
+
+Result:
+
+~~~text
+SOURCE_IDENTITY_REVALIDATION = PASS
+~~~
+
+This proves only that the frozen candidate points to the expected accepted
+repository Source identity. It does not authorize Production or replace the
+Source-backed field review required during seed authoring.
+
+### 9.2 Candidate identity uniqueness
+
+Canonical Collective identity remains:
+
+~~~text
+Shrine identity + source_attested_label
+~~~
+
+The 10 ready candidates were compared using that compound identity.
+
+~~~text
+candidate_count                  10
+unique_candidate_identity_count 10
+duplicate_candidate_count        0
+~~~
+
+Result:
+
+~~~text
+CANDIDATE_IDENTITY_DUPLICATE_GATE = PASS
+~~~
+
+A label alone is not a cross-Shrine identity key. Nested or overlapping
+Collectives inside one Shrine remain governed by their explicit review state;
+for example, 住吉三神 remains SOURCE_REVIEW_REQUIRED and is not silently merged
+with 住吉五所大神.
+
+### 9.3 Closure result
+
+All candidate-universe closure checks required before Mother Ship execution-set
+selection are now satisfied:
+
+~~~text
+CANDIDATE_UNIVERSE_FREEZE          PASS
+SOURCE_IDENTITY_REVALIDATION       PASS (10/10)
+CANDIDATE_IDENTITY_DUPLICATE_GATE  PASS (duplicate = 0)
+~~~
+
+Therefore:
+
+~~~text
+A5B_CANDIDATE_UNIVERSE_CLOSURE = CLOSED_FROZEN
+~~~
+
+Closure scope is limited to candidate discovery, Source identity traceability,
+and candidate identity uniqueness. It does not select an execution subset,
+author Knowledge Seed 1.1 data, mutate the database, activate Runtime behavior,
+or release any Model Risk HOLD.
+
+## 10. Mother Ship execution-set boundary
 
 The candidate universe is now separable from the execution set.
 
@@ -418,7 +495,7 @@ their own review closes.
 
 EXCLUDED_FROM_A5B items cannot enter through this track.
 
-## 10. Next implementation boundary
+## 11. Next implementation boundary
 
 After Mother Ship fixes A5B_INITIAL_BACKFILL_SET, the next task is a
 separate data PR that:
@@ -437,7 +514,7 @@ separate data PR that:
 
 Production remains governed by G7 and explicit Mother Ship approval.
 
-## 11. STOP
+## 12. STOP
 
 This candidate-freeze task stops before:
 
