@@ -1,6 +1,6 @@
 # A-5b Production Backfill Closure
 
-- Status: **IN PROGRESS — BACKUP / RESTORE EVIDENCE RECORDED**
+- Status: **IN PROGRESS — MIGRATION EVIDENCE RECORDED**
 - Date: 2026-09-27
 - Scope: A-5b Pattern B production backfill closure
 - Upstream execution contract: `docs/audit/collective-deity-a5b-production-backfill-execution-gate.md`
@@ -154,11 +154,137 @@ A5B_RECOVERY_READINESS = PASS
 
 No backup artifact is stored in Git.
 
-## 3. Remaining closure evidence
+## 3. Production migration 0115-0118 evidence
+
+### 3.1 Pre-migration Production position
+
+Production was observed at `temples.0114_f6d_explicit_place_ref_backfill`, with the four required migrations unapplied:
+
+```text
+[X] 0114_f6d_explicit_place_ref_backfill
+[ ] 0115_canonical_anchor_schema_foundation
+[ ] 0116_shrine_deity_collective_foundation
+[ ] 0117_shrine_deity_collective_membership_foundation
+[ ] 0118_shrine_deity_collective_count_relation_constraint
+```
+
+A physical-schema collision audit was performed before migration. Seven expected relation names were checked and no pre-existing collision was found:
+
+```text
+EXPECTED_TABLES 7
+COLLISION_FOUND 0
+COLLISION_TABLES []
+GATE PASS
+```
+
+### 3.2 Migration plan
+
+The Production migration plan targeted `temples.0118_shrine_deity_collective_count_relation_constraint` and resolved exactly the required sequence:
+
+```text
+0115_canonical_anchor_schema_foundation
+  Create ShrineCanonicalAnchor
+  Create ShrineCanonicalAnchorComponent
+  Create ShrineCanonicalAnchorEvidence
+  Add canonical-anchor constraints
+
+0116_shrine_deity_collective_foundation
+  Create ShrineDeityCollective
+
+0117_shrine_deity_collective_membership_foundation
+  Create ShrineDeityCollectiveMembership
+
+0118_shrine_deity_collective_count_relation_constraint
+  Create constraint chk_deity_coll_count_rel
+```
+
+### 3.3 Production migration execution
+
+The authorized Production migration was executed through Django migrations with target `temples 0118`.
+
+Observed result:
+
+```text
+Applying temples.0115_canonical_anchor_schema_foundation... OK
+Applying temples.0116_shrine_deity_collective_foundation... OK
+Applying temples.0117_shrine_deity_collective_membership_foundation... OK
+Applying temples.0118_shrine_deity_collective_count_relation_constraint... OK
+```
+
+No migration in this sequence reported an execution failure.
+
+### 3.4 Migration record verification
+
+The Production `django_migrations` state was checked after execution.
+
+```text
+MIGRATIONS_FOUND 4
+MIGRATIONS [
+  '0115_canonical_anchor_schema_foundation',
+  '0116_shrine_deity_collective_foundation',
+  '0117_shrine_deity_collective_membership_foundation',
+  '0118_shrine_deity_collective_count_relation_constraint'
+]
+```
+
+Therefore the expected migration records were present exactly `4 / 4`.
+
+### 3.5 Physical schema verification
+
+An initial post-migration check used incorrect canonical-anchor table-name assumptions and therefore reported only the two collective tables. That result was not accepted as the integrity result.
+
+The physical-schema check was corrected to the actual database table names and rerun. The verified result was:
+
+```text
+TABLES_EXPECTED 5
+TABLES_FOUND 5
+TABLES [
+  'temples_shrine_canonical_anchor',
+  'temples_shrine_canonical_anchor_component',
+  'temples_shrine_canonical_anchor_evidence',
+  'temples_shrinedeitycollective',
+  'temples_shrinedeitycollectivemembership'
+]
+MISSING_TABLES []
+```
+
+Thus the required post-migration physical schema was present `5 / 5`, with zero missing tables.
+
+### 3.6 Count-relation constraint verification
+
+The 0118 database constraint was queried independently after migration:
+
+```text
+COUNT_REL_CONSTRAINT_FOUND 1
+CONSTRAINTS ['chk_deity_coll_count_rel']
+```
+
+The required constraint therefore existed exactly once.
+
+### 3.7 Migration integrity classification
+
+The accepted post-migration gate was:
+
+```text
+MIGRATION_RECORDS = 4 / 4
+PHYSICAL_TABLES = 5 / 5
+MISSING_TABLES = 0
+chk_deity_coll_count_rel = 1
+GATE PASS
+```
+
+Classification:
+
+```text
+A5B_PRODUCTION_MIGRATION_0115_0118_EXECUTION = PASS
+A5B_PRODUCTION_POST_MIGRATION_INTEGRITY = PASS
+```
+
+## 4. Remaining closure evidence
 
 - [x] Production execution evidence organized
 - [x] backup / restore evidence recorded
-- [ ] migration 0115-0118 evidence recorded
+- [x] migration 0115-0118 evidence recorded
 - [ ] pre-import exact plan recorded
 - [ ] actual import result recorded
 - [ ] post-import integrity result recorded
