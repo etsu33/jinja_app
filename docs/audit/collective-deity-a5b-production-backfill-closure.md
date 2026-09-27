@@ -1,6 +1,6 @@
 # A-5b Production Backfill Closure
 
-- Status: **IN PROGRESS — PRE-IMPORT PLAN RECORDED**
+- Status: **IN PROGRESS — ACTUAL IMPORT RECORDED**
 - Date: 2026-09-27
 - Scope: A-5b Pattern B production backfill closure
 - Upstream execution contract: `docs/audit/collective-deity-a5b-production-backfill-execution-gate.md`
@@ -392,13 +392,126 @@ A5B_PRODUCTION_PRE_IMPORT_GATE = PASS
 
 The actual Production import was allowed to proceed only after this exact plan was observed.
 
-## 5. Remaining closure evidence
+## 5. Production actual import result
+
+### 5.1 Execution
+
+After the pre-import Gate passed, the frozen A-5b Pattern B seed was executed against Production using the same `import_shrine_knowledge` importer without `--dry-run`.
+
+The six source references again resolved to existing Production source rows. No source creation was performed:
+
+```text
+[source] REUSE_EXISTING [batch9-hakone-official] matched existing id=57
+[source] REUSE_EXISTING [batch10-samukawa-deities] matched existing id=72
+[source] REUSE_EXISTING [batch12-futarasan-official] matched existing id=82
+[source] REUSE_EXISTING [batch12-sumiyoshi-hakata-official] matched existing id=83
+[source] REUSE_EXISTING [batch12-awa-official] matched existing id=85
+[source] REUSE_EXISTING [batch14-oji-official] matched existing id=92
+```
+
+### 5.2 Created collectives
+
+The importer created exactly the six collectives predicted by the Production dry-run:
+
+```text
+[collective] CREATE 箱根神社: 箱根大神
+[collective] CREATE 寒川神社: 寒川大明神
+[collective] CREATE 二荒山神社: 二荒山大神
+[collective] CREATE 住吉神社（博多）: 住吉五所大神
+[collective] CREATE 安房神社: 忌部五部神
+[collective] CREATE 王子神社: 王子大神
+```
+
+Observed collective cardinality:
+
+```text
+planned = 6
+created = 6
+```
+
+### 5.3 Created memberships
+
+The importer created the 23 planned collective-to-deity memberships:
+
+```text
+箱根大神 = 3 memberships
+寒川大明神 = 2 memberships
+二荒山大神 = 3 memberships
+住吉五所大神 = 5 memberships
+忌部五部神 = 5 memberships
+王子大神 = 5 memberships
+TOTAL = 23 memberships
+```
+
+Observed membership cardinality:
+
+```text
+planned = 23
+created = 23
+```
+
+### 5.4 Import summary
+
+The importer reported the same mutation plan that had been observed during the pre-import dry-run:
+
+```text
+plan summary: {
+  'source_REUSE_EXISTING': 6,
+  'collective_CREATE': 6,
+  'membership_CREATE': 23
+}
+```
+
+The completed write result was:
+
+```text
+import complete:
+sources created=0,
+deities created=0,
+histories created=0,
+collectives created=6,
+memberships created=23
+```
+
+### 5.5 Plan-to-execution comparison
+
+The Production write remained inside the pre-authorized mutation boundary:
+
+```text
+                               planned   actual
+source REUSE_EXISTING                6        6
+source CREATE                        0        0
+deity CREATE                         0        0
+history CREATE                       0        0
+collective CREATE                    6        6
+membership CREATE                   23       23
+```
+
+No observed importer result expanded the write set beyond the dry-run plan.
+
+### 5.6 Actual import classification
+
+Based on the importer output:
+
+```text
+A5B_PRODUCTION_SOURCE_CREATE = 0
+A5B_PRODUCTION_DEITY_CREATE = 0
+A5B_PRODUCTION_HISTORY_CREATE = 0
+A5B_PRODUCTION_COLLECTIVE_CREATE = 6 / 6
+A5B_PRODUCTION_MEMBERSHIP_CREATE = 23 / 23
+A5B_PRODUCTION_PLAN_EXECUTION_MATCH = PASS
+A5B_PRODUCTION_ACTUAL_IMPORT = PASS
+```
+
+This classification records importer execution evidence only. Referential integrity, duplicate absence, same-shrine membership integrity, and rerun idempotency remain independently evidenced by the subsequent Gates rather than being inferred from the import summary.
+
+## 6. Remaining closure evidence
 
 - [x] Production execution evidence organized
 - [x] backup / restore evidence recorded
 - [x] migration 0115-0118 evidence recorded
 - [x] pre-import exact plan recorded
-- [ ] actual import result recorded
+- [x] actual import result recorded
 - [ ] post-import integrity result recorded
 - [ ] idempotency result recorded
 - [ ] reusable execution sequence recorded
