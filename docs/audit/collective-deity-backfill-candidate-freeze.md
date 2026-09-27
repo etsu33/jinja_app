@@ -2,7 +2,7 @@
 
 ## Status
 
-- Status: CANDIDATE_UNIVERSE_CLOSED / NO DATA WRITE
+- Status: CANDIDATE_UNIVERSE_CLOSED / INITIAL_SET_FROZEN / NO DATA WRITE
 - Recorded at: 2026-09-27
 - Base: develop@a5768c97f1e40184b1e3b5c9fc503cb5ff4015c7
 - A-5a importer: merged by PR #3014
@@ -24,8 +24,7 @@ collective / aggregate deity structure that the new Collective model may
 represent?
 ~~~
 
-It does not select the final execution subset, author the backfill seed, or
-write any database.
+It does not author the backfill seed or write any database.
 
 ## 2. Authority and boundaries
 
@@ -395,7 +394,7 @@ EXCLUDED_FROM_A5B
 
 Therefore the **frozen technically expressible ready universe is 10 Collective candidates**.
 
-This is not an execution order and is not a Production authorization.
+This is not a Production authorization.
 
 ## 9. Candidate-universe closure verification
 
@@ -470,47 +469,71 @@ A5B_CANDIDATE_UNIVERSE_CLOSURE = CLOSED_FROZEN
 ~~~
 
 Closure scope is limited to candidate discovery, Source identity traceability,
-and candidate identity uniqueness. It does not select an execution subset,
-author Knowledge Seed 1.1 data, mutate the database, activate Runtime behavior,
-or release any Model Risk HOLD.
+and candidate identity uniqueness. It does not author Knowledge Seed 1.1 data,
+mutate the database, activate Runtime behavior, or release any Model Risk HOLD.
 
-## 10. Mother Ship execution-set boundary
+## 10. Mother Ship execution-set decision
 
-The candidate universe is now separable from the execution set.
-
-This document does **not** choose which ready candidates are included in the
-first A-5b Data PR.
-
-The next Mother Ship decision is:
+Mother Ship decision recorded on 2026-09-27:
 
 ~~~text
-A5B_INITIAL_BACKFILL_SET =
-  UNRESOLVED
+A5B_INITIAL_BACKFILL_SET = PATTERN_B_6
 ~~~
 
-Valid selections must be a subset of the 10 ready candidates above.
+The initial A-5b Data PR is limited to these six frozen Pattern B candidates:
 
-SOURCE_REVIEW_REQUIRED candidates cannot enter the initial Data PR until
+| Shrine | Collective label | Existing members | Source key |
+|---|---|---:|---|
+| 箱根神社 | 箱根大神 | 3 | batch9-hakone-official |
+| 寒川神社 | 寒川大明神 | 2 | batch10-samukawa-deities |
+| 二荒山神社 | 二荒山大神 | 3 | batch12-futarasan-official |
+| 住吉神社（博多） | 住吉五所大神 | 5 | batch12-sumiyoshi-hakata-official |
+| 安房神社 | 忌部五部神 | 5 | batch12-awa-official |
+| 王子神社 | 王子大神 | 5 | batch14-oji-official |
+
+Reason for the initial boundary:
+
+- each candidate already has source-backed Collective identity
+- each candidate already has the named individual ShrineDeity members
+- the reviewed Source supports the member relation
+- no new individual ShrineDeity is required
+- the first Data PR can therefore exercise the standard Collective + Membership path without mixing Pattern C partial-membership or Pattern A/D collective-only edge cases
+
+The following four candidates remain ready but are deferred from the initial Data PR:
+
+~~~text
+DEFERRED_READY
+- 富岡八幡宮 / 応神天皇（誉田別命）外８柱
+- 阿蘇神社 / 健磐龍命をはじめ家族神12神
+- 八坂神社 / 八柱御子神
+- 東京大神宮 / 造化の三神
+~~~
+
+`DEFERRED_READY` means only "not selected for the initial Data PR". It does not
+mean HOLD, SOURCE_REVIEW_REQUIRED, EXCLUDED_FROM_A5B, or loss of the previously
+frozen ready status.
+
+SOURCE_REVIEW_REQUIRED candidates remain outside the initial Data PR until
 their own review closes.
 
 EXCLUDED_FROM_A5B items cannot enter through this track.
 
 ## 11. Next implementation boundary
 
-After Mother Ship fixes A5B_INITIAL_BACKFILL_SET, the next task is a
-separate data PR that:
+The next task is a separate A-5b Data PR for `PATTERN_B_6` that:
 
 1. starts from current develop
-2. authors an isolated Knowledge Seed 1.1 backfill file
-3. reuses existing Source identities
-4. changes no Runtime code
-5. deletes no legacy ShrineDeity
-6. runs --validate-only
-7. runs isolated --dry-run
-8. freezes expected delta
-9. applies only to isolated / production-equivalent DB during QA
-10. proves second dry-run has zero CREATE / CONFLICT
-11. stops before Production
+2. authors an isolated Knowledge Seed 1.1 backfill file for exactly the six selected candidates
+3. reuses the frozen existing Source identities
+4. creates no new individual ShrineDeity solely for Membership
+5. changes no Runtime code
+6. deletes or rewrites no legacy ShrineDeity
+7. runs --validate-only
+8. runs isolated --dry-run
+9. freezes expected delta
+10. applies only to isolated / production-equivalent DB during QA
+11. proves second dry-run has zero CREATE / CONFLICT
+12. stops before Production
 
 Production remains governed by G7 and explicit Mother Ship approval.
 
