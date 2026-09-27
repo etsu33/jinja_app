@@ -1,6 +1,6 @@
 # A-5b Production Backfill Closure
 
-- Status: **IN PROGRESS — MIGRATION EVIDENCE RECORDED**
+- Status: **IN PROGRESS — PRE-IMPORT PLAN RECORDED**
 - Date: 2026-09-27
 - Scope: A-5b Pattern B production backfill closure
 - Upstream execution contract: `docs/audit/collective-deity-a5b-production-backfill-execution-gate.md`
@@ -280,12 +280,124 @@ A5B_PRODUCTION_MIGRATION_0115_0118_EXECUTION = PASS
 A5B_PRODUCTION_POST_MIGRATION_INTEGRITY = PASS
 ```
 
-## 4. Remaining closure evidence
+## 4. Production pre-import exact plan evidence
+
+### 4.1 Seed validation
+
+After the required Production schema migration was confirmed, the frozen A-5b Pattern B seed was validated against Production before any A-5b seed write.
+
+Observed result:
+
+```text
+validate-only: OK, no errors
+```
+
+This established that the seed was structurally acceptable to the repository importer in the actual Production environment.
+
+### 4.2 Prerequisite object verification
+
+The A-5b seed does not independently create its six source records or its 23 referenced deity records. Their existence was therefore checked against Production before dry-run execution.
+
+Observed result:
+
+```text
+SOURCE_EXPECTED 6
+SOURCE_FOUND 6
+DEITY_EXPECTED 23
+DEITY_FOUND 23
+GATE PASS
+```
+
+The exact prerequisite cardinality was therefore satisfied:
+
+```text
+ShrineKnowledgeSource = 6 / 6
+ShrineDeity = 23 / 23
+```
+
+No missing prerequisite object was accepted.
+
+### 4.3 Exact Production dry-run plan
+
+The seed was then executed with `import_shrine_knowledge --dry-run` against Production.
+
+All six source references resolved to existing Production `ShrineKnowledgeSource` rows:
+
+```text
+[source] REUSE_EXISTING [batch9-hakone-official]
+[source] REUSE_EXISTING [batch10-samukawa-deities]
+[source] REUSE_EXISTING [batch12-futarasan-official]
+[source] REUSE_EXISTING [batch12-sumiyoshi-hakata-official]
+[source] REUSE_EXISTING [batch12-awa-official]
+[source] REUSE_EXISTING [batch14-oji-official]
+```
+
+The dry-run planned six collective creates:
+
+```text
+箱根神社: 箱根大神
+寒川神社: 寒川大明神
+二荒山神社: 二荒山大神
+住吉神社（博多）: 住吉五所大神
+安房神社: 忌部五部神
+王子神社: 王子大神
+```
+
+The planned membership cardinality was 23, using the already verified shrine-local deity records.
+
+Exact importer summary:
+
+```text
+plan summary: {
+  'source_REUSE_EXISTING': 6,
+  'collective_CREATE': 6,
+  'membership_CREATE': 23
+}
+dry-run: OK, no DB writes performed
+```
+
+### 4.4 Mutation boundary
+
+The pre-import plan contained only these A-5b actions:
+
+```text
+REUSE existing source rows = 6
+CREATE collective rows = 6
+CREATE membership rows = 23
+```
+
+It did not plan creation of source, deity, or history records. The dry-run itself performed no database writes.
+
+Therefore the exact authorized write set immediately before execution was:
+
+```text
+ShrineDeityCollective CREATE = 6
+ShrineDeityCollectiveMembership CREATE = 23
+all prerequisite Source rows = REUSE_EXISTING
+all referenced ShrineDeity rows = pre-existing prerequisites
+```
+
+### 4.5 Pre-import Gate classification
+
+The Production pre-import evidence is classified as:
+
+```text
+A5B_SEED_VALIDATE_ONLY = PASS
+A5B_SOURCE_PREREQUISITES = 6 / 6 PASS
+A5B_DEITY_PREREQUISITES = 23 / 23 PASS
+A5B_EXACT_DRY_RUN_PLAN = PASS
+A5B_DRY_RUN_DB_WRITES = 0
+A5B_PRODUCTION_PRE_IMPORT_GATE = PASS
+```
+
+The actual Production import was allowed to proceed only after this exact plan was observed.
+
+## 5. Remaining closure evidence
 
 - [x] Production execution evidence organized
 - [x] backup / restore evidence recorded
 - [x] migration 0115-0118 evidence recorded
-- [ ] pre-import exact plan recorded
+- [x] pre-import exact plan recorded
 - [ ] actual import result recorded
 - [ ] post-import integrity result recorded
 - [ ] idempotency result recorded
