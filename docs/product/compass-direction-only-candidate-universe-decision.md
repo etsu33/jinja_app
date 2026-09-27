@@ -121,7 +121,7 @@ Direction-only Contractでは、この挙動をCompass candidate universeへ持�
 1. `popular_score` はDirection-only candidate membership signalではない
 2. 60km圏内の方位適格Shrineが、全国人気上位N件に入らないだけで消える可能性がある
 3. Shrine DBが拡張するほど、候補漏れがデータ量依存で増える
-4. `DIRECTION_SET_RANKING_POLICY = OPEN` の状態でpopular_scoreをpre-filterに使うと、未確定Rankingをcandidate membershipへ事実上埋め込む
+4. 本Decision時点ではRankingが未確定だったため、popular_scoreをpre-filterに使うとRanking判断をcandidate membershipへ先取りして埋め込む問題があった。後続Decisionで `DISTANCE_ASC` が確定した後も、membershipへpopular_scoreを使わない境界は不変
 
 したがって:
 
