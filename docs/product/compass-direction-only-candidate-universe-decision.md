@@ -21,7 +21,7 @@ COMPASS_POPULARITY_PREFILTER        = PROHIBITED
 COMPASS_PRE_GEOGRAPHIC_COUNT_LIMIT  = PROHIBITED
 COMPASS_PURPOSE_PREFILTER           = PROHIBITED
 COMPASS_GORIYAKU_PREFILTER          = PROHIBITED
-DIRECTION_SET_RANKING_POLICY        = OPEN
+DIRECTION_SET_RANKING_POLICY        = DISTANCE_ASC
 ```
 
 Direction-only Compass の候補母集団は、**出発地点から最大60km以内に存在する、現行の構造条件を満たした神社全体**とする。
@@ -121,7 +121,7 @@ Direction-only Contractでは、この挙動をCompass candidate universeへ持�
 1. `popular_score` はDirection-only candidate membership signalではない
 2. 60km圏内の方位適格Shrineが、全国人気上位N件に入らないだけで消える可能性がある
 3. Shrine DBが拡張するほど、候補漏れがデータ量依存で増える
-4. `DIRECTION_SET_RANKING_POLICY = OPEN` の状態でpopular_scoreをpre-filterに使うと、未確定Rankingをcandidate membershipへ事実上埋め込む
+4. 本Decision時点ではRankingが未確定だったため、popular_scoreをpre-filterに使うとRanking判断をcandidate membershipへ先取りして埋め込む問題があった。後続Decisionで `DISTANCE_ASC` が確定した後も、membershipへpopular_scoreを使わない境界は不変
 
 したがって:
 
@@ -161,27 +161,23 @@ it cannot exclude a Shrine that satisfies the canonical <=60km membership rule
 
 ## 8. Ranking Boundary
 
-このDecisionは**候補集合のmembershipだけ**を確定する。
+このDecisionが確定したcandidate membershipは不変とする。その後のRankingは `docs/product/compass-direction-only-ranking-weekly-theme-decision.md` で閉じた。
 
 ```text
 CANDIDATE_UNIVERSE = CLOSED
-DIRECTION_SET_RANKING_POLICY = OPEN
+DIRECTION_SET_RANKING_POLICY = DISTANCE_ASC
+DIRECTION_SET_RANKING_TIE_BREAK = SHRINE_ID_ASC
 ```
 
-ACTIVE_SET 内を最終的に何順で表示するかは別Mother Ship Decisionである。
-
-本Decisionから以下を推論してはならない。
+RankingはACTIVE_SET確定後にのみ適用し、candidate membershipを変更しない。
 
 ```text
-- nearest first
-- popularity first
-- knowledge-rich first
-- id order
-- random
-- deterministic shuffle
+sort:
+  exact distance_m ASC
+  exact tie -> shrine_id ASC
 ```
 
-内部処理上の一時的な順序はuser-visible ranking authorityにならない。
+Popularity・Knowledge量・purpose / need / goriyaku・角度差によるweightはv1では使用しない。
 
 ## 9. No Semantic Fallback
 
@@ -225,7 +221,7 @@ popular_score prefilter
 - 300 -> 1000 のようなmagic number拡張で候補漏れを隠さない
 - purpose / goriyakuをpre-filterへ残さない
 - 60km超の候補で不足分を補充しない
-- Ranking Policy未決定のまま表示順を正本化しない
+- ACTIVE_SET確定前のdistance sortをcandidate membershipの代替にしない
 - Conciergeのcandidate pipelineをこのDecisionのために変更しない
 ```
 
@@ -239,14 +235,13 @@ CLOSED:
   COMPASS_PRE_GEOGRAPHIC_COUNT_LIMIT = PROHIBITED
   COMPASS_PURPOSE_PREFILTER = PROHIBITED
   COMPASS_GORIYAKU_PREFILTER = PROHIBITED
-
-OPEN:
-  DIRECTION_SET_RANKING_POLICY
-  WEEKLY_THEME_DIRECTION_ONLY_POLICY
+  DIRECTION_SET_RANKING_POLICY = DISTANCE_ASC
+  DIRECTION_SET_RANKING_TIE_BREAK = SHRINE_ID_ASC
+  WEEKLY_THEME_DIRECTION_ONLY_POLICY = NEUTRAL_ACTION_PROMPT
 ```
 
-## 13. Next Gate
+## 13. Follow-up
 
-次は `DIRECTION_SET_RANKING_POLICY` をMother Shipで確定する。
+`DIRECTION_SET_RANKING_POLICY` と `WEEKLY_THEME_DIRECTION_ONLY_POLICY` は `docs/product/compass-direction-only-ranking-weekly-theme-decision.md` で確定済み。
 
-候補母集団はこのDecisionで閉じたため、Ranking Decisionでは「誰を候補に含めるか」を再議論せず、`ACTIVE_SET` 内の表示順だけを扱う。
+Monthly Direction-only Coreは、candidate universeとrankingを新たに発明せず実装へ進める状態になった。Weekly persistenceについてはpurposeをSnapshot identityから外す前にProduction read-only collision auditが必要である。
