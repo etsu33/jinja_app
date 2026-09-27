@@ -8,6 +8,8 @@
 >
 > **2026-09-27 Candidate Universe Decision:** `docs/product/compass-direction-only-candidate-universe-decision.md` を下位Decision Recordとして採用し、Direction-only Compassの候補母集団を「現行の構造条件を満たすShrineのうちoriginから最大60km以内の全件」と確定する。候補membershipに `popular_score`・任意件数LIMIT・purpose / need / goriyakuを使用しない。
 >
+> **2026-09-27 Ranking / Weekly Theme Decision:** `docs/product/compass-direction-only-ranking-weekly-theme-decision.md` を下位Decision Recordとして採用し、ACTIVE_SET内のuser-visible rankingを `DISTANCE_ASC`、Weekly Themeをpurpose非依存の `NEUTRAL_ACTION_PROMPT` と確定する。
+>
 > 本書はDocsのみのPRとして作成された。コード・Model・Migration・Serializer・API Endpoint・DBデータの変更は一切含まない。記載内容はCompassの製品契約であり、実装済みであることを意味しない。Free/Premium境界の最終決定は本書の対象外とする（Section 12）。
 >
 > 現行Weekly CompassのPresentation責務（Weekly Theme / Featured Shrine / Owner / Snapshot / Reproducibility）は`docs/product/compass-weekly-presentation-contract.md`を下位正本とする。Weekly側は本書のMaster Principle・5 Authority・Signal-to-Explanation Ruleを継承し、それらを再定義しない。
@@ -75,7 +77,7 @@ COMPASS_CANDIDATE_UNIVERSE          = STRUCTURAL_BASE_WITHIN_60KM
 COMPASS_MAX_CANDIDATE_RADIUS_KM     = 60
 COMPASS_POPULARITY_PREFILTER        = PROHIBITED
 COMPASS_PRE_GEOGRAPHIC_COUNT_LIMIT  = PROHIBITED
-DIRECTION_SET_RANKING_POLICY        = OPEN
+DIRECTION_SET_RANKING_POLICY        = DISTANCE_ASC
 ```
 
 Compassが神社候補を作る因果経路は、**時間・生年月日から得た方位runtime signal、出発地点からのbearing、地理的距離、共有Recommendation Eligibility**に限定する。
@@ -86,7 +88,7 @@ Shrine KnowledgeはCompassから削除しない。ただし役割を明確に分
 
 候補membershipは `docs/product/compass-direction-only-candidate-universe-decision.md` を正本とする。現行共有candidate layerの非意味的な構造条件（QA fixture除外・座標必須・address非空）を起点とし、originから60kmを超えるShrineは候補母集団へ含めない。一方、60km以内の候補を `popular_score` や任意件数LIMITで先に切ってはならない。DB側のbounding box等は、60km以内の候補を欠落させないlossless optimizationとしてのみ許可する。
 
-方位・距離・Eligibilityを満たした候補集合の内部で、どの順序・規則で表示するかは本決定では確定しない。近さ・人気・Knowledge充実度などを暗黙に採用せず、`DIRECTION_SET_RANKING_POLICY = OPEN` として別のMother Ship decisionへ委譲する。
+方位・距離・Eligibilityを満たした `ACTIVE_SET` の内部は、`docs/product/compass-direction-only-ranking-weekly-theme-decision.md` に従い **exact `distance_m` 昇順**で表示する。同距離時のみ `shrine_id` 昇順をtechnical tie-breakerとして使用する。Popularity・Knowledge量・purpose / need / goriyaku・角度差による追加weightはv1のranking signalに使用しない。
 
 **Implementation gap:** 現行Frontend/Backend/Weekly実装には `purpose` と `need_tags=[purpose]` が残存する。本書の改訂はProduct Contractの正本変更であり、Runtime整合は別PRで行う。現行実装の残存purpose依存を本契約の例外として扱ってはならない。
 
@@ -510,7 +512,9 @@ direction sector match
     ↓
 direction-eligible ACTIVE_SET
     ↓
-DIRECTION_SET_RANKING_POLICY（OPEN。purpose / need / goriyakuを使用しない）
+DISTANCE_ASC ranking
+  - exact distance_m ASC
+  - exact tie: shrine_id ASC
     ↓
 shrine candidate presentation
     ↓
@@ -563,7 +567,7 @@ Weekly Presentationの永続化はPresentation結果の安定化を目的とし�
 
 **Direction Audit Gate状態（`docs/audit/compass-contract-reconciliation-direction-audit-completion.md`の判定を正式契約として確定）**:
 
-- **Gate A（旧Ranking組み込み）= SUPERSEDED FOR COMPASS**。既存Recommendation Scoreに`direction_signal`が存在する事実は維持するが、それをCompassの最終順位規則として自動採用しない。Direction-only Compassでは `DIRECTION_SET_RANKING_POLICY = OPEN` とし、purpose/need/goriyaku scoringを持ち込まない。Concierge側の既存Score契約は変更しない。
+- **Gate A（旧Ranking組み込み）= SUPERSEDED FOR COMPASS**。既存Recommendation Scoreに`direction_signal`が存在する事実は維持するが、それをCompassの最終順位規則として自動採用しない。Direction-only Compassでは `DIRECTION_SET_RANKING_POLICY = DISTANCE_ASC` とし、ACTIVE_SET確定後にexact distanceで並べる。purpose/need/goriyaku scoringは持ち込まず、Concierge側の既存Score契約は変更しない。
 - **Gate B（UI前面化）= Compassにおいてのみ条件付き解除、Concierge内では不変**。Gate Bの解除はCompassという別製品の存在を正当化するものであり、Concierge自体の表示ルールを一切変更しない。
 
 **重要な確認**: Direction Audit完了は、Concierge内での方位前面化を自動的に許可しない。これは本契約の不可逆の境界である。
@@ -594,7 +598,7 @@ Weekly Presentationの永続化はPresentation結果の安定化を目的とし�
 
 Weekly Presentationは第6のtop-level Authorityを追加しない。`docs/product/compass-weekly-presentation-contract.md`が定義するWeekly Presentation責務は、既存Presentation AuthorityのWeekly特化責務として扱う。したがってWeekly側はRecommendation Authority・Compass Runtime Authority・Shrine Knowledge Authorityを上書きしない。
 
-**Direction-only境界**: Compass Runtime Authorityは方位・距離による候補集合を作り、共有Recommendation Eligibilityは候補として表示可能かを判定する。そこから先の表示順序は `DIRECTION_SET_RANKING_POLICY = OPEN` とし、本書では決定しない。既存Recommendation Authorityのpurpose/need/goriyaku scoringやShrine Knowledgeを、未確定の順位規則の代替として流用してはならない。
+**Direction-only境界**: Compass Runtime Authorityは方位・距離による候補集合を作り、共有Recommendation Eligibilityは候補として表示可能かを判定する。ACTIVE_SET確定後の表示順は `DIRECTION_SET_RANKING_POLICY = DISTANCE_ASC` とし、exact distance昇順、同距離時のみ`shrine_id`昇順で再現可能にする。既存Recommendation Authorityのpurpose/need/goriyaku scoringやShrine Knowledgeを順位規則へ流用してはならない。
 
 ---
 
@@ -655,7 +659,7 @@ Shrine Knowledgeは候補化の理由ではない。逆に、方位一致から�
 ## 9. 禁止事項（絶対的制約）
 
 - **Compassでpurpose / need / goriyakuを使って候補選定・順位付け・fallbackを行ってはならない**。それらはConciergeのsemantic responsibilityである。
-- **未確定の`DIRECTION_SET_RANKING_POLICY`を暗黙に決めてはならない**。近さ・人気・Knowledge量など、Mother Shipが確定していない基準を実装都合で採用しない。
+- **Compass rankingは`DISTANCE_ASC`以外へ暗黙に拡張してはならない**。Popularity・Knowledge量・purpose/need/goriyaku・角度差によるweightを実装都合で追加しない。
 - **Runtime signal（方位・占術）がShrine Knowledgeを新設・上書きしてはならない**。「この神社は方位的に縁がある」という神社自体の性質としての主張を生成してはならない。
 - **未使用のsignalをcandidate evidenceとして提示してはならない**。
 - **日次精度を含意してはならない**。「今日の吉方位」のような表現は、実装が持たない精度を暗示するため使用しない（Section 4参照）。
