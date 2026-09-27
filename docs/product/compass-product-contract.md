@@ -469,7 +469,7 @@ COMMON DIRECTIONとMONTHLY FALLBACK DIRECTIONは、ユーザー向け説明に�
 
 Monthly Fallbackの導入はConciergeを変更しない。`kyusei.py`のシグネチャ・返り値契約も不変とし、`monthly_lucky_directions()`はCompass側で再利用する。
 
-Compassのranking境界はSection 2.1-7に従う。purpose/need/goriyaku scoringは使用禁止であり、direction-eligible set内の表示順は `DIRECTION_SET_RANKING_POLICY = OPEN` のままとする。
+Compassのranking境界はSection 2.1-7および`docs/product/compass-direction-only-ranking-weekly-theme-decision.md`に従う。purpose/need/goriyaku scoringは使用禁止であり、direction-eligible ACTIVE_SET内の表示順は `DIRECTION_SET_RANKING_POLICY = DISTANCE_ASC` とする。
 
 Monthly Fallbackのポリシー（COMMON/FALLBACK/NO_COMMON_DIRECTIONの判定ロジック）はCompass Layer B（`compass_runtime.py`）に閉じ込める。`kyusei.py`自体は製品文脈を持たない純粋な計算モジュールのままとする。
 
