@@ -224,20 +224,18 @@ UI上の見出しを「今週のテーマ」のまま残すことは避け、sem
 
 ## 7. Featured Shrine Contract
 
-Weekly Featured Shrineは、既存Recommendation結果からPresentation用の最大3件を選ぶ。
+Direction-only targetでは、Weekly Featured Shrineは**Monthly Compassで確定したDISTANCE_ASCのranked result**からPresentation用の最大3件を選ぶ。
 
-Weeklyは新しいRecommendation scoreを作らない。
-
-既存RecommendationのWeightを変更しない。
-
-再rankingを行わない。
+Weeklyは新しいRecommendation scoreを作らない。purpose / need / goriyaku / Popularity / Knowledge量で再rankingしない。
 
 ### Candidate Universe
 
-現行v1のCandidate Universeは次で固定する。
+Direction-only targetでは次の境界を採用する。
 
 ```text
-existing Recommendation result
+Monthly Direction-only ACTIVE_SET
+    ↓
+DISTANCE_ASC ranking
     ↓
 top 6 only
     ↓
@@ -254,6 +252,8 @@ maximum 3 featured shrines
 
 上位6件内でinvalid / duplicateが発生し、候補が6件未満になってもCandidate Universeを拡張しない。
 
+現行v1はsemantic Recommendation順位を入力にしているためImplementation Gapである。Direction-only Runtime整合後はMonthlyのDISTANCE_ASC順位をそのまま入力とする。
+
 ### 件数Fail-safe
 
 ```text
@@ -265,7 +265,7 @@ maximum 3 featured shrines
 
 ### Display Order
 
-選択されたShrineの表示順は、元のRecommendation順位を維持する。
+選択されたShrineの表示順は、MonthlyのDISTANCE_ASC順位を維持する。
 
 Frontendでslice、再ranking、shuffle、補充を行わない。
 
