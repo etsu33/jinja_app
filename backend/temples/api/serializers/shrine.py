@@ -110,6 +110,44 @@ class ShrineHistorySerializer(serializers.ModelSerializer):
         ).data
 
 
+# --- A6-02: admitted Collective（temples.services.collective_runtime_selector）の Read 専用表示 ---
+# 入力は selector が admission 済みにした AdmittedCollective / AdmittedCollectiveMembership
+# （frozen dataclass）であり、model instance ではない。Serializer は属性を写像するだけで、
+# Evidence Gate の再判定・admission の再計算・DB アクセスを行わない。Sources はこの段階では出さない。
+
+
+class _CollectiveMembershipDeitySerializer(serializers.Serializer):
+    id = serializers.IntegerField(source="deity_id", read_only=True)
+    display_name = serializers.CharField(source="deity_display_name", read_only=True)
+
+
+class ShrineDeityCollectiveMembershipSerializer(serializers.Serializer):
+    """AdmittedCollectiveMembership の Read 専用表示。deity は {id, display_name} に入れ子にする。"""
+
+    deity = _CollectiveMembershipDeitySerializer(source="*", read_only=True)
+    sort_order = serializers.IntegerField(read_only=True)
+    verification_status = serializers.CharField(read_only=True)
+    confidence = serializers.CharField(read_only=True)
+
+
+class ShrineDeityCollectiveSerializer(serializers.Serializer):
+    """AdmittedCollective の Read 専用表示。ShrineDeitySerializer へ flatten しない。
+
+    memberships の順序は selector が決めた (sort_order, id) 順をそのまま保持する。
+    """
+
+    id = serializers.IntegerField(source="collective_id", read_only=True)
+    source_attested_label = serializers.CharField(read_only=True)
+    role = serializers.CharField(read_only=True)
+    sort_order = serializers.IntegerField(read_only=True)
+    member_count = serializers.IntegerField(read_only=True, allow_null=True)
+    member_count_relation = serializers.CharField(read_only=True)
+    member_list_status = serializers.CharField(read_only=True)
+    verification_status = serializers.CharField(read_only=True)
+    confidence = serializers.CharField(read_only=True)
+    memberships = ShrineDeityCollectiveMembershipSerializer(many=True, read_only=True)
+
+
 class _DistanceFieldsMixin:
     def _distance_m(self, obj) -> Optional[float]:
         d = getattr(obj, "d_m", None)
@@ -295,4 +333,6 @@ __all__ = [
     "ShrineDeitySerializer",
     "ShrineHistorySerializer",
     "ShrineKnowledgeSourceSerializer",
+    "ShrineDeityCollectiveSerializer",
+    "ShrineDeityCollectiveMembershipSerializer",
 ]
