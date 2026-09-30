@@ -723,6 +723,28 @@ class ShrineDeityCollectiveMembership(models.Model):
         return super().save(*args, **kwargs)
 
 
+class CollectiveRuntimeActivation(models.Model):
+    """集合祭神 Collective の Runtime rollout 承認（A6-00 Foundation）。
+
+    row が存在する = その Collective が Runtime rollout 候補として明示承認されている。
+    row が存在しない = Runtime activated ではない。row の有無が唯一の rollout state である。
+
+    Activation は rollout 承認にすぎず、Runtime admission の十分条件ではない。
+    Evidence usability / member_list_status / Membership Evidence / deity 解決 /
+    same-Shrine 整合の判定は後続 A6-01 で別途行い、本 model は持たない。
+    Knowledge Fact 構造（ShrineDeityCollective）に rollout state を載せないため別 model とする。
+    本 model は Foundation のみであり、Runtime からは読まれない。
+    """
+
+    collective = models.OneToOneField(
+        ShrineDeityCollective, on_delete=models.CASCADE, related_name="runtime_activation"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self) -> str:
+        return f"runtime_activation:{self.collective_id}"
+
+
 class ShrineHistory(models.Model):
     """神社の由緒・歴史Knowledge。docs/knowledge/shrine-knowledge-contract.md「shrine_history契約」の実装。"""
 
