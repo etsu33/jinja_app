@@ -25,6 +25,49 @@ describe("sanitizeReturnTo", () => {
     );
   });
 
+  it("/favorites は復帰先として通す", () => {
+    expect(sanitizeReturnTo("/favorites")).toBe("/favorites");
+  });
+
+  it("/favorites のクエリ付きは復帰先として通す", () => {
+    expect(sanitizeReturnTo("/favorites?from=header")).toBe("/favorites?from=header");
+  });
+
+  it("/goshuin/new は復帰先として通す", () => {
+    expect(sanitizeReturnTo("/goshuin/new")).toBe("/goshuin/new");
+  });
+
+  it("/goshuin/new のクエリ付きは復帰先として通す", () => {
+    expect(sanitizeReturnTo("/goshuin/new?shrineId=12&from=detail")).toBe(
+      "/goshuin/new?shrineId=12&from=detail",
+    );
+  });
+
+  it("/favorites の lookalike path は拒否する", () => {
+    expect(sanitizeReturnTo("/favorites-evil")).toBeNull();
+    expect(sanitizeReturnTo("/favoritesx")).toBeNull();
+  });
+
+  it("/goshuin/new の lookalike path は拒否する", () => {
+    expect(sanitizeReturnTo("/goshuin/newx")).toBeNull();
+  });
+
+  it("許可rootの lookalike path は拒否する", () => {
+    expect(sanitizeReturnTo("/shrines-evil")).toBeNull();
+    expect(sanitizeReturnTo("/mypage-evil")).toBeNull();
+    expect(sanitizeReturnTo("/billingx")).toBeNull();
+  });
+
+  it("許可listに無い内部パスは拒否する", () => {
+    expect(sanitizeReturnTo("/goshuin")).toBeNull();
+    expect(sanitizeReturnTo("/admin")).toBeNull();
+  });
+
+  it("/favorites を装った外部URLは拒否する", () => {
+    expect(sanitizeReturnTo("https://evil.example.com/favorites")).toBeNull();
+    expect(sanitizeReturnTo("//evil.example.com/favorites")).toBeNull();
+  });
+
   it("外部URLは拒否する", () => {
     expect(sanitizeReturnTo("https://evil.example.com/phish")).toBeNull();
   });
@@ -59,6 +102,20 @@ describe("buildLoginHref", () => {
 
   it("/billing/upgrade を returnTo に付ける", () => {
     expect(buildLoginHref("/billing/upgrade")).toBe("/auth/login?returnTo=%2Fbilling%2Fupgrade");
+  });
+
+  it("/favorites を returnTo に付ける", () => {
+    expect(buildLoginHref("/favorites")).toBe("/auth/login?returnTo=%2Ffavorites");
+  });
+
+  it("/goshuin/new をクエリ込みで returnTo に付ける", () => {
+    expect(buildLoginHref("/goshuin/new?shrineId=12")).toBe(
+      "/auth/login?returnTo=%2Fgoshuin%2Fnew%3FshrineId%3D12",
+    );
+  });
+
+  it("lookalike path のとき /auth/login に落とす", () => {
+    expect(buildLoginHref("/favorites-evil")).toBe("/auth/login");
   });
 
   it("unsafe な returnTo のとき /auth/login に落とす", () => {

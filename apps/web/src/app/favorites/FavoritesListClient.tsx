@@ -2,14 +2,16 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Favorite } from "@/lib/api/favorites";
+import { useAuth } from "@/lib/auth/AuthProvider";
 import { normalizeFavorite } from "@/lib/favorites/normalize";
+import { buildLoginHref } from "@/lib/nav/login";
 import { removeFavoriteFromCacheByPk, clearFavoritesInFlight } from "@/lib/favoritesCache";
 import { FavoriteShrineCard } from "@/features/mypage/components/FavoriteShrineCard";
 
-
+const FAVORITES_LOGIN_HREF = buildLoginHref("/favorites");
 
 type Props = { initialFavorites: Favorite[] };
 
@@ -22,13 +24,21 @@ async function fetchFavoritesDirect(): Promise<Favorite[]> {
 
 export default function FavoritesListClient({ initialFavorites }: Props) {
   const router = useRouter();
+  const { loading: authLoading, isLoggedIn } = useAuth();
   const [items, setItems] = useState<Favorite[]>(initialFavorites);
   const [err, setErr] = useState<string | null>(null);
 
   const [busyId, setBusyId] = useState<number | null>(null);
   const [busyKind, setBusyKind] = useState<"unsave" | null>(null);
 
-  
+  const isGuest = !authLoading && !isLoggedIn;
+
+  // `getFavoritesServer()` は 401 でも `[]` を返すため、Guest はそのままだと
+  // 「お気に入り0件」と見分けがつかない。Guest は空表示ではなく Login へ送る。
+  useEffect(() => {
+    if (!isGuest) return;
+    router.replace(FAVORITES_LOGIN_HREF);
+  }, [isGuest, router]);
 
   async function unSave(f: Favorite) {
     if (busyId != null) return;
@@ -84,6 +94,40 @@ export default function FavoritesListClient({ initialFavorites }: Props) {
       setBusyId(null);
       setBusyKind(null);
     }
+  }
+
+  if (authLoading) {
+    return (
+      <div
+        className="rounded-2xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-background-subtle)] px-4 py-6 text-sm text-[var(--kt-color-text-secondary)]"
+        role="status"
+        aria-busy="true"
+      >
+        ログイン状態を確認しています…
+      </div>
+    );
+  }
+
+  // redirect が反映されるまでの1フレーム、および JS 遷移が働かない環境向けの
+  // 明示的な導線。ここで「0件」を出すと Guest が空データと誤認する。
+  if (isGuest) {
+    return (
+      <div className="rounded-2xl border border-[var(--kt-color-border-default)] bg-[var(--kt-color-background-subtle)] px-4 py-6 text-sm text-[var(--kt-color-text-secondary)]">
+        <p className="mb-1 font-semibold text-[var(--kt-color-text-primary)]">
+          ログインするとお気に入りを表示できます
+        </p>
+        <p className="text-xs text-[var(--kt-color-text-muted)]">
+          お気に入りはアカウントごとに保存されます。
+        </p>
+        <Link
+          href={FAVORITES_LOGIN_HREF}
+          prefetch={false}
+          className="mt-3 inline-block rounded-full bg-[var(--kt-color-action-primary)] px-4 py-1 text-xs font-medium text-[var(--kt-color-action-primary-text)] hover:bg-[var(--kt-color-action-primary-hover)]"
+        >
+          ログインへ
+        </Link>
+      </div>
+    );
   }
 
   return (

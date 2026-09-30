@@ -1,3 +1,35 @@
+/**
+ * Login 後に戻してよい内部パスの許可リスト。
+ *
+ * 追加するたびに「その画面が returnTo 経由の遷移で壊れないか」を確認すること。
+ */
+const SAFE_RETURN_TO_ROOTS = [
+  "/shrines",
+  "/mypage",
+  "/concierge",
+  "/billing",
+  "/favorites",
+  "/goshuin/new",
+] as const;
+
+/**
+ * path 境界まで見て一致させる。
+ *
+ * `startsWith` だけだと `/favorites-xxx` や `/shrines-evil` のような
+ * lookalike path まで許可してしまうため、次の境界のみを一致とみなす。
+ *
+ *   完全一致 / `/` の直後 / `?` の直後 / `#` の直後
+ */
+function isSafeInternalReturnTo(path: string): boolean {
+  return SAFE_RETURN_TO_ROOTS.some(
+    (root) =>
+      path === root ||
+      path.startsWith(`${root}/`) ||
+      path.startsWith(`${root}?`) ||
+      path.startsWith(`${root}#`),
+  );
+}
+
 export function sanitizeNext(next: string | null | undefined): string | null {
   const t0 = (next ?? "").trim();
   if (!t0) return null;
@@ -18,16 +50,7 @@ export function sanitizeNext(next: string | null | undefined): string | null {
   if (t.startsWith("/login")) return null;
   if (t.startsWith("/signup")) return null;
 
-  if (
-    t.startsWith("/shrines") ||
-    t.startsWith("/mypage") ||
-    t.startsWith("/concierge") ||
-    t.startsWith("/billing")
-  ) {
-    return t;
-  }
-
-  return null;
+  return isSafeInternalReturnTo(t) ? t : null;
 }
 
 export function normalizeReturnTo(input: string | null | undefined): string | null {
