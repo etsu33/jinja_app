@@ -1,0 +1,47 @@
+{
+  "schema_version": "1.0",
+  "collectives": [
+    {
+      "shrine_ref": {
+        "name_jp": "箱根神社",
+        "address": "神奈川県足柄下郡箱根町元箱根80-1"
+      },
+      "source_attested_label": "箱根大神"
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "寒川神社",
+        "address": "神奈川県高座郡寒川町宮山3916"
+      },
+      "source_attested_label": "寒川大明神"
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "二荒山神社",
+        "address": "栃木県日光市山内2307"
+      },
+      "source_attested_label": "二荒山大神"
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "住吉神社（博多）",
+        "address": "福岡県福岡市博多区住吉3-1-51"
+      },
+      "source_attested_label": "住吉五所大神"
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "安房神社",
+        "address": "千葉県館山市大神宮589"
+      },
+      "source_attested_label": "忌部五部神"
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "王子神社",
+        "address": "東京都北区王子本町1-1-12"
+      },
+      "source_attested_label": "王子大神"
+    }
+  ]
+}
