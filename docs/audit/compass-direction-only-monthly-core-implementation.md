@@ -9,7 +9,7 @@ PUBLIC_API       = UNCHANGED（Monthly / Weekly の request・response schema �
 OLD_WIRING       = UNCHANGED（get_compass_recommendations(purpose=...) は従来どおり）
 CONCIERGE        = UNCHANGED（候補生成・ranking・API の挙動は変更なし）
 MIGRATION        = NONE
-BASE             = develop @ a5768c97f1e40184b1e3b5c9fc503cb5ff4015c7
+BASE             = develop @ a5768c97f1e40184b1e3b5c9fc503cb5ff4015c7（PR 作成前に develop @ 9fe25c2b を merge）
 RECORDED_AT      = 2026-09-30
 ```
 
@@ -239,7 +239,8 @@ longitude BETWEEN λ0 - Δlng AND λ0 + Δlng
 |---|---|
 | 新 Core（`test_compass_direction_only_core.py`） | **51 passed** |
 | Compass / Shared Eligibility / Concierge 候補の関連 15 files（新 Core を含む） | **404 passed** |
-| backend 全体（`python -m pytest`、PostgreSQL 16、CI unit job と同じ env） | **4293 passed, 8 skipped, 0 failed**（skipped は PostGIS 専用 test） |
+| backend 全体（base `a5768c97` 上、PostgreSQL 16、CI unit job と同じ env） | **4293 passed, 8 skipped, 0 failed**（skipped は PostGIS 専用 test） |
+| backend 全体（最新 develop `9fe25c2b` を merge した後） | **4292 passed, 1 failed, 8 skipped**。1 failed は develop 側の既存失敗（下記） |
 | `ruff check`（新規 file） | pass |
 | `black --check`（新規 file） | pass |
 | `git diff --check` | pass |
@@ -249,6 +250,14 @@ longitude BETWEEN λ0 - Δlng AND λ0 + Δlng
 - **Compass**: api（recommendations / weekly / public projection / openapi identity / db query budget）、services（direction filter / orchestrator / runtime）、新 Core
 - **Eligibility**: `test_shared_recommendation_eligibility.py` / `test_shrine_knowledge_selector.py`
 - **Concierge 候補**: `test_concierge_build_chat_candidates_contract.py` / `test_concierge_candidate_utils.py` / `test_concierge_chat_candidates_dedupe.py` / `test_concierge_chat_score_v3_candidate_profile.py`
+
+### develop 側の既存失敗（本 PR と無関係）
+
+`temples/tests/test_knowledge_seed_collective_import.py::test_all_repository_seeds_are_1_0_and_still_parse_without_collectives`
+
+- 原因: develop の #3022（`data(knowledge): author A-5b Pattern B collective seed`）が追加した `backend/temples/data/knowledge_seeds/a5b_collective_pattern_b_seed.json` は version `1.1` である。この test は「repository の全 seed が `1.0`」を要求しているため失敗する（`AssertionError: a5b_collective_pattern_b_seed.json / '1.1' == '1.0'`）。
+- 証拠: 本 PR の変更を含まない `origin/develop @ 9fe25c2b` を単独で checkout し、同じ test file を実行した。結果は 1 failed / 113 passed で、同じ assertion で失敗する。
+- 本 PR の変更（Compass Core / 共有 eligibility helper）とは無関係である。指示どおり、無関係な code を変更して suite を緑にすることはしていない。
 
 ### 変更した既存 file の lint / format は develop と同じ状態
 
