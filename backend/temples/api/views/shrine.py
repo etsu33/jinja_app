@@ -41,6 +41,7 @@ from temples.services import places
 
 from temples.api.serializers.shrine import (
     ShrineDetailSerializer,
+    ShrineIngestResponseSerializer,
     ShrineListSerializer,
     ShrineWriteSerializer,
 )
@@ -353,7 +354,8 @@ class ShrineViewSet(viewsets.ModelViewSet):
         operation_id="api_shrines_ingest_create",
         request=ShrineIngestRequestSerializer,
         responses={
-            200: ShrineDetailSerializer,
+            # A6-02: deity_collectives は retrieve 専用。ingest は従来の Detail 契約を保持する。
+            200: ShrineIngestResponseSerializer,
             # F-6B: 登録済み Shrine がこの Place を表しうる場合。作成も束縛もしない。
             409: ShrineCollisionConflictSerializer,
         },
@@ -373,7 +375,7 @@ class ShrineViewSet(viewsets.ModelViewSet):
 
         try:
             shrine = get_or_create_shrine_by_place_id(place_id)
-            data = ShrineDetailSerializer(shrine, context={"request": request}).data
+            data = ShrineIngestResponseSerializer(shrine, context={"request": request}).data
             data["place_id"] = place_id
             return Response(data, status=status.HTTP_200_OK)
         # F-6B: collision は PlacesError のサブクラスなので、必ず先に捕まえる。

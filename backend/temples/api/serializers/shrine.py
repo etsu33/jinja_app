@@ -300,6 +300,19 @@ class ShrineDetailSerializer(ShrineBaseSerializer):
         return ShrineDeityCollectiveSerializer(admitted, many=True, context=self.context).data
 
 
+class ShrineIngestResponseSerializer(ShrineDetailSerializer):
+    """ShrineViewSet.ingest() の応答。A6-02 以前の Detail 契約（deity_collectives なし）を保持する。
+
+    deity_collectives（A6-02）は Shrine Detail（retrieve）専用であり、ingest へは広げない。
+    field 自体を持たないため Collective runtime selector を呼ばない。
+    """
+
+    deity_collectives = None
+
+    class Meta(ShrineDetailSerializer.Meta):
+        fields = [f for f in ShrineDetailSerializer.Meta.fields if f != "deity_collectives"]
+
+
 # 互換名
 ShrineSerializer = ShrineDetailSerializer
 
@@ -352,4 +365,5 @@ __all__ = [
     "ShrineKnowledgeSourceSerializer",
     "ShrineDeityCollectiveSerializer",
     "ShrineDeityCollectiveMembershipSerializer",
+    "ShrineIngestResponseSerializer",
 ]

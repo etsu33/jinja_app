@@ -15,7 +15,12 @@ from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APIClient
 from temples.api.serializers import shrine as shrine_serializers
-from temples.api.serializers.shrine import ShrineDetailSerializer, ShrineListSerializer
+from temples.api.serializers.shrine import (
+    ShrineDetailSerializer,
+    ShrineIngestResponseSerializer,
+    ShrineListSerializer,
+)
+from temples.api.views import shrine as shrine_views
 from temples.models import (
     CollectiveRuntimeActivation,
     Shrine,
@@ -329,6 +334,84 @@ def test_detail_http_without_admitted_collective_returns_200_and_empty_list():
     assert resp.json()["deity_collectives"] == []
 
 
+# ---------- ingest keeps its pre-A6-02 contract ----------
+
+# develop（A6-02 以前）で実測した ingest 応答の key 集合。is_favorite は ingest の Shrine が
+# annotate されないため従来から出ない。place_id は view が付与する。
+PRE_A6_02_INGEST_FIELDS = {
+    "id",
+    "kind",
+    "name_jp",
+    "name_romaji",
+    "address",
+    "latitude",
+    "longitude",
+    "goriyaku",
+    "goriyaku_tags",
+    "distance",
+    "distance_text",
+    "location",
+    "kyusei",
+    "deities",
+    "histories",
+    "place_id",
+}
+
+
+def _ingest(monkeypatch, shrine: Shrine):
+    monkeypatch.setattr(shrine_views, "get_or_create_shrine_by_place_id", lambda place_id: shrine)
+    return APIClient().post("/api/shrines/ingest/", {"place_id": "PID_A6_02"}, format="json")
+
+
+def test_ingest_does_not_invoke_collective_selector_or_expose_collectives(
+    monkeypatch, selector_spy
+):
+    shrine = _shrine()
+    _admitted(shrine)
+
+    resp = _ingest(monkeypatch, shrine)
+
+    assert resp.status_code == 200
+    assert "deity_collectives" not in resp.json()
+    assert selector_spy == []
+
+
+def test_ingest_retains_its_existing_response_fields(monkeypatch):
+    shrine = _shrine()
+    _admitted(shrine)
+    source = _source()
+    deity = ShrineDeity.objects.create(shrine=shrine, display_name="個別祭神", **_ready())
+    deity.sources.add(source)
+
+    resp = _ingest(monkeypatch, shrine)
+
+    body = resp.json()
+    assert set(body) == PRE_A6_02_INGEST_FIELDS
+    assert body["id"] == shrine.pk
+    assert body["place_id"] == "PID_A6_02"
+    assert [d["display_name"] for d in body["deities"]] == ["個別祭神"]
+
+
+def test_ingest_serializer_is_detail_minus_deity_collectives_only():
+    detail_fields = set(ShrineDetailSerializer().fields)
+    ingest_fields = set(ShrineIngestResponseSerializer().fields)
+    assert detail_fields - ingest_fields == {"deity_collectives"}
+    assert ingest_fields - detail_fields == set()
+    assert list(ShrineIngestResponseSerializer.Meta.fields) == [
+        f for f in ShrineDetailSerializer.Meta.fields if f != "deity_collectives"
+    ]
+
+
+def test_retrieve_still_exposes_admitted_collectives_alongside_ingest_boundary(selector_spy):
+    shrine = _shrine()
+    collective = _admitted(shrine)
+
+    resp = _get_detail(shrine)
+
+    assert [c["id"] for c in resp.json()["deity_collectives"]] == [collective.pk]
+    assert selector_spy == [[shrine.pk]]
+
+
 # ---------- query count ----------
 
 
@@ -394,3 +477,17 @@ def test_openapi_detail_has_deity_collectives_and_list_does_not():
     }
 
     assert "deity_collectives" not in components["ShrineList"]["properties"]
+
+
+def test_openapi_ingest_response_does_not_have_deity_collectives():
+    res = APIClient().get(reverse("schema"))
+    schema = (
+        res.json()
+        if "application/json" in res["Content-Type"]
+        else json.loads(res.content.decode("utf-8"))
+    )
+    ingest = schema["paths"]["/api/shrines/ingest/"]["post"]["responses"]["200"]
+    ref = ingest["content"]["application/json"]["schema"]["$ref"].rsplit("/", 1)[-1]
+    props = schema["components"]["schemas"][ref]["properties"]
+    assert "deity_collectives" not in props
+    assert {"deities", "histories"} <= set(props)
