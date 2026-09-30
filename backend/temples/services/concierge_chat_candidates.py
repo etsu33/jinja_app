@@ -175,6 +175,80 @@ class CandidateBuildResult:
     ineligible_count: int
 
 
+@dataclass(frozen=True)
+class EligibleShrine:
+    """Shared Recommendation Eligibility を通過した Shrine 1件と、判定に使った usable Fact。
+
+    Fact list は shrine_knowledge_selector が返したもの（usable 判定済み）をそのまま
+    保持する。呼び出し側は Fact を事実表示用の data として運ぶだけで、
+    eligibility を再判定しない。
+    """
+
+    shrine: Shrine
+    knowledge_deities: List[Dict[str, Any]]
+    knowledge_histories: List[Dict[str, Any]]
+
+
+@dataclass(frozen=True)
+class ShrineEligibilityResult:
+    """Shrine 集合へ Shared Recommendation Eligibility gate を適用した結果。
+
+    入力順を保つ。ineligible な Shrine は返さない（低スコアで残す・fallback として
+    保持する、のいずれもしない）。
+    """
+
+    eligible: List[EligibleShrine]
+    # gate 適用前の Shrine 数（= 呼び出し側が渡した候補 source 数）。
+    source_count: int
+    # gate 通過数（= len(eligible)）。
+    eligible_count: int
+    # gate で除外した数（source_count - eligible_count）。
+    ineligible_count: int
+
+
+def partition_recommendation_eligible_shrines(
+    shrines: Iterable[Shrine],
+) -> ShrineEligibilityResult:
+    """呼び出し側が決めた Shrine 集合へ Shared Recommendation Eligibility を適用する。
+
+    候補 source の決め方（人気順・件数上限・地理条件など）は呼び出し側の責務であり、
+    ここでは一切行わない。build_chat_candidates_with_eligibility() と同じ authority
+    （shrine_knowledge_selector の batch 取得 + is_recommendation_eligible()）を使い、
+    判定式・readiness rule を新設しない。Knowledge は Shrine 数によらず batch で読む
+    （deity / history それぞれ1回）。
+
+    Concierge の候補生成（build_chat_candidates_with_eligibility）はこの関数を
+    経由しておらず、その挙動はこの関数の追加によって変わらない。
+    """
+    rows = list(shrines)
+    shrine_ids = [s.id for s in rows]
+    deities_by_shrine = fetch_fact_ready_knowledge_deities(shrine_ids)
+    histories_by_shrine = fetch_fact_ready_knowledge_histories(shrine_ids)
+
+    eligible: List[EligibleShrine] = []
+    for shrine in rows:
+        deities = deities_by_shrine.get(shrine.id, [])
+        histories = histories_by_shrine.get(shrine.id, [])
+        if is_recommendation_eligible(
+            knowledge_deities=deities,
+            knowledge_histories=histories,
+        ):
+            eligible.append(
+                EligibleShrine(
+                    shrine=shrine,
+                    knowledge_deities=deities,
+                    knowledge_histories=histories,
+                )
+            )
+
+    return ShrineEligibilityResult(
+        eligible=eligible,
+        source_count=len(rows),
+        eligible_count=len(eligible),
+        ineligible_count=len(rows) - len(eligible),
+    )
+
+
 def build_chat_candidates(
     *,
     goriyaku_tag_ids: Optional[List[int]] = None,
