@@ -94,7 +94,7 @@ def _admit_membership(
     )
 
 
-def admit_collective(collective: ShrineDeityCollective) -> AdmittedCollective | None:
+def _admit_collective(collective: ShrineDeityCollective) -> AdmittedCollective | None:
     """prefetch 済み Collective 1件の admission 判定。1条件でも欠ければ None（部分返却しない）。
 
     Activation row の存在は候補取得 query 側（fetch_runtime_admitted_collectives）で保証する。
@@ -160,7 +160,7 @@ def fetch_runtime_admitted_collectives(
 
     result: dict[int, list[AdmittedCollective]] = defaultdict(list)
     for collective in candidates:
-        admitted = admit_collective(collective)
+        admitted = _admit_collective(collective)
         if admitted is not None:
             result[collective.shrine_id].append(admitted)
     return dict(result)
@@ -170,6 +170,5 @@ __all__ = [
     "REQUIRED_MEMBER_LIST_STATUS",
     "AdmittedCollective",
     "AdmittedCollectiveMembership",
-    "admit_collective",
     "fetch_runtime_admitted_collectives",
 ]
