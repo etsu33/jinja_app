@@ -165,14 +165,30 @@ def test_supported_versions_and_export_version_is_unchanged():
     assert SCHEMA_VERSION == "1.0"
 
 
-def test_all_repository_seeds_are_1_0_and_still_parse_without_collectives():
+def test_all_repository_seeds_use_a_supported_version_and_parse_cleanly():
+    """repository の seed 契約（export/default の SCHEMA_VERSION とは別の契約）。
+
+    - 全 seed の schema_version は SUPPORTED_SCHEMA_VERSIONS のいずれか
+    - 全 seed が error なしで parse できる
+    - schema_version 1.0 の seed は collectives を持たない（1.0 契約は不変）
+    - schema_version 1.1 の seed は collectives を持ってよい
+      （例: a5b_collective_pattern_b_seed.json。1.0 へ下げない）
+    """
     paths = sorted(SEED_DIR.glob("*.json"))
     assert paths
+    seen_versions = set()
     for path in paths:
-        parsed = parse_seed(json.loads(path.read_text(encoding="utf-8")))
-        assert parsed.schema_version == "1.0", path.name
-        assert parsed.errors == [], path.name
-        assert all(block.collectives == [] for block in parsed.shrines), path.name
+        raw = json.loads(path.read_text(encoding="utf-8"))
+        parsed = parse_seed(raw)
+        assert raw.get("schema_version") in SUPPORTED_SCHEMA_VERSIONS, path.name
+        assert parsed.schema_version == raw["schema_version"], path.name
+        assert parsed.errors == [], (path.name, parsed.errors)
+        if parsed.schema_version == SCHEMA_VERSION:
+            assert all(block.collectives == [] for block in parsed.shrines), path.name
+            assert all("collectives" not in shrine for shrine in raw.get("shrines", [])), path.name
+        seen_versions.add(parsed.schema_version)
+    # 1.0 の後方互換を検証している seed が残っていること（空振りしない）
+    assert SCHEMA_VERSION in seen_versions
 
 
 @pytest.mark.parametrize("collectives", [[], [_collective()]])
