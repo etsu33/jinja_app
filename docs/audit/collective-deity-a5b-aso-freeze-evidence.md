@@ -101,7 +101,7 @@ All entries share:
 
 | Field | Value | Basis |
 |---|---|---|
-| `candidate_order` | **UNRESOLVED** | no ordering defined by contract |
+| `candidate_order` | `10` | A-5b candidate_order rule (A-5b contract §7): first appearance in the historical freeze doc, §5.3 row 2 (after §5.1 ×6, §5.2 ×2, §5.3 富岡八幡宮). Kept on resumption under §6.5 |
 | `candidate_name` / `candidate_address` | 阿蘇神社 / 熊本県阿蘇市一の宮町宮地3083-1 | historical freeze doc §5.3; `batch_1_7_seed.json` |
 | `resolved_shrine_id` | **UNRESOLVED** | requires DB resolution |
 | `source_attested_label` | 健磐龍命をはじめ家族神12神 | P1 |
@@ -117,7 +117,7 @@ All entries share:
 | `collective_source_keys` | not assigned | §7: assigned only at Seed 1.1 authoring |
 | `memberships[]` | none | C.4 |
 | `a5b_freeze_status` | `HOLD` | C.6 |
-| `reason_code` | **UNRESOLVED** | no vocabulary defined by contract |
+| `reason_code` | `UNSATISFIED_FREEZE_CONDITIONS` | A-5b reason_code rule (A-5b contract §7): `HOLD` → `UNSATISFIED_FREEZE_CONDITIONS`. Condition-level detail is in `review_note` |
 | `review_note` | HOLD: §6.1 conditions 2, 10, 12 are not satisfied | C.6 |
 
 ### C.6 §6.1 evaluation (original candidate)
@@ -135,7 +135,7 @@ All entries share:
 | 9 | PASS | `source_confirmed` with `verified_at` present (Knowledge consistency rule); `confidence` = `""` (A-5b unset confidence rule); `verified_at` is the completion time of event C.1, which verified every asserted field (§12.8) |
 | 10 | UNRESOLVED | importer dry-run (CREATE / SKIP / CONFLICT) not executed |
 | 11 | PASS | P3; no inference beyond the contracts |
-| 12 | FAIL | required assertions O-A1, O-A3, O-A4 are `SUPPORTED`; the Artifact still has unresolved §7 fields: `resolved_shrine_id`, `candidate_order`, `reason_code` |
+| 12 | FAIL | required assertions O-A1, O-A3, O-A4 are `SUPPORTED`; the Artifact still has an unresolved §7 field: `resolved_shrine_id` (`candidate_order` and `reason_code` are set under the A-5b contract §7 rules) |
 
 ```text
 a5b_freeze_status (original candidate) = HOLD
@@ -151,9 +151,9 @@ conditions are 2, 10, and 12.
 |---|---|---|
 | Shrine identity not resolved against the target DB (`resolved_shrine_id`) | 2 | importer `--validate-only` / `--dry-run` against the target environment |
 | Existing-row conflict check not run | 10 | importer `--dry-run` (CREATE / SKIP / CONFLICT plan) |
-| `candidate_order` / `reason_code` undefined | 12 | Mother Ship decision or contract definition |
+| unresolved §7 field `resolved_shrine_id` | 12 | resolution of condition 2 |
 
-No longer blockers: P1, `member_list_status`, verification timestamp.
+No longer blockers: P1, `member_list_status`, verification timestamp, `candidate_order`, `reason_code`.
 
 ---
 

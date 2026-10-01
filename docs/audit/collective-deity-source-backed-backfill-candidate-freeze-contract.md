@@ -18,6 +18,7 @@
 - Revision 2026-10-01: A-5b unset Collective confidence rule (§6.1 condition 9, §7, §18)
 - Revision 2026-10-01: A-5b member_list_status assignment rule (§6.1 condition 5, §7, §19)
 - Revision 2026-10-01: Erroneous pre-FREEZE replacement lifecycle (§6.5, §20)
+- Revision 2026-10-01: candidate_order and reason_code rules (§7, §21)
 
 ## 1. Purpose
 
@@ -427,6 +428,74 @@ No rule of the form "N named deities + a stated total = `partial`" exists.
 
 This rule applies A-1 §4.2 semantics to A-5b. It does not change them, the
 Seed 1.1 default (`not_determined`), or the model enum.
+
+A-5b candidate_order rule.
+
+```text
+CANDIDATE_ORDER_POLICY = FIXED_INPUT_DOCUMENT_ORDER
+```
+
+- Source of authority: the historical fixed A-5b input document
+  `docs/audit/collective-deity-backfill-candidate-freeze.md`.
+- `candidate_order` is a positive 1-based integer.
+- It is the first-appearance order of each logical candidate position in that
+  document, traversed:
+  1. section order, top to bottom
+  2. table row order, top to bottom
+- A later appearance of the same logical candidate position does not create a new
+  order.
+- It is stable for the lifetime of the logical candidate position.
+- It is not a priority, a quality score, or a freeze order.
+- It is not recomputed after a `HOLD` / `FREEZE` / `EXCLUDE` change.
+- Replacement:
+  - A §6.4 replacement inherits the `candidate_order` of the original logical
+    position.
+  - An erroneous replacement invalidated under §6.5 does not create a new order.
+  - An original candidate resumed under §6.5 keeps the same `candidate_order`.
+  - The logical candidate count does not change.
+- Candidates are never renumbered after lifecycle transitions.
+
+A-5b reason_code rule.
+
+```text
+REASON_CODE_POLICY = STATUS_LEVEL_REASON_CODE_WITH_DETAIL_IN_REVIEW_NOTE
+```
+
+The allowed `reason_code` vocabulary is exactly:
+
+| `a5b_freeze_status` | `reason_code` |
+|---|---|
+| `FREEZE` | `ALL_FREEZE_CONDITIONS_SATISFIED` |
+| `HOLD` | `UNSATISFIED_FREEZE_CONDITIONS` |
+| `EXCLUDE` | `OUTSIDE_A5B_BACKFILL_SCOPE` |
+
+Field responsibilities:
+
+| Field | Responsibility |
+|---|---|
+| `a5b_freeze_status` | lifecycle classification |
+| `reason_code` | coarse reason category corresponding to that status |
+| `review_note` | concrete condition-level detail |
+
+Example:
+
+```text
+a5b_freeze_status = HOLD
+reason_code       = UNSATISFIED_FREEZE_CONDITIONS
+review_note       = HOLD: §6.1 conditions 2, 10, 12 are not satisfied
+```
+
+- `reason_code` is a status-level classification only. It does not encode
+  individual blockers. Blocker-specific codes (for example `SHRINE_UNRESOLVED`,
+  `IMPORTER_NOT_RUN`) are not part of the vocabulary unless a future Mother Ship
+  contract revision authorizes them.
+- No "primary blocker" rule exists.
+- Replacement invalidation is not a `reason_code`. It stays with the §6.5 Artifact
+  marker `replacement_progression = INVALIDATED`. An invalidated replacement keeps
+  its last recorded `a5b_freeze_status` and the `reason_code` mapped from it.
+
+Neither rule adds a status value, changes FREEZE / HOLD / EXCLUDE semantics, or
+adds anything to the Seed 1.1 schema or any DB model.
 
 Replacement provenance (§6.4). When a replacement is authored, the Freeze Evidence
 Artifact for that position records both candidate records and this minimum block:
@@ -949,5 +1018,30 @@ Unchanged:
 
 - the FREEZE / HOLD / EXCLUDE vocabulary
 - §6.4
+- Seed 1.1 schema, DB models, importer, runtime
+- the historical candidate-freeze document
+
+## 21. Revision record — candidate_order and reason_code (2026-10-01)
+
+Mother Ship decisions:
+
+```text
+CANDIDATE_ORDER_POLICY = FIXED_INPUT_DOCUMENT_ORDER
+REASON_CODE_POLICY     = STATUS_LEVEL_REASON_CODE_WITH_DETAIL_IN_REVIEW_NOTE
+```
+
+Origin: §7 required `candidate_order` and `reason_code`, but no rule defined their
+values. A §6.1 condition 12 Artifact could not record them.
+
+Added (§7):
+
+- the A-5b candidate_order rule
+- the A-5b reason_code rule, with the status → `reason_code` mapping and the
+  `review_note` responsibility
+
+Unchanged:
+
+- FREEZE / HOLD / EXCLUDE semantics and vocabulary
+- §6.4, §6.5
 - Seed 1.1 schema, DB models, importer, runtime
 - the historical candidate-freeze document
