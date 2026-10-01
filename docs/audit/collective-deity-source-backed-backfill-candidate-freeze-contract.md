@@ -15,6 +15,7 @@
 - Revision 2026-10-01: Direct Verification Timestamp Policy referenced (§6.1 condition 9, §7, §7.1, §15). Canonical text: Seed 1.1 contract §12.8
 - Revision 2026-10-01: Artifact Source reference = semantic Source identity (§7, §7.1, §16)
 - Revision 2026-10-01: Pre-FREEZE source-backed replacement (§4, §6.1, §6.3, §6.4, §7, §10, §12, §17)
+- Revision 2026-10-01: A-5b unset Collective confidence rule (§6.1 condition 9, §7, §18)
 
 ## 1. Purpose
 
@@ -150,7 +151,7 @@ A candidate may be `FREEZE` only when all applicable conditions are satisfied:
 6. every supplied Membership resolves to an individually attributable same-Shrine Deity under the v1.1 reference contract
 7. every supplied Membership has its own non-empty Source evidence
 8. member count / count relation values satisfy the existing v1.1 invariant
-9. verification / confidence / `verified_at` values satisfy the current Knowledge contract. For a new P1–P5-governed Collective or Membership, `verified_at` also satisfies the Direct Verification Timestamp Policy (Seed 1.1 contract §12.8)
+9. verification / confidence / `verified_at` values satisfy the current Knowledge contract. For a new P1–P5-governed Collective or Membership, `verified_at` also satisfies the Direct Verification Timestamp Policy (Seed 1.1 contract §12.8), and Collective `confidence` follows the A-5b unset confidence rule (§7)
 10. no unresolved Source, Shrine, Collective, Membership, or existing-row conflict is present
 11. the candidate can be represented without inference beyond upstream contracts
 12. a contract-compliant Freeze Evidence Artifact (§7.1) records the direct verification against the accepted official Source, and in it:
@@ -318,6 +319,24 @@ Source records referenced by `source_keys` must remain representable under Knowl
 No numeric DB primary key may be used as a portable Membership deity reference.
 
 For a new P1–P5-governed candidate, the Collective `verified_at` and each `memberships[].verified_at` follow Seed 1.1 contract §12.8.
+
+A-5b unset confidence rule. For a new P1–P5-governed Collective:
+
+1. If an existing authoritative contract explicitly determines `confidence` =
+   `high` / `medium` / `low`, use that value.
+2. Otherwise, `confidence = ""`. This is the existing Seed 1.1 unset/default
+   representation (Seed 1.1 contract §5.1).
+3. Collective `confidence` is never derived from:
+   - `source_type`
+   - official-source status
+   - `verification_status` (including `source_confirmed`)
+   - direct Source access
+   - Source `confidence`
+
+`confidence = ""` is not a confidence score. It does not mean low confidence. It is
+not a new `high` / `medium` / `low` assignment algorithm, and not a Source → Fact
+confidence conversion. A project-wide confidence-assignment policy remains a
+separate task.
 
 Replacement provenance (§6.4). When a replacement is authored, the Freeze Evidence
 Artifact for that position records both candidate records and this minimum block:
@@ -773,3 +792,26 @@ Unchanged:
 - the Seed 1.1 schema, DB models, importer, runtime
 
 This revision does not perform any replacement and does not reclassify any candidate.
+
+## 18. Revision record — A-5b unset confidence rule (2026-10-01)
+
+Mother Ship decision for a new P1–P5-governed Collective:
+
+```text
+No upstream authoritative high / medium / low assignment rule
+-> confidence = ""
+```
+
+Changed:
+
+- §6.1 condition 9 references the rule.
+- §7 states the rule.
+
+Unchanged:
+
+- Knowledge contract confidence semantics
+- the Source confidence prohibitions (PR-C1)
+- the Seed 1.1 `confidence` default (`""`)
+- importer, models, Recommendation expression-strength behavior
+
+No confidence scoring model is introduced.
