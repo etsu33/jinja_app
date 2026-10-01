@@ -235,9 +235,10 @@ a5b_freeze_status (replacement) = HOLD
 | Existing-row conflict check not run | 10 | CREATE / SKIP / CONFLICT plan | importer `--dry-run` against the target environment |
 | `candidate_order` / `reason_code` | 12 | the contract defines no ordering or vocabulary | Mother Ship decision or contract definition |
 
-The applicable §6.2 HOLD condition is "no contract-compliant Freeze Evidence Artifact
-exists, or a required assertion in it is not auditable", because required §7 fields
-remain unresolved.
+The replacement remains HOLD under §6.2 because it cannot satisfy all §6.1 FREEZE
+conditions without additional evidence or adjudication.
+
+The remaining unsatisfied conditions are 2, 5, 10, and 12.
 
 The legacy identity remains `HOLD` (§3). The historical freeze document and the
 logical candidate count are unchanged.
