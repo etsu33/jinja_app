@@ -127,14 +127,18 @@ Resolver input:
 ```text
 name_jp = 阿蘇神社
 address = 熊本県阿蘇市一の宮町宮地3083-1
+```
+
 Resolver result:
+
+```text
 status = OK
 resolved_shrine_id = 100
-
-The exact name_jp and exact address resolve to exactly one Production Shrine
-row. The place_ref_id IS NULL canonical-preference fallback is therefore not
-needed for this resolution.
 ```
+
+The exact `name_jp` and exact `address` resolve to exactly one Production Shrine
+row. The `place_ref_id IS NULL` canonical-preference fallback is therefore not
+needed for this resolution.
 
 ### C.5 Current candidate fields (§7)
 
