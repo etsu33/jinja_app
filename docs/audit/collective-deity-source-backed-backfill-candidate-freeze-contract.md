@@ -16,6 +16,7 @@
 - Revision 2026-10-01: Artifact Source reference = semantic Source identity (§7, §7.1, §16)
 - Revision 2026-10-01: Pre-FREEZE source-backed replacement (§4, §6.1, §6.3, §6.4, §7, §10, §12, §17)
 - Revision 2026-10-01: A-5b unset Collective confidence rule (§6.1 condition 9, §7, §18)
+- Revision 2026-10-01: A-5b member_list_status assignment rule (§6.1 condition 5, §7, §19)
 
 ## 1. Purpose
 
@@ -147,7 +148,7 @@ A candidate may be `FREEZE` only when all applicable conditions are satisfied:
 2. Shrine identity is deterministically resolvable under existing authority
 3. `source_attested_label` is non-blank, Source-attested, and occurs verbatim as one contiguous substring of the accepted official Source, extracted only as permitted by Seed 1.1 contract §12.1 (P1)
 4. at least one accepted official Source is traceable for the Collective, and its content has been confirmed to directly support the Collective assertion (§12.2, P2). A note, a legacy Fact, or a prior judgment alone does not satisfy this (§12.2–§12.3, P2–P3)
-5. every proposed Collective field is directly supported by the accepted official Source, or is a default that Seed 1.1 contract §12 permits: `role = unknown` under §12.4 (P4); `member_count_relation = unspecified` / `member_count = null` only when no numeric count is established, under §12.5 (P5)
+5. every proposed Collective field is directly supported by the accepted official Source, or is a default that Seed 1.1 contract §12 permits: `role = unknown` under §12.4 (P4); `member_count_relation = unspecified` / `member_count = null` only when no numeric count is established, under §12.5 (P5). `member_list_status` follows the A-5b member_list_status assignment rule (§7)
 6. every supplied Membership resolves to an individually attributable same-Shrine Deity under the v1.1 reference contract
 7. every supplied Membership has its own non-empty Source evidence
 8. member count / count relation values satisfy the existing v1.1 invariant
@@ -337,6 +338,35 @@ A-5b unset confidence rule. For a new P1–P5-governed Collective:
 not a new `high` / `medium` / `low` assignment algorithm, and not a Source → Fact
 confidence conversion. A project-wide confidence-assignment policy remains a
 separate task.
+
+A-5b member_list_status assignment rule. For a new P1–P5-governed Collective,
+`member_list_status` is assigned from the accepted Source as follows:
+
+| Value | Use only when the accepted Source |
+|---|---|
+| `complete` | explicitly establishes the complete individual member list |
+| `partial` | explicitly presents an individual member list **and** establishes that the presented list is incomplete / only part of the Collective |
+| `not_enumerated` | establishes the Collective but presents no individual member list |
+| `not_determined` | presents individual-member information but does not establish whether that list is complete or partial |
+
+A deity name that appears only as part of the aggregate expression or the
+`source_attested_label` does not itself count as an individual member-list entry.
+For example, 健磐龍命 inside 「健磐龍命をはじめ家族神１２神」 does not by itself
+establish `partial`.
+
+`member_list_status` is never derived from:
+
+- Membership row count
+- `member_count` or `member_count_relation`
+- known deity rows, canonical names, or aliases
+- religious relationships
+- legacy notes or external knowledge
+- the Collective label alone
+
+No rule of the form "N named deities + a stated total = `partial`" exists.
+
+This rule applies A-1 §4.2 semantics to A-5b. It does not change them, the
+Seed 1.1 default (`not_determined`), or the model enum.
 
 Replacement provenance (§6.4). When a replacement is authored, the Freeze Evidence
 Artifact for that position records both candidate records and this minimum block:
@@ -815,3 +845,25 @@ Unchanged:
 - importer, models, Recommendation expression-strength behavior
 
 No confidence scoring model is introduced.
+
+## 19. Revision record — A-5b member_list_status assignment rule (2026-10-01)
+
+Mother Ship decision: the four-state assignment semantics in §7, plus the
+aggregate-expression rule:
+
+```text
+deity name inside aggregate expression != individual member list
+```
+
+Changed:
+
+- §6.1 condition 5 references the rule.
+- §7 states the rule.
+
+Unchanged:
+
+- A-1 §4.2 vocabulary and semantics
+- Seed 1.1 `member_list_status` default and the prohibition on deriving it from
+  Membership rows
+- model enum, importer, runtime
+- candidate classifications
