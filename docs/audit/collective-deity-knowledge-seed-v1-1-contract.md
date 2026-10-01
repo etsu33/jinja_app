@@ -10,6 +10,7 @@
 - Backfill execution: **NONE**
 - Runtime activation: **NONE**
 - Revision 2026-10-01: Mother Ship P1–P5 authoring policy added as §12
+- Revision 2026-10-01: Freeze Evidence Artifact linkage added (§12.2, §12.7). The Artifact schema is defined in the A-5b contract §7.1
 
 ## 1. Purpose
 
@@ -551,9 +552,23 @@ Prohibited:
 
 A new Collective Fact must be directly supported by the accepted official Source.
 
-- `Source.note`, `Deity.note`, audit notes, legacy Facts, and previous extraction
-  results are supporting / discovery evidence only. By themselves, they are not
-  sufficient confirming evidence.
+P2 separates two things:
+
+- **Direct authority.** The accepted official Source content itself directly
+  supports the assertion. The Source is the confirming authority.
+- **Persisted verification record.** A contract-compliant Freeze Evidence Artifact
+  (A-5b contract §7.1) may serve as the canonical repository record of two facts:
+  that direct verification occurred, and which Source content supported the
+  assertion. The Artifact records the verification result. It is not the
+  underlying authority and does not replace the Source.
+
+```text
+FREEZE_EVIDENCE_ARTIFACT = REPOSITORY_LEVEL_CONFIRMING_EVIDENCE
+```
+
+- `Source.note`, `Deity.note`, ordinary audit notes, analysis notes, historical
+  audit prose, legacy Facts, and previous extraction results are
+  `DISCOVERY_EVIDENCE_ONLY`. They cannot independently satisfy P2.
 - The Source content itself must directly support the new Collective assertion.
 - An existing `source_key` may be reused only after confirming that the same Source
   directly supports the new assertion.
@@ -646,3 +661,33 @@ Prohibited:
   label and is compared exactly.
 - §6.2 / §7 / §10: the prohibitions on note parsing, Membership from note-only names,
   and automatic Source inheritance are unchanged. P2 and P3 do not relax them.
+
+### 12.7 Freeze Evidence Artifact linkage
+
+The minimum Artifact schema and the FREEZE / HOLD gates are defined in
+`docs/audit/collective-deity-source-backed-backfill-candidate-freeze-contract.md`
+§6 and §7.1. This section links each policy to the Artifact's assertion
+`support_status` (`SUPPORTED` / `UNSUPPORTED` / `AMBIGUOUS` / `NOT_APPLICABLE`).
+
+- **P1:** the `source_attested_label` assertion preserves enough exact Source
+  context to verify that the label is a permitted contiguous substring of the
+  Source (§12.1).
+- **P2:** the official Source is the confirming authority. The Artifact is the
+  canonical repository persistence of the direct-verification result. Ordinary
+  audit notes remain discovery-only (§12.2).
+- **P3:** legacy Facts may assist discovery and history. They cannot cause an
+  assertion to receive `SUPPORTED` (§12.3).
+- **P4:** a concrete `role` may receive `SUPPORTED` only when both hold:
+  1. the accepted Source directly supports the Collective role, and
+  2. any required Source-expression → role-enum mapping is valid under an
+     existing contract.
+
+  Otherwise the contract-valid fallback `role = unknown` applies (§12.4).
+- **P5:** a concrete `member_count` / `member_count_relation` may receive
+  `SUPPORTED` only when the Source establishes both the numeric value and the
+  semantics of the count. If a numeric expression exists but its semantics are
+  unresolved, `support_status = AMBIGUOUS` and the candidate remains HOLD. The
+  ambiguity must not be converted to `unspecified` / `null` to pass FREEZE (§12.5).
+
+The Artifact contract adds no field to the Seed 1.1 schema (§5–§6). It adds no
+parser rule (§8) and no DB schema.
