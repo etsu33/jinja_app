@@ -11,6 +11,7 @@
 - Runtime activation: **NONE**
 - Candidate Master change: **NONE**
 - Revision 2026-10-01: Mother Ship P1–P5 integrated (§5.1, §6.1, §6.2, §13). Canonical text: `collective-deity-knowledge-seed-v1-1-contract.md` §12
+- Revision 2026-10-01: Freeze Evidence Artifact defined (§6.1, §6.2, §7.1–§7.3, §9, §12, §14)
 
 ## 1. Purpose
 
@@ -149,6 +150,10 @@ A candidate may be `FREEZE` only when all applicable conditions are satisfied:
 9. verification / confidence / `verified_at` values satisfy the current Knowledge contract
 10. no unresolved Source, Shrine, Collective, Membership, or existing-row conflict is present
 11. the candidate can be represented without inference beyond upstream contracts
+12. a contract-compliant Freeze Evidence Artifact (§7.1) records the direct verification against the accepted official Source, and in it:
+    - every required assertion (§7.1) is auditable and has `support_status = SUPPORTED`
+    - no required assertion is `UNSUPPORTED` or `AMBIGUOUS`
+    - `NOT_APPLICABLE` is used only where the governing contract makes that assertion non-applicable
 
 `FREEZE` means only that the candidate packet is frozen for the next backfill stage.
 
@@ -178,7 +183,9 @@ HOLD conditions include:
 - any interpretation would require alias matching, note parsing, canonical-name inference, or religious-equivalence inference
 - the Collective assertion is supported only by notes, legacy Facts, or prior judgments, with no direct Source confirmation (P2 / P3)
 - the label cannot be extracted under P1
-- a numeric expression exists but the Source does not establish its semantics (P5): `unspecified` / `null` must not be used to bypass this HOLD
+- a numeric expression exists but the Source does not establish its semantics (P5): `unspecified` / `null` must not be used to bypass this HOLD. The Artifact records the count assertion as `AMBIGUOUS`
+- no contract-compliant Freeze Evidence Artifact exists, or a required assertion in it is not auditable
+- a required assertion is `UNSUPPORTED` or `AMBIGUOUS` in the Freeze Evidence Artifact
 
 HOLD performs zero writes.
 
@@ -233,6 +240,136 @@ Source records referenced by `source_keys` must remain representable under Knowl
 
 No numeric DB primary key may be used as a portable Membership deity reference.
 
+### 7.1 Freeze Evidence Artifact (new P1–P5-governed FREEZE)
+
+```text
+FREEZE_EVIDENCE_ARTIFACT = REPOSITORY_LEVEL_CONFIRMING_EVIDENCE
+```
+
+A contract-compliant Freeze Evidence Artifact is the §7 frozen candidate artifact,
+extended with the evidence block below. It persists the result of direct
+verification against an accepted official Source for an A-5b FREEZE decision. It is
+not a separate or parallel artifact type.
+
+The official Source remains the underlying authority. The Artifact does not replace it.
+
+```text
+Official Source
+-> direct verification
+-> Freeze Evidence Artifact
+-> A-5b FREEZE
+-> Seed 1.1
+-> importer
+-> DB
+```
+
+Minimum evidence block, per evaluated candidate:
+
+```text
+candidate identity
+  shrine_ref.name_jp
+  shrine_ref.address
+  source_attested_label
+
+sources[]                         (each Source used for verification)
+  source_key
+  url
+  source_type
+  accessed_at
+  verification_status
+
+assertions
+  source_attested_label           -> evidence entry
+  role                            -> evidence entry
+  member_count                    -> evidence entry
+  member_count_relation           -> evidence entry
+  memberships[]
+    deity_ref.display_name        -> evidence entry
+
+evidence entry
+  value
+  source_key
+  excerpt
+  location
+  support_status
+```
+
+Field rules:
+
+- **Candidate identity** uses the existing conventions:
+  - Shrine: `shrine_ref.name_jp` + `shrine_ref.address`, resolved by the existing
+    Shrine authority (§6.1 condition 2)
+  - Collective: resolved Shrine + `source_attested_label` (Seed 1.1 contract §5.3)
+
+  No new DB identity scheme is introduced.
+- **Source fields** follow the active Source contract
+  (`docs/knowledge/shrine-knowledge-contract.md` "Source契約").
+- **`value`**: the value proposed for the Seed 1.1 field.
+- **`excerpt`**: the exact Source text sufficient to audit the assertion. It stores
+  only the minimum excerpt needed for auditability, not a copy of the Source.
+- **`location`**: the Source location or surrounding context, when available.
+- **`support_status`**: one of `SUPPORTED`, `UNSUPPORTED`, `AMBIGUOUS`,
+  `NOT_APPLICABLE`.
+
+Required assertions:
+
+- `source_attested_label`
+- each supplied Membership
+- `role`, when a concrete role other than `unknown` is proposed
+- `member_count` / `member_count_relation`, when a value other than
+  `null` / `unspecified` is proposed
+
+A contract-valid fallback value is recorded with the `support_status` its Source
+evidence has. The fallbacks are `role = unknown` under P4, and
+`unspecified` / `null` under P5 when no numeric count is established.
+
+Policy linkage (canonical text: Seed 1.1 contract §12.7):
+
+- **P1:** the label entry's `excerpt` / `location` must show the label as a permitted
+  contiguous substring of the Source.
+- **P3:** legacy Facts may assist discovery. They cannot cause any entry to receive
+  `SUPPORTED`.
+- **P4:** a concrete `role` is `SUPPORTED` only when the Source directly supports
+  the Collective role and any Source-expression → role-enum mapping is valid under
+  an existing contract.
+- **P5:** a concrete count / relation is `SUPPORTED` only when the Source
+  establishes both the numeric value and its semantics. A numeric expression with
+  unresolved semantics is `AMBIGUOUS`, and the candidate is HOLD (§6.2).
+- **`NOT_APPLICABLE`** is permitted only where the governing contract makes the
+  assertion non-applicable.
+
+Membership evidence (Membership Evidence B, §5.2):
+
+- Each Membership entry is independently auditable and records its own
+  `source_key` and `excerpt`.
+- Collective evidence entries do not establish Membership evidence.
+- A Membership must not be derived solely from the Collective label, the member
+  count, list length, or legacy Membership / Deity Facts.
+
+### 7.2 Architecture boundary
+
+```text
+Freeze Evidence Artifact = why a candidate / value is supportable
+Seed 1.1                 = values selected for import + Source references
+Database                 = runtime Facts + Source relations
+```
+
+The Freeze Evidence Artifact is not a Source registry, a Seed, Production data,
+runtime data, or a copy of the official Source. Its fields are not added to the
+Seed 1.1 schema or to any DB model. The importer neither reads nor writes it.
+
+### 7.3 Pattern B 6 compatibility
+
+The six completed Pattern B Collectives are pre-policy / legacy freeze evidence:
+
+- Seed: `backend/temples/data/knowledge_seeds/a5b_collective_pattern_b_seed.json`
+- Closure: `docs/audit/collective-deity-a5b-production-final-closure-classification.md`
+
+This contract does not require their retroactive migration solely because it now
+exists, and it does not change their Seed or DB data. A future material re-authoring
+of any of them under the current P1–P5 process must use the current Freeze Evidence
+Artifact contract.
+
 ## 8. Conflict and fail-safe contract
 
 A-5b is fail closed.
@@ -273,7 +410,16 @@ AUTO_CREATE = 0
 Runtime activation = 0
 ```
 
-A frozen audit artifact may be committed to the repository. That repository artifact is evidence, not a Production data write.
+Not every audit document is confirming evidence:
+
+- ordinary audit notes, analysis notes, and historical audit prose remain
+  discovery-only under P2 (Seed 1.1 contract §12.2)
+- only a contract-compliant Freeze Evidence Artifact (§7.1) can be the
+  repository-level confirming record of direct Source verification for a new
+  P1–P5-governed FREEZE
+
+Committing a Freeze Evidence Artifact, or any other audit document, to the
+repository is not a Production write and not a DB mutation.
 
 ## 10. Determinism / reproducibility
 
@@ -321,6 +467,7 @@ A-5b candidate freeze may close only when:
 - the candidate input set is frozen
 - every candidate has exactly one `a5b_freeze_status`
 - every `FREEZE` candidate satisfies all applicable Source-backed conditions
+- every new P1–P5-governed `FREEZE` candidate has a contract-compliant Freeze Evidence Artifact (§7.1)
 - every supplied Membership has independent Source evidence
 - every HOLD / EXCLUDE has an explicit reason
 - no unresolved conflict is hidden by inference
@@ -354,4 +501,39 @@ Unchanged:
 - downstream write sequence
 
 This revision does not reclassify any candidate or change any recorded closure.
+
+## 14. Revision record — Freeze Evidence Artifact (2026-10-01)
+
+Mother Ship decision:
+
+```text
+FREEZE_EVIDENCE_ARTIFACT = REPOSITORY_LEVEL_CONFIRMING_EVIDENCE
+```
+
+Origin: the ambiguity between Seed 1.1 contract §12.2 ("audit notes … discovery
+evidence only") and the §9 sentence below.
+
+Superseded wording:
+
+| Location | Previous wording | Replaced because |
+|---|---|---|
+| §9 | "A frozen audit artifact may be committed to the repository. That repository artifact is evidence, not a Production data write." | It did not separate ordinary audit material (discovery-only under P2) from a contract-compliant Freeze Evidence Artifact |
+
+Added:
+
+- §6.1 condition 12
+- two §6.2 HOLD conditions, and an Artifact note on the P5 HOLD condition
+- §7.1–§7.3
+- one §12 closure criterion
+
+Unchanged:
+
+- the P2 direct-Source requirement
+- Membership Evidence B
+- FREEZE / HOLD / EXCLUDE vocabulary
+- the identity contracts
+- Seed 1.1 schema, importer, DB models, runtime
+
+This revision does not reclassify any candidate and does not change any recorded
+closure, including Pattern B 6.
 
