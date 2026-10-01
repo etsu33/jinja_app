@@ -56,7 +56,7 @@ are not authored here. The legacy identity proceeds no further (§6.4).
 
 | # | source_type | url (normalized) | accessed_at | verification_status |
 |---|---|---|---|---|
-| S1 | shrine_official | https://asojinja.or.jp/wp-content/uploads/2020/11/983d82999be9950866b9a9dd608cf1b9.pdf | 2026-10-01 | **UNRESOLVED** |
+| S1 | shrine_official | https://asojinja.or.jp/wp-content/uploads/2020/11/983d82999be9950866b9a9dd608cf1b9.pdf | 2026-10-01 | source_confirmed |
 
 - **Portable identity:** `shrine_official` +
   `https://asojinja.or.jp/wp-content/uploads/2020/11/983d82999be9950866b9a9dd608cf1b9.pdf`.
@@ -66,7 +66,7 @@ are not authored here. The legacy identity proceeds no further (§6.4).
 - **Not `src-999035`:** S1 is a different Source identity from `src-999035`
   (https://asojinja.or.jp/about/) and does not reuse it.
 - **`accessed_at`:** the date of the direct verification event.
-- **`verification_status`:** not supplied with the verification.
+- **`verification_status`:** `source_confirmed`. The Knowledge contract ("verification_status候補") defines it as 「Sourceの内容と一致することを確認済み」. S1's content was directly accessed and the cited text confirmed in the 2026-10-01T18:51:51+09:00 verification.
 
 ### 4.2 replacement_provenance
 
@@ -190,8 +190,8 @@ Not evaluated by P1–P5 in this record:
 | `member_count` | `12` | P5 |
 | `member_count_relation` | `exact` | P5 |
 | `member_list_status` | **UNRESOLVED** | §5.3 |
-| `verification_status` | **UNRESOLVED** | Not supplied |
-| `confidence` | **UNRESOLVED** | Not supplied |
+| `verification_status` | `source_confirmed` | Knowledge contract "verification_status候補": `source_confirmed` = 「Sourceの内容と一致することを確認済み」. The Collective assertions (R-A1, R-A3, R-A4) were confirmed against S1 by direct verification (§2). `verified_at` is present (importer / model consistency rule) |
+| `confidence` | **UNRESOLVED** | The Knowledge contract "confidence" leaves the calculation method undecided (「算出方式は今回確定しない」). PR-C1 forbids converting Source confidence into Fact confidence. No assignment rule exists (contract gap) |
 | `verified_at` | `2026-10-01T18:51:51+09:00` | §12.8: the label, existence, and count assertions above were all established by this single direct verification event |
 | `note` | `""` | Seed 1.1 contract §5.1 default |
 | `collective_source_keys` / `memberships[].source_keys` | not assigned | §7: assigned only at Seed 1.1 authoring |
@@ -217,10 +217,10 @@ Artifact and repository data only.
 | 6 | every supplied Membership resolves to a same-Shrine Deity | no Membership supplied (§5.3) | PASS (none supplied) |
 | 7 | every supplied Membership has its own Source evidence | no Membership supplied | PASS (none supplied) |
 | 8 | count / relation satisfy the v1.1 invariant | `exact` + `12` (non-null) | PASS |
-| 9 | verification / confidence / `verified_at` satisfy the Knowledge contract and §12.8 | `verified_at` = 2026-10-01T18:51:51+09:00 satisfies §12.8; `verification_status` and `confidence` are UNRESOLVED (not supplied; Source-level values are not Collective values) | FAIL |
+| 9 | verification / confidence / `verified_at` satisfy the Knowledge contract and §12.8 | `verified_at` = 2026-10-01T18:51:51+09:00 satisfies §12.8; `verification_status` = `source_confirmed` (contract definition; `verified_at` present); `confidence` UNRESOLVED (no contract assignment rule) | FAIL |
 | 10 | no unresolved Source / Shrine / Collective / Membership / existing-row conflict | existing-row planning (CREATE / SKIP / CONFLICT) requires the importer dry-run against a target DB (A-5b §8, §11); not executed. No conflict is visible in repository data | UNRESOLVED |
 | 11 | representable without inference beyond upstream contracts | P3 PASS (§5.2) | PASS |
-| 12 | compliant Artifact; required assertions `SUPPORTED`; none `UNSUPPORTED` / `AMBIGUOUS` | required assertions R-A1, R-A3, R-A4 are `SUPPORTED`; R-A2 is a P4 fallback (not required). The Artifact still has unresolved §7 fields: `verification_status`, `confidence`, `member_list_status`, `resolved_shrine_id`, `candidate_order`, `reason_code` | FAIL |
+| 12 | compliant Artifact; required assertions `SUPPORTED`; none `UNSUPPORTED` / `AMBIGUOUS` | required assertions R-A1, R-A3, R-A4 are `SUPPORTED`; R-A2 is a P4 fallback (not required). The Artifact still has unresolved §7 fields: `confidence`, `member_list_status`, `resolved_shrine_id`, `candidate_order`, `reason_code` | FAIL |
 
 ### 6.2 Determination
 
@@ -230,8 +230,8 @@ a5b_freeze_status (replacement) = HOLD
 
 | Blocker | §6.1 condition | Missing evidence | Required next evidence |
 |---|---|---|---|
-| Collective `verification_status` / `confidence` not established | 9, 12 | values from the direct verification event | Mother Ship supplies them for the 2026-10-01T18:51:51+09:00 verification, or a new §12.8 verification records them |
-| `member_list_status` not established | 5, 12 | whether S1 enumerates the other 11 members | direct verification of S1 content beyond the recorded excerpt |
+| Collective `confidence` not established | 9, 12 | no contract rule assigns Fact/Collective `confidence` (Knowledge contract "confidence": calculation method undecided) | Mother Ship decision on the Collective `confidence` assignment rule |
+| `member_list_status` not established | 5, 12 | whether S1 enumerates the other 11 members (S1 could not be re-read in this environment) | direct verification of the full S1 content |
 | Shrine identity not resolved against the target DB | 2 | `resolve_shrine` result (and `resolved_shrine_id`) | importer `--validate-only` / `--dry-run` against the target environment |
 | Existing-row conflict check not run | 10 | CREATE / SKIP / CONFLICT plan | importer `--dry-run` against the target environment |
 | `candidate_order` / `reason_code` | 12 | the contract defines no ordering or vocabulary | Mother Ship decision or contract definition |
