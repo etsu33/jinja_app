@@ -6,8 +6,160 @@
 - Base: `develop@1e3da5f34b906c8580754284a675c2975ffeb1d2` (includes PR #3047)
 - Replacement authorization: A-5b §6.4 `PRE_FREEZE_REAUTHORING_POLICY = ALLOW_SOURCE_BACKED_REPLACEMENT_WITH_PROVENANCE`
 - Lifecycle correction: A-5b §6.5 `ERRONEOUS_PRE_FREEZE_REPLACEMENT_POLICY = INVALIDATE_REPLACEMENT_AND_RESUME_ORIGINAL_CANDIDATE` (§0.1)
+- Current authoritative evaluation: original candidate, direct verification `2026-10-01T21:08:33+09:00` (section "C" below). `a5b_freeze_status = HOLD`
 - Seed / Source data / DB / importer / runtime change: **NONE**
 - Historical candidate-freeze document (`docs/audit/collective-deity-backfill-candidate-freeze.md`): **unchanged** (§6.4)
+
+## C. Current authoritative evaluation — original candidate
+
+This section is the **current authoritative** A-5b evaluation for this position
+(A-5b §6.5 B–C). Sections 0–7 below are historical records, preserved for
+auditability. They are not current evaluations.
+
+### C.1 Current direct verification event
+
+| Field | Value |
+|---|---|
+| Completed at (`verified_at`) | `2026-10-01T21:08:33+09:00` |
+| Performed by | Mother Ship direct verification |
+| Source | S1: `shrine_official` + `https://asojinja.or.jp/wp-content/uploads/2020/11/983d82999be9950866b9a9dd608cf1b9.pdf` |
+| Pages inspected | 8 / 8 |
+| Verified Source wording | 「健磐龍命をはじめ家族神12神を祀り」 (ASCII `12`, U+0031 U+0032) |
+| Collective established | yes |
+| Total count 12 stated | yes |
+| Individual member list presented anywhere in S1 | no |
+
+This is a new event. It does not reuse the historical `2026-10-01T18:51:51+09:00`
+event (§2), which remains historical-only.
+
+All of the following were directly verified during this single event, so they share
+its `verified_at` (Seed 1.1 contract §12.8):
+
+- the `source_attested_label`
+- Collective existence
+- the explicit count and its semantics
+- the absence of an individual member list
+
+S1 `sources[]` entry for this event:
+
+| source_type | url (normalized) | accessed_at | verification_status |
+|---|---|---|---|
+| shrine_official | https://asojinja.or.jp/wp-content/uploads/2020/11/983d82999be9950866b9a9dd608cf1b9.pdf | 2026-10-01 | source_confirmed |
+
+No `source_key` is issued (A-5b §7.1).
+
+### C.2 Original candidate
+
+```text
+shrine_ref.name_jp     = 阿蘇神社
+shrine_ref.address     = 熊本県阿蘇市一の宮町宮地3083-1
+source_attested_label  = 健磐龍命をはじめ家族神12神
+```
+
+- Lifecycle: active candidate for this position, resumed under A-5b §6.5 B.
+- Evaluated fresh. No PASS / FAIL judgment and no evidence are inherited from the
+  invalidated replacement (§6.5 D).
+- The full-width replacement keeps `replacement_progression = INVALIDATED` (§0.1).
+
+### C.3 P1–P5 evaluation
+
+| Policy | Result | Basis (S1, event C.1 only) |
+|---|---|---|
+| P1 (§12.1) | **PASS** | 「健磐龍命をはじめ家族神12神」 occurs verbatim as one contiguous substring of 「健磐龍命をはじめ家族神12神を祀り」. Only the predicate 「を祀り」 is excluded. No normalization (ASCII `12` preserved) |
+| P2 (§12.2) | **PASS** | S1 itself states the Collective expression and its enshrinement (「を祀り」). No legacy note, prior judgment, replacement evidence, or historical freeze prose is used |
+| P3 (§12.3) | **PASS** | All values are read from S1. Nothing is derived from legacy ShrineDeity rows, notes, aliases, canonical names, or religious knowledge |
+| P4 (§12.4) | **PASS: `role = unknown`** | S1 states enshrinement but no rank or position (no 主祭神 / 配祀 / 相殿). No Source-expression → role-enum mapping exists. P4 fallback |
+| P5 (§12.5) | **PASS: `member_count = 12`, `member_count_relation = exact`** | S1 states 「家族神12神」 as the count of the Collective. 健磐龍命 heads the 12 (「をはじめ」), so 12 is the total. No qualifier (以上 / 約 / 余 / 外). Not derived from Membership rows or legacy data |
+
+### C.4 Evidence block (§7.1)
+
+All entries share:
+
+- `source_ref` = S1
+- `excerpt` = 「健磐龍命をはじめ家族神12神を祀り」
+- `location` = S1 (8 / 8 pages inspected; page position not recorded)
+
+| # | Assertion | value | support_status | Required |
+|---|---|---|---|---|
+| O-A1 | `source_attested_label` | 健磐龍命をはじめ家族神12神 | `SUPPORTED` | yes |
+| O-A2 | `role` | `unknown` | `UNSUPPORTED` (no Source rank; P4 fallback) | no (fallback) |
+| O-A3 | `member_count` | 12 | `SUPPORTED` | yes |
+| O-A4 | `member_count_relation` | `exact` | `SUPPORTED` | yes |
+
+`member_list_status` = `not_enumerated`:
+
+- **Rule:** A-5b member_list_status assignment rule (A-5b contract §7).
+- **Basis:** the full 8-page S1 inspection in event C.1 shows that S1 establishes the
+  Collective and presents no individual member list.
+- 健磐龍命 inside the aggregate expression is not an individual member-list entry.
+- The value is not derived from Membership rows, `member_count`, or
+  `member_count_relation`.
+
+`memberships[]`: none. The other members are not inferred.
+
+### C.5 Current candidate fields (§7)
+
+| Field | Value | Basis |
+|---|---|---|
+| `candidate_order` | **UNRESOLVED** | no ordering defined by contract |
+| `candidate_name` / `candidate_address` | 阿蘇神社 / 熊本県阿蘇市一の宮町宮地3083-1 | historical freeze doc §5.3; `batch_1_7_seed.json` |
+| `resolved_shrine_id` | **UNRESOLVED** | requires DB resolution |
+| `source_attested_label` | 健磐龍命をはじめ家族神12神 | P1 |
+| `role` | `unknown` | P4 |
+| `sort_order` | `0` | Seed 1.1 contract §5.1 default |
+| `member_count` | `12` | P5 |
+| `member_count_relation` | `exact` | P5 |
+| `member_list_status` | `not_enumerated` | A-5b assignment rule; C.4 |
+| `verification_status` | `source_confirmed` | Knowledge contract: 「Sourceの内容と一致することを確認済み」; confirmed against S1 in event C.1 |
+| `confidence` | `""` | A-5b unset confidence rule (A-5b contract §7); not a score |
+| `verified_at` | `2026-10-01T21:08:33+09:00` | Seed 1.1 contract §12.8: completion time of event C.1 |
+| `note` | `""` | Seed 1.1 contract §5.1 default |
+| `collective_source_keys` | not assigned | §7: assigned only at Seed 1.1 authoring |
+| `memberships[]` | none | C.4 |
+| `a5b_freeze_status` | `HOLD` | C.6 |
+| `reason_code` | **UNRESOLVED** | no vocabulary defined by contract |
+| `review_note` | HOLD: §6.1 conditions 2, 10, 12 are not satisfied | C.6 |
+
+### C.6 §6.1 evaluation (original candidate)
+
+| # | Result | Basis |
+|---|---|---|
+| 1 | PASS | original candidate of the fixed input position, resumed under §6.5 (historical freeze doc §5.3, §10; §0.1) |
+| 2 | UNRESOLVED | `resolve_shrine` was not executed against a target DB |
+| 3 | PASS | P1 (C.3) |
+| 4 | PASS | S1 traceable (`shrine_official` + normalized URL); content directly supports the Collective (event C.1, P2) |
+| 5 | PASS | `role` = unknown (P4 fallback); `member_count` / `member_count_relation` = 12 / exact (P5); `member_list_status` = `not_enumerated` (Source-supported) |
+| 6 | PASS | no Membership supplied |
+| 7 | PASS | no Membership supplied |
+| 8 | PASS | `exact` + non-null 12 |
+| 9 | PASS | `source_confirmed` with `verified_at` present (Knowledge consistency rule); `confidence` = `""` (A-5b unset confidence rule); `verified_at` is the completion time of event C.1, which verified every asserted field (§12.8) |
+| 10 | UNRESOLVED | importer dry-run (CREATE / SKIP / CONFLICT) not executed |
+| 11 | PASS | P3; no inference beyond the contracts |
+| 12 | FAIL | required assertions O-A1, O-A3, O-A4 are `SUPPORTED`; the Artifact still has unresolved §7 fields: `resolved_shrine_id`, `candidate_order`, `reason_code` |
+
+```text
+a5b_freeze_status (original candidate) = HOLD
+```
+
+The candidate remains HOLD under §6.2 because it cannot satisfy all §6.1 FREEZE
+conditions without additional evidence or adjudication. The remaining unsatisfied
+conditions are 2, 10, and 12.
+
+### C.7 Current blockers
+
+| Blocker | §6.1 condition | Required next evidence |
+|---|---|---|
+| Shrine identity not resolved against the target DB (`resolved_shrine_id`) | 2 | importer `--validate-only` / `--dry-run` against the target environment |
+| Existing-row conflict check not run | 10 | importer `--dry-run` (CREATE / SKIP / CONFLICT plan) |
+| `candidate_order` / `reason_code` undefined | 12 | Mother Ship decision or contract definition |
+
+No longer blockers: P1, `member_list_status`, verification timestamp.
+
+---
+
+> **Historical record below.** Sections 0–7 record the earlier erroneous full-width
+> path, the correction notice, and the §6.5 lifecycle correction. They are preserved
+> for audit and are not current authoritative evaluations (A-5b §6.5 C).
 
 ## 0. Correction notice — Source label contradiction (lifecycle resolved in §0.1)
 
@@ -116,7 +268,7 @@ Consequences:
 
 | Identity | `source_attested_label` | `a5b_freeze_status` | Current lifecycle (§0.1) |
 |---|---|---|---|
-| Legacy (original) | 健磐龍命をはじめ家族神12神 | `HOLD` (historical reason: P1 failure, §3) | active candidate, resumed for re-evaluation |
+| Legacy (original) | 健磐龍命をはじめ家族神12神 | `HOLD` (historical reason: P1 failure, §3) | active candidate; current evaluation in section C (`HOLD`: conditions 2, 10, 12) |
 | Replacement | 健磐龍命をはじめ家族神１２神 | `HOLD` (historical: §6.1 evaluated, §6) | `replacement_progression = INVALIDATED` (historical only) |
 
 - The two labels are byte-distinct. The legacy one uses ASCII `12` (U+0031 U+0032).
