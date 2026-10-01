@@ -17,6 +17,7 @@
 - Revision 2026-10-01: Pre-FREEZE source-backed replacement (§4, §6.1, §6.3, §6.4, §7, §10, §12, §17)
 - Revision 2026-10-01: A-5b unset Collective confidence rule (§6.1 condition 9, §7, §18)
 - Revision 2026-10-01: A-5b member_list_status assignment rule (§6.1 condition 5, §7, §19)
+- Revision 2026-10-01: Erroneous pre-FREEZE replacement lifecycle (§6.5, §20)
 
 ## 1. Purpose
 
@@ -278,6 +279,65 @@ Evidence Artifact for that position. It is never automatic.
 - automatic replacement
 - Production writes
 - Seed writes during evidence classification (§9)
+
+### 6.5 Erroneous pre-FREEZE replacement
+
+```text
+ERRONEOUS_PRE_FREEZE_REPLACEMENT_POLICY
+= INVALIDATE_REPLACEMENT_AND_RESUME_ORIGINAL_CANDIDATE
+```
+
+**Scope.** This section applies only when all of the following hold:
+
+1. a replacement candidate was authorized under §6.4 before `FREEZE`
+2. the authorization is later shown to rely on an erroneous Source transcription /
+   verification premise
+3. the replacement has not been materialized into Seed 1.1, the DB, or runtime
+4. the original candidate identity remains historically identifiable
+
+**A. Erroneous replacement**
+
+- All further A-5b progression stops.
+- It must not reach `FREEZE`, be authored into Seed 1.1, be written to the DB, or
+  enter runtime.
+- Its identity and audit history are preserved.
+- It is marked invalidated for further A-5b progression by the Freeze Evidence
+  Artifact marker:
+
+  ```text
+  replacement_progression = INVALIDATED
+  ```
+
+  This marker is an Artifact lifecycle note. It is not an `a5b_freeze_status` value
+  and adds nothing to the Seed 1.1 schema or any DB model.
+- For §12, the replacement identity keeps its last recorded `a5b_freeze_status`. No
+  new status value is introduced. The marker bars any progression from that status.
+
+**B. Original candidate**
+
+- It resumes evaluation as the active candidate identity for the position.
+- No new candidate identity is created, and the logical candidate count is unchanged.
+- It is re-evaluated under the current contracts.
+- Earlier `PASS` / `FAIL` judgments are not inherited automatically.
+
+**C. Historical evaluations**
+
+- Historical erroneous evaluations are preserved.
+- They are not current authoritative evaluations.
+- The corrected evaluation is authoritative for subsequent A-5b processing.
+
+**D. Evidence inheritance**
+
+- Evidence judgments are not copied automatically from the erroneous replacement to
+  the resumed original candidate.
+- Source-backed facts may be re-established only through a valid current direct
+  verification event (Seed 1.1 contract §12.2, §12.8).
+
+**E. Materialization boundary**
+
+If the erroneous replacement has already been materialized into Seed 1.1, the DB, or
+runtime, this section does not apply. Such cases require a separate rollback /
+correction process.
 
 ## 7. Frozen candidate artifact schema
 
@@ -867,3 +927,27 @@ Unchanged:
   Membership rows
 - model enum, importer, runtime
 - candidate classifications
+
+## 20. Revision record — Erroneous pre-FREEZE replacement lifecycle (2026-10-01)
+
+Mother Ship decision:
+
+```text
+ERRONEOUS_PRE_FREEZE_REPLACEMENT_POLICY
+= INVALIDATE_REPLACEMENT_AND_RESUME_ORIGINAL_CANDIDATE
+```
+
+Origin: a §6.4 replacement whose authorization rested on an erroneous Source
+transcription, found before `FREEZE` / Seed / DB materialization.
+
+Added:
+
+- §6.5
+- the Artifact lifecycle marker `replacement_progression = INVALIDATED`
+
+Unchanged:
+
+- the FREEZE / HOLD / EXCLUDE vocabulary
+- §6.4
+- Seed 1.1 schema, DB models, importer, runtime
+- the historical candidate-freeze document

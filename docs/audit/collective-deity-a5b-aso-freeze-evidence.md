@@ -5,10 +5,11 @@
 - Policy: `docs/audit/collective-deity-knowledge-seed-v1-1-contract.md` §12.1–§12.8
 - Base: `develop@1e3da5f34b906c8580754284a675c2975ffeb1d2` (includes PR #3047)
 - Replacement authorization: A-5b §6.4 `PRE_FREEZE_REAUTHORING_POLICY = ALLOW_SOURCE_BACKED_REPLACEMENT_WITH_PROVENANCE`
+- Lifecycle correction: A-5b §6.5 `ERRONEOUS_PRE_FREEZE_REPLACEMENT_POLICY = INVALIDATE_REPLACEMENT_AND_RESUME_ORIGINAL_CANDIDATE` (§0.1)
 - Seed / Source data / DB / importer / runtime change: **NONE**
 - Historical candidate-freeze document (`docs/audit/collective-deity-backfill-candidate-freeze.md`): **unchanged** (§6.4)
 
-## 0. Correction notice — Source label contradiction (pending Mother Ship decision)
+## 0. Correction notice — Source label contradiction (lifecycle resolved in §0.1)
 
 This notice takes precedence over every statement below that depends on the
 full-width excerpt. It changes no lifecycle status. The legacy and replacement
@@ -66,12 +67,57 @@ normalization)
    - R-A1 and the replacement P1–P5 results (§5.2–§5.3)
    - §6.1 conditions 3, 4, 5, 9, 11, 12 for the replacement (§6)
 
+### 0.1 Lifecycle correction (A-5b §6.5)
+
+Mother Ship decision:
+
+```text
+ERRONEOUS_PRE_FREEZE_REPLACEMENT_POLICY
+= INVALIDATE_REPLACEMENT_AND_RESUME_ORIGINAL_CANDIDATE
+```
+
+§6.5 scope check:
+
+| §6.5 condition | Result |
+|---|---|
+| 1. replacement authorized under §6.4 before `FREEZE` | yes (§4.2) |
+| 2. authorization relied on an erroneous Source transcription / verification premise | yes (§0: the full-width excerpt conflicts with the directly inspected S1) |
+| 3. replacement not materialized into Seed 1.1 / DB / runtime | yes (no Seed 1.1 record, no import, no runtime activation) |
+| 4. original candidate identity historically identifiable | yes (historical freeze doc §5.3; §3) |
+
+Historical vs. current:
+
+| Identity | Label | Historical evaluation (preserved, not authoritative) | Corrected Source observation (§0) | Current lifecycle (authoritative) |
+|---|---|---|---|---|
+| Original (legacy) | 健磐龍命をはじめ家族神12神 (ASCII `12`, U+0031 U+0032) | P1 FAIL; `HOLD` with P1-failure reason (§3, §4.2) | P1-compatible with S1 | **Active candidate for this position, resumed for re-evaluation.** `a5b_freeze_status = HOLD`: no current evaluation exists yet. No earlier PASS / FAIL judgment is inherited |
+| Replacement | 健磐龍命をはじめ家族神１２神 (full-width `１２`, U+FF11 U+FF12) | P1 PASS; P1–P5 PASS; §6.1 evaluated, `HOLD` (§5, §6) | P1-incompatible with S1 | **`replacement_progression = INVALIDATED`.** Kept for audit history only. Keeps its last recorded `a5b_freeze_status = HOLD` (§6.5 A). Must not reach `FREEZE`, Seed 1.1, the DB, or runtime |
+
+Consequences:
+
+- **Sections now historical-only:** §2 (18:51:51 event), §4.2 provenance, and §5–§6
+  (replacement evaluation) are preserved as historical records. They are not current
+  authoritative evaluations (§6.5 C).
+- **Logical count:** unchanged. No new candidate identity is created (§6.5 B).
+- **Evidence:** nothing is copied from the replacement to the original candidate
+  (§6.5 D). This includes R-A1–R-A4, `verification_status`, `confidence`,
+  `verified_at`, and the §6.1 results.
+- **The original candidate still requires:**
+  1. a new timestamped direct verification event against S1 (Seed 1.1 contract
+     §12.8). The full-content inspection in §0 recorded no ISO-8601 datetime.
+  2. a fresh P1–P5 and §6.1 evaluation under the current contracts.
+- **`member_list_status`:** the full-content finding in §0 (no individual member
+  list; `not_enumerated` under the A-5b rule) is **not** attached to the original
+  candidate yet. It must be re-established by the new verification event.
+- **§6.1 conditions 2 and 10** are not affected by this correction.
+- **PR #3052 is obsolete.** It attaches `member_list_status` to the invalidated
+  full-width replacement. It is not merged.
+
 ## 1. Position summary
 
-| Identity | `source_attested_label` | `a5b_freeze_status` |
-|---|---|---|
-| Legacy | 健磐龍命をはじめ家族神12神 | `HOLD` (P1 failure, §3) |
-| Replacement | 健磐龍命をはじめ家族神１２神 | `HOLD` (§6.1 evaluated, §6) |
+| Identity | `source_attested_label` | `a5b_freeze_status` | Current lifecycle (§0.1) |
+|---|---|---|---|
+| Legacy (original) | 健磐龍命をはじめ家族神12神 | `HOLD` (historical reason: P1 failure, §3) | active candidate, resumed for re-evaluation |
+| Replacement | 健磐龍命をはじめ家族神１２神 | `HOLD` (historical: §6.1 evaluated, §6) | `replacement_progression = INVALIDATED` (historical only) |
 
 - The two labels are byte-distinct. The legacy one uses ASCII `12` (U+0031 U+0032).
   The replacement uses full-width `１２` (U+FF11 U+FF12).
