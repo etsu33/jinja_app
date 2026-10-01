@@ -98,7 +98,7 @@ replacement_provenance
     P4                       = PASS (role = unknown, fallback)
     P5                       = PASS (member_count = 12, member_count_relation = exact)
     p1_p5_evaluation         = COMPLETED (§5.2)
-    section_6_1_evaluation   = COMPLETED (§6): conditions 2, 5, 9, 10, 12 not satisfied
+    section_6_1_evaluation   = COMPLETED (§6): conditions 2, 5, 10, 12 not satisfied
     a5b_freeze_status        = HOLD
     detail                   = §5 of this Artifact
 ```
@@ -191,13 +191,13 @@ Not evaluated by P1–P5 in this record:
 | `member_count_relation` | `exact` | P5 |
 | `member_list_status` | **UNRESOLVED** | §5.3 |
 | `verification_status` | `source_confirmed` | Knowledge contract "verification_status候補": `source_confirmed` = 「Sourceの内容と一致することを確認済み」. The Collective assertions (R-A1, R-A3, R-A4) were confirmed against S1 by direct verification (§2). `verified_at` is present (importer / model consistency rule) |
-| `confidence` | **UNRESOLVED** | The Knowledge contract "confidence" leaves the calculation method undecided (「算出方式は今回確定しない」). PR-C1 forbids converting Source confidence into Fact confidence. No assignment rule exists (contract gap) |
+| `confidence` | `""` (unset) | A-5b unset confidence rule (A-5b contract §7): no authoritative contract assigns `high` / `medium` / `low`, so the existing Seed 1.1 unset/default representation applies (Seed 1.1 contract §5.1). Not a score, not low confidence, and not derived from Source confidence, `source_type`, official status, or `source_confirmed` |
 | `verified_at` | `2026-10-01T18:51:51+09:00` | §12.8: the label, existence, and count assertions above were all established by this single direct verification event |
 | `note` | `""` | Seed 1.1 contract §5.1 default |
 | `collective_source_keys` / `memberships[].source_keys` | not assigned | §7: assigned only at Seed 1.1 authoring |
 | `memberships[]` | none | §5.3 |
 | `a5b_freeze_status` | `HOLD` | §6 |
-| `review_note` | HOLD: §6.1 conditions 2, 5, 9, 10, 12 are not satisfied (§6.2) | §6 |
+| `review_note` | HOLD: §6.1 conditions 2, 5, 10, 12 are not satisfied (§6.2) | §6 |
 | `reason_code` | **UNRESOLVED** | No vocabulary |
 
 ## 6. §6.1 FREEZE evaluation (replacement candidate)
@@ -217,10 +217,10 @@ Artifact and repository data only.
 | 6 | every supplied Membership resolves to a same-Shrine Deity | no Membership supplied (§5.3) | PASS (none supplied) |
 | 7 | every supplied Membership has its own Source evidence | no Membership supplied | PASS (none supplied) |
 | 8 | count / relation satisfy the v1.1 invariant | `exact` + `12` (non-null) | PASS |
-| 9 | verification / confidence / `verified_at` satisfy the Knowledge contract and §12.8 | `verified_at` = 2026-10-01T18:51:51+09:00 satisfies §12.8; `verification_status` = `source_confirmed` (contract definition; `verified_at` present); `confidence` UNRESOLVED (no contract assignment rule) | FAIL |
+| 9 | verification / confidence / `verified_at` satisfy the Knowledge contract and §12.8 | `verification_status` = `source_confirmed` (contract definition); `confidence` = `""` (A-5b unset confidence rule; accepted by the Seed 1.1 parser and model); `verified_at` = 2026-10-01T18:51:51+09:00, present as `source_confirmed` requires, and satisfying §12.8 | PASS |
 | 10 | no unresolved Source / Shrine / Collective / Membership / existing-row conflict | existing-row planning (CREATE / SKIP / CONFLICT) requires the importer dry-run against a target DB (A-5b §8, §11); not executed. No conflict is visible in repository data | UNRESOLVED |
 | 11 | representable without inference beyond upstream contracts | P3 PASS (§5.2) | PASS |
-| 12 | compliant Artifact; required assertions `SUPPORTED`; none `UNSUPPORTED` / `AMBIGUOUS` | required assertions R-A1, R-A3, R-A4 are `SUPPORTED`; R-A2 is a P4 fallback (not required). The Artifact still has unresolved §7 fields: `confidence`, `member_list_status`, `resolved_shrine_id`, `candidate_order`, `reason_code` | FAIL |
+| 12 | compliant Artifact; required assertions `SUPPORTED`; none `UNSUPPORTED` / `AMBIGUOUS` | required assertions R-A1, R-A3, R-A4 are `SUPPORTED`; R-A2 is a P4 fallback (not required). The Artifact still has unresolved §7 fields: `member_list_status`, `resolved_shrine_id`, `candidate_order`, `reason_code` | FAIL |
 
 ### 6.2 Determination
 
@@ -230,14 +230,15 @@ a5b_freeze_status (replacement) = HOLD
 
 | Blocker | §6.1 condition | Missing evidence | Required next evidence |
 |---|---|---|---|
-| Collective `confidence` not established | 9, 12 | no contract rule assigns Fact/Collective `confidence` (Knowledge contract "confidence": calculation method undecided) | Mother Ship decision on the Collective `confidence` assignment rule |
 | `member_list_status` not established | 5, 12 | whether S1 enumerates the other 11 members (S1 could not be re-read in this environment) | direct verification of the full S1 content |
 | Shrine identity not resolved against the target DB | 2 | `resolve_shrine` result (and `resolved_shrine_id`) | importer `--validate-only` / `--dry-run` against the target environment |
 | Existing-row conflict check not run | 10 | CREATE / SKIP / CONFLICT plan | importer `--dry-run` against the target environment |
 | `candidate_order` / `reason_code` | 12 | the contract defines no ordering or vocabulary | Mother Ship decision or contract definition |
 
-The applicable §6.2 HOLD condition is "verification metadata cannot be established
-under the current contract".
+The replacement remains HOLD under §6.2 because it cannot satisfy all §6.1 FREEZE
+conditions without additional evidence or adjudication.
+
+The remaining unsatisfied conditions are 2, 5, 10, and 12.
 
 The legacy identity remains `HOLD` (§3). The historical freeze document and the
 logical candidate count are unchanged.
