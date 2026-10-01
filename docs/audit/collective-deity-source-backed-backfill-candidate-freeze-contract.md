@@ -12,6 +12,7 @@
 - Candidate Master change: **NONE**
 - Revision 2026-10-01: Mother Ship P1–P5 integrated (§5.1, §6.1, §6.2, §13). Canonical text: `collective-deity-knowledge-seed-v1-1-contract.md` §12
 - Revision 2026-10-01: Freeze Evidence Artifact defined (§6.1, §6.2, §7.1–§7.3, §9, §12, §14)
+- Revision 2026-10-01: Direct Verification Timestamp Policy referenced (§6.1 condition 9, §7, §7.1, §15). Canonical text: Seed 1.1 contract §12.8
 
 ## 1. Purpose
 
@@ -147,7 +148,7 @@ A candidate may be `FREEZE` only when all applicable conditions are satisfied:
 6. every supplied Membership resolves to an individually attributable same-Shrine Deity under the v1.1 reference contract
 7. every supplied Membership has its own non-empty Source evidence
 8. member count / count relation values satisfy the existing v1.1 invariant
-9. verification / confidence / `verified_at` values satisfy the current Knowledge contract
+9. verification / confidence / `verified_at` values satisfy the current Knowledge contract. For a new P1–P5-governed Collective or Membership, `verified_at` also satisfies the Direct Verification Timestamp Policy (Seed 1.1 contract §12.8)
 10. no unresolved Source, Shrine, Collective, Membership, or existing-row conflict is present
 11. the candidate can be represented without inference beyond upstream contracts
 12. a contract-compliant Freeze Evidence Artifact (§7.1) records the direct verification against the accepted official Source, and in it:
@@ -240,6 +241,8 @@ Source records referenced by `source_keys` must remain representable under Knowl
 
 No numeric DB primary key may be used as a portable Membership deity reference.
 
+For a new P1–P5-governed candidate, the Collective `verified_at` and each `memberships[].verified_at` follow Seed 1.1 contract §12.8.
+
 ### 7.1 Freeze Evidence Artifact (new P1–P5-governed FREEZE)
 
 ```text
@@ -310,6 +313,10 @@ Field rules:
 - **`location`**: the Source location or surrounding context, when available.
 - **`support_status`**: one of `SUPPORTED`, `UNSUPPORTED`, `AMBIGUOUS`,
   `NOT_APPLICABLE`.
+- **`verified_at` (§7)**: follows Seed 1.1 contract §12.8. One direct verification
+  event provides the same `verified_at` only to assertions directly verified during
+  that event. A verification recorded without an ISO-8601 datetime cannot supply
+  `verified_at`, and a new direct verification event is required.
 
 Required assertions:
 
@@ -537,3 +544,30 @@ Unchanged:
 This revision does not reclassify any candidate and does not change any recorded
 closure, including Pattern B 6.
 
+## 15. Revision record — Direct Verification Timestamp Policy (2026-10-01)
+
+Canonical text: Seed 1.1 contract §12.8.
+
+Changed:
+
+- **§6.1 condition 9.** Previously it required only that `verified_at` satisfy the
+  Knowledge contract. For a new P1–P5-governed Collective or Membership,
+  `verified_at` must now also be the completion timestamp of the direct verification
+  event (Seed 1.1 contract §12.8).
+- **§7 and §7.1.** Added references stating which event a `verified_at` value may come
+  from, and that a date-only verification cannot supply it.
+
+Consequence under the existing gates (no new gate added):
+
+- A candidate whose direct verification has no recorded ISO-8601 datetime cannot
+  satisfy §6.1 condition 9 with `source_confirmed` / `reviewed` metadata.
+- The existing §6.2 HOLD condition "verification metadata cannot be established
+  under the current contract" applies until a new direct verification event records
+  the datetime.
+
+Unchanged:
+
+- `Source.verified_at` semantics
+- §7.3 Pattern B 6 compatibility
+- Seed 1.1 schema, DB models, importer, runtime, migrations, seed data
+- candidate classifications

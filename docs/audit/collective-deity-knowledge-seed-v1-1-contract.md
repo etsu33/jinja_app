@@ -11,6 +11,7 @@
 - Runtime activation: **NONE**
 - Revision 2026-10-01: Mother Ship P1–P5 authoring policy added as §12
 - Revision 2026-10-01: Freeze Evidence Artifact linkage added (§12.2, §12.7). The Artifact schema is defined in the A-5b contract §7.1
+- Revision 2026-10-01: Direct Verification Timestamp Policy added (§12.8). Referenced from §5.1 and §6.1 `verified_at`
 
 ## 1. Purpose
 
@@ -122,7 +123,7 @@ Each item in `collectives` maps to one `ShrineDeityCollective`.
 | `member_list_status` | No | `not_determined` | `complete`, `partial`, `not_enumerated`, `not_determined`. |
 | `verification_status` | No | `draft` | Reuses the current Knowledge verification enum. |
 | `confidence` | No | empty string | Reuses the current Knowledge confidence enum. |
-| `verified_at` | Conditional | `null` | ISO-8601 datetime. Required for statuses already requiring it in the current Knowledge contract. |
+| `verified_at` | Conditional | `null` | ISO-8601 datetime. Required for statuses already requiring it in the current Knowledge contract. For a new P1–P5-governed Collective: §12.8. |
 | `note` | No | empty string | Editorial / audit note only. Must not be parsed into Facts or Memberships. |
 | `source_keys` | Yes | none | Non-empty list of Source keys defined in the same seed. Collective owns this Evidence relation. Direct support required: §12.2–§12.3 (P2, P3). |
 | `memberships` | No | `[]` | Nested Membership entries. Zero Memberships is valid. |
@@ -202,7 +203,7 @@ Each item in `memberships` maps to one
 | `sort_order` | No | `0` | Integer, 0 or greater. |
 | `verification_status` | No | `draft` | Reuses the current Knowledge verification enum. |
 | `confidence` | No | empty string | Reuses the current Knowledge confidence enum. |
-| `verified_at` | Conditional | `null` | ISO-8601 datetime; follows current verification-status consistency rules. |
+| `verified_at` | Conditional | `null` | ISO-8601 datetime; follows current verification-status consistency rules. For a new P1–P5-governed Membership: §12.8. |
 | `note` | No | empty string | Relation-specific note only. |
 | `source_keys` | Yes | none | Non-empty list of Source keys proving this member relation. Never inherited from the Collective. |
 
@@ -691,3 +692,42 @@ The minimum Artifact schema and the FREEZE / HOLD gates are defined in
 
 The Artifact contract adds no field to the Seed 1.1 schema (§5–§6). It adds no
 parser rule (§8) and no DB schema.
+
+`verified_at` for a new P1–P5-governed Collective or Membership follows §12.8.
+
+### 12.8 Direct Verification Timestamp Policy
+
+Scope: a new P1–P5-governed Collective (§5.1 `verified_at`) or Membership (§6.1
+`verified_at`).
+
+`verified_at` records the timestamp at which the direct verification against the
+accepted official Source supporting that Fact or relation was completed (P2, §12.2).
+
+Rules:
+
+- Record it as an ISO-8601 datetime at verification time.
+- It must satisfy the current Knowledge verification-status consistency rules:
+  `source_confirmed` / `reviewed` require `verified_at`
+  (`docs/knowledge/shrine-knowledge-contract.md`; model
+  `_validate_verified_at_consistency`).
+- Do not reconstruct it from a date-only audit record.
+- Do not inherit it from `Source.accessed_at`.
+- Do not inherit it from a Source's prior `verified_at`.
+- Do not inherit it from a legacy Fact's or Membership's `verified_at`.
+- Do not infer it from file timestamps, commit timestamps, screenshots, notes, or
+  incidental metadata.
+- One direct verification event may provide the same `verified_at` to multiple
+  assertions only when those assertions were directly verified during that same
+  event.
+- If a direct verification was completed without recording an ISO-8601 datetime,
+  do not reconstruct the datetime later. A new direct verification event is
+  required before `source_confirmed` / `reviewed` metadata may be authored for the
+  new Fact or relation.
+
+Unchanged by this policy:
+
+- `Source.verified_at` remains Source metadata. It is not redefined as a Collective
+  or Membership verification time.
+- No Seed 1.1 field, parser rule (§8), DB field, model, importer, runtime, migration,
+  or seed data is added or changed.
+- Pattern B 6 legacy compatibility (A-5b contract §7.3) is unchanged.
