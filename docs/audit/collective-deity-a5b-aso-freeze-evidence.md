@@ -97,13 +97,52 @@ All entries share:
 
 `memberships[]`: none. The other members are not inferred.
 
+### C.4a Production Shrine identity observation
+
+Mother Ship performed a read-only Production DB observation through the existing
+sanctioned bridge.
+
+| Field | Value |
+|---|---|
+| Observed by | Mother Ship |
+| Access path | `scripts/migration_safety/readonly_query.sh` |
+| Target | Production DB |
+| Mode | read-only `SELECT` |
+| Query scope | `id`, `name_jp`, `address`, `place_ref_id` where `name_jp = 阿蘇神社` |
+| Rows observed | `1` |
+| Production write | `NO` |
+
+Observed Production row:
+
+| id | name_jp | address | place_ref_id |
+|---:|---|---|---|
+| `100` | 阿蘇神社 | 熊本県阿蘇市一の宮町宮地3083-1 | `NULL` |
+
+Resolver authority:
+
+`backend/temples/services/knowledge_seed.py::resolve_shrine`
+
+Resolver input:
+
+```text
+name_jp = 阿蘇神社
+address = 熊本県阿蘇市一の宮町宮地3083-1
+Resolver result:
+status = OK
+resolved_shrine_id = 100
+
+The exact name_jp and exact address resolve to exactly one Production Shrine
+row. The place_ref_id IS NULL canonical-preference fallback is therefore not
+needed for this resolution.
+```
+
 ### C.5 Current candidate fields (§7)
 
 | Field | Value | Basis |
 |---|---|---|
 | `candidate_order` | `10` | A-5b candidate_order rule (A-5b contract §7): first appearance in the historical freeze doc, §5.3 row 2 (after §5.1 ×6, §5.2 ×2, §5.3 富岡八幡宮). Kept on resumption under §6.5 |
 | `candidate_name` / `candidate_address` | 阿蘇神社 / 熊本県阿蘇市一の宮町宮地3083-1 | historical freeze doc §5.3; `batch_1_7_seed.json` |
-| `resolved_shrine_id` | **UNRESOLVED** | requires DB resolution |
+| `resolved_shrine_id` | `100` | Production read-only observation (C.4a): exact `name_jp` + exact `address` resolve to one row under `resolve_shrine()`; result `OK` |
 | `source_attested_label` | 健磐龍命をはじめ家族神12神 | P1 |
 | `role` | `unknown` | P4 |
 | `sort_order` | `0` | Seed 1.1 contract §5.1 default |
@@ -118,14 +157,14 @@ All entries share:
 | `memberships[]` | none | C.4 |
 | `a5b_freeze_status` | `HOLD` | C.6 |
 | `reason_code` | `UNSATISFIED_FREEZE_CONDITIONS` | A-5b reason_code rule (A-5b contract §7): `HOLD` → `UNSATISFIED_FREEZE_CONDITIONS`. Condition-level detail is in `review_note` |
-| `review_note` | HOLD: §6.1 conditions 2, 10, 12 are not satisfied | C.6 |
+| `review_note` | HOLD: §6.1 condition 10 is not satisfied | C.6 |
 
 ### C.6 §6.1 evaluation (original candidate)
 
 | # | Result | Basis |
 |---|---|---|
 | 1 | PASS | original candidate of the fixed input position, resumed under §6.5 (historical freeze doc §5.3, §10; §0.1) |
-| 2 | UNRESOLVED | `resolve_shrine` was not executed against a target DB |
+| 2 | PASS | Production read-only observation (C.4a): exact `name_jp` + exact `address` resolve to Shrine id `100` under the existing `resolve_shrine()` authority; result `OK` |
 | 3 | PASS | P1 (C.3) |
 | 4 | PASS | S1 traceable (`shrine_official` + normalized URL); content directly supports the Collective (event C.1, P2) |
 | 5 | PASS | `role` = unknown (P4 fallback); `member_count` / `member_count_relation` = 12 / exact (P5); `member_list_status` = `not_enumerated` (Source-supported) |
@@ -135,25 +174,24 @@ All entries share:
 | 9 | PASS | `source_confirmed` with `verified_at` present (Knowledge consistency rule); `confidence` = `""` (A-5b unset confidence rule); `verified_at` is the completion time of event C.1, which verified every asserted field (§12.8) |
 | 10 | UNRESOLVED | importer dry-run (CREATE / SKIP / CONFLICT) not executed |
 | 11 | PASS | P3; no inference beyond the contracts |
-| 12 | FAIL | required assertions O-A1, O-A3, O-A4 are `SUPPORTED`; the Artifact still has an unresolved §7 field: `resolved_shrine_id` (`candidate_order` and `reason_code` are set under the A-5b contract §7 rules) |
+| 12 | PASS | required assertions O-A1, O-A3, O-A4 are `SUPPORTED`; all required §7 Artifact fields are now resolved, including `resolved_shrine_id = 100`, `candidate_order = 10`, and `reason_code = UNSATISFIED_FREEZE_CONDITIONS` |
 
 ```text
 a5b_freeze_status (original candidate) = HOLD
 ```
 
-The candidate remains HOLD under §6.2 because it cannot satisfy all §6.1 FREEZE
-conditions without additional evidence or adjudication. The remaining unsatisfied
-conditions are 2, 10, and 12.
+The candidate remains HOLD under §6.2 because condition 10 is not yet satisfied.
+
+The remaining unsatisfied condition is 10.
 
 ### C.7 Current blockers
 
 | Blocker | §6.1 condition | Required next evidence |
 |---|---|---|
-| Shrine identity not resolved against the target DB (`resolved_shrine_id`) | 2 | importer `--validate-only` / `--dry-run` against the target environment |
 | Existing-row conflict check not run | 10 | importer `--dry-run` (CREATE / SKIP / CONFLICT plan) |
-| unresolved §7 field `resolved_shrine_id` | 12 | resolution of condition 2 |
 
-No longer blockers: P1, `member_list_status`, verification timestamp, `candidate_order`, `reason_code`.
+No longer blockers: P1, `member_list_status`, verification timestamp,
+`candidate_order`, `reason_code`, `resolved_shrine_id`, conditions 2 and 12.
 
 ---
 
@@ -268,7 +306,7 @@ Consequences:
 
 | Identity | `source_attested_label` | `a5b_freeze_status` | Current lifecycle (§0.1) |
 |---|---|---|---|
-| Legacy (original) | 健磐龍命をはじめ家族神12神 | `HOLD` (historical reason: P1 failure, §3) | active candidate; current evaluation in section C (`HOLD`: conditions 2, 10, 12) |
+| Legacy (original) | 健磐龍命をはじめ家族神12神 | `HOLD` (historical reason: P1 failure, §3) | active candidate; current evaluation in section C (`HOLD`: condition 10) |
 | Replacement | 健磐龍命をはじめ家族神１２神 | `HOLD` (historical: §6.1 evaluated, §6) | `replacement_progression = INVALIDATED` (historical only) |
 
 - The two labels are byte-distinct. The legacy one uses ASCII `12` (U+0031 U+0032).
