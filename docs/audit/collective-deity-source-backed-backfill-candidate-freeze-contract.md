@@ -13,6 +13,7 @@
 - Revision 2026-10-01: Mother Ship P1–P5 integrated (§5.1, §6.1, §6.2, §13). Canonical text: `collective-deity-knowledge-seed-v1-1-contract.md` §12
 - Revision 2026-10-01: Freeze Evidence Artifact defined (§6.1, §6.2, §7.1–§7.3, §9, §12, §14)
 - Revision 2026-10-01: Direct Verification Timestamp Policy referenced (§6.1 condition 9, §7, §7.1, §15). Canonical text: Seed 1.1 contract §12.8
+- Revision 2026-10-01: Artifact Source reference = semantic Source identity (§7, §7.1, §16)
 
 ## 1. Purpose
 
@@ -243,6 +244,8 @@ No numeric DB primary key may be used as a portable Membership deity reference.
 
 For a new P1–P5-governed candidate, the Collective `verified_at` and each `memberships[].verified_at` follow Seed 1.1 contract §12.8.
 
+In a Freeze Evidence Artifact, `collective_source_keys` and `memberships[].source_keys` are Seed 1.1 file-local values. They are assigned only at Seed 1.1 authoring (§7.1 "Source reference and Seed linkage"). Before then, the Artifact identifies each Source by semantic Source identity (§7.1).
+
 ### 7.1 Freeze Evidence Artifact (new P1–P5-governed FREEZE)
 
 ```text
@@ -275,9 +278,8 @@ candidate identity
   source_attested_label
 
 sources[]                         (each Source used for verification)
-  source_key
-  url
   source_type
+  url
   accessed_at
   verification_status
 
@@ -291,7 +293,7 @@ assertions
 
 evidence entry
   value
-  source_key
+  source_ref                      (source_type + url of one sources[] entry)
   excerpt
   location
   support_status
@@ -307,6 +309,8 @@ Field rules:
   No new DB identity scheme is introduced.
 - **Source fields** follow the active Source contract
   (`docs/knowledge/shrine-knowledge-contract.md` "Source契約").
+- **`source_ref`** identifies a `sources[]` entry by its semantic Source identity
+  (`source_type` + normalized URL). See "Source reference and Seed linkage" below.
 - **`value`**: the value proposed for the Seed 1.1 field.
 - **`excerpt`**: the exact Source text sufficient to audit the assertion. It stores
   only the minimum excerpt needed for auditability, not a copy of the Source.
@@ -348,10 +352,38 @@ Policy linkage (canonical text: Seed 1.1 contract §12.7):
 Membership evidence (Membership Evidence B, §5.2):
 
 - Each Membership entry is independently auditable and records its own
-  `source_key` and `excerpt`.
+  `source_ref` and `excerpt`.
 - Collective evidence entries do not establish Membership evidence.
 - A Membership must not be derived solely from the Collective label, the member
   count, list length, or legacy Membership / Deity Facts.
+
+Source reference and Seed linkage:
+
+```text
+FREEZE_ARTIFACT_SOURCE_REFERENCE = SEMANTIC_SOURCE_IDENTITY
+```
+
+- **Portable identity.** The Artifact identifies an official Source portably by
+  `source_type` + normalized URL. This is the existing Source semantic identity
+  (Source contract "Import時のSource semantic identity"; `normalize_source_url` in
+  `backend/temples/services/knowledge_seed.py`).
+- **`source_key` is not portable.** It is not a Source identity in the Artifact. It
+  remains a Seed 1.1 file-local reference only (Seed 1.1 contract §5.1, §6.1).
+- **Not yet in a Seed.** The Artifact may record a directly verified official Source
+  that has not yet been authored into any Seed 1.1 file.
+- **No key ownership.** The Artifact does not reserve, issue, or own a future
+  `source_key`.
+- **Later Seed 1.1 authoring:**
+  1. Define the Source in that seed's `sources[]`.
+  2. Assign a non-blank seed-local `key` under the existing Seed 1.1 rules.
+  3. Link the Seed Source to the Artifact Source by exact semantic Source
+     identity (`source_type` + normalized URL).
+- **Keys need not match.** The seed-local key does not need to equal any identifier
+  in the Artifact.
+- **§5.1 / §5.2.** Their `source_keys` requirements are satisfied in the Seed 1.1
+  packet by these linked seed-local keys.
+- **No new registry.** No repository-wide Source key or Source registry is
+  introduced.
 
 ### 7.2 Architecture boundary
 
@@ -571,3 +603,36 @@ Unchanged:
 - §7.3 Pattern B 6 compatibility
 - Seed 1.1 schema, DB models, importer, runtime, migrations, seed data
 - candidate classifications
+
+## 16. Revision record — Artifact Source reference (2026-10-01)
+
+Mother Ship decision:
+
+```text
+FREEZE_ARTIFACT_SOURCE_REFERENCE = SEMANTIC_SOURCE_IDENTITY
+```
+
+Superseded wording:
+
+| Location | Previous wording | Replaced because |
+|---|---|---|
+| §7.1 `sources[]` | listed `source_key` as a Source field of the Artifact | `source_key` is file-local to a Seed 1.1 file and is not a portable Source identity |
+| §7.1 evidence entry | `source_key` | Replaced by `source_ref` (`source_type` + url of a `sources[]` entry) |
+| §7.1 Membership evidence | "records its own `source_key` and `excerpt`" | Membership evidence now records its own `source_ref` |
+
+Added:
+
+- the §7 note on when `collective_source_keys` / `memberships[].source_keys` are
+  assigned
+- the §7.1 "Source reference and Seed linkage" rules
+
+Unchanged:
+
+- Seed 1.1 `source_key` semantics (file-local; Seed 1.1 contract §5.1, §6.1, §8)
+- the Source semantic identity (`source_type` + normalized URL)
+- Membership Evidence B
+- §12.8 timestamp policy
+- Pattern B 6 (§7.3)
+- the Seed 1.1 schema, importer, DB models, runtime
+
+No key-generation convention and no Source registry is introduced.
