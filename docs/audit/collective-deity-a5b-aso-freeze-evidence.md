@@ -8,6 +8,64 @@
 - Seed / Source data / DB / importer / runtime change: **NONE**
 - Historical candidate-freeze document (`docs/audit/collective-deity-backfill-candidate-freeze.md`): **unchanged** (§6.4)
 
+## 0. Correction notice — Source label contradiction (pending Mother Ship decision)
+
+This notice takes precedence over every statement below that depends on the
+full-width excerpt. It changes no lifecycle status. The legacy and replacement
+statuses recorded below stay as recorded until Mother Ship decides how to resolve
+the contradiction. The current A-5b contract defines no rule for withdrawing a
+replacement authorization or for restoring a legacy candidate.
+
+**Observed conflict**
+
+| Record | Wording | Numeral |
+|---|---|---|
+| Excerpt recorded for the 2026-10-01T18:51:51+09:00 verification (§2) | 「健磐龍命をはじめ家族神１２神を祀り」 | full-width `１２` (U+FF11 U+FF12) |
+| Mother Ship later full-content inspection of S1 (all 8 pages) | 「健磐龍命をはじめ家族神12神を祀り」 | ASCII `12` (U+0031 U+0032) |
+
+- The earlier recorded excerpt conflicts with the directly inspected S1.
+- There is no evidence that S1 itself changed. The conflict is in the earlier
+  transcription / verification record.
+- The full-width excerpt is therefore **not** treated as a Source-attested fact.
+- The earlier record is kept below for auditability.
+
+**P1 against the directly inspected S1 wording** (Seed 1.1 contract §12.1; no numeral
+normalization)
+
+| Identity | Label | P1 |
+|---|---|---|
+| Legacy | 健磐龍命をはじめ家族神12神 | PASS: verbatim contiguous substring; only the predicate 「を祀り」 is excluded |
+| Replacement | 健磐龍命をはじめ家族神１２神 | FAIL: does not occur in S1 |
+
+**Consequences recorded, not resolved**
+
+1. **§6.4 scope condition 4 did not hold.** It requires that direct verification
+   establish that the legacy label cannot satisfy P1, and the legacy label
+   satisfies P1. The replacement authorization in §4.2 rests on the conflicting
+   excerpt.
+2. **Contract gap.** The A-5b contract defines no rule for withdrawing an
+   erroneously authorized replacement before FREEZE / Seed / DB materialization, for
+   restoring the legacy candidate, or for the lifecycle status either identity
+   should then carry.
+3. **Timestamp.** The full-content inspection recorded no ISO-8601 datetime.
+   `2026-10-01T18:51:51+09:00` belongs to the event that recorded the conflicting
+   excerpt. Under Seed 1.1 contract §12.8 it cannot be reused for assertions
+   established by the later inspection, and it cannot be reconstructed. A new
+   timestamped direct verification event is required before `source_confirmed`
+   metadata can be authored for whichever identity is valid.
+4. **Member list finding.** The full-content inspection found that S1 establishes
+   the Collective, states a total of 12, and presents no individual member list.
+   - Under the A-5b member_list_status assignment rule this maps to
+     `not_enumerated`.
+   - It is not attached to either identity here. The valid identity depends on the
+     Mother Ship decision.
+   - It carries the same timestamp limitation as item 3.
+5. **Judgments resting on the full-width excerpt are not reliable** until that
+   decision. These are:
+   - the legacy `HOLD` reason (§3, §4.2)
+   - R-A1 and the replacement P1–P5 results (§5.2–§5.3)
+   - §6.1 conditions 3, 4, 5, 9, 11, 12 for the replacement (§6)
+
 ## 1. Position summary
 
 | Identity | `source_attested_label` | `a5b_freeze_status` |
