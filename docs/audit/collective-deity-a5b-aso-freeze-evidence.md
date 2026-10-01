@@ -34,6 +34,19 @@
 Everything recorded as `SUPPORTED` in this Artifact is limited to what this event
 established. Other assertions remain pending (§5).
 
+Full-content inspection of S1 (for `member_list_status`):
+
+| Field | Value |
+|---|---|
+| Performed by | Mother Ship direct verification of the official Source S1 |
+| Scope | all 8 pages of S1 inspected |
+| Collective established | yes (「健磐龍命をはじめ家族神１２神を祀り」) |
+| Total count 12 stated | yes |
+| Individual member list presented | **no**: S1 presents no individual member list for this Collective |
+
+This records only that S1 does not present an individual member list. It makes no
+statement about the existence or identity of the other members.
+
 ## 3. Legacy candidate record (§7)
 
 | §7 field | Value | Resolution |
@@ -98,7 +111,7 @@ replacement_provenance
     P4                       = PASS (role = unknown, fallback)
     P5                       = PASS (member_count = 12, member_count_relation = exact)
     p1_p5_evaluation         = COMPLETED (§5.2)
-    section_6_1_evaluation   = COMPLETED (§6): conditions 2, 5, 10, 12 not satisfied
+    section_6_1_evaluation   = COMPLETED (§6): conditions 2, 10, 12 not satisfied
     a5b_freeze_status        = HOLD
     detail                   = §5 of this Artifact
 ```
@@ -169,10 +182,14 @@ All entries below share:
 
 Not evaluated by P1–P5 in this record:
 
-- **`member_list_status`:** **UNRESOLVED**. The verified excerpt names only
-  健磐龍命 among the 12. The direct verification record does not establish whether
-  S1 enumerates the other members elsewhere, so `partial` or `not_determined`
-  cannot be chosen from the record alone.
+- **`member_list_status`:** `not_enumerated`, under the A-5b member_list_status
+  assignment rule (A-5b contract §7):
+  - The full-content inspection of S1 (§2) shows that S1 establishes the
+    Collective but presents no individual member list.
+  - 健磐龍命 appears only inside the aggregate expression, so it is not an
+    individual member-list entry under the same rule.
+  - The value is not derived from Membership rows, `member_count`, or
+    `member_count_relation`.
 - **`memberships[]`:** none recorded. No Membership assertion (including
   健磐龍命) is independently recorded for the 18:51:51 event, so no Membership
   evidence is authored. The other 11 deities are not inferred.
@@ -189,7 +206,7 @@ Not evaluated by P1–P5 in this record:
 | `sort_order` | `0` | Seed 1.1 contract §5.1 default |
 | `member_count` | `12` | P5 |
 | `member_count_relation` | `exact` | P5 |
-| `member_list_status` | **UNRESOLVED** | §5.3 |
+| `member_list_status` | `not_enumerated` | A-5b member_list_status assignment rule; full 8-page inspection of S1: Collective established, no individual member list presented (§2, §5.3) |
 | `verification_status` | `source_confirmed` | Knowledge contract "verification_status候補": `source_confirmed` = 「Sourceの内容と一致することを確認済み」. The Collective assertions (R-A1, R-A3, R-A4) were confirmed against S1 by direct verification (§2). `verified_at` is present (importer / model consistency rule) |
 | `confidence` | `""` (unset) | A-5b unset confidence rule (A-5b contract §7): no authoritative contract assigns `high` / `medium` / `low`, so the existing Seed 1.1 unset/default representation applies (Seed 1.1 contract §5.1). Not a score, not low confidence, and not derived from Source confidence, `source_type`, official status, or `source_confirmed` |
 | `verified_at` | `2026-10-01T18:51:51+09:00` | §12.8: the label, existence, and count assertions above were all established by this single direct verification event |
@@ -197,7 +214,7 @@ Not evaluated by P1–P5 in this record:
 | `collective_source_keys` / `memberships[].source_keys` | not assigned | §7: assigned only at Seed 1.1 authoring |
 | `memberships[]` | none | §5.3 |
 | `a5b_freeze_status` | `HOLD` | §6 |
-| `review_note` | HOLD: §6.1 conditions 2, 5, 10, 12 are not satisfied (§6.2) | §6 |
+| `review_note` | HOLD: §6.1 conditions 2, 10, 12 are not satisfied (§6.2) | §6 |
 | `reason_code` | **UNRESOLVED** | No vocabulary |
 
 ## 6. §6.1 FREEZE evaluation (replacement candidate)
@@ -213,14 +230,14 @@ Artifact and repository data only.
 | 2 | Shrine identity deterministically resolvable under existing authority | `shrine_ref` (阿蘇神社 + 熊本県阿蘇市一の宮町宮地3083-1) occurs in exactly one block across the repository seeds (`batch_1_7_seed.json`). The existing authority, `resolve_shrine`, resolves against a DB and was not executed | UNRESOLVED |
 | 3 | label is a verbatim contiguous substring extracted under P1 | R-A1; P1 PASS (§5.2) | PASS |
 | 4 | accepted official Source traceable; content directly supports the Collective | S1 (`shrine_official` + normalized URL); excerpt; verification completed 2026-10-01T18:51:51+09:00; P2 PASS | PASS |
-| 5 | every proposed Collective field Source-supported or a §12-permitted default | `role` = unknown (P4 default) PASS; `member_count` / `member_count_relation` = 12 / exact (P5) PASS; `member_list_status` UNRESOLVED (§5.3). It is neither Source-supported in the record nor a §12-permitted default | UNRESOLVED |
+| 5 | every proposed Collective field Source-supported or a §12-permitted default | `role` = unknown (P4 default) PASS; `member_count` / `member_count_relation` = 12 / exact (P5) PASS; `member_list_status` = `not_enumerated` (Source-supported: full S1 inspection, A-5b assignment rule) PASS | PASS |
 | 6 | every supplied Membership resolves to a same-Shrine Deity | no Membership supplied (§5.3) | PASS (none supplied) |
 | 7 | every supplied Membership has its own Source evidence | no Membership supplied | PASS (none supplied) |
 | 8 | count / relation satisfy the v1.1 invariant | `exact` + `12` (non-null) | PASS |
 | 9 | verification / confidence / `verified_at` satisfy the Knowledge contract and §12.8 | `verification_status` = `source_confirmed` (contract definition); `confidence` = `""` (A-5b unset confidence rule; accepted by the Seed 1.1 parser and model); `verified_at` = 2026-10-01T18:51:51+09:00, present as `source_confirmed` requires, and satisfying §12.8 | PASS |
 | 10 | no unresolved Source / Shrine / Collective / Membership / existing-row conflict | existing-row planning (CREATE / SKIP / CONFLICT) requires the importer dry-run against a target DB (A-5b §8, §11); not executed. No conflict is visible in repository data | UNRESOLVED |
 | 11 | representable without inference beyond upstream contracts | P3 PASS (§5.2) | PASS |
-| 12 | compliant Artifact; required assertions `SUPPORTED`; none `UNSUPPORTED` / `AMBIGUOUS` | required assertions R-A1, R-A3, R-A4 are `SUPPORTED`; R-A2 is a P4 fallback (not required). The Artifact still has unresolved §7 fields: `member_list_status`, `resolved_shrine_id`, `candidate_order`, `reason_code` | FAIL |
+| 12 | compliant Artifact; required assertions `SUPPORTED`; none `UNSUPPORTED` / `AMBIGUOUS` | required assertions R-A1, R-A3, R-A4 are `SUPPORTED`; R-A2 is a P4 fallback (not required). The Artifact still has unresolved §7 fields: `resolved_shrine_id`, `candidate_order`, `reason_code` | FAIL |
 
 ### 6.2 Determination
 
@@ -230,7 +247,6 @@ a5b_freeze_status (replacement) = HOLD
 
 | Blocker | §6.1 condition | Missing evidence | Required next evidence |
 |---|---|---|---|
-| `member_list_status` not established | 5, 12 | whether S1 enumerates the other 11 members (S1 could not be re-read in this environment) | direct verification of the full S1 content |
 | Shrine identity not resolved against the target DB | 2 | `resolve_shrine` result (and `resolved_shrine_id`) | importer `--validate-only` / `--dry-run` against the target environment |
 | Existing-row conflict check not run | 10 | CREATE / SKIP / CONFLICT plan | importer `--dry-run` against the target environment |
 | `candidate_order` / `reason_code` | 12 | the contract defines no ordering or vocabulary | Mother Ship decision or contract definition |
@@ -238,7 +254,7 @@ a5b_freeze_status (replacement) = HOLD
 The replacement remains HOLD under §6.2 because it cannot satisfy all §6.1 FREEZE
 conditions without additional evidence or adjudication.
 
-The remaining unsatisfied conditions are 2, 5, 10, and 12.
+The remaining unsatisfied conditions are 2, 10, and 12.
 
 The legacy identity remains `HOLD` (§3). The historical freeze document and the
 logical candidate count are unchanged.
