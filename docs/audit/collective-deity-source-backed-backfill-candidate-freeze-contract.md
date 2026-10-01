@@ -10,6 +10,7 @@
 - Backfill execution: **NONE**
 - Runtime activation: **NONE**
 - Candidate Master change: **NONE**
+- Revision 2026-10-01: Mother Ship P1–P5 integrated (§5.1, §6.1, §6.2, §13). Canonical text: `collective-deity-knowledge-seed-v1-1-contract.md` §12
 
 ## 1. Purpose
 
@@ -98,6 +99,14 @@ resolved Shrine + source_attested_label
 
 `source_attested_label` is Source-attested text. A-5b must not canonicalize, translate, synonym-match, or infer an equivalent religious label.
 
+Collective evidence follows Knowledge Seed 1.1 contract §12 (Mother Ship P1–P5):
+
+- the label is extracted only as permitted by §12.1 (P1)
+- the accepted official Source content must directly support the Collective assertion (§12.2, P2)
+- notes, legacy ShrineDeity Facts, and prior extraction results are discovery evidence only (§12.2–§12.3, P2–P3)
+- `role` follows §12.4 (P4)
+- `member_count` / `member_count_relation` follow §12.5 (P5)
+
 ### 5.2 Membership evidence
 
 Membership Evidence remains policy B.
@@ -131,9 +140,9 @@ A candidate may be `FREEZE` only when all applicable conditions are satisfied:
 
 1. candidate belongs to the fixed A-5b input set
 2. Shrine identity is deterministically resolvable under existing authority
-3. `source_attested_label` is non-blank, Source-attested, and unmodified
-4. at least one valid Source is traceable for the Collective
-5. every proposed Collective field is supported by the recorded Source or is a contract-defined default
+3. `source_attested_label` is non-blank, Source-attested, and occurs verbatim as one contiguous substring of the accepted official Source, extracted only as permitted by Seed 1.1 contract §12.1 (P1)
+4. at least one accepted official Source is traceable for the Collective, and its content has been confirmed to directly support the Collective assertion (§12.2, P2). A note, a legacy Fact, or a prior judgment alone does not satisfy this (§12.2–§12.3, P2–P3)
+5. every proposed Collective field is directly supported by the accepted official Source, or is a default that Seed 1.1 contract §12 permits: `role = unknown` under §12.4 (P4); `member_count_relation = unspecified` / `member_count = null` only when no numeric count is established, under §12.5 (P5)
 6. every supplied Membership resolves to an individually attributable same-Shrine Deity under the v1.1 reference contract
 7. every supplied Membership has its own non-empty Source evidence
 8. member count / count relation values satisfy the existing v1.1 invariant
@@ -167,6 +176,9 @@ HOLD conditions include:
 - existing Source relation mismatch
 - verification metadata cannot be established under the current contract
 - any interpretation would require alias matching, note parsing, canonical-name inference, or religious-equivalence inference
+- the Collective assertion is supported only by notes, legacy Facts, or prior judgments, with no direct Source confirmation (P2 / P3)
+- the label cannot be extracted under P1
+- a numeric expression exists but the Source does not establish its semantics (P5): `unspecified` / `null` must not be used to bypass this HOLD
 
 HOLD performs zero writes.
 
@@ -316,3 +328,30 @@ A-5b candidate freeze may close only when:
 - the frozen artifact is reproducible under its fixed comparison contract
 
 Only then may A-5b be recorded as closed.
+
+## 13. Revision record — Mother Ship P1–P5 (2026-10-01)
+
+Source of the decisions: Mother Ship resolution of the questions in
+`docs/audit/collective-deity-a5b-deferred-ready-4-policy-gap.md` §6.
+Canonical policy text: `docs/audit/collective-deity-knowledge-seed-v1-1-contract.md` §12.
+
+Superseded wording:
+
+| Location | Previous wording | Replaced because |
+|---|---|---|
+| §6.1 condition 3 | "`source_attested_label` is non-blank, Source-attested, and unmodified" | "unmodified" did not define extraction. P1 permits contiguous verbatim extraction and prohibits all other changes |
+| §6.1 condition 4 | "at least one valid Source is traceable for the Collective" | P2 requires the Source content to directly support the assertion, not traceability alone |
+| §6.1 condition 5 | "every proposed Collective field is supported by the recorded Source or is a contract-defined default" | P5 forbids `unspecified` / `null` when a numeric expression exists with unestablished semantics. P4 fixes `role = unknown` as the only fallback |
+
+Added: §5.1 policy pointer and three HOLD conditions in §6.2.
+
+Unchanged:
+
+- FREEZE / HOLD / EXCLUDE vocabulary
+- identity contract
+- Membership Evidence B
+- mutation prohibition
+- downstream write sequence
+
+This revision does not reclassify any candidate or change any recorded closure.
+
