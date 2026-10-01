@@ -14,6 +14,7 @@
 - Revision 2026-10-01: Freeze Evidence Artifact defined (§6.1, §6.2, §7.1–§7.3, §9, §12, §14)
 - Revision 2026-10-01: Direct Verification Timestamp Policy referenced (§6.1 condition 9, §7, §7.1, §15). Canonical text: Seed 1.1 contract §12.8
 - Revision 2026-10-01: Artifact Source reference = semantic Source identity (§7, §7.1, §16)
+- Revision 2026-10-01: Pre-FREEZE source-backed replacement (§4, §6.1, §6.3, §6.4, §7, §10, §12, §17)
 
 ## 1. Purpose
 
@@ -57,7 +58,7 @@ A-5b may only determine whether a candidate has sufficient repository-traceable 
 
 A-5b may:
 
-- preserve the fixed candidate input set
+- preserve the fixed candidate input set (a §6.4 replacement preserves it: the replacement occupies the failed legacy candidate's position)
 - resolve Shrine identity using the existing authority
 - identify a Source-attested Collective label
 - identify Source-backed Collective properties
@@ -141,7 +142,7 @@ A-5b audit states are namespaced as `a5b_freeze_status` and do not replace Knowl
 
 A candidate may be `FREEZE` only when all applicable conditions are satisfied:
 
-1. candidate belongs to the fixed A-5b input set
+1. candidate belongs to the fixed A-5b input set, or is a replacement candidate authored under §6.4 that occupies the position of a legacy candidate in that set
 2. Shrine identity is deterministically resolvable under existing authority
 3. `source_attested_label` is non-blank, Source-attested, and occurs verbatim as one contiguous substring of the accepted official Source, extracted only as permitted by Seed 1.1 contract §12.1 (P1)
 4. at least one accepted official Source is traceable for the Collective, and its content has been confirmed to directly support the Collective assertion (§12.2, P2). A note, a legacy Fact, or a prior judgment alone does not satisfy this (§12.2–§12.3, P2–P3)
@@ -195,12 +196,86 @@ HOLD performs zero writes.
 
 Use `EXCLUDE` only when the item is not an A-5b Source-backed Collective backfill candidate, for example:
 
-- it is outside the fixed A-5b candidate input set
+- it is outside the fixed A-5b candidate input set (a §6.4 replacement candidate is not outside it)
 - evidence establishes no Collective fact to backfill
 - the item is a legacy representation that is not eligible for this staged candidate packet
 - the candidate was included accidentally and has no applicable Collective / Membership backfill target
 
 EXCLUDE is not a negative statement about the Shrine or religious content. It is only an A-5b scope classification.
+
+### 6.4 Pre-FREEZE source-backed replacement
+
+```text
+PRE_FREEZE_REAUTHORING_POLICY = ALLOW_SOURCE_BACKED_REPLACEMENT_WITH_PROVENANCE
+```
+
+**Scope.** This section applies only when all of the following hold:
+
+1. the legacy candidate belongs to the fixed A-5b input set
+2. it has not reached `FREEZE` under the current P1–P5 policy
+3. no applicable A-5b candidate packet has materialized it into Seed 1.1, the DB,
+   or runtime
+4. a current direct official Source verification establishes that the legacy
+   proposed `source_attested_label` cannot satisfy P1 (Seed 1.1 contract §12.1)
+
+**Legacy candidate.** The legacy candidate is never mutated. It remains recorded
+with:
+
+- its original identity (resolved Shrine + legacy `source_attested_label`)
+- `a5b_freeze_status = HOLD`
+- an explicit P1 failure reason
+- provenance pointing to the replacement (§7, "Replacement provenance")
+
+**Replacement candidate.** A replacement candidate may be authored from the
+accepted official Source. The replacement:
+
+- uses a `source_attested_label` that independently satisfies current P1
+- is evaluated fresh under P1–P5 and §6.1. No prior evidence judgment is inherited
+  automatically (P2)
+- does not normalize characters or numerals to preserve the legacy identity
+- receives its own exact identity: resolved Shrine + `source_attested_label`
+  (Seed 1.1 contract §5.3). It is never treated as equal to the legacy identity
+- has its own single `a5b_freeze_status`, decided by §6.1 / §6.2
+
+**Universe and count.**
+
+- A replacement is not an unrelated expansion of the fixed input set. It occupies
+  the lifecycle position of the failed legacy candidate.
+- The `CLOSED_FROZEN` candidate universe and the logical candidate count are
+  unchanged. One position holds both identities.
+- The legacy identity stays historically auditable and keeps its `HOLD`.
+- Only the replacement identity can proceed to `FREEZE` and Seed 1.1 authoring for
+  that position.
+
+**Explicit act.** A replacement is a deliberate authoring act recorded in the Freeze
+Evidence Artifact for that position. It is never automatic.
+
+**Historical candidate-freeze document.**
+
+- A source-backed replacement does not rewrite
+  `docs/audit/collective-deity-backfill-candidate-freeze.md`.
+- That document keeps the original `CLOSED_FROZEN` candidate identity as historical
+  provenance.
+- For an authorized replacement case, two records are authoritative for subsequent
+  A-5b processing:
+  - the current candidate evaluation
+  - the legacy → replacement provenance recorded in the contract-compliant Freeze
+    Evidence Artifact
+- The historical legacy identity does not override the later P1–P5-governed
+  replacement.
+- The logical candidate count is unchanged.
+
+**Not authorized by this section:**
+
+- mutation of a candidate already at `FREEZE`
+- mutation of an already materialized Collective
+- rewriting Pattern B 6 history (§7.3)
+- alias matching
+- Unicode or numeral normalization
+- religious-equivalence inference
+- automatic replacement
+- Production writes
+- Seed writes during evidence classification (§9)
 
 ## 7. Frozen candidate artifact schema
 
@@ -243,6 +318,29 @@ Source records referenced by `source_keys` must remain representable under Knowl
 No numeric DB primary key may be used as a portable Membership deity reference.
 
 For a new P1–P5-governed candidate, the Collective `verified_at` and each `memberships[].verified_at` follow Seed 1.1 contract §12.8.
+
+Replacement provenance (§6.4). When a replacement is authored, the Freeze Evidence
+Artifact for that position records both candidate records and this minimum block:
+
+```text
+replacement_provenance
+  legacy_identity
+    shrine_ref.name_jp
+    shrine_ref.address
+    source_attested_label            (legacy, verbatim)
+  legacy_a5b_freeze_status = HOLD
+  legacy_hold_reason                 (explicit P1 failure; cites the replacement's label evidence entry)
+  replacement_identity
+    shrine_ref.name_jp
+    shrine_ref.address
+    source_attested_label            (replacement, verbatim)
+  replacement_basis                  (source_ref + excerpt of the direct verification, §7.1)
+  replacement_evaluation             (the replacement's own §7.1 evidence block and §6.1 result)
+```
+
+The legacy and replacement labels are recorded verbatim. They are not normalized
+for comparison. This block is an Artifact field only. It adds nothing to the Seed 1.1
+schema or to any DB model.
 
 In a Freeze Evidence Artifact, `collective_source_keys` and `memberships[].source_keys` are Seed 1.1 file-local values. They are assigned only at Seed 1.1 authoring (§7.1 "Source reference and Seed linkage"). Before then, the Artifact identifies each Source by semantic Source identity (§7.1).
 
@@ -462,7 +560,7 @@ repository is not a Production write and not a DB mutation.
 
 ## 10. Determinism / reproducibility
 
-The candidate input set must be fixed before classification.
+The candidate input set must be fixed before classification. A §6.4 replacement does not change the fixed set: it occupies an existing position, and the reproducibility comparison includes both identities and the replacement provenance (§7).
 
 A-5b run1 must be frozen before an independent run2 comparison.
 
@@ -504,7 +602,8 @@ A-5b itself stops before any apply / Production write.
 A-5b candidate freeze may close only when:
 
 - the candidate input set is frozen
-- every candidate has exactly one `a5b_freeze_status`
+- every candidate identity has exactly one `a5b_freeze_status`. A §6.4 position holds two identities: the legacy identity (`HOLD`) and the replacement identity (its own status). The logical candidate count is unchanged
+- every §6.4 replacement records the replacement provenance (§7)
 - every `FREEZE` candidate satisfies all applicable Source-backed conditions
 - every new P1–P5-governed `FREEZE` candidate has a contract-compliant Freeze Evidence Artifact (§7.1)
 - every supplied Membership has independent Source evidence
@@ -636,3 +735,41 @@ Unchanged:
 - the Seed 1.1 schema, importer, DB models, runtime
 
 No key-generation convention and no Source registry is introduced.
+
+## 17. Revision record — Pre-FREEZE source-backed replacement (2026-10-01)
+
+Mother Ship decision:
+
+```text
+PRE_FREEZE_REAUTHORING_POLICY = ALLOW_SOURCE_BACKED_REPLACEMENT_WITH_PROVENANCE
+```
+
+Origin: the contract gap on pre-FREEZE label replacement found for a
+`DEFERRED_READY` candidate whose legacy label fails P1.
+
+Superseded or extended wording:
+
+| Location | Previous wording | Change |
+|---|---|---|
+| §4 | "preserve the fixed candidate input set" | Clarified that a §6.4 replacement preserves the set |
+| §6.1 condition 1 | "candidate belongs to the fixed A-5b input set" | Also admits a §6.4 replacement occupying a legacy position |
+| §6.3 | "it is outside the fixed A-5b candidate input set" | A §6.4 replacement is not outside the set |
+| §10 | "The candidate input set must be fixed before classification." | Replacement does not change the set. The comparison includes both identities |
+| §12 | "every candidate has exactly one `a5b_freeze_status`" | Applies per candidate identity. The logical count is unchanged. Replacement provenance is required |
+
+Added:
+
+- §6.4, including the precedence rule: the historical candidate-freeze document is
+  not rewritten, and the Freeze Evidence Artifact's current evaluation and
+  replacement provenance govern subsequent A-5b processing
+- §7 replacement provenance block
+
+Unchanged:
+
+- P1–P5 and Seed 1.1 contract §5.3 identity (A-5a not amended)
+- §9 mutation prohibition
+- Membership Evidence B
+- §7.3 Pattern B 6
+- the Seed 1.1 schema, DB models, importer, runtime
+
+This revision does not perform any replacement and does not reclassify any candidate.
