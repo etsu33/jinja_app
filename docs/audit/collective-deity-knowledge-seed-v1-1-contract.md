@@ -9,6 +9,7 @@
 - Production write: **NONE**
 - Backfill execution: **NONE**
 - Runtime activation: **NONE**
+- Revision 2026-10-01: Mother Ship P1–P5 authoring policy added as §12
 
 ## 1. Purpose
 
@@ -112,17 +113,17 @@ Each item in `collectives` maps to one `ShrineDeityCollective`.
 
 | Seed field | Required | Default | Contract |
 |---|---:|---|---|
-| `source_attested_label` | Yes | none | Non-blank Source-attested aggregate expression. Not an invented canonical group name. |
-| `role` | No | `unknown` | Reuses `ShrineDeity.ROLE_CHOICES`: `primary`, `enshrined`, `secondary`, `unknown`. |
+| `source_attested_label` | Yes | none | Non-blank Source-attested aggregate expression. Not an invented canonical group name. Extraction: §12.1 (P1). |
+| `role` | No | `unknown` | Reuses `ShrineDeity.ROLE_CHOICES`: `primary`, `enshrined`, `secondary`, `unknown`. Value selection: §12.4 (P4). |
 | `sort_order` | No | `0` | Integer, 0 or greater. |
-| `member_count` | Conditional | `null` | Integer 0 or greater, or null. Boolean is not accepted as an integer. |
-| `member_count_relation` | No | `unspecified` | `exact`, `minimum`, `approximate`, `unspecified`. |
+| `member_count` | Conditional | `null` | Integer 0 or greater, or null. Boolean is not accepted as an integer. Value selection: §12.5 (P5). |
+| `member_count_relation` | No | `unspecified` | `exact`, `minimum`, `approximate`, `unspecified`. Value selection: §12.5 (P5). |
 | `member_list_status` | No | `not_determined` | `complete`, `partial`, `not_enumerated`, `not_determined`. |
 | `verification_status` | No | `draft` | Reuses the current Knowledge verification enum. |
 | `confidence` | No | empty string | Reuses the current Knowledge confidence enum. |
 | `verified_at` | Conditional | `null` | ISO-8601 datetime. Required for statuses already requiring it in the current Knowledge contract. |
 | `note` | No | empty string | Editorial / audit note only. Must not be parsed into Facts or Memberships. |
-| `source_keys` | Yes | none | Non-empty list of Source keys defined in the same seed. Collective owns this Evidence relation. |
+| `source_keys` | Yes | none | Non-empty list of Source keys defined in the same seed. Collective owns this Evidence relation. Direct support required: §12.2–§12.3 (P2, P3). |
 | `memberships` | No | `[]` | Nested Membership entries. Zero Memberships is valid. |
 
 ### 5.2 Count relation invariant
@@ -498,3 +499,150 @@ parse
 ```
 
 Do not begin A-5b in the same PR.
+
+## 12. Collective authoring evidence policy (Mother Ship P1–P5)
+
+Revision added 2026-10-01. Origin: the policy questions recorded in
+`docs/audit/collective-deity-a5b-deferred-ready-4-policy-gap.md` §6, decided by Mother Ship.
+
+This section is the canonical authoring rule for every new Collective Fact authored
+under Knowledge Seed 1.1. It governs what a seed author may write. It does not add
+parser or DB invariants. §5.2 and §8 remain the complete structural validation
+contract.
+
+```text
+P1 LABEL_POLICY    = ALLOW_SYNTACTIC_EXTRACTION
+P2 EVIDENCE_POLICY = REQUIRE_DIRECT_SOURCE_SUPPORT
+P3 LEGACY_POLICY   = LEGACY_FACT_AS_DISCOVERY_EVIDENCE_ONLY
+P4 ROLE_POLICY     = DIRECT_SOURCE_ROLE_ONLY
+P5 COUNT_POLICY    = SOURCE_EXPLICIT_COUNT_SEMANTICS_ONLY
+```
+
+### 12.1 P1 — `source_attested_label` extraction
+
+A `source_attested_label` may be extracted as a contiguous substring that appears
+verbatim in the accepted official Source.
+
+Allowed:
+
+- selecting the contiguous substring that represents the Collective expression
+- excluding surrounding heading / category text
+- excluding surrounding grammatical predicate text
+- trimming leading / trailing whitespace required by schema validity (§5.3)
+
+Required:
+
+- the extracted label occurs verbatim as one contiguous substring in the Source
+- extraction does not alter the religious or semantic content
+- Source evidence retains enough context to audit the extraction
+
+Prohibited:
+
+- paraphrasing
+- synonym replacement
+- translation
+- character or numeral normalization
+- word reordering
+- concatenating text from separate Source locations
+- generating a canonical name not present in the Source
+- semantic inference
+
+### 12.2 P2 — Direct Source support
+
+A new Collective Fact must be directly supported by the accepted official Source.
+
+- `Source.note`, `Deity.note`, audit notes, legacy Facts, and previous extraction
+  results are supporting / discovery evidence only. By themselves, they are not
+  sufficient confirming evidence.
+- The Source content itself must directly support the new Collective assertion.
+- An existing `source_key` may be reused only after confirming that the same Source
+  directly supports the new assertion.
+- Source identity may be reused. A prior evidence judgment may not be reused
+  automatically.
+
+### 12.3 P3 — Legacy ShrineDeity Facts
+
+Legacy ShrineDeity Facts may be used for:
+
+- candidate discovery
+- identity matching
+- locating candidate Sources / `source_keys`
+- migration auditing
+- regression comparison
+
+Legacy ShrineDeity Facts must not by themselves establish:
+
+- Collective existence
+- Collective semantics
+- Collective `role`
+- `member_count`
+- `member_count_relation`
+- Memberships
+
+A legacy `source_key` is not inherited automatically. It may be reused only under
+P2 (§12.2), after direct Source verification.
+
+### 12.4 P4 — Collective `role`
+
+Set a concrete Collective `role` only when:
+
+- the accepted official Source directly supports the role of the Collective itself, and
+- the Source expression maps to an existing role enum under an existing contract.
+
+Otherwise:
+
+```text
+role = unknown
+```
+
+If Source wording exists but no authoritative Source-expression → role-enum mapping
+exists, use `unknown`.
+
+Prohibited:
+
+- inheriting a legacy ShrineDeity role
+- deriving the Collective role from member roles
+- deriving the role from the label alone
+- deriving the role from page position alone
+- deriving the role from general religious knowledge
+
+### 12.5 P5 — `member_count` / `member_count_relation`
+
+Set `member_count` and a non-`unspecified` `member_count_relation` only when the
+accepted official Source directly establishes both:
+
+1. the numeric count
+2. the semantics of that count
+
+| Source establishes | `member_count` | `member_count_relation` |
+|---|---|---|
+| explicit total N | N | `exact` |
+| explicit at-least N | N | `minimum` |
+| explicit approximate N | N | `approximate` |
+
+`unspecified` / `null` is permitted only when the Source-backed Collective has no
+established numeric count.
+
+If a numeric expression exists but its semantics cannot be established:
+
+- do not discard it by using `unspecified` / `null`
+- the candidate remains unresolved / HOLD until the count semantics are established
+
+Prohibited:
+
+- inferring exactness from a numeral alone
+- deriving the count from Membership row count
+- inheriting the count from a legacy Fact
+- converting an ambiguous numeric expression to `unspecified` / `null`
+- inferring total vs. remainder
+
+### 12.6 Relation to earlier sections
+
+- §5.1 `source_attested_label`, `role`, `member_count`, `member_count_relation`:
+  the allowed values are unchanged. §12 governs which value the author may choose.
+- §5.2: the parser / DB invariant is unchanged. P5 is an authoring evidence rule. It
+  is enforced at review / A-5b freeze, not by the parser.
+- §5.3: exact identity matching is unchanged. The P1-extracted label is the stored
+  label and is compared exactly.
+- §6.2 / §7 / §10: the prohibitions on note parsing, Membership from note-only names,
+  and automatic Source inheritance are unchanged. P2 and P3 do not relax them.
