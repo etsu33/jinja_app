@@ -607,6 +607,10 @@ Position 9 synchronized to its HOLD Evidence Artifact:
 - `NOT_RECORDED = 0` is not treated as sufficient for closure.
 - Stale position 9 statements are removed: no lifecycle status, unresolved Shrine
   identity, no existing-Collective preflight, unresolved Collective identity.
+- Clarification: the obsolete position-9 wording was removed from the current-state
+  sections and aggregate logic, while the former row is retained in §4.3 solely as a
+  superseded historical snapshot. It is not used for the current lifecycle state or
+  closure counts.
 - Audit extraction (§15) now also accepts the assignment form
   `a5b_freeze_status = X`.
 
