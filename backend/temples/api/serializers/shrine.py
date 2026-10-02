@@ -148,6 +148,12 @@ class ShrineDeityCollectiveSerializer(serializers.Serializer):
     memberships = ShrineDeityCollectiveMembershipSerializer(many=True, read_only=True)
 
 
+# A6-02 Step 2: Shrine Detail へ admitted Collective を渡す serializer context key。
+# 値は fetch_runtime_admitted_collectives() の戻り値（shrine_id -> list[AdmittedCollective]）。
+# View（ShrineViewSet.retrieve）が request ごとに 1 回だけ selector を呼んで格納する。
+ADMITTED_DEITY_COLLECTIVES_CONTEXT_KEY = "admitted_deity_collectives"
+
+
 class _DistanceFieldsMixin:
     def _distance_m(self, obj) -> Optional[float]:
         d = getattr(obj, "d_m", None)
@@ -230,10 +236,18 @@ class ShrineDetailSerializer(ShrineBaseSerializer):
     別のPolicyであり、disputedの扱いは経路ごとに異なる（PR-C4A Disputed Evidence
     Contractの契約通り、Recommendationはdisputedを常に除外する）。Knowledge未登録時は
     []を返し、Legacy Field（sajin/description）へのfallbackは行わない。
+
+    deity_collectives（A6-02 Step 2）は、A6-01 selector
+    （temples.services.collective_runtime_selector.fetch_runtime_admitted_collectives）が
+    admit した Collective だけを、serializer context
+    （ADMITTED_DEITY_COLLECTIVES_CONTEXT_KEY）経由で受け取って表示する。Serializer は
+    admission を再判定せず、model relation（Shrine.deity_collectives）も読まず、順序も
+    並べ替えない。context が無い呼び出し（例: ingest）は [] を返す（fail closed）。
     """
 
     deities = serializers.SerializerMethodField(read_only=True)
     histories = serializers.SerializerMethodField(read_only=True)
+    deity_collectives = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Shrine
@@ -254,6 +268,7 @@ class ShrineDetailSerializer(ShrineBaseSerializer):
             "kyusei",
             "deities",
             "histories",
+            "deity_collectives",
         ]
 
     @extend_schema_field(ShrineDeitySerializer(many=True))
@@ -281,6 +296,12 @@ class ShrineDetailSerializer(ShrineBaseSerializer):
             in ("full", "disputed")
         ]
         return ShrineHistorySerializer(items, many=True, context=self.context).data
+
+    @extend_schema_field(ShrineDeityCollectiveSerializer(many=True))
+    def get_deity_collectives(self, obj):
+        admitted_by_shrine = self.context.get(ADMITTED_DEITY_COLLECTIVES_CONTEXT_KEY) or {}
+        items = admitted_by_shrine.get(obj.pk, [])
+        return ShrineDeityCollectiveSerializer(items, many=True, context=self.context).data
 
 
 # 互換名
@@ -335,4 +356,5 @@ __all__ = [
     "ShrineKnowledgeSourceSerializer",
     "ShrineDeityCollectiveSerializer",
     "ShrineDeityCollectiveMembershipSerializer",
+    "ADMITTED_DEITY_COLLECTIVES_CONTEXT_KEY",
 ]

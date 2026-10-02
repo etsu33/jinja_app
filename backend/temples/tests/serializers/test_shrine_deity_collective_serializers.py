@@ -183,15 +183,43 @@ def test_new_serializers_are_exported():
     assert "ShrineDeityCollectiveMembershipSerializer" in shrine_serializers.__all__
 
 
-# ---------- 6. existing serializers unchanged / not yet connected ----------
+# ---------- 6. existing serializers unchanged / A6-02 Step 2 detail connection ----------
 
 
-def test_shrine_detail_serializer_is_not_connected_to_collectives():
-    fields = ShrineDetailSerializer().fields
-    assert "deity_collectives" not in fields
-    assert not any(
-        isinstance(getattr(f, "child", f), ShrineDeityCollectiveSerializer) for f in fields.values()
+def test_shrine_detail_serializer_exposes_deity_collectives_field():
+    # A6-02 Step 2: Shrine Detail は deity_collectives を持つ（表示は context 経由の admitted のみ）。
+    assert "deity_collectives" in ShrineDetailSerializer().fields
+
+
+@pytest.mark.django_db
+def test_shrine_detail_serializer_renders_only_context_admitted_collectives():
+    shrine = Shrine.objects.create(
+        name_jp="文脈神社", address="東京都2", latitude=35.0, longitude=139.0
     )
+    admitted = _collective(shrine_id=shrine.pk)
+    other_shrine_admitted = _collective(collective_id=99, shrine_id=shrine.pk + 1000)
+    context = {
+        shrine_serializers.ADMITTED_DEITY_COLLECTIVES_CONTEXT_KEY: {
+            shrine.pk: [admitted],
+            shrine.pk + 1000: [other_shrine_admitted],
+        }
+    }
+
+    with CaptureQueriesContext(connection) as ctx:
+        data = ShrineDetailSerializer(shrine, context=context).data["deity_collectives"]
+
+    assert data == [ShrineDeityCollectiveSerializer(admitted).data]
+    # deity_collectives の表示は context 写像のみ（Collective / Membership の追加 query なし）。
+    assert not any("deitycollective" in q["sql"].lower() for q in ctx.captured_queries)
+
+
+@pytest.mark.django_db
+def test_shrine_detail_serializer_without_context_returns_empty_collectives():
+    # context が無い呼び出しは fail closed で []（model relation へ fallback しない）。
+    shrine = Shrine.objects.create(
+        name_jp="無文脈神社", address="東京都3", latitude=35.0, longitude=139.0
+    )
+    assert ShrineDetailSerializer(shrine).data["deity_collectives"] == []
 
 
 @pytest.mark.django_db
