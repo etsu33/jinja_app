@@ -28,7 +28,7 @@ current authoritative status is absent, it is recorded as absent.
 
 | Role | Artifact |
 |---|---|
-| A-5b freeze contract (latest; revisions through §21) | `docs/audit/collective-deity-source-backed-backfill-candidate-freeze-contract.md` |
+| A-5b freeze contract (latest; revisions through §22) | `docs/audit/collective-deity-source-backed-backfill-candidate-freeze-contract.md` |
 | Seed 1.1 contract (downstream boundary reference only; §12 P1–P5, §12.8) | `docs/audit/collective-deity-knowledge-seed-v1-1-contract.md` |
 | Historical fixed input document (`CANDIDATE_ORDER_POLICY` authority, contract §7) | `docs/audit/collective-deity-backfill-candidate-freeze.md` |
 
