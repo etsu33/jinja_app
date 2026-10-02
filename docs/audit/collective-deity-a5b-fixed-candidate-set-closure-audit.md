@@ -17,6 +17,9 @@
 - Revision 2026-10-02 (2): position 7 synchronized to its Freeze Evidence Artifact
   (`collective-deity-a5b-yasaka-freeze-evidence.md`, `FREEZE`). See §20. Positions
   8–10 unchanged except aggregate counts.
+- Revision 2026-10-02 (3): position 8 synchronized to its Freeze Evidence Artifact
+  (`collective-deity-a5b-tokyo-daijingu-freeze-evidence.md`, `FREEZE`). See §21.
+  Positions 9–10 unchanged except aggregate counts.
 
 ## 1. Audit scope
 
@@ -43,6 +46,7 @@ Candidate-level A-5b artifacts located (`git grep` for `a5b_freeze_status`,
 |---|---|
 | `docs/audit/collective-deity-a5b-aso-freeze-evidence.md` | Freeze Evidence Artifact, position 10 |
 | `docs/audit/collective-deity-a5b-yasaka-freeze-evidence.md` | Freeze Evidence Artifact, position 7 (revision 2026-10-02 (2)) |
+| `docs/audit/collective-deity-a5b-tokyo-daijingu-freeze-evidence.md` | Freeze Evidence Artifact, position 8 (revision 2026-10-02 (3)) |
 | A-5b freeze contract §7.3.1 (revision 2026-10-02) | explicit current status, positions 1–6 (grandfathered; no Freeze Evidence Artifact) |
 | `docs/audit/collective-deity-a5b-frozen-candidate-count-confirmation.md` | prior audit; mentions `a5b_freeze_status` only to state that no per-candidate record existed at `cda1897` |
 
@@ -116,7 +120,7 @@ by Mother Ship decision in contract §7.3.1 (2026-10-02).
 | 5 | 安房神社 | **FREEZE** | `ALL_FREEZE_CONDITIONS_SATISFIED` | contract §7.3.1 (`LEGACY_PATTERN_B_6_CLOSURE_POLICY`) | "FREEZE: grandfathered under LEGACY_PATTERN_B_6_CLOSURE_POLICY; all conditions applicable under the governing legacy policy; not re-verified under P1–P5" | none under the governing legacy policy (P1–P5 not re-evaluated) | yes: `BACKFILL_READY`, `PATTERN_B_6`; Seed 1.1 + Production import (historical downstream execution) | no | no | yes (§15) |
 | 6 | 王子神社 | **FREEZE** | `ALL_FREEZE_CONDITIONS_SATISFIED` | contract §7.3.1 (`LEGACY_PATTERN_B_6_CLOSURE_POLICY`) | "FREEZE: grandfathered under LEGACY_PATTERN_B_6_CLOSURE_POLICY; all conditions applicable under the governing legacy policy; not re-verified under P1–P5" | none under the governing legacy policy (P1–P5 not re-evaluated) | yes: `BACKFILL_READY`, `PATTERN_B_6`; Seed 1.1 + Production import (historical downstream execution) | no | no | yes (§15) |
 | 7 | 八坂神社 | **FREEZE** | `ALL_FREEZE_CONDITIONS_SATISFIED` | `collective-deity-a5b-yasaka-freeze-evidence.md` | "FREEZE: all applicable §6.1 conditions are satisfied" (§8; detail §9 conditions 1–12 PASS) | none (§10) | yes: `BACKFILL_READY_COLLECTIVE_ONLY`, `DEFERRED_READY` | no | no | yes (§15) |
-| 8 | 東京大神宮 | NOT_RECORDED | NOT_RECORDED | none (no Freeze Evidence Artifact) | none | §5.3 | yes: `BACKFILL_READY_COLLECTIVE_ONLY`, `DEFERRED_READY` | no | no | identity: yes; status: n/a |
+| 8 | 東京大神宮 | **FREEZE** | `ALL_FREEZE_CONDITIONS_SATISFIED` | `collective-deity-a5b-tokyo-daijingu-freeze-evidence.md` | "FREEZE: all applicable §6.1 conditions are satisfied" (§8; detail §9 conditions 1–12 PASS) | none (§10) | yes: `BACKFILL_READY_COLLECTIVE_ONLY`, `DEFERRED_READY` | no | no | yes (§15) |
 | 9 | 富岡八幡宮 | NOT_RECORDED | NOT_RECORDED | none (no Freeze Evidence Artifact) | none | §5.3 | yes: `BACKFILL_READY`, `DEFERRED_READY` | no | no | identity: yes; status: n/a |
 | 10 | 阿蘇神社 | **FREEZE** | `ALL_FREEZE_CONDITIONS_SATISFIED` | `collective-deity-a5b-aso-freeze-evidence.md` section C | "FREEZE: all applicable §6.1 conditions are satisfied" (C.5; detail C.6 conditions 1–12 PASS) | none (C.7) | yes: original `HOLD` (P1-failure reason, §3), superseded by §6.5 | **yes**: 健磐龍命をはじめ家族神１２神, `replacement_progression = INVALIDATED` | no | yes (§15) |
 
@@ -187,7 +191,20 @@ at `2026-10-02T12:35:39+09:00` against S1
 No replacement exists, and `memberships[] = []`. The position 7 row below is the
 pre-revision record. It is kept as history and is not current.
 
-Positions 8–9: no Freeze Evidence Artifact exists. The only records are the historical
+Position 8 (revision 2026-10-02 (3)): current state is the Freeze Evidence Artifact
+`collective-deity-a5b-tokyo-daijingu-freeze-evidence.md`:
+
+- direct verification event at `2026-10-02T13:20:35+09:00` against S1
+  (`shrine_official` + `https://tokyodaijingu.or.jp/syoukai/`)
+- `resolved_shrine_id = 44` (exact identity rows = 1)
+- existing-Collective preflight: 0 rows (CREATE)
+- member ShrineDeity match: 0 rows, so `memberships[] = []`
+- no replacement
+
+The position 8 row below is the pre-revision record. It is kept as history and is not
+current.
+
+Position 9: no Freeze Evidence Artifact exists. The only records are the historical
 classification and the two 2026-10-01 inventory / policy-gap audits, which are
 discovery-only under Seed 1.1 contract §12.2. Repository-recorded unresolved items
 (from `…-deferred-ready-4-source-evidence.md` §4–§6, `…-policy-gap.md` §5):
@@ -206,22 +223,22 @@ These items are recorded, not evaluated. This audit does not classify them as
 Current authoritative statuses (one per logical position; INVALIDATED excluded):
 
 ```text
-FREEZE                          8   (positions 1–6 grandfathered, contract §7.3.1;
-                                     positions 7 and 10, Freeze Evidence Artifact)
+FREEZE                          9   (positions 1–6 grandfathered, contract §7.3.1;
+                                     positions 7, 8 and 10, Freeze Evidence Artifact)
 HOLD                            0
 EXCLUDE                         0
-FREEZE + HOLD + EXCLUDE         8   != 10   -> FAIL
-positions without status        2   (positions 8–9, NOT_RECORDED)
+FREEZE + HOLD + EXCLUDE         9   != 10   -> FAIL
+positions without status        1   (position 9, NOT_RECORDED)
 
 INVALIDATED replacement count   1   (position 10, 健磐龍命をはじめ家族神１２神)
-unresolved candidate count      2   (positions 8–9)
+unresolved candidate count      1   (position 9)
 ```
 
 FREEZE basis breakdown (not separate statuses):
 
 ```text
 FREEZE under LEGACY_PATTERN_B_6_CLOSURE_POLICY (no P1–P5 re-verification)   6
-FREEZE under current P1–P5 + Freeze Evidence Artifact                        2
+FREEZE under current P1–P5 + Freeze Evidence Artifact                        3
 ```
 
 ## 10–13. Conflict summary
@@ -234,9 +251,9 @@ Two measures are reported separately.
 
 | Dimension | Observed conflict | Unresolved positions | Unresolved count | Basis |
 |---|---:|---|---:|---|
-| Source | 0 | 8, 9 | 2 | no direct Source verification record (P2) |
-| Shrine | 0 | 8, 9 | 2 | no `resolve_shrine` result recorded (seed-unique only) |
-| Collective (existing-row) | 0 | 8, 9 | 2 | no existing-Collective preflight recorded |
+| Source | 0 | 9 | 1 | no direct Source verification record (P2) |
+| Shrine | 0 | 9 | 1 | no `resolve_shrine` result recorded (seed-unique only) |
+| Collective (existing-row) | 0 | 9 | 1 | no existing-Collective preflight recorded |
 | supplied Membership | 0 | 9 | 1 | 応神天皇 proposed by historical doc §5.3 ("known Membership only"); no independent Membership evidence. 7 and 8 have `Memberships = []` fixed by historical doc §5.2 |
 
 Positions 1–6: Production pre-import plan, import, integrity (duplicate 0,
@@ -247,6 +264,10 @@ not by a Freeze Evidence Artifact. They are not counted as unresolved.
 Position 7: Source (Artifact §2), Shrine (§6.2, `resolved_shrine_id = 56`),
 Collective (§6.3, 0 matching rows → CREATE), Membership (none supplied). No
 unresolved item.
+
+Position 8: Source (Artifact §2), Shrine (§6.1, exact identity rows = 1,
+`resolved_shrine_id = 44`), Collective (§6.2, 0 matching rows → CREATE), Membership
+(none supplied; §6.3 member ShrineDeity match = 0 rows). No unresolved item.
 
 Position 10: Source (C.1), Shrine (C.4a, `resolved_shrine_id = 100`), Collective
 (C.4b, 0 matching rows → CREATE), Membership (none supplied). No unresolved item.
@@ -330,12 +351,14 @@ Deterministic read-only derivation, run twice on the working tree of this revisi
 run1 count = 10, unique = 10
 run2 count = 10, unique = 10
 step 2: position 7 -> collective-deity-a5b-yasaka-freeze-evidence.md;
+        position 8 -> collective-deity-a5b-tokyo-daijingu-freeze-evidence.md;
         position 10 -> collective-deity-a5b-aso-freeze-evidence.md;
-        positions 1–6, 8, 9 -> no candidate-level artifact
+        positions 1–6, 9 -> no candidate-level artifact
 step 3: grandfather rows = 6, candidate_order / Shrine / label match step 1 = True,
         status = FREEZE x6, reason_code = ALL_FREEZE_CONDITIONS_SATISFIED x6
-step 1–2 output sha256  daea3e3500d26b4f43181992d2268a9bec20e183bbd0562bbbca71d78e58d7f3
-step 1–3 output sha256  ecc1ca1ed7d826f993e861237cf038ce0825c4ceb2b04b9860b4c4ff29b1851a
+step 1–2 output sha256  9fdb35cdc7093f72673363c3c25edf38397c691c38dbe8d71b622a932ab3568e
+step 1–3 output sha256  e036122e6ca2ff412c3aa99e05cebf10493f4b490375d868f76ec2b4f52c3b97
+(revision (2): daea3e35… / ecc1ca1e…, before the position 8 Artifact existed)
 (previous revision: df74623f… / 9869f791…, before the position 7 Artifact existed)
 run1 = run2 byte-identical = YES
 ```
@@ -347,7 +370,7 @@ A first run of step 2 without the title-line restriction matched position 9 to t
 ```text
 AUDIT_RESULT_REPRODUCIBLE          YES  (this matrix, from repository artifacts)
 CONTRACT §10 RUN1/RUN2 GATE        NOT RECORDED for a per-candidate status artifact set
-                                   (positions 8–9 have no status)
+                                   (position 9 has no status)
 ```
 
 The 2026-10-01 count-confirmation run1/run2 covers the 10 identities only (digest
@@ -359,12 +382,12 @@ Source truth (contract §10).
 | # | Closure Candidate Rule condition | Result | Evidence |
 |---|---|---|---|
 | 1 | fixed universe is exactly defined | **PASS** | §3 |
-| 2 | all 10 positions have one current authoritative status | **FAIL** | §4: positions 8–9 `NOT_RECORDED`; FREEZE+HOLD+EXCLUDE = 8 |
-| 3 | every status has a valid reason_code | **FAIL** | positions 1–7 and 10 valid; positions 8–9 have no `reason_code` |
-| 4 | no unresolved lifecycle ambiguity | **PASS** | §4.2: positions 1–6 resolved by contract §7.3.1; position 7 has one identity and one current status; positions 8–9 have one identity each and no status (counted under 2), with no competing current record |
+| 2 | all 10 positions have one current authoritative status | **FAIL** | §4: position 9 `NOT_RECORDED`; FREEZE+HOLD+EXCLUDE = 9 |
+| 3 | every status has a valid reason_code | **FAIL** | positions 1–8 and 10 valid; position 9 has no `reason_code` |
+| 4 | no unresolved lifecycle ambiguity | **PASS** | §4.2: positions 1–6 resolved by contract §7.3.1; positions 7 and 8 each have one identity and one current status; position 9 has one identity and no status (counted under 2), with no competing current record |
 | 5 | no INVALIDATED replacement treated as current | **PASS** | §4.1 |
-| 6 | no unresolved Source / Shrine / Collective / supplied Membership conflict | **FAIL** | §10–13: unresolved 2 / 2 / 2 / 1 (observed conflicts 0) |
-| 7 | no unsupported required assertion remains | **FAIL** | positions 8–9: no required assertion recorded with `SUPPORTED` (no Artifact). Position 7: Y-A1, Y-A3, Y-A4 `SUPPORTED` |
+| 6 | no unresolved Source / Shrine / Collective / supplied Membership conflict | **FAIL** | §10–13: unresolved 1 / 1 / 1 / 1 (position 9; observed conflicts 0) |
+| 7 | no unsupported required assertion remains | **FAIL** | position 9: no required assertion recorded with `SUPPORTED` (no Artifact). Position 7: Y-A1, Y-A3, Y-A4 `SUPPORTED`. Position 8: T-A1, T-A3, T-A4 `SUPPORTED` |
 | 8 | no undocumented A-5b mutation | **PASS** | §14: all mutations documented and classified |
 | 9 | Seed / importer stages not incorrectly required for FREEZE | **PASS** | §14.3 |
 | 10 | result reproducible from repository artifacts | **PASS** (audit) / contract §10 Gate not recorded | §15 |
@@ -375,13 +398,12 @@ CLOSURE_CANDIDATE = NO
 
 ### 16.1 Blockers
 
-1. **B1: missing current status, positions 8–9.** No `a5b_freeze_status`,
+1. **B1: missing current status, position 9.** No `a5b_freeze_status`,
    `reason_code`, or `review_note` is recorded (contract §7, §12).
-   FREEZE + HOLD + EXCLUDE = 8, not 10.
-2. **B3: positions 8–9 lack Freeze Evidence Artifacts.** Source direct
-   verification, Shrine resolution, existing-Collective preflight, and `verified_at`
-   are not established. Position 9 also lacks Membership evidence and P5 count
-   semantics.
+   FREEZE + HOLD + EXCLUDE = 9, not 10.
+2. **B3: position 9 lacks a Freeze Evidence Artifact.** Source direct verification,
+   Shrine resolution, existing-Collective preflight, and `verified_at` are not
+   established. It also lacks Membership evidence and P5 count semantics.
 3. **B4: contract §10 / §12 reproducibility Gate** for the frozen per-candidate
    artifact set cannot be evaluated until B1 is resolved.
 
@@ -400,7 +422,7 @@ Final A-5b CLOSED / NOT_CLOSED = Mother Ship decision (not made here)
 
 Decision this audit cannot make:
 
-- whether positions 8–9 proceed to direct verification or receive another
+- whether position 9 proceeds to direct verification or receives another
   disposition (B1, B3)
 
 ## 18. Mutation record (this audit and its 2026-10-02 revision)
@@ -471,3 +493,31 @@ files changed     2 (this document; collective-deity-a5b-yasaka-freeze-evidence.
 ```
 
 Positions 8–10 are unchanged except aggregate counts.
+
+## 21. Revision record — 2026-10-02 (3)
+
+Position 8 synchronized to its Freeze Evidence Artifact:
+`docs/audit/collective-deity-a5b-tokyo-daijingu-freeze-evidence.md`.
+
+| Item | Before | After |
+|---|---|---|
+| position 8 current status | `NOT_RECORDED` | `FREEZE` / `ALL_FREEZE_CONDITIONS_SATISFIED` |
+| FREEZE / HOLD / EXCLUDE | 8 / 0 / 0 | 9 / 0 / 0 |
+| positions without status | 2 (8–9) | 1 (9) |
+| unresolved candidate count | 2 | 1 |
+| INVALIDATED replacement count | 1 | 1 |
+| unresolved Source / Shrine / Collective / Membership | 2 / 2 / 2 / 1 | 1 / 1 / 1 / 1 |
+| blockers | B1 (8–9), B3 (8–9), B4 | B1 (9), B3 (9), B4 |
+| `CLOSURE_CANDIDATE` | NO | NO |
+
+Position 9 is not classified by this revision.
+
+Mutation record for this revision:
+
+```text
+Seed 1.1 mutation / source_key / importer / migration / DB / Production write   0
+runtime change                                                                  0
+Membership / ShrineDeity created                                                0
+positions 9, 10 status change                                                   0
+files changed     2 (this document; collective-deity-a5b-tokyo-daijingu-freeze-evidence.md)
+```
