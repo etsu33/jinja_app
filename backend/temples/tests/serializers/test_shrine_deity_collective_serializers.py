@@ -17,6 +17,7 @@ from temples.api.serializers.shrine import (
     ShrineDeitySerializer,
     ShrineDetailSerializer,
     ShrineHistorySerializer,
+    ShrineListSerializer,
 )
 from temples.models import Shrine, ShrineDeity, ShrineHistory, ShrineKnowledgeSource
 from temples.services.collective_runtime_selector import (
@@ -186,8 +187,10 @@ def test_new_serializers_are_exported():
 # ---------- 6. existing serializers unchanged / not yet connected ----------
 
 
-def test_shrine_detail_serializer_is_not_connected_to_collectives():
-    fields = ShrineDetailSerializer().fields
+def test_collective_serializer_is_not_attached_to_list_serializer():
+    # A6-02 Step 2 で Detail のみへ接続した。List（複数 Shrine 経路）には載せない。
+    assert "deity_collectives" in ShrineDetailSerializer().fields
+    fields = ShrineListSerializer().fields
     assert "deity_collectives" not in fields
     assert not any(
         isinstance(getattr(f, "child", f), ShrineDeityCollectiveSerializer) for f in fields.values()

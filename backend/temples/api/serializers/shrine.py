@@ -13,6 +13,7 @@ from temples.models import (
     Visit,
 )
 from temples.services import evidence_gate
+from temples.services.collective_runtime_selector import fetch_runtime_admitted_collectives
 
 from rest_framework import serializers
 from temples.models import GoriyakuTag, Shrine
@@ -230,10 +231,19 @@ class ShrineDetailSerializer(ShrineBaseSerializer):
     別のPolicyであり、disputedの扱いは経路ごとに異なる（PR-C4A Disputed Evidence
     Contractの契約通り、Recommendationはdisputedを常に除外する）。Knowledge未登録時は
     []を返し、Legacy Field（sajin/description）へのfallbackは行わない。
+
+    deity_collectives（A6-02）は temples.services.collective_runtime_selector の
+    fetch_runtime_admitted_collectives() が admit した Collective だけを返す。
+    Runtime admission の唯一の authority は selector であり、ここでは Evidence Gate の
+    再判定・Collective/Membership model への直接 query・deities への flatten を行わない。
+    admit された Collective が無ければ [] を返す（null / field 省略はしない）。
+    selector は呼び出し1回あたり最大5クエリのため、Detail（単一 Shrine）専用とし、
+    ShrineListSerializer 等の複数 Shrine 経路へは接続しない。
     """
 
     deities = serializers.SerializerMethodField(read_only=True)
     histories = serializers.SerializerMethodField(read_only=True)
+    deity_collectives = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Shrine
@@ -254,6 +264,7 @@ class ShrineDetailSerializer(ShrineBaseSerializer):
             "kyusei",
             "deities",
             "histories",
+            "deity_collectives",
         ]
 
     @extend_schema_field(ShrineDeitySerializer(many=True))
@@ -281,6 +292,25 @@ class ShrineDetailSerializer(ShrineBaseSerializer):
             in ("full", "disputed")
         ]
         return ShrineHistorySerializer(items, many=True, context=self.context).data
+
+    @extend_schema_field(ShrineDeityCollectiveSerializer(many=True))
+    def get_deity_collectives(self, obj):
+        result = fetch_runtime_admitted_collectives([obj.pk])
+        admitted = result.get(obj.pk, [])
+        return ShrineDeityCollectiveSerializer(admitted, many=True, context=self.context).data
+
+
+class ShrineIngestResponseSerializer(ShrineDetailSerializer):
+    """ShrineViewSet.ingest() の応答。A6-02 以前の Detail 契約（deity_collectives なし）を保持する。
+
+    deity_collectives（A6-02）は Shrine Detail（retrieve）専用であり、ingest へは広げない。
+    field 自体を持たないため Collective runtime selector を呼ばない。
+    """
+
+    deity_collectives = None
+
+    class Meta(ShrineDetailSerializer.Meta):
+        fields = [f for f in ShrineDetailSerializer.Meta.fields if f != "deity_collectives"]
 
 
 # 互換名
@@ -335,4 +365,5 @@ __all__ = [
     "ShrineKnowledgeSourceSerializer",
     "ShrineDeityCollectiveSerializer",
     "ShrineDeityCollectiveMembershipSerializer",
+    "ShrineIngestResponseSerializer",
 ]
