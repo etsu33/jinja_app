@@ -139,7 +139,7 @@ list.
 
 ## 6. Production read-only observations
 
-### 6.1 Observation metadata (as supplied by Mother Ship)
+### 6.1 Observation event 1 (as supplied by Mother Ship)
 
 | Field | Value |
 |---|---|
@@ -148,11 +148,16 @@ list.
 | Credential bridge | `~/.config/kami-musubi/production-db.env` / `DATABASE_URL` |
 | Mode | SELECT-only |
 | Production write | `0` |
-| Observed at | **not recorded.** The earlier observation's timestamp is not invented. Mother Ship states that a fresh SELECT-only observation with `CURRENT_TIMESTAMP` will be supplied |
+| Observed at | `2026-10-02T12:43:44.336988+09:00` (`CURRENT_TIMESTAMP` of the SELECT-only session) |
+
+- Event 1 is a Production observation event, separate from the Source direct
+  verification event (§2).
+- The two timestamps are not interchangeable. `verified_at` stays
+  `2026-10-02T12:35:39+09:00` (Seed 1.1 contract §12.8).
 
 ### 6.2 Shrine identity
 
-Observed Production row:
+Observed in event 1:
 
 | id | name_jp | address |
 |---:|---|---|
@@ -163,12 +168,12 @@ Observed Production row:
 - `resolved_shrine_id = 56`, as fixed by Mother Ship from this observation.
 - Under `resolve_shrine`, an exact `name_jp` + `address` match on exactly one row
   returns `OK` without the `place_ref_id` fallback.
-- The supplied observation does not state the number of rows matching `name_jp`, or
-  `name_jp` + `address`. That count is expected from the fresh observation (§6.1).
+- Event 1 does not report a row count for the exact `name_jp` + `address` match.
+  Mother Ship will record that count as a separate observation.
 
 ### 6.3 Existing Collective preflight
 
-| Check | Observed |
+| Check | Observed (event 1) |
 |---|---|
 | `temples_shrinedeitycollective` table exists | yes |
 | rows with `shrine_id = 56` and `source_attested_label = '八柱御子神'` | `0` |
@@ -251,11 +256,6 @@ None.
 
 - Importer validation / dry-run belongs to the post-FREEZE Seed 1.1 stage. It is not
   an A-5b FREEZE prerequisite.
-- **Pending (completeness, not a §6.1 condition):** the fresh SELECT-only observation
-  with `CURRENT_TIMESTAMP` (§6.1), including the matching-row count (§6.2). When it is
-  supplied, record it in §6 only. Any result other than "exactly one row for
-  `name_jp` + `address` = id 56" and "0 matching Collective rows" invalidates the
-  condition 2 / 10 basis and requires re-evaluation.
 
 ## 11. Mutation record
 

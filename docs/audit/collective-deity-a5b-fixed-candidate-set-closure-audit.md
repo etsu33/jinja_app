@@ -460,10 +460,6 @@ Position 7 synchronized to its Freeze Evidence Artifact:
 | blockers | B1 (7–9), B3 (7–9), B4 | B1 (8–9), B3 (8–9), B4 |
 | `CLOSURE_CANDIDATE` | NO | NO |
 
-Position 7 Artifact pending item (not a §6.1 condition): the fresh SELECT-only
-Production observation with `CURRENT_TIMESTAMP` and the matching-row count
-(Artifact §6.1, §6.2, §10).
-
 Mutation record for this revision:
 
 ```text
