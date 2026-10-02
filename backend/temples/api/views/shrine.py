@@ -40,10 +40,12 @@ from django.db.models import Prefetch, Q
 from temples.services import places
 
 from temples.api.serializers.shrine import (
+    ADMITTED_DEITY_COLLECTIVES_CONTEXT_KEY,
     ShrineDetailSerializer,
     ShrineListSerializer,
     ShrineWriteSerializer,
 )
+from temples.services.collective_runtime_selector import fetch_runtime_admitted_collectives
 from temples.models import (
     Shrine,
     ShrineDeity,
@@ -345,8 +347,19 @@ class ShrineViewSet(viewsets.ModelViewSet):
             )
 
         return qs
-    
-    
+
+    def retrieve(self, request, *args, **kwargs):
+        # A6-02 Step 2: Shrine Detail の deity_collectives は A6-01 selector が admit した
+        # Collective だけ。selector はこの request で 1 回だけ呼び、結果を serializer context で渡す
+        # （Serializer は admission を再判定せず、model relation も読まない）。
+        instance = self.get_object()
+        context = self.get_serializer_context()
+        context[ADMITTED_DEITY_COLLECTIVES_CONTEXT_KEY] = fetch_runtime_admitted_collectives(
+            [instance.pk]
+        )
+        serializer = self.get_serializer(instance, context=context)
+        return Response(serializer.data)
+
 
 
     @extend_schema(
