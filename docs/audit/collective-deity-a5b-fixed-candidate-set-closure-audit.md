@@ -9,7 +9,7 @@
 - Production / development DB access: **NONE**
 - Runtime / schema / recommendation change: **NONE**
 - Candidate status change by audit inference: **NONE** (no HOLD promoted, no record rewritten). Positions 1–6 carry the status recorded by Mother Ship decision (contract §7.3.1)
-- Final A-5b `CLOSED` / `NOT_CLOSED` decision: **Mother Ship** (§17)
+- Final A-5b decision: **`NOT_CLOSED`** (Mother Ship, 2026-10-02; §17, §23)
 - Revision 2026-10-02: positions 1–6 updated to their explicit current status under
   `LEGACY_PATTERN_B_6_CLOSURE_POLICY` (contract §7.3.1), and mutation accounting
   updated under `LEGACY_PATTERN_B_MATERIALIZATION` (contract §7.3.2). See §19.
@@ -23,6 +23,8 @@
 - Revision 2026-10-02 (4): position 9 synchronized to its HOLD Evidence Artifact
   (`collective-deity-a5b-tomioka-hold-evidence.md`, `HOLD`). See §22. Position 10
   unchanged.
+- Revision 2026-10-02 (5): Mother Ship final decision recorded (A-5b `NOT_CLOSED`).
+  See §17, §23. No candidate status or aggregate changed.
 
 ## 1. Audit scope
 
@@ -480,13 +482,47 @@ Resolved by the 2026-10-02 Mother Ship decisions:
 
 ```text
 CLOSURE_CANDIDATE = NO
-Final A-5b CLOSED / NOT_CLOSED = Mother Ship decision (not made here)
+MOTHER_SHIP_A5B_FINAL_DECISION = NOT_CLOSED
+Decision date: 2026-10-02
 ```
 
-Decision this audit cannot make:
+Basis for the Mother Ship decision:
 
-- whether position 9 stays HOLD, proceeds to a new direct verification event, or
-  receives another disposition (B3)
+- `CLOSURE_CANDIDATE = NO` (§16)
+- closure condition 6 = FAIL, closure condition 7 = FAIL (§16)
+- position 9 富岡八幡宮 remains `HOLD` / `UNSATISFIED_FREEZE_CONDITIONS`
+- unresolved Source verification = 1 (position 9)
+- unresolved Shrine = 0, unresolved Collective = 0
+- unresolved Membership Evidence B = 1 (position 9)
+- the contract §10 / §12 reproducibility Gate remains NOT RECORDED (§15)
+
+Classification vs. closure. These two results are separate:
+
+```text
+Fixed candidate lifecycle classification = COMPLETE
+  FREEZE        9
+  HOLD          1
+  EXCLUDE       0
+  NOT_RECORDED  0
+
+A-5b closure = NOT_CLOSED
+```
+
+All 10 candidates have an authoritative lifecycle status. `NOT_CLOSED` does not
+mean that candidate classification failed. It means the closure conditions are not
+all met: conditions 6 and 7 remain FAIL because of position 9's HOLD evidence state.
+
+Current statement:
+
+- **No status change.** This Mother Ship decision does not change any candidate
+  lifecycle status.
+- **Position 9 stays HOLD** under the current evidence state. It is not promoted to
+  `FREEZE` and not converted to `EXCLUDE`.
+- **Why NOT_CLOSED.** A-5b is `NOT_CLOSED` because closure conditions 6 and 7 remain
+  FAIL.
+- **Future verification.** A future direct official Source verification may reopen
+  the position 9 evaluation. That would be a future A-5b continuation event, and it
+  does not alter this recorded decision.
 
 ## 18. Mutation record (this audit and its 2026-10-02 revision)
 
@@ -623,4 +659,43 @@ runtime / product extraction tooling change                                     
 Membership / ShrineDeity created                                                0
 positions 1–8, 10 status change                                                 0
 files changed     1 (this document)
+```
+
+## 23. Mother Ship final decision — 2026-10-02
+
+| Item | Before | After |
+|---|---|---|
+| §17 final decision line | `Final A-5b CLOSED / NOT_CLOSED = Mother Ship decision` (pending) | Mother Ship final decision `NOT_CLOSED`, recorded in §17 |
+| `CLOSURE_CANDIDATE` | NO | NO |
+| FREEZE / HOLD / EXCLUDE / NOT_RECORDED | 9 / 1 / 0 / 0 | 9 / 1 / 0 / 0 |
+| unresolved candidate count | 0 | 0 |
+| unresolved Source / Shrine / Collective / Membership | 1 / 0 / 0 / 1 | 1 / 0 / 0 / 1 |
+| position 9 | `HOLD` / `UNSATISFIED_FREEZE_CONDITIONS` | `HOLD` / `UNSATISFIED_FREEZE_CONDITIONS` |
+
+Reason: closure conditions 6 and 7 remain FAIL because of position 9's HOLD
+evidence state.
+
+This revision records Mother Ship governance only:
+
+- no candidate status changed
+- no aggregate changed
+- no Source verification was performed
+- no Seed / importer / DB / Production / runtime mutation occurred
+
+The superseded §17 wording, which deferred the decision to Mother Ship and listed
+the open position 9 disposition question, is replaced by the current statement in
+§17.
+
+Mutation record for this revision:
+
+```text
+candidate status change     0
+Source verification         0
+Seed mutation               0
+source_key assignment       0
+importer run                0
+migration                   0
+DB / Production write       0
+runtime change              0
+files changed               1 (this document)
 ```
