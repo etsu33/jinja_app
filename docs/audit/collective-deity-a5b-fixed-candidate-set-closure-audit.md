@@ -8,8 +8,12 @@
 - Importer validation / dry-run / apply: **NONE**
 - Production / development DB access: **NONE**
 - Runtime / schema / recommendation change: **NONE**
-- Candidate status change: **NONE** (no HOLD promoted, no status assigned, no record rewritten)
+- Candidate status change by audit inference: **NONE** (no HOLD promoted, no record rewritten). Positions 1–6 carry the status recorded by Mother Ship decision (contract §7.3.1)
 - Final A-5b `CLOSED` / `NOT_CLOSED` decision: **Mother Ship** (§17)
+- Revision 2026-10-02: positions 1–6 updated to their explicit current status under
+  `LEGACY_PATTERN_B_6_CLOSURE_POLICY` (contract §7.3.1), and mutation accounting
+  updated under `LEGACY_PATTERN_B_MATERIALIZATION` (contract §7.3.2). See §19.
+  Positions 7–10 unchanged except aggregate counts.
 
 ## 1. Audit scope
 
@@ -34,7 +38,8 @@ Candidate-level A-5b artifacts located (`git grep` for `a5b_freeze_status`,
 
 | Artifact | Role |
 |---|---|
-| `docs/audit/collective-deity-a5b-aso-freeze-evidence.md` | Freeze Evidence Artifact, position 10 (the only candidate-level `a5b_freeze_status` record) |
+| `docs/audit/collective-deity-a5b-aso-freeze-evidence.md` | Freeze Evidence Artifact, position 10 |
+| A-5b freeze contract §7.3.1 (revision 2026-10-02) | explicit current status, positions 1–6 (grandfathered; no Freeze Evidence Artifact) |
 | `docs/audit/collective-deity-a5b-frozen-candidate-count-confirmation.md` | prior audit; mentions `a5b_freeze_status` only to state that no per-candidate record existed at `cda1897` |
 
 Other A-5b records consulted (discovery / history; not candidate status records):
@@ -95,16 +100,17 @@ logical count is unchanged.
 
 `NOT_RECORDED` is not a status value. It is this audit's notation for "no current
 authoritative `a5b_freeze_status` / `reason_code` exists in the repository for this
-position". This audit does not assign one.
+position". This audit does not assign one. Positions 1–6 carry the status recorded
+by Mother Ship decision in contract §7.3.1 (2026-10-02).
 
 | candidate_order | shrine | current_status | reason_code | authoritative_artifact | current_review_note | unresolved_conditions | historical_status_present | invalidated_replacement_present | current_candidate_ambiguous | evidence_reproducible |
 |---:|---|---|---|---|---|---|---|---|---|---|
-| 1 | 箱根神社 | NOT_RECORDED | NOT_RECORDED | none (Pattern B: §7.3 legacy freeze evidence, no `a5b_freeze_status`) | none | §12: no `a5b_freeze_status`; §7.3 does not assign a status value | yes: `BACKFILL_READY`, `PATTERN_B_6`; Seed 1.1 + Production import | no | **yes** (§5.2) | identity / materialization: yes; status: n/a |
-| 2 | 寒川神社 | NOT_RECORDED | NOT_RECORDED | same as 1 | none | same as 1 | same as 1 | no | **yes** | same as 1 |
-| 3 | 二荒山神社 | NOT_RECORDED | NOT_RECORDED | same as 1 | none | same as 1 | same as 1 | no | **yes** | same as 1 |
-| 4 | 住吉神社（博多） | NOT_RECORDED | NOT_RECORDED | same as 1 | none | same as 1 | same as 1 | no | **yes** | same as 1 |
-| 5 | 安房神社 | NOT_RECORDED | NOT_RECORDED | same as 1 | none | same as 1 | same as 1 | no | **yes** | same as 1 |
-| 6 | 王子神社 | NOT_RECORDED | NOT_RECORDED | same as 1 | none | same as 1 | same as 1 | no | **yes** | same as 1 |
+| 1 | 箱根神社 | **FREEZE** | `ALL_FREEZE_CONDITIONS_SATISFIED` | contract §7.3.1 (`LEGACY_PATTERN_B_6_CLOSURE_POLICY`) | "FREEZE: grandfathered under LEGACY_PATTERN_B_6_CLOSURE_POLICY; all conditions applicable under the governing legacy policy; not re-verified under P1–P5" | none under the governing legacy policy (P1–P5 not re-evaluated) | yes: `BACKFILL_READY`, `PATTERN_B_6`; Seed 1.1 + Production import (historical downstream execution) | no | no | yes (§15) |
+| 2 | 寒川神社 | **FREEZE** | `ALL_FREEZE_CONDITIONS_SATISFIED` | contract §7.3.1 (`LEGACY_PATTERN_B_6_CLOSURE_POLICY`) | "FREEZE: grandfathered under LEGACY_PATTERN_B_6_CLOSURE_POLICY; all conditions applicable under the governing legacy policy; not re-verified under P1–P5" | none under the governing legacy policy (P1–P5 not re-evaluated) | yes: `BACKFILL_READY`, `PATTERN_B_6`; Seed 1.1 + Production import (historical downstream execution) | no | no | yes (§15) |
+| 3 | 二荒山神社 | **FREEZE** | `ALL_FREEZE_CONDITIONS_SATISFIED` | contract §7.3.1 (`LEGACY_PATTERN_B_6_CLOSURE_POLICY`) | "FREEZE: grandfathered under LEGACY_PATTERN_B_6_CLOSURE_POLICY; all conditions applicable under the governing legacy policy; not re-verified under P1–P5" | none under the governing legacy policy (P1–P5 not re-evaluated) | yes: `BACKFILL_READY`, `PATTERN_B_6`; Seed 1.1 + Production import (historical downstream execution) | no | no | yes (§15) |
+| 4 | 住吉神社（博多） | **FREEZE** | `ALL_FREEZE_CONDITIONS_SATISFIED` | contract §7.3.1 (`LEGACY_PATTERN_B_6_CLOSURE_POLICY`) | "FREEZE: grandfathered under LEGACY_PATTERN_B_6_CLOSURE_POLICY; all conditions applicable under the governing legacy policy; not re-verified under P1–P5" | none under the governing legacy policy (P1–P5 not re-evaluated) | yes: `BACKFILL_READY`, `PATTERN_B_6`; Seed 1.1 + Production import (historical downstream execution) | no | no | yes (§15) |
+| 5 | 安房神社 | **FREEZE** | `ALL_FREEZE_CONDITIONS_SATISFIED` | contract §7.3.1 (`LEGACY_PATTERN_B_6_CLOSURE_POLICY`) | "FREEZE: grandfathered under LEGACY_PATTERN_B_6_CLOSURE_POLICY; all conditions applicable under the governing legacy policy; not re-verified under P1–P5" | none under the governing legacy policy (P1–P5 not re-evaluated) | yes: `BACKFILL_READY`, `PATTERN_B_6`; Seed 1.1 + Production import (historical downstream execution) | no | no | yes (§15) |
+| 6 | 王子神社 | **FREEZE** | `ALL_FREEZE_CONDITIONS_SATISFIED` | contract §7.3.1 (`LEGACY_PATTERN_B_6_CLOSURE_POLICY`) | "FREEZE: grandfathered under LEGACY_PATTERN_B_6_CLOSURE_POLICY; all conditions applicable under the governing legacy policy; not re-verified under P1–P5" | none under the governing legacy policy (P1–P5 not re-evaluated) | yes: `BACKFILL_READY`, `PATTERN_B_6`; Seed 1.1 + Production import (historical downstream execution) | no | no | yes (§15) |
 | 7 | 八坂神社 | NOT_RECORDED | NOT_RECORDED | none (no Freeze Evidence Artifact) | none | §5.3 | yes: `BACKFILL_READY_COLLECTIVE_ONLY`, `DEFERRED_READY` | no | no (one identity; no status) | identity: yes; status: n/a |
 | 8 | 東京大神宮 | NOT_RECORDED | NOT_RECORDED | none (no Freeze Evidence Artifact) | none | §5.3 | yes: `BACKFILL_READY_COLLECTIVE_ONLY`, `DEFERRED_READY` | no | no | identity: yes; status: n/a |
 | 9 | 富岡八幡宮 | NOT_RECORDED | NOT_RECORDED | none (no Freeze Evidence Artifact) | none | §5.3 | yes: `BACKFILL_READY`, `DEFERRED_READY` | no | no | identity: yes; status: n/a |
@@ -133,30 +139,39 @@ Checks:
 
 ### 4.2 Positions 1–6 (Pattern B 6)
 
-Repository facts:
+Current status source: A-5b freeze contract §7.3.1 (Mother Ship, 2026-10-02):
+
+```text
+LEGACY_PATTERN_B_6_CLOSURE_POLICY
+= GRANDFATHER_AS_FREEZE_WITHOUT_RETROACTIVE_REVERIFICATION
+```
+
+- Each of the six positions has exactly one current status:
+  `a5b_freeze_status = FREEZE`, `reason_code = ALL_FREEZE_CONDITIONS_SATISFIED`.
+- For these six, `ALL_FREEZE_CONDITIONS_SATISFIED` means all conditions that apply
+  under the governing legacy policy. It does **not** mean the current P1–P5
+  requirements, §12.8, the A-5b unset confidence rule, the member_list_status rule,
+  or §6.1 condition 12 were satisfied retroactively. None of them was re-evaluated.
+- No retroactive Freeze Evidence Artifact exists or is created.
+- Future material re-authoring of any of the six must use the current P1–P5 policy
+  and the Freeze Evidence Artifact contract (contract §7.3.1).
+
+Historical records (preserved, unchanged; not current status):
 
 - Selected by Mother Ship as `A5B_INITIAL_BACKFILL_SET = PATTERN_B_6`
-  (historical freeze doc §10, 2026-09-27).
+  (historical freeze doc §10, 2026-09-27). Historical classification
+  `BACKFILL_READY`.
 - Materialized in Seed 1.1 (`a5b_collective_pattern_b_seed.json`, PR #3022,
   SHA-256 `ae413989…504dd`, unchanged since).
 - Imported into Production on 2026-09-27: collectives 6, memberships 23;
   idempotent rerun `CREATE = 0` (`…-production-final-closure-classification.md`).
-- Contract §7.3 classifies them as "pre-policy / legacy freeze evidence". It
-  "does not require their retroactive migration" and does not change their data.
-- No repository artifact records `a5b_freeze_status`, `reason_code`, or
-  `review_note` for any of them. The contract §7 candidate_order / reason_code
-  rules (2026-10-01) were never applied to them.
+  Classified as historical downstream execution (contract §7.3.2; §14 below).
 
-Ambiguity: contract §12 requires every candidate identity to have exactly one
-`a5b_freeze_status`. §7.3 grants legacy compatibility but assigns no status value
-and does not say whether it satisfies §12 for these positions. The repository does
-not define their current A-5b status. This audit does not infer `FREEZE`
-from `BACKFILL_READY`, Seed materialization, or Production import.
-
-Seed field values (shown for completeness, not evaluated): `role = unknown`,
-`member_count_relation = exact`, `member_list_status = complete`,
+Seed field values (shown for completeness, not evaluated, not changed):
+`role = unknown`, `member_count_relation = exact`, `member_list_status = complete`,
 `confidence = high`, `verified_at` 2026-08-10 … 2026-08-12. These predate P1–P5,
-§12.8, and the A-5b unset confidence rule. §7.3 exempts them from those rules.
+§12.8, and the A-5b unset confidence rule. The grandfather policy does not
+re-verify them.
 
 ### 4.3 Positions 7–9
 
@@ -179,14 +194,22 @@ These items are recorded, not evaluated. This audit does not classify them as
 Current authoritative statuses (one per logical position; INVALIDATED excluded):
 
 ```text
-FREEZE                          1   (position 10)
+FREEZE                          7   (positions 1–6 grandfathered, contract §7.3.1;
+                                     position 10, Freeze Evidence Artifact)
 HOLD                            0
 EXCLUDE                         0
-FREEZE + HOLD + EXCLUDE         1   != 10   -> FAIL
-positions without status        9   (positions 1–9, NOT_RECORDED)
+FREEZE + HOLD + EXCLUDE         7   != 10   -> FAIL
+positions without status        3   (positions 7–9, NOT_RECORDED)
 
 INVALIDATED replacement count   1   (position 10, 健磐龍命をはじめ家族神１２神)
-unresolved candidate count      9   (positions 1–9)
+unresolved candidate count      3   (positions 7–9)
+```
+
+FREEZE basis breakdown (not separate statuses):
+
+```text
+FREEZE under LEGACY_PATTERN_B_6_CLOSURE_POLICY (no P1–P5 re-verification)   6
+FREEZE under current P1–P5 + Freeze Evidence Artifact                        1
 ```
 
 ## 10–13. Conflict summary
@@ -206,8 +229,8 @@ Two measures are reported separately.
 
 Positions 1–6: Production pre-import plan, import, integrity (duplicate 0,
 same-Shrine violation 0), and idempotency (`SKIP_EXISTS` 6 / 23, `CREATE` 0) record
-no conflict. Their Source-backed assertions are governed by §7.3 legacy
-compatibility, not by a Freeze Evidence Artifact.
+no conflict. Their assertions are governed by the legacy policy (contract §7.3.1),
+not by a Freeze Evidence Artifact. They are not counted as unresolved.
 
 Position 10: Source (C.1), Shrine (C.4a, `resolved_shrine_id = 100`), Collective
 (C.4b, 0 matching rows → CREATE), Membership (none supplied). No unresolved item.
@@ -215,80 +238,97 @@ Evidence is not inherited from the invalidated replacement.
 
 ## 14. Mutation guard
 
-A-5b window audited: `a524248` (2026-09-27, PR #3020) through `d5ee955`.
+Mother Ship classification (contract §7.3.2):
 
-| Item | Zero during A-5b? | What changed | When | Evidence |
+```text
+LEGACY_PATTERN_B_MATERIALIZATION = HISTORICAL_DOWNSTREAM_EXECUTION
+```
+
+Mutations are reported in two separate ledgers. Neither is netted against the other.
+
+### 14.1 Historical downstream execution (Pattern B, positions 1–6)
+
+These remain recorded as they occurred. They are not rewritten as zero.
+
+| Item | Count | What changed | When | Evidence |
 |---|---|---|---|---|
-| Seed 1.1 mutation | **NO** | `a5b_collective_pattern_b_seed.json` authored (6 Collectives, 23 Memberships) | 2026-09-27 (PR #3022, `dc3aa32`) | git history; SHA `ae413989…504dd` unchanged since |
-| Importer apply | **NO** | Pattern B seed applied to isolated scratch DB `jinja_a5b_scratch`, then to Production | 2026-09-27 | `…-pattern-b-verification-closure.md`; `…-production-backfill-closure.md` §5 |
-| Production DB write | **NO** | migrations 0115–0118; collectives created 6, memberships created 23 | 2026-09-27 | `…-production-backfill-closure.md`; `…-production-final-closure-classification.md` §3 |
-| Runtime activation | yes (per repository record) | A-6 activation code / manifest merged (PRs #3035–#3037, 2026-09-30); A6-00b records "Production apply NOT EXECUTED"; A6-01 "not connected to any Runtime surface" | — | `collective-deity-a6-00b-…md` L3; `collective-deity-a6-01-runtime-selector.md` L3 |
+| Seed 1.1 mutation | **NOT ZERO** | `a5b_collective_pattern_b_seed.json` authored (6 Collectives, 23 Memberships) | 2026-09-27 (PR #3022, `dc3aa32`) | git history; SHA `ae413989…504dd` unchanged since |
+| Importer apply | **NOT ZERO** | Pattern B seed applied to isolated scratch DB `jinja_a5b_scratch`, then to Production | 2026-09-27 | `…-pattern-b-verification-closure.md`; `…-production-backfill-closure.md` §5 |
+| Production DB write | **NOT ZERO** | migrations 0115–0118; collectives created 6, memberships created 23 | 2026-09-27 | `…-production-backfill-closure.md`; `…-production-final-closure-classification.md` §3 |
 
-Since `cda1897` (2026-09-30, start of the P1–P5 / Freeze Evidence Artifact phase,
-PRs #3042–#3058): 16 commits, non-`docs/` diff = empty. Position 10 Production
-observations (C.4a, C.4b) are recorded as read-only `SELECT`, `Production write = NO`.
+Factual note, unchanged: the execution gate requires "explicit Mother Ship approval"
+before P11 (Production write). `grep -i approv` over the Pattern B closure,
+integrity, idempotency, and classification records returns 0 hits. This audit
+neither creates nor infers an approval record. The mutations' classification is
+fixed by contract §7.3.2.
 
-Boundary classification of the 2026-09-27 mutations:
+### 14.2 A-5b candidate freeze / closure audit phase
 
-- They are documented (not hidden).
-- Contract §9 prohibits writes "during A-5b candidate freeze", and §11 states
-  "A-5b itself stops before any apply / Production write". The same Pattern B
-  execution is recorded under A-5b-named execution / closure Gates, and contract
-  §7.3 (2026-10-01) later accepted it as pre-policy legacy freeze evidence.
-- The execution gate requires "explicit Mother Ship approval" before P11
-  (Production write). No repository document records that approval statement:
-  `grep -i approv` over the closure, integrity, idempotency, and classification
-  records returns 0 hits.
-- Whether the 2026-09-27 mutations violate the A-5b boundary is **not determinable
-  from repository evidence**. Mother Ship decision (§17).
+| Item | Count | Evidence |
+|---|---|---|
+| Seed 1.1 mutation | 0 | since `cda1897` (2026-09-30; PRs #3042–#3058, 16 commits): non-`docs/` diff = empty |
+| Importer apply | 0 | same |
+| Production DB write | 0 | same; position 10 Production observations (C.4a, C.4b) are read-only `SELECT`, `Production write = NO` |
+| Runtime activation | 0 (per repository record) | A-6 activation code / manifest merged (PRs #3035–#3037, 2026-09-30); A6-00b records "Production apply NOT EXECUTED"; A6-01 "not connected to any Runtime surface" |
+| This audit and the 2026-10-02 revision | 0 | documentation-only diff (§18) |
 
-Importer dry-run as a FREEZE prerequisite:
+### 14.3 Importer dry-run as a FREEZE prerequisite
 
 - Position 10 (current): C.7 states that importer validation / dry-run is not an
   A-5b FREEZE prerequisite. The FREEZE rests on read-only Production observations.
 - Position 10 (historical replacement §6.2): importer `--validate-only` / `--dry-run`
   was listed as required next evidence. Historical-only (§6.5 C); not current.
-- Positions 1–6: dry-run / apply were steps of the Data PR and Production Gate, not
-  of an `a5b_freeze_status` determination (none exists).
+- Positions 1–6: their FREEZE comes from contract §7.3.1, not from the historical
+  dry-run / apply steps. Those steps are historical downstream execution.
 
 ```text
 MUTATION_GUARD_RESULT
-  Seed 1.1 mutation        NOT ZERO  (documented, Pattern B, 2026-09-27)
-  Importer apply           NOT ZERO  (documented, Pattern B, 2026-09-27)
-  Production DB write      NOT ZERO  (documented, Pattern B, 2026-09-27)
-  Runtime activation       ZERO      (per repository record)
-  Undocumented mutation    0
+  Historical downstream execution (Pattern B, 2026-09-27)
+    Seed 1.1 mutation        NOT ZERO  (recorded)
+    Importer apply           NOT ZERO  (recorded)
+    Production DB write      NOT ZERO  (recorded)
+    Classification           HISTORICAL_DOWNSTREAM_EXECUTION (contract §7.3.2)
+  A-5b freeze / closure audit phase
+    Seed 1.1 mutation        0
+    Importer apply           0
+    Production DB write      0
+    Runtime activation       0
+  Undocumented mutation      0
   Dry-run required for FREEZE (current)   NO
-  Boundary violation       UNDETERMINED -> Mother Ship
 ```
 
 ## 15. Reproducibility
 
-Deterministic read-only derivation at `d5ee955`, run twice:
+Deterministic read-only derivation, run twice on the working tree of this revision:
 
 1. Parse every table row of the historical fixed input document; key =
    (Shrine, label); first appearance = `candidate_order`.
 2. `git grep -l a5b_freeze_status -- docs backend`, excluding the contract and the
-   count-confirmation audit; a file is a candidate-level status artifact for a
+   count-confirmation audit. A file is a candidate-level status artifact for a
    position when its title line contains the Shrine name and it records an
    `a5b_freeze_status` of `FREEZE` / `HOLD` / `EXCLUDE`.
+3. Parse the contract §7.3.1 table (`candidate_order`, Shrine, label, status,
+   reason_code) and check each row against the step 1 order.
 
 ```text
 run1 count = 10, unique = 10
 run2 count = 10, unique = 10
-status artifacts: position 10 -> collective-deity-a5b-aso-freeze-evidence.md; positions 1–9 -> none
-output sha256 (run1 = run2) df74623febf84986fc9e1e4c8334dbcd9a75828411a1351fb08958e511922fc5
-byte-identical = YES
+step 2: position 10 -> collective-deity-a5b-aso-freeze-evidence.md; positions 1–9 -> no candidate-level artifact
+step 3: grandfather rows = 6, candidate_order / Shrine / label match step 1 = True,
+        status = FREEZE x6, reason_code = ALL_FREEZE_CONDITIONS_SATISFIED x6
+step 1–2 output sha256  df74623febf84986fc9e1e4c8334dbcd9a75828411a1351fb08958e511922fc5
+step 1–3 output sha256  9869f791273a3cc0093b61c662337b732fd9de5276fc2a5562732392e79de84e
+run1 = run2 byte-identical = YES
 ```
 
 A first run of step 2 without the title-line restriction matched position 9 to the
 阿蘇神社 Artifact. The cause was the text 富岡八幡宮 inside that Artifact's
-`candidate_order` basis (C.5). The rule was tightened before the two recorded runs.
+`candidate_order` basis (C.5). The rule was tightened before the recorded runs.
 
 ```text
 AUDIT_RESULT_REPRODUCIBLE          YES  (this matrix, from repository artifacts)
 CONTRACT §10 RUN1/RUN2 GATE        NOT RECORDED for a per-candidate status artifact set
-                                   (none exists for positions 1–9)
+                                   (positions 7–9 have no status)
 ```
 
 The 2026-10-01 count-confirmation run1/run2 covers the 10 identities only (digest
@@ -300,14 +340,14 @@ Source truth (contract §10).
 | # | Closure Candidate Rule condition | Result | Evidence |
 |---|---|---|---|
 | 1 | fixed universe is exactly defined | **PASS** | §3 |
-| 2 | all 10 positions have one current authoritative status | **FAIL** | §4: 9 positions `NOT_RECORDED`; FREEZE+HOLD+EXCLUDE = 1 |
-| 3 | every status has a valid reason_code | **FAIL** | position 10 valid; positions 1–9 have no `reason_code` |
-| 4 | no unresolved lifecycle ambiguity | **FAIL** | §4.2: positions 1–6, §7.3 vs §12 status undefined |
+| 2 | all 10 positions have one current authoritative status | **FAIL** | §4: positions 7–9 `NOT_RECORDED`; FREEZE+HOLD+EXCLUDE = 7 |
+| 3 | every status has a valid reason_code | **FAIL** | positions 1–6 and 10 valid; positions 7–9 have no `reason_code` |
+| 4 | no unresolved lifecycle ambiguity | **PASS** | §4.2: positions 1–6 resolved by contract §7.3.1; positions 7–9 have one identity each and no status (counted under 2), with no competing current record |
 | 5 | no INVALIDATED replacement treated as current | **PASS** | §4.1 |
 | 6 | no unresolved Source / Shrine / Collective / supplied Membership conflict | **FAIL** | §10–13: unresolved 3 / 3 / 3 / 1 (observed conflicts 0) |
 | 7 | no unsupported required assertion remains | **FAIL** | positions 7–9: no required assertion recorded with `SUPPORTED` (no Artifact) |
-| 8 | no undocumented A-5b mutation | **PASS** | §14: all mutations documented; boundary classification goes to Mother Ship |
-| 9 | Seed / importer stages not incorrectly required for FREEZE | **PASS** | §14 |
+| 8 | no undocumented A-5b mutation | **PASS** | §14: all mutations documented and classified |
+| 9 | Seed / importer stages not incorrectly required for FREEZE | **PASS** | §14.3 |
 | 10 | result reproducible from repository artifacts | **PASS** (audit) / contract §10 Gate not recorded | §15 |
 
 ```text
@@ -316,25 +356,21 @@ CLOSURE_CANDIDATE = NO
 
 ### 16.1 Blockers
 
-1. **B1: missing current status, positions 1–9.** No `a5b_freeze_status`,
+1. **B1: missing current status, positions 7–9.** No `a5b_freeze_status`,
    `reason_code`, or `review_note` is recorded (contract §7, §12).
-   FREEZE + HOLD + EXCLUDE = 1, not 10.
-2. **B2: Pattern B 6 lifecycle ambiguity (positions 1–6).** These are materialized in
-   Seed 1.1 and Production. Contract §7.3 gives them legacy compatibility but no
-   status value, and does not state whether that satisfies §12 "exactly one
-   `a5b_freeze_status`".
-3. **B3: positions 7–9 lack Freeze Evidence Artifacts.** Source direct
+   FREEZE + HOLD + EXCLUDE = 7, not 10.
+2. **B3: positions 7–9 lack Freeze Evidence Artifacts.** Source direct
    verification, Shrine resolution, existing-Collective preflight, and `verified_at`
    are not established. Position 9 also lacks Membership evidence and P5 count
    semantics.
-4. **B4: contract §10 / §12 reproducibility Gate** for the frozen per-candidate
+3. **B4: contract §10 / §12 reproducibility Gate** for the frozen per-candidate
    artifact set cannot be evaluated until B1 is resolved.
 
-### 16.2 Open item (not a Closure Candidate Rule blocker)
+Resolved by the 2026-10-02 Mother Ship decisions:
 
-- **M1:** the 2026-09-27 Pattern B Seed / importer / Production mutations are
-  documented, but no Mother Ship P11 approval statement is recorded, and their
-  classification against contract §9 / §11 is undetermined (§14).
+- **B2** (Pattern B 6 lifecycle ambiguity): resolved by contract §7.3.1.
+- **M1** (classification of the 2026-09-27 mutations): resolved by contract §7.3.2.
+  The factual note on the approval record (§14.1) is kept.
 
 ## 17. Mother Ship gate
 
@@ -343,23 +379,48 @@ CLOSURE_CANDIDATE = NO
 Final A-5b CLOSED / NOT_CLOSED = Mother Ship decision (not made here)
 ```
 
-Decisions this audit cannot make:
+Decision this audit cannot make:
 
-- the current A-5b status of positions 1–6 under §7.3 vs §12 (B2)
 - whether positions 7–9 proceed to direct verification or receive another
   disposition (B1, B3)
-- whether the 2026-09-27 Pattern B mutations are within the A-5b boundary, and
-  whether an approval record is required (M1)
 
-## 18. Mutation record (this audit)
+## 18. Mutation record (this audit and its 2026-10-02 revision)
 
 ```text
 Seed 1.1 mutation               0
 source_key assigned             0
 importer validate / dry-run / apply   0
 Production / DB access          0
+Source verification             0
 runtime / schema / recommendation change   0
-candidate status change         0
+verified_at / confidence change 0
+retroactive Freeze Evidence Artifact   0
+candidate status change         6 (positions 1–6 recorded per Mother Ship decision,
+                                   contract §7.3.1; not inferred by this audit)
 historical record rewritten     0
-files changed                   1 (this document)
+files changed                   2 (this document; A-5b freeze contract)
 ```
+
+## 19. Revision record — 2026-10-02
+
+Mother Ship decisions applied:
+
+```text
+LEGACY_PATTERN_B_6_CLOSURE_POLICY
+= GRANDFATHER_AS_FREEZE_WITHOUT_RETROACTIVE_REVERIFICATION
+
+LEGACY_PATTERN_B_MATERIALIZATION = HISTORICAL_DOWNSTREAM_EXECUTION
+```
+
+| Item | Before | After |
+|---|---|---|
+| positions 1–6 current status | `NOT_RECORDED` | `FREEZE` / `ALL_FREEZE_CONDITIONS_SATISFIED` (contract §7.3.1) |
+| FREEZE / HOLD / EXCLUDE | 1 / 0 / 0 | 7 / 0 / 0 |
+| unresolved candidate count | 9 | 3 |
+| INVALIDATED replacement count | 1 | 1 |
+| unresolved Source / Shrine / Collective / Membership | 3 / 3 / 3 / 1 | 3 / 3 / 3 / 1 |
+| mutation guard | single ledger; boundary UNDETERMINED | two ledgers (§14.1 historical downstream execution, §14.2 audit phase) |
+| blockers | B1 (1–9), B2, B3, B4; open M1 | B1 (7–9), B3, B4 |
+| `CLOSURE_CANDIDATE` | NO | NO |
+
+Positions 7–10 are unchanged except aggregate counts.
