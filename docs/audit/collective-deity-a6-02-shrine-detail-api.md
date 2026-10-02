@@ -106,6 +106,12 @@ GET /api/shrines/{id}/
 | Web / Mobile UI | not connected |
 | Recommendation / Compass / Concierge / Deep Dive | unchanged |
 
+**Ingest boundary.** `POST /api/shrines/ingest/` also instantiates
+`ShrineDetailSerializer`, but A6-02 Step 2 does not treat ingest as a Collective
+runtime exposure surface. Because ingest does not provide admitted Collective
+context, `deity_collectives` is intentionally `[]`. Any future Collective exposure
+from ingest requires a separate surface decision.
+
 `temples.serializers.ShrineSerializer` (used by legacy `temples/views.py`) is not this
 serializer. `temples/serializers/routes.py` does not export `ShrineSerializer`, so it
 resolves to `None`.
