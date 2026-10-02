@@ -227,15 +227,21 @@ decision.
 - Membership Evidence B remains incomplete
 - no concrete `member_count` / `member_count_relation` is frozen (Artifact §7)
 
-Pre-revision records for positions 7 and 8 (history, not current; from
-`…-deferred-ready-4-source-evidence.md` §4–§6, `…-policy-gap.md` §5). The
-pre-revision position 9 entry is superseded by the HOLD Artifact and is removed here.
-It remains in this document's git history:
+Pre-revision records for positions 7–9 (history, not current; from
+`…-deferred-ready-4-source-evidence.md` §4–§6, `…-policy-gap.md` §5).
+
+The position 9 row is kept for consistency with positions 7 and 8:
+
+- it is a historical snapshot only
+- it is superseded by `docs/audit/collective-deity-a5b-tomioka-hold-evidence.md`
+- it is not used for the current lifecycle matrix (§4) or the aggregate counts
+  (§5–§13)
 
 | Position | Unresolved per repository record |
 |---|---|
 | 7 八坂神社 | no direct Source verification of the expression (src-999044 note does not contain it; legacy Fact only, P3); role (P4) and count 8 semantics (P5) not Source-established; no `verified_at` event (§12.8); `resolve_shrine` not recorded; existing-Collective preflight not recorded |
 | 8 東京大神宮 | no direct Source verification of the expression (src-999050 note does not contain it; legacy Fact only, P3); role (P4) and count semantics (P5) not Source-established; no `verified_at` event; `resolve_shrine` not recorded; existing-Collective preflight not recorded |
+| 9 富岡八幡宮 (historical snapshot only; superseded by `collective-deity-a5b-tomioka-hold-evidence.md`; not used for §4 or counts) | label quote recorded only in a Source note (discovery-only, P2); count 外８柱 total-vs-remainder not established (P5); role not Source-established (P4); known member 応神天皇 has no independent Membership evidence entry (Membership Evidence B); no `verified_at` event; `resolve_shrine` not recorded; existing-Collective preflight not recorded |
 
 These pre-revision items were recorded, not evaluated. The current status of
 positions 7–9 comes only from their candidate-level Artifacts.
