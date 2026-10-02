@@ -166,10 +166,27 @@ Observed in event 1:
 - Resolver authority: `backend/temples/services/knowledge_seed.py::resolve_shrine`.
 - Resolver input: `name_jp = 八坂神社`, `address = 京都府京都市東山区祇園町北側625`.
 - `resolved_shrine_id = 56`, as fixed by Mother Ship from this observation.
-- Under `resolve_shrine`, an exact `name_jp` + `address` match on exactly one row
-  returns `OK` without the `place_ref_id` fallback.
-- Event 1 does not report a row count for the exact `name_jp` + `address` match.
-  Mother Ship will record that count as a separate observation.
+
+Observation event 2 (exact identity count):
+
+| Field | Value |
+|---|---|
+| Observed at | `2026-10-02T12:54:03.834889+09:00` |
+| Access path | `scripts/migration_safety/readonly_query.sh` |
+| Mode | SELECT-only |
+| Production write | `0` |
+| Query identity | `name_jp = '八坂神社'` AND `address = '京都府京都市東山区祇園町北側625'` |
+| Exact identity rows | `1` |
+| Resolved Shrine id | `56` |
+
+- `resolve_shrine` filters by `name_jp`, then by exact `address`. When the address
+  narrows the candidates to exactly one row, it returns `OK` without the
+  `place_ref_id` fallback.
+- Event 2 records exactly one row for the exact `name_jp` + `address`, with id `56`.
+- So the Shrine identity is deterministically unique under the existing resolver
+  authority: `status = OK`, `resolved_shrine_id = 56`.
+- Event 2 is a Production observation event. It does not change the Source
+  `verified_at` (§2) or observation event 1 (§6.1).
 
 ### 6.3 Existing Collective preflight
 
@@ -232,7 +249,7 @@ Under A-5b contract §8:
 | # | Result | Basis |
 |---|---|---|
 | 1 | PASS | original candidate of the fixed input position 7 (historical freeze doc §5.2, §10). No replacement |
-| 2 | PASS | Production read-only observation (§6.2): `八坂神社` + `京都府京都市東山区祇園町北側625` → Shrine id `56` under the `resolve_shrine` authority |
+| 2 | PASS | Production read-only observation event 2 (§6.2, `2026-10-02T12:54:03.834889+09:00`): exact `八坂神社` + `京都府京都市東山区祇園町北側625` = 1 row, id `56`. Deterministically unique under the `resolve_shrine` authority (`OK`, no `place_ref_id` fallback) |
 | 3 | PASS | P1 (§3; Y-A1) |
 | 4 | PASS | S1 is traceable (`shrine_official` + URL), and its content directly supports the Collective (event §2, P2) |
 | 5 | PASS | `role` = `unknown` (P4 fallback); `member_count` / `member_count_relation` = 8 / `exact` (P5); `member_list_status` = `complete` (Source-supported, §4.1) |
