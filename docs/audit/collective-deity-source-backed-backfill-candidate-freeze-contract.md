@@ -19,6 +19,7 @@
 - Revision 2026-10-01: A-5b member_list_status assignment rule (§6.1 condition 5, §7, §19)
 - Revision 2026-10-01: Erroneous pre-FREEZE replacement lifecycle (§6.5, §20)
 - Revision 2026-10-01: candidate_order and reason_code rules (§7, §21)
+- Revision 2026-10-02: Legacy Pattern B 6 lifecycle status and mutation accounting (§7.3.1, §7.3.2, §12, §22)
 
 ## 1. Purpose
 
@@ -685,6 +686,74 @@ exists, and it does not change their Seed or DB data. A future material re-autho
 of any of them under the current P1–P5 process must use the current Freeze Evidence
 Artifact contract.
 
+#### 7.3.1 Current lifecycle status (Mother Ship, 2026-10-02)
+
+```text
+LEGACY_PATTERN_B_6_CLOSURE_POLICY
+= GRANDFATHER_AS_FREEZE_WITHOUT_RETROACTIVE_REVERIFICATION
+```
+
+Exact scope. No other candidate is covered:
+
+| `candidate_order` | Shrine | `source_attested_label` | `a5b_freeze_status` | `reason_code` |
+|---:|---|---|---|---|
+| 1 | 箱根神社 | 箱根大神 | `FREEZE` | `ALL_FREEZE_CONDITIONS_SATISFIED` |
+| 2 | 寒川神社 | 寒川大明神 | `FREEZE` | `ALL_FREEZE_CONDITIONS_SATISFIED` |
+| 3 | 二荒山神社 | 二荒山大神 | `FREEZE` | `ALL_FREEZE_CONDITIONS_SATISFIED` |
+| 4 | 住吉神社（博多） | 住吉五所大神 | `FREEZE` | `ALL_FREEZE_CONDITIONS_SATISFIED` |
+| 5 | 安房神社 | 忌部五部神 | `FREEZE` | `ALL_FREEZE_CONDITIONS_SATISFIED` |
+| 6 | 王子神社 | 王子大神 | `FREEZE` | `ALL_FREEZE_CONDITIONS_SATISFIED` |
+
+`review_note` for each of the six:
+
+```text
+FREEZE: grandfathered under LEGACY_PATTERN_B_6_CLOSURE_POLICY; all conditions
+applicable under the governing legacy policy; not re-verified under P1–P5
+```
+
+This record is the authoritative current A-5b lifecycle status of these six
+positions. It is used for A-5b lifecycle and closure accounting (§12).
+
+Semantics:
+
+- For these six candidates, `ALL_FREEZE_CONDITIONS_SATISFIED` means all
+  conditions that apply under the governing legacy policy for them. That policy is
+  the one under which they were selected (`PATTERN_B_6`), materialized, and
+  imported (§7.3).
+- It does **not** state that the current P1–P5 requirements (Seed 1.1 contract §12),
+  the Direct Verification Timestamp Policy (§12.8), the A-5b unset confidence rule,
+  the A-5b member_list_status assignment rule, or §6.1 condition 12 were satisfied
+  retroactively. None of these was re-evaluated.
+- §6.1 condition 12 and the §12 Freeze Evidence Artifact criterion do not apply to
+  these six. They are not new P1–P5-governed candidates.
+
+Not done by this decision:
+
+- no retroactive Freeze Evidence Artifact is created
+- no Source verification is performed
+- no change to `verified_at`, `confidence`, Seed 1.1, DB data, Source rows,
+  Collective rows, Membership rows, runtime, or Production
+- the historical `BACKFILL_READY` / `PATTERN_B_6` / Production execution records
+  are not rewritten
+
+Future material re-authoring of any of these six candidates must use the current
+P1–P5 policy (Seed 1.1 contract §12) and the Freeze Evidence Artifact contract
+(§7.1). The grandfathered status does not carry over to a re-authored candidate.
+
+#### 7.3.2 Mutation accounting
+
+```text
+LEGACY_PATTERN_B_MATERIALIZATION = HISTORICAL_DOWNSTREAM_EXECUTION
+```
+
+- The 2026-09-27 Pattern B Seed 1.1 authoring, importer apply, and Production write
+  (Collectives 6, Memberships 23) remain recorded as they occurred. They are not
+  rewritten as zero.
+- They are classified as historical downstream execution of these six positions.
+- They are accounted separately from mutations that occur during the A-5b candidate
+  freeze / closure audit (§9, §12). The §9 / §12 zero-mutation checks apply to the
+  latter.
+
 ## 8. Conflict and fail-safe contract
 
 A-5b is fail closed.
@@ -787,7 +856,8 @@ A-5b candidate freeze may close only when:
 - every supplied Membership has independent Source evidence
 - every HOLD / EXCLUDE has an explicit reason
 - no unresolved conflict is hidden by inference
-- no Production or DB mutation occurred during the freeze audit
+- no Production or DB mutation occurred during the freeze audit. Legacy Pattern B
+  materialization is historical downstream execution, accounted separately (§7.3.2)
 - the frozen artifact is reproducible under its fixed comparison contract
 
 Only then may A-5b be recorded as closed.
@@ -1045,3 +1115,34 @@ Unchanged:
 - §6.4, §6.5
 - Seed 1.1 schema, DB models, importer, runtime
 - the historical candidate-freeze document
+
+## 22. Revision record — Legacy Pattern B 6 lifecycle status (2026-10-02)
+
+Mother Ship decisions:
+
+```text
+LEGACY_PATTERN_B_6_CLOSURE_POLICY
+= GRANDFATHER_AS_FREEZE_WITHOUT_RETROACTIVE_REVERIFICATION
+
+LEGACY_PATTERN_B_MATERIALIZATION = HISTORICAL_DOWNSTREAM_EXECUTION
+```
+
+Origin: `docs/audit/collective-deity-a5b-fixed-candidate-set-closure-audit.md`
+found that §7.3 granted legacy compatibility to the Pattern B 6 but assigned no
+`a5b_freeze_status`. §12 requires exactly one per candidate identity.
+
+Added:
+
+- §7.3.1: explicit current status `FREEZE` / `ALL_FREEZE_CONDITIONS_SATISFIED` for
+  `candidate_order` 1–6, with the legacy-policy meaning of the reason_code
+- §7.3.2: mutation accounting for the 2026-09-27 Pattern B materialization
+- §12: pointer from the zero-mutation criterion to §7.3.2
+
+Unchanged:
+
+- FREEZE / HOLD / EXCLUDE vocabulary and the reason_code mapping (§7)
+- P1–P5, §12.8, and the §7.1 Freeze Evidence Artifact contract
+- §6.4, §6.5
+- candidates 7–10
+- Seed 1.1 schema and data, DB models and data, importer, runtime, Production
+- the historical candidate-freeze document and the Pattern B Production records
