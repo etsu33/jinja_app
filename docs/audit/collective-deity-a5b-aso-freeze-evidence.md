@@ -6,7 +6,7 @@
 - Base: `develop@1e3da5f34b906c8580754284a675c2975ffeb1d2` (includes PR #3047)
 - Replacement authorization: A-5b §6.4 `PRE_FREEZE_REAUTHORING_POLICY = ALLOW_SOURCE_BACKED_REPLACEMENT_WITH_PROVENANCE`
 - Lifecycle correction: A-5b §6.5 `ERRONEOUS_PRE_FREEZE_REPLACEMENT_POLICY = INVALIDATE_REPLACEMENT_AND_RESUME_ORIGINAL_CANDIDATE` (§0.1)
-- Current authoritative evaluation: original candidate, direct verification `2026-10-01T21:08:33+09:00` (section "C" below). `a5b_freeze_status = HOLD`
+- Current authoritative evaluation: original candidate, direct verification `2026-10-01T21:08:33+09:00` (section "C" below). `a5b_freeze_status = FREEZE`
 - Seed / Source data / DB / importer / runtime change: **NONE**
 - Historical candidate-freeze document (`docs/audit/collective-deity-backfill-candidate-freeze.md`): **unchanged** (§6.4)
 
@@ -140,6 +140,51 @@ The exact `name_jp` and exact `address` resolve to exactly one Production Shrine
 row. The `place_ref_id IS NULL` canonical-preference fallback is therefore not
 needed for this resolution.
 
+### C.4b Production existing Collective preflight
+
+Mother Ship performed a read-only Production DB observation through the existing
+sanctioned bridge to check the existing Collective identity for this candidate.
+
+| Field | Value |
+|---|---|
+| Observed by | Mother Ship |
+| Access path | `scripts/migration_safety/readonly_query.sh` |
+| Target | Production DB |
+| Mode | read-only `SELECT` |
+| Shrine id | `100` |
+| `source_attested_label` | 健磐龍命をはじめ家族神12神 |
+| Rows observed | `0` |
+| Production write | `NO` |
+
+Query identity:
+
+```text
+shrine_id = 100
+source_attested_label = 健磐龍命をはじめ家族神12神
+```
+
+Observed result:
+
+```text
+matching_collective_rows = 0
+```
+
+Under A-5b contract §8:
+
+```text
+0 matching Collective rows
+-> CREATE candidate for later plan
+```
+
+Therefore no existing `ShrineDeityCollective` row matches this exact identity.
+No `COLLECTIVE_CONFLICT` or `COLLECTIVE_AMBIGUOUS` is present.
+
+`memberships[]` is empty for this candidate, so there is no supplied Membership
+identity requiring an existing-row conflict check in this preflight.
+
+This observation is read-only confirming evidence only. It performs no Seed,
+importer, DB write, backfill, or runtime activation.
+
 ### C.5 Current candidate fields (§7)
 
 | Field | Value | Basis |
@@ -159,9 +204,9 @@ needed for this resolution.
 | `note` | `""` | Seed 1.1 contract §5.1 default |
 | `collective_source_keys` | not assigned | §7: assigned only at Seed 1.1 authoring |
 | `memberships[]` | none | C.4 |
-| `a5b_freeze_status` | `HOLD` | C.6 |
-| `reason_code` | `UNSATISFIED_FREEZE_CONDITIONS` | A-5b reason_code rule (A-5b contract §7): `HOLD` → `UNSATISFIED_FREEZE_CONDITIONS`. Condition-level detail is in `review_note` |
-| `review_note` | HOLD: §6.1 condition 10 is not satisfied | C.6 |
+| `a5b_freeze_status` | `FREEZE` | C.6 |
+| `reason_code` | `ALL_FREEZE_CONDITIONS_SATISFIED` | A-5b reason_code rule (A-5b contract §7): `FREEZE` → `ALL_FREEZE_CONDITIONS_SATISFIED` |
+| `review_note` | FREEZE: all applicable §6.1 conditions are satisfied | C.6 |
 
 ### C.6 §6.1 evaluation (original candidate)
 
@@ -176,26 +221,25 @@ needed for this resolution.
 | 7 | PASS | no Membership supplied |
 | 8 | PASS | `exact` + non-null 12 |
 | 9 | PASS | `source_confirmed` with `verified_at` present (Knowledge consistency rule); `confidence` = `""` (A-5b unset confidence rule); `verified_at` is the completion time of event C.1, which verified every asserted field (§12.8) |
-| 10 | UNRESOLVED | importer dry-run (CREATE / SKIP / CONFLICT) not executed |
+| 10 | PASS | Production read-only preflight (C.4b): exact Collective identity has 0 matching rows; therefore no `COLLECTIVE_CONFLICT` or `COLLECTIVE_AMBIGUOUS` is present. `memberships[]` is empty, so no Membership existing-row conflict applies |
 | 11 | PASS | P3; no inference beyond the contracts |
-| 12 | PASS | required assertions O-A1, O-A3, O-A4 are `SUPPORTED`; all required §7 Artifact fields are now resolved, including `resolved_shrine_id = 100`, `candidate_order = 10`, and `reason_code = UNSATISFIED_FREEZE_CONDITIONS` |
+| 12 | PASS | required assertions O-A1, O-A3, O-A4 are `SUPPORTED`; all required §7 Artifact fields are now resolved, including `resolved_shrine_id = 100`, `candidate_order = 10`, and `reason_code = ALL_FREEZE_CONDITIONS_SATISFIED` |
 
 ```text
-a5b_freeze_status (original candidate) = HOLD
+a5b_freeze_status (original candidate) = FREEZE
 ```
 
-The candidate remains HOLD under §6.2 because condition 10 is not yet satisfied.
+The candidate satisfies all applicable §6.1 FREEZE conditions.
 
-The remaining unsatisfied condition is 10.
+The remaining unsatisfied conditions are none.
 
 ### C.7 Current blockers
 
-| Blocker | §6.1 condition | Required next evidence |
-|---|---|---|
-| Existing-row conflict check not run | 10 | importer `--dry-run` (CREATE / SKIP / CONFLICT plan) |
+None.
 
-No longer blockers: P1, `member_list_status`, verification timestamp,
-`candidate_order`, `reason_code`, `resolved_shrine_id`, conditions 2 and 12.
+All applicable §6.1 conditions are satisfied for the current original candidate.
+The Production existing-row conflict observation is recorded in C.4b.
+Importer validation / dry-run belongs to the post-FREEZE Seed 1.1 stage and is not an A-5b FREEZE prerequisite.
 
 ---
 
@@ -283,7 +327,7 @@ Historical vs. current:
 
 | Identity | Label | Historical evaluation (preserved, not authoritative) | Corrected Source observation (§0) | Current lifecycle (authoritative) |
 |---|---|---|---|---|
-| Original (legacy) | 健磐龍命をはじめ家族神12神 (ASCII `12`, U+0031 U+0032) | P1 FAIL; `HOLD` with P1-failure reason (§3, §4.2) | P1-compatible with S1 | **Active candidate for this position, resumed for re-evaluation.** `a5b_freeze_status = HOLD`: no current evaluation exists yet. No earlier PASS / FAIL judgment is inherited |
+| Original (legacy) | 健磐龍命をはじめ家族神12神 (ASCII `12`, U+0031 U+0032) | P1 FAIL; `HOLD` with P1-failure reason (§3, §4.2) | P1-compatible with S1 | **Active candidate for this position, resumed and re-evaluated.** Current authoritative evaluation is `a5b_freeze_status = FREEZE` in section C. Historical PASS / FAIL judgments are not inherited |
 | Replacement | 健磐龍命をはじめ家族神１２神 (full-width `１２`, U+FF11 U+FF12) | P1 PASS; P1–P5 PASS; §6.1 evaluated, `HOLD` (§5, §6) | P1-incompatible with S1 | **`replacement_progression = INVALIDATED`.** Kept for audit history only. Keeps its last recorded `a5b_freeze_status = HOLD` (§6.5 A). Must not reach `FREEZE`, Seed 1.1, the DB, or runtime |
 
 Consequences:
@@ -310,7 +354,7 @@ Consequences:
 
 | Identity | `source_attested_label` | `a5b_freeze_status` | Current lifecycle (§0.1) |
 |---|---|---|---|
-| Legacy (original) | 健磐龍命をはじめ家族神12神 | `HOLD` (historical reason: P1 failure, §3) | active candidate; current evaluation in section C (`HOLD`: condition 10) |
+| Legacy (original) | 健磐龍命をはじめ家族神12神 | `HOLD` (historical reason: P1 failure, §3) | active candidate; current evaluation in section C (`FREEZE`: all applicable §6.1 conditions satisfied) |
 | Replacement | 健磐龍命をはじめ家族神１２神 | `HOLD` (historical: §6.1 evaluated, §6) | `replacement_progression = INVALIDATED` (historical only) |
 
 - The two labels are byte-distinct. The legacy one uses ASCII `12` (U+0031 U+0032).
