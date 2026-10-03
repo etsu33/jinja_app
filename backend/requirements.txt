@@ -21,7 +21,7 @@ httpx>=0.28.1,<0.29.0
 openai==2.46.*
 
 pyyaml>=6.0.3
-drf-spectacular==0.29.0
+drf-spectacular==0.30.0
 
 mypy
 django-stubs
