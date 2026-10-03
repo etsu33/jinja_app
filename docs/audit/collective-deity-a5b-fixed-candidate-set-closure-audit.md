@@ -31,6 +31,9 @@
 - Revision 2026-10-03 (7): contract §10.1 run1 frozen
   (`docs/audit/a5b-reproducibility/run1-projection.json`). run2 not executed. B4 stays
   open. See §25. No candidate status or aggregate changed.
+- Revision 2026-10-03 (8): contract §10.1 run2 executed; run1 and run2 are
+  byte-identical. Reproducibility Gate PASS; B4 resolved. A-5b stays `NOT_CLOSED`
+  (B3). See §26. No candidate status or aggregate changed.
 
 ## 1. Audit scope
 
@@ -442,6 +445,9 @@ count as run1 / run2.
 Revision (7): §10.1 run1 is frozen. Its execution record is in §25. run2 has not been
 executed, so the Gate is still NOT RECORDED.
 
+Revision (8): §10.1 run2 is executed and byte-identical to run1. The contract §10
+run1 / run2 Gate is recorded as PASS (§26).
+
 The 2026-10-01 count-confirmation run1/run2 covers the 10 identities only (digest
 `83401ac7…e109`), not `a5b_freeze_status`. A reproducibility PASS does not prove
 Source truth (contract §10).
@@ -459,7 +465,7 @@ Source truth (contract §10).
 | 7 | no unsupported required assertion remains | **FAIL** | position 9: required FREEZE assertions (label, count / relation, Membership) are not `SUPPORTED`; HOLD Artifact §6, §8. Position 7: Y-A1, Y-A3, Y-A4 `SUPPORTED`. Position 8: T-A1, T-A3, T-A4 `SUPPORTED` |
 | 8 | no undocumented A-5b mutation | **PASS** | §14: all mutations documented and classified |
 | 9 | Seed / importer stages not incorrectly required for FREEZE | **PASS** | §14.3 |
-| 10 | result reproducible from repository artifacts | **PASS** (audit) / contract §10 Gate not recorded | §15 |
+| 10 | result reproducible from repository artifacts | **PASS** (audit) / contract §10 Gate **PASS** (revision (8)) | §15, §26 |
 
 ```text
 CLOSURE_CANDIDATE = NO
@@ -473,8 +479,8 @@ CLOSURE_CANDIDATE = NO
      established.
    - Shrine identity, existing Collective, and the Membership target are resolved
      (`non_source_blocker_count = 0`).
-2. **B4: contract §10 / §12 reproducibility Gate** for the frozen per-candidate
-   artifact set is not recorded (§15).
+2. **B4: contract §10 / §12 reproducibility Gate.** Resolved by revision (8):
+   §10.1 run1 and run2 are byte-identical (§26).
 
 Every position now has exactly one lifecycle status (condition 2 PASS). That alone
 is not sufficient for closure: position 9 still carries unresolved Source
@@ -537,6 +543,8 @@ Current statement:
 - **Future verification.** A future direct official Source verification may reopen
   the position 9 evaluation. That would be a future A-5b continuation event, and it
   does not alter this recorded decision.
+- **Revision (8).** B4 is resolved (§26). The decision stays `NOT_CLOSED`: closure
+  conditions 6 and 7 remain FAIL because of position 9 (B3).
 
 ## 18. Mutation record (this audit and its 2026-10-02 revision)
 
@@ -804,4 +812,86 @@ run2 executed                                                  0
 Seed / candidate Artifact / importer / migration / DB / Production / runtime change   0
 contract §10.1 / projection generator / test change            0
 files changed     2 (this document; docs/audit/a5b-reproducibility/run1-projection.json)
+```
+
+## 26. Reproducibility run2 execution and Gate result — 2026-10-03 (8)
+
+Contract §10.1 I / J run2 record.
+
+```text
+status                  RUN2_EXECUTED
+input_commit            89d2aa43cd49233492ffd64dc9f343b37f93a372
+                        (the frozen run1 input commit, §25; not the later develop HEAD)
+generator code          the merged generator, unchanged between the input commit and
+                        e03a580655e8cdca319a992b7e0f18f649545ed7 (the run2 branch base)
+command (in backend/)   python manage.py a5b_reproducibility_projection
+                          --commit 89d2aa43cd49233492ffd64dc9f343b37f93a372
+                          --output <temporary path outside the repository>
+generator exit status   0
+output size             13290 bytes
+sha256                  7b404f162329e731f4b57699b3640c56a76008b775f3097d03c1606731c94e66
+completion timestamp    2026-10-03T03:42:47+00:00 (captured immediately after the
+                        generator exited, in the same shell command)
+persistence             not committed (§10.1 J: run2 output need not be committed)
+```
+
+Independence:
+
+- run2 regenerated the projection from the frozen input commit through the merged
+  `git show <commit>:<path>` mechanism.
+- It did not read the run1 output. run1 does not exist at the input commit, and the
+  generator never reads `docs/audit/a5b-reproducibility/`.
+- The output was written to a temporary path, not over run1. It was not hand-edited.
+- `USE_SQLITE=1 USE_GIS=0` was set only so Django could start. No DB access occurred,
+  and no database file was created.
+
+Validation of run2, done before the comparison:
+
+| Check | Result |
+|---|---|
+| candidates | 10 |
+| `candidate_order` | 1–10, in order |
+| FREEZE / HOLD / EXCLUDE | 9 / 1 / 0 |
+| position 9 富岡八幡宮 | `HOLD` |
+| UTF-8, no BOM | yes |
+| trailing LF | exactly one |
+| canonical re-serialization (§10.1 H) equals the file | yes |
+
+Comparison (§10.1 I):
+
+| Comparison | Result |
+|---|---|
+| run1 vs. run2 bytes (`cmp`) | identical |
+| run1 SHA-256 | `7b404f162329e731f4b57699b3640c56a76008b775f3097d03c1606731c94e66` |
+| run2 SHA-256 | `7b404f162329e731f4b57699b3640c56a76008b775f3097d03c1606731c94e66` |
+| SHA-256 | identical |
+
+```text
+CONTRACT §10 RUN1/RUN2 GATE   PASS
+B4                            RESOLVED
+```
+
+A reproducibility PASS proves only the deterministic reproduction of the frozen
+comparison contract. It does not prove Source truth or Production import eligibility
+(contract §10).
+
+Unchanged:
+
+| Item | State |
+|---|---|
+| FREEZE / HOLD / EXCLUDE | 9 / 1 / 0 |
+| B3 (position 9 富岡八幡宮) | `HOLD` / `UNSATISFIED_FREEZE_CONDITIONS`; unresolved |
+| closure conditions 6, 7 | FAIL (position 9) |
+| `CLOSURE_CANDIDATE` | NO |
+| A-5b overall | `NOT_CLOSED` while B3 remains unresolved |
+
+Mutation record for this revision:
+
+```text
+candidate status change                                        0
+run1 modified                                                  0
+run2 output committed                                          0
+Seed / candidate Artifact / importer / migration / DB / Production / runtime change   0
+contract §10.1 / projection generator / test change            0
+files changed     1 (this document)
 ```
