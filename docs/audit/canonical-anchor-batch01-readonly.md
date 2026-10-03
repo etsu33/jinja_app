@@ -2,7 +2,7 @@
 
 ## Status
 
-- Status: IN_PROGRESS_STOPPED_ON_CONTRACT_GAP
+- Status: IN_PROGRESS_RESUMED_AFTER_F7_DECISION
 - Recorded at: 2026-09-24
 - Parent procedure: docs/knowledge/canonical-anchor-adjudication-procedure.md
 - Target batch: 春日大社 / 宇佐神宮 / 日光東照宮
@@ -581,6 +581,349 @@ Do not:
 - invent F-7 semantics for DIRECT_POINT
 - calculate partial MULTI means
 - copy Navigation coordinates
+- create Canonical Anchor rows
+- perform Production writes
+- begin PHASE_3
+
+
+---
+
+## 10. Resume after F-7 Representative Point Decision
+
+Mother Ship decision:
+
+docs/audit/canonical-anchor-f7-representative-point-decision.md
+
+was merged before this continuation.
+
+The prior contract gap is therefore closed:
+
+~~~text
+DIRECT_POINT_PACKET_FINAL_POINT_REPRESENTATION
+= RESOLVED
+
+ACTIVE_PHASE_2_F7
+= representative_point
+~~~
+
+Batch 01 resumes read-only under that ACTIVE contract.
+
+---
+
+## 11. PASS D Resume — Coordinate Evidence
+
+### 11.1 春日大社
+
+Semantic state remains unchanged:
+
+~~~text
+subject_type = MULTI_PRINCIPAL_UNIT
+point_method = UNWEIGHTED_COMPONENT_MEAN
+F-4 = COMPLETE
+~~~
+
+Authoritative semantic sources continue to identify the four Main Sanctuary halls:
+
+- 春日大社 official Main Sanctuary:
+  https://www.kasugataisha.or.jp/guidance/keidai-map3/modal-01/
+- 文化庁 第二殿 record:
+  https://kunishitei.bunka.go.jp/heritage/detail/102/2534
+- 文化遺産データベース 第二殿:
+  https://online.bunka.go.jp/db/heritages/detail/147731
+
+Object-level corroboration reproduced in this continuation:
+
+~~~text
+第一殿
+source = OpenStreetMap-derived Mapcarta object
+OSM way = 1134481290
+latitude = 34.68158
+longitude = 135.84854
+
+第三殿
+source = OpenStreetMap-derived Mapcarta object
+OSM way = 1134481289
+latitude = 34.68157
+longitude = 135.84844
+
+第四殿
+source = OpenStreetMap-derived Mapcarta object
+OSM way = 1134481288
+latitude = 34.68157
+longitude = 135.84839
+~~~
+
+Related source URLs:
+
+- https://mapcarta.com/W1134481290
+- https://mapcarta.com/es/W1134481289
+- https://mapcarta.com/es/W1134481288
+
+A Wikidata maintenance table exposes a coordinate for 第二殿:
+
+~~~text
+Q107020450
+34.68157, 135.8484
+~~~
+
+but the same rounded coordinate is also exposed for other Main Sanctuary halls.
+That precision does not preserve a reliable object-level distinction between the four
+INCLUDED components.
+
+Therefore:
+
+~~~text
+KASUGA_F5_STATUS
+= INCOMPLETE
+
+MISSING_ACCEPTED_INPUT
+= 第二殿 subject-distinguishing coordinate provenance
+~~~
+
+No F-7 mean is calculated.
+
+The existence of a plausible coordinate is not promoted to a complete F-5 packet
+unless the same source can distinguish the intended component reproducibly.
+
+---
+
+### 11.2 宇佐神宮
+
+Semantic state remains unchanged:
+
+~~~text
+semantic owner = 上宮
+subject_type = MULTI_PRINCIPAL_UNIT
+point_method = UNWEIGHTED_COMPONENT_MEAN
+F-4 = COMPLETE
+~~~
+
+文化庁 explicitly records:
+
+~~~text
+本殿は西から第一、第二、第三の順に並立
+~~~
+
+for the three Honden.
+
+Source:
+
+https://kunishitei.bunka.go.jp/heritage/detail/102/3599
+
+A Kanagawa University architecture research page exposes three numeric rows for
+宇佐神宮本殿:
+
+~~~text
+33.52346, 131.3770
+33.52348, 131.3772
+33.52349, 131.3773
+~~~
+
+Source:
+
+https://www.arch.kanagawa-u.ac.jp/lab/shimazaki_kazushi/shimazaki/NationalTreasureBuilding/NationalTreasureBuilding.html
+
+The third coordinate independently matches the 奈良文化財研究所 Cultural Affairs-derived
+第三殿 record:
+
+~~~text
+第三殿
+33.52349, 131.3773
+RecNo = 98032356
+~~~
+
+Source:
+
+https://heritagemap.nabunken.go.jp/statistic/98032356-%E5%AE%87%E4%BD%90%E7%A5%9E%E5%AE%AE%E6%9C%AC%E6%AE%BF.html
+
+However, the Kanagawa University table does not expose the 棟名 labels beside the three
+宇佐神宮 rows in the fetched representation.
+
+Using longitude order plus the Cultural Affairs west-to-east description would allow
+a plausible deterministic mapping:
+
+~~~text
+west -> 第一殿
+middle -> 第二殿
+east -> 第三殿
+~~~
+
+but this would be a derived attribution rather than a directly subject-labelled
+coordinate record for 第一殿 and 第二殿.
+
+Under the current PHASE_2 fail-closed rule this continuation does not silently promote
+that attribution into F-5.
+
+Therefore:
+
+~~~text
+USA_F5_STATUS
+= INCOMPLETE
+
+VERIFIED_COMPONENT_COORDINATE
+= 第三殿 33.52349, 131.3773
+
+UNRESOLVED_COMPONENT_COORDINATE_ATTRIBUTION
+= 第一殿
+= 第二殿
+~~~
+
+No official F-7 mean is calculated.
+
+For audit only, the three candidate numeric rows have an arithmetic mean of:
+
+~~~text
+33.52347666666667
+131.37716666666665
+~~~
+
+This diagnostic value is NOT F-7 and is NOT a Canonical candidate because the
+per-component F-5 attribution is not complete.
+
+---
+
+### 11.3 日光東照宮
+
+The F-7 contract gap is closed.
+
+Semantic state:
+
+~~~text
+subject = 東照宮 本殿、石の間及び拝殿 connected principal unit
+subject_type = SINGLE_PRINCIPAL_UNIT
+point_method = DIRECT_POINT
+~~~
+
+The same named subject is georeferenced by 奈良文化財研究所:
+
+~~~text
+subject = 東照宮 本殿、石の間及び拝殿
+latitude = 36.75808
+longitude = 139.5987
+~~~
+
+Source:
+
+https://heritagemap.nabunken.go.jp/statistic/98002610-%E6%9D%B1%E7%85%A7%E5%AE%AE_%E6%9C%AC%E6%AE%BF%E3%80%81%E7%9F%B3%E3%81%AE%E9%96%93%E5%8F%8A%E3%81%B3%E6%8B%9D%E6%AE%BF.html
+
+A separate architecture research table corroborates the same subject at approximately
+the same coordinate.
+
+Under the ACTIVE F-7 decision:
+
+~~~text
+F-7 representative_point
+
+latitude = 36.75808
+longitude = 139.5987
+point_method = DIRECT_POINT
+input_count = 1
+derivation_note =
+  copied exactly from the verified subject-matched F-5 coordinate
+~~~
+
+No mean is asserted.
+
+Current state:
+
+~~~text
+NIKKO_F5 = COMPLETE
+NIKKO_F6 = COMPLETE
+NIKKO_F7 = COMPLETE
+NIKKO_F8 = PENDING_LIVE_PRODUCTION_NAVIGATION_READ
+~~~
+
+The repository contains historical / candidate Navigation values, but F-8 requires the
+current Visitor / Navigation Anchor meaning and value at execution time.
+
+This audit does not substitute a stale repository value for the live read-only check.
+
+---
+
+## 12. Production Read-only Gate
+
+The final F-8 step requires a live read-only query of the current Production Shrine rows.
+
+Target:
+
+~~~text
+Shrine.id IN (5, 8, 9)
+
+fields:
+id
+name_jp
+address
+latitude
+longitude
+place_ref_id
+~~~
+
+No write is required.
+
+The connected Render account currently exposes one workspace candidate, but the Render
+connector requires explicit user confirmation of the workspace before any database
+query.
+
+Therefore the audit remains fail-closed until that authorization is supplied.
+
+~~~text
+PRODUCTION_READ
+= NOT_YET_EXECUTED
+
+PRODUCTION_WRITE
+= NONE
+~~~
+
+---
+
+## 13. Current Batch State after Resume
+
+| Shrine | F-4 | F-5 | F-6 | F-7 | F-8 | Current adjudication |
+| --- | --- | --- | --- | --- | --- | --- |
+| 春日大社 | COMPLETE | INCOMPLETE | PARTIAL | NOT_COMPUTED | NOT_ALLOWED | NOT_ADJUDICATED |
+| 宇佐神宮 | COMPLETE | INCOMPLETE | PARTIAL | NOT_COMPUTED | NOT_ALLOWED | NOT_ADJUDICATED |
+| 日光東照宮 | PRELIMINARY_COMPLETE | COMPLETE | COMPLETE | COMPLETE (DIRECT_POINT) | PENDING_PRODUCTION_READ | NOT_ADJUDICATED |
+
+No shrine is moved to HOLD_POSITION_REVIEW.
+
+The remaining blockers are missing / insufficiently attributable coordinate evidence
+and a live read-only Navigation snapshot, not accepted-source conflicts.
+
+---
+
+## 14. Updated Required Statements
+
+~~~text
+PHASE_2_BATCH_01_STARTED = YES
+PHASE_2_BATCH_01_RESUMED = YES
+
+F7_CONTRACT_GAP = RESOLVED
+
+KASUGA_F5 = INCOMPLETE
+USA_F5 = INCOMPLETE
+NIKKO_F7 = COMPLETE
+
+PRODUCTION_READ = NOT_YET_EXECUTED
+PRODUCTION_WRITE = NONE
+
+CANONICAL_DB_WRITE = NONE
+SEED_WRITE = NONE
+CANONICAL_BACKFILL = NOT_STARTED
+RUNTIME_CUTOVER = NOT_PERFORMED
+
+BATCH_01_CONFIRMED_COUNT = 0
+BATCH_01_HOLD_COUNT = 0
+BATCH_01_NOT_ADJUDICATED_COUNT = 3
+~~~
+
+## 15. STOP Boundary after Resume
+
+Do not:
+
+- infer 春日大社 第二殿 from rounded shared coordinates
+- infer 宇佐神宮 第一殿 / 第二殿 attribution from longitude ordering as final F-5
+- compute a MULTI F-7 from incomplete F-5
+- use stale repository Navigation coordinates as final F-8 input
 - create Canonical Anchor rows
 - perform Production writes
 - begin PHASE_3
