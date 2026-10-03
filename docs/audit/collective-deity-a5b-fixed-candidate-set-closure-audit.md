@@ -28,6 +28,9 @@
 - Revision 2026-10-03 (6): the fixed comparison contract for the contract §10 run1 /
   run2 Gate is now defined (contract §10.1). B4 stays open: run1 / run2 not executed.
   See §24. No candidate status or aggregate changed.
+- Revision 2026-10-03 (7): contract §10.1 run1 frozen
+  (`docs/audit/a5b-reproducibility/run1-projection.json`). run2 not executed. B4 stays
+  open. See §25. No candidate status or aggregate changed.
 
 ## 1. Audit scope
 
@@ -436,6 +439,9 @@ NOT RECORDED because run1 / run2 under §10.1 have not been executed. The step 1
 runs above are audit-derived extraction. They are not the §10.1 projection and do not
 count as run1 / run2.
 
+Revision (7): §10.1 run1 is frozen. Its execution record is in §25. run2 has not been
+executed, so the Gate is still NOT RECORDED.
+
 The 2026-10-01 count-confirmation run1/run2 covers the 10 identities only (digest
 `83401ac7…e109`), not `a5b_freeze_status`. A reproducibility PASS does not prove
 Source truth (contract §10).
@@ -729,4 +735,73 @@ candidate status change     0
 run1 / run2 executed        0
 Seed / importer / migration / DB / Production / runtime change   0
 files changed               2 (this document; A-5b freeze contract)
+```
+
+## 25. Reproducibility run1 execution record — 2026-10-03 (7)
+
+Contract §10.1 J run record.
+
+```text
+status                  RUN1_FROZEN
+input_commit            89d2aa43cd49233492ffd64dc9f343b37f93a372
+                        (origin/develop after PR #3066; full SHA resolved with git
+                        before generation)
+entry point             python manage.py a5b_reproducibility_projection
+command (in backend/)   python manage.py a5b_reproducibility_projection
+                          --commit 89d2aa43cd49233492ffd64dc9f343b37f93a372
+                          --output ../docs/audit/a5b-reproducibility/run1-projection.json
+generator exit status   0
+output                  docs/audit/a5b-reproducibility/run1-projection.json
+output size             13290 bytes
+sha256                  7b404f162329e731f4b57699b3640c56a76008b775f3097d03c1606731c94e66
+completion timestamp    NOT CAPTURED
+```
+
+- **Completion timestamp.** The generator does not emit a timestamp, and none was
+  captured at the run event. None is derived from filesystem, git, or current time.
+- **Input.** Generation used the fixed input commit. Every projection source read went
+  through the merged `git show <commit>:<path>` mechanism (`GitCommitReader`). The
+  working tree was not a projection input. The working tree was clean and equal to the
+  input commit when the run started.
+- **Generator settings.** The command ran with `USE_SQLITE=1 USE_GIS=0` only so that
+  Django could start. The generator performs no DB access, and no database file was
+  created.
+- **Output.** Written by the generator. It was not hand-edited.
+
+Post-generation validation of the frozen file (no regeneration):
+
+| Check | Result |
+|---|---|
+| candidates | 10 |
+| `candidate_order` | 1–10, in order |
+| FREEZE / HOLD / EXCLUDE | 9 / 1 / 0 |
+| position 9 富岡八幡宮 | `HOLD` / `UNSATISFIED_FREEZE_CONDITIONS` |
+| UTF-8, no BOM | yes |
+| trailing LF | exactly one |
+| canonical re-serialization (§10.1 H) equals the file | yes |
+| SHA-256 | `7b404f162329e731f4b57699b3640c56a76008b775f3097d03c1606731c94e66` |
+
+Gate state:
+
+| Item | State |
+|---|---|
+| run1 | frozen (this section) |
+| run2 | NOT EXECUTED |
+| run1 vs. run2 comparison | NOT PERFORMED |
+| contract §10 run1 / run2 Gate | NOT RECORDED |
+| B4 | NOT_RESOLVED |
+| B3 (position 9) | HOLD; unchanged |
+| `CLOSURE_CANDIDATE` / Mother Ship decision | NO / `NOT_CLOSED`; unchanged |
+
+Only executions under §10.1 count as run1 / run2. Projections generated during
+development are not Gate evidence.
+
+Mutation record for this revision:
+
+```text
+candidate status change                                        0
+run2 executed                                                  0
+Seed / candidate Artifact / importer / migration / DB / Production / runtime change   0
+contract §10.1 / projection generator / test change            0
+files changed     2 (this document; docs/audit/a5b-reproducibility/run1-projection.json)
 ```
