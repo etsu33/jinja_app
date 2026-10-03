@@ -140,12 +140,29 @@ DUPLICATE_AMBIGUITY = 0
 | candidate_id | Shrine | latitude | longitude | primary | corroboration | corroboration_coordinate | coordinate_delta_m | verified_at | status |
 |---|---|---|---|---|---|---|---|---|---|
 | wave0-019 | 建勲神社 | 35.0386537 | 135.7431512 | MapFan | Mapion | 35.03867354, 135.74317924 | 3.37 | `2026-10-03T18:04:26+09:00` | PASS |
-| wave0-021 | 大阪天満宮 | 34.6958917 | 135.5126472 | — | — | 34.6958916667, 135.5126472222 | 0.0042 | `2026-10-03T17:43:00+09:00` | PASS |
-| wave0-022 | 毛谷黒龍神社 | 36.056836 | 136.211886 | — | — | 36.056838, 136.211897 | 1.01 | `2026-10-03T17:22:51+09:00` | PASS |
+| wave0-021 | 大阪天満宮 | 34.6958917 | 135.5126472 | 國學院大學デジタル・ミュージアム（34.6958916667, 135.5126472222） | CODH / 『日本歴史地名大系』施設・地点項目データセット | 34.695530, 135.512634 | 未算出（注記参照） | `2026-10-03T17:43:00+09:00` | PASS |
+| wave0-022 | 毛谷黒龍神社 | 36.056836 | 136.211886 | Wikidata（36.056836, 136.211886） | hiharada 神社訪問記録 | 36.056838, 136.211897 | 1.01 | `2026-10-03T17:22:51+09:00` | PASS |
 | wave0-025 | 大崎八幡宮 | 38.2725678 | 140.8449622 | MapFan | NAVITIME | 38.272586, 140.844978 | 2.45 | `2026-10-03T17:59:08+09:00` | PASS |
 
-- `—`: wave0-021 / wave0-022 のprimary / corroboration Source名は本revisionへ供給されていない。
-  推測で補わない。座標値・corroboration座標・delta・verified_atはMother Ship frozen値である。
+- 座標値・Source・corroboration座標・delta・verified_atはMother Ship frozen値である。
+- wave0-021 大阪天満宮:
+  - adopted coordinate `34.6958917, 135.5126472` は、國學院大學デジタル・ミュージアムの座標
+    `34.6958916667, 135.5126472222` を丸めた値である。
+  - 以前記録した `0.0042` mは、adopted coordinateと國學院大學座標の**丸め差**であり、
+    独立Source間のdeltaではなかった。`coordinate_delta_m` 欄から外した。
+  - 独立した地理的corroborationはCODH / 『日本歴史地名大系』施設・地点項目データセット
+    （`34.695530, 135.512634`）である。國學院大學座標とのdeltaは、repositoryに
+    audit用の正本計算方法がない（haversine実装が複数散在し、Position Contractも計算方法を定めない）ため、
+    本監査では算出しない。値を推測で記録しない。
+  - official identity / addressのcorroborationは座標Sourceとは別に記録する:
+    大阪天満宮公式、住所 `大阪市北区天神橋2丁目1番8号`。
+- wave0-022 毛谷黒龍神社:
+  - adopted coordinateのSourceはWikidata、独立した座標corroborationはhiharada 神社訪問記録である。
+  - 両Sourceはfrozen coordinateの追跡可能なprovenanceを与える。ただしPosition Contract上の
+    preferred authoritative primary source（神社公式・自治体等）ではない。
+    いずれもofficial / authoritative primary sourceとは扱わない。
+  - G2 PASSはMother Ship frozen resultとして維持する。本revisionはprovenanceの記録であり、
+    G2を再判定するものではない。
 - `coordinate_delta_m` はSource間差分の観測値であり、自動PASS閾値ではない（Position Contract §Audit Record）。
 - `verified_at` はPositionのMother Ship verification時刻である。Knowledge Factの `verified_at` には流用しない。
 
