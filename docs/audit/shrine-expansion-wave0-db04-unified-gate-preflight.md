@@ -2,10 +2,13 @@
 
 ## Status
 
-- Status: `W0_DB04_G1_VERIFICATION_BLOCKED_5_OF_5`
+- Status: `W0_DB04_G1_G3_MOTHER_SHIP_VERIFIED_3_TO_G4_1_POSITION_HOLD_1_MODEL_HOLD`
 - Recorded at: `2026-10-03`
 - Branch: `audit/shrine-expansion-wave0-db04-unified-gate-preflight`
-- Base: `develop@ed39ebf3d5ba50814b149c2c60bd9bc8140275d5`
+- Base: `develop@9bc1e50a5f42e2721e9fa854803f01a249f1e10d`
+  （初回記録 PR #3069 は `develop@ed39ebf3d5ba50814b149c2c60bd9bc8140275d5`）
+- Revision 2026-10-03 (2): Mother Ship verified G1〜G3 results を反映。
+  初回の `W0_DB04_G1_VERIFICATION_BLOCKED_5_OF_5` は本revisionでsupersede（§Revision record）
 - Batch: `W0-DB04`
 - Scope: 建勲神社 / 水堂須佐男神社 / 大阪天満宮 / 毛谷黒龍神社 / 大崎八幡宮
 - Production write: なし
@@ -60,8 +63,11 @@ Candidate Master（`backend/temples/data/shrine_expansion_candidate_master.json`
 | `2026-10-03T07:52:27+00:00` | `kenkun-jinja.org` / `www.m-susanoo.net` / `osakatemmangu.or.jp` / `www.kurotatu-jinja.jp` / `www.oosaki-hachiman.or.jp` / `miyagi-jinjacho.or.jp` / `www.hyogo-jinjacho.com` / `www.city.kyoto.lg.jp` / `maps.gsi.go.jp` / `geoshape.ex.nii.ac.jp` | すべて実行環境のegress proxyがCONNECTを `403` で拒否。Source本文は取得していない |
 
 ```text
-DIRECT_VERIFICATION = BLOCKED (execution environment egress policy)
+DIRECT_VERIFICATION (this execution environment) = BLOCKED (egress policy)
 ```
+
+この制約は初回記録時点のものである。G1〜G3の現在の結果はMother Ship verification
+（§Mother Ship verification）に基づく。本実行環境は引き続きSource本文へ到達していない。
 
 - これは実行環境の制約であり、各神社のidentity・Source・Factに関する所見ではない。
 - アクセス不能をidentity ambiguity、Source不足、P1 FAIL、EXCLUDE等へ変換しない。
@@ -82,56 +88,58 @@ G0 PASSはIdentity / Position / Knowledge / Recommendation eligibilityを意味�
 
 ---
 
+## Mother Ship verification（2026-10-03）
+
+Mother Shipが本実行環境の外でG1〜G3を検証し、次の結果を確定した。
+
+```text
+G2 = 4 PASS / 1 HOLD
+G3 = 3 PASS / 1 HOLD
+
+wave0-020 水堂須佐男神社  G2 = HOLD_POSITION_REVIEW
+wave0-022 毛谷黒龍神社    G3 = MODEL_REVIEW_REMAINS
+
+G4 eligible = wave0-019 / wave0-021 / wave0-025
+```
+
+### Evidence recording boundary
+
+本revisionが受け取ったのは上記のGate結果である。次の検証値・根拠は本repository記録へ
+供給されていないため、記録しない。推測で補わない。
+
+```text
+official_name / official_address / official_source_url    NOT RECORDED
+verified_at (direct verification completion time)         NOT RECORDED
+position source / latitude / longitude / corroboration    NOT RECORDED
+wave0-020 HOLD_POSITION_REVIEW の具体的な理由              NOT RECORDED
+wave0-022 MODEL_REVIEW_REMAINS の具体的なModel Risk内容     NOT RECORDED
+G3 PASS 3社の分類語（NORMAL_MODEL_FIT / CURATION_RELEASE_CANDIDATE）  NOT RECORDED
+```
+
+これらはSource Packet Freeze（後述）で必要になる。
+
+---
+
 ## G1 Identity / Duplicate Gate
 
-### Repository evidence（2026-09-09 Wave0 audits）
+### Result
 
-以下はrepository上の既存audit記録であり、本監査の実行時点で直接検証した値ではない。
+`PASS = 5 / 5`（Mother Ship verification）
 
-| Shrine | Duplicate (current-db-duplicate-audit) | Official / Authority Source path (official-source-availability) | Repositoryに記録された住所 |
-|---|---|---|---|
-| 建勲神社 | NEW | `shrine_official` `https://kenkun-jinja.org/` | 記録なし（coordinate audit は「京都市北区」のみ） |
-| 水堂須佐男神社 | NEW | `shrine_official` `https://www.m-susanoo.net/` | `尼崎市水堂町1-25-7`（coordinate audit。尼崎市公式でcorroborateと記録） |
-| 大阪天満宮 | NEW | `shrine_official` `https://osakatemmangu.or.jp/` | 記録なし（coordinate audit は「大阪市北区」のみ） |
-| 毛谷黒龍神社 | NEW | `shrine_official` `https://www.kurotatu-jinja.jp/about/` | `福井市毛矢3-8-1`（coordinate audit が「公式住所」と記録） |
-| 大崎八幡宮 | NEW | `jinja_authority` `https://miyagi-jinjacho.or.jp/jinja-search/detail.php?code=310010033` | 記録なし |
+根拠の扱い:
 
-補足:
+- Mother ShipはG2結果を5社すべてについて確定している。
+- Unified Gate §4 Isolation Ruleにより、G1未解決のCandidateにPosition採用は確定しない。
+- したがって5社ともG1 PASSが前提となる。本監査はこれをMother Ship G1 verificationの結果として記録する。
+  G1 PASSの個別根拠値（official name / address）は上記の通りNOT RECORDEDである。
 
-- 大崎八幡宮のofficial-source-availability記録は `PASS_AUTHORITY`（宮城県神社庁）である。
-  一方、goriyaku-evidence / history-fact availability記録は神社公式
-  `https://www.oosaki-hachiman.or.jp/` 配下を参照している。identity sourceの選択は
-  直接検証時に確定する。
-- Repository内のBase Seed（`backend/temples/data/shrines_seed_clean.json`）および
-  Knowledge Seedに、5社と同名のShrine rowは存在しない（本監査時点の `ed39ebf3`）。
-  Production DBは参照していない。2026-09-09以降のProduction差分はrepository記録の範囲でのみ確認した。
-- Same-name shrine riskについて、repository記録に未解決collisionの記載はない。
-  本監査は外部Sourceで同名社を新たに調査していない。
-
-### Decision
-
-G1 PASS条件は、canonical identityがcurrent authoritative sourceで説明可能であることを要する。
-本監査では次を直接検証できなかった。
+Repository evidence（2026-09-09 Wave0 audits）は引き続き、duplicate = NEW、
+未解決collision記載なしを示す。Repository内のBase Seed / Knowledge Seedに5社と同名のShrine rowはない。
 
 ```text
-official_name     NOT VERIFIED (5 / 5)
-official_address  NOT VERIFIED (5 / 5)
+G1_IDENTITY = PASS (5 / 5)
+DUPLICATE_AMBIGUITY = 0
 ```
-
-Repository記録にidentity ambiguityやduplicate conflictの兆候はない。ただし、
-2026-09-09のavailability記録はSource path availabilityの記録であり、
-official name / official addressの現行値を凍結したものではない。
-
-```text
-G1_IDENTITY = NOT_PASSED (5 / 5)
-reason      = IDENTITY_VERIFICATION_BLOCKED
-owning Gate = G1
-DUPLICATE_AMBIGUITY observed in repository evidence = 0
-```
-
-`IDENTITY_VERIFICATION_BLOCKED` は本監査の記録語であり、Candidate Masterの
-`status_reason_code` ではない。Candidate Masterの `candidate_status` は変更しない
-（Post-batch HOLDへの遷移はMother Ship判断を要するlifecycle変更であり、本監査では行わない）。
 
 ---
 
@@ -139,26 +147,21 @@ DUPLICATE_AMBIGUITY observed in repository evidence = 0
 
 ### Result
 
-`NOT EXECUTED = 5 / 5`
+`PASS = 4 / 5`、`HOLD = 1 / 5`（Mother Ship verification）
 
-理由:
+| candidate_id | Shrine | G2 |
+|---|---|---|
+| wave0-019 | 建勲神社 | PASS |
+| wave0-020 | 水堂須佐男神社 | **HOLD_POSITION_REVIEW** |
+| wave0-021 | 大阪天満宮 | PASS |
+| wave0-022 | 毛谷黒龍神社 | PASS |
+| wave0-025 | 大崎八幡宮 | PASS |
 
-1. Unified Gate §4 Isolation Rule: G1未解決の間、Position採用を確定しない。
-2. Repositoryに5社のadopted coordinate値は存在しない。既存coordinate-availability auditは
-   取得経路のPASSのみを記録している。
-3. 位置Source（provider / 公的地図）にも本環境から到達できない。
-
-座標は推測しない。過去記録から座標値を再利用しない。
-
-Read-only research note（採用値ではない）:
-
-| Shrine | Repository記録上のposition acquisition path |
-|---|---|
-| 建勲神社 | MapFan |
-| 水堂須佐男神社 | provider / shrine-map系（住所 `尼崎市水堂町1-25-7` と対応） |
-| 大阪天満宮 | GeoShape |
-| 毛谷黒龍神社 | MapFan / 地図系Source（住所 `福井市毛矢3-8-1` と対応） |
-| 大崎八幡宮 | NAVITIME（宮城県神社庁の所在地と一致と記録） |
+- PASS 4社のadopted coordinateは本記録に含まれない（NOT RECORDED）。
+  座標値はSource Packet Freezeでposition source・corroborationと共に固定する。
+- wave0-020は `HOLD_POSITION_REVIEW`（Position Contract §Position Status）。
+  座標を推測せず、Seed / Productionへ投入しない。owning GateはG2である。
+- wave0-020は `build_batch = W0-DB04` を保持する。G3以降へ進めない。
 
 ---
 
@@ -166,26 +169,22 @@ Read-only research note（採用値ではない）:
 
 ### Result
 
-`NOT ADOPTED = 5 / 5`
+`PASS = 3 / 4`、`HOLD = 1 / 4`（Mother Ship verification。G2 HOLDのwave0-020は対象外）
 
-Unified Gate §15により、Source research自体はread-onlyで並行可能だが、G1未解決のCandidateに
-Fact ownershipやModel Fit判定を確定しない。加えて、本監査ではSource本文を取得していないため、
-Model Fitを判定できる現行Source内容がない。
+| candidate_id | Shrine | G3 |
+|---|---|---|
+| wave0-019 | 建勲神社 | PASS |
+| wave0-020 | 水堂須佐男神社 | NOT EVALUATED（G2 HOLD） |
+| wave0-021 | 大阪天満宮 | PASS |
+| wave0-022 | 毛谷黒龍神社 | **MODEL_REVIEW_REMAINS** |
+| wave0-025 | 大崎八幡宮 | PASS |
 
-Repository記録（deity / history availability audits）は次の通り。これはdiscovery contextであり、
-Model Fit判定の根拠には使っていない。
-
-| Shrine | Deity path（記録） | History path（記録） | 直接検証時に確認すべき点 |
-|---|---|---|---|
-| 建勲神社 | 神社公式: 主祭神 織田信長公、配祀 織田信忠卿 | 神社公式: 1869年創立宣下ほか | 主祭神 / 配祀のrole mappingがSource本文で直接支持されるか |
-| 水堂須佐男神社 | 兵庫県神社庁: 須佐男命 | 「神社公式/Authority Source」と記録（Source未特定） | History Fact候補のSourceを特定すること。祭神の完全性 |
-| 大阪天満宮 | 神社公式: 菅原道真公 | 神社公式: 大将軍社650年、949年天満宮創始等。伝承要素を保持 | 記録は御祭神1柱のみ。他の祭神の有無（partial deity listのModel Risk）をSource本文で確認すること |
-| 毛谷黒龍神社 | 神社公式: 高龗神・闇龗神・男大迹天皇「等」 | 神社公式: 創建由緒、708年合祀、1329年奉還・改称等 | 記録が「等」で終わる。全祭神が個別に記名されているか、未記名collectiveを含むか（Model Risk） |
-| 大崎八幡宮 | 宮城県神社庁: 応神天皇・仲哀天皇・神功皇后 | 神社公式: 坂上田村麻呂の創祀伝承、遷祀、現社殿造営 | 伝承と歴史イベントの分離。神社公式と神社庁の記載の一致 |
-
-`MODEL_CHANGE_REQUIRED` / `MODEL_REVIEW_REMAINS` / `PRODUCT_DECISION_REQUIRED` のいずれも、
-本監査では判定していない（判定材料がない）。上表の確認点はModel Riskの所見ではなく、
-直接検証時のcheck itemである。
+- PASS 3社はG4へ進めるModel Fit結果である。分類語（`NORMAL_MODEL_FIT` /
+  `CURATION_RELEASE_CANDIDATE`）は供給されていないため記録しない。
+- wave0-022は `MODEL_REVIEW_REMAINS`（`docs/audit/model-risk-release-contract.md` §5.3）。
+  curationで解消可能かSchema / Contract拡張が必要かは未判定であり、次工程はSource / identity境界の
+  focused reviewである。`MODEL_CHANGE_REQUIRED` へ昇格させない。G4へ進めない。
+- wave0-020のG3はG2 HOLD解除後に再判定する。本監査はG3の結果を持たない。
 
 ---
 
@@ -195,17 +194,11 @@ Model Fit判定の根拠には使っていない。
 
 `FROZEN = 0 / 5`
 
-次のいずれもfreezeしていない。
+G4 eligibleの3社についても、Source Packetの値（official values / `verified_at` / coordinate /
+Deity / History / goriyaku）は本repositoryへ供給されていない。値を推測でfreezeしない。
 
-```text
-official_name / official_address / official_source_type / official_source_url
-verified_at / latitude / longitude
-approved goriyaku wording / goriyaku_tags
-Deity facts / History facts
-```
-
-前提Gate（G1 / G2 / G3）を通過したCandidateがない。`verified_at` に使える直接検証イベントもない。
-過去audit日付・`accessed_at`・git時刻から `verified_at` を作らない。
+W0-DB03と同様、G4（Knowledge Seed / Evidence）着手前にSource Packet Freezeを
+別途記録する必要がある。
 
 ---
 
@@ -213,9 +206,13 @@ Deity facts / History facts
 
 ### Result
 
-`NOT EXECUTED = 5 / 5`
+`NOT EXECUTED`
 
-G4へ到達したCandidateはない。Source availabilityをFact verificationへ変換しない。
+```text
+G4 eligible = wave0-019 建勲神社 / wave0-021 大阪天満宮 / wave0-025 大崎八幡宮
+```
+
+G4の実処理は本監査のscope外である。Source availabilityをFact verificationへ変換しない。
 
 ---
 
@@ -224,63 +221,83 @@ G4へ到達したCandidateはない。Source availabilityをFact verificationへ
 | Gate | 建勲神社 | 水堂須佐男神社 | 大阪天満宮 | 毛谷黒龍神社 | 大崎八幡宮 |
 |---|---|---|---|---|---|
 | G0 Registry | PASS | PASS | PASS | PASS | PASS |
-| G1 Identity | **NOT_PASSED** | **NOT_PASSED** | **NOT_PASSED** | **NOT_PASSED** | **NOT_PASSED** |
-| G2 Position | NOT EXECUTED | NOT EXECUTED | NOT EXECUTED | NOT EXECUTED | NOT EXECUTED |
-| G3 Source / Model Fit | NOT ADOPTED | NOT ADOPTED | NOT ADOPTED | NOT ADOPTED | NOT ADOPTED |
-| Source Packet Freeze | NOT FROZEN | NOT FROZEN | NOT FROZEN | NOT FROZEN | NOT FROZEN |
-| G4 Evidence | NOT EXECUTED | NOT EXECUTED | NOT EXECUTED | NOT EXECUTED | NOT EXECUTED |
+| G1 Identity | PASS | PASS | PASS | PASS | PASS |
+| G2 Position | PASS | **HOLD_POSITION_REVIEW** | PASS | PASS | PASS |
+| G3 Source / Model Fit | PASS | NOT EVALUATED | PASS | **MODEL_REVIEW_REMAINS** | PASS |
+| Source Packet Freeze | NOT FROZEN | — | NOT FROZEN | — | NOT FROZEN |
+| G4 Evidence | ELIGIBLE / NOT EXECUTED | — | ELIGIBLE / NOT EXECUTED | — | ELIGIBLE / NOT EXECUTED |
 | G5–G8 | out of scope | out of scope | out of scope | out of scope | out of scope |
+
+```text
+G1 = 5 PASS / 0 HOLD
+G2 = 4 PASS / 1 HOLD
+G3 = 3 PASS / 1 HOLD   (1 not evaluated: G2 HOLD)
+G4 eligible = 3
+```
 
 ### Blockers
 
-| Shrine | Owning Gate | Blocker |
-|---|---|---|
-| 建勲神社 | G1 | `IDENTITY_VERIFICATION_BLOCKED`: official name / address not directly verifiable in this environment |
-| 水堂須佐男神社 | G1 | same |
-| 大阪天満宮 | G1 | same |
-| 毛谷黒龍神社 | G1 | same |
-| 大崎八幡宮 | G1 | same |
+| candidate_id | Shrine | Owning Gate | Blocker |
+|---|---|---|---|
+| wave0-020 | 水堂須佐男神社 | G2 | `HOLD_POSITION_REVIEW` |
+| wave0-022 | 毛谷黒龍神社 | G3 | `MODEL_REVIEW_REMAINS` |
 
-5社の停止は候補ごとに独立して判定した結果であり、同一の環境要因による。
-Gate Contractはbatch-level failureを要求していない。1社が通過可能になれば、他社を待たずに進められる。
+2社のHOLDは候補ごとの判定であり、他3社のG4進行を止めない（Gate Contractにbatch-level failureの規定はない）。
 
-```text
-Candidates eligible for the next Gate = 0 / 5
-```
+### Candidate Master boundary
+
+- 本監査はCandidate Masterを変更しない。5社とも `candidate_status = BUILD_READY`、
+  `build_batch = W0-DB04` のまま。
+- Post-batch HOLDへの遷移（`docs/knowledge/shrine-expansion-candidate-master-contract.md`
+  §Post-batch HOLD Boundary）は「遷移できる」規定であり、本Gate段階で必須とはされていない。
+- wave0-022について `docs/audit/shrine-model-risk/` のCurrent Model Risk Resolution Recordは作成しない。
+  作成すると `candidate_status = HOLD` が要求されるため、Candidate Masterのlifecycle変更と
+  合わせてMother Ship判断で別途行う。
+- いずれのHOLD Candidateも次Gateへ昇格させない。
 
 ---
 
 ## Re-entry
 
-次のいずれかで、各CandidateをG1から再判定する。
+| candidate_id | Re-entry |
+|---|---|
+| wave0-019 / 021 / 025 | Source Packet Freeze（Mother Ship verification値の記録）→ G4 |
+| wave0-020 | G2 Position再判定（Position Contract §Existing Coordinate Conflict / §Source Adoption Rule）→ PASS後にG3から |
+| wave0-022 | G3 focused review（Model Risk Release Contract §5.3）→ CURATION_RELEASE / MODEL_CHANGE_REQUIRED / MODEL_REVIEW_REMAINS を再判定 |
 
-1. **Mother Ship direct verification packet**（W0-DB03 Source Packet Freezeと同じ形式）
-   - official_name / official_address / official_source_type / official_source_url
-   - 直接検証の完了時刻（ISO-8601、`verified_at`）
-   - position source / latitude / longitude / corroboration
-   - Deity / History / goriyaku の Source本文抜粋と位置
-2. **実行環境のegress許可**: 上記ホストを許可した環境で本Preflightを再実行する。
-
-再判定はG1から順に行う。Repository availability記録だけでG1をPASSにしない。
+HOLD解除は自動ではない。問題を所有するGateの再判定が先である。
 
 ---
 
 ## Files / Data Changed
 
 ```text
-Production DB                                NONE
-backend/temples/data/shrines_seed_clean.json NONE
-Knowledge Seed                               NONE
-Candidate Master JSON                        NONE
+Production DB                                  NONE
+backend/temples/data/shrines_seed_clean.json   NONE
+Knowledge Seed                                 NONE
+Candidate Master JSON                          NONE
+Model Risk Resolution Record                   NONE
 Recommendation / Ranking / Concierge / Compass NONE
-Schema / Migration                           NONE
-A-5b records                                 NONE
+Schema / Migration / Runtime                   NONE
+A-5b records                                   NONE
 ```
 
 変更は本Audit文書のみ。
 
+---
+
+## Revision record
+
+| Revision | Date | Change |
+|---|---|---|
+| 1 (PR #3069) | 2026-10-03 | 初回Preflight。実行環境から公式Sourceへ到達できず、G1 `NOT_PASSED` 5/5（`IDENTITY_VERIFICATION_BLOCKED`）、G2〜G4未実施として記録 |
+| 2 | 2026-10-03 | Mother Ship verified G1〜G3 resultsを反映。G1 5 PASS、G2 4 PASS / 1 HOLD（wave0-020）、G3 3 PASS / 1 HOLD（wave0-022）、G4 eligible 3社。検証値はNOT RECORDED |
+
+Revision 1の `IDENTITY_VERIFICATION_BLOCKED` は実行環境の到達性に関する記録であり、
+神社identityに関する所見ではなかった。Revision 2で現在の結果を置き換える。
+
 ## Final Classification
 
 ```text
-W0_DB04_G1_VERIFICATION_BLOCKED_5_OF_5
+W0_DB04_G1_G3_MOTHER_SHIP_VERIFIED_3_TO_G4_1_POSITION_HOLD_1_MODEL_HOLD
 ```
