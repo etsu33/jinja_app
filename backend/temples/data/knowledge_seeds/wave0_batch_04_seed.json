@@ -1,0 +1,337 @@
+{
+  "schema_version": "1.0",
+  "sources": [
+    {
+      "key": "wave0-db04-kenkun-official",
+      "source_type": "shrine_official",
+      "title": "建勲神社について",
+      "publisher": "建勲神社",
+      "url": "https://kenkun-jinja.org/history/",
+      "bibliography": "",
+      "accessed_at": "2026-10-03",
+      "verified_at": "2026-10-03T00:00:00+09:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "W0-DB04 Evidence Backfill Freeze（docs/audit/shrine-expansion-wave0-db04-evidence-backfill-freeze.md）で凍結したSource。"
+    },
+    {
+      "key": "wave0-db04-osakatemmangu-official",
+      "source_type": "shrine_official",
+      "title": "大阪天満宮について",
+      "publisher": "大阪天満宮",
+      "url": "https://osakatemmangu.or.jp/about",
+      "bibliography": "",
+      "accessed_at": "2026-10-03",
+      "verified_at": "2026-10-03T00:00:00+09:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "W0-DB04 Evidence Backfill Freeze（docs/audit/shrine-expansion-wave0-db04-evidence-backfill-freeze.md）で凍結したSource。"
+    },
+    {
+      "key": "wave0-db04-oosaki-hachiman-jinja-authority",
+      "source_type": "government",
+      "title": "宮城県神社庁「大崎八幡宮」",
+      "publisher": "宮城県神社庁",
+      "url": "https://miyagi-jinjacho.or.jp/jinja-search/detail.php?code=310010033",
+      "bibliography": "",
+      "accessed_at": "2026-10-03",
+      "verified_at": "2026-10-03T00:00:00+09:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": "W0-DB04 Evidence Backfill Freeze（docs/audit/shrine-expansion-wave0-db04-evidence-backfill-freeze.md）で凍結したSource。"
+    }
+  ],
+  "shrines": [
+    {
+      "shrine_ref": {
+        "name_jp": "建勲神社",
+        "address": "京都府京都市北区紫野北舟岡町49"
+      },
+      "deities": [
+        {
+          "display_name": "織田信長公",
+          "canonical_name": "織田信長公",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-03T00:00:00+09:00",
+          "note": "source_role = 主祭神",
+          "source_keys": [
+            "wave0-db04-kenkun-official"
+          ]
+        },
+        {
+          "display_name": "織田信忠卿",
+          "canonical_name": "織田信忠卿",
+          "role": "enshrined",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-03T00:00:00+09:00",
+          "note": "source_role = 配祀",
+          "source_keys": [
+            "wave0-db04-kenkun-official"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "founding",
+          "title": "建勲神社創立の宣下",
+          "content": "明治天皇による神社創立の宣下",
+          "period_text": "1869",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-03T00:00:00+09:00",
+          "note": "境界: founding = 1869。",
+          "source_keys": [
+            "wave0-db04-kenkun-official"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "神号「建勲」の宣下",
+          "content": "神号「建勲」の宣下",
+          "period_text": "1870",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-03T00:00:00+09:00",
+          "note": "",
+          "source_keys": [
+            "wave0-db04-kenkun-official"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "別格官幣社列格と船岡山の社地",
+          "content": "別格官幣社に列格、船岡山に社地",
+          "period_text": "1875",
+          "event_date": null,
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-03T00:00:00+09:00",
+          "note": "",
+          "source_keys": [
+            "wave0-db04-kenkun-official"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "社殿造営と織田信忠卿の配祀",
+          "content": "社殿造営、織田信忠卿を配祀",
+          "period_text": "1880",
+          "event_date": null,
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-03T00:00:00+09:00",
+          "note": "",
+          "source_keys": [
+            "wave0-db04-kenkun-official"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "現在地への移建",
+          "content": "山麓から山上の現在地へ本殿以下諸舎を移建",
+          "period_text": "1910",
+          "event_date": null,
+          "sort_order": 4,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-03T00:00:00+09:00",
+          "note": "境界: 1910は移建であり創建ではない。",
+          "source_keys": [
+            "wave0-db04-kenkun-official"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "大阪天満宮",
+        "address": "大阪市北区天神橋2丁目1番8号"
+      },
+      "deities": [
+        {
+          "display_name": "菅原道真公",
+          "canonical_name": "菅原道真公",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-03T00:00:00+09:00",
+          "note": "",
+          "source_keys": [
+            "wave0-db04-osakatemmangu-official"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "regional_context",
+          "title": "大将軍社の鎮座",
+          "content": "大将軍社がこの地に祀られる",
+          "period_text": "650",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-03T00:00:00+09:00",
+          "note": "境界: 大将軍社の前史・地域文脈。大阪天満宮の創建ではない。",
+          "source_keys": [
+            "wave0-db04-osakatemmangu-official"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "菅原道真公の大将軍社参拝",
+          "content": "菅原道真公が太宰府へ向かう途中、大将軍社に参拝し旅の無事を祈願",
+          "period_text": "901",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-03T00:00:00+09:00",
+          "note": "",
+          "source_keys": [
+            "wave0-db04-osakatemmangu-official"
+          ]
+        },
+        {
+          "history_type": "founding",
+          "title": "大阪天満宮の創建",
+          "content": "村上天皇の勅命により社を建立し、菅原道真公の御霊を祀る",
+          "period_text": "949",
+          "event_date": null,
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-03T00:00:00+09:00",
+          "note": "境界: 949が大阪天満宮の創建。",
+          "source_keys": [
+            "wave0-db04-osakatemmangu-official"
+          ]
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "大崎八幡宮",
+        "address": "宮城県仙台市青葉区八幡4-6-1"
+      },
+      "deities": [
+        {
+          "display_name": "応神天皇",
+          "canonical_name": "応神天皇",
+          "role": "primary",
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-03T00:00:00+09:00",
+          "note": "",
+          "source_keys": [
+            "wave0-db04-oosaki-hachiman-jinja-authority"
+          ]
+        },
+        {
+          "display_name": "仲哀天皇",
+          "canonical_name": "仲哀天皇",
+          "role": "primary",
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-03T00:00:00+09:00",
+          "note": "",
+          "source_keys": [
+            "wave0-db04-oosaki-hachiman-jinja-authority"
+          ]
+        },
+        {
+          "display_name": "神功皇后",
+          "canonical_name": "神功皇后",
+          "role": "primary",
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-03T00:00:00+09:00",
+          "note": "",
+          "source_keys": [
+            "wave0-db04-oosaki-hachiman-jinja-authority"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "regional_context",
+          "title": "成島八幡系統の系譜",
+          "content": "成島八幡系統の福島伊達時代から米沢を経て仙台へ遷る系譜",
+          "period_text": "",
+          "event_date": null,
+          "sort_order": 0,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-03T00:00:00+09:00",
+          "note": "境界: 単一年を持たない系譜。",
+          "source_keys": [
+            "wave0-db04-oosaki-hachiman-jinja-authority"
+          ]
+        },
+        {
+          "history_type": "regional_context",
+          "title": "大崎八幡系統の系譜",
+          "content": "大崎八幡系統が葛西大崎地方で崇敬され、中世以来水沢・田尻を経て岩出山に仮宮を設けた系譜",
+          "period_text": "",
+          "event_date": null,
+          "sort_order": 1,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-03T00:00:00+09:00",
+          "note": "境界: 単一年を持たない系譜。大崎市岩出山の別の神社entityとは別。",
+          "source_keys": [
+            "wave0-db04-oosaki-hachiman-jinja-authority"
+          ]
+        },
+        {
+          "history_type": "official_origin",
+          "title": "二系統の集結と現在地での造営",
+          "content": "二つの系統を集結し、仙台開府後、現在地に社殿を造営",
+          "period_text": "",
+          "event_date": null,
+          "sort_order": 2,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-03T00:00:00+09:00",
+          "note": "境界: 単一の創建年へ平坦化しない。",
+          "source_keys": [
+            "wave0-db04-oosaki-hachiman-jinja-authority"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "慶長12年の遷座祭",
+          "content": "遷座祭を斎行",
+          "period_text": "慶長12年（1607）8月12日",
+          "event_date": null,
+          "sort_order": 3,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-03T00:00:00+09:00",
+          "note": "境界: 1607は信仰・歴史の起源ではない。",
+          "source_keys": [
+            "wave0-db04-oosaki-hachiman-jinja-authority"
+          ]
+        }
+      ]
+    }
+  ]
+}

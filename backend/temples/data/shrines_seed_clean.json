@@ -2194,5 +2194,44 @@
       "lat": 33.861611,
       "lng": 130.767333
     }
+  },
+  {
+    "name_jp": "建勲神社",
+    "address": "京都府京都市北区紫野北舟岡町49",
+    "latitude": 35.0386537,
+    "longitude": 135.7431512,
+    "goriyaku": "",
+    "kyusei": null,
+    "astro_elements": [],
+    "location": {
+      "lat": 35.0386537,
+      "lng": 135.7431512
+    }
+  },
+  {
+    "name_jp": "大阪天満宮",
+    "address": "大阪市北区天神橋2丁目1番8号",
+    "latitude": 34.6958917,
+    "longitude": 135.5126472,
+    "goriyaku": "",
+    "kyusei": null,
+    "astro_elements": [],
+    "location": {
+      "lat": 34.6958917,
+      "lng": 135.5126472
+    }
+  },
+  {
+    "name_jp": "大崎八幡宮",
+    "address": "宮城県仙台市青葉区八幡4-6-1",
+    "latitude": 38.2725678,
+    "longitude": 140.8449622,
+    "goriyaku": "",
+    "kyusei": null,
+    "astro_elements": [],
+    "location": {
+      "lat": 38.2725678,
+      "lng": 140.8449622
+    }
   }
 ]

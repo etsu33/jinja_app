@@ -143,6 +143,21 @@ HYDRATED_BUILD_BATCHES = ("W0-DB01", "W0-DB02")
 W0_DB03_G4_HYDRATED_IDS = frozenset({"wave0-012", "wave0-013", "wave0-015", "wave0-016"})
 W0_DB03_MODEL_HOLD_ID = "wave0-014"
 
+# W0-DB04 G4 re-entry（docs/audit/shrine-expansion-wave0-db04-g4-reentry.md）は
+# Evidence Backfill Freeze（docs/audit/shrine-expansion-wave0-db04-evidence-backfill-freeze.md）
+# の3社だけを hydrate する。goriyaku / goriyaku_tags は G4 対象外の architecture HOLD のため
+# hydrate しない。wave0-020（G2 HOLD_POSITION_REVIEW）/ wave0-022（G3 MODEL_REVIEW_REMAINS）は未 hydrate。
+W0_DB04_G4_HYDRATED_IDS = frozenset({"wave0-019", "wave0-021", "wave0-025"})
+W0_DB04_G4_HYDRATION_FIELDS = {
+    "official_name",
+    "official_address",
+    "official_source_type",
+    "official_source_url",
+    "verified_at",
+    "latitude",
+    "longitude",
+}
+
 REQUIRED_W0_DB01_HYDRATION_FIELDS = {
     "official_name",
     "official_address",
@@ -878,6 +893,10 @@ def test_wave0_db03_to_db07_remain_unhydrated():
                 continue
             if row["candidate_id"] in W0_DB03_G4_HYDRATED_IDS:
                 continue
+            if row["candidate_id"] in W0_DB04_G4_HYDRATED_IDS:
+                hydrated = REQUIRED_W0_DB01_HYDRATION_FIELDS & row.keys()
+                assert hydrated == W0_DB04_G4_HYDRATION_FIELDS, (row["candidate_id"], sorted(hydrated))
+                continue
             leaked = REQUIRED_W0_DB01_HYDRATION_FIELDS & row.keys()
             assert not leaked, (batch, row["candidate_id"], sorted(leaked))
 
@@ -930,6 +949,11 @@ def test_wave0_duplicate_and_availability_states_match_completed_audits():
             assert effective["identity_status"] == "CONFIRMED"
             assert effective["official_source_status"] == "CONFIRMED"
             assert effective["knowledge_status"] == "FACT_READY"
+        elif row["candidate_id"] in W0_DB04_G4_HYDRATED_IDS:
+            # G4 re-entry: identity / official source は確定。knowledge は Production 実測前のため既定のまま。
+            assert effective["identity_status"] == "CONFIRMED"
+            assert effective["official_source_status"] == "CONFIRMED"
+            assert effective["knowledge_status"] == "ACQUISITION_PATH_CONFIRMED"
         elif row["candidate_status"] == "REVIEW":
             assert effective["identity_status"] == "UNREVIEWED"
             assert effective["official_source_status"] == "UNREVIEWED"
