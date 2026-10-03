@@ -20,6 +20,7 @@
 - Revision 2026-10-01: Erroneous pre-FREEZE replacement lifecycle (§6.5, §20)
 - Revision 2026-10-01: candidate_order and reason_code rules (§7, §21)
 - Revision 2026-10-02: Legacy Pattern B 6 lifecycle status and mutation accounting (§7.3.1, §7.3.2, §12, §22)
+- Revision 2026-10-03: Reproducibility comparison contract (§10, §10.1, §12, §23)
 
 ## 1. Purpose
 
@@ -807,7 +808,7 @@ repository is not a Production write and not a DB mutation.
 
 ## 10. Determinism / reproducibility
 
-The candidate input set must be fixed before classification. A §6.4 replacement does not change the fixed set: it occupies an existing position, and the reproducibility comparison includes both identities and the replacement provenance (§7).
+The candidate input set must be fixed before classification. A §6.4 replacement does not change the fixed set: it occupies an existing position. The lifecycle (§6.4 / §6.5) resolves the position to one current authoritative identity before projection. Historical identities and the replacement provenance (§7) stay Artifact data. They are not part of the reproducibility equality output (§10.1 D, §23).
 
 A-5b run1 must be frozen before an independent run2 comparison.
 
@@ -816,6 +817,224 @@ The reproducibility comparison must use only fields whose generation authority i
 If a field is discovered to have no canonical repository authority, its provenance must be recorded and the field must be explicitly included or excluded before the reproducibility Gate is evaluated.
 
 A reproducibility PASS does not prove Source truth or Production import eligibility. It proves only deterministic reproduction of the frozen comparison contract.
+
+### 10.1 Reproducibility comparison contract (Mother Ship, 2026-10-03)
+
+```text
+A5B_REPRODUCIBILITY_TARGET
+= CANONICAL_PROJECTION_OF_FIXED_10_CANDIDATE_STATE
+```
+
+This section is the "fixed comparison contract" of §10 and §12.
+
+**A. Target.** The reproducibility Gate compares a deterministic canonical
+projection of the authoritative current state of the 10 fixed A-5b candidates. It
+does not compare Artifact files byte for byte.
+
+**B. Fixed input.**
+
+- One repository commit, identified by its full git commit SHA (the input commit).
+- At that commit, only the git-tracked authoritative records listed in E are read.
+- The comparison output location (G) is never an input.
+
+**C. Comparison fields.** Closed list. A field not listed here is excluded.
+
+| Group | Fields |
+|---|---|
+| Candidate identity | `candidate_order`, `shrine_ref.name_jp`, `shrine_ref.address`, `source_attested_label` |
+| Decision | `a5b_freeze_status`, `reason_code` |
+| Collective | `role`, `sort_order`, `member_count`, `member_count_relation`, `member_list_status`, `verification_status`, `confidence` |
+| Membership (each supplied) | `deity_ref.display_name` (the portable reference, Seed 1.1 contract §6.2), `sort_order`, `verification_status`, `confidence` |
+| Evidence identity | Source semantic identity `source_type` + normalized URL (§7.1); assertion-to-Source reference identity |
+
+Explicitly excluded from equality:
+
+- `resolved_shrine_id`
+- `verified_at` (Collective and Membership)
+- Source `accessed_at` and Source verification timestamps
+- `note`, Membership `note`, `review_note`
+- excerpts, evidence `location` / page prose, audit commentary
+- repository formatting
+
+Also excluded by the closed list:
+
+- `support_status`
+- `source_key`, `collective_source_keys`, `memberships[].source_keys` (file-local keys, §7.1)
+- Source `title`, `publisher`, `verification_status`, `confidence`
+- `candidate_name` / `candidate_address`. They are carried by `shrine_ref`
+- `replacement_progression`, historical statuses, and the replacement provenance
+
+Excluded fields stay valid Artifact / provenance data. The exclusion applies only to
+reproducibility equality.
+
+**D. Lifecycle resolution.**
+
+- The projection holds exactly one candidate object per logical position.
+- Each position is first resolved to its one current authoritative identity and
+  state under §6.4 / §6.5 and §7.3.1.
+- Historical, replaced, and `replacement_progression = INVALIDATED` identities are
+  not projected. They never create a candidate object.
+- If a position has zero, or two or more, current authoritative records, the Gate is
+  `UNRESOLVED`.
+
+**E. Record map.** Where each value is read, by position class:
+
+| Position class | Identity / decision | Collective / Memberships | Sources / assertion references |
+|---|---|---|---|
+| §7.3.1 grandfathered (current: 1–6) | §7.3.1 table: `candidate_order`, Shrine, label, status, `reason_code`. `shrine_ref.address`: the `shrine_ref` of the Pattern B Seed block whose `name_jp` matches | the Pattern B Seed Collective with that `source_attested_label` in that block, and its `memberships` | the Seed `sources[]` entries named by the Collective's and each Membership's `source_keys` |
+| §7.1 Freeze Evidence Artifact (current: 7, 8, 10) | the Artifact's candidate identity block and "Current candidate fields (§7)" table. For position 10 only the current authoritative section C applies (§6.5 C) | the same table; `memberships[]` as recorded by the Artifact | the Artifact's `sources[]` table for the current verification event; the §7.1 evidence block entries |
+| HOLD / EXCLUDE Artifact (current: 9) | the Artifact's candidate identity and final record (`a5b_freeze_status`, `reason_code`) | not projected (F, null rule) | not projected (F, null rule) |
+
+- Pattern B Seed: `backend/temples/data/knowledge_seeds/a5b_collective_pattern_b_seed.json`.
+- Pattern B values are read as recorded. They are not re-evaluated under P1–P5 and are
+  not rewritten into the §7.1 format (§7.3.1).
+- A Seed field omitted from a Seed entry takes its Seed 1.1 contract §5.1 / §6.1
+  default. That default is the contract-defined meaning of the omission. No other
+  default is applied.
+- Values are taken verbatim. No Unicode, numeral, width, or parenthesis normalization.
+  In an Artifact table, a value in backticks is the text inside the backticks, and
+  `""` is the empty string.
+- When this map no longer matches the records (for example, a new candidate-level
+  Artifact supersedes a position), the Gate is `UNRESOLVED` until this map is
+  revised.
+
+**F. Projection schema.**
+
+Top level:
+
+```text
+projection           "a5b-reproducibility-projection"
+projection_version   1
+candidates           array of exactly 10 candidate objects
+```
+
+Candidate object:
+
+| Key | Type | Value |
+|---|---|---|
+| `candidate_order` | integer | |
+| `shrine_ref` | object | `{"address", "name_jp"}` |
+| `source_attested_label` | string | |
+| `a5b_freeze_status` | string | `FREEZE` / `HOLD` / `EXCLUDE` |
+| `reason_code` | string | §7 reason_code mapping |
+| `collective` | object or null | `role`, `sort_order`, `member_count` (integer or null), `member_count_relation`, `member_list_status`, `verification_status`, `confidence` |
+| `memberships` | array or null | objects `{"confidence", "deity_ref": {"display_name"}, "sort_order", "verification_status"}` |
+| `sources` | array or null | objects `{"source_type", "url"}` |
+| `assertion_sources` | array or null | objects `{"assertion", "source_type", "url"}` |
+
+Null rule:
+
+- `a5b_freeze_status = FREEZE`: `collective`, `memberships`, `sources`, and
+  `assertion_sources` are required and non-null. `memberships` may be `[]`.
+- `a5b_freeze_status = HOLD` or `EXCLUDE`: all four are `null`. A HOLD / EXCLUDE
+  candidate has no frozen packet (§6.1 "FREEZE means only that the candidate packet
+  is frozen"; §6.2). Values a HOLD record mentions are not projected.
+- For a HOLD / EXCLUDE candidate, `null` means only "not projected under the
+  reproducibility comparison contract because the candidate is not frozen". It does
+  not mean unknown, absent in the authoritative Artifact, unsupported, unverified, or
+  a default value.
+- The null rule never fills a missing required value of a FREEZE candidate. That
+  case is `UNRESOLVED` (I).
+
+`url` is `normalize_source_url(url)` as implemented at the input commit in
+`backend/temples/services/knowledge_seed.py` (§7.1).
+
+`assertion_sources`:
+
+- §7.1 Artifact: one entry per evidence-block entry, whatever its
+  `support_status`. `assertion` is the asserted field name
+  (`source_attested_label`, `role`, `member_count`, `member_count_relation`), or
+  `membership:` + `deity_ref.display_name` for a Membership entry. The Source is the
+  entry's `source_ref`.
+- §7.3.1 Seed: one entry per Source key on the Collective (`assertion` =
+  `collective`) and on each Membership (`assertion` = `membership:` +
+  `deity_ref.display_name`), resolved through the Seed `sources[]`.
+
+`sources`:
+
+- §7.1 Artifact: the distinct Source identities in the Artifact's `sources[]` table
+  for the current verification event, together with every Source in
+  `assertion_sources`.
+- §7.3.1 Seed: only the distinct Sources in `assertion_sources`. The Seed's top-level
+  `sources[]` is shared by all blocks and is not projected as a whole.
+
+**G. Ordering.**
+
+- `candidates`: ascending `candidate_order`.
+- `memberships`: the array order of the authoritative record (Seed `memberships`
+  order, or the Artifact `memberships[]` order). No contract defines a semantic
+  Membership order, and `sort_order` does not order them (all Pattern B Memberships
+  have `sort_order = 0`). This record order is only a deterministic serialization
+  order for reproducibility. It does not establish or imply deity priority,
+  religious hierarchy, semantic importance, or a canonical worship order.
+- `sources`: ascending by `source_type`, then `url`. Exact duplicates are removed.
+- `assertion_sources`: ascending by `assertion`, then `source_type`, then `url`.
+  Exact duplicates are removed.
+- All string comparison is by Unicode code point, not by UTF-16 code unit or locale.
+
+**H. Canonical serialization.**
+
+- JSON (RFC 8259), encoded as UTF-8 without a BOM.
+- Object keys ascending by Unicode code point, at every level.
+- Array order as in G.
+- No whitespace outside strings. Separators are exactly `,` and `:`. No indentation.
+- Strings: non-ASCII characters are written literally, not as `\u` escapes, and
+  Unicode is not normalized. Escape only `"` as `\"`, `\` as `\\`, and U+0000–U+001F:
+  `\b` `\f` `\n` `\r` `\t` where defined, otherwise `\u00xx` with lowercase hex. `/`
+  is not escaped.
+- Numbers: integers only, in decimal, with no sign `+`, leading zero, fraction, or
+  exponent.
+- `null` is the literal `null`. No booleans are used.
+- The byte stream ends with exactly one LF (0x0A) after the JSON value.
+
+Reference equivalent: Python
+`json.dumps(projection, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n"`,
+encoded as UTF-8.
+
+Hash: SHA-256 of the canonical bytes, written as lowercase hex.
+
+**I. Comparison result.**
+
+| Result | When |
+|---|---|
+| `PASS` | run1 and run2 each produce a valid projection (F, exactly 10 candidates) from the same input commit, the canonical bytes are identical, and the SHA-256 hashes are identical |
+| `FAIL` | both projections are valid and the bytes differ |
+| `UNRESOLVED` | either run cannot produce a valid projection: a required value is missing or ambiguous, a position does not resolve to one record (D), or the record map does not match (E). Nothing is defaulted to complete it |
+
+Byte equality is authoritative. Hash equality is a recorded confirmation.
+
+**J. run1 freeze and run2.**
+
+- run1 output location: `docs/audit/a5b-reproducibility/run1-projection.json`. This
+  follows the existing `docs/audit/<topic>/*.json` audit-output convention. The file
+  holds exactly the canonical bytes (H).
+- run record: the input commit SHA, the process, the SHA-256, and the side effects
+  of each run are recorded in the reproducibility section of
+  `docs/audit/collective-deity-a5b-fixed-candidate-set-closure-audit.md`.
+- run1 is frozen when its output and run record are committed.
+- run2 regenerates the projection from the same input commit without reading the run1
+  output. A separate implementation is allowed but not required. run2 output need not
+  be committed; its SHA-256 and the byte comparison are recorded.
+
+**K. Boundary.**
+
+- Authoritative candidate evidence and decisions remain the records in E (contract
+  tables, Artifacts, Seed).
+- The projection is reproducibility comparison output only. It is not a Source of
+  truth for candidate semantics, not a Seed, not Production data, and not read by the
+  importer or runtime.
+- If the projection and an authoritative record disagree, the record governs. The
+  projection is then regenerated; it is never hand-edited.
+
+**L. Safety.** The process is read-only. It reads git-tracked files at the input
+commit and may call the pure function `normalize_source_url`. It does not access the
+DB or the network. It does not write Seed, candidate Artifacts, candidate decisions,
+or Production. It does not run the importer. Its only write is the run1 output and
+run record (J).
+
+**M. Not changed by this section.** Candidate states, the fixed universe, §6.1–§6.5,
+§7.3.1, P1–P5, Seed 1.1 schema and data, DB, importer, runtime, Production. The B3
+(position 9) HOLD is unaffected and is projected under the null rule.
 
 ## 11. Downstream boundary
 
@@ -858,7 +1077,7 @@ A-5b candidate freeze may close only when:
 - no unresolved conflict is hidden by inference
 - no Production or DB mutation occurred during the freeze audit. Legacy Pattern B
   materialization is historical downstream execution, accounted separately (§7.3.2)
-- the frozen artifact is reproducible under its fixed comparison contract
+- the frozen artifact is reproducible under its fixed comparison contract (§10.1)
 
 Only then may A-5b be recorded as closed.
 
@@ -1146,3 +1365,41 @@ Unchanged:
 - candidates 7–10
 - Seed 1.1 schema and data, DB models and data, importer, runtime, Production
 - the historical candidate-freeze document and the Pattern B Production records
+
+## 23. Revision record — Reproducibility comparison contract (2026-10-03)
+
+Mother Ship decision:
+
+```text
+A5B_REPRODUCIBILITY_TARGET
+= CANONICAL_PROJECTION_OF_FIXED_10_CANDIDATE_STATE
+```
+
+Origin: `docs/audit/collective-deity-a5b-fixed-candidate-set-closure-audit.md` §15
+recorded the contract §10 run1 / run2 Gate as NOT RECORDED. No fixed comparison
+contract existed (blocker B4).
+
+Added:
+
+- §10.1: the comparison target, fixed input, closed comparison field list and
+  exclusions, lifecycle resolution, record map, projection schema with the
+  HOLD / EXCLUDE null rule, ordering, canonical JSON serialization, comparison
+  result, run1 freeze location, boundary, and safety
+- §12: pointer from the reproducibility criterion to §10.1
+
+Changed:
+
+- §10 first paragraph. It said the comparison includes both §6.4 identities and the
+  replacement provenance. Under this decision, the position is resolved to its
+  current identity first, and historical identities and provenance are not part of
+  the equality output. They remain Artifact data
+
+Unchanged:
+
+- candidate states (FREEZE 9 / HOLD 1 / EXCLUDE 0), the fixed universe, and
+  `candidate_order`
+- §6.1–§6.5, §7, §7.1, §7.3.1, §7.3.2, P1–P5, §12.8
+- Seed 1.1 schema and data, DB, importer, runtime, Production
+- position 9 HOLD (B3)
+
+Not done: run1 and run2 were not executed. B4 stays open until they are.

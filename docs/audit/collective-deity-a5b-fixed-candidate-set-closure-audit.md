@@ -25,6 +25,9 @@
   unchanged.
 - Revision 2026-10-02 (5): Mother Ship final decision recorded (A-5b `NOT_CLOSED`).
   See §17, §23. No candidate status or aggregate changed.
+- Revision 2026-10-03 (6): the fixed comparison contract for the contract §10 run1 /
+  run2 Gate is now defined (contract §10.1). B4 stays open: run1 / run2 not executed.
+  See §24. No candidate status or aggregate changed.
 
 ## 1. Audit scope
 
@@ -428,6 +431,11 @@ CONTRACT §10 RUN1/RUN2 GATE        NOT RECORDED. All 10 positions now have a st
                                    per-candidate artifact set is recorded
 ```
 
+Revision (6): the fixed comparison contract is now contract §10.1. The Gate is still
+NOT RECORDED because run1 / run2 under §10.1 have not been executed. The step 1–4
+runs above are audit-derived extraction. They are not the §10.1 projection and do not
+count as run1 / run2.
+
 The 2026-10-01 count-confirmation run1/run2 covers the 10 identities only (digest
 `83401ac7…e109`), not `a5b_freeze_status`. A reproducibility PASS does not prove
 Source truth (contract §10).
@@ -698,4 +706,27 @@ migration                   0
 DB / Production write       0
 runtime change              0
 files changed               1 (this document)
+```
+
+## 24. Revision record — 2026-10-03 (6)
+
+The contract §10 / §12 fixed comparison contract is defined in contract §10.1
+(contract §23).
+
+| Item | Before | After |
+|---|---|---|
+| fixed comparison contract | not defined | contract §10.1 |
+| contract §10 run1 / run2 Gate | NOT RECORDED | NOT RECORDED (run1 / run2 not executed) |
+| B4 | open | open |
+| FREEZE / HOLD / EXCLUDE / NOT_RECORDED | 9 / 1 / 0 / 0 | 9 / 1 / 0 / 0 |
+| position 9 | `HOLD` / `UNSATISFIED_FREEZE_CONDITIONS` | unchanged |
+| `CLOSURE_CANDIDATE` / Mother Ship decision | NO / `NOT_CLOSED` | unchanged |
+
+Mutation record for this revision:
+
+```text
+candidate status change     0
+run1 / run2 executed        0
+Seed / importer / migration / DB / Production / runtime change   0
+files changed               2 (this document; A-5b freeze contract)
 ```
