@@ -584,3 +584,515 @@ Do not:
 - create Canonical Anchor rows
 - perform Production writes
 - begin PHASE_3
+
+
+---
+
+## 10. Follow-up — Batch 01 Resumed After F-7 Decision
+
+### Status
+
+- Resumed at: 2026-09-24
+- Resume base: develop `644675a8478c2607a211fa5803bb3f4cc461a992`
+- F-7 Mother Ship decision: MERGED via PR #2980
+- Active F-7: `representative_point`
+- Canonical DB write: NONE
+- Production write: NONE
+- Seed write: NONE
+- Runtime cutover: NONE
+
+PR #2980 resolved the previous
+`DIRECT_POINT_PACKET_FINAL_POINT_REPRESENTATION` contract gap.
+
+Active rule:
+
+```text
+DIRECT_POINT
+-> F-7 representative_point is the exact verified subject-matched F-5 coordinate
+
+UNWEIGHTED_COMPONENT_MEAN
+-> F-7 representative_point is the deterministic mean of exactly all INCLUDED F-5 coordinates
+
+F-8.to_coordinate
+-> F-7 representative_point
+```
+
+Batch 01 was resumed under that rule.
+
+---
+
+## 11. Production Navigation Read-only Access Gate
+
+### 11.1 Render workspace confirmation
+
+The explicitly authorized Production workspace was confirmed:
+
+```text
+workspace_name = エツ's workspace
+workspace_id   = tea-d18eq9qdbo4c739j9sdg
+```
+
+Production backend:
+
+```text
+service_name = jinja-backend
+service_id   = srv-d4sk1uscjiac739ko5r0
+branch       = develop
+region       = singapore
+```
+
+### 11.2 Database provider
+
+The user confirmed that the Production database is hosted in Supabase.
+
+Render reports no Render-managed Postgres instance in the authorized workspace,
+which is consistent with Render hosting the backend while `DATABASE_URL` points to
+an external Supabase Postgres database.
+
+### 11.3 Live SELECT result
+
+Supabase is connected in the ChatGPT product for this request, but the current
+execution surface did not expose a callable Supabase SQL action.
+
+The sanctioned local credential bridge also is not available in this container, and
+the public Production API could not be resolved from this execution environment.
+
+Therefore the requested point-in-time live SELECT was **not fabricated from historical values**.
+
+```text
+PRODUCTION_NAVIGATION_LIVE_SELECT
+= NOT_EXECUTED
+
+REASON
+= SUPABASE_SQL_ACTION_NOT_EXPOSED_IN_CURRENT_EXECUTION_SURFACE
+
+PRODUCTION_WRITE
+= NONE
+```
+
+### 11.4 Previously audited / migration-backed expectations
+
+These are retained only as expected state, not as the requested live snapshot.
+
+```text
+春日大社 Shrine.id=5
+expected after temples.0111
+= 34.6812901, 135.8482531
+
+宇佐神宮 Shrine.id=8
+expected after temples.0113
+= 33.52344557, 131.37716659
+
+日光東照宮 Shrine.id=9
+last audited stored Production coordinate
+= 36.7579, 139.5986
+```
+
+Production was later verified through `temples.0114`, proving the linear migration
+lineage through 0111 and 0113 was applied. This does not replace a fresh live SELECT.
+
+---
+
+## 12. 春日大社 — Coordinate Follow-up
+
+### 12.1 Semantic set
+
+The authoritative four-Honden set remains:
+
+```text
+第一殿 INCLUDED
+第二殿 INCLUDED
+第三殿 INCLUDED
+第四殿 INCLUDED
+
+subject_type = MULTI_PRINCIPAL_UNIT
+point_method = UNWEIGHTED_COMPONENT_MEAN
+F-4 = COMPLETE
+```
+
+Semantic authority remains the Shrine official material and Cultural Affairs records.
+
+### 12.2 Subject-labelled georeference leads
+
+Current directly labelled coordinate records include:
+
+```text
+第一殿
+Mapcarta / OSM-derived object record
+34.68158, 135.84854
+
+第二殿
+Wikidata cultural-property record Q107020450
+34.68157, 135.8484
+
+第三殿
+Mapcarta / OSM-derived object record
+34.68157, 135.84844
+(Wikidata project page also exposes 34.681576, 135.848419)
+
+第四殿
+Mapcarta / OSM-derived object record
+34.68157, 135.84839
+```
+
+### 12.3 Precision gate
+
+The second-hall coordinate is directly subject-labelled, but the displayed longitude
+precision is only four decimal places.
+
+The four Honden are adjacent structures. Promoting that rounded value into a
+high-precision four-component mean would create false precision.
+
+Therefore:
+
+```text
+KASUGA_SECOND_HALL_SUBJECT_MATCH
+= YES
+
+KASUGA_SECOND_HALL_HIGH_PRECISION
+= NO
+
+KASUGA_F5_HIGH_PRECISION_SET
+= INCOMPLETE
+
+KASUGA_F7
+= NOT_COMPUTED
+
+KASUGA_ADJUDICATION
+= NOT_ADJUDICATED
+```
+
+No interpolation, visual-center inference, ordinal-position inference, or neighboring
+hall substitution is permitted.
+
+---
+
+## 13. 宇佐神宮 — Coordinate Follow-up
+
+### 13.1 Semantic set
+
+Authoritative material continues to establish:
+
+```text
+上宮 本殿
+一之御殿 INCLUDED
+二之御殿 INCLUDED
+三之御殿 INCLUDED
+
+subject_type = MULTI_PRINCIPAL_UNIT
+point_method = UNWEIGHTED_COMPONENT_MEAN
+F-4 = COMPLETE
+```
+
+Cultural Affairs states that the three Honden are aligned east-west, and Usa City
+states that worship is performed at all three Honden.
+
+### 13.2 Directly labelled coordinate evidence
+
+#### 一之御殿
+
+Yahoo! Map exposes a directly labelled object:
+
+```text
+subject = 宇佐神宮 一之御殿
+coordinate = 33.52343924838255, 131.37705676706398
+```
+
+The coordinate is present in the static-map marker request for that named object.
+
+This is map-provider coordinate evidence, not semantic authority.
+
+#### 三之御殿
+
+奈良文化財研究所 Heritage Map exposes:
+
+```text
+subject = 宇佐神宮本殿
+棟名 = 第三殿
+coordinate = 33.52349, 131.3773
+source lineage = 文化庁 国指定文化財等データベース
+```
+
+#### 二之御殿
+
+Cultural Affairs / 文化遺産オンライン directly identify the 第二殿 as a distinct
+National Treasure building.
+
+A secondary National Treasure coordinate index exposes a three-row coordinate sequence
+for 宇佐神宮本殿:
+
+```text
+33.52346, 131.3770
+33.52348, 131.3772
+33.52349, 131.3773
+```
+
+However that coordinate table does **not** directly attach 第一殿 / 第二殿 / 第三殿
+labels to the individual rows in the retrieved evidence.
+
+The current contract prohibits assigning rows by ordinal or spatial inference merely
+because Cultural Affairs separately states that the buildings run west-to-east.
+
+Therefore the middle coordinate is **not** promoted to a subject-labelled F-5 entry.
+
+### 13.3 Gate
+
+```text
+USA_FIRST_HALL_DIRECT_SUBJECT_LABEL
+= YES
+
+USA_SECOND_HALL_DIRECT_SUBJECT_LABEL
+= NO
+
+USA_THIRD_HALL_DIRECT_SUBJECT_LABEL
+= YES
+
+USA_F5_COMPLETE
+= NO
+
+USA_F7
+= NOT_COMPUTED
+
+USA_ADJUDICATION
+= NOT_ADJUDICATED
+```
+
+No partial mean is calculated.
+
+---
+
+## 14. 日光東照宮 — F-7 Representative Point
+
+### 14.1 Semantic QA
+
+Cultural Affairs records:
+
+```text
+東照宮 本殿、石の間及び拝殿
+員数 = 1棟
+```
+
+and describes the connected Gongen-zukuri unit as consisting of 本殿・石の間・拝殿.
+
+Nikko City separately records the internal functions:
+
+- 本殿 = enshrinement building
+- 石の間 = connector
+- 拝殿 = worship building
+
+The connected cultural-property object is therefore not reinterpreted as three
+co-principal enshrinement components.
+
+Batch 01 retains:
+
+```text
+subject_type = SINGLE_PRINCIPAL_UNIT
+point_method = DIRECT_POINT
+```
+
+### 14.2 F-5 / F-6
+
+奈良文化財研究所 Heritage Map / Cultural Affairs lineage provides the
+subject-matched coordinate for:
+
+```text
+東照宮 本殿、石の間及び拝殿
+= 36.75808, 139.5987
+```
+
+### 14.3 F-7
+
+Under PR #2980:
+
+```text
+F-7 representative_point
+
+latitude = 36.75808
+longitude = 139.5987
+point_method = DIRECT_POINT
+input_count = 1
+derivation_note =
+  copied exactly from the verified subject-matched F-5 coordinate
+```
+
+No mean, rounding correction, centroid, or Navigation adjustment is applied.
+
+### 14.4 F-8
+
+The final F-8 requires the **fresh Production Navigation coordinate**.
+
+Because live Production SELECT was not executable in the current tool surface:
+
+```text
+NIKKO_F8_FINAL
+= NOT_COMPUTED
+```
+
+For audit orientation only, using the last audited stored Production coordinate
+`36.7579, 139.5986` would produce approximately 21.9 m geodesic displacement.
+
+That 21.9 m value is **PROVISIONAL / NON-AUTHORITATIVE** and MUST NOT be written into
+the final F-8 packet until the live Production SELECT confirms the from-coordinate.
+
+---
+
+## 15. Human QA — Current Result
+
+### 15.1 春日大社
+
+```text
+identity                    PASS
+semantic owner              PASS
+component membership        PASS
+component completeness      PASS
+subject_type / point_method PASS
+coordinate provenance       PARTIAL
+representative point        NOT_AVAILABLE
+Navigation fallback         NONE
+final status                NOT_ADJUDICATED
+```
+
+QA blocker:
+第二殿のhigh-precision subject-matched coordinate.
+
+### 15.2 宇佐神宮
+
+```text
+identity                    PASS
+semantic owner              PASS
+component membership        PASS
+component completeness      PASS
+subject_type / point_method PASS
+coordinate provenance       PARTIAL
+representative point        NOT_AVAILABLE
+Navigation fallback         NONE
+final status                NOT_ADJUDICATED
+```
+
+QA blocker:
+二之御殿のdirect subject-labelled coordinate.
+
+### 15.3 日光東照宮
+
+```text
+identity                    PASS
+semantic owner              PASS
+subject_type / point_method PASS
+subject-matched coordinate  PASS
+F-7 reproducibility         PASS
+Navigation fallback         NONE
+F-8                         BLOCKED_ON_LIVE_PRODUCTION_SELECT
+final status                NOT_ADJUDICATED
+```
+
+No accepted-source conflict was found.
+
+The remaining block is operational evidence for F-8, not a semantic disagreement.
+
+---
+
+## 16. Batch 01 Current Final Gate
+
+```text
+BATCH_01_CONFIRMED_COUNT
+= 0
+
+BATCH_01_HOLD_COUNT
+= 0
+
+BATCH_01_NOT_ADJUDICATED_COUNT
+= 3
+```
+
+Reasons:
+
+```text
+春日大社
+-> F-5 high-precision component coordinate set incomplete
+
+宇佐神宮
+-> F-5 direct subject-labelled component coordinate set incomplete
+
+日光東照宮
+-> F-7 complete
+-> F-8 blocked until fresh Production Navigation SELECT
+```
+
+None of these conditions are accepted-source conflicts, so
+`HOLD_POSITION_REVIEW` is not used.
+
+---
+
+## 17. Next Exact Requirements
+
+Only the following evidence gaps remain for Batch 01:
+
+```text
+1. Supabase Production:
+   SELECT id, name_jp, latitude, longitude
+   FROM temples_shrine
+   WHERE id IN (5, 8, 9)
+   ORDER BY id;
+
+2. 春日大社:
+   第二殿のhigher-precision direct subject-matched coordinate
+
+3. 宇佐神宮:
+   二之御殿のdirect subject-labelled coordinate
+```
+
+After those are obtained:
+
+- generate remaining F-7 where permitted
+- calculate F-8 from the fresh Production snapshot
+- rerun Human QA
+- produce the Batch 01 final adjudication
+
+No DB write is required for any of these steps.
+
+---
+
+## 18. Required Statements — Resume
+
+```text
+PHASE_2_BATCH_01_RESUMED = YES
+
+READ_ONLY = YES
+
+F7_CONTRACT_GAP = RESOLVED
+
+PRODUCTION_DB_PROVIDER = SUPABASE
+
+PRODUCTION_NAVIGATION_LIVE_SELECT = NOT_EXECUTED
+
+KASUGA_F7 = NOT_COMPUTED
+USA_F7 = NOT_COMPUTED
+NIKKO_F7 = COMPLETE
+NIKKO_F8_FINAL = NOT_COMPUTED
+
+HUMAN_QA = PARTIAL_COMPLETE
+
+BATCH_01_CONFIRMED_COUNT = 0
+BATCH_01_HOLD_COUNT = 0
+BATCH_01_NOT_ADJUDICATED_COUNT = 3
+
+CANONICAL_DB_WRITE = NONE
+PRODUCTION_WRITE = NONE
+SEED_WRITE = NONE
+CANONICAL_BACKFILL = NOT_STARTED
+RUNTIME_CUTOVER = NOT_PERFORMED
+```
+
+## 19. STOP
+
+Batch 01 stops again only on the three explicit evidence gaps in §17.
+
+Do not:
+
+- infer missing component coordinates from order or adjacency
+- promote rounded coordinates to false high precision
+- substitute historical Production values for a fresh live SELECT
+- calculate partial MULTI means
+- create Canonical Anchor rows
+- write to Production
+- begin PHASE_3
