@@ -1,9 +1,12 @@
 """Import a versioned Shrine Knowledge seed (ShrineKnowledgeSource/ShrineDeity/
-ShrineHistory, and for schema 1.1 ShrineDeityCollective/ShrineDeityCollectiveMembership)
-safely and idempotently.
+ShrineHistory, for schema 1.1+ ShrineDeityCollective/ShrineDeityCollectiveMembership,
+and for schema 1.2 ShrineSourceFact) safely and idempotently.
 
 Schema 1.1 Collective / Membership contract:
 docs/audit/collective-deity-knowledge-seed-v1-1-contract.md
+
+Schema 1.2 Source Fact contract (create-only; same stable_key + any difference = CONFLICT):
+docs/audit/shrine-expansion-wave0-db04-f1-goriyaku-mapping-boundary.md §12.15.C / §12.15.G
 
 See docs/audit/knowledge-production-import-foundation.md for the full
 design rationale (seed format, shrine identity strategy, idempotency,
@@ -41,16 +44,20 @@ from temples.models import (
     ShrineDeityCollectiveMembership,
     ShrineHistory,
     ShrineKnowledgeSource,
+    ShrineSourceFact,
 )
 from temples.services.knowledge_seed import (
     CollectiveEntry,
     MembershipEntry,
     ParsedSeed,
+    SourceFactEntry,
     diff_collective_fields,
     diff_membership_fields,
+    diff_source_fact_fields,
     find_collectives_by_identity,
     find_existing_deity,
     find_existing_history,
+    find_source_fact_by_stable_key,
     parse_seed,
     resolve_membership_deity,
     resolve_shrine,
@@ -60,7 +67,7 @@ from temples.services.knowledge_seed import (
 
 @dataclass
 class PlanItem:
-    kind: str  # "source" | "deity" | "history" | "collective" | "membership"
+    kind: str  # "source" | "deity" | "history" | "collective" | "membership" | "source_fact"
     shrine_name: str
     label: str
     action: str  # "CREATE" | "REUSE_EXISTING" | "SKIP_EXISTS" | blocking status
@@ -87,10 +94,19 @@ class CollectivePlan:
 
 
 @dataclass
+class SourceFactPlan:
+    shrine: Shrine
+    entry: SourceFactEntry
+    action: str  # "CREATE" | "SKIP_EXISTS"
+    existing: ShrineSourceFact | None = None
+
+
+@dataclass
 class Plan:
     items: list[PlanItem]
     errors: list[str]
     collectives: list[CollectivePlan] = field(default_factory=list)
+    source_facts: list[SourceFactPlan] = field(default_factory=list)
 
     @property
     def counts(self) -> dict[str, int]:
@@ -229,6 +245,53 @@ def _plan_collectives(
     return plans
 
 
+def _plan_source_facts(
+    shrine: Shrine,
+    block_name: str,
+    facts: list[SourceFactEntry],
+    source_existing: dict[str, ShrineKnowledgeSource | None],
+    items: list[PlanItem],
+    errors: list[str],
+) -> list[SourceFactPlan]:
+    """stable_key で既存の Fact を照合する。既存 row は更新しない（create-only）。
+
+    同じ stable_key で shrine / wording / characterization / verification 3列 / Source の集合の
+    どれかが違えば SOURCE_FACT_CONFLICT（import 全体を止める）。
+    """
+    plans: list[SourceFactPlan] = []
+    for entry in facts:
+        key = entry.stable_key
+        existing = find_source_fact_by_stable_key(key)
+        if existing is None:
+            action, detail = "CREATE", ""
+        else:
+            parts: list[str] = []
+            if existing.shrine_id != shrine.pk:
+                parts.append(f"shrine differs: existing={existing.shrine_id} seed={shrine.pk}")
+            diffs = diff_source_fact_fields(existing, entry)
+            if diffs:
+                parts.append(f"fields differ: {', '.join(diffs)}")
+            source_diff = _source_set_mismatch(
+                set(existing.sources.values_list("id", flat=True)),
+                entry.source_keys,
+                source_existing,
+            )
+            if source_diff:
+                parts.append(source_diff)
+            if parts:
+                action = "SOURCE_FACT_CONFLICT"
+                detail = f"existing id={existing.pk}; " + "; ".join(parts)
+                errors.append(f"source_fact {block_name!r}/{key!r}: {action} ({detail})")
+            else:
+                action, detail = "SKIP_EXISTS", f"matched existing id={existing.pk}"
+        items.append(PlanItem("source_fact", block_name, key, action, detail))
+        if action in ("CREATE", "SKIP_EXISTS"):
+            plans.append(
+                SourceFactPlan(shrine=shrine, entry=entry, action=action, existing=existing)
+            )
+    return plans
+
+
 def _build_plan(parsed: ParsedSeed) -> tuple[Plan, dict[str, ShrineKnowledgeSource | None]]:
     """Resolve every shrine identity and compute the CREATE/SKIP plan.
 
@@ -238,6 +301,7 @@ def _build_plan(parsed: ParsedSeed) -> tuple[Plan, dict[str, ShrineKnowledgeSour
     errors = list(parsed.errors)
     items: list[PlanItem] = []
     collective_plans: list[CollectivePlan] = []
+    source_fact_plans: list[SourceFactPlan] = []
     seen_collective_identities: set[tuple[int, str]] = set()
 
     source_existing: dict[str, ShrineKnowledgeSource | None] = {}
@@ -304,7 +368,19 @@ def _build_plan(parsed: ParsedSeed) -> tuple[Plan, dict[str, ShrineKnowledgeSour
             errors,
         )
 
-    return Plan(items=items, errors=errors, collectives=collective_plans), source_existing
+        source_fact_plans += _plan_source_facts(
+            shrine, block.name_jp, block.source_facts, source_existing, items, errors
+        )
+
+    return (
+        Plan(
+            items=items,
+            errors=errors,
+            collectives=collective_plans,
+            source_facts=source_fact_plans,
+        ),
+        source_existing,
+    )
 
 
 def _apply_collectives(
@@ -383,14 +459,59 @@ def _apply_collectives(
             created["membership"] += 1
 
 
+def _apply_source_facts(
+    source_fact_plans: list[SourceFactPlan],
+    source_objs: dict[str, ShrineKnowledgeSource],
+    created: dict[str, int],
+) -> None:
+    """Source Fact を plan どおりに作成する（create-only。既存 row は更新しない）。
+
+    plan 時点から DB 状態が変わっていれば CommandError を送出し、呼び出し側の
+    transaction.atomic() ごと巻き戻す。
+    """
+    for fplan in source_fact_plans:
+        entry = fplan.entry
+        current = find_source_fact_by_stable_key(entry.stable_key)
+        if fplan.action == "SKIP_EXISTS":
+            if current is None or current.pk != fplan.existing.pk:
+                raise CommandError(
+                    f"source_fact {entry.stable_key!r}: identity changed after planning"
+                )
+            continue
+        if current is not None:
+            raise CommandError(f"source_fact {entry.stable_key!r}: already exists at apply time")
+        fact = ShrineSourceFact(
+            shrine=fplan.shrine,
+            stable_key=entry.stable_key,
+            source_attested_wording=entry.source_attested_wording,
+            evidence_characterization=entry.evidence_characterization,
+            verification_status=entry.verification_status,
+            confidence=entry.confidence,
+            verified_at=entry.verified_at,
+        )
+        fact.full_clean()
+        fact.save()
+        # 自分の source_keys だけを付ける（他の Fact の Source を継承しない）。
+        fact.sources.set([source_objs[k] for k in entry.source_keys])
+        created["source_fact"] += 1
+
+
 def _apply(
     parsed: ParsedSeed,
     source_existing: dict[str, ShrineKnowledgeSource | None],
     collective_plans: list[CollectivePlan] | None = None,
+    source_fact_plans: list[SourceFactPlan] | None = None,
 ) -> dict[str, int]:
     """Apply the seed inside the caller's transaction. Assumes the plan has
     zero errors — the caller must check that before calling this."""
-    created = {"source": 0, "deity": 0, "history": 0, "collective": 0, "membership": 0}
+    created = {
+        "source": 0,
+        "deity": 0,
+        "history": 0,
+        "collective": 0,
+        "membership": 0,
+        "source_fact": 0,
+    }
 
     source_objs: dict[str, ShrineKnowledgeSource] = {}
     for key, entry in parsed.sources.items():
@@ -468,6 +589,7 @@ def _apply(
     # 全 shrine block の Deity を作成した後に Collective / Membership を作る
     # （same-seed Deity を Membership が参照できるように）。
     _apply_collectives(collective_plans or [], source_objs, created)
+    _apply_source_facts(source_fact_plans or [], source_objs, created)
 
     return created
 
@@ -530,10 +652,10 @@ class Command(BaseCommand):
 
         expected = {
             kind: sum(1 for item in plan.items if item.kind == kind and item.action == "CREATE")
-            for kind in ("collective", "membership")
+            for kind in ("collective", "membership", "source_fact")
         }
         with transaction.atomic():
-            created = _apply(parsed, source_existing, plan.collectives)
+            created = _apply(parsed, source_existing, plan.collectives, plan.source_facts)
             for kind, count in expected.items():
                 if created[kind] != count:
                     raise CommandError(
@@ -548,7 +670,8 @@ class Command(BaseCommand):
                 f"deities created={created['deity']}, "
                 f"histories created={created['history']}, "
                 f"collectives created={created['collective']}, "
-                f"memberships created={created['membership']}"
+                f"memberships created={created['membership']}, "
+                f"source_facts created={created['source_fact']}"
             )
         )
 
