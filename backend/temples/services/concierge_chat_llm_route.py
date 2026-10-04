@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional
 
 from django.conf import settings
 
+from temples.services.channel_b_typed_need_match import without_channel_b_carrier
 from temples.services.concierge_chat_pool import _seed_recs_from_candidates
 from temples.services.concierge_chat_ranking import _prefilter_candidates_for_need
 
@@ -75,9 +76,11 @@ def resolve_llm_route(
             from temples.llm import orchestrator as orch_mod  # type: ignore
 
             llm_used = True
+            # LLM の入力は従来どおりにする（Channel B の内部 carrier を外部 provider へ渡さず、
+            # LLM 成功経路の候補選択を変えない）。carrier は後段の _merge_candidate_fields で戻る。
             recs = orch_mod.ConciergeOrchestrator().suggest(
                 query=query,
-                candidates=valid_candidates,
+                candidates=without_channel_b_carrier(valid_candidates),
             )
         except Exception as e:
             llm_error = _safe_llm_error_code(e)
