@@ -1771,6 +1771,7 @@ def _prefilter_candidates_for_need(
 def _diversify_by_need(
     recs: List[Dict[str, Any]],
     limit: int = 3,
+    need_tags: Optional[List[str]] = None,
 ) -> List[Dict[str, Any]]:
     """
     上位候補で matched_need_tags の偏りを少し緩和する。
@@ -1778,10 +1779,24 @@ def _diversify_by_need(
     - 先頭 limit 件だけ多様化を意識
     - ただし元のスコア順を大きく壊さない
     - matched_need_tags が無い候補も除外しない
+
+    Need の被覆（Pre-G6 U1）: Channel A の matched_need_tags に、request の Need に一致する
+    Channel B の Need key（PR-F と同じ _channel_b_request_need_keys()）を和集合で加える。
+    和集合は多様化の判断の中だけで使い、matched_all / matched_need_tags / breakdown /
+    候補 / carrier には書き戻さない。need_tags を渡さない呼び出しは従来どおり Channel A だけ。
     """
     pool = [r for r in recs if isinstance(r, dict)]
     if len(pool) <= 1:
         return pool
+
+    need_tags_clean = _normalize_need_tags(need_tags or [], max_tags=10)
+
+    def _need_coverage(r: Dict[str, Any]) -> set[str]:
+        tags = (r.get("breakdown") or {}).get("matched_need_tags") or []
+        coverage = {str(t).strip() for t in tags if isinstance(t, str) and str(t).strip()}
+        if need_tags_clean:
+            coverage |= _channel_b_request_need_keys(r, need_tags_clean)
+        return coverage
 
     picked: List[Dict[str, Any]] = []
     used_tags: set[str] = set()
@@ -1790,15 +1805,12 @@ def _diversify_by_need(
         best_index: Optional[int] = None
 
         for i, r in enumerate(pool):
-            tags = (r.get("breakdown") or {}).get("matched_need_tags") or []
-            normalized_tags = [
-                str(t).strip() for t in tags if isinstance(t, str) and str(t).strip()
-            ]
+            coverage = _need_coverage(r)
 
-            if not normalized_tags:
+            if not coverage:
                 continue
 
-            if any(t not in used_tags for t in normalized_tags):
+            if any(t not in used_tags for t in coverage):
                 best_index = i
                 break
 
@@ -1808,10 +1820,7 @@ def _diversify_by_need(
         picked_row = pool.pop(best_index)
         picked.append(picked_row)
 
-        picked_tags = (picked_row.get("breakdown") or {}).get("matched_need_tags") or []
-        used_tags.update(
-            str(t).strip() for t in picked_tags if isinstance(t, str) and str(t).strip()
-        )
+        used_tags.update(_need_coverage(picked_row))
 
     picked.extend(pool)
     return picked
