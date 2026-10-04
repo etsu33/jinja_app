@@ -238,6 +238,7 @@ def _sort_chat_recommendations(
     *,
     sort_tags: set[str],
     score_v3_mode: str = "shadow",
+    need_tags: list[str] | None = None,
 ) -> Dict[str, Any]:
     recommendations = [r for r in (recs.get("recommendations") or []) if isinstance(r, dict)]
 
@@ -273,6 +274,7 @@ def _sort_chat_recommendations(
         recommendations = _diversify_by_need(
             recommendations,
             limit=3,
+            need_tags=need_tags,
         )
 
     recs["recommendations"] = recommendations
@@ -907,6 +909,7 @@ def build_chat_recommendations(
         recs,
         sort_tags=sort_tags,
         score_v3_mode=score_v3_mode,
+        need_tags=need_tags,
     )
     recs.setdefault("_debug", {})["score_v3_mode"] = score_v3_mode
     recs.setdefault("_debug", {})["score_v3_mode_source"] = score_v3_mode_detail["source"]
