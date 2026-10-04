@@ -336,6 +336,9 @@ def _candidates() -> list[dict]:
 
 @pytest.mark.django_db
 def test_t20_t21_registry_entry_does_not_change_candidates_or_eligibility(monkeypatch):
+    """registry の entry は、候補に Channel B の内部 carrier（PR-C）を付ける以外の変更をしない。"""
+    from temples.services.channel_b_typed_need_match import CHANNEL_B_TYPED_NEED_MATCHES_KEY
+
     eligible = _shrine()
     attach_usable_deity_fact(eligible)
     _fact(eligible)
@@ -346,7 +349,10 @@ def test_t20_t21_registry_entry_does_not_change_candidates_or_eligibility(monkey
     mapped = build_registry((_record(),))
     monkeypatch.setattr(registry_module, "_default_registry", mapped)
     assert lookup_source_fact_mapping(FACT_KEY) is not None
-    assert _candidates() == before
+    after = _candidates()
+    assert [
+        {k: v for k, v in row.items() if k != CHANNEL_B_TYPED_NEED_MATCHES_KEY} for row in after
+    ] == before
 
     # Source Fact と mapping だけの神社は、G5 で適格にならない。
     only_fact = Shrine.objects.create(name_jp="対応表のみ神社", kind="shrine", address="東京都")
@@ -355,15 +361,18 @@ def test_t20_t21_registry_entry_does_not_change_candidates_or_eligibility(monkey
     assert all(c.get("name") != "対応表のみ神社" for c in result.candidates)
 
 
-def test_t22_registry_is_not_imported_by_runtime_or_public_api_code():
-    """PR-B の registry は、tests 以外のどの module からも読まれない（Recommendation / API 非公開）。"""
+def test_t22_registry_is_only_read_by_the_channel_b_read_layer():
+    """registry を読む runtime module は Channel B の typed read（PR-C）だけである。
+
+    API / serializer / ranking / reason の module は registry を直接 import しない（公開しない）。
+    """
     root = Path(__file__).resolve().parents[1]
     module_name = "source_fact_mapping_registry_v1"
-    offenders = [
+    readers = sorted(
         str(path.relative_to(root))
         for path in root.rglob("*.py")
         if "tests" not in path.parts
         and path.name != f"{module_name}.py"
         and module_name in path.read_text(encoding="utf-8")
-    ]
-    assert offenders == []
+    )
+    assert readers == ["services/channel_b_typed_need_match.py"]

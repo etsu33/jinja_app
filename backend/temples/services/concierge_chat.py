@@ -10,6 +10,7 @@ from temples.domain.need_to_goriyaku_tag_ids import NEED_TO_GORIYAKU_IDS
 from temples.models import GoriyakuTag
 
 from temples.services.concierge_candidate_utils import _normalize_candidate_fields
+from temples.services.channel_b_typed_need_match import strip_channel_b_carrier
 from temples.services.consultation_interpreter import interpret_consultation
 from temples.services.recommendation_algorithm_v3 import (
     run_recommendation_algorithm_v3_shadow,
@@ -1067,5 +1068,9 @@ def build_chat_recommendations(
     )
 
     recs = attach_action_suggestion_v4_preview(recs)
+
+    # Channel B の内部 carrier は、ここ（推薦の内部処理の出口）で取り除く。
+    # 以降の公開 response・thread 保存・recommendation log・Compass の投影へ出さない。
+    recs = strip_channel_b_carrier(recs)
 
     return recs

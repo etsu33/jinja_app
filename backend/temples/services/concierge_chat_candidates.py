@@ -30,6 +30,10 @@ from temples.services.concierge_candidate_utils import (
     _to_float,
 )
 from temples.services.shrine_trust_metadata import get_shrine_trust_metadata
+from temples.services.channel_b_typed_need_match import (
+    CHANNEL_B_TYPED_NEED_MATCHES_KEY,
+    fetch_typed_need_matches,
+)
 
 from temples.services.shrine_meaning_composer import compose_shrine_meaning_payload
 from temples.services.meaning_translation import translate_meaning
@@ -319,6 +323,9 @@ def build_chat_candidates_with_eligibility(
     shrine_ids = [s.id for s in shrines]
     knowledge_deities_by_shrine = fetch_fact_ready_knowledge_deities(shrine_ids)
     knowledge_histories_by_shrine = fetch_fact_ready_knowledge_histories(shrine_ids)
+    # Policy C / Channel B の型付き Need 一致（PR-C）。prefilter より前に一括で作り、
+    # Channel A の field とは別の内部 carrier に載せる。G5 の判定には使わない。
+    channel_b_matches_by_shrine = fetch_typed_need_matches(shrine_ids)
 
     candidates: List[Dict[str, Any]] = []
     ineligible_count = 0
@@ -386,6 +393,9 @@ def build_chat_candidates_with_eligibility(
                 "history_context": generated_meaning.get("historyContext"),
             }
         )
+        channel_b_matches = channel_b_matches_by_shrine.get(s.id)
+        if channel_b_matches:
+            candidates[-1][CHANNEL_B_TYPED_NEED_MATCHES_KEY] = channel_b_matches
 
     # 座標がある場合は距離優先、ない場合は人気順
     if lat is not None and lng is not None:
