@@ -143,6 +143,52 @@ HYDRATED_BUILD_BATCHES = ("W0-DB01", "W0-DB02")
 W0_DB03_G4_HYDRATED_IDS = frozenset({"wave0-012", "wave0-013", "wave0-015", "wave0-016"})
 W0_DB03_MODEL_HOLD_ID = "wave0-014"
 
+# W0-DB04 G4 re-entry。original membership 5社のうち G4 eligible subset の3社だけを
+# hydrate する（凍結入力: docs/audit/shrine-expansion-wave0-db04-source-packet-freeze.md /
+# docs/audit/shrine-expansion-wave0-db04-evidence-backfill-freeze.md）。
+# wave0-020（G2 HOLD_POSITION_REVIEW）/ wave0-022（G3 MODEL_REVIEW_REMAINS）は未 hydrate。
+#
+# goriyaku / goriyaku_tags は凍結されていない（goriyaku typed evidence storage は別タスク）ため
+# 持ち込まない。Production 未 import のため knowledge_status は既定の
+# ACQUISITION_PATH_CONFIRMED のまま。
+#
+# wave0-021 の official_address は Source 表記「大阪市北区天神橋2丁目1番8号」に
+# 「大阪府」を前置した Candidate Master canonical address。Base Seed の prefecture 導出が
+# 都道府県始まりを要求するための W0-DB04 Mother Ship decision（wave0-021 限定）であり、
+# global な正規化ルールではない。
+W0_DB04_G4_HYDRATED_IDS = frozenset({"wave0-019", "wave0-021", "wave0-025"})
+W0_DB04_EXCLUDED_IDS = frozenset({"wave0-020", "wave0-022"})
+
+EXPECTED_W0_DB04_HYDRATION = {
+    "wave0-019": {
+        "official_name": "建勲神社",
+        "official_address": "京都府京都市北区紫野北舟岡町49",
+        "official_source_type": "shrine_official",
+        "official_source_url": "https://kenkun-jinja.org/history/",
+        "verified_at": "2026-10-03",
+        "latitude": 35.0386537,
+        "longitude": 135.7431512,
+    },
+    "wave0-021": {
+        "official_name": "大阪天満宮",
+        "official_address": "大阪府大阪市北区天神橋2丁目1番8号",
+        "official_source_type": "shrine_official",
+        "official_source_url": "https://osakatemmangu.or.jp/about",
+        "verified_at": "2026-10-03",
+        "latitude": 34.6958917,
+        "longitude": 135.5126472,
+    },
+    "wave0-025": {
+        "official_name": "大崎八幡宮",
+        "official_address": "宮城県仙台市青葉区八幡4-6-1",
+        "official_source_type": "government",
+        "official_source_url": "https://miyagi-jinjacho.or.jp/jinja-search/detail.php?code=310010033",
+        "verified_at": "2026-10-03",
+        "latitude": 38.2725678,
+        "longitude": 140.8449622,
+    },
+}
+
 REQUIRED_W0_DB01_HYDRATION_FIELDS = {
     "official_name",
     "official_address",
@@ -878,8 +924,42 @@ def test_wave0_db03_to_db07_remain_unhydrated():
                 continue
             if row["candidate_id"] in W0_DB03_G4_HYDRATED_IDS:
                 continue
+            if row["candidate_id"] in W0_DB04_G4_HYDRATED_IDS:
+                continue
             leaked = REQUIRED_W0_DB01_HYDRATION_FIELDS & row.keys()
             assert not leaked, (batch, row["candidate_id"], sorted(leaked))
+
+
+def test_wave0_db04_g4_subset_is_hydrated_from_frozen_inputs_only():
+    """W0-DB04 G4 re-entry: eligible subset 3社だけが凍結値で hydrate 済み。
+
+    lifecycle / build_batch / duplicate_status は不変で、goriyaku は持ち込まない。
+    wave0-020 / wave0-022 は未 hydrate のまま BUILD_READY を保持する。
+    """
+    master = _load_master()
+    db04 = {row["candidate_id"]: row for row in master["candidates"] if row["build_batch"] == "W0-DB04"}
+
+    assert set(db04) == W0_DB04_G4_HYDRATED_IDS | W0_DB04_EXCLUDED_IDS
+    assert set(EXPECTED_W0_DB04_HYDRATION) == W0_DB04_G4_HYDRATED_IDS
+
+    for candidate_id, expected in EXPECTED_W0_DB04_HYDRATION.items():
+        row = db04[candidate_id]
+        assert {key: row.get(key) for key in expected} == expected, candidate_id
+        assert row["official_name"] == row["candidate_name"], candidate_id
+        assert row["official_address"].startswith(row["prefecture"]), candidate_id
+        assert "goriyaku" not in row, candidate_id
+        assert "goriyaku_tags" not in row, candidate_id
+        assert "knowledge_status" not in row, candidate_id
+        assert row["candidate_status"] == "BUILD_READY", candidate_id
+        assert row["status_reason_code"] == "WAVE0_CORE_READY_CANDIDATE", candidate_id
+        assert row["duplicate_status"] == "NEW", candidate_id
+
+    for candidate_id in W0_DB04_EXCLUDED_IDS:
+        row = db04[candidate_id]
+        leaked = (REQUIRED_W0_DB01_HYDRATION_FIELDS | {"identity_status", "official_source_status"}) & row.keys()
+        assert not leaked, (candidate_id, sorted(leaked))
+        assert row["candidate_status"] == "BUILD_READY", candidate_id
+        assert row["duplicate_status"] == "NEW", candidate_id
 
 
 def test_wave0_hold_and_review_candidates_stay_separated():
@@ -930,6 +1010,10 @@ def test_wave0_duplicate_and_availability_states_match_completed_audits():
             assert effective["identity_status"] == "CONFIRMED"
             assert effective["official_source_status"] == "CONFIRMED"
             assert effective["knowledge_status"] == "FACT_READY"
+        elif row["candidate_id"] in W0_DB04_G4_HYDRATED_IDS:
+            assert effective["identity_status"] == "CONFIRMED"
+            assert effective["official_source_status"] == "CONFIRMED"
+            assert effective["knowledge_status"] == "ACQUISITION_PATH_CONFIRMED"
         elif row["candidate_status"] == "REVIEW":
             assert effective["identity_status"] == "UNREVIEWED"
             assert effective["official_source_status"] == "UNREVIEWED"

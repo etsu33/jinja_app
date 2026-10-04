@@ -63,6 +63,9 @@ HYDRATION_FIELDS = {
 # W0-DB03 追加前（develop@7106958）の Base Seed 113 行。既存行の不変を固定する。
 EXISTING_BASE_ROW_COUNT = 113
 EXISTING_BASE_ROWS_SHA256 = "86acbc9aadfe0a86cd7b8642d567f0a59b335a33578d2cb5b0e75f73d0489d32"
+# W0-DB03 が追加した4行の終端。後続 Batch（W0-DB04〜）の行はこの後ろへ追加されるため、
+# W0-DB03 の追加行は [EXISTING_BASE_ROW_COUNT:W0_DB03_BASE_ROW_END] に限定して検査する。
+W0_DB03_BASE_ROW_END = EXISTING_BASE_ROW_COUNT + 4
 
 EXPECTED_FACT_COUNTS = {
     "大神神社": (1, 1),
@@ -163,7 +166,7 @@ def test_exactly_four_execution_shrines_are_built():
     )
     assert hydrated == EXECUTION_IDS
 
-    added = _load_base_rows()[EXISTING_BASE_ROW_COUNT:]
+    added = _load_base_rows()[EXISTING_BASE_ROW_COUNT:W0_DB03_BASE_ROW_END]
     assert [(row["name_jp"], row["address"]) for row in added] == [
         (packet[cid]["official_name"], packet[cid]["official_address"]) for cid in EXECUTION_IDS
     ]
@@ -272,7 +275,7 @@ def test_execution_candidates_are_hydrated_and_core_ready():
 
 def test_existing_base_seed_rows_are_unchanged():
     rows = _load_base_rows()
-    assert len(rows) == EXISTING_BASE_ROW_COUNT + len(EXECUTION_IDS)
+    assert len(rows) >= W0_DB03_BASE_ROW_END == EXISTING_BASE_ROW_COUNT + len(EXECUTION_IDS)
     digest = hashlib.sha256(
         json.dumps(
             rows[:EXISTING_BASE_ROW_COUNT],
@@ -287,7 +290,7 @@ def test_existing_base_seed_rows_are_unchanged():
 def test_base_seed_canonical_identities_are_unique():
     identities = [(row["name_jp"], row["address"]) for row in _load_base_rows()]
     assert len(identities) == len(set(identities))
-    names = [row["name_jp"] for row in _load_base_rows()[EXISTING_BASE_ROW_COUNT:]]
+    names = [row["name_jp"] for row in _load_base_rows()[EXISTING_BASE_ROW_COUNT:W0_DB03_BASE_ROW_END]]
     existing_names = {row["name_jp"] for row in _load_base_rows()[:EXISTING_BASE_ROW_COUNT]}
     assert not set(names) & existing_names
 
@@ -307,14 +310,14 @@ def test_candidate_master_identity_and_position_match_base_seed():
 
 
 def test_base_seed_location_exactly_mirrors_latitude_longitude():
-    for row in _load_base_rows()[EXISTING_BASE_ROW_COUNT:]:
+    for row in _load_base_rows()[EXISTING_BASE_ROW_COUNT:W0_DB03_BASE_ROW_END]:
         assert row["location"] == {"lat": row["latitude"], "lng": row["longitude"]}, row["name_jp"]
         assert -90 <= row["latitude"] <= 90
         assert -180 <= row["longitude"] <= 180
 
 
 def test_new_base_rows_carry_no_legacy_or_inferred_fields():
-    for row in _load_base_rows()[EXISTING_BASE_ROW_COUNT:]:
+    for row in _load_base_rows()[EXISTING_BASE_ROW_COUNT:W0_DB03_BASE_ROW_END]:
         assert set(row) == {
             "name_jp",
             "address",
@@ -354,7 +357,7 @@ def test_held_goriyaku_wording_never_reaches_recommendation_evidence():
     for cid in EXECUTION_IDS:
         surfaces.append(candidates[cid]["goriyaku"])
         surfaces.extend(candidates[cid]["goriyaku_tags"])
-    for row in _load_base_rows()[EXISTING_BASE_ROW_COUNT:]:
+    for row in _load_base_rows()[EXISTING_BASE_ROW_COUNT:W0_DB03_BASE_ROW_END]:
         surfaces.append(row["goriyaku"])
         surfaces.extend(row["goriyaku_tags"])
 
@@ -513,7 +516,7 @@ def test_seed_parse_is_deterministic():
 def _write_execution_base_seed(tmp_path):
     path = tmp_path / "w0_db03_base.json"
     path.write_text(
-        json.dumps(_load_base_rows()[EXISTING_BASE_ROW_COUNT:], ensure_ascii=False),
+        json.dumps(_load_base_rows()[EXISTING_BASE_ROW_COUNT:W0_DB03_BASE_ROW_END], ensure_ascii=False),
         encoding="utf-8",
     )
     return path
