@@ -593,31 +593,37 @@ def test_t28_t29_t30_t40_carrier_does_not_leak_into_public_concierge_response(
 # ---------- Channel A / 数値 / G5 / goriyaku は変わらない（T16〜T22, T31, T33〜T36） ----------
 
 
-_NUMERIC_KEYS = ("_score_total", "goriyaku_tag_ids", "reason", "_reason_facts")
+# Channel A 側の値と理由文（PR-F の後も Channel B で変わらないもの）。
+_CHANNEL_A_KEYS = ("goriyaku_tag_ids", "reason", "_reason_facts")
 
 
-def _snapshot(recs: dict) -> list:
-    out = []
+def _snapshot(recs: dict) -> dict:
+    """name → (Channel A の値, rank_weighted)。PR-F は rank_weighted（と _score_total・順序）だけを変える。"""
+    out = {}
     for row in recs["recommendations"]:
         breakdown = row.get("breakdown") or {}
         need = ((row.get("breakdown_detail") or {}).get("features") or {}).get("need") or {}
-        out.append(
-            (
-                row.get("name"),
-                tuple(repr(row.get(k)) for k in _NUMERIC_KEYS),
-                breakdown.get("score_need"),
-                tuple(breakdown.get("matched_need_tags") or []),
-                need.get("rank_raw"),
-                need.get("rank_weighted"),
-                tuple(need.get("matched_tags") or []),
-                need.get("matched_by_gid_count"),
-                need.get("matched_by_text_count"),
-            )
+        channel_a = (
+            tuple(repr(row.get(k)) for k in _CHANNEL_A_KEYS),
+            breakdown.get("score_need"),
+            breakdown.get("score_total"),
+            tuple(breakdown.get("matched_need_tags") or []),
+            need.get("rank_raw"),
+            tuple(need.get("matched_tags") or []),
+            need.get("matched_by_gid_count"),
+            need.get("matched_by_text_count"),
         )
+        out[row.get("name")] = (channel_a, need.get("rank_weighted"))
     return out
 
 
-def test_t16_to_t21_t35_t36_numeric_and_channel_a_results_are_unchanged(install_registry):
+def test_t16_to_t21_t35_t36_channel_a_results_unchanged_and_only_pr_f_moves_rank_weighted(
+    install_registry,
+):
+    """Channel B は Channel A の値（score_need / matched_all / rank_raw / gid / text / 理由文）を
+    変えない。数値の効果は PR-F の規則だけ: B だけの Need は rank_weighted +2.0、
+    同じ Need に Channel A がある候補は +0。
+    """
     _tag("商売繁盛")
     _tag("金運")
     b_only = _shrine()
@@ -635,7 +641,12 @@ def test_t16_to_t21_t35_t36_numeric_and_channel_a_results_are_unchanged(install_
     )
     assert _matches(b_only) and _matches(a_only)
     after = _snapshot(_recommend())
-    assert after == before
+
+    assert set(after) == set(before)
+    for name in before:
+        assert after[name][0] == before[name][0], name
+    assert after[SHRINE_NAME][1] - before[SHRINE_NAME][1] == pytest.approx(2.0)
+    assert after["経路A試験神社"][1] == before["経路A試験神社"][1]
 
 
 def test_t31_channel_b_does_not_enter_the_legacy_goriyaku_reason_path(install_registry):
