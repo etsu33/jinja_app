@@ -5,6 +5,10 @@ import logging
 from typing import Any, Dict, List, Optional, TypedDict
 from temples.domain.shrine_identity import resolve_shrine_id
 from temples.domain.need_to_goriyaku_tag_ids import need_tags_to_goriyaku_ids
+from temples.services.channel_b_typed_need_match import (
+    CHANNEL_B_TYPED_NEED_MATCHES_KEY,
+    TypedNeedMatch,
+)
 from temples.services.concierge_history import (
     build_recent_reflection_hint,
     calculate_action_profile_breakdown,
@@ -249,6 +253,33 @@ SCORE_V3_HISTORY_THEME_BY_AXIS: dict[str, dict[str, float]] = {
 # 注意: 名称に "SCORE_V3" を含まない。SCORE_V3_HISTORY_THEME_BY_AXIS（shadow観測専用）の
 # 複製だが、resolve_history_theme_candidate_boost() 経由で score_need_rank_weighted と
 # 候補prefilterスコアへ直接加算されており、shadowではなく現行の本番ランキングに実影響する。
+# Policy C / Channel B の Need 単位の関連性（PR-F。docs/audit/shrine-expansion-wave0-db04-f1-
+# goriyaku-mapping-boundary.md §12.16.10 / §12.18）。Channel A がその Need に一致していない
+# ときだけ寄与する fallback であり、Channel A の値は変えない。prefilter と ranking は同じ規則を
+# 使うが、数値は別々に所有する（互いにも、gid のリテラルにも結合しない）。
+PREFILTER_CHANNEL_B_WEIGHT = 2
+CHANNEL_B_RANKING_WEIGHT = 2.0
+
+
+def _channel_b_request_need_keys(rec: Dict[str, Any], need_tags_clean: List[str]) -> set[str]:
+    """候補の Channel B carrier（PR-C の TypedNeedMatch）から、request の Need に一致する
+    Need key の集合を作る（一時的な数値用の projection。候補にも carrier にも書き戻さない）。
+
+    - TypedNeedMatch.need と request の Need key を完全一致で比べる（alias 正規化はしない）
+    - Need で重複を除く（Fact / Source / concept の数は寄与を増やさない）
+    - carrier が無い・空・想定外の要素は、その分の寄与を 0 にする（DB は読まない）
+    """
+    carrier = rec.get(CHANNEL_B_TYPED_NEED_MATCHES_KEY)
+    if not isinstance(carrier, (tuple, list)):
+        return set()
+    wanted = set(need_tags_clean)
+    return {
+        item.need
+        for item in carrier
+        if isinstance(item, TypedNeedMatch) and isinstance(item.need, str) and item.need in wanted
+    }
+
+
 HISTORY_THEME_CANDIDATE_BOOST_BY_AXIS: dict[str, dict[str, float]] = {
     axis: dict(theme_scores)
     for axis, theme_scores in SCORE_V3_HISTORY_THEME_BY_AXIS.items()
@@ -1201,6 +1232,14 @@ def _attach_breakdown(
         + study_bonus
     )
 
+    # Channel B（PR-F）: Channel A（astro / gid / text = matched_all）が一致していない Need に
+    # だけ、Need ごとに CHANNEL_B_RANKING_WEIGHT を加える。matched_all / score_need /
+    # score_need_rank（rank_raw）は変えない。
+    channel_b_only_need_keys = _channel_b_request_need_keys(rec, need_tags_clean) - set(
+        matched_all
+    )
+    score_need_rank_weighted += len(channel_b_only_need_keys) * CHANNEL_B_RANKING_WEIGHT
+
     history_theme_candidate_boost = resolve_history_theme_candidate_boost(
         consultation_axis=consultation_axis,
         history_theme=rec.get("history_theme"),
@@ -1638,16 +1677,21 @@ def _prefilter_candidates_for_need(
         text_score_by_tag: Dict[str, int] = {}
         matched_gid_tags: List[str] = []
 
+        channel_b_need_keys = _channel_b_request_need_keys(c, need_tags_clean)
+
         for tag in need_tags_clean:
+            channel_a_matched = False
             if tag in astro_tag_set:
                 score += 2
                 matched.append(f"{tag}:astro")
+                channel_a_matched = True
 
             expected_gids = need_tags_to_goriyaku_ids([tag])
             if expected_gids and (candidate_gid_set & expected_gids):
                 score += 2
                 matched.append(f"{tag}:gid")
                 matched_gid_tags.append(tag)
+                channel_a_matched = True
 
             text_weights = NEED_TEXT_WEIGHTS.get(tag, {})
             tag_matched_hints = [hint for hint in text_weights.keys() if hint in material]
@@ -1657,6 +1701,12 @@ def _prefilter_candidates_for_need(
                 matched.append(f"{tag}:text")
                 matched_text_hints_by_tag[tag] = tag_matched_hints
                 text_score_by_tag[tag] = sum(text_weights[h] for h in tag_matched_hints)
+                channel_a_matched = True
+
+            # Channel B（PR-F）: Channel A がこの Need に一致していないときだけ加える。
+            # Channel A の debug field（matched / matched_gid_tags / text_*）には入れない。
+            if not channel_a_matched and tag in channel_b_need_keys:
+                score += PREFILTER_CHANNEL_B_WEIGHT
 
         if is_study_need and any(h in material for h in STUDY_SHRINE_HINTS):
             score += 2
