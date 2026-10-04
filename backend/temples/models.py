@@ -798,6 +798,68 @@ class ShrineHistory(models.Model):
         _validate_verified_at_consistency(self.verification_status, self.verified_at)
 
 
+class ShrineSourceFact(models.Model):
+    """Source が述べる祈祷・現行案内の記載をそのまま保存する Knowledge Fact（Policy C / Channel B）。
+
+    docs/audit/shrine-expansion-wave0-db04-f1-goriyaku-mapping-boundary.md §12.15.A〜E の実装。
+    goriyaku（GoriyakuTag / goriyaku_tags / ShrineGoriyakuAssignment）とは別の Fact であり、
+    それらへ変換・書き込みしない。canonical concept / Need / score / mapping は持たない
+    （registry と後続の層が持つ）。本 model は Foundation のみであり、Recommendation /
+    Serializer / selector からは読まれない。
+
+    identity = 明示的に記述された stable_key（全体で一意）。DB の PK や wording から導出しない。
+    wording / evidence_characterization が変われば別の Fact（別の stable_key）である。
+    """
+
+    EVIDENCE_CHARACTERIZATION_CHOICES = [
+        ("official_prayer_supported", "official_prayer_supported"),
+        ("official_current_guidance_supported", "official_current_guidance_supported"),
+        # 祈祷と現行案内の両方を list 単位で併記した記載。term 単位ではどちらか分けられていない
+        # （wave0-021）。一方の種類へ解決しない。
+        (
+            "official_prayer_and_current_guidance_list_level",
+            "official_prayer_and_current_guidance_list_level",
+        ),
+    ]
+
+    shrine = models.ForeignKey(Shrine, on_delete=models.CASCADE, related_name="source_facts")
+    stable_key = models.CharField(max_length=255, unique=True, validators=[_validate_not_blank])
+    source_attested_wording = models.CharField(max_length=255, validators=[_validate_not_blank])
+    evidence_characterization = models.CharField(
+        max_length=64, choices=EVIDENCE_CHARACTERIZATION_CHOICES
+    )
+    sources = models.ManyToManyField(ShrineKnowledgeSource, related_name="source_facts", blank=True)
+    verification_status = models.CharField(
+        max_length=32,
+        choices=KNOWLEDGE_VERIFICATION_STATUS_CHOICES,
+        default="draft",
+    )
+    confidence = models.CharField(
+        max_length=8, choices=KNOWLEDGE_CONFIDENCE_CHOICES, blank=True, default=""
+    )
+    verified_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["id"]
+        constraints = [
+            # unique=True と合わせ、空 / 空白だけの stable_key を DB でも拒否する
+            # （objects.create() / bulk 経路でも破れないように）。
+            CheckConstraint(
+                condition=Q(stable_key__regex=r"\S"),
+                name="chk_source_fact_stable_key_not_blank",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.shrine_id}:{self.stable_key}"
+
+    def clean(self) -> None:
+        super().clean()
+        _validate_verified_at_consistency(self.verification_status, self.verified_at)
+
+
 class HistoryThemeAssignment(models.Model):
     """Evidence Foundation PR-F2: history_theme semantic assignmentの
     qualification path。docs/knowledge/evidence-foundation-shared-contract.md

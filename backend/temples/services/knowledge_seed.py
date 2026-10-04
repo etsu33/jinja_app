@@ -32,6 +32,7 @@ from temples.models import (
     ShrineDeityCollective,
     ShrineHistory,
     ShrineKnowledgeSource,
+    ShrineSourceFact,
 )
 
 # export_shrine_knowledge が出力する version。A-5a では変更しない。
@@ -39,7 +40,13 @@ SCHEMA_VERSION = "1.0"
 # import 側が受け付ける version（docs/audit/collective-deity-knowledge-seed-v1-1-contract.md §3）。
 # 1.0 は従来契約のまま。1.1 は shrine block に optional な `collectives` を追加する。
 COLLECTIVE_SCHEMA_VERSION = "1.1"
-SUPPORTED_SCHEMA_VERSIONS = (SCHEMA_VERSION, COLLECTIVE_SCHEMA_VERSION)
+# 1.2 は 1.1 に shrine block の optional な `source_facts`（ShrineSourceFact）を追加する。
+# 1.2 では shrine block と source_facts の要素の未知 key をエラーにする（1.0 / 1.1 は従来どおり）。
+# docs/audit/shrine-expansion-wave0-db04-f1-goriyaku-mapping-boundary.md §12.15.F
+SOURCE_FACT_SCHEMA_VERSION = "1.2"
+SUPPORTED_SCHEMA_VERSIONS = (SCHEMA_VERSION, COLLECTIVE_SCHEMA_VERSION, SOURCE_FACT_SCHEMA_VERSION)
+# collectives を受け付ける version（1.2 は 1.1 の上位互換）。
+_COLLECTIVE_SCHEMA_VERSIONS = (COLLECTIVE_SCHEMA_VERSION, SOURCE_FACT_SCHEMA_VERSION)
 
 _VALID_VERIFICATION_STATUSES = {v for v, _ in KNOWLEDGE_VERIFICATION_STATUS_CHOICES}
 _VALID_CONFIDENCES = {v for v, _ in KNOWLEDGE_CONFIDENCE_CHOICES} | {""}
@@ -49,6 +56,23 @@ _VALID_HISTORY_TYPES = {v for v, _ in ShrineHistory.HISTORY_TYPE_CHOICES}
 _VALID_MEMBER_COUNT_RELATIONS = {v for v, _ in ShrineDeityCollective.MEMBER_COUNT_RELATION_CHOICES}
 _MEMBER_COUNT_RELATIONS_WITH_COUNT = set(ShrineDeityCollective.MEMBER_COUNT_RELATIONS_WITH_COUNT)
 _VALID_MEMBER_LIST_STATUSES = {v for v, _ in ShrineDeityCollective.MEMBER_LIST_STATUS_CHOICES}
+_VALID_EVIDENCE_CHARACTERIZATIONS = {
+    v for v, _ in ShrineSourceFact.EVIDENCE_CHARACTERIZATION_CHOICES
+}
+_SHRINE_BLOCK_KEYS_V1_2 = frozenset(
+    {"shrine_ref", "deities", "histories", "collectives", "source_facts"}
+)
+_SOURCE_FACT_KEYS = frozenset(
+    {
+        "stable_key",
+        "source_attested_wording",
+        "evidence_characterization",
+        "source_keys",
+        "verification_status",
+        "confidence",
+        "verified_at",
+    }
+)
 
 ShrineIdentityStatus = Literal["OK", "OK_CANONICAL_PREFERRED", "NOT_FOUND", "AMBIGUOUS"]
 SourceIdentityStatus = Literal["CREATE", "REUSE_EXISTING", "CONFLICT", "AMBIGUOUS"]
@@ -351,6 +375,21 @@ _MEMBERSHIP_COMPARE_FIELDS = (
 )
 
 
+# shrine と Source の集合は呼び出し側で別に比較する。
+_SOURCE_FACT_COMPARE_FIELDS = (
+    "source_attested_wording",
+    "evidence_characterization",
+    "verification_status",
+    "confidence",
+    "verified_at",
+)
+
+
+def find_source_fact_by_stable_key(stable_key: str) -> ShrineSourceFact | None:
+    """stable_key は DB で一意なので、高々1件。"""
+    return ShrineSourceFact.objects.filter(stable_key=stable_key).first()
+
+
 def _comparable(field_name: str, value: Any) -> Any:
     if field_name == "verified_at" and isinstance(value, datetime) and timezone.is_naive(value):
         # DateTimeField は naive 値を TIME_ZONE で保存する。比較も同じ解釈にそろえる。
@@ -373,6 +412,10 @@ def diff_collective_fields(existing: ShrineDeityCollective, entry: "CollectiveEn
 
 def diff_membership_fields(existing: Any, entry: "MembershipEntry") -> list[str]:
     return diff_persisted_fields(existing, entry, _MEMBERSHIP_COMPARE_FIELDS)
+
+
+def diff_source_fact_fields(existing: ShrineSourceFact, entry: "SourceFactEntry") -> list[str]:
+    return diff_persisted_fields(existing, entry, _SOURCE_FACT_COMPARE_FIELDS)
 
 
 def _parse_date(value: Any, field_name: str, errors: list[str]) -> date | None:
@@ -475,12 +518,26 @@ class CollectiveEntry:
 
 
 @dataclass
+class SourceFactEntry:
+    """schema 1.2 の ShrineSourceFact 1件。identity = stable_key（seed 全体・DB 全体で一意）。"""
+
+    stable_key: str
+    source_attested_wording: str
+    evidence_characterization: str
+    verification_status: str = "draft"
+    confidence: str = ""
+    verified_at: datetime | None = None
+    source_keys: list[str] = field(default_factory=list)
+
+
+@dataclass
 class ShrineBlock:
     name_jp: str
     address: str
     deities: list[DeityEntry] = field(default_factory=list)
     histories: list[HistoryEntry] = field(default_factory=list)
     collectives: list[CollectiveEntry] = field(default_factory=list)
+    source_facts: list[SourceFactEntry] = field(default_factory=list)
 
 
 @dataclass
@@ -812,11 +869,11 @@ def _parse_collectives(
 ) -> list[CollectiveEntry]:
     if "collectives" not in raw:
         return []
-    if schema_version != COLLECTIVE_SCHEMA_VERSION:
+    if schema_version not in _COLLECTIVE_SCHEMA_VERSIONS:
         # 1.0 では空リストでも黙って無視しない（contract §3.1）。
         errors.append(
             f"{prefix}.collectives: not allowed in schema_version {schema_version!r}; "
-            f"requires {COLLECTIVE_SCHEMA_VERSION!r}"
+            f"requires one of {list(_COLLECTIVE_SCHEMA_VERSIONS)!r}"
         )
         return []
     raw_collectives = raw["collectives"]
@@ -842,9 +899,77 @@ def _parse_collectives(
     return collectives
 
 
+def _parse_exact_text(raw: dict, key: str, prefix: str, errors: list[str]) -> str:
+    """必須・非空白・前後の空白なしの文字列。trim / 正規化はしない（Source 上の表記をそのまま持つ）。"""
+    value = raw.get(key)
+    if not isinstance(value, str) or not value.strip():
+        errors.append(f"{prefix}.{key}: required, must be a non-blank string")
+        return ""
+    if value != value.strip():
+        errors.append(f"{prefix}.{key}: must not have leading/trailing whitespace, got {value!r}")
+    return value
+
+
+def _parse_source_fact(
+    raw: Any, prefix: str, sources: dict, errors: list[str]
+) -> SourceFactEntry | None:
+    if not isinstance(raw, dict):
+        errors.append(f"{prefix}: must be an object")
+        return None
+    unknown = sorted(set(raw) - _SOURCE_FACT_KEYS)
+    if unknown:
+        errors.append(f"{prefix}: unknown key(s) {unknown!r}")
+
+    stable_key = _parse_exact_text(raw, "stable_key", prefix, errors)
+    wording = _parse_exact_text(raw, "source_attested_wording", prefix, errors)
+    # 既定値は持たない（OFFICIAL_GORIYAKU_WORDING などへ黙って寄せない）。
+    characterization = raw.get("evidence_characterization")
+    if not _is_choice(characterization, _VALID_EVIDENCE_CHARACTERIZATIONS):
+        errors.append(f"{prefix}.evidence_characterization: invalid value {characterization!r}")
+        characterization = ""
+    verification_status, confidence, verified_at = _parse_verification(raw, prefix, errors)
+    return SourceFactEntry(
+        stable_key=stable_key,
+        source_attested_wording=wording,
+        evidence_characterization=characterization,
+        verification_status=verification_status,
+        confidence=confidence,
+        verified_at=verified_at,
+        source_keys=_parse_required_source_keys(raw, prefix, sources, errors),
+    )
+
+
+def _parse_source_facts(
+    raw: dict, schema_version: Any, prefix: str, sources: dict, errors: list[str]
+) -> list[SourceFactEntry]:
+    if "source_facts" not in raw:
+        return []
+    if schema_version != SOURCE_FACT_SCHEMA_VERSION:
+        # 古い version では空リストでも黙って無視しない（collectives と同じ）。
+        errors.append(
+            f"{prefix}.source_facts: not allowed in schema_version {schema_version!r}; "
+            f"requires {SOURCE_FACT_SCHEMA_VERSION!r}"
+        )
+        return []
+    raw_facts = raw["source_facts"]
+    if not isinstance(raw_facts, list):
+        errors.append(f"{prefix}.source_facts: must be a list")
+        return []
+    facts: list[SourceFactEntry] = []
+    for j, f in enumerate(raw_facts):
+        fact = _parse_source_fact(f, f"{prefix}.source_facts[{j}]", sources, errors)
+        if fact is not None:
+            facts.append(fact)
+    return facts
+
+
 def _parse_shrine_block(
     raw: dict, prefix: str, sources: dict, errors: list[str], schema_version: Any = SCHEMA_VERSION
 ) -> ShrineBlock:
+    if schema_version == SOURCE_FACT_SCHEMA_VERSION:
+        unknown = sorted(set(raw) - _SHRINE_BLOCK_KEYS_V1_2)
+        if unknown:
+            errors.append(f"{prefix}: unknown key(s) {unknown!r}")
     shrine_ref = raw.get("shrine_ref") or {}
     name_jp = shrine_ref.get("name_jp")
     if not name_jp or not str(name_jp).strip():
@@ -862,6 +987,7 @@ def _parse_shrine_block(
     ]
 
     collectives = _parse_collectives(raw, schema_version, prefix, sources, errors)
+    source_facts = _parse_source_facts(raw, schema_version, prefix, sources, errors)
 
     return ShrineBlock(
         name_jp=str(name_jp),
@@ -869,6 +995,7 @@ def _parse_shrine_block(
         deities=deities,
         histories=histories,
         collectives=collectives,
+        source_facts=source_facts,
     )
 
 
@@ -903,6 +1030,19 @@ def parse_seed(raw: dict) -> ParsedSeed:
     for i, block in enumerate(raw_shrines):
         shrines.append(_parse_shrine_block(block, f"shrines[{i}]", sources, errors, schema_version))
 
+    # stable_key は shrine block をまたいで seed 全体で一意（DB の一意制約と同じ範囲）。
+    seen_stable_keys: set[str] = set()
+    for i, block in enumerate(shrines):
+        for j, fact in enumerate(block.source_facts):
+            if not fact.stable_key:
+                continue
+            if fact.stable_key in seen_stable_keys:
+                errors.append(
+                    f"shrines[{i}].source_facts[{j}].stable_key: duplicate "
+                    f"{fact.stable_key!r} within this seed file"
+                )
+            seen_stable_keys.add(fact.stable_key)
+
     return ParsedSeed(
         schema_version=str(schema_version or ""), sources=sources, shrines=shrines, errors=errors
     )
@@ -911,7 +1051,11 @@ def parse_seed(raw: dict) -> ParsedSeed:
 __all__ = [
     "SCHEMA_VERSION",
     "COLLECTIVE_SCHEMA_VERSION",
+    "SOURCE_FACT_SCHEMA_VERSION",
     "SUPPORTED_SCHEMA_VERSIONS",
+    "SourceFactEntry",
+    "find_source_fact_by_stable_key",
+    "diff_source_fact_fields",
     "MembershipDeityResult",
     "resolve_membership_deity",
     "find_collectives_by_identity",
