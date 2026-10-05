@@ -272,12 +272,12 @@ class TestBuildRecommendationReasonLeadWiring:
         )
         assert text == "長太稲荷神社は、今の悩みや願いに合わせて参拝先の候補に入れています。"
 
-    def test_generic_primary_reason_label_falls_back_to_generic_lead(self):
+    def test_fallback_sentinel_primary_label_is_not_rendered_as_need_label(self):
         # 実運用でPurpose Evidenceが皆無の候補は、_resolve_primary_reasonが
         # label="fallback"を返す（docs/audit/compass-reason-evidence-priority.md
-        # 3節）。"fallback"はPurpose fallback辞書にもmatched evidenceにも
-        # 存在しないため、genericな"ご利益"へ落ちる（goriyaku先頭語を
-        # 推測で使わない、Phase A9のstudy境界と整合）。
+        # 3節）。"fallback"は内部の sentinel であり Need label ではない（SP3）。
+        # Need 用の事実の文（「〜のご利益で知られる」）を作らず、label が無いときと
+        # 同じ generic な文になる（goriyaku 先頭語を推測で使わない点は従来どおり）。
         rec = {
             "name": "明治神宮",
             "goriyaku": "縁結び・厄除け・交通安全",
@@ -286,14 +286,18 @@ class TestBuildRecommendationReasonLeadWiring:
             "breakdown": {"matched_need_tags": []},
             "_primary_reason_label": "fallback",
         }
-        text = build_recommendation_reason(
-            rec,
+        kwargs = dict(
             public_mode="need",
             birthdate=None,
             need_tags=["study"],
             need_gid_label_by_id={9: "学業成就", 10: "合格祈願"},
         )
-        assert text == "ご利益のご利益で知られる明治神宮は、今の願いを願う参拝先として適しています。"
+        text = build_recommendation_reason(rec, **kwargs)
+        no_label = build_recommendation_reason({**rec, "_primary_reason_label": ""}, **kwargs)
+        assert text == no_label
+        assert "ご利益で知られる" not in text
+        assert "fallback" not in text
+        assert "明治神宮" in text
 
     def test_need_gid_label_by_id_omitted_does_not_error(self):
         # Backward compatibility: callers that don't pass need_gid_label_by_id

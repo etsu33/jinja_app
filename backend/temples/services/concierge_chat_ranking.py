@@ -539,6 +539,9 @@ NEED_LABELS_JA: Dict[str, str] = {
 # - 「仕事」「金運」「恋愛」など語彙は重複してよいが、入力側と神社側で責務を分ける。
 # - primary_reason は固定相談文ではなく、フリーワードや短いキーワードから抽出された相談テーマとの接続を優先する。
 
+# _resolve_primary_reason() が「一致する evidence がない」ことを表す内部の sentinel（type / label）。
+FALLBACK_REASON_SENTINEL = "fallback"
+
 PRIMARY_REASON_PRIORITY: Dict[str, int] = {
     "history_theme": 0,
     # culture_translation is deliberately absent: per
@@ -1950,6 +1953,15 @@ def build_recommendation_reason(
         str(tag).strip() for tag in matched if isinstance(tag, str) and str(tag).strip()
     ]
     primary_label = str(rec.get("_primary_reason_label") or "").strip()
+    # SP3: _resolve_primary_reason() は一致する evidence がないとき type / label とも
+    # "fallback" を返す。これは内部の制御 sentinel であり Need label ではない。Need 用の
+    # 事実の文（「〜のご利益で知られる」）へ流すと、根拠のない御利益の断定になる
+    # （_build_need_lead("fallback") -> "ご利益"）。sentinel は Need label として扱わない。
+    if (
+        primary_label == FALLBACK_REASON_SENTINEL
+        or str(rec.get("_primary_reason_source") or "").strip() == FALLBACK_REASON_SENTINEL
+    ):
+        primary_label = ""
 
     try:
         log.info(
