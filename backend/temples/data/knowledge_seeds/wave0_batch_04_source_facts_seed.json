@@ -1,0 +1,309 @@
+{
+  "schema_version": "1.2",
+  "sources": [
+    {
+      "key": "w0-db04-osaka-tenmangu-gokito-official",
+      "source_type": "shrine_official",
+      "title": "ご祈祷・ご祈願",
+      "publisher": "大阪天満宮",
+      "url": "https://osakatemmangu.or.jp/gokito",
+      "language": "ja",
+      "verified_at": "2026-10-05T00:00:00+09:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high"
+    },
+    {
+      "key": "w0-db04-osaka-tenmangu-r8-torinuke-official",
+      "source_type": "shrine_official",
+      "title": "令和8年の通り抜け参拝について",
+      "publisher": "大阪天満宮",
+      "url": "https://osakatemmangu.or.jp/3944",
+      "language": "ja",
+      "verified_at": "2026-10-05T00:00:00+09:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high"
+    },
+    {
+      "key": "w0-db04-oosaki-hachiman-gokigan-official",
+      "source_type": "shrine_official",
+      "title": "御祈願の神札",
+      "publisher": "大崎八幡宮",
+      "url": "https://www.oosaki-hachiman.or.jp/event/shinsyun/doc/ofuda.pdf",
+      "language": "ja",
+      "verified_at": "2026-10-05T00:00:00+09:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high"
+    }
+  ],
+  "shrines": [
+    {
+      "shrine_ref": {
+        "name_jp": "大阪天満宮",
+        "address": "大阪府大阪市北区天神橋2丁目1番8号"
+      },
+      "source_facts": [
+        {
+          "stable_key": "osaka_tenmangu__prayer_and_current_guidance__shiken_gokaku",
+          "source_attested_wording": "試験合格",
+          "evidence_characterization": "official_prayer_and_current_guidance_list_level",
+          "source_keys": [
+            "w0-db04-osaka-tenmangu-gokito-official"
+          ],
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-05T00:00:00+09:00"
+        },
+        {
+          "stable_key": "osaka_tenmangu__prayer_and_current_guidance__gakugyo_joju",
+          "source_attested_wording": "学業成就",
+          "evidence_characterization": "official_prayer_and_current_guidance_list_level",
+          "source_keys": [
+            "w0-db04-osaka-tenmangu-gokito-official"
+          ],
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-05T00:00:00+09:00"
+        },
+        {
+          "stable_key": "osaka_tenmangu__prayer_and_current_guidance__yakuyoke",
+          "source_attested_wording": "厄除け",
+          "evidence_characterization": "official_prayer_and_current_guidance_list_level",
+          "source_keys": [
+            "w0-db04-osaka-tenmangu-gokito-official"
+          ],
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-05T00:00:00+09:00"
+        },
+        {
+          "stable_key": "osaka_tenmangu__prayer_and_current_guidance__kotsu_anzen",
+          "source_attested_wording": "交通安全",
+          "evidence_characterization": "official_prayer_and_current_guidance_list_level",
+          "source_keys": [
+            "w0-db04-osaka-tenmangu-gokito-official"
+          ],
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-05T00:00:00+09:00"
+        },
+        {
+          "stable_key": "osaka_tenmangu__prayer_and_current_guidance__shobai_hanjo",
+          "source_attested_wording": "商売繁昌",
+          "evidence_characterization": "official_prayer_and_current_guidance_list_level",
+          "source_keys": [
+            "w0-db04-osaka-tenmangu-gokito-official"
+          ],
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-05T00:00:00+09:00"
+        },
+        {
+          "stable_key": "osaka_tenmangu__prayer_and_current_guidance__shushoku_joju",
+          "source_attested_wording": "就職成就",
+          "evidence_characterization": "official_prayer_and_current_guidance_list_level",
+          "source_keys": [
+            "w0-db04-osaka-tenmangu-r8-torinuke-official"
+          ],
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-05T00:00:00+09:00"
+        },
+        {
+          "stable_key": "osaka_tenmangu__prayer_and_current_guidance__gakutoku_kojo",
+          "source_attested_wording": "学徳向上",
+          "evidence_characterization": "official_prayer_and_current_guidance_list_level",
+          "source_keys": [
+            "w0-db04-osaka-tenmangu-r8-torinuke-official"
+          ],
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-05T00:00:00+09:00"
+        }
+      ]
+    },
+    {
+      "shrine_ref": {
+        "name_jp": "大崎八幡宮",
+        "address": "宮城県仙台市青葉区八幡4-6-1"
+      },
+      "source_facts": [
+        {
+          "stable_key": "osaki_hachimangu__prayer__kanai_anzen",
+          "source_attested_wording": "家内安全",
+          "evidence_characterization": "official_prayer_supported",
+          "source_keys": [
+            "w0-db04-oosaki-hachiman-gokigan-official"
+          ],
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-05T00:00:00+09:00"
+        },
+        {
+          "stable_key": "osaki_hachimangu__prayer__shobai_hanjo",
+          "source_attested_wording": "商売繁昌",
+          "evidence_characterization": "official_prayer_supported",
+          "source_keys": [
+            "w0-db04-oosaki-hachiman-gokigan-official"
+          ],
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-05T00:00:00+09:00"
+        },
+        {
+          "stable_key": "osaki_hachimangu__prayer__kotsu_anzen",
+          "source_attested_wording": "交通安全",
+          "evidence_characterization": "official_prayer_supported",
+          "source_keys": [
+            "w0-db04-oosaki-hachiman-gokigan-official"
+          ],
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-05T00:00:00+09:00"
+        },
+        {
+          "stable_key": "osaki_hachimangu__prayer__yakuyoke",
+          "source_attested_wording": "厄除",
+          "evidence_characterization": "official_prayer_supported",
+          "source_keys": [
+            "w0-db04-oosaki-hachiman-gokigan-official"
+          ],
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-05T00:00:00+09:00"
+        },
+        {
+          "stable_key": "osaki_hachimangu__prayer__hoyoke",
+          "source_attested_wording": "方除",
+          "evidence_characterization": "official_prayer_supported",
+          "source_keys": [
+            "w0-db04-oosaki-hachiman-gokigan-official"
+          ],
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-05T00:00:00+09:00"
+        },
+        {
+          "stable_key": "osaki_hachimangu__prayer__gakugyo_joju",
+          "source_attested_wording": "学業成就",
+          "evidence_characterization": "official_prayer_supported",
+          "source_keys": [
+            "w0-db04-oosaki-hachiman-gokigan-official"
+          ],
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-05T00:00:00+09:00"
+        },
+        {
+          "stable_key": "osaki_hachimangu__prayer__gokaku_kigan",
+          "source_attested_wording": "合格祈願",
+          "evidence_characterization": "official_prayer_supported",
+          "source_keys": [
+            "w0-db04-oosaki-hachiman-gokigan-official"
+          ],
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-05T00:00:00+09:00"
+        },
+        {
+          "stable_key": "osaki_hachimangu__prayer__hissho",
+          "source_attested_wording": "必勝",
+          "evidence_characterization": "official_prayer_supported",
+          "source_keys": [
+            "w0-db04-oosaki-hachiman-gokigan-official"
+          ],
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-05T00:00:00+09:00"
+        },
+        {
+          "stable_key": "osaki_hachimangu__prayer__shintai_kengo",
+          "source_attested_wording": "身体堅固",
+          "evidence_characterization": "official_prayer_supported",
+          "source_keys": [
+            "w0-db04-oosaki-hachiman-gokigan-official"
+          ],
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-05T00:00:00+09:00"
+        },
+        {
+          "stable_key": "osaki_hachimangu__prayer__byoki_heiyu",
+          "source_attested_wording": "病気平癒",
+          "evidence_characterization": "official_prayer_supported",
+          "source_keys": [
+            "w0-db04-oosaki-hachiman-gokigan-official"
+          ],
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-05T00:00:00+09:00"
+        },
+        {
+          "stable_key": "osaki_hachimangu__prayer__kaiun_yakuyoke",
+          "source_attested_wording": "開運厄除",
+          "evidence_characterization": "official_prayer_supported",
+          "source_keys": [
+            "w0-db04-oosaki-hachiman-gokigan-official"
+          ],
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-05T00:00:00+09:00"
+        },
+        {
+          "stable_key": "osaki_hachimangu__prayer__sainan_shofuku",
+          "source_attested_wording": "災難招福",
+          "evidence_characterization": "official_prayer_supported",
+          "source_keys": [
+            "w0-db04-oosaki-hachiman-gokigan-official"
+          ],
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-05T00:00:00+09:00"
+        },
+        {
+          "stable_key": "osaki_hachimangu__prayer__shingan_joju",
+          "source_attested_wording": "心願成就",
+          "evidence_characterization": "official_prayer_supported",
+          "source_keys": [
+            "w0-db04-oosaki-hachiman-gokigan-official"
+          ],
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-05T00:00:00+09:00"
+        },
+        {
+          "stable_key": "osaki_hachimangu__prayer__ryoen",
+          "source_attested_wording": "良縁",
+          "evidence_characterization": "official_prayer_supported",
+          "source_keys": [
+            "w0-db04-oosaki-hachiman-gokigan-official"
+          ],
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-05T00:00:00+09:00"
+        },
+        {
+          "stable_key": "osaki_hachimangu__prayer__anzan",
+          "source_attested_wording": "安産",
+          "evidence_characterization": "official_prayer_supported",
+          "source_keys": [
+            "w0-db04-oosaki-hachiman-gokigan-official"
+          ],
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-05T00:00:00+09:00"
+        },
+        {
+          "stable_key": "osaki_hachimangu__prayer__ryoko_anzen",
+          "source_attested_wording": "旅行安全",
+          "evidence_characterization": "official_prayer_supported",
+          "source_keys": [
+            "w0-db04-oosaki-hachiman-gokigan-official"
+          ],
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-05T00:00:00+09:00"
+        }
+      ]
+    }
+  ]
+}
