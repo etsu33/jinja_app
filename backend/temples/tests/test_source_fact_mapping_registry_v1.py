@@ -88,12 +88,13 @@ def test_t1_registry_version_is_pinned():
     assert get_registry().version == REGISTRY_VERSION
 
 
-def test_repository_registry_is_an_empty_foundation():
-    """PR-B は W0-DB04 の実 mapping を持たない（PR-E が Mother Ship の承認後に追加する）。"""
-    assert SOURCE_FACT_MAPPING_RECORDS == ()
+def test_repository_registry_holds_only_the_ms2_frozen_records():
+    """PR-B は空の foundation だった。PR-E が MS-2 で承認・凍結した W0-DB04 の 16 件だけを追加した
+    （内容の固定は test_wave0_db04_registry_mappings.py）。"""
     assert isinstance(SOURCE_FACT_MAPPING_RECORDS, tuple)
+    assert len(SOURCE_FACT_MAPPING_RECORDS) == 16
     assert validate_registry_static() == ()
-    assert get_registry().records == ()
+    assert get_registry().records == SOURCE_FACT_MAPPING_RECORDS
 
 
 def test_repository_registry_concepts_are_within_the_canonical_master():

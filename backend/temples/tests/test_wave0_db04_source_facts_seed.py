@@ -27,7 +27,10 @@ from temples.models import (
     ShrineKnowledgeSource,
     ShrineSourceFact,
 )
-from temples.services.channel_b_typed_need_match import fetch_typed_need_matches
+from temples.services.channel_b_typed_need_match import (
+    CHANNEL_B_TYPED_NEED_MATCHES_KEY,
+    fetch_typed_need_matches,
+)
 from temples.services.concierge_chat_candidates import build_chat_candidates_with_eligibility
 from temples.services.knowledge_seed import (
     SOURCE_FACT_SCHEMA_VERSION,
@@ -36,6 +39,7 @@ from temples.services.knowledge_seed import (
 )
 from temples.domain.source_fact_mapping_registry_v1 import get_registry
 from temples.tests.support.recommendation_eligibility import attach_usable_deity_fact
+from temples.tests.test_bootstrap_goriyaku_master_exact39_contract import CANONICAL_MASTER
 
 TEMPLES_DIR = Path(__file__).resolve().parents[1]
 SEED_PATH = TEMPLES_DIR / "data" / "knowledge_seeds" / "wave0_batch_04_source_facts_seed.json"
@@ -345,10 +349,24 @@ def test_conflicting_existing_url_source_blocks_the_import():
 # ---------- Recommendation boundary（P / Q / R）----------
 
 
-def test_p_no_mapping_registry_entry_for_any_pr_d_stable_key():
+# PR-D 自身は registry を変えなかった。PR-E が MS-2 の 16 件を追加した後も、AMBIGUOUS 7 件は
+# registry に入らない（16 件の内容の固定は test_wave0_db04_registry_mappings.py）。
+AMBIGUOUS_KEYS = {
+    "osaka_tenmangu__prayer_and_current_guidance__shushoku_joju",
+    "osaka_tenmangu__prayer_and_current_guidance__gakutoku_kojo",
+    "osaki_hachimangu__prayer__shintai_kengo",
+    "osaki_hachimangu__prayer__kaiun_yakuyoke",
+    "osaki_hachimangu__prayer__sainan_shofuku",
+    "osaki_hachimangu__prayer__ryoen",
+    "osaki_hachimangu__prayer__ryoko_anzen",
+}
+
+
+def test_p_only_ms2_approved_pr_d_keys_have_a_registry_entry():
     registry = get_registry()
-    for key, _wording, _source in FROZEN_ALL:
-        assert registry.lookup(key) is None, key
+    mapped = {key for key, _w, _s in FROZEN_ALL if registry.lookup(key) is not None}
+    assert mapped == {key for key, _w, _s in FROZEN_ALL} - AMBIGUOUS_KEYS
+    assert len(mapped) == 16
 
 
 @pytest.mark.django_db
@@ -363,13 +381,21 @@ def test_q_no_goriyaku_tag_or_assignment_is_created():
 
 
 @pytest.mark.django_db
-def test_r_recommendation_candidates_unchanged_before_pr_e():
+def test_r_source_facts_change_the_candidate_only_through_the_channel_b_carrier():
+    """PR-D の data は Channel A の field を変えない。PR-E 以降は registry 経由の Channel B carrier だけが付く。"""
+    for tag_id, name in CANONICAL_MASTER:
+        GoriyakuTag.objects.get_or_create(id=tag_id, name=name)
     shrines = _shrines()
     before = build_chat_candidates_with_eligibility(lat=35.0, lng=139.0, trace_id="pr-d").candidates
     _run(SEED_PATH)
     after = build_chat_candidates_with_eligibility(lat=35.0, lng=139.0, trace_id="pr-d").candidates
-    assert after == before
-    assert fetch_typed_need_matches([s.id for s in shrines.values()]) == {}
+    stripped = [
+        {k: v for k, v in c.items() if k != CHANNEL_B_TYPED_NEED_MATCHES_KEY} for c in after
+    ]
+    assert stripped == before
+    assert set(fetch_typed_need_matches([s.id for s in shrines.values()])) == {
+        s.id for s in shrines.values()
+    }
 
 
 def test_seed_inputs_are_not_mutated_by_parsing():

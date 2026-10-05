@@ -25,7 +25,8 @@ record が無い stable_key は lookup で None（NO_SIGNAL）であり、エラ
 不正な正の record は fail-closed（黙って捨てない・直さない）。
 
 本 module は Recommendation から読まれない（Need mapping / TypedNeedMatch / scoring は PR-C 以降）。
-W0-DB04 の実 mapping は PR-E が追加する。本 foundation の registry は空である。
+W0-DB04 の実 mapping（PR-E）: Mother Ship が MS-2 で承認・凍結した正の mapping 16件
+（EXACT 10 / SAFE_NORMALIZATION 6）だけを持つ。AMBIGUOUS 7件は record を持たない（absence）。
 """
 from __future__ import annotations
 
@@ -57,8 +58,94 @@ class SourceFactMappingRecord:
 SOURCE_FACT_MAPPING_RECORD_FIELDS = tuple(f.name for f in fields(SourceFactMappingRecord))
 
 # 正本の record 列。tuple で持ち、dict にする前に重複を検出する（後の値で黙って上書きしない）。
-# PR-B foundation では空。W0-DB04 の実 mapping は Mother Ship の承認後に PR-E が追加する。
-SOURCE_FACT_MAPPING_RECORDS: tuple[SourceFactMappingRecord, ...] = ()
+# W0-DB04 PR-E: MS-2 で承認・凍結した 16 件（wave0-021 大阪天満宮 / wave0-025 大崎八幡宮）。
+# source_fact_key は ShrineSourceFact.stable_key（PR-D seed）、concept は既存 GoriyakuTag.name の exact name。
+# SAFE_NORMALIZATION は Source Fact の wording を書き換えない（wording は ShrineSourceFact 側にそのまま残る）。
+# AMBIGUOUS 7 件（就職成就 / 学徳向上 / 身体堅固 / 開運厄除 / 災難招福 / 良縁 / 旅行安全）は record を持たない。
+SOURCE_FACT_MAPPING_RECORDS: tuple[SourceFactMappingRecord, ...] = (
+    # EXACT（10）
+    SourceFactMappingRecord(
+        source_fact_key="osaka_tenmangu__prayer_and_current_guidance__gakugyo_joju",
+        canonical_concept_name="学業成就",
+        mapping_classification=MAPPING_CLASSIFICATION_EXACT,
+    ),
+    SourceFactMappingRecord(
+        source_fact_key="osaka_tenmangu__prayer_and_current_guidance__yakuyoke",
+        canonical_concept_name="厄除け",
+        mapping_classification=MAPPING_CLASSIFICATION_EXACT,
+    ),
+    SourceFactMappingRecord(
+        source_fact_key="osaka_tenmangu__prayer_and_current_guidance__kotsu_anzen",
+        canonical_concept_name="交通安全",
+        mapping_classification=MAPPING_CLASSIFICATION_EXACT,
+    ),
+    SourceFactMappingRecord(
+        source_fact_key="osaki_hachimangu__prayer__kanai_anzen",
+        canonical_concept_name="家内安全",
+        mapping_classification=MAPPING_CLASSIFICATION_EXACT,
+    ),
+    SourceFactMappingRecord(
+        source_fact_key="osaki_hachimangu__prayer__kotsu_anzen",
+        canonical_concept_name="交通安全",
+        mapping_classification=MAPPING_CLASSIFICATION_EXACT,
+    ),
+    SourceFactMappingRecord(
+        source_fact_key="osaki_hachimangu__prayer__gakugyo_joju",
+        canonical_concept_name="学業成就",
+        mapping_classification=MAPPING_CLASSIFICATION_EXACT,
+    ),
+    SourceFactMappingRecord(
+        source_fact_key="osaki_hachimangu__prayer__gokaku_kigan",
+        canonical_concept_name="合格祈願",
+        mapping_classification=MAPPING_CLASSIFICATION_EXACT,
+    ),
+    SourceFactMappingRecord(
+        source_fact_key="osaki_hachimangu__prayer__byoki_heiyu",
+        canonical_concept_name="病気平癒",
+        mapping_classification=MAPPING_CLASSIFICATION_EXACT,
+    ),
+    SourceFactMappingRecord(
+        source_fact_key="osaki_hachimangu__prayer__shingan_joju",
+        canonical_concept_name="心願成就",
+        mapping_classification=MAPPING_CLASSIFICATION_EXACT,
+    ),
+    SourceFactMappingRecord(
+        source_fact_key="osaki_hachimangu__prayer__anzan",
+        canonical_concept_name="安産",
+        mapping_classification=MAPPING_CLASSIFICATION_EXACT,
+    ),
+    # SAFE_NORMALIZATION（6）。方除 → 方除け は承認済みだが、方除け は現行のどの Need からも参照されない。
+    SourceFactMappingRecord(
+        source_fact_key="osaka_tenmangu__prayer_and_current_guidance__shiken_gokaku",
+        canonical_concept_name="合格祈願",
+        mapping_classification=MAPPING_CLASSIFICATION_SAFE_NORMALIZATION,
+    ),
+    SourceFactMappingRecord(
+        source_fact_key="osaka_tenmangu__prayer_and_current_guidance__shobai_hanjo",
+        canonical_concept_name="商売繁盛",
+        mapping_classification=MAPPING_CLASSIFICATION_SAFE_NORMALIZATION,
+    ),
+    SourceFactMappingRecord(
+        source_fact_key="osaki_hachimangu__prayer__shobai_hanjo",
+        canonical_concept_name="商売繁盛",
+        mapping_classification=MAPPING_CLASSIFICATION_SAFE_NORMALIZATION,
+    ),
+    SourceFactMappingRecord(
+        source_fact_key="osaki_hachimangu__prayer__yakuyoke",
+        canonical_concept_name="厄除け",
+        mapping_classification=MAPPING_CLASSIFICATION_SAFE_NORMALIZATION,
+    ),
+    SourceFactMappingRecord(
+        source_fact_key="osaki_hachimangu__prayer__hoyoke",
+        canonical_concept_name="方除け",
+        mapping_classification=MAPPING_CLASSIFICATION_SAFE_NORMALIZATION,
+    ),
+    SourceFactMappingRecord(
+        source_fact_key="osaki_hachimangu__prayer__hissho",
+        canonical_concept_name="勝運",
+        mapping_classification=MAPPING_CLASSIFICATION_SAFE_NORMALIZATION,
+    ),
+)
 
 
 class SourceFactMappingRegistryError(ValueError):
