@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import io
 import json
 from pathlib import Path
@@ -12,7 +13,9 @@ from temples.services.channel_b_reason_copy import (
     render_channel_b_reason,
     select_channel_b_reason_match,
 )
+from temples.services import concierge_chat
 from temples.services.channel_b_typed_need_match import (
+    CHANNEL_B_REASON_PROVENANCE_KEY,
     CHANNEL_B_TYPED_NEED_MATCHES_KEY,
     fetch_typed_need_matches,
 )
@@ -50,6 +53,10 @@ EXPECTED_MS5_SOURCE_FACT_KEY = {
     "大阪天満宮": "osaka_tenmangu__prayer_and_current_guidance__gakugyo_joju",
     "大崎八幡宮": "osaki_hachimangu__prayer__gakugyo_joju",
 }
+EXPECTED_MS5_SIGNAL_TYPE = {
+    "大阪天満宮": "official_prayer_and_current_guidance_list_level",
+    "大崎八幡宮": "official_prayer_supported",
+}
 EXPECTED_MS5_REASON = {
     "大阪天満宮": (
         "大阪天満宮の公式の祈願・現在の案内の一覧に『学業成就』が含まれています。"
@@ -79,7 +86,21 @@ def _assert_sp3_safe(recommendation: dict, reason_text: str) -> None:
 
 def test_wave0_db04_g6_runtime_imports_isolated_seed_and_passes_shared_eligibility(
     tmp_path,
+    monkeypatch,
 ):
+    # 公開の出口（strip_channel_b_carrier）の直前の recommendation を記録する（内部 provenance の確認用）。
+    pre_strip_rows: list[dict] = []
+    real_strip = concierge_chat.strip_channel_b_carrier
+
+    def _capture_before_strip(recs):
+        pre_strip_rows[:] = [copy.deepcopy(r) for r in recs.get("recommendations") or []]
+        return real_strip(recs)
+
+    monkeypatch.setattr(concierge_chat, "strip_channel_b_carrier", _capture_before_strip)
+
+    def _internal_row(row_name: str) -> dict:
+        return next(row for row in pre_strip_rows if row.get("name") == row_name)
+
     base_rows = json.loads(BASE_SEED_PATH.read_text(encoding="utf-8"))
     execution_rows = [
         row for row in base_rows if row.get("name_jp") in EXECUTION_SHRINE_NAMES
@@ -215,6 +236,8 @@ def test_wave0_db04_g6_runtime_imports_isolated_seed_and_passes_shared_eligibili
         assert not source_fact_used_by_reason
         _assert_sp3_safe(recommendation, reason_text)
         sp3_reproduced = False
+        # Channel B の理由文を使わないので、内部 provenance も無い。
+        assert CHANNEL_B_REASON_PROVENANCE_KEY not in _internal_row(name)
 
         # MS-5: request の Need に Channel B だけが一致するとき、Source-backed の理由文になる。
         ms5_recommendations = build_chat_recommendations(
@@ -241,6 +264,23 @@ def test_wave0_db04_g6_runtime_imports_isolated_seed_and_passes_shared_eligibili
         assert ms5_reason_text == render_channel_b_reason(selected, name=name)
         assert ms5_reason_text == EXPECTED_MS5_REASON[name]
         assert f"『{selected.source_attested_wording}』" in ms5_reason_text
+        # 内部 provenance（公開の出口の前）は、理由文に使った match と同じ Source Fact を指す。
+        provenance = _internal_row(name)[CHANNEL_B_REASON_PROVENANCE_KEY]
+        assert provenance == {
+            "channel": "channel_b",
+            "type": "channel_b_source_fact",
+            "source_fact_key": selected.source_fact_key,
+            "signal_type": selected.signal_type,
+            "need": MS5_REQUEST_NEED,
+        }
+        assert provenance["source_fact_key"] == EXPECTED_MS5_SOURCE_FACT_KEY[name]
+        assert provenance["signal_type"] == EXPECTED_MS5_SIGNAL_TYPE[name]
+        # 公開の出口の後には、provenance・carrier・source_fact_key のいずれも残らない。
+        public_blob = json.dumps(ms5_recommendations, ensure_ascii=False, default=str)
+        assert CHANNEL_B_REASON_PROVENANCE_KEY not in public_blob
+        assert CHANNEL_B_TYPED_NEED_MATCHES_KEY not in public_blob
+        assert "source_fact_key" not in public_blob
+        assert selected.source_fact_key not in public_blob
         # Channel A の evidence は無いまま（primary reason は fallback sentinel、matched_need_tags は空）。
         _assert_sp3_safe(ms5_recommendation, ms5_reason_text)
         # Channel B の数値は PR-F のまま（B だけの Need 1件 = +2.0）。
@@ -266,6 +306,10 @@ def test_wave0_db04_g6_runtime_imports_isolated_seed_and_passes_shared_eligibili
                 "ms5_selected_source_fact_key": selected.source_fact_key,
                 "ms5_signal_type": selected.signal_type,
                 "ms5_reason_text": ms5_reason_text,
+                "ms5_reason_provenance": provenance,
+                "ms5_reason_provenance_matches_selected": (
+                    provenance["source_fact_key"] == selected.source_fact_key
+                ),
             },
         )
 
@@ -360,6 +404,7 @@ def test_wave0_db04_g6_runtime_imports_isolated_seed_and_passes_shared_eligibili
         if row.get("name") == "建勲神社"
     )
     assert not candidate.get(CHANNEL_B_TYPED_NEED_MATCHES_KEY)
+    assert CHANNEL_B_REASON_PROVENANCE_KEY not in _internal_row("建勲神社")
     assert kenkun_ms5["reason"] == "建勲神社は、今の悩みや願いに合わせて参拝先の候補に入れています。"
     assert "公式の" not in kenkun_ms5["reason"] and "『" not in kenkun_ms5["reason"]
     _assert_sp3_safe(kenkun_ms5, kenkun_ms5["reason"])
@@ -375,6 +420,9 @@ def test_wave0_db04_g6_runtime_imports_isolated_seed_and_passes_shared_eligibili
             "primary_reason_label": recommendation.get("_primary_reason_label"),
             "reason_text": recommendation.get("reason"),
             "ms5_reason_text": kenkun_ms5["reason"],
+            "ms5_reason_provenance": _internal_row("建勲神社").get(
+                CHANNEL_B_REASON_PROVENANCE_KEY
+            ),
             "reason_facts": recommendation.get("_reason_facts"),
             "reason_v4_text": reason_v4_text,
             "evidence_used_by_reason": {

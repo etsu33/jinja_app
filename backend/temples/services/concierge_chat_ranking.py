@@ -10,6 +10,8 @@ from temples.services.channel_b_typed_need_match import (
     TypedNeedMatch,
 )
 from temples.services.channel_b_reason_copy import (
+    CHANNEL_B_REASON_PROVENANCE_KEY,
+    channel_b_reason_provenance,
     render_channel_b_reason,
     select_channel_b_reason_match,
 )
@@ -1925,6 +1927,8 @@ def build_recommendation_reason(
     need_tags: List[str],
     need_gid_label_by_id: Optional[Dict[int, str]] = None,
 ) -> str:
+    # MS-5 provenance は、この呼び出しで Channel B の理由文を返すときにだけ付け直す。
+    rec.pop(CHANNEL_B_REASON_PROVENANCE_KEY, None)
     if public_mode == "compat":
         user_element = None
         if birthdate:
@@ -2015,6 +2019,8 @@ def build_recommendation_reason(
     if channel_b_match is not None:
         channel_b_reason = render_channel_b_reason(channel_b_match, name=name)
         if channel_b_reason:
+            # 理由文と provenance は同じ match から作る（provenance のために選び直さない）。
+            rec[CHANNEL_B_REASON_PROVENANCE_KEY] = channel_b_reason_provenance(channel_b_match)
             return channel_b_reason
 
     if name:
