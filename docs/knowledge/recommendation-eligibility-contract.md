@@ -72,9 +72,14 @@ backend/temples/services/concierge_chat_candidates.py
 - **Compass 側に eligibility 判定を複製しない。** `compass_recommendation_orchestrator.py` は `build_chat_candidates()` の返り値をそのまま受け取るだけであり、Knowledge / Evidence を自分では参照しない（`test_shared_recommendation_eligibility.py::test_compass_module_contains_no_eligibility_logic` で固定）。
 - Concierge の `_build_chat_candidates_pipeline()`（`api_views_concierge.py`）は、request で持ち込まれた候補（`data["candidates"]`）が共有層を通っていないため、**同じ共有関数** `filter_recommendation_eligible_candidates()` をマージ後に1度だけ適用する。判定式は複製していない。
 
-### pool_limit との関係
+### 件数上限との関係
 
-`build_chat_candidates()` の `pool_limit = max(limit * 5, 50)` による queryset スライスは、この gate **より前**に効く。したがって gate 適用後の候補数が `pool_limit` を下回ることがある。不足分を ineligible な Shrine で埋め戻すことはしない（silent fallback の禁止）。
+**gate より前に、件数上限で候補 membership を決めない。** 人気順（`popular_score`）や id 順の上位N件で候補を先に切ると、条件を満たし eligible な Shrine が gate・距離・request relevance に届く前に消える（Pre-G6 F2）。
+
+- **Concierge（`build_chat_candidates()`）:** 候補母集団は「構造条件（QA fixture 除外 / 座標あり / address 非空）→ 明示条件（座標が無いときの `area`、`goriyaku_tag_ids`）→ この gate」だけで決める。件数上限は置かない。gate を通過した Shrine はすべて後段（距離 / Knowledge / Channel B / request-aware prefilter → seed 12 / refill 20 → ranking → top 3）へ到達する。gate で読んだ usable Fact はそのまま候補へ載せ、同じ Knowledge を二度読まない。
+- **Compass の現行経路（`build_chat_candidates_with_eligibility()` の既定）:** 従来の `order_by("-popular_score", "id")[:max(limit * 5, 50)]` が gate より前に残っている。これは正当な contract ではなく既知の F2 gap であり、Compass の候補母集団 contract（`docs/product/compass-direction-only-candidate-universe-decision.md`）に従って別 PR で解消する。
+
+いずれの経路でも、gate 適用後の候補が少なくても**不足分を ineligible な Shrine で埋め戻すことはしない**（silent fallback の禁止）。
 
 ## ineligible Shrine の扱い
 

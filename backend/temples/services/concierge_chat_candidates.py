@@ -221,8 +221,8 @@ def partition_recommendation_eligible_shrines(
     判定式・readiness rule を新設しない。Knowledge は Shrine 数によらず batch で読む
     （deity / history それぞれ1回）。
 
-    Concierge の候補生成（build_chat_candidates_with_eligibility）はこの関数を
-    経由しておらず、その挙動はこの関数の追加によって変わらない。
+    build_chat_candidates_with_eligibility() もこの関数で gate を適用し、返された
+    usable Fact をそのまま候補 dict へ載せる（同じ Knowledge を二度読まない）。
     """
     rows = list(shrines)
     shrine_ids = [s.id for s in rows]
@@ -268,6 +268,11 @@ def build_chat_candidates(
     eligibilityの内訳が必要な呼び出し側は
     build_chat_candidates_with_eligibility() を使う。判定・生成ロジックは
     そちらに一本化されており、ここは薄いadapterに過ぎない。
+
+    Concierge の候補母集団（Pre-G6 F2 / F2-C Concierge Stage 1）:
+    構造条件 + 明示条件（area / goriyaku_tag_ids）+ Shared Recommendation Eligibility
+    だけで決め、人気順の件数上限で membership を切らない。`limit` はこの経路では
+    候補数を制限しない（呼び出し形の互換のためだけに受け取る）。
     """
     return build_chat_candidates_with_eligibility(
         goriyaku_tag_ids=goriyaku_tag_ids,
@@ -277,6 +282,7 @@ def build_chat_candidates(
         limit=limit,
         trace_id=trace_id,
         interpretation_profile=interpretation_profile,
+        apply_popularity_pool_limit=False,
     ).candidates
 
 
@@ -289,7 +295,21 @@ def build_chat_candidates_with_eligibility(
     limit: int = DEFAULT_LIMIT,
     trace_id: str | None = None,
     interpretation_profile: dict[str, Any] | None = None,
+    apply_popularity_pool_limit: bool = True,
 ) -> CandidateBuildResult:
+    """共有候補層（Stage 1: 候補母集団 + Shared Recommendation Eligibility）。
+
+    `apply_popularity_pool_limit=True`（既定）は従来の候補 source をそのまま使う:
+    `order_by("-popular_score", "id")[:max(limit * 5, 50)]` を gate より前に適用する。
+    これは Compass（Monthly / Weekly）の現行経路が使っており、Compass の候補母集団は
+    別 contract（compass-direction-only-candidate-universe-decision.md）の別 PR で扱う。
+
+    `apply_popularity_pool_limit=False`（Concierge、build_chat_candidates 経由）は
+    人気順の件数上限で membership を切らない。構造条件 + 明示条件を満たし、
+    Shared Recommendation Eligibility を通過した Shrine はすべて Stage 2
+    （距離 / Knowledge / Channel B / request-aware prefilter 以降）へ到達する。
+    座標は membership 条件にしない（Concierge の lat/lng は soft な Context）。
+    """
     qs = Shrine.objects.all()
 
     if goriyaku_tag_ids:
@@ -312,40 +332,45 @@ def build_chat_candidates_with_eligibility(
     qs = qs.filter(latitude__isnull=False, longitude__isnull=False)
     qs = qs.exclude(address="")
 
-    # 候補母集団は少し広めに取る
+    # 並び順は membership を決めない。下の候補 sort の同値時に入力順が残るため、
+    # 決定的な順序として付けておく。
     if hasattr(Shrine, "popular_score"):
         qs = qs.order_by("-popular_score", "id")
     else:
         qs = qs.order_by("id")
 
     pool_limit = max(limit * 5, 50)
-    shrines = list(qs[:pool_limit])
-    shrine_ids = [s.id for s in shrines]
-    knowledge_deities_by_shrine = fetch_fact_ready_knowledge_deities(shrine_ids)
-    knowledge_histories_by_shrine = fetch_fact_ready_knowledge_histories(shrine_ids)
+    if apply_popularity_pool_limit:
+        # 従来の候補 source（Compass の現行経路）。gate より前に効く。
+        shrines = list(qs[:pool_limit])
+    else:
+        # Concierge: 件数上限なし。membership は構造条件 + 明示条件 + gate だけで決める。
+        shrines = list(qs)
+
+    # Shared Recommendation Eligibility gate。ConciergeとCompassが分岐する
+    # 手前のこの1箇所だけで適用する（Compass側に同じ判定を複製しない）。
+    # usable判定はshrine_knowledge_selector -> evidence_gateへ委譲済みで、
+    # ここは「usable Deity Fact OR usable History Fact」の有無だけを見る。
+    # ineligibleな候補は低スコアで残さず、fallbackとしても保持せず、
+    # 不足分をineligibleなShrineで埋め戻すこともしない（silent fallbackの禁止）。
+    eligibility = partition_recommendation_eligible_shrines(shrines)
+    ineligible_count = eligibility.ineligible_count
+
     # Policy C / Channel B の型付き Need 一致（PR-C）。prefilter より前に一括で作り、
     # Channel A の field とは別の内部 carrier に載せる。G5 の判定には使わない。
-    channel_b_matches_by_shrine = fetch_typed_need_matches(shrine_ids)
+    # Concierge は gate 通過分だけを読む（件数上限が無いため、ineligible 分を読まない）。
+    channel_b_shrine_ids = (
+        [s.id for s in shrines]
+        if apply_popularity_pool_limit
+        else [item.shrine.id for item in eligibility.eligible]
+    )
+    channel_b_matches_by_shrine = fetch_typed_need_matches(channel_b_shrine_ids)
 
     candidates: List[Dict[str, Any]] = []
-    ineligible_count = 0
-    for s in shrines:
-        # Shared Recommendation Eligibility gate。ConciergeとCompassが分岐する
-        # 手前のこの1箇所だけで適用する（Compass側に同じ判定を複製しない）。
-        # usable判定はshrine_knowledge_selector -> evidence_gateへ委譲済みで、
-        # ここは「usable Deity Fact OR usable History Fact」の有無だけを見る。
-        shrine_deities = knowledge_deities_by_shrine.get(s.id, [])
-        shrine_histories = knowledge_histories_by_shrine.get(s.id, [])
-        if not is_recommendation_eligible(
-            knowledge_deities=shrine_deities,
-            knowledge_histories=shrine_histories,
-        ):
-            # 除外した候補は低スコアで残さず、fallbackとしても保持しない。
-            # pool_limitのスライスはこのgateより前にpoolへ効くため、gate後の
-            # 候補数がpool_limitを下回ることがある。不足分をineligibleな
-            # Shrineで埋め戻すことはしない（silent fallbackの禁止）。
-            ineligible_count += 1
-            continue
+    for item in eligibility.eligible:
+        s = item.shrine
+        shrine_deities = item.knowledge_deities
+        shrine_histories = item.knowledge_histories
 
         dist = _distance_m(lat, lng, s.latitude, s.longitude)
 
@@ -414,7 +439,8 @@ def build_chat_candidates_with_eligibility(
             )
         )
 
-    candidates = candidates[:pool_limit]
+    if apply_popularity_pool_limit:
+        candidates = candidates[:pool_limit]
     candidates = _dedupe_candidates(candidates)
 
     with_pid = sum(1 for c in candidates if c.get("place_id"))

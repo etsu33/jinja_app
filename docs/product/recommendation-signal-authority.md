@@ -192,9 +192,9 @@ Candidate/Rankを一切変えず、推薦理由の説明にのみ使用するSig
 | `knowledge_histories` | `shrine_history`の入力元（同上） | **Explanation-only（現状維持、A）** | §8で詳述 | High |
 | `birthdate` | Secondary（`score_element*w1`。`public_mode="compat"`時のみ`astro_bonus`追加）。`reason_facts` priority 6 | **Personalization** | 継続的なユーザー属性（生年月日は不変）であり、セッションを跨いで意味を持つ。現行のSecondary的スコア実装はそのままで良いが、分類ラベルとしてはPersonalizationが実体に即している | Medium |
 | `visit_style` | Secondary（`score_visit_style*w5=0.35`固定）。`reason_facts` priority 7（fallback一歩手前） | **Secondary/Personalization境界**（今回セッションの入力なら Context寄り、保存済みProfile由来ならPersonalization寄り。現状は毎回入力のためContext/Secondary） | 現状`visit_preferences`はrequest単位で送信され継続保存されない（`docs/product/concierge-input-architecture.md` Level 2定義と整合）。Personal Profileへの永続化は現状のスコープ外 | Medium |
-| `distance` | Secondary（`score_distance*w4`）+ Candidate Retrieval段階でのpre-truncation sort key | **Context** | 「今回どこにいるか」というsession依存の現実世界情報であり、ユーザー属性ではない | High |
+| `distance` | Secondary（`score_distance*w4`）+ Candidate Retrieval段階の候補並び順（Conciergeでは候補membershipを決めない） | **Context** | 「今回どこにいるか」というsession依存の現実世界情報であり、ユーザー属性ではない | High |
 | `direction` | Context（`direction_signal_score`のみ実効、max+0.02。`direction_bonus`経路は死んでいる） | **Context** | 今回の参拝予定日・出発地点というsession依存情報。現状のContext分類は妥当。ただし`direction_bonus`のdead code整理はGap（§12） | High |
-| `popularity` | Secondary（`score_popular*w3`）+ Candidate Retrieval段階でのpre-truncation sort key | **Secondary** | 神社側の静的属性であり、ユーザー固有でも今回固有でもない、候補全体に対する品質のtie-breaker | High |
+| `popularity` | Secondary（`score_popular*w3`）+ 候補並び順のtie-break（同距離時 / 座標なし時の並び、prefilter同点時、refill順）。**候補membershipのAuthorityではない**（Conciergeは人気順の件数上限で候補を切らない。Compass現行経路に残る人気順上限は既知のF2 gapで別PRで解消） | **Secondary** | 神社側の静的属性であり、ユーザー固有でも今回固有でもない、候補全体に対する品質のtie-breaker | High |
 | `behavior` | Secondary、`min(base*0.3, 0.5)`でcap | **Personalization** | 複数セッションを跨いだユーザー固有の行動履歴であり、継続的信号。Cap設計（Level 1〜3を上回らない）は`concierge-input-architecture.md` Rule 5と整合、現状維持が妥当 | Medium |
 | `profile_context` | Context/Secondary、max+0.02 | **Personalization/Context混在**（`derived_profile.gogyo`はbirthdate由来のPersonalization。現状はsession単位で都度送信されており実質Context的に扱われている） | 五行は本来継続的なProfile情報だが、現行実装ではrequestごとに送信されるstatelessな値として扱われている。Personalizationとして永続化するかは今回の意思決定範囲外（Future）。なお`user_profile.worshipStyle`はRecommendation Signal（PR #2751）に続き永続Profile schema / APIからも退役済みで、本表の対象外 | Low（実装のstateless性が分類を曖昧にしている、§12） |
 
