@@ -8,7 +8,14 @@ import pytest
 from django.core.management import call_command
 
 from temples.models import GoriyakuTag, Shrine, ShrineSourceFact
-from temples.services.channel_b_typed_need_match import fetch_typed_need_matches
+from temples.services.channel_b_reason_copy import (
+    render_channel_b_reason,
+    select_channel_b_reason_match,
+)
+from temples.services.channel_b_typed_need_match import (
+    CHANNEL_B_TYPED_NEED_MATCHES_KEY,
+    fetch_typed_need_matches,
+)
 from temples.services.concierge_chat_candidates import (
     build_chat_candidates,
     build_chat_candidates_with_eligibility,
@@ -37,6 +44,22 @@ ELIGIBILITY_TARGET_NAMES = {"大阪天満宮", "大崎八幡宮"}
 EXPECTED_TYPED_MATCH_COUNTS = {"大阪天満宮": 7, "大崎八幡宮": 14}
 # 根拠のない神社固有の御利益の断定（SP3）。
 UNSUPPORTED_BENEFIT_CLAIMS = ("ご利益で知られる", "のご利益がある")
+# MS-5: request の Need（study）に Channel B だけが一致するときに選ばれる Source Fact と理由文。
+MS5_REQUEST_NEED = "study"
+EXPECTED_MS5_SOURCE_FACT_KEY = {
+    "大阪天満宮": "osaka_tenmangu__prayer_and_current_guidance__gakugyo_joju",
+    "大崎八幡宮": "osaki_hachimangu__prayer__gakugyo_joju",
+}
+EXPECTED_MS5_REASON = {
+    "大阪天満宮": (
+        "大阪天満宮の公式の祈願・現在の案内の一覧に『学業成就』が含まれています。"
+        "今の悩みや願いに合わせて参拝先の候補に入れています。"
+    ),
+    "大崎八幡宮": (
+        "大崎八幡宮の公式の祈願案内に『学業成就』の記載があります。"
+        "今の悩みや願いに合わせて参拝先の候補に入れています。"
+    ),
+}
 
 
 def _assert_sp3_safe(recommendation: dict, reason_text: str) -> None:
@@ -188,9 +211,46 @@ def test_wave0_db04_g6_runtime_imports_isolated_seed_and_passes_shared_eligibili
         )
         assert typed_matches
         assert len(typed_matches) == EXPECTED_TYPED_MATCH_COUNTS[name]
+        # request の Need が無いときは Channel B の理由文を作らない（MS-5）。
         assert not source_fact_used_by_reason
         _assert_sp3_safe(recommendation, reason_text)
         sp3_reproduced = False
+
+        # MS-5: request の Need に Channel B だけが一致するとき、Source-backed の理由文になる。
+        ms5_recommendations = build_chat_recommendations(
+            query="",
+            language="ja",
+            candidates=[candidate],
+            bias={"lat": base_row["latitude"], "lng": base_row["longitude"]},
+            public_mode="need",
+            flow="A",
+            need_tags=[MS5_REQUEST_NEED],
+            llm_enabled=False,
+        )
+        ms5_recommendation = next(
+            row
+            for row in ms5_recommendations["recommendations"]
+            if row.get("name") == name
+        )
+        ms5_reason_text = str(ms5_recommendation.get("reason") or "")
+        selected = select_channel_b_reason_match(
+            {CHANNEL_B_TYPED_NEED_MATCHES_KEY: typed_matches}, [MS5_REQUEST_NEED], []
+        )
+        assert selected is not None
+        assert selected.source_fact_key == EXPECTED_MS5_SOURCE_FACT_KEY[name]
+        assert ms5_reason_text == render_channel_b_reason(selected, name=name)
+        assert ms5_reason_text == EXPECTED_MS5_REASON[name]
+        assert f"『{selected.source_attested_wording}』" in ms5_reason_text
+        # Channel A の evidence は無いまま（primary reason は fallback sentinel、matched_need_tags は空）。
+        _assert_sp3_safe(ms5_recommendation, ms5_reason_text)
+        # Channel B の数値は PR-F のまま（B だけの Need 1件 = +2.0）。
+        ms5_need = ms5_recommendation["breakdown_detail"]["features"]["need"]
+        assert ms5_need["rank_raw"] == 0
+        assert ms5_need["rank_weighted"] == pytest.approx(2.0)
+        assert len(fetch_typed_need_matches([shrine.id])[shrine.id]) == len(typed_matches)
+        shrine.refresh_from_db()
+        assert shrine.goriyaku_tags.count() == 0
+        assert candidate["goriyaku_tag_ids"] == []
         print(
             "G6_REASON_OBSERVATION",
             {
@@ -202,6 +262,10 @@ def test_wave0_db04_g6_runtime_imports_isolated_seed_and_passes_shared_eligibili
                 "source_fact_keys": source_fact_keys,
                 "source_fact_used_by_reason": source_fact_used_by_reason,
                 "sp3_reproduced": sp3_reproduced,
+                "ms5_request_need": MS5_REQUEST_NEED,
+                "ms5_selected_source_fact_key": selected.source_fact_key,
+                "ms5_signal_type": selected.signal_type,
+                "ms5_reason_text": ms5_reason_text,
             },
         )
 
@@ -279,6 +343,26 @@ def test_wave0_db04_g6_runtime_imports_isolated_seed_and_passes_shared_eligibili
     assert not candidate["goriyaku"]
     assert safe_recommendation_evidence_path
     _assert_sp3_safe(recommendation, str(recommendation.get("reason") or ""))
+    # MS-5: Source Fact も typed match も無いので、request の Need があっても Channel B の
+    # 理由文は作らない（既存の generic fallback のまま）。
+    kenkun_ms5 = next(
+        row
+        for row in build_chat_recommendations(
+            query="",
+            language="ja",
+            candidates=[candidate],
+            bias={"lat": base_row["latitude"], "lng": base_row["longitude"]},
+            public_mode="need",
+            flow="A",
+            need_tags=[MS5_REQUEST_NEED],
+            llm_enabled=False,
+        )["recommendations"]
+        if row.get("name") == "建勲神社"
+    )
+    assert not candidate.get(CHANNEL_B_TYPED_NEED_MATCHES_KEY)
+    assert kenkun_ms5["reason"] == "建勲神社は、今の悩みや願いに合わせて参拝先の候補に入れています。"
+    assert "公式の" not in kenkun_ms5["reason"] and "『" not in kenkun_ms5["reason"]
+    _assert_sp3_safe(kenkun_ms5, kenkun_ms5["reason"])
     print(
         "G6_WAVE0_019_OBSERVATION",
         {
@@ -290,6 +374,7 @@ def test_wave0_db04_g6_runtime_imports_isolated_seed_and_passes_shared_eligibili
             "channel_b_typed_match_count": len(typed_matches),
             "primary_reason_label": recommendation.get("_primary_reason_label"),
             "reason_text": recommendation.get("reason"),
+            "ms5_reason_text": kenkun_ms5["reason"],
             "reason_facts": recommendation.get("_reason_facts"),
             "reason_v4_text": reason_v4_text,
             "evidence_used_by_reason": {

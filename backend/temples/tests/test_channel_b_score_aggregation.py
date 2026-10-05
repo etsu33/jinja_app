@@ -415,7 +415,12 @@ def test_compass_like_one_need_path_adds_exactly_two(monkeypatch, _no_llm):
     need_after = after["breakdown_detail"]["features"]["need"]
     need_before = before["breakdown_detail"]["features"]["need"]
     assert need_after["rank_raw"] == need_before["rank_raw"]
-    assert after.get("reason") == before.get("reason")
+    # MS-5: request の Need（money）は Channel B だけが一致するので、Source-backed の理由文になる。
+    assert after.get("reason") == (
+        "一Need試験神社の公式の祈願案内に『商売繁盛』の記載があります。"
+        "今の悩みや願いに合わせて参拝先の候補に入れています。"
+    )
+    assert after.get("_reason_facts") == before.get("_reason_facts")
     assert CHANNEL_B_TYPED_NEED_MATCHES_KEY not in after
 
 
@@ -466,7 +471,12 @@ def test_carrier_still_stripped_from_public_concierge_response(client, monkeypat
     raw = json.dumps(response.json(), ensure_ascii=False)
     assert CHANNEL_B_TYPED_NEED_MATCHES_KEY not in raw
     assert "pf-0100" not in raw
-    assert "金運祈願" not in raw
+    # MS-5: source wording は Source-backed の理由文の中にだけ現れる（carrier としては出ない）。
+    reason = next(
+        r for r in response.json()["data"]["recommendations"] if r.get("name") == "公開試験神社"
+    )["reason"]
+    assert "『金運祈願』" in reason
+    assert "金運祈願" not in raw.replace(reason, "")
 
 
 @pytest.mark.django_db

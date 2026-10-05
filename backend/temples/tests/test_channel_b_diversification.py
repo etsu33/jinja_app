@@ -479,7 +479,12 @@ def test_carrier_still_absent_from_public_response(client, monkeypatch, settings
     raw = json.dumps(response.json(), ensure_ascii=False)
     assert CHANNEL_B_TYPED_NEED_MATCHES_KEY not in raw
     assert "div-0100" not in raw
-    assert "金運祈願" not in raw
+    # MS-5: source wording は Source-backed の理由文の中にだけ現れる（carrier としては出ない）。
+    reason = next(
+        r for r in response.json()["data"]["recommendations"] if r.get("name") == "公開多様化神社"
+    )["reason"]
+    assert "『金運祈願』" in reason
+    assert "金運祈願" not in raw.replace(reason, "")
 
 
 @pytest.mark.django_db
