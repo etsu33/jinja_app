@@ -419,7 +419,8 @@ def test_t23_bulk_load_query_count_is_independent_of_candidate_count(install_reg
     assert len(four) == len(one) == 3
 
 
-def test_empty_registry_issues_no_query():
+def test_empty_registry_issues_no_query(install_registry):
+    install_registry()  # registry が空のとき（W0-DB04 PR-E 以降は repository の registry は空ではない）
     shrine = _shrine()
     _fact(shrine)
     with CaptureQueriesContext(connection) as ctx:
