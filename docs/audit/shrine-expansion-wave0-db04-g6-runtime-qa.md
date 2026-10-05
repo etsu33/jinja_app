@@ -145,6 +145,53 @@ OSAKI_MS5  = PASS（Source-backed）
 KENKUN_MS5 = PASS（Channel B の理由文を作らない）
 ```
 
+### Channel B reason provenance（`feature/channel-b-reason-provenance`）
+
+```text
+TYPED_REASON_PROVENANCE_REQUIRED = YES（§12.14.9）
+PROVENANCE_STORAGE               = OPTION_1_INTERNAL_ONLY（Mother Ship decision）
+PROVENANCE_KEY                   = rec["_channel_b_reason_provenance"]
+PROVENANCE_TYPE                  = channel_b_source_fact（channel = channel_b）
+PUBLIC_REASON_FACT_SCHEMA        = 変更なし（provenance は _reason_facts / reason_facts / _explanation_payload に入れない）
+```
+
+```text
+rec["_channel_b_reason_provenance"] = {
+    "channel": "channel_b",
+    "type": "channel_b_source_fact",
+    "source_fact_key": selected.source_fact_key,
+    "signal_type": selected.signal_type,
+    "need": selected.need,
+}
+```
+
+- `build_recommendation_reason()` が MS-5 の理由文（`render_channel_b_reason(selected, ...)`）を実際に返すときにだけ付ける。
+  理由文と provenance は、`select_channel_b_reason_match()` が選んだ同じ TypedNeedMatch から作る（provenance のために選び直さない）。
+- 呼び出しのたびに古い provenance を取り除くので、Channel A の理由・request Need なし・一致なし・想定外の signal_type・空の wording・
+  generic fallback・compat のときは付かない。
+- 「この Source Fact が神社のご利益タグである」ではなく、「この理由文がこの承認済み Source Fact を使った」ことを表す。
+  Channel A の evidence（`goriyaku_tag` / `matched_by_gid` / Need evidence / `goriyaku` / `goriyaku_tags`）としては出さない。
+  source wording・canonical concept・confidence は複製しない。
+- 公開 Concierge response では `_reason_facts` / `reason_facts` がそのまま公開されている。そのため provenance はそこへ入れず、
+  carrier と同じ出口（`strip_channel_b_carrier()`、`build_chat_recommendations()` の出口）で取り除く。
+  これにより、内部では追跡でき、意図的に公開 Reason Fact schema の外に置く。公開の citation UX は扱わない。
+
+runtime observation（G6 runtime test。公開の出口の直前の recommendation、request Need = `study`）:
+
+| shrine | 理由文に使った source_fact_key | provenance.source_fact_key | 一致 | provenance.signal_type | typed match | `goriyaku_tags` |
+|---|---|---|---|---|---:|---|
+| 大阪天満宮 | `osaka_tenmangu__prayer_and_current_guidance__gakugyo_joju` | `osaka_tenmangu__prayer_and_current_guidance__gakugyo_joju` | YES | `official_prayer_and_current_guidance_list_level` | 7 | `[]` |
+| 大崎八幡宮 | `osaki_hachimangu__prayer__gakugyo_joju` | `osaki_hachimangu__prayer__gakugyo_joju` | YES | `official_prayer_supported` | 14 | `[]` |
+| 建勲神社 | —（Channel B の理由文なし） | ABSENT | — | — | 0 | `[]` |
+
+- request Need なし（`need_tags=[]`）の 大阪天満宮 / 大崎八幡宮 も provenance は ABSENT。
+- A + B が同じ Need・想定外の signal_type・空の wording も ABSENT（`test_channel_b_reason_provenance.py`）。
+- carrier の並びを全順列で入れ替えても、理由文の Source Fact と provenance の `source_fact_key` は一致する。
+- 公開の出口の後（G6 runtime と `/api/concierge/chat/`）には、`_channel_b_reason_provenance`・`_channel_b_typed_need_matches`・
+  `source_fact_key`・選んだ key の値のいずれも出ない。公開 schema（top-level / recommendation の key）は変わらない。
+- MS-5 の理由文・選択、ranking、Candidate Universe、Channel B scoring、registry、seed、schema、Compass、TypedNeedMatch は変更していない。
+  SP3 は FIXED のまま。
+
 ## 3. wave0-019 建勲神社
 
 Runtime observations from the same isolated database:
@@ -239,14 +286,27 @@ MS-5（`feature/channel-b-source-backed-reason`）:
 | Ruff | PASS（変更した file で develop から増えた指摘なし） |
 | `git diff --check` | PASS |
 
+Channel B reason provenance（`feature/channel-b-reason-provenance`）:
+
+| Test group | Result |
+|---|---:|
+| provenance（`test_channel_b_reason_provenance.py`） | 16 passed |
+| provenance + MS-5 + Channel B typed read / score aggregation / distance tier / diversification + SP3 + G6 + Reason v4 + F2 | 240 passed |
+| Reason / ranking / Channel B / signal authority / Concierge / W0-DB04 | 827 passed, 5 skipped |
+| Full backend suite | 4821 passed, 12 skipped |
+| Ruff | PASS（変更した file で develop から増えた指摘なし） |
+| `makemigrations --check` | No changes detected |
+| `git diff --check` | PASS |
+
 ## 5. Remaining blockers and G6 status
 
 - SP3 は修正済み（§2「SP3 fix」）。大阪天満宮 / 大崎八幡宮 / 建勲神社 の legacy reason に
   根拠のない御利益の断定は出ない。
 - MS-5: 大阪天満宮 / 大崎八幡宮 は、request の Need に Channel B だけが一致するとき、Source Fact に基づく理由文になる
   （§2「MS-5」）。G6 closure の判定は Mother Ship が行う（本 QA の記録だけでは CLOSED にしない）。
-- 理由文の metadata（`_reason_facts`）には、Channel B の型付き provenance（characterization / source_fact_key）を
-  まだ持たせていない（§12.14.9 の TYPED_REASON_PROVENANCE_REQUIRED）。理由文の選択は決定的で、test から特定できる。
+- Channel B の型付き provenance（§12.14.9 TYPED_REASON_PROVENANCE_REQUIRED）は、内部の
+  `_channel_b_reason_provenance` で追跡できる（§2「Channel B reason provenance」）。意図的に公開 Reason Fact schema
+  （`_reason_facts` / `reason_facts`）の外に置き、公開 response には出さない。
 - 建勲神社 has a safe, explicitly non-ranking G4-backed v4 preview; its legacy
   `recommendation.reason` is now the safe generic fallback (no unsupported claim).
 - W0-DB04 `goriyaku` / `goriyaku_tags` remains empty under the existing

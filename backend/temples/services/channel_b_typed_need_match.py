@@ -37,6 +37,9 @@ from temples.models import (
 
 # 候補 dict 上の内部 carrier。値は tuple[TypedNeedMatch, ...]（一致がある候補にだけ付く）。
 CHANNEL_B_TYPED_NEED_MATCHES_KEY = "_channel_b_typed_need_matches"
+# recommendation dict 上の内部 provenance（MS-5 の理由文に実際に使った TypedNeedMatch 1件）。
+# 公開 Reason Fact schema（_reason_facts / reason_facts）には入れず、carrier と同じ出口で取り除く。
+CHANNEL_B_REASON_PROVENANCE_KEY = "_channel_b_reason_provenance"
 
 _VALID_EVIDENCE_CHARACTERIZATIONS = frozenset(
     value for value, _ in ShrineSourceFact.EVIDENCE_CHARACTERIZATION_CHOICES
@@ -165,10 +168,10 @@ def without_channel_b_carrier(candidates: Iterable[Any]) -> List[Any]:
 
 
 def strip_channel_b_carrier(recs: Dict[str, Any]) -> Dict[str, Any]:
-    """recommendation の dict から内部 carrier を取り除く（in-place）。
+    """recommendation の dict から内部 carrier と理由文の provenance を取り除く（in-place）。
 
     build_chat_recommendations() の出口で呼ぶ。以降の公開 response・thread 保存・
-    recommendation log・Compass の投影に carrier が出ないようにする。
+    recommendation log・Compass の投影に carrier / provenance が出ないようにする。
     """
     for key in ("recommendations", "recommendations_v2"):
         rows = recs.get(key)
@@ -177,10 +180,12 @@ def strip_channel_b_carrier(recs: Dict[str, Any]) -> Dict[str, Any]:
         for row in rows:
             if isinstance(row, dict):
                 row.pop(CHANNEL_B_TYPED_NEED_MATCHES_KEY, None)
+                row.pop(CHANNEL_B_REASON_PROVENANCE_KEY, None)
     return recs
 
 
 __all__ = [
+    "CHANNEL_B_REASON_PROVENANCE_KEY",
     "CHANNEL_B_TYPED_NEED_MATCHES_KEY",
     "TypedNeedMatch",
     "is_source_fact_recommendation_readable",

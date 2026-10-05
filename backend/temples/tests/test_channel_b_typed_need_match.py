@@ -34,6 +34,7 @@ from temples.models import (
 from temples.services import channel_b_typed_need_match as channel_b
 from temples.services import concierge_chat
 from temples.services.channel_b_typed_need_match import (
+    CHANNEL_B_REASON_PROVENANCE_KEY,
     CHANNEL_B_TYPED_NEED_MATCHES_KEY,
     TypedNeedMatch,
     fetch_typed_need_matches,
@@ -580,6 +581,9 @@ def test_t28_t29_t30_t40_carrier_does_not_leak_into_public_concierge_response(
     body = _concierge_body(client)
     raw = json.dumps(body, ensure_ascii=False)
     assert CHANNEL_B_TYPED_NEED_MATCHES_KEY not in raw
+    # MS-5 の理由文の内部 provenance も公開しない（公開 Reason Fact schema には入れない）。
+    assert CHANNEL_B_REASON_PROVENANCE_KEY not in raw
+    assert "channel_b_source_fact" not in raw
     assert "synthetic-channel-b-0001" not in raw
     assert "source_fact_key" not in raw
     # MS-5: source wording は Source-backed の理由文の中にだけ現れる（carrier としては出ない）。

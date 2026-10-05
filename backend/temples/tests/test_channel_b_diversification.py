@@ -478,6 +478,8 @@ def test_carrier_still_absent_from_public_response(client, monkeypatch, settings
     assert response.status_code == 200
     raw = json.dumps(response.json(), ensure_ascii=False)
     assert CHANNEL_B_TYPED_NEED_MATCHES_KEY not in raw
+    assert "_channel_b_reason_provenance" not in raw
+    assert "source_fact_key" not in raw
     assert "div-0100" not in raw
     # MS-5: source wording は Source-backed の理由文の中にだけ現れる（carrier としては出ない）。
     reason = next(

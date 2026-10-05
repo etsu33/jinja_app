@@ -9,6 +9,8 @@ docs/audit/shrine-expansion-wave0-db04-f1-goriyaku-mapping-boundary.md §12.14
 - Source に帰属させる文字列は source_attested_wording だけ。canonical concept は Source の文言として示さない。
 - Need の一致は事実の claim を強めない。Need に関する部分は事実の文と分けた Interpretation の文にする。
 - 想定外の signal_type・wording が空のときは None を返し、呼び出し側は既存の generic fallback を使う。
+- 理由文に使った match の provenance は、内部の CHANNEL_B_REASON_PROVENANCE_KEY にだけ記録する
+  （公開 Reason Fact schema には入れない。strip_channel_b_carrier() が取り除く）。
 """
 
 from __future__ import annotations
@@ -16,6 +18,7 @@ from __future__ import annotations
 from typing import Any, Iterable, Optional, Sequence
 
 from temples.services.channel_b_typed_need_match import (
+    CHANNEL_B_REASON_PROVENANCE_KEY,
     CHANNEL_B_TYPED_NEED_MATCHES_KEY,
     TypedNeedMatch,
 )
@@ -74,3 +77,24 @@ def render_channel_b_reason(match: TypedNeedMatch, *, name: str) -> Optional[str
     subject = f"{name}の" if name else ""
     fact = template.format(subject=subject, wording=wording.strip())
     return fact + CHANNEL_B_INTERPRETATION_TEXT
+
+
+def channel_b_reason_provenance(match: TypedNeedMatch) -> dict[str, str]:
+    """理由文に使った match の provenance（内部用。Channel A の evidence ではない）。"""
+    return {
+        "channel": "channel_b",
+        "type": "channel_b_source_fact",
+        "source_fact_key": match.source_fact_key,
+        "signal_type": match.signal_type,
+        "need": match.need,
+    }
+
+
+__all__ = [
+    "CHANNEL_B_FACT_TEMPLATES",
+    "CHANNEL_B_INTERPRETATION_TEXT",
+    "CHANNEL_B_REASON_PROVENANCE_KEY",
+    "channel_b_reason_provenance",
+    "render_channel_b_reason",
+    "select_channel_b_reason_match",
+]
