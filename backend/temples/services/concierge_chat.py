@@ -49,9 +49,11 @@ from temples.services.concierge_chat_presentation import (
 from temples.services.concierge_chat_ranking import (
     _attach_breakdown,
     _attach_rank_comparison,
+    _channel_b_request_need_keys,
     _diversify_by_need,
     _resolve_mode_weights,
     build_recommendation_reason,
+    _normalize_need_tags,
     has_primary_tier_reason,
     resolve_score_sort_key,
     resolve_score_v3_mode,
@@ -253,10 +255,27 @@ def _sort_chat_recommendations(
         # ahead of one without, and only sorted by distance within each
         # tier -- distance still fully controls order when no candidate
         # has established Recommendation Meaning at all.
+        #
+        # Pre-G6 U2 (Mother Ship OPTION_T): a verified, mapped Channel B
+        # TypedNeedMatch whose Need exactly matches a resolved request Need
+        # also establishes Recommendation Meaning for this tier. It is
+        # evaluated only here, via the PR-F projection, and is never written
+        # into _reason_facts / reason / matched_* / scores (reason semantics
+        # and claim strength are unchanged, so such a candidate may still be
+        # explained as fallback).
+        need_tags_clean = _normalize_need_tags(need_tags or [], max_tags=10)
+
+        def _has_recommendation_meaning(r: Dict[str, Any]) -> bool:
+            if has_primary_tier_reason(r.get("_reason_facts")):
+                return True
+            return bool(
+                need_tags_clean and _channel_b_request_need_keys(r, need_tags_clean)
+            )
+
         recommendations = sorted(
             recommendations,
             key=lambda r: (
-                0 if has_primary_tier_reason(r.get("_reason_facts")) else 1,
+                0 if _has_recommendation_meaning(r) else 1,
                 float(r.get("distance_m") or 1e12),
                 -resolve_score_sort_key(r, score_v3_mode=score_v3_mode),
                 str(r.get("name") or ""),

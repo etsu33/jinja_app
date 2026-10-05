@@ -354,7 +354,18 @@ def test_distance_mode_is_unchanged():
         ],
         needs,
     )
-    assert _order(rows, needs, {"sort_distance"}) == _order(rows, None, {"sort_distance"})
+    # U1 の多様化は distance mode では使われない（tier 内は距離順のまま）。
+    # Pre-G6 U2（OPTION_T）以降、request Need に一致する Channel B は distance tier 0 に入る。
+    assert _order(rows, needs, {"sort_distance"}) == [
+        "B_study_protection",
+        "D_study_A_low",
+        "A_money_A",
+    ]
+    assert _order(rows, None, {"sort_distance"}) == [
+        "D_study_A_low",
+        "A_money_A",
+        "B_study_protection",
+    ]
 
 
 # ---------- 統合（build_chat_recommendations / 公開 response / LLM） ----------
