@@ -33,6 +33,25 @@ EXECUTION_SHRINE_NAMES = {
     "大崎八幡宮",
 }
 ELIGIBILITY_TARGET_NAMES = {"大阪天満宮", "大崎八幡宮"}
+# PR-D / PR-E の data から決まる Channel B typed match の件数（SP3 の修正で変わらない）。
+EXPECTED_TYPED_MATCH_COUNTS = {"大阪天満宮": 7, "大崎八幡宮": 14}
+# 根拠のない神社固有の御利益の断定（SP3）。
+UNSUPPORTED_BENEFIT_CLAIMS = ("ご利益で知られる", "のご利益がある")
+
+
+def _assert_sp3_safe(recommendation: dict, reason_text: str) -> None:
+    """fallback sentinel を Need evidence として扱わず、根拠のない御利益の断定を作らない。"""
+    reason_facts = recommendation.get("_reason_facts") or []
+    fallback_facts = [fact for fact in reason_facts if fact.get("type") == "fallback"]
+    # sentinel 自体は変えない（evidence がない、という判定はそのまま）。
+    assert recommendation.get("_primary_reason_source") == "fallback"
+    assert recommendation.get("_primary_reason_label") == "fallback"
+    assert len(fallback_facts) == 1 and not fallback_facts[0].get("evidence")
+    assert not (recommendation.get("breakdown") or {}).get("matched_need_tags")
+    # sentinel を Need label として文にしない。
+    assert "fallback" not in reason_text
+    for claim in UNSUPPORTED_BENEFIT_CLAIMS:
+        assert claim not in reason_text
 
 
 def test_wave0_db04_g6_runtime_imports_isolated_seed_and_passes_shared_eligibility(
@@ -167,19 +186,11 @@ def test_wave0_db04_g6_runtime_imports_isolated_seed_and_passes_shared_eligibili
         source_fact_used_by_reason = any(
             marker in reason_blob for marker in source_markers
         )
-        fallback_reason_facts = [
-            fact for fact in reason_facts if fact.get("type") == "fallback"
-        ]
-        sp3_reproduced = (
-            recommendation.get("_primary_reason_source") == "fallback"
-            and recommendation.get("_primary_reason_label") == "fallback"
-            and len(fallback_reason_facts) == 1
-            and not fallback_reason_facts[0].get("evidence")
-            and "ご利益" in reason_text
-            and not source_fact_used_by_reason
-        )
         assert typed_matches
-        assert sp3_reproduced
+        assert len(typed_matches) == EXPECTED_TYPED_MATCH_COUNTS[name]
+        assert not source_fact_used_by_reason
+        _assert_sp3_safe(recommendation, reason_text)
+        sp3_reproduced = False
         print(
             "G6_REASON_OBSERVATION",
             {
@@ -267,6 +278,7 @@ def test_wave0_db04_g6_runtime_imports_isolated_seed_and_passes_shared_eligibili
     assert candidate["goriyaku_tag_ids"] == []
     assert not candidate["goriyaku"]
     assert safe_recommendation_evidence_path
+    _assert_sp3_safe(recommendation, str(recommendation.get("reason") or ""))
     print(
         "G6_WAVE0_019_OBSERVATION",
         {

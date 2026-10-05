@@ -285,6 +285,11 @@ def test_family_reason_generic_without_valid_family_evidence():
         public_mode="need",
         flow="A",
     )
-    reason = recs["recommendations"][0]["reason"]
-    assert "今の願いを願う参拝先として適しています。" in reason
+    rec = recs["recommendations"][0]
+    reason = rec["reason"]
+    # 有効な family evidence がない候補は family 固有の文にならない。primary reason は
+    # 内部の fallback sentinel であり、Need 用の事実の文（「〜のご利益で知られる」）にもしない（SP3）。
+    assert rec["_primary_reason_label"] == "fallback"
     assert "子宝や安産を願う参拝先として" not in reason
+    assert "ご利益で知られる" not in reason
+    assert "子宝神社" in reason

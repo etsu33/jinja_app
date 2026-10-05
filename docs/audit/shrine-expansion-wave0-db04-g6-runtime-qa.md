@@ -59,7 +59,39 @@ Channel B. The existing Channel B contract also observes the same fallback
 independently of Channel B presence.
 
 ```text
-Recommendation Reason / Copy criterion = FAIL
+Recommendation Reason / Copy criterion = FAIL（SP3 修正前の観測。下の「SP3 fix」を参照）
+```
+
+### SP3 fix（`fix/concierge-sp3-evidence-first-reason`）
+
+```text
+SP3_ROOT_CAUSE = _resolve_primary_reason() の内部 sentinel（type / label = "fallback"）を
+                 build_recommendation_reason() が Need label として _build_need_reason_text() へ渡し、
+                 _build_need_lead("fallback") が "ご利益" に落ちて「ご利益のご利益で知られる…」を作っていた
+SP3_FIX        = "fallback" sentinel（label または primary reason source）を Need label として扱わない。
+                 Need 用の事実の文へ入らず、既存の generic fallback の文になる
+SP3_STATUS     = FIXED（下の runtime regression が PASS した後に記録）
+```
+
+修正後の runtime observation（同じ isolated DB / LLM OFF の G6 runtime test）:
+
+```text
+大阪天満宮: 大阪天満宮は、今の悩みや願いに合わせて参拝先の候補に入れています。
+大崎八幡宮: 大崎八幡宮は、今の悩みや願いに合わせて参拝先の候補に入れています。
+```
+
+- primary reason は変わらず `fallback`（evidence がない、という判定は sentinel のまま）。`matched_need_tags` は空。
+- 根拠のない御利益の断定（「ご利益で知られる」「のご利益がある」）と sentinel の文字列 `fallback` は reason に出ない
+  （test は文の literal ではなく、この安全性を assert する）。
+- Channel B typed match の件数は変わらない（大阪天満宮 7 / 大崎八幡宮 14）。`goriyaku` / `goriyaku_tags` は空のまま。
+  Candidate Universe・Eligibility・ranking・Channel B scoring は変更していない。
+- Source Facts は理由文にまだ使われない（`SOURCE_FACT_USED_BY_REASON = NO`）。これは Channel B の理由文（MS-5）の
+  未実装によるものであり、SP3 とは別の G6 closure 項目として残る（§5）。
+
+```text
+OSAKA_SP3  = PASS
+OSAKI_SP3  = PASS
+UNSUPPORTED_FACTUAL_COPY = ABSENT
 ```
 
 ## 3. wave0-019 建勲神社
@@ -85,6 +117,13 @@ The current `recommendation.reason` was:
 
 Its `reason_facts` contained only the `fallback` fact with empty evidence. That
 legacy reason copy did not use stored G4 evidence.
+
+SP3 修正後（§2「SP3 fix」）の legacy `recommendation.reason`:
+
+```text
+建勲神社は、今の悩みや願いに合わせて参拝先の候補に入れています。
+KENKUN_SP3 = PASS（根拠のない御利益の断定なし。primary reason は fallback sentinel のまま）
+```
 
 The separately attached deterministic Recommendation Reason v4 preview did use
 stored G4 Deity evidence:
@@ -127,13 +166,25 @@ does not establish ranking authority, Top1, or Top3.
 | Ruff | PASS |
 | `git diff --check` | PASS |
 
+SP3 fix（`fix/concierge-sp3-evidence-first-reason`）:
+
+| Test group | Result |
+|---|---:|
+| SP3 regression（`test_concierge_sp3_fallback_reason.py`） | 11 passed |
+| G6 + SP3 + Channel B typed read + Reason v4 + F2 | 115 passed |
+| Reason / ranking / Channel B / signal authority / Concierge API | 575 passed |
+| Full backend suite | 4785 passed, 12 skipped |
+| Ruff | PASS |
+| `git diff --check` | PASS |
+
 ## 5. Remaining blockers and G6 status
 
-- SP3 remains reproduced for 大阪天満宮 and 大崎八幡宮. Their current primary
-  reason is an unsupported generic fallback and does not use their available
-  Source Facts.
-- 建勲神社 has a safe, explicitly non-ranking G4-backed v4 preview, but its
-  legacy `recommendation.reason` is still the fallback copy.
+- SP3 は修正済み（§2「SP3 fix」）。大阪天満宮 / 大崎八幡宮 / 建勲神社 の legacy reason に
+  根拠のない御利益の断定は出ない。
+- 大阪天満宮 / 大崎八幡宮 の理由文は Source Facts をまだ使わない（generic fallback）。
+  Channel B の理由文（MS-5、型付き evidence の claim strength）は未実装の G6 closure 項目として残る。
+- 建勲神社 has a safe, explicitly non-ranking G4-backed v4 preview; its legacy
+  `recommendation.reason` is now the safe generic fallback (no unsupported claim).
 - W0-DB04 `goriyaku` / `goriyaku_tags` remains empty under the existing
   HOLD_MODEL_BOUNDARY. This QA did not add Channel A evidence or claim a Need
   score path.
