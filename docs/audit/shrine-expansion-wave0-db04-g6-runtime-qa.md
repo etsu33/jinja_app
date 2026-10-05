@@ -94,6 +94,57 @@ OSAKI_SP3  = PASS
 UNSUPPORTED_FACTUAL_COPY = ABSENT
 ```
 
+### MS-5 Channel B Source-backed Recommendation Reason（`feature/channel-b-source-backed-reason`）
+
+```text
+MS5_REASON_BOUNDARY   = build_recommendation_reason() の generic fallback の直前。Channel A の理由
+                        （primary label / matched_need_tags）が無く、request の Need に Channel B だけが
+                        一致したときだけ、候補の既存の carrier（TypedNeedMatch）から理由文を作る
+SOURCE_LOOKUP_ADDED   = NO（DB は読まない。TypedNeedMatch も変えない）
+CLAIM_STRENGTH_SOURCE = evidence_characterization（TypedNeedMatch.signal_type）
+CONFIDENCE_IN_REASON_COPY = OUT_OF_SCOPE
+```
+
+事実の文（`temples/services/channel_b_reason_copy.py`）は characterization で決まり、Source に帰属させる文字列は
+`source_attested_wording` だけである。続く文は事実を断定しない Interpretation の文で、事実の文とは分けている。
+
+| characterization | 事実の文 |
+|---|---|
+| `official_prayer_supported` | `{name}の公式の祈願案内に『{wording}』の記載があります。` |
+| `official_current_guidance_supported` | `{name}の公式の現在の案内に『{wording}』の記載があります。` |
+| `official_prayer_and_current_guidance_list_level` | `{name}の公式の祈願・現在の案内の一覧に『{wording}』が含まれています。` |
+
+- 選び方: request の `need_tags`（正規化後）の順で、Channel A が一致していない最初の Need。同じ Need の中では `source_fact_key` の順（DB の id は使わない）。
+- A + B が同じ Need: Channel A の理由文のまま（Channel B の文を足さない。score も PR-F のまま +0）。
+- request の Need が無い・一致しない: Channel B の文を作らない。
+- 想定外の characterization・空の wording: 既存の generic fallback。「ご利益で知られる」へは戻らない。
+- carrier は公開 response から引き続き取り除かれる。公開 response に出る source wording は、理由文の中のものだけである。
+
+runtime observation（同じ isolated DB / LLM OFF の G6 runtime test。request Need = `study`）:
+
+```text
+大阪天満宮: 大阪天満宮の公式の祈願・現在の案内の一覧に『学業成就』が含まれています。今の悩みや願いに合わせて参拝先の候補に入れています。
+            selected source_fact_key = osaka_tenmangu__prayer_and_current_guidance__gakugyo_joju
+            （official_prayer_and_current_guidance_list_level）
+大崎八幡宮: 大崎八幡宮の公式の祈願案内に『学業成就』の記載があります。今の悩みや願いに合わせて参拝先の候補に入れています。
+            selected source_fact_key = osaki_hachimangu__prayer__gakugyo_joju
+            （official_prayer_supported）
+建勲神社:   建勲神社は、今の悩みや願いに合わせて参拝先の候補に入れています。
+            （Source Fact 0 / typed match 0。Channel B の理由文は作らない）
+```
+
+- Channel B typed match の件数は変わらない（大阪天満宮 7 / 大崎八幡宮 14 / 建勲神社 0）。`goriyaku` / `goriyaku_tags` は空のまま。
+- primary reason は `fallback` sentinel のまま、`matched_need_tags` は空（Channel A の evidence は作っていない）。SP3 は FIXED のまま。
+- Need = `study` の Channel B の数値は PR-F のまま（`rank_raw` = 0、`rank_weighted` = 2.0）。
+  Candidate Universe・Eligibility・ranking・Channel B scoring・registry・seed・schema・Compass は変更していない。
+- request の Need が無い呼び出し（`need_tags=[]`）では、従来どおり Source Facts は理由文に使われない。
+
+```text
+OSAKA_MS5  = PASS（Source-backed）
+OSAKI_MS5  = PASS（Source-backed）
+KENKUN_MS5 = PASS（Channel B の理由文を作らない）
+```
+
 ## 3. wave0-019 建勲神社
 
 Runtime observations from the same isolated database:
@@ -177,12 +228,25 @@ SP3 fix（`fix/concierge-sp3-evidence-first-reason`）:
 | Ruff | PASS |
 | `git diff --check` | PASS |
 
+MS-5（`feature/channel-b-source-backed-reason`）:
+
+| Test group | Result |
+|---|---:|
+| MS-5 reason copy（`test_channel_b_source_backed_reason.py`） | 20 passed |
+| MS-5 + Channel B typed read / score aggregation + G6 + SP3 + Reason v4 + F2 | 185 passed |
+| Reason / ranking / Channel B / signal authority / Concierge / W0-DB04 | 811 passed, 5 skipped |
+| Full backend suite | 4805 passed, 12 skipped |
+| Ruff | PASS（変更した file で develop から増えた指摘なし） |
+| `git diff --check` | PASS |
+
 ## 5. Remaining blockers and G6 status
 
 - SP3 は修正済み（§2「SP3 fix」）。大阪天満宮 / 大崎八幡宮 / 建勲神社 の legacy reason に
   根拠のない御利益の断定は出ない。
-- 大阪天満宮 / 大崎八幡宮 の理由文は Source Facts をまだ使わない（generic fallback）。
-  Channel B の理由文（MS-5、型付き evidence の claim strength）は未実装の G6 closure 項目として残る。
+- MS-5: 大阪天満宮 / 大崎八幡宮 は、request の Need に Channel B だけが一致するとき、Source Fact に基づく理由文になる
+  （§2「MS-5」）。G6 closure の判定は Mother Ship が行う（本 QA の記録だけでは CLOSED にしない）。
+- 理由文の metadata（`_reason_facts`）には、Channel B の型付き provenance（characterization / source_fact_key）を
+  まだ持たせていない（§12.14.9 の TYPED_REASON_PROVENANCE_REQUIRED）。理由文の選択は決定的で、test から特定できる。
 - 建勲神社 has a safe, explicitly non-ranking G4-backed v4 preview; its legacy
   `recommendation.reason` is now the safe generic fallback (no unsupported claim).
 - W0-DB04 `goriyaku` / `goriyaku_tags` remains empty under the existing

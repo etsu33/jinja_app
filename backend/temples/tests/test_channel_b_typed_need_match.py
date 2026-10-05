@@ -582,7 +582,15 @@ def test_t28_t29_t30_t40_carrier_does_not_leak_into_public_concierge_response(
     assert CHANNEL_B_TYPED_NEED_MATCHES_KEY not in raw
     assert "synthetic-channel-b-0001" not in raw
     assert "source_fact_key" not in raw
-    assert "商売繁昌" not in raw
+    # MS-5: source wording は Source-backed の理由文の中にだけ現れる（carrier としては出ない）。
+    reason = next(r for r in body["data"]["recommendations"] if r.get("name") == SHRINE_NAME)[
+        "reason"
+    ]
+    assert reason == (
+        f"{SHRINE_NAME}の公式の祈願案内に『商売繁昌』の記載があります。"
+        "今の悩みや願いに合わせて参拝先の候補に入れています。"
+    )
+    assert "商売繁昌" not in raw.replace(reason, "")
     # 公開 schema は変わらない（top-level と recommendation の key が同じ）。
     assert set(body) == set(baseline)
     assert set(body["data"]) == set(baseline["data"])
@@ -594,12 +602,13 @@ def test_t28_t29_t30_t40_carrier_does_not_leak_into_public_concierge_response(
 # ---------- Channel A / 数値 / G5 / goriyaku は変わらない（T16〜T22, T31, T33〜T36） ----------
 
 
-# Channel A 側の値と理由文（PR-F の後も Channel B で変わらないもの）。
-_CHANNEL_A_KEYS = ("goriyaku_tag_ids", "reason", "_reason_facts")
+# Channel A 側の値（PR-F / MS-5 の後も Channel B で変わらないもの）。理由文は MS-5 で
+# Channel B だけの Need に Source-backed の文が付くため、別に比べる。
+_CHANNEL_A_KEYS = ("goriyaku_tag_ids", "_reason_facts")
 
 
 def _snapshot(recs: dict) -> dict:
-    """name → (Channel A の値, rank_weighted)。PR-F は rank_weighted（と _score_total・順序）だけを変える。"""
+    """name → (Channel A の値, rank_weighted, reason)。PR-F は rank_weighted（と _score_total・順序）だけを変える。"""
     out = {}
     for row in recs["recommendations"]:
         breakdown = row.get("breakdown") or {}
@@ -614,16 +623,17 @@ def _snapshot(recs: dict) -> dict:
             need.get("matched_by_gid_count"),
             need.get("matched_by_text_count"),
         )
-        out[row.get("name")] = (channel_a, need.get("rank_weighted"))
+        out[row.get("name")] = (channel_a, need.get("rank_weighted"), row.get("reason"))
     return out
 
 
 def test_t16_to_t21_t35_t36_channel_a_results_unchanged_and_only_pr_f_moves_rank_weighted(
     install_registry,
 ):
-    """Channel B は Channel A の値（score_need / matched_all / rank_raw / gid / text / 理由文）を
+    """Channel B は Channel A の値（score_need / matched_all / rank_raw / gid / text / reason fact）を
     変えない。数値の効果は PR-F の規則だけ: B だけの Need は rank_weighted +2.0、
-    同じ Need に Channel A がある候補は +0。
+    同じ Need に Channel A がある候補は +0。理由文は MS-5: B だけの Need は Source-backed の文、
+    同じ Need に Channel A がある候補は Channel A の理由文のまま。
     """
     _tag("商売繁盛")
     _tag("金運")
@@ -648,15 +658,21 @@ def test_t16_to_t21_t35_t36_channel_a_results_unchanged_and_only_pr_f_moves_rank
         assert after[name][0] == before[name][0], name
     assert after[SHRINE_NAME][1] - before[SHRINE_NAME][1] == pytest.approx(2.0)
     assert after["経路A試験神社"][1] == before["経路A試験神社"][1]
+    assert after["経路A試験神社"][2] == before["経路A試験神社"][2]
+    assert after[SHRINE_NAME][2] == (
+        f"{SHRINE_NAME}の公式の祈願案内に『金運』の記載があります。"
+        "今の悩みや願いに合わせて参拝先の候補に入れています。"
+    )
 
 
-def test_t31_channel_b_does_not_enter_the_legacy_goriyaku_reason_path(install_registry):
-    """Channel B は理由文に入らない（「ご利益で知られる」へ格上げしない）。
+def test_t31_channel_b_only_need_gets_a_source_backed_reason_not_the_goriyaku_path(
+    install_registry,
+):
+    """MS-5: request の Need に Channel B だけが一致すると、Source Fact に基づく理由文になる。
 
-    注: Need の一致が無い候補にも Channel A の既存の fallback（SP3）が「〜のご利益で知られる」を
-    出すことがある。これは Channel B の有無と無関係な既存の挙動であり、PR-C では直さない。
-    ここでは、Channel B があっても理由文と reason fact が変わらず、B の provenance がそこへ
-    流れ込まないことを確認する。
+    - Source に帰属させる文字列は source wording（SAFE_NORMALIZATION の concept「金運」ではない）
+    - 「ご利益で知られる」（legacy の goriyaku の経路）へ格上げしない
+    - reason fact（Channel A）は変わらず、source_fact_key は理由文にも reason fact にも出ない
     """
     _tag("金運")
     shrine = _shrine()
@@ -670,12 +686,17 @@ def test_t31_channel_b_does_not_enter_the_legacy_goriyaku_reason_path(install_re
     install_registry(_record("synthetic-channel-b-0001", "金運", "SAFE_NORMALIZATION"))
     after = _row()
 
-    assert after.get("reason") == before.get("reason")
+    assert before.get("reason") == f"{SHRINE_NAME}は、今の悩みや願いに合わせて参拝先の候補に入れています。"
+    assert after.get("reason") == (
+        f"{SHRINE_NAME}の公式の祈願案内に『金運祈願』の記載があります。"
+        "今の悩みや願いに合わせて参拝先の候補に入れています。"
+    )
+    assert "『金運』" not in after["reason"]
+    assert "ご利益" not in after["reason"]
     assert after.get("_reason_facts") == before.get("_reason_facts")
     reason_blob = json.dumps(
         [after.get("reason"), after.get("_reason_facts")], ensure_ascii=False, default=str
     )
-    assert "金運祈願" not in reason_blob
     assert "synthetic-channel-b-0001" not in reason_blob
     assert all(fact.get("type") != "goriyaku_tag" for fact in after.get("_reason_facts") or [])
 

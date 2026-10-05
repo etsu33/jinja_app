@@ -9,6 +9,10 @@ from temples.services.channel_b_typed_need_match import (
     CHANNEL_B_TYPED_NEED_MATCHES_KEY,
     TypedNeedMatch,
 )
+from temples.services.channel_b_reason_copy import (
+    render_channel_b_reason,
+    select_channel_b_reason_match,
+)
 from temples.services.concierge_history import (
     build_recent_reflection_hint,
     calculate_action_profile_breakdown,
@@ -2002,6 +2006,16 @@ def build_recommendation_reason(
             matched_gid_label=matched_gid_label,
             matched_text_hint=matched_text_hint,
         )
+
+    # MS-5: Channel A の理由が無く、request の Need に Channel B だけが一致したときは、
+    # 既存の carrier の Source Fact から evidence の種類に従った理由文を作る（DB は読まない）。
+    channel_b_match = select_channel_b_reason_match(
+        rec, _normalize_need_tags(need_tags or [], max_tags=10), matched_tags
+    )
+    if channel_b_match is not None:
+        channel_b_reason = render_channel_b_reason(channel_b_match, name=name)
+        if channel_b_reason:
+            return channel_b_reason
 
     if name:
         return f"{name}は、今の悩みや願いに合わせて参拝先の候補に入れています。"
