@@ -30,8 +30,8 @@ POSITION_RESOLUTION_DIR = (
 POSITION_HOLD = "HOLD_POSITION_REVIEW"
 
 EXPECTED_STATUS_COUNTS = {
-    "BUILD_READY": 20,
-    "IMPORTED": 5,
+    "BUILD_READY": 17,
+    "IMPORTED": 8,
     "CORE_READY": 9,
     "HOLD": 9,
     "REVIEW": 1,
@@ -149,8 +149,11 @@ W0_DB03_MODEL_HOLD_ID = "wave0-014"
 # wave0-020（G2 HOLD_POSITION_REVIEW）/ wave0-022（G3 MODEL_REVIEW_REMAINS）は未 hydrate。
 #
 # goriyaku / goriyaku_tags は凍結されていない（goriyaku typed evidence storage は別タスク）ため
-# 持ち込まない。Production 未 import のため knowledge_status は既定の
-# ACQUISITION_PATH_CONFIRMED のまま。
+# 持ち込まない。
+#
+# G7 Production Import 完了後（docs/audit/shrine-expansion-wave0-db04-production-import.md）、
+# この3社は IMPORTED / FACT_READY。CORE_READY は G8 の別 Gate であり未判定。
+# wave0-020 / wave0-022 は G7 NOT EXECUTED で、BUILD_READY / 未 hydrate のまま。
 #
 # wave0-021 の official_address は Source 表記「大阪市北区天神橋2丁目1番8号」に
 # 「大阪府」を前置した Candidate Master canonical address。Base Seed の prefecture 導出が
@@ -772,11 +775,12 @@ def test_build_batch_survives_the_import_lifecycle_transition():
     candidates = _load_master()["candidates"]
 
     imported_or_core_ready = [row for row in candidates if row["candidate_status"] in {"IMPORTED", "CORE_READY"}]
-    assert len(imported_or_core_ready) == 14
+    assert len(imported_or_core_ready) == 17
     assert Counter(row["build_batch"] for row in imported_or_core_ready) == {
         "W0-DB01": 5,
         "W0-DB02": 5,
         "W0-DB03": 4,
+        "W0-DB04": 3,
     }
     assert all(_effective(_load_master(), row)["knowledge_status"] == "FACT_READY" for row in imported_or_core_ready)
 
@@ -790,10 +794,13 @@ def test_build_batch_survives_the_import_lifecycle_transition():
 
 
 def test_w0_db03_to_db07_stay_build_ready():
-    """Production Import 済みは W0-DB01 / W0-DB02 と W0-DB03 の G8 execution subset 4社。
+    """Production Import 済みは W0-DB01 / W0-DB02、W0-DB03 の G8 execution subset 4社、
+    W0-DB04 の G7 execution subset 3社。
 
     W0-DB03 は original membership 5社のまま、4社 CORE_READY / wave0-014 post-batch HOLD
-    （MODEL_CHANGE_REQUIRED）の混在状態である。W0-DB04〜W0-DB07 の 20 社は BUILD_READY のまま。
+    （MODEL_CHANGE_REQUIRED）の混在状態である。W0-DB04 は original membership 5社のまま、
+    3社 IMPORTED / wave0-020・wave0-022 BUILD_READY の混在状態である。
+    W0-DB05〜W0-DB07 の 15 社は BUILD_READY のまま。
     """
     candidates = _load_master()["candidates"]
 
@@ -807,7 +814,16 @@ def test_w0_db03_to_db07_stay_build_ready():
     assert db03[W0_DB03_MODEL_HOLD_ID]["status_reason_code"] == "MODEL_CHANGE_REQUIRED"
     assert db03[W0_DB03_MODEL_HOLD_ID]["build_batch"] == "W0-DB03"
 
-    for batch in CANONICAL_BUILD_BATCHES[3:]:
+    db04 = {row["candidate_id"]: row for row in candidates if row["build_batch"] == "W0-DB04"}
+    assert len(db04) == 5
+    assert set(db04) == W0_DB04_G4_HYDRATED_IDS | W0_DB04_EXCLUDED_IDS
+    for candidate_id in W0_DB04_G4_HYDRATED_IDS:
+        assert db04[candidate_id]["candidate_status"] == "IMPORTED", candidate_id
+        assert db04[candidate_id]["knowledge_status"] == "FACT_READY", candidate_id
+    for candidate_id in W0_DB04_EXCLUDED_IDS:
+        assert db04[candidate_id]["candidate_status"] == "BUILD_READY", candidate_id
+
+    for batch in CANONICAL_BUILD_BATCHES[4:]:
         members = [row for row in candidates if row["build_batch"] == batch]
         assert len(members) == 5, batch
         assert all(row["candidate_status"] == "BUILD_READY" for row in members), batch
@@ -933,7 +949,8 @@ def test_wave0_db03_to_db07_remain_unhydrated():
 def test_wave0_db04_g4_subset_is_hydrated_from_frozen_inputs_only():
     """W0-DB04 G4 re-entry: eligible subset 3社だけが凍結値で hydrate 済み。
 
-    lifecycle / build_batch / duplicate_status は不変で、goriyaku は持ち込まない。
+    build_batch / duplicate_status は不変で、goriyaku は持ち込まない。G7 Production Import 後、
+    3社は IMPORTED / FACT_READY（CORE_READY ではない）。
     wave0-020 / wave0-022 は未 hydrate のまま BUILD_READY を保持する。
     """
     master = _load_master()
@@ -949,8 +966,10 @@ def test_wave0_db04_g4_subset_is_hydrated_from_frozen_inputs_only():
         assert row["official_address"].startswith(row["prefecture"]), candidate_id
         assert "goriyaku" not in row, candidate_id
         assert "goriyaku_tags" not in row, candidate_id
-        assert "knowledge_status" not in row, candidate_id
-        assert row["candidate_status"] == "BUILD_READY", candidate_id
+        assert row["knowledge_status"] == "FACT_READY", candidate_id
+        assert row["candidate_status"] == "IMPORTED", candidate_id
+        assert row["candidate_status"] != "CORE_READY", candidate_id
+        assert row["build_batch"] == "W0-DB04", candidate_id
         assert row["status_reason_code"] == "WAVE0_CORE_READY_CANDIDATE", candidate_id
         assert row["duplicate_status"] == "NEW", candidate_id
 
@@ -1013,7 +1032,7 @@ def test_wave0_duplicate_and_availability_states_match_completed_audits():
         elif row["candidate_id"] in W0_DB04_G4_HYDRATED_IDS:
             assert effective["identity_status"] == "CONFIRMED"
             assert effective["official_source_status"] == "CONFIRMED"
-            assert effective["knowledge_status"] == "ACQUISITION_PATH_CONFIRMED"
+            assert effective["knowledge_status"] == "FACT_READY"
         elif row["candidate_status"] == "REVIEW":
             assert effective["identity_status"] == "UNREVIEWED"
             assert effective["official_source_status"] == "UNREVIEWED"
