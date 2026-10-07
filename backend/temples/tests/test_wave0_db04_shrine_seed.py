@@ -168,6 +168,107 @@ def test_no_other_build_ready_candidate_is_added():
     assert added_names == {candidates[cid]["candidate_name"] for cid in EXECUTION_IDS}
 
 
+# --- Candidate Master lifecycle（G7 後）-----------------------------------------
+
+# G7 NOT EXECUTED の4社。Candidate Master の行全体を固定する（G7 lifecycle sync で変えない）。
+UNCHANGED_CANDIDATE_ROWS = {
+    "wave0-020": {
+        "candidate_id": "wave0-020",
+        "candidate_name": "水堂須佐男神社",
+        "prefecture": "兵庫県",
+        "candidate_status": "BUILD_READY",
+        "status_reason_code": "WAVE0_CORE_READY_CANDIDATE",
+        "build_batch": "W0-DB04",
+        "duplicate_status": "NEW",
+        "discovery_sources": [
+            {
+                "discovery_source": "Omairi 全国神社人気ランキング2026",
+                "discovery_source_url": "https://omairi.club/spots/ranking/shrine/page/3",
+                "discovery_rank": 56,
+                "captured_at": "2026-08-27",
+            }
+        ],
+    },
+    "wave0-022": {
+        "candidate_id": "wave0-022",
+        "candidate_name": "毛谷黒龍神社",
+        "prefecture": "福井県",
+        "candidate_status": "BUILD_READY",
+        "status_reason_code": "WAVE0_CORE_READY_CANDIDATE",
+        "build_batch": "W0-DB04",
+        "duplicate_status": "NEW",
+        "discovery_sources": [
+            {
+                "discovery_source": "Omairi 全国神社人気ランキング2026",
+                "discovery_source_url": "https://omairi.club/spots/ranking/shrine/page/3",
+                "discovery_rank": 61,
+                "captured_at": "2026-08-27",
+            }
+        ],
+    },
+    "wave0-023": {
+        "candidate_id": "wave0-023",
+        "candidate_name": "富知六所浅間神社",
+        "prefecture": "静岡県",
+        "candidate_status": "HOLD",
+        "status_reason_code": "SOURCE_HOLD",
+        "build_batch": None,
+        "duplicate_status": "NEW",
+        "discovery_sources": [
+            {
+                "discovery_source": "Omairi 全国神社人気ランキング2026",
+                "discovery_source_url": "https://omairi.club/spots/ranking/shrine/page/3",
+                "discovery_rank": 62,
+                "captured_at": "2026-08-27",
+            }
+        ],
+    },
+    "wave0-024": {
+        "candidate_id": "wave0-024",
+        "candidate_name": "居多神社",
+        "prefecture": "新潟県",
+        "candidate_status": "HOLD",
+        "status_reason_code": "UNKNOWN_EVIDENCE",
+        "build_batch": None,
+        "duplicate_status": "NEW",
+        "discovery_sources": [
+            {
+                "discovery_source": "Omairi 全国神社人気ランキング2026",
+                "discovery_source_url": "https://omairi.club/spots/ranking/shrine/page/3",
+                "discovery_rank": 66,
+                "captured_at": "2026-08-27",
+            }
+        ],
+    },
+}
+
+
+def test_execution_candidates_are_imported_but_not_core_ready():
+    """G7 Production Import 完了後の lifecycle。
+
+    Production 実測は docs/audit/shrine-expansion-wave0-db04-production-import.md。
+    IMPORTED / FACT_READY まで。CORE_READY は G8 の別 Gate であり未判定。
+    """
+    candidates = _load_candidates()
+
+    for cid in EXECUTION_IDS:
+        row = candidates[cid]
+        assert row["candidate_status"] == "IMPORTED", cid
+        assert row["candidate_status"] != "CORE_READY", cid
+        assert row["knowledge_status"] == "FACT_READY", cid
+        assert row["build_batch"] == "W0-DB04", cid
+        assert row["status_reason_code"] == "WAVE0_CORE_READY_CANDIDATE", cid
+        assert row["duplicate_status"] == "NEW", cid
+
+
+def test_g7_not_executed_candidate_rows_are_unchanged():
+    """wave0-020 / 022（W0-DB04 member）と wave0-023 / 024（HOLD）は G7 対象外で、行全体が不変。"""
+    candidates = _load_candidates()
+
+    for cid, expected in UNCHANGED_CANDIDATE_ROWS.items():
+        assert candidates[cid] == expected, cid
+
+
 # --- identity / position -------------------------------------------------------
 
 
