@@ -319,3 +319,16 @@ Channel B reason provenance（`feature/channel-b-reason-provenance`）:
 G6_STATUS = OPEN / NOT CLOSED
 G7 Production Import approval = NOT GRANTED
 ```
+
+### Closure addendum（2026-10-07）
+
+上の `G6_STATUS = OPEN / NOT CLOSED` は、本 QA を記録した時点の状態である（書き換えていない）。
+その後、Mother Ship が G6 を `CLOSED / PASS` と判定し、G7 Production Import を承認・実行した。
+G6 の scenario は Production data 上でも確認され、PASS した（`G6_RUNTIME_PRODUCTION_QA = PASS`）。
+詳細は `docs/audit/shrine-expansion-wave0-db04-production-import.md` を参照。
+
+```text
+G6_STATUS                = CLOSED / PASS（Mother Ship decision）
+G6_RUNTIME_PRODUCTION_QA = PASS
+G7_STATUS                = CLOSED / PASS
+```
