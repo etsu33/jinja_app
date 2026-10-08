@@ -1157,11 +1157,11 @@ def test_wave0_duplicate_and_availability_states_match_completed_audits():
             assert effective["knowledge_status"] == "ACQUISITION_PATH_CONFIRMED"
 
 
-def test_candidate_defaults_are_not_promoted_by_a_single_batch_import():
-    """W0-DB01 の FACT_READY は行レベルの事実であり、Registry 全体の既定ではない。
+def test_wave0_candidate_defaults_are_not_promoted_by_a_single_batch_import():
+    """Wave0 legacy defaultsを単一Batch importで昇格させない。
 
-    `candidate_defaults` を FACT_READY にすると、未 import の 39 社まで
-    「Production 上で usable Knowledge が確認済み」と読めてしまう。
+    schema 1.4以降もtop-level candidate_defaultsはHistorical Wave0専用。
+    Nationwide nsrc-* はrow-level explicit valuesを持ち、このdefaultを暗黙継承しない。
     """
     defaults = _load_master()["candidate_defaults"]
 
@@ -1170,10 +1170,11 @@ def test_candidate_defaults_are_not_promoted_by_a_single_batch_import():
     assert defaults["official_source_status"] == "AVAILABLE"
 
 
-def test_candidate_reason_is_registry_admission_reason_and_not_overridden():
-    """candidate_reason は Registry 登録理由（schema 1.3）。lifecycle 遷移で上書きしない。
+def test_wave0_candidate_reason_is_historical_admission_reason_and_not_overridden():
+    """Wave0 candidate_reasonはhistorical Registry admission reasonとして固定する。
 
-    現在の candidate_status の理由は status_reason_code が表す。
+    Nationwide nsrc-* のcandidate_reasonは別Contractでrow-level overrideする。
+    現在の candidate_status の理由はstatus_reason_codeが表す。
     """
     master = _load_master()
 
