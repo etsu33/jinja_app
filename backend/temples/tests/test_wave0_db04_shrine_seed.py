@@ -243,18 +243,17 @@ UNCHANGED_CANDIDATE_ROWS = {
 }
 
 
-def test_execution_candidates_are_imported_but_not_core_ready():
-    """G7 Production Import 完了後の lifecycle。
+def test_execution_candidates_are_core_ready_after_g8():
+    """G8 で承認された3社のみ CORE_READY に遷移し、FACT_READY を維持する。
 
-    Production 実測は docs/audit/shrine-expansion-wave0-db04-production-import.md。
-    IMPORTED / FACT_READY まで。CORE_READY は G8 の別 Gate であり未判定。
+    G7 Production Import の記録は履歴として保持する。G8 は Candidate Master の
+    lifecycle 遷移であり、Production データへの書き込みを意味しない。
     """
     candidates = _load_candidates()
 
     for cid in EXECUTION_IDS:
         row = candidates[cid]
-        assert row["candidate_status"] == "IMPORTED", cid
-        assert row["candidate_status"] != "CORE_READY", cid
+        assert row["candidate_status"] == "CORE_READY", cid
         assert row["knowledge_status"] == "FACT_READY", cid
         assert row["build_batch"] == "W0-DB04", cid
         assert row["status_reason_code"] == "WAVE0_CORE_READY_CANDIDATE", cid
