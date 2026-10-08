@@ -897,3 +897,186 @@ NEXT = M2 FIRST_ROLLOUT_PREFECTURE
 ```
 
 本追記でもRunner / adapter / Production writeは実装しない。
+
+
+# 29. M2 Decision Record — First Rollout Prefecture
+
+> **Recorded at: 2026-10-08**
+>
+> 本節は §21 の `M2 FIRST_ROLLOUT_PREFECTURE` を確定する追記である。
+> M1は §27で `100 RAW SOURCE CANDIDATES` と確定済み。
+
+```text
+M2_FIRST_ROLLOUT_PREFECTURE = NIIGATA
+M2_FIRST_ROLLOUT_PREFECTURE_JA = 新潟県
+M2_STATUS = DECIDED
+```
+
+## 29.1 Selection rationale
+
+新潟県を初回Rolloutに採用する理由は、全国版Candidate Extraction Contractを
+最小の新規不確定要因で実証しながら、十分な失敗ケースも観測できるため。
+
+### A. Full-enumeration Source is already established
+
+神社庁Source正本では新潟県は:
+
+```text
+acquisition_scope = 全件取得可能
+source_total_count = 4,619
+registered_count = 11
+directory_status = 全件一覧・検索あり
+```
+
+で管理されている。
+
+### B. Source traversal has prior operational evidence
+
+既存Pilotは新潟県をMother Shipが選定し、Source既定表示順から固定20件を取得している。
+
+```text
+PILOT_PREFECTURE = NIIGATA
+pilot_input_count = 20
+Production write = 0
+```
+
+この20件についてInput fixednessは20/20一致でPASSしている。
+
+### C. Normalization is already reproducible on the same Source shape
+
+現行Repositoryの:
+
+```text
+normalize_shrine_name_for_duplicate()
+normalize_shrine_address_for_duplicate()
+```
+
+を独立再実行した結果、20 records × 2 fields = 40/40一致、DIFF 0が記録されている。
+
+### D. Duplicate lookup already produced both zero-hit and collision-signal cases
+
+同じ20件で `find_duplicate_candidates(..., limit=100)` を独立実行した結果:
+
+```text
+candidate_count = 0 : 15 records
+candidate_count = 1 : 5 records
+candidate_count > 1 : 0 records
+DIFF = 0
+```
+
+よって初回100件Batchで:
+
+```text
+READY_CANDIDATE path
+REVIEW_REQUIRED path
+```
+
+の両方が発生する可能性を既存実績から期待できる。
+
+これは「全件がNEWで簡単にPASSするだけ」の県より、Contract検証に適している。
+
+### E. Existing registered Shrine rows exist in the same prefecture
+
+新潟県はKAMI MUSUBI側に11社登録済み。
+
+```text
+registered_count = 11
+```
+
+したがって、Source Candidateと既存Shrine DBの衝突検知を
+実データ上で確認できる条件がすでにある。
+
+## 29.2 Why not use the smallest Source first
+
+沖縄県はSource total 10件で全件列挙可能だが、
+M1で固定した100 raw candidate Batchの実証には小さすぎる。
+
+```text
+Okinawa source_total = 10
+M1 batch_size = 100
+```
+
+最終partial Batchの動作確認には利用できるが、
+初回Rolloutで必要な:
+
+```text
+pagination / traversal
+100-record batch boundary
+collision lookup volume
+mixed classification
+reproducibility at M1 scale
+```
+
+を十分に検証しにくい。
+
+M2は「最も簡単な県」ではなく、
+**既存Evidenceが最も多く、全国RunnerのContractを100件規模で検証できる県**
+として新潟県を選定する。
+
+## 29.3 First rollout boundary
+
+M2は県だけを固定する。
+
+```text
+FIRST_ROLLOUT_PREFECTURE = 新潟県
+FIRST_BATCH_MAX_RAW_CANDIDATES = 100
+```
+
+実行時はSource registry Entry Gateを再確認する。
+
+```text
+acquisition_scope = 全件取得可能
+access_status = valid
+directory_url = non-empty
+verified_at = non-empty
+```
+
+Source unreadable / structure driftを検出した場合:
+
+```text
+M2 decision remains NIIGATA
+execution = STOP_SOURCE / STOP_SOURCE_DRIFT
+```
+
+別県へ自動fallbackしない。
+
+## 29.4 M2 does not decide
+
+M2は以下を確定しない。
+
+```text
+M3 PREFECTURE_ROLLOUT_ORDER
+M4 READY_CANDIDATE_HANDOFF_SIZE
+M5 REVIEW_REQUIRED_HUMAN_REVIEW_OWNER
+```
+
+またM2は:
+
+```text
+新潟県全4,619件の一括実行
+Production Import
+Coordinate write
+Knowledge generation
+Recommendation change
+```
+
+を許可しない。
+
+初回実証範囲はM1に従い最大100 raw Source Candidates。
+
+# 30. Updated decision state
+
+```text
+M1 BATCH_SIZE                    = DECIDED / 100 RAW CANDIDATES
+M2 FIRST_ROLLOUT_PREFECTURE      = DECIDED / NIIGATA
+M3 PREFECTURE_ROLLOUT_ORDER      = PENDING
+M4 READY_CANDIDATE_HANDOFF_SIZE  = PENDING
+M5 REVIEW_REQUIRED_REVIEW_OWNER  = PENDING
+
+FIRST_IMPLEMENTATION_GATE
+= NIIGATA / MAX 100 RAW SOURCE CANDIDATES
+
+NEXT = M3 PREFECTURE_ROLLOUT_ORDER
+```
+
+本追記でもRunner / adapter / Production writeは実装しない。
