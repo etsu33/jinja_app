@@ -36,7 +36,34 @@ EXPECTED_STATUS_COUNTS = {
     "HOLD": 9,
     "REVIEW": 1,
 }
-EXPECTED_TOTAL = 44
+EXPECTED_WAVE0_TOTAL = 44
+
+WAVE0_ID_RE = re.compile(r"^wave0-[0-9]{3}$")
+NATIONWIDE_ID_RE = re.compile(r"^nsrc-[0-9]{6}$")
+CANONICAL_CANDIDATE_STATUSES = frozenset(
+    {"DISCOVERED", "BUILD_READY", "IMPORTED", "CORE_READY", "HOLD", "REVIEW"}
+)
+NATIONWIDE_CANDIDATE_REASON = "official_source_full_enumeration_candidate"
+NATIONWIDE_TRACK = "nationwide_source_candidate"
+NATIONWIDE_PROVENANCE_FIELDS = frozenset(
+    {
+        "track",
+        "prefecture",
+        "source_batch_id",
+        "handoff_id",
+        "source_position",
+        "source_snapshot_sha256",
+        "source_url",
+        "source_verified_at",
+        "captured_at",
+    }
+)
+NATIONWIDE_POSITIVE_STATUS_REASONS = {
+    "DISCOVERED": "REGISTRY_ADMISSION_COMPLETE",
+    "BUILD_READY": "BUILD_READINESS_CONFIRMED",
+    "IMPORTED": "PRODUCTION_IMPORT_COMPLETE",
+    "CORE_READY": "CORE_READY_CONTRACT_PASS",
+}
 
 # Data Build Batch を割り当てられた Candidate の lifecycle status。
 #
@@ -720,13 +747,101 @@ def _effective(master: dict, row: dict) -> dict:
     return {**master.get("candidate_defaults", {}), **row}
 
 
-def test_wave0_candidate_master_registry_accounting():
+def _wave0_candidates(master: dict) -> list[dict]:
+    return [
+        row
+        for row in master["candidates"]
+        if WAVE0_ID_RE.fullmatch(str(row.get("candidate_id", "")))
+    ]
+
+
+def _nationwide_candidates(master: dict) -> list[dict]:
+    return [
+        row
+        for row in master["candidates"]
+        if NATIONWIDE_ID_RE.fullmatch(str(row.get("candidate_id", "")))
+    ]
+
+
+def test_candidate_master_global_registry_namespaces_are_partitioned():
     master = _load_master()
     candidates = master["candidates"]
+    candidate_ids = [str(row.get("candidate_id", "")) for row in candidates]
 
-    assert master["schema_version"] == "1.3"
-    assert len(candidates) == EXPECTED_TOTAL
-    assert len({row["candidate_id"] for row in candidates}) == EXPECTED_TOTAL
+    assert len(candidate_ids) == len(set(candidate_ids))
+
+    unknown = [
+        candidate_id
+        for candidate_id in candidate_ids
+        if not (
+            WAVE0_ID_RE.fullmatch(candidate_id)
+            or NATIONWIDE_ID_RE.fullmatch(candidate_id)
+        )
+    ]
+    assert unknown == []
+
+    wave0 = _wave0_candidates(master)
+    nationwide = _nationwide_candidates(master)
+
+    assert len(candidates) == len(wave0) + len(nationwide)
+    assert {row["candidate_id"] for row in wave0}.isdisjoint(
+        {row["candidate_id"] for row in nationwide}
+    )
+    assert all(row["candidate_status"] in CANONICAL_CANDIDATE_STATUSES for row in candidates)
+
+
+def test_nationwide_candidate_contract_is_additive_and_fail_closed():
+    """nsrc-* はWave0 defaultを暗黙継承せず、Nationwide contractをrow-levelで持つ。"""
+    master = _load_master()
+
+    for row in _nationwide_candidates(master):
+        assert row["candidate_reason"] == NATIONWIDE_CANDIDATE_REASON
+        assert "admission_provenance" in row
+        provenance = row["admission_provenance"]
+        assert set(provenance) == NATIONWIDE_PROVENANCE_FIELDS
+        assert provenance["track"] == NATIONWIDE_TRACK
+        assert provenance["prefecture"] == row["prefecture"]
+        assert provenance["source_batch_id"]
+        assert provenance["handoff_id"]
+        assert provenance["source_position"]
+        assert re.fullmatch(r"[0-9a-f]{64}", provenance["source_snapshot_sha256"])
+        assert provenance["source_url"]
+        assert provenance["source_verified_at"]
+        assert provenance["captured_at"]
+
+        # Historical Wave0 defaultsをNationwide rowへ暗黙適用しない。
+        assert "wave_id" in row and row["wave_id"] is None
+        assert "identity_status" in row
+        assert "duplicate_status" in row
+        assert "official_source_status" in row
+        assert "knowledge_status" in row
+        assert "build_batch" in row
+
+        if row["candidate_status"] in NATIONWIDE_POSITIVE_STATUS_REASONS:
+            assert row["status_reason_code"] == NATIONWIDE_POSITIVE_STATUS_REASONS[
+                row["candidate_status"]
+            ]
+
+        if row["candidate_status"] == "DISCOVERED":
+            assert row["identity_status"] == "UNREVIEWED"
+            assert row["duplicate_status"] == "UNREVIEWED"
+            assert row["official_source_status"] == "AVAILABLE"
+            assert row["knowledge_status"] == "UNREVIEWED"
+            assert row["build_batch"] is None
+
+        assert row.get("build_batch") not in {
+            provenance["source_batch_id"],
+            provenance["handoff_id"],
+        }
+
+
+def test_wave0_candidate_master_registry_accounting():
+    master = _load_master()
+    candidates = _wave0_candidates(master)
+
+    assert master["schema_version"] == "1.4"
+    assert len(candidates) == EXPECTED_WAVE0_TOTAL
+    assert len({row["candidate_id"] for row in candidates}) == EXPECTED_WAVE0_TOTAL
     assert Counter(row["candidate_status"] for row in candidates) == EXPECTED_STATUS_COUNTS
     assert Counter(row["status_reason_code"] for row in candidates) == EXPECTED_REASON_COUNTS
 
@@ -739,7 +854,7 @@ def test_wave0_batch_membership_is_deterministic():
     不変条件は status ではなく「`build_batch` が付いた行の分布」である。
     Batch 割り当て後の HOLD / REVIEW も member として数える（schema 1.3）。
     """
-    candidates = _load_master()["candidates"]
+    candidates = _wave0_candidates(_load_master())
     assigned = [row for row in candidates if row["build_batch"] is not None]
 
     assert len(assigned) == 35
@@ -772,7 +887,7 @@ def test_build_batch_survives_the_import_lifecycle_transition():
     BUILD_READY -> IMPORTED -> CORE_READY で消してはならない。消すと
     「どの Batch で Production へ入ったのか」が追跡不能になる。
     """
-    candidates = _load_master()["candidates"]
+    candidates = _wave0_candidates(_load_master())
 
     imported_or_core_ready = [row for row in candidates if row["candidate_status"] in {"IMPORTED", "CORE_READY"}]
     assert len(imported_or_core_ready) == 17
@@ -802,7 +917,7 @@ def test_w0_db03_to_db07_stay_build_ready():
     3社 CORE_READY / wave0-020・wave0-022 BUILD_READY の混在状態である。
     W0-DB05〜W0-DB07 の 15 社は BUILD_READY のまま。
     """
-    candidates = _load_master()["candidates"]
+    candidates = _wave0_candidates(_load_master())
 
     db03 = {row["candidate_id"]: row for row in candidates if row["build_batch"] == "W0-DB03"}
     assert len(db03) == 5
@@ -835,7 +950,7 @@ def test_wave0_build_batch_uses_the_canonical_db_namespace_only():
     これらは Wave0 の工程ID と同じ文字列であり、Candidate Master 内に
     残っていると工程とデータバッチが区別できなくなる。
     """
-    candidates = _load_master()["candidates"]
+    candidates = _wave0_candidates(_load_master())
 
     batches = {row["build_batch"] for row in candidates if row["build_batch"] is not None}
     assert batches == set(CANONICAL_BUILD_BATCHES)
@@ -850,7 +965,7 @@ def test_wave0_build_batch_uses_the_canonical_db_namespace_only():
 
 def test_wave0_db01_member_set_is_frozen():
     """次の Data Build target `W0-DB01` の member set を exact に固定する。"""
-    candidates = _load_master()["candidates"]
+    candidates = _wave0_candidates(_load_master())
 
     members = {
         row["candidate_name"]
@@ -981,7 +1096,7 @@ def test_wave0_db04_g4_subset_is_hydrated_from_frozen_inputs_only():
 
 
 def test_wave0_hold_and_review_candidates_stay_separated():
-    candidates = _load_master()["candidates"]
+    candidates = _wave0_candidates(_load_master())
 
     for reason, expected_names in EXPECTED_HOLD_BY_REASON.items():
         actual_names = {
@@ -1011,7 +1126,7 @@ def test_wave0_hold_and_review_candidates_stay_separated():
 
 def test_wave0_duplicate_and_availability_states_match_completed_audits():
     master = _load_master()
-    candidates = master["candidates"]
+    candidates = _wave0_candidates(master)
 
     assert Counter(row["duplicate_status"] for row in candidates) == {
         "NEW": 43,
@@ -1063,14 +1178,14 @@ def test_candidate_reason_is_registry_admission_reason_and_not_overridden():
     master = _load_master()
 
     assert master["candidate_defaults"]["candidate_reason"] == "historical_recovered_popularity_candidate"
-    assert all("candidate_reason" not in row for row in master["candidates"])
+    assert all("candidate_reason" not in row for row in _wave0_candidates(master))
 
 
 def test_wave0_discovery_provenance_has_required_fields():
     master = _load_master()
     required = set(master["required_discovery_fields"])
 
-    for row in master["candidates"]:
+    for row in _wave0_candidates(master):
         assert row["discovery_sources"]
         for source in row["discovery_sources"]:
             assert required <= source.keys()
