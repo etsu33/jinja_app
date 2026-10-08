@@ -16,9 +16,9 @@
 W0_DB04_G8_EVIDENCE_GATE          = PASS_3_OF_3（#1〜#11。#8 は evidence 範囲の限界つき。§6.1）
 W0_DB04_PRE_TRANSITION_ALIGNMENT  = PASS
 W0_DB04_POST_TRANSITION_ALIGNMENT = NOT_EXECUTED
-W0_DB04_PARTIAL_BATCH_DECISION    = PENDING（Mother Ship。§2.2）
+W0_DB04_PARTIAL_BATCH_DECISION    = APPROVED_3_OF_5（Mother Ship Decision、§12）
 W0_DB04_COMPLETION_CONTRACT       = 11/12_PASS + #12 PRE_TRANSITION_PASS / POST_TRANSITION_NOT_EXECUTED
-W0_DB04_G8_DECISION               = CONDITIONAL_GO（Mother Ship review 待ち）
+W0_DB04_G8_DECISION               = CONDITIONAL_GO（遷移の別途承認待ち）
 W0_DB04_CORE_READY                = NOT_EXECUTED
 CANDIDATE_STATUS_TRANSITION       = NOT_EXECUTED
 ```
@@ -71,7 +71,7 @@ identity contract ではない。canonical identity は `(name_jp, address)` で
 対象は candidate_id で明示的に指定する。`build_batch = W0-DB04` だけで選ばない
 （同じ batch に G7 NOT EXECUTED の wave0-020 / wave0-022 が含まれるため）。
 
-### 2.2 3 / 5 で CORE_READY へ遷移する根拠（PENDING）
+### 2.2 3 / 5 で CORE_READY へ遷移する根拠（母艦判断記録前の経緯）
 
 Data Build Plan は「Batch 5社すべてが Completion Contract を満たした場合のみ Candidate Master を
 `CORE_READY` 相当 state へ更新する」と定め、失敗がある場合の扱いは「Mother Ship へ判断を返す」としている。
@@ -87,12 +87,12 @@ W0-DB04 の記録で確認できるのは次の範囲である。
   execution subset 3社、wave0-020 / wave0-022 は評価しない、original membership は5社のまま。
 - G5 / G6 / G7 は execution subset 3社で実行・完了している。
 
-一方、**3 / 5 の部分 batch で `CORE_READY` へ遷移することを明示した Mother Ship decision record は、
-repo 内で確認できなかった。** 上の記録は G4 以降の進行についての判断であり、本書はこれを
-CORE_READY 遷移の承認として読み替えない。
+本PR初版の時点では、**3 / 5 の部分 batch で `CORE_READY` へ遷移することを明示した Mother Ship decision record は、
+repo 内で確認できなかった。** 上の記録は G4 以降の進行についての判断であり、G4の記録を遷移承認として読み替えない。
+その後、2026-10-08に母艦が対象3社限定の部分batch進行を明示承認した（§12）。これは実際のCORE_READY遷移の実行承認ではない。
 
 ```text
-W0_DB04_PARTIAL_BATCH_DECISION = PENDING（Mother Ship が W0-DB03 Decision A 相当の判断を記録する必要がある）
+W0_DB04_PARTIAL_BATCH_DECISION = APPROVED_3_OF_5（2026-10-08 Mother Ship Decision。§12）
 ```
 
 ---
@@ -380,13 +380,41 @@ wave0-020 / 022 / 023 / 024             変更なし
 
 ---
 
-## 12. Final
+## 12. Mother Ship Decision Record（2026-10-08）
+
+母艦が本G8監査の判断事項2件を明示確定した。PR #3093の監査記録に反映するものであり、Candidate MasterやProduction DBを変更する承認ではない。
+
+**Decision A: Partial Batch 3/5**
+
+- `APPROVED_3_OF_5`。original membership 5社を維持し、`wave0-019` 建勲神社、`wave0-021` 大阪天満宮、`wave0-025` 大崎八幡宮の3社のみを将来のCORE_READY遷移の対象候補とする。
+- `wave0-020` 水堂須佐男神社のG2 HOLD、`wave0-022` 毛谷黒龍神社のG3 HOLDは解除しない。`wave0-023`、`wave0-024`も変更しない。
+- 本判断は部分batchの例外を認めるものであり、**CORE_READY遷移PRの実行・マージを承認しない**。
+
+**Decision B: GoriyakuTag Completion Contract #8**
+
+- `ACCEPTED_WITH_LIMITATION`。Production canonical 39/39完全一致、G7 assignment delta 0、対象Importerの新規tag非生成コード経路を根拠に、#8のPASSを証拠の限界つきで受容する。
+- G7実行前後のtag件数・id範囲は`NOT_RECORDED`であり、一時的な作成・削除がなかったことを独立に実測証明したとは扱わない。
+- この判断は新規tag生成や既存tag変更を許可しない。
+
+```text
+W0_DB04_PARTIAL_BATCH_DECISION    = APPROVED_3_OF_5
+W0_DB04_GORIYAKU_TAG_8_DECISION  = ACCEPTED_WITH_LIMITATION
+W0_DB04_G8_DECISION               = CONDITIONAL_GO
+W0_DB04_CORE_READY                = NOT_EXECUTED（別途明示承認が必要）
+W0_DB04_POST_TRANSITION_ALIGNMENT = NOT_EXECUTED
+G8_STATUS                         = OPEN
+```
+
+---
+
+## 13. Final
 
 ```text
 W0_DB04_G8_EVIDENCE_GATE          = PASS_3_OF_3（#8 は §6.1 の限界つき）
 W0_DB04_PRE_TRANSITION_ALIGNMENT  = PASS
 W0_DB04_POST_TRANSITION_ALIGNMENT = NOT_EXECUTED
-W0_DB04_PARTIAL_BATCH_DECISION    = PENDING
+W0_DB04_PARTIAL_BATCH_DECISION    = APPROVED_3_OF_5
+W0_DB04_GORIYAKU_TAG_8_DECISION  = ACCEPTED_WITH_LIMITATION
 W0_DB04_G8_DECISION               = CONDITIONAL_GO
 W0_DB04_CORE_READY                = NOT_EXECUTED
 CANDIDATE_STATUS_TRANSITION       = NOT_EXECUTED（未承認）
@@ -408,8 +436,4 @@ G8_STATUS                         = OPEN（CLOSED ではない）
 | 11 | Import idempotency | PASS |
 | 12 | Candidate Master / Production alignment | PRE_TRANSITION PASS / POST_TRANSITION NOT_EXECUTED |
 
-CONDITIONAL_GO の条件（Mother Ship review）:
-
-1. 3 / 5 の部分 batch で CORE_READY へ遷移する判断を記録する（§2.2）
-2. #8 の evidence 範囲の限界（§6.1）を受け入れるか、追加の確認を求めるかを決める
-3. CORE_READY 遷移を明示承認する（別 PR。§7.3 の POST_TRANSITION 条件で検証する）
+母艦判断は§12に記録済み。**未了の条件は、CORE_READY遷移についての別途明示承認、別PRでの限定変更、§7.3のPOST_TRANSITION検証である。** それまでは`CONDITIONAL_GO / OPEN`を維持する。
