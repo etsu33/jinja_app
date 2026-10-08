@@ -139,16 +139,54 @@ G8_TARGETS               = 3
 | Production GoriyakuTag canonical master | EXACT MATCH 39/39、mismatch 0 |
 | Candidate Master PRE state | PASS 3/3 |
 
-### 4.2 個別値
+### 4.2 個別値（Production read-only）
 
-W0-DB03 の G8 記録にある shrine ごとの値（`exact`、position / location、Deity / History / Source 件数、
-sourceless 件数、eligibility の母数、QA origin と direction）は、本 G8 では判定だけが提供された。
+shrine ごとの個別値は Mother Ship の QA で Production に対して確認済みであった。本書の初版（PR #3093 の最初の commit）は、
+それらが最初の handoff に含まれていなかったため「判定だけが提供された」と記録していた。その記述を本節で訂正する。
+
+| candidate_id | Production `id`（provenance） | latitude | longitude | location | Deity | History | ShrineSourceFact |
+| --- | ---: | ---: | ---: | --- | ---: | ---: | ---: |
+| wave0-019 建勲神社 | 123 | 35.0386537 | 135.7431512 | true | 2 | 5 | 0 |
+| wave0-021 大阪天満宮 | 124 | 34.6958917 | 135.5126472 | true | 1 | 3 | 7 |
+| wave0-025 大崎八幡宮 | 125 | 38.2725678 | 140.8449622 | true | 3 | 4 | 16 |
+
+3社とも:
 
 ```text
-G8_PER_SHRINE_VALUES = NOT_RECORDED（判定 PASS のみ提供）
+sourceless Deity         = 0
+sourceless History       = 0
+sourceless SourceFact    = 0
+Shared Eligibility       = PASS
+Concierge candidate path = PASS
 ```
 
-参考として、G7 post-write で記録済みの値（`shrine-expansion-wave0-db04-production-import.md` §4 / §5 / §8）:
+repo 内での cross-check: latitude / longitude は3社とも `backend/temples/data/shrines_seed_clean.json` と
+`backend/temples/data/shrine_expansion_candidate_master.json` の値に完全一致する。
+Deity / History / ShrineSourceFact の件数は G7 post-write の記録（§4.4）と一致する。
+
+### 4.3 Compass QA
+
+QA origin（固定の test 入力。実ユーザー位置でも推薦結果でもない）:
+
+```text
+lat = 35.681236
+lng = 139.767125
+```
+
+| candidate_id | distance (m) | direction |
+| --- | ---: | --- |
+| wave0-019 建勲神社 | 371806 | 西 |
+| wave0-021 大阪天満宮 | 401811 | 西 |
+| wave0-025 大崎八幡宮 | 303626 | 北 |
+
+- direction filter: 各 shrine は自分の direction で通過し、他の direction では除外される。
+- distance stage: 3社とも 60 km の distance stage の外にある。
+
+これらは component レベルの runtime 観測であり、UI の E2E 結果ではない。
+
+### 4.4 参考: G7 post-write の記録
+
+G7 post-write で記録済みの値（`shrine-expansion-wave0-db04-production-import.md` §4 / §5 / §8）:
 
 | candidate_id | exact | same_name | Deity | History | ShrineSourceFact | Channel B typed match | `goriyaku` | `goriyaku_tags` |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |
@@ -156,7 +194,7 @@ G8_PER_SHRINE_VALUES = NOT_RECORDED（判定 PASS のみ提供）
 | wave0-021 大阪天満宮 | 1 | 1 | 1 | 3 | 7 | 7 | `""` | `[]` |
 | wave0-025 大崎八幡宮 | 1 | 1 | 3 | 4 | 16 | 14 | `""` | `[]` |
 
-source-less Deity / History / ShrineSourceFact = 0（G7）。これは G7 時点の記録であり、G8 時点の再測定ではない。
+source-less Deity / History / ShrineSourceFact = 0（G7）。G8 時点の値は §4.2。
 
 ---
 
@@ -183,15 +221,15 @@ G7 の idempotency 確認中に local database へ接続した運用 incident �
 | # | 条件 | Evidence | 判定 |
 | ---: | --- | --- | --- |
 | 1 | Production Shrine が canonical `name_jp + address` で一意 | §4.1 canonical identity PASS 3/3。G7 で `exact = 1` / `same_name = 1` | PASS |
-| 2 | 採用 `latitude / longitude` が保存されている | §4.1 coordinates PASS 3/3 | PASS |
+| 2 | 採用 `latitude / longitude` が保存されている | §4.2 latitude / longitude が Base Seed / Candidate Master と完全一致、location = true（3/3） | PASS |
 | 3 | Source-backed `ShrineKnowledgeSource` | §4.1 PASS 3/3。G7 で Source +6（reuse なし） | PASS |
-| 4 | Fact-ready Deity / History が1件以上 | §4.1 PASS 3/3。G7 で Deity 2 / 1 / 3、History 5 / 3 / 4 | PASS |
-| 5 | Fact-ready Source relation / Evidence Gate `usable=True` | §4.1 PASS 3/3。G7 で source-less 0、G5 で 3社 ELIGIBLE | PASS |
+| 4 | Fact-ready Deity / History が1件以上 | §4.2 Deity 2 / 1 / 3、History 5 / 3 / 4（G7 と一致） | PASS |
+| 5 | Fact-ready Source relation / Evidence Gate `usable=True` | §4.2 sourceless Deity / History / SourceFact = 0、Shared Eligibility PASS（3/3） | PASS |
 | 6 | `Shrine.goriyaku` が承認済みの意味のみ | G7 で3社とも `goriyaku = ""`（承認されていない意味を保持しない） | PASS |
 | 7 | `goriyaku_tags` が canonical 39 の safe subset | G7 で3社とも `goriyaku_tags = []`（空集合は canonical 39 の subset） | PASS |
 | 8 | 新規 GoriyakuTag を自動生成しない | §6.1 | PASS（evidence 範囲の限界つき） |
-| 9 | Concierge の shared eligibility / candidate path で読める | §4.1 shared eligibility PASS 3/3、Concierge candidate path PASS 3/3 | PASS |
-| 10 | Compass distance / direction 計算が可能 | §4.1 distance / direction / filter / stage PASS 3/3 | PASS |
+| 9 | Concierge の shared eligibility / candidate path で読める | §4.2 Shared Eligibility PASS / Concierge candidate path PASS（3/3） | PASS |
+| 10 | Compass distance / direction 計算が可能 | §4.3 distance 371806 / 401811 / 303626 m、direction 西 / 西 / 北、direction filter・distance stage を確認（component レベル） | PASS |
 | 11 | Import 再実行で unexpected CREATE / UPDATE なし | §5（G7 evidence） | PASS |
 
 ```text
@@ -309,7 +347,6 @@ VALUE_COMPLETION     = NONE
 | G8 実行時の develop commit | `NOT_RECORDED` |
 | 実行 operator | `NOT_RECORDED` |
 | Production DB identifier | `NOT_RECORDED` |
-| G8 の shrine ごとの個別値 | `NOT_RECORDED`（§4.2） |
 | G7 実行前後の GoriyakuTag 総数・id 範囲 | `NOT_RECORDED`（§6.1） |
 
 いずれも推測で補完しない。一次 log file は repo 内に保存していない。
