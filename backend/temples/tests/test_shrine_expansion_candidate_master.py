@@ -799,7 +799,7 @@ def test_w0_db03_to_db07_stay_build_ready():
 
     W0-DB03 は original membership 5社のまま、4社 CORE_READY / wave0-014 post-batch HOLD
     （MODEL_CHANGE_REQUIRED）の混在状態である。W0-DB04 は original membership 5社のまま、
-    3社 IMPORTED / wave0-020・wave0-022 BUILD_READY の混在状態である。
+    3社 CORE_READY / wave0-020・wave0-022 BUILD_READY の混在状態である。
     W0-DB05〜W0-DB07 の 15 社は BUILD_READY のまま。
     """
     candidates = _load_master()["candidates"]
@@ -818,7 +818,7 @@ def test_w0_db03_to_db07_stay_build_ready():
     assert len(db04) == 5
     assert set(db04) == W0_DB04_G4_HYDRATED_IDS | W0_DB04_EXCLUDED_IDS
     for candidate_id in W0_DB04_G4_HYDRATED_IDS:
-        assert db04[candidate_id]["candidate_status"] == "IMPORTED", candidate_id
+        assert db04[candidate_id]["candidate_status"] == "CORE_READY", candidate_id
         assert db04[candidate_id]["knowledge_status"] == "FACT_READY", candidate_id
     for candidate_id in W0_DB04_EXCLUDED_IDS:
         assert db04[candidate_id]["candidate_status"] == "BUILD_READY", candidate_id
@@ -950,7 +950,7 @@ def test_wave0_db04_g4_subset_is_hydrated_from_frozen_inputs_only():
     """W0-DB04 G4 re-entry: eligible subset 3社だけが凍結値で hydrate 済み。
 
     build_batch / duplicate_status は不変で、goriyaku は持ち込まない。G7 Production Import 後、
-    3社は IMPORTED / FACT_READY（CORE_READY ではない）。
+    3社は G8 遷移後 CORE_READY / FACT_READY。
     wave0-020 / wave0-022 は未 hydrate のまま BUILD_READY を保持する。
     """
     master = _load_master()
@@ -967,8 +967,7 @@ def test_wave0_db04_g4_subset_is_hydrated_from_frozen_inputs_only():
         assert "goriyaku" not in row, candidate_id
         assert "goriyaku_tags" not in row, candidate_id
         assert row["knowledge_status"] == "FACT_READY", candidate_id
-        assert row["candidate_status"] == "IMPORTED", candidate_id
-        assert row["candidate_status"] != "CORE_READY", candidate_id
+        assert row["candidate_status"] == "CORE_READY", candidate_id
         assert row["build_batch"] == "W0-DB04", candidate_id
         assert row["status_reason_code"] == "WAVE0_CORE_READY_CANDIDATE", candidate_id
         assert row["duplicate_status"] == "NEW", candidate_id
