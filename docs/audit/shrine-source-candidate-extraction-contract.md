@@ -1080,3 +1080,339 @@ NEXT = M3 PREFECTURE_ROLLOUT_ORDER
 ```
 
 本追記でもRunner / adapter / Production writeは実装しない。
+
+
+# 31. M3 Decision Record — Prefecture Rollout Order
+
+> **Recorded at: 2026-10-08**
+>
+> M3は商品優先順位ではなく、Source adapter / batch / reproducibilityを
+> 安全に広げるための**技術Rollout順**として固定する。
+
+```text
+M3_PREFECTURE_ROLLOUT_ORDER =
+
+01 新潟県
+02 沖縄県
+03 大阪府
+04 香川県
+05 岐阜県
+06 鹿児島県
+07 秋田県
+08 愛媛県
+09 山梨県
+10 滋賀県
+11 岡山県
+12 山形県
+13 三重県
+14 奈良県
+15 京都府
+
+M3_STATUS = DECIDED
+```
+
+## 31.1 Ordering policy
+
+Rollout順は以下の優先軸で決める。
+
+```text
+1. 既存実証量
+2. Source構造差の早期検証
+3. 小さいSourceでpartial Batchを検証
+4. exact source_total_countがあるSourceを先行
+5. 地域分割・概数・外部詳細導線など構造が複雑なSourceを後段
+```
+
+順番は神社の重要度・人気・地域優先度を意味しない。
+
+## 31.2 First three prefectures are deliberate contract tests
+
+### 01 新潟県
+
+M2で確定済み。
+既存20件Pilot + 4,619件Source + 既存DB11社により、
+100 raw candidate Batch / collision signal / reproducibilityを検証する。
+
+### 02 沖縄県
+
+```text
+source_total_count = 10
+directory_status = 全件一覧あり
+```
+
+新潟とは異なる小規模static-list型Sourceで、
+M1の `FINAL_PARTIAL_BATCH = ALLOWED` を実データで検証する。
+
+### 03 大阪府
+
+行政区別一覧型。
+新潟のpagination/search型、沖縄のsmall static list型に続き、
+region-partition型Source adapterを早期に検証する。
+
+## 31.3 Middle rollout group
+
+以下は全件取得可能かつ、比較的明確な一覧/検索Sourceを持つため、
+共通Runner / adapter contractが3県で成立した後に順次展開する。
+
+```text
+04 香川県
+05 岐阜県
+06 鹿児島県
+07 秋田県
+08 愛媛県
+09 山梨県
+10 滋賀県
+11 岡山県
+12 山形県
+```
+
+この順番はSource品質ランキングではない。
+同一Contractで段階的に規模を上げるための運用順である。
+
+## 31.4 Structure-heavy group
+
+以下は地域別列挙・別導線・概数等を含み、
+Source traversalのadapter差が比較的大きいため後段に置く。
+
+```text
+13 三重県
+14 奈良県
+15 京都府
+```
+
+京都府は21支部・約1,570社という公開構造を持つが、
+source_total_countをexactとして固定していないため最後とする。
+
+## 31.5 Rollout gate
+
+次県へ進むには、その県のfirst Batchで最低限:
+
+```text
+Source Entry Gate PASS
+Canonical output schema PASS
+Production write = 0
+classification漏れ = 0
+reproducibility DIFF = 0
+```
+
+を満たす。
+
+失敗した場合:
+
+```text
+AUTO_SKIP_TO_NEXT_PREFECTURE = PROHIBITED
+```
+
+Source修正 / adapter修正 / Contract再確認を行い、
+Mother Ship判断なしに順番を飛ばさない。
+
+# 32. M4 Decision Record — READY_CANDIDATE Handoff Size
+
+```text
+M4_READY_CANDIDATE_HANDOFF_SIZE = MAX 5
+M4_STATUS = DECIDED
+```
+
+## 32.1 Meaning
+
+Candidate Extractionで `READY_CANDIDATE` になった行だけを、
+同一Extraction snapshot内の `source_position` 順で最大5件ずつ
+Coordinate / Base Seed Candidate Gateへhandoffする。
+
+```text
+HANDOFF_SIZE = 1..5 READY_CANDIDATES
+MAX = 5
+FINAL_PARTIAL_HANDOFF = ALLOWED
+```
+
+`REVIEW_REQUIRED` / `INVALID` を5件に含めない。
+
+## 32.2 Why 5
+
+既存Wave0 Data Build Contractは:
+
+```text
+Data Build standard unit = 5 shrines / Batch
+MAX = 5
+```
+
+として実運用されている。
+
+この単位は:
+
+- Source / Position Human Review量を制限
+- 1社のidentity/position conflictを局所化
+- Production差分を小さく保つ
+- rollback / incident isolationを容易にする
+
+という既存理由を持つ。
+
+新しい20件・10件等の並行単位を作らず、
+READY handoffも既存5社単位へ合わせる。
+
+## 32.3 Boundary
+
+```text
+M1 Extraction Batch = max 100 RAW candidates
+M4 Handoff          = max 5 READY candidates
+```
+
+は別Contract。
+
+100 raw candidatesから60 READYが出た場合、例として:
+
+```text
+Handoff 01 = READY source_position順 1-5
+Handoff 02 = 次の5 READY
+...
+Handoff 12 = 最後の5 READY
+```
+
+途中のREVIEW / INVALIDを飛ばしてREADYだけを順序保持して束ねる。
+
+ただしhandoff membershipはExtraction snapshotごとにfreezeする。
+後日REVIEWが解決してREADYへ変わっても、既存handoffへ差し込んで
+過去のmember setを変更しない。新しいhandoffとして扱う。
+
+## 32.4 Cross-boundary policy
+
+```text
+CROSS_PREFECTURE_HANDOFF = PROHIBITED
+CROSS_EXTRACTION_SNAPSHOT_HANDOFF = PROHIBITED
+```
+
+同じ県でも別Extraction snapshotのREADYを混ぜない。
+
+# 33. M5 Decision Record — REVIEW_REQUIRED Human Review Owner
+
+```text
+M5_REVIEW_REQUIRED_HUMAN_REVIEW_OWNER = MOTHER_SHIP
+M5_STATUS = DECIDED
+```
+
+## 33.1 Responsibility
+
+`REVIEW_REQUIRED` の最終identity / Source判断はMother Shipが行う。
+
+```text
+ChatGPT
+= evidence整理 / conflict説明 / review観点提示
+
+Codex
+= repo lookup / deterministic artifact生成 / tests / PR
+
+Mother Ship
+= final Human Review decision
+
+Cursor
+= local adjustment only
+```
+
+Codex / Runner / ChatGPTが候補1件を理由に同一神社と自動確定しない。
+
+## 33.2 REVIEW_REQUIRED does not auto-resolve
+
+以下はいずれもMother Ship確認前に自動解除しない。
+
+```text
+collision candidate >= 1
+prefecture mismatch
+possibly_truncated
+Source ambiguity
+same-name / different-address
+same-address / different-name
+```
+
+```text
+AUTO_RECLASSIFY_TO_READY = PROHIBITED
+AUTO_RECLASSIFY_TO_DUPLICATE = PROHIBITED
+AUTO_MERGE = PROHIBITED
+```
+
+## 33.3 Human Review evidence packet
+
+Mother Shipへ最低限以下を提示する。
+
+```text
+raw_name
+raw_address
+prefecture
+source_url
+source_position
+
+normalized_name
+normalized_address
+
+returned_candidate_count
+returned_candidate_ids
+returned_candidate_names
+returned_candidate_addresses
+
+review_reason
+source_verified_at
+batch_id
+```
+
+必要なEvidenceが欠ける場合は判定せずREVIEWを維持する。
+
+## 33.4 Scope boundary
+
+M5はCandidate Extraction段階のidentity / Source Review ownerを決める。
+
+以下の別GateのHuman Review責任を上書きしない。
+
+```text
+Position / Navigation Anchor adjudication
+Knowledge Fact review
+Model Risk review
+Recommendation semantic review
+Production Import execution
+```
+
+# 34. M1-M5 Final Decision State
+
+```text
+M1 BATCH_SIZE
+= DECIDED / 100 RAW SOURCE CANDIDATES
+
+M2 FIRST_ROLLOUT_PREFECTURE
+= DECIDED / NIIGATA
+
+M3 PREFECTURE_ROLLOUT_ORDER
+= DECIDED / 15 PREFECTURES
+
+M4 READY_CANDIDATE_HANDOFF_SIZE
+= DECIDED / MAX 5
+
+M5 REVIEW_REQUIRED_HUMAN_REVIEW_OWNER
+= DECIDED / MOTHER_SHIP
+```
+
+```text
+MOTHER_SHIP_DECISIONS_M1_M5 = CLOSED
+```
+
+# 35. Next implementation gate
+
+M1-M5がすべて確定したため、次工程は実装Gateへ移る。
+
+```text
+FIRST IMPLEMENTATION
+= NIIGATA
+= Source positions first 100 under deterministic traversal
+= Production write 0
+= Runner / adapter / tests
+= reproducibility run1/run2
+= READY handoff max 5
+= REVIEW_REQUIRED -> Mother Ship
+```
+
+担当:
+
+```text
+Codex = primary implementation owner
+ChatGPT = contract/review
+Mother Ship = REVIEW_REQUIRED adjudication
+```
+
+15県同時実装は禁止を維持する。
