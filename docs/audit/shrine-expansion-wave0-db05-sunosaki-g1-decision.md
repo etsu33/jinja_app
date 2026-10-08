@@ -6,7 +6,7 @@
 - Candidate: `wave0-029` / 洲崎神社 / 千葉県館山市
 - Batch: `W0-DB05`
 - G1 Identity / Duplicate: **PASS**（母艦が本会話で確定）
-- G2 Position / Navigation Anchor: **HOLD_POSITION_REVIEW**（別Gate、PASSではない）
+- G2 Position / Navigation Anchor: **HOLD_POSITION_REVIEW**（2026-10-08、母艦正式判定。PASSではない）
 - Candidate Master: `BUILD_READY` / `duplicate_status: NEW`（変更なし）
 - Production write: なし
 - Candidate Master write: なし
@@ -44,7 +44,18 @@
 
 このPASSは、館山市公式Identity Source、住所の関連性、上記名称・住所条件でのProduction重複不検出に基づく母艦判定である。異なる別名・住所で登録された同一神社や、座標のみから検出できる衝突の不存在を保証しない。Render実行プロセスの実接続セッションそのものは確認していない。
 
-## G2 boundary
+## G2 Position / Navigation Anchor Gate（母艦正式判定：2026-10-08）
+
+**G2 = HOLD_POSITION_REVIEW**。G1 PASSの前提条件は満たすが、候補点の位置Sourceと採用座標の一致、入口地点の独立検証が未充足のため、正式なNavigation Anchorとして採用しない。
+
+- Official / visitor-facing identity: G1 PASSの洲崎神社を対象とする。
+- Primary position provenance: Street View表示座標付近の地図解釈であり、入口そのものを測位したSourceではない。
+- Corroboration: GSIの道路接続トポロジーのみ。GSI URLの中心座標を独立測位として扱わない。
+- Coordinate conflict / distance delta (m): NOT_VERIFIED。数値を推定・創作しない。
+- Position status: `HOLD_POSITION_REVIEW`（監査上の状態）。Candidate Masterの`candidate_status`とは別。
+- Release condition: 同一神社のvisitor-facing入口またはNavigation Anchorの位置を、追跡可能な一次Sourceと独立した裏付けで確認し、Sourceとの座標整合を監査記録に残したうえで母艦再判定する。
+
+## G2 evidence boundary
 
 - Navigation Anchor候補: `34.968075, 139.756508`
 - Coordinate method: `MAP_INTERPRETED`（Street View付近の表示座標からの解釈）
@@ -56,7 +67,7 @@
 ## Next steps
 
 - [x] G1母艦判定を監査文書に記録
-- [ ] G2 Position / Navigation Anchorを別途正式判定
+- [x] G2 Position / Navigation Anchorを正式判定（HOLD_POSITION_REVIEW）
 - [ ] 本監査文書のPRを作成
 
 ## Change boundary
