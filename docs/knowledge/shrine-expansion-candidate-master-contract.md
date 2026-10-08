@@ -5,7 +5,7 @@
 - Status: `ACTIVE`
 - Effective from: `2026-09-10`
 - Scope: KAMI MUSUBI 神社500社拡充の pre-import Candidate 管理
-- Schema version: `1.3`
+- Schema version: `1.4`
 - Runtime / DB schema change: なし
 
 ## 目的
@@ -33,8 +33,248 @@ FACT_READY  != CORE_READY
 CORE_READY   = Unified Gate Closure完了後のみ
 ~~~
 
-本追記ではCandidate Master schema / JSON fieldを追加しない。
-machine-readableなGate statusが必要になった場合は別Contract / 別PRで設計する。
+2026-09-25のUnified Gate Boundary追記時点ではCandidate Master schema / JSON fieldを追加しなかった。
+その後のschema 1.4 Nationwide Source Track拡張は、直後の専用節を現在のauthorityとする。
+
+## Nationwide Source Track Boundary（schema 1.4 / 2026-10-08）
+
+Mother Ship Decisions N1〜N5
+（`docs/audit/candidate-master-nationwide-*-decision.md`）により、
+Candidate MasterをHistorical Wave0だけでなくNationwide Source Candidate Trackも保持できる
+**single G0 registry authority**へadditiveに拡張する。
+
+~~~text
+Candidate Master
+├─ Historical Wave0 Track
+└─ Nationwide Source Candidate Track
+~~~
+
+別Candidate Registryは作らない。
+
+### Namespace
+
+Candidate identityはtrack別namespaceを持つ。
+
+~~~text
+Historical Wave0
+= ^wave0-[0-9]{3}$
+
+Nationwide Source
+= ^nsrc-[0-9]{6}$
+~~~
+
+Nationwide IDはglobal serialであり、例は `nsrc-000001`。
+一度割り当てたIDは再利用・renumberしない。
+
+`candidate_id` に次を埋め込まない。
+
+~~~text
+prefecture
+source_batch_id
+handoff_id
+source_position
+Shrine name
+address
+lifecycle status
+~~~
+
+これらはidentityではなく別provenance / factual fieldで保持する。
+
+### Historical Wave0 preservation
+
+schema 1.4は既存Wave0 44行のID・membership・lifecycle history・W0-DB01〜W0-DB07を
+変更しない。
+
+~~~text
+WAVE0_TOTAL = 44
+~~~
+
+はHistorical Wave0 cohortのexact invariantとして維持するが、
+Candidate Master全体の永続的なtotal invariantではない。
+
+### Nationwide candidate_reason
+
+Nationwide `nsrc-*` 行は `candidate_reason` を明示overrideする。
+
+~~~text
+candidate_reason
+= official_source_full_enumeration_candidate
+~~~
+
+意味:
+
+~~~text
+accepted official Sourceをdeterministicに全件列挙した結果、
+Registry admission candidateとして採用された
+~~~
+
+`candidate_reason` はadmission reasonであり、candidate_statusの理由ではない。
+lifecycle遷移でも変更しない。
+
+### admission_provenance
+
+Nationwide `nsrc-*` 行は、Source Extraction由来をtop-level
+`admission_provenance` objectで保持する。
+
+required exact keys:
+
+~~~text
+track
+prefecture
+source_batch_id
+handoff_id
+source_position
+source_snapshot_sha256
+source_url
+source_verified_at
+captured_at
+~~~
+
+`track` の現在の許可値:
+
+~~~text
+nationwide_source_candidate
+~~~
+
+`source_snapshot_sha256` はlowercase hexadecimal 64文字。
+
+`admission_provenance` はG0登録後immutable。
+後続Source refresh / lifecycle transition / duplicate review / Data Build assignmentで上書きしない。
+
+### build_batch responsibility boundary
+
+~~~text
+admission_provenance
+= upstream Source Extraction / Handoff provenance
+
+build_batch
+= downstream Data Build provenance
+~~~
+
+したがって次は禁止する。
+
+~~~text
+build_batch = NIIGATA-001
+build_batch = NIIGATA-001-H001
+~~~
+
+Source batch / handoffからdownstream build_batchを推論しない。
+
+### Nationwide G0 initial state
+
+Nationwide Candidate Extractionの `READY_CANDIDATE` はUnified Gate G1 PASSではない。
+
+G0へ新規登録した `nsrc-*` Candidateの初期stateは:
+
+~~~text
+candidate_status        = DISCOVERED
+status_reason_code      = REGISTRY_ADMISSION_COMPLETE
+wave_id                 = null
+identity_status         = UNREVIEWED
+duplicate_status        = UNREVIEWED
+official_source_status  = AVAILABLE
+knowledge_status        = UNREVIEWED
+build_batch             = null
+~~~
+
+`wave_id = null` はNationwide Source TrackがHistorical Wave0のmemberではないことを
+明示するためのoverrideである。既存 `candidate_defaults.wave_id = W0` を継承させない。
+
+`knowledge_status = UNREVIEWED` とする理由は、Source Candidate Extractionでは
+Knowledge acquisition path / Fact readinessを判定していないため。
+既存Wave0 default `ACQUISITION_PATH_CONFIRMED` をNationwide行へ暗黙適用しない。
+
+### Nationwide positive lifecycle reason
+
+Nationwide `nsrc-*` 行はpositive lifecycle stateごとにreasonを分ける。
+
+~~~text
+DISCOVERED
+-> REGISTRY_ADMISSION_COMPLETE
+
+BUILD_READY
+-> BUILD_READINESS_CONFIRMED
+
+IMPORTED
+-> PRODUCTION_IMPORT_COMPLETE
+
+CORE_READY
+-> CORE_READY_CONTRACT_PASS
+~~~
+
+HOLD / REVIEWでは、track名ではなく問題を所有するGateのcurrent blocker / review reasonを使う。
+既存Wave0の `WAVE0_CORE_READY_CANDIDATE` 利用履歴は変更しない。
+
+### Track-scoped test accounting
+
+schema 1.4以降、Candidate Master test accountingは3層とする。
+
+~~~text
+Layer A = Global Registry invariants
+Layer B = Historical Wave0 exact invariants
+Layer C = Nationwide Source Track invariants
+~~~
+
+Global invariant:
+
+- `candidate_id` は全Registryでunique。
+- unknown namespaceはfail closed。
+- all rows = Wave0 cohort ∪ Nationwide cohort。
+- cohort intersection = 0。
+- lifecycle valueはcanonical enum内。
+
+Historical Wave0:
+
+- exact 44を維持。
+-既存status / reason / W0-DB accountingをWave0 cohortだけに適用。
+- Omairi `discovery_sources[]` / `discovery_rank` ContractもWave0-only。
+
+Nationwide:
+
+- `candidate_reason` explicit override必須。
+- `admission_provenance`必須。
+- Wave0用ranking provenanceを捏造しない。
+- Handoffごとのexact regressionを追加する。
+
+Global totalを `44 -> 49 -> 54 ...` のmagic numberとして更新し続けない。
+
+### candidate_defaults compatibility
+
+既存top-level `candidate_defaults` はHistorical Wave0用legacy defaultsとして維持する。
+
+Nationwide `nsrc-*` 行へ暗黙適用してはいけない。
+Nationwide行は少なくとも次をrow-levelで明示する。
+
+~~~text
+wave_id
+identity_status
+duplicate_status
+official_source_status
+knowledge_status
+candidate_reason
+candidate_status
+status_reason_code
+build_batch
+admission_provenance
+~~~
+
+これによりWave0 default由来の `W0` / `ACQUISITION_PATH_CONFIRMED` 等を
+Nationwide Candidateへ誤継承しない。
+
+### G0 / G1 boundary
+
+Nationwide行をCandidate Masterへ登録できたことだけでG0 PASS。
+
+~~~text
+G0 PASS
+!= G1 Identity PASS
+!= G2 Position PASS
+!= BUILD_READY
+!= Production Import approved
+!= Recommendation eligible
+~~~
+
+G1 / G2はUnified Gate Contractに従い別工程で実行する。
 
 ## Post-batch HOLD Boundary（schema 1.3 / 2026-09-26）
 
@@ -105,6 +345,8 @@ Candidateは `candidate_id` で一意に管理する。
 
 Candidate Masterは、Wave単位で共通する値を `candidate_defaults` に保持できる。
 
+**schema 1.4以降も、このtop-level `candidate_defaults` はHistorical Wave0用legacy defaultsである。Nationwide `nsrc-*` 行へは暗黙適用しない。**
+
 P0-A Wave0では以下を共通値として持つ。
 
 ```text
@@ -126,7 +368,9 @@ Candidate objectに同名fieldが存在する場合は、Candidate側の値をov
 
 ## Discovery Provenance
 
-同一Candidateが複数Sourceに現れることを前提に、Discovery情報は `discovery_sources[]` として複数保持する。
+Historical Wave0では、同一Candidateが複数Sourceに現れることを前提に、Discovery情報を `discovery_sources[]` として複数保持する。
+
+Nationwide Source Trackのadmission provenanceは `discovery_sources[]` へ押し込まず、schema 1.4の `admission_provenance` を使用する。
 
 各Discovery Sourceには最低限以下を必須とする。
 
