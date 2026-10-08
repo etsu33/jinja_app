@@ -33,8 +33,8 @@ FACT_READY  != CORE_READY
 CORE_READY   = Unified Gate Closure完了後のみ
 ~~~
 
-本追記ではCandidate Master schema / JSON fieldを追加しない。
-machine-readableなGate statusが必要になった場合は別Contract / 別PRで設計する。
+2026-09-25のUnified Gate Boundary追記時点ではCandidate Master schema / JSON fieldを追加しなかった。
+その後のschema 1.4 Nationwide Source Track拡張は、直後の専用節を現在のauthorityとする。
 
 ## Nationwide Source Track Boundary（schema 1.4 / 2026-10-08）
 
