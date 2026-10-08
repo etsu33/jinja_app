@@ -1196,3 +1196,229 @@ def test_wave0_discovery_provenance_has_required_fields():
             )
             assert isinstance(source["discovery_rank"], int)
             assert source["captured_at"]
+
+
+# --- Nationwide Source Track: NIIGATA-001-H001（G0 registration）---------------------
+#
+# docs/audit/niigata-batch001-ready-set-freeze.md の H001 5社を、schema 1.4 の
+# Nationwide G0 初期 state で登録した exact regression。G1 / G2 は未実行のため、
+# official_* / 座標 / goriyaku / Knowledge / Shrine.id は持たない。
+# Handoff ごとの exact regression であり、Global total の magic number ではない。
+
+H001_HANDOFF_ID = "NIIGATA-001-H001"
+H001_SOURCE_BATCH_ID = "NIIGATA-001"
+H001_SOURCE_SNAPSHOT_SHA256 = "f54022303700821672ee4ee65e9967a7e8f343715a66ad987cc0b43530850380"
+H001_SOURCE_URL = "https://niigata-jinjacho.jp/shrine_niigata/search.php"
+H001_MEMBERS = (
+    ("nsrc-000001", "相吉神社", "page001-row001"),
+    ("nsrc-000002", "青澤神社", "page001-row002"),
+    ("nsrc-000003", "蒼柴神社", "page001-row003"),
+    ("nsrc-000004", "青海神社", "page001-row004"),
+    ("nsrc-000005", "青山稲荷神社", "page001-row005"),
+)
+WAVE0_RANKING_PROVENANCE_KEYS = frozenset({"discovery_sources", "discovery_rank"})
+
+
+def _expected_h001_row(candidate_id: str, candidate_name: str, source_position: str) -> dict:
+    return {
+        "candidate_id": candidate_id,
+        "candidate_name": candidate_name,
+        "prefecture": "新潟県",
+        "candidate_status": "DISCOVERED",
+        "status_reason_code": "REGISTRY_ADMISSION_COMPLETE",
+        "build_batch": None,
+        "duplicate_status": "UNREVIEWED",
+        "wave_id": None,
+        "identity_status": "UNREVIEWED",
+        "official_source_status": "AVAILABLE",
+        "knowledge_status": "UNREVIEWED",
+        "candidate_reason": NATIONWIDE_CANDIDATE_REASON,
+        "admission_provenance": {
+            "track": NATIONWIDE_TRACK,
+            "prefecture": "新潟県",
+            "source_batch_id": H001_SOURCE_BATCH_ID,
+            "handoff_id": H001_HANDOFF_ID,
+            "source_position": source_position,
+            "source_snapshot_sha256": H001_SOURCE_SNAPSHOT_SHA256,
+            "source_url": H001_SOURCE_URL,
+            "source_verified_at": "2026-10-08",
+            "captured_at": "2026-10-08T14:27:00+09:00",
+        },
+    }
+
+
+def _h001_violations(master: dict) -> list[str]:
+    """H001 の exact contract からのずれを列挙する（空なら PASS）。"""
+    candidates = master["candidates"]
+    violations: list[str] = []
+
+    ids = [str(row.get("candidate_id", "")) for row in candidates]
+    duplicated = sorted({cid for cid in ids if ids.count(cid) > 1})
+    if duplicated:
+        violations.append(f"reused candidate_id {duplicated}")
+    unknown = [
+        cid for cid in ids if not (WAVE0_ID_RE.fullmatch(cid) or NATIONWIDE_ID_RE.fullmatch(cid))
+    ]
+    if unknown:
+        violations.append(f"unknown namespace {unknown}")
+
+    h001 = [
+        row
+        for row in candidates
+        if (row.get("admission_provenance") or {}).get("handoff_id") == H001_HANDOFF_ID
+    ]
+    expected = [_expected_h001_row(*member) for member in H001_MEMBERS]
+    if [row.get("candidate_id") for row in h001] != [row["candidate_id"] for row in expected]:
+        violations.append(f"H001 ids {[row.get('candidate_id') for row in h001]}")
+
+    by_id = {row.get("candidate_id"): row for row in candidates}
+    for want in expected:
+        row = by_id.get(want["candidate_id"])
+        if row is None:
+            violations.append(f"{want['candidate_id']} missing")
+            continue
+        if row != want:
+            diff = sorted(k for k in set(row) | set(want) if row.get(k) != want.get(k))
+            violations.append(f"{want['candidate_id']} differs: {diff}")
+        effective = _effective(master, row)
+        if effective.get("wave_id") is not None:
+            violations.append(f"{want['candidate_id']} wave_id={effective.get('wave_id')!r}")
+        if effective.get("knowledge_status") != "UNREVIEWED":
+            violations.append(
+                f"{want['candidate_id']} knowledge_status={effective.get('knowledge_status')!r}"
+            )
+        if WAVE0_RANKING_PROVENANCE_KEYS & row.keys():
+            violations.append(f"{want['candidate_id']} has Wave0 ranking provenance")
+        if row.get("build_batch") in {H001_SOURCE_BATCH_ID, H001_HANDOFF_ID}:
+            violations.append(f"{want['candidate_id']} build_batch={row.get('build_batch')!r}")
+    return violations
+
+
+def test_niigata_h001_is_registered_exactly_at_g0():
+    master = _load_master()
+    assert _h001_violations(master) == []
+
+    h001 = [
+        row
+        for row in _nationwide_candidates(master)
+        if row["admission_provenance"]["handoff_id"] == H001_HANDOFF_ID
+    ]
+    assert len(h001) == 5
+    assert [row["candidate_id"] for row in h001] == [m[0] for m in H001_MEMBERS]
+    assert [row["candidate_name"] for row in h001] == [m[1] for m in H001_MEMBERS]
+    assert [row["admission_provenance"]["source_position"] for row in h001] == [
+        m[2] for m in H001_MEMBERS
+    ]
+    assert {row["admission_provenance"]["source_batch_id"] for row in h001} == {
+        H001_SOURCE_BATCH_ID
+    }
+    assert {row["admission_provenance"]["handoff_id"] for row in h001} == {H001_HANDOFF_ID}
+    assert {row["admission_provenance"]["source_snapshot_sha256"] for row in h001} == {
+        H001_SOURCE_SNAPSHOT_SHA256
+    }
+    for row in h001:
+        assert row["candidate_status"] == "DISCOVERED"
+        assert row["status_reason_code"] == "REGISTRY_ADMISSION_COMPLETE"
+        assert row["build_batch"] is None
+        assert row["wave_id"] is None
+        assert row["candidate_reason"] == NATIONWIDE_CANDIDATE_REASON
+        # Nationwide 行に Wave0 / Omairi の discovery_sources は要求しない（持たない）。
+        assert "discovery_sources" not in row
+
+    # H001 は Historical Wave0 の後ろに置き、Wave0 の並びを変えない。
+    ids = [row["candidate_id"] for row in master["candidates"]]
+    assert ids[: len(_wave0_candidates(master))] == [
+        row["candidate_id"] for row in _wave0_candidates(master)
+    ]
+
+
+def _h001_mutation(master: dict, mutate) -> dict:
+    master = json.loads(json.dumps(master))
+    rows = {row["candidate_id"]: row for row in master["candidates"]}
+    mutate(master, rows)
+    return master
+
+
+def _set(candidate_id: str, key: str, value):
+    def mutate(master, rows):
+        rows[candidate_id][key] = value
+
+    return mutate
+
+
+def _drop(candidate_id: str, key: str):
+    def mutate(master, rows):
+        del rows[candidate_id][key]
+
+    return mutate
+
+
+def _set_provenance(candidate_id: str, key: str, value):
+    def mutate(master, rows):
+        rows[candidate_id]["admission_provenance"][key] = value
+
+    return mutate
+
+
+def _append_row(row: dict):
+    def mutate(master, rows):
+        master["candidates"].append(row)
+
+    return mutate
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        pytest.param(_set("nsrc-000003", "candidate_id", "nsrc-000006"), id="renamed-id"),
+        pytest.param(_set("nsrc-000004", "candidate_id", "nsrc-000002"), id="reused-id"),
+        pytest.param(_set("nsrc-000005", "candidate_id", "wave0-010"), id="reused-wave0-id"),
+        pytest.param(
+            _set_provenance("nsrc-000002", "source_position", "page001-row006"),
+            id="changed-source-position",
+        ),
+        pytest.param(_drop("nsrc-000001", "wave_id"), id="inherits-wave-id-W0"),
+        pytest.param(_set("nsrc-000001", "wave_id", "W0"), id="wave-id-W0"),
+        pytest.param(
+            _drop("nsrc-000002", "knowledge_status"), id="inherits-acquisition-path-confirmed"
+        ),
+        pytest.param(
+            _set("nsrc-000002", "knowledge_status", "ACQUISITION_PATH_CONFIRMED"),
+            id="acquisition-path-confirmed",
+        ),
+        pytest.param(_set("nsrc-000003", "candidate_status", "BUILD_READY"), id="build-ready"),
+        pytest.param(_set("nsrc-000004", "build_batch", "NIIGATA-001"), id="build-batch-source"),
+        pytest.param(
+            _set("nsrc-000004", "build_batch", "NIIGATA-001-H001"), id="build-batch-handoff"
+        ),
+        pytest.param(
+            _set(
+                "nsrc-000005",
+                "discovery_sources",
+                [
+                    {
+                        "discovery_source": "Omairi 全国神社人気ランキング2026",
+                        "discovery_source_url": "https://omairi.club/spots/ranking/shrine/page/1",
+                        "discovery_rank": 1,
+                        "captured_at": "2026-10-08",
+                    }
+                ],
+            ),
+            id="wave0-omairi-provenance",
+        ),
+        pytest.param(_set("nsrc-000005", "discovery_rank", 1), id="wave0-ranking"),
+        pytest.param(_set("nsrc-000001", "official_name", "相吉神社"), id="premature-hydration"),
+        pytest.param(
+            _set_provenance("nsrc-000003", "source_snapshot_sha256", "0" * 64),
+            id="changed-snapshot-sha",
+        ),
+        pytest.param(
+            _append_row({"candidate_id": "src-000006", "candidate_status": "DISCOVERED"}),
+            id="unknown-namespace",
+        ),
+    ],
+)
+def test_niigata_h001_contract_rejects_mutations(mutate):
+    master = _load_master()
+    assert _h001_violations(master) == []
+    assert _h001_violations(_h001_mutation(master, mutate)) != []
