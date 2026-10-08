@@ -768,3 +768,132 @@ NEXT
 本ContractはここでSTOPする。
 
 Runner / adapter / Production writeはこのPRでは実装しない。
+
+
+# 27. M1 Decision Record — Batch Size
+
+> **Recorded at: 2026-10-08**
+>
+> 本節は §21 の `M1 BATCH_SIZE` を確定する追記である。
+> §1–§26のContract本文は履歴として書き換えない。
+
+```text
+M1_BATCH_SIZE = 100 RAW SOURCE CANDIDATES
+M1_STATUS = DECIDED
+```
+
+## 27.1 Meaning
+
+1 Batchは、同一都道府県・同一Source traversal上の**連続した最大100 raw candidates**で構成する。
+
+```text
+BATCH_SIZE_COUNTS
+= READY_CANDIDATE
++ REVIEW_REQUIRED
++ INVALID
+```
+
+したがって「100 READY_CANDIDATEを集めるまで読み進める」という意味ではない。
+
+## 27.2 Boundaries
+
+```text
+CROSS_PREFECTURE_BATCH = PROHIBITED
+CROSS_SOURCE_UNIVERSE_BATCH = PROHIBITED
+MAX_RAW_CANDIDATES_PER_BATCH = 100
+FINAL_PARTIAL_BATCH = ALLOWED
+```
+
+県内の最終Batchが100件未満でも、その件数のまま1 Batchとして扱う。
+
+例:
+
+```text
+source_total = 1,729
+
+Batch 001 = source positions   1-100
+Batch 002 = source positions 101-200
+...
+Batch 017 = source positions 1601-1700
+Batch 018 = source positions 1701-1729
+```
+
+## 27.3 Source page boundary
+
+Source側のpagination件数とBatch boundaryは同一である必要はない。
+
+例:
+
+```text
+Source page size = 12
+Batch size       = 100
+```
+
+の場合でも、決定論的なSource traversal順を維持したまま100 raw candidatesまで束ねる。
+
+ただし各rowの `source_position` は元Source上の位置を保持する。
+
+## 27.4 Safety rationale
+
+100件はCandidate Extraction専用の論理Batchであり、Production write単位ではない。
+
+既存新潟Pilotは20件でNormalization / Lookupの独立再実行を検証済み。
+全国Contractでは以下が成立しているため、Existence Candidate抽出単位を100件へ拡張する。
+
+```text
+Production write = 0
+AUTO_IMPORT = 0
+AUTO_MERGE = 0
+AUTO_BIND = 0
+AUTO_CREATE = 0
+
+REVIEW_REQUIRED rows may remain in artifact
+INVALID rows may remain in artifact
+only READY_CANDIDATE can be handed to the next Gate
+```
+
+20件を全国運用単位として維持すると、4,619件規模のSourceでは200を超えるBatchへ細分化され、
+監査・再開位置・PR/Artifact管理の運用負荷が過大になる。
+
+一方、200件以上を1 BatchとするとSource drift・adapter defect・reproducibility failure発生時の
+再検証範囲が広くなる。
+
+したがってM1では中間値として100件を固定する。
+
+## 27.5 M1 does not decide
+
+M1は以下を確定しない。
+
+```text
+M2 FIRST_ROLLOUT_PREFECTURE
+M3 PREFECTURE_ROLLOUT_ORDER
+M4 READY_CANDIDATE_HANDOFF_SIZE
+M5 REVIEW_REQUIRED_HUMAN_REVIEW_OWNER
+```
+
+また:
+
+```text
+BATCH_SIZE = 100
+!= duplicate lookup limitの意味変更
+!= Production import size
+!= Coordinate Audit size
+!= Knowledge Batch size
+```
+
+§9の `duplicate_lookup_limit = 100` とM1の `BATCH_SIZE = 100` は
+数値が同じでも独立したContractである。
+
+# 28. Updated decision state
+
+```text
+M1 BATCH_SIZE                    = DECIDED / 100 RAW CANDIDATES
+M2 FIRST_ROLLOUT_PREFECTURE      = PENDING
+M3 PREFECTURE_ROLLOUT_ORDER      = PENDING
+M4 READY_CANDIDATE_HANDOFF_SIZE  = PENDING
+M5 REVIEW_REQUIRED_REVIEW_OWNER  = PENDING
+
+NEXT = M2 FIRST_ROLLOUT_PREFECTURE
+```
+
+本追記でもRunner / adapter / Production writeは実装しない。
