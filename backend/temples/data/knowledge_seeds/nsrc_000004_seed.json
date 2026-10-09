@@ -46,7 +46,18 @@
         "name_jp": "青海神社",
         "address": "新潟県加茂市大字加茂字宮山229番地"
       },
-      "deities": [],
+      "deities": [
+        {
+          "display_name": "椎根津彦命",
+          "role": "unknown",
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-09T12:40:22+09:00",
+          "source_keys": [
+            "AOMI_OFFICIAL_DEITY"
+          ]
+        }
+      ],
       "histories": [],
       "collectives": [],
       "source_facts": []
