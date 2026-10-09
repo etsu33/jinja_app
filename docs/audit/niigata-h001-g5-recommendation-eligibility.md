@@ -439,8 +439,8 @@ This G5 work only adds reproducible eligibility verification.
 - [x] G5監査文書を作成
 - [x] Production writeなし
 - [x] Ranking / Score変更なし
-- [ ] PR作成
-- [ ] STOP
+- [x] PR作成（#3130）
+- [x] STOP
 
 ---
 
