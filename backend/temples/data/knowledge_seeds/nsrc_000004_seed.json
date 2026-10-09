@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.2",
+  "sources": [],
+  "shrines": [
+    {
+      "shrine_ref": {
+        "name_jp": "青海神社",
+        "address": "新潟県加茂市大字加茂字宮山229番地"
+      },
+      "deities": [],
+      "histories": [],
+      "collectives": [],
+      "source_facts": []
+    }
+  ]
+}
