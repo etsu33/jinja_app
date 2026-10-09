@@ -141,3 +141,49 @@ def test_nsrc_000004_knowledge_seed_dry_run_passes_without_writes():
         "goriyaku_assignment": ShrineGoriyakuAssignment.objects.count(),
     }
     assert after == before
+
+
+@pytest.mark.django_db
+def test_nsrc_000004_knowledge_seed_apply_passes_with_no_identity_or_source_errors():
+    call_command(
+        "import_shrines_seed",
+        "--source",
+        str(BASE_SEED_PATH),
+        "--skip-goriyaku-tags",
+        stdout=io.StringIO(),
+        stderr=io.StringIO(),
+    )
+
+    out = io.StringIO()
+    err = io.StringIO()
+    call_command(
+        "import_shrine_knowledge",
+        str(SEED_PATH),
+        stdout=out,
+        stderr=err,
+    )
+    output = out.getvalue()
+    error_output = err.getvalue()
+    combined = output + "\n" + error_output
+
+    for blocked_code in (
+        "NOT_FOUND",
+        "IMPORT_IDENTITY_AMBIGUOUS",
+        "SOURCE_REUSE_CONFLICT",
+        "SOURCE_REUSE_AMBIGUOUS",
+    ):
+        assert blocked_code not in combined
+
+    assert "import complete: sources created=3, deities created=2, histories created=2, collectives created=0, memberships created=0, source_facts created=11" in output
+
+    shrine = Shrine.objects.get(name_jp=SHRINE_NAME, address=SHRINE_ADDRESS)
+    deities = list(ShrineDeity.objects.filter(shrine=shrine).order_by("id"))
+    histories = list(ShrineHistory.objects.filter(shrine=shrine).order_by("id"))
+
+    assert [deity.display_name for deity in deities] == ["椎根津彦命", "大国魂命"]
+    assert [history.title for history in histories] == ["神亀3年の創建", "明治5年の三社本殿合殿"]
+    assert ShrineKnowledgeSource.objects.count() == 3
+    assert ShrineSourceFact.objects.filter(shrine=shrine).count() == 11
+
+    assert sum(1 for deity in deities if not deity.sources.exists()) == 0
+    assert sum(1 for history in histories if not history.sources.exists()) == 0
