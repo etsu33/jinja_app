@@ -1219,12 +1219,18 @@ def test_wave0_discovery_provenance_has_required_fields():
             assert source["captured_at"]
 
 
-# --- Nationwide Source Track: NIIGATA-001-H001（G0 registration）---------------------
+# --- Nationwide Source Track: NIIGATA-001-H001 -----------------------------------------
 #
-# docs/audit/niigata-batch001-ready-set-freeze.md の H001 5社を、schema 1.4 の
-# Nationwide G0 初期 state で登録した exact regression。G1 / G2 は未実行のため、
-# official_* / 座標 / goriyaku / Knowledge / Shrine.id は持たない。
-# Handoff ごとの exact regression であり、Global total の magic number ではない。
+# docs/audit/niigata-batch001-ready-set-freeze.md の H001 5社の exact regression。
+# Handoff ごとの regression であり、Global total の magic number ではない。
+#
+# 2つの層に分けて固定する:
+#   immutable : membership / 名称 / prefecture / wave_id / candidate_reason /
+#               admission_provenance（G0 登録後 immutable）/ G1 identity・duplicate evidence
+#   lifecycle : candidate_status / status_reason_code / official_source_status /
+#               knowledge_status / build_batch（Candidate ごとに独立して進む）
+# Candidate を次の state へ進めるときは H001_CURRENT_LIFECYCLE の該当行だけを変える。
+# 行全体は exact に比較するので、official_* / 座標 / goriyaku 等の premature な field も検出する。
 
 H001_HANDOFF_ID = "NIIGATA-001-H001"
 H001_SOURCE_BATCH_ID = "NIIGATA-001"
@@ -1246,20 +1252,47 @@ H001_G1_DUPLICATE_STATUS = {
 }
 WAVE0_RANKING_PROVENANCE_KEYS = frozenset({"discovery_sources", "discovery_rank"})
 
+H001_LIFECYCLE_FIELDS = (
+    "candidate_status",
+    "status_reason_code",
+    "official_source_status",
+    "knowledge_status",
+    "build_batch",
+)
+_H001_DISCOVERED = {
+    "candidate_status": "DISCOVERED",
+    "status_reason_code": "REGISTRY_ADMISSION_COMPLETE",
+    "official_source_status": "AVAILABLE",
+    "knowledge_status": "UNREVIEWED",
+    "build_batch": None,
+}
+# 現在の lifecycle（Candidate ごと）。
+# nsrc-000004 は G7 Production Import 完了（docs/audit/niigata-h001-g7-production-import.md）。
+# G8 CORE READY は未実行のため IMPORTED で止める。Nationwide 行は Wave0 の W0-DBxx を使わず、
+# Source batch / handoff も build_batch に入れないため build_batch = null のまま。
+H001_CURRENT_LIFECYCLE = {
+    "nsrc-000001": dict(_H001_DISCOVERED),
+    "nsrc-000002": dict(_H001_DISCOVERED),
+    "nsrc-000003": dict(_H001_DISCOVERED),
+    "nsrc-000004": {
+        "candidate_status": "IMPORTED",
+        "status_reason_code": "PRODUCTION_IMPORT_COMPLETE",
+        "official_source_status": "CONFIRMED",
+        "knowledge_status": "FACT_READY",
+        "build_batch": None,
+    },
+    "nsrc-000005": dict(_H001_DISCOVERED),
+}
 
-def _expected_h001_row(candidate_id: str, candidate_name: str, source_position: str) -> dict:
+
+def _expected_h001_immutable(candidate_id: str, candidate_name: str, source_position: str) -> dict:
     return {
         "candidate_id": candidate_id,
         "candidate_name": candidate_name,
         "prefecture": "新潟県",
-        "candidate_status": "DISCOVERED",
-        "status_reason_code": "REGISTRY_ADMISSION_COMPLETE",
-        "build_batch": None,
         "duplicate_status": H001_G1_DUPLICATE_STATUS[candidate_id],
         "wave_id": None,
         "identity_status": "CONFIRMED",
-        "official_source_status": "AVAILABLE",
-        "knowledge_status": "UNREVIEWED",
         "candidate_reason": NATIONWIDE_CANDIDATE_REASON,
         "admission_provenance": {
             "track": NATIONWIDE_TRACK,
@@ -1272,6 +1305,13 @@ def _expected_h001_row(candidate_id: str, candidate_name: str, source_position: 
             "source_verified_at": "2026-10-08",
             "captured_at": "2026-10-08T14:27:00+09:00",
         },
+    }
+
+
+def _expected_h001_row(candidate_id: str, candidate_name: str, source_position: str) -> dict:
+    return {
+        **_expected_h001_immutable(candidate_id, candidate_name, source_position),
+        **H001_CURRENT_LIFECYCLE[candidate_id],
     }
 
 
@@ -1311,10 +1351,12 @@ def _h001_violations(master: dict) -> list[str]:
         effective = _effective(master, row)
         if effective.get("wave_id") is not None:
             violations.append(f"{want['candidate_id']} wave_id={effective.get('wave_id')!r}")
-        if effective.get("knowledge_status") != "UNREVIEWED":
-            violations.append(
-                f"{want['candidate_id']} knowledge_status={effective.get('knowledge_status')!r}"
-            )
+        # Wave0 candidate_defaults を継承していないこと（key 欠落でも検出する）。
+        for field in H001_LIFECYCLE_FIELDS:
+            if effective.get(field) != want[field]:
+                violations.append(
+                    f"{want['candidate_id']} effective {field}={effective.get(field)!r}"
+                )
         if WAVE0_RANKING_PROVENANCE_KEYS & row.keys():
             violations.append(f"{want['candidate_id']} has Wave0 ranking provenance")
         if row.get("build_batch") in {H001_SOURCE_BATCH_ID, H001_HANDOFF_ID}:
@@ -1322,7 +1364,7 @@ def _h001_violations(master: dict) -> list[str]:
     return violations
 
 
-def test_niigata_h001_g0_membership_and_current_g1_state_are_exact():
+def test_niigata_h001_membership_provenance_and_current_lifecycle_are_exact():
     master = _load_master()
     assert _h001_violations(master) == []
 
@@ -1345,8 +1387,8 @@ def test_niigata_h001_g0_membership_and_current_g1_state_are_exact():
         H001_SOURCE_SNAPSHOT_SHA256
     }
     for row in h001:
-        assert row["candidate_status"] == "DISCOVERED"
-        assert row["status_reason_code"] == "REGISTRY_ADMISSION_COMPLETE"
+        lifecycle = H001_CURRENT_LIFECYCLE[row["candidate_id"]]
+        assert {field: row[field] for field in H001_LIFECYCLE_FIELDS} == lifecycle
         assert row["build_batch"] is None
         assert row["wave_id"] is None
         assert row["candidate_reason"] == NATIONWIDE_CANDIDATE_REASON
@@ -1360,6 +1402,43 @@ def test_niigata_h001_g0_membership_and_current_g1_state_are_exact():
     assert ids[: len(_wave0_candidates(master))] == [
         row["candidate_id"] for row in _wave0_candidates(master)
     ]
+
+
+def test_nsrc_000004_is_synced_to_g7_imported_and_stops_before_core_ready():
+    """G7 Production Import 完了状態。G8 CORE READY は未実行。"""
+    master = _load_master()
+    rows = {row["candidate_id"]: row for row in master["candidates"]}
+    row = rows["nsrc-000004"]
+
+    assert row["candidate_status"] == "IMPORTED"
+    assert row["candidate_status"] != "CORE_READY"
+    assert row["status_reason_code"] == "PRODUCTION_IMPORT_COMPLETE"
+    assert row["official_source_status"] == "CONFIRMED"
+    assert row["knowledge_status"] == "FACT_READY"
+    assert row["build_batch"] is None
+    assert row["identity_status"] == "CONFIRMED"
+    assert row["duplicate_status"] == "SAME_NAME_DIFFERENT_SHRINE"
+    assert row["admission_provenance"] == _expected_h001_immutable(
+        "nsrc-000004", "青海神社", "page001-row004"
+    )["admission_provenance"]
+
+    # 他の H001 4社は現在の state のまま。
+    for candidate_id, name, position in H001_MEMBERS:
+        if candidate_id == "nsrc-000004":
+            continue
+        assert rows[candidate_id] == {
+            **_expected_h001_immutable(candidate_id, name, position),
+            **_H001_DISCOVERED,
+        }, candidate_id
+
+    # Wave0 accounting は Nationwide の遷移で変わらない。
+    wave0 = _wave0_candidates(master)
+    assert len(wave0) == EXPECTED_WAVE0_TOTAL
+    assert Counter(r["candidate_status"] for r in wave0) == EXPECTED_STATUS_COUNTS
+    assert Counter(r["status_reason_code"] for r in wave0) == EXPECTED_REASON_COUNTS
+    assert Counter(
+        r["build_batch"] for r in wave0 if r["build_batch"] is not None
+    ) == {batch: 5 for batch in CANONICAL_BUILD_BATCHES}
 
 
 def _h001_mutation(master: dict, mutate) -> dict:
@@ -1447,6 +1526,32 @@ def _append_row(row: dict):
         pytest.param(
             _append_row({"candidate_id": "src-000006", "candidate_status": "DISCOVERED"}),
             id="unknown-namespace",
+        ),
+        # nsrc-000004（IMPORTED）の lifecycle と immutable evidence。
+        pytest.param(_set("nsrc-000004", "candidate_status", "CORE_READY"), id="n4-premature-core-ready"),
+        pytest.param(
+            _set("nsrc-000004", "status_reason_code", "CORE_READY_CONTRACT_PASS"),
+            id="n4-premature-core-ready-reason",
+        ),
+        pytest.param(_set("nsrc-000004", "candidate_status", "DISCOVERED"), id="n4-lifecycle-regression"),
+        pytest.param(_set("nsrc-000004", "knowledge_status", "UNREVIEWED"), id="n4-knowledge-regression"),
+        pytest.param(_drop("nsrc-000004", "knowledge_status"), id="n4-inherits-wave0-knowledge-default"),
+        pytest.param(
+            _set("nsrc-000004", "official_source_status", "AVAILABLE"), id="n4-official-source-regression"
+        ),
+        pytest.param(_set("nsrc-000004", "build_batch", "W0-DB08"), id="n4-invented-wave0-build-batch"),
+        pytest.param(_set("nsrc-000004", "build_batch", "W0-DB04"), id="n4-reused-wave0-build-batch"),
+        pytest.param(
+            _set_provenance("nsrc-000004", "source_url", "https://example.invalid/"),
+            id="n4-changed-provenance",
+        ),
+        pytest.param(
+            _set("nsrc-000004", "duplicate_status", "SAME_SHRINE"), id="n4-duplicate-evidence-change"
+        ),
+        # 他の4社が nsrc-000004 に連動して進まないこと。
+        pytest.param(_set("nsrc-000001", "candidate_status", "IMPORTED"), id="other-member-advanced"),
+        pytest.param(
+            _set("nsrc-000005", "knowledge_status", "FACT_READY"), id="other-member-knowledge-advanced"
         ),
     ],
 )
