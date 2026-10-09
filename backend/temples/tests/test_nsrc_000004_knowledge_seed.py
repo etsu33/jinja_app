@@ -13,7 +13,7 @@ from temples.models import (
     ShrineKnowledgeSource,
     ShrineSourceFact,
 )
-from temples.services.knowledge_seed import parse_seed
+from temples.services.knowledge_seed import parse_seed, resolve_shrine
 
 TEMPLES_DIR = Path(__file__).resolve().parents[1]
 SEED_PATH = TEMPLES_DIR / "data" / "knowledge_seeds" / "nsrc_000004_seed.json"
@@ -77,4 +77,13 @@ def test_nsrc_000004_base_seed_imports_into_isolated_db():
 
     summary = [line for line in out.getvalue().splitlines() if line.startswith("done ")][-1]
     assert "total_seed=121" in summary
-    assert Shrine.objects.filter(name_jp=SHRINE_NAME, address=SHRINE_ADDRESS).exists()
+
+    exact_qs = Shrine.objects.filter(name_jp=SHRINE_NAME, address=SHRINE_ADDRESS)
+    assert exact_qs.count() == 1
+
+    result = resolve_shrine(SHRINE_NAME, SHRINE_ADDRESS)
+    assert result.status == "OK"
+    assert result.shrine is not None
+    assert result.shrine.pk == exact_qs.get().pk
+    assert result.shrine.name_jp == SHRINE_NAME
+    assert result.shrine.address == SHRINE_ADDRESS
