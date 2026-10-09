@@ -64,6 +64,7 @@ NORMALIZED_PREFECTURE_PREFIX = {"wave0-021": "大阪府"}
 # W0-DB04 追加前（W0-DB03 追加後）の Base Seed 117 行。既存行の不変を固定する。
 EXISTING_BASE_ROW_COUNT = 117
 EXISTING_BASE_ROWS_SHA256 = "e55dda6303e5be59b5c202f4ff3e130af9ce1e2147da5b3f04c63df06d9fe296"
+# W0-DB04の3行が占めるcohort終端。Base Seed全体の最終件数ではない。
 W0_DB04_BASE_ROW_END = EXISTING_BASE_ROW_COUNT + len(EXECUTION_IDS)
 
 # goriyaku の既存 builder 互換な空表現。
@@ -145,7 +146,8 @@ def test_exactly_three_rows_are_appended_in_execution_order():
     rows = _load_base_rows()
     candidates = _load_candidates()
 
-    assert len(rows) == W0_DB04_BASE_ROW_END
+    assert len(rows) >= W0_DB04_BASE_ROW_END
+    assert len(_added_rows()) == len(EXECUTION_IDS)
     assert [(row["name_jp"], row["address"]) for row in _added_rows()] == [
         (candidates[cid]["official_name"], candidates[cid]["official_address"])
         for cid in EXECUTION_IDS
@@ -370,7 +372,8 @@ def test_builder_gates_pass_and_rebuild_is_a_no_op():
 
     result = builder.validate(source_rows, built_rows)
     assert builder.gate_failures(result) == []
-    assert result["total"] == W0_DB04_BASE_ROW_END
+    assert len(source_rows) >= W0_DB04_BASE_ROW_END
+    assert result["total"] == len(source_rows)
 
     first = builder.serialize(built_rows)
     second = builder.serialize([builder.canonicalize_row(row) for row in json.loads(first)])
