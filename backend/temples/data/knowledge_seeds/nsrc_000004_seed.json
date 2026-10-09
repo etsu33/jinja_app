@@ -1,6 +1,45 @@
 {
   "schema_version": "1.2",
-  "sources": [],
+  "sources": [
+    {
+      "key": "AOMI_OFFICIAL_DEITY",
+      "source_type": "shrine_official",
+      "title": "御祭神｜青海神社公式サイト｜新潟県加茂市鎮座",
+      "publisher": "青海神社",
+      "url": "https://www.aomi-jinjya.or.jp/history/gosaisin.html",
+      "language": "ja",
+      "accessed_at": "2026-10-09",
+      "verified_at": "2026-10-09T12:09:11+09:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high"
+    },
+    {
+      "key": "AOMI_OFFICIAL_HISTORY",
+      "source_type": "shrine_official",
+      "title": "由緒,年表｜青海神社公式サイト｜新潟県加茂市鎮座",
+      "publisher": "青海神社",
+      "url": "https://www.aomi-jinjya.or.jp/history/yuisyo.html",
+      "language": "ja",
+      "accessed_at": "2026-10-09",
+      "verified_at": "2026-10-09T12:09:11+09:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high"
+    },
+    {
+      "key": "AOMI_OFFICIAL_PRAYER_GUIDE",
+      "source_type": "shrine_official",
+      "title": "御祈祷種類｜青海神社公式サイト｜新潟県加茂市鎮座",
+      "publisher": "青海神社",
+      "url": "https://www.aomi-jinjya.or.jp/gokitou/syurui.html",
+      "bibliography": "",
+      "accessed_at": "2026-10-09",
+      "verified_at": "2026-10-09T12:35:59+09:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": ""
+    }
+  ],
   "shrines": [
     {
       "shrine_ref": {
