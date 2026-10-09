@@ -64,6 +64,23 @@ NATIONWIDE_POSITIVE_STATUS_REASONS = {
     "IMPORTED": "PRODUCTION_IMPORT_COMPLETE",
     "CORE_READY": "CORE_READY_CONTRACT_PASS",
 }
+NATIONWIDE_IDENTITY_STATUSES = frozenset({"UNREVIEWED", "CONFIRMED"})
+NATIONWIDE_DUPLICATE_STATUSES = frozenset(
+    {
+        "UNREVIEWED",
+        "NEW",
+        "DUPLICATE",
+        "ALIAS",
+        "SAME_NAME_DIFFERENT_SHRINE",
+        "REVIEW",
+    }
+)
+NATIONWIDE_OFFICIAL_SOURCE_STATUSES = frozenset(
+    {"UNREVIEWED", "AVAILABLE", "CONFIRMED", "HOLD"}
+)
+NATIONWIDE_KNOWLEDGE_STATUSES = frozenset(
+    {"UNREVIEWED", "ACQUISITION_PATH_CONFIRMED", "FACT_READY", "HOLD"}
+)
 
 # Data Build Batch を割り当てられた Candidate の lifecycle status。
 #
@@ -822,11 +839,15 @@ def test_nationwide_candidate_contract_is_additive_and_fail_closed():
                 row["candidate_status"]
             ]
 
+        # candidate_status はData Build lifecycleのみを表す。
+        # G1 Identity / DuplicateはDISCOVEREDのままsub-statusだけ進められるため、
+        # G0初期値のUNREVIEWEDを永続条件として固定しない。
+        assert row["identity_status"] in NATIONWIDE_IDENTITY_STATUSES
+        assert row["duplicate_status"] in NATIONWIDE_DUPLICATE_STATUSES
+        assert row["official_source_status"] in NATIONWIDE_OFFICIAL_SOURCE_STATUSES
+        assert row["knowledge_status"] in NATIONWIDE_KNOWLEDGE_STATUSES
+
         if row["candidate_status"] == "DISCOVERED":
-            assert row["identity_status"] == "UNREVIEWED"
-            assert row["duplicate_status"] == "UNREVIEWED"
-            assert row["official_source_status"] == "AVAILABLE"
-            assert row["knowledge_status"] == "UNREVIEWED"
             assert row["build_batch"] is None
 
         assert row.get("build_batch") not in {
