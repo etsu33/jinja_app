@@ -1,6 +1,6 @@
 -- nsrc-000004 G7 post-Base / pre-Knowledge Production guard
 -- SELECT-only; raises division-by-zero on any unexpected Base delta.
-SELECT CASE WHEN (
+SELECT 1 / CASE WHEN (
   (SELECT COUNT(*) FROM temples_shrine) = 121
   AND (SELECT COUNT(*) FROM temples_shrineknowledgesource) = 137
   AND (SELECT COUNT(*) FROM temples_shrinedeity) = 293
@@ -15,4 +15,4 @@ SELECT CASE WHEN (
     OR lower(url) LIKE '%aomi-jinjya.or.jp/history/yuisyo.html%'
     OR lower(url) LIKE '%aomi-jinjya.or.jp/gokitou/syurui.html%'
   )) = 0
-) THEN 1 ELSE 1/0 END AS g7_post_base_guard_pass;
+ THEN 1 ELSE 0 END AS g7_post_base_guard_pass;
