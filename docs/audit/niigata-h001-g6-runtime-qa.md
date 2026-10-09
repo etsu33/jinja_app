@@ -613,8 +613,8 @@ The next gate requires its own scope and explicit Mother Ship decision.
 - [x] Production access / writeなし
 - [x] Formal G6 = PASS
 - [x] G6監査文書を作成
-- [ ] PR作成
-- [ ] STOP
+- [x] PR作成（#3131）
+- [x] STOP
 
 ---
 
