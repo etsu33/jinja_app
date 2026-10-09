@@ -68,7 +68,21 @@
           ]
         }
       ],
-      "histories": [],
+      "histories": [
+        {
+          "history_type": "founding",
+          "title": "神亀3年の創建",
+          "content": "神亀3年（726）、青海首一族が加茂山山麓に青海神社を創建した。",
+          "period_text": "神亀3年（726）",
+          "event_date": null,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-09T12:42:36+09:00",
+          "source_keys": [
+            "AOMI_OFFICIAL_HISTORY"
+          ]
+        }
+      ],
       "collectives": [],
       "source_facts": []
     }
