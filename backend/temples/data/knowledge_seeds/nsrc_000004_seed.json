@@ -97,7 +97,129 @@
         }
       ],
       "collectives": [],
-      "source_facts": []
+      "source_facts": [
+        {
+          "stable_key": "aomi_jinja_kamo__prayer__kanai_anzen",
+          "source_attested_wording": "家内安全",
+          "evidence_characterization": "official_prayer_supported",
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-09T13:14:51+09:00",
+          "source_keys": [
+            "AOMI_OFFICIAL_PRAYER_GUIDE"
+          ]
+        },
+        {
+          "stable_key": "aomi_jinja_kamo__prayer__kosazuke_kigan",
+          "source_attested_wording": "子授祈願",
+          "evidence_characterization": "official_prayer_supported",
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-09T13:14:51+09:00",
+          "source_keys": [
+            "AOMI_OFFICIAL_PRAYER_GUIDE"
+          ]
+        },
+        {
+          "stable_key": "aomi_jinja_kamo__prayer__anzan_kigan",
+          "source_attested_wording": "安産祈願",
+          "evidence_characterization": "official_prayer_supported",
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-09T13:14:51+09:00",
+          "source_keys": [
+            "AOMI_OFFICIAL_PRAYER_GUIDE"
+          ]
+        },
+        {
+          "stable_key": "aomi_jinja_kamo__prayer__kotsu_anzen",
+          "source_attested_wording": "交通安全",
+          "evidence_characterization": "official_prayer_supported",
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-09T13:14:51+09:00",
+          "source_keys": [
+            "AOMI_OFFICIAL_PRAYER_GUIDE"
+          ]
+        },
+        {
+          "stable_key": "aomi_jinja_kamo__prayer__yakubarai",
+          "source_attested_wording": "厄祓",
+          "evidence_characterization": "official_prayer_supported",
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-09T13:14:51+09:00",
+          "source_keys": [
+            "AOMI_OFFICIAL_PRAYER_GUIDE"
+          ]
+        },
+        {
+          "stable_key": "aomi_jinja_kamo__prayer__hoi_barai",
+          "source_attested_wording": "方位祓",
+          "evidence_characterization": "official_prayer_supported",
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-09T13:14:51+09:00",
+          "source_keys": [
+            "AOMI_OFFICIAL_PRAYER_GUIDE"
+          ]
+        },
+        {
+          "stable_key": "aomi_jinja_kamo__prayer__byoki_heiyu_kigan",
+          "source_attested_wording": "病気平癒祈願",
+          "evidence_characterization": "official_prayer_supported",
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-09T13:14:51+09:00",
+          "source_keys": [
+            "AOMI_OFFICIAL_PRAYER_GUIDE"
+          ]
+        },
+        {
+          "stable_key": "aomi_jinja_kamo__prayer__mi_no_anzen_kigan",
+          "source_attested_wording": "身の安全祈願",
+          "evidence_characterization": "official_prayer_supported",
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-09T13:14:51+09:00",
+          "source_keys": [
+            "AOMI_OFFICIAL_PRAYER_GUIDE"
+          ]
+        },
+        {
+          "stable_key": "aomi_jinja_kamo__prayer__gokaku_kigan",
+          "source_attested_wording": "合格祈願",
+          "evidence_characterization": "official_prayer_supported",
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-09T13:14:51+09:00",
+          "source_keys": [
+            "AOMI_OFFICIAL_PRAYER_GUIDE"
+          ]
+        },
+        {
+          "stable_key": "aomi_jinja_kamo__prayer__shobai_hanjo",
+          "source_attested_wording": "商売繁盛",
+          "evidence_characterization": "official_prayer_supported",
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-09T13:14:51+09:00",
+          "source_keys": [
+            "AOMI_OFFICIAL_PRAYER_GUIDE"
+          ]
+        },
+        {
+          "stable_key": "aomi_jinja_kamo__prayer__hissho_kigan",
+          "source_attested_wording": "必勝祈願",
+          "evidence_characterization": "official_prayer_supported",
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-09T13:14:51+09:00",
+          "source_keys": [
+            "AOMI_OFFICIAL_PRAYER_GUIDE"
+          ]
+        }
+      ]
     }
   ]
 }
