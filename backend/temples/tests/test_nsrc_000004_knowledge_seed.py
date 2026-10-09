@@ -250,3 +250,56 @@ def test_nsrc_000004_d1_d2_h1_h2_are_usable_under_evidence_gate():
         assert decision.reason == "fact_ready_with_source", label
         assert decision.verification_status == "source_confirmed", label
         assert decision.confidence == "high", label
+
+
+@pytest.mark.django_db
+def test_nsrc_000004_source_facts_all_link_exactly_to_s4():
+    call_command(
+        "import_shrines_seed",
+        "--source",
+        str(BASE_SEED_PATH),
+        "--skip-goriyaku-tags",
+        stdout=io.StringIO(),
+        stderr=io.StringIO(),
+    )
+    call_command(
+        "import_shrine_knowledge",
+        str(SEED_PATH),
+        stdout=io.StringIO(),
+        stderr=io.StringIO(),
+    )
+
+    shrine = Shrine.objects.get(name_jp=SHRINE_NAME, address=SHRINE_ADDRESS)
+    facts = list(ShrineSourceFact.objects.filter(shrine=shrine).order_by("stable_key"))
+
+    expected_stable_keys = {
+        "aomi_jinja_kamo__prayer__kanai_anzen",
+        "aomi_jinja_kamo__prayer__kosazuke_kigan",
+        "aomi_jinja_kamo__prayer__anzan_kigan",
+        "aomi_jinja_kamo__prayer__kotsu_anzen",
+        "aomi_jinja_kamo__prayer__yakubarai",
+        "aomi_jinja_kamo__prayer__hoi_barai",
+        "aomi_jinja_kamo__prayer__byoki_heiyu_kigan",
+        "aomi_jinja_kamo__prayer__mi_no_anzen_kigan",
+        "aomi_jinja_kamo__prayer__gokaku_kigan",
+        "aomi_jinja_kamo__prayer__shobai_hanjo",
+        "aomi_jinja_kamo__prayer__hissho_kigan",
+    }
+
+    assert len(facts) == 11
+    assert {fact.stable_key for fact in facts} == expected_stable_keys
+
+    s4_url = "https://www.aomi-jinjya.or.jp/gokitou/syurui.html"
+    s4 = ShrineKnowledgeSource.objects.get(
+        source_type="shrine_official",
+        url=s4_url,
+    )
+    assert s4.verification_status == "source_confirmed"
+
+    for fact in facts:
+        linked_sources = list(fact.sources.all())
+        assert len(linked_sources) == 1, fact.stable_key
+        assert linked_sources[0].pk == s4.pk, fact.stable_key
+        assert linked_sources[0].url == s4_url, fact.stable_key
+        assert linked_sources[0].source_type == "shrine_official", fact.stable_key
+        assert linked_sources[0].verification_status == "source_confirmed", fact.stable_key
