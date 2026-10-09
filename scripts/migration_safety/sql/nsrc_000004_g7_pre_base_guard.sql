@@ -1,6 +1,6 @@
 -- nsrc-000004 G7 pre-Base Production write guard
 -- SELECT-only; deliberately raises division-by-zero if the frozen pre-state drifted.
-SELECT CASE WHEN (
+SELECT 1 / CASE WHEN (
   (SELECT COUNT(*) FROM temples_shrine) = 120
   AND (SELECT COUNT(*) FROM temples_shrineknowledgesource) = 137
   AND (SELECT COUNT(*) FROM temples_shrinedeity) = 293
@@ -26,4 +26,4 @@ SELECT CASE WHEN (
     'aomi_jinja_kamo__prayer__shobai_hanjo',
     'aomi_jinja_kamo__prayer__hissho_kigan'
   )) = 0
-) THEN 1 ELSE 1/0 END AS g7_pre_base_guard_pass;
+ THEN 1 ELSE 0 END AS g7_pre_base_guard_pass;
