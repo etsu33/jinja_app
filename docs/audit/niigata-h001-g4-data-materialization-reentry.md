@@ -585,6 +585,93 @@ G5 / G6 / G7 / G8:
 NOT EXECUTED
 ~~~
 
+### 16.1 Final Contract / Isolation confirmation
+
+Final comparison:
+
+~~~text
+base = develop@54de75342c7574f450cb9d66b5b38be22a0fb049
+head = 29fc7fa29706429794624dfd20756de5283b2258
+
+ahead_by  = 22
+behind_by = 0
+changed_files = 7
+~~~
+
+PR #3129 changed files:
+
+~~~text
+backend/temples/data/knowledge_seeds/nsrc_000004_seed.json
+backend/temples/data/shrines_seed_clean.json
+backend/temples/tests/test_nsrc_000004_knowledge_seed.py
+backend/temples/tests/test_wave0_db01_knowledge_seed.py
+backend/temples/tests/test_wave0_db02_shrine_seed.py
+backend/temples/tests/test_wave0_db04_shrine_seed.py
+docs/audit/niigata-h001-g4-data-materialization-reentry.md
+~~~
+
+Gate Contract §16 Data Build PRとの対応:
+
+~~~text
+frozen Base Shrine values = PRESENT / ALLOWED
+Knowledge Seed            = PRESENT / ALLOWED
+batch tests               = PRESENT / ALLOWED
+batch audit               = PRESENT / ALLOWED
+
+Candidate Master target change = NONE
+Ranking algorithm change       = NONE
+NEED / Goriyaku mapping change = NONE
+Model migration                = NONE
+unrelated coordinate change    = NONE
+unrelated existing Fact change = NONE
+Recommendation logic change    = NONE
+Compass logic change           = NONE
+Production config change       = NONE
+~~~
+
+Candidate Master exact comparison:
+
+~~~text
+branch blob SHA  = 796afe472714fbbe7beb9c06596229be6bb31490
+develop blob SHA = 796afe472714fbbe7beb9c06596229be6bb31490
+diff             = 0
+~~~
+
+G2 HOLD artifacts exact comparison:
+
+~~~text
+niigata-h001-g2-position-gate.md
+branch/develop blob SHA = 3ac9b0d36c3587607631a459ceb50e5ca782b4af
+
+nsrc-000001 相吉神社
+branch/develop blob SHA = d64b0c9e4fce165c08eaebc3318b3f43a2347b85
+
+nsrc-000002 青澤神社
+branch/develop blob SHA = 190d37cf7136531813e6cebd673d261a605416b2
+
+nsrc-000003 蒼柴神社
+branch/develop blob SHA = aa99e9b3f826a290392a4fe215643e34d86d7693
+
+nsrc-000005 青山稲荷神社
+branch/develop blob SHA = 95edf2f995b1e482980c6ae3a967a98d1b7b2501
+~~~
+
+Therefore:
+
+~~~text
+CONTRACT_FINAL_CHECK  = PASS
+ISOLATION_FINAL_CHECK = PASS
+
+Candidate Master diff = 0
+G2 HOLD four diff     = 0
+Ranking / Mapping diff outside allowed scope = 0
+Migration diff        = 0
+Production path/config diff = 0
+~~~
+
+このPASSはG4のFormal PASSそのものではない。
+次工程のFormal G4 PASS / HOLD再判定に使用するclosure evidenceである。
+
 ---
 
 ## 17. CI infrastructure note
