@@ -6,6 +6,7 @@ import pytest
 from django.core.management import call_command
 
 from temples.models import (
+    GoriyakuTag,
     Shrine,
     ShrineDeity,
     ShrineGoriyakuAssignment,
@@ -379,3 +380,75 @@ def test_nsrc_000004_second_import_is_idempotent():
 
     assert "import complete: sources created=0, deities created=0, histories created=0, collectives created=0, memberships created=0, source_facts created=0" in output
     assert snapshot() == before
+
+
+@pytest.mark.django_db
+def test_nsrc_000004_knowledge_import_keeps_goriyaku_state_unchanged():
+    call_command(
+        "import_shrines_seed",
+        "--source",
+        str(BASE_SEED_PATH),
+        "--skip-goriyaku-tags",
+        stdout=io.StringIO(),
+        stderr=io.StringIO(),
+    )
+
+    shrine = Shrine.objects.get(name_jp=SHRINE_NAME, address=SHRINE_ADDRESS)
+
+    before = {
+        "goriyaku": shrine.goriyaku,
+        "goriyaku_tag_ids": tuple(
+            shrine.goriyaku_tags.order_by("id").values_list("id", flat=True)
+        ),
+        "goriyaku_tag_master": tuple(
+            GoriyakuTag.objects.order_by("id").values_list("id", "name", "category")
+        ),
+        "goriyaku_assignments": tuple(
+            ShrineGoriyakuAssignment.objects.order_by("id").values_list(
+                "id",
+                "shrine_id",
+                "canonical_key",
+                "taxonomy_version",
+                "lifecycle",
+                "producer",
+                "mechanism",
+                "assigned_at",
+            )
+        ),
+    }
+
+    assert before["goriyaku"] == ""
+    assert before["goriyaku_tag_ids"] == ()
+
+    call_command(
+        "import_shrine_knowledge",
+        str(SEED_PATH),
+        stdout=io.StringIO(),
+        stderr=io.StringIO(),
+    )
+
+    shrine.refresh_from_db()
+    after = {
+        "goriyaku": shrine.goriyaku,
+        "goriyaku_tag_ids": tuple(
+            shrine.goriyaku_tags.order_by("id").values_list("id", flat=True)
+        ),
+        "goriyaku_tag_master": tuple(
+            GoriyakuTag.objects.order_by("id").values_list("id", "name", "category")
+        ),
+        "goriyaku_assignments": tuple(
+            ShrineGoriyakuAssignment.objects.order_by("id").values_list(
+                "id",
+                "shrine_id",
+                "canonical_key",
+                "taxonomy_version",
+                "lifecycle",
+                "producer",
+                "mechanism",
+                "assigned_at",
+            )
+        ),
+    }
+
+    assert ShrineSourceFact.objects.filter(shrine=shrine).count() == 11
+    assert after == before
