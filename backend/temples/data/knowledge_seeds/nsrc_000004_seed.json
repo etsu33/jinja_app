@@ -56,6 +56,16 @@
           "source_keys": [
             "AOMI_OFFICIAL_DEITY"
           ]
+        },
+        {
+          "display_name": "大国魂命",
+          "role": "unknown",
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-09T12:41:49+09:00",
+          "source_keys": [
+            "AOMI_OFFICIAL_DEITY"
+          ]
         }
       ],
       "histories": [],
