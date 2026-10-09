@@ -64,6 +64,23 @@ NATIONWIDE_POSITIVE_STATUS_REASONS = {
     "IMPORTED": "PRODUCTION_IMPORT_COMPLETE",
     "CORE_READY": "CORE_READY_CONTRACT_PASS",
 }
+NATIONWIDE_IDENTITY_STATUSES = frozenset({"UNREVIEWED", "CONFIRMED"})
+NATIONWIDE_DUPLICATE_STATUSES = frozenset(
+    {
+        "UNREVIEWED",
+        "NEW",
+        "DUPLICATE",
+        "ALIAS",
+        "SAME_NAME_DIFFERENT_SHRINE",
+        "REVIEW",
+    }
+)
+NATIONWIDE_OFFICIAL_SOURCE_STATUSES = frozenset(
+    {"UNREVIEWED", "AVAILABLE", "CONFIRMED", "HOLD"}
+)
+NATIONWIDE_KNOWLEDGE_STATUSES = frozenset(
+    {"UNREVIEWED", "ACQUISITION_PATH_CONFIRMED", "FACT_READY", "HOLD"}
+)
 
 # Data Build Batch を割り当てられた Candidate の lifecycle status。
 #
@@ -822,11 +839,15 @@ def test_nationwide_candidate_contract_is_additive_and_fail_closed():
                 row["candidate_status"]
             ]
 
+        # candidate_status はData Build lifecycleのみを表す。
+        # G1 Identity / DuplicateはDISCOVEREDのままsub-statusだけ進められるため、
+        # G0初期値のUNREVIEWEDを永続条件として固定しない。
+        assert row["identity_status"] in NATIONWIDE_IDENTITY_STATUSES
+        assert row["duplicate_status"] in NATIONWIDE_DUPLICATE_STATUSES
+        assert row["official_source_status"] in NATIONWIDE_OFFICIAL_SOURCE_STATUSES
+        assert row["knowledge_status"] in NATIONWIDE_KNOWLEDGE_STATUSES
+
         if row["candidate_status"] == "DISCOVERED":
-            assert row["identity_status"] == "UNREVIEWED"
-            assert row["duplicate_status"] == "UNREVIEWED"
-            assert row["official_source_status"] == "AVAILABLE"
-            assert row["knowledge_status"] == "UNREVIEWED"
             assert row["build_batch"] is None
 
         assert row.get("build_batch") not in {
@@ -1216,6 +1237,13 @@ H001_MEMBERS = (
     ("nsrc-000004", "青海神社", "page001-row004"),
     ("nsrc-000005", "青山稲荷神社", "page001-row005"),
 )
+H001_G1_DUPLICATE_STATUS = {
+    "nsrc-000001": "NEW",
+    "nsrc-000002": "NEW",
+    "nsrc-000003": "NEW",
+    "nsrc-000004": "SAME_NAME_DIFFERENT_SHRINE",
+    "nsrc-000005": "NEW",
+}
 WAVE0_RANKING_PROVENANCE_KEYS = frozenset({"discovery_sources", "discovery_rank"})
 
 
@@ -1227,9 +1255,9 @@ def _expected_h001_row(candidate_id: str, candidate_name: str, source_position: 
         "candidate_status": "DISCOVERED",
         "status_reason_code": "REGISTRY_ADMISSION_COMPLETE",
         "build_batch": None,
-        "duplicate_status": "UNREVIEWED",
+        "duplicate_status": H001_G1_DUPLICATE_STATUS[candidate_id],
         "wave_id": None,
-        "identity_status": "UNREVIEWED",
+        "identity_status": "CONFIRMED",
         "official_source_status": "AVAILABLE",
         "knowledge_status": "UNREVIEWED",
         "candidate_reason": NATIONWIDE_CANDIDATE_REASON,
@@ -1294,7 +1322,7 @@ def _h001_violations(master: dict) -> list[str]:
     return violations
 
 
-def test_niigata_h001_is_registered_exactly_at_g0():
+def test_niigata_h001_g0_membership_and_current_g1_state_are_exact():
     master = _load_master()
     assert _h001_violations(master) == []
 
@@ -1322,6 +1350,8 @@ def test_niigata_h001_is_registered_exactly_at_g0():
         assert row["build_batch"] is None
         assert row["wave_id"] is None
         assert row["candidate_reason"] == NATIONWIDE_CANDIDATE_REASON
+        assert row["identity_status"] == "CONFIRMED"
+        assert row["duplicate_status"] == H001_G1_DUPLICATE_STATUS[row["candidate_id"]]
         # Nationwide 行に Wave0 / Omairi の discovery_sources は要求しない（持たない）。
         assert "discovery_sources" not in row
 
@@ -1387,6 +1417,8 @@ def _append_row(row: dict):
             id="acquisition-path-confirmed",
         ),
         pytest.param(_set("nsrc-000003", "candidate_status", "BUILD_READY"), id="build-ready"),
+        pytest.param(_set("nsrc-000001", "identity_status", "UNREVIEWED"), id="g1-identity-regression"),
+        pytest.param(_set("nsrc-000004", "duplicate_status", "NEW"), id="same-name-classification-regression"),
         pytest.param(_set("nsrc-000004", "build_batch", "NIIGATA-001"), id="build-batch-source"),
         pytest.param(
             _set("nsrc-000004", "build_batch", "NIIGATA-001-H001"), id="build-batch-handoff"
