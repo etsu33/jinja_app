@@ -15,12 +15,9 @@ from temples.models import (
 )
 from temples.services.knowledge_seed import parse_seed
 
-SEED_PATH = (
-    Path(__file__).resolve().parents[1]
-    / "data"
-    / "knowledge_seeds"
-    / "nsrc_000004_seed.json"
-)
+TEMPLES_DIR = Path(__file__).resolve().parents[1]
+SEED_PATH = TEMPLES_DIR / "data" / "knowledge_seeds" / "nsrc_000004_seed.json"
+BASE_SEED_PATH = TEMPLES_DIR / "data" / "shrines_seed_clean.json"
 
 SHRINE_NAME = "青海神社"
 SHRINE_ADDRESS = "新潟県加茂市大字加茂字宮山229番地"
@@ -64,3 +61,20 @@ def test_nsrc_000004_seed_validate_only_passes_without_writes():
     assert ShrineHistory.objects.count() == 0
     assert ShrineSourceFact.objects.count() == 0
     assert ShrineGoriyakuAssignment.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_nsrc_000004_base_seed_imports_into_isolated_db():
+    out = io.StringIO()
+    call_command(
+        "import_shrines_seed",
+        "--source",
+        str(BASE_SEED_PATH),
+        "--skip-goriyaku-tags",
+        stdout=out,
+        stderr=io.StringIO(),
+    )
+
+    summary = [line for line in out.getvalue().splitlines() if line.startswith("done ")][-1]
+    assert "total_seed=121" in summary
+    assert Shrine.objects.filter(name_jp=SHRINE_NAME, address=SHRINE_ADDRESS).exists()
