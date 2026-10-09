@@ -13,6 +13,7 @@ from temples.models import (
     ShrineKnowledgeSource,
     ShrineSourceFact,
 )
+from temples.services import evidence_gate
 from temples.services.knowledge_seed import parse_seed, resolve_shrine
 
 TEMPLES_DIR = Path(__file__).resolve().parents[1]
@@ -187,3 +188,65 @@ def test_nsrc_000004_knowledge_seed_apply_passes_with_no_identity_or_source_erro
 
     assert sum(1 for deity in deities if not deity.sources.exists()) == 0
     assert sum(1 for history in histories if not history.sources.exists()) == 0
+
+
+@pytest.mark.django_db
+def test_nsrc_000004_d1_d2_h1_h2_are_usable_under_evidence_gate():
+    call_command(
+        "import_shrines_seed",
+        "--source",
+        str(BASE_SEED_PATH),
+        "--skip-goriyaku-tags",
+        stdout=io.StringIO(),
+        stderr=io.StringIO(),
+    )
+    call_command(
+        "import_shrine_knowledge",
+        str(SEED_PATH),
+        stdout=io.StringIO(),
+        stderr=io.StringIO(),
+    )
+
+    shrine = Shrine.objects.get(name_jp=SHRINE_NAME, address=SHRINE_ADDRESS)
+    facts = [
+        (
+            "D1",
+            ShrineDeity.objects.get(shrine=shrine, display_name="椎根津彦命"),
+            "https://www.aomi-jinjya.or.jp/history/gosaisin.html",
+        ),
+        (
+            "D2",
+            ShrineDeity.objects.get(shrine=shrine, display_name="大国魂命"),
+            "https://www.aomi-jinjya.or.jp/history/gosaisin.html",
+        ),
+        (
+            "H1",
+            ShrineHistory.objects.get(shrine=shrine, title="神亀3年の創建"),
+            "https://www.aomi-jinjya.or.jp/history/yuisyo.html",
+        ),
+        (
+            "H2",
+            ShrineHistory.objects.get(shrine=shrine, title="明治5年の三社本殿合殿"),
+            "https://www.aomi-jinjya.or.jp/history/yuisyo.html",
+        ),
+    ]
+
+    for label, fact, expected_source_url in facts:
+        source_statuses = list(fact.sources.values_list("verification_status", flat=True))
+        source_urls = list(fact.sources.values_list("url", flat=True))
+
+        assert source_statuses == ["source_confirmed"], label
+        assert source_urls == [expected_source_url], label
+
+        decision = evidence_gate.decide_fact_usability(
+            verification_status=fact.verification_status,
+            confidence=fact.confidence,
+            source_verification_statuses=source_statuses,
+        )
+
+        assert decision.usable is True, label
+        assert decision.display_mode == "full", label
+        assert decision.reason_strength == "assertive", label
+        assert decision.reason == "fact_ready_with_source", label
+        assert decision.verification_status == "source_confirmed", label
+        assert decision.confidence == "high", label
