@@ -1,3 +1,4 @@
+import hashlib
 import io
 import json
 from pathlib import Path
@@ -452,3 +453,31 @@ def test_nsrc_000004_knowledge_import_keeps_goriyaku_state_unchanged():
 
     assert ShrineSourceFact.objects.filter(shrine=shrine).count() == 11
     assert after == before
+
+
+def test_nsrc_000004_base_seed_preserves_existing_120_rows():
+    rows = json.loads(BASE_SEED_PATH.read_text(encoding="utf-8"))
+
+    target_rows = [
+        row
+        for row in rows
+        if row.get("name_jp") == SHRINE_NAME and row.get("address") == SHRINE_ADDRESS
+    ]
+    assert len(target_rows) == 1
+
+    existing_rows = [
+        row
+        for row in rows
+        if not (row.get("name_jp") == SHRINE_NAME and row.get("address") == SHRINE_ADDRESS)
+    ]
+    assert len(existing_rows) == 120
+
+    canonical = json.dumps(
+        sorted(existing_rows, key=lambda row: (row.get("name_jp", ""), row.get("address", ""))),
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    fingerprint = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+    assert fingerprint == "dd9a958eb5a7c51345fe5b9f9bb2a2f696a1b3edef8e67f6fcee7301f91a66b7"
