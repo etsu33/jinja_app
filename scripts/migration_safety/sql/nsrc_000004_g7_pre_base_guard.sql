@@ -26,4 +26,4 @@ SELECT 1 / CASE WHEN (
     'aomi_jinja_kamo__prayer__shobai_hanjo',
     'aomi_jinja_kamo__prayer__hissho_kigan'
   )) = 0
- THEN 1 ELSE 0 END AS g7_pre_base_guard_pass;
+) THEN 1 ELSE 0 END AS g7_pre_base_guard_pass;
