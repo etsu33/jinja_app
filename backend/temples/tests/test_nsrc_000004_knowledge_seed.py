@@ -303,3 +303,79 @@ def test_nsrc_000004_source_facts_all_link_exactly_to_s4():
         assert linked_sources[0].url == s4_url, fact.stable_key
         assert linked_sources[0].source_type == "shrine_official", fact.stable_key
         assert linked_sources[0].verification_status == "source_confirmed", fact.stable_key
+
+
+@pytest.mark.django_db
+def test_nsrc_000004_second_import_is_idempotent():
+    call_command(
+        "import_shrines_seed",
+        "--source",
+        str(BASE_SEED_PATH),
+        "--skip-goriyaku-tags",
+        stdout=io.StringIO(),
+        stderr=io.StringIO(),
+    )
+    call_command(
+        "import_shrine_knowledge",
+        str(SEED_PATH),
+        stdout=io.StringIO(),
+        stderr=io.StringIO(),
+    )
+
+    shrine = Shrine.objects.get(name_jp=SHRINE_NAME, address=SHRINE_ADDRESS)
+
+    def snapshot():
+        deities = list(ShrineDeity.objects.filter(shrine=shrine).order_by("id"))
+        histories = list(ShrineHistory.objects.filter(shrine=shrine).order_by("id"))
+        source_facts = list(ShrineSourceFact.objects.filter(shrine=shrine).order_by("id"))
+        sources = list(ShrineKnowledgeSource.objects.order_by("id"))
+
+        return {
+            "source_ids": [source.pk for source in sources],
+            "deity_ids": [deity.pk for deity in deities],
+            "history_ids": [history.pk for history in histories],
+            "source_fact_ids": [fact.pk for fact in source_facts],
+            "deity_sources": {
+                deity.pk: tuple(deity.sources.order_by("id").values_list("id", flat=True))
+                for deity in deities
+            },
+            "history_sources": {
+                history.pk: tuple(history.sources.order_by("id").values_list("id", flat=True))
+                for history in histories
+            },
+            "source_fact_sources": {
+                fact.pk: tuple(fact.sources.order_by("id").values_list("id", flat=True))
+                for fact in source_facts
+            },
+        }
+
+    before = snapshot()
+
+    out = io.StringIO()
+    err = io.StringIO()
+    call_command(
+        "import_shrine_knowledge",
+        str(SEED_PATH),
+        stdout=out,
+        stderr=err,
+    )
+    output = out.getvalue()
+    combined = output + "\n" + err.getvalue()
+
+    assert "'source_REUSE_EXISTING': 3" in output
+    assert "'deity_SKIP_EXISTS': 2" in output
+    assert "'history_SKIP_EXISTS': 2" in output
+    assert "'source_fact_SKIP_EXISTS': 11" in output
+    assert "CREATE" not in output
+
+    for blocked_code in (
+        "NOT_FOUND",
+        "IMPORT_IDENTITY_AMBIGUOUS",
+        "SOURCE_REUSE_CONFLICT",
+        "SOURCE_REUSE_AMBIGUOUS",
+        "SOURCE_FACT_CONFLICT",
+    ):
+        assert blocked_code not in combined
+
+    assert "import complete: sources created=0, deities created=0, histories created=0, collectives created=0, memberships created=0, source_facts created=0" in output
+    assert snapshot() == before
