@@ -10,7 +10,8 @@ fact_owner                = 青海神社（加茂市）
 UPSTREAM_G3               = PASS / CURATION_RELEASE_CANDIDATE
 UPSTREAM_G4_PREFLIGHT     = HOLD / BASE_SHRINE_NOT_MATERIALIZED
 G4_REENTRY_VALIDATION     = COMPLETE
-FORMAL_G4_REDECISION      = PENDING
+FORMAL_G4_REDECISION      = PASS
+FORMAL_G4                 = PASS
 
 Production write          = NONE
 G5 / G6 / G7 / G8         = NOT EXECUTED
@@ -45,7 +46,7 @@ Historical HOLD
 != retroactive PASS
 ~~~
 
-Formal G4 PASS / HOLDの再判定は本書作成とは分離し、次工程で行う。
+Formal G4 PASS / HOLDの再判定はre-entry validation完了後に実施し、本書へ追記した。
 
 ---
 
@@ -779,7 +780,7 @@ existing Base Shrine preservation
 = PASS
 
 Formal G4
-= PENDING REDECISION
+= PASS
 ~~~
 
 Historical preflight remains:
@@ -790,6 +791,94 @@ reason_code            = BASE_SHRINE_NOT_MATERIALIZED
 ~~~
 
 The historical record is not rewritten.
+
+### 19.1 Formal G4 redecision
+
+Governing Contract:
+
+`docs/knowledge/shrine-expansion-gate-contract.md §7 G4 Knowledge Fact + Evidence Gate`
+
+PASS condition review:
+
+| G4 PASS condition | Result | Evidence |
+|---|---|---|
+| Fact ownerがG1/G3と一致 | PASS | nsrc-000004 = 青海神社（加茂市）。D1/D2のみを当該Shrine ownerへ帰属し、賀茂神社 / 賀茂御祖神社の祭神を除外 |
+| source-less Fact = 0 | PASS | D1/D2/H1/H2すべてSource relationあり |
+| Source identity conflict = 0 | PASS | SOURCE_REUSE_CONFLICT=0 / SOURCE_REUSE_AMBIGUOUS=0 |
+| Fact / Source verificationが契約に適合 | PASS | D1/D2/H1/H2およびS1/S2はsource_confirmed。verified_atを保持 |
+| usable DeityまたはHistory >= 1 | PASS | Evidence Gate actual measurement = 4/4 usable |
+| 伝承を確定史実へ昇格させない | PASS | H1/H2のSource boundary、event_date=null、現在地創建/遷座/法人統合/1872年新築等を推測しない |
+| AI生成のみをconfirmed Sourceとして扱わない | PASS | D/H Primary Sourceは青海神社公式S1/S2。AI Generated Sourceを使用しない |
+
+STOP condition review:
+
+| G4 STOP condition | Result |
+|---|---|
+| SOURCE_REUSE_CONFLICT / AMBIGUOUS | NOT ACTIVE |
+| Shrine NOT_FOUND / IMPORT_IDENTITY_AMBIGUOUS | NOT ACTIVE |
+| Source不十分 | NOT ACTIVE |
+| FactがSource本文を越えている | NOT ACTIVE |
+| Model RiskをFact本文で隠している | NOT ACTIVE |
+
+Model / ownership boundary:
+
+~~~text
+G3 = PASS / CURATION_RELEASE_CANDIDATE
+current main-shrine Fact owner = clear
+target Deity set = individually representable
+anonymous/open-ended collective = none
+unresolved principal-deity relation = none
+Model / Migration change required = no
+~~~
+
+Isolation:
+
+~~~text
+CONTRACT_FINAL_CHECK  = PASS
+ISOLATION_FINAL_CHECK = PASS
+
+Ranking / Score change        = 0
+Candidate identity change     = 0
+G2 HOLD four change           = 0
+Mapping / Need change         = 0
+Production write              = NONE
+~~~
+
+Formal decision:
+
+~~~text
+FORMAL_G4 = PASS
+
+reason:
+all G4 PASS conditions satisfied
+AND
+no G4 STOP condition active
+AND
+G4 Isolation Rule satisfied
+~~~
+
+Historical state remains valid:
+
+~~~text
+2026-10-09 G4_EVIDENCE_PREFLIGHT = HOLD
+reason_code = BASE_SHRINE_NOT_MATERIALIZED
+
+2026-10-10 prerequisite resolved
+-> isolated re-entry validation PASS
+-> Formal G4 redecision = PASS
+~~~
+
+The PASS is scoped only to G4.
+
+~~~text
+G4 PASS
+!= G5 Shared Recommendation Eligibility PASS
+!= G6 Runtime QA PASS
+!= G7 Production Import PASS
+!= G8 CORE_READY
+~~~
+
+Do not execute G5 as part of this redecision.
 
 ---
 
@@ -825,7 +914,7 @@ The historical record is not rewritten.
 - [x] Ranking / Mapping / Recommendation logicを変更しない
 - [x] Production writeを行わない
 - [x] G4 re-entry監査文書を作成
-- [ ] Formal G4をPASS / HOLDで再判定
+- [x] Formal G4をPASS / HOLDで再判定
 - [ ] PR #3129 closure stateを更新
 - [ ] STOP
 
