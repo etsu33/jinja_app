@@ -15,4 +15,4 @@ SELECT 1 / CASE WHEN (
     OR lower(url) LIKE '%aomi-jinjya.or.jp/history/yuisyo.html%'
     OR lower(url) LIKE '%aomi-jinjya.or.jp/gokitou/syurui.html%'
   )) = 0
- THEN 1 ELSE 0 END AS g7_post_base_guard_pass;
+) THEN 1 ELSE 0 END AS g7_post_base_guard_pass;
