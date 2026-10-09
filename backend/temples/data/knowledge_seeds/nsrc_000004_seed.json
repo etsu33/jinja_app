@@ -81,6 +81,19 @@
           "source_keys": [
             "AOMI_OFFICIAL_HISTORY"
           ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "明治5年の三社本殿合殿",
+          "content": "明治5年（1872）、青海・賀茂・御祖三社本殿を現在地に合殿した。",
+          "period_text": "明治5年（1872）",
+          "event_date": null,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-09T12:43:46+09:00",
+          "source_keys": [
+            "AOMI_OFFICIAL_HISTORY"
+          ]
         }
       ],
       "collectives": [],
