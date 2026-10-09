@@ -1,0 +1,225 @@
+{
+  "schema_version": "1.2",
+  "sources": [
+    {
+      "key": "AOMI_OFFICIAL_DEITY",
+      "source_type": "shrine_official",
+      "title": "御祭神｜青海神社公式サイト｜新潟県加茂市鎮座",
+      "publisher": "青海神社",
+      "url": "https://www.aomi-jinjya.or.jp/history/gosaisin.html",
+      "language": "ja",
+      "accessed_at": "2026-10-09",
+      "verified_at": "2026-10-09T12:09:11+09:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high"
+    },
+    {
+      "key": "AOMI_OFFICIAL_HISTORY",
+      "source_type": "shrine_official",
+      "title": "由緒,年表｜青海神社公式サイト｜新潟県加茂市鎮座",
+      "publisher": "青海神社",
+      "url": "https://www.aomi-jinjya.or.jp/history/yuisyo.html",
+      "language": "ja",
+      "accessed_at": "2026-10-09",
+      "verified_at": "2026-10-09T12:09:11+09:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high"
+    },
+    {
+      "key": "AOMI_OFFICIAL_PRAYER_GUIDE",
+      "source_type": "shrine_official",
+      "title": "御祈祷種類｜青海神社公式サイト｜新潟県加茂市鎮座",
+      "publisher": "青海神社",
+      "url": "https://www.aomi-jinjya.or.jp/gokitou/syurui.html",
+      "bibliography": "",
+      "accessed_at": "2026-10-09",
+      "verified_at": "2026-10-09T12:35:59+09:00",
+      "verification_status": "source_confirmed",
+      "confidence": "high",
+      "language": "ja",
+      "note": ""
+    }
+  ],
+  "shrines": [
+    {
+      "shrine_ref": {
+        "name_jp": "青海神社",
+        "address": "新潟県加茂市大字加茂字宮山229番地"
+      },
+      "deities": [
+        {
+          "display_name": "椎根津彦命",
+          "role": "unknown",
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-09T12:40:22+09:00",
+          "source_keys": [
+            "AOMI_OFFICIAL_DEITY"
+          ]
+        },
+        {
+          "display_name": "大国魂命",
+          "role": "unknown",
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-09T12:41:49+09:00",
+          "source_keys": [
+            "AOMI_OFFICIAL_DEITY"
+          ]
+        }
+      ],
+      "histories": [
+        {
+          "history_type": "founding",
+          "title": "神亀3年の創建",
+          "content": "神亀3年（726）、青海首一族が加茂山山麓に青海神社を創建した。",
+          "period_text": "神亀3年（726）",
+          "event_date": null,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-09T12:42:36+09:00",
+          "source_keys": [
+            "AOMI_OFFICIAL_HISTORY"
+          ]
+        },
+        {
+          "history_type": "historical_event",
+          "title": "明治5年の三社本殿合殿",
+          "content": "明治5年（1872）、青海・賀茂・御祖三社本殿を現在地に合殿した。",
+          "period_text": "明治5年（1872）",
+          "event_date": null,
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-09T12:43:46+09:00",
+          "source_keys": [
+            "AOMI_OFFICIAL_HISTORY"
+          ]
+        }
+      ],
+      "collectives": [],
+      "source_facts": [
+        {
+          "stable_key": "aomi_jinja_kamo__prayer__kanai_anzen",
+          "source_attested_wording": "家内安全",
+          "evidence_characterization": "official_prayer_supported",
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-09T13:14:51+09:00",
+          "source_keys": [
+            "AOMI_OFFICIAL_PRAYER_GUIDE"
+          ]
+        },
+        {
+          "stable_key": "aomi_jinja_kamo__prayer__kosazuke_kigan",
+          "source_attested_wording": "子授祈願",
+          "evidence_characterization": "official_prayer_supported",
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-09T13:14:51+09:00",
+          "source_keys": [
+            "AOMI_OFFICIAL_PRAYER_GUIDE"
+          ]
+        },
+        {
+          "stable_key": "aomi_jinja_kamo__prayer__anzan_kigan",
+          "source_attested_wording": "安産祈願",
+          "evidence_characterization": "official_prayer_supported",
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-09T13:14:51+09:00",
+          "source_keys": [
+            "AOMI_OFFICIAL_PRAYER_GUIDE"
+          ]
+        },
+        {
+          "stable_key": "aomi_jinja_kamo__prayer__kotsu_anzen",
+          "source_attested_wording": "交通安全",
+          "evidence_characterization": "official_prayer_supported",
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-09T13:14:51+09:00",
+          "source_keys": [
+            "AOMI_OFFICIAL_PRAYER_GUIDE"
+          ]
+        },
+        {
+          "stable_key": "aomi_jinja_kamo__prayer__yakubarai",
+          "source_attested_wording": "厄祓",
+          "evidence_characterization": "official_prayer_supported",
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-09T13:14:51+09:00",
+          "source_keys": [
+            "AOMI_OFFICIAL_PRAYER_GUIDE"
+          ]
+        },
+        {
+          "stable_key": "aomi_jinja_kamo__prayer__hoi_barai",
+          "source_attested_wording": "方位祓",
+          "evidence_characterization": "official_prayer_supported",
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-09T13:14:51+09:00",
+          "source_keys": [
+            "AOMI_OFFICIAL_PRAYER_GUIDE"
+          ]
+        },
+        {
+          "stable_key": "aomi_jinja_kamo__prayer__byoki_heiyu_kigan",
+          "source_attested_wording": "病気平癒祈願",
+          "evidence_characterization": "official_prayer_supported",
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-09T13:14:51+09:00",
+          "source_keys": [
+            "AOMI_OFFICIAL_PRAYER_GUIDE"
+          ]
+        },
+        {
+          "stable_key": "aomi_jinja_kamo__prayer__mi_no_anzen_kigan",
+          "source_attested_wording": "身の安全祈願",
+          "evidence_characterization": "official_prayer_supported",
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-09T13:14:51+09:00",
+          "source_keys": [
+            "AOMI_OFFICIAL_PRAYER_GUIDE"
+          ]
+        },
+        {
+          "stable_key": "aomi_jinja_kamo__prayer__gokaku_kigan",
+          "source_attested_wording": "合格祈願",
+          "evidence_characterization": "official_prayer_supported",
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-09T13:14:51+09:00",
+          "source_keys": [
+            "AOMI_OFFICIAL_PRAYER_GUIDE"
+          ]
+        },
+        {
+          "stable_key": "aomi_jinja_kamo__prayer__shobai_hanjo",
+          "source_attested_wording": "商売繁盛",
+          "evidence_characterization": "official_prayer_supported",
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-09T13:14:51+09:00",
+          "source_keys": [
+            "AOMI_OFFICIAL_PRAYER_GUIDE"
+          ]
+        },
+        {
+          "stable_key": "aomi_jinja_kamo__prayer__hissho_kigan",
+          "source_attested_wording": "必勝祈願",
+          "evidence_characterization": "official_prayer_supported",
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "verified_at": "2026-10-09T13:14:51+09:00",
+          "source_keys": [
+            "AOMI_OFFICIAL_PRAYER_GUIDE"
+          ]
+        }
+      ]
+    }
+  ]
+}

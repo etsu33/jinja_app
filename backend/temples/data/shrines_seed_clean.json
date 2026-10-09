@@ -2233,5 +2233,18 @@
       "lat": 38.2725678,
       "lng": 140.8449622
     }
+  },
+  {
+    "name_jp": "青海神社",
+    "address": "新潟県加茂市大字加茂字宮山229番地",
+    "latitude": 37.65657387,
+    "longitude": 139.0536436,
+    "goriyaku": "",
+    "kyusei": null,
+    "astro_elements": [],
+    "location": {
+      "lat": 37.65657387,
+      "lng": 139.0536436
+    }
   }
 ]

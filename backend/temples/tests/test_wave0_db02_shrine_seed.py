@@ -475,7 +475,8 @@ def test_wave0_db02_base_seed_appends_five_rows_without_duplicates():
 
     # W0-DB03 G4 で4行（wave0-012 / 013 / 015 / 016）を追加し 113 -> 117。
     # W0-DB04 G4 re-entry で3行（wave0-019 / 021 / 025）を追加し 117 -> 120。
-    assert len(base_rows) == 120
+    # NIIGATA-001-H001 G4 data materialization で nsrc-000004 青海神社を追加し 120 -> 121。
+    assert len(base_rows) == 121
     assert len(identities) == len(set(identities))
 
     for candidate_id in CANDIDATE_IDS:
