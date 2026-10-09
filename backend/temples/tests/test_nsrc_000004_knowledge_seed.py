@@ -87,3 +87,57 @@ def test_nsrc_000004_base_seed_imports_into_isolated_db():
     assert result.shrine.pk == exact_qs.get().pk
     assert result.shrine.name_jp == SHRINE_NAME
     assert result.shrine.address == SHRINE_ADDRESS
+
+
+@pytest.mark.django_db
+def test_nsrc_000004_knowledge_seed_dry_run_passes_without_writes():
+    call_command(
+        "import_shrines_seed",
+        "--source",
+        str(BASE_SEED_PATH),
+        "--skip-goriyaku-tags",
+        stdout=io.StringIO(),
+        stderr=io.StringIO(),
+    )
+
+    before = {
+        "source": ShrineKnowledgeSource.objects.count(),
+        "deity": ShrineDeity.objects.count(),
+        "history": ShrineHistory.objects.count(),
+        "source_fact": ShrineSourceFact.objects.count(),
+        "goriyaku_assignment": ShrineGoriyakuAssignment.objects.count(),
+    }
+
+    out = io.StringIO()
+    call_command(
+        "import_shrine_knowledge",
+        str(SEED_PATH),
+        "--dry-run",
+        stdout=out,
+        stderr=io.StringIO(),
+    )
+    output = out.getvalue()
+
+    assert "[source] CREATE" in output
+    assert output.count("[source] CREATE") == 3
+    assert output.count("[deity] CREATE") == 2
+    assert output.count("[history] CREATE") == 2
+    assert output.count("[source_fact] CREATE") == 11
+    assert "source_CREATE': 3" in output
+    assert "deity_CREATE': 2" in output
+    assert "history_CREATE': 2" in output
+    assert "source_fact_CREATE': 11" in output
+    assert "SOURCE_REUSE_CONFLICT" not in output
+    assert "SOURCE_REUSE_AMBIGUOUS" not in output
+    assert "IMPORT_IDENTITY_AMBIGUOUS" not in output
+    assert "NOT_FOUND" not in output
+    assert "dry-run: OK, no DB writes performed" in output
+
+    after = {
+        "source": ShrineKnowledgeSource.objects.count(),
+        "deity": ShrineDeity.objects.count(),
+        "history": ShrineHistory.objects.count(),
+        "source_fact": ShrineSourceFact.objects.count(),
+        "goriyaku_assignment": ShrineGoriyakuAssignment.objects.count(),
+    }
+    assert after == before
