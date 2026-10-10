@@ -10,14 +10,21 @@ UPSTREAM_G4                  = PASS            (PR #3149)
 UPSTREAM_G5                  = PASS / ELIGIBLE (PR #3150)
 UPSTREAM_G6                  = PASS            (PR #3151)
 
-G7_READ_ONLY_PREFLIGHT       = HOLD
-PRODUCTION_STATE_CLASS       = NOT_MEASURED
-EXPECTED_PRODUCTION_DELTA    = NOT_COMPUTED
+G7_READ_ONLY_PREFLIGHT       = PASS            (Mother Ship decision, §4)
+PRODUCTION_STATE_CLASS       = CLEAN_CREATE
+EXPECTED_PRODUCTION_DELTA    =
+  Shrine     +1
+  Source     +1
+  Deity      +0
+  History    +1
+  SourceFact +0
+  goriyaku   +0
+PRODUCTION_POSTGRESQL        = 17.6
 BACKUP_CLIENT_COMPATIBILITY  = HOLD
 BACKUP_RESTORE_READINESS     = HOLD
-PRE_BASE_GUARD_READY         = HOLD
-POST_BASE_GUARD_READY        = HOLD
-POST_KNOWLEDGE_VERIFY_READY  = HOLD
+PRE_BASE_GUARD_READY         = PASS            (committed frozen values tested, §5.1)
+POST_BASE_GUARD_READY        = PASS            (local sequential simulation, §5.1)
+POST_KNOWLEDGE_VERIFY_READY  = PASS            (local sequential simulation, §5.1)
 PRODUCTION_RUNTIME_QA_READY  = PASS
 
 PRODUCTION_WRITE_AUTHORIZED  = NO
@@ -28,19 +35,21 @@ FORMAL_G7                    = NOT EXECUTED
 
 - Recorded at: 2026-10-10
 - Base: `develop@3009478a`（PR #3151 merge 後）
-- Branch: `audit/nsrc-000002-g7-production-import-preflight`
+- Branch: `audit/nsrc-000002-g7-production-import-preflight`（PR #3152, merged）
+- Frozen pre-state update: `audit/nsrc-000002-g7-freeze-production-prestate`（base `develop@08ec7cef`）
 - Authority: `docs/knowledge/shrine-expansion-gate-contract.md` §10
 - Reference: nsrc-000004 G7（PR #3132 / `docs/audit/niigata-h001-g7-production-import.md`）
 
 本書は G7 の pre-write authorization evidence の準備記録である。G7 PASS を記録しない。
 
-### Blocker
+### Blocker（PR #3152 時点。解消済み）
 
 ~~~text
-G7_BLOCKER = PRODUCTION_READ_ONLY_ACCESS_UNAVAILABLE_IN_THIS_EXECUTION_ENVIRONMENT
+G7_BLOCKER (PR #3152) = PRODUCTION_READ_ONLY_ACCESS_UNAVAILABLE_IN_THIS_EXECUTION_ENVIRONMENT
+STATUS                = RESOLVED: Production read-only preflight は Mother Ship 側で実行された（§4）
 ~~~
 
-本 PR を作成した実行環境には Production credential が存在しない。
+PR #3152 を作成した実行環境には Production credential が存在しない。
 
 ~~~text
 scripts/migration_safety/check_credential_presence.sh ~/.config/kami-musubi/production-db.env DATABASE_URL
@@ -50,6 +59,8 @@ scripts/migration_safety/check_credential_presence.sh ~/.config/kami-musubi/prod
 Production への read-only query（Phase 2）は実行していない。credential は要求も作成もしていない。
 そのため Production 実測に依存する項目（Phase 2 / Phase 3 / guard の frozen 値 / Production backup）は
 すべて HOLD または NOT_MEASURED とした。推測値は記録していない。
+freeze PR を作成した実行環境にも Production credential は無く、本 PR でも Production へは接続していない。
+§4 の値は Mother Ship から受け取った Production read-only preflight の実測値である。
 
 ---
 
@@ -137,24 +148,60 @@ government 行に importer が解析できない URL が1件でもあると impo
 
 ## 4. Phase 2 / Phase 3 — Production 実測と expected delta
 
+Production read-only preflight（`nsrc_000002_g7_preflight.sql`）は Mother Ship 側で実行された。
+本実行環境からは実行していない。以下は受け取った実測値である。
+
 ~~~text
-PHASE_2_PRODUCTION_READ_ONLY_EXECUTION = NOT EXECUTED (blocker §1)
-PRODUCTION_STATE_CLASS                 = NOT_MEASURED
-EXPECTED_PRODUCTION_DELTA              = NOT_COMPUTED
+server_version                     = 17.6
+latest_temples_migration           = 0120_shrine_source_fact_foundation
+
+Shrine                             = 121
+Source                             = 140
+Deity                              = 295
+History                            = 228
+SourceFact                         = 34
+
+target exact                       = 0
+same-name 青澤神社                 = 0
+same-name 青沢神社                 = 0
+same-address                       = 0
+
+source_identity_count              = 0
+source_metadata_compatible_count   = 0
+source_url_lookalike_count         = 0
+source_url_lookalike_non_identity  = 0
+government_url_unparseable_count   = 0
+source_identity_state              = ABSENT
+
+target Deity                       = 0
+target History                     = 0
+target SourceFact                  = 0
+target goriyaku tag links          = 0
+target goriyaku assignments        = 0
+
+production_state_class_candidate   = CLEAN_CREATE
 ~~~
 
-Production state が分からないため、A / B / C / D のどれにも分類していない。
-expected delta はどちらの case かを推測せず、Production 実測後に次のどちらかへ確定する。
+Mother Ship decision:
 
-| Production 実測 | expected delta |
-|---|---|
-| CLEAN_CREATE かつ `source_identity_state = ABSENT` | Shrine +1 / Source +1 / Deity +0 / History +1 / SourceFact +0 / goriyaku系 +0 |
-| CLEAN_CREATE かつ `source_identity_state = REUSABLE` | Shrine +1 / Source +0 / Deity +0 / History +1 / SourceFact +0 / goriyaku系 +0 |
-| B / C / D | STOP。delta を計算せず Mother Ship へ戻す |
+~~~text
+G7_READ_ONLY_PREFLIGHT = PASS
+PRODUCTION_STATE_CLASS = CLEAN_CREATE
+~~~
 
-参考（Production 現在値ではない）: nsrc-000004 G7 完了時点の Production 記録値は
-Shrine 121 / Source 140 / Deity 295 / History 228 / SourceFact 34。
-その後の変更有無は未測定のため、本 PR の guard には使っていない。
+`source_identity_state = ABSENT` のため、expected delta は Source を新規作成する case に確定した。
+
+~~~text
+EXPECTED_PRODUCTION_DELTA:
+  Shrine     +1   (121 -> 122)
+  Source     +1   (140 -> 141)
+  Deity      +0   (295)
+  History    +1   (228 -> 229)
+  SourceFact +0   (34)
+  goriyaku系 +0
+~~~
+
+PR #3152 で参考として記した nsrc-000004 G7 完了時点の記録値（121 / 140 / 295 / 228 / 34）と、今回の実測値は一致した。
 
 ---
 
@@ -178,8 +225,19 @@ shrine_total / source_total / deity_total / history_total / source_fact_total
 accepted_source_count   (= 実測 source_identity_count。0 か 1 だけが先へ進める)
 ~~~
 
-現在の値はすべて `NULL::bigint`。NULL のままでは比較が NULL になり `1 / 0` で必ず失敗する（fail closed）。
-Production read-only preflight の実測値で置き換えるまで、どの guard も PASS を返さない。
+PR #3152 では全値が `NULL::bigint`（どの guard も PASS できない fail closed 状態）だった。
+本 freeze で §4 の Production 実測値に置き換えた。3 file の frozen block は byte 一致する。
+
+~~~text
+shrine_total          = 121
+source_total          = 140
+deity_total           = 295
+history_total         = 228
+source_fact_total     = 34
+accepted_source_count = 0
+~~~
+
+Source identity block（`nsrc_000002_source_identity`）は変更していない。
 
 ### 判定条件
 
@@ -300,11 +358,52 @@ metadata drift の場合、frozen accepted を 1 にしても（compatible 0 ≠
 
 simulation 用 DB 6個（template + 5 case）は検証後に削除した。
 
+### 5.1 Committed frozen values の sequential simulation（freeze PR）
+
+repo に commit した guard file（frozen 値入り、scratch copy ではない）を、そのまま `readonly_query.sh` 経由で実行した。
+disposable local DB（Production ではない）を Production 実測 pre-state と同じ件数に作った:
+canonical Base Seed から青澤神社を除いた121行 + `nsrc_000004_seed.json` に、非 target Shrine へ付けた
+padding 行（Source は lookalike にならない `https://example.invalid/...` URL）を足して
+Shrine 121 / Source 140 / Deity 295 / History 228 / SourceFact 34 にした。
+
+模擬 pre-state の preflight:
+
 ~~~text
-PRE_BASE_GUARD_READY        = HOLD   (logic validated locally; frozen values not measured on Production)
-POST_BASE_GUARD_READY       = HOLD
-POST_KNOWLEDGE_VERIFY_READY = HOLD
+target exact / same-name / same-address = 0 / 0 / 0 / 0
+source_identity 0 / compatible 0 / lookalike 0 / non-identity 0 / unparseable 0 / ABSENT
+production_state_class_candidate = CLEAN_CREATE
 ~~~
+
+| step | pre_base | post_base | post_knowledge |
+|---|---|---|---|
+| [1] pre-state（121 / 140 / 295 / 228 / 34） | **PASS** | FAIL | FAIL |
+| [2] drifted pre-state（別 DB copy に無関係な History を1件追加、History 229） | **FAIL（closed）** | FAIL | FAIL |
+| [3] Base subset のみ apply 後 | FAIL | **PASS** | FAIL |
+| [4] Knowledge apply 後 | FAIL | FAIL | **PASS** |
+
+~~~text
+[3] Base dry-run / apply : done created=1 updated=0 skipped=0 total_seed=1（一致）
+[4] Knowledge dry-run    : {'source_CREATE': 1, 'history_CREATE': 1}
+    Knowledge apply      : sources created=1, deities created=0, histories created=1, collectives created=0,
+                           memberships created=0, source_facts created=0
+final state              : Shrine 122 / Source 141 / Deity 295 / History 229 / SourceFact 34
+target                   : shrine 1 / deity 0 / history 1 / source_fact 0 / history_source_relations 1 /
+                           sourceless_history 0 / goriyaku tag links 0 / assignments 0
+post preflight           : production_state_class_candidate = ALREADY_MATERIALIZED
+[5] second import        : Base created=0 skipped=1 / Knowledge {'source_REUSE_EXISTING': 1, 'history_SKIP_EXISTS': 1}
+runtime QA               : G7_PRODUCTION_RUNTIME_QA=PASS / TRANSACTION_MODE=READ_ONLY
+~~~
+
+2つの disposable DB は検証後に削除した。
+
+~~~text
+PRE_BASE_GUARD_READY        = PASS
+POST_BASE_GUARD_READY       = PASS
+POST_KNOWLEDGE_VERIFY_READY = PASS
+~~~
+
+guard Ready は「Production pre-state を固定した guard が、同じ件数の模擬 DB で期待通りに通過 / 停止する」ことを意味する。
+Production で guard を実行したことは意味しない。
 
 ---
 
@@ -387,13 +486,13 @@ PRODUCTION_RUNTIME_QA_READY = PASS
 ## 8. Phase 7 — Backup / restore readiness
 
 ~~~text
-PRODUCTION_SERVER_MAJOR_VERSION = NOT_MEASURED (blocker §1)
+PRODUCTION_SERVER_VERSION       = 17.6 (Production read-only preflight, §4)
 LOCAL_CLIENT (this environment) = pg_dump / psql / pg_restore 16.15
 ~~~
 
-参考: nsrc-000004 G7 では Production server `17.6` に対し client 16 が major mismatch で失敗し、
-client `17.10` で再取得した（`docs/audit/niigata-h001-g7-production-import.md` §4.1）。
-この値は今回再測定していない。現在 server が 17 系のままなら、本実行環境の client 16.15 では dump できない。
+Production server は 17 系なので、本実行環境の client 16.15 では dump できない（major mismatch）。
+nsrc-000004 G7 では client `17.10` で取得した（`docs/audit/niigata-h001-g7-production-import.md` §4.1）。
+互換 client での backup / disposable restore / fingerprint 一致は未実施。
 
 ~~~text
 BACKUP_CLIENT_COMPATIBILITY = HOLD
@@ -435,7 +534,7 @@ BACKUP_RESTORE_READINESS  = HOLD
    この Linux 環境では失敗する（どちらも本 PR で変更していない script の test）。
 2. ローカルの test 設定（`DISABLE_GIS_FOR_TESTS=1`）は `temples.migrations_nogis` を使うため、
    模擬 DB の latest temples migration は `0019_shrine_source_fact_foundation` と出る。
-   Production は `temples/migrations`（最新 `0120_shrine_source_fact_foundation`）なので、この値は Production 実測で確認する。
+   Production は `temples/migrations` で、実測値は `0120_shrine_source_fact_foundation`（§4）。
 
 ---
 
@@ -455,6 +554,9 @@ BACKUP_RESTORE_READINESS  = HOLD
 | knowledge seed / source identity 関連（`-k 'knowledge_seed or source_identity or source_reuse'`） | 318 passed |
 | `scripts/tests` | 685 passed |
 | backend full suite | 4942 passed, 12 skipped |
+| freeze PR: committed frozen guard の sequential simulation（§5.1） | pre PASS / drift FAIL / post-base PASS / post-knowledge PASS |
+| freeze PR: nsrc-000002 Base / G4 / G5 / G6 / G7 test（5 file） | 24 passed |
+| freeze PR: `test_guard.py` / `test_backup_logging.sh` / `scripts/tests` / backend full suite | 49 passed / PASS / 685 passed / 4942 passed, 12 skipped |
 | `makemigrations --check` | No changes detected |
 | ruff / black（新規 Python 3 file） | PASS |
 | `git diff --check` | clean |
@@ -483,7 +585,6 @@ Runtime 実装、importer（`knowledge_seed.py`）、Base Seed、Knowledge Seed�
 ## 12. Not executed / next
 
 ~~~text
-Production read-only preflight   = NOT EXECUTED (credential unavailable here)
 Production backup / restore      = NOT EXECUTED
 Base Shrine apply                = NOT EXECUTED
 Knowledge Seed apply             = NOT EXECUTED
@@ -491,13 +592,15 @@ INSERT / UPDATE / DELETE         = NONE
 Candidate Master transition      = NOT EXECUTED
 G8                               = NOT EXECUTED
 
-PRODUCTION_WRITE = NONE
-FORMAL_G7        = NOT EXECUTED
+PRODUCTION_WRITE_AUTHORIZED = NO
+PRODUCTION_WRITE            = NONE
+FORMAL_G7                   = NOT EXECUTED
 ~~~
 
 次に必要なこと（Mother Ship 判断）:
 
-1. Production read-only access のある環境で `nsrc_000002_g7_preflight.sql` を実行し、state class を確定する
-2. CLEAN_CREATE の場合だけ、実測値で frozen block を埋める PR を作る（B / C / D なら STOP）
-3. 互換 client で backup → disposable restore → fingerprint 一致を確認する
-4. その後に Production write の明示承認を受ける
+1. PostgreSQL 17 互換 client で Production backup → disposable restore → preflight fingerprint 一致を確認する
+   （`BACKUP_CLIENT_COMPATIBILITY` / `BACKUP_RESTORE_READINESS` を PASS にする）
+2. その後に Production write の明示承認を受ける
+3. 承認後: pre-Base guard → target Base subset のみ apply → post-Base guard → Knowledge apply →
+   post-Knowledge verification → idempotency → Production Runtime QA

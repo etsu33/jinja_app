@@ -9,18 +9,19 @@
 -- No Production numeric PK is referenced.
 WITH
 frozen AS (
-  -- FROZEN_PRE_STATE: every NULL below must be replaced with the value measured by
-  -- nsrc_000002_g7_preflight.sql on Production (read-only) before this file is used.
-  -- While any value is NULL the guard cannot return 1 and fails closed.
+  -- FROZEN_PRE_STATE: measured by nsrc_000002_g7_preflight.sql on Production (read-only),
+  -- PostgreSQL 17.6, temples 0120_shrine_source_fact_foundation.
+  -- Mother Ship decision: G7_READ_ONLY_PREFLIGHT = PASS / PRODUCTION_STATE_CLASS = CLEAN_CREATE
+  -- (source_identity_state = ABSENT). Any drift from these values fails closed.
   -- The block must be identical in the pre-Base / post-Base / post-Knowledge files.
   SELECT
-    NULL::bigint AS shrine_total,
-    NULL::bigint AS source_total,
-    NULL::bigint AS deity_total,
-    NULL::bigint AS history_total,
-    NULL::bigint AS source_fact_total,
+    121::bigint AS shrine_total,
+    140::bigint AS source_total,
+    295::bigint AS deity_total,
+    228::bigint AS history_total,
+    34::bigint AS source_fact_total,
     -- = measured source_identity_count; only 0 (absent) or 1 (metadata compatible) may proceed
-    NULL::bigint AS accepted_source_count
+    0::bigint AS accepted_source_count
 ),
 target AS (
   SELECT id, latitude, longitude, goriyaku
