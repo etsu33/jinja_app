@@ -20,8 +20,12 @@ EXPECTED_PRODUCTION_DELTA    =
   SourceFact +0
   goriyaku   +0
 PRODUCTION_POSTGRESQL        = 17.6
-BACKUP_CLIENT_COMPATIBILITY  = HOLD
-BACKUP_RESTORE_READINESS     = HOLD
+BACKUP_CLIENT_COMPATIBILITY  = PASS            (client 17.10, §8.1)
+PRODUCTION_FRESH_BACKUP      = PASS            (20261010202119, §8.1)
+ISOLATED_RESTORE             = PASS
+RESTORED_DB_FINGERPRINT      = PASS
+ISOLATED_PRE_BASE_GUARD      = PASS
+BACKUP_RESTORE_READINESS     = PASS
 PRE_BASE_GUARD_READY         = PASS            (committed frozen values tested, §5.1)
 POST_BASE_GUARD_READY        = PASS            (local sequential simulation, §5.1)
 POST_KNOWLEDGE_VERIFY_READY  = PASS            (local sequential simulation, §5.1)
@@ -36,7 +40,8 @@ FORMAL_G7                    = NOT EXECUTED
 - Recorded at: 2026-10-10
 - Base: `develop@3009478a`（PR #3151 merge 後）
 - Branch: `audit/nsrc-000002-g7-production-import-preflight`（PR #3152, merged）
-- Frozen pre-state update: `audit/nsrc-000002-g7-freeze-production-prestate`（base `develop@08ec7cef`）
+- Frozen pre-state update: `audit/nsrc-000002-g7-freeze-production-prestate`（base `develop@08ec7cef`, PR #3153, merged）
+- Backup / restore evidence: `audit/nsrc-000002-g7-backup-restore-evidence`（base `develop@9d776d5c`）
 - Authority: `docs/knowledge/shrine-expansion-gate-contract.md` §10
 - Reference: nsrc-000004 G7（PR #3132 / `docs/audit/niigata-h001-g7-production-import.md`）
 
@@ -495,8 +500,10 @@ nsrc-000004 G7 では client `17.10` で取得した（`docs/audit/niigata-h001-
 互換 client での backup / disposable restore / fingerprint 一致は未実施。
 
 ~~~text
-BACKUP_CLIENT_COMPATIBILITY = HOLD
+BACKUP_CLIENT_COMPATIBILITY (this environment, client 16.15) = HOLD
 ~~~
+
+（Mother Ship 側 client 17.10 での判定は §8.1。）
 
 ### Procedure（Production write 前に必須）
 
@@ -518,8 +525,106 @@ dump は scratch 領域にだけ置き、commit していない。2つの dispos
 
 ~~~text
 LOCAL_PROCEDURE_REHEARSAL = PASS
-PRODUCTION_BACKUP         = NOT TAKEN
-BACKUP_RESTORE_READINESS  = HOLD
+~~~
+
+上記 rehearsal 時点では Production backup は未取得だった（`BACKUP_RESTORE_READINESS = HOLD`）。§8.1 で解消。
+
+### 8.1 Production fresh backup / isolated restore（Mother Ship 実行）
+
+Production backup と isolated restore は Mother Ship 側の環境で実行された。本 PR を作成した実行環境は
+Production にも backup file にも接続していない。以下は受け取った観測値である。
+credential / hostname / database name / connection 詳細は記録しない。
+
+Client compatibility:
+
+~~~text
+Production PostgreSQL = 17.6
+pg_dump               = 17.10
+pg_dumpall            = 17.10
+pg_restore            = 17.10
+psql                  = 17.10
+
+BACKUP_CLIENT_COMPATIBILITY = PASS   (client major 17 = server major 17)
+~~~
+
+Fresh Production backup（`dump_readonly.sh` の roles / schema / data 構成）:
+
+| artifact | bytes |
+| --- | ---: |
+| `roles.sql` | 5,792 |
+| `schema.sql` | 134,714 |
+| `data.sql` | 11,761,148 |
+
+~~~text
+backup timestamp = 20261010202119
+backup location  = repository 外（operator home 配下 ~/kami-musubi-backups/20261010202119）
+~~~
+
+backup file は repo に含めていない。
+
+Isolated restore:
+
+~~~text
+restore target   = disposable local DB only（Production ではない）
+ISOLATED_RESTORE = PASS
+~~~
+
+Restored DB fingerprint（restore DB に `nsrc_000002_g7_preflight.sql` を実行）:
+
+~~~text
+latest_temples_migration                = 0120_shrine_source_fact_foundation
+
+Shrine                                  = 121
+Source                                  = 140
+Deity                                   = 295
+History                                 = 228
+SourceFact                              = 34
+
+target_exact_count                      = 0
+same_name_aosawa_kyuji_count            = 0
+same_name_aosawa_shinji_count           = 0
+same_address_count                      = 0
+
+source_identity_count                   = 0
+source_metadata_compatible_count        = 0
+source_url_lookalike_count              = 0
+source_url_lookalike_non_identity_count = 0
+government_url_unparseable_count        = 0
+source_identity_state                   = ABSENT
+
+target Deity                            = 0
+target History                          = 0
+target SourceFact                       = 0
+target goriyaku tag links               = 0
+target goriyaku assignments             = 0
+
+production_state_class_candidate        = CLEAN_CREATE
+~~~
+
+restore DB の fingerprint は §4 の Production read-only preflight 実測値とすべて一致した。
+
+Frozen pre-Base guard（commit 済み `nsrc_000002_g7_pre_base_guard.sql`）を restore DB で実行:
+
+~~~text
+g7_pre_base_guard_pass = 1
+~~~
+
+Mother Ship decision:
+
+~~~text
+PRODUCTION_FRESH_BACKUP  = PASS
+ISOLATED_RESTORE         = PASS
+RESTORED_DB_FINGERPRINT  = PASS
+ISOLATED_PRE_BASE_GUARD  = PASS
+BACKUP_RESTORE_READINESS = PASS
+~~~
+
+Backup / restore readiness の PASS は Production write の承認を意味しない。
+
+~~~text
+PRODUCTION_WRITE_AUTHORIZED = NO
+PRODUCTION_WRITE            = NONE
+FORMAL_G7                   = NOT EXECUTED
 ~~~
 
 ---
@@ -585,7 +690,7 @@ Runtime 実装、importer（`knowledge_seed.py`）、Base Seed、Knowledge Seed�
 ## 12. Not executed / next
 
 ~~~text
-Production backup / restore      = NOT EXECUTED
+Production backup / restore      = DONE by Mother Ship (§8.1)
 Base Shrine apply                = NOT EXECUTED
 Knowledge Seed apply             = NOT EXECUTED
 INSERT / UPDATE / DELETE         = NONE
@@ -599,8 +704,7 @@ FORMAL_G7                   = NOT EXECUTED
 
 次に必要なこと（Mother Ship 判断）:
 
-1. PostgreSQL 17 互換 client で Production backup → disposable restore → preflight fingerprint 一致を確認する
-   （`BACKUP_CLIENT_COMPATIBILITY` / `BACKUP_RESTORE_READINESS` を PASS にする）
-2. その後に Production write の明示承認を受ける
-3. 承認後: pre-Base guard → target Base subset のみ apply → post-Base guard → Knowledge apply →
+1. Production write の明示承認を受ける
+2. 承認後: Production で pre-Base guard → target Base subset のみ apply → post-Base guard → Knowledge apply →
    post-Knowledge verification → idempotency → Production Runtime QA
+3. 各 step の実測を記録したうえで Formal G7 を判定する
