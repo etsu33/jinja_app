@@ -1,8 +1,8 @@
 # NIIGATA-001-H001 G2 Position / Navigation Anchor Gate
 
-> Status: **PARTIAL PASS — 1 PASS / 4 HOLD**
+> Status: **PARTIAL PASS — 2 PASS / 3 HOLD**
 >
-> Recorded at: 2026-10-09
+> Recorded at: 2026-10-10
 >
 > G0: PASS
 > G1: PASS 5 / 5
@@ -29,11 +29,11 @@ guess is promoted to an adopted coordinate.
 | nsrc-000002 | 青澤神社 | HOLD_POSITION_REVIEW | — | provider POI observed but numeric coordinate not traceable |
 | nsrc-000003 | 蒼柴神社 | HOLD_POSITION_REVIEW | — | official map center semantics vs facility point unresolved |
 | nsrc-000004 | 青海神社（加茂市） | PASS | 37.65657387, 139.0536436 | Mapion POI + official visitor route + Kokugakuin corroboration |
-| nsrc-000005 | 青山稲荷神社（柏崎市） | HOLD_POSITION_REVIEW | — | exact-address provider POI observed but numeric coordinate not traceable |
+| nsrc-000005 | 青山稲荷神社（柏崎市） | PASS | 37.4172812, 138.5910754 | Yahoo! Map exact-address POI + selected map pin coordinate |
 
 ```text
-G2_PASS = 1
-G2_HOLD_POSITION_REVIEW = 4
+G2_PASS = 2
+G2_HOLD_POSITION_REVIEW = 3
 ```
 
 ## PASS: nsrc-000004 青海神社
@@ -74,13 +74,32 @@ Observed delta:
 The iframe `ll` parameter is a map-view center and is not deterministically proven to be the
 POI marker / Visitor Anchor. The Gate therefore does not choose either point.
 
+## PASS: nsrc-000005 青山稲荷神社
+
+Canonical identity:
+- 新潟県神社庁
+- 青山稲荷神社
+- 新潟県柏崎市荒浜4丁目1754番地2
+
+Primary map-provider POI:
+- https://map.yahoo.co.jp/v3/place/PBYAFpYs7-Q
+- name: 青山稲荷神社
+- address: 新潟県柏崎市荒浜4丁目1754-2
+- selected POI pin: `37.4172812, 138.5910754`
+
+Human QA on 2026-10-10 confirmed the Yahoo! Map POI HTML binds the selected map marker coordinate
+to the 青山稲荷神社 static map / place summary. The coordinate is not adopted from address
+geocoding or a generic map viewport.
+
+The `番地` / hyphenated parcel notation difference is explainably aligned and the exact
+柏崎市荒浜 address controls same-name shrine risk.
+
 ## HOLD: remaining three
 
 - 相吉神社: official address is confirmed, but no traceable numeric primary POI coordinate was
   obtained.
 - 青澤神社: Mapion POI is identified, but the captured source does not expose numeric lat/lng.
-- 青山稲荷神社: Yahoo exact-address POI is identified, but the captured source does not expose
-  numeric lat/lng.
+- 蒼柴神社: official map center semantics vs facility point remain unresolved.
 
 The Gate does not reverse-geocode or infer coordinates from address / Mapcode / provider IDs.
 
@@ -113,15 +132,15 @@ Position status is kept in the Position Resolution Record, not pushed into
 ## Downstream Gate boundary
 
 ```text
-nsrc-000004 -> G3 eligible after this G2 record is merged
+nsrc-000004 -> G3 eligible / downstream G3 already audited separately
+nsrc-000005 -> G3 eligible after this G2 re-entry record is merged
 
 nsrc-000001 -> G2 HOLD
 nsrc-000002 -> G2 HOLD
 nsrc-000003 -> G2 HOLD
-nsrc-000005 -> G2 HOLD
 ```
 
-Do not execute G3 for the four HOLD Candidates.
+Do not execute G3 for the three HOLD Candidates.
 
 ## STOP
 
