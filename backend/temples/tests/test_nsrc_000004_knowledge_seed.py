@@ -79,7 +79,8 @@ def test_nsrc_000004_base_seed_imports_into_isolated_db():
     )
 
     summary = [line for line in out.getvalue().splitlines() if line.startswith("done ")][-1]
-    assert "total_seed=121" in summary
+    # nsrc-000002 青澤神社の Base Shrine materialization で 121 -> 122。
+    assert "total_seed=122" in summary
 
     exact_qs = Shrine.objects.filter(name_jp=SHRINE_NAME, address=SHRINE_ADDRESS)
     assert exact_qs.count() == 1
@@ -465,10 +466,14 @@ def test_nsrc_000004_base_seed_preserves_existing_120_rows():
     ]
     assert len(target_rows) == 1
 
+    # 後続で追加した Base Shrine 行（nsrc-000002 青澤神社）は、本 test が固定する
+    # 「nsrc-000004 追加前の120行」に含めない。120行の fingerprint は変えない。
+    later_rows = {("青澤神社", "新潟県糸魚川市大字青海2696番地")}
     existing_rows = [
         row
         for row in rows
         if not (row.get("name_jp") == SHRINE_NAME and row.get("address") == SHRINE_ADDRESS)
+        and (row.get("name_jp"), row.get("address")) not in later_rows
     ]
     assert len(existing_rows) == 120
 

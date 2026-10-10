@@ -60,7 +60,8 @@ def test_wave0_db01_shrine_refs_exist_in_base_seed():
     # W0-DB03 G4 で4行（wave0-012 / 013 / 015 / 016）を追加し 113 -> 117。
     # W0-DB04 G4 re-entry で3行（wave0-019 / 021 / 025）を追加し 117 -> 120。
     # NIIGATA-001-H001 G4 data materialization で nsrc-000004 青海神社を追加し 120 -> 121。
-    assert len(base_rows) == 121
+    # nsrc-000002 青澤神社の Base Shrine materialization で 121 -> 122。
+    assert len(base_rows) == 122
     assert all(identity in base_identities for identity in TARGETS)
 
 

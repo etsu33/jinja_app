@@ -2246,5 +2246,18 @@
       "lat": 37.65657387,
       "lng": 139.0536436
     }
+  },
+  {
+    "name_jp": "青澤神社",
+    "address": "新潟県糸魚川市大字青海2696番地",
+    "latitude": 37.00763484,
+    "longitude": 137.79024297,
+    "goriyaku": "",
+    "kyusei": null,
+    "astro_elements": [],
+    "location": {
+      "lat": 37.00763484,
+      "lng": 137.79024297
+    }
   }
 ]
