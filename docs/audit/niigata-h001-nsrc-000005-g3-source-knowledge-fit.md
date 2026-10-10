@@ -1,8 +1,10 @@
 # NIIGATA-001-H001 nsrc-000005 G3 Source + Knowledge Model Fit
 
-> Status: **HOLD — RESEARCH_REQUIRED_BEFORE_RELEASE**
+> Status: **HOLD — RESEARCH_REQUIRED_BEFORE_RELEASE (RE-EVALUATED)**
 >
 > Recorded at: 2026-10-10
+>
+> Follow-up source research / re-evaluation: 2026-10-10
 >
 > Candidate: `nsrc-000005` / 青山稲荷神社（新潟県柏崎市）
 >
@@ -146,6 +148,117 @@ source-confirmed Knowledge for G4.
 
 No statement from these leads is frozen as a Stored Fact by this G3 audit.
 
+## Follow-up Source Research — 2026-10-10
+
+Additional read-only research was executed after the initial G3 HOLD record.
+
+The purpose was to determine whether a stronger deity / history Source now satisfies the G3
+release condition. No Fact row is created by this follow-up.
+
+### R1 — 八百万の神 / deity listing
+
+URL:
+- https://yaokami.jp/1151388/
+
+Observed target identity:
+- 青山稲荷神社
+- 新潟県柏崎市荒浜4-1754-2
+
+Observed deity presentation:
+- 稲荷神
+- 宇迦之御魂神
+
+However the page explicitly labels the deity information as `[推定]`.
+
+```text
+G3_SOURCE_ACCEPTANCE = REJECTED_AS_FACT_SOURCE
+reason = deity attribution is explicitly estimated / inferred
+```
+
+This page may remain a discovery lead but cannot establish a source-confirmed current Deity Fact.
+
+### R2 — 2025 current field visit reproducing shrine explanatory text
+
+URL:
+- https://mannjyu-kowai.seesaa.net/article/518889946.html
+
+The 2025 field-visit page identifies the 柏崎市荒浜 青山稲荷神社 and reproduces a block headed
+`青山稲荷について`.
+
+The reproduced text includes claims that:
+
+- 宇迦之御魂神 is enshrined;
+- the shrine was founded in 文禄四年;
+- the shrine was moved to the current site in 昭和五十一年 in connection with construction
+  of the nuclear power station;
+- an Edo-period shrine structure donated by the local Makiguchi family is retained in the
+  honden.
+
+These statements are highly relevant because they appear to originate from a shrine-site
+explanatory notice rather than generic Inari inference.
+
+However the current review path does not expose the original shrine notice / explanatory-board
+artifact itself in a directly reviewable form. The page is still a third-party field report.
+
+```text
+G3_SOURCE_ACCEPTANCE = PROMISING_RESEARCH_LEAD_ONLY
+reason = apparent shrine-site notice text, but original notice artifact / official reproduction not directly reviewed
+```
+
+Do not freeze 宇迦之御魂神 or the reproduced history claims as source-confirmed Stored Facts from
+this page alone.
+
+### R3 — independent historical walking record
+
+URL:
+- https://fdkt.sakura.ne.jp/kaidou/category3/entry174.html
+
+This independent walking record also describes:
+
+- 1595 / 文禄4 founding;
+- 1976 / 昭和51 relocation connected with nuclear-power-station construction;
+- an Edo-period Makiguchi-family donation retained in the honden.
+
+The recurrence of these details is useful corroboration for research routing.
+
+The page is not shrine-official, municipal / prefectural archival material, or another
+authoritative Knowledge Source. It therefore remains corroboration-only and is not promoted into
+`ShrineHistory`.
+
+### R4 — public-sector current identity material
+
+柏崎市 public material continues to identify 青山稲荷神社 in 荒浜四丁目 as a current real-world
+site / emergency-evacuation location.
+
+This strengthens identity continuity but still does not directly state a deity or shrine history.
+
+### Follow-up G3 re-evaluation
+
+After this source research:
+
+```text
+accepted_source_backed_current_deity = NONE
+accepted_source_backed_history       = NONE
+
+NORMAL_MODEL_FIT                  = NO
+CURATION_RELEASE_CANDIDATE       = NO
+RESEARCH_REQUIRED_BEFORE_RELEASE = YES
+MODEL_REVIEW_REMAINS             = NO
+MODEL_CHANGE_REQUIRED            = NO
+PRODUCT_DECISION_REQUIRED        = NO
+
+G3             = HOLD
+classification = RESEARCH_REQUIRED_BEFORE_RELEASE
+```
+
+The new evidence narrows the research target but does not yet satisfy the G3 release condition.
+
+A directly reviewable shrine-originated notice / explanatory-board image or other accepted
+authoritative source that attributes at least one Deity or History Fact to this exact shrine
+would permit another G3 re-entry.
+
+No G4 execution is authorized by this follow-up.
+
 ## Fact / Interpretation boundary
 
 ### Source-backed Stored Fact candidates available now
@@ -278,7 +391,7 @@ the Candidate Master lifecycle state.
 ## Files / Data Changed
 
 ```text
-docs/audit/niigata-h001-nsrc-000005-g3-source-knowledge-fit.md  ADDED
+docs/audit/niigata-h001-nsrc-000005-g3-source-knowledge-fit.md  MODIFIED
 
 Candidate Master JSON                          NONE
 Base Shrine Seed                              NONE
