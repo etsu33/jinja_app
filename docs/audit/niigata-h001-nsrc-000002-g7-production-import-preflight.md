@@ -1,6 +1,57 @@
-# NIIGATA-H001 nsrc-000002 青澤神社 G7 Production Import — read-only preflight preparation
+# NIIGATA-H001 nsrc-000002 青澤神社 G7 Production Import
 
-## 1. Status
+## 0. Final classification（G7 CLOSED / PASS）
+
+- Recorded at: `2026-10-10`
+- Candidate: `nsrc-000002`
+- Shrine: 青澤神社（新潟県糸魚川市大字青海2696番地）
+- Gate: `G7 Production Import`（`docs/knowledge/shrine-expansion-gate-contract.md` §10）
+- Result: **`CLOSED / PASS`**
+- G8 CORE READY: **`NOT_EXECUTED`**
+- Full canonical Base Seed Production apply: **`PROHIBITED`**
+- Production write after closure: **`PROHIBITED`**
+
+~~~text
+G7_READ_ONLY_PREFLIGHT          = PASS
+G7_PRODUCTION_BACKUP_RESTORE    = PASS
+G7_BASE_IMPORT                  = PASS
+G7_BASE_IDEMPOTENCY             = PASS
+G7_KNOWLEDGE_IMPORT             = PASS
+G7_KNOWLEDGE_IDEMPOTENCY        = PASS
+G7_AGGREGATE_INVARIANT          = PASS
+G7_KNOWLEDGE_INTEGRITY          = PASS
+G7_SOURCE_RELATION_INTEGRITY    = PASS
+G7_GORIYAKU_ISOLATION           = PASS
+G7_PRODUCTION_RUNTIME_QA        = PASS
+G7_BLOCKERS_REMAINING           = NONE
+G7_STATUS                       = CLOSED
+G7_RESULT                       = PASS
+
+Production final delta:
+Shrine        +1
+Source        +1
+Deity         +0
+History       +1
+SourceFact    +0
+goriyaku系    +0
+
+PRODUCTION_WRITE_AFTER_CLOSURE  = PROHIBITED
+G8_CORE_READY                   = NOT_EXECUTED
+~~~
+
+Production 実行は Mother Ship 側で行われた。本書を更新した実行環境は Production に接続していない。
+§13〜§19 は受け取った実測値の point-in-time 記録で、Production の現在値を永久に保証するものではない
+（Production の current state は Production 自身が正本）。
+
+本書の §1〜§12 は Production write 承認前の準備記録で、当時の HOLD / NO / NOT EXECUTED を含む。
+それらは歴史的観測としてそのまま残し、最終結果は本節と §13〜§19 を正とする。
+
+- Closure branch: `audit/nsrc-000002-g7-production-closure`（base `develop@90309189`）
+- Structural precedent: nsrc-000004 G7（`docs/audit/niigata-h001-g7-production-import.md`）
+
+---
+
+## 1. Status（pre-write 時点。歴史的記録）
 
 ~~~text
 candidate_id                 = nsrc-000002
@@ -45,7 +96,8 @@ FORMAL_G7                    = NOT EXECUTED
 - Authority: `docs/knowledge/shrine-expansion-gate-contract.md` §10
 - Reference: nsrc-000004 G7（PR #3132 / `docs/audit/niigata-h001-g7-production-import.md`）
 
-本書は G7 の pre-write authorization evidence の準備記録である。G7 PASS を記録しない。
+（PR #3152〜#3154 時点の記述）本書は G7 の pre-write authorization evidence の準備記録である。G7 PASS を記録しない。
+→ 最終結果は §0 / §13〜§19。
 
 ### Blocker（PR #3152 時点。解消済み）
 
@@ -687,7 +739,9 @@ Runtime 実装、importer（`knowledge_seed.py`）、Base Seed、Knowledge Seed�
 
 ---
 
-## 12. Not executed / next
+## 12. Not executed / next（pre-write 時点。歴史的記録）
+
+以下は Production write 承認前（PR #3154 時点）の状態である。実行結果は §13〜§19。
 
 ~~~text
 Production backup / restore      = DONE by Mother Ship (§8.1)
@@ -708,3 +762,293 @@ FORMAL_G7                   = NOT EXECUTED
 2. 承認後: Production で pre-Base guard → target Base subset のみ apply → post-Base guard → Knowledge apply →
    post-Knowledge verification → idempotency → Production Runtime QA
 3. 各 step の実測を記録したうえで Formal G7 を判定する
+
+---
+
+## 13. Production write authorization
+
+~~~text
+PRODUCTION_WRITE_AUTHORIZED = YES   (Mother Ship)
+authorized target           = nsrc-000002 青澤神社
+scope                       = target-only Base subset + backend/temples/data/knowledge_seeds/nsrc_000002_seed.json only
+full Base Seed apply        = PROHIBITED
+~~~
+
+Precondition（§4 / §5.1 / §8.1）:
+
+~~~text
+G7_READ_ONLY_PREFLIGHT   = PASS (CLEAN_CREATE, source_identity_state = ABSENT)
+BACKUP_RESTORE_READINESS = PASS (backup 20261010202119, restored fingerprint match)
+frozen pre-state         = Shrine 121 / Source 140 / Deity 295 / History 228 / SourceFact 34 / accepted_source_count 0
+~~~
+
+---
+
+## 14. Base Shrine Production import
+
+### 14.1 Pre-Base guard
+
+~~~text
+nsrc_000002_g7_pre_base_guard.sql -> g7_pre_base_guard_pass = 1
+~~~
+
+### 14.2 Target-only subset
+
+`scripts/migration_safety/nsrc_000002_g7_extract_base_subset.py` で canonical Base Seed から1行だけを抽出した。
+
+~~~text
+SUBSET_ROWS   = 1
+name_jp       = 青澤神社
+address       = 新潟県糸魚川市大字青海2696番地
+SUBSET_SHA256 = d5bcc3229b883314d54826f4381877102c4adcda7cb1e1b662ee876260bb7e40
+~~~
+
+SHA256 は §6 のローカル抽出値と一致する。
+
+### 14.3 Dry-run / apply
+
+~~~text
+dry-run : CREATE 青澤神社
+          done created=1 updated=0 skipped=0 total_seed=1
+          goriyaku delta = 0
+
+apply   : CREATE 青澤神社
+          done created=1 updated=0 skipped=0 total_seed=1
+          goriyaku delta = 0
+~~~
+
+dry-run と apply は一致した。
+
+Observed Production Shrine id `127` は point-in-time provenance であり、canonical identity ではない
+（identity は `name_jp + address`）。
+
+### 14.4 Post-Base guard
+
+~~~text
+nsrc_000002_g7_post_base_guard.sql -> g7_post_base_guard_pass = 1
+~~~
+
+post-Base guard は Shrine = 121 + 1、Knowledge aggregate 不変、target Knowledge 0、canonical coordinate、
+goriyaku '' / tag link 0 / assignment 0、Source state 不変を同時に確認する（§5）。
+
+~~~text
+G7_BASE_IMPORT = PASS
+~~~
+
+---
+
+## 15. Knowledge Production import
+
+対象: `backend/temples/data/knowledge_seeds/nsrc_000002_seed.json`
+
+### 15.1 Dry-run
+
+~~~text
+source_CREATE  = 1
+history_CREATE = 1
+~~~
+
+unexpected `CONFLICT` / `AMBIGUOUS` / `NOT_FOUND` は 0。Deity / SourceFact / collective の CREATE は無い。
+
+### 15.2 Apply
+
+~~~text
+import complete:
+  sources created      = 1
+  deities created      = 0
+  histories created    = 1
+  collectives created  = 0
+  memberships created  = 0
+  source_facts created = 0
+~~~
+
+dry-run と apply は一致した。
+
+~~~text
+G7_KNOWLEDGE_IMPORT = PASS
+~~~
+
+---
+
+## 16. Post-Knowledge verification
+
+`scripts/migration_safety/sql/nsrc_000002_g7_post_knowledge_verification.sql` を Production へ read-only 実行した。
+
+### 16.1 Aggregate
+
+~~~text
+Shrine     = 122   (121 + 1)
+Source     = 141   (140 + 1)
+Deity      = 295   (+0)
+History    = 229   (228 + 1)
+SourceFact = 34    (+0)
+~~~
+
+§4 の EXPECTED_PRODUCTION_DELTA と一致した。
+
+### 16.2 Target integrity
+
+~~~text
+target_shrine               = 1
+target_deity                = 0
+target_history              = 1
+target_source_fact          = 0
+history_source_relations    = 1
+sourceless_history          = 0
+target_goriyaku_tag_links   = 0
+target_goriyaku_assignments = 0
+~~~
+
+### 16.3 History / Source
+
+~~~text
+history_type        = regional_context
+title               = 青沢神社の春季祭礼
+period_text         = 毎年4月第3日曜日
+event_date          = null
+verification_status = source_confirmed
+confidence          = high
+
+source_type         = government
+url                 = https://matsuri.geo-itoigawa.com/calendar/m04/
+publisher           = 糸魚川市 / 糸魚川ジオパーク協議会
+source verification = source_confirmed
+source confidence   = high
+language            = ja
+~~~
+
+~~~text
+g7_post_knowledge_verification_pass = 1
+~~~
+
+Deity は 0 件のまま。沼河比賣命 / 沼河比売命を含め、Source-backed でない祭神は追加していない。
+
+~~~text
+G7_AGGREGATE_INVARIANT       = PASS
+G7_KNOWLEDGE_INTEGRITY       = PASS
+G7_SOURCE_RELATION_INTEGRITY = PASS
+G7_GORIYAKU_ISOLATION        = PASS
+~~~
+
+---
+
+## 17. Idempotency
+
+### 17.1 Base
+
+同じ target-only subset を `--dry-run` で再実行した。
+
+~~~text
+SKIP 青澤神社
+done created=0 updated=0 skipped=1 total_seed=1
+goriyaku delta = 0
+~~~
+
+~~~text
+G7_BASE_IDEMPOTENCY = PASS
+~~~
+
+### 17.2 Knowledge
+
+同じ Knowledge Seed を `--dry-run` で再実行した。
+
+~~~text
+source_REUSE_EXISTING = 1
+history_SKIP_EXISTS   = 1
+CREATE                = 0
+~~~
+
+~~~text
+G7_KNOWLEDGE_IDEMPOTENCY = PASS
+~~~
+
+### 17.3 Observed provenance
+
+~~~text
+Shrine id  = 127
+Source id  = 142
+History id = 229
+~~~
+
+これら numeric id は point-in-time provenance であり、identity contract ではない。
+
+---
+
+## 18. Production Runtime QA
+
+`scripts/migration_safety/nsrc_000002_g7_runtime_qa.py`（全体を `SET TRANSACTION READ ONLY` で実行）を Production data に対して実行した。
+
+~~~text
+DETAIL_RUNTIME=PASS
+CONCIERGE_CANDIDATE_PATH=PASS
+RECOMMENDATION_REASON=PASS
+COMPASS_DISTANCE=PASS
+COMPASS_DIRECTION=PASS
+G7_PRODUCTION_RUNTIME_QA=PASS
+TRANSACTION_MODE=READ_ONLY
+~~~
+
+runtime log:
+
+~~~text
+trace=nsrc-000002-g7-production-runtime
+count=108
+eligible=108
+ineligible=14
+with_place_id=2
+miss_latlng=0
+dist_none=0
+~~~
+
+Runtime QA は以下を確認した（§7 の script 内容）:
+
+- Shrine Detail が Deity 0 / History 1（regional_context / 青沢神社の春季祭礼、government Source 1件）を返す
+- 沼河比賣命 / 沼河比売命を返さない
+- Concierge shared candidate path に target が1件だけ存在し、`goriyaku_tag_ids == []`
+- Recommendation reason は deity None / shrine_history = H1 / goriyaku None で、保証表現を含まない
+- adopted coordinate（37.00763484 / 137.79024297）で distance / direction を計算し、direction filter が一致方向だけで target を保持する
+
+Recommendation Top1 / Compass Top1 は要求していない。
+
+~~~text
+G7_PRODUCTION_RUNTIME_QA = PASS
+~~~
+
+---
+
+## 19. No-scope-change invariants / final state
+
+本 G7 で変更していないもの:
+
+~~~text
+Full Base Seed（Production へは target 1行 subset のみ）
+他の nsrc candidate（nsrc-000001 / 000003 / 000004 / 000005）
+GoriyakuTag / ShrineGoriyakuAssignment
+Ranking / Score / Recommendation contract
+Coordinate decision
+Seed / guard / runtime code / models / migrations
+Candidate Master
+G1〜G6 の historical audit result
+G8 CORE READY state
+~~~
+
+本 closure PR は audit document だけを変更した。Production への接続・write は本 PR の作業では行っていない。
+
+~~~text
+G7_BLOCKERS_REMAINING          = NONE
+G7_STATUS                      = CLOSED
+G7_RESULT                      = PASS
+
+Production final delta:
+Shrine        +1
+Source        +1
+Deity         +0
+History       +1
+SourceFact    +0
+goriyaku系    +0
+
+PRODUCTION_WRITE_AFTER_CLOSURE = PROHIBITED
+G8_CORE_READY                  = NOT_EXECUTED
+~~~
+
+G7 PASS は G8 CORE READY を意味しない。Candidate Master の lifecycle transition と G8 Completion Contract は別途判定する。
