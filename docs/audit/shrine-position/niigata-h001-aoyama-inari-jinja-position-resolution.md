@@ -3,17 +3,17 @@
 ## Status
 
 ```text
-record_kind            = position_resolution_record
-candidate_id           = nsrc-000005
-position_status        = HOLD_POSITION_REVIEW
-new_latitude           = PENDING_HUMAN_QA_INPUT
-new_longitude          = PENDING_HUMAN_QA_INPUT
-new_position_source_type = PENDING_HUMAN_QA_INPUT
-new_position_source_url  = PENDING_HUMAN_QA_INPUT
-verified_at            = 2026-10-09
-production_write       = NONE
-seed_write             = NONE
-candidate_master_write = NONE
+record_kind              = position_resolution_record
+candidate_id             = nsrc-000005
+position_status          = PASS
+new_latitude             = 37.4172812
+new_longitude            = 138.5910754
+new_position_source_type = map_provider_poi
+new_position_source_url  = https://map.yahoo.co.jp/v3/place/PBYAFpYs7-Q
+verified_at              = 2026-10-10
+production_write         = NONE
+seed_write               = NONE
+candidate_master_write   = NONE
 ```
 
 Authority: `docs/knowledge/shrine-position-contract.md`.
@@ -29,34 +29,86 @@ identity_status  = CONFIRMED
 Identity Source:
 - 新潟県神社庁: https://niigata-jinjacho.jp/shrine_niigata/search.php?area=15205
 
-## Position evidence observed
+The current prefectural shrine directory fixes the target as the 柏崎市荒浜 identity.
+Same-name shrine results outside 柏崎市 are not used for this Candidate.
 
-Yahoo! Map exposes a current shrine POI with the exact H001 target address:
+## Primary Position Evidence
 
-- https://map.yahoo.co.jp/v3/place/PBYAFpYs7-Q
+Yahoo! Map current shrine POI:
+
+- URL: https://map.yahoo.co.jp/v3/place/PBYAFpYs7-Q
 - name: 青山稲荷神社
 - address: 新潟県柏崎市荒浜4丁目1754-2
+- selected POI pin coordinate: `37.4172812, 138.5910754`
 
-The captured page does not expose a traceable numeric latitude / longitude for that POI.
-
-Same-name map results exist outside 柏崎市; therefore this G2 record uses the exact G1 address
-as an identity constraint and does not select a same-name POI by name alone.
-
-## HOLD reason
+Human QA on 2026-10-10 verified the returned POI page HTML contains the selected static-map marker:
 
 ```text
-hold_reason = PRIMARY_POI_COORDINATE_NOT_TRACEABLE
-adopted_anchor = NOT_DETERMINED
+mappin_selected_48.png(138.5910754,37.4172812)
+alt="青山稲荷神社の地図"
 ```
 
-The exact-address POI is useful identity evidence but cannot satisfy the Position Contract until
-its numeric coordinate is traceable.
+The same POI context identifies the place as `青山稲荷神社` / category `神社`.
+The coordinate pair is therefore traceable to the selected shrine POI rather than adopted from
+an address geocoder, opaque provider ID, or unrelated map viewport.
 
-## Release condition
+## Identity / address alignment
 
-Obtain a coordinate-bearing current POI / visitor map for the 柏崎市荒浜 identity and re-run G2.
+```text
+canonical address = 新潟県柏崎市荒浜4丁目1754番地2
+Yahoo POI address = 新潟県柏崎市荒浜4丁目1754-2
+```
+
+The difference is address notation only (`番地` vs hyphenated parcel notation).
+Municipality, district, chome, parcel number, and shrine name align.
+
+A separately observed same-name / similar-name shrine outside 柏崎市 is excluded by this exact
+address constraint.
+
+## Corroboration / conflict review
+
+No unexplained competing coordinate for the same 柏崎市荒浜 shrine identity remains in this
+G2 re-entry.
+
+The previously investigated municipal ArcGIS FeatureServer was directly queried and did not
+return a text-identity match for 青山稲荷神社 in its 807-feature dataset. That dataset is
+therefore not promoted into the primary coordinate source and does not create a competing
+coordinate.
+
+```text
+corroboration_source_url = NONE_REQUIRED
+corroboration_coordinate = NOT_APPLICABLE
+coordinate_delta_m       = NOT_APPLICABLE
+conflicting_address_note = notation-only difference; exact parcel identity aligns
+```
+
+## Human QA
+
+The Position Contract Source Adoption Rule was re-checked against the evidence above:
+
+1. current authoritative shrine identity: PASS
+2. primary source is the same shrine POI / navigation target: PASS
+3. latitude / longitude are traceable from the primary source: PASS
+4. primary point aligns with the visitor-facing identity: PASS
+5. unexplained source / coordinate conflict requiring corroboration: NONE
+6. deterministic Visitor / Navigation Anchor can be selected without inference: PASS
+
+```text
+HUMAN_QA = PASS
+```
+
+## Gate result
+
+```text
+POSITION_GATE          = PASS
+ADOPTED_VISITOR_ANCHOR = 37.4172812, 138.5910754
+```
+
+The previous `PRIMARY_POI_COORDINATE_NOT_TRACEABLE` HOLD condition is resolved by the
+coordinate-bearing Yahoo! Map selected POI evidence.
 
 ## Boundary
 
-No coordinate is written to Candidate Master, Base Seed, Knowledge Seed, or Production.
-G3 is not executed for this Candidate while G2 is HOLD.
+This resolution record establishes the G2 adopted Position only.
+It does not hydrate Candidate Master, Base Seed, Knowledge Seed, or Production in this PR.
+G3 may proceed for this Candidate after this record is merged.
