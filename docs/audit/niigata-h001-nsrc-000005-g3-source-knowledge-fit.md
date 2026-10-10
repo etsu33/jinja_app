@@ -1,6 +1,6 @@
 # NIIGATA-001-H001 nsrc-000005 G3 Source + Knowledge Model Fit
 
-> Status: **HOLD — RESEARCH_REQUIRED_BEFORE_RELEASE (DIRECT ARTIFACT SEARCH COMPLETED)**
+> Status: **HOLD — RESEARCH_REQUIRED_BEFORE_RELEASE (SOURCE WAIT RE-ENTRY COMPLETED)**
 >
 > Recorded at: 2026-10-10
 >
@@ -375,6 +375,93 @@ detail page, or public historical archive can re-open G3.
 
 This result closes the current web-search subtask without pretending that the missing primary
 artifact has been found.
+
+## Accepted Source Wait Re-entry — 2026-10-10
+
+After the direct-artifact search was merged, G3 was re-entered once more to check whether a
+new accepted Deity / History Source had become discoverable through current public web sources.
+
+### Re-entry search scope
+
+Focused searches were repeated for:
+
+- 青山稲荷神社 + 宇迦之御魂神
+- 青山稲荷神社 + 文禄4 / 文禄四年
+- 青山稲荷神社 + 昭和51 / 遷座
+- 柏崎市 / 新潟県 public material
+- 新潟県神社庁
+- 東京電力 current / archived communication
+- public digital-archive / local-history discovery paths
+
+### Authoritative / institutional sources observed
+
+The following current sources still support identity / location / current shrine activity:
+
+1. 新潟県神社庁 — 青山稲荷神社 / 柏崎市荒浜4丁目1754番地2
+2. 柏崎市 / 新潟県 evacuation-location material — same shrine / location
+3. 東京電力 — current safety-prayer activity at 青山稲荷神社
+
+None of the reviewed material directly states:
+
+- the current enshrined deity;
+- 文禄4 / 1595 founding;
+- 昭和51 / 1976 relocation.
+
+Therefore those sources remain useful corroboration for identity / current existence only.
+
+### Secondary-source recurrence
+
+The following claims continue to recur across secondary visitor / walking records:
+
+```text
+candidate_deity      = 宇迦之御魂神
+candidate_founding   = 文禄4 / 1595
+candidate_relocation = 昭和51 / 1976
+```
+
+One shrine-directory page explicitly marks the deity attribution as estimated.
+
+A 2025 field-visit page reproduces text headed `青山稲荷について` containing all three claims,
+and an independent walking record repeats the founding / relocation history.
+
+This recurrence does not change Source classification.
+
+```text
+secondary_recurrence_strength = HIGH_AS_RESEARCH_LEAD
+accepted_fact_source          = NO
+```
+
+### Same-name Source exclusion
+
+Search also returns an official shrine page for a different `青山稲荷神社` associated with
+白鳥神社.
+
+That Source contains a deity attribution but is not the 柏崎市荒浜 Candidate and is explicitly
+excluded from `nsrc-000005`.
+
+No same-name Source is reused by name alone.
+
+### G3 re-entry result
+
+The release condition is still not satisfied.
+
+```text
+accepted_source_backed_current_deity = NONE
+accepted_source_backed_history       = NONE
+
+G3_REENTRY      = EXECUTED
+G3              = HOLD
+classification  = RESEARCH_REQUIRED_BEFORE_RELEASE
+G4_AUTHORIZED   = NO
+```
+
+No Model / Schema incompatibility was discovered.
+
+The blocker remains Source sufficiency, not representational capacity.
+
+This re-entry closes without G4 execution. A future directly reviewable shrine-originated,
+shrine-association, municipal / prefectural historical, or equivalent accepted Source can
+trigger another G3 re-entry.
 
 ## Fact / Interpretation boundary
 
