@@ -936,7 +936,7 @@ G7_GORIYAKU_ISOLATION        = PASS
 
 ### 17.1 Base
 
-同じ target-only subset を再実行した。
+同じ target-only subset を `--dry-run` で再実行した。
 
 ~~~text
 SKIP 青澤神社
@@ -950,7 +950,7 @@ G7_BASE_IDEMPOTENCY = PASS
 
 ### 17.2 Knowledge
 
-同じ Knowledge Seed を再実行した。
+同じ Knowledge Seed を `--dry-run` で再実行した。
 
 ~~~text
 source_REUSE_EXISTING = 1
