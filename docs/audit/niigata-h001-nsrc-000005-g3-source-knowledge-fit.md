@@ -1,6 +1,6 @@
 # NIIGATA-001-H001 nsrc-000005 G3 Source + Knowledge Model Fit
 
-> Status: **HOLD — RESEARCH_REQUIRED_BEFORE_RELEASE (RE-EVALUATED)**
+> Status: **HOLD — RESEARCH_REQUIRED_BEFORE_RELEASE (DIRECT ARTIFACT SEARCH COMPLETED)**
 >
 > Recorded at: 2026-10-10
 >
@@ -258,6 +258,123 @@ authoritative source that attributes at least one Deity or History Fact to this 
 would permit another G3 re-entry.
 
 No G4 execution is authorized by this follow-up.
+
+## Direct Source Artifact Search — 2026-10-10
+
+A focused follow-up search was executed for the original `青山稲荷について` artifact or an
+official / public reproduction of the same shrine-originated text.
+
+This search is narrower than the prior general Source research. Its purpose is to decide whether
+the deity / history claims can be attributed directly enough to become an accepted G3 Source.
+
+### Search targets
+
+The following target classes were checked:
+
+1. shrine-originated explanatory-board image;
+2. official reproduction of the board text;
+3. municipal / prefectural archive reproducing the shrine history or deity;
+4. shrine-association material containing the same Knowledge;
+5. public-sector / operator records directly stating the shrine history.
+
+### Result — original explanatory-board artifact
+
+Current web search did not expose a directly reviewable image of the `青山稲荷について`
+explanatory board.
+
+Image search returned current on-site shrine photographs from multiple visitor pages, including
+the approach and shrine buildings, but no board image whose text could be independently reviewed
+and attributed to the shrine.
+
+The 2025 field-visit page continues to reproduce the apparent board wording in text, but the
+original board artifact is not directly exposed by the reviewed search result.
+
+```text
+ORIGINAL_BOARD_ARTIFACT = NOT_OBTAINED
+OFFICIAL_BOARD_REPRODUCTION = NOT_FOUND
+PUBLIC_ARCHIVE_BOARD_REPRODUCTION = NOT_FOUND
+```
+
+This is a result of the current review path, not a claim that no such artifact exists offline.
+
+### Public / institutional material checked
+
+Current authoritative and public-sector records continue to support shrine identity / location:
+
+- 新潟県神社庁 identifies 青山稲荷神社 at 柏崎市荒浜4丁目1754番地2;
+- 柏崎市 / 新潟県 emergency-evacuation material identifies the same shrine / location;
+- 東京電力 current communication records annual safety prayer activity at 青山稲荷神社;
+- 新潟県 / archaeological material identifies the nearby `青山稲荷西` archaeological-site
+  name in the same broad area.
+
+None of the reviewed public / institutional material directly states the current enshrined deity,
+文禄4 founding, or 昭和51 relocation as shrine Knowledge.
+
+The archaeological `青山稲荷西` material is not treated as shrine-history evidence merely
+because the name contains `青山稲荷`.
+
+### Direct attribution — 宇迦之御魂神
+
+The strongest observed wording remains the 2025 field-visit transcription headed
+`青山稲荷について`, which states that 宇迦之御魂神 is enshrined.
+
+A separate shrine-directory page also lists 宇迦之御魂神 for the exact 柏崎市荒浜 shrine, but
+explicitly marks the deity information as estimated.
+
+Because the original shrine notice / official reproduction was not directly reviewed:
+
+```text
+DIRECT_SOURCE_ATTRIBUTION_DEITY = NOT_CONFIRMED
+candidate_deity = 宇迦之御魂神
+accepted_as_source_confirmed_fact = NO
+```
+
+The shrine name `稲荷` and generic Inari tradition are not used to infer the deity.
+
+### Direct attribution — 文禄4 founding / 昭和51 relocation
+
+The same two historical claims recur across multiple independent visitor / walking records:
+
+- 1595 / 文禄4 founding;
+- 1976 / 昭和51 relocation associated with nuclear-power-station construction.
+
+The recurrence increases research confidence that the reproduced text reflects a real local
+tradition / on-site explanation, but repetition among secondary visitor pages does not convert
+the claims into a directly attributable accepted Source.
+
+No reviewed shrine-official, shrine-association, municipal / prefectural historical archive, or
+operator record directly reproduced these two historical statements.
+
+```text
+DIRECT_SOURCE_ATTRIBUTION_FOUNDING = NOT_CONFIRMED
+DIRECT_SOURCE_ATTRIBUTION_RELOCATION = NOT_CONFIRMED
+accepted_as_source_confirmed_history = NO
+```
+
+### Source acceptance decision
+
+The direct-artifact search therefore does not change the G3 acceptance state.
+
+```text
+DIRECT_SOURCE_ARTIFACT_SEARCH = COMPLETE_FOR_CURRENT_WEB_PATH
+
+accepted_source_backed_current_deity = NONE
+accepted_source_backed_history       = NONE
+
+field_visit_transcription = RESEARCH_LEAD_ONLY
+independent_walking_record = CORROBORATION_ONLY
+estimated_deity_directory = REJECTED_AS_FACT_SOURCE
+
+G3             = HOLD
+classification = RESEARCH_REQUIRED_BEFORE_RELEASE
+G4_AUTHORIZED  = NO
+```
+
+A future directly reviewable shrine notice image, shrine-issued publication, shrine-association
+detail page, or public historical archive can re-open G3.
+
+This result closes the current web-search subtask without pretending that the missing primary
+artifact has been found.
 
 ## Fact / Interpretation boundary
 
