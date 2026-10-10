@@ -1267,16 +1267,16 @@ _H001_DISCOVERED = {
     "build_batch": None,
 }
 # 現在の lifecycle（Candidate ごと）。
-# nsrc-000004 は G7 Production Import 完了（docs/audit/niigata-h001-g7-production-import.md）。
-# G8 CORE READY は未実行のため IMPORTED で止める。Nationwide 行は Wave0 の W0-DBxx を使わず、
-# Source batch / handoff も build_batch に入れないため build_batch = null のまま。
+# nsrc-000004 は G8 Mother Ship decision APPROVED_TARGET_ONLY により CORE_READY
+# （docs/audit/niigata-h001-g8-core-ready-pretransition.md §6）。Nationwide 行は Wave0 の
+# W0-DBxx を使わず、Source batch / handoff も build_batch に入れないため build_batch = null のまま。
 H001_CURRENT_LIFECYCLE = {
     "nsrc-000001": dict(_H001_DISCOVERED),
     "nsrc-000002": dict(_H001_DISCOVERED),
     "nsrc-000003": dict(_H001_DISCOVERED),
     "nsrc-000004": {
-        "candidate_status": "IMPORTED",
-        "status_reason_code": "PRODUCTION_IMPORT_COMPLETE",
+        "candidate_status": "CORE_READY",
+        "status_reason_code": "CORE_READY_CONTRACT_PASS",
         "official_source_status": "CONFIRMED",
         "knowledge_status": "FACT_READY",
         "build_batch": None,
@@ -1404,15 +1404,14 @@ def test_niigata_h001_membership_provenance_and_current_lifecycle_are_exact():
     ]
 
 
-def test_nsrc_000004_is_synced_to_g7_imported_and_stops_before_core_ready():
-    """G7 Production Import 完了状態。G8 CORE READY は未実行。"""
+def test_nsrc_000004_is_core_ready_with_unchanged_evidence():
+    """G8 Mother Ship decision（APPROVED_TARGET_ONLY）による CORE_READY。他の field は不変。"""
     master = _load_master()
     rows = {row["candidate_id"]: row for row in master["candidates"]}
     row = rows["nsrc-000004"]
 
-    assert row["candidate_status"] == "IMPORTED"
-    assert row["candidate_status"] != "CORE_READY"
-    assert row["status_reason_code"] == "PRODUCTION_IMPORT_COMPLETE"
+    assert row["candidate_status"] == "CORE_READY"
+    assert row["status_reason_code"] == "CORE_READY_CONTRACT_PASS"
     assert row["official_source_status"] == "CONFIRMED"
     assert row["knowledge_status"] == "FACT_READY"
     assert row["build_batch"] is None
@@ -1527,11 +1526,11 @@ def _append_row(row: dict):
             _append_row({"candidate_id": "src-000006", "candidate_status": "DISCOVERED"}),
             id="unknown-namespace",
         ),
-        # nsrc-000004（IMPORTED）の lifecycle と immutable evidence。
-        pytest.param(_set("nsrc-000004", "candidate_status", "CORE_READY"), id="n4-premature-core-ready"),
+        # nsrc-000004（CORE_READY）の lifecycle と immutable evidence。
+        pytest.param(_set("nsrc-000004", "candidate_status", "IMPORTED"), id="n4-regressed-to-imported"),
         pytest.param(
-            _set("nsrc-000004", "status_reason_code", "CORE_READY_CONTRACT_PASS"),
-            id="n4-premature-core-ready-reason",
+            _set("nsrc-000004", "status_reason_code", "PRODUCTION_IMPORT_COMPLETE"),
+            id="n4-core-ready-reason-mismatch",
         ),
         pytest.param(_set("nsrc-000004", "candidate_status", "DISCOVERED"), id="n4-lifecycle-regression"),
         pytest.param(_set("nsrc-000004", "knowledge_status", "UNREVIEWED"), id="n4-knowledge-regression"),
