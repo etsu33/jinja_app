@@ -52,7 +52,8 @@ IDENTITY_VARIANTS = (
 )
 
 # lookalike だが importer の identity ではない（再利用してはいけない）
-NON_IDENTITY_VARIANTS = (
+# importer の identity ではないが、SQL の lookalike 診断には必ず拾われる表記
+NON_IDENTITY_LOOKALIKE_VARIANTS = (
     "http://matsuri.geo-itoigawa.com/calendar/m04/",
     "https://matsuri.geo-itoigawa.com/Calendar/m04/",
     "https://matsuri.geo-itoigawa.com/calendar/M04/",
@@ -62,10 +63,14 @@ NON_IDENTITY_VARIANTS = (
     "https://www.matsuri.geo-itoigawa.com/calendar/m04/",
     "https://matsuri.geo-itoigawa.com./calendar/m04/",
     "https://matsuri.geo-itoigawa.com/calendar/m04/index.html",
-    "https://matsuri.geo-itoigawa.com/calendar/m05/",
     "matsuri.geo-itoigawa.com/calendar/m04/",
     "//matsuri.geo-itoigawa.com/calendar/m04/",
     "https:/matsuri.geo-itoigawa.com/calendar/m04/",
+)
+
+# importer の identity でも lookalike でもない表記（別ページ / host なし）
+NON_IDENTITY_OTHER_VARIANTS = (
+    "https://matsuri.geo-itoigawa.com/calendar/m05/",
     "https:///calendar/m04",
 )
 
@@ -174,7 +179,8 @@ def test_identity_block_is_identical_in_every_g7_sql_file():
 def test_sql_normalized_url_equals_importer_normalize_source_url():
     urls = (
         *IDENTITY_VARIANTS,
-        *NON_IDENTITY_VARIANTS,
+        *NON_IDENTITY_LOOKALIKE_VARIANTS,
+        *NON_IDENTITY_OTHER_VARIANTS,
         *GENERAL_CORPUS,
         *IMPORTER_UNPARSEABLE,
     )
@@ -189,33 +195,34 @@ def test_sql_normalized_url_equals_importer_normalize_source_url():
 @pytest.mark.django_db
 def test_identity_count_uses_importer_semantics_only():
     identity = _create(IDENTITY_VARIANTS)
-    non_identity = _create(NON_IDENTITY_VARIANTS)
+    lookalike_non_identity = _create(NON_IDENTITY_LOOKALIKE_VARIANTS)
+    other_non_identity = _create(NON_IDENTITY_OTHER_VARIANTS)
     unparseable = _create(IMPORTER_UNPARSEABLE)
     other_type = _create(("https://matsuri.geo-itoigawa.com/calendar/m04/",), source_type="web")
     rows = _sql_rows()
 
+    # rows[pk] = (normalized_url, is_identity, is_metadata_compatible, is_lookalike)
     for pk, url in identity.items():
         assert normalize_source_url(url) == TARGET_NORMALIZED, url
         assert rows[pk][1] is True, url
-    for pk, url in non_identity.items():
+        # lookalike 診断は identity の superset
+        assert rows[pk][3] is True, url
+    for pk, url in lookalike_non_identity.items():
         assert normalize_source_url(url) != TARGET_NORMALIZED, url
         assert rows[pk][1] is False, url
+        assert rows[pk][3] is True, url
+    for pk, url in other_non_identity.items():
+        assert normalize_source_url(url) != TARGET_NORMALIZED, url
+        assert rows[pk][1] is False, url
+        assert rows[pk][3] is False, url
     for pk, url in unparseable.items():
         assert _python_normalized(url) is None, url
         assert rows[pk][0] is None, url
         assert rows[pk][1] is False, url
+    # 同じ URL でも source_type が違えば identity ではない（lookalike としてだけ拾う）
     for pk in other_type:
         assert rows[pk][1] is False
-
-    # lookalike は診断用に広く拾うが、identity とは別に数える
-    lookalikes = {pk for pk, row in rows.items() if row[3]}
-    assert set(identity) <= lookalikes
-    assert set(other_type) <= lookalikes
-    assert {
-        pk
-        for pk, url in non_identity.items()
-        if "matsuri.geo-itoigawa.com" in url.lower() and "m04" in url.lower()
-    } <= lookalikes
+        assert rows[pk][3] is True
 
 
 @pytest.mark.django_db
