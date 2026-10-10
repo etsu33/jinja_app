@@ -88,16 +88,50 @@ Full canonical Base Seed の Production apply は禁止。Production へ入れ�
 | 4 | 必要 table の存在（Shrine / Source / Deity / History / History-Source / SourceFact / goriyaku_tags / GoriyakuAssignment） |
 | 5 | aggregate count（Shrine / Source / Deity / History / SourceFact） |
 | 6 | target exact count、same-name 青澤神社、same-name 青沢神社、same-address count と該当行（id / name_jp / address / latitude / longitude / place_ref_id / goriyaku） |
-| 7 | Source: URL が `matsuri.geo-itoigawa.com/calendar/m04` を含む全行（source_type 不問）、accepted identity count、metadata compatible count |
-| 8 | target Deity / History / History→Source relation / SourceFact 行 |
-| 9 | target goriyaku tag link / ShrineGoriyakuAssignment count |
-
-Source identity は importer（`knowledge_seed.resolve_source_identity()`）の `source_type + normalize_source_url()` に合わせた。
-SQL 側の正規化は URL 全体を小文字化し、fragment と末尾 `/` を除き、明示 default port `:443` も一致扱いにする。
-importer は path の大小を区別するので、SQL は importer より広い（再利用可能な行を見落とさない）。
-metadata compatible は importer の reuse 比較項目（publisher / verification_status / confidence / bibliography / language）と同じ。
+| 7 | Source: lookalike 行（normalized_url / identity / compatible flag 付き）と Source state counts |
+| 8 | target Deity / History / History→Source relation / SourceFact 行、goriyaku tag link / GoriyakuAssignment count |
+| 9 | `production_state_class_candidate`（A/B/C/D の SQL 判定。最終分類は Mother Ship が確認） |
 
 credential / hostname / connection URL / database name は出力しない（boolean と version だけ）。
+
+### 3.1 Source identity（PR review で修正）
+
+初版は URL 全体を小文字化した広い一致を accepted Source として数えていた。これは importer の
+`normalize_source_url()` と一致しない（path の大小、query、http/https の扱いが違う）ため、次のように分離した。
+
+| 概念 | 定義 | 用途 |
+|---|---|---|
+| `source_identity_count` | `source_type = 'government'` かつ `url <> ''` かつ importer と同一の正規化 URL = `https://matsuri.geo-itoigawa.com/calendar/m04` | **accepted_source_count に使う唯一の値** |
+| `source_metadata_compatible_count` | identity 行のうち `_SOURCE_REUSE_FIELDS`（publisher / verification_status / confidence / bibliography / language）が strip 後に seed と一致 | 再利用可否 |
+| `source_url_lookalike_count` | source_type 不問、raw または正規化 URL に host と `calendar…m04` を含む | 診断のみ。再利用根拠にしない |
+
+SQL の `normalized_url` は `normalize_source_url()` を再現する: Python `str.strip()` と同じ空白集合の除去、
+`urlsplit()` と同じ C0 制御文字の左除去と TAB/CR/LF の除去、scheme と hostname の小文字化、userinfo 除去、
+default port（http 80 / https 443、先頭0付きも含む）除去、fragment 除去、root 以外の末尾 `/` 無視、
+path の大小保持、query の byte 保持、http と https の区別。importer が `ValueError` で停止する URL
+（不正 port / bracket host）は NULL になり identity に数えない。
+
+同一の block（`-- BEGIN/END nsrc_000002_source_identity`）を preflight と3つの guard に置いた。
+`backend/temples/tests/test_nsrc_000002_g7_source_identity_sql.py` が次を検証する:
+
+- 4 file の block が byte 一致
+- 表記揺れ・非 identity・一般 URL・importer が停止する URL の corpus（64件）で SQL `normalized_url` = Python `normalize_source_url()`
+- identity / lookalike / metadata compatible の分離
+
+`source_identity_state`:
+
+| 条件 | state |
+|---|---|
+| identity > 1 | `CONFLICT_IDENTITY_AMBIGUOUS` |
+| identity = 1 かつ compatible = 0 | `CONFLICT_METADATA_DRIFT` |
+| importer が解析できない government URL がある | `CONFLICT_IMPORTER_UNPARSEABLE_URL` |
+| identity ではない lookalike がある | `CONFLICT_NON_IDENTITY_LOOKALIKE` |
+| identity = 1 かつ compatible = 1 | `REUSABLE` |
+| identity = 0 | `ABSENT` |
+
+identity ではない lookalike（例: `http://` 版や別 source_type の同 URL）は再利用しない。
+その状態で import すると近似 URL の Source が並存するため、fail closed として CONFLICT に寄せ、Mother Ship 判断にした。
+government 行に importer が解析できない URL が1件でもあると importer 自体が停止するので、これも CONFLICT とした。
 
 ---
 
@@ -114,8 +148,8 @@ expected delta はどちらの case かを推測せず、Production 実測後に
 
 | Production 実測 | expected delta |
 |---|---|
-| CLEAN_CREATE かつ accepted Source 不在 | Shrine +1 / Source +1 / Deity +0 / History +1 / SourceFact +0 / goriyaku系 +0 |
-| CLEAN_CREATE かつ metadata compatible な accepted Source が1件 | Shrine +1 / Source +0 / Deity +0 / History +1 / SourceFact +0 / goriyaku系 +0 |
+| CLEAN_CREATE かつ `source_identity_state = ABSENT` | Shrine +1 / Source +1 / Deity +0 / History +1 / SourceFact +0 / goriyaku系 +0 |
+| CLEAN_CREATE かつ `source_identity_state = REUSABLE` | Shrine +1 / Source +0 / Deity +0 / History +1 / SourceFact +0 / goriyaku系 +0 |
 | B / C / D | STOP。delta を計算せず Mother Ship へ戻す |
 
 参考（Production 現在値ではない）: nsrc-000004 G7 完了時点の Production 記録値は
@@ -141,21 +175,29 @@ Shrine 121 / Source 140 / Deity 295 / History 228 / SourceFact 34。
 
 ~~~text
 shrine_total / source_total / deity_total / history_total / source_fact_total
-accepted_source_count   (0 = Source 不在, 1 = metadata compatible な1件)
+accepted_source_count   (= 実測 source_identity_count。0 か 1 だけが先へ進める)
 ~~~
 
 現在の値はすべて `NULL::bigint`。NULL のままでは比較が NULL になり `1 / 0` で必ず失敗する（fail closed）。
 Production read-only preflight の実測値で置き換えるまで、どの guard も PASS を返さない。
-3 file の frozen 値は同一でなければならない。
 
 ### 判定条件
+
+全 guard 共通の Source 条件:
+
+~~~text
+accepted_source_count IN (0, 1)
+source_identity_count            = accepted（post-Knowledge は 1）
+source_metadata_compatible_count = accepted（post-Knowledge は 1）
+source_url_lookalike_count       = accepted（post-Knowledge は 1。identity 以外の lookalike = 0）
+importer が解析できない government URL = 0
+~~~
 
 pre_base_guard:
 
 ~~~text
 aggregate 5種 = frozen
 target exact = 0 / same-name 青澤神社 = 0 / same-name 青沢神社 = 0 / same-address = 0
-accepted Source = frozen accepted_source_count、かつ全件 metadata compatible
 target Deity / History / SourceFact / goriyaku tag link / GoriyakuAssignment = 0
 ~~~
 
@@ -164,10 +206,8 @@ post_base_guard:
 ~~~text
 Shrine = frozen + 1、Source / Deity / History / SourceFact = frozen
 target exact = 1 / same-name 青澤神社 = 1 / same-name 青沢神社 = 0 / same-address = 1
-|latitude - 37.00763484| < 1e-8 かつ |longitude - 137.79024297| < 1e-8
-goriyaku = '' / goriyaku tag link = 0 / GoriyakuAssignment = 0
-target Deity / History / SourceFact = 0（Knowledge 未変更）
-accepted Source = frozen accepted_source_count
+|latitude - 37.00763484| < 1e-8 かつ |longitude - 137.79024297| < 1e-8、goriyaku = ''
+goriyaku tag link = 0 / GoriyakuAssignment = 0、target Deity / History / SourceFact = 0
 ~~~
 
 post_knowledge_verification（detail SELECT + 最終 pass 判定）:
@@ -178,45 +218,93 @@ Deity = frozen / History = frozen + 1 / SourceFact = frozen
 target exact = 1、canonical coordinate、goriyaku ''
 target Deity = 0 / History = 1 / SourceFact = 0
 History = regional_context / 青沢神社の春季祭礼 / 毎年4月第3日曜日 / event_date NULL / source_confirmed / high
-History-Source relation = 1、その Source は accepted かつ metadata compatible
-source-less History = 0
-accepted Source = 1 / compatible = 1
-goriyaku tag link = 0 / GoriyakuAssignment = 0
+History-Source relation = 1、その Source は identity かつ metadata compatible
+source-less History = 0、goriyaku tag link = 0 / GoriyakuAssignment = 0
 ~~~
 
-### Disposable local DB での検証
+### Disposable local DB simulation（Production ではない）
 
-Production ではない disposable local PostgreSQL DB（名前に `migration_safety_audit` を含む）で、Production の
-pre-state を模した状態を作り、`readonly_query.sh` 経由で実行した。
+すべて disposable local PostgreSQL DB（名前に `migration_safety_audit` を含む）で、`readonly_query.sh` 経由で実行した。
+共通の模擬 pre-state: canonical Base Seed から青澤神社を除いた121行 + `nsrc_000004_seed.json`
+（Shrine 121 / Source 3 / Deity 2 / History 2 / SourceFact 11）。
+各 case で preflight を実行し、その実測値を scratch copy の frozen block に入れて guard を実行した（repo の file は NULL のまま）。
+repo の file そのまま（frozen NULL）の guard は、どの state でも FAIL（error）になる。
 
-模擬 pre-state: canonical Base Seed から青澤神社を除いた121行 + `nsrc_000004_seed.json`。
+#### Case A — `accepted_source_count = 0`（Source 不在）
 
 ~~~text
-shrine 121 / source 3 / deity 2 / history 2 / source_fact 11 / accepted_source 0
+preflight: source_identity 0 / compatible 0 / lookalike 0 / non-identity lookalike 0 / unparseable 0
+           source_identity_state = ABSENT
+           production_state_class_candidate = CLEAN_CREATE
+frozen   : 121 / 3 / 2 / 2 / 11 / accepted 0
 ~~~
 
-上の値を scratch copy の frozen block に入れて実行した結果（repo の file は NULL のまま）:
-
-| state | pre_base | post_base | post_knowledge |
+| step | pre_base | post_base | post_knowledge |
 |---|---|---|---|
-| frozen 値 NULL（repo の file そのまま） | FAIL（error） | — | — |
-| pre-state | **1** | FAIL | — |
-| pre-state、shrine_total を 120 に変えた drift | FAIL | — | — |
-| Base subset apply 後 | FAIL | **1** | FAIL |
-| Knowledge apply 後 | — | FAIL | **1** |
-
-post-Knowledge の実測（模擬 DB）:
+| pre-state（accepted=0） | **PASS** | FAIL | FAIL |
+| pre-state を accepted=1 で凍結した場合 | FAIL | — | — |
+| Base subset apply 後 | FAIL | **PASS** | FAIL |
+| Knowledge apply 後 | FAIL | FAIL | **PASS** |
 
 ~~~text
-Shrine 121 -> 122 / Source 3 -> 4 / Deity 2 -> 2 / History 2 -> 3 / SourceFact 11 -> 11
-target_shrine 1 / deity 0 / history 1 / source_fact 0
-history_source_relations 1 / sourceless_history 0 / goriyaku tag link 0 / assignment 0
-History-Source = government / https://matsuri.geo-itoigawa.com/calendar/m04/ / source_confirmed / high / ja
+Base dry-run / apply : done created=1 updated=0 skipped=0 total_seed=1（一致）
+Knowledge dry-run    : {'source_CREATE': 1, 'history_CREATE': 1}
+Knowledge apply      : sources created=1, deities created=0, histories created=1, source_facts created=0
+final                : Shrine 121->122 / Source 3->4 / Deity 2->2 / History 2->3 / SourceFact 11->11 / goriyaku +0
+post preflight       : REUSABLE / ALREADY_MATERIALIZED
+second import        : Base created=0 skipped=1 / Knowledge {'source_REUSE_EXISTING': 1, 'history_SKIP_EXISTS': 1} / CREATE = 0
+runtime QA           : G7_PRODUCTION_RUNTIME_QA=PASS / TRANSACTION_MODE=READ_ONLY
 ~~~
 
-`accepted_source_count = 1`（既存 Source 再利用）の分岐は模擬 DB では実行していない。
+#### Case B — `accepted_source_count = 1`（metadata compatible な既存 Source を再利用）
 
-guard は意図通り動くが、frozen 値が Production 実測で確定していないため Ready は HOLD とした。
+target Shrine 不在のまま、seed と reuse 項目が一致する government Source を1件追加した。
+URL は `https://matsuri.geo-itoigawa.com/calendar/m04`（末尾 `/` なし。seed と表記は違うが importer identity は同じ）。
+
+~~~text
+preflight: source_identity 1 / compatible 1 / lookalike 1 / non-identity lookalike 0 / unparseable 0
+           source_identity_state = REUSABLE
+           production_state_class_candidate = CLEAN_CREATE
+frozen   : 121 / 4 / 2 / 2 / 11 / accepted 1
+~~~
+
+| step | pre_base | post_base | post_knowledge |
+|---|---|---|---|
+| pre-state（accepted=1） | **PASS** | FAIL | FAIL |
+| pre-state を accepted=0 で凍結した場合 | FAIL | — | — |
+| Base subset apply 後 | FAIL | **PASS** | FAIL |
+| Knowledge apply 後 | FAIL | FAIL | **PASS** |
+
+~~~text
+Base dry-run / apply : done created=1 updated=0 skipped=0 total_seed=1（Shrine +1 / Source +0）
+Knowledge dry-run    : {'source_REUSE_EXISTING': 1, 'history_CREATE': 1}
+Knowledge apply      : sources created=0, deities created=0, histories created=1, source_facts created=0
+final                : Shrine 121->122 / Source 4->4 / Deity 2->2 / History 2->3 / SourceFact 11->11 / goriyaku +0
+post preflight       : REUSABLE / ALREADY_MATERIALIZED
+second import        : Base created=0 skipped=1 / Knowledge {'source_REUSE_EXISTING': 1, 'history_SKIP_EXISTS': 1} / CREATE = 0
+runtime QA           : G7_PRODUCTION_RUNTIME_QA=PASS / TRANSACTION_MODE=READ_ONLY
+~~~
+
+#### Negative cases（import を承認しない）
+
+target Shrine 不在のまま、既存 Source だけを変えた。どれも Base import は実行していない。
+
+| case | 既存 Source | preflight | pre_base（accepted=実測 / 逆値） | importer dry-run |
+|---|---|---|---|---|
+| metadata drift | identity 1件、publisher = `糸魚川市` | identity 1 / compatible 0 / `CONFLICT_METADATA_DRIFT` / class `CONFLICT` | FAIL / FAIL | `source_CONFLICT` / `SOURCE_REUSE_CONFLICT (meaningful metadata differs: publisher)` |
+| identity ambiguous | `…/m04/` と `HTTPS://…:443/calendar/m04#x` の2件 | identity 2 / compatible 2 / `CONFLICT_IDENTITY_AMBIGUOUS` / class `CONFLICT` | FAIL / FAIL | `source_AMBIGUOUS` |
+| non-identity lookalike | `http://…/calendar/m04/` の1件 | identity 0 / lookalike 1 / non-identity 1 / `CONFLICT_NON_IDENTITY_LOOKALIKE` / class `CONFLICT` | FAIL / FAIL | `source_CREATE`（importer は別 Source を作る。guard 側で止める） |
+
+metadata drift の場合、frozen accepted を 1 にしても（compatible 0 ≠ 1）、0 にしても（identity 1 ≠ 0）guard は FAIL する。
+推測で frozen 値を選んでも通らない。
+
+simulation 用 DB 6個（template + 5 case）は検証後に削除した。
+
+~~~text
+PRE_BASE_GUARD_READY        = HOLD   (logic validated locally; frozen values not measured on Production)
+POST_BASE_GUARD_READY       = HOLD
+POST_KNOWLEDGE_VERIFY_READY = HOLD
+~~~
 
 ---
 
@@ -270,8 +358,10 @@ apply   : sources created=1, deities created=0, histories created=1, collectives
   candidate 1件・distance 0・goriyaku_tag_ids []、Reason の deity None / shrine_history = H1 / goriyaku None /
   現行 assertive History 文 / 保証表現なし、Compass distance・bearing・direction filter
 - Top1 は要求しない
+- History の Source は `source_type = government` かつ `normalize_source_url(url)` が seed と一致することを確認する
+  （Case B で再利用される既存 Source は URL 表記が seed と違い得るため。raw URL 比較だった初版は Case B で失敗し、修正した）
 
-模擬 materialized DB での実行:
+模擬 materialized DB（Case A / Case B の両方）での実行:
 
 ~~~text
 DETAIL_RUNTIME=PASS
@@ -341,6 +431,8 @@ BACKUP_RESTORE_READINESS  = HOLD
    Linux（GNU stat）では `stat -f` が filesystem 情報を返して成功するため、mode 600 の file でも
    `BLOCKED: file permissions are ...` になる。これは fail closed 側の不具合で、write を許す方向ではない。
    macOS では従来通り動く。本 PR では repo の script を変更せず、ローカル検証は順序だけ入れ替えた scratch copy で行った。
+   同じ理由で、既存の `tests/test_credential_bridge_e2e.sh` / `tests/test_readonly_query_hostname_redaction.sh` も
+   この Linux 環境では失敗する（どちらも本 PR で変更していない script の test）。
 2. ローカルの test 設定（`DISABLE_GIS_FOR_TESTS=1`）は `temples.migrations_nogis` を使うため、
    模擬 DB の latest temples migration は `0019_shrine_source_fact_foundation` と出る。
    Production は `temples/migrations`（最新 `0120_shrine_source_fact_foundation`）なので、この値は Production 実測で確認する。
@@ -352,15 +444,19 @@ BACKUP_RESTORE_READINESS  = HOLD
 | check | 結果 |
 |---|---|
 | 新規 SQL 5 file `guard.py check-readonly-sql` | SAFE（5/5） |
-| 新規 Python 2 file ruff / black / py_compile | PASS |
-| runtime QA script（模擬 materialized DB） | PASS |
+| `test_nsrc_000002_g7_source_identity_sql.py`（SQL = importer 正規化、block 一致、概念分離） | 4 passed |
+| Case A / Case B / metadata drift / ambiguous / non-identity lookalike simulation | 上記 §5 の通り |
+| runtime QA script（Case A / Case B の materialized DB） | PASS / PASS |
 | subset extraction（決定性 / repo 内出力拒否） | PASS |
 | `scripts/migration_safety/tests/test_guard.py` | 49 passed |
 | `scripts/migration_safety/tests/test_backup_logging.sh` | ALL CHECKS PASSED |
+| `test_credential_bridge_e2e.sh` / `test_readonly_query_hostname_redaction.sh` | FAIL（既存の Linux `stat` 問題。§9） |
 | nsrc-000002 Base / G4 / G5 / G6 test（4 file） | 20 passed |
+| knowledge seed / source identity 関連（`-k 'knowledge_seed or source_identity or source_reuse'`） | 318 passed |
 | `scripts/tests` | 685 passed |
-| backend full suite | 4938 passed, 12 skipped |
+| backend full suite | 4942 passed, 12 skipped |
 | `makemigrations --check` | No changes detected |
+| ruff / black（新規 Python 3 file） | PASS |
 | `git diff --check` | clean |
 | credential / hostname / connection URL in diff | なし |
 
@@ -376,10 +472,11 @@ scripts/migration_safety/sql/nsrc_000002_g7_post_base_guard.sql
 scripts/migration_safety/sql/nsrc_000002_g7_post_knowledge_verification.sql
 scripts/migration_safety/nsrc_000002_g7_extract_base_subset.py
 scripts/migration_safety/nsrc_000002_g7_runtime_qa.py
+backend/temples/tests/test_nsrc_000002_g7_source_identity_sql.py
 docs/audit/niigata-h001-nsrc-000002-g7-production-import-preflight.md
 ~~~
 
-Runtime 実装、Base Seed、Knowledge Seed、Candidate Master、models / migrations、Production 設定は変更していない。
+Runtime 実装、importer（`knowledge_seed.py`）、Base Seed、Knowledge Seed、Candidate Master、models / migrations、Production 設定は変更していない。
 
 ---
 

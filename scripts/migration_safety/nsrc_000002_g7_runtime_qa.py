@@ -36,6 +36,7 @@ from temples.services.concierge_chat import (
 )
 from temples.services.concierge_chat_candidates import _distance_m, build_chat_candidates
 from temples.services.direction_reference import _bearing, _direction_label
+from temples.services.knowledge_seed import normalize_source_url
 from temples.services.recommendation_input_profile import build_recommendation_input_profile
 from temples.services.recommendation_reason_v4 import build_recommendation_reason_v4
 
@@ -50,6 +51,7 @@ H1_CONTENT = (
     "青沢神社では毎年4月第3日曜日に春季祭礼が行われ、前日の宵宮には神楽が奉納される。"
     "祭礼当日は神輿・子供みこしの地区巡回、神楽奉納、手踊りが行われる。"
 )
+SOURCE_TYPE = "government"
 SOURCE_URL = "https://matsuri.geo-itoigawa.com/calendar/m04/"
 UNSUPPORTED_DEITY_NAMES = ("沼河比賣命", "沼河比売命")
 FORBIDDEN_GUARANTEE_PHRASES = (
@@ -83,7 +85,11 @@ def main() -> None:
         assert history["history_type"] == HISTORY_TYPE
         assert history["verification_status"] == "source_confirmed"
         assert len(history["sources"]) == 1
-        assert history["sources"][0]["url"] == SOURCE_URL
+        # A reused pre-existing Source may differ only in URL syntax; compare importer identity.
+        assert history["sources"][0]["source_type"] == SOURCE_TYPE
+        assert normalize_source_url(history["sources"][0]["url"]) == normalize_source_url(
+            SOURCE_URL
+        )
         assert history["sources"][0]["verification_status"] == "source_confirmed"
         assert {row["id"] for row in body["histories"]} == set(
             ShrineHistory.objects.filter(shrine=shrine).values_list("id", flat=True)
