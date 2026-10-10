@@ -1,6 +1,6 @@
 # NIIGATA-001-H001 G2 Position / Navigation Anchor Gate
 
-> Status: **PARTIAL PASS — 2 PASS / 3 HOLD**
+> Status: **PARTIAL PASS — 3 PASS / 2 HOLD**
 >
 > Recorded at: 2026-10-10
 >
@@ -26,14 +26,14 @@ guess is promoted to an adopted coordinate.
 | candidate_id | Shrine | G2 | adopted coordinate | reason |
 |---|---|---|---|---|
 | nsrc-000001 | 相吉神社 | HOLD_POSITION_REVIEW | — | current traceable coordinate-bearing primary POI not obtained |
-| nsrc-000002 | 青澤神社 | HOLD_POSITION_REVIEW | — | provider POI observed but numeric coordinate not traceable |
+| nsrc-000002 | 青澤神社 | PASS | 37.00763484, 137.79024297 | Mapion POI payload + route destination bind name / locality / coordinate |
 | nsrc-000003 | 蒼柴神社 | HOLD_POSITION_REVIEW | — | official map center semantics vs facility point unresolved |
 | nsrc-000004 | 青海神社（加茂市） | PASS | 37.65657387, 139.0536436 | Mapion POI + official visitor route + Kokugakuin corroboration |
 | nsrc-000005 | 青山稲荷神社（柏崎市） | PASS | 37.4172812, 138.5910754 | Yahoo! Map exact-address POI + selected map pin coordinate |
 
 ```text
-G2_PASS = 2
-G2_HOLD_POSITION_REVIEW = 3
+G2_PASS = 3
+G2_HOLD_POSITION_REVIEW = 2
 ```
 
 ## PASS: nsrc-000004 青海神社
@@ -54,6 +54,28 @@ Observed delta:
 
 The G1 same-name risk is controlled by matching the 加茂市 / あおみ identity and visitor-facing
 official address. The 糸魚川市 same-name shrine is not used.
+
+## PASS: nsrc-000002 青澤神社
+
+Canonical identity:
+- 新潟県神社庁
+- 青澤神社
+- 新潟県糸魚川市大字青海2696番地
+
+Primary map-provider POI:
+- https://www.mapion.co.jp/phonebook/M51020/15216/120399442_ipcbl/
+- displayed name: 青沢神社
+- reading: あおさわじんじゃ
+- locality: 新潟県糸魚川市大字青海
+- coordinate: `37.00763484, 137.79024297`
+
+Human QA on 2026-10-10 confirmed the current Mapion page binds the same coordinate to the
+`青沢神社` POI in `data-spotinfo` and uses it as the route destination
+(`n_end_name=青沢神社`, `n_end_lat`, `n_end_lon`).
+
+The G1 spelling `青澤` and Mapion spelling `青沢` are controlled by the matching reading,
+municipality / locality, and the separately observed exact-address provider listing at
+`2696 Oumi, Itoigawa`. No coordinate is inferred from that provider ID or from the address.
 
 ## HOLD: nsrc-000003 蒼柴神社
 
@@ -94,11 +116,10 @@ geocoding or a generic map viewport.
 The `番地` / hyphenated parcel notation difference is explainably aligned and the exact
 柏崎市荒浜 address controls same-name shrine risk.
 
-## HOLD: remaining three
+## HOLD: remaining two
 
 - 相吉神社: official address is confirmed, but no traceable numeric primary POI coordinate was
   obtained.
-- 青澤神社: Mapion POI is identified, but the captured source does not expose numeric lat/lng.
 - 蒼柴神社: official map center semantics vs facility point remain unresolved.
 
 The Gate does not reverse-geocode or infer coordinates from address / Mapcode / provider IDs.
@@ -115,16 +136,12 @@ These records are the G2 current-state evidence. The Position Contract remains t
 
 ## Candidate Master / lifecycle boundary
 
-No Candidate Master field is changed in this G2 PR.
+No Candidate Master field is changed in this G2 re-entry PR.
 
-All five remain:
+Current lifecycle state remains authoritative in Candidate Master and is not rewritten by this
+Position audit.
 
-```text
-candidate_status = DISCOVERED
-build_batch = null
-```
-
-G2 PASS does not mean BUILD_READY.
+G2 PASS does not mean BUILD_READY, FACT_READY, imported, or CORE_READY.
 
 Position status is kept in the Position Resolution Record, not pushed into
 `candidate_status`.
@@ -132,15 +149,15 @@ Position status is kept in the Position Resolution Record, not pushed into
 ## Downstream Gate boundary
 
 ```text
-nsrc-000004 -> G3 eligible / downstream G3 already audited separately
-nsrc-000005 -> G3 eligible after this G2 re-entry record is merged
+nsrc-000002 -> G3 eligible after this G2 re-entry record is merged
+nsrc-000004 -> downstream gates already progressed separately
+nsrc-000005 -> G3 HOLD / source wait tracked separately
 
 nsrc-000001 -> G2 HOLD
-nsrc-000002 -> G2 HOLD
 nsrc-000003 -> G2 HOLD
 ```
 
-Do not execute G3 for the three HOLD Candidates.
+Do not execute G3 for the two G2 HOLD Candidates.
 
 ## STOP
 
