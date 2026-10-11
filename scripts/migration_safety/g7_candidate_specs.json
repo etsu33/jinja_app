@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "purpose": "Explicit G7 artifact generation input. Every value is copied from validated G1-G7 evidence; scripts/migration_safety/g7_artifacts.py infers nothing. Not a Production input and not a runtime input.",
+  "candidates": [
+    {
+      "candidate_id": "nsrc-000002",
+      "knowledge_profile": "HISTORY_ONLY_SINGLE_SOURCE",
+      "identity": {
+        "official_name": "青澤神社",
+        "official_address": "新潟県糸魚川市大字青海2696番地",
+        "identity_label": "aosawa",
+        "name_variants": [
+          {
+            "name_jp": "青澤神社",
+            "label": "kyuji"
+          },
+          {
+            "name_jp": "青沢神社",
+            "label": "shinji"
+          }
+        ]
+      },
+      "base_seed_row": {
+        "name_jp": "青澤神社",
+        "address": "新潟県糸魚川市大字青海2696番地",
+        "latitude": 37.00763484,
+        "longitude": 137.79024297,
+        "goriyaku": "",
+        "kyusei": null,
+        "astro_elements": [],
+        "location": {
+          "lat": 37.00763484,
+          "lng": 137.79024297
+        }
+      },
+      "frozen_pre_state": {
+        "shrine_total": 121,
+        "source_total": 140,
+        "deity_total": 295,
+        "history_total": 228,
+        "source_fact_total": 34,
+        "accepted_source_count": 0,
+        "server_version": "17.6",
+        "latest_temples_migration": "0120_shrine_source_fact_foundation",
+        "preflight_result": "PASS",
+        "production_state_class": "CLEAN_CREATE",
+        "source_identity_state": "ABSENT"
+      },
+      "expected_delta": {
+        "shrine": 1,
+        "source": 1,
+        "deity": 0,
+        "history": 1,
+        "source_fact": 0
+      },
+      "knowledge": {
+        "source": {
+          "source_type": "government",
+          "url": "https://matsuri.geo-itoigawa.com/calendar/m04/",
+          "normalized_url": "https://matsuri.geo-itoigawa.com/calendar/m04",
+          "publisher": "糸魚川市 / 糸魚川ジオパーク協議会",
+          "verification_status": "source_confirmed",
+          "confidence": "high",
+          "bibliography": "",
+          "language": "ja",
+          "lookalike_like_patterns": [
+            "%matsuri.geo-itoigawa.com%",
+            "%calendar%m04%"
+          ]
+        },
+        "deities": [],
+        "histories": [
+          {
+            "history_type": "regional_context",
+            "title": "青沢神社の春季祭礼",
+            "content": "青沢神社では毎年4月第3日曜日に春季祭礼が行われ、前日の宵宮には神楽が奉納される。祭礼当日は神輿・子供みこしの地区巡回、神楽奉納、手踊りが行われる。",
+            "period_text": "毎年4月第3日曜日",
+            "event_date": null,
+            "verification_status": "source_confirmed",
+            "confidence": "high"
+          }
+        ],
+        "source_facts": []
+      },
+      "runtime_qa": {
+        "unsupported_deity_names": [
+          "沼河比賣命",
+          "沼河比売命"
+        ],
+        "expect_history_background_sentence": true,
+        "compass_origin": {
+          "lat": 35.681236,
+          "lng": 139.767125
+        }
+      },
+      "source_identity_regression_test": "backend/temples/tests/test_nsrc_000002_g7_source_identity_sql.py"
+    }
+  ]
+}

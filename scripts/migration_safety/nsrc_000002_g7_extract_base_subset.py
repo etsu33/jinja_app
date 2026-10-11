@@ -24,39 +24,37 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parents[1]
 sys.path.insert(0, str(SCRIPT_DIR))
 
+from g7_artifacts import (  # noqa: E402
+    SubsetError,
+    candidate_spec,
+    extract_target_subset,
+    load_spec,
+    render_subset,
+)
 from guard import is_safe_dump_path  # noqa: E402
 
 BASE_SEED_PATH = REPO_ROOT / "backend" / "temples" / "data" / "shrines_seed_clean.json"
-TARGET_NAME = "青澤神社"
-TARGET_ADDRESS = "新潟県糸魚川市大字青海2696番地"
-EXPECTED_ROW = {
-    "name_jp": TARGET_NAME,
-    "address": TARGET_ADDRESS,
-    "latitude": 37.00763484,
-    "longitude": 137.79024297,
-    "goriyaku": "",
-    "kyusei": None,
-    "astro_elements": [],
-    "location": {"lat": 37.00763484, "lng": 137.79024297},
-}
+# The frozen G7 row and identity come from the explicit G7 input spec
+# (scripts/migration_safety/g7_candidate_specs.json); extraction is the generic
+# target-only path in g7_artifacts.py.
+_SPEC = candidate_spec(load_spec(), "nsrc-000002")
+TARGET_NAME = _SPEC["identity"]["official_name"]
+TARGET_ADDRESS = _SPEC["identity"]["official_address"]
+EXPECTED_ROW = _SPEC["base_seed_row"]
 
 
 def extract_subset(base_seed_path: Path = BASE_SEED_PATH) -> list[dict]:
     rows = json.loads(base_seed_path.read_text(encoding="utf-8"))
-    subset = [
-        row
-        for row in rows
-        if row.get("name_jp") == TARGET_NAME and row.get("address") == TARGET_ADDRESS
-    ]
-    if len(subset) != 1:
-        raise SystemExit(f"BLOCKED: expected exactly 1 target row, found {len(subset)}")
-    if subset[0] != EXPECTED_ROW:
-        raise SystemExit("BLOCKED: target Base Seed row differs from the frozen G7 row")
-    return subset
+    try:
+        return extract_target_subset(
+            rows, name_jp=TARGET_NAME, address=TARGET_ADDRESS, expected_row=EXPECTED_ROW
+        )
+    except SubsetError as error:
+        raise SystemExit(str(error)) from None
 
 
 def render(subset: list[dict]) -> str:
-    return json.dumps(subset, ensure_ascii=False, indent=2) + "\n"
+    return render_subset(subset)
 
 
 def main(argv: list[str]) -> int:

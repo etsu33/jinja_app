@@ -1,0 +1,111 @@
+-- {{candidate_id}} G7 post-Knowledge Production verification
+-- SELECT-only. No credential / connection-target output. No Production numeric PK is referenced.
+-- Expected final delta from the frozen pre-state:
+--   Shrine +1 / Source +(1 - accepted_source_count) / Deity +0 / History +1 / SourceFact +0
+-- Source: exactly one importer identity row, metadata compatible, no lookalike beyond it.
+
+SELECT
+  (SELECT COUNT(*) FROM temples_shrine) AS shrine_total,
+  (SELECT COUNT(*) FROM temples_shrineknowledgesource) AS source_total,
+  (SELECT COUNT(*) FROM temples_shrinedeity) AS deity_total,
+  (SELECT COUNT(*) FROM temples_shrinehistory) AS history_total,
+  (SELECT COUNT(*) FROM temples_shrinesourcefact) AS source_fact_total;
+
+WITH target AS (
+  SELECT id FROM temples_shrine
+  WHERE name_jp = {{official_name_sql}} AND address = {{official_address_sql}}
+)
+SELECT
+  (SELECT COUNT(*) FROM target) AS target_shrine,
+  (SELECT COUNT(*) FROM temples_shrinedeity d JOIN target t ON t.id = d.shrine_id) AS target_deity,
+  (SELECT COUNT(*) FROM temples_shrinehistory h JOIN target t ON t.id = h.shrine_id) AS target_history,
+  (SELECT COUNT(*) FROM temples_shrinesourcefact sf JOIN target t ON t.id = sf.shrine_id) AS target_source_fact,
+  (SELECT COUNT(*) FROM temples_shrinehistory_sources hs JOIN temples_shrinehistory h ON h.id = hs.shrinehistory_id JOIN target t ON t.id = h.shrine_id) AS history_source_relations,
+  (SELECT COUNT(*) FROM temples_shrinehistory h JOIN target t ON t.id = h.shrine_id
+     WHERE NOT EXISTS (SELECT 1 FROM temples_shrinehistory_sources hs WHERE hs.shrinehistory_id = h.id)) AS sourceless_history,
+  (SELECT COUNT(*) FROM temples_shrine_goriyaku_tags gt JOIN target t ON t.id = gt.shrine_id) AS target_goriyaku_tag_links,
+  (SELECT COUNT(*) FROM temples_shrinegoriyakuassignment ga JOIN target t ON t.id = ga.shrine_id) AS target_goriyaku_assignments;
+
+SELECT
+  h.history_type,
+  h.title,
+  h.period_text,
+  h.event_date,
+  h.verification_status,
+  h.confidence,
+  src.source_type,
+  src.url,
+  src.publisher,
+  src.verification_status AS source_verification_status,
+  src.confidence AS source_confidence,
+  src.language AS source_language
+FROM temples_shrinehistory h
+JOIN temples_shrine s ON s.id = h.shrine_id
+JOIN temples_shrinehistory_sources hs ON hs.shrinehistory_id = h.id
+JOIN temples_shrineknowledgesource src ON src.id = hs.shrineknowledgesource_id
+WHERE s.name_jp = {{official_name_sql}}
+  AND s.address = {{official_address_sql}}
+ORDER BY h.title, src.url;
+
+WITH
+frozen AS (
+  -- FROZEN_PRE_STATE: measured by {{candidate_slug}}_g7_preflight.sql on Production (read-only),
+  -- PostgreSQL {{frozen_server_version}}, temples {{frozen_latest_temples_migration}}.
+  -- Mother Ship decision: G7_READ_ONLY_PREFLIGHT = {{frozen_preflight_result}} / PRODUCTION_STATE_CLASS = {{frozen_production_state_class}}
+  -- (source_identity_state = {{frozen_source_identity_state}}). Any drift from these values fails closed.
+  -- The block must be identical in the pre-Base / post-Base / post-Knowledge files.
+  SELECT
+    {{frozen_shrine_total}}::bigint AS shrine_total,
+    {{frozen_source_total}}::bigint AS source_total,
+    {{frozen_deity_total}}::bigint AS deity_total,
+    {{frozen_history_total}}::bigint AS history_total,
+    {{frozen_source_fact_total}}::bigint AS source_fact_total,
+    -- = measured source_identity_count; only 0 (absent) or 1 (metadata compatible) may proceed
+    {{frozen_accepted_source_count}}::bigint AS accepted_source_count
+),
+target AS (
+  SELECT id, latitude, longitude, goriyaku
+  FROM temples_shrine
+  WHERE name_jp = {{official_name_sql}}
+    AND address = {{official_address_sql}}
+),
+{{source_identity_block}}SELECT 1 / CASE WHEN (
+  (SELECT COUNT(*) FROM temples_shrine) = f.shrine_total + 1
+  AND (SELECT COUNT(*) FROM temples_shrineknowledgesource) = f.source_total + (1 - f.accepted_source_count)
+  AND (SELECT COUNT(*) FROM temples_shrinedeity) = f.deity_total
+  AND (SELECT COUNT(*) FROM temples_shrinehistory) = f.history_total + 1
+  AND (SELECT COUNT(*) FROM temples_shrinesourcefact) = f.source_fact_total
+  AND (SELECT COUNT(*) FROM target) = 1
+  AND (SELECT COUNT(*) FROM target
+        WHERE abs(latitude - {{latitude}}) < 0.00000001
+          AND abs(longitude - {{longitude}}) < 0.00000001
+          AND COALESCE(goriyaku, '') = '') = 1
+  AND (SELECT COUNT(*) FROM temples_shrinedeity d JOIN target t ON t.id = d.shrine_id) = 0
+  AND (SELECT COUNT(*) FROM temples_shrinesourcefact sf JOIN target t ON t.id = sf.shrine_id) = 0
+  AND (SELECT COUNT(*) FROM temples_shrinehistory h JOIN target t ON t.id = h.shrine_id) = 1
+  AND (SELECT COUNT(*) FROM temples_shrinehistory h JOIN target t ON t.id = h.shrine_id
+        WHERE h.history_type = {{history_type_sql}}
+          AND h.title = {{history_title_sql}}
+          AND h.period_text = {{history_period_text_sql}}
+          AND h.event_date IS NULL
+          AND h.verification_status = {{history_verification_status_sql}}
+          AND h.confidence = {{history_confidence_sql}}) = 1
+  AND (SELECT COUNT(*) FROM temples_shrinehistory_sources hs
+        JOIN temples_shrinehistory h ON h.id = hs.shrinehistory_id
+        JOIN target t ON t.id = h.shrine_id) = 1
+  AND (SELECT COUNT(*) FROM temples_shrinehistory_sources hs
+        JOIN temples_shrinehistory h ON h.id = hs.shrinehistory_id
+        JOIN target t ON t.id = h.shrine_id
+        JOIN source_metadata_compatible cs ON cs.id = hs.shrineknowledgesource_id) = 1
+  AND (SELECT COUNT(*) FROM temples_shrinehistory h JOIN target t ON t.id = h.shrine_id
+        WHERE NOT EXISTS (SELECT 1 FROM temples_shrinehistory_sources hs WHERE hs.shrinehistory_id = h.id)) = 0
+  AND f.accepted_source_count IN (0, 1)
+  AND (SELECT COUNT(*) FROM source_identity) = 1
+  AND (SELECT COUNT(*) FROM source_metadata_compatible) = 1
+  AND (SELECT COUNT(*) FROM source_url_lookalike) = 1
+  AND (SELECT COUNT(*) FROM source_url_norm
+        WHERE source_type = {{source_type_sql}} AND url <> '' AND normalized_url IS NULL) = 0
+  AND (SELECT COUNT(*) FROM temples_shrine_goriyaku_tags gt JOIN target t ON t.id = gt.shrine_id) = 0
+  AND (SELECT COUNT(*) FROM temples_shrinegoriyakuassignment ga JOIN target t ON t.id = ga.shrine_id) = 0
+) THEN 1 ELSE 0 END AS g7_post_knowledge_verification_pass
+FROM frozen f;
