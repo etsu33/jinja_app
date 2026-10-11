@@ -1660,3 +1660,283 @@ def test_niigata_h001_contract_rejects_mutations(mutate):
     master = _load_master()
     assert _h001_violations(master) == []
     assert _h001_violations(_h001_mutation(master, mutate)) != []
+
+
+# --- Nationwide Source Track: NIIGATA-001-H002 -----------------------------------------
+#
+# docs/audit/niigata-batch001-ready-set-freeze.md の H002 5社の exact regression（G0 Registry Admission）。
+# H001 と同じく Handoff ごとの regression であり、Global total の magic number ではない。
+#
+# 4件の「赤城社」は別々の Registry Candidate である。名前の一致から identity / duplicate を推論せず、
+# 統合・重複排除・alias をしない（G1 の責務）。candidate_name の一意性は要求しない。
+# Source 上の住所（例: 佐渡市加茂歌代2662番地）は frozen handoff の evidence であり、
+# G0 の Candidate Master には official_address 等として持たせない。
+
+H002_HANDOFF_ID = "NIIGATA-001-H002"
+H002_SOURCE_BATCH_ID = "NIIGATA-001"
+H002_SOURCE_SNAPSHOT_SHA256 = "f54022303700821672ee4ee65e9967a7e8f343715a66ad987cc0b43530850380"
+H002_SOURCE_URL = "https://niigata-jinjacho.jp/shrine_niigata/search.php"
+H002_MEMBERS = (
+    ("nsrc-000006", "赤井神社", "page001-row006"),
+    ("nsrc-000007", "赤城社", "page001-row007"),
+    ("nsrc-000008", "赤城社", "page001-row008"),
+    ("nsrc-000009", "赤城社", "page001-row009"),
+    ("nsrc-000010", "赤城社", "page001-row010"),
+)
+_H002_G0_LIFECYCLE = {
+    "candidate_status": "DISCOVERED",
+    "status_reason_code": "REGISTRY_ADMISSION_COMPLETE",
+    "official_source_status": "AVAILABLE",
+    "knowledge_status": "UNREVIEWED",
+    "build_batch": None,
+}
+# G0 時点で持ってはいけない field（G1 以降の hydrate / Wave0 provenance）。
+H002_FORBIDDEN_G0_FIELDS = frozenset(
+    {
+        "official_name",
+        "official_address",
+        "address",
+        "latitude",
+        "longitude",
+        "lat",
+        "lng",
+        "location",
+        "shrine_id",
+        "goriyaku",
+        "goriyaku_tags",
+        "knowledge",
+        "deities",
+        "histories",
+        "discovery_sources",
+        "discovery_rank",
+    }
+)
+
+
+def _expected_h002_row(candidate_id: str, candidate_name: str, source_position: str) -> dict:
+    return {
+        "candidate_id": candidate_id,
+        "candidate_name": candidate_name,
+        "prefecture": "新潟県",
+        "duplicate_status": "UNREVIEWED",
+        "wave_id": None,
+        "identity_status": "UNREVIEWED",
+        "candidate_reason": NATIONWIDE_CANDIDATE_REASON,
+        "admission_provenance": {
+            "track": NATIONWIDE_TRACK,
+            "prefecture": "新潟県",
+            "source_batch_id": H002_SOURCE_BATCH_ID,
+            "handoff_id": H002_HANDOFF_ID,
+            "source_position": source_position,
+            "source_snapshot_sha256": H002_SOURCE_SNAPSHOT_SHA256,
+            "source_url": H002_SOURCE_URL,
+            "source_verified_at": "2026-10-08",
+            "captured_at": "2026-10-08T14:27:00+09:00",
+        },
+        **_H002_G0_LIFECYCLE,
+    }
+
+
+def _h002_violations(master: dict) -> list[str]:
+    """H002 の exact G0 contract からのずれを列挙する（空なら PASS）。"""
+    candidates = master["candidates"]
+    violations: list[str] = []
+
+    ids = [str(row.get("candidate_id", "")) for row in candidates]
+    duplicated = sorted({cid for cid in ids if ids.count(cid) > 1})
+    if duplicated:
+        violations.append(f"reused candidate_id {duplicated}")
+    unknown = [
+        cid for cid in ids if not (WAVE0_ID_RE.fullmatch(cid) or NATIONWIDE_ID_RE.fullmatch(cid))
+    ]
+    if unknown:
+        violations.append(f"unknown namespace {unknown}")
+
+    h002 = [
+        row
+        for row in candidates
+        if (row.get("admission_provenance") or {}).get("handoff_id") == H002_HANDOFF_ID
+    ]
+    expected = [_expected_h002_row(*member) for member in H002_MEMBERS]
+    if [row.get("candidate_id") for row in h002] != [row["candidate_id"] for row in expected]:
+        violations.append(f"H002 ids {[row.get('candidate_id') for row in h002]}")
+
+    by_id = {row.get("candidate_id"): row for row in candidates}
+    for want in expected:
+        row = by_id.get(want["candidate_id"])
+        if row is None:
+            violations.append(f"{want['candidate_id']} missing")
+            continue
+        if row != want:
+            diff = sorted(k for k in set(row) | set(want) if row.get(k) != want.get(k))
+            violations.append(f"{want['candidate_id']} differs: {diff}")
+        effective = _effective(master, row)
+        if effective.get("wave_id") is not None:
+            violations.append(f"{want['candidate_id']} wave_id={effective.get('wave_id')!r}")
+        for field in H001_LIFECYCLE_FIELDS:
+            if effective.get(field) != want[field]:
+                violations.append(
+                    f"{want['candidate_id']} effective {field}={effective.get(field)!r}"
+                )
+        if H002_FORBIDDEN_G0_FIELDS & row.keys():
+            violations.append(
+                f"{want['candidate_id']} premature fields {sorted(H002_FORBIDDEN_G0_FIELDS & row.keys())}"
+            )
+        if row.get("build_batch") in {H002_SOURCE_BATCH_ID, H002_HANDOFF_ID}:
+            violations.append(f"{want['candidate_id']} build_batch={row.get('build_batch')!r}")
+    return violations
+
+
+def test_niigata_h002_is_registered_exactly_at_g0():
+    master = _load_master()
+    assert _h002_violations(master) == []
+
+    h002 = [
+        row
+        for row in _nationwide_candidates(master)
+        if row["admission_provenance"]["handoff_id"] == H002_HANDOFF_ID
+    ]
+    assert len(h002) == 5
+    assert [row["candidate_id"] for row in h002] == [m[0] for m in H002_MEMBERS]
+    assert [row["candidate_name"] for row in h002] == [m[1] for m in H002_MEMBERS]
+    assert [row["admission_provenance"]["source_position"] for row in h002] == [
+        m[2] for m in H002_MEMBERS
+    ]
+    assert {row["admission_provenance"]["source_batch_id"] for row in h002} == {
+        H002_SOURCE_BATCH_ID
+    }
+    assert {row["admission_provenance"]["handoff_id"] for row in h002} == {H002_HANDOFF_ID}
+    assert {row["admission_provenance"]["source_snapshot_sha256"] for row in h002} == {
+        H002_SOURCE_SNAPSHOT_SHA256
+    }
+    # 4件の赤城社は別 Candidate（名前の一致で統合しない）。
+    assert [row["candidate_name"] for row in h002].count("赤城社") == 4
+    assert len({row["candidate_id"] for row in h002}) == 5
+    assert len({row["admission_provenance"]["source_position"] for row in h002}) == 5
+
+    for row in h002:
+        assert row["candidate_status"] == "DISCOVERED"
+        assert row["status_reason_code"] == "REGISTRY_ADMISSION_COMPLETE"
+        assert row["duplicate_status"] == "UNREVIEWED"
+        assert row["identity_status"] == "UNREVIEWED"
+        assert row["official_source_status"] == "AVAILABLE"
+        assert row["knowledge_status"] == "UNREVIEWED"
+        assert row["build_batch"] is None
+        assert row["wave_id"] is None
+        assert row["candidate_reason"] == NATIONWIDE_CANDIDATE_REASON
+        assert "discovery_sources" not in row
+        assert "discovery_rank" not in row
+        assert not (H002_FORBIDDEN_G0_FIELDS & row.keys())
+
+    # H002 は H001 の後ろに append し、既存の並び（Historical Wave0 → H001）を変えない。
+    ids = [row["candidate_id"] for row in master["candidates"]]
+    wave0_ids = [row["candidate_id"] for row in _wave0_candidates(master)]
+    assert ids[: len(wave0_ids)] == wave0_ids
+    h001_ids = [m[0] for m in H001_MEMBERS]
+    h002_ids = [m[0] for m in H002_MEMBERS]
+    assert ids[len(wave0_ids) : len(wave0_ids) + len(h001_ids)] == h001_ids
+    assert ids.index(h002_ids[0]) > ids.index(h001_ids[-1])
+
+    # Cohort accounting は H002 登録で変わらない（global total は固定しない）。
+    assert _h001_violations(master) == []
+    wave0 = _wave0_candidates(master)
+    assert len(wave0) == EXPECTED_WAVE0_TOTAL
+    assert Counter(r["candidate_status"] for r in wave0) == EXPECTED_STATUS_COUNTS
+    assert Counter(r["status_reason_code"] for r in wave0) == EXPECTED_REASON_COUNTS
+
+
+def _h002_reorder(master, rows):
+    candidates = master["candidates"]
+    i, j = (
+        candidates.index(rows["nsrc-000007"]),
+        candidates.index(rows["nsrc-000008"]),
+    )
+    candidates[i], candidates[j] = candidates[j], candidates[i]
+
+
+def _h002_remove(candidate_id: str):
+    def mutate(master, rows):
+        master["candidates"].remove(rows[candidate_id])
+
+    return mutate
+
+
+def _h002_extra_member(master, rows):
+    extra = json.loads(json.dumps(rows["nsrc-000010"]))
+    extra["candidate_id"] = "nsrc-000011"
+    extra["admission_provenance"]["source_position"] = "page002-row001"
+    master["candidates"].append(extra)
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        pytest.param(_set("nsrc-000008", "candidate_id", "nsrc-000011"), id="h002-renamed-id"),
+        pytest.param(_set("nsrc-000007", "candidate_id", "nsrc-000002"), id="h002-reused-nsrc-id"),
+        pytest.param(_set("nsrc-000006", "candidate_id", "wave0-010"), id="h002-reused-wave0-id"),
+        pytest.param(
+            _set_provenance("nsrc-000009", "source_position", "page001-row011"),
+            id="h002-changed-source-position",
+        ),
+        pytest.param(
+            _set_provenance("nsrc-000010", "handoff_id", "NIIGATA-001-H001"),
+            id="h002-changed-handoff-id",
+        ),
+        pytest.param(
+            _set_provenance("nsrc-000006", "source_snapshot_sha256", "0" * 64),
+            id="h002-changed-snapshot-sha",
+        ),
+        pytest.param(
+            _set("nsrc-000007", "identity_status", "CONFIRMED"), id="h002-premature-identity"
+        ),
+        pytest.param(_set("nsrc-000008", "duplicate_status", "NEW"), id="h002-premature-duplicate-new"),
+        pytest.param(
+            _set("nsrc-000009", "duplicate_status", "SAME_SHRINE"),
+            id="h002-premature-duplicate-same-shrine",
+        ),
+        pytest.param(_set("nsrc-000006", "candidate_status", "BUILD_READY"), id="h002-premature-build-ready"),
+        pytest.param(_set("nsrc-000006", "official_name", "赤井神社"), id="h002-premature-official-name"),
+        pytest.param(
+            _set("nsrc-000007", "official_address", "十日町市四日町2534番地"),
+            id="h002-premature-official-address",
+        ),
+        pytest.param(_set("nsrc-000010", "latitude", 37.0), id="h002-premature-coordinate"),
+        pytest.param(_set("nsrc-000008", "build_batch", "NIIGATA-001"), id="h002-build-batch-source"),
+        pytest.param(
+            _set("nsrc-000008", "build_batch", "NIIGATA-001-H002"), id="h002-build-batch-handoff"
+        ),
+        pytest.param(_set("nsrc-000009", "build_batch", "W0-DB08"), id="h002-invented-wave0-build-batch"),
+        pytest.param(
+            _set(
+                "nsrc-000006",
+                "discovery_sources",
+                [
+                    {
+                        "discovery_source": "Omairi 全国神社人気ランキング2026",
+                        "discovery_source_url": "https://omairi.club/spots/ranking/shrine/page/1",
+                        "discovery_rank": 1,
+                        "captured_at": "2026-10-08",
+                    }
+                ],
+            ),
+            id="h002-wave0-discovery-sources",
+        ),
+        pytest.param(_set("nsrc-000007", "discovery_rank", 1), id="h002-wave0-discovery-rank"),
+        pytest.param(_drop("nsrc-000010", "wave_id"), id="h002-inherits-wave-id-W0"),
+        pytest.param(_drop("nsrc-000006", "knowledge_status"), id="h002-inherits-wave0-knowledge"),
+        pytest.param(
+            _append_row({"candidate_id": "src-000011", "candidate_status": "DISCOVERED"}),
+            id="h002-unknown-namespace",
+        ),
+        pytest.param(_h002_reorder, id="h002-member-reordered"),
+        pytest.param(_h002_remove("nsrc-000006"), id="h002-member-removed"),
+        pytest.param(_h002_extra_member, id="h002-member-added"),
+        # 同名の赤城社を1件に統合（重複排除）した状態。
+        pytest.param(_h002_remove("nsrc-000009"), id="h002-akagi-deduplicated"),
+        pytest.param(_set("nsrc-000008", "candidate_name", "赤城神社"), id="h002-akagi-renamed"),
+    ],
+)
+def test_niigata_h002_contract_rejects_mutations(mutate):
+    master = _load_master()
+    assert _h002_violations(master) == []
+    assert _h002_violations(_h001_mutation(master, mutate)) != []
