@@ -253,9 +253,10 @@ goriyaku_tag_max_id       = 39
 goriyaku_tag_distinct_ids = 39
 ```
 
-G7 の Base / Knowledge dry-run と apply はいずれも goriyaku delta 0 で、target の tag link / assignment は 0 件。
-`import_shrines_seed --skip-goriyaku-tags` と Knowledge importer は GoriyakuTag を作らない contract であり、
-既存 regression（`test_nsrc_000002_knowledge_seed.py` の goriyaku isolation）も Knowledge import 前後で GoriyakuTag master 不変を確認している。
+G7 Base dry-run / apply は `goriyaku_tags rows=0 updated=0 added_links=0 removed_links=0` を記録した。
+Knowledge importer は GoriyakuTag / ShrineGoriyakuAssignment を操作対象に持たず、
+既存 regression（`test_nsrc_000002_knowledge_seed.py` の goriyaku isolation）で GoriyakuTag master と target goriyaku state の before / after 完全一致を確認している。
+Production post-Knowledge verification でも `Shrine.goriyaku = ""`、`target_goriyaku_tag_links = 0`、`target_goriyaku_assignments = 0` を確認した。
 
 Limitation:
 
