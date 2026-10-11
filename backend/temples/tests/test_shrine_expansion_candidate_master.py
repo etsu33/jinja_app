@@ -1219,115 +1219,197 @@ def test_wave0_discovery_provenance_has_required_fields():
             assert source["captured_at"]
 
 
-# --- Nationwide Source Track: NIIGATA-001-H001 -----------------------------------------
+# --- Nationwide Source Track: handoff regression（data-driven） ------------------------------
 #
-# docs/audit/niigata-batch001-ready-set-freeze.md の H001 5社の exact regression。
+# docs/audit/niigata-batch001-ready-set-freeze.md の frozen handoff ごとの exact regression。
 # Handoff ごとの regression であり、Global total の magic number ではない。
+#
+# 期待値は test 専用 manifest（tests/fixtures/shrine_expansion_handoffs.json）が持つ。
+# 全 handoff は同じ generic validator（_handoff_violations）と同じ parametrized contract を通る。
+# H003 以降は manifest に handoff を追加するだけで、専用の validator / block を足さない。
 #
 # 2つの層に分けて固定する:
 #   immutable : membership / 名称 / prefecture / wave_id / candidate_reason /
-#               admission_provenance（G0 登録後 immutable）/ G1 identity・duplicate evidence
+#               admission_provenance（G0 登録後 immutable）/ G1 identity・duplicate
 #   lifecycle : candidate_status / status_reason_code / official_source_status /
 #               knowledge_status / build_batch（Candidate ごとに独立して進む）
-# Candidate を次の state へ進めるときは H001_CURRENT_LIFECYCLE の該当行だけを変える。
+# Candidate を次の state へ進めるときは manifest の該当 member だけを変える。
 # 行全体は exact に比較するので、official_* / 座標 / goriyaku 等の premature な field も検出する。
+#
+# manifest 自体の誤りは frozen Ready Set（Markdown の H00x table）との cross-check で検出する
+# （test_handoff_manifest_matches_frozen_ready_set）。
+#
+# 同名 Candidate（例: H002 の赤城社4件）は別々の Registry Candidate である。名前の一致から
+# identity / duplicate を推論せず、統合・重複排除・alias をしない。candidate_name の一意性は要求しない。
+# Source 上の住所は frozen handoff の evidence であり、Candidate Master には official_address 等として持たせない。
+
+HANDOFF_MANIFEST_PATH = (
+    Path(__file__).resolve().parent / "fixtures" / "shrine_expansion_handoffs.json"
+)
+FROZEN_READY_SET_PATH = (
+    Path(__file__).resolve().parents[3] / "docs" / "audit" / "niigata-batch001-ready-set-freeze.md"
+)
 
 H001_HANDOFF_ID = "NIIGATA-001-H001"
-H001_SOURCE_BATCH_ID = "NIIGATA-001"
-H001_SOURCE_SNAPSHOT_SHA256 = "f54022303700821672ee4ee65e9967a7e8f343715a66ad987cc0b43530850380"
-H001_SOURCE_URL = "https://niigata-jinjacho.jp/shrine_niigata/search.php"
-H001_MEMBERS = (
-    ("nsrc-000001", "相吉神社", "page001-row001"),
-    ("nsrc-000002", "青澤神社", "page001-row002"),
-    ("nsrc-000003", "蒼柴神社", "page001-row003"),
-    ("nsrc-000004", "青海神社", "page001-row004"),
-    ("nsrc-000005", "青山稲荷神社", "page001-row005"),
-)
-H001_G1_DUPLICATE_STATUS = {
-    "nsrc-000001": "NEW",
-    "nsrc-000002": "NEW",
-    "nsrc-000003": "NEW",
-    "nsrc-000004": "SAME_NAME_DIFFERENT_SHRINE",
-    "nsrc-000005": "NEW",
-}
-WAVE0_RANKING_PROVENANCE_KEYS = frozenset({"discovery_sources", "discovery_rank"})
+H002_HANDOFF_ID = "NIIGATA-001-H002"
 
-H001_LIFECYCLE_FIELDS = (
+HANDOFF_LIFECYCLE_FIELDS = (
     "candidate_status",
     "status_reason_code",
     "official_source_status",
     "knowledge_status",
     "build_batch",
 )
-_H001_DISCOVERED = {
+HANDOFF_SPEC_FIELDS = frozenset(
+    {
+        "handoff_id",
+        "source_batch_id",
+        "prefecture",
+        "source_snapshot_sha256",
+        "source_url",
+        "source_verified_at",
+        "captured_at",
+        "members",
+    }
+)
+HANDOFF_MEMBER_FIELDS = frozenset(
+    {
+        "candidate_id",
+        "candidate_name",
+        "source_position",
+        "identity_status",
+        "duplicate_status",
+        "lifecycle",
+    }
+)
+WAVE0_RANKING_PROVENANCE_KEYS = frozenset({"discovery_sources", "discovery_rank"})
+# Candidate Master に持たせてはいけない field（G1 以降の hydrate / Wave0 provenance）。
+# G1 PASS 後も official_name / official_address 等は Candidate Master に持たせない。
+HANDOFF_FORBIDDEN_HYDRATION_FIELDS = frozenset(
+    {
+        "official_name",
+        "official_address",
+        "address",
+        "latitude",
+        "longitude",
+        "lat",
+        "lng",
+        "location",
+        "shrine_id",
+        "goriyaku",
+        "goriyaku_tags",
+        "knowledge",
+        "deities",
+        "histories",
+    }
+    | WAVE0_RANKING_PROVENANCE_KEYS
+)
+
+# Nationwide の lifecycle preset。Candidate 固有の test が manifest から独立した期待値として使う。
+# build_batch は null のまま（Source batch / handoff / Wave0 の W0-DBxx を入れない）。
+NATIONWIDE_DISCOVERED_LIFECYCLE = {
     "candidate_status": "DISCOVERED",
     "status_reason_code": "REGISTRY_ADMISSION_COMPLETE",
     "official_source_status": "AVAILABLE",
     "knowledge_status": "UNREVIEWED",
     "build_batch": None,
 }
-# Nationwide CORE_READY の lifecycle。build_batch は null のまま（Source batch / handoff を入れない）。
-_H001_CORE_READY = {
+NATIONWIDE_CORE_READY_LIFECYCLE = {
     "candidate_status": "CORE_READY",
     "status_reason_code": "CORE_READY_CONTRACT_PASS",
     "official_source_status": "CONFIRMED",
     "knowledge_status": "FACT_READY",
     "build_batch": None,
 }
-# 現在の lifecycle（Candidate ごと）。
-# nsrc-000004 は G8 Mother Ship decision APPROVED_TARGET_ONLY により CORE_READY
-# （docs/audit/niigata-h001-g8-core-ready-pretransition.md §6）。
-# nsrc-000002 は G7 CLOSED / PASS 後、G8 Mother Ship decision APPROVED_TARGET_ONLY により CORE_READY
-# （docs/audit/niigata-h001-nsrc-000002-g8-core-ready-pretransition.md §7）。Nationwide 行は Wave0 の
-# W0-DBxx を使わず、Source batch / handoff も build_batch に入れないため build_batch = null のまま。
-H001_CURRENT_LIFECYCLE = {
-    "nsrc-000001": dict(_H001_DISCOVERED),
-    "nsrc-000002": dict(_H001_CORE_READY),
-    "nsrc-000003": dict(_H001_DISCOVERED),
-    "nsrc-000004": {
-        "candidate_status": "CORE_READY",
-        "status_reason_code": "CORE_READY_CONTRACT_PASS",
-        "official_source_status": "CONFIRMED",
-        "knowledge_status": "FACT_READY",
-        "build_batch": None,
-    },
-    "nsrc-000005": dict(_H001_DISCOVERED),
-}
 
 
-def _expected_h001_immutable(candidate_id: str, candidate_name: str, source_position: str) -> dict:
+def _load_handoff_manifest() -> dict:
+    return json.loads(HANDOFF_MANIFEST_PATH.read_text(encoding="utf-8"))
+
+
+HANDOFF_SPECS = tuple(_load_handoff_manifest()["handoffs"])
+
+
+def _handoff_spec(handoff_id: str) -> dict:
+    matches = [spec for spec in HANDOFF_SPECS if spec["handoff_id"] == handoff_id]
+    assert len(matches) == 1, handoff_id
+    return matches[0]
+
+
+def _member_spec(candidate_id: str) -> dict:
+    matches = [
+        member
+        for spec in HANDOFF_SPECS
+        for member in spec["members"]
+        if member["candidate_id"] == candidate_id
+    ]
+    assert len(matches) == 1, candidate_id
+    return matches[0]
+
+
+def _member_handoff(candidate_id: str) -> dict:
+    matches = [
+        spec
+        for spec in HANDOFF_SPECS
+        if any(member["candidate_id"] == candidate_id for member in spec["members"])
+    ]
+    assert len(matches) == 1, candidate_id
+    return matches[0]
+
+
+def _member_g1(candidate_id: str) -> dict:
+    member = _member_spec(candidate_id)
+    return {
+        "identity_status": member["identity_status"],
+        "duplicate_status": member["duplicate_status"],
+    }
+
+
+def _member_triples(handoff_id: str) -> list[tuple[str, str, str]]:
+    return [
+        (member["candidate_id"], member["candidate_name"], member["source_position"])
+        for member in _handoff_spec(handoff_id)["members"]
+    ]
+
+
+def _expected_member_immutable(
+    candidate_id: str, candidate_name: str, source_position: str
+) -> dict:
+    spec = _member_handoff(candidate_id)
+    member = _member_spec(candidate_id)
     return {
         "candidate_id": candidate_id,
         "candidate_name": candidate_name,
-        "prefecture": "新潟県",
-        "duplicate_status": H001_G1_DUPLICATE_STATUS[candidate_id],
+        "prefecture": spec["prefecture"],
+        "duplicate_status": member["duplicate_status"],
         "wave_id": None,
-        "identity_status": "CONFIRMED",
+        "identity_status": member["identity_status"],
         "candidate_reason": NATIONWIDE_CANDIDATE_REASON,
         "admission_provenance": {
             "track": NATIONWIDE_TRACK,
-            "prefecture": "新潟県",
-            "source_batch_id": H001_SOURCE_BATCH_ID,
-            "handoff_id": H001_HANDOFF_ID,
+            "prefecture": spec["prefecture"],
+            "source_batch_id": spec["source_batch_id"],
+            "handoff_id": spec["handoff_id"],
             "source_position": source_position,
-            "source_snapshot_sha256": H001_SOURCE_SNAPSHOT_SHA256,
-            "source_url": H001_SOURCE_URL,
-            "source_verified_at": "2026-10-08",
-            "captured_at": "2026-10-08T14:27:00+09:00",
+            "source_snapshot_sha256": spec["source_snapshot_sha256"],
+            "source_url": spec["source_url"],
+            "source_verified_at": spec["source_verified_at"],
+            "captured_at": spec["captured_at"],
         },
     }
 
 
-def _expected_h001_row(candidate_id: str, candidate_name: str, source_position: str) -> dict:
+def _expected_member_row(candidate_id: str, candidate_name: str, source_position: str) -> dict:
     return {
-        **_expected_h001_immutable(candidate_id, candidate_name, source_position),
-        **H001_CURRENT_LIFECYCLE[candidate_id],
+        **_expected_member_immutable(candidate_id, candidate_name, source_position),
+        **_member_spec(candidate_id)["lifecycle"],
     }
 
 
-def _h001_violations(master: dict) -> list[str]:
-    """H001 の exact contract からのずれを列挙する（空なら PASS）。"""
+def _handoff_violations(master: dict, spec: dict) -> list[str]:
+    """Handoff の exact contract からのずれを列挙する（空なら PASS）。全 handoff 共通。"""
     candidates = master["candidates"]
+    handoff_id = spec["handoff_id"]
     violations: list[str] = []
 
     ids = [str(row.get("candidate_id", "")) for row in candidates]
@@ -1340,79 +1422,623 @@ def _h001_violations(master: dict) -> list[str]:
     if unknown:
         violations.append(f"unknown namespace {unknown}")
 
-    h001 = [
+    members = spec["members"]
+    in_handoff = [
         row
         for row in candidates
-        if (row.get("admission_provenance") or {}).get("handoff_id") == H001_HANDOFF_ID
+        if (row.get("admission_provenance") or {}).get("handoff_id") == handoff_id
     ]
-    expected = [_expected_h001_row(*member) for member in H001_MEMBERS]
-    if [row.get("candidate_id") for row in h001] != [row["candidate_id"] for row in expected]:
-        violations.append(f"H001 ids {[row.get('candidate_id') for row in h001]}")
+    if [row.get("candidate_id") for row in in_handoff] != [m["candidate_id"] for m in members]:
+        violations.append(f"{handoff_id} ids {[row.get('candidate_id') for row in in_handoff]}")
 
     by_id = {row.get("candidate_id"): row for row in candidates}
-    for want in expected:
-        row = by_id.get(want["candidate_id"])
+    for member in members:
+        candidate_id = member["candidate_id"]
+        if not NATIONWIDE_ID_RE.fullmatch(candidate_id):
+            violations.append(f"{candidate_id} is not a nationwide candidate_id")
+        want = _expected_member_row(
+            candidate_id, member["candidate_name"], member["source_position"]
+        )
+        row = by_id.get(candidate_id)
         if row is None:
-            violations.append(f"{want['candidate_id']} missing")
+            violations.append(f"{candidate_id} missing")
             continue
         if row != want:
             diff = sorted(k for k in set(row) | set(want) if row.get(k) != want.get(k))
-            violations.append(f"{want['candidate_id']} differs: {diff}")
+            violations.append(f"{candidate_id} differs: {diff}")
         effective = _effective(master, row)
         if effective.get("wave_id") is not None:
-            violations.append(f"{want['candidate_id']} wave_id={effective.get('wave_id')!r}")
+            violations.append(f"{candidate_id} wave_id={effective.get('wave_id')!r}")
         # Wave0 candidate_defaults を継承していないこと（key 欠落でも検出する）。
-        for field in H001_LIFECYCLE_FIELDS:
+        for field in HANDOFF_LIFECYCLE_FIELDS:
             if effective.get(field) != want[field]:
-                violations.append(
-                    f"{want['candidate_id']} effective {field}={effective.get(field)!r}"
-                )
+                violations.append(f"{candidate_id} effective {field}={effective.get(field)!r}")
         if WAVE0_RANKING_PROVENANCE_KEYS & row.keys():
-            violations.append(f"{want['candidate_id']} has Wave0 ranking provenance")
-        if row.get("build_batch") in {H001_SOURCE_BATCH_ID, H001_HANDOFF_ID}:
-            violations.append(f"{want['candidate_id']} build_batch={row.get('build_batch')!r}")
+            violations.append(f"{candidate_id} has Wave0 ranking provenance")
+        if HANDOFF_FORBIDDEN_HYDRATION_FIELDS & row.keys():
+            violations.append(
+                f"{candidate_id} premature fields {sorted(HANDOFF_FORBIDDEN_HYDRATION_FIELDS & row.keys())}"
+            )
+        if row.get("build_batch") in {spec["source_batch_id"], handoff_id}:
+            violations.append(f"{candidate_id} build_batch={row.get('build_batch')!r}")
     return violations
 
 
-def test_niigata_h001_membership_provenance_and_current_lifecycle_are_exact():
-    master = _load_master()
-    assert _h001_violations(master) == []
+def test_handoff_manifest_is_well_formed():
+    """Test 専用 manifest 自体の整合性。不正な manifest で contract を素通りさせない。"""
+    manifest = _load_handoff_manifest()
+    assert set(manifest) == {"schema_version", "purpose", "frozen_ready_set", "handoffs"}
+    assert manifest["frozen_ready_set"] == "docs/audit/niigata-batch001-ready-set-freeze.md"
 
-    h001 = [
+    handoff_ids = [spec["handoff_id"] for spec in HANDOFF_SPECS]
+    assert len(handoff_ids) == len(set(handoff_ids))
+    member_ids = [m["candidate_id"] for spec in HANDOFF_SPECS for m in spec["members"]]
+    assert len(member_ids) == len(set(member_ids))
+    positions = [m["source_position"] for spec in HANDOFF_SPECS for m in spec["members"]]
+    assert len(positions) == len(set(positions))
+
+    for spec in HANDOFF_SPECS:
+        assert set(spec) == HANDOFF_SPEC_FIELDS, spec["handoff_id"]
+        assert spec["handoff_id"].startswith(f"{spec['source_batch_id']}-H"), spec["handoff_id"]
+        assert re.fullmatch(r"[0-9a-f]{64}", spec["source_snapshot_sha256"])
+        assert spec["members"], spec["handoff_id"]
+        for member in spec["members"]:
+            assert set(member) == HANDOFF_MEMBER_FIELDS, member
+            assert NATIONWIDE_ID_RE.fullmatch(member["candidate_id"]), member
+            assert re.fullmatch(r"page[0-9]{3}-row[0-9]{3}", member["source_position"]), member
+            assert member["identity_status"] in NATIONWIDE_IDENTITY_STATUSES, member
+            assert member["duplicate_status"] in NATIONWIDE_DUPLICATE_STATUSES, member
+            lifecycle = member["lifecycle"]
+            assert tuple(lifecycle) == HANDOFF_LIFECYCLE_FIELDS, member
+            assert lifecycle["candidate_status"] in CANONICAL_CANDIDATE_STATUSES, member
+            assert lifecycle["status_reason_code"] == NATIONWIDE_POSITIVE_STATUS_REASONS.get(
+                lifecycle["candidate_status"]
+            ), member
+            assert lifecycle["official_source_status"] in NATIONWIDE_OFFICIAL_SOURCE_STATUSES
+            assert lifecycle["knowledge_status"] in NATIONWIDE_KNOWLEDGE_STATUSES
+            assert lifecycle["build_batch"] is None, member
+
+
+def test_every_registered_handoff_is_in_the_manifest():
+    """Candidate Master に登録された handoff は全て manifest の contract を通る（未登録 handoff を見逃さない）。"""
+    master = _load_master()
+    registered = []
+    for row in _nationwide_candidates(master):
+        handoff_id = row["admission_provenance"]["handoff_id"]
+        if handoff_id not in registered:
+            registered.append(handoff_id)
+    assert registered == [spec["handoff_id"] for spec in HANDOFF_SPECS]
+
+
+@pytest.mark.parametrize("spec", HANDOFF_SPECS, ids=lambda spec: spec["handoff_id"])
+def test_handoff_contract_is_exact(spec):
+    master = _load_master()
+    assert _handoff_violations(master, spec) == []
+
+    members = spec["members"]
+    rows = [
         row
         for row in _nationwide_candidates(master)
-        if row["admission_provenance"]["handoff_id"] == H001_HANDOFF_ID
+        if row["admission_provenance"]["handoff_id"] == spec["handoff_id"]
     ]
-    assert len(h001) == 5
-    assert [row["candidate_id"] for row in h001] == [m[0] for m in H001_MEMBERS]
-    assert [row["candidate_name"] for row in h001] == [m[1] for m in H001_MEMBERS]
-    assert [row["admission_provenance"]["source_position"] for row in h001] == [
-        m[2] for m in H001_MEMBERS
+    assert len(rows) == len(members)
+    assert [row["candidate_id"] for row in rows] == [m["candidate_id"] for m in members]
+    assert [row["candidate_name"] for row in rows] == [m["candidate_name"] for m in members]
+    assert [row["admission_provenance"]["source_position"] for row in rows] == [
+        m["source_position"] for m in members
     ]
-    assert {row["admission_provenance"]["source_batch_id"] for row in h001} == {
-        H001_SOURCE_BATCH_ID
+    assert len({row["candidate_id"] for row in rows}) == len(members)
+    assert len({row["admission_provenance"]["source_position"] for row in rows}) == len(members)
+    assert {row["admission_provenance"]["source_batch_id"] for row in rows} == {
+        spec["source_batch_id"]
     }
-    assert {row["admission_provenance"]["handoff_id"] for row in h001} == {H001_HANDOFF_ID}
-    assert {row["admission_provenance"]["source_snapshot_sha256"] for row in h001} == {
-        H001_SOURCE_SNAPSHOT_SHA256
+    assert {row["admission_provenance"]["handoff_id"] for row in rows} == {spec["handoff_id"]}
+    assert {row["admission_provenance"]["source_snapshot_sha256"] for row in rows} == {
+        spec["source_snapshot_sha256"]
     }
-    for row in h001:
-        lifecycle = H001_CURRENT_LIFECYCLE[row["candidate_id"]]
-        assert {field: row[field] for field in H001_LIFECYCLE_FIELDS} == lifecycle
+
+    for row, member in zip(rows, members, strict=True):
+        assert {field: row[field] for field in HANDOFF_LIFECYCLE_FIELDS} == member["lifecycle"]
         assert row["build_batch"] is None
         assert row["wave_id"] is None
         assert row["candidate_reason"] == NATIONWIDE_CANDIDATE_REASON
-        assert row["identity_status"] == "CONFIRMED"
-        assert row["duplicate_status"] == H001_G1_DUPLICATE_STATUS[row["candidate_id"]]
+        assert row["identity_status"] == member["identity_status"]
+        assert row["duplicate_status"] == member["duplicate_status"]
         # Nationwide 行に Wave0 / Omairi の discovery_sources は要求しない（持たない）。
         assert "discovery_sources" not in row
+        assert "discovery_rank" not in row
+        assert not (HANDOFF_FORBIDDEN_HYDRATION_FIELDS & row.keys())
 
-    # H001 は Historical Wave0 の後ろに置き、Wave0 の並びを変えない。
+    # Wave0 accounting は Nationwide handoff の登録・遷移で変わらない（global total は固定しない）。
+    wave0 = _wave0_candidates(master)
+    assert len(wave0) == EXPECTED_WAVE0_TOTAL
+    assert Counter(r["candidate_status"] for r in wave0) == EXPECTED_STATUS_COUNTS
+    assert Counter(r["status_reason_code"] for r in wave0) == EXPECTED_REASON_COUNTS
+
+
+def test_handoffs_are_appended_after_wave0_in_manifest_order():
+    """Historical Wave0 → H001 → H002 … の並び。handoff 同士は交差しない。"""
+    master = _load_master()
     ids = [row["candidate_id"] for row in master["candidates"]]
-    assert ids[: len(_wave0_candidates(master))] == [
-        row["candidate_id"] for row in _wave0_candidates(master)
-    ]
+    wave0_ids = [row["candidate_id"] for row in _wave0_candidates(master)]
+    assert ids[: len(wave0_ids)] == wave0_ids
 
+    expected = [m["candidate_id"] for spec in HANDOFF_SPECS for m in spec["members"]]
+    assert ids[len(wave0_ids) : len(wave0_ids) + len(expected)] == expected
+
+
+# --- Frozen Ready Set cross-check -------------------------------------------------------
+#
+# Data-driven test は manifest が誤っていれば誤った data を忠実に検証してしまう。
+# frozen Ready Set（Markdown）の §3 input identity と §6 の `### <handoff_id>` table だけを
+# 厳格に parse し、manifest と Candidate Master provenance の両方を照合する。
+# 構造が想定と異なれば parse は ValueError で fail-closed する（推測で読まない）。
+
+FROZEN_HANDOFF_HEADING_RE = re.compile(r"^### ([A-Z]+-[0-9]{3}-H[0-9]{3})$")
+FROZEN_TABLE_HEADER = "| source_position | raw_name | raw_address | ready_basis |"
+FROZEN_TABLE_SEPARATOR = "|---|---|---|---|"
+FROZEN_READY_BASES = frozenset({"RUNNER_READY", "HUMAN_REVIEW_RELEASED"})
+FROZEN_IDENTITY_KEYS = ("batch_id", "prefecture", "captured_at", "source_verified_at")
+
+
+def _parse_frozen_handoffs(text: str) -> dict[str, list[dict]]:
+    lines = text.splitlines()
+    handoffs: dict[str, list[dict]] = {}
+    index = 0
+    while index < len(lines):
+        match = FROZEN_HANDOFF_HEADING_RE.fullmatch(lines[index])
+        index += 1
+        if not match:
+            continue
+        handoff_id = match.group(1)
+        if handoff_id in handoffs:
+            raise ValueError(f"duplicate frozen handoff heading {handoff_id}")
+        while index < len(lines) and not lines[index].strip():
+            index += 1
+        if index + 1 >= len(lines):
+            raise ValueError(f"{handoff_id}: table missing")
+        if lines[index] != FROZEN_TABLE_HEADER or lines[index + 1] != FROZEN_TABLE_SEPARATOR:
+            raise ValueError(f"{handoff_id}: unexpected table header")
+        index += 2
+        rows = []
+        while index < len(lines) and lines[index].startswith("|"):
+            line = lines[index]
+            if not line.endswith("|"):
+                raise ValueError(f"{handoff_id}: malformed row {line!r}")
+            cells = [cell.strip() for cell in line[1:-1].split("|")]
+            if len(cells) != 4 or not all(cells):
+                raise ValueError(f"{handoff_id}: malformed row {line!r}")
+            source_position, raw_name, raw_address, ready_basis = cells
+            if not re.fullmatch(r"page[0-9]{3}-row[0-9]{3}", source_position):
+                raise ValueError(f"{handoff_id}: malformed source_position {source_position!r}")
+            if ready_basis not in FROZEN_READY_BASES:
+                raise ValueError(f"{handoff_id}: unknown ready_basis {ready_basis!r}")
+            rows.append(
+                {
+                    "source_position": source_position,
+                    "raw_name": raw_name,
+                    "raw_address": raw_address,
+                    "ready_basis": ready_basis,
+                }
+            )
+            index += 1
+        if not rows:
+            raise ValueError(f"{handoff_id}: empty table")
+        handoffs[handoff_id] = rows
+    if not handoffs:
+        raise ValueError("no frozen handoff tables")
+    return handoffs
+
+
+def _parse_frozen_identity(text: str) -> dict[str, str]:
+    sections = re.findall(
+        r"^## 3\. Frozen input identity\n(.*?)(?=^## )", text, flags=re.MULTILINE | re.DOTALL
+    )
+    if len(sections) != 1:
+        raise ValueError("frozen input identity section not found exactly once")
+    blocks = re.findall(r"^```text\n(.*?)^```$", sections[0], flags=re.MULTILINE | re.DOTALL)
+    if len(blocks) != 1:
+        raise ValueError("frozen input identity block not found exactly once")
+    block = blocks[0]
+    identity: dict[str, str] = {}
+    for key in FROZEN_IDENTITY_KEYS:
+        values = re.findall(rf"^{key}\s*=\s*(\S+)\s*$", block, flags=re.MULTILINE)
+        if len(values) != 1:
+            raise ValueError(f"frozen identity {key} not found exactly once")
+        identity[key] = values[0]
+    shas = re.findall(r"^snapshot_sha256\n=\s*([0-9a-f]{64})\s*$", block, flags=re.MULTILINE)
+    if len(shas) != 1:
+        raise ValueError("frozen identity snapshot_sha256 not found exactly once")
+    identity["snapshot_sha256"] = shas[0]
+    return identity
+
+
+def _frozen_ready_set_violations(
+    spec: dict, identity: dict[str, str], frozen: dict[str, list[dict]]
+) -> list[str]:
+    """manifest の handoff spec と frozen Ready Set のずれを列挙する（空なら PASS）。"""
+    handoff_id = spec["handoff_id"]
+    violations: list[str] = []
+    for spec_key, frozen_key in (
+        ("source_batch_id", "batch_id"),
+        ("prefecture", "prefecture"),
+        ("captured_at", "captured_at"),
+        ("source_verified_at", "source_verified_at"),
+        ("source_snapshot_sha256", "snapshot_sha256"),
+    ):
+        if spec[spec_key] != identity[frozen_key]:
+            violations.append(
+                f"{handoff_id} {spec_key}={spec[spec_key]!r} != frozen {identity[frozen_key]!r}"
+            )
+    rows = frozen.get(handoff_id)
+    if rows is None:
+        violations.append(f"{handoff_id} is not a frozen handoff")
+        return violations
+    want = [(row["source_position"], row["raw_name"]) for row in rows]
+    have = [(m["source_position"], m["candidate_name"]) for m in spec["members"]]
+    if have != want:
+        violations.append(f"{handoff_id} members {have} != frozen {want}")
+    return violations
+
+
+def _frozen_ready_set_text() -> str:
+    return FROZEN_READY_SET_PATH.read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("spec", HANDOFF_SPECS, ids=lambda spec: spec["handoff_id"])
+def test_handoff_manifest_matches_frozen_ready_set(spec):
+    text = _frozen_ready_set_text()
+    assert (
+        _frozen_ready_set_violations(
+            spec, _parse_frozen_identity(text), _parse_frozen_handoffs(text)
+        )
+        == []
+    )
+
+
+@pytest.mark.parametrize("spec", HANDOFF_SPECS, ids=lambda spec: spec["handoff_id"])
+def test_candidate_master_provenance_matches_frozen_ready_set(spec):
+    """manifest を経由せず、Candidate Master の provenance 列を frozen table と直接照合する。"""
+    master = _load_master()
+    frozen = _parse_frozen_handoffs(_frozen_ready_set_text())[spec["handoff_id"]]
+    rows = [
+        row
+        for row in _nationwide_candidates(master)
+        if row["admission_provenance"]["handoff_id"] == spec["handoff_id"]
+    ]
+    assert [
+        (row["admission_provenance"]["source_position"], row["candidate_name"]) for row in rows
+    ] == [(row["source_position"], row["raw_name"]) for row in frozen]
+    # manifest の id 列は、その frozen source_position 列へ同じ順序で対応する。
+    assert [row["candidate_id"] for row in rows] == [m["candidate_id"] for m in spec["members"]]
+
+
+def test_frozen_ready_set_parser_reads_the_frozen_handoff_boundaries():
+    text = _frozen_ready_set_text()
+    frozen = _parse_frozen_handoffs(text)
+    assert len(frozen) == 20
+    assert all(len(rows) == 5 for rows in frozen.values())
+    positions = [row["source_position"] for rows in frozen.values() for row in rows]
+    assert len(positions) == len(set(positions)) == 100
+    assert positions[0] == "page001-row001"
+    assert positions[-1] == "page010-row010"
+    assert _parse_frozen_identity(text)["batch_id"] == "NIIGATA-001"
+
+
+def _drift_spec(handoff_id: str, mutate) -> dict:
+    spec = json.loads(json.dumps(_handoff_spec(handoff_id)))
+    mutate(spec)
+    return spec
+
+
+def _swap_first_two_members(spec):
+    spec["members"][0], spec["members"][1] = spec["members"][1], spec["members"][0]
+
+
+@pytest.mark.parametrize("handoff_id", [spec["handoff_id"] for spec in HANDOFF_SPECS])
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        pytest.param(_swap_first_two_members, id="manifest-member-reordered"),
+        pytest.param(lambda spec: spec["members"].pop(), id="manifest-member-removed"),
+        pytest.param(
+            lambda spec: spec["members"].append(
+                dict(spec["members"][-1], source_position="page999-row999")
+            ),
+            id="manifest-member-added",
+        ),
+        pytest.param(
+            lambda spec: spec["members"][0].update(source_position="page999-row999"),
+            id="manifest-source-position-changed",
+        ),
+        pytest.param(
+            lambda spec: spec["members"][0].update(candidate_name="架空神社"),
+            id="manifest-candidate-name-changed",
+        ),
+        pytest.param(
+            lambda spec: spec.update(handoff_id="NIIGATA-001-H999"), id="manifest-unknown-handoff"
+        ),
+        pytest.param(
+            lambda spec: spec.update(source_batch_id="NIIGATA-999"), id="manifest-batch-changed"
+        ),
+        pytest.param(
+            lambda spec: spec.update(source_snapshot_sha256="0" * 64),
+            id="manifest-snapshot-sha-changed",
+        ),
+        pytest.param(
+            lambda spec: spec.update(captured_at="2026-10-09T00:00:00+09:00"),
+            id="manifest-captured-at-changed",
+        ),
+        pytest.param(
+            lambda spec: spec.update(source_verified_at="2026-10-09"),
+            id="manifest-verified-at-changed",
+        ),
+        pytest.param(
+            lambda spec: spec.update(prefecture="長野県"), id="manifest-prefecture-changed"
+        ),
+    ],
+)
+def test_frozen_ready_set_cross_check_detects_manifest_drift(handoff_id, mutate):
+    text = _frozen_ready_set_text()
+    identity, frozen = _parse_frozen_identity(text), _parse_frozen_handoffs(text)
+    assert _frozen_ready_set_violations(_handoff_spec(handoff_id), identity, frozen) == []
+    assert _frozen_ready_set_violations(_drift_spec(handoff_id, mutate), identity, frozen) != []
+
+
+@pytest.mark.parametrize(
+    "transform",
+    [
+        pytest.param(
+            lambda text: text.replace(
+                "| page001-row006 | 赤井神社 |", "| page001-row006 | 架空神社 |"
+            ),
+            id="frozen-name-changed",
+        ),
+        pytest.param(
+            lambda text: text.replace("| page001-row002 |", "| page001-row092 |"),
+            id="frozen-position-changed",
+        ),
+    ],
+)
+def test_frozen_ready_set_cross_check_detects_frozen_drift(transform):
+    text = transform(_frozen_ready_set_text())
+    identity, frozen = _parse_frozen_identity(text), _parse_frozen_handoffs(text)
+    assert any(_frozen_ready_set_violations(spec, identity, frozen) for spec in HANDOFF_SPECS)
+
+
+@pytest.mark.parametrize(
+    "transform",
+    [
+        pytest.param(
+            lambda text: text.replace(
+                FROZEN_TABLE_HEADER, "| position | name | address | basis |", 1
+            ),
+            id="table-header-changed",
+        ),
+        pytest.param(
+            lambda text: text.replace(
+                "| page001-row001 | 相吉神社 |", "| page001-row001 | 相吉神社 | extra |"
+            ),
+            id="extra-cell",
+        ),
+        pytest.param(
+            lambda text: text.replace("| page001-row003 |", "| p1-r3 |"), id="malformed-position"
+        ),
+        pytest.param(
+            lambda text: text.replace("RUNNER_READY |", "MAYBE |", 1), id="unknown-ready-basis"
+        ),
+        pytest.param(
+            lambda text: text.replace("### NIIGATA-001-H002", "### NIIGATA-001-H001"),
+            id="duplicate-heading",
+        ),
+        pytest.param(
+            lambda text: re.sub(r"^### NIIGATA-001-H\d{3}$", "### moved", text, flags=re.MULTILINE),
+            id="no-handoff-headings",
+        ),
+        pytest.param(
+            lambda text: text.replace("snapshot_sha256\n=", "snapshot_sha256 :=", 1),
+            id="identity-sha-unreadable",
+        ),
+        pytest.param(
+            lambda text: text.replace("captured_at        =", "captured_on        =", 1),
+            id="identity-key-missing",
+        ),
+    ],
+)
+def test_frozen_ready_set_parser_fails_closed_on_structure_drift(transform):
+    text = transform(_frozen_ready_set_text())
+    with pytest.raises(ValueError):
+        _parse_frozen_identity(text)
+        _parse_frozen_handoffs(text)
+
+
+# --- Generic handoff mutation matrix ------------------------------------------------------
+#
+# 全 handoff に同じ protection category を適用する。H003 以降も manifest に追加するだけで
+# 同じ fail-closed coverage を得る。各 mutation は manifest の現在値から「異なる値」を作る。
+
+
+def _mutated(master: dict, mutate) -> dict:
+    master = json.loads(json.dumps(master))
+    rows = {row["candidate_id"]: row for row in master["candidates"]}
+    mutate(master, rows)
+    return master
+
+
+def _other(values, current):
+    return next(value for value in sorted(values) if value != current)
+
+
+def _generic_handoff_mutations(spec: dict) -> list:
+    members = spec["members"]
+    first, last = members[0]["candidate_id"], members[-1]["candidate_id"]
+    second = members[1]["candidate_id"] if len(members) > 1 else first
+    hid = spec["handoff_id"]
+
+    def set_field(candidate_id, key, value):
+        def mutate(master, rows):
+            rows[candidate_id][key] = value
+
+        return mutate
+
+    def drop_field(candidate_id, key):
+        def mutate(master, rows):
+            del rows[candidate_id][key]
+
+        return mutate
+
+    def set_prov(candidate_id, key, value):
+        def mutate(master, rows):
+            rows[candidate_id]["admission_provenance"][key] = value
+
+        return mutate
+
+    def remove_member(master, rows):
+        master["candidates"].remove(rows[last])
+
+    def add_member(master, rows):
+        extra = json.loads(json.dumps(rows[last]))
+        extra["candidate_id"] = "nsrc-999999"
+        extra["admission_provenance"]["source_position"] = "page999-row999"
+        master["candidates"].append(extra)
+
+    def reorder_members(master, rows):
+        candidates = master["candidates"]
+        i, j = candidates.index(rows[first]), candidates.index(rows[second])
+        candidates[i], candidates[j] = candidates[j], candidates[i]
+
+    def append_unknown(master, rows):
+        master["candidates"].append(
+            {"candidate_id": "src-999999", "candidate_status": "DISCOVERED"}
+        )
+
+    params = [
+        ("member-removed", remove_member),
+        ("member-added", add_member),
+        ("member-reordered", reorder_members),
+        ("reused-candidate-id", set_field(second, "candidate_id", first)),
+        ("reused-wave0-id", set_field(first, "candidate_id", "wave0-010")),
+        ("unknown-namespace", append_unknown),
+        ("candidate-name-changed", set_field(first, "candidate_name", "架空神社")),
+        ("prefecture-changed", set_field(first, "prefecture", "長野県")),
+        ("source-position-changed", set_prov(first, "source_position", "page999-row999")),
+        ("wrong-handoff-id", set_prov(first, "handoff_id", f"{spec['source_batch_id']}-H999")),
+        ("wrong-source-batch-id", set_prov(first, "source_batch_id", "NIIGATA-999")),
+        ("snapshot-sha-changed", set_prov(first, "source_snapshot_sha256", "0" * 64)),
+        ("source-url-changed", set_prov(first, "source_url", "https://example.invalid/")),
+        ("verified-at-changed", set_prov(first, "source_verified_at", "2026-10-09")),
+        ("captured-at-changed", set_prov(first, "captured_at", "2026-10-09T00:00:00+09:00")),
+        ("provenance-track-changed", set_prov(first, "track", "wave0")),
+        ("provenance-prefecture-changed", set_prov(first, "prefecture", "長野県")),
+        (
+            "candidate-reason-changed",
+            set_field(first, "candidate_reason", "historical_recovered_popularity_candidate"),
+        ),
+        ("wave-id-W0", set_field(first, "wave_id", "W0")),
+        ("inherits-wave-id-W0", drop_field(first, "wave_id")),
+        ("inherits-wave0-knowledge-default", drop_field(first, "knowledge_status")),
+        ("inherits-wave0-identity-default", drop_field(first, "identity_status")),
+        ("build-batch-source", set_field(first, "build_batch", spec["source_batch_id"])),
+        ("build-batch-handoff", set_field(first, "build_batch", hid)),
+        ("build-batch-invented-wave0", set_field(first, "build_batch", "W0-DB08")),
+        ("build-batch-reused-wave0", set_field(first, "build_batch", "W0-DB04")),
+    ]
+    for field in sorted(HANDOFF_FORBIDDEN_HYDRATION_FIELDS):
+        params.append((f"forbidden-{field}", set_field(first, field, "x")))
+    params.append(
+        (
+            "wave0-omairi-provenance",
+            set_field(
+                first,
+                "discovery_sources",
+                [
+                    {
+                        "discovery_source": "Omairi 全国神社人気ランキング2026",
+                        "discovery_source_url": "https://omairi.club/spots/ranking/shrine/page/1",
+                        "discovery_rank": 1,
+                        "captured_at": "2026-10-08",
+                    }
+                ],
+            ),
+        )
+    )
+    for member in members:
+        cid = member["candidate_id"]
+        lifecycle = member["lifecycle"]
+        params += [
+            (
+                f"{cid}-identity-changed",
+                set_field(
+                    cid,
+                    "identity_status",
+                    _other(NATIONWIDE_IDENTITY_STATUSES, member["identity_status"]),
+                ),
+            ),
+            (
+                f"{cid}-duplicate-changed",
+                set_field(
+                    cid,
+                    "duplicate_status",
+                    _other(NATIONWIDE_DUPLICATE_STATUSES, member["duplicate_status"]),
+                ),
+            ),
+            (
+                f"{cid}-lifecycle-changed",
+                set_field(
+                    cid,
+                    "candidate_status",
+                    _other(CANONICAL_CANDIDATE_STATUSES, lifecycle["candidate_status"]),
+                ),
+            ),
+            (
+                f"{cid}-status-reason-changed",
+                set_field(
+                    cid,
+                    "status_reason_code",
+                    _other(
+                        set(NATIONWIDE_POSITIVE_STATUS_REASONS.values()),
+                        lifecycle["status_reason_code"],
+                    ),
+                ),
+            ),
+            (
+                f"{cid}-official-source-changed",
+                set_field(
+                    cid,
+                    "official_source_status",
+                    _other(
+                        NATIONWIDE_OFFICIAL_SOURCE_STATUSES, lifecycle["official_source_status"]
+                    ),
+                ),
+            ),
+            (
+                f"{cid}-knowledge-changed",
+                set_field(
+                    cid,
+                    "knowledge_status",
+                    _other(NATIONWIDE_KNOWLEDGE_STATUSES, lifecycle["knowledge_status"]),
+                ),
+            ),
+        ]
+    return [pytest.param(spec, mutate, id=f"{hid}-{name}") for name, mutate in params]
+
+
+@pytest.mark.parametrize(
+    ("spec", "mutate"),
+    [param for spec in HANDOFF_SPECS for param in _generic_handoff_mutations(spec)],
+)
+def test_handoff_contract_rejects_generic_mutations(spec, mutate):
+    master = _load_master()
+    assert _handoff_violations(master, spec) == []
+    mutated = _mutated(master, mutate)
+    assert mutated != master
+    assert _handoff_violations(mutated, spec) != []
+
+
+# --- Candidate-specific semantics -----------------------------------------------------------
+#
+# 以下は handoff の identity ではなく、Candidate 固有の履歴的な遷移（nsrc-000002 / nsrc-000004 の
+# CORE_READY、H002 各 Candidate の G1 結果）を表す test。期待値は manifest から独立した literal を使う。
 
 def test_nsrc_000004_is_core_ready_with_unchanged_evidence():
     """G8 Mother Ship decision（APPROVED_TARGET_ONLY）による CORE_READY。他の field は不変。"""
@@ -1427,17 +2053,17 @@ def test_nsrc_000004_is_core_ready_with_unchanged_evidence():
     assert row["build_batch"] is None
     assert row["identity_status"] == "CONFIRMED"
     assert row["duplicate_status"] == "SAME_NAME_DIFFERENT_SHRINE"
-    assert row["admission_provenance"] == _expected_h001_immutable(
+    assert row["admission_provenance"] == _expected_member_immutable(
         "nsrc-000004", "青海神社", "page001-row004"
     )["admission_provenance"]
 
     # 他の H001 4社は現在の state のまま（nsrc-000004 の遷移に連動しない）。
-    for candidate_id, name, position in H001_MEMBERS:
+    for candidate_id, name, position in _member_triples(H001_HANDOFF_ID):
         if candidate_id == "nsrc-000004":
             continue
         assert rows[candidate_id] == {
-            **_expected_h001_immutable(candidate_id, name, position),
-            **H001_CURRENT_LIFECYCLE[candidate_id],
+            **_expected_member_immutable(candidate_id, name, position),
+            **_member_spec(candidate_id)["lifecycle"],
         }, candidate_id
 
     # Wave0 accounting は Nationwide の遷移で変わらない。
@@ -1466,8 +2092,8 @@ def test_nsrc_000002_is_core_ready_with_unchanged_evidence():
     assert row["duplicate_status"] == "NEW"
     assert row["candidate_reason"] == NATIONWIDE_CANDIDATE_REASON
     assert row == {
-        **_expected_h001_immutable("nsrc-000002", "青澤神社", "page001-row002"),
-        **_H001_CORE_READY,
+        **_expected_member_immutable("nsrc-000002", "青澤神社", "page001-row002"),
+        **NATIONWIDE_CORE_READY_LIFECYCLE,
     }
     assert row["admission_provenance"] == {
         "track": "nationwide_source_candidate",
@@ -1486,12 +2112,12 @@ def test_nsrc_000002_is_core_ready_with_unchanged_evidence():
     assert rows["nsrc-000004"]["status_reason_code"] == "CORE_READY_CONTRACT_PASS"
 
     # nsrc-000001 / 000003 / 000005 は G0 DISCOVERED のまま。
-    for candidate_id, name, position in H001_MEMBERS:
+    for candidate_id, name, position in _member_triples(H001_HANDOFF_ID):
         if candidate_id in {"nsrc-000002", "nsrc-000004"}:
             continue
         assert rows[candidate_id] == {
-            **_expected_h001_immutable(candidate_id, name, position),
-            **_H001_DISCOVERED,
+            **_expected_member_immutable(candidate_id, name, position),
+            **NATIONWIDE_DISCOVERED_LIFECYCLE,
         }, candidate_id
 
     # Historical Wave0 accounting は Nationwide の遷移で変わらない。
@@ -1502,13 +2128,6 @@ def test_nsrc_000002_is_core_ready_with_unchanged_evidence():
     assert Counter(
         r["build_batch"] for r in wave0 if r["build_batch"] is not None
     ) == {batch: 5 for batch in CANONICAL_BUILD_BATCHES}
-
-
-def _h001_mutation(master: dict, mutate) -> dict:
-    master = json.loads(json.dumps(master))
-    rows = {row["candidate_id"]: row for row in master["candidates"]}
-    mutate(master, rows)
-    return master
 
 
 def _set(candidate_id: str, key: str, value):
@@ -1539,6 +2158,8 @@ def _append_row(row: dict):
     return mutate
 
 
+# nsrc-000002 / nsrc-000004 の CORE_READY 遷移と、他の H001 member が連動しないことの mutation。
+# 汎用 category は test_handoff_contract_rejects_generic_mutations にもある（重複は意図的。既存 id を保持する）。
 @pytest.mark.parametrize(
     "mutate",
     [
@@ -1658,219 +2279,9 @@ def _append_row(row: dict):
 )
 def test_niigata_h001_contract_rejects_mutations(mutate):
     master = _load_master()
-    assert _h001_violations(master) == []
-    assert _h001_violations(_h001_mutation(master, mutate)) != []
-
-
-# --- Nationwide Source Track: NIIGATA-001-H002 -----------------------------------------
-#
-# docs/audit/niigata-batch001-ready-set-freeze.md の H002 5社の exact regression（G0 Registry Admission）。
-# H001 と同じく Handoff ごとの regression であり、Global total の magic number ではない。
-#
-# 4件の「赤城社」は別々の Registry Candidate である。名前の一致から identity / duplicate を推論せず、
-# 統合・重複排除・alias をしない（G1 の責務）。candidate_name の一意性は要求しない。
-# Source 上の住所（例: 佐渡市加茂歌代2662番地）は frozen handoff の evidence であり、
-# G0 の Candidate Master には official_address 等として持たせない。
-
-H002_HANDOFF_ID = "NIIGATA-001-H002"
-H002_SOURCE_BATCH_ID = "NIIGATA-001"
-H002_SOURCE_SNAPSHOT_SHA256 = "f54022303700821672ee4ee65e9967a7e8f343715a66ad987cc0b43530850380"
-H002_SOURCE_URL = "https://niigata-jinjacho.jp/shrine_niigata/search.php"
-H002_MEMBERS = (
-    ("nsrc-000006", "赤井神社", "page001-row006"),
-    ("nsrc-000007", "赤城社", "page001-row007"),
-    ("nsrc-000008", "赤城社", "page001-row008"),
-    ("nsrc-000009", "赤城社", "page001-row009"),
-    ("nsrc-000010", "赤城社", "page001-row010"),
-)
-_H002_G0_LIFECYCLE = {
-    "candidate_status": "DISCOVERED",
-    "status_reason_code": "REGISTRY_ADMISSION_COMPLETE",
-    "official_source_status": "AVAILABLE",
-    "knowledge_status": "UNREVIEWED",
-    "build_batch": None,
-}
-# G1 Identity / Duplicate の現在値（Candidate ごと）。G1 は candidate_status を進めず sub-status だけを持つ。
-# nsrc-000006 は G1 PASS / NEW（docs/audit/niigata-h002-nsrc-000006-g1-identity-duplicate.md）。
-# nsrc-000007 は G1 PASS / SAME_NAME_DIFFERENT_SHRINE（docs/audit/niigata-h002-nsrc-000007-g1-identity-duplicate.md）。
-# nsrc-000008 は G1 PASS / SAME_NAME_DIFFERENT_SHRINE（docs/audit/niigata-h002-nsrc-000008-g1-identity-duplicate.md）。
-# nsrc-000009 は G1 PASS / SAME_NAME_DIFFERENT_SHRINE（docs/audit/niigata-h002-nsrc-000009-g1-identity-duplicate.md）。
-# nsrc-000010 は G1 PASS / SAME_NAME_DIFFERENT_SHRINE（docs/audit/niigata-h002-nsrc-000010-g1-identity-duplicate.md）。
-# これで H002 の G1 は全5件 resolved。
-H002_G1_STATUS = {
-    "nsrc-000006": {"identity_status": "CONFIRMED", "duplicate_status": "NEW"},
-    "nsrc-000007": {
-        "identity_status": "CONFIRMED",
-        "duplicate_status": "SAME_NAME_DIFFERENT_SHRINE",
-    },
-    "nsrc-000008": {
-        "identity_status": "CONFIRMED",
-        "duplicate_status": "SAME_NAME_DIFFERENT_SHRINE",
-    },
-    "nsrc-000009": {
-        "identity_status": "CONFIRMED",
-        "duplicate_status": "SAME_NAME_DIFFERENT_SHRINE",
-    },
-    "nsrc-000010": {
-        "identity_status": "CONFIRMED",
-        "duplicate_status": "SAME_NAME_DIFFERENT_SHRINE",
-    },
-}
-# G0 時点で持ってはいけない field（G1 以降の hydrate / Wave0 provenance）。
-# G1 PASS 後も official_name / official_address 等は Candidate Master に持たせない。
-H002_FORBIDDEN_G0_FIELDS = frozenset(
-    {
-        "official_name",
-        "official_address",
-        "address",
-        "latitude",
-        "longitude",
-        "lat",
-        "lng",
-        "location",
-        "shrine_id",
-        "goriyaku",
-        "goriyaku_tags",
-        "knowledge",
-        "deities",
-        "histories",
-        "discovery_sources",
-        "discovery_rank",
-    }
-)
-
-
-def _expected_h002_row(candidate_id: str, candidate_name: str, source_position: str) -> dict:
-    return {
-        "candidate_id": candidate_id,
-        "candidate_name": candidate_name,
-        "prefecture": "新潟県",
-        "duplicate_status": H002_G1_STATUS[candidate_id]["duplicate_status"],
-        "wave_id": None,
-        "identity_status": H002_G1_STATUS[candidate_id]["identity_status"],
-        "candidate_reason": NATIONWIDE_CANDIDATE_REASON,
-        "admission_provenance": {
-            "track": NATIONWIDE_TRACK,
-            "prefecture": "新潟県",
-            "source_batch_id": H002_SOURCE_BATCH_ID,
-            "handoff_id": H002_HANDOFF_ID,
-            "source_position": source_position,
-            "source_snapshot_sha256": H002_SOURCE_SNAPSHOT_SHA256,
-            "source_url": H002_SOURCE_URL,
-            "source_verified_at": "2026-10-08",
-            "captured_at": "2026-10-08T14:27:00+09:00",
-        },
-        **_H002_G0_LIFECYCLE,
-    }
-
-
-def _h002_violations(master: dict) -> list[str]:
-    """H002 の exact G0 contract からのずれを列挙する（空なら PASS）。"""
-    candidates = master["candidates"]
-    violations: list[str] = []
-
-    ids = [str(row.get("candidate_id", "")) for row in candidates]
-    duplicated = sorted({cid for cid in ids if ids.count(cid) > 1})
-    if duplicated:
-        violations.append(f"reused candidate_id {duplicated}")
-    unknown = [
-        cid for cid in ids if not (WAVE0_ID_RE.fullmatch(cid) or NATIONWIDE_ID_RE.fullmatch(cid))
-    ]
-    if unknown:
-        violations.append(f"unknown namespace {unknown}")
-
-    h002 = [
-        row
-        for row in candidates
-        if (row.get("admission_provenance") or {}).get("handoff_id") == H002_HANDOFF_ID
-    ]
-    expected = [_expected_h002_row(*member) for member in H002_MEMBERS]
-    if [row.get("candidate_id") for row in h002] != [row["candidate_id"] for row in expected]:
-        violations.append(f"H002 ids {[row.get('candidate_id') for row in h002]}")
-
-    by_id = {row.get("candidate_id"): row for row in candidates}
-    for want in expected:
-        row = by_id.get(want["candidate_id"])
-        if row is None:
-            violations.append(f"{want['candidate_id']} missing")
-            continue
-        if row != want:
-            diff = sorted(k for k in set(row) | set(want) if row.get(k) != want.get(k))
-            violations.append(f"{want['candidate_id']} differs: {diff}")
-        effective = _effective(master, row)
-        if effective.get("wave_id") is not None:
-            violations.append(f"{want['candidate_id']} wave_id={effective.get('wave_id')!r}")
-        for field in H001_LIFECYCLE_FIELDS:
-            if effective.get(field) != want[field]:
-                violations.append(
-                    f"{want['candidate_id']} effective {field}={effective.get(field)!r}"
-                )
-        if H002_FORBIDDEN_G0_FIELDS & row.keys():
-            violations.append(
-                f"{want['candidate_id']} premature fields {sorted(H002_FORBIDDEN_G0_FIELDS & row.keys())}"
-            )
-        if row.get("build_batch") in {H002_SOURCE_BATCH_ID, H002_HANDOFF_ID}:
-            violations.append(f"{want['candidate_id']} build_batch={row.get('build_batch')!r}")
-    return violations
-
-
-def test_niigata_h002_is_registered_exactly_at_g0():
-    master = _load_master()
-    assert _h002_violations(master) == []
-
-    h002 = [
-        row
-        for row in _nationwide_candidates(master)
-        if row["admission_provenance"]["handoff_id"] == H002_HANDOFF_ID
-    ]
-    assert len(h002) == 5
-    assert [row["candidate_id"] for row in h002] == [m[0] for m in H002_MEMBERS]
-    assert [row["candidate_name"] for row in h002] == [m[1] for m in H002_MEMBERS]
-    assert [row["admission_provenance"]["source_position"] for row in h002] == [
-        m[2] for m in H002_MEMBERS
-    ]
-    assert {row["admission_provenance"]["source_batch_id"] for row in h002} == {
-        H002_SOURCE_BATCH_ID
-    }
-    assert {row["admission_provenance"]["handoff_id"] for row in h002} == {H002_HANDOFF_ID}
-    assert {row["admission_provenance"]["source_snapshot_sha256"] for row in h002} == {
-        H002_SOURCE_SNAPSHOT_SHA256
-    }
-    # 4件の赤城社は別 Candidate（名前の一致で統合しない）。
-    assert [row["candidate_name"] for row in h002].count("赤城社") == 4
-    assert len({row["candidate_id"] for row in h002}) == 5
-    assert len({row["admission_provenance"]["source_position"] for row in h002}) == 5
-
-    for row in h002:
-        assert row["candidate_status"] == "DISCOVERED"
-        assert row["status_reason_code"] == "REGISTRY_ADMISSION_COMPLETE"
-        g1 = H002_G1_STATUS[row["candidate_id"]]
-        assert row["duplicate_status"] == g1["duplicate_status"]
-        assert row["identity_status"] == g1["identity_status"]
-        assert row["official_source_status"] == "AVAILABLE"
-        assert row["knowledge_status"] == "UNREVIEWED"
-        assert row["build_batch"] is None
-        assert row["wave_id"] is None
-        assert row["candidate_reason"] == NATIONWIDE_CANDIDATE_REASON
-        assert "discovery_sources" not in row
-        assert "discovery_rank" not in row
-        assert not (H002_FORBIDDEN_G0_FIELDS & row.keys())
-
-    # H002 は H001 の後ろに append し、既存の並び（Historical Wave0 → H001）を変えない。
-    ids = [row["candidate_id"] for row in master["candidates"]]
-    wave0_ids = [row["candidate_id"] for row in _wave0_candidates(master)]
-    assert ids[: len(wave0_ids)] == wave0_ids
-    h001_ids = [m[0] for m in H001_MEMBERS]
-    h002_ids = [m[0] for m in H002_MEMBERS]
-    assert ids[len(wave0_ids) : len(wave0_ids) + len(h001_ids)] == h001_ids
-    assert ids.index(h002_ids[0]) > ids.index(h001_ids[-1])
-
-    # Cohort accounting は H002 登録で変わらない（global total は固定しない）。
-    assert _h001_violations(master) == []
-    wave0 = _wave0_candidates(master)
-    assert len(wave0) == EXPECTED_WAVE0_TOTAL
-    assert Counter(r["candidate_status"] for r in wave0) == EXPECTED_STATUS_COUNTS
-    assert Counter(r["status_reason_code"] for r in wave0) == EXPECTED_REASON_COUNTS
+    spec = _handoff_spec(H001_HANDOFF_ID)
+    assert _handoff_violations(master, spec) == []
+    assert _handoff_violations(_mutated(master, mutate), spec) != []
 
 
 def test_nsrc_000006_g1_is_confirmed_new_and_stays_discovered():
@@ -1888,7 +2299,7 @@ def test_nsrc_000006_g1_is_confirmed_new_and_stays_discovered():
     assert row["build_batch"] is None
     assert row["wave_id"] is None
     assert row["candidate_reason"] == NATIONWIDE_CANDIDATE_REASON
-    assert row == _expected_h002_row("nsrc-000006", "赤井神社", "page001-row006")
+    assert row == _expected_member_row("nsrc-000006", "赤井神社", "page001-row006")
     assert row["admission_provenance"] == {
         "track": "nationwide_source_candidate",
         "prefecture": "新潟県",
@@ -1900,16 +2311,16 @@ def test_nsrc_000006_g1_is_confirmed_new_and_stays_discovered():
         "source_verified_at": "2026-10-08",
         "captured_at": "2026-10-08T14:27:00+09:00",
     }
-    assert not (H002_FORBIDDEN_G0_FIELDS & row.keys())
+    assert not (HANDOFF_FORBIDDEN_HYDRATION_FIELDS & row.keys())
 
     # 赤城社4件は nsrc-000006 の G1 に連動しない（各自の G1 現在値のまま）。
     for candidate_id in ("nsrc-000007", "nsrc-000008", "nsrc-000009", "nsrc-000010"):
-        g1 = H002_G1_STATUS[candidate_id]
+        g1 = _member_g1(candidate_id)
         assert rows[candidate_id]["identity_status"] == g1["identity_status"], candidate_id
         assert rows[candidate_id]["duplicate_status"] == g1["duplicate_status"], candidate_id
         assert rows[candidate_id]["candidate_status"] == "DISCOVERED", candidate_id
 
-    assert _h001_violations(master) == []
+    assert _handoff_violations(master, _handoff_spec(H001_HANDOFF_ID)) == []
     wave0 = _wave0_candidates(master)
     assert len(wave0) == EXPECTED_WAVE0_TOTAL
     assert Counter(r["candidate_status"] for r in wave0) == EXPECTED_STATUS_COUNTS
@@ -1930,7 +2341,7 @@ def test_nsrc_000007_g1_is_confirmed_same_name_different_shrine_and_stays_discov
     assert row["build_batch"] is None
     assert row["wave_id"] is None
     assert row["candidate_reason"] == NATIONWIDE_CANDIDATE_REASON
-    assert row == _expected_h002_row("nsrc-000007", "赤城社", "page001-row007")
+    assert row == _expected_member_row("nsrc-000007", "赤城社", "page001-row007")
     assert row["admission_provenance"] == {
         "track": "nationwide_source_candidate",
         "prefecture": "新潟県",
@@ -1942,12 +2353,12 @@ def test_nsrc_000007_g1_is_confirmed_same_name_different_shrine_and_stays_discov
         "source_verified_at": "2026-10-08",
         "captured_at": "2026-10-08T14:27:00+09:00",
     }
-    assert not (H002_FORBIDDEN_G0_FIELDS & row.keys())
+    assert not (HANDOFF_FORBIDDEN_HYDRATION_FIELDS & row.keys())
     assert "reading" not in row
 
     # 他の赤城社3件は nsrc-000007 の G1 に連動しない（各自の G1 現在値のまま）。別 Candidate のまま。
     for candidate_id in ("nsrc-000008", "nsrc-000009", "nsrc-000010"):
-        g1 = H002_G1_STATUS[candidate_id]
+        g1 = _member_g1(candidate_id)
         assert rows[candidate_id]["identity_status"] == g1["identity_status"], candidate_id
         assert rows[candidate_id]["duplicate_status"] == g1["duplicate_status"], candidate_id
         assert rows[candidate_id]["candidate_status"] == "DISCOVERED", candidate_id
@@ -1963,7 +2374,7 @@ def test_nsrc_000007_g1_is_confirmed_same_name_different_shrine_and_stays_discov
     assert rows["nsrc-000006"]["identity_status"] == "CONFIRMED"
     assert rows["nsrc-000006"]["duplicate_status"] == "NEW"
 
-    assert _h001_violations(master) == []
+    assert _handoff_violations(master, _handoff_spec(H001_HANDOFF_ID)) == []
     wave0 = _wave0_candidates(master)
     assert len(wave0) == EXPECTED_WAVE0_TOTAL
     assert Counter(r["candidate_status"] for r in wave0) == EXPECTED_STATUS_COUNTS
@@ -1984,7 +2395,7 @@ def test_nsrc_000008_g1_is_confirmed_same_name_different_shrine_and_stays_discov
     assert row["build_batch"] is None
     assert row["wave_id"] is None
     assert row["candidate_reason"] == NATIONWIDE_CANDIDATE_REASON
-    assert row == _expected_h002_row("nsrc-000008", "赤城社", "page001-row008")
+    assert row == _expected_member_row("nsrc-000008", "赤城社", "page001-row008")
     assert row["admission_provenance"] == {
         "track": "nationwide_source_candidate",
         "prefecture": "新潟県",
@@ -1996,12 +2407,12 @@ def test_nsrc_000008_g1_is_confirmed_same_name_different_shrine_and_stays_discov
         "source_verified_at": "2026-10-08",
         "captured_at": "2026-10-08T14:27:00+09:00",
     }
-    assert not (H002_FORBIDDEN_G0_FIELDS & row.keys())
+    assert not (HANDOFF_FORBIDDEN_HYDRATION_FIELDS & row.keys())
     assert "reading" not in row
 
     # 他の H002 Candidate は nsrc-000008 の G1 に連動しない（各自の G1 現在値のまま）。
     for candidate_id in ("nsrc-000006", "nsrc-000007", "nsrc-000009", "nsrc-000010"):
-        g1 = H002_G1_STATUS[candidate_id]
+        g1 = _member_g1(candidate_id)
         assert rows[candidate_id]["identity_status"] == g1["identity_status"], candidate_id
         assert rows[candidate_id]["duplicate_status"] == g1["duplicate_status"], candidate_id
         assert rows[candidate_id]["candidate_status"] == "DISCOVERED", candidate_id
@@ -2021,7 +2432,7 @@ def test_nsrc_000008_g1_is_confirmed_same_name_different_shrine_and_stays_discov
         "page001-row010",
     ]
 
-    assert _h001_violations(master) == []
+    assert _handoff_violations(master, _handoff_spec(H001_HANDOFF_ID)) == []
     wave0 = _wave0_candidates(master)
     assert len(wave0) == EXPECTED_WAVE0_TOTAL
     assert Counter(r["candidate_status"] for r in wave0) == EXPECTED_STATUS_COUNTS
@@ -2042,7 +2453,7 @@ def test_nsrc_000009_g1_is_confirmed_same_name_different_shrine_and_stays_discov
     assert row["build_batch"] is None
     assert row["wave_id"] is None
     assert row["candidate_reason"] == NATIONWIDE_CANDIDATE_REASON
-    assert row == _expected_h002_row("nsrc-000009", "赤城社", "page001-row009")
+    assert row == _expected_member_row("nsrc-000009", "赤城社", "page001-row009")
     assert row["admission_provenance"] == {
         "track": "nationwide_source_candidate",
         "prefecture": "新潟県",
@@ -2054,12 +2465,12 @@ def test_nsrc_000009_g1_is_confirmed_same_name_different_shrine_and_stays_discov
         "source_verified_at": "2026-10-08",
         "captured_at": "2026-10-08T14:27:00+09:00",
     }
-    assert not (H002_FORBIDDEN_G0_FIELDS & row.keys())
+    assert not (HANDOFF_FORBIDDEN_HYDRATION_FIELDS & row.keys())
     assert "reading" not in row
 
     # 他の赤城社2件は nsrc-000009 の G1 に連動しない（各自の G1 現在値のまま）。
     for candidate_id in ("nsrc-000008", "nsrc-000010"):
-        g1 = H002_G1_STATUS[candidate_id]
+        g1 = _member_g1(candidate_id)
         assert rows[candidate_id]["identity_status"] == g1["identity_status"], candidate_id
         assert rows[candidate_id]["duplicate_status"] == g1["duplicate_status"], candidate_id
         assert rows[candidate_id]["candidate_status"] == "DISCOVERED", candidate_id
@@ -2091,7 +2502,7 @@ def test_nsrc_000009_g1_is_confirmed_same_name_different_shrine_and_stays_discov
         "page001-row010",
     ]
 
-    assert _h001_violations(master) == []
+    assert _handoff_violations(master, _handoff_spec(H001_HANDOFF_ID)) == []
     wave0 = _wave0_candidates(master)
     assert len(wave0) == EXPECTED_WAVE0_TOTAL
     assert Counter(r["candidate_status"] for r in wave0) == EXPECTED_STATUS_COUNTS
@@ -2112,7 +2523,7 @@ def test_nsrc_000010_g1_is_confirmed_same_name_different_shrine_and_stays_discov
     assert row["build_batch"] is None
     assert row["wave_id"] is None
     assert row["candidate_reason"] == NATIONWIDE_CANDIDATE_REASON
-    assert row == _expected_h002_row("nsrc-000010", "赤城社", "page001-row010")
+    assert row == _expected_member_row("nsrc-000010", "赤城社", "page001-row010")
     assert row["admission_provenance"] == {
         "track": "nationwide_source_candidate",
         "prefecture": "新潟県",
@@ -2124,12 +2535,12 @@ def test_nsrc_000010_g1_is_confirmed_same_name_different_shrine_and_stays_discov
         "source_verified_at": "2026-10-08",
         "captured_at": "2026-10-08T14:27:00+09:00",
     }
-    assert not (H002_FORBIDDEN_G0_FIELDS & row.keys())
+    assert not (HANDOFF_FORBIDDEN_HYDRATION_FIELDS & row.keys())
     assert "reading" not in row
 
     # 他の H002 Candidate は nsrc-000010 の G1 に連動しない（各自の G1 現在値のまま）。
     for candidate_id in ("nsrc-000006", "nsrc-000007", "nsrc-000008", "nsrc-000009"):
-        g1 = H002_G1_STATUS[candidate_id]
+        g1 = _member_g1(candidate_id)
         assert rows[candidate_id]["identity_status"] == g1["identity_status"], candidate_id
         assert rows[candidate_id]["duplicate_status"] == g1["duplicate_status"], candidate_id
         assert rows[candidate_id]["candidate_status"] == "DISCOVERED", candidate_id
@@ -2149,7 +2560,7 @@ def test_nsrc_000010_g1_is_confirmed_same_name_different_shrine_and_stays_discov
         "page001-row010",
     ]
 
-    assert _h001_violations(master) == []
+    assert _handoff_violations(master, _handoff_spec(H001_HANDOFF_ID)) == []
     wave0 = _wave0_candidates(master)
     assert len(wave0) == EXPECTED_WAVE0_TOTAL
     assert Counter(r["candidate_status"] for r in wave0) == EXPECTED_STATUS_COUNTS
@@ -2202,6 +2613,7 @@ def _h002_extra_member(master, rows):
     master["candidates"].append(extra)
 
 
+# H002 各 Candidate の G1 結果（regression / G1 越境 / 同名統合）の mutation。
 @pytest.mark.parametrize(
     "mutate",
     [
@@ -2391,5 +2803,6 @@ def _h002_extra_member(master, rows):
 )
 def test_niigata_h002_contract_rejects_mutations(mutate):
     master = _load_master()
-    assert _h002_violations(master) == []
-    assert _h002_violations(_h001_mutation(master, mutate)) != []
+    spec = _handoff_spec(H002_HANDOFF_ID)
+    assert _handoff_violations(master, spec) == []
+    assert _handoff_violations(_mutated(master, mutate), spec) != []
