@@ -1,3 +1,4 @@
+import copy
 import hashlib
 import io
 import json
@@ -24,6 +25,14 @@ BASE_SEED_PATH = TEMPLES_DIR / "data" / "shrines_seed_clean.json"
 
 SHRINE_NAME = "青海神社"
 SHRINE_ADDRESS = "新潟県加茂市大字加茂字宮山229番地"
+
+# nsrc-000004 は Base Seed の historical cohort rows[120:121] を占める。
+# 後続の append で総行数が増えても、この境界は変わらない。
+NSRC_000004_EXISTING_BASE_ROW_COUNT = 120
+NSRC_000004_BASE_ROW_END = 121
+# nsrc-000004 追加前の Base Seed 120行の fingerprint。
+# rows[:NSRC_000004_EXISTING_BASE_ROW_COUNT] だけから計算する。
+EXISTING_ROWS_SHA256 = "dd9a958eb5a7c51345fe5b9f9bb2a2f696a1b3edef8e67f6fcee7301f91a66b7"
 
 
 def test_nsrc_000004_seed_parses_cleanly_and_writes_no_goriyaku_fields():
@@ -79,8 +88,10 @@ def test_nsrc_000004_base_seed_imports_into_isolated_db():
     )
 
     summary = [line for line in out.getvalue().splitlines() if line.startswith("done ")][-1]
-    # nsrc-000002 青澤神社の Base Shrine materialization で 121 -> 122。
-    assert "total_seed=122" in summary
+    # importer は実際の入力 Base Seed の行数を報告する（repository の総行数は固定しない）。
+    base_rows = json.loads(BASE_SEED_PATH.read_text(encoding="utf-8"))
+    expected_total_seed = len(base_rows)
+    assert f"total_seed={expected_total_seed}" in summary
 
     exact_qs = Shrine.objects.filter(name_jp=SHRINE_NAME, address=SHRINE_ADDRESS)
     assert exact_qs.count() == 1
@@ -456,33 +467,147 @@ def test_nsrc_000004_knowledge_import_keeps_goriyaku_state_unchanged():
     assert after == before
 
 
-def test_nsrc_000004_base_seed_preserves_existing_120_rows():
-    rows = json.loads(BASE_SEED_PATH.read_text(encoding="utf-8"))
+def _prefix_fingerprint(rows: list[dict]) -> str:
+    canonical = json.dumps(
+        sorted(rows, key=lambda row: (row.get("name_jp", ""), row.get("address", ""))),
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
+
+def _nsrc_000004_accounting_violations(
+    rows: list[dict],
+    *,
+    identity: tuple[str, str],
+    existing_count: int,
+    row_end: int,
+    prefix_sha256: str,
+) -> list[str]:
+    """nsrc-000004 の historical cohort accounting。後続 append は許容する。"""
+    violations = []
+    if len(rows) < row_end:
+        violations.append(f"base seed has {len(rows)} rows, fewer than cohort end {row_end}")
+    if _prefix_fingerprint(rows[:existing_count]) != prefix_sha256:
+        violations.append("historical prefix fingerprint mismatch")
+    cohort_identities = [
+        (row.get("name_jp"), row.get("address")) for row in rows[existing_count:row_end]
+    ]
+    if cohort_identities != [identity]:
+        violations.append(f"rows[{existing_count}:{row_end}] is not the nsrc-000004 row")
+    count = sum(1 for row in rows if (row.get("name_jp"), row.get("address")) == identity)
+    if count != 1:
+        violations.append(f"nsrc-000004 identity occurs {count} times")
+    return violations
+
+
+def _violations(rows: list[dict]) -> list[str]:
+    return _nsrc_000004_accounting_violations(
+        rows,
+        identity=(SHRINE_NAME, SHRINE_ADDRESS),
+        existing_count=NSRC_000004_EXISTING_BASE_ROW_COUNT,
+        row_end=NSRC_000004_BASE_ROW_END,
+        prefix_sha256=EXISTING_ROWS_SHA256,
+    )
+
+
+def _base_rows() -> list[dict]:
+    return json.loads(BASE_SEED_PATH.read_text(encoding="utf-8"))
+
+
+def test_nsrc_000004_base_seed_preserves_existing_120_rows():
+    rows = _base_rows()
+    start, end = NSRC_000004_EXISTING_BASE_ROW_COUNT, NSRC_000004_BASE_ROW_END
+
+    assert len(rows) >= end
+    assert [(row.get("name_jp"), row.get("address")) for row in rows[start:end]] == [
+        (SHRINE_NAME, SHRINE_ADDRESS)
+    ]
     target_rows = [
         row
         for row in rows
         if row.get("name_jp") == SHRINE_NAME and row.get("address") == SHRINE_ADDRESS
     ]
     assert len(target_rows) == 1
+    assert _prefix_fingerprint(rows[:start]) == EXISTING_ROWS_SHA256
 
-    # 後続で追加した Base Shrine 行（nsrc-000002 青澤神社）は、本 test が固定する
-    # 「nsrc-000004 追加前の120行」に含めない。120行の fingerprint は変えない。
-    later_rows = {("青澤神社", "新潟県糸魚川市大字青海2696番地")}
-    existing_rows = [
-        row
-        for row in rows
-        if not (row.get("name_jp") == SHRINE_NAME and row.get("address") == SHRINE_ADDRESS)
-        and (row.get("name_jp"), row.get("address")) not in later_rows
-    ]
-    assert len(existing_rows) == 120
 
-    canonical = json.dumps(
-        sorted(existing_rows, key=lambda row: (row.get("name_jp", ""), row.get("address", ""))),
-        ensure_ascii=False,
-        sort_keys=True,
-        separators=(",", ":"),
+def test_nsrc_000004_historical_base_seed_cohort_is_append_safe():
+    assert _violations(_base_rows()) == []
+
+
+def test_nsrc_000004_accounting_allows_later_appended_rows():
+    rows = copy.deepcopy(_base_rows())
+    rows.append(
+        {
+            "name_jp": "検証用後続神社",
+            "address": "新潟県新潟市中央区検証町1番地",
+            "latitude": 37.9,
+            "longitude": 139.0,
+            "goriyaku": "",
+            "kyusei": None,
+            "astro_elements": [],
+            "location": {"lat": 37.9, "lng": 139.0},
+        }
     )
-    fingerprint = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    assert _violations(rows) == []
 
-    assert fingerprint == "dd9a958eb5a7c51345fe5b9f9bb2a2f696a1b3edef8e67f6fcee7301f91a66b7"
+
+def _remove_nsrc_000004_row(rows: list[dict]) -> None:
+    del rows[NSRC_000004_EXISTING_BASE_ROW_COUNT]
+
+
+def _change_nsrc_000004_identity(rows: list[dict]) -> None:
+    rows[NSRC_000004_EXISTING_BASE_ROW_COUNT]["address"] = "新潟県加茂市大字加茂字宮山9999番地"
+
+
+def _replace_historical_row(rows: list[dict]) -> None:
+    rows[NSRC_000004_EXISTING_BASE_ROW_COUNT] = {
+        "name_jp": "検証用後続神社",
+        "address": "新潟県新潟市中央区検証町1番地",
+    }
+
+
+def _move_nsrc_000004_row_to_end(rows: list[dict]) -> None:
+    rows.append(rows.pop(NSRC_000004_EXISTING_BASE_ROW_COUNT))
+
+
+def _remove_earlier_prefix_row(rows: list[dict]) -> None:
+    del rows[0]
+
+
+def _mutate_historical_prefix_row(rows: list[dict]) -> None:
+    rows[0]["goriyaku"] = str(rows[0].get("goriyaku", "")) + "（変更）"
+
+
+def _duplicate_nsrc_000004_later(rows: list[dict]) -> None:
+    rows.append(copy.deepcopy(rows[NSRC_000004_EXISTING_BASE_ROW_COUNT]))
+
+
+@pytest.mark.parametrize(
+    ("mutate", "expected_violation"),
+    [
+        (_remove_nsrc_000004_row, "is not the nsrc-000004 row"),
+        (_change_nsrc_000004_identity, "nsrc-000004 identity occurs 0 times"),
+        (_replace_historical_row, "is not the nsrc-000004 row"),
+        (_move_nsrc_000004_row_to_end, "is not the nsrc-000004 row"),
+        (_remove_earlier_prefix_row, "historical prefix fingerprint mismatch"),
+        (_mutate_historical_prefix_row, "historical prefix fingerprint mismatch"),
+        (_duplicate_nsrc_000004_later, "nsrc-000004 identity occurs 2 times"),
+    ],
+    ids=[
+        "remove-nsrc-000004",
+        "change-nsrc-000004-identity",
+        "replace-historical-row",
+        "move-nsrc-000004-row",
+        "remove-earlier-prefix-row",
+        "mutate-historical-prefix-row",
+        "duplicate-nsrc-000004-later",
+    ],
+)
+def test_nsrc_000004_accounting_rejects_mutations(mutate, expected_violation):
+    rows = copy.deepcopy(_base_rows())
+    mutate(rows)
+    violations = _violations(rows)
+    assert any(expected_violation in violation for violation in violations), violations
