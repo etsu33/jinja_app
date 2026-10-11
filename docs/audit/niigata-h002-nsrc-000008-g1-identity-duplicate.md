@@ -78,7 +78,7 @@ H002 には同名「赤城社」が4件あり、それぞれ別の住所を持�
 | nsrc-000009 | 赤城社 | 十日町市伊達乙48番地 |
 | nsrc-000010 | 赤城社 | 南魚沼市芹田79番地 |
 
-Mother Ship はこれらを同名の別の実在神社として扱う。名前の一致から duplicate / alias を推論しない（name-only dedupe はしない）。
+G1では、これらを異なるSource住所を持つ別identityとして扱う。名前の一致から duplicate / alias を推論しない（name-only dedupe はしない）。別々の物理地点へ解決されることは、各CandidateのG2 Positionで確認する。
 nsrc-000008 の identity は住所 `十日町市上組2059番地子` で他の3件と区別できる。
 同じ十日町市内の nsrc-000007（四日町）・nsrc-000009（伊達乙）とも町名・地番が異なる。
 
