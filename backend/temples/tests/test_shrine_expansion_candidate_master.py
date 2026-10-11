@@ -1266,13 +1266,23 @@ _H001_DISCOVERED = {
     "knowledge_status": "UNREVIEWED",
     "build_batch": None,
 }
+# nsrc-000002 は G7 Production Import CLOSED / PASS により IMPORTED
+# （docs/audit/niigata-h001-nsrc-000002-g7-production-import-preflight.md §0）。
+# CORE_READY は G8 の別 Gate であり、ここでは進めない。
+_H001_IMPORTED = {
+    "candidate_status": "IMPORTED",
+    "status_reason_code": "PRODUCTION_IMPORT_COMPLETE",
+    "official_source_status": "CONFIRMED",
+    "knowledge_status": "FACT_READY",
+    "build_batch": None,
+}
 # 現在の lifecycle（Candidate ごと）。
 # nsrc-000004 は G8 Mother Ship decision APPROVED_TARGET_ONLY により CORE_READY
 # （docs/audit/niigata-h001-g8-core-ready-pretransition.md §6）。Nationwide 行は Wave0 の
 # W0-DBxx を使わず、Source batch / handoff も build_batch に入れないため build_batch = null のまま。
 H001_CURRENT_LIFECYCLE = {
     "nsrc-000001": dict(_H001_DISCOVERED),
-    "nsrc-000002": dict(_H001_DISCOVERED),
+    "nsrc-000002": dict(_H001_IMPORTED),
     "nsrc-000003": dict(_H001_DISCOVERED),
     "nsrc-000004": {
         "candidate_status": "CORE_READY",
@@ -1421,16 +1431,72 @@ def test_nsrc_000004_is_core_ready_with_unchanged_evidence():
         "nsrc-000004", "青海神社", "page001-row004"
     )["admission_provenance"]
 
-    # 他の H001 4社は現在の state のまま。
+    # 他の H001 4社は現在の state のまま（nsrc-000004 の遷移に連動しない）。
     for candidate_id, name, position in H001_MEMBERS:
         if candidate_id == "nsrc-000004":
+            continue
+        assert rows[candidate_id] == {
+            **_expected_h001_immutable(candidate_id, name, position),
+            **H001_CURRENT_LIFECYCLE[candidate_id],
+        }, candidate_id
+
+    # Wave0 accounting は Nationwide の遷移で変わらない。
+    wave0 = _wave0_candidates(master)
+    assert len(wave0) == EXPECTED_WAVE0_TOTAL
+    assert Counter(r["candidate_status"] for r in wave0) == EXPECTED_STATUS_COUNTS
+    assert Counter(r["status_reason_code"] for r in wave0) == EXPECTED_REASON_COUNTS
+    assert Counter(
+        r["build_batch"] for r in wave0 if r["build_batch"] is not None
+    ) == {batch: 5 for batch in CANONICAL_BUILD_BATCHES}
+
+
+def test_nsrc_000002_is_synced_to_g7_imported_and_stops_before_core_ready():
+    """G7 Production Import CLOSED / PASS による IMPORTED。CORE_READY（G8）へは進めない。"""
+    master = _load_master()
+    rows = {row["candidate_id"]: row for row in master["candidates"]}
+    row = rows["nsrc-000002"]
+
+    assert row["candidate_status"] == "IMPORTED"
+    assert row["candidate_status"] != "CORE_READY"
+    assert row["status_reason_code"] == "PRODUCTION_IMPORT_COMPLETE"
+    assert row["status_reason_code"] != "CORE_READY_CONTRACT_PASS"
+    assert row["official_source_status"] == "CONFIRMED"
+    assert row["knowledge_status"] == "FACT_READY"
+    assert row["build_batch"] is None
+    assert row["wave_id"] is None
+    assert row["identity_status"] == "CONFIRMED"
+    assert row["duplicate_status"] == "NEW"
+    assert row["candidate_reason"] == NATIONWIDE_CANDIDATE_REASON
+    assert row == {
+        **_expected_h001_immutable("nsrc-000002", "青澤神社", "page001-row002"),
+        **_H001_IMPORTED,
+    }
+    assert row["admission_provenance"] == {
+        "track": "nationwide_source_candidate",
+        "prefecture": "新潟県",
+        "source_batch_id": "NIIGATA-001",
+        "handoff_id": "NIIGATA-001-H001",
+        "source_position": "page001-row002",
+        "source_snapshot_sha256": "f54022303700821672ee4ee65e9967a7e8f343715a66ad987cc0b43530850380",
+        "source_url": "https://niigata-jinjacho.jp/shrine_niigata/search.php",
+        "source_verified_at": "2026-10-08",
+        "captured_at": "2026-10-08T14:27:00+09:00",
+    }
+
+    # nsrc-000004 は CORE_READY のまま。
+    assert rows["nsrc-000004"]["candidate_status"] == "CORE_READY"
+    assert rows["nsrc-000004"]["status_reason_code"] == "CORE_READY_CONTRACT_PASS"
+
+    # nsrc-000001 / 000003 / 000005 は G0 DISCOVERED のまま。
+    for candidate_id, name, position in H001_MEMBERS:
+        if candidate_id in {"nsrc-000002", "nsrc-000004"}:
             continue
         assert rows[candidate_id] == {
             **_expected_h001_immutable(candidate_id, name, position),
             **_H001_DISCOVERED,
         }, candidate_id
 
-    # Wave0 accounting は Nationwide の遷移で変わらない。
+    # Historical Wave0 accounting は Nationwide の遷移で変わらない。
     wave0 = _wave0_candidates(master)
     assert len(wave0) == EXPECTED_WAVE0_TOTAL
     assert Counter(r["candidate_status"] for r in wave0) == EXPECTED_STATUS_COUNTS
@@ -1547,8 +1613,39 @@ def _append_row(row: dict):
         pytest.param(
             _set("nsrc-000004", "duplicate_status", "SAME_SHRINE"), id="n4-duplicate-evidence-change"
         ),
-        # 他の4社が nsrc-000004 に連動して進まないこと。
+        # nsrc-000002（IMPORTED）の lifecycle と immutable evidence。premature CORE_READY も拒否する。
+        pytest.param(_set("nsrc-000002", "candidate_status", "CORE_READY"), id="n2-premature-core-ready"),
+        pytest.param(
+            _set("nsrc-000002", "status_reason_code", "CORE_READY_CONTRACT_PASS"),
+            id="n2-premature-core-ready-reason",
+        ),
+        pytest.param(_set("nsrc-000002", "candidate_status", "DISCOVERED"), id="n2-regressed-to-discovered"),
+        pytest.param(
+            _set("nsrc-000002", "status_reason_code", "REGISTRY_ADMISSION_COMPLETE"),
+            id="n2-imported-reason-mismatch",
+        ),
+        pytest.param(_set("nsrc-000002", "candidate_status", "BUILD_READY"), id="n2-regressed-to-build-ready"),
+        pytest.param(_set("nsrc-000002", "knowledge_status", "UNREVIEWED"), id="n2-knowledge-regression"),
+        pytest.param(
+            _set("nsrc-000002", "official_source_status", "AVAILABLE"), id="n2-official-source-regression"
+        ),
+        pytest.param(_drop("nsrc-000002", "official_source_status"), id="n2-inherits-wave0-official-default"),
+        pytest.param(_set("nsrc-000002", "build_batch", "W0-DB08"), id="n2-invented-wave0-build-batch"),
+        pytest.param(_set("nsrc-000002", "build_batch", "NIIGATA-001"), id="n2-build-batch-source"),
+        pytest.param(_set("nsrc-000002", "build_batch", "NIIGATA-001-H001"), id="n2-build-batch-handoff"),
+        pytest.param(_set("nsrc-000002", "identity_status", "UNREVIEWED"), id="n2-identity-regression"),
+        pytest.param(_set("nsrc-000002", "duplicate_status", "SAME_SHRINE"), id="n2-duplicate-evidence-change"),
+        pytest.param(
+            _set_provenance("nsrc-000002", "captured_at", "2026-10-10T00:00:00+09:00"),
+            id="n2-changed-provenance",
+        ),
+        # 他の4社が nsrc-000002 / nsrc-000004 に連動して進まないこと。
         pytest.param(_set("nsrc-000001", "candidate_status", "IMPORTED"), id="other-member-advanced"),
+        pytest.param(_set("nsrc-000003", "candidate_status", "IMPORTED"), id="other-member-n3-advanced"),
+        pytest.param(
+            _set("nsrc-000005", "status_reason_code", "PRODUCTION_IMPORT_COMPLETE"),
+            id="other-member-n5-reason-advanced",
+        ),
         pytest.param(
             _set("nsrc-000005", "knowledge_status", "FACT_READY"), id="other-member-knowledge-advanced"
         ),
